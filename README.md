@@ -1,6 +1,6 @@
 # THE FOUR — Hotel
 
-**0.4-P1 · Primer hotel procedural individual · Godot 4.7.2 Steam**
+**0.4-S1 · Hotel variable y supervivencia individual · Godot 4.7.2 Steam**
 
 Proyecto principal: `E:\Projects\The Four`. Repositorio local, sin publicación ni remoto público.
 
@@ -8,7 +8,7 @@ Proyecto principal: `E:\Projects\The Four`. Repositorio local, sin publicación 
 
 Abre **Jugar.cmd** y elige **Jugar · nuevo recorrido**. Explora el hotel hasta encontrar la sala señalizada **SALIDA / REFUGIO**. Dentro puedes volver a explorar o mantener la interacción durante tres segundos para terminar el piso. No necesitas recoger fusibles ni completar puzles.
 
-Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Espacio para saltar, **E** para puertas, **F** para linterna y **Esc** para pausa. Pulsa y suelta E para apertura normal; mantenla un segundo para apertura lenta. Los controles se pueden cambiar en Ajustes.
+Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Espacio para saltar, **Ctrl** para agacharte, **E** para puertas y escondites, **F** para linterna y **Esc** para pausa. Pulsa y suelta E para apertura normal; mantenla un segundo para apertura lenta. Los controles se pueden cambiar en Ajustes.
 
 **Continuar** restaura el inicio del mismo piso, no la posición donde cerraste el juego. Reintentar conserva el mapa y restablece puertas/estado. Al completar esta demostración se borra su checkpoint. Los cambios de pantalla necesitan confirmación; se revierten a los doce segundos si no se aceptan.
 
@@ -16,15 +16,18 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 
 - Entre 100 y 132 módulos en cinco sectores, distribución reproducible, rutas alternativas y salida distante.
 - Veinte definiciones de habitaciones/espacios y más de quince tipos de muebles originales provisionales.
-- Habitaciones subdivididas, puertas físicas, cobertura reservada y navegación validada.
+- Módulos rectangulares de 12–18 × 12–20 m, salones unidos de dos/tres módulos, distribuciones interiores asimétricas, puertas físicas y navegación derivada de colisiones.
 - Menú principal, ajustes persistentes de gráficos/imagen/controles/audio, créditos y pausa real.
 - Refugio reversible, salida libre, checkpoint individual y reintento.
 - Forward+, perfil Compatibility, iluminación cálida/fría, moqueta y papel mural procedurales, niebla y filtro analógico regulable.
+- The Locust patrulla, escucha, investiga, persigue y busca; ataque anunciado de 0,7 s con alcance y visión comprobados.
+- Resistencia, agacharse y cuatro escondites accesibles por módulo no protegido; refugio seguro.
+- Polvo, cortinas con movimiento reducido opcional, niebla localizada y reflejos en espacios comunes.
 - Ambiente aportado por el usuario en bucle y música en buses separados.
 
-**Todavía no hay IA, ataques, cooperativo, hoja compartida ni cuatro pisos jugables.** El mobiliario y materiales siguen siendo provisionales; no se presenta como una entrega fotorrealista. La duración de 25–40 minutos por piso necesita pruebas humanas de exploración.
+**Todavía no hay cooperativo, hoja compartida ni cuatro pisos jugables.** La supervivencia individual tiene pruebas funcionales, pero todavía requiere balance en partidas humanas. El mobiliario y materiales siguen siendo provisionales; no se presenta como una entrega fotorrealista. La duración de 25–40 minutos por piso necesita pruebas humanas de exploración.
 
-F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. El personaje de Locust permanece disponible en el prototipo histórico; no hay una criatura activa en este hotel.
+F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. Locust está activo en el hotel. El reintento reinicia resistencia, criatura y 15 s de protección inicial. Su movimiento y preparación usan animación procedural provisional. Los checkpoints del generador anterior (v2) son incompatibles con v3 y se conservan sin convertirlos silenciosamente.
 
 ## Abrir y validar
 
@@ -37,11 +40,13 @@ Desde PowerShell en la carpeta del proyecto:
 ./tools/godot.ps1 compatibility
 ./tools/godot.ps1 editor
 ./tools/godot.ps1 test
+./tools/godot.ps1 survival-test
+./tools/godot.ps1 playtest -Seed 81
 ./tools/godot.ps1 hotel-batch
 ./tools/godot.ps1 hotel-walkthrough
 ```
 
-Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
+Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. Las regresiones de arquitectura usan `--no-enemy`; `survival-test` mantiene la IA real. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
 
 Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle del ambiente; `hotel_benchmark.gd` mide tres vistas por calidad a 1080p. Ejecutarlas con Godot, `--path` al proyecto, `--script res://tools/<archivo>` y, tras `--`, `--automation --test-profile --silent`.
 
@@ -54,7 +59,9 @@ Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle d
 - `scenes/hotel.tscn`: entrada actual; `scripts/hotel/`: sesión, generador/validador, geometría, jugador, ajustes y menús.
 - `scenes/main.tscn` y scripts anteriores: prototipo histórico de fusibles.
 - `docs/GAME_DESIGN.md`, `ROADMAP.md`, `TODO.md`: diseño v0.4, orden y estado real.
-- `docs/V04_VALIDATION.md`: resultados y limitaciones de esta entrega.
+- `docs/V04_VALIDATION.md`: informe histórico de P1.
+- `docs/SURVIVAL_VALIDATION.md`: validación actual del hotel variable y la amenaza.
+- `docs/PLAYTEST_HOTEL.md`: protocolo pendiente de evaluación humana.
 - `docs/ASSETS.md`, `hotel_audio_inventory.json`: procedencia, créditos y análisis técnico.
 - `docs/history/`: plan v0.3 conservado.
 - `evidence/`: resultados y capturas regenerables, excluidos de Git.

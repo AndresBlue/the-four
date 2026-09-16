@@ -1,4 +1,5 @@
 extends SceneTree
+const FLOOR := preload("res://scripts/hotel/floor_definition.gd")
 func _initialize() -> void: run.call_deferred()
 func run() -> void:
 	var level = load("res://scenes/hotel.tscn").instantiate()
@@ -17,7 +18,7 @@ func run() -> void:
 		var samples: Array[float] = []
 		for id in [0, 36, int(level.manifest.exit)]:
 			var room: Dictionary = level.manifest.rooms[id]
-			level.player.position = Vector3(room.x * 12, 0.04, room.z * 12)
+			level.player.position = FLOOR.position_of(room) + Vector3(0, 0.04, 0)
 			level.player.rotation.y = 0.65
 			level.player.camera.rotation.x = -0.1
 			level.hotel.update_visibility(level.player.position, true)

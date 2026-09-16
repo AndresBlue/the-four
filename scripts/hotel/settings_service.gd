@@ -2,7 +2,7 @@ extends Node
 signal changed
 signal display_pending(seconds: int)
 const DEFAULTS := {"fullscreen": false, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.18, "grain": 0.12, "chromatic": 0.08, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.8, "ambience": 0.65, "music": 0.25, "effects": 0.8, "threat": 0.85, "subtitles": true}
-const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F}
+const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL}
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
 var values := DEFAULTS.duplicate()
 var bindings := KEYS.duplicate()

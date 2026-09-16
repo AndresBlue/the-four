@@ -1,6 +1,6 @@
 # The Four — TODO v0.4
 
-Estado: juego **0.4-P1**, diseño **0.4**. Las casillas describen implementación comprobada, no intención. [Diseño](GAME_DESIGN.md), [ruta](ROADMAP.md), [evidencias](V04_VALIDATION.md).
+Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementación comprobada, no intención. [Diseño](GAME_DESIGN.md), [ruta](ROADMAP.md), [evidencias](SURVIVAL_VALIDATION.md).
 
 ## P1 — Niveles y base de presentación
 
@@ -16,6 +16,8 @@ Estado: juego **0.4-P1**, diseño **0.4**. Las casillas describen implementació
 - [x] Salida libre, refugio reversible, confirmación de 3 s y victoria de primer piso.
 - [x] Checkpoint al inicio, reintento de misma distribución y aviso de incompatibilidad.
 - [x] Forward+ y alternativa Compatibility; iluminación, ambiente y filtro iniciales.
+- [x] Dimensiones rectangulares variables, salones unidos de dos/tres módulos y cuatro variantes de particiones interiores; generador v3.
+- [x] Navegación derivada de colisiones; accesos físicos a escondites.
 - [ ] Completar veinte recorridos manuales y cinco partidas de exploración para aceptar duración y orientación. No sustituirlos por el lote automático.
 - [ ] Ajustar tamaño y referencias a partir de esas partidas; meta de 25–40 min todavía no validada.
 
@@ -26,7 +28,9 @@ Estado: juego **0.4-P1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Escucha y selección definitiva de los cinco audios; edición de copias y procedencia documentada.
 - [ ] Fuentes espaciales fijas, acústica por recinto, pasos, conductos, tuberías y silencio contextual.
 - [ ] Materiales PBR terminados, reflejos y composición de escenas de referencia.
-- [ ] Polvo, aire, cortinas animadas y niebla localizada.
+- [x] Polvo suspendido, cortinas animadas y niebla localizada, con perfiles reducidos.
+- [x] Material procedural de madera y sondas de reflexión en espacios comunes.
+- [ ] Acabado PBR definitivo, efectos de conductos y variedad artística adicional.
 - [ ] Sustitución gradual del mobiliario provisional por assets adecuados y acreditados.
 - [ ] Accesibilidad, mezcla y rendimiento sostenido en la escena más exigente.
 
@@ -45,11 +49,14 @@ Estado: juego **0.4-P1**, diseño **0.4**. Las casillas describen implementació
 
 ## P4 — Escondite y The Locust
 
-- [ ] Agacharse, resistencia, ruido y escondites interactivos.
-- [ ] Percepción real, investigación, persecución y búsqueda; memoria de entrada observada.
-- [ ] Navegación de búsqueda dentro de habitaciones y tratamiento de puertas cerradas.
-- [ ] Ataques con alcance, visibilidad y anticipación; permisos/animaciones adecuados.
-- [ ] Validar acompañamiento y regreso desde el refugio; muertes comprensibles.
+- [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.
+- [x] Percepción con paredes/puertas, investigación, persecución, búsqueda y memoria de entrada observada, en individual.
+- [x] Navegación física dentro de habitaciones; la criatura abre lentamente y espera a las puertas.
+- [x] Ataque de 0,7 s con alcance <1,2 m y línea de visión; fallar permite escapar; captura real y reintento.
+- [x] Pasos/aviso originales en bus de peligro; movimiento y preparación procedural provisional del modelo.
+- [ ] Animación final, permisos del personaje/modelo y balance de persecución en partidas humanas.
+- [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
+- [ ] Validar acompañamiento y regreso en cooperativo cuando exista red; evaluar comprensión de muertes con jugadores.
 
 ## P5 — Campaña
 
@@ -72,3 +79,5 @@ Estado: juego **0.4-P1**, diseño **0.4**. Las casillas describen implementació
 ## Historial
 
 H1 v0.3 validó fusibles y sesión fija. Permanece en [H1_VALIDATION.md](H1_VALIDATION.md), pero sus resultados no acreditan el hotel, la IA ni el cooperativo. Cierre técnico y limitaciones de P1 en [V04_VALIDATION.md](V04_VALIDATION.md).
+
+Esta ampliación adelanta supervivencia individual por petición del usuario; no acredita P3 ni cierra toda la atmósfera. Ver [validación S1](SURVIVAL_VALIDATION.md) y [protocolo humano](PLAYTEST_HOTEL.md). Los muebles externos siguen pendientes expresamente.

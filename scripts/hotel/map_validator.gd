@@ -1,4 +1,5 @@
 extends RefCounted
+const FLOOR := preload("res://scripts/hotel/floor_definition.gd")
 
 func validate(data: Dictionary) -> Array[String]:
 	var errors: Array[String] = []
@@ -55,7 +56,7 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 	query.shape = capsule
 	query.collision_mask = 1
 	for room in data.rooms:
-		var center := Vector3(room.x * 12.0, 0.94, room.z * 12.0)
+		var center := FLOOR.position_of(room) + Vector3(0, 0.94, 0)
 		query.transform = Transform3D(Basis.IDENTITY, center)
 		query.motion = Vector3.ZERO
 		if not world.direct_space_state.intersect_shape(query).is_empty(): errors.append("center_%d" % room.id)
@@ -69,10 +70,19 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 					query.transform = Transform3D(Basis.IDENTITY, center + Vector3(0, 0, end * 4.4))
 					query.motion = Vector3(side * 3.0, 0, 0)
 					if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("alcove_entrance_%d" % room.id)
+		if room.type != 19:
+			for spot in FLOOR.hiding_positions(room):
+				var approach := spot + Vector3(-signf(spot.x) * 1.1, 0, 0)
+				query.transform = Transform3D(Basis.IDENTITY, center)
+				query.motion = approach
+				if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("hide_approach_%d" % room.id)
+				query.transform = Transform3D(Basis.IDENTITY, center + approach)
+				query.motion = spot - approach
+				if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("hide_entry_%d" % room.id)
 	for edge in data.edges:
 		var a: Dictionary = data.rooms[edge[0]]
 		var b: Dictionary = data.rooms[edge[1]]
-		query.transform = Transform3D(Basis.IDENTITY, Vector3(a.x * 12.0, 0.94, a.z * 12.0))
-		query.motion = Vector3((b.x - a.x) * 12.0, 0, (b.z - a.z) * 12.0)
+		query.transform = Transform3D(Basis.IDENTITY, FLOOR.position_of(a) + Vector3(0, 0.94, 0))
+		query.motion = FLOOR.position_of(b) - FLOOR.position_of(a)
 		if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("passage_%d_%d" % [a.id, b.id])
 	return errors

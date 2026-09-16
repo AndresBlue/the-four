@@ -1,4 +1,5 @@
 extends SceneTree
+const FLOOR := preload("res://scripts/hotel/floor_definition.gd")
 var level
 var failures: Array[String] = []
 var walked := 0.0
@@ -41,15 +42,15 @@ func run() -> void:
 	if DisplayServer.get_name() == "headless": Engine.max_fps = 0
 	for frame in 4: await physics_frame
 	await capture_image("reception")
-	var navigation := NavigationServer3D.map_get_path(level.get_world_3d().navigation_map, level.player.position, Vector3(level.manifest.rooms[level.manifest.exit].x * 12, 0, level.manifest.rooms[level.manifest.exit].z * 12), true)
-	print("NAV end=", navigation[-1] if not navigation.is_empty() else Vector3.ZERO, " expected=", Vector3(level.manifest.rooms[level.manifest.exit].x * 12, 0, level.manifest.rooms[level.manifest.exit].z * 12))
+	var navigation := FLOOR.navigation_path(level.get_world_3d().navigation_map, level.player.position, FLOOR.position_of(level.manifest.rooms[level.manifest.exit]))
+	print("NAV end=", navigation[-1] if not navigation.is_empty() else Vector3.ZERO, " expected=", FLOOR.position_of(level.manifest.rooms[level.manifest.exit]))
 	if navigation.size() < 2: failures.append("navigation_empty")
 	var path := route(level.manifest)
 	var screenshot_count := 0
 	var timings: Array[float] = []
 	for id in path:
 		var room: Dictionary = level.manifest.rooms[id]
-		var destination := Vector3(room.x * 12.0, 0, room.z * 12.0)
+		var destination := FLOOR.position_of(room)
 		var frames := 0
 		while Vector2(level.player.position.x - destination.x, level.player.position.z - destination.z).length() > 0.22 and frames < 1000:
 			var direction: Vector3 = destination - level.player.position

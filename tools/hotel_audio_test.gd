@@ -4,6 +4,9 @@ func run() -> void:
 	var level = load("res://scenes/hotel.tscn").instantiate()
 	root.add_child(level)
 	await level.start_floor(81)
+	# The previous run deliberately mutes this test profile; establish prerequisites.
+	level.settings.set_value("master", 0.8)
+	level.settings.set_value("ambience", 0.65)
 	level.ambience.play()
 	level.theme.play()
 	var index := AudioServer.get_bus_index("Ambience")

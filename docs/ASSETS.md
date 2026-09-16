@@ -1,9 +1,10 @@
-# Assets y créditos — 0.4-P1
+# Assets y créditos — 0.4-S1
 
 ## Hotel actual
 
 - Arquitectura modular, veinte definiciones espaciales y mobiliario provisional: geometría original creada para este proyecto. No se atribuye a Sketchfab.
-- Materiales de papel mural y moqueta: shaders procedurales propios. El resto usa materiales básicos; no son texturas fotorrealistas descargadas.
+- Materiales de papel mural, moqueta, madera y cortinas: shaders procedurales propios. El resto usa materiales básicos; no son texturas fotorrealistas descargadas.
+- Pasos y señal de preparación de ataque: síntesis original en ejecución, sin muestras externas. Polvo, cortinas, niebla localizada y sondas de reflexión creados dentro de Godot. No se añadieron muebles externos.
 - Copia utilizada: `assets/audio/hotel/ambience.wav`, idéntica al original `ambience.wav` de la raíz. SHA-256: `7f873c02a389c4da33befb3da559d613a98aa4cc051f91c805a7782c4d72adb1`.
 - Ambiente: 410,46 s, estéreo, 11.025 Hz, PCM de 8 bits. Se reproduce en bucle y a volumen reducido; el original no se modifica. Autoría/licencia pendientes de verificar.
 - Los otros cuatro audios nuevos quedan conservados para la selección de la etapa 2. Detalles técnicos en `hotel_audio_inventory.json`. La voz tiene un nivel notablemente mayor que el ambiente y requiere edición/mezcla antes de incorporarla.
@@ -19,7 +20,7 @@
 
 ## Assets del prototipo histórico
 
-Las secciones siguientes documentan el H1 anterior. Locust sigue disponible en esa escena; no hay una criatura activa en el hotel 0.4-P1.
+Las secciones siguientes conservan la procedencia del H1 anterior. El mismo GLB de Locust también está activo en el hotel 0.4-S1; los originales no se modificaron.
 
 ## The Locust
 
@@ -31,7 +32,7 @@ Las secciones siguientes documentan el H1 anterior. Locust sigue disponible en e
 - Ficha: https://sketchfab.com/3d-models/toe-locust-by-doumty-cd344df3cdc04fb5b8d1ca73a8a26c37
 - Ficha original de Workshop enlazada por el autor: https://steamcommunity.com/sharedfiles/filedetails/?id=3544392594
 - Licencia anunciada en la ficha consultada el 16/09/2026: **CC Attribution-NonCommercial-NoDerivs**. El archivo suministrado no incluye un documento de licencia. La apertura directa de la ficha devolvió 403, pero el índice consultado muestra explícitamente esta licencia; comprobar la versión y sus condiciones con el autor antes de distribuir.
-- Adaptación local: escala de instancia de 1,9×, posición de apoyo y pose estática de brazos calculada en Godot. El GLB y sus texturas originales se mantienen sin modificar.
+- Adaptación local: H1 conserva escala 1,9× y pose estática. El hotel usa 1,65× (altura medida 2,46 m), oscilación procedural de huesos y preparación visual de ataque. Es animación provisional, no un paquete final de animaciones. El GLB y sus texturas originales se mantienen sin modificar; los permisos pendientes de distribución no cambian.
 
 No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato anterior: se trata de un modelo distinto. No presentar el asset como oficial de Doctor Nowhere ni suponer autorización comercial. Resolver el permiso de distribución de esta integración y sus adaptaciones, o sustituirla, antes de una entrega pública.
 

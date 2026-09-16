@@ -2,7 +2,7 @@
 
 ## Estado real y cambio de dirección
 
-La entrega **0.4-P1** implementa un primer hotel procedural individual, menú y ajustes persistentes, salida libre, refugio reversible y checkpoint de inicio del piso. Incluye iluminación y ambiente iniciales. No incluye todavía cooperativo, hoja compartida, ataques, escondites interactivos ni campaña completa.
+La entrega **0.4-S1** amplía el hotel individual con módulos de dimensiones variables, salones unidos, distribuciones asimétricas, polvo, cortinas móviles, niebla localizada y reflejos iniciales. The Locust ya patrulla, oye, persigue y captura; existen agacharse, resistencia y escondites. Conserva menú, ajustes, salida libre, refugio y checkpoint. Cooperativo, hoja y campaña siguen pendientes. La aceptación de duración, balance y acabado visual requiere partidas humanas; no se presenta como completa.
 
 El antiguo H1 de fusibles se conserva como prototipo histórico en `scenes/main.tscn`; ya no es la escena principal ni determina la victoria del juego nuevo. Su informe no acredita la generación o supervivencia actuales. Los planes anteriores están archivados en `history/`.
 
@@ -23,9 +23,9 @@ La salida conduce a un refugio protegido. Quien llega puede dibujar en la hoja o
 
 La captura elimina al jugador hasta el siguiente piso. No hay reanimación. Si ya no quedan suficientes vivos para alcanzar el mínimo, termina el intento. Quienes murieron reaparecen en el siguiente piso. Salvar a todos es un resultado ideal registrado, sin ventajas estadísticas.
 
-En 0.4-P1 solo hay un participante real. La sesión separa su estado individual —explorando, refugiado o muerto— del estado global de partida. La cuota está preparada y probada como regla, pero eso **no constituye implementación de red**. F9 prueba la derrota únicamente en ejecución de desarrollo y fuera del refugio.
+En 0.4-S1 solo hay un participante real. La sesión separa su estado individual —explorando, refugiado o muerto— del estado global de partida. La cuota está preparada y probada como regla, pero eso **no constituye implementación de red**. F9 prueba la derrota únicamente en ejecución de desarrollo y fuera del refugio.
 
-Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa distribución y el estado inicial, no la posición donde se salió. Guardar formato, versión del generador, semilla, piso y uso de respaldo. Escritura mediante archivo temporal y copia anterior; incompatibilidad explícita, sin reemplazo silencioso de mapas. En 0.4-P1 completar el primer piso termina la demostración y elimina el checkpoint completado.
+Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa distribución y el estado inicial, no la posición donde se salió. Guardar formato, versión del generador, semilla, piso y uso de respaldo. Escritura mediante archivo temporal y copia anterior; incompatibilidad explícita, sin reemplazo silencioso de mapas. En 0.4-S1 completar el primer piso termina la demostración y elimina el checkpoint completado.
 
 ## Menú y ajustes
 
@@ -46,24 +46,24 @@ La versión actual conserva caminar a 3,8 m/s, correr a 6 m/s y salto. Interacci
 
 Recepción, habitaciones, baños, salones, comedor, lavandería, almacenes, mantenimiento, vestíbulos, galerías, sala de lectura, televisión, oficina, guardarropa y jardín interior. Veinte definiciones base combinan función, altura y recetas de decoración. Las zonas domésticas incluyen subdivisiones interiores; no todo es un corredor de laboratorio.
 
-Moqueta, papel mural, zócalos de madera, lámparas cálidas y fluorescentes. Techos de 3,15 m y salones seleccionados de 4,2 m. Referencias reconocibles: mobiliario, números, cuadros, tapizados y, en etapas siguientes, manchas y fuentes de sonido.
+Moqueta, papel mural, zócalos de madera, lámparas cálidas y fluorescentes. Techos de 3,15 m y salones seleccionados de 4,2 m y espacios comunes unidos de 4,8 m. Referencias reconocibles: mobiliario, números, cuadros, tapizados y, en etapas siguientes, manchas y fuentes de sonido.
 
 Mobiliario inicial original y provisional: cama, mesita, lámpara, sofá, escritorio, televisión, teléfono, cuadros, maleta, carro, estantería, planta, papelera, cortina, recepción, mesa, armario, lavadora y lavabo. Son piezas geométricas reconocibles, no assets fotorrealistas terminados.
 
 ### Generación y garantías
 
-1. Presupuesto de 100–140 módulos en 4–6 sectores. La implementación inicial usa 100–132 módulos de 12 m y cinco sectores.
+1. Presupuesto de 100–140 módulos en 4–6 sectores. El generador v3 usa 100–132 módulos de 12/14/18 m por 12/16/20 m y cinco sectores. Agrupa módulos vecinos en salones de dos/tres piezas, incluidos contornos en L, retirando físicamente sus paredes y puertas interiores. La topología base sigue siendo ortogonal; no se promete geometría libre arbitraria.
 2. Construir un grafo conectado, añadir ciclos, elegir tipos y salida y, por último, decorar. Inicio y salida son distintos.
 3. Elegir salida entre posiciones cuya distancia desde el inicio sea al menos el 85% de la máxima del grafo. Existen distintos emplazamientos posibles por semilla.
 4. Al menos cuatro ciclos; reducir las ramas sin salida demasiado largas. No encadenar más de tres módulos rectos de pasillo sin cambio espacial o bifurcación.
 5. Semillas separadas para distribución, decoración y ambiente. Misma semilla y versión reproducen el mapa; geometría fija durante la partida.
-6. Reservar cuatro posiciones de cobertura por módulo y acceso desde los pasos principales. La frecuencia de espacios disponibles supera la meta de uno cada 20–30 m. Los escondites y su utilidad frente a cada criatura se validarán al añadir IA.
+6. Reservar cuatro posiciones de cobertura por módulo y acceso desde los pasos principales. La frecuencia de espacios disponibles supera la meta de uno cada 20–30 m. Existen cuatro armarios con cortina por módulo no protegido, colocados junto a los perímetros. Sus accesos y salidas se comprueban físicamente; el balance para cuatro jugadores se validará con el cooperativo.
 7. Decoración en posiciones reservadas, sin ocupar conectores ni pasos. Portales de 2,4 m; comprobar con cápsula de jugador, no solo con un grafo.
 8. Validar después de construir: centros libres, accesos a posiciones reservadas, barridos físicos entre habitaciones y ruta de navegación completa hasta la salida. Las hojas de puertas se verifican como mecanismos abribles por separado.
 9. Hasta veinte intentos de distribución, luego respaldo fijo validado. Si falla la validación física, intentar respaldo; nunca habilitar un piso que no tenga ruta de salida validada.
 10. Guardar cuándo se utilizó respaldo para reproducirlo al continuar o reintentar.
 
-La navegación inicial usa una red conservadora de pasos centrales. La IA futura deberá ampliar la navegación a las zonas de búsqueda y escondites y respetar puertas cerradas; no se da por completada con esa red inicial.
+La navegación se calcula desde los cuerpos estáticos construidos, incluyendo interiores y accesos de escondites. Las puertas son obstáculos dinámicos tratados por la IA: apertura lenta y espera, sin atravesarlas. Durante el giro siguen bloqueando la visión de la criatura aunque se desactive su empuje sobre personajes. Las consultas de rutas largas eliminan el límite predeterminado de polígonos para validar la salida completa.
 
 ## Presentación y assets
 
@@ -71,7 +71,7 @@ Forward+ es el render principal de escritorio. Un lanzador Compatibility ofrece 
 
 0.4-P1 incorpora materiales procedurales de moqueta y papel mural, luces localizadas, sombras próximas, niebla de profundidad, oclusión ambiental, niebla volumétrica en calidad alta y filtro VHS moderado. Menús, subtítulos e indicaciones se dibujan después del filtro. Las instancias se agrupan por habitación/material y se limita la presentación lejana; las colisiones y el mapa permanecen cargados.
 
-El fotorrealismo sigue siendo una meta visual pendiente. La etapa de atmósfera desarrollará materiales PBR completos, reflejos, composición, polvo, conductos de aire, cortinas animadas, niebla localizada y una colección coherente de sonidos. No se considerará logrado por aplicar un filtro.
+El fotorrealismo sigue siendo una meta visual pendiente. Esta ampliación añade madera procedural, sondas de reflexión iniciales, polvo, cortinas móviles y niebla localizada. Siguen pendientes materiales PBR finales, composición definitiva, efectos de conductos y una colección coherente de sonidos. No se considerará logrado por aplicar un filtro.
 
 Audio inicial: copia de `ambience.wav`, bucle a volumen reducido, fuente ambiental espacial y música anterior en su propio bus. Los cinco nuevos sonidos tienen inventario técnico con hashes y formatos. La selección auditiva definitiva y el catálogo completo de eventos pertenecen a la etapa 2. No usar la voz estridente como amenaza aleatoria sin aviso.
 
@@ -93,11 +93,11 @@ Hoja inicialmente vacía por piso, abierta con Tab. Botón izquierdo dibuja y de
 
 El anfitrión ordena trazos y borrados; quien dibuja recibe respuesta visual inmediata. Agrupar y limitar tráfico, restaurar superficie al reconectar. Nueva hoja al empezar piso o reintento. Los muertos observan a un compañero vivo sin cámara libre ni edición de la hoja. Guilt nunca falsifica esta superficie.
 
-## Criaturas y ritmo — pendiente
+## Criaturas y ritmo — Locust individual implementado; resto pendiente
 
-Primero The Locust: patrulla, oído, visión comprobada, investigación, persecución y búsqueda. Valores iniciales heredados: visión de 80° y 14 m, confirmación visible de 0,35 s, patrulla 2,4 m/s, persecución 5,2 m/s, búsqueda 8–12 s. Ataque por debajo de 1,2 m con línea de visión y 0,7 s de anticipación; salir del alcance hace fallar el ataque. No matar por contacto ni atravesando muros.
+The Locust individual implementa: patrulla, oído, visión comprobada, investigación, persecución y búsqueda. Valores iniciales heredados: visión de 80° y 14 m, confirmación visible de 0,35 s, patrulla 2,4 m/s, persecución 5,2 m/s, búsqueda 8–12 s. Ataque por debajo de 1,2 m con línea de visión y 0,7 s de anticipación; salir del alcance hace fallar el ataque. No matar por contacto ni atravesando muros.
 
-Añadir agacharse a 2 m/s, resistencia 100, gasto al correr 20/s y recuperación 15/s tras 1,5 s. Escondites con entrada y salida libres; observar una entrada permite inspeccionarla. Las puertas retrasan, no conceden inmunidad fuera del refugio.
+Implementado agacharse a 2 m/s, resistencia 100, gasto al correr 20/s y recuperación 15/s tras 1,5 s. Escondites con entrada y salida libres; observar una entrada permite inspeccionarla. Las puertas retrasan, no conceden inmunidad fuera del refugio. Se añaden 15 s de protección inicial y aparición distante al empezar/reintentar, sin tiempo mínimo exigido para salir. Un escondite no observado oculta a distancia, pero una inspección frontal próxima o una entrada observada pueden revelar al jugador. Movimiento y preparación procedural del modelo son provisionales; las animaciones finales y permisos siguen pendientes.
 
 - Sunman: atrios y galerías; aviso 2 s, barrido 4 s, descanso 6 s. Exposición +25/s, recuperación −20/s tras 1 s protegido, aviso a 70 y captura a 100. Cada cruce cabe en su ventana caminando más 1 s de margen.
 - The Boiled One: televisores en habitaciones y salones; mirada central de 25°, exposición real tras 0,5 s. Intrusión +18/s, recuperación −12/s; avisos a 60/85 y captura a 100. No paralizar inevitablemente antes del umbral.

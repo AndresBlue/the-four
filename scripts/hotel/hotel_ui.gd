@@ -4,6 +4,7 @@ var settings
 var overlay: ColorRect
 var column: VBoxContainer
 var hint: Label
+var survival: Label
 var subtitle: Label
 var progress: ProgressBar
 var settings_open := false
@@ -29,6 +30,8 @@ func _ready() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle = label(hud, "", 16)
 	subtitle.position = Vector2(36, 30)
+	survival = label(hud, "", 14)
+	survival.position = Vector2(36, 105)
 	progress = ProgressBar.new()
 	progress.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	progress.offset_left = -140
@@ -90,12 +93,13 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 	clear()
 	overlay.show()
 	hint.text = ""
+	survival.text = ""
 	progress.hide()
 	match kind:
 		"main":
 			label(column, "T H E   F O U R", 42)
 			label(column, "UN HOTEL SIN RECUERDOS", 17)
-			label(column, "Explora. Escucha. Encuentra la salida.\n\nPrimer piso procedural · Exploración individual\nLas criaturas todavía no persiguen al jugador.", 16)
+			label(column, "Explora. Escucha. Encuentra la salida.\n\nPrimer piso procedural · Supervivencia individual\nThe Locust escucha. No dejes que te vea esconderte.", 16)
 			action("Jugar · nuevo recorrido", "new")
 			action("Continuar", "continue", not can_continue)
 			action("Ajustes", "settings")
@@ -110,19 +114,19 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Menú principal", "main")
 		"won":
 			label(column, "ENCONTRASTE LA SALIDA", 30)
-			label(column, "El hotel queda atrás. Por ahora.\n\nFin del primer piso de exploración.\nLos otros pisos y el cooperativo están en desarrollo.", 17)
+			label(column, "El hotel queda atrás. Por ahora.\n\nSobreviviste al primer piso.\nLos otros pisos y el cooperativo están en desarrollo.", 17)
 			action("Explorar un nuevo recorrido", "new")
 			action("Menú principal", "main")
 		"failed":
 			label(column, "SEÑAL PERDIDA", 32)
-			label(column, "Derrota de prueba. Las criaturas aún no atacan.\nEl reintento conserva la distribución del piso.", 17)
+			label(column, "The Locust te encontró. Rompe su línea de visión antes de esconderte.\nEl reintento conserva la distribución del piso.", 17)
 			action("Reintentar", "retry")
 			action("Menú principal", "main")
 		"loading": label(column, "EL HOTEL ESTÁ TOMANDO FORMA…", 27)
 		"transition": label(column, "DEJANDO EL PISO…", 30)
 		"credits":
 			label(column, "CRÉDITOS", 30)
-			label(column, "Universo y criaturas: Doctor Nowhere.\nProyecto fan en desarrollo; no oficial.\nArquitectura y mobiliario provisional: creados para The Four.\nLocust del prototipo histórico: modelo de Doumty.\nAudio aportado por el usuario: autoría y licencias por verificar.\n\nEsta entrega usa mobiliario original provisional.\nLos permisos de distribución de los assets siguen pendientes.", 16)
+			label(column, "Universo y criaturas: Doctor Nowhere.\nProyecto fan en desarrollo; no oficial.\nArquitectura y mobiliario provisional: creados para The Four.\nThe Locust: modelo de Doumty.\nAudio aportado por el usuario: autoría y licencias por verificar.\n\nEsta entrega usa mobiliario original provisional.\nLos permisos de distribución de los assets siguen pendientes.", 16)
 			action("Volver", "main")
 	if not message.is_empty():
 		var info := label(column, message, 14)
@@ -154,7 +158,7 @@ func show_settings(back: String) -> void:
 	var controls := page(tabs, "Controles")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")
-	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna"}
+	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)

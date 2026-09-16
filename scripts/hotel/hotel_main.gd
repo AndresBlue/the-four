@@ -1,4 +1,8 @@
 extends Node3D
+const FLOOR := preload("res://scripts/hotel/floor_definition.gd")
+const HIDE := preload("res://scripts/hotel/hiding_place.gd")
+const LOCUST := preload("res://scripts/hotel/hotel_locust.gd")
+var locust
 const GENERATOR := preload("res://scripts/hotel/map_generator.gd")
 const VALIDATOR := preload("res://scripts/hotel/map_validator.gd")
 const GEOMETRY := preload("res://scripts/hotel/hotel_geometry.gd")
@@ -68,6 +72,10 @@ func _ready() -> void:
 	var saved: Dictionary = session.checkpoint()
 	ui.menu("main", not saved.is_empty(), session.message)
 	on_state()
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--playtest-seed="):
+			var value := argument.trim_prefix("--playtest-seed=")
+			if value.is_valid_int() and int(value) >= 0 and int(value) <= 2147483647: start_floor(int(value))
 
 func on_action(action: String) -> void:
 	match action:
@@ -89,6 +97,10 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	session.set_state(session.State.LOADING)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	player.reset_survival()
+	if is_instance_valid(locust):
+		remove_child(locust)
+		locust.queue_free()
 	if is_instance_valid(hotel):
 		remove_child(hotel)
 		hotel.queue_free()
@@ -102,6 +114,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	add_child(hotel)
 	hotel.build(manifest)
 	hotel.quality = settings.values.quality
+	hotel.reduced = settings.values.reduced
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
@@ -134,12 +147,12 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 			return
 	# Wait for the new static floor's navigation to be queryable before playing.
 	var exit_room: Dictionary = manifest.rooms[manifest.exit]
-	var exit_position := Vector3(exit_room.x * 12, 0, exit_room.z * 12)
+	var exit_position := FLOOR.position_of(exit_room)
 	var navigation_ready := false
 	for frame in 12:
 		await get_tree().physics_frame
-		var path := NavigationServer3D.map_get_path(get_world_3d().navigation_map, Vector3.ZERO, exit_position, true)
-		if path.size() > 1 and path[-1].distance_to(exit_position) < 0.2:
+		var path := FLOOR.navigation_path(get_world_3d().navigation_map, Vector3.ZERO, exit_position)
+		if path.size() > 1 and path[-1].distance_to(exit_position) < 0.5:
 			navigation_ready = true
 			break
 	if not navigation_ready:
@@ -148,6 +161,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 		return
 	session.start(seed_value, manifest.get("fallback", false))
 	save_error = session.message
+	spawn_locust()
 	if not automation and not OS.get_cmdline_user_args().has("--silent"):
 		ambience.play()
 		theme.play()
@@ -177,10 +191,43 @@ func on_state() -> void:
 		session.State.FAILED: ui.menu("failed")
 
 func in_refuge() -> bool:
+	return point_in_refuge(player.position)
+
+func point_in_refuge(point: Vector3) -> bool:
 	if manifest.is_empty(): return false
 	var room: Dictionary = manifest.rooms[manifest.exit]
-	var center := Vector3(room.x * 12.0, 0, room.z * 12.0)
-	return absf(player.position.x - center.x) < 5.45 and absf(player.position.z - center.z) < 5.45 and player.position.y >= -0.1 and player.position.y < 2.0
+	var center := FLOOR.position_of(room)
+	var span := FLOOR.size_of(room)
+	return absf(point.x - center.x) < span.x * 0.5 - 0.55 and absf(point.z - center.z) < span.y * 0.5 - 0.55 and point.y >= -0.1 and point.y < 2.0
+
+func spawn_locust() -> void:
+	locust = LOCUST.new()
+	locust.level = self
+	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
+	var distances := GENERATOR.distance_map(manifest.adjacency, 0)
+	var chosen := 0
+	var target := int(distances.max() * 0.55)
+	for room in manifest.rooms:
+		if room.id != manifest.exit and distances[room.id] >= target and distances[room.id] > 3:
+			chosen = room.id
+			break
+	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
+	locust.patrol_room = chosen
+	add_child(locust)
+	if not player.noise.is_connected(on_noise): player.noise.connect(on_noise)
+	for door in hotel.doors: door.noise.connect(on_noise)
+	# Architecture regression tests opt out explicitly; normal/headless games keep AI.
+	if OS.get_cmdline_user_args().has("--no-enemy"): locust.set_physics_process(false)
+
+func on_noise(point: Vector3, radius: float) -> void:
+	if is_instance_valid(locust): locust.hear(point, radius)
+
+func focused_hide():
+	var from: Vector3 = player.camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * 2.0, 1 | 8 | 16)
+	query.collide_with_areas = true
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return hit.collider if not hit.is_empty() and hit.collider is HIDE else null
 
 func focused_door():
 	var from: Vector3 = player.camera.global_position
@@ -192,6 +239,20 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	var inside := in_refuge()
 	session.set_refuge(1, inside)
+	ui.survival.text = "%s · Agacharse    Resistencia %d%%" % [settings.key_name("crouch"), player.stamina]
+	var hiding_target = focused_hide()
+	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
+		if player.hidden: player.leave_hide()
+		else:
+			if is_instance_valid(locust) and locust.sees_player(true): locust.observed_hide = hiding_target
+			player.enter_hide(hiding_target)
+		pressed_door = null
+		was_held = true
+	if player.hidden:
+		ui.hint.text = "%s · Salir del escondite. No estás a salvo si te vio entrar." % settings.key_name("interact")
+		ui.subtitle.text = locust.warning if is_instance_valid(locust) and settings.values.subtitles else ""
+		ui.progress.visible = false
+		return
 	var target = focused_door()
 	var held := Input.is_action_pressed("interact")
 	var key: String = settings.key_name("interact")
@@ -223,10 +284,15 @@ func _physics_process(delta: float) -> void:
 		ui.subtitle.text = "Encuentra la salida.\n%s · Interactuar    %s · Linterna    Esc · Pausa" % [key, settings.key_name("flashlight")]
 	elif settings.values.subtitles and session.elapsed < 17:
 		ui.subtitle.text = "[Ventilación constante]"
+	if is_instance_valid(hiding_target): ui.hint.text = "%s · Esconderse" % key
+	if is_instance_valid(locust) and not locust.warning.is_empty(): ui.subtitle.text = locust.warning
 	if not save_error.is_empty(): ui.subtitle.text = save_error
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
+	var warning_active: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
+	ambience.volume_db = -30 if warning_active else -23
+	theme.volume_db = -36 if warning_active else -26
 	visibility_clock += delta
 	if visibility_clock > 0.25:
 		visibility_clock = 0
@@ -290,7 +356,9 @@ func apply_settings() -> void:
 	environment.volumetric_fog_density = 0.008
 	for key in ["vhs", "grain", "chromatic"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key])
 	player.torch.shadow_enabled = settings.values.shadows
-	if is_instance_valid(hotel): hotel.quality = settings.values.quality
+	if is_instance_valid(hotel):
+		hotel.quality = settings.values.quality
+		hotel.reduced = settings.values.reduced
 
 func build_audio() -> void:
 	ambience = AudioStreamPlayer.new()

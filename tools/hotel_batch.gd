@@ -1,4 +1,5 @@
 extends SceneTree
+const FLOOR := preload("res://scripts/hotel/floor_definition.gd")
 const WALK := preload("res://tools/hotel_walkthrough.gd")
 var failures: Array = []
 var walks: Array = []
@@ -22,8 +23,8 @@ func run() -> void:
 		physics_passed += 1
 		await physics_frame
 		var exit_room: Dictionary = level.manifest.rooms[level.manifest.exit]
-		var destination := Vector3(exit_room.x * 12, 0, exit_room.z * 12)
-		var path := NavigationServer3D.map_get_path(level.get_world_3d().navigation_map, Vector3.ZERO, destination, true)
+		var destination := FLOOR.position_of(exit_room)
+		var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, Vector3.ZERO, destination)
 		if path.size() < 2 or path[path.size() - 1].distance_to(destination) > 1.0:
 			failures.append({"seed": seed_value, "reason": "navigation"})
 			print("NAV_FAIL ", seed_value, " points=", path.size(), " end=", path[-1] if not path.is_empty() else Vector3.ZERO, " expected=", destination)
@@ -58,7 +59,7 @@ func walk(level) -> bool:
 	path.reverse()
 	for id in path:
 		var room: Dictionary = level.manifest.rooms[id]
-		var destination := Vector3(room.x * 12, 0, room.z * 12)
+		var destination := FLOOR.position_of(room)
 		var frames := 0
 		while Vector2(level.player.position.x - destination.x, level.player.position.z - destination.z).length() > 0.22 and frames < 700:
 			var direction: Vector3 = destination - level.player.position
