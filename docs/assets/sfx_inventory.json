@@ -1,0 +1,312 @@
+[
+  {
+    "source": "sfx/ambience/only-ambience/dark terror ambience.wav",
+    "bytes": 130207430,
+    "sha256": "89d9d61249b716284c723c73ebb3c32ffae0227cd24086c964bc3999e17107ab",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/ambience/dark_hotel.wav",
+    "seconds": 452.107625,
+    "channels": 2,
+    "sample_rate": 48000,
+    "bits": 24,
+    "peak": 0.35638427734375,
+    "rms": 0.050185784697532654,
+    "processing": {
+      "mono": false,
+      "sample_rate": 24000,
+      "bits": 16,
+      "loop_crossfade_seconds": 1,
+      "gain": 1.0,
+      "seconds": 451.107625
+    }
+  },
+  {
+    "source": "sfx/ambience/presence/big-hall-far-prop-glass-noise.wav",
+    "bytes": 7391136,
+    "sha256": "f536c4d3cc5746d3fe578588f3a7634398bf832440761eec68103684c53c595b",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": null,
+    "seconds": 27.898775510204082,
+    "channels": 2,
+    "sample_rate": 44100,
+    "bits": 24,
+    "peak": 0.18058109283447266,
+    "rms": 0.012848572805523872
+  },
+  {
+    "source": "sfx/ambience/presence/sub-riser-presence.wav",
+    "bytes": 1443580,
+    "sha256": "729803e32c3a1de64ee36360eb3527aa9181277ec75f7f635525744819faf74c",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": null,
+    "seconds": 5.008416666666666,
+    "channels": 2,
+    "sample_rate": 48000,
+    "bits": 24,
+    "peak": 0.244537353515625,
+    "rms": 0.0395754836499691
+  },
+  {
+    "source": "sfx/ambience/presence/terror ambience (dark presence).wav",
+    "bytes": 9388076,
+    "sha256": "1a63433a4aae2ce12e44f78dc37fbc8d3b9b04cb112cdc899fcc558c8eb0069c",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/presence/locust_presence.wav",
+    "seconds": 53.22013605442177,
+    "channels": 2,
+    "sample_rate": 44100,
+    "bits": 16,
+    "peak": 1.0,
+    "rms": 0.22384074330329895,
+    "processing": {
+      "mono": true,
+      "sample_rate": 22050,
+      "bits": 16,
+      "loop_crossfade_seconds": 1,
+      "gain": 0.7992179517200337,
+      "seconds": 52.22013605442177
+    }
+  },
+  {
+    "source": "sfx/door/closing/close-hard-closing.ogg",
+    "bytes": 31428,
+    "sha256": "558849d5c7e64bf36c50a112b42e0b722a4d6810be044cbbe1ed4ae5d2cc3ba4",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/door/closing/close-hard-closing.ogg"
+  },
+  {
+    "source": "sfx/door/closing/closing1.ogg",
+    "bytes": 30199,
+    "sha256": "d6c9b44f34b63af459c6e10f5e51a8d20d4f9f036ce9c884e3981de6a26bf026",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/closing/closing1.ogg"
+  },
+  {
+    "source": "sfx/door/closing/closing2.ogg",
+    "bytes": 33179,
+    "sha256": "e7b2f04e96c6006206e7306bc377b3a3ada0aaef77df302ac32f2c69043efb4b",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/closing/closing2.ogg"
+  },
+  {
+    "source": "sfx/door/closing/closing3.ogg",
+    "bytes": 44918,
+    "sha256": "90864ea03fe769dfcc9386c1ea30cb045255ab17c6e3c0969282edab3553c8c4",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/closing/closing3.ogg"
+  },
+  {
+    "source": "sfx/door/closing/far-closing.ogg",
+    "bytes": 24546,
+    "sha256": "d6af989af945c92623fe2c814aae02c554d8eaf3f8018c161c2a6084564c4fe3",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/closing/far-closing.ogg"
+  },
+  {
+    "source": "sfx/door/closing/far-hard-closing.ogg",
+    "bytes": 24893,
+    "sha256": "4b87044a7d29b964eaf73c9c8abef96c261369a8f1f17467d302fbd995d82e16",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/door/closing/far-hard-closing.ogg"
+  },
+  {
+    "source": "sfx/door/closing/far-soft-closing.ogg",
+    "bytes": 22297,
+    "sha256": "1ffd2683c694a635137c73ac7e01c7b621cad08d57b2956b1d4a507d0ef0f7e8",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/closing/far-soft-closing.ogg"
+  },
+  {
+    "source": "sfx/door/closing/wooden-closing.ogg",
+    "bytes": 24112,
+    "sha256": "167493ce617c041f7835c898283f71664a555398b8d419045f70bbf9b734b7a8",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/closing/wooden-closing.ogg"
+  },
+  {
+    "source": "sfx/door/opening/close-hard-opening.ogg",
+    "bytes": 23830,
+    "sha256": "1e8bec3658351494db1ec9333ef48f80683c8637cc78c610a1b4f69bc90343e7",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/door/opening/close-hard-opening.ogg"
+  },
+  {
+    "source": "sfx/door/opening/creaky-wooden-door-slow-opening.mp3",
+    "bytes": 78994,
+    "sha256": "bded1169b684ab95f1ea7c31665863609b8207bc8f736d853b6cb226d85ab8ef",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
+  },
+  {
+    "source": "sfx/door/opening/far-hard-opening.ogg",
+    "bytes": 12068,
+    "sha256": "c0277e8b7952bb9617ba32683e5d0e16df49a7636e7b1813cc74f3c8567d1cec",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/door/opening/far-hard-opening.ogg"
+  },
+  {
+    "source": "sfx/door/opening/far-opening.ogg",
+    "bytes": 17224,
+    "sha256": "8a1c3cfc7d3811f74fbe8f30a4c8587606a39786fc831220d6b53b9a1d6ad85d",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/far-opening.ogg"
+  },
+  {
+    "source": "sfx/door/opening/far-soft-opening.ogg",
+    "bytes": 23585,
+    "sha256": "d82136c29fde8a5233979fa6c3d219daf10e883cb640f93483e5e41d54fb9dbe",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/far-soft-opening.ogg"
+  },
+  {
+    "source": "sfx/door/opening/opening1.ogg",
+    "bytes": 62220,
+    "sha256": "bbf6f3462b4c2ff6517b630b1d2937c450b85fdf44c7a3444c903cba21dcc2db",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/opening1.ogg"
+  },
+  {
+    "source": "sfx/door/opening/opening2.ogg",
+    "bytes": 35787,
+    "sha256": "0fc313e09ddc8d07be781ce0a5467dc51728e541b1644d5b1f40ce750fb118ed",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/opening2.ogg"
+  },
+  {
+    "source": "sfx/door/opening/opening3.ogg",
+    "bytes": 32805,
+    "sha256": "a5cff9f6a886c2706e1f5ca17b93cf969c94798b291b79b61605b834a5c48000",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/opening3.ogg"
+  },
+  {
+    "source": "sfx/door/opening/wooden-opening.ogg",
+    "bytes": 20977,
+    "sha256": "7bc15e9c3a43bb50727b2d253368cb4851f1d28dd88e9382607db1a3d22b764e",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/door/opening/wooden-opening.ogg"
+  },
+  {
+    "source": "sfx/door/other/metalic-sliding-long-door.wav",
+    "bytes": 1395456,
+    "sha256": "093207e0f610805cc52b08cfcdda837c6a789dcb7492dc42b937af503197e865",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": null,
+    "seconds": 7.264583333333333,
+    "channels": 2,
+    "sample_rate": 48000,
+    "bits": 16,
+    "peak": 0.84478759765625,
+    "rms": 0.11238811910152435
+  },
+  {
+    "source": "sfx/heartbeat/1.ogg",
+    "bytes": 16341,
+    "sha256": "8940759b5015a14bd3c64967c645c5ac94d4ce1824c4505510fb426271890c92",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/heartbeat/1.ogg"
+  },
+  {
+    "source": "sfx/heartbeat/2.ogg",
+    "bytes": 19506,
+    "sha256": "8aa058599165a99d20d742d783648463720d77360b6f38159eb95330b2ce8615",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/heartbeat/2.ogg"
+  },
+  {
+    "source": "sfx/paper/paper.ogg",
+    "bytes": 20637,
+    "sha256": "78baf3ca6d9fa131cfc0ab7bdf17fd09021657b0e97ff22bf1eed8b7537acd38",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "reserved",
+    "working_copy": "assets/audio/sfx/paper/paper.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/closing1.ogg",
+    "bytes": 33624,
+    "sha256": "99ec7c195528ff789c6987fc51ca5b2fc36933661ff488f9a046fcca76d24ce1",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/closing1.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/closing2.ogg",
+    "bytes": 23729,
+    "sha256": "eb0e7b1a649b9f7bb72e9ebd6e39a40db49c43d0ee3ea0120ab549d73120ee2d",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/closing2.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/closing3.ogg",
+    "bytes": 48364,
+    "sha256": "66522873600285246afe1ec5ebf415195e9cdea214f59d2786de160943c73b4f",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/closing3.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/closing4.ogg",
+    "bytes": 48179,
+    "sha256": "eec8cc29f16c87fe4369d40220aae937334dc298fa0dea7f04c8349860f7776f",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/closing4.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/opening1.ogg",
+    "bytes": 38393,
+    "sha256": "28bd313d83dea9eb226623cba24c48db67be0fee18a8add83b77aec15657c247",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/opening1.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/opening2.ogg",
+    "bytes": 24414,
+    "sha256": "0b915a540be567592b88cbb2ca3ea436e884f90b2054ad32327fba657918693c",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/opening2.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/opening3.ogg",
+    "bytes": 38087,
+    "sha256": "686a1e7c8cbb1bcedb3d070035798a14c08a8ef2ddf7a13913ab844187a37aa8",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/opening3.ogg"
+  },
+  {
+    "source": "sfx/wardrobe/opening4.ogg",
+    "bytes": 37578,
+    "sha256": "9a5ec8376a93389524051831816261a623ba94109bf755bc8db55c54f9526c36",
+    "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
+    "status": "integrated",
+    "working_copy": "assets/audio/sfx/wardrobe/opening4.ogg"
+  }
+]

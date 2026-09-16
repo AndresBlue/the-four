@@ -2,6 +2,7 @@ extends Node3D
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const HIDE := preload("res://game/world/interactables/hiding_place.gd")
 const LOCUST := preload("res://game/enemies/locust/locust.tscn")
+var world_audio
 var locust
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
@@ -28,6 +29,8 @@ var save_error := ""
 var physical_errors: Array[String] = []
 
 func _enter_tree() -> void:
+	world_audio = $WorldAudio
+	world_audio.level = self
 	settings = $Services/Settings
 	session = $Services/GameSession
 	player = $Player
@@ -44,6 +47,8 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	automation = DisplayServer.get_name() == "headless" or OS.get_cmdline_user_args().has("--automation")
+	world_audio.enabled = not automation and not OS.get_cmdline_user_args().has("--silent")
+	player.hiding_changed.connect(world_audio.hide_cue)
 	ui.action_requested.connect(on_action)
 	session.changed.connect(on_state)
 	NavigationServer3D.map_set_use_async_iterations(get_world_3d().navigation_map, false)
@@ -92,6 +97,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	session.set_state(session.State.LOADING)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	world_audio.reset()
 	player.reset_survival()
 	if is_instance_valid(locust):
 		remove_child(locust)
@@ -159,6 +165,8 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	session.start(seed_value, manifest.get("fallback", false))
 	save_error = session.message
 	spawn_locust()
+	world_audio.set_creature(locust.sound_profile)
+	for door in hotel.doors: door.sound_requested.connect(world_audio.door_cue)
 	if not automation and not OS.get_cmdline_user_args().has("--silent"):
 		ambience.play()
 		theme.play()
@@ -166,6 +174,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 
 func on_state() -> void:
 	var playing: bool = session.state == session.State.PLAYING
+	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]: world_audio.reset()
 	player.active = playing
 	if not playing: player.velocity = Vector3.ZERO
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing else Input.MOUSE_MODE_VISIBLE
@@ -291,8 +300,10 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	var warning_active: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
-	ambience.volume_db = -30 if warning_active else -23
-	theme.volume_db = -36 if warning_active else -26
+	ambience.volume_db = -35 if warning_active else -27
+	theme.volume_db = -38 if warning_active else -32
+	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty() and not warning_active:
+		ui.subtitle.text = world_audio.caption_text
 	visibility_clock += delta
 	if visibility_clock > 0.25:
 		visibility_clock = 0
@@ -342,8 +353,8 @@ func build_audio() -> void:
 	ambience.name = "AmbientLoop"
 	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE
 	ambience.bus = "Ambience"
-	ambience.volume_db = -23
-	var ambient_stream := load("res://assets/audio/hotel/ambience.wav").duplicate() as AudioStreamWAV
+	ambience.volume_db = -27
+	var ambient_stream := load("res://assets/audio/sfx/ambience/dark_hotel.wav").duplicate() as AudioStreamWAV
 	ambient_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	ambient_stream.loop_begin = 0
 	ambient_stream.loop_end = int(ambient_stream.get_length() * ambient_stream.mix_rate)
@@ -353,7 +364,7 @@ func build_audio() -> void:
 	theme.name = "Music"
 	theme.process_mode = Node.PROCESS_MODE_PAUSABLE
 	theme.bus = "Music"
-	theme.volume_db = -26
+	theme.volume_db = -32
 	theme.stream = load("res://assets/audio/the_four_theme.mp3").duplicate()
 	theme.stream.loop = true
 	add_child(theme)
@@ -363,5 +374,5 @@ func build_audio() -> void:
 	ventilation.bus = "Ambience"
 	ventilation.volume_db = -28
 	ventilation.max_distance = 14
-	ventilation.stream = ambient_stream
+	ventilation.stream = preload("res://game/audio/world_audio.gd").loop_stream(load("res://assets/audio/hotel/ambience.wav"))
 	add_child(ventilation)

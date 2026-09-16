@@ -2,6 +2,7 @@ extends CharacterBody3D
 var camera: Camera3D
 var torch: SpotLight3D
 signal noise(point: Vector3, radius: float)
+signal hiding_changed(entering: bool, point: Vector3)
 var active := false
 var stamina := 100.0
 var recovery_delay := 0.0
@@ -108,6 +109,7 @@ func enter_hide(place: Node3D) -> bool:
 	hide_yaw = rotation.y
 	camera.rotation = Vector3.ZERO
 	torch.visible = false
+	hiding_changed.emit(true, global_position)
 	return true
 
 func leave_hide() -> bool:
@@ -118,6 +120,7 @@ func leave_hide() -> bool:
 	hiding_place.occupant = null
 	hiding_place = null
 	hidden = false
+	hiding_changed.emit(false, global_position)
 	return true
 
 func reset_survival() -> void:

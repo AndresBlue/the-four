@@ -125,3 +125,15 @@ Validación exigida: 1.000 semillas por conjunto soportado con ningún mapa acep
 Rendimiento objetivo: 60 FPS a 1080p en la RTX 4060 Ti del equipo, con tiempos de fotograma, carga y memoria. Medir, no asumir. Estado y límites de la entrega en [V04_VALIDATION.md](V04_VALIDATION.md); tareas en [TODO.md](TODO.md).
 
 Fuentes técnicas consultadas: [renderizadores de Godot](https://docs.godotengine.org/en/4.7/tutorials/rendering/renderers.html), [multijugador](https://docs.godotengine.org/en/4.7/tutorials/networking/high_level_multiplayer.html) y [sincronización de navegación](https://docs.godotengine.org/en/4.7/classes/class_navigationserver3d.html).
+
+## Adenda — Audio de presencia y armarios (16 de septiembre de 2026)
+
+**Implementado en individual:** las asignaciones de [AUDIO.md](AUDIO.md): variación de puertas por acción/distancia, sonidos de escondite, ambiente y presencia de Locust emitida desde su posición. La identidad sonora anuncia una criatura real; su mezcla no cambia sus reglas de detección ni ataque. Grabaciones reservadas y futuras identidades no equivalen a nuevos sistemas implementados.
+
+**Pendiente — armario claustrofóbico:** al entrar, cerrar puertas que tapen físicamente el cuerpo desde fuera. Desde dentro queda una abertura frontal estrecha; un efecto gradual oscurece/distorsiona la periferia y amplía la abertura con ojo de pez, buscando sensación de encierro y una visión parcial de presencias próximas. No genera imágenes de enemigos ni permite ver a través de superficies opacas. Mantener control de mirada dentro de los límites del escondite y una salida accesible.
+
+Separar la geometría/ocultación del posprocesado: apagar o reducir la distorsión no revela al personaje desde fuera ni cambia reglas de visión de Locust. El efecto no afecta menús, hoja, subtítulos o señales esenciales; al salir, morir o reintentar vuelve al estado normal. Intensidad regulable y modo reducido con abertura legible, sin oscilaciones ni distorsión intensa. Evaluar los latidos reservados como complemento opcional, siempre por debajo de los avisos de peligro.
+
+Validación pendiente: comparar vista interior/exterior, entrada vista por enemigo, amenaza frente a abertura y detrás de pared, escondite vacío/ocupado, salida bloqueada, pausa, muerte y reintento. Comprobar resoluciones/perfiles, efectos reducidos, música apagada y, cuando exista red, ocultación coherente para los demás jugadores. La abertura no anula el riesgo de inspección ni concede inmunidad.
+
+**Hoja pendiente:** el papel se oye una vez al abrirla, como acción local de interfaz. Dibujar/borrar no repite ese sonido. Se implementará con la hoja, sin añadir un atajo de teclado que todavía no cumpla su función.

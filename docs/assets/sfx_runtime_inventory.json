@@ -1,0 +1,182 @@
+[
+	{
+		"seconds": 451.107625,
+		"source": "sfx/ambience/only-ambience/dark terror ambience.wav",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/ambience/dark_hotel.wav"
+	},
+	{
+		"seconds": 52.2201360544218,
+		"source": "sfx/ambience/presence/terror ambience (dark presence).wav",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/presence/locust_presence.wav"
+	},
+	{
+		"seconds": 1.85047614574432,
+		"source": "sfx/door/closing/close-hard-closing.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/door/closing/close-hard-closing.ogg"
+	},
+	{
+		"seconds": 1.43893420696259,
+		"source": "sfx/door/closing/closing1.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/closing/closing1.ogg"
+	},
+	{
+		"seconds": 1.5507709980011,
+		"source": "sfx/door/closing/closing2.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/closing/closing2.ogg"
+	},
+	{
+		"seconds": 2.17705225944519,
+		"source": "sfx/door/closing/closing3.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/closing/closing3.ogg"
+	},
+	{
+		"seconds": 2.06217694282532,
+		"source": "sfx/door/closing/far-closing.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/closing/far-closing.ogg"
+	},
+	{
+		"seconds": 2.1088662147522,
+		"source": "sfx/door/closing/far-hard-closing.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/door/closing/far-hard-closing.ogg"
+	},
+	{
+		"seconds": 1.86478459835052,
+		"source": "sfx/door/closing/far-soft-closing.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/closing/far-soft-closing.ogg"
+	},
+	{
+		"seconds": 1.04482996463776,
+		"source": "sfx/door/closing/wooden-closing.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/closing/wooden-closing.ogg"
+	},
+	{
+		"seconds": 1.26730155944824,
+		"source": "sfx/door/opening/close-hard-opening.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/door/opening/close-hard-opening.ogg"
+	},
+	{
+		"seconds": 5.01533317565918,
+		"source": "sfx/door/opening/creaky-wooden-door-slow-opening.mp3",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
+	},
+	{
+		"seconds": 0.779138326644897,
+		"source": "sfx/door/opening/far-hard-opening.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/door/opening/far-hard-opening.ogg"
+	},
+	{
+		"seconds": 1.35054421424866,
+		"source": "sfx/door/opening/far-opening.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/far-opening.ogg"
+	},
+	{
+		"seconds": 2.05696153640747,
+		"source": "sfx/door/opening/far-soft-opening.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/far-soft-opening.ogg"
+	},
+	{
+		"seconds": 3.21335601806641,
+		"source": "sfx/door/opening/opening1.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/opening1.ogg"
+	},
+	{
+		"seconds": 1.67004537582397,
+		"source": "sfx/door/opening/opening2.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/opening2.ogg"
+	},
+	{
+		"seconds": 1.48365080356598,
+		"source": "sfx/door/opening/opening3.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/opening3.ogg"
+	},
+	{
+		"seconds": 0.819160997867584,
+		"source": "sfx/door/opening/wooden-opening.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/door/opening/wooden-opening.ogg"
+	},
+	{
+		"seconds": 1.22256231307983,
+		"source": "sfx/heartbeat/1.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/heartbeat/1.ogg"
+	},
+	{
+		"seconds": 1.40197277069092,
+		"source": "sfx/heartbeat/2.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/heartbeat/2.ogg"
+	},
+	{
+		"seconds": 1.58605444431305,
+		"source": "sfx/paper/paper.ogg",
+		"status": "reserved",
+		"working_copy": "assets/audio/sfx/paper/paper.ogg"
+	},
+	{
+		"seconds": 2.03365087509155,
+		"source": "sfx/wardrobe/closing1.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/closing1.ogg"
+	},
+	{
+		"seconds": 1.32648527622223,
+		"source": "sfx/wardrobe/closing2.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/closing2.ogg"
+	},
+	{
+		"seconds": 2.31612253189087,
+		"source": "sfx/wardrobe/closing3.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/closing3.ogg"
+	},
+	{
+		"seconds": 2.40975046157837,
+		"source": "sfx/wardrobe/closing4.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/closing4.ogg"
+	},
+	{
+		"seconds": 2.44328808784485,
+		"source": "sfx/wardrobe/opening1.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/opening1.ogg"
+	},
+	{
+		"seconds": 1.36063492298126,
+		"source": "sfx/wardrobe/opening2.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/opening2.ogg"
+	},
+	{
+		"seconds": 1.74448978900909,
+		"source": "sfx/wardrobe/opening3.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/opening3.ogg"
+	},
+	{
+		"seconds": 1.73954653739929,
+		"source": "sfx/wardrobe/opening4.ogg",
+		"status": "integrated",
+		"working_copy": "assets/audio/sfx/wardrobe/opening4.ogg"
+	}
+]

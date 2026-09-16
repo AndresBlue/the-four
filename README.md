@@ -71,3 +71,7 @@ Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle d
 - `evidence/`: resultados y capturas regenerables, excluidos de Git.
 
 El proyecto usa los archivos locales compartidos entre Codex y Godot; no incorpora una API de ChatGPT en el juego. Los audios originales y paquetes de personajes aportados se conservan. Antes de distribuir deben resolverse los permisos pendientes de los assets; no se descargó ni acreditó como usado un modelo de Sketchfab que no se haya incorporado.
+
+## Audio espacial y siguientes efectos
+
+Puertas con variantes cercanas/lejanas, escondites con sonidos de entrada/salida y presencia de Locust desde su posición. [Asignaciones y edición](docs/AUDIO.md). El papel está preparado para la futura hoja; el efecto claustrofóbico de armario con ojo de pez está registrado como pendiente, no implementado.

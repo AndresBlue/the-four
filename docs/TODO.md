@@ -23,6 +23,14 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 
 ## P2 — Atmósfera analógica
 
+- [x] Catalogar 33 archivos de sfx y conservar originales; preparar copias de trabajo.
+- [x] Puertas con grupos cercanos/lejanos y apertura lenta, sin repetición inmediata; cierres solo al completarse.
+- [x] Sonidos de entrada/salida de escondite y límite de efectos simultáneos.
+- [x] Ambiente nuevo y perfil espacial de Locust, oclusión aproximada, mezcla y subtítulos.
+- [ ] Escucha crítica y balance humano de las nuevas asignaciones; acústica por recinto y eventos en salones.
+- [ ] Perfiles sonoros distintos para las otras tres criaturas al incorporarlas.
+
+
 - [x] Inventario técnico de los cinco audios y conservación de originales.
 - [x] Ambiente inicial, mezcla, bucle y control de volumen.
 - [ ] Escucha y selección definitiva de los cinco audios; edición de copias y procedencia documentada.
@@ -39,6 +47,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Separación de estado global/individual y regla matemática de supervivientes en sesión local.
 - [ ] ENet LAN/IP para 2–4: sala, preparación y manifiesto común.
 - [ ] Autoridad del anfitrión para jugadores, puertas, muerte y transición.
+- [ ] Reproducir `paper/paper.ogg` una vez al abrir la hoja; sonido local, sin alterar oído de la IA. Copia preparada; disparador pendiente.
 - [ ] Hoja vacía: Tab, izquierdo dibuja, derecho borra; acciones simultáneas ordenadas.
 - [ ] Hoja detiene movimiento sin pausar; sin mapa ni posiciones automáticas.
 - [ ] Sincronización, tráfico limitado y restauración de hoja al reconectar.
@@ -48,6 +57,13 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Evidencias de sesiones reales de 2, 3 y 4 jugadores.
 
 ## P4 — Escondite y The Locust
+
+- [ ] Armario con puertas: ocultación física exterior del jugador y abertura frontal estrecha visible desde dentro.
+- [ ] Efecto gradual de claustrofobia: periferia oscurecida y distorsión de ojo de pez que amplíe la abertura sin permitir ver a través de madera/paredes.
+- [ ] Conservar mirada parcial hacia delante, señales de presencia y control del jugador; salida revierte el efecto sin saltos.
+- [ ] Ajuste reducido/sin distorsión; comprobar comodidad, nitidez, diferentes resoluciones y señales con música desactivada.
+- [ ] Verificar desde dentro y fuera, entrada observada por Locust y futura visibilidad entre clientes. No convertir el armario en invulnerabilidad.
+
 
 - [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.
 - [x] Percepción con paredes/puertas, investigación, persecución, búsqueda y memoria de entrada observada, en individual.

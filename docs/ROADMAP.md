@@ -11,9 +11,9 @@ La aceptación de duración, exploración humana y calidad visual final sigue pe
 ## Orden pendiente
 
 1. **Cerrar aceptación de niveles:** veinte recorridos manuales y cinco partidas completas de exploración; ajustar tamaño con datos, sin esperar artificialmente al jugador.
-2. **Atmósfera analógica:** materiales completos, selección auditiva de los nuevos sonidos, audio espacial y contextual, reflejos, polvo, cortinas, efectos y rendimiento.
+2. **Atmósfera analógica:** puertas con variaciones/distancia, sonidos de escondite, ambiente y presencia espacial de Locust ya integrados; cerrar escucha/balance humano, acústica por recinto y perfiles de futuras criaturas. Continuar materiales, efectos y rendimiento. [Asignaciones de audio](AUDIO.md).
 3. **Cooperativo y hoja:** 2–4 en LAN/IP; autoridad del anfitrión, dibujos, refugio con regreso, mínimos de supervivencia y reconexión.
-4. **Cerrar Locust:** la base individual ya está implementada; faltan balance humano, animación final y adaptación/validación en cooperativo.
+4. **Armarios y cerrar Locust:** añadir puertas que oculten físicamente al jugador, abertura frontal y efecto gradual de claustrofobia/ojo de pez con opción reducida; después comprobar legibilidad de amenazas y visión exterior. La base individual ya está implementada; faltan balance humano, animación final y adaptación/validación en cooperativo.
 5. **Campaña completa:** Sunman, The Boiled One y Guilt en sus pisos procedurales. Muertos regresan en el siguiente piso; todos los vivos deben llegar antes de partir.
 6. **Consolidación:** ritmo adaptativo, descubrimientos, códigos, balance, accesibilidad, permisos y exportación.
 

@@ -11,3 +11,6 @@ source_assets/
 # Local exports and generated editor caches
 exports/
 *.bak
+
+# User supplied audio masters; working copies live under assets/audio/sfx.
+/sfx/

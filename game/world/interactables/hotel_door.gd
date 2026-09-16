@@ -1,5 +1,6 @@
 extends StaticBody3D
 signal noise(point: Vector3, radius: float)
+signal sound_requested(opening: bool, slow: bool, point: Vector3, emitter: RID)
 var opened := false
 var moving := false
 var closed_rotation := 0.0
@@ -20,13 +21,16 @@ func toggle(slow := false, emit_noise := true) -> bool:
 	# While swinging, ignore character contact but still occlude creature sight.
 	collision_layer = 64
 	var target := not opened
+	if target: sound_requested.emit(true, slow, doorway + Vector3.UP * 1.2, get_rid())
 	motion = create_tween()
 	motion.tween_property(self, "rotation:y", closed_rotation + (1.48 if target else 0.0), 1.5 if slow else 0.55).set_trans(Tween.TRANS_SINE)
 	motion.finished.connect(func():
 		if not target and occupied():
 			rotation.y = closed_rotation + 1.48
 			opened = true
-		else: opened = target
+		else:
+			opened = target
+			if not target: sound_requested.emit(false, slow, doorway + Vector3.UP * 1.2, get_rid())
 		moving = false
 	)
 	return true

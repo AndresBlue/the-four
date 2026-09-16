@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="" load_steps=3 format=3]
+[ext_resource type="Script" path="res://game/audio/creature_audio_profile.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/presence/locust_presence.wav" id="2"]
+[resource]
+script = ExtResource("1")
+presence = ExtResource("2")
+volume_db = -18.0
+audible_distance = 26.0
+caption = "[Una presencia grave se desplaza por el hotel]"

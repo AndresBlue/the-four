@@ -1,4 +1,5 @@
 extends CharacterBody3D
+@export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER }
 var level

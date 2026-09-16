@@ -61,3 +61,7 @@ Para otro equipo, configura la variable `GODOT_PATH` o pasa `-GodotPath` a los l
 ## Límites que se mantienen
 
 Las habitaciones siguen siendo procedurales y los menús se rellenan por código; no se ha creado un editor visual de mapas ni se han reemplazado los muebles por assets finales. Cooperativo, hoja paranormal, otros pisos y validación humana siguen pendientes según `TODO.md`.
+
+## Audio espacial incorporado
+
+`game/audio/world_audio.tscn` se instancia en la escena principal. Sus grupos y recursos están documentados en [AUDIO.md](AUDIO.md); `profiles/locust.tres` cambia la presencia de Locust desde el Inspector. Puertas y jugador emiten señales de presentación separadas del ruido que percibe la IA. `sfx/` contiene masters locales ignorados; conservarlos en copias de seguridad.
