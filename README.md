@@ -1,6 +1,6 @@
 # THE FOUR
 
-Prototipo 0.2 de terror y exploración en primera persona para Godot 4.7.2 (Steam).
+Prototipo 0.3-H1 de terror y exploración en primera persona para Godot 4.7.2 (Steam).
 
 Ubicación principal: `E:\Projects\The Four`. Migrado el 16/09/2026 conservando el repositorio Git y su historial. Es un repositorio local en la rama `main`, sin remoto público.
 
@@ -8,7 +8,7 @@ Ubicación principal: `E:\Projects\The Four`. Migrado el 16/09/2026 conservando 
 
 Abre **Jugar.cmd**. Para editar, abre **Abrir en Godot.cmd** o importa `project.godot` en Godot y pulsa F5.
 
-Haz clic en el juego para capturar el ratón. WASD mueve al jugador; ratón mira; Shift corre; Espacio salta; Esc libera/captura el ratón; R vuelve al inicio; F11 alterna pantalla completa. La pérdida de foco libera el ratón y pausa la música.
+Pulsa **INICIAR PARTIDA**. WASD mueve al jugador; ratón mira; Shift corre; Espacio salta; **E** interactúa a un máximo de 2 m. Una pulsación abre puertas; mantener E permite apertura lenta. Recoge los tres fusibles, instálalos en el panel del ascensor y, dentro de la cabina, mantén E durante 3 s para salir. **Esc** abre la pausa real; perder el foco también pausa. F11 alterna pantalla completa. El reintento está disponible desde los menús de victoria y derrota.
 
 **M** silencia/restaura la música. **− / +** ajustan el volumen en pasos de 3 dB, entre −40 y −6 dB; comienza a −22 dB con entrada gradual. La pista se reproduce en bucle. El volumen todavía no se guarda entre ejecuciones.
 
@@ -20,11 +20,14 @@ Haz clic en el juego para capturar el ratón. WASD mueve al jugador; ratón mira
 - Música aportada por el usuario: MP3 de 384,63 s, bucle, entrada gradual, silencio y control de volumen.
 - Pruebas de movimiento, colisiones, recursos, controles de audio y mezcla/retorno del bucle.
 
-Todavía no hay IA, interacción con objetos, daño, victoria/derrota, mapas generados ni multijugador. El enemigo permanece estático. Las propuestas para esas funciones están en **docs/GAME_DESIGN.md**.
+El hito 1 añade objetivos, puertas, ascensor, pausa, victoria, muerte de prueba, reintento y menús. **The Locust permanece estático y no ataca.** Para comprobar la muerte durante una ejecución de desarrollo, pulsa **F9**; esta función no existe en una exportación de distribución. IA, supervivencia, guardado, generación, campaña y multijugador permanecen pendientes. El siguiente hito es H2.
 
 ## Documentación
 
 - `docs/GAME_DESIGN.md`: plan de avance; reglas de generación, criaturas, mecánicas, objetos, muerte, victoria/derrota y criterios de aceptación.
+- `docs/ROADMAP.md`: orden de los diez hitos y dependencias.
+- `docs/TODO.md`: tareas con separación de implementado, pendiente y ampliación posterior.
+- `docs/H1_VALIDATION.md`: revisión evaluada, pruebas reproducibles y límites del hito 1.
 - `docs/ASSETS.md`: créditos, fuentes y situación de los permisos.
 - `docs/asset_hashes.json`: huellas SHA-256 de los archivos recibidos e incorporados.
 - `docs/VALIDATION.md`: resultado de la validación del prototipo 0.2.
@@ -35,7 +38,11 @@ Codex y Godot trabajan sobre esta misma carpeta: Codex modifica los archivos y e
 
 - `scenes/main.tscn`: escena editable del piso de prueba.
 - `scripts/player.gd`: movimiento y cámara.
-- `scripts/main.gd`: controles de sesión, HUD y capturas.
+- `scripts/main.gd`: coordinación de sesión, interacción y capturas.
+- `scripts/game_session.gd`: autoridad de estados, fusibles, salida y muerte.
+- `scripts/level_gameplay.gd`: puertas, objetos y ascensor del mapa fijo.
+- `scripts/interactable.gd`: interacción, puertas y protección del umbral.
+- `scripts/session_ui.gd`: HUD y menús de partida.
 - `scripts/locust_visual.gd`: pose estática de presentación, sin IA.
 - `scripts/music.gd`: bucle, mezcla y controles de música.
 - `assets/enemies/locust.glb`: modelo original con texturas embebidas.
@@ -52,6 +59,9 @@ En PowerShell, desde esta carpeta:
 ./tools/godot.ps1 editor
 ./tools/godot.ps1 play
 ./tools/godot.ps1 test
+./tools/godot.ps1 h1-test
+./tools/godot.ps1 audio-test
+./tools/godot.ps1 walkthrough
 ./tools/godot.ps1 capture
 ```
 

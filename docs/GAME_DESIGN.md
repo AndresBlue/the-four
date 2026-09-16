@@ -1,6 +1,6 @@
 # THE FOUR — Plan de diseño y avance
 
-Versión de propuesta: 0.2 · 16 de septiembre de 2026
+Versión de diseño: 0.3 · Juego: 0.3-H1 · 16 de septiembre de 2026
 
 Este documento define una propuesta jugable para el proyecto. Las reglas de las criaturas son adaptaciones para The Four, no afirmaciones sobre el canon de Doctor Nowhere. Los números son valores iniciales para pruebas, no un balance definitivo.
 
@@ -8,11 +8,15 @@ Este documento define una propuesta jugable para el proyecto. Las reglas de las 
 
 Implementado: proyecto de Godot 4.7.2, mapa fijo con cuatro salas, jugador en primera persona, caminar/correr/saltar, colisiones, The Locust estático con modelo y texturas aportados, música en bucle y control de volumen. Repositorio local migrado a `E:\Projects\The Four` conservando el historial Git.
 
-Todavía no implementado: IA, interacción con objetos, inventario, daño/muerte, victoria/derrota, guardado de partida, generación procedural, otros tres enemigos, multijugador, VFX o sonido espacial de enemigos.
+Implementado en H1: sesión individual, interacción a 2 m con línea de visión, puertas, tres fusibles únicos, inventario de misión, panel, arranque del ascensor de 3 s, pausa real, victoria de piso, muerte de prueba y reintento. Evidencia: [H1_VALIDATION.md](H1_VALIDATION.md).
 
-**Siguiente entrega: un piso completo y rejugable con The Locust**, construido primero a mano: entrar, aprender una regla, conseguir tres fusibles, encender el ascensor, sobrevivir a una persecución y salir. Debe poder ganarse y perderse sin usar herramientas del editor.
+Pendiente del TODO actual (H2–H6): IA y captura por criaturas, supervivencia, inventario de consumibles, guardado, generación, otros tres pisos, cooperativo y presentación final. La ampliación H7–H10 sigue pendiente de la primera etapa.
+
+**Siguiente entrega: hito 2, supervivencia frente a The Locust.** El piso fijo ya se completa y reintenta desde sus menús sin herramientas del editor. La derrota se valida con F9 en ejecución de desarrollo; el enemigo todavía es estático y no ataca. El siguiente hito añade percepción, persecución y captura con avisos y contramedidas.
 
 Dirección: terror de anticipación y desorientación, con amenazas que el jugador pueda entender. La iluminación, el sonido y la distribución deben aportar información útil, además de ambiente. El jugador no combate ni mata a las criaturas.
+
+Las secciones 2–9 conservan las reglas y valores del diseño base. Son requisitos del juego completo; solo las funciones identificadas en el estado anterior y en el informe H1 están implementadas.
 
 ## 2. Estructura de una partida
 
@@ -37,7 +41,7 @@ El primer hito será para **un jugador**. Se conservarán identificadores establ
 - Inventario: dos espacios para herramientas consumibles. Los objetos de misión van en una sección separada para evitar que una mochila llena bloquee la partida. Un objeto obligatorio nunca se destruye ni queda fuera del mapa.
 - Interacción: E, alcance máximo 2 m, línea de visión despejada y un único objeto enfocado. Mostrar acción y requisito antes de ejecutarla. Las acciones prolongadas muestran progreso y se cancelan al alejarse.
 - No se incluirán armas. Las herramientas permiten distraer, detectar, iluminar o retrasar; no eliminar a la criatura.
-- Esc abre pausa real en la versión individual. En la versión actual solo libera el ratón; cambiarlo forma parte del siguiente hito.
+- Esc abre pausa real en la versión individual. Implementado en H1; perder el foco también pausa la partida.
 - Opciones futuras: sensibilidad, inversión de eje, volumen separado de música/SFX, subtítulos de pistas, reducción de flashes, movimiento de cámara y jumpscares. Las pistas esenciales tendrán alternativa visual y sonora.
 
 ## 4. Los cuatro pisos y sus criaturas
@@ -201,6 +205,8 @@ Un modo sin checkpoints puede añadirse después. No será el modo predeterminad
 
 ### Hito 1 — Interacción y sesión completa sobre el mapa fijo
 
+**Implementado y validado — 0.3-H1.** Véase [H1_VALIDATION.md](H1_VALIDATION.md). Muerte de prueba; IA y ataques pertenecen a H2.
+
 Implementar `GameSession`, estados de partida, foco de interacción, puertas, tres fusibles, panel, ascensor, pausa y pantallas de victoria/derrota. El estado del nivel vive en el controlador; el HUD lo presenta.
 
 Se acepta cuando se puede completar el piso, reintentarlo desde muerte de prueba y volver al menú diez veces sin duplicar objetos ni conservar controles bloqueados. Pulsar E repetidamente no duplica instalaciones. La partida se puede terminar sin usar herramientas del editor.
@@ -233,7 +239,7 @@ Se acepta con una campaña recorrida, sin errores de recursos, señales legibles
 
 ### Hito 6 — Cooperativo y entrega pública
 
-Decidir tamaño de grupo y alcance de red antes de implementarlos; propuesta: 2–4 jugadores. Servidor autoritativo para objetos, objetivos, IA y muerte. Diseño propuesto: primera captura deja incapacitado 25 s; un compañero puede reanimar manteniendo interacción 5 s si la zona es segura. Una segunda captura en el mismo piso elimina hasta la transición. Si nadie puede actuar, derrota del grupo. Espectador sin capacidad de revelar información oculta.
+Cooperativo acordado: 2–4 jugadores; concretar alcance de red al abrir H6. Servidor autoritativo para objetos, objetivos, IA y muerte. Diseño propuesto: primera captura deja incapacitado 25 s; un compañero puede reanimar manteniendo interacción 5 s si la zona es segura. Una segunda captura en el mismo piso elimina hasta la transición. Si nadie puede actuar, derrota del grupo. Espectador sin capacidad de revelar información oculta.
 
 Este modo requiere pruebas propias de desconexión, reconexión y duplicación de objetos; no se considera una simple activación de los sistemas individuales.
 
@@ -253,8 +259,154 @@ Antes de distribuir: resolver permisos de personajes/modelos, sustituir o licenc
 
 No construir todos estos sistemas a la vez. El primer hito incorpora solo los necesarios para jugar y terminar un piso; los siguientes extraen y amplían lo que ya esté probado.
 
-## 10. Decisiones abiertas y orden recomendado
+## 10. Decisiones acordadas para v0.3
 
-Supuestos de trabajo: primera versión individual; campaña de cuatro pisos; una amenaza principal por piso; sin combate; checkpoints entre pisos; criaturas con reglas propuestas para este juego. El usuario puede cambiar estos supuestos antes de implementar el hito correspondiente.
+Conservar los seis hitos de la sección 8 como **primera etapa / TODO actual**. La segunda etapa comienza solo después de completarlos y validarlos. Su prioridad es terror y rejugabilidad, no combate ni progresión de poder.
 
-La prioridad inmediata es **interacción + tres fusibles + salida + muerte/reintento**, seguida de IA de The Locust. El mapa procedural y el acabado fotorrealista vienen después de demostrar que ese ciclo resulta claro y entretenido.
+- La progresión permanente conserva descubrimientos, secretos y desafíos. No mejora velocidad, resistencia o inventario.
+- El ritmo de encuentros es adaptativo; las reglas y capacidades de las criaturas permanecen estables.
+- Se mantienen cuatro pisos, una amenaza principal por piso y checkpoints entre pisos.
+- No se incorporan anticipadamente al prototipo los sistemas de la segunda etapa.
+
+Esta es la versión **0.3 del diseño**, no una declaración de que el juego haya alcanzado esos hitos. La versión jugable es **0.3-H1**, con el primer hito implementado y validado; H2–H6 siguen pendientes. El estado de tareas y dependencias se registra en [TODO.md](TODO.md), y el orden resumido en [ROADMAP.md](ROADMAP.md).
+
+### Condición de entrada a la segunda etapa
+
+Los hitos 1–6 deben tener implementación y evidencia de aceptación: campaña completa jugable, objetivos y muerte fiables, generador validado, cooperativo comprobado y entrega preparada con sus permisos resueltos. No debe haber errores conocidos que bloqueen partidas.
+
+Cada cierre de hito registra revisión Git, prueba ejecutada, resultado y ubicación de la evidencia. Una descripción, un checkbox o una prueba del prototipo 0.2 no acreditan sistemas que todavía no existen. Si falla cualquier condición, los hitos 7–10 permanecen pendientes de sus dependencias.
+
+## 11. Segunda etapa — Terror y rejugabilidad
+
+### Hito 7 — Ritmo adaptativo y eventos ambientales
+
+**Objetivo:** evitar tanto la persecución constante como los periodos largos sin acontecimientos. **Dependencia:** primera etapa aceptada.
+
+Añadir un `TensionDirector` que observe persecuciones, exposición a amenazas, objetivos completados y tiempo desde el último encuentro. Solicita eventos; `GameSession` valida y autoriza. No reemplaza la percepción ni la máquina de estados del enemigo.
+
+Reglas iniciales:
+
+- Tras terminar una persecución, conceder **30 segundos sin nuevos eventos hostiles programados**. Las criaturas conservan su percepción normal; el jugador puede provocar otro encuentro.
+- Tras **60 segundos sin amenaza ni progreso de objetivos**, permitir una señal ambiental. No iniciar automáticamente un ataque.
+- Completar un objetivo puede solicitar una investigación, respetando las restricciones de aparición y el descanso anterior. Esta restricción se aplica también a la investigación del tercer fusible del piso 1; no introduce una aparición forzada ni una excepción al descanso.
+- Como máximo un evento con consecuencias jugables activo; separación mínima de **45 segundos** entre esos eventos.
+- No alterar velocidad, alcance, daño, umbrales de exposición ni percepción para castigar al jugador.
+- No modificar geometría, retirar recursos o bloquear rutas para aumentar tensión.
+- En cooperativo, usar el estado del equipo y no iniciar un evento hostil programado durante una incapacitación o reanimación.
+
+Catálogo inicial de **12 eventos**, tres por piso:
+
+**The Locust**
+
+1. Golpes tras una pared.
+2. Objeto que cae y genera ruido.
+3. Pasos audibles de la criatura sobre una ruta existente.
+
+**Sunman**
+
+4. Sombra que anticipa un barrido.
+5. Persiana secundaria que vibra.
+6. Zumbido del circuito que señala el siguiente ciclo.
+
+**The Boiled One**
+
+7. Pantalla secundaria que se enciende con aviso.
+8. Llamada por interfono.
+9. Interferencia breve que no oculta controles ni señales esenciales.
+
+**Guilt**
+
+10. Indicación falsa contrastable con el registro.
+11. Puerta que imita un sonido conocido.
+12. Silueta ambiental sin capacidad de ataque.
+
+Cada evento declara condiciones, duración, enfriamiento y efecto. Si no existe una posición válida, se cancela. Los eventos de Guilt nunca falsifican avisos de accesibilidad, controles, guardado ni menús.
+
+**Aceptación:** pruebas de descansos, exclusión de eventos simultáneos, cancelación por ubicación inválida y respeto de capacidades originales. Comprobar los 12 eventos con música desactivada, subtítulos y efectos visuales reducidos; ninguna pista obligatoria puede desaparecer por estos ajustes.
+
+### Hito 8 — Objetivos alternativos y decisiones de riesgo
+
+**Objetivo:** que una nueva distribución no sea la única diferencia entre partidas. **Dependencia:** hito 7 aceptado.
+
+Mantener **tres objetivos obligatorios por piso** y añadir una alternativa al objetivo original de cada criatura:
+
+- **The Locust:** tres fusibles, o tres relés que se reparan y producen ruido durante su activación.
+- **Sunman:** cerrar tres conjuntos de persianas, o orientar tres pantallas protectoras desde posiciones de cobertura.
+- **The Boiled One:** desconectar tres transmisores, o aislar sus circuitos desde tres cabinas protegidas.
+- **Guilt:** autenticar tres registros, o identificar tres puertas verdaderas comparando sus sellos con pistas accesibles.
+
+Seleccionar **una sola variante por piso al crear la partida**. Guardarla con la semilla y explicarla en la antesala. No mezclar instrucciones de ambas variantes ni cambiar el objetivo después de comenzar. Las reglas originales de la sección 4 se conservan para la variante base.
+
+Añadir salas opcionales:
+
+- **Almacén:** ofrece un consumible; abrirlo genera ruido.
+- **Archivo:** contiene un descubrimiento y exige un desvío. Su persistencia se habilita en el hito 9; no debe declarar todavía un desbloqueo guardado.
+- **Atajo:** reduce el recorrido y atraviesa una zona de mayor exposición.
+
+Estas salas no alojan objetos obligatorios ni recursos imprescindibles para ganar. Anunciar el riesgo antes de aceptar la interacción. Respetar límites de inventario y presupuesto de consumibles; no aumentar indiscriminadamente su abundancia.
+
+**Aceptación:** 1.000 semillas por piso, variante y dificultad soportada, sin aceptar mapas que bloqueen objetivos o salida. Validar cada combinación, no solo las variantes originales. Recorrer al menos cinco partidas individuales por variante de piso, documentando duración, fallos y causas de muerte.
+
+### Hito 9 — Descubrimientos y rejugabilidad persistente
+
+**Objetivo:** dar motivos para volver sin convertir el terror en acumulación de poder. **Dependencia:** hito 8 aceptado.
+
+Añadir:
+
+- **Archivo de descubrimientos:** 16 entradas iniciales, cuatro por criatura; dos explican pistas observables de comportamiento y dos desarrollan narrativa ambiental.
+- **Registro de campaña:** pisos completados, variantes vistas, secretos encontrados, tiempo y causas de muerte.
+- **Repetición por código de partida:** conserva semilla, versión del generador, dificultad y variantes de objetivos.
+- **Dos desafíos opcionales:** completar una campaña sin reintentos; completar un piso sin usar distractores.
+
+Reglas:
+
+- Los descubrimientos persisten tras morir. Los objetos y objetivos se restauran según el checkpoint.
+- Diferenciar observar una pista de haber encontrado una criatura. No revelar automáticamente contramedidas que aún no se descubrieron.
+- Evaluar los desafíos al terminar; no añadir condiciones ocultas de derrota.
+- No incluir mejoras permanentes, monedas, tiendas ni ventajas estadísticas.
+- Un código reproduce mapa, distribución y objetivos. Los encuentros adaptativos pueden variar según las acciones del jugador; no se promete una repetición idéntica de toda la sesión.
+- Rechazar códigos de versiones incompatibles con un mensaje claro; no sustituir silenciosamente el mapa.
+
+**Aceptación:** morir, cargar y reintentar sin duplicar recursos; conservar descubrimientos sin conservar indebidamente el progreso del piso. Verificar reproducción de códigos compatibles y rechazo de incompatibles, y que los desafíos no cambien las condiciones de victoria.
+
+### Hito 10 — Balance y consolidación
+
+**Dependencia:** hito 9 aceptado. Completar esta consolidación antes de añadir más contenido.
+
+- Registrar localmente duración, encuentros, tiempo de persecución, causas de muerte, objetivos y variantes.
+- Identificar muertes sin advertencia suficiente, habitaciones evitadas y objetivos desproporcionadamente lentos.
+- Ajustar primero pistas, espacios y ventanas de respuesta; después los valores de dificultad.
+- Comprobar que cada criatura mantiene una estrategia reconocible pese a las variaciones.
+- Publicar una versión estable de la ampliación antes de plantear nuevos pisos o enemigos, manteniendo las condiciones de permisos y entrega del hito 6.
+
+**Aceptación:** campaña completable, variaciones comprensibles, ausencia de ataques programados durante descansos y conservación del objetivo de rendimiento de la sección 8. Completar dos campañas cooperativas, una con dos jugadores y otra con cuatro, además de los recorridos individuales de cada variante. Registrar resultados; no reemplazar estas partidas con pruebas unitarias.
+
+**Fuera de esta ampliación:** combate, árboles de habilidades, mapas infinitos, editor de mods, clasificaciones en línea, nuevos monstruos y geometría que se reorganiza durante persecuciones.
+
+## 12. Integración de la segunda etapa
+
+Extender los sistemas de la sección 9, sin duplicar su autoridad:
+
+- `TensionDirector` solicita eventos; `GameSession` valida el estado de la partida y autoriza su ejecución.
+- `EncounterDefinition` describe requisitos, efecto, duración y enfriamiento.
+- `FloorDefinition` incorpora variantes de objetivos y salas opcionales compatibles.
+- `MapValidator` conserva las garantías de accesibilidad y conectividad para cada variante.
+- El perfil persistente almacena descubrimientos y desafíos separado del checkpoint de campaña.
+- El guardado incorpora la variante elegida y el estado necesario del director. Reintentar restaura el inicio del piso, incluido su periodo de protección.
+- En cooperativo, el servidor decide y replica los eventos. Los clientes no sortean encuentros independientemente.
+- Los registros permanecen locales. Esta etapa no requiere servicios externos.
+
+Las ampliaciones anteriores son requisitos futuros. GameSession existe desde H1, pero aún no autoriza eventos adaptativos ni guarda campañas. El catálogo y las variantes se diseñan como datos; sus definiciones no se confunden con la lógica que autoriza efectos de juego.
+
+## 13. Validación de la ampliación
+
+- **Regresión:** conservar, a medida que existan, las pruebas de la primera etapa para interacción, IA, muerte, guardado, generación y cooperativo. Las pruebas actuales de movimiento/modelo/audio no cubren estas funciones futuras.
+- **Director:** comprobar descansos, exclusión de eventos simultáneos, cancelación de posiciones inválidas y capacidades estables de las criaturas.
+- **Generación:** 1.000 semillas por piso, variante y dificultad soportada; cero mapas aceptados con objetivos o salida bloqueados.
+- **Persistencia:** ausencia de duplicaciones y separación correcta entre descubrimientos y progreso del checkpoint.
+- **Cooperativo:** todos reciben el mismo evento; una desconexión no duplica objetivos, recompensas o efectos.
+- **Accesibilidad:** comprobar los 12 eventos con música desactivada, subtítulos y efectos reducidos, sin perder pistas obligatorias.
+- **Pruebas de juego:** al menos cinco partidas individuales por variante de piso y dos campañas cooperativas completas, de dos y cuatro jugadores.
+- **Aceptación final:** campaña completable, variaciones comprensibles, descansos respetados y rendimiento dentro del objetivo establecido.
+
+Orden de ejecución: **hitos 1–6 → validar entrada a segunda etapa → ritmo y eventos → variantes y riesgo opcional → descubrimientos y desafíos → balance**. Cada hito se valida antes de abrir el siguiente.
