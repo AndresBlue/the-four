@@ -55,3 +55,7 @@ El ZIP contiene cinco PNG externos adicionales. El GLB incorpora sus propias im�
 ## Conservación
 
 `docs/asset_hashes.json` registra tamaño y huellas SHA-256 de los originales y las copias usadas. Los originales están en `source_assets/`, carpeta local ignorada por Git y Godot. Los recursos efectivos del juego sí están versionados en el repositorio local. No se ha publicado ni subido el proyecto a un servicio externo.
+
+## Organización posterior de originales
+
+Los cinco audios nuevos ahora están en `source_assets/audio/`; Sunman y The Boy and The Bath están en `source_assets/characters/`. El ambiente activo sigue en `assets/audio/hotel/ambience.wav`. Se conservaron todos los bytes originales; `docs/assets/originals_manifest.json` registra sus nuevas rutas y SHA-256. No se cambiaron permisos ni se incorporaron assets nuevos.

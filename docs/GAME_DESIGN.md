@@ -4,7 +4,7 @@
 
 La entrega **0.4-S1** amplía el hotel individual con módulos de dimensiones variables, salones unidos, distribuciones asimétricas, polvo, cortinas móviles, niebla localizada y reflejos iniciales. The Locust ya patrulla, oye, persigue y captura; existen agacharse, resistencia y escondites. Conserva menú, ajustes, salida libre, refugio y checkpoint. Cooperativo, hoja y campaña siguen pendientes. La aceptación de duración, balance y acabado visual requiere partidas humanas; no se presenta como completa.
 
-El antiguo H1 de fusibles se conserva como prototipo histórico en `scenes/main.tscn`; ya no es la escena principal ni determina la victoria del juego nuevo. Su informe no acredita la generación o supervivencia actuales. Los planes anteriores están archivados en `history/`.
+El antiguo H1 de fusibles se conserva como prototipo histórico en `legacy/fuse_prototype/main.tscn`; ya no es la escena principal ni determina la victoria del juego nuevo. Su informe no acredita la generación o supervivencia actuales. Los planes anteriores están archivados en `history/`.
 
 La experiencia final será de terror ambiental cooperativo para **2–4 jugadores**, con modo individual disponible. El jugador explora un hotel imposible, escucha, investiga, se esconde y ayuda a otros a salir. La vulnerabilidad y el ritmo producen la sensación de estar inmerso en una película; el jugador conserva el control de su personaje.
 

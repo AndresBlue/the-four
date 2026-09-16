@@ -7,3 +7,7 @@ evidence/*.json
 evidence/*.import
 local.settings.json
 source_assets/
+
+# Local exports and generated editor caches
+exports/
+*.bak

@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="THE FOUR — Hotel"
-run/main_scene="res://scenes/hotel.tscn"
+run/main_scene="res://game/app/hotel.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [display]
@@ -35,3 +35,11 @@ window/stretch/mode="canvas_items"
 renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.025, 0.026, 0.021, 1)
+
+[layer_names]
+3d_physics/layer_1="Architecture"
+3d_physics/layer_3="Players"
+3d_physics/layer_4="Closed doors"
+3d_physics/layer_5="Hiding interactions"
+3d_physics/layer_6="Creatures"
+3d_physics/layer_7="Door sight occlusion"

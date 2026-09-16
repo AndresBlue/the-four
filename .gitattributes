@@ -5,3 +5,13 @@
 *.cmd text eol=crlf
 *.png binary
 *.glb binary
+
+*.tres text eol=lf
+*.gdshader text eol=lf
+*.uid text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.ps1 text eol=lf
+.editorconfig text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf

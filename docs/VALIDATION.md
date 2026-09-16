@@ -10,7 +10,7 @@ El ZIP y MP3 aportados se conservan en `source_assets/`; el archivo GLB extraíd
 
 ## Pruebas automatizadas
 
-`tools/smoke_test.gd`: 18 comprobaciones.
+`tests/legacy/smoke_test.gd`: 18 comprobaciones.
 
 - Suelo y gravedad.
 - Movimiento hacia delante y aumento de velocidad al correr.
@@ -24,7 +24,7 @@ El ZIP y MP3 aportados se conservan en `source_assets/`; el archivo GLB extraíd
 - M silencia y restaura el bus de música.
 - Límites superior e inferior de volumen.
 
-`tools/audio_test.gd`: dos comprobaciones adicionales.
+`tests/legacy/audio_test.gd`: dos comprobaciones adicionales.
 
 - Mezcla de muestras reales del MP3: 57.344 frames capturados, pico aproximado 0,025 a −22 dB. Confirma decodificación y mezcla; no es una evaluación artística de la canción.
 - Retorno automático al principio al alcanzar el final: reproducción continuó alrededor de 0,80 s después del salto de bucle.

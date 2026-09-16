@@ -1,0 +1,37 @@
+[
+  {
+    "file": "source_assets/audio/726475__ultraameise__liminal-beep.mp3",
+    "sha256": "fd04e7b0f82d29ea708458263b64016baea0ad437850d0f549743ecf4d745152",
+    "bytes": 104278
+  },
+  {
+    "file": "source_assets/audio/ambience.wav",
+    "sha256": "7f873c02a389c4da33befb3da559d613a98aa4cc051f91c805a7782c4d72adb1",
+    "bytes": 9050650
+  },
+  {
+    "file": "source_assets/audio/deep_ambiance.flac",
+    "sha256": "d22a330e8d6c6668cb195bbcc6b4d0d96670c1d023fee8c37eb74e78eef256a1",
+    "bytes": 23472380
+  },
+  {
+    "file": "source_assets/audio/deep_atmosphere_short.wav",
+    "sha256": "e98905738ebba2640d329f3c94a416e33772027bb85e12674587276dd5b820fc",
+    "bytes": 12120988
+  },
+  {
+    "file": "source_assets/audio/piercing-glitchy-voice-sfx.wav",
+    "sha256": "432ef50f6682b84a8efa0ff8418f02d0b3f2a2537282c60910d5733bc22b6a6b",
+    "bytes": 341636
+  },
+  {
+    "file": "source_assets/characters/the-boy-and-the-bath-v2-doctor-nowhere-old.zip",
+    "sha256": "32484189c52c4d4a4fac529ba61ae338dcf95a7a77739d573199c2b5f5a70701",
+    "bytes": 3154774
+  },
+  {
+    "file": "source_assets/characters/the-sunmandoctor-nowhere.zip",
+    "sha256": "219ee5dee3fa1e783312360fe09529029b2ffaee72dd5d793cbce820da2507ab",
+    "bytes": 1053344
+  }
+]
