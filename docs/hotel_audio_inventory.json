@@ -1,0 +1,63 @@
+[
+  {
+    "file": "ambience.wav",
+    "bytes": 9050650,
+    "sha256": "7f873c02a389c4da33befb3da559d613a98aa4cc051f91c805a7782c4d72adb1",
+    "license": "Pendiente de verificar; archivo aportado por el usuario",
+    "seconds": 410.4567800453515,
+    "channels": 2,
+    "sample_rate": 11025,
+    "bits": 8,
+    "peak": 0.71875,
+    "rms": 0.060800011483471764,
+    "endpoint_difference": 0.0,
+    "use": "Ambiente inicial en volumen reducido"
+  },
+  {
+    "file": "deep_atmosphere_short.wav",
+    "bytes": 12120988,
+    "sha256": "e98905738ebba2640d329f3c94a416e33772027bb85e12674587276dd5b820fc",
+    "license": "Pendiente de verificar; archivo aportado por el usuario",
+    "seconds": 68.71160997732426,
+    "channels": 2,
+    "sample_rate": 44100,
+    "bits": 16,
+    "peak": 0.708038330078125,
+    "rms": 0.14512190883337622,
+    "endpoint_difference": 0.000152587890625,
+    "use": "Reservado para la etapa de atmósfera; aún no asignado a eventos"
+  },
+  {
+    "file": "piercing-glitchy-voice-sfx.wav",
+    "bytes": 341636,
+    "sha256": "432ef50f6682b84a8efa0ff8418f02d0b3f2a2537282c60910d5733bc22b6a6b",
+    "license": "Pendiente de verificar; archivo aportado por el usuario",
+    "seconds": 7.740317460317461,
+    "channels": 2,
+    "sample_rate": 11025,
+    "bits": 16,
+    "peak": 0.891448974609375,
+    "rms": 0.4554446549441786,
+    "endpoint_difference": 0.461761474609375,
+    "use": "Reservado para la etapa de atmósfera; aún no asignado a eventos"
+  },
+  {
+    "file": "deep_ambiance.flac",
+    "bytes": 23472380,
+    "sha256": "d22a330e8d6c6668cb195bbcc6b4d0d96670c1d023fee8c37eb74e78eef256a1",
+    "license": "Pendiente de verificar; archivo aportado por el usuario",
+    "seconds": 276.03929166666666,
+    "channels": 2,
+    "sample_rate": 48000,
+    "bits": 24,
+    "use": "Reservado para la etapa de atmósfera; aún no asignado a eventos"
+  },
+  {
+    "file": "726475__ultraameise__liminal-beep.mp3",
+    "bytes": 104278,
+    "sha256": "fd04e7b0f82d29ea708458263b64016baea0ad437850d0f549743ecf4d745152",
+    "license": "Pendiente de verificar; archivo aportado por el usuario",
+    "use": "Reservado para la etapa de atmósfera; aún no asignado a eventos",
+    "seconds": 3.95256233215332
+  }
+]

@@ -1,0 +1,96 @@
+{
+	"checks": [
+		{
+			"check": "Suelo y gravedad",
+			"detail": "(0.0, 0.030069, 11.3)",
+			"passed": true
+		},
+		{
+			"check": "W avanza",
+			"detail": "metros=3.50",
+			"passed": true
+		},
+		{
+			"check": "Shift corre",
+			"detail": "metros=5.23",
+			"passed": true
+		},
+		{
+			"check": "Pared detiene al jugador",
+			"detail": "(3.108333, 0.000273, 1.0)",
+			"passed": true
+		},
+		{
+			"check": "Puerta permite entrar a sala",
+			"detail": "(5.50278, 0.000273, 6.5)",
+			"passed": true
+		},
+		{
+			"check": "Salto",
+			"detail": "(5.800003, 0.610862, 6.5)",
+			"passed": true
+		},
+		{
+			"check": "Aterrizaje",
+			"detail": "(5.800003, 0.000341, 6.5)",
+			"passed": true
+		},
+		{
+			"check": "Ratón y límite de cámara",
+			"detail": "(0.0, -0.22, 0.0)",
+			"passed": true
+		},
+		{
+			"check": "Ratón libre bloquea movimiento",
+			"detail": "(0.0, 0.030156, 11.3)",
+			"passed": true
+		},
+		{
+			"check": "Colisión del enemigo",
+			"detail": "(0.0, 1.0, -11.35)",
+			"passed": true
+		},
+		{
+			"check": "Enemigo estático",
+			"detail": "(0.0, 0.0, -12.0)",
+			"passed": true
+		},
+		{
+			"check": "Modelo GLB importado",
+			"detail": "Locust de Doumty",
+			"passed": true
+		},
+		{
+			"check": "Mallas del personaje",
+			"detail": "2",
+			"passed": true
+		},
+		{
+			"check": "MP3 y bucle",
+			"detail": "duración=384.63s",
+			"passed": true
+		},
+		{
+			"check": "M silencia la música",
+			"detail": "M  MÚSICA OFF   /   − +  VOLUMEN -22 dB",
+			"passed": true
+		},
+		{
+			"check": "M restaura la música",
+			"detail": "M  MÚSICA ON   /   − +  VOLUMEN -22 dB",
+			"passed": true
+		},
+		{
+			"check": "Límite superior de volumen",
+			"detail": "-6.0",
+			"passed": true
+		},
+		{
+			"check": "Límite inferior de volumen",
+			"detail": "-40.0",
+			"passed": true
+		}
+	],
+	"engine": "4.7.2-stable (steam)",
+	"passed": true
+}
