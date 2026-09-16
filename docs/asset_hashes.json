@@ -1,0 +1,18 @@
+{
+  "assets/enemies/locust.glb": {
+    "bytes": 15303916,
+    "sha256": "53e51f76c60be30bda0b4ecdea6a071003641a3c214e0b509965ab7db3a14c37"
+  },
+  "assets/audio/the_four_theme.mp3": {
+    "bytes": 6154797,
+    "sha256": "96f5b8f1f5061bc00ef15be8c530691d2e9514e36032310cb5686aa83cf368a7"
+  },
+  "source_assets/locust.zip": {
+    "bytes": 21561615,
+    "sha256": "a25d9b68f5cbba0dcaee20a1cb008ff6ba12339937795ccd180e835dab428a3a"
+  },
+  "source_assets/song.mp3": {
+    "bytes": 6154797,
+    "sha256": "96f5b8f1f5061bc00ef15be8c530691d2e9514e36032310cb5686aa83cf368a7"
+  }
+}

@@ -1,36 +1,52 @@
 # THE FOUR
 
-Prototipo 0.1 de exploración en primera persona, creado para Godot 4.7.2 (Steam).
+Prototipo 0.2 de terror y exploración en primera persona para Godot 4.7.2 (Steam).
 
-## Jugar
+Ubicación principal: `E:\Projects\The Four`. Migrado el 16/09/2026 conservando el repositorio Git y su historial. Es un repositorio local en la rama `main`, sin remoto público.
 
-Abre **Jugar.cmd**. Para editar, abre **Abrir en Godot.cmd** o importa `project.godot` en Godot y pulsa F6 sobre `scenes/main.tscn` (F5 ejecuta el proyecto).
+## Jugar y editar
 
-Haz clic dentro del juego para capturar el ratón. WASD mueve al jugador, el ratón gira la cámara, Shift permite correr y Espacio salta. Esc libera o captura el ratón; R vuelve al inicio; F11 cambia entre ventana y pantalla completa. Al perder el foco, se libera el ratón y se detiene el movimiento.
+Abre **Jugar.cmd**. Para editar, abre **Abrir en Godot.cmd** o importa `project.godot` en Godot y pulsa F5.
 
-## Incluido
+Haz clic en el juego para capturar el ratón. WASD mueve al jugador; ratón mira; Shift corre; Espacio salta; Esc libera/captura el ratón; R vuelve al inicio; F11 alterna pantalla completa. La pérdida de foco libera el ratón y pausa la música.
 
-- Piso de 24 × 32 metros, corredor central y cuatro salas laterales conectadas.
-- Geometría editable, colisiones, techo modular, pilares y luz básica.
-- Jugador con cápsula física de 1,75 m, cámara, gravedad, salto y carrera.
-- Un enemigo estático con colisión en la zona de observación.
-- HUD con controles y zona actual.
-- Pruebas de física y controles, y captura del render desde Godot.
+**M** silencia/restaura la música. **− / +** ajustan el volumen en pasos de 3 dB, entre −40 y −6 dB; comienza a −22 dB con entrada gradual. La pista se reproduce en bucle. El volumen todavía no se guarda entre ejecuciones.
 
-El enemigo inicial es una representación geométrica provisional de The Locust creada para comprobar escala y render. No es el modelo de Sketchfab ni un asset oficial. La descarga del modelo de xerio3900 requiere que el usuario inicie sesión; su integración está pendiente.
+## Implementado
 
-## Conexión con ChatGPT / Codex
+- Piso fijo de 24 × 32 m, corredor y cuatro salas, colisiones, pilares, luminarias y materiales básicos.
+- Jugador físico en primera persona con gravedad, caminar, carrera y salto.
+- The Locust: GLB suministrado por el usuario, texturas embebidas, escala 1,9×, ajuste de posición y pose estática en Godot. Se conserva el GLB original sin modificación.
+- Música aportada por el usuario: MP3 de 384,63 s, bucle, entrada gradual, silencio y control de volumen.
+- Pruebas de movimiento, colisiones, recursos, controles de audio y mezcla/retorno del bucle.
 
-Este repositorio es el punto compartido entre Codex y Godot. Codex edita escenas y scripts y ejecuta el Godot instalado en Steam para importar, probar y abrir el juego. Esta conexión por archivos y línea de comandos está comprobada en este equipo. No hay un chat incrustado en el editor, ni un servidor MCP de Godot instalado, ni llamadas a OpenAI dentro del juego.
+Todavía no hay IA, interacción con objetos, daño, victoria/derrota, mapas generados ni multijugador. El enemigo permanece estático. Las propuestas para esas funciones están en **docs/GAME_DESIGN.md**.
 
-Para continuar el desarrollo, añade esta carpeta como proyecto local en Codex. Godot recarga los archivos externos; detén la ejecución y vuelve a ejecutar para ver los cambios. Si pregunta por una escena modificada externamente, recarga la versión de disco después de guardar cualquier trabajo propio.
+## Documentación
 
-Referencia oficial: https://learn.chatgpt.com/docs/codex/cli
-Interfaz de Godot: https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
+- `docs/GAME_DESIGN.md`: plan de avance; reglas de generación, criaturas, mecánicas, objetos, muerte, victoria/derrota y criterios de aceptación.
+- `docs/ASSETS.md`: créditos, fuentes y situación de los permisos.
+- `docs/asset_hashes.json`: huellas SHA-256 de los archivos recibidos e incorporados.
+- `docs/VALIDATION.md`: resultado de la validación del prototipo 0.2.
+
+## Conexión con Codex y estructura
+
+Codex y Godot trabajan sobre esta misma carpeta: Codex modifica los archivos y ejecuta el Godot de Steam para importar y validar. No hay chat dentro del editor ni una API de OpenAI dentro del juego. Para futuras tareas, selecciona `E:\Projects\The Four` como proyecto local en Codex.
+
+- `scenes/main.tscn`: escena editable del piso de prueba.
+- `scripts/player.gd`: movimiento y cámara.
+- `scripts/main.gd`: controles de sesión, HUD y capturas.
+- `scripts/locust_visual.gd`: pose estática de presentación, sin IA.
+- `scripts/music.gd`: bucle, mezcla y controles de música.
+- `assets/enemies/locust.glb`: modelo original con texturas embebidas.
+- `assets/audio/the_four_theme.mp3`: copia exacta de la canción aportada.
+- `source_assets/`: ZIP y MP3 originales, conservados localmente y excluidos de Git/importación para evitar duplicados.
+- `tools/`: generación, lanzamiento y pruebas.
+- `evidence/`: capturas y resultados locales excluidos de Git y del escaneo de Godot.
 
 ## Herramientas
 
-Desde PowerShell, en esta carpeta:
+En PowerShell, desde esta carpeta:
 
 ```powershell
 ./tools/godot.ps1 editor
@@ -39,19 +55,12 @@ Desde PowerShell, en esta carpeta:
 ./tools/godot.ps1 capture
 ```
 
-La herramienta encuentra la instalación de Steam de este equipo. En otro equipo admite `-GodotPath 'ruta/al/godot.exe'` o la variable `GODOT_PATH`.
+La ruta del proyecto se calcula desde el propio lanzador, por lo que admite espacios y no depende de su ubicación anterior. Admite otra instalación con `-GodotPath 'ruta/al/godot.exe'` o `GODOT_PATH`.
 
-`tools/build_scene.gd` genera `scenes/main.tscn`. La escena resultante contiene nodos reales y se puede editar visualmente. **Reconstruir sustituye esa escena:** conserva antes los cambios manuales mediante Git o modifica el generador.
+`tools/build_scene.gd` reconstruye `scenes/main.tscn` con nodos reales. **Reconstruir sustituye esa escena**: guarda antes cualquier edición manual en Git o incorpora el cambio al generador.
 
-## Estructura
+La prueba de mezcla de audio se ejecuta con Godot en modo headless y `--script res://tools/audio_test.gd`. Las capturas aceptan argumentos después de `--`: `--capture=ruta.png`, `--closeup`, `--overview`, `--silent`.
 
-- `scenes/main.tscn`: escena completa del prototipo.
-- `scripts/player.gd`: movimiento y cámara.
-- `scripts/main.gd`: controles de sesión, HUD y capturas.
-- `assets/enemies/`: modelos y créditos de terceros cuando estén disponibles.
-- `tools/`: lanzamiento, generación y pruebas.
-- `evidence/`: capturas y resultados locales de pruebas, excluidos de Git.
-- `docs/ASSETS.md`: fuentes y estado de licencias.
-- `docs/ROADMAP.md`: siguientes etapas.
+## Assets y publicación
 
-Repositorio Git local, rama `main`. No tiene remoto ni está publicado en GitHub.
+El modelo de Doumty se anuncia como **CC BY-NC-ND**, no como CC BY. La canción no contiene título, artista o licencia verificables en sus metadatos. Se usan en este prototipo local a partir de los archivos aportados; antes de publicar o comercializar, resolver los permisos o sustituir los assets. Detalles y enlaces en `docs/ASSETS.md`.

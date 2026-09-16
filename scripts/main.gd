@@ -3,6 +3,8 @@ extends Node3D
 @onready var player: CharacterBody3D = $Player
 @onready var hint: Label = $HUD/Hint
 @onready var status: Label = $HUD/Status
+@onready var music: AudioStreamPlayer = $Music
+@onready var music_label: Label = $HUD/MusicStatus
 var capture_path := ""
 var frame_count := 0
 
@@ -17,6 +19,7 @@ func _ready() -> void:
 			player.position = Vector3(10.8, 0.05, 3.8)
 			player.rotation.y = 1.0
 	_update_hint()
+	_update_music_label()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -24,6 +27,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_update_hint()
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
+			KEY_M:
+				music.set_music_muted(not music.muted)
+				_update_music_label()
+			KEY_EQUAL, KEY_KP_ADD:
+				music.adjust_volume(3.0)
+				_update_music_label()
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				music.adjust_volume(-3.0)
+				_update_music_label()
 			KEY_ESCAPE:
 				player.set_active(not player.active)
 				_update_hint()
@@ -40,6 +52,9 @@ func _notification(what: int) -> void:
 
 func _update_hint() -> void:
 	hint.text = "W A S D   MOVERSE     /     RATÓN   MIRAR     /     SHIFT   CORRER     /     ESPACIO   SALTAR     /     ESC   LIBERAR RATÓN" if player.active else "HAZ CLIC PARA EXPLORAR     /     R   VOLVER AL INICIO     /     F11   PANTALLA COMPLETA"
+
+func _update_music_label() -> void:
+	music_label.text = "M  MÚSICA %s   /   − +  VOLUMEN %d dB" % ["OFF" if music.muted else "ON", int(music.target_volume)]
 
 func _process(_delta: float) -> void:
 	frame_count += 1

@@ -95,6 +95,9 @@ func make_enemy() -> void:
 	if ResourceLoader.exists(imported_path):
 		var imported: Node3D = load(imported_path).instantiate()
 		imported.name = "ImportedLocust"
+		imported.scale = Vector3.ONE * 1.9
+		imported.position = Vector3(0, -0.0045, -0.27)
+		imported.set_script(load("res://scripts/locust_visual.gd"))
 		attach(enemy, imported)
 	else:
 		var skin := material(Color(0.055, 0.041, 0.031))
@@ -217,11 +220,17 @@ func _initialize() -> void:
 	attach(scene, hud)
 	var cream := Color(0.88, 0.87, 0.77)
 	ui_label(hud, "Title", "T H E   F O U R", Vector2(38, 29), 26, cream)
-	ui_label(hud, "Subtitle", "PRUEBA DE SUPERVIVENCIA   /   0.1", Vector2(40, 67), 12, Color(0.65, 0.66, 0.56))
+	ui_label(hud, "Subtitle", "PRUEBA DE SUPERVIVENCIA   /   0.2", Vector2(40, 67), 12, Color(0.65, 0.66, 0.56))
 	ui_label(hud, "Status", "PISO 01   /   ACCESO", Vector2(1000, 35), 14, cream)
 	ui_label(hud, "Crosshair", "·", Vector2(635, 342), 22, Color(0.9, 0.9, 0.8, 0.65))
 	ui_label(hud, "Hint", "", Vector2(38, 674), 13, cream)
-	ui_label(hud, "Specimen", "01 / THE LOCUST\nESTÁTICO · MODELO PROVISIONAL", Vector2(38, 610), 13, Color(0.7, 0.70, 0.57))
+	ui_label(hud, "Specimen", "01 / THE LOCUST\nESTÁTICO · MODELO DE DOUMTY", Vector2(38, 610), 13, Color(0.7, 0.70, 0.57))
+	ui_label(hud, "MusicStatus", "", Vector2(860, 636), 12, Color(0.7, 0.70, 0.57))
+	var music := AudioStreamPlayer.new()
+	music.name = "Music"
+	music.stream = load("res://assets/audio/the_four_theme.mp3")
+	music.set_script(load("res://scripts/music.gd"))
+	attach(scene, music)
 	var packed := PackedScene.new()
 	packed.pack(scene)
 	var result := ResourceSaver.save(packed, "res://scenes/main.tscn")
