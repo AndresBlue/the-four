@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d18v8ylyx784s"
-path="res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.ctex"
+path.s3tc="res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ce182035edaf1a32be9b559eae28fb1c"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/enemies/locust_locust_by-doumty_basecolor_tex.png"
-dest_files=["res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.ctex"]
+dest_files=["res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
