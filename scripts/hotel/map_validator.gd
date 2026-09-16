@@ -1,0 +1,78 @@
+extends RefCounted
+
+func validate(data: Dictionary) -> Array[String]:
+	var errors: Array[String] = []
+	var rooms: Array = data.rooms
+	var graph: Array = data.adjacency
+	if rooms.size() < 100 or rooms.size() > 140: errors.append("module_count")
+	if data.start == data.exit: errors.append("same_exit")
+	if data.edges.size() - rooms.size() + 1 < 4: errors.append("cycles")
+	var visited := {int(data.start): true}
+	var queue: Array = [int(data.start)]
+	var cursor := 0
+	while cursor < queue.size():
+		var current: int = queue[cursor]
+		cursor += 1
+		for neighbor in graph[current]:
+			if not visited.has(neighbor):
+				visited[neighbor] = true
+				queue.append(neighbor)
+	if visited.size() != rooms.size() or not visited.has(int(data.exit)): errors.append("connectivity")
+	var occupied := {}
+	for room in rooms:
+		var key := "%d:%d" % [room.x, room.z]
+		if occupied.has(key): errors.append("overlap")
+		occupied[key] = true
+		if room.cover_slots < 4: errors.append("cover")
+		var slots := {}
+		for prop in room.props:
+			if prop.slot < 0 or prop.slot > 3 or slots.has(prop.slot): errors.append("prop_socket")
+			slots[prop.slot] = true
+	for edge in data.edges:
+		var a: Dictionary = rooms[edge[0]]
+		var b: Dictionary = rooms[edge[1]]
+		if abs(a.x - b.x) + abs(a.z - b.z) != 1: errors.append("connector")
+	for room in rooms:
+		for step in [1, int(data.width)]:
+			var straight := true
+			for offset in 4:
+				var id: int = room.id + offset * step
+				if id >= rooms.size() or (step == 1 and id / int(data.width) != int(room.id) / int(data.width)):
+					straight = false
+					break
+				if rooms[id].type not in [11, 12]: straight = false
+			if straight: errors.append("corridor_chain")
+	return errors
+
+# Run after physics synchronization, in addition to graph validation. Capsule
+# sweeps cover every connector and four furnished-room escape lanes.
+func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
+	var errors: Array[String] = []
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.32
+	capsule.height = 1.8
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = capsule
+	query.collision_mask = 1
+	for room in data.rooms:
+		var center := Vector3(room.x * 12.0, 0.94, room.z * 12.0)
+		query.transform = Transform3D(Basis.IDENTITY, center)
+		query.motion = Vector3.ZERO
+		if not world.direct_space_state.intersect_shape(query).is_empty(): errors.append("center_%d" % room.id)
+		for corner in [Vector3(-2.2, 0, -2.2), Vector3(2.2, 0, -2.2), Vector3(-2.2, 0, 2.2), Vector3(2.2, 0, 2.2)]:
+			query.motion = corner
+			var result := world.direct_space_state.cast_motion(query)
+			if result[0] < 0.99: errors.append("cover_access_%d" % room.id)
+		if room.type in [1, 2, 3, 4, 7, 15, 16]:
+			for side in [-1, 1]:
+				for end in [-1, 1]:
+					query.transform = Transform3D(Basis.IDENTITY, center + Vector3(0, 0, end * 4.4))
+					query.motion = Vector3(side * 3.0, 0, 0)
+					if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("alcove_entrance_%d" % room.id)
+	for edge in data.edges:
+		var a: Dictionary = data.rooms[edge[0]]
+		var b: Dictionary = data.rooms[edge[1]]
+		query.transform = Transform3D(Basis.IDENTITY, Vector3(a.x * 12.0, 0.94, a.z * 12.0))
+		query.motion = Vector3((b.x - a.x) * 12.0, 0, (b.z - a.z) * 12.0)
+		if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("passage_%d_%d" % [a.id, b.id])
+	return errors
