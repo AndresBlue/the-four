@@ -1,0 +1,7 @@
+.godot/
+*.log
+*.tmp
+.DS_Store
+evidence/*.png
+evidence/*.json
+local.settings.json
