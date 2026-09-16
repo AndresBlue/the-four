@@ -4,4 +4,5 @@
 .DS_Store
 evidence/*.png
 evidence/*.json
+evidence/*.import
 local.settings.json
