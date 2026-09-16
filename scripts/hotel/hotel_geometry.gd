@@ -198,7 +198,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		for corner in FLOOR.hiding_positions(room):
 			var hide := preload("res://scripts/hotel/hiding_place.gd").new()
 			hide.position = corner
-			hide.rotation.y = -signf(corner.x) * PI / 2
+			hide.rotation.y = FLOOR.hiding_yaw(corner)
 			node.add_child(hide)
 			box(hide, Vector3(0, 1.05, -0.58), Vector3(1.25, 2.1, 0.1), "wood", true)
 			for side in [-1, 1]: box(hide, Vector3(side * 0.62, 1.05, 0), Vector3(0.1, 2.1, 1.2), "wood", true)

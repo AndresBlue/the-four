@@ -95,6 +95,13 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 	var exit_id: int = exits[rng.randi_range(0, exits.size() - 1)] if not exits.is_empty() else count - 1
 	merged = merged.filter(func(edge): return not edge.has(exit_id))
 	rooms[exit_id].hall = -1
+	for room in rooms: room["open_sides"] = []
+	for edge in merged:
+		var a: Dictionary = rooms[edge[0]]
+		var b: Dictionary = rooms[edge[1]]
+		var direction := "east" if b.x > a.x else "south"
+		a.open_sides.append(direction)
+		b.open_sides.append("west" if direction == "east" else "north")
 	var decoration := RandomNumberGenerator.new()
 	decoration.seed = run_seed + 2000003 + attempt * 104729
 	for room in rooms:

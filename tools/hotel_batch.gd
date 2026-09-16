@@ -13,8 +13,10 @@ func run() -> void:
 	Engine.max_fps = 0
 	var started := Time.get_ticks_msec()
 	var count := 1000
+	var report_path := "res://evidence/hotel_batch.json"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--count="): count = int(arg.trim_prefix("--count="))
+		if arg.begins_with("--report="): report_path = "res://evidence/" + arg.trim_prefix("--report=").get_file()
 	for seed_value in count:
 		await level.start_floor(seed_value)
 		if level.session.state != level.session.State.PLAYING or not level.physical_errors.is_empty():
@@ -33,7 +35,7 @@ func run() -> void:
 			walks.append({"seed": seed_value, "passed": success, "position_teleports": 0})
 			if not success: failures.append({"seed": seed_value, "reason": "physical_walk"})
 		if seed_value % 50 == 0: print("BATCH_PROGRESS ", seed_value, "/", count, " failures=", failures.size())
-	var file := FileAccess.open("res://evidence/hotel_batch.json", FileAccess.WRITE)
+	var file := FileAccess.open(report_path, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failures.is_empty(), "physical_seeds": physics_passed, "walks": walks, "failures": failures, "elapsed_seconds": (Time.get_ticks_msec() - started) / 1000.0}, "\t"))
 	file.close()
 	print("BATCH_RESULT ", failures.is_empty(), " seeds=", physics_passed, " walks=", walks.size(), " failures=", failures)

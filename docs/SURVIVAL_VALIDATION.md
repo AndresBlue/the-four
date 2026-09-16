@@ -16,18 +16,20 @@ Fecha: 16/09/2026. Godot 4.7.2 Steam, Windows, RTX 4060 Ti. Proyecto local `E:\P
 ## Evidencia automática
 
 - `evidence/hotel_tests.json`: **34/34** comprobaciones de menú, ajustes, puertas, movimiento, checkpoint, respaldo y salida, además de 1.000 grafos reproducibles.
-- `evidence/hotel_batch.json`: **1.000/1.000 semillas físicas válidas**, semillas 0–999; **20/20 recorridos automáticos** con movimiento, puertas y llegada a victoria, sin teletransportar posiciones durante el recorrido. Lote de 479,096 s. La arquitectura se prueba con IA desactivada expresamente; no acredita escapar de Locust en mil partidas.
-- `evidence/survival_tests.json`: **32/32** comprobaciones con física real: resistencia/postura, visión, oclusión, ruido, investigación, búsqueda limitada, persecución, anticipación/esquiva, cruce de puerta lenta, escondite observado, refugio, captura y reintento.
-- `evidence/hotel_audio.json`: **3/3** — señal decodificada en mezcla, bucle y silencio del bus. Prueba en tiempo real, con niveles iniciales explícitos para ser repetible.
+- `evidence/hotel_generation_acceptance.json`: **1.000/1.000 semillas físicas válidas**, semillas 0–999, y **20/20 recorridos automáticos** finales con movimiento, puertas y victoria, sin teletransportar posiciones. Fuentes: `hotel_batch.json` (física/navegación) y `hotel_walks_final.json` (recorridos). La arquitectura se prueba con IA desactivada expresamente; no acredita escapar de Locust en mil partidas.
+- `evidence/survival_tests.json`: **33/33** comprobaciones con física real: resistencia/postura, visión, oclusión, ruido, investigación, búsqueda limitada, persecución, anticipación/esquiva, cruce de puerta lenta, escondite observado, refugio, captura y reintento.
+- `evidence/hotel_audio.json`: **4/4** — señal decodificada en mezcla, bucle, silencio del bus y aviso de ataque audible con música/efectos generales silenciados. Prueba en tiempo real, con niveles iniciales explícitos para ser repetible.
 - `evidence/smoke_test.log`: **18/18** regresiones del prototipo histórico. No se utilizan para acreditar la IA nueva.
 - Capturas inspeccionadas: salón conectado, habitación doméstica, Locust, escondite, refugio y menús. `survival_capture.gd` coloca la cámara para inspección; estas capturas no se presentan como recorridos manuales.
+
+Durante el lote físico, un recorrido automático chocó con el cuerpo inmóvil de Locust porque el antiguo modo `--no-enemy` solo detenía la IA. Se corrigió el aislamiento de arquitectura y se repitieron los veinte recorridos: todos pasan. El informe consolidado conserva la incidencia original y enlaza la repetición correcta. En la partida normal, la colisión de la criatura permanece activa.
 
 ## Muestras de rendimiento
 
 Semilla 81, 121 módulos, 1920×1080, tres vistas por calidad y 180 muestras por perfil. Sin límite de FPS ni sincronización vertical, criatura desactivada para comparar presentación.
 
-- Forward+: P95 baja **3,474 ms**, media **3,457 ms**, alta **3,492 ms**. Carga del piso **718 ms**. Memoria estática observada **197.646.061 bytes**.
-- Compatibility: P95 baja **4,462 ms**, media **6,765 ms**, alta **6,164 ms**. Carga **736 ms**. Memoria estática **140.132.757 bytes**. Sin crear recursos de niebla incompatibles con OpenGL.
+- Forward+: P95 baja **3,506 ms**, media **3,558 ms**, alta **3,519 ms**. Carga del piso **731 ms**. Memoria estática observada **197,741,216 bytes**.
+- Compatibility: P95 baja **4,37 ms**, media **6,462 ms**, alta **6,677 ms**. Carga del piso **674 ms**. Memoria estática observada **140,210,124 bytes**. Sin crear recursos de niebla incompatibles con OpenGL.
 
 Son muestras breves, no una garantía sostenida de 60 FPS ni medición de toda la memoria del proceso/VRAM. Falta medir persecuciones largas, escenas extremas y futuro cooperativo.
 

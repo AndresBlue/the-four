@@ -217,7 +217,10 @@ func spawn_locust() -> void:
 	if not player.noise.is_connected(on_noise): player.noise.connect(on_noise)
 	for door in hotel.doors: door.noise.connect(on_noise)
 	# Architecture regression tests opt out explicitly; normal/headless games keep AI.
-	if OS.get_cmdline_user_args().has("--no-enemy"): locust.set_physics_process(false)
+	if OS.get_cmdline_user_args().has("--no-enemy"):
+		locust.set_physics_process(false)
+		locust.collision_layer = 0
+		locust.collision_mask = 0
 
 func on_noise(point: Vector3, radius: float) -> void:
 	if is_instance_valid(locust): locust.hear(point, radius)

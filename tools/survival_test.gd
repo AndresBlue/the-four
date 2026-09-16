@@ -177,6 +177,10 @@ func run() -> void:
 		if level.session.state == level.session.State.FAILED: break
 	check("Entrada observada permite inspeccionar y capturar dentro", level.session.state == level.session.State.FAILED)
 	if level.session.state != level.session.State.FAILED: print("HIDE_DEBUG enemy=",enemy.position," player=",player.position," mode=",enemy.mode," cansee=",enemy.sees_player()," path=",enemy.path," target=",enemy.destination)
+	level.settings.set_value("reduced", true)
+	level.hotel.update_visibility(player.position, true)
+	check("Efectos reducidos apagan polvo y movimiento de cortinas", not level.hotel.dust.visible and level.hotel.curtain_material.get_shader_parameter("motion") == 0.0)
+	level.settings.set_value("reduced", false)
 	var file := FileAccess.open("res://evidence/survival_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed":failed == 0,"checks": checks}, "\t"))
 	file.close()

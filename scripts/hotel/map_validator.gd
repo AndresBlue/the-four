@@ -72,7 +72,7 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 					if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("alcove_entrance_%d" % room.id)
 		if room.type != 19:
 			for spot in FLOOR.hiding_positions(room):
-				var approach := spot + Vector3(-signf(spot.x) * 1.1, 0, 0)
+				var approach := FLOOR.hiding_approach(spot)
 				query.transform = Transform3D(Basis.IDENTITY, center)
 				query.motion = approach
 				if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("hide_approach_%d" % room.id)

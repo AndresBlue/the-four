@@ -36,8 +36,26 @@ static func size_of(room: Dictionary) -> Vector2:
 	return Vector2(room.get("span_x", CELL), room.get("span_z", CELL))
 
 static func hiding_positions(room: Dictionary) -> Array[Vector3]:
-	var side := size_of(room).x * 0.5 - 0.8
-	return [Vector3(-side, 0, -1.8), Vector3(side, 0, -1.8), Vector3(-side, 0, 1.8), Vector3(side, 0, 1.8)]
+	var span := size_of(room) * 0.5 - Vector2.ONE * 0.8
+	var open: Array = room.get("open_sides", [])
+	var result: Array[Vector3] = []
+	for wall in ["west", "east", "north", "south"]:
+		if open.has(wall): continue
+		for offset in [-1.8, 1.8]:
+			if result.size() == 4: return result
+			match wall:
+				"west": result.append(Vector3(-span.x, 0, offset))
+				"east": result.append(Vector3(span.x, 0, offset))
+				"north": result.append(Vector3(offset, 0, -span.y))
+				"south": result.append(Vector3(offset, 0, span.y))
+	return result
+
+static func hiding_yaw(spot: Vector3) -> float:
+	if absf(spot.x) > absf(spot.z): return -signf(spot.x) * PI / 2
+	return PI if spot.z > 0 else 0.0
+
+static func hiding_approach(spot: Vector3) -> Vector3:
+	return spot + Basis(Vector3.UP, hiding_yaw(spot)) * Vector3(0, 0, 1.1)
 
 static func portal_between(a: Dictionary, b: Dictionary) -> Vector3:
 	var point := position_of(a)

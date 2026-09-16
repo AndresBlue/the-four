@@ -28,6 +28,16 @@ func run() -> void:
 		level.player.camera.rotation = Vector3.ZERO
 		await shot("upgrade_grand_salon")
 		break
+	for room in level.manifest.rooms:
+		var sides: Array = room.get("open_sides", [])
+		if sides.size() != 2: continue
+		if not (sides.has("west") or sides.has("east")) or not (sides.has("north") or sides.has("south")): continue
+		var forward := Vector3(-1 if sides.has("west") else 1, 0, -1 if sides.has("north") else 1)
+		level.player.position = FLOOR.position_of(room) - forward * 1.5 + Vector3(0, 0.04, 0)
+		level.player.rotation.y = atan2(-forward.x, -forward.z)
+		level.player.camera.rotation = Vector3.ZERO
+		await shot("upgrade_lounge_corner")
+		break
 	level.player.position = Vector3(0, 0.04, 0)
 	level.player.rotation = Vector3.ZERO
 	level.player.camera.rotation = Vector3.ZERO
