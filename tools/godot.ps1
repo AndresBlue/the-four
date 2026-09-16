@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','editor','test','build','capture')][string]$Mode = 'play',
+    [ValidateSet('play','editor','test','h1-test','walkthrough','audio-test','build','capture')][string]$Mode = 'play',
     [string]$GodotPath = $env:GODOT_PATH
 )
 $ErrorActionPreference = 'Stop'
@@ -15,6 +15,9 @@ $arguments = @('--path', $projectPath)
 switch ($Mode) {
     'editor' { $arguments += '--editor' }
     'test' { $arguments += @('--headless','--script','res://tools/smoke_test.gd') }
+    'h1-test' { $arguments += @('--headless','--script','res://tools/h1_test.gd') }
+    'walkthrough' { $arguments += @('--script','res://tools/walkthrough_test.gd') }
+    'audio-test' { $arguments += @('--headless','--script','res://tools/audio_test.gd') }
     'build' { $arguments += @('--headless','--script','res://tools/build_scene.gd') }
     'capture' { $arguments += @('--','--capture=' + (Join-Path $projectPath 'evidence/corridor.png')) }
 }

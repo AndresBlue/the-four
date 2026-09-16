@@ -19,6 +19,7 @@ func _initialize() -> void:
 func run() -> void:
 	var level: Node3D = load("res://scenes/main.tscn").instantiate()
 	root.add_child(level)
+	level.begin_run()
 	var player = level.get_node("Player")
 	await frames(30)
 	check("Suelo y gravedad", player.is_on_floor() and absf(player.position.y) < 0.1, str(player.position))
@@ -44,6 +45,10 @@ func run() -> void:
 	check("Pared detiene al jugador", player.position.x < 3.15 and player.position.x > 2.9, str(player.position))
 	player.position = Vector3(2, 0.02, 6.5)
 	player.velocity = Vector3.ZERO
+	for item in level.gameplay.items:
+		if item.kind == "door" and item.position.x > 0 and item.position.z > 0:
+			item.toggle_door()
+	await frames(40)
 	Input.action_press("right")
 	await frames(60)
 	Input.action_release("right")

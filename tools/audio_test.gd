@@ -6,6 +6,7 @@ func _initialize() -> void:
 func run() -> void:
 	var level: Node3D = load("res://scenes/main.tscn").instantiate()
 	root.add_child(level)
+	level.begin_run()
 	await process_frame
 	var music = level.get_node("Music")
 	var bus_index := AudioServer.get_bus_index("Music")
@@ -29,4 +30,8 @@ func run() -> void:
 	var file := FileAccess.open("res://evidence/audio_test.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"decoded_samples": samples.size(), "peak": peak, "decoded": decoded, "looped": looped}, "\t"))
 	file.close()
+	AudioServer.remove_bus_effect(bus_index, 0)
+	level.queue_free()
+	await process_frame
+	await process_frame
 	quit(0 if decoded and looped else 1)
