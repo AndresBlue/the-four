@@ -44,8 +44,14 @@ var caption_cooldown := 0.0
 var presence_gain := 0.0
 var clock := 0.0
 var aura
-## Failing-fluorescent hum near the listener.
+## Fluorescent hum from the nearest battens.
 var hums: Array[AudioStreamPlayer3D] = []
+## Hum level at the reference mix and its distance scale: clearly there under
+## the tube and across its room, gone a room away. Fixtures hang at ceiling
+## height, so the listener is never much closer than about 1.5 m.
+const HUM_DB := -28.0
+const HUM_UNIT := 4.0
+const HUM_REACH := 13.0
 var ambient_clock := 0.0
 var route_clock := 0.0
 var presence_route := {}
@@ -64,9 +70,9 @@ func _ready() -> void:
 	add_child(presence)
 	aura = get_node_or_null("DreadAura")
 	for i in 2:
-		var hum := make_source("FluorescentHum", "Ambience", loop_stream(load("res://assets/audio/dread/fluorescent_hum.wav")), 2.0, 12.0)
-		# A background detail: capped so standing right under a tube stays quiet.
-		hum.max_db = -36.0
+		var hum := make_source("FluorescentHum", "Ambience", loop_stream(load("res://assets/audio/dread/fluorescent_hum.wav")), HUM_UNIT, HUM_REACH)
+		# Capped so standing right under a tube is never harsh.
+		hum.max_db = HUM_DB + 3.0
 		hums.append(hum)
 
 func make_source(title: String, bus: String, stream: AudioStream, unit: float, reach: float) -> AudioStreamPlayer3D:
@@ -85,14 +91,10 @@ func make_source(title: String, bus: String, stream: AudioStream, unit: float, r
 func update_space(delta: float) -> void:
 	var wanted := {"room_size": 0.5, "wet": 0.12, "damping": 0.6}
 	if level.session.state == level.session.State.PLAYING and not level.manifest.is_empty():
-		var listener := listener_position()
-		for room in level.manifest.rooms:
-			var center := FLOOR.position_of(room)
-			var span := FLOOR.size_of(room)
-			if absf(listener.x - center.x) <= span.x * 0.5 and absf(listener.z - center.z) <= span.y * 0.5:
-				if room.hall >= 0: wanted = {"room_size": 0.86, "wet": 0.24, "damping": 0.42}
-				elif room.type in [4, 7, 9]: wanted = {"room_size": 0.42, "wet": 0.2, "damping": 0.25}
-				break
+		var room := FLOOR.room_at(level.manifest.rooms, listener_position())
+		if not room.is_empty():
+			if room.hall >= 0: wanted = {"room_size": 0.86, "wet": 0.24, "damping": 0.42}
+			elif room.type in FLOOR.HARD_FLOORS: wanted = {"room_size": 0.42, "wet": 0.2, "damping": 0.25}
 	for bus_name in ["Effects", "Threat"]:
 		var bus := AudioServer.get_bus_index(bus_name)
 		for index in AudioServer.get_bus_effect_count(bus):
@@ -275,19 +277,23 @@ func _physics_process(delta: float) -> void:
 	presence.attenuation_filter_cutoff_hz = presence_route.get("cutoff", 20000.0)
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
 
-## Moves the hum emitters to the closest failing lights.
+## Moves the hum emitters to the closest fluorescent battens. A tube in another
+## room is only heard through the opening, like any other sound.
 func update_ambient_sources() -> void:
 	if level.session.state != level.session.State.PLAYING or not is_instance_valid(level.hotel):
 		for source in hums: source.stop()
 		return
 	var listener := listener_position()
-	var nearest: Array = level.hotel.flickers.filter(func(entry): return is_instance_valid(entry.light) and entry.light.global_position.distance_to(listener) < 16.0)
+	var nearest: Array = level.hotel.tubes.filter(func(entry): return is_instance_valid(entry.light) and entry.light.global_position.distance_to(listener) < HUM_REACH)
 	nearest.sort_custom(func(a, b): return a.light.global_position.distance_to(listener) < b.light.global_position.distance_to(listener))
 	for i in hums.size():
 		var hum := hums[i]
-		if i < nearest.size():
+		var route := route_source(nearest[i].light.global_position) if i < nearest.size() else {"audible": false}
+		if route.audible:
 			hum.set_meta("entry", nearest[i])
-			hum.global_position = nearest[i].light.global_position
+			hum.set_meta("route_gain", route.gain)
+			hum.global_position = route.position
+			hum.attenuation_filter_cutoff_hz = route.cutoff
 			if not hum.playing: hum.play(rng.randf() * 1.5)
 		else:
 			hum.set_meta("entry", null)
@@ -299,4 +305,4 @@ func update_hum_levels() -> void:
 		var entry = hum.get_meta("entry") if hum.has_meta("entry") else null
 		if entry == null or not hum.playing: continue
 		var level_ratio: float = clampf(entry.light.light_energy / maxf(entry.energy, 0.01), 0.0, 1.0)
-		hum.volume_db = lerpf(-60.0, -40.0, level_ratio)
+		hum.volume_db = HUM_DB + float(hum.get_meta("route_gain", 0.0)) + linear_to_db(maxf(level_ratio, 0.001))

@@ -9,6 +9,8 @@ const LEAF_WIDTH := 1.2
 ## Wardrobes per module type: bedrooms and the cloakroom get two, a few
 ## private rooms get one, corridors, halls and public spaces none.
 const WARDROBES := {1: 2, 2: 2, 3: 2, 16: 2, 13: 1, 14: 1, 15: 1, 8: 1}
+## Tiled floors (baths, laundry, maintenance); every other module is carpeted.
+const HARD_FLOORS := [4, 7, 9]
 const TYPES := ["recepcion", "habitacion_doble", "habitacion_simple", "suite", "bano", "salon", "comedor", "lavanderia", "almacen", "mantenimiento", "vestibulo", "pasillo", "galeria", "sala_lectura", "sala_tv", "oficina", "guardarropa", "sala_plantas", "salon_vacio", "refugio"]
 const NAMES := ["Recepción", "Habitación doble", "Habitación", "Suite", "Baños", "Salón", "Comedor", "Lavandería", "Almacén", "Mantenimiento", "Vestíbulo", "Pasillo", "Galería", "Sala de lectura", "Sala de televisión", "Oficina", "Guardarropa", "Jardín interior", "Salón vacío", "Refugio"]
 # Each corner is a reserved furnishing socket; the central cross remains clear.
@@ -40,6 +42,14 @@ static func position_of(room: Dictionary) -> Vector3:
 
 static func size_of(room: Dictionary) -> Vector2:
 	return Vector2(room.get("span_x", CELL), room.get("span_z", CELL))
+
+## The module whose footprint contains a world point, or {} outside the plan.
+static func room_at(rooms: Array, point: Vector3) -> Dictionary:
+	for room in rooms:
+		var center := position_of(room)
+		var span := size_of(room)
+		if absf(point.x - center.x) <= span.x * 0.5 and absf(point.z - center.z) <= span.y * 0.5: return room
+	return {}
 
 static func hiding_count(room: Dictionary) -> int:
 	if int(room.get("hall", -1)) >= 0: return 0

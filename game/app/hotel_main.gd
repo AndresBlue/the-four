@@ -262,17 +262,37 @@ func focused_hide():
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	return hit.collider if not hit.is_empty() and hit.collider is HIDE else null
 
+## Doors are reached from further away than wardrobes.
+const DOOR_REACH := 3.2
+## An open door this close can be shut without looking at it, so it can be
+## pulled closed behind you while running away.
+const DOOR_BEHIND_REACH := 3.0
+
 func focused_door():
 	var from: Vector3 = player.camera.global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * 2.0, 1 | 8)
+	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * DOOR_REACH, 1 | 8)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	return hit.collider if not hit.is_empty() and hit.collider is DOOR else null
+
+## Nearest open door within reach, for closing it without looking at it.
+func door_behind():
+	var best = null
+	var best_distance := DOOR_BEHIND_REACH
+	for door in hotel.doors:
+		if not door.opened or door.moving: continue
+		var distance := Vector2(door.doorway.x - player.global_position.x, door.doorway.z - player.global_position.z).length()
+		if distance < best_distance:
+			best = door
+			best_distance = distance
+	return best
 
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	var inside := in_refuge()
 	session.set_refuge(1, inside)
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
+	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
+	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
 	var hiding_target = focused_hide()
 	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
 		if player.hidden: player.leave_hide()
@@ -289,6 +309,7 @@ func _physics_process(delta: float) -> void:
 		ui.progress.visible = false
 		return
 	var target = focused_door()
+	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
 	camcorder.focus("ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else "")

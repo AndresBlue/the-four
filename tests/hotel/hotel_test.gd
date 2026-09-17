@@ -35,20 +35,29 @@ func run() -> void:
 	check("Validación física de todos los pasos y coberturas", scene.physical_errors.is_empty())
 	var door = scene.hotel.doors[0]
 	door.open_immediately()
-	scene.player.position = door.doorway + Vector3(0, 0.04, 0.7)
+	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
+	scene.player.position = door.doorway + across * 0.15 + Vector3(0, 0.04, 0)
 	check("Puerta no cierra con jugador en el umbral", not door.toggle())
+	scene.player.position = door.doorway + across * 0.8 + Vector3(0, 0.04, 0)
+	check("Puerta cierra con el jugador ya pasado el marco", door.toggle(false, false))
 	scene.player.position = Vector3(0, 0.04, 0)
-	door.toggle()
 	for frame in 45: await physics_frame
 	check("Puerta cerrada recupera colisión", not door.opened and door.collision_layer == 8)
-	scene.player.position = door.doorway + Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0.04, 1.5)
+	scene.player.position = door.doorway + across * 2.8 + Vector3(0, 0.04, 0)
 	scene.player.rotation.y = door.closed_rotation
 	scene.player.camera.rotation = Vector3.ZERO
 	await physics_frame
-	check("Interacción enfoca puerta a menos de 2 m", scene.focused_door() == door)
-	scene.player.position = door.doorway + Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0.04, 3.5)
+	check("Interacción enfoca puerta a casi 3 m", scene.focused_door() == door)
+	scene.player.position = door.doorway + across * 4.2 + Vector3(0, 0.04, 0)
 	await physics_frame
 	check("Interacción no alcanza puerta distante", scene.focused_door() != door)
+	door.open_immediately()
+	scene.player.position = door.doorway + across * 2.0 + Vector3(0, 0.04, 0)
+	scene.player.rotation.y = door.closed_rotation + PI
+	await physics_frame
+	check("Puerta abierta a la espalda se puede cerrar", scene.focused_door() != door and scene.door_behind() == door)
+	door.toggle(false, false)
+	for frame in 45: await physics_frame
 	scene.player.position = Vector3(0, 0.04, 0)
 	door.toggle(true)
 	for frame in 20: await physics_frame
@@ -64,6 +73,26 @@ func run() -> void:
 	for frame in 35: await physics_frame
 	Input.action_release("forward")
 	check("Movimiento físico", scene.player.position.distance_to(start_position) > 1.0)
+	# Recorded steps start early so their impact lands on the footfall.
+	var offsets := []
+	for gait in ["walk", "run"]:
+		scene.player.position = start_position
+		scene.player.step_phase = 0.0
+		scene.player.step_scheduled = -1
+		if gait == "run": Input.action_press("sprint")
+		Input.action_press("forward")
+		var last_step := 0
+		for frame in 150:
+			await physics_frame
+			var step := floori(scene.player.step_phase / PI)
+			# physics_frame fires before the player's own update: its step count
+			# is from the previous frame, and a crossing is only seen on the frame after it.
+			if step != last_step and frame > 30: offsets.append(absf(Engine.get_physics_frames() - 1 - scene.player.step_impact_frame))
+			last_step = step
+		Input.action_release("forward")
+		Input.action_release("sprint")
+		for frame in 20: await physics_frame
+	check("Golpe de cada paso grabado coincide con la pisada", offsets.size() >= 4 and offsets.max() <= 1.05)
 	scene.session.pause()
 	var pause_position: Vector3 = scene.player.position
 	var time_before: float = scene.session.elapsed

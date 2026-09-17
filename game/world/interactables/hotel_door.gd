@@ -7,9 +7,16 @@ var closed_rotation := 0.0
 var doorway := Vector3.ZERO
 var motion: Tween
 
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+## Only a body standing in the frame itself keeps the door from closing; the
+## swinging leaf passes through anyone beside it (see _physics_process).
+const THRESHOLD_DEPTH := 0.45
+
 func occupied() -> bool:
+	var frame := Basis(Vector3.UP, closed_rotation)
 	for player in get_tree().get_nodes_in_group("hotel_players") + get_tree().get_nodes_in_group("hotel_actors"):
-		if Vector2(player.global_position.x - doorway.x, player.global_position.z - doorway.z).length() < 1.1:
+		var offset: Vector3 = player.global_position - doorway
+		if absf(offset.dot(frame.z)) < THRESHOLD_DEPTH and absf(offset.dot(frame.x)) < FLOOR.PORTAL * 0.5 + 0.35:
 			return true
 	return false
 

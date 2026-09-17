@@ -90,6 +90,11 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Locust orientado hacia su avance, animación procedural con pies anclados al suelo (IK de dos huesos), brazos-cuchilla por estado, cabeza que sigue al objetivo y pasos sincronizados con cada pisada.
 - [x] Sospecha gradual por distancia, linterna, carrera y agacharse; reacción a linterna lejana; velocidad variable y pérdida de rastro al romper la línea de visión.
 - [x] Pasos del jugador por distancia recorrida y balanceo de cámara ligado a cada pisada.
+- [x] Pasos grabados por superficie (moqueta/baldosa) con el golpe alineado a la pisada.
+- [x] Puertas a 3,2 m, cierre a la espalda y umbral que solo bloquea dentro del marco.
+- [x] Asomarse del armario por cada puerta según hacia dónde se mira; solo la primera apertura cruje.
+- [x] Zumbido audible en todos los fluorescentes de servicio.
+- [ ] Comprobar en partida el nivel de los pasos grabados y del zumbido.
 - [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
 - [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).
 - [x] Exploradora animada (esqueleto del cuerpo) y señal visual de la estocada sin texto.

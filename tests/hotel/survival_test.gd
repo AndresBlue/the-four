@@ -159,9 +159,25 @@ func run() -> void:
 	Input.action_press("forward")
 	await frames(120)
 	check("Asomarse por la puerta entreabierta lo delata", hide.ajar() and enemy.sees_player() and player.camera.position.z < -0.3)
+	var creaks := [0]
+	hide.peek_started.connect(func(_point): creaks[0] += 1)
+	# Looking left opens the leaf on the right hand (wardrobe -X) and leans out there.
+	player.rotation.y = player.hide_yaw + 1.2
+	await frames(60)
+	var lean: Vector3 = Basis(Vector3.UP, player.rotation.y - player.hide_yaw) * player.camera.position
+	check("Mirar a un lado abre la puerta contraria y se asoma por ese hueco", hide.peek.left > 0.9 and hide.peek.right < 0.1 and lean.x > 0.2)
+	player.rotation.y = player.hide_yaw - 1.2
+	await frames(60)
+	lean = Basis(Vector3.UP, player.rotation.y - player.hide_yaw) * player.camera.position
+	check("Mirar al otro lado cambia de puerta", hide.peek.right > 0.9 and hide.peek.left < 0.1 and lean.x < -0.2)
 	Input.action_release("forward")
 	await frames(120)
 	check("Con las puertas cerradas vuelve a ocultarlo", not hide.ajar() and not enemy.sees_player())
+	Input.action_press("forward")
+	await frames(30)
+	Input.action_release("forward")
+	await frames(60)
+	check("Solo la primera apertura de las puertas hace ruido", creaks[0] == 0)
 	enemy.observed_hide = hide
 	check("Salida de escondite libre sin teletransporte a otra sala", player.leave_hide() and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
 	var exit_room: Dictionary = level.manifest.rooms[level.manifest.exit]

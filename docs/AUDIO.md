@@ -71,7 +71,7 @@ Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/drea
 
 ## Atmósfera local
 
-- Zumbido de los fluorescentes que fallan: hasta dos fuentes en las luces cercanas, que se apagan con cada parpadeo.
+- Zumbido de fluorescentes: todos los tubos de las salas de servicio zumban, hasta dos fuentes en los más cercanos (13 m), que se apagan con cada parpadeo. Un tubo de otra sala solo llega por la abertura, como cualquier sonido. Medido al 50 % con `tools/audio/measure_hum.gd`: −31 dBFS RMS debajo, −34 a 3 m, −40 a 5 m.
 - Pasos de The Locust: golpe seco sintetizado de pata punzante sobre un golpe hueco, en cada pisada real de la animación.
 
 Pendiente: escucha crítica con auriculares, balance del aura en partidas humanas y perfiles de las otras criaturas.
@@ -88,4 +88,10 @@ Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Loc
 
 ## Armarios
 
-Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura puede oír (radio 4). Entreabrir las puertas cruje en voz baja (radio 2).
+Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura puede oír (radio 4). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (radio 2); cambiar de lado o volver a abrir no suena.
+
+## Pasos del jugador
+
+Las tomas aportadas están en `sfx/footsteps/` (fuera de git): moqueta caminando, moqueta corriendo y suelo duro caminando. `tools/audio/slice_footsteps.py` las corta en pasos sueltos (`assets/audio/sfx/footsteps/`, WAV mono) y escribe `game/audio/footstep_segments.gd` con el instante del golpe dentro de cada recorte. Las grabaciones de moqueta traen mucha energía por debajo de 35 Hz, que se filtra antes de cortar; cada juego se normaliza a un pico común. Si cambias una toma, vuelve a ejecutar el script.
+
+Las tomas no van al ritmo del juego (moqueta 0,56 s por paso, carrera 0,34 s, suelo duro 0,84 s con talón y punta), así que no se reproducen seguidas: cada pisada del jugador lanza un recorte suelto y, como la pisada sale de la distancia recorrida, el recorte empieza antes lo justo para que su golpe coincida con ella y con la bajada de la cámara (comprobado en `hotel_test`, error ≤ 1 fotograma). Suelo: baldosa en baños, lavandería y mantenimiento; moqueta en el resto. Correr sobre baldosa reutiliza la toma de caminar, más aguda y fuerte. Dos voces alternas evitan cortar la cola del paso anterior.

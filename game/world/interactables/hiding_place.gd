@@ -1,6 +1,7 @@
 extends Area3D
 ## Wardrobe hiding place. The occupant stands inside with both doors shut;
-## holding forward eases the doors ajar to peek left, ahead and right.
+## holding forward eases the doors ajar. Each leaf opens on its own: looking to
+## one side opens the opposite leaf, which then shields the head leaning out.
 ## Closed doors block sight like a wall; a door left ajar lets a creature see
 ## the occupant. The Area3D itself is only the interaction target.
 const BODY := preload("res://assets/props/wardrobe/wardrobe_body.res")
@@ -10,9 +11,9 @@ const HINGE := Vector3(0.615, 0.0, 0.38)
 const WIDTH := 1.25
 const HEIGHT := 2.3
 const DEPTH := 0.78
-## Door angles (radians): fully open, and ajar at maximum peek.
+## Door angles (radians): fully open, and a leaf ajar at maximum peek.
 const OPEN_ANGLE := 1.75
-const PEEK_ANGLE := 0.7
+const PEEK_ANGLE := 1.05
 ## Doors wider than this stop blocking movement so they never shove anyone.
 const COLLISION_LIMIT := 0.3
 signal peek_started(point: Vector3)
@@ -22,7 +23,11 @@ var exit_offset := Vector3(0, 0.04, 1.15)
 var inside_offset := Vector3(0, 0.04, -0.02)
 ## 0 closed .. 1 wide open (entering, leaving, forced); peek is separate.
 var opening := 0.0
-var peek := 0.0
+## Per leaf, 0..1, named in wardrobe space: "left" is the leaf at -X, which is
+## on the right hand of someone standing inside.
+var peek := {"left": 0.0, "right": 0.0}
+## Only the first time the doors part during a stay makes a sound.
+var peeked := false
 var pivots := {}
 var leaf_bodies := {}
 var motion: Tween
@@ -78,12 +83,14 @@ func _ready() -> void:
 		leaf_bodies[side] = door
 	apply_angles()
 
+func leaf_angle(side: String) -> float:
+	return maxf(opening * OPEN_ANGLE, peek[side] * PEEK_ANGLE)
+
 func apply_angles() -> void:
-	var angle := maxf(opening * OPEN_ANGLE, peek * PEEK_ANGLE)
 	# Left leaf swings out with a negative turn, the right one with a positive turn.
-	pivots.left.rotation.y = -angle
-	pivots.right.rotation.y = angle
-	for side in leaf_bodies: leaf_bodies[side].collision_layer = 8 if angle < COLLISION_LIMIT else 0
+	pivots.left.rotation.y = -leaf_angle("left")
+	pivots.right.rotation.y = leaf_angle("right")
+	for side in leaf_bodies: leaf_bodies[side].collision_layer = 8 if leaf_angle(side) < COLLISION_LIMIT else 0
 
 func swing(to: float, seconds: float) -> void:
 	if is_instance_valid(motion): motion.kill()
@@ -92,14 +99,15 @@ func swing(to: float, seconds: float) -> void:
 
 func enter(player: CharacterBody3D) -> void:
 	occupant = player
-	peek = 0.0
+	peek = {"left": 0.0, "right": 0.0}
+	peeked = false
 	opening = 0.85
 	apply_angles()
 	swing(0.0, 0.55)
 
 func leave() -> void:
 	occupant = null
-	peek = 0.0
+	peek = {"left": 0.0, "right": 0.0}
 	swing(1.0, 0.3)
 	close_timer = 1.1
 
@@ -108,15 +116,17 @@ func force_open() -> void:
 	if opening < 0.9: swing(1.0, 0.25)
 	close_timer = 2.5
 
-func set_peek(value: float) -> void:
-	var was_closed := peek <= 0.02
-	peek = clampf(value, 0.0, 1.0)
-	if was_closed and peek > 0.02: peek_started.emit(to_global(Vector3(0, 1.2, HINGE.z)))
+func set_peek(left: float, right: float) -> void:
+	peek.left = clampf(left, 0.0, 1.0)
+	peek.right = clampf(right, 0.0, 1.0)
+	if not peeked and maxf(peek.left, peek.right) > 0.02:
+		peeked = true
+		peek_started.emit(to_global(Vector3(0, 1.2, HINGE.z)))
 	apply_angles()
 
-## True when the doors are open enough for a line of sight to the occupant.
+## True when a leaf is open enough for a line of sight to the occupant.
 func ajar() -> bool:
-	return maxf(opening * OPEN_ANGLE, peek * PEEK_ANGLE) >= COLLISION_LIMIT
+	return maxf(leaf_angle("left"), leaf_angle("right")) >= COLLISION_LIMIT
 
 func _physics_process(delta: float) -> void:
 	if close_timer <= 0.0: return

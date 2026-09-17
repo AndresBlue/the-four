@@ -19,11 +19,27 @@ var eye_height := 1.64
 var hide_yaw := 0.0
 ## 0..1: how far the wardrobe doors are eased open while hiding.
 var peek := 0.0
+## -1..1: which side the occupant looks to while peeking (+ is left), smoothed.
+var peek_side := 0.0
 ## Looking range inside the wardrobe (radians either side), shut and fully ajar.
-const HIDE_LOOK := Vector2(0.35, 1.35)
-## How far the head leans out through the gap at full peek (metres).
+const HIDE_LOOK := Vector2(0.35, 1.45)
+## How far the head leans out through the gap at full peek (metres), forward
+## and sideways into the opened half.
 const PEEK_LEAN := 0.5
+const PEEK_SIDE_LEAN := 0.28
 var footstep: AudioStreamPlayer3D
+## Two voices so a step's tail is not cut by the next one.
+var step_voices: Array[AudioStreamPlayer3D] = []
+var step_voice := 0
+## Step clips per set, loaded from the generated table.
+var step_clips := {}
+## Footfall index whose sound already started ahead of the impact.
+var step_scheduled := -1
+## Set by the level from the module underfoot: tiles instead of carpet.
+var hard_floor := false
+## Physics frame at which the last started step clip reaches its impact (tests).
+var step_impact_frame := -1.0
+const STEPS := preload("res://game/audio/footstep_segments.gd")
 var settings
 var spawn := Vector3.ZERO
 # Stamina: long sprints, slow and delayed recovery.
@@ -60,7 +76,13 @@ func _ready() -> void:
 	torch.top_level = true
 	snap_torch()
 	footstep = $Footsteps
-	footstep.stream = step_sound()
+	for set_name in STEPS.SETS:
+		step_clips[set_name] = STEPS.SETS[set_name].map(func(entry): return {"stream": load(entry[0]), "impact": entry[1]})
+	footstep.stream = step_clips.carpet_walk[0].stream
+	var second := footstep.duplicate() as AudioStreamPlayer3D
+	second.name = "FootstepsTail"
+	add_child(second)
+	step_voices = [footstep, second]
 	if settings == null: set_physics_process(false)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -109,16 +131,23 @@ func _physics_process(delta: float) -> void:
 	if planar > 0.25 and is_on_floor() and not hidden:
 		var stride := STRIDE_CROUCH if crouched else STRIDE_RUN if running else STRIDE_WALK
 		var previous := floori(step_phase / PI)
-		step_phase += planar * delta / stride * PI
+		var rate := planar / stride * PI
+		step_phase += rate * delta
 		bob_weight = move_toward(bob_weight, 1.0, delta * 5.0)
-		if floori(step_phase / PI) != previous:
-			noise.emit(global_position, 2.5 if crouched else 16.0 if running else 7.0)
-			footstep.volume_db = -22 if crouched else -3 if running else -12
-			# Running strikes land heavier and a little lower.
-			footstep.pitch_scale = randf_range(0.84, 0.94) if running else randf_range(0.94, 1.06)
-			footstep.play()
+		var index := floori(step_phase / PI)
+		if index != previous:
+			# Tiles carry a step further than carpet.
+			noise.emit(global_position, (2.5 if crouched else 16.0 if running else 7.0) * (1.3 if hard_floor else 1.0))
+			if step_scheduled != index: play_step(running, 0.0)
+		# Recorded steps have their impact some way into the clip: start the next
+		# one early so the impact lands exactly on the footfall (and the head dip).
+		var next := index + 1
+		if step_scheduled != next:
+			var remaining := (float(next) * PI - step_phase) / rate
+			if remaining <= 0.2 and play_step(running, remaining): step_scheduled = next
 	else:
 		bob_weight = move_toward(bob_weight, 0.0, delta * 4.0)
+		step_scheduled = -1
 	eye_height = move_toward(eye_height, 0.9 if crouched else 1.64, delta * 5.0)
 	# Head is highest mid-stride and dips at each heel strike; it sways toward
 	# the planted foot once per two steps.
@@ -126,8 +155,7 @@ func _physics_process(delta: float) -> void:
 	var amplitude: float = 0.0 if settings.values.reduced else settings.values.bob * (0.1 if crouched else 0.25 if running else 0.15)
 	var lift := (absf(sin(step_phase)) - 0.6) * amplitude * bob_weight
 	update_peek(delta)
-	# Peeking leans the head forward through the gap between the doors.
-	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, -peek * PEEK_LEAN)
+	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, 0.0) + peek_lean()
 	camera.rotation.z = sin(step_phase) * amplitude * 0.02 * bob_weight
 
 # Incandescent torch: hot centre, faint reflector ring and a soft falloff.
@@ -144,18 +172,26 @@ static func beam_pattern() -> Texture2D:
 	texture.height = 256
 	return texture
 
-static func step_sound() -> AudioStreamWAV:
-	var sound := AudioStreamWAV.new()
-	sound.format = AudioStreamWAV.FORMAT_16_BITS
-	sound.mix_rate = 22050
-	var samples := PackedByteArray()
-	samples.resize(4410)
-	for i in 2205:
-		var t := float(i) / 22050
-		var value := sin(TAU * 85 * t) * exp(-t * 55) * minf(1, t * 500)
-		samples.encode_s16(i * 2, int(value * 16000))
-	sound.data = samples
-	return sound
+## Starts a step clip so its impact sounds `ahead` seconds from now. Returns
+## false while it is still too early for this clip's lead-in.
+func play_step(running: bool, ahead: float) -> bool:
+	var set_name := ("hard_walk" if hard_floor else "carpet_run" if running and not crouched else "carpet_walk")
+	var clips: Array = step_clips[set_name]
+	var clip: Dictionary = clips[randi() % clips.size()]
+	# Hard-floor running reuses the walk takes, struck quicker and harder.
+	var pitch := randf_range(0.95, 1.05)
+	if crouched: pitch = randf_range(0.9, 0.97)
+	elif running and hard_floor: pitch = randf_range(1.04, 1.12)
+	var lead := ahead * pitch
+	if lead > clip.impact: return false
+	var voice := step_voices[step_voice]
+	step_voice = (step_voice + 1) % step_voices.size()
+	voice.stream = clip.stream
+	voice.pitch_scale = pitch
+	voice.volume_db = (-25.0 if crouched else -5.0 if running else -14.0) + (2.0 if hard_floor else 0.0)
+	voice.play(clip.impact - lead)
+	step_impact_frame = Engine.get_physics_frames() + ahead * Engine.physics_ticks_per_second
+	return true
 
 func torch_target() -> Transform3D:
 	var view := camera.global_transform
@@ -212,15 +248,35 @@ func can_stand() -> bool:
 	query.collision_mask = 1 | 8
 	return get_world_3d().direct_space_state.intersect_shape(query).is_empty()
 
-## Hold forward to ease the doors open, release to let them fall shut.
+## Hold forward to ease the doors open, release to let them fall shut. Looking
+## to one side opens the opposite leaf wider: its open door screens the near
+## side while the head leans out through that half to look across.
 func update_peek(delta: float) -> void:
 	var wanted := 1.0 if hidden and active and Input.is_action_pressed("forward") else 0.0
 	peek = move_toward(peek, wanted, delta * (0.5 if wanted > peek else 0.9))
-	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek)
+	if not hidden:
+		peek_side = 0.0
+		return
+	var look := clampf(wrapf(rotation.y - hide_yaw, -PI, PI) / 0.9, -1.0, 1.0)
+	peek_side = move_toward(peek_side, look, delta * 2.5)
+	# The occupant's right hand is the wardrobe's -X ("left") leaf.
+	var toward_left := maxf(peek_side, 0.0)
+	var toward_right := maxf(-peek_side, 0.0)
+	var right_hand := lerpf(0.55, 1.0, toward_left) * lerpf(1.0, 0.0, toward_right)
+	var left_hand := lerpf(0.55, 1.0, toward_right) * lerpf(1.0, 0.0, toward_left)
+	if is_instance_valid(hiding_place): hiding_place.set_peek(peek * right_hand, peek * left_hand)
 	# Narrow the view back inside as the doors close.
-	if hidden:
-		var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
-		rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
+	var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
+	rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
+
+## Head offset in body space: forward through the doors and sideways into the
+## half that is open, fixed to the wardrobe rather than to where the view turns.
+func peek_lean() -> Vector3:
+	if not hidden or peek <= 0.0: return Vector3.ZERO
+	# Wardrobe-aligned axes seen from inside: forward is -Z, the right hand +X.
+	# Looking left leans out through the right-hand half, and the other way round.
+	var outward := Vector3(peek_side * PEEK_SIDE_LEAN, 0.0, -PEEK_LEAN - absf(peek_side) * 0.12) * peek
+	return Basis(Vector3.UP, hide_yaw - rotation.y) * outward
 
 func enter_hide(place: Node3D) -> bool:
 	if hidden or is_instance_valid(place.occupant): return false

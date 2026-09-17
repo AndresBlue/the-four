@@ -34,7 +34,9 @@ func run() -> void:
 	Input.action_press("forward")
 	await shot("peek", 150)
 	level.player.rotation.y = level.player.hide_yaw + 1.1
-	await shot("peek_left", 20)
+	await shot("peek_left", 70)
+	level.player.rotation.y = level.player.hide_yaw - 1.1
+	await shot("peek_right", 70)
 	Input.action_release("forward")
 	level.player.leave_hide()
 	# The Locust under a door lintel, seen from the next room.

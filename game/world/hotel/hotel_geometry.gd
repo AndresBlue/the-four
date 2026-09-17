@@ -17,6 +17,8 @@ var reflection_probes: Array[ReflectionProbe] = []
 var practicals: Array[OmniLight3D] = []
 # Fluorescent fixtures that flicker (never while effects are reduced).
 var flickers: Array = []
+## Every fluorescent batten (service rooms), steady or failing: they hum.
+var tubes: Array = []
 var flicker_clock := 0.0
 const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
@@ -166,7 +168,7 @@ func build(data: Dictionary) -> void:
 func build_room(node: Node3D, room: Dictionary) -> void:
 	var height: float = room.height
 	var span := FLOOR.size_of(room)
-	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in [4, 7, 9] else "carpet", true)
+	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in FLOOR.HARD_FLOORS else "carpet", true)
 	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling", true)
 	for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		var neighbor: int = room.id + direction.x + direction.y * int(manifest.width)
@@ -268,6 +270,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	light.distance_fade_shadow = SHADOW_FADE
 	node.add_child(light)
 	lights.append(light)
+	if service: tubes.append({"light": light, "energy": light.light_energy})
 	if failing:
 		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials["tube_%d" % flickers.size()], "glow": materials.light.emission_energy_multiplier})
 	if room.hall == room.id and room.hall >= 0:
