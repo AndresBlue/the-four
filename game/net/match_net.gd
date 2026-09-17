@@ -49,6 +49,12 @@ func _ready() -> void:
 func in_match() -> bool:
 	return not config.is_empty()
 
+## This machine decides: the host online, and the only machine there is when
+## nobody is connected. Everything the hunter asks for goes through here, so
+## the local preview takes the same path instead of sending an RPC to itself.
+func in_charge() -> bool:
+	return not net.is_client()
+
 func versus() -> bool:
 	return in_match() and int(config.mode) == net.Mode.VERSUS
 
@@ -164,7 +170,7 @@ func go() -> void:
 func _process(delta: float) -> void:
 	# Wardrobes are searched, and the shriek listens, offline too: the local
 	# Locust preview is the same code path with nobody connected.
-	if is_instance_valid(level) and is_instance_valid(level.hotel) and not net.is_client():
+	if is_instance_valid(level) and is_instance_valid(level.hotel) and in_charge():
 		update_wardrobe_jobs(delta)
 		if is_instance_valid(level.locust): update_shriek(delta)
 	if not in_match() or not net.active(): return
@@ -394,7 +400,7 @@ func locust_peer() -> int:
 
 ## The Locust player's strike ended its wind-up here, facing this way.
 func locust_strike(origin: Vector3, facing: Vector3) -> void:
-	if net.is_host: resolve_strike(origin, facing)
+	if in_charge(): resolve_strike(origin, facing)
 	else: strike.rpc_id(1, origin, facing)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -432,7 +438,7 @@ func resolve_strike(origin: Vector3, facing: Vector3) -> void:
 ## leaf, then a look inside).
 func locust_open_hide(hide: Node3D) -> void:
 	var index: int = level.hotel.hides.find(hide)
-	if net.is_host: level.open_wardrobe(hide)
+	if in_charge(): level.open_wardrobe(hide)
 	else: request_force.rpc_id(1, index)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -444,7 +450,7 @@ func request_force(index: int) -> void:
 
 ## The Locust player shrieked: the host listens for it for a few seconds.
 func locust_shriek() -> void:
-	if not net.is_client(): shriek_left = SHRIEK_TIME
+	if in_charge(): shriek_left = SHRIEK_TIME
 	else: request_shriek.rpc_id(1)
 
 @rpc("any_peer", "call_remote", "reliable")

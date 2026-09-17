@@ -21,7 +21,7 @@ uniform sampler2D depth_map : hint_depth_texture, repeat_disable, filter_nearest
 // any value this shader computes.
 uniform float now = 0.0;
 uniform float reach = 40.0;
-uniform float wave_speed = 42.0;
+uniform float wave_speed = 16.0;
 uniform float band_step = 1.5;
 // 0 grey, 1 the red flood of its own shriek.
 uniform float shriek : hint_range(0.0, 1.0) = 0.0;
@@ -29,7 +29,7 @@ uniform float shriek : hint_range(0.0, 1.0) = 0.0;
 // simply sees, and the whole acoustic conceit collapses. Every level in here
 // is LINEAR light: the AgX tonemap and the sRGB encoding roughly double what
 // reaches the screen, which is why these numbers look so small.
-uniform float base_level : hint_range(0.0, 1.0) = 0.012;
+uniform float base_level : hint_range(0.0, 1.0) = 0.008;
 uniform float front_level : hint_range(0.0, 2.0) = 1.0;
 uniform float grain_amount : hint_range(0.0, 1.0) = 1.0;
 uniform float jitter_amount : hint_range(0.0, 1.0) = 1.0;
@@ -92,20 +92,24 @@ void fragment() {
 		vec3 normal = normalize(cross(dy, dx));
 		float facing = abs(dot(normal, normalize(-here)));
 		// A surface square to the click throws the echo straight back; one seen
-		// edge-on scatters it away. So what it is facing is what it reads, and
-		// the floor and ceiling running away underfoot stay dim.
-		float shape = 0.22 + 0.78 * pow(facing, 1.3);
-		// A real depth discontinuity: the edge that draws the doorways.
-		float edge = clamp((abs(left.z - right.z) + abs(down.z - up.z)) * 0.55, 0.0, 1.0);
+		// edge-on scatters it away. Deliberately weak even head-on: a flat wall
+		// should be a dark field with its edges drawn, not a lit panel. The
+		// shape of the room comes from its outlines and from the point cloud.
+		float shape = 0.14 + 0.48 * pow(facing, 1.8);
+		// A real discontinuity, not a slope: the curvature of the depth, so a
+		// flat wall reads as zero however steeply it runs away and only a crease
+		// or a silhouette answers. Measuring the slope instead lit up every
+		// slanted wall and made the whole room a set of bright panels.
+		float edge = clamp((abs(left.z + right.z - 2.0 * here.z) + abs(down.z + up.z - 2.0 * here.z)) * 4.0, 0.0, 1.0);
 
 		// Depth contour bands: distance read at a glance, and the residual level
 		// that keeps the image from blinking to black between clicks.
 		float ring = 1.0 - abs(fract(eye_distance / band_step) - 0.5) * 2.0;
 		float bands = pow(clamp(ring, 0.0, 1.0), 7.0);
-		float level = base_level * (bands * 3.0 + 0.12) * shape;
+		float level = base_level * (bands * 2.0 + 0.10) * shape;
 		// Edges answer on their own, so doorways and furniture stay readable
 		// even in the gap between two clicks.
-		level += base_level * edge * 8.0;
+		level += base_level * edge * 10.0;
 
 		// Every click in flight, as a shell expanding from where its head was.
 		// The falloff is asymmetric: tight ahead of the front, long tail behind,
@@ -124,7 +128,7 @@ void fragment() {
 				// The far side of the room answers later and quieter.
 				// Nothing right against its head is allowed to blow out.
 				float spread = smoothstep(0.0, 1.3, away) / (1.0 + away * away * 0.008);
-				level += 1.5 * front_level * sweep_power[i].x * shell * spread * shape * (0.6 + edge * 1.6);
+				level += 0.6 * front_level * sweep_power[i].x * shell * spread * shape * (0.6 + edge * 1.6);
 			}
 		}
 
@@ -146,11 +150,14 @@ void fragment() {
 			}
 		}
 
-		// Beyond its hearing there is nothing to reconstruct.
+		// Beyond its hearing there is nothing to reconstruct, and a surface
+		// pressed against the camera returns nothing useful either: without
+		// that second fade, backing into a corner washes out the whole screen.
 		level *= 1.0 - smoothstep(reach * 0.55, reach, eye_distance);
-		// A soft ceiling. A wall square-on and close is hit by every shell at
-		// once; without this it burns to flat white and swallows the room.
-		level = level / (1.0 + level * 0.8);
+		level *= smoothstep(0.35, 1.35, eye_distance);
+		// A soft ceiling, so nothing ever reaches flat white and the picture
+		// keeps its range between the dark and the bright.
+		level = level / (1.0 + level * 1.7);
 
 		// Grey with a cold cast; its own shriek floods the reading red.
 		// AgX takes a lot of the chroma out of a saturated colour, so the red of

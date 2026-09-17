@@ -6,9 +6,11 @@ Código: `game/enemies/locust/echo_view.gd` (el controlador), `echo_body.gd` (si
 
 ## El pulso
 
-Chasquea unas **15 veces por segundo**. Esa es la tasa a la que se refresca la información: cada clic lanza un presupuesto de rayos desde su cabeza y siembra puntos en el mundo.
+Chasquea **dos veces por segundo**. Lento a propósito: a quince por segundo la imagen sale abarrotada, casi psicodélica, y a dos cada barrido es un acontecimiento que se espera. Lo que llena el medio segundo entre uno y otro es la memoria del anterior apagándose.
 
-La cadencia no es un metrónomo: cada intervalo se estira o se aprieta al azar (±22 %), respira lentamente por debajo, y se aprieta mientras caza. Uno de cada cuatro clics vuelve como un barrido fuerte, así que lo que se siente es un temblor constante con un oleaje marcado cada pocas décimas. Hay hasta seis frentes en vuelo a la vez, a unos 42 m/s, así que nunca hay un instante muerto.
+Cada clic lanza su presupuesto de rayos desde la cabeza de la criatura y siembra puntos en el mundo. La cadencia no es un metrónomo: cada intervalo se estira o se aprieta al azar (±22 %), respira lentamente por debajo, y se aprieta mientras caza. La onda viaja a **16 m/s**, lo bastante despacio para verla cruzar una sala y volver: un frente tarda unos dos segundos y medio en llegar al límite de su oído, así que hay cinco o seis en vuelo a radios distintos.
+
+**Una captura fija no puede mostrar esto.** Medio segundo de cada ciclo la sala está barrida por el frente y el resto está a oscuras, así que un fotograma la pilla encendida o apagada, y ninguna de las dos es lo que se ve. Para eso está la hoja de contactos: `./tools/godot.ps1 rehearsal` con `-- --strip` reparte un clic entero en ocho fotogramas (`evidence/rehearsal_pulse.png`).
 
 **La imagen se dibuja cada fotograma, no cada clic.** Los puntos están anclados en el mundo, no en la pantalla: moverse es fluido, las formas no se deforman, y lo que pulsa es la información, no el framerate.
 
@@ -31,7 +33,7 @@ Un quad a pantalla completa hijo de la cámara devuelve `ALPHA = 1.0`: tapa la i
 - bandas de profundidad cada 1,5 m: la distancia se lee de un vistazo;
 - una banda por cada frente en vuelo, con caída **asimétrica** (ajustada delante, cola corta detrás). Esa asimetría es lo que hace que sea un eco y no una cámara de profundidad;
 - **respuesta por incidencia**: una superficie de frente al clic devuelve el eco de vuelta, una vista de canto lo dispersa. Por eso lo que mira es lo que lee, y el suelo y el techo que se alejan bajo sus pies quedan oscuros;
-- bordes por discontinuidad de profundidad: los vanos, los muebles y las siluetas siguen legibles entre clic y clic;
+- bordes por **curvatura** de la profundidad, no por pendiente: una pared plana devuelve cero por muy inclinada que se aleje, y solo contestan las aristas y las siluetas. Midiendo la pendiente se encendía cada muro en diagonal y la sala entera quedaba hecha de paneles claros;
 - los anillos de los contactos de sonido pintados sobre esas mismas superficies. **Aquí el ruido y la geometría se vuelven una sola imagen.**
 
 ### Memoria y cuerpos
@@ -39,6 +41,8 @@ Un quad a pantalla completa hijo de la cámara devuelve `ALPHA = 1.0`: tapa la i
 Dos anillos de puntos en el mundo. La arquitectura se recuerda unos segundos; un cuerpo, apenas un suspiro (0,6 s), porque un superviviente es una lectura viva y no un rastro que seguir.
 
 El desvanecido **no está fijado a mano**: se mide la tasa de escritura y se ajusta para que un punto siempre acabe de apagarse antes de que el anillo lo pise. Así no hay saltos con ninguna calidad ni en ningún mapa.
+
+Casi toda la luz de un punto viene del instante en que el frente lo cruza; lo que queda después es un residuo mínimo. Tiene que ser mínimo: en una sala pequeña todos los puntos recordados caen sobre los mismos pocos metros cuadrados, y un residuo generoso se suma hasta convertir la pared en un panel iluminado en vez de un granulado. Por lo mismo, solo la mitad de los rayos van a un cono frontal amplio y el resto se reparten por toda la esfera: más estrechos, y la pared que mira acumula tantos puntos que se fusionan en una lámina.
 
 La memoria de los muros se intuye a través de los muros, atenuada, con una comparación de profundidad suave hecha a mano en el fragmento. Un cuerpo usa la misma comparación con atenuación cero, así que una pared lo corta por completo.
 
@@ -88,7 +92,9 @@ Para el asiento del cazador, `hotel_main.apply_settings()` apaga SSAO, SSIL, glo
 
 **TAA y FXAA se apagan, y eso no es optativo:** un vértice que escribe `POSITION` no produce vectores de movimiento, y una nube que se resiembra quince veces por segundo es el peor caso posible para acumulación temporal. El tinte cálido del filtro VHS se neutraliza y el fleco de color se reduce a la mitad, porque sobre una imagen gris es solo barro. Todo se vuelve a derivar llamando a `apply_settings()`, nunca recordando valores, porque el `Environment` es un recurso compartido.
 
-Presupuestos por calidad (0/1/2): rayos por clic `[0, 128, 224]`, puntos recordados `[0, 8000, 16000]`, puntos de cuerpo `[0, 256, 512]`. No hay ajuste guardado nuevo. Con 224 rayos a 15 clics por segundo son 56 rayos por paso de física, repartidos entre los fotogramas de cada clic, con una sola consulta reutilizada.
+También se apaga la **luz ambiental** para su asiento, que es la que alcanza cada superficie haya o no una lámpara: cualquier cosa que siga iluminada filtra el hotel visto dentro de una lectura que debe estar hecha de ecos.
+
+Presupuestos por calidad (0/1/2): rayos por clic `[0, 900, 1800]`, puntos recordados `[0, 7000, 11000]`, puntos de cuerpo `[0, 320, 640]`. No hay ajuste guardado nuevo. El presupuesto por clic es grande porque hay treinta fotogramas de física para repartirlo: el coste por fotograma es el mismo que tendría un pulso rápido, y lo que se gana es una escena hecha de puntos. Una sola consulta de rayo reutilizada.
 
 `reduced` **no deja la pantalla negra**: quita el temblor, la respiración y el grano, baja el contraste de los frentes y sube el término base y los hitos. Cambia el pulso por una imagen más plana y quieta, pero igual de navegable. Hay una prueba que comprueba justo eso, para que «reducido = pantalla negra» no pueda colarse como regresión.
 
@@ -100,12 +106,14 @@ Presupuestos por calidad (0/1/2): rayos por clic `[0, 128, 224]`, puntos recorda
 - `tools/dev/check_shaders.gd`: **necesita ventana**. Con `--headless` el rasterizador ficticio hace de `shader_set_code` una función vacía y un shader roto se carga sin una sola queja. `verify.ps1` lo ejecuta con ventana y juzga por el log; en una máquina sin GPU informa `SHADERS_SKIPPED` y no cuenta como fallo.
 - `tools/capture/echo_capture.gd`: las evidencias `evidence/echo_*.png`. Hay que lanzarlo con `--automation` o el arranque VCR se sienta encima de cada fotograma.
 - Mirarlo en movimiento: `./tools/godot.ps1 locust -Seed 81` abre el piso con la criatura en tus manos y un superviviente quieto como blanco, sin necesidad de nadie conectado.
+- **Con gente y ruido: `./tools/godot.ps1 rehearsal -Seed 81`** (`tools/dev/echo_rehearsal.gd`). Tres supervivientes recorren el piso solos, caminando, corriendo, agachándose, abriendo puertas, saltando, y uno de ellos metiéndose en armarios. Son los mismos cuerpos `remote_player` que construye una partida en red, así que sus pasos pasan por el enrutado real, sus poses alimentan el muestreo de siluetas y la criatura los ve y los oye exactamente como lo haría en versus. Es la forma de juzgar la imagen con algo pasando dentro. Con `-- --shots` toma unos fotogramas en `evidence/rehearsal_*.png` y sale, en vez de darte los mandos.
 
 ## Pendiente de juicio humano
 
 Los números de la imagen se ajustan jugando, no sobre el papel:
 
 - **El término base.** Una imagen de bordes derivada de la profundidad cada fotograma *es* vista. Si ese término sube, la criatura simplemente ve y se cae toda la ficción. Está bajo a propósito.
-- **La separación de los frentes.** A 42 m/s los cascarones quedan a unos 3 m. Demasiado juntos hacen moiré de pana.
+- **La separación de los frentes.** A 2 clics por segundo y 16 m/s los cascarones quedan a unos 8 m. Más juntos vuelven a abarrotar la imagen.
+- **Las salas pequeñas son más claras que los pasillos**, y eso es acústicamente cierto: todo está cerca y devuelve mucho. Si molesta, el mando es la ganancia del barrido en `echo_field.gdshader`.
 - **La legibilidad en un salón grande**, con memoria e hitos a través de los muros y doce anillos de contacto a la vez. Lo esperable es bajar las transparencias, no subirlas.
 - **El equilibrio de la caza** con esta información nueva, junto al chillido y la resistencia.

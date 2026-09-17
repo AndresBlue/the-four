@@ -533,10 +533,13 @@ func update_title_scene() -> void:
 		if is_instance_valid(hotel): hotel.visible = false
 		player.visible = false
 	elif session.state != session.State.CUTSCENE:
-		environment.ambient_light_energy = ambient_energy
+		# Leaving the menu: the hotel's own light back, unless the creature is
+		# being driven from here, in which case it has none and keeps its camera.
+		environment.ambient_light_energy = 0.0 if hunter_seat() else ambient_energy
 		if is_instance_valid(hotel): hotel.visible = true
-		player.visible = true
-		player.camera.current = true
+		player.visible = not hunter_seat()
+		player.camera.current = not hunter_seat()
+		if hunter_seat() and is_instance_valid(locust) and is_instance_valid(locust.camera): locust.camera.current = true
 
 func in_refuge() -> bool:
 	return point_in_refuge(player.position)
@@ -952,6 +955,11 @@ func apply_settings() -> void:
 	# SDFGI leaks light through the 18 cm hotel walls; bounce light is screen-space only.
 	environment.sdfgi_enabled = false
 	environment.glow_enabled = quality > 0 and not hunter
+	# Ambient light reaches every surface whether or not a lamp does, so for the
+	# creature it has to go too: anything still lit leaks the seen hotel into a
+	# reading that is supposed to be made of echoes.
+	environment.ambient_light_energy = 0.0 if hunter else ambient_energy
+	environment.fog_enabled = not hunter
 	environment.volumetric_fog_enabled = advanced and quality > 0 and not settings.values.reduced and not hunter
 	var viewport := get_viewport()
 	viewport.msaa_3d = Viewport.MSAA_2X if quality > 0 else Viewport.MSAA_DISABLED

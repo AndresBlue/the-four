@@ -52,7 +52,9 @@ func run() -> void:
 	var intervals: Array = []
 	var seen: int = echo.clicks
 	var ticks := 0
-	while intervals.size() < 40 and ticks < 600:
+	# Enough wall clock for a slow click rate: sixteen intervals at two per
+	# second is eight seconds, so give it fifteen.
+	while intervals.size() < 16 and ticks < 900:
 		await physics_frame
 		ticks += 1
 		if echo.clicks != seen:
@@ -62,7 +64,7 @@ func run() -> void:
 	var widest: float = nominal * (1.0 + echo.CLICK_JITTER) * (1.0 + echo.BREATH_DEPTH)
 	var tightest: float = nominal * (1.0 - echo.CLICK_JITTER) * (1.0 - echo.BREATH_DEPTH)
 	var inside := intervals.all(func(value: float): return value >= tightest - 0.001 and value <= widest + 0.001)
-	check("La cadencia de pulsos se mantiene en su margen", intervals.size() >= 30 and inside)
+	check("La cadencia de pulsos se mantiene en su margen", intervals.size() >= 12 and inside)
 	var distinct := {}
 	for value in intervals: distinct[snappedf(value, 0.0001)] = true
 	check("El pulso no es un metrónomo", distinct.size() > intervals.size() / 2)

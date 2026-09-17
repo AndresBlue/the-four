@@ -1,6 +1,10 @@
 extends SceneTree
 ## Loads every script under game/ and tests/ so parse and type errors show up
 ## at once, without starting the game.
+##
+## tools/dev is deliberately not in the list: loading a script from here with
+## CACHE_MODE_IGNORE would reload this very file while it is running, which
+## breaks the running function and then hangs the process.
 func _initialize() -> void:
 	var failed := 0
 	for root_path in ["res://game", "res://tests", "res://tools/capture", "res://tools/audio"]:

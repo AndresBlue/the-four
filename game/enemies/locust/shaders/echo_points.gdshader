@@ -44,10 +44,14 @@ void vertex() {
 	float front = age * wave_speed;
 	// The front sweeping past is the flash; what it leaves behind is memory.
 	float gap = front - echo.y;
-	float flash = exp(-gap * gap / 0.7);
+	float flash = exp(-gap * gap / 2.5);
 	float since = max(age - echo.y / wave_speed, 0.0);
 	float memory = clamp(1.0 - since / max(age_limit, 0.05), 0.0, 1.0);
-	float live = (0.42 + 0.95 * flash) * memory * echo.w;
+	// Almost all of a point's light comes from the moment the front passes it.
+	// The residue has to stay tiny: in a small room every remembered point
+	// lands on the same few square metres, and a generous residue adds up into
+	// a flat lit panel instead of a stipple.
+	float live = (0.11 + 1.8 * flash) * memory * echo.w;
 
 	// Screen-constant billboard: take the instance origin into view space and
 	// add the quad corners there, so nothing has to be turned to face anything.

@@ -26,38 +26,47 @@ const BODY := preload("res://game/enemies/locust/echo_body.gd")
 const KINDS := preload("res://game/audio/noise_kinds.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 
-## Nominal clicks per second: the rate the reading refreshes at.
-const CLICK_RATE := 15.0
+## Nominal clicks per second: the rate the reading refreshes at. Slow on
+## purpose. A fast click makes a busy, almost psychedelic picture; at two per
+## second each sweep is an event you wait for, and what fills the time between
+## them is the memory of the last one going out.
+const CLICK_RATE := 2.0
 ## Never a metronome. Each interval is stretched or squeezed, breathes slowly
 ## underneath, and tightens while it is hunting.
 const CLICK_JITTER := 0.22
 const BREATH_RATE := 0.14
 const BREATH_DEPTH := 0.25
 const HUNT_SCALE := 0.62
-## One click in four comes back as a full sweep; the rest are weaker shells, so
-## what you feel is a swell every few tenths over a constant shimmer.
-const SWEEP_STRONG_EVERY := 4
-## Not the speed of sound: slow enough to watch a front cross a room, fast
-## enough that the shells sit about three metres apart.
-const WAVE_SPEED := 42.0
+## Every click is a full sweep at this rate, with only a little variation in
+## how hard it comes back.
+const SWEEP_MIN := 0.78
+## Slow enough to watch a front cross a room and back: a shell takes about two
+## and a half seconds to reach the end of its hearing, so five or six of them
+## are always in flight at different radii.
+const WAVE_SPEED := 16.0
 ## Useful range. Under world_audio.ROUTE_LIMIT (42) and far under the 66 m at
 ## which update_visibility hides rooms, so no wall it should show is missing.
 const REACH := 40.0
 ## Depth contour spacing, about one band per stride of the hotel.
 const BAND_STEP := 1.5
 ## Longest a remembered point lives; the real limit follows the ring buffer.
-const MEMORY := 6.0
-## Rays per click, points remembered, body points: off / medium / high.
-const RAY_BUDGET := [0, 128, 224]
-const POINT_BUDGET := [0, 8000, 16000]
-const BODY_POINTS := [0, 256, 512]
-## Bodies are sampled every third click and fade fast: a survivor is a live
-## reading, never a memory to be followed.
-const BODY_EVERY := 3
-const BODY_FADE := 0.6
-## Seven rays in ten go into a forward cone; the rest keep the room's shape.
-const FORWARD_BIAS := 0.7
-const FORWARD_CONE := 0.85
+const MEMORY := 5.0
+## Rays per click, points remembered, body points: off / medium / high. The
+## budget per click is large because there are thirty physics frames to spread
+## it over: the cost per frame is the same as a fast click would be, and what
+## you get for it is a scene made of points.
+const RAY_BUDGET := [0, 900, 1800]
+const POINT_BUDGET := [0, 7000, 11000]
+const BODY_POINTS := [0, 320, 640]
+## Bodies are sampled on every click and fade just past the next one: a
+## survivor is a live reading, never a memory to be followed.
+const BODY_EVERY := 1
+const BODY_FADE := 0.85
+## Half the rays go into a wide cone ahead and the rest over the whole sphere.
+## Any narrower and the wall it happens to be facing collects so many points
+## that they merge into a solid sheet instead of reading as stipple.
+const FORWARD_BIAS := 0.5
+const FORWARD_CONE := 1.15
 ## Shells and sound contacts the shader carries at once. The per-pixel loops
 ## are the only superlinear cost in the whole view.
 const SWEEPS := 6
@@ -71,13 +80,14 @@ const SHRIEK_FALL := 0.55
 ## Doors and wardrobes it simply knows are there, faded out by this distance.
 const LANDMARK_NEAR := 12.0
 const LANDMARK_REACH := 20.0
-const LANDMARK_LEVEL := 0.10
-## A point's radius on screen, in pixels of the rendered image.
-const POINT_PIXELS := 3.6
+const LANDMARK_LEVEL := 0.12
+## A point's radius on screen, in pixels of the rendered image. Small: the
+## picture should be made of grains, and grains that touch are a surface.
+const POINT_PIXELS := 2.0
 ## Residual level between clicks. Low on purpose: raise it and the creature
 ## simply sees, and the whole thing stops being echolocation.
-const BASE_LEVEL := 0.012
-const BASE_CALM := 0.045
+const BASE_LEVEL := 0.008
+const BASE_CALM := 0.03
 ## Walls, doors and swinging leaves: what an echo comes back from.
 const RAY_MASK := 1 | 8 | 64
 ## Its own hearing already knows where the lamps are humming.
@@ -156,7 +166,7 @@ func setup(owner_driver) -> void:
 	self_material.render_priority = 124
 	# Its own body is a presence, not the picture: kept well under the reading
 	# so it never blinds the middle of the frame.
-	self_material.set_shader_parameter("gain", 0.12)
+	self_material.set_shader_parameter("gain", 0.08)
 	build_landmarks()
 	apply_quality()
 	enable()
@@ -291,8 +301,9 @@ func apply_quality() -> void:
 	field_material.set_shader_parameter("grain_amount", 0.0 if calm else 1.0)
 	field_material.set_shader_parameter("jitter_amount", 0.0 if calm else 1.0)
 	mark_material.set_shader_parameter("gain", 1.8 if calm else 1.0)
-	wall_material.set_shader_parameter("gain", 0.55)
-	body_material.set_shader_parameter("gain", 1.2)
+	# The cloud carries most of the picture now that the clicks are slow.
+	wall_material.set_shader_parameter("gain", 0.95)
+	body_material.set_shader_parameter("gain", 1.6)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
 	for material in [wall_material, body_material, mark_material]:
@@ -326,10 +337,9 @@ func click(hunting: bool) -> void:
 	var interval := (1.0 / CLICK_RATE) * breath * jitter * (HUNT_SCALE if hunting else 1.0)
 	last_interval = interval
 	next_click = clock + interval
-	var strong := clicks % SWEEP_STRONG_EVERY == 0
 	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
-	var reach: float = REACH if strong else REACH * 0.55
-	shells.push_back([from, clock, 1.0 if strong else 0.42, reach])
+	var reach: float = REACH
+	shells.push_back([from, clock, rng.randf_range(SWEEP_MIN, 1.0), reach])
 	while shells.size() > SWEEPS: shells.pop_front()
 	var budget: int = RAY_BUDGET[quality]
 	if budget > 0:
@@ -361,7 +371,11 @@ func spray(count: int) -> PackedVector3Array:
 		var z := 1.0 - (1.0 - span) * (float(index) + 0.5) / float(maxi(reach_i, 1))
 		var radius := sqrt(maxf(0.0, 1.0 - z * z))
 		var angle := golden * float(i) + turn
-		out.append(frame * Vector3(cos(angle) * radius, sin(angle) * radius, -z))
+		var direction := Vector3(cos(angle) * radius, sin(angle) * radius, -z)
+		# A touch of scatter on every ray: the bare spiral lands on a floor in
+		# visible rings, and the point of this is stipple, not moire.
+		direction += Vector3(rng.randfn(0.0, 0.012), rng.randfn(0.0, 0.012), rng.randfn(0.0, 0.012))
+		out.append(frame * direction.normalized())
 	return out
 
 ## The rays of the click in flight, spread over the frames until the next one
