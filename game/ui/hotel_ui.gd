@@ -4,7 +4,7 @@ extends CanvasLayer
 signal action_requested(action: String)
 const STYLE := preload("res://game/ui/osd_style.gd")
 const NOISE := preload("res://game/ui/shaders/tape_noise.gdshader")
-const VERSION := "v0.4-S1"
+const VERSION := "v0.5"
 var settings
 var overlay: Control
 var column: VBoxContainer

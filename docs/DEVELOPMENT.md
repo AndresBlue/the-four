@@ -21,6 +21,7 @@ La galería es una referencia generada: muestra módulos aislados, techos oculto
 - **Documentos y archivo:** textos en `game/discovery/discovery_catalog.gd`; colocación reproducible sobre mesas, escritorios y mesillas en `game/world/generation/document_placement.gd`; la hoja en el mundo es `game/world/interactables/hotel_document.gd`; lo leído se guarda en `user://discoveries.json` (`game/services/discovery_service.gd`) y se consulta en **Archivo** del menú.
 - **Muebles de modelo:** `tools/props/build_model_props.gd` hornea tele, cama, sofá, aplique y monstera (una superficie por material, suelo en y = 0, frente +Z). `prop_factory.gd` los coloca dentro de los huecos de mueble conservando los colisionadores de caja validados. Captura: `tools/capture/props_capture.gd`.
 - **Aspecto de The Locust:** `game/enemies/locust/locust_look.gd` sustituye el material del cuerpo por `assets/enemies/locust_reference_material.tres` (textura recoloreada con `tools/art/make_locust_reference_texture.py` y material guardado con `tools/art/build_locust_reference_material.gd`) en el juego y en la escena de entrada. El material se guarda como recurso: un duplicado en memoria provocaba un error al cerrar con el renderizador de pruebas.
+- **Multijugador:** `game/net/net_session.gd` (nodo `Services/Net`) abre la sala o se une con ENet, asigna plazas y guarda las opciones del anfitrión; `game/net/match_net.gd` (`Services/Net/Match`) replica el piso: arranque coordinado, estados de jugadores, puertas, armarios, ruidos, criatura, sesión, muertes, reconexión, hoja y versus. `game/net/remote_player.gd` es el cuerpo de otro superviviente. `game/enemies/locust/locust_player.gd` controla a The Locust en versus; `hotel_locust.gd` tiene tres modos de control (`ai`, `puppet`, `player`). La hoja es `game/ui/paper_sheet.gd`. Todos los RPC viven en esos dos nodos de ruta fija; si cambias un mensaje, sube `PROTOCOL` en `net_session.gd`.
 - **Portada:** `game/title/title_scene.gd` construye, lejos del hotel (`TITLE_ORIGIN`), la habitación del fondo del menú con los ayudantes de decorado de `hotel_geometry.gd` (`set_wall`, `set_door`, que también usa la escena de entrada) y posa a The Locust con `game/enemies/locust/locust_poser.gd` (girar y apuntar huesos, alcance de dos huesos; lo comparte con la tele de la entrada). `hotel_main.update_title_scene()` activa su cámara solo en el estado `MENU`. Capturas: `tools/capture/title_capture.gd`.
 - **Distribución:** `game/world/generation/map_generator.gd`. `floor_definition.gd` define tipos, recetas, tamaños auxiliares y versión del manifiesto. `map_validator.gd` valida grafo y física.
 - **Arquitectura y colocación:** `game/world/hotel/hotel_geometry.gd`. Construye habitaciones, puertas, escondites, colisiones, navegación y efectos locales.
@@ -55,7 +56,7 @@ Desde PowerShell en la raíz:
 ./tools/godot.ps1 compatibility
 ```
 
-`verify.ps1` ejecuta contratos de escenas, hotel, supervivencia, audio y regresión histórica, secuencialmente. Guarda un resumen en `evidence/verification.json` y un registro por prueba. Usa preferencias/checkpoints de prueba separados; no toca la partida normal. La prueba de audio funciona en tiempo real. El lote físico de mil mapas es independiente y más largo.
+`verify.ps1` ejecuta contratos de escenas, hotel, supervivencia, audio y regresión histórica, secuencialmente, y después la prueba en red (`tools/net_test.ps1`): un anfitrión y dos invitados en cooperativo, y un anfitrión contra un invitado que es The Locust en versus, como procesos reales conectados por 127.0.0.1 (puertos 24600 y 24610). Para revisar solo la red: `./tools/net_test.ps1 -Scenario coop` o `-Scenario versus`. `tools/dev/check_scripts.gd` carga todos los scripts para encontrar errores de compilación de una vez. Guarda un resumen en `evidence/verification.json` y un registro por prueba. Usa preferencias/checkpoints de prueba separados; no toca la partida normal. La prueba de audio funciona en tiempo real. El lote físico de mil mapas es independiente y más largo.
 
 Para otro equipo, configura la variable `GODOT_PATH` o pasa `-GodotPath` a los lanzadores. La galería no modifica checkpoints. Las escenas de jugador, enemigo e interfaz son componentes; para probar jugabilidad usa F5, y para inspección visual usa el taller.
 
@@ -70,7 +71,7 @@ Para otro equipo, configura la variable `GODOT_PATH` o pasa `-GodotPath` a los l
 
 ## Límites que se mantienen
 
-Las habitaciones siguen siendo procedurales y los menús se rellenan por código; no se ha creado un editor visual de mapas ni se han reemplazado los muebles por assets finales. Cooperativo, hoja paranormal, otros pisos y validación humana siguen pendientes según `TODO.md`.
+Las habitaciones siguen siendo procedurales y los menús se rellenan por código; no se ha creado un editor visual de mapas ni se han reemplazado los muebles por assets finales. Otros pisos, sesiones humanas en red y balance siguen pendientes según `TODO.md`.
 
 ## Audio espacial incorporado
 

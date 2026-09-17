@@ -6,7 +6,7 @@ La entrega **0.4-S1** amplía el hotel individual con módulos de dimensiones va
 
 El antiguo H1 de fusibles se conserva como prototipo histórico en `legacy/fuse_prototype/main.tscn`; ya no es la escena principal ni determina la victoria del juego nuevo. Su informe no acredita la generación o supervivencia actuales. Los planes anteriores están archivados en `history/`.
 
-La experiencia final será de terror ambiental cooperativo para **2–4 jugadores**, con modo individual disponible. El jugador explora un hotel imposible, escucha, investiga, se esconde y ayuda a otros a salir. La vulnerabilidad y el ritmo producen la sensación de estar inmerso en una película; el jugador conserva el control de su personaje.
+La experiencia final será de terror ambiental cooperativo para **2–5 jugadores**, con modo individual y modo versus. El jugador explora un hotel imposible, escucha, investiga, se esconde y ayuda a otros a salir. La vulnerabilidad y el ritmo producen la sensación de estar inmerso en una película; el jugador conserva el control de su personaje.
 
 - Encontrar y cruzar la salida sustituye todos los objetivos obligatorios de tres piezas.
 - La salida está disponible desde la generación. No necesita fusibles, relés, transmisores, autenticaciones, llaves, consumibles ni tiempo mínimo de supervivencia.
@@ -37,7 +37,7 @@ Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa 
 
 ## Menú y ajustes
 
-Menú principal: Nueva partida, Continuar, Multijugador, Archivo, Ajustes, Créditos y Salir. Multijugador está en desarrollo: por ahora solo contiene Personaje (la elección de aspecto, pensada para el cooperativo) y Volver. Continuar solo se habilita con un checkpoint compatible. Preferencias locales separadas del guardado de campaña.
+Menú principal: Nueva partida, Continuar, Multijugador, Archivo, Ajustes, Créditos y Salir. Personaje está dentro de Multijugador (ver «Multijugador en red»). Continuar solo se habilita con un checkpoint compatible. Preferencias locales separadas del guardado de campaña.
 
 Portada: detrás del menú se ve una habitación de hotel normal, iluminada por su lámpara, con una cámara en mano que deriva despacio. Al fondo, a la derecha y fuera del centro de la imagen, la puerta al pasillo está entreabierta (bisagra a la derecha) y The Locust se asoma desde detrás del marco izquierdo: por la rendija solo se ve la cara pálida, ladeada, con algún tic de cabeza. Es pequeño y oscuro a propósito, para que sorprenda a quien lo descubra.
 
@@ -46,7 +46,7 @@ Portada: detrás del menú se ve una habitación de hotel normal, iluminada por 
 - Controles: sensibilidad, inversión vertical, reasignación sin conflictos y restauración de controles. Esc, F9 y F11 se reservan.
 - Audio: buses general, ambiente, música, efectos y peligro; subtítulos para sonidos relevantes.
 - Pantalla: confirmación durante doce segundos con reversión automática si no se acepta.
-- Esc pausa en individual; en el futuro cooperativo abre un menú local sin detener el mundo. Perder el foco pausa la versión individual.
+- Esc pausa en individual; en línea abre un menú local sin detener el mundo. Perder el foco pausa solo la versión individual.
 
 La versión actual conserva caminar a 3,8 m/s, correr a 6 m/s y salto. Interacción con línea de visión: puertas a 3,2 m y armarios a 2 m. Una puerta abierta a menos de 3 m se puede cerrar sin mirarla (a la espalda, huyendo). Puertas de hotel de apertura normal al pulsar/soltar, o lenta al mantener un segundo. Solo impide cerrar un cuerpo dentro del propio marco (±0,45 m); la hoja atraviesa a quien esté al lado y no empuja al jugador contra el marco.
 
@@ -91,17 +91,33 @@ Conservar originales. Priorizar mobiliario CC0/CC BY de escala compatible, con a
 
 Sunman se conserva como candidato para su piso. The Boy and The Bath es material adicional en evaluación y no sustituye a ninguno de los cuatro enemigos. Los permisos del Locust y la canción anterior continúan pendientes para distribución. Véase [ASSETS.md](ASSETS.md).
 
-## Cooperativo y hoja paranormal — pendiente
+## Multijugador en red — implementado (pendiente de sesiones humanas)
 
-ENet con anfitrión y clientes, sala de 2–4, IP directa/LAN y preparación antes de iniciar. Sin invitaciones Steam, matchmaking, voz integrada ni migración de anfitrión en esta primera versión de red.
+**Conexión.** ENet con un anfitrión y hasta cuatro invitados (**2–5 jugadores**), por IP directa o LAN, puerto UDP 24570. Por Internet, el anfitrión abre ese puerto en su router. Sin Steam, matchmaking, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador).
 
-El anfitrión decide manifiesto del mapa, puertas, criaturas, muertes y transiciones. Los clientes reciben la distribución; no hacen sorteos independientes. Identificadores estables de módulos, props y puertas.
+**Menú Multijugador.** Nombre del jugador, **Crear sala**, **Unirse a una sala** (dirección del anfitrión), **Personaje** y Volver. La **Sala** muestra las plazas (1 anfitrión, 2–5 invitados), su personaje y las direcciones locales del anfitrión. Solo el anfitrión cambia las opciones:
+- **Tipo de partida:** *Cooperativo contra IA* (todos sobreviven contra The Locust controlado por la IA) o *Versus* (un jugador es The Locust).
+- **The Locust (versus):** *Al azar* o un jugador concreto de la sala.
+- **Retomar el piso guardado** si existe su checkpoint en línea.
+Empezar exige al menos dos jugadores conectados. Nombres repetidos se numeran.
 
-Reconexión durante 60 segundos conservando identidad y cuerpo, que continúa expuesto al peligro. Agotado el plazo, baja de ese piso sin reducir el mínimo. Caída del anfitrión: explicación, retorno al menú y posibilidad de retomar su checkpoint.
+**Autoridad.** Todas las máquinas generan el mismo piso desde la semilla del anfitrión y lo comprueban con una huella; nadie hace sorteos propios. Cada jugador mueve su cuerpo y lo envía unas veinte veces por segundo; los demás lo ven interpolado, con animación, linterna y pasos. El anfitrión decide puertas (índice estable por orden de construcción), armarios (quién entra), la criatura, las muertes, la salida y el final. Los ruidos de cada jugador se envían al anfitrión, donde escucha la criatura. El director de ritmo solo actúa en cooperativo, en el anfitrión, y sus sonidos se oyen en todas las máquinas.
 
-Hoja inicialmente vacía por piso, abierta con Tab. Botón izquierdo dibuja y derecho borra bajo el cursor. Compartida por todos los vivos, sin mapa, posiciones, norte, salida o enemigos automáticos. Abrirla detiene el movimiento y limita la visión, pero no pausa el mundo.
+**Cooperativo.** The Locust vigila y persigue a un superviviente cada vez (el que ve, o el más cercano). Mínimo para salir: `ceil(N / 2)` supervivientes (1/2, 2/3, 2/4, 3/5), todos los vivos dentro del refugio y cualquiera manteniendo la interacción tres segundos. Mirar a un compañero cercano muestra su nombre en los corchetes de enfoque.
 
-El anfitrión ordena trazos y borrados; quien dibuja recibe respuesta visual inmediata. Agrupar y limitar tráfico, restaurar superficie al reconectar. Nueva hoja al empezar piso o reintento. Los muertos observan a un compañero vivo sin cámara libre ni edición de la hoja. Guilt nunca falsifica esta superficie.
+**Muertes.** Quien muere observa a un compañero vivo desde su cámara (clic para cambiar), sin cámara libre ni edición de la hoja. Esc abre un menú local sin detener la partida.
+
+**Reconexión.** Si un jugador se cae, su cuerpo se queda en el piso, expuesto, durante 60 s. Si vuelve con el mismo nombre recupera su plaza, reconstruye el piso y recibe el estado actual: puertas, armarios, posiciones, la criatura y la hoja. Pasado el plazo cuenta como baja de ese piso sin reducir el mínimo. Si se cae el anfitrión, los demás ven la explicación y vuelven al menú; el anfitrión puede retomar el piso con su checkpoint en línea.
+
+**Final.** Solo el anfitrión elige: reintentar (tras perder), nueva partida, volver a la sala o cerrarla. Los invitados esperan o salen.
+
+**Versus.** El jugador elegido controla a The Locust con cámara sobre el hombro. Anda a 2,8 m/s y **caza** a 6,4 m/s (más que el sprint de un superviviente) mientras dura su resistencia de caza (unos 8 s, se recupera tras 1,5 s de descanso). **Clic izquierdo:** estocada con la misma preparación de 0,3 s y aviso sonoro que la IA; el anfitrión decide si alcanza a alguien (3,2 m, dentro de 70° de su frente, línea de visión; a un escondido solo con las puertas del armario abiertas). **Clic derecho:** chillido. **E:** puertas y abrir armarios a la fuerza; andar contra una puerta la abre y cazando la abre de golpe. Los ruidos que la criatura oiría (pasos, puertas, armarios, saltos) le aparecen en pantalla como anillos rojos, también a través de paredes si llegan por una ruta: es su oído de largo alcance. Empieza con los mismos 15 s de protección, inmóvil. No oye su propia presencia ni el aura. Gana si quedan menos supervivientes que el mínimo («CAZA COMPLETA»); pierde si salen del piso («SE TE ESCAPARON»). Sin director en versus.
+
+## Hoja paranormal — implementada
+
+Hoja vacía por piso, abierta con **Tab** (reasignable). Botón izquierdo dibuja y derecho borra bajo el cursor. Sin mapa, posiciones, norte, salida ni enemigos automáticos. Abrirla detiene al personaje y oscurece la vista, pero no pausa el mundo; suena el papel una vez al abrirla. También existe en individual.
+
+En línea es compartida por los supervivientes vivos: el anfitrión ordena trazos y borrados, quien dibuja los ve al instante y ocupan su lugar al confirmarse. Los trazos viajan en fragmentos diez veces por segundo con un límite de 30 fragmentos por segundo por jugador y 3.000 operaciones por hoja. Los muertos pueden mirarla sin editar; The Locust nunca la ve. Se restaura al reconectar y empieza vacía en cada piso o reintento. Guilt nunca falsifica esta superficie.
 
 ## Criaturas y ritmo — Locust individual implementado; resto pendiente
 

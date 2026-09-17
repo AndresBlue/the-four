@@ -1,6 +1,6 @@
 # THE FOUR — Hotel
 
-**0.4-S1 · Hotel variable y supervivencia individual · Godot 4.7.2 Steam**
+**0.5 · Hotel variable, individual y en red (2–5 jugadores) · Godot 4.7.2 Steam**
 
 Proyecto principal: `E:\Projects\The Four`. Repositorio local, sin publicación ni remoto público.
 
@@ -16,6 +16,14 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 
 **Continuar** restaura el inicio del mismo piso, no la posición donde cerraste el juego. Reintentar conserva el mapa y restablece puertas/estado. Al completar esta demostración se borra su checkpoint. El juego arranca en pantalla completa. En Ajustes puedes pasar a ventana: se ajusta al área útil del monitor y queda centrada; cambiar otros ajustes gráficos no la mueve ni cambia su tamaño. Los cambios de pantalla necesitan confirmación; se revierten a los doce segundos si no se aceptan.
 
+## Jugar en red
+
+**Multijugador** en el menú principal. Escribe tu nombre y elige **Crear sala** (anfitrión) o **Unirse a una sala** con la dirección del anfitrión. En la misma red usad la IP local que aparece en la sala; por Internet, la IP pública del anfitrión con el puerto **24570 UDP** abierto en su router. De 2 a 5 jugadores, todos con el mismo exe.
+
+El anfitrión elige **Cooperativo contra IA** o **Versus** (un jugador es The Locust: elegido o al azar). En cooperativo hay que llegar al refugio con al menos la mitad de los jugadores (redondeando hacia arriba) y todos los vivos dentro. Si mueres, observas a un compañero (clic para cambiar). **Tab** abre la hoja compartida: izquierdo dibuja, derecho borra. **Esc** abre un menú sin detener la partida. Si pierdes la conexión, vuelve a unirte con el mismo nombre antes de 60 s.
+
+En versus, The Locust se controla con cámara sobre el hombro: Shift caza a toda velocidad mientras dura su resistencia, clic izquierdo ataca, clic derecho chilla y E abre puertas y armarios. Los ruidos de los supervivientes le aparecen como anillos rojos.
+
 ## Qué contiene esta entrega
 
 - Entre 100 y 132 módulos en cinco sectores, distribución reproducible, rutas alternativas y salida distante.
@@ -29,7 +37,7 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 - Polvo, cortinas con movimiento reducido opcional, niebla localizada y reflejos en espacios comunes.
 - Ambiente aportado por el usuario en bucle y música en buses separados.
 
-**Todavía no hay cooperativo, hoja compartida ni cuatro pisos jugables.** La supervivencia individual tiene pruebas funcionales, pero todavía requiere balance en partidas humanas. El mobiliario y materiales siguen siendo provisionales; no se presenta como una entrega fotorrealista. La duración de 25–40 minutos por piso necesita pruebas humanas de exploración.
+**Todavía no hay cuatro pisos jugables; el juego en red falta probarlo con sesiones humanas.** La supervivencia individual tiene pruebas funcionales, pero todavía requiere balance en partidas humanas. El mobiliario y materiales siguen siendo provisionales; no se presenta como una entrega fotorrealista. La duración de 25–40 minutos por piso necesita pruebas humanas de exploración.
 
 F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. Locust está activo en el hotel. El reintento reinicia resistencia, criatura y 15 s de protección inicial. Su movimiento y preparación usan animación procedural provisional. Los checkpoints del generador anterior (v2) son incompatibles con v3 y se conservan sin convertirlos silenciosamente.
 

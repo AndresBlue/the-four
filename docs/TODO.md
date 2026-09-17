@@ -59,16 +59,21 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 ## P3 — Cooperativo y hoja paranormal
 
 - [x] Separación de estado global/individual y regla matemática de supervivientes en sesión local.
-- [ ] ENet LAN/IP para 2–4: sala, preparación y manifiesto común.
-- [ ] Autoridad del anfitrión para jugadores, puertas, muerte y transición.
-- [ ] Reproducir `paper/paper.ogg` una vez al abrir la hoja; sonido local, sin alterar oído de la IA. Copia preparada; disparador pendiente.
-- [ ] Hoja vacía: Tab, izquierdo dibuja, derecho borra; acciones simultáneas ordenadas.
-- [ ] Hoja detiene movimiento sin pausar; sin mapa ni posiciones automáticas.
-- [ ] Sincronización, tráfico limitado y restauración de hoja al reconectar.
-- [ ] Refugio con regreso: todos los vivos deben llegar, mínimos 1/2, 2/3 y 2/4.
-- [ ] Reconexión de 60 s sin reducir cuota; recuperación tras caída del anfitrión.
-- [ ] Observación de compañero vivo tras muerte, sin cámara libre ni edición.
-- [ ] Evidencias de sesiones reales de 2, 3 y 4 jugadores.
+- [x] ENet LAN/IP para 2–5: sala con plazas, nombres y personajes, opciones del anfitrión y piso común comprobado por huella.
+- [x] Tipos de partida: cooperativo contra IA y versus (The Locust elegido o al azar).
+- [x] Autoridad del anfitrión para puertas, armarios, criatura, muertes, salida y final.
+- [x] Reproducir `paper/paper.ogg` una vez al abrir la hoja.
+- [x] Hoja vacía: Tab, izquierdo dibuja, derecho borra; acciones simultáneas ordenadas por el anfitrión.
+- [x] Hoja detiene movimiento sin pausar; sin mapa ni posiciones automáticas.
+- [x] Sincronización, tráfico limitado y restauración de hoja al reconectar.
+- [x] Refugio con regreso: todos los vivos deben llegar, mínimo `ceil(N/2)`.
+- [x] Reconexión de 60 s sin reducir cuota; aviso y checkpoint en línea si cae el anfitrión.
+- [x] Observación de compañero vivo tras muerte, sin cámara libre ni edición.
+- [x] Versus: control de The Locust, estocada juzgada por el anfitrión, anillos de ruido.
+- [x] Prueba en red automática con procesos reales (cooperativo de tres y versus de dos) dentro de `verify.ps1`.
+- [ ] Evidencias de sesiones reales de 2, 3, 4 y 5 jugadores en LAN y por Internet.
+- [ ] Balance humano del versus (velocidades, resistencia de caza, alcance de la estocada, anillos de ruido).
+- [ ] Revisar en partida el volumen de los pasos de los compañeros.
 
 ## P4 — Escondite y The Locust
 

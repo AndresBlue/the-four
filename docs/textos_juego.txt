@@ -296,15 +296,59 @@ ACTUAL: MULTIJUGADOR
 CORRECCIÓN:
 
 [MP.03] Bajo el título
-ACTUAL: EN DESARROLLO
+ACTUAL: DE 2 A 5 JUGADORES · LAN O IP
 CORRECCIÓN:
 
-[MP.04] Opción
-ACTUAL: PERSONAJE
+[MP.04] Campo de texto
+ACTUAL: Tu nombre
 CORRECCIÓN:
 
-[MP.05] Opción
-ACTUAL: VOLVER
+[MP.05] Opciones
+ACTUAL: CREAR SALA / UNIRSE A UNA SALA / PERSONAJE / VOLVER
+CORRECCIÓN:
+
+[MP.06] Explicación a la derecha
+ACTUAL: Quien crea la sala es el anfitrión: elige el tipo de partida y, en versus, quién es The Locust. Los demás se unen con su dirección IP (en la misma red, la local; por Internet, la pública con el puerto 24570 UDP abierto).
+CORRECCIÓN:
+
+[MP.07] Pantalla Unirse
+ACTUAL: MULTIJUGADOR ▸ UNIRSE · UNIRSE · Dirección del anfitrión · CONECTAR · VOLVER · Conectando con %s…
+CORRECCIÓN:
+
+[MP.08] Sala
+ACTUAL: MULTIJUGADOR ▸ SALA · SALA · JUGADORES  %d / 5 · Tipo de partida · The Locust · Retomar el piso guardado · EMPEZAR · PERSONAJE · CERRAR LA SALA / SALIR DE LA SALA
+CORRECCIÓN:
+
+[MP.09] Tipos de partida
+ACTUAL: Cooperativo contra IA / Versus: un jugador es The Locust / Al azar
+CORRECCIÓN:
+
+[MP.10] Sala, avisos
+ACTUAL: Hacen falta al menos 2 jugadores. / Esperando a que el anfitrión empiece… / Para unirse: %s · puerto 24570 / anfitrión, tú, desconectado, The Locust
+CORRECCIÓN:
+
+[MP.11] Errores de conexión
+ACTUAL: No se pudo conectar con esa dirección. / Se perdió la conexión con el anfitrión. / Versiones distintas del juego: actualizad todos al mismo exe. / La partida ya empezó. Espera a que vuelvan a la sala. / La sala está llena (máximo 5 jugadores). / No se pudo abrir la sala en el puerto %d (¿ya hay otra abierta?).
+CORRECCIÓN:
+
+[MP.12] Durante la partida
+ACTUAL: Esperando a los demás jugadores… / HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR / ERES THE LOCUST
+CORRECCIÓN:
+
+[MP.13] Menú en partida
+ACTUAL: ❚❚ MENÚ · MENÚ · LA PARTIDA NO SE DETIENE · CONTINUAR · AJUSTES · CERRAR LA SALA / SALIR DE LA PARTIDA
+CORRECCIÓN:
+
+[MP.14] Final en línea
+ACTUAL: SALISTE DEL PISO / SEÑAL PERDIDA / SE TE ESCAPARON / CAZA COMPLETA · REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · CERRAR LA SALA · El anfitrión decide cómo seguir… · SALIR DE LA SALA
+CORRECCIÓN:
+
+[MP.15] The Locust jugador
+ACTUAL: LA CAZA EMPIEZA EN %d / CLIC IZQ. ATACAR · CLIC DER. CHILLAR · [TECLA] CAZAR · [TECLA] PUERTAS Y ARMARIOS
+CORRECCIÓN:
+
+[MP.16] Hoja
+ACTUAL: IZQUIERDO DIBUJA · DERECHO BORRA · [TECLA] CIERRA / SOLO PUEDES MIRAR · [TECLA] CIERRA
 CORRECCIÓN:
 
 [PJ.01] Esquina superior izquierda
