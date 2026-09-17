@@ -6,6 +6,7 @@ extends Node3D
 ## is dark and small in the shot, easy to miss until it is noticed.
 ## Built far from the hotel plan; runs while the tree is paused.
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const LOOK := preload("res://game/enemies/locust/locust_look.gd")
 const POSER := preload("res://game/enemies/locust/locust_poser.gd")
 const MODEL := preload("res://assets/enemies/locust.glb")
@@ -68,14 +69,18 @@ func build_room() -> void:
 	# The door stands wide open into the room, hinged on the left and back
 	# against the wall, so nothing hides the gap.
 	var leaf: Node3D = builder.set_door(DOORWAY, "214", -PI / 2)
-	leaf.rotation.y -= 2.95
+	# Hinged like a real door: on the jamb's inner edge at the room face, just
+	# proud of the casing, so the open leaf lies flat beside the frame instead
+	# of turning inside the wall.
+	leaf.position = DOORWAY + Vector3(-FLOOR.PORTAL * 0.5, 0.0, 0.225)
+	leaf.rotation.y = -PI / 2 - PI + 0.03
 	builder.set_door(Vector3(1.0, 0.0, -6.0), "", PI / 2)
 	# A made bed against the back wall, with a nightstand and a floor lamp.
 	var bed := MeshInstance3D.new()
 	bed.mesh = load("res://assets/props/bedroom/bed.res")
 	bed.position = Vector3(-1.0, 0.0, -2.45)
 	builder.add_child(bed)
-	place("nightstand", Vector3(-0.58, 0, -3.1), 0.0)
+	place("nightstand", Vector3(-0.8, 0, -3.1), 0.0)
 	place("lamp", Vector3(-2.75, 0, -3.15), 0.0)
 	place("desk", Vector3(2.55, 0, 1.2), -PI / 2)
 	place("curtain", Vector3(-3.05, 0, 1.2), PI / 2)
