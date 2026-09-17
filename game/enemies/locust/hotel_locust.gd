@@ -36,6 +36,9 @@ const RECOVER_TIME := 0.6
 ## Eye height of the creature for line-of-sight checks.
 const EYE_HEIGHT := 2.4
 const GRUNTS := preload("res://game/audio/grunt_segments.gd")
+## Grunts at least this long are the full, aggressive ones; shorter pieces of
+## the recording are breaths and clicks, not used as calls.
+const AGGRESSIVE_GRUNT := 1.4
 var level
 var mode := Mode.PATROL
 var destination := Vector3.ZERO
@@ -63,6 +66,7 @@ var wander_clock := 0.0
 var voice: AudioStreamPlayer3D
 var grunt_clock := 0.0
 var grunt_left := 0.0
+var last_grunt := -1
 
 func _ready() -> void:
 	add_to_group("hotel_actors")
@@ -130,16 +134,23 @@ func on_footfall(point: Vector3, strength: float) -> void:
 	footstep.pitch_scale = rng.randf_range(0.82, 1.08)
 	footstep.play()
 
-## Plays one grunt from the recording, routed like every other creature sound.
-func grunt() -> void:
-	if level == null or not level.world_audio.enabled: return
+## Plays one aggressive grunt from the recording, never the same one twice in
+## a row, routed like every other creature sound. Returns how long it lasts.
+func grunt() -> float:
+	if level == null or not level.world_audio.enabled: return 0.0
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
-	if not route.audible: return
-	var segment: Array = GRUNTS.SEGMENTS[rng.randi_range(0, GRUNTS.SEGMENTS.size() - 1)]
+	if not route.audible: return 0.0
+	var choices: Array = []
+	for index in GRUNTS.SEGMENTS.size():
+		if GRUNTS.SEGMENTS[index][1] >= AGGRESSIVE_GRUNT and index != last_grunt: choices.append(index)
+	last_grunt = choices[rng.randi_range(0, choices.size() - 1)]
+	var segment: Array = GRUNTS.SEGMENTS[last_grunt]
 	level.world_audio.apply_route(voice, route, 0.0, "Threat")
 	voice.pitch_scale = rng.randf_range(0.85, 1.0)
 	voice.play(segment[0])
-	grunt_left = segment[1]
+	# A lower pitch plays the segment slower: stop when it really ends.
+	grunt_left = segment[1] / voice.pitch_scale
+	return grunt_left
 
 func clear_sight(point: Vector3) -> bool:
 	var ray := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, EYE_HEIGHT, 0), point, 1 | 8 | 64)
@@ -210,7 +221,9 @@ func set_mode(next: Mode) -> void:
 	if next == Mode.CHASE and previous != Mode.CHASE:
 		# It sets off from a stride and builds up to full speed.
 		speed = maxf(speed, CHASE_START_SPEED)
-		grunt_clock = rng.randf_range(1.5, 3.0) if previous == Mode.ALERT else 0.0
+		# Coming out of the alert, the next call waits for the first to finish.
+		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT else 0.0
+	# Spotting the player: an aggressive grunt as it turns to hunt.
 	if next == Mode.ALERT: grunt()
 	if next == Mode.WINDUP: signal_player.play()
 

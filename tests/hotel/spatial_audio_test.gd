@@ -99,6 +99,19 @@ func run() -> void:
 	await wait(2)
 	check("Presence follows creature and uses Threat bus", audio.presence.playing and audio.presence.global_position.distance_to(level.locust.global_position + Vector3(0, 1.4, 0)) < 0.01 and audio.presence.bus == &"Threat")
 	var gain: float = audio.presence.volume_db
+	level.locust.set_mode(level.locust.Mode.PATROL)
+	level.locust.voice.stop()
+	level.locust.position = audio.listener_position() + Vector3(0, -1.6, -4)
+	level.locust.set_mode(level.locust.Mode.ALERT)
+	var grunt_segment: Array = preload("res://game/audio/grunt_segments.gd").SEGMENTS[level.locust.last_grunt]
+	check("Spotting the player plays an aggressive grunt", level.locust.voice.playing and grunt_segment[1] >= level.locust.AGGRESSIVE_GRUNT and is_equal_approx(level.locust.grunt_left, grunt_segment[1] / level.locust.voice.pitch_scale))
+	level.locust.set_mode(level.locust.Mode.CHASE)
+	check("The chase calls again once that grunt ends", level.locust.grunt_clock > level.locust.grunt_left)
+	var first_grunt: int = level.locust.last_grunt
+	level.locust.grunt()
+	check("Grunts do not repeat back to back", level.locust.last_grunt != first_grunt)
+	level.locust.voice.stop()
+	level.locust.position = Vector3(500, 0, 0)
 	level.locust.set_mode(level.locust.Mode.WINDUP)
 	await wait(0.2)
 	check("Presence ducks under attack warning", audio.presence.volume_db < gain - 10)

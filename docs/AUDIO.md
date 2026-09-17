@@ -84,7 +84,7 @@ Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Loc
 
 ## Gruñidos de persecución
 
-`assets/audio/sfx/chase/grunts.ogg` (aportado) se divide en gruñidos sueltos con `tools/audio/analyze_grunts.gd`, que escribe `game/audio/grunt_segments.gd`. Durante la persecución suena uno cada 2,5–5 s desde la criatura, con la misma propagación. Si cambias la grabación, vuelve a ejecutar el analizador.
+`assets/audio/sfx/chase/grunts.ogg` (aportado) se divide en gruñidos sueltos con `tools/audio/analyze_grunts.gd`, que escribe `game/audio/grunt_segments.gd`. Solo se usan los gruñidos completos (1,4 s o más; los trozos cortos son respiraciones), sin repetir el mismo dos veces seguidas. Suena uno en cuanto la criatura te ve y se gira hacia ti (alerta), el siguiente cuando termina ese y después uno cada 2,5–5 s mientras persigue, con la misma propagación. El corte respeta el tono aleatorio, así que no se truncan. Si cambias la grabación, vuelve a ejecutar el analizador.
 
 ## Armarios
 
