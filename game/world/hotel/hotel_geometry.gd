@@ -12,6 +12,11 @@ var lights: Array[OmniLight3D] = []
 var manifest: Dictionary
 var quality := 1
 var reduced := false
+## The Locust's player is looking: it does not see light, so every lamp, the
+## dust, the fog and the probes are hidden. The opaque pass still writes the
+## depth its acoustic view reads, but pays for no shadow map and no light
+## clustering, which is where that view's budget comes from.
+var echo_view := false
 var dust: CPUParticles3D
 var curtain_material: ShaderMaterial
 var fog_volumes: Array[FogVolume] = []
@@ -509,17 +514,17 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
-		dust.emitting = quality > 0 and not reduced
-		dust.visible = quality > 0 and not reduced
-	for fog in fog_volumes: fog.visible = quality == 2 and not reduced and RenderingServer.get_current_rendering_method() == "forward_plus"
-	for probe in reflection_probes: probe.visible = quality > 0
+		dust.emitting = quality > 0 and not reduced and not echo_view
+		dust.visible = quality > 0 and not reduced and not echo_view
+	for fog in fog_volumes: fog.visible = quality == 2 and not reduced and not echo_view and RenderingServer.get_current_rendering_method() == "forward_plus"
+	for probe in reflection_probes: probe.visible = quality > 0 and not echo_view
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
 		room_nodes[i].visible = distance < (42.0 if quality == 0 else 66.0)
-		lights[i].visible = distance < FADE_BEGIN + FADE_LENGTH + 4.0 and not lights[i].has_meta("off")
+		lights[i].visible = distance < FADE_BEGIN + FADE_LENGTH + 4.0 and not lights[i].has_meta("off") and not echo_view
 		lights[i].shadow_enabled = shadows
 	for lamp in practicals:
-		lamp.visible = quality > 0 and lamp.global_position.distance_to(player_position) < 28.0
+		lamp.visible = quality > 0 and not echo_view and lamp.global_position.distance_to(player_position) < 28.0
 		lamp.shadow_enabled = shadows
 	for door in doors: door.visible = door.doorway.distance_to(player_position) < 66.0
 

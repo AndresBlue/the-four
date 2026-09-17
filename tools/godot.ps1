@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     [string]$GodotPath = $env:GODOT_PATH
 )
@@ -17,6 +17,7 @@ switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
     'playtest' { $arguments += @('--', '--playtest-seed=' + $Seed) }
+    'locust' { $arguments += @('--', '--locust', '--playtest-seed=' + $Seed) }
     'survival-test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/survival_test.gd','--','--test-profile','--automation') }
     'editor' { $arguments += '--editor' }
     'test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/hotel_test.gd','--','--test-profile','--automation','--no-enemy') }

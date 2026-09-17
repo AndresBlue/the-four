@@ -754,3 +754,11 @@ CORRECCIÓN:
 [ESC.01] Escena de entrada, esquina superior derecha, pequeño, durante los primeros 6 s
 ACTUAL: [TECLA]  para saltar cinemática
 CORRECCIÓN:
+
+18. VISION ACUSTICA DE THE LOCUST
+---------------------------------
+
+[ECO.01] Aviso al abrir la prueba local de la vista acustica (./tools/godot.ps1 locust)
+OBS: solo aparece en la prueba en solitario; en partida normal el aviso es MP.xx "ERES THE LOCUST".
+ACTUAL: VISION ACUSTICA - PRUEBA LOCAL
+CORRECCIÓN:

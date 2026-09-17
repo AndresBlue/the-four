@@ -1,5 +1,6 @@
 extends StaticBody3D
-signal noise(point: Vector3, radius: float)
+const NOISE := preload("res://game/audio/noise_kinds.gd")
+signal noise(point: Vector3, radius: float, kind: int)
 signal sound_requested(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful: bool)
 ## A swing started (towards `target` open or shut), and where it ended up:
 ## online, the host relays both so every machine shows the same door.
@@ -30,7 +31,7 @@ func occupied() -> bool:
 func toggle(slow := false, emit_noise := true, forceful := false) -> bool:
 	if moving or (opened and occupied()): return false
 	forceful = forceful and not slow
-	if emit_noise: noise.emit(doorway, 3.0 if slow else 18.0 if forceful else 12.0)
+	if emit_noise: noise.emit(doorway, 3.0 if slow else 18.0 if forceful else 12.0, NOISE.Kind.SLAM if forceful else NOISE.Kind.DOOR)
 	swing_to(not opened, slow, forceful)
 	return true
 

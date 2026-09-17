@@ -7,7 +7,7 @@ if (-not $GodotPath) {
 if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) { throw 'Configura GODOT_PATH o pasa -GodotPath.' }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
 # Sequential: audio capture needs real time and should not compete with map batches.
-$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/intro_test','hotel/loop_test','hotel/hotel_audio_test','hotel/spatial_audio_test','legacy/smoke_test')
+$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/hotel_audio_test','hotel/spatial_audio_test','legacy/smoke_test')
 $results = @()
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
@@ -28,6 +28,19 @@ foreach ($test in $tests) {
     Write-Output "$name : $passed"
     if (-not $passed) { Write-Output $logText }
 }
+# Shaders: only a real device compiles them, so this one runs with a window and
+# is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
+# and counts as passed, because a skipped check is not a failed one.
+$shaderLog = Join-Path $projectPath 'evidence/verify_shaders.log'
+$shaderArguments = (@('--path',$projectPath,'--script','res://tools/dev/check_shaders.gd','--log-file',$shaderLog) | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$shaderProcess = Start-Process -FilePath $GodotPath -ArgumentList $shaderArguments -WindowStyle Hidden -PassThru
+if (-not $shaderProcess.WaitForExit(180000)) { $shaderProcess.Kill(); throw "Tiempo agotado en shaders. Consulta $shaderLog" }
+$shaderText = Get-Content -LiteralPath $shaderLog -Raw
+$shaderPassed = $shaderProcess.ExitCode -eq 0 -and $shaderText -notmatch 'SHADER ERROR|Shader compilation failed|SCRIPT ERROR:'
+$results += [PSCustomObject]@{ test='dev/check_shaders'; passed=$shaderPassed; exit_code=$shaderProcess.ExitCode }
+Write-Output "shaders : $shaderPassed"
+if (-not $shaderPassed) { Write-Output $shaderText }
+
 # Online play: real host and guest processes over 127.0.0.1.
 foreach ($scenario in @('coop', 'versus')) {
     $port = if ($scenario -eq 'coop') { 24600 } else { 24610 }

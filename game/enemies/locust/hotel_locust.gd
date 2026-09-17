@@ -258,15 +258,39 @@ func lit_by_torch() -> Node3D:
 ## Whether a noise reaches it: within its (long) hearing, along a walkable
 ## route through rooms and doorways, never through walls.
 func can_hear(point: Vector3, radius: float) -> bool:
-	if level.point_in_refuge(point): return false
+	return hear_route(point, radius).audible
+
+## How a noise reaches it. With nothing solid in between it comes straight from
+## the source. Otherwise it follows the walkable route and arrives through the
+## last opening the creature can see, quieter and duller for the detour. This
+## is the one measurement of its hearing: can_hear() is this, and the player who
+## drives it paints its acoustic image from the same numbers.
+##  audible   - it reaches the creature at all
+##  apparent  - where it is heard from: the source, or the opening it came in by
+##  distance  - straight line when direct, metres of route when it came around
+##  muffle    - 0 direct, towards 1 as the detour grows
+func hear_route(point: Vector3, radius: float) -> Dictionary:
+	var missed := {"audible": false, "apparent": point, "distance": INF, "muffle": 1.0}
+	if level.point_in_refuge(point): return missed
 	var reach := radius * HEARING_SCALE
-	if global_position.distance_to(point) > reach: return false
-	if not clear_sight(point + Vector3(0, 1, 0)):
-		var route := FLOOR.navigation_path(get_world_3d().navigation_map, position, point)
-		var length := 0.0
-		for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
-		if route.size() < 2 or length > reach: return false
-	return true
+	var straight := global_position.distance_to(point)
+	if straight > reach: return missed
+	if clear_sight(point + Vector3(0, 1, 0)):
+		return {"audible": true, "apparent": point, "distance": straight, "muffle": 0.0}
+	var route := FLOOR.navigation_path(get_world_3d().navigation_map, position, point)
+	if route.size() < 2: return missed
+	var length := 0.0
+	for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
+	if length > reach: return missed
+	# Walk the route outwards and keep the last waypoint still in plain sight:
+	# that doorway or corner is the direction the sound arrives from.
+	var apparent: Vector3 = route[0] + Vector3.UP * 1.5
+	for i in range(1, route.size()):
+		var probe: Vector3 = route[i] + Vector3.UP * 1.5
+		if not clear_sight(probe): break
+		apparent = probe
+	var detour := maxf(0.0, length - global_position.distance_to(apparent))
+	return {"audible": true, "apparent": apparent, "distance": length, "muffle": clampf(detour / 25.0, 0.0, 1.0)}
 
 func hear(point: Vector3, radius: float) -> void:
 	if control != "ai": return
@@ -358,6 +382,10 @@ func set_control(kind: String) -> void:
 		driver = preload("res://game/enemies/locust/locust_player.gd").new()
 		add_child(driver)
 		driver.setup(self)
+	# Only the player who drives it sees through its ears.
+	if driver != null and is_instance_valid(driver.echo):
+		if kind == "player": driver.echo.enable()
+		else: driver.echo.disable()
 
 ## What the machine in charge sends about fifteen times a second.
 func pack_state() -> Array:

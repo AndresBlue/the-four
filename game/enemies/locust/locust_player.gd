@@ -24,11 +24,19 @@ const COOLDOWN := 1.2
 const SHRIEK_COOLDOWN := 3.0
 ## Wardrobes within this distance can be pulled open.
 const WARDROBE_REACH := 2.6
+const ECHO := preload("res://game/enemies/locust/echo_view.gd")
 const EYE := Vector3(0.0, 2.35, 0.0)
 const ARM := 2.8
+## Route metres within which a noise is placed where it happened, and beyond
+## which only the opening it arrived through is known. In between it slides:
+## close by you know where, far away you only know which way.
+const CONTACT_TRUTH := 8.0
+const CONTACT_BLUR := 14.0
 var creature
 var level
 var camera: Camera3D
+## The acoustic image: everything this player actually sees (echo_view.gd).
+var echo
 var pivot: Node3D
 var arm: SpringArm3D
 var pitch := -0.2
@@ -37,7 +45,8 @@ var recovery := 0.0
 var cooldown := 0.0
 var shriek_cooldown := 0.0
 var struck := false
-## Heard noises: {point, time, strength}.
+## Heard noises, as the creature hears them:
+## {point, apparent, at, time, strength, kind, distance, muffle}.
 var heard: Array = []
 ## Where the shriek placed the survivors it found, and its free hunting time.
 var revealed: Array = []
@@ -69,6 +78,10 @@ func setup(owner) -> void:
 	arm.add_child(camera)
 	camera.position = Vector3(0, 0, ARM)
 	creature.camera = camera
+	# It does not see the hotel: it clicks and rebuilds it.
+	echo = ECHO.new()
+	add_child(echo)
+	echo.setup(self)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not can_act(): return
@@ -132,6 +145,7 @@ func drive(delta: float) -> void:
 			open_doors(hunting, heading)
 	creature.update_visual(delta)
 	creature.visual.look_point = camera.global_position - camera.global_basis.z * 10.0
+	if is_instance_valid(echo): echo.advance(delta, hunting)
 	if free and Input.is_action_just_pressed("interact") and creature.mode not in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: use()
 	update_hud()
 	var now := Time.get_ticks_msec() / 1000.0
@@ -160,6 +174,8 @@ func shriek() -> void:
 	if shriek_cooldown > 0.0 or creature.grace > 0.0 or creature.mode in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: return
 	shriek_cooldown = SHRIEK_COOLDOWN
 	creature.grunt()
+	# The reading floods red and one enormous shell goes out with the cry.
+	if is_instance_valid(echo): echo.flash_shriek()
 	level.match_net.locust_shriek()
 
 ## Survivors the shriek found, from the host.
@@ -188,9 +204,21 @@ func use() -> void:
 		creature.begin_wardrobe(target)
 		level.match_net.locust_open_hide(target)
 
-## A survivor's noise within its hearing, from the host.
+## A survivor's noise within its hearing, from the host (or measured locally
+## when this machine is in charge). See match_net.tell_hunter.
+func hear_contact(point: Vector3, apparent: Vector3, distance: float, strength: float, kind: int, muffle: float) -> void:
+	# Where the image places it: the real spot up close, the opening it came
+	# through further away, sliding between the two so nothing ever jumps.
+	var blur := clampf((distance - CONTACT_TRUTH) / (CONTACT_BLUR - CONTACT_TRUTH), 0.0, 1.0)
+	heard.append({
+		"point": point, "apparent": apparent, "at": point.lerp(apparent, blur),
+		"time": Time.get_ticks_msec() / 1000.0, "strength": strength,
+		"kind": kind, "distance": distance, "muffle": muffle, "blur": blur,
+	})
+
+## Older two-argument callers (and the tests): treated as a direct footstep.
 func hear_noise(point: Vector3, radius: float) -> void:
-	heard.append({"point": point, "time": Time.get_ticks_msec() / 1000.0, "strength": clampf(radius / 16.0, 0.25, 1.0)})
+	hear_contact(point, point, creature.global_position.distance_to(point), clampf(radius / 16.0, 0.25, 1.0), 0, 0.0)
 
 func update_hud() -> void:
 	var ui = level.ui
@@ -204,8 +232,5 @@ func update_hud() -> void:
 		ui.hint.text = ""
 	else:
 		ui.hint.text = "CLIC IZQ. ATACAR · CLIC DER. CHILLAR · %s CAZAR · %s PUERTAS Y ARMARIOS" % [level.settings.key_name("sprint"), level.settings.key_name("interact")]
-	ui.hunter_marks = heard
-	ui.hunter_reveals = revealed
-	ui.hunter_camera = camera
 	var now := Time.get_ticks_msec() / 1000.0
 	revealed = revealed.filter(func(entry): return now - entry.time < 1.2)

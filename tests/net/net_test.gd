@@ -227,7 +227,8 @@ func versus_hunter() -> void:
 	check("Controla a The Locust", creature.control == "player" and creature.driver != null and creature.camera.current)
 	check("Su jugador no cuenta como superviviente", not level.survivors().has(level.player) and not level.player.visible)
 	creature.grace = 0.0
-	check("Oye los ruidos de los supervivientes como anillos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
+	check("Los ruidos de los supervivientes le llegan como contactos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
+	check("El contacto trae su clase y sus metros de ruta", creature.driver.heard.is_empty() or (creature.driver.heard[0].has("kind") and creature.driver.heard[0].has("apparent") and creature.driver.heard[0].distance > 0.0))
 	# Close enough for the shriek to find the survivor.
 	creature.global_position = level.match_net.bodies[1].global_position + Vector3(2.5, 0, 0)
 	await pause_for(0.6)

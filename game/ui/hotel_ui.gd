@@ -56,12 +56,6 @@ var skip_label: Label
 ## The shared sheet (paper_sheet.gd), above the HUD and below the menus.
 var sheet: Control
 const SHEET := preload("res://game/ui/paper_sheet.gd")
-## Versus: noises The Locust player hears, drawn as rings ({point, time, strength}).
-var hunter_marks: Array = []
-## Versus: survivors the shriek found ({point, time}).
-var hunter_reveals: Array = []
-var hunter_camera: Camera3D
-var hunter_layer: Control
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -85,12 +79,6 @@ func _ready() -> void:
 	skip_label.add_theme_color_override("font_color", STYLE.SOFT)
 	skip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(skip_label)
-	hunter_layer = Control.new()
-	hunter_layer.name = "HunterMarks"
-	hunter_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	hunter_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hunter_layer.draw.connect(draw_hunter_marks)
-	$HUD.add_child(hunter_layer)
 	sheet = SHEET.new()
 	add_child(sheet)
 	move_child(sheet, overlay.get_index())
@@ -806,42 +794,8 @@ func flash(words: String, seconds := 2.5) -> void:
 	flash_label.text = words
 	flash_time = seconds
 
-## Heard noises as widening rings where they came from; off-screen ones sit on
-## the nearest edge of the picture.
-func draw_hunter_marks() -> void:
-	if not is_instance_valid(hunter_camera): return
-	# What the shriek found: a steady mark over each survivor.
-	for mark in hunter_reveals:
-		var point: Vector3 = mark.point
-		if hunter_camera.is_position_behind(point): continue
-		var at := hunter_camera.unproject_position(point)
-		var fade := clampf(1.0 - (Time.get_ticks_msec() / 1000.0 - mark.time) / 1.2, 0.0, 1.0)
-		var ink := Color(0.95, 0.93, 0.85, fade * 0.8)
-		hunter_layer.draw_arc(at, 18.0, 0.0, TAU, 24, ink, 2.0, true)
-		hunter_layer.draw_line(at + Vector2(0, -26), at + Vector2(0, -60), ink, 2.0, true)
-	if hunter_marks.is_empty(): return
-	var now := Time.get_ticks_msec() / 1000.0
-	var rect := hunter_layer.get_rect().grow(-40.0)
-	for mark in hunter_marks:
-		var age: float = now - mark.time
-		var fade := clampf(1.0 - age / 1.6, 0.0, 1.0)
-		var point: Vector3 = mark.point
-		var screen_point: Vector2
-		if hunter_camera.is_position_behind(point):
-			var local := hunter_camera.global_transform.affine_inverse() * point
-			screen_point = rect.get_center() + Vector2(local.x, -local.y).normalized() * rect.size.length()
-		else: screen_point = hunter_camera.unproject_position(point)
-		screen_point = screen_point.clamp(rect.position, rect.end)
-		var radius: float = lerpf(8.0, 46.0, clampf(age / 1.6, 0.0, 1.0)) * (0.6 + mark.strength * 0.6)
-		hunter_layer.draw_arc(screen_point, radius, 0.0, TAU, 32, Color(0.9, 0.15, 0.1, fade * 0.85), 3.0, true)
-		hunter_layer.draw_arc(screen_point, radius * 0.45, 0.0, TAU, 24, Color(0.9, 0.2, 0.15, fade * 0.5), 2.0, true)
-
 func _process(delta: float) -> void:
 	clock += delta
-	if is_instance_valid(hunter_layer):
-		var showing: bool = not hunter_marks.is_empty() or not hunter_reveals.is_empty()
-		if showing or hunter_layer.get_meta("drawn", false): hunter_layer.queue_redraw()
-		hunter_layer.set_meta("drawn", showing)
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
 	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
 	if screen == "main" and overlay.visible:

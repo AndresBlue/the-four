@@ -55,8 +55,10 @@ func versus() -> bool:
 func locust_seat() -> int:
 	return int(config.get("locust_seat", 0))
 
-## This machine plays The Locust.
+## This machine plays The Locust: the hunter's seat in a versus match, or the
+## local preview started with --locust (hotel_main.solo_locust).
 func local_is_locust() -> bool:
+	if is_instance_valid(level) and level.solo_locust: return true
 	return versus() and locust_seat() == net.local_seat
 
 func is_survivor(seat: int) -> bool:
@@ -160,8 +162,11 @@ func go() -> void:
 # --- Per frame -------------------------------------------------------------------
 
 func _process(delta: float) -> void:
-	# Wardrobes are searched offline too.
-	if is_instance_valid(level) and is_instance_valid(level.hotel) and not net.is_client(): update_wardrobe_jobs(delta)
+	# Wardrobes are searched, and the shriek listens, offline too: the local
+	# Locust preview is the same code path with nobody connected.
+	if is_instance_valid(level) and is_instance_valid(level.hotel) and not net.is_client():
+		update_wardrobe_jobs(delta)
+		if is_instance_valid(level.locust): update_shriek(delta)
 	if not in_match() or not net.active(): return
 	# Dead teammates leave no body in the way.
 	for seat in bodies:
@@ -180,7 +185,6 @@ func _process(delta: float) -> void:
 			away.erase(seat)
 			level.session.drop(seat)
 			if bodies.has(seat): bodies[seat].visible = false
-	update_shriek(delta)
 	session_clock -= delta
 	if session_clock <= 0.0:
 		session_clock = 1.0 / SESSION_RATE
@@ -348,13 +352,13 @@ func hide_forced(index: int) -> void:
 # --- Noise, sounds and the creature's calls ----------------------------------------
 
 ## A noise the local player made; the creature listens on the host.
-func noise(point: Vector3, radius: float) -> void:
-	if not in_match() or net.is_host: level.locust_hear(point, radius)
-	else: player_noise.rpc_id(1, point, radius)
+func noise(point: Vector3, radius: float, kind := 0) -> void:
+	if not in_match() or net.is_host: level.locust_hear(point, radius, kind)
+	else: player_noise.rpc_id(1, point, radius, kind)
 
 @rpc("any_peer", "call_remote", "unreliable")
-func player_noise(point: Vector3, radius: float) -> void:
-	if net.is_host and net.seat_of_peer(multiplayer.get_remote_sender_id()) != 0: level.locust_hear(point, radius)
+func player_noise(point: Vector3, radius: float, kind: int) -> void:
+	if net.is_host and net.seat_of_peer(multiplayer.get_remote_sender_id()) != 0: level.locust_hear(point, radius, kind)
 
 ## A world sound decided on the host (director events), heard by everyone.
 func world_sound(path: String, point: Vector3, gain: float, start: float) -> void:
@@ -440,7 +444,7 @@ func request_force(index: int) -> void:
 
 ## The Locust player shrieked: the host listens for it for a few seconds.
 func locust_shriek() -> void:
-	if net.is_host: shriek_left = SHRIEK_TIME
+	if not net.is_client(): shriek_left = SHRIEK_TIME
 	else: request_shriek.rpc_id(1)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -461,7 +465,7 @@ func update_shriek(delta: float) -> void:
 		if not level.survivor_active(body): continue
 		if body.global_position.distance_to(creature.global_position) > SHRIEK_RANGE: continue
 		points.append(body.global_position + Vector3(0, 1.2, 0))
-	if locust_seat() == net.local_seat:
+	if locust_seat() == net.local_seat or not net.active():
 		if is_instance_valid(creature.driver): creature.driver.reveal(points)
 	elif locust_peer() > 0: shriek_reveal.rpc_id(locust_peer(), points)
 
@@ -470,15 +474,19 @@ func shriek_reveal(points: PackedVector3Array) -> void:
 	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.reveal(points)
 
 ## A noise the creature would hear: shown to the player who is The Locust.
-func tell_hunter(point: Vector3, radius: float) -> void:
-	if locust_seat() == net.local_seat:
-		if is_instance_valid(level.locust.driver): level.locust.driver.hear_noise(point, radius)
+## A noise the creature hears, as it hears it. `point` is where it happened and
+## `route` is hotel_locust.hear_route: close by, the image paints the real spot;
+## far away, only the opening the sound came through.
+func tell_hunter(point: Vector3, route: Dictionary, radius: float, kind: int) -> void:
+	var strength := clampf(radius / 16.0, 0.25, 1.0)
+	if locust_seat() == net.local_seat or not net.active():
+		if is_instance_valid(level.locust.driver): level.locust.driver.hear_contact(point, route.apparent, route.distance, strength, kind, route.muffle)
 	elif locust_peer() > 0:
-		heard_noise.rpc_id(locust_peer(), point, radius)
+		heard_contact.rpc_id(locust_peer(), point, route.apparent, route.distance, strength, kind, route.muffle)
 
 @rpc("authority", "call_remote", "unreliable")
-func heard_noise(point: Vector3, radius: float) -> void:
-	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.hear_noise(point, radius)
+func heard_contact(point: Vector3, apparent: Vector3, distance: float, strength: float, kind: int, muffle: float) -> void:
+	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.hear_contact(point, apparent, distance, strength, kind, muffle)
 
 # --- Wardrobes searched by the creature, and executions -------------------------------
 

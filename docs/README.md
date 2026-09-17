@@ -9,3 +9,4 @@
 `V04_VALIDATION.md`, `H1_VALIDATION.md`, `VALIDATION.md`, `validation/` e `history/` contienen antecedentes. No acreditan por sí solos el estado actual.
 
 - [Audio: asignaciones, perfiles y reservas](AUDIO.md).
+- [Visión de The Locust: ecolocalización acústica](VISION_LOCUST.md).

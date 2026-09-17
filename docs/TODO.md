@@ -80,7 +80,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Pasos de los compañeros más bajos y ruta de sonido calculada desde la cámara que escucha.
 - [ ] Evidencias de sesiones reales de 2, 3, 4 y 5 jugadores en LAN y por Internet.
 - [ ] Balance humano del ritual del armario, la ejecución y el chillido.
-- [ ] Balance humano del versus (velocidades, resistencia de caza, alcance de la estocada, anillos de ruido).
+- [ ] Balance humano del versus (velocidades, resistencia de caza, alcance de la estocada, contactos de sonido).
 - [ ] Revisar en partida el volumen de los pasos de los compañeros.
 
 ## P4 — Escondite y The Locust
@@ -131,11 +131,14 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
 - [ ] Validar acompañamiento y regreso en cooperativo cuando exista red; evaluar comprensión de muertes con jugadores.
 
-## P4b — Visión de The Locust (pendiente)
+## P4b — Visión de The Locust — implementada (pendiente de ajuste humano)
 
-- [ ] Revisión completa de la vista del jugador que lleva a The Locust: imagen monocroma en blanco y negro, con su propio grano y contraste.
-- [ ] Integrar la información sonora en la imagen (dónde suena, a qué distancia, qué lo produjo) en lugar de los anillos rojos actuales, que funcionan pero son un añadido sobre la pantalla.
-- [ ] Mantener legible qué es un superviviente, qué es un ruido y qué es memoria; sin ver a través de las paredes más de lo que ya concede su oído.
+- [x] Revisión completa de la vista del jugador que lleva a The Locust: imagen monocroma con su propio grano y contraste, reconstruida de pulsos acústicos sobre la profundidad real.
+- [x] Información sonora integrada en la imagen (dónde, a qué distancia, por dónde llega y qué lo produjo) en lugar de los anillos rojos, que quedan eliminados.
+- [x] Legible qué es un superviviente, qué es un ruido y qué es memoria; los cuerpos solo aparecen cuando `sees()` los concede y nunca a través de una pared, y de lejos un ruido solo da la dirección.
+- [x] Prueba en `verify.ps1` (`hotel/echo_test`), comprobación de shaders con ventana y capturas de evidencia.
+- [ ] Ajuste humano de la imagen: término base, separación de los frentes, legibilidad en salones grandes (ver `docs/VISION_LOCUST.md`).
+- [ ] Probar la vista en el lanzador `compatibility`; hoy solo está validada en Forward+.
 
 ## P5 — Campaña
 

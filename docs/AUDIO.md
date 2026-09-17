@@ -125,6 +125,12 @@ En red, cada superviviente suena con los mismos recortes grabados que el jugador
 
 La ruta de los sonidos ocluidos se calcula desde la cámara que escucha, no desde el cuerpo del jugador: al observar a un compañero tras morir, lo que se oye corresponde a lo que se ve.
 
+## El oído de la criatura, medido una sola vez
+
+`hotel_locust.hear_route(point, radius)` es la única medición de su oído: si lo oye, por qué abertura le llega, cuántos metros de ruta ha recorrido el sonido y cuánto llega amortiguado. `can_hear()` es esa misma función, así que ya no se consulta la navegación dos veces por ruido. Es el equivalente de `world_audio.route_source()` pero anclado en la criatura en vez de en quien escucha, y deliberadamente separado: el mezclador de audio no debe conocer la percepción de la criatura.
+
+Cada ruido lleva además su clase (`game/audio/noise_kinds.gd`), que el audio ignora y la vista acústica del cazador usa para responder «qué lo produjo». El zumbido de las balastras que `update_ambient_sources()` ya enruta hace doble trabajo: en la máquina del cazador aparece también como contacto débil en su imagen (`docs/VISION_LOCUST.md`).
+
 ## Eventos del director
 
 Sonidos sintetizados por `tools/audio/generate_event_sfx.py` en `assets/audio/events/`: dos caídas de un objeto de madera (inclinación, golpe, rebote y rodar) y dos series de tres golpes con los nudillos en una puerta. Se reproducen con `world_audio.play_at()`, así que llegan por la ruta caminable con eco como cualquier otro sonido. Los golpes en la puerta no los oye la criatura; la caída la manda a investigar directamente, sin pasar por su oído.

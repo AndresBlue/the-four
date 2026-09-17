@@ -16,6 +16,7 @@ const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
 const NET := preload("res://game/net/net_session.gd")
+const NOISE := preload("res://game/audio/noise_kinds.gd")
 ## The opening scene is built far from the hotel so the two never overlap.
 const INTRO_ORIGIN := Vector3(600, 0, 0)
 const TITLE_ORIGIN := Vector3(-600, 0, 0)
@@ -38,6 +39,11 @@ var ventilation: AudioStreamPlayer3D
 # Quiet theme behind the menus; the in-game players pause with the tree.
 var menu_music: AudioStreamPlayer
 var automation := false
+## Local preview of the hunter's seat (--locust): this machine drives The
+## Locust against an idle survivor, with no connection. Everything the hunter
+## sees and hears runs in one process, so the acoustic view can be looked at
+## and tuned without gathering five players.
+var solo_locust := false
 var visibility_clock := 0.0
 var pressed_door
 var press_time := 0.0
@@ -134,7 +140,23 @@ func _ready() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--playtest-seed="):
 			var value := argument.trim_prefix("--playtest-seed=")
-			if value.is_valid_int() and int(value) >= 0 and int(value) <= 2147483647: start_floor(int(value))
+			if value.is_valid_int() and int(value) >= 0 and int(value) <= 2147483647:
+				if OS.get_cmdline_user_args().has("--locust"): await take_locust(int(value))
+				else: start_floor(int(value))
+
+## The local hunter preview: build a floor and hand the creature to this player.
+func take_locust(seed_value: int) -> void:
+	solo_locust = true
+	await start_floor(seed_value)
+	if not is_instance_valid(locust): return
+	locust.set_control("player")
+	locust.grace = 0.0
+	player.camera.current = false
+	locust.camera.current = true
+	# It never hears its own presence, online or here.
+	world_audio.set_creature(null)
+	apply_settings()
+	ui.flash("VISION ACUSTICA - PRUEBA LOCAL", 4.0)
 
 func on_action(action: String) -> void:
 	match action:
@@ -353,6 +375,9 @@ func begin_online_play(config: Dictionary) -> void:
 		# The hunter does not hear its own presence or dread.
 		world_audio.set_creature(null)
 		ui.flash("ERES THE LOCUST", 4.0)
+	# Re-derived, never remembered: the Environment is shared, so the hunter's
+	# grade has to come back out of apply_settings() on the way in and out.
+	apply_settings()
 	on_state()
 
 ## Back in the room: the floor stays hidden behind the menu until the next one.
@@ -364,7 +389,9 @@ func leave_online_floor() -> void:
 	player.visible = true
 	player.collision_layer = 4
 	player.slot = 1
+	solo_locust = false
 	session.online = false
+	apply_settings()
 	session.set_state(session.State.MENU)
 
 func on_net_closed(reason: String) -> void:
@@ -387,10 +414,17 @@ func close_online_menu() -> void:
 	on_state()
 
 ## A noise the creature may hear, wherever the creature is decided.
-func locust_hear(point: Vector3, radius: float) -> void:
+func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:
 	if not is_instance_valid(locust): return
-	if locust.control == "ai": locust.hear(point, radius)
-	elif match_net.versus() and net.is_host and locust.grace <= 0.0 and locust.can_hear(point, radius): match_net.tell_hunter(point, radius)
+	if locust.control == "ai":
+		locust.hear(point, radius)
+	elif not net.is_client() and (match_net.versus() or match_net.local_is_locust()) and locust.grace <= 0.0:
+		# Whoever is in charge decides, which online is the host even when the
+		# host is a survivor and its copy of the creature is only a puppet.
+		# The machine in charge measures how the noise reaches the creature and
+		# sends that, not the bare position: the hunter is told what it hears.
+		var route: Dictionary = locust.hear_route(point, radius)
+		if route.audible: match_net.tell_hunter(point, route, radius, kind)
 
 ## The survivor the director measures distances from: this player while alive,
 ## otherwise any living survivor.
@@ -512,7 +546,9 @@ func in_refuge() -> bool:
 ## hidden, hiding_place, crouched and velocity.
 func survivors() -> Array:
 	var result: Array = []
-	if session.participants.has(player.slot) and not match_net.local_is_locust(): result.append(player)
+	# The hunter has no survivor of its own, except in the local preview, where
+	# this body is left standing as something to hunt.
+	if session.participants.has(player.slot) and (solo_locust or not match_net.local_is_locust()): result.append(player)
 	for body in match_net.bodies.values():
 		if is_instance_valid(body): result.append(body)
 	return result
@@ -632,14 +668,15 @@ func spawn_locust() -> void:
 func on_peek(point: Vector3) -> void:
 	world_audio.play_at(world_audio.choose("open_slow"), point, -25.0, RID(), 0.4)
 	# Online the host hears every wardrobe itself (it mirrors everyone's peeking).
-	if not net.is_client(): locust_hear(point, 2.0)
+	if not net.is_client(): locust_hear(point, 2.0, NOISE.Kind.PEEK)
 
 func on_hide_changed(entering: bool, point: Vector3) -> void:
 	# Climbing in or out of a wardrobe is not silent.
-	on_noise(point, 4.0)
+	on_noise(point, 4.0, NOISE.Kind.WARDROBE)
 
-func on_noise(point: Vector3, radius: float) -> void:
-	match_net.noise(point, radius)
+## Kind defaults to a footstep so older callers (and the tests) still work.
+func on_noise(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:
+	match_net.noise(point, radius, kind)
 
 func focused_area():
 	var from: Vector3 = player.camera.global_position
@@ -849,7 +886,7 @@ func _process(delta: float) -> void:
 	visibility_clock += delta
 	if visibility_clock > 0.25:
 		visibility_clock = 0
-		if is_instance_valid(hotel): hotel.update_visibility(world_audio.listener_position(), settings.values.shadows)
+		if is_instance_valid(hotel): hotel.update_visibility(world_audio.listener_position(), settings.values.shadows and not hunter_seat())
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -898,22 +935,35 @@ func build_environment() -> void:
 	post_material = $Presentation/Analog/Screen.material
 	camcorder = $Presentation/Camcorder
 
+## This machine drives The Locust: the hunter's seat online, or the local
+## preview. Its screen is the acoustic image, not the lit hotel.
+func hunter_seat() -> bool:
+	return is_instance_valid(net) and match_net.local_is_locust()
+
 func apply_settings() -> void:
 	if not is_instance_valid(environment): return
 	var advanced := RenderingServer.get_current_rendering_method() == "forward_plus"
 	var quality: int = settings.values.quality
-	environment.ssao_enabled = advanced and quality > 0
-	environment.ssil_enabled = advanced and quality > 0
+	# The acoustic view replaces the lit image entirely, so none of this would
+	# ever be seen; switching it off is what pays for its own screen pass.
+	var hunter := hunter_seat()
+	environment.ssao_enabled = advanced and quality > 0 and not hunter
+	environment.ssil_enabled = advanced and quality > 0 and not hunter
 	# SDFGI leaks light through the 18 cm hotel walls; bounce light is screen-space only.
 	environment.sdfgi_enabled = false
-	environment.glow_enabled = quality > 0
-	environment.volumetric_fog_enabled = advanced and quality > 0 and not settings.values.reduced
+	environment.glow_enabled = quality > 0 and not hunter
+	environment.volumetric_fog_enabled = advanced and quality > 0 and not settings.values.reduced and not hunter
 	var viewport := get_viewport()
 	viewport.msaa_3d = Viewport.MSAA_2X if quality > 0 else Viewport.MSAA_DISABLED
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == 0 else Viewport.SCREEN_SPACE_AA_DISABLED
-	viewport.use_taa = advanced and quality == 2
-	for key in ["vhs", "grain", "chromatic", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key])
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == 0 and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
+	# Temporal accumulation has nothing to work with here: the echo field writes
+	# POSITION itself (no motion vectors) and the point cloud is restamped
+	# fifteen times a second, so TAA smears it into paste.
+	viewport.use_taa = advanced and quality == 2 and not hunter
+	for key in ["vhs", "grain", "chromatic", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key] * (0.5 if hunter and key == "chromatic" else 1.0))
 	post_material.set_shader_parameter("vignette", 0.0 if settings.values.reduced else 0.45)
+	# The warm tape cast would break the monochrome reading.
+	post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
 	if settings.values.reduced:
 		post_material.set_shader_parameter("enclosure", 0.0)
 		post_material.set_shader_parameter("threat_glitch", 0.0)
@@ -922,6 +972,8 @@ func apply_settings() -> void:
 	if is_instance_valid(hotel):
 		hotel.quality = settings.values.quality
 		hotel.reduced = settings.values.reduced
+		hotel.echo_view = hunter
+	if is_instance_valid(locust) and locust.driver != null and is_instance_valid(locust.driver.echo): locust.driver.echo.apply_quality()
 
 ## Wardrobe enclosure and strike glitch on the analog filter (off when reduced).
 var enclosure := 0.0
