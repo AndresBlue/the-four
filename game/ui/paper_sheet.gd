@@ -45,12 +45,12 @@ var flush_clock := 0.0
 
 func _ready() -> void:
 	name = "PaperSheet"
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.62)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
 	page = Panel.new()
@@ -61,10 +61,11 @@ func _ready() -> void:
 	style.shadow_color = Color(0, 0, 0, 0.5)
 	style.shadow_size = 18
 	page.add_theme_stylebox_override("panel", style)
-	page.custom_minimum_size = PAGE
-	page.size = PAGE
 	page.set_anchors_preset(Control.PRESET_CENTER)
-	page.position = -PAGE * 0.5
+	page.offset_left = -PAGE.x * 0.5
+	page.offset_right = PAGE.x * 0.5
+	page.offset_top = -PAGE.y * 0.5 - 16
+	page.offset_bottom = PAGE.y * 0.5 - 16
 	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(page)
 	ink = Control.new()
@@ -85,20 +86,22 @@ func _ready() -> void:
 	caption.add_theme_font_override("font", preload("res://game/ui/osd_style.gd").font())
 	caption.add_theme_font_size_override("font_size", 16)
 	caption.add_theme_color_override("font_color", Color(0.85, 0.83, 0.76))
-	caption.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	caption.set_anchors_preset(Control.PRESET_CENTER)
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caption.position = Vector2(-PAGE.x * 0.5, PAGE.y * 0.5 + 14)
-	caption.size = Vector2(PAGE.x, 24)
+	caption.offset_left = -PAGE.x * 0.5
+	caption.offset_right = PAGE.x * 0.5
+	caption.offset_top = PAGE.y * 0.5 - 4
+	caption.offset_bottom = PAGE.y * 0.5 + 22
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(caption)
-	page.position = (get_viewport_rect().size - PAGE) * 0.5 if is_inside_tree() else page.position
-	resized.connect(func(): page.position = (size - PAGE) * 0.5; caption.position = Vector2((size.x - PAGE.x) * 0.5, (size.y + PAGE.y) * 0.5 + 14))
 
 func open(can_edit: bool, key_name: String) -> void:
 	editable = can_edit
 	visible = true
-	page.position = (size - PAGE) * 0.5
-	caption.position = Vector2((size.x - PAGE.x) * 0.5, (size.y + PAGE.y) * 0.5 + 14)
+	# Smaller windows get a smaller page (pointer positions stay in page space).
+	var fit := minf(1.0, minf((size.x - 60.0) / PAGE.x, (size.y - 90.0) / PAGE.y))
+	page.pivot_offset = PAGE * 0.5
+	page.scale = Vector2.ONE * maxf(fit, 0.4)
 	caption.text = ("IZQUIERDO DIBUJA · DERECHO BORRA · %s CIERRA" % key_name) if editable else ("SOLO PUEDES MIRAR · %s CIERRA" % key_name)
 
 func close() -> void:

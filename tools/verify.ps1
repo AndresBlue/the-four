@@ -28,5 +28,13 @@ foreach ($test in $tests) {
     Write-Output "$name : $passed"
     if (-not $passed) { Write-Output $logText }
 }
+# Online play: real host and guest processes over 127.0.0.1.
+foreach ($scenario in @('coop', 'versus')) {
+    $port = if ($scenario -eq 'coop') { 24600 } else { 24610 }
+    $passed = $true
+    try { & (Join-Path $PSScriptRoot 'net_test.ps1') -GodotPath $GodotPath -Scenario $scenario -Port $port | Write-Output } catch { $passed = $false; Write-Output $_ }
+    $results += [PSCustomObject]@{ test="net/$scenario"; passed=$passed; exit_code=0 }
+    Write-Output "net_$scenario : $passed"
+}
 $results | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $projectPath 'evidence/verification.json') -Encoding UTF8
 if ($results.passed -contains $false) { throw 'Hay regresiones fallidas; revisa evidence/verify_*.log.' }

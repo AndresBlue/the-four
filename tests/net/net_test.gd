@@ -45,6 +45,8 @@ func run() -> void:
 		"host": await host()
 		"alpha": await guest("Alpha", 1)
 		"bravo": await guest("Bravo", 2)
+		"vs_host": await versus_host()
+		"vs_hunter": await versus_hunter()
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -181,3 +183,55 @@ func bravo_part() -> void:
 	check("Reaparece donde estaba", level.player.global_position.distance_to(spot) < 2.5)
 	check("Recupera la hoja con los trazos de los demás", level.ui.sheet.log_index.has("%d:1" % seat_named("Alpha")))
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))
+
+# --- Versus ------------------------------------------------------------------------
+
+func versus_host() -> void:
+	var net = level.net
+	check("La sala versus se abre", net.host("Anfitrión", 0, port) == OK)
+	check("Llega el cazador", await wait_for(func(): return net.connected_seats().size() == 2, 40.0))
+	net.set_option("mode", net.Mode.VERSUS)
+	var hunter := seat_named("Cazador")
+	net.set_option("locust", hunter)
+	check("Se elige quién es The Locust", int(net.options.locust) == hunter)
+	check("Empieza el versus", net.start_match(90))
+	check("Se juega el versus", await wait_for(playing, 60.0))
+	var match_net = level.match_net
+	check("En el anfitrión The Locust es una réplica del jugador", level.locust.control == "puppet")
+	check("Solo el anfitrión es superviviente", level.session.participants.keys() == [1] and match_net.bodies.is_empty())
+	check("Llega el movimiento de The Locust del jugador", await wait_for(func(): return not level.locust.net_states.is_empty(), 15.0))
+	check("La protección inicial termina cuando el cazador la termina", await wait_for(func(): return level.locust.grace <= 0.0, 20.0))
+	# A noise the hunter should see as a ring.
+	await pause_for(1.0)
+	level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
+	var hide = level.hotel.hides[0]
+	level.player.global_position = hide.to_global(hide.exit_offset) + Vector3(0, 0.1, 0)
+	await pause_for(0.5)
+	check("El superviviente se esconde", level.match_net.use_hide(hide, true) and level.player.hidden)
+	check("The Locust jugador abre el armario a la fuerza", await wait_for(func(): return hide.opening > 0.5, 30.0))
+	check("La estocada del cazador mata al superviviente y termina el piso", await wait_for(func(): return level.session.state == level.session.State.FAILED, 30.0))
+	await pause_for(2.0)
+	net.shutdown("")
+
+func versus_hunter() -> void:
+	var net = level.net
+	await pause_for(1.5)
+	check("El cazador se conecta", net.join("127.0.0.1", "Cazador", 1, port) == OK)
+	check("Entra en el versus", await wait_for(playing, 90.0))
+	var creature = level.locust
+	check("Controla a The Locust", creature.control == "player" and creature.driver != null and creature.camera.current)
+	check("Su jugador no cuenta como superviviente", not level.survivors().has(level.player) and not level.player.visible)
+	creature.grace = 0.0
+	check("Oye los ruidos de los supervivientes como anillos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
+	var hide = level.hotel.hides[0]
+	check("Ve al superviviente meterse en el armario", await wait_for(func(): return is_instance_valid(hide.occupant), 30.0))
+	creature.global_position = hide.to_global(hide.exit_offset + Vector3(0, 0, 0.9))
+	await pause_for(0.6)
+	level.match_net.locust_open_hide(hide)
+	check("El armario se abre también aquí", await wait_for(func(): return hide.opening > 0.5, 15.0))
+	# Face the open wardrobe and strike.
+	var offset: Vector3 = hide.global_position - creature.global_position
+	creature.rotation.y = atan2(-offset.x, -offset.z)
+	await pause_for(0.3)
+	creature.driver.strike()
+	check("La estocada termina la caza", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.ui.screen == "online_failed", 20.0))

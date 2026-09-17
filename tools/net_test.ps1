@@ -1,6 +1,7 @@
-param([string]$GodotPath = $env:GODOT_PATH, [int]$Port = 24600, [int]$TimeoutSeconds = 420)
-# Online play test: starts a host and two guests as separate headless Godot
+param([string]$GodotPath = $env:GODOT_PATH, [int]$Port = 24600, [int]$TimeoutSeconds = 420, [ValidateSet('coop','versus')][string]$Scenario = 'coop')
+# Online play test: starts a host and guests as separate headless Godot
 # processes on this machine and collects their checks (evidence/net_*.json).
+# coop: host and two guests; versus: host survivor and a guest as The Locust.
 $ErrorActionPreference = 'Stop'
 $projectPath = Split-Path -Parent $PSScriptRoot
 if (-not $GodotPath) {
@@ -8,7 +9,8 @@ if (-not $GodotPath) {
 }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
 $processes = @()
-foreach ($role in @('host', 'alpha', 'bravo')) {
+$roles = if ($Scenario -eq 'versus') { @('vs_host', 'vs_hunter') } else { @('host', 'alpha', 'bravo') }
+foreach ($role in $roles) {
     $json = Join-Path $projectPath "evidence/net_$role.json"
     if (Test-Path $json) { Remove-Item $json }
     $log = Join-Path $projectPath "evidence/verify_net_$role.log"

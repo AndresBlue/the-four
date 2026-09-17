@@ -76,8 +76,9 @@ var focus: Node3D
 ## co-op match). "puppet": it follows the state sent by the machine in charge.
 ## "player": a player drives it (versus, see locust_player.gd).
 var control := "ai"
-## Versus: the controller that reads the local player's input.
+## Versus: the controller that reads the local player's input, and its camera.
 var driver: Node
+var camera: Camera3D
 ## Puppet: received states {time, position, yaw, velocity} and a local clock.
 var net_states: Array = []
 var net_clock := 0.0
@@ -243,17 +244,23 @@ func lit_by_torch() -> Node3D:
 		if get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): return player
 	return null
 
-func hear(point: Vector3, radius: float) -> void:
-	if control != "ai": return
-	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER] or level.point_in_refuge(point): return
+## Whether a noise reaches it: within its (long) hearing, along a walkable
+## route through rooms and doorways, never through walls.
+func can_hear(point: Vector3, radius: float) -> bool:
+	if level.point_in_refuge(point): return false
 	var reach := radius * HEARING_SCALE
-	if global_position.distance_to(point) > reach: return
-	# Sound travels through rooms and doorways; the walkable route must fit.
+	if global_position.distance_to(point) > reach: return false
 	if not clear_sight(point + Vector3(0, 1, 0)):
 		var route := FLOOR.navigation_path(get_world_3d().navigation_map, position, point)
 		var length := 0.0
 		for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
-		if route.size() < 2 or length > reach: return
+		if route.size() < 2 or length > reach: return false
+	return true
+
+func hear(point: Vector3, radius: float) -> void:
+	if control != "ai": return
+	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER]: return
+	if not can_hear(point, radius): return
 	if mode == Mode.CHASE:
 		# While hunting, every noise tells it where the player is.
 		last_known = point
@@ -336,6 +343,10 @@ func desired_speed() -> float:
 func set_control(kind: String) -> void:
 	control = kind
 	net_states.clear()
+	if kind == "player" and driver == null:
+		driver = preload("res://game/enemies/locust/locust_player.gd").new()
+		add_child(driver)
+		driver.setup(self)
 
 ## What the machine in charge sends about fifteen times a second.
 func pack_state() -> Array:

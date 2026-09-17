@@ -333,7 +333,12 @@ func begin_online_play(config: Dictionary) -> void:
 	var locust_player: bool = match_net.local_is_locust()
 	player.visible = not locust_player
 	player.collision_layer = 0 if locust_player else 4
-	if locust_player: locust.camera.current = true
+	player.torch.visible = false
+	if locust_player:
+		locust.camera.current = true
+		# The hunter does not hear its own presence or dread.
+		world_audio.set_creature(null)
+		ui.flash("ERES THE LOCUST", 4.0)
 	on_state()
 
 ## Back in the room: the floor stays hidden behind the menu until the next one.
@@ -369,7 +374,9 @@ func close_online_menu() -> void:
 
 ## A noise the creature may hear, wherever the creature is decided.
 func locust_hear(point: Vector3, radius: float) -> void:
-	if is_instance_valid(locust): locust.hear(point, radius)
+	if not is_instance_valid(locust): return
+	if locust.control == "ai": locust.hear(point, radius)
+	elif match_net.versus() and net.is_host and locust.grace <= 0.0 and locust.can_hear(point, radius): match_net.tell_hunter(point, radius)
 
 ## The survivor the director measures distances from: this player while alive,
 ## otherwise any living survivor.
@@ -565,6 +572,16 @@ func focused_document():
 	var area = focused_area()
 	return area if area is DOCUMENT else null
 
+## Online: the name of the teammate straight ahead, within a few metres.
+func focused_teammate() -> String:
+	if match_net.bodies.is_empty(): return ""
+	var from: Vector3 = player.camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * 8.0, 1 | 4 | 8)
+	query.exclude = [player.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty() or not "player_name" in hit.collider: return ""
+	return hit.collider.player_name.to_upper()
+
 ## Doors are reached from further away than wardrobes.
 const DOOR_REACH := 3.2
 ## An open door this close can be shut without looking at it, so it can be
@@ -645,7 +662,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	camcorder.focus("LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else "")
+	camcorder.focus("LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0

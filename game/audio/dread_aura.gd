@@ -119,7 +119,7 @@ func _physics_process(delta: float) -> void:
 	clock += delta
 	riser_cooldown = maxf(0.0, riser_cooldown - delta)
 	var creature = level.locust
-	var active: bool = is_instance_valid(creature) and level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge()
+	var active: bool = is_instance_valid(creature) and level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and not level.match_net.local_is_locust()
 	var listener: Vector3 = world_audio.listener_position()
 	target = 0.0
 	if active:

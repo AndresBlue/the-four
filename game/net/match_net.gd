@@ -365,6 +365,74 @@ func locust_call(kind: String, segment: int, pitch: float) -> void:
 	var creature = level.locust
 	if is_instance_valid(creature) and creature.control == "puppet": creature.play_call(kind, segment, pitch)
 
+# --- Versus: a player is The Locust --------------------------------------------------
+
+## Angle either side of its facing within which a strike connects.
+const STRIKE_ANGLE := 70.0
+
+func locust_peer() -> int:
+	return int(net.players.get(locust_seat(), {}).get("peer", -1))
+
+## The Locust player's strike ended its wind-up here, facing this way.
+func locust_strike(origin: Vector3, facing: Vector3) -> void:
+	if net.is_host: resolve_strike(origin, facing)
+	else: strike.rpc_id(1, origin, facing)
+
+@rpc("any_peer", "call_remote", "reliable")
+func strike(origin: Vector3, facing: Vector3) -> void:
+	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
+	resolve_strike(origin, facing)
+
+## The host judges a strike with its own copy of everyone's positions: the
+## nearest living survivor in reach, in front and in clear sight (a hidden one
+## only through open wardrobe doors) is struck down.
+func resolve_strike(origin: Vector3, facing: Vector3) -> void:
+	var creature = level.locust
+	if not is_instance_valid(creature) or creature.grace > 0.0: return
+	# The claimed spot must match where the host sees the creature.
+	if origin.distance_to(creature.global_position) > 3.0: origin = creature.global_position
+	facing.y = 0.0
+	var best: Node3D = null
+	var best_distance: float = creature.STRIKE_REACH
+	for body in level.survivors():
+		if not level.survivor_active(body): continue
+		var offset: Vector3 = body.global_position - origin
+		offset.y = 0.0
+		var distance := offset.length()
+		if distance >= best_distance: continue
+		if distance > 0.8 and facing.length() > 0.1 and rad_to_deg(facing.angle_to(offset)) > STRIKE_ANGLE: continue
+		if body.hidden and not (is_instance_valid(body.hiding_place) and body.hiding_place.ajar()): continue
+		var ray := PhysicsRayQueryParameters3D.create(origin + Vector3(0, creature.EYE_HEIGHT, 0), body.camera.global_position, 1 | 8 | 64)
+		ray.exclude = [creature.get_rid()]
+		if not creature.get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): continue
+		best = body
+		best_distance = distance
+	level.capture_survivor(best)
+
+## The Locust player pulls a wardrobe open.
+func locust_open_hide(hide: Node3D) -> void:
+	var index: int = level.hotel.hides.find(hide)
+	if net.is_host: hide.force_open()
+	else: request_force.rpc_id(1, index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_force(index: int) -> void:
+	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if index < 0 or index >= level.hotel.hides.size(): return
+	var hide = level.hotel.hides[index]
+	if hide.global_position.distance_to(level.locust.global_position) < REACH: hide.force_open()
+
+## A noise the creature would hear: shown to the player who is The Locust.
+func tell_hunter(point: Vector3, radius: float) -> void:
+	if locust_seat() == net.local_seat:
+		if is_instance_valid(level.locust.driver): level.locust.driver.hear_noise(point, radius)
+	elif locust_peer() > 0:
+		heard_noise.rpc_id(locust_peer(), point, radius)
+
+@rpc("authority", "call_remote", "unreliable")
+func heard_noise(point: Vector3, radius: float) -> void:
+	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.hear_noise(point, radius)
+
 # --- The shared sheet ----------------------------------------------------------------
 
 ## Most sheet chunks a player may send per second.
@@ -464,7 +532,12 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 		elif bodies.has(seat): bodies[seat].place(places[seat_key][0], places[seat_key][1])
 	for index in mini(hides.size(), level.hotel.hides.size()):
 		if int(hides[index]) != 0: hide_state(index, int(hides[index]))
-	if not creature.is_empty() and is_instance_valid(level.locust): level.locust.push_state(creature)
+	if not creature.is_empty() and is_instance_valid(level.locust):
+		if local_is_locust():
+			# Back in control where the creature was left standing.
+			level.locust.global_position = creature[0]
+			level.locust.rotation.y = creature[1]
+		else: level.locust.push_state(creature)
 	level.restore_sheet(sheet)
 
 @rpc("authority", "call_remote", "reliable")
