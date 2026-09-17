@@ -72,11 +72,13 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 
 ## P4 — Escondite y The Locust
 
-- [ ] Armario con puertas: ocultación física exterior del jugador y abertura frontal estrecha visible desde dentro.
-- [ ] Efecto gradual de claustrofobia: periferia oscurecida y distorsión de ojo de pez que amplíe la abertura sin permitir ver a través de madera/paredes.
-- [ ] Conservar mirada parcial hacia delante, señales de presencia y control del jugador; salida revierte el efecto sin saltos.
-- [ ] Ajuste reducido/sin distorsión; comprobar comodidad, nitidez, diferentes resoluciones y señales con música desactivada.
-- [ ] Verificar desde dentro y fuera, entrada observada por Locust y futura visibilidad entre clientes. No convertir el armario en invulnerabilidad.
+- [x] Armario con puertas (modelo aportado): ocultación física exterior y rendija visible desde dentro.
+- [x] Efecto gradual de claustrofobia: periferia oscurecida y ojo de pez leve que se abre al asomarse; las puertas siguen bloqueando la vista.
+- [x] Asomarse abriendo lentamente las puertas para mirar a izquierda, delante y derecha; salir revierte el efecto.
+- [x] Efectos reducidos desactivan encierro y distorsión.
+- [ ] Comprobar comodidad del efecto en partidas humanas y a distintas resoluciones.
+- [x] Verificado dentro y fuera: puertas cerradas ocultan, entreabiertas delatan, entrada observada o ruido cercano hacen que la criatura abra y ataque.
+- [ ] Visibilidad del armario entre clientes cuando exista red.
 
 
 - [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.
@@ -87,7 +89,10 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Locust orientado hacia su avance, animación procedural con pies anclados al suelo (IK de dos huesos), brazos-cuchilla por estado, cabeza que sigue al objetivo y pasos sincronizados con cada pisada.
 - [x] Sospecha gradual por distancia, linterna, carrera y agacharse; reacción a linterna lejana; velocidad variable y pérdida de rastro al romper la línea de visión.
 - [x] Pasos del jugador por distancia recorrida y balanceo de cámara ligado a cada pisada.
-- [ ] Animación final, permisos del personaje/modelo y balance de persecución en partidas humanas.
+- [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
+- [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).
+- [x] Exploradora animada (esqueleto del cuerpo) y señal visual de la estocada sin texto.
+- [ ] Balance de la nueva agresividad y de la propagación en partidas humanas.
 - [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
 - [ ] Validar acompañamiento y regreso en cooperativo cuando exista red; evaluar comprensión de muertes con jugadores.
 

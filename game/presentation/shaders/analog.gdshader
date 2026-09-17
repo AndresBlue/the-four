@@ -10,6 +10,10 @@ uniform float scanlines : hint_range(0.0, 1.0) = 0.35;
 // Stable colour treatment of old tape: lifted blacks, soft highlights, warm cast.
 uniform vec3 tint = vec3(1.02, 1.0, 0.9);
 uniform float vignette : hint_range(0.0, 1.0) = 0.45;
+// Inside a wardrobe: dark closing edges and a slight fish-eye bulge.
+uniform float enclosure : hint_range(0.0, 1.0) = 0.0;
+// The creature's strike wind-up: a brief tape tear across the image.
+uniform float threat_glitch : hint_range(0.0, 1.0) = 0.0;
 
 float hash(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -39,6 +43,8 @@ void fragment() {
 	vec2 uv = SCREEN_UV;
 	vec2 px = SCREEN_PIXEL_SIZE;
 	float t = TIME;
+	vec2 centred = uv - 0.5;
+	uv = 0.5 + centred * (1.0 - enclosure * 0.12 * (1.0 - dot(centred, centred) * 2.0));
 	// Tape transport: slow line wobble, a drifting tracking band and the
 	// head-switching tear at the bottom of the frame.
 	float line = floor(uv.y / px.y);
@@ -49,6 +55,8 @@ void fragment() {
 	float head = smoothstep(0.035, 0.0, 1.0 - uv.y);
 	float tear = head * (0.012 + (hash(vec2(floor(t * 24.0), line)) - 0.5) * 0.01);
 	uv.x += (wobble + jitter) * vhs + tear * vhs;
+	float glitch_row = step(0.6, hash(vec2(floor(uv.y * 38.0), floor(t * 20.0))));
+	uv.x += (hash(vec2(floor(uv.y * 90.0), floor(t * 30.0))) - 0.5) * 0.05 * threat_glitch * glitch_row;
 	// Luma: slightly soft with edge ringing; chroma: much lower horizontal
 	// resolution and a small delay, like composite video on tape.
 	float soft = 1.0 + vhs * 2.5;
@@ -101,5 +109,7 @@ void fragment() {
 	float edge = dot(from_center * vec2(1.1, 1.0), from_center * vec2(1.1, 1.0));
 	color *= 1.0 - smoothstep(0.12, 0.6, edge) * vignette * clamp(vhs * 3.0, 0.3, 1.0);
 	color *= 1.0 - (noise1(t * 11.0) - 0.5) * 0.03 * vhs;
+	float closed_in = smoothstep(0.05, 0.42, edge);
+	color *= 1.0 - closed_in * enclosure * 0.85;
 	COLOR = vec4(max(color, vec3(0.0)), 1.0);
 }

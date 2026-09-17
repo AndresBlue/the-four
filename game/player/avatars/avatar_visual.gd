@@ -56,6 +56,8 @@ func configure(index: int, local_view: bool) -> void:
 	base_height = model.position.y
 	var rigs := model.find_children("*", "Skeleton3D", true, false)
 	if not rigs.is_empty():
+		# Some models carry a small accessory skeleton too; animate the body one.
+		rigs.sort_custom(func(a, b): return a.get_bone_count() > b.get_bone_count())
 		rig = rigs[0]
 		var names := {"hip":"mixamorig_Hips", "spine":"mixamorig_Spine", "la":"mixamorig_LeftArm", "lf":"mixamorig_LeftForeArm", "ra":"mixamorig_RightArm", "rf":"mixamorig_RightForeArm", "lt":"mixamorig_LeftUpLeg", "lk":"mixamorig_LeftLeg", "rt":"mixamorig_RightUpLeg", "rk":"mixamorig_RightLeg"} if character == 1 else {"hip":"CC_Base_Hip", "spine":"CC_Base_Spine01", "la":"CC_Base_L_Upperarm", "lf":"CC_Base_L_Forearm", "ra":"CC_Base_R_Upperarm", "rf":"CC_Base_R_Forearm", "lt":"CC_Base_L_Thigh", "lk":"CC_Base_L_Calf", "rt":"CC_Base_R_Thigh", "rk":"CC_Base_R_Calf"}
 		for key in names: bones[key] = rig.find_bone(names[key])
@@ -71,7 +73,6 @@ func rotate_bone(key: String, axis: Vector3, angle: float) -> void:
 
 func update_pose(velocity: Vector3, crouching: bool, delta: float) -> void:
 	if not initialized: return
-	if character == 2: return
 	var speed := Vector2(velocity.x, velocity.z).length()
 	phase += delta * speed * 2.5
 	if rig == null:

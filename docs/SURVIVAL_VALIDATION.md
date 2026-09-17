@@ -1,5 +1,11 @@
 # Validación 0.4-S1 — hotel variable y The Locust
 
+## Estado vigente (17/09/2026)
+
+Los valores de las secciones siguientes son históricos (16/09/2026). Los vigentes están en [GAME_DESIGN.md](GAME_DESIGN.md): Locust con visión de 120°/70 m, oído por rutas a 2,6 veces el radio, persecución 6,4 m/s, estocada de 0,3 s con alcance de 3,2 m; resistencia 8/s de gasto y 6/s de recuperación tras 3 s; escondites en armarios con puertas y asomarse. Pruebas actuales: `survival_tests.json` 36/36, `spatial_audio.json` 27/27, `hotel_tests.json` 34/34. Las partidas humanas siguen pendientes.
+
+## Registro histórico
+
 Fecha: 16/09/2026. Godot 4.7.2 Steam, Windows, RTX 4060 Ti. Proyecto local `E:\Projects\The Four`. Esta entrega adelanta supervivencia individual a petición del usuario y amplía P1/P2. No incorpora cooperativo ni muebles externos.
 
 ## Cambios comprobados

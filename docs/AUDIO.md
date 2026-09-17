@@ -75,3 +75,17 @@ Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/drea
 - Pasos de The Locust: golpe seco sintetizado de pata punzante sobre un golpe hueco, en cada pisada real de la animación.
 
 Pendiente: escucha crítica con auriculares, balance del aura en partidas humanas y perfiles de las otras criaturas.
+
+## Propagación entre salas
+
+`world_audio.route_source()` decide por dónde llega un sonido. Con línea libre llega directo desde su origen. Si hay muros de por medio sigue la ruta caminable y se oye desde la última abertura visible (una puerta o una esquina): más bajo según el rodeo, más apagado y por los buses `EffectsEcho` o `ThreatEcho` (retardos de 170/340 ms y reverberación amplia), que envían a Effects o Threat. Nada atraviesa muros. Más allá de 42 m de ruta no se oye.
+
+Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Locust. La criatura oye al jugador por la misma lógica de rutas pero a 2,6 veces el radio de cada ruido, y el aura empieza a 24 m de ruta: la criatura siempre detecta antes de lo que el jugador puede oírla.
+
+## Gruñidos de persecución
+
+`assets/audio/sfx/chase/grunts.ogg` (aportado) se divide en gruñidos sueltos con `tools/audio/analyze_grunts.gd`, que escribe `game/audio/grunt_segments.gd`. Durante la persecución suena uno cada 2,5–5 s desde la criatura, con la misma propagación. Si cambias la grabación, vuelve a ejecutar el analizador.
+
+## Armarios
+
+Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura puede oír (radio 4). Entreabrir las puertas cruje en voz baja (radio 2).

@@ -8,9 +8,9 @@ signal footfall(point: Vector3, strength: float)
 const BONE := "ValveBiped.Bip01_"
 const LEGS := [["L", -1.0], ["R", 1.0]]
 ## Body-space lateral distance of each foot from the centre line (metres).
-@export var stance_width := 0.17
+@export var stance_width := 0.21
 ## Reference top speed used to scale stride, lean and arm swing.
-@export var run_speed := 5.6
+@export var run_speed := 6.4
 var skeleton: Skeleton3D
 var body: Node3D
 var bones := {}
@@ -21,6 +21,8 @@ var move_velocity := Vector3.ZERO
 var aggression := 0.0
 var attack := 0.0
 var recovering := 0.0
+## 0..1: stooping to pass under a lintel.
+var duck := 0.0
 var look_point := Vector3.INF
 var hunch := 0.0
 var bob := 0.0
@@ -65,7 +67,8 @@ func _process(delta: float) -> void:
 	pose_head(delta)
 
 func step_feet(delta: float, planar: Vector3, speed: float, ratio: float) -> void:
-	var stride := lerpf(0.55, 1.35, ratio)
+	# Long, reaching strides for its size.
+	var stride := lerpf(0.8, 1.9, ratio)
 	var direction := planar.normalized() if speed > 0.05 else Vector3.ZERO
 	var duration := clampf(stride / maxf(speed, 0.1) * 0.5, 0.17, 0.42)
 	var lift := 0.1 + ratio * 0.12
@@ -124,10 +127,10 @@ func turn_bone(bone: int, axis: Vector3, angle: float) -> void:
 func pose_body(delta: float, ratio: float) -> void:
 	# Lower the pelvis so legs keep slack to reach; stilts rise mid-step.
 	var pelvis := skeleton.get_bone_global_pose(bones.Pelvis)
-	var drop := lerpf(0.05, 0.15, ratio) + attack * 0.08 - bob * 0.025
+	var drop := lerpf(0.05, 0.15, ratio) + attack * 0.08 + duck * 0.12 - bob * 0.025
 	pelvis.origin += Vector3(0, -drop, 0)
 	skeleton.set_bone_global_pose(bones.Pelvis, pelvis)
-	var lean_target := ratio * 0.32 + aggression * 0.12 + attack * 0.25 - recovering * 0.1
+	var lean_target := ratio * 0.32 + aggression * 0.12 + attack * 0.25 - recovering * 0.1 + duck * 0.55
 	hunch = lerpf(hunch, lean_target, minf(1.0, delta * 5.0))
 	# Model faces +Z: pitching about +X tips the chest forward.
 	turn_bone(bones.Spine2, Vector3.RIGHT, hunch * 0.6)

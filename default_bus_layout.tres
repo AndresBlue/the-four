@@ -1,4 +1,4 @@
-[gd_resource type="AudioBusLayout" load_steps=5 format=3]
+[gd_resource type="AudioBusLayout" load_steps=9 format=3]
 
 [sub_resource type="AudioEffectHardLimiter" id="Limiter"]
 resource_name = "HardLimiter"
@@ -31,6 +31,54 @@ spread = 1.0
 hipass = 0.08
 dry = 1.0
 wet = 0.16
+
+[sub_resource type="AudioEffectReverb" id="EchoRoom"]
+resource_name = "EchoRoom"
+predelay_msec = 60.0
+predelay_feedback = 0.35
+room_size = 0.8
+damping = 0.55
+spread = 1.0
+hipass = 0.1
+dry = 0.6
+wet = 0.55
+
+[sub_resource type="AudioEffectDelay" id="EchoTaps"]
+resource_name = "EchoTaps"
+dry = 1.0
+tap1_active = true
+tap1_delay_ms = 170.0
+tap1_level_db = -9.0
+tap1_pan = 0.25
+tap2_active = true
+tap2_delay_ms = 340.0
+tap2_level_db = -15.0
+tap2_pan = -0.25
+feedback_active = false
+
+[sub_resource type="AudioEffectReverb" id="EchoRoomThreat"]
+resource_name = "EchoRoom"
+predelay_msec = 60.0
+predelay_feedback = 0.35
+room_size = 0.85
+damping = 0.5
+spread = 1.0
+hipass = 0.08
+dry = 0.6
+wet = 0.6
+
+[sub_resource type="AudioEffectDelay" id="EchoTapsThreat"]
+resource_name = "EchoTaps"
+dry = 1.0
+tap1_active = true
+tap1_delay_ms = 190.0
+tap1_level_db = -8.0
+tap1_pan = 0.3
+tap2_active = true
+tap2_delay_ms = 380.0
+tap2_level_db = -14.0
+tap2_pan = -0.3
+feedback_active = false
 
 [resource]
 bus/0/volume_db = 0.0
@@ -72,3 +120,23 @@ bus/5/mute = false
 bus/5/bypass_fx = false
 bus/5/volume_db = 0.0
 bus/5/send = &"Threat"
+bus/6/name = &"EffectsEcho"
+bus/6/solo = false
+bus/6/mute = false
+bus/6/bypass_fx = false
+bus/6/volume_db = 0.0
+bus/6/send = &"Effects"
+bus/6/effect/0/effect = SubResource("EchoTaps")
+bus/6/effect/0/enabled = true
+bus/6/effect/1/effect = SubResource("EchoRoom")
+bus/6/effect/1/enabled = true
+bus/7/name = &"ThreatEcho"
+bus/7/solo = false
+bus/7/mute = false
+bus/7/bypass_fx = false
+bus/7/volume_db = 0.0
+bus/7/send = &"Threat"
+bus/7/effect/0/effect = SubResource("EchoTapsThreat")
+bus/7/effect/0/enabled = true
+bus/7/effect/1/effect = SubResource("EchoRoomThreat")
+bus/7/effect/1/enabled = true

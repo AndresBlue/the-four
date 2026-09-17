@@ -219,18 +219,15 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				for z in [3.2, 5.6]:
 					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), "plaster", true)
 				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), "plaster", true)
-	# Four curtained hiding booths with open approaches and collision-free exits.
+	# Four wardrobes to hide in, against the walls, with open approaches and exits.
 	if room.type != 19:
 		for corner in FLOOR.hiding_positions(room):
 			var hide := preload("res://game/world/interactables/hiding_place.gd").new()
-			hide.name = "HidingBooth_%d" % node.get_child_count()
+			hide.name = "Wardrobe_%d" % node.get_child_count()
 			hide.position = corner
 			hide.rotation.y = FLOOR.hiding_yaw(corner)
+			# The wardrobe builds its own model, frame colliders and door leaves.
 			node.add_child(hide)
-			box(hide, Vector3(0, 1.05, -0.58), Vector3(1.25, 2.1, 0.1), "wood", true)
-			for side in [-1, 1]: box(hide, Vector3(side * 0.62, 1.05, 0), Vector3(0.1, 2.1, 1.2), "wood", true)
-			box(hide, Vector3(0, 2.12, 0), Vector3(1.3, 0.12, 1.25), "wood")
-			for side in [-1, 1]: box(hide, Vector3(side * 0.42, 1.05, 0.6), Vector3(0.35, 2.0, 0.04), "curtain")
 	# Central sightlines remain open; booths sit against the perimeter.
 	var service: bool = room.type in [4, 7, 8, 9]
 	var light := OmniLight3D.new()

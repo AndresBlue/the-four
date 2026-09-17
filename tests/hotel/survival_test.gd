@@ -67,13 +67,18 @@ func run() -> void:
 	var wall := obstacle(Vector3(0, 1.5, 2))
 	await frames(2)
 	check("Pared bloquea visión y ataque", not enemy.sees_player() and not enemy.clear_sight(player.camera.global_position))
+	# Hearing follows walkable routes: a free-standing wall does not stop it,
+	# but a noise beyond its scaled reach is not heard.
 	enemy.set_mode(enemy.Mode.PATROL)
 	enemy.hear(player.position, 7)
-	check("Pared atenúa pasos suaves", enemy.mode == enemy.Mode.PATROL)
+	check("Oye pasos alrededor de una pared por la ruta", enemy.mode == enemy.Mode.INVESTIGATE)
+	enemy.set_mode(enemy.Mode.PATROL)
+	enemy.hear(player.position, 4.0 / enemy.HEARING_SCALE)
+	check("No oye ruidos más allá de su alcance", enemy.mode == enemy.Mode.PATROL)
 	enemy.set_mode(enemy.Mode.CHASE)
 	enemy.last_known = player.position
 	enemy.lost_time = 0
-	enemy._physics_process(3.0)
+	enemy._physics_process(enemy.LOSE_AFTER + 0.5)
 	check("Perder visión cambia persecución a búsqueda", enemy.mode == enemy.Mode.SEARCH)
 	enemy._physics_process(10.1)
 	check("Búsqueda termina sin perseguir posición omnisciente", enemy.mode == enemy.Mode.PATROL)
@@ -98,11 +103,13 @@ func run() -> void:
 	enemy.set_mode(enemy.Mode.CHASE)
 	enemy._physics_process(0.01)
 	check("Ataque anuncia preparación", enemy.mode == enemy.Mode.WINDUP and enemy.signal_player.playing)
-	enemy._physics_process(0.5)
-	check("No mata antes de 0,7 s", level.session.state == level.session.State.PLAYING)
-	player.position = Vector3(0, 0.04, -2)
-	enemy._physics_process(0.21)
-	check("Alejarse evita ataque y abre recuperación", level.session.state == level.session.State.PLAYING and enemy.mode == enemy.Mode.RECOVER)
+	enemy._physics_process(enemy.WINDUP_TIME * 0.5)
+	check("La estocada no es instantánea", level.session.state == level.session.State.PLAYING)
+	# Only a player already beyond its lunge survives the strike.
+	player.position = Vector3(0, 0.04, -7)
+	enemy._physics_process(enemy.WINDUP_TIME)
+	check("Fuera del alcance de la estocada no hay captura", level.session.state == level.session.State.PLAYING and enemy.mode == enemy.Mode.RECOVER)
+	player.position = Vector3(0, 0.04, 0)
 	player.position = Vector3(0, 0.04, 0)
 	enemy.position = Vector3(0, 0.04, 0.9)
 	wall = obstacle(Vector3(0, 1.5, 0.45))
@@ -141,11 +148,21 @@ func run() -> void:
 	enemy.position = hide.to_global(Vector3(0, 0.04, 3.5))
 	face(enemy, player.position)
 	check("Entrada al escondite físicamente disponible", player.enter_hide(hide))
-	await frames(15)
+	# The doors take about half a second to swing shut behind the player.
+	await frames(45)
 	enemy.observed_hide = null
 	check("Oculto no revela posición a distancia", not enemy.sees_player())
 	enemy.observed_hide = hide
 	check("Recuerda la entrada observada", enemy.sees_player())
+	enemy.observed_hide = null
+	player.active = true
+	Input.action_press("forward")
+	await frames(120)
+	check("Asomarse por la puerta entreabierta lo delata", hide.ajar() and enemy.sees_player() and player.camera.position.z < -0.3)
+	Input.action_release("forward")
+	await frames(120)
+	check("Con las puertas cerradas vuelve a ocultarlo", not hide.ajar() and not enemy.sees_player())
+	enemy.observed_hide = hide
 	check("Salida de escondite libre sin teletransporte a otra sala", player.leave_hide() and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
 	var exit_room: Dictionary = level.manifest.rooms[level.manifest.exit]
 	player.position = FLOOR.position_of(exit_room) + Vector3(0, 0.04, 0)
@@ -158,7 +175,7 @@ func run() -> void:
 	enemy.position = Vector3(0, 0.04, 0.9)
 	face(enemy, player.position)
 	enemy.set_mode(enemy.Mode.WINDUP)
-	enemy._physics_process(0.71)
+	enemy._physics_process(enemy.WINDUP_TIME + 0.01)
 	check("Captura real con alcance y visión causa derrota", level.session.state == level.session.State.FAILED)
 	await level.start_floor(81)
 	check("Reintento reinicia amenaza, resistencia y escondite", level.locust.grace == 15 and not player.hidden and player.stamina == 100 and level.session.state == level.session.State.PLAYING)

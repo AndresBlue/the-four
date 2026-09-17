@@ -17,6 +17,12 @@ var step_phase := 0.0
 var bob_weight := 0.0
 var eye_height := 1.64
 var hide_yaw := 0.0
+## 0..1: how far the wardrobe doors are eased open while hiding.
+var peek := 0.0
+## Looking range inside the wardrobe (radians either side), shut and fully ajar.
+const HIDE_LOOK := Vector2(0.35, 1.35)
+## How far the head leans out through the gap at full peek (metres).
+const PEEK_LEAN := 0.5
 var footstep: AudioStreamPlayer3D
 var settings
 var spawn := Vector3.ZERO
@@ -61,7 +67,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not active: return
 	if event is InputEventMouseMotion:
 		rotate_y(-event.relative.x * settings.values.sensitivity)
-		if hidden: rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -0.6, 0.6)
+		if hidden:
+			var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
+			rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
 		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * settings.values.sensitivity * (-1 if settings.values.invert else 1), -1.45, 1.45)
 	if event.is_action_pressed("flashlight"):
 		torch.visible = not torch.visible
@@ -70,7 +78,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden else Vector2.ZERO
 	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized()
-	var wants_crouch := hidden or (active and Input.is_action_pressed("crouch"))
+	var wants_crouch := active and not hidden and Input.is_action_pressed("crouch")
 	if wants_crouch or can_stand(): crouched = wants_crouch
 	body_shape.shape.height = 1.05 if crouched else 1.8
 	body_shape.position.y = 0.54 if crouched else 0.91
@@ -117,7 +125,9 @@ func _physics_process(delta: float) -> void:
 	# Kept subtle: about 1.5 cm walking and 2.5 cm running at the default setting.
 	var amplitude: float = 0.0 if settings.values.reduced else settings.values.bob * (0.1 if crouched else 0.25 if running else 0.15)
 	var lift := (absf(sin(step_phase)) - 0.6) * amplitude * bob_weight
-	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, 0.0)
+	update_peek(delta)
+	# Peeking leans the head forward through the gap between the doors.
+	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, -peek * PEEK_LEAN)
 	camera.rotation.z = sin(step_phase) * amplitude * 0.02 * bob_weight
 
 # Incandescent torch: hot centre, faint reflector ring and a soft falloff.
@@ -202,12 +212,23 @@ func can_stand() -> bool:
 	query.collision_mask = 1 | 8
 	return get_world_3d().direct_space_state.intersect_shape(query).is_empty()
 
+## Hold forward to ease the doors open, release to let them fall shut.
+func update_peek(delta: float) -> void:
+	var wanted := 1.0 if hidden and active and Input.is_action_pressed("forward") else 0.0
+	peek = move_toward(peek, wanted, delta * (0.5 if wanted > peek else 0.9))
+	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek)
+	# Narrow the view back inside as the doors close.
+	if hidden:
+		var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
+		rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
+
 func enter_hide(place: Node3D) -> bool:
 	if hidden or is_instance_valid(place.occupant): return false
 	hiding_place = place
-	place.occupant = self
 	hidden = true
-	global_position = place.global_position + Vector3(0, 0.04, 0)
+	peek = 0.0
+	place.enter(self)
+	global_position = place.to_global(place.inside_offset)
 	velocity = Vector3.ZERO
 	rotation.y = place.global_rotation.y + PI
 	hide_yaw = rotation.y
@@ -222,16 +243,18 @@ func leave_hide() -> bool:
 	if point == Vector3.INF: return false
 	global_position = point
 	snap_torch()
-	hiding_place.occupant = null
+	hiding_place.leave()
 	hiding_place = null
+	peek = 0.0
 	hidden = false
 	hiding_changed.emit(false, global_position)
 	return true
 
 func reset_survival() -> void:
-	if is_instance_valid(hiding_place): hiding_place.occupant = null
+	if is_instance_valid(hiding_place): hiding_place.leave()
 	hidden = false
 	hiding_place = null
+	peek = 0.0
 	crouched = false
 	stamina = 100
 	recovery_delay = 0

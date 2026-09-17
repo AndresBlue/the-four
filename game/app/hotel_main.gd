@@ -54,6 +54,7 @@ func _ready() -> void:
 	world_audio.enabled = not automation and not OS.get_cmdline_user_args().has("--silent")
 	ui.sounds_enabled = world_audio.enabled
 	player.hiding_changed.connect(world_audio.hide_cue)
+	player.hiding_changed.connect(on_hide_changed)
 	ui.action_requested.connect(on_action)
 	session.changed.connect(on_state)
 	NavigationServer3D.map_set_use_async_iterations(get_world_3d().navigation_map, false)
@@ -176,6 +177,8 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	spawn_locust()
 	world_audio.set_creature(locust.sound_profile)
 	for door in hotel.doors: door.sound_requested.connect(world_audio.door_cue)
+	# Easing wardrobe doors creaks: a quiet noise the creature can pick up.
+	for hide in get_tree().get_nodes_in_group("hotel_hides"): hide.peek_started.connect(on_peek)
 	if not automation and not OS.get_cmdline_user_args().has("--silent"):
 		ambience.play()
 		theme.play()
@@ -240,6 +243,14 @@ func spawn_locust() -> void:
 		locust.set_physics_process(false)
 		locust.collision_layer = 0
 		locust.collision_mask = 0
+
+func on_peek(point: Vector3) -> void:
+	world_audio.play_at(world_audio.choose("open_slow"), point, -20.0, RID(), 0.4)
+	on_noise(point, 2.0)
+
+func on_hide_changed(entering: bool, point: Vector3) -> void:
+	# Climbing in or out of a wardrobe is not silent.
+	on_noise(point, 4.0)
 
 func on_noise(point: Vector3, radius: float) -> void:
 	if is_instance_valid(locust): locust.hear(point, radius)
@@ -316,6 +327,7 @@ func _process(delta: float) -> void:
 	camcorder.marks = settings.values.osd
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
+	update_screen_cues(delta)
 	var warning_active: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
 	# The bed and music recede as the dread aura rises, leaving room for it.
 	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
@@ -372,11 +384,26 @@ func apply_settings() -> void:
 	viewport.use_taa = advanced and quality == 2
 	for key in ["vhs", "grain", "chromatic", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key])
 	post_material.set_shader_parameter("vignette", 0.0 if settings.values.reduced else 0.45)
+	if settings.values.reduced:
+		post_material.set_shader_parameter("enclosure", 0.0)
+		post_material.set_shader_parameter("threat_glitch", 0.0)
 	player.torch.shadow_enabled = settings.values.shadows
 	player.set_character(settings.values.character)
 	if is_instance_valid(hotel):
 		hotel.quality = settings.values.quality
 		hotel.reduced = settings.values.reduced
+
+## Wardrobe enclosure and strike glitch on the analog filter (off when reduced).
+var enclosure := 0.0
+var glitch := 0.0
+func update_screen_cues(delta: float) -> void:
+	var wanted_enclosure: float = (1.0 - player.peek * 0.8) if player.hidden and session.state == session.State.PLAYING else 0.0
+	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
+	var striking: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
+	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
+	if settings.values.reduced: return
+	post_material.set_shader_parameter("enclosure", enclosure)
+	post_material.set_shader_parameter("threat_glitch", glitch)
 
 func build_audio() -> void:
 	ambience = AudioStreamPlayer.new()

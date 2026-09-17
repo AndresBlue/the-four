@@ -12,8 +12,8 @@ const HEART_DUB := "res://assets/audio/sfx/heartbeat/2.ogg"
 const TIMING := preload("res://game/audio/cue_timing.gd")
 const ACOUSTIC_MASK := 512
 ## Route distance (metres) at which the aura begins, and where it is at full strength.
-@export var start_distance := 38.0
-@export var full_distance := 5.0
+@export var start_distance := 24.0
+@export var full_distance := 4.0
 ## How far ahead along the route the directional cues sit, when far and when close.
 @export var cue_distance_far := 7.5
 @export var cue_distance_near := 2.5

@@ -115,6 +115,20 @@ func run() -> void:
 	check("Physical wall occludes sound ray", audio.occluded(Vector3(500, 1.4, 0)))
 	wall.queue_free()
 	await physics_frame
+	# Propagation: behind a wall a sound arrives from the doorway, with echo.
+	var portal = level.hotel.doors[0]
+	portal.open_immediately()
+	var across: Vector3 = Basis(Vector3.UP, portal.closed_rotation) * Vector3(0, 0, 1)
+	var sideways: Vector3 = across.cross(Vector3.UP).normalized()
+	level.player.position = portal.doorway - across * 3.0 + sideways * 3.5 + Vector3(0, 0.04, 0)
+	await physics_frame
+	# Same side as the listener: the straight line meets the wall, not the doorway.
+	var hidden_point: Vector3 = portal.doorway + across * 3.0 + sideways * 3.5 + Vector3.UP * 1.4
+	var heard: Dictionary = audio.route_source(hidden_point)
+	check("Walls never pass sound: it arrives from the opening", heard.audible and heard.echo and heard.position.distance_to(portal.doorway + Vector3.UP * 1.5) < 2.5 and heard.gain < -3.0)
+	var visible_point: Vector3 = level.player.global_position + Vector3(0, 1.4, -2.0)
+	var direct: Dictionary = audio.route_source(visible_point)
+	check("In the open a sound comes straight from its source", direct.audible and not direct.echo and direct.position == visible_point)
 	# Dread aura: follows the walkable route and points toward the creature.
 	var aura = audio.aura
 	level.player.position = Vector3(-3.5, 0.04, 0)

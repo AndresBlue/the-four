@@ -10,6 +10,9 @@ const HIDE_PREROLL := 0.3
 ## Area layer 3D sources respond to; gameplay areas stay out of the audio path.
 const ACOUSTIC_MASK := 512
 ## Gains (dB) at the reference mix (sliders at 50%).
+## Longest walkable route (metres) along which a sound still reaches the player.
+const ROUTE_LIMIT := 42.0
+const ECHO_BUS := {"Effects": &"EffectsEcho", "Threat": &"ThreatEcho"}
 const GAIN := {"open": 1.0, "open_slow": -7.0, "slam": 0.0, "close": -11.0, "hide": -8.0}
 const POOLS := {
 	"open_near": ["door/opening/opening1.ogg", "door/opening/opening2.ogg", "door/opening/opening3.ogg", "door/opening/wooden-opening.ogg"],
@@ -44,6 +47,8 @@ var aura
 ## Failing-fluorescent hum near the listener.
 var hums: Array[AudioStreamPlayer3D] = []
 var ambient_clock := 0.0
+var route_clock := 0.0
+var presence_route := {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -147,7 +152,9 @@ func hide_cue(entering: bool, point: Vector3) -> void:
 func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0) -> void:
 	if start < 0.0: start = TIMING.onset(path)
 	last_event = {"path": path, "position": point}
-	if not enabled or listener_position().distance_to(point) > 40.0: return
+	if not enabled or listener_position().distance_to(point) > ROUTE_LIMIT: return
+	var route := route_source(point, emitter)
+	if not route.audible: return
 	if not streams.has(path): streams[path] = load(path)
 	if voices.size() >= maximum_voices:
 		var oldest := voices.pop_front() as AudioStreamPlayer3D
@@ -167,24 +174,51 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 	voice.set_meta("emitter", emitter)
 	voice.set_meta("start", start)
 	add_child(voice)
-	voice.global_position = point
+	apply_route(voice, route, gain, "Effects")
 	voices.append(voice)
-	update_voice(voice)
 	voice.finished.connect(func():
 		voices.erase(voice)
 		voice.queue_free()
 	)
 	voice.play(start)
 
+## How a sound reaches the listener. With nothing solid in between it comes
+## straight from the source. Otherwise it follows the walkable route and is
+## heard from the last opening visible from the listener (a doorway or corner),
+## quieter, duller and with an echo for the extra distance. Walls never let
+## sound through.
+func route_source(point: Vector3, emitter := RID()) -> Dictionary:
+	var listener := listener_position()
+	if not occluded(point, emitter):
+		return {"audible": true, "position": point, "gain": 0.0, "cutoff": 20000.0, "echo": false, "distance": listener.distance_to(point)}
+	var map: RID = level.get_world_3d().navigation_map
+	var from := NavigationServer3D.map_get_closest_point(map, level.player.global_position)
+	var to := NavigationServer3D.map_get_closest_point(map, point)
+	var path := FLOOR.navigation_path(map, from, to)
+	if path.size() < 2: return {"audible": false, "distance": INF}
+	var length := 0.0
+	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])
+	if length > ROUTE_LIMIT: return {"audible": false, "distance": length}
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var opening := path[0] + Vector3.UP * 1.5
+	for i in range(1, path.size()):
+		var probe := path[i] + Vector3.UP * 1.5
+		if not space.intersect_ray(PhysicsRayQueryParameters3D.create(listener, probe, 1)).is_empty(): break
+		opening = probe
+	var detour := maxf(0.0, length - listener.distance_to(opening))
+	return {"audible": true, "position": opening, "gain": -3.0 - 20.0 * log(1.0 + detour / 5.0) / log(10.0), "cutoff": lerpf(5200.0, 900.0, clampf(detour / 25.0, 0.0, 1.0)), "echo": true, "distance": length}
+
+## Places a 3D player where the route says, on the echo bus when it travelled.
+func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dry_bus: String) -> void:
+	player.global_position = route.position
+	player.bus = ECHO_BUS[dry_bus] if route.echo else StringName(dry_bus)
+	player.volume_db = gain + route.gain
+	player.attenuation_filter_cutoff_hz = route.cutoff
+
 func occluded(point: Vector3, emitter := RID()) -> bool:
 	var ray := PhysicsRayQueryParameters3D.create(point, listener_position(), 1 | 8 | 64)
 	if emitter.is_valid(): ray.exclude = [emitter]
 	return not level.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
-
-func update_voice(voice: AudioStreamPlayer3D) -> void:
-	var blocked := occluded(voice.global_position, voice.get_meta("emitter", RID()))
-	voice.volume_db = float(voice.get_meta("base_gain")) - (7.0 if blocked else 0.0)
-	voice.attenuation_filter_cutoff_hz = 2000.0 if blocked else 5000.0
 
 func show_caption(words: String, is_presence: bool) -> void:
 	if is_presence and caption_cooldown > 0: return
@@ -199,6 +233,7 @@ func reset() -> void:
 	voices.clear()
 	presence.stop()
 	presence_gain = 0
+	presence_route = {}
 	for source in hums: source.stop()
 	if aura != null: aura.reset()
 	caption_time = 0
@@ -219,20 +254,26 @@ func _physics_process(delta: float) -> void:
 	update_space(delta)
 	if profile == null or not is_instance_valid(level.locust): return
 	var creature = level.locust
-	presence.global_position = creature.global_position + Vector3(0, 1.4, 0)
-	var distance := presence.global_position.distance_to(listener_position())
-	var audible: bool = level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and distance < profile.audible_distance
+	var voice_point: Vector3 = creature.global_position + Vector3(0, 1.4, 0)
+	route_clock -= delta
+	if route_clock <= 0.0 or presence_route.is_empty():
+		route_clock = 0.25
+		presence_route = route_source(voice_point, creature.get_rid())
+	var distance: float = presence_route.get("distance", INF)
+	var audible: bool = level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
+	# Heard straight, it sits on the creature; heard around corners, it drifts to the opening.
+	var target: Vector3 = voice_point if not presence_route.get("echo", false) else presence_route.position
+	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
+	presence.bus = &"ThreatEcho" if presence_route.get("echo", false) else &"Threat"
 	if audible and not presence.playing: presence.play()
 	presence_gain = move_toward(presence_gain, 1.0 if audible else 0.0, delta * 0.6)
 	if presence_gain <= 0 and presence.playing: presence.stop()
 	clock += delta
 	if clock < 0.1: return
 	clock = 0
-	var blocked := occluded(presence.global_position)
-	presence.volume_db = profile.volume_db + linear_to_db(maxf(presence_gain, 0.0001)) - (8.0 if blocked else 0.0) - (16.0 if creature.mode == creature.Mode.WINDUP else 0.0)
-	presence.attenuation_filter_cutoff_hz = 1800.0 if blocked else 5000.0
+	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if creature.mode == creature.Mode.WINDUP else 0.0)
+	presence.attenuation_filter_cutoff_hz = presence_route.get("cutoff", 20000.0)
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
-	for voice in voices: update_voice(voice)
 
 ## Moves the hum emitters to the closest failing lights.
 func update_ambient_sources() -> void:
