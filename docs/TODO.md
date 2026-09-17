@@ -79,6 +79,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Comprobar comodidad del efecto en partidas humanas y a distintas resoluciones.
 - [x] Verificado dentro y fuera: puertas cerradas ocultan, entreabiertas delatan, entrada observada o ruido cercano hacen que la criatura abra y ataque.
 - [ ] Visibilidad del armario entre clientes cuando exista red.
+- [x] Armarios solo en habitaciones (1–2 por módulo, ninguno en pasillos ni salones) y puertas de hotel más estrechas (vano 1,3 m).
 
 
 - [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.

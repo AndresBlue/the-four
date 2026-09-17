@@ -9,7 +9,7 @@ var motion: Tween
 
 func occupied() -> bool:
 	for player in get_tree().get_nodes_in_group("hotel_players") + get_tree().get_nodes_in_group("hotel_actors"):
-		if Vector2(player.global_position.x - doorway.x, player.global_position.z - doorway.z).length() < 1.65:
+		if Vector2(player.global_position.x - doorway.x, player.global_position.z - doorway.z).length() < 1.1:
 			return true
 	return false
 

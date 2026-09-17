@@ -2,7 +2,7 @@
 
 ## Estado vigente (17/09/2026)
 
-Los valores de las secciones siguientes son históricos (16/09/2026). Los vigentes están en [GAME_DESIGN.md](GAME_DESIGN.md): Locust con visión de 120°/70 m, oído por rutas a 2,6 veces el radio, persecución 6,4 m/s, estocada de 0,3 s con alcance de 3,2 m; resistencia 8/s de gasto y 6/s de recuperación tras 3 s; escondites en armarios con puertas y asomarse. Pruebas actuales: `survival_tests.json` 36/36, `spatial_audio.json` 27/27, `hotel_tests.json` 34/34. Las partidas humanas siguen pendientes.
+Los valores de las secciones siguientes son históricos (16/09/2026). Los vigentes están en [GAME_DESIGN.md](GAME_DESIGN.md): Locust con visión de 120°/70 m, oído por rutas a 2,6 veces el radio, persecución 6,4 m/s, estocada de 0,3 s con alcance de 3,2 m; resistencia 8/s de gasto y 6/s de recuperación tras 3 s; escondites en armarios con puertas y asomarse, solo en habitaciones (1–2 por módulo); puertas de 1,3 m. Pruebas actuales: `survival_tests.json` 36/36, `spatial_audio.json` 27/27, `hotel_tests.json` 34/34. Las partidas humanas siguen pendientes.
 
 ## Registro histórico
 

@@ -134,17 +134,18 @@ func build(data: Dictionary) -> void:
 		door.name = "Door_%d_%d" % [a.id, b.id]
 		door.collision_layer = 8
 		door.collision_mask = 4
-		door.position = center + Basis(Vector3.UP, yaw) * Vector3(-1.12, 0, 0)
+		var half := FLOOR.LEAF_WIDTH * 0.5
+		door.position = center + Basis(Vector3.UP, yaw) * Vector3(-half, 0, 0)
 		door.rotation.y = yaw
 		door.closed_rotation = yaw
 		door.doorway = center
 		add_child(door)
 		var leaf := MeshInstance3D.new()
 		var mesh := BoxMesh.new()
-		mesh.size = Vector3(2.24, 2.58, 0.11)
+		mesh.size = Vector3(FLOOR.LEAF_WIDTH, 2.58, 0.07)
 		mesh.material = materials.door
 		leaf.mesh = mesh
-		leaf.position = Vector3(1.12, 1.29, 0)
+		leaf.position = Vector3(half, 1.29, 0)
 		door.add_child(leaf)
 		var shape := CollisionShape3D.new()
 		shape.name = "CollisionShape3D"
@@ -153,10 +154,9 @@ func build(data: Dictionary) -> void:
 		shape.shape = cube
 		shape.position = leaf.position
 		door.add_child(shape)
-		box(door, Vector3(1.96, 1.08, 0.09), Vector3(0.28, 0.06, 0.07), "gold")
-		box(door, Vector3(1.96, 1.08, -0.09), Vector3(0.28, 0.06, 0.07), "gold")
-		text(door, str(100 + int(b.id)), Vector3(1.12, 1.94, 0.065), 0, 28)
-		text(door, str(100 + int(a.id)), Vector3(1.12, 1.94, -0.065), PI, 28)
+		for face in [-1, 1]: box(door, Vector3(FLOOR.LEAF_WIDTH - 0.14, 1.08, face * 0.07), Vector3(0.14, 0.04, 0.05), "gold")
+		text(door, str(100 + int(b.id)), Vector3(half, 1.94, 0.045), 0, 24)
+		text(door, str(100 + int(a.id)), Vector3(half, 1.94, -0.045), PI, 24)
 		if int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
@@ -183,15 +183,15 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		var inner: int = -(direction.x + direction.y)
 		if connected:
 			for side in [-1, 1]:
-				wall_run(boundary, side * (length + 2.4) * 0.25, (length - 2.4) * 0.5, height, inner)
-				box(boundary, Vector3(side * 1.23, 1.35, 0), Vector3(0.12, 2.7, 0.3), "trim")
+				wall_run(boundary, side * (length + FLOOR.PORTAL) * 0.25, (length - FLOOR.PORTAL) * 0.5, height, inner)
+				box(boundary, Vector3(side * (FLOOR.PORTAL * 0.5 + 0.03), 1.35, 0), Vector3(0.06, 2.7, 0.3), "trim")
 				# Door casing proud of both wall faces.
-				for face in [-1, 1]: box(boundary, Vector3(side * 1.26, 1.36, face * 0.165), Vector3(0.14, 2.72, 0.035), "trim")
-			box(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(2.4, height - 2.65, 0.18), "plaster", true)
-			box(boundary, Vector3(0, 2.65, 0), Vector3(2.6, 0.12, 0.3), "trim")
+				for face in [-1, 1]: box(boundary, Vector3(side * (FLOOR.PORTAL * 0.5 + 0.06), 1.36, face * 0.165), Vector3(0.14, 2.72, 0.035), "trim")
+			box(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), "plaster", true)
+			box(boundary, Vector3(0, 2.65, 0), Vector3(FLOOR.PORTAL + 0.2, 0.12, 0.3), "trim")
 			for face in [-1, 1]:
-				box(boundary, Vector3(0, 2.74, face * 0.165), Vector3(2.66, 0.14, 0.035), "trim")
-			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(2.4, 0.1, 0.06), "trim")
+				box(boundary, Vector3(0, 2.74, face * 0.165), Vector3(FLOOR.PORTAL + 0.26, 0.14, 0.035), "trim")
+			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
 		for side in [-1, 1]:
@@ -219,7 +219,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				for z in [3.2, 5.6]:
 					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), "plaster", true)
 				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), "plaster", true)
-	# Four wardrobes to hide in, against the walls, with open approaches and exits.
+	# Wardrobes only in room-like modules (see FLOOR.WARDROBES), against the walls.
 	if room.type != 19:
 		for corner in FLOOR.hiding_positions(room):
 			var hide := preload("res://game/world/interactables/hiding_place.gd").new()

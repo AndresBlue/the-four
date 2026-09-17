@@ -21,7 +21,7 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 - Refugio reversible, salida libre, checkpoint individual y reintento.
 - Forward+, perfil Compatibility, iluminación cálida/fría, moqueta y papel mural procedurales, niebla y filtro analógico regulable.
 - The Locust patrulla, escucha, investiga, persigue y busca; ataque anunciado de 0,7 s con alcance y visión comprobados.
-- Resistencia, agacharse y cuatro escondites accesibles por módulo no protegido; refugio seguro.
+- Resistencia, agacharse y armarios para esconderse en las habitaciones (no en pasillos); refugio seguro.
 - Polvo, cortinas con movimiento reducido opcional, niebla localizada y reflejos en espacios comunes.
 - Ambiente aportado por el usuario en bucle y música en buses separados.
 

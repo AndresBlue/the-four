@@ -2,7 +2,13 @@ extends RefCounted
 
 const VERSION := 3
 const CELL := 12.0
-const PORTAL := 2.4
+## Clear width of a doorway: a hotel door with room for the creature to pass.
+const PORTAL := 1.3
+## Door leaf width, a little narrower than the opening.
+const LEAF_WIDTH := 1.2
+## Wardrobes per module type: bedrooms and the cloakroom get two, a few
+## private rooms get one, corridors, halls and public spaces none.
+const WARDROBES := {1: 2, 2: 2, 3: 2, 16: 2, 13: 1, 14: 1, 15: 1, 8: 1}
 const TYPES := ["recepcion", "habitacion_doble", "habitacion_simple", "suite", "bano", "salon", "comedor", "lavanderia", "almacen", "mantenimiento", "vestibulo", "pasillo", "galeria", "sala_lectura", "sala_tv", "oficina", "guardarropa", "sala_plantas", "salon_vacio", "refugio"]
 const NAMES := ["Recepción", "Habitación doble", "Habitación", "Suite", "Baños", "Salón", "Comedor", "Lavandería", "Almacén", "Mantenimiento", "Vestíbulo", "Pasillo", "Galería", "Sala de lectura", "Sala de televisión", "Oficina", "Guardarropa", "Jardín interior", "Salón vacío", "Refugio"]
 # Each corner is a reserved furnishing socket; the central cross remains clear.
@@ -35,19 +41,28 @@ static func position_of(room: Dictionary) -> Vector3:
 static func size_of(room: Dictionary) -> Vector2:
 	return Vector2(room.get("span_x", CELL), room.get("span_z", CELL))
 
+static func hiding_count(room: Dictionary) -> int:
+	if int(room.get("hall", -1)) >= 0: return 0
+	return WARDROBES.get(int(room.type), 0)
+
+## Wardrobe spots against the walls; with two, they go on opposite walls.
 static func hiding_positions(room: Dictionary) -> Array[Vector3]:
 	var span := size_of(room) * 0.5 - Vector2.ONE * 0.8
 	var open: Array = room.get("open_sides", [])
-	var result: Array[Vector3] = []
+	var candidates: Array[Vector3] = []
 	for wall in ["west", "east", "north", "south"]:
 		if open.has(wall): continue
 		for offset in [-1.8, 1.8]:
-			if result.size() == 4: return result
 			match wall:
-				"west": result.append(Vector3(-span.x, 0, offset))
-				"east": result.append(Vector3(span.x, 0, offset))
-				"north": result.append(Vector3(offset, 0, -span.y))
-				"south": result.append(Vector3(offset, 0, span.y))
+				"west": candidates.append(Vector3(-span.x, 0, offset))
+				"east": candidates.append(Vector3(span.x, 0, offset))
+				"north": candidates.append(Vector3(offset, 0, -span.y))
+				"south": candidates.append(Vector3(offset, 0, span.y))
+	var result: Array[Vector3] = []
+	var count := mini(hiding_count(room), candidates.size())
+	if count >= 1: result.append(candidates[0])
+	# Candidates come in pairs per wall (west, east, ...): index 2 is the opposite wall.
+	if count >= 2: result.append(candidates[2] if candidates.size() > 2 else candidates[1])
 	return result
 
 static func hiding_yaw(spot: Vector3) -> float:
