@@ -102,7 +102,8 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Tele de 80 cm con The Locust en 3D golpeando el cristal (grietas en el punto de impacto), estática y parpadeo más intensos, crujidos de cama, pasos marcados, cámara con muelles y balanceo, giro desesperado al cerrar, salida hacia la recepción con luz roja.
 - [x] Aspecto de The Locust según la imagen de referencia (cuerpo negro, máscara pálida), en juego y escena.
 - [ ] Revisar en partida el ritmo y la cámara de la escena de entrada.
-- [x] Portada: habitación normal detrás del menú con The Locust asomándose por la puerta abierta.
+- [x] Portada: habitación normal detrás del menú con The Locust asomándose por la rendija de la puerta entreabierta.
+- [x] Menú Multijugador (en desarrollo) con Personaje dentro; Personaje sale del menú principal.
 - [x] Audio binaural de The Locust (retardo y nivel por oído) y filtro para sonidos por detrás.
 - [ ] Escuchar con auriculares la dirección de The Locust en partida (esquinas, dos puertas).
 - [x] Texto pequeño «E  para saltar cinemática» arriba a la derecha.

@@ -37,9 +37,9 @@ Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa 
 
 ## Menú y ajustes
 
-Menú principal: Jugar, Continuar, Ajustes, Créditos y Salir. Continuar solo se habilita con un checkpoint compatible. Preferencias locales separadas del guardado de campaña.
+Menú principal: Nueva partida, Continuar, Multijugador, Archivo, Ajustes, Créditos y Salir. Multijugador está en desarrollo: por ahora solo contiene Personaje (la elección de aspecto, pensada para el cooperativo) y Volver. Continuar solo se habilita con un checkpoint compatible. Preferencias locales separadas del guardado de campaña.
 
-Portada: detrás del menú se ve una habitación de hotel normal, iluminada por su lámpara, con una cámara en mano que deriva despacio. Al fondo, a la derecha y fuera del centro de la imagen, la puerta al pasillo está abierta y The Locust se asoma desde detrás del marco: solo la cara pálida, ladeada, y un brazo largo colgando en la abertura, con algún tic de cabeza. Es pequeño y oscuro a propósito, para que sorprenda a quien lo descubra.
+Portada: detrás del menú se ve una habitación de hotel normal, iluminada por su lámpara, con una cámara en mano que deriva despacio. Al fondo, a la derecha y fuera del centro de la imagen, la puerta al pasillo está entreabierta (bisagra a la derecha) y The Locust se asoma desde detrás del marco izquierdo: por la rendija solo se ve la cara pálida, ladeada, con algún tic de cabeza. Es pequeño y oscuro a propósito, para que sorprenda a quien lo descubra.
 
 - Gráficos: ventana/pantalla completa, resolución, escala de render, calidad baja/media/alta, sombras, límite de FPS y sincronización vertical.
 - Imagen: intensidad VHS, grano, aberración cromática, movimiento de cámara y efectos reducidos. Sin desenfoque de movimiento.

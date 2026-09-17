@@ -29,6 +29,10 @@ func run() -> void:
 	root.add_child(scene)
 	await process_frame
 	check("Menú principal y cursor libre", scene.ui.buttons.has("new") and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)
+	check("El menú principal lleva Multijugador y no Personaje", scene.ui.buttons.has("multiplayer") and not scene.ui.buttons.has("characters"))
+	scene.on_action("multiplayer")
+	check("Personaje está dentro de Multijugador", scene.ui.screen == "multiplayer" and scene.ui.buttons.has("characters"))
+	scene.on_action("main")
 	await scene.start_floor(81)
 	await physics_frame
 	check("Se inicia un hotel grande y libre de objetivos", scene.manifest.rooms.size() >= 100 and scene.session.state == scene.session.State.PLAYING)

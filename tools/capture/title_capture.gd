@@ -15,6 +15,11 @@ func run() -> void:
 		for i in 20: await process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://evidence/title_%d.png" % int(moment))
+	level.on_action("multiplayer")
+	for i in 30: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://evidence/title_multiplayer.png")
+	level.on_action("main")
 	# Close-up of the gap without the menu.
 	level.ui.overlay.hide()
 	title.camera.fov = 20.0

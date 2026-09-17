@@ -1,7 +1,7 @@
 extends Node3D
 ## Background of the main menu: an ordinary, lamp-lit hotel room seen from a
 ## slowly drifting handheld camera. At the back, off to the side of the
-## picture, the door to the corridor stands open and The Locust leans into the
+## picture, the door to the corridor stands ajar and The Locust leans into the
 ## gap from behind the frame, long arm hanging, head cocked, watching. It
 ## is dark and small in the shot, easy to miss until it is noticed.
 ## Built far from the hotel plan; runs while the tree is paused.
@@ -14,8 +14,12 @@ const HEIGHT := 2.9
 ## Room x -3.2..3.2, z -3.6..3.6; the corridor runs behind the back wall,
 ## x -3.2..6.0, z -6.0..-3.6. The doorway is in the back wall, right of centre.
 const DOORWAY := Vector3(1.7, 0.0, -3.6)
-## Where it stands in the corridor, hidden by the wall right of the doorway.
-const LOCUST_AT := Vector3(2.8, 0.0, -3.95)
+## Where it stands in the corridor, hidden by the wall left of the doorway.
+## The door is hinged on the right and only ajar: from the camera the gap
+## between its edge and the left jamb shows just the face.
+const LOCUST_AT := Vector3(0.99, 0.0, -3.95)
+## How far the door stands open, in radians.
+const AJAR := 0.44
 const CAMERA_AT := Vector3(-2.3, 1.5, 1.5)
 const LOOK_AT := Vector3(-1.0, 1.35, -3.6)
 var builder: Node3D
@@ -68,12 +72,11 @@ func build_room() -> void:
 	builder.set_wall(Vector2(-3.2, -6.0), Vector2(6.0, -6.0), [4.2])
 	# The door stands wide open into the room, hinged on the left and back
 	# against the wall, so nothing hides the gap.
-	var leaf: Node3D = builder.set_door(DOORWAY, "214", -PI / 2)
-	# Hinged like a real door: on the jamb's inner edge at the room face, just
-	# proud of the casing, so the open leaf lies flat beside the frame instead
-	# of turning inside the wall.
-	leaf.position = DOORWAY + Vector3(-FLOOR.PORTAL * 0.5, 0.0, 0.225)
-	leaf.rotation.y = -PI / 2 - PI + 0.03
+	var leaf: Node3D = builder.set_door(DOORWAY, "214", PI / 2)
+	# Hinged like a real door, on the right jamb at the room face, and only
+	# ajar into the room: just enough of a gap to be seen through.
+	leaf.position = DOORWAY + Vector3(FLOOR.PORTAL * 0.5, 0.0, 0.225)
+	leaf.rotation.y = PI / 2 + AJAR
 	builder.set_door(Vector3(1.0, 0.0, -6.0), "", PI / 2)
 	# A made bed against the back wall, with a nightstand and a floor lamp.
 	var bed := MeshInstance3D.new()
@@ -146,20 +149,21 @@ func pose_locust(delta: float) -> void:
 	twitch = maxf(0.0, twitch - delta * 5.0)
 	var lean := 0.36 + sin(clock * 0.21) * 0.04 + sin(clock * 0.077) * 0.03
 	poser.reset()
-	poser.turn("Spine", Vector3(0, 0, 1), lean)
-	poser.turn("Spine2", Vector3(0, 0, 1), lean)
+	# Leans right (+X) from behind the left jamb into the gap.
+	poser.turn("Spine", Vector3(0, 0, 1), -lean)
+	poser.turn("Spine2", Vector3(0, 0, 1), -lean)
 	poser.turn("Spine2", Vector3(1, 0, 0), 0.15)
-	poser.turn("Spine4", Vector3(0, 0, 1), lean * 0.5)
+	poser.turn("Spine4", Vector3(0, 0, 1), -lean * 0.5)
 	# Looks out of the gap towards the camera, head cocked hard.
 	poser.turn("Neck1", Vector3(0, 1, 0), -0.35)
-	poser.turn("Neck1", Vector3(0, 0, 1), -lean * 0.4)
-	poser.turn("Head1", Vector3(0, 0, 1), -0.5 + twitch * twitch_sign * 0.14 + sin(clock * 0.6) * 0.02)
+	poser.turn("Neck1", Vector3(0, 0, 1), lean * 0.4)
+	poser.turn("Head1", Vector3(0, 0, 1), 0.5 + twitch * twitch_sign * 0.14 + sin(clock * 0.6) * 0.02)
 	poser.turn("Head1", Vector3(1, 0, 0), 0.15)
 	# The long arms hang straight down, the near one showing in the gap.
-	poser.aim("R_UpperArm", "R_Forearm", Vector3(-0.08, -1.0, 0.12))
-	poser.aim("R_Forearm", "R_Hand", Vector3(0.02, -1.0, 0.2))
-	poser.aim("L_UpperArm", "L_Forearm", Vector3(0.15, -1.0, 0.0))
-	poser.aim("L_Forearm", "L_Hand", Vector3(0.05, -1.0, 0.1))
+	poser.aim("L_UpperArm", "L_Forearm", Vector3(0.08, -1.0, 0.12))
+	poser.aim("L_Forearm", "L_Hand", Vector3(-0.02, -1.0, 0.2))
+	poser.aim("R_UpperArm", "R_Forearm", Vector3(-0.15, -1.0, 0.0))
+	poser.aim("R_Forearm", "R_Hand", Vector3(-0.05, -1.0, 0.1))
 
 ## Menu on: this camera takes over. Off: hidden and idle.
 func set_active(active: bool) -> void:

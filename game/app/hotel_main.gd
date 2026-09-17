@@ -118,6 +118,7 @@ func on_action(action: String) -> void:
 		"settings": ui.show_settings("pause" if session.state == session.State.PAUSED else "main")
 		"credits": ui.menu("credits")
 		"characters": ui.show_characters()
+		"multiplayer": ui.menu("multiplayer")
 		"archive": ui.menu("archive")
 		"quit": get_tree().quit()
 
@@ -491,7 +492,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif ui.settings_open:
 			if not settings.previous_display.is_empty(): settings.revert_display()
 			on_action(ui.return_action)
-		elif ui.screen in ["credits", "characters"] and session.state == session.State.MENU: on_action("main")
+		elif ui.screen == "characters" and session.state == session.State.MENU: on_action("multiplayer")
+		elif ui.screen in ["credits", "multiplayer"] and session.state == session.State.MENU: on_action("main")
 		elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
 		else: session.pause()
 	if event.physical_keycode == KEY_F9 and OS.is_debug_build(): session.capture(1)

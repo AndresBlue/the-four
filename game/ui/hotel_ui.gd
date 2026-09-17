@@ -271,7 +271,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 40)
 			action("Nueva partida", "new")
 			action("Continuar", "continue", not can_continue)
-			action("Personaje", "characters")
+			action("Multijugador", "multiplayer")
 			action("Archivo", "archive")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
@@ -334,6 +334,16 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			if not shown: paragraph(side, "Los documentos que leas en el hotel se guardan aquí, también entre partidas.", 18, 560)
 			spacer(column, 20)
 			action("Volver", "main")
+		"multiplayer":
+			# Work in progress: co-op over LAN or IP is not built yet.
+			set_osd("MENU ▸ MULTIJUGADOR", "", "", "")
+			title(column, "MULTIJUGADOR", 64)
+			label(column, "EN DESARROLLO", 20).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 24)
+			action("Personaje", "characters")
+			spacer(column, 12)
+			action("Volver", "main")
+			side.visible = false
 		"credits":
 			set_osd("▶ PLAY", "", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
 			title(column, "CRÉDITOS", 64)
@@ -561,7 +571,7 @@ func show_characters() -> void:
 	clear()
 	screen = "characters"
 	overlay.show()
-	set_osd("MENU ▸ PERSONAJE", "", "", "")
+	set_osd("MULTIJUGADOR ▸ PERSONAJE", "", "", "")
 	title(column, "PERSONAJE", 64)
 	spacer(column, 24)
 	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")
@@ -574,7 +584,7 @@ func show_characters() -> void:
 			chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[index].to_upper()
 		)
 	spacer(column, 18)
-	action("Volver", "main")
+	action("Volver", "multiplayer")
 	var container := SubViewportContainer.new()
 	container.custom_minimum_size = Vector2(460, 500)
 	container.stretch = true
