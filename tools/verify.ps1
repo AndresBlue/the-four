@@ -7,7 +7,7 @@ if (-not $GodotPath) {
 if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) { throw 'Configura GODOT_PATH o pasa -GodotPath.' }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
 # Sequential: audio capture needs real time and should not compete with map batches.
-$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/hotel_audio_test','hotel/spatial_audio_test','legacy/smoke_test')
+$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/intro_test','hotel/hotel_audio_test','hotel/spatial_audio_test','legacy/smoke_test')
 $results = @()
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
@@ -15,7 +15,7 @@ foreach ($test in $tests) {
     $arguments = @('--headless','--path',$projectPath,'--script',('res://tests/' + $test + '.gd'),'--log-file',$log)
     if ($name -notin @('hotel_audio_test','spatial_audio_test')) { $arguments += @('--fixed-fps','60') }
     $arguments += @('--','--automation','--test-profile','--silent')
-    if ($name -eq 'hotel_test') { $arguments += '--no-enemy' }
+    if ($name -in @('hotel_test','intro_test')) { $arguments += '--no-enemy' }
     $quotedArguments = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $process = Start-Process -FilePath $GodotPath -ArgumentList $quotedArguments -WindowStyle Hidden -PassThru
     if (-not $process.WaitForExit(180000)) {

@@ -16,3 +16,6 @@ exports/
 /sfx/
 
 /models/
+
+# Downloaded model archives; the extracted, resized working copies are tracked.
+assets/props/**/*.zip

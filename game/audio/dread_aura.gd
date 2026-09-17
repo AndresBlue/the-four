@@ -12,7 +12,7 @@ const HEART_DUB := "res://assets/audio/sfx/heartbeat/2.ogg"
 const TIMING := preload("res://game/audio/cue_timing.gd")
 const ACOUSTIC_MASK := 512
 ## Route distance (metres) at which the aura begins, and where it is at full strength.
-@export var start_distance := 24.0
+@export var start_distance := 30.0
 @export var full_distance := 4.0
 ## How far ahead along the route the directional cues sit, when far and when close.
 @export var cue_distance_far := 7.5
@@ -131,7 +131,7 @@ func _physics_process(delta: float) -> void:
 		target = pow(clampf((start_distance - route_distance) / (start_distance - full_distance), 0.0, 1.0), 1.3)
 		# Its state sharpens the dread: hunting reads worse than wandering.
 		match creature.mode:
-			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER: target = maxf(target + 0.25, 0.7)
+			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.ALERT: target = maxf(target + 0.25, 0.7)
 			creature.Mode.INVESTIGATE, creature.Mode.SEARCH: target += 0.08
 		target = clampf(target, 0.0, 1.0)
 	var previous := intensity

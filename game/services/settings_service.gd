@@ -128,7 +128,8 @@ func apply() -> void:
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if values.vsync else DisplayServer.VSYNC_DISABLED)
 	get_viewport().scaling_3d_scale = values.scale
-	for pair in [["Master", "master"], ["Ambience", "ambience"], ["Music", "music"], ["Effects", "effects"], ["Threat", "threat"]]:
+	# The player's own footsteps have their own drier bus, under the effects slider.
+	for pair in [["Master", "master"], ["Ambience", "ambience"], ["Music", "music"], ["Effects", "effects"], ["Threat", "threat"], ["Steps", "effects"]]:
 		var index := AudioServer.get_bus_index(pair[0])
 		if index < 0:
 			AudioServer.add_bus()

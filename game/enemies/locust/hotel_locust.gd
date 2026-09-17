@@ -1,15 +1,15 @@
 extends CharacterBody3D
 @export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER }
+enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT }
 ## Perception and pacing. Distances in metres, speeds in m/s.
 ## It perceives the player from much farther than the player can sense it:
 ## anything in its wide view with a clear line is noticed, however far.
 const SIGHT_RANGE := 70.0
 const SIGHT_HALF_ANGLE := 60.0
 ## Suspicion gained per second with the player in view, near and far.
-const NOTICE_NEAR := 4.5
-const NOTICE_FAR := 1.4
+const NOTICE_NEAR := 3.2
+const NOTICE_FAR := 0.9
 const NOTICE_DECAY := 0.12
 ## Suspicion at which it stops wandering and goes to look.
 const SUSPICION := 0.2
@@ -21,6 +21,12 @@ const LOSE_AFTER := 7.0
 const CHASE_SPEED := 6.4
 ## Speed while heading to the last place it saw or heard the player.
 const TRACK_SPEED := 5.2
+## On first spotting the player it freezes, turns and shrieks before it runs:
+## the moment the player hears it is the moment to break line of sight.
+const ALERT_TIME := 1.2
+## A chase starts from this speed and builds up at CHASE_ACCELERATION.
+const CHASE_START_SPEED := 2.5
+const CHASE_ACCELERATION := 3.2
 const TORCH_NOTICE_RANGE := 45.0
 ## Strike: starts within ATTACK_RANGE, lunges for WINDUP_TIME, kills within STRIKE_REACH.
 const ATTACK_RANGE := 2.4
@@ -202,9 +208,10 @@ func set_mode(next: Mode) -> void:
 	repath = 0
 	pause_time = 0
 	if next == Mode.CHASE and previous != Mode.CHASE:
-		# A startled lunge, then it builds up to full speed.
-		speed = maxf(speed, 3.5)
-		grunt_clock = 0.0
+		# It sets off from a stride and builds up to full speed.
+		speed = maxf(speed, CHASE_START_SPEED)
+		grunt_clock = rng.randf_range(1.5, 3.0) if previous == Mode.ALERT else 0.0
+	if next == Mode.ALERT: grunt()
 	if next == Mode.WINDUP: signal_player.play()
 
 func choose_patrol() -> void:
@@ -257,8 +264,8 @@ func _physics_process(delta: float) -> void:
 		detection = maxf(0.0, detection - delta * NOTICE_DECAY)
 		lost_time += delta
 	# Only a player it can currently see starts a chase; memory alone does not.
-	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER]:
-		set_mode(Mode.CHASE)
+	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT]:
+		set_mode(Mode.ALERT)
 	elif visible_player and detection >= SUSPICION and mode in [Mode.PATROL, Mode.SEARCH]:
 		# Something moved: stop wandering and go look, before committing.
 		set_mode(Mode.INVESTIGATE)
@@ -324,11 +331,19 @@ func _physics_process(delta: float) -> void:
 				set_mode(Mode.RECOVER)
 		Mode.RECOVER:
 			if state_time >= RECOVER_TIME: set_mode(Mode.CHASE if visible_player else Mode.SEARCH)
+		Mode.ALERT:
+			# Even if the player ducks out of view it heads for where it saw them.
+			if state_time >= ALERT_TIME: set_mode(Mode.CHASE)
 	if grunt_left > 0.0:
 		grunt_left -= delta
 		if grunt_left <= 0.0: voice.stop()
 	if mode == Mode.WINDUP:
 		lunge(delta)
+	elif mode == Mode.ALERT:
+		speed = move_toward(speed, 0.0, 12.0 * delta)
+		velocity = Vector3(-global_basis.z.x * speed, -2.0, -global_basis.z.z * speed)
+		move_and_slide()
+		face_toward(last_known, delta, 5.0)
 	elif mode == Mode.RECOVER:
 		velocity = Vector3.ZERO
 		speed = 0.0
@@ -356,7 +371,7 @@ func face_toward(point: Vector3, delta: float, rate: float) -> void:
 func update_visual(delta: float) -> void:
 	if not is_instance_valid(visual) or not "move_velocity" in visual: return
 	visual.move_velocity = velocity
-	visual.aggression = move_toward(visual.aggression, 1.0 if mode == Mode.CHASE else 0.0, delta * 2.5)
+	visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT] else 0.0, delta * 2.5)
 	visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 	# Stoops under door lintels; it is taller than the doorways.
 	var near_door := false
@@ -367,7 +382,7 @@ func update_visual(delta: float) -> void:
 	visual.duck = move_toward(visual.duck, 1.0 if near_door else 0.0, delta * 3.0)
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 	var player = level.player
-	if mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER] or detection > 0.2 or light_exposure > 0.2:
+	if mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT] or detection > 0.2 or light_exposure > 0.2:
 		visual.look_point = player.camera.global_position if lost_time < 0.5 else last_known + Vector3.UP * 1.5
 	elif mode in [Mode.SEARCH, Mode.PATROL] and pause_time > 0:
 		# Scans the room while standing still.
@@ -414,7 +429,7 @@ func move_on_path(delta: float) -> void:
 	# Sharp turns cost speed: it has to swing its stilt legs around.
 	if direction.length() > 0.1:
 		wanted *= lerpf(0.35, 1.0, clampf((-global_basis.z).dot(direction) * 0.5 + 0.5, 0.0, 1.0))
-	var acceleration := 7.0 if mode == Mode.CHASE else 3.5
+	var acceleration := CHASE_ACCELERATION if mode == Mode.CHASE else 3.5
 	speed = move_toward(speed, wanted, (acceleration if wanted > speed else 9.0) * delta)
 	var heading := direction if direction.length() > 0.1 else -global_basis.z
 	velocity.x = heading.x * speed

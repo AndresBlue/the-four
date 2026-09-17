@@ -37,7 +37,8 @@ spot_angle = 32.0
 spot_angle_attenuation = 0.8
 
 [node name="Footsteps" type="AudioStreamPlayer3D" parent="."]
-bus = &"Effects"
+bus = &"Steps"
+max_db = 12.0
 max_distance = 24.0
 area_mask = 512
 

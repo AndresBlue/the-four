@@ -1,6 +1,7 @@
 extends Node
 signal changed
-enum State { MENU, LOADING, PLAYING, PAUSED, TRANSITION, WON, FAILED }
+## CUTSCENE: the opening scene of a new game, before its floor is built.
+enum State { MENU, LOADING, PLAYING, PAUSED, TRANSITION, WON, FAILED, CUTSCENE }
 enum Life { EXPLORING, REFUGE, DEAD }
 const GENERATOR_VERSION := preload("res://game/world/generation/floor_definition.gd").VERSION
 var state := State.MENU

@@ -95,14 +95,17 @@ func update_space(delta: float) -> void:
 		if not room.is_empty():
 			if room.hall >= 0: wanted = {"room_size": 0.86, "wet": 0.24, "damping": 0.42}
 			elif room.type in FLOOR.HARD_FLOORS: wanted = {"room_size": 0.42, "wet": 0.2, "damping": 0.25}
-	for bus_name in ["Effects", "Threat"]:
+	for bus_name in ["Effects", "Threat", "Steps"]:
 		var bus := AudioServer.get_bus_index(bus_name)
+		if bus < 0: continue
 		for index in AudioServer.get_bus_effect_count(bus):
 			var reverb = AudioServer.get_bus_effect(bus, index)
 			if not reverb is AudioEffectReverb: continue
 			var extra := 0.04 if bus_name == "Threat" else 0.0
-			reverb.room_size = move_toward(reverb.room_size, wanted.room_size, delta * 0.8)
-			reverb.wet = move_toward(reverb.wet, wanted.wet + extra, delta * 0.3)
+			# Your own steps only take a trace of the room, never a hall's echo.
+			var scale := 0.3 if bus_name == "Steps" else 1.0
+			reverb.room_size = move_toward(reverb.room_size, minf(wanted.room_size, 0.45) if bus_name == "Steps" else wanted.room_size, delta * 0.8)
+			reverb.wet = move_toward(reverb.wet, wanted.wet * scale + extra, delta * 0.3)
 			reverb.damping = move_toward(reverb.damping, wanted.damping, delta * 0.8)
 
 static func loop_stream(source: AudioStream) -> AudioStream:

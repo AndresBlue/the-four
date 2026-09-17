@@ -95,6 +95,12 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Asomarse del armario por cada puerta según hacia dónde se mira; solo la primera apertura cruje.
 - [x] Zumbido audible en todos los fluorescentes de servicio.
 - [ ] Comprobar en partida el nivel de los pasos grabados y del zumbido.
+- [x] Pasos más bajos y sin eco de salón (bus `Steps`).
+- [x] Locust: alerta de 1,2 s y arranque progresivo antes de perseguir; sospecha más lenta.
+- [ ] Balance de la alerta de Locust en partidas humanas.
+- [x] Escena de entrada: dormitorio, tele con Locust golpeando el cristal, huida por el pasillo; saltable.
+- [ ] Imagen de Locust para la tele en `assets/intro/locust_tv.png` (hay una figura dibujada provisional).
+- [ ] Integrar sofá, lámpara de pared y plantas descargados en el hotel.
 - [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
 - [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).
 - [x] Exploradora animada (esqueleto del cuerpo) y señal visual de la estocada sin texto.

@@ -8,6 +8,11 @@ const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
+const INTRO := preload("res://game/intro/intro_sequence.gd")
+## The opening scene is built far from the hotel so the two never overlap.
+const INTRO_ORIGIN := Vector3(600, 0, 0)
+## Holding interact this long skips the opening scene.
+const SKIP_HOLD := 0.8
 var settings
 var session
 var hotel
@@ -31,6 +36,9 @@ var was_held := false
 var slow_used := false
 var save_error := ""
 var physical_errors: Array[String] = []
+var intro: Node3D
+var intro_seed := 0
+var skip_time := 0.0
 
 func _enter_tree() -> void:
 	world_audio = $WorldAudio
@@ -86,7 +94,7 @@ func _ready() -> void:
 
 func on_action(action: String) -> void:
 	match action:
-		"new": start_floor(randi_range(0, 2147483647))
+		"new": start_intro(randi_range(0, 2147483647))
 		"continue":
 			var data: Dictionary = session.checkpoint()
 			if not data.is_empty(): start_floor(int(data.seed), data.get("fallback", false) == true)
@@ -99,6 +107,34 @@ func on_action(action: String) -> void:
 		"credits": ui.menu("credits")
 		"characters": ui.show_characters()
 		"quit": get_tree().quit()
+
+## A new game opens with the bedroom scene; its floor is built when it ends.
+func start_intro(seed_value: int) -> void:
+	if session.state in [session.State.LOADING, session.State.CUTSCENE]: return
+	intro_seed = seed_value
+	skip_time = 0.0
+	intro = INTRO.new()
+	intro.name = "Intro"
+	intro.position = INTRO_ORIGIN
+	add_child(intro)
+	intro.finished.connect(finish_intro, CONNECT_ONE_SHOT)
+	if is_instance_valid(hotel): hotel.visible = false
+	player.visible = false
+	# Only the television lights the room: no hotel ambient light.
+	environment.ambient_light_energy = 0.02
+	session.set_state(session.State.CUTSCENE)
+	ui.hint.text = "MANTÉN [%s] PARA SALTAR" % settings.key_name("interact")
+	get_tree().create_timer(5.0).timeout.connect(func(): if session.state == session.State.CUTSCENE: ui.hint.text = "")
+
+func finish_intro() -> void:
+	if not is_instance_valid(intro): return
+	intro.queue_free()
+	intro = null
+	ui.hint.text = ""
+	environment.ambient_light_energy = ambient_energy
+	player.visible = true
+	player.camera.current = true
+	start_floor(intro_seed)
 
 func start_floor(seed_value: int, force_fallback := false) -> void:
 	if session.state == session.State.LOADING: return
@@ -194,9 +230,12 @@ func on_state() -> void:
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
-	if playing:
+	if playing or session.state == session.State.CUTSCENE:
 		ui.overlay.hide()
 		ui.settings_open = false
+		if not playing:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			get_tree().paused = false
 		return
 	match session.state:
 		session.State.MENU:
@@ -287,6 +326,10 @@ func door_behind():
 	return best
 
 func _physics_process(delta: float) -> void:
+	if is_instance_valid(session) and session.state == session.State.CUTSCENE:
+		skip_time = skip_time + delta if Input.is_action_pressed("interact") else 0.0
+		if skip_time >= SKIP_HOLD: finish_intro()
+		return
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	var inside := in_refuge()
 	session.set_refuge(1, inside)
@@ -365,7 +408,8 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo: return
 	if event.physical_keycode == KEY_ESCAPE:
-		if ui.settings_open:
+		if session.state == session.State.CUTSCENE: finish_intro()
+		elif ui.settings_open:
 			if not settings.previous_display.is_empty(): settings.revert_display()
 			on_action(ui.return_action)
 		elif ui.screen in ["credits", "characters"] and session.state == session.State.MENU: on_action("main")
@@ -384,8 +428,10 @@ func _exit_tree() -> void:
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
+var ambient_energy := 0.16
 func build_environment() -> void:
 	environment = $Presentation/WorldEnvironment.environment
+	ambient_energy = environment.ambient_light_energy
 	post_material = $Presentation/Analog/Screen.material
 	camcorder = $Presentation/Camcorder
 
