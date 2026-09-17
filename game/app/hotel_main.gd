@@ -99,6 +99,7 @@ func _ready() -> void:
 	player.hiding_changed.connect(world_audio.hide_cue)
 	player.hiding_changed.connect(on_hide_changed)
 	ui.action_requested.connect(on_action)
+	ui.sheet.chunk_drawn.connect(func(op_id, kind, points): match_net.sheet_local(op_id, kind, points))
 	session.changed.connect(on_state)
 	net.closed.connect(on_net_closed)
 	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else "join"))
@@ -197,6 +198,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	session.online = false
 	session.start(seed_value, manifest.get("fallback", false))
 	save_error = session.message
+	ui.sheet.clear()
 	populate_floor(true)
 
 ## Generates, builds and validates a floor. False (back in the menu) when it
@@ -321,6 +323,8 @@ func begin_online_play(config: Dictionary) -> void:
 	session.online = true
 	session.start(int(config.seed), manifest.get("fallback", false), config.survivors)
 	save_error = ""
+	ui.sheet.clear()
+	ui.sheet.seat = net.local_seat
 	populate_floor(net.is_host and int(config.mode) == NET.Mode.COOP)
 	if int(config.mode) == NET.Mode.VERSUS:
 		locust.set_control("player" if match_net.local_is_locust() else "puppet")
@@ -374,12 +378,26 @@ func pacing_anchor() -> Vector3:
 		if survivor_active(body): return body.global_position
 	return player.global_position
 
-## Stubs until the shared sheet exists.
 func sheet_snapshot() -> Array:
-	return []
+	return ui.sheet.snapshot()
 
-func restore_sheet(_ops: Array) -> void:
-	pass
+func restore_sheet(ops: Array) -> void:
+	ui.sheet.restore(ops)
+
+## Tab opens and closes the sheet. Dead players may look but not draw; The
+## Locust never sees it.
+func toggle_sheet() -> void:
+	if ui.sheet.visible:
+		ui.sheet.close()
+		player.reading = false
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		return
+	if match_net.local_is_locust() or is_instance_valid(reading_document): return
+	ui.sheet.seat = player.slot
+	ui.sheet.open(local_alive(), settings.key_name("sheet"))
+	player.reading = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if world_audio.enabled: paper_sound.play()
 
 ## This floor's documents, lying on furniture (freed with the hotel).
 func place_documents() -> void:
@@ -409,7 +427,10 @@ func on_state() -> void:
 	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]: world_audio.reset()
 	player.active = playing and not online_menu and local_alive() and not match_net.local_is_locust()
 	if not playing: player.velocity = Vector3.ZERO
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu else Input.MOUSE_MODE_VISIBLE
+	if not playing and ui.sheet.visible:
+		ui.sheet.close()
+		player.reading = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible else Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	press_time = 0
 	pressed_door = null
@@ -577,6 +598,14 @@ func _physics_process(delta: float) -> void:
 	var inside := in_refuge()
 	if not net.is_client():
 		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+	if Input.is_action_just_pressed("sheet") and not online_menu: toggle_sheet()
+	if ui.sheet.visible:
+		# Looking at the sheet: the character stands still, the world goes on.
+		exit_held = false
+		camcorder.focus("")
+		if net.is_host or not match_net.in_match(): host_exit(delta)
+		if not local_alive(): watch_teammates()
+		return
 	if not local_alive():
 		watch_teammates()
 		return
@@ -696,6 +725,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		match_net.next_watch()
 		return
 	if not event is InputEventKey or not event.pressed or event.echo: return
+	if event.physical_keycode == KEY_ESCAPE and ui.sheet.visible:
+		toggle_sheet()
+		return
 	if event.physical_keycode == KEY_ESCAPE and match_net.in_match() and session.state == session.State.PLAYING and not ui.settings_open:
 		if online_menu: close_online_menu()
 		else: open_online_menu()

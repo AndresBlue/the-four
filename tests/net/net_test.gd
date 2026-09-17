@@ -89,9 +89,12 @@ func host() -> void:
 	check("Una puerta cambia a petición de un invitado", await wait_for(func(): return door.opened != was_open and not door.moving, 25.0))
 	var hide = level.hotel.hides[0]
 	check("Un invitado ocupa un armario a través del anfitrión", await wait_for(func(): return hide.occupant == match_net.bodies[alpha], 25.0))
+	check("Un trazo de un invitado entra en la hoja del anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has("%d:1" % alpha), 15.0))
 	# Bravo is struck down: with three survivors the floor goes on (two needed).
 	await pause_for(1.0)
 	check("Una muerte no termina el piso de tres", level.session.capture(bravo) and playing())
+	await pause_for(3.0)
+	check("Un muerto no puede dibujar en la hoja", not level.ui.sheet.log_index.has("%d:1" % bravo))
 	check("El armario queda libre al salir el invitado", await wait_for(func(): return not is_instance_valid(hide.occupant), 30.0))
 	level.player.global_position = refuge_point(Vector3(0.8, 0, 0))
 	check("El superviviente invitado llega al refugio", await wait_for(func(): return level.point_in_refuge(match_net.bodies[alpha].global_position), 30.0))
@@ -143,6 +146,9 @@ func alpha_part() -> void:
 	await pause_for(0.8)
 	match_net.use_hide(hide, true)
 	check("El anfitrión le deja entrar al armario", await wait_for(func(): return level.player.hidden, 15.0))
+	var mine := "%d:1" % level.net.local_seat
+	match_net.sheet_local(mine, 0, PackedVector2Array([Vector2(0.2, 0.2), Vector2(0.6, 0.4)]))
+	check("Su trazo vuelve confirmado por el anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has(mine), 15.0))
 	var bravo := seat_named("Bravo")
 	check("Se entera de la muerte de un compañero", await wait_for(func(): return level.session.participants.get(bravo) == level.session.Life.DEAD, 25.0))
 	await pause_for(0.5)
@@ -151,12 +157,15 @@ func alpha_part() -> void:
 	level.player.global_position = refuge_point(Vector3(-0.8, 0, 0))
 	check("Ve terminar el piso con la salida", await wait_for(func(): return level.session.state == level.session.State.WON, 60.0))
 	check("Segundo piso", await wait_for(playing, 90.0))
+	check("La hoja empieza vacía en el piso nuevo", level.ui.sheet.log.is_empty())
+	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.3, 0.3), Vector2(0.7, 0.7)]))
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))
 	check("Se entera de que el anfitrión cerró la sala", await wait_for(func(): return not level.net.active() and level.ui.screen == "multiplayer", 30.0))
 
 func bravo_part() -> void:
 	var match_net = level.match_net
 	check("Muere y observa a un compañero vivo", await wait_for(func(): return not level.local_alive() and not level.player.active and match_net.watched_body() != null and match_net.watched_body().camera.current, 60.0))
+	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.5, 0.5), Vector2(0.9, 0.9)]))
 	check("Ve terminar el piso aunque haya muerto", await wait_for(func(): return level.session.state == level.session.State.WON, 60.0))
 	check("Segundo piso", await wait_for(playing, 90.0))
 	await pause_for(2.0)
@@ -170,4 +179,5 @@ func bravo_part() -> void:
 	check("Vuelve al piso en curso", await wait_for(playing, 90.0))
 	await pause_for(1.0)
 	check("Reaparece donde estaba", level.player.global_position.distance_to(spot) < 2.5)
+	check("Recupera la hoja con los trazos de los demás", level.ui.sheet.log_index.has("%d:1" % seat_named("Alpha")))
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))

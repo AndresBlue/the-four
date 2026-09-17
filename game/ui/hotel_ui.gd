@@ -53,6 +53,9 @@ const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 var intro_tween: Tween
 ## Small corner note during the opening scene: which key skips it.
 var skip_label: Label
+## The shared sheet (paper_sheet.gd), above the HUD and below the menus.
+var sheet: Control
+const SHEET := preload("res://game/ui/paper_sheet.gd")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -76,6 +79,9 @@ func _ready() -> void:
 	skip_label.add_theme_color_override("font_color", STYLE.SOFT)
 	skip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(skip_label)
+	sheet = SHEET.new()
+	add_child(sheet)
+	move_child(sheet, overlay.get_index())
 	tick_player = sound_player(STYLE.beep(2400.0, 0.018, 0.12))
 	confirm_player = sound_player(STYLE.beep(1250.0, 0.07, 0.25))
 	if settings != null: settings.display_pending.connect(_display_changed)
@@ -566,7 +572,7 @@ func controls_panel(parent: Node) -> void:
 	label(list, "CONTROLES", 20).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(list, 4)
 	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
-	for row in [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], ["ESC", "Pausa"]]:
+	for row in [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["ESC", "Pausa"]]:
 		var line := HBoxContainer.new()
 		list.add_child(line)
 		var key := label(line, row[0].to_upper(), 17)
@@ -604,7 +610,7 @@ func show_settings(back: String) -> void:
 	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")
-	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse"}
+	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)

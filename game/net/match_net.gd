@@ -365,6 +365,42 @@ func locust_call(kind: String, segment: int, pitch: float) -> void:
 	var creature = level.locust
 	if is_instance_valid(creature) and creature.control == "puppet": creature.play_call(kind, segment, pitch)
 
+# --- The shared sheet ----------------------------------------------------------------
+
+## Most sheet chunks a player may send per second.
+const SHEET_RATE := 30.0
+var sheet_budget := {}
+
+## A chunk of a stroke drawn here: offline it counts at once, online the host
+## puts it in order for everyone.
+func sheet_local(op_id: String, kind: int, points: PackedVector2Array) -> void:
+	if not in_match() or net.is_host:
+		level.ui.sheet.apply_confirmed(op_id, kind, points)
+		if in_match(): sheet_confirmed.rpc(op_id, kind, points)
+	else:
+		sheet_chunk.rpc_id(1, op_id, kind, points)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sheet_chunk(op_id: String, kind: int, points: PackedVector2Array) -> void:
+	if not net.is_host or not in_match(): return
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	# Only living survivors draw, under their own seat, within the traffic limit.
+	if not is_survivor(seat) or level.session.participants.get(seat, 2) == level.session.Life.DEAD: return
+	if not op_id.begins_with("%d:" % seat) or kind not in [0, 1] or points.size() > 128: return
+	var now := Time.get_ticks_msec() / 1000.0
+	var budget: Array = sheet_budget.get(seat, [SHEET_RATE, now])
+	budget[0] = minf(SHEET_RATE, budget[0] + (now - budget[1]) * SHEET_RATE)
+	budget[1] = now
+	sheet_budget[seat] = budget
+	if budget[0] < 1.0 or level.ui.sheet.log.size() >= level.ui.sheet.MAX_OPS: return
+	budget[0] -= 1.0
+	level.ui.sheet.apply_confirmed(op_id, kind, points)
+	sheet_confirmed.rpc(op_id, kind, points)
+
+@rpc("authority", "call_remote", "reliable")
+func sheet_confirmed(op_id: String, kind: int, points: PackedVector2Array) -> void:
+	level.ui.sheet.apply_confirmed(op_id, kind, points)
+
 # --- Deaths and watching -----------------------------------------------------------
 
 ## Living teammates a dead player can watch, in seat order.
