@@ -315,6 +315,22 @@ func update_title_scene() -> void:
 func in_refuge() -> bool:
 	return point_in_refuge(player.position)
 
+## Everyone the creature can hunt on this floor: the local player and, in an
+## online match, the other survivors' bodies. Each has slot, camera, torch,
+## hidden, hiding_place, crouched and velocity.
+func survivors() -> Array:
+	var result: Array = []
+	if session.participants.has(player.slot): result.append(player)
+	return result
+
+## Alive and outside the refuge: fair game.
+func survivor_active(body: Node3D) -> bool:
+	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position)
+
+## The creature's strike landed on this survivor.
+func capture_survivor(body: Node3D) -> void:
+	if body != null: session.capture(body.slot)
+
 func point_in_refuge(point: Vector3) -> bool:
 	if manifest.is_empty(): return false
 	var room: Dictionary = manifest.rooms[manifest.exit]
@@ -401,7 +417,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	var inside := in_refuge()
-	session.set_refuge(1, inside)
+	for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
 	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
@@ -419,7 +435,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
 		if player.hidden: player.leave_hide()
 		else:
-			if is_instance_valid(locust) and locust.sees_player(true): locust.observed_hide = hiding_target
+			if is_instance_valid(locust) and locust.sees(player, true): locust.observed_hide = hiding_target
 			player.enter_hide(hiding_target)
 		pressed_door = null
 		was_held = true

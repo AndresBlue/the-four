@@ -1,5 +1,7 @@
 extends CharacterBody3D
 var avatar
+## Seat in the match (session participant key). Single player is seat 1.
+var slot := 1
 var camera: Camera3D
 var torch: SpotLight3D
 signal noise(point: Vector3, radius: float)

@@ -5,6 +5,9 @@ var materials := {}
 var batches := {}
 var room_nodes: Array[Node3D] = []
 var doors: Array = []
+## Wardrobes in build order: the same index names the same wardrobe on every
+## machine in an online match (doors likewise).
+var hides: Array = []
 var lights: Array[OmniLight3D] = []
 var manifest: Dictionary
 var quality := 1
@@ -306,6 +309,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			hide.name = "Wardrobe_%d" % node.get_child_count()
 			hide.position = corner
 			hide.rotation.y = FLOOR.hiding_yaw(corner)
+			hides.append(hide)
 			# The wardrobe builds its own model, frame colliders and door leaves.
 			node.add_child(hide)
 	# Central sightlines remain open; booths sit against the perimeter.

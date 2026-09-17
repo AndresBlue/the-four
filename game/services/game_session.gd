@@ -21,11 +21,13 @@ func set_state(next: State) -> void:
 	state = next
 	changed.emit()
 
-func start(seed_value: int, used_fallback := false) -> void:
+## slots: participant keys of the survivors on this floor (1 alone offline).
+func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	run_seed = seed_value
 	map_fallback = used_fallback
-	participants = {1: Life.EXPLORING}
-	roster_count = 1
+	participants = {}
+	for slot in slots: participants[int(slot)] = Life.EXPLORING
+	roster_count = slots.size()
 	exit_progress = 0
 	elapsed = 0
 	transition_time = 0

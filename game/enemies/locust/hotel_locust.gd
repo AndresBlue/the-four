@@ -69,6 +69,9 @@ var grunt_left := 0.0
 var last_grunt := -1
 ## A patrol route set by the pacing director: kept until it gets there.
 var guided := false
+## The survivor it is watching or hunting (see level.survivors()); several
+## players can be on the floor, it only ever pursues one at a time.
+var focus: Node3D
 
 func _ready() -> void:
 	add_to_group("hotel_actors")
@@ -158,9 +161,9 @@ func clear_sight(point: Vector3) -> bool:
 	var ray := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, EYE_HEIGHT, 0), point, 1 | 8 | 64)
 	return get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
 
-func sees_player(ignore_concealment := false) -> bool:
-	if level.in_refuge() or level.session.participants.get(1) == level.session.Life.DEAD: return false
-	var player = level.player
+## Whether it can see this survivor right now.
+func sees(player: Node3D, ignore_concealment := false) -> bool:
+	if not is_instance_valid(player) or not level.survivor_active(player): return false
 	var offset: Vector3 = player.global_position - global_position
 	if offset.length() > SIGHT_RANGE: return false
 	# It knows which wardrobe the player went into, doors shut or not.
@@ -172,10 +175,39 @@ func sees_player(ignore_concealment := false) -> bool:
 	if player.hidden and not ignore_concealment: return player.hiding_place.ajar()
 	return true
 
+## The survivor it would react to: the one it already follows if still in
+## view, otherwise the nearest one it can see. Null when nobody is in view.
+func seen_survivor(ignore_concealment := false) -> Node3D:
+	if sees(focus, ignore_concealment): return focus
+	var best: Node3D = null
+	var best_distance := INF
+	for player in level.survivors():
+		if not sees(player, ignore_concealment): continue
+		var distance: float = player.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best = player
+			best_distance = distance
+	return best
+
+func sees_player(ignore_concealment := false) -> bool:
+	return seen_survivor(ignore_concealment) != null
+
+## Survivor to aim an attack at: the one it hunts, else the nearest one.
+func target() -> Node3D:
+	if is_instance_valid(focus) and level.survivor_active(focus): return focus
+	var best: Node3D = null
+	var best_distance := INF
+	for player in level.survivors():
+		if not level.survivor_active(player): continue
+		var distance: float = player.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best = player
+			best_distance = distance
+	return best
+
 ## How quickly a visible player is noticed: close, lit and running players
 ## stand out; crouching and distance buy time to break line of sight.
-func notice_rate() -> float:
-	var player = level.player
+func notice_rate(player: Node3D) -> float:
 	var distance: float = player.global_position.distance_to(global_position)
 	var rate := lerpf(NOTICE_NEAR, NOTICE_FAR, clampf((distance - 4.0) / (SIGHT_RANGE - 4.0), 0.0, 1.0))
 	if player.crouched: rate *= 0.55
@@ -183,20 +215,22 @@ func notice_rate() -> float:
 	if player.torch.visible: rate *= 1.4
 	return rate
 
-## True when the player's torch beam falls on the creature from afar.
-func lit_by_torch() -> bool:
-	var player = level.player
-	var torch: SpotLight3D = player.torch
-	if not torch.visible or player.hidden or level.in_refuge(): return false
-	var chest := global_position + Vector3(0, 1.6, 0)
-	var offset := chest - torch.global_position
-	if offset.length() > TORCH_NOTICE_RANGE or offset.length() < 5.0: return false
-	if (-torch.global_basis.z).angle_to(offset) > deg_to_rad(torch.spot_angle * 0.85): return false
-	var ray := PhysicsRayQueryParameters3D.create(torch.global_position, chest, 1 | 8 | 64)
-	return get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+## The survivor whose torch beam falls on the creature from afar, if any.
+func lit_by_torch() -> Node3D:
+	for player in level.survivors():
+		if not level.survivor_active(player): continue
+		var torch: SpotLight3D = player.torch
+		if not torch.visible or player.hidden: continue
+		var chest := global_position + Vector3(0, 1.6, 0)
+		var offset := chest - torch.global_position
+		if offset.length() > TORCH_NOTICE_RANGE or offset.length() < 5.0: continue
+		if (-torch.global_basis.z).angle_to(offset) > deg_to_rad(torch.spot_angle * 0.85): continue
+		var ray := PhysicsRayQueryParameters3D.create(torch.global_position, chest, 1 | 8 | 64)
+		if get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): return player
+	return null
 
 func hear(point: Vector3, radius: float) -> void:
-	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER] or level.in_refuge(): return
+	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER] or level.point_in_refuge(point): return
 	var reach := radius * HEARING_SCALE
 	if global_position.distance_to(point) > reach: return
 	# Sound travels through rooms and doorways; the walkable route must fit.
@@ -256,10 +290,10 @@ func choose_patrol() -> void:
 	repath = 0
 
 func can_attack(reach := ATTACK_RANGE) -> bool:
-	var player = level.player
-	if level.in_refuge() or global_position.distance_to(player.global_position) >= reach: return false
+	var player := target()
+	if player == null or global_position.distance_to(player.global_position) >= reach: return false
 	if not clear_sight(player.camera.global_position): return false
-	return not player.hidden or observed_hide == player.hiding_place or sees_player()
+	return not player.hidden or observed_hide == player.hiding_place or sees(player)
 
 ## A wardrobe it has reason to search: occupied and near where the noise was.
 func suspect_hide(point: Vector3) -> Node3D:
@@ -289,10 +323,12 @@ func _physics_process(delta: float) -> void:
 	if grace > 0:
 		update_visual(delta)
 		return
-	var visible_player := sees_player()
+	var seen := seen_survivor()
+	var visible_player := seen != null
 	if visible_player:
-		detection = minf(1.5, detection + delta * notice_rate())
-		last_known = level.player.global_position
+		focus = seen
+		detection = minf(1.5, detection + delta * notice_rate(seen))
+		last_known = seen.global_position
 		lost_time = 0
 	else:
 		detection = maxf(0.0, detection - delta * NOTICE_DECAY)
@@ -305,9 +341,11 @@ func _physics_process(delta: float) -> void:
 		set_mode(Mode.INVESTIGATE)
 		destination = last_known
 	# A torch beam seen from afar gives away where the player is standing.
-	light_exposure = light_exposure + delta if lit_by_torch() else maxf(0.0, light_exposure - delta * 0.5)
-	if light_exposure > 0.35 and mode in [Mode.PATROL, Mode.SEARCH, Mode.INVESTIGATE]:
-		last_known = level.player.global_position
+	var lit_by := lit_by_torch()
+	light_exposure = light_exposure + delta if lit_by != null else maxf(0.0, light_exposure - delta * 0.5)
+	if light_exposure > 0.35 and mode in [Mode.PATROL, Mode.SEARCH, Mode.INVESTIGATE] and lit_by != null:
+		focus = lit_by
+		last_known = lit_by.global_position
 		if mode != Mode.INVESTIGATE or destination.distance_to(last_known) > 2.0:
 			set_mode(Mode.INVESTIGATE)
 			destination = last_known
@@ -335,11 +373,11 @@ func _physics_process(delta: float) -> void:
 					pause_time = rng.randf_range(0.6, 1.4)
 		Mode.CHASE:
 			destination = last_known
-			var player = level.player
+			var player := focus
 			# Reaching where it last saw or heard the player, it checks the wardrobes there.
 			if lost_time > 0.5 and observed_hide == null and global_position.distance_to(last_known) < 2.5:
 				observed_hide = suspect_hide(last_known)
-			if player.hidden and observed_hide == player.hiding_place:
+			if is_instance_valid(player) and player.hidden and observed_hide == player.hiding_place:
 				# Goes to the wardrobe and pulls the doors open.
 				destination = observed_hide.to_global(observed_hide.exit_offset)
 				if global_position.distance_to(destination) < 2.2: observed_hide.force_open()
@@ -347,7 +385,7 @@ func _physics_process(delta: float) -> void:
 			if grunt_clock <= 0.0:
 				grunt()
 				grunt_clock = rng.randf_range(2.5, 5.0)
-			if level.in_refuge() or lost_time > LOSE_AFTER: set_mode(Mode.SEARCH)
+			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > LOSE_AFTER: set_mode(Mode.SEARCH)
 			elif can_attack(): set_mode(Mode.WINDUP)
 		Mode.SEARCH:
 			if state_time > 10:
@@ -362,7 +400,7 @@ func _physics_process(delta: float) -> void:
 				repath = 0
 		Mode.WINDUP:
 			if state_time >= WINDUP_TIME:
-				if can_attack(STRIKE_REACH): level.session.capture(1)
+				if can_attack(STRIKE_REACH): level.capture_survivor(target())
 				set_mode(Mode.RECOVER)
 		Mode.RECOVER:
 			if state_time >= RECOVER_TIME: set_mode(Mode.CHASE if visible_player else Mode.SEARCH)
@@ -382,16 +420,20 @@ func _physics_process(delta: float) -> void:
 	elif mode == Mode.RECOVER:
 		velocity = Vector3.ZERO
 		speed = 0.0
-		face_toward(level.player.global_position, delta, 6.0)
+		if is_instance_valid(focus): face_toward(focus.global_position, delta, 6.0)
 	else:
 		move_on_path(delta)
 	update_visual(delta)
 
 ## During the wind-up it keeps closing in on the player, blades raised.
 func lunge(delta: float) -> void:
-	var offset: Vector3 = level.player.global_position - global_position
+	var player := target()
+	if player == null:
+		velocity = Vector3.ZERO
+		return
+	var offset: Vector3 = player.global_position - global_position
 	offset.y = 0.0
-	face_toward(level.player.global_position, delta, 12.0)
+	face_toward(player.global_position, delta, 12.0)
 	if offset.length() < 0.9: velocity = Vector3.ZERO
 	else:
 		var heading := offset.normalized() * CHASE_SPEED * 1.15
@@ -416,8 +458,8 @@ func update_visual(delta: float) -> void:
 			break
 	visual.duck = move_toward(visual.duck, 1.0 if near_door else 0.0, delta * 3.0)
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
-	var player = level.player
-	if mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT] or detection > 0.2 or light_exposure > 0.2:
+	var player := focus
+	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT] or detection > 0.2 or light_exposure > 0.2) and is_instance_valid(player):
 		visual.look_point = player.camera.global_position if lost_time < 0.5 else last_known + Vector3.UP * 1.5
 	elif mode in [Mode.SEARCH, Mode.PATROL] and pause_time > 0:
 		# Scans the room while standing still.

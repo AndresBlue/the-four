@@ -152,8 +152,14 @@ func choose(pool: String) -> String:
 	last[pool] = selected
 	return BASE + selected
 
+## The camera the local screen shows: the player's own, or while dead the
+## teammate being watched.
+func listener_camera() -> Camera3D:
+	var current: Camera3D = level.get_viewport().get_camera_3d() if level.is_inside_tree() else null
+	return current if current != null else level.player.camera
+
 func listener_position() -> Vector3:
-	return level.player.camera.global_position
+	return listener_camera().global_position
 
 func door_cue(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful := false) -> void:
 	var distance := listener_position().distance_to(point)
@@ -249,7 +255,7 @@ func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dr
 ## 0 in front of or beside the listener, 1 straight behind (smooth in between).
 func behind(point: Vector3) -> float:
 	if level == null or level.player == null: return 0.0
-	var camera: Camera3D = level.player.camera
+	var camera := listener_camera()
 	var local: Vector3 = camera.global_basis.inverse() * (point - camera.global_position)
 	local.y = 0.0
 	if local.length_squared() < 0.01: return 0.0
@@ -322,7 +328,7 @@ func _physics_process(delta: float) -> void:
 ## on arrives first and louder at that ear. Eased so a turn of the head never
 ## jumps the delay by more than a few samples at a time.
 func update_ears(point: Vector3, delta: float) -> void:
-	var camera: Camera3D = level.player.camera
+	var camera := listener_camera()
 	var local: Vector3 = camera.global_basis.inverse() * (point - camera.global_position)
 	var side := 0.0
 	if Vector2(local.x, local.z).length_squared() > 0.0001:
