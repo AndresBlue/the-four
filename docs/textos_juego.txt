@@ -691,6 +691,6 @@ CORRECCIÓN:
 ACTUAL: Los documentos que leas en el hotel se guardan aquí, también entre partidas.
 CORRECCIÓN:
 
-[ESC.01] Escena de entrada, indicación durante los primeros 5 s
-ACTUAL: MANTÉN [TECLA] PARA SALTAR
+[ESC.01] Escena de entrada, esquina superior derecha, pequeño, durante los primeros 6 s
+ACTUAL: [TECLA]  para saltar cinemática
 CORRECCIÓN:

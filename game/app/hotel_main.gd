@@ -9,6 +9,7 @@ const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 const INTRO := preload("res://game/intro/intro_sequence.gd")
+const TITLE := preload("res://game/title/title_scene.gd")
 const DOCUMENT := preload("res://game/world/interactables/hotel_document.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
@@ -16,6 +17,9 @@ const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
 ## The opening scene is built far from the hotel so the two never overlap.
 const INTRO_ORIGIN := Vector3(600, 0, 0)
+const TITLE_ORIGIN := Vector3(-600, 0, 0)
+## Ambient light while the title room is on screen: its own lamps do the work.
+const TITLE_AMBIENT := 0.03
 ## Holding interact this long skips the opening scene.
 const SKIP_HOLD := 0.8
 var settings
@@ -32,7 +36,6 @@ var theme: AudioStreamPlayer
 var ventilation: AudioStreamPlayer3D
 # Quiet theme behind the menus; the in-game players pause with the tree.
 var menu_music: AudioStreamPlayer
-var menu_clock := 0.0
 var automation := false
 var visibility_clock := 0.0
 var pressed_door
@@ -42,6 +45,7 @@ var slow_used := false
 var save_error := ""
 var physical_errors: Array[String] = []
 var intro: Node3D
+var title_scene: Node3D
 var director
 var discoveries
 ## The document being read, if any.
@@ -85,19 +89,12 @@ func _ready() -> void:
 	build_audio()
 	settings.changed.connect(apply_settings)
 	apply_settings()
-	# A single furnished reception previews the visual language behind the menu.
-	var preview := GENERATOR.new().generate(404)
-	hotel = GEOMETRY.new()
-	hotel.name = "GeneratedHotel"
-	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
-	add_child(hotel)
-	hotel.manifest = preview
-	var lobby := Node3D.new()
-	hotel.add_child(lobby)
-	hotel.build_room(lobby, preview.rooms[0])
-	hotel.flush()
+	# Behind the menu: an ordinary room, and something watching from its doorway.
+	title_scene = TITLE.new()
+	title_scene.name = "TitleScene"
+	title_scene.position = TITLE_ORIGIN
+	add_child(title_scene)
 	player.position = Vector3(1, 0.06, 3.8)
-	player.rotation.y = 0.15
 	var saved: Dictionary = session.checkpoint()
 	ui.menu("main", not saved.is_empty(), session.message)
 	on_state()
@@ -139,14 +136,13 @@ func start_intro(seed_value: int) -> void:
 	# Only the television lights the room: no hotel ambient light.
 	environment.ambient_light_energy = 0.02
 	session.set_state(session.State.CUTSCENE)
-	ui.hint.text = "MANTÉN [%s] PARA SALTAR" % settings.key_name("interact")
-	get_tree().create_timer(5.0).timeout.connect(func(): if session.state == session.State.CUTSCENE: ui.hint.text = "")
+	ui.show_skip(settings.key_name("interact"))
 
 func finish_intro() -> void:
 	if not is_instance_valid(intro): return
 	intro.queue_free()
 	intro = null
-	ui.hint.text = ""
+	ui.hide_skip()
 	environment.ambient_light_energy = ambient_energy
 	player.visible = true
 	player.camera.current = true
@@ -274,6 +270,9 @@ func on_state() -> void:
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
 	if not playing and is_instance_valid(reading_document): close_document()
+	# The aiming dot only while playing: not over the title room or the opening scene.
+	ui.get_node("HUD/Crosshair").visible = playing
+	update_title_scene()
 	if playing or session.state == session.State.CUTSCENE:
 		ui.overlay.hide()
 		ui.settings_open = false
@@ -294,6 +293,23 @@ func on_state() -> void:
 		session.State.FAILED:
 			ui.elapsed = session.elapsed
 			ui.menu("failed")
+
+## The title room is shown only on the main menu; any other state gets the
+## hotel's light back and, outside the opening scene, the player's camera.
+func update_title_scene() -> void:
+	if not is_instance_valid(title_scene): return
+	var in_menu: bool = session.state == session.State.MENU
+	if not in_menu and not title_scene.visible: return
+	title_scene.set_active(in_menu)
+	if in_menu:
+		environment.ambient_light_energy = TITLE_AMBIENT
+		if is_instance_valid(hotel): hotel.visible = false
+		player.visible = false
+	elif session.state != session.State.CUTSCENE:
+		environment.ambient_light_energy = ambient_energy
+		if is_instance_valid(hotel): hotel.visible = true
+		player.visible = true
+		player.camera.current = true
 
 func in_refuge() -> bool:
 	return point_in_refuge(player.position)
@@ -328,7 +344,7 @@ func spawn_locust() -> void:
 		locust.collision_mask = 0
 
 func on_peek(point: Vector3) -> void:
-	world_audio.play_at(world_audio.choose("open_slow"), point, -20.0, RID(), 0.4)
+	world_audio.play_at(world_audio.choose("open_slow"), point, -25.0, RID(), 0.4)
 	on_noise(point, 2.0)
 
 func on_hide_changed(entering: bool, point: Vector3) -> void:
@@ -464,7 +480,7 @@ func _process(delta: float) -> void:
 	visibility_clock += delta
 	if visibility_clock > 0.25:
 		visibility_clock = 0
-		hotel.update_visibility(player.position, settings.values.shadows)
+		if is_instance_valid(hotel): hotel.update_visibility(player.position, settings.values.shadows)
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -580,14 +596,9 @@ func build_audio() -> void:
 	menu_music.stream.loop = true
 	add_child(menu_music)
 
-# Menu background: a slow handheld drift through the lobby and quiet music.
-func update_menu_scene(delta: float) -> void:
+# Quiet music behind the menus (the title room is its own scene).
+func update_menu_scene(_delta: float) -> void:
 	var in_menu: bool = session.state == session.State.MENU
 	var audible: bool = in_menu and world_audio.enabled
 	if audible and not menu_music.playing: menu_music.play()
 	elif not audible and menu_music.playing: menu_music.stop()
-	if not in_menu or automation: return
-	menu_clock += delta
-	player.rotation.y = 0.15 + sin(menu_clock * 0.06) * 0.32
-	player.camera.rotation.x = -0.05 + sin(menu_clock * 0.09) * 0.025
-	player.camera.rotation.z = sin(menu_clock * 0.13) * 0.006

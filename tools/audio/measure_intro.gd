@@ -1,7 +1,7 @@
 extends SceneTree
 ## Loudness of the opening scene through the real mixer (sliders at 50%):
 ## peak and RMS on the Master bus per stretch of the timeline. Real time.
-const WINDOWS := [[1.0, 6.0, "waking, static"], [13.0, 18.0, "staring at the static"], [21.0, 25.0, "figure peeks, drone, heartbeat"], [26.3, 30.4, "knocks on the glass"], [31.1, 34.0, "running out, door"], [34.0, 34.9, "slam and shatter behind"], [35.0, 38.0, "corridor: bangs, steps"]]
+const WINDOWS := [[1.0, 6.0, "waking, static"], [8.0, 12.8, "sitting up on the bed"], [12.9, 18.0, "leaning in, staring at the static"], [21.0, 25.0, "figure peeks, drone, heartbeat"], [26.3, 30.4, "knocks on the glass"], [31.1, 34.0, "running out, door"], [34.0, 34.9, "slam and shatter behind"], [35.0, 38.0, "corridor: bangs, steps"]]
 var level
 var capture: AudioEffectCapture
 

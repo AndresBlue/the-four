@@ -82,4 +82,4 @@ El proyecto usa los archivos locales compartidos entre Codex y Godot; no incorpo
 
 ## Audio espacial y siguientes efectos
 
-Puertas con variantes cercanas/lejanas, escondites con sonidos de entrada/salida y presencia de Locust desde su posición. [Asignaciones y edición](docs/AUDIO.md). El papel está preparado para la futura hoja; el efecto claustrofóbico de armario con ojo de pez está registrado como pendiente, no implementado.
+Puertas con variantes cercanas/lejanas, escondites con sonidos de entrada/salida y presencia de Locust desde su posición. Con auriculares, The Locust se oye en binaural (diferencia de tiempo y de nivel entre oídos) y lo que viene de detrás suena más apagado. [Asignaciones y edición](docs/AUDIO.md). El papel está preparado para la futura hoja; el efecto claustrofóbico de armario con ojo de pez está registrado como pendiente, no implementado.

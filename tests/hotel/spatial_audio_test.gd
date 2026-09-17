@@ -97,7 +97,7 @@ func run() -> void:
 	level.locust.position = Vector3(500, 0, 0)
 	level.locust.grace = 0
 	await wait(2)
-	check("Presence follows creature and uses Threat bus", audio.presence.playing and audio.presence.global_position.distance_to(level.locust.global_position + Vector3(0, 1.4, 0)) < 0.01 and audio.presence.bus == &"Threat")
+	check("Presence follows creature on its binaural bus", audio.presence.playing and audio.presence.global_position.distance_to(level.locust.global_position + Vector3(0, 1.4, 0)) < 0.01 and audio.presence.bus == &"Creature")
 	var gain: float = audio.presence.volume_db
 	level.locust.set_mode(level.locust.Mode.PATROL)
 	level.locust.voice.stop()

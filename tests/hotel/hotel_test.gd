@@ -33,6 +33,20 @@ func run() -> void:
 	await physics_frame
 	check("Se inicia un hotel grande y libre de objetivos", scene.manifest.rooms.size() >= 100 and scene.session.state == scene.session.State.PLAYING)
 	check("Validación física de todos los pasos y coberturas", scene.physical_errors.is_empty())
+	# Each face of a door shows the number of the room behind it.
+	var FLOOR := preload("res://game/world/generation/floor_definition.gd")
+	var numbers_ok := true
+	for each in scene.hotel.doors:
+		for label in each.find_children("*", "Label3D", true, false):
+			# Measured with the door shut, whatever its leaf is doing now.
+			var facing := Basis(Vector3.UP, each.closed_rotation + label.rotation.y).z
+			var in_front: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + facing * 1.5)
+			var behind: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway - facing * 1.5)
+			if in_front.is_empty() or behind.is_empty() or label.text != str(100 + int(behind.id)): numbers_ok = false
+	check("El número de cada cara de puerta indica la habitación de detrás", numbers_ok)
+	var dark: Array = scene.hotel.lights.filter(func(light): return light.has_meta("off"))
+	var reception_lit: bool = scene.manifest.rooms.all(func(room): return int(room.type) != 0 or not scene.hotel.lights[room.id].has_meta("off"))
+	check("Algunas habitaciones tienen la luz apagada, nunca la recepción", dark.size() > 0 and dark.size() < scene.hotel.lights.size() / 3 and reception_lit and dark.all(func(light): return not light.visible))
 	var door = scene.hotel.doors[0]
 	door.open_immediately()
 	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)

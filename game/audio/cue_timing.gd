@@ -22,6 +22,7 @@ const TIMING := {
 	"res://assets/audio/sfx/door/opening/opening1.ogg": {"onset": 0.149, "hit": 0.279},
 	"res://assets/audio/sfx/door/opening/opening2.ogg": {"onset": 0.009, "hit": 0.209},
 	"res://assets/audio/sfx/door/opening/opening3.ogg": {"onset": 0.189, "hit": 0.669},
+	"res://assets/audio/sfx/door/opening/slow-opening-clean.wav": {"onset": 0.139, "hit": 0.429},
 	"res://assets/audio/sfx/door/opening/wooden-opening.ogg": {"onset": 0.009, "hit": 0.429},
 	"res://assets/audio/sfx/heartbeat/1.ogg": {"onset": 0.079, "hit": 0.169},
 	"res://assets/audio/sfx/heartbeat/2.ogg": {"onset": 0.119, "hit": 0.169},

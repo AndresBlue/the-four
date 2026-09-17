@@ -22,7 +22,8 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	await process_frame
-	var ambient: float = level.environment.ambient_light_energy
+	var ambient: float = level.ambient_energy
+	check("El menú muestra la habitación de portada con su cámara", level.title_scene.visible and level.title_scene.camera.current and level.title_scene.locust != null)
 	level.on_action("new")
 	var intro = level.intro
 	check("Nueva partida abre la escena de entrada", is_instance_valid(intro) and level.session.state == level.session.State.CUTSCENE)
@@ -38,6 +39,7 @@ func run() -> void:
 	check("Al terminar empieza la partida", await wait_for(func(): return level.session.state == level.session.State.PLAYING, 900))
 	check("La escena se libera y vuelve la cámara del jugador", not is_instance_valid(level.intro) and level.player.camera.current and level.player.visible)
 	check("Se restaura la luz ambiente", is_equal_approx(level.environment.ambient_light_energy, ambient))
+	check("La portada queda oculta durante la partida", not level.title_scene.visible)
 	# Skipping: holding interact ends the scene early.
 	level.session.set_state(level.session.State.MENU)
 	await process_frame

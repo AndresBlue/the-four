@@ -13,11 +13,31 @@ const ACOUSTIC_MASK := 512
 ## Longest walkable route (metres) along which a sound still reaches the player.
 const ROUTE_LIMIT := 42.0
 const ECHO_BUS := {"Effects": &"EffectsEcho", "Threat": &"ThreatEcho"}
-const GAIN := {"open": 1.0, "open_slow": -7.0, "slam": 0.0, "close": -11.0, "hide": -8.0}
+## Direction cues on headphones. World cues use the engine's panning, at the
+## strength that separates left and right the most (measured with
+## tools/audio/measure_spatial.gd; higher values blur it again).
+const PANNING := {"Effects": 1.15, "Threat": 1.15}
+## The creature is heard binaurally instead: its sounds reach the mixer as mono
+## on its own buses, where the "Ears" delay sends each ear its own copy with
+## the time difference between the ears (up to about 0.65 ms, as around a
+## human head) and a level difference (the far ear up to EAR_SHADOW dB down).
+const CREATURE_BUS := {false: &"Creature", true: &"CreatureEcho"}
+const ITD_MS := 0.65
+const EAR_SHADOW := 18.0
+const EAR_NEAR := 1.5
+## Smallest tap delay: a zero delay would read the wrong end of the buffer.
+const EAR_BASE_MS := 0.05
+var ear_itd := 0.0
+var ear_side := 0.0
+## Head shadow: a source behind the listener loses its highs and a little level,
+## so front and back sound different, not just left and right.
+const REAR_CUTOFF := 3200.0
+const REAR_GAIN := -4.0
+const GAIN := {"open": 1.0, "open_slow": -12.0, "slam": 0.0, "close": -11.0, "hide": -8.0}
 const POOLS := {
 	"open_near": ["door/opening/opening1.ogg", "door/opening/opening2.ogg", "door/opening/opening3.ogg", "door/opening/wooden-opening.ogg"],
 	"open_far": ["door/opening/far-opening.ogg", "door/opening/far-soft-opening.ogg"],
-	"open_slow": ["door/opening/creaky-wooden-door-slow-opening.mp3"],
+	"open_slow": ["door/opening/slow-opening-clean.wav"],
 	"close_near": ["door/closing/closing1.ogg", "door/closing/closing2.ogg", "door/closing/closing3.ogg", "door/closing/wooden-closing.ogg"],
 	"close_far": ["door/closing/far-closing.ogg", "door/closing/far-soft-closing.ogg"],
 	"open_slam_near": ["door/opening/close-hard-opening.ogg"],
@@ -66,7 +86,7 @@ func _ready() -> void:
 	presence.max_db = 4.0
 	presence.volume_db = -80.0
 	presence.area_mask = ACOUSTIC_MASK
-	presence.panning_strength = 1.3
+	presence.panning_strength = 0.0
 	add_child(presence)
 	aura = get_node_or_null("DreadAura")
 	for i in 2:
@@ -173,7 +193,6 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 	voice.max_distance = 40.0
 	voice.max_db = 6.0
 	voice.area_mask = ACOUSTIC_MASK
-	voice.panning_strength = 1.2
 	voice.pitch_scale = rng.randf_range(0.98, 1.02)
 	voice.set_meta("base_gain", gain)
 	voice.set_meta("emitter", emitter)
@@ -213,12 +232,28 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	var detour := maxf(0.0, length - listener.distance_to(opening))
 	return {"audible": true, "position": opening, "gain": -3.0 - 20.0 * log(1.0 + detour / 5.0) / log(10.0), "cutoff": lerpf(5200.0, 900.0, clampf(detour / 25.0, 0.0, 1.0)), "echo": true, "distance": length}
 
-## Places a 3D player where the route says, on the echo bus when it travelled.
-func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dry_bus: String) -> void:
+## Places a 3D player where the route says, on the echo bus when it travelled,
+## duller and a little quieter when it comes from behind.
+## creature: on the binaural creature buses (mono into the mixer).
+func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dry_bus: String, creature := false) -> void:
 	player.global_position = route.position
 	player.bus = ECHO_BUS[dry_bus] if route.echo else StringName(dry_bus)
-	player.volume_db = gain + route.gain
-	player.attenuation_filter_cutoff_hz = route.cutoff
+	player.panning_strength = PANNING[dry_bus]
+	if creature:
+		player.bus = CREATURE_BUS[route.echo]
+		player.panning_strength = 0.0
+	var rear := behind(route.position)
+	player.volume_db = gain + route.gain + REAR_GAIN * rear
+	player.attenuation_filter_cutoff_hz = minf(route.cutoff, lerpf(20000.0, REAR_CUTOFF, rear))
+
+## 0 in front of or beside the listener, 1 straight behind (smooth in between).
+func behind(point: Vector3) -> float:
+	if level == null or level.player == null: return 0.0
+	var camera: Camera3D = level.player.camera
+	var local: Vector3 = camera.global_basis.inverse() * (point - camera.global_position)
+	local.y = 0.0
+	if local.length_squared() < 0.01: return 0.0
+	return smoothstep(0.0, 1.0, maxf(0.0, local.normalized().z))
 
 func occluded(point: Vector3, emitter := RID()) -> bool:
 	var ray := PhysicsRayQueryParameters3D.create(point, listener_position(), 1 | 8 | 64)
@@ -257,28 +292,56 @@ func _physics_process(delta: float) -> void:
 		update_ambient_sources()
 	update_hum_levels()
 	update_space(delta)
-	if profile == null or not is_instance_valid(level.locust): return
+	if not is_instance_valid(level.locust) or level.session.state != level.session.State.PLAYING: return
 	var creature = level.locust
 	var voice_point: Vector3 = creature.global_position + Vector3(0, 1.4, 0)
 	route_clock -= delta
 	if route_clock <= 0.0 or presence_route.is_empty():
 		route_clock = 0.25
 		presence_route = route_source(voice_point, creature.get_rid())
-	var distance: float = presence_route.get("distance", INF)
-	var audible: bool = level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
 	# Heard straight, it sits on the creature; heard around corners, it drifts to the opening.
 	var target: Vector3 = voice_point if not presence_route.get("echo", false) else presence_route.position
+	update_ears(target, delta)
+	if profile == null: return
+	var distance: float = presence_route.get("distance", INF)
+	var audible: bool = level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
 	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
-	presence.bus = &"ThreatEcho" if presence_route.get("echo", false) else &"Threat"
+	presence.bus = CREATURE_BUS[presence_route.get("echo", false)]
 	if audible and not presence.playing: presence.play()
 	presence_gain = move_toward(presence_gain, 1.0 if audible else 0.0, delta * 0.6)
 	if presence_gain <= 0 and presence.playing: presence.stop()
 	clock += delta
 	if clock < 0.1: return
 	clock = 0
-	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if creature.mode == creature.Mode.WINDUP else 0.0)
-	presence.attenuation_filter_cutoff_hz = presence_route.get("cutoff", 20000.0)
+	var rear := behind(presence.global_position)
+	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if creature.mode == creature.Mode.WINDUP else 0.0)
+	presence.attenuation_filter_cutoff_hz = minf(presence_route.get("cutoff", 20000.0), lerpf(20000.0, REAR_CUTOFF, rear))
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
+
+## Points the creature buses' ears at where it is heard from: the side it is
+## on arrives first and louder at that ear. Eased so a turn of the head never
+## jumps the delay by more than a few samples at a time.
+func update_ears(point: Vector3, delta: float) -> void:
+	var camera: Camera3D = level.player.camera
+	var local: Vector3 = camera.global_basis.inverse() * (point - camera.global_position)
+	var side := 0.0
+	if Vector2(local.x, local.z).length_squared() > 0.0001:
+		side = sin(atan2(local.x, -local.z))
+	ear_side = move_toward(ear_side, side, delta * 6.0)
+	ear_itd = ear_side * ITD_MS
+	var far_db := -EAR_SHADOW * pow(absf(ear_side), 0.7)
+	var near_db := EAR_NEAR * absf(ear_side)
+	var left := EAR_BASE_MS + maxf(ear_itd, 0.0)
+	var right := EAR_BASE_MS + maxf(-ear_itd, 0.0)
+	for bus_name in CREATURE_BUS.values():
+		var bus := AudioServer.get_bus_index(bus_name)
+		if bus < 0 or AudioServer.get_bus_effect_count(bus) == 0: continue
+		var ears = AudioServer.get_bus_effect(bus, 0)
+		if not ears is AudioEffectDelay: continue
+		ears.tap1_delay_ms = left
+		ears.tap2_delay_ms = right
+		ears.tap1_level_db = far_db if ear_side > 0.0 else near_db
+		ears.tap2_level_db = near_db if ear_side > 0.0 else far_db
 
 ## Moves the hum emitters to the closest fluorescent battens. A tube in another
 ## room is only heard through the opening, like any other sound.

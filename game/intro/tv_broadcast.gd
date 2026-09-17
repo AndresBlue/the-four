@@ -6,16 +6,13 @@ extends SubViewport
 ## blow ends exactly at the point of the tube where the cracks will start.
 ## Bones are posed directly here; the gameplay IK is not used.
 const LOOK := preload("res://game/enemies/locust/locust_look.gd")
+const POSER := preload("res://game/enemies/locust/locust_poser.gd")
 const MODEL := preload("res://assets/enemies/locust.glb")
-const BONE := "ValveBiped.Bip01_"
 ## Model scale, as in the game.
 const SCALE := 1.95
-## Length of the blade beyond the hand, in model units along the forearm.
-const BLADE := 0.36
 var camera: Camera3D
 var locust: Node3D
-var skeleton: Skeleton3D
-var bones := {}
+var poser
 ## Timeline inputs, written by the scene every frame.
 var peek := 0.0
 var lunge := 0.0
@@ -80,9 +77,7 @@ func build(materials: Dictionary) -> void:
 	locust.scale = Vector3.ONE * SCALE
 	add_child(locust)
 	LOOK.apply(locust)
-	skeleton = locust.find_children("*", "Skeleton3D", true, false)[0]
-	for name in ["Spine2", "Spine4", "Neck1", "Head1", "R_Clavicle", "R_UpperArm", "R_Forearm", "R_Hand", "L_UpperArm", "L_Forearm"]:
-		bones[name] = skeleton.find_bone(BONE + name)
+	poser = POSER.new(locust)
 	camera = Camera3D.new()
 	# Framed like the photograph: head and shoulders, close.
 	camera.fov = 50.0
@@ -96,20 +91,20 @@ func build(materials: Dictionary) -> void:
 ## Advances the creature by one frame of the scene's timeline.
 func pose(delta: float) -> void:
 	clock += delta
-	if skeleton == null: return
-	skeleton.reset_bone_poses()
+	if poser == null: return
+	poser.reset()
 	# Leans in from beyond the right edge, then steps at the lens.
 	var lean := 1.0 - peek
 	locust.position = Vector3(lerpf(0.95, 0.06, peek), 0.0, lerpf(0.0, 0.42, lunge))
 	# Arms hang instead of the T-pose.
-	aim(bones.L_UpperArm, "L_Forearm", Vector3(0.25, -1.0, 0.15))
-	aim(bones.R_UpperArm, "R_Forearm", Vector3(-0.25, -1.0, 0.15))
+	poser.aim("L_UpperArm", "L_Forearm", Vector3(0.25, -1.0, 0.15))
+	poser.aim("R_UpperArm", "R_Forearm", Vector3(-0.25, -1.0, 0.15))
 	# The upper body tilts sideways into the picture, head cocked the other way.
-	turn(bones.Spine2, Vector3(0, 0, 1), lean * 0.38)
-	turn(bones.Neck1, Vector3(0, 0, 1), -lean * 0.3 + sin(clock * 1.7) * 0.03)
+	poser.turn("Spine2", Vector3(0, 0, 1), lean * 0.38)
+	poser.turn("Neck1", Vector3(0, 0, 1), -lean * 0.3 + sin(clock * 1.7) * 0.03)
 	var jerk := twitch * (rng.randf() - 0.5) * 0.25
-	turn(bones.Head1, Vector3(0, 0, 1), -0.32 + jerk)
-	turn(bones.Head1, Vector3(1, 0, 0), 0.12 + lunge * 0.1)
+	poser.turn("Head1", Vector3(0, 0, 1), -0.32 + jerk)
+	poser.turn("Head1", Vector3(1, 0, 0), 0.12 + lunge * 0.1)
 	strike()
 
 ## The blow: wind-up behind the shoulder, a fast stab at the tube, recoil.
@@ -119,7 +114,7 @@ func strike() -> void:
 	var hit: float = blow.hit
 	var now := clock
 	if now > hit + 0.55: return
-	var shoulder := skeleton.global_transform * skeleton.get_bone_global_pose(bones.R_UpperArm).origin
+	var shoulder: Vector3 = poser.point("R_UpperArm")
 	var glass := camera.project_position(blow.uv * Vector2(size), 0.09)
 	# Raised high beside the head, drawn back from the lens.
 	var up := camera.global_basis.y
@@ -129,61 +124,12 @@ func strike() -> void:
 	var target := cocked
 	if now < start: return
 	if now < hit - 0.1:
-		target = shoulder.lerp(cocked, ease_out((now - start) / maxf(hit - 0.1 - start, 0.01)))
+		target = shoulder.lerp(cocked, POSER.ease_out((now - start) / maxf(hit - 0.1 - start, 0.01)))
 	elif now < hit:
-		target = cocked.lerp(glass, ease_in((now - (hit - 0.1)) / 0.1))
+		target = cocked.lerp(glass, POSER.ease_in((now - (hit - 0.1)) / 0.1))
 	elif now < hit + 0.12:
 		target = glass
 	else:
-		target = glass.lerp(shoulder - up * 0.35 - right * 0.2 + toward * 0.15, ease_out((now - hit - 0.12) / 0.43))
-	reach(target)
-
-## Two-bone reach of the right arm so that the blade tip lands on the target.
-func reach(target: Vector3) -> void:
-	var to_skeleton := skeleton.global_transform.affine_inverse()
-	var tip_local := to_skeleton * target
-	var upper_rest := skeleton.get_bone_global_rest(bones.R_UpperArm).origin
-	var fore_rest := skeleton.get_bone_global_rest(bones.R_Forearm).origin
-	var hand_rest := skeleton.get_bone_global_rest(bones.R_Hand).origin
-	var a := upper_rest.distance_to(fore_rest)
-	var b := fore_rest.distance_to(hand_rest) + BLADE
-	var shoulder := skeleton.get_bone_global_pose(bones.R_UpperArm).origin
-	var span := tip_local - shoulder
-	var d := clampf(span.length(), absf(a - b) + 0.001, a + b - 0.001)
-	var direction := span.normalized()
+		target = glass.lerp(shoulder - up * 0.35 - right * 0.2 + toward * 0.15, POSER.ease_out((now - hit - 0.12) / 0.43))
 	# Elbow bends outwards and down.
-	var pole := Vector3(-1.0, -0.6, -0.3).normalized()
-	var side := (pole - direction * pole.dot(direction)).normalized()
-	var along := (a * a - b * b + d * d) / (2.0 * d)
-	var height := sqrt(maxf(a * a - along * along, 0.0))
-	var elbow := shoulder + direction * along + side * height
-	aim(bones.R_UpperArm, "R_Forearm", elbow - shoulder)
-	aim(bones.R_Forearm, "R_Hand", (shoulder + direction * d) - elbow)
-
-## Rotates a bone so the direction to its child points along `direction`
-## (skeleton space), keeping everything above it as posed.
-func aim(bone: int, child: String, direction: Vector3) -> void:
-	var parent := skeleton.get_bone_parent(bone)
-	var parent_pose := skeleton.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
-	var current := parent_pose * skeleton.get_bone_pose(bone)
-	var child_offset := skeleton.get_bone_rest(skeleton.find_bone(BONE + child)).origin
-	var now_direction := (current.basis * child_offset).normalized()
-	var rotation := Quaternion(now_direction, direction.normalized())
-	var wanted := Basis(rotation) * current.basis
-	skeleton.set_bone_pose_rotation(bone, (parent_pose.basis.inverse() * wanted).get_rotation_quaternion())
-
-## Turns a bone about a skeleton-space axis by an angle.
-func turn(bone: int, axis: Vector3, angle: float) -> void:
-	var parent := skeleton.get_bone_parent(bone)
-	var parent_pose := skeleton.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
-	var current := parent_pose * skeleton.get_bone_pose(bone)
-	var wanted := Basis(axis.normalized(), angle) * current.basis
-	skeleton.set_bone_pose_rotation(bone, (parent_pose.basis.inverse() * wanted).get_rotation_quaternion())
-
-static func ease_out(t: float) -> float:
-	t = clampf(t, 0.0, 1.0)
-	return 1.0 - (1.0 - t) * (1.0 - t)
-
-static func ease_in(t: float) -> float:
-	t = clampf(t, 0.0, 1.0)
-	return t * t * t
+	poser.reach("R", target, Vector3(-1.0, -0.6, -0.3))

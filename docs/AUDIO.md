@@ -58,6 +58,15 @@ Ganancias actuales: apertura −5 dB, portazo −1 dB, apertura lenta −12 dB y
 - **Niveles medidos al 50 %** con `tools/audio/measure_mix.gd` (bus Master, dBFS): ambiente con música y ventilación −26 RMS; paso caminando pico −17; puerta abierta a 2,5 m pico −7; cierre pico −10; portazo al limitador; puerta a 20 m pico −25. Al 100 % todo sube unos 6 dB y el limitador contiene los picos.
 - **Buses** (`default_bus_layout.tres`, editables en el panel Audio de Godot): Master con limitador; Ambience con filtro paso bajo que el aura cierra al acercarse la criatura; Music; Effects y Threat con reverberación que sigue la sala del oyente (habitación, salón largo o sala de azulejos); Aura, que envía a Threat y depende de su deslizador.
 
+## Dirección con auriculares
+
+Medido con `tools/audio/measure_spatial.gd` (pisadas de la criatura a 3,5 m de un oyente quieto, bus Master, tiempo real):
+
+- **Sonidos del mundo** (puertas, eventos): paneo del motor con fuerza 1,15 (`PANNING` en `world_audio.gd`). Es el máximo útil: por encima de ~1,2 Godot separa menos (a 2,0 la izquierda quedaba casi en el centro).
+- **The Locust, binaural:** sus pasos, gruñidos y presencia llegan en mono a los buses `Creature` y `CreatureEcho` (envían a `Threat` y `ThreatEcho`). Su efecto `Ears` es un retardo sin señal directa cuyas dos tomas van una a cada oído; `world_audio.update_ears()` las ajusta en cada fotograma según dónde se oye la criatura (su posición o la abertura por la que llega): el oído del lado de la criatura recibe el sonido hasta 0,65 ms antes (la diferencia de tiempo entre oídos alrededor de una cabeza) y el otro hasta 18 dB más bajo. Medido con 14 dB: a 90° retardo de 31 muestras y unos 15 dB de diferencia (antes 13 dB y sin retardo); a 45° 22 muestras y 11,5 dB (antes 7 dB). El cambio se suaviza para no dar saltos al girar la cabeza.
+- **Delante o detrás:** todo sonido enrutado que llega por detrás del oyente pierde agudos (hasta 3,2 kHz) y 4 dB (`behind()`); en la medición, detrás tiene la cuarta parte de energía aguda que delante.
+- Los ecos de `EffectsEcho` y `ThreatEcho` ya no se abren a izquierda y derecha (panorama 0) y la reverberación de ambos es más seca (directo 0,85), para que lo que llega por una esquina conserve su lado.
+
 ## Aura de The Locust
 
 `game/audio/dread_aura.gd` (nodo `WorldAudio/DreadAura`) calcula cada 0,25 s la distancia **por ruta caminable** entre jugador y criatura. La intensidad crece desde 38 m hasta 5 m y aumenta si investiga o persigue; es cero durante la protección inicial y en el refugio.
@@ -90,6 +99,10 @@ Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Loc
 
 Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura puede oír (radio 4). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (radio 2); cambiar de lado o volver a abrir no suena.
 
+## Apertura lenta
+
+La puerta abierta despacio y el asomarse del armario usan `door/opening/slow-opening-clean.wav`, sacado de `creaky-wooden-door-slow-opening.mp3` por `tools/audio/clean_recordings.py`: filtro de graves bajo 120 Hz y puerta espectral contra el ruido de micrófono, y un descenso de 10 dB a lo largo del sonido con un desvanecimiento final, para que no termine fuerte. Suena 5 dB por debajo que antes (−12 dB, frente a +1 de una apertura normal; asomarse, −25).
+
 ## Pasos del jugador
 
 Las tomas aportadas están en `sfx/footsteps/` (fuera de git): moqueta caminando, moqueta corriendo y suelo duro caminando. `tools/audio/slice_footsteps.py` las corta en pasos sueltos (`assets/audio/sfx/footsteps/`, WAV mono) y escribe `game/audio/footstep_segments.gd` con el instante del golpe dentro de cada recorte. Las grabaciones de moqueta traen mucha energía por debajo de 35 Hz, que se filtra antes de cortar; cada juego se normaliza a un pico común. Si cambias una toma, vuelve a ejecutar el script.
@@ -100,7 +113,7 @@ Los pasos propios van por el bus `Steps` (sigue el deslizador de efectos), con u
 
 ## Escena de entrada
 
-Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes al cristal (con un golpe grave sintetizado debajo, bajo) y `glass-break` para la pantalla que estalla, oída amortiguada a través de la puerta. Sintetizados por `tools/audio/generate_intro_sfx.py` en `assets/audio/intro/`: estática de canal muerto más intensa (siseo de banda ancha con subidas, chasquidos y zumbido de campo a 59,94 Hz), zumbido del tubo, crujidos de la cama al incorporarse e inclinarse (armazón, muelles y sábanas), pisadas fuertes para ir hacia la puerta y golpes contra la puerta. Se reutilizan respiración, dron, crecida de presencia, latidos, portazos, un gruñido y los pasos grabados. `tools/audio/analyze_cue_timing.gd` incluye ahora `assets/audio/glass` para arrancar las grabaciones en su ataque. Niveles al 50 % con `tools/audio/measure_intro.gd`: estática mirando la tele unos −22 dBFS RMS; golpes al cristal pico −2; portazo y rotura pico −1.
+Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes al cristal (con un golpe grave sintetizado debajo, bajo) y `glass-break` para la pantalla que estalla, oída amortiguada a través de la puerta. Sintetizados por `tools/audio/generate_intro_sfx.py` en `assets/audio/intro/`: estática de canal muerto más intensa (siseo de banda ancha con subidas, chasquidos y zumbido de campo a 59,94 Hz), zumbido del tubo, pisadas fuertes para ir hacia la puerta y golpes contra la puerta. La cama es la grabación aportada `assets/audio/bed-sound.m4a` (alguien moviéndose en una cama, 34 s): `tools/audio/clean_recordings.py` la decodifica con `tools/audio/decode_media.ps1` (Media Foundation de Windows, sin instalar nada), le quita ruido y la corta en seis movimientos (`bed_stir`, `bed_sit`, `bed_lean`, `bed_shift`, `bed_press`, `bed_rise`) con los golpes de las manos contra el colchón suavizados. Se reutilizan respiración, dron, crecida de presencia, latidos, portazos, un gruñido y los pasos grabados. `tools/audio/analyze_cue_timing.gd` incluye ahora `assets/audio/glass` para arrancar las grabaciones en su ataque. Niveles al 50 % con `tools/audio/measure_intro.gd`: estática mirando la tele unos −22 dBFS RMS; golpes al cristal pico −2; portazo y rotura pico −1. Incorporarse y apoyarse en la cama: pico −4 y RMS −23 dBFS con la estática debajo.
 
 ## Eventos del director
 

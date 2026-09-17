@@ -158,17 +158,16 @@ func build_events() -> void:
 	# Time, method, arguments.
 	events = [
 		[0.3, "play", ["breath", -10.0]],
-		[8.2, "creak", [2, -14.0]],
-		[9.6, "creak", [0, -4.0]],
-		[11.3, "creak", [1, -8.0]],
-		[13.2, "creak", [2, -6.0]],
-		[15.0, "creak", [0, -7.0]],
+		[8.0, "play", ["bed_stir", -12.0]],
+		[9.4, "play", ["bed_sit", -8.0]],
+		[12.9, "play", ["bed_lean", -8.0]],
 		[16.5, "tween_uniform", ["roll", 0.0, 1.0, 0.6]],
 		[19.0, "start_drone", []],
 		[21.0, "start_heartbeat", []],
-		[21.2, "creak", [1, -8.0]],
+		[19.2, "play", ["bed_shift", -12.0]],
+		[20.4, "play", ["bed_press", -9.0]],
 		[25.2, "lunge", []],
-		[30.3, "creak", [2, -2.0]],
+		[29.9, "play", ["bed_rise", -3.0]],
 		[32.5, "swing", ["bedroom", -1.45, 0.22, "open"]],
 		[33.62, "swing", ["bedroom", 0.0, 0.14, "slam"]],
 		[33.85, "play", ["glass_break", -6.0]],
@@ -360,9 +359,6 @@ static func ease_out(t: float) -> float:
 
 # --- Sound -----------------------------------------------------------------
 
-func creak(index: int, volume: float) -> void:
-	play("creak_%d" % index, volume)
-
 func bang(sound: int) -> void:
 	door_rattle = 1.0
 	shake = maxf(shake, 0.2)
@@ -422,7 +418,6 @@ func build_audio() -> void:
 	for i in 3:
 		voice3d("glass_hit_%d" % i, "res://assets/audio/glass/glass-hit-%d.ogg" % (i + 1), SCREEN, "Threat", 0.0, false, 4.0)
 		voice3d("knock_%d" % i, "res://assets/audio/intro/glass_knock_%d.wav" % (i + 1), SCREEN, "Threat", 0.0, false, 4.0)
-		voice3d("creak_%d" % i, "res://assets/audio/intro/bed_creak_%d.wav" % (i + 1), BED + Vector3(-0.7, 0.5, -0.4), "Effects", 0.0, false, 3.0)
 		voice2d("stomp_%d" % i, "res://assets/audio/intro/stomp_%d.wav" % (i + 1), "Steps")
 		voice3d("bang_%d" % i, "res://assets/audio/intro/door_bang_%d.wav" % (i + 1), door_point, "Threat", 0.0, false, 6.0)
 		voices["bang_%d" % i].attenuation_filter_cutoff_hz = 3000.0
@@ -431,6 +426,9 @@ func build_audio() -> void:
 	voices.glass_break.attenuation_filter_cutoff_hz = 1500.0
 	voice3d("grunt", "res://assets/audio/sfx/chase/grunts.ogg", door_point, "Threat", -2.0, false, 6.0)
 	voices.grunt.attenuation_filter_cutoff_hz = 1800.0
+	# Recorded movements on the bed, right under the listener.
+	for title in ["bed_stir", "bed_sit", "bed_lean", "bed_shift", "bed_press", "bed_rise"]:
+		voice3d(title, "res://assets/audio/intro/%s.wav" % title, BED + Vector3(-0.7, 0.5, -0.4), "Effects", 0.0, false, 3.0)
 	voice3d("door_open", "res://assets/audio/sfx/door/opening/close-hard-opening.ogg", door_point, "Effects", 0.0, false, 4.0)
 	voice3d("door_slam", "res://assets/audio/sfx/door/closing/close-hard-closing.ogg", door_point, "Effects", 0.0, false, 4.0)
 	voice3d("door_push", "res://assets/audio/sfx/door/opening/opening2.ogg", NEXT_DOOR + Vector3(0, 1.4, 0), "Effects", 0.0, false, 4.0)
@@ -487,88 +485,33 @@ func build_set() -> void:
 		builder.box(builder, centre + Vector3(0, -0.15, 0), Vector3(rect.size.x + 0.2, 0.3, rect.size.y + 0.2), "carpet", true)
 		builder.box(builder, centre + Vector3(0, HEIGHT + 0.1, 0), Vector3(rect.size.x + 0.2, 0.2, rect.size.y + 0.2), "ceiling", true)
 	# Bedroom walls; the east one is shared with the corridor.
-	wall(Vector2(-2.6, -3.2), Vector2(2.6, -3.2), [])
-	wall(Vector2(-2.6, 3.2), Vector2(2.6, 3.2), [])
-	wall(Vector2(-2.6, -3.2), Vector2(-2.6, 3.2), [])
-	wall(Vector2(2.6, -14.0), Vector2(2.6, 4.0), [16.0, 6.8])
+	builder.set_wall(Vector2(-2.6, -3.2), Vector2(2.6, -3.2), [])
+	builder.set_wall(Vector2(-2.6, 3.2), Vector2(2.6, 3.2), [])
+	builder.set_wall(Vector2(-2.6, -3.2), Vector2(-2.6, 3.2), [])
+	builder.set_wall(Vector2(2.6, -14.0), Vector2(2.6, 4.0), [16.0, 6.8])
 	# Corridor: east wall with the lit room's door and two shut ones, end walls.
-	wall(Vector2(5.0, -14.0), Vector2(5.0, 4.0), [3.0, 9.5, 15.0])
-	wall(Vector2(2.6, 4.0), Vector2(5.0, 4.0), [])
-	wall(Vector2(2.6, -14.0), Vector2(5.0, -14.0), [])
+	builder.set_wall(Vector2(5.0, -14.0), Vector2(5.0, 4.0), [3.0, 9.5, 15.0])
+	builder.set_wall(Vector2(2.6, 4.0), Vector2(5.0, 4.0), [])
+	builder.set_wall(Vector2(2.6, -14.0), Vector2(5.0, -14.0), [])
 	# Lit room, with a far door into the reception.
-	wall(Vector2(5.0, -13.5), Vector2(9.0, -13.5), [])
-	wall(Vector2(5.0, -8.5), Vector2(9.0, -8.5), [])
-	wall(Vector2(9.0, -13.5), Vector2(9.0, -8.5), [2.5])
-	wall(Vector2(9.0, -13.5), Vector2(13.5, -13.5), [])
-	wall(Vector2(9.0, -8.5), Vector2(13.5, -8.5), [])
-	wall(Vector2(13.5, -13.5), Vector2(13.5, -8.5), [])
+	builder.set_wall(Vector2(5.0, -13.5), Vector2(9.0, -13.5), [])
+	builder.set_wall(Vector2(5.0, -8.5), Vector2(9.0, -8.5), [])
+	builder.set_wall(Vector2(9.0, -13.5), Vector2(9.0, -8.5), [2.5])
+	builder.set_wall(Vector2(9.0, -13.5), Vector2(13.5, -13.5), [])
+	builder.set_wall(Vector2(9.0, -8.5), Vector2(13.5, -8.5), [])
+	builder.set_wall(Vector2(13.5, -13.5), Vector2(13.5, -8.5), [])
 	build_furniture()
-	bedroom_leaf = door_leaf(BEDROOM_DOOR, "107")
-	next_leaf = door_leaf(NEXT_DOOR, "112")
+	bedroom_leaf = builder.set_door(BEDROOM_DOOR, "107")
+	next_leaf = builder.set_door(NEXT_DOOR, "112")
 	next_leaf.rotation.y = -0.6
-	far_leaf = door_leaf(FAR_DOOR, "")
-	door_leaf(Vector3(2.6, 0, -7.2), "109")
-	door_leaf(Vector3(5.0, 0, 1.0), "108")
-	door_leaf(Vector3(5.0, 0, -4.5), "110")
+	far_leaf = builder.set_door(FAR_DOOR, "")
+	builder.set_door(Vector3(2.6, 0, -7.2), "109")
+	builder.set_door(Vector3(5.0, 0, 1.0), "108")
+	builder.set_door(Vector3(5.0, 0, -4.5), "110")
 	builder.flush()
 	build_lights()
 	# Room numbers only show where light falls on them.
 	for label in builder.find_children("*", "Label3D", true, false): label.shaded = true
-
-## A papered wall between two floor points, with doorway gaps centred at the
-## given distances from its start.
-func wall(from: Vector2, to: Vector2, gaps: Array) -> void:
-	var direction := to - from
-	var length := direction.length()
-	var boundary := Node3D.new()
-	var middle := (from + to) * 0.5
-	boundary.position = Vector3(middle.x, 0, middle.y)
-	boundary.rotation.y = atan2(-direction.y, direction.x)
-	builder.add_child(boundary)
-	var cuts: Array = gaps.duplicate()
-	cuts.sort()
-	var start := 0.0
-	var portal: float = FLOOR.PORTAL
-	for centre in cuts + [length + portal * 0.5]:
-		var stop: float = minf(centre - portal * 0.5, length)
-		if stop - start > 0.01:
-			var x := (start + stop) * 0.5 - length * 0.5
-			builder.box(boundary, Vector3(x, HEIGHT / 2, 0), Vector3(stop - start, HEIGHT, 0.18), "plaster", true)
-			for face in [-1, 1]:
-				builder.box(boundary, Vector3(x, 0.48, face * 0.11), Vector3(stop - start, 0.96, 0.07), "panel")
-				builder.box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(stop - start, 0.05, 0.035), "trim")
-				builder.box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(stop - start, 0.14, 0.03), "trim")
-				builder.box(boundary, Vector3(x, HEIGHT - 0.05, face * 0.12), Vector3(stop - start, 0.1, 0.06), "trim")
-		if centre < length:
-			var x: float = centre - length * 0.5
-			builder.box(boundary, Vector3(x, (HEIGHT + 2.65) / 2, 0), Vector3(portal, HEIGHT - 2.65, 0.18), "plaster", true)
-			for face in [-1, 1]:
-				builder.box(boundary, Vector3(x, 2.74, face * 0.165), Vector3(portal + 0.26, 0.14, 0.035), "trim")
-				for side in [-1, 1]: builder.box(boundary, Vector3(x + side * (portal * 0.5 + 0.06), 1.36, face * 0.165), Vector3(0.14, 2.72, 0.035), "trim")
-		start = centre + portal * 0.5
-
-## A door leaf hinged at the south edge of a doorway in a wall running along Z;
-## returns its hinge. A negative turn swings it towards +X.
-func door_leaf(centre: Vector3, number: String) -> Node3D:
-	var width: float = FLOOR.LEAF_WIDTH
-	var hinge := Node3D.new()
-	hinge.position = centre + Vector3(0, 0, width * 0.5)
-	builder.add_child(hinge)
-	var holder := Node3D.new()
-	holder.rotation.y = PI / 2
-	hinge.add_child(holder)
-	var leaf := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(width, 2.58, 0.07)
-	mesh.material = builder.materials.door
-	leaf.mesh = mesh
-	leaf.position = Vector3(width * 0.5, 1.29, 0)
-	holder.add_child(leaf)
-	for face in [-1, 1]: builder.box(holder, Vector3(width - 0.14, 1.08, face * 0.07), Vector3(0.14, 0.04, 0.05), "gold")
-	if not number.is_empty():
-		builder.text(holder, number, Vector3(width * 0.5, 1.94, 0.045), 0, 24)
-		builder.text(holder, number, Vector3(width * 0.5, 1.94, -0.045), PI, 24)
-	return hinge
 
 func build_furniture() -> void:
 	var bed := MeshInstance3D.new()

@@ -17,7 +17,7 @@ La experiencia final será de terror ambiental cooperativo para **2–4 jugadore
 
 ## Escena de entrada
 
-Un recorrido nuevo empieza en un dormitorio a oscuras con solo un televisor grande (unos 80 cm) encendido. Se despierta despacio, se incorpora y se inclina hacia la pantalla apoyándose en la cama, que cruje. En la tele se ve The Locust (el mismo modelo del juego) en una esquina empapelada: se asoma desde el borde, mira, se abalanza hacia el objetivo y golpea el cristal desde dentro con el brazo; cada golpe raja el vidrio justo donde impacta. Antes de que se rompa, el personaje se levanta y va hacia la puerta con pasos marcados, sale, se gira de golpe para cerrarla (la pantalla estalla detrás) y corre por el pasillo oscuro mientras golpean la puerta. Cruza la habitación iluminada del fondo y abre su otra puerta hacia la recepción, donde parpadea la luz roja que marca el inicio del piso; la imagen se rompe en estática y empieza la partida. Dura unos 40 s, el ratón mueve un poco la mirada mientras está en la cama y se puede saltar. No se repite al continuar ni al reintentar.
+Un recorrido nuevo empieza en un dormitorio a oscuras con solo un televisor grande (unos 80 cm) encendido. Se despierta despacio, se incorpora y se inclina hacia la pantalla apoyándose en la cama, que cruje. En la tele se ve The Locust (el mismo modelo del juego) en una esquina empapelada: se asoma desde el borde, mira, se abalanza hacia el objetivo y golpea el cristal desde dentro con el brazo; cada golpe raja el vidrio justo donde impacta. Antes de que se rompa, el personaje se levanta y va hacia la puerta con pasos marcados, sale, se gira de golpe para cerrarla (la pantalla estalla detrás) y corre por el pasillo oscuro mientras golpean la puerta. Cruza la habitación iluminada del fondo y abre su otra puerta hacia la recepción, donde parpadea la luz roja que marca el inicio del piso; la imagen se rompe en estática y empieza la partida. Dura unos 40 s, el ratón mueve un poco la mirada mientras está en la cama y se puede saltar manteniendo E (lo recuerda un texto pequeño arriba a la derecha durante los primeros segundos: «E  para saltar cinemática»). No se repite al continuar ni al reintentar.
 
 La recepción inicial no tiene carteles: la señala una lámpara roja de emergencia que parpadea en el techo, para orientarse de vuelta al punto de partida.
 
@@ -39,6 +39,8 @@ Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa 
 
 Menú principal: Jugar, Continuar, Ajustes, Créditos y Salir. Continuar solo se habilita con un checkpoint compatible. Preferencias locales separadas del guardado de campaña.
 
+Portada: detrás del menú se ve una habitación de hotel normal, iluminada por su lámpara, con una cámara en mano que deriva despacio. Al fondo, a la derecha y fuera del centro de la imagen, la puerta al pasillo está abierta y The Locust se asoma desde detrás del marco: solo la cara pálida, ladeada, y un brazo largo colgando en la abertura, con algún tic de cabeza. Es pequeño y oscuro a propósito, para que sorprenda a quien lo descubra.
+
 - Gráficos: ventana/pantalla completa, resolución, escala de render, calidad baja/media/alta, sombras, límite de FPS y sincronización vertical.
 - Imagen: intensidad VHS, grano, aberración cromática, movimiento de cámara y efectos reducidos. Sin desenfoque de movimiento.
 - Controles: sensibilidad, inversión vertical, reasignación sin conflictos y restauración de controles. Esc, F9 y F11 se reservan.
@@ -54,7 +56,7 @@ La versión actual conserva caminar a 3,8 m/s, correr a 6 m/s y salto. Interacci
 
 Recepción, habitaciones, baños, salones, comedor, lavandería, almacenes, mantenimiento, vestíbulos, galerías, sala de lectura, televisión, oficina, guardarropa y jardín interior. Veinte definiciones base combinan función, altura y recetas de decoración. Las zonas domésticas incluyen subdivisiones interiores; no todo es un corredor de laboratorio.
 
-Moqueta, papel mural, zócalos de madera, lámparas cálidas y fluorescentes. Techos de 3,15 m y salones seleccionados de 4,2 m y espacios comunes unidos de 4,8 m. Referencias reconocibles: mobiliario, números, cuadros, tapizados y, en etapas siguientes, manchas y fuentes de sonido.
+Moqueta, papel mural, zócalos de madera, lámparas cálidas y fluorescentes. Alrededor de una de cada cinco habitaciones, salones o pasillos (nunca recepción, salas de servicio, salones unidos ni refugio) tiene la lámpara del techo apagada: solo la iluminan la linterna, las lámparas de los muebles y lo que entra por las puertas. Cada cara de una puerta lleva el número de la habitación que hay **detrás**: desde dentro de la 100, sus puertas muestran los números de los módulos vecinos. Techos de 3,15 m y salones seleccionados de 4,2 m y espacios comunes unidos de 4,8 m. Referencias reconocibles: mobiliario, números, cuadros, tapizados y, en etapas siguientes, manchas y fuentes de sonido.
 
 Mobiliario inicial original y provisional: cama, mesita, lámpara, sofá, escritorio, televisión, teléfono, cuadros, maleta, carro, estantería, planta, papelera, cortina, recepción, mesa, armario, lavadora y lavabo. Son piezas geométricas reconocibles, no assets fotorrealistas terminados.
 

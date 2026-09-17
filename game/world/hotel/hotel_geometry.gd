@@ -22,6 +22,9 @@ var tubes: Array = []
 var flicker_clock := 0.0
 ## Red start lamps in the reception: {light, material, energy}.
 var beacons: Array = []
+## Share of eligible rooms (private rooms, lounges, corridors; never the
+## reception, service rooms, halls or the refuge) whose ceiling lamp is out.
+const DARK_SHARE := 0.2
 const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
 const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
@@ -37,6 +40,10 @@ func _init() -> void:
 		materials[key] = load("res://game/presentation/materials/%s.tres" % key).duplicate()
 		apply_image_maps(materials[key], key)
 	curtain_material = materials.curtain
+	# A dead ceiling dome: same glass, no glow.
+	materials["light_off"] = materials.light.duplicate()
+	materials.light_off.emission_enabled = false
+	materials.light_off.albedo_color = materials.light.albedo_color.darkened(0.55)
 
 # Photographic maps dropped in assets/textures/<material>/ replace the
 # procedural base automatically: albedo, normal (OpenGL) and roughness.
@@ -121,6 +128,65 @@ func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38) -
 	label.outline_size = 0
 	parent.add_child(label)
 
+## Staged sets (opening scene, title screen), built outside the floor plan.
+## A papered wall between two floor points, with doorway gaps centred at the
+## given distances from its start.
+func set_wall(from: Vector2, to: Vector2, gaps: Array, height := 2.9) -> void:
+	var direction := to - from
+	var length := direction.length()
+	var boundary := Node3D.new()
+	var middle := (from + to) * 0.5
+	boundary.position = Vector3(middle.x, 0, middle.y)
+	boundary.rotation.y = atan2(-direction.y, direction.x)
+	add_child(boundary)
+	var cuts: Array = gaps.duplicate()
+	cuts.sort()
+	var start := 0.0
+	var portal: float = FLOOR.PORTAL
+	for centre in cuts + [length + portal * 0.5]:
+		var stop: float = minf(centre - portal * 0.5, length)
+		if stop - start > 0.01:
+			var x := (start + stop) * 0.5 - length * 0.5
+			box(boundary, Vector3(x, height / 2, 0), Vector3(stop - start, height, 0.18), "plaster", true)
+			for face in [-1, 1]:
+				box(boundary, Vector3(x, 0.48, face * 0.11), Vector3(stop - start, 0.96, 0.07), "panel")
+				box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(stop - start, 0.05, 0.035), "trim")
+				box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(stop - start, 0.14, 0.03), "trim")
+				box(boundary, Vector3(x, height - 0.05, face * 0.12), Vector3(stop - start, 0.1, 0.06), "trim")
+		if centre < length:
+			var x: float = centre - length * 0.5
+			box(boundary, Vector3(x, (height + 2.65) / 2, 0), Vector3(portal, height - 2.65, 0.18), "plaster", true)
+			for face in [-1, 1]:
+				box(boundary, Vector3(x, 2.74, face * 0.165), Vector3(portal + 0.26, 0.14, 0.035), "trim")
+				for side in [-1, 1]: box(boundary, Vector3(x + side * (portal * 0.5 + 0.06), 1.36, face * 0.165), Vector3(0.14, 2.72, 0.035), "trim")
+		start = centre + portal * 0.5
+
+## A door leaf hinged at the south edge of a doorway in a wall running along Z;
+## returns its hinge. A negative turn swings it towards +X. With `yaw` the
+## whole door turns for walls along other directions (PI / 2: a wall along X,
+## hinged at its east edge).
+func set_door(centre: Vector3, number: String, yaw := 0.0) -> Node3D:
+	var width: float = FLOOR.LEAF_WIDTH
+	var hinge := Node3D.new()
+	hinge.position = centre + Basis(Vector3.UP, yaw) * Vector3(0, 0, width * 0.5)
+	hinge.rotation.y = yaw
+	add_child(hinge)
+	var holder := Node3D.new()
+	holder.rotation.y = PI / 2
+	hinge.add_child(holder)
+	var leaf := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(width, 2.58, 0.07)
+	mesh.material = materials.door
+	leaf.mesh = mesh
+	leaf.position = Vector3(width * 0.5, 1.29, 0)
+	holder.add_child(leaf)
+	for face in [-1, 1]: box(holder, Vector3(width - 0.14, 1.08, face * 0.07), Vector3(0.14, 0.04, 0.05), "gold")
+	if not number.is_empty():
+		text(holder, number, Vector3(width * 0.5, 1.94, 0.045), 0, 24)
+		text(holder, number, Vector3(width * 0.5, 1.94, -0.045), PI, 24)
+	return hinge
+
 func build(data: Dictionary) -> void:
 	manifest = data
 	for room in data.rooms:
@@ -162,8 +228,11 @@ func build(data: Dictionary) -> void:
 		shape.position = leaf.position
 		door.add_child(shape)
 		for face in [-1, 1]: box(door, Vector3(FLOOR.LEAF_WIDTH - 0.14, 1.08, face * 0.07), Vector3(0.14, 0.04, 0.05), "gold")
-		text(door, str(100 + int(b.id)), Vector3(half, 1.94, 0.045), 0, 24)
-		text(door, str(100 + int(a.id)), Vector3(half, 1.94, -0.045), PI, 24)
+		# Each face shows the number of the room behind the door, as seen from
+		# the room that face looks into.
+		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
+		text(door, str(100 + int(a.id)), Vector3(half, 1.94, 0.045 * b_side), 0.0 if b_side > 0 else PI, 24)
+		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -0.045 * b_side), PI if b_side > 0 else 0.0, 24)
 		if int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
@@ -258,7 +327,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	else:
 		# Frosted dome in a brass ring: warm pool with darker corners.
 		cylinder(node, Vector3(0, height - 0.03, 0), 0.26, 0.06, "gold")
-		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light", false, "cone", Vector3(PI, 0, 0))
+		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light_off" if dark_room(room) else "light", false, "cone", Vector3(PI, 0, 0))
 		light.light_color = Color("ffcf94")
 		light.light_energy = 3.6
 		light.position = Vector3(0, height - 0.45, 0)
@@ -279,6 +348,10 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	light.distance_fade_shadow = SHADOW_FADE
 	node.add_child(light)
 	lights.append(light)
+	# Some rooms have their lamp out: only torches and the doorways light them.
+	if dark_room(room):
+		light.set_meta("off", true)
+		light.visible = false
 	if service: tubes.append({"light": light, "energy": light.light_energy})
 	if failing:
 		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials["tube_%d" % flickers.size()], "glow": materials.light.emission_energy_multiplier})
@@ -418,6 +491,11 @@ func build_navigation() -> void:
 	region.navigation_mesh = nav
 	add_child(region)
 
+## Whether this room's ceiling lamp is out (deterministic per position).
+static func dark_room(room: Dictionary) -> bool:
+	if int(room.type) in [0, 4, 7, 8, 9, 19] or int(room.get("hall", -1)) >= 0: return false
+	return vary(FLOOR.position_of(room), 7) < DARK_SHARE
+
 func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array], center: Vector3, low: Vector2, high: Vector2) -> void:
 	var first := vertices.size()
 	vertices.append_array(PackedVector3Array([center + Vector3(low.x, 0.04, low.y), center + Vector3(low.x, 0.04, high.y), center + Vector3(high.x, 0.04, high.y), center + Vector3(high.x, 0.04, low.y)]))
@@ -434,7 +512,7 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
 		room_nodes[i].visible = distance < (42.0 if quality == 0 else 66.0)
-		lights[i].visible = distance < FADE_BEGIN + FADE_LENGTH + 4.0
+		lights[i].visible = distance < FADE_BEGIN + FADE_LENGTH + 4.0 and not lights[i].has_meta("off")
 		lights[i].shadow_enabled = shadows
 	for lamp in practicals:
 		lamp.visible = quality > 0 and lamp.global_position.distance_to(player_position) < 28.0

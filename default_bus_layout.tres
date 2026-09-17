@@ -32,10 +32,10 @@ wet = 0.16
 resource_name = "EchoTaps"
 tap1_delay_ms = 170.0
 tap1_level_db = -9.0
-tap1_pan = 0.25
+tap1_pan = 0.0
 tap2_delay_ms = 340.0
 tap2_level_db = -15.0
-tap2_pan = -0.25
+tap2_pan = 0.0
 
 [sub_resource type="AudioEffectReverb" id="EchoRoom"]
 resource_name = "EchoRoom"
@@ -43,17 +43,17 @@ predelay_msec = 60.0
 predelay_feedback = 0.35
 damping = 0.55
 hipass = 0.1
-dry = 0.6
+dry = 0.85
 wet = 0.55
 
 [sub_resource type="AudioEffectDelay" id="EchoTapsThreat"]
 resource_name = "EchoTaps"
 tap1_delay_ms = 190.0
 tap1_level_db = -8.0
-tap1_pan = 0.3
+tap1_pan = 0.0
 tap2_delay_ms = 380.0
 tap2_level_db = -14.0
-tap2_pan = -0.3
+tap2_pan = 0.0
 
 [sub_resource type="AudioEffectReverb" id="EchoRoomThreat"]
 resource_name = "EchoRoom"
@@ -61,8 +61,8 @@ predelay_msec = 60.0
 predelay_feedback = 0.35
 room_size = 0.85
 hipass = 0.08
-dry = 0.6
-wet = 0.6
+dry = 0.85
+wet = 0.42
 
 [sub_resource type="AudioEffectReverb" id="StepsSpace"]
 resource_name = "StepsSpace"
@@ -73,6 +73,32 @@ damping = 0.7
 spread = 0.6
 hipass = 0.2
 wet = 0.05
+
+[sub_resource type="AudioEffectDelay" id="Ears"]
+resource_name = "Ears"
+dry = 0.0
+tap1_active = true
+tap1_delay_ms = 0.05
+tap1_level_db = 0.0
+tap1_pan = -1.0
+tap2_active = true
+tap2_delay_ms = 0.05
+tap2_level_db = 0.0
+tap2_pan = 1.0
+feedback_active = false
+
+[sub_resource type="AudioEffectDelay" id="EarsEcho"]
+resource_name = "Ears"
+dry = 0.0
+tap1_active = true
+tap1_delay_ms = 0.05
+tap1_level_db = 0.0
+tap1_pan = -1.0
+tap2_active = true
+tap2_delay_ms = 0.05
+tap2_level_db = 0.0
+tap2_pan = 1.0
+feedback_active = false
 
 [resource]
 bus/0/effect/0/effect = SubResource("Limiter")
@@ -141,3 +167,19 @@ bus/8/volume_db = 0.0
 bus/8/send = &"Master"
 bus/8/effect/0/effect = SubResource("StepsSpace")
 bus/8/effect/0/enabled = true
+bus/9/name = &"Creature"
+bus/9/solo = false
+bus/9/mute = false
+bus/9/bypass_fx = false
+bus/9/volume_db = 0.0
+bus/9/send = &"Threat"
+bus/9/effect/0/effect = SubResource("Ears")
+bus/9/effect/0/enabled = true
+bus/10/name = &"CreatureEcho"
+bus/10/solo = false
+bus/10/mute = false
+bus/10/bypass_fx = false
+bus/10/volume_db = 0.0
+bus/10/send = &"ThreatEcho"
+bus/10/effect/0/effect = SubResource("EarsEcho")
+bus/10/effect/0/enabled = true

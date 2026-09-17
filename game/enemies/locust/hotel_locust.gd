@@ -132,7 +132,7 @@ func on_footfall(point: Vector3, strength: float) -> void:
 	# Heard directly, or from the doorway it would come through; never through walls.
 	var route: Dictionary = level.world_audio.route_source(point + Vector3.UP * 0.2, get_rid())
 	if not route.audible: return
-	level.world_audio.apply_route(footstep, route, lerpf(-4.0, 4.0, strength), "Threat")
+	level.world_audio.apply_route(footstep, route, lerpf(-4.0, 4.0, strength), "Threat", true)
 	footstep.pitch_scale = rng.randf_range(0.82, 1.08)
 	footstep.play()
 
@@ -147,7 +147,7 @@ func grunt() -> float:
 		if GRUNTS.SEGMENTS[index][1] >= AGGRESSIVE_GRUNT and index != last_grunt: choices.append(index)
 	last_grunt = choices[rng.randi_range(0, choices.size() - 1)]
 	var segment: Array = GRUNTS.SEGMENTS[last_grunt]
-	level.world_audio.apply_route(voice, route, 0.0, "Threat")
+	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
 	voice.pitch_scale = rng.randf_range(0.85, 1.0)
 	voice.play(segment[0])
 	# A lower pitch plays the segment slower: stop when it really ends.

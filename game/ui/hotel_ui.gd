@@ -46,6 +46,8 @@ var reading: Control
 var discoveries
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 var intro_tween: Tween
+## Small corner note during the opening scene: which key skips it.
+var skip_label: Label
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -59,6 +61,16 @@ func _ready() -> void:
 	overlay = $MenuOverlay
 	overlay.theme = style
 	build_frame()
+	skip_label = STYLE.text("", 15)
+	skip_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	skip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	skip_label.offset_left = -440
+	skip_label.offset_right = -36
+	skip_label.offset_top = 26
+	skip_label.offset_bottom = 50
+	skip_label.add_theme_color_override("font_color", STYLE.SOFT)
+	skip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(skip_label)
 	tick_player = sound_player(STYLE.beep(2400.0, 0.018, 0.12))
 	confirm_player = sound_player(STYLE.beep(1250.0, 0.07, 0.25))
 	if settings != null: settings.display_pending.connect(_display_changed)
@@ -609,6 +621,17 @@ func show_characters() -> void:
 	quiet_focus = false
 
 ## Short OSD message in the top-left corner of the recording.
+## Shows the skip key in the top right corner, fading out after a few seconds.
+func show_skip(key: String, seconds := 6.0) -> void:
+	skip_label.text = "%s  para saltar cinemática" % key
+	skip_label.modulate.a = 1.0
+	var fade := create_tween()
+	fade.tween_interval(seconds)
+	fade.tween_property(skip_label, "modulate:a", 0.0, 1.2)
+
+func hide_skip() -> void:
+	skip_label.text = ""
+
 func flash(words: String, seconds := 2.5) -> void:
 	flash_label.text = words
 	flash_time = seconds
