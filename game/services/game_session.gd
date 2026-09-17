@@ -14,6 +14,8 @@ var elapsed := 0.0
 var transition_time := 0.0
 var message := ""
 var checkpoint_path := "user://hotel_checkpoint.json"
+## An online floor: the single-player checkpoint is left alone.
+var online := false
 
 func _ready() -> void: process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -32,7 +34,7 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	elapsed = 0
 	transition_time = 0
 	message = ""
-	write_checkpoint()
+	if not online: write_checkpoint()
 	set_state(State.PLAYING)
 
 func minimum_survivors() -> int: return maxi(1, int(ceil(roster_count / 2.0)))
@@ -65,12 +67,24 @@ func hold_exit(delta: float, held: bool) -> void:
 func capture(id: int) -> bool:
 	if state != State.PLAYING or not participants.has(id) or participants[id] != Life.EXPLORING: return false
 	participants[id] = Life.DEAD
+	return check_quota()
+
+## A player who dropped out of an online floor and never came back: lost for
+## this floor, and the minimum does not drop with them.
+func drop(id: int) -> void:
+	if state != State.PLAYING or not participants.has(id) or participants[id] == Life.DEAD: return
+	participants[id] = Life.DEAD
+	exit_progress = 0
+	check_quota()
+
+func check_quota() -> bool:
 	var alive := 0
 	for life in participants.values():
 		if life != Life.DEAD: alive += 1
 	if alive < minimum_survivors():
 		message = "No quedan suficientes supervivientes."
 		set_state(State.FAILED)
+	else: changed.emit()
 	return true
 
 func pause() -> void:
@@ -117,5 +131,5 @@ func _process(delta: float) -> void:
 	if state == State.TRANSITION:
 		transition_time += delta
 		if transition_time >= 1.2:
-			if FileAccess.file_exists(checkpoint_path): DirAccess.remove_absolute(checkpoint_path)
+			if FileAccess.file_exists(checkpoint_path) and not online: DirAccess.remove_absolute(checkpoint_path)
 			set_state(State.WON)

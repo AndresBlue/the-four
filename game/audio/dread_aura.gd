@@ -102,7 +102,7 @@ func update_route(listener: Vector3, creature: Node3D) -> void:
 		cue_point = listener + (creature.global_position - listener).normalized() * cue_distance_far
 		return
 	var level = world_audio.level
-	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, level.player.global_position, creature.global_position)
+	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, listener, creature.global_position)
 	if path.size() < 2:
 		route_distance = straight * 1.3
 		cue_point = creature.global_position

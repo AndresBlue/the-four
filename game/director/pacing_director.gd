@@ -59,7 +59,7 @@ func stalled() -> bool:
 func tick(delta: float) -> void:
 	clock += delta
 	if hostile(): last_hostile = clock
-	var room := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
+	var room := FLOOR.room_at(level.manifest.rooms, level.pacing_anchor())
 	if not room.is_empty() and not visited.has(room.id):
 		visited[room.id] = true
 		last_new_room = clock
@@ -97,7 +97,7 @@ func start(type: String) -> bool:
 
 func route_length(to: Vector3) -> float:
 	var map: RID = level.get_world_3d().navigation_map
-	var path := FLOOR.navigation_path(map, NavigationServer3D.map_get_closest_point(map, level.player.global_position), NavigationServer3D.map_get_closest_point(map, to))
+	var path := FLOOR.navigation_path(map, NavigationServer3D.map_get_closest_point(map, level.pacing_anchor()), NavigationServer3D.map_get_closest_point(map, to))
 	if path.size() < 2 or path[-1].distance_to(NavigationServer3D.map_get_closest_point(map, to)) > 0.6: return INF
 	var length := 0.0
 	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])
@@ -105,24 +105,26 @@ func route_length(to: Vector3) -> float:
 
 ## Rooms other than the player's and the refuge, at a walking distance between NEAR and FAR.
 func rooms_in_range() -> Array:
-	var here := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
+	var here := FLOOR.room_at(level.manifest.rooms, level.pacing_anchor())
 	var result: Array = []
 	for room in level.manifest.rooms:
 		if room.id == level.manifest.exit or (not here.is_empty() and room.id == here.id): continue
 		var centre := FLOOR.position_of(room)
-		if centre.distance_to(level.player.global_position) > FAR: continue
+		if centre.distance_to(level.pacing_anchor()) > FAR: continue
 		var length := route_length(centre)
 		if length >= NEAR and length <= FAR: result.append(room)
 	return result
 
 func start_raps() -> bool:
 	var doors: Array = level.hotel.doors.filter(func(door):
-		var d: float = door.doorway.distance_to(level.player.global_position)
+		var d: float = door.doorway.distance_to(level.pacing_anchor())
 		return d >= NEAR and d <= FAR and not level.point_in_refuge(door.doorway))
 	if doors.is_empty(): return false
 	var door = doors[rng.randi_range(0, doors.size() - 1)]
 	var point: Vector3 = door.doorway + Vector3.UP * 1.3
-	level.world_audio.play_at(pick("raps"), point, -8.0, door.get_rid(), 0.0)
+	var sound := pick("raps")
+	level.world_audio.play_at(sound, point, -8.0, door.get_rid(), 0.0)
+	level.match_net.world_sound(sound, point, -8.0, 0.0)
 	active = {"type": "raps", "started": clock, "until": clock + 3.0, "point": point, "consequence": false}
 	return true
 
@@ -134,7 +136,9 @@ func start_fall() -> bool:
 	var room: Dictionary = rooms[rng.randi_range(0, rooms.size() - 1)]
 	var map: RID = level.get_world_3d().navigation_map
 	var point := NavigationServer3D.map_get_closest_point(map, FLOOR.position_of(room) + Vector3(rng.randf_range(-2.0, 2.0), 0, rng.randf_range(-2.0, 2.0)))
-	level.world_audio.play_at(pick("fall"), point + Vector3.UP * 0.4, -2.0, RID(), 0.0)
+	var sound := pick("fall")
+	level.world_audio.play_at(sound, point + Vector3.UP * 0.4, -2.0, RID(), 0.0)
+	level.match_net.world_sound(sound, point + Vector3.UP * 0.4, -2.0, 0.0)
 	creature.investigate(point)
 	active = {"type": "fall", "started": clock, "until": clock + 25.0, "point": point, "consequence": true}
 	return true
@@ -142,7 +146,7 @@ func start_fall() -> bool:
 func start_steps() -> bool:
 	var creature = level.locust
 	if not is_instance_valid(creature) or creature.mode != creature.Mode.PATROL: return false
-	var here := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
+	var here := FLOOR.room_at(level.manifest.rooms, level.pacing_anchor())
 	if here.is_empty(): return false
 	var neighbours: Array = rooms_in_range().filter(func(room): return level.manifest.adjacency[here.id].has(room.id) or level.manifest.adjacency[room.id].any(func(id): return level.manifest.adjacency[here.id].has(id)))
 	if neighbours.is_empty(): return false

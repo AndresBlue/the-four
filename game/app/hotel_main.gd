@@ -15,6 +15,7 @@ const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
+const NET := preload("res://game/net/net_session.gd")
 ## The opening scene is built far from the hotel so the two never overlap.
 const INTRO_ORIGIN := Vector3(600, 0, 0)
 const TITLE_ORIGIN := Vector3(-600, 0, 0)
@@ -53,6 +54,14 @@ var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
 var intro_seed := 0
 var skip_time := 0.0
+## Online play (net_session.gd) and its in-match replication (match_net.gd).
+var net
+var match_net
+## The local player is holding interact inside the refuge (online, the host
+## counts everyone holding).
+var exit_held := false
+## Online, Esc opens a menu over the running match instead of pausing it.
+var online_menu := false
 
 func _enter_tree() -> void:
 	world_audio = $WorldAudio
@@ -74,6 +83,13 @@ func _enter_tree() -> void:
 	player.settings = settings
 	ui.settings = settings
 	ui.discoveries = discoveries
+	net = NET.new()
+	net.level = self
+	match_net = net.match_net
+	match_net.level = self
+	if OS.get_cmdline_user_args().has("--test-profile"): match_net.checkpoint_path = "user://test_coop_%s_checkpoint.json" % test_name
+	$Services.add_child(net)
+	ui.net = net
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -84,6 +100,9 @@ func _ready() -> void:
 	player.hiding_changed.connect(on_hide_changed)
 	ui.action_requested.connect(on_action)
 	session.changed.connect(on_state)
+	net.closed.connect(on_net_closed)
+	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else "join"))
+	net.joined.connect(func(): if session.state == session.State.MENU: ui.menu("lobby"))
 	NavigationServer3D.map_set_use_async_iterations(get_world_3d().navigation_map, false)
 	build_environment()
 	build_audio()
@@ -119,6 +138,29 @@ func on_action(action: String) -> void:
 		"credits": ui.menu("credits")
 		"characters": ui.show_characters()
 		"multiplayer": ui.menu("multiplayer")
+		"host":
+			if net.host(settings.values.player_name, settings.values.character) == OK: ui.menu("lobby")
+			else: ui.menu("multiplayer", false, net.status)
+		"join": ui.menu("join")
+		"connect":
+			if net.join(settings.values.join_address, settings.values.player_name, settings.values.character) != OK: ui.menu("join", false, net.status)
+			else: ui.menu("join")
+		"lobby_start":
+			if not net.start_match(): ui.menu("lobby", false, net.start_problem())
+		"lobby_leave":
+			net.shutdown("")
+			ui.menu("multiplayer")
+		"online_resume": close_online_menu()
+		"online_settings": ui.show_settings("online_pause")
+		"online_pause": ui.menu("online_pause")
+		"lobby": ui.menu("lobby")
+		"lobby_character": ui.show_characters("lobby")
+		"online_retry": net.start_match(int(match_net.config.get("seed", -1)))
+		"online_new": net.start_match()
+		"online_room": net.return_to_lobby()
+		"online_quit":
+			net.shutdown("")
+			leave_online_floor()
 		"archive": ui.menu("archive")
 		"quit": get_tree().quit()
 
@@ -150,7 +192,17 @@ func finish_intro() -> void:
 	start_floor(intro_seed)
 
 func start_floor(seed_value: int, force_fallback := false) -> void:
-	if session.state == session.State.LOADING: return
+	if not await build_floor(seed_value, force_fallback): return
+	camcorder.start_tape(seed_value)
+	session.online = false
+	session.start(seed_value, manifest.get("fallback", false))
+	save_error = session.message
+	populate_floor(true)
+
+## Generates, builds and validates a floor. False (back in the menu) when it
+## could not be made playable.
+func build_floor(seed_value: int, force_fallback := false) -> bool:
+	if session.state == session.State.LOADING: return false
 	session.set_state(session.State.LOADING)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -204,7 +256,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 		if not physical_errors.is_empty():
 			save_error = "El mapa de respaldo no superó la validación física. No se inició la partida."
 			session.set_state(session.State.MENU)
-			return
+			return false
 	# Wait for the new static floor's navigation to be queryable before playing.
 	var exit_room: Dictionary = manifest.rooms[manifest.exit]
 	var exit_position := FLOOR.position_of(exit_room)
@@ -218,24 +270,116 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	if not navigation_ready:
 		save_error = "No se pudo validar la ruta de salida. El nivel no se inició."
 		session.set_state(session.State.MENU)
-		return
-	camcorder.start_tape(seed_value)
-	session.start(seed_value, manifest.get("fallback", false))
-	save_error = session.message
+		return false
+	return true
+
+## Creature, documents, director and sounds of a floor that is about to be played.
+func populate_floor(with_director: bool) -> void:
 	spawn_locust()
 	place_documents()
-	director = DIRECTOR.new()
-	director.name = "Director"
-	director.setup(self, int(manifest.seed))
-	hotel.add_child(director)
+	director = null
+	if with_director:
+		director = DIRECTOR.new()
+		director.name = "Director"
+		director.setup(self, int(manifest.seed))
+		hotel.add_child(director)
 	world_audio.set_creature(locust.sound_profile)
 	for door in hotel.doors: door.sound_requested.connect(world_audio.door_cue)
 	# Easing wardrobe doors creaks: a quiet noise the creature can pick up.
-	for hide in get_tree().get_nodes_in_group("hotel_hides"): hide.peek_started.connect(on_peek)
+	for hide in hotel.hides: hide.peek_started.connect(on_peek)
 	if not automation and not OS.get_cmdline_user_args().has("--silent"):
 		ambience.play()
 		theme.play()
 		ventilation.play()
+
+# --- Online floors ---------------------------------------------------------------
+
+## The host started a floor: build it, then tell the host we are ready.
+func start_online_floor(config: Dictionary) -> void:
+	if is_instance_valid(intro):
+		intro.queue_free()
+		intro = null
+	close_online_menu()
+	if is_instance_valid(reading_document): close_document()
+	if session.state == session.State.LOADING:
+		await session.changed
+	if not await build_floor(int(config.seed)):
+		net.shutdown("No se pudo construir el piso de la partida.")
+		return
+	ui.menu("loading", false, "Esperando a los demás jugadores…")
+	player.visible = true
+	player.collision_layer = 4
+	player.camera.current = true
+	player.slot = net.local_seat
+	player.spawn = match_net.spawn_point(net.local_seat)
+	player.position = player.spawn
+	match_net.floor_built()
+
+## Everyone has the floor: the session, the creature and who controls it.
+func begin_online_play(config: Dictionary) -> void:
+	camcorder.start_tape(int(config.seed))
+	session.online = true
+	session.start(int(config.seed), manifest.get("fallback", false), config.survivors)
+	save_error = ""
+	populate_floor(net.is_host and int(config.mode) == NET.Mode.COOP)
+	if int(config.mode) == NET.Mode.VERSUS:
+		locust.set_control("player" if match_net.local_is_locust() else "puppet")
+	else:
+		locust.set_control("ai" if net.is_host else "puppet")
+	var locust_player: bool = match_net.local_is_locust()
+	player.visible = not locust_player
+	player.collision_layer = 0 if locust_player else 4
+	if locust_player: locust.camera.current = true
+	on_state()
+
+## Back in the room: the floor stays hidden behind the menu until the next one.
+func leave_online_floor() -> void:
+	close_online_menu()
+	if is_instance_valid(locust):
+		remove_child(locust)
+		locust.queue_free()
+	player.visible = true
+	player.collision_layer = 4
+	player.slot = 1
+	session.online = false
+	session.set_state(session.State.MENU)
+
+func on_net_closed(reason: String) -> void:
+	if match_net.in_match() or session.state != session.State.MENU:
+		match_net.end()
+		leave_online_floor()
+	ui.menu("multiplayer", false, reason)
+
+func open_online_menu() -> void:
+	online_menu = true
+	player.active = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	ui.menu("online_pause")
+
+func close_online_menu() -> void:
+	if not online_menu: return
+	online_menu = false
+	ui.overlay.hide()
+	ui.settings_open = false
+	on_state()
+
+## A noise the creature may hear, wherever the creature is decided.
+func locust_hear(point: Vector3, radius: float) -> void:
+	if is_instance_valid(locust): locust.hear(point, radius)
+
+## The survivor the director measures distances from: this player while alive,
+## otherwise any living survivor.
+func pacing_anchor() -> Vector3:
+	for body in survivors():
+		if survivor_active(body): return body.global_position
+	return player.global_position
+
+## Stubs until the shared sheet exists.
+func sheet_snapshot() -> Array:
+	return []
+
+func restore_sheet(_ops: Array) -> void:
+	pass
 
 ## This floor's documents, lying on furniture (freed with the hotel).
 func place_documents() -> void:
@@ -263,10 +407,10 @@ func close_document() -> void:
 func on_state() -> void:
 	var playing: bool = session.state == session.State.PLAYING
 	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]: world_audio.reset()
-	player.active = playing
+	player.active = playing and not online_menu and local_alive() and not match_net.local_is_locust()
 	if not playing: player.velocity = Vector3.ZERO
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing else Input.MOUSE_MODE_VISIBLE
-	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED]
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu else Input.MOUSE_MODE_VISIBLE
+	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
@@ -274,6 +418,7 @@ func on_state() -> void:
 	# The aiming dot only while playing: not over the title room or the opening scene.
 	ui.get_node("HUD/Crosshair").visible = playing
 	update_title_scene()
+	if playing and online_menu: return
 	if playing or session.state == session.State.CUTSCENE:
 		ui.overlay.hide()
 		ui.settings_open = false
@@ -283,17 +428,22 @@ func on_state() -> void:
 		return
 	match session.state:
 		session.State.MENU:
-			var saved: Dictionary = session.checkpoint()
-			ui.menu("main", not saved.is_empty(), save_error if not save_error.is_empty() else session.message)
+			if net.active(): ui.menu("lobby" if net.local_seat != 0 else "join")
+			else:
+				var saved: Dictionary = session.checkpoint()
+				ui.menu("main", not saved.is_empty(), save_error if not save_error.is_empty() else session.message)
 		session.State.PAUSED: ui.menu("pause")
 		session.State.LOADING: ui.menu("loading")
 		session.State.TRANSITION: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
-			ui.menu("won")
+			if match_net.in_match():
+				if net.is_host: match_net.clear_checkpoint()
+				ui.menu("online_won")
+			else: ui.menu("won")
 		session.State.FAILED:
 			ui.elapsed = session.elapsed
-			ui.menu("failed")
+			ui.menu("online_failed" if match_net.in_match() else "failed")
 
 ## The title room is shown only on the main menu; any other state gets the
 ## hotel's light back and, outside the opening scene, the player's camera.
@@ -320,8 +470,14 @@ func in_refuge() -> bool:
 ## hidden, hiding_place, crouched and velocity.
 func survivors() -> Array:
 	var result: Array = []
-	if session.participants.has(player.slot): result.append(player)
+	if session.participants.has(player.slot) and not match_net.local_is_locust(): result.append(player)
+	for body in match_net.bodies.values():
+		if is_instance_valid(body): result.append(body)
 	return result
+
+## This machine's survivor is still alive (always true for The Locust player).
+func local_alive() -> bool:
+	return not match_net.in_match() or match_net.local_is_locust() or session.participants.get(player.slot, session.Life.DEAD) != session.Life.DEAD
 
 ## Alive and outside the refuge: fair game.
 func survivor_active(body: Node3D) -> bool:
@@ -329,7 +485,8 @@ func survivor_active(body: Node3D) -> bool:
 
 ## The creature's strike landed on this survivor.
 func capture_survivor(body: Node3D) -> void:
-	if body != null: session.capture(body.slot)
+	if body == null or net.is_client(): return
+	session.capture(body.slot)
 
 func point_in_refuge(point: Vector3) -> bool:
 	if manifest.is_empty(): return false
@@ -362,14 +519,15 @@ func spawn_locust() -> void:
 
 func on_peek(point: Vector3) -> void:
 	world_audio.play_at(world_audio.choose("open_slow"), point, -25.0, RID(), 0.4)
-	on_noise(point, 2.0)
+	# Online the host hears every wardrobe itself (it mirrors everyone's peeking).
+	if not net.is_client(): locust_hear(point, 2.0)
 
 func on_hide_changed(entering: bool, point: Vector3) -> void:
 	# Climbing in or out of a wardrobe is not silent.
 	on_noise(point, 4.0)
 
 func on_noise(point: Vector3, radius: float) -> void:
-	if is_instance_valid(locust): locust.hear(point, radius)
+	match_net.noise(point, radius)
 
 func focused_area():
 	var from: Vector3 = player.camera.global_position
@@ -417,7 +575,15 @@ func _physics_process(delta: float) -> void:
 		return
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	var inside := in_refuge()
-	for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+	if not net.is_client():
+		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+	if not local_alive():
+		watch_teammates()
+		return
+	if online_menu or match_net.local_is_locust():
+		exit_held = false
+		if net.is_host: host_exit(delta)
+		return
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
 	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
@@ -433,10 +599,10 @@ func _physics_process(delta: float) -> void:
 		return
 	var hiding_target = focused_hide()
 	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
-		if player.hidden: player.leave_hide()
+		if player.hidden: match_net.use_hide(player.hiding_place, false)
 		else:
-			if is_instance_valid(locust) and locust.sees(player, true): locust.observed_hide = hiding_target
-			player.enter_hide(hiding_target)
+			if is_instance_valid(locust) and locust.control == "ai" and locust.sees(player, true): locust.observed_hide = hiding_target
+			match_net.use_hide(hiding_target, true)
 		pressed_door = null
 		was_held = true
 	var key: String = settings.key_name("interact")
@@ -458,7 +624,7 @@ func _physics_process(delta: float) -> void:
 	if held and is_instance_valid(pressed_door) and target == pressed_door:
 		press_time += delta
 		if press_time >= 1 and not slow_used:
-			pressed_door.toggle(true)
+			match_net.use_door(pressed_door, true, false)
 			slow_used = true
 	elif held:
 		pressed_door = null
@@ -467,11 +633,12 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(pressed_door) and target == pressed_door and not slow_used:
 			# Running into a door pushes it open (or shut) with a slam.
 			var running := Vector2(player.velocity.x, player.velocity.z).length() > 4.6
-			if not pressed_door.toggle(false, true, running): ui.flash("DEJA LIBRE EL UMBRAL")
+			if not match_net.use_door(pressed_door, false, running): ui.flash("DEJA LIBRE EL UMBRAL")
 		pressed_door = null
 	was_held = held
 	# Deliberate hold inside the refuge; door operations never also start departure.
-	session.hold_exit(delta, held and inside and not is_instance_valid(target) and not is_instance_valid(pressed_door))
+	exit_held = held and inside and not is_instance_valid(target) and not is_instance_valid(pressed_door)
+	if not net.is_client(): host_exit(delta)
 	ui.progress.visible = session.exit_progress > 0
 	ui.progress.value = session.exit_progress
 	ui.hint.text = "REFUGIO · MANTÉN [%s] PARA SALIR DEL PISO" % key if inside else ""
@@ -479,6 +646,30 @@ func _physics_process(delta: float) -> void:
 	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
 		ui.subtitle.text = "[Ventilación constante]"
 	if not save_error.is_empty(): ui.subtitle.text = save_error
+
+## Leaving the floor: offline the local hold; online anyone in the refuge
+## holding counts (the session still needs every survivor inside).
+func host_exit(delta: float) -> void:
+	var holding := exit_held
+	for body in match_net.bodies.values():
+		if is_instance_valid(body) and body.holding_exit and point_in_refuge(body.global_position): holding = true
+	session.hold_exit(delta, holding)
+
+## Dead online: the view follows a living teammate; a click switches to the next.
+func watch_teammates() -> void:
+	exit_held = false
+	player.active = false
+	player.visible = false
+	player.collision_layer = 0
+	var body: Node3D = match_net.watched_body()
+	ui.progress.visible = session.exit_progress > 0
+	ui.progress.value = session.exit_progress
+	camcorder.focus("")
+	if body == null:
+		ui.hint.text = "HAS MUERTO"
+		return
+	if not body.camera.current: body.camera.current = true
+	ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR" % body.player_name.to_upper()
 
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
@@ -497,29 +688,40 @@ func _process(delta: float) -> void:
 	visibility_clock += delta
 	if visibility_clock > 0.25:
 		visibility_clock = 0
-		if is_instance_valid(hotel): hotel.update_visibility(player.position, settings.values.shadows)
+		if is_instance_valid(hotel): hotel.update_visibility(world_audio.listener_position(), settings.values.shadows)
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and not local_alive() and session.state == session.State.PLAYING and not online_menu:
+		match_net.next_watch()
+		return
 	if not event is InputEventKey or not event.pressed or event.echo: return
+	if event.physical_keycode == KEY_ESCAPE and match_net.in_match() and session.state == session.State.PLAYING and not ui.settings_open:
+		if online_menu: close_online_menu()
+		else: open_online_menu()
+		return
+	if event.physical_keycode == KEY_ESCAPE and net.active() and session.state == session.State.MENU and ui.screen in ["lobby", "join"] and not ui.settings_open:
+		on_action("lobby_leave")
+		return
 	if event.physical_keycode == KEY_ESCAPE:
 		if session.state == session.State.CUTSCENE: finish_intro()
 		elif is_instance_valid(reading_document): close_document()
 		elif ui.settings_open:
 			if not settings.previous_display.is_empty(): settings.revert_display()
 			on_action(ui.return_action)
-		elif ui.screen == "characters" and session.state == session.State.MENU: on_action("multiplayer")
+		elif ui.screen == "join" and session.state == session.State.MENU: on_action("multiplayer")
+		elif ui.screen == "characters" and session.state == session.State.MENU: on_action("lobby" if net.active() else "multiplayer")
 		elif ui.screen in ["credits", "multiplayer"] and session.state == session.State.MENU: on_action("main")
 		elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
 		else: session.pause()
-	if event.physical_keycode == KEY_F9 and OS.is_debug_build(): session.capture(1)
+	if event.physical_keycode == KEY_F9 and OS.is_debug_build() and not net.is_client(): session.capture(player.slot)
 	if event.physical_keycode == KEY_F11:
 		session.pause()
 		settings.set_value("fullscreen", not settings.values.fullscreen)
 		ui.show_settings("pause" if session.state == session.State.PAUSED else "main")
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(session) and not automation: session.pause()
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(session) and not automation and not match_net.in_match(): session.pause()
 
 func _exit_tree() -> void:
 	get_tree().paused = false

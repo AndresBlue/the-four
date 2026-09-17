@@ -72,6 +72,16 @@ var guided := false
 ## The survivor it is watching or hunting (see level.survivors()); several
 ## players can be on the floor, it only ever pursues one at a time.
 var focus: Node3D
+## Who decides what it does. "ai": its own behaviour (offline, or the host of a
+## co-op match). "puppet": it follows the state sent by the machine in charge.
+## "player": a player drives it (versus, see locust_player.gd).
+var control := "ai"
+## Versus: the controller that reads the local player's input.
+var driver: Node
+## Puppet: received states {time, position, yaw, velocity} and a local clock.
+var net_states: Array = []
+var net_clock := 0.0
+var net_look := Vector3.INF
 
 func _ready() -> void:
 	add_to_group("hotel_actors")
@@ -142,16 +152,20 @@ func on_footfall(point: Vector3, strength: float) -> void:
 ## Plays one aggressive grunt from the recording, never the same one twice in
 ## a row, routed like every other creature sound. Returns how long it lasts.
 func grunt() -> float:
-	if level == null or not level.world_audio.enabled: return 0.0
-	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
-	if not route.audible: return 0.0
+	if level == null: return 0.0
 	var choices: Array = []
 	for index in GRUNTS.SEGMENTS.size():
 		if GRUNTS.SEGMENTS[index][1] >= AGGRESSIVE_GRUNT and index != last_grunt: choices.append(index)
 	last_grunt = choices[rng.randi_range(0, choices.size() - 1)]
 	var segment: Array = GRUNTS.SEGMENTS[last_grunt]
+	var pitch := rng.randf_range(0.85, 1.0)
+	# Everyone else hears the same call from their own place.
+	if "match_net" in level and level.match_net != null: level.match_net.creature_call("grunt", last_grunt, pitch)
+	if not level.world_audio.enabled: return 0.0
+	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
+	if not route.audible: return 0.0
 	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
-	voice.pitch_scale = rng.randf_range(0.85, 1.0)
+	voice.pitch_scale = pitch
 	voice.play(segment[0])
 	# A lower pitch plays the segment slower: stop when it really ends.
 	grunt_left = segment[1] / voice.pitch_scale
@@ -230,6 +244,7 @@ func lit_by_torch() -> Node3D:
 	return null
 
 func hear(point: Vector3, radius: float) -> void:
+	if control != "ai": return
 	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER] or level.point_in_refuge(point): return
 	var reach := radius * HEARING_SCALE
 	if global_position.distance_to(point) > reach: return
@@ -250,7 +265,7 @@ func hear(point: Vector3, radius: float) -> void:
 
 ## Walks its patrol to a given room and only then resumes wandering.
 func guide(room_id: int) -> void:
-	if mode != Mode.PATROL: return
+	if mode != Mode.PATROL or control != "ai": return
 	patrol_room = room_id
 	destination = FLOOR.position_of(level.manifest.rooms[room_id])
 	guided = true
@@ -261,6 +276,7 @@ func guide(room_id: int) -> void:
 ## A sound it did not have to hear through the player: something fell, it goes
 ## to look. Ignored while it is already hunting.
 func investigate(point: Vector3) -> void:
+	if control != "ai": return
 	if mode in [Mode.CHASE, Mode.ALERT, Mode.WINDUP, Mode.RECOVER]: return
 	last_known = point
 	set_mode(Mode.INVESTIGATE)
@@ -280,7 +296,9 @@ func set_mode(next: Mode) -> void:
 		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT else 0.0
 	# Spotting the player: an aggressive grunt as it turns to hunt.
 	if next == Mode.ALERT: grunt()
-	if next == Mode.WINDUP: signal_player.play()
+	if next == Mode.WINDUP:
+		signal_player.play()
+		if "match_net" in level and level.match_net != null: level.match_net.creature_call("warning", 0, 1.0)
 
 func choose_patrol() -> void:
 	var choices: Array = level.manifest.adjacency[patrol_room].filter(func(id): return id != level.manifest.exit)
@@ -315,8 +333,70 @@ func desired_speed() -> float:
 			return 0.0 if pause_time > 0 else 1.5
 	return 0.0
 
+func set_control(kind: String) -> void:
+	control = kind
+	net_states.clear()
+
+## What the machine in charge sends about fifteen times a second.
+func pack_state() -> Array:
+	return [global_position, rotation.y, velocity, mode, grace, visual.look_point if is_instance_valid(visual) and "look_point" in visual else Vector3.INF]
+
+func push_state(data: Array) -> void:
+	if data.size() < 6: return
+	net_states.append({"time": net_clock, "position": data[0], "yaw": data[1], "velocity": data[2]})
+	while net_states.size() > 10: net_states.pop_front()
+	var next: int = data[3]
+	if next != mode:
+		mode = next
+		state_time = 0.0
+	grace = data[4]
+	net_look = data[5]
+
+## Puppet: smoothed onto the received states, animated like the real thing.
+func follow_state(delta: float) -> void:
+	net_clock += delta
+	state_time += delta
+	if net_states.is_empty():
+		update_visual(delta)
+		return
+	var wanted := net_clock - 0.1
+	var before: Dictionary = net_states[0]
+	var after: Dictionary = net_states[net_states.size() - 1]
+	for i in range(net_states.size() - 1):
+		if net_states[i].time <= wanted and net_states[i + 1].time >= wanted:
+			before = net_states[i]
+			after = net_states[i + 1]
+			break
+	var t := clampf((wanted - before.time) / maxf(after.time - before.time, 0.001), 0.0, 1.0)
+	global_position = before.position.lerp(after.position, t)
+	rotation.y = lerp_angle(before.yaw, after.yaw, t)
+	velocity = before.velocity.lerp(after.velocity, t)
+	if grunt_left > 0.0:
+		grunt_left -= delta
+		if grunt_left <= 0.0: voice.stop()
+	update_visual(delta)
+
+## A call decided where the creature is controlled, replayed here.
+func play_call(kind: String, segment: int, pitch: float) -> void:
+	if kind == "warning":
+		signal_player.play()
+		return
+	if kind != "grunt" or segment < 0 or segment >= GRUNTS.SEGMENTS.size() or not level.world_audio.enabled: return
+	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
+	if not route.audible: return
+	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
+	voice.pitch_scale = pitch
+	voice.play(GRUNTS.SEGMENTS[segment][0])
+	grunt_left = GRUNTS.SEGMENTS[segment][1] / pitch
+
 func _physics_process(delta: float) -> void:
 	if level.session.state != level.session.State.PLAYING: return
+	if control == "puppet":
+		follow_state(delta)
+		return
+	if control == "player":
+		if is_instance_valid(driver): driver.drive(delta)
+		return
 	grace = maxf(0, grace - delta)
 	state_time += delta
 	wander_clock += delta
@@ -447,16 +527,19 @@ func face_toward(point: Vector3, delta: float, rate: float) -> void:
 
 func update_visual(delta: float) -> void:
 	if not is_instance_valid(visual) or not "move_velocity" in visual: return
+	if control == "puppet":
+		visual.move_velocity = velocity
+		visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT] else 0.0, delta * 2.5)
+		visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
+		visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
+		visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
+		visual.look_point = net_look
+		return
 	visual.move_velocity = velocity
 	visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT] else 0.0, delta * 2.5)
 	visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 	# Stoops under door lintels; it is taller than the doorways.
-	var near_door := false
-	for door in level.hotel.doors:
-		if door.doorway.distance_to(global_position) < 2.6:
-			near_door = true
-			break
-	visual.duck = move_toward(visual.duck, 1.0 if near_door else 0.0, delta * 3.0)
+	visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 	var player := focus
 	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT] or detection > 0.2 or light_exposure > 0.2) and is_instance_valid(player):
@@ -466,6 +549,11 @@ func update_visual(delta: float) -> void:
 		visual.look_point = global_position - global_basis.z * 4.0 + global_basis.x * sin(wander_clock * 0.9) * 4.0 + Vector3.UP * 1.6
 	else:
 		visual.look_point = Vector3.INF
+
+func near_doorway() -> bool:
+	for door in level.hotel.doors:
+		if door.doorway.distance_to(global_position) < 2.6: return true
+	return false
 
 func nearest_room() -> int:
 	var best := 0

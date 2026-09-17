@@ -1,7 +1,7 @@
 extends Node
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "fullscreen": true, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false}
+const DEFAULTS := {"character": 0, "fullscreen": true, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL}
 const AUDIO_KEYS := ["master", "ambience", "music", "effects", "threat"]
 ## Saved-settings revision of the volume curve. Older files kept sliders tuned
@@ -55,6 +55,7 @@ func load_settings() -> void:
 
 func sanitize(key: String, value: Variant) -> Variant:
 	if DEFAULTS[key] is bool: return value if value is bool else DEFAULTS[key]
+	if DEFAULTS[key] is String: return str(value).strip_edges().left(40) if value is String else DEFAULTS[key]
 	if not (value is float or value is int) or not is_finite(float(value)): return DEFAULTS[key]
 	match key:
 		"resolution": return clampi(int(value), 0, 3)

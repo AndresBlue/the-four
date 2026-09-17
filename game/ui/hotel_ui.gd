@@ -19,6 +19,8 @@ var rebind_button: Button
 var display_label: Label
 var return_action := "main"
 var buttons := {}
+## Text fields on the current screen, by setting key.
+var fields := {}
 var display_was_pending := false
 ## Current screen id ("main", "pause", "settings", "characters", ...).
 var screen := ""
@@ -44,6 +46,9 @@ var intro: Control
 ## Open document sheet during play, and the record of found documents.
 var reading: Control
 var discoveries
+## Online play (net_session.gd), for the room screens.
+var net
+const NET := preload("res://game/net/net_session.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 var intro_tween: Tween
 ## Small corner note during the opening scene: which key skips it.
@@ -191,6 +196,7 @@ func clear() -> void:
 			container.remove_child(child)
 			child.queue_free()
 	buttons.clear()
+	fields.clear()
 	display_label = null
 	loading_label = null
 	rebind_action = ""
@@ -335,15 +341,44 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 20)
 			action("Volver", "main")
 		"multiplayer":
-			# Work in progress: co-op over LAN or IP is not built yet.
 			set_osd("MENU ▸ MULTIJUGADOR", "", "", "")
 			title(column, "MULTIJUGADOR", 64)
-			label(column, "EN DESARROLLO", 20).add_theme_color_override("font_color", STYLE.AMBER)
-			spacer(column, 24)
+			label(column, "DE 2 A %d JUGADORES · LAN O IP" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 18)
+			field(column, "Tu nombre", "player_name", "Jugador")
+			spacer(column, 10)
+			action("Crear sala", "host")
+			action("Unirse a una sala", "join")
 			action("Personaje", "characters")
 			spacer(column, 12)
 			action("Volver", "main")
+			paragraph(side, "Quien crea la sala es el anfitrión: elige el tipo de partida y, en versus, quién es The Locust. Los demás se unen con su dirección IP (en la misma red, la local; por Internet, la pública con el puerto %d UDP abierto)." % NET.PORT, 18, 560)
+		"join":
+			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "")
+			title(column, "UNIRSE", 64)
+			spacer(column, 18)
+			field(column, "Dirección del anfitrión", "join_address", "192.168.1.20")
+			spacer(column, 10)
+			if net != null and net.active():
+				label(column, net.status if not net.status.is_empty() else "Conectando…", 20).add_theme_color_override("font_color", STYLE.AMBER)
+			else: action("Conectar", "connect")
+			spacer(column, 12)
+			action("Volver", "lobby_leave" if net != null and net.active() else "multiplayer")
 			side.visible = false
+		"lobby":
+			lobby_screen()
+		"online_pause":
+			set_osd("❚❚ MENÚ", "", "", "LA PARTIDA SIGUE")
+			backdrop.modulate.a = 0.75
+			title(column, "MENÚ", 72)
+			label(column, "LA PARTIDA NO SE DETIENE", 20).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 24)
+			action("Continuar", "online_resume")
+			action("Ajustes", "online_settings")
+			action("Cerrar la sala" if net != null and net.is_host else "Salir de la partida", "online_quit")
+			controls_panel(side)
+		"online_won", "online_failed":
+			online_end(kind == "online_won")
 		"credits":
 			set_osd("▶ PLAY", "", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
 			title(column, "CRÉDITOS", 64)
@@ -362,6 +397,113 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		paragraph(column, message, 16, 560, STYLE.AMBER)
 	transition(0.35 if kind != "failed" else 0.9)
 	focus_first()
+
+## A text field bound to a setting (saved as it is typed).
+func field(parent: Node, title_text: String, key: String, placeholder: String) -> LineEdit:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	parent.add_child(row)
+	label(row, title_text, 19).custom_minimum_size.x = 240
+	var edit := LineEdit.new()
+	edit.custom_minimum_size = Vector2(300, 40)
+	edit.add_theme_font_size_override("font_size", 20)
+	edit.placeholder_text = placeholder
+	edit.text = settings.values[key]
+	edit.max_length = 40
+	edit.text_changed.connect(func(value): settings.set_value(key, value))
+	row.add_child(edit)
+	fields[key] = edit
+	return edit
+
+## The room: who is in, the host's options and the way into the match.
+func lobby_screen() -> void:
+	var hosting: bool = net.is_host
+	set_osd("MULTIJUGADOR ▸ SALA", "", "", "ANFITRIÓN" if hosting else "")
+	title(column, "SALA", 64)
+	var seats: Array = net.players.keys()
+	seats.sort()
+	label(column, "JUGADORES  %d / %d" % [net.connected_seats().size(), NET.MAX_PLAYERS], 20).add_theme_color_override("font_color", STYLE.AMBER)
+	spacer(column, 12)
+	# Options: editable by the host, shown as text to the others.
+	var mode: int = int(net.options.mode)
+	if hosting:
+		choice(column, "Tipo de partida", NET.MODE_NAMES, mode, func(index): net.set_option("mode", index))
+		if mode == NET.Mode.VERSUS:
+			var names: Array = ["Al azar"]
+			var ids: Array = [NET.RANDOM]
+			for seat in net.connected_seats():
+				names.append(net.player_name(seat))
+				ids.append(seat)
+			choice(column, "The Locust", names, maxi(0, ids.find(int(net.options.locust))), func(index): net.set_option("locust", ids[index]))
+		if not net.match_net.saved_checkpoint().is_empty():
+			var resume := CheckButton.new()
+			resume.text = "Retomar el piso guardado"
+			resume.add_theme_font_size_override("font_size", 19)
+			resume.button_pressed = net.options.get("resume", false)
+			resume.toggled.connect(func(value): tick(); net.set_option("resume", value))
+			column.add_child(resume)
+	else:
+		label(column, NET.MODE_NAMES[mode], 20)
+		if mode == NET.Mode.VERSUS:
+			label(column, "The Locust: %s" % ("al azar" if int(net.options.locust) == NET.RANDOM else net.player_name(int(net.options.locust))), 20)
+	spacer(column, 18)
+	if hosting:
+		var problem: String = net.start_problem()
+		action("Empezar", "lobby_start", not problem.is_empty())
+		if not problem.is_empty(): label(column, problem, 17).add_theme_color_override("font_color", STYLE.SOFT)
+	else:
+		label(column, "Esperando a que el anfitrión empiece…", 19).add_theme_color_override("font_color", STYLE.SOFT)
+	action("Personaje", "lobby_character")
+	action("Cerrar la sala" if hosting else "Salir de la sala", "lobby_leave")
+	# Seats on the right.
+	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")
+	for seat in seats:
+		var entry_data: Dictionary = net.players[seat]
+		var tags: Array = []
+		if seat == 1: tags.append("anfitrión")
+		if seat == net.local_seat: tags.append("tú")
+		if not entry_data.connected: tags.append("desconectado")
+		if mode == NET.Mode.VERSUS and int(net.options.locust) == seat: tags.append("The Locust")
+		var line := label(side, "%d · %s" % [seat, entry_data.name.to_upper()], 22)
+		if seat == net.local_seat: line.add_theme_color_override("font_color", STYLE.AMBER)
+		paragraph(side, "%s%s" % [visual_script.NAMES[clampi(int(entry_data.character), 0, 2)], ("  ·  " + ", ".join(tags)) if not tags.is_empty() else ""], 16, 560)
+	if hosting:
+		spacer(side, 14)
+		var addresses: Array = NET.local_addresses()
+		paragraph(side, "Para unirse: %s · puerto %d" % [" / ".join(addresses) if not addresses.is_empty() else "tu IP", NET.PORT], 17, 560, STYLE.AMBER)
+
+func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable) -> void:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	label(row, title_text, 19).custom_minimum_size.x = 240
+	var control := OptionButton.new()
+	control.custom_minimum_size.x = 420
+	control.add_theme_font_size_override("font_size", 19)
+	for words in labels: control.add_item(words)
+	control.select(selected)
+	control.item_selected.connect(func(index): tick(); on_pick.call(index))
+	row.add_child(control)
+
+## End of an online floor. Only the host chooses what comes next.
+func online_end(won: bool) -> void:
+	var hunter: bool = net.match_net.local_is_locust()
+	var headline := ("SE TE ESCAPARON" if hunter else "SALISTE DEL PISO") if won else ("CAZA COMPLETA" if hunter else "SEÑAL PERDIDA")
+	var bad := won == hunter
+	set_osd("■ STOP" if not bad else "SEÑAL PERDIDA", "", "", "")
+	if bad: osd_left.add_theme_color_override("font_color", STYLE.ALERT)
+	title(column, headline, 58, STYLE.ALERT if bad else STYLE.INK)
+	spacer(column, 8)
+	label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
+	spacer(column, 28)
+	if net.is_host:
+		if not won: action("Reintentar piso", "online_retry")
+		action("Nueva partida", "online_new")
+		action("Volver a la sala", "online_room")
+		action("Cerrar la sala", "online_quit")
+	else:
+		label(column, "El anfitrión decide cómo seguir…", 19).add_theme_color_override("font_color", STYLE.SOFT)
+		action("Salir de la sala", "online_quit")
+	side.visible = false
 
 func show_archive_entry(item: Dictionary) -> void:
 	for child in side.get_children():
@@ -567,7 +709,7 @@ func slider(parent: Node, title_text: String, key: String, low: float, high: flo
 	number.add_theme_color_override("font_color", STYLE.SOFT)
 	control.value_changed.connect(func(value): settings.set_value(key, value); number.text = ("%d%%" % roundi(value * 100)) if percent else ("%.4f" % value))
 
-func show_characters() -> void:
+func show_characters(back := "multiplayer") -> void:
 	clear()
 	screen = "characters"
 	overlay.show()
@@ -580,11 +722,12 @@ func show_characters() -> void:
 	for index in visual_script.NAMES.size():
 		buttons["character_%d" % index] = entry(column, visual_script.NAMES[index], func():
 			settings.set_value("character", index)
+			if net != null and net.active(): net.set_character(index)
 			visual.configure(index, false)
 			chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[index].to_upper()
 		)
 	spacer(column, 18)
-	action("Volver", "multiplayer")
+	action("Volver", back)
 	var container := SubViewportContainer.new()
 	container.custom_minimum_size = Vector2(460, 500)
 	container.stretch = true

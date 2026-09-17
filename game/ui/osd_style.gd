@@ -75,6 +75,12 @@ static func theme() -> Theme:
 	var on := pixel(22, 22, func(x, y): return INK if x < 2 or y < 2 or x > 19 or y > 19 or (x > 5 and x < 16 and y > 5 and y < 16) else Color(0, 0, 0, 0.4))
 	for icon in ["unchecked", "unchecked_disabled", "unchecked_mirrored", "unchecked_disabled_mirrored"]: t.set_icon(icon, "CheckButton", off)
 	for icon in ["checked", "checked_disabled", "checked_mirrored", "checked_disabled_mirrored"]: t.set_icon(icon, "CheckButton", on)
+	# Text fields (player name, address): a thin box like the option buttons.
+	t.set_stylebox("normal", "LineEdit", flat(Color(0, 0, 0, 0.35), FAINT, 1, 8))
+	t.set_stylebox("focus", "LineEdit", flat(Color(1, 1, 1, 0.06), INK, 1, 8))
+	t.set_color("font_color", "LineEdit", INK)
+	t.set_color("font_placeholder_color", "LineEdit", FAINT)
+	t.set_color("caret_color", "LineEdit", AMBER)
 	t.set_icon("arrow", "OptionButton", pixel(12, 8, func(x, y): return INK if absi(x * 2 - 11) <= (7 - y) * 2 - 2 else Color(0, 0, 0, 0)))
 	t.set_stylebox("panel", "PopupMenu", flat(Color(0.02, 0.02, 0.02, 0.96), SOFT, 1, 8))
 	t.set_stylebox("hover", "PopupMenu", flat(Color(1, 1, 1, 0.12)))

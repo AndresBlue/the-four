@@ -1,0 +1,153 @@
+extends CharacterBody3D
+## Another survivor in an online match, as seen on this machine: the body the
+## creature can see and strike, the doors can be blocked by, and a dead
+## teammate can watch through. It follows the state its owner sends about
+## twenty times a second, smoothed a little behind real time, and replays
+## what others would notice: walk animation, torch beam and footsteps.
+## Same fields the creature reads on the local player (slot, camera, torch,
+## hidden, hiding_place, crouched, velocity).
+const AVATAR := preload("res://game/player/avatars/avatar_visual.tscn")
+const STEPS := preload("res://game/audio/footstep_segments.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+## Seconds behind the newest state: smooths the gaps between packets.
+const DELAY := 0.1
+var slot := 0
+var player_name := ""
+var camera: Camera3D
+var torch: SpotLight3D
+var avatar: Node3D
+var hidden := false
+var hiding_place: Node3D
+var hide_index := -1
+var crouched := false
+var reading := false
+## Holding interact in the refuge: counts towards leaving the floor.
+var holding_exit := false
+var peek_left := 0.0
+var peek_right := 0.0
+var pitch := 0.0
+var level
+## Received states: {time, position, yaw, pitch, velocity}.
+var states: Array = []
+var clock := 0.0
+var step_distance := 0.0
+var step_voice: AudioStreamPlayer3D
+## True while the owner is disconnected (the body stays, exposed).
+var away := false
+
+func setup(owner_level, seat: int, words: String, character: int) -> void:
+	level = owner_level
+	slot = seat
+	player_name = words
+	name = "Survivor_%d" % seat
+	collision_layer = 4
+	collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.3
+	capsule.height = 1.8
+	shape.shape = capsule
+	shape.position.y = 0.91
+	shape.name = "BodyShape"
+	add_child(shape)
+	avatar = AVATAR.instantiate()
+	avatar.character = character
+	avatar.first_person = false
+	add_child(avatar)
+	camera = Camera3D.new()
+	camera.name = "Camera"
+	camera.position.y = 1.64
+	camera.fov = 78.0
+	camera.far = 95.0
+	camera.cull_mask = 1048573
+	add_child(camera)
+	torch = SpotLight3D.new()
+	torch.name = "Flashlight"
+	torch.visible = false
+	torch.light_color = Color(1, 0.9, 0.74)
+	torch.light_energy = 8.0
+	torch.spot_range = 24.0
+	torch.spot_angle = 32.0
+	torch.spot_attenuation = 0.85
+	torch.position = Vector3(0.24, -0.3, -0.25)
+	camera.add_child(torch)
+	step_voice = AudioStreamPlayer3D.new()
+	step_voice.bus = "Effects"
+	step_voice.max_distance = 26.0
+	step_voice.unit_size = 3.0
+	step_voice.area_mask = 512
+	add_child(step_voice)
+	add_to_group("hotel_players")
+
+## One state from the owner (see match_net.gd pack_local).
+func push_state(data: Array) -> void:
+	states.append({"time": clock, "position": data[0], "yaw": data[1], "pitch": data[2], "velocity": data[3]})
+	while states.size() > 12: states.pop_front()
+	var flags: int = data[4]
+	crouched = flags & 1 != 0
+	torch.visible = flags & 2 != 0 and not hidden
+	holding_exit = flags & 4 != 0
+	reading = flags & 8 != 0
+	peek_left = data[6]
+	peek_right = data[7]
+	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right)
+	away = false
+
+## Snap straight to a position (spawn, or a teammate returning).
+func place(point: Vector3, yaw: float) -> void:
+	global_position = point
+	rotation.y = yaw
+	states.clear()
+
+func _physics_process(delta: float) -> void:
+	clock += delta
+	if states.is_empty():
+		velocity = Vector3.ZERO
+		avatar.update_pose(Vector3.ZERO, crouched, delta)
+		return
+	# Interpolate between the two states around (now - DELAY).
+	var wanted := clock - DELAY
+	var before: Dictionary = states[0]
+	var after: Dictionary = states[states.size() - 1]
+	for i in range(states.size() - 1):
+		if states[i].time <= wanted and states[i + 1].time >= wanted:
+			before = states[i]
+			after = states[i + 1]
+			break
+	var span: float = maxf(after.time - before.time, 0.001)
+	var t := clampf((wanted - before.time) / span, 0.0, 1.0)
+	var previous := global_position
+	var target: Vector3 = before.position.lerp(after.position, t)
+	# A long jump (respawn, wardrobe) is taken at once.
+	global_position = target if target.distance_to(previous) > 3.0 else target
+	rotation.y = lerp_angle(before.yaw, after.yaw, t)
+	pitch = lerpf(before.pitch, after.pitch, t)
+	camera.position.y = 0.9 if crouched else 1.64
+	camera.rotation.x = pitch
+	velocity = before.velocity.lerp(after.velocity, t)
+	avatar.visible = not hidden
+	avatar.update_pose(velocity if not hidden else Vector3.ZERO, crouched, delta)
+	update_steps(previous, delta)
+
+## Footsteps from the distance walked, quieter crouched, louder running.
+func update_steps(previous: Vector3, _delta: float) -> void:
+	var moved := Vector2(global_position.x - previous.x, global_position.z - previous.z).length()
+	if moved > 1.0 or hidden: return
+	var planar := Vector2(velocity.x, velocity.z).length()
+	if planar < 0.3: return
+	var running := planar > 4.6
+	step_distance += moved
+	var stride := 2.0 / 1.5 if crouched else 6.0 / 2.5 if running else 3.8 / 2.0
+	if step_distance < stride: return
+	step_distance = 0.0
+	if level == null or not level.world_audio.enabled: return
+	var room := FLOOR.room_at(level.manifest.rooms, global_position)
+	var hard := not room.is_empty() and int(room.type) in FLOOR.HARD_FLOORS
+	var set_name := "hard_walk" if hard else "carpet_run" if running and not crouched else "carpet_walk"
+	var clips: Array = STEPS.SETS[set_name]
+	var clip: Array = clips[randi() % clips.size()]
+	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 0.2, get_rid())
+	if not route.audible: return
+	step_voice.stream = load(clip[0])
+	level.world_audio.apply_route(step_voice, route, (-14.0 if crouched else 2.0 if running else -6.0) + (2.0 if hard else 0.0), "Effects")
+	step_voice.play(maxf(0.0, clip[1] - 0.02))

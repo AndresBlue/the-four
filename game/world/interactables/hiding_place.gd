@@ -17,6 +17,8 @@ const PEEK_ANGLE := 1.05
 ## Doors wider than this stop blocking movement so they never shove anyone.
 const COLLISION_LIMIT := 0.3
 signal peek_started(point: Vector3)
+## The creature pulled the doors open (online, the host relays it).
+signal forced
 var occupant: CharacterBody3D
 ## Where the occupant steps out, and where they stand inside (local space).
 var exit_offset := Vector3(0, 0.04, 1.15)
@@ -113,7 +115,9 @@ func leave() -> void:
 
 ## A creature that knows someone is inside pulls the doors open.
 func force_open() -> void:
-	if opening < 0.9: swing(1.0, 0.25)
+	if opening < 0.9:
+		swing(1.0, 0.25)
+		forced.emit()
 	close_timer = 2.5
 
 func set_peek(left: float, right: float) -> void:
