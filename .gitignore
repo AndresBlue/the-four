@@ -14,3 +14,5 @@ exports/
 
 # User supplied audio masters; working copies live under assets/audio/sfx.
 /sfx/
+
+/models/

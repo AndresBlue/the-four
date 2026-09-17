@@ -16,9 +16,13 @@ var ui
 var manifest := {}
 var environment: Environment
 var post_material: ShaderMaterial
+var camcorder
 var ambience: AudioStreamPlayer
 var theme: AudioStreamPlayer
 var ventilation: AudioStreamPlayer3D
+# Quiet theme behind the menus; the in-game players pause with the tree.
+var menu_music: AudioStreamPlayer
+var menu_clock := 0.0
 var automation := false
 var visibility_clock := 0.0
 var pressed_door
@@ -48,6 +52,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	automation = DisplayServer.get_name() == "headless" or OS.get_cmdline_user_args().has("--automation")
 	world_audio.enabled = not automation and not OS.get_cmdline_user_args().has("--silent")
+	ui.sounds_enabled = world_audio.enabled
 	player.hiding_changed.connect(world_audio.hide_cue)
 	ui.action_requested.connect(on_action)
 	session.changed.connect(on_state)
@@ -72,6 +77,7 @@ func _ready() -> void:
 	var saved: Dictionary = session.checkpoint()
 	ui.menu("main", not saved.is_empty(), session.message)
 	on_state()
+	if not automation: ui.play_intro()
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--playtest-seed="):
 			var value := argument.trim_prefix("--playtest-seed=")
@@ -90,6 +96,7 @@ func on_action(action: String) -> void:
 		"main": session.set_state(session.State.MENU)
 		"settings": ui.show_settings("pause" if session.state == session.State.PAUSED else "main")
 		"credits": ui.menu("credits")
+		"characters": ui.show_characters()
 		"quit": get_tree().quit()
 
 func start_floor(seed_value: int, force_fallback := false) -> void:
@@ -162,7 +169,9 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 		save_error = "No se pudo validar la ruta de salida. El nivel no se inició."
 		session.set_state(session.State.MENU)
 		return
+	camcorder.start_tape(seed_value)
 	session.start(seed_value, manifest.get("fallback", false))
+	ui.flash("ENCUENTRA LA SALIDA", 5.0)
 	save_error = session.message
 	spawn_locust()
 	world_audio.set_creature(locust.sound_profile)
@@ -193,8 +202,12 @@ func on_state() -> void:
 		session.State.PAUSED: ui.menu("pause")
 		session.State.LOADING: ui.menu("loading")
 		session.State.TRANSITION: ui.menu("transition")
-		session.State.WON: ui.menu("won")
-		session.State.FAILED: ui.menu("failed")
+		session.State.WON:
+			ui.elapsed = session.elapsed
+			ui.menu("won")
+		session.State.FAILED:
+			ui.elapsed = session.elapsed
+			ui.menu("failed")
 
 func in_refuge() -> bool:
 	return point_in_refuge(player.position)
@@ -248,7 +261,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	var inside := in_refuge()
 	session.set_refuge(1, inside)
-	ui.survival.text = "%s · Agacharse    Resistencia %d%%" % [settings.key_name("crouch"), player.stamina]
+	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var hiding_target = focused_hide()
 	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
 		if player.hidden: player.leave_hide()
@@ -257,15 +270,17 @@ func _physics_process(delta: float) -> void:
 			player.enter_hide(hiding_target)
 		pressed_door = null
 		was_held = true
+	var key: String = settings.key_name("interact")
 	if player.hidden:
-		ui.hint.text = "%s · Salir del escondite. No estás a salvo si te vio entrar." % settings.key_name("interact")
-		ui.subtitle.text = locust.warning if is_instance_valid(locust) and settings.values.subtitles else ""
+		camcorder.focus("SALIR")
+		ui.hint.text = ""
+		ui.subtitle.text = ""
 		ui.progress.visible = false
 		return
 	var target = focused_door()
 	var held := Input.is_action_pressed("interact")
-	var key: String = settings.key_name("interact")
-	ui.hint.text = "%s · Abrir puerta / mantener para abrir lentamente" % key if is_instance_valid(target) and not target.opened else "%s · Cerrar puerta" % key if is_instance_valid(target) else ""
+	# Camcorder-style focus brackets replace the old control prompts.
+	camcorder.focus("ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else "")
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0
@@ -280,28 +295,32 @@ func _physics_process(delta: float) -> void:
 		press_time = 0
 	if was_held and not held:
 		if is_instance_valid(pressed_door) and target == pressed_door and not slow_used:
-			if not pressed_door.toggle(): ui.hint.text = "Deja libre el umbral para cerrar."
+			# Running into a door pushes it open (or shut) with a slam.
+			var running := Vector2(player.velocity.x, player.velocity.z).length() > 4.6
+			if not pressed_door.toggle(false, true, running): ui.flash("DEJA LIBRE EL UMBRAL")
 		pressed_door = null
 	was_held = held
 	# Deliberate hold inside the refuge; door operations never also start departure.
 	session.hold_exit(delta, held and inside and not is_instance_valid(target) and not is_instance_valid(pressed_door))
 	ui.progress.visible = session.exit_progress > 0
 	ui.progress.value = session.exit_progress
-	if inside: ui.hint.text = "REFUGIO · Puedes regresar al hotel. Mantén %s durante 3 s para salir." % key
+	ui.hint.text = "REFUGIO · MANTÉN [%s] PARA SALIR DEL PISO" % key if inside else ""
 	ui.subtitle.text = ""
-	if session.elapsed < 12:
-		ui.subtitle.text = "Encuentra la salida.\n%s · Interactuar    %s · Linterna    Esc · Pausa" % [key, settings.key_name("flashlight")]
-	elif settings.values.subtitles and session.elapsed < 17:
+	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
 		ui.subtitle.text = "[Ventilación constante]"
-	if is_instance_valid(hiding_target): ui.hint.text = "%s · Esconderse" % key
-	if is_instance_valid(locust) and not locust.warning.is_empty(): ui.subtitle.text = locust.warning
 	if not save_error.is_empty(): ui.subtitle.text = save_error
 
 func _process(delta: float) -> void:
+	update_menu_scene(delta)
+	camcorder.visible = session.state == session.State.PLAYING
+	camcorder.marks = settings.values.osd
+	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	var warning_active: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
-	ambience.volume_db = -35 if warning_active else -27
-	theme.volume_db = -38 if warning_active else -32
+	# The bed and music recede as the dread aura rises, leaving room for it.
+	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
+	ambience.volume_db = (-25.0 if warning_active else -17.0) - dread * 9.0
+	theme.volume_db = (-30.0 if warning_active else -24.0) - dread * 22.0
 	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty() and not warning_active:
 		ui.subtitle.text = world_audio.caption_text
 	visibility_clock += delta
@@ -316,6 +335,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if ui.settings_open:
 			if not settings.previous_display.is_empty(): settings.revert_display()
 			on_action(ui.return_action)
+		elif ui.screen in ["credits", "characters"] and session.state == session.State.MENU: on_action("main")
 		elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
 		else: session.pause()
 	if event.physical_keycode == KEY_F9 and OS.is_debug_build(): session.capture(1)
@@ -334,16 +354,26 @@ func _exit_tree() -> void:
 func build_environment() -> void:
 	environment = $Presentation/WorldEnvironment.environment
 	post_material = $Presentation/Analog/Screen.material
+	camcorder = $Presentation/Camcorder
 
 func apply_settings() -> void:
 	if not is_instance_valid(environment): return
 	var advanced := RenderingServer.get_current_rendering_method() == "forward_plus"
-	environment.ssao_enabled = advanced and settings.values.quality > 0
-	environment.glow_enabled = settings.values.quality > 0
-	environment.volumetric_fog_enabled = advanced and settings.values.quality == 2 and not settings.values.reduced
-	environment.volumetric_fog_density = 0.008
-	for key in ["vhs", "grain", "chromatic"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key])
+	var quality: int = settings.values.quality
+	environment.ssao_enabled = advanced and quality > 0
+	environment.ssil_enabled = advanced and quality > 0
+	# SDFGI leaks light through the 18 cm hotel walls; bounce light is screen-space only.
+	environment.sdfgi_enabled = false
+	environment.glow_enabled = quality > 0
+	environment.volumetric_fog_enabled = advanced and quality > 0 and not settings.values.reduced
+	var viewport := get_viewport()
+	viewport.msaa_3d = Viewport.MSAA_2X if quality > 0 else Viewport.MSAA_DISABLED
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == 0 else Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.use_taa = advanced and quality == 2
+	for key in ["vhs", "grain", "chromatic", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key])
+	post_material.set_shader_parameter("vignette", 0.0 if settings.values.reduced else 0.45)
 	player.torch.shadow_enabled = settings.values.shadows
+	player.set_character(settings.values.character)
 	if is_instance_valid(hotel):
 		hotel.quality = settings.values.quality
 		hotel.reduced = settings.values.reduced
@@ -353,7 +383,7 @@ func build_audio() -> void:
 	ambience.name = "AmbientLoop"
 	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE
 	ambience.bus = "Ambience"
-	ambience.volume_db = -27
+	ambience.volume_db = -17
 	var ambient_stream := load("res://assets/audio/sfx/ambience/dark_hotel.wav").duplicate() as AudioStreamWAV
 	ambient_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	ambient_stream.loop_begin = 0
@@ -364,7 +394,7 @@ func build_audio() -> void:
 	theme.name = "Music"
 	theme.process_mode = Node.PROCESS_MODE_PAUSABLE
 	theme.bus = "Music"
-	theme.volume_db = -32
+	theme.volume_db = -24
 	theme.stream = load("res://assets/audio/the_four_theme.mp3").duplicate()
 	theme.stream.loop = true
 	add_child(theme)
@@ -372,7 +402,28 @@ func build_audio() -> void:
 	ventilation.name = "Ventilation"
 	ventilation.process_mode = Node.PROCESS_MODE_PAUSABLE
 	ventilation.bus = "Ambience"
-	ventilation.volume_db = -28
-	ventilation.max_distance = 14
+	ventilation.volume_db = -19
+	ventilation.max_distance = 16
+	ventilation.area_mask = world_audio.ACOUSTIC_MASK
 	ventilation.stream = preload("res://game/audio/world_audio.gd").loop_stream(load("res://assets/audio/hotel/ambience.wav"))
 	add_child(ventilation)
+	menu_music = AudioStreamPlayer.new()
+	menu_music.name = "MenuMusic"
+	menu_music.process_mode = Node.PROCESS_MODE_ALWAYS
+	menu_music.bus = "Music"
+	menu_music.volume_db = -12
+	menu_music.stream = load("res://assets/audio/the_four_theme.mp3").duplicate()
+	menu_music.stream.loop = true
+	add_child(menu_music)
+
+# Menu background: a slow handheld drift through the lobby and quiet music.
+func update_menu_scene(delta: float) -> void:
+	var in_menu: bool = session.state == session.State.MENU
+	var audible: bool = in_menu and world_audio.enabled
+	if audible and not menu_music.playing: menu_music.play()
+	elif not audible and menu_music.playing: menu_music.stop()
+	if not in_menu or automation: return
+	menu_clock += delta
+	player.rotation.y = 0.15 + sin(menu_clock * 0.06) * 0.32
+	player.camera.rotation.x = -0.05 + sin(menu_clock * 0.09) * 0.025
+	player.camera.rotation.z = sin(menu_clock * 0.13) * 0.006

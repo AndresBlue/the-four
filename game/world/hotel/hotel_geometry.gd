@@ -13,32 +13,49 @@ var dust: CPUParticles3D
 var curtain_material: ShaderMaterial
 var fog_volumes: Array[FogVolume] = []
 var reflection_probes: Array[ReflectionProbe] = []
+# Lamp lights inside furniture; visibility is managed with the rooms.
+var practicals: Array[OmniLight3D] = []
+# Fluorescent fixtures that flicker (never while effects are reduced).
+var flickers: Array = []
+var flicker_clock := 0.0
+const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
+# Batched primitive meshes. Unit size; transforms carry the dimensions.
+const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
+const FADE_BEGIN := 40.0
+const FADE_LENGTH := 16.0
+const SHADOW_FADE := 26.0
 
 func _init() -> void:
-	materials = {
-		"plaster": preload("res://game/presentation/materials/plaster.tres").duplicate(),
-		"wood": preload("res://game/presentation/materials/wood.tres").duplicate(),
-		"trim": preload("res://game/presentation/materials/trim.tres").duplicate(),
-		"linen": preload("res://game/presentation/materials/linen.tres").duplicate(),
-		"fabric": preload("res://game/presentation/materials/fabric.tres").duplicate(),
-		"metal": preload("res://game/presentation/materials/metal.tres").duplicate(),
-		"black": preload("res://game/presentation/materials/black.tres").duplicate(),
-		"green": preload("res://game/presentation/materials/green.tres").duplicate(),
-		"ceramic": preload("res://game/presentation/materials/ceramic.tres").duplicate(),
-		"gold": preload("res://game/presentation/materials/gold.tres").duplicate(),
-		"carpet": preload("res://game/presentation/materials/carpet.tres").duplicate(),
-		"ceiling": preload("res://game/presentation/materials/ceiling.tres").duplicate(),
-		"light": preload("res://game/presentation/materials/light.tres").duplicate(),
-		"curtain": preload("res://game/presentation/materials/curtain.tres").duplicate(),
-	}
+	for key in MATERIALS:
+		materials[key] = load("res://game/presentation/materials/%s.tres" % key).duplicate()
+		apply_image_maps(materials[key], key)
 	curtain_material = materials.curtain
 
-func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid := false) -> void:
-	var key := parent.get_instance_id()
-	if not batches.has(key): batches[key] = {"parent": parent, "groups": {}}
-	var groups: Dictionary = batches[key].groups
-	if not groups.has(material): groups[material] = []
-	groups[material].append(Transform3D(Basis.from_scale(size), pos))
+# Photographic maps dropped in assets/textures/<material>/ replace the
+# procedural base automatically: albedo, normal (OpenGL) and roughness.
+static func apply_image_maps(material: Material, key: String) -> void:
+	if not material is ShaderMaterial: return
+	for slot in [["albedo", "albedo_map", "use_albedo_map"], ["normal", "normal_map", "use_normal_map"], ["roughness", "roughness_map", "use_roughness_map"]]:
+		for extension in ["png", "jpg", "jpeg", "webp"]:
+			var path := "res://assets/textures/%s/%s.%s" % [key, slot[0], extension]
+			if ResourceLoader.exists(path):
+				material.set_shader_parameter(slot[1], load(path))
+				material.set_shader_parameter(slot[2], true)
+				break
+
+# Deterministic per-position variation; never consumes generator randomness.
+static func vary(value: Vector3, salt := 0) -> float:
+	return fposmod(sin(value.x * 12.9898 + value.z * 78.233 + value.y * 37.719 + salt * 11.31) * 43758.5453, 1.0)
+
+func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid := false, form := "box", euler := Vector3.ZERO) -> void:
+	# An empty material creates only the collider (detailed visuals stay separate).
+	if not material.is_empty():
+		var key := parent.get_instance_id()
+		if not batches.has(key): batches[key] = {"parent": parent, "groups": {}}
+		var groups: Dictionary = batches[key].groups
+		var group: String = material + SHAPES[form]
+		if not groups.has(group): groups[group] = []
+		groups[group].append(Transform3D(Basis.from_euler(euler) * Basis.from_scale(size), pos))
 	if solid:
 		var body := StaticBody3D.new()
 		body.position = pos
@@ -50,20 +67,38 @@ func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid :=
 		body.add_child(shape)
 		parent.add_child(body)
 
+func cylinder(parent: Node3D, pos: Vector3, radius: float, height: float, material: String, euler := Vector3.ZERO) -> void:
+	box(parent, pos, Vector3(radius * 2, height, radius * 2), material, false, "cylinder", euler)
+
+static func unit_mesh(group: String) -> Mesh:
+	if group.ends_with("@cyl") or group.ends_with("@cone"):
+		var rounded := CylinderMesh.new()
+		rounded.height = 1.0
+		rounded.bottom_radius = 0.5
+		rounded.top_radius = 0.28 if group.ends_with("@cone") else 0.5
+		rounded.radial_segments = 20
+		rounded.rings = 1
+		return rounded
+	var cube := BoxMesh.new()
+	cube.size = Vector3.ONE
+	return cube
+
+static func material_of(group: String) -> String:
+	return group.get_slice("@", 0)
+
 func flush() -> void:
 	for batch in batches.values():
-		for material in batch.groups:
-			var transforms: Array = batch.groups[material]
-			var mesh := BoxMesh.new()
-			mesh.size = Vector3.ONE
-			mesh.material = materials[material]
+		for group in batch.groups:
+			var transforms: Array = batch.groups[group]
+			var mesh := unit_mesh(group)
+			mesh.material = materials[material_of(group)]
 			var multi := MultiMesh.new()
 			multi.transform_format = MultiMesh.TRANSFORM_3D
 			multi.mesh = mesh
 			multi.instance_count = transforms.size()
 			for i in transforms.size(): multi.set_instance_transform(i, transforms[i])
 			var instance := MultiMeshInstance3D.new()
-			instance.name = "Mesh_" + material
+			instance.name = "Mesh_" + group.replace("@", "-")
 			instance.multimesh = multi
 			batch.parent.add_child(instance)
 	batches.clear()
@@ -107,7 +142,7 @@ func build(data: Dictionary) -> void:
 		var leaf := MeshInstance3D.new()
 		var mesh := BoxMesh.new()
 		mesh.size = Vector3(2.24, 2.58, 0.11)
-		mesh.material = materials.wood
+		mesh.material = materials.door
 		leaf.mesh = mesh
 		leaf.position = Vector3(1.12, 1.29, 0)
 		door.add_child(leaf)
@@ -131,7 +166,7 @@ func build(data: Dictionary) -> void:
 func build_room(node: Node3D, room: Dictionary) -> void:
 	var height: float = room.height
 	var span := FLOOR.size_of(room)
-	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "ceramic" if room.type in [4, 7, 9] else "carpet", true)
+	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in [4, 7, 9] else "carpet", true)
 	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling", true)
 	for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		var neighbor: int = room.id + direction.x + direction.y * int(manifest.width)
@@ -144,21 +179,25 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		boundary.position = Vector3(direction.x * span.x * 0.5, 0, direction.y * span.y * 0.5)
 		boundary.rotation.y = PI / 2 if direction.x != 0 else 0.0
 		node.add_child(boundary)
+		# Local face pointing into this room; a neighbour may have another height.
+		var inner: int = -(direction.x + direction.y)
 		if connected:
 			for side in [-1, 1]:
-				box(boundary, Vector3(side * (length + 2.4) * 0.25, height / 2, 0), Vector3((length - 2.4) * 0.5, height, 0.18), "plaster", true)
-				box(boundary, Vector3(side * (length + 2.4) * 0.25, 0.48, -0.11), Vector3((length - 2.4) * 0.5, 0.96, 0.07), "wood")
-				box(boundary, Vector3(side * (length + 2.4) * 0.25, 0.48, 0.11), Vector3((length - 2.4) * 0.5, 0.96, 0.07), "wood")
+				wall_run(boundary, side * (length + 2.4) * 0.25, (length - 2.4) * 0.5, height, inner)
 				box(boundary, Vector3(side * 1.23, 1.35, 0), Vector3(0.12, 2.7, 0.3), "trim")
+				# Door casing proud of both wall faces.
+				for face in [-1, 1]: box(boundary, Vector3(side * 1.26, 1.36, face * 0.165), Vector3(0.14, 2.72, 0.035), "trim")
 			box(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(2.4, height - 2.65, 0.18), "plaster", true)
 			box(boundary, Vector3(0, 2.65, 0), Vector3(2.6, 0.12, 0.3), "trim")
+			for face in [-1, 1]:
+				box(boundary, Vector3(0, 2.74, face * 0.165), Vector3(2.66, 0.14, 0.035), "trim")
+			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(2.4, 0.1, 0.06), "trim")
 		else:
-			box(boundary, Vector3(0, height / 2, 0), Vector3(length, height, 0.18), "plaster", true)
-			box(boundary, Vector3(0, 0.48, -0.11), Vector3(length, 0.96, 0.07), "wood")
-			box(boundary, Vector3(0, 0.48, 0.11), Vector3(length, 0.96, 0.07), "wood")
+			wall_run(boundary, 0.0, length, height, inner)
 		for side in [-1, 1]:
-			box(boundary, Vector3(side * 3.5, 2.02, -0.16), Vector3(1.28, 0.92, 0.08), "gold")
-			box(boundary, Vector3(side * 3.5, 2.02, -0.21), Vector3(1.14, 0.78, 0.035), "fabric" if int(room.variant) % 2 == 0 else "green")
+			# Framed hotel art; each canvas composition varies with its position.
+			box(boundary, Vector3(side * 3.5, 2.02, -0.16), Vector3(1.28, 0.92, 0.08), "gold" if int(room.variant) % 2 == 0 else "trim")
+			box(boundary, Vector3(side * 3.5, 2.02, -0.205), Vector3(1.14, 0.78, 0.02), "painting")
 	for prop in room.props:
 		var furniture := Node3D.new()
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
@@ -193,17 +232,47 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			box(hide, Vector3(0, 2.12, 0), Vector3(1.3, 0.12, 1.25), "wood")
 			for side in [-1, 1]: box(hide, Vector3(side * 0.42, 1.05, 0.6), Vector3(0.35, 2.0, 0.04), "curtain")
 	# Central sightlines remain open; booths sit against the perimeter.
-	box(node, Vector3(0, height - 0.13, 0), Vector3(1.3, 0.12, 0.55), "gold")
-	box(node, Vector3(0, height - 0.21, 0), Vector3(1.15, 0.05, 0.4), "light")
+	var service: bool = room.type in [4, 7, 8, 9]
 	var light := OmniLight3D.new()
-	light.position = Vector3(0, height - 0.5, 0)
-	light.light_color = Color("ffdba7") if room.type not in [4, 7, 9] else Color("c5d9cb")
-	light.light_energy = 1.5
-	light.omni_range = maxf(9.0, maxf(span.x, span.y) * 0.7)
-	light.omni_attenuation = 0.75
+	var failing := service and vary(node.position, 3) < 0.35
+	if service:
+		# Fluorescent batten: cold, even, occasionally failing.
+		var tube := "light"
+		if failing:
+			tube = "tube_%d" % flickers.size()
+			materials[tube] = materials.light.duplicate()
+			materials[tube].emission = Color("d8f0dc")
+		box(node, Vector3(0, height - 0.04, 0), Vector3(1.5, 0.08, 0.32), "metal")
+		for z in [-0.08, 0.08]: box(node, Vector3(0, height - 0.11, z), Vector3(0.05, 1.38, 0.05), tube, false, "cylinder", Vector3(0, 0, PI / 2))
+		light.light_color = Color("d4e3d2")
+		light.light_energy = 3.4
+		light.position = Vector3(0, height - 0.35, 0)
+	else:
+		# Frosted dome in a brass ring: warm pool with darker corners.
+		cylinder(node, Vector3(0, height - 0.03, 0), 0.26, 0.06, "gold")
+		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light", false, "cone", Vector3(PI, 0, 0))
+		light.light_color = Color("ffcf94")
+		light.light_energy = 3.6
+		light.position = Vector3(0, height - 0.45, 0)
+	light.omni_range = maxf(10.0, maxf(span.x, span.y) * 0.85)
+	light.omni_attenuation = 1.25
+	light.light_size = 0.12
+	light.light_specular = 0.45 if service else 0.6
 	light.shadow_enabled = true
+	# Small biases so thin shelves and trays still block light and glints.
+	light.shadow_bias = 0.03
+	light.shadow_normal_bias = 0.6
+	# Lights and shadows fade with distance instead of switching on abruptly.
+	# Shadows stay on wherever a light can reach visible rooms, so light never
+	# passes through walls.
+	light.distance_fade_enabled = true
+	light.distance_fade_begin = FADE_BEGIN
+	light.distance_fade_length = FADE_LENGTH
+	light.distance_fade_shadow = SHADOW_FADE
 	node.add_child(light)
 	lights.append(light)
+	if failing:
+		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials["tube_%d" % flickers.size()], "glow": materials.light.emission_energy_multiplier})
 	if room.hall == room.id and room.hall >= 0:
 		if RenderingServer.get_current_rendering_method() == "forward_plus":
 			var fog := FogVolume.new()
@@ -229,6 +298,54 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		if room.type == 19:
 			text(node, "SALIDA / REFUGIO", Vector3(0, 2.65, 4.8), PI, 35)
 			light.light_color = Color("b8d4b6")
+
+# One straight wall segment centred at x along the boundary: plaster core,
+# panelled wainscot, chair rail and skirting on both faces; cornice inside only.
+func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
+	box(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), "plaster", true)
+	for face in [-1, 1]:
+		box(boundary, Vector3(x, 0.48, face * 0.11), Vector3(length, 0.96, 0.07), "panel")
+		box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(length, 0.05, 0.035), "trim")
+		box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(length, 0.14, 0.03), "trim")
+	box(boundary, Vector3(x, height - 0.05, inner * 0.12), Vector3(length, 0.1, 0.06), "trim")
+	box(boundary, Vector3(x, height - 0.13, inner * 0.1), Vector3(length, 0.06, 0.03), "trim")
+
+# A lamp that really lights its surroundings (no shadows, culled by distance).
+func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach: float) -> void:
+	var lamp := OmniLight3D.new()
+	lamp.position = pos
+	lamp.light_color = color
+	lamp.light_energy = energy
+	lamp.omni_range = reach
+	lamp.omni_attenuation = 2.2
+	lamp.light_size = 0.2
+	lamp.light_specular = 0.25
+	lamp.shadow_enabled = true
+	lamp.shadow_bias = 0.04
+	lamp.shadow_normal_bias = 0.6
+	lamp.distance_fade_enabled = true
+	lamp.distance_fade_begin = 18.0
+	lamp.distance_fade_length = 8.0
+	lamp.distance_fade_shadow = 14.0
+	parent.add_child(lamp)
+	practicals.append(lamp)
+
+func _process(delta: float) -> void:
+	if flickers.is_empty(): return
+	flicker_clock += delta
+	for entry in flickers:
+		var lamp: OmniLight3D = entry.light
+		if not lamp.visible: continue
+		var level := 1.0
+		if not reduced:
+			# Mostly steady, with short irregular dropouts and a faint hum.
+			var t: float = flicker_clock + entry.phase
+			var burst := fposmod(t, 7.3) < 0.45
+			var chatter := sin(t * 71.0) * sin(t * 23.0)
+			level = 0.95 + sin(t * 314.0) * 0.02
+			if burst: level = 0.25 if chatter > 0.1 else 1.0
+		lamp.light_energy = entry.energy * level
+		entry.material.emission_energy_multiplier = entry.glow * level
 
 func build_prop(node: Node3D, kind: String) -> void:
 	preload("res://game/world/hotel/prop_factory.gd").build(self, node, kind)
@@ -266,8 +383,11 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
 		room_nodes[i].visible = distance < (42.0 if quality == 0 else 66.0)
-		lights[i].visible = distance < 26.0
-		lights[i].shadow_enabled = shadows and distance < 16.0
+		lights[i].visible = distance < FADE_BEGIN + FADE_LENGTH + 4.0
+		lights[i].shadow_enabled = shadows
+	for lamp in practicals:
+		lamp.visible = quality > 0 and lamp.global_position.distance_to(player_position) < 28.0
+		lamp.shadow_enabled = shadows
 	for door in doors: door.visible = door.doorway.distance_to(player_position) < 66.0
 
 func build_dust() -> void:

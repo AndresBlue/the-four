@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/wood.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/object_space = true
+shader_parameter/door_panels = true
+shader_parameter/light_color = Color(0.33, 0.19, 0.1, 1)
+shader_parameter/dark_color = Color(0.15, 0.08, 0.045, 1)

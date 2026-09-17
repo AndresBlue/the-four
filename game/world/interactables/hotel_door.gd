@@ -1,6 +1,6 @@
 extends StaticBody3D
 signal noise(point: Vector3, radius: float)
-signal sound_requested(opening: bool, slow: bool, point: Vector3, emitter: RID)
+signal sound_requested(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful: bool)
 var opened := false
 var moving := false
 var closed_rotation := 0.0
@@ -13,24 +13,26 @@ func occupied() -> bool:
 			return true
 	return false
 
-func toggle(slow := false, emit_noise := true) -> bool:
+## forceful: pushed while running; faster swing, a slam and a louder noise.
+func toggle(slow := false, emit_noise := true, forceful := false) -> bool:
 	if moving or (opened and occupied()): return false
-	if emit_noise: noise.emit(doorway, 3.0 if slow else 12.0)
+	forceful = forceful and not slow
+	if emit_noise: noise.emit(doorway, 3.0 if slow else 18.0 if forceful else 12.0)
 	moving = true
 	# A swinging leaf must not sweep a CharacterBody into its door frame.
 	# While swinging, ignore character contact but still occlude creature sight.
 	collision_layer = 64
 	var target := not opened
-	if target: sound_requested.emit(true, slow, doorway + Vector3.UP * 1.2, get_rid())
+	if target: sound_requested.emit(true, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
 	motion = create_tween()
-	motion.tween_property(self, "rotation:y", closed_rotation + (1.48 if target else 0.0), 1.5 if slow else 0.55).set_trans(Tween.TRANS_SINE)
+	motion.tween_property(self, "rotation:y", closed_rotation + (1.48 if target else 0.0), 1.5 if slow else 0.32 if forceful else 0.55).set_trans(Tween.TRANS_QUAD if forceful else Tween.TRANS_SINE)
 	motion.finished.connect(func():
 		if not target and occupied():
 			rotation.y = closed_rotation + 1.48
 			opened = true
 		else:
 			opened = target
-			if not target: sound_requested.emit(false, slow, doorway + Vector3.UP * 1.2, get_rid())
+			if not target: sound_requested.emit(false, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
 		moving = false
 	)
 	return true

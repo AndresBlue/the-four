@@ -1,0 +1,20 @@
+[
+  {
+    "id": "detective",
+    "source": "models\\detective.zip",
+    "sha256": "bf72aab06b55c72fea28155555b0ef957aac14341eb598d96fef6f312c9eeb78",
+    "license": "Aportado por el usuario; autor/fuente y permisos pendientes"
+  },
+  {
+    "id": "detective_woman",
+    "source": "models\\detective-woman.zip",
+    "sha256": "48ed7d1ca1febffbf0ad36ad456c1e6b24201e5b93ff3913ae6a71030dfa1cf2",
+    "license": "Aportado por el usuario; autor/fuente y permisos pendientes"
+  },
+  {
+    "id": "realistic_female",
+    "source": "models\\realistic-female.zip",
+    "sha256": "80616970bab72215b7d7e9e592794711f187851e0a2ba4f6968966564bfc4c60",
+    "license": "Aportado por el usuario; autor/fuente y permisos pendientes"
+  }
+]

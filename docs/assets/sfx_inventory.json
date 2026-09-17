@@ -40,14 +40,20 @@
     "bytes": 1443580,
     "sha256": "729803e32c3a1de64ee36360eb3527aa9181277ec75f7f635525744819faf74c",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
-    "working_copy": null,
+    "status": "integrated",
+    "working_copy": "assets/audio/dread/presence_riser.wav",
     "seconds": 5.008416666666666,
     "channels": 2,
     "sample_rate": 48000,
     "bits": 24,
     "peak": 0.244537353515625,
-    "rms": 0.0395754836499691
+    "rms": 0.0395754836499691,
+    "processing": {
+      "mono": true,
+      "sample_rate": 22050,
+      "bits": 16,
+      "tool": "tools/audio/generate_dread_layers.py"
+    }
   },
   {
     "source": "sfx/ambience/presence/terror ambience (dark presence).wav",
@@ -76,7 +82,7 @@
     "bytes": 31428,
     "sha256": "558849d5c7e64bf36c50a112b42e0b722a4d6810be044cbbe1ed4ae5d2cc3ba4",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
+    "status": "integrated",
     "working_copy": "assets/audio/sfx/door/closing/close-hard-closing.ogg"
   },
   {
@@ -116,7 +122,7 @@
     "bytes": 24893,
     "sha256": "4b87044a7d29b964eaf73c9c8abef96c261369a8f1f17467d302fbd995d82e16",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
+    "status": "integrated",
     "working_copy": "assets/audio/sfx/door/closing/far-hard-closing.ogg"
   },
   {
@@ -140,7 +146,7 @@
     "bytes": 23830,
     "sha256": "1e8bec3658351494db1ec9333ef48f80683c8637cc78c610a1b4f69bc90343e7",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
+    "status": "integrated",
     "working_copy": "assets/audio/sfx/door/opening/close-hard-opening.ogg"
   },
   {
@@ -156,7 +162,7 @@
     "bytes": 12068,
     "sha256": "c0277e8b7952bb9617ba32683e5d0e16df49a7636e7b1813cc74f3c8567d1cec",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
+    "status": "integrated",
     "working_copy": "assets/audio/sfx/door/opening/far-hard-opening.ogg"
   },
   {
@@ -226,7 +232,7 @@
     "bytes": 16341,
     "sha256": "8940759b5015a14bd3c64967c645c5ac94d4ce1824c4505510fb426271890c92",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
+    "status": "integrated",
     "working_copy": "assets/audio/sfx/heartbeat/1.ogg"
   },
   {
@@ -234,7 +240,7 @@
     "bytes": 19506,
     "sha256": "8aa058599165a99d20d742d783648463720d77360b6f38159eb95330b2ce8615",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "reserved",
+    "status": "integrated",
     "working_copy": "assets/audio/sfx/heartbeat/2.ogg"
   },
   {

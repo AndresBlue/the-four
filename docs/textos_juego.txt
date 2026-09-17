@@ -1,0 +1,607 @@
+THE FOUR — TEXTOS VISIBLES DEL JUEGO
+=====================================
+
+Cómo usar este archivo
+----------------------
+- Cada entrada tiene un identificador entre corchetes, dónde aparece y el texto ACTUAL.
+- Escribe tu versión en la línea CORRECCIÓN. Si la dejas vacía, el texto se mantiene.
+- Escribe "eliminar" en CORRECCIÓN para quitar ese texto, o debajo del título de una
+  sección para quitar la sección completa.
+- Las líneas que empiezan por "| " son saltos de línea dentro del mismo texto.
+- %s, %d o [TECLA] se sustituyen en el juego por un valor (tecla, número, fecha...).
+  Mantenlos donde quieras que aparezca ese valor.
+- "OBS:" es una observación mía sobre textos que pueden sonar artificiales o
+  redundantes. Ignórala si no estás de acuerdo.
+
+
+1. ARRANQUE (antes del menú, se puede saltar con cualquier tecla)
+-----------------------------------------------------------------
+
+[INTRO.01] Pantalla negra, texto centrado
+ACTUAL: FAN PROJECT
+CORRECCIÓN:
+
+[INTRO.02] Pantalla azul de vídeo, esquina superior izquierda
+ACTUAL: VIDEO 1
+CORRECCIÓN:
+
+[INTRO.03] Pantalla azul de vídeo, centro
+ACTUAL: ▶ PLAY
+CORRECCIÓN:
+
+
+2. MENÚ PRINCIPAL
+-----------------
+
+[MENU.01] Esquina superior izquierda
+ACTUAL: ▶ PLAY
+CORRECCIÓN:
+
+[MENU.02] Título
+ACTUAL: THE FOUR
+CORRECCIÓN:
+
+[MENU.03] Subtítulo bajo el título
+ACTUAL: H  O  T  E  L
+CORRECCIÓN:
+
+[MENU.04] Opción
+ACTUAL: NUEVA PARTIDA
+CORRECCIÓN:
+
+[MENU.05] Opción (desactivada si no hay partida guardada)
+ACTUAL: CONTINUAR
+CORRECCIÓN:
+
+[MENU.06] Opción
+ACTUAL: PERSONAJE
+CORRECCIÓN:
+
+[MENU.07] Opción
+ACTUAL: AJUSTES
+CORRECCIÓN:
+
+[MENU.08] Opción
+ACTUAL: CRÉDITOS
+CORRECCIÓN:
+
+[MENU.09] Opción
+ACTUAL: SALIR
+CORRECCIÓN:
+
+[MENU.11] Abajo a la derecha, parpadea como un vídeo sin programar
+ACTUAL: 12:00
+CORRECCIÓN:
+
+
+3. PAUSA
+--------
+
+[PAUSA.01] Esquina superior izquierda
+ACTUAL: ❚❚ PAUSA
+CORRECCIÓN:
+
+[PAUSA.03] Título
+ACTUAL: PAUSA
+CORRECCIÓN:
+
+[PAUSA.04] Opción
+ACTUAL: CONTINUAR
+CORRECCIÓN:
+
+[PAUSA.05] Opción
+ACTUAL: AJUSTES
+CORRECCIÓN:
+
+[PAUSA.06] Opción
+ACTUAL: REINTENTAR PISO
+CORRECCIÓN:
+
+[PAUSA.07] Opción
+ACTUAL: MENÚ PRINCIPAL
+CORRECCIÓN:
+
+
+4. PANEL DE CONTROLES (en pausa y en la pantalla de carga)
+----------------------------------------------------------
+Las teclas se muestran según la configuración del jugador.
+
+[CTRL.01] Título del panel
+ACTUAL: CONTROLES
+CORRECCIÓN:
+
+[CTRL.02] W A S D
+ACTUAL: Moverse
+CORRECCIÓN:
+
+[CTRL.03] RATÓN
+ACTUAL: Mirar
+CORRECCIÓN:
+
+[CTRL.04] Tecla de correr
+ACTUAL: Correr
+CORRECCIÓN:
+
+[CTRL.05] Tecla de agacharse
+ACTUAL: Agacharse
+CORRECCIÓN:
+
+[CTRL.06] Tecla de saltar
+ACTUAL: Saltar
+CORRECCIÓN:
+
+[CTRL.07] Tecla de interactuar
+ACTUAL: Puertas y escondites
+CORRECCIÓN:
+
+[CTRL.08] Tecla de interactuar + " MANTENER"
+ACTUAL: Abrir despacio · Salir del refugio
+CORRECCIÓN:
+
+[CTRL.09] Tecla de linterna
+ACTUAL: Linterna
+CORRECCIÓN:
+
+[CTRL.10] ESC
+ACTUAL: Pausa
+CORRECCIÓN:
+
+[CTRL.11] Texto de la tecla en la fila de interactuar mantenido
+ACTUAL: MANTENER
+CORRECCIÓN:
+
+
+5. CARGA Y TRANSICIÓN
+---------------------
+
+[CARGA.01] Esquina superior izquierda
+ACTUAL: ◀◀ REW
+CORRECCIÓN:
+
+[CARGA.02] Título
+ACTUAL: CARGANDO CINTA
+CORRECCIÓN:
+
+[CARGA.03] Bajo el título, con puntos animados
+ACTUAL: EL HOTEL ESTÁ TOMANDO FORMA
+CORRECCIÓN:
+
+[TRANS.01] Esquina superior izquierda al salir del piso
+ACTUAL: ■ STOP
+CORRECCIÓN:
+
+[TRANS.02] Título al salir del piso (dura 1,2 s)
+ACTUAL: FIN DEL PISO
+CORRECCIÓN:
+
+
+6. PISO COMPLETADO
+------------------
+
+[FIN.01] Esquina superior izquierda
+ACTUAL: ■ STOP
+CORRECCIÓN:
+
+[FIN.02] Título
+ACTUAL: SALISTE DEL PISO
+CORRECCIÓN:
+
+[FIN.03] Dato (%s = horas:minutos:segundos en el piso)
+ACTUAL: TIEMPO DE GRABACIÓN  %s
+CORRECCIÓN:
+
+[FIN.04] Párrafo
+ACTUAL: El hotel queda atrás. Por ahora.
+CORRECCIÓN:
+
+[FIN.05] Opción
+ACTUAL: NUEVA PARTIDA
+CORRECCIÓN:
+
+[FIN.06] Opción
+ACTUAL: MENÚ PRINCIPAL
+CORRECCIÓN:
+
+
+7. MUERTE (SEÑAL PERDIDA)
+-------------------------
+
+[MUERTE.01] Esquina superior izquierda, parpadea en rojo
+ACTUAL: SEÑAL PERDIDA
+CORRECCIÓN:
+
+[MUERTE.02] Título
+ACTUAL: SEÑAL PERDIDA
+CORRECCIÓN:
+
+[MUERTE.03] Dato (%s = tiempo en el piso)
+ACTUAL: TIEMPO DE GRABACIÓN  %s
+CORRECCIÓN:
+
+[MUERTE.05] Opción
+ACTUAL: REINTENTAR
+CORRECCIÓN:
+
+[MUERTE.06] Opción
+ACTUAL: MENÚ PRINCIPAL
+CORRECCIÓN:
+
+[MUERTE.07] Mensaje interno de derrota (hoy no se muestra en individual)
+ACTUAL: No quedan suficientes supervivientes.
+CORRECCIÓN:
+
+
+8. CRÉDITOS
+-----------
+
+[CRED.01] Esquina superior izquierda
+ACTUAL: ▶ PLAY
+CORRECCIÓN:
+
+[CRED.02] Pie de página (%s = versión)
+ACTUAL: %s  ·  PROYECTO FAN NO OFICIAL
+CORRECCIÓN:
+
+[CRED.03] Título
+ACTUAL: CRÉDITOS
+CORRECCIÓN:
+
+[CRED.06] Encabezado
+ACTUAL: THE LOCUST
+CORRECCIÓN:
+
+[CRED.07] Texto
+ACTUAL: Modelo de Doumty.
+CORRECCIÓN:
+
+[CRED.08] Encabezado
+ACTUAL: ARQUITECTURA Y MOBILIARIO
+CORRECCIÓN:
+
+[CRED.09] Texto
+ACTUAL: Creados para The Four. Provisionales.
+CORRECCIÓN:
+
+[CRED.10] Encabezado
+ACTUAL: AUDIO
+CORRECCIÓN:
+
+[CRED.11] Texto
+ACTUAL: Aportado por el usuario. Autoría y licencias por verificar.
+CORRECCIÓN:
+OBS: "Aportado por el usuario" es lenguaje de desarrollo; en créditos debería ir el autor real.
+
+[CRED.12] Encabezado
+ACTUAL: DISTRIBUCIÓN
+CORRECCIÓN:
+
+[CRED.13] Texto
+ACTUAL: Los permisos de los assets siguen pendientes.
+CORRECCIÓN:
+
+[CRED.14] Opción
+ACTUAL: VOLVER
+CORRECCIÓN:
+
+
+9. PERSONAJE
+------------
+
+[PJ.01] Esquina superior izquierda
+ACTUAL: MENU ▸ PERSONAJE
+CORRECCIÓN:
+
+[PJ.03] Título
+ACTUAL: PERSONAJE
+CORRECCIÓN:
+
+[PJ.04] Nombre del personaje 1
+ACTUAL: Detective Masculino
+CORRECCIÓN:
+
+[PJ.05] Nombre del personaje 2
+ACTUAL: Detective Femenino
+CORRECCIÓN:
+
+[PJ.06] Nombre del personaje 3
+ACTUAL: Exploradora
+CORRECCIÓN:
+
+[PJ.07] Bajo la vista previa (%s = nombre en mayúsculas)
+ACTUAL: SELECCIONADO · %s
+CORRECCIÓN:
+
+[PJ.08] Opción
+ACTUAL: VOLVER
+CORRECCIÓN:
+
+
+10. AJUSTES
+-----------
+
+[AJ.01] Esquina superior izquierda
+ACTUAL: MENU ▸ AJUSTES
+CORRECCIÓN:
+
+[AJ.03] Título
+ACTUAL: AJUSTES
+CORRECCIÓN:
+
+-- Pestaña GRÁFICOS --
+
+[AJ.10] Nombre de la pestaña
+ACTUAL: GRÁFICOS
+CORRECCIÓN:
+
+[AJ.11] Casilla
+ACTUAL: Pantalla completa
+CORRECCIÓN:
+
+[AJ.12] Desplegable (desactivado en pantalla completa)
+ACTUAL: Tamaño de ventana
+CORRECCIÓN:
+
+[AJ.13] Desplegable
+ACTUAL: Calidad
+CORRECCIÓN:
+
+[AJ.14] Opciones de calidad
+ACTUAL: Baja / Media / Alta
+CORRECCIÓN:
+
+[AJ.15] Deslizador
+ACTUAL: Escala de render
+CORRECCIÓN:
+
+[AJ.16] Casilla
+ACTUAL: Sombras
+CORRECCIÓN:
+
+[AJ.17] Desplegable
+ACTUAL: Límite de FPS
+CORRECCIÓN:
+
+[AJ.18] Opción del límite
+ACTUAL: Sin límite
+CORRECCIÓN:
+
+[AJ.19] Casilla
+ACTUAL: Sincronización vertical
+CORRECCIÓN:
+
+-- Pestaña IMAGEN --
+
+[AJ.20] Nombre de la pestaña
+ACTUAL: IMAGEN
+CORRECCIÓN:
+
+[AJ.21] Deslizador
+ACTUAL: Cinta VHS
+CORRECCIÓN:
+
+[AJ.22] Deslizador
+ACTUAL: Grano
+CORRECCIÓN:
+
+[AJ.23] Deslizador
+ACTUAL: Aberración cromática
+CORRECCIÓN:
+
+[AJ.24] Deslizador
+ACTUAL: Líneas de barrido
+CORRECCIÓN:
+
+[AJ.25] Deslizador
+ACTUAL: Movimiento de cámara
+CORRECCIÓN:
+
+[AJ.26] Casilla
+ACTUAL: Marcas de videocámara (REC, fecha y hora)
+CORRECCIÓN:
+
+[AJ.27] Casilla
+ACTUAL: Efectos reducidos
+CORRECCIÓN:
+
+-- Pestaña CONTROLES --
+
+[AJ.30] Nombre de la pestaña
+ACTUAL: CONTROLES
+CORRECCIÓN:
+
+[AJ.31] Deslizador
+ACTUAL: Sensibilidad
+CORRECCIÓN:
+
+[AJ.32] Casilla
+ACTUAL: Invertir mirada vertical
+CORRECCIÓN:
+
+[AJ.33] Acciones reasignables
+ACTUAL: Adelante / Atrás / Izquierda / Derecha / Correr / Saltar / Interactuar / Linterna / Agacharse
+CORRECCIÓN:
+
+[AJ.34] Botón mientras espera una tecla
+ACTUAL: PULSA UNA TECLA · ESC CANCELA
+CORRECCIÓN:
+
+[AJ.35] Botón si la tecla no se puede usar
+ACTUAL: TECLA RESERVADA O EN USO
+CORRECCIÓN:
+
+[AJ.36] Botón
+ACTUAL: RESTAURAR CONTROLES
+CORRECCIÓN:
+
+-- Pestaña AUDIO --
+
+[AJ.40] Nombre de la pestaña
+ACTUAL: AUDIO
+CORRECCIÓN:
+
+[AJ.41] Deslizadores
+ACTUAL: General / Ambiente / Música / Efectos / Señales de peligro
+CORRECCIÓN:
+
+[AJ.42] Casilla
+ACTUAL: Subtítulos de sonidos relevantes
+CORRECCIÓN:
+
+-- Confirmación de pantalla (al cambiar resolución o pantalla completa) --
+
+[AJ.50] Aviso (%d = segundos restantes)
+ACTUAL: Confirma la pantalla: se revertirá en %d s.
+CORRECCIÓN:
+
+[AJ.51] Botón
+ACTUAL: CONSERVAR PANTALLA
+CORRECCIÓN:
+
+[AJ.52] Botón
+ACTUAL: REVERTIR PANTALLA
+CORRECCIÓN:
+
+[AJ.53] Opción
+ACTUAL: VOLVER
+CORRECCIÓN:
+
+
+11. HUD EN PARTIDA
+------------------
+
+[HUD.01] Mensaje breve arriba a la izquierda al empezar el piso (5 s)
+ACTUAL: ENCUENTRA LA SALIDA
+CORRECCIÓN:
+
+[HUD.02] Mensaje breve si intentas cerrar una puerta con alguien en el umbral
+ACTUAL: DEJA LIBRE EL UMBRAL
+CORRECCIÓN:
+
+[HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
+ACTUAL: REFUGIO · MANTÉN [%s] PARA SALIR DEL PISO
+CORRECCIÓN:
+
+[HUD.04] Palabra bajo los corchetes de enfoque: puerta cerrada
+ACTUAL: ABRIR
+CORRECCIÓN:
+
+[HUD.05] Palabra bajo los corchetes de enfoque: puerta abierta
+ACTUAL: CERRAR
+CORRECCIÓN:
+
+[HUD.06] Palabra bajo los corchetes de enfoque: escondite
+ACTUAL: ESCONDERSE
+CORRECCIÓN:
+
+[HUD.07] Palabra bajo los corchetes de enfoque: dentro del escondite
+ACTUAL: SALIR
+CORRECCIÓN:
+
+
+12. MARCAS DE VIDEOCÁMARA (bajo el filtro VHS)
+----------------------------------------------
+
+[CAM.01] Arriba a la derecha, con punto rojo parpadeante
+ACTUAL:
+| REC
+| SP
+CORRECCIÓN:
+
+[CAM.02] Abajo a la izquierda (hora y fecha de la cinta; varían con cada partida)
+ACTUAL:
+| AM 2:51:26
+| AUG. 3 1990
+CORRECCIÓN:
+
+[CAM.03] Abreviaturas de los meses
+ACTUAL: JAN. FEB. MAR. APR. MAY JUN. JUL. AUG. SEP. OCT. NOV. DEC.
+CORRECCIÓN:
+
+
+13. SUBTÍTULOS DE SONIDO (si están activados)
+---------------------------------------------
+
+[SUB.01] Entre los 5 y 10 s de partida
+ACTUAL: [Ventilación constante]
+CORRECCIÓN:
+
+[SUB.02] Puerta abriéndose cerca
+ACTUAL: [Una puerta cruje]
+CORRECCIÓN:
+
+[SUB.03] Puerta cerrándose cerca
+ACTUAL: [Una puerta se cierra]
+CORRECCIÓN:
+
+[SUB.04] Puerta abierta o cerrada corriendo
+ACTUAL: [Un portazo]
+CORRECCIÓN:
+
+[SUB.05] Presencia de The Locust cerca (como mucho cada 18 s)
+ACTUAL: [Una presencia grave se desplaza por el hotel]
+CORRECCIÓN:
+OBS: "presencia grave" suena algo artificial.
+
+
+14. MENSAJES DE ERROR Y GUARDADO (aparecen en el menú principal)
+----------------------------------------------------------------
+
+[ERR.01] Checkpoint dañado
+ACTUAL: El checkpoint no se puede leer. Puedes iniciar una partida nueva.
+CORRECCIÓN:
+
+[ERR.02] Checkpoint de otra versión
+ACTUAL: Checkpoint incompatible con esta versión. Se conserva el archivo original.
+CORRECCIÓN:
+
+[ERR.03] Checkpoint con datos incorrectos
+ACTUAL: El checkpoint contiene una semilla inválida.
+CORRECCIÓN:
+
+[ERR.04] No se pudo escribir el guardado
+ACTUAL: No se pudo guardar el inicio del piso.
+CORRECCIÓN:
+
+[ERR.05] Falla el mapa de respaldo
+ACTUAL: El mapa de respaldo no superó la validación física. No se inició la partida.
+CORRECCIÓN:
+
+[ERR.06] No hay ruta hasta la salida
+ACTUAL: No se pudo validar la ruta de salida. El nivel no se inició.
+CORRECCIÓN:
+
+
+15. CARTELES DENTRO DEL HOTEL (texto 3D)
+----------------------------------------
+
+[MUNDO.01] Pared de la recepción inicial
+ACTUAL:
+| THE FOUR
+| HOTEL · RECEPCIÓN
+CORRECCIÓN:
+
+[MUNDO.02] Pared del refugio de salida
+ACTUAL:
+| SALIDA
+| REFUGIO
+CORRECCIÓN:
+
+[MUNDO.03] Pared opuesta del refugio
+ACTUAL: SALIDA / REFUGIO
+CORRECCIÓN:
+
+[MUNDO.04] Números de habitación en las puertas (100 + número de sala)
+ACTUAL: 101, 102, 103...
+CORRECCIÓN:
+
+
+16. OTROS
+---------
+
+[OTRO.01] Título de la ventana del juego
+ACTUAL: THE FOUR — Hotel
+CORRECCIÓN:
+
+[OTRO.02] Nombres de salas (solo en la galería de módulos del editor)
+ACTUAL: Recepción / Habitación doble / Habitación / Suite / Baños / Salón / Comedor / Lavandería / Almacén / Mantenimiento / Vestíbulo / Pasillo / Galería / Sala de lectura / Sala de televisión / Oficina / Guardarropa / Jardín interior / Salón vacío / Refugio
+CORRECCIÓN:

@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/finish.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/albedo = Color(0.17, 0.25, 0.1, 1)
+shader_parameter/variation_color = Color(0.1, 0.16, 0.06, 1)
+shader_parameter/roughness = 0.55
+shader_parameter/finish = 4
+shader_parameter/detail_scale = 3.0
+shader_parameter/backlight = 0.5
+shader_parameter/grime = 0.1

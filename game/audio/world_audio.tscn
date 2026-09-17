@@ -1,5 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 [ext_resource type="Script" path="res://game/audio/world_audio.gd" id="1"]
+[ext_resource type="Script" path="res://game/audio/dread_aura.gd" id="2"]
 [node name="WorldAudio" type="Node"]
 process_mode = 1
 script = ExtResource("1")
+[node name="DreadAura" type="Node" parent="."]
+script = ExtResource("2")

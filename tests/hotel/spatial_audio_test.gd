@@ -1,4 +1,5 @@
 extends SceneTree
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 var checks: Array = []
 var errors := 0
@@ -17,7 +18,10 @@ func sample_at(point: Vector3, capture: AudioEffectCapture) -> Vector2:
 	level.world_audio.reset()
 	await wait(0.1)
 	capture.clear_buffer()
-	level.world_audio.play_at("res://assets/audio/sfx/door/opening/opening1.ogg", point, -10)
+	# A mono test tone: stereo door recordings are not centred, which would
+	# measure the recording's own balance instead of the 3D panning.
+	level.world_audio.streams["test://mono_tone"] = preload("res://game/ui/osd_style.gd").beep(440.0, 0.8, 0.5)
+	level.world_audio.play_at("test://mono_tone", point, -10)
 	level.world_audio.voices[-1].pitch_scale = 1.0
 	await wait(0.9)
 	return energy(capture)
@@ -53,13 +57,18 @@ func run() -> void:
 	check("Far listener selects distant recordings", audio.last_event.pool == "open_far")
 	audio.door_cue(true, true, listener + Vector3(0, 0, -3), RID())
 	check("Slow opening selects creaking recording", audio.last_event.pool == "open_slow")
+	audio.door_cue(true, false, listener + Vector3(0, 0, -3), RID(), true)
+	check("Running into a door selects a slam", audio.last_event.pool == "open_slam_near")
+	check("Playback skips the recording's leading silence", is_equal_approx(audio.voices[-1].get_meta("start"), preload("res://game/audio/cue_timing.gd").onset(audio.last_event.path)))
+	audio.door_cue(false, false, listener + Vector3(0, 0, -3), RID())
+	check("Closing cue starts near its impact", audio.voices[-1].get_meta("start") >= preload("res://game/audio/cue_timing.gd").hit(audio.last_event.path) - audio.CLOSE_PREROLL - 0.001)
 	for i in 20: audio.play_at(audio.choose("close_near"), listener, -16)
 	check("Effects have bounded simultaneous voices", audio.voices.size() == audio.maximum_voices)
 	var door := preload("res://game/world/interactables/hotel_door.gd").new()
 	level.add_child(door)
 	door.doorway = Vector3(500, 0, 0)
 	var events := []
-	door.sound_requested.connect(func(opening, slow, point, _rid): events.append({"opening": opening, "slow": slow, "point": point}))
+	door.sound_requested.connect(func(opening, slow, point, _rid, forceful): events.append({"opening": opening, "slow": slow, "point": point, "forceful": forceful}))
 	door.open_immediately()
 	check("Map initialization emits no door sound", events.is_empty())
 	level.player.position = door.doorway
@@ -106,6 +115,38 @@ func run() -> void:
 	check("Physical wall occludes sound ray", audio.occluded(Vector3(500, 1.4, 0)))
 	wall.queue_free()
 	await physics_frame
+	# Dread aura: follows the walkable route and points toward the creature.
+	var aura = audio.aura
+	level.player.position = Vector3(-3.5, 0.04, 0)
+	level.player.rotation = Vector3.ZERO
+	level.player.camera.rotation = Vector3.ZERO
+	level.locust.grace = 0
+	level.locust.set_mode(level.locust.Mode.PATROL)
+	level.locust.position = Vector3(500, 0.04, 500)
+	aura.reset()
+	await wait(1.0)
+	var far_intensity: float = aura.intensity
+	level.locust.position = Vector3(3.5, 0.04, 0)
+	await wait(2.5)
+	check("Dread aura rises as the creature closes in by route", aura.intensity > far_intensity + 0.5 and aura.route_distance < 10.0)
+	var local: Vector3 = level.player.camera.global_transform.affine_inverse() * aura.cue_point
+	check("Directional dread cues sit on the creature's side", local.x > 1.0)
+	# Isolate the directional layers from the centred pressure drone.
+	aura.drone.bus = &"Music"
+	var aura_capture := AudioEffectCapture.new()
+	aura_capture.buffer_length = 3
+	var aura_bus := AudioServer.get_bus_index("Aura")
+	AudioServer.add_bus_effect(aura_bus, aura_capture)
+	await wait(1.6)
+	var dread_energy := energy(aura_capture)
+	check("Rendered dread cues pan toward the creature", dread_energy.y > dread_energy.x * 1.4 and dread_energy.y > 0.0000001)
+	AudioServer.remove_bus_effect(aura_bus, AudioServer.get_bus_effect_count(aura_bus) - 1)
+	aura.drone.bus = &"Aura"
+	level.player.position = FLOOR.position_of(level.manifest.rooms[level.manifest.exit]) + Vector3(0, 0.04, 0)
+	await wait(0.4)
+	check("Refuge releases the aura", aura.target == 0.0)
+	level.player.position = Vector3(500, 0, 4)
+	level.locust.position = Vector3(500, 0, 0)
 	audio.reset()
 	audio.set_physics_process(false)
 	var capture := AudioEffectCapture.new()

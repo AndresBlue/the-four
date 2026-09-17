@@ -8,9 +8,9 @@ Proyecto principal: `E:\Projects\The Four`. Repositorio local, sin publicación 
 
 Abre **Jugar.cmd** y elige **Jugar · nuevo recorrido**. Explora el hotel hasta encontrar la sala señalizada **SALIDA / REFUGIO**. Dentro puedes volver a explorar o mantener la interacción durante tres segundos para terminar el piso. No necesitas recoger fusibles ni completar puzles.
 
-Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Espacio para saltar, **Ctrl** para agacharte, **E** para puertas y escondites, **F** para linterna y **Esc** para pausa. Pulsa y suelta E para apertura normal; mantenla un segundo para apertura lenta. Los controles se pueden cambiar en Ajustes.
+Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Espacio para saltar, **Ctrl** para agacharte, **E** para puertas y escondites, **F** para linterna y **Esc** para pausa. Pulsa y suelta E para apertura normal; mantenla un segundo para apertura lenta; si corres, das un portazo que se oye más lejos. El HUD imita una videocámara: corchetes de enfoque sobre lo que puedes usar y un medidor de resistencia; los controles están en la pausa y en Ajustes. Los controles se pueden cambiar en Ajustes.
 
-**Continuar** restaura el inicio del mismo piso, no la posición donde cerraste el juego. Reintentar conserva el mapa y restablece puertas/estado. Al completar esta demostración se borra su checkpoint. Los cambios de pantalla necesitan confirmación; se revierten a los doce segundos si no se aceptan.
+**Continuar** restaura el inicio del mismo piso, no la posición donde cerraste el juego. Reintentar conserva el mapa y restablece puertas/estado. Al completar esta demostración se borra su checkpoint. El juego arranca en pantalla completa. En Ajustes puedes pasar a ventana: se ajusta al área útil del monitor y queda centrada; cambiar otros ajustes gráficos no la mueve ni cambia su tamaño. Los cambios de pantalla necesitan confirmación; se revierten a los doce segundos si no se aceptan.
 
 ## Qué contiene esta entrega
 
@@ -28,6 +28,10 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 **Todavía no hay cooperativo, hoja compartida ni cuatro pisos jugables.** La supervivencia individual tiene pruebas funcionales, pero todavía requiere balance en partidas humanas. El mobiliario y materiales siguen siendo provisionales; no se presenta como una entrega fotorrealista. La duración de 25–40 minutos por piso necesita pruebas humanas de exploración.
 
 F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. Locust está activo en el hotel. El reintento reinicia resistencia, criatura y 15 s de protección inicial. Su movimiento y preparación usan animación procedural provisional. Los checkpoints del generador anterior (v2) son incompatibles con v3 y se conservan sin convertirlos silenciosamente.
+
+## Ejecutable para Windows
+
+`./tools/godot.ps1 export` genera `exports/windows/TheFour.exe`: un único archivo de unos 400 MB con todo el juego (plantilla release de Godot 4.7.2, sin consola ni atajos de depuración como F9). La configuración está en `export_presets.cfg` y excluye `tests/`, `tools/` y `legacy/`. `exports/` no se versiona. Antes de distribuirlo deben resolverse los permisos de los assets.
 
 ## Abrir y validar
 

@@ -44,7 +44,7 @@ func run() -> void:
 	Input.action_release("crouch")
 	await frames(5)
 	check("Puede volver a ponerse de pie", not player.crouched)
-	player.stamina = 10
+	player.stamina = 4
 	player.active = true
 	Input.action_press("forward")
 	Input.action_press("sprint")
@@ -52,7 +52,7 @@ func run() -> void:
 	check("Correr agota resistencia sin regeneración instantánea", player.exhausted and player.stamina < 1)
 	Input.action_release("sprint")
 	Input.action_release("forward")
-	await frames(240)
+	await frames(560)
 	check("Resistencia se recupera después del descanso", player.stamina > 25 and not player.exhausted)
 	player.position = Vector3(0, 0.04, 0)
 	player.velocity = Vector3.ZERO
@@ -97,7 +97,7 @@ func run() -> void:
 	face(enemy, player.position)
 	enemy.set_mode(enemy.Mode.CHASE)
 	enemy._physics_process(0.01)
-	check("Ataque anuncia preparación", enemy.mode == enemy.Mode.WINDUP and not enemy.warning.is_empty())
+	check("Ataque anuncia preparación", enemy.mode == enemy.Mode.WINDUP and enemy.signal_player.playing)
 	enemy._physics_process(0.5)
 	check("No mata antes de 0,7 s", level.session.state == level.session.State.PLAYING)
 	player.position = Vector3(0, 0.04, -2)

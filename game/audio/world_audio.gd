@@ -1,12 +1,26 @@
 extends Node
 ## Local presentation only: never changes AI hearing or consumes map RNG.
 const BASE := "res://assets/audio/sfx/"
+const TIMING := preload("res://game/audio/cue_timing.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+# Closing cues are emitted when the leaf lands; start just before the recorded
+# impact so the latch is heard with the movement, not after it.
+const CLOSE_PREROLL := 0.08
+const HIDE_PREROLL := 0.3
+## Area layer 3D sources respond to; gameplay areas stay out of the audio path.
+const ACOUSTIC_MASK := 512
+## Gains (dB) at the reference mix (sliders at 50%).
+const GAIN := {"open": 1.0, "open_slow": -7.0, "slam": 0.0, "close": -11.0, "hide": -8.0}
 const POOLS := {
 	"open_near": ["door/opening/opening1.ogg", "door/opening/opening2.ogg", "door/opening/opening3.ogg", "door/opening/wooden-opening.ogg"],
 	"open_far": ["door/opening/far-opening.ogg", "door/opening/far-soft-opening.ogg"],
 	"open_slow": ["door/opening/creaky-wooden-door-slow-opening.mp3"],
 	"close_near": ["door/closing/closing1.ogg", "door/closing/closing2.ogg", "door/closing/closing3.ogg", "door/closing/wooden-closing.ogg"],
 	"close_far": ["door/closing/far-closing.ogg", "door/closing/far-soft-closing.ogg"],
+	"open_slam_near": ["door/opening/close-hard-opening.ogg"],
+	"open_slam_far": ["door/opening/far-hard-opening.ogg"],
+	"close_slam_near": ["door/closing/close-hard-closing.ogg"],
+	"close_slam_far": ["door/closing/far-hard-closing.ogg"],
 	"hide_enter": ["wardrobe/closing1.ogg", "wardrobe/closing2.ogg", "wardrobe/closing3.ogg", "wardrobe/closing4.ogg"],
 	"hide_leave": ["wardrobe/opening1.ogg", "wardrobe/opening2.ogg", "wardrobe/opening3.ogg", "wardrobe/opening4.ogg"],
 }
@@ -26,6 +40,10 @@ var caption_time := 0.0
 var caption_cooldown := 0.0
 var presence_gain := 0.0
 var clock := 0.0
+var aura
+## Failing-fluorescent hum near the listener.
+var hums: Array[AudioStreamPlayer3D] = []
+var ambient_clock := 0.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -33,10 +51,52 @@ func _ready() -> void:
 	presence = AudioStreamPlayer3D.new()
 	presence.name = "CreaturePresence"
 	presence.bus = "Threat"
-	presence.unit_size = 7.0
-	presence.max_db = -6.0
+	presence.unit_size = 9.0
+	presence.max_db = 4.0
 	presence.volume_db = -80.0
+	presence.area_mask = ACOUSTIC_MASK
+	presence.panning_strength = 1.3
 	add_child(presence)
+	aura = get_node_or_null("DreadAura")
+	for i in 2:
+		var hum := make_source("FluorescentHum", "Ambience", loop_stream(load("res://assets/audio/dread/fluorescent_hum.wav")), 2.0, 12.0)
+		# A background detail: capped so standing right under a tube stays quiet.
+		hum.max_db = -36.0
+		hums.append(hum)
+
+func make_source(title: String, bus: String, stream: AudioStream, unit: float, reach: float) -> AudioStreamPlayer3D:
+	var source := AudioStreamPlayer3D.new()
+	source.name = title
+	source.bus = bus
+	source.stream = stream
+	source.unit_size = unit
+	source.max_distance = reach
+	source.area_mask = ACOUSTIC_MASK
+	add_child(source)
+	return source
+
+## Listener-based acoustics: the reverb on effect and threat buses follows the
+## space the player is in, tight in rooms and long in merged salons.
+func update_space(delta: float) -> void:
+	var wanted := {"room_size": 0.5, "wet": 0.12, "damping": 0.6}
+	if level.session.state == level.session.State.PLAYING and not level.manifest.is_empty():
+		var listener := listener_position()
+		for room in level.manifest.rooms:
+			var center := FLOOR.position_of(room)
+			var span := FLOOR.size_of(room)
+			if absf(listener.x - center.x) <= span.x * 0.5 and absf(listener.z - center.z) <= span.y * 0.5:
+				if room.hall >= 0: wanted = {"room_size": 0.86, "wet": 0.24, "damping": 0.42}
+				elif room.type in [4, 7, 9]: wanted = {"room_size": 0.42, "wet": 0.2, "damping": 0.25}
+				break
+	for bus_name in ["Effects", "Threat"]:
+		var bus := AudioServer.get_bus_index(bus_name)
+		for index in AudioServer.get_bus_effect_count(bus):
+			var reverb = AudioServer.get_bus_effect(bus, index)
+			if not reverb is AudioEffectReverb: continue
+			var extra := 0.04 if bus_name == "Threat" else 0.0
+			reverb.room_size = move_toward(reverb.room_size, wanted.room_size, delta * 0.8)
+			reverb.wet = move_toward(reverb.wet, wanted.wet + extra, delta * 0.3)
+			reverb.damping = move_toward(reverb.damping, wanted.damping, delta * 0.8)
 
 static func loop_stream(source: AudioStream) -> AudioStream:
 	var copy: AudioStream = source.duplicate()
@@ -65,20 +125,29 @@ func choose(pool: String) -> String:
 func listener_position() -> Vector3:
 	return level.player.camera.global_position
 
-func door_cue(opening: bool, slow: bool, point: Vector3, emitter: RID) -> void:
+func door_cue(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful := false) -> void:
 	var distance := listener_position().distance_to(point)
-	var pool := ("open" if opening else "close") + ("_far" if distance >= far_threshold else "_near")
+	var pool := ("open" if opening else "close") + ("_slam" if forceful else "") + ("_far" if distance >= far_threshold else "_near")
 	if opening and slow and distance < far_threshold: pool = "open_slow"
-	play_at(choose(pool), point, -16.0 if slow else -10.0, emitter)
+	var path := choose(pool)
+	var gain: float = GAIN.open_slow if slow and opening else GAIN.slam if forceful else GAIN.open if opening else GAIN.close
+	var start := TIMING.onset(path) if opening else maxf(TIMING.onset(path), TIMING.hit(path) - CLOSE_PREROLL)
+	play_at(path, point, gain, emitter, start)
 	last_event["pool"] = pool
-	if enabled and distance < 16.0: show_caption("[Una puerta cruje]" if opening else "[Una puerta se cierra]", false)
+	if enabled and distance < 16.0:
+		var words := "[Un portazo]" if forceful else "[Una puerta cruje]" if opening else "[Una puerta se cierra]"
+		show_caption(words, false)
 
 func hide_cue(entering: bool, point: Vector3) -> void:
-	play_at(choose("hide_enter" if entering else "hide_leave"), point + Vector3.UP, -16.0)
+	var path := choose("hide_enter" if entering else "hide_leave")
+	var start := maxf(TIMING.onset(path), TIMING.hit(path) - HIDE_PREROLL) if entering else TIMING.onset(path)
+	play_at(path, point + Vector3.UP, GAIN.hide, RID(), start)
 
-func play_at(path: String, point: Vector3, gain: float, emitter := RID()) -> void:
+## start: seconds into the recording; negative uses its measured onset.
+func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0) -> void:
+	if start < 0.0: start = TIMING.onset(path)
 	last_event = {"path": path, "position": point}
-	if not enabled or listener_position().distance_to(point) > 32.0: return
+	if not enabled or listener_position().distance_to(point) > 40.0: return
 	if not streams.has(path): streams[path] = load(path)
 	if voices.size() >= maximum_voices:
 		var oldest := voices.pop_front() as AudioStreamPlayer3D
@@ -88,12 +157,15 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID()) -> voi
 	voice.name = "WorldCue"
 	voice.bus = "Effects"
 	voice.stream = streams[path]
-	voice.unit_size = 5.0
-	voice.max_distance = 32.0
-	voice.max_db = -4.0
+	voice.unit_size = 6.0
+	voice.max_distance = 40.0
+	voice.max_db = 6.0
+	voice.area_mask = ACOUSTIC_MASK
+	voice.panning_strength = 1.2
 	voice.pitch_scale = rng.randf_range(0.98, 1.02)
 	voice.set_meta("base_gain", gain)
 	voice.set_meta("emitter", emitter)
+	voice.set_meta("start", start)
 	add_child(voice)
 	voice.global_position = point
 	voices.append(voice)
@@ -102,7 +174,7 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID()) -> voi
 		voices.erase(voice)
 		voice.queue_free()
 	)
-	voice.play()
+	voice.play(start)
 
 func occluded(point: Vector3, emitter := RID()) -> bool:
 	var ray := PhysicsRayQueryParameters3D.create(point, listener_position(), 1 | 8 | 64)
@@ -127,6 +199,8 @@ func reset() -> void:
 	voices.clear()
 	presence.stop()
 	presence_gain = 0
+	for source in hums: source.stop()
+	if aura != null: aura.reset()
 	caption_time = 0
 	caption_cooldown = 0
 	caption_text = ""
@@ -136,7 +210,14 @@ func _physics_process(delta: float) -> void:
 	caption_time = maxf(0, caption_time - delta)
 	caption_cooldown = maxf(0, caption_cooldown - delta)
 	if caption_time <= 0: caption_text = ""
-	if not enabled or profile == null or not is_instance_valid(level.locust): return
+	if not enabled: return
+	ambient_clock -= delta
+	if ambient_clock <= 0.0:
+		ambient_clock = 0.5
+		update_ambient_sources()
+	update_hum_levels()
+	update_space(delta)
+	if profile == null or not is_instance_valid(level.locust): return
 	var creature = level.locust
 	presence.global_position = creature.global_position + Vector3(0, 1.4, 0)
 	var distance := presence.global_position.distance_to(listener_position())
@@ -150,5 +231,31 @@ func _physics_process(delta: float) -> void:
 	var blocked := occluded(presence.global_position)
 	presence.volume_db = profile.volume_db + linear_to_db(maxf(presence_gain, 0.0001)) - (8.0 if blocked else 0.0) - (16.0 if creature.mode == creature.Mode.WINDUP else 0.0)
 	presence.attenuation_filter_cutoff_hz = 1800.0 if blocked else 5000.0
-	if audible and presence_gain > 0.5 and distance < 18: show_caption(profile.caption, true)
+	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
 	for voice in voices: update_voice(voice)
+
+## Moves the hum emitters to the closest failing lights.
+func update_ambient_sources() -> void:
+	if level.session.state != level.session.State.PLAYING or not is_instance_valid(level.hotel):
+		for source in hums: source.stop()
+		return
+	var listener := listener_position()
+	var nearest: Array = level.hotel.flickers.filter(func(entry): return is_instance_valid(entry.light) and entry.light.global_position.distance_to(listener) < 16.0)
+	nearest.sort_custom(func(a, b): return a.light.global_position.distance_to(listener) < b.light.global_position.distance_to(listener))
+	for i in hums.size():
+		var hum := hums[i]
+		if i < nearest.size():
+			hum.set_meta("entry", nearest[i])
+			hum.global_position = nearest[i].light.global_position
+			if not hum.playing: hum.play(rng.randf() * 1.5)
+		else:
+			hum.set_meta("entry", null)
+			hum.stop()
+
+## Hum follows the tube: it drops out with the light when it flickers.
+func update_hum_levels() -> void:
+	for hum in hums:
+		var entry = hum.get_meta("entry") if hum.has_meta("entry") else null
+		if entry == null or not hum.playing: continue
+		var level_ratio: float = clampf(entry.light.light_energy / maxf(entry.energy, 0.01), 0.0, 1.0)
+		hum.volume_db = lerpf(-60.0, -40.0, level_ratio)

@@ -4,6 +4,6 @@
 [resource]
 script = ExtResource("1")
 presence = ExtResource("2")
-volume_db = -18.0
-audible_distance = 26.0
+volume_db = -6.0
+audible_distance = 36.0
 caption = "[Una presencia grave se desplaza por el hotel]"

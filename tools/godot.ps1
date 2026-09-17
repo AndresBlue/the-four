@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     [string]$GodotPath = $env:GODOT_PATH
 )
@@ -32,5 +32,17 @@ switch ($Mode) {
     'audio-test' { $arguments += @('--headless','--script','res://tests/legacy/audio_test.gd') }
     'build' { $arguments += @('--headless','--script','res://tools/legacy/build_scene.gd') }
     'capture' { $arguments += @('res://legacy/fuse_prototype/main.tscn','--','--capture=' + (Join-Path $projectPath 'evidence/corridor.png')) }
+    'export' {
+        New-Item -ItemType Directory -Force (Join-Path $projectPath 'exports/windows') | Out-Null
+        $arguments += @('--headless','--export-release','Windows Desktop',(Join-Path $projectPath 'exports/windows/TheFour.exe'))
+    }
 }
-& $GodotPath @arguments
+if ($Mode -eq 'export') {
+    # The editor binary is a GUI program: wait so the command ends with the export.
+    $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -Wait -PassThru -WindowStyle Hidden
+    if ($process.ExitCode -ne 0) { throw "La exportación falló (código $($process.ExitCode))." }
+    Get-Item (Join-Path $projectPath 'exports/windows/TheFour.exe') | Select-Object FullName, LastWriteTime, Length
+} else {
+    & $GodotPath @arguments
+}

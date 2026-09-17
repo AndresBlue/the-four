@@ -24,6 +24,13 @@ func run() -> void:
 	var looped: bool = level.ambience.playing and level.ambience.get_playback_position() < 2
 	level.settings.set_value("ambience", 0)
 	var muted := AudioServer.is_bus_mute(index)
+	# Volume curve: 50% is the reference mix, 100% adds +6 dB behind a limiter.
+	var effects_bus := AudioServer.get_bus_index("Effects")
+	level.settings.set_value("effects", 0.5)
+	var reference_db := AudioServer.get_bus_volume_db(effects_bus)
+	level.settings.set_value("effects", 1.0)
+	var extreme_db := AudioServer.get_bus_volume_db(effects_bus)
+	var curve := absf(reference_db) < 0.05 and absf(extreme_db - 6.02) < 0.05 and AudioServer.get_bus_effect(0, 0) is AudioEffectHardLimiter
 	var threat_bus := AudioServer.get_bus_index("Threat")
 	var threat_capture := AudioEffectCapture.new()
 	threat_capture.buffer_length = 1
@@ -42,9 +49,9 @@ func run() -> void:
 	level.settings.set_value("effects", 0.8)
 	var catalog = JSON.parse_string(FileAccess.get_file_as_string("res://docs/hotel_audio_inventory.json"))
 	var report := FileAccess.open("res://evidence/hotel_audio.json", FileAccess.WRITE)
-	report.store_string(JSON.stringify({"passed": audible and looped and muted and warning_audible, "decoded": audible, "looped": looped, "muted": muted, "warning_without_music_or_effects": warning_audible, "threat_peak": threat_peak, "peak": peak, "samples": frames.size(), "catalog": catalog}, "\t"))
+	report.store_string(JSON.stringify({"passed": audible and looped and muted and warning_audible and curve, "volume_curve": curve, "reference_db": reference_db, "extreme_db": extreme_db, "decoded": audible, "looped": looped, "muted": muted, "warning_without_music_or_effects": warning_audible, "threat_peak": threat_peak, "peak": peak, "samples": frames.size(), "catalog": catalog}, "\t"))
 	report.close()
-	print("HOTEL_AUDIO ", audible, " loop=", looped, " mute=", muted, " independent_warning=", warning_audible)
+	print("HOTEL_AUDIO ", audible, " loop=", looped, " mute=", muted, " independent_warning=", warning_audible, " curve=", curve)
 	AudioServer.remove_bus_effect(threat_bus, 0)
 	threat_capture = null
 	AudioServer.remove_bus_effect(index, 0)
@@ -52,4 +59,4 @@ func run() -> void:
 	level.queue_free()
 	await process_frame
 	await create_timer(0.15).timeout
-	quit(0 if audible and looped and muted and warning_audible else 1)
+	quit(0 if audible and looped and muted and warning_audible and curve else 1)

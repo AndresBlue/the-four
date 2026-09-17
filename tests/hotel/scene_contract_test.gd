@@ -18,7 +18,7 @@ func run() -> void:
 	var env_a: Environment = a.get_node("Presentation/WorldEnvironment").environment
 	var env_b: Environment = b.get_node("Presentation/WorldEnvironment").environment
 	env_a.fog_density = 0.9
-	check("Environment settings stay local to a scene", is_equal_approx(env_b.fog_density, 0.003))
+	check("Environment settings stay local to a scene", is_equal_approx(env_b.fog_density, (load("res://game/presentation/hotel_environment.tres") as Environment).fog_density))
 	var fx_a: ShaderMaterial = a.get_node("Presentation/Analog/Screen").material
 	var fx_b: ShaderMaterial = b.get_node("Presentation/Analog/Screen").material
 	check("Postprocessing state is not shared", fx_a != fx_b)
@@ -27,7 +27,8 @@ func run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	check("Services are assigned before children are ready", scene.player.settings == scene.settings and scene.ui.settings == scene.settings)
-	check("Presentation defaults preserve previous rendering", scene.environment.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and scene.environment.tonemap_mode == Environment.TONE_MAPPER_FILMIC)
+	check("Presentation uses AgX tone mapping and colour ambient", scene.environment.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and scene.environment.tonemap_mode == Environment.TONE_MAPPER_AGX)
+	check("Camcorder overlay sits below the analog filter", scene.get_node("Presentation/Camcorder").layer < scene.get_node("Presentation/Analog").layer and scene.get_node("Presentation/Analog").layer < scene.ui.layer)
 	scene.queue_free()
 	await process_frame
 	var gallery: Node = load("res://tools/workbenches/module_gallery.tscn").instantiate()

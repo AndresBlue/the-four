@@ -1,11 +1,17 @@
 extends CanvasLayer
+## HUD and menus in the camcorder OSD style. Screens are rebuilt from code for
+## each state; layout constants live here and HUD positions in interface.tscn.
 signal action_requested(action: String)
+const STYLE := preload("res://game/ui/osd_style.gd")
+const NOISE := preload("res://game/ui/shaders/tape_noise.gdshader")
+const VERSION := "v0.4-S1"
 var settings
-var overlay: ColorRect
+var overlay: Control
 var column: VBoxContainer
+var side: VBoxContainer
 var hint: Label
-var survival: Label
 var subtitle: Label
+var flash_label: Label
 var progress: ProgressBar
 var settings_open := false
 var rebind_action := ""
@@ -14,204 +20,560 @@ var display_label: Label
 var return_action := "main"
 var buttons := {}
 var display_was_pending := false
+## Current screen id ("main", "pause", "settings", "characters", ...).
+var screen := ""
+## Seconds on the floor, shown on the end screens.
+var elapsed := 0.0
+var sounds_enabled := true
+var backdrop: TextureRect
+var noise: ColorRect
+var noise_amount := 0.0
+var noise_floor := 0.0
+var osd_left: Label
+var osd_right: Label
+var footer: Label
+var menu_clock: Label
+var body: HBoxContainer
+var clock := 0.0
+var flash_time := 0.0
+var loading_label: Label
+var tick_player: AudioStreamPlayer
+var confirm_player: AudioStreamPlayer
+var quiet_focus := false
+var intro: Control
+var intro_tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 20
+	var style := STYLE.theme()
+	$HUD.theme = style
 	hint = $HUD/InteractionHint
 	subtitle = $HUD/Subtitle
-	survival = $HUD/Survival
+	flash_label = $HUD/Flash
 	progress = $HUD/ExitProgress
 	overlay = $MenuOverlay
-	column = $MenuOverlay/Center/Column
+	overlay.theme = style
+	build_frame()
+	tick_player = sound_player(STYLE.beep(2400.0, 0.018, 0.12))
+	confirm_player = sound_player(STYLE.beep(1250.0, 0.07, 0.25))
 	if settings != null: settings.display_pending.connect(_display_changed)
 
-func label(parent: Node, words: String, size := 18) -> Label:
-	var result := Label.new()
-	result.text = words
-	result.add_theme_font_size_override("font_size", size)
-	result.add_theme_color_override("font_color", Color("e0d6bc"))
-	result.add_theme_color_override("font_shadow_color", Color.BLACK)
-	result.add_theme_constant_override("shadow_offset_y", 2)
+func sound_player(stream: AudioStream) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	player.bus = "Effects"
+	player.volume_db = -6.0
+	add_child(player)
+	return player
+
+func tick() -> void:
+	if sounds_enabled and not quiet_focus: tick_player.play()
+
+func confirm() -> void:
+	if sounds_enabled: confirm_player.play()
+
+# Persistent menu frame: backdrop, tape static, OSD corners and content columns.
+func build_frame() -> void:
+	backdrop = TextureRect.new()
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	backdrop.stretch_mode = TextureRect.STRETCH_SCALE
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.42, 1.0])
+	gradient.colors = PackedColorArray([Color(0.01, 0.01, 0.01, 0.94), Color(0.01, 0.01, 0.01, 0.72), Color(0.01, 0.01, 0.01, 0.18)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.width = 256
+	texture.height = 4
+	backdrop.texture = texture
+	overlay.add_child(backdrop)
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for key in ["left", "right"]: margin.add_theme_constant_override("margin_" + key, 96)
+	margin.add_theme_constant_override("margin_top", 110)
+	margin.add_theme_constant_override("margin_bottom", 90)
+	overlay.add_child(margin)
+	body = HBoxContainer.new()
+	body.add_theme_constant_override("separation", 56)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(body)
+	column = VBoxContainer.new()
+	column.custom_minimum_size.x = 520
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 6)
+	body.add_child(column)
+	side = VBoxContainer.new()
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	side.alignment = BoxContainer.ALIGNMENT_CENTER
+	side.add_theme_constant_override("separation", 12)
+	body.add_child(side)
+	osd_left = corner_label(Control.PRESET_TOP_LEFT, HORIZONTAL_ALIGNMENT_LEFT, Vector2(48, 34))
+	osd_right = corner_label(Control.PRESET_TOP_RIGHT, HORIZONTAL_ALIGNMENT_RIGHT, Vector2(-48, 34))
+	menu_clock = corner_label(Control.PRESET_BOTTOM_RIGHT, HORIZONTAL_ALIGNMENT_RIGHT, Vector2(-48, -70))
+	footer = corner_label(Control.PRESET_BOTTOM_LEFT, HORIZONTAL_ALIGNMENT_LEFT, Vector2(48, -58))
+	footer.add_theme_font_size_override("font_size", 15)
+	footer.add_theme_color_override("font_color", STYLE.SOFT)
+	noise = ColorRect.new()
+	noise.set_anchors_preset(Control.PRESET_FULL_RECT)
+	noise.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var material := ShaderMaterial.new()
+	material.shader = NOISE
+	noise.material = material
+	overlay.add_child(noise)
+
+func corner_label(preset: int, align: int, offset: Vector2) -> Label:
+	var result := STYLE.text("", 28)
+	result.set_anchors_preset(preset)
+	result.horizontal_alignment = align
+	if align == HORIZONTAL_ALIGNMENT_RIGHT:
+		result.offset_left = offset.x - 520
+		result.offset_right = offset.x
+	else:
+		result.offset_left = offset.x
+		result.offset_right = offset.x + 900
+	result.offset_top = offset.y
+	result.offset_bottom = offset.y + 40
+	overlay.add_child(result)
+	return result
+
+func label(parent: Node, words: String, size := 20) -> Label:
+	var result := STYLE.text(words, size)
 	parent.add_child(result)
 	return result
+
+func paragraph(parent: Node, words: String, size := 18, width := 560.0, color := STYLE.SOFT) -> Label:
+	var result := STYLE.text(words, size, color)
+	result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result.custom_minimum_size.x = width
+	parent.add_child(result)
+	return result
+
+func spacer(parent: Node, height: float) -> void:
+	var gap := Control.new()
+	gap.custom_minimum_size.y = height
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(gap)
+
+## Title with a slight chroma split, like a caption burnt onto tape.
+func title(parent: Node, words: String, size := 64, ink := STYLE.INK) -> void:
+	var main := STYLE.text(words, size, ink)
+	parent.add_child(main)
+	# Colour ghosts are children drawn behind the title, so layout uses its real size.
+	for shift in [[Vector2(-3, 0), Color(0.9, 0.15, 0.1, 0.55)], [Vector2(3, 0), Color(0.1, 0.75, 0.9, 0.45)]]:
+		var ghost := STYLE.text(words, size, shift[1])
+		ghost.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
+		ghost.position = shift[0]
+		ghost.show_behind_parent = true
+		main.add_child(ghost)
 
 func clear() -> void:
-	for child in column.get_children():
-		column.remove_child(child)
-		child.queue_free()
+	for container in [column, side]:
+		for child in container.get_children():
+			container.remove_child(child)
+			child.queue_free()
 	buttons.clear()
 	display_label = null
+	loading_label = null
 	rebind_action = ""
+	column.custom_minimum_size.x = 520
+	side.visible = true
+	noise_floor = 0.0
 
-func button(parent: Node, words: String, callback: Callable) -> Button:
+## Menu entry: bare text with a play cursor on focus. Returns the Button.
+func entry(parent: Node, words: String, callback: Callable, disabled := false, size := 28) -> Button:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 0)
+	parent.add_child(row)
+	var cursor := STYLE.text("▶", size - 6)
+	cursor.custom_minimum_size.x = 40
+	cursor.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cursor.modulate.a = 0.0
+	row.add_child(cursor)
 	var result := Button.new()
-	result.text = words
-	result.custom_minimum_size.y = 40
-	result.add_theme_font_size_override("font_size", 17)
-	result.pressed.connect(callback)
-	parent.add_child(result)
+	result.text = words.to_upper()
+	result.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	result.add_theme_font_size_override("font_size", size)
+	result.disabled = disabled
+	result.focus_mode = Control.FOCUS_NONE if disabled else Control.FOCUS_ALL
+	result.focus_entered.connect(func():
+		cursor.modulate.a = 1.0
+		tick()
+	)
+	result.focus_exited.connect(func(): cursor.modulate.a = 0.0)
+	result.mouse_entered.connect(func(): if not result.disabled: result.grab_focus())
+	result.pressed.connect(func():
+		confirm()
+		callback.call()
+	)
+	row.add_child(result)
 	return result
 
+func button(parent: Node, words: String, callback: Callable) -> Button:
+	return entry(parent, words, callback, false, 22)
+
 func action(words: String, id: String, disabled := false) -> void:
-	var result := button(column, words, func(): action_requested.emit(id))
-	result.disabled = disabled
-	buttons[id] = result
+	buttons[id] = entry(column, words, func(): action_requested.emit(id), disabled)
+
+func set_osd(left: String, right := "", clock_text := "", footer_text := "") -> void:
+	osd_left.text = left
+	osd_right.text = right
+	menu_clock.text = clock_text
+	footer.text = footer_text
+
+func focus_first() -> void:
+	quiet_focus = true
+	for id in buttons:
+		if not buttons[id].disabled:
+			buttons[id].grab_focus()
+			break
+	quiet_focus = false
+
+## Brief tape static and a fade-in of the new content.
+func transition(strength := 0.5) -> void:
+	noise_amount = maxf(noise_amount, strength)
+	body.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(body, "modulate:a", 1.0, 0.28).set_delay(0.06)
 
 func menu(kind: String, can_continue := false, message := "") -> void:
 	settings_open = false
 	clear()
+	screen = kind
 	overlay.show()
 	hint.text = ""
-	survival.text = ""
+	flash_label.text = ""
 	progress.hide()
+	backdrop.modulate.a = 1.0
 	match kind:
 		"main":
-			label(column, "T H E   F O U R", 42)
-			label(column, "UN HOTEL SIN RECUERDOS", 17)
-			label(column, "Explora. Escucha. Encuentra la salida.\n\nPrimer piso procedural · Supervivencia individual\nThe Locust escucha. No dejes que te vea esconderte.", 16)
-			action("Jugar · nuevo recorrido", "new")
+			set_osd("▶ PLAY", "", "12:00", "")
+			title(column, "THE FOUR", 104)
+			label(column, "H  O  T  E  L", 24).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 40)
+			action("Nueva partida", "new")
 			action("Continuar", "continue", not can_continue)
+			action("Personaje", "characters")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
 			action("Salir", "quit")
 		"pause":
-			label(column, "UN MOMENTO DE SILENCIO", 30)
-			label(column, "Partida individual en pausa.\nContinuar desde el menú restaura el inicio de este mismo piso.", 16)
-			action("Volver al hotel", "resume")
+			set_osd("❚❚ PAUSA", "", "", "")
+			backdrop.modulate.a = 0.9
+			title(column, "PAUSA", 72)
+			spacer(column, 28)
+			action("Continuar", "resume")
 			action("Ajustes", "settings")
-			action("Reintentar este piso", "retry")
+			action("Reintentar piso", "retry")
 			action("Menú principal", "main")
+			controls_panel(side)
 		"won":
-			label(column, "ENCONTRASTE LA SALIDA", 30)
-			label(column, "El hotel queda atrás. Por ahora.\n\nSobreviviste al primer piso.\nLos otros pisos y el cooperativo están en desarrollo.", 17)
-			action("Explorar un nuevo recorrido", "new")
+			set_osd("■ STOP", "", "", "")
+			title(column, "SALISTE DEL PISO", 58)
+			spacer(column, 8)
+			label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 24).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 10)
+			paragraph(column, "El hotel queda atrás. Por ahora.")
+			spacer(column, 28)
+			action("Nueva partida", "new")
 			action("Menú principal", "main")
 		"failed":
-			label(column, "SEÑAL PERDIDA", 32)
-			label(column, "The Locust te encontró. Rompe su línea de visión antes de esconderte.\nEl reintento conserva la distribución del piso.", 17)
+			set_osd("SEÑAL PERDIDA", "", "", "")
+			osd_left.add_theme_color_override("font_color", STYLE.ALERT)
+			noise_floor = 0.16
+			title(column, "SEÑAL PERDIDA", 70, STYLE.ALERT)
+			spacer(column, 8)
+			label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 28)
 			action("Reintentar", "retry")
 			action("Menú principal", "main")
-		"loading": label(column, "EL HOTEL ESTÁ TOMANDO FORMA…", 27)
-		"transition": label(column, "DEJANDO EL PISO…", 30)
+		"loading":
+			set_osd("◀◀ REW", "", "", "")
+			title(column, "CARGANDO CINTA", 58)
+			spacer(column, 6)
+			loading_label = label(column, "EL HOTEL ESTÁ TOMANDO FORMA", 22)
+			loading_label.add_theme_color_override("font_color", STYLE.SOFT)
+			controls_panel(side)
+		"transition":
+			set_osd("■ STOP", "", "", "")
+			title(column, "FIN DEL PISO", 64)
+			side.visible = false
 		"credits":
-			label(column, "CRÉDITOS", 30)
-			label(column, "Universo y criaturas: Doctor Nowhere.\nProyecto fan en desarrollo; no oficial.\nArquitectura y mobiliario provisional: creados para The Four.\nThe Locust: modelo de Doumty.\nAudio aportado por el usuario: autoría y licencias por verificar.\n\nEsta entrega usa mobiliario original provisional.\nLos permisos de distribución de los assets siguen pendientes.", 16)
+			set_osd("▶ PLAY", "", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
+			title(column, "CRÉDITOS", 64)
+			spacer(column, 18)
+			column.custom_minimum_size.x = 720
+			for block in [["THE LOCUST", "Modelo de Doumty."], ["ARQUITECTURA Y MOBILIARIO", "Creados para The Four. Provisionales."], ["AUDIO", "Aportado por el usuario. Autoría y licencias por verificar."], ["DISTRIBUCIÓN", "Los permisos de los assets siguen pendientes."]]:
+				label(column, block[0], 18).add_theme_color_override("font_color", STYLE.AMBER)
+				paragraph(column, block[1], 18, 700)
+				spacer(column, 6)
+			spacer(column, 16)
 			action("Volver", "main")
+			side.visible = false
+	if osd_left.text != "SEÑAL PERDIDA": osd_left.remove_theme_color_override("font_color")
 	if not message.is_empty():
-		var info := label(column, message, 14)
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		info.custom_minimum_size.x = 640
-	if not buttons.is_empty(): buttons.values()[0].grab_focus()
+		spacer(column, 14)
+		paragraph(column, message, 16, 560, STYLE.AMBER)
+	transition(0.35 if kind != "failed" else 0.9)
+	focus_first()
+
+func tape_time(seconds: float) -> String:
+	var total := int(seconds)
+	return "%d:%02d:%02d" % [total / 3600, (total / 60) % 60, total % 60]
+
+func controls_panel(parent: Node) -> void:
+	if settings == null: return
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	panel.custom_minimum_size.x = 420
+	parent.add_child(panel)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	panel.add_child(list)
+	label(list, "CONTROLES", 20).add_theme_color_override("font_color", STYLE.AMBER)
+	spacer(list, 4)
+	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
+	for row in [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], ["ESC", "Pausa"]]:
+		var line := HBoxContainer.new()
+		list.add_child(line)
+		var key := label(line, row[0].to_upper(), 17)
+		key.custom_minimum_size.x = 190
+		label(line, row[1], 17).add_theme_color_override("font_color", STYLE.SOFT)
 
 func show_settings(back: String) -> void:
 	clear()
+	screen = "settings"
 	settings_open = true
 	return_action = back
 	overlay.show()
-	label(column, "AJUSTES", 30)
+	backdrop.modulate.a = 1.0
+	set_osd("MENU ▸ AJUSTES", "", "", "")
+	side.visible = false
+	column.custom_minimum_size.x = 1000
+	title(column, "AJUSTES", 58)
+	spacer(column, 10)
 	var tabs := TabContainer.new()
-	tabs.custom_minimum_size = Vector2(680, 400)
+	tabs.custom_minimum_size = Vector2(1000, 380)
+	tabs.add_theme_font_size_override("font_size", 20)
 	column.add_child(tabs)
-	var graphics := page(tabs, "Gráficos")
+	var graphics := page(tabs, "GRÁFICOS")
 	check(graphics, "Pantalla completa", "fullscreen")
-	options(graphics, "Resolución", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3])
+	options(graphics, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.values.fullscreen)
 	options(graphics, "Calidad", "quality", ["Baja", "Media", "Alta"], [0, 1, 2])
 	slider(graphics, "Escala de render", "scale", 0.5, 1.0, 0.05)
 	check(graphics, "Sombras", "shadows")
 	options(graphics, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
 	check(graphics, "Sincronización vertical", "vsync")
-	var picture := page(tabs, "Imagen")
-	for item in [["VHS", "vhs"], ["Grano", "grain"], ["Aberración cromática", "chromatic"], ["Movimiento de cámara", "bob"]]: slider(picture, item[0], item[1], 0, 1, 0.05)
+	var picture := page(tabs, "IMAGEN")
+	for item in [["Cinta VHS", "vhs"], ["Grano", "grain"], ["Aberración cromática", "chromatic"], ["Líneas de barrido", "scanlines"], ["Movimiento de cámara", "bob"]]: slider(picture, item[0], item[1], 0, 1, 0.05)
+	check(picture, "Marcas de videocámara (REC, fecha y hora)", "osd")
 	check(picture, "Efectos reducidos", "reduced")
-	label(picture, "Los menús y las indicaciones no reciben el filtro VHS.\nDesenfoque de movimiento desactivado.", 14)
-	var controls := page(tabs, "Controles")
+	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")
 	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)
-		var name_label := label(row, titles[id], 16)
-		name_label.custom_minimum_size.x = 280
+		label(row, titles[id], 19).custom_minimum_size.x = 340
 		var key_button := Button.new()
+		key_button.theme_type_variation = "BoxButton"
 		key_button.text = settings.key_name(id)
-		key_button.custom_minimum_size = Vector2(260, 32)
+		key_button.custom_minimum_size = Vector2(300, 38)
 		row.add_child(key_button)
 		key_button.pressed.connect(func():
+			confirm()
 			rebind_action = id
 			rebind_button = key_button
-			key_button.text = "Pulsa una tecla · Esc cancela"
+			key_button.text = "PULSA UNA TECLA · ESC CANCELA"
 		)
-	button(controls, "Restaurar controles", func():
+	var reset := Button.new()
+	reset.theme_type_variation = "BoxButton"
+	reset.text = "RESTAURAR CONTROLES"
+	reset.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	reset.pressed.connect(func():
+		confirm()
 		settings.reset_controls()
 		show_settings.call_deferred(return_action)
 	)
-	var audio_page := page(tabs, "Audio")
+	controls.add_child(reset)
+	var audio_page := page(tabs, "AUDIO")
 	for item in [["General", "master"], ["Ambiente", "ambience"], ["Música", "music"], ["Efectos", "effects"], ["Señales de peligro", "threat"]]: slider(audio_page, item[0], item[1], 0, 1, 0.05)
 	check(audio_page, "Subtítulos de sonidos relevantes", "subtitles")
-	display_label = label(column, "", 14)
+	display_label = paragraph(column, "", 16, 900, STYLE.AMBER)
 	var confirm_row := HBoxContainer.new()
+	confirm_row.add_theme_constant_override("separation", 12)
 	column.add_child(confirm_row)
-	button(confirm_row, "Conservar pantalla", func(): settings.confirm_display())
-	button(confirm_row, "Revertir pantalla", func(): settings.revert_display(); show_settings.call_deferred(return_action))
-	button(column, "Volver", func():
+	for pair in [["CONSERVAR PANTALLA", func(): settings.confirm_display()], ["REVERTIR PANTALLA", func(): settings.revert_display(); show_settings.call_deferred(return_action)]]:
+		var box := Button.new()
+		box.theme_type_variation = "BoxButton"
+		box.text = pair[0]
+		box.pressed.connect(pair[1])
+		confirm_row.add_child(box)
+	var leave := func():
 		if not settings.previous_display.is_empty(): settings.revert_display()
 		settings_open = false
 		action_requested.emit(return_action)
-	)
+	buttons["back"] = entry(column, "Volver", leave, false, 24)
 	_display_changed(int(ceil(settings.countdown)))
+	transition(0.3)
+	quiet_focus = true
+	tabs.get_tab_bar().grab_focus()
+	quiet_focus = false
 
-func page(tabs: TabContainer, title: String) -> VBoxContainer:
+func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
-	scroll.name = title
+	scroll.name = title_text
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	tabs.add_child(scroll)
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 12)
+	content.add_theme_constant_override("separation", 10)
 	scroll.add_child(content)
 	return content
 
-func check(parent: Node, title: String, key: String) -> void:
+func check(parent: Node, title_text: String, key: String) -> void:
 	var control := CheckButton.new()
-	control.text = title
+	control.text = title_text
+	control.add_theme_font_size_override("font_size", 19)
 	control.button_pressed = settings.values[key]
-	control.toggled.connect(func(value): settings.set_value(key, value))
+	control.toggled.connect(func(value):
+		tick()
+		settings.set_value(key, value)
+		# The window size only applies outside fullscreen; refresh its state.
+		if key == "fullscreen": show_settings.call_deferred(return_action)
+	)
 	parent.add_child(control)
 
-func options(parent: Node, title: String, key: String, labels: Array, values: Array) -> void:
+func options(parent: Node, title_text: String, key: String, labels: Array, values: Array, disabled := false) -> void:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
-	label(row, title, 16).custom_minimum_size.x = 280
+	label(row, title_text, 19).custom_minimum_size.x = 340
 	var control := OptionButton.new()
-	control.custom_minimum_size.x = 260
+	control.custom_minimum_size.x = 300
+	control.add_theme_font_size_override("font_size", 19)
 	for words in labels: control.add_item(words)
 	control.select(values.find(settings.values[key]))
-	control.item_selected.connect(func(index): settings.set_value(key, values[index]))
+	control.disabled = disabled
+	control.item_selected.connect(func(index): tick(); settings.set_value(key, values[index]))
 	row.add_child(control)
 
-func slider(parent: Node, title: String, key: String, low: float, high: float, step: float) -> void:
+func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float) -> void:
 	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
 	parent.add_child(row)
-	label(row, title, 16).custom_minimum_size.x = 280
+	label(row, title_text, 19).custom_minimum_size.x = 340
 	var control := HSlider.new()
-	control.custom_minimum_size = Vector2(210, 28)
+	control.custom_minimum_size = Vector2(300, 30)
 	control.min_value = low
 	control.max_value = high
 	control.step = step
 	control.value = settings.values[key]
 	row.add_child(control)
-	var number := label(row, "%.2f" % control.value, 14)
-	control.value_changed.connect(func(value): settings.set_value(key, value); number.text = "%.2f" % value)
+	# Sliders from 0 to 1 read as percentages; others show their raw value.
+	var percent := low == 0.0 and high == 1.0
+	var number := label(row, ("%d%%" % roundi(control.value * 100)) if percent else ("%.4f" % control.value), 17)
+	number.add_theme_color_override("font_color", STYLE.SOFT)
+	control.value_changed.connect(func(value): settings.set_value(key, value); number.text = ("%d%%" % roundi(value * 100)) if percent else ("%.4f" % value))
+
+func show_characters() -> void:
+	clear()
+	screen = "characters"
+	overlay.show()
+	set_osd("MENU ▸ PERSONAJE", "", "", "")
+	title(column, "PERSONAJE", 64)
+	spacer(column, 24)
+	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")
+	var visual := visual_script.new()
+	var chosen := STYLE.text("", 20, STYLE.AMBER)
+	for index in visual_script.NAMES.size():
+		buttons["character_%d" % index] = entry(column, visual_script.NAMES[index], func():
+			settings.set_value("character", index)
+			visual.configure(index, false)
+			chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[index].to_upper()
+		)
+	spacer(column, 18)
+	action("Volver", "main")
+	var container := SubViewportContainer.new()
+	container.custom_minimum_size = Vector2(460, 500)
+	container.stretch = true
+	container.size_flags_horizontal = Control.SIZE_SHRINK_END
+	side.add_child(container)
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(460, 500)
+	viewport.own_world_3d = true
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	container.add_child(viewport)
+	var preview := Node3D.new()
+	viewport.add_child(preview)
+	visual.character = settings.values.character
+	preview.add_child(visual)
+	var world := WorldEnvironment.new()
+	world.environment = Environment.new()
+	world.environment.background_mode = Environment.BG_CLEAR_COLOR
+	world.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	world.environment.ambient_light_color = Color("d8c9a8")
+	world.environment.ambient_light_energy = 0.45
+	world.environment.tonemap_mode = Environment.TONE_MAPPER_AGX
+	preview.add_child(world)
+	var key_light := SpotLight3D.new()
+	key_light.position = Vector3(1.4, 2.6, -2.2)
+	key_light.light_color = Color("ffcf94")
+	key_light.light_energy = 6.0
+	key_light.spot_range = 8.0
+	key_light.spot_angle = 35.0
+	preview.add_child(key_light)
+	key_light.look_at_from_position(key_light.position, Vector3(0, 1.0, 0))
+	var camera := Camera3D.new()
+	preview.add_child(camera)
+	camera.position = Vector3(0.35, 1.05, -3.3)
+	camera.look_at(Vector3(0, 0.92, 0))
+	camera.fov = 38
+	chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[settings.values.character].to_upper()
+	chosen.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	chosen.size_flags_horizontal = Control.SIZE_SHRINK_END
+	side.add_child(chosen)
+	transition(0.35)
+	quiet_focus = true
+	buttons["character_%d" % settings.values.character].grab_focus()
+	quiet_focus = false
+
+## Short OSD message in the top-left corner of the recording.
+func flash(words: String, seconds := 2.5) -> void:
+	flash_label.text = words
+	flash_time = seconds
+
+func _process(delta: float) -> void:
+	clock += delta
+	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
+	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
+	if screen == "main" and overlay.visible:
+		menu_clock.modulate.a = 1.0 if fposmod(clock, 1.0) < 0.55 else 0.0
+	else:
+		menu_clock.modulate.a = 1.0
+	osd_left.modulate.a = 1.0 if screen != "failed" or fposmod(clock, 1.0) < 0.6 else 0.25
+	if is_instance_valid(loading_label):
+		loading_label.text = "EL HOTEL ESTÁ TOMANDO FORMA" + ".".repeat(int(clock * 3.0) % 4)
+	if flash_time > 0:
+		flash_time -= delta
+		flash_label.modulate.a = 1.0 if flash_time > 1.0 or fposmod(flash_time, 0.4) < 0.25 else 0.0
+		if flash_time <= 0: flash_label.text = ""
 
 func _display_changed(seconds: int) -> void:
 	if is_instance_valid(display_label):
-		display_label.text = "Confirma la pantalla: se revertirá en %d s." % seconds if seconds > 0 else "Los ajustes se guardan en este equipo."
+		display_label.text = "Confirma la pantalla: se revertirá en %d s." % seconds if seconds > 0 else ""
 	var refresh := seconds == 0 and display_was_pending and settings_open
 	display_was_pending = seconds > 0
 	if refresh: show_settings.call_deferred(return_action)
 
 func _input(event: InputEvent) -> void:
+	if is_instance_valid(intro) and (event is InputEventKey or event is InputEventMouseButton) and event.pressed:
+		get_viewport().set_input_as_handled()
+		finish_intro()
+		return
 	if rebind_action.is_empty() or not event is InputEventKey or not event.pressed: return
 	get_viewport().set_input_as_handled()
 	if event.physical_keycode == KEY_ESCAPE:
@@ -220,4 +582,66 @@ func _input(event: InputEvent) -> void:
 	elif settings.bind(rebind_action, event.physical_keycode):
 		rebind_button.text = settings.key_name(rebind_action)
 		rebind_action = ""
-	else: rebind_button.text = "Tecla reservada o ya utilizada"
+	else: rebind_button.text = "TECLA RESERVADA O EN USO"
+
+## Boot sequence: disclaimer, VCR blue screen, PLAY, static, menu. Any key skips.
+func play_intro() -> void:
+	if is_instance_valid(intro): finish_intro()
+	intro = Control.new()
+	intro.name = "Intro"
+	intro.set_anchors_preset(Control.PRESET_FULL_RECT)
+	intro.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(intro)
+	var black := ColorRect.new()
+	black.color = Color.BLACK
+	black.set_anchors_preset(Control.PRESET_FULL_RECT)
+	intro.add_child(black)
+	var blue := ColorRect.new()
+	blue.color = STYLE.VCR_BLUE
+	blue.set_anchors_preset(Control.PRESET_FULL_RECT)
+	blue.modulate.a = 0.0
+	intro.add_child(blue)
+	var notice := STYLE.text("FAN PROJECT", 24, STYLE.SOFT)
+	notice.set_anchors_preset(Control.PRESET_FULL_RECT)
+	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	notice.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	notice.modulate.a = 0.0
+	intro.add_child(notice)
+	var channel := STYLE.text("VIDEO 1", 34)
+	channel.position = Vector2(56, 40)
+	blue.add_child(channel)
+	var play := STYLE.text("▶ PLAY", 44)
+	play.set_anchors_preset(Control.PRESET_CENTER)
+	play.offset_left = -120
+	play.offset_right = 120
+	play.offset_top = -30
+	play.offset_bottom = 30
+	play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	blue.add_child(play)
+	var static_layer := ColorRect.new()
+	static_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	static_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var material := ShaderMaterial.new()
+	material.shader = NOISE
+	static_layer.material = material
+	intro.add_child(static_layer)
+	intro_tween = create_tween()
+	intro_tween.tween_interval(0.5)
+	intro_tween.tween_property(notice, "modulate:a", 1.0, 0.8)
+	intro_tween.tween_interval(1.6)
+	intro_tween.tween_property(notice, "modulate:a", 0.0, 0.6)
+	intro_tween.tween_callback(func(): if sounds_enabled: confirm_player.play())
+	intro_tween.tween_property(blue, "modulate:a", 1.0, 0.05)
+	intro_tween.tween_interval(1.4)
+	intro_tween.tween_method(func(value): material.set_shader_parameter("amount", value), 0.0, 1.0, 0.15)
+	intro_tween.tween_callback(func(): blue.hide(); black.hide())
+	intro_tween.tween_method(func(value): material.set_shader_parameter("amount", value), 1.0, 0.0, 0.5)
+	intro_tween.tween_callback(finish_intro)
+
+func finish_intro() -> void:
+	if is_instance_valid(intro_tween): intro_tween.kill()
+	if is_instance_valid(intro):
+		intro.queue_free()
+		intro = null
+		transition(0.6)
+		focus_first()

@@ -1,5 +1,8 @@
 [gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
 [ext_resource type="Shader" path="res://game/presentation/shaders/carpet.gdshader" id="1"]
+
 [resource]
 shader = ExtResource("1")
-shader_parameter/base_color = Color(0.31764706, 0.26666667, 0.2, 1)
+shader_parameter/base_color = Color(0.32, 0.27, 0.2, 1)
+shader_parameter/map_metres = 1.5

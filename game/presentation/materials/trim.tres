@@ -1,5 +1,11 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/wood.gdshader" id="1"]
 
 [resource]
-albedo_color = Color(0.27843137, 0.23529412, 0.18823529, 1)
-roughness = 0.88
+shader = ExtResource("1")
+shader_parameter/light_color = Color(0.25, 0.14, 0.08, 1)
+shader_parameter/dark_color = Color(0.11, 0.06, 0.035, 1)
+shader_parameter/ring_density = 40.0
+shader_parameter/varnish = 0.8
+shader_parameter/map_metres = 0.8

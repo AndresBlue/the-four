@@ -36,14 +36,15 @@ func build() -> void:
 	# The editor reference uses ordinary editable meshes. Runtime MultiMesh buffers
 	# cannot be read back from the dummy renderer used by a headless builder.
 	for batch in builder.batches.values():
-		for material in batch.groups:
-			var transforms: Array = batch.groups[material]
+		for group in batch.groups:
+			var transforms: Array = batch.groups[group]
+			var material: String = GEOMETRY.material_of(group)
+			var path := "res://game/presentation/materials/%s.tres" % material
 			for index in transforms.size():
 				var instance := MeshInstance3D.new()
-				instance.name = "Mesh_%s_%d" % [material, index]
-				var mesh := BoxMesh.new()
-				mesh.size = Vector3.ONE
-				mesh.material = load("res://game/presentation/materials/%s.tres" % material)
+				instance.name = "Mesh_%s_%d" % [group.replace("@", "-"), index]
+				var mesh := GEOMETRY.unit_mesh(group)
+				mesh.material = load(path) if ResourceLoader.exists(path) else builder.materials[material]
 				instance.mesh = mesh
 				instance.transform = transforms[index]
 				batch.parent.add_child(instance)

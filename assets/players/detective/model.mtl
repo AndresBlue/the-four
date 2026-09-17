@@ -1,0 +1,42 @@
+newmtl Body
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Body_diffuse.png
+
+newmtl Glove
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Glove_diffuse.png
+
+newmtl Top
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Top_diffuse.png
+
+newmtl Bottom
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Bottom_diffuse.png
+
+newmtl Shoes
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Shoes_diffuse.png
+
+newmtl Hat
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Hat_diffuse.png
+
+newmtl Eyewear
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 12
+map_Kd textures/detective_Eyewear_diffuse.png
+

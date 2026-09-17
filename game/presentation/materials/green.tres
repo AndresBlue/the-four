@@ -1,5 +1,9 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/finish.gdshader" id="1"]
 
 [resource]
-albedo_color = Color(0.20392157, 0.29803922, 0.19607843, 1)
-roughness = 0.88
+shader = ExtResource("1")
+shader_parameter/albedo = Color(0.16, 0.24, 0.15, 1)
+shader_parameter/variation_color = Color(0.1, 0.15, 0.09, 1)
+shader_parameter/roughness = 0.6
