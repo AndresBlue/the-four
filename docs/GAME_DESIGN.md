@@ -17,7 +17,11 @@ La experiencia final será de terror ambiental cooperativo para **2–4 jugadore
 
 ## Escena de entrada
 
-Un recorrido nuevo empieza en un dormitorio a oscuras con solo la tele encendida. Se despierta despacio, se incorpora y mira la estática. The Locust se asoma en la pantalla, se abalanza y golpea el cristal desde dentro; cada golpe lo agrieta más. Antes de que se rompa, el personaje se levanta, sale corriendo, cierra la puerta de golpe (el cristal estalla detrás) y huye por el pasillo oscuro mientras golpean la puerta, hasta la habitación iluminada de enfrente: ahí empieza el piso. Dura unos 40 s, el ratón mueve un poco la mirada mientras está en la cama y se puede saltar. No se repite al continuar ni al reintentar.
+Un recorrido nuevo empieza en un dormitorio a oscuras con solo un televisor grande (unos 80 cm) encendido. Se despierta despacio, se incorpora y se inclina hacia la pantalla apoyándose en la cama, que cruje. En la tele se ve The Locust (el mismo modelo del juego) en una esquina empapelada: se asoma desde el borde, mira, se abalanza hacia el objetivo y golpea el cristal desde dentro con el brazo; cada golpe raja el vidrio justo donde impacta. Antes de que se rompa, el personaje se levanta y va hacia la puerta con pasos marcados, sale, se gira de golpe para cerrarla (la pantalla estalla detrás) y corre por el pasillo oscuro mientras golpean la puerta. Cruza la habitación iluminada del fondo y abre su otra puerta hacia la recepción, donde parpadea la luz roja que marca el inicio del piso; la imagen se rompe en estática y empieza la partida. Dura unos 40 s, el ratón mueve un poco la mirada mientras está en la cama y se puede saltar. No se repite al continuar ni al reintentar.
+
+La recepción inicial no tiene carteles: la señala una lámpara roja de emergencia que parpadea en el techo, para orientarse de vuelta al punto de partida.
+
+The Locust usa en todo el juego un aspecto basado en la imagen de referencia `assets/images/the-locust.png`: cuerpo negro como tinta y máscara pálida con ojos y boca huecos.
 
 ## Supervivencia, refugio y progreso
 

@@ -637,7 +637,7 @@ func _display_changed(seconds: int) -> void:
 	if refresh: show_settings.call_deferred(return_action)
 
 func _input(event: InputEvent) -> void:
-	if is_instance_valid(intro) and (event is InputEventKey or event is InputEventMouseButton) and event.pressed:
+	if is_instance_valid(intro) and event is InputEventKey and event.pressed:
 		get_viewport().set_input_as_handled()
 		finish_intro()
 		return
@@ -651,7 +651,8 @@ func _input(event: InputEvent) -> void:
 		rebind_action = ""
 	else: rebind_button.text = "TECLA RESERVADA O EN USO"
 
-## Boot sequence: disclaimer, VCR blue screen, PLAY, static, menu. Any key skips.
+## Boot sequence: VCR blue screen with PLAY, then a long stretch of tape static
+## into the menu. A key skips it; mouse clicks do not.
 func play_intro() -> void:
 	if is_instance_valid(intro): finish_intro()
 	intro = Control.new()
@@ -668,12 +669,6 @@ func play_intro() -> void:
 	blue.set_anchors_preset(Control.PRESET_FULL_RECT)
 	blue.modulate.a = 0.0
 	intro.add_child(blue)
-	var notice := STYLE.text("FAN PROJECT", 24, STYLE.SOFT)
-	notice.set_anchors_preset(Control.PRESET_FULL_RECT)
-	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	notice.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	notice.modulate.a = 0.0
-	intro.add_child(notice)
 	var channel := STYLE.text("VIDEO 1", 34)
 	channel.position = Vector2(56, 40)
 	blue.add_child(channel)
@@ -692,17 +687,26 @@ func play_intro() -> void:
 	material.shader = NOISE
 	static_layer.material = material
 	intro.add_child(static_layer)
+	var hiss := AudioStreamPlayer.new()
+	hiss.bus = "Effects"
+	hiss.stream = load("res://assets/audio/intro/tv_static.wav")
+	hiss.volume_db = -60.0
+	intro.add_child(hiss)
+	var amount := func(value: float) -> void: material.set_shader_parameter("amount", value)
 	intro_tween = create_tween()
-	intro_tween.tween_interval(0.5)
-	intro_tween.tween_property(notice, "modulate:a", 1.0, 0.8)
-	intro_tween.tween_interval(1.6)
-	intro_tween.tween_property(notice, "modulate:a", 0.0, 0.6)
+	intro_tween.tween_interval(0.6)
 	intro_tween.tween_callback(func(): if sounds_enabled: confirm_player.play())
 	intro_tween.tween_property(blue, "modulate:a", 1.0, 0.05)
-	intro_tween.tween_interval(1.4)
-	intro_tween.tween_method(func(value): material.set_shader_parameter("amount", value), 0.0, 1.0, 0.15)
+	intro_tween.tween_interval(1.8)
+	# The picture breaks up slowly into static, holds, and clears into the menu.
+	intro_tween.tween_callback(func(): if sounds_enabled: hiss.play())
+	intro_tween.parallel().tween_property(hiss, "volume_db", -16.0, 0.9)
+	intro_tween.parallel().tween_method(amount, 0.0, 0.65, 0.9)
+	intro_tween.tween_method(amount, 0.65, 1.0, 0.5)
 	intro_tween.tween_callback(func(): blue.hide(); black.hide())
-	intro_tween.tween_method(func(value): material.set_shader_parameter("amount", value), 1.0, 0.0, 0.5)
+	intro_tween.tween_interval(0.5)
+	intro_tween.tween_method(amount, 1.0, 0.0, 1.6).set_trans(Tween.TRANS_SINE)
+	intro_tween.parallel().tween_property(hiss, "volume_db", -60.0, 1.6)
 	intro_tween.tween_callback(finish_intro)
 
 func finish_intro() -> void:

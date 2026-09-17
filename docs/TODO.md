@@ -99,7 +99,9 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Locust: alerta de 1,2 s y arranque progresivo antes de perseguir; sospecha más lenta.
 - [ ] Balance de la alerta de Locust en partidas humanas.
 - [x] Escena de entrada: dormitorio, tele con Locust golpeando el cristal, huida por el pasillo; saltable.
-- [ ] Imagen de Locust para la tele en `assets/intro/locust_tv.png` (hay una figura dibujada provisional).
+- [x] Tele de 80 cm con The Locust en 3D golpeando el cristal (grietas en el punto de impacto), estática y parpadeo más intensos, crujidos de cama, pasos marcados, cámara con muelles y balanceo, giro desesperado al cerrar, salida hacia la recepción con luz roja.
+- [x] Aspecto de The Locust según la imagen de referencia (cuerpo negro, máscara pálida), en juego y escena.
+- [ ] Revisar en partida el ritmo y la cámara de la escena de entrada.
 - [x] Sofá, aplique de pared y monstera descargados integrados en el hotel (la dieffenbachia es `.blend` y queda fuera).
 - [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
 - [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).

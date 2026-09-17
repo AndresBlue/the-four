@@ -8,7 +8,7 @@ Proyecto principal: `E:\Projects\The Four`. Repositorio local, sin publicación 
 
 Abre **Jugar.cmd** y elige **Jugar · nuevo recorrido**. Explora el hotel hasta encontrar la sala señalizada **SALIDA / REFUGIO**. Dentro puedes volver a explorar o mantener la interacción durante tres segundos para terminar el piso. No necesitas recoger fusibles ni completar puzles.
 
-Un recorrido nuevo empieza con una escena: despiertas de noche en una habitación donde solo está encendida la tele, algo se asoma entre la estática y golpea el cristal desde dentro hasta agrietarlo; huyes, das un portazo y corres por el pasillo oscuro hasta la siguiente habitación, donde empieza el piso. Mantén **E** o pulsa **Esc** para saltarla. **Continuar** y **Reintentar** no la repiten.
+Un recorrido nuevo empieza con una escena: despiertas de noche en una habitación donde solo está encendida la tele, The Locust se asoma en la pantalla y golpea el cristal desde dentro hasta agrietarlo; huyes, das un portazo y corres por el pasillo oscuro hasta la recepción, marcada por una luz roja que parpadea: ahí empieza el piso y ahí puedes volver para orientarte. Mantén **E** o pulsa **Esc** para saltarla. **Continuar** y **Reintentar** no la repiten.
 
 En mesas y escritorios hay documentos: acércate y pulsa **E** para leerlos (el juego sigue mientras lees). Se guardan en **Archivo**, en el menú principal. De vez en cuando el hotel hace cosas: golpes, algo que cae o pasos cerca; la criatura puede acudir.
 

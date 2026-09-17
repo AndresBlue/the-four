@@ -57,16 +57,21 @@ def partial(t, freq, rate, start=0.0, amp=1.0):
 
 
 def static():
-    """Detuned-channel hiss: band-limited noise with a slow flutter, looped."""
+    """A dead channel on a big set: harsh full-band hiss that surges and
+    crackles, over the field-rate buzz of the picture tube. Looped."""
     t = seconds(4.5)
-    noise = band(rng.standard_normal(len(t)), 700, 11000)
-    flutter = 0.8 + 0.2 * np.sin(2 * np.pi * 0.7 * t) * np.sin(2 * np.pi * 3.1 * t)
+    noise = band(rng.standard_normal(len(t)), 250, 17000)
+    bright = band(rng.standard_normal(len(t)), 3000, 12000) * 0.6
+    surge = 0.7 + 0.3 * np.abs(np.sin(2 * np.pi * 0.45 * t) * np.sin(2 * np.pi * 1.9 * t + 0.6))
     crackle = np.zeros(len(t))
-    for start in rng.uniform(0, 4.4, 40):
+    for start in rng.uniform(0, 4.4, 160):
         i = int(start * RATE)
-        crackle[i:i + 60] += rng.standard_normal(60) * np.exp(-np.arange(60) / 12) * 3
-    hum = 0.05 * np.sin(2 * np.pi * 60 * t) + 0.03 * np.sin(2 * np.pi * 120 * t)
-    write("tv_static.wav", seamless(noise * flutter + crackle + hum * 8, 0.25))
+        length = int(rng.uniform(20, 140))
+        crackle[i:i + length] += rng.standard_normal(length) * np.exp(-np.arange(length) / (length / 5)) * rng.uniform(1.5, 4.0)
+    # Vertical sync buzz: a pulse train at the field rate with its harmonics.
+    buzz = np.sign(np.sin(2 * np.pi * 59.94 * t)) * 0.5 + np.sin(2 * np.pi * 119.88 * t) * 0.3
+    buzz = band(buzz, 55, 2400) * 0.35
+    write("tv_static.wav", seamless((noise + bright) * surge + crackle + buzz, 0.25))
 
 
 def whine():
@@ -119,6 +124,41 @@ def bang(index):
     write(f"door_bang_{index + 1}.wav", band(thud + wood + panel + rattle, 30, 5000))
 
 
+def bed(index):
+    """Leaning forward on a hotel bed: the frame creaks, springs squeak and the
+    sheets rustle under the hands."""
+    t = seconds(1.8)
+    # Stick-slip creak of the wooden frame: a train of tiny clicks whose rate glides.
+    creak = np.zeros(len(t))
+    rate = 70 + index * 25
+    phase = 0.0
+    start, stop = 0.1 + index * 0.05, 1.0 + index * 0.15
+    for i in range(int(start * RATE), int(stop * RATE)):
+        u = (i / RATE - start) / (stop - start)
+        phase += (rate + 90 * np.sin(np.pi * u) + rng.uniform(-10, 10)) / RATE
+        if phase >= 1.0:
+            phase -= 1.0
+            creak[i:i + 40] += np.exp(-np.arange(min(40, len(t) - i)) / 6.0) * rng.uniform(0.5, 1.0)
+    creak = band(creak, 250, 2200) * np.sin(np.pi * np.clip((t - start) / (stop - start), 0, 1)) ** 0.6
+    spring = np.zeros(len(t))
+    for k in range(3):
+        at = rng.uniform(0.15, 1.1)
+        freq = 1900 + rng.uniform(-300, 400)
+        spring += np.sin(2 * np.pi * freq * np.maximum(t - at, 0) * (1 + 0.04 * np.maximum(t - at, 0))) * decay(t, 14, at) * 0.18
+    rustle = band(rng.standard_normal(len(t)), 1800, 9000) * np.clip(np.sin(np.pi * t / 1.8), 0, 1) ** 2 * 0.22
+    body = partial(t, 85, 9, 0.12, 0.4)
+    write(f"bed_creak_{index + 1}.wav", creak * 1.3 + spring + rustle + body)
+
+
+def stomp(index):
+    """A heavy, deliberate step on carpet over a wooden floor."""
+    t = seconds(0.7)
+    thud = partial(t, 62 + index * 7, 22) * 1.4 + partial(t, 115, 30) * 0.5
+    board = band(rng.standard_normal(len(t)), 120, 900) * decay(t, 45) * 0.7
+    scuff = band(rng.standard_normal(len(t)), 1500, 7000) * decay(t, 25, 0.02) * 0.08
+    write(f"stomp_{index + 1}.wav", thud + board + scuff)
+
+
 if __name__ == "__main__":
     static()
     whine()
@@ -127,3 +167,7 @@ if __name__ == "__main__":
     shatter()
     for i in range(3):
         bang(i)
+    for i in range(3):
+        bed(i)
+    for i in range(3):
+        stomp(i)

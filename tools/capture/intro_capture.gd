@@ -1,6 +1,6 @@
 extends SceneTree
 ## Frames of the opening scene at key moments (evidence/intro_*.png).
-const MOMENTS := [5.5, 12.0, 21.5, 24.5, 26.6, 29.5, 33.0, 34.2, 36.0, 37.9, 38.6]
+const MOMENTS := [5.5, 12.0, 17.0, 21.0, 23.0, 26.1, 26.38, 30.3, 31.7, 33.4, 33.7, 35.5, 37.4, 38.75, 39.3]
 var level
 
 func _initialize() -> void: run.call_deferred()

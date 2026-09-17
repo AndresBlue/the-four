@@ -18,7 +18,7 @@ Cómo usar este archivo
 -----------------------------------------------------------------
 
 [INTRO.01] Pantalla negra, texto centrado
-ACTUAL: FAN PROJECT
+ACTUAL: (retirado)
 CORRECCIÓN:
 
 [INTRO.02] Pantalla azul de vídeo, esquina superior izquierda
@@ -470,7 +470,7 @@ CORRECCIÓN:
 ------------------
 
 [HUD.01] Mensaje breve arriba a la izquierda al empezar el piso (5 s)
-ACTUAL: ENCUENTRA LA SALIDA
+ACTUAL: (retirado: la recepción se señala con una luz roja)
 CORRECCIÓN:
 
 [HUD.02] Mensaje breve si intentas cerrar una puerta con alguien en el umbral
@@ -575,9 +575,7 @@ CORRECCIÓN:
 ----------------------------------------
 
 [MUNDO.01] Pared de la recepción inicial
-ACTUAL:
-| THE FOUR
-| HOTEL · RECEPCIÓN
+ACTUAL: (retirado: ahora hay una luz roja parpadeante)
 CORRECCIÓN:
 
 [MUNDO.02] Pared del refugio de salida

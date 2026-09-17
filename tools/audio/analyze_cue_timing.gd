@@ -3,7 +3,7 @@ extends SceneTree
 ## (peak) by rendering it through the mixer. Writes game/audio/cue_timing.gd so
 ## playback can skip leading silence without editing the recordings.
 ## Real time: run with --headless; takes roughly the total length of the clips.
-const ROOTS := ["res://assets/audio/sfx/door", "res://assets/audio/sfx/wardrobe", "res://assets/audio/sfx/paper", "res://assets/audio/sfx/heartbeat"]
+const ROOTS := ["res://assets/audio/sfx/door", "res://assets/audio/sfx/wardrobe", "res://assets/audio/sfx/paper", "res://assets/audio/sfx/heartbeat", "res://assets/audio/glass"]
 const WINDOW := 0.01
 
 func _initialize() -> void: run.call_deferred()

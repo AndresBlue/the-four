@@ -26,16 +26,15 @@ general/3d_panning_strength=0.9
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/size/mode=3
 window/size/window_width_override=1280
 window/size/window_height_override=720
-window/size/mode=3
-window/size/initial_position_type=1
-window/stretch/aspect="expand"
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [layer_names]
-3d_render/layer_2="Local player body (hidden by own camera)"
 
+3d_render/layer_2="Local player body (hidden by own camera)"
 3d_physics/layer_1="Architecture"
 3d_physics/layer_3="Players"
 3d_physics/layer_4="Closed doors"
@@ -51,6 +50,6 @@ window/stretch/mode="canvas_items"
 [rendering]
 
 renderer/rendering_method.mobile="gl_compatibility"
-textures/default_filters/anisotropic_filtering_level=4
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=3
+textures/default_filters/anisotropic_filtering_level=4
 environment/defaults/default_clear_color=Color(0.025, 0.026, 0.021, 1)

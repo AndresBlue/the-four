@@ -30,6 +30,7 @@ var arm_dirs := {}
 var initialized := false
 
 func _ready() -> void:
+	preload("res://game/enemies/locust/locust_look.gd").apply(self)
 	var rigs := find_children("*", "Skeleton3D", true, false)
 	if rigs.is_empty(): return
 	skeleton = rigs[0]

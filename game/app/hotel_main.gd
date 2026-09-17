@@ -224,7 +224,6 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 		return
 	camcorder.start_tape(seed_value)
 	session.start(seed_value, manifest.get("fallback", false))
-	ui.flash("ENCUENTRA LA SALIDA", 5.0)
 	save_error = session.message
 	spawn_locust()
 	place_documents()

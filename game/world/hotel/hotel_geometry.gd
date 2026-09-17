@@ -20,6 +20,8 @@ var flickers: Array = []
 ## Every fluorescent batten (service rooms), steady or failing: they hum.
 var tubes: Array = []
 var flicker_clock := 0.0
+## Red start lamps in the reception: {light, material, energy}.
+var beacons: Array = []
 const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
 const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
@@ -300,11 +302,38 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			probe.max_distance = 25
 			node.add_child(probe)
 			reflection_probes.append(probe)
-	if room.type in [0, 19]:
-		text(node, "THE FOUR\nHOTEL · RECEPCIÓN" if room.type == 0 else "SALIDA\nREFUGIO", Vector3(0, 2.25, -2.5), 0, 40)
-		if room.type == 19:
-			text(node, "SALIDA / REFUGIO", Vector3(0, 2.65, 4.8), PI, 35)
-			light.light_color = Color("b8d4b6")
+	if room.type == 0:
+		# Where the night started: a red emergency lamp blinking over the
+		# reception, the one landmark to find the way back by.
+		box(node, Vector3(0, height - 0.12, 0), Vector3(0.36, 0.12, 0.2), "metal")
+		var beacon_glass := StandardMaterial3D.new()
+		beacon_glass.albedo_color = Color(0.5, 0.02, 0.02)
+		beacon_glass.emission_enabled = true
+		beacon_glass.emission = Color(1.0, 0.08, 0.04)
+		beacon_glass.emission_energy_multiplier = 4.0
+		var lens := MeshInstance3D.new()
+		var dome := SphereMesh.new()
+		dome.radius = 0.11
+		dome.height = 0.14
+		dome.material = beacon_glass
+		lens.mesh = dome
+		lens.position = Vector3(0, height - 0.22, 0)
+		node.add_child(lens)
+		var beacon := OmniLight3D.new()
+		beacon.name = "StartBeacon"
+		beacon.position = Vector3(0, height - 0.45, 0)
+		beacon.light_color = Color(1.0, 0.1, 0.06)
+		beacon.light_energy = 3.2
+		beacon.omni_range = 10.0
+		# The usual warm ceiling light is kept low so the red reads from afar.
+		light.light_energy *= 0.3
+		beacon.shadow_enabled = true
+		node.add_child(beacon)
+		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy})
+	if room.type == 19:
+		text(node, "SALIDA\nREFUGIO", Vector3(0, 2.25, -2.5), 0, 40)
+		text(node, "SALIDA / REFUGIO", Vector3(0, 2.65, 4.8), PI, 35)
+		light.light_color = Color("b8d4b6")
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
@@ -346,8 +375,15 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	practicals.append(lamp)
 
 func _process(delta: float) -> void:
-	if flickers.is_empty(): return
 	flicker_clock += delta
+	for beacon in beacons:
+		# A slow emergency blink with a nervous stutter in each lit phase.
+		var t: float = fposmod(flicker_clock, 1.6)
+		var on := 1.0 if t < 0.8 else 0.0
+		if on > 0.0 and not reduced: on *= 0.75 + 0.25 * sign(sin(flicker_clock * 37.0))
+		beacon.light.light_energy = beacon.energy * (0.08 + 0.92 * on)
+		beacon.material.emission_energy_multiplier = 0.4 + 3.6 * on
+	if flickers.is_empty(): return
 	for entry in flickers:
 		var lamp: OmniLight3D = entry.light
 		if not lamp.visible: continue
