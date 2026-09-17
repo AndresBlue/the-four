@@ -97,6 +97,7 @@ func host() -> void:
 	check("Una muerte no termina el piso de tres", level.session.capture(bravo) and playing())
 	await pause_for(3.0)
 	check("Un muerto no puede dibujar en la hoja", not level.ui.sheet.log_index.has("%d:1" % bravo))
+	check("El cuerpo del muerto desaparece y no estorba", await wait_for(func(): return match_net.bodies[bravo].dead and match_net.bodies[bravo].collision_layer == 0 and not match_net.bodies[bravo].visible, 10.0))
 	check("El armario queda libre al salir el invitado", await wait_for(func(): return not is_instance_valid(hide.occupant), 30.0))
 	level.player.global_position = refuge_point(Vector3(0.8, 0, 0))
 	check("El superviviente invitado llega al refugio", await wait_for(func(): return level.point_in_refuge(match_net.bodies[alpha].global_position), 30.0))
@@ -166,7 +167,8 @@ func alpha_part() -> void:
 
 func bravo_part() -> void:
 	var match_net = level.match_net
-	check("Muere y observa a un compañero vivo", await wait_for(func(): return not level.local_alive() and not level.player.active and match_net.watched_body() != null and match_net.watched_body().camera.current, 60.0))
+	check("Muere y observa a un compañero vivo desde detrás", await wait_for(func(): return not level.local_alive() and not level.player.active and match_net.watched_body() != null and is_instance_valid(level.watch_camera) and level.watch_camera.current, 60.0))
+	check("La cámara de observación no atraviesa paredes", level.watch_camera.global_position.distance_to(match_net.watched_body().global_position) < 3.2)
 	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.5, 0.5), Vector2(0.9, 0.9)]))
 	check("Ve terminar el piso aunque haya muerto", await wait_for(func(): return level.session.state == level.session.State.WON, 60.0))
 	check("Segundo piso", await wait_for(playing, 90.0))
@@ -204,12 +206,15 @@ func versus_host() -> void:
 	# A noise the hunter should see as a ring.
 	await pause_for(1.0)
 	level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
+	check("Oye el chillido del cazador", await wait_for(func(): return level.locust.calls_heard > 0, 25.0))
 	var hide = level.hotel.hides[0]
 	level.player.global_position = hide.to_global(hide.exit_offset) + Vector3(0, 0.1, 0)
 	await pause_for(0.5)
 	check("El superviviente se esconde", level.match_net.use_hide(hide, true) and level.player.hidden)
-	check("The Locust jugador abre el armario a la fuerza", await wait_for(func(): return hide.opening > 0.5, 30.0))
-	check("La estocada del cazador mata al superviviente y termina el piso", await wait_for(func(): return level.session.state == level.session.State.FAILED, 30.0))
+	check("Abre el armario puerta a puerta", await wait_for(func(): return hide.wide.right > 0.5, 30.0) and await wait_for(func(): return hide.wide.left > 0.5, 5.0))
+	check("Lo saca del armario y lo ejecuta en el aire", await wait_for(func(): return not level.execution.is_empty() and not level.player.hidden, 10.0) and await wait_for(func(): return level.player.global_position.y > 0.8, 3.0))
+	check("La ejecución no es instantánea", level.session.state == level.session.State.PLAYING)
+	check("Al final de la ejecución termina el piso", await wait_for(func(): return level.session.state == level.session.State.FAILED, 15.0))
 	await pause_for(2.0)
 	net.shutdown("")
 
@@ -223,15 +228,18 @@ func versus_hunter() -> void:
 	check("Su jugador no cuenta como superviviente", not level.survivors().has(level.player) and not level.player.visible)
 	creature.grace = 0.0
 	check("Oye los ruidos de los supervivientes como anillos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
+	# Close enough for the shriek to find the survivor.
+	creature.global_position = level.match_net.bodies[1].global_position + Vector3(2.5, 0, 0)
+	await pause_for(0.6)
+	creature.driver.shriek()
+	check("El chillido le revela a los supervivientes cercanos", await wait_for(func(): return not creature.driver.revealed.is_empty(), 15.0))
+	check("El chillido le da caza libre un rato", creature.driver.frenzy > 0.0)
 	var hide = level.hotel.hides[0]
 	check("Ve al superviviente meterse en el armario", await wait_for(func(): return is_instance_valid(hide.occupant), 30.0))
 	creature.global_position = hide.to_global(hide.exit_offset + Vector3(0, 0, 0.9))
 	await pause_for(0.6)
+	creature.begin_wardrobe(hide)
 	level.match_net.locust_open_hide(hide)
-	check("El armario se abre también aquí", await wait_for(func(): return hide.opening > 0.5, 15.0))
-	# Face the open wardrobe and strike.
-	var offset: Vector3 = hide.global_position - creature.global_position
-	creature.rotation.y = atan2(-offset.x, -offset.z)
-	await pause_for(0.3)
-	creature.driver.strike()
-	check("La estocada termina la caza", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.ui.screen == "online_failed", 20.0))
+	check("El armario se abre puerta a puerta también aquí", await wait_for(func(): return hide.wide.right > 0.5 and hide.wide.left > 0.5, 15.0))
+	check("El ritual del armario lo deja quieto un momento", creature.mode == creature.Mode.WARDROBE)
+	check("Abrir el armario acaba con quien estaba dentro", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.ui.screen == "online_failed", 25.0))

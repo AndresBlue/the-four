@@ -58,6 +58,8 @@ var sheet: Control
 const SHEET := preload("res://game/ui/paper_sheet.gd")
 ## Versus: noises The Locust player hears, drawn as rings ({point, time, strength}).
 var hunter_marks: Array = []
+## Versus: survivors the shriek found ({point, time}).
+var hunter_reveals: Array = []
 var hunter_camera: Camera3D
 var hunter_layer: Control
 
@@ -807,7 +809,17 @@ func flash(words: String, seconds := 2.5) -> void:
 ## Heard noises as widening rings where they came from; off-screen ones sit on
 ## the nearest edge of the picture.
 func draw_hunter_marks() -> void:
-	if hunter_marks.is_empty() or not is_instance_valid(hunter_camera): return
+	if not is_instance_valid(hunter_camera): return
+	# What the shriek found: a steady mark over each survivor.
+	for mark in hunter_reveals:
+		var point: Vector3 = mark.point
+		if hunter_camera.is_position_behind(point): continue
+		var at := hunter_camera.unproject_position(point)
+		var fade := clampf(1.0 - (Time.get_ticks_msec() / 1000.0 - mark.time) / 1.2, 0.0, 1.0)
+		var ink := Color(0.95, 0.93, 0.85, fade * 0.8)
+		hunter_layer.draw_arc(at, 18.0, 0.0, TAU, 24, ink, 2.0, true)
+		hunter_layer.draw_line(at + Vector2(0, -26), at + Vector2(0, -60), ink, 2.0, true)
+	if hunter_marks.is_empty(): return
 	var now := Time.get_ticks_msec() / 1000.0
 	var rect := hunter_layer.get_rect().grow(-40.0)
 	for mark in hunter_marks:
@@ -827,8 +839,9 @@ func draw_hunter_marks() -> void:
 func _process(delta: float) -> void:
 	clock += delta
 	if is_instance_valid(hunter_layer):
-		if not hunter_marks.is_empty() or hunter_layer.get_meta("drawn", false): hunter_layer.queue_redraw()
-		hunter_layer.set_meta("drawn", not hunter_marks.is_empty())
+		var showing: bool = not hunter_marks.is_empty() or not hunter_reveals.is_empty()
+		if showing or hunter_layer.get_meta("drawn", false): hunter_layer.queue_redraw()
+		hunter_layer.set_meta("drawn", showing)
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
 	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
 	if screen == "main" and overlay.visible:

@@ -34,6 +34,8 @@ var step_distance := 0.0
 var step_voice: AudioStreamPlayer3D
 ## True while the owner is disconnected (the body stays, exposed).
 var away := false
+## Dead: no body on screen and nothing to bump into.
+var dead := false
 
 func setup(owner_level, seat: int, words: String, character: int) -> void:
 	level = owner_level
@@ -79,6 +81,17 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	add_child(step_voice)
 	add_to_group("hotel_players")
 
+## Dead players do not stand in doorways or corridors any more.
+func set_dead(value: bool) -> void:
+	if dead == value: return
+	dead = value
+	visible = not value
+	collision_layer = 0 if value else 4
+	if value:
+		hidden = false
+		hiding_place = null
+		torch.visible = false
+
 ## One state from the owner (see match_net.gd pack_local).
 func push_state(data: Array) -> void:
 	states.append({"time": clock, "position": data[0], "yaw": data[1], "pitch": data[2], "velocity": data[3]})
@@ -101,7 +114,7 @@ func place(point: Vector3, yaw: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	clock += delta
-	if states.is_empty():
+	if dead or states.is_empty():
 		velocity = Vector3.ZERO
 		avatar.update_pose(Vector3.ZERO, crouched, delta)
 		return
@@ -132,7 +145,7 @@ func _physics_process(delta: float) -> void:
 ## Footsteps from the distance walked, quieter crouched, louder running.
 func update_steps(previous: Vector3, _delta: float) -> void:
 	var moved := Vector2(global_position.x - previous.x, global_position.z - previous.z).length()
-	if moved > 1.0 or hidden: return
+	if moved > 1.0 or hidden or dead: return
 	var planar := Vector2(velocity.x, velocity.z).length()
 	if planar < 0.3: return
 	var running := planar > 4.6
@@ -149,5 +162,6 @@ func update_steps(previous: Vector3, _delta: float) -> void:
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 0.2, get_rid())
 	if not route.audible: return
 	step_voice.stream = load(clip[0])
-	level.world_audio.apply_route(step_voice, route, (-14.0 if crouched else 2.0 if running else -6.0) + (2.0 if hard else 0.0), "Effects")
+	# Kept under the creature's own noises: a teammate running is not a threat.
+	level.world_audio.apply_route(step_voice, route, (-24.0 if crouched else -8.0 if running else -14.0) + (2.0 if hard else 0.0), "Effects")
 	step_voice.play(maxf(0.0, clip[1] - 0.02))

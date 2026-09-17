@@ -24,6 +24,10 @@ var recovering := 0.0
 ## 0..1: stooping to pass under a lintel.
 var duck := 0.0
 var look_point := Vector3.INF
+## 0..1 progress of an execution (impale, lift, three stabs) and of searching
+## a wardrobe (reaching in with both arms).
+var execute := 0.0
+var searching := 0.0
 var hunch := 0.0
 var bob := 0.0
 var arm_dirs := {}
@@ -131,7 +135,7 @@ func pose_body(delta: float, ratio: float) -> void:
 	var drop := lerpf(0.05, 0.15, ratio) + attack * 0.08 + duck * 0.12 - bob * 0.025
 	pelvis.origin += Vector3(0, -drop, 0)
 	skeleton.set_bone_global_pose(bones.Pelvis, pelvis)
-	var lean_target := ratio * 0.32 + aggression * 0.12 + attack * 0.25 - recovering * 0.1 + duck * 0.55
+	var lean_target := ratio * 0.32 + aggression * 0.12 + attack * 0.25 - recovering * 0.1 + duck * 0.55 + searching * 0.35 - execute * 0.15
 	hunch = lerpf(hunch, lean_target, minf(1.0, delta * 5.0))
 	# Model faces +Z: pitching about +X tips the chest forward.
 	turn_bone(bones.Spine2, Vector3.RIGHT, hunch * 0.6)
@@ -177,8 +181,27 @@ func pose_arms(delta: float, ratio: float) -> void:
 		fore = fore.lerp(Vector3(s * 0.15, 0.95, -0.2), attack)
 		upper = upper.lerp(Vector3(s * 0.2, -0.35, 0.95), recovering)
 		fore = fore.lerp(Vector3(s * -0.1, -0.8, 0.6), recovering)
+		if searching > 0.0:
+			# Reaching into a wardrobe: both arms forward, low and open.
+			var reach := clampf((searching - 0.5) / 0.35, 0.0, 1.0)
+			upper = upper.lerp(Vector3(s * 0.5, -0.25, 0.9), 0.7)
+			fore = fore.lerp(Vector3(s * 0.3, -0.15 + reach * 0.2, 1.0), 0.8)
+		if execute > 0.0:
+			# The first arm holds the body up; the other stabs chest, hip, head.
+			var lift := clampf(execute / 0.18, 0.0, 1.0)
+			var holding: bool = s > 0.0
+			upper = upper.lerp(Vector3(s * 0.35, lerpf(0.1, 0.75, lift), 0.7), 0.85)
+			fore = fore.lerp(Vector3(s * 0.1, lerpf(0.2, 0.55, lift), 0.95), 0.85)
+			if not holding:
+				# Three thrusts, each one drawn back first.
+				var thrust := 0.0
+				for hit in [0.34, 0.55, 0.76]:
+					var phase: float = (execute - hit) / 0.12
+					if absf(phase) < 1.0: thrust = maxf(thrust, 1.0 - absf(phase))
+				upper = upper.lerp(Vector3(s * 0.55, 0.35 - thrust * 0.2, 0.35 + thrust * 0.65), 0.9)
+				fore = fore.lerp(Vector3(s * 0.15, 0.55 - thrust * 0.9, 0.2 + thrust * 0.9), 0.9)
 		var key: String = side[0]
-		var blend := minf(1.0, delta * (18.0 if recovering > 0.1 else 8.0))
+		var blend := minf(1.0, delta * (26.0 if execute > 0.0 else 18.0 if recovering > 0.1 else 8.0))
 		if not arm_dirs.has(key): arm_dirs[key] = [upper, fore]
 		arm_dirs[key][0] = arm_dirs[key][0].lerp(upper, blend)
 		arm_dirs[key][1] = arm_dirs[key][1].lerp(fore, blend)

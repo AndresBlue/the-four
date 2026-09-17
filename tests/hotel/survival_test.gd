@@ -196,7 +196,11 @@ func run() -> void:
 	face(enemy, player.position)
 	enemy.set_mode(enemy.Mode.WINDUP)
 	enemy._physics_process(enemy.WINDUP_TIME + 0.01)
-	check("Captura real con alcance y visión causa derrota", level.session.state == level.session.State.FAILED)
+	check("El golpe encadena una ejecución en vez de matar al instante", enemy.mode == enemy.Mode.EXECUTE and not level.execution.is_empty() and level.session.state == level.session.State.PLAYING)
+	await frames(30)
+	check("Durante la ejecución la víctima queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
+	await frames(210)
+	check("La ejecución acaba en derrota", level.session.state == level.session.State.FAILED)
 	await level.start_floor(81)
 	check("Reintento reinicia amenaza, resistencia y escondite", level.locust.grace == 15 and not player.hidden and player.stamina == 100 and level.session.state == level.session.State.PLAYING)
 	enemy = level.locust
@@ -209,9 +213,18 @@ func run() -> void:
 	face(enemy, player.position)
 	enemy.set_mode(enemy.Mode.CHASE)
 	enemy.set_physics_process(true)
-	for i in 600:
+	var ritual := {"started": -1.0, "right": -1.0, "left": -1.0, "kill": -1.0}
+	var clock := 0.0
+	for i in 900:
 		await physics_frame
+		clock += 1.0 / 60.0
+		if ritual.started < 0.0 and enemy.mode == enemy.Mode.WARDROBE: ritual.started = clock
+		if ritual.right < 0.0 and hide.wide.right > 0.5: ritual.right = clock
+		if ritual.left < 0.0 and hide.wide.left > 0.5: ritual.left = clock
+		if ritual.kill < 0.0 and not level.execution.is_empty(): ritual.kill = clock
 		if level.session.state == level.session.State.FAILED: break
+	check("Se planta ante el armario y lo abre puerta a puerta", ritual.started >= 0.0 and ritual.right > ritual.started and ritual.left > ritual.right)
+	check("Abrir el armario le cuesta tiempo antes de alcanzar a nadie", ritual.kill > ritual.started + 1.4)
 	check("Entrada observada permite inspeccionar y capturar dentro", level.session.state == level.session.State.FAILED)
 	if level.session.state != level.session.State.FAILED: print("HIDE_DEBUG enemy=",enemy.position," player=",player.position," mode=",enemy.mode," cansee=",enemy.sees_player()," path=",enemy.path," target=",enemy.destination)
 	level.settings.set_value("reduced", true)

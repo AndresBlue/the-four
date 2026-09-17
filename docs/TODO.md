@@ -71,7 +71,15 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Observación de compañero vivo tras muerte, sin cámara libre ni edición.
 - [x] Versus: control de The Locust, estocada juzgada por el anfitrión, anillos de ruido.
 - [x] Prueba en red automática con procesos reales (cooperativo de tres y versus de dos) dentro de `verify.ps1`.
+- [x] Los cuerpos de los jugadores no frenan a la criatura; los muertos desaparecen y no bloquean puertas ni pasillos.
+- [x] Observación en tercera persona tras morir, con brazo de cámara que no atraviesa paredes ni armarios.
+- [x] Ritual del armario: se planta, abre hoja a hoja y mira dentro (unos 2,5 s inmóvil), en individual y en red.
+- [x] Ejecución de tres estocadas en el aire en vez de muerte instantánea.
+- [x] Chillido útil: revela supervivientes cercanos unos segundos y da caza libre; los demás lo oyen desde su propia copia de la criatura.
+- [x] Caza de The Locust más larga y con recuperación rápida: escapar corriendo no es viable.
+- [x] Pasos de los compañeros más bajos y ruta de sonido calculada desde la cámara que escucha.
 - [ ] Evidencias de sesiones reales de 2, 3, 4 y 5 jugadores en LAN y por Internet.
+- [ ] Balance humano del ritual del armario, la ejecución y el chillido.
 - [ ] Balance humano del versus (velocidades, resistencia de caza, alcance de la estocada, anillos de ruido).
 - [ ] Revisar en partida el volumen de los pasos de los compañeros.
 
@@ -122,6 +130,12 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Balance de la nueva agresividad y de la propagación en partidas humanas.
 - [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
 - [ ] Validar acompañamiento y regreso en cooperativo cuando exista red; evaluar comprensión de muertes con jugadores.
+
+## P4b — Visión de The Locust (pendiente)
+
+- [ ] Revisión completa de la vista del jugador que lleva a The Locust: imagen monocroma en blanco y negro, con su propio grano y contraste.
+- [ ] Integrar la información sonora en la imagen (dónde suena, a qué distancia, qué lo produjo) en lugar de los anillos rojos actuales, que funcionan pero son un añadido sobre la pantalla.
+- [ ] Mantener legible qué es un superviviente, qué es un ruido y qué es memoria; sin ver a través de las paredes más de lo que ya concede su oído.
 
 ## P5 — Campaña
 

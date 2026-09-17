@@ -222,7 +222,7 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	if not occluded(point, emitter):
 		return {"audible": true, "position": point, "gain": 0.0, "cutoff": 20000.0, "echo": false, "distance": listener.distance_to(point)}
 	var map: RID = level.get_world_3d().navigation_map
-	var from := NavigationServer3D.map_get_closest_point(map, level.player.global_position)
+	var from := NavigationServer3D.map_get_closest_point(map, listener_position())
 	var to := NavigationServer3D.map_get_closest_point(map, point)
 	var path := FLOOR.navigation_path(map, from, to)
 	if path.size() < 2: return {"audible": false, "distance": INF}

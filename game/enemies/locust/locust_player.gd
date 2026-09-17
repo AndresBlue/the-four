@@ -11,9 +11,14 @@ extends Node
 ## hearing show on screen as brief rings (the creature's long-range hearing).
 const WALK_SPEED := 2.8
 const HUNT_SPEED := 6.4
-const STAMINA_DRAIN := 13.0
-const STAMINA_RECOVERY := 9.0
-const RECOVERY_DELAY := 1.5
+## Hunting lasts long and comes back quickly: a survivor cannot simply outrun
+## it, only break its line of sight or hide well.
+const STAMINA_DRAIN := 6.5
+const STAMINA_RECOVERY := 22.0
+const RECOVERY_DELAY := 0.6
+## Shrieking with someone near: seconds of free hunting and stamina back.
+const FRENZY_TIME := 6.0
+const FRENZY_STAMINA := 30.0
 ## A strike: the same wind-up and recovery as the AI's.
 const COOLDOWN := 1.2
 const SHRIEK_COOLDOWN := 3.0
@@ -34,6 +39,9 @@ var shriek_cooldown := 0.0
 var struck := false
 ## Heard noises: {point, time, strength}.
 var heard: Array = []
+## Where the shriek placed the survivors it found, and its free hunting time.
+var revealed: Array = []
+var frenzy := 0.0
 var active := true
 
 func setup(owner) -> void:
@@ -84,14 +92,19 @@ func drive(delta: float) -> void:
 	pivot.rotation.x = pitch
 	var free: bool = can_act() and creature.grace <= 0.0
 	var axis := Input.get_vector("left", "right", "forward", "backward") if free else Vector2.ZERO
-	var hunting := free and axis.length() > 0.1 and Input.is_action_pressed("sprint") and stamina > 0.0
+	frenzy = maxf(0.0, frenzy - delta)
+	var hunting := free and axis.length() > 0.1 and Input.is_action_pressed("sprint") and (stamina > 0.0 or frenzy > 0.0)
 	if hunting:
-		stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
+		if frenzy <= 0.0: stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
 		recovery = RECOVERY_DELAY
 	else:
 		recovery = maxf(0.0, recovery - delta)
 		if recovery <= 0.0: stamina = minf(100.0, stamina + STAMINA_RECOVERY * delta)
 	match creature.mode:
+		creature.Mode.WARDROBE:
+			creature.update_wardrobe(delta)
+		creature.Mode.EXECUTE:
+			creature.update_execution(delta)
 		creature.Mode.WINDUP:
 			# The lunge carries it forward; the host judges the hit at the end.
 			var forward: Vector3 = -creature.global_basis.z
@@ -119,7 +132,7 @@ func drive(delta: float) -> void:
 			open_doors(hunting, heading)
 	creature.update_visual(delta)
 	creature.visual.look_point = camera.global_position - camera.global_basis.z * 10.0
-	if free and Input.is_action_just_pressed("interact"): use()
+	if free and Input.is_action_just_pressed("interact") and creature.mode not in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: use()
 	update_hud()
 	var now := Time.get_ticks_msec() / 1000.0
 	heard = heard.filter(func(entry): return now - entry.time < 1.6)
@@ -140,10 +153,23 @@ func strike() -> void:
 	struck = false
 	creature.set_mode(creature.Mode.WINDUP)
 
+## The shriek gives away where it is, and in exchange it listens: for a few
+## seconds the survivors within earshot show on screen, and if any of them is
+## near, hunting costs nothing for a while.
 func shriek() -> void:
-	if shriek_cooldown > 0.0 or creature.grace > 0.0: return
+	if shriek_cooldown > 0.0 or creature.grace > 0.0 or creature.mode in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: return
 	shriek_cooldown = SHRIEK_COOLDOWN
 	creature.grunt()
+	level.match_net.locust_shriek()
+
+## Survivors the shriek found, from the host.
+func reveal(points: PackedVector3Array) -> void:
+	revealed = []
+	var now := Time.get_ticks_msec() / 1000.0
+	for point in points: revealed.append({"point": point, "time": now})
+	if not points.is_empty() and frenzy <= 0.0:
+		frenzy = FRENZY_TIME
+		stamina = minf(100.0, stamina + FRENZY_STAMINA)
 
 ## Interact: the door ahead, or the wardrobe in front.
 func use() -> void:
@@ -158,6 +184,8 @@ func use() -> void:
 	if target in level.hotel.doors and target.doorway.distance_to(creature.global_position) < 3.4:
 		level.match_net.use_door(target, false, false)
 	elif target in level.hotel.hides and target.global_position.distance_to(creature.global_position) < WARDROBE_REACH + 0.8:
+		# The ritual: it plants itself and opens the wardrobe leaf by leaf.
+		creature.begin_wardrobe(target)
 		level.match_net.locust_open_hide(target)
 
 ## A survivor's noise within its hearing, from the host.
@@ -170,7 +198,14 @@ func update_hud() -> void:
 	camcorder.set_stamina(stamina / 100.0, stamina <= 0.0)
 	if creature.grace > 0.0:
 		ui.hint.text = "LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace))
+	elif creature.mode == creature.Mode.WARDROBE:
+		ui.hint.text = "ABRIENDO EL ARMARIO"
+	elif creature.mode == creature.Mode.EXECUTE:
+		ui.hint.text = ""
 	else:
 		ui.hint.text = "CLIC IZQ. ATACAR · CLIC DER. CHILLAR · %s CAZAR · %s PUERTAS Y ARMARIOS" % [level.settings.key_name("sprint"), level.settings.key_name("interact")]
 	ui.hunter_marks = heard
+	ui.hunter_reveals = revealed
 	ui.hunter_camera = camera
+	var now := Time.get_ticks_msec() / 1000.0
+	revealed = revealed.filter(func(entry): return now - entry.time < 1.2)

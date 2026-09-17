@@ -19,6 +19,8 @@ const THRESHOLD_DEPTH := 0.45
 func occupied() -> bool:
 	var frame := Basis(Vector3.UP, closed_rotation)
 	for player in get_tree().get_nodes_in_group("hotel_players") + get_tree().get_nodes_in_group("hotel_actors"):
+		# Dead or disconnected bodies (collision off) do not hold a door.
+		if player.collision_layer == 0: continue
 		var offset: Vector3 = player.global_position - doorway
 		if absf(offset.dot(frame.z)) < THRESHOLD_DEPTH and absf(offset.dot(frame.x)) < FLOOR.PORTAL * 0.5 + 0.35:
 			return true

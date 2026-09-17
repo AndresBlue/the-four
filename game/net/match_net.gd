@@ -63,6 +63,8 @@ func is_survivor(seat: int) -> bool:
 	return in_match() and config.survivors.has(seat)
 
 func end() -> void:
+	wardrobe_jobs.clear()
+	shriek_left = 0.0
 	for body in bodies.values():
 		if is_instance_valid(body): body.queue_free()
 	bodies.clear()
@@ -158,7 +160,12 @@ func go() -> void:
 # --- Per frame -------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	# Wardrobes are searched offline too.
+	if is_instance_valid(level) and is_instance_valid(level.hotel) and not net.is_client(): update_wardrobe_jobs(delta)
 	if not in_match() or not net.active(): return
+	# Dead teammates leave no body in the way.
+	for seat in bodies:
+		bodies[seat].set_dead(level.session.participants.get(seat, level.session.Life.DEAD) == level.session.Life.DEAD)
 	if waiting_time >= 0.0:
 		waiting_time += delta
 		if waiting_time > READY_TIMEOUT:
@@ -173,6 +180,7 @@ func _process(delta: float) -> void:
 			away.erase(seat)
 			level.session.drop(seat)
 			if bodies.has(seat): bodies[seat].visible = false
+	update_shriek(delta)
 	session_clock -= delta
 	if session_clock <= 0.0:
 		session_clock = 1.0 / SESSION_RATE
@@ -369,6 +377,13 @@ func locust_call(kind: String, segment: int, pitch: float) -> void:
 
 ## Angle either side of its facing within which a strike connects.
 const STRIKE_ANGLE := 70.0
+## The shriek: how far it listens, how long it keeps listening and how often
+## it sends what it found.
+const SHRIEK_RANGE := 26.0
+const SHRIEK_TIME := 4.0
+const SHRIEK_RATE := 5.0
+var shriek_left := 0.0
+var shriek_clock := 0.0
 
 func locust_peer() -> int:
 	return int(net.players.get(locust_seat(), {}).get("peer", -1))
@@ -409,10 +424,11 @@ func resolve_strike(origin: Vector3, facing: Vector3) -> void:
 		best_distance = distance
 	level.capture_survivor(best)
 
-## The Locust player pulls a wardrobe open.
+## The Locust player searches a wardrobe: the host runs the ritual (leaf by
+## leaf, then a look inside).
 func locust_open_hide(hide: Node3D) -> void:
 	var index: int = level.hotel.hides.find(hide)
-	if net.is_host: hide.force_open()
+	if net.is_host: level.open_wardrobe(hide)
 	else: request_force.rpc_id(1, index)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -420,7 +436,38 @@ func request_force(index: int) -> void:
 	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
 	if index < 0 or index >= level.hotel.hides.size(): return
 	var hide = level.hotel.hides[index]
-	if hide.global_position.distance_to(level.locust.global_position) < REACH: hide.force_open()
+	if hide.global_position.distance_to(level.locust.global_position) < REACH: level.open_wardrobe(hide)
+
+## The Locust player shrieked: the host listens for it for a few seconds.
+func locust_shriek() -> void:
+	if net.is_host: shriek_left = SHRIEK_TIME
+	else: request_shriek.rpc_id(1)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_shriek() -> void:
+	if net.is_host and versus() and multiplayer.get_remote_sender_id() == locust_peer(): shriek_left = SHRIEK_TIME
+
+## While the shriek lasts, where the survivors within earshot are.
+func update_shriek(delta: float) -> void:
+	if shriek_left <= 0.0: return
+	shriek_left -= delta
+	shriek_clock -= delta
+	if shriek_clock > 0.0: return
+	shriek_clock = 1.0 / SHRIEK_RATE
+	var creature = level.locust
+	if not is_instance_valid(creature): return
+	var points := PackedVector3Array()
+	for body in level.survivors():
+		if not level.survivor_active(body): continue
+		if body.global_position.distance_to(creature.global_position) > SHRIEK_RANGE: continue
+		points.append(body.global_position + Vector3(0, 1.2, 0))
+	if locust_seat() == net.local_seat:
+		if is_instance_valid(creature.driver): creature.driver.reveal(points)
+	elif locust_peer() > 0: shriek_reveal.rpc_id(locust_peer(), points)
+
+@rpc("authority", "call_remote", "unreliable")
+func shriek_reveal(points: PackedVector3Array) -> void:
+	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.reveal(points)
 
 ## A noise the creature would hear: shown to the player who is The Locust.
 func tell_hunter(point: Vector3, radius: float) -> void:
@@ -432,6 +479,63 @@ func tell_hunter(point: Vector3, radius: float) -> void:
 @rpc("authority", "call_remote", "unreliable")
 func heard_noise(point: Vector3, radius: float) -> void:
 	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.hear_noise(point, radius)
+
+# --- Wardrobes searched by the creature, and executions -------------------------------
+
+## Wardrobes being searched: {hide, index, time, step}.
+var wardrobe_jobs: Array = []
+
+## The creature plants itself and searches this wardrobe (host, or offline).
+func begin_wardrobe_job(hide: Node3D) -> void:
+	if not is_instance_valid(hide): return
+	for job in wardrobe_jobs:
+		if job.hide == hide: return
+	wardrobe_jobs.append({"hide": hide, "index": level.hotel.hides.find(hide), "time": 0.0, "step": 0})
+
+## One leaf at a time, then a look inside: whoever is in there is pulled out.
+func update_wardrobe_jobs(delta: float) -> void:
+	for job in wardrobe_jobs.duplicate():
+		if not is_instance_valid(job.hide):
+			wardrobe_jobs.erase(job)
+			continue
+		job.time += delta
+		var steps: Dictionary = level.locust.WARDROBE_TIME if is_instance_valid(level.locust) else {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
+		if job.step == 0 and job.time >= steps.right:
+			job.step = 1
+			pull_leaf(job, "right")
+		elif job.step == 1 and job.time >= steps.left:
+			job.step = 2
+			pull_leaf(job, "left")
+		elif job.step == 2 and job.time >= steps.reach:
+			job.step = 3
+			var occupant = job.hide.occupant
+			var creature = level.locust
+			if is_instance_valid(occupant) and level.survivor_active(occupant) and is_instance_valid(creature) and creature.global_position.distance_to(job.hide.global_position) < 3.4:
+				level.capture_survivor(occupant)
+		elif job.step == 3 and job.time >= steps.done + 0.4:
+			job.hide.close_timer = 2.0
+			wardrobe_jobs.erase(job)
+
+func pull_leaf(job: Dictionary, side: String) -> void:
+	job.hide.open_leaf(side)
+	if in_match(): leaf_opened.rpc(job.index, side)
+
+@rpc("authority", "call_remote", "reliable")
+func leaf_opened(index: int, side: String) -> void:
+	if is_instance_valid(level.hotel) and index >= 0 and index < level.hotel.hides.size(): level.hotel.hides[index].open_leaf(side)
+
+## An execution decided by the host: everyone plays it out (hotel_main).
+@rpc("authority", "call_remote", "reliable")
+func execute_start(seat: int, point: Vector3, yaw: float) -> void:
+	level.apply_execution(seat, point, yaw)
+
+## The victim was inside a wardrobe: it is pulled out of it first.
+func free_victim_hide(seat: int) -> void:
+	var body = bodies.get(seat)
+	if body == null or not body.hidden or not is_instance_valid(body.hiding_place): return
+	var index: int = level.hotel.hides.find(body.hiding_place)
+	remote_leaves(body.hiding_place, body)
+	if in_match() and index >= 0: hide_state.rpc(index, -seat)
 
 # --- The shared sheet ----------------------------------------------------------------
 

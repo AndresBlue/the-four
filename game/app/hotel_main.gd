@@ -62,6 +62,18 @@ var match_net
 var exit_held := false
 ## Online, Esc opens a menu over the running match instead of pausing it.
 var online_menu := false
+## A kill in progress: {seat, time, point, yaw, stabs, dropped}. The floor only
+## registers the death when the last blow lands.
+var execution := {}
+## The view of a dead player, over the shoulder of the teammate watched.
+var watch_rig: Node3D
+var watch_arm: SpringArm3D
+var watch_camera: Camera3D
+const STABS := ["res://assets/audio/events/execution_stab_1.wav", "res://assets/audio/events/execution_stab_2.wav", "res://assets/audio/events/execution_stab_3.wav"]
+const BODY_DROP := "res://assets/audio/events/execution_drop.wav"
+## When each blow of an execution lands, and when the body is let go.
+const STAB_TIMES := [1.0, 1.6, 2.2]
+const DROP_TIME := 2.7
 
 func _enter_tree() -> void:
 	world_audio = $WorldAudio
@@ -334,6 +346,8 @@ func begin_online_play(config: Dictionary) -> void:
 	player.visible = not locust_player
 	player.collision_layer = 0 if locust_player else 4
 	player.torch.visible = false
+	player.camera.current = not locust_player
+	execution = {}
 	if locust_player:
 		locust.camera.current = true
 		# The hunter does not hear its own presence or dread.
@@ -511,10 +525,80 @@ func local_alive() -> bool:
 func survivor_active(body: Node3D) -> bool:
 	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position)
 
-## The creature's strike landed on this survivor.
+## The creature reached this survivor: the execution starts and the death is
+## registered when it ends (host, or offline).
 func capture_survivor(body: Node3D) -> void:
-	if body == null or net.is_client(): return
-	session.capture(body.slot)
+	if body == null or net.is_client() or not execution.is_empty() or not is_instance_valid(locust): return
+	if session.participants.get(body.slot, session.Life.DEAD) != session.Life.EXPLORING: return
+	if match_net.in_match(): match_net.free_victim_hide(body.slot)
+	var point: Vector3 = locust.global_position
+	var yaw: float = locust.rotation.y
+	apply_execution(body.slot, point, yaw)
+	if match_net.in_match(): match_net.execute_start.rpc(body.slot, point, yaw)
+
+## Everyone plays out the execution: the creature holds its victim up and
+## stabs three times. The victim's own machine takes over its body.
+func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
+	execution = {"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false}
+	if is_instance_valid(locust) and locust.control != "puppet": locust.begin_execution()
+	if seat == player.slot:
+		player.active = false
+		player.held = true
+		player.velocity = Vector3.ZERO
+		if player.hidden: player.force_leave_hide()
+		if ui.sheet.visible: toggle_sheet()
+
+## Sounds, screen jolts and, on the host, the death at the end.
+func update_execution(delta: float) -> void:
+	if execution.is_empty(): return
+	execution.time += delta
+	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
+	var held := point + Vector3(0, 1.7, 0)
+	while int(execution.stabs) < STAB_TIMES.size() and execution.time >= STAB_TIMES[int(execution.stabs)]:
+		if world_audio.enabled: world_audio.play_at(STABS[int(execution.stabs)], held, -2.0, RID(), 0.0)
+		glitch = 1.0
+		execution.stabs = int(execution.stabs) + 1
+	if not execution.dropped and execution.time >= DROP_TIME:
+		execution.dropped = true
+		if world_audio.enabled: world_audio.play_at(BODY_DROP, point + Vector3(0, 0.3, 0), -6.0, RID(), 0.0)
+	if execution.time >= locust.EXECUTION_TIME + 0.3:
+		var seat := int(execution.seat)
+		execution = {}
+		player.held = false
+		if player.avatar != null:
+			player.avatar.rotation.x = 0.0
+			player.avatar.rotation.z = 0.0
+		if not net.is_client(): session.capture(seat)
+
+## The victim: held in the air in front of the creature, looking at it.
+func hold_victim(delta: float) -> void:
+	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
+	var yaw: float = locust.rotation.y if is_instance_valid(locust) else execution.yaw
+	var forward := -Basis(Vector3.UP, yaw).z
+	var time: float = execution.time
+	var lift := clampf(time / 0.5, 0.0, 1.0) - clampf((time - DROP_TIME) / 0.4, 0.0, 1.0)
+	# Held on the blade at the creature's chest height, close in front of it.
+	var wanted := point + forward * 1.05 + Vector3(0, 0.1 + lift * 1.0, 0)
+	player.velocity = Vector3.ZERO
+	player.global_position = player.global_position.lerp(wanted, minf(1.0, delta * 10.0))
+	# Run through on the blade: the body hangs back and sags.
+	if player.avatar != null:
+		player.avatar.rotation.x = -0.5 * lift
+		player.avatar.rotation.z = 0.12 * lift
+	# It is the last thing you see.
+	var head := point + Vector3(0, 2.3, 0)
+	var offset: Vector3 = head - player.camera.global_position
+	player.rotation.y = lerp_angle(player.rotation.y, atan2(-offset.x, -offset.z), minf(1.0, delta * 8.0))
+	player.camera.rotation.x = lerpf(player.camera.rotation.x, atan2(offset.y, Vector2(offset.x, offset.z).length()), minf(1.0, delta * 8.0))
+	camcorder.focus("")
+	ui.hint.text = ""
+	ui.progress.visible = false
+
+## The creature searches a wardrobe: the host opens it leaf by leaf and, if
+## somebody is inside, that is where the execution starts.
+func open_wardrobe(hide: Node3D) -> void:
+	if net.is_client(): return
+	match_net.begin_wardrobe_job(hide)
 
 func point_in_refuge(point: Vector3) -> bool:
 	if manifest.is_empty(): return false
@@ -615,6 +699,9 @@ func _physics_process(delta: float) -> void:
 	var inside := in_refuge()
 	if not net.is_client():
 		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+	if not execution.is_empty() and int(execution.seat) == player.slot:
+		hold_victim(delta)
+		return
 	if Input.is_action_just_pressed("sheet") and not online_menu: toggle_sheet()
 	if ui.sheet.visible:
 		# Looking at the sheet: the character stands still, the world goes on.
@@ -714,11 +801,39 @@ func watch_teammates() -> void:
 	if body == null:
 		ui.hint.text = "HAS MUERTO"
 		return
-	if not body.camera.current: body.camera.current = true
+	watch_over(body)
 	ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR" % body.player_name.to_upper()
+
+## Third person behind the teammate being watched: the arm keeps the camera
+## out of walls and wardrobes, so nothing is seen through them.
+func watch_over(body: Node3D) -> void:
+	if not is_instance_valid(watch_rig):
+		watch_rig = Node3D.new()
+		watch_rig.name = "WatchRig"
+		add_child(watch_rig)
+		watch_arm = SpringArm3D.new()
+		watch_arm.spring_length = 2.6
+		watch_arm.collision_mask = 1 | 8
+		watch_arm.margin = 0.25
+		var ball := SphereShape3D.new()
+		ball.radius = 0.25
+		watch_arm.shape = ball
+		watch_rig.add_child(watch_arm)
+		watch_camera = Camera3D.new()
+		watch_camera.name = "WatchCamera"
+		watch_camera.fov = 76.0
+		watch_camera.far = 95.0
+		watch_camera.cull_mask = 1048573
+		watch_arm.add_child(watch_camera)
+	watch_rig.global_position = body.global_position + Vector3(0, 1.5, 0)
+	watch_rig.rotation.y = body.rotation.y
+	watch_arm.rotation.x = clampf(body.pitch, -0.6, 0.5)
+	if not watch_camera.current: watch_camera.current = true
 
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
+	if session.state == session.State.PLAYING: update_execution(delta)
+	elif not execution.is_empty(): execution = {}
 	camcorder.visible = session.state == session.State.PLAYING
 	camcorder.marks = settings.values.osd
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)

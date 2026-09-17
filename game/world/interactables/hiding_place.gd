@@ -28,6 +28,9 @@ var opening := 0.0
 ## Per leaf, 0..1, named in wardrobe space: "left" is the leaf at -X, which is
 ## on the right hand of someone standing inside.
 var peek := {"left": 0.0, "right": 0.0}
+## Leaves pulled wide open one by one (the creature searching it).
+var wide := {"left": 0.0, "right": 0.0}
+var leaf_motion := {}
 ## Only the first time the doors part during a stay makes a sound.
 var peeked := false
 var pivots := {}
@@ -86,7 +89,23 @@ func _ready() -> void:
 	apply_angles()
 
 func leaf_angle(side: String) -> float:
-	return maxf(opening * OPEN_ANGLE, peek[side] * PEEK_ANGLE)
+	return maxf(maxf(opening, wide[side]) * OPEN_ANGLE, peek[side] * PEEK_ANGLE)
+
+## The creature pulls one leaf open; the other stays as it is.
+func open_leaf(side: String, seconds := 0.35) -> void:
+	if leaf_motion.has(side) and is_instance_valid(leaf_motion[side]): leaf_motion[side].kill()
+	var tween := create_tween()
+	tween.tween_method(func(value): wide[side] = value; apply_angles(), wide[side], 1.0, seconds).set_trans(Tween.TRANS_SINE)
+	leaf_motion[side] = tween
+	close_timer = 6.0
+
+func close_leaves(seconds := 0.7) -> void:
+	for side in wide:
+		if leaf_motion.has(side) and is_instance_valid(leaf_motion[side]): leaf_motion[side].kill()
+		var tween := create_tween()
+		var which: String = side
+		tween.tween_method(func(value): wide[which] = value; apply_angles(), wide[which], 0.0, seconds).set_trans(Tween.TRANS_SINE)
+		leaf_motion[which] = tween
 
 func apply_angles() -> void:
 	# Left leaf swings out with a negative turn, the right one with a positive turn.
@@ -102,6 +121,7 @@ func swing(to: float, seconds: float) -> void:
 func enter(player: CharacterBody3D) -> void:
 	occupant = player
 	peek = {"left": 0.0, "right": 0.0}
+	wide = {"left": 0.0, "right": 0.0}
 	peeked = false
 	opening = 0.85
 	apply_angles()
@@ -135,7 +155,9 @@ func ajar() -> bool:
 func _physics_process(delta: float) -> void:
 	if close_timer <= 0.0: return
 	close_timer -= delta
-	if close_timer <= 0.0 and not is_instance_valid(occupant): swing(0.0, 0.8)
+	if close_timer <= 0.0 and not is_instance_valid(occupant):
+		swing(0.0, 0.8)
+		close_leaves(0.8)
 
 func available_exit(player: CharacterBody3D) -> Vector3:
 	var capsule := CapsuleShape3D.new()

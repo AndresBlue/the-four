@@ -1,7 +1,7 @@
 extends CharacterBody3D
 @export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT }
+enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT, WARDROBE, EXECUTE }
 ## Perception and pacing. Distances in metres, speeds in m/s.
 ## It perceives the player from much farther than the player can sense it:
 ## anything in its wide view with a clear line is noticed, however far.
@@ -39,6 +39,13 @@ const GRUNTS := preload("res://game/audio/grunt_segments.gd")
 ## Grunts at least this long are the full, aggressive ones; shorter pieces of
 ## the recording are breaths and clicks, not used as calls.
 const AGGRESSIVE_GRUNT := 1.4
+## Searching a wardrobe is a ritual, not a swipe in passing: it plants itself
+## in front, pulls one leaf open, then the other, reaches in and only then
+## moves on. Seconds from the start (see level.open_wardrobe for the leaves).
+const WARDROBE_TIME := {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
+## An execution: impaled, lifted and stabbed three times before the floor
+## registers the death (see hotel_main.start_execution).
+const EXECUTION_TIME := 2.9
 var level
 var mode := Mode.PATROL
 var destination := Vector3.ZERO
@@ -79,10 +86,14 @@ var control := "ai"
 ## Versus: the controller that reads the local player's input, and its camera.
 var driver: Node
 var camera: Camera3D
+## The wardrobe it is searching (Mode.WARDROBE).
+var wardrobe: Node3D
 ## Puppet: received states {time, position, yaw, velocity} and a local clock.
 var net_states: Array = []
 var net_clock := 0.0
 var net_look := Vector3.INF
+## Calls replayed here from the machine in charge (tests check they arrive).
+var calls_heard := 0
 
 func _ready() -> void:
 	add_to_group("hotel_actors")
@@ -387,8 +398,40 @@ func follow_state(delta: float) -> void:
 		if grunt_left <= 0.0: voice.stop()
 	update_visual(delta)
 
+## Plants itself in front of a wardrobe and searches it, which takes a while.
+func begin_wardrobe(hide: Node3D) -> void:
+	if not is_instance_valid(hide) or mode in [Mode.WARDROBE, Mode.EXECUTE]: return
+	wardrobe = hide
+	set_mode(Mode.WARDROBE)
+	speed = 0.0
+	if control == "ai": level.open_wardrobe(hide)
+
+## Standing still while the ritual plays out; the leaves and whoever is inside
+## are handled by the host (level.open_wardrobe).
+func update_wardrobe(delta: float) -> void:
+	speed = 0.0
+	velocity = Vector3(0, -2.0, 0)
+	move_and_slide()
+	if is_instance_valid(wardrobe): face_toward(wardrobe.global_position, delta, 7.0)
+	if state_time >= WARDROBE_TIME.done and control != "puppet":
+		wardrobe = null
+		set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
+
+## Holding a victim up and stabbing: it cannot move or turn away.
+func begin_execution() -> void:
+	set_mode(Mode.EXECUTE)
+	speed = 0.0
+
+func update_execution(delta: float) -> void:
+	speed = 0.0
+	velocity = Vector3(0, -2.0, 0)
+	move_and_slide()
+	if state_time >= EXECUTION_TIME and control != "puppet":
+		set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
+
 ## A call decided where the creature is controlled, replayed here.
 func play_call(kind: String, segment: int, pitch: float) -> void:
+	calls_heard += 1
 	if kind == "warning":
 		signal_player.play()
 		return
@@ -471,7 +514,7 @@ func _physics_process(delta: float) -> void:
 			if is_instance_valid(player) and player.hidden and observed_hide == player.hiding_place:
 				# Goes to the wardrobe and pulls the doors open.
 				destination = observed_hide.to_global(observed_hide.exit_offset)
-				if global_position.distance_to(destination) < 2.2: observed_hide.force_open()
+				if global_position.distance_to(destination) < 2.0: begin_wardrobe(observed_hide)
 			grunt_clock -= delta
 			if grunt_clock <= 0.0:
 				grunt()
@@ -491,8 +534,9 @@ func _physics_process(delta: float) -> void:
 				repath = 0
 		Mode.WINDUP:
 			if state_time >= WINDUP_TIME:
+				# A hit starts an execution (which takes over the body).
 				if can_attack(STRIKE_REACH): level.capture_survivor(target())
-				set_mode(Mode.RECOVER)
+				if mode == Mode.WINDUP: set_mode(Mode.RECOVER)
 		Mode.RECOVER:
 			if state_time >= RECOVER_TIME: set_mode(Mode.CHASE if visible_player else Mode.SEARCH)
 		Mode.ALERT:
@@ -501,7 +545,11 @@ func _physics_process(delta: float) -> void:
 	if grunt_left > 0.0:
 		grunt_left -= delta
 		if grunt_left <= 0.0: voice.stop()
-	if mode == Mode.WINDUP:
+	if mode == Mode.WARDROBE:
+		update_wardrobe(delta)
+	elif mode == Mode.EXECUTE:
+		update_execution(delta)
+	elif mode == Mode.WINDUP:
 		lunge(delta)
 	elif mode == Mode.ALERT:
 		speed = move_toward(speed, 0.0, 12.0 * delta)
@@ -540,14 +588,18 @@ func update_visual(delta: float) -> void:
 	if not is_instance_valid(visual) or not "move_velocity" in visual: return
 	if control == "puppet":
 		visual.move_velocity = velocity
-		visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT] else 0.0, delta * 2.5)
+		visual.execute = clampf(state_time / EXECUTION_TIME, 0.0, 1.0) if mode == Mode.EXECUTE else 0.0
+		visual.searching = clampf(state_time / WARDROBE_TIME.done, 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
+		visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT, Mode.EXECUTE] else 0.0, delta * 2.5)
 		visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 		visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 		visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 		visual.look_point = net_look
 		return
 	visual.move_velocity = velocity
-	visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT] else 0.0, delta * 2.5)
+	visual.execute = clampf(state_time / EXECUTION_TIME, 0.0, 1.0) if mode == Mode.EXECUTE else 0.0
+	visual.searching = clampf(state_time / WARDROBE_TIME.done, 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
+	visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT, Mode.EXECUTE] else 0.0, delta * 2.5)
 	visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 	# Stoops under door lintels; it is taller than the doorways.
 	visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)

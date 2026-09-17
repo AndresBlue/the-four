@@ -22,7 +22,9 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 
 El anfitrión elige **Cooperativo contra IA** o **Versus** (un jugador es The Locust: elegido o al azar). En cooperativo hay que llegar al refugio con al menos la mitad de los jugadores (redondeando hacia arriba) y todos los vivos dentro. Si mueres, observas a un compañero (clic para cambiar). **Tab** abre la hoja compartida: izquierdo dibuja, derecho borra. **Esc** abre un menú sin detener la partida. Si pierdes la conexión, vuelve a unirte con el mismo nombre antes de 60 s.
 
-En versus, The Locust se controla con cámara sobre el hombro: Shift caza a toda velocidad mientras dura su resistencia, clic izquierdo ataca, clic derecho chilla y E abre puertas y armarios. Los ruidos de los supervivientes le aparecen como anillos rojos.
+En versus, The Locust se controla con cámara sobre el hombro: Shift caza a toda velocidad (dura mucho y se recupera rápido: no se le escapa nadie corriendo), clic izquierdo ataca, clic derecho chilla y E abre puertas y armarios. Los ruidos de los supervivientes le aparecen como anillos rojos; el chillido delata dónde está pero le marca a los supervivientes cercanos unos segundos y le da caza libre.
+
+Alcanzar a alguien no lo mata al instante: la criatura lo levanta en el aire y lo clava tres veces, y la baja cuenta al terminar. Registrar un armario también le cuesta: se planta delante y lo abre hoja a hoja, inmóvil unos segundos. Al morir observas a un compañero desde detrás de su hombro.
 
 ## Qué contiene esta entrega
 

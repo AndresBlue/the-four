@@ -12,6 +12,8 @@ var recovery_delay := 0.0
 var exhausted := false
 var crouched := false
 var hidden := false
+## Impaled and lifted during an execution: the body is placed, not walked.
+var held := false
 ## Holding a document up to read: no walking or looking around.
 var reading := false
 var hiding_place: Node3D
@@ -102,6 +104,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		torch_warmup = 0.0
 
 func _physics_process(delta: float) -> void:
+	if held:
+		velocity = Vector3.ZERO
+		return
 	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden and not reading else Vector2.ZERO
 	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized()
 	var wants_crouch := active and not hidden and Input.is_action_pressed("crouch")
@@ -310,7 +315,17 @@ func leave_hide() -> bool:
 	hiding_changed.emit(false, global_position)
 	return true
 
+## Dragged out of a wardrobe (an execution): no room needed outside.
+func force_leave_hide() -> void:
+	if not hidden: return
+	if is_instance_valid(hiding_place): hiding_place.leave()
+	hiding_place = null
+	hidden = false
+	peek = 0.0
+	hiding_changed.emit(false, global_position)
+
 func reset_survival() -> void:
+	held = false
 	if is_instance_valid(hiding_place): hiding_place.leave()
 	hidden = false
 	hiding_place = null

@@ -115,6 +115,16 @@ Los pasos propios van por el bus `Steps` (sigue el deslizador de efectos), con u
 
 Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes al cristal (con un golpe grave sintetizado debajo, bajo) y `glass-break` para la pantalla que estalla, oída amortiguada a través de la puerta. Sintetizados por `tools/audio/generate_intro_sfx.py` en `assets/audio/intro/`: estática de canal muerto más intensa (siseo de banda ancha con subidas, chasquidos y zumbido de campo a 59,94 Hz), zumbido del tubo, pisadas fuertes para ir hacia la puerta y golpes contra la puerta. La cama es la grabación aportada `assets/audio/bed-sound.m4a` (alguien moviéndose en una cama, 34 s): `tools/audio/clean_recordings.py` la decodifica con `tools/audio/decode_media.ps1` (Media Foundation de Windows, sin instalar nada), le quita ruido y la corta en seis movimientos (`bed_stir`, `bed_sit`, `bed_lean`, `bed_shift`, `bed_press`, `bed_rise`) con los golpes de las manos contra el colchón suavizados. Se reutilizan respiración, dron, crecida de presencia, latidos, portazos, un gruñido y los pasos grabados. `tools/audio/analyze_cue_timing.gd` incluye ahora `assets/audio/glass` para arrancar las grabaciones en su ataque. Niveles al 50 % con `tools/audio/measure_intro.gd`: estática mirando la tele unos −22 dBFS RMS; golpes al cristal pico −2; portazo y rotura pico −1. Incorporarse y apoyarse en la cama: pico −4 y RMS −23 dBFS con la estática debajo.
 
+## Ejecución
+
+`tools/audio/generate_event_sfx.py` sintetiza también `execution_stab_1..3.wav` (la hoja entrando: golpe grave, desgarro húmedo y un timbre corto) y `execution_drop.wav` (el cuerpo soltado). Suenan en los tres golpes de la ejecución (a 1,0, 1,6 y 2,2 s) y al caer el cuerpo (2,7 s), desde la posición de la criatura y por la misma propagación que el resto.
+
+## Pasos de los compañeros
+
+En red, cada superviviente suena con los mismos recortes grabados que el jugador local, desde su cuerpo y con la propagación por rutas. Van más bajos que antes (caminar −14 dB, correr −8, agachado −24, +2 en baldosa) para que un compañero corriendo en la sala de al lado no se confunda con la criatura. Pendiente de escucha humana.
+
+La ruta de los sonidos ocluidos se calcula desde la cámara que escucha, no desde el cuerpo del jugador: al observar a un compañero tras morir, lo que se oye corresponde a lo que se ve.
+
 ## Eventos del director
 
 Sonidos sintetizados por `tools/audio/generate_event_sfx.py` en `assets/audio/events/`: dos caídas de un objeto de madera (inclinación, golpe, rebote y rodar) y dos series de tres golpes con los nudillos en una puerta. Se reproducen con `world_audio.play_at()`, así que llegan por la ruta caminable con eco como cualquier otro sonido. Los golpes en la puerta no los oye la criatura; la caída la manda a investigar directamente, sin pasar por su oído.
