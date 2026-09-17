@@ -12,7 +12,7 @@ signal lobby_changed
 signal closed(reason: String)
 signal joined
 const MATCH := preload("res://game/net/match_net.gd")
-const PORT := 24570
+const PORT := 38430
 const MAX_PLAYERS := 5
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.

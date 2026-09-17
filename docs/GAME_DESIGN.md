@@ -93,7 +93,7 @@ Sunman se conserva como candidato para su piso. The Boy and The Bath es material
 
 ## Multijugador en red — implementado (pendiente de sesiones humanas)
 
-**Conexión.** ENet con un anfitrión y hasta cuatro invitados (**2–5 jugadores**), por IP directa o LAN, puerto UDP 24570. Por Internet, el anfitrión abre ese puerto en su router. Sin Steam, matchmaking, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador).
+**Conexión.** ENet con un anfitrión y hasta cuatro invitados (**2–5 jugadores**), por IP directa o LAN, puerto UDP 38430. Por Internet, el anfitrión abre ese puerto en su router. Sin Steam, matchmaking, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador).
 
 **Menú Multijugador.** Nombre del jugador, **Crear sala**, **Unirse a una sala** (dirección del anfitrión), **Personaje** y Volver. La **Sala** muestra las plazas (1 anfitrión, 2–5 invitados), su personaje y las direcciones locales del anfitrión. Solo el anfitrión cambia las opciones:
 - **Tipo de partida:** *Cooperativo contra IA* (todos sobreviven contra The Locust controlado por la IA) o *Versus* (un jugador es The Locust).

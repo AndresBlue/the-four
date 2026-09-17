@@ -299,16 +299,12 @@ CORRECCIÓN:
 ACTUAL: DE 2 A 5 JUGADORES · LAN O IP
 CORRECCIÓN:
 
-[MP.04] Campo de texto
-ACTUAL: Tu nombre
+[MP.04] Campo de texto del nombre (sin etiqueta), texto de ejemplo
+ACTUAL: Jugador
 CORRECCIÓN:
 
 [MP.05] Opciones
 ACTUAL: CREAR SALA / UNIRSE A UNA SALA / PERSONAJE / VOLVER
-CORRECCIÓN:
-
-[MP.06] Explicación a la derecha
-ACTUAL: Quien crea la sala es el anfitrión: elige el tipo de partida y, en versus, quién es The Locust. Los demás se unen con su dirección IP (en la misma red, la local; por Internet, la pública con el puerto 24570 UDP abierto).
 CORRECCIÓN:
 
 [MP.07] Pantalla Unirse
@@ -324,7 +320,7 @@ ACTUAL: Cooperativo contra IA / Versus: un jugador es The Locust / Al azar
 CORRECCIÓN:
 
 [MP.10] Sala, avisos
-ACTUAL: Hacen falta al menos 2 jugadores. / Esperando a que el anfitrión empiece… / Para unirse: %s · puerto 24570 / anfitrión, tú, desconectado, The Locust
+ACTUAL: Hacen falta al menos 2 jugadores. / Esperando a que el anfitrión empiece… / Para unirse: %s · puerto 38430 / anfitrión, tú, desconectado, The Locust
 CORRECCIÓN:
 
 [MP.11] Errores de conexión

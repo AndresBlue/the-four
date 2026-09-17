@@ -361,14 +361,13 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			title(column, "MULTIJUGADOR", 64)
 			label(column, "DE 2 A %d JUGADORES · LAN O IP" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
-			field(column, "Tu nombre", "player_name", "Jugador")
+			field(column, "", "player_name", "Jugador")
 			spacer(column, 10)
 			action("Crear sala", "host")
 			action("Unirse a una sala", "join")
 			action("Personaje", "characters")
 			spacer(column, 12)
 			action("Volver", "main")
-			paragraph(side, "Quien crea la sala es el anfitrión: elige el tipo de partida y, en versus, quién es The Locust. Los demás se unen con su dirección IP (en la misma red, la local; por Internet, la pública con el puerto %d UDP abierto)." % NET.PORT, 18, 560)
 		"join":
 			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "")
 			title(column, "UNIRSE", 64)
@@ -419,7 +418,7 @@ func field(parent: Node, title_text: String, key: String, placeholder: String) -
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	parent.add_child(row)
-	label(row, title_text, 19).custom_minimum_size.x = 240
+	if not title_text.is_empty(): label(row, title_text, 19).custom_minimum_size.x = 240
 	var edit := LineEdit.new()
 	edit.custom_minimum_size = Vector2(300, 40)
 	edit.add_theme_font_size_override("font_size", 20)
