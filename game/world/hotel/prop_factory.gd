@@ -4,6 +4,19 @@ extends RefCounted
 ## layered separately and never adds collision. Back of each piece is -Z.
 
 const BOOKS := ["leather", "fabric", "green", "linen", "black", "trim"]
+## Supplied models baked by tools/props/build_model_props.gd (front +Z, floor at 0).
+const SOFA := preload("res://assets/props/sofa/sofa.res")
+const MONSTERA := preload("res://assets/props/monstera/monstera.res")
+## Turn that puts the sofa model's back against the socket's back (-Z).
+const SOFA_YAW := 0.0
+
+## A baked model inside a furniture socket; visual only, colliders stay boxes.
+static func model(node: Node3D, mesh: Mesh, offset := Vector3.ZERO, yaw := 0.0) -> void:
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.position = offset
+	instance.rotation.y = yaw
+	node.add_child(instance)
 
 static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 	var seed_pos: Vector3 = node.position + Vector3(0, float(kind.length()), 0)
@@ -23,16 +36,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			builder.box(node, Vector3(0, 1.46, -1.32), Vector3(2.08, 0.06, 0.17), "trim")
 		"sofa":
 			builder.box(node, Vector3(0, 0.34, 0), Vector3(2.3, 0.55, 0.9), "", true)
-			builder.box(node, Vector3(0, 0.25, 0.02), Vector3(2.1, 0.3, 0.84), "fabric")
-			for i in 3:
-				var x := -0.68 + i * 0.68
-				builder.box(node, Vector3(x, 0.5, 0.08), Vector3(0.66, 0.2, 0.7), "fabric")
-				builder.box(node, Vector3(x, 0.82, -0.3), Vector3(0.64, 0.5, 0.2), "fabric", false, "box", Vector3(-0.16, 0, 0))
-			builder.box(node, Vector3(0, 0.87, -0.42), Vector3(2.3, 0.65, 0.25), "fabric")
-			for side in [-1, 1]:
-				builder.box(node, Vector3(side * 1.08, 0.55, 0), Vector3(0.2, 0.5, 0.95), "fabric")
-				builder.cylinder(node, Vector3(side * 1.08, 0.8, 0), 0.11, 0.95, "fabric", Vector3(PI / 2, 0, 0))
-				for end in [-1, 1]: builder.cylinder(node, Vector3(side * 1.02, 0.05, end * 0.36), 0.035, 0.1, "wood")
+			model(node, SOFA, Vector3(0, 0, 0.02), SOFA_YAW)
 		"table", "desk", "nightstand", "phone":
 			var width := 0.85 if kind in ["nightstand", "phone"] else 2.2
 			builder.box(node, Vector3(0, 0.77, 0), Vector3(width, 0.12, 1.1), "", true)
@@ -132,15 +136,8 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			for i in 4: builder.box(node, Vector3(0.1, 0.97 + i * 0.045, 0.05), Vector3(0.9, 0.04, 0.55), "linen", false, "box", Vector3(0, i * 0.06, 0))
 		"plant":
 			builder.box(node, Vector3(0, 0.27, 0), Vector3(0.55, 0.54, 0.55), "", true)
-			builder.box(node, Vector3(0, 0.27, 0), Vector3(0.52, 0.54, 0.52), "ceramic", false, "cone", Vector3(PI, 0, 0))
-			builder.cylinder(node, Vector3(0, 0.53, 0), 0.24, 0.02, "black")
-			builder.cylinder(node, Vector3(0, 0.8, 0), 0.02, 0.6, "wood")
-			for i in 14:
-				var turn := i * 2.39996
-				var tilt: float = 0.5 + builder.vary(seed_pos, i) * 0.7
-				var up := 0.72 + (i % 5) * 0.14
-				var reach := 0.2 + (1.0 - float(i) / 14.0) * 0.12
-				builder.box(node, Vector3(sin(turn) * reach, up, cos(turn) * reach), Vector3(0.1, 0.012, 0.5), "leaf", false, "box", Vector3(-tilt, turn, 0))
+			# Each plant turned differently so neighbours do not look copied.
+			model(node, MONSTERA, Vector3.ZERO, builder.vary(seed_pos, 3) * TAU)
 		"bin":
 			builder.box(node, Vector3(0, 0.32, 0), Vector3(0.5, 0.64, 0.5), "", true)
 			builder.box(node, Vector3(0, 0.32, 0), Vector3(0.44, 0.64, 0.44), "metal", false, "cone", Vector3(PI, 0, 0))

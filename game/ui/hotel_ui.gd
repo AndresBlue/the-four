@@ -41,6 +41,10 @@ var tick_player: AudioStreamPlayer
 var confirm_player: AudioStreamPlayer
 var quiet_focus := false
 var intro: Control
+## Open document sheet during play, and the record of found documents.
+var reading: Control
+var discoveries
+const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 var intro_tween: Tween
 
 func _ready() -> void:
@@ -256,6 +260,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Nueva partida", "new")
 			action("Continuar", "continue", not can_continue)
 			action("Personaje", "characters")
+			action("Archivo", "archive")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
 			action("Salir", "quit")
@@ -300,12 +305,29 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			set_osd("■ STOP", "", "", "")
 			title(column, "FIN DEL PISO", 64)
 			side.visible = false
+		"archive":
+			set_osd("▶ PLAY", "", "", "")
+			title(column, "ARCHIVO", 64)
+			var count: int = discoveries.found.size() if discoveries != null else 0
+			label(column, "DOCUMENTOS  %d / %d" % [count, CATALOG.TOTAL], 20).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 14)
+			var shown := false
+			for item in CATALOG.ENTRIES:
+				var known: bool = discoveries != null and discoveries.has(item.id)
+				var entry_data: Dictionary = item
+				buttons[item.id] = entry(column, item.title if known else "— sin descubrir —", func(): show_archive_entry(entry_data), not known, 22)
+				if known and not shown:
+					show_archive_entry(item)
+					shown = true
+			if not shown: paragraph(side, "Los documentos que leas en el hotel se guardan aquí, también entre partidas.", 18, 560)
+			spacer(column, 20)
+			action("Volver", "main")
 		"credits":
 			set_osd("▶ PLAY", "", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
 			title(column, "CRÉDITOS", 64)
 			spacer(column, 18)
 			column.custom_minimum_size.x = 720
-			for block in [["THE LOCUST", "Modelo de Doumty."], ["ARQUITECTURA Y MOBILIARIO", "Creados para The Four. Provisionales."], ["AUDIO", "Aportado por el usuario. Autoría y licencias por verificar."], ["DISTRIBUCIÓN", "Los permisos de los assets siguen pendientes."]]:
+			for block in [["THE LOCUST", "Modelo de Doumty."], ["ARQUITECTURA Y MOBILIARIO", "Arquitectura creada para The Four. Televisor, cama, sofá, lámpara de pared y monstera: modelos aportados por el usuario; autoría y licencias por verificar."], ["AUDIO", "Aportado por el usuario. Autoría y licencias por verificar."], ["DISTRIBUCIÓN", "Los permisos de los assets siguen pendientes."]]:
 				label(column, block[0], 18).add_theme_color_override("font_color", STYLE.AMBER)
 				paragraph(column, block[1], 18, 700)
 				spacer(column, 6)
@@ -318,6 +340,51 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		paragraph(column, message, 16, 560, STYLE.AMBER)
 	transition(0.35 if kind != "failed" else 0.9)
 	focus_first()
+
+func show_archive_entry(item: Dictionary) -> void:
+	for child in side.get_children():
+		side.remove_child(child)
+		child.queue_free()
+	label(side, item.title.to_upper(), 26)
+	label(side, item.header, 16).add_theme_color_override("font_color", STYLE.SOFT)
+	spacer(side, 8)
+	paragraph(side, item.body, 19, 620, STYLE.INK)
+
+## A document held up to the camera while play goes on behind it.
+func show_document(item: Dictionary) -> void:
+	hide_document()
+	reading = Control.new()
+	reading.name = "Document"
+	reading.set_anchors_preset(Control.PRESET_FULL_RECT)
+	reading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(reading)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.55)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reading.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reading.add_child(center)
+	var sheet := PanelContainer.new()
+	sheet.custom_minimum_size = Vector2(720, 0)
+	sheet.add_theme_stylebox_override("panel", STYLE.flat(Color(0.05, 0.05, 0.045, 0.92), STYLE.FAINT, 1, 34.0))
+	center.add_child(sheet)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 8)
+	sheet.add_child(text)
+	label(text, item.title.to_upper(), 28)
+	label(text, item.header, 16).add_theme_color_override("font_color", STYLE.SOFT)
+	spacer(text, 6)
+	paragraph(text, item.body, 20, 640, STYLE.INK)
+	spacer(text, 10)
+	var key: String = settings.key_name("interact") if settings != null else "E"
+	label(text, "[%s] GUARDAR" % key, 16).add_theme_color_override("font_color", STYLE.FAINT)
+
+func hide_document() -> void:
+	if is_instance_valid(reading): reading.queue_free()
+	reading = null
 
 func tape_time(seconds: float) -> String:
 	var total := int(seconds)

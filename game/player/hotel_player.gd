@@ -10,6 +10,8 @@ var recovery_delay := 0.0
 var exhausted := false
 var crouched := false
 var hidden := false
+## Holding a document up to read: no walking or looking around.
+var reading := false
 var hiding_place: Node3D
 var body_shape: CollisionShape3D
 ## Advances by PI per footfall; derived from distance walked, not time.
@@ -87,7 +89,7 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not active: return
-	if event is InputEventMouseMotion:
+	if event is InputEventMouseMotion and not reading:
 		rotate_y(-event.relative.x * settings.values.sensitivity)
 		if hidden:
 			var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
@@ -98,7 +100,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		torch_warmup = 0.0
 
 func _physics_process(delta: float) -> void:
-	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden else Vector2.ZERO
+	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden and not reading else Vector2.ZERO
 	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized()
 	var wants_crouch := active and not hidden and Input.is_action_pressed("crouch")
 	if wants_crouch or can_stand(): crouched = wants_crouch
@@ -311,6 +313,7 @@ func reset_survival() -> void:
 	hidden = false
 	hiding_place = null
 	peek = 0.0
+	reading = false
 	crouched = false
 	stamina = 100
 	recovery_delay = 0

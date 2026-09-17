@@ -605,3 +605,94 @@ CORRECCIÓN:
 [OTRO.02] Nombres de salas (solo en la galería de módulos del editor)
 ACTUAL: Recepción / Habitación doble / Habitación / Suite / Baños / Salón / Comedor / Lavandería / Almacén / Mantenimiento / Vestíbulo / Pasillo / Galería / Sala de lectura / Sala de televisión / Oficina / Guardarropa / Jardín interior / Salón vacío / Refugio
 CORRECCIÓN:
+
+17. DOCUMENTOS DEL HOTEL (se leen con E sobre mesas y escritorios; se guardan en Archivo)
+--------------------------------------------------------------------------------------
+
+[DOC.01] locust_reception — título
+ACTUAL: Nota para el turno de noche
+CORRECCIÓN:
+
+[DOC.01b] locust_reception — encabezado bajo el título
+ACTUAL: Recepción · papel con membrete del hotel
+CORRECCIÓN:
+
+[DOC.01c] locust_reception — texto
+ACTUAL: Tres quejas más de la planta primera. Dicen que la tele se enciende sola pasadas las tres y que en la pantalla sale alguien mirando desde muy cerca. El 107 pidió cambiar de habitación. El 112 no contestó al teléfono.
+| 
+| Ya desenchufé dos aparatos y volvieron a encenderse. No subas solo. Si oyes golpes en una puerta, no abras para ver quién es.
+CORRECCIÓN:
+
+[DOC.02] locust_maintenance — título
+ACTUAL: Parte de mantenimiento
+CORRECCIÓN:
+
+[DOC.02b] locust_maintenance — encabezado bajo el título
+ACTUAL: Hoja de avería · sin firmar
+CORRECCIÓN:
+
+[DOC.02c] locust_maintenance — texto
+ACTUAL: Habitación 107: pantalla del televisor rota. Los cristales están fuera, sobre la moqueta, no dentro del tubo. Lo rompieron desde dentro.
+| 
+| Marcas en el marco de la puerta, a más de dos metros y medio de altura, como de algo que se agacha para pasar. Arañazos en el interior de dos armarios del pasillo. Pido que alguien más venga a verlo antes de cambiar nada.
+CORRECCIÓN:
+
+[DOC.03] locust_letter — título
+ACTUAL: Carta sin enviar
+CORRECCIÓN:
+
+[DOC.03b] locust_letter — encabezado bajo el título
+ACTUAL: Papel doblado en cuatro
+CORRECCIÓN:
+
+[DOC.03c] locust_letter — texto
+ACTUAL: Si alguien encuentra esto: me he pasado la noche dentro de un armario. Lo que anda por los pasillos ve muy lejos, mucho más lejos que tú. No le apuntes con la linterna, la luz lo trae.
+| 
+| Cuando se para en seco y chilla, ya sabe dónde estás. Ese segundo es lo único que tienes: sal de su vista. Y no abras las puertas del armario para mirar si lo tienes delante.
+CORRECCIÓN:
+
+[DOC.04] locust_guard — título
+ACTUAL: Registro del vigilante
+CORRECCIÓN:
+
+[DOC.04b] locust_guard — encabezado bajo el título
+ACTUAL: Libreta de rondas · última página
+CORRECCIÓN:
+
+[DOC.04c] locust_guard — texto
+ACTUAL: 02:40 Pasos en la planta de arriba. No son de persona, suenan como puntas contra el suelo.
+| 02:55 Se oye por las puertas abiertas y por los pasillos. A través de las paredes, nada. Cierro detrás de mí.
+| 03:10 En la sala de la salida no entra. Me quedo aquí hasta que se haga de día.
+CORRECCIÓN:
+
+[DOC.05] Pie de la hoja abierta
+ACTUAL: [TECLA] GUARDAR
+CORRECCIÓN:
+
+[DOC.06] Aviso al leer un documento nuevo
+ACTUAL: ARCHIVADO  %d/%d
+CORRECCIÓN:
+
+[DOC.07] Corchetes de enfoque sobre un documento
+ACTUAL: LEER
+CORRECCIÓN:
+
+[ARCH.01] Menú principal, botón
+ACTUAL: ARCHIVO
+CORRECCIÓN:
+
+[ARCH.02] Pantalla de archivo, contador
+ACTUAL: DOCUMENTOS  %d / %d
+CORRECCIÓN:
+
+[ARCH.03] Entrada sin descubrir
+ACTUAL: — sin descubrir —
+CORRECCIÓN:
+
+[ARCH.04] Archivo vacío
+ACTUAL: Los documentos que leas en el hotel se guardan aquí, también entre partidas.
+CORRECCIÓN:
+
+[ESC.01] Escena de entrada, indicación durante los primeros 5 s
+ACTUAL: MANTÉN [TECLA] PARA SALTAR
+CORRECCIÓN:

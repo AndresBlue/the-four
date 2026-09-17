@@ -11,6 +11,17 @@
 - `deep_ambiance.flac`: conservar original; preparar copia en formato admitido por el importador al integrarlo. Todavía no se carga en el juego.
 - La música anterior sigue en su bus separado. Su estado de permisos no cambia.
 
+## Modelos aportados en 0.4-S1
+
+Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. Autoría y licencia por verificar antes de cualquier distribución.
+
+- `tv/sony-trinitron-prl.zip`: televisor CRT de la escena de entrada (carcasa y pantalla separadas).
+- `bedroom/bedroom-furniture-set.zip`: cama con escritorio y silla, escena de entrada.
+- `other/sofa-pbr.zip`: sofá Chesterfield; sustituye al sofá provisional en todo el hotel.
+- `other/wall-lamp-2048px2.zip`: aplique de pared con pantalla de tela; dos junto a cada cuadro en recepción, vestíbulos, pasillos y galerías (solo emisivo, sin luz propia).
+- `plants/monstera-indoor.zip`: monstera en maceta con soporte; sustituye a la planta provisional.
+- `plants/indoor-plant-dieffenbachia.zip`: sin usar (solo `.blend`, que Godot no importa sin Blender).
+
 ## Candidatos y paquetes conservados
 
 - [Hotel bed — Alex Jung](https://sketchfab.com/3d-models/hotel-bed-41ec871d6fd64719b8231ba6ecde6279): ficha revisada, CC Attribution, 738.300 triángulos aproximadamente. Descartada para instancias repetidas por su coste. No se descargó ni incorporó. El navegador accesible mostraba LOGIN, sin compartir la sesión del navegador del usuario.

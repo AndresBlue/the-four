@@ -17,7 +17,7 @@ La atenuación direccional usa AudioStreamPlayer3D; la oclusión por pared es un
 
 ## Preparados o reservados
 
-- `paper/paper.ogg`: copia preparada para abrir la hoja de dibujo. **Sin disparador todavía:** la hoja no está implementada. Será un sonido local de interfaz, no un evento de ruido para la IA, y se disparará una vez al abrir, no por cada trazo.
+- `paper/paper.ogg`: suena al leer un documento (sonido local, no es un ruido para la IA). También está previsto para abrir la futura hoja de dibujo.
 - `heartbeat/1.ogg` y `2.ogg`: preparados para evaluar tensión/claustrofobia, sin reproducción automática por ahora.
 - Cuatro grabaciones `hard-*`: se usan como portazo cuando el jugador abre o cierra una puerta mientras corre. Ese giro es más rápido y su ruido jugable llega a 18 m (normal: 12 m; lento: 3 m).
 - `sub-riser-presence.wav`: reservado para una transición de presencia anunciada; no se suma al aviso corto de ataque para no ocultarlo.
@@ -101,3 +101,7 @@ Los pasos propios van por el bus `Steps` (sigue el deslizador de efectos), con u
 ## Escena de entrada
 
 Sonidos sintetizados por `tools/audio/generate_intro_sfx.py` en `assets/audio/intro/`: estática y zumbido de la tele (en bucle), tres golpes en el cristal desde dentro (golpe sordo, resonancia de vidrio y grietas que crecen), la rotura de la pantalla y tres golpes contra la puerta oídos desde el pasillo. Se reutilizan la respiración, el dron y la crecida de presencia, los latidos, los portazos de puerta, un gruñido de persecución y los pasos de carrera sobre moqueta. La rotura, los golpes y el gruñido pasan por un filtro que los apaga, porque llegan a través de la puerta cerrada. Niveles al 50 % medidos con `tools/audio/measure_intro.gd`: tele y respiración al despertar −33 dBFS RMS; golpes al cristal pico −8; portazo y rotura pico −1, sin llegar al limitador.
+
+## Eventos del director
+
+Sonidos sintetizados por `tools/audio/generate_event_sfx.py` en `assets/audio/events/`: dos caídas de un objeto de madera (inclinación, golpe, rebote y rodar) y dos series de tres golpes con los nudillos en una puerta. Se reproducen con `world_audio.play_at()`, así que llegan por la ruta caminable con eco como cualquier otro sonido. Los golpes en la puerta no los oye la criatura; la caída la manda a investigar directamente, sin pasar por su oído.

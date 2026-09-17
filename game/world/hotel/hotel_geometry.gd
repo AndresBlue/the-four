@@ -23,6 +23,9 @@ var flicker_clock := 0.0
 const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
 const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
+## Modules with wall lamps: reception, lobby, corridor, gallery.
+const SCONCE_ROOMS := [0, 10, 11, 12]
+const WALL_LAMP := preload("res://assets/props/wall_lamp/wall_lamp.res")
 const FADE_BEGIN := 40.0
 const FADE_LENGTH := 16.0
 const SHADOW_FADE := 26.0
@@ -200,14 +203,18 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			# Framed hotel art; each canvas composition varies with its position.
 			box(boundary, Vector3(side * 3.5, 2.02, -0.16), Vector3(1.28, 0.92, 0.08), "gold" if int(room.variant) % 2 == 0 else "trim")
 			box(boundary, Vector3(side * 3.5, 2.02, -0.205), Vector3(1.14, 0.78, 0.02), "painting")
+			# Public spaces: a pair of cloth-shaded wall lamps beside each print.
+			if room.type in SCONCE_ROOMS and length > 9.0:
+				for flank in [-1, 1]:
+					var sconce := MeshInstance3D.new()
+					sconce.mesh = WALL_LAMP
+					sconce.position = Vector3(side * 3.5 + flank * 0.98, 1.6, -0.09)
+					sconce.rotation.y = PI
+					boundary.add_child(sconce)
 	for prop in room.props:
 		var furniture := Node3D.new()
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
-		furniture.position = Vector3(-3.95 if prop.slot % 2 == 0 else 3.95, 0, -3.95 if prop.slot < 2 else 3.95)
-		if room.type in [1, 2, 3, 4, 7, 15, 16]:
-			furniture.position = Vector3(-4.35 if prop.slot % 2 == 0 else 4.35, 0, -4.35 if prop.slot < 2 else 4.35)
-			furniture.scale = Vector3.ONE * 0.85
-		furniture.rotation.y = prop.rotation * PI / 2
+		furniture.transform = prop_transform(room, prop)
 		node.add_child(furniture)
 		build_prop(furniture, prop.kind)
 	if room.type in [1, 2, 3, 4, 7, 15, 16]:
@@ -301,6 +308,14 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
+## Furniture socket in room space: corners, set further in and smaller in
+## domestic rooms, turned by the recipe.
+static func prop_transform(room: Dictionary, prop: Dictionary) -> Transform3D:
+	var domestic: bool = room.type in [1, 2, 3, 4, 7, 15, 16]
+	var corner := 4.35 if domestic else 3.95
+	var basis := Basis(Vector3.UP, prop.rotation * PI / 2).scaled(Vector3.ONE * (0.85 if domestic else 1.0))
+	return Transform3D(basis, Vector3(-corner if prop.slot % 2 == 0 else corner, 0, -corner if prop.slot < 2 else corner))
+
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
 	box(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), "plaster", true)
 	for face in [-1, 1]:

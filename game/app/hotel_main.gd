@@ -9,6 +9,11 @@ const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 const INTRO := preload("res://game/intro/intro_sequence.gd")
+const DOCUMENT := preload("res://game/world/interactables/hotel_document.gd")
+const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
+const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
+const DIRECTOR := preload("res://game/director/pacing_director.gd")
+const DISCOVERIES := preload("res://game/services/discovery_service.gd")
 ## The opening scene is built far from the hotel so the two never overlap.
 const INTRO_ORIGIN := Vector3(600, 0, 0)
 ## Holding interact this long skips the opening scene.
@@ -37,6 +42,11 @@ var slow_used := false
 var save_error := ""
 var physical_errors: Array[String] = []
 var intro: Node3D
+var director
+var discoveries
+## The document being read, if any.
+var reading_document: Node3D
+var paper_sound: AudioStreamPlayer
 var intro_seed := 0
 var skip_time := 0.0
 
@@ -53,8 +63,13 @@ func _enter_tree() -> void:
 	if OS.get_cmdline_user_args().has("--test-profile"):
 		settings.save_path = "user://test_hotel_%s_settings.json" % test_name
 		session.checkpoint_path = "user://test_hotel_%s_checkpoint.json" % test_name
+	discoveries = DISCOVERIES.new()
+	discoveries.name = "Discoveries"
+	if OS.get_cmdline_user_args().has("--test-profile"): discoveries.save_path = "user://test_hotel_%s_discoveries.json" % test_name
+	$Services.add_child(discoveries)
 	player.settings = settings
 	ui.settings = settings
+	ui.discoveries = discoveries
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -106,6 +121,7 @@ func on_action(action: String) -> void:
 		"settings": ui.show_settings("pause" if session.state == session.State.PAUSED else "main")
 		"credits": ui.menu("credits")
 		"characters": ui.show_characters()
+		"archive": ui.menu("archive")
 		"quit": get_tree().quit()
 
 ## A new game opens with the bedroom scene; its floor is built when it ends.
@@ -211,6 +227,11 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	ui.flash("ENCUENTRA LA SALIDA", 5.0)
 	save_error = session.message
 	spawn_locust()
+	place_documents()
+	director = DIRECTOR.new()
+	director.name = "Director"
+	director.setup(self, int(manifest.seed))
+	hotel.add_child(director)
 	world_audio.set_creature(locust.sound_profile)
 	for door in hotel.doors: door.sound_requested.connect(world_audio.door_cue)
 	# Easing wardrobe doors creaks: a quiet noise the creature can pick up.
@@ -219,6 +240,29 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 		ambience.play()
 		theme.play()
 		ventilation.play()
+
+## This floor's documents, lying on furniture (freed with the hotel).
+func place_documents() -> void:
+	for spot in PLACEMENT.choose(manifest, "locust"):
+		var document := DOCUMENT.new()
+		document.name = "Document_" + spot.entry
+		document.entry_id = spot.entry
+		document.position = spot.position
+		document.rotation.y = spot.yaw
+		hotel.add_child(document)
+
+func open_document(document: Node3D) -> void:
+	reading_document = document
+	player.reading = true
+	ui.show_document(CATALOG.entry(document.entry_id))
+	if world_audio.enabled: paper_sound.play()
+	if discoveries.record(document.entry_id):
+		ui.flash("ARCHIVADO  %d/%d" % [discoveries.found.size(), CATALOG.TOTAL], 3.0)
+
+func close_document() -> void:
+	reading_document = null
+	player.reading = false
+	ui.hide_document()
 
 func on_state() -> void:
 	var playing: bool = session.state == session.State.PLAYING
@@ -230,6 +274,7 @@ func on_state() -> void:
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
+	if not playing and is_instance_valid(reading_document): close_document()
 	if playing or session.state == session.State.CUTSCENE:
 		ui.overlay.hide()
 		ui.settings_open = false
@@ -294,12 +339,20 @@ func on_hide_changed(entering: bool, point: Vector3) -> void:
 func on_noise(point: Vector3, radius: float) -> void:
 	if is_instance_valid(locust): locust.hear(point, radius)
 
-func focused_hide():
+func focused_area():
 	var from: Vector3 = player.camera.global_position
 	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * 2.0, 1 | 8 | 16)
 	query.collide_with_areas = true
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	return hit.collider if not hit.is_empty() and hit.collider is HIDE else null
+	return hit.collider if not hit.is_empty() else null
+
+func focused_hide():
+	var area = focused_area()
+	return area if area is HIDE else null
+
+func focused_document():
+	var area = focused_area()
+	return area if area is DOCUMENT else null
 
 ## Doors are reached from further away than wardrobes.
 const DOOR_REACH := 3.2
@@ -336,6 +389,16 @@ func _physics_process(delta: float) -> void:
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
 	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
+	if is_instance_valid(reading_document):
+		camcorder.focus("")
+		if Input.is_action_just_pressed("interact"): close_document()
+		was_held = true
+		return
+	var document_target = focused_document()
+	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(document_target):
+		open_document(document_target)
+		was_held = true
+		return
 	var hiding_target = focused_hide()
 	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
 		if player.hidden: player.leave_hide()
@@ -355,7 +418,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	camcorder.focus("ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else "")
+	camcorder.focus("LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else "")
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0
@@ -409,6 +472,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo: return
 	if event.physical_keycode == KEY_ESCAPE:
 		if session.state == session.State.CUTSCENE: finish_intro()
+		elif is_instance_valid(reading_document): close_document()
 		elif ui.settings_open:
 			if not settings.previous_display.is_empty(): settings.revert_display()
 			on_action(ui.return_action)
@@ -473,6 +537,13 @@ func update_screen_cues(delta: float) -> void:
 	post_material.set_shader_parameter("threat_glitch", glitch)
 
 func build_audio() -> void:
+	# Handling a document: a local sound, not a noise the creature can hear.
+	paper_sound = AudioStreamPlayer.new()
+	paper_sound.name = "Paper"
+	paper_sound.bus = "Effects"
+	paper_sound.volume_db = -8.0
+	paper_sound.stream = load("res://assets/audio/sfx/paper/paper.ogg")
+	add_child(paper_sound)
 	ambience = AudioStreamPlayer.new()
 	ambience.name = "AmbientLoop"
 	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE

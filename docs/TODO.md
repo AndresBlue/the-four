@@ -100,7 +100,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Balance de la alerta de Locust en partidas humanas.
 - [x] Escena de entrada: dormitorio, tele con Locust golpeando el cristal, huida por el pasillo; saltable.
 - [ ] Imagen de Locust para la tele en `assets/intro/locust_tv.png` (hay una figura dibujada provisional).
-- [ ] Integrar sofá, lámpara de pared y plantas descargados en el hotel.
+- [x] Sofá, aplique de pared y monstera descargados integrados en el hotel (la dieffenbachia es `.blend` y queda fuera).
 - [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
 - [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).
 - [x] Exploradora animada (esqueleto del cuerpo) y señal visual de la estocada sin texto.
@@ -119,9 +119,12 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 
 ## P6 — Consolidación
 
-- [ ] Director: descanso 30 s, separación 45 s y un evento jugable activo.
-- [ ] Doce eventos con requisitos y cancelación; estar quieto no dispara ataques.
-- [ ] Dieciséis descubrimientos, registro y códigos compatibles; sin progresión de poder.
+- [x] Director: descanso 30 s, separación 45 s y un evento jugable activo (piso de Locust).
+- [x] Tres eventos de Locust (golpes, objeto caído, pasos) con requisitos y cancelación; estar quieto no dispara ataques.
+- [ ] Los nueve eventos de las otras criaturas.
+- [x] Cuatro descubrimientos de Locust: documentos legibles, archivo persistente en el menú.
+- [ ] Los doce descubrimientos restantes, registro de partidas y códigos compatibles; sin progresión de poder.
+- [ ] Balance humano del director (frecuencia y distancia de eventos) y revisión de los textos de los documentos.
 - [ ] Desafíos opcionales sin condiciones ocultas de derrota.
 - [ ] Balance basado en datos locales; objetivo 60 FPS/1080p y perfiles reducidos.
 - [ ] Permisos de criaturas/modelos/canción, créditos y exportaciones sin editor.

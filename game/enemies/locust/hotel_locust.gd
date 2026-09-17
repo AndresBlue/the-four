@@ -67,6 +67,8 @@ var voice: AudioStreamPlayer3D
 var grunt_clock := 0.0
 var grunt_left := 0.0
 var last_grunt := -1
+## A patrol route set by the pacing director: kept until it gets there.
+var guided := false
 
 func _ready() -> void:
 	add_to_group("hotel_actors")
@@ -212,10 +214,29 @@ func hear(point: Vector3, radius: float) -> void:
 	set_mode(Mode.INVESTIGATE)
 	destination = point
 
+## Walks its patrol to a given room and only then resumes wandering.
+func guide(room_id: int) -> void:
+	if mode != Mode.PATROL: return
+	patrol_room = room_id
+	destination = FLOOR.position_of(level.manifest.rooms[room_id])
+	guided = true
+	pause_time = 0.0
+	state_time = 0.0
+	repath = 0.0
+
+## A sound it did not have to hear through the player: something fell, it goes
+## to look. Ignored while it is already hunting.
+func investigate(point: Vector3) -> void:
+	if mode in [Mode.CHASE, Mode.ALERT, Mode.WINDUP, Mode.RECOVER]: return
+	last_known = point
+	set_mode(Mode.INVESTIGATE)
+	destination = point
+
 func set_mode(next: Mode) -> void:
 	var previous := mode
 	mode = next
 	state_time = 0
+	guided = false
 	repath = 0
 	pause_time = 0
 	if next == Mode.CHASE and previous != Mode.CHASE:
@@ -294,7 +315,8 @@ func _physics_process(delta: float) -> void:
 	pause_time = maxf(0.0, pause_time - delta)
 	match mode:
 		Mode.PATROL:
-			if pause_time <= 0 and (position.distance_to(destination) < 0.6 or state_time > 14):
+			if pause_time <= 0 and (position.distance_to(destination) < 0.6 or (state_time > 14 and not guided)):
+				guided = false
 				# Stops now and then to listen before moving on.
 				if rng.randf() < 0.45: pause_time = rng.randf_range(1.0, 3.0)
 				choose_patrol()
