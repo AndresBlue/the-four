@@ -6,7 +6,9 @@ extends SceneTree
 ##
 ##   godot --path . --script res://tools/dev/echo_probe.gd -- ##       --automation --silent --test-profile
 ##
-## Writes evidence/probe_all, _no_clouds, _no_self, _field_black, _no_field.
+## Writes evidence/probe_all, _no_puffs, _no_clouds, _no_self, _field_black,
+## _no_field. With "-- --at-door" it stands at a doorway and makes a noise
+## first, which is where a puff can be judged.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 
@@ -34,8 +36,18 @@ func run() -> void:
 	var centre: Vector3 = FLOOR.position_of(corridor)
 	level.locust.global_position = centre + Vector3(0, 0.04, 4.0)
 	level.locust.rotation.y = 0.0
+	if OS.get_cmdline_user_args().has("--at-door"):
+		var door = level.hotel.doors[mini(4, level.hotel.doors.size() - 1)]
+		level.locust.global_position = door.doorway + Vector3(0, 0.04, 3.2)
+		var offset: Vector3 = door.doorway - level.locust.global_position
+		level.locust.rotation.y = atan2(-offset.x, -offset.z)
+		for i in 120: await physics_frame
+		level.on_noise(door.doorway + Vector3(0, 0.2, -2.5), 12.0, 4)
 	for i in 180: await physics_frame
 	await shot("all")
+	echo.puffs.visible = false
+	echo.finds.visible = false
+	await shot("no_puffs")
 	echo.clouds.visible = false
 	await shot("no_clouds")
 	echo.self_material.set_shader_parameter("gain", 0.0)

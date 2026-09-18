@@ -60,6 +60,8 @@ Sus mallas reciben un material aditivo propio mientras conduce, y se restaura el
 
 Vive aquí. Las puertas y los armarios del piso se dibujan tenues y para siempre, atenuándose entre 12 y 20 m, construidos una vez por piso y sin coste por fotograma. Es lo que le permite seguir orientándose entre clics.
 
+**El marco de una puerta va deliberadamente cargado de granos**: las dos jambas y el dintel, en las dos caras del vano, con una pizca de dispersión para que se lea como algo que la sala devuelve y no como una línea dibujada. Una puerta es lo que necesita reconocer de un vistazo mientras caza, así que es el único sitio donde la densidad se agrupa a propósito. Los armarios llevan su propio contorno, más sobrio. Son unos ochenta granos por puerta y unos cincuenta por armario, todos estáticos: no cuestan nada por fotograma.
+
 ## El sonido
 
 El ruido lo confirma la máquina que manda, con la misma medición que usa el oído de la criatura: `hotel_locust.hear_route()` devuelve si lo oye, el punto aparente, los metros de ruta y cuánto llega amortiguado. `can_hear()` es ahora esa misma función, así que el oído tiene un solo dueño y se hace una sola consulta de navegación por ruido.

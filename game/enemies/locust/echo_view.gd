@@ -13,10 +13,10 @@ extends Node
 ##               found, and the doors it simply knows
 ##   the self    its own body, the one thing it knows without listening
 ##
-## The reading refreshes on the click, about fifteen times a second, with an
-## organic cadence and several shells in flight at once. The picture itself is
-## redrawn every frame from wherever the camera is, so moving is smooth and
-## nothing warps: what pulses is the information, not the framerate.
+## The reading refreshes on the click, twice a second, with an organic cadence.
+## The picture itself is redrawn every frame from wherever the camera is, so
+## moving is smooth and nothing warps: what pulses is the information, not the
+## framerate, and nothing that has a shape is computed from the live frame.
 ##
 ## Presentation only. It never changes what the creature perceives: bodies are
 ## gated on creature.sees(), and noises on what the machine in charge already
@@ -89,7 +89,13 @@ const SHRIEK_FALL := 0.55
 ## Doors and wardrobes it simply knows are there, faded out by this distance.
 const LANDMARK_NEAR := 12.0
 const LANDMARK_REACH := 20.0
-const LANDMARK_LEVEL := 0.16
+const LANDMARK_LEVEL := 0.10
+## Grains up each jamb and across each lintel. A doorway is what it navigates
+## by, so its frame is crowded on purpose.
+const JAMB_GRAINS := 15
+const LINTEL_GRAINS := 9
+## Clear height of a hotel doorway (hotel_geometry builds the lintel at 2.65).
+const DOORWAY_HIGH := 2.6
 ## A point's radius on screen, in pixels of the rendered image. Small: the
 ## picture should be made of grains, and grains that touch are a surface.
 const POINT_PIXELS := 2.0
@@ -276,18 +282,38 @@ func build_landmarks() -> void:
 	var places := PackedVector3Array()
 	if not is_instance_valid(level.hotel): return
 	for door in level.hotel.doors:
-		var across: Vector3 = Basis(Vector3.UP, door.closed_rotation).x * (FLOOR.PORTAL * 0.5)
-		for side in [-1.0, 1.0]:
-			places.append(door.doorway + across * side + Vector3(0, 0.12, 0))
-			places.append(door.doorway + across * side + Vector3(0, 2.05, 0))
+		# The frame traced all the way round, on both faces of the reveal, so a
+		# doorway is a shape and not four dots. A door is the thing it needs to
+		# read at a glance while it hunts, so this is the one place where the
+		# grains are deliberately crowded.
+		var turn := Basis(Vector3.UP, door.closed_rotation)
+		var across: Vector3 = turn.x * (FLOOR.PORTAL * 0.5 + 0.04)
+		var through: Vector3 = turn.z
+		for face in [-1.0, 1.0]:
+			var depth: Vector3 = through * (0.165 * face)
+			for side in [-1.0, 1.0]:
+				var jamb: Vector3 = door.doorway + across * side + depth
+				for i in JAMB_GRAINS:
+					places.append(jamb + Vector3(0, lerpf(0.06, DOORWAY_HIGH, float(i) / float(JAMB_GRAINS - 1)), 0))
+			for i in LINTEL_GRAINS:
+				var over := lerpf(-1.0, 1.0, float(i) / float(LINTEL_GRAINS - 1))
+				places.append(door.doorway + across * over + depth + Vector3(0, DOORWAY_HIGH + 0.04, 0))
 	for hide in level.hotel.hides:
 		var frame: Basis = hide.global_basis
-		for corner in [Vector3(-0.55, 0.1, 0), Vector3(0.55, 0.1, 0), Vector3(-0.55, 2.05, 0), Vector3(0.55, 2.05, 0), Vector3(0, 1.1, 0), Vector3(0, 2.05, 0)]:
-			places.append(hide.global_position + frame * corner)
+		for side in [-1.0, 1.0]:
+			for i in JAMB_GRAINS:
+				places.append(hide.global_position + frame * Vector3(side * 0.56, lerpf(0.08, 2.02, float(i) / float(JAMB_GRAINS - 1)), 0))
+		for i in LINTEL_GRAINS:
+			var over := lerpf(-0.56, 0.56, float(i) / float(LINTEL_GRAINS - 1))
+			for high in [0.08, 2.02]:
+				places.append(hide.global_position + frame * Vector3(over, high, 0))
 	var multi: MultiMesh = marks.multimesh
 	multi.instance_count = places.size()
 	for i in places.size():
-		multi.set_instance_transform(i, Transform3D(Basis(), places[i]))
+		# A hair of scatter, or the frame reads as a drawn line rather than
+		# something the room gave back.
+		var grain: Vector3 = places[i] + Vector3(rng.randfn(0.0, 0.016), rng.randfn(0.0, 0.016), rng.randfn(0.0, 0.016))
+		multi.set_instance_transform(i, Transform3D(Basis(), grain))
 		multi.set_instance_custom_data(i, Color(0.0, 0.0, 0.0, LANDMARK_LEVEL))
 
 # --- Turning the view on and off ----------------------------------------------------

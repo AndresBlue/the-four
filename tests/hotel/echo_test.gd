@@ -109,7 +109,8 @@ func run() -> void:
 	await frames(30)
 	check("La criatura ve al superviviente a la vista", creature.sees(level.player))
 	var grown: int = echo.body_shown
-	await frames(30)
+	await click_passes(echo)
+	await click_passes(echo)
 	check("Un cuerpo a la vista deja puntos", echo.body_shown > grown or echo.body_shown == echo.bodies.multimesh.instance_count)
 	# The same survivor, rooms away: no silhouette at all.
 	var away := far_room(int(corridor.id))
@@ -117,7 +118,8 @@ func run() -> void:
 	await frames(20)
 	echo.body_shown = 0
 	var quiet: int = echo.body_shown
-	await frames(40)
+	await click_passes(echo)
+	await click_passes(echo)
 	check("Un cuerpo tras las paredes no deja ninguno", not creature.sees(level.player) and echo.body_shown == quiet)
 
 	# --- Sound contacts -----------------------------------------------------------
@@ -195,10 +197,14 @@ func run() -> void:
 	check("Y se apaga después", echo.shriek < 0.05)
 
 	# --- Landmarks ----------------------------------------------------------------
-	var wanted: int = level.hotel.doors.size() * 4 + level.hotel.hides.size() * 6
+	# Both faces of a door reveal: two jambs and a lintel each. A wardrobe gets
+	# its two sides and a rail top and bottom.
+	var per_door: int = 2 * (2 * echo.JAMB_GRAINS + echo.LINTEL_GRAINS)
+	var per_hide: int = 2 * echo.JAMB_GRAINS + 2 * echo.LINTEL_GRAINS
+	var wanted: int = level.hotel.doors.size() * per_door + level.hotel.hides.size() * per_hide
 	var marks: int = echo.marks.multimesh.instance_count
 	await frames(60)
-	check("Conoce sus puertas y armarios", marks == wanted and marks > 0)
+	check("Conoce sus puertas y armarios, con el marco entero", marks == wanted and marks > level.hotel.doors.size() * 40)
 	check("Y esos hitos no cambian", echo.marks.multimesh.instance_count == marks)
 
 	# --- Settings -----------------------------------------------------------------

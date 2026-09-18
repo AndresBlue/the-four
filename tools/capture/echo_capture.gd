@@ -9,9 +9,9 @@ extends SceneTree
 ## over every frame.
 ##
 ## Produces evidence/<prefix>_*.png:
-##   corridor      depth bands and corner returns on real geometry
-##   corridor_wave one frame mid-sweep: the front as an arc across the walls
-##   doorway       a landmark outline and a noise arriving through a door
+##   corridor      a corridor described entirely in grains
+##   corridor_wave one frame mid-sweep: the front lighting the grains it passes
+##   doorway       a door frame crowded with grains, and a noise hanging by it
 ##   body_seen     a survivor in plain sight, as a human-shaped cloud
 ##   body_walled   the same survivor behind a wall: no silhouette at all
 ##   shriek        the reading flooded red
@@ -39,6 +39,15 @@ func look(from: Vector3, target: Vector3, pitch := -0.1) -> void:
 	var offset := target - from
 	level.locust.rotation = Vector3(0, atan2(-offset.x, -offset.z), 0)
 	level.locust.driver.pitch = pitch
+
+## Waits for the next click, then for the front to travel `seconds` worth.
+func after_click(echo, seconds: float) -> void:
+	var seen: int = echo.clicks
+	var ticks := 0
+	while echo.clicks == seen and ticks < 180:
+		ticks += 1
+		await physics_frame
+	for i in int(seconds * 60.0): await physics_frame
 
 ## Let the clicks run for a while so the memory fills in.
 func listen(seconds: float) -> void:
@@ -71,14 +80,10 @@ func run() -> void:
 	await listen(3.0)
 	await shot("corridor")
 
-	# One frame caught mid-sweep: freeze the clicks and place the front by hand
-	# six metres out, which is the only way to prove the shell on a still image.
-	level.locust.set_physics_process(false)
-	echo.shells.clear()
-	echo.shells.push_back([echo.creature.global_position + Vector3(0, level.locust.driver.EYE.y, 0), echo.clock - 6.0 / echo.WAVE_SPEED, 1.0, echo.REACH])
-	echo.push_uniforms()
+	# One frame caught mid-sweep, by waiting for a click and then letting the
+	# front travel a few metres before the shutter.
+	await after_click(echo, 0.34)
 	await shot("corridor_wave")
-	level.locust.set_physics_process(true)
 
 	# A doorway, with a noise arriving through it.
 	var door = level.hotel.doors[mini(4, level.hotel.doors.size() - 1)]
