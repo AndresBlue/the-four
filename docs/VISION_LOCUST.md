@@ -14,13 +14,17 @@ Cada clic lanza su presupuesto de rayos desde la cabeza de la criatura y siembra
 
 **La imagen se dibuja cada fotograma, no cada clic.** Los puntos están anclados en el mundo, no en la pantalla: moverse es fluido, las formas no se deforman, y lo que pulsa es la información, no el framerate.
 
-## Las cinco lecturas
+## Todo lo que tiene forma son granos
 
-Se dibujan en este orden, todas por encima de los transparentes del hotel (que están en prioridad 0):
+Esto es la regla, y es la que costó aprender: **nada se dibuja a partir del búfer de profundidad**. Una imagen calculada de la profundidad cada fotograma es la geometría con las texturas quitadas, y se actualiza en cuanto algo se mueve, así que un superviviente cruzando la sala se veía de forma continua en vez de leerse una vez por clic. Las bandas de profundidad, los bordes y el frente barriendo las superficies hacían justo eso y están fuera.
+
+Lo único que queda del paso a pantalla completa es **el negro sobre el que se apoya todo**, más las dos cosas que no son geometría: el grano de su propio oído y la interferencia de una linterna encendida. Sigue devolviendo `ALPHA = 1` para tapar el hotel iluminado, y la profundidad que el hotel escribió sigue ahí para que los granos se comparen con ella.
+
+Todo lo demás —suelo, paredes, techo, muebles, puertas y cuerpos— **son granos sellados en el mundo cuando un clic los alcanza, y quietos hasta el siguiente**. Se dibujan en este orden, todos por encima de los transparentes del hotel (que están en prioridad 0):
 
 | Prioridad | Lectura | De dónde sale | Atraviesa paredes |
 |---|---|---|---|
-| 120 | **Campo de eco** | el búfer de profundidad real | no |
+| 120 | **La oscuridad** | nada con forma: negro, grano y la linterna | — |
 | 121 | **Hitos** | las puertas y armarios del piso | sí, tenue |
 | 122 | **Memoria** | rayos de cada clic, acumulados | sí, muy atenuada, **solo arquitectura** |
 | 123 | **Nubes de sonido** | cada ruido que oye | sí: es sonido |
@@ -28,29 +32,15 @@ Se dibujan en este orden, todas por encima de los transparentes del hotel (que e
 | 125 | **Cuerpos** | la superficie del superviviente | **no, nunca** |
 | 126 | **Su cuerpo** | sus propias mallas | — |
 
-### Campo de eco
+### Memoria de la sala
 
-Un quad a pantalla completa hijo de la cámara devuelve `ALPHA = 1.0`: tapa la imagen iluminada y deja intacta su profundidad, que es lo que hace posible todo lo demás. Con esa profundidad reconstruye la posición en el mundo de cada píxel y compone:
+Los rayos de cada clic son ahora el único dibujante de la arquitectura, así que hay muchos más: **4.200 por clic** en calidad alta, repartidos entre los treinta fotogramas de física que caben entre dos clics (unos 140 por paso). Se recuerdan hasta 46.000 granos, que a esa tasa son unos seis segundos de sala. Entre frentes los granos conservan una parte de su luz —tienen que hacerlo, o la sala sería negra medio segundo de cada uno— y el resto lo trae el frente al pasar.
 
-- bandas de profundidad cada 1,5 m: la distancia se lee de un vistazo;
-- una banda por cada frente en vuelo, con caída **asimétrica** (ajustada delante, cola corta detrás). Esa asimetría es lo que hace que sea un eco y no una cámara de profundidad;
-- **respuesta por incidencia**: una superficie de frente al clic devuelve el eco de vuelta, una vista de canto lo dispersa. Por eso lo que mira es lo que lee, y el suelo y el techo que se alejan bajo sus pies quedan oscuros;
-- bordes por **curvatura** de la profundidad, no por pendiente: una pared plana devuelve cero por muy inclinada que se aleje, y solo contestan las aristas y las siluetas. Midiendo la pendiente se encendía cada muro en diagonal y la sala entera quedaba hecha de paneles claros;
-El sonido **no** se pinta aquí. Un anillo extendiéndose por todas las superficies alrededor de un ruido levanta la sala entera y se lee como adorno; un ruido oído ahora cuelga en el aire como su propia nube de granos, que se puede mirar y rodear.
-
-### Memoria y cuerpos
-
-Dos anillos de puntos en el mundo. La arquitectura se recuerda unos segundos; un cuerpo, apenas un suspiro (0,6 s), porque un superviviente es una lectura viva y no un rastro que seguir.
-
-El desvanecido **no está fijado a mano**: se mide la tasa de escritura y se ajusta para que un punto siempre acabe de apagarse antes de que el anillo lo pise. Así no hay saltos con ninguna calidad ni en ningún mapa.
-
-Casi toda la luz de un punto viene del instante en que el frente lo cruza; lo que queda después es un residuo mínimo. Tiene que ser mínimo: en una sala pequeña todos los puntos recordados caen sobre los mismos pocos metros cuadrados, y un residuo generoso se suma hasta convertir la pared en un panel iluminado en vez de un granulado. Por lo mismo, solo la mitad de los rayos van a un cono frontal amplio y el resto se reparten por toda la esfera: más estrechos, y la pared que mira acumula tantos puntos que se fusionan en una lámina.
-
-La memoria de los muros se intuye a través de los muros, atenuada, con una comparación de profundidad suave hecha a mano en el fragmento. Un cuerpo usa la misma comparación con atenuación cero, así que una pared lo corta por completo.
+Ese presupuesto es lo caro de toda la vista, y es el primer mando que tocar si un PC va justo: `RAY_BUDGET` y `POINT_BUDGET` en `echo_view.gd`, o directamente bajar la calidad.
 
 ### Nubes de sonido
 
-Cada ruido que el oído confirma deja **una nube de granos colgando donde se oyó**, que florece hacia fuera desde ese punto y se apaga en un par de segundos. Es la misma maquinaria de la nube de puntos con una onda lenta y un cuerpo propio, así que el grano no solo destella al pasar el frente: se queda.
+Cada ruido que el oído confirma deja **una nube de granos colgando donde se oyó**, que florece hacia fuera desde ese punto y se apaga en un par de segundos. Y si el ruido se hizo cerca, **dentro de esa nube aparece densamente la forma de quien lo hizo**: un sonido no dice solo «por ahí», sale de un cuerpo, y el cuerpo vuelve con él. Solo con un ruido oído de cerca, donde el sitio exacto ya forma parte de lo que la máquina que manda envió, así que revela una forma y nunca una posición que la criatura no se hubiera ganado. Es la misma maquinaria de la nube de puntos con una onda lenta y un cuerpo propio, así que el grano no solo destella al pasar el frente: se queda.
 
 Un superviviente andando deja una nube por zancada, y esa hilera de nubes apagándose **es el rastro**. Cuanto más fuerte y más brusco el ruido, más ancha y más densa la nube; cuanto más lejos ha viajado el sonido, más difuso el sitio donde cuelga. Los tubos fluorescentes que zumban dejan la suya, tenue, cada segundo y pico.
 
@@ -108,7 +98,7 @@ Para el asiento del cazador, `hotel_main.apply_settings()` apaga SSAO, SSIL, glo
 
 También se apaga la **luz ambiental** para su asiento, que es la que alcanza cada superficie haya o no una lámpara: cualquier cosa que siga iluminada filtra el hotel visto dentro de una lectura que debe estar hecha de ecos.
 
-Presupuestos por calidad (0/1/2): rayos por clic `[0, 900, 1800]`, puntos recordados `[0, 7000, 11000]`, puntos de cuerpo `[0, 320, 640]`. No hay ajuste guardado nuevo. El presupuesto por clic es grande porque hay treinta fotogramas de física para repartirlo: el coste por fotograma es el mismo que tendría un pulso rápido, y lo que se gana es una escena hecha de puntos. Una sola consulta de rayo reutilizada.
+Presupuestos por calidad (0/1/2): rayos por clic `[0, 2200, 4200]`, granos recordados `[0, 24000, 46000]`, granos de cuerpo `[0, 700, 1400]`, granos de sonido `[0, 2600, 5200]`. No hay ajuste guardado nuevo. El presupuesto por clic es grande porque hay treinta fotogramas de física para repartirlo: el coste por fotograma es el mismo que tendría un pulso rápido, y lo que se gana es una escena hecha de puntos. Una sola consulta de rayo reutilizada.
 
 `reduced` **no deja la pantalla negra**: quita el temblor, la respiración y el grano, baja el contraste de los frentes y sube el término base y los hitos. Cambia el pulso por una imagen más plana y quieta, pero igual de navegable. Hay una prueba que comprueba justo eso, para que «reducido = pantalla negra» no pueda colarse como regresión.
 
@@ -126,7 +116,8 @@ Presupuestos por calidad (0/1/2): rayos por clic `[0, 900, 1800]`, puntos record
 
 Los números de la imagen se ajustan jugando, no sobre el papel:
 
-- **El término base.** Una imagen de bordes derivada de la profundidad cada fotograma *es* vista. Si ese término sube, la criatura simplemente ve y se cae toda la ficción. Está bajo a propósito.
+- **`presence`.** Es el único término que aún toca la profundidad: una insinuación plana de que hay algo sólido, sin bordes ni forma. Si sube, la sala vuelve a dibujarse en vez de ser clicada, y se cae toda la ficción. Está casi a cero a propósito.
+- **La densidad del granulado.** Es lo único que describe la sala, así que si no se puede navegar, el mando es `RAY_BUDGET` hacia arriba (y el coste en CPU con él) o `residue` del material de los muros.
 - **La separación de los frentes.** A 2 clics por segundo y 16 m/s los cascarones quedan a unos 8 m. Más juntos vuelven a abarrotar la imagen.
 - **Las salas pequeñas son más claras que los pasillos**, y eso es acústicamente cierto: todo está cerca y devuelve mucho. Si molesta, el mando es la ganancia del barrido en `echo_field.gdshader`.
 - **La legibilidad en un salón grande**, con memoria e hitos a través de los muros y doce anillos de contacto a la vez. Lo esperable es bajar las transparencias, no subirlas.

@@ -3,12 +3,14 @@ extends Node
 ## it clicks, and rebuilds the hotel from what comes back, mixed with the
 ## sounds the survivors are making. Three readings, one image:
 ##
-##   the field   a screen pass over the real depth buffer: the wavefront of
-##               each click sweeping the surfaces in front of it, depth bands,
-##               edges, and the sounds painted as rings on those same surfaces
-##   the clouds  world-space points stamped by rays on every click, so the
-##               shape of a room stays where it really is; architecture is
-##               remembered for seconds, a body only for a breath
+##   the dark    a screen pass that replaces the lit hotel with black. It draws
+##               nothing with a shape: a picture computed from the live depth
+##               buffer is the geometry with its textures off, and it moves
+##               whenever anything moves
+##   the grains  every shape there is. Points stamped in the world when a click
+##               reaches them and frozen until the next one: walls, the surface
+##               of a body, the puff a noise leaves hanging, what the shriek
+##               found, and the doors it simply knows
 ##   the self    its own body, the one thing it knows without listening
 ##
 ## The reading refreshes on the click, about fifteen times a second, with an
@@ -38,9 +40,6 @@ const CLICK_RATE := 2.0
 const CLICK_JITTER := 0.22
 const BREATH_RATE := 0.14
 const BREATH_DEPTH := 0.25
-## Every click is a full sweep at this rate, with only a little variation in
-## how hard it comes back.
-const SWEEP_MIN := 0.78
 ## Slow enough to watch a front cross a room and back: a shell takes about two
 ## and a half seconds to reach the end of its hearing, so five or six of them
 ## are always in flight at different radii.
@@ -51,32 +50,31 @@ const REACH := 40.0
 ## Depth contour spacing, about one band per stride of the hotel.
 const BAND_STEP := 1.5
 ## Longest a remembered point lives; the real limit follows the ring buffer.
-const MEMORY := 5.0
+const MEMORY := 9.0
 ## Rays per click, points remembered, body points: off / medium / high. The
 ## budget per click is large because there are thirty physics frames to spread
 ## it over: the cost per frame is the same as a fast click would be, and what
 ## you get for it is a scene made of points.
-const RAY_BUDGET := [0, 900, 1800]
-const POINT_BUDGET := [0, 7000, 11000]
+const RAY_BUDGET := [0, 2200, 4200]
+const POINT_BUDGET := [0, 24000, 46000]
 const BODY_POINTS := [0, 700, 1400]
 ## Bodies are sampled on every click and fade just past the next one: a
 ## survivor is a live reading, never a memory to be followed.
 const BODY_EVERY := 1
 const BODY_FADE := 0.75
-## Half the rays go into a wide cone ahead and the rest over the whole sphere.
-## Any narrower and the wall it happens to be facing collects so many points
-## that they merge into a solid sheet instead of reading as stipple.
-const FORWARD_BIAS := 0.5
-const FORWARD_CONE := 1.15
-## Shells the field shader carries at once: its per-pixel loop is the only
-## superlinear cost in the whole view.
-const SWEEPS := 6
+## Most of the rays go into a wide cone ahead and the rest over the whole
+## sphere: what it looks at is what it describes, but a room it has walked
+## through keeps its shape behind it too.
+const FORWARD_BIAS := 0.62
+const FORWARD_CONE := 1.0
 ## A heard noise hangs as a puff of grains where it was heard, blooming outward
 ## from the spot at this speed and out to this radius before it goes.
 const PUFF_SPEED := 4.5
 const PUFF_LIFE := 2.2
 const PUFF_POINTS := [0, 26, 44]
-const PUFF_BUDGET := [0, 900, 1800]
+## Grains per surface sample when a close noise brings a body's shape with it.
+const NOISE_SHAPE := 3
+const PUFF_BUDGET := [0, 2600, 5200]
 ## What the shriek found stays marked well after the cry has died away, so it
 ## is worth something beyond turning the picture red.
 const FIND_LIFE := 3.2
@@ -91,14 +89,16 @@ const SHRIEK_FALL := 0.55
 ## Doors and wardrobes it simply knows are there, faded out by this distance.
 const LANDMARK_NEAR := 12.0
 const LANDMARK_REACH := 20.0
-const LANDMARK_LEVEL := 0.12
+const LANDMARK_LEVEL := 0.16
 ## A point's radius on screen, in pixels of the rendered image. Small: the
 ## picture should be made of grains, and grains that touch are a surface.
 const POINT_PIXELS := 2.0
 ## Residual level between clicks. Low on purpose: raise it and the creature
 ## simply sees, and the whole thing stops being echolocation.
-const BASE_LEVEL := 0.008
-const BASE_CALM := 0.03
+## The faintest hint that something solid is out there. Near nothing on
+## purpose: raise it and the room starts being drawn instead of clicked at.
+const PRESENCE := 0.006
+const PRESENCE_CALM := 0.016
 ## Walls, doors and swinging leaves: what an echo comes back from.
 const RAY_MASK := 1 | 8 | 64
 ## Its own hearing already knows where the lamps are humming.
@@ -159,8 +159,8 @@ var per_tick := 1
 var rays_cast := 0
 var query: PhysicsRayQueryParameters3D
 
-## Shells in flight: [origin, emit time, amplitude, reach].
-var shells: Array = []
+## The next click is its own cry, and answers three times as loudly.
+var shriek_click := false
 var shriek_hold := 0.0
 var shriek := 0.0
 var hum_clock := 0.0
@@ -341,13 +341,17 @@ func apply_quality() -> void:
 		finds.multimesh.instance_count = FIND_BUDGET[quality]
 		find_at = 0
 	per_tick = maxi(1, int(ceil(float(RAY_BUDGET[quality]) / (60.0 / CLICK_RATE))))
-	field_material.set_shader_parameter("base_level", BASE_CALM if calm else BASE_LEVEL)
-	field_material.set_shader_parameter("front_level", 0.5 if calm else 1.0)
+	field_material.set_shader_parameter("presence", PRESENCE_CALM if calm else PRESENCE)
+	# With nothing drawn from the depth buffer, the grains have to carry the
+	# room between clicks, so they keep more of themselves alight than a
+	# wavefront-lit stipple needed to.
+	wall_material.set_shader_parameter("residue", 0.40 if calm else 0.32)
+	wall_material.set_shader_parameter("flare", 1.2 if calm else 1.9)
 	field_material.set_shader_parameter("grain_amount", 0.0 if calm else 1.0)
 	field_material.set_shader_parameter("jitter_amount", 0.0 if calm else 1.0)
 	mark_material.set_shader_parameter("gain", 1.8 if calm else 1.0)
 	# The cloud carries most of the picture now that the clicks are slow.
-	wall_material.set_shader_parameter("gain", 0.95)
+	wall_material.set_shader_parameter("gain", 1.15)
 	body_material.set_shader_parameter("gain", 1.6)
 	puff_material.set_shader_parameter("gain", 1.0)
 	find_material.set_shader_parameter("gain", 1.35)
@@ -380,7 +384,8 @@ func advance(delta: float, hunting: bool) -> void:
 	cast_pending()
 	push_uniforms()
 
-## One click: a shell leaves its head and a budget of rays goes with it.
+## One click: a front leaves its head and a budget of rays goes with it, and
+## every ray that comes back becomes a grain stamped with that front's time.
 func click(hunting: bool) -> void:
 	clicks += 1
 	var breath := 1.0 if calm else 1.0 + sin(clock * TAU * BREATH_RATE) * BREATH_DEPTH
@@ -390,9 +395,9 @@ func click(hunting: bool) -> void:
 	next_click = clock + interval
 	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
 	var reach: float = REACH
-	shells.push_back([from, clock, rng.randf_range(SWEEP_MIN, 1.0), reach])
-	while shells.size() > SWEEPS: shells.pop_front()
-	var budget: int = RAY_BUDGET[quality]
+	# Its own cry is one enormous click: everything answers at once.
+	var budget: int = RAY_BUDGET[quality] * (3 if shriek_click else 1)
+	shriek_click = false
 	if budget > 0:
 		# Whatever is left of the previous click is dropped: the reading is
 		# always the newest one, and the cost per tick stays bounded.
@@ -520,7 +525,35 @@ func bloom_contacts() -> void:
 		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud))
 		# The further the sound travelled, the vaguer the place it hangs in.
 		radius *= 1.0 + mark.get("blur", 0.0) * 1.6
-		scatter(puffs, mark.at, radius, count, 0.0, 0.35 + 0.65 * loud, clock - (seconds - mark.time))
+		var when: float = clock - (seconds - mark.time)
+		scatter(puffs, mark.at, radius, count, 0.0, 0.35 + 0.65 * loud, when)
+		shape_of_noise(mark, when)
+
+## A noise made close by does not just say "over there": it comes off a body,
+## and the body's shape comes back with it. Inside the puff, whoever made the
+## sound is drawn densely in grains. Only for a noise heard from close, where
+## the exact spot is already part of what the machine in charge sent, so this
+## reveals a shape and never a position the creature had not earned.
+func shape_of_noise(mark: Dictionary, when: float) -> void:
+	if float(mark.get("blur", 1.0)) > 0.01: return
+	var point: Vector3 = mark.point
+	var maker: Node3D = null
+	for body in level.survivors():
+		if not is_instance_valid(body) or not level.survivor_active(body): continue
+		if body.global_position.distance_to(point) > 1.4: continue
+		maker = body
+		break
+	if maker == null: return
+	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
+	var shape := PackedVector3Array()
+	BODY.points(maker, from, shape)
+	# Two or three grains per sample, jittered, so the figure reads as a dense
+	# cloud of its own rather than a row of dots.
+	for i in shape.size():
+		var surface: Vector3 = shape[i]
+		for extra in NOISE_SHAPE:
+			var grain := surface + Vector3(rng.randfn(0.0, 0.022), rng.randfn(0.0, 0.022), rng.randfn(0.0, 0.022))
+			write(puffs, grain, grain.distance_to(point), 1.0, 1.0, when)
 
 # --- Uniforms -----------------------------------------------------------------------
 
@@ -530,19 +563,6 @@ func push_uniforms() -> void:
 	var span: float = minf(MEMORY, float(maxi(wall_shown, 1)) / maxf(write_rate, 1.0))
 	wall_material.set_shader_parameter("age_limit", span)
 	body_material.set_shader_parameter("age_limit", BODY_FADE)
-	var shell_points := PackedVector4Array()
-	var shell_power := PackedVector4Array()
-	for i in SWEEPS:
-		if i < shells.size():
-			var shell: Array = shells[shells.size() - 1 - i]
-			shell_points.append(Vector4(shell[0].x, shell[0].y, shell[0].z, shell[1]))
-			shell_power.append(Vector4(shell[2], shell[3], 0.0, 0.0))
-		else:
-			shell_points.append(Vector4.ZERO)
-			shell_power.append(Vector4.ZERO)
-	field_material.set_shader_parameter("sweep_count", mini(shells.size(), SWEEPS))
-	field_material.set_shader_parameter("sweeps", shell_points)
-	field_material.set_shader_parameter("sweep_power", shell_power)
 	puff_material.set_shader_parameter("age_limit", PUFF_LIFE)
 	find_material.set_shader_parameter("age_limit", FIND_LIFE)
 	field_material.set_shader_parameter("glare", torch_glare())
@@ -579,9 +599,8 @@ func torch_glare() -> Vector3:
 	var near := clampf(1.0 - local.length() / 45.0, 0.0, 1.0)
 	return Vector3(aim.x, aim.y, near)
 
-## It shrieked: the reading floods red, and one enormous shell goes out with it.
+## It shrieked: the reading floods red and it clicks at once, hard.
 func flash_shriek() -> void:
 	shriek_hold = SHRIEK_HOLD
-	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
-	shells.push_back([from, clock, 2.0, REACH])
-	while shells.size() > SWEEPS: shells.pop_front()
+	shriek_click = true
+	next_click = clock

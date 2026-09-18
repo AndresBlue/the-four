@@ -23,6 +23,16 @@ func check(title: String, passed: bool) -> void:
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
+## Waits for the next click. At two a second with its jitter and its breathing,
+## an interval can run past three quarters of a second, so counting frames is
+## how a test becomes flaky.
+func click_passes(echo) -> void:
+	var seen: int = echo.clicks
+	var ticks := 0
+	while echo.clicks == seen and ticks < 180:
+		ticks += 1
+		await physics_frame
+
 ## Which room of the floor is farthest from this one along the map.
 func far_room(from: int) -> Dictionary:
 	var spans: Array = GENERATOR.distance_map(level.manifest.adjacency, from)
@@ -127,10 +137,18 @@ func run() -> void:
 	await frames(4)
 	var far_mark: Dictionary = creature.driver.heard[0] if not creature.driver.heard.is_empty() else {}
 	check("Lejos se pinta por dónde llega, no dónde está", not far_mark.is_empty() and far_mark.blur == 1.0 and far_mark.at.distance_to(far_mark.apparent) < 0.01)
-	# A heard noise leaves a puff of grains hanging where it was heard. The
-	# puffs bloom on a click, so give it one.
-	await frames(45)
-	check("El ruido se materializa como una nube de puntos", echo.puffs.multimesh.instance_count > 0 and echo.puff_at > 0)
+	# A heard noise leaves a puff of grains hanging where it was heard, and a
+	# noise made close by brings the shape of whoever made it with it. Puffs
+	# bloom on a click, so wait for one instead of counting frames.
+	creature.driver.heard.clear()
+	level.player.global_position = near_point
+	await frames(4)
+	var before_puff: int = echo.puff_at
+	level.on_noise(near_point, 12.0, NOISE.Kind.SLAM)
+	await click_passes(echo)
+	var grains: int = echo.puff_at - before_puff
+	check("El ruido se materializa como una nube de puntos", echo.puffs.multimesh.instance_count > 0 and grains > 0)
+	check("Y un ruido cercano trae la forma de quien lo hizo", grains > echo.PUFF_POINTS[echo.quality] * 2)
 	await frames(int(echo.CONTACT_LIFE * 60) + 20)
 	var stale: bool = creature.driver.heard.any(func(mark): return Time.get_ticks_msec() / 1000.0 - mark.time > echo.CONTACT_LIFE + 0.1)
 	check("Los contactos caducan", not stale)
@@ -187,14 +205,16 @@ func run() -> void:
 	level.settings.set_value("reduced", true)
 	level.apply_settings()
 	await frames(10)
-	var quiet_base: float = echo.field_material.get_shader_parameter("base_level")
 	check("Efectos reducidos quitan temblor y grano", echo.field_material.get_shader_parameter("jitter_amount") == 0.0 and echo.field_material.get_shader_parameter("grain_amount") == 0.0)
-	check("Pero no apagan la imagen", quiet_base >= echo.BASE_LEVEL and echo.walls.multimesh.instance_count > 0)
+	# Reduced calms the reading; it must never leave the hunter a black screen,
+	# and with the grains carrying every shape they are what must stay on.
+	var quiet_grain: float = echo.wall_material.get_shader_parameter("residue")
+	check("Pero no apagan la imagen", quiet_grain >= 0.3 and echo.walls.multimesh.instance_count > 0 and echo.RAY_BUDGET[echo.quality] > 0)
 	level.settings.set_value("reduced", false)
 	level.settings.set_value("quality", 0)
 	level.apply_settings()
 	await frames(20)
-	check("Calidad 0 apaga la nube y deja el campo", echo.walls.multimesh.instance_count == 0 and echo.RAY_BUDGET[echo.quality] == 0 and is_instance_valid(echo.field))
+	check("Calidad 0 apaga las nubes y deja la oscuridad", echo.walls.multimesh.instance_count == 0 and echo.RAY_BUDGET[echo.quality] == 0 and is_instance_valid(echo.field))
 	level.settings.set_value("quality", 1)
 	level.apply_settings()
 	await frames(10)
