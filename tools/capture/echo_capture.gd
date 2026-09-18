@@ -68,6 +68,8 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	await level.take_locust(81)
+	# Unattended: a stray click on the window must not strike the survivor.
+	level.locust.driver.set_process_unhandled_input(false)
 	level.settings.values.quality = 2
 	level.apply_settings()
 	var echo = level.locust.driver.echo

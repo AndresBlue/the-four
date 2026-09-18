@@ -123,15 +123,19 @@ const INTEREST_GRAINS := 2
 const FRAME_POINTS := [0, 7000, 14000]
 const FRAME_MEMORY := 5.0
 const FRAME_PIXELS := 2.6
-## Samples on a doorway: up the end of each wall, round the frame on both
-## faces, along the soffit, and across the opening when a door shuts it.
-const REVEAL_SAMPLES := 12
-const BAND_SAMPLES := 8
-const PANEL_ACROSS := 5
-const PANEL_UP := 8
-## Samples on the front of a wardrobe, which is a block, not an outline.
-const WARDROBE_ACROSS := 8
-const WARDROBE_UP := 14
+## Aimed spots on a doorway per click: up the end of each wall, on the strip
+## of wall round the frame (each side, each face), under the soffit and on the
+## band above it (each face), and across the opening when a door shuts it.
+## They are drawn at random over each surface every click, never from a fixed
+## grid: a grid hit click after click piles its grains into neat clumps that
+## read as a matrix of big dots instead of a lit surface.
+const REVEAL_SPOTS := 24
+const BAND_SPOTS := 12
+const SOFFIT_SPOTS := 8
+const HEADER_SPOTS := 8
+const PANEL_SPOTS := 40
+## Aimed spots on the front of a wardrobe, which is a block, not an outline.
+const WARDROBE_SPOTS := 112
 ## Its own hearing already knows where the lamps are humming.
 const HUM_LEVEL := 0.13
 
@@ -338,9 +342,9 @@ func build_landmarks() -> void:
 			for side in [-1.0, 1.0]:
 				var jamb: Vector3 = door.doorway + across * side + depth
 				for i in JAMB_GRAINS:
-					places.append(jamb + Vector3(0, lerpf(0.06, DOORWAY_HIGH, float(i) / float(JAMB_GRAINS - 1)), 0))
+					places.append(jamb + Vector3(0, lerpf(0.06, DOORWAY_HIGH, rng.randf()), 0))
 			for i in LINTEL_GRAINS:
-				var over := lerpf(-1.0, 1.0, float(i) / float(LINTEL_GRAINS - 1))
+				var over := lerpf(-1.0, 1.0, rng.randf())
 				places.append(door.doorway + across * over + depth + Vector3(0, DOORWAY_HIGH + 0.04, 0))
 	for hide in level.hotel.hides:
 		# On the front of the wardrobe (hiding_place.gd: HINGE.z, WIDTH, HEIGHT),
@@ -350,9 +354,9 @@ func build_landmarks() -> void:
 		var half: float = HIDE.WIDTH * 0.5
 		for side in [-1.0, 1.0]:
 			for i in JAMB_GRAINS:
-				places.append(hide.global_position + frame * Vector3(side * half, lerpf(0.08, HIDE.HEIGHT - 0.04, float(i) / float(JAMB_GRAINS - 1)), front))
+				places.append(hide.global_position + frame * Vector3(side * half, lerpf(0.08, HIDE.HEIGHT - 0.04, rng.randf()), front))
 		for i in LINTEL_GRAINS:
-			var over := lerpf(-half, half, float(i) / float(LINTEL_GRAINS - 1))
+			var over := lerpf(-half, half, rng.randf())
 			for high in [0.08, HIDE.HEIGHT - 0.04]:
 				places.append(hide.global_position + frame * Vector3(over, high, front))
 	var multi: MultiMesh = marks.multimesh
@@ -371,52 +375,50 @@ func build_landmarks() -> void:
 func build_reflectors() -> void:
 	reflectors.clear()
 	if not is_instance_valid(level.hotel): return
+	var up := Vector3(0, 1, 0)
 	for door in level.hotel.doors:
 		var turn := Basis(Vector3.UP, door.closed_rotation)
 		var across: Vector3 = turn.x
 		var through: Vector3 = turn.z
 		var edge: float = FLOOR.PORTAL * 0.5
 		var base: Vector3 = door.doorway
-		var frame := PackedVector3Array()
+		var tall: float = DOORWAY_HIGH - 0.2
+		# Each surface is [corner, one side, the other side, spots per click].
+		var frame: Array = []
 		for side in [-1.0, 1.0]:
-			for i in REVEAL_SAMPLES:
-				var high := lerpf(0.12, DOORWAY_HIGH - 0.08, float(i) / float(REVEAL_SAMPLES - 1))
-				# The end of the wall, facing into the opening.
-				for depth in [-0.05, 0.05]:
-					frame.append(base + across * side * (edge + 0.01) + through * depth + Vector3(0, high, 0))
-				# The band of wall round the opening, on both faces.
-				for face in [-1.0, 1.0]:
-					frame.append(base + across * side * (edge + 0.12) + through * (0.1 * face) + Vector3(0, high, 0))
-		for i in BAND_SAMPLES:
-			var over := lerpf(-edge, edge, float(i) / float(BAND_SAMPLES - 1))
-			# Under the header, and the band above the opening on both faces.
-			frame.append(base + across * over + Vector3(0, DOORWAY_HIGH + 0.04, 0))
+			# The end of the wall, facing into the opening.
+			frame.append([base + across * side * (edge + 0.01) - through * 0.06 + up * 0.12, through * 0.12, up * tall, REVEAL_SPOTS])
+			# The strip of wall round the opening, on both faces.
 			for face in [-1.0, 1.0]:
-				frame.append(base + across * over + through * (0.1 * face) + Vector3(0, DOORWAY_HIGH + 0.16, 0))
+				frame.append([base + across * side * (edge + 0.02) + through * (0.1 * face) + up * 0.12, across * side * 0.22, up * tall, BAND_SPOTS])
+		# Under the header, and the band above the opening on both faces.
+		frame.append([base - across * edge - through * 0.06 + up * (DOORWAY_HIGH + 0.04), across * (2.0 * edge), through * 0.12, SOFFIT_SPOTS])
+		for face in [-1.0, 1.0]:
+			frame.append([base - across * (edge + 0.1) + through * (0.1 * face) + up * (DOORWAY_HIGH + 0.06), across * (2.0 * edge + 0.2), up * 0.24, HEADER_SPOTS])
 		# Across the opening, where a shut door stands.
-		var panel := PackedVector3Array()
-		for i in PANEL_ACROSS:
-			for j in PANEL_UP:
-				var over := lerpf(-edge + 0.12, edge - 0.12, float(i) / float(PANEL_ACROSS - 1))
-				panel.append(base + across * over + Vector3(0, lerpf(0.25, DOORWAY_HIGH - 0.25, float(j) / float(PANEL_UP - 1)), 0))
+		var panel: Array = [[base - across * (edge - 0.08) + up * 0.12, across * (2.0 * edge - 0.16), up * tall, PANEL_SPOTS]]
 		reflectors.append({"node": door, "centre": base + Vector3(0, 1.3, 0), "frame": frame, "panel": panel})
 	for hide in level.hotel.hides:
 		var turn: Basis = hide.global_basis
 		var front: float = HIDE.HINGE.z + 0.03
 		var half: float = HIDE.WIDTH * 0.5 - 0.04
-		var frame := PackedVector3Array()
-		for i in WARDROBE_ACROSS:
-			for j in WARDROBE_UP:
-				var over := lerpf(-half, half, float(i) / float(WARDROBE_ACROSS - 1))
-				var high := lerpf(0.12, HIDE.HEIGHT - 0.1, float(j) / float(WARDROBE_UP - 1))
-				frame.append(hide.global_position + turn * Vector3(over, high, front))
-		reflectors.append({"node": hide, "centre": hide.global_position + turn * Vector3(0, 1.1, front), "frame": frame, "panel": PackedVector3Array()})
+		var frame: Array = [[hide.global_position + turn * Vector3(-half, 0.1, front), turn * Vector3(2.0 * half, 0, 0), turn * Vector3(0, HIDE.HEIGHT - 0.18, 0), WARDROBE_SPOTS]]
+		reflectors.append({"node": hide, "centre": hide.global_position + turn * Vector3(0, 1.1, front), "frame": frame, "panel": []})
 	reflector_hits.resize(reflectors.size())
 	reflector_hits.fill(0)
 
+## Fresh spots scattered over a reflector's surfaces, uniformly and anew each
+## time, so click after click the grains cover the whole face.
+func reflector_spots(surfaces: Array) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for surface in surfaces:
+		for i in int(surface[3]):
+			out.append(surface[0] + surface[1] * rng.randf() + surface[2] * rng.randf())
+	return out
+
 ## This click's aimed spots: the reflectors within reach and not behind it,
 ## nearest first, until the budget runs out. A doorway's panel only while the
-## door is shut. A hair of scatter each click so the grains fall as stipple.
+## door is shut. The spots are new every click (reflector_spots).
 func aim_reflectors(from: Vector3) -> void:
 	pending_targets = PackedVector3Array()
 	pending_owner = PackedInt32Array()
@@ -436,11 +438,11 @@ func aim_reflectors(from: Vector3) -> void:
 	near.sort_custom(func(a, b): return a[0] < b[0])
 	for entry in near:
 		var one: Dictionary = reflectors[entry[1]]
-		var spots: PackedVector3Array = one.frame
-		if "opened" in one.node and not one.node.opened: spots = spots + one.panel
+		var spots := reflector_spots(one.frame)
+		if "opened" in one.node and not one.node.opened: spots.append_array(reflector_spots(one.panel))
 		for spot in spots:
 			if pending_targets.size() >= budget: return
-			pending_targets.append(spot + Vector3(rng.randfn(0.0, 0.03), rng.randfn(0.0, 0.03), rng.randfn(0.0, 0.03)))
+			pending_targets.append(spot)
 			pending_owner.append(entry[1])
 
 ## One aimed ray. The hit if it landed on the spot it was aimed at, which means
@@ -660,7 +662,7 @@ func stamp_bodies(from: Vector3, reach: float) -> void:
 		if body.global_position.distance_to(creature.global_position) > REACH: continue
 		if not creature.sees(body): continue
 		shape.clear()
-		BODY.points(body, from, shape)
+		BODY.points(body, from, shape, rng)
 		for point in shape:
 			# Stamped with this click's own time and each grain's own distance
 			# from where it left, so the front sweeps across the body exactly as
@@ -744,7 +746,7 @@ func shape_of_noise(mark: Dictionary, when: float) -> void:
 	if maker == null: return
 	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
 	var shape := PackedVector3Array()
-	BODY.points(maker, from, shape)
+	BODY.points(maker, from, shape, rng)
 	# Two or three grains per sample, jittered, so the figure reads as a dense
 	# cloud of its own rather than a row of dots.
 	for i in shape.size():

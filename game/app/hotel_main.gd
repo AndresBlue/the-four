@@ -580,8 +580,6 @@ func capture_survivor(body: Node3D) -> void:
 func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 	execution = {"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false}
 	if is_instance_valid(locust) and locust.control != "puppet": locust.begin_execution()
-	# The Locust player sees almost nothing: it is told in words whom it caught.
-	if hunter_seat(): ui.flash("ATRAPASTE A %s" % survivor_name(seat), 2.6)
 	if seat == player.slot:
 		player.active = false
 		player.held = true
@@ -610,6 +608,8 @@ func update_execution(delta: float) -> void:
 			player.avatar.rotation.x = 0.0
 			player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
+		# The execution itself shows the hunter it caught someone; only the
+		# death, which the reading cannot show, is put into words.
 		if hunter_seat(): ui.flash("%s HA MUERTO · QUEDAN %d" % [survivor_name(seat), survivors_left(seat)], 4.0)
 
 ## A survivor's name as the HUD shows it.
@@ -892,7 +892,8 @@ func _process(delta: float) -> void:
 	update_menu_scene(delta)
 	if session.state == session.State.PLAYING: update_execution(delta)
 	elif not execution.is_empty(): execution = {}
-	camcorder.visible = session.state == session.State.PLAYING
+	# The creature records nothing: its seat has no camcorder on screen.
+	camcorder.visible = session.state == session.State.PLAYING and not hunter_seat()
 	camcorder.marks = settings.values.osd
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return

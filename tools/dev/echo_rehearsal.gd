@@ -15,8 +15,7 @@ extends SceneTree
 ## Controls are the hunter's own: mouse to look, WASD to move, Shift to hunt,
 ## left button to strike, right button to shriek, E for doors and wardrobes.
 ## A survivor struck down is executed, dies and walks again six seconds later
-## somewhere else; the screen says whom you caught, whom you killed and when
-## a strike found no one.
+## somewhere else; the screen only says who died and how many are left.
 ## With "-- --shots" it takes a handful of frames into evidence/ and quits
 ## instead of handing you the controls, and with "-- --strip" it tiles one
 ## click's worth of frames into a single sheet, which is the only way a still

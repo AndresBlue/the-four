@@ -200,7 +200,7 @@ func play_step(running: bool, ahead: float) -> bool:
 	step_voice = (step_voice + 1) % step_voices.size()
 	voice.stream = clip.stream
 	voice.pitch_scale = pitch
-	voice.volume_db = (-36.0 if crouched else -17.0 if running else -26.0) + (2.0 if hard_floor else 0.0)
+	voice.volume_db = (-41.0 if crouched else -22.0 if running else -31.0) + (2.0 if hard_floor else 0.0)
 	voice.play(clip.impact - lead)
 	step_impact_frame = Engine.get_physics_frames() + ahead * Engine.physics_ticks_per_second
 	return true

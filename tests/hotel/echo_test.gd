@@ -226,7 +226,7 @@ func run() -> void:
 	var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
 	var head: Vector3 = creature.global_position + Vector3(0, creature.driver.EYE.y, 0)
 	var seen_spot := Vector3.INF
-	for aim in echo.reflectors[slot].frame:
+	for aim in echo.reflector_spots(echo.reflectors[slot].frame):
 		if not echo.reflect(space, head, aim).is_empty():
 			seen_spot = aim
 			break
@@ -248,9 +248,13 @@ func run() -> void:
 	check("Un marco tras una pared no devuelve nada", seen_spot != Vector3.INF and blocked)
 	check("Los rayos a puertas y armarios cuentan en el mismo presupuesto", echo.per_tick * (60.0 / echo.CLICK_RATE) >= echo.RAY_BUDGET[echo.quality] + echo.INTEREST_BUDGET[echo.quality])
 	# A wardrobe is a block, and a shut door a panel, not only an outline.
-	var hide_spots: int = echo.reflectors[level.hotel.doors.size()].frame.size() if level.hotel.hides.size() > 0 else 0
-	check("Un armario se apunta como bloque entero", hide_spots == echo.WARDROBE_ACROSS * echo.WARDROBE_UP)
-	check("Una puerta cerrada se apunta también en su hoja", echo.reflectors[0].panel.size() == echo.PANEL_ACROSS * echo.PANEL_UP)
+	var hide_spots: int = echo.reflector_spots(echo.reflectors[level.hotel.doors.size()].frame).size() if level.hotel.hides.size() > 0 else 0
+	check("Un armario se apunta como bloque entero", hide_spots == echo.WARDROBE_SPOTS)
+	check("Una puerta cerrada se apunta también en su hoja", echo.reflector_spots(echo.reflectors[0].panel).size() == echo.PANEL_SPOTS)
+	# Stipple, not a matrix: two clicks never aim at the same spots.
+	var first: PackedVector3Array = echo.reflector_spots(echo.reflectors[0].frame)
+	var second: PackedVector3Array = echo.reflector_spots(echo.reflectors[0].frame)
+	check("Los puntos de un marco cambian de un clic a otro", first.size() == second.size() and first[0].distance_to(second[0]) > 0.001 and first[first.size() - 1].distance_to(second[second.size() - 1]) > 0.001)
 
 	# --- Landmarks ----------------------------------------------------------------
 	# Both faces of a door reveal: two jambs and a lintel each. A wardrobe gets

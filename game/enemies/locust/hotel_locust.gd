@@ -157,7 +157,9 @@ func on_footfall(point: Vector3, strength: float) -> void:
 	# Heard directly, or from the doorway it would come through; never through walls.
 	var route: Dictionary = level.world_audio.route_source(point + Vector3.UP * 0.2, get_rid())
 	if not route.audible: return
-	level.world_audio.apply_route(footstep, route, lerpf(-4.0, 4.0, strength), "Threat", true)
+	# Its own feet, right under the hunter's ear, would wear it out: quieter still.
+	var level_db := lerpf(-9.0, -1.0, strength) - (6.0 if control == "player" else 0.0)
+	level.world_audio.apply_route(footstep, route, level_db, "Threat", true)
 	footstep.pitch_scale = rng.randf_range(0.82, 1.08)
 	footstep.play()
 

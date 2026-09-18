@@ -26,8 +26,8 @@ const SLEEVES := [
 	["rt", "rk", 0.092, 0.066],
 	["rk", "rfoot", 0.062, 0.044],
 ]
-## Rings along a sleeve and points around each ring. Half are thrown away by
-## the facing test, so a body comes back as roughly a hundred and forty points.
+## Samples per sleeve (as many as rings along times points around, drawn at
+## random over it). Half are thrown away by the facing test, so a body comes back as roughly a hundred and forty points.
 const ALONG := 4
 const AROUND := 7
 ## No rig: rings up the body, with the half-width of a person at each height.
@@ -38,14 +38,17 @@ const RINGS := [
 
 ## World points on the surface of this survivor that face `from`, appended to
 ## `out`. `from` is where the click left, not where the camera is.
-static func points(body: Node3D, from: Vector3, out: PackedVector3Array) -> void:
+## The spots are drawn afresh from `rng` every call, never a fixed pattern:
+## the same grid stamped click after click piles up into clumps that read as a
+## few big dots instead of a body.
+static func points(body: Node3D, from: Vector3, out: PackedVector3Array, rng: RandomNumberGenerator) -> void:
 	var avatar = body.avatar if "avatar" in body else null
 	if avatar != null and avatar.rig != null and not avatar.bones.is_empty():
-		if rigged(avatar, from, out): return
-	capsule(body, from, out)
+		if rigged(avatar, from, out, rng): return
+	capsule(body, from, out, rng)
 
 ## Sleeves around the bones the avatar is actually posing.
-static func rigged(avatar, from: Vector3, out: PackedVector3Array) -> bool:
+static func rigged(avatar, from: Vector3, out: PackedVector3Array, rng: RandomNumberGenerator) -> bool:
 	var rig: Skeleton3D = avatar.rig
 	var frame := rig.global_transform
 	var places := {}
@@ -61,12 +64,12 @@ static func rigged(avatar, from: Vector3, out: PackedVector3Array) -> bool:
 	places["lfoot"] = places.lk + (places.lk - places.lt)
 	places["rfoot"] = places.rk + (places.rk - places.rt)
 	for sleeve in SLEEVES:
-		sleeve_points(places[sleeve[0]], places[sleeve[1]], sleeve[2], sleeve[3], from, out)
+		sleeve_points(places[sleeve[0]], places[sleeve[1]], sleeve[2], sleeve[3], from, out, rng)
 	return true
 
 ## Points on the surface of a tapered sleeve from one bone to the next, keeping
 ## only the side that faces the listener.
-static func sleeve_points(from_point: Vector3, to_point: Vector3, near: float, far: float, listener: Vector3, out: PackedVector3Array) -> void:
+static func sleeve_points(from_point: Vector3, to_point: Vector3, near: float, far: float, listener: Vector3, out: PackedVector3Array, rng: RandomNumberGenerator) -> void:
 	var axis := to_point - from_point
 	var span := axis.length()
 	if span < 0.01: return
@@ -76,27 +79,30 @@ static func sleeve_points(from_point: Vector3, to_point: Vector3, near: float, f
 	if side.length() < 0.15: side = axis.cross(Vector3.RIGHT)
 	side = side.normalized()
 	var other := axis.cross(side).normalized()
-	for i in ALONG:
-		var along := float(i) / float(ALONG - 1)
+	for i in ALONG * AROUND:
+		var along := rng.randf()
 		var middle: Vector3 = from_point.lerp(to_point, along)
 		var radius: float = lerpf(near, far, along)
 		var towards := (listener - middle).normalized()
-		for j in AROUND:
-			var turn := TAU * float(j) / float(AROUND)
-			var outward := (side * cos(turn) + other * sin(turn))
-			# The far side of a limb sends nothing back.
-			if outward.dot(towards) <= 0.0: continue
-			out.append(middle + outward * radius)
+		var turn := rng.randf() * TAU
+		var outward := (side * cos(turn) + other * sin(turn))
+		# The far side of a limb sends nothing back.
+		if outward.dot(towards) <= 0.0: continue
+		out.append(middle + outward * radius)
 
 ## No rig: rings up the body capsule, turned with it, facing side only.
-static func capsule(body: Node3D, listener: Vector3, out: PackedVector3Array) -> void:
+static func capsule(body: Node3D, listener: Vector3, out: PackedVector3Array, rng: RandomNumberGenerator) -> void:
 	var frame := body.global_transform
 	var squat: float = 0.59 if ("crouched" in body and body.crouched) else 1.0
-	for ring in RINGS:
-		var middle: Vector3 = frame * Vector3(0, ring[0] * squat, 0)
+	for i in RINGS.size() * AROUND:
+		# Anywhere up the profile, the width taken between the two rings.
+		var at := rng.randf() * float(RINGS.size() - 1)
+		var below: Array = RINGS[int(at)]
+		var above: Array = RINGS[mini(int(at) + 1, RINGS.size() - 1)]
+		var weight := at - floorf(at)
+		var middle: Vector3 = frame * Vector3(0, lerpf(below[0], above[0], weight) * squat, 0)
 		var towards := (listener - middle).normalized()
-		for i in AROUND:
-			var turn := TAU * float(i) / float(AROUND)
-			var outward := frame.basis * Vector3(cos(turn), 0, sin(turn))
-			if outward.normalized().dot(towards) <= 0.0: continue
-			out.append(middle + outward * ring[1])
+		var turn := rng.randf() * TAU
+		var outward := frame.basis * Vector3(cos(turn), 0, sin(turn))
+		if outward.normalized().dot(towards) <= 0.0: continue
+		out.append(middle + outward * lerpf(below[1], above[1], weight))

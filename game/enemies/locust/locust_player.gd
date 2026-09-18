@@ -8,7 +8,7 @@ extends Node
 ## Controls: move and look as usual; sprint hunts at full speed while its
 ## hunting stamina lasts; left button strikes; right button shrieks; interact
 ## opens doors and pulls wardrobes open. Noises survivors make within its
-## hearing show on screen as brief rings (the creature's long-range hearing).
+## hearing show in its acoustic view as clouds of grains (echo_view.gd).
 const WALK_SPEED := 2.8
 const HUNT_SPEED := 6.4
 ## Hunting lasts long and comes back quickly: a survivor cannot simply outrun
@@ -134,11 +134,7 @@ func drive(delta: float) -> void:
 				if creature.mode == creature.Mode.WINDUP: creature.set_mode(creature.Mode.RECOVER)
 		creature.Mode.RECOVER:
 			creature.velocity = Vector3.ZERO
-			if creature.state_time >= creature.RECOVER_TIME:
-				# A hit would have turned this into an execution by now (the host
-				# answers well inside the recovery), so this one found no one.
-				level.ui.flash("GOLPE FALLIDO", 1.2)
-				creature.set_mode(creature.Mode.CHASE if hunting else creature.Mode.PATROL)
+			if creature.state_time >= creature.RECOVER_TIME: creature.set_mode(creature.Mode.CHASE if hunting else creature.Mode.PATROL)
 		_:
 			var body_basis: Basis = creature.global_basis
 			var direction := (body_basis * Vector3(axis.x, 0, axis.y)).normalized()
@@ -233,16 +229,8 @@ func hear_noise(point: Vector3, radius: float) -> void:
 	hear_contact(point, point, creature.global_position.distance_to(point), clampf(radius / 16.0, 0.25, 1.0), 0, 0.0)
 
 func update_hud() -> void:
-	var ui = level.ui
-	var camcorder = level.camcorder
-	camcorder.set_stamina(stamina / 100.0, stamina <= 0.0)
-	if creature.grace > 0.0:
-		ui.hint.text = "LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace))
-	elif creature.mode == creature.Mode.WARDROBE:
-		ui.hint.text = "ABRIENDO EL ARMARIO"
-	elif creature.mode == creature.Mode.EXECUTE:
-		ui.hint.text = "EJECUTANDO"
-	else:
-		ui.hint.text = "CLIC IZQ. ATACAR · CLIC DER. CHILLAR · %s CAZAR · %s PUERTAS Y ARMARIOS" % [level.settings.key_name("sprint"), level.settings.key_name("interact")]
+	# A clear view: no controls, no camcorder (it records nothing). Only the
+	# count to the start of the hunt, while it cannot move yet.
+	level.ui.hint.text = "LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace)) if creature.grace > 0.0 else ""
 	var now := Time.get_ticks_msec() / 1000.0
 	revealed = revealed.filter(func(entry): return now - entry.time < 1.2)

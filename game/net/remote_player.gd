@@ -163,5 +163,5 @@ func update_steps(previous: Vector3, _delta: float) -> void:
 	if not route.audible: return
 	step_voice.stream = load(clip[0])
 	# Kept under the creature's own noises: a teammate running is not a threat.
-	level.world_audio.apply_route(step_voice, route, (-24.0 if crouched else -8.0 if running else -14.0) + (2.0 if hard else 0.0), "Effects")
+	level.world_audio.apply_route(step_voice, route, (-29.0 if crouched else -13.0 if running else -19.0) + (2.0 if hard else 0.0), "Effects")
 	step_voice.play(maxf(0.0, clip[1] - 0.02))

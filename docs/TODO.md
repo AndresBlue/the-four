@@ -23,6 +23,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Navegación derivada de colisiones; accesos físicos a escondites.
 - [ ] Completar veinte recorridos manuales y cinco partidas de exploración para aceptar duración y orientación. No sustituirlos por el lote automático.
 - [ ] Ajustar tamaño y referencias a partir de esas partidas; meta de 25–40 min todavía no validada.
+- [ ] **Individual demasiado corto y tranquilo (pruebas con amigos, septiembre de 2026).** La mayoría encontró la salida de forma consistente y casi sin tener que huir de la criatura: desde 1 min 30 s, con una media de 5 a 8 min, muy lejos de la meta de 25–40 min. Hay que revisar a la vez lo fácil que es orientarse hasta la salida (tamaño del piso, referencias, colocación de la salida) y la presión de The Locust (cuánto patrulla cerca, lo pronto que encuentra al jugador, eventos del director), y volver a medir con partidas humanas.
 
 ## P2 — Atmósfera analógica
 
@@ -139,6 +140,8 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Prueba en `verify.ps1` (`hotel/echo_test`), comprobación de shaders con ventana y capturas de evidencia.
 - [ ] Ajuste humano de la imagen: término base, separación de los frentes, legibilidad en salones grandes (ver `docs/VISION_LOCUST.md`).
 - [ ] Probar la vista en el lanzador `compatibility`; hoy solo está validada en Forward+.
+- [ ] La animación de la ejecución vista desde el cazador todavía es floja: es lo único que le dice que atrapó a alguien (ya no hay aviso en texto, solo el de la muerte).
+- [ ] El cazador ya no tiene medidor de resistencia en pantalla (se quitó la interfaz de la videocámara); falta una señal propia de la criatura, por ejemplo su respiración.
 
 ## P5 — Campaña
 
