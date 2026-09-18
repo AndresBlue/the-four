@@ -1,10 +1,15 @@
 shader_type spatial;
-// What the creature remembers. Each click fires rays from its head and every
-// hit becomes a point in a world-space ring buffer, so the shape of a room
-// stays registered where it really is and is drawn at whatever framerate the
-// machine manages: the reading refreshes on the pulse, the picture never
-// stutters. One shader serves three clouds (architecture, bodies, landmarks)
-// which differ only by uniforms and draw priority.
+// Everything the creature reads as grains in the world. Each click fires rays
+// from its head and every hit becomes a point in a world-space ring buffer, so
+// the shape of a room stays registered where it really is and is drawn at
+// whatever framerate the machine manages: the reading refreshes on the pulse,
+// the picture never stutters.
+//
+// One shader serves five clouds, which differ only by uniforms and priority:
+// architecture, the surface of a body, the puff of grains a heard noise leaves
+// hanging where it was heard, what the shriek found, and the landmarks it
+// simply knows. A puff is the same machinery with a slow wave and a long fade:
+// its grains bloom outward from the noise instead of being swept by a click.
 // depth_test_disabled on purpose: the depth test is done by hand in the
 // fragment, softly, so remembered walls can whisper through a wall while a
 // body (through = 0) is cut off by it completely.
@@ -29,6 +34,15 @@ uniform float steady_fade_from = 12.0;
 uniform float steady_fade_to = 20.0;
 uniform float shriek : hint_range(0.0, 1.0) = 0.0;
 uniform float gain : hint_range(0.0, 4.0) = 1.0;
+// What the grains of this cloud are made of: kind 0 and kind 1 (see below).
+uniform vec3 tone_cold : source_color = vec3(0.70, 0.75, 0.78);
+uniform vec3 tone_hot : source_color = vec3(1.0, 0.94, 0.88);
+uniform vec3 shriek_cold : source_color = vec3(1.3, 0.06, 0.03);
+uniform vec3 shriek_hot : source_color = vec3(1.4, 0.34, 0.22);
+// How much of a grain's light is there between fronts, and how much the front
+// itself brings. A puff wants a body of its own; a remembered wall does not.
+uniform float residue : hint_range(0.0, 2.0) = 0.11;
+uniform float flare : hint_range(0.0, 4.0) = 1.8;
 uniform sampler2D depth_map : hint_depth_texture, repeat_disable, filter_nearest;
 
 // INSTANCE_CUSTOM only exists in vertex(): carried over uninterpolated.
@@ -47,11 +61,12 @@ void vertex() {
 	float flash = exp(-gap * gap / 2.5);
 	float since = max(age - echo.y / wave_speed, 0.0);
 	float memory = clamp(1.0 - since / max(age_limit, 0.05), 0.0, 1.0);
-	// Almost all of a point's light comes from the moment the front passes it.
-	// The residue has to stay tiny: in a small room every remembered point
+	// Almost all of a remembered point's light comes from the moment the front
+	// passes it. That residue has to stay tiny: in a small room every point
 	// lands on the same few square metres, and a generous residue adds up into
-	// a flat lit panel instead of a stipple.
-	float live = (0.11 + 1.8 * flash) * memory * echo.w;
+	// a flat lit panel instead of a stipple. A puff sets it high instead, so it
+	// hangs in the air after its own little front has gone by.
+	float live = (residue + flare * flash) * memory * echo.w;
 
 	// Screen-constant billboard: take the instance origin into view space and
 	// add the quad corners there, so nothing has to be turned to face anything.
@@ -82,12 +97,9 @@ void fragment() {
 			weight *= mix(1.0, through, smoothstep(0.15, 0.9, from_eye - wall));
 		}
 	}
-	// Flesh reads brighter and warmer than plaster, and its own shriek turns
-	// the whole reading red with a hot core on anything alive.
-	vec3 stone = vec3(0.70, 0.75, 0.78);
-	vec3 flesh = vec3(1.0, 0.94, 0.88);
-	vec3 tone = mix(stone, flesh, echo.z);
-	tone = mix(tone, mix(vec3(1.3, 0.06, 0.03), vec3(1.4, 0.34, 0.22), echo.z), shriek);
+	// echo.z picks between this cloud's two tones, and the shriek swaps both.
+	vec3 tone = mix(tone_cold, tone_hot, echo.z);
+	tone = mix(tone, mix(shriek_cold, shriek_hot, echo.z), shriek);
 	ALBEDO = tone;
 	ALPHA = clamp(disc * weight, 0.0, 1.0);
 }

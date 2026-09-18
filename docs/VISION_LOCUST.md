@@ -6,9 +6,9 @@ Código: `game/enemies/locust/echo_view.gd` (el controlador), `echo_body.gd` (si
 
 ## El pulso
 
-Chasquea **dos veces por segundo**. Lento a propósito: a quince por segundo la imagen sale abarrotada, casi psicodélica, y a dos cada barrido es un acontecimiento que se espera. Lo que llena el medio segundo entre uno y otro es la memoria del anterior apagándose.
+Chasquea **dos veces por segundo**, y **no se acelera al correr**: una lectura que se apretara al echar a correr se leería como los propios pasos volviendo, que no es lo que esto es. Lento a propósito: a quince por segundo la imagen sale abarrotada, casi psicodélica, y a dos cada barrido es un acontecimiento que se espera. Lo que llena el medio segundo entre uno y otro es la memoria del anterior apagándose.
 
-Cada clic lanza su presupuesto de rayos desde la cabeza de la criatura y siembra puntos en el mundo. La cadencia no es un metrónomo: cada intervalo se estira o se aprieta al azar (±22 %), respira lentamente por debajo, y se aprieta mientras caza. La onda viaja a **16 m/s**, lo bastante despacio para verla cruzar una sala y volver: un frente tarda unos dos segundos y medio en llegar al límite de su oído, así que hay cinco o seis en vuelo a radios distintos.
+Cada clic lanza su presupuesto de rayos desde la cabeza de la criatura y siembra puntos en el mundo. La cadencia no es un metrónomo: cada intervalo se estira o se aprieta al azar (±22 %) y respira lentamente por debajo. La onda viaja a **16 m/s**, lo bastante despacio para verla cruzar una sala y volver: un frente tarda unos dos segundos y medio en llegar al límite de su oído, así que hay cinco o seis en vuelo a radios distintos.
 
 **Una captura fija no puede mostrar esto.** Medio segundo de cada ciclo la sala está barrida por el frente y el resto está a oscuras, así que un fotograma la pilla encendida o apagada, y ninguna de las dos es lo que se ve. Para eso está la hoja de contactos: `./tools/godot.ps1 rehearsal` con `-- --strip` reparte un clic entero en ocho fotogramas (`evidence/rehearsal_pulse.png`).
 
@@ -23,8 +23,10 @@ Se dibujan en este orden, todas por encima de los transparentes del hotel (que e
 | 120 | **Campo de eco** | el búfer de profundidad real | no |
 | 121 | **Hitos** | las puertas y armarios del piso | sí, tenue |
 | 122 | **Memoria** | rayos de cada clic, acumulados | sí, muy atenuada, **solo arquitectura** |
-| 123 | **Cuerpos** | la pose del superviviente | **no, nunca** |
-| 124 | **Su cuerpo** | sus propias mallas | — |
+| 123 | **Nubes de sonido** | cada ruido que oye | sí: es sonido |
+| 124 | **Lo que halló el chillido** | los supervivientes que encontró | sí, y dura |
+| 125 | **Cuerpos** | la superficie del superviviente | **no, nunca** |
+| 126 | **Su cuerpo** | sus propias mallas | — |
 
 ### Campo de eco
 
@@ -34,7 +36,7 @@ Un quad a pantalla completa hijo de la cámara devuelve `ALPHA = 1.0`: tapa la i
 - una banda por cada frente en vuelo, con caída **asimétrica** (ajustada delante, cola corta detrás). Esa asimetría es lo que hace que sea un eco y no una cámara de profundidad;
 - **respuesta por incidencia**: una superficie de frente al clic devuelve el eco de vuelta, una vista de canto lo dispersa. Por eso lo que mira es lo que lee, y el suelo y el techo que se alejan bajo sus pies quedan oscuros;
 - bordes por **curvatura** de la profundidad, no por pendiente: una pared plana devuelve cero por muy inclinada que se aleje, y solo contestan las aristas y las siluetas. Midiendo la pendiente se encendía cada muro en diagonal y la sala entera quedaba hecha de paneles claros;
-- los anillos de los contactos de sonido pintados sobre esas mismas superficies. **Aquí el ruido y la geometría se vuelven una sola imagen.**
+El sonido **no** se pinta aquí. Un anillo extendiéndose por todas las superficies alrededor de un ruido levanta la sala entera y se lee como adorno; un ruido oído ahora cuelga en el aire como su propia nube de granos, que se puede mirar y rodear.
 
 ### Memoria y cuerpos
 
@@ -46,9 +48,17 @@ Casi toda la luz de un punto viene del instante en que el frente lo cruza; lo qu
 
 La memoria de los muros se intuye a través de los muros, atenuada, con una comparación de profundidad suave hecha a mano en el fragmento. Un cuerpo usa la misma comparación con atenuación cero, así que una pared lo corta por completo.
 
+### Nubes de sonido
+
+Cada ruido que el oído confirma deja **una nube de granos colgando donde se oyó**, que florece hacia fuera desde ese punto y se apaga en un par de segundos. Es la misma maquinaria de la nube de puntos con una onda lenta y un cuerpo propio, así que el grano no solo destella al pasar el frente: se queda.
+
+Un superviviente andando deja una nube por zancada, y esa hilera de nubes apagándose **es el rastro**. Cuanto más fuerte y más brusco el ruido, más ancha y más densa la nube; cuanto más lejos ha viajado el sonido, más difuso el sitio donde cuelga. Los tubos fluorescentes que zumban dejan la suya, tenue, cada segundo y pico.
+
 ### Siluetas
 
-Un superviviente se muestrea de su propia pose: unos sesenta puntos interpolados a lo largo de los huesos que expone `avatar_visual.gd`, con caída a anillos sobre la cápsula para el personaje sin esqueleto. Quieto se lee nítido; corriendo se desdibuja.
+Un superviviente se muestrea de **la superficie de su cuerpo**, no de sus huesos: cada hueso es una manga cónica del grosor que le toca (pecho hondo, cuello, brazos que se afinan hacia la mano) y los granos van sobre esa manga. Recorrer las líneas de los huesos dibujaba un esqueleto colgado en el aire, que no es ni lo que parece un cuerpo ni lo que devolvería un eco.
+
+**Solo se queda la mitad que mira al que escucha:** el sonido vuelve de la superficie encarada, nunca del otro lado de un pecho. Y cada grano se sella con el instante del clic y su propia distancia al punto de donde salió, así que el frente **barre el cuerpo** igual que barre las paredes, en vez de encenderse la figura entera de golpe. Un cuerpo vivo conserva algo de retorno entre frentes, para que siga siendo localizable en el medio segundo en que la sala se queda callada.
 
 **Solo cuando `creature.sees(body)`.** Esa función ya aplica su cono de visión, su línea de vista y la regla del armario (`ajar()`), así que la imagen no puede mostrar más de lo que su propia percepción concede. Es la regla que protege el diseño, y hay una prueba dedicada a ella.
 
@@ -72,7 +82,11 @@ Dos cosas no necesitan red: las poses de los supervivientes ya están en la máq
 
 ## El chillido
 
-Su propio grito inunda la lectura de rojo durante unos cuatro segundos y suelta un frente enorme. Los supervivientes que encuentra se archivan como contactos brillantes, que pintan anillos sobre las superficies a su alrededor **incluso a través de las paredes**: es la traducción correcta de «el chillido escucha». El intercambio sigue siendo el mismo de antes: delata dónde está, y a cambio da información y caza libre.
+Su propio grito inunda la lectura de rojo durante unos cuatro segundos y suelta un frente enorme. Pero el rojo no es lo que vale: lo que vale es que **deja marcados** a los que encuentra con una nube densa sobre cada uno, que sigue ahí **más de tres segundos después de que el grito se haya apagado**, también a través de las paredes.
+
+**Solo encuentra lo que se mueve y está a la vista.** Un superviviente quieto, o metido en un armario, no le devuelve nada. Se mide por el terreno que cubre entre dos lecturas del propio chillido (cinco por segundo), no por un campo de velocidad: lo que importa es si se movió. Quedarse helado al oír el grito es la respuesta, y cuesta segundos preciosos.
+
+El intercambio sigue siendo el mismo: delata dónde está, y a cambio da información y caza libre.
 
 El rojo hay que empujarlo mucho más allá de lo que parece razonable sobre el papel, porque el tonemapper AgX le quita buena parte del croma a un color saturado.
 

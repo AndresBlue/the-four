@@ -73,6 +73,7 @@ func is_survivor(seat: int) -> bool:
 func end() -> void:
 	wardrobe_jobs.clear()
 	shriek_left = 0.0
+	shriek_seen.clear()
 	for body in bodies.values():
 		if is_instance_valid(body): body.queue_free()
 	bodies.clear()
@@ -450,6 +451,7 @@ func request_force(index: int) -> void:
 
 ## The Locust player shrieked: the host listens for it for a few seconds.
 func locust_shriek() -> void:
+	shriek_seen.clear()
 	if in_charge(): shriek_left = SHRIEK_TIME
 	else: request_shriek.rpc_id(1)
 
@@ -457,7 +459,17 @@ func locust_shriek() -> void:
 func request_shriek() -> void:
 	if net.is_host and versus() and multiplayer.get_remote_sender_id() == locust_peer(): shriek_left = SHRIEK_TIME
 
-## While the shriek lasts, where the survivors within earshot are.
+## Metres per second below which a survivor is standing still enough that the
+## shriek finds nothing to come back from. Holding still is the counter to
+## being shrieked at. Measured as ground actually covered between two of its
+## readings, not from a velocity field: what matters is whether they moved.
+const SHRIEK_STIR := 0.45
+## Where each survivor was at the shriek's last reading.
+var shriek_seen := {}
+
+## While the shriek lasts, where the survivors within earshot are. It only
+## finds what is moving and out in the open: someone frozen, or shut in a
+## wardrobe, gives it nothing.
 func update_shriek(delta: float) -> void:
 	if shriek_left <= 0.0: return
 	shriek_left -= delta
@@ -469,8 +481,16 @@ func update_shriek(delta: float) -> void:
 	var points := PackedVector3Array()
 	for body in level.survivors():
 		if not level.survivor_active(body): continue
-		if body.global_position.distance_to(creature.global_position) > SHRIEK_RANGE: continue
-		points.append(body.global_position + Vector3(0, 1.2, 0))
+		var here: Vector3 = body.global_position
+		var before = shriek_seen.get(body.slot)
+		shriek_seen[body.slot] = here
+		if body.hidden: continue
+		# The first reading has nothing to compare against, so the cry takes a
+		# fifth of a second to tell anyone apart from the furniture.
+		if before == null: continue
+		if (here - before).length() * SHRIEK_RATE < SHRIEK_STIR: continue
+		if here.distance_to(creature.global_position) > SHRIEK_RANGE: continue
+		points.append(here + Vector3(0, 1.2, 0))
 	if locust_seat() == net.local_seat or not net.active():
 		if is_instance_valid(creature.driver): creature.driver.reveal(points)
 	elif locust_peer() > 0: shriek_reveal.rpc_id(locust_peer(), points)

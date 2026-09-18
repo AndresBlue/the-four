@@ -90,7 +90,9 @@ func run() -> void:
 
 	# A survivor in plain sight, then the same one behind a wall.
 	look(centre + Vector3(0, 0, 4.0), centre)
-	level.player.global_position = centre + Vector3(0, 0.06, -2.0)
+	# Close enough to judge whether the grains read as a person, and off to the
+	# side so the creature's own shoulders are not in the way.
+	level.player.global_position = centre + Vector3(1.7, 0.06, 1.4)
 	await listen(2.0)
 	await shot("body_seen")
 	level.player.global_position = centre + Vector3(0, 0.06, 40.0)

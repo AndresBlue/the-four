@@ -46,8 +46,11 @@ var cooldown := 0.0
 var shriek_cooldown := 0.0
 var struck := false
 ## Heard noises, as the creature hears them:
-## {point, apparent, at, time, strength, kind, distance, muffle}.
+## {id, point, apparent, at, time, strength, kind, distance, muffle, blur}.
+## The id only counts up, so the acoustic view can tell which ones it has
+## already turned into a puff of grains.
 var heard: Array = []
+var heard_count := 0
 ## Where the shriek placed the survivors it found, and its free hunting time.
 var revealed: Array = []
 var frenzy := 0.0
@@ -183,6 +186,8 @@ func reveal(points: PackedVector3Array) -> void:
 	revealed = []
 	var now := Time.get_ticks_msec() / 1000.0
 	for point in points: revealed.append({"point": point, "time": now})
+	# Marked in the image with a cloud that outlasts the cry by seconds.
+	if is_instance_valid(echo): echo.mark_found(points)
 	if not points.is_empty() and frenzy <= 0.0:
 		frenzy = FRENZY_TIME
 		stamina = minf(100.0, stamina + FRENZY_STAMINA)
@@ -210,8 +215,9 @@ func hear_contact(point: Vector3, apparent: Vector3, distance: float, strength: 
 	# Where the image places it: the real spot up close, the opening it came
 	# through further away, sliding between the two so nothing ever jumps.
 	var blur := clampf((distance - CONTACT_TRUTH) / (CONTACT_BLUR - CONTACT_TRUTH), 0.0, 1.0)
+	heard_count += 1
 	heard.append({
-		"point": point, "apparent": apparent, "at": point.lerp(apparent, blur),
+		"id": heard_count, "point": point, "apparent": apparent, "at": point.lerp(apparent, blur),
 		"time": Time.get_ticks_msec() / 1000.0, "strength": strength,
 		"kind": kind, "distance": distance, "muffle": muffle, "blur": blur,
 	})

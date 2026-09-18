@@ -31,12 +31,13 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## second each sweep is an event you wait for, and what fills the time between
 ## them is the memory of the last one going out.
 const CLICK_RATE := 2.0
-## Never a metronome. Each interval is stretched or squeezed, breathes slowly
-## underneath, and tightens while it is hunting.
+## Never a metronome: each interval is stretched or squeezed and breathes
+## slowly underneath. It does NOT speed up while hunting, whatever the creature
+## is doing with its legs: a reading that quickens when you run reads as your
+## own footsteps coming back, which is not what this is.
 const CLICK_JITTER := 0.22
 const BREATH_RATE := 0.14
 const BREATH_DEPTH := 0.25
-const HUNT_SCALE := 0.62
 ## Every click is a full sweep at this rate, with only a little variation in
 ## how hard it comes back.
 const SWEEP_MIN := 0.78
@@ -57,21 +58,31 @@ const MEMORY := 5.0
 ## you get for it is a scene made of points.
 const RAY_BUDGET := [0, 900, 1800]
 const POINT_BUDGET := [0, 7000, 11000]
-const BODY_POINTS := [0, 320, 640]
+const BODY_POINTS := [0, 700, 1400]
 ## Bodies are sampled on every click and fade just past the next one: a
 ## survivor is a live reading, never a memory to be followed.
 const BODY_EVERY := 1
-const BODY_FADE := 0.85
+const BODY_FADE := 0.75
 ## Half the rays go into a wide cone ahead and the rest over the whole sphere.
 ## Any narrower and the wall it happens to be facing collects so many points
 ## that they merge into a solid sheet instead of reading as stipple.
 const FORWARD_BIAS := 0.5
 const FORWARD_CONE := 1.15
-## Shells and sound contacts the shader carries at once. The per-pixel loops
-## are the only superlinear cost in the whole view.
+## Shells the field shader carries at once: its per-pixel loop is the only
+## superlinear cost in the whole view.
 const SWEEPS := 6
-const CONTACTS := 12
-## A contact lasts as long as the old noise rings did.
+## A heard noise hangs as a puff of grains where it was heard, blooming outward
+## from the spot at this speed and out to this radius before it goes.
+const PUFF_SPEED := 4.5
+const PUFF_LIFE := 2.2
+const PUFF_POINTS := [0, 26, 44]
+const PUFF_BUDGET := [0, 900, 1800]
+## What the shriek found stays marked well after the cry has died away, so it
+## is worth something beyond turning the picture red.
+const FIND_LIFE := 3.2
+const FIND_POINTS := [0, 40, 70]
+const FIND_BUDGET := [0, 600, 1200]
+## How long a contact is worth marking at all.
 const CONTACT_LIFE := 1.6
 ## Its own shriek floods the reading red, then drains.
 const SHRIEK_HOLD := 4.0
@@ -113,9 +124,13 @@ var field_material: ShaderMaterial
 var clouds: Node3D
 var walls: MultiMeshInstance3D
 var bodies: MultiMeshInstance3D
+var puffs: MultiMeshInstance3D
+var finds: MultiMeshInstance3D
 var marks: MultiMeshInstance3D
 var wall_material: ShaderMaterial
 var body_material: ShaderMaterial
+var puff_material: ShaderMaterial
+var find_material: ShaderMaterial
 var mark_material: ShaderMaterial
 var self_material: ShaderMaterial
 
@@ -124,6 +139,10 @@ var wall_at := 0
 var wall_shown := 0
 var body_at := 0
 var body_shown := 0
+var puff_at := 0
+var find_at := 0
+## Noises already turned into a puff, so each one only blooms once.
+var puffed := 0
 ## Writes in the last second, so the fade can be kept just short of the wrap.
 var written := 0
 var write_rate := 1.0
@@ -144,6 +163,7 @@ var query: PhysicsRayQueryParameters3D
 var shells: Array = []
 var shriek_hold := 0.0
 var shriek := 0.0
+var hum_clock := 0.0
 
 ## Its own randomness: the cadence and the ray rotation must never touch the
 ## map's generator (see the rule at the top of world_audio.gd).
@@ -163,7 +183,7 @@ func setup(owner_driver) -> void:
 	build_clouds()
 	self_material = ShaderMaterial.new()
 	self_material.shader = SELF_SHADER
-	self_material.render_priority = 124
+	self_material.render_priority = 126
 	# Its own body is a presence, not the picture: kept well under the reading
 	# so it never blinds the middle of the frame.
 	self_material.set_shader_parameter("gain", 0.08)
@@ -220,12 +240,31 @@ func build_clouds() -> void:
 	level.add_child(clouds)
 	# Remembered architecture whispers through a wall; a body never does, which
 	# the soft depth test does for us by leaving it nothing to whisper with.
+	# A noise is a sound, so its puff hangs there whatever is in the way.
 	walls = make_cloud("EchoWalls", 122, 0.35)
-	bodies = make_cloud("EchoBodies", 123, 0.0)
+	puffs = make_cloud("EchoPuffs", 123, 0.8)
+	finds = make_cloud("EchoFinds", 124, 0.8)
+	bodies = make_cloud("EchoBodies", 125, 0.0)
 	marks = make_cloud("EchoLandmarks", 121, 0.55)
 	wall_material = walls.material_override as ShaderMaterial
 	body_material = bodies.material_override as ShaderMaterial
+	puff_material = puffs.material_override as ShaderMaterial
+	find_material = finds.material_override as ShaderMaterial
 	mark_material = marks.material_override as ShaderMaterial
+	# A puff is the same machinery with a slow wave and a body of its own: its
+	# grains bloom outward from the noise and then hang in the air.
+	for material in [puff_material, find_material]:
+		material.set_shader_parameter("wave_speed", PUFF_SPEED)
+		material.set_shader_parameter("residue", 0.85)
+		material.set_shader_parameter("flare", 1.1)
+		material.set_shader_parameter("tone_cold", Color(0.86, 0.90, 0.95))
+		material.set_shader_parameter("tone_hot", Color(1.0, 0.97, 0.92))
+	find_material.set_shader_parameter("shriek_cold", Color(1.4, 0.18, 0.10))
+	find_material.set_shader_parameter("shriek_hot", Color(1.5, 0.40, 0.24))
+	# A living thing keeps answering a little between fronts: it has to stay
+	# findable in the half second when the room has gone quiet.
+	body_material.set_shader_parameter("residue", 0.32)
+	body_material.set_shader_parameter("flare", 2.4)
 	mark_material.set_shader_parameter("steady", 1.0)
 	mark_material.set_shader_parameter("steady_fade_from", LANDMARK_NEAR)
 	mark_material.set_shader_parameter("steady_fade_to", LANDMARK_REACH)
@@ -295,6 +334,12 @@ func apply_quality() -> void:
 		bodies.multimesh.instance_count = flesh
 		body_at = 0
 		body_shown = 0
+	if puffs.multimesh.instance_count != PUFF_BUDGET[quality]:
+		puffs.multimesh.instance_count = PUFF_BUDGET[quality]
+		puff_at = 0
+	if finds.multimesh.instance_count != FIND_BUDGET[quality]:
+		finds.multimesh.instance_count = FIND_BUDGET[quality]
+		find_at = 0
 	per_tick = maxi(1, int(ceil(float(RAY_BUDGET[quality]) / (60.0 / CLICK_RATE))))
 	field_material.set_shader_parameter("base_level", BASE_CALM if calm else BASE_LEVEL)
 	field_material.set_shader_parameter("front_level", 0.5 if calm else 1.0)
@@ -304,9 +349,11 @@ func apply_quality() -> void:
 	# The cloud carries most of the picture now that the clicks are slow.
 	wall_material.set_shader_parameter("gain", 0.95)
 	body_material.set_shader_parameter("gain", 1.6)
+	puff_material.set_shader_parameter("gain", 1.0)
+	find_material.set_shader_parameter("gain", 1.35)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
-	for material in [wall_material, body_material, mark_material]:
+	for material in [wall_material, body_material, puff_material, find_material, mark_material]:
 		material.set_shader_parameter("point_scale", span)
 		material.set_shader_parameter("point_min", 0.010)
 		material.set_shader_parameter("point_max", 0.085)
@@ -322,6 +369,10 @@ func advance(delta: float, hunting: bool) -> void:
 		write_rate = maxf(1.0, float(written) / rate_clock)
 		written = 0
 		rate_clock = 0.0
+	hum_clock -= delta
+	if hum_clock <= 0.0:
+		hum_clock = 1.4
+		bloom_hums()
 	shriek_hold = maxf(0.0, shriek_hold - delta)
 	var wanted := 1.0 if shriek_hold > 0.0 else 0.0
 	shriek = move_toward(shriek, wanted, delta * ((SHRIEK_RISE if not calm else 2.5) if wanted > shriek else SHRIEK_FALL))
@@ -334,7 +385,7 @@ func click(hunting: bool) -> void:
 	clicks += 1
 	var breath := 1.0 if calm else 1.0 + sin(clock * TAU * BREATH_RATE) * BREATH_DEPTH
 	var jitter := 1.0 if calm else 1.0 + rng.randf_range(-CLICK_JITTER, CLICK_JITTER)
-	var interval := (1.0 / CLICK_RATE) * breath * jitter * (HUNT_SCALE if hunting else 1.0)
+	var interval := (1.0 / CLICK_RATE) * breath * jitter
 	last_interval = interval
 	next_click = clock + interval
 	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
@@ -349,7 +400,8 @@ func click(hunting: bool) -> void:
 		pending_from = from
 		pending_at = clock
 		pending_reach = reach
-	if clicks % BODY_EVERY == 0: stamp_bodies(from)
+	if clicks % BODY_EVERY == 0: stamp_bodies(from, reach)
+	bloom_contacts()
 
 ## Directions for one click: a Fibonacci sphere, turned by a fresh angle every
 ## time so successive clicks fill in each other's gaps, with most of the rays
@@ -400,7 +452,7 @@ func cast_pending() -> void:
 ## A survivor as the echo returns it, only while the creature can actually see
 ## it: sees() already applies its cone, its line of sight and the wardrobe
 ## rule, so the image can never show more than its own perception allows.
-func stamp_bodies(from: Vector3) -> void:
+func stamp_bodies(from: Vector3, reach: float) -> void:
 	if BODY_POINTS[quality] == 0: return
 	var shape := PackedVector3Array()
 	for body in level.survivors():
@@ -408,20 +460,31 @@ func stamp_bodies(from: Vector3) -> void:
 		if body.global_position.distance_to(creature.global_position) > REACH: continue
 		if not creature.sees(body): continue
 		shape.clear()
-		BODY.points(body, shape)
-		var span := from.distance_to(body.global_position)
+		BODY.points(body, from, shape)
 		for point in shape:
-			write(bodies, point, span, 1.0, 1.0, clock)
+			# Stamped with this click's own time and each grain's own distance
+			# from where it left, so the front sweeps across the body exactly as
+			# it sweeps the walls, instead of the whole figure lighting at once.
+			write(bodies, point, from.distance_to(point), 1.0, 1.0, clock, reach)
 
-## One point into a cloud's ring buffer.
-func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float, energy: float, at: float) -> void:
+## One grain into a cloud's ring buffer. `span` is how far it is from whatever
+## front will light it: the click's origin for the world, the centre of the
+## noise for a puff. `reach` beyond zero drops grains past the click's range.
+func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float, energy: float, at: float, reach := 0.0) -> void:
 	var multi: MultiMesh = cloud.multimesh
 	if multi.instance_count == 0: return
+	if reach > 0.0 and span > reach: return
 	var index: int
 	if cloud == walls:
 		index = wall_at
 		wall_at = (wall_at + 1) % multi.instance_count
 		wall_shown = mini(wall_shown + 1, multi.instance_count)
+	elif cloud == puffs:
+		index = puff_at
+		puff_at = (puff_at + 1) % multi.instance_count
+	elif cloud == finds:
+		index = find_at
+		find_at = (find_at + 1) % multi.instance_count
 	else:
 		index = body_at
 		body_at = (body_at + 1) % multi.instance_count
@@ -429,6 +492,35 @@ func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float,
 	multi.set_instance_transform(index, Transform3D(Basis(), point))
 	multi.set_instance_custom_data(index, Color(at, span, kind, energy))
 	written += 1
+
+## A ball of grains scattered around a point, each one carrying its distance
+## from the centre so the shader blooms them outward from it.
+func scatter(cloud: MultiMeshInstance3D, centre: Vector3, radius: float, count: int, kind: float, energy: float, at: float) -> void:
+	for i in count:
+		var direction := Vector3(rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0))
+		if direction.length() < 0.001: direction = Vector3.UP
+		# Cube root of a uniform draw fills the ball evenly instead of clumping
+		# everything at the middle.
+		var span: float = radius * pow(rng.randf(), 0.34)
+		var point: Vector3 = centre + direction.normalized() * span
+		write(cloud, point, span, kind, energy, at)
+
+## Every noise heard since the last click becomes a puff hanging where it was
+## heard. A survivor walking leaves one every stride, which is the trail.
+func bloom_contacts() -> void:
+	if PUFF_BUDGET[quality] == 0: return
+	var seconds := Time.get_ticks_msec() / 1000.0
+	for mark in driver.heard:
+		if int(mark.get("id", 0)) <= puffed: continue
+		puffed = int(mark.id)
+		if seconds - mark.time > CONTACT_LIFE: continue
+		# Loud and blunt noises make a wider, denser cloud than a crouched step.
+		var loud: float = mark.strength
+		var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[int(mark.kind)]
+		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud))
+		# The further the sound travelled, the vaguer the place it hangs in.
+		radius *= 1.0 + mark.get("blur", 0.0) * 1.6
+		scatter(puffs, mark.at, radius, count, 0.0, 0.35 + 0.65 * loud, clock - (seconds - mark.time))
 
 # --- Uniforms -----------------------------------------------------------------------
 
@@ -451,50 +543,29 @@ func push_uniforms() -> void:
 	field_material.set_shader_parameter("sweep_count", mini(shells.size(), SWEEPS))
 	field_material.set_shader_parameter("sweeps", shell_points)
 	field_material.set_shader_parameter("sweep_power", shell_power)
-	var heard := gather_contacts()
-	var contact_points := PackedVector4Array()
-	var contact_power := PackedVector4Array()
-	for i in CONTACTS:
-		if i < heard.size():
-			var one: Dictionary = heard[i]
-			var at: Vector3 = one.at
-			contact_points.append(Vector4(at.x, at.y, at.z, one.emit))
-			contact_power.append(Vector4(one.strength, float(one.kind), one.muffle, one.spread))
-		else:
-			contact_points.append(Vector4.ZERO)
-			contact_power.append(Vector4.ZERO)
-	field_material.set_shader_parameter("contact_count", mini(heard.size(), CONTACTS))
-	field_material.set_shader_parameter("contacts", contact_points)
-	field_material.set_shader_parameter("contact_power", contact_power)
+	puff_material.set_shader_parameter("age_limit", PUFF_LIFE)
+	find_material.set_shader_parameter("age_limit", FIND_LIFE)
 	field_material.set_shader_parameter("glare", torch_glare())
-	for material in [field_material, wall_material, body_material, mark_material, self_material]:
+	for material in [field_material, wall_material, body_material, puff_material, find_material, mark_material, self_material]:
 		material.set_shader_parameter("now", clock)
 		material.set_shader_parameter("shriek", shriek)
 
-## Everything it is hearing right now, loudest first: the noises the machine in
-## charge confirmed, what its shriek came back with, and the lamps it can hear
-## buzzing. Culled here so the shader's per-pixel loop stays short.
-func gather_contacts() -> Array:
-	var out: Array = []
-	var seconds := Time.get_ticks_msec() / 1000.0
-	for mark in driver.heard:
-		var age: float = seconds - mark.time
-		if age > CONTACT_LIFE: continue
-		out.append({
-			"at": mark.at, "emit": clock - age, "strength": mark.strength,
-			"kind": mark.kind, "muffle": mark.muffle,
-			"spread": KINDS.SPREAD[mark.kind] * (0.6 + mark.get("blur", 0.0) * 1.4),
-		})
-	for mark in driver.revealed:
-		var age: float = seconds - mark.time
-		out.append({"at": mark.point, "emit": clock - age, "strength": 1.4, "kind": 0, "muffle": 0.0, "spread": 1.0})
-	if is_instance_valid(level.world_audio):
-		for hum in level.world_audio.hums:
-			if not is_instance_valid(hum) or not hum.playing: continue
-			out.append({"at": hum.global_position, "emit": clock - fposmod(clock, 1.6), "strength": HUM_LEVEL, "kind": KINDS.Kind.HUM, "muffle": 0.4, "spread": 0.5})
-	out.sort_custom(func(a, b): return a.strength > b.strength)
-	if out.size() > CONTACTS: out.resize(CONTACTS)
-	return out
+## The fluorescent battens it can hear buzzing, as a faint puff under each one,
+## refreshed slowly. Free texture: world_audio already routes them from its own
+## camera, so this costs no network and no extra listening.
+func bloom_hums() -> void:
+	if PUFF_BUDGET[quality] == 0 or not is_instance_valid(level.world_audio): return
+	for hum in level.world_audio.hums:
+		if not is_instance_valid(hum) or not hum.playing: continue
+		scatter(puffs, hum.global_position, 0.5, maxi(4, PUFF_POINTS[quality] / 5), 0.0, HUM_LEVEL, clock)
+
+## What the shriek came back with: a dense cloud over each survivor it found,
+## which stays for seconds after the cry itself has died away. This is what the
+## shriek is worth, not the red.
+func mark_found(points: PackedVector3Array) -> void:
+	if FIND_BUDGET[quality] == 0: return
+	for point in points:
+		scatter(finds, point, 0.55, FIND_POINTS[quality], 1.0, 1.0, clock)
 
 ## A survivor's lit torch pointed this way. It cannot see light, but the beam
 ## disturbs the reading from that direction: turning it off still matters.

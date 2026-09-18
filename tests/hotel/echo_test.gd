@@ -8,6 +8,7 @@ extends SceneTree
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
+const REMOTE := preload("res://game/net/remote_player.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -42,11 +43,11 @@ func run() -> void:
 	# The order the five readings stack in. The hotel's own transparents (the
 	# monstera leaves, the dust) all sit at 0, so the whole echo draws above
 	# them; within the echo, the field goes first and its own body last.
-	var order := [echo.field_material.render_priority, echo.mark_material.render_priority, echo.wall_material.render_priority, echo.body_material.render_priority, echo.self_material.render_priority]
+	var order := [echo.field_material.render_priority, echo.mark_material.render_priority, echo.wall_material.render_priority, echo.puff_material.render_priority, echo.find_material.render_priority, echo.body_material.render_priority, echo.self_material.render_priority]
 	var rising := true
 	for i in range(1, order.size()):
 		if order[i] <= order[i - 1]: rising = false
-	check("Las cinco lecturas se dibujan en orden y sobre el hotel", rising and order[0] > 0)
+	check("Las lecturas se dibujan en orden y sobre el hotel", rising and order[0] > 0)
 
 	# --- Cadence ------------------------------------------------------------------
 	var intervals: Array = []
@@ -126,11 +127,48 @@ func run() -> void:
 	await frames(4)
 	var far_mark: Dictionary = creature.driver.heard[0] if not creature.driver.heard.is_empty() else {}
 	check("Lejos se pinta por dónde llega, no dónde está", not far_mark.is_empty() and far_mark.blur == 1.0 and far_mark.at.distance_to(far_mark.apparent) < 0.01)
+	# A heard noise leaves a puff of grains hanging where it was heard. The
+	# puffs bloom on a click, so give it one.
+	await frames(45)
+	check("El ruido se materializa como una nube de puntos", echo.puffs.multimesh.instance_count > 0 and echo.puff_at > 0)
 	await frames(int(echo.CONTACT_LIFE * 60) + 20)
 	var stale: bool = creature.driver.heard.any(func(mark): return Time.get_ticks_msec() / 1000.0 - mark.time > echo.CONTACT_LIFE + 0.1)
 	check("Los contactos caducan", not stale)
 
 	# --- The shriek ---------------------------------------------------------------
+	# It only finds what is moving and out in the open. Checked on a real
+	# remote body, which is what an online match actually hunts, and whose
+	# velocity comes from the states its owner pushes.
+	var mate = REMOTE.new()
+	mate.setup(level, 2, "Prueba", 0)
+	level.add_child(mate)
+	var spot: Vector3 = creature.global_position + Vector3(2.5, 0.0, 0.0)
+	mate.place(spot, 0.0)
+	level.match_net.bodies[2] = mate
+	level.session.participants[2] = level.session.Life.EXPLORING
+	for i in 8:
+		mate.push_state([spot, 0.0, 0.0, Vector3.ZERO, 0, -1, 0.0, 0.0])
+		await physics_frame
+	level.match_net.shriek_left = level.match_net.SHRIEK_TIME
+	level.match_net.shriek_clock = 0.0
+	creature.driver.revealed.clear()
+	for i in 20:
+		mate.push_state([spot, 0.0, 0.0, Vector3.ZERO, 0, -1, 0.0, 0.0])
+		await physics_frame
+	check("Quieto, el chillido no lo encuentra", creature.driver.revealed.is_empty())
+	level.match_net.shriek_clock = 0.0
+	for i in 20:
+		spot += Vector3(0.05, 0.0, 0.0)
+		mate.push_state([spot, 0.0, 0.0, Vector3(3.0, 0.0, 0.0), 0, -1, 0.0, 0.0])
+		await physics_frame
+	var found: bool = not creature.driver.revealed.is_empty()
+	check("Moviéndose, el chillido lo marca", found)
+	check("Y la marca es una nube que dura", found and echo.finds.multimesh.instance_count > 0 and echo.find_at > 0 and echo.FIND_LIFE >= 3.0)
+	level.match_net.shriek_left = 0.0
+	level.match_net.bodies.erase(2)
+	level.session.participants.erase(2)
+	mate.queue_free()
+	await physics_frame
 	echo.flash_shriek()
 	await frames(30)
 	check("El chillido enrojece la lectura", echo.shriek > 0.9)

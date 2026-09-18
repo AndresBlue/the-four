@@ -28,6 +28,12 @@ func wait_for(condition: Callable, seconds: float) -> bool:
 		await process_frame
 	return condition.call()
 
+## Keeps the survivor walking on the spot, a step to one side and back. The
+## shriek only finds what is moving, so a test that stands still proves nothing.
+func sway() -> void:
+	var way := 1.0 if int(Time.get_ticks_msec() / 400) % 2 == 0 else -1.0
+	level.player.global_position += Vector3(0.025 * way, 0.0, 0.0)
+
 func pause_for(seconds: float) -> void:
 	var until := Time.get_ticks_msec() + int(seconds * 1000.0)
 	while Time.get_ticks_msec() < until: await process_frame
@@ -203,10 +209,17 @@ func versus_host() -> void:
 	check("Solo el anfitrión es superviviente", level.session.participants.keys() == [1] and match_net.bodies.is_empty())
 	check("Llega el movimiento de The Locust del jugador", await wait_for(func(): return not level.locust.net_states.is_empty(), 15.0))
 	check("La protección inicial termina cuando el cazador la termina", await wait_for(func(): return level.locust.grace <= 0.0, 20.0))
-	# A noise the hunter should see as a ring.
+	# A noise the hunter should hear as a contact.
 	await pause_for(1.0)
 	level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
-	check("Oye el chillido del cazador", await wait_for(func(): return level.locust.calls_heard > 0, 25.0))
+	# Kept walking while the hunter shrieks: its cry only finds what is moving,
+	# so a survivor standing still would give it nothing to mark.
+	check("Oye el chillido del cazador", await wait_for(func():
+		sway()
+		return level.locust.calls_heard > 0, 25.0))
+	for i in 120:
+		sway()
+		await physics_frame
 	var hide = level.hotel.hides[0]
 	level.player.global_position = hide.to_global(hide.exit_offset) + Vector3(0, 0.1, 0)
 	await pause_for(0.5)
@@ -233,7 +246,12 @@ func versus_hunter() -> void:
 	creature.global_position = level.match_net.bodies[1].global_position + Vector3(2.5, 0, 0)
 	await pause_for(0.6)
 	creature.driver.shriek()
-	check("El chillido le revela a los supervivientes cercanos", await wait_for(func(): return not creature.driver.revealed.is_empty(), 15.0))
+	# Only what is moving answers, so give it a second cry if the first one
+	# happened to land while the survivor was between steps.
+	check("El chillido le revela a los supervivientes que se mueven", await wait_for(func():
+		if creature.driver.shriek_cooldown <= 0.0: creature.driver.shriek()
+		return not creature.driver.revealed.is_empty(), 15.0))
+	check("Y los deja marcados con una nube que dura", creature.driver.echo.find_at > 0)
 	check("El chillido le da caza libre un rato", creature.driver.frenzy > 0.0)
 	var hide = level.hotel.hides[0]
 	check("Ve al superviviente meterse en el armario", await wait_for(func(): return is_instance_valid(hide.occupant), 30.0))

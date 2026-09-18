@@ -10,7 +10,6 @@ shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_disabled, fog_disabled;
 
 const int SWEEPS = 6;
-const int CONTACTS = 12;
 
 // DEPTH_TEXTURE is not a built-in: it has to be asked for. Nearest filtering
 // is not optional, interpolating raw depth gives nonsense world positions
@@ -41,11 +40,6 @@ uniform int sweep_count = 0;
 uniform vec4 sweeps[SWEEPS];
 // x: amplitude of that click, y: its reach.
 uniform vec4 sweep_power[SWEEPS];
-uniform int contact_count = 0;
-// xyz: where the sound is heard from. w: when it arrived.
-uniform vec4 contacts[CONTACTS];
-// x: loudness, y: kind, z: how muffled, w: how wide it spreads.
-uniform vec4 contact_power[CONTACTS];
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -132,23 +126,10 @@ void fragment() {
 			}
 		}
 
-		// The sounds it hears, spreading over the surfaces around where they
-		// arrived from. Here the noise and the geometry become one image.
-		for (int i = 0; i < CONTACTS; i++) {
-			if (i >= contact_count) { break; }
-			float age = now - contacts[i].w;
-			if (age >= 0.0) {
-				float away = distance(world, contacts[i].xyz);
-				float front = age * 9.0;
-				float width = 0.5 + contact_power[i].w;
-				float ripple = exp(-pow((away - front) / width, 2.0));
-				// The ring carries the news; the glow only says "around here", so
-				// it has to stay tight or a single slam washes the whole room.
-				float halo = exp(-away * (1.7 - contact_power[i].w * 0.35)) * 0.22;
-				float dulled = 1.0 - contact_power[i].z * 0.55;
-				level += 0.45 * contact_power[i].x * (ripple * 1.25 + halo) * dulled * shape;
-			}
-		}
+		// Sound is not painted onto the walls here. A ring spreading over every
+		// surface around a noise lifts the whole room and reads as decoration;
+		// a heard noise now hangs in the air as its own puff of grains, in
+		// echo_view.gd, where it can be looked at and walked around.
 
 		// Beyond its hearing there is nothing to reconstruct, and a surface
 		// pressed against the camera returns nothing useful either: without
