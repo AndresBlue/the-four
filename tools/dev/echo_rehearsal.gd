@@ -9,13 +9,13 @@ extends SceneTree
 ## The survivors are the same remote_player bodies an online match builds, so
 ## their footsteps go through the real routing, their poses feed the silhouette
 ## sampling, and the creature sees and hears them exactly as it would in a
-## versus match. They walk, run, crouch, open doors, jump, and one of them
-## keeps ducking into wardrobes.
+## versus match. They walk, run, crouch, open doors and jump, and every so
+## often one of them walks to a free wardrobe, gets in and comes out later.
 ##
 ## Controls are the hunter's own: mouse to look, WASD to move, Shift to hunt,
 ## left button to strike, right button to shriek, E for doors and wardrobes.
 ## A survivor struck down is executed, dies and walks again six seconds later
-## somewhere else; the screen only says who died and how many are left.
+## somewhere else. Nothing about it is written on screen (the console logs it).
 ## With "-- --shots" it takes a handful of frames into evidence/ and quits
 ## instead of handing you the controls, and with "-- --strip" it tiles one
 ## click's worth of frames into a single sheet, which is the only way a still
@@ -33,9 +33,13 @@ const GAITS := [
 	{"speed": 2.0, "stride": 1.333, "radius": 2.5, "kind": NOISE.Kind.FOOTSTEP, "crouched": true},
 ]
 const NAMES := ["Ana", "Bruno", "Celia"]
-## Seconds between one body's trips to a wardrobe, and how long it stays.
-const HIDE_EVERY := 22.0
-const HIDE_FOR := 7.0
+## Any of them, now and then, walks to a free wardrobe near it, gets in and
+## later comes out again: seconds between trips, and how long it stays, both
+## drawn at random each time. Getting in and out is a WARDROBE noise.
+const HIDE_WAIT := Vector2(8.0, 26.0)
+const HIDE_STAY := Vector2(4.0, 14.0)
+## A wardrobe further than this along the floor is not worth the trip.
+const HIDE_REACH := 30.0
 ## Seconds a killed survivor stays dead before walking again. An execution
 ## alone takes three, so at most two are ever down at once and the floor never
 ## fails for lack of survivors (the roster below asks for one alive).
@@ -59,6 +63,7 @@ func somewhere() -> Vector3:
 	return FLOOR.position_of(level.manifest.rooms[0])
 
 func retarget(walker: Dictionary) -> void:
+	walker.bound_for = null
 	var map: RID = level.get_world_3d().navigation_map
 	var from := NavigationServer3D.map_get_closest_point(map, walker.body.global_position)
 	var to := NavigationServer3D.map_get_closest_point(map, somewhere())
@@ -78,7 +83,7 @@ func spawn() -> void:
 		# and hunts them and the shriek can find them.
 		level.match_net.bodies[seat] = body
 		level.session.participants[seat] = level.session.Life.EXPLORING
-		var walker := {"body": body, "seat": seat, "path": PackedVector3Array(), "index": 1, "gait": GAITS[0], "distance": 0.0, "hide_clock": HIDE_EVERY * (0.4 + 0.3 * float(i)), "hidden_left": 0.0, "dead_left": 0.0, "velocity": Vector3.ZERO}
+		var walker := {"body": body, "seat": seat, "path": PackedVector3Array(), "index": 1, "gait": GAITS[0], "distance": 0.0, "hide_clock": rng.randf_range(HIDE_WAIT.x * 0.5, HIDE_WAIT.y), "hidden_left": 0.0, "bound_for": null, "dead_left": 0.0, "velocity": Vector3.ZERO}
 		retarget(walker)
 		walkers.append(walker)
 	# One alive is enough: striking them down is part of the rehearsal.
@@ -123,7 +128,32 @@ func revive(walker: Dictionary) -> void:
 	level.session.participants[walker.seat] = level.session.Life.EXPLORING
 	walker.hidden_left = 0.0
 	retarget(walker)
-	level.ui.flash("%s VUELVE AL PISO" % NAMES[walker.seat - 2].to_upper(), 2.0)
+	print("REHEARSAL ", NAMES[walker.seat - 2], " walks again")
+
+## The end of the path: a new room, or the last step to a wardrobe's doors
+## (the navigation mesh stops short of them).
+func path_done(walker: Dictionary) -> void:
+	var bound = walker.bound_for
+	if bound == null:
+		retarget(walker)
+		return
+	walker.path = PackedVector3Array([walker.body.global_position, bound.to_global(bound.exit_offset)])
+	walker.index = 1
+
+## The nearest free wardrobe within reach, walked to at the body's own gait.
+func head_for_wardrobe(walker: Dictionary) -> void:
+	var body = walker.body
+	var nearest = null
+	for hide in level.hotel.hides:
+		if hide.occupant != null: continue
+		if nearest == null or hide.global_position.distance_to(body.global_position) < nearest.global_position.distance_to(body.global_position): nearest = hide
+	if nearest == null or nearest.global_position.distance_to(body.global_position) > HIDE_REACH: return
+	var map: RID = level.get_world_3d().navigation_map
+	var from := NavigationServer3D.map_get_closest_point(map, body.global_position)
+	var to := NavigationServer3D.map_get_closest_point(map, nearest.to_global(nearest.exit_offset))
+	walker.path = FLOOR.navigation_path(map, from, to)
+	walker.index = 1
+	walker.bound_for = nearest
 
 ## One body's step: follow its path, make the noise it would make, and tell the
 ## body where it is so its own footsteps and walking pose follow.
@@ -133,24 +163,37 @@ func walk(walker: Dictionary, delta: float) -> void:
 		walker.hidden_left -= delta
 		walker.velocity = Vector3.ZERO
 		if walker.hidden_left <= 0.0 and is_instance_valid(body.hiding_place):
-			level.match_net.remote_leaves(body.hiding_place, body)
+			var hide = body.hiding_place
+			level.match_net.remote_leaves(hide, body)
+			body.place(hide.to_global(hide.exit_offset), body.rotation.y)
+			level.on_noise(hide.global_position, 4.0, NOISE.Kind.WARDROBE)
+			print("REHEARSAL ", NAMES[walker.seat - 2], " leaves a wardrobe")
+			walker.hide_clock = rng.randf_range(HIDE_WAIT.x, HIDE_WAIT.y)
 			retarget(walker)
 		return
-	walker.hide_clock -= delta
-	if walker.hide_clock <= 0.0 and walkers[0] != walker:
-		walker.hide_clock = HIDE_EVERY
-		var nearest = null
-		for hide in level.hotel.hides:
-			if hide.occupant != null: continue
-			if nearest == null or hide.global_position.distance_to(body.global_position) < nearest.global_position.distance_to(body.global_position): nearest = hide
-		if nearest != null and nearest.global_position.distance_to(body.global_position) < 26.0:
-			# Close enough to be worth the trip: walk in and shut the doors.
-			body.global_position = nearest.global_position
-			level.match_net.remote_enters(nearest, body)
-			level.on_noise(nearest.global_position, 4.0, NOISE.Kind.WARDROBE)
-			walker.hidden_left = HIDE_FOR
+	var bound = walker.bound_for
+	if bound != null:
+		if bound.occupant != null:
+			# Somebody got there first: carry on somewhere else.
+			walker.bound_for = null
+			walker.hide_clock = rng.randf_range(HIDE_WAIT.x, HIDE_WAIT.y)
+			retarget(walker)
+		elif body.global_position.distance_to(bound.to_global(bound.exit_offset)) < 0.9:
+			# At its doors: in, and shut them.
+			walker.bound_for = null
+			body.global_position = bound.global_position
+			level.match_net.remote_enters(bound, body)
+			level.on_noise(bound.global_position, 4.0, NOISE.Kind.WARDROBE)
+			walker.hidden_left = rng.randf_range(HIDE_STAY.x, HIDE_STAY.y)
+			print("REHEARSAL ", NAMES[walker.seat - 2], " hides in a wardrobe")
+			walker.velocity = Vector3.ZERO
 			return
-	if walker.index >= walker.path.size(): retarget(walker)
+	else:
+		walker.hide_clock -= delta
+		if walker.hide_clock <= 0.0:
+			walker.hide_clock = rng.randf_range(HIDE_WAIT.x, HIDE_WAIT.y)
+			head_for_wardrobe(walker)
+	if walker.index >= walker.path.size(): path_done(walker)
 	if walker.path.size() < 2: return
 	var target: Vector3 = walker.path[mini(walker.index, walker.path.size() - 1)]
 	var here: Vector3 = body.global_position
@@ -158,7 +201,7 @@ func walk(walker: Dictionary, delta: float) -> void:
 	step.y = 0.0
 	if step.length() < 0.45:
 		walker.index += 1
-		if walker.index >= walker.path.size(): retarget(walker)
+		if walker.index >= walker.path.size(): path_done(walker)
 		return
 	var gait: Dictionary = walker.gait
 	var direction := step.normalized()

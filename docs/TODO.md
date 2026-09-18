@@ -141,7 +141,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Ajuste humano de la imagen: término base, separación de los frentes, legibilidad en salones grandes (ver `docs/VISION_LOCUST.md`).
 - [ ] Probar la vista en el lanzador `compatibility`; hoy solo está validada en Forward+.
 - [ ] La animación de la ejecución vista desde el cazador todavía es floja: es lo único que le dice que atrapó a alguien (ya no hay aviso en texto, solo el de la muerte).
-- [ ] El cazador ya no tiene medidor de resistencia en pantalla (se quitó la interfaz de la videocámara); falta una señal propia de la criatura, por ejemplo su respiración.
+- [ ] Juzgar en partida el peso de cada tipo de ruido en la vista (paso, carrera, puerta, armario con apagado rápido) con `./tools/godot.ps1 rehearsal`.
 
 ## P5 — Campaña
 

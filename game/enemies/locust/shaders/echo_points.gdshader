@@ -43,11 +43,15 @@ uniform vec3 shriek_hot : source_color = vec3(1.4, 0.34, 0.22);
 // itself brings. A puff wants a body of its own; a remembered wall does not.
 uniform float residue : hint_range(0.0, 2.0) = 0.11;
 uniform float flare : hint_range(0.0, 4.0) = 1.8;
+// A grain whose kind is two or more (the tone plus two) lives only this share
+// of age_limit: a wardrobe's noise, gone sooner than a door's.
+uniform float quick_life : hint_range(0.05, 1.0) = 1.0;
 uniform sampler2D depth_map : hint_depth_texture, repeat_disable, filter_nearest;
 
 // INSTANCE_CUSTOM only exists in vertex(): carried over uninterpolated.
 // x: when the click left. y: metres from that click's origin to this point.
-// z: what it is (0 architecture, 1 flesh). w: how much came back.
+// z: what it is (0 architecture, 1 flesh; plus 2 for a quick grain).
+// w: how much came back.
 varying flat vec4 echo;
 varying flat float strength;
 varying flat float from_eye;
@@ -60,7 +64,8 @@ void vertex() {
 	float gap = front - echo.y;
 	float flash = exp(-gap * gap / 2.5);
 	float since = max(age - echo.y / wave_speed, 0.0);
-	float memory = clamp(1.0 - since / max(age_limit, 0.05), 0.0, 1.0);
+	float life = age_limit * (echo.z >= 1.5 ? quick_life : 1.0);
+	float memory = clamp(1.0 - since / max(life, 0.05), 0.0, 1.0);
 	// Almost all of a remembered point's light comes from the moment the front
 	// passes it. That residue has to stay tiny: in a small room every point
 	// lands on the same few square metres, and a generous residue adds up into
@@ -98,8 +103,9 @@ void fragment() {
 		}
 	}
 	// echo.z picks between this cloud's two tones, and the shriek swaps both.
-	vec3 tone = mix(tone_cold, tone_hot, echo.z);
-	tone = mix(tone, mix(shriek_cold, shriek_hot, echo.z), shriek);
+	float pick = echo.z >= 1.5 ? echo.z - 2.0 : echo.z;
+	vec3 tone = mix(tone_cold, tone_hot, pick);
+	tone = mix(tone, mix(shriek_cold, shriek_hot, pick), shriek);
 	ALBEDO = tone;
 	ALPHA = clamp(disc * weight, 0.0, 1.0);
 }

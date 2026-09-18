@@ -154,6 +154,19 @@ func run() -> void:
 	await frames(int(echo.CONTACT_LIFE * 60) + 20)
 	var stale: bool = creature.driver.heard.any(func(mark): return Time.get_ticks_msec() / 1000.0 - mark.time > echo.CONTACT_LIFE + 0.1)
 	check("Los contactos caducan", not stale)
+	# Each kind shows as much as it should: at the same loudness a run leaves
+	# far more than a step, and a door more than either. Nobody near, so no
+	# body shape is added to the count.
+	level.player.global_position = Vector3(0, -80, 0)
+	var puffed := {}
+	for kind in [NOISE.Kind.FOOTSTEP, NOISE.Kind.RUN, NOISE.Kind.DOOR]:
+		creature.driver.heard.clear()
+		var start: int = echo.puff_at
+		level.on_noise(near_point, 12.0, kind)
+		await click_passes(echo)
+		puffed[kind] = posmod(echo.puff_at - start, echo.puffs.multimesh.instance_count)
+	check("Correr deja más rastro que caminar, y una puerta más aún", puffed[NOISE.Kind.RUN] > puffed[NOISE.Kind.FOOTSTEP] * 2 and puffed[NOISE.Kind.DOOR] > puffed[NOISE.Kind.FOOTSTEP] * 2)
+	check("Un armario se apaga antes que una puerta", echo.PUFF_QUICK < 1.0 and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------
 	# It only finds what is moving and out in the open. Checked on a real

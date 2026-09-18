@@ -75,7 +75,16 @@ const PUFF_LIFE := 2.2
 const PUFF_POINTS := [0, 26, 44]
 ## Grains per surface sample when a close noise brings a body's shape with it.
 const NOISE_SHAPE := 3
-const PUFF_BUDGET := [0, 2600, 5200]
+const PUFF_BUDGET := [0, 4800, 9600]
+## How much each kind of noise shows, by noise_kinds.gd Kind: grains (times
+## PUFF_POINTS) and size (times the spread). A step leaves a light trail and a
+## run a heavy one; a door is a burst it cannot miss. A wardrobe is as loud as
+## a door, but its cloud goes out in a fraction of the time (PUFF_QUICK): the
+## survivor gets that much of an edge for hiding.
+##                     step  run  jump door slam wardrobe peek hum
+const PUFF_DENSITY := [1.5, 3.4, 2.0, 3.6, 4.4, 3.6, 1.0, 1.0]
+const PUFF_SIZE := [1.15, 1.45, 1.2, 1.35, 1.5, 1.35, 1.0, 1.0]
+const PUFF_QUICK := 0.4
 ## What the shriek found stays marked well after the cry has died away, so it
 ## is worth something beyond turning the picture red.
 const FIND_LIFE := 3.2
@@ -528,6 +537,7 @@ func apply_quality() -> void:
 	frame_material.set_shader_parameter("gain", 1.5)
 	body_material.set_shader_parameter("gain", 1.6)
 	puff_material.set_shader_parameter("gain", 1.0)
+	puff_material.set_shader_parameter("quick_life", PUFF_QUICK)
 	find_material.set_shader_parameter("gain", 1.35)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
@@ -721,20 +731,23 @@ func bloom_contacts() -> void:
 		if seconds - mark.time > CONTACT_LIFE: continue
 		# Loud and blunt noises make a wider, denser cloud than a crouched step.
 		var loud: float = mark.strength
-		var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[int(mark.kind)]
-		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud))
+		var kind := int(mark.kind)
+		var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[kind] * PUFF_SIZE[kind]
+		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud) * PUFF_DENSITY[kind])
 		# The further the sound travelled, the vaguer the place it hangs in.
 		radius *= 1.0 + mark.get("blur", 0.0) * 1.6
 		var when: float = clock - (seconds - mark.time)
-		scatter(puffs, mark.at, radius, count, 0.0, 0.35 + 0.65 * loud, when)
-		shape_of_noise(mark, when)
+		# Two above the tone marks a grain that fades early (echo_points.gdshader).
+		var quick := 2.0 if kind == KINDS.Kind.WARDROBE else 0.0
+		scatter(puffs, mark.at, radius, count, quick, 0.35 + 0.65 * loud, when)
+		shape_of_noise(mark, when, quick)
 
 ## A noise made close by does not just say "over there": it comes off a body,
 ## and the body's shape comes back with it. Inside the puff, whoever made the
 ## sound is drawn densely in grains. Only for a noise heard from close, where
 ## the exact spot is already part of what the machine in charge sent, so this
 ## reveals a shape and never a position the creature had not earned.
-func shape_of_noise(mark: Dictionary, when: float) -> void:
+func shape_of_noise(mark: Dictionary, when: float, quick := 0.0) -> void:
 	if float(mark.get("blur", 1.0)) > 0.01: return
 	var point: Vector3 = mark.point
 	var maker: Node3D = null
@@ -753,7 +766,7 @@ func shape_of_noise(mark: Dictionary, when: float) -> void:
 		var surface: Vector3 = shape[i]
 		for extra in NOISE_SHAPE:
 			var grain := surface + Vector3(rng.randfn(0.0, 0.022), rng.randfn(0.0, 0.022), rng.randfn(0.0, 0.022))
-			write(puffs, grain, grain.distance_to(point), 1.0, 1.0, when)
+			write(puffs, grain, grain.distance_to(point), 1.0 + quick, 1.0, when)
 
 # --- Uniforms -----------------------------------------------------------------------
 

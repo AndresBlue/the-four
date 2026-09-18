@@ -341,7 +341,7 @@ CORRECCIÓN:
 
 [MP.15] The Locust jugador
 ACTUAL: LA CAZA EMPIEZA EN %d
-OBS: la pantalla del cazador no muestra controles ni otras pistas (septiembre de 2026).
+OBS: con la letra de la videocámara, bajo el filtro; la pantalla del cazador no muestra controles ni otras pistas (septiembre de 2026).
 CORRECCIÓN:
 
 [MP.16] Hoja
@@ -762,13 +762,4 @@ CORRECCIÓN:
 [ECO.01] Aviso al abrir la prueba local de la vista acustica (./tools/godot.ps1 locust)
 OBS: solo aparece en la prueba en solitario; en partida normal el aviso es MP.xx "ERES THE LOCUST".
 ACTUAL: VISION ACUSTICA - PRUEBA LOCAL
-CORRECCIÓN:
-
-[ECO.02] La baja queda registrada; %s nombre, %d supervivientes que quedan
-ACTUAL: %s HA MUERTO · QUEDAN %d
-CORRECCIÓN:
-
-[ECO.03] Ensayo (./tools/godot.ps1 rehearsal): un superviviente muerto vuelve a andar
-OBS: solo en la herramienta de ensayo, no en el juego.
-ACTUAL: %s VUELVE AL PISO
 CORRECCIÓN:

@@ -21,6 +21,11 @@ var stamina_alpha := 0.0
 var full_time := 99.0
 var focus_word := ""
 var focus_amount := 0.0
+## The Locust's seat: the creature records nothing, so no REC, tape clock or
+## focus brackets. What is left is drawn the same way, under the same filter:
+## the stamina meter and a short notice (the countdown to the hunt).
+var hunter := false
+var notice: Label
 
 func _ready() -> void:
 	layer = 4
@@ -65,6 +70,14 @@ func _ready() -> void:
 	focus_label.offset_top = 44
 	focus_label.offset_bottom = 74
 	add_child(focus_label)
+	notice = STYLE.text("", 30)
+	notice.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	notice.offset_left = -420
+	notice.offset_right = 420
+	notice.offset_top = -150
+	notice.offset_bottom = -110
+	add_child(notice)
 	hide()
 
 ## The recording date derives from the floor seed, so a retry shows the same tape.
@@ -85,15 +98,22 @@ func set_stamina(value: float, is_exhausted: bool) -> void:
 	stamina = clampf(value, 0.0, 1.0)
 	exhausted = is_exhausted
 
+## A line of text in the tape's own lettering; empty hides it.
+func announce(words: String) -> void:
+	notice.text = words
+
 ## Autofocus brackets with a one-word action; empty hides them.
 func focus(word: String) -> void:
 	focus_word = word
 
 func show_tape(elapsed: float, delta: float) -> void:
 	blink = fposmod(blink + delta, 1.0)
-	rec.visible = marks
-	dot.visible = marks and blink < 0.6
-	clock.visible = marks
+	var tape := marks and not hunter
+	rec.visible = tape
+	dot.visible = tape and blink < 0.6
+	clock.visible = tape
+	notice.visible = not notice.text.is_empty()
+	if hunter: focus_word = ""
 	var total := start_seconds + int(elapsed)
 	var hours := total / 3600
 	clock.text = "AM %d:%02d:%02d\n%s" % [hours % 12 if hours % 12 != 0 else 12, (total / 60) % 60, total % 60, date_text]

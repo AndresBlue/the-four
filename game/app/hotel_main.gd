@@ -608,24 +608,6 @@ func update_execution(delta: float) -> void:
 			player.avatar.rotation.x = 0.0
 			player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
-		# The execution itself shows the hunter it caught someone; only the
-		# death, which the reading cannot show, is put into words.
-		if hunter_seat(): ui.flash("%s HA MUERTO · QUEDAN %d" % [survivor_name(seat), survivors_left(seat)], 4.0)
-
-## A survivor's name as the HUD shows it.
-func survivor_name(seat: int) -> String:
-	if seat == player.slot: return str(settings.values.player_name).to_upper()
-	var body = match_net.bodies.get(seat)
-	if is_instance_valid(body) and body.player_name != "": return body.player_name.to_upper()
-	return "UN SUPERVIVIENTE"
-
-## Survivors still alive, not counting this one (whose death may not have
-## reached a client's copy of the session yet).
-func survivors_left(seat: int) -> int:
-	var count := 0
-	for body in survivors():
-		if body.slot != seat and session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD: count += 1
-	return count
 
 ## The victim: held in the air in front of the creature, looking at it.
 func hold_victim(delta: float) -> void:
@@ -892,8 +874,10 @@ func _process(delta: float) -> void:
 	update_menu_scene(delta)
 	if session.state == session.State.PLAYING: update_execution(delta)
 	elif not execution.is_empty(): execution = {}
-	# The creature records nothing: its seat has no camcorder on screen.
-	camcorder.visible = session.state == session.State.PLAYING and not hunter_seat()
+	camcorder.visible = session.state == session.State.PLAYING
+	# The creature records nothing: its seat keeps only the meter and notices.
+	camcorder.hunter = hunter_seat()
+	if not camcorder.hunter: camcorder.announce("")
 	camcorder.marks = settings.values.osd
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return

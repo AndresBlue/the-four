@@ -229,8 +229,11 @@ func hear_noise(point: Vector3, radius: float) -> void:
 	hear_contact(point, point, creature.global_position.distance_to(point), clampf(radius / 16.0, 0.25, 1.0), 0, 0.0)
 
 func update_hud() -> void:
-	# A clear view: no controls, no camcorder (it records nothing). Only the
-	# count to the start of the hunt, while it cannot move yet.
-	level.ui.hint.text = "LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace)) if creature.grace > 0.0 else ""
+	# A clear view: no controls and no tape, only its hunting stamina and the
+	# count to the start of the hunt, both in the camcorder's lettering and
+	# under the same analog filter as the image (camcorder_osd.gd).
+	level.ui.hint.text = ""
+	level.camcorder.set_stamina(stamina / 100.0, stamina <= 0.0)
+	level.camcorder.announce("LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace)) if creature.grace > 0.0 else "")
 	var now := Time.get_ticks_msec() / 1000.0
 	revealed = revealed.filter(func(entry): return now - entry.time < 1.2)
