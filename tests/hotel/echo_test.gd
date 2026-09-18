@@ -182,7 +182,7 @@ func run() -> void:
 		var cabinet = level.hotel.hides[0]
 		var hung: Vector3 = echo.before_wardrobe(cabinet.global_position)
 		check("La nube de un armario cuelga delante de sus puertas", hung.y - cabinet.global_position.y > 0.8 and (cabinet.global_basis.inverse() * (hung - cabinet.global_position)).z > 0.5)
-	check("Un armario se apaga antes que una puerta", echo.PUFF_QUICK < 1.0 and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
+	check("Un armario se apaga antes que una puerta", echo.PUFF_LIVES[NOISE.Kind.WARDROBE] < echo.PUFF_LIVES[NOISE.Kind.DOOR] and echo.PUFF_LIVES[NOISE.Kind.DOOR] > echo.PUFF_LIFE and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------
 	# It only finds what is moving and out in the open. Checked on a real

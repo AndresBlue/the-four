@@ -78,13 +78,14 @@ const NOISE_SHAPE := 3
 const PUFF_BUDGET := [0, 4800, 9600]
 ## How much each kind of noise shows, by noise_kinds.gd Kind: grains (times
 ## PUFF_POINTS) and size (times the spread). A step leaves a light trail and a
-## run a heavy one; a door is a burst it cannot miss. A wardrobe is as loud as
-## a door, but its cloud goes out in a fraction of the time (PUFF_QUICK): the
-## survivor gets that much of an edge for hiding.
+## run a heavy one; a door is a burst it cannot miss, and stays. A wardrobe is
+## as loud as a door, but its cloud goes out sooner: the survivor gets that
+## much of an edge for hiding. PUFF_LIVES is each kind's life in seconds,
+## carried by every grain (write_life) so one cloud can hold all of them.
 ##                     step  run  jump door slam wardrobe peek hum
 const PUFF_DENSITY := [1.5, 3.4, 2.0, 3.6, 4.4, 3.6, 1.0, 1.0]
 const PUFF_SIZE := [1.15, 1.45, 1.2, 1.35, 1.5, 1.35, 1.0, 1.0]
-const PUFF_QUICK := 0.6
+const PUFF_LIVES := [2.2, 2.2, 2.2, 4.0, 4.0, 2.5, 2.2, 2.2]
 ## A wardrobe's cloud hangs in front of its doors at chest height: centred on
 ## the wardrobe itself, half of it would sit inside the cabinet or under the
 ## floor, hidden by the very thing that made the noise.
@@ -542,7 +543,6 @@ func apply_quality() -> void:
 	frame_material.set_shader_parameter("gain", 1.5)
 	body_material.set_shader_parameter("gain", 1.6)
 	puff_material.set_shader_parameter("gain", 1.0)
-	puff_material.set_shader_parameter("quick_life", PUFF_QUICK)
 	find_material.set_shader_parameter("gain", 1.35)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
@@ -745,9 +745,15 @@ func bloom_contacts() -> void:
 		var centre: Vector3 = mark.at
 		if kind == KINDS.Kind.WARDROBE: centre = before_wardrobe(centre)
 		# Two above the tone marks a grain that fades early (echo_points.gdshader).
-		var quick := 2.0 if kind == KINDS.Kind.WARDROBE else 0.0
-		scatter(puffs, centre, radius, count, quick, 0.35 + 0.65 * loud, when)
-		shape_of_noise(mark, when, quick)
+		var life := write_life(PUFF_LIVES[kind])
+		scatter(puffs, centre, radius, count, life, 0.35 + 0.65 * loud, when)
+		shape_of_noise(mark, when, life)
+
+## A grain's own life, added to its tone (0 or 1) in the kind channel: two
+## per tenth of a second, so the tone stays readable as what is left over.
+## Zero means the cloud's age_limit (echo_points.gdshader decodes it).
+func write_life(seconds: float) -> float:
+	return 2.0 * roundf(seconds * 10.0)
 
 ## In front of the wardrobe a noise came from, if it hangs on one; a noise
 ## heard from afar hangs in a doorway instead and stays there.
@@ -762,7 +768,7 @@ func before_wardrobe(point: Vector3) -> Vector3:
 ## sound is drawn densely in grains. Only for a noise heard from close, where
 ## the exact spot is already part of what the machine in charge sent, so this
 ## reveals a shape and never a position the creature had not earned.
-func shape_of_noise(mark: Dictionary, when: float, quick := 0.0) -> void:
+func shape_of_noise(mark: Dictionary, when: float, life := 0.0) -> void:
 	if float(mark.get("blur", 1.0)) > 0.01: return
 	var point: Vector3 = mark.point
 	var maker: Node3D = null
@@ -781,7 +787,7 @@ func shape_of_noise(mark: Dictionary, when: float, quick := 0.0) -> void:
 		var surface: Vector3 = shape[i]
 		for extra in NOISE_SHAPE:
 			var grain := surface + Vector3(rng.randfn(0.0, 0.022), rng.randfn(0.0, 0.022), rng.randfn(0.0, 0.022))
-			write(puffs, grain, grain.distance_to(point), 1.0 + quick, 1.0, when)
+			write(puffs, grain, grain.distance_to(point), 1.0 + life, 1.0, when)
 
 # --- Uniforms -----------------------------------------------------------------------
 
