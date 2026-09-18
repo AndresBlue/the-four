@@ -84,7 +84,12 @@ const PUFF_BUDGET := [0, 4800, 9600]
 ##                     step  run  jump door slam wardrobe peek hum
 const PUFF_DENSITY := [1.5, 3.4, 2.0, 3.6, 4.4, 3.6, 1.0, 1.0]
 const PUFF_SIZE := [1.15, 1.45, 1.2, 1.35, 1.5, 1.35, 1.0, 1.0]
-const PUFF_QUICK := 0.4
+const PUFF_QUICK := 0.6
+## A wardrobe's cloud hangs in front of its doors at chest height: centred on
+## the wardrobe itself, half of it would sit inside the cabinet or under the
+## floor, hidden by the very thing that made the noise.
+const WARDROBE_PUFF_OUT := 0.55
+const WARDROBE_PUFF_UP := 1.15
 ## What the shriek found stays marked well after the cry has died away, so it
 ## is worth something beyond turning the picture red.
 const FIND_LIFE := 3.2
@@ -737,10 +742,20 @@ func bloom_contacts() -> void:
 		# The further the sound travelled, the vaguer the place it hangs in.
 		radius *= 1.0 + mark.get("blur", 0.0) * 1.6
 		var when: float = clock - (seconds - mark.time)
+		var centre: Vector3 = mark.at
+		if kind == KINDS.Kind.WARDROBE: centre = before_wardrobe(centre)
 		# Two above the tone marks a grain that fades early (echo_points.gdshader).
 		var quick := 2.0 if kind == KINDS.Kind.WARDROBE else 0.0
-		scatter(puffs, mark.at, radius, count, quick, 0.35 + 0.65 * loud, when)
+		scatter(puffs, centre, radius, count, quick, 0.35 + 0.65 * loud, when)
 		shape_of_noise(mark, when, quick)
+
+## In front of the wardrobe a noise came from, if it hangs on one; a noise
+## heard from afar hangs in a doorway instead and stays there.
+func before_wardrobe(point: Vector3) -> Vector3:
+	for hide in level.hotel.hides:
+		if hide.global_position.distance_to(point) > 1.2: continue
+		return hide.global_position + hide.global_basis * Vector3(0, WARDROBE_PUFF_UP, HIDE.HINGE.z + WARDROBE_PUFF_OUT)
+	return point
 
 ## A noise made close by does not just say "over there": it comes off a body,
 ## and the body's shape comes back with it. Inside the puff, whoever made the

@@ -413,6 +413,11 @@ func close_online_menu() -> void:
 	ui.settings_open = false
 	on_state()
 
+## A player hunting hears a wardrobe door as far as an ordinary door: getting
+## in or out has to show from the next rooms, not only from beside it. The AI
+## keeps the quiet radius (on_hide_changed), so hiding from it is unchanged.
+const HUNTER_WARDROBE_RADIUS := 12.0
+
 ## A noise the creature may hear, wherever the creature is decided.
 func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:
 	if not is_instance_valid(locust): return
@@ -423,6 +428,7 @@ func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> 
 		# host is a survivor and its copy of the creature is only a puppet.
 		# The machine in charge measures how the noise reaches the creature and
 		# sends that, not the bare position: the hunter is told what it hears.
+		if kind == NOISE.Kind.WARDROBE: radius = maxf(radius, HUNTER_WARDROBE_RADIUS)
 		var route: Dictionary = locust.hear_route(point, radius)
 		if route.audible: match_net.tell_hunter(point, route, radius, kind)
 

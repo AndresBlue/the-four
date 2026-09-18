@@ -166,6 +166,22 @@ func run() -> void:
 		await click_passes(echo)
 		puffed[kind] = posmod(echo.puff_at - start, echo.puffs.multimesh.instance_count)
 	check("Correr deja más rastro que caminar, y una puerta más aún", puffed[NOISE.Kind.RUN] > puffed[NOISE.Kind.FOOTSTEP] * 2 and puffed[NOISE.Kind.DOOR] > puffed[NOISE.Kind.FOOTSTEP] * 2)
+	# A wardrobe is heard from the next rooms, as far as a door, and its cloud
+	# hangs in front of its doors instead of inside it.
+	var far_hide = null
+	for hide in level.hotel.hides:
+		var gap: float = hide.global_position.distance_to(creature.global_position)
+		if gap > 12.0 and gap < 22.0 and creature.hear_route(hide.global_position, level.HUNTER_WARDROBE_RADIUS).audible:
+			far_hide = hide
+			break
+	creature.driver.heard.clear()
+	if far_hide != null: level.on_hide_changed(true, far_hide.global_position)
+	await frames(3)
+	check("Un armario se oye desde otra habitación", far_hide != null and creature.driver.heard.any(func(mark): return int(mark.kind) == NOISE.Kind.WARDROBE))
+	if level.hotel.hides.size() > 0:
+		var cabinet = level.hotel.hides[0]
+		var hung: Vector3 = echo.before_wardrobe(cabinet.global_position)
+		check("La nube de un armario cuelga delante de sus puertas", hung.y - cabinet.global_position.y > 0.8 and (cabinet.global_basis.inverse() * (hung - cabinet.global_position)).z > 0.5)
 	check("Un armario se apaga antes que una puerta", echo.PUFF_QUICK < 1.0 and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------
