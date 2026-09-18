@@ -27,16 +27,29 @@ Todo lo demás —suelo, paredes, techo, muebles, puertas y cuerpos— **son gra
 | 120 | **La oscuridad** | nada con forma: negro, grano y la linterna | — |
 | 121 | **Hitos** | las puertas y armarios del piso | sí, tenue |
 | 122 | **Memoria** | rayos de cada clic, acumulados | sí, muy atenuada, **solo arquitectura** |
-| 123 | **Nubes de sonido** | cada ruido que oye | sí: es sonido |
-| 124 | **Lo que halló el chillido** | los supervivientes que encontró | sí, y dura |
-| 125 | **Cuerpos** | la superficie del superviviente | **no, nunca** |
-| 126 | **Su cuerpo** | sus propias mallas | — |
+| 123 | **Reflectores fuertes** | rayos dirigidos a puertas y armarios | apenas |
+| 124 | **Nubes de sonido** | cada ruido que oye | sí: es sonido |
+| 125 | **Lo que halló el chillido** | los supervivientes que encontró | sí, y dura |
+| 126 | **Cuerpos** | la superficie del superviviente | **no, nunca** |
+| 127 | **Su cuerpo** | sus propias mallas | — |
 
 ### Memoria de la sala
 
-Los rayos de cada clic son ahora el único dibujante de la arquitectura, así que hay muchos más: **4.200 por clic** en calidad alta, repartidos entre los treinta fotogramas de física que caben entre dos clics (unos 140 por paso). Se recuerdan hasta 46.000 granos, que a esa tasa son unos seis segundos de sala. Entre frentes los granos conservan una parte de su luz —tienen que hacerlo, o la sala sería negra medio segundo de cada uno— y el resto lo trae el frente al pasar.
+Los rayos de cada clic son ahora el único dibujante de la arquitectura: **3.600 por clic** de rociada general en calidad alta más **1.200 apuntados a puertas y armarios**, repartidos entre los treinta fotogramas de física que caben entre dos clics (unos 160 por paso). Los apuntados se lanzan primero, así que si un intervalo corto corta el clic, lo que se pierde es sala genérica y nunca una puerta. Se recuerdan hasta 46.000 granos, que a esa tasa son unos seis segundos de sala. Entre frentes los granos conservan una parte de su luz —tienen que hacerlo, o la sala sería negra medio segundo de cada uno— y el resto lo trae el frente al pasar.
 
 Ese presupuesto es lo caro de toda la vista, y es el primer mando que tocar si un PC va justo: `RAY_BUDGET` y `POINT_BUDGET` en `echo_view.gd`, o directamente bajar la calidad.
+
+### Reflectores fuertes
+
+Un marco de puerta y un armario son aristas duras y caras planas grandes: en ecolocalización real, lo que más devuelve. Y es lo que necesita encontrar mientras caza. Así que cada clic gasta **un presupuesto de rayos propio apuntado directamente a ellos** (1.200 en calidad alta), además de la rociada general, que a cambio baja a 3.600.
+
+Cada rayo va desde la cabeza hasta un punto de muestra del marco o del armario. **Si aterriza a menos de 25 cm del punto al que apuntaba, estaba a la vista** y se sella como grano de reflector; si algo se interpuso, se descarta. La línea de vista la da el propio rayo, así que un marco detrás de una pared no devuelve nada, y hay una prueba que pone una pared en medio para comprobarlo.
+
+- **Puertas:** el final del muro a cada lado del vano, la banda de pared alrededor en las dos caras y el techo del vano. Los puntos van sobre superficies con colisión, porque la moldura decorativa no la tiene. Si la puerta está **cerrada**, además una rejilla sobre la hoja: una puerta abierta es un marco vacío, una cerrada es un bloque encendido.
+- **Armarios:** el frente entero en rejilla, no solo el contorno, así que un armario es un bloque claramente iluminado.
+- Se apuntan primero los más cercanos y los que no quedan a la espalda, hasta agotar el presupuesto. Los lejanos los sigue marcando la capa de hitos.
+
+Van en su propia nube, más brillante que la sala, con el grano algo más grande y más luz entre frentes. **El resto de la sala se echó un poco hacia atrás** a propósito: son las puertas y los armarios lo que importa; lo demás solo es un sitio donde estar.
 
 ### Nubes de sonido
 
@@ -58,9 +71,9 @@ Sus mallas reciben un material aditivo propio mientras conduce, y se restaura el
 
 ### Hitos
 
-Vive aquí. Las puertas y los armarios del piso se dibujan tenues y para siempre, atenuándose entre 12 y 20 m, construidos una vez por piso y sin coste por fotograma. Es lo que le permite seguir orientándose entre clics.
+Vive aquí. Las puertas y los armarios del piso se dibujan tenues y para siempre, atenuándose entre 14 y 28 m, construidos una vez por piso y sin coste por fotograma. Es lo que le permite seguir orientándose entre clics.
 
-**El marco de una puerta va deliberadamente cargado de granos**: las dos jambas y el dintel, en las dos caras del vano, con una pizca de dispersión para que se lea como algo que la sala devuelve y no como una línea dibujada. Una puerta es lo que necesita reconocer de un vistazo mientras caza, así que es el único sitio donde la densidad se agrupa a propósito. Los armarios llevan su propio contorno, más sobrio. Son unos ochenta granos por puerta y unos cincuenta por armario, todos estáticos: no cuestan nada por fotograma.
+**El marco de una puerta va deliberadamente cargado de granos**: las dos jambas y el dintel, en las dos caras del vano, con una pizca de dispersión para que se lea como algo que la sala devuelve y no como una línea dibujada. Una puerta es lo que necesita reconocer de un vistazo mientras caza, así que es el único sitio donde la densidad se agrupa a propósito. Los armarios llevan su propio contorno, más sobrio. Son unos ciento setenta granos por puerta y unos setenta por armario, sobre el frente real del armario, todos estáticos: no cuestan nada por fotograma. Ubican una puerta aunque todavía no se haya barrido; los reflectores fuertes son los que la encienden cuando la tiene delante.
 
 ## El sonido
 

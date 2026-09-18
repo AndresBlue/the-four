@@ -53,7 +53,7 @@ func run() -> void:
 	# The order the five readings stack in. The hotel's own transparents (the
 	# monstera leaves, the dust) all sit at 0, so the whole echo draws above
 	# them; within the echo, the field goes first and its own body last.
-	var order := [echo.field_material.render_priority, echo.mark_material.render_priority, echo.wall_material.render_priority, echo.puff_material.render_priority, echo.find_material.render_priority, echo.body_material.render_priority, echo.self_material.render_priority]
+	var order := [echo.field_material.render_priority, echo.mark_material.render_priority, echo.wall_material.render_priority, echo.frame_material.render_priority, echo.puff_material.render_priority, echo.find_material.render_priority, echo.body_material.render_priority, echo.self_material.render_priority]
 	var rising := true
 	for i in range(1, order.size()):
 		if order[i] <= order[i - 1]: rising = false
@@ -195,6 +195,62 @@ func run() -> void:
 	echo.shriek_hold = 0.0
 	await frames(240)
 	check("Y se apaga después", echo.shriek < 0.05)
+
+	# --- Strong reflectors ---------------------------------------------------------
+	# A door in plain view answers on its own: its frame fills with grains.
+	var door = null
+	var stand := Vector3.ZERO
+	var map: RID = level.get_world_3d().navigation_map
+	for candidate in level.hotel.doors:
+		var turn := Basis(Vector3.UP, candidate.closed_rotation)
+		for side in [-1.0, 1.0]:
+			var place: Vector3 = NavigationServer3D.map_get_closest_point(map, candidate.doorway + turn.z * (3.2 * side))
+			if place.distance_to(candidate.doorway) < 2.4: continue
+			door = candidate
+			stand = place
+			break
+		if door != null: break
+	check("Hay una puerta para mirar", door != null)
+	creature.global_position = stand + Vector3(0, 0.04, 0)
+	var facing: Vector3 = door.doorway - stand
+	creature.rotation.y = atan2(-facing.x, -facing.z)
+	creature.driver.pitch = -0.1
+	await frames(4)
+	var slot: int = level.hotel.doors.find(door)
+	var before_hits: int = echo.reflector_hits[slot]
+	await click_passes(echo)
+	await click_passes(echo)
+	await click_passes(echo)
+	check("Un marco de puerta a la vista se llena de granos", echo.reflector_hits[slot] - before_hits > 40)
+	# One aimed ray that lands, then the same with a wall put in between.
+	var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
+	var head: Vector3 = creature.global_position + Vector3(0, creature.driver.EYE.y, 0)
+	var seen_spot := Vector3.INF
+	for aim in echo.reflectors[slot].frame:
+		if not echo.reflect(space, head, aim).is_empty():
+			seen_spot = aim
+			break
+	var screen := StaticBody3D.new()
+	var screen_shape := CollisionShape3D.new()
+	var screen_box := BoxShape3D.new()
+	screen_box.size = Vector3(4.0, 4.0, 0.2)
+	screen_shape.shape = screen_box
+	screen.add_child(screen_shape)
+	level.add_child(screen)
+	var blocked := false
+	if seen_spot != Vector3.INF:
+		screen.global_position = head.lerp(seen_spot, 0.5)
+		screen.look_at(seen_spot, Vector3.UP)
+		await frames(2)
+		blocked = echo.reflect(space, head, seen_spot).is_empty()
+	screen.queue_free()
+	await frames(2)
+	check("Un marco tras una pared no devuelve nada", seen_spot != Vector3.INF and blocked)
+	check("Los rayos a puertas y armarios cuentan en el mismo presupuesto", echo.per_tick * (60.0 / echo.CLICK_RATE) >= echo.RAY_BUDGET[echo.quality] + echo.INTEREST_BUDGET[echo.quality])
+	# A wardrobe is a block, and a shut door a panel, not only an outline.
+	var hide_spots: int = echo.reflectors[level.hotel.doors.size()].frame.size() if level.hotel.hides.size() > 0 else 0
+	check("Un armario se apunta como bloque entero", hide_spots == echo.WARDROBE_ACROSS * echo.WARDROBE_UP)
+	check("Una puerta cerrada se apunta también en su hoja", echo.reflectors[0].panel.size() == echo.PANEL_ACROSS * echo.PANEL_UP)
 
 	# --- Landmarks ----------------------------------------------------------------
 	# Both faces of a door reveal: two jambs and a lintel each. A wardrobe gets

@@ -27,6 +27,7 @@ const SELF_SHADER := preload("res://game/enemies/locust/shaders/echo_self.gdshad
 const BODY := preload("res://game/enemies/locust/echo_body.gd")
 const KINDS := preload("res://game/audio/noise_kinds.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const HIDE := preload("res://game/world/interactables/hiding_place.gd")
 
 ## Nominal clicks per second: the rate the reading refreshes at. Slow on
 ## purpose. A fast click makes a busy, almost psychedelic picture; at two per
@@ -55,7 +56,7 @@ const MEMORY := 9.0
 ## budget per click is large because there are thirty physics frames to spread
 ## it over: the cost per frame is the same as a fast click would be, and what
 ## you get for it is a scene made of points.
-const RAY_BUDGET := [0, 2200, 4200]
+const RAY_BUDGET := [0, 1900, 3600]
 const POINT_BUDGET := [0, 24000, 46000]
 const BODY_POINTS := [0, 700, 1400]
 ## Bodies are sampled on every click and fade just past the next one: a
@@ -87,13 +88,13 @@ const SHRIEK_HOLD := 4.0
 const SHRIEK_RISE := 6.0
 const SHRIEK_FALL := 0.55
 ## Doors and wardrobes it simply knows are there, faded out by this distance.
-const LANDMARK_NEAR := 12.0
-const LANDMARK_REACH := 20.0
-const LANDMARK_LEVEL := 0.10
+const LANDMARK_NEAR := 14.0
+const LANDMARK_REACH := 28.0
+const LANDMARK_LEVEL := 0.16
 ## Grains up each jamb and across each lintel. A doorway is what it navigates
 ## by, so its frame is crowded on purpose.
-const JAMB_GRAINS := 15
-const LINTEL_GRAINS := 9
+const JAMB_GRAINS := 22
+const LINTEL_GRAINS := 13
 ## Clear height of a hotel doorway (hotel_geometry builds the lintel at 2.65).
 const DOORWAY_HIGH := 2.6
 ## A point's radius on screen, in pixels of the rendered image. Small: the
@@ -107,6 +108,30 @@ const PRESENCE := 0.006
 const PRESENCE_CALM := 0.016
 ## Walls, doors and swinging leaves: what an echo comes back from.
 const RAY_MASK := 1 | 8 | 64
+## Strong reflectors. A door frame and a wardrobe are hard edges and big flat
+## faces, which in real echolocation are what answers loudest, and they are
+## what it needs to find while it hunts. So each click spends a budget of its
+## own on rays aimed straight at them, on top of the general spray. A ray that
+## lands within INTEREST_HIT of the spot it was aimed at found it in plain
+## sight; anything else was in the way and the ray is dropped, so a frame
+## behind a wall never answers.
+const INTEREST_BUDGET := [0, 600, 1200]
+const INTEREST_HIT := 0.25
+## Grains laid for each reflector hit: two, so a frame reads crowded.
+const INTEREST_GRAINS := 2
+## Where the reflector grains live, how long, and how big they read.
+const FRAME_POINTS := [0, 7000, 14000]
+const FRAME_MEMORY := 5.0
+const FRAME_PIXELS := 2.6
+## Samples on a doorway: up the end of each wall, round the frame on both
+## faces, along the soffit, and across the opening when a door shuts it.
+const REVEAL_SAMPLES := 12
+const BAND_SAMPLES := 8
+const PANEL_ACROSS := 5
+const PANEL_UP := 8
+## Samples on the front of a wardrobe, which is a block, not an outline.
+const WARDROBE_ACROSS := 8
+const WARDROBE_UP := 14
 ## Its own hearing already knows where the lamps are humming.
 const HUM_LEVEL := 0.13
 
@@ -132,6 +157,8 @@ var walls: MultiMeshInstance3D
 var bodies: MultiMeshInstance3D
 var puffs: MultiMeshInstance3D
 var finds: MultiMeshInstance3D
+var frames: MultiMeshInstance3D
+var frame_material: ShaderMaterial
 var marks: MultiMeshInstance3D
 var wall_material: ShaderMaterial
 var body_material: ShaderMaterial
@@ -147,6 +174,7 @@ var body_at := 0
 var body_shown := 0
 var puff_at := 0
 var find_at := 0
+var frame_at := 0
 ## Noises already turned into a puff, so each one only blooms once.
 var puffed := 0
 ## Writes in the last second, so the fade can be kept just short of the wrap.
@@ -159,6 +187,15 @@ var pending := PackedVector3Array()
 var pending_from := Vector3.ZERO
 var pending_at := 0.0
 var pending_reach := REACH
+## Spots on the doors and wardrobes in reach, aimed at directly this click,
+## and which reflector each one belongs to.
+var pending_targets := PackedVector3Array()
+var pending_owner := PackedInt32Array()
+## Each door and wardrobe of the floor: {node, centre, frame, panel}.
+var reflectors: Array = []
+## How many aimed rays each reflector has answered, since the floor began. The
+## regression reads it: instance data cannot be read back without a GPU.
+var reflector_hits := PackedInt32Array()
 var per_tick := 1
 ## Rays cast since this view opened; the regression reads it to check the
 ## budget really is spread across the frames between two clicks.
@@ -189,11 +226,12 @@ func setup(owner_driver) -> void:
 	build_clouds()
 	self_material = ShaderMaterial.new()
 	self_material.shader = SELF_SHADER
-	self_material.render_priority = 126
+	self_material.render_priority = 127
 	# Its own body is a presence, not the picture: kept well under the reading
 	# so it never blinds the middle of the frame.
 	self_material.set_shader_parameter("gain", 0.08)
 	build_landmarks()
+	build_reflectors()
 	apply_quality()
 	enable()
 
@@ -212,9 +250,6 @@ func build_field() -> void:
 	# box never is. The shader writes POSITION itself to cover the frame.
 	field.custom_aabb = AABB(Vector3.ONE * -100000.0, Vector3.ONE * 200000.0)
 	camera.add_child(field)
-	field_material.set_shader_parameter("reach", REACH)
-	field_material.set_shader_parameter("wave_speed", WAVE_SPEED)
-	field_material.set_shader_parameter("band_step", BAND_STEP)
 
 ## One shader, three clouds; they differ only in uniforms and draw priority.
 func make_cloud(title: String, priority: int, through: float) -> MultiMeshInstance3D:
@@ -248,15 +283,24 @@ func build_clouds() -> void:
 	# the soft depth test does for us by leaving it nothing to whisper with.
 	# A noise is a sound, so its puff hangs there whatever is in the way.
 	walls = make_cloud("EchoWalls", 122, 0.35)
-	puffs = make_cloud("EchoPuffs", 123, 0.8)
-	finds = make_cloud("EchoFinds", 124, 0.8)
-	bodies = make_cloud("EchoBodies", 125, 0.0)
+	# A remembered frame only whispers through the wall in front of it.
+	frames = make_cloud("EchoFrames", 123, 0.2)
+	puffs = make_cloud("EchoPuffs", 124, 0.8)
+	finds = make_cloud("EchoFinds", 125, 0.8)
+	bodies = make_cloud("EchoBodies", 126, 0.0)
 	marks = make_cloud("EchoLandmarks", 121, 0.55)
 	wall_material = walls.material_override as ShaderMaterial
 	body_material = bodies.material_override as ShaderMaterial
 	puff_material = puffs.material_override as ShaderMaterial
 	find_material = finds.material_override as ShaderMaterial
 	mark_material = marks.material_override as ShaderMaterial
+	frame_material = frames.material_override as ShaderMaterial
+	# Strong reflectors keep a body of light between fronts and come back warm
+	# white, so a doorway or a wardrobe stands out from the room around it.
+	frame_material.set_shader_parameter("residue", 0.5)
+	frame_material.set_shader_parameter("flare", 2.0)
+	frame_material.set_shader_parameter("tone_cold", Color(1.0, 0.97, 0.9))
+	frame_material.set_shader_parameter("tone_hot", Color(1.0, 0.97, 0.9))
 	# A puff is the same machinery with a slow wave and a body of its own: its
 	# grains bloom outward from the noise and then hang in the air.
 	for material in [puff_material, find_material]:
@@ -299,14 +343,18 @@ func build_landmarks() -> void:
 				var over := lerpf(-1.0, 1.0, float(i) / float(LINTEL_GRAINS - 1))
 				places.append(door.doorway + across * over + depth + Vector3(0, DOORWAY_HIGH + 0.04, 0))
 	for hide in level.hotel.hides:
+		# On the front of the wardrobe (hiding_place.gd: HINGE.z, WIDTH, HEIGHT),
+		# not inside it.
 		var frame: Basis = hide.global_basis
+		var front: float = HIDE.HINGE.z + 0.02
+		var half: float = HIDE.WIDTH * 0.5
 		for side in [-1.0, 1.0]:
 			for i in JAMB_GRAINS:
-				places.append(hide.global_position + frame * Vector3(side * 0.56, lerpf(0.08, 2.02, float(i) / float(JAMB_GRAINS - 1)), 0))
+				places.append(hide.global_position + frame * Vector3(side * half, lerpf(0.08, HIDE.HEIGHT - 0.04, float(i) / float(JAMB_GRAINS - 1)), front))
 		for i in LINTEL_GRAINS:
-			var over := lerpf(-0.56, 0.56, float(i) / float(LINTEL_GRAINS - 1))
-			for high in [0.08, 2.02]:
-				places.append(hide.global_position + frame * Vector3(over, high, 0))
+			var over := lerpf(-half, half, float(i) / float(LINTEL_GRAINS - 1))
+			for high in [0.08, HIDE.HEIGHT - 0.04]:
+				places.append(hide.global_position + frame * Vector3(over, high, front))
 	var multi: MultiMesh = marks.multimesh
 	multi.instance_count = places.size()
 	for i in places.size():
@@ -315,6 +363,98 @@ func build_landmarks() -> void:
 		var grain: Vector3 = places[i] + Vector3(rng.randfn(0.0, 0.016), rng.randfn(0.0, 0.016), rng.randfn(0.0, 0.016))
 		multi.set_instance_transform(i, Transform3D(Basis(), grain))
 		multi.set_instance_custom_data(i, Color(0.0, 0.0, 0.0, LANDMARK_LEVEL))
+
+## The spots each door and wardrobe is aimed at, laid once per floor. Every one
+## sits a centimetre or two in front of a solid face, because a ray has to land
+## on something to count: the decorative trim round a doorway has no collision,
+## but the end of the wall and the header above the opening do.
+func build_reflectors() -> void:
+	reflectors.clear()
+	if not is_instance_valid(level.hotel): return
+	for door in level.hotel.doors:
+		var turn := Basis(Vector3.UP, door.closed_rotation)
+		var across: Vector3 = turn.x
+		var through: Vector3 = turn.z
+		var edge: float = FLOOR.PORTAL * 0.5
+		var base: Vector3 = door.doorway
+		var frame := PackedVector3Array()
+		for side in [-1.0, 1.0]:
+			for i in REVEAL_SAMPLES:
+				var high := lerpf(0.12, DOORWAY_HIGH - 0.08, float(i) / float(REVEAL_SAMPLES - 1))
+				# The end of the wall, facing into the opening.
+				for depth in [-0.05, 0.05]:
+					frame.append(base + across * side * (edge + 0.01) + through * depth + Vector3(0, high, 0))
+				# The band of wall round the opening, on both faces.
+				for face in [-1.0, 1.0]:
+					frame.append(base + across * side * (edge + 0.12) + through * (0.1 * face) + Vector3(0, high, 0))
+		for i in BAND_SAMPLES:
+			var over := lerpf(-edge, edge, float(i) / float(BAND_SAMPLES - 1))
+			# Under the header, and the band above the opening on both faces.
+			frame.append(base + across * over + Vector3(0, DOORWAY_HIGH + 0.04, 0))
+			for face in [-1.0, 1.0]:
+				frame.append(base + across * over + through * (0.1 * face) + Vector3(0, DOORWAY_HIGH + 0.16, 0))
+		# Across the opening, where a shut door stands.
+		var panel := PackedVector3Array()
+		for i in PANEL_ACROSS:
+			for j in PANEL_UP:
+				var over := lerpf(-edge + 0.12, edge - 0.12, float(i) / float(PANEL_ACROSS - 1))
+				panel.append(base + across * over + Vector3(0, lerpf(0.25, DOORWAY_HIGH - 0.25, float(j) / float(PANEL_UP - 1)), 0))
+		reflectors.append({"node": door, "centre": base + Vector3(0, 1.3, 0), "frame": frame, "panel": panel})
+	for hide in level.hotel.hides:
+		var turn: Basis = hide.global_basis
+		var front: float = HIDE.HINGE.z + 0.03
+		var half: float = HIDE.WIDTH * 0.5 - 0.04
+		var frame := PackedVector3Array()
+		for i in WARDROBE_ACROSS:
+			for j in WARDROBE_UP:
+				var over := lerpf(-half, half, float(i) / float(WARDROBE_ACROSS - 1))
+				var high := lerpf(0.12, HIDE.HEIGHT - 0.1, float(j) / float(WARDROBE_UP - 1))
+				frame.append(hide.global_position + turn * Vector3(over, high, front))
+		reflectors.append({"node": hide, "centre": hide.global_position + turn * Vector3(0, 1.1, front), "frame": frame, "panel": PackedVector3Array()})
+	reflector_hits.resize(reflectors.size())
+	reflector_hits.fill(0)
+
+## This click's aimed spots: the reflectors within reach and not behind it,
+## nearest first, until the budget runs out. A doorway's panel only while the
+## door is shut. A hair of scatter each click so the grains fall as stipple.
+func aim_reflectors(from: Vector3) -> void:
+	pending_targets = PackedVector3Array()
+	pending_owner = PackedInt32Array()
+	var budget: int = INTEREST_BUDGET[quality]
+	if budget == 0: return
+	var forward: Vector3 = -camera.global_basis.z
+	var near: Array = []
+	for index in reflectors.size():
+		var one: Dictionary = reflectors[index]
+		if not is_instance_valid(one.node): continue
+		var offset: Vector3 = one.centre - from
+		var span := offset.length()
+		if span > REACH: continue
+		# Behind it counts only when it is right on top of it.
+		if span > 3.0 and offset.normalized().dot(forward) < -0.2: continue
+		near.append([span, index])
+	near.sort_custom(func(a, b): return a[0] < b[0])
+	for entry in near:
+		var one: Dictionary = reflectors[entry[1]]
+		var spots: PackedVector3Array = one.frame
+		if "opened" in one.node and not one.node.opened: spots = spots + one.panel
+		for spot in spots:
+			if pending_targets.size() >= budget: return
+			pending_targets.append(spot + Vector3(rng.randfn(0.0, 0.03), rng.randfn(0.0, 0.03), rng.randfn(0.0, 0.03)))
+			pending_owner.append(entry[1])
+
+## One aimed ray. The hit if it landed on the spot it was aimed at, which means
+## the spot is in plain sight from `from`; empty if anything was in the way.
+func reflect(space: PhysicsDirectSpaceState3D, from: Vector3, target: Vector3) -> Dictionary:
+	var way := target - from
+	var span := way.length()
+	if span < 0.05 or span > REACH: return {}
+	query.from = from
+	query.to = from + way / span * (span + 0.3)
+	rays_cast += 1
+	var hit: Dictionary = space.intersect_ray(query)
+	if hit.is_empty() or hit.position.distance_to(target) > INTEREST_HIT: return {}
+	return hit
 
 # --- Turning the view on and off ----------------------------------------------------
 
@@ -366,27 +506,35 @@ func apply_quality() -> void:
 	if finds.multimesh.instance_count != FIND_BUDGET[quality]:
 		finds.multimesh.instance_count = FIND_BUDGET[quality]
 		find_at = 0
-	per_tick = maxi(1, int(ceil(float(RAY_BUDGET[quality]) / (60.0 / CLICK_RATE))))
+	if frames.multimesh.instance_count != FRAME_POINTS[quality]:
+		frames.multimesh.instance_count = FRAME_POINTS[quality]
+		frame_at = 0
+	per_tick = maxi(1, int(ceil(float(RAY_BUDGET[quality] + INTEREST_BUDGET[quality]) / (60.0 / CLICK_RATE))))
 	field_material.set_shader_parameter("presence", PRESENCE_CALM if calm else PRESENCE)
 	# With nothing drawn from the depth buffer, the grains have to carry the
 	# room between clicks, so they keep more of themselves alight than a
 	# wavefront-lit stipple needed to.
-	wall_material.set_shader_parameter("residue", 0.40 if calm else 0.32)
+	# The general room sits a little back now that doors and wardrobes answer
+	# on their own: they are what matters, the rest is only somewhere to be.
+	wall_material.set_shader_parameter("residue", 0.32 if calm else 0.24)
 	wall_material.set_shader_parameter("flare", 1.2 if calm else 1.9)
 	field_material.set_shader_parameter("grain_amount", 0.0 if calm else 1.0)
 	field_material.set_shader_parameter("jitter_amount", 0.0 if calm else 1.0)
 	mark_material.set_shader_parameter("gain", 1.8 if calm else 1.0)
 	# The cloud carries most of the picture now that the clicks are slow.
-	wall_material.set_shader_parameter("gain", 1.15)
+	wall_material.set_shader_parameter("gain", 0.95)
+	frame_material.set_shader_parameter("gain", 1.5)
 	body_material.set_shader_parameter("gain", 1.6)
 	puff_material.set_shader_parameter("gain", 1.0)
 	find_material.set_shader_parameter("gain", 1.35)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
-	for material in [wall_material, body_material, puff_material, find_material, mark_material]:
+	for material in [wall_material, body_material, puff_material, find_material, mark_material, frame_material]:
 		material.set_shader_parameter("point_scale", span)
 		material.set_shader_parameter("point_min", 0.010)
 		material.set_shader_parameter("point_max", 0.085)
+	# Reflector grains a touch bigger than the room's.
+	frame_material.set_shader_parameter("point_scale", span * FRAME_PIXELS / POINT_PIXELS)
 
 # --- The clicks ---------------------------------------------------------------------
 
@@ -431,6 +579,11 @@ func click(hunting: bool) -> void:
 		pending_from = from
 		pending_at = clock
 		pending_reach = reach
+	# Doors and wardrobes in reach get rays of their own, cast first.
+	aim_reflectors(from)
+	if not pending_targets.is_empty() and budget == 0:
+		pending_from = from
+		pending_at = clock
 	if clicks % BODY_EVERY == 0: stamp_bodies(from, reach)
 	bloom_contacts()
 
@@ -465,9 +618,25 @@ func spray(count: int) -> PackedVector3Array:
 ## so the cost never lands in a single tick. The origin is frozen at emission:
 ## the shell left from there, wherever the body has walked to since.
 func cast_pending() -> void:
-	if pending.is_empty() or not is_instance_valid(level.hotel): return
+	if (pending.is_empty() and pending_targets.is_empty()) or not is_instance_valid(level.hotel): return
 	var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
-	var count := mini(per_tick, pending.size())
+	var left := per_tick
+	# The reflectors first: if a short interval cuts the click off, what gets
+	# dropped is general room, never a doorway.
+	while left > 0 and not pending_targets.is_empty():
+		left -= 1
+		var target: Vector3 = pending_targets[pending_targets.size() - 1]
+		var owner: int = pending_owner[pending_owner.size() - 1]
+		pending_targets.remove_at(pending_targets.size() - 1)
+		pending_owner.remove_at(pending_owner.size() - 1)
+		var hit: Dictionary = reflect(space, pending_from, target)
+		if hit.is_empty(): continue
+		reflector_hits[owner] += 1
+		var landed: Vector3 = hit.position
+		for grain in INTEREST_GRAINS:
+			var spot: Vector3 = landed if grain == 0 else landed + Vector3(rng.randfn(0.0, 0.02), rng.randfn(0.0, 0.02), rng.randfn(0.0, 0.02))
+			write(frames, spot, pending_from.distance_to(spot), 0.0, 1.0, pending_at)
+	var count := mini(left, pending.size())
 	for i in count:
 		var direction: Vector3 = pending[pending.size() - 1]
 		pending.remove_at(pending.size() - 1)
@@ -516,6 +685,9 @@ func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float,
 	elif cloud == finds:
 		index = find_at
 		find_at = (find_at + 1) % multi.instance_count
+	elif cloud == frames:
+		index = frame_at
+		frame_at = (frame_at + 1) % multi.instance_count
 	else:
 		index = body_at
 		body_at = (body_at + 1) % multi.instance_count
@@ -590,9 +762,10 @@ func push_uniforms() -> void:
 	wall_material.set_shader_parameter("age_limit", span)
 	body_material.set_shader_parameter("age_limit", BODY_FADE)
 	puff_material.set_shader_parameter("age_limit", PUFF_LIFE)
+	frame_material.set_shader_parameter("age_limit", FRAME_MEMORY)
 	find_material.set_shader_parameter("age_limit", FIND_LIFE)
 	field_material.set_shader_parameter("glare", torch_glare())
-	for material in [field_material, wall_material, body_material, puff_material, find_material, mark_material, self_material]:
+	for material in [field_material, wall_material, frame_material, body_material, puff_material, find_material, mark_material, self_material]:
 		material.set_shader_parameter("now", clock)
 		material.set_shader_parameter("shriek", shriek)
 
