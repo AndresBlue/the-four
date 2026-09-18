@@ -129,10 +129,16 @@ func drive(delta: float) -> void:
 			if creature.state_time >= creature.WINDUP_TIME and not struck:
 				struck = true
 				level.match_net.locust_strike(creature.global_position, -creature.global_basis.z)
-				creature.set_mode(creature.Mode.RECOVER)
+				# Where this machine judges the strike, a hit has already begun
+				# the execution: recovering would cut it short.
+				if creature.mode == creature.Mode.WINDUP: creature.set_mode(creature.Mode.RECOVER)
 		creature.Mode.RECOVER:
 			creature.velocity = Vector3.ZERO
-			if creature.state_time >= creature.RECOVER_TIME: creature.set_mode(creature.Mode.CHASE if hunting else creature.Mode.PATROL)
+			if creature.state_time >= creature.RECOVER_TIME:
+				# A hit would have turned this into an execution by now (the host
+				# answers well inside the recovery), so this one found no one.
+				level.ui.flash("GOLPE FALLIDO", 1.2)
+				creature.set_mode(creature.Mode.CHASE if hunting else creature.Mode.PATROL)
 		_:
 			var body_basis: Basis = creature.global_basis
 			var direction := (body_basis * Vector3(axis.x, 0, axis.y)).normalized()
@@ -235,7 +241,7 @@ func update_hud() -> void:
 	elif creature.mode == creature.Mode.WARDROBE:
 		ui.hint.text = "ABRIENDO EL ARMARIO"
 	elif creature.mode == creature.Mode.EXECUTE:
-		ui.hint.text = ""
+		ui.hint.text = "EJECUTANDO"
 	else:
 		ui.hint.text = "CLIC IZQ. ATACAR · CLIC DER. CHILLAR · %s CAZAR · %s PUERTAS Y ARMARIOS" % [level.settings.key_name("sprint"), level.settings.key_name("interact")]
 	var now := Time.get_ticks_msec() / 1000.0

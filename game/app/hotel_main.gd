@@ -580,6 +580,8 @@ func capture_survivor(body: Node3D) -> void:
 func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 	execution = {"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false}
 	if is_instance_valid(locust) and locust.control != "puppet": locust.begin_execution()
+	# The Locust player sees almost nothing: it is told in words whom it caught.
+	if hunter_seat(): ui.flash("ATRAPASTE A %s" % survivor_name(seat), 2.6)
 	if seat == player.slot:
 		player.active = false
 		player.held = true
@@ -608,6 +610,22 @@ func update_execution(delta: float) -> void:
 			player.avatar.rotation.x = 0.0
 			player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
+		if hunter_seat(): ui.flash("%s HA MUERTO · QUEDAN %d" % [survivor_name(seat), survivors_left(seat)], 4.0)
+
+## A survivor's name as the HUD shows it.
+func survivor_name(seat: int) -> String:
+	if seat == player.slot: return str(settings.values.player_name).to_upper()
+	var body = match_net.bodies.get(seat)
+	if is_instance_valid(body) and body.player_name != "": return body.player_name.to_upper()
+	return "UN SUPERVIVIENTE"
+
+## Survivors still alive, not counting this one (whose death may not have
+## reached a client's copy of the session yet).
+func survivors_left(seat: int) -> int:
+	var count := 0
+	for body in survivors():
+		if body.slot != seat and session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD: count += 1
+	return count
 
 ## The victim: held in the air in front of the creature, looking at it.
 func hold_victim(delta: float) -> void:

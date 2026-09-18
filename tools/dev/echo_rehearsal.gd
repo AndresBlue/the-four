@@ -14,6 +14,9 @@ extends SceneTree
 ##
 ## Controls are the hunter's own: mouse to look, WASD to move, Shift to hunt,
 ## left button to strike, right button to shriek, E for doors and wardrobes.
+## A survivor struck down is executed, dies and walks again six seconds later
+## somewhere else; the screen says whom you caught, whom you killed and when
+## a strike found no one.
 ## With "-- --shots" it takes a handful of frames into evidence/ and quits
 ## instead of handing you the controls, and with "-- --strip" it tiles one
 ## click's worth of frames into a single sheet, which is the only way a still
@@ -34,6 +37,10 @@ const NAMES := ["Ana", "Bruno", "Celia"]
 ## Seconds between one body's trips to a wardrobe, and how long it stays.
 const HIDE_EVERY := 22.0
 const HIDE_FOR := 7.0
+## Seconds a killed survivor stays dead before walking again. An execution
+## alone takes three, so at most two are ever down at once and the floor never
+## fails for lack of survivors (the roster below asks for one alive).
+const REVIVE_AFTER := 6.0
 
 var level
 var walkers: Array = []
@@ -72,10 +79,52 @@ func spawn() -> void:
 		# and hunts them and the shriek can find them.
 		level.match_net.bodies[seat] = body
 		level.session.participants[seat] = level.session.Life.EXPLORING
-		var walker := {"body": body, "seat": seat, "path": PackedVector3Array(), "index": 1, "gait": GAITS[0], "distance": 0.0, "hide_clock": HIDE_EVERY * (0.4 + 0.3 * float(i)), "hidden_left": 0.0, "velocity": Vector3.ZERO}
+		var walker := {"body": body, "seat": seat, "path": PackedVector3Array(), "index": 1, "gait": GAITS[0], "distance": 0.0, "hide_clock": HIDE_EVERY * (0.4 + 0.3 * float(i)), "hidden_left": 0.0, "dead_left": 0.0, "velocity": Vector3.ZERO}
 		retarget(walker)
 		walkers.append(walker)
-	level.session.roster_count = 1 + walkers.size()
+	# One alive is enough: striking them down is part of the rehearsal.
+	level.session.roster_count = 1
+
+## Caught, held on the blade, dead, and back again after a while so the
+## rehearsal can go on: otherwise it walks.
+func tend(walker: Dictionary, delta: float) -> void:
+	var body = walker.body
+	var seat: int = walker.seat
+	var life = level.session.participants.get(seat, level.session.Life.DEAD)
+	if not level.execution.is_empty() and int(level.execution.seat) == seat:
+		# Nobody is at this body's controls to be lifted: do it here, where the
+		# creature holds it, so its silhouette hangs in front of the hunter.
+		# Offline nothing pulls a victim out of its wardrobe; do what the host would.
+		if body.hidden and is_instance_valid(body.hiding_place): level.match_net.remote_leaves(body.hiding_place, body)
+		walker.hidden_left = 0.0
+		var yaw: float = level.locust.rotation.y
+		var lift := clampf(float(level.execution.time) / 0.5, 0.0, 1.0)
+		walker.velocity = Vector3.ZERO
+		body.place(level.locust.global_position - Basis(Vector3.UP, yaw).z * 1.05 + Vector3(0, 0.1 + lift, 0), yaw + PI)
+		return
+	if life == level.session.Life.DEAD:
+		if not body.dead:
+			body.set_dead(true)
+			walker.dead_left = REVIVE_AFTER
+			print("REHEARSAL ", NAMES[seat - 2], " died")
+		walker.dead_left -= delta
+		if walker.dead_left <= 0.0: revive(walker)
+		return
+	walk(walker, delta)
+
+## Back on the floor somewhere the creature is not.
+func revive(walker: Dictionary) -> void:
+	var body = walker.body
+	var point := somewhere()
+	for attempt in 8:
+		if point.distance_to(level.locust.global_position) > 14.0: break
+		point = somewhere()
+	body.set_dead(false)
+	body.place(point + Vector3(0, 0.06, 0), 0.0)
+	level.session.participants[walker.seat] = level.session.Life.EXPLORING
+	walker.hidden_left = 0.0
+	retarget(walker)
+	level.ui.flash("%s VUELVE AL PISO" % NAMES[walker.seat - 2].to_upper(), 2.0)
 
 ## One body's step: follow its path, make the noise it would make, and tell the
 ## body where it is so its own footsteps and walking pose follow.
@@ -220,6 +269,9 @@ func run() -> void:
 	approach(walkers[0].body, 9.0)
 	level.ui.flash("ENSAYO - TRES SUPERVIVIENTES EN EL PISO", 5.0)
 	print("REHEARSAL walkers=", walkers.size(), " seed=", seed_value)
+	# Unattended, a stray click on the window would strike someone and spoil
+	# the frames: the controls belong to a person only.
+	if shots or strip: level.locust.driver.set_process_unhandled_input(false)
 	if strip:
 		await contact_sheet()
 		paused = false
@@ -235,7 +287,7 @@ func run() -> void:
 		var delta := 1.0 / 60.0
 		clock += delta
 		if level.session.state != level.session.State.PLAYING: continue
-		for walker in walkers: walk(walker, delta)
+		for walker in walkers: tend(walker, delta)
 		state_clock -= delta
 		if state_clock <= 0.0:
 			state_clock = 1.0 / STATE_RATE

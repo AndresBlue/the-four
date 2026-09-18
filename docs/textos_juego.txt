@@ -762,3 +762,25 @@ CORRECCIÓN:
 OBS: solo aparece en la prueba en solitario; en partida normal el aviso es MP.xx "ERES THE LOCUST".
 ACTUAL: VISION ACUSTICA - PRUEBA LOCAL
 CORRECCIÓN:
+
+[ECO.02] The Locust atrapa a alguien (empieza la ejecución); %s es el nombre
+OBS: solo en la pantalla de quien lleva a la criatura (versus, prueba local y ensayo).
+ACTUAL: ATRAPASTE A %s
+CORRECCIÓN:
+
+[ECO.03] Pista abajo mientras dura la ejecución
+ACTUAL: EJECUTANDO
+CORRECCIÓN:
+
+[ECO.04] La baja queda registrada; %s nombre, %d supervivientes que quedan
+ACTUAL: %s HA MUERTO · QUEDAN %d
+CORRECCIÓN:
+
+[ECO.05] La estocada no alcanzó a nadie
+ACTUAL: GOLPE FALLIDO
+CORRECCIÓN:
+
+[ECO.06] Ensayo (./tools/godot.ps1 rehearsal): un superviviente muerto vuelve a andar
+OBS: solo en la herramienta de ensayo, no en el juego.
+ACTUAL: %s VUELVE AL PISO
+CORRECCIÓN:
