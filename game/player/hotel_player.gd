@@ -131,7 +131,7 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor(): velocity.y -= 20 * delta
 	if active and not hidden and not crouched and is_on_floor() and Input.is_action_just_pressed("jump"):
 		velocity.y = 5.4
-		noise.emit(global_position, 10.0, NOISE.Kind.JUMP)
+		noise.emit(global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)
 	move_and_slide()
 	avatar.update_pose(velocity, crouched, delta)
 	if position.y < -5:
@@ -149,7 +149,7 @@ func _physics_process(delta: float) -> void:
 		var index := floori(step_phase / PI)
 		if index != previous:
 			# Tiles carry a step further than carpet.
-			noise.emit(global_position, (2.5 if crouched else 16.0 if running else 7.0) * (1.3 if hard_floor else 1.0), NOISE.Kind.RUN if running and not crouched else NOISE.Kind.FOOTSTEP)
+			noise.emit(global_position, NOISE.radius(("crouch" if crouched else "run" if running else "walk") + ("_hard" if hard_floor else "")), NOISE.Kind.RUN if running and not crouched else NOISE.Kind.FOOTSTEP)
 			if step_scheduled != index: play_step(running, 0.0)
 		# Recorded steps have their impact some way into the clip: start the next
 		# one early so the impact lands exactly on the footfall (and the head dip).

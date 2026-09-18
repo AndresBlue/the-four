@@ -415,8 +415,8 @@ func close_online_menu() -> void:
 
 ## A player hunting hears a wardrobe door as far as an ordinary door: getting
 ## in or out has to show from the next rooms, not only from beside it. The AI
-## keeps the quiet radius (on_hide_changed), so hiding from it is unchanged.
-const HUNTER_WARDROBE_RADIUS := 12.0
+## keeps the quieter radius (on_hide_changed). Both in noise_kinds.HEARD.
+const HUNTER_WARDROBE_RADIUS: float = NOISE.HEARD["wardrobe_hunter"] / NOISE.HEARING_SCALE
 
 ## A noise the creature may hear, wherever the creature is decided.
 func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:
@@ -677,11 +677,11 @@ func spawn_locust() -> void:
 func on_peek(point: Vector3) -> void:
 	world_audio.play_at(world_audio.choose("open_slow"), point, -25.0, RID(), 0.4)
 	# Online the host hears every wardrobe itself (it mirrors everyone's peeking).
-	if not net.is_client(): locust_hear(point, 2.0, NOISE.Kind.PEEK)
+	if not net.is_client(): locust_hear(point, NOISE.radius("peek"), NOISE.Kind.PEEK)
 
 func on_hide_changed(entering: bool, point: Vector3) -> void:
 	# Climbing in or out of a wardrobe is not silent.
-	on_noise(point, 4.0, NOISE.Kind.WARDROBE)
+	on_noise(point, NOISE.radius("wardrobe"), NOISE.Kind.WARDROBE)
 
 ## Kind defaults to a footstep so older callers (and the tests) still work.
 func on_noise(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:

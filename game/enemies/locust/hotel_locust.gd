@@ -14,7 +14,8 @@ const NOTICE_DECAY := 0.12
 ## Suspicion at which it stops wandering and goes to look.
 const SUSPICION := 0.2
 ## Player noises carry this many times their base radius, along walkable routes.
-const HEARING_SCALE := 2.6
+const NOISE_TABLE := preload("res://game/audio/noise_kinds.gd")
+const HEARING_SCALE := NOISE_TABLE.HEARING_SCALE
 ## Lost sight for longer than this, the chase becomes a search.
 const LOSE_AFTER := 7.0
 ## Faster than a sprinting player: breaking line of sight is the only escape.

@@ -28,9 +28,9 @@ const NOISE := preload("res://game/audio/noise_kinds.gd")
 const STATE_RATE := 20.0
 ## Walking, running and crouching, and the noise each carries (hotel_player).
 const GAITS := [
-	{"speed": 3.8, "stride": 1.9, "radius": 7.0, "kind": NOISE.Kind.FOOTSTEP, "crouched": false},
-	{"speed": 6.0, "stride": 2.4, "radius": 16.0, "kind": NOISE.Kind.RUN, "crouched": false},
-	{"speed": 2.0, "stride": 1.333, "radius": 2.5, "kind": NOISE.Kind.FOOTSTEP, "crouched": true},
+	{"speed": 3.8, "stride": 1.9, "noise": "walk", "kind": NOISE.Kind.FOOTSTEP, "crouched": false},
+	{"speed": 6.0, "stride": 2.4, "noise": "run", "kind": NOISE.Kind.RUN, "crouched": false},
+	{"speed": 2.0, "stride": 1.333, "noise": "crouch", "kind": NOISE.Kind.FOOTSTEP, "crouched": true},
 ]
 const NAMES := ["Ana", "Bruno", "Celia"]
 ## Any of them, now and then, walks to a free wardrobe near it, gets in and
@@ -166,7 +166,7 @@ func walk(walker: Dictionary, delta: float) -> void:
 			var hide = body.hiding_place
 			level.match_net.remote_leaves(hide, body)
 			body.place(hide.to_global(hide.exit_offset), body.rotation.y)
-			level.on_noise(hide.global_position, 4.0, NOISE.Kind.WARDROBE)
+			level.on_noise(hide.global_position, NOISE.radius("wardrobe"), NOISE.Kind.WARDROBE)
 			print("REHEARSAL ", NAMES[walker.seat - 2], " leaves a wardrobe")
 			walker.hide_clock = rng.randf_range(HIDE_WAIT.x, HIDE_WAIT.y)
 			retarget(walker)
@@ -183,7 +183,7 @@ func walk(walker: Dictionary, delta: float) -> void:
 			walker.bound_for = null
 			body.global_position = bound.global_position
 			level.match_net.remote_enters(bound, body)
-			level.on_noise(bound.global_position, 4.0, NOISE.Kind.WARDROBE)
+			level.on_noise(bound.global_position, NOISE.radius("wardrobe"), NOISE.Kind.WARDROBE)
 			walker.hidden_left = rng.randf_range(HIDE_STAY.x, HIDE_STAY.y)
 			print("REHEARSAL ", NAMES[walker.seat - 2], " hides in a wardrobe")
 			walker.velocity = Vector3.ZERO
@@ -216,9 +216,9 @@ func walk(walker: Dictionary, delta: float) -> void:
 		walker.distance = 0.0
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)
 		var hard: bool = not room.is_empty() and int(room.type) in FLOOR.HARD_FLOORS
-		level.on_noise(body.global_position, float(gait.radius) * (1.3 if hard else 1.0), gait.kind)
+		level.on_noise(body.global_position, NOISE.radius(gait.noise + ("_hard" if hard else "")), gait.kind)
 		# Now and then somebody vaults something.
-		if rng.randf() < 0.02: level.on_noise(body.global_position, 10.0, NOISE.Kind.JUMP)
+		if rng.randf() < 0.02: level.on_noise(body.global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)
 	# A door in the way gets opened, gently or shoved depending on the hurry.
 	for door in level.hotel.doors:
 		if door.opened or door.moving: continue

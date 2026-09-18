@@ -31,7 +31,7 @@ func occupied() -> bool:
 func toggle(slow := false, emit_noise := true, forceful := false) -> bool:
 	if moving or (opened and occupied()): return false
 	forceful = forceful and not slow
-	if emit_noise: noise.emit(doorway, 3.0 if slow else 18.0 if forceful else 12.0, NOISE.Kind.SLAM if forceful else NOISE.Kind.DOOR)
+	if emit_noise: noise.emit(doorway, NOISE.radius("door_slow" if slow else "slam" if forceful else "door"), NOISE.Kind.SLAM if forceful else NOISE.Kind.DOOR)
 	swing_to(not opened, slow, forceful)
 	return true
 

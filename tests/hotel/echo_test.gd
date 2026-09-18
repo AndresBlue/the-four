@@ -182,6 +182,12 @@ func run() -> void:
 		var cabinet = level.hotel.hides[0]
 		var hung: Vector3 = echo.before_wardrobe(cabinet.global_position)
 		check("La nube de un armario cuelga delante de sus puertas", hung.y - cabinet.global_position.y > 0.8 and (cabinet.global_basis.inverse() * (hung - cabinet.global_position)).z > 0.5)
+	# A door's cloud is a bell round its source, not an even ball: many more
+	# grains in its core than an even ball would put there (under 3%).
+	var core := 0
+	for i in 400:
+		if echo.bell_offset(1.0).length() < 0.3: core += 1
+	check("La nube de una puerta se concentra en su origen", core > 40 and NOISE.Kind.DOOR in echo.PUFF_BELLS and NOISE.Kind.WARDROBE in echo.PUFF_BELLS)
 	check("Un armario se apaga antes que una puerta", echo.PUFF_LIVES[NOISE.Kind.WARDROBE] < echo.PUFF_LIVES[NOISE.Kind.DOOR] and echo.PUFF_LIVES[NOISE.Kind.DOOR] > echo.PUFF_LIFE and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------

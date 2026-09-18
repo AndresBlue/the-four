@@ -86,6 +86,11 @@ const PUFF_BUDGET := [0, 4800, 9600]
 const PUFF_DENSITY := [1.5, 3.4, 2.0, 3.6, 4.4, 3.6, 1.0, 1.0]
 const PUFF_SIZE := [1.15, 1.45, 1.2, 1.35, 1.5, 1.35, 1.0, 1.0]
 const PUFF_LIVES := [2.2, 2.2, 2.2, 4.0, 4.0, 2.5, 2.2, 2.2]
+## Doors and wardrobes gather round the spot the sound came from, a gaussian
+## of this share of the radius (clipped at 1.6 radii), instead of filling an
+## even ball: a bright core with a thin halo is what reads from rooms away.
+const PUFF_BELLS := [KINDS.Kind.DOOR, KINDS.Kind.SLAM, KINDS.Kind.WARDROBE, KINDS.Kind.PEEK]
+const PUFF_BELL := 0.35
 ## A wardrobe's cloud hangs in front of its doors at chest height: centred on
 ## the wardrobe itself, half of it would sit inside the cabinet or under the
 ## floor, hidden by the very thing that made the noise.
@@ -715,8 +720,14 @@ func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float,
 
 ## A ball of grains scattered around a point, each one carrying its distance
 ## from the centre so the shader blooms them outward from it.
-func scatter(cloud: MultiMeshInstance3D, centre: Vector3, radius: float, count: int, kind: float, energy: float, at: float) -> void:
+func scatter(cloud: MultiMeshInstance3D, centre: Vector3, radius: float, count: int, kind: float, energy: float, at: float, bell := false) -> void:
 	for i in count:
+		if bell:
+			# A bell instead of a ball: dense at the source and thinning out,
+			# so the source itself stays a bright knot that reads from afar.
+			var offset := bell_offset(radius)
+			write(cloud, centre + offset, offset.length(), kind, energy, at)
+			continue
 		var direction := Vector3(rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0))
 		if direction.length() < 0.001: direction = Vector3.UP
 		# Cube root of a uniform draw fills the ball evenly instead of clumping
@@ -724,6 +735,11 @@ func scatter(cloud: MultiMeshInstance3D, centre: Vector3, radius: float, count: 
 		var span: float = radius * pow(rng.randf(), 0.34)
 		var point: Vector3 = centre + direction.normalized() * span
 		write(cloud, point, span, kind, energy, at)
+
+## One grain's place in a bell-shaped puff, from its centre.
+func bell_offset(radius: float) -> Vector3:
+	var offset := Vector3(rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0)) * radius * PUFF_BELL
+	return offset.limit_length(radius * 1.6)
 
 ## Every noise heard since the last click becomes a puff hanging where it was
 ## heard. A survivor walking leaves one every stride, which is the trail.
@@ -746,7 +762,7 @@ func bloom_contacts() -> void:
 		if kind == KINDS.Kind.WARDROBE: centre = before_wardrobe(centre)
 		# Two above the tone marks a grain that fades early (echo_points.gdshader).
 		var life := write_life(PUFF_LIVES[kind])
-		scatter(puffs, centre, radius, count, life, 0.35 + 0.65 * loud, when)
+		scatter(puffs, centre, radius, count, life, 0.35 + 0.65 * loud, when, kind in PUFF_BELLS)
 		shape_of_noise(mark, when, life)
 
 ## A grain's own life, added to its tone (0 or 1) in the kind channel: two
