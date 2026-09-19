@@ -218,7 +218,7 @@ func pack_local() -> Array:
 		left = player.hiding_place.peek.left
 		right = player.hiding_place.peek.right
 		hide_index = level.hotel.hides.find(player.hiding_place)
-	return [player.global_position, player.rotation.y, player.camera.rotation.x, player.velocity, flags, hide_index, left, right]
+	return [player.global_position, player.rotation.y, player.look_pitch(), player.velocity, flags, hide_index, left, right]
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func player_state(seat: int, data: Array) -> void:

@@ -72,6 +72,25 @@ var torch_follow := 9.0
 var torch_energy := 0.0
 var torch_warmup := 1.0
 var torch_clock := 0.0
+## The camcorder is carried, not bolted to the head: on top of the look it
+## trails quick turns and banks into them (a spring), trembles with the hand,
+## rises and falls with breathing and nods at each heel strike. Radians
+## (pitch, yaw, roll) at the default "Movimiento de cámara". The offset is
+## taken out and put back every frame, so what the mouse or a script writes to
+## the camera stays the look and the tremor never builds up in it. Tests and
+## capture tools (--automation) run without it, so every frame is repeatable.
+const TREMOR := Vector3(0.0016, 0.0013, 0.0011)
+const BREATH := Vector3(0.0022, 0.0, 0.0009)
+const GAIT := Vector3(0.0055, 0.0022, 0.0035)
+var handheld_enabled := true
+## Rotation offset applied last frame.
+var handheld := Vector3.ZERO
+var turn_delta := Vector2.ZERO
+var turn_rate := Vector2.ZERO
+var sway := Vector3.ZERO
+var sway_velocity := Vector3.ZERO
+var hand_clock := 0.0
+var was_on_floor := true
 
 func _ready() -> void:
 	avatar = $Avatar
@@ -93,10 +112,13 @@ func _ready() -> void:
 	add_child(second)
 	step_voices = [footstep, second]
 	if settings == null: set_physics_process(false)
+	# --handheld puts it back for a recorded walkthrough under --automation.
+	handheld_enabled = not OS.get_cmdline_user_args().has("--automation") or OS.get_cmdline_user_args().has("--handheld")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not active: return
 	if event is InputEventMouseMotion and not reading:
+		turn_delta += Vector2(-event.relative.x, -event.relative.y * (-1 if settings.values.invert else 1)) * settings.values.sensitivity
 		rotate_y(-event.relative.x * settings.values.sensitivity)
 		if hidden:
 			var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
@@ -170,7 +192,10 @@ func _physics_process(delta: float) -> void:
 	var lift := (absf(sin(step_phase)) - 0.6) * amplitude * bob_weight
 	update_peek(delta)
 	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, 0.0) + peek_lean()
-	camera.rotation.z = sin(step_phase) * amplitude * 0.02 * bob_weight
+	# Landing: the arms absorb it, the camera dips and swings back.
+	var grounded := is_on_floor()
+	if grounded and not was_on_floor: sway_velocity.x -= 0.35
+	was_on_floor = grounded
 
 # Incandescent torch: hot centre, faint reflector ring and a soft falloff.
 static func beam_pattern() -> Texture2D:
@@ -217,7 +242,57 @@ func torch_target() -> Transform3D:
 func snap_torch() -> void:
 	if is_instance_valid(torch) and is_instance_valid(camera) and camera.is_inside_tree(): torch.global_transform = torch_target()
 
+## Strength of the hand-held motion: the "Movimiento de cámara" slider (0.1 by
+## default gives 1), none with reduced effects.
+func handheld_strength() -> float:
+	if not handheld_enabled or settings == null or settings.values.reduced: return 0.0
+	return clampf(settings.values.bob / 0.1, 0.0, 3.0)
+
+## Smooth noise in -1..1 with a 1/f spectrum: three octaves, each half as
+## strong and twice as quick. `lane` keeps the three axes apart.
+static func tremor_noise(t: float, lane: int) -> float:
+	var value := 0.0
+	var amplitude := 0.57
+	var frequency := 0.7
+	for octave in 3:
+		var x := t * frequency + lane * 17.3 + octave * 5.1
+		value += (sin(x) * 0.6 + sin(x * 2.17 + 1.3) * 0.4) * amplitude
+		amplitude *= 0.5
+		frequency *= 2.1
+	return value
+
+func update_handheld(delta: float) -> void:
+	var strength := handheld_strength()
+	hand_clock += delta
+	# How fast the look is turning, smoothed (radians per second).
+	var rate := turn_delta / maxf(delta, 0.001)
+	turn_delta = Vector2.ZERO
+	turn_rate = turn_rate.lerp(rate, 1.0 - exp(-delta * 12.0))
+	# The arms trail a quick turn and bank into a sideways one; a stiff,
+	# slightly underdamped spring brings the camera back with a hint of
+	# overshoot. Clamped: a flick never throws the picture far.
+	var target := Vector3(clampf(-turn_rate.y * 0.01, -0.02, 0.02), clampf(-turn_rate.x * 0.008, -0.02, 0.02), clampf(turn_rate.x * 0.012, -0.025, 0.025))
+	sway_velocity += ((target - sway) * 110.0 - sway_velocity * 13.0) * delta
+	sway += sway_velocity * delta
+	var tremor := Vector3(tremor_noise(hand_clock, 0), tremor_noise(hand_clock, 1), tremor_noise(hand_clock, 2)) * TREMOR
+	# Breathing: slow, deeper when winded.
+	var winded := 1.0 + (1.0 - stamina / 100.0) * 2.0
+	var breath := Vector3(sin(hand_clock * 1.7), 0.0, sin(hand_clock * 1.7 + 1.2)) * BREATH * winded
+	# A nod at each heel strike (sharp, when the step's |sin| is near 0), a yaw
+	# and a roll towards the planted foot once per stride.
+	var strike := pow(1.0 - absf(sin(step_phase)), 5.0)
+	var gait := Vector3(strike, sin(step_phase), sin(step_phase)) * GAIT * bob_weight * (1.7 if velocity.length() > 4.5 else 0.6 if crouched else 1.0)
+	var offset := (sway + tremor + breath + gait) * strength
+	camera.rotation += offset - handheld
+	handheld = offset
+
+## Where the camera looks without the hand-held motion (what the network
+## sends as the look, for instance).
+func look_pitch() -> float:
+	return camera.rotation.x - handheld.x
+
 func _process(delta: float) -> void:
+	if is_instance_valid(camera) and settings != null: update_handheld(delta)
 	if not is_instance_valid(torch) or not torch.is_inside_tree(): return
 	var target := torch_target()
 	var reduced: bool = settings != null and settings.values.reduced
@@ -303,6 +378,7 @@ func enter_hide(place: Node3D) -> bool:
 	rotation.y = place.global_rotation.y + PI
 	hide_yaw = rotation.y
 	camera.rotation = Vector3.ZERO
+	handheld = Vector3.ZERO
 	torch.visible = false
 	hiding_changed.emit(true, global_position)
 	return true

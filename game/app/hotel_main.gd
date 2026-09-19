@@ -265,6 +265,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
 	player.camera.rotation = Vector3.ZERO
+	player.handheld = Vector3.ZERO
 	player.torch.visible = false
 	player.rotation.y = -PI / 2 if manifest.adjacency[0].has(1) else PI
 	visibility_clock = 1
