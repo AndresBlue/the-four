@@ -105,6 +105,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Cuadros y apliques de las paredes oeste y norte colgaban en la cara de la sala vecina (marcos superpuestos, paredes desnudas); ahora cada pared tiene los suyos.
 - [ ] Revisar en partida lo que las capturas fijas no enseñan: cuadros y apliques nuevos, sombras con el filtro más barato en Baja y Media en movimiento, salas que aparezcan tarde al girar en un vano (oclusión).
 - [ ] Medir `tools/benchmarks/run_bench.ps1` en un PC modesto (los de las pruebas con amigos) y anotarlo en PERFORMANCE.md.
+- [x] Presets gráficos Bajo, Medio, Alto y Ultra desde una sola tabla (`graphics_presets.gd`), opción de renderizador (Forward+ o Compatibilidad) y Bajo en el primer arranque con gráfica integrada. Medidos a 1080p en el PC de desarrollo: GPU caminando 0,74 / 2,35 / 4,92 / 6,87 ms. Ver PERFORMANCE.md, sección 6.
+- [ ] Probar los presets en partida (TAA de Medio en movimiento, penumbras de Ultra, eco de Bajo y halo de Ultra) y medir Bajo, en Forward+ y en Compatibilidad, en un PC con gráfica integrada.
 
 ## P3 — Cooperativo y hoja paranormal
 

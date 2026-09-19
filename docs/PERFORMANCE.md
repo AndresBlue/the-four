@@ -17,6 +17,8 @@ Herramientas relacionadas:
 - `./tools/benchmarks/bench_table.ps1 base,final` pone dos informes en tabla.
 - `tools/benchmarks/compare_captures.gd` compara dos juegos de capturas: da la diferencia media y máxima y el porcentaje de píxeles que cambian, y escribe una imagen de diferencias.
 - `-Compatibility` mide con el otro renderizador; `-Extra '--shadow-filter=N'` o `'--atlas-quads=a,b,c,d'` sirven para pruebas A/B.
+- `-Extra '--qualities=0,3'` mide solo esos presets y `'--set=clave:valor,...'` fuerza valores de `graphics_presets.gd` sobre todos, para medir un efecto solo (sección 6).
+- `tools/benchmarks/preset_sheet.gd` pone los cuatro presets de una vista en una hoja (`--view=room36`, `--crop=x,y,w,h`).
 
 ## Antes y después
 
@@ -73,7 +75,7 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
 | Paredes una vez | Se dibuja solo la mitad propia del núcleo y la cara propia (`wall_core()`); el colisionador sigue siendo la caja entera de 18 cm; la galería conserva paredes completas (`full_walls`) | GPU −10 a −16 % |
 | Oclusión | `use_occlusion_culling`; un `OccluderInstance3D` por sala con quads dentro de sus paredes, dinteles y alcobas; las nubes de eco lo ignoran; se desactiva durante una ejecución | Llamadas −70 %, primitivas −80 %; +0,2–0,3 ms de CPU de oclusión |
 | Cuadros y apliques | Colocados en la cara interior (`inner`) | Cambio visual deliberado: ahora cada pared tiene los suyos |
-| Filtro por preset | `SHADOW_FILTER` en `hotel_main.gd`: Baja Soft Very Low, Media Soft Low, Alta Soft Medium | GPU caminando: Baja 2,38 → 1,65 ms; Media 3,76 → 3,36 ms |
+| Filtro por preset | Baja Soft Very Low, Media Soft Low, Alta Soft Medium (hoy `shadow_filter` en `graphics_presets.gd`, sección 6) | GPU caminando: Baja 2,38 → 1,65 ms; Media 3,76 → 3,36 ms |
 | CPU | Direcciones de eco bajo demanda; rutas de sonido sin búsqueda más allá de `ROUTE_LIMIT + ROUTE_SLACK`; cápsula solo al cambiar | Del orden de 1,3–7,4 ms por chasquido a unos 0,1 ms por tick |
 
 ## 3. Recomendaciones que no se aplicaron
@@ -82,8 +84,8 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
   - En Media (atlas de 4096) y en algunas vistas, varias luces se disputan los huecos grandes y se redibujan en cada fotograma. En la sala 36 quedan unas 800 llamadas de sombra por fotograma.
   - Cambiar las subdivisiones de los cuadrantes lo evita en esa vista, pero cambia qué resolución recibe cada sombra.
   - Hay que probarlo con capturas A/B: `run_bench.ps1 -Extra '--atlas-quads=2,3,4,4'`.
-- **MSAA 2× en Media y Alta.** Es redundante con TAA en Alta y con el emborronado VHS. Necesita comparación A/B.
-- **Sombra del jugador local.** `shadow_caster_mask` evitaría que sus lámparas vecinas se redibujen al caminar, pero se perdería su propia sombra.
+- **MSAA 2× en Media y Alta.** Es redundante con TAA en Alta y con el emborronado VHS. Necesita comparación A/B. *Resuelto en los presets (sección 6): Medio usa solo TAA.*
+- **Sombra del jugador local.** `shadow_caster_mask` evitaría que sus lámparas vecinas se redibujen al caminar, pero se perdería su propia sombra. *Resuelto en los presets: Bajo la quita (`body_shadow`).*
 - **Sombras omni dual-paraboloid: descartadas.** Deforman las cajas grandes de pocos polígonos y abrirían fugas de luz.
 - **Niebla volumétrica y SSIL a menor resolución.** Cambian el haz de la linterna y el rebote.
 - **LOD en la hoja y el marco de puerta.** Se dejaron fuera a propósito, porque sellan la luz.
@@ -100,7 +102,7 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
   - `_physics_process` de puertas y armarios corre en reposo.
   - El OSD se repinta en cada fotograma.
   - El subtítulo se reescribe en cada fotograma.
-- **FSR 1** cuando la escala 3D sea menor que 1.
+- **FSR 1** cuando la escala 3D sea menor que 1. *Resuelto: `settings_service.apply()`.*
 
 ## 4. Posibles regresiones a revisar en partida
 
@@ -123,6 +125,122 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
 6. Partida con `./tools/godot.ps1 playtest -Seed 81`:
    - pasillos con apliques, salas oscuras con puertas cerradas, linterna;
    - un armario y una persecución;
-   - los tres presets.
+   - los cuatro presets.
 7. `./tools/godot.ps1 locust -Seed 81` y `rehearsal`: la visión de eco sin tirones al chasquear.
 8. Repetir el benchmark en un PC modesto y anotar sus cifras aquí.
+
+## 6. Presets gráficos: Bajo, Medio, Alto y Ultra
+
+Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada estaba pensado para gráficas integradas. Ahora hay cuatro presets con diferencias claras y acumulativas. Todo lo que cambia con la calidad está en una tabla, `game/presentation/graphics_presets.gd`, y ningún otro archivo guarda valores por calidad. La calidad guardada 0–2 conserva su significado (Bajo, Medio, Alto) y 3 es Ultra. Elegir un preset fija también su escala de render; el deslizador sigue libre.
+
+### Qué cambia
+
+| Parámetro | Bajo | Medio | Alto | Ultra |
+|---|---|---|---|---|
+| Escala de render | 0,67 + FSR 1 | 0,85 + FSR 1 | 1,0 | 1,0 |
+| Antialiasing | FXAA | TAA | TAA + MSAA 2× | TAA + MSAA 4× |
+| AA especular (limitador de rugosidad) | no | sí | sí | sí |
+| Atlas de sombras | 4096 | 4096 | 8192 | 8192 |
+| Filtro de sombras | Soft Very Low | Soft Low | Soft Medium | Soft High |
+| Penumbra (tamaño de la fuente, PCSS) | ninguna (PCF simple) | la de siempre | la de siempre | ×2,5, como la cúpula esmerilada |
+| Alcance de las lámparas (luz y sombra) | 42 m | 42 m | 48 m | 64 m |
+| Salas dibujadas | 56 m | 66 m | 66 m | 82 m |
+| Lámparas de muebles | apagadas | hasta 28 m | hasta 32 m | hasta 40 m |
+| Sombra del cuerpo propio | no | sí | sí | sí |
+| SSAO | no | Low, media resolución | Medium, media resolución | High, resolución completa |
+| SSIL (la única GI viable) | no | no | Medium, media resolución | High, media resolución |
+| Reflejos SSR | no | no | 32 pasos, rugosidad Low | 64 pasos, rugosidad High |
+| Sondas de reflexión | no | 1 de cada 3 vestíbulos | todos los vestíbulos, con sombras | igual que Alto |
+| Niebla volumétrica | no | 48³ | 64³ | 96³ |
+| Neblina de suelo en vestíbulos | no | no | sí | sí |
+| Glow | sí | sí | sí, subida bicúbica | igual que Alto |
+| Debanding | no | no | sí | sí |
+| Polvo (partículas) | no | 60 | 90 | 140 |
+| Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas |
+| Filtro VHS | 4 lecturas de croma | 7 | 7 | 7 |
+| Umbral de LOD | 4 px | 2 px | 1 px | 1 px |
+| Filtrado anisotrópico | 2× | 4× | 8× | 16× |
+| Visión de eco (criatura) | ½ de granos, ×2 de tamaño | base | más densa | algo más fina + halo de fósforo |
+
+**Lo que no cambia, a propósito:**
+- **Sombras de las lámparas.** Toda lámpara visible conserva su sombra en todos los presets. Una lámpara sin sombra atraviesa paredes y puertas cerradas, así que la sombra se abarata (filtro, penumbra, cuerpo propio), nunca se quita. Por la misma razón el atlas no baja de 4096: con celdas más bastas, el sesgo crece más que el grosor de una hoja de puerta.
+- **Luz ambiente cero y niebla casi negra.** Las salas oscuras son negras en todos los presets.
+- **Números de puerta y rótulos (20 m), faro rojo, sellos de puerta y salas oscuras.** Son gameplay y orientación.
+- **Filtro VHS.** Sus deslizadores y «Efectos reducidos» son ajustes del jugador.
+- **GI.** SDFGI deja pasar luz por muros de 18 cm, y un piso generado no se puede hornear (VoxelGI, lightmaps). La GI es SSIL.
+- **Decals.** No hay ninguno.
+- **Streaming de texturas.** Godot 4.7 no lo tiene. Las texturas ya van comprimidas (sección 2).
+
+### Rendimiento medido
+
+PC de desarrollo (RTX 4060 Ti, Ryzen 9 5900X), 1080p, sin límite de FPS. Tiempos en ms (media); `run_bench.ps1 -Label presets`.
+
+| Preset | GPU caminando | Fotograma caminando | p99 caminando | GPU salón (sala 36) | GPU recepción | Llamadas de sombra caminando | Memoria de vídeo |
+|---|---|---|---|---|---|---|---|
+| Bajo | 0,74 | 2,85 | 3,5 | 0,77 | 0,69 | 26 | 842 MB |
+| Medio | 2,35 | 3,27 | 5,1 | 2,44 | 1,96 | 447 | 935 MB |
+| Alto | 4,92 | 5,78 | 7,2 | 4,53 | 3,93 | 558 | 1.256 MB |
+| Ultra | 6,87 | 7,73 | 9,8 | 6,82 | 6,24 | 588 | 1.375 MB |
+
+Frente a los tres niveles anteriores (sección «Antes y después», GPU caminando): Baja 1,65 → Bajo 0,74; Media 3,36 → Medio 2,35; Alta 4,67 → Alto 4,92. Alto añade SSR, sondas en todos los vestíbulos y lámparas hasta 48 m. De Bajo a Ultra la GPU se multiplica por 9.
+
+- **Bajo:** unos 350 FPS en este PC, pero limitado por la CPU (lógica del juego, audio, IA): la GPU solo trabaja 0,74 ms.
+- **Ultra:** unos 130 FPS a 1080p en este PC. No está medido a 1440p ni en gráficas de gama media.
+- **Diferencia visual entre presets vecinos** (capturas sin VHS, píxeles que cambian más de 12 niveles): Bajo → Medio del 0,8 al 3,7 %; Medio → Alto del 2,0 al 5,2 %; Alto → Ultra del 0,3 al 1,9 %. Donde más se nota Alto → Ultra es en las penumbras, en el salón.
+- **Hojas comparativas:** `evidence/bench/presets_forward_plus/sheet_*.png`, con `preset_sheet.gd`.
+
+Lo que más se nota en partida no sale en una foto fija: antialiasing en movimiento, haz volumétrico de la linterna, polvo en el haz y lámparas lejanas encendidas en pasillos largos.
+
+### Coste de cada efecto
+
+Medido forzando un valor sobre el preset (`-Extra '--qualities=N --set=clave:valor'`). GPU caminando, en ms; el ruido entre medidas es de ±0,1–0,2 ms.
+
+| Efecto | Preset | Coste |
+|---|---|---|
+| Soft High frente a Soft Medium | Ultra | 1,25 |
+| SSIL a resolución completa frente a media (no adoptado: sin diferencia visible) | Ultra | 1,65 |
+| Escala 0,85 frente a 1,0 | Medio | 0,63 |
+| SSIL Medium | Alto | 0,46 |
+| SSR 64 pasos | Ultra | 0,44 |
+| SSAO a resolución completa frente a media | Ultra | 0,41 |
+| Escala 0,67 frente a 1,0 | Bajo | 0,36 |
+| MSAA 2× | Alto | 0,37 |
+| Niebla volumétrica 96³ frente a 64³ | Ultra | 0,27 |
+| SSAO Low | Medio | 0,27 |
+| TAA | Medio | 0,20 |
+| SSR 32 pasos | Alto | 0,20 |
+| Penumbra (PCSS) frente a PCF simple | Bajo | 0,13 |
+| Sombra del cuerpo propio al caminar | Bajo | 0,13 (y unas 420 llamadas de sombra) |
+| Glow | Bajo | 0,10 |
+| Niebla volumétrica 48³ / 64³ | Medio / Alto | ~0,10 |
+| Lámparas hasta 64 m frente a 48 m | Ultra | ~0 caminando; 0,17 en el salón |
+
+**Lo que más cambia los FPS:**
+1. **Escala de render.** El coste de casi todo es por píxel: 0,85 quita un 27 % de la GPU en Medio. En gráficas modestas, que se quedan cortas por píxeles, pesa aún más.
+2. **Filtrado de sombras.** Soft High es lo más caro de Ultra (un 18 % de su GPU), y solo compensa porque su penumbra es ancha.
+3. **Efectos de pantalla:** SSIL, SSAO, SSR y MSAA, entre 0,2 y 0,5 ms cada uno.
+4. **Sombra del propio cuerpo al caminar.** En Bajo quitarla deja las llamadas de sombra en 26 (frente a unas 450), porque ya nada obliga a redibujar las lámparas de alrededor en cada paso.
+5. **El detalle de shaders y el filtro VHS reducido casi no se notan en esta GPU** (0,04 ms). Ahorran cálculo, que pesa más en una integrada; en Bajo, además, quitan el grano de aliasing del techo.
+
+### Visión de eco por preset
+
+Bajo tenía presupuesto cero y dejaba al jugador de The Locust a oscuras. Ahora:
+- **Bajo:** la mitad de granos que Medio, del doble de tamaño. Puertas y armarios conservan sus rayos.
+- **Ultra:** algo más fino que Alto (más granos, más pequeños), para no dar más información; su atractivo es un halo tenue de fósforo alrededor de cada grano.
+
+Detalle en [VISION_LOCUST.md](VISION_LOCUST.md). Capturas: `echo_capture.gd` (`preset_0` a `preset_3`).
+
+### Renderizador y gráficas integradas
+
+- **Opción en Ajustes ▸ Gráficos ▸ Renderizador:** Forward+ o Compatibilidad (OpenGL). Se guarda en `user://renderer.cfg`, que `project.godot` usa como override, y se aplica al reiniciar; desde el menú principal hay un botón para reiniciar.
+- **Primer arranque con gráfica integrada** (`RenderingServer.get_video_adapter_type()`): el juego empieza en Bajo y el menú sugiere Compatibilidad.
+- **Compatibility probado con los cuatro presets** en este PC, sin errores. En una gráfica dedicada no es más rápido: Bajo 1,47 ms de GPU frente a 0,74 en Forward+. Su ventaja esperada está en integradas, **sin medir: este PC no tiene gráfica integrada** (el 5900X no trae GPU).
+- **Fugas de luz** con la sala oscura y la puerta cerrada: brillo medio inferior a 1/255 en los cuatro presets, también con la penumbra de Ultra.
+
+### Pendiente
+
+- Medir Bajo, en Forward+ y en Compatibilidad, en un PC con gráfica integrada, y Ultra en una gráfica de gama media a 1440p.
+- Revisar en partida:
+  - TAA de Medio en movimiento (estela del polvo y de la linterna);
+  - penumbras anchas de Ultra con las lámparas que parpadean;
+  - la visión de eco de Bajo y el halo de Ultra con jugadores reales.

@@ -70,7 +70,7 @@ Desde PowerShell en la carpeta del proyecto:
 
 Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. Las regresiones de arquitectura usan `--no-enemy`; `survival-test` mantiene la IA real. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
 
-Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle del ambiente; `hotel_benchmark.gd` mide tres vistas por calidad a 1080p. Ejecutarlas con Godot, `--path` al proyecto, `--script res://tests/hotel/hotel_audio_test.gd o res://tools/benchmarks/hotel_benchmark.gd` y, tras `--`, `--automation --test-profile --silent`.
+Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle del ambiente; `hotel_benchmark.gd` mide tres vistas quietas y un tramo caminando con cada preset gráfico a 1080p (`tools/benchmarks/run_bench.ps1` lo lanza). Ejecutarlas con Godot, `--path` al proyecto, `--script res://tests/hotel/hotel_audio_test.gd o res://tools/benchmarks/hotel_benchmark.gd` y, tras `--`, `--automation --test-profile --silent`.
 
 ## Prototipo anterior
 

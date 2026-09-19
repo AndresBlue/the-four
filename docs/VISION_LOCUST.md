@@ -37,7 +37,16 @@ Todo lo demás —suelo, paredes, techo, muebles, puertas y cuerpos— **son gra
 
 Los rayos de cada clic son ahora el único dibujante de la arquitectura: **3.600 por clic** de rociada general en calidad alta más **1.200 apuntados a puertas y armarios**, repartidos entre los treinta fotogramas de física que caben entre dos clics (unos 160 por paso). Los apuntados se lanzan primero, así que si un intervalo corto corta el clic, lo que se pierde es sala genérica y nunca una puerta. Se recuerdan hasta 46.000 granos, que a esa tasa son unos seis segundos de sala. Entre frentes los granos conservan una parte de su luz —tienen que hacerlo, o la sala sería negra medio segundo de cada uno— y el resto lo trae el frente al pasar.
 
-Ese presupuesto es lo caro de toda la vista, y es el primer mando que tocar si un PC va justo: `RAY_BUDGET` y `POINT_BUDGET` en `echo_view.gd`, o directamente bajar la calidad.
+Ese presupuesto es lo caro de toda la vista, y es el primer mando que tocar si un PC va justo. Sale del preset gráfico (`echo` en `game/presentation/graphics_presets.gd`):
+
+| Preset | Rayos por clic | Apuntados | Granos recordados | Tamaño de grano |
+|---|---|---|---|---|
+| Bajo | 950 | 600 | 12.000 | ×2 |
+| Medio | 1.900 | 600 | 24.000 | ×1 |
+| Alto | 3.600 | 1.200 | 46.000 | ×1 |
+| Ultra | 4.800 | 1.400 | 64.000 | ×0,8, con halo |
+
+Bajo reparte la mitad de granos que Medio, del doble de tamaño, para que la sala se siga leyendo; puertas y armarios conservan los rayos y la memoria de Medio, porque son lo que usa para orientarse (antes, en calidad baja, la vista se quedaba a oscuras). Ultra es solo algo más fino que Alto, para que la calidad no dé más información: lo que gana es un halo tenue de fósforo alrededor de cada grano (`halo` en `echo_points.gdshader`), siempre sobre granos que ya existen. El glow del entorno no servía: trabaja sobre imágenes reducidas, donde un grano de 2 px casi desaparece.
 
 ### Reflectores fuertes
 
@@ -143,7 +152,7 @@ Presupuestos por calidad (0/1/2): rayos por clic `[0, 2200, 4200]`, granos recor
 Los números de la imagen se ajustan jugando, no sobre el papel:
 
 - **`presence`.** Es el único término que aún toca la profundidad: una insinuación plana de que hay algo sólido, sin bordes ni forma. Si sube, la sala vuelve a dibujarse en vez de ser clicada, y se cae toda la ficción. Está casi a cero a propósito.
-- **La densidad del granulado.** Es lo único que describe la sala, así que si no se puede navegar, el mando es `RAY_BUDGET` hacia arriba (y el coste en CPU con él) o `residue` del material de los muros.
+- **La densidad del granulado.** Es lo único que describe la sala, así que si no se puede navegar, el mando es `rays` del preset hacia arriba (y el coste en CPU con él) o `residue` del material de los muros.
 - **La separación de los frentes.** A 2 clics por segundo y 16 m/s los cascarones quedan a unos 8 m. Más juntos vuelven a abarrotar la imagen.
 - **Las salas pequeñas son más claras que los pasillos**, y eso es acústicamente cierto: todo está cerca y devuelve mucho. Si molesta, el mando es la ganancia del barrido en `echo_field.gdshader`.
 - **La legibilidad en un salón grande**, con memoria e hitos a través de los muros y doce anillos de contacto a la vez. Lo esperable es bajar las transparencias, no subirlas.

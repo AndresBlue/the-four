@@ -41,7 +41,7 @@ Menú principal: Nueva partida, Continuar, Multijugador, Archivo, Ajustes, Créd
 
 Portada: detrás del menú se ve una habitación de hotel normal, iluminada por su lámpara, con una cámara en mano que deriva despacio. Al fondo, a la derecha y fuera del centro de la imagen, la puerta al pasillo está entreabierta (bisagra a la derecha) y The Locust se asoma desde detrás del marco izquierdo: por la rendija solo se ve la cara pálida, ladeada, con algún tic de cabeza. Es pequeño y oscuro a propósito, para que sorprenda a quien lo descubra.
 
-- Gráficos: ventana/pantalla completa, resolución, escala de render, calidad baja/media/alta, sombras, límite de FPS y sincronización vertical.
+- Gráficos: ventana/pantalla completa, resolución, preset gráfico Bajo/Medio/Alto/Ultra (fija también la escala de render), renderizador Forward+/Compatibilidad (al reiniciar), escala de render, sombras, límite de FPS y sincronización vertical.
 - Imagen: intensidad VHS, grano, aberración cromática, movimiento de cámara y efectos reducidos. Sin desenfoque de movimiento.
 - Controles: sensibilidad, inversión vertical, reasignación sin conflictos y restauración de controles. Esc, F9 y F11 se reservan.
 - Audio: buses general, ambiente, música, efectos y peligro; subtítulos para sonidos relevantes.
@@ -77,7 +77,7 @@ La navegación se calcula desde los cuerpos estáticos construidos, incluyendo i
 
 ## Presentación y assets
 
-Forward+ es el render principal de escritorio. Un lanzador Compatibility ofrece una alternativa reducida con la misma geometría y reglas. Calidades y efectos no deben alterar rutas o pistas.
+Forward+ es el render principal de escritorio. Compatibility, elegible en Ajustes y sugerido en gráficas integradas, ofrece una alternativa reducida con la misma geometría y reglas. Presets y efectos no deben alterar rutas o pistas: toda lámpara visible conserva su sombra en todos, y la visión de eco de The Locust nunca da más información por calidad (Bajo reparte menos granos más grandes; Ultra, algo más finos y con halo).
 
 0.4-P1 incorpora materiales procedurales de moqueta y papel mural, luces localizadas, sombras próximas, niebla de profundidad, oclusión ambiental, niebla volumétrica en calidad alta y filtro VHS moderado. Menús, subtítulos e indicaciones se dibujan después del filtro. Las instancias se agrupan por habitación/material y se limita la presentación lejana; las colisiones y el mapa permanecen cargados.
 

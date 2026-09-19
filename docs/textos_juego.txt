@@ -403,11 +403,31 @@ ACTUAL: Tamaño de ventana
 CORRECCIÓN:
 
 [AJ.13] Desplegable
-ACTUAL: Calidad
+ACTUAL: Preset gráfico
 CORRECCIÓN:
 
-[AJ.14] Opciones de calidad
-ACTUAL: Baja / Media / Alta
+[AJ.14] Opciones del preset gráfico
+ACTUAL: Bajo / Medio / Alto / Ultra
+CORRECCIÓN:
+
+[AJ.14b] Desplegable
+ACTUAL: Renderizador
+CORRECCIÓN:
+
+[AJ.14c] Opciones del renderizador
+ACTUAL: Forward+ (completo) / Compatibilidad (gráfica integrada)
+CORRECCIÓN:
+
+[AJ.14d] Aviso bajo el renderizador, tras cambiarlo
+ACTUAL: El renderizador cambia al reiniciar el juego.
+CORRECCIÓN:
+
+[AJ.14e] Botón bajo el aviso (solo desde el menú principal)
+ACTUAL: REINICIAR AHORA
+CORRECCIÓN:
+
+[AJ.14f] Menú principal, primer arranque con gráfica integrada
+ACTUAL: Gráfica integrada: preset Bajo. Si aun así va lento, prueba Ajustes ▸ Gráficos ▸ Renderizador: Compatibilidad.
 CORRECCIÓN:
 
 [AJ.15] Deslizador
