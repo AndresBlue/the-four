@@ -128,21 +128,26 @@ func finish() -> void:
 		volume.visible = false
 		# Walled in: no sky, no environment light.
 		job.data.interior = true
-		volume.data = job.data
+		# Held here, handed to the volume only while it is shown.
+		volume.set_meta("baked", job.data)
 		volume.set_meta("room", job.room)
 		job.node.add_child(volume)
 		volumes.append(volume)
 	print_verbose("Bounce light: %d volumes baked" % volumes.size())
 	jobs.clear()
 
-## Shows the nearest rooms' volumes, as many as Godot draws.
+## Shows the nearest rooms' volumes, as many as Godot draws. Only a shown
+## volume has its data: a volume with data keeps its textures in video
+## memory, shown or not, some 56 MB each (the 51 of a floor took 2.9 GB).
 func show_near(position: Vector3, on: bool) -> void:
 	if volumes.is_empty(): return
 	var nearest := volumes.duplicate()
 	nearest.sort_custom(func(a: VoxelGI, b: VoxelGI) -> bool: return a.global_position.distance_squared_to(position) < b.global_position.distance_squared_to(position))
 	for k in nearest.size():
 		var shown: bool = on and k < SHOWN
-		if nearest[k].visible != shown: nearest[k].visible = shown
+		if nearest[k].visible == shown: continue
+		nearest[k].data = nearest[k].get_meta("baked") if shown else null
+		nearest[k].visible = shown
 
 ## A volume's boxes, one surface per material, moved into the volume's frame:
 ## by their room's offset from the centre, then by offset.
