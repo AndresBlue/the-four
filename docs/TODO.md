@@ -43,6 +43,9 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Escucha y selección definitiva de los cinco audios; edición de copias y procedencia documentada.
 - [ ] Fuentes espaciales fijas, acústica por recinto, pasos, conductos, tuberías y silencio contextual.
 - [ ] Materiales PBR terminados, reflejos y composición de escenas de referencia.
+- [x] Oscuridad y fugas de luz (septiembre de 2026): linternas de compañeros que se veían a través de paredes, lámparas que alumbraban tras paredes y puertas cerradas, salas apagadas con número de puerta, pantallas y paredes visibles; más salas oscuras y en tramos; puerta de madera antigua con marco. Ver `docs/DEVELOPMENT.md` (Luces) y `tools/capture/darkness_capture.gd`.
+- [ ] Juzgar en partida la oscuridad nueva: sin luz ambiente, los rincones en sombra de las salas iluminadas también son negros. Si resulta excesivo, no conviene subir `ambient_light_energy` (aclara también las salas apagadas); mejor dar relleno propio a las salas iluminadas.
+- [ ] Revisar a mano las puertas nuevas (escala del modelo, número en el panel superior, rendija de 1,2 cm) y las del dormitorio y la portada, que usan la misma hoja.
 - [x] Polvo suspendido, cortinas animadas y niebla localizada, con perfiles reducidos.
 - [x] Material procedural de madera y sondas de reflexión en espacios comunes.
 - [x] Materiales procedurales con relieve y desgaste (papel pintado, moqueta estampada, techo, madera barnizada, azulejo, tela, metal, cuadros) y carga automática de texturas fotográficas desde `assets/textures/`.

@@ -67,6 +67,10 @@ func set_state(open: bool) -> void:
 	collision_layer = 64
 
 func _physics_process(_delta: float) -> void:
+	# The light seal (hotel_geometry.light_seal) only stands in a shut door:
+	# swinging open, the light comes in with the leaf.
+	var seal := get_node_or_null("LightSeal") as GeometryInstance3D
+	if seal != null: seal.visible = not opened and not moving
 	if moving or collision_layer != 64: return
 	var shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if shape == null: return

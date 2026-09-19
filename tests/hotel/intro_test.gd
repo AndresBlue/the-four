@@ -27,7 +27,9 @@ func run() -> void:
 	level.on_action("new")
 	var intro = level.intro
 	check("Nueva partida abre la escena de entrada", is_instance_valid(intro) and level.session.state == level.session.State.CUTSCENE)
-	check("La escena usa su propia cámara y oscurece el ambiente", intro.camera.current and level.environment.ambient_light_energy < ambient)
+	# The hotel itself has no ambient light any more (dark rooms are dark), so
+	# the scene cannot be darker than it: it has none either.
+	check("La escena usa su propia cámara y oscurece el ambiente", intro.camera.current and level.environment.ambient_light_energy <= ambient and level.environment.ambient_light_energy == 0.0)
 	check("Durante la escena no hay menú ni pausa del árbol", not level.ui.overlay.visible and not paused)
 	intro.speed = 12.0
 	var outcome := {"fired": false}

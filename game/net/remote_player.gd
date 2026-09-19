@@ -71,6 +71,15 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	torch.spot_range = 24.0
 	torch.spot_angle = 32.0
 	torch.spot_attenuation = 0.85
+	# A teammate's beam must stay in its own room. It was seen in the next one
+	# as a round glow: not the beam itself, but the volumetric fog it lit, which
+	# is worked out in cells coarse enough to straddle a wall (measured: the far
+	# face of a wall brightened by two thirds with fog, not at all without).
+	# The haze of your own torch stays; only you see it, on your side.
+	torch.light_volumetric_fog_energy = 0.0
+	torch.shadow_enabled = true
+	torch.shadow_bias = 0.04
+	torch.light_size = 0.03
 	torch.position = Vector3(0.24, -0.3, -0.25)
 	camera.add_child(torch)
 	step_voice = AudioStreamPlayer3D.new()

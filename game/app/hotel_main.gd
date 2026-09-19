@@ -212,7 +212,7 @@ func start_intro(seed_value: int) -> void:
 	if is_instance_valid(hotel): hotel.visible = false
 	player.visible = false
 	# Only the television lights the room: no hotel ambient light.
-	environment.ambient_light_energy = 0.02
+	environment.ambient_light_energy = 0.0
 	session.set_state(session.State.CUTSCENE)
 	ui.show_skip(settings.key_name("interact"))
 

@@ -31,17 +31,34 @@ var flicker_clock := 0.0
 ## Red start lamps in the reception: {light, material, energy}.
 var beacons: Array = []
 ## Share of eligible rooms (private rooms, lounges, corridors; never the
-## reception, service rooms, halls or the refuge) whose ceiling lamp is out.
-const DARK_SHARE := 0.2
+## reception, service rooms, halls or the refuge) whose lamps are all out.
+## Darkness spreads: an eligible room beside a dark one goes dark as well with
+## NEIGHBOUR_DARK, so dark rooms come in stretches where the torch is the only
+## light, not as isolated black boxes.
+const DARK_SHARE := 0.4
+const NEIGHBOUR_DARK := 0.55
+## Room ids whose lamps are out, decided once per floor in build().
+var dark_ids := {}
+## Set while a dark room's furniture is built: its lamps stay out.
+var building_dark := false
 const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
 const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
 ## Modules with wall lamps: reception, lobby, corridor, gallery.
 const SCONCE_ROOMS := [0, 10, 11, 12]
 const WALL_LAMP := preload("res://assets/props/wall_lamp/wall_lamp.res")
+## The supplied old wooden door, baked by tools/props/build_door.gd: the leaf
+## (hinge at the origin, along +X) and the casing (centred on the doorway).
+const DOOR_LEAF := preload("res://assets/props/door/door_leaf.res")
+const DOOR_FRAME := preload("res://assets/props/door/door_frame.res")
+## Where the leaf's faces are, for the room numbers screwed onto them.
+const LEAF_FACE := 0.066
 const FADE_BEGIN := 40.0
 const FADE_LENGTH := 16.0
-const SHADOW_FADE := 26.0
+## A light keeps its shadow until the light itself is gone. A shadow that
+## faded earlier left lamps shining through walls and closed doors between
+## that distance and the light's own fade.
+const SHADOW_FADE := FADE_BEGIN + FADE_LENGTH
 
 func _init() -> void:
 	for key in MATERIALS:
@@ -52,6 +69,9 @@ func _init() -> void:
 	materials["light_off"] = materials.light.duplicate()
 	materials.light_off.emission_enabled = false
 	materials.light_off.albedo_color = materials.light.albedo_color.darkened(0.55)
+	# A lampshade whose bulb is out does not glow either.
+	materials["shade_off"] = materials.shade.duplicate()
+	materials.shade_off.emission_enabled = false
 
 # Photographic maps dropped in assets/textures/<material>/ replace the
 # procedural base automatically: albedo, normal (OpenGL) and roughness.
@@ -134,6 +154,8 @@ func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38) -
 	label.pixel_size = 0.007
 	label.modulate = Color("d3bd8e")
 	label.outline_size = 0
+	# Lit like everything else: an unshaded label glowed in a black room.
+	label.shaded = true
 	parent.add_child(label)
 
 ## Staged sets (opening scene, title screen), built outside the floor plan.
@@ -183,20 +205,38 @@ func set_door(centre: Vector3, number: String, yaw := 0.0) -> Node3D:
 	holder.rotation.y = PI / 2
 	hinge.add_child(holder)
 	var leaf := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(width, 2.58, 0.07)
-	mesh.material = materials.door
-	leaf.mesh = mesh
-	leaf.position = Vector3(width * 0.5, 1.29, 0)
+	leaf.mesh = DOOR_LEAF
 	holder.add_child(leaf)
-	for face in [-1, 1]: box(holder, Vector3(width - 0.14, 1.08, face * 0.07), Vector3(0.14, 0.04, 0.05), "gold")
 	if not number.is_empty():
-		text(holder, number, Vector3(width * 0.5, 1.94, 0.045), 0, 24)
-		text(holder, number, Vector3(width * 0.5, 1.94, -0.045), PI, 24)
+		text(holder, number, Vector3(width * 0.5, 1.94, LEAF_FACE), 0, 24)
+		text(holder, number, Vector3(width * 0.5, 1.94, -LEAF_FACE), PI, 24)
 	return hinge
+
+## A shut door has to stop light. The leaf is 7 cm thick and leaves a gap of
+## 5 cm at each side of the 1.3 m opening and 7 cm at the top, and a shadow
+## map sees straight through both. This shadow-only slab swings with the leaf
+## and covers the whole opening, reaching SEAL_OVERLAP into the wall and the
+## header round it (a centimetre of overlap is less than one texel of a lamp's
+## shadow a few metres away, and the jambs still glowed). It stays inside the
+## leaf's thickness (faces at LEAF_FACE), or it would shade the leaf itself.
+## It is never drawn, has no collision and only exists while the door is shut
+## (hotel_door.gd hides it as soon as the leaf moves).
+const SEAL_DEPTH := 0.1
+const SEAL_OVERLAP := 0.12
+func light_seal(half: float) -> MeshInstance3D:
+	var seal := MeshInstance3D.new()
+	seal.name = "LightSeal"
+	var slab := BoxMesh.new()
+	slab.size = Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, 2.65 + SEAL_OVERLAP, SEAL_DEPTH)
+	seal.mesh = slab
+	# Centred on the opening, which starts half a gap before the hinge side.
+	seal.position = Vector3(half, (2.65 + SEAL_OVERLAP) * 0.5, 0)
+	seal.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	return seal
 
 func build(data: Dictionary) -> void:
 	manifest = data
+	decide_dark(data)
 	for room in data.rooms:
 		var node := Node3D.new()
 		node.name = "Room_%d_%s" % [room.id, FLOOR.TYPES[room.type]]
@@ -222,25 +262,31 @@ func build(data: Dictionary) -> void:
 		door.doorway = center
 		add_child(door)
 		var leaf := MeshInstance3D.new()
-		var mesh := BoxMesh.new()
-		mesh.size = Vector3(FLOOR.LEAF_WIDTH, 2.58, 0.07)
-		mesh.material = materials.door
-		leaf.mesh = mesh
-		leaf.position = Vector3(half, 1.29, 0)
+		leaf.name = "Leaf"
+		leaf.mesh = DOOR_LEAF
 		door.add_child(leaf)
+		door.add_child(light_seal(half))
+		# The body keeps the leaf's original box: walking, the creature's reach
+		# and the physical checks were all tuned against it.
 		var shape := CollisionShape3D.new()
 		shape.name = "CollisionShape3D"
 		var cube := BoxShape3D.new()
-		cube.size = mesh.size
+		cube.size = Vector3(FLOOR.LEAF_WIDTH, 2.58, 0.07)
 		shape.shape = cube
-		shape.position = leaf.position
+		shape.position = Vector3(half, 1.29, 0)
 		door.add_child(shape)
-		for face in [-1, 1]: box(door, Vector3(FLOOR.LEAF_WIDTH - 0.14, 1.08, face * 0.07), Vector3(0.14, 0.04, 0.05), "gold")
+		# The casing belongs to the wall, not the leaf: it stays when it swings.
+		var casing := MeshInstance3D.new()
+		casing.name = "Casing_%d_%d" % [a.id, b.id]
+		casing.mesh = DOOR_FRAME
+		casing.position = center
+		casing.rotation.y = yaw
+		add_child(casing)
 		# Each face shows the number of the room behind the door, as seen from
 		# the room that face looks into.
 		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
-		text(door, str(100 + int(a.id)), Vector3(half, 1.94, 0.045 * b_side), 0.0 if b_side > 0 else PI, 24)
-		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -0.045 * b_side), PI if b_side > 0 else 0.0, 24)
+		text(door, str(100 + int(a.id)), Vector3(half, 1.94, LEAF_FACE * b_side), 0.0 if b_side > 0 else PI, 24)
+		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -LEAF_FACE * b_side), PI if b_side > 0 else 0.0, 24)
 		if int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
@@ -268,13 +314,8 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		if connected:
 			for side in [-1, 1]:
 				wall_run(boundary, side * (length + FLOOR.PORTAL) * 0.25, (length - FLOOR.PORTAL) * 0.5, height, inner)
-				box(boundary, Vector3(side * (FLOOR.PORTAL * 0.5 + 0.03), 1.35, 0), Vector3(0.06, 2.7, 0.3), "trim")
-				# Door casing proud of both wall faces.
-				for face in [-1, 1]: box(boundary, Vector3(side * (FLOOR.PORTAL * 0.5 + 0.06), 1.36, face * 0.165), Vector3(0.14, 2.72, 0.035), "trim")
+			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
 			box(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), "plaster", true)
-			box(boundary, Vector3(0, 2.65, 0), Vector3(FLOOR.PORTAL + 0.2, 0.12, 0.3), "trim")
-			for face in [-1, 1]:
-				box(boundary, Vector3(0, 2.74, face * 0.165), Vector3(FLOOR.PORTAL + 0.26, 0.14, 0.035), "trim")
 			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
@@ -295,7 +336,9 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
 		furniture.transform = prop_transform(room, prop)
 		node.add_child(furniture)
+		building_dark = dark_room(room)
 		build_prop(furniture, prop.kind)
+		building_dark = false
 	if room.type in [1, 2, 3, 4, 7, 15, 16]:
 		# Domestic alcoves interrupt the square footprint while preserving portals.
 		for side in [-1, 1]:
@@ -342,12 +385,16 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.position = Vector3(0, height - 0.45, 0)
 	light.omni_range = maxf(10.0, maxf(span.x, span.y) * 0.85)
 	light.omni_attenuation = 1.25
-	light.light_size = 0.12
+	# A small source: a wide one softens its shadows until light creeps round
+	# the edges of closed doors and thin walls.
+	light.light_size = 0.05
 	light.light_specular = 0.45 if service else 0.6
 	light.shadow_enabled = true
-	# Small biases so thin shelves and trays still block light and glints.
-	light.shadow_bias = 0.03
-	light.shadow_normal_bias = 0.6
+	# Small biases so thin shelves, trays and door leaves still block light
+	# (a normal bias of 0.6 let it straight through a 7 cm leaf, and a depth
+	# bias of 0.03 still lit the jambs of a shut door from the next room).
+	light.shadow_bias = 0.01
+	light.shadow_normal_bias = 0.25
 	# Lights and shadows fade with distance instead of switching on abruptly.
 	# Shadows stay on wherever a light can reach visible rooms, so light never
 	# passes through walls.
@@ -438,6 +485,8 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 
 # A lamp that really lights its surroundings (no shadows, culled by distance).
 func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach: float) -> void:
+	# In a dark room the table and floor lamps are out too: it is dark.
+	if building_dark: return
 	var lamp := OmniLight3D.new()
 	lamp.position = pos
 	lamp.light_color = color
@@ -447,12 +496,14 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	lamp.light_size = 0.2
 	lamp.light_specular = 0.25
 	lamp.shadow_enabled = true
-	lamp.shadow_bias = 0.04
-	lamp.shadow_normal_bias = 0.6
+	lamp.shadow_bias = 0.01
+	lamp.shadow_normal_bias = 0.25
 	lamp.distance_fade_enabled = true
 	lamp.distance_fade_begin = 18.0
 	lamp.distance_fade_length = 8.0
-	lamp.distance_fade_shadow = 14.0
+	# Shadows last as long as the light does: a lamp still shining without its
+	# shadow shines through walls and closed doors.
+	lamp.distance_fade_shadow = 26.0
 	parent.add_child(lamp)
 	practicals.append(lamp)
 
@@ -501,9 +552,24 @@ func build_navigation() -> void:
 	add_child(region)
 
 ## Whether this room's ceiling lamp is out (deterministic per position).
-static func dark_room(room: Dictionary) -> bool:
-	if int(room.type) in [0, 4, 7, 8, 9, 19] or int(room.get("hall", -1)) >= 0: return false
-	return vary(FLOOR.position_of(room), 7) < DARK_SHARE
+func dark_room(room: Dictionary) -> bool:
+	return dark_ids.has(int(room.id))
+
+static func may_be_dark(room: Dictionary) -> bool:
+	return not (int(room.type) in [0, 4, 7, 8, 9, 19] or int(room.get("hall", -1)) >= 0)
+
+## Which rooms are dark: a share of the eligible ones, then their eligible
+## neighbours with NEIGHBOUR_DARK. Deterministic from positions, like the
+## rest of the floor, so every machine agrees.
+func decide_dark(data: Dictionary) -> void:
+	dark_ids.clear()
+	for room in data.rooms:
+		if may_be_dark(room) and vary(FLOOR.position_of(room), 7) < DARK_SHARE: dark_ids[int(room.id)] = true
+	var seeds: Array = dark_ids.keys()
+	for id in seeds:
+		for neighbour in data.adjacency[id]:
+			var other: Dictionary = data.rooms[int(neighbour)]
+			if may_be_dark(other) and vary(FLOOR.position_of(other), 13) < NEIGHBOUR_DARK: dark_ids[int(neighbour)] = true
 
 func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array], center: Vector3, low: Vector2, high: Vector2) -> void:
 	var first := vertices.size()
