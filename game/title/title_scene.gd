@@ -9,6 +9,9 @@ const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const LOOK := preload("res://game/enemies/locust/locust_look.gd")
 const POSER := preload("res://game/enemies/locust/locust_poser.gd")
+## The camcorder lens remaps the picture: the camera renders a little wider.
+const CAMCORDER := preload("res://game/presentation/camcorder_look.gd")
+
 const MODEL := preload("res://assets/enemies/locust.glb")
 const HEIGHT := 2.9
 ## Room x -3.2..3.2, z -3.6..3.6; the corridor runs behind the back wall,
@@ -134,6 +137,7 @@ func _process(delta: float) -> void:
 func update_scene(delta: float) -> void:
 	clock += delta
 	# Handheld drift, slow enough to read as someone breathing behind the camera.
+	camera.fov = CAMCORDER.fov_for(get_viewport(), 58.0)
 	camera.position = CAMERA_AT + Vector3(sin(clock * 0.11) * 0.05, sin(clock * 0.23) * 0.015, sin(clock * 0.07) * 0.04)
 	camera.look_at(global_transform * (LOOK_AT + Vector3(sin(clock * 0.05) * 0.35, sin(clock * 0.09) * 0.08, 0.0)))
 	camera.rotation.z += sin(clock * 0.13) * 0.006

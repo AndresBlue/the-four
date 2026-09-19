@@ -19,6 +19,9 @@ const TIMING := preload("res://game/audio/cue_timing.gd")
 const BROADCAST := preload("res://game/intro/tv_broadcast.gd")
 const CRACKS := preload("res://game/intro/crack_pattern.gd")
 const NOISE := preload("res://game/ui/shaders/tape_noise.gdshader")
+## The camcorder lens remaps the picture: the camera renders a little wider.
+const CAMCORDER := preload("res://game/presentation/camcorder_look.gd")
+
 const HEIGHT := 2.9
 const EYE := 1.62
 ## Room layout (local metres). Bedroom x -2.6..2.6, z -3.2..3.2; corridor to the
@@ -301,7 +304,7 @@ func update_camera(step: float) -> void:
 		cam_pitch + look_offset.y - dip * amplitude * 0.5 + wobble.y * 0.8 + (rng.randf() - 0.5) * 0.04 * jitter,
 		cam_yaw + look_offset.x + wobble.x * 0.8 + (rng.randf() - 0.5) * 0.04 * jitter,
 		cam_roll + sin(clock * 0.17) * 0.006)
-	camera.fov = target.fov - jolt * 6.0
+	camera.fov = CAMCORDER.fov_for(get_viewport(), target.fov - jolt * 6.0)
 
 func footfall(gait: String) -> void:
 	if not audible: return

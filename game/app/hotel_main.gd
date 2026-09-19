@@ -868,7 +868,7 @@ func watch_over(body: Node3D) -> void:
 		watch_rig.add_child(watch_arm)
 		watch_camera = Camera3D.new()
 		watch_camera.name = "WatchCamera"
-		watch_camera.fov = 76.0
+		watch_camera.fov = LOOK.fov_for(get_viewport(), 76.0)
 		watch_camera.far = 95.0
 		watch_camera.cull_mask = 1048573
 		watch_arm.add_child(watch_camera)
@@ -946,11 +946,35 @@ func _exit_tree() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 var ambient_energy := 0.16
+const LOOK := preload("res://game/presentation/camcorder_look.gd")
+## The camcorder's lens and sensor layer (lens.gdshader), under the OSD.
+var lens_material: ShaderMaterial
+var lens_layer: CanvasLayer
 func build_environment() -> void:
 	environment = $Presentation/WorldEnvironment.environment
 	ambient_energy = environment.ambient_light_energy
 	post_material = $Presentation/Analog/Screen.material
+	lens_material = $Presentation/Lens/Screen.material
+	lens_layer = $Presentation/Lens
 	camcorder = $Presentation/Camcorder
+	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), settings.values.reduced))
+
+## The lens remaps a picture rendered wider than the view (camcorder_look.gd):
+## the cameras that film the hotel render at the lens's field of view.
+func apply_lens(hunter: bool, reduced: bool) -> void:
+	if not is_instance_valid(lens_material): return
+	var size := get_viewport().get_visible_rect().size
+	var aspect := size.x / maxf(size.y, 1.0)
+	lens_layer.visible = not hunter
+	lens_material.set_shader_parameter("barrel", LOOK.BARREL)
+	lens_material.set_shader_parameter("scale", LOOK.corner_scale(aspect))
+	lens_material.set_shader_parameter("noise", 0.0 if reduced else settings.values.grain)
+	lens_material.set_shader_parameter("chromatic", 0.0 if reduced else settings.values.chromatic)
+	lens_material.set_shader_parameter("vignette", 0.0 if reduced else 0.45)
+	lens_material.set_shader_parameter("detail", 0.0 if reduced else 0.35)
+	var fov := LOOK.render_fov(aspect) if not hunter else LOOK.VIEW_FOV
+	player.camera.fov = fov
+	if is_instance_valid(watch_camera): watch_camera.fov = fov
 
 ## This machine drives The Locust: the hunter's seat online, or the local
 ## preview. Its screen is the acoustic image, not the lit hotel.
@@ -1010,8 +1034,15 @@ func apply_settings() -> void:
 	# filter's chroma reads.
 	RenderingServer.global_shader_parameter_set("surface_detail", preset.surface_detail)
 	post_material.set_shader_parameter("chroma_taps", preset.chroma_taps)
-	for key in ["vhs", "grain", "chromatic", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key] * (0.5 if hunter and key == "chromatic" else 1.0))
-	post_material.set_shader_parameter("vignette", 0.0 if settings.values.reduced else 0.45)
+	var reduced: bool = settings.values.reduced
+	# The camcorder's lens and sensor (lens.gdshader) take the grain, the colour
+	# fringes and the vignette; the tape filter keeps the tape. The creature's
+	# acoustic view has no lens: it keeps the tape filter's own versions.
+	for key in ["vhs", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if reduced else settings.values[key])
+	post_material.set_shader_parameter("grain", 0.0 if reduced or not hunter else settings.values.grain)
+	post_material.set_shader_parameter("chromatic", 0.0 if reduced or not hunter else settings.values.chromatic * 0.5)
+	post_material.set_shader_parameter("vignette", 0.0 if reduced or not hunter else 0.45)
+	apply_lens(hunter, reduced)
 	# The warm tape cast would break the monochrome reading.
 	post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
 	if settings.values.reduced:

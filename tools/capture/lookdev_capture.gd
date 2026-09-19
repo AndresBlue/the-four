@@ -3,8 +3,9 @@ extends SceneTree
 ## of the same floor (seed 81), from fixed marks, so every milestone can be put
 ## side by side with the last one and with the references.
 ##   godot --path . --rendering-method forward_plus --script res://tools/capture/lookdev_capture.gd -- --automation --test-profile --no-enemy --silent [--label=name] [--quality=2]
-## Writes evidence/lookdev/<label>_q<quality>/<shot>_raw.png (no tape filter,
-## no OSD: the scene has to stand on its own) and <shot>_vhs.png (as played).
+## Writes evidence/lookdev/<label>_q<quality>/<shot>_raw.png (no camera at all:
+## no lens, sensor, tape or OSD; the scene has to stand on its own, and it
+## stays comparable pixel by pixel) and <shot>_vhs.png (as played).
 ## --setup=path.gd runs that script's run(level) on the built floor before the
 ## shots: how a trial (a light recipe, probes, a material) is compared with
 ## the last milestone without touching the game.
@@ -94,16 +95,19 @@ func capture(shot: String) -> void:
 	var started := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - started < 1500: await process_frame
 	var screen: CanvasItem = level.get_node("Presentation/Analog/Screen")
+	var lens: CanvasLayer = level.get_node("Presentation/Lens")
 	var camcorder: CanvasLayer = level.get_node("Presentation/Camcorder")
 	# The level shows the camcorder layer again every frame (and with it the
 	# focus brackets on a door in view): hold it still for the raw frame.
 	level.set_process(false)
 	screen.visible = false
+	lens.visible = false
 	camcorder.visible = false
 	for frame in 3: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/%s_raw.png" % shot)
 	screen.visible = true
+	lens.visible = true
 	camcorder.visible = true
 	level.set_process(true)
 	for frame in 3: await process_frame

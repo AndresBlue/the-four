@@ -1,15 +1,29 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Environment" path="res://game/presentation/hotel_environment.tres" id="1"]
 [ext_resource type="Shader" path="res://game/presentation/shaders/analog.gdshader" id="2"]
 [ext_resource type="Script" path="res://game/presentation/camcorder_osd.gd" id="3"]
+[ext_resource type="Shader" path="res://game/presentation/shaders/lens.gdshader" id="4"]
 [sub_resource type="ShaderMaterial" id="Analog"]
 resource_local_to_scene = true
 shader = ExtResource("2")
+[sub_resource type="ShaderMaterial" id="Lens"]
+resource_local_to_scene = true
+shader = ExtResource("4")
 
 [node name="Presentation" type="Node3D"]
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = ExtResource("1")
+[node name="Lens" type="CanvasLayer" parent="."]
+layer = 2
+[node name="Screen" type="ColorRect" parent="Lens"]
+material = SubResource("Lens")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 [node name="Analog" type="CanvasLayer" parent="."]
 layer = 5
 [node name="Screen" type="ColorRect" parent="Analog"]

@@ -173,16 +173,18 @@ func summary(view: String, quality: int, frames: Array) -> Dictionary:
 		entry[key] = {"mean": int(mean(values)), "max": int(values[-1])}
 	return entry
 
-## The same view without the tape filter (stable, for pixel comparison) and
-## with it (as played).
+## The same view without the camera's lens, sensor and tape (stable, for pixel
+## comparison) and with them (as played).
 func capture(level: Node, name: String) -> void:
 	var screen: CanvasItem = level.get_node("Presentation/Analog/Screen")
+	var lens: CanvasLayer = level.get_node("Presentation/Lens")
 	var camcorder: CanvasLayer = level.get_node("Presentation/Camcorder")
 	# The reception beacon and the failing tubes blink with time: freeze them lit.
 	level.hotel.flicker_clock = 0.4
 	level.hotel._process(0.0)
 	level.hotel.set_process(false)
 	screen.visible = false
+	lens.visible = false
 	var marks = level.settings.values.osd
 	level.settings.values.osd = false
 	camcorder.visible = false
@@ -190,6 +192,7 @@ func capture(level: Node, name: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/%s_raw.png" % name)
 	screen.visible = true
+	lens.visible = true
 	level.settings.values.osd = marks
 	for frame in 3: await process_frame
 	await RenderingServer.frame_post_draw
