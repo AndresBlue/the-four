@@ -11,8 +11,14 @@ extends CompositorEffect
 ##            reads its gain from, on the GPU: no read-back to the CPU
 ##   smear    per column, the charge a saturated highlight spills down the
 ##            CCD: a faint vertical streak through a bare bulb
-##   grade    exposure, smear, white balance and the video knee that replaces
-##            the tonemapper (the environment is set to linear while it runs)
+##   glare    what the lamps do inside the lens: the brightest light, taken at
+##            a quarter of the resolution and blurred, comes back as a soft
+##            halo round each lamp (veiling glare) and as faint coloured
+##            ghosts mirrored through the centre (reflections between the
+##            lens elements, the camcorder's cheap coatings)
+##   grade    exposure, smear, glare, white balance and the video knee that
+##            replaces the tonemapper (the environment is set to linear while
+##            it runs)
 ## Without a RenderingDevice (headless, Compatibility) it does nothing, and the
 ## game keeps AgX and its fixed exposure.
 
@@ -31,6 +37,12 @@ var speed_down := 2.4
 ## CCD smear strength (0 off) and the level above which a pixel spills.
 var smear := 0.04
 var smear_threshold := 4.0
+## Glare (0 off, from the graphics preset): halo and ghosts, relative to the
+## light above glare_threshold (in exposed, linear units).
+var glare := 1.0
+var glare_threshold := 1.5
+const HALO := 0.3
+const GHOSTS := 0.06
 ## White balance multipliers (a fixed camera white point) and the knee: from
 ## `knee` up the signal is compressed into what is left below clipping.
 var white_balance := Vector3.ONE
@@ -54,6 +66,11 @@ var samples: RID
 var state: RID
 var columns: RID
 var exposure: RID
+## The glare at a quarter of the resolution, blurred back and forth.
+var glare_a: RID
+var glare_b: RID
+var glare_size := Vector2i.ZERO
+var sampler: RID
 var column_count := 0
 var last_usec := 0
 ## The game's frame time, set every frame by the level (see motion_blur_effect).
@@ -139,12 +156,65 @@ void main() {
 	columns.data[x] = spill * 2.0 / p.size.y;
 }
 """
+const BRIGHT := """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(rgba16f, set = 0, binding = 0) uniform restrict readonly image2D color_image;
+layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float pad; } state;
+layout(rgba16f, set = 0, binding = 2) uniform restrict writeonly image2D glare_image;
+layout(push_constant, std430) uniform Params { vec2 size; vec2 glare_size; float threshold; float pad0; float pad1; float pad2; } p;
+void main() {
+	ivec2 cell = ivec2(gl_GlobalInvocationID.xy);
+	if (cell.x >= int(p.glare_size.x) || cell.y >= int(p.glare_size.y)) return;
+	// The 4 x 4 pixels under this texel, so a small bulb is not missed.
+	vec3 c = vec3(0.0);
+	for (int y = 0; y < 4; y++) {
+		for (int x = 0; x < 4; x++) {
+			ivec2 pix = min(cell * 4 + ivec2(x, y), ivec2(p.size) - 1);
+			c += imageLoad(color_image, pix).rgb;
+		}
+	}
+	c *= exp2(state.ev) / 16.0;
+	float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+	// Only what is over the threshold, keeping its colour; capped, so a
+	// bare bulb does not flood the frame.
+	float over = min(max(lum - p.threshold, 0.0), 24.0);
+	imageStore(glare_image, cell, vec4(c * over / max(lum, 1e-4), 1.0));
+}
+"""
+const BLUR := """
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 0) uniform sampler2D source_image;
+layout(rgba16f, set = 0, binding = 1) uniform restrict writeonly image2D target_image;
+layout(push_constant, std430) uniform Params { vec2 size; vec2 step; } p;
+void main() {
+	ivec2 cell = ivec2(gl_GlobalInvocationID.xy);
+	if (cell.x >= int(p.size.x) || cell.y >= int(p.size.y)) return;
+	vec2 uv = (vec2(cell) + 0.5) / p.size;
+	// A wide Gaussian (sigma 5 texels, 20 pixels at full size) in 15 taps.
+	vec3 sum = vec3(0.0);
+	float total = 0.0;
+	for (int i = -7; i <= 7; i++) {
+		float w = exp(-float(i * i) / 50.0);
+		sum += texture(source_image, uv + p.step * float(i) * 1.5).rgb * w;
+		total += w;
+	}
+	imageStore(target_image, cell, vec4(sum / total, 1.0));
+}
+"""
 const GRADE := """
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba16f, set = 0, binding = 0) uniform restrict image2D color_image;
 layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float pad; } state;
 layout(set = 0, binding = 2, std430) restrict readonly buffer Columns { float data[]; } columns;
-layout(push_constant, std430) uniform Params { vec2 size; float smear; float knee; vec3 white; float toe; } p;
+layout(set = 0, binding = 3) uniform sampler2D glare_image;
+layout(push_constant, std430) uniform Params { vec2 size; float smear; float knee; vec3 white; float toe; float halo; float ghosts; float pad0; float pad1; } p;
+// Where the lens puts a ghost of the light at uv: mirrored through the centre
+// and scaled, fading towards the edge of the image circle.
+vec3 ghost(vec2 uv, float scale, vec3 tint) {
+	vec2 at = 0.5 + (0.5 - uv) * scale;
+	float fade = 1.0 - smoothstep(0.3, 0.75, length(at - 0.5));
+	return texture(glare_image, at).rgb * tint * fade;
+}
 vec3 shoulder(vec3 x) {
 	// Linear up to the knee, then compressed into what is left below 1.
 	vec3 over = max(x - p.knee, 0.0);
@@ -163,6 +233,13 @@ void main() {
 		if (pix.x < int(p.size.x) - 1) s += columns.data[pix.x + 1] * 0.25;
 		c += s * p.smear * vec3(0.95, 0.95, 1.05);
 	}
+	if (p.halo > 0.0) {
+		vec2 uv = (vec2(pix) + 0.5) / p.size;
+		// Veiling glare: faintly warm, as through old glass.
+		c += texture(glare_image, uv).rgb * p.halo * vec3(1.0, 0.94, 0.86);
+		vec3 g = ghost(uv, 0.55, vec3(0.55, 1.0, 0.6)) + ghost(uv, 1.0, vec3(1.0, 0.75, 0.45)) * 0.7 + ghost(uv, 1.6, vec3(0.7, 0.55, 1.0)) * 0.5;
+		c += g * p.ghosts;
+	}
 	c *= p.white;
 	c = c * c / (c + p.toe);
 	c = shoulder(c);
@@ -180,7 +257,7 @@ func _init() -> void:
 func setup() -> void:
 	rd = RenderingServer.get_rendering_device()
 	if rd == null: return
-	var sources := {"meter": METER, "iris": IRIS, "smear": SMEAR, "grade": GRADE}
+	var sources := {"meter": METER, "iris": IRIS, "smear": SMEAR, "bright": BRIGHT, "blur": BLUR, "grade": GRADE}
 	for name in sources:
 		var source := RDShaderSource.new()
 		source.language = RenderingDevice.SHADER_LANGUAGE_GLSL
@@ -202,6 +279,13 @@ func setup() -> void:
 	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	exposure = rd.texture_create(format, RDTextureView.new(), [PackedFloat32Array([0.0, 0.0, 1.0, 1.0]).to_byte_array()])
 	exposure_texture.texture_rd_rid = exposure
+	var filtering := RDSamplerState.new()
+	filtering.min_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	filtering.mag_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	filtering.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER
+	filtering.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER
+	filtering.border_color = RenderingDevice.SAMPLER_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK
+	sampler = rd.sampler_create(filtering)
 
 ## Frees what it made on the GPU. The level calls it when it leaves the tree:
 ## on quitting, the effect itself outlives the RenderingDevice, and freeing
@@ -210,7 +294,7 @@ func release() -> void:
 	if rd == null: return
 	enabled = false
 	exposure_texture.texture_rd_rid = RID()
-	for rid in [samples, state, columns, exposure]:
+	for rid in [samples, state, columns, exposure, glare_a, glare_b, sampler]:
 		if rid.is_valid(): rd.free_rid(rid)
 	for name in shaders: rd.free_rid(shaders[name])
 	shaders.clear()
@@ -220,7 +304,7 @@ func release() -> void:
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_PREDELETE or rd == null: return
 	exposure_texture.texture_rd_rid = RID()
-	for rid in [samples, state, columns, exposure]:
+	for rid in [samples, state, columns, exposure, glare_a, glare_b, sampler]:
 		if rid.is_valid(): rd.free_rid(rid)
 	for name in shaders: rd.free_rid(shaders[name])
 
@@ -235,6 +319,14 @@ func image(binding: int, rid: RID) -> RDUniform:
 	var uniform := RDUniform.new()
 	uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	uniform.binding = binding
+	uniform.add_id(rid)
+	return uniform
+
+func sampled(binding: int, rid: RID) -> RDUniform:
+	var uniform := RDUniform.new()
+	uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+	uniform.binding = binding
+	uniform.add_id(sampler)
 	uniform.add_id(rid)
 	return uniform
 
@@ -256,6 +348,18 @@ func _render_callback(_type: int, data: RenderData) -> void:
 		if columns.is_valid(): rd.free_rid(columns)
 		columns = rd.storage_buffer_create(size.x * 4)
 		column_count = size.x
+	var quarter := Vector2i(maxi((size.x + 3) / 4, 1), maxi((size.y + 3) / 4, 1))
+	if glare_size != quarter:
+		for rid in [glare_a, glare_b]:
+			if rid.is_valid(): rd.free_rid(rid)
+		var format := RDTextureFormat.new()
+		format.format = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+		format.width = quarter.x
+		format.height = quarter.y
+		format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
+		glare_a = rd.texture_create(format, RDTextureView.new())
+		glare_b = rd.texture_create(format, RDTextureView.new())
+		glare_size = quarter
 	var now := Time.get_ticks_usec()
 	var dt := frame_delta if frame_delta > 0.0 else (clampf((now - last_usec) / 1000000.0, 0.0, 0.25) if last_usec > 0 else 0.0)
 	last_usec = now
@@ -266,4 +370,10 @@ func _render_callback(_type: int, data: RenderData) -> void:
 	reset = false
 	if smear > 0.0:
 		dispatch("smear", [image(0, color), storage(1, state), storage(2, columns)], PackedFloat32Array([sizef.x, sizef.y, smear_threshold, 0.0]), Vector3i((size.x + 63) / 64, 1, 1))
-	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))
+	if glare > 0.0:
+		var quarterf := Vector2(quarter)
+		var groups := Vector3i((quarter.x + 7) / 8, (quarter.y + 7) / 8, 1)
+		dispatch("bright", [image(0, color), storage(1, state), image(2, glare_a)], PackedFloat32Array([sizef.x, sizef.y, quarterf.x, quarterf.y, glare_threshold, 0.0, 0.0, 0.0]), groups)
+		dispatch("blur", [sampled(0, glare_a), image(1, glare_b)], PackedFloat32Array([quarterf.x, quarterf.y, 1.0 / quarterf.x, 0.0]), groups)
+		dispatch("blur", [sampled(0, glare_b), image(1, glare_a)], PackedFloat32Array([quarterf.x, quarterf.y, 0.0, 1.0 / quarterf.y]), groups)
+	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns), sampled(3, glare_a)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe, HALO * glare, GHOSTS * glare, 0.0, 0.0]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))

@@ -164,6 +164,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Umbral de LOD | 4 px | 2 px | 1 px | 1 px |
 | Filtrado anisotrópico | 2× | 4× | 8× | 16× |
 | Smear de CCD | no | sí | sí | sí |
+| Halo y reflejos fantasma de las lámparas | no | sí | sí | sí |
 | Motion blur (muestras) | no | 6 | 8 | 12 |
 | Autoenfoque | no | no | sí | sí |
 | Visión de eco (criatura) | ½ de granos, ×2 de tamaño | base | más densa | algo más fina + halo de fósforo |

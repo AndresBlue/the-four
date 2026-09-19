@@ -4,8 +4,8 @@ shader_type canvas_item;
 // picture) and under the OSD: a lens does not bend the date stamp, while the
 // tape (analog.gdshader, above) records both. Every term follows the real
 // order: lens (barrel distortion, lateral colour, vignetting), then sensor
-// (noise that grows with gain, chroma noise in the dark), then the camera's
-// own detail enhancement.
+// (interlaced fields, noise that grows with gain, chroma noise in the dark),
+// then the camera's own detail enhancement.
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 // Barrel distortion: source radius = r * scale * (1 + barrel * r^2), with r in
 // half-heights. scale keeps the corners on the rendered picture, which is
@@ -22,6 +22,11 @@ uniform float vignette : hint_range(0.0, 1.0) = 0.45;
 // (camcorder_effect.gd); without it the default white is a gain of 1.
 uniform float noise : hint_range(0.0, 1.0) = 0.35;
 uniform sampler2D gain_map : filter_nearest, hint_default_white;
+// Interlaced video: of the 480 lines of a frame, every other one is the field
+// recorded 1/60 s earlier. field_shift is how far the picture moved in that
+// time (in UV, set by the level from the camera's turn, and only for fast
+// turns): the older lines are drawn that much behind, combing edges apart.
+uniform vec2 field_shift = vec2(0.0);
 // Horizontal detail enhancement ("peaking"): the sharp, haloed edges of
 // consumer video.
 uniform float detail : hint_range(0.0, 1.0) = 0.35;
@@ -49,11 +54,13 @@ void fragment() {
 	vec2 uv = SCREEN_UV;
 	// Lens: each colour through its own magnification, the centre untouched.
 	float spread = chromatic * 0.004;
-	vec2 green_uv = distort(uv, aspect, 1.0);
+	float field_line = floor(FRAGCOORD.y * px.y * 480.0);
+	vec2 field = mod(field_line, 2.0) > 0.5 ? field_shift : vec2(0.0);
+	vec2 green_uv = distort(uv, aspect, 1.0) + field;
 	vec3 color;
-	color.r = tap(distort(uv, aspect, 1.0 + spread)).r;
+	color.r = tap(distort(uv, aspect, 1.0 + spread) + field).r;
 	color.g = tap(green_uv).g;
-	color.b = tap(distort(uv, aspect, 1.0 - spread)).b;
+	color.b = tap(distort(uv, aspect, 1.0 - spread) + field).b;
 	// Camera detail: luma minus its horizontal blur, added back.
 	if (detail > 0.0) {
 		vec3 side = (tap(green_uv - vec2(px.x * 1.5, 0.0)) + tap(green_uv + vec2(px.x * 1.5, 0.0))) * 0.5;

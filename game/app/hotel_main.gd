@@ -900,6 +900,7 @@ func _process(delta: float) -> void:
 	if is_instance_valid(camera_effect):
 		camera_effect.frame_delta = delta
 		blur_effect.frame_delta = delta
+	update_fields(delta)
 	camcorder.visible = session.state == session.State.PLAYING
 	# The creature records nothing: its seat keeps only the meter and notices.
 	camcorder.hunter = hunter_seat()
@@ -1005,6 +1006,7 @@ func apply_camera(preset: Dictionary, hunter: bool) -> void:
 	if is_instance_valid(camera_effect):
 		camera_effect.enabled = on
 		camera_effect.smear = preset.ccd_smear
+		camera_effect.glare = preset.glare
 		# Reduced effects: no smearing of the picture while turning.
 		blur_effect.samples = 0 if settings.values.reduced else preset.motion_blur
 		blur_effect.enabled = on and blur_effect.samples > 0
@@ -1021,6 +1023,35 @@ func apply_camera(preset: Dictionary, hunter: bool) -> void:
 ## instead of adjusting across it.
 func camera_cut() -> void:
 	if is_instance_valid(camera_effect): camera_effect.reset = true
+	field_camera = null
+
+## Interlaced fields (lens.gdshader, field_shift): how far the picture moved in
+## the 1/60 s between a frame's two fields, from the camera's turn since the
+## last frame. Only fast turns comb: under FIELD_FROM pixels (of a 1080-line
+## picture) nothing shows, from FIELD_TO the full offset, never past
+## FIELD_MAX. Reduced effects: none.
+const FIELD_TIME := 1.0 / 60.0
+const FIELD_FROM := 12.0
+const FIELD_TO := 30.0
+const FIELD_MAX := 48.0
+var field_camera: Camera3D
+var field_basis := Basis.IDENTITY
+func update_fields(delta: float) -> void:
+	if not is_instance_valid(lens_material): return
+	var camera := get_viewport().get_camera_3d()
+	var shift := Vector2.ZERO
+	if camera != null and camera == field_camera and delta > 0.0 and not settings.values.reduced:
+		# Last frame's view centre, seen from this frame's view.
+		var before: Vector3 = camera.global_basis.orthonormalized().inverse() * -field_basis.z
+		if before.z < -0.01:
+			var projection := camera.get_camera_projection()
+			var moved := Vector2(projection.x.x * before.x, -projection.y.y * before.y) / -before.z * 0.5 * FIELD_TIME / delta
+			var size := get_viewport().get_visible_rect().size
+			var pixels := Vector2(moved.x * size.x / maxf(size.y, 1.0), moved.y).length() * 1080.0
+			shift = moved * smoothstep(FIELD_FROM, FIELD_TO, pixels) * minf(1.0, FIELD_MAX / maxf(pixels, 0.001))
+	field_camera = camera
+	if camera != null: field_basis = camera.global_basis.orthonormalized()
+	lens_material.set_shader_parameter("field_shift", shift)
 
 ## The lens remaps a picture rendered wider than the view (camcorder_look.gd):
 ## the cameras that film the hotel render at the lens's field of view.

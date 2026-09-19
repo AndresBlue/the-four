@@ -99,13 +99,31 @@ void fragment() {
 	// Tracking band noise, dropouts and interference.
 	float snow = hash(vec2(uv.x * 900.0 + t * 60.0, line));
 	color += (snow - 0.5) * band * 0.25 * vhs;
-	// Rare, short oxide dropouts: a few pixels tall, a small stretch wide.
-	float dropout_row = floor(line / 2.0);
-	float dropout_frame = floor(t * 12.0);
-	float dropout_line = step(0.9993, hash(vec2(dropout_frame, dropout_row)));
-	float start = hash(vec2(dropout_row, dropout_frame + 3.0));
-	float dropout = dropout_line * smoothstep(0.0, 0.01, uv.x - start) * smoothstep(0.0, 0.01, start + 0.04 + start * 0.08 - uv.x);
-	color = mix(color, vec3(0.75), dropout * vhs * 0.6);
+	// Oxide dropouts: for a moment the head reads no signal and the line
+	// flashes white, brightest where it starts, with a ragged tail; one field
+	// line tall (240 a frame), sometimes two, lasting one frame. Worn tape
+	// (vhs) drops out more. A third of them the deck's dropout compensation
+	// hides by repeating the line above instead.
+	float field_row = floor(SCREEN_UV.y * 240.0);
+	float dropout_frame = floor(t * 30.0);
+	float chance = vhs * 0.0012;
+	float hit = step(1.0 - chance, hash(vec2(dropout_frame, field_row)));
+	// The line below a dropout often goes too.
+	hit = max(hit, step(1.0 - chance, hash(vec2(dropout_frame, field_row - 1.0))) * step(0.6, hash(vec2(field_row, dropout_frame + 5.0))));
+	if (hit > 0.0) {
+		float row = field_row - (1.0 - step(1.0 - chance, hash(vec2(dropout_frame, field_row))));
+		float start = hash(vec2(row, dropout_frame + 3.0)) * 1.1 - 0.05;
+		float span = 0.02 + 0.13 * hash(vec2(row, dropout_frame + 7.0));
+		float along = (uv.x - start) / span;
+		float inside = step(0.0, along) * step(along, 1.0);
+		float ragged = 0.55 + 0.45 * hash(vec2(floor(uv.x / px.x / 3.0), dropout_frame));
+		float strength = inside * (1.0 - along * 0.75) * ragged;
+		if (hash(vec2(row, dropout_frame + 11.0)) < 0.33) {
+			color = mix(color, tap(uv - vec2(0.0, 1.0 / 240.0)), inside);
+		} else {
+			color = mix(color, vec3(0.92, 0.92, 0.9), strength * clamp(0.5 + vhs, 0.0, 0.9));
+		}
+	}
 	color = mix(color, vec3(snow * 0.8), head * vhs * 0.55);
 	// Grain: stronger in the shadows, as with auto-gain in the dark.
 	float g = hash(uv * vec2(1731.0, 977.0) + fract(t * 23.0)) - 0.5;

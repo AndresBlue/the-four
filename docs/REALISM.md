@@ -112,6 +112,17 @@ La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no u
    - la ganancia llega a la lente sin pasar por el procesador: el iris la escribe en una textura de 1 × 1 que el shader de la lente lee.
 4. **Motion blur** (`camera/motion_blur_effect.gd`, desde Medio): la estela de un giro durante un obturador de 1/60 s. Se calcula con la rotación entre fotogramas, porque el búfer de velocidad de Godot no lleva el movimiento de la cámara. Girando a 3 rad/s, la nitidez horizontal baja un 27 %.
 5. **Autoenfoque** (Alto y Ultra): sigue el centro con retraso y «caza» tras un cambio grande. Solo desenfoca cuando hay algo cerca.
+6. **Halo y reflejos fantasma** (desde Medio, añadidos después de la fase 2; preset `glare`), en la etapa HDR:
+   - la luz por encima de un umbral se toma a un cuarto de resolución y se difumina;
+   - vuelve como un halo cálido alrededor de cada lámpara, el velo de un cristal viejo;
+   - y como tres reflejos fantasma tenues de color, reflejados a través del centro, como los que dejan las lentes de una camcorder barata.
+   Cuesta unos 0,07 ms en Medio y en Alto.
+7. **Entrelazado** (lente, todos los presets): de las 480 líneas de un fotograma, una de cada dos es el campo grabado 1/60 s antes, desplazado lo que giró la cámara en ese tiempo (`hotel_main.update_fields`).
+   - Solo peina en giros rápidos: nada por debajo de unos 12 píxeles de desplazamiento (a 1 rad/s no aparece), todo a partir de 30 y nunca más de 48.
+   - «Efectos reducidos» lo quita.
+8. **Cortes de señal de la cinta** (`analog.gdshader`), rehechos: destellos blancos de una línea de campo, a veces dos, que duran un fotograma, más brillantes al empezar y con la cola deshilachada. En un tercio de los casos el aparato los tapa repitiendo la línea de arriba. Su frecuencia sigue a «Cinta VHS»: unos 4 por segundo con el valor por defecto, ninguno a cero.
+
+**El encuadre sigue en 16:9:** el 4:3 opcional del plan se descartó.
 
 **Calibración del iris** (`key` 0,065, sin cinta):
 
