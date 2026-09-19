@@ -132,7 +132,7 @@ func finish() -> void:
 		volume.set_meta("room", job.room)
 		job.node.add_child(volume)
 		volumes.append(volume)
-	print_verbose("Bounce light: %d rooms baked" % volumes.size())
+	print_verbose("Bounce light: %d volumes baked" % volumes.size())
 	jobs.clear()
 
 ## Shows the nearest rooms' volumes, as many as Godot draws.
