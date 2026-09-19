@@ -67,6 +67,12 @@ var preset: Dictionary = PRESETS.PRESETS[PRESETS.MEDIUM]
 ## preset's penumbra (0: plain filtering).
 const LAMP_SIZE := 0.12
 const PRACTICAL_SIZE := 0.2
+const SCONCE_SIZE := 0.05
+## Colour and profiles of the lamps (docs/REALISM.md, phase 2).
+const LIGHTING := preload("res://game/world/hotel/lighting.gd")
+## Lit wall lamps (preset sconce_lights) and how far away they go out.
+var sconce_lights: Array[OmniLight3D] = []
+const SCONCE_REACH := 24.0
 ## Door numbers are not drawn past this: about 5 px tall there, unreadable
 ## through the tape filter anyway.
 const NUMBER_REACH := 20.0
@@ -454,6 +460,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 					# The model faces +Z: turned to face into this room.
 					sconce.rotation.y = PI if inner < 0 else 0.0
 					boundary.add_child(sconce)
+					if not dark_room(room): sconce_light(boundary, sconce)
 	for prop in room.props:
 		var furniture := Node3D.new()
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
@@ -497,15 +504,17 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			materials[tube].emission = Color("d8f0dc")
 		box(node, Vector3(0, height - 0.04, 0), Vector3(1.5, 0.08, 0.32), "metal")
 		for z in [-0.08, 0.08]: box(node, Vector3(0, height - 0.11, z), Vector3(0.05, 1.38, 0.05), tube, false, "cylinder", Vector3(0, 0, PI / 2))
-		light.light_color = Color("d4e3d2")
-		light.light_energy = 3.4
+		light.light_color = LIGHTING.light_color(LIGHTING.FLUORESCENT, LIGHTING.TUBE_TINT)
+		light.light_energy = 3.4 * LIGHTING.PROFILE_GAIN
+		light.set_meta("profile", LIGHTING.profile("tube"))
 		light.position = Vector3(0, height - 0.35, 0)
 	else:
 		# Frosted dome in a brass ring: warm pool with darker corners.
 		cylinder(node, Vector3(0, height - 0.03, 0), 0.26, 0.06, "gold")
 		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light_off" if dark_room(room) else "light", false, "cone", Vector3(PI, 0, 0))
-		light.light_color = Color("ffcf94")
-		light.light_energy = 3.6
+		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
+		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
+		light.set_meta("profile", LIGHTING.profile("dome"))
 		light.position = Vector3(0, height - 0.45, 0)
 	light.omni_range = maxf(10.0, maxf(span.x, span.y) * 0.85)
 	light.omni_attenuation = 1.25
@@ -518,9 +527,12 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	# (light_seal, jamb_seal).
 	light.shadow_bias = 0.03
 	light.shadow_normal_bias = 0.6
-	# No lamp lights the volumetric fog: its cells straddle walls, and a lit
-	# room's haze glowed in the dark room next door, growing with depth (near
-	# floor black, far walls showing). Only the player's own torch lights it.
+	# The shape of its light: a photometric profile as a projector
+	# (lighting.gd), which only works while the light casts shadows.
+	light.light_projector = light.get_meta("profile")
+	# Lamps light the volumetric fog only on presets with lamp_fog, where the
+	# fog is short enough (14 m) for its cells not to straddle walls: at 48 m a
+	# lit room's haze glowed in the dark room next door (apply_quality).
 	light.light_volumetric_fog_energy = 0.0
 	# Lights and shadows fade with distance instead of switching on abruptly
 	# (lamp_fade, per preset). A light keeps its shadow until the light itself
@@ -548,16 +560,23 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			fog.material = fog_mat
 			node.add_child(fog)
 			fog_volumes.append(fog)
-		# Every hall has one; the preset decides how many are in use (probes:
-		# every third hall, or all of them rendered with shadows).
+	# Every lit room has a reflection probe the size of the room; the preset
+	# decides which are in use (probes: every third hall for reflections, or
+	# every lit room, whose capture also becomes the room's ambient light:
+	# its bounce, confined to its box, so it never reaches the next room). A
+	# dark room has none and stays black.
+	if not dark_room(room):
 		var probe := ReflectionProbe.new()
-		probe.position.y = 1.8
-		probe.size = Vector3(span.x, height, span.y)
+		probe.position.y = height * 0.5
+		probe.size = Vector3(span.x - 0.2, height - 0.05, span.y - 0.2)
 		probe.interior = true
-		probe.intensity = 0.35
-		probe.max_distance = 25
+		probe.box_projection = true
+		probe.blend_distance = 0.1
+		probe.intensity = 0.6
+		probe.max_distance = 30
 		probe.visible = false
-		probe.set_meta("every_third", int(room.id) % 3 == 0)
+		probe.set_meta("every_third", room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0)
+		probe.set_meta("room", int(room.id))
 		node.add_child(probe)
 		reflection_probes.append(probe)
 	if room.type == 0:
@@ -659,6 +678,32 @@ func wall_core(boundary: Node3D, pos: Vector3, size: Vector3, inner: int) -> voi
 	if full_walls: box(boundary, pos, size, "plaster")
 	else: box(boundary, pos + Vector3(0, 0, inner * size.z * 0.25), Vector3(size.x, size.y, size.z * 0.5), "plaster")
 
+## A wall lamp that really lights its wall (preset sconce_lights): a cone up
+## and one down out of the shade, nothing behind it (lighting.gd "sconce").
+## Like every lamp it casts shadows, which the profile needs anyway; without
+## shadows (the Sombras switch) it stays off rather than shine through the
+## wall.
+func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
+	var lamp := OmniLight3D.new()
+	var facing := Basis(Vector3.UP, sconce.rotation.y)
+	lamp.transform = Transform3D(facing, sconce.position + facing.z * 0.16 + Vector3(0, 0.22, 0))
+	lamp.light_color = LIGHTING.light_color(2600.0)
+	lamp.light_energy = 1.6
+	lamp.omni_range = 3.4
+	lamp.omni_attenuation = 1.6
+	lamp.light_size = SCONCE_SIZE * preset.penumbra
+	lamp.light_specular = 0.3
+	lamp.shadow_enabled = true
+	lamp.shadow_bias = 0.04
+	lamp.shadow_normal_bias = 0.6
+	lamp.light_volumetric_fog_energy = 0.0
+	lamp.light_projector = LIGHTING.profile("sconce")
+	lamp.distance_fade_enabled = true
+	set_fade(lamp, SCONCE_REACH - 8.0, 6.0)
+	lamp.visible = false
+	boundary.add_child(lamp)
+	sconce_lights.append(lamp)
+
 # A lamp that really lights its surroundings (no shadows, culled by distance).
 func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach: float) -> void:
 	# In a dark room the table and floor lamps are out too: it is dark.
@@ -706,9 +751,19 @@ func apply_quality(new_preset: Dictionary) -> void:
 		practical_fade(lamp)
 		var size: float = PRACTICAL_SIZE * preset.penumbra
 		if lamp.light_size != size: lamp.light_size = size
-	var shadowed: bool = preset.probes >= 2
+	# Every lit room's probe, rendered with shadows, also lights its room
+	# (probes 2); otherwise only reflections.
+	var ambient: bool = preset.probes >= 2
 	for probe in reflection_probes:
-		if probe.enable_shadows != shadowed: probe.enable_shadows = shadowed
+		if probe.enable_shadows != ambient: probe.enable_shadows = ambient
+		var mode := ReflectionProbe.AMBIENT_ENVIRONMENT if ambient else ReflectionProbe.AMBIENT_DISABLED
+		if probe.ambient_mode != mode: probe.ambient_mode = mode
+	var fog_energy := 1.0 if preset.lamp_fog else 0.0
+	for light in lights:
+		if light.light_volumetric_fog_energy != fog_energy: light.light_volumetric_fog_energy = fog_energy
+	for lamp in sconce_lights:
+		var size: float = SCONCE_SIZE * preset.penumbra
+		if lamp.light_size != size: lamp.light_size = size
 	if is_instance_valid(dust) and preset.dust > 0 and dust.amount != preset.dust: dust.amount = preset.dust
 
 func _process(delta: float) -> void:
@@ -788,7 +843,6 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		dust.visible = dust.emitting
 	# Hall haze only exists in Forward+ (the preset has it off elsewhere).
 	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
-	for probe in reflection_probes: probe.visible = not echo_view and (preset.probes >= 2 or (preset.probes == 1 and probe.get_meta("every_third")))
 	var reach: float = preset.room_reach
 	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
 	for i in room_nodes.size():
@@ -799,8 +853,19 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		# light into the dark rooms beside it (far walls of a shut dark room lit).
 		var light_reach := minf(fade_end + 2.0, reach - lights[i].omni_range - 2.0)
 		lights[i].visible = distance < light_reach and not lights[i].has_meta("off") and not echo_view
-		# Only when it changes: every write makes Godot redraw that shadow.
-		if lights[i].shadow_enabled != shadows: lights[i].shadow_enabled = shadows
+		# Only when it changes: every write makes Godot redraw that shadow. A
+		# profile only works on a shadowed light: without shadows it goes, or
+		# the lamp would give no light at all.
+		if lights[i].shadow_enabled != shadows:
+			lights[i].shadow_enabled = shadows
+			lights[i].light_projector = lights[i].get_meta("profile") if shadows else null
+	# A probe captures its room once, when it first shows: only while the
+	# room's lamp is on, or it would keep a dark capture as the room's light.
+	for probe in reflection_probes:
+		var used: bool = preset.probes >= 2 or (preset.probes == 1 and probe.get_meta("every_third"))
+		probe.visible = used and not echo_view and lights[int(probe.get_meta("room"))].visible
+	for lamp in sconce_lights:
+		lamp.visible = preset.sconce_lights and shadows and not echo_view and lamp.global_position.distance_to(player_position) < SCONCE_REACH
 	for lamp in practicals:
 		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows

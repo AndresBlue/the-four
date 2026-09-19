@@ -54,8 +54,14 @@ const ULTRA := 3
 ## floor_haze            the low haze in the halls (FogVolume).
 ## glow, glow_bicubic    bloom and its smoother upscale.
 ## debanding             dither against banding in dark gradients.
-## probes                reflection probes: 0 none, 1 every third hall,
-##                       2 every hall, rendered with shadows.
+## probes                reflection probes: 0 none, 1 every third hall
+##                       (reflections), 2 every lit room, rendered with
+##                       shadows, its capture also the room's ambient light: the
+##                       bounce, confined to the room's box.
+## sconce_lights         wall lamps light their wall (lighting.gd profile,
+##                       shadowed); otherwise only their shades glow.
+## lamp_fog              ceiling lamps light the volumetric fog, which is
+##                       then 14 m long: short cells do not straddle walls.
 ## dust                  dust motes floating round the player (0 none).
 ## surface_detail        octaves of the procedural surface noise (the
 ##                       surface_detail shader global); under 2.5 the finest
@@ -93,7 +99,7 @@ const PRESETS := [
 		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
-		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "motion_blur": 0, "autofocus": false,
+		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "lamp_fog": false,
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 	{
@@ -103,7 +109,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 48, "fog_depth": 48, "fog_filter": true, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 1, "dust": 60,
-		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.04, "motion_blur": 6, "autofocus": false,
+		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.04, "motion_blur": 6, "autofocus": false, "sconce_lights": false, "lamp_fog": true,
 		"echo": {"rays": 1900, "aimed": 600, "points": 24000, "bodies": 700, "puff_points": 26, "puffs": 4800, "find_points": 40, "finds": 600, "frames": 7000, "grain": 1.0, "halo": 0.0},
 	},
 	{
@@ -113,7 +119,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
 		"fog_size": 64, "fog_depth": 64, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 90,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.04, "motion_blur": 8, "autofocus": true,
+		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.04, "motion_blur": 8, "autofocus": true, "sconce_lights": true, "lamp_fog": true,
 		"echo": {"rays": 3600, "aimed": 1200, "points": 46000, "bodies": 1400, "puff_points": 44, "puffs": 9600, "find_points": 70, "finds": 1200, "frames": 14000, "grain": 1.0, "halo": 0.0},
 	},
 	{
@@ -123,7 +129,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
 		"fog_size": 96, "fog_depth": 96, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 140,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.04, "motion_blur": 12, "autofocus": true,
+		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.04, "motion_blur": 12, "autofocus": true, "sconce_lights": true, "lamp_fog": true,
 		"echo": {"rays": 4800, "aimed": 1400, "points": 64000, "bodies": 1800, "puff_points": 56, "puffs": 12000, "find_points": 90, "finds": 1600, "frames": 18000, "grain": 0.8, "halo": 1.0},
 	},
 ]
@@ -145,6 +151,8 @@ static func of(quality: int) -> Dictionary:
 		preset.floor_haze = false
 		preset.taa = false
 		preset.autofocus = false
+		preset.lamp_fog = false
+		preset.sconce_lights = false
 		# Without TAA, the plain edge smoothing.
 		if preset.msaa == Viewport.MSAA_DISABLED: preset.fxaa = true
 	return preset

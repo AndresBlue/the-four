@@ -962,6 +962,8 @@ var ambient_energy := 0.16
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
 const CAMERA_EFFECT := preload("res://game/presentation/camera/camcorder_effect.gd")
 const BLUR_EFFECT := preload("res://game/presentation/camera/motion_blur_effect.gd")
+## How deep the volumetric fog reaches when lamps light it.
+const LIT_FOG_LENGTH := 14.0
 var blur_effect: CompositorEffect
 ## The camcorder's lens and sensor layer (lens.gdshader), under the OSD.
 var lens_material: ShaderMaterial
@@ -978,7 +980,7 @@ func build_environment() -> void:
 	lens_layer = $Presentation/Lens
 	camcorder = $Presentation/Camcorder
 	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), settings.values.reduced))
-	authored_tone = {"mode": environment.tonemap_mode, "exposure": environment.tonemap_exposure, "glow": environment.glow_hdr_threshold}
+	authored_tone = {"mode": environment.tonemap_mode, "exposure": environment.tonemap_exposure, "glow": environment.glow_hdr_threshold, "fog_length": environment.volumetric_fog_length}
 	# Only where there is a RenderingDevice to run it (not headless, not
 	# Compatibility): elsewhere the game keeps AgX.
 	if RenderingServer.get_rendering_device() != null:
@@ -1059,6 +1061,10 @@ func apply_settings() -> void:
 	environment.ambient_light_energy = 0.0 if hunter else ambient_energy
 	environment.fog_enabled = not hunter
 	environment.volumetric_fog_enabled = preset.fog_size > 0 and not settings.values.reduced and not hunter
+	# Lamps that light the fog (preset lamp_fog) need short cells, or a room's
+	# glow would spread into the next one through the wall (docs/REALISM.md,
+	# trial 7).
+	environment.volumetric_fog_length = LIT_FOG_LENGTH if preset.lamp_fog else authored_tone.fog_length
 	if preset.fog_size > 0:
 		RenderingServer.environment_set_volumetric_fog_volume_size(preset.fog_size, preset.fog_depth)
 		RenderingServer.environment_set_volumetric_fog_filter_active(preset.fog_filter)

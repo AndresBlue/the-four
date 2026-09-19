@@ -134,8 +134,77 @@ Brillo medio frente a antes: salas cálidas 34–37 de 255 (antes 21–29), fluo
 - vídeo `evidence/lookdev/fase1_alto.avi` (20 s de recorrido en Alto, grabado con `tools/capture/walkthrough_movie.gd` y Movie Maker);
 - hoja `evidence/lookdev/fase1_antes_despues.png`.
 
+## Fase 2 — Luz como en un hotel real (hecha)
+
+La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). La jugabilidad no cambia: las mismas lámparas, con sombra, las salas oscuras sin luz y la linterna igual.
+
+1. **Color por temperatura:**
+   - incandescente a 2.700 K, apliques a 2.600 K, fluorescente viejo a 4.100 K con un tinte verde;
+   - la cámara tiene un balance fijo de tungsteno (3.200 K), así que lo incandescente sale algo cálido y el fluorescente frío y verdoso, como en una cinta grabada en interiores;
+   - el balance se aplica a cada luz y no a la imagen entera: la linterna, los cristales que brillan y los colores pintados conservan su aspecto.
+2. **Forma de la luz:** perfiles fotométricos, como los de un archivo IES, generados por código y puestos como proyector en cada lámpara:
+   - **plafón de cristal esmerilado:** un charco ancho hacia abajo, bastante luz hacia las paredes y un resplandor en el techo alrededor;
+   - **regleta fluorescente:** reparto en «alas de murciélago», más fuerte a unos 40° a los lados del tubo, y algo de luz al techo;
+   - **aplique de pantalla de tela:** un cono hacia arriba, otro hacia abajo, un brillo tenue a través de la tela y nada hacia atrás.
+   Los perfiles restan luz fuera de su dirección principal; un 25 % más de energía mantiene el brillo de cada sala. Un proyector solo funciona con sombra: si los ajustes quitan las sombras, el perfil se retira con ellas.
+3. **Apliques que iluminan** (Alto y Ultra): una luz con sombra por aplique en las salas iluminadas, apagada a partir de 24 m. En Bajo y Medio la pantalla solo brilla.
+4. **Rebote de luz** (Alto y Ultra): una sonda por sala iluminada que, renderizada con sombras, es además la luz ambiente de su sala. Es un rebote confinado a la caja de la sala, que no llega a la contigua. Solo se muestra con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. En Medio, una de cada tres salas de pasillo lleva sonda, solo para reflejos.
+5. **Niebla iluminada** (desde Medio): las lámparas iluminan la niebla volumétrica, que entonces llega a 14 m en vez de 48. La linterna también la ilumina hasta esa distancia; a 14 m su haz ya es débil y el corte no se nota.
+
+**Resultado** (Alto, sin cinta, brillo medio / porcentaje de píxeles negros):
+
+| Vista | Fase 1 | Fase 2 |
+|---|---|---|
+| Recepción | 23,2 / 8 % | 28,1 / 5 % |
+| Dormitorio | 37,2 / 13 % | 36,1 / 9 % |
+| Salón | 33,6 / 11 % | 34,5 / 4 % |
+| Pasillo | 36,7 / 8 % | 40,0 / 3 % |
+| Baño | 44,4 / 15 % | 43,9 / 22 % |
+| Servicio | 42,1 / 16 % | 42,3 / 24 % |
+| Sala oscura | 3,1 / 91 % | 3,3 / 91 % |
+
+- Los apliques lavan la pared en festones y el pasillo gana profundidad.
+- Las sombras de las salas cálidas dejan de ser negras.
+- El techo de los fluorescentes se oscurece, porque la regleta lo tapa, y la luz toma el tono frío y verdoso.
+- La sala oscura queda igual.
+
+**Sin fugas:** con la puerta cerrada, la sala oscura contigua a una iluminada da lo mismo con la luz nueva que sin apliques, sondas ni niebla iluminada, en los cuatro presets (8,9–9,0 de 255 con el ruido del sensor, sin lente ni OSD).
+
+**Coste** (RTX 4060 Ti, 1080p, GPU caminando, frente a la fase 1):
+
+| Preset | GPU | p99 del fotograma |
+|---|---|---|
+| Bajo | 0,86 → 0,90 ms | 3,5 → 3,4 ms |
+| Medio | 2,66 → 2,79 ms | 4,9 → 5,1 ms |
+| Alto | 5,71 → 6,42 ms | 8,3 → 10,2 ms |
+| Ultra | 7,91 → 9,40 ms | 11,2 → 15,1 ms |
+
+Casi todo es la sombra de los apliques, que se redibuja al pasar junto a ellos. Alto sigue muy por debajo de los 16,7 ms de 60 FPS.
+
+### 8. VoxelGI por sala frente a las sondas
+
+Prueba: un `VoxelGI` de subdivisión 64 por sala de las vistas, horneado en la carga con su geometría real, con las lámparas inyectadas en cada fotograma y sin la luz ambiente de las sondas. Se compara con la sonda y con ningún rebote (`evidence/lookdev/rebote_sondas_voxelgi.png`).
+
+| Vista | Sin rebote | Sonda | VoxelGI |
+|---|---|---|---|
+| Recepción | 28,0 / 6 % | 28,1 / 5 % | 31,4 / 3 % |
+| Dormitorio | 35,6 / 10 % | 36,1 / 9 % | 45,1 / 1 % |
+| Salón | 34,4 / 4 % | 34,5 / 4 % | 45,7 / 0 % |
+| Pasillo | 39,9 / 3 % | 40,0 / 3 % | 42,7 / 0 % |
+| Baño | 43,7 / 22 % | 43,9 / 22 % | 46,7 / 10 % |
+| Servicio | 42,3 / 24 % | 42,3 / 24 % | 46,2 / 12 % |
+
+- **La sonda apenas rebota:** su luz ambiente es la media de una captura oscura.
+- **VoxelGI da el rebote de verdad:** el interior del armario, las esquinas y las paredes bajo el fluorescente reciben luz de la sala. Es el cambio que más acerca la imagen a una foto.
+- **Pero así no sirve tal cual:**
+  - El horneado lee el color solo de los materiales estándar. Los del hotel son shaders propios, así que los ve blancos y el rebote sale sin color y demasiado fuerte.
+  - Hornear la geometría real cuesta 220–860 ms por sala, y el piso tiene unas 97 iluminadas.
+  - Godot solo muestra 8 volúmenes a la vez.
+- **Siguiente paso:** hornear un proxy con los mismos bloques de cada sala y el color medio de cada material, y mostrar solo los volúmenes cercanos.
+
+**Hito:** hoja `evidence/lookdev/fase2_antes_despues.png` y vídeo `evidence/lookdev/fase2_alto.avi`.
+
 ### Pruebas que se hacen al empezar su fase
 
 - **5. Decals** (límite de elementos agrupados, atlas): fase 4.
 - **6. Bisel en shader:** fase 5.
-- **8. VoxelGI por sala frente a las sondas:** fase 2.
