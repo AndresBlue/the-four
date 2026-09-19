@@ -55,8 +55,10 @@ const DOOR_LEAF := preload("res://assets/props/door/door_leaf.res")
 const DOOR_FRAME := preload("res://assets/props/door/door_frame.res")
 ## Where the leaf's faces are, for the room numbers screwed onto them.
 const LEAF_FACE := 0.066
-const FADE_BEGIN := 40.0
-const FADE_LENGTH := 16.0
+const FADE_BEGIN := 30.0
+const FADE_LENGTH := 12.0
+## Rooms further than this are hidden (and a hidden room casts no shadow).
+const ROOM_REACH := [56.0, 66.0, 66.0]
 ## A light keeps its shadow until the light itself is gone. A shadow that
 ## faded earlier left lamps shining through walls and closed doors between
 ## that distance and the light's own fade.
@@ -222,7 +224,8 @@ func set_door(centre: Vector3, number: String, yaw := 0.0) -> Node3D:
 ##    blotchy while the door was shut).
 ##  - jamb_seal(): strips fixed in the doorway, SEAL_LIP into the opening
 ##    behind the edges of the leaf and SEAL_OVERLAP into the wall and header,
-##    so no crack round a shut leaf lets the next room's light through.
+##    so no crack round a shut leaf lets the next room's light through. These
+##    are drawn too, as the frame's door stop, so no crack can be seen through.
 ## Both are always there: one that appeared only once the door had finished
 ## closing made the room go dark all at once.
 const SEAL_DEPTH := 0.04
@@ -241,9 +244,17 @@ func jamb_seal(center: Vector3, yaw: float) -> Node3D:
 	var edge := FLOOR.PORTAL * 0.5
 	var side_width := SEAL_LIP + SEAL_OVERLAP
 	for side in [-1.0, 1.0]:
-		holder.add_child(shadow_block("Side", Vector3(side_width, OPENING_HIGH + SEAL_OVERLAP, SEAL_DEPTH), Vector3(side * (edge - SEAL_LIP + side_width * 0.5), (OPENING_HIGH + SEAL_OVERLAP) * 0.5, 0)))
-	holder.add_child(shadow_block("Head", Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, SEAL_LIP + SEAL_OVERLAP, SEAL_DEPTH), Vector3(0, OPENING_HIGH - SEAL_LIP + (SEAL_LIP + SEAL_OVERLAP) * 0.5, 0)))
+		holder.add_child(door_stop("Side", Vector3(side_width, OPENING_HIGH + SEAL_OVERLAP, SEAL_DEPTH), Vector3(side * (edge - SEAL_LIP + side_width * 0.5), (OPENING_HIGH + SEAL_OVERLAP) * 0.5, 0)))
+	holder.add_child(door_stop("Head", Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, SEAL_LIP + SEAL_OVERLAP, SEAL_DEPTH), Vector3(0, OPENING_HIGH - SEAL_LIP + (SEAL_LIP + SEAL_OVERLAP) * 0.5, 0)))
 	return holder
+
+## The jamb strips are drawn, like the stop of a real door frame: through the
+## crack beside a shut leaf you saw straight into the lit room next door.
+func door_stop(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
+	var block := shadow_block(title, size, at)
+	block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	block.material_override = DOOR_FRAME.surface_get_material(0)
+	return block
 
 ## Puts out whatever glows on a mesh (lamp shades, bulbs): same surfaces,
 ## emission off.
@@ -629,13 +640,19 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	for probe in reflection_probes: probe.visible = quality > 0 and not echo_view
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
-		room_nodes[i].visible = distance < (42.0 if quality == 0 else 66.0)
-		lights[i].visible = distance < FADE_BEGIN + FADE_LENGTH + 4.0 and not lights[i].has_meta("off") and not echo_view
+		var reach: float = ROOM_REACH[clampi(quality, 0, 2)]
+		room_nodes[i].visible = distance < reach
+		# A lamp only shines while every wall round it is still drawn: a hidden
+		# room casts no shadow, and a lamp left on among hidden walls poured its
+		# light into the dark rooms beside it (far walls of a shut dark room lit).
+		var light_reach := minf(FADE_BEGIN + FADE_LENGTH + 2.0, reach - lights[i].omni_range - 2.0)
+		lights[i].visible = distance < light_reach and not lights[i].has_meta("off") and not echo_view
 		lights[i].shadow_enabled = shadows
 	for lamp in practicals:
 		lamp.visible = quality > 0 and not echo_view and lamp.global_position.distance_to(player_position) < 28.0
 		lamp.shadow_enabled = shadows
-	for door in doors: door.visible = door.doorway.distance_to(player_position) < 66.0
+	# Doors carry their light seals: shown as far as the rooms are.
+	for door in doors: door.visible = door.doorway.distance_to(player_position) < ROOM_REACH[clampi(quality, 0, 2)]
 
 func build_dust() -> void:
 	dust = CPUParticles3D.new()
