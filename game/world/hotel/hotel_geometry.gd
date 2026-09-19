@@ -10,7 +10,6 @@ var doors: Array = []
 var hides: Array = []
 var lights: Array[OmniLight3D] = []
 var manifest: Dictionary
-var quality := 1
 var reduced := false
 ## The Locust's player is looking: it does not see light, so every lamp, the
 ## dust, the fog and the probes are hidden. The opaque pass still writes the
@@ -58,14 +57,16 @@ const DOOR_LEAF := preload("res://assets/props/door/door_leaf.res")
 const DOOR_FRAME := preload("res://assets/props/door/door_frame.res")
 ## Where the leaf's faces are, for the room numbers screwed onto them.
 const LEAF_FACE := 0.066
-const FADE_BEGIN := 30.0
-const FADE_LENGTH := 12.0
-## Rooms further than this are hidden (and a hidden room casts no shadow).
-const ROOM_REACH := [56.0, 66.0, 66.0]
-## A light keeps its shadow until the light itself is gone. A shadow that
-## faded earlier left lamps shining through walls and closed doors between
-## that distance and the light's own fade.
-const SHADOW_FADE := FADE_BEGIN + FADE_LENGTH
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
+## The graphics preset in force (graphics_presets.gd): how far rooms are drawn
+## (room_reach; a hidden room casts no shadow), where the ceiling lamps fade
+## (lamp_fade) and the furniture lamps go out, dust, haze and probes. Medium
+## until apply_quality() says otherwise: the staged sets use it as built.
+var preset: Dictionary = PRESETS.PRESETS[PRESETS.MEDIUM]
+## Source sizes of the lamps (a small bulb for PCSS penumbrae), times the
+## preset's penumbra (0: plain filtering).
+const LAMP_SIZE := 0.12
+const PRACTICAL_SIZE := 0.2
 ## Door numbers are not drawn past this: about 5 px tall there, unreadable
 ## through the tape filter anyway.
 const NUMBER_REACH := 20.0
@@ -508,7 +509,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.position = Vector3(0, height - 0.45, 0)
 	light.omni_range = maxf(10.0, maxf(span.x, span.y) * 0.85)
 	light.omni_attenuation = 1.25
-	light.light_size = 0.12
+	light.light_size = LAMP_SIZE * preset.penumbra
 	light.light_specular = 0.45 if service else 0.6
 	light.shadow_enabled = true
 	# Small biases so thin shelves and trays still block light and glints.
@@ -521,13 +522,12 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	# room's haze glowed in the dark room next door, growing with depth (near
 	# floor black, far walls showing). Only the player's own torch lights it.
 	light.light_volumetric_fog_energy = 0.0
-	# Lights and shadows fade with distance instead of switching on abruptly.
-	# Shadows stay on wherever a light can reach visible rooms, so light never
-	# passes through walls.
+	# Lights and shadows fade with distance instead of switching on abruptly
+	# (lamp_fade, per preset). A light keeps its shadow until the light itself
+	# is gone: a shadow that faded earlier left lamps shining through walls and
+	# closed doors between that distance and the light's own fade.
 	light.distance_fade_enabled = true
-	light.distance_fade_begin = FADE_BEGIN
-	light.distance_fade_length = FADE_LENGTH
-	light.distance_fade_shadow = SHADOW_FADE
+	set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
 	node.add_child(light)
 	lights.append(light)
 	# Some rooms have their lamp out: only torches and the doorways light them.
@@ -548,15 +548,18 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			fog.material = fog_mat
 			node.add_child(fog)
 			fog_volumes.append(fog)
-		if int(room.id) % 3 == 0:
-			var probe := ReflectionProbe.new()
-			probe.position.y = 1.8
-			probe.size = Vector3(span.x, height, span.y)
-			probe.interior = true
-			probe.intensity = 0.35
-			probe.max_distance = 25
-			node.add_child(probe)
-			reflection_probes.append(probe)
+		# Every hall has one; the preset decides how many are in use (probes:
+		# every third hall, or all of them rendered with shadows).
+		var probe := ReflectionProbe.new()
+		probe.position.y = 1.8
+		probe.size = Vector3(span.x, height, span.y)
+		probe.interior = true
+		probe.intensity = 0.35
+		probe.max_distance = 25
+		probe.visible = false
+		probe.set_meta("every_third", int(room.id) % 3 == 0)
+		node.add_child(probe)
+		reflection_probes.append(probe)
 	if room.type == 0:
 		# Where the night started: a red emergency lamp blinking over the
 		# reception, the one landmark to find the way back by.
@@ -666,20 +669,47 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	lamp.light_energy = energy
 	lamp.omni_range = reach
 	lamp.omni_attenuation = 2.2
-	lamp.light_size = 0.2
+	lamp.light_size = PRACTICAL_SIZE * preset.penumbra
 	lamp.light_specular = 0.25
 	lamp.shadow_enabled = true
 	lamp.shadow_bias = 0.04
 	lamp.shadow_normal_bias = 0.6
 	lamp.light_volumetric_fog_energy = 0.0
 	lamp.distance_fade_enabled = true
-	lamp.distance_fade_begin = 18.0
-	lamp.distance_fade_length = 8.0
-	# Shadows last as long as the light does: a lamp still shining without its
-	# shadow shines through walls and closed doors.
-	lamp.distance_fade_shadow = 26.0
+	# Shadows last as long as the light does (set_fade): a lamp still shining
+	# without its shadow shines through walls and closed doors.
+	practical_fade(lamp)
 	parent.add_child(lamp)
 	practicals.append(lamp)
+
+## A furniture lamp fades over its last 10 m before furniture_lamps (it is
+## hidden there), 8 m of fade and 2 m to spare.
+func practical_fade(lamp: OmniLight3D) -> void:
+	var out: float = preset.furniture_lamps
+	if out > 0.0: set_fade(lamp, out - 10.0, 8.0)
+
+## Distance fade of a lamp; its shadow ends exactly where its light does.
+static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
+	if lamp.distance_fade_begin != begin: lamp.distance_fade_begin = begin
+	if lamp.distance_fade_length != length: lamp.distance_fade_length = length
+	if lamp.distance_fade_shadow != begin + length: lamp.distance_fade_shadow = begin + length
+
+## A new graphics preset (graphics_presets.gd), from hotel_main. Visibility
+## follows on the next update_visibility().
+func apply_quality(new_preset: Dictionary) -> void:
+	preset = new_preset
+	for light in lights:
+		set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
+		var size: float = LAMP_SIZE * preset.penumbra
+		if light.light_size != size: light.light_size = size
+	for lamp in practicals:
+		practical_fade(lamp)
+		var size: float = PRACTICAL_SIZE * preset.penumbra
+		if lamp.light_size != size: lamp.light_size = size
+	var shadowed: bool = preset.probes >= 2
+	for probe in reflection_probes:
+		if probe.enable_shadows != shadowed: probe.enable_shadows = shadowed
+	if is_instance_valid(dust) and preset.dust > 0 and dust.amount != preset.dust: dust.amount = preset.dust
 
 func _process(delta: float) -> void:
 	flicker_clock += delta
@@ -754,28 +784,30 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
-		dust.emitting = quality > 0 and not reduced and not echo_view
-		dust.visible = quality > 0 and not reduced and not echo_view
-	for fog in fog_volumes: fog.visible = quality == 2 and not reduced and not echo_view and RenderingServer.get_current_rendering_method() == "forward_plus"
-	for probe in reflection_probes: probe.visible = quality > 0 and not echo_view
+		dust.emitting = preset.dust > 0 and not reduced and not echo_view
+		dust.visible = dust.emitting
+	# Hall haze only exists in Forward+ (the preset has it off elsewhere).
+	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
+	for probe in reflection_probes: probe.visible = not echo_view and (preset.probes >= 2 or (preset.probes == 1 and probe.get_meta("every_third")))
+	var reach: float = preset.room_reach
+	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
-		var reach: float = ROOM_REACH[clampi(quality, 0, 2)]
 		room_nodes[i].visible = distance < reach
 		# A lamp only shines while every wall round it is still drawn: a hidden
 		# room casts no shadow, and a lamp left on among hidden walls poured its
 		# light into the dark rooms beside it (far walls of a shut dark room lit).
-		var light_reach := minf(FADE_BEGIN + FADE_LENGTH + 2.0, reach - lights[i].omni_range - 2.0)
+		var light_reach := minf(fade_end + 2.0, reach - lights[i].omni_range - 2.0)
 		lights[i].visible = distance < light_reach and not lights[i].has_meta("off") and not echo_view
 		# Only when it changes: every write makes Godot redraw that shadow.
 		if lights[i].shadow_enabled != shadows: lights[i].shadow_enabled = shadows
 	for lamp in practicals:
-		lamp.visible = quality > 0 and not echo_view and lamp.global_position.distance_to(player_position) < 28.0
+		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).
 	for i in doors.size():
-		var shown: bool = doors[i].doorway.distance_to(player_position) < ROOM_REACH[clampi(quality, 0, 2)]
+		var shown: bool = doors[i].doorway.distance_to(player_position) < reach
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
 
@@ -784,7 +816,7 @@ func build_dust() -> void:
 	# Its specks would never show in a shadow, and as a caster its every-frame
 	# update made Godot redraw the shadow of every lamp round the player.
 	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	dust.amount = 90
+	dust.amount = maxi(1, preset.dust)
 	dust.lifetime = 10
 	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	dust.emission_box_extents = Vector3(6, 1.2, 6)

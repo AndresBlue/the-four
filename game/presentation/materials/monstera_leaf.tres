@@ -6,6 +6,8 @@
 
 [resource]
 resource_name = "MonsteraLeaf"
+; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
+texture_filter = 5
 ; Cut-out leaves seen from both sides.
 transparency = 2
 alpha_scissor_threshold = 0.5

@@ -6,6 +6,8 @@
 
 [resource]
 resource_name = "Bed"
+; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
+texture_filter = 5
 ; ORM packing: occlusion in red, roughness in green, metallic in blue.
 albedo_texture = ExtResource("1")
 metallic = 1.0

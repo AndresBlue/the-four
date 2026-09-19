@@ -43,7 +43,7 @@ void fragment() {
 	}
 	color = albedo_or(color);
 	// Pile: fine directional fibres and shading patches from brushing.
-	float pile = vnoise(uv * 260.0) * 0.6 + vnoise(uv * 90.0 + 3.0) * 0.4;
+	float pile = fine_noise(uv * 260.0) * 0.6 + fine_noise(uv * 90.0 + 3.0) * 0.4;
 	float brush = fbm(uv * 0.9 + vec2(4.0, 1.0));
 	color *= 0.84 + pile * 0.22 + (brush - 0.5) * 0.14;
 	// Wear: lighter, flattened paths and scattered dark stains.

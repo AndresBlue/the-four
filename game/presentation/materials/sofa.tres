@@ -7,6 +7,8 @@
 
 [resource]
 resource_name = "Sofa"
+; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
+texture_filter = 5
 albedo_color = Color(0.82, 0.78, 0.74, 1)
 albedo_texture = ExtResource("1")
 roughness_texture = ExtResource("3")

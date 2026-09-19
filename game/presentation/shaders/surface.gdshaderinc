@@ -29,15 +29,35 @@ float vnoise(vec2 p) {
 	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+// Detail of every procedural surface, set by the graphics preset
+// (graphics_presets.gd surface_detail; declared in project.godot): how many
+// of fbm's four octaves are worked out, and under 2.5 the finest terms go too.
+global uniform float surface_detail;
+
 float fbm(vec2 p) {
 	float value = 0.0;
 	float amplitude = 0.5;
-	for (int i = 0; i < 4; i++) {
+	int octaves = clamp(int(surface_detail), 1, 4);
+	for (int i = 0; i < octaves; i++) {
 		value += vnoise(p) * amplitude;
 		p = p * 2.03 + vec2(17.1, 9.2);
 		amplitude *= 0.5;
 	}
+	// Octaves left out add their mean, so the pattern keeps its level and only
+	// loses its finest grain.
+	for (int i = octaves; i < 4; i++) {
+		value += 0.5 * amplitude;
+		amplitude *= 0.5;
+	}
 	return value;
+}
+
+// The finest terms (carpet pile, paper fibre, wood pores, ceiling stipple):
+// sub-pixel a few metres away, and aliasing grain at a low render scale. On a
+// low surface_detail they are their mean.
+float fine_noise(vec2 p) {
+	if (surface_detail < 2.5) return 0.5;
+	return vnoise(p);
 }
 
 // Face-aligned coordinates in metres, oriented so that the image "up" points

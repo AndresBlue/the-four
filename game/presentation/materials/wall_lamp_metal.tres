@@ -7,6 +7,8 @@
 
 [resource]
 resource_name = "WallLampMetal"
+; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
+texture_filter = 5
 albedo_texture = ExtResource("1")
 metallic = 1.0
 metallic_texture = ExtResource("4")

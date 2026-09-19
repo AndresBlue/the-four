@@ -8,6 +8,8 @@
 
 [resource]
 resource_name = "Wardrobe"
+; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
+texture_filter = 5
 ; The model is single-sided; the inside of the doors must render when hiding.
 cull_mode = 2
 albedo_color = Color(0.78, 0.7, 0.62, 1)

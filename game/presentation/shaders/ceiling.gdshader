@@ -11,7 +11,7 @@ void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
 	vec2 uv = face_uv();
-	float stipple = vnoise(uv * 70.0) * 0.6 + vnoise(uv * 190.0) * 0.4;
+	float stipple = fine_noise(uv * 70.0) * 0.6 + fine_noise(uv * 190.0) * 0.4;
 	float blotch = fbm(uv * 0.45);
 	vec3 color = base_color.rgb * (0.9 + stipple * 0.12);
 	color = albedo_or(color);

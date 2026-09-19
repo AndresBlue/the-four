@@ -7,7 +7,13 @@ extends SceneTree
 ## capture without the tape filter (<view>_q<n>_raw.png, for
 ## tools/benchmarks/compare_captures.gd) and one with it (_vhs.png, as played).
 ## evidence/hotel_benchmark_<renderer>.json keeps the old summary.
+## Each quality is a whole graphics preset, render scale included.
+##   --qualities=0,3         only these presets (all four by default)
+##   --set=key:value[,...]   force preset values (graphics_presets.gd keys) over
+##                           every preset, to measure one effect at a time,
+##                           e.g. --set=ssil:-1 or --set=msaa:0,taa:false
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const STILL_FRAMES := 120
 const WALK_FRAMES := 240
 ## Walking pace in metres per frame (6 m/s at 60 fps), whatever the real rate,
@@ -19,8 +25,17 @@ var out_dir := ""
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
+	var qualities := range(PRESETS.count())
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--bench-label="): label = argument.trim_prefix("--bench-label=")
+		if argument.begins_with("--qualities="): qualities = Array(argument.trim_prefix("--qualities=").split(",")).map(func(q): return int(q))
+		if argument.begins_with("--set="):
+			for pair in argument.trim_prefix("--set=").split(","):
+				var key := pair.get_slice(":", 0)
+				var text := pair.get_slice(":", 1)
+				# a/b is a pair (lamp_fade:36/12).
+				if "/" in text: PRESETS.overrides[key] = Array(text.split("/")).map(func(v): return float(v))
+				else: PRESETS.overrides[key] = (text == "true") if text in ["true", "false"] else (float(text) if "." in text else int(text))
 	out_dir = "res://evidence/bench/%s_%s" % [label, RenderingServer.get_current_rendering_method()]
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	var level = load("res://game/app/hotel.tscn").instantiate()
@@ -38,9 +53,14 @@ func run() -> void:
 	var results: Array = []
 	var legacy: Array = []
 	var peak_memory := 0.0
-	for quality in [0, 1, 2]:
-		level.settings.values.quality = quality
-		level.apply_settings()
+	for quality in qualities:
+		# Through the settings, as the menu does: the preset's render scale too.
+		level.settings.set_value("quality", quality)
+		# A forced scale wins over the preset's (--set=scale:0.5).
+		if PRESETS.overrides.has("scale"): level.settings.set_value("scale", PRESETS.overrides.scale)
+		# The settings put back their frame cap and vsync: unlimited again.
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = 0
 		for argument in OS.get_cmdline_user_args():
 			if argument.begins_with("--atlas-quads="):
 				var quads := argument.trim_prefix("--atlas-quads=").split(",")

@@ -49,9 +49,15 @@ window/stretch/aspect="expand"
 
 [rendering]
 
-occlusion_culling/use_occlusion_culling=true
-
 renderer/rendering_method.mobile="gl_compatibility"
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=3
 textures/default_filters/anisotropic_filtering_level=4
 environment/defaults/default_clear_color=Color(0.025, 0.026, 0.021, 1)
+occlusion_culling/use_occlusion_culling=true
+
+[shader_globals]
+
+surface_detail={
+"type": "float",
+"value": 4.0
+}

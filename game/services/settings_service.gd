@@ -1,4 +1,5 @@
 extends Node
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
 const DEFAULTS := {"character": 0, "fullscreen": true, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1"}
@@ -29,7 +30,9 @@ func _ready() -> void:
 	apply_display()
 
 func load_settings() -> void:
-	if not FileAccess.file_exists(save_path): return
+	if not FileAccess.file_exists(save_path):
+		first_run()
+		return
 	var data = JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	if not data is Dictionary: return
 	var stored = data.get("values", {})
@@ -53,6 +56,12 @@ func load_settings() -> void:
 			used[code] = true
 			bindings[action] = code
 
+## No settings saved yet: the default preset, with its render scale. Tests and
+## capture tools keep the plain defaults.
+func first_run() -> void:
+	if not manages_window(): return
+	values.scale = PRESETS.PRESETS[values.quality].scale
+
 func sanitize(key: String, value: Variant) -> Variant:
 	if DEFAULTS[key] is bool: return value if value is bool else DEFAULTS[key]
 	if DEFAULTS[key] is String: return str(value).strip_edges().left(40) if value is String else DEFAULTS[key]
@@ -60,7 +69,7 @@ func sanitize(key: String, value: Variant) -> Variant:
 	match key:
 		"resolution": return clampi(int(value), 0, 3)
 		"character": return clampi(int(value), 0, 2)
-		"quality": return clampi(int(value), 0, 2)
+		"quality": return clampi(int(value), 0, PRESETS.count() - 1)
 		"fps": return int(value) if int(value) in [0, 30, 60, 120, 144] else 60
 		"sensitivity": return clampf(value, 0.0005, 0.008)
 		"scale": return clampf(value, 0.5, 1.0)
@@ -71,6 +80,8 @@ func set_value(key: String, value: Variant) -> void:
 	if key in ["resolution", "fullscreen"] and previous_display.is_empty():
 		previous_display = {"resolution": values.resolution, "fullscreen": values.fullscreen}
 	values[key] = sanitize(key, value)
+	# A preset brings its own render scale; the slider can move it afterwards.
+	if key == "quality": values.scale = PRESETS.PRESETS[values.quality].scale
 	if key in DISPLAY_KEYS:
 		countdown = 12.0
 		display_pending.emit(12)
@@ -129,6 +140,9 @@ func apply() -> void:
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if values.vsync else DisplayServer.VSYNC_DISABLED)
 	get_viewport().scaling_3d_scale = values.scale
+	# Under native resolution FSR 1 sharpens the upscale (Forward+ only).
+	var upscale: bool = values.scale < 1.0 and RenderingServer.get_current_rendering_method() == "forward_plus"
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if upscale else Viewport.SCALING_3D_MODE_BILINEAR
 	# The player's own footsteps have their own drier bus, under the effects slider.
 	for pair in [["Master", "master"], ["Ambience", "ambience"], ["Music", "music"], ["Effects", "effects"], ["Threat", "threat"], ["Steps", "effects"]]:
 		var index := AudioServer.get_bus_index(pair[0])

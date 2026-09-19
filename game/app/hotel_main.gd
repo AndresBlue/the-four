@@ -260,8 +260,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(hotel)
 	hotel.build(manifest)
-	hotel.quality = settings.values.quality
-	hotel.reduced = settings.values.reduced
+	configure_hotel()
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
@@ -286,6 +285,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 		hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(hotel)
 		hotel.build(manifest)
+		configure_hotel()
 		await get_tree().physics_frame
 		await get_tree().physics_frame
 		physical_errors = VALIDATOR.new().validate_physics(get_world_3d(), manifest)
@@ -956,43 +956,59 @@ func build_environment() -> void:
 func hunter_seat() -> bool:
 	return is_instance_valid(net) and match_net.local_is_locust()
 
-## Positional soft shadow filter per quality (RenderingServer.ShadowQuality):
-## Soft Very Low, Soft Low, Soft Medium.
-const SHADOW_FILTER := [RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM]
+## Every value that changes with the quality setting (graphics_presets.gd).
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
+## The torch's source size as built (player.tscn), for presets without penumbra.
+var torch_size := -1.0
 func apply_settings() -> void:
 	if not is_instance_valid(environment): return
-	var advanced := RenderingServer.get_current_rendering_method() == "forward_plus"
-	var quality: int = settings.values.quality
+	var preset: Dictionary = PRESETS.of(settings.values.quality)
 	# The acoustic view replaces the lit image entirely, so none of this would
 	# ever be seen; switching it off is what pays for its own screen pass.
 	var hunter := hunter_seat()
-	environment.ssao_enabled = advanced and quality > 0 and not hunter
-	environment.ssil_enabled = advanced and quality > 0 and not hunter
+	environment.ssao_enabled = preset.ssao >= 0 and not hunter
+	if preset.ssao >= 0: RenderingServer.environment_set_ssao_quality(preset.ssao, preset.ssao_half, ProjectSettings.get_setting("rendering/environment/ssao/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssao/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_to"))
+	environment.ssil_enabled = preset.ssil >= 0 and not hunter
+	if preset.ssil >= 0: RenderingServer.environment_set_ssil_quality(preset.ssil, preset.ssil_half, ProjectSettings.get_setting("rendering/environment/ssil/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssil/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssil/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssil/fadeout_to"))
+	environment.ssr_enabled = preset.ssr_steps > 0 and not hunter
+	if preset.ssr_steps > 0:
+		environment.ssr_max_steps = preset.ssr_steps
+		RenderingServer.environment_set_ssr_roughness_quality(preset.ssr_roughness)
 	# SDFGI leaks light through the 18 cm hotel walls; bounce light is screen-space only.
 	environment.sdfgi_enabled = false
-	environment.glow_enabled = quality > 0 and not hunter
+	environment.glow_enabled = preset.glow and not hunter
+	RenderingServer.environment_glow_set_use_bicubic_upscale(preset.glow_bicubic)
 	# Ambient light reaches every surface whether or not a lamp does, so for the
 	# creature it has to go too: anything still lit leaks the seen hotel into a
 	# reading that is supposed to be made of echoes.
 	environment.ambient_light_energy = 0.0 if hunter else ambient_energy
 	environment.fog_enabled = not hunter
-	environment.volumetric_fog_enabled = advanced and quality > 0 and not settings.values.reduced and not hunter
+	environment.volumetric_fog_enabled = preset.fog_size > 0 and not settings.values.reduced and not hunter
+	if preset.fog_size > 0:
+		RenderingServer.environment_set_volumetric_fog_volume_size(preset.fog_size, preset.fog_depth)
+		RenderingServer.environment_set_volumetric_fog_filter_active(preset.fog_filter)
 	var viewport := get_viewport()
 	# Every lamp shares one shadow atlas. At 4096 the rooms further off got
 	# cells so coarse that shadows came out as saw-teeth along door frames and
 	# a lamp's shadow bias grew past a 7 cm leaf: light through shut doors.
-	viewport.positional_shadow_atlas_size = 8192 if quality == 2 else 4096
+	# No preset goes under 4096.
+	viewport.positional_shadow_atlas_size = preset.shadow_atlas
 	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
-	# Side-by-side captures showed no difference between Soft Medium (3), Low
-	# (2) and Very Low (1) through these lamps; each step down saved about a
-	# tenth of the GPU frame. High keeps the project's Soft Medium.
-	RenderingServer.positional_soft_shadow_filter_set_quality(SHADOW_FILTER[clampi(quality, 0, 2)])
-	viewport.msaa_3d = Viewport.MSAA_2X if quality > 0 else Viewport.MSAA_DISABLED
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == 0 and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
+	RenderingServer.positional_soft_shadow_filter_set_quality(preset.shadow_filter)
+	viewport.msaa_3d = preset.msaa
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if preset.fxaa and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
 	# Temporal accumulation has nothing to work with here: the echo field writes
 	# POSITION itself (no motion vectors) and the point cloud is restamped
 	# fifteen times a second, so TAA smears it into paste.
-	viewport.use_taa = advanced and quality == 2 and not hunter
+	viewport.use_taa = preset.taa and not hunter
+	viewport.mesh_lod_threshold = preset.lod_threshold
+	viewport.anisotropic_filtering_level = preset.anisotropy
+	viewport.use_debanding = preset.debanding
+	RenderingServer.screen_space_roughness_limiter_set_active(preset.roughness_limiter, ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/amount"), ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/limit"))
+	# Octaves of every procedural surface (surface.gdshaderinc) and the tape
+	# filter's chroma reads.
+	RenderingServer.global_shader_parameter_set("surface_detail", preset.surface_detail)
+	post_material.set_shader_parameter("chroma_taps", preset.chroma_taps)
 	for key in ["vhs", "grain", "chromatic", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if settings.values.reduced else settings.values[key] * (0.5 if hunter and key == "chromatic" else 1.0))
 	post_material.set_shader_parameter("vignette", 0.0 if settings.values.reduced else 0.45)
 	# The warm tape cast would break the monochrome reading.
@@ -1001,12 +1017,20 @@ func apply_settings() -> void:
 		post_material.set_shader_parameter("enclosure", 0.0)
 		post_material.set_shader_parameter("threat_glitch", 0.0)
 	player.torch.shadow_enabled = settings.values.shadows
+	if torch_size < 0.0: torch_size = player.torch.light_size
+	player.torch.light_size = torch_size * minf(preset.penumbra, 1.0)
 	player.set_character(settings.values.character)
-	if is_instance_valid(hotel):
-		hotel.quality = settings.values.quality
-		hotel.reduced = settings.values.reduced
-		hotel.echo_view = hunter
+	# Your own body, walking, re-renders the shadow of every lamp round it.
+	player.avatar.set_body_shadow(preset.body_shadow)
+	configure_hotel()
 	if is_instance_valid(locust) and locust.driver != null and is_instance_valid(locust.driver.echo): locust.driver.echo.apply_quality()
+
+## The floor's share of the settings: preset, reduced effects, creature's view.
+func configure_hotel() -> void:
+	if not is_instance_valid(hotel): return
+	hotel.reduced = settings.values.reduced
+	hotel.echo_view = hunter_seat()
+	hotel.apply_quality(PRESETS.of(settings.values.quality))
 
 ## Wardrobe enclosure and strike glitch on the analog filter (off when reduced).
 var enclosure := 0.0

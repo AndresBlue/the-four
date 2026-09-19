@@ -145,6 +145,19 @@ func run() -> void:
 	settings.set_value("reduced", true)
 	check("Efectos reducidos eliminan VHS", scene.post_material.get_shader_parameter("vhs") == 0.0)
 	settings.set_value("reduced", false)
+	# Graphics presets (graphics_presets.gd): four, each applied whole, the
+	# render scale with it.
+	settings.set_value("quality", 3)
+	settings.load_settings()
+	check("El preset Ultra se guarda y un valor fuera de rango se corrige", settings.values.quality == 3 and settings.sanitize("quality", 9) == 3 and settings.sanitize("quality", -2) == 0)
+	var viewport: Viewport = scene.get_viewport()
+	settings.set_value("quality", 0)
+	check("Bajo: escala 0,67 con FSR, FXAA, sin SSAO ni volumétrica y sin sombra propia", is_equal_approx(viewport.scaling_3d_scale, 0.67) and viewport.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR and viewport.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA and not scene.environment.ssao_enabled and not scene.environment.volumetric_fog_enabled and scene.player.avatar.meshes.all(func(mesh): return mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF))
+	settings.set_value("quality", 1)
+	check("Medio: TAA, SSAO sin SSIL y lámparas hasta 42 m", viewport.use_taa and scene.environment.ssao_enabled and not scene.environment.ssil_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 42.0) and scene.player.avatar.meshes.all(func(mesh): return mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON))
+	settings.set_value("quality", 3)
+	check("Ultra: MSAA 4×, SSR, lámparas hasta 64 m y salas hasta 82 m", viewport.msaa_3d == Viewport.MSAA_4X and scene.environment.ssr_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 64.0) and scene.hotel.preset.room_reach == 82.0)
+	settings.set_value("quality", 1)
 	var session = scene.session
 	check("Cuotas correctas", quota(session, 1) == 1 and quota(session, 2) == 1 and quota(session, 3) == 2 and quota(session, 4) == 2)
 	session.roster_count = 1

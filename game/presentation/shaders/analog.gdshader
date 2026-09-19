@@ -14,6 +14,9 @@ uniform float vignette : hint_range(0.0, 1.0) = 0.45;
 uniform float enclosure : hint_range(0.0, 1.0) = 0.0;
 // The creature's strike wind-up: a brief tape tear across the image.
 uniform float threat_glitch : hint_range(0.0, 1.0) = 0.0;
+// Screen reads for the chroma smear, over the same width (graphics preset
+// chroma_taps): 7, or 4 on the lowest preset.
+uniform int chroma_taps : hint_range(2, 7) = 7;
 
 float hash(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -64,23 +67,30 @@ void fragment() {
 	vec3 blur_l = tap(uv - vec2(px.x * soft, 0.0));
 	vec3 blur_r = tap(uv + vec2(px.x * soft, 0.0));
 	float luma = rgb_to_yiq(center * 0.5 + (blur_l + blur_r) * 0.25).x;
-	float far_luma = rgb_to_yiq(tap(uv - vec2(px.x * soft * 3.0, 0.0)) * 0.5 + tap(uv + vec2(px.x * soft * 3.0, 0.0)) * 0.5).x;
-	luma += (luma - far_luma) * 0.35 * vhs;
+	// Terms whose slider is at 0 read nothing (the result would be the same).
+	if (vhs > 0.0) {
+		float far_luma = rgb_to_yiq(tap(uv - vec2(px.x * soft * 3.0, 0.0)) * 0.5 + tap(uv + vec2(px.x * soft * 3.0, 0.0)) * 0.5).x;
+		luma += (luma - far_luma) * 0.35 * vhs;
+	}
 	vec2 chroma = vec2(0.0);
 	float chroma_width = px.x * (1.5 + vhs * 9.0);
 	float chroma_delay = px.x * vhs * 3.0;
-	for (int i = -3; i <= 3; i++) {
-		vec3 sample_yiq = rgb_to_yiq(tap(uv + vec2(float(i) * chroma_width + chroma_delay, 0.0)));
+	// Taps spread evenly from -3 to +3 chroma widths, however many there are.
+	float spacing = 6.0 / float(max(chroma_taps - 1, 1));
+	for (int i = 0; i < chroma_taps; i++) {
+		vec3 sample_yiq = rgb_to_yiq(tap(uv + vec2((-3.0 + float(i) * spacing) * chroma_width + chroma_delay, 0.0)));
 		chroma += sample_yiq.yz;
 	}
-	chroma /= 7.0;
+	chroma /= float(chroma_taps);
 	chroma *= 1.0 - vhs * 0.25;
 	vec3 color = yiq_to_rgb(vec3(luma, chroma));
 	// Lens colour fringing, stronger towards the corners.
 	vec2 from_center = SCREEN_UV - 0.5;
 	vec2 fringe = from_center * dot(from_center, from_center) * chromatic * 0.045 + vec2(chromatic * px.x * 2.0, 0.0);
-	color.r = mix(color.r, tap(uv + fringe).r, clamp(chromatic * 3.0, 0.0, 1.0));
-	color.b = mix(color.b, tap(uv - fringe).b, clamp(chromatic * 3.0, 0.0, 1.0));
+	if (chromatic > 0.0) {
+		color.r = mix(color.r, tap(uv + fringe).r, clamp(chromatic * 3.0, 0.0, 1.0));
+		color.b = mix(color.b, tap(uv - fringe).b, clamp(chromatic * 3.0, 0.0, 1.0));
+	}
 	// Tape grade: lifted blacks, compressed highlights, slight warm/green cast.
 	float grade = clamp(vhs * 2.2, 0.0, 1.0);
 	color = mix(color, color * tint, grade);

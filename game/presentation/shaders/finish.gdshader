@@ -25,19 +25,19 @@ void fragment() {
 	float rough = roughness;
 	vec3 color = mix(variation_color.rgb, albedo.rgb, 0.55 + large * 0.45);
 	if (finish == 1) {
-		float streak = vnoise(uv * vec2(3.0, 600.0)) * 0.7 + vnoise(uv * vec2(1.0, 150.0)) * 0.3;
+		float streak = fine_noise(uv * vec2(3.0, 600.0)) * 0.7 + vnoise(uv * vec2(1.0, 150.0)) * 0.3;
 		color *= 0.9 + streak * 0.15;
 		rough = clamp(roughness + (streak - 0.5) * 0.18 + large * 0.1, 0.05, 1.0);
 		height = streak * 0.0002;
 	} else if (finish == 2) {
 		vec2 w = uv * 180.0;
 		float weave = abs(sin(w.x)) * step(0.5, fract(w.y / 6.2831)) + abs(sin(w.y)) * step(fract(w.y / 6.2831), 0.5);
-		float fuzz = vnoise(uv * 400.0);
+		float fuzz = fine_noise(uv * 400.0);
 		color *= 0.86 + weave * 0.1 + fuzz * 0.08;
 		height = weave * 0.0005 + fuzz * 0.0003;
 	} else if (finish == 3) {
 		float crumple = fbm(uv * 5.0) * 0.7 + fbm(uv * 14.0 + 3.0) * 0.3;
-		float weave = vnoise(uv * 300.0);
+		float weave = fine_noise(uv * 300.0);
 		color *= 0.9 + crumple * 0.14;
 		height = crumple * 0.012 + weave * 0.0003;
 	} else if (finish == 4) {
@@ -45,7 +45,7 @@ void fragment() {
 		color = mix(color, color * 1.5 + vec3(0.03, 0.05, 0.0), vein * 0.4);
 		height = -vein * 0.0008 + large * 0.003;
 	} else {
-		float speck = vnoise(uv * 220.0);
+		float speck = fine_noise(uv * 220.0);
 		color *= 0.95 + speck * 0.08;
 		height = speck * 0.0002;
 	}

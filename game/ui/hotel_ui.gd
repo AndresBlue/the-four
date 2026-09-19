@@ -4,6 +4,7 @@ extends CanvasLayer
 signal action_requested(action: String)
 const STYLE := preload("res://game/ui/osd_style.gd")
 const NOISE := preload("res://game/ui/shaders/tape_noise.gdshader")
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const VERSION := "v0.5"
 var settings
 var overlay: Control
@@ -597,7 +598,7 @@ func show_settings(back: String) -> void:
 	var graphics := page(tabs, "GRÁFICOS")
 	check(graphics, "Pantalla completa", "fullscreen")
 	options(graphics, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.values.fullscreen)
-	options(graphics, "Calidad", "quality", ["Baja", "Media", "Alta"], [0, 1, 2])
+	options(graphics, "Preset gráfico", "quality", PRESETS.NAMES, range(PRESETS.count()))
 	slider(graphics, "Escala de render", "scale", 0.5, 1.0, 0.05)
 	check(graphics, "Sombras", "shadows")
 	options(graphics, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
@@ -693,7 +694,12 @@ func options(parent: Node, title_text: String, key: String, labels: Array, value
 	for words in labels: control.add_item(words)
 	control.select(values.find(settings.values[key]))
 	control.disabled = disabled
-	control.item_selected.connect(func(index): tick(); settings.set_value(key, values[index]))
+	control.item_selected.connect(func(index):
+		tick()
+		settings.set_value(key, values[index])
+		# A preset also moves the render scale slider: show it where it went.
+		if key == "quality": show_settings.call_deferred(return_action)
+	)
 	row.add_child(control)
 
 func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float) -> void:

@@ -29,7 +29,7 @@ void fragment() {
 	float warp = fbm(g * vec2(0.6, 7.0) + plane_offset() * 17.0);
 	float rings = fract((g.y + warp * 0.12) * ring_density);
 	float ring_line = smoothstep(0.0, 0.55, rings) * smoothstep(1.0, 0.8, rings);
-	float pores = smoothstep(0.62, 0.8, vnoise(g * vec2(8.0, 420.0)));
+	float pores = smoothstep(0.62, 0.8, fine_noise(g * vec2(8.0, 420.0)));
 	vec3 color = mix(dark_color.rgb, light_color.rgb, 0.35 + ring_line * 0.45 + (warp - 0.5) * 0.4);
 	color *= 1.0 - pores * 0.25;
 	color = albedo_or(color);

@@ -34,7 +34,7 @@ void fragment() {
 		float dots = smoothstep(0.06, 0.04, length(q - vec2(0.0, 0.0)));
 		float stripe = smoothstep(0.035, 0.02, abs(in_roll - 0.5)) * 0.6;
 		float print_mask = clamp(ogee * 0.8 + dots + stripe, 0.0, 1.0) * print_strength;
-		float fibre = vnoise(uv * vec2(160.0, 40.0));
+		float fibre = fine_noise(uv * vec2(160.0, 40.0));
 		float mottling = fbm(uv * 1.7);
 		vec3 base = mix(paper_color.rgb, print_color.rgb, print_mask);
 		base *= 0.97 + hash12(vec2(roll, 3.0)) * 0.03 + (mottling - 0.5) * 0.12 + (fibre - 0.5) * 0.04;

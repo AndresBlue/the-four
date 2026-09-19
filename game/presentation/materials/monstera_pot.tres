@@ -6,6 +6,8 @@
 
 [resource]
 resource_name = "MonsteraPot"
+; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
+texture_filter = 5
 albedo_texture = ExtResource("1")
 roughness_texture = ExtResource("3")
 normal_enabled = true

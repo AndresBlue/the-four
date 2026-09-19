@@ -13,6 +13,10 @@ var initialized := false
 # Fitted transform of the unrigged model, reused by its crouch/walk motion.
 var base_scale := Vector3.ONE
 var base_height := 0.0
+## Whether the body casts shadows. Only the local first-person body turns it
+## off (graphics preset body_shadow): nobody sees it but its own shadow, and
+## walking it re-renders every lamp shadow round the player.
+var body_shadow := true
 
 func _ready() -> void: configure(character, first_person)
 
@@ -47,7 +51,7 @@ func configure(index: int, local_view: bool) -> void:
 		bounds = box if first else bounds.merge(box)
 		first = false
 		mesh.layers = 2 if first_person else 1
-		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if body_shadow or not first_person else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var size_factor := 1.78 / maxf(bounds.size.y, 0.01)
 	model.scale *= size_factor
 	model.position.y -= bounds.position.y * size_factor
@@ -63,6 +67,12 @@ func configure(index: int, local_view: bool) -> void:
 		for key in names: bones[key] = rig.find_bone(names[key])
 	initialized = true
 	update_pose(Vector3.ZERO, false, 0)
+
+func set_body_shadow(on: bool) -> void:
+	body_shadow = on
+	var setting := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on or not first_person else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for mesh in meshes:
+		if mesh.cast_shadow != setting: mesh.cast_shadow = setting
 
 func rotate_bone(key: String, axis: Vector3, angle: float) -> void:
 	var id: int = bones.get(key, -1)
