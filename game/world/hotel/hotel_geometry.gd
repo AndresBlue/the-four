@@ -63,6 +63,14 @@ const ROOM_REACH := [56.0, 66.0, 66.0]
 ## faded earlier left lamps shining through walls and closed doors between
 ## that distance and the light's own fade.
 const SHADOW_FADE := FADE_BEGIN + FADE_LENGTH
+## Door numbers are not drawn past this: about 5 px tall there, unreadable
+## through the tape filter anyway.
+const NUMBER_REACH := 20.0
+## Casing and jamb stop of each door in doors, hidden with it.
+var door_fixtures: Array = []
+## Shared meshes: seal slabs by size, and the jamb stop.
+var slabs := {}
+var stop_mesh: ArrayMesh
 
 func _init() -> void:
 	for key in MATERIALS:
@@ -132,6 +140,11 @@ static func unit_mesh(group: String) -> Mesh:
 static func material_of(group: String) -> String:
 	return group.get_slice("@", 0)
 
+## Materials whose vertices move with TIME (the curtain sway). Godot redraws
+## every shadow that such a caster falls in on every frame, so they cast
+## through a still copy instead (a 3.5 cm sway never shows in a shadow).
+const SWAYING := ["curtain"]
+
 func flush() -> void:
 	for batch in batches.values():
 		for group in batch.groups:
@@ -147,9 +160,18 @@ func flush() -> void:
 			instance.name = "Mesh_" + group.replace("@", "-")
 			instance.multimesh = multi
 			batch.parent.add_child(instance)
+			if material_of(group) in SWAYING:
+				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				var still := MultiMeshInstance3D.new()
+				still.name = instance.name + "_Shadow"
+				still.multimesh = multi
+				still.material_override = materials.black
+				still.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+				batch.parent.add_child(still)
 	batches.clear()
 
-func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38) -> void:
+## reach: past it the label is not drawn at all (0 keeps it at any distance).
+func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38, reach := 0.0) -> void:
 	var label := Label3D.new()
 	label.text = words
 	label.position = pos
@@ -160,6 +182,11 @@ func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38) -
 	label.outline_size = 0
 	# Lit like everything else: an unshaded label glowed in a black room.
 	label.shaded = true
+	# Blended text never reaches a shadow map; saying so keeps it out of them.
+	label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if reach > 0.0:
+		label.visibility_range_end = reach
+		label.visibility_range_end_margin = 1.0
 	parent.add_child(label)
 
 ## Staged sets (opening scene, title screen), built outside the floor plan.
@@ -241,18 +268,30 @@ func jamb_seal(center: Vector3, yaw: float) -> Node3D:
 	holder.name = "JambSeal"
 	holder.position = center
 	holder.rotation.y = yaw
-	var edge := FLOOR.PORTAL * 0.5
-	var side_width := SEAL_LIP + SEAL_OVERLAP
-	for side in [-1.0, 1.0]:
-		holder.add_child(door_stop("Side", Vector3(side_width, OPENING_HIGH + SEAL_OVERLAP, SEAL_DEPTH), Vector3(side * (edge - SEAL_LIP + side_width * 0.5), (OPENING_HIGH + SEAL_OVERLAP) * 0.5, 0)))
-	holder.add_child(door_stop("Head", Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, SEAL_LIP + SEAL_OVERLAP, SEAL_DEPTH), Vector3(0, OPENING_HIGH - SEAL_LIP + (SEAL_LIP + SEAL_OVERLAP) * 0.5, 0)))
+	holder.add_child(door_stop())
 	return holder
 
 ## The jamb strips are drawn, like the stop of a real door frame: through the
 ## crack beside a shut leaf you saw straight into the lit room next door.
-func door_stop(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
-	var block := shadow_block(title, size, at)
-	block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+## The two sides and the head are one mesh, the same for every doorway.
+func door_stop() -> MeshInstance3D:
+	if stop_mesh == null:
+		var edge := FLOOR.PORTAL * 0.5
+		var side_width := SEAL_LIP + SEAL_OVERLAP
+		var strips := []
+		for side in [-1.0, 1.0]:
+			strips.append([Vector3(side_width, OPENING_HIGH + SEAL_OVERLAP, SEAL_DEPTH), Vector3(side * (edge - SEAL_LIP + side_width * 0.5), (OPENING_HIGH + SEAL_OVERLAP) * 0.5, 0)])
+		strips.append([Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, SEAL_LIP + SEAL_OVERLAP, SEAL_DEPTH), Vector3(0, OPENING_HIGH - SEAL_LIP + (SEAL_LIP + SEAL_OVERLAP) * 0.5, 0)])
+		var tool := SurfaceTool.new()
+		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for strip in strips:
+			var box := BoxMesh.new()
+			box.size = strip[0]
+			tool.append_from(box, 0, Transform3D(Basis.IDENTITY, strip[1]))
+		stop_mesh = tool.commit()
+	var block := MeshInstance3D.new()
+	block.name = "Stop"
+	block.mesh = stop_mesh
 	block.material_override = DOOR_FRAME.surface_get_material(0)
 	return block
 
@@ -272,9 +311,12 @@ func switch_off(instance: MeshInstance3D) -> void:
 func shadow_block(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
 	var block := MeshInstance3D.new()
 	block.name = title
-	var slab := BoxMesh.new()
-	slab.size = size
-	block.mesh = slab
+	# Every door's seal is the same slab: one mesh for all of them.
+	if not slabs.has(size):
+		var slab := BoxMesh.new()
+		slab.size = size
+		slabs[size] = slab
+	block.mesh = slabs[size]
 	block.position = at
 	block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 	return block
@@ -327,12 +369,15 @@ func build(data: Dictionary) -> void:
 		casing.position = center
 		casing.rotation.y = yaw
 		add_child(casing)
-		add_child(jamb_seal(center, yaw))
+		var stop := jamb_seal(center, yaw)
+		add_child(stop)
+		# They belong to the wall, but are shown only as far as the door is.
+		door_fixtures.append([casing, stop])
 		# Each face shows the number of the room behind the door, as seen from
 		# the room that face looks into.
 		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
-		text(door, str(100 + int(a.id)), Vector3(half, 1.94, LEAF_FACE * b_side), 0.0 if b_side > 0 else PI, 24)
-		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -LEAF_FACE * b_side), PI if b_side > 0 else 0.0, 24)
+		text(door, str(100 + int(a.id)), Vector3(half, 1.94, LEAF_FACE * b_side), 0.0 if b_side > 0 else PI, 24, NUMBER_REACH)
+		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -LEAF_FACE * b_side), PI if b_side > 0 else 0.0, 24, NUMBER_REACH)
 		if int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
@@ -647,15 +692,23 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		# light into the dark rooms beside it (far walls of a shut dark room lit).
 		var light_reach := minf(FADE_BEGIN + FADE_LENGTH + 2.0, reach - lights[i].omni_range - 2.0)
 		lights[i].visible = distance < light_reach and not lights[i].has_meta("off") and not echo_view
-		lights[i].shadow_enabled = shadows
+		# Only when it changes: every write makes Godot redraw that shadow.
+		if lights[i].shadow_enabled != shadows: lights[i].shadow_enabled = shadows
 	for lamp in practicals:
 		lamp.visible = quality > 0 and not echo_view and lamp.global_position.distance_to(player_position) < 28.0
-		lamp.shadow_enabled = shadows
-	# Doors carry their light seals: shown as far as the rooms are.
-	for door in doors: door.visible = door.doorway.distance_to(player_position) < ROOM_REACH[clampi(quality, 0, 2)]
+		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
+	# Doors carry their light seals, casings and stops: shown as far as the
+	# rooms are. No lit lamp reaches past that (its range ends inside it).
+	for i in doors.size():
+		var shown: bool = doors[i].doorway.distance_to(player_position) < ROOM_REACH[clampi(quality, 0, 2)]
+		doors[i].visible = shown
+		for fixture in door_fixtures[i]: fixture.visible = shown
 
 func build_dust() -> void:
 	dust = CPUParticles3D.new()
+	# Its specks would never show in a shadow, and as a caster its every-frame
+	# update made Godot redraw the shadow of every lamp round the player.
+	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	dust.amount = 90
 	dust.lifetime = 10
 	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
