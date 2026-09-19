@@ -19,3 +19,6 @@ exports/
 
 # Downloaded model archives; the extracted, resized working copies are tracked.
 assets/props/**/*.zip
+
+# Benchmark reports and captures (tools/benchmarks/run_bench.ps1)
+evidence/bench/
