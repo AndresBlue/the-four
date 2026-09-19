@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://54wt8wdtducf"
-path="res://.godot/imported/model_alpha_4.png-6e9f792509510b470437fa16cd5d3a8e.ctex"
+path.s3tc="res://.godot/imported/model_alpha_4.png-6e9f792509510b470437fa16cd5d3a8e.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a84b83256f6220ac98366986f4c4fd69"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/players/realistic_female/model_alpha_4.png"
-dest_files=["res://.godot/imported/model_alpha_4.png-6e9f792509510b470437fa16cd5d3a8e.ctex"]
+dest_files=["res://.godot/imported/model_alpha_4.png-6e9f792509510b470437fa16cd5d3a8e.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
