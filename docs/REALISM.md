@@ -225,7 +225,9 @@ Prueba: un `VoxelGI` de subdivisión 64 por sala de las vistas, horneado en la c
   - **Compartir el horneado entre salas iguales:** con cada lado distinguido entre pared, puerta o abierto, casi todas las salas son únicas (102 claves en 121 salas).
   - **La luz ambiente de las sondas:** no rebota.
 
-**Hito:** hoja `evidence/lookdev/fase2_antes_despues.png` (fase 1 frente a la fase 2 completa) y vídeo `evidence/lookdev/fase2_alto.avi`.
+**Hito:**
+- hojas `evidence/lookdev/fase2_antes_despues.png` (sin cinta) y `fase2_antes_despues_vhs.png` (como se juega), que comparan la fase 1 con la fase 2 completa;
+- vídeo `evidence/lookdev/fase2_alto.avi` (20 s de recorrido en Alto).
 
 ### Pruebas que se hacen al empezar su fase
 
