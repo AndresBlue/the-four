@@ -103,10 +103,14 @@ const PUFF_STAND_OFF := 1.1
 ## The core of a bell shines brighter than its halo: energy times one plus
 ## this, falling off with the same gaussian.
 const PUFF_CORE_GAIN := 2.5
-## A far noise hangs vaguer and wider (blur). For a bell only a little: spread
-## the same grains over a doorway-sized ball and there is nothing left to see.
-const PUFF_BLUR := 1.6
+## A far noise hangs vaguer and wider (blur), but only a little: spread over
+## a room-sized ball, a run heard from afar hung a sparse cloud twelve metres
+## across round the creature with nobody in it, which read as a phantom (or
+## as leftovers from the last match). And no puff ever gets wider than
+## PUFF_MAX_RADIUS, however loud: a sound is a place, not a room.
+const PUFF_BLUR := 0.4
 const BELL_BLUR := 0.35
+const PUFF_MAX_RADIUS := 1.8
 ## A wardrobe's cloud hangs in front of its doors at chest height: centred on
 ## the wardrobe itself, half of it would sit inside the cabinet or under the
 ## floor, hidden by the very thing that made the noise.
@@ -779,11 +783,10 @@ func bloom_contacts() -> void:
 		# Loud and blunt noises make a wider, denser cloud than a crouched step.
 		var loud: float = mark.strength
 		var kind := int(mark.kind)
-		var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[kind] * PUFF_SIZE[kind]
+		var bell: bool = kind in PUFF_BELLS
+		var radius := puff_radius(loud, kind, mark.get("blur", 0.0))
 		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud) * PUFF_DENSITY[kind])
 		# The further the sound travelled, the vaguer the place it hangs in.
-		var bell: bool = kind in PUFF_BELLS
-		radius *= 1.0 + mark.get("blur", 0.0) * (BELL_BLUR if bell else PUFF_BLUR)
 		var when: float = clock - (seconds - mark.time)
 		var centre: Vector3 = mark.at
 		if kind == KINDS.Kind.WARDROBE: centre = before_wardrobe(centre)
@@ -795,6 +798,13 @@ func bloom_contacts() -> void:
 		var life := write_life(PUFF_LIVES[kind])
 		scatter(puffs, centre, radius, count, life, 0.35 + 0.65 * loud, when, bell)
 		shape_of_noise(mark, when, life)
+
+## How wide a noise's cloud is: louder and blunter is wider, heard from afar
+## a little vaguer, and never wider than PUFF_MAX_RADIUS.
+func puff_radius(loud: float, kind: int, blur: float) -> float:
+	var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[kind] * PUFF_SIZE[kind]
+	radius *= 1.0 + blur * (BELL_BLUR if kind in PUFF_BELLS else PUFF_BLUR)
+	return minf(radius, PUFF_MAX_RADIUS)
 
 ## A grain's own life, added to its tone (0 or 1) in the kind channel: two
 ## per tenth of a second, so the tone stays readable as what is left over.

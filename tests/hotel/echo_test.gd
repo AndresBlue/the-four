@@ -195,6 +195,10 @@ func run() -> void:
 	for i in 400:
 		if echo.bell_offset(1.0).length() < 0.3: core += 1
 	check("La nube de una puerta se concentra en su origen", core > 120 and NOISE.Kind.DOOR in echo.PUFF_BELLS and NOISE.Kind.WARDROBE in echo.PUFF_BELLS)
+	# However loud and however far, a sound stays a place: a far run once hung
+	# a ball twelve metres across round the creature with nobody in it.
+	var loudest: float = echo.puff_radius(1.0, NOISE.Kind.RUN, 1.0)
+	check("Una nube de sonido nunca es más grande que un sitio", loudest <= echo.PUFF_MAX_RADIUS and echo.PUFF_MAX_RADIUS <= 2.0 and echo.puff_radius(0.25, NOISE.Kind.FOOTSTEP, 0.0) < loudest)
 	check("Un armario se apaga antes que una puerta", echo.PUFF_LIVES[NOISE.Kind.WARDROBE] < echo.PUFF_LIVES[NOISE.Kind.DOOR] and echo.PUFF_LIVES[NOISE.Kind.DOOR] > echo.PUFF_LIFE and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------
