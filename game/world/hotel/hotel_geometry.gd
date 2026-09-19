@@ -101,15 +101,35 @@ static func apply_image_maps(material: Material, key: String) -> void:
 static func vary(value: Vector3, salt := 0) -> float:
 	return fposmod(sin(value.x * 12.9898 + value.z * 78.233 + value.y * 37.719 + salt * 11.31) * 43758.5453, 1.0)
 
+## Nodes whose whole subtree is batched together (a room: its walls and its
+## furniture). One MultiMesh per material for the room instead of one per
+## wall and per piece of furniture: a fraction of the draw calls, in the
+## camera pass and in every face of every shadow round it.
+var batch_roots := {}
+
+## Where a box under `parent` is batched, and its parent's transform in that
+## node's space. The nodes are not in the tree yet, so the chain is walked by
+## hand. Anything outside a registered room (opening scene, title set) keeps
+## one batch per parent as before.
+func batch_target(parent: Node3D) -> Array:
+	var node: Node = parent
+	var chain := Transform3D.IDENTITY
+	while node != null and node != self:
+		if batch_roots.has(node.get_instance_id()): return [node, chain]
+		chain = (node as Node3D).transform * chain
+		node = node.get_parent()
+	return [parent, Transform3D.IDENTITY]
+
 func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid := false, form := "box", euler := Vector3.ZERO) -> void:
 	# An empty material creates only the collider (detailed visuals stay separate).
 	if not material.is_empty():
-		var key := parent.get_instance_id()
-		if not batches.has(key): batches[key] = {"parent": parent, "groups": {}}
+		var target := batch_target(parent)
+		var key: int = target[0].get_instance_id()
+		if not batches.has(key): batches[key] = {"parent": target[0], "groups": {}}
 		var groups: Dictionary = batches[key].groups
 		var group: String = material + SHAPES[form]
 		if not groups.has(group): groups[group] = []
-		groups[group].append(Transform3D(Basis.from_euler(euler) * Basis.from_scale(size), pos))
+		groups[group].append(target[1] * Transform3D(Basis.from_euler(euler) * Basis.from_scale(size), pos))
 	if solid:
 		var body := StaticBody3D.new()
 		body.position = pos
@@ -385,6 +405,7 @@ func build(data: Dictionary) -> void:
 	build_dust()
 
 func build_room(node: Node3D, room: Dictionary) -> void:
+	batch_roots[node.get_instance_id()] = true
 	var height: float = room.height
 	var span := FLOOR.size_of(room)
 	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in FLOOR.HARD_FLOORS else "carpet", true)
