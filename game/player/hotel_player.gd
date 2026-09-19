@@ -91,6 +91,16 @@ var sway := Vector3.ZERO
 var sway_velocity := Vector3.ZERO
 var hand_clock := 0.0
 var was_on_floor := true
+## Autofocus (graphics preset "autofocus", set by the level): the distance the
+## lens is focused at follows what is in the centre of the picture, late, and
+## hunts a little after a big change. A wide-angle camcorder keeps nearly all
+## of a room sharp, so only something close (a document, a door leaf at arm's
+## length) throws the background out of focus.
+var autofocus := false
+var focus := 6.0
+var focus_target := 6.0
+var hunt := 0.0
+var focus_attributes: CameraAttributesPractical
 
 func _ready() -> void:
 	avatar = $Avatar
@@ -286,13 +296,43 @@ func update_handheld(delta: float) -> void:
 	camera.rotation += offset - handheld
 	handheld = offset
 
+func update_focus(delta: float) -> void:
+	if not autofocus:
+		if camera.attributes == focus_attributes and focus_attributes != null: camera.attributes = null
+		return
+	if focus_attributes == null:
+		focus_attributes = CameraAttributesPractical.new()
+		focus_attributes.dof_blur_amount = 0.06
+	if camera.attributes != focus_attributes: camera.attributes = focus_attributes
+	var from := camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * 12.0, 1 | 8 | 16)
+	query.exclude = [get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var measured: float = from.distance_to(hit.position) if not hit.is_empty() else 12.0
+	# A big jump in distance sets the lens hunting: it overshoots and swings
+	# back for a moment before it settles.
+	if absf(measured - focus_target) > maxf(0.6, focus_target * 0.5): hunt = 1.0
+	focus_target = measured
+	hunt = maxf(0.0, hunt - delta * 2.5)
+	var swing := sin(hand_clock * 17.0) * hunt * 0.35 * focus_target
+	focus = lerpf(focus, focus_target + swing, 1.0 - exp(-delta * 6.0))
+	var close := focus < 1.6
+	focus_attributes.dof_blur_far_enabled = close
+	focus_attributes.dof_blur_far_distance = focus * 1.8
+	focus_attributes.dof_blur_far_transition = focus * 2.0
+	focus_attributes.dof_blur_near_enabled = true
+	focus_attributes.dof_blur_near_distance = minf(0.35, focus * 0.5)
+	focus_attributes.dof_blur_near_transition = 0.2
+
 ## Where the camera looks without the hand-held motion (what the network
 ## sends as the look, for instance).
 func look_pitch() -> float:
 	return camera.rotation.x - handheld.x
 
 func _process(delta: float) -> void:
-	if is_instance_valid(camera) and settings != null: update_handheld(delta)
+	if is_instance_valid(camera) and settings != null:
+		update_handheld(delta)
+		update_focus(delta)
 	if not is_instance_valid(torch) or not torch.is_inside_tree(): return
 	var target := torch_target()
 	var reduced: bool = settings != null and settings.values.reduced

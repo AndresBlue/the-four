@@ -63,6 +63,17 @@ const ULTRA := 3
 ## chroma_taps           taps of the tape filter's chroma smear (same width).
 ## lod_threshold         pixels of error allowed before a mesh LOD switches.
 ## anisotropy            anisotropic filtering of textured props.
+## ccd_smear             strength of the CCD's vertical streak through saturated
+##                       lights (camera/camcorder_effect.gd; 0 off). The rest of
+##                       the camera (iris, video knee, lens, sensor noise) is the
+##                       same on every preset: it is the camera, not a quality.
+##                       Compatibility has no compositor and keeps AgX.
+## motion_blur           samples along the trail a turn leaves during the
+##                       camcorder's 1/60 s shutter (camera/motion_blur_effect.gd;
+##                       0 off).
+## autofocus             the lens focuses on what is in the centre, late, and
+##                       hunts; only something close blurs the background
+##                       (hotel_player.update_focus, Godot's depth of field).
 ## echo                  the creature's acoustic reading (echo_view.gd): rays
 ##                       per click, rays aimed at doors and wardrobes, grains
 ##                       remembered, grain size. Low keeps half the grains of
@@ -82,7 +93,7 @@ const PRESETS := [
 		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
-		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X,
+		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "motion_blur": 0, "autofocus": false,
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 	{
@@ -92,7 +103,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 48, "fog_depth": 48, "fog_filter": true, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 1, "dust": 60,
-		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X,
+		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.04, "motion_blur": 6, "autofocus": false,
 		"echo": {"rays": 1900, "aimed": 600, "points": 24000, "bodies": 700, "puff_points": 26, "puffs": 4800, "find_points": 40, "finds": 600, "frames": 7000, "grain": 1.0, "halo": 0.0},
 	},
 	{
@@ -102,7 +113,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
 		"fog_size": 64, "fog_depth": 64, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 90,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X,
+		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.04, "motion_blur": 8, "autofocus": true,
 		"echo": {"rays": 3600, "aimed": 1200, "points": 46000, "bodies": 1400, "puff_points": 44, "puffs": 9600, "find_points": 70, "finds": 1200, "frames": 14000, "grain": 1.0, "halo": 0.0},
 	},
 	{
@@ -112,7 +123,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
 		"fog_size": 96, "fog_depth": 96, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 140,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X,
+		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.04, "motion_blur": 12, "autofocus": true,
 		"echo": {"rays": 4800, "aimed": 1400, "points": 64000, "bodies": 1800, "puff_points": 56, "puffs": 12000, "find_points": 90, "finds": 1600, "frames": 18000, "grain": 0.8, "halo": 1.0},
 	},
 ]
@@ -133,6 +144,7 @@ static func of(quality: int) -> Dictionary:
 		preset.fog_size = 0
 		preset.floor_haze = false
 		preset.taa = false
+		preset.autofocus = false
 		# Without TAA, the plain edge smoothing.
 		if preset.msaa == Viewport.MSAA_DISABLED: preset.fxaa = true
 	return preset

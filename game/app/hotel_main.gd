@@ -215,6 +215,7 @@ func start_intro(seed_value: int) -> void:
 	environment.ambient_light_energy = 0.0
 	session.set_state(session.State.CUTSCENE)
 	ui.show_skip(settings.key_name("interact"))
+	camera_cut()
 
 func finish_intro() -> void:
 	if not is_instance_valid(intro): return
@@ -312,6 +313,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 
 ## Creature, documents, director and sounds of a floor that is about to be played.
 func populate_floor(with_director: bool) -> void:
+	camera_cut()
 	spawn_locust()
 	place_documents()
 	director = null
@@ -885,6 +887,12 @@ func _process(delta: float) -> void:
 	# occluders: no occlusion culling while an execution lasts.
 	var cull: bool = execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
 	if get_viewport().use_occlusion_culling != cull: get_viewport().use_occlusion_culling = cull
+	# The sensor's noise grows with the gain the iris had to add.
+	if is_instance_valid(lens_material): lens_material.set_shader_parameter("gain", camera_effect.gain if is_instance_valid(camera_effect) and camera_effect.enabled else 1.0)
+	# The camera stage runs on the game's clock (what Movie Maker records).
+	if is_instance_valid(camera_effect):
+		camera_effect.frame_delta = delta
+		blur_effect.frame_delta = delta
 	camcorder.visible = session.state == session.State.PLAYING
 	# The creature records nothing: its seat keeps only the meter and notices.
 	camcorder.hunter = hunter_seat()
@@ -944,12 +952,24 @@ func _notification(what: int) -> void:
 func _exit_tree() -> void:
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# The camera's compositor effects free their GPU resources while the
+	# RenderingDevice still exists (left to themselves they outlive it on quit).
+	if has_node("Presentation/WorldEnvironment"): $Presentation/WorldEnvironment.compositor = null
+	for effect in [blur_effect, camera_effect]:
+		if is_instance_valid(effect): effect.release()
 
 var ambient_energy := 0.16
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
+const CAMERA_EFFECT := preload("res://game/presentation/camera/camcorder_effect.gd")
+const BLUR_EFFECT := preload("res://game/presentation/camera/motion_blur_effect.gd")
+var blur_effect: CompositorEffect
 ## The camcorder's lens and sensor layer (lens.gdshader), under the OSD.
 var lens_material: ShaderMaterial
 var lens_layer: CanvasLayer
+## The camcorder's HDR stage (iris, video knee, CCD smear) as a compositor
+## effect on the world environment, and the tonemapper it replaces.
+var camera_effect: CompositorEffect
+var authored_tone := {}
 func build_environment() -> void:
 	environment = $Presentation/WorldEnvironment.environment
 	ambient_energy = environment.ambient_light_energy
@@ -958,6 +978,36 @@ func build_environment() -> void:
 	lens_layer = $Presentation/Lens
 	camcorder = $Presentation/Camcorder
 	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), settings.values.reduced))
+	authored_tone = {"mode": environment.tonemap_mode, "exposure": environment.tonemap_exposure, "glow": environment.glow_hdr_threshold}
+	# Only where there is a RenderingDevice to run it (not headless, not
+	# Compatibility): elsewhere the game keeps AgX.
+	if RenderingServer.get_rendering_device() != null:
+		camera_effect = CAMERA_EFFECT.new()
+		# The light smears while it is being exposed: blur first, then the camera.
+		blur_effect = BLUR_EFFECT.new()
+		var compositor := Compositor.new()
+		compositor.compositor_effects = [blur_effect, camera_effect]
+		$Presentation/WorldEnvironment.compositor = compositor
+
+## The camera's HDR stage on or off, with the tonemapper that goes with it.
+func apply_camera(preset: Dictionary, hunter: bool) -> void:
+	var on := is_instance_valid(camera_effect) and not hunter
+	if is_instance_valid(camera_effect):
+		camera_effect.enabled = on
+		camera_effect.smear = preset.ccd_smear
+		# Reduced effects: no smearing of the picture while turning.
+		blur_effect.samples = 0 if settings.values.reduced else preset.motion_blur
+		blur_effect.enabled = on and blur_effect.samples > 0
+	# The camera's own video knee does the tonemapping; Godot's stays linear.
+	# Its highlights end just under 1, so the bloom starts lower.
+	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if on else authored_tone.mode
+	environment.tonemap_exposure = 1.0 if on else authored_tone.exposure
+	environment.glow_hdr_threshold = 0.9 if on else authored_tone.glow
+
+## A cut (a new floor, the opening scene): the iris jumps to the new light
+## instead of adjusting across it.
+func camera_cut() -> void:
+	if is_instance_valid(camera_effect): camera_effect.reset = true
 
 ## The lens remaps a picture rendered wider than the view (camcorder_look.gd):
 ## the cameras that film the hotel render at the lens's field of view.
@@ -1043,6 +1093,7 @@ func apply_settings() -> void:
 	post_material.set_shader_parameter("chromatic", 0.0 if reduced or not hunter else settings.values.chromatic * 0.5)
 	post_material.set_shader_parameter("vignette", 0.0 if reduced or not hunter else 0.45)
 	apply_lens(hunter, reduced)
+	apply_camera(preset, hunter)
 	# The warm tape cast would break the monochrome reading.
 	post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
 	if settings.values.reduced:
@@ -1054,6 +1105,7 @@ func apply_settings() -> void:
 	player.set_character(settings.values.character)
 	# Your own body, walking, re-renders the shadow of every lamp round it.
 	player.avatar.set_body_shadow(preset.body_shadow)
+	player.autofocus = preset.autofocus and not hunter
 	configure_hotel()
 	if is_instance_valid(locust) and locust.driver != null and is_instance_valid(locust.driver.echo): locust.driver.echo.apply_quality()
 
