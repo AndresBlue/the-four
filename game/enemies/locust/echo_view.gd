@@ -111,6 +111,14 @@ const PUFF_CORE_GAIN := 2.5
 const PUFF_BLUR := 0.4
 const BELL_BLUR := 0.35
 const PUFF_MAX_RADIUS := 1.8
+## Heard only by the way it came in, a step or a run is "something over
+## there", not a thing: every stride renews the same cloud in the same
+## opening, and a full-sized one read as a solid object standing there for
+## as long as somebody kept running out of sight. So it shrinks to this
+## radius and keeps this share of its grains at full blur. Doors and
+## wardrobes keep their bright core: those have to read from afar.
+const FAR_STEP_RADIUS := 0.9
+const FAR_STEP_GRAINS := 0.45
 ## A wardrobe's cloud hangs in front of its doors at chest height: centred on
 ## the wardrobe itself, half of it would sit inside the cabinet or under the
 ## floor, hidden by the very thing that made the noise.
@@ -786,6 +794,7 @@ func bloom_contacts() -> void:
 		var bell: bool = kind in PUFF_BELLS
 		var radius := puff_radius(loud, kind, mark.get("blur", 0.0))
 		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud) * PUFF_DENSITY[kind])
+		if not kind in PUFF_BELLS: count = int(count * lerpf(1.0, FAR_STEP_GRAINS, float(mark.get("blur", 0.0))))
 		# The further the sound travelled, the vaguer the place it hangs in.
 		var when: float = clock - (seconds - mark.time)
 		var centre: Vector3 = mark.at
@@ -804,7 +813,8 @@ func bloom_contacts() -> void:
 func puff_radius(loud: float, kind: int, blur: float) -> float:
 	var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[kind] * PUFF_SIZE[kind]
 	radius *= 1.0 + blur * (BELL_BLUR if kind in PUFF_BELLS else PUFF_BLUR)
-	return minf(radius, PUFF_MAX_RADIUS)
+	if kind in PUFF_BELLS: return minf(radius, PUFF_MAX_RADIUS)
+	return minf(radius, lerpf(PUFF_MAX_RADIUS, FAR_STEP_RADIUS, blur))
 
 ## A grain's own life, added to its tone (0 or 1) in the kind channel: two
 ## per tenth of a second, so the tone stays readable as what is left over.

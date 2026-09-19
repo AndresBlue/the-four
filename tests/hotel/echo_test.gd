@@ -199,6 +199,7 @@ func run() -> void:
 	# a ball twelve metres across round the creature with nobody in it.
 	var loudest: float = echo.puff_radius(1.0, NOISE.Kind.RUN, 1.0)
 	check("Una nube de sonido nunca es más grande que un sitio", loudest <= echo.PUFF_MAX_RADIUS and echo.PUFF_MAX_RADIUS <= 2.0 and echo.puff_radius(0.25, NOISE.Kind.FOOTSTEP, 0.0) < loudest)
+	check("Una carrera oída solo por dónde llega es algo por ahí, no un objeto", echo.puff_radius(1.0, NOISE.Kind.RUN, 1.0) < echo.puff_radius(1.0, NOISE.Kind.RUN, 0.0) and echo.puff_radius(1.0, NOISE.Kind.DOOR, 1.0) >= echo.puff_radius(1.0, NOISE.Kind.DOOR, 0.0))
 	check("Un armario se apaga antes que una puerta", echo.PUFF_LIVES[NOISE.Kind.WARDROBE] < echo.PUFF_LIVES[NOISE.Kind.DOOR] and echo.PUFF_LIVES[NOISE.Kind.DOOR] > echo.PUFF_LIFE and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------
