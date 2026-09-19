@@ -47,7 +47,14 @@ var dark_ids := {}
 var building_dark := false
 ## Glowing materials and their unlit copies (switch_off).
 var unlit := {}
-const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
+const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
+## Service rooms (laundry, storeroom, maintenance, office) have a suspended
+## ceiling of acoustic tiles; the empty lounge and the storeroom decrepit
+## paper on the walls.
+const SERVICE_CEILINGS := [7, 8, 9, 15]
+const DECREPIT_WALLS := [8, 18]
+## The walls' material of the room being built (build_room()).
+var wall_material := "plaster"
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
 const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
 ## Modules with wall lamps: reception, lobby, corridor, gallery.
@@ -95,7 +102,8 @@ var stop_mesh: ArrayMesh
 func _init() -> void:
 	for key in MATERIALS:
 		materials[key] = load("res://game/presentation/materials/%s.tres" % key).duplicate()
-		apply_image_maps(materials[key], key)
+		apply_scan(materials[key], small_maps)
+	maps_small = small_maps
 	curtain_material = materials.curtain
 	# A dead ceiling dome: same glass, no glow.
 	materials["light_off"] = materials.light.duplicate()
@@ -105,17 +113,36 @@ func _init() -> void:
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
 
-# Photographic maps dropped in assets/textures/<material>/ replace the
-# procedural base automatically: albedo, normal (OpenGL) and roughness.
-static func apply_image_maps(material: Material, key: String) -> void:
-	if not material is ShaderMaterial: return
-	for slot in [["albedo", "albedo_map", "use_albedo_map"], ["normal", "normal_map", "use_normal_map"], ["roughness", "roughness_map", "use_roughness_map"]]:
-		for extension in ["png", "jpg", "jpeg", "webp"]:
-			var path := "res://assets/textures/%s/%s.%s" % [key, slot[0], extension]
-			if ResourceLoader.exists(path):
-				material.set_shader_parameter(slot[1], load(path))
-				material.set_shader_parameter(slot[2], true)
-				break
+## Scanned maps (docs/REALISM.md, phase 3): a material's set is its "scan"
+## metadata, a folder of assets/textures/ made by tools/textures/ingest_pbr.py
+## (albedo, normal, orm). Loaded once and shared by every builder; the preset
+## chooses the 2048 px ones or the 1024 px ones (small_maps, set by
+## hotel_main before a floor is built and by apply_quality()).
+static var small_maps := false
+static var scans := {}
+## The size this builder's materials have.
+var maps_small := false
+
+static func apply_scan(material: Material, small: bool) -> void:
+	if not material is ShaderMaterial or not material.has_meta("scan"): return
+	var maps := scan_maps(material.get_meta("scan"), small)
+	if maps.is_empty(): return
+	material.set_shader_parameter("albedo_map", maps.albedo)
+	material.set_shader_parameter("normal_map", maps.normal)
+	material.set_shader_parameter("orm_map", maps.orm)
+	material.set_shader_parameter("use_maps", true)
+
+static func scan_maps(set_name: String, small: bool) -> Dictionary:
+	var key := set_name + ("_1k" if small else "")
+	if not scans.has(key):
+		var folder := "res://assets/textures/%s/" % set_name
+		if not ResourceLoader.exists(folder + "albedo.jpg"): return {}
+		# The other size goes: never both in video memory.
+		scans.erase(set_name + ("" if small else "_1k"))
+		var suffix := "_1k" if small else ""
+		scans[key] = {}
+		for kind in ["albedo", "normal", "orm"]: scans[key][kind] = load(folder + kind + suffix + ".jpg")
+	return scans[key]
 
 # Deterministic per-position variation; never consumes generator randomness.
 static func vary(value: Vector3, salt := 0) -> float:
@@ -193,14 +220,20 @@ func flush() -> void:
 			mesh.material = materials[material_of(group)]
 			var multi := MultiMesh.new()
 			multi.transform_format = MultiMesh.TRANSFORM_3D
+			var room: Variant = batch_roots.get(batch.parent.get_instance_id())
+			# A room's boxes carry the room (surface.gdshaderinc room_data), for
+			# the grime where its surfaces meet.
+			multi.use_custom_data = room != null
 			multi.mesh = mesh
 			multi.instance_count = transforms.size()
-			for i in transforms.size(): multi.set_instance_transform(i, transforms[i])
+			for i in transforms.size():
+				multi.set_instance_transform(i, transforms[i])
+				if room != null: multi.set_instance_custom_data(i, room)
 			var instance := MultiMeshInstance3D.new()
 			instance.name = "Mesh_" + group.replace("@", "-")
 			instance.multimesh = multi
 			batch.parent.add_child(instance)
-			if batch_roots.has(batch.parent.get_instance_id()): bounce.add(batch.parent.get_instance_id(), group, transforms)
+			if room != null: bounce.add(batch.parent.get_instance_id(), group, transforms)
 			if material_of(group) in SWAYING:
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				var still := MultiMeshInstance3D.new()
@@ -426,16 +459,23 @@ func build(data: Dictionary) -> void:
 	build_dust()
 
 func build_room(node: Node3D, room: Dictionary) -> void:
-	batch_roots[node.get_instance_id()] = true
 	var height: float = room.height
 	var span := FLOOR.size_of(room)
+	# Half the floor round the room's origin, the height, and the open sides
+	# of a hall (no wall, the next cell goes on): no grime gathers there.
+	batch_roots[node.get_instance_id()] = Color(span.x * 0.5, span.y * 0.5, height, 0.0)
+	wall_material = "plaster_decrepit" if room.type in DECREPIT_WALLS else "plaster"
 	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in FLOOR.HARD_FLOORS else "carpet", true)
-	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling", true)
+	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in SERVICE_CEILINGS else "ceiling", true)
 	for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		var neighbor: int = room.id + direction.x + direction.y * int(manifest.width)
 		var connected: bool = manifest.adjacency[room.id].has(neighbor) and (direction.y != 0 or abs(int(room.x) - neighbor % int(manifest.width)) == 1)
 		var edge := [mini(room.id, neighbor), maxi(room.id, neighbor)]
-		if connected and manifest.get("merged", []).has(edge): continue
+		if connected and manifest.get("merged", []).has(edge):
+			# 1 -x, 2 +x, 4 -z, 8 +z (surface.gdshaderinc room_edge()).
+			var bit: int = {Vector2i(-1, 0): 1, Vector2i(1, 0): 2, Vector2i(0, -1): 4, Vector2i(0, 1): 8}[direction]
+			batch_roots[node.get_instance_id()].a += bit
+			continue
 		var length: float = span.y if direction.x != 0 else span.x
 		var boundary := Node3D.new()
 		boundary.name = "Wall_%s_%s" % [direction.x, direction.y]
@@ -487,11 +527,11 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				if room.get("layout", 0) == 1 and side > 0: continue
 				if room.get("layout", 0) == 2 and end > 0: continue
 				if room.get("layout", 0) == 3 and side != end: continue
-				box(node, Vector3(side * 4.4, height / 2, end * 2.8), Vector3(3.2, height, 0.12), "plaster", true)
+				box(node, Vector3(side * 4.4, height / 2, end * 2.8), Vector3(3.2, height, 0.12), wall_material, true)
 				blocker(Transform3D.IDENTITY, Vector3(side * 4.4, height / 2, end * 2.8), Vector2(3.2, height))
 				for z in [3.2, 5.6]:
-					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), "plaster", true)
-				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), "plaster", true)
+					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), wall_material, true)
+				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), wall_material, true)
 	# Wardrobes only in room-like modules (see FLOOR.WARDROBES), against the walls.
 	if room.type != 19:
 		for corner in FLOOR.hiding_positions(room):
@@ -673,8 +713,8 @@ func build_occluder(node: Node3D) -> void:
 func wall_core(boundary: Node3D, pos: Vector3, size: Vector3, inner: int) -> void:
 	box(boundary, pos, size, "", true)
 	blocker(boundary.transform, pos + Vector3(0, 0, inner * size.z * 0.25), Vector2(size.x, size.y))
-	if full_walls: box(boundary, pos, size, "plaster")
-	else: box(boundary, pos + Vector3(0, 0, inner * size.z * 0.25), Vector3(size.x, size.y, size.z * 0.5), "plaster")
+	if full_walls: box(boundary, pos, size, wall_material)
+	else: box(boundary, pos + Vector3(0, 0, inner * size.z * 0.25), Vector3(size.x, size.y, size.z * 0.5), wall_material)
 
 ## A wall lamp that really lights its wall (preset sconce_lights): a cone up
 ## and one down out of the shade, nothing behind it (lighting.gd "sconce").
@@ -808,6 +848,10 @@ static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
 ## follows on the next update_visibility().
 func apply_quality(new_preset: Dictionary) -> void:
 	preset = new_preset
+	small_maps = preset.small_maps
+	if maps_small != small_maps:
+		maps_small = small_maps
+		for key in materials: apply_scan(materials[key], small_maps)
 	for light in lights:
 		set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
 		var size: float = LAMP_SIZE * preset.penumbra

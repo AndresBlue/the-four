@@ -16,6 +16,11 @@ extends SceneTree
 ##   bano        a tiled bathroom under a fluorescent batten
 ##   servicio    a service room (laundry, storage, maintenance)
 ##   oscura      a dark room, the torch on
+## And close up, to judge the materials (phase 3):
+##   cama        the bed of that bedroom, from two metres
+##   cornisa     where the lounge's wall meets its ceiling
+##   zocalo      where the lounge's wall meets its carpet
+##   azulejo     the bathroom's floor by a wall
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const SIZE := Vector2i(1920, 1080)
@@ -58,6 +63,11 @@ func run() -> void:
 		aim(room)
 		level.player.torch.visible = shot == "oscura"
 		await capture(shot)
+		for close in CLOSE.get(shot, []):
+			if close_up(room, close):
+				# The bed stands in its alcove's shadow: the torch shows it.
+				level.player.torch.visible = close == "cama"
+				await capture(close)
 	level.queue_free()
 	await process_frame
 	quit()
@@ -86,6 +96,43 @@ func aim(room: Dictionary) -> void:
 	level.player.rotation.y = atan2(-flat.x, -flat.y)
 	level.player.camera.rotation.x = -0.12
 	level.player.snap_torch()
+
+const CLOSE := {"dormitorio": ["cama"], "salon": ["cornisa", "zocalo"], "bano": ["azulejo"]}
+
+## The camera for a close shot of room; false if the room has nothing for it.
+func close_up(room: Dictionary, close: String) -> bool:
+	var centre := FLOOR.position_of(room)
+	var span: Vector2 = FLOOR.size_of(room)
+	var from: Vector3
+	var at: Vector3
+	match close:
+		"cama":
+			var bed := {}
+			for prop in room.props:
+				if prop.kind == "bed":
+					bed = prop
+					break
+			if bed.is_empty(): return false
+			# From the doorway of the alcove it stands in.
+			var place: Vector3 = centre + level.hotel.prop_transform(room, bed).origin
+			var side := Vector3(signf(place.x - centre.x), 0, signf(place.z - centre.z))
+			at = place + Vector3(0, 0.4, 0)
+			from = centre + Vector3(side.x * 1.3, 0, side.z * 4.4)
+		"cornisa":
+			at = centre + Vector3(0.6, room.height - 0.1, -span.y * 0.5)
+			from = centre + Vector3(-0.6, 0, -span.y * 0.5 + 2.4)
+		"zocalo":
+			at = centre + Vector3(0.6, 0.1, -span.y * 0.5)
+			from = centre + Vector3(-0.6, 0, -span.y * 0.5 + 2.2)
+		"azulejo":
+			at = centre + Vector3(0.0, 0.0, -span.y * 0.5 + 0.4)
+			from = centre + Vector3(-0.8, 0, -span.y * 0.5 + 2.6)
+	level.player.global_position = Vector3(from.x, 0.04, from.z)
+	var eye: Vector3 = level.player.global_position + Vector3(0, level.player.eye_height, 0)
+	var d := at - eye
+	level.player.rotation.y = atan2(-d.x, -d.z)
+	level.player.camera.rotation.x = atan2(d.y, Vector2(d.x, d.z).length())
+	return true
 
 func capture(shot: String) -> void:
 	level.hotel.update_visibility(level.player.global_position, true)

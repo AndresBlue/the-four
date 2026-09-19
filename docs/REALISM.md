@@ -251,6 +251,81 @@ Prueba: un `VoxelGI` de subdivisión 64 por sala de las vistas, horneado en la c
 - hojas `evidence/lookdev/fase2_antes_despues.png` (sin cinta) y `fase2_antes_despues_vhs.png` (como se juega), que comparan la fase 1 con la fase 2 completa;
 - vídeo `evidence/lookdev/fase2_alto.avi` (20 s de recorrido en Alto).
 
+## Fase 3 — Materiales escaneados (hecha)
+
+Doce materiales escaneados CC0 de Poly Haven y ambientCG, registrados en [ASSETS.md](ASSETS.md). La identidad del hotel se conserva: los medallones de la moqueta y el motivo del papel siguen siendo procedurales y se imprimen sobre la materia real. En el resto de materiales, el escaneo manda y se tiñe a la paleta de antes.
+
+**1. Ingesta.** `tools/textures/ingest_pbr.py` lee las descargas de `source_assets/textures/` (fuera de git) y escribe en `assets/textures/<set>/`:
+- color, normal (convención OpenGL) y ORM (oclusión, rugosidad y metal en R, G y B);
+- cada mapa a 2048 px y a 1024 px (`_1k`);
+- un `.import` junto a cada imagen: comprimida en VRAM (BC1, y las normales en BC5) y con mipmaps;
+- la tabla de créditos, entre las marcas `SCANS` de `ASSETS.md`.
+
+Ocupan 63 MB en el repositorio.
+
+**2. Carga.** Cada material dice su set en el metadato `scan` de su `.tres`, y `hotel_geometry.apply_scan()` le da los mapas. Se cargan una vez y los comparten todos los constructores (piso, intro y portada). En Bajo (preset `small_maps`) se usan los de 1024 px; al cambiar de preset se sueltan los del otro tamaño, para no tener nunca los dos en memoria de vídeo.
+
+**3. Cómo se combina el escaneo** (`image_maps.gdshaderinc`, uniforme `map_mode`):
+- **Recolour.** El tinte del material, aclarado y oscurecido como el escaneo, que conserva la veta, el pelo y las manchas. Va por luminancia: al dividir por canal, la colcha (un escaneo rojo saturado, con un verde medio de 0,01) salía carmesí.
+- **Detail.** El color procedural, variado por el escaneo. Se usa en la moqueta, el papel pintado y el techo.
+- **Replace.** El escaneo tal cual, por el tinte.
+
+La rugosidad y la oclusión salen del ORM, con un ajuste por material (`map_roughness`). Sin él, la moqueta brillaba bajo la lámpara (el escaneo tiene 0,65 de rugosidad), y el latón a su color real saturaba la cámara y dibujaba una columna de smear.
+
+**4. Proyección:**
+- **Madera:** la veta sigue el lado largo de cada cara de cada caja (tablón, pata o marco), en metros. Cada pieza toma el escaneo desde otro punto, para que dos baldas iguales no sean idénticas.
+- **Papel, yeso y techo:** siguen con `face_uv`.
+- **Antirrepetición** (`map_no_tile`): cada repetición se desplaza con un ruido, con dos lecturas mezcladas y las derivadas tomadas antes del desplazamiento, para que las costuras no bajen de mip. Solo en escaneos de aspecto aleatorio (estuco, pelo, papel liso) y solo donde el preset trabaja el detalle fino (`surface_detail` ≥ 2,5; en Bajo, no). Nunca en azulejo ni en tablas.
+
+**5. Tejido e impresión.**
+- **Moqueta:** el pelo del escaneo desplaza los bordes de los medallones unos centímetros (`fibre_bleed`), así que el dibujo parece tejido y no pintado.
+- **Papel pintado:** el motivo se corre con la fibra del papel (`ink_bleed`).
+
+**6. Suciedad por sala** (`surface.gdshaderinc`, `room_grime()`), sin decals:
+- **Dónde:** donde se juntan dos de las superficies de la sala (paredes, suelo y techo), con un oscurecimiento que también quita luz indirecta (AO).
+- **Qué:**
+  - polvo y agua de fregar a lo largo del zócalo;
+  - humedad y humo amarillentos bajo el techo.
+- **Datos de la sala:** cada caja lleva su sala en los datos propios de su instancia del MultiMesh: medio ancho, medio fondo, altura y lados abiertos.
+  - Los lados abiertos de un salón que sigue en la celda de al lado no acumulan nada.
+  - Primero se probó con `instance uniform`, pero cada lote de cada sala ocupaba sitio en un búfer global. En Compatibility (4.096 elementos) se desbordaba con unos 2.000 lotes.
+
+**7. Materiales nuevos:**
+- falso techo de placas en lavandería, almacén, mantenimiento y oficina (`ceiling_service`);
+- papel deteriorado en salones vacíos y almacenes (`plaster_decrepit`);
+- colcha de jacquard (`bedspread`).
+
+El resto de los sets van a `plaster`, `carpet`, `ceiling`, `wood`, `door`, `panel`, `trim`, `tile`, `gold`, `fabric` y `leather`.
+
+**8. Colores del rebote.** `tools/lighting/measure_albedo.gd` se volvió a ejecutar y los colores medios apenas cambian (el tinte es el color de antes).
+
+**9. Shaders precompilados.** Hay dos niveles:
+- **Ya lo hace Godot:** desde la 4.4 compila las variantes (pipelines) al instanciar cada malla, así que la pantalla de carga del piso las absorbe.
+- **Nuevo, el bakeador de shaders** (`shader_baker/enabled` en `export_presets.cfg`): mete en el ejecutable el código ya compilado de cada shader, para que el primer arranque en otro equipo no los compile.
+  - Solo funciona si la exportación tiene GPU: con `--headless` se lo salta sin avisar.
+  - Por eso `tools/godot.ps1 export` exporta con ventana (oculta).
+
+**Coste** (`run_bench.ps1`, recorrido, GPU media; antes, las etiquetas `bounce` y `hotfix`):
+
+| Preset | GPU media antes | GPU media ahora | p99 del fotograma antes | p99 ahora |
+|---|---|---|---|---|
+| Bajo | 0,92 ms | 1,00 ms | 4,07 ms | 3,44 ms |
+| Medio | 2,96 ms | 3,24 ms | 8,12 ms | 5,24 ms |
+| Alto | 6,77 ms | 7,40 ms | 10,67 ms | 10,97 ms |
+| Ultra | 10,53 ms | 11,18 ms | 17,0 ms | 17,9 ms |
+
+- **Alto:** sigue muy por debajo de los 16,7 ms.
+- **Ultra:** ya estaba en el límite en los fotogramas más lentos y queda para el cierre.
+- **Memoria de vídeo:** los mapas comprimidos son unos 130 MB. Al medirla apareció una fuga de la fase 2, arreglada aquí:
+  - los 51 volúmenes de rebote de un piso guardaban sus texturas en la GPU aunque solo se dibujaran los 8 más cercanos, unos 56 MB cada uno, 2,9 GB en total;
+  - ahora un volumen solo recibe sus datos mientras se muestra (`bounce_light.show_near()`);
+  - Alto pasa de 4,30 a 1,94 GB y Ultra de 4,45 a 2,09 GB, ya dentro del presupuesto de 3 GB;
+  - el p99 del recorrido no cambia (Alto 10,8 ms, Ultra 17,3 ms) y la imagen tampoco: menos de medio nivel de diferencia media en las tomas de look-dev.
+
+**Hito:**
+- hojas `evidence/lookdev/fase3_antes_despues.png` (sin cinta) y `fase3_antes_despues_vhs.png` (como se juega);
+- `fase3_primeros_planos.png`: cama con linterna, cornisa, zócalo y azulejo. Son las tomas cercanas nuevas de `lookdev_capture.gd`: `cama`, `cornisa`, `zocalo` y `azulejo`.
+
 ### Pruebas que se hacen al empezar su fase
 
 - **5. Decals** (límite de elementos agrupados, atlas): fase 4.

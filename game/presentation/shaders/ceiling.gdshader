@@ -11,15 +11,19 @@ void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
 	vec2 uv = face_uv();
-	float stipple = fine_noise(uv * 70.0) * 0.6 + fine_noise(uv * 190.0) * 0.4;
+	// The scanned stucco (Detail) takes the place of the procedural stipple.
+	MapLookup l = map_lookup(map_uv());
+	float stipple = use_maps ? 0.5 : fine_noise(uv * 70.0) * 0.6 + fine_noise(uv * 190.0) * 0.4;
 	float blotch = fbm(uv * 0.45);
 	vec3 color = base_color.rgb * (0.9 + stipple * 0.12);
-	color = albedo_or(color);
+	color = scan_albedo(l, color);
 	float damp = smoothstep(0.6, 0.72, blotch) * stains;
 	float edge = smoothstep(0.015, 0.0, abs(blotch - 0.66)) * stains;
 	color = mix(color, stain_color.rgb, damp * 0.55);
 	color *= 1.0 - edge * 0.25;
-	ALBEDO = color;
-	ROUGHNESS = roughness_or(0.95);
-	NORMAL = BUMPED_VIEW_NORMAL(normal_or(wn), stipple * 0.004, 1.0);
+	float ao = scan_occlusion(l);
+	ALBEDO = room_grime(color, wp, NODE_POSITION_WORLD, ao);
+	AO = ao;
+	ROUGHNESS = scan_roughness(l, 0.95);
+	NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), stipple * 0.004, 1.0);
 }

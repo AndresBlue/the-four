@@ -6,9 +6,14 @@
 
 varying vec3 wp;
 varying vec3 wn;
+// The room a batched surface belongs to, from its instance's custom data
+// (hotel_geometry.flush()): half its width and depth round the room's origin,
+// its ceiling height, and which sides are open (a hall goes on past them:
+// 1 -x, 2 +x, 4 -z, 8 +z). Zero outside a room: no grime.
+varying flat vec4 room_data;
 
 // Usage inside vertex(): SURFACE_VERTEX;
-#define SURFACE_VERTEX wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz)
+#define SURFACE_VERTEX wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); room_data = INSTANCE_CUSTOM
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -98,6 +103,48 @@ vec3 map_normal_world(vec4 encoded, float strength) {
 	float z = sqrt(clamp(1.0 - dot(xy, xy), 0.0, 1.0));
 	xy *= strength;
 	return normalize(face_tangent() * xy.x + face_bitangent() * xy.y + wn * max(z, 0.05));
+}
+
+// How much a point is tucked into its room's edges: 1 where two of the walls,
+// floor and ceiling meet, 0 in the open. The two nearest of them count: on a
+// wall, the floor, the ceiling or the next wall; on the floor, the nearest
+// wall. Dust, soot and the missing bounce light gather there.
+float room_edge(vec3 world, vec3 origin, out float by_floor, out float by_ceiling) {
+	by_floor = 0.0;
+	by_ceiling = 0.0;
+	if (room_data.z <= 0.0) return 0.0;
+	vec3 p = world - origin;
+	float open = room_data.w + 0.5;
+	// An open side is no wall: far away.
+	vec4 far = step(vec4(1.0), mod(floor(vec4(open, open / 2.0, open / 4.0, open / 8.0)), 2.0)) * 10000.0;
+	// Wall faces stand some 10-15 cm inside the rectangle (half core, panels).
+	float wx = max(min(p.x + room_data.x + far.x, room_data.x + far.y - p.x) - 0.12, 0.0);
+	float wz = max(min(p.z + room_data.y + far.z, room_data.y + far.w - p.z) - 0.12, 0.0);
+	float h = max(p.y, 0.0);
+	float t = max(room_data.z - p.y, 0.0);
+	float v = min(h, t);
+	float nearest = min(min(wx, wz), v);
+	float two = wx + wz + v - max(max(wx, wz), v);
+	float edge = exp(-two * 3.2) * smoothstep(0.4, 0.0, nearest);
+	float wall = min(wx, wz);
+	by_floor = exp(-(h + wall) * 6.0);
+	by_ceiling = exp(-(t + wall) * 2.5) * step(t, h);
+	return edge;
+}
+
+// Room grime on a surface's colour; the occlusion it adds (to AO) in ao.
+vec3 room_grime(vec3 color, vec3 world, vec3 origin, inout float ao) {
+	float by_floor;
+	float by_ceiling;
+	float edge = room_edge(world, origin, by_floor, by_ceiling);
+	float patchy = 0.6 + 0.8 * vnoise(world.xz * 3.1 + world.y * 2.3);
+	ao *= 1.0 - edge * 0.55;
+	color *= 1.0 - edge * 0.22 * patchy;
+	// Dust and mop water along the skirting, brown.
+	color = mix(color, color * vec3(0.72, 0.62, 0.5), clamp(by_floor * patchy, 0.0, 1.0) * 0.5);
+	// Old damp and smoke under the ceiling, yellowed.
+	color = mix(color, color * vec3(0.86, 0.78, 0.6), clamp(by_ceiling * patchy, 0.0, 1.0) * 0.45);
+	return color;
 }
 
 // Perturbs a world normal from screen derivatives of a height field

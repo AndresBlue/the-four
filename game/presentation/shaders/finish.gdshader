@@ -49,19 +49,25 @@ void fragment() {
 		color *= 0.95 + speck * 0.08;
 		height = speck * 0.0002;
 	}
-	color = albedo_or(color);
+	// A scanned cloth, leather or metal (Recolour or Replace) takes the place
+	// of the procedural pattern; its relief stands for the procedural one.
+	MapLookup l = map_lookup(map_uv());
+	color = scan_albedo(l, color);
+	if (use_maps) height *= 0.2;
 	// Uneven dirt collects low on objects and in patches.
 	float dirt = smoothstep(0.6, 0.9, fbm(uv * 1.7 + 5.0)) * grime * 0.6;
 	dirt += smoothstep(0.35, 0.0, wp.y) * grime * 0.4;
 	color *= 1.0 - clamp(dirt, 0.0, 1.0) * 0.35;
-	ALBEDO = color;
-	METALLIC = metallic;
+	float ao = scan_occlusion(l);
+	ALBEDO = room_grime(color, wp, NODE_POSITION_WORLD, ao);
+	AO = ao;
+	METALLIC = scan_metallic(l, metallic);
 	SPECULAR = specular;
-	ROUGHNESS = roughness_or(clamp(rough + dirt * 0.25, 0.02, 1.0));
+	ROUGHNESS = clamp((use_maps ? scan_roughness(l, rough) : rough) + dirt * 0.25, 0.02, 1.0);
 	if (sheen > 0.0) {
 		RIM = sheen;
 		RIM_TINT = 0.6;
 	}
 	if (backlight > 0.0) BACKLIGHT = color * backlight;
-	NORMAL = BUMPED_VIEW_NORMAL(normal_or(wn), height, relief);
+	NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), height, relief);
 }

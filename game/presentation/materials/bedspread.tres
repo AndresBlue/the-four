@@ -1,0 +1,18 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/finish.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/albedo = Color(0.38, 0.30, 0.15, 1)
+shader_parameter/variation_color = Color(0.25, 0.19, 0.1, 1)
+shader_parameter/roughness = 0.95
+shader_parameter/finish = 2
+shader_parameter/sheen = 0.18
+shader_parameter/grime = 0.15
+shader_parameter/map_metres = 0.4
+shader_parameter/map_mode = 1
+shader_parameter/map_tint = Color(0.36, 0.2, 0.13, 1)
+shader_parameter/map_roughness = 0.15
+shader_parameter/map_metallic = 0.0
+metadata/scan = "quatrefoil_jacquard_fabric"

@@ -160,6 +160,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Debanding | no | no | sí | sí |
 | Polvo (partículas) | no | 60 | 90 | 140 |
 | Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas |
+| Materiales escaneados | 1024 px, sin antirrepetición | 2048 px | 2048 px | 2048 px |
 | Filtro VHS | 4 lecturas de croma | 7 | 7 | 7 |
 | Umbral de LOD | 4 px | 2 px | 1 px | 1 px |
 | Filtrado anisotrópico | 2× | 4× | 8× | 16× |
@@ -174,7 +175,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 - **Luz ambiente cero y niebla casi negra.** Las salas oscuras son negras en todos los presets.
 - **Números de puerta y rótulos (20 m), faro rojo, sellos de puerta y salas oscuras.** Son gameplay y orientación.
 - **Filtro VHS.** Sus deslizadores y «Efectos reducidos» son ajustes del jugador.
-- **GI.** SDFGI deja pasar luz por muros de 18 cm y los lightmaps no se hornean en partida. Desde Alto, el rebote es un VoxelGI por sala, horneado en hilos al cargar el piso ([REALISM.md](REALISM.md), prueba 8), más SSIL.
+- **GI.** SDFGI deja pasar luz por muros de 18 cm y los lightmaps no se hornean en partida. Desde Alto, el rebote es un VoxelGI por sala, horneado en hilos al cargar el piso ([REALISM.md](REALISM.md), prueba 8), más SSIL. Solo los 8 volúmenes que se dibujan tienen sus datos: con datos, un volumen ocupa unos 56 MB de vídeo aunque esté oculto, y los 51 de un piso llegaban a 2,9 GB.
 - **Decals.** No hay ninguno.
 - **Streaming de texturas.** Godot 4.7 no lo tiene. Las texturas ya van comprimidas (sección 2).
 

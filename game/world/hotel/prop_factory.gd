@@ -26,9 +26,9 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			builder.box(node, Vector3(0, 0.17, 0.02), Vector3(1.86, 0.3, 2.5), "wood")
 			builder.box(node, Vector3(0, 0.44, 0.02), Vector3(1.8, 0.24, 2.46), "linen")
 			# Bedspread with hanging sides and a folded top edge.
-			builder.box(node, Vector3(0, 0.575, 0.28), Vector3(1.9, 0.04, 1.98), "fabric")
-			for side in [-1, 1]: builder.box(node, Vector3(side * 0.94, 0.4, 0.28), Vector3(0.03, 0.34, 1.98), "fabric")
-			builder.box(node, Vector3(0, 0.4, 1.265), Vector3(1.9, 0.34, 0.03), "fabric")
+			builder.box(node, Vector3(0, 0.575, 0.28), Vector3(1.9, 0.04, 1.98), "bedspread")
+			for side in [-1, 1]: builder.box(node, Vector3(side * 0.94, 0.4, 0.28), Vector3(0.03, 0.34, 1.98), "bedspread")
+			builder.box(node, Vector3(0, 0.4, 1.265), Vector3(1.9, 0.34, 0.03), "bedspread")
 			builder.box(node, Vector3(0, 0.6, -0.68), Vector3(1.9, 0.06, 0.18), "linen", false, "box", Vector3(0.12, 0, 0))
 			for side in [-1, 1]: builder.box(node, Vector3(side * 0.43, 0.64, -0.98), Vector3(0.74, 0.16, 0.42), "linen", false, "box", Vector3(-0.35, side * 0.06, 0))
 			builder.box(node, Vector3(0, 0.72, -1.32), Vector3(2.0, 1.44, 0.13), "wood")

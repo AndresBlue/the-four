@@ -12,6 +12,8 @@ uniform float motif_height = 0.46;
 uniform float print_strength : hint_range(0.0, 1.0) = 0.55;
 uniform float stains : hint_range(0.0, 1.0) = 0.55;
 uniform float grime : hint_range(0.0, 1.0) = 0.5;
+// How far the ink bleeds along the paper's grain, in metres.
+uniform float ink_bleed = 0.03;
 
 void vertex() { SURFACE_VERTEX; }
 
@@ -25,6 +27,13 @@ void fragment() {
 		ALBEDO = edge_color.rgb * (0.9 + n * 0.15);
 		ROUGHNESS = 0.9;
 	} else {
+		// The scanned paper (Detail) under the printed motif, or a decrepit
+		// scan (Replace) with the print faded into it. The ink bleeds into
+		// the paper's grain: the print's edges follow it.
+		MapLookup l = map_lookup(map_uv());
+		vec2 bleed = use_maps ? (map_sample(normal_map, l).xy * 2.0 - 1.0) * ink_bleed : vec2(0.0);
+		u += bleed.x;
+		y += bleed.y;
 		float roll = floor(u / roll_width);
 		float in_roll = fract(u / roll_width);
 		// Printed motif: alternating ogee drops with a thin stripe between rolls.
@@ -34,11 +43,16 @@ void fragment() {
 		float dots = smoothstep(0.06, 0.04, length(q - vec2(0.0, 0.0)));
 		float stripe = smoothstep(0.035, 0.02, abs(in_roll - 0.5)) * 0.6;
 		float print_mask = clamp(ogee * 0.8 + dots + stripe, 0.0, 1.0) * print_strength;
-		float fibre = fine_noise(uv * vec2(160.0, 40.0));
+		float fibre = use_maps ? 0.5 : fine_noise(uv * vec2(160.0, 40.0));
 		float mottling = fbm(uv * 1.7);
 		vec3 base = mix(paper_color.rgb, print_color.rgb, print_mask);
 		base *= 0.97 + hash12(vec2(roll, 3.0)) * 0.03 + (mottling - 0.5) * 0.12 + (fibre - 0.5) * 0.04;
-		base = albedo_or(base);
+		if (use_maps && map_mode != 2) {
+			vec3 scan = scan_albedo(l, base);
+			base = mix(scan, scan * base / paper_color.rgb, print_strength);
+		} else {
+			base = scan_albedo(l, base);
+		}
 		// Seams: slightly lifted, lighter paper edge with a dark gap.
 		float seam = smoothstep(0.012, 0.0, min(in_roll, 1.0 - in_roll) * roll_width);
 		float lifted = smoothstep(0.55, 0.8, vnoise(vec2(roll * 3.1, y * 1.7))) * seam;
@@ -53,9 +67,11 @@ void fragment() {
 		float low = smoothstep(1.4, 0.9, y) * grime;
 		float hand = smoothstep(0.25, 0.0, abs(y - 1.15)) * fbm(vec2(u * 3.0, 1.0)) * grime * 0.4;
 		base *= 1.0 - (low * 0.18 + hand * 0.2) * fbm(uv * vec2(4.0, 9.0));
-		ALBEDO = base;
-		ROUGHNESS = roughness_or(0.82 + fibre * 0.1 - print_mask * 0.12 + mask * 0.05);
-		float height = fibre * 0.0015 + print_mask * 0.0008 - seam * 0.002 + mottling * 0.002;
-		NORMAL = BUMPED_VIEW_NORMAL(normal_or(wn), height, 1.0);
+		float ao = scan_occlusion(l);
+		ALBEDO = room_grime(base, wp, NODE_POSITION_WORLD, ao);
+		AO = ao;
+		ROUGHNESS = scan_roughness(l, 0.82 + fibre * 0.1) - print_mask * 0.12 + mask * 0.05;
+		float height = fibre * 0.0015 + print_mask * 0.0008 - seam * 0.002 + (use_maps ? 0.0 : mottling * 0.002);
+		NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), height, 1.0);
 	}
 }

@@ -4,4 +4,8 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/map_metres = 1.0
+shader_parameter/map_metres = 1.6
+shader_parameter/map_mode = 1
+shader_parameter/map_tint = Color(0.58, 0.58, 0.5, 1)
+shader_parameter/tile_count = 8.0
+metadata/scan = "tiles036"

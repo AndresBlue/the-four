@@ -1,30 +1,28 @@
-# Texturas fotográficas
+# Materiales escaneados
 
-Cada carpeta con el nombre de un material de `game/presentation/materials/` sustituye automáticamente la base procedural al construir el hotel. No hace falta tocar código ni materiales.
+Cada carpeta es un set escaneado (fase 3 de `docs/REALISM.md`), generado por `tools/textures/ingest_pbr.py` a partir de las descargas en `source_assets/textures/` (fuera de git):
 
 ```
-assets/textures/<material>/albedo.png     color (sRGB)
-assets/textures/<material>/normal.png     normal map formato OpenGL (verde hacia arriba)
-assets/textures/<material>/roughness.png  rugosidad (canal verde)
+assets/textures/<set>/albedo.jpg    color (sRGB)
+assets/textures/<set>/normal.jpg    normal map, convención OpenGL (verde hacia arriba)
+assets/textures/<set>/orm.jpg       oclusión, rugosidad y metal en R, G y B
+assets/textures/<set>/*_1k.jpg      lo mismo a 1024 px, para el preset Bajo (small_maps)
 ```
 
-Se aceptan `.png`, `.jpg`, `.jpeg` y `.webp`. Cualquiera de los tres mapas es opcional. Las manchas, suciedad y desgaste procedurales se siguen aplicando encima para que la repetición se note menos.
+Un material usa un set con el metadato `scan` de su `.tres` en `game/presentation/materials/` (Inspector → Metadata). `hotel_geometry.apply_scan()` le asigna los mapas al construir. Los parámetros del grupo `image_maps` deciden cómo se combina con el shader:
 
-Tamaño real de una repetición: `map_metres` en el `.tres` del material (editable desde el Inspector). Tinte opcional: `map_tint`.
+- **`map_mode`:**
+  - `Replace`: el escaneo por `map_tint`;
+  - `Recolour`: `map_tint`, aclarado y oscurecido como el escaneo;
+  - `Detail`: el color procedural, variado por el escaneo (moqueta, papel pintado y techo).
+- **`map_metres`:** tamaño real de una repetición.
+- **`map_roughness` y `map_metallic`:** ajuste de la rugosidad y del metal del ORM.
+- **`normal_strength`:** relieve del escaneo.
+- **`map_no_tile`:** antirrepetición, solo para escaneos de aspecto aleatorio; nunca para azulejo ni tablas.
 
-| Carpeta | Uso | `map_metres` |
-|---|---|---|
-| `plaster` | Papel pintado de paredes | 0.6 |
-| `carpet` | Moqueta | 1.5 |
-| `ceiling` | Techo | 1.2 |
-| `tile` | Suelo de baños, lavandería y mantenimiento | 1.0 |
-| `wood` | Muebles y escondites | 1.0 |
-| `panel` | Zócalo de madera de las paredes | 1.0 |
-| `trim` | Molduras, marcos y rodapiés | 0.8 |
-| `door` | Hojas de puerta (coordenadas locales) | 1.0 |
-| `fabric` | Sofás, colchas, cabeceros | 0.5 |
-| `linen` | Sábanas, almohadas, pantallas | 0.6 |
-| `leather` | Maletas | 0.5 |
-| `metal`, `gold` | Metal cepillado y latón | 0.5 |
-
-Registra autor, fuente y licencia de cada textura en `docs/ASSETS.md` antes de distribuir.
+Para añadir un set:
+1. Descarga el ZIP 2K-JPG de ambientCG, o los mapas 2K JPG `diff`, `nor_gl` y `arm` de Poly Haven, en `source_assets/textures/`.
+2. Añádelo a `SETS` en `ingest_pbr.py` y ejecuta `python tools/textures/ingest_pbr.py`, que también actualiza `docs/ASSETS.md`.
+3. Importa las imágenes con el editor o con `--import`.
+4. Pon `metadata/scan` en el material.
+5. Vuelve a medir los colores para el rebote con `tools/lighting/measure_albedo.gd`.

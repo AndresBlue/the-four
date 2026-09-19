@@ -5,3 +5,6 @@
 [resource]
 shader = ExtResource("1")
 shader_parameter/map_metres = 1.0
+shader_parameter/map_mode = 1
+shader_parameter/map_tint = Color(0.3, 0.17, 0.09, 1)
+metadata/scan = "lacquered_cherry_wood"

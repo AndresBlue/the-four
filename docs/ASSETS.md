@@ -3,13 +3,34 @@
 ## Hotel actual
 
 - Arquitectura modular, veinte definiciones espaciales y mobiliario provisional: geometría original creada para este proyecto. No se atribuye a Sketchfab.
-- Materiales de papel mural, moqueta, madera y cortinas: shaders procedurales propios. El resto usa materiales básicos; no son texturas fotorrealistas descargadas.
+- Materiales: shaders procedurales propios (motivo del papel, medallones de la moqueta, desgaste y suciedad) sobre materiales escaneados CC0, listados abajo en «Materiales escaneados». Las cortinas siguen siendo solo procedurales.
 - Pasos y señal de preparación de ataque: síntesis original en ejecución, sin muestras externas. Polvo, cortinas, niebla localizada y sondas de reflexión creados dentro de Godot. No se añadieron muebles externos.
 - Copia utilizada: `assets/audio/hotel/ambience.wav`, idéntica al original `ambience.wav` de la raíz. SHA-256: `7f873c02a389c4da33befb3da559d613a98aa4cc051f91c805a7782c4d72adb1`.
 - Ambiente: 410,46 s, estéreo, 11.025 Hz, PCM de 8 bits. Se reproduce en bucle y a volumen reducido; el original no se modifica. Autoría/licencia pendientes de verificar.
 - Los otros cuatro audios nuevos quedan conservados para la selección de la etapa 2. Detalles técnicos en `hotel_audio_inventory.json`. La voz tiene un nivel notablemente mayor que el ambiente y requiere edición/mezcla antes de incorporarla.
 - `deep_ambiance.flac`: conservar original; preparar copia en formato admitido por el importador al integrarlo. Todavía no se carga en el juego.
 - La música anterior sigue en su bus separado. Su estado de permisos no cambia.
+
+<!-- SCANS: generado por tools/textures/ingest_pbr.py, no editar a mano -->
+## Materiales escaneados (fase 3 de REALISM.md)
+
+Todos CC0 (dominio público): no exigen atribución, se acreditan igualmente. Descargas originales en `source_assets/textures/` (fuera de git); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px y a 1024 px (`_1k`, preset Bajo).
+
+| Set | Asset | Autoría | Fuente | Licencia | Uso |
+|---|---|---|---|---|---|
+| `carpet016` | [Carpet016](https://ambientcg.com/view?id=Carpet016) | Lennart Demes (ambientCG) | ambientCG | CC0 1.0 | pelo de la moqueta, bajo el medallón procedural |
+| `wallpaper001a` | [Wallpaper001A](https://ambientcg.com/view?id=Wallpaper001A) | Lennart Demes (ambientCG) | ambientCG | CC0 1.0 | papel de las paredes, bajo el motivo procedural |
+| `decrepit_wallpaper` | [Decrepit Wallpaper](https://polyhaven.com/a/decrepit_wallpaper) | Rob Tuytel | Poly Haven | CC0 1.0 | paredes de salones vacíos y almacenes |
+| `ceiling_interior` | [Ceiling Interior](https://polyhaven.com/a/ceiling_interior) | Dimitrios Savva | Poly Haven | CC0 1.0 | techo de estuco |
+| `officeceiling001` | [OfficeCeiling001](https://ambientcg.com/view?id=OfficeCeiling001) | Lennart Demes (ambientCG) | ambientCG | CC0 1.0 | falso techo de lavandería, almacén, mantenimiento y oficina |
+| `lacquered_cherry_wood` | [Lacquered Cherry Wood](https://polyhaven.com/a/lacquered_cherry_wood) | Jenelle van Heerden, Rico Cilliers | Poly Haven | CC0 1.0 | muebles de madera |
+| `dark_wood` | [Dark Wood](https://polyhaven.com/a/dark_wood) | Dario Barresi, Dimitrios Savva, Rico Cilliers | Poly Haven | CC0 1.0 | arrimaderos y molduras |
+| `tiles036` | [Tiles036](https://ambientcg.com/view?id=Tiles036) | Lennart Demes (ambientCG) | ambientCG | CC0 1.0 | azulejo de baños y zonas de servicio |
+| `metal048b` | [Metal048B](https://ambientcg.com/view?id=Metal048B) | Lennart Demes (ambientCG) | ambientCG | CC0 1.0 | latón |
+| `velour_velvet` | [Velour Velvet](https://polyhaven.com/a/velour_velvet) | colormass, Rico Cilliers | Poly Haven | CC0 1.0 | tapicería |
+| `quatrefoil_jacquard_fabric` | [Quatrefoil Jacquard Fabric](https://polyhaven.com/a/quatrefoil_jacquard_fabric) | colormass, Rico Cilliers | Poly Haven | CC0 1.0 | colchas |
+| `brown_leather` | [Brown Leather](https://polyhaven.com/a/brown_leather) | Rob Tuytel | Poly Haven | CC0 1.0 | maletas |
+<!-- /SCANS -->
 
 ## Modelos aportados en 0.4-S1
 

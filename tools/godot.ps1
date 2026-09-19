@@ -46,7 +46,10 @@ switch ($Mode) {
         # old copy of a resource it embeds (the hotel environment did). Start clean.
         $cache = Join-Path $projectPath '.godot/exported'
         if (Test-Path -LiteralPath $cache) { Remove-Item -LiteralPath $cache -Recurse -Force }
-        $arguments += @('--headless','--export-release','Windows Desktop',(Join-Path $projectPath 'exports/windows/TheFour.exe'))
+        # Not headless: the shader baker (export_presets.cfg shader_baker) needs a
+        # GPU to compile every shader into the pack, and skips without a word
+        # under --headless. The window stays hidden (Start-Process below).
+        $arguments += @('--export-release','Windows Desktop',(Join-Path $projectPath 'exports/windows/TheFour.exe'))
     }
 }
 if ($Mode -eq 'export') {

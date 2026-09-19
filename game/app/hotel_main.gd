@@ -1082,6 +1082,8 @@ var torch_size := -1.0
 func apply_settings() -> void:
 	if not is_instance_valid(environment): return
 	var preset: Dictionary = PRESETS.of(settings.values.quality)
+	# Before any set is built (title, intro, floor): the size of the scans.
+	GEOMETRY.small_maps = preset.small_maps
 	# The acoustic view replaces the lit image entirely, so none of this would
 	# ever be seen; switching it off is what pays for its own screen pass.
 	var hunter := hunter_seat()
