@@ -143,10 +143,12 @@ func show_tape(elapsed: float, delta: float) -> void:
 func draw_overlay() -> void:
 	var size := canvas.size
 	if zoom_alpha > 0.01:
-		# W [---|----] T, the rocker's own scale, top left under the tape marks.
-		var left := 48.0
-		var top := 58.0
+		# W [---|----] T, the rocker's own scale in its frame, centred across
+		# the top of the picture, under the tape marks.
 		var width := 260.0
+		var top := 74.0
+		var frame := Rect2(Vector2((size.x - width) * 0.5 - 40.0, top - 22.0), Vector2(width + 80.0, 44.0))
+		var left := frame.position.x + 16.0
 		var ink := Color(STYLE.INK, zoom_alpha * 0.9)
 		var faint := Color(STYLE.INK, zoom_alpha * 0.35)
 		var shadow := Color(0, 0, 0, zoom_alpha * 0.6)
@@ -155,6 +157,7 @@ func draw_overlay() -> void:
 			var shift := Vector2(2, 2) if pass_index == 0 else Vector2.ZERO
 			var color := shadow if pass_index == 0 else ink
 			var soft := shadow if pass_index == 0 else faint
+			canvas.draw_rect(Rect2(frame.position + shift, frame.size), soft, false, 2.0)
 			canvas.draw_string(font, Vector2(left, top + 8) + shift, "W", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, color)
 			canvas.draw_string(font, Vector2(left + width + 34, top + 8) + shift, "T", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, color)
 			canvas.draw_line(Vector2(left + 28, top) + shift, Vector2(left + 28 + width, top) + shift, soft, 3.0)

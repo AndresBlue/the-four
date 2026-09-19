@@ -333,12 +333,12 @@ func update_focus(delta: float) -> void:
 
 ## Where the camera looks without the hand-held motion (what the network
 ## sends as the look, for instance).
-## The camcorder's zoom (LOOK.ZOOM_MAX at full telephoto), the rocker's
-## position, and how fast the motor travels (the whole range in about three
-## seconds, as a home camcorder does).
+## The camcorder's zoom (LOOK.ZOOM_MAX at full telephoto), how far one notch
+## of the wheel pushes the rocker, and how fast the motor travels (the whole
+## range in about a second: a quick roll of the wheel takes it end to end).
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
-const ZOOM_STEP := 1.18
-const ZOOM_SPEED := 0.9
+const ZOOM_STEP := 1.42
+const ZOOM_SPEED := 2.4
 var zoom := 1.0
 var zoom_wanted := 1.0
 

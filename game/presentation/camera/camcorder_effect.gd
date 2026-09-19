@@ -10,7 +10,11 @@ extends CompositorEffect
 ##            writes the exposure to a 1x1 texture (exposure_texture) the lens
 ##            reads its gain from, on the GPU: no read-back to the CPU
 ##   smear    per column, the charge a saturated highlight spills down the
-##            CCD: a faint vertical streak through a bare bulb
+##            CCD: a faint vertical streak through a bare bulb. What each
+##            pixel can spill is capped, so the streak measures how much of
+##            the column is burnt out and not how fierce its brightest point
+##            is: a lamp streaks, a glint on a clock face barely does
+##   spread    that column of charge, blurred sideways into a soft band
 ##   glare    what the lamps do inside the lens: the brightest light, taken at
 ##            a quarter of the resolution and blurred, comes back as a soft
 ##            halo round each lamp (veiling glare) and as faint coloured
@@ -39,9 +43,17 @@ var speed_down := 2.4
 ## CCD smear strength (0 off) and the level above which a pixel spills. The
 ## streak levels off at SMEAR_CAP: a tube across the frame used to paint a
 ## solid white bar.
-var smear := 0.04
+var smear := 0.28
 var smear_threshold := 5.0
-const SMEAR_CAP := 0.28
+## The most one pixel can spill, over the threshold. Without it a specular
+## glint (a clock face, a brass knob), which in HDR is hundreds of times the
+## lamp, streaked harder than the lamp itself.
+var smear_clip := 12.0
+## How far the streak is smudged sideways, as a fraction of the frame's width
+## (about 15 px at 1920): what is left is a soft band, not a line, and a
+## streak only stays strong if the light is wide.
+var smear_spread := 0.008
+const SMEAR_CAP := 0.16
 ## Glare (0 off, from the graphics preset): halo and ghosts, relative to the
 ## light above glare_threshold (in exposed, linear units).
 var glare := 1.0
@@ -75,6 +87,8 @@ var pipelines := {}
 var samples: RID
 var state: RID
 var columns: RID
+## The same columns, smudged sideways (the spread pass).
+var columns_soft: RID
 var exposure: RID
 ## The glare at a quarter of the resolution, blurred back and forth.
 var glare_a: RID
@@ -153,7 +167,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(rgba16f, set = 0, binding = 0) uniform restrict readonly image2D color_image;
 layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float glare; } state;
 layout(set = 0, binding = 2, std430) restrict writeonly buffer Columns { float data[]; } columns;
-layout(push_constant, std430) uniform Params { vec2 size; float threshold; float pad; } p;
+layout(push_constant, std430) uniform Params { vec2 size; float threshold; float clip; } p;
 void main() {
 	int x = int(gl_GlobalInvocationID.x);
 	if (x >= int(p.size.x)) return;
@@ -161,9 +175,36 @@ void main() {
 	float spill = 0.0;
 	for (int y = 0; y < int(p.size.y); y += 2) {
 		float lum = dot(imageLoad(color_image, ivec2(x, y)).rgb, vec3(0.2126, 0.7152, 0.0722)) * exposure;
-		spill += max(lum - p.threshold, 0.0);
+		// Capped: what counts is how much of the column is burnt out, not
+		// how fierce its brightest pixel is.
+		spill += min(max(lum - p.threshold, 0.0), p.clip);
 	}
 	columns.data[x] = spill * 2.0 / p.size.y;
+}
+"""
+## The column of charge, smudged sideways: a wide Gaussian, so the streak is a
+## soft band. It also puts a narrow light in its place, since a glint one
+## pixel wide comes out of a sigma-wide blur some thirty times fainter, while
+## a lamp's own width survives it.
+const SPREAD := """
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) restrict readonly buffer Columns { float data[]; } columns;
+layout(set = 0, binding = 1, std430) restrict writeonly buffer Soft { float data[]; } soft;
+layout(push_constant, std430) uniform Params { float count; float sigma; float pad0; float pad1; } p;
+void main() {
+	int x = int(gl_GlobalInvocationID.x);
+	int n = int(p.count);
+	if (x >= n) return;
+	int reach = int(p.sigma * 2.5);
+	int stride = max(reach / 12, 1);
+	float s = 0.0;
+	float total = 0.0;
+	for (int i = -reach; i <= reach; i += stride) {
+		float w = exp(-float(i * i) / (2.0 * p.sigma * p.sigma));
+		s += columns.data[clamp(x + i, 0, n - 1)] * w;
+		total += w;
+	}
+	soft.data[x] = s / total;
 }
 """
 const BRIGHT := """
@@ -242,7 +283,7 @@ layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; 
 layout(set = 0, binding = 2, std430) restrict readonly buffer Columns { float data[]; } columns;
 layout(set = 0, binding = 3) uniform sampler2D glare_image;
 layout(push_constant, std430) uniform Params { vec2 size; float smear; float knee; vec3 white; float toe; float halo; float ghosts; float ghost_floor; float crowd; } p;
-const float SMEAR_CAP = 0.28;
+const float SMEAR_CAP = 0.16;
 // Where the lens puts a ghost of the light at uv: mirrored through the centre
 // and scaled, fading towards the edge of the image circle. Only what is over
 // ghost_floor: the bigger lights.
@@ -263,19 +304,12 @@ void main() {
 	vec4 source = imageLoad(color_image, pix);
 	vec3 c = source.rgb * exp2(state.ev);
 	if (p.smear > 0.0) {
-		// The streak: spread over nine columns, so it comes out soft rather
-		// than a hard line, and levelled off, so a tube filling the frame
-		// gives a veil and not a white bar.
-		float s = 0.0;
-		float weight = 0.0;
-		for (int i = -4; i <= 4; i++) {
-			int x = clamp(pix.x + i, 0, int(p.size.x) - 1);
-			float w = exp(-float(i * i) * 0.12);
-			s += columns.data[x] * w;
-			weight += w;
-		}
-		s = 1.0 - exp(-s / weight * p.smear * 6.0);
-		c += s * SMEAR_CAP * vec3(0.95, 0.95, 1.05);
+		// The streak, already smudged sideways by the spread pass: levelled
+		// off, so a tube filling the frame gives a veil and not a white bar,
+		// and thinner the more light there is in frame, so a corridor of
+		// lamps is not a set of bars.
+		float s = 1.0 - exp(-columns.data[pix.x] * p.smear * 6.0);
+		c += s * SMEAR_CAP / (1.0 + state.glare * p.crowd * 0.5) * vec3(0.95, 0.95, 1.05);
 	}
 	if (p.halo > 0.0) {
 		vec2 uv = (vec2(pix) + 0.5) / p.size;
@@ -303,7 +337,7 @@ func _init() -> void:
 func setup() -> void:
 	rd = RenderingServer.get_rendering_device()
 	if rd == null: return
-	var sources := {"meter": METER, "iris": IRIS, "smear": SMEAR, "bright": BRIGHT, "blur": BLUR, "glare_mean": GLARE_MEAN, "grade": GRADE}
+	var sources := {"meter": METER, "iris": IRIS, "smear": SMEAR, "spread": SPREAD, "bright": BRIGHT, "blur": BLUR, "glare_mean": GLARE_MEAN, "grade": GRADE}
 	for name in sources:
 		var source := RDShaderSource.new()
 		source.language = RenderingDevice.SHADER_LANGUAGE_GLSL
@@ -340,7 +374,7 @@ func release() -> void:
 	if rd == null: return
 	enabled = false
 	exposure_texture.texture_rd_rid = RID()
-	for rid in [samples, state, columns, exposure, glare_a, glare_b, sampler]:
+	for rid in [samples, state, columns, columns_soft, exposure, glare_a, glare_b, sampler]:
 		if rid.is_valid(): rd.free_rid(rid)
 	for name in shaders: rd.free_rid(shaders[name])
 	shaders.clear()
@@ -350,7 +384,7 @@ func release() -> void:
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_PREDELETE or rd == null: return
 	exposure_texture.texture_rd_rid = RID()
-	for rid in [samples, state, columns, exposure, glare_a, glare_b, sampler]:
+	for rid in [samples, state, columns, columns_soft, exposure, glare_a, glare_b, sampler]:
 		if rid.is_valid(): rd.free_rid(rid)
 	for name in shaders: rd.free_rid(shaders[name])
 
@@ -391,8 +425,10 @@ func _render_callback(_type: int, data: RenderData) -> void:
 	var size := buffers.get_internal_size()
 	if size.x == 0 or size.y == 0: return
 	if column_count != size.x:
-		if columns.is_valid(): rd.free_rid(columns)
+		for rid in [columns, columns_soft]:
+			if rid.is_valid(): rd.free_rid(rid)
 		columns = rd.storage_buffer_create(size.x * 4)
+		columns_soft = rd.storage_buffer_create(size.x * 4)
 		column_count = size.x
 	var quarter := Vector2i(maxi((size.x + 3) / 4, 1), maxi((size.y + 3) / 4, 1))
 	if glare_size != quarter:
@@ -415,7 +451,8 @@ func _render_callback(_type: int, data: RenderData) -> void:
 	dispatch("iris", [storage(0, samples), storage(1, state), image(2, exposure)], PackedFloat32Array([GRID.x * GRID.y, dt, key, min_ev, max_ev, speed_up, speed_down, 1.0 if reset else 0.0]), Vector3i(1, 1, 1))
 	reset = false
 	if smear > 0.0:
-		dispatch("smear", [image(0, color), storage(1, state), storage(2, columns)], PackedFloat32Array([sizef.x, sizef.y, smear_threshold, 0.0]), Vector3i((size.x + 63) / 64, 1, 1))
+		dispatch("smear", [image(0, color), storage(1, state), storage(2, columns)], PackedFloat32Array([sizef.x, sizef.y, smear_threshold, smear_clip]), Vector3i((size.x + 63) / 64, 1, 1))
+		dispatch("spread", [storage(0, columns), storage(1, columns_soft)], PackedFloat32Array([sizef.x, maxf(sizef.x * smear_spread, 1.0), 0.0, 0.0]), Vector3i((size.x + 63) / 64, 1, 1))
 	if glare > 0.0:
 		var quarterf := Vector2(quarter)
 		var groups := Vector3i((quarter.x + 7) / 8, (quarter.y + 7) / 8, 1)
@@ -423,4 +460,4 @@ func _render_callback(_type: int, data: RenderData) -> void:
 		dispatch("blur", [sampled(0, glare_a), image(1, glare_b)], PackedFloat32Array([quarterf.x, quarterf.y, 1.0 / quarterf.x, 0.0]), groups)
 		dispatch("blur", [sampled(0, glare_b), image(1, glare_a)], PackedFloat32Array([quarterf.x, quarterf.y, 0.0, 1.0 / quarterf.y]), groups)
 		dispatch("glare_mean", [sampled(0, glare_a), storage(1, state)], PackedFloat32Array([32.0, 16.0, 0.0, 0.0]), Vector3i(1, 1, 1))
-	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns), sampled(3, glare_a)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe, HALO * glare, GHOSTS * glare, GHOST_FLOOR, CROWD]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))
+	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns_soft), sampled(3, glare_a)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe, HALO * glare, GHOSTS * glare, GHOST_FLOOR, CROWD]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))

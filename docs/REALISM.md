@@ -399,17 +399,27 @@ Arreglos del camino:
 ## Ajustes tras probar el piso (después de la fase 4)
 
 **1. Zoom óptico** (fase 1, la camcorder). La cámara tiene el zoom de 6 aumentos de una camcorder doméstica:
-- se mueve con la rueda del ratón, adelante hacia T y atrás hacia W;
-- el motor recorre todo su viaje en unos tres segundos y avanza parejo en pasos de lente, no de ángulo;
+- se mueve con la rueda del ratón, adelante hacia T y atrás hacia W; cada muesca lo empuja un 42 %, así que un golpe de rueda lo lleva de un extremo al otro;
+- el motor recorre todo su viaje en algo más de un segundo y avanza parejo en pasos de lente, no de ángulo;
 - a más zoom, el barril de la lente se endereza (`camcorder_look.barrel_for()`), como en un teleobjetivo real, y la vista gira más despacio con el mismo movimiento de ratón, así que sigue siendo manejable;
 - el temblor de la mano no cambia, pero a 6 aumentos se ve seis veces mayor, como en una cinta de verdad;
-- el OSD muestra la barra `W ├───■───┤ T` mientras el zoom se mueve, y se desvanece 1,6 s después;
+- el OSD muestra la barra `W ├───■───┤ T` en su marco, centrada en la parte de arriba del cuadro, mientras el zoom se mueve, y se desvanece 1,6 s después;
 - cada piso empieza con la lente abierta, y la criatura no tiene zoom.
 
-**2. Smear de CCD más sutil.** La raya vertical de las luces saturadas se repartía poco y no tenía tope, así que un fluorescente de frente pintaba una barra blanca sólida:
-- ahora se reparte sobre nueve columnas y sale difuminada;
-- se satura en `SMEAR_CAP` (0,28 en luz lineal), así que nunca pasa de un velo translúcido;
-- el umbral sube de 4 a 5, así que no la disparan los reflejos, solo las fuentes de luz.
+**2. Smear de CCD: que lo pinte la luz, no el brillo de un punto.** La raya vertical se repartía poco y no tenía tope, así que un fluorescente de frente pintaba una barra blanca sólida. En una primera pasada se repartió sobre nueve columnas, se le puso tope y le subió el umbral. Seguía mal, y la sonda dijo por qué: **la raya la pintaban los destellos, no las lámparas**. Cada píxel sumaba a su columna todo lo que pasara del umbral, y un reflejo especular (la esfera de un reloj, un pomo de latón) en luz lineal vale cientos de veces lo que una lámpara. Medido en la semilla 81, con la columna ya normalizada:
+
+| Toma | Antes | Ahora |
+|---|---|---|
+| Dormitorio (destello de un objeto) | 70,4 → velo al tope (0,160) | 0,002 → 0,0005 |
+| Salón (el plafón del techo) | 2,58 → 0,074 | 0,128 → 0,031 |
+| Pasillo (seis apliques) | 1,51 → 0,049 | 0,033 → 0,009 |
+
+Tres cambios en `camcorder_effect.gd`:
+- **Tope por píxel** (`smear_clip`, 12 sobre el umbral): lo que cuenta es cuánta parte de la columna está quemada, no lo fiero que sea su píxel más brillante. Un destello de un píxel deja de mandar.
+- **Paso `spread`:** la columna de carga se difumina a lo ancho con una gaussiana de σ = 0,8 % del ancho (unos 15 px a 1920), así que queda una banda suave y no una línea. De paso pone en su sitio a lo estrecho: un destello de un píxel sale unas treinta veces más flojo de un difuminado así, mientras que una lámpara conserva su ancho.
+- **Más translúcido y menos cuando hay muchas luces:** `SMEAR_CAP` baja de 0,28 a 0,16 y el velo se divide por el brillo medio del cuadro, como ya hacían el halo y los fantasmas.
+
+Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la del plafón que se mira de frente.
 
 **3. Placas de puerta.** El número no cabía en la placa: la placa pasa de 0,26 × 0,13 m a 0,34 × 0,19 m y el número baja de 24 a 20, con 4,5 cm de margen a los lados.
 
