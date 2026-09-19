@@ -115,8 +115,10 @@ La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no u
 6. **Halo y reflejos fantasma** (desde Medio, añadidos después de la fase 2; preset `glare`), en la etapa HDR:
    - la luz por encima de un umbral se toma a un cuarto de resolución y se difumina;
    - vuelve como un halo cálido alrededor de cada lámpara, el velo de un cristal viejo;
-   - y como tres reflejos fantasma tenues de color, reflejados a través del centro, como los que dejan las lentes de una camcorder barata.
-   Cuesta unos 0,07 ms en Medio y en Alto.
+   - y como tres reflejos fantasma tenues de color, reflejados a través del centro, como los que dejan las lentes de una camcorder barata;
+   - una pasada mide el destello medio del cuadro y ambos bajan cuanto más luz fuerte hay: a la mitad en un pasillo lleno de apliques, al 86 % en un dormitorio con un solo plafón;
+   - solo las luces grandes dejan reflejos, porque el destello difuminado de una bombilla pequeña queda por debajo de un umbral.
+   Cuesta unos 0,07 ms en Medio y en Alto. Se suavizó tras probarlo en partida: con muchas fuentes de luz molestaba.
 7. **Entrelazado** (lente, todos los presets): de las 480 líneas de un fotograma, una de cada dos es el campo grabado 1/60 s antes, desplazado lo que giró la cámara en ese tiempo (`hotel_main.update_fields`).
    - Solo peina en giros rápidos: nada por debajo de unos 12 píxeles de desplazamiento (a 1 rad/s no aparece), todo a partir de 30 y nunca más de 48.
    - «Efectos reducidos» lo quita.
@@ -167,7 +169,12 @@ La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). 
    - El volumen termina en las paredes de su sala: el rebote no llega a la contigua, y una sala oscura no tiene.
    - Las lámparas se inyectan en vivo, así que un tubo que falla o una lámpara que se apaga se llevan su rebote.
    - Alto lo dibuja a media resolución (`bounce_half`), sin diferencia visible; Ultra, a resolución completa.
-5. **Reflejos:** una sonda por sala iluminada en Alto y Ultra, renderizada con sombras, y una de cada tres salas de pasillo en Medio. Solo se muestra con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. Su luz ambiente solo se usa si se quita el rebote.
+5. **Reflejos:** una sonda por sala iluminada en Alto y Ultra, renderizada con sombras, y una de cada tres salas de pasillo en Medio. Solo se crea con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. Su luz ambiente solo se usa si se quita el rebote.
+   - **Solo existen las cercanas:** se crean las 24 más próximas y una ya creada se conserva mientras esté entre las 32 más próximas; las demás se destruyen.
+   - **Por qué:** Godot reserva a cada sonda un hueco de su atlas de reflejos (64) la primera vez que la dibuja, y no lo devuelve hasta destruirla, aunque se oculte. Con una sonda en cada sala iluminada, al explorar un piso grande se llenaba el atlas:
+     - las sondas nuevas mostraban capturas de otras salas: un rectángulo rojizo en un techo o luz cálida en un baño de azulejos;
+     - poco después el juego se cerraba.
+     Encontrado jugando; reproducido recorriendo las 104 salas iluminadas de la semilla 7 en Ultra, que se caía siempre y ahora no, con un máximo de 30 sondas vivas.
 6. **Niebla iluminada** (desde Medio): las lámparas iluminan la niebla volumétrica, que entonces llega a 14 m en vez de 48. La linterna también la ilumina hasta esa distancia; a 14 m su haz ya es débil y el corte no se nota.
 
 **Resultado** (Alto, sin cinta, brillo medio / porcentaje de píxeles negros):

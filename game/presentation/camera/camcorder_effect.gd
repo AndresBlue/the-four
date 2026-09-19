@@ -15,7 +15,9 @@ extends CompositorEffect
 ##            a quarter of the resolution and blurred, comes back as a soft
 ##            halo round each lamp (veiling glare) and as faint coloured
 ##            ghosts mirrored through the centre (reflections between the
-##            lens elements, the camcorder's cheap coatings)
+##            lens elements, the camcorder's cheap coatings). Both fade the
+##            more light there is in frame (a corridor of wall lamps is not a
+##            firework), and only the bigger lights leave ghosts
 ##   grade    exposure, smear, glare, white balance and the video knee that
 ##            replaces the tonemapper (the environment is set to linear while
 ##            it runs)
@@ -41,8 +43,13 @@ var smear_threshold := 4.0
 ## light above glare_threshold (in exposed, linear units).
 var glare := 1.0
 var glare_threshold := 1.5
-const HALO := 0.3
-const GHOSTS := 0.06
+const HALO := 0.22
+const GHOSTS := 0.035
+## Blurred glare under this leaves no ghost: a small bulb's is spread thin.
+const GHOST_FLOOR := 0.08
+## How fast halo and ghosts give way as the frame's mean glare grows: at a
+## mean glare of 1 / CROWD they are at half strength.
+const CROWD := 400.0
 ## White balance multipliers (a fixed camera white point) and the knee: from
 ## `knee` up the signal is compressed into what is left below clipping.
 var white_balance := Vector3.ONE
@@ -104,7 +111,7 @@ void main() {
 const IRIS := """
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0, std430) restrict readonly buffer Samples { float data[]; } samples;
-layout(set = 0, binding = 1, std430) restrict buffer State { float ev; float target; float gain; float pad; } state;
+layout(set = 0, binding = 1, std430) restrict buffer State { float ev; float target; float gain; float glare; } state;
 layout(rgba32f, set = 0, binding = 2) uniform restrict writeonly image2D exposure_image;
 layout(push_constant, std430) uniform Params { float count; float dt; float key; float min_ev; float max_ev; float speed_up; float speed_down; float reset; } p;
 shared float sums[256];
@@ -141,7 +148,7 @@ void main() {
 const SMEAR := """
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(rgba16f, set = 0, binding = 0) uniform restrict readonly image2D color_image;
-layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float pad; } state;
+layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float glare; } state;
 layout(set = 0, binding = 2, std430) restrict writeonly buffer Columns { float data[]; } columns;
 layout(push_constant, std430) uniform Params { vec2 size; float threshold; float pad; } p;
 void main() {
@@ -159,7 +166,7 @@ void main() {
 const BRIGHT := """
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba16f, set = 0, binding = 0) uniform restrict readonly image2D color_image;
-layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float pad; } state;
+layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float glare; } state;
 layout(rgba16f, set = 0, binding = 2) uniform restrict writeonly image2D glare_image;
 layout(push_constant, std430) uniform Params { vec2 size; vec2 glare_size; float threshold; float pad0; float pad1; float pad2; } p;
 void main() {
@@ -179,6 +186,30 @@ void main() {
 	// bare bulb does not flood the frame.
 	float over = min(max(lum - p.threshold, 0.0), 24.0);
 	imageStore(glare_image, cell, vec4(c * over / max(lum, 1e-4), 1.0));
+}
+"""
+## The frame's mean glare (a 32 x 16 look at the blurred glare), into the
+## state for the grade.
+const GLARE_MEAN := """
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0) uniform sampler2D glare_image;
+layout(set = 0, binding = 1, std430) restrict buffer State { float ev; float target; float gain; float glare; } state;
+layout(push_constant, std430) uniform Params { vec2 grid; vec2 pad; } p;
+shared float sums[256];
+void main() {
+	uint t = gl_LocalInvocationID.x;
+	float s = 0.0;
+	for (uint i = t; i < 512u; i += 256u) {
+		vec2 uv = (vec2(float(i % 32u), float(i / 32u)) + 0.5) / p.grid;
+		s += dot(textureLod(glare_image, uv, 0.0).rgb, vec3(0.2126, 0.7152, 0.0722));
+	}
+	sums[t] = s;
+	barrier();
+	for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+		if (t < stride) sums[t] += sums[t + stride];
+		barrier();
+	}
+	if (t == 0u) state.glare = sums[0] / 512.0;
 }
 """
 const BLUR := """
@@ -204,16 +235,17 @@ void main() {
 const GRADE := """
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba16f, set = 0, binding = 0) uniform restrict image2D color_image;
-layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float pad; } state;
+layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; float target; float gain; float glare; } state;
 layout(set = 0, binding = 2, std430) restrict readonly buffer Columns { float data[]; } columns;
 layout(set = 0, binding = 3) uniform sampler2D glare_image;
-layout(push_constant, std430) uniform Params { vec2 size; float smear; float knee; vec3 white; float toe; float halo; float ghosts; float pad0; float pad1; } p;
+layout(push_constant, std430) uniform Params { vec2 size; float smear; float knee; vec3 white; float toe; float halo; float ghosts; float ghost_floor; float crowd; } p;
 // Where the lens puts a ghost of the light at uv: mirrored through the centre
-// and scaled, fading towards the edge of the image circle.
+// and scaled, fading towards the edge of the image circle. Only what is over
+// ghost_floor: the bigger lights.
 vec3 ghost(vec2 uv, float scale, vec3 tint) {
 	vec2 at = 0.5 + (0.5 - uv) * scale;
 	float fade = 1.0 - smoothstep(0.3, 0.75, length(at - 0.5));
-	return texture(glare_image, at).rgb * tint * fade;
+	return max(texture(glare_image, at).rgb - p.ghost_floor, vec3(0.0)) * tint * fade;
 }
 vec3 shoulder(vec3 x) {
 	// Linear up to the knee, then compressed into what is left below 1.
@@ -235,10 +267,12 @@ void main() {
 	}
 	if (p.halo > 0.0) {
 		vec2 uv = (vec2(pix) + 0.5) / p.size;
+		// The more light in frame, the less of either.
+		float calm = 1.0 / (1.0 + state.glare * p.crowd);
 		// Veiling glare: faintly warm, as through old glass.
-		c += texture(glare_image, uv).rgb * p.halo * vec3(1.0, 0.94, 0.86);
+		c += texture(glare_image, uv).rgb * p.halo * calm * vec3(1.0, 0.94, 0.86);
 		vec3 g = ghost(uv, 0.55, vec3(0.55, 1.0, 0.6)) + ghost(uv, 1.0, vec3(1.0, 0.75, 0.45)) * 0.7 + ghost(uv, 1.6, vec3(0.7, 0.55, 1.0)) * 0.5;
-		c += g * p.ghosts;
+		c += g * p.ghosts * calm;
 	}
 	c *= p.white;
 	c = c * c / (c + p.toe);
@@ -257,7 +291,7 @@ func _init() -> void:
 func setup() -> void:
 	rd = RenderingServer.get_rendering_device()
 	if rd == null: return
-	var sources := {"meter": METER, "iris": IRIS, "smear": SMEAR, "bright": BRIGHT, "blur": BLUR, "grade": GRADE}
+	var sources := {"meter": METER, "iris": IRIS, "smear": SMEAR, "bright": BRIGHT, "blur": BLUR, "glare_mean": GLARE_MEAN, "grade": GRADE}
 	for name in sources:
 		var source := RDShaderSource.new()
 		source.language = RenderingDevice.SHADER_LANGUAGE_GLSL
@@ -376,4 +410,5 @@ func _render_callback(_type: int, data: RenderData) -> void:
 		dispatch("bright", [image(0, color), storage(1, state), image(2, glare_a)], PackedFloat32Array([sizef.x, sizef.y, quarterf.x, quarterf.y, glare_threshold, 0.0, 0.0, 0.0]), groups)
 		dispatch("blur", [sampled(0, glare_a), image(1, glare_b)], PackedFloat32Array([quarterf.x, quarterf.y, 1.0 / quarterf.x, 0.0]), groups)
 		dispatch("blur", [sampled(0, glare_b), image(1, glare_a)], PackedFloat32Array([quarterf.x, quarterf.y, 0.0, 1.0 / quarterf.y]), groups)
-	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns), sampled(3, glare_a)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe, HALO * glare, GHOSTS * glare, 0.0, 0.0]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))
+		dispatch("glare_mean", [sampled(0, glare_a), storage(1, state)], PackedFloat32Array([32.0, 16.0, 0.0, 0.0]), Vector3i(1, 1, 1))
+	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns), sampled(3, glare_a)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe, HALO * glare, GHOSTS * glare, GHOST_FLOOR, CROWD]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))

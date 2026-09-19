@@ -22,7 +22,9 @@ var full_walls := false
 var dust: CPUParticles3D
 var curtain_material: ShaderMaterial
 var fog_volumes: Array[FogVolume] = []
-var reflection_probes: Array[ReflectionProbe] = []
+## Every lit room's reflection probe, made only while it is among the nearest
+## (update_visibility): {room, parent, height, size, every_third, probe}.
+var probe_slots: Array[Dictionary] = []
 # Lamp lights inside furniture; visibility is managed with the rooms.
 var practicals: Array[OmniLight3D] = []
 # Fluorescent fixtures that flicker (never while effects are reduced).
@@ -76,6 +78,11 @@ const SCONCE_REACH := 24.0
 ## Bounce light round each lit room (preset bounce): bounce_light.gd.
 const BOUNCE := preload("res://game/world/hotel/bounce_light.gd")
 var bounce := BOUNCE.new()
+## Reflection probes made at once, the nearest (update_visibility), and how
+## far down that order a made one is kept: never more than PROBES_KEPT, well
+## under the 64 places of Godot's reflection atlas.
+const PROBES_SHOWN := 24
+const PROBES_KEPT := 32
 ## Door numbers are not drawn past this: about 5 px tall there, unreadable
 ## through the tape filter anyway.
 const NUMBER_REACH := 20.0
@@ -564,25 +571,12 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			fog.material = fog_mat
 			node.add_child(fog)
 			fog_volumes.append(fog)
-	# Every lit room has a reflection probe the size of the room; the preset
-	# decides which are in use (probes: every third hall for reflections, or
-	# every lit room, whose capture also becomes the room's ambient light:
-	# its bounce, confined to its box, so it never reaches the next room). A
-	# dark room has none and stays black.
+	# Every lit room can have a reflection probe the size of the room; the
+	# preset decides which are in use (probes: every third hall, or every lit
+	# room), and only the nearest exist (update_visibility). A dark room has
+	# none and stays black.
 	if not dark_room(room):
-		var probe := ReflectionProbe.new()
-		probe.position.y = height * 0.5
-		probe.size = Vector3(span.x - 0.2, height - 0.05, span.y - 0.2)
-		probe.interior = true
-		probe.box_projection = true
-		probe.blend_distance = 0.1
-		probe.intensity = 0.6
-		probe.max_distance = 30
-		probe.visible = false
-		probe.set_meta("every_third", room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0)
-		probe.set_meta("room", int(room.id))
-		node.add_child(probe)
-		reflection_probes.append(probe)
+		probe_slots.append({"room": int(room.id), "parent": node, "height": height, "size": Vector3(span.x - 0.2, height - 0.05, span.y - 0.2), "every_third": room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0, "probe": null})
 	if room.type == 0:
 		# Where the night started: a red emergency lamp blinking over the
 		# reception, the one landmark to find the way back by.
@@ -750,6 +744,33 @@ func start_bounce() -> void:
 func _exit_tree() -> void:
 	bounce.finish()
 
+func make_probe(slot: Dictionary) -> void:
+	var probe := ReflectionProbe.new()
+	probe.position.y = slot.height * 0.5
+	probe.size = slot.size
+	probe.interior = true
+	probe.box_projection = true
+	probe.blend_distance = 0.1
+	probe.intensity = 0.6
+	probe.max_distance = 30
+	probe_settings(probe)
+	slot.parent.add_child(probe)
+	slot.probe = probe
+
+## Freeing it is what gives its place in the atlas back.
+func drop_probe(slot: Dictionary) -> void:
+	slot.probe.queue_free()
+	slot.probe = null
+
+## Rendered with shadows at probes 2, and there, without bounce light, its
+## capture is also its room's ambient light (the bounce volumes would be
+## replaced by it otherwise).
+func probe_settings(probe: ReflectionProbe) -> void:
+	var shadowed: bool = preset.probes >= 2
+	if probe.enable_shadows != shadowed: probe.enable_shadows = shadowed
+	var mode := ReflectionProbe.AMBIENT_ENVIRONMENT if shadowed and not preset.bounce else ReflectionProbe.AMBIENT_DISABLED
+	if probe.ambient_mode != mode: probe.ambient_mode = mode
+
 ## Distance fade of a lamp; its shadow ends exactly where its light does.
 static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
 	if lamp.distance_fade_begin != begin: lamp.distance_fade_begin = begin
@@ -774,12 +795,8 @@ func apply_quality(new_preset: Dictionary) -> void:
 	# Every lit room's probe, rendered with shadows, also lights its room
 	# (probes 2); otherwise only reflections. The bounce volumes take over
 	# from it (a probe's ambient light would replace theirs).
-	var shadowed: bool = preset.probes >= 2
-	var ambient: bool = shadowed and not preset.bounce
-	for probe in reflection_probes:
-		if probe.enable_shadows != shadowed: probe.enable_shadows = shadowed
-		var mode := ReflectionProbe.AMBIENT_ENVIRONMENT if ambient else ReflectionProbe.AMBIENT_DISABLED
-		if probe.ambient_mode != mode: probe.ambient_mode = mode
+	for slot in probe_slots:
+		if slot.probe != null: probe_settings(slot.probe)
 	var fog_energy := 1.0 if preset.lamp_fog else 0.0
 	for light in lights:
 		if light.light_volumetric_fog_energy != fog_energy: light.light_volumetric_fog_energy = fog_energy
@@ -882,11 +899,24 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		if lights[i].shadow_enabled != shadows:
 			lights[i].shadow_enabled = shadows
 			lights[i].light_projector = lights[i].get_meta("profile") if shadows else null
-	# A probe captures its room once, when it first shows: only while the
-	# room's lamp is on, or it would keep a dark capture as the room's light.
-	for probe in reflection_probes:
-		var used: bool = preset.probes >= 2 or (preset.probes == 1 and probe.get_meta("every_third"))
-		probe.visible = used and not echo_view and lights[int(probe.get_meta("room"))].visible
+	# A probe captures its room once, when it is made: only while the room's
+	# lamp is on, or it would keep a dark capture. Only the nearest exist.
+	# Godot's reflection atlas has 64 places and a probe keeps its place until
+	# it is freed, even hidden: with a probe in every lit room, exploring a big
+	# floor filled the atlas, probes then showed other rooms' captures (a red
+	# square on a ceiling, warm light in a tiled bathroom) and the game
+	# crashed. So the nearest PROBES_SHOWN are made, one already made is kept
+	# while among the nearest PROBES_KEPT (no remaking at the edge), and the
+	# rest are freed.
+	var wanted: Array[Dictionary] = []
+	for slot in probe_slots:
+		var used: bool = preset.probes >= 2 or (preset.probes == 1 and slot.every_third)
+		if used and not echo_view and lights[slot.room].visible: wanted.append(slot)
+		elif slot.probe != null: drop_probe(slot)
+	wanted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.parent.global_position.distance_squared_to(player_position) < b.parent.global_position.distance_squared_to(player_position))
+	for k in wanted.size():
+		if wanted[k].probe == null and k < PROBES_SHOWN: make_probe(wanted[k])
+		elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
 	for lamp in sconce_lights:
 		lamp.visible = preset.sconce_lights and shadows and not echo_view and lamp.global_position.distance_to(player_position) < SCONCE_REACH
 	bounce.show_near(player_position, preset.bounce and not echo_view)
