@@ -237,6 +237,16 @@ func run() -> void:
 	echo.shriek_hold = 0.0
 	await frames(240)
 	check("Y se apaga después", echo.shriek < 0.05)
+	# The cry sounds exactly as long as the red, fading with it, and a second
+	# shriek while it lasts stretches it instead of cutting it short.
+	var cry: float = echo.SHRIEK_HOLD + 1.0 / echo.SHRIEK_FALL
+	creature.howl(echo.SHRIEK_HOLD, 1.0 / echo.SHRIEK_FALL, false)
+	check("El chillido suena lo que dura el rojo", absf(creature.howl_left - cry) < 0.05)
+	await frames(180)
+	creature.howl(echo.SHRIEK_HOLD, 1.0 / echo.SHRIEK_FALL, false)
+	check("Chillar otra vez lo alarga", absf(creature.howl_left - cry) < 0.05 and creature.grunt_left > 0.0)
+	await frames(int(cry * 60.0) + 20)
+	check("Y termina callado", creature.howl_left == 0.0 and creature.grunt_left == 0.0)
 
 	# --- Strong reflectors ---------------------------------------------------------
 	# A door in plain view answers on its own: its frame fills with grains.

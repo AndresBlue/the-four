@@ -76,6 +76,12 @@ var wander_clock := 0.0
 var voice: AudioStreamPlayer3D
 var grunt_clock := 0.0
 var grunt_left := 0.0
+## The hunter's shriek: aggressive grunts chained back to back for as long as
+## its red lasts, then faded out with it (howl()). Seconds left including the
+## fade, how long that fade is, and the level the current grunt was routed at.
+var howl_left := 0.0
+var howl_fade := 1.0
+var howl_db := 0.0
 var last_grunt := -1
 ## A patrol route set by the pacing director: kept until it gets there.
 var guided := false
@@ -187,6 +193,53 @@ func grunt() -> float:
 	# A lower pitch plays the segment slower: stop when it really ends.
 	grunt_left = segment[1] / voice.pitch_scale
 	return grunt_left
+
+## The shriek of a player hunting: it cries for `hold` seconds and fades over
+## `fade`, the same curve as the red of its acoustic view. Shrieking again
+## while it lasts starts a fresh cry and stretches it, so a hunter who keeps
+## shrieking keeps sounding, one grunt after another. `tell` sends it to the
+## other machines, which replay it at their own place.
+func howl(hold: float, fade: float, tell := true) -> void:
+	howl_fade = maxf(fade, 0.05)
+	howl_left = maxf(howl_left, hold + howl_fade)
+	if tell and "match_net" in level and level.match_net != null: level.match_net.creature_call("howl", int(round(hold * 100.0)), howl_fade)
+	howl_next()
+
+## The next grunt of the chain, never the one just heard.
+func howl_next() -> void:
+	var choices: Array = []
+	for index in GRUNTS.SEGMENTS.size():
+		if GRUNTS.SEGMENTS[index][1] >= AGGRESSIVE_GRUNT and index != last_grunt: choices.append(index)
+	last_grunt = choices[rng.randi_range(0, choices.size() - 1)]
+	var segment: Array = GRUNTS.SEGMENTS[last_grunt]
+	var pitch := rng.randf_range(0.85, 1.0)
+	# Out of earshot it still keeps time, so the chain stays in step.
+	grunt_left = segment[1] / pitch
+	if level == null or not level.world_audio.enabled: return
+	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
+	if not route.audible: return
+	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
+	howl_db = voice.volume_db
+	voice.pitch_scale = pitch
+	voice.play(segment[0])
+	update_voice(0.0)
+
+## Stops each grunt where it ends (the file holds them all in a row), chains
+## the next one while a shriek lasts, and fades the shriek out at its end.
+func update_voice(delta: float) -> void:
+	if howl_left > 0.0:
+		howl_left -= delta
+		if howl_left <= 0.0:
+			howl_left = 0.0
+			grunt_left = 0.0
+			voice.stop()
+			return
+		voice.volume_db = howl_db + linear_to_db(maxf(clampf(howl_left / howl_fade, 0.0, 1.0), 0.001))
+	if grunt_left > 0.0:
+		grunt_left -= delta
+		if grunt_left <= 0.0:
+			if howl_left > 0.2: howl_next()
+			else: voice.stop()
 
 func clear_sight(point: Vector3) -> bool:
 	var ray := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, EYE_HEIGHT, 0), point, 1 | 8 | 64)
@@ -434,9 +487,7 @@ func follow_state(delta: float) -> void:
 	global_position = before.position.lerp(after.position, t)
 	rotation.y = lerp_angle(before.yaw, after.yaw, t)
 	velocity = before.velocity.lerp(after.velocity, t)
-	if grunt_left > 0.0:
-		grunt_left -= delta
-		if grunt_left <= 0.0: voice.stop()
+	update_voice(delta)
 	update_visual(delta)
 
 ## Plants itself in front of a wardrobe and searches it, which takes a while.
@@ -476,6 +527,9 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 	if kind == "warning":
 		signal_player.play()
 		return
+	if kind == "howl":
+		howl(segment / 100.0, pitch, false)
+		return
 	if kind != "grunt" or segment < 0 or segment >= GRUNTS.SEGMENTS.size() or not level.world_audio.enabled: return
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
 	if not route.audible: return
@@ -491,6 +545,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if control == "player":
 		if is_instance_valid(driver): driver.drive(delta)
+		update_voice(delta)
 		return
 	grace = maxf(0, grace - delta)
 	state_time += delta
@@ -583,9 +638,7 @@ func _physics_process(delta: float) -> void:
 		Mode.ALERT:
 			# Even if the player ducks out of view it heads for where it saw them.
 			if state_time >= ALERT_TIME: set_mode(Mode.CHASE)
-	if grunt_left > 0.0:
-		grunt_left -= delta
-		if grunt_left <= 0.0: voice.stop()
+	update_voice(delta)
 	if mode == Mode.WARDROBE:
 		update_wardrobe(delta)
 	elif mode == Mode.EXECUTE:

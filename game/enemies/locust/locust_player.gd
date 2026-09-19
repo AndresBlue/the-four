@@ -194,7 +194,9 @@ func strike() -> void:
 func shriek() -> void:
 	if shriek_cooldown > 0.0 or creature.grace > 0.0 or creature.mode in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: return
 	shriek_cooldown = SHRIEK_COOLDOWN
-	creature.grunt()
+	# The cry lasts exactly as long as the red it floods the reading with, and
+	# fades out with it; shrieking again stretches both.
+	creature.howl(ECHO.SHRIEK_HOLD, 1.0 / ECHO.SHRIEK_FALL)
 	# The reading floods red and one enormous shell goes out with the cry.
 	if is_instance_valid(echo): echo.flash_shriek()
 	level.match_net.locust_shriek()

@@ -98,7 +98,7 @@ Dos cosas no necesitan red: las poses de los supervivientes ya están en la máq
 
 ## El chillido
 
-Su propio grito inunda la lectura de rojo durante unos cuatro segundos y suelta un frente enorme. Pero el rojo no es lo que vale: lo que vale es que **deja marcados** a los que encuentra con una nube densa sobre cada uno, que sigue ahí **más de tres segundos después de que el grito se haya apagado**, también a través de las paredes.
+Su propio grito inunda la lectura de rojo durante unos cuatro segundos y suelta un frente enorme. **El grito suena exactamente lo mismo que el rojo** (`hotel_locust.howl()`, con `SHRIEK_HOLD` y `SHRIEK_FALL` de esta vista): gruñidos agresivos encadenados durante el rojo pleno y un desvanecido de volumen que sigue su misma caída; chillar de nuevo mientras dura empieza otro gruñido y alarga los dos, y se envía a las demás máquinas para que lo oigan desde su posición. Pero el rojo no es lo que vale: lo que vale es que **deja marcados** a los que encuentra con una nube densa sobre cada uno, que sigue ahí **más de tres segundos después de que el grito se haya apagado**, también a través de las paredes.
 
 **Solo encuentra lo que se mueve y está a la vista.** Un superviviente quieto, o metido en un armario, no le devuelve nada. Se mide por el terreno que cubre entre dos lecturas del propio chillido (cinco por segundo), no por un campo de velocidad: lo que importa es si se movió. Quedarse helado al oír el grito es la respuesta, y cuesta segundos preciosos.
 
