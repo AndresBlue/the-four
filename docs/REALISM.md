@@ -396,6 +396,30 @@ Arreglos del camino:
 - `fase4_primeros_planos.png`;
 - catálogo `evidence/catalogue_sheet.png`.
 
+## Ajustes tras probar el piso (después de la fase 4)
+
+**1. Zoom óptico** (fase 1, la camcorder). La cámara tiene el zoom de 6 aumentos de una camcorder doméstica:
+- se mueve con la rueda del ratón, adelante hacia T y atrás hacia W;
+- el motor recorre todo su viaje en unos tres segundos y avanza parejo en pasos de lente, no de ángulo;
+- a más zoom, el barril de la lente se endereza (`camcorder_look.barrel_for()`), como en un teleobjetivo real, y la vista gira más despacio con el mismo movimiento de ratón, así que sigue siendo manejable;
+- el temblor de la mano no cambia, pero a 6 aumentos se ve seis veces mayor, como en una cinta de verdad;
+- el OSD muestra la barra `W ├───■───┤ T` mientras el zoom se mueve, y se desvanece 1,6 s después;
+- cada piso empieza con la lente abierta, y la criatura no tiene zoom.
+
+**2. Smear de CCD más sutil.** La raya vertical de las luces saturadas se repartía poco y no tenía tope, así que un fluorescente de frente pintaba una barra blanca sólida:
+- ahora se reparte sobre nueve columnas y sale difuminada;
+- se satura en `SMEAR_CAP` (0,28 en luz lineal), así que nunca pasa de un velo translúcido;
+- el umbral sube de 4 a 5, así que no la disparan los reflejos, solo las fuentes de luz.
+
+**3. Placas de puerta.** El número no cabía en la placa: la placa pasa de 0,26 × 0,13 m a 0,34 × 0,19 m y el número baja de 24 a 20, con 4,5 cm de margen a los lados.
+
+**4. Luz de los apliques a través de las paredes (bug).** Reproducido con una sonda: desde una sala, la pared contigua se aclaraba con la forma de los apliques del otro lado. Tres causas, todas en el rebote:
+- **Las caras exteriores del doble.** Cada sala hornea su volumen con un doble de sus cajas; la media pared del borde llevaba también la cara que mira a la sala vecina. Esos vóxeles del borde se encendían con las lámparas de enfrente (el horneador ilumina un vóxel desde cualquier lado) y daban su luz a esta sala: un almacén de luz fría junto a un baño salía un 12 % más claro y amarillento. Ahora el doble pierde las caras que miran fuera del volumen (`bounce_light.outer_faces_removed()`); no se dibuja nunca, así que no se nota en nada más.
+- **Los vanos.** En el doble, cada vano se tapa con una losa del tamaño de la hoja, así que por el hueco ya no entra la luz de la sala de al lado.
+- **Puertas y marcos.** Una hoja está metida en los volúmenes de las dos salas y Godot la iluminaba con los dos, así que la cara de este lado brillaba con las lámparas de la otra. Las puertas y sus marcos ya no reciben luz rebotada.
+- **Medida:** apagar el rebote de las lámparas de la sala vecina ya no cambia lo que se ve (antes hasta un 12 %). Queda una diferencia del 1,6 % junto a un vano, sin forma reconocible.
+- **Descartado:** la máscara de culling de las luces (`light_cull_mask`) no sirve, porque VoxelGI inyecta la luz igual.
+
 ### Pruebas que se hacen al empezar su fase
 
 - **6. Bisel en shader:** fase 5.

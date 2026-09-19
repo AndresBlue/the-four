@@ -242,6 +242,9 @@ func flush() -> void:
 			var instance := MultiMeshInstance3D.new()
 			instance.name = "Mesh_" + group.replace("@", "-")
 			instance.multimesh = multi
+			# Outside a room (door plaques, staged sets): no bounce light,
+			# like the doors themselves.
+			if room == null: instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 			batch.parent.add_child(instance)
 			if room != null: bounce.add(batch.parent.get_instance_id(), group, transforms)
 			if material_of(group) in SWAYING:
@@ -502,6 +505,12 @@ func build(data: Dictionary) -> void:
 		if data.get("merged", []).has(edge): continue
 		var center := FLOOR.portal_between(a, b)
 		var yaw := PI / 2 if a.x != b.x else 0.0
+		# In each room's bounce stand-in the doorway is shut (bounce_light.gd):
+		# through a hole in it the voxels there took the next room's lamps
+		# and lit the leaf's face on this side, door closed.
+		for room in [a, b]:
+			var slab := Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(FLOOR.PORTAL, 2.65, 0.12)), center - FLOOR.position_of(room) + Vector3(0, 1.325, 0))
+			bounce.add(room_nodes[int(room.id)].get_instance_id(), "door", [slab])
 		var door = DOOR.new()
 		door.name = "Door_%d_%d" % [a.id, b.id]
 		door.collision_layer = 8
@@ -515,6 +524,10 @@ func build(data: Dictionary) -> void:
 		var leaf := MeshInstance3D.new()
 		leaf.name = "Leaf"
 		leaf.mesh = DOOR_LEAF
+		# A leaf and its casing stand in both rooms' bounce volumes: Godot
+		# lit each face with both, and a shut door's far face glowed with the
+		# lamps of the room behind it. Doors take no bounce light.
+		leaf.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		door.add_child(leaf)
 		door.add_child(light_seal())
 		# The body keeps the leaf's original box: walking, the creature's reach
@@ -530,6 +543,7 @@ func build(data: Dictionary) -> void:
 		var casing := MeshInstance3D.new()
 		casing.name = "Casing_%d_%d" % [a.id, b.id]
 		casing.mesh = DOOR_FRAME
+		casing.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		casing.position = center
 		casing.rotation.y = yaw
 		add_child(casing)
@@ -542,9 +556,9 @@ func build(data: Dictionary) -> void:
 		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
 		# On a brass plaque screwed to the leaf, in dark letters.
 		for face in [1, -1]:
-			box(door, Vector3(half, 1.94, face * (LEAF_FACE + 0.002)), Vector3(0.26, 0.13, 0.004), "gold")
-		text(door, str(100 + int(a.id)), Vector3(half, 1.94, (LEAF_FACE + 0.005) * b_side), 0.0 if b_side > 0 else PI, 24, NUMBER_REACH, PLAQUE_INK)
-		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -(LEAF_FACE + 0.005) * b_side), PI if b_side > 0 else 0.0, 24, NUMBER_REACH, PLAQUE_INK)
+			box(door, Vector3(half, 1.94, face * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
+		text(door, str(100 + int(a.id)), Vector3(half, 1.94, (LEAF_FACE + 0.005) * b_side), 0.0 if b_side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
+		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -(LEAF_FACE + 0.005) * b_side), PI if b_side > 0 else 0.0, 20, NUMBER_REACH, PLAQUE_INK)
 		if int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
@@ -857,6 +871,10 @@ func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
 	lamp.shadow_normal_bias = 0.6
 	lamp.light_volumetric_fog_energy = 0.0
 	lamp.light_projector = LIGHTING.profile("sconce")
+	# Out of the bounce light: a wall lamp sits 25 cm from the wall, and the
+	# next room's volume (bounce_light.gd) took its light in through a half
+	# wall thinner than one of its voxels, lighting the far face yellow.
+	lamp.light_bake_mode = Light3D.BAKE_DYNAMIC
 	lamp.distance_fade_enabled = true
 	set_fade(lamp, SCONCE_REACH - 8.0, 6.0)
 	lamp.visible = false
@@ -874,6 +892,9 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	lamp.omni_range = reach
 	lamp.omni_attenuation = 2.2
 	lamp.light_size = PRACTICAL_SIZE * preset.penumbra
+	# Floor and desk lamps stand near walls: out of the bounce light, like the
+	# wall lamps (sconce_light()).
+	lamp.light_bake_mode = Light3D.BAKE_DYNAMIC
 	lamp.light_specular = 0.25
 	lamp.shadow_enabled = true
 	lamp.shadow_bias = 0.04

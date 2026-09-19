@@ -11,20 +11,33 @@ extends RefCounted
 ## Barrel distortion: source radius = r * scale * (1 + BARREL * r^2), with r
 ## in half-heights.
 const BARREL := 0.05
-## Vertical field of view at the centre of the picture, as before the lens.
+## Vertical field of view at the centre of the picture, as before the lens,
+## with the zoom fully wide.
 const VIEW_FOV := 78.0
+## The zoom motor's range, wide (1) to telephoto: a 6x lens, like the home
+## camcorders of the day.
+const ZOOM_MAX := 6.0
+
+## The field of view the picture's centre keeps at a zoom of 1 to ZOOM_MAX.
+static func zoom_fov(zoom: float, design := VIEW_FOV) -> float:
+	return rad_to_deg(2.0 * atan(tan(deg_to_rad(design) * 0.5) / clampf(zoom, 1.0, ZOOM_MAX)))
+
+## A long lens bends straight lines far less than a wide one: the barrel
+## fades out as the zoom goes in.
+static func barrel_for(zoom: float) -> float:
+	return BARREL / clampf(zoom, 1.0, ZOOM_MAX)
 
 ## Scale that puts the corners of the output exactly on the corners of the
 ## rendered picture, for an aspect ratio (width / height).
-static func corner_scale(aspect: float) -> float:
-	return 1.0 / (1.0 + BARREL * (aspect * aspect + 1.0))
+static func corner_scale(aspect: float, barrel := BARREL) -> float:
+	return 1.0 / (1.0 + barrel * (aspect * aspect + 1.0))
 
 ## Vertical field of view to render with, so that after the remap the centre
 ## sees `design` (VIEW_FOV for the player). Every camera the lens films
 ## through asks for its field of view here: the player's, the watch camera,
 ## the opening scene and the title set.
-static func render_fov(aspect: float, design := VIEW_FOV) -> float:
-	return rad_to_deg(2.0 * atan(tan(deg_to_rad(design) * 0.5) / corner_scale(aspect)))
+static func render_fov(aspect: float, design := VIEW_FOV, barrel := BARREL) -> float:
+	return rad_to_deg(2.0 * atan(tan(deg_to_rad(design) * 0.5) / corner_scale(aspect, barrel)))
 
 ## The same for whatever viewport a camera renders into.
 static func fov_for(viewport: Viewport, design: float) -> float:

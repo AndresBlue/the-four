@@ -128,12 +128,19 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not active: return
 	if event is InputEventMouseMotion and not reading:
-		turn_delta += Vector2(-event.relative.x, -event.relative.y * (-1 if settings.values.invert else 1)) * settings.values.sensitivity
-		rotate_y(-event.relative.x * settings.values.sensitivity)
+		# Zoomed in, the same hand movement swings the picture as much more,
+		# so the look slows down with the lens.
+		var aim: float = settings.values.sensitivity / zoom
+		turn_delta += Vector2(-event.relative.x, -event.relative.y * (-1 if settings.values.invert else 1)) * aim
+		rotate_y(-event.relative.x * aim)
 		if hidden:
 			var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
 			rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
-		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * settings.values.sensitivity * (-1 if settings.values.invert else 1), -1.45, 1.45)
+		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * aim * (-1 if settings.values.invert else 1), -1.45, 1.45)
+	if event is InputEventMouseButton and event.pressed and not reading:
+		# The zoom rocker: the wheel forward is T, back is W.
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_to(zoom_wanted * ZOOM_STEP)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_to(zoom_wanted / ZOOM_STEP)
 	if event.is_action_pressed("flashlight"):
 		torch.visible = not torch.visible
 		torch_warmup = 0.0
@@ -326,11 +333,34 @@ func update_focus(delta: float) -> void:
 
 ## Where the camera looks without the hand-held motion (what the network
 ## sends as the look, for instance).
+## The camcorder's zoom (LOOK.ZOOM_MAX at full telephoto), the rocker's
+## position, and how fast the motor travels (the whole range in about three
+## seconds, as a home camcorder does).
+const LOOK := preload("res://game/presentation/camcorder_look.gd")
+const ZOOM_STEP := 1.18
+const ZOOM_SPEED := 0.9
+var zoom := 1.0
+var zoom_wanted := 1.0
+
+func zoom_to(value: float) -> void:
+	zoom_wanted = clampf(value, 1.0, LOOK.ZOOM_MAX)
+
+## Follows the rocker at the motor's pace, evenly along the lens's travel.
+func update_zoom(delta: float) -> void:
+	var here := log(zoom) / log(2.0)
+	var there := log(zoom_wanted) / log(2.0)
+	zoom = pow(2.0, move_toward(here, there, delta * ZOOM_SPEED))
+
+## Where the rocker stands, 0 wide to 1 telephoto (the zoom bar in the OSD).
+func zoom_fraction() -> float:
+	return log(zoom) / log(LOOK.ZOOM_MAX)
+
 func look_pitch() -> float:
 	return camera.rotation.x - handheld.x
 
 func _process(delta: float) -> void:
 	if is_instance_valid(camera) and settings != null:
+		update_zoom(delta)
 		update_handheld(delta)
 		update_focus(delta)
 	if not is_instance_valid(torch) or not torch.is_inside_tree(): return

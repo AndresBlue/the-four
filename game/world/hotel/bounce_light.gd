@@ -36,6 +36,8 @@ const SKIP := ["light", "shade", "tube"]
 ## Godot draws at most 8 volumes at once: the nearest rooms' are shown.
 const SHOWN := 8
 const BIG_SIDE := 20.0
+## How far in from a volume's side its walls reach (half core, panels, rails).
+const EDGE := 0.3
 
 ## Boxes of each room, by the room node's instance id: [[group, transforms]].
 var groups := {}
@@ -90,7 +92,7 @@ func bake(k: int) -> void:
 	var job: Dictionary = jobs[k]
 	var holder := Node3D.new()
 	var stand_in := MeshInstance3D.new()
-	stand_in.mesh = stand_in_mesh(job.boxes, Vector3(0, -job.height * 0.5, 0))
+	stand_in.mesh = stand_in_mesh(job.boxes, Vector3(0, -job.height * 0.5, 0), job.size * 0.5)
 	holder.add_child(stand_in)
 	var volume := VoxelGI.new()
 	volume.subdiv = subdivision(job)
@@ -151,7 +153,7 @@ func show_near(position: Vector3, on: bool) -> void:
 
 ## A volume's boxes, one surface per material, moved into the volume's frame:
 ## by their room's offset from the centre, then by offset.
-func stand_in_mesh(boxes: Array, offset: Vector3) -> Mesh:
+func stand_in_mesh(boxes: Array, offset: Vector3, half := Vector2(INF, INF)) -> Mesh:
 	var by_material := {}
 	for box in boxes:
 		var shift := Transform3D(Basis.IDENTITY, box[2] + offset)
@@ -162,8 +164,30 @@ func stand_in_mesh(boxes: Array, offset: Vector3) -> Mesh:
 			by_material[material][0].append_array((shift * frame) * shape[0])
 			by_material[material][1].append_array(Transform3D(frame.basis.inverse().transposed(), Vector3.ZERO) * shape[1])
 	var mesh := STAND_IN.new()
-	for material in by_material: mesh.add(by_material[material][0], by_material[material][1], colours.get(material, colours[""]))
+	for material in by_material:
+		var kept := outer_faces_removed(by_material[material][0], by_material[material][1], half)
+		mesh.add(kept[0], kept[1], colours.get(material, colours[""]))
 	return mesh
+
+## Only faces that look into the volume, at its edges. A wall at the edge of
+## a room's volume lies in its last voxels; with the face it turns to the next
+## room, those voxels took in that room's lamps (the baker lights a voxel from
+## any side) and gave their light to this one: a cold storeroom beside a
+## bathroom came out 12 % brighter, and yellow round the wall lamps. The
+## stand-in is never drawn: the faces that look out of the volume go.
+static func outer_faces_removed(vertices: PackedVector3Array, normals: PackedVector3Array, half: Vector2) -> Array:
+	var kept_vertices := PackedVector3Array()
+	var kept_normals := PackedVector3Array()
+	for t in range(0, vertices.size(), 3):
+		var middle := (vertices[t] + vertices[t + 1] + vertices[t + 2]) / 3.0
+		var normal := normals[t]
+		var out_x := absf(middle.x) > half.x - EDGE and normal.x * signf(middle.x) > 0.5
+		var out_z := absf(middle.z) > half.y - EDGE and normal.z * signf(middle.z) > 0.5
+		if out_x or out_z: continue
+		for k in 3:
+			kept_vertices.append(vertices[t + k])
+			kept_normals.append(normals[t + k])
+	return [kept_vertices, kept_normals]
 
 ## A unit shape's triangles, unindexed: [vertices, normals].
 static func unindexed(mesh: Mesh) -> Array:

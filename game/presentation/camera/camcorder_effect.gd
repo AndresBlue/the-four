@@ -36,9 +36,12 @@ var max_ev := 0.8
 ## gain) is slower than darkening, as in a camera.
 var speed_up := 1.1
 var speed_down := 2.4
-## CCD smear strength (0 off) and the level above which a pixel spills.
+## CCD smear strength (0 off) and the level above which a pixel spills. The
+## streak levels off at SMEAR_CAP: a tube across the frame used to paint a
+## solid white bar.
 var smear := 0.04
-var smear_threshold := 4.0
+var smear_threshold := 5.0
+const SMEAR_CAP := 0.28
 ## Glare (0 off, from the graphics preset): halo and ghosts, relative to the
 ## light above glare_threshold (in exposed, linear units).
 var glare := 1.0
@@ -239,6 +242,7 @@ layout(set = 0, binding = 1, std430) restrict readonly buffer State { float ev; 
 layout(set = 0, binding = 2, std430) restrict readonly buffer Columns { float data[]; } columns;
 layout(set = 0, binding = 3) uniform sampler2D glare_image;
 layout(push_constant, std430) uniform Params { vec2 size; float smear; float knee; vec3 white; float toe; float halo; float ghosts; float ghost_floor; float crowd; } p;
+const float SMEAR_CAP = 0.28;
 // Where the lens puts a ghost of the light at uv: mirrored through the centre
 // and scaled, fading towards the edge of the image circle. Only what is over
 // ghost_floor: the bigger lights.
@@ -259,11 +263,19 @@ void main() {
 	vec4 source = imageLoad(color_image, pix);
 	vec3 c = source.rgb * exp2(state.ev);
 	if (p.smear > 0.0) {
-		// The streak, a touch wider than a column and faintly cold.
-		float s = columns.data[pix.x] * 0.5;
-		if (pix.x > 0) s += columns.data[pix.x - 1] * 0.25;
-		if (pix.x < int(p.size.x) - 1) s += columns.data[pix.x + 1] * 0.25;
-		c += s * p.smear * vec3(0.95, 0.95, 1.05);
+		// The streak: spread over nine columns, so it comes out soft rather
+		// than a hard line, and levelled off, so a tube filling the frame
+		// gives a veil and not a white bar.
+		float s = 0.0;
+		float weight = 0.0;
+		for (int i = -4; i <= 4; i++) {
+			int x = clamp(pix.x + i, 0, int(p.size.x) - 1);
+			float w = exp(-float(i * i) * 0.12);
+			s += columns.data[x] * w;
+			weight += w;
+		}
+		s = 1.0 - exp(-s / weight * p.smear * 6.0);
+		c += s * SMEAR_CAP * vec3(0.95, 0.95, 1.05);
 	}
 	if (p.halo > 0.0) {
 		vec2 uv = (vec2(pix) + 0.5) / p.size;

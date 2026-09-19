@@ -26,6 +26,12 @@ var focus_amount := 0.0
 ## the stamina meter and a short notice (the countdown to the hunt).
 var hunter := false
 var notice: Label
+## The zoom rocker: where it stands (0 wide, 1 telephoto) and how long the
+## bar stays up after it last moved, as on a camcorder.
+var zoom := 0.0
+var zoom_alpha := 0.0
+var zoom_still := 9.0
+const ZOOM_HOLD := 1.6
 
 func _ready() -> void:
 	layer = 4
@@ -98,6 +104,15 @@ func set_stamina(value: float, is_exhausted: bool) -> void:
 	stamina = clampf(value, 0.0, 1.0)
 	exhausted = is_exhausted
 
+## The zoom's place along its travel; the bar shows while it moves and for a
+## moment after.
+func set_zoom(fraction: float, delta: float) -> void:
+	if absf(fraction - zoom) > 0.0005: zoom_still = 0.0
+	else: zoom_still += delta
+	zoom = fraction
+	var wanted := 0.0 if zoom_still > ZOOM_HOLD or hunter or not marks else 1.0
+	zoom_alpha = move_toward(zoom_alpha, wanted, delta * (3.0 if wanted > 0.0 else 1.6))
+
 ## A line of text in the tape's own lettering; empty hides it.
 func announce(words: String) -> void:
 	notice.text = words
@@ -127,6 +142,26 @@ func show_tape(elapsed: float, delta: float) -> void:
 
 func draw_overlay() -> void:
 	var size := canvas.size
+	if zoom_alpha > 0.01:
+		# W [---|----] T, the rocker's own scale, top left under the tape marks.
+		var left := 48.0
+		var top := 58.0
+		var width := 260.0
+		var ink := Color(STYLE.INK, zoom_alpha * 0.9)
+		var faint := Color(STYLE.INK, zoom_alpha * 0.35)
+		var shadow := Color(0, 0, 0, zoom_alpha * 0.6)
+		var font := STYLE.font()
+		for pass_index in 2:
+			var shift := Vector2(2, 2) if pass_index == 0 else Vector2.ZERO
+			var color := shadow if pass_index == 0 else ink
+			var soft := shadow if pass_index == 0 else faint
+			canvas.draw_string(font, Vector2(left, top + 8) + shift, "W", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, color)
+			canvas.draw_string(font, Vector2(left + width + 34, top + 8) + shift, "T", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, color)
+			canvas.draw_line(Vector2(left + 28, top) + shift, Vector2(left + 28 + width, top) + shift, soft, 3.0)
+			for end in [0.0, width]:
+				canvas.draw_line(Vector2(left + 28 + end, top - 7) + shift, Vector2(left + 28 + end, top + 7) + shift, soft, 3.0)
+			var marker := Vector2(left + 28 + width * clampf(zoom, 0.0, 1.0), top) + shift
+			canvas.draw_rect(Rect2(marker - Vector2(5, 9), Vector2(10, 18)), color)
 	if stamina_alpha > 0.01:
 		var right := size.x - 48.0
 		var bottom := size.y - 60.0

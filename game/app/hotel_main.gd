@@ -230,6 +230,9 @@ func finish_intro() -> void:
 func start_floor(seed_value: int, force_fallback := false) -> void:
 	if not await build_floor(seed_value, force_fallback): return
 	camcorder.start_tape(seed_value)
+	# A new tape starts with the lens wide.
+	player.zoom = 1.0
+	player.zoom_wanted = 1.0
 	session.online = false
 	session.start(seed_value, manifest.get("fallback", false))
 	save_error = session.message
@@ -906,6 +909,8 @@ func _process(delta: float) -> void:
 	camcorder.hunter = hunter_seat()
 	if not camcorder.hunter: camcorder.announce("")
 	camcorder.marks = settings.values.osd
+	update_zoom_lens()
+	camcorder.set_zoom(player.zoom_fraction(), delta)
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	update_screen_cues(delta)
@@ -1060,13 +1065,27 @@ func apply_lens(hunter: bool, reduced: bool) -> void:
 	var size := get_viewport().get_visible_rect().size
 	var aspect := size.x / maxf(size.y, 1.0)
 	lens_layer.visible = not hunter
-	lens_material.set_shader_parameter("barrel", LOOK.BARREL)
-	lens_material.set_shader_parameter("scale", LOOK.corner_scale(aspect))
+	update_zoom_lens()
 	lens_material.set_shader_parameter("noise", 0.0 if reduced else settings.values.grain)
 	lens_material.set_shader_parameter("chromatic", 0.0 if reduced else settings.values.chromatic)
 	lens_material.set_shader_parameter("vignette", 0.0 if reduced else 0.45)
 	lens_material.set_shader_parameter("detail", 0.0 if reduced else 0.35)
-	var fov := LOOK.render_fov(aspect) if not hunter else LOOK.VIEW_FOV
+	if hunter:
+		player.camera.fov = LOOK.VIEW_FOV
+		if is_instance_valid(watch_camera): watch_camera.fov = LOOK.VIEW_FOV
+
+## The lens as the zoom stands (hotel_player.zoom): the field of view it sees,
+## how wide the picture is rendered and how much the barrel bends it. A long
+## lens bends far less, so the remap follows the zoom (camcorder_look.gd).
+func update_zoom_lens() -> void:
+	if hunter_seat() or not is_instance_valid(player) or not is_instance_valid(lens_material): return
+	var size := get_viewport().get_visible_rect().size
+	var aspect := size.x / maxf(size.y, 1.0)
+	var barrel: float = LOOK.barrel_for(player.zoom)
+	var design: float = LOOK.zoom_fov(player.zoom)
+	lens_material.set_shader_parameter("barrel", barrel)
+	lens_material.set_shader_parameter("scale", LOOK.corner_scale(aspect, barrel))
+	var fov: float = LOOK.render_fov(aspect, design, barrel)
 	player.camera.fov = fov
 	if is_instance_valid(watch_camera): watch_camera.fov = fov
 
