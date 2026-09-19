@@ -138,6 +138,13 @@ func run() -> void:
 	level.on_noise(route_point, 400.0, NOISE.Kind.DOOR)
 	await frames(4)
 	var far_mark: Dictionary = creature.driver.heard[0] if not creature.driver.heard.is_empty() else {}
+	var hugging := false
+	for door in level.hotel.doors:
+		var heard_route: Dictionary = creature.hear_route(door.doorway, 30.0)
+		# Heard in plain sight it is placed where it is, however close; only a
+		# noise round a corner is placed by the way it arrives.
+		if heard_route.audible and heard_route.apparent.distance_to(door.doorway) > 0.01 and heard_route.apparent.distance_to(creature.global_position + Vector3.UP * 1.5) < creature.APPARENT_NEAREST - 0.05: hugging = true
+	check("Un ruido tras una esquina nunca se pinta encima de la criatura", not hugging)
 	check("Lejos se pinta por dónde llega, no dónde está", not far_mark.is_empty() and far_mark.blur == 1.0 and far_mark.at.distance_to(far_mark.apparent) < 0.01)
 	# A heard noise leaves a puff of grains hanging where it was heard, and a
 	# noise made close by brings the shape of whoever made it with it. Puffs
@@ -183,11 +190,11 @@ func run() -> void:
 		var hung: Vector3 = echo.before_wardrobe(cabinet.global_position)
 		check("La nube de un armario cuelga delante de sus puertas", hung.y - cabinet.global_position.y > 0.8 and (cabinet.global_basis.inverse() * (hung - cabinet.global_position)).z > 0.5)
 	# A door's cloud is a bell round its source, not an even ball: many more
-	# grains in its core than an even ball would put there (under 3%).
+	# grains in its core than an even ball would put there (under 3%; this one over 30%).
 	var core := 0
 	for i in 400:
 		if echo.bell_offset(1.0).length() < 0.3: core += 1
-	check("La nube de una puerta se concentra en su origen", core > 40 and NOISE.Kind.DOOR in echo.PUFF_BELLS and NOISE.Kind.WARDROBE in echo.PUFF_BELLS)
+	check("La nube de una puerta se concentra en su origen", core > 120 and NOISE.Kind.DOOR in echo.PUFF_BELLS and NOISE.Kind.WARDROBE in echo.PUFF_BELLS)
 	check("Un armario se apaga antes que una puerta", echo.PUFF_LIVES[NOISE.Kind.WARDROBE] < echo.PUFF_LIVES[NOISE.Kind.DOOR] and echo.PUFF_LIVES[NOISE.Kind.DOOR] > echo.PUFF_LIFE and echo.PUFF_DENSITY[NOISE.Kind.WARDROBE] == echo.PUFF_DENSITY[NOISE.Kind.DOOR])
 
 	# --- The shriek ---------------------------------------------------------------

@@ -83,14 +83,30 @@ const PUFF_BUDGET := [0, 4800, 9600]
 ## much of an edge for hiding. PUFF_LIVES is each kind's life in seconds,
 ## carried by every grain (write_life) so one cloud can hold all of them.
 ##                     step  run  jump door slam wardrobe peek hum
-const PUFF_DENSITY := [1.5, 3.4, 2.0, 3.6, 4.4, 3.6, 1.0, 1.0]
+const PUFF_DENSITY := [1.5, 3.4, 2.0, 6.0, 7.0, 6.0, 2.0, 1.0]
 const PUFF_SIZE := [1.15, 1.45, 1.2, 1.35, 1.5, 1.35, 1.0, 1.0]
 const PUFF_LIVES := [2.2, 2.2, 2.2, 4.0, 4.0, 2.5, 2.2, 2.2]
 ## Doors and wardrobes gather round the spot the sound came from, a gaussian
 ## of this share of the radius (clipped at 1.6 radii), instead of filling an
 ## even ball: a bright core with a thin halo is what reads from rooms away.
 const PUFF_BELLS := [KINDS.Kind.DOOR, KINDS.Kind.SLAM, KINDS.Kind.WARDROBE, KINDS.Kind.PEEK]
-const PUFF_BELL := 0.35
+const PUFF_BELL := 0.22
+## Sound grains outshine the room and the reflectors, and are a little coarser.
+const PUFF_GAIN := 1.8
+const PUFF_PIXELS := 3.2
+const PUFF_WHITE := 2.2
+const PUFF_TWINKLE := 0.7
+## A far noise hangs in the opening it came through, which is also where a
+## doorway's reflector grains are brightest. Stood this far out of it, towards
+## the listener, it is a cloud in the air instead of a busier door frame.
+const PUFF_STAND_OFF := 1.1
+## The core of a bell shines brighter than its halo: energy times one plus
+## this, falling off with the same gaussian.
+const PUFF_CORE_GAIN := 2.5
+## A far noise hangs vaguer and wider (blur). For a bell only a little: spread
+## the same grains over a doorway-sized ball and there is nothing left to see.
+const PUFF_BLUR := 1.6
+const BELL_BLUR := 0.35
 ## A wardrobe's cloud hangs in front of its doors at chest height: centred on
 ## the wardrobe itself, half of it would sit inside the cabinet or under the
 ## floor, hidden by the very thing that made the noise.
@@ -333,6 +349,11 @@ func build_clouds() -> void:
 		material.set_shader_parameter("flare", 1.1)
 		material.set_shader_parameter("tone_cold", Color(0.86, 0.90, 0.95))
 		material.set_shader_parameter("tone_hot", Color(1.0, 0.97, 0.92))
+	# Every grain's opacity tops out at one, so gain alone cannot lift a sound
+	# above a door frame: its white is pushed past one instead (the image is
+	# linear light, and the red of the shriek already goes past it too).
+	puff_material.set_shader_parameter("tone_cold", Color(0.86, 0.90, 0.95) * PUFF_WHITE)
+	puff_material.set_shader_parameter("tone_hot", Color(1.0, 0.97, 0.92) * PUFF_WHITE)
 	find_material.set_shader_parameter("shriek_cold", Color(1.4, 0.18, 0.10))
 	find_material.set_shader_parameter("shriek_hot", Color(1.5, 0.40, 0.24))
 	# A living thing keeps answering a little between fronts: it has to stay
@@ -547,7 +568,10 @@ func apply_quality() -> void:
 	wall_material.set_shader_parameter("gain", 0.95)
 	frame_material.set_shader_parameter("gain", 1.5)
 	body_material.set_shader_parameter("gain", 1.6)
-	puff_material.set_shader_parameter("gain", 1.0)
+	# A heard noise has to stand out from the architecture round it, which a
+	# door's own reflector grains made hard: brighter and coarser than both.
+	puff_material.set_shader_parameter("gain", PUFF_GAIN)
+	puff_material.set_shader_parameter("twinkle", PUFF_TWINKLE)
 	find_material.set_shader_parameter("gain", 1.35)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
@@ -557,6 +581,7 @@ func apply_quality() -> void:
 		material.set_shader_parameter("point_max", 0.085)
 	# Reflector grains a touch bigger than the room's.
 	frame_material.set_shader_parameter("point_scale", span * FRAME_PIXELS / POINT_PIXELS)
+	puff_material.set_shader_parameter("point_scale", span * PUFF_PIXELS / POINT_PIXELS)
 
 # --- The clicks ---------------------------------------------------------------------
 
@@ -726,7 +751,8 @@ func scatter(cloud: MultiMeshInstance3D, centre: Vector3, radius: float, count: 
 			# A bell instead of a ball: dense at the source and thinning out,
 			# so the source itself stays a bright knot that reads from afar.
 			var offset := bell_offset(radius)
-			write(cloud, centre + offset, offset.length(), kind, energy, at)
+			var near: float = offset.length() / maxf(radius * PUFF_BELL, 0.01)
+			write(cloud, centre + offset, offset.length(), kind, energy * (1.0 + PUFF_CORE_GAIN * exp(-near * near)), at)
 			continue
 		var direction := Vector3(rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0), rng.randfn(0.0, 1.0))
 		if direction.length() < 0.001: direction = Vector3.UP
@@ -756,13 +782,18 @@ func bloom_contacts() -> void:
 		var radius: float = (0.30 + 1.25 * loud) * KINDS.SPREAD[kind] * PUFF_SIZE[kind]
 		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud) * PUFF_DENSITY[kind])
 		# The further the sound travelled, the vaguer the place it hangs in.
-		radius *= 1.0 + mark.get("blur", 0.0) * 1.6
+		var bell: bool = kind in PUFF_BELLS
+		radius *= 1.0 + mark.get("blur", 0.0) * (BELL_BLUR if bell else PUFF_BLUR)
 		var when: float = clock - (seconds - mark.time)
 		var centre: Vector3 = mark.at
 		if kind == KINDS.Kind.WARDROBE: centre = before_wardrobe(centre)
+		var blur: float = mark.get("blur", 0.0)
+		if blur > 0.0:
+			var towards: Vector3 = creature.global_position + Vector3(0, centre.y - creature.global_position.y, 0) - centre
+			if towards.length() > PUFF_STAND_OFF * 2.0: centre += towards.normalized() * PUFF_STAND_OFF * blur
 		# Two above the tone marks a grain that fades early (echo_points.gdshader).
 		var life := write_life(PUFF_LIVES[kind])
-		scatter(puffs, centre, radius, count, life, 0.35 + 0.65 * loud, when, kind in PUFF_BELLS)
+		scatter(puffs, centre, radius, count, life, 0.35 + 0.65 * loud, when, bell)
 		shape_of_noise(mark, when, life)
 
 ## A grain's own life, added to its tone (0 or 1) in the kind channel: two

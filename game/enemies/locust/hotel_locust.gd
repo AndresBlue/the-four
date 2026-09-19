@@ -16,6 +16,8 @@ const SUSPICION := 0.2
 ## Player noises carry this many times their base radius, along walkable routes.
 const NOISE_TABLE := preload("res://game/audio/noise_kinds.gd")
 const HEARING_SCALE := NOISE_TABLE.HEARING_SCALE
+## Closest to itself that a noise heard round a corner is ever placed.
+const APPARENT_NEAREST := 3.5
 ## Lost sight for longer than this, the chase becomes a search.
 const LOSE_AFTER := 7.0
 ## Faster than a sprinting player: breaking line of sight is the only escape.
@@ -292,6 +294,14 @@ func hear_route(point: Vector3, radius: float) -> Dictionary:
 		var probe: Vector3 = route[i] + Vector3.UP * 1.5
 		if not clear_sight(probe): break
 		apparent = probe
+	# Nothing along the route in sight, not even the first turn: the opening
+	# it arrives through is right here, and a contact placed on its own head
+	# would swallow the camera. Put it a few metres off, the way it comes.
+	var start: Vector3 = route[0] + Vector3.UP * 1.5
+	if apparent.distance_to(start) < APPARENT_NEAREST:
+		var way: Vector3 = route[1] - route[0]
+		way.y = 0.0
+		if way.length() > 0.01: apparent = start + way.normalized() * APPARENT_NEAREST
 	var detour := maxf(0.0, length - global_position.distance_to(apparent))
 	return {"audible": true, "apparent": apparent, "distance": length, "muffle": clampf(detour / 25.0, 0.0, 1.0)}
 

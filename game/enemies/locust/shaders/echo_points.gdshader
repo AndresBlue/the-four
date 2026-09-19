@@ -43,6 +43,10 @@ uniform vec3 shriek_hot : source_color = vec3(1.4, 0.34, 0.22);
 // itself brings. A puff wants a body of its own; a remembered wall does not.
 uniform float residue : hint_range(0.0, 2.0) = 0.11;
 uniform float flare : hint_range(0.0, 4.0) = 1.8;
+// Sound, unlike architecture, never holds still: each grain flickers on its
+// own a dozen times a second by this much. In a picture made only of greys,
+// that shimmer is what tells a noise from the doorway it hangs in.
+uniform float twinkle : hint_range(0.0, 1.0) = 0.0;
 uniform sampler2D depth_map : hint_depth_texture, repeat_disable, filter_nearest;
 
 // INSTANCE_CUSTOM only exists in vertex(): carried over uninterpolated.
@@ -71,6 +75,10 @@ void vertex() {
 	// a flat lit panel instead of a stipple. A puff sets it high instead, so it
 	// hangs in the air after its own little front has gone by.
 	float live = (residue + flare * flash) * memory * echo.w;
+	if (twinkle > 0.0) {
+		float seed = fract(sin(float(INSTANCE_ID) * 12.9898 + floor(now * 12.0) * 78.233) * 43758.5453);
+		live *= 1.0 - twinkle + twinkle * 2.0 * seed;
+	}
 
 	// Screen-constant billboard: take the instance origin into view space and
 	// add the quad corners there, so nothing has to be turned to face anything.

@@ -27,10 +27,10 @@ const HEARD := {
 	"wardrobe": 12.0,
 	"walk": 20.0, "walk_hard": 25.0,
 	"jump": 32.0,
-	"door": 35.0,
-	"wardrobe_hunter": 35.0,
-	"slam": 52.0,
-	"run": 45.0, "run_hard": 56.0,
+	"door": 45.0,
+	"wardrobe_hunter": 45.0,
+	"slam": 62.0,
+	"run": 52.0, "run_hard": 64.0,
 }
 
 static func radius(noise: String) -> float:

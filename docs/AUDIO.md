@@ -89,7 +89,7 @@ Pendiente: escucha crítica con auriculares, balance del aura en partidas humana
 
 `world_audio.route_source()` decide por dónde llega un sonido. Con línea libre llega directo desde su origen. Si hay muros de por medio sigue la ruta caminable y se oye desde la última abertura visible (una puerta o una esquina): más bajo según el rodeo, más apagado y por los buses `EffectsEcho` o `ThreatEcho` (retardos de 170/340 ms y reverberación amplia), que envían a Effects o Threat. Nada atraviesa muros. Más allá de 42 m de ruta no se oye.
 
-Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Locust. La criatura oye al jugador por la misma lógica de rutas pero hasta la distancia de cada ruido en la tabla `HEARD` de `noise_kinds.gd` (de 8 m agachado a 56 m corriendo sobre baldosa), y el aura empieza a 24 m de ruta: la criatura siempre detecta antes de lo que el jugador puede oírla.
+Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Locust. La criatura oye al jugador por la misma lógica de rutas pero hasta la distancia de cada ruido en la tabla `HEARD` de `noise_kinds.gd` (de 8 m agachado a 64 m corriendo sobre baldosa), y el aura empieza a 24 m de ruta: la criatura siempre detecta antes de lo que el jugador puede oírla.
 
 ## Gruñidos de persecución
 
@@ -97,7 +97,7 @@ Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Loc
 
 ## Armarios
 
-Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura oye hasta 12 m (35 m si la lleva un jugador). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (se oye hasta 10,5 m); cambiar de lado o volver a abrir no suena.
+Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura oye hasta 12 m (45 m si la lleva un jugador). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (se oye hasta 10,5 m); cambiar de lado o volver a abrir no suena.
 
 ## Apertura lenta
 

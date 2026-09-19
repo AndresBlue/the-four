@@ -27,6 +27,9 @@ const WARDROBE_REACH := 2.6
 const ECHO := preload("res://game/enemies/locust/echo_view.gd")
 const EYE := Vector3(0.0, 2.35, 0.0)
 const ARM := 2.8
+## How far to the side the camera rides. Far enough that the middle of the
+## screen, where it turns to look at what it heard, is not its own head.
+const SHOULDER := 1.0
 ## Route metres within which a noise is placed where it happened, and beyond
 ## which only the opening it arrived through is known. In between it slides:
 ## close by you know where, far away you only know which way.
@@ -68,7 +71,7 @@ func setup(owner) -> void:
 	arm.spring_length = ARM
 	arm.collision_mask = 1 | 8
 	arm.margin = 0.2
-	arm.position = Vector3(0.45, 0, 0)
+	arm.position = Vector3(SHOULDER, 0, 0)
 	var sphere := SphereShape3D.new()
 	sphere.radius = 0.2
 	arm.shape = sphere
@@ -106,6 +109,7 @@ func drive(delta: float) -> void:
 	cooldown = maxf(0.0, cooldown - delta)
 	shriek_cooldown = maxf(0.0, shriek_cooldown - delta)
 	pivot.rotation.x = pitch
+	place_shoulder(delta)
 	var free: bool = can_act() and creature.grace <= 0.0
 	var axis := Input.get_vector("left", "right", "forward", "backward") if free else Vector2.ZERO
 	frenzy = maxf(0.0, frenzy - delta)
@@ -155,6 +159,18 @@ func drive(delta: float) -> void:
 	update_hud()
 	var now := Time.get_ticks_msec() / 1000.0
 	heard = heard.filter(func(entry): return now - entry.time < 1.6)
+
+## The spring arm only guards the length behind it, so the sideways step to
+## the shoulder is checked here: against a wall it comes in, never through.
+func place_shoulder(delta: float) -> void:
+	var from: Vector3 = pivot.global_position
+	var side: Vector3 = pivot.global_basis.x * SHOULDER
+	var query := PhysicsRayQueryParameters3D.create(from, from + side, 1 | 8)
+	query.exclude = [creature.get_rid()]
+	var hit: Dictionary = creature.get_world_3d().direct_space_state.intersect_ray(query)
+	var room: float = SHOULDER if hit.is_empty() else maxf(0.0, from.distance_to(hit.position) - 0.3)
+	# In at once (a wall must never be crossed), back out gently.
+	arm.position.x = room if room < arm.position.x else move_toward(arm.position.x, room, 2.0 * delta)
 
 ## Walking into a closed door eases it open; hunting slams it.
 func open_doors(hunting: bool, heading: Vector3) -> void:
