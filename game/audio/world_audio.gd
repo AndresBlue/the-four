@@ -12,6 +12,9 @@ const ACOUSTIC_MASK := 512
 ## Gains (dB) at the reference mix (sliders at 50%).
 ## Longest walkable route (metres) along which a sound still reaches the player.
 const ROUTE_LIMIT := 42.0
+## Margin over ROUTE_LIMIT before a route is not even searched: covers the
+## height of the ears and of the source above the walkable floor.
+const ROUTE_SLACK := 10.0
 const ECHO_BUS := {"Effects": &"EffectsEcho", "Threat": &"ThreatEcho"}
 ## Direction cues on headphones. World cues use the engine's panning, at the
 ## strength that separates left and right the most (measured with
@@ -221,6 +224,11 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	var listener := listener_position()
 	if not occluded(point, emitter):
 		return {"audible": true, "position": point, "gain": 0.0, "cutoff": 20000.0, "echo": false, "distance": listener.distance_to(point)}
+	# A walked route is never shorter than the straight line less the gap from
+	# each end down to the walkable floor (a few metres at most), so past this
+	# the search below could only end in "too far", after crossing the floor.
+	var straight := listener.distance_to(point)
+	if straight > ROUTE_LIMIT + ROUTE_SLACK: return {"audible": false, "distance": straight}
 	var map: RID = level.get_world_3d().navigation_map
 	var from := NavigationServer3D.map_get_closest_point(map, listener_position())
 	var to := NavigationServer3D.map_get_closest_point(map, point)

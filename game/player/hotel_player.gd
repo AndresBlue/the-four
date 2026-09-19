@@ -114,8 +114,10 @@ func _physics_process(delta: float) -> void:
 	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized()
 	var wants_crouch := active and not hidden and Input.is_action_pressed("crouch")
 	if wants_crouch or can_stand(): crouched = wants_crouch
-	body_shape.shape.height = 1.05 if crouched else 1.8
-	body_shape.position.y = 0.54 if crouched else 0.91
+	# Only on a change: every write rebuilds the physics shape.
+	if not is_equal_approx(body_shape.shape.height, 1.05 if crouched else 1.8):
+		body_shape.shape.height = 1.05 if crouched else 1.8
+		body_shape.position.y = 0.54 if crouched else 0.91
 	var running := active and not hidden and not crouched and axis.length() > 0.1 and Input.is_action_pressed("sprint") and stamina > 0 and not exhausted
 	if running:
 		stamina = maxf(0, stamina - STAMINA_DRAIN * delta)

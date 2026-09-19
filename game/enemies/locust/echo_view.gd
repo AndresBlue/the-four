@@ -234,8 +234,15 @@ var written := 0
 var write_rate := 1.0
 var rate_clock := 0.0
 
-## Rays still to cast for the click in flight, and where that click left from.
-var pending := PackedVector3Array()
+## The click in flight: its rays are worked out one by one as they are cast
+## (spray_direction), from the last to the first; spray_left of them remain.
+## Building the whole spray at once cost a hitch on every click. Where the
+## click left from follows.
+var spray_left := 0
+var spray_count := 0
+var spray_ahead := 0
+var spray_turn := 0.0
+var spray_frame := Basis()
 var pending_from := Vector3.ZERO
 var pending_at := 0.0
 var pending_reach := REACH
@@ -637,7 +644,7 @@ func click(hunting: bool) -> void:
 	if budget > 0:
 		# Whatever is left of the previous click is dropped: the reading is
 		# always the newest one, and the cost per tick stays bounded.
-		pending = spray(budget)
+		start_spray(budget)
 		pending_from = from
 		pending_at = clock
 		pending_reach = reach
@@ -651,36 +658,38 @@ func click(hunting: bool) -> void:
 
 ## Directions for one click: a Fibonacci sphere, turned by a fresh angle every
 ## time so successive clicks fill in each other's gaps, with most of the rays
-## pushed into a cone ahead of where it is looking.
-func spray(count: int) -> PackedVector3Array:
-	var out := PackedVector3Array()
+## pushed into a cone ahead of where it is looking. start_spray() fixes the
+## frame and the turn; spray_direction() gives ray i when it is cast.
+const GOLDEN := PI * (3.0 - 2.2360679775)
+func start_spray(count: int) -> void:
 	var forward: Vector3 = -camera.global_basis.z
-	var frame := Basis()
+	spray_frame = Basis()
 	if absf(forward.dot(Vector3.UP)) < 0.98:
-		frame = Basis.looking_at(forward, Vector3.UP)
-	var turn := rng.randf() * TAU
-	var golden := PI * (3.0 - sqrt(5.0))
-	var ahead := int(count * FORWARD_BIAS)
-	for i in count:
-		var into_cone := i < ahead
-		var span: float = cos(FORWARD_CONE) if into_cone else -1.0
-		var reach_i: int = ahead if into_cone else count - ahead
-		var index: int = i if into_cone else i - ahead
-		var z := 1.0 - (1.0 - span) * (float(index) + 0.5) / float(maxi(reach_i, 1))
-		var radius := sqrt(maxf(0.0, 1.0 - z * z))
-		var angle := golden * float(i) + turn
-		var direction := Vector3(cos(angle) * radius, sin(angle) * radius, -z)
-		# A touch of scatter on every ray: the bare spiral lands on a floor in
-		# visible rings, and the point of this is stipple, not moire.
-		direction += Vector3(rng.randfn(0.0, 0.012), rng.randfn(0.0, 0.012), rng.randfn(0.0, 0.012))
-		out.append(frame * direction.normalized())
-	return out
+		spray_frame = Basis.looking_at(forward, Vector3.UP)
+	spray_turn = rng.randf() * TAU
+	spray_count = count
+	spray_ahead = int(count * FORWARD_BIAS)
+	spray_left = count
+
+func spray_direction(i: int) -> Vector3:
+	var into_cone := i < spray_ahead
+	var span: float = cos(FORWARD_CONE) if into_cone else -1.0
+	var reach_i: int = spray_ahead if into_cone else spray_count - spray_ahead
+	var index: int = i if into_cone else i - spray_ahead
+	var z := 1.0 - (1.0 - span) * (float(index) + 0.5) / float(maxi(reach_i, 1))
+	var radius := sqrt(maxf(0.0, 1.0 - z * z))
+	var angle := GOLDEN * float(i) + spray_turn
+	var direction := Vector3(cos(angle) * radius, sin(angle) * radius, -z)
+	# A touch of scatter on every ray: the bare spiral lands on a floor in
+	# visible rings, and the point of this is stipple, not moire.
+	direction += Vector3(rng.randfn(0.0, 0.012), rng.randfn(0.0, 0.012), rng.randfn(0.0, 0.012))
+	return spray_frame * direction.normalized()
 
 ## The rays of the click in flight, spread over the frames until the next one
 ## so the cost never lands in a single tick. The origin is frozen at emission:
 ## the shell left from there, wherever the body has walked to since.
 func cast_pending() -> void:
-	if (pending.is_empty() and pending_targets.is_empty()) or not is_instance_valid(level.hotel): return
+	if (spray_left == 0 and pending_targets.is_empty()) or not is_instance_valid(level.hotel): return
 	var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
 	var left := per_tick
 	# The reflectors first: if a short interval cuts the click off, what gets
@@ -698,10 +707,10 @@ func cast_pending() -> void:
 		for grain in INTEREST_GRAINS:
 			var spot: Vector3 = landed if grain == 0 else landed + Vector3(rng.randfn(0.0, 0.02), rng.randfn(0.0, 0.02), rng.randfn(0.0, 0.02))
 			write(frames, spot, pending_from.distance_to(spot), 0.0, 1.0, pending_at)
-	var count := mini(left, pending.size())
+	var count := mini(left, spray_left)
 	for i in count:
-		var direction: Vector3 = pending[pending.size() - 1]
-		pending.remove_at(pending.size() - 1)
+		spray_left -= 1
+		var direction := spray_direction(spray_left)
 		query.from = pending_from
 		query.to = pending_from + direction * pending_reach
 		rays_cast += 1
