@@ -38,6 +38,11 @@ switch ($Mode) {
     'capture' { $arguments += @('res://legacy/fuse_prototype/main.tscn','--','--capture=' + (Join-Path $projectPath 'evidence/corridor.png')) }
     'export' {
         New-Item -ItemType Directory -Force (Join-Path $projectPath 'exports/windows') | Out-Null
+        # Godot caches every scene it converts for export and only redoes one
+        # when that file changes, not its dependencies: a scene could ship an
+        # old copy of a resource it embeds (the hotel environment did). Start clean.
+        $cache = Join-Path $projectPath '.godot/exported'
+        if (Test-Path -LiteralPath $cache) { Remove-Item -LiteralPath $cache -Recurse -Force }
         $arguments += @('--headless','--export-release','Windows Desktop',(Join-Path $projectPath 'exports/windows/TheFour.exe'))
     }
 }
