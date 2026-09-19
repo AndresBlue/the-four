@@ -32,6 +32,115 @@ Todos CC0 (dominio público): no exigen atribución, se acreditan igualmente. De
 | `brown_leather` | [Brown Leather](https://polyhaven.com/a/brown_leather) | Rob Tuytel | Poly Haven | CC0 1.0 | maletas |
 <!-- /SCANS -->
 
+## Pendiente: modelos CC-BY de Sketchfab (fase 4)
+
+Requieren cuenta; los descarga el usuario en `source_assets/props/`. Si entran, van en los créditos del juego:
+- **SFM Telephone**, de G= (ge);
+- **Old Dirty Pedestal Sink**, de Renend Studio;
+- **Dirty Public Toilet**, de lucianofgatto;
+- **Bathroom Urinal Game-Ready**, de CurlyFryWhy;
+- **Lave linge vintage**, de maxipub;
+- **Cleaning Cart**, de crow.bite;
+- **Table Bell**, de gla_bot;
+- **Vintage Metal Ashtray**, de Mattyew;
+- **Towel**, de andree.
+
+<!-- MODELS: generado por tools/props/ingest_models.py, no editar a mano -->
+## Mobiliario y objetos (fase 4 de REALISM.md)
+
+Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmente. Descargas originales en `source_assets/props/` (fuera de git); en `assets/props/hotel/<id>/` quedan las texturas (1024 px, 2048 en los muebles grandes) y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/hotel/<id>.res`.
+
+| Modelo | Autoría | Licencia |
+|---|---|---|
+| [Arm Chair 01](https://polyhaven.com/a/ArmChair_01) | Kirill Sannikov | CC0 1.0 |
+| [Cash Register 01](https://polyhaven.com/a/CashRegister_01) | Joe Seabuhr | CC0 1.0 |
+| [Chandelier 01](https://polyhaven.com/a/Chandelier_01) | Kirill Sannikov | CC0 1.0 |
+| [Classic Console 01](https://polyhaven.com/a/ClassicConsole_01) | Kirill Sannikov | CC0 1.0 |
+| [Classic Nightstand 01](https://polyhaven.com/a/ClassicNightstand_01) | Kirill Sannikov | CC0 1.0 |
+| [Gothic Bed 01](https://polyhaven.com/a/GothicBed_01) | Kirill Sannikov | CC0 1.0 |
+| [Gothic Commode 01](https://polyhaven.com/a/GothicCommode_01) | Kirill Sannikov | CC0 1.0 |
+| [Green Chair 01](https://polyhaven.com/a/GreenChair_01) | Kirill Sannikov | CC0 1.0 |
+| [Ottoman 01](https://polyhaven.com/a/Ottoman_01) | Caspian Fortune | CC0 1.0 |
+| [Sofa 01](https://polyhaven.com/a/Sofa_01) | Kirill Sannikov | CC0 1.0 |
+| [Wet Floor Sign 01](https://polyhaven.com/a/WetFloorSign_01) | Fran Calvente | CC0 1.0 |
+| [Alarm Clock 01](https://polyhaven.com/a/alarm_clock_01) | Yann Kervran, James Ray Cock | CC0 1.0 |
+| [Bleach Bottle](https://polyhaven.com/a/bleach_bottle) | James Ray Cock | CC0 1.0 |
+| [Book Encyclopedia Set 01](https://polyhaven.com/a/book_encyclopedia_set_01) | John Malcolm | CC0 1.0 |
+| [Brass Vase 02](https://polyhaven.com/a/brass_vase_02) | Rico Cilliers | CC0 1.0 |
+| [Cardboard Box 01](https://polyhaven.com/a/cardboard_box_01) | Rahul Chaudhary | CC0 1.0 |
+| [Ceramic Vase 01](https://polyhaven.com/a/ceramic_vase_01) | James Ray Cock | CC0 1.0 |
+| [Cigarette Pack](https://polyhaven.com/a/cigarette_pack) | Ulrich Büch | CC0 1.0 |
+| [Clipboard](https://polyhaven.com/a/clipboard) | ProgrammerOnCoffee | CC0 1.0 |
+| [Dining Chair 02](https://polyhaven.com/a/dining_chair_02) | James Ray Cock | CC0 1.0 |
+| [Drawer Cabinet](https://polyhaven.com/a/drawer_cabinet) | Ulan Cabanilla | CC0 1.0 |
+| [Fancy Picture Frame 01](https://polyhaven.com/a/fancy_picture_frame_01) | Rob Tuytel, Rico Cilliers | CC0 1.0 |
+| [Hanging Picture Frame 02](https://polyhaven.com/a/hanging_picture_frame_02) | James Ray Cock | CC0 1.0 |
+| [Industrial Storage Cart](https://polyhaven.com/a/industrial_storage_cart) | Jule Bielitz | CC0 1.0 |
+| [Jug 01](https://polyhaven.com/a/jug_01) | Kuutti Siitonen | CC0 1.0 |
+| [Metal Office Desk](https://polyhaven.com/a/metal_office_desk) | Ulan Cabanilla | CC0 1.0 |
+| [Metal Trash Can](https://polyhaven.com/a/metal_trash_can) | GurJas Studios | CC0 1.0 |
+| [Modern Arm Chair 01](https://polyhaven.com/a/modern_arm_chair_01) | Vibrant Nordic | CC0 1.0 |
+| [Multi Cleaner Bottle](https://polyhaven.com/a/multi_cleaner_bottle) | James Ray Cock | CC0 1.0 |
+| [Office Notepads](https://polyhaven.com/a/office_notepads) | Ulan Cabanilla | CC0 1.0 |
+| [Ornate Mirror 01](https://polyhaven.com/a/ornate_mirror_01) | James Ray Cock | CC0 1.0 |
+| [Painted Wooden Cabinet](https://polyhaven.com/a/painted_wooden_cabinet) | Kirill Sannikov | CC0 1.0 |
+| [Plastic Crate 02](https://polyhaven.com/a/plastic_crate_02) | Fabi_G | CC0 1.0 |
+| [Round Wooden Table 01](https://polyhaven.com/a/round_wooden_table_01) | Ulan Cabanilla | CC0 1.0 |
+| [Side Table Tall 01](https://polyhaven.com/a/side_table_tall_01) | James Ray Cock | CC0 1.0 |
+| [Small Wooden Table 01](https://polyhaven.com/a/small_wooden_table_01) | Ulan Cabanilla | CC0 1.0 |
+| [Sofa 03](https://polyhaven.com/a/sofa_03) | Fran Calvente | CC0 1.0 |
+| [Stationery Supplies](https://polyhaven.com/a/stationery_supplies) | Mateusz Sadek | CC0 1.0 |
+| [Steel Frame Shelves 01](https://polyhaven.com/a/steel_frame_shelves_01) | James Ray Cock | CC0 1.0 |
+| [Television 02](https://polyhaven.com/a/television_02) | Benny Weimer | CC0 1.0 |
+| [Vintage Suitcase](https://polyhaven.com/a/vintage_suitcase) | Maximilian Schuster | CC0 1.0 |
+| [Wall Clock](https://polyhaven.com/a/wall_clock) | PierreB3D | CC0 1.0 |
+| [Wicker Basket 02](https://polyhaven.com/a/wicker_basket_02) | Kuutti Siitonen | CC0 1.0 |
+| [Wine Bottles 01](https://polyhaven.com/a/wine_bottles_01) | Rico Cilliers, Jurita Burger | CC0 1.0 |
+| [Wooden Bookshelf Worn](https://polyhaven.com/a/wooden_bookshelf_worn) | Ulan Cabanilla | CC0 1.0 |
+| [Worn Metal Rack](https://polyhaven.com/a/worn_metal_rack) | Luca B | CC0 1.0 |
+<!-- /MODELS -->
+
+<!-- DRESSING: generado por tools/textures/ingest_dressing.py, no editar a mano -->
+## Decals y cuadros (fase 4 de REALISM.md)
+
+Decals de ambientCG (Lennart Demes), CC0 1.0, en `assets/decals/` (512 px); originales en `source_assets/decals/`.
+
+| Decal | Uso |
+|---|---|
+| [Leaking001](https://ambientcg.com/view?id=Leaking001) | humedad que baja por la pared |
+| [Leaking003](https://ambientcg.com/view?id=Leaking003) | humedad que baja por la pared |
+| [Leaking005](https://ambientcg.com/view?id=Leaking005) | humedad que baja por la pared |
+| [Leaking008](https://ambientcg.com/view?id=Leaking008) | gotera bajo el techo |
+| [Leaking009](https://ambientcg.com/view?id=Leaking009) | gotera bajo el techo |
+| [ChewingGum001](https://ambientcg.com/view?id=ChewingGum001) | chicles pegados al suelo |
+| [Fingerprints002](https://ambientcg.com/view?id=Fingerprints002) | huellas de dedos junto a las puertas |
+| [Fingerprints004](https://ambientcg.com/view?id=Fingerprints004) | huellas de dedos junto a las puertas |
+| [Smear003](https://ambientcg.com/view?id=Smear003) | manchas en espejos y azulejo |
+| [Footsteps003](https://ambientcg.com/view?id=Footsteps003) | pisadas en el suelo |
+| [SurfaceImperfections001](https://ambientcg.com/view?id=SurfaceImperfections001) | manchas en suelos y paredes |
+| [SurfaceImperfections013](https://ambientcg.com/view?id=SurfaceImperfections013) | manchas en suelos y paredes |
+| [SurfaceImperfections017](https://ambientcg.com/view?id=SurfaceImperfections017) | manchas en suelos y paredes |
+
+Cuadros: imágenes de dominio público del Art Institute of Chicago (CC0, open access), en `assets/paintings/` (1024 px); originales en `source_assets/paintings/`.
+
+| Obra | Autor | Fecha |
+|---|---|---|
+| [River Landscape with a View of Naarden](https://www.artic.edu/artworks/238272) | Salomon van Ruysdael (Dutch, about 1602–1670) | 1642 |
+| [The Watermill with the Great Red Roof](https://www.artic.edu/artworks/869) | Meindert Hobbema (Dutch, 1638–1709) | c. 1665 |
+| [Coast Scene](https://www.artic.edu/artworks/495) | Attributed to Reinier Nooms (Reinier Zeeman; Dutch, c. 1623-c. 1668) | c. 1655 |
+| [Douarnenez in Sunshine](https://www.artic.edu/artworks/111632) | Maxime Maufra (French, 1861–1918) | 1897 |
+| [Portrait of a Man with Gray Hair](https://www.artic.edu/artworks/15708) | Henry Raeburn (Scottish, 1756–1823) | 1810–20 |
+| [Portrait of a Woman](https://www.artic.edu/artworks/79765) | John Wollaston (American, born England, c. 1710–c. 1775) | 1749–52 |
+| [Portrait of a Man](https://www.artic.edu/artworks/75409) | Arthur Devis (English, 1712–1787) | 1763 |
+| [Mountain Brook](https://www.artic.edu/artworks/146701) | Albert Bierstadt (American, born Solingen, Prussia, now Germany, 1830–1902) | 1863 |
+| [Icebound](https://www.artic.edu/artworks/72801) | John Henry Twachtman (American, 1853–1902) | c. 1889 |
+| [On the Road](https://www.artic.edu/artworks/890) | Jules Dupré (French, 1811–1889) | 1856 |
+| [Landscape](https://www.artic.edu/artworks/874) | Jean Charles Cazin (French, 1841–1901) | c. 1895 |
+| [York Harbor, Coast of Maine](https://www.artic.edu/artworks/152747) | Martin Johnson Heade (American, 1819–1904) | 1877 |
+| [Italian Landscape with Travelers](https://www.artic.edu/artworks/69041) | Jan Both (Dutch, c. 1618–1652) | c. 1650 |
+| [Bouquet of Flowers in an Earthenware Vase](https://www.artic.edu/artworks/64029) | Attributed to Jan Brueghel the Elder (Flemish, 1568–1625) | c. 1610 |
+<!-- /DRESSING -->
+
 ## Modelos aportados en 0.4-S1
 
 Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. Autoría y licencia por verificar antes de cualquier distribución.

@@ -45,6 +45,8 @@ const NEIGHBOUR_DARK := 0.55
 var dark_ids := {}
 ## Set while a dark room's furniture is built: its lamps stay out.
 var building_dark := false
+## The module whose furniture is being built (prop_factory.gd), -1 otherwise.
+var building_type := -1
 ## Glowing materials and their unlit copies (switch_off).
 var unlit := {}
 const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
@@ -67,6 +69,7 @@ const DOOR_FRAME := preload("res://assets/props/door/door_frame.res")
 ## Where the leaf's faces are, for the room numbers screwed onto them.
 const LEAF_FACE := 0.066
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
+const DRESSING := preload("res://game/world/hotel/room_dressing.gd")
 ## The graphics preset in force (graphics_presets.gd): how far rooms are drawn
 ## (room_reach; a hidden room casts no shadow), where the ceiling lamps fade
 ## (lamp_fade) and the furniture lamps go out, dust, haze and probes. Medium
@@ -112,6 +115,13 @@ func _init() -> void:
 	# A lampshade whose bulb is out does not glow either.
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
+	# The exit sign's lit panel.
+	var exit := StandardMaterial3D.new()
+	exit.albedo_color = Color(0.05, 0.35, 0.15)
+	exit.emission_enabled = true
+	exit.emission = Color(0.1, 0.85, 0.35)
+	exit.emission_energy_multiplier = 1.6
+	materials["exit_sign"] = exit
 
 ## Scanned maps (docs/REALISM.md, phase 3): a material's set is its "scan"
 ## metadata, a folder of assets/textures/ made by tools/textures/ingest_pbr.py
@@ -243,16 +253,96 @@ func flush() -> void:
 				still.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 				batch.parent.add_child(still)
 	batches.clear()
+	for batch in model_batches.values():
+		for entry in batch.meshes.values():
+			var mesh: Mesh = entry.mesh
+			var transforms: Array = entry.transforms
+			var multi := MultiMesh.new()
+			multi.transform_format = MultiMesh.TRANSFORM_3D
+			multi.mesh = mesh
+			multi.instance_count = transforms.size()
+			for i in transforms.size(): multi.set_instance_transform(i, transforms[i])
+			var instance := MultiMeshInstance3D.new()
+			instance.name = "Model_" + mesh.resource_name
+			instance.multimesh = multi
+			var size := mesh.get_aabb().size
+			# Lamps redraw their shadows whenever anything moves near them:
+			# only pieces of furniture cast, never what stands on them.
+			if not entry.casts or size.y < SHADOW_MODEL:
+				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if size.y < SMALL_MODEL and maxf(size.x, size.z) < 0.8:
+				# Small things are not drawn from afar.
+				instance.visibility_range_end = SMALL_REACH
+				instance.visibility_range_end_margin = 2.0
+			batch.parent.add_child(instance)
+	model_batches.clear()
+
+## Baked models (assets/props/hotel, room_dressing.gd), batched per room and
+## per mesh like the boxes: one MultiMesh each. Nothing under SHADOW_MODEL
+## tall casts a shadow, nor anything placed with casts off (what stands on a
+## top or a shelf); things under SMALL_MODEL are not drawn past SMALL_REACH.
+var model_batches := {}
+const SHADOW_MODEL := 0.6
+const SMALL_MODEL := 0.3
+const SMALL_REACH := 16.0
+
+func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true) -> void:
+	var target := batch_target(parent)
+	var key: int = target[0].get_instance_id()
+	if not model_batches.has(key): model_batches[key] = {"parent": target[0], "meshes": {}}
+	var meshes: Dictionary = model_batches[key].meshes
+	var slot := "%d:%s" % [mesh.get_instance_id(), casts]
+	if not meshes.has(slot): meshes[slot] = {"mesh": mesh, "casts": casts, "transforms": []}
+	meshes[slot].transforms.append(target[1] * xform)
+
+## A decal from assets/decals/ (tools/textures/ingest_dressing.py) under
+## parent: projected along the transform's -Y over size, as strong as
+## strength. Only on surfaces facing it, and faded out from afar. rank (0-1)
+## orders a room's decals: the preset shows those under its share (decals).
+func decal(parent: Node3D, name: String, xform: Transform3D, size: Vector3, strength: float, rank: float) -> void:
+	var tint: Color = DECAL_TINT.get(name, Color.WHITE)
+	var projector := Decal.new()
+	projector.transform = xform
+	projector.size = size
+	projector.texture_albedo = load("res://assets/decals/%s.png" % name)
+	var normal := "res://assets/decals/%s_normal.png" % name
+	if ResourceLoader.exists(normal): projector.texture_normal = load(normal)
+	projector.modulate = Color(tint.r, tint.g, tint.b, clampf(strength * tint.a, 0.0, 1.0))
+	projector.normal_fade = 0.4
+	projector.upper_fade = 0.2
+	projector.lower_fade = 0.2
+	projector.distance_fade_enabled = true
+	projector.distance_fade_begin = DECAL_REACH
+	projector.distance_fade_length = 4.0
+	projector.set_meta("rank", rank)
+	projector.visible = rank < float(preset.decals)
+	parent.add_child(projector)
+	decals.append(projector)
+
+var decals: Array[Decal] = []
+
+## Decals scanned from something else: footprints in sand made mud, a white
+## handprint made grime, the smear softened.
+const DECAL_TINT := {"Footsteps003": Color(0.2, 0.16, 0.11, 1.0), "Fingerprints004": Color(0.4, 0.36, 0.3, 1.0), "Smear003": Color(1, 1, 1, 0.45)}
+## Decals are not drawn past this: some 20 in view at most.
+const DECAL_REACH := 14.0
+
+## Compatibility draws no decals: none are made.
+func decals_drawn() -> bool:
+	return RenderingServer.get_current_rendering_method() != "gl_compatibility"
 
 ## reach: past it the label is not drawn at all (0 keeps it at any distance).
-func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38, reach := 0.0) -> void:
+## Engraved figures on the door plaques.
+const PLAQUE_INK := Color(0.07, 0.05, 0.03)
+
+func text(parent: Node3D, words: String, pos: Vector3, yaw := 0.0, size := 38, reach := 0.0, ink := Color("d3bd8e")) -> void:
 	var label := Label3D.new()
 	label.text = words
 	label.position = pos
 	label.rotation.y = yaw
 	label.font_size = size
 	label.pixel_size = 0.007
-	label.modulate = Color("d3bd8e")
+	label.modulate = ink
 	label.outline_size = 0
 	# Lit like everything else: an unshaded label glowed in a black room.
 	label.shaded = true
@@ -450,8 +540,11 @@ func build(data: Dictionary) -> void:
 		# Each face shows the number of the room behind the door, as seen from
 		# the room that face looks into.
 		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
-		text(door, str(100 + int(a.id)), Vector3(half, 1.94, LEAF_FACE * b_side), 0.0 if b_side > 0 else PI, 24, NUMBER_REACH)
-		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -LEAF_FACE * b_side), PI if b_side > 0 else 0.0, 24, NUMBER_REACH)
+		# On a brass plaque screwed to the leaf, in dark letters.
+		for face in [1, -1]:
+			box(door, Vector3(half, 1.94, face * (LEAF_FACE + 0.002)), Vector3(0.26, 0.13, 0.004), "gold")
+		text(door, str(100 + int(a.id)), Vector3(half, 1.94, (LEAF_FACE + 0.005) * b_side), 0.0 if b_side > 0 else PI, 24, NUMBER_REACH, PLAQUE_INK)
+		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -(LEAF_FACE + 0.005) * b_side), PI if b_side > 0 else 0.0, 24, NUMBER_REACH, PLAQUE_INK)
 		if int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
@@ -497,8 +590,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			# composition varies with its position. It used to hang on local -Z,
 			# which on west and north walls is the next room's face, on top of that
 			# room's own prints (two frames z-fighting, this room's wall bare).
-			box(boundary, Vector3(side * 3.5, 2.02, inner * 0.16), Vector3(1.28, 0.92, 0.08), "gold" if int(room.variant) % 2 == 0 else "trim")
-			box(boundary, Vector3(side * 3.5, 2.02, inner * 0.205), Vector3(1.14, 0.78, 0.02), "painting")
+			hang_painting(boundary, Vector3(side * 3.5, 2.02, 0), inner, int(room.variant) % 2 == 0)
 			# Public spaces: a pair of cloth-shaded wall lamps beside each print.
 			if room.type in SCONCE_ROOMS and length > 9.0:
 				for flank in [-1, 1]:
@@ -518,8 +610,10 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		furniture.transform = prop_transform(room, prop)
 		node.add_child(furniture)
 		building_dark = dark_room(room)
+		building_type = int(room.type)
 		build_prop(furniture, prop.kind)
 		building_dark = false
+		building_type = -1
 	if room.type in [1, 2, 3, 4, 7, 15, 16]:
 		# Domestic alcoves interrupt the square footprint while preserving portals.
 		for side in [-1, 1]:
@@ -542,6 +636,8 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			hides.append(hide)
 			# The wardrobe builds its own model, frame colliders and door leaves.
 			node.add_child(hide)
+	# Furniture along the free walls, things, clutter and decals (phase 4).
+	DRESSING.dress(self, node, room)
 	# Central sightlines remain open; booths sit against the perimeter.
 	var service: bool = room.type in [4, 7, 8, 9]
 	var light := OmniLight3D.new()
@@ -647,10 +743,35 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		node.add_child(beacon)
 		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy})
 	if room.type == 19:
-		text(node, "SALIDA\nREFUGIO", Vector3(0, 2.25, -2.5), 0, 40)
-		text(node, "SALIDA / REFUGIO", Vector3(0, 2.65, 4.8), PI, 35)
+		exit_sign(node, Vector3(0, 2.25, -2.5), 0.0, height)
+		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
 		light.light_color = Color("b8d4b6")
 	build_occluder(node)
+
+## A lit exit sign hung from the ceiling on two rods: a green panel, glowing,
+## lettered on both faces.
+func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
+	var board := Node3D.new()
+	board.name = "ExitSign"
+	board.position = pos
+	board.rotation.y = yaw
+	node.add_child(board)
+	box(board, Vector3.ZERO, Vector3(1.0, 0.44, 0.09), "black")
+	box(board, Vector3.ZERO, Vector3(0.92, 0.36, 0.1), "exit_sign")
+	for x in [-0.4, 0.4]: box(board, Vector3(x, (ceiling - pos.y) * 0.5 + 0.11, 0), Vector3(0.012, ceiling - pos.y - 0.22, 0.012), "metal", false, "cylinder")
+	for face in [1.0, -1.0]:
+		var label := Label3D.new()
+		label.text = "SALIDA\nREFUGIO"
+		label.position = Vector3(0, 0, face * 0.052)
+		label.rotation.y = 0.0 if face > 0 else PI
+		label.font_size = 30
+		label.pixel_size = 0.0068
+		label.line_spacing = -6.0
+		label.modulate = Color(0.95, 1.0, 0.95)
+		# Its own light: the letters glow like the panel.
+		label.shaded = false
+		label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		board.add_child(label)
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
@@ -848,6 +969,9 @@ static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
 ## follows on the next update_visibility().
 func apply_quality(new_preset: Dictionary) -> void:
 	preset = new_preset
+	for projector in decals:
+		var shown: bool = projector.get_meta("rank") < float(preset.decals)
+		if projector.visible != shown: projector.visible = shown
 	small_maps = preset.small_maps
 	if maps_small != small_maps:
 		maps_small = small_maps
@@ -900,6 +1024,82 @@ func _process(delta: float) -> void:
 			if burst: level = 0.25 if chatter > 0.1 else 1.0
 		lamp.light_energy = entry.energy * level
 		entry.material.emission_energy_multiplier = entry.glow * level
+
+## Public-domain paintings (assets/paintings, tools/textures/ingest_dressing.py)
+## in their frames: a gold, carved frame (Poly Haven's, its own canvas taken
+## out) or a plain wooden one. Portraits hang upright. Which painting hangs
+## where comes from the position, like everything else.
+const PAINTINGS := "res://assets/paintings/"
+const CANVAS := Vector2(1.14, 0.78)
+static var art: Array = []
+static var carved_frame: Mesh
+## Where the carved frame's opening is, in its own space: centre and size.
+static var carved_opening := AABB()
+
+static func paintings() -> Array:
+	if not art.is_empty(): return art
+	var entries = JSON.parse_string(FileAccess.get_file_as_string(PAINTINGS + "paintings.json"))
+	for entry in entries:
+		var portrait: bool = entry.aspect < 0.95
+		var canvas := Vector2(CANVAS.y, CANVAS.x) if portrait else CANVAS
+		var material := StandardMaterial3D.new()
+		material.albedo_texture = load(PAINTINGS + "%d.jpg" % int(entry.id))
+		material.roughness = 0.62
+		# Cropped to the canvas, centred; a portrait keeps its upper part.
+		var ratio: float = (canvas.x / canvas.y) / float(entry.aspect)
+		if ratio < 1.0:
+			material.uv1_scale = Vector3(ratio, 1, 1)
+			material.uv1_offset = Vector3((1.0 - ratio) * 0.5, 0, 0)
+		else:
+			material.uv1_scale = Vector3(1, 1.0 / ratio, 1)
+			material.uv1_offset = Vector3(0, (1.0 - 1.0 / ratio) * (0.25 if portrait else 0.5), 0)
+		var quad := QuadMesh.new()
+		quad.size = canvas
+		quad.material = material
+		quad.resource_name = "painting_%d" % int(entry.id)
+		art.append({"mesh": quad, "portrait": portrait})
+	# The carved frame without the canvas it came with.
+	var source: Mesh = load("res://assets/props/hotel/fancy_picture_frame_01.res")
+	carved_frame = ArrayMesh.new()
+	for surface in source.get_surface_count():
+		var arrays := source.surface_get_arrays(surface)
+		var box := AABB()
+		var first := true
+		for vertex: Vector3 in arrays[Mesh.ARRAY_VERTEX]:
+			box = AABB(vertex, Vector3.ZERO) if first else box.expand(vertex)
+			first = false
+		if source.surface_get_name(surface).ends_with("canvas"):
+			carved_opening = box
+			continue
+		(carved_frame as ArrayMesh).add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		carved_frame.surface_set_material(carved_frame.get_surface_count() - 1, source.surface_get_material(surface))
+	carved_frame.resource_name = "carved_frame"
+	return art
+
+## A painting on a wall's inner face (inner: which side of the boundary),
+## centred at pos; carved gold frame or a wooden one.
+func hang_painting(boundary: Node3D, pos: Vector3, inner: int, carved: bool) -> void:
+	var list := paintings()
+	var pick: Dictionary = list[int(vary(boundary.position + boundary.basis * pos, 13) * list.size())]
+	var canvas := Vector2(CANVAS.y, CANVAS.x) if pick.portrait else CANVAS
+	var facing := Basis(Vector3.UP, PI if inner < 0 else 0.0)
+	# The plaster face above the chair rail is 9 cm from the wall's centre.
+	var face := 0.09
+	pos += Vector3(0, 0, inner * face)
+	if carved:
+		# The frame is carved landscape: a portrait turns it on its side
+		# rather than stretching the carving.
+		var turn := Basis(Vector3.BACK, PI / 2) if pick.portrait else Basis.IDENTITY
+		var scale := Vector3(CANVAS.x / carved_opening.size.x, CANVAS.y / carved_opening.size.y, 1.6)
+		var local := Basis.from_scale(scale)
+		var centre := turn * (local * carved_opening.get_center())
+		var depth := 0.016 + 1.6 * (carved_frame.get_aabb().size.z * 0.5)
+		place(boundary, carved_frame, Transform3D(facing * turn * local, pos + facing * Vector3(-centre.x, -centre.y, depth - 0.016)))
+		place(boundary, pick.mesh, Transform3D(facing, pos + facing * Vector3(0, 0, depth - 0.016 + centre.z + 0.002)))
+	else:
+		var border := 0.07
+		box(boundary, pos + Vector3(0, 0, inner * 0.02), Vector3(canvas.x + border * 2, canvas.y + border * 2, 0.04), "trim")
+		place(boundary, pick.mesh, Transform3D(facing, pos + Vector3(0, 0, inner * 0.041)))
 
 func build_prop(node: Node3D, kind: String) -> void:
 	preload("res://game/world/hotel/prop_factory.gd").build(self, node, kind)

@@ -326,7 +326,76 @@ El resto de los sets van a `plaster`, `carpet`, `ceiling`, `wood`, `door`, `pane
 - hojas `evidence/lookdev/fase3_antes_despues.png` (sin cinta) y `fase3_antes_despues_vhs.png` (como se juega);
 - `fase3_primeros_planos.png`: cama con linterna, cornisa, zócalo y azulejo. Son las tomas cercanas nuevas de `lookdev_capture.gd`: `cama`, `cornisa`, `zocalo` y `azulejo`.
 
+## Fase 4 — Ambientación y mobiliario real (hecha, salvo lo de Sketchfab)
+
+Muebles y objetos de Poly Haven, decals de ambientCG y cuadros del Art Institute of Chicago, todo CC0 y registrado en [ASSETS.md](ASSETS.md). Pendientes los nueve modelos CC-BY de Sketchfab (teléfono, sanitarios, lavadoras, carro de limpieza, timbre, cenicero y toallas), que requieren cuenta: sus huecos siguen como estaban.
+
+**1. Catálogo** (46 descargas, 52 modelos: las que traen varios objetos, como la papelera, las maletas y las botellas, se separan):
+- `tools/props/ingest_models.py` copia las texturas (1024 px, 2048 en los muebles grandes) y escribe un material por material del glTF;
+- `tools/props/build_catalogue.gd` hornea cada glTF, leído con `GLTFDocument` desde `source_assets/` (que Godot no importa), en una malla por modelo en `assets/props/hotel/<id>.res`: una superficie por material, suelo en y = 0, frente hacia +Z, a tamaño real y con LOD automáticos;
+- `tools/props/catalogue_sheet.gd` dibuja la hoja `evidence/catalogue_sheet.png`, para comprobar frentes y tamaños.
+
+Arreglos del camino:
+- las estanterías metálicas venían en centímetros;
+- en glTF, `BLEND` es transparencia alfa y no el prepaso de profundidad (el cristal de los relojes salía negro);
+- los flecos y agujeros con `BLEND` pasan a recorte, para que sigan proyectando sombra.
+
+**2. Huecos de siempre** (`prop_factory.gd`), con sus colisionadores intactos:
+- cama tallada con mesilla y despertador;
+- mesillas a 0,84 m, la altura a la que `document_placement.gd` deja los documentos (su colisionador se ajusta al mueble);
+- sillas reales en mesas y escritorios, con papeles y lápices fuera del centro, donde puede caer un documento;
+- tres sofás que se alternan;
+- estanterías rellenas: metálicas con cajas y botes en las salas de servicio, librerías con enciclopedias en el resto;
+- caja registradora en recepción, maletas, papeleras metálicas y carro metálico en servicio.
+
+**3. Paredes** (`room_dressing.gd`). Cada pared cerrada tiene dos tramos libres: desde pasado el vano (la hoja nunca barre más allá de su bisagra) hasta antes del hueco de la esquina o del tabique de la alcoba, y nunca donde hay un armario-escondite.
+- Cada tipo de sala tiene su juego de piezas: cómoda con espejo, consola, butaca con velador, sillas, maletas, planta, librería, estanterías, cajas, papeleras, cestos...
+- Encima o dentro van jarrones, relojes, libros, cajas y botes, colocados en las alturas reales de cada modelo: `shelves()` busca sus caras planas hacia arriba.
+- Las piezas grandes llevan colisionador de caja; lo de menos de unos 30 cm, no.
+- **Validación física: 0 errores en 8 semillas**, sin caer al piso de reserva.
+
+**4. Estado de cada sala** (por posición):
+- cuidada (50 %), descuidada (35 %) o abandonada (15 %); el salón vacío nunca está cuidado;
+- en los tramos vacíos, lo descuidado deja botellas, papeles, cajas y colillas, y lo abandonado además alguna silla volcada.
+
+**5. Densidad:** mediana de 35–43 objetos por sala (entre 7 y 151; lo alto son las estanterías llenas).
+
+**6. Cuadros:** 14 obras de dominio público en `assets/paintings/`.
+- En el marco tallado de Poly Haven, sin su lienzo, o en uno de madera lisa.
+- Los retratos cuelgan en vertical, con el marco girado en lugar de estirado, y se recortan conservando la parte de arriba.
+- Qué cuadro va en cada sitio sale de la posición.
+
+**7. Decals** (prueba 5), 13 de ambientCG preparados por `tools/textures/ingest_dressing.py`: 512 px, alfa desde su opacidad (las pisadas desde el relieve y la mancha desde la rugosidad) y bordes difuminados.
+- **Dónde:** humedad bajo el techo y desde el suelo, huellas junto a los vanos, manchas, chicles en zonas públicas y pisadas en salas abandonadas.
+- **Cuántos por sala:** 4, 9 o 16 según el estado. Se crean todos al construir, y el preset muestra una parte (`decals`: ninguno en Bajo, la mitad en Medio, todos en Alto y Ultra). Compatibility no tiene decals.
+- **Cómo:** solo se pintan en superficies que miran al decal (`normal_fade`) y se desvanecen a 14 m. Con eso y las salas ocultas nunca hay más de unas decenas en el clúster, lejos del límite de 512.
+- **Tintes:** las pisadas en arena pasan a ser barro y la mano blanca, mugre; la mancha se suaviza y queda para baños y servicio.
+
+**8. Letrero de salida y placas:**
+- en el refugio, dos letreros de salida verdes iluminados colgados del techo sustituyen al texto flotante;
+- los números de puerta van en placas de latón, en letra oscura.
+
+**9. Sombras.** Lo que mide menos de 60 cm, y todo lo que está encima de otro mueble, no proyecta sombra; lo de menos de 30 cm deja de dibujarse a 16 m.
+- **Descartado:** una copia simplificada por modelo para la sombra. Tuvo el efecto contrario (1,9 M de primitivas de sombra frente a 0,98 M), porque en las sombras Godot ya usa los LOD de la malla, y la copia no los tenía.
+
+**Coste** (recorrido, GPU media; antes, `scans2`):
+
+| Preset | GPU media antes | GPU media ahora | p99 del fotograma ahora | Memoria de vídeo |
+|---|---|---|---|---|
+| Bajo | 1,00 ms | 1,25 ms | 4,9 ms | 1,46 GB |
+| Medio | 3,24 ms | 3,78 ms | 6,6 ms | 1,53 GB |
+| Alto | 7,40 ms | 8,11 ms | 12,9 ms | 2,21 GB |
+| Ultra | 11,21 ms | 11,92 ms | 19,8 ms | 2,37 GB |
+
+- **Alto:** sigue dentro de los 16,7 ms.
+- **Ultra:** su p99 empeora (17,3 → 19,8 ms). La GPU del p99 sube menos (15,6 → 16,2 ms), así que el resto son picos de CPU al entrar en salas nuevas; queda para el cierre.
+- **Primitivas visibles:** unas 150 000, cuatro veces las de antes.
+
+**Hito:**
+- hojas `evidence/lookdev/fase4_antes_despues.png` y `_vhs.png`;
+- `fase4_primeros_planos.png`;
+- catálogo `evidence/catalogue_sheet.png`.
+
 ### Pruebas que se hacen al empezar su fase
 
-- **5. Decals** (límite de elementos agrupados, atlas): fase 4.
 - **6. Bisel en shader:** fase 5.

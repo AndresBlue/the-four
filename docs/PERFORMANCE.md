@@ -161,6 +161,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Polvo (partículas) | no | 60 | 90 | 140 |
 | Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas |
 | Materiales escaneados | 1024 px, sin antirrepetición | 2048 px | 2048 px | 2048 px |
+| Decals (humedad, manchas, huellas) | no | la mitad | todos | todos |
 | Filtro VHS | 4 lecturas de croma | 7 | 7 | 7 |
 | Umbral de LOD | 4 px | 2 px | 1 px | 1 px |
 | Filtrado anisotrópico | 2× | 4× | 8× | 16× |
