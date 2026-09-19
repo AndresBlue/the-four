@@ -435,9 +435,12 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
 		for side in [-1, 1]:
-			# Framed hotel art; each canvas composition varies with its position.
-			box(boundary, Vector3(side * 3.5, 2.02, -0.16), Vector3(1.28, 0.92, 0.08), "gold" if int(room.variant) % 2 == 0 else "trim")
-			box(boundary, Vector3(side * 3.5, 2.02, -0.205), Vector3(1.14, 0.78, 0.02), "painting")
+			# Framed hotel art on this room's face of the wall (inner); each canvas
+			# composition varies with its position. It used to hang on local -Z,
+			# which on west and north walls is the next room's face, on top of that
+			# room's own prints (two frames z-fighting, this room's wall bare).
+			box(boundary, Vector3(side * 3.5, 2.02, inner * 0.16), Vector3(1.28, 0.92, 0.08), "gold" if int(room.variant) % 2 == 0 else "trim")
+			box(boundary, Vector3(side * 3.5, 2.02, inner * 0.205), Vector3(1.14, 0.78, 0.02), "painting")
 			# Public spaces: a pair of cloth-shaded wall lamps beside each print.
 			if room.type in SCONCE_ROOMS and length > 9.0:
 				for flank in [-1, 1]:
@@ -446,8 +449,9 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 					# In a dark room its shade and bulb are out: an emissive
 					# shade lit the walls round it by bounce light.
 					if dark_room(room): switch_off(sconce)
-					sconce.position = Vector3(side * 3.5 + flank * 0.98, 1.6, -0.09)
-					sconce.rotation.y = PI
+					sconce.position = Vector3(side * 3.5 + flank * 0.98, 1.6, inner * 0.09)
+					# The model faces +Z: turned to face into this room.
+					sconce.rotation.y = PI if inner < 0 else 0.0
 					boundary.add_child(sconce)
 	for prop in room.props:
 		var furniture := Node3D.new()
