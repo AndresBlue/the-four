@@ -65,7 +65,7 @@ Prueba: una `ReflectionProbe` interior por sala iluminada (97 en la semilla 81),
 - **Efecto:** levanta las sombras de las salas iluminadas (el interior del armario y la mesa de servicio dejan de ser negros). La sala oscura no cambia.
 - **Medida sin cinta:** brillo medio +1 a +1,5 de 255 y 1–3 puntos menos de píxeles negros. Subir `intensity` a 3 casi no cambia la luz ambiente, sobre todo el reflejo.
 - **Sin fugas:** con puerta cerrada, la sala oscura contigua da en los cuatro presets lo mismo que sin sondas, 0,6–0,8 de 255.
-- **Conclusión:** es un rebote plausible y confinado a la sala. Su fuerza real la dará la exposición de la cámara (fase 1). Si hace falta más relleno, el modo `COLOR` permite fijarlo por sala.
+- **Conclusión:** es un rebote plausible y confinado a la sala, pero débil. **Superada por la prueba 8:** el rebote es un `VoxelGI` por sala y las sondas quedan para los reflejos.
 - **Aviso:** 97 sondas superan las 64 plazas del atlas de reflejos (`rendering/reflections/reflection_atlas/reflection_count`); en el piso solo se ven las cercanas, pero hay que medirlo.
 
 ### 4. Luz de los apliques y perfiles IES — funciona con sombra
@@ -80,7 +80,7 @@ Prueba: una `OmniLight3D` por aplique en las salas iluminadas (32 en la semilla 
 | Foco de 89° metido 3 cm en el muro | Apenas ilumina (la pared queda en rasante) |
 
 - **En el proyector, el frente (hacia la sala) es −Z local de la luz.**
-- **Adoptado para la fase 2:** proyector con sombra, en Alto y Ultra; en Bajo y Medio el aplique queda emisivo. Los perfiles se generarán desde archivos IES (`tools/lighting/ies_to_projector.gd`).
+- **Adoptado para la fase 2:** proyector con sombra, en Alto y Ultra; en Bajo y Medio el aplique queda emisivo. Los perfiles se generan por código en `lighting.gd`; no hizo falta leer archivos IES.
 
 ### 7. Niebla volumétrica iluminada por las lámparas — funciona
 
@@ -88,7 +88,7 @@ Prueba: `volumetric_fog_length` de 14 m (antes 48) y `light_volumetric_fog_energ
 
 - **Efecto:** una bruma suave en el aire de las salas iluminadas. Brillo medio +2 a +3 de 255 y un 5–6 % menos de píxeles negros. La sala oscura, igual.
 - **Sin fugas:** los cuatro presets dan lo mismo que sin niebla. Con celdas más cortas, el resplandor ya no cruza el muro.
-- **Pendiente:** la linterna también ilumina la niebla solo hasta 14 m; se juzgará en la fase 2.
+- **La linterna** también ilumina la niebla solo hasta 14 m. Juzgado en la fase 2: a esa distancia su haz ya es débil y el corte no se nota.
 
 ## Fase 1 — La camcorder (hecha)
 
@@ -148,27 +148,32 @@ La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). 
    - **aplique de pantalla de tela:** un cono hacia arriba, otro hacia abajo, un brillo tenue a través de la tela y nada hacia atrás.
    Los perfiles restan luz fuera de su dirección principal; un 25 % más de energía mantiene el brillo de cada sala. Un proyector solo funciona con sombra: si los ajustes quitan las sombras, el perfil se retira con ellas.
 3. **Apliques que iluminan** (Alto y Ultra): una luz con sombra por aplique en las salas iluminadas, apagada a partir de 24 m. En Bajo y Medio la pantalla solo brilla.
-4. **Rebote de luz** (Alto y Ultra): una sonda por sala iluminada que, renderizada con sombras, es además la luz ambiente de su sala. Es un rebote confinado a la caja de la sala, que no llega a la contigua. Solo se muestra con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. En Medio, una de cada tres salas de pasillo lleva sonda, solo para reflejos.
-5. **Niebla iluminada** (desde Medio): las lámparas iluminan la niebla volumétrica, que entonces llega a 14 m en vez de 48. La linterna también la ilumina hasta esa distancia; a 14 m su haz ya es débil y el corte no se nota.
+4. **Rebote de luz** (Alto y Ultra, `bounce_light.gd`): un `VoxelGI` por sala iluminada. La luz que cae en la moqueta, las paredes y el techo ilumina el resto de la sala con su color. Detalles en la prueba 8.
+   - El volumen termina en las paredes de su sala: el rebote no llega a la contigua, y una sala oscura no tiene.
+   - Las lámparas se inyectan en vivo, así que un tubo que falla o una lámpara que se apaga se llevan su rebote.
+   - Alto lo dibuja a media resolución (`bounce_half`), sin diferencia visible; Ultra, a resolución completa.
+5. **Reflejos:** una sonda por sala iluminada en Alto y Ultra, renderizada con sombras, y una de cada tres salas de pasillo en Medio. Solo se muestra con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. Su luz ambiente solo se usa si se quita el rebote.
+6. **Niebla iluminada** (desde Medio): las lámparas iluminan la niebla volumétrica, que entonces llega a 14 m en vez de 48. La linterna también la ilumina hasta esa distancia; a 14 m su haz ya es débil y el corte no se nota.
 
 **Resultado** (Alto, sin cinta, brillo medio / porcentaje de píxeles negros):
 
-| Vista | Fase 1 | Fase 2 |
-|---|---|---|
-| Recepción | 23,2 / 8 % | 28,1 / 5 % |
-| Dormitorio | 37,2 / 13 % | 36,1 / 9 % |
-| Salón | 33,6 / 11 % | 34,5 / 4 % |
-| Pasillo | 36,7 / 8 % | 40,0 / 3 % |
-| Baño | 44,4 / 15 % | 43,9 / 22 % |
-| Servicio | 42,1 / 16 % | 42,3 / 24 % |
-| Sala oscura | 3,1 / 91 % | 3,3 / 91 % |
+| Vista | Fase 1 | Luz (paso 1) | Con rebote |
+|---|---|---|---|
+| Recepción | 23,2 / 8 % | 28,1 / 5 % | 36,7 / 3 % |
+| Dormitorio | 37,2 / 13 % | 36,1 / 9 % | 40,7 / 9 % |
+| Salón | 33,6 / 11 % | 34,5 / 4 % | 40,5 / 4 % |
+| Pasillo | 36,7 / 8 % | 40,0 / 3 % | 42,9 / 3 % |
+| Baño | 44,4 / 15 % | 43,9 / 22 % | 45,8 / 13 % |
+| Servicio | 42,1 / 16 % | 42,3 / 24 % | 45,1 / 13 % |
+| Sala oscura | 3,1 / 91 % | 3,3 / 91 % | 3,2 / 91 % |
 
 - Los apliques lavan la pared en festones y el pasillo gana profundidad.
-- Las sombras de las salas cálidas dejan de ser negras.
-- El techo de los fluorescentes se oscurece, porque la regleta lo tapa, y la luz toma el tono frío y verdoso.
+- La luz de los fluorescentes toma el tono frío y verdoso. La regleta tapa el techo, que sin rebote quedaba negro; con él recibe la luz que devuelve el suelo.
+- Con el rebote, techos y paredes reciben un relleno cálido del color de la sala, y las sombras dejan de ser negras.
 - La sala oscura queda igual.
+- La mancha de humedad del techo del salón se ve más, porque ahora el techo está iluminado.
 
-**Sin fugas:** con la puerta cerrada, la sala oscura contigua a una iluminada da lo mismo con la luz nueva que sin apliques, sondas ni niebla iluminada, en los cuatro presets (8,9–9,0 de 255 con el ruido del sensor, sin lente ni OSD).
+**Sin fugas:** con la puerta cerrada, la sala oscura contigua a una iluminada da lo mismo con la luz nueva que sin apliques, sondas, niebla iluminada ni rebote, en los cuatro presets (8,9–9,0 de 255 con el ruido del sensor, sin lente ni OSD).
 
 **Coste** (RTX 4060 Ti, 1080p, GPU caminando, frente a la fase 1):
 
@@ -176,10 +181,13 @@ La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). 
 |---|---|---|
 | Bajo | 0,86 → 0,90 ms | 3,5 → 3,4 ms |
 | Medio | 2,66 → 2,79 ms | 4,9 → 5,1 ms |
-| Alto | 5,71 → 6,42 ms | 8,3 → 10,2 ms |
-| Ultra | 7,91 → 9,40 ms | 11,2 → 15,1 ms |
+| Alto | 5,71 → 6,90 ms | 8,3 → 11,6 ms |
+| Ultra | 7,91 → 10,86 ms | 11,2 → 18,8 ms |
 
-Casi todo es la sombra de los apliques, que se redibuja al pasar junto a ellos. Alto sigue muy por debajo de los 16,7 ms de 60 FPS.
+- **Apliques:** la mayor parte. Su sombra se redibuja al pasar junto a ellos.
+- **Rebote:** +0,5 ms en Alto (media resolución) y +1,5 ms en Ultra.
+- Alto sigue por debajo de los 16,7 ms de 60 FPS también en el p99. Ultra baja de 60 FPS en algunos fotogramas.
+- **Carga del piso:** +0,9 s en Alto y Ultra (1,4–1,6 s frente a 0,6 s en Medio), por el horneado del rebote.
 
 ### 8. VoxelGI por sala frente a las sondas
 
@@ -200,9 +208,20 @@ Prueba: un `VoxelGI` de subdivisión 64 por sala de las vistas, horneado en la c
   - El horneado lee el color solo de los materiales estándar. Los del hotel son shaders propios, así que los ve blancos y el rebote sale sin color y demasiado fuerte.
   - Hornear la geometría real cuesta 220–860 ms por sala, y el piso tiene unas 97 iluminadas.
   - Godot solo muestra 8 volúmenes a la vez.
-- **Siguiente paso:** hornear un proxy con los mismos bloques de cada sala y el color medio de cada material, y mostrar solo los volúmenes cercanos.
 
-**Hito:** hoja `evidence/lookdev/fase2_antes_despues.png` y vídeo `evidence/lookdev/fase2_alto.avi`.
+**Cómo quedó** (`game/world/hotel/bounce_light.gd`):
+- **Doble de la sala.** El horneado recibe un doble de cada sala: sus mismas cajas agrupadas, una superficie por material en el color medio de ese material. `tools/lighting/measure_albedo.gd` mide esos colores dibujando cada material bajo luz ambiente blanca y los escribe en `material_albedo.gd`; hay que volver a ejecutarlo si cambia un material. Las lámparas, los tubos y las pantallas quedan fuera del doble, porque sus vóxeles ahogarían su propia luz.
+- **Coste por sala.** El horneado relee de la GPU cada instancia de malla, a 1,5–2 ms por caja. Con una malla por sala baja de 60–180 ms a unos 55 ms, que es el trazado de vóxeles en sí. Aun así son 5,4 s por piso.
+- **En hilos.** Las salas se hornean en hilos de trabajo, desprendidas del árbol de escena: un nodo del árbol no se puede tocar fuera del hilo principal. Con la mitad de los núcleos, un piso tarda unos 1,3 s y el juego sigue dibujando mientras tanto.
+  - **Sin bloqueos.** El doble es una malla que vive solo en memoria (`stand_in_mesh.gd`) y responde al horneador sin pedir nada al servidor de render. Si se lo pidiera, un hilo esperaría al hilo principal, y el hilo principal esperando al horneado (al cambiar de piso a medias) se bloquearía.
+  - **Errores silenciados.** Desprendido del árbol, el horneador lee cada transformación global como la identidad y se queja de cada una. Por eso el doble se da ya en el marco del volumen, y los mensajes de error se apagan mientras dura el horneado.
+- **Presentación.** La carga del piso espera al horneado (`hotel_main.bounce_ready()`), así que el rebote no aparece de golpe. Solo se muestran los 8 volúmenes más cercanos, que es el máximo que dibuja Godot.
+- **Resultado.** El rebote de color es menor que el de la prueba blanca pero de la misma forma (tabla de la fase 2): la hoja `evidence/lookdev/rebote_antes_despues.png` compara la luz del paso 1 con el rebote.
+- **Descartado:**
+  - **Compartir el horneado entre salas iguales:** con cada lado distinguido entre pared, puerta o abierto, casi todas las salas son únicas (102 claves en 121 salas).
+  - **La luz ambiente de las sondas:** no rebota.
+
+**Hito:** hoja `evidence/lookdev/fase2_antes_despues.png` (fase 1 frente a la fase 2 completa) y vídeo `evidence/lookdev/fase2_alto.avi`.
 
 ### Pruebas que se hacen al empezar su fase
 

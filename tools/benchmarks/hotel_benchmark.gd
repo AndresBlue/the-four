@@ -56,6 +56,8 @@ func run() -> void:
 	for quality in qualities:
 		# Through the settings, as the menu does: the preset's render scale too.
 		level.settings.set_value("quality", quality)
+		# Presets with bounce light bake it now, on worker threads.
+		await level.bounce_ready()
 		# A forced scale wins over the preset's (--set=scale:0.5).
 		if PRESETS.overrides.has("scale"): level.settings.set_value("scale", PRESETS.overrides.scale)
 		# The settings put back their frame cap and vsync: unlimited again.

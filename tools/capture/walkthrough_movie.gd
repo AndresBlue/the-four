@@ -23,6 +23,8 @@ func run() -> void:
 	root.add_child(level)
 	await level.start_floor(81)
 	level.settings.set_value("quality", quality)
+	# Presets with bounce light bake it now, on worker threads.
+	await level.bounce_ready()
 	DisplayServer.window_set_size(SIZE)
 	if is_instance_valid(level.locust):
 		level.locust.set_physics_process(false)

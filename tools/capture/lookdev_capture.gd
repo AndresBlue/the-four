@@ -41,6 +41,8 @@ func run() -> void:
 	root.add_child(level)
 	await level.start_floor(81)
 	level.settings.set_value("quality", quality)
+	# Presets with bounce light bake it now, on worker threads.
+	await level.bounce_ready()
 	# After the floor and the settings, which place the window themselves.
 	DisplayServer.window_set_size(SIZE)
 	level.player.set_physics_process(false)

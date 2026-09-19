@@ -309,7 +309,16 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 		save_error = "No se pudo validar la ruta de salida. El nivel no se inició."
 		session.set_state(session.State.MENU)
 		return false
+	# The floor starts with its bounce light in place, not popping in.
+	await bounce_ready()
 	return true
+
+## Waits for the bounce light, which bakes on worker threads after a floor is
+## built or a preset first asks for it (hotel_geometry.start_bounce).
+func bounce_ready() -> void:
+	while is_instance_valid(hotel) and hotel.bounce.baking():
+		hotel.bounce.poll()
+		await get_tree().process_frame
 
 ## Creature, documents, director and sounds of a floor that is about to be played.
 func populate_floor(with_director: bool) -> void:
@@ -1055,6 +1064,7 @@ func apply_settings() -> void:
 	environment.sdfgi_enabled = false
 	environment.glow_enabled = preset.glow and not hunter
 	RenderingServer.environment_glow_set_use_bicubic_upscale(preset.glow_bicubic)
+	RenderingServer.gi_set_use_half_resolution(preset.bounce_half)
 	# Ambient light reaches every surface whether or not a lamp does, so for the
 	# creature it has to go too: anything still lit leaks the seen hotel into a
 	# reading that is supposed to be made of echoes.

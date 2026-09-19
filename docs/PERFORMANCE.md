@@ -148,9 +148,12 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Lámparas de muebles | apagadas | hasta 28 m | hasta 32 m | hasta 40 m |
 | Sombra del cuerpo propio | no | sí | sí | sí |
 | SSAO | no | Low, media resolución | Medium, media resolución | High, resolución completa |
-| SSIL (la única GI viable) | no | no | Medium, media resolución | High, media resolución |
+| SSIL | no | no | Medium, media resolución | High, media resolución |
 | Reflejos SSR | no | no | 32 pasos, rugosidad Low | 64 pasos, rugosidad High |
-| Sondas de reflexión | no | 1 de cada 3 vestíbulos | todos los vestíbulos, con sombras | igual que Alto |
+| Sondas de reflexión | no | 1 de cada 3 vestíbulos | todas las salas iluminadas, con sombras | igual que Alto |
+| Rebote de luz (un VoxelGI por sala iluminada) | no | no | sí, media resolución | sí, resolución completa |
+| Apliques que iluminan (con sombra) | no | no | sí, hasta 24 m | igual que Alto |
+| Lámparas en la niebla volumétrica (niebla de 14 m) | no | sí | sí | sí |
 | Niebla volumétrica | no | 48³ | 64³ | 96³ |
 | Neblina de suelo en vestíbulos | no | no | sí | sí |
 | Glow | sí | sí | sí, subida bicúbica | igual que Alto |
@@ -160,6 +163,9 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Filtro VHS | 4 lecturas de croma | 7 | 7 | 7 |
 | Umbral de LOD | 4 px | 2 px | 1 px | 1 px |
 | Filtrado anisotrópico | 2× | 4× | 8× | 16× |
+| Smear de CCD | no | sí | sí | sí |
+| Motion blur (muestras) | no | 6 | 8 | 12 |
+| Autoenfoque | no | no | sí | sí |
 | Visión de eco (criatura) | ½ de granos, ×2 de tamaño | base | más densa | algo más fina + halo de fósforo |
 
 **Lo que no cambia, a propósito:**
@@ -167,13 +173,13 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 - **Luz ambiente cero y niebla casi negra.** Las salas oscuras son negras en todos los presets.
 - **Números de puerta y rótulos (20 m), faro rojo, sellos de puerta y salas oscuras.** Son gameplay y orientación.
 - **Filtro VHS.** Sus deslizadores y «Efectos reducidos» son ajustes del jugador.
-- **GI.** SDFGI deja pasar luz por muros de 18 cm, y un piso generado no se puede hornear (VoxelGI, lightmaps). La GI es SSIL.
+- **GI.** SDFGI deja pasar luz por muros de 18 cm y los lightmaps no se hornean en partida. Desde Alto, el rebote es un VoxelGI por sala, horneado en hilos al cargar el piso ([REALISM.md](REALISM.md), prueba 8), más SSIL.
 - **Decals.** No hay ninguno.
 - **Streaming de texturas.** Godot 4.7 no lo tiene. Las texturas ya van comprimidas (sección 2).
 
 ### Rendimiento medido
 
-PC de desarrollo (RTX 4060 Ti, Ryzen 9 5900X), 1080p, sin límite de FPS. Tiempos en ms (media); `run_bench.ps1 -Label presets`.
+PC de desarrollo (RTX 4060 Ti, Ryzen 9 5900X), 1080p, sin límite de FPS. Tiempos en ms (media); `run_bench.ps1 -Label presets`. Es la medida de antes del plan de fotorrealismo: lo que suman la cámara y la luz está en [REALISM.md](REALISM.md) (Alto caminando: 5,71 ms con la cámara y 6,90 ms con la luz, en una medida posterior de la misma escena).
 
 | Preset | GPU caminando | Fotograma caminando | p99 caminando | GPU salón (sala 36) | GPU recepción | Llamadas de sombra caminando | Memoria de vídeo |
 |---|---|---|---|---|---|---|---|

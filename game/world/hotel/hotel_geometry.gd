@@ -73,6 +73,9 @@ const LIGHTING := preload("res://game/world/hotel/lighting.gd")
 ## Lit wall lamps (preset sconce_lights) and how far away they go out.
 var sconce_lights: Array[OmniLight3D] = []
 const SCONCE_REACH := 24.0
+## Bounce light round each lit room (preset bounce): bounce_light.gd.
+const BOUNCE := preload("res://game/world/hotel/bounce_light.gd")
+var bounce := BOUNCE.new()
 ## Door numbers are not drawn past this: about 5 px tall there, unreadable
 ## through the tape filter anyway.
 const NUMBER_REACH := 20.0
@@ -190,6 +193,7 @@ func flush() -> void:
 			instance.name = "Mesh_" + group.replace("@", "-")
 			instance.multimesh = multi
 			batch.parent.add_child(instance)
+			if batch_roots.has(batch.parent.get_instance_id()): bounce.add(batch.parent.get_instance_id(), group, transforms)
 			if material_of(group) in SWAYING:
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				var still := MultiMeshInstance3D.new()
@@ -733,6 +737,19 @@ func practical_fade(lamp: OmniLight3D) -> void:
 	var out: float = preset.furniture_lamps
 	if out > 0.0: set_fade(lamp, out - 10.0, 8.0)
 
+## Bakes the lit rooms' bounce light on worker threads (bounce_light.gd), once.
+func start_bounce() -> void:
+	var rooms := []
+	for i in room_nodes.size():
+		var room: Dictionary = manifest.rooms[i]
+		if not dark_room(room): rooms.append({"room": i, "node": room_nodes[i], "size": FLOOR.size_of(room), "height": float(room.height)})
+	bounce.start(rooms, unit_mesh)
+
+## The floor goes mid-bake: the bake is waited for, which is safe (its workers
+## never wait for the main thread), and error printing comes back on.
+func _exit_tree() -> void:
+	bounce.finish()
+
 ## Distance fade of a lamp; its shadow ends exactly where its light does.
 static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
 	if lamp.distance_fade_begin != begin: lamp.distance_fade_begin = begin
@@ -751,11 +768,16 @@ func apply_quality(new_preset: Dictionary) -> void:
 		practical_fade(lamp)
 		var size: float = PRACTICAL_SIZE * preset.penumbra
 		if lamp.light_size != size: lamp.light_size = size
+	# Baked once, the first time a preset asks for it (only where a GPU can
+	# draw it: not headless, not Compatibility).
+	if preset.bounce and RenderingServer.get_rendering_device() != null: start_bounce()
 	# Every lit room's probe, rendered with shadows, also lights its room
-	# (probes 2); otherwise only reflections.
-	var ambient: bool = preset.probes >= 2
+	# (probes 2); otherwise only reflections. The bounce volumes take over
+	# from it (a probe's ambient light would replace theirs).
+	var shadowed: bool = preset.probes >= 2
+	var ambient: bool = shadowed and not preset.bounce
 	for probe in reflection_probes:
-		if probe.enable_shadows != ambient: probe.enable_shadows = ambient
+		if probe.enable_shadows != shadowed: probe.enable_shadows = shadowed
 		var mode := ReflectionProbe.AMBIENT_ENVIRONMENT if ambient else ReflectionProbe.AMBIENT_DISABLED
 		if probe.ambient_mode != mode: probe.ambient_mode = mode
 	var fog_energy := 1.0 if preset.lamp_fog else 0.0
@@ -767,6 +789,7 @@ func apply_quality(new_preset: Dictionary) -> void:
 	if is_instance_valid(dust) and preset.dust > 0 and dust.amount != preset.dust: dust.amount = preset.dust
 
 func _process(delta: float) -> void:
+	bounce.poll()
 	flicker_clock += delta
 	for beacon in beacons:
 		# A slow emergency blink with a nervous stutter in each lit phase.
@@ -866,6 +889,7 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		probe.visible = used and not echo_view and lights[int(probe.get_meta("room"))].visible
 	for lamp in sconce_lights:
 		lamp.visible = preset.sconce_lights and shadows and not echo_view and lamp.global_position.distance_to(player_position) < SCONCE_REACH
+	bounce.show_near(player_position, preset.bounce and not echo_view)
 	for lamp in practicals:
 		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
