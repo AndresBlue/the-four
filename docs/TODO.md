@@ -37,7 +37,7 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 ### Supervivientes
 
-- [ ] **Cordura (medidor interno de oscuridad):** baja con el tiempo pasado a oscuras (armarios, salas apagadas), más despacio con la linterna encendida, y de golpe al ver a la criatura. Se recupera en salas iluminadas. Con la cordura baja, alucinaciones sonoras alrededor del jugador, de modo que la criatura parezca venir de direcciones contradictorias y no se distinga bien de dónde viene. Encajarla con el aura (`dread_aura.gd`) y la escucha binaural, y decidir cuánto se permite engañar.
+- [ ] **Cordura (medidor interno de oscuridad):** baja con el tiempo pasado a oscuras (armarios, salas apagadas). La linterna encendida no la detiene: solo hace que baje más despacio. También baja de golpe al ver a la criatura. Se recupera en salas iluminadas. Con la cordura baja, alucinaciones sonoras alrededor del jugador, de modo que la criatura parezca venir de direcciones contradictorias y no se distinga bien de dónde viene. Encajarla con el aura (`dread_aura.gd`) y la escucha binaural, y decidir cuánto se permite engañar.
 - [ ] **Revisión completa de las animaciones con esqueleto:** hoy son malísimas o no existen. Caminar, correr, saltar, agacharse quieto y moverse agachado tienen que verse naturales y realistas, con detalles como quedarse en cuclillas apoyando una mano en el suelo y levantarla al avanzar agachado. Aplica a todos los movimientos, al propio cuerpo y a los compañeros en red.
 
 ### Cierre
