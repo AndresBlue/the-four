@@ -17,6 +17,9 @@ var reduced := false
 ## depth its acoustic view reads, but pays for no shadow map and no light
 ## clustering, which is where that view's budget comes from.
 var echo_view := false
+## Walls drawn whole, both faces panelled: for modules seen alone from outside
+## (the gallery). In a floor every wall has a room on each side.
+var full_walls := false
 var dust: CPUParticles3D
 var curtain_material: ShaderMaterial
 var fog_volumes: Array[FogVolume] = []
@@ -427,7 +430,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			for side in [-1, 1]:
 				wall_run(boundary, side * (length + FLOOR.PORTAL) * 0.25, (length - FLOOR.PORTAL) * 0.5, height, inner)
 			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
-			box(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), "plaster", true)
+			wall_core(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), inner)
 			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
@@ -594,13 +597,24 @@ static func prop_transform(room: Dictionary, prop: Dictionary) -> Transform3D:
 	return Transform3D(basis, Vector3(-corner if prop.slot % 2 == 0 else corner, 0, -corner if prop.slot < 2 else corner))
 
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
-	box(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), "plaster", true)
-	for face in [-1, 1]:
+	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
+	for face in ([-1, 1] if full_walls else [inner]):
 		box(boundary, Vector3(x, 0.48, face * 0.11), Vector3(length, 0.96, 0.07), "panel")
 		box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(length, 0.05, 0.035), "trim")
 		box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(length, 0.14, 0.03), "trim")
 	box(boundary, Vector3(x, height - 0.05, inner * 0.12), Vector3(length, 0.1, 0.06), "trim")
 	box(boundary, Vector3(x, height - 0.13, inner * 0.1), Vector3(length, 0.06, 0.03), "trim")
+
+## Plaster core of a wall along its boundary. The collider is the whole 18 cm,
+## as always (walking, navigation, hearing and the creature's sight are tuned
+## to it). What is drawn is only this room's half, and wall_run() panels only
+## this room's face: the room on the other side draws its own, so a shared
+## wall is no longer drawn twice. Together the two halves are the old wall,
+## in the camera and in every shadow.
+func wall_core(boundary: Node3D, pos: Vector3, size: Vector3, inner: int) -> void:
+	box(boundary, pos, size, "", true)
+	if full_walls: box(boundary, pos, size, "plaster")
+	else: box(boundary, pos + Vector3(0, 0, inner * size.z * 0.25), Vector3(size.x, size.y, size.z * 0.5), "plaster")
 
 # A lamp that really lights its surroundings (no shadows, culled by distance).
 func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach: float) -> void:

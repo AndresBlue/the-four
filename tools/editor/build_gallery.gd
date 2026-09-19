@@ -23,6 +23,8 @@ func build() -> void:
 	scene.add_child(builder)
 	builder.name = "Modules"
 	builder.manifest = {"width": 1, "adjacency": [[]], "merged": []}
+	# Modules stand alone here and are seen from outside: whole walls.
+	builder.full_walls = true
 	for type in FLOOR.TYPES.size():
 		var props := []
 		for slot in 4: props.append({"slot": slot, "kind": FLOOR.RECIPES[type][slot], "rotation": 0})
