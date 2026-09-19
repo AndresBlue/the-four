@@ -166,14 +166,18 @@ La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). 
    Los perfiles restan luz fuera de su dirección principal; un 25 % más de energía mantiene el brillo de cada sala. Un proyector solo funciona con sombra: si los ajustes quitan las sombras, el perfil se retira con ellas.
 3. **Apliques que iluminan** (Alto y Ultra): una luz con sombra por aplique en las salas iluminadas, apagada a partir de 24 m. En Bajo y Medio la pantalla solo brilla.
 4. **Rebote de luz** (Alto y Ultra, `bounce_light.gd`): un `VoxelGI` por sala iluminada. La luz que cae en la moqueta, las paredes y el techo ilumina el resto de la sala con su color. Detalles en la prueba 8.
+   - **Salas grandes:** las celdas unidas en un espacio abierto llevan un solo volumen sobre toda la sala, horneado con la geometría de todas sus celdas; con más de 20 m de lado, a subdivisión 128.
+   - **Por qué:** con un volumen por celda, cada una se horneaba sin ver lo que había pasado su borde, y el rebote de dos celdas vecinas salía distinto. Godot da a cada superficie como mucho dos volúmenes y los normaliza, así que el cambio era brusco. El techo mostraba una línea recta en diagonal, con zonas de tono distinto centradas en cada lámpara (visto jugando, reproducido en la semilla 7).
+   - **Salas en L** (unas 3 de cada 10 salas grandes): sin rebote, porque la caja que las envuelve tomaría la sala de su esquina.
    - El volumen termina en las paredes de su sala: el rebote no llega a la contigua, y una sala oscura no tiene.
    - Las lámparas se inyectan en vivo, así que un tubo que falla o una lámpara que se apaga se llevan su rebote.
    - Alto lo dibuja a media resolución (`bounce_half`), sin diferencia visible; Ultra, a resolución completa.
 5. **Reflejos:** una sonda por sala iluminada en Alto y Ultra, renderizada con sombras, y una de cada tres salas de pasillo en Medio. Solo se crea con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. Su luz ambiente solo se usa si se quita el rebote.
    - **Solo existen las cercanas:** se crean las 24 más próximas y una ya creada se conserva mientras esté entre las 32 más próximas; las demás se destruyen.
    - **Por qué:** Godot reserva a cada sonda un hueco de su atlas de reflejos (64) la primera vez que la dibuja, y no lo devuelve hasta destruirla, aunque se oculte. Con una sonda en cada sala iluminada, al explorar un piso grande se llenaba el atlas:
-     - las sondas nuevas mostraban capturas de otras salas: un rectángulo rojizo en un techo o luz cálida en un baño de azulejos;
+     - las sondas nuevas no tenían dónde dibujarse;
      - poco después el juego se cerraba.
+     Las zonas de tono distinto que se veían entonces en los techos eran otra cosa: las costuras entre volúmenes de rebote (punto 4).
      Encontrado jugando; reproducido recorriendo las 104 salas iluminadas de la semilla 7 en Ultra, que se caía siempre y ahora no, con un máximo de 30 sondas vivas.
 6. **Niebla iluminada** (desde Medio): las lámparas iluminan la niebla volumétrica, que entonces llega a 14 m en vez de 48. La linterna también la ilumina hasta esa distancia; a 14 m su haz ya es débil y el corte no se nota.
 

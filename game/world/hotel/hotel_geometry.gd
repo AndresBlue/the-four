@@ -732,12 +732,39 @@ func practical_fade(lamp: OmniLight3D) -> void:
 	if out > 0.0: set_fade(lamp, out - 10.0, 8.0)
 
 ## Bakes the lit rooms' bounce light on worker threads (bounce_light.gd), once.
+## A room alone, or a hall's cells together (one volume over the hall, if it
+## is a rectangle; an L-shaped hall has none: see bounce_light.gd).
 func start_bounce() -> void:
-	var rooms := []
+	var halls := {}
+	var wanted := []
 	for i in room_nodes.size():
 		var room: Dictionary = manifest.rooms[i]
-		if not dark_room(room): rooms.append({"room": i, "node": room_nodes[i], "size": FLOOR.size_of(room), "height": float(room.height)})
-	bounce.start(rooms, unit_mesh)
+		if dark_room(room): continue
+		var hall := int(room.get("hall", -1))
+		if hall >= 0:
+			if not halls.has(hall): halls[hall] = []
+			halls[hall].append(i)
+		else:
+			wanted.append({"room": i, "node": room_nodes[i], "centre": Vector3.ZERO, "size": FLOOR.size_of(room), "height": float(room.height), "parts": [[room_nodes[i], Vector3.ZERO]]})
+	for hall in halls:
+		var cells: Array = halls[hall]
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		var area := 0.0
+		var height := 0.0
+		for i in cells:
+			var span := FLOOR.size_of(manifest.rooms[i])
+			var at := room_nodes[i].position
+			low = Vector2(minf(low.x, at.x - span.x * 0.5), minf(low.y, at.z - span.y * 0.5))
+			high = Vector2(maxf(high.x, at.x + span.x * 0.5), maxf(high.y, at.z + span.y * 0.5))
+			area += span.x * span.y
+			height = maxf(height, float(manifest.rooms[i].height))
+		var size := high - low
+		if absf(size.x * size.y - area) > 0.5: continue
+		var middle := Vector3((low.x + high.x) * 0.5, 0.0, (low.y + high.y) * 0.5)
+		var root: Node3D = room_nodes[cells[0]]
+		wanted.append({"room": cells[0], "node": root, "centre": middle - root.position, "size": size, "height": height, "parts": cells.map(func(i): return [room_nodes[i], room_nodes[i].position - middle])})
+	bounce.start(wanted, unit_mesh)
 
 ## The floor goes mid-bake: the bake is waited for, which is safe (its workers
 ## never wait for the main thread), and error printing comes back on.

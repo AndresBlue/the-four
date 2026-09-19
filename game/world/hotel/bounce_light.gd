@@ -10,6 +10,15 @@ extends RefCounted
 ## material in its mean colour (material_albedo.gd). VoxelGI reads colour only
 ## from standard materials and takes the hotel's shaders for white.
 ##
+## A hall (cells merged into one open space) is one volume over all its
+## cells, baked from all their boxes: a volume per cell saw nothing past its
+## own edge, the next cell's bounce came out different, and where one volume
+## gave way to the next the ceiling showed a straight line (Godot gives a
+## surface at most two volumes and normalises them, so the change is abrupt).
+## Only rectangular halls: an L-shaped hall's box would take in the room in
+## its corner, so those have no bounce. A volume more than BIG_SIDE metres
+## long bakes at subdivision 128, not to lose detail.
+##
 ## A room takes some 55 ms to bake, about 5 s for a floor, so the rooms are
 ## baked on worker threads, detached from the scene tree (a node in the tree
 ## cannot be touched off the main thread), and handed to their rooms when all
@@ -26,6 +35,7 @@ const STAND_IN := preload("res://game/world/hotel/stand_in_mesh.gd")
 const SKIP := ["light", "shade", "tube"]
 ## Godot draws at most 8 volumes at once: the nearest rooms' are shown.
 const SHOWN := 8
+const BIG_SIDE := 20.0
 
 ## Boxes of each room, by the room node's instance id: [[group, transforms]].
 var groups := {}
@@ -52,17 +62,21 @@ static func material_of(group: String) -> String:
 func baking() -> bool:
 	return task >= 0
 
-## Starts baking the given rooms: [{"room": index, "node": Node3D, "size":
-## Vector2, "height": float}]; unit_mesh(group) gives a group's unit shape.
-## Only once per floor.
-func start(rooms: Array, unit_mesh: Callable) -> void:
+## Starts baking the given volumes: [{"room": index, "node": Node3D (the
+## volume goes under it), "centre": Vector3 (the volume's middle on the floor,
+## in node's space), "size": Vector2, "height": float, "parts": [[room node,
+## offset of that room from the centre]]}]; unit_mesh(group) gives a group's
+## unit shape. Only once per floor.
+func start(volumes_wanted: Array, unit_mesh: Callable) -> void:
 	if baking() or not volumes.is_empty(): return
-	for entry in rooms:
-		var boxes: Array = groups.get(entry.node.get_instance_id(), [])
+	for entry in volumes_wanted:
+		var boxes := []
+		for part in entry.parts:
+			for box in groups.get(part[0].get_instance_id(), []):
+				var key: String = box[0].get_slice("@", 1)
+				if not shapes.has(key): shapes[key] = unindexed(unit_mesh.call(box[0]))
+				boxes.append([box[0], box[1], part[1]])
 		if boxes.is_empty(): continue
-		for box in boxes:
-			var key: String = box[0].get_slice("@", 1)
-			if not shapes.has(key): shapes[key] = unindexed(unit_mesh.call(box[0]))
 		entry["boxes"] = boxes
 		jobs.append(entry)
 	if jobs.is_empty(): return
@@ -79,7 +93,7 @@ func bake(k: int) -> void:
 	stand_in.mesh = stand_in_mesh(job.boxes, Vector3(0, -job.height * 0.5, 0))
 	holder.add_child(stand_in)
 	var volume := VoxelGI.new()
-	volume.subdiv = VoxelGI.SUBDIV_64
+	volume.subdiv = subdivision(job)
 	volume.size = volume_size(job)
 	holder.add_child(volume)
 	volume.bake(stand_in)
@@ -89,6 +103,9 @@ func bake(k: int) -> void:
 ## Floor and ceiling faces just inside the volume.
 static func volume_size(job: Dictionary) -> Vector3:
 	return Vector3(job.size.x, job.height + 0.3, job.size.y)
+
+static func subdivision(job: Dictionary) -> VoxelGI.Subdiv:
+	return VoxelGI.SUBDIV_128 if maxf(job.size.x, job.size.y) > BIG_SIDE else VoxelGI.SUBDIV_64
 
 ## Every frame: once the bake is done, each room gets its volume.
 func poll() -> void:
@@ -105,9 +122,9 @@ func finish() -> void:
 	for job in jobs:
 		if job.get("data") == null or not is_instance_valid(job.node): continue
 		var volume := VoxelGI.new()
-		volume.subdiv = VoxelGI.SUBDIV_64
+		volume.subdiv = subdivision(job)
 		volume.size = volume_size(job)
-		volume.position.y = job.height * 0.5
+		volume.position = Vector3(job.centre.x, job.height * 0.5, job.centre.z)
 		volume.visible = false
 		# Walled in: no sky, no environment light.
 		job.data.interior = true
@@ -127,12 +144,12 @@ func show_near(position: Vector3, on: bool) -> void:
 		var shown: bool = on and k < SHOWN
 		if nearest[k].visible != shown: nearest[k].visible = shown
 
-## A room's boxes, one surface per material, moved by offset (into the
-## volume's frame).
+## A volume's boxes, one surface per material, moved into the volume's frame:
+## by their room's offset from the centre, then by offset.
 func stand_in_mesh(boxes: Array, offset: Vector3) -> Mesh:
 	var by_material := {}
-	var shift := Transform3D(Basis.IDENTITY, offset)
 	for box in boxes:
+		var shift := Transform3D(Basis.IDENTITY, box[2] + offset)
 		var material := material_of(box[0])
 		if not by_material.has(material): by_material[material] = [PackedVector3Array(), PackedVector3Array()]
 		var shape: Array = shapes[box[0].get_slice("@", 1)]
