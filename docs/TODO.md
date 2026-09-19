@@ -26,7 +26,14 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 - [ ] **Gruñidos al ver y perseguir:** los jugadores no oyen `grunts.ogg` cuando la criatura los ve y los persigue. Revisarlo con la IA (cooperativo e individual) y en versus, donde hoy el cazador humano solo suena al chillar, y comprobar que se oye en todas las máquinas.
 - [ ] **El chillido depende mucho de la distancia:** hoy suena casi como un sonido global y no dice si está cerca. A 10, 20 y 40 m tiene que oírse claramente distinto (volumen, filtrado, reverberación, por dónde llega), y no debe oírse mucho más allá del alcance de lo que el chillido ofrece (26 m de escucha).
-- [ ] **Nueva ejecución:** sostiene a la víctima varios segundos acercándole la cara despacio y después le entierra el brazo en la cara. Transición a un ruido como el de la escena de entrada y a la pantalla de SEÑAL PERDIDA. Al ser agarrado, un sonido muy feo que asuste de verdad, como un screamer de FNAF. Sustituye la ejecución actual (2,9 s y tres estocadas) y resuelve el pendiente de P4b sobre su animación.
+- [ ] **Nueva ejecución**, en este orden:
+  1. **El screamer salta al agarrarte:** en el instante en que la criatura atrapa a la víctima, un sonido muy feo que asuste de verdad, como un screamer de FNAF.
+  2. La sostiene varios segundos acercándole la cara despacio.
+  3. La mata enterrándole el brazo en la cara.
+  4. Estática como la de la escena de entrada.
+  5. Transición a la pantalla de SEÑAL PERDIDA.
+
+  Sustituye la ejecución actual (2,9 s y tres estocadas) y resuelve el pendiente de P4b sobre su animación.
 
 ### Supervivientes
 
