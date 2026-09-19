@@ -45,6 +45,9 @@ func run() -> void:
 			if argument.begins_with("--atlas-quads="):
 				var quads := argument.trim_prefix("--atlas-quads=").split(",")
 				for q in 4: root.get_viewport().set_positional_shadow_atlas_quadrant_subdiv(q, int(quads[q]))
+			# A/B of the soft shadow filter (RenderingServer.ShadowQuality, 0..5).
+			if argument.begins_with("--shadow-filter="):
+				RenderingServer.positional_soft_shadow_filter_set_quality(int(argument.trim_prefix("--shadow-filter=")))
 		var all_frames: Array = []
 		for id in [0, 36, int(level.manifest.exit)]:
 			var room: Dictionary = level.manifest.rooms[id]

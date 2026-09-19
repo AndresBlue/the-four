@@ -956,6 +956,9 @@ func build_environment() -> void:
 func hunter_seat() -> bool:
 	return is_instance_valid(net) and match_net.local_is_locust()
 
+## Positional soft shadow filter per quality (RenderingServer.ShadowQuality):
+## Soft Very Low, Soft Low, Soft Medium.
+const SHADOW_FILTER := [RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM]
 func apply_settings() -> void:
 	if not is_instance_valid(environment): return
 	var advanced := RenderingServer.get_current_rendering_method() == "forward_plus"
@@ -979,6 +982,11 @@ func apply_settings() -> void:
 	# cells so coarse that shadows came out as saw-teeth along door frames and
 	# a lamp's shadow bias grew past a 7 cm leaf: light through shut doors.
 	viewport.positional_shadow_atlas_size = 8192 if quality == 2 else 4096
+	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
+	# Side-by-side captures showed no difference between Soft Medium (3), Low
+	# (2) and Very Low (1) through these lamps; each step down saved about a
+	# tenth of the GPU frame. High keeps the project's Soft Medium.
+	RenderingServer.positional_soft_shadow_filter_set_quality(SHADOW_FILTER[clampi(quality, 0, 2)])
 	viewport.msaa_3d = Viewport.MSAA_2X if quality > 0 else Viewport.MSAA_DISABLED
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == 0 and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
 	# Temporal accumulation has nothing to work with here: the echo field writes
