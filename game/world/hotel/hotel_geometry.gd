@@ -41,6 +41,8 @@ const NEIGHBOUR_DARK := 0.55
 var dark_ids := {}
 ## Set while a dark room's furniture is built: its lamps stay out.
 var building_dark := false
+## Glowing materials and their unlit copies (switch_off).
+var unlit := {}
 const MATERIALS := ["plaster", "wood", "panel", "door", "trim", "linen", "fabric", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "light", "shade", "mirror", "painting", "curtain"]
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
 const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
@@ -212,27 +214,59 @@ func set_door(centre: Vector3, number: String, yaw := 0.0) -> Node3D:
 		text(holder, number, Vector3(width * 0.5, 1.94, -LEAF_FACE), PI, 24)
 	return hinge
 
-## A shut door has to stop light. The leaf is 7 cm thick and leaves a gap of
-## 5 cm at each side of the 1.3 m opening and 7 cm at the top, and a shadow
-## map sees straight through both. This shadow-only slab swings with the leaf
-## and covers the whole opening, reaching SEAL_OVERLAP into the wall and the
-## header round it (a centimetre of overlap is less than one texel of a lamp's
-## shadow a few metres away, and the jambs still glowed). It stays inside the
-## leaf's thickness (faces at LEAF_FACE), or it would shade the leaf itself.
-## It is never drawn, has no collision and only exists while the door is shut
-## (hotel_door.gd hides it as soon as the leaf moves).
-const SEAL_DEPTH := 0.1
+## A shut door has to stop light, and a shadow map sees through a crack or
+## a thin leaf. Two shadow-only pieces, never drawn and without collision:
+##  - light_seal(): a slab inside the leaf that swings with it. SEAL_DEPTH is
+##    under the leaf's thinnest part (its sunken panels, 3.5 cm either side of
+##    the middle), or it would shade the leaf's own panels (they came out
+##    blotchy while the door was shut).
+##  - jamb_seal(): strips fixed in the doorway, SEAL_LIP into the opening
+##    behind the edges of the leaf and SEAL_OVERLAP into the wall and header,
+##    so no crack round a shut leaf lets the next room's light through.
+## Both are always there: one that appeared only once the door had finished
+## closing made the room go dark all at once.
+const SEAL_DEPTH := 0.04
 const SEAL_OVERLAP := 0.12
-func light_seal(half: float) -> MeshInstance3D:
-	var seal := MeshInstance3D.new()
-	seal.name = "LightSeal"
+const SEAL_LIP := 0.04
+const OPENING_HIGH := 2.65
+func light_seal() -> MeshInstance3D:
+	var bounds := DOOR_LEAF.get_aabb()
+	return shadow_block("LightSeal", Vector3(bounds.size.x - 0.02, bounds.size.y - 0.02, SEAL_DEPTH), bounds.get_center() * Vector3(1, 1, 0))
+
+func jamb_seal(center: Vector3, yaw: float) -> Node3D:
+	var holder := Node3D.new()
+	holder.name = "JambSeal"
+	holder.position = center
+	holder.rotation.y = yaw
+	var edge := FLOOR.PORTAL * 0.5
+	var side_width := SEAL_LIP + SEAL_OVERLAP
+	for side in [-1.0, 1.0]:
+		holder.add_child(shadow_block("Side", Vector3(side_width, OPENING_HIGH + SEAL_OVERLAP, SEAL_DEPTH), Vector3(side * (edge - SEAL_LIP + side_width * 0.5), (OPENING_HIGH + SEAL_OVERLAP) * 0.5, 0)))
+	holder.add_child(shadow_block("Head", Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, SEAL_LIP + SEAL_OVERLAP, SEAL_DEPTH), Vector3(0, OPENING_HIGH - SEAL_LIP + (SEAL_LIP + SEAL_OVERLAP) * 0.5, 0)))
+	return holder
+
+## Puts out whatever glows on a mesh (lamp shades, bulbs): same surfaces,
+## emission off.
+func switch_off(instance: MeshInstance3D) -> void:
+	for surface in instance.mesh.get_surface_count():
+		var material := instance.mesh.surface_get_material(surface) as BaseMaterial3D
+		if material == null or not material.emission_enabled: continue
+		if not unlit.has(material):
+			var dark := material.duplicate() as BaseMaterial3D
+			dark.emission_enabled = false
+			dark.albedo_color = dark.albedo_color.darkened(0.3)
+			unlit[material] = dark
+		instance.set_surface_override_material(surface, unlit[material])
+
+func shadow_block(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
+	var block := MeshInstance3D.new()
+	block.name = title
 	var slab := BoxMesh.new()
-	slab.size = Vector3(FLOOR.PORTAL + SEAL_OVERLAP * 2.0, 2.65 + SEAL_OVERLAP, SEAL_DEPTH)
-	seal.mesh = slab
-	# Centred on the opening, which starts half a gap before the hinge side.
-	seal.position = Vector3(half, (2.65 + SEAL_OVERLAP) * 0.5, 0)
-	seal.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
-	return seal
+	slab.size = size
+	block.mesh = slab
+	block.position = at
+	block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	return block
 
 func build(data: Dictionary) -> void:
 	manifest = data
@@ -265,7 +299,7 @@ func build(data: Dictionary) -> void:
 		leaf.name = "Leaf"
 		leaf.mesh = DOOR_LEAF
 		door.add_child(leaf)
-		door.add_child(light_seal(half))
+		door.add_child(light_seal())
 		# The body keeps the leaf's original box: walking, the creature's reach
 		# and the physical checks were all tuned against it.
 		var shape := CollisionShape3D.new()
@@ -282,6 +316,7 @@ func build(data: Dictionary) -> void:
 		casing.position = center
 		casing.rotation.y = yaw
 		add_child(casing)
+		add_child(jamb_seal(center, yaw))
 		# Each face shows the number of the room behind the door, as seen from
 		# the room that face looks into.
 		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
@@ -328,6 +363,9 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				for flank in [-1, 1]:
 					var sconce := MeshInstance3D.new()
 					sconce.mesh = WALL_LAMP
+					# In a dark room its shade and bulb are out: an emissive
+					# shade lit the walls round it by bounce light.
+					if dark_room(room): switch_off(sconce)
 					sconce.position = Vector3(side * 3.5 + flank * 0.98, 1.6, -0.09)
 					sconce.rotation.y = PI
 					boundary.add_child(sconce)
@@ -385,16 +423,15 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.position = Vector3(0, height - 0.45, 0)
 	light.omni_range = maxf(10.0, maxf(span.x, span.y) * 0.85)
 	light.omni_attenuation = 1.25
-	# A small source: a wide one softens its shadows until light creeps round
-	# the edges of closed doors and thin walls.
-	light.light_size = 0.05
+	light.light_size = 0.12
 	light.light_specular = 0.45 if service else 0.6
 	light.shadow_enabled = true
-	# Small biases so thin shelves, trays and door leaves still block light
-	# (a normal bias of 0.6 let it straight through a 7 cm leaf, and a depth
-	# bias of 0.03 still lit the jambs of a shut door from the next room).
-	light.shadow_bias = 0.01
-	light.shadow_normal_bias = 0.25
+	# Small biases so thin shelves and trays still block light and glints.
+	# Lower ones (0.01 and 0.25 were tried) cover walls and ceilings in
+	# shadow acne, rippling bands: doors are sealed with geometry instead
+	# (light_seal, jamb_seal).
+	light.shadow_bias = 0.03
+	light.shadow_normal_bias = 0.6
 	# Lights and shadows fade with distance instead of switching on abruptly.
 	# Shadows stay on wherever a light can reach visible rooms, so light never
 	# passes through walls.
@@ -496,8 +533,8 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	lamp.light_size = 0.2
 	lamp.light_specular = 0.25
 	lamp.shadow_enabled = true
-	lamp.shadow_bias = 0.01
-	lamp.shadow_normal_bias = 0.25
+	lamp.shadow_bias = 0.04
+	lamp.shadow_normal_bias = 0.6
 	lamp.distance_fade_enabled = true
 	lamp.distance_fade_begin = 18.0
 	lamp.distance_fade_length = 8.0
