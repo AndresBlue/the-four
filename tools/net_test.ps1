@@ -14,7 +14,7 @@ foreach ($role in $roles) {
     $json = Join-Path $projectPath "evidence/net_$role.json"
     if (Test-Path $json) { Remove-Item $json }
     $log = Join-Path $projectPath "evidence/verify_net_$role.log"
-    $arguments = @('--headless', '--path', $projectPath, '--script', 'res://tests/net/net_test.gd', '--log-file', $log, '--', '--automation', '--test-profile', '--silent', "--role=$role", "--port=$Port")
+    $arguments = @('--headless', '--path', $projectPath, '--rendering-method', 'forward_plus', '--script', 'res://tests/net/net_test.gd', '--log-file', $log, '--', '--automation', '--test-profile', '--silent', "--role=$role", "--port=$Port")
     $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $processes += [PSCustomObject]@{ role = $role; log = $log; json = $json; process = (Start-Process -FilePath $GodotPath -ArgumentList $quoted -WindowStyle Hidden -PassThru) }
     Start-Sleep -Milliseconds 700

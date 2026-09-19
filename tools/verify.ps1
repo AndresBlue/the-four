@@ -12,7 +12,7 @@ $results = @()
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
     $log = Join-Path $projectPath ('evidence/verify_' + $name + '.log')
-    $arguments = @('--headless','--path',$projectPath,'--script',('res://tests/' + $test + '.gd'),'--log-file',$log)
+    $arguments = @('--headless','--path',$projectPath,'--rendering-method','forward_plus','--script',('res://tests/' + $test + '.gd'),'--log-file',$log)
     if ($name -notin @('hotel_audio_test','spatial_audio_test')) { $arguments += @('--fixed-fps','60') }
     $arguments += @('--','--automation','--test-profile','--silent')
     if ($name -in @('hotel_test','intro_test')) { $arguments += '--no-enemy' }
@@ -32,7 +32,7 @@ foreach ($test in $tests) {
 # is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
 # and counts as passed, because a skipped check is not a failed one.
 $shaderLog = Join-Path $projectPath 'evidence/verify_shaders.log'
-$shaderArguments = (@('--path',$projectPath,'--script','res://tools/dev/check_shaders.gd','--log-file',$shaderLog) | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$shaderArguments = (@('--path',$projectPath,'--rendering-method','forward_plus','--script','res://tools/dev/check_shaders.gd','--log-file',$shaderLog) | ForEach-Object { '"' + $_ + '"' }) -join ' '
 $shaderProcess = Start-Process -FilePath $GodotPath -ArgumentList $shaderArguments -WindowStyle Hidden -PassThru
 if (-not $shaderProcess.WaitForExit(180000)) { $shaderProcess.Kill(); throw "Tiempo agotado en shaders. Consulta $shaderLog" }
 $shaderText = Get-Content -LiteralPath $shaderLog -Raw

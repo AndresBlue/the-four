@@ -8,7 +8,7 @@ if (-not $GodotPath) {
 }
 $log = Join-Path $projectPath "evidence/bench_$Label.log"
 $arguments = @('--path', $projectPath)
-if ($Compatibility) { $arguments += @('--rendering-method', 'gl_compatibility') }
+$arguments += @('--rendering-method', $(if ($Compatibility) { 'gl_compatibility' } else { 'forward_plus' }))
 $arguments += @('--script', 'res://tools/benchmarks/hotel_benchmark.gd', '--log-file', $log, '--', '--test-profile', '--automation', '--no-enemy', '--silent', "--bench-label=$Label")
 if ($Extra) { $arguments += $Extra.Split(' ') }
 $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '

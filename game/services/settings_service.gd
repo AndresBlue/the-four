@@ -2,7 +2,7 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "fullscreen": true, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1"}
+const DEFAULTS := {"character": 0, "fullscreen": true, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB}
 const AUDIO_KEYS := ["master", "ambience", "music", "effects", "threat"]
 ## Saved-settings revision of the volume curve. Older files kept sliders tuned
@@ -22,10 +22,22 @@ var bindings := KEYS.duplicate()
 var save_path := "user://hotel_settings.json"
 var previous_display := {}
 var countdown := 0.0
+## First start on an integrated GPU (or none): the game starts on Bajo and
+## the menu suggests the Compatibility renderer once.
+var integrated_gpu := false
+## The renderer is chosen before anything runs, so the choice lives in its own
+## file, which project.godot names as its settings override
+## (application/config/project_settings_override): the next start reads it.
+## Forward+ is the project's own, so choosing it removes the file. The editor
+## ignores the override, and tools pass --rendering-method, which wins.
+const RENDERER_OVERRIDE := "user://renderer.cfg"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	load_settings()
+	# Keeps the override file in step with the saved choice (a deleted settings
+	# file means Forward+ again). Tests never touch it.
+	if manages_window(): write_renderer()
 	apply()
 	apply_display()
 
@@ -56,13 +68,28 @@ func load_settings() -> void:
 			used[code] = true
 			bindings[action] = code
 
-## No settings saved yet: the default preset, with its render scale. Tests and
-## capture tools keep the plain defaults.
+func write_renderer() -> void:
+	if values.renderer == "forward_plus":
+		if FileAccess.file_exists(RENDERER_OVERRIDE): DirAccess.remove_absolute(ProjectSettings.globalize_path(RENDERER_OVERRIDE))
+		return
+	var file := FileAccess.open(RENDERER_OVERRIDE, FileAccess.WRITE)
+	if file: file.store_string("[rendering]\n\nrenderer/rendering_method=\"%s\"\n" % values.renderer)
+
+## Whether the renderer running is the one chosen (a change waits for a restart).
+func renderer_pending() -> bool:
+	return values.renderer != RenderingServer.get_current_rendering_method()
+
+## No settings saved yet: a preset for this machine, with its render scale.
+## Tests and capture tools keep the plain defaults.
 func first_run() -> void:
 	if not manages_window(): return
+	var adapter := RenderingServer.get_video_adapter_type()
+	integrated_gpu = adapter in [RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU, RenderingDevice.DEVICE_TYPE_CPU]
+	if integrated_gpu: values.quality = PRESETS.LOW
 	values.scale = PRESETS.PRESETS[values.quality].scale
 
 func sanitize(key: String, value: Variant) -> Variant:
+	if key == "renderer": return value if value in ["forward_plus", "gl_compatibility"] else DEFAULTS[key]
 	if DEFAULTS[key] is bool: return value if value is bool else DEFAULTS[key]
 	if DEFAULTS[key] is String: return str(value).strip_edges().left(40) if value is String else DEFAULTS[key]
 	if not (value is float or value is int) or not is_finite(float(value)): return DEFAULTS[key]
@@ -82,6 +109,7 @@ func set_value(key: String, value: Variant) -> void:
 	values[key] = sanitize(key, value)
 	# A preset brings its own render scale; the slider can move it afterwards.
 	if key == "quality": values.scale = PRESETS.PRESETS[values.quality].scale
+	if key == "renderer": write_renderer()
 	if key in DISPLAY_KEYS:
 		countdown = 12.0
 		display_pending.emit(12)

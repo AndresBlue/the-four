@@ -16,6 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="THE FOUR — Hotel"
 run/main_scene="res://game/app/hotel.tscn"
+config/project_settings_override="user://renderer.cfg"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [audio]

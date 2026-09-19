@@ -13,6 +13,9 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
     throw 'Indica la ruta de Godot con -GodotPath o con la variable GODOT_PATH.'
 }
 $arguments = @('--path', $projectPath)
+# The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
+# tests, captures and benchmarks run the renderer they were written for.
+if ($Mode -notin @('play','playtest','locust','rehearsal','editor','gallery','compatibility','export','legacy')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }

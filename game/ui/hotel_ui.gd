@@ -398,6 +398,10 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "main")
 			side.visible = false
 	if osd_left.text != "SEÑAL PERDIDA": osd_left.remove_theme_color_override("font_color")
+	# First start on an integrated GPU: it starts on Bajo; the lighter renderer
+	# is the player's call (it restarts the game).
+	if kind == "main" and message.is_empty() and settings.integrated_gpu and settings.values.renderer == "forward_plus":
+		message = "Gráfica integrada: preset Bajo. Si aun así va lento, prueba Ajustes ▸ Gráficos ▸ Renderizador: Compatibilidad."
 	if not message.is_empty():
 		spacer(column, 14)
 		paragraph(column, message, 16, 560, STYLE.AMBER)
@@ -599,6 +603,23 @@ func show_settings(back: String) -> void:
 	check(graphics, "Pantalla completa", "fullscreen")
 	options(graphics, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.values.fullscreen)
 	options(graphics, "Preset gráfico", "quality", PRESETS.NAMES, range(PRESETS.count()))
+	options(graphics, "Renderizador", "renderer", ["Forward+ (completo)", "Compatibilidad (gráfica integrada)"], ["forward_plus", "gl_compatibility"])
+	if settings.renderer_pending():
+		paragraph(graphics, "El renderizador cambia al reiniciar el juego.", 16, 900, STYLE.AMBER)
+		# Only from the main menu: a restart mid-floor would lose the floor.
+		if return_action == "main" and not (net != null and net.active()):
+			var restart := Button.new()
+			restart.theme_type_variation = "BoxButton"
+			restart.text = "REINICIAR AHORA"
+			restart.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			restart.pressed.connect(func():
+				confirm()
+				var arguments := OS.get_cmdline_args()
+				if not OS.get_cmdline_user_args().is_empty(): arguments += PackedStringArray(["--"]) + OS.get_cmdline_user_args()
+				OS.set_restart_on_exit(true, arguments)
+				get_tree().quit()
+			)
+			graphics.add_child(restart)
 	slider(graphics, "Escala de render", "scale", 0.5, 1.0, 0.05)
 	check(graphics, "Sombras", "shadows")
 	options(graphics, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
@@ -697,8 +718,9 @@ func options(parent: Node, title_text: String, key: String, labels: Array, value
 	control.item_selected.connect(func(index):
 		tick()
 		settings.set_value(key, values[index])
-		# A preset also moves the render scale slider: show it where it went.
-		if key == "quality": show_settings.call_deferred(return_action)
+		# A preset also moves the render scale slider: show it where it went. A
+		# renderer change shows its restart notice.
+		if key in ["quality", "renderer"]: show_settings.call_deferred(return_action)
 	)
 	row.add_child(control)
 
