@@ -22,3 +22,5 @@ assets/props/**/*.zip
 
 # Benchmark reports and captures (tools/benchmarks/run_bench.ps1)
 evidence/bench/
+evidence/lookdev/
+evidence/reference/
