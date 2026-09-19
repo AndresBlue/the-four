@@ -465,6 +465,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				if room.get("layout", 0) == 2 and end > 0: continue
 				if room.get("layout", 0) == 3 and side != end: continue
 				box(node, Vector3(side * 4.4, height / 2, end * 2.8), Vector3(3.2, height, 0.12), "plaster", true)
+				blocker(Transform3D.IDENTITY, Vector3(side * 4.4, height / 2, end * 2.8), Vector2(3.2, height))
 				for z in [3.2, 5.6]:
 					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), "plaster", true)
 				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), "plaster", true)
@@ -585,6 +586,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		text(node, "SALIDA\nREFUGIO", Vector3(0, 2.25, -2.5), 0, 40)
 		text(node, "SALIDA / REFUGIO", Vector3(0, 2.65, 4.8), PI, 35)
 		light.light_color = Color("b8d4b6")
+	build_occluder(node)
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
@@ -605,6 +607,39 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 	box(boundary, Vector3(x, height - 0.05, inner * 0.12), Vector3(length, 0.1, 0.06), "trim")
 	box(boundary, Vector3(x, height - 0.13, inner * 0.1), Vector3(length, 0.06, 0.03), "trim")
 
+## Occlusion culling: every wall of a room is also a quad of an occluder, so
+## rooms and furniture hidden behind walls are not drawn by the camera. It
+## never touches shadows (Godot does not occlusion-cull shadow passes), so
+## light stays sealed exactly as before. Doors are left out: they move, and an
+## open door must show the room behind it. Quads sit inside the wall's own
+## drawn half and are 3 cm short of every edge, so nothing visible is ever
+## behind them. lockers collects them while a room is built.
+const BLOCKER_INSET := 0.03
+var blockers: Array = []
+
+## A vertical quad of size (width along local X, height along Y) centred at
+## pos in the frame rame (a wall boundary, or the room itself).
+func blocker(frame: Transform3D, pos: Vector3, size: Vector2) -> void:
+	var half := Vector2(size.x * 0.5 - BLOCKER_INSET, size.y * 0.5 - BLOCKER_INSET)
+	if half.x <= 0.0 or half.y <= 0.0: return
+	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		blockers.append(frame * (pos + Vector3(corner.x * half.x, corner.y * half.y, 0)))
+
+## The room's occluder, from the quads its walls left in lockers.
+func build_occluder(node: Node3D) -> void:
+	if full_walls or blockers.is_empty(): return
+	var indices := PackedInt32Array()
+	for quad in blockers.size() / 4:
+		var first := quad * 4
+		indices.append_array([first, first + 1, first + 2, first, first + 2, first + 3])
+	var shape := ArrayOccluder3D.new()
+	shape.set_arrays(PackedVector3Array(blockers), indices)
+	var occluder := OccluderInstance3D.new()
+	occluder.name = "Occluder"
+	occluder.occluder = shape
+	node.add_child(occluder)
+	blockers.clear()
+
 ## Plaster core of a wall along its boundary. The collider is the whole 18 cm,
 ## as always (walking, navigation, hearing and the creature's sight are tuned
 ## to it). What is drawn is only this room's half, and wall_run() panels only
@@ -613,6 +648,7 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 ## in the camera and in every shadow.
 func wall_core(boundary: Node3D, pos: Vector3, size: Vector3, inner: int) -> void:
 	box(boundary, pos, size, "", true)
+	blocker(boundary.transform, pos + Vector3(0, 0, inner * size.z * 0.25), Vector2(size.x, size.y))
 	if full_walls: box(boundary, pos, size, "plaster")
 	else: box(boundary, pos + Vector3(0, 0, inner * size.z * 0.25), Vector3(size.x, size.y, size.z * 0.5), "plaster")
 

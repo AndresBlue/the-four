@@ -301,6 +301,7 @@ func build_field() -> void:
 	# A 1x1 quad sitting on the camera would be frustum-culled; a huge custom
 	# box never is. The shader writes POSITION itself to cover the frame.
 	field.custom_aabb = AABB(Vector3.ONE * -100000.0, Vector3.ONE * 200000.0)
+	field.ignore_occlusion_culling = true
 	camera.add_child(field)
 
 ## One shader, three clouds; they differ only in uniforms and draw priority.
@@ -324,6 +325,8 @@ func make_cloud(title: String, priority: int, through: float) -> MultiMeshInstan
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Points are stamped anywhere in the floor: never cull the cloud itself.
 	instance.custom_aabb = AABB(Vector3.ONE * -100000.0, Vector3.ONE * 200000.0)
+	# Grains show through walls by design ("through"): walls must not cull them.
+	instance.ignore_occlusion_culling = true
 	clouds.add_child(instance)
 	return instance
 

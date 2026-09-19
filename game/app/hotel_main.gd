@@ -880,6 +880,10 @@ func _process(delta: float) -> void:
 	update_menu_scene(delta)
 	if session.state == session.State.PLAYING: update_execution(delta)
 	elif not execution.is_empty(): execution = {}
+	# A victim held up can be carried across a wall plane, and the walls are
+	# occluders: no occlusion culling while an execution lasts.
+	var cull: bool = execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
+	if get_viewport().use_occlusion_culling != cull: get_viewport().use_occlusion_culling = cull
 	camcorder.visible = session.state == session.State.PLAYING
 	# The creature records nothing: its seat keeps only the meter and notices.
 	camcorder.hunter = hunter_seat()
