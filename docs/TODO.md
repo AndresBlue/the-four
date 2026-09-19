@@ -2,6 +2,41 @@
 
 Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementación comprobada, no intención. [Diseño](GAME_DESIGN.md), [ruta](ROADMAP.md), [evidencias](SURVIVAL_VALIDATION.md).
 
+## P0 — Cierre del Early Access (prioridad alta)
+
+Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de Early Access y va por delante del resto de pendientes. Nada de esta sección está implementado todavía.
+
+### El piso de The Locust en tres etapas
+
+- [ ] **Tres etapas encadenadas**, cada una cerrada por una condición. Al cumplirla se desbloquea una puerta cerrada con llave que da paso a la etapa siguiente; ya no se termina en la habitación de refugio (decidir qué papel le queda al refugio).
+- [ ] **Etapa 1:** la condición de salida actual (llegar al refugio con la cuota de supervivientes y mantener), pero lo que abre es la puerta de la etapa 2.
+- [ ] **Etapa 2: encender televisores**, tantos como jugadores haya; se generan 2 teles más de las exigidas.
+- [ ] **The Locust usa las teles:** desde una tele encendida puede teletransportarse a otra tele encendida con una interfaz propia. Esa interfaz es un «mapa» que solo muestra la posición relativa entre las teles, coherente con la distribución real, sin salas, paredes ni números.
+- [ ] **Etapa 3:** además de las teles, encontrar **4 números** para abrir una cerradura de código. Se esconden en cajones o libreros de las habitaciones.
+- [ ] **Apagón final:** cuando solo queda por encender la última tele, se apagan todas las luces del piso y la criatura caza sin límite de resistencia. Se le avisa de forma no textual (sonido y señal en su visión) y tiene que entender que ocurrió.
+- [ ] **Revivir entre etapas:** los supervivientes muertos vuelven al pasar a la etapa siguiente.
+- [ ] **Aviso a la criatura al cambiar de etapa:** una señal simbólica que reconozca (sobre todo en versus) y, en su visión de partículas, el camino marcado hasta la puerta de la nueva etapa, para que no pierda tiempo en una etapa ya vacía.
+- [ ] **En red:** el anfitrión decide y sincroniza todo lo anterior (teles, números, cerradura, puertas con llave, apagón, revivir), con pruebas en `verify.ps1` para cooperativo y versus.
+
+### Mapa y ritmo
+
+- [ ] **La generación es sólida técnicamente pero floja como juego.** Tanto novatos como expertos siguen la numeración de las puertas hacia arriba hasta la salida, sin estrategia. Hubo partidas terminadas en 1 min 30 s y a menudo sin cruzarse con la criatura. No es culpa de su IA, que está equilibrada (casi un poco injusta, y está bien), sino de que los recorridos nunca se cruzan. Hace falta que la numeración no delate la dirección, que los objetivos de las tres etapas obliguen a recorrer el piso y a atravesar el territorio de la criatura, y medirlo con partidas humanas (ver también el pendiente de P1 sobre la duración).
+
+### The Locust
+
+- [ ] **Gruñidos al ver y perseguir:** los jugadores no oyen `grunts.ogg` cuando la criatura los ve y los persigue. Revisarlo con la IA (cooperativo e individual) y en versus, donde hoy el cazador humano solo suena al chillar, y comprobar que se oye en todas las máquinas.
+- [ ] **El chillido depende mucho de la distancia:** hoy suena casi como un sonido global y no dice si está cerca. A 10, 20 y 40 m tiene que oírse claramente distinto (volumen, filtrado, reverberación, por dónde llega), y no debe oírse mucho más allá del alcance de lo que el chillido ofrece (26 m de escucha).
+- [ ] **Nueva ejecución:** sostiene a la víctima varios segundos acercándole la cara despacio y después le entierra el brazo en la cara. Transición a un ruido como el de la escena de entrada y a la pantalla de SEÑAL PERDIDA. Al ser agarrado, un sonido muy feo que asuste de verdad, como un screamer de FNAF. Sustituye la ejecución actual (2,9 s y tres estocadas) y resuelve el pendiente de P4b sobre su animación.
+
+### Supervivientes
+
+- [ ] **Cordura (medidor interno de oscuridad):** baja con el tiempo pasado a oscuras (armarios, salas apagadas), más despacio con la linterna encendida, y de golpe al ver a la criatura. Se recupera en salas iluminadas. Con la cordura baja, alucinaciones sonoras alrededor del jugador, de modo que la criatura parezca venir de direcciones contradictorias y no se distinga bien de dónde viene. Encajarla con el aura (`dread_aura.gd`) y la escucha binaural, y decidir cuánto se permite engañar.
+- [ ] **Revisión completa de las animaciones con esqueleto:** hoy son malísimas o no existen. Caminar, correr, saltar, agacharse quieto y moverse agachado tienen que verse naturales y realistas, con detalles como quedarse en cuclillas apoyando una mano en el suelo y levantarla al avanzar agachado. Aplica a todos los movimientos, al propio cuerpo y a los compañeros en red.
+
+### Cierre
+
+- [ ] **Partidas de prueba con amigos** (individual, cooperativo y versus) midiendo duración, encuentros con la criatura y comprensión de las etapas antes de dar por cerrado el Early Access.
+
 ## P1 — Niveles y base de presentación
 
 - [x] Hotel como escena principal; prototipo de fusibles conservado aparte.
@@ -23,7 +58,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Navegación derivada de colisiones; accesos físicos a escondites.
 - [ ] Completar veinte recorridos manuales y cinco partidas de exploración para aceptar duración y orientación. No sustituirlos por el lote automático.
 - [ ] Ajustar tamaño y referencias a partir de esas partidas; meta de 25–40 min todavía no validada.
-- [ ] **Individual demasiado corto y tranquilo (pruebas con amigos, septiembre de 2026).** La mayoría encontró la salida de forma consistente y casi sin tener que huir de la criatura: desde 1 min 30 s, con una media de 5 a 8 min, muy lejos de la meta de 25–40 min. Hay que revisar a la vez lo fácil que es orientarse hasta la salida (tamaño del piso, referencias, colocación de la salida) y la presión de The Locust (cuánto patrulla cerca, lo pronto que encuentra al jugador, eventos del director), y volver a medir con partidas humanas.
+- [ ] **Individual demasiado corto y tranquilo (pruebas con amigos, septiembre de 2026).** La mayoría encontró la salida de forma consistente y casi sin tener que huir de la criatura: desde 1 min 30 s, con una media de 5 a 8 min, muy lejos de la meta de 25–40 min. Hay que revisar a la vez lo fácil que es orientarse hasta la salida (tamaño del piso, referencias, colocación de la salida) y la presión de The Locust (cuánto patrulla cerca, lo pronto que encuentra al jugador, eventos del director), y volver a medir con partidas humanas. Se aborda en P0 (etapas, y Mapa y ritmo).
 
 ## P2 — Atmósfera analógica
 
@@ -147,7 +182,7 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [x] Prueba en `verify.ps1` (`hotel/echo_test`), comprobación de shaders con ventana y capturas de evidencia.
 - [ ] Ajuste humano de la imagen: término base, separación de los frentes, legibilidad en salones grandes (ver `docs/VISION_LOCUST.md`).
 - [ ] Probar la vista en el lanzador `compatibility`; hoy solo está validada en Forward+.
-- [ ] La animación de la ejecución vista desde el cazador todavía es floja: es lo único que le dice que atrapó a alguien (ya no hay aviso en texto, solo el de la muerte).
+- [ ] La animación de la ejecución vista desde el cazador todavía es floja: es lo único que le dice que atrapó a alguien (ya no hay aviso en texto). Se sustituye por la nueva ejecución de P0.
 - [ ] Juzgar en partida el peso de cada tipo de ruido en la vista (paso, carrera, puerta, armario con apagado rápido) con `./tools/godot.ps1 rehearsal`.
 
 ## P5 — Campaña
