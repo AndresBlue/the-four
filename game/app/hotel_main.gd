@@ -1071,16 +1071,27 @@ func apply_lens(hunter: bool, reduced: bool) -> void:
 	lens_material.set_shader_parameter("vignette", 0.0 if reduced else 0.45)
 	lens_material.set_shader_parameter("detail", 0.0 if reduced else 0.35)
 	if hunter:
+		# The creature's view has no lens and no zoom; leaving that seat the
+		# lens is written again.
 		player.camera.fov = LOOK.VIEW_FOV
 		if is_instance_valid(watch_camera): watch_camera.fov = LOOK.VIEW_FOV
+		lens_zoom = -1.0
 
 ## The lens as the zoom stands (hotel_player.zoom): the field of view it sees,
 ## how wide the picture is rendered and how much the barrel bends it. A long
 ## lens bends far less, so the remap follows the zoom (camcorder_look.gd).
+var lens_zoom := -1.0
+var lens_aspect := -1.0
+
 func update_zoom_lens() -> void:
 	if hunter_seat() or not is_instance_valid(player) or not is_instance_valid(lens_material): return
 	var size := get_viewport().get_visible_rect().size
 	var aspect := size.x / maxf(size.y, 1.0)
+	# Written only when it moves: setting a camera's field of view rebuilds
+	# its projection, every frame, for nothing.
+	if is_equal_approx(player.zoom, lens_zoom) and is_equal_approx(aspect, lens_aspect): return
+	lens_zoom = player.zoom
+	lens_aspect = aspect
 	var barrel: float = LOOK.barrel_for(player.zoom)
 	var design: float = LOOK.zoom_fov(player.zoom)
 	lens_material.set_shader_parameter("barrel", barrel)
