@@ -59,6 +59,10 @@ Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementació
 - [ ] Acabado PBR definitivo, efectos de conductos y variedad artística adicional.
 - [ ] Sustitución gradual del mobiliario provisional por assets adecuados y acreditados.
 - [ ] Accesibilidad, mezcla y rendimiento sostenido en la escena más exigente.
+- [x] Auditoría de rendimiento (septiembre de 2026), medida con el benchmark nuevo a 1080p: sombras que ya no se redibujan en cada fotograma, lotes por sala, paredes compartidas dibujadas una vez, occlusion culling, LOD en muebles de modelo, texturas de puerta y personajes comprimidas, filtro de sombras por preset y tirones de CPU (visión de eco, rutas de sonido). GPU entre −30 % y −55 % según calidad y vista en el PC de desarrollo. Ver [PERFORMANCE.md](PERFORMANCE.md).
+- [x] Cuadros y apliques de las paredes oeste y norte colgaban en la cara de la sala vecina (marcos superpuestos, paredes desnudas); ahora cada pared tiene los suyos.
+- [ ] Revisar en partida lo que las capturas fijas no enseñan: cuadros y apliques nuevos, sombras con el filtro más barato en Baja y Media en movimiento, salas que aparezcan tarde al girar en un vano (oclusión).
+- [ ] Medir `tools/benchmarks/run_bench.ps1` en un PC modesto (los de las pruebas con amigos) y anotarlo en PERFORMANCE.md.
 
 ## P3 — Cooperativo y hoja paranormal
 
