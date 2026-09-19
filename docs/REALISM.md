@@ -56,7 +56,7 @@ Prueba: un `CompositorEffect` en `POST_TRANSPARENT` pinta ruido distinto en cada
 Consecuencias para la cámara:
 - **En HDR (compositor, antes de TAA):** lo que es estable por píxel. Es decir, exposición, curva de vídeo, balance de blancos, halo, smear de CCD y motion blur.
 - **En el lienzo (después de TAA y tonemap):** lo que TAA emborronaría o cuya reproyección rompería. Es decir, distorsión de lente, aberración lateral, viñeteado, ruido del sensor y realce de bordes. Va en una capa propia por debajo del OSD, porque la óptica no deforma el OSD pero la cinta sí lo graba.
-- **La ganancia medida en la GPU** llega al ruido del lienzo con `buffer_get_data_async`, que está disponible, igual que `texture_copy`, `get_velocity_layer`, `get_depth_layer` y las matrices de cámara.
+- **La ganancia medida en la GPU** podía llegar al ruido del lienzo con `buffer_get_data_async`. Hay también `texture_copy`, `get_velocity_layer`, `get_depth_layer` y las matrices de cámara. (Después se cambió por una textura: la lectura asíncrona tumbaba el juego exportado al salir; ver la fase 1.)
 
 ### 3. Sonda por sala como luz ambiente — funciona, rebote débil
 
@@ -109,7 +109,7 @@ La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no u
    - medidor centrado e iris automático con ganancia: abre despacio, cierra más rápido y tiene un tope de +0,8 pasos, así que una sala sin luz sigue negra;
    - smear vertical de CCD en las luces saturadas (desde Medio);
    - curva de vídeo con knee y pie de negros, que sustituye a AgX;
-   - la ganancia vuelve al lienzo por lectura asíncrona.
+   - la ganancia llega a la lente sin pasar por el procesador: el iris la escribe en una textura de 1 × 1 que el shader de la lente lee.
 4. **Motion blur** (`camera/motion_blur_effect.gd`, desde Medio): la estela de un giro durante un obturador de 1/60 s. Se calcula con la rotación entre fotogramas, porque el búfer de velocidad de Godot no lleva el movimiento de la cámara. Girando a 3 rad/s, la nitidez horizontal baja un 27 %.
 5. **Autoenfoque** (Alto y Ultra): sigue el centro con retraso y «caza» tras un cambio grande. Solo desenfoca cuando hay algo cerca.
 
@@ -128,7 +128,11 @@ Brillo medio frente a antes: salas cálidas 34–37 de 255 (antes 21–29), fluo
 
 **Dos fallos resueltos por el camino:**
 - La copia del color para el blur se hace con una pasada de cómputo: el búfer de Godot no admite `texture_copy`.
-- **El juego se caía al salir** por dos motivos: una lectura asíncrona pendiente llamaba a un efecto ya liberado, y los efectos liberaban sus recursos cuando el dispositivo ya no existía. Ahora la lectura cae en campos estáticos y el nivel libera los recursos en `_exit_tree`.
+- **El juego se caía al salir** por dos motivos. Los efectos liberaban sus recursos cuando el dispositivo ya no existía: ahora el nivel los libera en `_exit_tree`. Y una lectura asíncrona de la ganancia seguía pendiente al salir:
+  - primero se desvió a campos estáticos, lo que bastó con el binario del editor;
+  - el juego exportado se seguía cayendo al salir en Forward+, cuando la lectura llegaba con los scripts ya descargados (encontrado en la fase 2);
+  - ahora no hay lectura: la ganancia viaja por una textura en la GPU (`exposure_texture`).
+  - **Comprobado con el `.exe` exportado:** sale con código 0 desde el menú y desde una partida, también en Compatibility.
 
 **Hito:**
 - vídeo `evidence/lookdev/fase1_alto.avi` (20 s de recorrido en Alto, grabado con `tools/capture/walkthrough_movie.gd` y Movie Maker);

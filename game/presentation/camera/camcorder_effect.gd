@@ -6,7 +6,9 @@ extends CompositorEffect
 ## the canvas (lens.gdshader).
 ##   meter    a centre-weighted average of the scene's luminance, on a grid
 ##   iris     the automatic iris and gain: opens slowly, closes quicker, never
-##            past its range, so a room with no light stays black
+##            past its range, so a room with no light stays black. It also
+##            writes the exposure to a 1x1 texture (exposure_texture) the lens
+##            reads its gain from, on the GPU: no read-back to the CPU
 ##   smear    per column, the charge a saturated highlight spills down the
 ##            CCD: a faint vertical streak through a bare bulb
 ##   grade    exposure, smear, white balance and the video knee that replaces
@@ -38,11 +40,12 @@ var knee := 0.72
 var toe := 0.008
 ## Set to jump to the metered exposure on the next frame (a cut, a new floor).
 var reset := true
-## The gain the iris added last time it was read back (1 at or below the base
-## exposure): the sensor noise on the canvas grows with it.
-static var gain := 1.0
-## The exposure the iris settled on, in stops over the base (read back too).
-static var ev := 0.0
+## The exposure as a texture for the lens (lens.gdshader, gain_map): in one
+## texel, the stops over the base exposure, the target and the gain the iris
+## added (1 at or below the base), which the sensor noise grows with. Read
+## on the GPU: a read-back to the CPU, answered after the game had quit,
+## crashed the exported game on exit.
+var exposure_texture := Texture2DRD.new()
 
 var rd: RenderingDevice
 var shaders := {}
@@ -50,9 +53,9 @@ var pipelines := {}
 var samples: RID
 var state: RID
 var columns: RID
+var exposure: RID
 var column_count := 0
 var last_usec := 0
-static var reading := false
 ## The game's frame time, set every frame by the level (see motion_blur_effect).
 var frame_delta := 0.0
 
@@ -85,6 +88,7 @@ const IRIS := """
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0, std430) restrict readonly buffer Samples { float data[]; } samples;
 layout(set = 0, binding = 1, std430) restrict buffer State { float ev; float target; float gain; float pad; } state;
+layout(rgba32f, set = 0, binding = 2) uniform restrict writeonly image2D exposure_image;
 layout(push_constant, std430) uniform Params { float count; float dt; float key; float min_ev; float max_ev; float speed_up; float speed_down; float reset; } p;
 shared float sums[256];
 shared float weights[256];
@@ -113,6 +117,7 @@ void main() {
 		state.ev = p.reset > 0.5 ? target : mix(state.ev, target, 1.0 - exp(-p.dt * rate));
 		state.target = target;
 		state.gain = exp2(max(state.ev, 0.0));
+		imageStore(exposure_image, ivec2(0), vec4(state.ev, target, state.gain, 1.0));
 	}
 }
 """
@@ -189,6 +194,14 @@ func setup() -> void:
 		pipelines[name] = rd.compute_pipeline_create(shaders[name])
 	samples = rd.storage_buffer_create(GRID.x * GRID.y * 2 * 4)
 	state = rd.storage_buffer_create(16, PackedFloat32Array([0.0, 0.0, 1.0, 0.0]).to_byte_array())
+	var format := RDTextureFormat.new()
+	format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
+	format.width = 1
+	format.height = 1
+	# Copyable too, so a test can read it back.
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	exposure = rd.texture_create(format, RDTextureView.new(), [PackedFloat32Array([0.0, 0.0, 1.0, 1.0]).to_byte_array()])
+	exposure_texture.texture_rd_rid = exposure
 
 ## Frees what it made on the GPU. The level calls it when it leaves the tree:
 ## on quitting, the effect itself outlives the RenderingDevice, and freeing
@@ -196,7 +209,8 @@ func setup() -> void:
 func release() -> void:
 	if rd == null: return
 	enabled = false
-	for rid in [samples, state, columns]:
+	exposure_texture.texture_rd_rid = RID()
+	for rid in [samples, state, columns, exposure]:
 		if rid.is_valid(): rd.free_rid(rid)
 	for name in shaders: rd.free_rid(shaders[name])
 	shaders.clear()
@@ -205,7 +219,8 @@ func release() -> void:
 ## Inline, not release(): a method call on an instance being deleted fails.
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_PREDELETE or rd == null: return
-	for rid in [samples, state, columns]:
+	exposure_texture.texture_rd_rid = RID()
+	for rid in [samples, state, columns, exposure]:
 		if rid.is_valid(): rd.free_rid(rid)
 	for name in shaders: rd.free_rid(shaders[name])
 
@@ -247,22 +262,8 @@ func _render_callback(_type: int, data: RenderData) -> void:
 	var color := buffers.get_color_layer(0)
 	var sizef := Vector2(size)
 	dispatch("meter", [image(0, color), storage(1, samples)], PackedFloat32Array([sizef.x, sizef.y, GRID.x, GRID.y]), Vector3i((GRID.x + 7) / 8, (GRID.y + 7) / 8, 1))
-	dispatch("iris", [storage(0, samples), storage(1, state)], PackedFloat32Array([GRID.x * GRID.y, dt, key, min_ev, max_ev, speed_up, speed_down, 1.0 if reset else 0.0]), Vector3i(1, 1, 1))
+	dispatch("iris", [storage(0, samples), storage(1, state), image(2, exposure)], PackedFloat32Array([GRID.x * GRID.y, dt, key, min_ev, max_ev, speed_up, speed_down, 1.0 if reset else 0.0]), Vector3i(1, 1, 1))
 	reset = false
 	if smear > 0.0:
 		dispatch("smear", [image(0, color), storage(1, state), storage(2, columns)], PackedFloat32Array([sizef.x, sizef.y, smear_threshold, 0.0]), Vector3i((size.x + 63) / 64, 1, 1))
 	dispatch("grade", [image(0, color), storage(1, state), storage(2, columns)], PackedFloat32Array([sizef.x, sizef.y, smear, knee, white_balance.x, white_balance.y, white_balance.z, toe]), Vector3i((size.x + 7) / 8, (size.y + 7) / 8, 1))
-	# The gain for the sensor noise, a frame or two late, which is plenty.
-	if not reading:
-		reading = true
-		rd.buffer_get_data_async(state, receive)
-
-## Where the iris readback lands. Static on purpose: a readback still pending
-## when the game quits is answered after the effect is gone, and a callback
-## into a freed object crashed the exit. The script outlives the device.
-static func receive(bytes: PackedByteArray) -> void:
-	var values := bytes.to_float32_array()
-	if values.size() >= 3:
-		ev = values[0]
-		gain = values[2]
-	reading = false

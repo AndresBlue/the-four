@@ -17,9 +17,11 @@ uniform float chromatic : hint_range(0.0, 1.0) = 0.3;
 // Natural (cos^4) and mechanical falloff towards the corners.
 uniform float vignette : hint_range(0.0, 1.0) = 0.45;
 // Sensor noise: shot noise (grows with the square root of the signal) and
-// read noise, both scaled by the gain the automatic iris had to add.
+// read noise, both scaled by the gain the automatic iris had to add. The
+// camera stage writes that gain to gain_map's blue channel on the GPU
+// (camcorder_effect.gd); without it the default white is a gain of 1.
 uniform float noise : hint_range(0.0, 1.0) = 0.35;
-uniform float gain = 1.0;
+uniform sampler2D gain_map : filter_nearest, hint_default_white;
 // Horizontal detail enhancement ("peaking"): the sharp, haloed edges of
 // consumer video.
 uniform float detail : hint_range(0.0, 1.0) = 0.35;
@@ -73,6 +75,7 @@ void fragment() {
 		vec2 cell = floor(FRAGCOORD.xy);
 		float n = hash(vec3(cell, frame)) + hash(vec3(cell + 19.1, frame)) - 1.0;
 		vec3 c = vec3(hash(vec3(cell, frame + 7.0)), hash(vec3(cell, frame + 13.0)), hash(vec3(cell, frame + 29.0))) - 0.5;
+		float gain = texture(gain_map, vec2(0.5)).b;
 		float sigma = (sqrt(luma) * 0.06 + 0.012) * gain;
 		float dark = 1.0 - smoothstep(0.0, 0.25, luma);
 		linear += (n * sigma + c * sigma * 0.9 * dark) * noise * 2.0;

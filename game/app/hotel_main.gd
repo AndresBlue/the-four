@@ -896,8 +896,6 @@ func _process(delta: float) -> void:
 	# occluders: no occlusion culling while an execution lasts.
 	var cull: bool = execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
 	if get_viewport().use_occlusion_culling != cull: get_viewport().use_occlusion_culling = cull
-	# The sensor's noise grows with the gain the iris had to add.
-	if is_instance_valid(lens_material): lens_material.set_shader_parameter("gain", camera_effect.gain if is_instance_valid(camera_effect) and camera_effect.enabled else 1.0)
 	# The camera stage runs on the game's clock (what Movie Maker records).
 	if is_instance_valid(camera_effect):
 		camera_effect.frame_delta = delta
@@ -964,6 +962,7 @@ func _exit_tree() -> void:
 	# The camera's compositor effects free their GPU resources while the
 	# RenderingDevice still exists (left to themselves they outlive it on quit).
 	if has_node("Presentation/WorldEnvironment"): $Presentation/WorldEnvironment.compositor = null
+	if is_instance_valid(lens_material): lens_material.set_shader_parameter("gain_map", null)
 	for effect in [blur_effect, camera_effect]:
 		if is_instance_valid(effect): effect.release()
 
@@ -1014,6 +1013,9 @@ func apply_camera(preset: Dictionary, hunter: bool) -> void:
 	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if on else authored_tone.mode
 	environment.tonemap_exposure = 1.0 if on else authored_tone.exposure
 	environment.glow_hdr_threshold = 0.9 if on else authored_tone.glow
+	# The sensor's noise grows with the gain the iris had to add, which the
+	# lens reads straight from the camera stage on the GPU.
+	if is_instance_valid(lens_material): lens_material.set_shader_parameter("gain_map", camera_effect.exposure_texture if on else null)
 
 ## A cut (a new floor, the opening scene): the iris jumps to the new light
 ## instead of adjusting across it.
