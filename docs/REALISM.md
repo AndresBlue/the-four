@@ -90,6 +90,50 @@ Prueba: `volumetric_fog_length` de 14 m (antes 48) y `light_volumetric_fog_energ
 - **Sin fugas:** los cuatro presets dan lo mismo que sin niebla. Con celdas más cortas, el resplandor ya no cruza el muro.
 - **Pendiente:** la linterna también ilumina la niebla solo hasta 14 m; se juzgará en la fase 2.
 
+## Fase 1 — La camcorder (hecha)
+
+La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no una calidad: es igual en los cuatro presets, salvo lo que se indica.
+
+1. **Cámara en mano** (`hotel_player.update_handheld`):
+   - un muelle rígido y algo subamortiguado se queda atrás en los giros rápidos y se inclina hacia el lado;
+   - temblor de mano 1/f, respiración (más honda sin resistencia), cabeceo en cada pisada y sacudida al aterrizar;
+   - el temblor se quita y se repone en cada fotograma, así que la mirada nunca lo acumula, y la red envía la mirada limpia (`look_pitch()`);
+   - lo escala «Movimiento de cámara», «Efectos reducidos» lo quita, y las pruebas lo apagan salvo con `--handheld`.
+2. **Óptica y sensor en el lienzo** (`lens.gdshader`, capa 2, entre la imagen 3D y el OSD):
+   - distorsión de barril: se renderiza más ancho y se remapea, y el centro conserva los 78° de siempre (`camcorder_look.gd`, que da el FOV a todas las cámaras que filma: jugador, observación, entrada y portada);
+   - aberración cromática lateral y viñeteado cos⁴;
+   - ruido del sensor (fotónico con √señal y de lectura), que crece con la ganancia, con ruido de croma en la oscuridad;
+   - realce de bordes de vídeo.
+   Va después de TAA y por debajo del OSD. «Grano» y «Aberración cromática» pasan aquí; la vista de la criatura no tiene lente.
+3. **Etapa HDR** (`camera/camcorder_effect.gd`, compositor, antes de TAA):
+   - medidor centrado e iris automático con ganancia: abre despacio, cierra más rápido y tiene un tope de +0,8 pasos, así que una sala sin luz sigue negra;
+   - smear vertical de CCD en las luces saturadas (desde Medio);
+   - curva de vídeo con knee y pie de negros, que sustituye a AgX;
+   - la ganancia vuelve al lienzo por lectura asíncrona.
+4. **Motion blur** (`camera/motion_blur_effect.gd`, desde Medio): la estela de un giro durante un obturador de 1/60 s. Se calcula con la rotación entre fotogramas, porque el búfer de velocidad de Godot no lleva el movimiento de la cámara. Girando a 3 rad/s, la nitidez horizontal baja un 27 %.
+5. **Autoenfoque** (Alto y Ultra): sigue el centro con retraso y «caza» tras un cambio grande. Solo desenfoca cuando hay algo cerca.
+
+**Calibración del iris** (`key` 0,065, sin cinta):
+
+| Sala | Iris |
+|---|---|
+| Cálida | +0,4 a +0,5 EV |
+| Fluorescente | −0,3 EV |
+| Recepción | +0,8 EV |
+| Sala oscura con linterna | +0,6 EV (tope) |
+
+Brillo medio frente a antes: salas cálidas 34–37 de 255 (antes 21–29), fluorescentes 42–44 (antes 46–49), sala oscura igual.
+
+**Coste** en la RTX 4060 Ti, 1080p, GPU caminando: +0,12 ms en Bajo, +0,31 en Medio, +0,79 en Alto y +1,04 en Ultra. Alto queda en 5,7 ms.
+
+**Dos fallos resueltos por el camino:**
+- La copia del color para el blur se hace con una pasada de cómputo: el búfer de Godot no admite `texture_copy`.
+- **El juego se caía al salir** por dos motivos: una lectura asíncrona pendiente llamaba a un efecto ya liberado, y los efectos liberaban sus recursos cuando el dispositivo ya no existía. Ahora la lectura cae en campos estáticos y el nivel libera los recursos en `_exit_tree`.
+
+**Hito:**
+- vídeo `evidence/lookdev/fase1_alto.avi` (20 s de recorrido en Alto, grabado con `tools/capture/walkthrough_movie.gd` y Movie Maker);
+- hoja `evidence/lookdev/fase1_antes_despues.png`.
+
 ### Pruebas que se hacen al empezar su fase
 
 - **5. Decals** (límite de elementos agrupados, atlas): fase 4.
