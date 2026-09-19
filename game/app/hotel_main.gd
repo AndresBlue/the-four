@@ -971,6 +971,10 @@ func apply_settings() -> void:
 	environment.fog_enabled = not hunter
 	environment.volumetric_fog_enabled = advanced and quality > 0 and not settings.values.reduced and not hunter
 	var viewport := get_viewport()
+	# Every lamp shares one shadow atlas. At 4096 the rooms further off got
+	# cells so coarse that shadows came out as saw-teeth along door frames and
+	# a lamp's shadow bias grew past a 7 cm leaf: light through shut doors.
+	viewport.positional_shadow_atlas_size = 8192 if quality == 2 else 4096
 	viewport.msaa_3d = Viewport.MSAA_2X if quality > 0 else Viewport.MSAA_DISABLED
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if quality == 0 and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
 	# Temporal accumulation has nothing to work with here: the echo field writes

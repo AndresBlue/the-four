@@ -432,6 +432,10 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	# (light_seal, jamb_seal).
 	light.shadow_bias = 0.03
 	light.shadow_normal_bias = 0.6
+	# No lamp lights the volumetric fog: its cells straddle walls, and a lit
+	# room's haze glowed in the dark room next door, growing with depth (near
+	# floor black, far walls showing). Only the player's own torch lights it.
+	light.light_volumetric_fog_energy = 0.0
 	# Lights and shadows fade with distance instead of switching on abruptly.
 	# Shadows stay on wherever a light can reach visible rooms, so light never
 	# passes through walls.
@@ -494,6 +498,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		# The usual warm ceiling light is kept low so the red reads from afar.
 		light.light_energy *= 0.3
 		beacon.shadow_enabled = true
+		beacon.light_volumetric_fog_energy = 0.0
 		node.add_child(beacon)
 		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy})
 	if room.type == 19:
@@ -535,6 +540,7 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	lamp.shadow_enabled = true
 	lamp.shadow_bias = 0.04
 	lamp.shadow_normal_bias = 0.6
+	lamp.light_volumetric_fog_energy = 0.0
 	lamp.distance_fade_enabled = true
 	lamp.distance_fade_begin = 18.0
 	lamp.distance_fade_length = 8.0
