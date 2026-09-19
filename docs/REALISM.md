@@ -421,6 +421,8 @@ Tres cambios en `camcorder_effect.gd`:
 
 Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la del plafón que se mira de frente.
 
+**Coste** (recorrido, medido después de estos ajustes): Alto 8,02 ms de GPU media y 12,3 ms de p99; Ultra 12,06 ms y 19,9 ms; memoria de vídeo 2,17 GB en Alto. El paso nuevo es una pasada de 1920 hilos, y a cambio el grado lee una columna en vez de nueve, así que sale a cuenta.
+
 **3. Placas de puerta.** El número no cabía en la placa: la placa pasa de 0,26 × 0,13 m a 0,34 × 0,19 m y el número baja de 24 a 20, con 4,5 cm de margen a los lados.
 
 **4. Luz de los apliques a través de las paredes (bug).** Reproducido con una sonda: desde una sala, la pared contigua se aclaraba con la forma de los apliques del otro lado. Tres causas, todas en el rebote:
