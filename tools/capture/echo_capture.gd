@@ -17,10 +17,12 @@ extends SceneTree
 ##   shriek        the reading flooded red
 ##   memory        turned away two seconds later: the points stayed put
 ##   reduced       reduced effects: calm, flat, still navigable
-##   quality0      the field alone, no point cloud
+##   preset_0..3   the corridor on each graphics preset: Bajo coarser grains,
+##                 Ultra finer ones with its brightest grains blooming
 ##   lit           a survivor's torch as interference
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 var level
 var prefix := "echo"
 
@@ -134,10 +136,10 @@ func run() -> void:
 	await listen(2.5)
 	await shot("reduced")
 	level.settings.values.reduced = false
-	level.settings.values.quality = 0
-	level.apply_settings()
-	await listen(2.0)
-	await shot("quality0")
+	for quality in PRESETS.count():
+		level.settings.set_value("quality", quality)
+		await listen(2.5)
+		await shot("preset_%d" % quality)
 
 	paused = false
 	level.queue_free()

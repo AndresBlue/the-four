@@ -9,6 +9,7 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const REMOTE := preload("res://game/net/remote_player.gd")
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -81,7 +82,7 @@ func run() -> void:
 	check("El pulso no es un metrónomo", distinct.size() > intervals.size() / 2)
 
 	# --- Rays and the ring buffer -------------------------------------------------
-	var budget: int = echo.RAY_BUDGET[echo.quality]
+	var budget: int = echo.budget.rays
 	var most := 0
 	var before: int = echo.rays_cast
 	for i in 120:
@@ -91,7 +92,7 @@ func run() -> void:
 	check("El presupuesto de rayos se reparte entre fotogramas", most <= echo.per_tick and echo.per_tick < budget)
 	check("Se lanzan rayos en cada pulso", echo.rays_cast > budget)
 	var cloud: MultiMesh = echo.walls.multimesh
-	check("El anillo de puntos nunca pasa del presupuesto", cloud.instance_count == echo.POINT_BUDGET[echo.quality] and echo.wall_at < cloud.instance_count and echo.wall_shown <= cloud.instance_count)
+	check("El anillo de puntos nunca pasa del presupuesto", cloud.instance_count == echo.budget.points and echo.wall_at < cloud.instance_count and echo.wall_shown <= cloud.instance_count)
 	var span: float = echo.wall_material.get_shader_parameter("age_limit")
 	check("Los puntos se apagan antes de ser sobrescritos", span <= float(maxi(echo.wall_shown, 1)) / maxf(echo.write_rate, 1.0) + 0.001 and span <= echo.MEMORY)
 
@@ -157,7 +158,7 @@ func run() -> void:
 	await click_passes(echo)
 	var grains: int = echo.puff_at - before_puff
 	check("El ruido se materializa como una nube de puntos", echo.puffs.multimesh.instance_count > 0 and grains > 0)
-	check("Y un ruido cercano trae la forma de quien lo hizo", grains > echo.PUFF_POINTS[echo.quality] * 2)
+	check("Y un ruido cercano trae la forma de quien lo hizo", grains > echo.budget.puff_points * 2)
 	await frames(int(echo.CONTACT_LIFE * 60) + 20)
 	var stale: bool = creature.driver.heard.any(func(mark): return Time.get_ticks_msec() / 1000.0 - mark.time > echo.CONTACT_LIFE + 0.1)
 	check("Los contactos caducan", not stale)
@@ -303,7 +304,7 @@ func run() -> void:
 	screen.queue_free()
 	await frames(2)
 	check("Un marco tras una pared no devuelve nada", seen_spot != Vector3.INF and blocked)
-	check("Los rayos a puertas y armarios cuentan en el mismo presupuesto", echo.per_tick * (60.0 / echo.CLICK_RATE) >= echo.RAY_BUDGET[echo.quality] + echo.INTEREST_BUDGET[echo.quality])
+	check("Los rayos a puertas y armarios cuentan en el mismo presupuesto", echo.per_tick * (60.0 / echo.CLICK_RATE) >= echo.budget.rays + echo.budget.aimed)
 	# A wardrobe is a block, and a shut door a panel, not only an outline.
 	var hide_spots: int = echo.reflector_spots(echo.reflectors[level.hotel.doors.size()].frame).size() if level.hotel.hides.size() > 0 else 0
 	check("Un armario se apunta como bloque entero", hide_spots == echo.WARDROBE_SPOTS)
@@ -332,12 +333,22 @@ func run() -> void:
 	# Reduced calms the reading; it must never leave the hunter a black screen,
 	# and with the grains carrying every shape they are what must stay on.
 	var quiet_grain: float = echo.wall_material.get_shader_parameter("residue")
-	check("Pero no apagan la imagen", quiet_grain >= 0.3 and echo.walls.multimesh.instance_count > 0 and echo.RAY_BUDGET[echo.quality] > 0)
+	check("Pero no apagan la imagen", quiet_grain >= 0.3 and echo.walls.multimesh.instance_count > 0 and echo.budget.rays > 0)
+	# Every preset leaves the hunter a reading to play with: Bajo has half the
+	# grains of Medio at twice the size, and its doors and wardrobes lose no
+	# rays; Ultra is only a little finer than Alto.
+	var medium_span: float = echo.wall_material.get_shader_parameter("point_scale")
+	var medium_points: int = echo.walls.multimesh.instance_count
 	level.settings.set_value("reduced", false)
 	level.settings.set_value("quality", 0)
 	level.apply_settings()
 	await frames(20)
-	check("Calidad 0 apaga las nubes y deja la oscuridad", echo.walls.multimesh.instance_count == 0 and echo.RAY_BUDGET[echo.quality] == 0 and is_instance_valid(echo.field))
+	check("Bajo sigue leyendo la sala: la mitad de granos, del doble de tamaño", echo.walls.multimesh.instance_count * 2 == medium_points and echo.budget.rays > 0 and is_equal_approx(echo.wall_material.get_shader_parameter("point_scale"), medium_span * 2.0))
+	check("Y en Bajo las puertas y armarios no pierden rayos", echo.budget.aimed >= PRESETS.PRESETS[PRESETS.MEDIUM].echo.aimed and echo.frames.multimesh.instance_count >= PRESETS.PRESETS[PRESETS.MEDIUM].echo.frames)
+	level.settings.set_value("quality", 3)
+	level.apply_settings()
+	await frames(20)
+	check("Ultra: algo más denso que Alto y con granos más pequeños", echo.walls.multimesh.instance_count > PRESETS.PRESETS[PRESETS.HIGH].echo.points and echo.wall_material.get_shader_parameter("point_scale") < medium_span)
 	level.settings.set_value("quality", 1)
 	level.apply_settings()
 	await frames(10)

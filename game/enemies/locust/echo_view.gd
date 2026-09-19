@@ -28,6 +28,7 @@ const BODY := preload("res://game/enemies/locust/echo_body.gd")
 const KINDS := preload("res://game/audio/noise_kinds.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const HIDE := preload("res://game/world/interactables/hiding_place.gd")
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 
 ## Nominal clicks per second: the rate the reading refreshes at. Slow on
 ## purpose. A fast click makes a busy, almost psychedelic picture; at two per
@@ -52,13 +53,11 @@ const REACH := 40.0
 const BAND_STEP := 1.5
 ## Longest a remembered point lives; the real limit follows the ring buffer.
 const MEMORY := 9.0
-## Rays per click, points remembered, body points: off / medium / high. The
+## Rays per click, points remembered, body points and every other count below
+## come from the graphics preset (graphics_presets.gd "echo", in budget). The
 ## budget per click is large because there are thirty physics frames to spread
 ## it over: the cost per frame is the same as a fast click would be, and what
 ## you get for it is a scene made of points.
-const RAY_BUDGET := [0, 1900, 3600]
-const POINT_BUDGET := [0, 24000, 46000]
-const BODY_POINTS := [0, 700, 1400]
 ## Bodies are sampled on every click and fade just past the next one: a
 ## survivor is a live reading, never a memory to be followed.
 const BODY_EVERY := 1
@@ -72,12 +71,10 @@ const FORWARD_CONE := 1.0
 ## from the spot at this speed and out to this radius before it goes.
 const PUFF_SPEED := 4.5
 const PUFF_LIFE := 2.2
-const PUFF_POINTS := [0, 26, 44]
 ## Grains per surface sample when a close noise brings a body's shape with it.
 const NOISE_SHAPE := 3
-const PUFF_BUDGET := [0, 4800, 9600]
 ## How much each kind of noise shows, by noise_kinds.gd Kind: grains (times
-## PUFF_POINTS) and size (times the spread). A step leaves a light trail and a
+## budget.puff_points) and size (times the spread). A step leaves a light trail and a
 ## run a heavy one; a door is a burst it cannot miss, and stays. A wardrobe is
 ## as loud as a door, but its cloud goes out sooner: the survivor gets that
 ## much of an edge for hiding. PUFF_LIVES is each kind's life in seconds,
@@ -127,8 +124,6 @@ const WARDROBE_PUFF_UP := 1.15
 ## What the shriek found stays marked well after the cry has died away, so it
 ## is worth something beyond turning the picture red.
 const FIND_LIFE := 3.2
-const FIND_POINTS := [0, 40, 70]
-const FIND_BUDGET := [0, 600, 1200]
 ## How long a contact is worth marking at all.
 const CONTACT_LIFE := 1.6
 ## Its own shriek floods the reading red, then drains.
@@ -163,12 +158,10 @@ const RAY_MASK := 1 | 8 | 64
 ## lands within INTEREST_HIT of the spot it was aimed at found it in plain
 ## sight; anything else was in the way and the ray is dropped, so a frame
 ## behind a wall never answers.
-const INTEREST_BUDGET := [0, 600, 1200]
 const INTEREST_HIT := 0.25
 ## Grains laid for each reflector hit: two, so a frame reads crowded.
 const INTEREST_GRAINS := 2
 ## Where the reflector grains live, how long, and how big they read.
-const FRAME_POINTS := [0, 7000, 14000]
 const FRAME_MEMORY := 5.0
 const FRAME_PIXELS := 2.6
 ## Aimed spots on a doorway per click: up the end of each wall, on the strip
@@ -200,6 +193,9 @@ var clicks := 0
 var last_interval := 0.0
 var enabled := false
 var quality := 1
+## The preset's echo counts (graphics_presets.gd): rays, aimed, points,
+## bodies, puff_points, puffs, find_points, finds, frames, grain.
+var budget: Dictionary = PRESETS.PRESETS[PRESETS.MEDIUM].echo
 var calm := false
 
 var field: MeshInstance3D
@@ -485,8 +481,8 @@ func reflector_spots(surfaces: Array) -> PackedVector3Array:
 func aim_reflectors(from: Vector3) -> void:
 	pending_targets = PackedVector3Array()
 	pending_owner = PackedInt32Array()
-	var budget: int = INTEREST_BUDGET[quality]
-	if budget == 0: return
+	var aimed: int = budget.aimed
+	if aimed == 0: return
 	var forward: Vector3 = -camera.global_basis.z
 	var near: Array = []
 	for index in reflectors.size():
@@ -504,7 +500,7 @@ func aim_reflectors(from: Vector3) -> void:
 		var spots := reflector_spots(one.frame)
 		if "opened" in one.node and not one.node.opened: spots.append_array(reflector_spots(one.panel))
 		for spot in spots:
-			if pending_targets.size() >= budget: return
+			if pending_targets.size() >= aimed: return
 			pending_targets.append(spot)
 			pending_owner.append(entry[1])
 
@@ -553,28 +549,29 @@ func _exit_tree() -> void:
 
 ## Point budgets and how much of the reading trembles, from the user's setting.
 func apply_quality() -> void:
-	quality = clampi(int(level.settings.values.quality), 0, 2)
+	quality = clampi(int(level.settings.values.quality), 0, PRESETS.count() - 1)
+	budget = PRESETS.of(quality).echo
 	calm = level.settings.values.reduced == true
-	var points: int = POINT_BUDGET[quality]
+	var points: int = budget.points
 	if walls.multimesh.instance_count != points:
 		walls.multimesh.instance_count = points
 		wall_at = 0
 		wall_shown = 0
-	var flesh: int = BODY_POINTS[quality]
+	var flesh: int = budget.bodies
 	if bodies.multimesh.instance_count != flesh:
 		bodies.multimesh.instance_count = flesh
 		body_at = 0
 		body_shown = 0
-	if puffs.multimesh.instance_count != PUFF_BUDGET[quality]:
-		puffs.multimesh.instance_count = PUFF_BUDGET[quality]
+	if puffs.multimesh.instance_count != budget.puffs:
+		puffs.multimesh.instance_count = budget.puffs
 		puff_at = 0
-	if finds.multimesh.instance_count != FIND_BUDGET[quality]:
-		finds.multimesh.instance_count = FIND_BUDGET[quality]
+	if finds.multimesh.instance_count != budget.finds:
+		finds.multimesh.instance_count = budget.finds
 		find_at = 0
-	if frames.multimesh.instance_count != FRAME_POINTS[quality]:
-		frames.multimesh.instance_count = FRAME_POINTS[quality]
+	if frames.multimesh.instance_count != budget.frames:
+		frames.multimesh.instance_count = budget.frames
 		frame_at = 0
-	per_tick = maxi(1, int(ceil(float(RAY_BUDGET[quality] + INTEREST_BUDGET[quality]) / (60.0 / CLICK_RATE))))
+	per_tick = maxi(1, int(ceil(float(budget.rays + budget.aimed) / (60.0 / CLICK_RATE))))
 	field_material.set_shader_parameter("presence", PRESENCE_CALM if calm else PRESENCE)
 	# With nothing drawn from the depth buffer, the grains have to carry the
 	# room between clicks, so they keep more of themselves alight than a
@@ -596,11 +593,15 @@ func apply_quality() -> void:
 	puff_material.set_shader_parameter("twinkle", PUFF_TWINKLE)
 	find_material.set_shader_parameter("gain", 1.35)
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
-	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS / height
+	# Fewer grains read as a room when each is bigger, and the other way round
+	# (budget.grain, per preset): the same share of the screen is covered.
+	var grain: float = budget.grain
+	var span := 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS * grain / height
 	for material in [wall_material, body_material, puff_material, find_material, mark_material, frame_material]:
 		material.set_shader_parameter("point_scale", span)
-		material.set_shader_parameter("point_min", 0.010)
-		material.set_shader_parameter("point_max", 0.085)
+		material.set_shader_parameter("point_min", 0.010 * grain)
+		material.set_shader_parameter("point_max", 0.085 * grain)
+		material.set_shader_parameter("halo", budget.halo)
 	# Reflector grains a touch bigger than the room's.
 	frame_material.set_shader_parameter("point_scale", span * FRAME_PIXELS / POINT_PIXELS)
 	puff_material.set_shader_parameter("point_scale", span * PUFF_PIXELS / POINT_PIXELS)
@@ -639,18 +640,18 @@ func click(hunting: bool) -> void:
 	var from: Vector3 = creature.global_position + Vector3(0, driver.EYE.y, 0)
 	var reach: float = REACH
 	# Its own cry is one enormous click: everything answers at once.
-	var budget: int = RAY_BUDGET[quality] * (3 if shriek_click else 1)
+	var rays: int = budget.rays * (3 if shriek_click else 1)
 	shriek_click = false
-	if budget > 0:
+	if rays > 0:
 		# Whatever is left of the previous click is dropped: the reading is
 		# always the newest one, and the cost per tick stays bounded.
-		start_spray(budget)
+		start_spray(rays)
 		pending_from = from
 		pending_at = clock
 		pending_reach = reach
 	# Doors and wardrobes in reach get rays of their own, cast first.
 	aim_reflectors(from)
-	if not pending_targets.is_empty() and budget == 0:
+	if not pending_targets.is_empty() and rays == 0:
 		pending_from = from
 		pending_at = clock
 	if clicks % BODY_EVERY == 0: stamp_bodies(from, reach)
@@ -724,7 +725,7 @@ func cast_pending() -> void:
 ## it: sees() already applies its cone, its line of sight and the wardrobe
 ## rule, so the image can never show more than its own perception allows.
 func stamp_bodies(from: Vector3, reach: float) -> void:
-	if BODY_POINTS[quality] == 0: return
+	if budget.bodies == 0: return
 	var shape := PackedVector3Array()
 	for body in level.survivors():
 		if not is_instance_valid(body) or not level.survivor_active(body): continue
@@ -794,7 +795,7 @@ func bell_offset(radius: float) -> Vector3:
 ## Every noise heard since the last click becomes a puff hanging where it was
 ## heard. A survivor walking leaves one every stride, which is the trail.
 func bloom_contacts() -> void:
-	if PUFF_BUDGET[quality] == 0: return
+	if budget.puffs == 0: return
 	var seconds := Time.get_ticks_msec() / 1000.0
 	for mark in driver.heard:
 		if int(mark.get("id", 0)) <= puffed: continue
@@ -805,7 +806,7 @@ func bloom_contacts() -> void:
 		var kind := int(mark.kind)
 		var bell: bool = kind in PUFF_BELLS
 		var radius := puff_radius(loud, kind, mark.get("blur", 0.0))
-		var count: int = int(PUFF_POINTS[quality] * (0.45 + 0.55 * loud) * PUFF_DENSITY[kind])
+		var count: int = int(budget.puff_points * (0.45 + 0.55 * loud) * PUFF_DENSITY[kind])
 		if not kind in PUFF_BELLS: count = int(count * lerpf(1.0, FAR_STEP_GRAINS, float(mark.get("blur", 0.0))))
 		# The further the sound travelled, the vaguer the place it hangs in.
 		var when: float = clock - (seconds - mark.time)
@@ -888,18 +889,18 @@ func push_uniforms() -> void:
 ## refreshed slowly. Free texture: world_audio already routes them from its own
 ## camera, so this costs no network and no extra listening.
 func bloom_hums() -> void:
-	if PUFF_BUDGET[quality] == 0 or not is_instance_valid(level.world_audio): return
+	if budget.puffs == 0 or not is_instance_valid(level.world_audio): return
 	for hum in level.world_audio.hums:
 		if not is_instance_valid(hum) or not hum.playing: continue
-		scatter(puffs, hum.global_position, 0.5, maxi(4, PUFF_POINTS[quality] / 5), 0.0, HUM_LEVEL, clock)
+		scatter(puffs, hum.global_position, 0.5, maxi(4, int(budget.puff_points) / 5), 0.0, HUM_LEVEL, clock)
 
 ## What the shriek came back with: a dense cloud over each survivor it found,
 ## which stays for seconds after the cry itself has died away. This is what the
 ## shriek is worth, not the red.
 func mark_found(points: PackedVector3Array) -> void:
-	if FIND_BUDGET[quality] == 0: return
+	if budget.finds == 0: return
 	for point in points:
-		scatter(finds, point, 0.55, FIND_POINTS[quality], 1.0, 1.0, clock)
+		scatter(finds, point, 0.55, budget.find_points, 1.0, 1.0, clock)
 
 ## A survivor's lit torch pointed this way. It cannot see light, but the beam
 ## disturbs the reading from that direction: turning it off still matters.

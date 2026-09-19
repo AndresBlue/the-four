@@ -47,6 +47,10 @@ uniform float flare : hint_range(0.0, 4.0) = 1.8;
 // own a dozen times a second by this much. In a picture made only of greys,
 // that shimmer is what tells a noise from the doorway it hangs in.
 uniform float twinkle : hint_range(0.0, 1.0) = 0.0;
+// A faint phosphor halo round each grain (graphics preset echo_halo, Ultra):
+// the quad grows to fit it and the core keeps its size. It only ever lies
+// round a grain that is already there, so it shows nothing new.
+uniform float halo : hint_range(0.0, 1.0) = 0.0;
 uniform sampler2D depth_map : hint_depth_texture, repeat_disable, filter_nearest;
 
 // INSTANCE_CUSTOM only exists in vertex(): carried over uninterpolated.
@@ -92,11 +96,15 @@ void vertex() {
 	// A spent or never-written instance collapses to nothing, so the unused
 	// tail of the ring buffer can never show up as a blob at the world origin.
 	if (strength <= 0.002) radius = 0.0;
+	radius *= 1.0 + halo * 2.0;
 	POSITION = PROJECTION_MATRIX * vec4(centre + vec3(VERTEX.xy * radius, 0.0), 1.0);
 }
 
 void fragment() {
-	float disc = smoothstep(1.0, 0.15, length(UV - vec2(0.5)) * 2.0);
+	// Distance from the centre in core radii (the quad is bigger with a halo).
+	float r = length(UV - vec2(0.5)) * 2.0 * (1.0 + halo * 2.0);
+	float disc = smoothstep(1.0, 0.15, r);
+	if (halo > 0.0) disc += exp(-r * r * 0.35) * halo * 0.3;
 	float weight = strength;
 	if (through < 0.999) {
 		// Soft depth test by hand. A hard depth_test_disabled would draw the
