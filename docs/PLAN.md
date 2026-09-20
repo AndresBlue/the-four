@@ -55,7 +55,8 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 - [x] **Apagón final:** con una tele por encender se va la luz del piso entero y para siempre (plafones, lámparas, apliques, fluorescentes y baliza), solo quedan las teles y las linternas, y la caza deja de gastar resistencia. Sin una palabra: el corte se oye y en su lectura los techos le vuelven de golpe desde todos lados.
 - [x] **Revivir entre etapas:** al pasar de ala vuelven los caídos, y un piso perdona un hundimiento —todos en pie y la etapa otra vez desde el principio, con las teles apagadas—; a la segunda se acabó.
 - [x] **Aviso a la criatura al cambiar de etapa:** gruñe (su propia voz) y en su visión se dibuja el camino hasta la puerta nueva, más denso en la puerta misma. Comprobado en `echo_test`.
-- [ ] **En red:** el anfitrión decide y sincroniza todo lo anterior (teles, números, cerradura, puertas con llave, apagón, revivir), con pruebas en `verify.ps1` para cooperativo y versus.
+- [x] **En red:** el anfitrión decide y sincroniza todo (teles, números, cerradura, puertas con llave, apagón, revivir, viaje por teles), con pruebas dentro de `verify.ps1`: el cooperativo juega las tres etapas de punta a punta —incluido salir sin el anfitrión, muerto— y el versus comprueba el viaje del cazador por las teles y la muerte con su reinicio.
+- [ ] Juzgar en partida el bloque entero: cuánto dura cada ala, si el apagón asusta o solo estorba, si el reinicio de etapa perdona demasiado y si el camino marcado le da demasiada ventaja a la criatura.
 
 
 
