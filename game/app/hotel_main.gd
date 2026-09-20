@@ -81,7 +81,6 @@ var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
 const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
 const DEAD_CHANNEL := "res://assets/audio/events/execution_static.ogg"
-const BODY_DROP := "res://assets/audio/events/execution_body.wav"
 ## The beats of an execution, in seconds from the grab. The scream is at zero,
 ## because that is the point of it; then it holds you and looks at you; then
 ## the arm comes for the lens, covers it and lands; and the picture goes.
@@ -523,6 +522,7 @@ func on_state() -> void:
 		player.reading = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible else Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
+	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
@@ -650,9 +650,9 @@ func update_execution(delta: float) -> void:
 	if int(execution.stabs) == 2 and execution.time >= SIGNAL_TIME:
 		execution.stabs = 3
 		if int(execution.seat) == player.slot and world_audio.enabled and is_instance_valid(static_sound): static_sound.play()
-	if not execution.dropped and execution.time >= DROP_TIME:
-		execution.dropped = true
-		if world_audio.enabled: world_audio.play_at(BODY_DROP, point + Vector3(0, 0.3, 0), -6.0, RID(), 0.0)
+	# The body going down is not heard: right after the blow it read as a
+	# second stab, and nothing is lost by letting it fall in silence.
+	if not execution.dropped and execution.time >= DROP_TIME: execution.dropped = true
 	if execution.time >= locust.EXECUTION_TIME + 0.3:
 		var seat := int(execution.seat)
 		# Its own picture is gone: it keeps the lost signal a moment before it
@@ -666,6 +666,23 @@ func update_execution(delta: float) -> void:
 			player.avatar.rotation.x = 0.0
 			player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
+
+## Back to a clean picture: leaving for the menu, or starting a floor. The
+## filter's material outlives the floor, so a signal that was lost when the
+## hotel was freed would still be lost over the title room.
+func clear_screen_cues() -> void:
+	lost_signal = 0.0
+	static_level = 0.0
+	strike_uv = Vector2(0.35, 0.55)
+	enclosure = 0.0
+	glitch = 0.0
+	if is_instance_valid(static_sound) and static_sound.playing: static_sound.stop()
+	if is_instance_valid(camcorder): camcorder.signal_lost = false
+	if post_material != null:
+		post_material.set_shader_parameter("signal_loss", 0.0)
+		post_material.set_shader_parameter("strike_fill", 0.0)
+		post_material.set_shader_parameter("enclosure", 0.0)
+		post_material.set_shader_parameter("threat_glitch", 0.0)
 
 ## Where the striking arm is on the victim's screen, as a UV: the black
 ## spreads from there, so it reads as an arm arriving and not as a fade.
@@ -850,7 +867,6 @@ func drive_local(delta: float) -> void:
 		# Its own picture went with it: the lost signal holds a moment before
 		# the view ends up over a teammate's shoulder.
 		if lost_signal > 0.0:
-			lost_signal = maxf(0.0, lost_signal - delta)
 			camcorder.focus("")
 			ui.hint.text = ""
 			ui.progress.visible = false
@@ -1291,12 +1307,16 @@ func update_screen_cues(delta: float) -> void:
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
 	var striking: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
 	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
+	lost_signal = maxf(0.0, lost_signal - delta)
 	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
 	var dying: bool = mine and float(execution.time) >= SIGNAL_TIME
 	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else 0.0
 	# Straight to static once the arm has landed: the picture does not fade,
 	# it goes. Coming back (a new floor) it clears gently.
-	static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
+	# Gone at once when the view is already somebody else's camera; otherwise
+	# it comes in hard and clears gently.
+	if wanted_static <= 0.0 and not local_alive() and execution.is_empty(): static_level = 0.0
+	else: static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
 	post_material.set_shader_parameter("signal_loss", static_level * (0.75 if settings.values.reduced else 1.0))
 	# The arm arriving: black spreading from where its hand is on screen.
 	var arm := 0.0

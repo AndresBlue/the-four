@@ -3,13 +3,13 @@ originals in sfx/ into assets/audio/events/. The originals are never touched.
 
   execution_scream.wav  the grab      (Freesound 865842, EnclosureX_Studios, CC BY 4.0)
   execution_hit.wav     the blow      (Freesound 829590, Artninja, CC BY 4.0)
-  execution_body.wav    the body down (the same recording, its second take)
   execution_static.ogg  the dead tape (Freesound 624412, nlux, CC0)
 
-The impact recording holds three takes. The first is the blow, cut so that the
+The impact recording holds three takes; only the first is used, cut so that the
 impact itself lands HIT_AT seconds in: that is the delay the arm has to travel
-from a dot to covering the lens, so picture and sound land together. The
-second, heavier and with a longer tail, is the body hitting the floor.
+from a dot to covering the lens, so picture and sound land together. The body
+going down afterwards is not heard at all -- a thud that close behind the blow
+read as a second stab.
 
 Deterministic: re-running reproduces the same files.
 
@@ -91,8 +91,6 @@ def hit():
     blow, at = take(mono, rate, (0.0, 1.2), HIT_AT, HIT_TAIL)
     print("impact at", round(at, 3), "s into the clip")
     write("execution_hit.wav", blow, peak=0.97)
-    body, _ = take(mono, rate, (1.3, 2.6), 0.04, 0.95)
-    write("execution_body.wav", body, peak=0.9)
 
 
 def static():

@@ -210,7 +210,13 @@ func run() -> void:
 	# The execution is longer now: the scream, the mask coming in, the blow.
 	await frames(300)
 	check("La ejecución acaba en derrota", level.session.state == level.session.State.FAILED)
+	check("Al morir la imagen se pierde en estática", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) > 0.5)
+	# The picture is not lost for ever: it clears itself even though the floor
+	# is over and nobody is being driven any more.
+	await frames(300)
+	check("La estática se va sola cuando la partida ya ha terminado", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) < 0.05)
 	await level.start_floor(81)
+	check("Un piso nuevo empieza con la imagen limpia", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) == 0.0 and float(level.post_material.get_shader_parameter("strike_fill")) == 0.0)
 	check("Reintento reinicia amenaza, resistencia y escondite", level.locust.grace == 15 and not player.hidden and player.stamina == 100 and level.session.state == level.session.State.PLAYING)
 	enemy = level.locust
 	hide = get_nodes_in_group("hotel_hides")[0]

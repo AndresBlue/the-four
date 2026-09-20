@@ -183,7 +183,10 @@ func run() -> void:
 	aura_capture.buffer_length = 3
 	var aura_bus := AudioServer.get_bus_index("Aura")
 	AudioServer.add_bus_effect(aura_bus, aura_capture)
-	await wait(1.6)
+	# Long enough for several chitters: without the swell that used to fire on
+	# the way up, a short window could land between two of them and measure
+	# almost nothing. The property is the same, the luck is not needed.
+	await wait(3.2)
 	var dread_energy := energy(aura_capture)
 	check("Rendered dread cues pan toward the creature", dread_energy.y > dread_energy.x * 1.4 and dread_energy.y > 0.0000001)
 	AudioServer.remove_bus_effect(aura_bus, AudioServer.get_bus_effect_count(aura_bus) - 1)

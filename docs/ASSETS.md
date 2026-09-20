@@ -54,7 +54,7 @@ El usuario aportó estos once. De los ocho primeros, el reparto archivo por arch
 | custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025 | Artninja | CC BY 4.0 | [829590](https://freesound.org/people/Artninja/sounds/829590/) |
 | Radio Music — A MakeNoise Morphagene Reel | nlux | CC0 | [624412](https://freesound.org/people/nlux/sounds/624412/) |
 
-Los tres de la ejecución: el grito del agarre (`execution_scream.wav`), el golpe del brazo (`execution_hit.wav`) y la estática del canal muerto (`execution_static.ogg`), más el cuerpo al caer (`execution_body.wav`), que sale de la misma grabación de impactos. Los originales están en `sfx/screamer/`, `sfx/hit/` y `sfx/static/` (esa carpeta no se versiona: son los másteres del usuario); las copias que usa el juego las prepara `tools/audio/prepare_execution_sfx.py` (mono a 44,1 kHz; del archivo de impactos, que trae tres tomas, la primera es el golpe —cortada para que el impacto caiga a 0,18 s— y la segunda es el cuerpo).
+Los tres de la ejecución: el grito del agarre (`execution_scream.wav`), el golpe del brazo (`execution_hit.wav`) y la estática del canal muerto (`execution_static.ogg`). El cuerpo al caer no suena. Los originales están en `sfx/screamer/`, `sfx/hit/` y `sfx/static/` (esa carpeta no se versiona: son los másteres del usuario); las copias que usa el juego las prepara `tools/audio/prepare_execution_sfx.py` (mono a 44,1 kHz; del archivo de impactos, que trae tres tomas, solo se usa la primera, cortada para que el impacto caiga a 0,22 s).
 
 ### Lo que esto impide
 

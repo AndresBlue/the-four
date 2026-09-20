@@ -78,7 +78,7 @@ Medido con `tools/audio/measure_spatial.gd` (pisadas de la criatura a 3,5 m de u
 
 Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/dread/` (WAV mono 16 bits, reproducibles): dron, respiración, cuatro chasquidos y zumbido de fluorescente. Se pueden sustituir por grabaciones propias con el mismo nombre.
 
-**La crecida se retiró** (septiembre de 2026): `presence_riser.wav` era un barrido ascendente sintetizado —de 93 Hz a 4,7 kHz en cinco segundos— que se disparaba al cruzar intensidad 0,55, es decir justo cuando la criatura se te echaba encima, y sonaba a efecto de tráiler y no a bicho. El archivo se conserva porque la escena de entrada lo usa como golpe de la tele.
+**La crecida se retiró** (septiembre de 2026): `presence_riser.wav` era un barrido ascendente sintetizado —de 93 Hz a 4,7 kHz en cinco segundos— que se disparaba al cruzar intensidad 0,55, es decir justo cuando la criatura se te echaba encima, y sonaba a efecto de tráiler y no a bicho. El archivo se conserva porque la escena de entrada lo usa como golpe de la tele. Sin ella el aura sigue apuntando igual (medido en el bus `Aura`: entre 8 y 13 veces más energía en el oído del lado de la criatura), pero la prueba de sonido espacial necesita una ventana más larga, porque ya no hay un golpe garantizado dentro de ella.
 
 ## Atmósfera local
 
@@ -135,7 +135,7 @@ Los tiempos, contados desde el agarre:
 - **2,58 s — el brazo sale.** Empieza el silbido del golpe, cortado para que su impacto caiga 0,22 s después, que es justo lo que tarda el brazo en pasar de un punto a tapar la lente. El negro crece desde donde está su mano derecha en la pantalla, que desde los ojos de la víctima queda a la izquierda.
 - **2,8 s — el impacto**, con la pantalla ya negra.
 - **2,92 s — la estática.** El canal muerto arranca **en el mismo instante** en que la imagen se va (bus Effects, −2 dB): sonido e imagen son el mismo suceso.
-- **3,1 s** cae el cuerpo (`execution_body.wav`, la segunda toma de la misma grabación de impactos: más pesada y con más cola).
+- **3,1 s** cae el cuerpo, **en silencio**: un golpe tres décimas después del otro se oía como una segunda estocada.
 
 En la ejecución no queda nada sintetizado: los golpes y el cuerpo generados de la versión anterior (`execution_stab_1..3.wav`, `execution_drop.wav`) se han borrado, y `generate_event_sfx.py` ya no los produce.
 
