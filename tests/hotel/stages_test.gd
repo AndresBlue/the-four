@@ -3,6 +3,7 @@ extends SceneTree
 ## the next and only the last one ends the floor. This drives a real floor from
 ## the refuge, the way a player does, and checks what the session does with it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const TV := preload("res://game/world/generation/tv_placement.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -65,8 +66,23 @@ func run() -> void:
 	check("Y el anterior deja de proteger", not level.point_in_refuge(FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].room)])))
 	check("La criatura se va detrás de los jugadores al ala nueva", int(level.manifest.rooms[level.locust.patrol_room].wing) == 1)
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
+	# Second stage: the sets of that wing, and it asks for as many as there
+	# are survivors, with two spare.
+	# A few frames for the authority to look at the new stage.
+	await frames(5)
+	var needed: int = TV.needed(session.roster_count)
+	check("La etapa 2 se juega con televisores", session.goal.kind == "televisions" and session.goal.needed == needed)
+	check("Hay dos teles de más y todas en el ala nueva", level.televisions.size() == needed + TV.SPARE and level.televisions.all(func(set): return int(FLOOR.room_at(level.manifest.rooms, set.global_position).get("wing", -1)) == 1))
+	check("Ninguna está encendida al empezar la etapa", level.televisions_on() == 0 and not session.goal.ready)
+	# Switching them on one by one: only the last one opens the door.
+	for index in needed:
+		level.switch_television(level.televisions[index])
+		await frames(4)
+		if index < needed - 1: check("Con %d de %d encendidas la puerta sigue cerrada" % [index + 1, needed], not session.goal.ready and level.hotel.gates[1].locked)
+	await frames(6)
+	check("Encendidas las que pide, se abre la puerta de la etapa", session.goal.ready and session.goal.done >= needed and not level.hotel.gates[1].locked)
+	check("Una tele encendida da luz y no se apaga", level.televisions[0].on and level.televisions[0].lamp.visible and not level.televisions[0].set_on(true))
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
-	check("La etapa nueva empieza sin cumplir", not session.goal.ready or level.point_in_refuge(level.player.global_position))
 	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
 	# The last one is the only one that ends the floor: there is no wing beyond
 	# it yet, so standing in its refuge with the quota is what leaves.

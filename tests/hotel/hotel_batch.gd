@@ -88,10 +88,8 @@ func walk(level) -> bool:
 		Input.action_release("forward")
 		if frames >= 700: return false
 	level.player.camera.rotation.x = -0.4
-	Input.action_press("interact")
-	for frame in 200: await physics_frame
-	Input.action_release("interact")
-	for frame in 100: await physics_frame
-	# Reaching the refuge and holding closes the first stage; the floor itself
-	# ends two wings later, which the navigation legs above cover.
-	return level.session.stage > 1 or level.session.state == level.session.State.WON
+	# Standing in the refuge with the quota is the condition of the first
+	# stage: what it opens is the door on, which the navigation legs above
+	# already prove is walkable.
+	for frame in 120: await physics_frame
+	return level.session.goal.get("ready", false) or level.session.stage > 1 or level.session.state == level.session.State.WON

@@ -293,6 +293,32 @@ func body_of(seat: int) -> Node3D:
 	if seat == locust_seat() and versus(): return level.locust
 	return bodies.get(seat)
 
+# --- Televisions -----------------------------------------------------------------
+
+## Switching a set on. Offline or on the host it happens now; a guest asks,
+## and the host tells everyone. They only ever go on, so there is nothing to
+## undo and no order to get wrong.
+func use_television(set: Node3D) -> void:
+	var index: int = level.televisions.find(set)
+	if index < 0: return
+	if not in_match() or net.is_host:
+		level.apply_television(index, true)
+		if in_match(): television_state.rpc(index, true)
+		return
+	request_television.rpc_id(1, index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_television(index: int) -> void:
+	if not net.is_host or index < 0 or index >= level.televisions.size(): return
+	var set = level.televisions[index]
+	if not is_instance_valid(set) or set.on or not near_sender(set.global_position): return
+	level.apply_television(index, true)
+	television_state.rpc(index, true)
+
+@rpc("authority", "call_remote", "reliable")
+func television_state(index: int, value: bool) -> void:
+	level.apply_television(index, value)
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.
@@ -657,11 +683,13 @@ func catch_up(seat: int, id: int) -> void:
 		var body := body_of(other)
 		if body != null: places[other] = [body.global_position, body.rotation.y]
 	var creature = level.locust
-	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot())
+	var sets: Array = []
+	for set in level.televisions: sets.append(is_instance_valid(set) and set.on)
+	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot(), sets)
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 
 @rpc("authority", "call_remote", "reliable")
-func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array) -> void:
+func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array, sets: Array) -> void:
 	level.begin_online_play(config)
 	for index in mini(doors.size(), level.hotel.doors.size()): level.hotel.doors[index].set_state(doors[index])
 	for seat_key in places:
@@ -678,6 +706,8 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 			level.locust.global_position = creature[0]
 			level.locust.rotation.y = creature[1]
 		else: level.locust.push_state(creature)
+	for index in mini(sets.size(), level.televisions.size()):
+		if bool(sets[index]): level.apply_television(index, true)
 	level.restore_sheet(sheet)
 
 @rpc("authority", "call_remote", "reliable")

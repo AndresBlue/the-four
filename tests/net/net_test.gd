@@ -85,6 +85,18 @@ func cross_to_the_end(offset: Vector3, seconds: float) -> bool:
 		var stage: int = level.session.stage
 		var gate: Dictionary = level.manifest.gates[stage - 1]
 		var door = level.hotel.gates[stage - 1] if level.hotel.gates.size() >= stage else null
+		# A stage played on televisions: go and switch one on. A guest asks the
+		# host, which is the path worth exercising here.
+		if level.session.goal.get("kind", "") == "televisions" and not level.session.goal.get("ready", false):
+			for set in level.televisions:
+				if is_instance_valid(set) and not set.on:
+					level.player.global_position = set.global_position + Vector3(0.9, 0.1, 0.9)
+					await pause_for(0.2)
+					level.switch_television(set)
+					break
+			await pause_for(0.3)
+			left -= 0.5
+			continue
 		if is_instance_valid(door) and not door.locked and int(gate.get("beyond", -1)) >= 0:
 			level.player.global_position = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)]) + offset + Vector3(0, 0.1, 0)
 		else:
@@ -134,6 +146,7 @@ func host() -> void:
 	check("Con todos dentro se abre la puerta de la etapa", opened and level.session.goal.ready)
 	var won: bool = await cross_to_the_end(Vector3(0.8, 0, 0), 90.0)
 	check("Cruzarla lleva a la etapa siguiente y no termina el piso", level.session.stage > 1)
+	check("La etapa de los televisores se jugó de verdad", level.televisions.size() >= 4 and level.televisions_on() >= 2)
 	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.STAGES)
 	# Second floor, after everyone has seen the end: Bravo drops and comes back.
 	await pause_for(5.0)

@@ -3,6 +3,9 @@ extends RefCounted
 ## way on is a single door, kept locked until its stage is closed, and the room
 ## holding it is that stage's refuge.
 const WINGS := 3
+## Rooms with a television in the wing of the second stage: its condition asks
+## for as many as there are survivors (up to five) plus two spare.
+const TV_ROOMS := 8
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 
@@ -152,8 +155,24 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		if (room.x + room.z) % 2 == 0 and room.type in [11, 12]: room.type = 5
 		if room.id == 0: room.type = 0
 		if refuges.has(room.id): room.type = 19
-		room["variant"] = decoration.randi_range(0, 3)
 		if room.hall >= 0: room.type = [5, 6, 17, 18][int(room.hall) % 4]
+	# The second stage is played on the sets of its wing, and it asks for as
+	# many as there are survivors: a wing has to hold enough of them whatever
+	# the room types rolled, so the ones missing are given a television room.
+	var tv_wing := 1
+	var with_tv: Array[int] = []
+	var plain: Array[int] = []
+	for room in rooms:
+		if int(room.wing) != tv_wing or refuges.has(room.id) or int(room.hall) >= 0: continue
+		if FLOOR.RECIPES[room.type].has("tv"): with_tv.append(int(room.id))
+		elif not int(room.type) in [0, 19]: plain.append(int(room.id))
+	while with_tv.size() < TV_ROOMS and not plain.is_empty():
+		var pick: int = plain[decoration.randi_range(0, plain.size() - 1)]
+		plain.erase(pick)
+		rooms[pick].type = 14
+		with_tv.append(pick)
+	for room in rooms:
+		room["variant"] = decoration.randi_range(0, 3)
 		room["layout"] = decoration.randi_range(0, 3)
 		room["height"] = 4.8 if room.hall >= 0 else 4.2 if room.type in [0, 5, 6, 17, 18] else 3.15
 		room["cover_slots"] = 4

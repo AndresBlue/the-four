@@ -564,7 +564,10 @@ ACTUAL: DEJA LIBRE EL UMBRAL
 CORRECCIÓN:
 
 [HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
-ACTUAL: LA PUERTA DE LA ETAPA ESTÁ ABIERTA / REFUGIO · FALTAN SUPERVIVIENTES / SALIENDO DEL PISO
+ACTUAL: LA PUERTA DE LA ETAPA ESTÁ ABIERTA / REFUGIO · FALTAN SUPERVIVIENTES /
+| REFUGIO · FALTAN TELEVISORES / SALIENDO DEL PISO
+OBS: también aparece brevemente «TELEVISORES 2/4» al encender uno, y «ETAPA 2»
+| al cambiar de ala.
 CORRECCIÓN:
 
 [HUD.04] Palabra bajo los corchetes de enfoque: puerta cerrada

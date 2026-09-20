@@ -12,6 +12,8 @@ const INTRO := preload("res://game/intro/intro_sequence.gd")
 const TITLE := preload("res://game/title/title_scene.gd")
 const DOCUMENT := preload("res://game/world/interactables/hotel_document.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
+const TELEVISION := preload("res://game/world/interactables/hotel_television.gd")
+const TV_PLACEMENT := preload("res://game/world/generation/tv_placement.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
@@ -59,6 +61,9 @@ var discoveries
 var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
 var scream_sound: AudioStreamPlayer
+## The sets of the stage in hand, in build order: the index is their name on
+## the wire, like doors and wardrobes.
+var televisions: Array = []
 var blow_sound: AudioStreamPlayer
 var static_sound: AudioStreamPlayer
 var intro_seed := 0
@@ -78,6 +83,8 @@ var watch_rig: Node3D
 var watch_arm: SpringArm3D
 var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
+## A set coming on: the clunk of an old switch, reusing a door latch.
+const SWITCH_SOUND := "res://assets/audio/sfx/door/closing/closing1.ogg"
 const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
 const DEAD_CHANNEL := "res://assets/audio/events/execution_static.ogg"
 ## The beats of an execution, in seconds from the grab. The scream is at zero,
@@ -341,6 +348,7 @@ func populate_floor(with_director: bool) -> void:
 	camera_cut()
 	spawn_locust()
 	place_documents()
+	place_televisions()
 	director = null
 	if with_director:
 		director = DIRECTOR.new()
@@ -489,6 +497,43 @@ func toggle_sheet() -> void:
 	if world_audio.enabled: paper_sound.play()
 
 ## This floor's documents, lying on furniture (freed with the hotel).
+## The sets of the second stage, in the wing that stage opens. Everyone works
+## out the same list from the seed and the number of survivors, so nothing has
+## to be sent: only which ones are on travels.
+func place_televisions() -> void:
+	televisions.clear()
+	if manifest.get("gates", []).is_empty(): return
+	for spot in TV_PLACEMENT.choose(manifest, session.roster_count):
+		var set := TELEVISION.new()
+		set.name = "Television_%d" % televisions.size()
+		set.position = spot.position
+		set.rotation.y = spot.yaw
+		hotel.add_child(set)
+		televisions.append(set)
+
+## Switching one on: the host decides, and the noise is made once, there.
+func switch_television(set: Node3D) -> void:
+	if not is_instance_valid(set) or set.on: return
+	match_net.use_television(set)
+
+## Applied everywhere, whoever decided it.
+func apply_television(index: int, value: bool) -> void:
+	if index < 0 or index >= televisions.size(): return
+	var set = televisions[index]
+	if not is_instance_valid(set) or not set.set_on(value): return
+	if value:
+		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, set.global_position + Vector3(0, 1.4, 0), -8.0)
+		if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
+		if session.stage == 2 and not match_net.local_is_locust():
+			ui.flash("TELEVISORES %d/%d" % [televisions_on(), TV_PLACEMENT.needed(session.roster_count)], 2.5)
+
+## How many of the stage's sets are on, and how many it asks for.
+func televisions_on() -> int:
+	var count := 0
+	for set in televisions:
+		if is_instance_valid(set) and set.on: count += 1
+	return count
+
 func place_documents() -> void:
 	for spot in PLACEMENT.choose(manifest, "locust"):
 		var document := DOCUMENT.new()
@@ -844,6 +889,10 @@ func focused_document():
 	var area = focused_area()
 	return area if area is DOCUMENT else null
 
+func focused_television():
+	var area = focused_area()
+	return area if area is TELEVISION else null
+
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
 	if match_net.bodies.is_empty(): return ""
@@ -924,6 +973,11 @@ func drive_local(delta: float) -> void:
 		if Input.is_action_just_pressed("interact"): close_document()
 		was_held = true
 		return
+	var television_target = focused_television()
+	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(television_target) and not television_target.on:
+		switch_television(television_target)
+		was_held = true
+		return
 	var document_target = focused_document()
 	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(document_target):
 		open_document(document_target)
@@ -948,7 +1002,7 @@ func drive_local(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	camcorder.focus("LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	camcorder.focus("ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0
@@ -971,8 +1025,9 @@ func drive_local(delta: float) -> void:
 	# Nothing is held down at the refuge any more: with everyone inside, the
 	# door on unlocks itself and crossing it is what takes you on.
 	var ready: bool = session.goal.get("ready", false)
-	if inside and not session.more_stages(): ui.hint.text = "SALIENDO DEL PISO" if ready else "REFUGIO · FALTAN SUPERVIVIENTES"
-	elif inside: ui.hint.text = "LA PUERTA DE LA ETAPA ESTÁ ABIERTA" if ready else "REFUGIO · FALTAN SUPERVIVIENTES"
+	var missing: String = "FALTAN TELEVISORES" if session.goal.get("kind", "") == "televisions" else "FALTAN SUPERVIVIENTES"
+	if inside and not session.more_stages(): ui.hint.text = "SALIENDO DEL PISO" if ready else "REFUGIO · " + missing
+	elif inside: ui.hint.text = "LA PUERTA DE LA ETAPA ESTÁ ABIERTA" if ready else "REFUGIO · " + missing
 	else: ui.hint.text = ""
 	ui.subtitle.text = ""
 	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
@@ -983,7 +1038,14 @@ func drive_local(delta: float) -> void:
 ## unlocks the door on -- and whether somebody has already crossed it, which
 ## is what carries the floor to the next stage. Nothing is held down any more.
 func host_gate(delta: float) -> void:
-	session.update_goal(delta, session.can_depart())
+	if session.stage == 2 and not televisions.is_empty():
+		var needed: int = TV_PLACEMENT.needed(session.roster_count)
+		var done: int = televisions_on()
+		session.goal["kind"] = "televisions"
+		session.goal["done"] = done
+		session.goal["needed"] = needed
+		session.update_goal(delta, done >= needed)
+	else: session.update_goal(delta, session.can_depart())
 	if not session.more_stages(): return
 	# Once its door is open, stepping through is what closes the stage -- even
 	# if somebody left the refuge in the meantime and the condition no longer
