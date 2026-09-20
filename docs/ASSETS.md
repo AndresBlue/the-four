@@ -1,4 +1,6 @@
-# Assets y créditos — 0.4-S1
+# Assets y créditos
+
+Procedencia, licencias y permisos pendientes de todo lo que entra en el juego. Mientras queden permisos sin resolver, no se distribuye.
 
 ## Hotel actual
 
@@ -186,7 +188,7 @@ Cuadros: imágenes de dominio público del Art Institute of Chicago (CC0, open a
 | [Bouquet of Flowers in an Earthenware Vase](https://www.artic.edu/artworks/64029) | Attributed to Jan Brueghel the Elder (Flemish, 1568–1625) | c. 1610 |
 <!-- /DRESSING -->
 
-## Modelos aportados en 0.4-S1
+## Modelos aportados por el usuario
 
 Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. El sofá, el aplique y la monstera ya tienen ficha y licencia (arriba); el resto sigue por verificar antes de cualquier distribución.
 
@@ -207,7 +209,7 @@ Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se
 
 ## Assets del prototipo histórico
 
-Las secciones siguientes conservan la procedencia del H1 anterior. El mismo GLB de Locust también está activo en el hotel 0.4-S1; los originales no se modificaron.
+Las secciones siguientes conservan la procedencia del H1 anterior. El mismo GLB de Locust sigue activo en el hotel; los originales no se modificaron.
 
 ## The Locust
 

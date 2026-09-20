@@ -1,6 +1,38 @@
-# The Four — TODO v0.4
+# The Four — Plan de trabajo
 
-Estado: juego **0.4-S1**, diseño **0.4**. Las casillas describen implementación comprobada, no intención. [Diseño](GAME_DESIGN.md), [ruta](ROADMAP.md), [evidencias](SURVIVAL_VALIDATION.md).
+Documento único de **estado, orden y pendientes**. Reemplaza a la antigua hoja de ruta y a la lista de tareas, que iban por separado y acabaron contándose cosas distintas. El juego se describe en [el diseño](GAME_DESIGN.md); aquí está qué hay hecho, en qué orden continúa y qué falta.
+
+Estado: juego **0.5**, generador de mapas **v3**, protocolo de red **the-four-net-2**, Godot 4.7.2. Las casillas marcadas describen implementación comprobada —por las pruebas de `./tools/verify.ps1`, por capturas o por partidas reales—, no intención. Marcada no quiere decir equilibrada: el juicio humano tiene sus propias líneas sin marcar.
+
+## Dónde estamos (19 de septiembre de 2026)
+
+Hay un piso jugable de principio a fin, solo o acompañado:
+
+- **Hotel procedural** de 100–132 módulos en cinco sectores, reproducible por semilla, con salida libre, refugio reversible, checkpoint de inicio y reintento.
+- **Individual, cooperativo de 2 a 5 y versus** por ENet (IP directa o LAN, UDP 38430), con autoridad del anfitrión, reconexión de 60 s, hoja compartida y observación tras morir. Ya se ha jugado con gente real en LAN y por Internet.
+- **The Locust:** IA que patrulla, oye por rutas caminables, investiga, persigue y registra armarios; ejecución de tres estocadas; y, en versus, un jugador lo lleva con su propia vista de ecolocalización, sin ver el hotel ([detalles](VISION_LOCUST.md)).
+- **Supervivencia:** resistencia, agacharse, armarios con puertas y asomarse, linterna, puertas normales/lentas/portazos y ruido que la criatura escucha de verdad.
+- **Presentación:** cuatro presets gráficos y dos renderizadores, filtro de videocámara, materiales procedurales, oscuridad real (salas apagadas sin luz ambiente, sin fugas por las puertas) y puerta de madera con marco.
+- **Empaquetado:** `./tools/godot.ps1 export` produce un ejecutable de Windows que funciona.
+
+Y esto es lo que hoy no está bien, que es de donde sale el orden de abajo:
+
+- Las partidas se acaban demasiado pronto (desde 1 min 30 s, media de 5 a 8 min frente a la meta de 25–40) y muchas veces sin cruzarse con la criatura: el piso se resuelve siguiendo la numeración de las puertas.
+- Falta la estructura que convierte el piso en una partida: las tres etapas, las teles, la cerradura de código y el apagón.
+- Las animaciones de los supervivientes son malas, la ejecución vista desde el cazador no comunica lo suficiente y el ejecutable pesa ~1 GB.
+- Solo existe un piso de los cuatro; Sunman, The Boiled One y Guilt no están.
+
+## Orden de trabajo
+
+1. **[P0 — Cierre del Early Access](#p0--cierre-del-early-access-prioridad-alta):** lo que se está haciendo ahora. Etapas, ritmo del mapa, la criatura que se oye y se entiende, cordura, animaciones y tamaño del paquete.
+2. **[P1 — Niveles y base](#p1--niveles-y-base-de-presentación):** cerrado salvo la aceptación de duración y orientación con partidas humanas, que P0 aborda.
+3. **[P2 — Atmósfera analógica](#p2--atmósfera-analógica):** implementada; quedan escucha crítica, acabado PBR y sustitución del mobiliario provisional.
+4. **[P3 — Cooperativo y hoja](#p3--cooperativo-y-hoja-paranormal):** cerrado, con sesiones humanas hechas.
+5. **[P4 y P4b — Escondite, The Locust y su visión](#p4--escondite-y-the-locust):** implementados; quedan ajustes a juicio humano.
+6. **[P5 — Campaña](#p5--campaña):** los otros tres pisos y criaturas. No empieza hasta cerrar P0.
+7. **[P6 — Consolidación](#p6--consolidación):** director completo, descubrimientos, accesibilidad, permisos y balance final.
+
+La numeración es histórica: P1 a P4b se hicieron en ese orden y se conservan como registro de lo comprobado. P0 se antepuso a todo lo demás tras las pruebas con amigos de septiembre de 2026.
 
 ## P0 — Cierre del Early Access (prioridad alta)
 
@@ -59,6 +91,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 ## P1 — Niveles y base de presentación
 
+Lo que hace que exista un juego: menú, ajustes, el hotel generado, la salida y el checkpoint. Cerrado en código; lo que queda es aceptar con partidas humanas que el piso se recorre en el tiempo previsto, y eso lo ataca P0.
+
 - [x] Hotel como escena principal; prototipo de fusibles conservado aparte.
 - [x] Menú, Continuar condicionado, ajustes, créditos y salida.
 - [x] Subtítulos desactivados por defecto (activables en Ajustes > Audio).
@@ -84,6 +118,10 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 ## P2 — Atmósfera analógica
 
+Sonido, materiales, luz y el filtro de videocámara: lo que hace que el hotel dé miedo aunque no pase nada. Implementado y medido; lo que queda es acabado artístico, escucha crítica con auriculares y sustituir el mobiliario provisional por assets con permisos.
+
+### Sonido
+
 - [x] Catalogar 33 archivos de sfx y conservar originales; preparar copias de trabajo.
 - [x] Puertas con grupos cercanos/lejanos y apertura lenta, sin repetición inmediata; cierres solo al completarse.
 - [x] Sonidos de entrada/salida de escondite y límite de efectos simultáneos.
@@ -93,11 +131,14 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Reverberación según la sala del oyente, zumbido de fluorescentes.
 - [ ] Escucha crítica y balance humano de las nuevas asignaciones y del aura; eventos ambientales en salones.
 - [ ] Perfiles sonoros distintos para las otras tres criaturas al incorporarlas.
-
 - [x] Inventario técnico de los cinco audios y conservación de originales.
 - [x] Ambiente inicial, mezcla, bucle y control de volumen.
 - [ ] Escucha y selección definitiva de los cinco audios; edición de copias y procedencia documentada.
 - [ ] Fuentes espaciales fijas, acústica por recinto, pasos, conductos, tuberías y silencio contextual.
+- [x] Efectos arrancan sin silencio inicial y los cierres coinciden con el impacto; portazos al abrir o cerrar corriendo.
+
+### Imagen, materiales y luz
+
 - [ ] Materiales PBR terminados, reflejos y composición de escenas de referencia.
 - [x] Oscuridad y fugas de luz (septiembre de 2026): linternas de compañeros que se veían a través de paredes, lámparas que alumbraban tras paredes y puertas cerradas, salas apagadas con número de puerta, pantallas y paredes visibles; más salas oscuras y en tramos; puerta de madera antigua con marco. Ver `docs/DEVELOPMENT.md` (Luces) y `tools/capture/darkness_capture.gd`.
 - [ ] Juzgar en partida la oscuridad nueva: sin luz ambiente, los rincones en sombra de las salas iluminadas también son negros. Si resulta excesivo, no conviene subir `ambient_light_energy` (aclara también las salas apagadas); mejor dar relleno propio a las salas iluminadas.
@@ -108,23 +149,25 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Filtro de videocámara/VHS ampliado con líneas de barrido regulables y marcas REC/fecha opcionales; tonemapping AgX, SSIL (SDFGI desactivado por fugas de luz), linterna con patrón de reflector, lámparas que iluminan y fluorescentes con parpadeo.
 - [x] Detalle geométrico sin colisión: molduras, rodapiés, marcos de puerta, puertas con cuarterones y muebles con cojines, cajones, libros, patas y plantas.
 - [x] Luces con sombra y desvanecimiento por distancia (sin fugas a través de muros ni encendidos bruscos); lámparas atenuadas; manchas continuas sin cortes rectangulares.
-- [x] Efectos arrancan sin silencio inicial y los cierres coinciden con el impacto; portazos al abrir o cerrar corriendo.
 - [x] HUD de videocámara: corchetes de enfoque, medidor de resistencia, mensajes breves; sin listas de controles en pantalla. Menús, intro y pantallas finales con el mismo estilo.
 - [x] Linterna en mano con retraso, balanceo y calentamiento.
 - [ ] Texturas fotográficas CC0 seleccionadas e importadas, con licencia registrada; revisión visual humana de la nueva iluminación y de la legibilidad en zonas oscuras.
 - [ ] Acabado PBR definitivo, efectos de conductos y variedad artística adicional.
 - [ ] Sustitución gradual del mobiliario provisional por assets adecuados y acreditados.
+- [x] Cuadros y apliques de las paredes oeste y norte colgaban en la cara de la sala vecina (marcos superpuestos, paredes desnudas); ahora cada pared tiene los suyos.
+
+### Rendimiento
+
 - [ ] Accesibilidad, mezcla y rendimiento sostenido en la escena más exigente.
 - [x] Auditoría de rendimiento (septiembre de 2026), medida con el benchmark nuevo a 1080p: sombras que ya no se redibujan en cada fotograma, lotes por sala, paredes compartidas dibujadas una vez, occlusion culling, LOD en muebles de modelo, texturas de puerta y personajes comprimidas, filtro de sombras por preset y tirones de CPU (visión de eco, rutas de sonido). GPU entre −30 % y −55 % según calidad y vista en el PC de desarrollo. Ver [PERFORMANCE.md](PERFORMANCE.md).
-- [x] Cuadros y apliques de las paredes oeste y norte colgaban en la cara de la sala vecina (marcos superpuestos, paredes desnudas); ahora cada pared tiene los suyos.
 - [ ] Revisar en partida lo que las capturas fijas no enseñan: cuadros y apliques nuevos, sombras con el filtro más barato en Baja y Media en movimiento, salas que aparezcan tarde al girar en un vano (oclusión).
 - [ ] Medir `tools/benchmarks/run_bench.ps1` en un PC modesto (los de las pruebas con amigos) y anotarlo en PERFORMANCE.md.
 - [x] Presets gráficos Bajo, Medio, Alto y Ultra desde una sola tabla (`graphics_presets.gd`), opción de renderizador (Forward+ o Compatibilidad) y Bajo en el primer arranque con gráfica integrada. Medidos a 1080p en el PC de desarrollo: GPU caminando 0,74 / 2,35 / 4,92 / 6,87 ms. Ver PERFORMANCE.md, sección 6.
 - [ ] Probar los presets en partida (TAA de Medio en movimiento, penumbras de Ultra, eco de Bajo y halo de Ultra) y medir Bajo, en Forward+ y en Compatibilidad, en un PC con gráfica integrada.
 
-
-
 ## P3 — Cooperativo y hoja paranormal
+
+Jugar acompañado: red, autoridad del anfitrión, cuotas de supervivencia, hoja compartida, muertes y versus. Cerrado, con sesiones humanas de 2 a 5 jugadores ya hechas.
 
 - [x] Separación de estado global/individual y regla matemática de supervivientes en sesión local.
 - [x] ENet LAN/IP para 2–5: sala con plazas, nombres y personajes, opciones del anfitrión y piso común comprobado por huella.
@@ -155,54 +198,70 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 ## P4 — Escondite y The Locust
 
+La amenaza y la forma de sobrevivirla: percepción, ruido, resistencia, armarios y la escena de entrada. Implementado; lo que queda es juicio humano sobre niveles, ritmo y comodidad.
+
+### Armarios y esconderse
+
 - [x] Armario con puertas (modelo aportado): ocultación física exterior y rendija visible desde dentro.
 - [x] Efecto gradual de claustrofobia: periferia oscurecida y ojo de pez leve que se abre al asomarse; las puertas siguen bloqueando la vista.
 - [x] Asomarse abriendo lentamente las puertas para mirar a izquierda, delante y derecha; salir revierte el efecto.
 - [x] Efectos reducidos desactivan encierro y distorsión.
 - [ ] Comprobar comodidad del efecto en partidas humanas y a distintas resoluciones.
 - [x] Verificado dentro y fuera: puertas cerradas ocultan, entreabiertas delatan, entrada observada o ruido cercano hacen que la criatura abra y ataque.
-- [ ] Visibilidad del armario entre clientes cuando exista red.
+- [x] Visibilidad del armario entre clientes: quien está dentro desaparece de las pantallas de los demás y sus puertas se mueven igual en todas; comprobado en `tests/net/net_test.gd` (ocupación, salida y ritual del cazador).
 - [x] Armarios solo en habitaciones (1–2 por módulo, ninguno en pasillos ni salones) y puertas de hotel más estrechas (vano 1,3 m).
+- [x] Asomarse del armario por cada puerta según hacia dónde se mira; solo la primera apertura cruje.
 
-- [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.
+### La criatura
+
 - [x] Percepción con paredes/puertas, investigación, persecución, búsqueda y memoria de entrada observada, en individual.
 - [x] Navegación física dentro de habitaciones; la criatura abre lentamente y espera a las puertas.
-- [x] Ataque de 0,7 s con alcance <1,2 m y línea de visión; fallar permite escapar; captura real y reintento.
+- [x] Estocada con línea de visión, fallo que permite escapar, captura real y reintento. Los números se endurecieron después: hoy se anuncia 0,3 s antes y alcanza 3,2 m (ver [el diseño](GAME_DESIGN.md)).
 - [x] Pasos/aviso originales en bus de peligro; movimiento y preparación procedural provisional del modelo.
 - [x] Locust orientado hacia su avance, animación procedural con pies anclados al suelo (IK de dos huesos), brazos-cuchilla por estado, cabeza que sigue al objetivo y pasos sincronizados con cada pisada.
 - [x] Sospecha gradual por distancia, linterna, carrera y agacharse; reacción a linterna lejana; velocidad variable y pérdida de rastro al romper la línea de visión.
+- [x] Locust: alerta de 1,2 s y arranque progresivo antes de perseguir; sospecha más lenta.
+- [ ] Balance de la alerta de Locust en partidas humanas.
+- [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
+- [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).
+- [x] Exploradora animada (esqueleto del cuerpo) y señal visual de la estocada sin texto.
+- [ ] Balance de la nueva agresividad y de la propagación en partidas humanas.
+- [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
+
+### Supervivencia, ruido y pasos
+
+- [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.
 - [x] Pasos del jugador por distancia recorrida y balanceo de cámara ligado a cada pisada.
 - [x] Pasos grabados por superficie (moqueta/baldosa) con el golpe alineado a la pisada.
 - [x] Puertas a 3,2 m, cierre a la espalda y umbral que solo bloquea dentro del marco.
-- [x] Asomarse del armario por cada puerta según hacia dónde se mira; solo la primera apertura cruje.
 - [x] Zumbido audible en todos los fluorescentes de servicio.
 - [ ] Comprobar en partida el nivel de los pasos grabados y del zumbido.
 - [x] Pasos más bajos y sin eco de salón (bus `Steps`).
-- [x] Locust: alerta de 1,2 s y arranque progresivo antes de perseguir; sospecha más lenta.
-- [ ] Balance de la alerta de Locust en partidas humanas.
+- [x] Audio binaural de The Locust (retardo y nivel por oído) y filtro para sonidos por detrás.
+- [ ] Escuchar con auriculares la dirección de The Locust en partida (esquinas, dos puertas).
+- [x] Apertura lenta sin ruido de micrófono, más baja y con final suave.
+
+### Escena de entrada, portada y detalles
+
 - [x] Escena de entrada: dormitorio, tele con Locust golpeando el cristal, huida por el pasillo; saltable.
 - [x] Tele de 80 cm con The Locust en 3D golpeando el cristal (grietas en el punto de impacto), estática y parpadeo más intensos, crujidos de cama, pasos marcados, cámara con muelles y balanceo, giro desesperado al cerrar, salida hacia la recepción con luz roja.
 - [x] Aspecto de The Locust según la imagen de referencia (cuerpo negro, máscara pálida), en juego y escena.
 - [ ] Revisar en partida el ritmo y la cámara de la escena de entrada.
 - [x] Portada: habitación normal detrás del menú con The Locust asomándose por la rendija de la puerta entreabierta.
 - [x] Menú Multijugador (en desarrollo) con Personaje dentro; Personaje sale del menú principal.
-- [x] Audio binaural de The Locust (retardo y nivel por oído) y filtro para sonidos por detrás.
-- [ ] Escuchar con auriculares la dirección de The Locust en partida (esquinas, dos puertas).
 - [x] Texto pequeño «E  para saltar cinemática» arriba a la derecha.
 - [x] Cama de la escena de entrada con la grabación aportada.
-- [x] Apertura lenta sin ruido de micrófono, más baja y con final suave.
 - [x] Números de puerta que indican la habitación de detrás; algunas habitaciones con la luz apagada.
 - [x] Sofá, aplique de pared y monstera descargados integrados en el hotel (la dieffenbachia es `.blend` y queda fuera).
-- [x] Locust agresivo: percepción de largo alcance, oído por rutas, persecución más rápida que el sprint, portazos, estocada casi inevitable, mayor tamaño y gruñidos.
-- [x] Sonidos que no atraviesan muros: llegan desde la abertura de la ruta con eco (buses EffectsEcho/ThreatEcho).
-- [x] Exploradora animada (esqueleto del cuerpo) y señal visual de la estocada sin texto.
-- [ ] Balance de la nueva agresividad y de la propagación en partidas humanas.
-- [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
-- [ ] Validar acompañamiento y regreso en cooperativo cuando exista red; evaluar comprensión de muertes con jugadores.
 
+### En cooperativo
 
+- [x] Acompañamiento y regreso al refugio en cooperativo, con muertes reales, cubiertos por la prueba de red y por sesiones humanas.
+- [ ] Evaluar con jugadores si se entiende quién murió y por qué, ahora que no hay avisos de texto.
 
 ## P4b — Visión de The Locust — implementada (pendiente de ajuste humano)
+
+La pantalla del jugador que lleva a la criatura en versus: no ve el hotel, lo reconstruye a pulsos. Funciona y tiene pruebas; lo que queda es afinarla jugando. Documento completo en [VISION_LOCUST.md](VISION_LOCUST.md).
 
 - [x] Revisión completa de la vista del jugador que lleva a The Locust: imagen monocroma con su propio grano y contraste, reconstruida de pulsos acústicos sobre la profundidad real.
 - [x] Información sonora integrada en la imagen (dónde, a qué distancia, por dónde llega y qué lo produjo) en lugar de los anillos rojos, que quedan eliminados.
@@ -217,6 +276,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 ## P5 — Campaña
 
+Los otros tres pisos con sus criaturas y el progreso entre ellos. No empieza hasta cerrar P0: no tiene sentido multiplicar por cuatro un piso que todavía se resuelve en minuto y medio.
+
 - [ ] Sunman en atrios y galerías; cobertura y barridos anunciados.
 - [ ] Boiled One en habitaciones/salones con pantallas; exposición comprobada.
 - [ ] Guilt con señales contrastables; nunca falsifica hoja ni interfaz esencial.
@@ -227,6 +288,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 
 ## P6 — Consolidación
+
+Lo que hace falta para publicar: director completo, descubrimientos, códigos, accesibilidad, permisos de assets y balance con datos.
 
 - [x] Director: descanso 30 s, separación 45 s y un evento jugable activo (piso de Locust).
 - [x] Tres eventos de Locust (golpes, objeto caído, pasos) con requisitos y cancelación; estar quieto no dispara ataques.
@@ -240,8 +303,18 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 
 
+## Qué sustituyó este diseño
+
+Los tres objetivos obligatorios del prototipo anterior, las llaves necesarias para salir y la reanimación dentro del piso. El H1 de fusibles se conserva como prototipo histórico (`legacy/fuse_prototype/main.tscn`), no como objetivo del hotel, y sus hitos no se acumulan sobre los de ahora. La reanimación vuelve, pero solo **entre etapas**, como parte de P0.
+
 ## Historial
 
-H1 v0.3 validó fusibles y sesión fija. Permanece en [H1_VALIDATION.md](H1_VALIDATION.md), pero sus resultados no acreditan el hotel, la IA ni el cooperativo. Cierre técnico y limitaciones de P1 en [V04_VALIDATION.md](V04_VALIDATION.md).
+Los informes antiguos siguen en su sitio y valen como registro de cuándo se comprobó cada cosa, no como estado actual:
 
-Esta ampliación adelanta supervivencia individual por petición del usuario; no acredita P3 ni cierra toda la atmósfera. Ver [validación S1](SURVIVAL_VALIDATION.md) y [protocolo humano](PLAYTEST_HOTEL.md). Los muebles externos siguen pendientes expresamente.
+- [H1_VALIDATION.md](H1_VALIDATION.md): el prototipo de fusibles v0.3. No acredita el hotel, la IA ni la red.
+- [V04_VALIDATION.md](V04_VALIDATION.md): cierre técnico y límites de P1.
+- [SURVIVAL_VALIDATION.md](SURVIVAL_VALIDATION.md): el hotel variable y The Locust individual (0.4-S1).
+- [REORGANIZATION_VALIDATION.md](REORGANIZATION_VALIDATION.md): la reorganización de carpetas.
+- [PLAYTEST_HOTEL.md](PLAYTEST_HOTEL.md): el protocolo de evaluación humana, todavía sin completar.
+
+El mobiliario externo y los permisos de assets siguen pendientes de forma expresa; ver [ASSETS.md](ASSETS.md).

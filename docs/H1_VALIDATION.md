@@ -1,5 +1,7 @@
 # The Four — Validación del hito 1
 
+> **Informe histórico.** Registra lo comprobado en su fecha, no el estado actual. Para eso están [GAME_DESIGN.md](GAME_DESIGN.md) y [PLAN.md](PLAN.md).
+
 Fecha: 16/09/2026. Juego: **0.3-H1**. Godot: **4.7.2 Steam**. Plataforma: Windows.
 
 Revisión de código evaluada: `8e5117fab1a77db9f44d3fefc3206cfee9006b9f`.

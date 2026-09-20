@@ -1,5 +1,7 @@
 # Validación del prototipo 0.2
 
+> **Informe histórico.** Registra lo comprobado en su fecha, no el estado actual. Para eso están [GAME_DESIGN.md](GAME_DESIGN.md) y [PLAN.md](PLAN.md).
+
 16/09/2026 · Godot 4.7.2 stable Steam · Windows · OpenGL Compatibility · NVIDIA GeForce RTX 4060 Ti.
 
 ## Migración

@@ -1,5 +1,7 @@
 # The Four — Validación 0.4-P1
 
+> **Informe histórico.** Registra lo comprobado en su fecha, no el estado actual. Para eso están [GAME_DESIGN.md](GAME_DESIGN.md) y [PLAN.md](PLAN.md).
+
 Fecha: 16/09/2026. Godot 4.7.2 Steam, Windows, NVIDIA RTX 4060 Ti.
 
 Revisión de código: fd0aa1ecb70be27c00293cfef90d26f7e85c3f5a. Generador: versión 2.

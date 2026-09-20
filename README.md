@@ -24,7 +24,7 @@ El anfitrión elige **Cooperativo contra IA** o **Versus** (un jugador es The Lo
 
 En versus, The Locust se controla con cámara sobre el hombro: Shift caza a toda velocidad (dura mucho y se recupera rápido: no se le escapa nadie corriendo), clic izquierdo ataca, clic derecho chilla y E abre puertas y armarios.
 
-No ve el hotel: lo reconstruye. Chasquea quince veces por segundo y la imagen se arma de esos pulsos, en grises, mezclando la geometría que le devuelve el eco con los ruidos que hacen los supervivientes; al chillar, todo se vuelve rojo. La oscuridad no le afecta: hay que romperle la visión o esconderse bien. Los detalles están en [docs/VISION_LOCUST.md](docs/VISION_LOCUST.md), y se puede mirar en solitario con `./tools/godot.ps1 locust`.
+No ve el hotel: lo reconstruye. Chasquea dos veces por segundo y la imagen se arma de esos pulsos, en grises: el frente de onda cruza la sala despacio, deja los puntos que devuelve la geometría y se apaga hasta el siguiente. A eso se suman los ruidos que hacen los supervivientes, cada uno con su nube; al chillar, todo se vuelve rojo. La oscuridad no le afecta: hay que romperle la visión o esconderse bien. Los detalles están en [docs/VISION_LOCUST.md](docs/VISION_LOCUST.md), y se puede mirar en solitario con `./tools/godot.ps1 locust`.
 
 Alcanzar a alguien no lo mata al instante: la criatura lo levanta en el aire y lo clava tres veces, y la baja cuenta al terminar. Registrar un armario también le cuesta: se planta delante y lo abre hoja a hoja, inmóvil unos segundos. Al morir observas a un compañero desde detrás de su hombro.
 
@@ -36,18 +36,24 @@ Alcanzar a alguien no lo mata al instante: la criatura lo levanta en el aire y l
 - Menú principal, ajustes persistentes de gráficos/imagen/controles/audio, créditos y pausa real.
 - Refugio reversible, salida libre, checkpoint individual y reintento.
 - Forward+, perfil Compatibility, iluminación cálida/fría, moqueta y papel mural procedurales, niebla y filtro analógico regulable.
-- The Locust patrulla, escucha, investiga, persigue y busca; ataque anunciado de 0,7 s con alcance y visión comprobados.
+- The Locust patrulla, escucha por rutas caminables, investiga, persigue, registra armarios y ejecuta; su estocada se anuncia 0,3 s antes y alcanza 3,2 m con línea de visión.
 - Resistencia, agacharse y armarios para esconderse en las habitaciones (no en pasillos); refugio seguro.
 - Polvo, cortinas con movimiento reducido opcional, niebla localizada y reflejos en espacios comunes.
 - Ambiente aportado por el usuario en bucle y música en buses separados.
+- Cooperativo y versus por IP o LAN de 2 a 5 jugadores, con hoja compartida, reconexión y observación tras morir.
+- Visión de ecolocalización para quien lleva a The Locust en versus: no ve el hotel, lo reconstruye a pulsos.
+- Habitaciones a oscuras de verdad, sin luz ambiente ni fugas por las puertas, y puerta de madera antigua con su marco.
+- Cuatro presets gráficos desde una sola tabla, medidos a 1080p, y elección de renderizador.
 
-**Todavía no hay cuatro pisos jugables; el juego en red falta probarlo con sesiones humanas.** La supervivencia individual tiene pruebas funcionales, pero todavía requiere balance en partidas humanas. El mobiliario y materiales siguen siendo provisionales; no se presenta como una entrega fotorrealista. La duración de 25–40 minutos por piso necesita pruebas humanas de exploración.
+**Solo hay un piso de los cuatro.** Sunman, The Boiled One y Guilt todavía no existen. La red ya se ha jugado con gente real, en LAN y por Internet, y de ahí salió el problema principal de ahora: **las partidas se acaban demasiado pronto** —desde minuto y medio, una media de 5 a 8 minutos frente a la meta de 25–40— porque el piso se resuelve siguiendo la numeración de las puertas, a menudo sin cruzarse con la criatura. La estructura que debe arreglarlo (tres etapas, televisores, cerradura de código y apagón) está pendiente; el mobiliario y los materiales siguen siendo provisionales y no se presenta como una entrega fotorrealista. Lo que falta, en orden, en [docs/PLAN.md](docs/PLAN.md).
 
 F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. Locust está activo en el hotel. El reintento reinicia resistencia, criatura y 15 s de protección inicial. Su movimiento y preparación usan animación procedural provisional. Los checkpoints del generador anterior (v2) son incompatibles con v3 y se conservan sin convertirlos silenciosamente.
 
 ## Ejecutable para Windows
 
-`./tools/godot.ps1 export` genera `exports/windows/TheFour.exe`: un único archivo de unos 400 MB con todo el juego (plantilla release de Godot 4.7.2, sin consola ni atajos de depuración como F9). La configuración está en `export_presets.cfg` y excluye `tests/`, `tools/` y `legacy/`. `exports/` no se versiona. Antes de distribuirlo deben resolverse los permisos de los assets.
+`./tools/godot.ps1 export` genera `exports/windows/TheFour.exe`: un único archivo con todo el juego (plantilla release de Godot 4.7.2, sin consola ni atajos de depuración como F9). La configuración está en `export_presets.cfg`, que excluye `tests/`, `tools/`, `legacy/`, `evidence/`, `models/`, `sfx/`, `source_assets/`, `exports/`, `docs/` y los `.zip` de origen; `evidence/`, `models/`, `sfx/` y `exports/` llevan además un `.gdignore` para que Godot ni siquiera los importe. `exports/` no se versiona.
+
+**Pesa unos 970 MB**, demasiado: el paquete lleva a la vez los archivos de origen y su copia ya importada, y las texturas de los personajes son de 4K. Está anotado como pendiente en [docs/PLAN.md](docs/PLAN.md). Antes de distribuirlo deben resolverse los permisos de los assets.
 
 ## Abrir y validar
 
@@ -66,7 +72,13 @@ Desde PowerShell en la carpeta del proyecto:
 ./tools/godot.ps1 playtest -Seed 81
 ./tools/godot.ps1 hotel-batch
 ./tools/godot.ps1 hotel-walkthrough
+./tools/godot.ps1 locust -Seed 81
+./tools/godot.ps1 rehearsal -Seed 81
+./tools/net_test.ps1 -Scenario coop
+./tools/benchmarks/run_bench.ps1 -Label prueba
 ```
+
+`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, intro, visión de eco, bucle de partida, audio, audio espacial, regresión del prototipo histórico, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro.
 
 Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. Las regresiones de arquitectura usan `--no-enemy`; `survival-test` mantiene la IA real. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
 
@@ -82,9 +94,11 @@ Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle d
 - `tools/workbenches/module_gallery.tscn`: galería de los veinte módulos.
 - `docs/DEVELOPMENT.md`: guía para localizar, editar y comprobar cada sistema.
 - `legacy/fuse_prototype/main.tscn` y scripts anteriores: prototipo histórico de fusibles.
-- `docs/GAME_DESIGN.md`, `ROADMAP.md`, `TODO.md`: diseño v0.4, orden y estado real.
-- `docs/V04_VALIDATION.md`: informe histórico de P1.
-- `docs/SURVIVAL_VALIDATION.md`: validación actual del hotel variable y la amenaza.
+- `docs/README.md`: índice de la documentación, por si no sabes dónde mirar.
+- `docs/GAME_DESIGN.md`: el diseño vigente. `docs/PLAN.md`: estado, orden de trabajo y pendientes, en un solo documento.
+- `docs/VISION_LOCUST.md`, `docs/AUDIO.md`, `docs/PERFORMANCE.md`, `docs/REALISM.md`: la visión de la criatura, el sonido, el rendimiento medido y el plan de imagen.
+- `docs/textos_juego.txt`: todos los textos que aparecen en pantalla, para corregirlos en un solo sitio.
+- `docs/V04_VALIDATION.md` y `docs/SURVIVAL_VALIDATION.md`: informes históricos; registran cuándo se comprobó algo, no el estado de hoy.
 - `docs/PLAYTEST_HOTEL.md`: protocolo pendiente de evaluación humana.
 - `docs/ASSETS.md`, `hotel_audio_inventory.json`: procedencia, créditos y análisis técnico.
 - `docs/history/`: plan v0.3 conservado.

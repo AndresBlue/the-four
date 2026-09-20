@@ -1,5 +1,7 @@
 # Reorganización del proyecto — 16 de septiembre de 2026
 
+> **Informe histórico.** Registra lo comprobado en su fecha, no el estado actual. Para eso están [GAME_DESIGN.md](GAME_DESIGN.md) y [PLAN.md](PLAN.md).
+
 Se conservan The Four 0.4-S1, Godot 4.7.2 Steam y generador v3. El trabajo reorganiza y hace editables los componentes; no completa nuevos hitos de juego.
 
 ## Cambios

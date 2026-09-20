@@ -1,8 +1,10 @@
-# The Four — Diseño v0.4
+# The Four — Diseño
+
+Qué es el juego y por qué reglas se rige. El estado, el orden de trabajo y lo que falta están en [el plan](PLAN.md); aquí se describe el juego, marcando lo que todavía no existe.
 
 ## Estado real y cambio de dirección
 
-La entrega **0.4-S1** amplía el hotel individual con módulos de dimensiones variables, salones unidos, distribuciones asimétricas, polvo, cortinas móviles, niebla localizada y reflejos iniciales. The Locust ya patrulla, oye, persigue y captura; existen agacharse, resistencia y escondites. Conserva menú, ajustes, salida libre, refugio y checkpoint. Cooperativo, hoja y campaña siguen pendientes. La aceptación de duración, balance y acabado visual requiere partidas humanas; no se presenta como completa.
+La versión **0.5** tiene un piso jugable solo, en cooperativo de 2 a 5 o en versus con un jugador llevando a The Locust. Están el hotel procedural con salida y refugio, la red por IP o LAN, la hoja compartida, los armarios, la ejecución, la visión de ecolocalización del cazador y la oscuridad real de las salas apagadas. Siguen sin existir los otros tres pisos y sus criaturas, las tres etapas que deben estructurar el piso (teles, cerradura de código y apagón), la cordura y las animaciones definitivas de los supervivientes. Las pruebas con amigos de septiembre de 2026 dejaron claro que el piso se resuelve demasiado rápido: eso es lo que se está corrigiendo. No se presenta como completo.
 
 El antiguo H1 de fusibles se conserva como prototipo histórico en `legacy/fuse_prototype/main.tscn`; ya no es la escena principal ni determina la victoria del juego nuevo. Su informe no acredita la generación o supervivencia actuales. Los planes anteriores están archivados en `history/`.
 
@@ -31,9 +33,9 @@ La salida conduce a un refugio protegido. Quien llega puede dibujar en la hoja o
 
 La captura elimina al jugador hasta el siguiente piso. No hay reanimación. Si ya no quedan suficientes vivos para alcanzar el mínimo, termina el intento. Quienes murieron reaparecen en el siguiente piso. Salvar a todos es un resultado ideal registrado, sin ventajas estadísticas.
 
-En 0.4-S1 solo hay un participante real. La sesión separa su estado individual —explorando, refugiado o muerto— del estado global de partida. La cuota está preparada y probada como regla, pero eso **no constituye implementación de red**. F9 prueba la derrota únicamente en ejecución de desarrollo y fuera del refugio.
+La sesión separa el estado de cada jugador —explorando, refugiado o muerto— del estado global de partida, y la misma regla vale en individual y en red. F9 prueba la derrota únicamente en ejecución de desarrollo y fuera del refugio.
 
-Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa distribución y el estado inicial, no la posición donde se salió. Guardar formato, versión del generador, semilla, piso y uso de respaldo. Escritura mediante archivo temporal y copia anterior; incompatibilidad explícita, sin reemplazo silencioso de mapas. En 0.4-S1 completar el primer piso termina la demostración y elimina el checkpoint completado.
+Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa distribución y el estado inicial, no la posición donde se salió. Guardar formato, versión del generador, semilla, piso y uso de respaldo. Escritura mediante archivo temporal y copia anterior; incompatibilidad explícita, sin reemplazo silencioso de mapas. Completar el primer piso termina esta entrega y elimina el checkpoint completado: los otros tres pisos todavía no existen.
 
 ## Menú y ajustes
 
@@ -79,7 +81,7 @@ La navegación se calcula desde los cuerpos estáticos construidos, incluyendo i
 
 Forward+ es el render principal de escritorio. Compatibility, elegible en Ajustes y sugerido en gráficas integradas, ofrece una alternativa reducida con la misma geometría y reglas. Presets y efectos no deben alterar rutas o pistas: toda lámpara visible conserva su sombra en todos, y la visión de eco de The Locust nunca da más información por calidad (Bajo reparte menos granos más grandes; Ultra, algo más finos y con halo).
 
-0.4-P1 incorpora materiales procedurales de moqueta y papel mural, luces localizadas, sombras próximas, niebla de profundidad, oclusión ambiental, niebla volumétrica en calidad alta y filtro VHS moderado. Menús, subtítulos e indicaciones se dibujan después del filtro. Las instancias se agrupan por habitación/material y se limita la presentación lejana; las colisiones y el mapa permanecen cargados.
+El hotel usa materiales procedurales de moqueta y papel mural, luces localizadas, sombras próximas, niebla de profundidad, oclusión ambiental, niebla volumétrica en calidad alta y filtro VHS moderado. Menús, subtítulos e indicaciones se dibujan después del filtro. Las instancias se agrupan por habitación/material y se limita la presentación lejana; las colisiones y el mapa permanecen cargados.
 
 El fotorrealismo sigue siendo una meta visual pendiente. Esta ampliación añade madera procedural, sondas de reflexión iniciales, polvo, cortinas móviles y niebla localizada. Siguen pendientes materiales PBR finales, composición definitiva, efectos de conductos y una colección coherente de sonidos. No se considerará logrado por aplicar un filtro.
 
@@ -91,7 +93,7 @@ Conservar originales. Priorizar mobiliario CC0/CC BY de escala compatible, con a
 
 Sunman se conserva como candidato para su piso. The Boy and The Bath es material adicional en evaluación y no sustituye a ninguno de los cuatro enemigos. Los permisos del Locust y la canción anterior continúan pendientes para distribución. Véase [ASSETS.md](ASSETS.md).
 
-## Multijugador en red — implementado (pendiente de sesiones humanas)
+## Multijugador en red — implementado
 
 **Conexión.** ENet con un anfitrión y hasta cuatro invitados (**2–5 jugadores**), por IP directa o LAN, puerto UDP 38430. Por Internet, el anfitrión abre ese puerto en su router. Sin Steam, matchmaking, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador).
 
@@ -128,13 +130,15 @@ Hoja vacía por piso, abierta con **Tab** (reasignable). Botón izquierdo dibuja
 
 En línea es compartida por los supervivientes vivos: el anfitrión ordena trazos y borrados, quien dibuja los ve al instante y ocupan su lugar al confirmarse. Los trazos viajan en fragmentos diez veces por segundo con un límite de 30 fragmentos por segundo por jugador y 3.000 operaciones por hoja. Los muertos pueden mirarla sin editar; The Locust nunca la ve. Se restaura al reconectar y empieza vacía en cada piso o reintento. Guilt nunca falsifica esta superficie.
 
-## Criaturas y ritmo — Locust individual implementado; resto pendiente
+## Criaturas y ritmo — The Locust implementado; las otras tres criaturas, pendientes
 
 The Locust individual implementa: patrulla, oído, visión, investigación, persecución, búsqueda y registro de armarios. Percibe al jugador desde mucho más lejos de lo que el jugador lo percibe a él: visión de 120° y 70 m con línea libre y sospecha gradual (3,2/s de cerca, 0,9/s a 70 m; más rápida con linterna o corriendo, más lenta agachado; baja 0,12/s sin visión). A 0,2 investiga. A 1, si te ve, primero se detiene, se gira hacia ti y chilla durante 1,2 s; después persigue, arrancando desde 2,5 m/s y acelerando a 3,2 m/s² (algo más de un segundo hasta la velocidad máxima). Ese margen es el momento de romper la línea de visión. Oye los ruidos siguiendo rutas caminables (atraviesa salas y puertas, no muros; en línea recta si tiene el sitio a la vista), hasta estas distancias (`HEARD` en `game/audio/noise_kinds.gd`, una sola tabla para todo): asomarse en un armario 10,5 m; pasos agachado 8 m (12 en baldosa); puerta abierta despacio 9 m; entrar o salir de un armario 12 m (45 m para un cazador humano); pasos caminando 20 m (25 en baldosa); salto 32 m; puerta normal 45 m; pasos corriendo 52 m (64 en baldosa); portazo 62 m. Una linterna que lo ilumina desde más de 5 m y hasta 45 m lo atrae. Persecución a 6,4 m/s, más rápida que el sprint; sin visión va a 5,2 m/s hacia la última posición vista u oída. Cada ruido durante la persecución actualiza su objetivo; sin verte 7 s pasa a búsqueda. Al perseguir abre las puertas de golpe sin esperar. Estocada: empieza a menos de 2,4 m, embiste durante 0,3 s y mata a menos de 3,2 m con línea de visión; desde el alcance de ataque es casi inevitable. Es un 18 % más grande (≈2,9 m) con zancadas más largas y se agacha bajo los dinteles. No mata por contacto ni atravesando muros.
 
 **Ritual del armario (individual y en red).** Registrar un armario cuesta tiempo, a la IA y al jugador que lleva a la criatura: se planta delante, abre una hoja, luego la otra y mete el brazo; en total unos 2,5 s inmóvil. Si hay alguien dentro, ahí empieza la ejecución; si no, se queda un momento más antes de recuperar el control. Ya no puede recorrer una habitación abriendo armarios de pasada sin penalización.
 
 **Ejecución.** Alcanzar a un superviviente ya no lo mata al instante: la criatura lo ensarta con un brazo, lo levanta en el aire y lo clava tres veces con el otro (pecho, cadera y cabeza). Dura unos 2,9 s, durante los cuales la criatura no puede moverse y la víctima solo mira lo que la está matando. La baja se registra al final, así que el piso no se pierde hasta que acaba. Suena en tres golpes y el cuerpo al caer (`assets/audio/events/execution_*.wav`). La criatura tampoco se ve frenada por los cuerpos de los jugadores.
+
+**Se la oye antes de verla.** The Locust arrastra un aura —dron, respiración, chasquidos y latidos— que llega por la ruta caminable por la que se acerca, no en línea recta a través de los muros: dice por dónde viene sin decir exactamente dónde está. Se oye dentro de 26 m, entra y sale gradualmente, calla durante la protección inicial y dentro del refugio, y baja 16 dB mientras prepara la estocada, para que el aviso de ataque se distinga. Con auriculares es binaural (diferencia de tiempo y de nivel entre oídos) y lo que viene de detrás suena más apagado. El jugador que la lleva en versus no oye ni su propia presencia ni el aura. Asignaciones completas en [AUDIO.md](AUDIO.md).
 
 Pasos por distancia recorrida con cadencia adulta: unos 2 pasos/s caminando, 2,5 corriendo (más fuertes) y 1,5 agachado; balanceo de cámara ligado a cada pisada y de pocos centímetros. Suenan pasos grabados sobre moqueta o, en baños, lavandería y mantenimiento, sobre baldosa (se oyen más lejos: entre un 25 y un 50 % según el paso); cada grabación arranca antes para que su golpe caiga en la pisada. Implementado agacharse a 2 m/s, resistencia 100, gasto al correr 8/s y recuperación 6/s tras 3 s de descanso; agotado no vuelve a correr hasta 30. La resistencia se muestra como un medidor segmentado de videocámara que desaparece al llenarse. Escondites: armarios grandes con doble puerta. Dentro, las puertas cerradas tapan la vista como una pared; manteniendo avanzar se entreabren despacio y la cabeza se asoma, con el campo de visión más amplio cuanto más abiertas. Mirando al frente se abren las dos a medias; al girar la vista a un lado se abre la puerta contraria, se cierra la otra y la cabeza sale por ese hueco, con la puerta abierta cubriéndola. Una puerta entreabierta delata al jugador si la criatura tiene línea de visión. Solo la primera apertura de cada estancia cruje. Si la criatura vio la entrada, o investiga un ruido junto a un armario ocupado, abre sus puertas y ataca. Dentro, la imagen se cierra con bordes oscuros y un leve ojo de pez que se abre al asomarse (desactivado con efectos reducidos). Escondites con entrada y salida libres; observar una entrada permite inspeccionarla. Las puertas retrasan, no conceden inmunidad fuera del refugio. Se añaden 15 s de protección inicial y aparición distante al empezar/reintentar, sin tiempo mínimo exigido para salir. Movimiento y preparación procedural del modelo son provisionales; las animaciones finales y permisos siguen pendientes.
 
@@ -150,29 +154,26 @@ Catálogo de doce eventos: golpes, objeto caído y pasos para Locust (implementa
 
 Descubrimientos opcionales persistentes: dieciséis entradas, cuatro por criatura, sin ventajas estadísticas. Implementados los cuatro de The Locust: documentos sobre mesas, escritorios y mesillas (dos por piso, lejos del inicio y en sectores distintos, fijos por semilla). Leer detiene al personaje sin pausar el juego, suena el papel y la entrada queda en **Archivo** del menú, también entre partidas. Dan contexto y pistas sobre la criatura, nunca mejoras. Registro de supervivientes, causas de muerte y campaña; códigos con semilla y versión. Desafíos de campaña sin reintentos y salida de todos con vida. Se retira el desafío basado en distractores obligatorios del diseño anterior. Ningún desafío añade derrota oculta.
 
-## Orden y aceptación
+## Aceptación
 
-1. Niveles y presentación básica: menú, ajustes, hotel, props, salida, refugio y checkpoint individual.
-2. Atmósfera analógica: audios seleccionados, materiales, efectos, sonido espacial y perfiles.
-3. Cooperativo y hoja: red, dibujos, cuotas, regreso, reconexión y transición con muertes de prueba.
-4. Escondite y Locust: captura real, percepción, ruido, resistencia y ayuda entre jugadores.
-5. Campaña: los otros tres pisos y enemigos, reaparición de fallecidos y progreso completo.
-6. Consolidación: director, descubrimientos, códigos, balance, accesibilidad, permisos y exportación.
+El orden de trabajo y lo que falta están en [PLAN.md](PLAN.md). Aquí queda solo lo que hay que demostrar para dar algo por bueno.
 
-Validación exigida: 1.000 semillas por conjunto soportado con ningún mapa aceptado bloqueado; veinte recorridos manuales del primer piso; persistencia y reversión de ajustes; sesiones de 2/3/4 y dibujos concurrentes; mínimos 1/2, 2/3, 2/4; captura y puertas fiables; cinco partidas completas de exploración y campañas de dos/cuatro jugadores. Los recorridos automáticos se registran por separado de las partidas humanas.
+Hecho: las mil semillas del único conjunto que existe hoy, sin mapas aceptados que bloqueen (`./tools/godot.ps1 hotel-batch`, resultado en `evidence/hotel_batch.json`); persistencia y reversión de ajustes; sesiones reales de 2 a 5 jugadores con dibujos simultáneos, muertes y mínimos `ceil(N/2)`; captura, puertas y armarios fiables en individual y en red, comprobados por procesos reales en `./tools/verify.ps1`.
 
-Rendimiento objetivo: 60 FPS a 1080p en la RTX 4060 Ti del equipo, con tiempos de fotograma, carga y memoria. Medir, no asumir. Estado y límites de la entrega en [V04_VALIDATION.md](V04_VALIDATION.md); tareas en [TODO.md](TODO.md).
+Pendiente: veinte recorridos manuales del primer piso y cinco partidas completas de exploración con la duración medida (hoy muy por debajo de la meta); campañas de dos y cuatro jugadores, que necesitan los otros tres pisos. Los recorridos automáticos se registran aparte de las partidas humanas y no las sustituyen; el protocolo está en [PLAYTEST_HOTEL.md](PLAYTEST_HOTEL.md).
+
+Rendimiento objetivo: 60 FPS a 1080p en la RTX 4060 Ti del equipo, con tiempos de fotograma, carga y memoria. Medir, no asumir. Medidas por preset y vista en [PERFORMANCE.md](PERFORMANCE.md); estado y tareas en [PLAN.md](PLAN.md).
 
 Fuentes técnicas consultadas: [renderizadores de Godot](https://docs.godotengine.org/en/4.7/tutorials/rendering/renderers.html), [multijugador](https://docs.godotengine.org/en/4.7/tutorials/networking/high_level_multiplayer.html) y [sincronización de navegación](https://docs.godotengine.org/en/4.7/classes/class_navigationserver3d.html).
 
-## Adenda — Audio de presencia y armarios (16 de septiembre de 2026)
+## Reglas que no se rompen
 
-**Implementado en individual:** un aura de The Locust que se oye en la dirección de la ruta por la que se acerca, sin revelar su posición exacta, y las asignaciones de [AUDIO.md](AUDIO.md): variación de puertas por acción/distancia, sonidos de escondite, ambiente y presencia de Locust emitida desde su posición. La identidad sonora anuncia una criatura real; su mezcla no cambia sus reglas de detección ni ataque. Grabaciones reservadas y futuras identidades no equivalen a nuevos sistemas implementados.
+Todo lo de esta sección está implementado; se deja escrito porque son límites que ningún cambio posterior debe cruzar.
 
-**Pendiente — armario claustrofóbico:** al entrar, cerrar puertas que tapen físicamente el cuerpo desde fuera. Desde dentro queda una abertura frontal estrecha; un efecto gradual oscurece/distorsiona la periferia y amplía la abertura con ojo de pez, buscando sensación de encierro y una visión parcial de presencias próximas. No genera imágenes de enemigos ni permite ver a través de superficies opacas. Mantener control de mirada dentro de los límites del escondite y una salida accesible.
-
-Separar la geometría/ocultación del posprocesado: apagar o reducir la distorsión no revela al personaje desde fuera ni cambia reglas de visión de Locust. El efecto no afecta menús, hoja, subtítulos o señales esenciales; al salir, morir o reintentar vuelve al estado normal. Intensidad regulable y modo reducido con abertura legible, sin oscilaciones ni distorsión intensa. Evaluar los latidos reservados como complemento opcional, siempre por debajo de los avisos de peligro.
-
-Validación pendiente: comparar vista interior/exterior, entrada vista por enemigo, amenaza frente a abertura y detrás de pared, escondite vacío/ocupado, salida bloqueada, pausa, muerte y reintento. Comprobar resoluciones/perfiles, efectos reducidos, música apagada y, cuando exista red, ocultación coherente para los demás jugadores. La abertura no anula el riesgo de inspección ni concede inmunidad.
-
-**Hoja pendiente:** el papel se oye una vez al abrirla, como acción local de interfaz. Dibujar/borrar no repite ese sonido. Se implementará con la hoja, sin añadir un atajo de teclado que todavía no cumpla su función.
+- **El posprocesado no cambia las reglas.** El encierro y el ojo de pez del armario, el filtro de videocámara y los efectos reducidos alteran lo que se ve, nunca lo que la criatura percibe ni lo que los demás jugadores ven desde fuera. Apagar la distorsión no revela ni esconde a nadie.
+- **Los efectos no tocan lo esencial.** Menús, hoja, subtítulos y señales de peligro se dibujan por encima del filtro y no se distorsionan. Al salir del armario, morir o reintentar, la vista vuelve al estado normal.
+- **Esconderse retrasa, no protege.** Un armario no concede inmunidad: si la criatura vio la entrada, o investiga un ruido al lado, lo abre. Solo el refugio es seguro.
+- **El juego no miente sobre su propia interfaz.** Ninguna criatura falsifica controles, guardado, menús, accesibilidad ni la hoja compartida. Guilt engañará con señales del mundo, verificables observando, no con la interfaz.
+- **Los eventos del director no hacen daño.** Nunca apuntan a la posición del jugador, no cambian capacidades, geometría ni recursos, y estarse quieto no provoca ataques.
+- **El audio anuncia, no castiga.** La identidad sonora de una criatura no altera sus reglas de detección ni de ataque, y nada se reproduce como amenaza aleatoria sin aviso.
+- **La calidad gráfica no da ventaja.** Toda lámpara visible conserva su sombra en todos los presets, y la visión de eco de The Locust no entrega más información por subir la calidad.
