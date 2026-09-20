@@ -386,6 +386,15 @@ func request_code(text: String) -> void:
 func code_state() -> void:
 	level.apply_code()
 
+## Everybody up again, and where. The host decides; every machine puts its own
+## body back and the others where it is told.
+func revive_everyone(places: Dictionary, restart: bool) -> void:
+	if in_match(): revived_state.rpc(places, restart)
+
+@rpc("authority", "call_remote", "reliable")
+func revived_state(places: Dictionary, restart: bool) -> void:
+	level.apply_revival(places, restart)
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.
@@ -589,6 +598,19 @@ func update_shriek(delta: float) -> void:
 	if locust_seat() == net.local_seat or not net.active():
 		if is_instance_valid(creature.driver): creature.driver.reveal(points)
 	elif locust_peer() > 0: shriek_reveal.rpc_id(locust_peer(), points)
+
+## The way on has opened somewhere else: the creature is shown the road to it
+## in its own reading, so it does not keep hunting a wing nobody is in.
+func tell_stage(points: PackedVector3Array) -> void:
+	if not in_match() or locust_seat() == net.local_seat:
+		var creature = level.locust
+		if is_instance_valid(creature) and is_instance_valid(creature.driver) and creature.driver.has_method("mark_stage"): creature.driver.mark_stage(points)
+		return
+	if locust_peer() > 0: stage_road.rpc_id(locust_peer(), points)
+
+@rpc("authority", "call_remote", "reliable")
+func stage_road(points: PackedVector3Array) -> void:
+	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.mark_stage(points)
 
 @rpc("authority", "call_remote", "unreliable")
 func shriek_reveal(points: PackedVector3Array) -> void:

@@ -82,6 +82,11 @@ func run() -> void:
 		if index < needed - 1: check("Con %d de %d encendidas la puerta sigue cerrada" % [index + 1, needed], not session.goal.ready and level.hotel.gates[1].locked)
 	await frames(6)
 	check("Encendidas las que pide, se abre la puerta de la etapa", session.goal.ready and session.goal.done >= needed and not level.hotel.gates[1].locked)
+	# The blackout: it fell when only the last set was left, and it does not
+	# come back.
+	check("Se fue la luz del piso entero", session.goal.get("blackout", false) and level.hotel.dark)
+	check("Ninguna lámpara del hotel queda encendida", level.hotel.lights.all(func(light): return not light.visible) and level.hotel.practicals.all(func(lamp): return not lamp.visible) and level.hotel.sconce_lights.all(func(lamp): return not lamp.visible))
+	check("Las teles encendidas siguen dando luz", level.televisions[0].lamp.visible)
 	check("Una tele encendida da luz y no se apaga", level.televisions[0].on and level.televisions[0].lamp.visible and not level.televisions[0].set_on(true))
 	# Travelling by television: a lit set is a way in and a way out.
 	var lit: Array = level.lit_televisions()
@@ -116,6 +121,27 @@ func run() -> void:
 	check("Registrar los cuatro da el código entero", level.found_digits.size() == DIG.COUNT and not level.code_so_far().contains("–"))
 	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
 	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
+	# A floor forgives one collapse: everybody up, the stage as it was found.
+	var before_stage: int = session.stage
+	check("Morir sin cuota no termina el piso la primera vez", session.capture(1) and session.state == session.State.PLAYING)
+	# It takes a moment: the death is seen and heard before anybody gets up.
+	check("La muerte se cuenta antes de levantar a nadie", session.participants[1] == session.Life.DEAD and session.restart_wait > 0.0)
+	await frames(int(session.RESTART_WAIT * 60) + 20)
+	check("Vuelven todos de pie, en la misma etapa", session.participants[1] == session.Life.EXPLORING and session.stage == before_stage and session.restarts == 1)
+	check("Y el jugador recupera su cuerpo y su cámara", level.player.visible and level.player.collision_layer == 4 and level.player.camera.current)
+	check("La segunda vez sí se acaba", session.capture(1) and session.state == session.State.FAILED)
+	await frames(10)
+	# Back to a floor in hand for the rest of the checks.
+	await level.start_floor(81)
+	session = level.session
+	level.locust.set_physics_process(false)
+	level.locust.global_position = Vector3(0, -80, 0)
+	level.player.set_physics_process(false)
+	check("Un piso nuevo perdona otra vez", session.restarts == 0)
+	# Straight to the last stage: the numbers and the door are the point here.
+	session.stage = 3
+	session.goal = {"kind": "code", "done": 0, "needed": 4, "ready": false}
+	await frames(4)
 	# The last door: shut until the code is read into it, and the floor ends
 	# on the landing behind it.
 	var exit_door = level.hotel.gates[2]

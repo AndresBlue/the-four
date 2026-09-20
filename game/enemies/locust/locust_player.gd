@@ -121,9 +121,12 @@ func drive(delta: float) -> void:
 	var free: bool = can_act() and creature.grace <= 0.0
 	var axis := Input.get_vector("left", "right", "forward", "backward") if free else Vector2.ZERO
 	frenzy = maxf(0.0, frenzy - delta)
-	var hunting := free and axis.length() > 0.1 and Input.is_action_pressed("sprint") and (stamina > 0.0 or frenzy > 0.0)
+	# With the floor dark there is no limit to the hunt: it has nothing left to
+	# fear and nothing to spend.
+	var free_hunt: bool = frenzy > 0.0 or level.session.goal.get("blackout", false)
+	var hunting := free and axis.length() > 0.1 and Input.is_action_pressed("sprint") and (stamina > 0.0 or free_hunt)
 	if hunting:
-		if frenzy <= 0.0: stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
+		if not free_hunt: stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
 		recovery = RECOVERY_DELAY
 	else:
 		recovery = maxf(0.0, recovery - delta)
@@ -245,6 +248,33 @@ func shriek() -> void:
 	# The reading floods red and one enormous shell goes out with the cry.
 	if is_instance_valid(echo): echo.flash_shriek()
 	level.match_net.locust_shriek()
+
+## A stage has closed and the way on is elsewhere: the road to it is laid out
+## in the reading as a line of grains, thicker where the door is. Nothing is
+## written: it is a thing it hears coming back from a direction, and it can
+## follow it or ignore it.
+func mark_stage(points: PackedVector3Array) -> void:
+	if not is_instance_valid(echo) or points.size() < 2: return
+	var road := PackedVector3Array()
+	for i in range(1, points.size()):
+		var step: float = points[i - 1].distance_to(points[i])
+		var count: int = maxi(1, int(step / 2.5))
+		for k in count: road.append(points[i - 1].lerp(points[i], float(k) / float(count)) + Vector3(0, 1.2, 0))
+	# The door itself, three times over, so the end of the road reads louder.
+	for i in 3: road.append(points[points.size() - 1] + Vector3(0, 1.2, 0))
+	echo.mark_found(road)
+
+## The power has gone: nothing is written on screen, the ceilings that were
+## there simply come back at it in one burst, from every side at once, and the
+## hunt stops costing anything (drive()).
+func mark_blackout() -> void:
+	if not is_instance_valid(echo): return
+	var points := PackedVector3Array()
+	var here: Vector3 = creature.global_position
+	for i in 14:
+		var angle := TAU * float(i) / 14.0
+		points.append(here + Vector3(cos(angle), 0, sin(angle)) * (4.0 + float(i % 3) * 2.5) + Vector3(0, 2.6, 0))
+	echo.mark_found(points)
 
 ## Survivors the shriek found, from the host.
 func reveal(points: PackedVector3Array) -> void:

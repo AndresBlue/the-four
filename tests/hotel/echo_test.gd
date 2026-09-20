@@ -189,6 +189,15 @@ func run() -> void:
 	creature.driver.heard.clear()
 	if far_hide != null: level.on_hide_changed(true, far_hide.global_position)
 	await frames(3)
+	# The way on has moved: the road to it is laid out in the reading.
+	var before_road: int = echo.find_at
+	creature.driver.mark_stage(PackedVector3Array([creature.global_position, creature.global_position + Vector3(0, 0, -12.0), creature.global_position + Vector3(8.0, 0, -12.0)]))
+	await click_passes(echo)
+	check("El camino a la etapa nueva se dibuja en su lectura", echo.find_at != before_road)
+	var before_dark: int = echo.find_at
+	creature.driver.mark_blackout()
+	await click_passes(echo)
+	check("Y el apagón le llega como una sacudida alrededor", echo.find_at != before_dark)
 	check("Un armario se oye desde otra habitación", far_hide != null and creature.driver.heard.any(func(mark): return int(mark.kind) == NOISE.Kind.WARDROBE))
 	if level.hotel.hides.size() > 0:
 		var cabinet = level.hotel.hides[0]

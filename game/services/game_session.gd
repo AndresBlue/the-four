@@ -1,5 +1,8 @@
 extends Node
 signal changed
+## Everybody is back on their feet: between stages, or because the floor gave
+## the survivors one more go at the stage they lost.
+signal revived(restart: bool)
 ## CUTSCENE: the opening scene of a new game, before its floor is built.
 enum State { MENU, LOADING, PLAYING, PAUSED, TRANSITION, WON, FAILED, CUTSCENE }
 enum Life { EXPLORING, REFUGE, DEAD }
@@ -12,6 +15,14 @@ var state := State.MENU
 ## finished.
 const STAGES := 3
 var stage := 1
+## A floor forgives one collapse: the stage starts again with everyone alive.
+## The second time there is nobody left to start it again for.
+const RESTARTS := 1
+var restarts := 0
+## Seconds between the floor collapsing and everybody getting up again: long
+## enough for the last death to be seen and heard.
+const RESTART_WAIT := 4.0
+var restart_wait := 0.0
 ## What the stage in hand needs, how far along it is and whether it is already
 ## met, for the interface and for the other machines. `ready` is what unlocks
 ## the door on: from then on anyone can open it, and crossing it is what
@@ -45,6 +56,8 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	transition_time = 0
 	message = ""
 	stage = 1
+	restarts = 0
+	restart_wait = 0.0
 	goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 	if not online: write_checkpoint()
 	set_state(State.PLAYING)
@@ -105,11 +118,24 @@ func check_quota() -> bool:
 	var alive := 0
 	for life in participants.values():
 		if life != Life.DEAD: alive += 1
-	if alive < minimum_survivors():
-		message = "No quedan suficientes supervivientes."
-		set_state(State.FAILED)
-	else: changed.emit()
+	if alive >= minimum_survivors():
+		changed.emit()
+		return true
+	if restarts < RESTARTS and state == State.PLAYING:
+		# One more go at this stage, with everybody on their feet again -- but
+		# not this instant: the last one down has earned its own death first.
+		restarts += 1
+		restart_wait = RESTART_WAIT
+		changed.emit()
+		return true
+	message = "No quedan suficientes supervivientes."
+	set_state(State.FAILED)
 	return true
+
+## Everyone back among the living (the authority decides when).
+func raise_everyone() -> void:
+	for id in participants: participants[id] = Life.EXPLORING
+	changed.emit()
 
 func pause() -> void:
 	if state == State.PLAYING: set_state(State.PAUSED)
@@ -150,13 +176,23 @@ func write_checkpoint() -> bool:
 
 func _process(delta: float) -> void:
 	if state == State.PLAYING: elapsed += delta
+	if restart_wait > 0.0 and state == State.PLAYING:
+		restart_wait -= delta
+		if restart_wait <= 0.0:
+			restart_wait = 0.0
+			raise_everyone()
+			revived.emit(true)
 	if state == State.TRANSITION:
 		transition_time += delta
 		if transition_time >= 1.2:
 			if more_stages():
 				stage += 1
-				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
+				# Whoever died in the wing left behind comes back for the next.
+				var dead: bool = participants.values().has(Life.DEAD)
+				if dead: raise_everyone()
+				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": bool(goal.get("blackout", false)) and false, "blackout": goal.get("blackout", false)}
 				set_state(State.PLAYING)
+				if dead: revived.emit(false)
 				return
 			if FileAccess.file_exists(checkpoint_path) and not online: DirAccess.remove_absolute(checkpoint_path)
 			set_state(State.WON)

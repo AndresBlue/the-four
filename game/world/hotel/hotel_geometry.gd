@@ -42,6 +42,8 @@ var tubes: Array = []
 var flicker_clock := 0.0
 ## Red start lamps in the reception: {light, material, energy}.
 var beacons: Array = []
+## The floor has gone dark for good (the blackout of the second stage).
+var dark := false
 ## Share of eligible rooms (private rooms, lounges, corridors; never the
 ## reception, service rooms, halls or the refuge) whose lamps are all out.
 ## Darkness spreads: an eligible room beside a dark one goes dark as well with
@@ -463,6 +465,26 @@ func door_stop() -> MeshInstance3D:
 	block.material_override = DOOR_FRAME.surface_get_material(0)
 	return block
 
+## The power goes. Every light in the hotel dies at once and stays dead: the
+## ceilings, the lamps inside the furniture, the wall sconces, the service
+## battens and the red lamp of the reception. The televisions are not touched
+## (they have their own set) and neither is anybody's torch.
+func blackout(on: bool) -> void:
+	if dark == on: return
+	dark = on
+	for light in lights:
+		if on: light.set_meta("off", true)
+		elif not dark_ids.has(int(light.get_meta("room", -1))): light.remove_meta("off")
+		light.visible = light.visible and not on
+	for lamp in practicals: lamp.visible = lamp.visible and not on
+	for lamp in sconce_lights: lamp.visible = lamp.visible and not on
+	for entry in tubes: entry.light.visible = entry.light.visible and not on
+	for entry in beacons:
+		entry.light.visible = entry.light.visible and not on
+		if on and entry.has("material"): entry.material.emission_energy_multiplier = 0.0
+	# The bounce baked for the lit rooms would keep lighting them.
+	if on and is_instance_valid(bounce): bounce.show_near(Vector3(0, -9000, 0), false)
+
 ## Puts out whatever glows on a mesh (lamp shades, bulbs): same surfaces,
 ## emission off.
 func switch_off(instance: MeshInstance3D) -> void:
@@ -715,6 +737,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	light.distance_fade_enabled = true
 	set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
 	node.add_child(light)
+	light.set_meta("room", int(room.id))
 	lights.append(light)
 	# Some rooms have their lamp out: only torches and the doorways light them.
 	if dark_room(room):
@@ -1176,6 +1199,9 @@ func apply_quality(new_preset: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	bounce.poll()
+	# With the power gone nothing blinks and nothing hums: the lamps are not
+	# failing, they are dead.
+	if dark: return
 	flicker_clock += delta
 	for beacon in beacons:
 		# A slow emergency blink with a nervous stutter in each lit phase.
@@ -1363,10 +1389,10 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		if wanted[k].probe == null and k < PROBES_SHOWN: make_probe(wanted[k])
 		elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
 	for lamp in sconce_lights:
-		lamp.visible = preset.sconce_lights and shadows and not echo_view and lamp.global_position.distance_to(player_position) < SCONCE_REACH
+		lamp.visible = not dark and preset.sconce_lights and shadows and not echo_view and lamp.global_position.distance_to(player_position) < SCONCE_REACH
 	bounce.show_near(player_position, preset.bounce and not echo_view)
 	for lamp in practicals:
-		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
+		lamp.visible = not dark and not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).

@@ -213,7 +213,9 @@ func run() -> void:
 	check("Durante la ejecución la víctima queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
 	# The execution is longer now: the scream, the mask coming in, the blow.
 	await frames(300)
-	check("La ejecución acaba en derrota", level.session.state == level.session.State.FAILED)
+	# A floor forgives one collapse: the death lands, and a moment later
+	# everybody is on their feet again for the same stage.
+	check("La ejecución acaba con el superviviente", level.session.participants[1] == level.session.Life.DEAD and level.session.restarts == 1)
 	check("Al morir la imagen se pierde en estática", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) > 0.5)
 	# The picture is not lost for ever: it clears itself even though the floor
 	# is over and nobody is being driven any more.
@@ -241,10 +243,10 @@ func run() -> void:
 		if ritual.right < 0.0 and hide.wide.right > 0.5: ritual.right = clock
 		if ritual.left < 0.0 and hide.wide.left > 0.5: ritual.left = clock
 		if ritual.kill < 0.0 and not level.execution.is_empty(): ritual.kill = clock
-		if level.session.state == level.session.State.FAILED: break
+		if level.session.state == level.session.State.FAILED or level.session.restarts >= 1: break
 	check("Se planta ante el armario y lo abre puerta a puerta", ritual.started >= 0.0 and ritual.right > ritual.started and ritual.left > ritual.right)
 	check("Abrir el armario le cuesta tiempo antes de alcanzar a nadie", ritual.kill > ritual.started + 1.4)
-	check("Entrada observada permite inspeccionar y capturar dentro", level.session.state == level.session.State.FAILED)
+	check("Entrada observada permite inspeccionar y capturar dentro", ritual.kill >= 0.0 and (level.session.state == level.session.State.FAILED or level.session.restarts >= 1))
 	if level.session.state != level.session.State.FAILED: print("HIDE_DEBUG enemy=",enemy.position," player=",player.position," mode=",enemy.mode," cansee=",enemy.sees_player()," path=",enemy.path," target=",enemy.destination)
 	level.settings.set_value("reduced", true)
 	level.hotel.update_visibility(player.position, true)

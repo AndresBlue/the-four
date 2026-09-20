@@ -101,6 +101,8 @@ var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
 ## A set coming on: the clunk of an old switch, reusing a door latch.
 const SWITCH_SOUND := "res://assets/audio/sfx/door/closing/closing1.ogg"
+## The power going: the same dead channel the execution uses, from above.
+const BLACKOUT_SOUND := "res://assets/audio/events/execution_static.ogg"
 ## Going through a drawer: the slow creak of a door, which is what it is.
 const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
 const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
@@ -157,6 +159,7 @@ func _ready() -> void:
 	ui.action_requested.connect(on_action)
 	ui.sheet.chunk_drawn.connect(func(op_id, kind, points): match_net.sheet_local(op_id, kind, points))
 	session.changed.connect(on_state)
+	session.revived.connect(on_revived)
 	net.closed.connect(on_net_closed)
 	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else "join"))
 	net.joined.connect(func(): if session.state == session.State.MENU: ui.menu("lobby"))
@@ -695,6 +698,7 @@ func on_state() -> void:
 	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
 	if is_instance_valid(hotel) and not manifest.is_empty():
 		hotel.open_gates(session.stage, session.goal.get("ready", false))
+		if session.goal.get("blackout", false) and not hotel.dark: apply_blackout()
 		if playing and session.stage > last_stage: follow_players(session.stage)
 	last_stage = session.stage
 	press_time = 0
@@ -757,6 +761,74 @@ func follow_players(stage: int) -> void:
 	locust.destination = FLOOR.position_of(manifest.rooms[beyond])
 	locust.guided = true
 	locust.repath = 0
+	# And it is told, in the only language it has: its own voice, and the road
+	# to the door laid out in its reading.
+	locust.grunt()
+	var road := FLOOR.navigation_path(get_world_3d().navigation_map, locust.global_position, FLOOR.position_of(manifest.rooms[int(gate.room)]))
+	if road.size() >= 2: match_net.tell_stage(road)
+
+## The power goes, everywhere at once. Nothing says so in words: the hotel
+## drops into the dark with a sound, and in the creature's reading the ceilings
+## it can no longer hear humming come back at it in one burst.
+func apply_blackout() -> void:
+	hotel.blackout(true)
+	if world_audio.enabled: world_audio.play_at(BLACKOUT_SOUND, player.global_position + Vector3(0, 2.5, 0), 0.0)
+	if is_instance_valid(locust) and is_instance_valid(locust.driver) and locust.driver.has_method("mark_blackout"): locust.driver.mark_blackout()
+
+## Everybody is on their feet again: between stages, or because the floor gave
+## this stage back after it was lost. The authority says where, and every
+## machine puts the bodies there.
+func on_revived(restart: bool) -> void:
+	if net.is_client() or manifest.is_empty(): return
+	var point := revival_point()
+	var places := {}
+	for seat in session.participants: places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
+	apply_revival(places, restart)
+	if match_net.in_match(): match_net.revive_everyone(places, restart)
+
+## Where a stage starts: just inside the wing it is played in.
+func revival_point() -> Vector3:
+	var gates_list: Array = manifest.get("gates", [])
+	if session.stage <= 1 or gates_list.size() < session.stage - 1: return Vector3(0, 0.04, 0)
+	var gate: Dictionary = gates_list[session.stage - 2]
+	var beyond := int(gate.get("beyond", -1))
+	if beyond < 0: return FLOOR.position_of(manifest.rooms[refuge_room()])
+	return FLOOR.position_of(manifest.rooms[beyond])
+
+## Applied on every machine: the local body comes back where it is told, the
+## others are placed, and a stage that was lost starts again as it was found.
+func apply_revival(places: Dictionary, restart: bool) -> void:
+	for seat_key in places:
+		var seat := int(seat_key)
+		if seat == player.slot: restore_local_player(places[seat_key])
+		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(places[seat_key], 0.0)
+	if restart:
+		ui.flash("OTRA VEZ", 3.0)
+		if session.stage == 2:
+			for index in televisions.size():
+				if is_instance_valid(televisions[index]) and televisions[index].on:
+					apply_television(index, false)
+					if not net.is_client() and match_net.in_match(): match_net.television_state.rpc(index, false)
+	else: ui.flash("ETAPA %d · DE PIE" % session.stage, 3.0)
+
+## The inverse of watching a teammate: its own body, its own camera.
+func restore_local_player(point: Vector3) -> void:
+	player.active = session.state == session.State.PLAYING and not online_menu and not match_net.local_is_locust()
+	player.visible = true
+	player.collision_layer = 4
+	player.velocity = Vector3.ZERO
+	player.global_position = point
+	player.held = false
+	if player.hidden: player.force_leave_hide()
+	if is_instance_valid(player.camera): player.camera.current = not match_net.local_is_locust()
+	if is_instance_valid(watch_camera): watch_camera.current = false
+	if is_instance_valid(watch_rig):
+		watch_rig.queue_free()
+		watch_rig = null
+		watch_camera = null
+		watch_arm = null
+	match_net.watching = 0
+	clear_screen_cues()
 
 ## The title room is shown only on the main menu; any other state gets the
 ## hotel's light back and, outside the opening scene, the player's camera.
@@ -1268,6 +1340,11 @@ func host_gate(delta: float) -> void:
 		session.goal["kind"] = "televisions"
 		session.goal["done"] = done
 		session.goal["needed"] = needed
+		# With one set left to light, the floor loses its power for good and
+		# the creature hunts without tiring.
+		if done >= needed - 1 and not session.goal.get("blackout", false):
+			session.goal["blackout"] = true
+			session.changed.emit()
 		session.update_goal(delta, done >= needed)
 	else: session.update_goal(delta, session.can_depart())
 	if not session.more_stages(): return

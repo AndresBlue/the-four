@@ -212,6 +212,9 @@ func run() -> void:
 	session._process(1.3)
 	check("Victoria y eliminación de checkpoint completado", session.state == session.State.WON and session.checkpoint().is_empty())
 	await scene.start_floor(81)
+	# The first collapse of a floor is forgiven; the second ends it.
+	session.capture(1)
+	session._process(session.RESTART_WAIT + 0.1)
 	session.capture(1)
 	check("Muerte de prueba permite reintento", session.state == session.State.FAILED)
 	await scene.start_floor(81)
