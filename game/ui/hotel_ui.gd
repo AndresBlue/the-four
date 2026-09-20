@@ -390,7 +390,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			title(column, "CRÉDITOS", 64)
 			spacer(column, 18)
 			column.custom_minimum_size.x = 720
-			for block in [["THE LOCUST", "Modelo de Doumty."], ["ARQUITECTURA Y MOBILIARIO", "Arquitectura creada para The Four. Televisor, cama, sofá, lámpara de pared y monstera: modelos aportados por el usuario; autoría y licencias por verificar."], ["AUDIO", "Aportado por el usuario. Autoría y licencias por verificar."], ["DISTRIBUCIÓN", "Los permisos de los assets siguen pendientes."]]:
+			for block in [["THE LOCUST", "Modelo de Doumty."], ["ARQUITECTURA Y MOBILIARIO", "Arquitectura creada para The Four. Televisor, cama, sofá, lámpara de pared y monstera: modelos aportados por el usuario; autoría y licencias por verificar."], ["AUDIO", "Aportado por el usuario. Autoría y licencias por verificar."], ["MOTOR", "Godot Engine 4.7, © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT."], ["DISTRIBUCIÓN", "Los permisos de los assets siguen pendientes."]]:
 				label(column, block[0], 18).add_theme_color_override("font_color", STYLE.AMBER)
 				paragraph(column, block[1], 18, 700)
 				spacer(column, 6)

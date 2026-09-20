@@ -18,6 +18,11 @@ config/name="THE FOUR — Hotel"
 run/main_scene="res://game/app/hotel.tscn"
 config/project_settings_override="user://renderer.cfg"
 config/features=PackedStringArray("4.7", "Forward Plus")
+; No engine splash: the game opens on its own title screen. Godot's licence
+; (MIT) does not ask for it, only that its notice travels with the game, and
+; that is in the credits screen (hotel_ui.gd).
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.02, 0.02, 0.017, 1)
 
 [audio]
 
