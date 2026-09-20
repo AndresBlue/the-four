@@ -27,6 +27,10 @@ The Locust usa en todo el juego un aspecto basado en la imagen de referencia `as
 
 ## Supervivencia, refugio y progreso
 
+**Un piso son tres etapas encadenadas.** Cada una se cierra con su propia condición y da paso a la siguiente; solo la tercera termina el piso. Entre una y otra hay un latido de 1,2 s: el personaje se queda quieto, sale el aviso de la etapa nueva y se sigue jugando en el mismo hotel, sin pantallas por el medio.
+
+La condición de la **etapa 1** es la de siempre: llegar al refugio con la cuota de supervivientes y mantener la interacción tres segundos. Las condiciones de las etapas 2 y 3 —encender televisores y abrir una cerradura con cuatro números— **todavía no están construidas**: mientras tanto usan la misma condición que la primera, para que el piso se pueda terminar. El refugio dejará de proteger a partir de la etapa 2 cuando exista la puerta con llave que las separa.
+
 El número de participantes se fija al comenzar el piso. Para avanzar deben sobrevivir `ceil(N / 2)`: uno de dos, dos de tres, dos de cuatro; uno en individual. Desconectarse no reduce el requisito.
 
 La salida conduce a un refugio protegido. Quien llega puede dibujar en la hoja o regresar al laberinto para ayudar; al regresar pierde la protección y deja de contar como refugiado. **No se abandona a compañeros vivos:** todos los supervivientes deben estar en el refugio y alcanzar el mínimo. Confirmar durante tres segundos inicia la transición; soltar la interacción o abandonar el refugio cancela el progreso.

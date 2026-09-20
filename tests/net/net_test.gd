@@ -109,9 +109,15 @@ func host() -> void:
 	check("El superviviente invitado llega al refugio", await wait_for(func(): return level.point_in_refuge(match_net.bodies[alpha].global_position), 30.0))
 	await pause_for(0.5)
 	Input.action_press("interact")
-	var won: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 15.0)
+	# A floor is three stages now: the first hold closes one and the floor goes
+	# on, and only the last one ends it. Everyone is in the refuge, so holding
+	# through all three is what leaving looks like today.
+	var staged: bool = await wait_for(func(): return level.session.stage > 1, 20.0)
+	check("Cerrar una etapa en el refugio no termina el piso", staged and level.session.state != level.session.State.WON)
+	check("La etapa llega a los invitados", await wait_for(func(): return level.session.stage > 1, 5.0))
+	var won: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 40.0)
 	Input.action_release("interact")
-	check("Salen del piso juntos manteniendo en el refugio", won)
+	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.STAGES)
 	# Second floor, after everyone has seen the end: Bravo drops and comes back.
 	await pause_for(5.0)
 	check("Nueva partida desde el final", net.start_match(82))
@@ -172,6 +178,7 @@ func alpha_part() -> void:
 	check("Sale del armario", match_net.use_hide(hide, false))
 	await pause_for(0.5)
 	level.player.global_position = refuge_point(Vector3(-0.8, 0, 0))
+	check("Le llega el cambio de etapa del anfitrión", await wait_for(func(): return level.session.stage > 1, 40.0))
 	check("Ve terminar el piso con la salida", await wait_for(func(): return level.session.state == level.session.State.WON, 60.0))
 	check("Segundo piso", await wait_for(playing, 90.0))
 	check("La hoja empieza vacía en el piso nuevo", level.ui.sheet.log.is_empty())

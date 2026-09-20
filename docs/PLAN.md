@@ -42,8 +42,9 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 
 ### El piso de The Locust en tres etapas
 
-- [ ] **Tres etapas encadenadas**, cada una cerrada por una condición. Al cumplirla se desbloquea una puerta cerrada con llave que da paso a la etapa siguiente; ya no se termina en la habitación de refugio (decidir qué papel le queda al refugio).
-- [ ] **Etapa 1:** la condición de salida actual (llegar al refugio con la cuota de supervivientes y mantener), pero lo que abre es la puerta de la etapa 2.
+- [x] **Tres etapas encadenadas** en la sesión y en la red: `stage` y su objetivo viajan con el resto del estado (`push_session`), el latido de `State.TRANSITION` lleva de una etapa a la siguiente y solo la última termina el piso. Protocolo subido a `the-four-net-3`. Comprobado en `tests/hotel/stages_test.gd` (11 comprobaciones) y en el cooperativo de `tests/net/net_test.gd`.
+- [x] **Etapa 1:** la condición de salida de siempre (refugio, cuota y tres segundos), que ahora cierra una etapa en vez del piso.
+- [ ] Falta que lo que abra sea una puerta cerrada con llave, y que el refugio deje de proteger a partir de ahí. Mientras tanto las etapas 2 y 3 usan la misma condición que la 1, para que el piso se pueda terminar.
 - [ ] **Etapa 2: encender televisores**, tantos como jugadores haya; se generan 2 teles más de las exigidas.
 - [ ] **The Locust usa las teles:** desde una tele encendida puede teletransportarse a otra tele encendida con una interfaz propia. Esa interfaz es un «mapa» que solo muestra la posición relativa entre las teles, coherente con la distribución real, sin salas, paredes ni números.
 - [ ] **Etapa 3:** además de las teles, encontrar **4 números** para abrir una cerradura de código. Se esconden en cajones o libreros de las habitaciones.

@@ -5,6 +5,16 @@ enum State { MENU, LOADING, PLAYING, PAUSED, TRANSITION, WON, FAILED, CUTSCENE }
 enum Life { EXPLORING, REFUGE, DEAD }
 const GENERATOR_VERSION := preload("res://game/world/generation/floor_definition.gd").VERSION
 var state := State.MENU
+## A floor is three chained stages. Each one is closed by its own condition and
+## opens the way to the next; only the last one ends the floor. The condition
+## of stage 1 is the refuge as it always was; the other two get theirs as they
+## are built, and until then they use the same one, so a floor can always be
+## finished.
+const STAGES := 3
+var stage := 1
+## What the stage in hand needs and how far along it is, for the interface and
+## for the other machines: {"kind": String, "done": int, "needed": int}.
+var goal := {"kind": "refuge", "done": 0, "needed": 1}
 var participants := {1: Life.EXPLORING}
 var roster_count := 1
 var run_seed := 0
@@ -34,6 +44,8 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	elapsed = 0
 	transition_time = 0
 	message = ""
+	stage = 1
+	goal = {"kind": "refuge", "done": 0, "needed": 1}
 	if not online: write_checkpoint()
 	set_state(State.PLAYING)
 
@@ -54,15 +66,26 @@ func can_depart() -> bool:
 		if life == Life.REFUGE: alive += 1
 	return alive >= minimum_survivors()
 
+## The refuge closes a stage only while that is the stage's condition.
+func refuge_stage() -> bool: return true
+
 func hold_exit(delta: float, held: bool) -> void:
-	if state != State.PLAYING: return
+	if state != State.PLAYING or not refuge_stage(): return
 	if not held or not can_depart():
 		exit_progress = 0
 		return
 	exit_progress += delta
-	if exit_progress >= 3:
-		transition_time = 0
-		set_state(State.TRANSITION)
+	if exit_progress >= 3: finish_stage()
+
+## The condition of the stage in hand is met (the authority decides). The beat
+## of State.TRANSITION carries either into the next stage or out of the floor.
+func finish_stage() -> void:
+	if state != State.PLAYING: return
+	transition_time = 0
+	set_state(State.TRANSITION)
+
+## True while the floor goes on: the last stage is the one that ends it.
+func more_stages() -> bool: return stage < STAGES
 
 func capture(id: int) -> bool:
 	if state != State.PLAYING or not participants.has(id) or participants[id] != Life.EXPLORING: return false
@@ -131,5 +154,11 @@ func _process(delta: float) -> void:
 	if state == State.TRANSITION:
 		transition_time += delta
 		if transition_time >= 1.2:
+			if more_stages():
+				stage += 1
+				exit_progress = 0
+				goal = {"kind": "refuge", "done": 0, "needed": 1}
+				set_state(State.PLAYING)
+				return
 			if FileAccess.file_exists(checkpoint_path) and not online: DirAccess.remove_absolute(checkpoint_path)
 			set_state(State.WON)

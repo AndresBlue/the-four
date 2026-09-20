@@ -170,6 +170,13 @@ func run() -> void:
 	session.hold_exit(3.1, true)
 	check("Salida libre sin objetos", session.state == session.State.TRANSITION)
 	session._process(1.3)
+	check("Cerrar una etapa deja el piso en marcha", session.state == session.State.PLAYING and session.stage == 2)
+	# Through to the last one, which is the only one that ends the floor.
+	while session.more_stages():
+		session.hold_exit(3.1, true)
+		session._process(1.3)
+	session.hold_exit(3.1, true)
+	session._process(1.3)
 	check("Victoria y eliminación de checkpoint completado", session.state == session.State.WON and session.checkpoint().is_empty())
 	await scene.start_floor(81)
 	session.capture(1)

@@ -238,12 +238,15 @@ func locust_state(data: Array) -> void:
 func push_session() -> void:
 	if not net.is_host or not in_match(): return
 	var session = level.session
-	session_state.rpc(session.state, session.participants, session.exit_progress, session.elapsed, session.message)
+	session_state.rpc(session.state, session.participants, session.exit_progress, session.elapsed, session.message, session.stage, session.goal)
 
 @rpc("authority", "call_remote", "reliable")
-func session_state(state: int, participants: Dictionary, progress: float, elapsed: float, message: String) -> void:
+func session_state(state: int, participants: Dictionary, progress: float, elapsed: float, message: String, stage: int, goal: Dictionary) -> void:
 	var session = level.session
 	if not in_match() or session.state in [session.State.LOADING, session.State.MENU] and state != session.State.PLAYING: return
+	var stage_changed: bool = stage != session.stage
+	session.stage = stage
+	session.goal = goal
 	var lives := {}
 	for seat in participants: lives[int(seat)] = participants[seat]
 	var deaths_changed: bool = lives != session.participants
@@ -252,7 +255,7 @@ func session_state(state: int, participants: Dictionary, progress: float, elapse
 	session.elapsed = elapsed
 	session.message = message
 	if state != session.state: session.set_state(state)
-	elif deaths_changed: session.changed.emit()
+	elif deaths_changed or stage_changed: session.changed.emit()
 
 # --- Doors -----------------------------------------------------------------------
 

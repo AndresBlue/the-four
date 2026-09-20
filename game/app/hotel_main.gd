@@ -546,7 +546,15 @@ func on_state() -> void:
 				ui.menu("main", not saved.is_empty(), save_error if not save_error.is_empty() else session.message)
 		session.State.PAUSED: ui.menu("pause")
 		session.State.LOADING: ui.menu("loading")
-		session.State.TRANSITION: ui.menu("transition")
+		session.State.TRANSITION:
+			# Between stages the floor goes on: a held beat and a notice, not
+			# the end-of-floor screen. Only the last stage brings that.
+			if session.more_stages():
+				ui.overlay.hide()
+				ui.settings_open = false
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+				ui.flash("ETAPA %d" % (session.stage + 1), 3.0)
+			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
 			if match_net.in_match():
