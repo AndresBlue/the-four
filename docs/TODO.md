@@ -18,9 +18,13 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [ ] **Aviso a la criatura al cambiar de etapa:** una señal simbólica que reconozca (sobre todo en versus) y, en su visión de partículas, el camino marcado hasta la puerta de la nueva etapa, para que no pierda tiempo en una etapa ya vacía.
 - [ ] **En red:** el anfitrión decide y sincroniza todo lo anterior (teles, números, cerradura, puertas con llave, apagón, revivir), con pruebas en `verify.ps1` para cooperativo y versus.
 
+
+
 ### Mapa y ritmo
 
 - [ ] **La generación es sólida técnicamente pero floja como juego.** Tanto novatos como expertos siguen la numeración de las puertas hacia arriba hasta la salida, sin estrategia. Hubo partidas terminadas en 1 min 30 s y a menudo sin cruzarse con la criatura. No es culpa de su IA, que está equilibrada (casi un poco injusta, y está bien), sino de que los recorridos nunca se cruzan. Hace falta que la numeración no delate la dirección, que los objetivos de las tres etapas obliguen a recorrer el piso y a atravesar el territorio de la criatura, y medirlo con partidas humanas (ver también el pendiente de P1 sobre la duración).
+
+
 
 ### The Locust
 
@@ -32,17 +36,26 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
   3. La mata enterrándole el brazo en la cara.
   4. Estática como la de la escena de entrada.
   5. Transición a la pantalla de SEÑAL PERDIDA.
-
   Sustituye la ejecución actual (2,9 s y tres estocadas) y resuelve el pendiente de P4b sobre su animación.
+
+
 
 ### Supervivientes
 
 - [ ] **Cordura (medidor interno de oscuridad):** baja con el tiempo pasado a oscuras (armarios, salas apagadas). La linterna encendida no la detiene: solo hace que baje más despacio. También baja de golpe al ver a la criatura. Se recupera en salas iluminadas. Con la cordura baja, alucinaciones sonoras alrededor del jugador, de modo que la criatura parezca venir de direcciones contradictorias y no se distinga bien de dónde viene. Encajarla con el aura (`dread_aura.gd`) y la escucha binaural, y decidir cuánto se permite engañar.
 - [ ] **Revisión completa de las animaciones con esqueleto:** hoy son malísimas o no existen. Caminar, correr, saltar, agacharse quieto y moverse agachado tienen que verse naturales y realistas, con detalles como quedarse en cuclillas apoyando una mano en el suelo y levantarla al avanzar agachado. Aplica a todos los movimientos, al propio cuerpo y a los compañeros en red.
 
+
+
+### Empaquetado
+
+- [ ] **El ejecutable pesa ~1 GB.** El paquete lleva a la vez los archivos de origen (imágenes, modelos) y su copia ya importada, y las texturas de los personajes son de 4K. Bajarlo sin romper nada: comprobar qué carga el juego por ruta (`avatar_visual.gd` abre `model.fbx` en marcha), excluir originales o reducir tamaños de textura, y verificar el resultado con una partida real desde el ejecutable. `evidence/`, `models/`, `sfx/` y `exports/` ya se ignoran con `.gdignore` (eran otros 180 MB de importaciones inútiles) y los `.zip` de origen se excluyen en `export_presets.cfg`.
+
 ### Cierre
 
 - [ ] **Partidas de prueba con amigos** (individual, cooperativo y versus) midiendo duración, encuentros con la criatura y comprensión de las etapas antes de dar por cerrado el Early Access.
+
+
 
 ## P1 — Niveles y base de presentación
 
@@ -67,6 +80,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [ ] Ajustar tamaño y referencias a partir de esas partidas; meta de 25–40 min todavía no validada.
 - [ ] **Individual demasiado corto y tranquilo (pruebas con amigos, septiembre de 2026).** La mayoría encontró la salida de forma consistente y casi sin tener que huir de la criatura: desde 1 min 30 s, con una media de 5 a 8 min, muy lejos de la meta de 25–40 min. Hay que revisar a la vez lo fácil que es orientarse hasta la salida (tamaño del piso, referencias, colocación de la salida) y la presión de The Locust (cuánto patrulla cerca, lo pronto que encuentra al jugador, eventos del director), y volver a medir con partidas humanas. Se aborda en P0 (etapas, y Mapa y ritmo).
 
+
+
 ## P2 — Atmósfera analógica
 
 - [x] Catalogar 33 archivos de sfx y conservar originales; preparar copias de trabajo.
@@ -78,7 +93,6 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Reverberación según la sala del oyente, zumbido de fluorescentes.
 - [ ] Escucha crítica y balance humano de las nuevas asignaciones y del aura; eventos ambientales en salones.
 - [ ] Perfiles sonoros distintos para las otras tres criaturas al incorporarlas.
-
 
 - [x] Inventario técnico de los cinco audios y conservación de originales.
 - [x] Ambiente inicial, mezcla, bucle y control de volumen.
@@ -108,6 +122,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Presets gráficos Bajo, Medio, Alto y Ultra desde una sola tabla (`graphics_presets.gd`), opción de renderizador (Forward+ o Compatibilidad) y Bajo en el primer arranque con gráfica integrada. Medidos a 1080p en el PC de desarrollo: GPU caminando 0,74 / 2,35 / 4,92 / 6,87 ms. Ver PERFORMANCE.md, sección 6.
 - [ ] Probar los presets en partida (TAA de Medio en movimiento, penumbras de Ultra, eco de Bajo y halo de Ultra) y medir Bajo, en Forward+ y en Compatibilidad, en un PC con gráfica integrada.
 
+
+
 ## P3 — Cooperativo y hoja paranormal
 
 - [x] Separación de estado global/individual y regla matemática de supervivientes en sesión local.
@@ -130,10 +146,12 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Chillido útil: revela supervivientes cercanos unos segundos y da caza libre; los demás lo oyen desde su propia copia de la criatura.
 - [x] Caza de The Locust más larga y con recuperación rápida: escapar corriendo no es viable.
 - [x] Pasos de los compañeros más bajos y ruta de sonido calculada desde la cámara que escucha.
-- [ ] Evidencias de sesiones reales de 2, 3, 4 y 5 jugadores en LAN y por Internet.
-- [ ] Balance humano del ritual del armario, la ejecución y el chillido.
-- [ ] Balance humano del versus (velocidades, resistencia de caza, alcance de la estocada, contactos de sonido).
-- [ ] Revisar en partida el volumen de los pasos de los compañeros.
+- [x] Evidencias de sesiones reales de 2, 3, 4 y 5 jugadores en LAN y por Internet.
+- [x] Balance humano del ritual del armario, la ejecución y el chillido.
+- [x] Balance humano del versus (velocidades, resistencia de caza, alcance de la estocada, contactos de sonido).
+- [x] Revisar en partida el volumen de los pasos de los compañeros.
+
+
 
 ## P4 — Escondite y The Locust
 
@@ -145,7 +163,6 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Verificado dentro y fuera: puertas cerradas ocultan, entreabiertas delatan, entrada observada o ruido cercano hacen que la criatura abra y ataque.
 - [ ] Visibilidad del armario entre clientes cuando exista red.
 - [x] Armarios solo en habitaciones (1–2 por módulo, ninguno en pasillos ni salones) y puertas de hotel más estrechas (vano 1,3 m).
-
 
 - [x] Agacharse, resistencia, ruido de pasos/saltos/puertas y escondites interactivos en individual.
 - [x] Percepción con paredes/puertas, investigación, persecución, búsqueda y memoria de entrada observada, en individual.
@@ -183,6 +200,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [x] Refugio bloquea percepción/captura; reintento restablece amenaza, postura, resistencia y escondite.
 - [ ] Validar acompañamiento y regreso en cooperativo cuando exista red; evaluar comprensión de muertes con jugadores.
 
+
+
 ## P4b — Visión de The Locust — implementada (pendiente de ajuste humano)
 
 - [x] Revisión completa de la vista del jugador que lleva a The Locust: imagen monocroma con su propio grano y contraste, reconstruida de pulsos acústicos sobre la profundidad real.
@@ -194,6 +213,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [ ] La animación de la ejecución vista desde el cazador todavía es floja: es lo único que le dice que atrapó a alguien (ya no hay aviso en texto). Se sustituye por la nueva ejecución de P0.
 - [ ] Juzgar en partida el peso de cada tipo de ruido en la vista (paso, carrera, puerta, armario con apagado rápido) con `./tools/godot.ps1 rehearsal`.
 
+
+
 ## P5 — Campaña
 
 - [ ] Sunman en atrios y galerías; cobertura y barridos anunciados.
@@ -202,6 +223,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [ ] Tres conjuntos procedurales adicionales y 1.000 semillas validadas por conjunto.
 - [ ] Checkpoints entre cuatro pisos, reaparición de fallecidos y victoria final.
 - [ ] Campañas completas de dos y cuatro jugadores sin bloqueos.
+
+
 
 ## P6 — Consolidación
 
@@ -214,6 +237,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 - [ ] Desafíos opcionales sin condiciones ocultas de derrota.
 - [ ] Balance basado en datos locales; objetivo 60 FPS/1080p y perfiles reducidos.
 - [ ] Permisos de criaturas/modelos/canción, créditos y exportaciones sin editor.
+
+
 
 ## Historial
 
