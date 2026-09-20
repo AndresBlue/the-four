@@ -68,12 +68,12 @@ func configure(index: int, local_view: bool) -> void:
 	initialized = true
 	update_pose(Vector3.ZERO, false, 0)
 
-## The red motes of a mind that has gone: a few embers coming off the body,
-## drawn on the layer only the creature's camera renders, at a size that does
-## not shrink with distance and through whatever stands in the way. It is what
-## the creature senses of somebody who cannot think any more, and it is why
-## nobody waits a floor out inside a wardrobe.
-const MOTE_LAYER := 4
+## The red motes of a mind that has gone: a few embers coming off the body.
+## These are the ones in the room -- a teammate standing next to you can see
+## them, and so can you, on your own hands. What the creature gets is not
+## this: it is the red grains its own reading puts over you from anywhere on
+## the floor (echo_view.bloom_motes), and that is why nobody waits a floor out
+## inside a wardrobe.
 var motes: GPUParticles3D
 
 func set_burnt(on: bool) -> void:
@@ -94,10 +94,6 @@ func build_motes() -> GPUParticles3D:
 	ember.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	ember.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	ember.billboard_keep_scale = true
-	# Through the hotel and the same size however far off it is: the creature
-	# is not looking at them, it is sensing them.
-	ember.no_depth_test = true
-	ember.fixed_size = true
 	ember.disable_receive_shadows = true
 	ember.render_priority = 126
 	var quad := QuadMesh.new()
@@ -120,7 +116,6 @@ func build_motes() -> GPUParticles3D:
 	dots.draw_pass_1 = quad
 	dots.process_material = drift
 	dots.position = Vector3(0, 1.1, 0)
-	dots.layers = MOTE_LAYER
 	dots.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Stamped anywhere in the floor: never culled with the body's own box.
 	dots.visibility_aabb = AABB(Vector3(-3, -3, -3), Vector3(6, 6, 6))

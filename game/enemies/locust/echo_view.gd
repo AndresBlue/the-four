@@ -208,6 +208,14 @@ var finds: MultiMeshInstance3D
 var frames: MultiMeshInstance3D
 var frame_material: ShaderMaterial
 var marks: MultiMeshInstance3D
+## The motes: a handful of red grains over everybody whose mind has gone out,
+## written again on every click so they never fade while it lasts.
+const MOTE_GRAINS := 10
+const MOTE_BODIES := 5
+const MOTE_SPREAD := 0.38
+var motes: MultiMeshInstance3D
+var mote_material: ShaderMaterial
+var mote_at := 0
 var wall_material: ShaderMaterial
 var body_material: ShaderMaterial
 var puff_material: ShaderMaterial
@@ -347,11 +355,25 @@ func build_clouds() -> void:
 	finds = make_cloud("EchoFinds", 125, 0.8)
 	bodies = make_cloud("EchoBodies", 126, 0.0)
 	marks = make_cloud("EchoLandmarks", 121, 0.55)
+	# The motes of a burnt-out mind. They are not a reading: they arrive
+	# whatever is in the way and however far off they are, which is the whole
+	# point of them, so the cloud is fully "through" and its grains keep the
+	# smallest size the shader allows instead of shrinking away with distance.
+	motes = make_cloud("EchoMotes", 127, 1.0)
 	wall_material = walls.material_override as ShaderMaterial
 	body_material = bodies.material_override as ShaderMaterial
 	puff_material = puffs.material_override as ShaderMaterial
 	find_material = finds.material_override as ShaderMaterial
 	mark_material = marks.material_override as ShaderMaterial
+	mote_material = motes.material_override as ShaderMaterial
+	motes.multimesh.instance_count = MOTE_GRAINS * MOTE_BODIES
+	mote_material.set_shader_parameter("tone_cold", Color(1.5, 0.05, 0.03))
+	mote_material.set_shader_parameter("tone_hot", Color(1.6, 0.22, 0.12))
+	mote_material.set_shader_parameter("residue", 1.0)
+	mote_material.set_shader_parameter("flare", 2.2)
+	# Lifted well past the tone of the rest of the image, so a handful of
+	# grains at the far end of a wing still reads as something red.
+	mote_material.set_shader_parameter("gain", 2.6)
 	frame_material = frames.material_override as ShaderMaterial
 	# Strong reflectors keep a body of light between fronts and come back warm
 	# white, so a doorway or a wardrobe stands out from the room around it.
@@ -656,6 +678,7 @@ func click(hunting: bool) -> void:
 		pending_at = clock
 	if clicks % BODY_EVERY == 0: stamp_bodies(from, reach)
 	bloom_contacts()
+	bloom_motes()
 
 ## Directions for one click: a Fibonacci sphere, turned by a fresh angle every
 ## time so successive clicks fill in each other's gaps, with most of the rays
@@ -757,6 +780,9 @@ func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float,
 	elif cloud == finds:
 		index = find_at
 		find_at = (find_at + 1) % multi.instance_count
+	elif cloud == motes:
+		index = mote_at
+		mote_at = (mote_at + 1) % multi.instance_count
 	elif cloud == frames:
 		index = frame_at
 		frame_at = (frame_at + 1) % multi.instance_count
@@ -893,6 +919,15 @@ func bloom_hums() -> void:
 	for hum in level.world_audio.hums:
 		if not is_instance_valid(hum) or not hum.playing: continue
 		scatter(puffs, hum.global_position, 0.5, maxi(4, int(budget.puff_points) / 5), 0.0, HUM_LEVEL, clock)
+
+## Whoever has burnt out, wherever they are: a few grains over each of them,
+## with no sight check and no distance to it. This is the one thing the
+## creature is given for free, and it is given because somebody stopped being
+## able to think -- which is what standing in the dark long enough does.
+func bloom_motes() -> void:
+	if motes.multimesh.instance_count == 0 or not is_instance_valid(level): return
+	for point in level.burnt_survivors():
+		scatter(motes, point + Vector3(0, 1.15, 0), MOTE_SPREAD, MOTE_GRAINS, 1.0, 1.0, clock)
 
 ## What the shriek came back with: a dense cloud over each survivor it found,
 ## which stays for seconds after the cry itself has died away. This is what the

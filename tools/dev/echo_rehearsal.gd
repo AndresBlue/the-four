@@ -83,7 +83,7 @@ func spawn() -> void:
 		# and hunts them and the shriek can find them.
 		level.match_net.bodies[seat] = body
 		level.session.participants[seat] = level.session.Life.EXPLORING
-		var walker := {"body": body, "seat": seat, "path": PackedVector3Array(), "index": 1, "gait": GAITS[0], "distance": 0.0, "hide_clock": rng.randf_range(HIDE_WAIT.x * 0.5, HIDE_WAIT.y), "hidden_left": 0.0, "bound_for": null, "dead_left": 0.0, "velocity": Vector3.ZERO}
+		var walker := {"body": body, "seat": seat, "path": PackedVector3Array(), "index": 1, "gait": GAITS[0], "distance": 0.0, "hide_clock": rng.randf_range(HIDE_WAIT.x * 0.5, HIDE_WAIT.y), "hidden_left": 0.0, "bound_for": null, "dead_left": 0.0, "velocity": Vector3.ZERO, "burnt_out": false}
 		retarget(walker)
 		walkers.append(walker)
 	# One alive is enough: striking them down is part of the rehearsal.
@@ -234,7 +234,10 @@ func push_states() -> void:
 		var body = walker.body
 		var index := -1
 		if body.hidden and is_instance_valid(body.hiding_place): index = level.hotel.hides.find(body.hiding_place)
-		var flags := 1 if walker.gait.crouched else 0
+		# Bit 4 is a mind that has burnt out: the state each machine sends
+		# carries it, so a body only keeps its motes while its own machine
+		# says so -- here, while the rehearsal says so.
+		var flags := (1 if walker.gait.crouched else 0) | (4 if walker.burnt_out else 0)
 		body.push_state([body.global_position, body.rotation.y, 0.0, walker.velocity, flags, index, 0.0, 0.0])
 
 func shot(name: String) -> void:
@@ -323,7 +326,7 @@ func run() -> void:
 		return
 	var clock := 0.0
 	var next_shot := 0
-	var when := [4.0, 9.0, 14.0, 19.0, 24.0]
+	var when := [4.0, 9.0, 14.0, 19.0, 24.0, 29.0]
 	while true:
 		await physics_frame
 		var delta := 1.0 / 60.0
@@ -342,11 +345,23 @@ func run() -> void:
 				# The wardrobe one: look at whoever is hidden, if anybody is.
 				for walker in walkers:
 					if walker.hidden_left > 0.0: target = walker.body
-			approach(target, [7.0, 11.0, 4.5, 9.0, 3.2][next_shot])
+			approach(target, [7.0, 11.0, 4.5, 9.0, 3.2, 6.0][next_shot])
+			if next_shot == 5:
+				# A mind that has gone out, seen from the far end of the wing:
+				# the motes come through the hotel and do not shrink, so the
+				# body is put right down the creature's line of sight and far
+				# enough away that nothing else of it reads.
+				for walker in walkers: walker.burnt_out = walker.body == target
+				var map: RID = level.get_world_3d().navigation_map
+				var down_the_line: Vector3 = level.locust.global_position - level.locust.global_basis.z * 34.0
+				target.place(NavigationServer3D.map_get_closest_point(map, down_the_line) + Vector3(0, 0.1, 0), 0.0)
+				# The states are sent from the loop, and the loop is not
+				# running while this shot is being set up.
+				push_states()
 			if next_shot == 3: level.locust.driver.shriek()
 			# Two or three clicks so the reading has swept it.
 			for i in 18: await physics_frame
-			await shot(["walking", "noises", "chase", "shriek", "wardrobe"][next_shot])
+			await shot(["walking", "noises", "chase", "shriek", "wardrobe", "burnt"][next_shot])
 			next_shot += 1
 		elif next_shot >= when.size():
 			break

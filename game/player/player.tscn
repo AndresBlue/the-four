@@ -19,7 +19,7 @@ shape = SubResource("Capsule")
 
 [node name="Camera" type="Camera3D" parent="."]
 position = Vector3(0, 1.64, 0)
-cull_mask = 1048569
+cull_mask = 1048573
 fov = 78.0
 far = 95.0
 

@@ -4,7 +4,6 @@ extends SceneTree
 ## body with motes the creature senses from anywhere. This drives it on a real
 ## floor and checks what each part of it actually does.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const AVATAR := preload("res://game/player/avatars/avatar_visual.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -110,8 +109,7 @@ func run() -> void:
 	player.sanity = 0.0
 	await frames(4)
 	check("A cero, el cuerpo queda marcado", player.burnt and is_instance_valid(player.avatar.motes) and player.avatar.motes.emitting)
-	check("Las motas se ven a cualquier distancia y a través de todo", player.avatar.motes.draw_pass_1.material.fixed_size and player.avatar.motes.draw_pass_1.material.no_depth_test)
-	check("Y solo las ve la criatura", player.avatar.motes.layers == AVATAR.MOTE_LAYER and player.camera.cull_mask & AVATAR.MOTE_LAYER == 0)
+	check("Las motas del cuerpo son una brasa roja en la sala", player.avatar.motes.draw_pass_1.material.emission.r > 0.9 and player.avatar.motes.draw_pass_1.material.emission.g < 0.2)
 	check("La marca aparece en lo que el nivel le cuenta a la criatura", level.burnt_survivors().size() == 1)
 	# It is told where they are and it goes, however far away it is.
 	level.locust.global_position = FLOOR.position_of(room_far_from(player.global_position)) + Vector3(0, 0.04, 0)

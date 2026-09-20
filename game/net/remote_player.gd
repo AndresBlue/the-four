@@ -60,9 +60,7 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	camera.position.y = 1.64
 	camera.fov = 78.0
 	camera.far = 95.0
-	# Neither the first-person body (layer 2) nor the motes a burnt-out mind
-	# gives off (layer 3), which only the creature senses.
-	camera.cull_mask = 1048569
+	camera.cull_mask = 1048573
 	add_child(camera)
 	torch = SpotLight3D.new()
 	torch.name = "Flashlight"

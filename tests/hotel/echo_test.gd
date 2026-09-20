@@ -50,11 +50,9 @@ func run() -> void:
 	var creature = level.locust
 	var echo = creature.driver.echo
 	check("El asiento del cazador crea la vista acústica", echo != null and echo.enabled)
-	# The motes a burnt-out mind gives off are drawn for the creature and for
-	# nobody else, and its camera reaches the whole floor so "from anywhere"
-	# is true and not clipped.
-	var avatar_script := preload("res://game/player/avatars/avatar_visual.gd")
-	check("Solo la criatura ve las motas, y desde cualquier parte del piso", creature.camera.cull_mask & avatar_script.MOTE_LAYER != 0 and creature.camera.far > 200.0)
+	# The motes of a burnt-out mind belong to the reading: a cloud of its own,
+	# red, that goes through walls and is not gated on sight or distance.
+	check("La lectura tiene una nube propia para las motas, roja y a través de todo", echo.motes != null and echo.motes.multimesh.instance_count > 0 and echo.mote_material.get_shader_parameter("tone_cold").r > 1.0 and is_equal_approx(echo.mote_material.get_shader_parameter("through"), 1.0))
 	check("La vista trae su propio azar y no el del mapa", echo.rng != null and echo.rng.seed != 0)
 	# The order the five readings stack in. The hotel's own transparents (the
 	# monstera leaves, the dust) all sit at 0, so the whole echo draws above

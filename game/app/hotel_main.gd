@@ -1446,7 +1446,7 @@ func watch_over(body: Node3D) -> void:
 		watch_camera.name = "WatchCamera"
 		watch_camera.fov = LOOK.fov_for(get_viewport(), 76.0)
 		watch_camera.far = 95.0
-		watch_camera.cull_mask = 1048569
+		watch_camera.cull_mask = 1048573
 		watch_arm.add_child(watch_camera)
 	watch_rig.global_position = body.global_position + Vector3(0, 1.5, 0)
 	watch_rig.rotation.y = body.rotation.y
