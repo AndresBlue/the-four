@@ -1,7 +1,7 @@
 """Builds the synthesized sounds of the pacing director's events and of an
 execution in assets/audio/events/ (16-bit mono WAV): something heavy falling
-over in a nearby room, knuckles rapping on a door, the blows of a blade going
-through a body and the body dropping afterwards.
+over in a nearby room and knuckles rapping on a door. The execution's own
+sounds are recordings now, prepared by prepare_execution_sfx.py.
 
 Deterministic (fixed seeds): re-running reproduces the same files.
 
@@ -44,31 +44,7 @@ def raps(index):
     base.write(f"door_raps_{index + 1}.wav", signal)
 
 
-def stab(index):
-    """A blade driven into a body: the hit, a wet tear and a short ring."""
-    t = base.seconds(1.1)
-    hit = base.partial(t, 70 + index * 8, 26, 0.0, 1.0) + base.partial(t, 150 + index * 20, 40, 0.0, 0.5)
-    # Wet burst that tears off instead of cracking like wood.
-    tear = base.band(rng.standard_normal(len(t)), 240, 2600) * base.decay(t, 22 + index * 4) * 0.75
-    tear *= 0.7 + 0.3 * np.sin(2 * np.pi * (26 + index * 7) * t)
-    ring = base.partial(t, 1850 + index * 240, 30, 0.01, 0.12)
-    drip = base.band(rng.standard_normal(len(t)), 500, 4200) * np.where(t > 0.18, np.exp(-(t - 0.18) * 7.0), 0) * 0.2
-    base.write(f"execution_stab_{index + 1}.wav", hit + tear + ring + drip, 0.8)
-
-
-def body_drop():
-    """The body let go: it lands and settles."""
-    t = base.seconds(1.6)
-    land = base.partial(t, 52, 14, 0.0, 1.0) + base.partial(t, 110, 26, 0.0, 0.45)
-    cloth = base.band(rng.standard_normal(len(t)), 300, 3200) * base.decay(t, 16) * 0.5
-    settle = base.partial(t, 64, 22, 0.22, 0.35) + base.band(rng.standard_normal(len(t)), 250, 2000) * base.decay(t, 20, 0.22) * 0.25
-    base.write("execution_drop.wav", land + cloth + settle, 0.82)
-
-
 if __name__ == "__main__":
     for i in range(2):
         fall(i)
         raps(i)
-    for i in range(3):
-        stab(i)
-    body_drop()

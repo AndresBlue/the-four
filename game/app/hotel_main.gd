@@ -81,7 +81,7 @@ var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
 const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
 const DEAD_CHANNEL := "res://assets/audio/events/execution_static.ogg"
-const BODY_DROP := "res://assets/audio/events/execution_drop.wav"
+const BODY_DROP := "res://assets/audio/events/execution_body.wav"
 ## The beats of an execution, in seconds from the grab. The scream is at zero,
 ## because that is the point of it; then it holds you and looks at you; then
 ## the arm comes for the lens, covers it and lands; and the picture goes.

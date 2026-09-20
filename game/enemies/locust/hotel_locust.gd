@@ -627,7 +627,10 @@ func _physics_process(delta: float) -> void:
 		lost_time += delta
 		sight_gap += delta
 	# Only a player it can currently see starts a chase; memory alone does not.
-	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT]:
+	# Busy modes are left out on purpose: holding a victim or pulling a
+	# wardrobe open, it used to re-alert on the very next frame -- it can see
+	# the person it is already killing -- and walk out of its own execution.
+	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE, Mode.WARDROBE]:
 		set_mode(Mode.ALERT)
 	elif visible_player and detection >= SUSPICION and mode in [Mode.PATROL, Mode.SEARCH]:
 		# Something moved: stop wandering and go look, before committing.

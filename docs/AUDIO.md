@@ -131,9 +131,9 @@ Los tiempos, contados desde el agarre:
 - **2,62 s — el brazo sale.** Empieza el silbido del golpe, cortado para que su impacto caiga 0,18 s después, que es justo lo que tarda el brazo en pasar de un punto a tapar la lente.
 - **2,8 s — el impacto**, con la pantalla ya negra.
 - **2,92 s — la estática.** El canal muerto arranca en los oídos de la víctima (bus Effects, −6 dB) y la imagen se va con él.
-- **3,1 s** cae el cuerpo (`execution_drop.wav`, síntesis propia).
+- **3,1 s** cae el cuerpo (`execution_body.wav`, la segunda toma de la misma grabación de impactos: más pesada y con más cola).
 
-`execution_stab_1..3.wav` (síntesis de `tools/audio/generate_event_sfx.py`) eran los tres golpes de la ejecución anterior; quedan sin usar.
+En la ejecución no queda nada sintetizado: los golpes y el cuerpo generados de la versión anterior (`execution_stab_1..3.wav`, `execution_drop.wav`) se han borrado, y `generate_event_sfx.py` ya no los produce.
 
 ## Pasos de los compañeros
 

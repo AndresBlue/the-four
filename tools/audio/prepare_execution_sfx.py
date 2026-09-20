@@ -3,11 +3,13 @@ originals in sfx/ into assets/audio/events/. The originals are never touched.
 
   execution_scream.wav  the grab      (Freesound 865842, EnclosureX_Studios, CC BY 4.0)
   execution_hit.wav     the blow      (Freesound 829590, Artninja, CC BY 4.0)
+  execution_body.wav    the body down (the same recording, its second take)
   execution_static.ogg  the dead tape (Freesound 624412, nlux, CC0)
 
-The impact recording holds three takes; only the first is used, cut so that the
-blow itself lands HIT_AT seconds in. That is the delay the arm has to travel
-from a dot to covering the lens, so picture and sound land together.
+The impact recording holds three takes. The first is the blow, cut so that the
+impact itself lands HIT_AT seconds in: that is the delay the arm has to travel
+from a dot to covering the lens, so picture and sound land together. The
+second, heavier and with a longer tail, is the body hitting the floor.
 
 Deterministic: re-running reproduces the same files.
 
@@ -70,22 +72,27 @@ def scream():
     write("execution_scream.wav", mono, peak=0.99)
 
 
-def hit():
-    data, rate = read(SOURCE / "hit/829590__artninja__custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025.wav")
-    mono = data.mean(axis=1)
-    envelope = np.abs(mono)
-    # The loudest sample of the first take is the blow itself.
-    first = mono[: int(1.2 * rate)]
-    landing = int(np.argmax(np.abs(first)))
-    start = max(0, landing - int(HIT_AT * rate))
-    end = min(len(mono), landing + int(HIT_TAIL * rate))
+def take(mono, rate, window, lead, tail):
+    """The loudest moment inside `window` seconds, with `lead` before it."""
+    span = mono[int(window[0] * rate):int(window[1] * rate)]
+    landing = int(window[0] * rate) + int(np.argmax(np.abs(span)))
+    start = max(0, landing - int(lead * rate))
+    end = min(len(mono), landing + int(tail * rate))
     clip = resample(mono[start:end], rate)
-    # A couple of milliseconds of fade at each end, so nothing clicks.
     edge = int(0.003 * RATE)
     clip[:edge] *= np.linspace(0.0, 1.0, edge)
     clip[-edge:] *= np.linspace(1.0, 0.0, edge)
-    print("impact at", round((landing - start) / rate, 3), "s into the clip;", round(float(envelope.max()), 3), "peak in the original")
-    write("execution_hit.wav", clip, peak=0.97)
+    return clip, (landing - start) / rate
+
+
+def hit():
+    data, rate = read(SOURCE / "hit/829590__artninja__custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025.wav")
+    mono = data.mean(axis=1)
+    blow, at = take(mono, rate, (0.0, 1.2), HIT_AT, HIT_TAIL)
+    print("impact at", round(at, 3), "s into the clip")
+    write("execution_hit.wav", blow, peak=0.97)
+    body, _ = take(mono, rate, (1.3, 2.6), 0.04, 0.95)
+    write("execution_body.wav", body, peak=0.9)
 
 
 def static():

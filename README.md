@@ -74,11 +74,12 @@ Desde PowerShell en la carpeta del proyecto:
 ./tools/godot.ps1 hotel-walkthrough
 ./tools/godot.ps1 locust -Seed 81
 ./tools/godot.ps1 rehearsal -Seed 81
+./tools/godot.ps1 execution -Seed 81
 ./tools/net_test.ps1 -Scenario coop
 ./tools/benchmarks/run_bench.ps1 -Label prueba
 ```
 
-`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, intro, visión de eco, bucle de partida, audio, audio espacial, regresión del prototipo histórico, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro.
+`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, intro, visión de eco, bucle de partida, audio, audio espacial, regresión del prototipo histórico, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro; `execution` monta la escena de la muerte —la criatura enfrente, te ve, gruñe, te persigue y te ejecuta— y escribe cada golpe en la consola con el segundo en que ocurre, volviéndola a montar cada vez que mueres.
 
 Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. Las regresiones de arquitectura usan `--no-enemy`; `survival-test` mantiene la IA real. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
 

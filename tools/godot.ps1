@@ -1,6 +1,8 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture','export')][string]$Mode = 'play',
     [int]$Seed = 81,
+    # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
+    [string]$Extra = '',
     [string]$GodotPath = $env:GODOT_PATH
 )
 $ErrorActionPreference = 'Stop'
@@ -15,7 +17,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','editor','gallery','compatibility','export','legacy')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','export','legacy')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -24,6 +26,7 @@ switch ($Mode) {
     'playtest' { $arguments += @('--', ('--playtest-seed=' + $Seed)) }
     'locust' { $arguments += @('--', '--locust', ('--playtest-seed=' + $Seed)) }
     'rehearsal' { $arguments += @('--script','res://tools/dev/echo_rehearsal.gd','--',('--rehearsal-seed=' + $Seed)) }
+    'execution' { $arguments += @('--script','res://tools/dev/execution_rehearsal.gd','--',('--rehearsal-seed=' + $Seed)) }
     'survival-test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/survival_test.gd','--','--test-profile','--automation') }
     'editor' { $arguments += '--editor' }
     'test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/hotel_test.gd','--','--test-profile','--automation','--no-enemy') }
@@ -51,6 +54,11 @@ switch ($Mode) {
         # under --headless. The window stays hidden (Start-Process below).
         $arguments += @('--export-release','Windows Desktop',(Join-Path $projectPath 'exports/windows/TheFour.exe'))
     }
+}
+# Flags for the script behind the mode, after everything it already passes.
+if ($Extra -and $Mode -ne 'export') {
+    if ($arguments -notcontains '--') { $arguments += '--' }
+    $arguments += ($Extra -split ' ' | Where-Object { $_ })
 }
 if ($Mode -eq 'export') {
     # The editor binary is a GUI program: wait so the command ends with the export.
