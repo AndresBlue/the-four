@@ -523,6 +523,10 @@ func on_state() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible else Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
+	if is_instance_valid(hotel) and not manifest.is_empty():
+		hotel.open_gates(session.stage)
+		if playing and session.stage > last_stage: follow_players(session.stage)
+	last_stage = session.stage
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
@@ -564,6 +568,25 @@ func on_state() -> void:
 		session.State.FAILED:
 			ui.elapsed = session.elapsed
 			ui.menu("online_failed" if match_net.in_match() else "failed")
+
+## The stage the floor was on when it was last looked at, to tell a change.
+var last_stage := 1
+
+## A stage has closed: the creature is sent through the gate after the players
+## instead of hunting a wing that nobody will come back to.
+func follow_players(stage: int) -> void:
+	if net.is_client() or not is_instance_valid(locust) or manifest.is_empty(): return
+	var gates: Array = manifest.get("gates", [])
+	if stage - 2 < 0 or stage - 2 >= gates.size(): return
+	var gate: Dictionary = gates[stage - 2]
+	var beyond := int(gate.get("beyond", -1))
+	if beyond < 0: return
+	if locust.mode in [locust.Mode.PATROL, locust.Mode.SEARCH]: locust.set_mode(locust.Mode.INVESTIGATE)
+	# After set_mode, which clears a guided route of its own.
+	locust.patrol_room = beyond
+	locust.destination = FLOOR.position_of(manifest.rooms[beyond])
+	locust.guided = true
+	locust.repath = 0
 
 ## The title room is shown only on the main menu; any other state gets the
 ## hotel's light back and, outside the opening scene, the player's camera.
@@ -751,9 +774,17 @@ func open_wardrobe(hide: Node3D) -> void:
 	if net.is_client(): return
 	match_net.begin_wardrobe_job(hide)
 
+## The refuge of the stage in hand: the room holding the door on. Each one
+## protects only while its stage lasts; once crossed it is a room like any
+## other.
+func refuge_room() -> int:
+	var refuges: Array = manifest.get("refuges", [])
+	if refuges.is_empty(): return int(manifest.exit)
+	return int(refuges[clampi(session.stage - 1, 0, refuges.size() - 1)])
+
 func point_in_refuge(point: Vector3) -> bool:
 	if manifest.is_empty(): return false
-	var room: Dictionary = manifest.rooms[manifest.exit]
+	var room: Dictionary = manifest.rooms[refuge_room()]
 	var center := FLOOR.position_of(room)
 	var span := FLOOR.size_of(room)
 	return absf(point.x - center.x) < span.x * 0.5 - 0.55 and absf(point.z - center.z) < span.y * 0.5 - 0.55 and point.y >= -0.1 and point.y < 2.0
@@ -762,11 +793,17 @@ func spawn_locust() -> void:
 	locust = LOCUST.instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
+	# As far into the first wing as that wing goes: the stage is played there
+	# and the creature has to start away from the door everyone comes in by.
 	var distances := GENERATOR.distance_map(manifest.adjacency, 0)
-	var chosen := 0
-	var target := int(distances.max() * 0.55)
+	var reach := 0
 	for room in manifest.rooms:
-		if room.id != manifest.exit and distances[room.id] >= target and distances[room.id] > 3:
+		if int(room.get("wing", 0)) == 0 and room.id != manifest.exit: reach = maxi(reach, int(distances[room.id]))
+	var chosen := 0
+	var target := int(reach * 0.75)
+	for room in manifest.rooms:
+		if int(room.get("wing", 0)) != 0 or room.id == manifest.exit: continue
+		if distances[room.id] >= target and distances[room.id] > 3:
 			chosen = room.id
 			break
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)

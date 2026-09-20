@@ -5,6 +5,8 @@ var materials := {}
 var batches := {}
 var room_nodes: Array[Node3D] = []
 var doors: Array = []
+## The doors that lead from one wing to the next, one per stage.
+var gates: Array = []
 ## Wardrobes in build order: the same index names the same wardrobe on every
 ## machine in an online match (doors likewise).
 var hides: Array = []
@@ -552,7 +554,14 @@ func build(data: Dictionary) -> void:
 			box(door, Vector3(half, 1.94, face * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
 		text(door, str(100 + int(a.id)), Vector3(half, 1.94, (LEAF_FACE + 0.005) * b_side), 0.0 if b_side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
 		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -(LEAF_FACE + 0.005) * b_side), PI if b_side > 0 else 0.0, 20, NUMBER_REACH, PLAQUE_INK)
-		if int(a.id + b.id) % 3 != 0: door.open_immediately()
+		# The door on to the next wing is the gate of its stage: shut, locked,
+		# and never open at the start.
+		var stage := gate_stage(data, int(a.id), int(b.id))
+		if stage > 0:
+			door.gate_stage = stage
+			door.locked = true
+			gates.append(door)
+		elif int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
 	flush()
 	build_navigation()
@@ -853,6 +862,23 @@ func blocker(frame: Transform3D, pos: Vector3, size: Vector2) -> void:
 		blockers.append(frame * (pos + Vector3(corner.x * half.x, corner.y * half.y, 0)))
 
 ## The room's occluder, from the quads its walls left in lockers.
+## The stage whose gate this pair of rooms holds, or 0 for a normal door.
+static func gate_stage(data: Dictionary, a: int, b: int) -> int:
+	for gate in data.get("gates", []):
+		var beyond := int(gate.get("beyond", -1))
+		if beyond < 0: continue
+		if (int(gate.room) == a and beyond == b) or (int(gate.room) == b and beyond == a): return int(gate.stage)
+	return 0
+
+## Closing a stage opens its gate for good; every machine works it out from the
+## stage itself, which is already replicated, so no door message is needed.
+func open_gates(stage: int) -> void:
+	for door in gates:
+		if not is_instance_valid(door): continue
+		var was: bool = door.locked
+		door.locked = door.gate_stage >= stage
+		if was and not door.locked and not door.opened: door.set_state(true)
+
 func build_occluder(node: Node3D) -> void:
 	if full_walls or blockers.is_empty(): return
 	var indices := PackedInt32Array()

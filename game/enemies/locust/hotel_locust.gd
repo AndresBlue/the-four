@@ -473,7 +473,11 @@ func set_mode(next: Mode) -> void:
 		if "match_net" in level and level.match_net != null: level.match_net.creature_call("warning", 0, 1.0)
 
 func choose_patrol() -> void:
-	var choices: Array = level.manifest.adjacency[patrol_room].filter(func(id): return id != level.manifest.exit)
+	# Never through a gate it cannot open, and never into the refuge that is
+	# protecting the survivors this stage: it would stand at a door and wait.
+	var wing: int = int(level.manifest.rooms[patrol_room].get("wing", 0))
+	var refuge: int = level.refuge_room()
+	var choices: Array = level.manifest.adjacency[patrol_room].filter(func(id): return id != refuge and int(level.manifest.rooms[id].get("wing", 0)) == wing)
 	if choices.is_empty(): return
 	patrol_room = choices[rng.randi_range(0, choices.size() - 1)]
 	destination = FLOOR.position_of(level.manifest.rooms[patrol_room])

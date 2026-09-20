@@ -8,6 +8,11 @@ signal swung(target: bool, slow: bool, forceful: bool)
 signal settled(opened: bool)
 var opened := false
 var moving := false
+## The door that leads on to the next wing stays shut until its stage is
+## closed. Nothing opens it in the meantime: not the players, not the creature,
+## not a slam.
+var locked := false
+var gate_stage := 0
 var closed_rotation := 0.0
 var doorway := Vector3.ZERO
 var motion: Tween
@@ -29,7 +34,7 @@ func occupied() -> bool:
 
 ## forceful: pushed while running; faster swing, a slam and a louder noise.
 func toggle(slow := false, emit_noise := true, forceful := false) -> bool:
-	if moving or (opened and occupied()): return false
+	if locked or moving or (opened and occupied()): return false
 	forceful = forceful and not slow
 	if emit_noise: noise.emit(doorway, NOISE.radius("door_slow" if slow else "slam" if forceful else "door"), NOISE.Kind.SLAM if forceful else NOISE.Kind.DOOR)
 	swing_to(not opened, slow, forceful)

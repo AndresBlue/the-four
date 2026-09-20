@@ -1,4 +1,8 @@
 extends RefCounted
+## Three wings and the doors between them. A floor is played wing by wing: the
+## way on is a single door, kept locked until its stage is closed, and the room
+## holding it is that stage's refuge.
+const WINGS := 3
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 
@@ -33,28 +37,38 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		if z > 0: z_centers.append(z_centers[-1] + (z_sizes[z-1] + z_sizes[z]) * 0.5)
 	var rooms: Array = []
 	var adjacency: Array = []
+	# Three wings, in bands of columns. They share no way through except one
+	# door each, so a wing left behind is left behind for good.
 	for i in count:
-		rooms.append({"id": i, "x": i % width, "z": i / width, "type": 0, "sector": mini(4, (i % width) * 5 / width), "props": [], "px": x_centers[i % width], "pz": z_centers[i / width], "span_x": x_sizes[i % width], "span_z": z_sizes[i / width], "hall": -1})
+		rooms.append({"id": i, "x": i % width, "z": i / width, "type": 0, "sector": mini(4, (i % width) * 5 / width), "wing": mini(WINGS - 1, (i % width) * WINGS / width), "props": [], "px": x_centers[i % width], "pz": z_centers[i / width], "span_x": x_sizes[i % width], "span_z": z_sizes[i / width], "hall": -1})
 		adjacency.append([])
 	var edges: Array = []
-	var seen := {0: true}
-	var stack: Array[int] = [0]
-	while not stack.is_empty():
-		var current: int = stack.back()
-		var choices: Array[int] = []
-		for n in neighbors(current, width, height):
-			if not seen.has(n): choices.append(n)
-		if choices.is_empty():
-			stack.pop_back()
-		else:
-			var next: int = choices[rng.randi_range(0, choices.size() - 1)]
-			connect_rooms(current, next, edges, adjacency)
-			seen[next] = true
-			stack.append(next)
+	# One maze per wing: the spanning tree never crosses a boundary.
+	for wing in WINGS:
+		var root := -1
+		for i in count:
+			if int(rooms[i].wing) == wing:
+				root = i
+				break
+		if root < 0: continue
+		var seen := {root: true}
+		var stack: Array[int] = [root]
+		while not stack.is_empty():
+			var current: int = stack.back()
+			var choices: Array[int] = []
+			for n in neighbors(current, width, height):
+				if not seen.has(n) and int(rooms[n].wing) == wing: choices.append(n)
+			if choices.is_empty():
+				stack.pop_back()
+			else:
+				var next: int = choices[rng.randi_range(0, choices.size() - 1)]
+				connect_rooms(current, next, edges, adjacency)
+				seen[next] = true
+				stack.append(next)
 	# Additional connections create alternatives; no long dead-end chains survive.
 	for i in count:
 		for n in neighbors(i, width, height):
-			if n > i and not adjacency[i].has(n) and (full_grid or rng.randf() < 0.18):
+			if n > i and int(rooms[n].wing) == int(rooms[i].wing) and not adjacency[i].has(n) and (full_grid or rng.randf() < 0.18):
 				connect_rooms(i, n, edges, adjacency)
 	for i in count:
 		if adjacency[i].size() == 1:
@@ -68,7 +82,7 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 				length += 1
 			if length > 2:
 				for n in neighbors(i, width, height):
-					if not adjacency[i].has(n):
+					if int(rooms[n].wing) == int(rooms[i].wing) and not adjacency[i].has(n):
 						connect_rooms(i, n, edges, adjacency)
 						break
 	# Connected two/three-cell common spaces include L-shaped lounges. Their
@@ -78,7 +92,7 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		if rooms[anchor].hall != -1 or rng.randf() > 0.16: continue
 		var members: Array[int] = [anchor]
 		for n in neighbors(anchor, width, height):
-			if n > 0 and rooms[n].hall == -1 and members.size() < 3: members.append(n)
+			if n > 0 and rooms[n].hall == -1 and int(rooms[n].wing) == int(rooms[anchor].wing) and members.size() < 3: members.append(n)
 		if members.size() < 2: continue
 		for id in members: rooms[id].hall = anchor
 		for id in members:
@@ -86,15 +100,43 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 				if members.has(n) and n > id:
 					if not adjacency[id].has(n): connect_rooms(id, n, edges, adjacency)
 					merged.append([id, n])
-	var distances := distance_map(adjacency, 0)
-	var farthest := 0
-	for d in distances: farthest = maxi(farthest, d)
-	var exits: Array[int] = []
+	# The way on from each wing: one door, as far into the wing as the boundary
+	# allows, so a wing is walked through and not cut across.
+	var gates: Array = []
+	var refuges: Array = []
+	var entrance := 0
+	for wing in WINGS - 1:
+		var distances := distance_map(adjacency, entrance)
+		var best := -1
+		var best_distance := -1
+		for i in count:
+			if int(rooms[i].wing) != wing or distances[i] < 0: continue
+			for n in neighbors(i, width, height):
+				if int(rooms[n].wing) != wing + 1: continue
+				if distances[i] > best_distance:
+					best_distance = distances[i]
+					best = i
+		if best < 0: return candidate(run_seed, attempt + 1, true)
+		var through := -1
+		for n in neighbors(best, width, height):
+			if int(rooms[n].wing) == wing + 1:
+				through = n
+				break
+		connect_rooms(best, through, edges, adjacency)
+		gates.append({"stage": wing + 1, "room": best, "beyond": through})
+		refuges.append(best)
+		entrance = through
+	# The last stage ends the floor: its refuge is the deepest room of the last
+	# wing, and the door out of it is the one with the code lock.
+	var last := distance_map(adjacency, entrance)
+	var deepest := entrance
 	for i in count:
-		if distances[i] >= maxi(8, int(ceil(farthest * 0.85))): exits.append(i)
-	var exit_id: int = exits[rng.randi_range(0, exits.size() - 1)] if not exits.is_empty() else count - 1
-	merged = merged.filter(func(edge): return not edge.has(exit_id))
-	rooms[exit_id].hall = -1
+		if int(rooms[i].wing) == WINGS - 1 and last[i] > last[deepest]: deepest = i
+	gates.append({"stage": WINGS, "room": deepest, "beyond": -1})
+	refuges.append(deepest)
+	var exit_id: int = refuges[0]
+	merged = merged.filter(func(edge): return not refuges.any(func(id): return edge.has(id)))
+	for id in refuges: rooms[id].hall = -1
 	for room in rooms: room["open_sides"] = []
 	for edge in merged:
 		var a: Dictionary = rooms[edge[0]]
@@ -109,7 +151,7 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		room.type = decoration.randi_range(1, 18)
 		if (room.x + room.z) % 2 == 0 and room.type in [11, 12]: room.type = 5
 		if room.id == 0: room.type = 0
-		if room.id == exit_id: room.type = 19
+		if refuges.has(room.id): room.type = 19
 		room["variant"] = decoration.randi_range(0, 3)
 		if room.hall >= 0: room.type = [5, 6, 17, 18][int(room.hall) % 4]
 		room["layout"] = decoration.randi_range(0, 3)
@@ -121,7 +163,7 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 			if kind in ["bed", "sofa", "desk", "tv", "reception", "washer", "basin", "shelf"]: rotation = 0 if slot < 2 else 2
 			if kind in ["wardrobe", "curtain"]: rotation = 1 if slot % 2 == 0 else 3
 			room.props.append({"kind": kind, "slot": slot, "rotation": rotation})
-	return {"version": FLOOR.VERSION, "seed": run_seed, "attempt": attempt, "width": width, "height": height, "start": 0, "exit": exit_id, "rooms": rooms, "edges": edges, "adjacency": adjacency, "ambient_seed": run_seed + 4000037, "merged": merged}
+	return {"version": FLOOR.VERSION, "seed": run_seed, "attempt": attempt, "width": width, "height": height, "start": 0, "exit": exit_id, "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": rooms, "edges": edges, "adjacency": adjacency, "ambient_seed": run_seed + 4000037, "merged": merged}
 
 static func neighbors(id: int, width: int, height: int) -> Array[int]:
 	var result: Array[int] = []

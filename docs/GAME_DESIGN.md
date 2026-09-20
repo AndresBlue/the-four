@@ -27,9 +27,17 @@ The Locust usa en todo el juego un aspecto basado en la imagen de referencia `as
 
 ## Supervivencia, refugio y progreso
 
-**Un piso son tres etapas encadenadas.** Cada una se cierra con su propia condición y da paso a la siguiente; solo la tercera termina el piso. Entre una y otra hay un latido de 1,2 s: el personaje se queda quieto, sale el aviso de la etapa nueva y se sigue jugando en el mismo hotel, sin pantallas por el medio.
+**Un piso son tres alas y tres etapas.** El hotel se genera en tres bandas de habitaciones que **no se comunican entre sí**: el único paso de una a la siguiente es una puerta, la puerta de acceso de esa etapa, y la habitación que la contiene es el refugio de esa etapa. Se empieza en el ala primera, como hasta ahora; al cerrar la etapa se abre esa puerta y se pasa al ala siguiente, que es otro conjunto de habitaciones. El ala que queda atrás deja de servir para nada: ni los objetivos ni la criatura tienen ya nada que hacer allí. Detrás de la tercera puerta —la de la cerradura de código— termina el piso.
 
-La condición de la **etapa 1** es la de siempre: llegar al refugio con la cuota de supervivientes y mantener la interacción tres segundos. Las condiciones de las etapas 2 y 3 —encender televisores y abrir una cerradura con cuatro números— **todavía no están construidas**: mientras tanto usan la misma condición que la primera, para que el piso se pueda terminar. El refugio dejará de proteger a partir de la etapa 2 cuando exista la puerta con llave que las separa.
+Cada refugio protege solo durante su etapa: mientras se espera a pasar, quien está dentro está a salvo; una vez cruzada la puerta, esa sala es una sala más.
+
+Medido sobre mil semillas: 42, 38 y 35 habitaciones por ala de media (nunca menos de 30), y el camino más corto que recorre las tres etapas pasa por 41 habitaciones de media, nunca menos de 20. Antes, una partida entera terminaba en un solo trayecto hasta la salida.
+
+Entre etapa y etapa hay un latido de 1,2 s: el personaje se queda quieto, sale el aviso de la etapa nueva y se sigue jugando en el mismo hotel, sin pantallas por el medio.
+
+La condición de la **etapa 1** es la de siempre: llegar al refugio con la cuota de supervivientes y mantener la interacción tres segundos. Las condiciones de las etapas 2 y 3 —encender televisores y abrir una cerradura con cuatro números— **todavía no están construidas**: mientras tanto usan la misma condición que la primera, para que el piso se pueda terminar.
+
+La puerta de acceso de cada etapa está **cerrada con llave** hasta que esa etapa se cumple: no la abren los jugadores, ni la criatura, ni un portazo. Al cerrarse la etapa se abre sola y ya no vuelve a cerrarse. La criatura, además, **se va detrás de los jugadores**: en cuanto se abre la puerta se le manda al ala nueva, para que no se quede cazando un ala por la que ya no va a pasar nadie.
 
 El número de participantes se fija al comenzar el piso. Para avanzar deben sobrevivir `ceil(N / 2)`: uno de dos, dos de tres, dos de cuatro; uno en individual. Desconectarse no reduce el requisito.
 

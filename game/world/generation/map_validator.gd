@@ -19,6 +19,7 @@ func validate(data: Dictionary) -> Array[String]:
 				visited[neighbor] = true
 				queue.append(neighbor)
 	if visited.size() != rooms.size() or not visited.has(int(data.exit)): errors.append("connectivity")
+	errors.append_array(wings(data))
 	var occupied := {}
 	for room in rooms:
 		var key := "%d:%d" % [room.x, room.z]
@@ -85,4 +86,49 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 		query.transform = Transform3D(Basis.IDENTITY, FLOOR.position_of(a) + Vector3(0, 0.94, 0))
 		query.motion = FLOOR.position_of(b) - FLOOR.position_of(a)
 		if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("passage_%d_%d" % [a.id, b.id])
+	return errors
+
+## Wings: three bands of rooms that share no way through except one door each,
+## the gate of that stage, in the room that is its refuge. A floor that failed
+## this would let players walk into the next stage before closing this one, or
+## strand them in a wing with no way on.
+func wings(data: Dictionary) -> Array[String]:
+	var errors: Array[String] = []
+	var rooms: Array = data.rooms
+	var gates: Array = data.get("gates", [])
+	var refuges: Array = data.get("refuges", [])
+	var count: int = int(data.get("wings", 3))
+	if gates.size() != count or refuges.size() != count:
+		errors.append("gate_count")
+		return errors
+	var crossings := {}
+	for gate in gates:
+		if int(gate.get("beyond", -1)) >= 0: crossings["%d:%d" % [mini(int(gate.room), int(gate.beyond)), maxi(int(gate.room), int(gate.beyond))]] = true
+	for edge in data.edges:
+		var a: int = int(edge[0])
+		var b: int = int(edge[1])
+		if int(rooms[a].wing) == int(rooms[b].wing): continue
+		if not crossings.has("%d:%d" % [mini(a, b), maxi(a, b)]): errors.append("wing_leak_%d_%d" % [a, b])
+	# Every wing is one piece on its own, without its gate.
+	for wing in count:
+		var members: Array[int] = []
+		for room in rooms:
+			if int(room.wing) == wing: members.append(int(room.id))
+		if members.size() < 20:
+			errors.append("wing_small_%d" % wing)
+			continue
+		var seen := {members[0]: true}
+		var queue: Array[int] = [members[0]]
+		var cursor := 0
+		while cursor < queue.size():
+			var current: int = queue[cursor]
+			cursor += 1
+			for neighbor in data.adjacency[current]:
+				if int(rooms[neighbor].wing) == wing and not seen.has(neighbor):
+					seen[neighbor] = true
+					queue.append(neighbor)
+		if seen.size() != members.size(): errors.append("wing_split_%d" % wing)
+		var refuge: int = int(refuges[wing])
+		if int(rooms[refuge].wing) != wing: errors.append("refuge_wing_%d" % wing)
+		elif not seen.has(refuge): errors.append("refuge_unreachable_%d" % wing)
 	return errors

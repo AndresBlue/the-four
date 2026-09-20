@@ -15,12 +15,37 @@ func run() -> void:
 	var fallback_count := 0
 	var failures: Array = []
 	var used_types := {}
+	var wing_leaks: Array = []
+	var small_wings: Array = []
+	var walked: Array = []
 	for seed_value in 1000:
 		var data := generator.generate(seed_value)
 		if data.fallback: fallback_count += 1
 		if not VALIDATOR.new().validate(data).is_empty(): failures.append(seed_value)
 		for room in data.rooms: used_types[room.type] = true
+		# Wings: no way from one to the next except its gate, and each one big
+		# enough to be a stage of its own.
+		var gate_keys := {}
+		for gate in data.gates:
+			if int(gate.get("beyond", -1)) >= 0: gate_keys["%d:%d" % [mini(int(gate.room), int(gate.beyond)), maxi(int(gate.room), int(gate.beyond))]] = true
+		var counts := [0, 0, 0]
+		for room in data.rooms: counts[int(room.wing)] += 1
+		if counts.min() < 20: small_wings.append(seed_value)
+		for edge in data.edges:
+			if int(data.rooms[int(edge[0])].wing) == int(data.rooms[int(edge[1])].wing): continue
+			if not gate_keys.has("%d:%d" % [mini(int(edge[0]), int(edge[1])), maxi(int(edge[0]), int(edge[1]))]): wing_leaks.append(seed_value)
+		var entrance: int = int(data.start)
+		var rooms_walked := 0
+		for gate in data.gates:
+			var distances: Array = GEN.distance_map(data.adjacency, entrance)
+			rooms_walked += maxi(0, int(distances[int(gate.room)]))
+			if int(gate.get("beyond", -1)) >= 0: entrance = int(gate.beyond)
+		walked.append(rooms_walked)
 	check("1.000 semillas: grafos y módulos válidos", failures.is_empty())
+	check("Las alas solo se comunican por su puerta de etapa", wing_leaks.is_empty())
+	check("Ningún ala se queda sin habitaciones", small_wings.is_empty())
+	var shortest: int = walked.min()
+	check("Las tres etapas obligan a recorrer el piso", shortest >= 20 and float(walked.reduce(func(a, b): return a + b, 0)) / walked.size() >= 30.0)
 	check("Tasa de respaldo inferior al 1%", fallback_count < 10)
 	check("20 tipos de módulo presentes en el lote", used_types.size() == 20)
 	check("Semilla reproducible", JSON.stringify(generator.generate(81)) == JSON.stringify(generator.generate(81)))

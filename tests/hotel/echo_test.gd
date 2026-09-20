@@ -176,12 +176,16 @@ func run() -> void:
 	check("Correr deja más rastro que caminar, y una puerta más aún", puffed[NOISE.Kind.RUN] > puffed[NOISE.Kind.FOOTSTEP] * 2 and puffed[NOISE.Kind.DOOR] > puffed[NOISE.Kind.FOOTSTEP] * 2)
 	# A wardrobe is heard from the next rooms, as far as a door, and its cloud
 	# hangs in front of its doors instead of inside it.
+	# The farthest wardrobe it can still hear: with the floor split into wings,
+	# whether one happens to sit at a given distance is luck, but that a
+	# wardrobe carries from another room is the property being checked.
 	var far_hide = null
+	var far_gap := 0.0
 	for hide in level.hotel.hides:
 		var gap: float = hide.global_position.distance_to(creature.global_position)
-		if gap > 12.0 and gap < 22.0 and creature.hear_route(hide.global_position, level.HUNTER_WARDROBE_RADIUS).audible:
+		if gap > 8.0 and gap > far_gap and creature.hear_route(hide.global_position, level.HUNTER_WARDROBE_RADIUS).audible:
 			far_hide = hide
-			break
+			far_gap = gap
 	creature.driver.heard.clear()
 	if far_hide != null: level.on_hide_changed(true, far_hide.global_position)
 	await frames(3)

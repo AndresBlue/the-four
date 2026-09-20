@@ -24,12 +24,20 @@ func run() -> void:
 			continue
 		physics_passed += 1
 		await physics_frame
-		var exit_room: Dictionary = level.manifest.rooms[level.manifest.exit]
-		var destination := FLOOR.position_of(exit_room)
-		var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, Vector3.ZERO, destination)
-		if path.size() < 2 or path[path.size() - 1].distance_to(destination) > 1.0:
-			failures.append({"seed": seed_value, "reason": "navigation"})
-			print("NAV_FAIL ", seed_value, " points=", path.size(), " end=", path[-1] if not path.is_empty() else Vector3.ZERO, " expected=", destination)
+		# Every leg of the floor: the start to the first refuge, and from each
+		# gate to the refuge of the wing it opens.
+		var from := Vector3.ZERO
+		for stage in level.manifest.refuges.size():
+			var room: Dictionary = level.manifest.rooms[int(level.manifest.refuges[stage])]
+			var destination := FLOOR.position_of(room)
+			var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, destination)
+			if path.size() < 2 or path[path.size() - 1].distance_to(destination) > 1.0:
+				failures.append({"seed": seed_value, "reason": "navigation_stage_%d" % (stage + 1)})
+				print("NAV_FAIL ", seed_value, " etapa ", stage + 1, " points=", path.size(), " end=", path[-1] if not path.is_empty() else Vector3.ZERO, " expected=", destination)
+				break
+			var gate: Dictionary = level.manifest.gates[stage]
+			if int(gate.get("beyond", -1)) < 0: break
+			from = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)])
 		if seed_value < 20:
 			var success := await walk(level)
 			walks.append({"seed": seed_value, "passed": success, "position_teleports": 0})
@@ -84,4 +92,6 @@ func walk(level) -> bool:
 	for frame in 200: await physics_frame
 	Input.action_release("interact")
 	for frame in 100: await physics_frame
-	return level.session.state == level.session.State.WON
+	# Reaching the refuge and holding closes the first stage; the floor itself
+	# ends two wings later, which the navigation legs above cover.
+	return level.session.stage > 1 or level.session.state == level.session.State.WON
