@@ -130,12 +130,18 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		refuges.append(best)
 		entrance = through
 	# The last stage ends the floor: its refuge is the deepest room of the last
-	# wing, and the door out of it is the one with the code lock.
+	# wing that sits against the outside of the building, because the door with
+	# the code lock opens outwards, into the way out.
 	var last := distance_map(adjacency, entrance)
 	var deepest := entrance
+	var outward := Vector2i(1, 0)
 	for i in count:
-		if int(rooms[i].wing) == WINGS - 1 and last[i] > last[deepest]: deepest = i
-	gates.append({"stage": WINGS, "room": deepest, "beyond": -1})
+		if int(rooms[i].wing) != WINGS - 1 or last[i] <= last[deepest]: continue
+		var side := outer_side(i, width, height)
+		if side == Vector2i.ZERO: continue
+		deepest = i
+		outward = side
+	gates.append({"stage": WINGS, "room": deepest, "beyond": -1, "out": [outward.x, outward.y]})
 	refuges.append(deepest)
 	var exit_id: int = refuges[0]
 	merged = merged.filter(func(edge): return not refuges.any(func(id): return edge.has(id)))
@@ -183,6 +189,14 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 			if kind in ["wardrobe", "curtain"]: rotation = 1 if slot % 2 == 0 else 3
 			room.props.append({"kind": kind, "slot": slot, "rotation": rotation})
 	return {"version": FLOOR.VERSION, "seed": run_seed, "attempt": attempt, "width": width, "height": height, "start": 0, "exit": exit_id, "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": rooms, "edges": edges, "adjacency": adjacency, "ambient_seed": run_seed + 4000037, "merged": merged}
+
+## Which way this cell faces the outside of the building, or zero if it is
+## boxed in by other cells. East first: that is the far side of the last wing.
+static func outer_side(id: int, width: int, height: int) -> Vector2i:
+	if id % width == width - 1: return Vector2i(1, 0)
+	if id < width: return Vector2i(0, -1)
+	if id >= width * (height - 1): return Vector2i(0, 1)
+	return Vector2i.ZERO
 
 static func neighbors(id: int, width: int, height: int) -> Array[int]:
 	var result: Array[int] = []

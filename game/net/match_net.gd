@@ -365,6 +365,27 @@ func request_container(index: int) -> void:
 func container_state(index: int, value: bool) -> void:
 	level.apply_search(index, value)
 
+## The code read into the last door's keypad. A guest asks; the host checks the
+## numbers itself, so a client cannot open a floor by saying it did.
+func use_code() -> void:
+	if not in_match() or net.is_host:
+		level.apply_code()
+		if in_match(): code_state.rpc()
+		return
+	request_code.rpc_id(1, level.typed)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_code(text: String) -> void:
+	if not net.is_host or level.code_entered: return
+	var right: String = "".join(level.DIGITS.code(level.manifest).map(func(digit): return str(digit)))
+	if text != right: return
+	level.apply_code()
+	code_state.rpc()
+
+@rpc("authority", "call_remote", "reliable")
+func code_state() -> void:
+	level.apply_code()
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.

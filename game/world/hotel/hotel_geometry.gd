@@ -7,6 +7,9 @@ var room_nodes: Array[Node3D] = []
 var doors: Array = []
 ## The doors that lead from one wing to the next, one per stage.
 var gates: Array = []
+## Where each floor is left from: the middle of the landing behind the last
+## door. Stepping onto it ends the floor.
+var landings: Array = []
 ## Every piece of furniture with drawers or shelves, as it is dressed:
 ## {room, position, yaw, kind}. Four of them hide the numbers of the code.
 var containers: Array = []
@@ -566,6 +569,9 @@ func build(data: Dictionary) -> void:
 			gates.append(door)
 		elif int(a.id + b.id) % 3 != 0: door.open_immediately()
 		doors.append(door)
+	# Last, so the gates stay in the order of their stages and the doors keep
+	# the indices the network knows them by.
+	build_exit_door(data)
 	flush()
 	build_navigation()
 	build_dust()
@@ -588,6 +594,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			var bit: int = {Vector2i(-1, 0): 1, Vector2i(1, 0): 2, Vector2i(0, -1): 4, Vector2i(0, 1): 8}[direction]
 			batch_roots[node.get_instance_id()].a += bit
 			continue
+		var way_out: bool = direction == exit_side(room)
 		var length: float = span.y if direction.x != 0 else span.x
 		var boundary := Node3D.new()
 		boundary.name = "Wall_%s_%s" % [direction.x, direction.y]
@@ -596,7 +603,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		node.add_child(boundary)
 		# Local face pointing into this room; a neighbour may have another height.
 		var inner: int = -(direction.x + direction.y)
-		if connected:
+		if connected or way_out:
 			for side in [-1, 1]:
 				wall_run(boundary, side * (length + FLOOR.PORTAL) * 0.25, (length - FLOOR.PORTAL) * 0.5, height, inner)
 			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
@@ -604,6 +611,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
+		if way_out: build_landing(node, room, direction)
 		for side in [-1, 1]:
 			# Framed hotel art on this room's face of the wall (inner); each canvas
 			# composition varies with its position. It used to hang on local -Z,
@@ -766,6 +774,91 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
 		light.light_color = Color("b8d4b6")
 	build_occluder(node)
+
+## The door of the last stage: in the outer wall of the last refuge, shut and
+## locked until its code is read in. Behind it, the landing, and stepping onto
+## that is leaving the floor.
+func build_exit_door(data: Dictionary) -> void:
+	var gates_list: Array = data.get("gates", [])
+	if gates_list.is_empty(): return
+	var last: Dictionary = gates_list[gates_list.size() - 1]
+	var room: Dictionary = data.rooms[int(last.room)]
+	var out: Array = last.get("out", [1, 0])
+	var direction := Vector2i(int(out[0]), int(out[1]))
+	var span := FLOOR.size_of(room)
+	var away := Vector3(direction.x, 0, direction.y)
+	var centre: Vector3 = FLOOR.position_of(room) + away * (Vector2(span.x, span.y).dot(Vector2(absf(away.x), absf(away.z))) * 0.5)
+	var yaw := PI / 2 if direction.x != 0 else 0.0
+	var door = DOOR.new()
+	door.name = "ExitDoor"
+	door.collision_layer = 8
+	door.collision_mask = 4
+	var half := FLOOR.LEAF_WIDTH * 0.5
+	door.position = centre + Basis(Vector3.UP, yaw) * Vector3(-half, 0, 0)
+	door.rotation.y = yaw
+	door.closed_rotation = yaw
+	door.doorway = centre
+	door.locked = true
+	door.gate_stage = int(last.stage)
+	var leaf := MeshInstance3D.new()
+	leaf.name = "Leaf"
+	leaf.mesh = DOOR_LEAF
+	door.add_child(leaf)
+	door.add_child(light_seal())
+	var shape := CollisionShape3D.new()
+	var body := BoxShape3D.new()
+	body.size = Vector3(FLOOR.LEAF_WIDTH, OPENING_HIGH, 0.12)
+	shape.shape = body
+	shape.position = Vector3(half, OPENING_HIGH * 0.5, 0)
+	door.add_child(shape)
+	add_child(door)
+	var casing := MeshInstance3D.new()
+	casing.name = "ExitCasing"
+	casing.mesh = DOOR_FRAME
+	casing.position = centre
+	casing.rotation.y = yaw
+	add_child(casing)
+	var stop := jamb_seal(centre, yaw)
+	add_child(stop)
+	# Same as every other door: its casing and stop are shown with it.
+	door_fixtures.append([casing, stop])
+	doors.append(door)
+	gates.append(door)
+
+## Which way the floor is left from: the outer side of the last refuge, or
+## zero for every other room.
+func exit_side(room: Dictionary) -> Vector2i:
+	var gates_list: Array = manifest.get("gates", [])
+	if gates_list.is_empty(): return Vector2i.ZERO
+	var last: Dictionary = gates_list[gates_list.size() - 1]
+	if int(last.get("room", -1)) != int(room.id): return Vector2i.ZERO
+	var out: Array = last.get("out", [1, 0])
+	return Vector2i(int(out[0]), int(out[1]))
+
+## Behind that door: a small landing, walled and roofed, with nothing in it.
+## Stepping onto it is leaving the floor.
+const LANDING := Vector3(4.0, 2.9, 4.0)
+func build_landing(node: Node3D, room: Dictionary, direction: Vector2i) -> void:
+	var span := FLOOR.size_of(room)
+	var away := Vector3(direction.x, 0, direction.y)
+	var centre: Vector3 = away * (Vector2(span.x, span.y).dot(Vector2(absf(away.x), absf(away.z))) * 0.5 + LANDING.z * 0.5)
+	var landing := Node3D.new()
+	landing.name = "WayOut"
+	landing.position = centre
+	node.add_child(landing)
+	var size := Vector3(LANDING.x if direction.x == 0 else LANDING.z, LANDING.y, LANDING.z if direction.x == 0 else LANDING.x)
+	box(landing, Vector3(0, -0.15, 0), Vector3(size.x, 0.3, size.z), "tile", true)
+	box(landing, Vector3(0, size.y + 0.1, 0), Vector3(size.x, 0.2, size.z), "ceiling_service", true)
+	# Three walls: the fourth is the refuge's own, with the door in it.
+	for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if side == -direction: continue
+		var wall := Node3D.new()
+		wall.name = "Wall_%s_%s" % [side.x, side.y]
+		wall.position = Vector3(side.x * size.x * 0.5, 0, side.y * size.z * 0.5)
+		wall.rotation.y = PI / 2 if side.x != 0 else 0.0
+		landing.add_child(wall)
+		wall_run(wall, 0.0, size.z if side.x != 0 else size.x, size.y, -(side.x + side.y))
+	landings.append(node.position + centre)
 
 ## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
 ## its top edge, engraved SALIDA with an arrow pointing down at the room the

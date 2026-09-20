@@ -107,6 +107,25 @@ func cross_to_the_end(offset: Vector3, seconds: float) -> bool:
 			await pause_for(0.3)
 			left -= 0.5
 			continue
+		# The last stage: find the numbers, read the code in and step out.
+		if level.session.goal.get("kind", "") == "code" and not level.code_entered:
+			for piece in level.containers:
+				if is_instance_valid(piece) and piece.digit >= 0 and not piece.searched:
+					level.player.global_position = piece.global_position + Vector3(0.7, 0.1, 0.7)
+					await pause_for(0.2)
+					level.search_container(piece)
+			await pause_for(0.4)
+			if level.found_digits.size() >= 4:
+				level.typed = "".join(level.DIGITS.code(level.manifest).map(func(digit): return str(digit)))
+				level.match_net.use_code()
+			left -= 1.0
+			continue
+		if level.code_entered and not level.hotel.landings.is_empty():
+			level.player.global_position = level.hotel.landings[0] + offset + Vector3(0, 0.1, 0)
+			await pause_for(0.2)
+			left -= 0.2
+			if level.session.state == level.session.State.WON: return true
+			continue
 		if is_instance_valid(door) and not door.locked and int(gate.get("beyond", -1)) >= 0:
 			level.player.global_position = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)]) + offset + Vector3(0, 0.1, 0)
 		else:
@@ -154,7 +173,7 @@ func host() -> void:
 	# crossing it is what closes the stage.
 	var opened: bool = await wait_for(func(): return not level.hotel.gates[0].locked, 25.0)
 	check("Con todos dentro se abre la puerta de la etapa", opened and level.session.goal.ready)
-	var won: bool = await cross_to_the_end(Vector3(0.8, 0, 0), 90.0)
+	var won: bool = await cross_to_the_end(Vector3(0.8, 0, 0), 150.0)
 	check("Cruzarla lleva a la etapa siguiente y no termina el piso", level.session.stage > 1)
 	check("La etapa de los televisores se jugó de verdad", level.televisions.size() >= 4 and level.televisions_on() >= 2)
 	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.STAGES)
@@ -172,7 +191,7 @@ func host() -> void:
 	# to be skipped entirely while its own player was dead and watching.
 	await pause_for(1.0)
 	check("El anfitrión cae y el piso sigue", level.session.capture(1) and playing())
-	var left: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 90.0)
+	var left: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 240.0)
 	check("Con el anfitrión muerto, sus invitados salen del piso", left)
 	await pause_for(3.0)
 	net.return_to_lobby()
@@ -220,14 +239,14 @@ func alpha_part() -> void:
 	check("Le llega el cambio de etapa del anfitrión", await wait_for(func():
 		level.player.global_position = refuge_point(Vector3(-0.8, 0, 0))
 		return level.session.stage > 1, 60.0))
-	check("Ve terminar el piso con la salida", await cross_to_the_end(Vector3(-0.8, 0, 0), 120.0))
+	check("Ve terminar el piso con la salida", await cross_to_the_end(Vector3(-0.8, 0, 0), 220.0))
 	check("Segundo piso", await wait_for(playing, 90.0))
 	check("La hoja empieza vacía en el piso nuevo", level.ui.sheet.log.is_empty())
 	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.3, 0.3), Vector2(0.7, 0.7)]))
 	# The host dies: the two guests leave the floor on their own.
 	check("Ve morir al anfitrión", await wait_for(func(): return level.session.participants.get(1) == level.session.Life.DEAD, 90.0))
 	await pause_for(1.0)
-	var alone: bool = await cross_to_the_end(Vector3(-0.8, 0, 0), 120.0)
+	var alone: bool = await cross_to_the_end(Vector3(-0.8, 0, 0), 220.0)
 	check("Sale del piso sin el anfitrión", alone)
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))
 	check("Se entera de que el anfitrión cerró la sala", await wait_for(func(): return not level.net.active() and level.ui.screen == "multiplayer", 30.0))
@@ -253,7 +272,7 @@ func bravo_part() -> void:
 	check("Recupera la hoja con los trazos de los demás", level.ui.sheet.log_index.has("%d:1" % seat_named("Alpha")))
 	check("Ve morir al anfitrión", await wait_for(func(): return level.session.participants.get(1) == level.session.Life.DEAD, 90.0))
 	await pause_for(1.0)
-	var alone: bool = await cross_to_the_end(Vector3(0.9, 0, 0), 120.0)
+	var alone: bool = await cross_to_the_end(Vector3(0.9, 0, 0), 220.0)
 	check("Sale del piso sin el anfitrión", alone)
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))
 

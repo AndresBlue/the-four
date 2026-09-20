@@ -15,6 +15,7 @@ const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const TELEVISION := preload("res://game/world/interactables/hotel_television.gd")
 const TV_PLACEMENT := preload("res://game/world/generation/tv_placement.gd")
 const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
+const LOCK := preload("res://game/world/interactables/hotel_lock.gd")
 const DIGITS := preload("res://game/world/generation/digit_placement.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const DIRECTOR := preload("res://game/director/pacing_director.gd")
@@ -72,6 +73,13 @@ var televisions: Array = []
 ## in them so far, by place in the code.
 var containers: Array = []
 var found_digits := {}
+## Whether the code has been read into the lock: from then on the last door
+## opens and the floor is left by stepping through it.
+var code_entered := false
+## The keypad of the last door, and what is being typed into it.
+var lock: Node3D
+var lock_open := false
+var typed := ""
 var blow_sound: AudioStreamPlayer
 var static_sound: AudioStreamPlayer
 var intro_seed := 0
@@ -595,6 +603,10 @@ func televisions_on() -> int:
 func place_containers() -> void:
 	containers.clear()
 	found_digits.clear()
+	code_entered = false
+	typed = ""
+	lock = null
+	close_lock()
 	if manifest.get("gates", []).is_empty(): return
 	for spot in hotel.containers:
 		var piece := CONTAINER.new()
@@ -608,6 +620,17 @@ func place_containers() -> void:
 		piece.position = spot.position - room_node.position
 		room_node.add_child(piece)
 		containers.append(piece)
+	# The keypad, beside the last door, on the refuge's side of it.
+	if not hotel.landings.is_empty() and not manifest.gates.is_empty():
+		var last: Dictionary = manifest.gates[manifest.gates.size() - 1]
+		var out: Array = last.get("out", [1, 0])
+		var away := Vector3(int(out[0]), 0, int(out[1]))
+		var door_point: Vector3 = hotel.landings[0] - away * (hotel.LANDING.z * 0.5)
+		lock = LOCK.new()
+		lock.name = "CodeLock"
+		lock.position = door_point - away * 0.35 + Vector3(away.z, 0, -away.x) * 1.1
+		lock.rotation.y = atan2(-away.x, -away.z)
+		hotel.add_child(lock)
 	for hidden in DIGITS.choose(manifest, hotel.containers):
 		var index := int(hidden.container)
 		if index < 0 or index >= containers.size(): continue
@@ -1000,6 +1023,46 @@ func focused_container():
 	var area = focused_area()
 	return area if area is CONTAINER else null
 
+func focused_lock():
+	var area = focused_area()
+	return area if area is LOCK else null
+
+## The keypad: numbers go in, a wrong code clears itself, the right one opens
+## the door for everybody.
+func type_code(character: String) -> void:
+	if character == "borrar": typed = typed.substr(0, maxi(0, typed.length() - 1))
+	elif typed.length() < DIGITS.COUNT: typed += character
+	if typed.length() < DIGITS.COUNT:
+		ui.show_lock(typed, DIGITS.COUNT, "")
+		return
+	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
+	if typed == right:
+		match_net.use_code()
+		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA")
+		close_lock()
+	else:
+		typed = ""
+		ui.show_lock("", DIGITS.COUNT, "NO ES")
+		if world_audio.enabled: world_audio.play_at(SEARCH_SOUND, lock.global_position, -12.0)
+
+func open_lock() -> void:
+	lock_open = true
+	typed = ""
+	player.reading = true
+	ui.show_lock("", DIGITS.COUNT, "")
+
+func close_lock() -> void:
+	lock_open = false
+	player.reading = false
+	ui.hide_lock()
+
+## The code is in: the last door gives way, on every machine.
+func apply_code() -> void:
+	if code_entered: return
+	code_entered = true
+	if is_instance_valid(lock): lock.set_open(true)
+	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, hotel.landings[0] if not hotel.landings.is_empty() else player.global_position, -4.0)
+
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
 	if match_net.bodies.is_empty(): return ""
@@ -1080,6 +1143,15 @@ func drive_local(delta: float) -> void:
 		if Input.is_action_just_pressed("interact"): close_document()
 		was_held = true
 		return
+	if lock_open:
+		camcorder.focus("")
+		ui.hint.text = ""
+		return
+	var lock_target = focused_lock()
+	if Input.is_action_just_pressed("interact") and is_instance_valid(lock_target) and not code_entered:
+		open_lock()
+		was_held = true
+		return
 	var container_target = focused_container()
 	if is_instance_valid(container_target) and not container_target.searched:
 		if Input.is_action_pressed("interact"):
@@ -1122,7 +1194,7 @@ func drive_local(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	camcorder.focus("ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0
@@ -1178,6 +1250,18 @@ func creature_channel_hop(delta: float) -> void:
 
 func host_gate(delta: float) -> void:
 	creature_channel_hop(delta)
+	if session.stage == session.STAGES and not containers.is_empty():
+		session.goal["kind"] = "code"
+		session.goal["done"] = found_digits.size()
+		session.goal["needed"] = DIGITS.COUNT
+		session.update_goal(delta, code_entered)
+		# Out through the last door: whoever steps onto the landing leaves.
+		if code_entered and not hotel.landings.is_empty():
+			for body in survivors():
+				if body.global_position.distance_to(hotel.landings[0]) < 2.4:
+					session.finish_stage()
+					return
+		return
 	if session.stage == 2 and not televisions.is_empty():
 		var needed: int = TV_PLACEMENT.needed(session.roster_count)
 		var done: int = televisions_on()
@@ -1278,6 +1362,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		match_net.next_watch()
 		return
 	if not event is InputEventKey or not event.pressed or event.echo: return
+	if lock_open:
+		if event.physical_keycode == KEY_ESCAPE: close_lock()
+		elif event.physical_keycode == KEY_BACKSPACE: type_code("borrar")
+		elif event.physical_keycode >= KEY_0 and event.physical_keycode <= KEY_9: type_code(str(event.physical_keycode - KEY_0))
+		elif event.physical_keycode >= KEY_KP_0 and event.physical_keycode <= KEY_KP_9: type_code(str(event.physical_keycode - KEY_KP_0))
+		return
 	if event.physical_keycode == KEY_ESCAPE and ui.sheet.visible:
 		toggle_sheet()
 		return

@@ -52,7 +52,7 @@ func run() -> void:
 	check("Cada refugio está en su ala", level.manifest.refuges.all(func(id): return int(level.manifest.rooms[int(id)].wing) == level.manifest.refuges.find(id)))
 	check("El refugio de la etapa 1 es la sala de su puerta", level.refuge_room() == int(level.manifest.gates[0].room))
 	var gate = level.hotel.gates[0]
-	check("La puerta a la segunda ala empieza cerrada con llave", level.hotel.gates.size() == 2 and gate.locked and not gate.opened)
+	check("La puerta a la segunda ala empieza cerrada con llave", level.hotel.gates.size() == 3 and gate.locked and not gate.opened)
 	check("Y no se abre por mucho que se insista", not gate.toggle() and not gate.opened)
 	check("Nada que mantener: la condición es estar dentro con la cuota", not session.goal.ready)
 	check("La criatura empieza en la primera ala", int(level.manifest.rooms[level.locust.patrol_room].wing) == 0)
@@ -116,16 +116,23 @@ func run() -> void:
 	check("Registrar los cuatro da el código entero", level.found_digits.size() == DIG.COUNT and not level.code_so_far().contains("–"))
 	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
 	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
-	# The last one is the only one that ends the floor: there is no wing beyond
-	# it yet, so standing in its refuge with the quota is what leaves.
+	# The last door: shut until the code is read into it, and the floor ends
+	# on the landing behind it.
+	var exit_door = level.hotel.gates[2]
+	check("La última puerta está cerrada con código", exit_door.locked and not exit_door.opened and is_instance_valid(level.lock))
+	check("Y el piso no termina por estar en el refugio", not session.goal.ready)
+	level.typed = "".join(DIG.code(level.manifest).map(func(d): return str(d)))
+	level.match_net.use_code()
+	await frames(4)
+	check("Con el código puesto la puerta se abre", level.code_entered and not exit_door.locked)
 	var won := false
-	for i in 900:
-		level.player.global_position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
+	for i in 300:
+		level.player.global_position = level.hotel.landings[0] + Vector3(0, 0.1, 0)
 		await physics_frame
 		if session.state == session.State.WON:
 			won = true
 			break
-	check("La última etapa sí termina el piso", won and session.stage == 3)
+	check("Salir por esa puerta termina el piso", won and session.stage == 3)
 	check("Y entonces sale la pantalla de fin", level.ui.screen == "won")
 	# A floor started again begins at the first stage.
 	await level.start_floor(81)

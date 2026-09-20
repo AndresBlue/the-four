@@ -202,12 +202,13 @@ func run() -> void:
 	check("Salida libre sin objetos", session.state == session.State.TRANSITION)
 	session._process(1.3)
 	check("Cerrar una etapa deja el piso en marcha", session.state == session.State.PLAYING and session.stage == 2)
-	# Through to the last one, which is the only one that ends the floor: there
-	# the condition being met for a few seconds is what leaves.
+	# Through to the last one, which is the only one that ends the floor: in a
+	# real floor that is done by stepping through the door with the code lock,
+	# which at this level of the game is the same call.
 	while session.more_stages():
 		session.finish_stage()
 		session._process(1.3)
-	for i in 40: session.update_goal(0.1, true)
+	session.finish_stage()
 	session._process(1.3)
 	check("Victoria y eliminación de checkpoint completado", session.state == session.State.WON and session.checkpoint().is_empty())
 	await scene.start_floor(81)

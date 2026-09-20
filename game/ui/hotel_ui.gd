@@ -70,6 +70,8 @@ var side: VBoxContainer
 var hint: Label
 var subtitle: Label
 var flash_label: Label
+## The keypad overlay of the last door.
+var lock_panel: Control
 var progress: ProgressBar
 var settings_open := false
 var rebind_action := ""
@@ -609,6 +611,39 @@ func show_document(item: Dictionary) -> void:
 	spacer(text, 10)
 	var key: String = settings.key_name("interact") if settings != null else "E"
 	label(text, "[%s] GUARDAR" % key, 16).add_theme_color_override("font_color", STYLE.FAINT)
+
+## The keypad of the last door: four places, what has been typed so far, and a
+## word when it refuses or gives way.
+func show_lock(entered: String, places: int, word: String) -> void:
+	hide_lock()
+	lock_panel = Control.new()
+	lock_panel.name = "Lock"
+	lock_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lock_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lock_panel)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.45)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lock_panel.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lock_panel.add_child(center)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	center.add_child(column)
+	var slots := ""
+	for place in places: slots += (entered[place] if place < entered.length() else "_") + "  "
+	label(column, slots.strip_edges(), 64).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var key: String = settings.key_name("interact") if settings != null else "E"
+	var foot := label(column, word if not word.is_empty() else "TECLEA EL CÓDIGO · [ESC] SALIR", 18)
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	foot.add_theme_color_override("font_color", STYLE.ALERT if word == "NO ES" else STYLE.SOFT)
+
+func hide_lock() -> void:
+	if is_instance_valid(lock_panel): lock_panel.queue_free()
+	lock_panel = null
 
 func hide_document() -> void:
 	if is_instance_valid(reading): reading.queue_free()

@@ -21,9 +21,6 @@ var participants := {1: Life.EXPLORING}
 var roster_count := 1
 var run_seed := 0
 var map_fallback := false
-## Seconds the last stage has been met for: the floor ends after a moment,
-## until the door with the code lock is built and crossing it does that.
-var leaving := 0.0
 var elapsed := 0.0
 var transition_time := 0.0
 var message := ""
@@ -44,7 +41,6 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	participants = {}
 	for slot in slots: participants[int(slot)] = Life.EXPLORING
 	roster_count = slots.size()
-	leaving = 0
 	elapsed = 0
 	transition_time = 0
 	message = ""
@@ -82,13 +78,6 @@ func update_goal(delta: float, met: bool) -> void:
 	if bool(goal.get("ready", false)) != met:
 		goal["ready"] = met
 		changed.emit()
-	if more_stages() or not met:
-		leaving = 0.0
-		return
-	leaving += delta
-	if leaving >= LEAVING_TIME: finish_stage()
-
-const LEAVING_TIME := 3.0
 
 ## The condition of the stage in hand is met (the authority decides). The beat
 ## of State.TRANSITION carries either into the next stage or out of the floor.
@@ -110,7 +99,6 @@ func capture(id: int) -> bool:
 func drop(id: int) -> void:
 	if state != State.PLAYING or not participants.has(id) or participants[id] == Life.DEAD: return
 	participants[id] = Life.DEAD
-	leaving = 0.0
 	check_quota()
 
 func check_quota() -> bool:
@@ -124,9 +112,7 @@ func check_quota() -> bool:
 	return true
 
 func pause() -> void:
-	if state == State.PLAYING:
-		leaving = 0.0
-		set_state(State.PAUSED)
+	if state == State.PLAYING: set_state(State.PAUSED)
 
 func checkpoint() -> Dictionary:
 	message = ""
@@ -169,7 +155,6 @@ func _process(delta: float) -> void:
 		if transition_time >= 1.2:
 			if more_stages():
 				stage += 1
-				leaving = 0.0
 				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 				set_state(State.PLAYING)
 				return

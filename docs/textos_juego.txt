@@ -566,8 +566,12 @@ CORRECCIÓN:
 [HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
 ACTUAL: LA PUERTA DE LA ETAPA ESTÁ ABIERTA / REFUGIO · FALTAN SUPERVIVIENTES /
 | REFUGIO · FALTAN TELEVISORES / SALIENDO DEL PISO
-OBS: también aparece brevemente «TELEVISORES 2/4» al encender uno, y «ETAPA 2»
-| al cambiar de ala.
+OBS: también aparece brevemente «TELEVISORES 2/4» al encender uno, «NÚMERO 3 DEL
+| CÓDIGO: 7» al registrar un mueble, y «ETAPA 2» al cambiar de ala.
+
+[REFUGIO.02] Teclado de la última puerta
+ACTUAL: TECLEA EL CÓDIGO · [ESC] SALIR / NO ES / ABIERTA
+CORRECCIÓN:
 CORRECCIÓN:
 
 [HUD.04] Palabra bajo los corchetes de enfoque: puerta cerrada
