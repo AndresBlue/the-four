@@ -17,21 +17,22 @@ func check(title: String, passed: bool) -> void:
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
-## Stands in the refuge of the stage in hand and holds, as a player would.
-func hold_until_stage(stage: int, seconds := 10.0) -> bool:
+## Walks into the refuge of the stage in hand, waits for the door on to
+## unlock and steps through it, which is what closes a stage now.
+func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 	var session = level.session
 	var left := seconds
-	Input.action_press("interact")
+	var gate: Dictionary = level.manifest.gates[session.stage - 1]
 	while left > 0.0:
-		var refuge: Vector3 = FLOOR.position_of(level.manifest.rooms[level.refuge_room()])
-		level.player.global_position = refuge + Vector3(0, 0.04, 0)
+		if session.stage >= stage and session.state == session.State.PLAYING: return true
+		if session.goal.get("ready", false) and int(gate.get("beyond", -1)) >= 0:
+			# Through the door: one step into the wing beyond.
+			level.player.global_position = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)]) + Vector3(0, 0.04, 0)
+		else:
+			level.player.global_position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
 		level.player.velocity = Vector3.ZERO
 		await physics_frame
 		left -= 1.0 / 60.0
-		if session.stage >= stage and session.state == session.State.PLAYING:
-			Input.action_release("interact")
-			return true
-	Input.action_release("interact")
 	return false
 
 func run() -> void:
@@ -51,33 +52,31 @@ func run() -> void:
 	var gate = level.hotel.gates[0]
 	check("La puerta a la segunda ala empieza cerrada con llave", level.hotel.gates.size() == 2 and gate.locked and not gate.opened)
 	check("Y no se abre por mucho que se insista", not gate.toggle() and not gate.opened)
+	check("Nada que mantener: la condición es estar dentro con la cuota", not session.goal.ready)
 	check("La criatura empieza en la primera ala", int(level.manifest.rooms[level.locust.patrol_room].wing) == 0)
 	# Outside the refuge the hold counts for nothing.
 	level.player.global_position = Vector3(0, 0.04, 0)
-	Input.action_press("interact")
 	for i in 240: await physics_frame
-	Input.action_release("interact")
-	check("Fuera del refugio no avanza ninguna etapa", session.stage == 1 and session.exit_progress == 0.0)
-	check("Cerrar la etapa 1 no termina el piso", await hold_until_stage(2))
+	check("Fuera del refugio la puerta sigue cerrada", session.stage == 1 and not session.goal.ready and gate.locked)
+	check("Cerrar la etapa 1 no termina el piso", await cross_to_stage(2))
 	check("Sigue jugándose, en la etapa 2", session.state == session.State.PLAYING and session.stage == 2)
-	check("Cerrar la etapa abre su puerta", not gate.locked and gate.opened)
+	check("La puerta de la etapa cumplida queda abierta", not gate.locked and gate.opened)
 	check("El refugio pasa a ser el de la etapa nueva", level.refuge_room() == int(level.manifest.gates[1].room) and level.refuge_room() != int(level.manifest.gates[0].room))
 	check("Y el anterior deja de proteger", not level.point_in_refuge(FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].room)])))
 	check("La criatura se va detrás de los jugadores al ala nueva", int(level.manifest.rooms[level.locust.patrol_room].wing) == 1)
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
-	check("El progreso de salida se reinicia en cada etapa", session.exit_progress < 3.0)
-	check("Cerrar la etapa 2 lleva a la 3", await hold_until_stage(3))
-	# The last one is the only one that ends the floor.
+	check("La etapa nueva empieza sin cumplir", not session.goal.ready or level.point_in_refuge(level.player.global_position))
+	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
+	# The last one is the only one that ends the floor: there is no wing beyond
+	# it yet, so standing in its refuge with the quota is what leaves.
 	var won := false
-	Input.action_press("interact")
 	for i in 900:
 		level.player.global_position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
 		await physics_frame
 		if session.state == session.State.WON:
 			won = true
 			break
-	Input.action_release("interact")
 	check("La última etapa sí termina el piso", won and session.stage == 3)
 	check("Y entonces sale la pantalla de fin", level.ui.screen == "won")
 	# A floor started again begins at the first stage.

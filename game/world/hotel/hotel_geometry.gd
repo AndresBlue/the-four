@@ -872,12 +872,15 @@ static func gate_stage(data: Dictionary, a: int, b: int) -> int:
 
 ## Closing a stage opens its gate for good; every machine works it out from the
 ## stage itself, which is already replicated, so no door message is needed.
-func open_gates(stage: int) -> void:
+func open_gates(stage: int, ready: bool) -> void:
 	for door in gates:
-		if not is_instance_valid(door): continue
-		var was: bool = door.locked
-		door.locked = door.gate_stage >= stage
-		if was and not door.locked and not door.opened: door.set_state(true)
+		if not is_instance_valid(door) or not door.locked: continue
+		# A gate only ever opens: past stages are already through, and the one
+		# in hand gives way as soon as its condition is met. Once open it stays
+		# open, even if somebody steps out of the refuge again.
+		if door.gate_stage > stage or (door.gate_stage == stage and not ready): continue
+		door.locked = false
+		if not door.opened and not door.moving: door.set_state(true)
 
 func build_occluder(node: Node3D) -> void:
 	if full_walls or blockers.is_empty(): return

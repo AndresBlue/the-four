@@ -131,7 +131,7 @@ func run() -> void:
 	await frames(2)
 	var door = level.hotel.doors[0]
 	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
-	player.position = FLOOR.position_of(level.manifest.rooms[level.manifest.exit]) + Vector3(0, 0.04, 0)
+	player.position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
 	enemy.position = door.doorway - across * 2.6 + Vector3(0, 0.04, 0)
 	door.rotation.y = door.closed_rotation
 	door.opened = false
@@ -192,7 +192,9 @@ func run() -> void:
 	check("Solo la primera apertura de las puertas hace ruido", creaks[0] == 0)
 	enemy.observed_hide = hide
 	check("Salida de escondite libre sin teletransporte a otra sala", player.leave_hide() and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
-	var exit_room: Dictionary = level.manifest.rooms[level.manifest.exit]
+	# The refuge of the stage in hand: walking the floor during this test can
+	# have carried it on to the next wing already.
+	var exit_room: Dictionary = level.manifest.rooms[level.refuge_room()]
 	player.position = FLOOR.position_of(exit_room) + Vector3(0, 0.04, 0)
 	level.session.set_refuge(1, true)
 	enemy.position = player.position + Vector3(0, 0, 1)

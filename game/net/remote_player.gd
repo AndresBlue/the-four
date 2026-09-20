@@ -22,7 +22,6 @@ var hide_index := -1
 var crouched := false
 var reading := false
 ## Holding interact in the refuge: counts towards leaving the floor.
-var holding_exit := false
 var peek_left := 0.0
 var peek_right := 0.0
 var pitch := 0.0
@@ -108,7 +107,6 @@ func push_state(data: Array) -> void:
 	var flags: int = data[4]
 	crouched = flags & 1 != 0
 	torch.visible = flags & 2 != 0 and not hidden
-	holding_exit = flags & 4 != 0
 	reading = flags & 8 != 0
 	peek_left = data[6]
 	peek_right = data[7]

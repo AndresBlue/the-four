@@ -210,7 +210,7 @@ func _physics_process(delta: float) -> void:
 
 func pack_local() -> Array:
 	var player = level.player
-	var flags := (1 if player.crouched else 0) | (2 if player.torch.visible else 0) | (4 if level.exit_held else 0) | (8 if player.reading else 0)
+	var flags := (1 if player.crouched else 0) | (2 if player.torch.visible else 0) | (8 if player.reading else 0)
 	var left := 0.0
 	var right := 0.0
 	var hide_index := -1
@@ -238,20 +238,19 @@ func locust_state(data: Array) -> void:
 func push_session() -> void:
 	if not net.is_host or not in_match(): return
 	var session = level.session
-	session_state.rpc(session.state, session.participants, session.exit_progress, session.elapsed, session.message, session.stage, session.goal)
+	session_state.rpc(session.state, session.participants, session.elapsed, session.message, session.stage, session.goal)
 
 @rpc("authority", "call_remote", "reliable")
-func session_state(state: int, participants: Dictionary, progress: float, elapsed: float, message: String, stage: int, goal: Dictionary) -> void:
+func session_state(state: int, participants: Dictionary, elapsed: float, message: String, stage: int, goal: Dictionary) -> void:
 	var session = level.session
 	if not in_match() or session.state in [session.State.LOADING, session.State.MENU] and state != session.State.PLAYING: return
-	var stage_changed: bool = stage != session.stage
+	var stage_changed: bool = stage != session.stage or goal != session.goal
 	session.stage = stage
 	session.goal = goal
 	var lives := {}
 	for seat in participants: lives[int(seat)] = participants[seat]
 	var deaths_changed: bool = lives != session.participants
 	session.participants = lives
-	session.exit_progress = progress
 	session.elapsed = elapsed
 	session.message = message
 	if state != session.state: session.set_state(state)
@@ -659,7 +658,7 @@ func catch_up(seat: int, id: int) -> void:
 		if body != null: places[other] = [body.global_position, body.rotation.y]
 	var creature = level.locust
 	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot())
-	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.exit_progress, level.session.elapsed, level.session.message)
+	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 
 @rpc("authority", "call_remote", "reliable")
 func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array) -> void:

@@ -564,7 +564,7 @@ ACTUAL: DEJA LIBRE EL UMBRAL
 CORRECCIÓN:
 
 [HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
-ACTUAL: REFUGIO · MANTÉN [%s] PARA SALIR DEL PISO
+ACTUAL: LA PUERTA DE LA ETAPA ESTÁ ABIERTA / REFUGIO · FALTAN SUPERVIVIENTES / SALIENDO DEL PISO
 CORRECCIÓN:
 
 [HUD.04] Palabra bajo los corchetes de enfoque: puerta cerrada

@@ -187,27 +187,34 @@ func run() -> void:
 	check("Cuotas correctas", quota(session, 1) == 1 and quota(session, 2) == 1 and quota(session, 3) == 2 and quota(session, 4) == 2)
 	session.roster_count = 1
 	session.set_refuge(1, true)
-	session.hold_exit(1.5, true)
+	session.update_goal(0.1, session.can_depart())
+	check("Con la cuota dentro, la puerta de la etapa se da por abierta", session.goal.ready)
 	session.set_refuge(1, false)
-	check("Salir del refugio cancela partida", session.exit_progress == 0 and not session.can_depart())
+	session.update_goal(0.1, session.can_depart())
+	check("Salir del refugio deja de cumplir la condición", not session.goal.ready and not session.can_depart())
 	session.set_refuge(1, true)
 	check("Refugio protege de captura de prueba", not session.capture(1))
-	session.hold_exit(3.1, true)
+	# Crossing is what closes a stage; at this level of the game there is no
+	# door, so the stage is closed by hand, as hotel_main does when somebody
+	# steps through it.
+	session.update_goal(0.1, true)
+	session.finish_stage()
 	check("Salida libre sin objetos", session.state == session.State.TRANSITION)
 	session._process(1.3)
 	check("Cerrar una etapa deja el piso en marcha", session.state == session.State.PLAYING and session.stage == 2)
-	# Through to the last one, which is the only one that ends the floor.
+	# Through to the last one, which is the only one that ends the floor: there
+	# the condition being met for a few seconds is what leaves.
 	while session.more_stages():
-		session.hold_exit(3.1, true)
+		session.finish_stage()
 		session._process(1.3)
-	session.hold_exit(3.1, true)
+	for i in 40: session.update_goal(0.1, true)
 	session._process(1.3)
 	check("Victoria y eliminación de checkpoint completado", session.state == session.State.WON and session.checkpoint().is_empty())
 	await scene.start_floor(81)
 	session.capture(1)
 	check("Muerte de prueba permite reintento", session.state == session.State.FAILED)
 	await scene.start_floor(81)
-	check("Reintento reproduce piso y limpia estado", session.state == session.State.PLAYING and scene.manifest.seed == 81 and session.exit_progress == 0)
+	check("Reintento reproduce piso y limpia estado", session.state == session.State.PLAYING and scene.manifest.seed == 81 and session.stage == 1 and not session.goal.ready)
 	var file := FileAccess.open(session.checkpoint_path, FileAccess.WRITE)
 	file.store_string('{"format":1,"generator":999,"seed":81,"floor":1}')
 	file.close()

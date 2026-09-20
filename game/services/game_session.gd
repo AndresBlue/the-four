@@ -12,14 +12,18 @@ var state := State.MENU
 ## finished.
 const STAGES := 3
 var stage := 1
-## What the stage in hand needs and how far along it is, for the interface and
-## for the other machines: {"kind": String, "done": int, "needed": int}.
-var goal := {"kind": "refuge", "done": 0, "needed": 1}
+## What the stage in hand needs, how far along it is and whether it is already
+## met, for the interface and for the other machines. `ready` is what unlocks
+## the door on: from then on anyone can open it, and crossing it is what
+## carries the floor to the next stage.
+var goal := {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 var participants := {1: Life.EXPLORING}
 var roster_count := 1
 var run_seed := 0
 var map_fallback := false
-var exit_progress := 0.0
+## Seconds the last stage has been met for: the floor ends after a moment,
+## until the door with the code lock is built and crossing it does that.
+var leaving := 0.0
 var elapsed := 0.0
 var transition_time := 0.0
 var message := ""
@@ -40,12 +44,12 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	participants = {}
 	for slot in slots: participants[int(slot)] = Life.EXPLORING
 	roster_count = slots.size()
-	exit_progress = 0
+	leaving = 0
 	elapsed = 0
 	transition_time = 0
 	message = ""
 	stage = 1
-	goal = {"kind": "refuge", "done": 0, "needed": 1}
+	goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 	if not online: write_checkpoint()
 	set_state(State.PLAYING)
 
@@ -56,7 +60,6 @@ func set_refuge(id: int, inside: bool) -> void:
 	var next: int = Life.REFUGE if inside else Life.EXPLORING
 	if participants[id] != next:
 		participants[id] = next
-		exit_progress = 0
 		changed.emit()
 
 func can_depart() -> bool:
@@ -69,13 +72,23 @@ func can_depart() -> bool:
 ## The refuge closes a stage only while that is the stage's condition.
 func refuge_stage() -> bool: return true
 
-func hold_exit(delta: float, held: bool) -> void:
-	if state != State.PLAYING or not refuge_stage(): return
-	if not held or not can_depart():
-		exit_progress = 0
+## The authority, every frame: whether the stage in hand is met. While it is,
+## the door on is unlocked; crossing it is what closes the stage (hotel_main).
+## On the last stage there is no wing beyond yet, so being met for a few
+## seconds is what ends the floor, until its door has its code lock.
+func update_goal(delta: float, met: bool) -> void:
+	if state != State.PLAYING: return
+	# A change here opens or shuts the door on, so everyone is told at once.
+	if bool(goal.get("ready", false)) != met:
+		goal["ready"] = met
+		changed.emit()
+	if more_stages() or not met:
+		leaving = 0.0
 		return
-	exit_progress += delta
-	if exit_progress >= 3: finish_stage()
+	leaving += delta
+	if leaving >= LEAVING_TIME: finish_stage()
+
+const LEAVING_TIME := 3.0
 
 ## The condition of the stage in hand is met (the authority decides). The beat
 ## of State.TRANSITION carries either into the next stage or out of the floor.
@@ -97,7 +110,7 @@ func capture(id: int) -> bool:
 func drop(id: int) -> void:
 	if state != State.PLAYING or not participants.has(id) or participants[id] == Life.DEAD: return
 	participants[id] = Life.DEAD
-	exit_progress = 0
+	leaving = 0.0
 	check_quota()
 
 func check_quota() -> bool:
@@ -112,7 +125,7 @@ func check_quota() -> bool:
 
 func pause() -> void:
 	if state == State.PLAYING:
-		exit_progress = 0
+		leaving = 0.0
 		set_state(State.PAUSED)
 
 func checkpoint() -> Dictionary:
@@ -156,8 +169,8 @@ func _process(delta: float) -> void:
 		if transition_time >= 1.2:
 			if more_stages():
 				stage += 1
-				exit_progress = 0
-				goal = {"kind": "refuge", "done": 0, "needed": 1}
+				leaving = 0.0
+				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 				set_state(State.PLAYING)
 				return
 			if FileAccess.file_exists(checkpoint_path) and not online: DirAccess.remove_absolute(checkpoint_path)

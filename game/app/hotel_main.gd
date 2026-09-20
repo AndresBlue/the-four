@@ -68,7 +68,6 @@ var net
 var match_net
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
-var exit_held := false
 ## Online, Esc opens a menu over the running match instead of pausing it.
 var online_menu := false
 ## A kill in progress: {seat, time, point, yaw, stabs, dropped}. The floor only
@@ -524,7 +523,7 @@ func on_state() -> void:
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
 	if is_instance_valid(hotel) and not manifest.is_empty():
-		hotel.open_gates(session.stage)
+		hotel.open_gates(session.stage, session.goal.get("ready", false))
 		if playing and session.stage > last_stage: follow_players(session.stage)
 	last_stage = session.stage
 	press_time = 0
@@ -890,7 +889,7 @@ func _physics_process(delta: float) -> void:
 	# its own player happens to be doing. It used to be called from inside the
 	# branches below, and the one for a dead player had no call: with the host
 	# dead, its guests could hold at the refuge for ever and never leave.
-	if not net.is_client(): host_exit(delta)
+	if not net.is_client(): host_gate(delta)
 
 ## This machine's own player: looking, opening, reading, hiding, or watching a
 ## teammate once it is dead.
@@ -904,7 +903,6 @@ func drive_local(delta: float) -> void:
 	if Input.is_action_just_pressed("sheet") and not online_menu: toggle_sheet()
 	if ui.sheet.visible:
 		# Looking at the sheet: the character stands still, the world goes on.
-		exit_held = false
 		camcorder.focus("")
 		if not local_alive(): watch_teammates()
 		return
@@ -914,13 +912,10 @@ func drive_local(delta: float) -> void:
 		if lost_signal > 0.0:
 			camcorder.focus("")
 			ui.hint.text = ""
-			ui.progress.visible = false
 			return
 		watch_teammates()
 		return
-	if online_menu or match_net.local_is_locust():
-		exit_held = false
-		return
+	if online_menu or match_net.local_is_locust(): return
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
 	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
@@ -973,33 +968,40 @@ func drive_local(delta: float) -> void:
 			if not match_net.use_door(pressed_door, false, running): ui.flash("DEJA LIBRE EL UMBRAL")
 		pressed_door = null
 	was_held = held
-	# Deliberate hold inside the refuge; door operations never also start departure.
-	exit_held = held and inside and not is_instance_valid(target) and not is_instance_valid(pressed_door)
-	ui.progress.visible = session.exit_progress > 0
-	ui.progress.value = session.exit_progress
-	ui.hint.text = "REFUGIO · MANTÉN [%s] PARA SALIR DEL PISO" % key if inside else ""
+	# Nothing is held down at the refuge any more: with everyone inside, the
+	# door on unlocks itself and crossing it is what takes you on.
+	var ready: bool = session.goal.get("ready", false)
+	if inside and not session.more_stages(): ui.hint.text = "SALIENDO DEL PISO" if ready else "REFUGIO · FALTAN SUPERVIVIENTES"
+	elif inside: ui.hint.text = "LA PUERTA DE LA ETAPA ESTÁ ABIERTA" if ready else "REFUGIO · FALTAN SUPERVIVIENTES"
+	else: ui.hint.text = ""
 	ui.subtitle.text = ""
 	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
 		ui.subtitle.text = "[Ventilación constante]"
 	if not save_error.is_empty(): ui.subtitle.text = save_error
 
-## Leaving the floor: offline the local hold; online anyone in the refuge
-## holding counts (the session still needs every survivor inside).
-func host_exit(delta: float) -> void:
-	var holding := exit_held
-	for body in match_net.bodies.values():
-		if is_instance_valid(body) and body.holding_exit and point_in_refuge(body.global_position): holding = true
-	session.hold_exit(delta, holding)
+## The authority, every frame: whether the stage in hand is met -- which
+## unlocks the door on -- and whether somebody has already crossed it, which
+## is what carries the floor to the next stage. Nothing is held down any more.
+func host_gate(delta: float) -> void:
+	session.update_goal(delta, session.can_depart())
+	if not session.more_stages(): return
+	# Once its door is open, stepping through is what closes the stage -- even
+	# if somebody left the refuge in the meantime and the condition no longer
+	# reads as met.
+	var gate = hotel.gates[session.stage - 1] if is_instance_valid(hotel) and hotel.gates.size() >= session.stage else null
+	if not is_instance_valid(gate) or gate.locked: return
+	for body in survivors():
+		var room: Dictionary = FLOOR.room_at(manifest.rooms, body.global_position)
+		if not room.is_empty() and int(room.get("wing", 0)) >= session.stage:
+			session.finish_stage()
+			return
 
 ## Dead online: the view follows a living teammate; a click switches to the next.
 func watch_teammates() -> void:
-	exit_held = false
 	player.active = false
 	player.visible = false
 	player.collision_layer = 0
 	var body: Node3D = match_net.watched_body()
-	ui.progress.visible = session.exit_progress > 0
-	ui.progress.value = session.exit_progress
 	camcorder.focus("")
 	if body == null:
 		ui.hint.text = "HAS MUERTO"

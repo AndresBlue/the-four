@@ -35,9 +35,9 @@ Medido sobre mil semillas: 42, 38 y 35 habitaciones por ala de media (nunca meno
 
 Entre etapa y etapa hay un latido de 1,2 s: el personaje se queda quieto, sale el aviso de la etapa nueva y se sigue jugando en el mismo hotel, sin pantallas por el medio.
 
-La condición de la **etapa 1** es la de siempre: llegar al refugio con la cuota de supervivientes y mantener la interacción tres segundos. Las condiciones de las etapas 2 y 3 —encender televisores y abrir una cerradura con cuatro números— **todavía no están construidas**: mientras tanto usan la misma condición que la primera, para que el piso se pueda terminar.
+La condición de la **etapa 1** es llegar al refugio con la cuota de supervivientes y que todos los vivos estén dentro. **Ya no hay nada que mantener pulsado:** cumplida la condición, la puerta de acceso se abre y cualquiera puede cruzarla; cruzarla es lo que cierra la etapa, y desde ese momento ese refugio deja de proteger. Una puerta que se ha abierto no se vuelve a cerrar, aunque alguien salga del refugio después. Las condiciones de las etapas 2 y 3 —encender televisores y abrir una cerradura con cuatro números— **todavía no están construidas**: mientras tanto usan la misma condición que la primera, para que el piso se pueda terminar.
 
-La puerta de acceso de cada etapa está **cerrada con llave** hasta que esa etapa se cumple: no la abren los jugadores, ni la criatura, ni un portazo. Al cerrarse la etapa se abre sola y ya no vuelve a cerrarse. La criatura, además, **se va detrás de los jugadores**: en cuanto se abre la puerta se le manda al ala nueva, para que no se quede cazando un ala por la que ya no va a pasar nadie.
+La puerta de acceso de cada etapa está **cerrada con llave** hasta que esa etapa se cumple: no la abren los jugadores, ni la criatura, ni un portazo. Al cumplirse la condición se abre sola y ya no vuelve a cerrarse. La criatura, además, **se va detrás de los jugadores**: en cuanto se abre la puerta se le manda al ala nueva, para que no se quede cazando un ala por la que ya no va a pasar nadie.
 
 El número de participantes se fija al comenzar el piso. Para avanzar deben sobrevivir `ceil(N / 2)`: uno de dos, dos de tres, dos de cuatro; uno en individual. Desconectarse no reduce el requisito.
 
