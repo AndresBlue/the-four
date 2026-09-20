@@ -26,7 +26,7 @@ SOURCE = ROOT / "sfx"
 OUT = ROOT / "assets/audio/events"
 RATE = 44100
 ## Where the impact sits inside the finished clip: the whoosh comes first.
-HIT_AT = 0.18
+HIT_AT = 0.22
 HIT_TAIL = 0.62
 
 

@@ -28,7 +28,6 @@ var cue_point := Vector3.INF
 var drone: AudioStreamPlayer
 var breath: AudioStreamPlayer3D
 var chitter: AudioStreamPlayer3D
-var riser: AudioStreamPlayer3D
 var heart: AudioStreamPlayer
 var chitter_streams: Array[AudioStream] = []
 var lub: AudioStream
@@ -36,7 +35,6 @@ var dub: AudioStream
 var route_clock := 0.0
 var chitter_clock := 2.0
 var heart_clock := 0.0
-var riser_cooldown := 0.0
 var clock := 0.0
 var muffle: AudioEffectLowPassFilter
 var rng := RandomNumberGenerator.new()
@@ -52,7 +50,6 @@ func _ready() -> void:
 	add_child(drone)
 	breath = spatial("DreadBreath", world_audio.loop_stream(load("res://assets/audio/dread/dread_breath.wav")), 3.0, 22.0)
 	chitter = spatial("DreadChitter", null, 3.5, 26.0)
-	riser = spatial("DreadSwell", load("res://assets/audio/dread/presence_riser.wav"), 5.0, 30.0)
 	heart = AudioStreamPlayer.new()
 	heart.name = "Heartbeat"
 	heart.bus = "Threat"
@@ -82,9 +79,8 @@ func reset() -> void:
 	target = 0.0
 	route_distance = INF
 	cue_point = Vector3.INF
-	for player in [drone, breath, chitter, riser, heart]: player.stop()
+	for player in [drone, breath, chitter, heart]: player.stop()
 	if muffle != null: muffle.cutoff_hz = 20000.0
-	riser_cooldown = 0.0
 
 ## Point `distance` metres along a path, or its end.
 static func along(path: PackedVector3Array, distance: float) -> Vector3:
@@ -117,7 +113,6 @@ func _physics_process(delta: float) -> void:
 	var level = world_audio.level
 	if level == null or not world_audio.enabled: return
 	clock += delta
-	riser_cooldown = maxf(0.0, riser_cooldown - delta)
 	var creature = level.locust
 	var active: bool = is_instance_valid(creature) and level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and not level.match_net.local_is_locust()
 	var listener: Vector3 = world_audio.listener_position()
@@ -143,11 +138,6 @@ func _physics_process(delta: float) -> void:
 		breath.global_position = ear if breath.global_position.distance_to(ear) > 6.0 else breath.global_position.lerp(ear, minf(1.0, delta * 2.5))
 	update_chitters(delta)
 	update_heart(delta)
-	if previous < 0.55 and intensity >= 0.55 and riser_cooldown <= 0.0 and cue_point != Vector3.INF:
-		riser.global_position = cue_point + Vector3.UP * 1.5
-		riser.volume_db = 0.0
-		riser.play()
-		riser_cooldown = 30.0
 
 func apply_levels(shaped: float, _delta: float, _listener: Vector3) -> void:
 	var audible := intensity > 0.01

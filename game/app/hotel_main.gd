@@ -85,7 +85,7 @@ const BODY_DROP := "res://assets/audio/events/execution_body.wav"
 ## The beats of an execution, in seconds from the grab. The scream is at zero,
 ## because that is the point of it; then it holds you and looks at you; then
 ## the arm comes for the lens, covers it and lands; and the picture goes.
-const ARM_TIME := 2.62
+const ARM_TIME := 2.58
 const KILL_TIME := 2.8
 const SIGNAL_TIME := 2.92
 const DROP_TIME := 3.1
@@ -615,6 +615,7 @@ func capture_survivor(body: Node3D) -> void:
 ## stabs three times. The victim's own machine takes over its body.
 func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 	execution = {"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false}
+	strike_uv = Vector2(0.35, 0.55)
 	if is_instance_valid(locust) and locust.control != "puppet": locust.begin_execution()
 	if seat == player.slot:
 		player.active = false
@@ -644,7 +645,10 @@ func update_execution(delta: float) -> void:
 	if int(execution.stabs) == 1 and execution.time >= KILL_TIME:
 		glitch = 1.0
 		execution.stabs = 2
-		# The dead channel takes over the victim's own ears.
+	# The dead channel starts with the snow, not before it: sound and picture
+	# are the same event.
+	if int(execution.stabs) == 2 and execution.time >= SIGNAL_TIME:
+		execution.stabs = 3
 		if int(execution.seat) == player.slot and world_audio.enabled and is_instance_valid(static_sound): static_sound.play()
 	if not execution.dropped and execution.time >= DROP_TIME:
 		execution.dropped = true
@@ -665,15 +669,28 @@ func update_execution(delta: float) -> void:
 
 ## Where the striking arm is on the victim's screen, as a UV: the black
 ## spreads from there, so it reads as an arm arriving and not as a fade.
+var strike_uv := Vector2(0.35, 0.55)
 func strike_on_screen() -> Vector2:
-	if not is_instance_valid(locust) or not is_instance_valid(player.camera): return Vector2(0.5, 0.5)
-	var hand: Vector3 = locust.global_position + Vector3(0, 2.0, 0) - locust.global_basis.x * 0.45
+	if not is_instance_valid(locust) or not is_instance_valid(player.camera): return strike_uv
+	# The hand that is actually coming: the creature holds with its left and
+	# strikes with its right (locust_visual), and facing you its right is on
+	# your left, which is where the black has to start.
+	var hand: Vector3 = locust.global_position + Vector3(0, 2.0, 0) + locust.global_basis.x * 0.45
+	var visual = locust.visual
+	if is_instance_valid(visual) and "skeleton" in visual and "bones" in visual and visual.bones.has("R_Hand"):
+		hand = visual.skeleton.global_transform * visual.skeleton.get_bone_global_pose(int(visual.bones["R_Hand"])).origin
 	var size: Vector2 = player.camera.get_viewport().get_visible_rect().size
-	if size.x <= 0.0 or size.y <= 0.0: return Vector2(0.5, 0.5)
-	# Behind the camera it would project inverted: keep it in the middle.
-	if player.camera.is_position_behind(hand): return Vector2(0.5, 0.5)
+	if size.x <= 0.0 or size.y <= 0.0: return strike_uv
+	# Once the hand is past the lens it would project inverted, so the last
+	# place it was seen is kept: the black goes on spreading from there instead
+	# of jumping to the middle of the screen.
+	if player.camera.is_position_behind(hand): return strike_uv
 	var point: Vector2 = player.camera.unproject_position(hand)
-	return Vector2(clampf(point.x / size.x, -0.2, 1.2), clampf(point.y / size.y, -0.2, 1.2))
+	# Kept inside the frame and on the left half: the arm that strikes is the
+	# creature's right, which facing you is on your left, and a black growing
+	# from a corner reads as a shadow instead of as something arriving.
+	strike_uv = Vector2(clampf(point.x / size.x, 0.08, 0.5), clampf(point.y / size.y, 0.18, 0.82))
+	return strike_uv
 
 ## The victim: held in the air in front of the creature, looking at it.
 func hold_victim(delta: float) -> void:
@@ -1319,7 +1336,7 @@ func build_audio() -> void:
 	static_sound = AudioStreamPlayer.new()
 	static_sound.name = "DeadChannel"
 	static_sound.bus = "Effects"
-	static_sound.volume_db = -6.0
+	static_sound.volume_db = -2.0
 	static_sound.stream = load(DEAD_CHANNEL)
 	add_child(static_sound)
 	ambience = AudioStreamPlayer.new()

@@ -94,6 +94,9 @@ const GRUNT_MIN := 1.6
 const VOICE_SHRIEK := {"unit": 5.5, "reach": 32.0, "level": 3.0}
 const VOICE_GRUNT := {"unit": 7.0, "reach": 40.0, "level": 0.0}
 var grunt_rest := 0.0
+## Seconds left of the bark that announces a strike (it lives inside the same
+## long recording, so it has to be stopped where it ends).
+var warn_left := 0.0
 ## How long it can go without seeing its prey before finding it again is worth
 ## another grunt.
 const GRUNT_REGAIN := 1.5
@@ -133,7 +136,10 @@ func _ready() -> void:
 	add_to_group("hotel_actors")
 	visual = $Visual
 	signal_player = $Warning
-	signal_player.stream = make_warning()
+	# The tell before a strike is its own voice, a short bark out of the same
+	# recording: the synthesised sweep it used to be was a rising whoosh that
+	# belonged to no animal.
+	signal_player.stream = load("res://assets/audio/sfx/chase/grunts.ogg")
 	footstep = $Footsteps
 	footstep.stream = claw_sound()
 	if visual.has_signal("footfall"): visual.footfall.connect(on_footfall)
@@ -162,20 +168,17 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if is_instance_valid(voice) and voice.get_parent() != self: voice.queue_free()
 
-static func make_warning() -> AudioStreamWAV:
-	# Original short scrape/pulse; independent of music and ambient buses.
-	var audio := AudioStreamWAV.new()
-	audio.format = AudioStreamWAV.FORMAT_16_BITS
-	audio.mix_rate = 22050
-	var bytes := PackedByteArray()
-	bytes.resize(15435 * 2)
-	for i in 15435:
-		var t := float(i) / 22050.0
-		var envelope := sin(PI * t / 0.7)
-		var value := (sin(TAU * (190 * t + 160 * t * t)) * 0.6 + sin(TAU * 67 * t) * 0.25) * envelope
-		bytes.encode_s16(i * 2, int(value * 17000))
-	audio.data = bytes
-	return audio
+## The short pieces of the recording, the ones too short to be calls: barks and
+## breaths. One of them is the tell that a strike is coming.
+func warn() -> void:
+	var choices: Array = []
+	for index in GRUNTS.SEGMENTS.size():
+		if GRUNTS.SEGMENTS[index][1] < AGGRESSIVE_GRUNT: choices.append(index)
+	if choices.is_empty() or signal_player.stream == null: return
+	var segment: Array = GRUNTS.SEGMENTS[choices[rng.randi_range(0, choices.size() - 1)]]
+	signal_player.pitch_scale = rng.randf_range(0.78, 0.9)
+	signal_player.play(segment[0])
+	warn_left = segment[1] / signal_player.pitch_scale
 
 ## A pointed leg striking the floor: a hard tick over a hollow knock.
 static func claw_sound() -> AudioStreamWAV:
@@ -285,6 +288,9 @@ func howl_next() -> void:
 ## the next one while a shriek lasts, and fades the shriek out at its end.
 func update_voice(delta: float) -> void:
 	grunt_rest = maxf(0.0, grunt_rest - delta)
+	if warn_left > 0.0:
+		warn_left -= delta
+		if warn_left <= 0.0: signal_player.stop()
 	if howl_left > 0.0:
 		howl_left -= delta
 		if howl_left <= 0.0:
@@ -463,7 +469,7 @@ func set_mode(next: Mode) -> void:
 	# Spotting the player: an aggressive grunt as it turns to hunt.
 	if next == Mode.ALERT: grunt()
 	if next == Mode.WINDUP:
-		signal_player.play()
+		warn()
 		if "match_net" in level and level.match_net != null: level.match_net.creature_call("warning", 0, 1.0)
 
 func choose_patrol() -> void:
@@ -584,7 +590,7 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 	calls_heard += 1
 	last_call = kind
 	if kind == "warning":
-		signal_player.play()
+		warn()
 		return
 	if kind == "howl":
 		howl(segment / 100.0, pitch, false)

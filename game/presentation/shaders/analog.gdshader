@@ -154,8 +154,8 @@ void fragment() {
 		// A few big lobes rather than even teeth: a limb, not a cog.
 		float angle = atan(away.y, away.x);
 		float ragged = 1.0 + (hash(vec2(floor(angle * 2.5), floor(t * 18.0))) - 0.5) * 0.3 + (hash(vec2(floor(angle * 6.0), 3.0)) - 0.5) * 0.12;
-		// Cubed: for most of the swing it is a speck, and then it is everything.
-		float radius = strike_fill * strike_fill * strike_fill * 2.0 * ragged;
+		// Most of the swing it is a speck, and then it is everything.
+		float radius = pow(strike_fill, 2.2) * 2.0 * ragged;
 		// A hard edge: a limb blocking the lens, not a shadow falling on it.
 		float covered = 1.0 - smoothstep(radius * 0.9, radius, length(away));
 		color *= 1.0 - covered;

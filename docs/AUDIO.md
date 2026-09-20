@@ -71,12 +71,14 @@ Medido con `tools/audio/measure_spatial.gd` (pisadas de la criatura a 3,5 m de u
 
 `game/audio/dread_aura.gd` (nodo `WorldAudio/DreadAura`) calcula cada 0,25 s la distancia **por ruta caminable** entre jugador y criatura. La intensidad crece desde 38 m hasta 5 m y aumenta si investiga o persigue; es cero durante la protección inicial y en el refugio.
 
-- **Dirección sin revelar la posición:** respiración, chasquidos y crecidas suenan unos metros por delante del jugador (7,5 m lejos, 2,5 m cerca) **sobre la ruta por la que llegaría**. Se oye por qué puerta o pasillo viene aunque haya paredes, pero no dónde está exactamente.
+- **Dirección sin revelar la posición:** respiración y chasquidos suenan unos metros por delante del jugador (7,5 m lejos, 2,5 m cerca) **sobre la ruta por la que llegaría**. Se oye por qué puerta o pasillo viene aunque haya paredes, pero no dónde está exactamente.
 - **Presión:** dron grave desafinado (no direccional), ambiente amortiguado y música que se retira. Latidos desde intensidad 0,5, de 64 a 128 ppm.
 - **Subtítulo direccional** al cruzar intensidad 0,3: `[Algo se acerca · izquierda/derecha/delante/detrás]`, como máximo cada 20 s.
 - La presencia grabada sigue sonando desde la propia criatura, con oclusión por paredes. El aura es solo presentación: no altera percepción, rutas ni ataques.
 
-Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/dread/` (WAV mono 16 bits, reproducibles): dron, respiración, cuatro chasquidos y zumbido de fluorescente; más una copia mono de `sub-riser-presence.wav` (crecida). Se pueden sustituir por grabaciones propias con el mismo nombre.
+Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/dread/` (WAV mono 16 bits, reproducibles): dron, respiración, cuatro chasquidos y zumbido de fluorescente. Se pueden sustituir por grabaciones propias con el mismo nombre.
+
+**La crecida se retiró** (septiembre de 2026): `presence_riser.wav` era un barrido ascendente sintetizado —de 93 Hz a 4,7 kHz en cinco segundos— que se disparaba al cruzar intensidad 0,55, es decir justo cuando la criatura se te echaba encima, y sonaba a efecto de tráiler y no a bicho. El archivo se conserva porque la escena de entrada lo usa como golpe de la tele.
 
 ## Atmósfera local
 
@@ -94,6 +96,8 @@ Pendiente: escucha crítica con auriculares, balance del aura en partidas humana
 Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Locust. La criatura oye al jugador por la misma lógica de rutas pero hasta la distancia de cada ruido en la tabla `HEARD` de `noise_kinds.gd` (de 8 m agachado a 64 m corriendo sobre baldosa), y el aura empieza a 24 m de ruta: la criatura siempre detecta antes de lo que el jugador puede oírla.
 
 ## Gruñidos de persecución
+
+**El aviso de la estocada también sale de la misma grabación**: 0,3 s antes de embestir suena uno de los trozos cortos de `grunts.ogg` (los que no llegan a 1,4 s: ladridos y respiraciones), con el tono bajado entre 0,78 y 0,9. Antes era un barrido sintetizado de 190 Hz hacia arriba, que no sonaba a animal. Sigue siendo la señal que te dice que esquives, y no la tapa nada: va por su propio reproductor (`$Warning`).
 
 `assets/audio/sfx/chase/grunts.ogg` (aportado) se divide en gruñidos sueltos con `tools/audio/analyze_grunts.gd`, que escribe `game/audio/grunt_segments.gd`. Solo se usan los gruñidos completos (1,4 s o más; los trozos cortos son respiraciones), sin repetir el mismo dos veces seguidas. Suena uno en cuanto la criatura te ve y se gira hacia ti (alerta), el siguiente cuando termina ese y después uno cada 2,5–5 s mientras persigue, con la misma propagación. El corte respeta el tono aleatorio, así que no se truncan. Si cambias la grabación, vuelve a ejecutar el analizador.
 
@@ -128,9 +132,9 @@ Tres grabaciones aportadas, preparadas por `tools/audio/prepare_execution_sfx.py
 Los tiempos, contados desde el agarre:
 
 - **0,0 s — el grito.** En la máquina de la víctima suena plano, a 0 dB, sin posición: no está en la sala, está en su cabeza. En las demás sale de la criatura por la propagación normal.
-- **2,62 s — el brazo sale.** Empieza el silbido del golpe, cortado para que su impacto caiga 0,18 s después, que es justo lo que tarda el brazo en pasar de un punto a tapar la lente.
+- **2,58 s — el brazo sale.** Empieza el silbido del golpe, cortado para que su impacto caiga 0,22 s después, que es justo lo que tarda el brazo en pasar de un punto a tapar la lente. El negro crece desde donde está su mano derecha en la pantalla, que desde los ojos de la víctima queda a la izquierda.
 - **2,8 s — el impacto**, con la pantalla ya negra.
-- **2,92 s — la estática.** El canal muerto arranca en los oídos de la víctima (bus Effects, −6 dB) y la imagen se va con él.
+- **2,92 s — la estática.** El canal muerto arranca **en el mismo instante** en que la imagen se va (bus Effects, −2 dB): sonido e imagen son el mismo suceso.
 - **3,1 s** cae el cuerpo (`execution_body.wav`, la segunda toma de la misma grabación de impactos: más pesada y con más cola).
 
 En la ejecución no queda nada sintetizado: los golpes y el cuerpo generados de la versión anterior (`execution_stab_1..3.wav`, `execution_drop.wav`) se han borrado, y `generate_event_sfx.py` ya no los produce.
