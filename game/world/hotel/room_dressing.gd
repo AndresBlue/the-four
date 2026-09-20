@@ -143,7 +143,7 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		furnish(builder, holder, pick, stretch[1], seed_pos, kept, room)
 		# Anything with drawers or shelves is somewhere a number could be
 		# hidden: the builder keeps the list so a floor can put four in them.
-		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick})
+		if pick in CONTAINERS and not bool(room.get("landing", false)): builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick})
 		k += 1
 	decals(builder, node, room, kept)
 

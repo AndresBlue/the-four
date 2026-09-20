@@ -176,19 +176,32 @@ func run() -> void:
 	check("Correr deja más rastro que caminar, y una puerta más aún", puffed[NOISE.Kind.RUN] > puffed[NOISE.Kind.FOOTSTEP] * 2 and puffed[NOISE.Kind.DOOR] > puffed[NOISE.Kind.FOOTSTEP] * 2)
 	# A wardrobe is heard from the next rooms, as far as a door, and its cloud
 	# hangs in front of its doors instead of inside it.
-	# The farthest wardrobe it can still hear: with the floor split into wings,
-	# whether one happens to sit at a given distance is luck, but that a
-	# wardrobe carries from another room is the property being checked.
+	# That a wardrobe carries into the next room is the property being checked,
+	# so the hunter is stood in a room next door to one instead of being left
+	# wherever its patrol had taken it -- cells are twelve metres across, so
+	# the next room over is always another room and always well past arm's
+	# reach.
 	var far_hide = null
 	var far_gap := 0.0
 	for hide in level.hotel.hides:
-		var gap: float = hide.global_position.distance_to(creature.global_position)
-		if gap > 8.0 and gap > far_gap and creature.hear_route(hide.global_position, level.HUNTER_WARDROBE_RADIUS).audible:
+		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, hide.global_position)
+		if room.is_empty() or int(room.type) == 19: continue
+		for neighbour in level.manifest.adjacency[int(room.id)]:
+			var next_room: Dictionary = level.manifest.rooms[int(neighbour)]
+			if int(next_room.type) == 19: continue
+			creature.global_position = FLOOR.position_of(next_room) + Vector3(0, 0.1, 0)
+			await frames(2)
+			if not creature.hear_route(hide.global_position, level.HUNTER_WARDROBE_RADIUS).audible: continue
 			far_hide = hide
-			far_gap = gap
+			far_gap = hide.global_position.distance_to(creature.global_position)
+			break
+		if far_hide != null: break
 	creature.driver.heard.clear()
 	if far_hide != null: level.on_hide_changed(true, far_hide.global_position)
 	await frames(3)
+	# Asked straight away: a contact lives CONTACT_LIFE seconds, and waiting
+	# for a couple of clicks first is long enough to lose it.
+	check("Un armario se oye desde otra habitación", far_hide != null and far_gap > 8.0 and creature.driver.heard.any(func(mark): return int(mark.kind) == NOISE.Kind.WARDROBE))
 	# The way on has moved: the road to it is laid out in the reading.
 	var before_road: int = echo.find_at
 	creature.driver.mark_stage(PackedVector3Array([creature.global_position, creature.global_position + Vector3(0, 0, -12.0), creature.global_position + Vector3(8.0, 0, -12.0)]))
@@ -198,7 +211,6 @@ func run() -> void:
 	creature.driver.mark_blackout()
 	await click_passes(echo)
 	check("Y el apagón le llega como una sacudida alrededor", echo.find_at != before_dark)
-	check("Un armario se oye desde otra habitación", far_hide != null and creature.driver.heard.any(func(mark): return int(mark.kind) == NOISE.Kind.WARDROBE))
 	if level.hotel.hides.size() > 0:
 		var cabinet = level.hotel.hides[0]
 		var hung: Vector3 = echo.before_wardrobe(cabinet.global_position)

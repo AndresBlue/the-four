@@ -37,9 +37,9 @@ func run() -> void:
 	var spans := {}
 	for room in level.manifest.rooms: spans[str(FLOOR.size_of(room))] = true
 	check("Habitaciones rectangulares de tamaños distintos", spans.size() >= 5)
-	# One door per connection, plus the last door of the floor, the one with
-	# the code lock, which belongs to no connection.
-	check("Salones unidos físicamente sin puertas interiores", level.manifest.merged.size() > 5 and level.hotel.doors.size() == level.manifest.edges.size() - level.manifest.merged.size() + 1)
+	# One door per connection, the last door of the floor among them: it is
+	# the connection between the refuge and the landing behind it.
+	check("Salones unidos físicamente sin puertas interiores", level.manifest.merged.size() > 5 and level.hotel.doors.size() == level.manifest.edges.size() - level.manifest.merged.size())
 	Input.action_press("crouch")
 	await frames(5)
 	check("Agacharse reduce cápsula y altura", player.crouched and player.body_shape.shape.height < 1.1 and player.camera.position.y < 1.4)

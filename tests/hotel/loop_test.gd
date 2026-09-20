@@ -47,7 +47,15 @@ func run() -> void:
 	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y > 0.6 and d.position.y < 0.9))
 	check("Documentos distintos entre sí", documents[0].entry_id != documents[1].entry_id)
 	var document = documents[0]
-	player.position = document.position + Vector3(0, -0.8, 1.0) - Vector3(0, document.position.y - 0.84, 0)
+	# Stood a metre away on the side the room is open. A document lies on a
+	# piece of furniture and furniture stands against a wall, so coming at it
+	# from a fixed direction means standing inside the wall half the time; a
+	# player walks up to it from the middle of the room.
+	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, document.position)
+	var inward: Vector3 = FLOOR.position_of(room) - document.position
+	inward.y = 0.0
+	if inward.length() < 0.5: inward = Vector3(0, 0, 1)
+	player.position = document.position + inward.normalized()
 	player.position.y = 0.04
 	player.rotation.y = 0.0
 	var eye: Vector3 = player.position + Vector3(0, player.eye_height, 0)

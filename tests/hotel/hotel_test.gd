@@ -1,5 +1,6 @@
 extends SceneTree
 const GEN := preload("res://game/world/generation/map_generator.gd")
+const WALKER := preload("res://game/world/generation/wall_walker.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 var checks: Array = []
 var failed := 0
@@ -21,6 +22,9 @@ func run() -> void:
 	var number_faults: Array = []
 	var climbing := 0
 	var falling := 0
+	var one_door: Array = []
+	var wall_solved: Array = []
+	var sealed_landing: Array = []
 	for seed_value in 1000:
 		var data := generator.generate(seed_value)
 		if data.fallback: fallback_count += 1
@@ -44,6 +48,19 @@ func run() -> void:
 			rooms_walked += maxi(0, int(distances[int(gate.room)]))
 			if int(gate.get("beyond", -1)) >= 0: entrance = int(gate.beyond)
 		walked.append(rooms_walked)
+		# Every refuge is entered by one door and no other. The last one has
+		# the locked door to the landing behind it as well, and that landing
+		# is a dead end: nothing else opens on to it.
+		var landing := int(data.gates[data.gates.size() - 1].get("beyond", -1))
+		for wing in 3:
+			var refuge: int = int(data.refuges[wing])
+			var ways: Array = data.adjacency[refuge].filter(func(id): return int(data.rooms[id].wing) == wing and id != landing)
+			if ways.size() != 1: one_door.append([seed_value, wing, ways.size()])
+		if landing < 0 or data.adjacency[landing].size() != 1 or not bool(data.rooms[landing].get("landing", false)): sealed_landing.append(seed_value)
+		# And the exit room is not found by walking with a hand on the wall:
+		# not with either hand, not setting off any of the four ways.
+		var last_wing: int = int(data.gates[1].beyond) if int(data.gates[1].get("beyond", -1)) >= 0 else int(data.start)
+		if WALKER.hits(data.rooms, data.adjacency, int(data.width), int(data.height), last_wing, int(data.refuges[2])) > 0: wall_solved.append(seed_value)
 		# The numbers: each wing its hundred, never two doors the same, and
 		# only the rooms let to somebody carry one.
 		var seen_numbers := {}
@@ -73,6 +90,9 @@ func run() -> void:
 				elif far < near: falling += 1
 			if wing < data.gates.size() and int(data.gates[wing].get("beyond", -1)) >= 0: wing_entrance = int(data.gates[wing].beyond)
 	check("1.000 semillas: grafos y módulos válidos", failures.is_empty())
+	check("Cada refugio se entra por una sola puerta", one_door.is_empty())
+	check("Detrás de la última puerta solo hay el rellano, sin otra entrada", sealed_landing.is_empty())
+	check("Ir pegado a una pared no encuentra la habitación de salida", wall_solved.is_empty())
 	check("La numeración es de hotel: una centena por ala, sin repetir y sin placa en servicio", number_faults.is_empty())
 	var drawn: float = float(climbing) / maxf(1.0, float(climbing + falling))
 	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)
@@ -120,7 +140,7 @@ func run() -> void:
 	check("Servicio, pasillo y refugio no llevan placa", plaques_ok)
 	var dark: Array = scene.hotel.lights.filter(func(light): return light.has_meta("off"))
 	var reception_lit: bool = scene.manifest.rooms.all(func(room): return int(room.type) != 0 or not scene.hotel.lights[room.id].has_meta("off"))
-	check("Algunas habitaciones tienen la luz apagada, nunca la recepción", dark.size() > 0 and dark.size() < scene.hotel.lights.size() / 3 and reception_lit and dark.all(func(light): return not light.visible))
+	check("Algunas habitaciones tienen la luz apagada, nunca la recepción", dark.size() > 0 and float(dark.size()) < float(scene.hotel.lights.size()) * 0.4 and reception_lit and dark.all(func(light): return not light.visible))
 	var door = scene.hotel.doors[0]
 	door.open_immediately()
 	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)

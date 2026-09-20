@@ -628,7 +628,9 @@ func place_containers() -> void:
 		var last: Dictionary = manifest.gates[manifest.gates.size() - 1]
 		var out: Array = last.get("out", [1, 0])
 		var away := Vector3(int(out[0]), 0, int(out[1]))
-		var door_point: Vector3 = hotel.landings[0] - away * (hotel.LANDING.z * 0.5)
+		# On the wall the door is in, which is the one the refuge shares with
+		# the landing behind it.
+		var door_point: Vector3 = FLOOR.portal_between(manifest.rooms[int(last.room)], manifest.rooms[int(last.beyond)])
 		lock = LOCK.new()
 		lock.name = "CodeLock"
 		lock.position = door_point - away * 0.35 + Vector3(away.z, 0, -away.x) * 1.1

@@ -27,7 +27,7 @@ static func choose(manifest: Dictionary, containers: Array, stage := 3) -> Array
 	for index in containers.size():
 		var spot: Dictionary = containers[index]
 		var room: Dictionary = manifest.rooms[int(spot.room)]
-		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id): continue
+		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id) or bool(room.get("landing", false)): continue
 		if Vector3(spot.position).distance_to(entrance) < MIN_FROM_ENTRANCE: continue
 		spots.append({"index": index, "sector": int(room.sector), "room": int(room.id)})
 	for i in range(spots.size() - 1, 0, -1):

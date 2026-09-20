@@ -16,7 +16,7 @@ static func choose(manifest: Dictionary, creature: String) -> Array:
 	rng.seed = hash([manifest.seed, "documents"])
 	var spots: Array = []
 	for room in manifest.rooms:
-		if room.id == manifest.exit or FLOOR.position_of(room).length() < MIN_FROM_START: continue
+		if room.id == manifest.exit or bool(room.get("landing", false)) or FLOOR.position_of(room).length() < MIN_FROM_START: continue
 		for prop in room.props:
 			if not SURFACES.has(prop.kind): continue
 			var socket := GEOMETRY.prop_transform(room, prop)

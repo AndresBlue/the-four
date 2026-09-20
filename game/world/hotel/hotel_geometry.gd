@@ -49,8 +49,13 @@ var dark := false
 ## Darkness spreads: an eligible room beside a dark one goes dark as well with
 ## NEIGHBOUR_DARK, so dark rooms come in stretches where the torch is the only
 ## light, not as isolated black boxes.
+## A corridor is the last thing a hotel stops lighting, and it is what makes
+## the floor readable at all, so it goes dark far less often than a room and
+## catches it from a neighbour far less easily.
 const DARK_SHARE := 0.4
 const NEIGHBOUR_DARK := 0.55
+const DARK_CORRIDOR := 0.18
+const NEIGHBOUR_CORRIDOR := 0.25
 ## Room ids whose lamps are out, decided once per floor in build().
 var dark_ids := {}
 ## Set while a dark room's furniture is built: its lamps stay out.
@@ -526,6 +531,9 @@ func build(data: Dictionary) -> void:
 		var b: Dictionary = data.rooms[edge[1]]
 		# One door per connection, with a physical leaf and a stable identifier.
 		if data.get("merged", []).has(edge): continue
+		# The last door of the floor, the one with the lock, is built at the
+		# end so the gates keep the order of their stages.
+		if gate_stage(data, int(a.id), int(b.id)) == int(data.get("wings", 3)): continue
 		var center := FLOOR.portal_between(a, b)
 		var yaw := PI / 2 if a.x != b.x else 0.0
 		# In each room's bounce stand-in the doorway is shut (bounce_light.gd):
@@ -619,7 +627,6 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			var bit: int = {Vector2i(-1, 0): 1, Vector2i(1, 0): 2, Vector2i(0, -1): 4, Vector2i(0, 1): 8}[direction]
 			batch_roots[node.get_instance_id()].a += bit
 			continue
-		var way_out: bool = direction == exit_side(room)
 		var length: float = span.y if direction.x != 0 else span.x
 		var boundary := Node3D.new()
 		boundary.name = "Wall_%s_%s" % [direction.x, direction.y]
@@ -628,7 +635,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		node.add_child(boundary)
 		# Local face pointing into this room; a neighbour may have another height.
 		var inner: int = -(direction.x + direction.y)
-		if connected or way_out:
+		if connected:
 			for side in [-1, 1]:
 				wall_run(boundary, side * (length + FLOOR.PORTAL) * 0.25, (length - FLOOR.PORTAL) * 0.5, height, inner)
 			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
@@ -636,7 +643,6 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
-		if way_out: build_landing(node, room, direction)
 		for side in [-1, 1]:
 			# Framed hotel art on this room's face of the wall (inner); each canvas
 			# composition varies with its position. It used to hang on local -Z,
@@ -801,9 +807,11 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.light_color = Color("b8d4b6")
 	build_occluder(node)
 
-## The door of the last stage: in the outer wall of the last refuge, shut and
-## locked until its code is read in. Behind it, the landing, and stepping onto
-## that is leaving the floor.
+## The door of the last stage: in the wall the last refuge shares with the
+## landing, shut and locked until its code is read in. Behind it are the back
+## stairs -- a room of the floor that nothing else opens on to -- and stepping
+## into them is leaving the floor. It is built after every other door so the
+## gates stay in the order of their stages.
 func build_exit_door(data: Dictionary) -> void:
 	var gates_list: Array = data.get("gates", [])
 	if gates_list.is_empty(): return
@@ -814,6 +822,12 @@ func build_exit_door(data: Dictionary) -> void:
 	var span := FLOOR.size_of(room)
 	var away := Vector3(direction.x, 0, direction.y)
 	var centre: Vector3 = FLOOR.position_of(room) + away * (Vector2(span.x, span.y).dot(Vector2(absf(away.x), absf(away.z))) * 0.5)
+	# The landing is the cell behind that door: the back stairs, which is
+	# where the floor ends. Stepping into it is leaving.
+	var beyond := int(last.get("beyond", -1))
+	if beyond >= 0:
+		centre = FLOOR.portal_between(room, data.rooms[beyond])
+		landings.append(FLOOR.position_of(data.rooms[beyond]))
 	var yaw := PI / 2 if direction.x != 0 else 0.0
 	var door = DOOR.new()
 	door.name = "ExitDoor"
@@ -850,41 +864,6 @@ func build_exit_door(data: Dictionary) -> void:
 	door_fixtures.append([casing, stop])
 	doors.append(door)
 	gates.append(door)
-
-## Which way the floor is left from: the outer side of the last refuge, or
-## zero for every other room.
-func exit_side(room: Dictionary) -> Vector2i:
-	var gates_list: Array = manifest.get("gates", [])
-	if gates_list.is_empty(): return Vector2i.ZERO
-	var last: Dictionary = gates_list[gates_list.size() - 1]
-	if int(last.get("room", -1)) != int(room.id): return Vector2i.ZERO
-	var out: Array = last.get("out", [1, 0])
-	return Vector2i(int(out[0]), int(out[1]))
-
-## Behind that door: a small landing, walled and roofed, with nothing in it.
-## Stepping onto it is leaving the floor.
-const LANDING := Vector3(4.0, 2.9, 4.0)
-func build_landing(node: Node3D, room: Dictionary, direction: Vector2i) -> void:
-	var span := FLOOR.size_of(room)
-	var away := Vector3(direction.x, 0, direction.y)
-	var centre: Vector3 = away * (Vector2(span.x, span.y).dot(Vector2(absf(away.x), absf(away.z))) * 0.5 + LANDING.z * 0.5)
-	var landing := Node3D.new()
-	landing.name = "WayOut"
-	landing.position = centre
-	node.add_child(landing)
-	var size := Vector3(LANDING.x if direction.x == 0 else LANDING.z, LANDING.y, LANDING.z if direction.x == 0 else LANDING.x)
-	box(landing, Vector3(0, -0.15, 0), Vector3(size.x, 0.3, size.z), "tile", true)
-	box(landing, Vector3(0, size.y + 0.1, 0), Vector3(size.x, 0.2, size.z), "ceiling_service", true)
-	# Three walls: the fourth is the refuge's own, with the door in it.
-	for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		if side == -direction: continue
-		var wall := Node3D.new()
-		wall.name = "Wall_%s_%s" % [side.x, side.y]
-		wall.position = Vector3(side.x * size.x * 0.5, 0, side.y * size.z * 0.5)
-		wall.rotation.y = PI / 2 if side.x != 0 else 0.0
-		landing.add_child(wall)
-		wall_run(wall, 0.0, size.z if side.x != 0 else size.x, size.y, -(side.x + side.y))
-	landings.append(node.position + centre)
 
 ## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
 ## its top edge, engraved SALIDA with an arrow pointing down at the room the
@@ -1337,12 +1316,14 @@ static func may_be_dark(room: Dictionary) -> bool:
 func decide_dark(data: Dictionary) -> void:
 	dark_ids.clear()
 	for room in data.rooms:
-		if may_be_dark(room) and vary(FLOOR.position_of(room), 7) < DARK_SHARE: dark_ids[int(room.id)] = true
+		var share: float = DARK_CORRIDOR if bool(room.get("corridor", false)) else DARK_SHARE
+		if may_be_dark(room) and vary(FLOOR.position_of(room), 7) < share: dark_ids[int(room.id)] = true
 	var seeds: Array = dark_ids.keys()
 	for id in seeds:
 		for neighbour in data.adjacency[id]:
 			var other: Dictionary = data.rooms[int(neighbour)]
-			if may_be_dark(other) and vary(FLOOR.position_of(other), 13) < NEIGHBOUR_DARK: dark_ids[int(neighbour)] = true
+			var catches: float = NEIGHBOUR_CORRIDOR if bool(other.get("corridor", false)) else NEIGHBOUR_DARK
+			if may_be_dark(other) and vary(FLOOR.position_of(other), 13) < catches: dark_ids[int(neighbour)] = true
 
 func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array], center: Vector3, low: Vector2, high: Vector2) -> void:
 	var first := vertices.size()
