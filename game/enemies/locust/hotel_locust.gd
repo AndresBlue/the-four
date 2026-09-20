@@ -445,6 +445,24 @@ func guide(room_id: int) -> void:
 	state_time = 0.0
 	repath = 0.0
 
+## A mind that has gone out. The motes it gives off reach the creature from
+## anywhere on the floor and through anything, so this is not hearing and does
+## not care about walls or distance: it is told where, and it goes. It will
+## not walk into a refuge for it, and it does not drop somebody it is already
+## chasing -- it only learns where that one is.
+func smell_burnt(point: Vector3) -> void:
+	if control != "ai" or grace > 0: return
+	if mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
+	if level.point_in_refuge(point): return
+	last_known = point
+	if mode == Mode.CHASE:
+		lost_time = minf(lost_time, 1.0)
+		return
+	# Re-aimed as the body moves, without starting the behaviour over.
+	if mode != Mode.INVESTIGATE: set_mode(Mode.INVESTIGATE)
+	destination = point
+	guided = false
+
 ## A sound it did not have to hear through the player: something fell, it goes
 ## to look. Ignored while it is already hunting.
 func investigate(point: Vector3) -> void:

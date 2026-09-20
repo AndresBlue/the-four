@@ -88,7 +88,10 @@ func setup(owner) -> void:
 	camera = Camera3D.new()
 	camera.name = "HunterCamera"
 	camera.fov = 74.0
-	camera.far = 95.0
+	# Far enough to take in the whole floor: the motes of a burnt-out mind
+	# reach it from anywhere, and a clipped camera would make that a lie. The
+	# reading itself still only goes as far as REACH.
+	camera.far = 240.0
 	arm.add_child(camera)
 	camera.position = Vector3(0, 0, ARM)
 	creature.camera = camera

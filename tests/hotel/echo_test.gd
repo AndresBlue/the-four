@@ -50,6 +50,11 @@ func run() -> void:
 	var creature = level.locust
 	var echo = creature.driver.echo
 	check("El asiento del cazador crea la vista acústica", echo != null and echo.enabled)
+	# The motes a burnt-out mind gives off are drawn for the creature and for
+	# nobody else, and its camera reaches the whole floor so "from anywhere"
+	# is true and not clipped.
+	var avatar_script := preload("res://game/player/avatars/avatar_visual.gd")
+	check("Solo la criatura ve las motas, y desde cualquier parte del piso", creature.camera.cull_mask & avatar_script.MOTE_LAYER != 0 and creature.camera.far > 200.0)
 	check("La vista trae su propio azar y no el del mapa", echo.rng != null and echo.rng.seed != 0)
 	# The order the five readings stack in. The hotel's own transparents (the
 	# monstera leaves, the dust) all sit at 0, so the whole echo draws above

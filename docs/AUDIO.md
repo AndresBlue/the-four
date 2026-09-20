@@ -105,6 +105,12 @@ Gruñe también el cazador humano en versus mientras corre (antes solo sonaba al
 
 **La voz cambia de forma según lo que dice** (`VOICE_GRUNT` y `VOICE_SHRIEK` en `hotel_locust.gd`): el chillido empieza 3 dB más alto pero cae más rápido y se corta a 32 m, poco más allá de los 26 m de escucha que le compra al cazador; el gruñido de caza nunca es tan fuerte pero llega a 40 m. La voz cuelga de `world_audio`, no de la criatura, para que un sonido enrutado por un vano se quede en ese vano.
 
+## Lo que se oye con la cordura baja
+
+Por debajo de 60 de cordura el piso empieza a mentirle a quien la está perdiendo: cada cierto tiempo suena una puerta lejana (`close_far`, `open_far`), un armario abriéndose (`hide_leave`) o una puerta lenta (`open_slow`) en un punto sorteado a 4–14 m, **puesto siempre sobre la malla de navegación** para que salga de una sala y no de dentro de un muro. Con menos de 30 empieza a sonar también **la voz de la criatura** —un trozo cualquiera de `grunts.ogg`, con el tono entre 0,8 y 0,95— desde donde la criatura no está; va por su propio reproductor (`$Phantom`, bus Threat) para no cortar nunca una llamada de verdad, y se para al terminar el trozo. La espera entre mentiras va de 40 s a 13 s según lo baja que esté la cordura, con un ±30 % de azar.
+
+Son **locales de cada máquina**: no pasan por `match_net.noise()`, así que la criatura no las oye, no la mandan a ninguna parte y los compañeros no las oyen tampoco. En una ejecución silenciosa (pruebas, capturas) la cadencia se cuenta igual aunque no suene nada, como con los gruñidos.
+
 ## Armarios
 
 Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura oye hasta 12 m (45 m si la lleva un jugador). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (se oye hasta 10,5 m); cambiar de lado o volver a abrir no suena.

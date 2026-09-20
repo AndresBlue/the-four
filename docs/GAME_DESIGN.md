@@ -4,7 +4,7 @@ Qué es el juego y por qué reglas se rige. El estado, el orden de trabajo y lo 
 
 ## Estado real y cambio de dirección
 
-La versión **0.5** tiene un piso jugable solo, en cooperativo de 2 a 5 o en versus con un jugador llevando a The Locust. Están el hotel procedural con salida y refugio, la red por IP o LAN, la hoja compartida, los armarios, la ejecución, la visión de ecolocalización del cazador y la oscuridad real de las salas apagadas. Siguen sin existir los otros tres pisos y sus criaturas, las tres etapas que deben estructurar el piso (teles, cerradura de código y apagón), la cordura y las animaciones definitivas de los supervivientes. Las pruebas con amigos de septiembre de 2026 dejaron claro que el piso se resuelve demasiado rápido: eso es lo que se está corrigiendo. No se presenta como completo.
+La versión **0.5** tiene un piso jugable solo, en cooperativo de 2 a 5 o en versus con un jugador llevando a The Locust. Están el hotel procedural con salida y refugio, la red por IP o LAN, la hoja compartida, los armarios, la ejecución, la visión de ecolocalización del cazador y la oscuridad real de las salas apagadas. Siguen sin existir los otros tres pisos y sus criaturas, y las animaciones definitivas de los supervivientes. Las pruebas con amigos de septiembre de 2026 dejaron claro que el piso se resuelve demasiado rápido: eso es lo que se está corrigiendo. No se presenta como completo.
 
 El antiguo H1 de fusibles se conserva como prototipo histórico en `legacy/fuse_prototype/main.tscn`; ya no es la escena principal ni determina la victoria del juego nuevo. Su informe no acredita la generación o supervivencia actuales. Los planes anteriores están archivados en `history/`.
 
@@ -52,6 +52,16 @@ El número de participantes se fija al comenzar el piso. Para avanzar deben sobr
 La salida conduce a un refugio protegido. Quien llega puede dibujar en la hoja o regresar al laberinto para ayudar; al regresar pierde la protección y deja de contar como refugiado. **No se abandona a compañeros vivos:** todos los supervivientes deben estar en el refugio y alcanzar el mínimo. Confirmar durante tres segundos inicia la transición; soltar la interacción o abandonar el refugio cancela el progreso.
 
 La captura elimina al jugador hasta el final de la etapa: al pasar a la siguiente vuelve de pie. Además, un piso perdona un hundimiento (ver arriba); a la segunda vez se acabó. Si ya no quedan suficientes vivos para alcanzar el mínimo, termina el intento. Quienes murieron reaparecen en el siguiente piso. Salvar a todos es un resultado ideal registrado, sin ventajas estadísticas.
+
+### La cordura
+
+**Un medidor sin barra.** Cada superviviente lleva una cordura de 100 a 0 que **nadie ve**: no hay indicador en pantalla, solo lo que el piso empieza a hacer contigo. Baja a oscuras —sala apagada, apagón, o encerrado en un armario— y sube en una sala encendida. La linterna no la detiene: la frena a menos de la mitad, porque es algo a lo que agarrarse. Encerrado en un armario baja un 30 % más deprisa que a oscuras a secas, así que **quemarse del todo cuesta unos dos minutos ahí dentro** y unos dos y medio en una sala apagada; recuperarla entera pide cuatro minutos de luz. Ver a la criatura de cerca y con luz cuesta 14 puntos de golpe, y mirarla un rato es un susto, no uno por fotograma (hay cinco segundos de descanso).
+
+**Por debajo de 60 el piso empieza a mentir.** Suenan puertas que se abren, armarios que se cierran y, más abajo, **la voz de la criatura desde donde no está**. Son alucinaciones locales: no son ruido, la criatura no las oye y los compañeros tampoco. La frecuencia sube conforme baja la cordura (de una cada 40 s a una cada 13 s). Además la cinta se estropea con la cabeza: la imagen arrastra y los colores empiezan a correrse, y eso es lo único en pantalla que dice que el medidor existe. Con efectos reducidos no se toca la imagen.
+
+**A cero, el cuerpo queda marcado.** Empieza a soltar unas pocas **motas rojas** que la criatura percibe **desde cualquier distancia y a través de todo**: en versus se dibujan solo en la cámara del cazador (capa 3, sin prueba de profundidad y a tamaño fijo, con su cámara alcanzando todo el piso), y con la IA el nivel le dice dónde está esa persona cada segundo y medio y va a por ella. No entra al refugio por ellas. Volver en sí no es instantáneo: hay que subir la cordura por encima de 25 —un minuto de luz— para dejar de soltarlas. Así **encerrarse en un armario a quemar tiempo deja de ser una estrategia**: aguantar las alucinaciones no sale gratis, porque al final del medidor estás diciéndole dónde estás.
+
+Un piso nuevo, y una etapa que se vuelve a jugar después de caer, empiezan con la cabeza entera.
 
 La sesión separa el estado de cada jugador —explorando, refugiado o muerto— del estado global de partida, y la misma regla vale en individual y en red. F9 prueba la derrota únicamente en ejecución de desarrollo y fuera del refugio.
 

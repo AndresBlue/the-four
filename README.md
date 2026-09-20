@@ -6,7 +6,9 @@ Proyecto principal: `E:\Projects\The Four`. Repositorio local, sin publicación 
 
 ## Jugar
 
-Abre **Jugar.cmd** y elige **Jugar · nuevo recorrido**. Explora el hotel hasta encontrar la sala del cartel verde de **SALIDA**. Dentro puedes volver a explorar o mantener la interacción durante tres segundos para terminar el piso. No necesitas recoger fusibles ni completar puzles.
+Abre **Jugar.cmd** y elige **Jugar · nuevo recorrido**. Un piso son **tres alas y tres etapas**, y de un ala a la siguiente solo se pasa por el **ascensor de servicio**: cuando la etapa se cumple, la puerta del refugio se abre, detrás está el coche esperando y meterse en él te lleva al ala siguiente. La primera etapa es llegar al refugio con los vivos dentro; la segunda, encender los televisores del ala nueva (al penúltimo se va la luz del piso entero); la tercera, encontrar los cuatro números escondidos en cajones y muebles, teclearlos en la cerradura de la última puerta y tomar ese último ascensor, que termina el piso.
+
+**La oscuridad se paga.** Cada superviviente tiene una cordura que no se ve en ninguna parte: baja a oscuras y sobre todo encerrado en un armario, la linterna solo la frena, y se recupera en salas encendidas. Según baja, el piso empieza a mentir —puertas y armarios que nadie abre, y más abajo la voz de la criatura desde donde no está— y la cinta de la cámara se estropea. Si se agota del todo, el cuerpo suelta unas motas rojas que **la criatura percibe desde cualquier parte del piso**: esconderse a esperar deja de funcionar. Un minuto de luz las apaga.
 
 Un recorrido nuevo empieza con una escena: despiertas de noche en una habitación donde solo está encendida la tele, The Locust se asoma en la pantalla y golpea el cristal desde dentro hasta agrietarlo; huyes, das un portazo y corres por el pasillo oscuro hasta la recepción, marcada por una luz roja que parpadea: ahí empieza el piso y ahí puedes volver para orientarte. Mantén **E** o pulsa **Esc** para saltarla. **Continuar** y **Reintentar** no la repiten.
 

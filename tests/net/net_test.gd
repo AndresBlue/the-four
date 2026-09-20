@@ -156,6 +156,8 @@ func host() -> void:
 	var hide = level.hotel.hides[0]
 	check("Un invitado ocupa un armario a través del anfitrión", await wait_for(func(): return hide.occupant == match_net.bodies[alpha], 25.0))
 	check("Un trazo de un invitado entra en la hoja del anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has("%d:1" % alpha), 15.0))
+	check("Aquí se ve que a ese invitado se le fue la cabeza", await wait_for(func(): return match_net.bodies[alpha].burnt, 20.0))
+	check("Y la criatura sabe dónde está sin oírle", not level.burnt_survivors().is_empty())
 	# Bravo is struck down: with three survivors the floor goes on (two needed).
 	await pause_for(1.0)
 	check("Una muerte no termina el piso de tres", level.session.capture(bravo) and playing())
@@ -226,6 +228,10 @@ func alpha_part() -> void:
 	await pause_for(0.8)
 	match_net.use_hide(hide, true)
 	check("El anfitrión le deja entrar al armario", await wait_for(func(): return level.player.hidden, 15.0))
+	# Shut in the dark with nothing left: the meter reaches the bottom and the
+	# body starts giving off motes, which is what the others have to see.
+	level.player.sanity = 0.0
+	check("Encerrado y sin cabeza, se marca solo", await wait_for(func(): return level.player.burnt, 5.0))
 	var mine := "%d:1" % level.net.local_seat
 	match_net.sheet_local(mine, 0, PackedVector2Array([Vector2(0.2, 0.2), Vector2(0.6, 0.4)]))
 	check("Su trazo vuelve confirmado por el anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has(mine), 15.0))

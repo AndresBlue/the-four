@@ -295,6 +295,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	if is_instance_valid(hotel):
 		remove_child(hotel)
 		hotel.queue_free()
+	if match_net != null: match_net.floor_building()
 	manifest = GENERATOR.new().generate(seed_value)
 	if force_fallback:
 		manifest = GENERATOR.new().candidate(404, 0, true)
@@ -309,6 +310,8 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
+	player.sanity = 100.0
+	player.set_burnt(false)
 	player.camera.rotation = Vector3.ZERO
 	player.handheld = Vector3.ZERO
 	player.torch.visible = false
@@ -343,7 +346,12 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	var exit_room: Dictionary = manifest.rooms[manifest.exit]
 	var exit_position := FLOOR.position_of(exit_room)
 	var navigation_ready := false
-	for frame in 12:
+	# A second and a half of frames: the mesh is baked inside build(), but the
+	# server needs a few frames to take it, and it is baked fine now (10 cm
+	# cells), so twelve frames was cutting it close on a machine that is busy
+	# -- a guest that gave up here ended up on the standby floor and was
+	# thrown out of the match for not having the host's.
+	for frame in 90:
 		await get_tree().physics_frame
 		var path := FLOOR.navigation_path(get_world_3d().navigation_map, Vector3.ZERO, exit_position)
 		if path.size() > 1 and path[-1].distance_to(exit_position) < 0.5:
@@ -828,6 +836,10 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 
 ## The inverse of watching a teammate: its own body, its own camera.
 func restore_local_player(point: Vector3) -> void:
+	# On its feet again with its head clear: what it went through belonged to
+	# the stage it lost.
+	player.sanity = 100.0
+	player.set_burnt(false)
 	player.active = session.state == session.State.PLAYING and not online_menu and not match_net.local_is_locust()
 	player.visible = true
 	player.collision_layer = 4
@@ -1191,6 +1203,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	drive_local(delta)
+	sanity_tick(delta)
 	# Whoever is in charge counts the hold at the exit once a frame, whatever
 	# its own player happens to be doing. It used to be called from inside the
 	# branches below, and the one for a dead player had no call: with the host
@@ -1337,6 +1350,7 @@ func creature_channel_hop(delta: float) -> void:
 
 func host_gate(delta: float) -> void:
 	creature_channel_hop(delta)
+	haunt_burnt(delta)
 	if session.stage == session.STAGES and not containers.is_empty():
 		session.goal["kind"] = "code"
 		session.goal["done"] = found_digits.size()
@@ -1432,7 +1446,7 @@ func watch_over(body: Node3D) -> void:
 		watch_camera.name = "WatchCamera"
 		watch_camera.fov = LOOK.fov_for(get_viewport(), 76.0)
 		watch_camera.far = 95.0
-		watch_camera.cull_mask = 1048573
+		watch_camera.cull_mask = 1048569
 		watch_arm.add_child(watch_camera)
 	watch_rig.global_position = body.global_position + Vector3(0, 1.5, 0)
 	watch_rig.rotation.y = body.rotation.y
@@ -1751,6 +1765,151 @@ func configure_hotel() -> void:
 	hotel.echo_view = hunter_seat()
 	hotel.apply_quality(PRESETS.of(settings.values.quality))
 
+# --- The mind -------------------------------------------------------------------
+## A meter with no bar. It falls in the dark -- faster shut inside a wardrobe,
+## and half as fast with the torch on, because a torch is something to hold on
+## to -- and it comes back in a lit room. Seeing the creature takes a lump out
+## of it at once.
+##
+## Under UNEASY the floor starts lying: doors and wardrobes open where nobody
+## is, and further down the creature calls from somewhere it is not. The tape
+## frays along with it, which is the only thing on screen that says any of this
+## is happening.
+##
+## At zero the body gives off motes the creature senses from anywhere, and it
+## takes the better part of a minute in the light to stop giving them off.
+## Waiting a floor out inside a wardrobe is not a plan.
+const SANITY_DARK := 100.0 / 150.0
+const SANITY_HIDDEN := 1.3
+const SANITY_TORCH := 0.45
+const SANITY_LIGHT := 100.0 / 240.0
+const SANITY_SIGHT := 14.0
+const SANITY_SIGHT_REST := 5.0
+const SANITY_UNEASY := 60.0
+const SANITY_BACK := 25.0
+const SANITY_SEEN := 28.0
+const HALLUCINATION_WAIT := Vector2(13.0, 42.0)
+const GRUNTS := preload("res://game/audio/grunt_segments.gd")
+const PHANTOM_CLIP := "res://assets/audio/sfx/chase/grunts.ogg"
+var sight_rest := 0.0
+var hallucination_wait := 0.0
+var phantom: AudioStreamPlayer3D
+var phantom_left := 0.0
+
+func sanity_tick(delta: float) -> void:
+	if manifest.is_empty() or not is_instance_valid(hotel) or match_net.local_is_locust(): return
+	if not local_alive():
+		phantom_quiet(delta)
+		return
+	var room: Dictionary = FLOOR.room_at(manifest.rooms, player.global_position)
+	var lit: bool = not hotel.dark and not room.is_empty() and not hotel.dark_ids.has(int(room.id))
+	if player.hidden or not lit:
+		var rate := SANITY_DARK
+		if player.hidden: rate *= SANITY_HIDDEN
+		elif player.torch.visible: rate *= SANITY_TORCH
+		player.sanity = maxf(0.0, player.sanity - rate * delta)
+	else: player.sanity = minf(100.0, player.sanity + SANITY_LIGHT * delta)
+	# A long look at it is one fright, not one a frame.
+	sight_rest = maxf(0.0, sight_rest - delta)
+	if sight_rest <= 0.0 and sees_creature(lit):
+		sight_rest = SANITY_SIGHT_REST
+		player.sanity = maxf(0.0, player.sanity - SANITY_SIGHT)
+	if player.burnt and player.sanity >= SANITY_BACK:
+		player.set_burnt(false)
+		ui.flash("VUELVES EN TI", 3.0)
+	elif not player.burnt and player.sanity <= 0.0:
+		player.set_burnt(true)
+		ui.flash("SABE DÓNDE ESTÁS", 3.5)
+	hallucinate(delta)
+	phantom_quiet(delta)
+
+## The creature in plain view: in the picture, near enough to make out, lit by
+## something, and nothing in between. In the pitch dark with the torch off
+## there is nothing to see and nothing to be frightened by.
+func sees_creature(lit: bool) -> bool:
+	if not is_instance_valid(locust) or locust.grace > 0.0 or not is_instance_valid(player.camera): return false
+	var eye: Vector3 = player.camera.global_position
+	var towards: Vector3 = locust.global_position + Vector3(0, 1.2, 0) - eye
+	var gap := towards.length()
+	if gap > SANITY_SEEN or gap < 0.01: return false
+	if not lit and not player.torch.visible and gap > 6.0: return false
+	if -player.camera.global_basis.z.dot(towards / gap) < 0.72: return false
+	var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1)
+	query.exclude = [player.get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+## The floor lying: a door, a wardrobe or the creature's own call, somewhere
+## nobody is. Local to this machine -- it is not a noise, nothing hears it and
+## nobody else does either.
+var last_lie := {}
+func hallucinate(delta: float) -> void:
+	if player.sanity > SANITY_UNEASY or player.reading: return
+	hallucination_wait -= delta
+	if hallucination_wait > 0.0: return
+	var gone: float = 1.0 - player.sanity / SANITY_UNEASY
+	hallucination_wait = lerpf(HALLUCINATION_WAIT.y, HALLUCINATION_WAIT.x, gone) * randf_range(0.7, 1.3)
+	var point := hallucination_point(randf_range(4.0, 14.0))
+	var voice: bool = gone > 0.5 and randf() < gone * 0.45
+	last_lie = {"point": point, "voice": voice, "time": Time.get_ticks_msec() / 1000.0}
+	# A silent run (tests, captures) keeps the cadence: the lie counts as told.
+	if not world_audio.enabled: return
+	if voice: false_call(point)
+	else: world_audio.play_at(world_audio.choose(["close_far", "open_far", "hide_leave", "open_slow"][randi() % 4]), point, -4.0)
+
+## Somewhere on the floor around, in a room and not inside a wall.
+func hallucination_point(reach: float) -> Vector3:
+	var angle := randf() * TAU
+	var point: Vector3 = player.global_position + Vector3(sin(angle), 0, cos(angle)) * reach
+	return NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, point)
+
+## Its voice, from where it is not. Its own throat is elsewhere: this one has
+## a player of its own so the real call is never cut short by a made-up one.
+func false_call(point: Vector3) -> void:
+	if not is_instance_valid(phantom):
+		phantom = AudioStreamPlayer3D.new()
+		phantom.name = "Phantom"
+		phantom.bus = "Threat"
+		phantom.stream = load(PHANTOM_CLIP)
+		phantom.unit_size = 7.0
+		phantom.max_distance = 40.0
+		add_child(phantom)
+	var segment: Array = GRUNTS.SEGMENTS[randi() % GRUNTS.SEGMENTS.size()]
+	phantom.global_position = point + Vector3(0, 1.6, 0)
+	phantom.pitch_scale = randf_range(0.8, 0.95)
+	phantom.volume_db = -4.0
+	phantom.play(segment[0])
+	phantom_left = float(segment[1]) / phantom.pitch_scale
+
+## A made-up call lasts as long as the piece of the recording it came from.
+func phantom_quiet(delta: float) -> void:
+	if not is_instance_valid(phantom) or not phantom.playing: return
+	phantom_left -= delta
+	if phantom_left <= 0.0: phantom.stop()
+
+## The creature is told, over and over, where the burnt-out minds are. Only
+## the machine in charge of it does this, and only while it drives itself: in
+## versus the motes are on the hunter's screen instead.
+const SMELL_EVERY := 1.5
+var smell_rest := 0.0
+func haunt_burnt(delta: float) -> void:
+	smell_rest -= delta
+	if smell_rest > 0.0 or not is_instance_valid(locust) or locust.control != "ai": return
+	var marked := burnt_survivors()
+	if marked.is_empty(): return
+	smell_rest = SMELL_EVERY
+	var nearest: Vector3 = marked[0]
+	for point in marked:
+		if locust.global_position.distance_to(point) < locust.global_position.distance_to(nearest): nearest = point
+	locust.smell_burnt(nearest)
+
+## Everybody whose mind has gone, wherever they are. The creature is told
+## where they are however far away it is: that is what the motes are.
+func burnt_survivors() -> Array:
+	var marked: Array = []
+	for body in survivors():
+		if bool(body.get("burnt")): marked.append(body.global_position)
+	return marked
+
 ## Wardrobe enclosure, strike glitch and lost signal on the analog filter.
 ## The first two are off with reduced effects; the picture going is not an
 ## effect, it is how a victim is told it died, so it stays (milder).
@@ -1787,6 +1946,12 @@ func update_screen_cues(delta: float) -> void:
 	if settings.values.reduced: return
 	post_material.set_shader_parameter("enclosure", enclosure)
 	post_material.set_shader_parameter("threat_glitch", glitch)
+	# The tape frays with the mind: the picture drags and the colours start to
+	# run. With no bar anywhere, this is what says the meter is there at all.
+	if not hunter_seat():
+		var frayed: float = clampf(1.0 - player.sanity / SANITY_UNEASY, 0.0, 1.0)
+		post_material.set_shader_parameter("vhs", settings.values.vhs * (1.0 + frayed * 1.6))
+		post_material.set_shader_parameter("chromatic", settings.values.chromatic * frayed * 0.7)
 
 func build_audio() -> void:
 	# Handling a document: a local sound, not a noise the creature can hear.

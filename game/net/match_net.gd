@@ -101,6 +101,12 @@ func begin(data: Dictionary, snapshot := {}) -> void:
 	rejoin_snapshot = snapshot
 	level.start_online_floor(config)
 
+## Called by the level before it starts putting a floor up: until it is built
+## there is nothing to compare anybody else's against.
+func floor_building() -> void:
+	manifest_hash = 0
+	pending_ready.clear()
+
 ## Called by the level once its floor exists and passed validation.
 func floor_built() -> void:
 	manifest_hash = hash(JSON.stringify(level.manifest))
@@ -122,6 +128,12 @@ func floor_built() -> void:
 			level.hotel.hides[index].forced.connect(func(): hide_forced.rpc(index))
 		ready_seats = {1: manifest_hash}
 		waiting_time = 0.0
+		# Whoever got there first, while this machine still had no floor of
+		# its own to compare with.
+		for seat_waiting in pending_ready.keys():
+			var waited: Array = pending_ready[seat_waiting]
+			judge_ready(int(seat_waiting), int(waited[0]), int(waited[1]))
+		pending_ready.clear()
 		check_ready()
 	else:
 		report_ready.rpc_id(1, manifest_hash)
@@ -130,12 +142,25 @@ func spawn_point(seat: int) -> Vector3:
 	var angle := TAU * float(seat - 1) / float(net.MAX_PLAYERS)
 	return Vector3(cos(angle), 0.0, sin(angle)) * SPAWN_RADIUS + Vector3(0, 0.04, 0)
 
+## A guest can finish its floor before the host finishes its own -- a floor
+## takes a second and a half to put up and machines differ -- so a report that
+## arrives early is kept until there is something to compare it against.
+## Judging it against nothing threw guests out of matches over floors that
+## were identical.
+var pending_ready := {}
+
 @rpc("any_peer", "call_remote", "reliable")
 func report_ready(floor_hash: int) -> void:
 	if not net.is_host: return
 	var id := multiplayer.get_remote_sender_id()
 	var seat: int = net.seat_of_peer(id)
 	if seat == 0: return
+	if manifest_hash == 0:
+		pending_ready[seat] = [id, floor_hash]
+		return
+	judge_ready(seat, id, floor_hash)
+
+func judge_ready(seat: int, id: int, floor_hash: int) -> void:
 	if floor_hash != manifest_hash:
 		push_warning("Seat %d built a different floor" % seat)
 		net.refuse(id, "Tu piso no coincide con el del anfitrión: usad todos el mismo exe.")
@@ -210,7 +235,7 @@ func _physics_process(delta: float) -> void:
 
 func pack_local() -> Array:
 	var player = level.player
-	var flags := (1 if player.crouched else 0) | (2 if player.torch.visible else 0) | (8 if player.reading else 0)
+	var flags := (1 if player.crouched else 0) | (2 if player.torch.visible else 0) | (4 if player.burnt else 0) | (8 if player.reading else 0)
 	var left := 0.0
 	var right := 0.0
 	var hide_index := -1

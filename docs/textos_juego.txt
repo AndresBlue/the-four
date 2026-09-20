@@ -570,6 +570,15 @@ OBS: también aparece brevemente «TELEVISORES 2/4» al encender uno, «NÚMERO 
 | CÓDIGO: 7» al registrar un mueble, «ETAPA 2» al cambiar de ala y «EL ASCENSOR SE
 | ABRE» al salir del ascensor en el ala siguiente.
 
+[CORDURA.01] Aviso al quedarse sin cordura: el cuerpo empieza a soltar motas que
+| la criatura percibe desde cualquier parte del piso
+ACTUAL: SABE DÓNDE ESTÁS
+CORRECCIÓN:
+
+[CORDURA.02] Aviso al recuperarse lo suficiente para dejar de soltarlas
+ACTUAL: VUELVES EN TI
+CORRECCIÓN:
+
 [REFUGIO.02] Teclado de la última puerta
 ACTUAL: TECLEA EL CÓDIGO · [ESC] SALIR / NO ES / ABIERTA
 CORRECCIÓN:

@@ -11,6 +11,11 @@ signal noise(point: Vector3, radius: float, kind: int)
 signal hiding_changed(entering: bool, point: Vector3)
 var active := false
 var stamina := 100.0
+## How much of a mind is left, 100 down to 0. It falls in the dark and comes
+## back in the light; the level keeps it (hotel_main.sanity_tick). At zero the
+## body gives off motes the creature senses from anywhere.
+var sanity := 100.0
+var burnt := false
 var recovery_delay := 0.0
 var exhausted := false
 var crouched := false
@@ -394,6 +399,13 @@ func _process(delta: float) -> void:
 	var warm := torch_warmup * torch_warmup
 	if torch_warmup < 0.6 and not reduced: warm *= 0.7 + 0.3 * absf(sin(torch_clock * 90.0))
 	torch.light_energy = torch_energy * warm * (1.0 - 0.06 * moving * absf(sin(step)) * sway)
+
+## Burnt out, or back from it. The motes are the only thing that says so to
+## anybody else.
+func set_burnt(on: bool) -> void:
+	if burnt == on: return
+	burnt = on
+	if is_instance_valid(avatar): avatar.set_burnt(on)
 
 func can_stand() -> bool:
 	if not crouched: return true

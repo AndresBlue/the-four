@@ -60,7 +60,9 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	camera.position.y = 1.64
 	camera.fov = 78.0
 	camera.far = 95.0
-	camera.cull_mask = 1048573
+	# Neither the first-person body (layer 2) nor the motes a burnt-out mind
+	# gives off (layer 3), which only the creature senses.
+	camera.cull_mask = 1048569
 	add_child(camera)
 	torch = SpotLight3D.new()
 	torch.name = "Flashlight"
@@ -108,10 +110,18 @@ func push_state(data: Array) -> void:
 	crouched = flags & 1 != 0
 	torch.visible = flags & 2 != 0 and not hidden
 	reading = flags & 8 != 0
+	set_burnt(flags & 4 != 0)
 	peek_left = data[6]
 	peek_right = data[7]
 	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right)
 	away = false
+
+## Its mind has gone, or come back: the motes are what the creature senses.
+var burnt := false
+func set_burnt(on: bool) -> void:
+	if burnt == on: return
+	burnt = on
+	if is_instance_valid(avatar): avatar.set_burnt(on)
 
 ## Snap straight to a position (spawn, or a teammate returning).
 func place(point: Vector3, yaw: float) -> void:

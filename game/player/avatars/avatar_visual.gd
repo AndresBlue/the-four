@@ -68,6 +68,65 @@ func configure(index: int, local_view: bool) -> void:
 	initialized = true
 	update_pose(Vector3.ZERO, false, 0)
 
+## The red motes of a mind that has gone: a few embers coming off the body,
+## drawn on the layer only the creature's camera renders, at a size that does
+## not shrink with distance and through whatever stands in the way. It is what
+## the creature senses of somebody who cannot think any more, and it is why
+## nobody waits a floor out inside a wardrobe.
+const MOTE_LAYER := 4
+var motes: GPUParticles3D
+
+func set_burnt(on: bool) -> void:
+	if not on:
+		if is_instance_valid(motes): motes.emitting = false
+		return
+	if not is_instance_valid(motes): motes = build_motes()
+	motes.emitting = true
+
+func build_motes() -> GPUParticles3D:
+	var ember := StandardMaterial3D.new()
+	ember.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ember.albedo_color = Color(1.0, 0.13, 0.1)
+	ember.emission_enabled = true
+	ember.emission = Color(1.0, 0.1, 0.08)
+	ember.emission_energy_multiplier = 7.0
+	ember.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ember.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	ember.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	ember.billboard_keep_scale = true
+	# Through the hotel and the same size however far off it is: the creature
+	# is not looking at them, it is sensing them.
+	ember.no_depth_test = true
+	ember.fixed_size = true
+	ember.disable_receive_shadows = true
+	ember.render_priority = 126
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.05, 0.05)
+	quad.material = ember
+	var drift := ParticleProcessMaterial.new()
+	drift.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	drift.emission_sphere_radius = 0.28
+	drift.direction = Vector3(0, 1, 0)
+	drift.spread = 22.0
+	drift.initial_velocity_min = 0.12
+	drift.initial_velocity_max = 0.3
+	drift.gravity = Vector3(0, 0.04, 0)
+	drift.scale_min = 0.6
+	drift.scale_max = 1.0
+	var dots := GPUParticles3D.new()
+	dots.name = "Motes"
+	dots.amount = 6
+	dots.lifetime = 2.6
+	dots.draw_pass_1 = quad
+	dots.process_material = drift
+	dots.position = Vector3(0, 1.1, 0)
+	dots.layers = MOTE_LAYER
+	dots.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Stamped anywhere in the floor: never culled with the body's own box.
+	dots.visibility_aabb = AABB(Vector3(-3, -3, -3), Vector3(6, 6, 6))
+	add_child(dots)
+	return dots
+
 func set_body_shadow(on: bool) -> void:
 	body_shadow = on
 	var setting := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on or not first_person else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
