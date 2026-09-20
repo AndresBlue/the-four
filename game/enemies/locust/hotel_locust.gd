@@ -85,6 +85,12 @@ const GRUNT_RETRY := 0.7
 ## tapping the sprint key restarts the chase over and over, and without this
 ## the creature would gabble.
 const GRUNT_MIN := 1.6
+## The voice is shaped by what it is saying. A shriek is brutal close up and
+## then stops: past what it buys the hunter (match_net.SHRIEK_RANGE, 26 m of
+## listening) it should be no use as a bearing. A chase grunt is never that
+## loud but carries further, because it is meant to be heard coming.
+const VOICE_SHRIEK := {"unit": 5.5, "reach": 32.0, "level": 3.0}
+const VOICE_GRUNT := {"unit": 7.0, "reach": 40.0, "level": 0.0}
 var grunt_rest := 0.0
 ## How long it can go without seeing its prey before finding it again is worth
 ## another grunt.
@@ -218,12 +224,20 @@ func grunt() -> float:
 	if not route.audible: return 0.0
 	# Its own throat, right under the hunter's ear, would wear it out: quieter
 	# for whoever is carrying the creature, like its feet.
-	level.world_audio.apply_route(voice, route, -6.0 if control == "player" else 0.0, "Threat", true)
+	level.world_audio.apply_route(voice, route, shape_voice(false) - (6.0 if control == "player" else 0.0), "Threat", true)
 	voice.pitch_scale = pitch
 	voice.play(segment[0])
 	# A lower pitch plays the segment slower: stop when it really ends.
 	grunt_left = segment[1] / voice.pitch_scale
 	return grunt_left
+
+## How far the voice carries and how loud it starts, by what it is saying.
+## Returns the level to route it at.
+func shape_voice(shriek: bool) -> float:
+	var shape: Dictionary = VOICE_SHRIEK if shriek else VOICE_GRUNT
+	voice.unit_size = shape.unit
+	voice.max_distance = shape.reach
+	return shape.level
 
 ## The chase has a voice, whether the AI or a player is driving: a grunt every
 ## few seconds while it is after someone. A shriek takes over the throat, and
@@ -259,7 +273,7 @@ func howl_next() -> void:
 	if level == null or not level.world_audio.enabled: return
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
 	if not route.audible: return
-	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
+	level.world_audio.apply_route(voice, route, shape_voice(true), "Threat", true)
 	howl_db = voice.volume_db
 	voice.pitch_scale = pitch
 	voice.play(segment[0])
@@ -576,7 +590,7 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 	if kind != "grunt" or segment < 0 or segment >= GRUNTS.SEGMENTS.size() or not level.world_audio.enabled: return
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
 	if not route.audible: return
-	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
+	level.world_audio.apply_route(voice, route, shape_voice(false), "Threat", true)
 	voice.pitch_scale = pitch
 	voice.play(GRUNTS.SEGMENTS[segment][0])
 	grunt_left = GRUNTS.SEGMENTS[segment][1] / pitch

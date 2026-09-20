@@ -36,6 +36,14 @@ var ear_side := 0.0
 ## so front and back sound different, not just left and right.
 const REAR_CUTOFF := 3200.0
 const REAR_GAIN := -4.0
+## Air absorption: distance does not only make a sound quieter, it eats its top
+## end. Without this the only thing telling ten metres from forty was volume,
+## so a cry across the floor read like a cry in the room. Metres of route at
+## which the effect is complete, the level it takes off there, and the top end
+## that survives it.
+const AIR_REACH := 45.0
+const AIR_GAIN := -6.0
+const AIR_CUTOFF := 2000.0
 const GAIN := {"open": 1.0, "open_slow": -12.0, "slam": 0.0, "close": -11.0, "hide": -8.0}
 const POOLS := {
 	"open_near": ["door/opening/opening1.ogg", "door/opening/opening2.ogg", "door/opening/opening3.ogg", "door/opening/wooden-opening.ogg"],
@@ -257,8 +265,11 @@ func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dr
 		player.bus = CREATURE_BUS[route.echo]
 		player.panning_strength = 0.0
 	var rear := behind(route.position)
-	player.volume_db = gain + route.gain + REAR_GAIN * rear
-	player.attenuation_filter_cutoff_hz = minf(route.cutoff, lerpf(20000.0, REAR_CUTOFF, rear))
+	var far := clampf(float(route.get("distance", 0.0)) / AIR_REACH, 0.0, 1.0)
+	player.volume_db = gain + route.gain + REAR_GAIN * rear + AIR_GAIN * far
+	# The square root front-loads it: the first metres already dull a sound,
+	# which is what tells a room away from a floor away.
+	player.attenuation_filter_cutoff_hz = minf(minf(route.cutoff, lerpf(20000.0, REAR_CUTOFF, rear)), lerpf(20000.0, AIR_CUTOFF, sqrt(far)))
 
 ## 0 in front of or beside the listener, 1 straight behind (smooth in between).
 func behind(point: Vector3) -> float:

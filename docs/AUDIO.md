@@ -89,11 +89,17 @@ Pendiente: escucha crítica con auriculares, balance del aura en partidas humana
 
 `world_audio.route_source()` decide por dónde llega un sonido. Con línea libre llega directo desde su origen. Si hay muros de por medio sigue la ruta caminable y se oye desde la última abertura visible (una puerta o una esquina): más bajo según el rodeo, más apagado y por los buses `EffectsEcho` o `ThreatEcho` (retardos de 170/340 ms y reverberación amplia), que envían a Effects o Threat. Nada atraviesa muros. Más allá de 42 m de ruta no se oye.
 
+**La distancia también se oye como distancia**, no solo como volumen: sobre la atenuación normal, cada sonido pierde hasta 6 dB y sus agudos con los metros de ruta (`AIR_REACH` 45 m, `AIR_GAIN`, `AIR_CUTOFF` 2 kHz en `world_audio.gd`, aplicados en `apply_route()`). La curva es una raíz, así que los primeros metros ya apagan algo: es lo que diferencia «en esta sala» de «al otro lado del piso». Antes, con línea libre, el filtro se quedaba en 20 kHz a cualquier distancia y un grito a cuarenta metros sonaba como uno a diez, solo más bajo.
+
 Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Locust. La criatura oye al jugador por la misma lógica de rutas pero hasta la distancia de cada ruido en la tabla `HEARD` de `noise_kinds.gd` (de 8 m agachado a 64 m corriendo sobre baldosa), y el aura empieza a 24 m de ruta: la criatura siempre detecta antes de lo que el jugador puede oírla.
 
 ## Gruñidos de persecución
 
 `assets/audio/sfx/chase/grunts.ogg` (aportado) se divide en gruñidos sueltos con `tools/audio/analyze_grunts.gd`, que escribe `game/audio/grunt_segments.gd`. Solo se usan los gruñidos completos (1,4 s o más; los trozos cortos son respiraciones), sin repetir el mismo dos veces seguidas. Suena uno en cuanto la criatura te ve y se gira hacia ti (alerta), el siguiente cuando termina ese y después uno cada 2,5–5 s mientras persigue, con la misma propagación. El corte respeta el tono aleatorio, así que no se truncan. Si cambias la grabación, vuelve a ejecutar el analizador.
+
+Gruñe también el cazador humano en versus mientras corre (antes solo sonaba al chillar), con al menos 1,6 s entre llamadas y 6 dB más bajo para quien lleva la criatura, que la tiene en el oído. Un gruñido que nadie podía oír se reintenta a los 0,7 s en vez de gastar la espera entera, y recuperar de vista a la presa tras perderla más de 1,5 s vale otra llamada.
+
+**La voz cambia de forma según lo que dice** (`VOICE_GRUNT` y `VOICE_SHRIEK` en `hotel_locust.gd`): el chillido empieza 3 dB más alto pero cae más rápido y se corta a 32 m, poco más allá de los 26 m de escucha que le compra al cazador; el gruñido de caza nunca es tan fuerte pero llega a 40 m. La voz cuelga de `world_audio`, no de la criatura, para que un sonido enrutado por un vano se quede en ese vano.
 
 ## Armarios
 

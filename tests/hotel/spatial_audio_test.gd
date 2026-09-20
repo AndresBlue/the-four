@@ -111,6 +111,25 @@ func run() -> void:
 	level.locust.grunt()
 	check("Grunts do not repeat back to back", level.locust.last_grunt != first_grunt)
 	level.locust.voice.stop()
+	# Distance has to be audible as distance, not only as volume: ten metres,
+	# twenty and forty must read differently, and a shriek has to die before
+	# the reach it buys (26 m of listening) makes it useful as a bearing.
+	var reading := func(metres: float, shriek: bool) -> Dictionary:
+		var point: Vector3 = audio.listener_position() + Vector3(0, 1.4, -metres)
+		var route: Dictionary = audio.route_source(point)
+		audio.apply_route(level.locust.voice, route, level.locust.shape_voice(shriek), "Threat", true)
+		var db: float = level.locust.voice.volume_db - 20.0 * log(maxf(metres, 1.0) / level.locust.voice.unit_size) / log(10.0)
+		return {"db": db, "cutoff": level.locust.voice.attenuation_filter_cutoff_hz, "reach": level.locust.voice.max_distance}
+	var near: Dictionary = reading.call(10.0, true)
+	var middle: Dictionary = reading.call(20.0, true)
+	var distant: Dictionary = reading.call(40.0, true)
+	check("Distance eats the top end of a cry", distant.cutoff < middle.cutoff * 0.85 and middle.cutoff < near.cutoff * 0.9)
+	# More than the 6 dB per doubling that distance alone gives: the extra is
+	# the air, and without it these thresholds are not met.
+	check("And it keeps dropping in level", distant.db < middle.db - 8.0 and middle.db < near.db - 7.0)
+	check("A shriek stops before the reach it buys is useful", distant.reach < 40.0 and distant.reach <= level.match_net.SHRIEK_RANGE + 7.0)
+	check("A chase grunt carries further than a cry, and quieter", reading.call(10.0, false).reach > distant.reach and reading.call(10.0, false).db < near.db)
+	level.locust.voice.stop()
 	level.locust.position = Vector3(500, 0, 0)
 	level.locust.set_mode(level.locust.Mode.WINDUP)
 	await wait(0.2)
