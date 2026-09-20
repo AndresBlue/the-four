@@ -340,6 +340,31 @@ func request_warp(index: int) -> void:
 func warp_state(index: int) -> void:
 	level.warp_creature(index)
 
+# --- Drawers and shelves ---------------------------------------------------------
+
+## Going through a piece of furniture. Like a television, it only ever goes one
+## way, so there is nothing to undo.
+func use_container(piece: Node3D) -> void:
+	var index: int = level.containers.find(piece)
+	if index < 0: return
+	if not in_match() or net.is_host:
+		level.apply_search(index, true)
+		if in_match(): container_state.rpc(index, true)
+		return
+	request_container.rpc_id(1, index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_container(index: int) -> void:
+	if not net.is_host or index < 0 or index >= level.containers.size(): return
+	var piece = level.containers[index]
+	if not is_instance_valid(piece) or piece.searched or not near_sender(piece.global_position): return
+	level.apply_search(index, true)
+	container_state.rpc(index, true)
+
+@rpc("authority", "call_remote", "reliable")
+func container_state(index: int, value: bool) -> void:
+	level.apply_search(index, value)
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.

@@ -4,6 +4,7 @@ extends SceneTree
 ## the refuge, the way a player does, and checks what the session does with it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const TV := preload("res://game/world/generation/tv_placement.gd")
+const DIG := preload("res://game/world/generation/digit_placement.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -99,6 +100,22 @@ func run() -> void:
 	check("Y no puede salir por una apagada", dark < 0 or level.locust.global_position.is_equal_approx(standing))
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
 	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
+	await frames(5)
+	# Third stage: four numbers hidden in drawers and shelves of its wing.
+	var hidden: Array = level.containers.filter(func(piece): return piece.digit >= 0)
+	check("Hay cuatro números escondidos", hidden.size() == DIG.COUNT)
+	check("Todos en el ala de la última etapa", hidden.all(func(piece): return int(FLOOR.room_at(level.manifest.rooms, piece.global_position).get("wing", -1)) == 2))
+	check("Cada uno en una sala distinta", hidden.map(func(piece): return int(FLOOR.room_at(level.manifest.rooms, piece.global_position).id)).size() == hidden.size())
+	check("Y cada uno ocupa su lugar del código", hidden.map(func(piece): return piece.slot).duplicate().size() == DIG.COUNT and hidden.all(func(piece): return piece.slot >= 1 and piece.slot <= DIG.COUNT))
+	check("El código no se sabe hasta registrar", level.code_so_far() == "––––")
+	var muebles: int = level.containers.size()
+	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
+	for piece in hidden:
+		level.search_container(piece)
+		await frames(2)
+	check("Registrar los cuatro da el código entero", level.found_digits.size() == DIG.COUNT and not level.code_so_far().contains("–"))
+	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
+	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
 	# The last one is the only one that ends the floor: there is no wing beyond
 	# it yet, so standing in its refuge with the quota is what leaves.
 	var won := false

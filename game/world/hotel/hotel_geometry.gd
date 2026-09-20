@@ -7,6 +7,9 @@ var room_nodes: Array[Node3D] = []
 var doors: Array = []
 ## The doors that lead from one wing to the next, one per stage.
 var gates: Array = []
+## Every piece of furniture with drawers or shelves, as it is dressed:
+## {room, position, yaw, kind}. Four of them hide the numbers of the code.
+var containers: Array = []
 ## Wardrobes in build order: the same index names the same wardrobe on every
 ## machine in an online match (doors likewise).
 var hides: Array = []

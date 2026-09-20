@@ -123,6 +123,9 @@ static func stretches(room: Dictionary) -> Array:
 	return result
 
 ## Dresses a room (called by hotel_geometry.build_room(), after its sockets).
+## The pieces you can go through: drawers, shelves and cupboards.
+const CONTAINERS := ["commode", "console", "drawers", "bookcase", "cabinet", "boxes"]
+
 static func dress(builder, node: Node3D, room: Dictionary) -> void:
 	if int(room.type) == 19: return
 	var kept := state(builder, room)
@@ -138,6 +141,9 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		var seed_pos: Vector3 = node.position + frame.origin
 		var pick: String = sets[int(builder.vary(seed_pos, 31) * sets.size())] if not sets.is_empty() else ""
 		furnish(builder, holder, pick, stretch[1], seed_pos, kept, room)
+		# Anything with drawers or shelves is somewhere a number could be
+		# hidden: the builder keeps the list so a floor can put four in them.
+		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick})
 		k += 1
 	decals(builder, node, room, kept)
 

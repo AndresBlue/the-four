@@ -14,6 +14,8 @@ const DOCUMENT := preload("res://game/world/interactables/hotel_document.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const TELEVISION := preload("res://game/world/interactables/hotel_television.gd")
 const TV_PLACEMENT := preload("res://game/world/generation/tv_placement.gd")
+const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
+const DIGITS := preload("res://game/world/generation/digit_placement.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
@@ -61,9 +63,15 @@ var discoveries
 var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
 var scream_sound: AudioStreamPlayer
+## Seconds spent going through the piece of furniture in front.
+var search_time := 0.0
 ## The sets of the stage in hand, in build order: the index is their name on
 ## the wire, like doors and wardrobes.
 var televisions: Array = []
+## Everything with drawers or shelves, in build order, and the numbers found
+## in them so far, by place in the code.
+var containers: Array = []
+var found_digits := {}
 var blow_sound: AudioStreamPlayer
 var static_sound: AudioStreamPlayer
 var intro_seed := 0
@@ -85,6 +93,8 @@ var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
 ## A set coming on: the clunk of an old switch, reusing a door latch.
 const SWITCH_SOUND := "res://assets/audio/sfx/door/closing/closing1.ogg"
+## Going through a drawer: the slow creak of a door, which is what it is.
+const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
 const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
 const DEAD_CHANNEL := "res://assets/audio/events/execution_static.ogg"
 ## The beats of an execution, in seconds from the grab. The scream is at zero,
@@ -349,6 +359,7 @@ func populate_floor(with_director: bool) -> void:
 	spawn_locust()
 	place_documents()
 	place_televisions()
+	place_containers()
 	director = null
 	if with_director:
 		director = DIRECTOR.new()
@@ -577,6 +588,54 @@ func televisions_on() -> int:
 	for set in televisions:
 		if is_instance_valid(set) and set.on: count += 1
 	return count
+
+## The drawers, shelves and cupboards of the floor, and the four numbers hidden
+## in four of them, in the wing of the last stage. Everyone works out the same
+## hiding places from the seed; only what has been gone through travels.
+func place_containers() -> void:
+	containers.clear()
+	found_digits.clear()
+	if manifest.get("gates", []).is_empty(): return
+	for spot in hotel.containers:
+		var piece := CONTAINER.new()
+		piece.name = "Container_%d" % containers.size()
+		piece.kind = str(spot.kind)
+		piece.position = spot.position
+		piece.rotation.y = spot.yaw
+		# Parented to its room, so it is culled with it, but placed by the
+		# world point the dressing worked out.
+		var room_node = hotel.room_nodes[int(spot.room)] if int(spot.room) < hotel.room_nodes.size() else hotel
+		piece.position = spot.position - room_node.position
+		room_node.add_child(piece)
+		containers.append(piece)
+	for hidden in DIGITS.choose(manifest, hotel.containers):
+		var index := int(hidden.container)
+		if index < 0 or index >= containers.size(): continue
+		containers[index].digit = int(hidden.digit)
+		containers[index].slot = int(hidden.slot)
+
+## Going through one: the host decides, as with everything else.
+func search_container(piece: Node3D) -> void:
+	if not is_instance_valid(piece) or piece.searched: return
+	match_net.use_container(piece)
+
+## Applied everywhere, whoever decided it.
+func apply_search(index: int, value: bool) -> void:
+	if index < 0 or index >= containers.size(): return
+	var piece = containers[index]
+	if not is_instance_valid(piece) or not piece.set_searched(value): return
+	if not value: return
+	if world_audio.enabled: world_audio.play_at(SEARCH_SOUND, piece.global_position + Vector3(0, 0.8, 0), -10.0)
+	if not net.is_client(): on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
+	if piece.digit >= 0:
+		found_digits[piece.slot] = piece.digit
+		if not match_net.local_is_locust(): ui.flash("NÚMERO %d DEL CÓDIGO: %d" % [piece.slot, piece.digit], 4.0)
+
+## The code as it is known so far, with a dash where a number is missing.
+func code_so_far() -> String:
+	var text := ""
+	for slot in range(1, DIGITS.COUNT + 1): text += str(found_digits[slot]) if found_digits.has(slot) else "–"
+	return text
 
 func place_documents() -> void:
 	for spot in PLACEMENT.choose(manifest, "locust"):
@@ -937,6 +996,10 @@ func focused_television():
 	var area = focused_area()
 	return area if area is TELEVISION else null
 
+func focused_container():
+	var area = focused_area()
+	return area if area is CONTAINER else null
+
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
 	if match_net.bodies.is_empty(): return ""
@@ -1017,6 +1080,19 @@ func drive_local(delta: float) -> void:
 		if Input.is_action_just_pressed("interact"): close_document()
 		was_held = true
 		return
+	var container_target = focused_container()
+	if is_instance_valid(container_target) and not container_target.searched:
+		if Input.is_action_pressed("interact"):
+			search_time += delta
+			if search_time >= CONTAINER.SEARCH_TIME:
+				search_container(container_target)
+				search_time = 0.0
+			camcorder.focus("REGISTRAR")
+			ui.hint.text = ""
+			was_held = true
+			return
+		search_time = 0.0
+	else: search_time = 0.0
 	var television_target = focused_television()
 	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(television_target) and not television_target.on:
 		switch_television(television_target)
