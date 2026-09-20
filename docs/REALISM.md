@@ -372,7 +372,7 @@ Arreglos del camino:
 - **Tintes:** las pisadas en arena pasan a ser barro y la mano blanca, mugre; la mancha se suaviza y queda para baños y servicio.
 
 **8. Letrero de salida y placas:**
-- en el refugio, dos letreros de salida verdes iluminados colgados del techo sustituyen al texto flotante;
+- en el refugio, dos letreros de salida colgados del techo sustituyen al texto flotante (rehechos después: ver los ajustes de abajo);
 - los números de puerta van en placas de latón, en letra oscura.
 
 **9. Sombras.** Lo que mide menos de 60 cm, y todo lo que está encima de otro mueble, no proyecta sombra; lo de menos de 30 cm deja de dibujarse a 16 m.
@@ -431,6 +431,17 @@ Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la d
 - **Puertas y marcos.** Una hoja está metida en los volúmenes de las dos salas y Godot la iluminaba con los dos, así que la cara de este lado brillaba con las lámparas de la otra. Las puertas y sus marcos ya no reciben luz rebotada.
 - **Medida:** apagar el rebote de las lámparas de la sala vecina ya no cambia lo que se ve (antes hasta un 12 %). Queda una diferencia del 1,6 % junto a un vano, sin forma reconocible.
 - **Descartado:** la máscara de culling de las luces (`light_cull_mask`) no sirve, porque VoxelGI inyecta la luz igual.
+
+**5. El cartel del refugio.** El de la fase 4 era un panel verde opaco con un `Label3D` encima y se veía de plástico. El nuevo es el cartel de emergencia que se ve en cualquier edificio: una lámina de metacrilato transparente con una hilera de diodos metidos en el canto de arriba.
+
+- **La lámina guía la luz**, y donde está grabada deja de guiarla y la derrama: así, **las letras las dibuja la luz**, no la pintura (`shaders/exit_panel.gdshader`). El panel es más brillante bajo los diodos y pierde algo hacia abajo, los cantos del grabado recogen más que el fondo (de ahí el filo claro de cada letra), y los cantos cortados de la lámina brillan, el de abajo más que ninguno. En lo más claro, el verde se va al blanco, como una luz sobreexpuesta.
+- **Se ven los diodos**, cinco puntos en el canto de arriba, cada uno con su cono abriéndose hacia abajo dentro de la lámina.
+- **Grabado por las dos caras**, como son de verdad: se lee igual desde atrás.
+- **La tipografía es nuestra.** No hay ningún archivo de fuente en el proyecto, así que `tools/textures/make_exit_sign.py` dibuja SALIDA y la flecha como contornos: cada letra es su propia figura (la S es un trazo estampado sobre su curva, con los remates cortados a escuadra) y de ahí salen dos máscaras, el fondo del grabado y el canto del corte. No se embarca nada de nadie.
+- **La flecha apunta hacia abajo:** el piso se abandona en esta sala, no más allá, y así se lee igual por las dos caras.
+- **El resto de la luminaria:** canal de aluminio, mordazas negras en las dos esquinas, vástago y florón contra el techo. El canal tapa la luz hacia arriba, así que deja su propia banda de sombra en el techo.
+- **Su luz** es una lámpara más: verde, corta (2,8 m), con sombra, sin rebote y con el mismo desvanecido que las lámparas de mueble, así que no se cuela en la sala de al lado.
+- Comprobado también en Compatibility.
 
 ### Pruebas que se hacen al empezar su fase
 

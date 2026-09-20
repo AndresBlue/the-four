@@ -115,13 +115,6 @@ func _init() -> void:
 	# A lampshade whose bulb is out does not glow either.
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
-	# The exit sign's lit panel.
-	var exit := StandardMaterial3D.new()
-	exit.albedo_color = Color(0.05, 0.35, 0.15)
-	exit.emission_enabled = true
-	exit.emission = Color(0.1, 0.85, 0.35)
-	exit.emission_energy_multiplier = 1.6
-	materials["exit_sign"] = exit
 
 ## Scanned maps (docs/REALISM.md, phase 3): a material's set is its "scan"
 ## metadata, a folder of assets/textures/ made by tools/textures/ingest_pbr.py
@@ -762,30 +755,65 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.light_color = Color("b8d4b6")
 	build_occluder(node)
 
-## A lit exit sign hung from the ceiling on two rods: a green panel, glowing,
-## lettered on both faces.
+## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
+## its top edge, engraved SALIDA with an arrow pointing down at the room the
+## floor is left from, in an aluminium channel hung from the ceiling on a
+## stem. The lettering is drawn by the light the sheet guides
+## (shaders/exit_panel.gdshader); the sign also throws its own green light,
+## with a shadow, like every other visible lamp in the hotel.
+const EXIT_PANEL := preload("res://game/presentation/shaders/exit_panel.gdshader")
+const EXIT_ENGRAVING := preload("res://assets/props/exit_sign/engraving.png")
+const PANEL_SIZE := Vector2(0.62, 0.31)
+
 func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
 	var board := Node3D.new()
 	board.name = "ExitSign"
 	board.position = pos
 	board.rotation.y = yaw
 	node.add_child(board)
-	box(board, Vector3.ZERO, Vector3(1.0, 0.44, 0.09), "black")
-	box(board, Vector3.ZERO, Vector3(0.92, 0.36, 0.1), "exit_sign")
-	for x in [-0.4, 0.4]: box(board, Vector3(x, (ceiling - pos.y) * 0.5 + 0.11, 0), Vector3(0.012, ceiling - pos.y - 0.22, 0.012), "metal", false, "cylinder")
-	for face in [1.0, -1.0]:
-		var label := Label3D.new()
-		label.text = "SALIDA\nREFUGIO"
-		label.position = Vector3(0, 0, face * 0.052)
-		label.rotation.y = 0.0 if face > 0 else PI
-		label.font_size = 30
-		label.pixel_size = 0.0068
-		label.line_spacing = -6.0
-		label.modulate = Color(0.95, 1.0, 0.95)
-		# Its own light: the letters glow like the panel.
-		label.shaded = false
-		label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		board.add_child(label)
+	var top := PANEL_SIZE.y * 0.5
+	# The channel the diodes sit in, its end clamps, and the stem and canopy
+	# that hang the whole thing from the ceiling.
+	box(board, Vector3(0, top + 0.03, 0), Vector3(PANEL_SIZE.x + 0.06, 0.055, 0.07), "metal")
+	box(board, Vector3(0, top + 0.058, 0), Vector3(PANEL_SIZE.x + 0.062, 0.006, 0.072), "black")
+	for side in [-1.0, 1.0]:
+		box(board, Vector3(side * (PANEL_SIZE.x * 0.5 - 0.012), top - 0.022, 0), Vector3(0.05, 0.06, 0.034), "black")
+	var drop := ceiling - pos.y - top - 0.06
+	box(board, Vector3(0, top + 0.06 + drop * 0.5, 0), Vector3(0.016, drop, 0.016), "metal", false, "cylinder")
+	box(board, Vector3(0, ceiling - 0.01, 0), Vector3(0.1, 0.02, 0.1), "metal")
+	var glass := ShaderMaterial.new()
+	glass.shader = EXIT_PANEL
+	glass.set_shader_parameter("engraving", EXIT_ENGRAVING)
+	var sheet := MeshInstance3D.new()
+	sheet.name = "Panel"
+	var quad := QuadMesh.new()
+	quad.size = PANEL_SIZE
+	sheet.mesh = quad
+	sheet.material_override = glass
+	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sheet.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	board.add_child(sheet)
+	# The light it spills: green, close, and with a shadow, so it stays in
+	# this room like every other lamp (docs/REALISM.md, the bounce leak).
+	var lamp := OmniLight3D.new()
+	lamp.name = "ExitGlow"
+	lamp.position = Vector3(0, 0.02, 0)
+	lamp.light_color = Color(0.25, 1.0, 0.45)
+	lamp.light_energy = 0.55
+	lamp.omni_range = 2.8
+	lamp.shadow_enabled = true
+	lamp.shadow_bias = 0.04
+	lamp.shadow_normal_bias = 0.6
+	lamp.light_size = PRACTICAL_SIZE
+	lamp.light_specular = 0.3
+	# No bounce: a sign hangs in the doorway's own volume as well, and the
+	# rebuilt bounce would carry its green into the room next door.
+	lamp.light_bake_mode = Light3D.BAKE_DISABLED
+	lamp.light_volumetric_fog_energy = 0.12
+	lamp.distance_fade_enabled = true
+	practical_fade(lamp)
+	board.add_child(lamp)
+	practicals.append(lamp)
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
