@@ -47,6 +47,9 @@ const CREDITS := [
 		"«Atmosphere 2» — oldaccount (CC BY 3.0).",
 		"«DOOR creak — multiple creaks wooden door» — mickfire (CC BY-NC 4.0).",
 		"«Sub Riser» — deleted_user_3277771 / Josh Mclelland (CC BY-NC 3.0).",
+		"«Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).",
+		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).",
+		"«Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).",
 	]],
 	["SONIDO — EL RESTO", [
 		"Pasos, respiración, latido, presencia de la criatura y los golpes del hotel: síntesis creada para el juego.",

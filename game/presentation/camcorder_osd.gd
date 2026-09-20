@@ -12,6 +12,8 @@ var clock: Label
 var focus_label: Label
 var canvas: Control
 var marks := true
+## The picture is gone (an execution): the tape marks go with it.
+var signal_lost := false
 var start_seconds := 0
 var date_text := ""
 var blink := 0.0
@@ -123,12 +125,12 @@ func focus(word: String) -> void:
 
 func show_tape(elapsed: float, delta: float) -> void:
 	blink = fposmod(blink + delta, 1.0)
-	var tape := marks and not hunter
+	var tape := marks and not hunter and not signal_lost
 	rec.visible = tape
 	dot.visible = tape and blink < 0.6
 	clock.visible = tape
 	notice.visible = not notice.text.is_empty()
-	if hunter: focus_word = ""
+	if hunter or signal_lost: focus_word = ""
 	var total := start_seconds + int(elapsed)
 	var hours := total / 3600
 	clock.text = "AM %d:%02d:%02d\n%s" % [hours % 12 if hours % 12 != 0 else 12, (total / 60) % 60, total % 60, date_text]

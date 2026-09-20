@@ -1,11 +1,15 @@
 extends SceneTree
 ## The execution seen from the side (evidence/execution_*.png): the grab, the
 ## lift, the mask coming in, the arm through the face and the picture going.
+## With "-- --victim" it stays behind the victim's own eyes instead
+## (evidence/execution_pov_*.png), which is where the arm and the static are.
 var level
+var victim := false
 
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
+	victim = OS.get_cmdline_user_args().has("--victim")
 	DisplayServer.window_set_size(Vector2i(1280, 720))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -22,18 +26,21 @@ func run() -> void:
 	lamp.omni_range = 12.0
 	lamp.position = spot + Vector3(2.5, 2.6, 2.0)
 	level.add_child(lamp)
-	var view := Camera3D.new()
-	view.fov = 60.0
-	level.add_child(view)
-	view.global_position = spot + Vector3(3.4, 1.9, 1.4)
-	view.look_at(spot + Vector3(0, 1.4, -0.9))
-	view.current = true
+	if not victim:
+		var view := Camera3D.new()
+		view.fov = 60.0
+		level.add_child(view)
+		view.global_position = spot + Vector3(3.4, 1.9, 1.4)
+		view.look_at(spot + Vector3(0, 1.4, -0.9))
+		view.current = true
 	# Straight into the execution, with the creature still animating.
 	level.locust.face_toward(spot, 1.0, 100.0)
 	level.capture_survivor(level.player)
 	# Timed off the execution itself, not off frame numbers: the window does
 	# not render at a fixed rate and the beats would slide.
 	var shots := [[0.15, "grab"], [0.7, "lift"], [2.2, "face"], [2.9, "kill"], [3.4, "static"]]
+	if victim: shots = [[0.2, "grab"], [2.4, "held"], [level.ARM_TIME + level.ARM_SWING * 0.45, "arm"], [level.KILL_TIME + 0.02, "covered"], [level.SIGNAL_TIME + 0.25, "static"]]
+	var prefix := "execution_pov_" if victim else "execution_" 
 	var taken: Array = []
 	var next := 0
 	while next < shots.size():
@@ -41,7 +48,7 @@ func run() -> void:
 		if level.execution.is_empty(): break
 		if float(level.execution.time) < float(shots[next][0]): continue
 		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png("res://evidence/execution_%s.png" % shots[next][1])
+		root.get_texture().get_image().save_png("res://evidence/%s%s.png" % [prefix, shots[next][1]])
 		taken.append(shots[next][1])
 		next += 1
 	print("EXECUTION_SHOTS ", taken)

@@ -17,6 +17,10 @@ uniform float threat_glitch : hint_range(0.0, 1.0) = 0.0;
 // The victim's own camera giving out: the picture tears, rolls and is eaten
 // by the snow of a dead channel. 1 is no picture left at all.
 uniform float signal_loss : hint_range(0.0, 1.0) = 0.0;
+// The arm coming for the lens: black spreading from strike_point (screen UV)
+// until it covers everything. 0 is nothing, 1 is no light at all.
+uniform float strike_fill : hint_range(0.0, 1.0) = 0.0;
+uniform vec2 strike_point = vec2(0.5, 0.5);
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -142,20 +146,45 @@ void fragment() {
 	color *= 1.0 - (noise1(t * 11.0) - 0.5) * 0.03 * vhs;
 	float closed_in = smoothstep(0.05, 0.42, edge);
 	color *= 1.0 - closed_in * enclosure * 0.85;
-	// The signal going: the frame loses its hold and rolls, the colour drains,
-	// and the snow of a dead channel takes it over.
+	// The arm: it comes in as a point and takes the whole lens in a moment.
+	// Slightly oval and with a ragged edge, so it reads as something arriving
+	// rather than as an iris closing.
+	if (strike_fill > 0.0) {
+		vec2 away = (SCREEN_UV - strike_point) * vec2(1.0, 0.78);
+		// A few big lobes rather than even teeth: a limb, not a cog.
+		float angle = atan(away.y, away.x);
+		float ragged = 1.0 + (hash(vec2(floor(angle * 2.5), floor(t * 18.0))) - 0.5) * 0.3 + (hash(vec2(floor(angle * 6.0), 3.0)) - 0.5) * 0.12;
+		// Cubed: for most of the swing it is a speck, and then it is everything.
+		float radius = strike_fill * strike_fill * strike_fill * 2.0 * ragged;
+		// A hard edge: a limb blocking the lens, not a shadow falling on it.
+		float covered = 1.0 - smoothstep(radius * 0.9, radius, length(away));
+		color *= 1.0 - covered;
+	}
+	// The signal going, as a dead channel on a big set: the picture loses its
+	// hold and rolls, sync tears drag lines sideways, and fat interlaced snow
+	// with a rolling hum bar takes it over.
 	if (signal_loss > 0.0) {
 		float loss = clamp(signal_loss, 0.0, 1.0);
-		float roll = fract(SCREEN_UV.y + t * (0.35 + loss * 1.6));
-		float tear = smoothstep(0.02, 0.0, roll) * loss;
-		vec3 torn = tap(vec2(fract(uv.x + (hash(vec2(line, floor(t * 45.0))) - 0.5) * 0.4 * loss), uv.y));
-		color = mix(color, torn, tear);
-		color = mix(color, vec3(dot(color, vec3(0.333))), loss * 0.8);
-		float snow_fine = hash(vec2(uv.x * 1500.0 + t * 130.0, line * 3.0 + floor(t * 70.0)));
-		float snow_coarse = hash(vec2(floor(uv.x * 220.0) + t * 40.0, floor(SCREEN_UV.y * 140.0)));
-		vec3 dead = vec3(mix(snow_fine, snow_coarse, 0.45)) * (0.75 + 0.25 * noise1(t * 9.0));
-		color = mix(color, dead, smoothstep(0.15, 1.0, loss));
-		color *= 1.0 - smoothstep(0.55, 1.0, loss) * 0.25;
+		float field = floor(t * 50.0);
+		vec2 rolled = vec2(uv.x, fract(SCREEN_UV.y + t * (0.02 + loss * 0.55)));
+		float row = floor(rolled.y * 240.0);
+		float tear = step(0.96 - loss * 0.05, hash(vec2(floor(rolled.y * 24.0), floor(t * 12.0))));
+		rolled.x += (hash(vec2(row, field)) - 0.5) * 0.02 * loss + tear * (hash(vec2(row, floor(t * 20.0))) - 0.3) * 0.12 * loss;
+		vec3 torn = tap(vec2(fract(rolled.x), uv.y));
+		color = mix(color, torn, loss * 0.85);
+		color = mix(color, vec3(dot(color, vec3(0.333))), loss * 0.85);
+		// Tuner snow: fat dots on a 260 x 240 grid, restruck every field, with
+		// the odd bright horizontal streak across a whole line.
+		float snow = hash(floor(rolled * vec2(260.0, 240.0)) + field * 7.0);
+		float streak = hash(vec2(row, field * 3.0));
+		vec3 dead = vec3(snow * 0.85 + step(0.93, streak) * 0.45);
+		// Rolling hum bar and the alternating field of interlaced lines.
+		float bar = smoothstep(0.0, 0.12, abs(fract(rolled.y - t * 0.11) - 0.5) - 0.28);
+		dead *= 0.82 + 0.18 * bar;
+		float lines = 0.5 + 0.5 * sin((SCREEN_UV.y * 480.0 + mod(field, 2.0)) * 3.14159);
+		dead *= 0.62 + 0.38 * lines;
+		color = mix(color, dead, smoothstep(0.1, 0.85, loss));
+		color *= 1.0 - (noise1(t * 21.0) - 0.5) * 0.22 * loss;
 	}
 	COLOR = vec4(max(color, vec3(0.0)), 1.0);
 }

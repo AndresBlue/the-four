@@ -197,12 +197,14 @@ func pose_arms(delta: float, ratio: float) -> void:
 			upper = upper.lerp(Vector3(s * 0.35, lerpf(0.1, 0.75, lift), lerpf(0.7, 0.45, closing)), 0.85)
 			fore = fore.lerp(Vector3(s * 0.1, lerpf(0.2, 0.55, lift), lerpf(0.95, 0.7, closing)), 0.85)
 			if not holding:
-				# Wound up all the way through the wait, then one blow.
-				var phase: float = (execute - kill) / 0.14
+				# Wound up all the way through the wait, then one blow, and a
+				# fast one: from drawn back to buried in a fifth of a second.
+				var phase: float = (execute - kill) / 0.05
 				var thrust: float = maxf(0.0, 1.0 - absf(phase))
-				var wind := closing * 0.35
-				upper = upper.lerp(Vector3(s * (0.55 + wind), 0.35 - thrust * 0.25, 0.3 - wind * 0.3 + thrust * 0.8), 0.9)
-				fore = fore.lerp(Vector3(s * 0.15, 0.55 - thrust * 1.0, 0.15 + thrust * 1.0), 0.9)
+				thrust = thrust * thrust * (3.0 - 2.0 * thrust)
+				var wind := closing * 0.4
+				upper = upper.lerp(Vector3(s * (0.6 + wind) * (1.0 - thrust), 0.4 - thrust * 0.35, 0.25 - wind * 0.25 + thrust * 1.05), 0.92)
+				fore = fore.lerp(Vector3(s * 0.15 * (1.0 - thrust), 0.6 - thrust * 1.2, 0.1 + thrust * 1.25), 0.92)
 		var key: String = side[0]
 		var blend := minf(1.0, delta * (26.0 if execute > 0.0 else 18.0 if recovering > 0.1 else 8.0))
 		if not arm_dirs.has(key): arm_dirs[key] = [upper, fore]

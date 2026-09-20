@@ -59,6 +59,8 @@ var discoveries
 var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
 var scream_sound: AudioStreamPlayer
+var blow_sound: AudioStreamPlayer
+var static_sound: AudioStreamPlayer
 var intro_seed := 0
 var skip_time := 0.0
 ## Online play (net_session.gd) and its in-match replication (match_net.gd).
@@ -77,14 +79,18 @@ var watch_rig: Node3D
 var watch_arm: SpringArm3D
 var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
-const KILL_BLOW := "res://assets/audio/events/execution_stab_3.wav"
+const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
+const DEAD_CHANNEL := "res://assets/audio/events/execution_static.ogg"
 const BODY_DROP := "res://assets/audio/events/execution_drop.wav"
-## The beats of an execution, in seconds from the grab: the arm goes through
-## the face, the picture gives way, and the body is let go. The scream is at
-## zero, because that is the point of it.
+## The beats of an execution, in seconds from the grab. The scream is at zero,
+## because that is the point of it; then it holds you and looks at you; then
+## the arm comes for the lens, covers it and lands; and the picture goes.
+const ARM_TIME := 2.62
 const KILL_TIME := 2.8
-const SIGNAL_TIME := 3.0
+const SIGNAL_TIME := 2.92
 const DROP_TIME := 3.1
+## How long the arm takes to go from a point to the whole screen.
+const ARM_SWING := KILL_TIME - ARM_TIME
 ## How long the victim's own screen stays lost before it starts watching a
 ## teammate. Alone, or with everyone else dead, the failure screen takes over
 ## instead and this never runs out.
@@ -629,10 +635,17 @@ func update_execution(delta: float) -> void:
 	execution.time += delta
 	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
 	var held := point + Vector3(0, 1.7, 0)
-	if int(execution.stabs) == 0 and execution.time >= KILL_TIME:
-		if world_audio.enabled: world_audio.play_at(KILL_BLOW, held, -1.0, RID(), 0.0)
-		glitch = 1.0
+	# The whoosh starts with the arm, so its impact lands as the lens goes.
+	if int(execution.stabs) == 0 and execution.time >= ARM_TIME:
+		if world_audio.enabled:
+			if int(execution.seat) == player.slot and is_instance_valid(blow_sound): blow_sound.play()
+			else: world_audio.play_at(KILL_BLOW, held, -1.0, RID(), 0.0)
 		execution.stabs = 1
+	if int(execution.stabs) == 1 and execution.time >= KILL_TIME:
+		glitch = 1.0
+		execution.stabs = 2
+		# The dead channel takes over the victim's own ears.
+		if int(execution.seat) == player.slot and world_audio.enabled and is_instance_valid(static_sound): static_sound.play()
 	if not execution.dropped and execution.time >= DROP_TIME:
 		execution.dropped = true
 		if world_audio.enabled: world_audio.play_at(BODY_DROP, point + Vector3(0, 0.3, 0), -6.0, RID(), 0.0)
@@ -649,6 +662,18 @@ func update_execution(delta: float) -> void:
 			player.avatar.rotation.x = 0.0
 			player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
+
+## Where the striking arm is on the victim's screen, as a UV: the black
+## spreads from there, so it reads as an arm arriving and not as a fade.
+func strike_on_screen() -> Vector2:
+	if not is_instance_valid(locust) or not is_instance_valid(player.camera): return Vector2(0.5, 0.5)
+	var hand: Vector3 = locust.global_position + Vector3(0, 2.0, 0) - locust.global_basis.x * 0.45
+	var size: Vector2 = player.camera.get_viewport().get_visible_rect().size
+	if size.x <= 0.0 or size.y <= 0.0: return Vector2(0.5, 0.5)
+	# Behind the camera it would project inverted: keep it in the middle.
+	if player.camera.is_position_behind(hand): return Vector2(0.5, 0.5)
+	var point: Vector2 = player.camera.unproject_position(hand)
+	return Vector2(clampf(point.x / size.x, -0.2, 1.2), clampf(point.y / size.y, -0.2, 1.2))
 
 ## The victim: held in the air in front of the creature, looking at it.
 func hold_victim(delta: float) -> void:
@@ -1249,10 +1274,22 @@ func update_screen_cues(delta: float) -> void:
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
 	var striking: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
 	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
-	var dying: bool = not execution.is_empty() and int(execution.seat) == player.slot and float(execution.time) >= SIGNAL_TIME
+	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
+	var dying: bool = mine and float(execution.time) >= SIGNAL_TIME
 	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else 0.0
-	static_level = move_toward(static_level, wanted_static, delta * (3.5 if wanted_static > static_level else 1.6))
-	post_material.set_shader_parameter("signal_loss", static_level * (0.55 if settings.values.reduced else 1.0))
+	# Straight to static once the arm has landed: the picture does not fade,
+	# it goes. Coming back (a new floor) it clears gently.
+	static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
+	post_material.set_shader_parameter("signal_loss", static_level * (0.75 if settings.values.reduced else 1.0))
+	# The arm arriving: black spreading from where its hand is on screen.
+	var arm := 0.0
+	if mine and float(execution.time) >= ARM_TIME and static_level < 0.9:
+		arm = clampf((float(execution.time) - ARM_TIME) / ARM_SWING, 0.0, 1.0)
+		post_material.set_shader_parameter("strike_point", strike_on_screen())
+	post_material.set_shader_parameter("strike_fill", arm)
+	camcorder.signal_lost = static_level > 0.35 or arm > 0.25
+	# The dead channel stops with the snow, not a moment later.
+	if is_instance_valid(static_sound) and static_sound.playing and static_level < 0.05: static_sound.stop()
 	if settings.values.reduced: return
 	post_material.set_shader_parameter("enclosure", enclosure)
 	post_material.set_shader_parameter("threat_glitch", glitch)
@@ -1272,6 +1309,19 @@ func build_audio() -> void:
 	scream_sound.volume_db = 0.0
 	scream_sound.stream = load(SCREAM)
 	add_child(scream_sound)
+	# The blow and the dead channel that follows it, in the victim's own ears.
+	blow_sound = AudioStreamPlayer.new()
+	blow_sound.name = "Blow"
+	blow_sound.bus = "Threat"
+	blow_sound.volume_db = -1.0
+	blow_sound.stream = load(KILL_BLOW)
+	add_child(blow_sound)
+	static_sound = AudioStreamPlayer.new()
+	static_sound.name = "DeadChannel"
+	static_sound.bus = "Effects"
+	static_sound.volume_db = -6.0
+	static_sound.stream = load(DEAD_CHANNEL)
+	add_child(static_sound)
 	ambience = AudioStreamPlayer.new()
 	ambience.name = "AmbientLoop"
 	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE

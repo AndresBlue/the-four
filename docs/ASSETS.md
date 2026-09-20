@@ -7,7 +7,7 @@ Procedencia, licencias y permisos pendientes de todo lo que entra en el juego. M
 - Cartel de salida del refugio: lámina, luminaria y grabado originales. Las letras y la flecha las dibuja `tools/textures/make_exit_sign.py` como contornos propios en `assets/props/exit_sign/engraving.png`; no se usa ni se embarca ningún archivo de fuente.
 - Arquitectura modular, veinte definiciones espaciales y mobiliario provisional: geometría original creada para este proyecto. No se atribuye a Sketchfab.
 - Materiales: shaders procedurales propios (motivo del papel, medallones de la moqueta, desgaste y suciedad) sobre materiales escaneados CC0, listados abajo en «Materiales escaneados». Las cortinas siguen siendo solo procedurales.
-- Pasos y señal de preparación de ataque: síntesis original en ejecución, sin muestras externas. Los sonidos de la ejecución (`assets/audio/events/execution_*.wav`), incluido el grito del agarre, son síntesis propia y determinista: `tools/audio/generate_event_sfx.py` y `tools/audio/generate_screamer.py`, sin muestras de terceros. Polvo, cortinas, niebla localizada y sondas de reflexión creados dentro de Godot. No se añadieron muebles externos.
+- Pasos y señal de preparación de ataque: síntesis original en ejecución, sin muestras externas. Los golpes de puerta, el objeto que cae y el cuerpo soltado de la ejecución (`tools/audio/generate_event_sfx.py`) son síntesis propia y determinista; el grito, el golpe y la estática de la ejecución son grabaciones de Freesound, abajo. Polvo, cortinas, niebla localizada y sondas de reflexión creados dentro de Godot. No se añadieron muebles externos.
 - Copia utilizada: `assets/audio/hotel/ambience.wav`, idéntica al original `ambience.wav` de la raíz. SHA-256: `7f873c02a389c4da33befb3da559d613a98aa4cc051f91c805a7782c4d72adb1`.
 - Ambiente: 410,46 s, estéreo, 11.025 Hz, PCM de 8 bits. Se reproduce en bucle y a volumen reducido; el original no se modifica. Autoría/licencia pendientes de verificar.
 - Los otros cuatro audios nuevos quedan conservados para la selección de la etapa 2. Detalles técnicos en `hotel_audio_inventory.json`. La voz tiene un nivel notablemente mayor que el ambiente y requiere edición/mezcla antes de incorporarla.
@@ -38,7 +38,7 @@ Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena
 
 ### Sonido (Freesound)
 
-El usuario aportó estos ocho; el reparto archivo por archivo dentro de `assets/audio/` todavía no está anotado (pendiente de que el usuario diga cuál es cuál).
+El usuario aportó estos once. De los ocho primeros, el reparto archivo por archivo dentro de `assets/audio/` todavía no está anotado (pendiente de que el usuario diga cuál es cuál); los tres últimos, en cambio, se saben exactamente: son los de la ejecución.
 
 | Sonido | Autoría | Licencia | Ficha |
 |---|---|---|---|
@@ -50,6 +50,11 @@ El usuario aportó estos ocho; el reparto archivo por archivo dentro de `assets/
 | Atmosphere 2 | oldaccount | CC BY 3.0 | [316800](https://freesound.org/people/oldaccount/sounds/316800/) |
 | DOOR creak — multiple creaks wooden door | mickfire | **CC BY-NC 4.0** | [326416](https://freesound.org/people/mickfire/sounds/326416/) |
 | Sub Riser | deleted_user_3277771 (Josh Mclelland) | **CC BY-NC 3.0** | [185372](https://freesound.org/people/deleted_user_3277771/sounds/185372/) |
+| Jumpscare sound | EnclosureX_Studios | CC BY 4.0 | [865842](https://freesound.org/people/EnclosureX_Studios/sounds/865842/) |
+| custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025 | Artninja | CC BY 4.0 | [829590](https://freesound.org/people/Artninja/sounds/829590/) |
+| Radio Music — A MakeNoise Morphagene Reel | nlux | CC0 | [624412](https://freesound.org/people/nlux/sounds/624412/) |
+
+Los tres de la ejecución: el grito del agarre (`execution_scream.wav`), el golpe del brazo (`execution_hit.wav`) y la estática del canal muerto (`execution_static.ogg`). Los originales están en `sfx/screamer/`, `sfx/hit/` y `sfx/static/`; las copias que usa el juego las prepara `tools/audio/prepare_execution_sfx.py` (mono a 44,1 kHz, y del golpe solo la primera de las tres tomas, cortada para que el impacto caiga a 0,18 s).
 
 ### Lo que esto impide
 

@@ -123,9 +123,17 @@ Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes
 
 ## Ejecución
 
-`tools/audio/generate_screamer.py` sintetiza `execution_scream.wav`: el grito del agarre, sin ataque (dos milisegundos de nada a todo), con parciales inarmónicos que caen, una capa rota encima y saturación dura, para que suene a garganta y no a sintetizador. Suena en el instante 0 de la ejecución: en la máquina de la víctima como sonido plano a 0 dB (no está en la sala, está en su cabeza) y en las demás desde la criatura, por la propagación normal.
+Tres grabaciones aportadas, preparadas por `tools/audio/prepare_execution_sfx.py` desde `sfx/` (los originales no se tocan): `execution_scream.wav` (el grito del agarre), `execution_hit.wav` (el golpe) y `execution_static.ogg` (el canal muerto). Procedencia y licencias en [ASSETS.md](ASSETS.md).
 
-`tools/audio/generate_event_sfx.py` sintetiza `execution_stab_1..3.wav` (la hoja entrando) y `execution_drop.wav` (el cuerpo soltado). De los tres golpes solo se usa el tercero, como el brazo entrando en la cara a los 2,8 s; el cuerpo cae a los 3,1 s. Los otros dos quedan disponibles.
+Los tiempos, contados desde el agarre:
+
+- **0,0 s — el grito.** En la máquina de la víctima suena plano, a 0 dB, sin posición: no está en la sala, está en su cabeza. En las demás sale de la criatura por la propagación normal.
+- **2,62 s — el brazo sale.** Empieza el silbido del golpe, cortado para que su impacto caiga 0,18 s después, que es justo lo que tarda el brazo en pasar de un punto a tapar la lente.
+- **2,8 s — el impacto**, con la pantalla ya negra.
+- **2,92 s — la estática.** El canal muerto arranca en los oídos de la víctima (bus Effects, −6 dB) y la imagen se va con él.
+- **3,1 s** cae el cuerpo (`execution_drop.wav`, síntesis propia).
+
+`execution_stab_1..3.wav` (síntesis de `tools/audio/generate_event_sfx.py`) eran los tres golpes de la ejecución anterior; quedan sin usar.
 
 ## Pasos de los compañeros
 
