@@ -147,13 +147,13 @@ func draw_overlay() -> void:
 		# picture under the tape marks: short and heavy, and its frame close
 		# round the lettering, the way a camcorder stamps it.
 		var track := 170.0
-		var letters := 18
+		var letters := 16
 		var font := STYLE.font()
 		var w_wide := font.get_string_size("W", HORIZONTAL_ALIGNMENT_LEFT, -1, letters).x
 		var t_wide := font.get_string_size("T", HORIZONTAL_ALIGNMENT_LEFT, -1, letters).x
 		var gap := 9.0
 		var pad := Vector2(9.0, 5.0)
-		var inside := Vector2(w_wide + gap + track + gap + t_wide, 20.0)
+		var inside := Vector2(w_wide + gap + track + gap + t_wide, 14.0)
 		var frame := Rect2(Vector2((size.x - inside.x) * 0.5 - pad.x, 56.0), inside + pad * 2.0)
 		var middle := frame.position.y + frame.size.y * 0.5
 		var left := frame.position.x + pad.x
@@ -164,16 +164,16 @@ func draw_overlay() -> void:
 			var shift := Vector2(2, 2) if pass_index == 0 else Vector2.ZERO
 			var color := shadow if pass_index == 0 else ink
 			var soft := shadow if pass_index == 0 else faint
-			canvas.draw_rect(Rect2(frame.position + shift, frame.size), soft, false, 3.0)
+			canvas.draw_rect(Rect2(frame.position + shift, frame.size), soft, false, 4.0)
 			var base := Vector2(left, middle + letters * 0.36) + shift
 			canvas.draw_string(font, base, "W", HORIZONTAL_ALIGNMENT_LEFT, -1, letters, color)
 			canvas.draw_string(font, base + Vector2(inside.x - t_wide, 0), "T", HORIZONTAL_ALIGNMENT_LEFT, -1, letters, color)
 			var start := left + w_wide + gap
 			canvas.draw_line(Vector2(start, middle) + shift, Vector2(start + track, middle) + shift, soft, 5.0)
 			for end in [0.0, track]:
-				canvas.draw_line(Vector2(start + end, middle - 7) + shift, Vector2(start + end, middle + 7) + shift, soft, 5.0)
+				canvas.draw_line(Vector2(start + end, middle - 5) + shift, Vector2(start + end, middle + 5) + shift, soft, 5.0)
 			var marker := Vector2(start + track * clampf(zoom, 0.0, 1.0), middle) + shift
-			canvas.draw_rect(Rect2(marker - Vector2(6, 9), Vector2(12, 18)), color)
+			canvas.draw_rect(Rect2(marker - Vector2(6, 7), Vector2(12, 14)), color)
 	if stamina_alpha > 0.01:
 		var right := size.x - 48.0
 		var bottom := size.y - 60.0
