@@ -121,6 +121,14 @@ func host() -> void:
 	check("Vuelve con su plaza antes de 60 s", await wait_for(func(): return not match_net.away.has(bravo) and net.players[bravo].connected, 40.0))
 	await pause_for(3.0)
 	check("Sigue vivo tras volver", level.session.participants[bravo] == level.session.Life.EXPLORING and playing())
+	# The host dies and only the guests are left: the floor still has to be
+	# finishable. The hold at the exit is counted here, on the host, and used
+	# to be skipped entirely while its own player was dead and watching.
+	await pause_for(1.0)
+	check("El anfitrión cae y el piso sigue", level.session.capture(1) and playing())
+	var left: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 90.0)
+	check("Con el anfitrión muerto, sus invitados salen del piso", left)
+	await pause_for(3.0)
 	net.return_to_lobby()
 	check("Todos vuelven a la sala", level.session.state == level.session.State.MENU and not net.in_match)
 	await pause_for(2.0)
@@ -168,6 +176,14 @@ func alpha_part() -> void:
 	check("Segundo piso", await wait_for(playing, 90.0))
 	check("La hoja empieza vacía en el piso nuevo", level.ui.sheet.log.is_empty())
 	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.3, 0.3), Vector2(0.7, 0.7)]))
+	# The host dies: the two guests leave the floor on their own.
+	check("Ve morir al anfitrión", await wait_for(func(): return level.session.participants.get(1) == level.session.Life.DEAD, 90.0))
+	level.player.global_position = refuge_point(Vector3(-0.8, 0, 0))
+	await pause_for(1.0)
+	Input.action_press("interact")
+	var alone: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 60.0)
+	Input.action_release("interact")
+	check("Sale del piso sin el anfitrión", alone)
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))
 	check("Se entera de que el anfitrión cerró la sala", await wait_for(func(): return not level.net.active() and level.ui.screen == "multiplayer", 30.0))
 
@@ -190,6 +206,13 @@ func bravo_part() -> void:
 	await pause_for(1.0)
 	check("Reaparece donde estaba", level.player.global_position.distance_to(spot) < 2.5)
 	check("Recupera la hoja con los trazos de los demás", level.ui.sheet.log_index.has("%d:1" % seat_named("Alpha")))
+	check("Ve morir al anfitrión", await wait_for(func(): return level.session.participants.get(1) == level.session.Life.DEAD, 90.0))
+	level.player.global_position = refuge_point(Vector3(0.9, 0, 0))
+	await pause_for(1.0)
+	Input.action_press("interact")
+	var alone: bool = await wait_for(func(): return level.session.state == level.session.State.WON, 60.0)
+	Input.action_release("interact")
+	check("Sale del piso sin el anfitrión", alone)
 	check("Vuelve a la sala con los demás", await wait_for(func(): return level.session.state == level.session.State.MENU and level.ui.screen == "lobby", 120.0))
 
 # --- Versus ------------------------------------------------------------------------

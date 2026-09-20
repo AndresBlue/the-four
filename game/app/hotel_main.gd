@@ -757,6 +757,16 @@ func _physics_process(delta: float) -> void:
 		if skip_time >= SKIP_HOLD: finish_intro()
 		return
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
+	drive_local(delta)
+	# Whoever is in charge counts the hold at the exit once a frame, whatever
+	# its own player happens to be doing. It used to be called from inside the
+	# branches below, and the one for a dead player had no call: with the host
+	# dead, its guests could hold at the refuge for ever and never leave.
+	if not net.is_client(): host_exit(delta)
+
+## This machine's own player: looking, opening, reading, hiding, or watching a
+## teammate once it is dead.
+func drive_local(delta: float) -> void:
 	var inside := in_refuge()
 	if not net.is_client():
 		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
@@ -768,7 +778,6 @@ func _physics_process(delta: float) -> void:
 		# Looking at the sheet: the character stands still, the world goes on.
 		exit_held = false
 		camcorder.focus("")
-		if net.is_host or not match_net.in_match(): host_exit(delta)
 		if not local_alive(): watch_teammates()
 		return
 	if not local_alive():
@@ -776,7 +785,6 @@ func _physics_process(delta: float) -> void:
 		return
 	if online_menu or match_net.local_is_locust():
 		exit_held = false
-		if net.is_host: host_exit(delta)
 		return
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
@@ -832,7 +840,6 @@ func _physics_process(delta: float) -> void:
 	was_held = held
 	# Deliberate hold inside the refuge; door operations never also start departure.
 	exit_held = held and inside and not is_instance_valid(target) and not is_instance_valid(pressed_door)
-	if not net.is_client(): host_exit(delta)
 	ui.progress.visible = session.exit_progress > 0
 	ui.progress.value = session.exit_progress
 	ui.hint.text = "REFUGIO · MANTÉN [%s] PARA SALIR DEL PISO" % key if inside else ""
