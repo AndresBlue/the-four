@@ -47,23 +47,29 @@ func run() -> void:
 	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y > 0.6 and d.position.y < 0.9))
 	check("Documentos distintos entre sí", documents[0].entry_id != documents[1].entry_id)
 	var document = documents[0]
-	# Stood a metre away on the side the room is open. A document lies on a
-	# piece of furniture and furniture stands against a wall, so coming at it
-	# from a fixed direction means standing inside the wall half the time; a
-	# player walks up to it from the middle of the room.
+	# Walked up to from the middle of the room and looked at, the way it is
+	# read in a game. A document lies on a piece of furniture and furniture
+	# stands against a wall, so how close one can get to it depends on what it
+	# is lying on: a few steps are tried, near to far, and the first one from
+	# which it can be read counts.
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, document.position)
 	var inward: Vector3 = FLOOR.position_of(room) - document.position
 	inward.y = 0.0
 	if inward.length() < 0.5: inward = Vector3(0, 0, 1)
-	player.position = document.position + inward.normalized()
-	player.position.y = 0.04
-	player.rotation.y = 0.0
-	var eye: Vector3 = player.position + Vector3(0, player.eye_height, 0)
-	var to_doc: Vector3 = document.position - eye
-	player.rotation.y = atan2(-to_doc.x, -to_doc.z)
-	player.camera.rotation.x = atan2(to_doc.y, Vector2(to_doc.x, to_doc.z).length())
-	await frames(3)
-	check("Mirar un documento lo enfoca para leer", level.focused_document() == document)
+	var readable := false
+	for step in [1.0, 1.3, 1.6, 1.9]:
+		player.position = document.position + inward.normalized() * step
+		player.position.y = 0.04
+		player.rotation.y = 0.0
+		var eye: Vector3 = player.position + Vector3(0, player.eye_height, 0)
+		var to_doc: Vector3 = document.position - eye
+		player.rotation.y = atan2(-to_doc.x, -to_doc.z)
+		player.camera.rotation.x = atan2(to_doc.y, Vector2(to_doc.x, to_doc.z).length())
+		await frames(3)
+		if level.focused_document() == document:
+			readable = true
+			break
+	check("Mirar un documento lo enfoca para leer", readable)
 	player.active = true
 	level.open_document(document)
 	check("Leer muestra la hoja y detiene al jugador", player.reading and is_instance_valid(level.ui.reading))

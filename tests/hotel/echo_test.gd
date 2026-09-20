@@ -178,9 +178,10 @@ func run() -> void:
 	# hangs in front of its doors instead of inside it.
 	# That a wardrobe carries into the next room is the property being checked,
 	# so the hunter is stood in a room next door to one instead of being left
-	# wherever its patrol had taken it -- cells are twelve metres across, so
-	# the next room over is always another room and always well past arm's
-	# reach.
+	# wherever its patrol had taken it. A wardrobe stands against its room's
+	# wall, so the middle of the room next door can be as close as seven
+	# metres: the pair is only taken if it is more than eight, which is a
+	# room away and not arm's reach.
 	var far_hide = null
 	var far_gap := 0.0
 	for hide in level.hotel.hides:
@@ -192,6 +193,7 @@ func run() -> void:
 			creature.global_position = FLOOR.position_of(next_room) + Vector3(0, 0.1, 0)
 			await frames(2)
 			if not creature.hear_route(hide.global_position, level.HUNTER_WARDROBE_RADIUS).audible: continue
+			if hide.global_position.distance_to(creature.global_position) <= 8.0: continue
 			far_hide = hide
 			far_gap = hide.global_position.distance_to(creature.global_position)
 			break

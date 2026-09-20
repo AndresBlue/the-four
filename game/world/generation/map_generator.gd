@@ -275,7 +275,7 @@ func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumbe
 	# About a third of a wing that still reads like a hotel is corridor; half
 	# of that where it has come apart, because there the floor is rooms giving
 	# on to rooms.
-	var target := int(round(float(band.size()) * lerpf(0.17, 0.34, tidiness)))
+	var target := int(round(float(band.size()) * lerpf(0.14, 0.28, tidiness)))
 	var guard := 0
 	while corridor.size() < target and guard < 400:
 		guard += 1
@@ -288,7 +288,25 @@ func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumbe
 		# Runs of two or three cells and then a turn, never a hall straight
 		# across the wing.
 		var run := 3 if rng.randf() < float(rooms[from].order) else 2
-		var direction: Vector2i = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)][rng.randi_range(0, 3)]
+		# It turns towards the rooms nobody serves yet, and the tidier a room
+		# is the more it counts: that is what makes the corridor of an orderly
+		# stretch reach everything without paving half the wing, and what
+		# leaves the tangled half to be crossed room by room.
+		var direction := Vector2i.ZERO
+		var best := -1.0
+		for way: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var gain := rng.randf() * 0.4
+			var at_cell := from
+			for step in run:
+				at_cell = step_cell(rooms, width, height, at_cell, way, wing)
+				if at_cell < 0 or bool(rooms[at_cell].corridor) or not line_ok(rooms, width, height, at_cell): break
+				for n in neighbors(at_cell, width, height):
+					if int(rooms[n].wing) != wing or bool(rooms[n].corridor) or float(rooms[n].order) < 0.45: continue
+					if neighbors(n, width, height).any(func(other): return int(rooms[other].wing) == wing and bool(rooms[other].corridor)): continue
+					gain += float(rooms[n].order)
+			if gain > best:
+				best = gain
+				direction = way
 		var at := from
 		for step in run:
 			var next := step_cell(rooms, width, height, at, direction, wing)
@@ -303,6 +321,26 @@ func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumbe
 			corridor.append(next)
 			connect_rooms(at, next, edges, adjacency)
 			at = next
+	# A stretch that still reads like a hotel is served by its corridor: a room
+	# left without one beside it takes the nearest cell for one. It is also
+	# what keeps the tidy half of the floor from filling up with doors between
+	# rooms to make up for the corridor that never came.
+	for id in band:
+		if bool(rooms[id].corridor) or float(rooms[id].order) < 0.75 or id == 0: continue
+		if neighbors(id, width, height).any(func(n): return int(rooms[n].wing) == wing and bool(rooms[n].corridor)): continue
+		var reachable := -1
+		var spare := -1
+		for n in neighbors(id, width, height):
+			if int(rooms[n].wing) != wing or bool(rooms[n].corridor) or n == 0: continue
+			if float(rooms[n].order) < float(rooms[id].order) - 0.2 or not line_ok(rooms, width, height, n): continue
+			if neighbors(n, width, height).any(func(other): return int(rooms[other].wing) == wing and bool(rooms[other].corridor)): reachable = n
+			elif spare < 0: spare = n
+		# One that carries on from corridor already laid if there is one, so
+		# the network grows instead of leaving a lobby on its own.
+		var taken: int = reachable if reachable >= 0 else spare
+		if taken < 0: continue
+		rooms[taken].corridor = true
+		corridor.append(taken)
 	# Corridor that meets corridor is corridor: no wall between two of them.
 	for id in corridor:
 		for n in neighbors(id, width, height):
