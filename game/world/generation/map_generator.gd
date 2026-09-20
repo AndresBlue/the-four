@@ -6,6 +6,9 @@ const WINGS := 3
 ## Rooms with a television in the wing of the second stage: its condition asks
 ## for as many as there are survivors (up to five) plus two spare.
 const TV_ROOMS := 8
+## Doors that carry no guest number: reception, circulation, service and the
+## refuge. In a hotel only the rooms let to somebody have a plaque.
+const NO_NUMBER := [0, 7, 8, 9, 10, 11, 12, 15, 19]
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 
@@ -177,6 +180,10 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		plain.erase(pick)
 		rooms[pick].type = 14
 		with_tv.append(pick)
+	# Its own draw, so a change in the numbering never moves the furniture.
+	var plaques := RandomNumberGenerator.new()
+	plaques.seed = run_seed + 3000017 + attempt * 104729
+	number_rooms(rooms, width, height, plaques)
 	for room in rooms:
 		room["variant"] = decoration.randi_range(0, 3)
 		room["layout"] = decoration.randi_range(0, 3)
@@ -189,6 +196,45 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 			if kind in ["wardrobe", "curtain"]: rotation = 1 if slot % 2 == 0 else 3
 			room.props.append({"kind": kind, "slot": slot, "rotation": rotation})
 	return {"version": FLOOR.VERSION, "seed": run_seed, "attempt": attempt, "width": width, "height": height, "start": 0, "exit": exit_id, "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": rooms, "edges": edges, "adjacency": adjacency, "ambient_seed": run_seed + 4000037, "merged": merged}
+
+## The numbers on the doors. Each wing has its own hundred and each corridor of
+## the wing its own twenty: the numbers climb along the corridor, odd on one
+## side and even on the other, as they do in a hotel. Which way they climb is
+## drawn per corridor, so going up in number no longer walks the floor -- which
+## is how the floor used to be solved.
+static func number_rooms(rooms: Array, width: int, height: int, rng: RandomNumberGenerator) -> void:
+	for room in rooms: room["number"] = 0
+	for wing in WINGS:
+		var columns: Array[int] = []
+		for x in width:
+			if int(rooms[x].wing) == wing: columns.append(x)
+		var corridor := 0
+		var index := 0
+		while index < columns.size():
+			# A corridor with rooms on both sides, or a single line of them
+			# against the wall where the wing has an odd column left over.
+			var sides: Array[int] = [columns[index]]
+			if index + 1 < columns.size(): sides.append(columns[index + 1])
+			index += sides.size()
+			var base := (wing + 1) * 100 + corridor * 30
+			corridor += 1
+			var upward := rng.randi_range(0, 1) == 1
+			var step := 0
+			for position in height:
+				var z: int = position if upward else height - 1 - position
+				var used := false
+				for side in sides.size():
+					var room: Dictionary = rooms[z * width + sides[side]]
+					if not numbered(room): continue
+					room.number = base + step * 2 + side + 1
+					used = true
+				# Service and common space do not take a number with them: the
+				# next rooms along the corridor carry on where they left off.
+				if used: step += 1
+
+## Whether this room is let to somebody, and so has a number on its door.
+static func numbered(room: Dictionary) -> bool:
+	return int(room.hall) < 0 and not int(room.type) in NO_NUMBER
 
 ## Which way this cell faces the outside of the building, or zero if it is
 ## boxed in by other cells. East first: that is the far side of the last wing.

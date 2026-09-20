@@ -18,6 +18,9 @@ func run() -> void:
 	var wing_leaks: Array = []
 	var small_wings: Array = []
 	var walked: Array = []
+	var number_faults: Array = []
+	var climbing := 0
+	var falling := 0
 	for seed_value in 1000:
 		var data := generator.generate(seed_value)
 		if data.fallback: fallback_count += 1
@@ -41,7 +44,38 @@ func run() -> void:
 			rooms_walked += maxi(0, int(distances[int(gate.room)]))
 			if int(gate.get("beyond", -1)) >= 0: entrance = int(gate.beyond)
 		walked.append(rooms_walked)
+		# The numbers: each wing its hundred, never two doors the same, and
+		# only the rooms let to somebody carry one.
+		var seen_numbers := {}
+		for room in data.rooms:
+			var number := int(room.get("number", 0))
+			if number == 0:
+				if GEN.numbered(room): number_faults.append(seed_value)
+				continue
+			if not GEN.numbered(room) or seen_numbers.has(number): number_faults.append(seed_value)
+			if number / 100 != int(room.wing) + 1: number_faults.append(seed_value)
+			seen_numbers[number] = true
+		# And they are no longer a compass: whether they climb or fall as one
+		# walks into a wing is drawn, so over a thousand floors it is a coin.
+		var wing_entrance: int = int(data.start)
+		for wing in 3:
+			var reach: Array = GEN.distance_map(data.adjacency, wing_entrance)
+			var by_distance: Array = data.rooms.filter(func(room): return int(room.wing) == wing and int(room.get("number", 0)) > 0 and reach[int(room.id)] >= 0)
+			by_distance.sort_custom(func(one, two): return reach[int(one.id)] < reach[int(two.id)])
+			var third: int = by_distance.size() / 3
+			if third > 0:
+				var near := 0.0
+				var far := 0.0
+				for index in third:
+					near += int(by_distance[index].number) % 100
+					far += int(by_distance[by_distance.size() - 1 - index].number) % 100
+				if far > near: climbing += 1
+				elif far < near: falling += 1
+			if wing < data.gates.size() and int(data.gates[wing].get("beyond", -1)) >= 0: wing_entrance = int(data.gates[wing].beyond)
 	check("1.000 semillas: grafos y módulos válidos", failures.is_empty())
+	check("La numeración es de hotel: una centena por ala, sin repetir y sin placa en servicio", number_faults.is_empty())
+	var drawn: float = float(climbing) / maxf(1.0, float(climbing + falling))
+	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)
 	check("Las alas solo se comunican por su puerta de etapa", wing_leaks.is_empty())
 	check("Ningún ala se queda sin habitaciones", small_wings.is_empty())
 	var shortest: int = walked.min()
@@ -65,14 +99,25 @@ func run() -> void:
 	# Each face of a door shows the number of the room behind it.
 	var FLOOR := preload("res://game/world/generation/floor_definition.gd")
 	var numbers_ok := true
+	var plaques_ok := true
 	for each in scene.hotel.doors:
-		for label in each.find_children("*", "Label3D", true, false):
+		var labels: Array = each.find_children("*", "Label3D", true, false)
+		for label in labels:
 			# Measured with the door shut, whatever its leaf is doing now.
 			var facing := Basis(Vector3.UP, each.closed_rotation + label.rotation.y).z
 			var in_front: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + facing * 1.5)
 			var behind: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway - facing * 1.5)
-			if in_front.is_empty() or behind.is_empty() or label.text != str(100 + int(behind.id)): numbers_ok = false
+			if in_front.is_empty() or behind.is_empty() or label.text != str(int(behind.get("number", 0))): numbers_ok = false
+		# And only the rooms that have a number show a plaque: service,
+		# circulation and the refuge show a bare leaf.
+		var across := Basis(Vector3.UP, each.closed_rotation).z
+		var wanted := 0
+		for step in [1.5, -1.5]:
+			var room: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + across * step)
+			if int(room.get("number", 0)) > 0: wanted += 1
+		if labels.size() != wanted: plaques_ok = false
 	check("El número de cada cara de puerta indica la habitación de detrás", numbers_ok)
+	check("Servicio, pasillo y refugio no llevan placa", plaques_ok)
 	var dark: Array = scene.hotel.lights.filter(func(light): return light.has_meta("off"))
 	var reception_lit: bool = scene.manifest.rooms.all(func(room): return int(room.type) != 0 or not scene.hotel.lights[room.id].has_meta("off"))
 	check("Algunas habitaciones tienen la luz apagada, nunca la recepción", dark.size() > 0 and dark.size() < scene.hotel.lights.size() / 3 and reception_lit and dark.all(func(light): return not light.visible))

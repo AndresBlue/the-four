@@ -575,13 +575,16 @@ func build(data: Dictionary) -> void:
 		# They belong to the wall, but are shown only as far as the door is.
 		door_fixtures.append([casing, stop])
 		# Each face shows the number of the room behind the door, as seen from
-		# the room that face looks into.
+		# the room that face looks into, on a brass plaque screwed to the leaf.
+		# A door into service or common space has no plaque at all.
 		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
-		# On a brass plaque screwed to the leaf, in dark letters.
-		for face in [1, -1]:
-			box(door, Vector3(half, 1.94, face * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
-		text(door, str(100 + int(a.id)), Vector3(half, 1.94, (LEAF_FACE + 0.005) * b_side), 0.0 if b_side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
-		text(door, str(100 + int(b.id)), Vector3(half, 1.94, -(LEAF_FACE + 0.005) * b_side), PI if b_side > 0 else 0.0, 20, NUMBER_REACH, PLAQUE_INK)
+		for which in 2:
+			var behind: Dictionary = a if which == 0 else b
+			var number := int(behind.get("number", 0))
+			if number <= 0: continue
+			var side := b_side if which == 0 else -b_side
+			box(door, Vector3(half, 1.94, side * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
+			text(door, str(number), Vector3(half, 1.94, side * (LEAF_FACE + 0.005)), 0.0 if side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
 		# The door on to the next wing is the gate of its stage: shut, locked,
 		# and never open at the start.
 		var stage := gate_stage(data, int(a.id), int(b.id))

@@ -34,14 +34,14 @@ func run() -> void:
 		var inside := FLOOR.room_at(level.manifest.rooms, eye)
 		var behind := FLOOR.room_at(level.manifest.rooms, door.doorway - facing * 2.5)
 		if inside.is_empty() or behind.is_empty(): continue
-		print("DOOR inside room ", 100 + int(inside.id), " behind room ", 100 + int(behind.id))
+		print("DOOR inside room ", int(inside.get("number", 0)), " behind room ", int(behind.get("number", 0)))
 		look(eye, door.doorway + Vector3(0, 1.9, 0))
 		await shot("door_number")
 		break
 	for i in level.hotel.lights.size():
 		if not level.hotel.lights[i].has_meta("off"): continue
 		var centre := FLOOR.position_of(level.manifest.rooms[i])
-		print("DARK room ", 100 + i, " type ", FLOOR.NAMES[level.manifest.rooms[i].type])
+		print("DARK room ", int(level.manifest.rooms[i].get("number", 0)), " type ", FLOOR.NAMES[level.manifest.rooms[i].type])
 		look(centre + Vector3(0, 1.6, 4.5), centre + Vector3(0, 1.2, -3))
 		await shot("dark_room")
 		break

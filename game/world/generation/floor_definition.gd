@@ -1,6 +1,6 @@
 extends RefCounted
 
-const VERSION := 3
+const VERSION := 4
 const CELL := 12.0
 ## Clear width of a doorway: a hotel door with room for the creature to pass.
 const PORTAL := 1.3
