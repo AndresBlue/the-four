@@ -319,6 +319,27 @@ func request_television(index: int) -> void:
 func television_state(index: int, value: bool) -> void:
 	level.apply_television(index, value)
 
+## The creature travels by television: from the lit set it is standing at to
+## any other lit one. The host judges it, as it judges a strike.
+func locust_warp(index: int) -> void:
+	if not in_match() or net.is_host:
+		if level.creature_at_television() >= 0:
+			level.warp_creature(index)
+			if in_match(): warp_state.rpc(index)
+		return
+	request_warp.rpc_id(1, index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_warp(index: int) -> void:
+	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if level.creature_at_television() < 0 or not level.lit_televisions().has(index): return
+	level.warp_creature(index)
+	warp_state.rpc(index)
+
+@rpc("authority", "call_remote", "reliable")
+func warp_state(index: int) -> void:
+	level.warp_creature(index)
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.

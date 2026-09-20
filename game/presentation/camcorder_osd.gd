@@ -14,6 +14,18 @@ var canvas: Control
 var marks := true
 ## The picture is gone (an execution): the tape marks go with it.
 var signal_lost := false
+## The creature's channels: the lit sets laid out by where they are, nothing
+## else. [{index, at (plane, in screen spans), here}], which way it is looking
+## and which one it would step out of.
+var channels: Array = []
+var channel_look := Vector2.ZERO
+var channel_target := -1
+
+func show_channels(points: Array, look: Vector2, target: int) -> void:
+	channels = points
+	channel_look = look
+	channel_target = target
+	canvas.queue_redraw()
 var start_seconds := 0
 var date_text := ""
 var blink := 0.0
@@ -205,3 +217,25 @@ func draw_overlay() -> void:
 					var color := shadow if pass_index == 0 else ink
 					canvas.draw_line(corner + shift, corner + shift + Vector2(-sx * arm, 0), color, 3.0)
 					canvas.draw_line(corner + shift, corner + shift + Vector2(0, -sy * arm), color, 3.0)
+	if not channels.is_empty():
+		# No rooms, no walls, no numbers: only how far and which way one set is
+		# from another, which is all it knows about a place it has never seen.
+		var center := size * 0.5
+		var reach: float = minf(size.x, size.y) * 0.34
+		canvas.draw_circle(center, reach + 26.0, Color(0, 0, 0, 0.45))
+		# Which way it is facing, so turning its head reads as aiming.
+		if channel_look.length() > 0.01:
+			var heading := Vector2(channel_look.x, channel_look.y).normalized() * (reach + 18.0)
+			canvas.draw_line(center, center + heading, Color(STYLE.INK, 0.25), 2.0)
+		for point in channels:
+			var at: Vector2 = point.at
+			var spot := center + Vector2(at.x, at.y) * reach * 2.0
+			var here: bool = point.here
+			var chosen: bool = int(point.index) == channel_target
+			var ink := Color(STYLE.INK, 0.9 if here or chosen else 0.5)
+			canvas.draw_circle(spot + Vector2(2, 2), 7.0 if here else 5.0, Color(0, 0, 0, 0.6))
+			if here: canvas.draw_circle(spot, 7.0, ink)
+			else: canvas.draw_circle(spot, 5.0, ink)
+			if chosen:
+				canvas.draw_arc(spot, 13.0, 0.0, TAU, 24, Color(STYLE.INK, 0.85), 2.0)
+				canvas.draw_line(center, spot, Color(STYLE.INK, 0.4), 2.0)

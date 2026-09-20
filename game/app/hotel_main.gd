@@ -527,6 +527,50 @@ func apply_television(index: int, value: bool) -> void:
 		if session.stage == 2 and not match_net.local_is_locust():
 			ui.flash("TELEVISORES %d/%d" % [televisions_on(), TV_PLACEMENT.needed(session.roster_count)], 2.5)
 
+## Travelling by television: a lit set is a way in and a way out. The creature
+## steps out of another lit one, wherever it is, which is why lighting them is
+## a risk and not only an errand.
+const WARP_REACH := 3.4
+const WARP_SOUND := "res://assets/audio/events/execution_static.ogg"
+
+## The sets it could step out of, by index, from the one it is standing at.
+func lit_televisions() -> Array:
+	var result: Array = []
+	for index in televisions.size():
+		if is_instance_valid(televisions[index]) and televisions[index].on: result.append(index)
+	return result
+
+## The lit set the creature is standing at, or -1.
+func creature_at_television() -> int:
+	if not is_instance_valid(locust): return -1
+	for index in televisions.size():
+		var set = televisions[index]
+		if is_instance_valid(set) and set.on and set.global_position.distance_to(locust.global_position) < WARP_REACH: return index
+	return -1
+
+## It comes out of the set at `index`, a step in front of it, looking into the
+## room. Applied on every machine, whoever decided it.
+func warp_creature(index: int) -> void:
+	if index < 0 or index >= televisions.size() or not is_instance_valid(locust): return
+	var set = televisions[index]
+	if not is_instance_valid(set) or not set.on: return
+	var facing := Vector3(sin(set.rotation.y), 0, cos(set.rotation.y))
+	var from: Vector3 = locust.global_position
+	locust.global_position = set.global_position + facing * 1.6 + Vector3(0, 0.04, 0)
+	locust.rotation.y = set.rotation.y
+	locust.velocity = Vector3.ZERO
+	locust.speed = 0.0
+	# A puppet interpolates between the states it is sent: without this it
+	# would slide across the floor instead of stepping out of a screen.
+	locust.net_states.clear()
+	locust.net_clock = 0.0
+	if is_instance_valid(locust.driver): locust.driver.channel_open = false
+	if world_audio.enabled:
+		world_audio.play_at(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0)
+		world_audio.play_at(WARP_SOUND, locust.global_position + Vector3(0, 1.4, 0), -4.0)
+	# Where it comes out is a noise of its own: the set it steps from spits.
+	if not net.is_client(): on_noise(locust.global_position + Vector3(0, 1.4, 0), NOISE.radius("door"), NOISE.Kind.DOOR)
+
 ## How many of the stage's sets are on, and how many it asks for.
 func televisions_on() -> int:
 	var count := 0
@@ -1037,7 +1081,27 @@ func drive_local(delta: float) -> void:
 ## The authority, every frame: whether the stage in hand is met -- which
 ## unlocks the door on -- and whether somebody has already crossed it, which
 ## is what carries the floor to the next stage. Nothing is held down any more.
+## The AI travels by television too, so a lit set is never safe just because
+## the creature is far: after a while looking for nobody, standing at one, it
+## steps out of another. Seconds left before it may do that again.
+var hop_rest := 0.0
+const HOP_REST := 25.0
+const HOP_PATIENCE := 8.0
+func creature_channel_hop(delta: float) -> void:
+	hop_rest = maxf(0.0, hop_rest - delta)
+	if not is_instance_valid(locust) or locust.control != "ai" or hop_rest > 0.0: return
+	if locust.mode != locust.Mode.SEARCH or locust.state_time < HOP_PATIENCE: return
+	var here: int = creature_at_television()
+	var lit: Array = lit_televisions()
+	if here < 0 or lit.size() < 2: return
+	var choices: Array = lit.filter(func(index): return index != here)
+	var pick: int = choices[locust.rng.randi_range(0, choices.size() - 1)]
+	hop_rest = HOP_REST
+	warp_creature(pick)
+	if match_net.in_match(): match_net.warp_state.rpc(pick)
+
 func host_gate(delta: float) -> void:
+	creature_channel_hop(delta)
 	if session.stage == 2 and not televisions.is_empty():
 		var needed: int = TV_PLACEMENT.needed(session.roster_count)
 		var done: int = televisions_on()

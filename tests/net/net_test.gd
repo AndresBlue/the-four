@@ -20,6 +20,16 @@ func check(title: String, passed: bool) -> void:
 	if not passed: failed += 1
 	print("PASS " if passed else "FAIL ", "[", role, "] ", title)
 
+## Waits for a value that satisfies a test, and returns it (or the last one).
+func wait_for_value(read: Callable, test: Callable, seconds: float):
+	var left := seconds
+	var value = read.call()
+	while left > 0.0 and not test.call(value):
+		await pause_for(0.2)
+		left -= 0.2
+		value = read.call()
+	return value
+
 ## Waits (real time) until the condition holds or the time runs out.
 func wait_for(condition: Callable, seconds: float) -> bool:
 	var until := Time.get_ticks_msec() + int(seconds * 1000.0)
@@ -274,6 +284,15 @@ func versus_host() -> void:
 	check("Oye el chillido del cazador", await wait_for(func():
 		sway()
 		return level.locust.calls_heard > 0, 25.0))
+	# Two sets lit, so the hunter has channels to travel by.
+	for index in 2:
+		if index < level.televisions.size():
+			level.apply_television(index, true)
+			match_net.television_state.rpc(index, true)
+	check("Las teles encendidas llegan a la máquina del cazador", level.lit_televisions().size() >= 2)
+	check("El viaje del cazador por las teles se ve aquí", await wait_for(func():
+		sway()
+		return level.creature_at_television() >= 0, 60.0))
 	for i in 120:
 		sway()
 		await physics_frame
@@ -317,6 +336,15 @@ func versus_hunter() -> void:
 		if creature.driver.shriek_cooldown <= 0.0: creature.driver.shriek()
 		return not creature.driver.revealed.is_empty(), 15.0))
 	check("Y los deja marcados con una nube que dura", creature.driver.echo.find_at > 0)
+	# Travelling by television: the hunter asks, the host judges it.
+	var lit: Array = await wait_for_value(func(): return level.lit_televisions(), func(value): return value.size() >= 2, 30.0)
+	if lit.size() >= 2:
+		creature.global_position = level.televisions[lit[0]].global_position + Vector3(1.0, 0.04, 0)
+		await pause_for(0.4)
+		check("Reconoce la tele en la que está", level.creature_at_television() == lit[0])
+		level.match_net.locust_warp(lit[1])
+		check("Sale por la otra tele encendida", await wait_for(func(): return level.creature_at_television() == lit[1], 15.0))
+	else: check("Reconoce la tele en la que está", false)
 	check("El chillido le da caza libre un rato", creature.driver.frenzy > 0.0)
 	var hide = level.hotel.hides[0]
 	check("Ve al superviviente meterse en el armario", await wait_for(func(): return is_instance_valid(hide.occupant), 30.0))

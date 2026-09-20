@@ -58,6 +58,14 @@ var heard_count := 0
 var revealed: Array = []
 var frenzy := 0.0
 var active := true
+## Travelling by television. With the channels open the creature stands still
+## and the sets it could step out of are laid out on screen by where they
+## really are, relative to each other and to nothing else. Turning its head
+## picks one; interacting again steps through.
+var channel_open := false
+var channel_target := -1
+## Metres of the layout the map is drawn over, so far sets sit near the edge.
+const CHANNEL_SPAN := 70.0
 
 func setup(owner) -> void:
 	creature = owner
@@ -156,6 +164,7 @@ func drive(delta: float) -> void:
 			if creature.mode != wanted_mode: creature.set_mode(wanted_mode)
 			if hunting: creature.chase_voice(delta)
 			open_doors(hunting, heading)
+	update_channels()
 	creature.update_visual(delta)
 	creature.visual.look_point = camera.global_position - camera.global_basis.z * 10.0
 	if is_instance_valid(echo): echo.advance(delta, hunting)
@@ -163,6 +172,38 @@ func drive(delta: float) -> void:
 	update_hud()
 	var now := Time.get_ticks_msec() / 1000.0
 	heard = heard.filter(func(entry): return now - entry.time < 1.6)
+
+## The map of lit sets, laid out by where they are in the world and nothing
+## else: no rooms, no walls, no numbers. The one it is looking most directly
+## towards is the one it would step out of.
+func update_channels() -> void:
+	if not channel_open or not can_act():
+		if not channel_open: level.camcorder.show_channels([], Vector2.ZERO, -1)
+		channel_open = false
+		return
+	var here: int = level.creature_at_television()
+	var lit: Array = level.lit_televisions()
+	if here < 0 or lit.size() < 2:
+		channel_open = false
+		level.camcorder.show_channels([], Vector2.ZERO, -1)
+		return
+	var origin: Vector3 = level.televisions[here].global_position
+	var look: Vector3 = -camera.global_basis.z
+	var flat := Vector2(look.x, look.z).normalized()
+	var points: Array = []
+	var best := -1.0
+	channel_target = -1
+	for index in lit:
+		var set = level.televisions[index]
+		var offset: Vector3 = set.global_position - origin
+		var plane := Vector2(offset.x, offset.z)
+		points.append({"index": index, "at": plane / CHANNEL_SPAN, "here": index == here})
+		if index == here: continue
+		var aim: float = flat.dot(plane.normalized())
+		if aim > best:
+			best = aim
+			channel_target = index
+	level.camcorder.show_channels(points, flat, channel_target)
 
 ## The spring arm only guards the length behind it, so the sideways step to
 ## the shoulder is checked here: against a wall it comes in, never through.
@@ -216,8 +257,17 @@ func reveal(points: PackedVector3Array) -> void:
 		frenzy = FRENZY_TIME
 		stamina = minf(100.0, stamina + FRENZY_STAMINA)
 
-## Interact: the door ahead, or the wardrobe in front.
+## Interact: step through the channels if they are open, open them at a lit
+## set, or else the door ahead or the wardrobe in front.
 func use() -> void:
+	if channel_open:
+		if channel_target >= 0: level.match_net.locust_warp(channel_target)
+		channel_open = false
+		return
+	if level.creature_at_television() >= 0 and level.lit_televisions().size() > 1:
+		channel_open = true
+		channel_target = -1
+		return
 	var from := camera.global_position
 	var query := PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * (ARM + 3.2), 1 | 8 | 16)
 	query.collide_with_areas = true

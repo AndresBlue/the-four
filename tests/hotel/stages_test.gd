@@ -82,6 +82,21 @@ func run() -> void:
 	await frames(6)
 	check("Encendidas las que pide, se abre la puerta de la etapa", session.goal.ready and session.goal.done >= needed and not level.hotel.gates[1].locked)
 	check("Una tele encendida da luz y no se apaga", level.televisions[0].on and level.televisions[0].lamp.visible and not level.televisions[0].set_on(true))
+	# Travelling by television: a lit set is a way in and a way out.
+	var lit: Array = level.lit_televisions()
+	check("Las teles encendidas son las que aparecen en su mapa", lit.size() == needed)
+	level.locust.global_position = level.televisions[lit[0]].global_position + Vector3(1.0, 0.04, 0)
+	await frames(2)
+	check("La criatura reconoce la tele en la que está", level.creature_at_television() == lit[0])
+	var before: Vector3 = level.locust.global_position
+	level.warp_creature(lit[1])
+	check("Sale por otra tele encendida, lejos de donde estaba", level.locust.global_position.distance_to(before) > 5.0 and level.creature_at_television() == lit[1])
+	var dark := -1
+	for index in level.televisions.size():
+		if not level.televisions[index].on: dark = index
+	var standing: Vector3 = level.locust.global_position
+	if dark >= 0: level.warp_creature(dark)
+	check("Y no puede salir por una apagada", dark < 0 or level.locust.global_position.is_equal_approx(standing))
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
 	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
 	# The last one is the only one that ends the floor: there is no wing beyond
