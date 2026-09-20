@@ -97,6 +97,14 @@ func run() -> void:
 	check("La alerta da tiempo a reaccionar", enemy.mode == enemy.Mode.ALERT)
 	enemy._physics_process(enemy.ALERT_TIME)
 	check("Tras la alerta persigue", enemy.mode == enemy.Mode.CHASE)
+	# The chase has a voice of its own, not only the shriek.
+	enemy.calls_made = 0
+	enemy.grunt_clock = 0.0
+	enemy.grunt_rest = 0.0
+	enemy.chase_voice(0.1)
+	check("La persecución tiene voz: gruñe mientras corre", enemy.calls_made == 1)
+	enemy.chase_voice(0.1)
+	check("Pero nunca dos gruñidos pegados", enemy.calls_made == 1)
 	enemy.set_physics_process(true)
 	var before: float = enemy.position.distance_to(player.position)
 	await frames(12)

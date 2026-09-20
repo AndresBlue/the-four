@@ -36,7 +36,9 @@ La numeración es histórica: P1 a P4b se hicieron en ese orden y se conservan c
 
 ## P0 — Cierre del Early Access (prioridad alta)
 
-Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de Early Access y va por delante del resto de pendientes. Nada de esta sección está implementado todavía.
+Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de Early Access y va por delante del resto de pendientes.
+
+Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva ejecución), que cambia la próxima partida sin esperar a lo estructural; después las tres etapas; después mapa y ritmo, supervivientes y empaquetado. Decisiones tomadas: el refugio es la meta de la etapa 1 y luego deja de ser seguro; las teles exigidas son `max(2, jugadores)` y se generan dos más; si en una etapa no queda gente para la cuota, la etapa se reinicia con todos vivos; las animaciones parten de un pack externo con los retoques procedurales encima, y el personaje «detective» se sustituye por uno con esqueleto (hoy es un OBJ sin huesos).
 
 ### El piso de The Locust en tres etapas
 
@@ -60,7 +62,8 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 ### The Locust
 
-- [ ] **Gruñidos al ver y perseguir:** los jugadores no oyen `grunts.ogg` cuando la criatura los ve y los persigue. Revisarlo con la IA (cooperativo e individual) y en versus, donde hoy el cazador humano solo suena al chillar, y comprobar que se oye en todas las máquinas.
+- [x] **Gruñidos al ver y perseguir.** La causa en versus era que el cazador humano asignaba el modo de la criatura a mano sin pasar por `set_mode()`, así que se saltaba todo lo que cuelga de ahí: ahora cazar (correr) gruñe, con una separación mínima para que dar toques al sprint no lo haga tartamudear. En la IA, un gruñido que nadie podía oír ya no gasta la espera entera (se reintenta a los 0,7 s), y volver a ver a la presa tras perderla más de 1,5 s vale otro gruñido. La voz cuelga de `world_audio` y no de la criatura, así que un gruñido oído por un vano se queda en ese vano en vez de irse andando. Comprobado en `tests/hotel/survival_test.gd` y en el versus de `tests/net/net_test.gd` (las dos comprobaciones fallan sin el arreglo).
+- [ ] Juzgar en partida el nivel y la frecuencia de los gruñidos, sobre todo los del propio cazador (se oyen 6 dB más bajos para quien lleva la criatura).
 - [ ] **El chillido depende mucho de la distancia:** hoy suena casi como un sonido global y no dice si está cerca. A 10, 20 y 40 m tiene que oírse claramente distinto (volumen, filtrado, reverberación, por dónde llega), y no debe oírse mucho más allá del alcance de lo que el chillido ofrece (26 m de escucha).
 - [ ] **Nueva ejecución**, en este orden:
   1. **El screamer salta al agarrarte:** en el instante en que la criatura atrapa a la víctima, un sonido muy feo que asuste de verdad, como un screamer de FNAF.

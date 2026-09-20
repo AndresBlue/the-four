@@ -150,7 +150,11 @@ func drive(delta: float) -> void:
 			creature.velocity.y = -2.0 if creature.is_on_floor() else creature.velocity.y - 20.0 * delta
 			creature.move_and_slide()
 			var wanted_mode: int = creature.Mode.CHASE if hunting else creature.Mode.PATROL
-			if creature.mode != wanted_mode: creature.mode = wanted_mode
+			# Through set_mode, not by hand: the chase's kick-off speed and its
+			# voice hang off it, and assigning the mode skipped both, which is
+			# why a human hunter only ever sounded when it shrieked.
+			if creature.mode != wanted_mode: creature.set_mode(wanted_mode)
+			if hunting: creature.chase_voice(delta)
 			open_doors(hunting, heading)
 	creature.update_visual(delta)
 	creature.visual.look_point = camera.global_position - camera.global_basis.z * 10.0

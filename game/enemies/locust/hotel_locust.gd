@@ -76,6 +76,20 @@ var wander_clock := 0.0
 var voice: AudioStreamPlayer3D
 var grunt_clock := 0.0
 var grunt_left := 0.0
+## Seconds between chase grunts, and the short wait after one that nobody
+## could hear: out of earshot it tries again soon, so it calls the moment it
+## comes round the corner instead of staying mute for another five seconds.
+const GRUNT_WAIT := Vector2(2.5, 5.0)
+const GRUNT_RETRY := 0.7
+## No two calls closer together than this, whatever asks for them: a hunter
+## tapping the sprint key restarts the chase over and over, and without this
+## the creature would gabble.
+const GRUNT_MIN := 1.6
+var grunt_rest := 0.0
+## How long it can go without seeing its prey before finding it again is worth
+## another grunt.
+const GRUNT_REGAIN := 1.5
+var sight_gap := 0.0
 ## The hunter's shriek: aggressive grunts chained back to back for as long as
 ## its red lasts, then faded out with it (howl()). Seconds left including the
 ## fade, how long that fade is, and the level the current grunt was routed at.
@@ -101,8 +115,11 @@ var wardrobe: Node3D
 var net_states: Array = []
 var net_clock := 0.0
 var net_look := Vector3.INF
-## Calls replayed here from the machine in charge (tests check they arrive).
+## Calls replayed here from the machine in charge (tests check they arrive),
+## the kind of the last one, and how many calls this machine has made itself.
 var calls_heard := 0
+var last_call := ""
+var calls_made := 0
 
 func _ready() -> void:
 	add_to_group("hotel_actors")
@@ -119,13 +136,23 @@ func _ready() -> void:
 	voice.unit_size = 7.0
 	voice.max_distance = 40.0
 	voice.max_db = 4.0
-	add_child(voice)
+	voice.area_mask = 512
+	# Hung where the route leaves it, like world_audio's presence: as a child of
+	# the creature it dragged the call along for the rest of the segment, so a
+	# grunt heard through a doorway walked away from that doorway.
+	if level != null and is_instance_valid(level.world_audio): level.world_audio.add_child(voice)
+	else: add_child(voice)
 	if level == null:
 		set_physics_process(false)
 		return
 	rng.seed = level.manifest.seed + 71013
 	destination = position
 	wander_clock = rng.randf() * 100.0
+
+## Its voice hangs under world_audio, which outlives the floor: it has to go
+## when the creature does, or the next floor starts with a mute leftover.
+func _exit_tree() -> void:
+	if is_instance_valid(voice) and voice.get_parent() != self: voice.queue_free()
 
 static func make_warning() -> AudioStreamWAV:
 	# Original short scrape/pulse; independent of music and ambient buses.
@@ -180,19 +207,33 @@ func grunt() -> float:
 	for index in GRUNTS.SEGMENTS.size():
 		if GRUNTS.SEGMENTS[index][1] >= AGGRESSIVE_GRUNT and index != last_grunt: choices.append(index)
 	last_grunt = choices[rng.randi_range(0, choices.size() - 1)]
+	calls_made += 1
 	var segment: Array = GRUNTS.SEGMENTS[last_grunt]
 	var pitch := rng.randf_range(0.85, 1.0)
 	# Everyone else hears the same call from their own place.
 	if "match_net" in level and level.match_net != null: level.match_net.creature_call("grunt", last_grunt, pitch)
-	if not level.world_audio.enabled: return 0.0
+	# Silent runs (tests, captures) keep the cadence: the call counts as made.
+	if not level.world_audio.enabled: return segment[1] / pitch
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
 	if not route.audible: return 0.0
-	level.world_audio.apply_route(voice, route, 0.0, "Threat", true)
+	# Its own throat, right under the hunter's ear, would wear it out: quieter
+	# for whoever is carrying the creature, like its feet.
+	level.world_audio.apply_route(voice, route, -6.0 if control == "player" else 0.0, "Threat", true)
 	voice.pitch_scale = pitch
 	voice.play(segment[0])
 	# A lower pitch plays the segment slower: stop when it really ends.
 	grunt_left = segment[1] / voice.pitch_scale
 	return grunt_left
+
+## The chase has a voice, whether the AI or a player is driving: a grunt every
+## few seconds while it is after someone. A shriek takes over the throat, and
+## a call nobody could hear is retried soon instead of spending the whole wait.
+func chase_voice(delta: float) -> void:
+	if howl_left > 0.0 or grunt_left > 0.0 or grunt_rest > 0.0: return
+	grunt_clock -= delta
+	if grunt_clock > 0.0: return
+	grunt_rest = GRUNT_MIN
+	grunt_clock = rng.randf_range(GRUNT_WAIT.x, GRUNT_WAIT.y) if grunt() > 0.0 else GRUNT_RETRY
 
 ## The shriek of a player hunting: it cries for `hold` seconds and fades over
 ## `fade`, the same curve as the red of its acoustic view. Shrieking again
@@ -227,6 +268,7 @@ func howl_next() -> void:
 ## Stops each grunt where it ends (the file holds them all in a row), chains
 ## the next one while a shriek lasts, and fades the shriek out at its end.
 func update_voice(delta: float) -> void:
+	grunt_rest = maxf(0.0, grunt_rest - delta)
 	if howl_left > 0.0:
 		howl_left -= delta
 		if howl_left <= 0.0:
@@ -524,6 +566,7 @@ func update_execution(delta: float) -> void:
 ## A call decided where the creature is controlled, replayed here.
 func play_call(kind: String, segment: int, pitch: float) -> void:
 	calls_heard += 1
+	last_call = kind
 	if kind == "warning":
 		signal_player.play()
 		return
@@ -560,9 +603,13 @@ func _physics_process(delta: float) -> void:
 		detection = minf(1.5, detection + delta * notice_rate(seen))
 		last_known = seen.global_position
 		lost_time = 0
+		# Finding them again after losing them is worth its own call.
+		if mode == Mode.CHASE and sight_gap >= GRUNT_REGAIN: grunt_clock = 0.0
+		sight_gap = 0.0
 	else:
 		detection = maxf(0.0, detection - delta * NOTICE_DECAY)
 		lost_time += delta
+		sight_gap += delta
 	# Only a player it can currently see starts a chase; memory alone does not.
 	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT]:
 		set_mode(Mode.ALERT)
@@ -611,10 +658,7 @@ func _physics_process(delta: float) -> void:
 				# Goes to the wardrobe and pulls the doors open.
 				destination = observed_hide.to_global(observed_hide.exit_offset)
 				if global_position.distance_to(destination) < 2.0: begin_wardrobe(observed_hide)
-			grunt_clock -= delta
-			if grunt_clock <= 0.0:
-				grunt()
-				grunt_clock = rng.randf_range(2.5, 5.0)
+			chase_voice(delta)
 			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > LOSE_AFTER: set_mode(Mode.SEARCH)
 			elif can_attack(): set_mode(Mode.WINDUP)
 		Mode.SEARCH:

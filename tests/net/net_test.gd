@@ -232,6 +232,8 @@ func versus_host() -> void:
 	check("Solo el anfitrión es superviviente", level.session.participants.keys() == [1] and match_net.bodies.is_empty())
 	check("Llega el movimiento de The Locust del jugador", await wait_for(func(): return not level.locust.net_states.is_empty(), 15.0))
 	check("La protección inicial termina cuando el cazador la termina", await wait_for(func(): return level.locust.grace <= 0.0, 20.0))
+	# The hunt is audible from here, and what arrives is a grunt, not a shriek.
+	check("Los gruñidos de caza del cazador llegan aquí", await wait_for(func(): return level.locust.last_call == "grunt", 30.0))
 	# A noise the hunter should hear as a contact.
 	await pause_for(1.0)
 	level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
@@ -263,6 +265,14 @@ func versus_hunter() -> void:
 	check("Controla a The Locust", creature.control == "player" and creature.driver != null and creature.camera.current)
 	check("Su jugador no cuenta como superviviente", not level.survivors().has(level.player) and not level.player.visible)
 	creature.grace = 0.0
+	# Sprinting is the hunter's chase, and a chase has a voice: before this it
+	# only ever made a sound when it shrieked.
+	Input.action_press("forward")
+	Input.action_press("sprint")
+	var grunted: bool = await wait_for(func(): return creature.calls_made > 0, 15.0)
+	Input.action_release("sprint")
+	Input.action_release("forward")
+	check("Gruñe mientras caza, no solo al chillar", grunted)
 	check("Los ruidos de los supervivientes le llegan como contactos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
 	check("El contacto trae su clase y sus metros de ruta", creature.driver.heard.is_empty() or (creature.driver.heard[0].has("kind") and creature.driver.heard[0].has("apparent") and creature.driver.heard[0].distance > 0.0))
 	# Close enough for the shriek to find the survivor.
