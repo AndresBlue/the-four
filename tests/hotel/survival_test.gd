@@ -207,7 +207,8 @@ func run() -> void:
 	check("El golpe encadena una ejecución en vez de matar al instante", enemy.mode == enemy.Mode.EXECUTE and not level.execution.is_empty() and level.session.state == level.session.State.PLAYING)
 	await frames(30)
 	check("Durante la ejecución la víctima queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
-	await frames(210)
+	# The execution is longer now: the scream, the mask coming in, the blow.
+	await frames(300)
 	check("La ejecución acaba en derrota", level.session.state == level.session.State.FAILED)
 	await level.start_floor(81)
 	check("Reintento reinicia amenaza, resistencia y escondite", level.locust.grace == 15 and not player.hidden and player.stamina == 100 and level.session.state == level.session.State.PLAYING)

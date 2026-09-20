@@ -14,6 +14,9 @@ uniform float vignette : hint_range(0.0, 1.0) = 0.45;
 uniform float enclosure : hint_range(0.0, 1.0) = 0.0;
 // The creature's strike wind-up: a brief tape tear across the image.
 uniform float threat_glitch : hint_range(0.0, 1.0) = 0.0;
+// The victim's own camera giving out: the picture tears, rolls and is eaten
+// by the snow of a dead channel. 1 is no picture left at all.
+uniform float signal_loss : hint_range(0.0, 1.0) = 0.0;
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -139,5 +142,20 @@ void fragment() {
 	color *= 1.0 - (noise1(t * 11.0) - 0.5) * 0.03 * vhs;
 	float closed_in = smoothstep(0.05, 0.42, edge);
 	color *= 1.0 - closed_in * enclosure * 0.85;
+	// The signal going: the frame loses its hold and rolls, the colour drains,
+	// and the snow of a dead channel takes it over.
+	if (signal_loss > 0.0) {
+		float loss = clamp(signal_loss, 0.0, 1.0);
+		float roll = fract(SCREEN_UV.y + t * (0.35 + loss * 1.6));
+		float tear = smoothstep(0.02, 0.0, roll) * loss;
+		vec3 torn = tap(vec2(fract(uv.x + (hash(vec2(line, floor(t * 45.0))) - 0.5) * 0.4 * loss), uv.y));
+		color = mix(color, torn, tear);
+		color = mix(color, vec3(dot(color, vec3(0.333))), loss * 0.8);
+		float snow_fine = hash(vec2(uv.x * 1500.0 + t * 130.0, line * 3.0 + floor(t * 70.0)));
+		float snow_coarse = hash(vec2(floor(uv.x * 220.0) + t * 40.0, floor(SCREEN_UV.y * 140.0)));
+		vec3 dead = vec3(mix(snow_fine, snow_coarse, 0.45)) * (0.75 + 0.25 * noise1(t * 9.0));
+		color = mix(color, dead, smoothstep(0.15, 1.0, loss));
+		color *= 1.0 - smoothstep(0.55, 1.0, loss) * 0.25;
+	}
 	COLOR = vec4(max(color, vec3(0.0)), 1.0);
 }

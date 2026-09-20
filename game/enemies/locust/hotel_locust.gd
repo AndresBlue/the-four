@@ -46,9 +46,11 @@ const AGGRESSIVE_GRUNT := 1.4
 ## in front, pulls one leaf open, then the other, reaches in and only then
 ## moves on. Seconds from the start (see level.open_wardrobe for the leaves).
 const WARDROBE_TIME := {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
-## An execution: impaled, lifted and stabbed three times before the floor
-## registers the death (see hotel_main.start_execution).
-const EXECUTION_TIME := 2.9
+## An execution: it grabs you, holds you up while it brings its mask slowly to
+## your face, and then buries its arm in it. Seconds from the grab, and when
+## the killing blow lands (see hotel_main.apply_execution).
+const EXECUTION_TIME := 4.2
+const EXECUTION_KILL := 2.8
 var level
 var mode := Mode.PATROL
 var destination := Vector3.ZERO
@@ -757,7 +759,8 @@ func update_visual(delta: float) -> void:
 	visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 	var player := focus
-	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT] or detection > 0.2 or light_exposure > 0.2) and is_instance_valid(player):
+	# During an execution it stares at the face it is bringing in to its own.
+	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE] or detection > 0.2 or light_exposure > 0.2) and is_instance_valid(player):
 		visual.look_point = player.camera.global_position if lost_time < 0.5 else last_known + Vector3.UP * 1.5
 	elif mode in [Mode.SEARCH, Mode.PATROL] and pause_time > 0:
 		# Scans the room while standing still.

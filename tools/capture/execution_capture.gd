@@ -1,6 +1,6 @@
 extends SceneTree
-## The execution seen from the side (evidence/execution_*.png): impaled,
-## lifted and the three blows.
+## The execution seen from the side (evidence/execution_*.png): the grab, the
+## lift, the mask coming in, the arm through the face and the picture going.
 var level
 
 func _initialize() -> void: run.call_deferred()
@@ -31,14 +31,19 @@ func run() -> void:
 	# Straight into the execution, with the creature still animating.
 	level.locust.face_toward(spot, 1.0, 100.0)
 	level.capture_survivor(level.player)
-	var shots := {25: "impale", 66: "lift", 100: "second", 140: "head"}
+	# Timed off the execution itself, not off frame numbers: the window does
+	# not render at a fixed rate and the beats would slide.
+	var shots := [[0.15, "grab"], [0.7, "lift"], [2.2, "face"], [2.9, "kill"], [3.4, "static"]]
 	var taken: Array = []
-	for frame in 200:
+	var next := 0
+	while next < shots.size():
 		await process_frame
-		if shots.has(frame):
-			await RenderingServer.frame_post_draw
-			root.get_texture().get_image().save_png("res://evidence/execution_%s.png" % shots[frame])
-			taken.append(shots[frame])
+		if level.execution.is_empty(): break
+		if float(level.execution.time) < float(shots[next][0]): continue
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://evidence/execution_%s.png" % shots[next][1])
+		taken.append(shots[next][1])
+		next += 1
 	print("EXECUTION_SHOTS ", taken)
 	level.queue_free()
 	await process_frame

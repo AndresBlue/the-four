@@ -906,6 +906,12 @@ func flash(words: String, seconds := 2.5) -> void:
 	flash_label.text = words
 	flash_time = seconds
 
+## A victim in a match that goes on without it: the same words as the failure
+## screen, over the static, without stopping anybody else's game.
+func lost_signal(seconds := 2.6) -> void:
+	flash_label.add_theme_color_override("font_color", STYLE.ALERT)
+	flash("SEÑAL PERDIDA", seconds)
+
 func _process(delta: float) -> void:
 	clock += delta
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
@@ -920,7 +926,9 @@ func _process(delta: float) -> void:
 	if flash_time > 0:
 		flash_time -= delta
 		flash_label.modulate.a = 1.0 if flash_time > 1.0 or fposmod(flash_time, 0.4) < 0.25 else 0.0
-		if flash_time <= 0: flash_label.text = ""
+		if flash_time <= 0:
+			flash_label.text = ""
+			flash_label.remove_theme_color_override("font_color")
 
 func _display_changed(seconds: int) -> void:
 	if is_instance_valid(display_label):

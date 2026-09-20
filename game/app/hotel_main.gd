@@ -58,6 +58,7 @@ var discoveries
 ## The document being read, if any.
 var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
+var scream_sound: AudioStreamPlayer
 var intro_seed := 0
 var skip_time := 0.0
 ## Online play (net_session.gd) and its in-match replication (match_net.gd).
@@ -75,11 +76,19 @@ var execution := {}
 var watch_rig: Node3D
 var watch_arm: SpringArm3D
 var watch_camera: Camera3D
-const STABS := ["res://assets/audio/events/execution_stab_1.wav", "res://assets/audio/events/execution_stab_2.wav", "res://assets/audio/events/execution_stab_3.wav"]
+const SCREAM := "res://assets/audio/events/execution_scream.wav"
+const KILL_BLOW := "res://assets/audio/events/execution_stab_3.wav"
 const BODY_DROP := "res://assets/audio/events/execution_drop.wav"
-## When each blow of an execution lands, and when the body is let go.
-const STAB_TIMES := [1.0, 1.6, 2.2]
-const DROP_TIME := 2.7
+## The beats of an execution, in seconds from the grab: the arm goes through
+## the face, the picture gives way, and the body is let go. The scream is at
+## zero, because that is the point of it.
+const KILL_TIME := 2.8
+const SIGNAL_TIME := 3.0
+const DROP_TIME := 3.1
+## How long the victim's own screen stays lost before it starts watching a
+## teammate. Alone, or with everyone else dead, the failure screen takes over
+## instead and this never runs out.
+const LOST_HOLD := 2.6
 
 func _enter_tree() -> void:
 	world_audio = $WorldAudio
@@ -607,6 +616,12 @@ func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 		player.velocity = Vector3.ZERO
 		if player.hidden: player.force_leave_hide()
 		if ui.sheet.visible: toggle_sheet()
+	# The scream is the moment it has you: flat and loud in the victim's own
+	# ears, and out in the room for everybody else.
+	if not world_audio.enabled: return
+	if seat == player.slot:
+		if is_instance_valid(scream_sound): scream_sound.play()
+	else: world_audio.play_at(SCREAM, point + Vector3(0, 2.0, 0), -4.0, RID(), 0.0)
 
 ## Sounds, screen jolts and, on the host, the death at the end.
 func update_execution(delta: float) -> void:
@@ -614,15 +629,20 @@ func update_execution(delta: float) -> void:
 	execution.time += delta
 	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
 	var held := point + Vector3(0, 1.7, 0)
-	while int(execution.stabs) < STAB_TIMES.size() and execution.time >= STAB_TIMES[int(execution.stabs)]:
-		if world_audio.enabled: world_audio.play_at(STABS[int(execution.stabs)], held, -2.0, RID(), 0.0)
+	if int(execution.stabs) == 0 and execution.time >= KILL_TIME:
+		if world_audio.enabled: world_audio.play_at(KILL_BLOW, held, -1.0, RID(), 0.0)
 		glitch = 1.0
-		execution.stabs = int(execution.stabs) + 1
+		execution.stabs = 1
 	if not execution.dropped and execution.time >= DROP_TIME:
 		execution.dropped = true
 		if world_audio.enabled: world_audio.play_at(BODY_DROP, point + Vector3(0, 0.3, 0), -6.0, RID(), 0.0)
 	if execution.time >= locust.EXECUTION_TIME + 0.3:
 		var seat := int(execution.seat)
+		# Its own picture is gone: it keeps the lost signal a moment before it
+		# ends up watching somebody else's camera.
+		if seat == player.slot:
+			lost_signal = LOST_HOLD
+			ui.lost_signal(LOST_HOLD)
 		execution = {}
 		player.held = false
 		if player.avatar != null:
@@ -637,14 +657,18 @@ func hold_victim(delta: float) -> void:
 	var forward := -Basis(Vector3.UP, yaw).z
 	var time: float = execution.time
 	var lift := clampf(time / 0.5, 0.0, 1.0) - clampf((time - DROP_TIME) / 0.4, 0.0, 1.0)
-	# Held on the blade at the creature's chest height, close in front of it.
-	var wanted := point + forward * 1.05 + Vector3(0, 0.1 + lift * 1.0, 0)
+	# Held on the blade at the creature's chest height, and drawn slowly in:
+	# the mask arriving is the whole point of the wait before the blow.
+	var closing := ease(clampf((time - 0.5) / maxf(KILL_TIME - 0.5, 0.01), 0.0, 1.0), 0.45)
+	var wanted := point + forward * lerpf(1.15, 0.6, closing) + Vector3(0, 0.1 + lift * 1.0, 0)
 	player.velocity = Vector3.ZERO
 	player.global_position = player.global_position.lerp(wanted, minf(1.0, delta * 10.0))
-	# Run through on the blade: the body hangs back and sags.
+	# Run through on the blade: the body hangs back and sags, and goes limp
+	# once the arm is through its face.
+	var limp := clampf((time - KILL_TIME) / 0.35, 0.0, 1.0)
 	if player.avatar != null:
-		player.avatar.rotation.x = -0.5 * lift
-		player.avatar.rotation.z = 0.12 * lift
+		player.avatar.rotation.x = -(0.5 + 0.5 * limp) * lift
+		player.avatar.rotation.z = (0.12 + 0.25 * limp) * lift
 	# It is the last thing you see.
 	var head := point + Vector3(0, 2.3, 0)
 	var offset: Vector3 = head - player.camera.global_position
@@ -781,6 +805,14 @@ func drive_local(delta: float) -> void:
 		if not local_alive(): watch_teammates()
 		return
 	if not local_alive():
+		# Its own picture went with it: the lost signal holds a moment before
+		# the view ends up over a teammate's shoulder.
+		if lost_signal > 0.0:
+			lost_signal = maxf(0.0, lost_signal - delta)
+			camcorder.focus("")
+			ui.hint.text = ""
+			ui.progress.visible = false
+			return
 		watch_teammates()
 		return
 	if online_menu or match_net.local_is_locust():
@@ -1204,14 +1236,23 @@ func configure_hotel() -> void:
 	hotel.echo_view = hunter_seat()
 	hotel.apply_quality(PRESETS.of(settings.values.quality))
 
-## Wardrobe enclosure and strike glitch on the analog filter (off when reduced).
+## Wardrobe enclosure, strike glitch and lost signal on the analog filter.
+## The first two are off with reduced effects; the picture going is not an
+## effect, it is how a victim is told it died, so it stays (milder).
 var enclosure := 0.0
 var glitch := 0.0
+## Seconds of lost picture left for the local victim, and how far gone it is.
+var lost_signal := 0.0
+var static_level := 0.0
 func update_screen_cues(delta: float) -> void:
 	var wanted_enclosure: float = (1.0 - player.peek * 0.8) if player.hidden and session.state == session.State.PLAYING else 0.0
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
 	var striking: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
 	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
+	var dying: bool = not execution.is_empty() and int(execution.seat) == player.slot and float(execution.time) >= SIGNAL_TIME
+	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else 0.0
+	static_level = move_toward(static_level, wanted_static, delta * (3.5 if wanted_static > static_level else 1.6))
+	post_material.set_shader_parameter("signal_loss", static_level * (0.55 if settings.values.reduced else 1.0))
 	if settings.values.reduced: return
 	post_material.set_shader_parameter("enclosure", enclosure)
 	post_material.set_shader_parameter("threat_glitch", glitch)
@@ -1224,6 +1265,13 @@ func build_audio() -> void:
 	paper_sound.volume_db = -8.0
 	paper_sound.stream = load("res://assets/audio/sfx/paper/paper.ogg")
 	add_child(paper_sound)
+	# The scream of being caught: not a sound in the room, a sound in your head.
+	scream_sound = AudioStreamPlayer.new()
+	scream_sound.name = "Scream"
+	scream_sound.bus = "Threat"
+	scream_sound.volume_db = 0.0
+	scream_sound.stream = load(SCREAM)
+	add_child(scream_sound)
 	ambience = AudioStreamPlayer.new()
 	ambience.name = "AmbientLoop"
 	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE

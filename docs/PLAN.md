@@ -66,13 +66,8 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 - [ ] Juzgar en partida el nivel y la frecuencia de los gruñidos, sobre todo los del propio cazador (se oyen 6 dB más bajos para quien lleva la criatura).
 - [x] **El chillido depende de la distancia.** No había ningún filtrado por distancia: con línea libre el corte se quedaba en 20 kHz a cualquier metraje. Ahora cada sonido pierde hasta 6 dB y sus agudos con los metros de ruta (`AIR_REACH`/`AIR_GAIN`/`AIR_CUTOFF` en `world_audio.apply_route()`), y la voz de la criatura cambia de forma según lo que dice: el chillido arranca 3 dB más alto, cae más rápido y se corta a 32 m (los 26 m de escucha que compra, más una cola); el gruñido llega a 40 m sin ser tan fuerte. Medido en `tests/hotel/spatial_audio_test.gd` a 10, 20 y 40 m (nivel y corte de agudos).
 - [ ] Juzgar con auriculares si 10, 20 y 40 m se distinguen de verdad en partida, y si las puertas lejanas siguen leyéndose bien con la absorción nueva.
-- [ ] **Nueva ejecución**, en este orden:
-  1. **El screamer salta al agarrarte:** en el instante en que la criatura atrapa a la víctima, un sonido muy feo que asuste de verdad, como un screamer de FNAF.
-  2. La sostiene varios segundos acercándole la cara despacio.
-  3. La mata enterrándole el brazo en la cara.
-  4. Estática como la de la escena de entrada.
-  5. Transición a la pantalla de SEÑAL PERDIDA.
-  Sustituye la ejecución actual (2,9 s y tres estocadas) y resuelve el pendiente de P4b sobre su animación.
+- [x] **Nueva ejecución.** Grito al agarrar (sintetizado en `tools/audio/generate_screamer.py`: sin ataque, parciales inarmónicos que caen y saturación dura; plano y alto para la víctima, desde la criatura para los demás), la sostiene acercándole la cara hasta los 2,8 s, le entierra el brazo en la cara, la imagen se rompe en estática (`signal_loss` en `analog.gdshader`, que rueda y se come el cuadro) y sale SEÑAL PERDIDA. 4,2 s en total. En cooperativo la víctima se queda sin señal 2,6 s antes de pasar a observar a un compañero, porque la pantalla final solo sale cuando ya no queda nadie. Capturas en `evidence/execution_*.png` con `tools/capture/execution_capture.gd`.
+- [ ] Juzgar en partida el grito (¿asusta o solo molesta?), la duración de los 4,2 s y si la estática se entiende como «te mataron» sin leer nada.
 
 
 
@@ -273,7 +268,7 @@ La pantalla del jugador que lleva a la criatura en versus: no ve el hotel, lo re
 - [x] Prueba en `verify.ps1` (`hotel/echo_test`), comprobación de shaders con ventana y capturas de evidencia.
 - [ ] Ajuste humano de la imagen: término base, separación de los frentes, legibilidad en salones grandes (ver `docs/VISION_LOCUST.md`).
 - [ ] Probar la vista en el lanzador `compatibility`; hoy solo está validada en Forward+.
-- [ ] La animación de la ejecución vista desde el cazador todavía es floja: es lo único que le dice que atrapó a alguien (ya no hay aviso en texto). Se sustituye por la nueva ejecución de P0.
+- [x] La animación de la ejecución vista desde el cazador: sustituida por la nueva ejecución de P0 (agarre, la cara acercándose, un solo golpe). Queda por juzgar en partida si desde el cazador se entiende que atrapó a alguien.
 - [ ] Juzgar en partida el peso de cada tipo de ruido en la vista (paso, carrera, puerta, armario con apagado rápido) con `./tools/godot.ps1 rehearsal`.
 
 

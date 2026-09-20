@@ -1,4 +1,5 @@
 extends Node3D
+const EXECUTION := preload("res://game/enemies/locust/hotel_locust.gd")
 ## Procedural animation for The Locust (Valve Biped skeleton, modelled facing +Z).
 ## Feet are planted in world space and only move during a step, so the pointed
 ## legs never slide; two-bone IK bends the knees to reach them. Presentation
@@ -187,19 +188,21 @@ func pose_arms(delta: float, ratio: float) -> void:
 			upper = upper.lerp(Vector3(s * 0.5, -0.25, 0.9), 0.7)
 			fore = fore.lerp(Vector3(s * 0.3, -0.15 + reach * 0.2, 1.0), 0.8)
 		if execute > 0.0:
-			# The first arm holds the body up; the other stabs chest, hip, head.
+			# One arm holds the body up and draws it in while the mask comes to
+			# meet it; the other waits, drawn back, and goes through the face.
 			var lift := clampf(execute / 0.18, 0.0, 1.0)
+			var kill: float = EXECUTION.EXECUTION_KILL / EXECUTION.EXECUTION_TIME
+			var closing := clampf((execute - 0.12) / maxf(kill - 0.12, 0.01), 0.0, 1.0)
 			var holding: bool = s > 0.0
-			upper = upper.lerp(Vector3(s * 0.35, lerpf(0.1, 0.75, lift), 0.7), 0.85)
-			fore = fore.lerp(Vector3(s * 0.1, lerpf(0.2, 0.55, lift), 0.95), 0.85)
+			upper = upper.lerp(Vector3(s * 0.35, lerpf(0.1, 0.75, lift), lerpf(0.7, 0.45, closing)), 0.85)
+			fore = fore.lerp(Vector3(s * 0.1, lerpf(0.2, 0.55, lift), lerpf(0.95, 0.7, closing)), 0.85)
 			if not holding:
-				# Three thrusts, each one drawn back first.
-				var thrust := 0.0
-				for hit in [0.34, 0.55, 0.76]:
-					var phase: float = (execute - hit) / 0.12
-					if absf(phase) < 1.0: thrust = maxf(thrust, 1.0 - absf(phase))
-				upper = upper.lerp(Vector3(s * 0.55, 0.35 - thrust * 0.2, 0.35 + thrust * 0.65), 0.9)
-				fore = fore.lerp(Vector3(s * 0.15, 0.55 - thrust * 0.9, 0.2 + thrust * 0.9), 0.9)
+				# Wound up all the way through the wait, then one blow.
+				var phase: float = (execute - kill) / 0.14
+				var thrust: float = maxf(0.0, 1.0 - absf(phase))
+				var wind := closing * 0.35
+				upper = upper.lerp(Vector3(s * (0.55 + wind), 0.35 - thrust * 0.25, 0.3 - wind * 0.3 + thrust * 0.8), 0.9)
+				fore = fore.lerp(Vector3(s * 0.15, 0.55 - thrust * 1.0, 0.15 + thrust * 1.0), 0.9)
 		var key: String = side[0]
 		var blend := minf(1.0, delta * (26.0 if execute > 0.0 else 18.0 if recovering > 0.1 else 8.0))
 		if not arm_dirs.has(key): arm_dirs[key] = [upper, fore]

@@ -218,6 +218,11 @@ CORRECCIÓN:
 ACTUAL: TIEMPO DE GRABACIÓN  %s
 CORRECCIÓN:
 
+[MUERTE.04] Centro de la pantalla, sobre la estática, solo en cooperativo
+cuando la partida sigue sin ti (después pasas a observar a un compañero)
+ACTUAL: SEÑAL PERDIDA
+CORRECCIÓN:
+
 [MUERTE.05] Opción
 ACTUAL: REINTENTAR
 CORRECCIÓN:

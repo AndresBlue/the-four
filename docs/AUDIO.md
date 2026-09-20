@@ -123,7 +123,9 @@ Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes
 
 ## Ejecución
 
-`tools/audio/generate_event_sfx.py` sintetiza también `execution_stab_1..3.wav` (la hoja entrando: golpe grave, desgarro húmedo y un timbre corto) y `execution_drop.wav` (el cuerpo soltado). Suenan en los tres golpes de la ejecución (a 1,0, 1,6 y 2,2 s) y al caer el cuerpo (2,7 s), desde la posición de la criatura y por la misma propagación que el resto.
+`tools/audio/generate_screamer.py` sintetiza `execution_scream.wav`: el grito del agarre, sin ataque (dos milisegundos de nada a todo), con parciales inarmónicos que caen, una capa rota encima y saturación dura, para que suene a garganta y no a sintetizador. Suena en el instante 0 de la ejecución: en la máquina de la víctima como sonido plano a 0 dB (no está en la sala, está en su cabeza) y en las demás desde la criatura, por la propagación normal.
+
+`tools/audio/generate_event_sfx.py` sintetiza `execution_stab_1..3.wav` (la hoja entrando) y `execution_drop.wav` (el cuerpo soltado). De los tres golpes solo se usa el tercero, como el brazo entrando en la cara a los 2,8 s; el cuerpo cae a los 3,1 s. Los otros dos quedan disponibles.
 
 ## Pasos de los compañeros
 
