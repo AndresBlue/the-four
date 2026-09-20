@@ -12,6 +12,50 @@
 - `deep_ambiance.flac`: conservar original; preparar copia en formato admitido por el importador al integrarlo. Todavía no se carga en el juego.
 - La música anterior sigue en su bus separado. Su estado de permisos no cambia.
 
+## Aportado por el usuario, con su ficha (revisado el 19/09/2026)
+
+Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se anotó tal cual la publica su autor. **Todos se acreditan en la pantalla de créditos del juego** (`game/ui/hotel_ui.gd`, `CREDITS`).
+
+### Personajes jugables (`assets/players/`)
+
+| Carpeta | Modelo | Autoría | Licencia | Ficha |
+|---|---|---|---|---|
+| `detective` | detective | haider706 | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/detective-b1de47c043314837a844698f2380daad) |
+| `detective_woman` | Debra — Detective Woman (Game Model) | Zukomazi | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/debra-detective-woman-game-model-208e5cf748404521894bf30c95f25c12) |
+| `realistic_female` | Realistic Female | Biviyt | **CC Attribution-ShareAlike 4.0** | [Sketchfab](https://sketchfab.com/3d-models/realistic-female-b0cc2a6c26114da184252e433cf75d23) |
+
+### Mobiliario (`assets/props/`)
+
+| Carpeta | Modelo | Autoría | Licencia | Ficha |
+|---|---|---|---|---|
+| `sofa` | Sofa (Game Ready / 2K PBR) | Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/sofa-game-ready-2k-pbr-959bc21f62964c068e441622e8d1103a) |
+| `monstera` | Monstera Deliciosa Potted Mid-Century plant | Giora (ChubbyPanda) | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/monstera-deliciosa-potted-mid-century-plant-1ab9bf841df04c07b1819be596327629) |
+| `wall_lamp` | Wall Lamp — 2048px² | Mark Peters | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/wall-lamp-2048px2-487c69d1748c46d2b3cc433fe6885a5e) |
+
+Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada, el dormitorio de esa misma escena, la puerta de madera y el armario.
+
+### Sonido (Freesound)
+
+El usuario aportó estos ocho; el reparto archivo por archivo dentro de `assets/audio/` todavía no está anotado (pendiente de que el usuario diga cuál es cuál).
+
+| Sonido | Autoría | Licencia | Ficha |
+|---|---|---|---|
+| Bed sheets (SoundAction 104) | alexarje | CC BY 4.0 | [863082](https://freesound.org/people/alexarje/sounds/863082/) |
+| men_sneaker_shoes_walking_sound_09262024 | Artninja | CC BY 4.0 | [757366](https://freesound.org/people/Artninja/sounds/757366/) |
+| Open letter and reading | dersuperanton | CC BY 4.0 | [434466](https://freesound.org/people/dersuperanton/sounds/434466/) |
+| horror ambience 161101_1038 | klankbeeld | CC BY 4.0 | [535780](https://freesound.org/people/klankbeeld/sounds/535780/) |
+| Door Opening | AUDACITIER | CC BY 4.0 | [632128](https://freesound.org/people/AUDACITIER/sounds/632128/) |
+| Atmosphere 2 | oldaccount | CC BY 3.0 | [316800](https://freesound.org/people/oldaccount/sounds/316800/) |
+| DOOR creak — multiple creaks wooden door | mickfire | **CC BY-NC 4.0** | [326416](https://freesound.org/people/mickfire/sounds/326416/) |
+| Sub Riser | deleted_user_3277771 (Josh Mclelland) | **CC BY-NC 3.0** | [185372](https://freesound.org/people/deleted_user_3277771/sounds/185372/) |
+
+### Lo que esto impide
+
+- **No comercial:** los dos sonidos marcados arriba y el modelo de The Locust (CC BY-NC-ND) prohíben el uso comercial. Mientras sigan en el juego, no se puede vender ni monetizar.
+- **Sin obra derivada:** la licencia de The Locust es además NoDerivs, y el hotel lo escala y le mueve los huesos. Hay que resolverlo con el autor o sustituirlo antes de publicar.
+- **CompartirIgual:** «Realistic Female» obliga a distribuir bajo la misma licencia cualquier obra derivada del modelo.
+- **Atribución:** todos los CC BY exigen crédito, y ya lo tienen en la pantalla de créditos. Los CC0 (ambientCG, Poly Haven) y el dominio público (Art Institute of Chicago) no lo exigen; se acreditan igualmente.
+
 <!-- SCANS: generado por tools/textures/ingest_pbr.py, no editar a mano -->
 ## Materiales escaneados (fase 3 de REALISM.md)
 
@@ -144,13 +188,13 @@ Cuadros: imágenes de dominio público del Art Institute of Chicago (CC0, open a
 
 ## Modelos aportados en 0.4-S1
 
-Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. Autoría y licencia por verificar antes de cualquier distribución.
+Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. El sofá, el aplique y la monstera ya tienen ficha y licencia (arriba); el resto sigue por verificar antes de cualquier distribución.
 
 - `tv/sony-trinitron-prl.zip`: televisor CRT de la escena de entrada (carcasa y pantalla separadas).
 - `bedroom/bedroom-furniture-set.zip`: cama con escritorio y silla, escena de entrada.
-- `other/sofa-pbr.zip`: sofá Chesterfield; sustituye al sofá provisional en todo el hotel.
-- `other/wall-lamp-2048px2.zip`: aplique de pared con pantalla de tela; dos junto a cada cuadro en recepción, vestíbulos, pasillos y galerías (solo emisivo, sin luz propia).
-- `plants/monstera-indoor.zip`: monstera en maceta con soporte; sustituye a la planta provisional.
+- `other/sofa-pbr.zip`: sofá; sustituye al sofá provisional en todo el hotel. Ficha y licencia arriba (Meerschaum Digital, CC BY).
+- `other/wall-lamp-2048px2.zip`: aplique de pared con pantalla de tela; dos junto a cada cuadro en recepción, vestíbulos, pasillos y galerías. Ficha y licencia arriba (Mark Peters, CC BY).
+- `plants/monstera-indoor.zip`: monstera en maceta con soporte; sustituye a la planta provisional. Ficha y licencia arriba (Giora, CC BY).
 - `plants/indoor-plant-dieffenbachia.zip`: sin usar (solo `.blend`, que Godot no importa sin Blender).
 - `door/door-wooden-old-9mb.zip`: puerta de madera antigua con marco, pomo y bisagras (el archivo trae dos copias, cerrada y entreabierta; se usa la cerrada, nodo `01`). FBX en `assets/props/door/door.fbx` y texturas de 1024 px (`leaf_*` para la hoja, `frame_*` para marco y herrajes), materiales `door_leaf.tres` y `door_frame.tres`. `tools/props/build_door.gd` hornea `door_leaf.res` (hoja con pomo, bisagra en el origen) y `door_frame.res` (marco centrado en el vano), ajustados al vano del hotel (1,30 × 2,65 m) y no a su tamaño original (1,01 × 2,30 m de hoja). Sustituye a la hoja de caja y a las molduras de caja de todas las puertas; la colisión sigue siendo la caja de siempre.
 
@@ -205,4 +249,4 @@ Los cinco audios nuevos ahora están en `source_assets/audio/`; Sunman y The Boy
 
 ## Paquete sfx
 
-33 sonidos originales aportados en `sfx/`, conservados sin modificación. Las copias activas y preparadas están en `assets/audio/sfx/`; [AUDIO.md](AUDIO.md) distingue 23 asignaciones actuales y diez reservas. Inventario con SHA-256 en `docs/assets/sfx_inventory.json`. Origen/autoría y permisos de distribución pendientes; no se atribuye licencia libre por el nombre del archivo.
+33 sonidos aportados en `sfx/`, conservados sin modificación. Ocho de ellos ya tienen ficha y licencia (Freesound, arriba); falta anotar qué archivo es cada uno. Las copias activas y preparadas están en `assets/audio/sfx/`; [AUDIO.md](AUDIO.md) distingue 23 asignaciones actuales y diez reservas. Inventario con SHA-256 en `docs/assets/sfx_inventory.json`. Origen/autoría y permisos de distribución pendientes; no se atribuye licencia libre por el nombre del archivo.

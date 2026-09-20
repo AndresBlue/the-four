@@ -6,6 +6,60 @@ const STYLE := preload("res://game/ui/osd_style.gd")
 const NOISE := preload("res://game/ui/shaders/tape_noise.gdshader")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const VERSION := "v0.5"
+## The credits, as they roll: a heading and its lines. Everything the game
+## ships that somebody else made is named here, with its licence, and what is
+## still unresolved is said out loud. The register of them all, with links and
+## the conditions of each one, is docs/ASSETS.md.
+const CREDITS := [
+	["THE FOUR", [
+		"Proyecto fan no oficial, sin ánimo de lucro.",
+		"Arquitectura del hotel, generación del piso, cámara de vídeo doméstica, shaders, iluminación, sonido sintetizado, red y código: creados para este juego.",
+	]],
+	["MOTOR", [
+		"Godot Engine 4.7 — © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.",
+	]],
+	["PERSONAJES", [
+		"The Locust — modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).",
+		"«detective» — haider706 (Sketchfab, CC BY 4.0).",
+		"«Debra — Detective Woman (Game Model)» — Zukomazi (Sketchfab, CC BY 4.0).",
+		"«Realistic Female» — Biviyt (Sketchfab, CC BY-SA 4.0).",
+	]],
+	["MOBILIARIO Y OBJETOS", [
+		"Poly Haven, CC0: Kirill Sannikov, James Ray Cock, Ulan Cabanilla, Rico Cilliers, Kuutti Siitonen, Fran Calvente, Yann Kervran, Vibrant Nordic, Ulrich Büch, Rob Tuytel, Rahul Chaudhary, ProgrammerOnCoffee, PierreB3D, Maximilian Schuster, Mateusz Sadek, Luca B, Jurita Burger, Jule Bielitz, John Malcolm, Joe Seabuhr, GurJas Studios, Fabi_G, Caspian Fortune y Benny Weimer.",
+		"«Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
+		"«Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).",
+		"«Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).",
+		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el usuario; autoría y licencia pendientes de verificar.",
+	]],
+	["MATERIALES", [
+		"ambientCG — Lennart Demes, CC0: moqueta, papel pintado, azulejo, latón, falso techo y todos los decals.",
+		"Poly Haven, CC0: Rob Tuytel, Dimitrios Savva, Rico Cilliers, Dario Barresi, Jenelle van Heerden y colormass — madera, yeso, terciopelo, jacquard y cuero.",
+	]],
+	["CUADROS", [
+		"Art Institute of Chicago, colección de acceso abierto (dominio público): Salomon van Ruysdael, Meindert Hobbema, Reinier Nooms, Maxime Maufra, Henry Raeburn, John Wollaston, Arthur Devis, Albert Bierstadt, John Henry Twachtman, Jules Dupré, Jean Charles Cazin, Martin Johnson Heade, Jan Both y Jan Brueghel el Viejo.",
+	]],
+	["SONIDO — FREESOUND", [
+		"«Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).",
+		"«men_sneaker_shoes_walking_sound_09262024» — Artninja (CC BY 4.0).",
+		"«Open letter and reading» — dersuperanton (CC BY 4.0).",
+		"«horror ambience 161101_1038» — klankbeeld (CC BY 4.0).",
+		"«Door Opening» — AUDACITIER (CC BY 4.0).",
+		"«Atmosphere 2» — oldaccount (CC BY 3.0).",
+		"«DOOR creak — multiple creaks wooden door» — mickfire (CC BY-NC 4.0).",
+		"«Sub Riser» — deleted_user_3277771 / Josh Mclelland (CC BY-NC 3.0).",
+	]],
+	["SONIDO — EL RESTO", [
+		"Pasos, respiración, latido, presencia de la criatura y los golpes del hotel: síntesis creada para el juego.",
+		"Música y el resto del paquete de efectos: aportados por el usuario; autoría y licencia pendientes de verificar.",
+	]],
+	["LETRAS", [
+		"El cartel de SALIDA y los números de puerta están dibujados para este juego: no se embarca ningún archivo de tipografía.",
+	]],
+	["LICENCIAS PENDIENTES", [
+		"Dos de los sonidos y el modelo de The Locust llevan cláusula No Comercial, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.",
+		"El registro completo, con enlaces y condiciones, está en docs/ASSETS.md.",
+	]],
+]
 var settings
 var overlay: Control
 var column: VBoxContainer
@@ -388,13 +442,10 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"credits":
 			set_osd("▶ PLAY", "", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
 			title(column, "CRÉDITOS", 64)
-			spacer(column, 18)
+			spacer(column, 14)
 			column.custom_minimum_size.x = 720
-			for block in [["THE LOCUST", "Modelo de Doumty."], ["ARQUITECTURA Y MOBILIARIO", "Arquitectura creada para The Four. Televisor, cama, sofá, lámpara de pared y monstera: modelos aportados por el usuario; autoría y licencias por verificar."], ["AUDIO", "Aportado por el usuario. Autoría y licencias por verificar."], ["MOTOR", "Godot Engine 4.7, © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT."], ["DISTRIBUCIÓN", "Los permisos de los assets siguen pendientes."]]:
-				label(column, block[0], 18).add_theme_color_override("font_color", STYLE.AMBER)
-				paragraph(column, block[1], 18, 700)
-				spacer(column, 6)
-			spacer(column, 16)
+			credits_roll()
+			spacer(column, 14)
 			action("Volver", "main")
 			side.visible = false
 	if osd_left.text != "SEÑAL PERDIDA": osd_left.remove_theme_color_override("font_color")
@@ -680,6 +731,39 @@ func show_settings(back: String) -> void:
 	quiet_focus = true
 	tabs.get_tab_bar().grab_focus()
 	quiet_focus = false
+
+## The credits, in a panel that rolls by itself: there are more of them than
+## fit on the screen, and nobody should have to drag them by hand to read to
+## the end. The roll stops the moment the reader takes the wheel.
+func credits_roll() -> void:
+	var roll := ScrollContainer.new()
+	roll.custom_minimum_size = Vector2(720, 384)
+	roll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(roll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 4)
+	roll.add_child(list)
+	for block in CREDITS:
+		label(list, block[0], 18).add_theme_color_override("font_color", STYLE.AMBER)
+		for line in block[1]: paragraph(list, line, 17, 660)
+		spacer(list, 12)
+	start_roll(roll, list)
+
+func start_roll(roll: ScrollContainer, list: VBoxContainer) -> void:
+	# Two frames, for the wrapped lines to find their height.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(roll) or not is_instance_valid(list): return
+	var span := list.size.y - roll.size.y
+	if span <= 1.0: return
+	var tween := create_tween()
+	tween.tween_interval(2.5)
+	tween.tween_property(roll, "scroll_vertical", int(span), span / 26.0)
+	var stop := func(event):
+		if event is InputEventMouseButton or event is InputEventPanGesture: tween.kill()
+	roll.gui_input.connect(stop)
+	roll.get_v_scroll_bar().gui_input.connect(stop)
 
 func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
