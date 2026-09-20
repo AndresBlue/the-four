@@ -24,10 +24,10 @@ static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([manifest.seed, "televisions", survivors, stage])
 	var wing := stage - 1
-	var entrance: Vector3 = FLOOR.position_of(manifest.rooms[int(manifest.gates[wing - 1].beyond)]) if wing > 0 and manifest.gates.size() >= wing else Vector3.ZERO
+	var entrance: Vector3 = FLOOR.position_of(manifest.rooms[int(manifest.entries[wing])]) if wing > 0 and manifest.get("entries", []).size() > wing else Vector3.ZERO
 	var spots: Array = []
 	for room in manifest.rooms:
-		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id): continue
+		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id) or bool(room.get("landing", false)): continue
 		if FLOOR.position_of(room).distance_to(entrance) < MIN_FROM_ENTRANCE: continue
 		for prop in room.props:
 			if prop.kind != "tv": continue

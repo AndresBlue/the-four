@@ -7,9 +7,14 @@ var room_nodes: Array[Node3D] = []
 var doors: Array = []
 ## The doors that lead from one wing to the next, one per stage.
 var gates: Array = []
-## Where each floor is left from: the middle of the landing behind the last
-## door. Stepping onto it ends the floor.
-var landings: Array = []
+## The lift of each stage: the middle of the car standing in the lobby behind
+## that refuge's door. Stepping into it is taking it -- to the next wing, or,
+## for the last one, off the floor.
+var lifts: Array = []
+## And where each of those lifts puts people down: in front of the car in the
+## cell the next wing is walked into from. Empty for the last one, which
+## leaves the floor instead.
+var arrivals: Array = []
 ## Every piece of furniture with drawers or shelves, as it is dressed:
 ## {room, position, yaw, kind}. Four of them hide the numbers of the code.
 var containers: Array = []
@@ -605,6 +610,7 @@ func build(data: Dictionary) -> void:
 	# Last, so the gates stay in the order of their stages and the doors keep
 	# the indices the network knows them by.
 	build_exit_door(data)
+	build_lifts(data)
 	flush()
 	build_navigation()
 	build_dust()
@@ -822,12 +828,10 @@ func build_exit_door(data: Dictionary) -> void:
 	var span := FLOOR.size_of(room)
 	var away := Vector3(direction.x, 0, direction.y)
 	var centre: Vector3 = FLOOR.position_of(room) + away * (Vector2(span.x, span.y).dot(Vector2(absf(away.x), absf(away.z))) * 0.5)
-	# The landing is the cell behind that door: the back stairs, which is
-	# where the floor ends. Stepping into it is leaving.
+	# The cell behind that door is the lift lobby, and its doorway is the wall
+	# the two of them share.
 	var beyond := int(last.get("beyond", -1))
-	if beyond >= 0:
-		centre = FLOOR.portal_between(room, data.rooms[beyond])
-		landings.append(FLOOR.position_of(data.rooms[beyond]))
+	if beyond >= 0: centre = FLOOR.portal_between(room, data.rooms[beyond])
 	var yaw := PI / 2 if direction.x != 0 else 0.0
 	var door = DOOR.new()
 	door.name = "ExitDoor"
@@ -864,6 +868,86 @@ func build_exit_door(data: Dictionary) -> void:
 	door_fixtures.append([casing, stop])
 	doors.append(door)
 	gates.append(door)
+
+## The cars themselves: one waiting in the lobby behind each refuge's door,
+## and one in the cell its lift arrives at. Brushed metal, a light of its own
+## and its doors stood open, because it is waiting for whoever closed the
+## stage. Stepping into one is taking it.
+const CAR := Vector3(2.6, 2.45, 2.3)
+func build_lifts(data: Dictionary) -> void:
+	for gate in data.get("gates", []):
+		var out: Array = gate.get("out", [1, 0])
+		var lobby := int(gate.get("beyond", -1))
+		# In the lobby the car stands against the far wall, facing the door
+		# the refuge is behind.
+		lifts.append(build_car(data.rooms[lobby], Vector2i(-int(out[0]), -int(out[1]))) if lobby >= 0 else Vector3.ZERO)
+		var arrive := int(gate.get("arrive", -1))
+		if arrive < 0:
+			arrivals.append(Vector3.ZERO)
+			continue
+		var facing := free_side(data, arrive)
+		var car := build_car(data.rooms[arrive], facing)
+		# People are put down in front of it, not inside it.
+		arrivals.append(car + Vector3(facing.x, 0, facing.y) * 1.8)
+
+## A car standing against the wall its opening turns away from, in the cell
+## given, and the middle of it in world space.
+func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
+	var node: Node3D = room_nodes[int(room.id)]
+	var span := FLOOR.size_of(room)
+	var back := Vector3(-facing.x, 0, -facing.y)
+	var depth: float = span.y if absf(back.z) > 0.5 else span.x
+	var centre := back * (depth * 0.5 - CAR.z * 0.5 - 0.1)
+	var yaw := 0.0 if absf(back.z) > 0.5 else PI / 2
+	var car := Node3D.new()
+	car.name = "Lift"
+	car.position = centre
+	car.rotation.y = yaw
+	node.add_child(car)
+	# Floor, ceiling, the wall it backs on to and its two sides. The front is
+	# the opening, so nothing is built there.
+	var deep: float = CAR.z
+	box(car, Vector3(0, -0.15, 0), Vector3(CAR.x, 0.3, deep), "metal", true)
+	box(car, Vector3(0, CAR.y, 0), Vector3(CAR.x, 0.12, deep), "metal", true)
+	box(car, Vector3(0, CAR.y * 0.5, -deep * 0.5), Vector3(CAR.x, CAR.y, 0.12), "mirror", true)
+	for side in [-1.0, 1.0]:
+		box(car, Vector3(side * CAR.x * 0.5, CAR.y * 0.5, 0), Vector3(0.12, CAR.y, deep), "metal", true)
+		# The handrail down each side, and the panelling under it.
+		box(car, Vector3(side * (CAR.x * 0.5 - 0.1), 0.92, 0), Vector3(0.05, 0.05, deep - 0.2), "gold", false, "cylinder", Vector3(PI / 2, 0, 0))
+		box(car, Vector3(side * (CAR.x * 0.5 - 0.07), 0.45, 0), Vector3(0.03, 0.9, deep - 0.3), "panel")
+	box(car, Vector3(0, 0.45, -deep * 0.5 + 0.07), Vector3(CAR.x - 0.3, 0.9, 0.03), "panel")
+	# The leaves, slid back into the jambs, and the brass sill between them.
+	for side in [-1.0, 1.0]:
+		box(car, Vector3(side * (CAR.x * 0.5 - 0.16), CAR.y * 0.5, deep * 0.5), Vector3(0.28, CAR.y - 0.1, 0.1), "metal")
+	box(car, Vector3(0, 0.05, deep * 0.5), Vector3(CAR.x, 0.06, 0.16), "gold")
+	# Its light, which is the only one it has and never goes out with the rest.
+	var panel := box_light(car, Vector3(0, CAR.y - 0.1, 0))
+	car.add_child(panel)
+	return node.position + centre
+
+## The flat light in a car's ceiling: a small lamp and the panel it comes out
+## of, which stays on whatever the floor is doing.
+func box_light(car: Node3D, at: Vector3) -> OmniLight3D:
+	box(car, at + Vector3(0, 0.03, 0), Vector3(1.0, 0.04, 0.7), "light")
+	var lamp := OmniLight3D.new()
+	lamp.name = "CarLight"
+	lamp.position = at - Vector3(0, 0.1, 0)
+	lamp.light_color = Color(0.96, 0.94, 0.86)
+	lamp.light_energy = 2.4
+	lamp.omni_range = 5.5
+	lamp.shadow_enabled = false
+	lamp.light_volumetric_fog_energy = 0.0
+	return lamp
+
+## A side of this cell with no door in it, for the car to back on to.
+static func free_side(data: Dictionary, id: int) -> Vector2i:
+	var width := int(data.width)
+	for way: Vector2i in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		var x: int = int(data.rooms[id].x) + way.x
+		var z: int = int(data.rooms[id].z) + way.y
+		if x < 0 or x >= width or z < 0 or z >= int(data.height): return Vector2i(-way.x, -way.y)
+		if not data.adjacency[id].has(z * width + x): return Vector2i(-way.x, -way.y)
+	return Vector2i(0, 1)
 
 ## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
 ## its top edge, engraved SALIDA with an arrow pointing down at the room the
@@ -1293,7 +1377,12 @@ func build_navigation() -> void:
 	nav.agent_radius = 0.4
 	nav.agent_height = 1.8
 	nav.agent_max_climb = 0.1
-	nav.cell_size = 0.2
+	# Four voxels to the agent's radius. At 0.2 the rasterised bake lost width
+	# inside a furnished room and left the mesh cut in two, with a refuge
+	# nobody could walk to (one floor in a thousand: seed 213). Finer costs
+	# about half a second of the second and a half a floor takes to put up,
+	# and the radius comes out exact instead of being ceiled to voxels.
+	nav.cell_size = 0.1
 	nav.cell_height = 0.1
 	nav.filter_baking_aabb = AABB(Vector3(-12, -0.5, -12), Vector3(300, 3, 300))
 	var source := NavigationMeshSourceGeometryData3D.new()

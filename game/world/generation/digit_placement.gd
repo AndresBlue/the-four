@@ -22,7 +22,7 @@ static func choose(manifest: Dictionary, containers: Array, stage := 3) -> Array
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([manifest.seed, "digits", stage])
 	var wing := stage - 1
-	var entrance: Vector3 = FLOOR.position_of(manifest.rooms[int(manifest.gates[wing - 1].beyond)]) if wing > 0 and manifest.gates.size() >= wing else Vector3.ZERO
+	var entrance: Vector3 = FLOOR.position_of(manifest.rooms[int(manifest.entries[wing])]) if wing > 0 and manifest.get("entries", []).size() > wing else Vector3.ZERO
 	var spots: Array = []
 	for index in containers.size():
 		var spot: Dictionary = containers[index]

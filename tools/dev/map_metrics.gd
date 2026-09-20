@@ -40,7 +40,7 @@ func _initialize() -> void:
 		if data.fallback: fallbacks += 1
 		var errors := VALIDATOR.new().validate(data)
 		if not errors.is_empty(): failures.append([seed_value, errors])
-		var entrance: int = int(data.start)
+		var entrance: int = int(data.entries[0])
 		for wing in 3:
 			var band: Array = data.rooms.filter(func(room): return int(room.wing) == wing)
 			var inside := 0
@@ -91,7 +91,7 @@ func _initialize() -> void:
 			var walk: Dictionary = WALKER.follow(data, entrance, refuge)
 			if WALKER.reaches(data.rooms, data.adjacency, int(data.width), int(data.height), entrance, refuge): walker_found[wing] += 1
 			walker_seen[wing] += float(walk.rooms) / float(band.size()) * 100.0 / float(floors)
-			if wing < data.gates.size() and int(data.gates[wing].get("beyond", -1)) >= 0: entrance = int(data.gates[wing].beyond)
+			if wing + 1 < 3: entrance = int(data.entries[wing + 1])
 	print("%d pisos en %.1f s, respaldo %d, invalidos %d" % [floors, float(Time.get_ticks_msec() - elapsed) / 1000.0, fallbacks, failures.size()])
 	for failure in failures.slice(0, 5): print("  semilla ", failure[0], " ", failure[1])
 	print("ala | pasillo | servicio | orden | ordenado | medio | revuelto | puertas | entre salas | de las que se pueden | anillos | sin salida | al refugio | puertas refugio | mano en la pared | visto")

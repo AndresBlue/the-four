@@ -35,9 +35,24 @@ func run() -> void:
 				failures.append({"seed": seed_value, "reason": "navigation_stage_%d" % (stage + 1)})
 				print("NAV_FAIL ", seed_value, " etapa ", stage + 1, " points=", path.size(), " end=", path[-1] if not path.is_empty() else Vector3.ZERO, " expected=", destination)
 				break
+			# And not only the refuge: every room of the wing has to be
+			# walkable from where its lift arrives, or the creature has
+			# corners it cannot reach and the players have rooms it will
+			# never look into.
+			var stranded := 0
+			for other in level.manifest.rooms:
+				if int(other.wing) != stage: continue
+				var point := FLOOR.position_of(other)
+				var route := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, point)
+				if route.size() < 2 or route[route.size() - 1].distance_to(point) > 1.5: stranded += 1
+			if stranded > 0:
+				failures.append({"seed": seed_value, "reason": "navigation_wing_%d_stranded_%d" % [stage + 1, stranded]})
+				print("NAV_FAIL ", seed_value, " ala ", stage + 1, " salas sin ruta ", stranded)
+				break
+			# The next leg starts where that stage's lift puts people down.
 			var gate: Dictionary = level.manifest.gates[stage]
-			if int(gate.get("beyond", -1)) < 0: break
-			from = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)])
+			if int(gate.get("arrive", -1)) < 0: break
+			from = FLOOR.position_of(level.manifest.rooms[int(gate.arrive)])
 		if seed_value < 20:
 			var success := await walk(level)
 			walks.append({"seed": seed_value, "passed": success, "position_teleports": 0})

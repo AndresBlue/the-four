@@ -395,6 +395,14 @@ func revive_everyone(places: Dictionary, restart: bool) -> void:
 func revived_state(places: Dictionary, restart: bool) -> void:
 	level.apply_revival(places, restart)
 
+## Somebody took a lift: the host says who, and where they come out.
+func ride_lift(seat: int, point: Vector3) -> void:
+	if in_match(): ride_state.rpc(seat, point)
+
+@rpc("authority", "call_remote", "reliable")
+func ride_state(seat: int, point: Vector3) -> void:
+	level.apply_ride(seat, point)
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.

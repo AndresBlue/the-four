@@ -127,7 +127,9 @@ static func stretches(room: Dictionary) -> Array:
 const CONTAINERS := ["commode", "console", "drawers", "bookcase", "cabinet", "boxes"]
 
 static func dress(builder, node: Node3D, room: Dictionary) -> void:
-	if int(room.type) == 19: return
+	# Neither the refuge nor the lift lobby is furnished: one is bare by
+	# design and the other has nothing in it but the car.
+	if int(room.type) == 19 or bool(room.get("landing", false)): return
 	var kept := state(builder, room)
 	var set_name: String = MODULE_SET.get(int(room.type), "")
 	var sets: Array = SETS.get(set_name, [])
@@ -143,7 +145,7 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		furnish(builder, holder, pick, stretch[1], seed_pos, kept, room)
 		# Anything with drawers or shelves is somewhere a number could be
 		# hidden: the builder keeps the list so a floor can put four in them.
-		if pick in CONTAINERS and not bool(room.get("landing", false)): builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick})
+		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick})
 		k += 1
 	decals(builder, node, room, kept)
 

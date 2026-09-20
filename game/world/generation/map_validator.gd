@@ -8,6 +8,10 @@ func validate(data: Dictionary) -> Array[String]:
 	if rooms.size() < 100 or rooms.size() > 140: errors.append("module_count")
 	if data.start == data.exit: errors.append("same_exit")
 	if data.edges.size() - rooms.size() + 1 < 4: errors.append("cycles")
+	# A floor is three wings that share no door at all: one is walked out of by
+	# its lift and not by a wall. So what has to hold is that each wing is of a
+	# piece from the cell its lift arrives at -- checked wing by wing below --
+	# and that the first one reaches the room the first lift is in.
 	var visited := {int(data.start): true}
 	var queue: Array = [int(data.start)]
 	var cursor := 0
@@ -18,7 +22,7 @@ func validate(data: Dictionary) -> Array[String]:
 			if not visited.has(neighbor):
 				visited[neighbor] = true
 				queue.append(neighbor)
-	if visited.size() != rooms.size() or not visited.has(int(data.exit)): errors.append("connectivity")
+	if not visited.has(int(data.exit)): errors.append("connectivity")
 	errors.append_array(wings(data))
 	var occupied := {}
 	for room in rooms:
@@ -101,15 +105,12 @@ func wings(data: Dictionary) -> Array[String]:
 	if gates.size() != count or refuges.size() != count:
 		errors.append("gate_count")
 		return errors
-	var crossings := {}
-	for gate in gates:
-		if int(gate.get("beyond", -1)) >= 0: crossings["%d:%d" % [mini(int(gate.room), int(gate.beyond)), maxi(int(gate.room), int(gate.beyond))]] = true
+	# Nothing joins one wing to another: no door, no wall, nothing but the lift.
 	for edge in data.edges:
 		var a: int = int(edge[0])
 		var b: int = int(edge[1])
-		if int(rooms[a].wing) == int(rooms[b].wing): continue
-		if not crossings.has("%d:%d" % [mini(a, b), maxi(a, b)]): errors.append("wing_leak_%d_%d" % [a, b])
-	# Every wing is one piece on its own, without its gate.
+		if int(rooms[a].wing) != int(rooms[b].wing): errors.append("wing_leak_%d_%d" % [a, b])
+	# Every wing is one piece, walked from the cell its lift arrives at.
 	for wing in count:
 		var members: Array[int] = []
 		for room in rooms:
@@ -117,8 +118,11 @@ func wings(data: Dictionary) -> Array[String]:
 		if members.size() < 20:
 			errors.append("wing_small_%d" % wing)
 			continue
-		var seen := {members[0]: true}
-		var queue: Array[int] = [members[0]]
+		var entries: Array = data.get("entries", [])
+		var first: int = int(entries[wing]) if wing < entries.size() else members[0]
+		if int(rooms[first].wing) != wing: first = members[0]
+		var seen := {first: true}
+		var queue: Array[int] = [first]
 		var cursor := 0
 		while cursor < queue.size():
 			var current: int = queue[cursor]

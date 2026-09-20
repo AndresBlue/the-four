@@ -120,14 +120,12 @@ func cross_to_the_end(offset: Vector3, seconds: float) -> bool:
 				level.match_net.use_code()
 			left -= 1.0
 			continue
-		if level.code_entered and not level.hotel.landings.is_empty():
-			level.player.global_position = level.hotel.landings[0] + offset + Vector3(0, 0.1, 0)
-			await pause_for(0.2)
-			left -= 0.2
-			if level.session.state == level.session.State.WON: return true
-			continue
-		if is_instance_valid(door) and not door.locked and int(gate.get("beyond", -1)) >= 0:
-			level.player.global_position = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)]) + offset + Vector3(0, 0.1, 0)
+		# Into the car of this stage's lift, which is what closes a stage and,
+		# for the last one, what leaves the floor. The offset is what keeps
+		# two guests from standing in the same place; the car is small, so it
+		# is halved to stay inside it.
+		if is_instance_valid(door) and not door.locked and level.hotel.lifts.size() >= level.session.stage:
+			level.player.global_position = level.hotel.lifts[level.session.stage - 1] + offset * 0.5 + Vector3(0, 0.1, 0)
 		else:
 			level.player.global_position = refuge_point(offset)
 		await pause_for(0.1)

@@ -31,12 +31,10 @@ func generate(run_seed: int) -> Dictionary:
 	for attempt in 20:
 		var result := candidate(run_seed, attempt)
 		var errors := VALIDATOR.new().validate(result)
-		# A floor whose exit room falls to a hand on the wall is thrown away
-		# and drawn again. The two refuges before it cannot promise as much --
-		# a room against the next wing is always found in the end -- so what
-		# is asked of those is only that the technique be no shortcut. The
-		# standby floor at the end promises nothing but that it can be walked.
-		if errors.is_empty() and int(result.wall_hits[WINGS - 1]) == 0 and int(result.walk) >= MIN_WALK:
+		# A floor where a hand on the wall finds any of the three refuges is
+		# thrown away and drawn again. The standby floor at the end promises
+		# nothing but that it can be walked.
+		if errors.is_empty() and int(result.wall_hits.max()) == 0 and int(result.walk) >= MIN_WALK:
 			result["fallback"] = false
 			return result
 	var fallback := candidate(404, 0, true)
@@ -77,8 +75,20 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		for i in count:
 			for n in neighbors(i, width, height):
 				if n > i and int(rooms[n].wing) == int(rooms[i].wing): connect_rooms(i, n, edges, adjacency)
+	# Where each wing is walked into from: reception in the first, and the cell
+	# the lift of the wing before arrives at in the others.
+	var entries: Array[int] = []
+	if full_grid:
+		for wing in WINGS:
+			var first := -1
+			for room in rooms:
+				if int(room.wing) == wing and (first < 0 or int(room.id) < first): first = int(room.id)
+			entries.append(first)
 	else:
-		for wing in WINGS: lay_wing(rooms, width, height, wing, rng, edges, adjacency)
+		for wing in WINGS: entries.append(lay_wing(rooms, width, height, wing, rng, edges, adjacency))
+	# The first wing is walked into at reception, whatever cell its corridor
+	# was seeded from: that is where the floor starts.
+	entries[0] = start_id
 	# Connected two/three-cell common spaces include L-shaped lounges. Their
 	# internal boundaries disappear physically, rather than just changing labels.
 	var merged: Array = []
@@ -94,48 +104,24 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 				if members.has(n) and n > id:
 					if not adjacency[id].has(n): connect_rooms(id, n, edges, adjacency)
 					merged.append([id, n])
-	# The way on from each wing: one door, as far into the wing as the boundary
-	# allows, so a wing is walked through and not cut across.
+	# The way on from each wing is its lift. The wings share no wall a door
+	# could go in -- they are not next to each other any more, they are three
+	# parts of a building joined by the service lift -- so every refuge can be
+	# an island: the room and the lift lobby behind its door ringed by ten
+	# cells doored all the way round, which is the one plan a hand on the wall
+	# does not solve. The third lift leaves the floor.
 	var gates: Array = []
 	var refuges: Array = []
 	var hidden: Array = []
-	var entrance := 0
-	for wing in WINGS - 1:
-		var distances := distance_map(adjacency, entrance)
-		var deep: Array = []
-		for i in count:
-			if int(rooms[i].wing) != wing or distances[i] < 0 or bool(rooms[i].corridor): continue
-			if not neighbors(i, width, height).any(func(n): return int(rooms[n].wing) == wing + 1): continue
-			deep.append(i)
-		if deep.is_empty(): return candidate(run_seed, attempt + 1, true)
-		deep.sort_custom(func(one, two): return distances[one] > distances[two])
-		# Within two rooms of the deepest there is: the wing has to be walked
-		# through, so how well a room hides only settles it between the ones
-		# that are far enough in.
-		deep = deep.filter(func(id): return distances[id] >= distances[deep[0]] - 2)
-		var choice := hide_refuge(rooms, width, height, deep, wing, entrance, edges, adjacency, distances)
-		var best: int = int(choice.room)
-		hidden.append(int(choice.hits))
-		var through := -1
-		for n in neighbors(best, width, height):
-			if int(rooms[n].wing) == wing + 1:
-				through = n
-				break
-		connect_rooms(best, through, edges, adjacency)
-		gates.append({"stage": wing + 1, "room": best, "beyond": through})
-		refuges.append(best)
-		entrance = through
-	# The last stage ends the floor: its refuge is the deepest room of the last
-	# wing that sits against the outside of the building, because the door with
-	# the code lock opens outwards, into the way out.
-	var last := distance_map(adjacency, entrance)
-	var island := island_refuge(rooms, width, height, WINGS - 1, entrance, edges, adjacency, last)
-	if island.is_empty(): return candidate(run_seed, attempt + 1, true)
-	var deepest: int = int(island.room)
-	hidden.append(int(island.hits))
-	var outward: Vector2i = island.out
-	gates.append({"stage": WINGS, "room": deepest, "beyond": int(island.landing), "out": [outward.x, outward.y]})
-	refuges.append(deepest)
+	for wing in WINGS:
+		var entrance: int = int(entries[wing])
+		var reach := distance_map(adjacency, entrance)
+		var island := island_refuge(rooms, width, height, wing, entrance, edges, adjacency, reach)
+		if island.is_empty(): return candidate(run_seed, attempt + 1, true)
+		var way: Vector2i = island.out
+		gates.append({"stage": wing + 1, "room": int(island.room), "beyond": int(island.landing), "out": [way.x, way.y], "arrive": int(entries[wing + 1]) if wing + 1 < WINGS else -1})
+		refuges.append(int(island.room))
+		hidden.append(int(island.hits))
 	var exit_id: int = refuges[0]
 	merged = merged.filter(func(edge): return not refuges.any(func(id): return edge.has(id)) and int(rooms[edge[0]].hall) >= 0 and int(rooms[edge[1]].hall) >= 0)
 	for id in refuges:
@@ -160,15 +146,15 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		else: room.type = UNRULY_ROOMS[decoration.randi_range(0, UNRULY_ROOMS.size() - 1)]
 		if room.hall >= 0: room.type = [5, 6, 17, 18][int(room.hall) % 4]
 		if room.id == 0: room.type = 0
-		# Behind the last door: the back stairs. Tiled, lit, and nothing in
-		# it but the way off the floor.
+		# Behind the door of a refuge: the lift lobby. Tiled, lit, and nothing
+		# in it but the car -- to the next wing, or off the floor.
 		if bool(room.get("landing", false)): room.type = 9
 		if refuges.has(room.id): room.type = 19
-	# One arrives into the next wing through its lobby, whatever the cell was
-	# going to be: a landmark to come back to, and the only one there is.
+	# One comes out of the lift into the wing's own lobby, whatever that cell
+	# was going to be: a landmark to come back to, and the only one there is.
 	for gate in gates:
-		var beyond := int(gate.get("beyond", -1))
-		if beyond >= 0 and not refuges.has(beyond): rooms[beyond].type = 10
+		var arrive := int(gate.get("arrive", -1))
+		if arrive >= 0 and not refuges.has(arrive): rooms[arrive].type = 10
 	# The second stage is played on the sets of its wing, and it asks for as
 	# many as there are survivors: a wing has to hold enough of them whatever
 	# the room types rolled, so the ones missing are given a television room.
@@ -176,7 +162,7 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 	var with_tv: Array[int] = []
 	var plain: Array[int] = []
 	for room in rooms:
-		if int(room.wing) != tv_wing or refuges.has(room.id) or int(room.hall) >= 0 or bool(room.corridor) or bool(room.service): continue
+		if int(room.wing) != tv_wing or refuges.has(room.id) or int(room.hall) >= 0 or bool(room.corridor) or bool(room.service) or bool(room.get("landing", false)): continue
 		if FLOOR.RECIPES[room.type].has("tv"): with_tv.append(int(room.id))
 		elif not int(room.type) in [0, 10, 19]: plain.append(int(room.id))
 	while with_tv.size() < TV_ROOMS and not plain.is_empty():
@@ -200,13 +186,10 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 			if kind in ["wardrobe", "curtain"]: rotation = 1 if slot % 2 == 0 else 3
 			room.props.append({"kind": kind, "slot": slot, "rotation": rotation})
 	var walk := 0
-	var leg := int(start_id)
 	for gate in gates:
-		var spans := distance_map(adjacency, leg)
+		var spans := distance_map(adjacency, int(entries[int(gate.stage) - 1]))
 		walk += maxi(0, int(spans[int(gate.room)]))
-		var beyond := int(gate.get("beyond", -1))
-		if beyond >= 0 and int(rooms[beyond].wing) != int(rooms[int(gate.room)].wing): leg = beyond
-	return {"version": FLOOR.VERSION, "seed": run_seed, "walk": walk, "attempt": attempt, "width": width, "height": height, "start": start_id, "exit": exit_id, "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": rooms, "edges": edges, "adjacency": adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "wall_hits": hidden}
+	return {"version": FLOOR.VERSION, "seed": run_seed, "walk": walk, "attempt": attempt, "width": width, "height": height, "start": start_id, "exit": exit_id, "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": rooms, "edges": edges, "adjacency": adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "wall_hits": hidden, "entries": entries}
 
 ## How much of a hotel each cell still is: 1 is a plan somebody drew, 0 is what
 ## the place turned into. It falls as one walks in, and it falls early -- by
@@ -260,14 +243,14 @@ static func doorstep(rooms: Array, width: int, wing: int, rng: RandomNumberGener
 
 ## A wing, laid out in this order: the corridors first, then the service block,
 ## then the rooms hanging off the corridors and the doors between them.
-func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumberGenerator, edges: Array, adjacency: Array) -> void:
+func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumberGenerator, edges: Array, adjacency: Array) -> int:
 	var band: Array[int] = []
 	var tidiness := 0.0
 	for room in rooms:
 		if int(room.wing) != wing: continue
 		band.append(int(room.id))
 		tidiness += float(room.order)
-	if band.is_empty(): return
+	if band.is_empty(): return 0
 	tidiness /= float(band.size())
 	var entrance := doorstep(rooms, width, wing, rng)
 	rooms[entrance].corridor = true
@@ -275,7 +258,9 @@ func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumbe
 	# About a third of a wing that still reads like a hotel is corridor; half
 	# of that where it has come apart, because there the floor is rooms giving
 	# on to rooms.
-	var target := int(round(float(band.size()) * lerpf(0.14, 0.28, tidiness)))
+	# The island of the refuge brings ten cells of its own, a quarter of a
+	# wing, so the network itself is laid thinner than that share suggests.
+	var target := int(round(float(band.size()) * lerpf(0.07, 0.15, tidiness)))
 	var guard := 0
 	while corridor.size() < target and guard < 400:
 		guard += 1
@@ -326,7 +311,7 @@ func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumbe
 	# what keeps the tidy half of the floor from filling up with doors between
 	# rooms to make up for the corridor that never came.
 	for id in band:
-		if bool(rooms[id].corridor) or float(rooms[id].order) < 0.75 or id == 0: continue
+		if bool(rooms[id].corridor) or float(rooms[id].order) < 0.78 or id == 0: continue
 		if neighbors(id, width, height).any(func(n): return int(rooms[n].wing) == wing and bool(rooms[n].corridor)): continue
 		var reachable := -1
 		var spare := -1
@@ -368,6 +353,7 @@ func lay_wing(rooms: Array, width: int, height: int, wing: int, rng: RandomNumbe
 			# A department is one piece: its own back way through.
 			if bool(rooms[id].service) or rng.randf() < lerpf(0.46, 0.05, shared): connect_rooms(id, n, edges, adjacency)
 	join_wing(rooms, width, height, band, entrance, wing, edges, adjacency)
+	return entrance
 
 ## The service block: a compact department -- laundry, stores, maintenance, the
 ## office -- planted in the tidiest patch of the first wing, where it reads at
@@ -430,50 +416,6 @@ static func join_wing(rooms: Array, width: int, height: int, band: Array, entran
 					break
 			if joined: break
 		if not joined: return
-
-## The refuge of a wing, and the single door it is entered by. The deepest
-## rooms are tried in turn, and each of their doors with them, until one is
-## found that the walk with a hand on the wall does not reach -- from the way
-## into the wing, with either hand and setting off any of the four ways. The
-## room that holds up is sealed: every other door of it is bricked up, and
-## whatever that leaves cut off is given another way round.
-##
-## It hides itself in whichever way the floor around it allows. Where the
-## corridors close a ring it ends up the core inside it, with its door on the
-## inner face -- the hand on the wall goes round the outside and comes back
-## out. Where the plan has come apart it ends up at the end of a chain of
-## rooms that open into each other, which the corridors never touch.
-func hide_refuge(rooms: Array, width: int, height: int, candidates: Array, wing: int, entrance: int, edges: Array, adjacency: Array, reach: Array) -> Dictionary:
-	var band: Array[int] = []
-	for room in rooms:
-		if int(room.wing) == wing: band.append(int(room.id))
-	var best := {"room": int(candidates[0]), "keep": -1, "hits": 8, "cost": -1}
-	# Only the deepest handful is worth trying: a refuge near the way in is a
-	# bad refuge however well it hides.
-	for id in candidates.slice(0, 10):
-		var ways: Array[int] = []
-		for n in adjacency[id]:
-			if int(rooms[n].wing) == wing: ways.append(int(n))
-		for keep in ways:
-			# The trial only needs the doors, not the list of them: what the
-			# seal writes into this one is thrown away with it.
-			var trial_edges: Array = []
-			var trial: Array = adjacency.duplicate(true)
-			seal_refuge(rooms, width, height, band, int(id), keep, wing, entrance, trial_edges, trial)
-			# A refuge against the next wing cannot be hidden from the hand on
-			# the wall -- its walls run into the wall between the wings, and
-			# that is the one the walk is holding. What can be asked of it is
-			# that the technique be no shortcut: the one kept is the one that
-			# makes the walk look into the most rooms before it arrives.
-			# Rooms the technique has to look into, and rooms away from the way
-			# in: both count in rooms walked, and the depth counts double,
-			# because it is what everybody pays and not only the one hugging
-			# a wall.
-			var price: int = WALKER.cost(rooms, trial, width, height, entrance, int(id), band.size()) + 2 * maxi(0, int(reach[id]))
-			if price <= int(best.cost): continue
-			best = {"room": int(id), "keep": keep, "hits": WALKER.hits(rooms, trial, width, height, entrance, int(id)), "cost": price}
-	if int(best.keep) >= 0: seal_refuge(rooms, width, height, band, int(best.room), int(best.keep), wing, entrance, edges, adjacency)
-	return best
 
 ## The last refuge and the way off the floor, laid out as an island. The room
 ## with the lock and the landing behind its door are a block of two cells, and
@@ -551,14 +493,6 @@ static func island_ring(rooms: Array, width: int, height: int, one: int, two: in
 	for id in ring:
 		if int(rooms[id].wing) != wing or id == 0: return []
 	return ring
-
-## Bricks up every door of the refuge except the one it keeps, and gives the
-## rooms that left stranded another way round.
-static func seal_refuge(rooms: Array, width: int, height: int, band: Array, refuge: int, keep: int, wing: int, entrance: int, edges: Array, adjacency: Array) -> void:
-	for n in adjacency[refuge].duplicate():
-		if int(rooms[n].wing) != wing or int(n) == keep: continue
-		disconnect_rooms(refuge, int(n), edges, adjacency)
-	join_wing(rooms, width, height, band, entrance, wing, edges, adjacency, [refuge])
 
 static func disconnect_rooms(a: int, b: int, edges: Array, adjacency: Array) -> void:
 	adjacency[a].erase(b)

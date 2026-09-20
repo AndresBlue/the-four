@@ -32,35 +32,28 @@ func run() -> void:
 		for room in data.rooms: used_types[room.type] = true
 		# Wings: no way from one to the next except its gate, and each one big
 		# enough to be a stage of its own.
-		var gate_keys := {}
-		for gate in data.gates:
-			if int(gate.get("beyond", -1)) >= 0: gate_keys["%d:%d" % [mini(int(gate.room), int(gate.beyond)), maxi(int(gate.room), int(gate.beyond))]] = true
 		var counts := [0, 0, 0]
 		for room in data.rooms: counts[int(room.wing)] += 1
 		if counts.min() < 20: small_wings.append(seed_value)
+		# Nothing joins one wing to another: the lift is the only way across.
 		for edge in data.edges:
-			if int(data.rooms[int(edge[0])].wing) == int(data.rooms[int(edge[1])].wing): continue
-			if not gate_keys.has("%d:%d" % [mini(int(edge[0]), int(edge[1])), maxi(int(edge[0]), int(edge[1]))]): wing_leaks.append(seed_value)
-		var entrance: int = int(data.start)
+			if int(data.rooms[int(edge[0])].wing) != int(data.rooms[int(edge[1])].wing): wing_leaks.append(seed_value)
 		var rooms_walked := 0
 		for gate in data.gates:
-			var distances: Array = GEN.distance_map(data.adjacency, entrance)
+			var distances: Array = GEN.distance_map(data.adjacency, int(data.entries[int(gate.stage) - 1]))
 			rooms_walked += maxi(0, int(distances[int(gate.room)]))
-			if int(gate.get("beyond", -1)) >= 0: entrance = int(gate.beyond)
 		walked.append(rooms_walked)
-		# Every refuge is entered by one door and no other. The last one has
-		# the locked door to the landing behind it as well, and that landing
-		# is a dead end: nothing else opens on to it.
-		var landing := int(data.gates[data.gates.size() - 1].get("beyond", -1))
+		# Every refuge is entered by one door and no other, with the locked
+		# door to its lift lobby besides, and that lobby is a dead end:
+		# nothing else opens on to it. And none of the three is found by a
+		# hand on the wall, either hand, any of the four ways of setting off.
 		for wing in 3:
 			var refuge: int = int(data.refuges[wing])
-			var ways: Array = data.adjacency[refuge].filter(func(id): return int(data.rooms[id].wing) == wing and id != landing)
+			var lobby := int(data.gates[wing].get("beyond", -1))
+			var ways: Array = data.adjacency[refuge].filter(func(id): return int(data.rooms[id].wing) == wing and id != lobby)
 			if ways.size() != 1: one_door.append([seed_value, wing, ways.size()])
-		if landing < 0 or data.adjacency[landing].size() != 1 or not bool(data.rooms[landing].get("landing", false)): sealed_landing.append(seed_value)
-		# And the exit room is not found by walking with a hand on the wall:
-		# not with either hand, not setting off any of the four ways.
-		var last_wing: int = int(data.gates[1].beyond) if int(data.gates[1].get("beyond", -1)) >= 0 else int(data.start)
-		if WALKER.hits(data.rooms, data.adjacency, int(data.width), int(data.height), last_wing, int(data.refuges[2])) > 0: wall_solved.append(seed_value)
+			if lobby < 0 or data.adjacency[lobby].size() != 1 or not bool(data.rooms[lobby].get("landing", false)): sealed_landing.append(seed_value)
+			if WALKER.hits(data.rooms, data.adjacency, int(data.width), int(data.height), int(data.entries[wing]), refuge) > 0: wall_solved.append(seed_value)
 		# The numbers: each wing its hundred, never two doors the same, and
 		# only the rooms let to somebody carry one.
 		var seen_numbers := {}
@@ -74,8 +67,8 @@ func run() -> void:
 			seen_numbers[number] = true
 		# And they are no longer a compass: whether they climb or fall as one
 		# walks into a wing is drawn, so over a thousand floors it is a coin.
-		var wing_entrance: int = int(data.start)
 		for wing in 3:
+			var wing_entrance: int = int(data.entries[wing])
 			var reach: Array = GEN.distance_map(data.adjacency, wing_entrance)
 			var by_distance: Array = data.rooms.filter(func(room): return int(room.wing) == wing and int(room.get("number", 0)) > 0 and reach[int(room.id)] >= 0)
 			by_distance.sort_custom(func(one, two): return reach[int(one.id)] < reach[int(two.id)])
@@ -88,11 +81,10 @@ func run() -> void:
 					far += int(by_distance[by_distance.size() - 1 - index].number) % 100
 				if far > near: climbing += 1
 				elif far < near: falling += 1
-			if wing < data.gates.size() and int(data.gates[wing].get("beyond", -1)) >= 0: wing_entrance = int(data.gates[wing].beyond)
 	check("1.000 semillas: grafos y módulos válidos", failures.is_empty())
 	check("Cada refugio se entra por una sola puerta", one_door.is_empty())
-	check("Detrás de la última puerta solo hay el rellano, sin otra entrada", sealed_landing.is_empty())
-	check("Ir pegado a una pared no encuentra la habitación de salida", wall_solved.is_empty())
+	check("Detrás de la puerta de cada refugio solo está su ascensor, sin otra entrada", sealed_landing.is_empty())
+	check("Ir pegado a una pared no encuentra ningún refugio", wall_solved.is_empty())
 	check("La numeración es de hotel: una centena por ala, sin repetir y sin placa en servicio", number_faults.is_empty())
 	var drawn: float = float(climbing) / maxf(1.0, float(climbing + falling))
 	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)

@@ -624,7 +624,7 @@ func place_containers() -> void:
 		room_node.add_child(piece)
 		containers.append(piece)
 	# The keypad, beside the last door, on the refuge's side of it.
-	if not hotel.landings.is_empty() and not manifest.gates.is_empty():
+	if not hotel.lifts.is_empty() and not manifest.gates.is_empty():
 		var last: Dictionary = manifest.gates[manifest.gates.size() - 1]
 		var out: Array = last.get("out", [1, 0])
 		var away := Vector3(int(out[0]), 0, int(out[1]))
@@ -755,18 +755,31 @@ func follow_players(stage: int) -> void:
 	var gates: Array = manifest.get("gates", [])
 	if stage - 2 < 0 or stage - 2 >= gates.size(): return
 	var gate: Dictionary = gates[stage - 2]
-	var beyond := int(gate.get("beyond", -1))
-	if beyond < 0: return
+	var arrive := int(gate.get("arrive", -1))
+	if arrive < 0: return
+	# The wings share no wall, so it cannot walk there: it takes the service
+	# lift as well, and steps out a few rooms from where the survivors did --
+	# near enough to be a problem, far enough not to land on top of them.
+	var spans := GENERATOR.distance_map(manifest.adjacency, arrive)
+	var start := arrive
+	for room in manifest.rooms:
+		if int(room.wing) != int(manifest.rooms[arrive].wing) or bool(room.get("landing", false)): continue
+		if spans[int(room.id)] < 0 or spans[int(room.id)] > 6: continue
+		if spans[int(room.id)] > spans[start]: start = int(room.id)
+	locust.global_position = FLOOR.position_of(manifest.rooms[start]) + Vector3(0, 0.04, 0)
+	locust.velocity = Vector3.ZERO
+	locust.net_states.clear()
+	locust.net_clock = 0.0
 	if locust.mode in [locust.Mode.PATROL, locust.Mode.SEARCH]: locust.set_mode(locust.Mode.INVESTIGATE)
 	# After set_mode, which clears a guided route of its own.
-	locust.patrol_room = beyond
-	locust.destination = FLOOR.position_of(manifest.rooms[beyond])
+	locust.patrol_room = start
+	locust.destination = FLOOR.position_of(manifest.rooms[arrive])
 	locust.guided = true
 	locust.repath = 0
 	# And it is told, in the only language it has: its own voice, and the road
-	# to the door laid out in its reading.
+	# to the lift they came out of laid out in its reading.
 	locust.grunt()
-	var road := FLOOR.navigation_path(get_world_3d().navigation_map, locust.global_position, FLOOR.position_of(manifest.rooms[int(gate.room)]))
+	var road := FLOOR.navigation_path(get_world_3d().navigation_map, locust.global_position, FLOOR.position_of(manifest.rooms[arrive]))
 	if road.size() >= 2: match_net.tell_stage(road)
 
 ## The power goes, everywhere at once. Nothing says so in words: the hotel
@@ -793,9 +806,9 @@ func revival_point() -> Vector3:
 	var gates_list: Array = manifest.get("gates", [])
 	if session.stage <= 1 or gates_list.size() < session.stage - 1: return Vector3(0, 0.04, 0)
 	var gate: Dictionary = gates_list[session.stage - 2]
-	var beyond := int(gate.get("beyond", -1))
-	if beyond < 0: return FLOOR.position_of(manifest.rooms[refuge_room()])
-	return FLOOR.position_of(manifest.rooms[beyond])
+	var arrive := int(gate.get("arrive", -1))
+	if arrive < 0: return FLOOR.position_of(manifest.rooms[refuge_room()])
+	return FLOOR.position_of(manifest.rooms[arrive])
 
 ## Applied on every machine: the local body comes back where it is told, the
 ## others are placed, and a stage that was lost starts again as it was found.
@@ -1135,7 +1148,7 @@ func apply_code() -> void:
 	if code_entered: return
 	code_entered = true
 	if is_instance_valid(lock): lock.set_open(true)
-	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, hotel.landings[0] if not hotel.landings.is_empty() else player.global_position, -4.0)
+	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, hotel.lifts[hotel.lifts.size() - 1] if not hotel.lifts.is_empty() else player.global_position, -4.0)
 
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
@@ -1329,12 +1342,7 @@ func host_gate(delta: float) -> void:
 		session.goal["done"] = found_digits.size()
 		session.goal["needed"] = DIGITS.COUNT
 		session.update_goal(delta, code_entered)
-		# Out through the last door: whoever steps onto the landing leaves.
-		if code_entered and not hotel.landings.is_empty():
-			for body in survivors():
-				if body.global_position.distance_to(hotel.landings[0]) < 2.4:
-					session.finish_stage()
-					return
+		ride_lifts()
 		return
 	if session.stage == 2 and not televisions.is_empty():
 		var needed: int = TV_PLACEMENT.needed(session.roster_count)
@@ -1349,17 +1357,48 @@ func host_gate(delta: float) -> void:
 			session.changed.emit()
 		session.update_goal(delta, done >= needed)
 	else: session.update_goal(delta, session.can_depart())
-	if not session.more_stages(): return
-	# Once its door is open, stepping through is what closes the stage -- even
-	# if somebody left the refuge in the meantime and the condition no longer
-	# reads as met.
-	var gate = hotel.gates[session.stage - 1] if is_instance_valid(hotel) and hotel.gates.size() >= session.stage else null
-	if not is_instance_valid(gate) or gate.locked: return
-	for body in survivors():
-		var room: Dictionary = FLOOR.room_at(manifest.rooms, body.global_position)
-		if not room.is_empty() and int(room.get("wing", 0)) >= session.stage:
-			session.finish_stage()
-			return
+	ride_lifts()
+
+## Whoever steps into a lift takes it. The stage that lift belongs to closes
+## behind them -- what walking through the door used to do -- and they come
+## out in front of the car at the way into the next wing; the last lift leaves
+## the floor. The car stays there for the rest of the floor, so anybody left
+## behind rides after them. It is the only way from one wing to the next: they
+## share no wall.
+const RIDE_REACH := 1.4
+const RIDE_REST := 3.0
+var riding := {}
+func ride_lifts() -> void:
+	for seat in riding.keys():
+		riding[seat] = riding[seat] - get_physics_process_delta_time()
+		if riding[seat] <= 0.0: riding.erase(seat)
+	for index in hotel.lifts.size():
+		var door = hotel.gates[index] if hotel.gates.size() > index else null
+		if not is_instance_valid(door) or door.locked: continue
+		for body in survivors():
+			var seat := int(body.slot)
+			if riding.has(seat) or body.global_position.distance_to(hotel.lifts[index]) > RIDE_REACH: continue
+			# The last one does not arrive anywhere on this floor.
+			if index >= hotel.arrivals.size() or hotel.arrivals[index] == Vector3.ZERO:
+				session.finish_stage()
+				return
+			var point: Vector3 = hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
+			riding[seat] = RIDE_REST
+			apply_ride(seat, point)
+			if match_net.in_match(): match_net.ride_lift(seat, point)
+			if session.stage == index + 1: session.finish_stage()
+
+## The lift has moved somebody: on their own machine the body goes with it, on
+## the others the puppet is put where it is told. Both doors are heard, the
+## one that shuts here and the one that opens there.
+func apply_ride(seat: int, point: Vector3) -> void:
+	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, point + Vector3(0, 1.2, 0), -6.0)
+	if seat == player.slot:
+		if player.hidden: player.force_leave_hide()
+		player.velocity = Vector3.ZERO
+		player.global_position = point
+		ui.flash("EL ASCENSOR SE ABRE", 2.5)
+	elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(point, 0.0)
 
 ## Dead online: the view follows a living teammate; a click switches to the next.
 func watch_teammates() -> void:

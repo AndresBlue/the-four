@@ -20,16 +20,16 @@ func frames(count: int) -> void:
 	for i in count: await physics_frame
 
 ## Walks into the refuge of the stage in hand, waits for the door on to
-## unlock and steps through it, which is what closes a stage now.
+## unlock and steps into the lift behind it, which is what closes a stage now.
 func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 	var session = level.session
 	var left := seconds
-	var gate: Dictionary = level.manifest.gates[session.stage - 1]
+	var car: Vector3 = level.hotel.lifts[session.stage - 1]
 	while left > 0.0:
 		if session.stage >= stage and session.state == session.State.PLAYING: return true
-		if session.goal.get("ready", false) and int(gate.get("beyond", -1)) >= 0:
-			# Through the door: one step into the wing beyond.
-			level.player.global_position = FLOOR.position_of(level.manifest.rooms[int(gate.beyond)]) + Vector3(0, 0.04, 0)
+		if session.goal.get("ready", false):
+			# Into the car: the lift takes it from there.
+			level.player.global_position = car + Vector3(0, 0.04, 0)
 		else:
 			level.player.global_position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
 		level.player.velocity = Vector3.ZERO
@@ -153,7 +153,7 @@ func run() -> void:
 	check("Con el código puesto la puerta se abre", level.code_entered and not exit_door.locked)
 	var won := false
 	for i in 300:
-		level.player.global_position = level.hotel.landings[0] + Vector3(0, 0.1, 0)
+		level.player.global_position = level.hotel.lifts[level.hotel.lifts.size() - 1] + Vector3(0, 0.1, 0)
 		await physics_frame
 		if session.state == session.State.WON:
 			won = true

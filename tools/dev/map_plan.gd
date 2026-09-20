@@ -26,19 +26,20 @@ func _initialize() -> void:
 			if bool(room.service): mark = "S"
 			if int(room.id) == 0: mark = "@"
 			if bool(room.get("landing", false)): mark = "L"
+			if data.get("entries", []).has(int(room.id)): mark = "E"
 			if data.refuges.has(int(room.id)): mark = "R"
 			line += mark
 			if x < width - 1: line += door_mark(data, id, id + 1, "-")
 			if z < height - 1: below += door_mark(data, id, id + width, "|") + " "
 		print(line)
 		if z < height - 1: print(below)
-	var entrance: int = int(data.start)
+	var entrance: int = int(data.entries[0])
 	for wing in 3:
 		var refuge: int = int(data.refuges[wing])
 		var found: int = WALKER.hits(data.rooms, data.adjacency, width, height, entrance, refuge)
 		var doors: Array = data.adjacency[refuge].filter(func(id): return int(data.rooms[id].wing) == wing and not bool(data.rooms[id].get("landing", false)))
 		print("ala ", wing + 1, ": refugio ", refuge, " con ", doors.size(), " puerta(s), la mano en la pared lo encuentra ", found, "/8 veces")
-		if wing < data.gates.size() and int(data.gates[wing].get("beyond", -1)) >= 0 and int(data.rooms[int(data.gates[wing].beyond)].wing) != wing: entrance = int(data.gates[wing].beyond)
+		if wing + 1 < 3: entrance = int(data.entries[wing + 1])
 	quit()
 
 ## A door between two cells, an equals sign where the wall came down because
