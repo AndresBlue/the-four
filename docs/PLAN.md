@@ -146,9 +146,6 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
 - [ ] **El recorte de blend shapes va enganchado a mano en cada `.import`.** Si
   se reemplaza o reimporta un modelo se pierde el enganche en silencio y el
   paquete vuelve a engordar 50 MB sin que nada se ponga rojo.
-- [ ] **Pruebas que no corre nadie:** `tests/legacy/walkthrough_test.gd`,
-  `audio_test.gd` y `h1_test.gd` no están en `verify.ps1`. O se corren o se
-  archivan como registro histórico.
 - [ ] **La reconexión que falló una vez** («Reaparece donde estaba»): un
   invitado que se cae y vuelve apareció lejos de donde estaba una vez de cinco
   verificaciones, y no se ha vuelto a reproducir en seis pasadas seguidas del

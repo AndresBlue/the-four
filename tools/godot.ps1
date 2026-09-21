@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','legacy','legacy-test','h1-test','walkthrough','audio-test','build','capture','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -17,7 +17,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','export','legacy')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','export')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -35,13 +35,6 @@ switch ($Mode) {
     'hotel-audio' { $arguments += @('--headless','--script','res://tests/hotel/hotel_audio_test.gd','--','--test-profile','--automation','--silent') }
     'hotel-benchmark' { $arguments += @('--script','res://tools/benchmarks/hotel_benchmark.gd','--','--test-profile','--automation','--no-enemy','--silent') }
     'compatibility' { $arguments += @('--rendering-method','gl_compatibility') }
-    'legacy' { $arguments += 'res://legacy/fuse_prototype/main.tscn' }
-    'legacy-test' { $arguments += @('--headless','--script','res://tests/legacy/smoke_test.gd') }
-    'h1-test' { $arguments += @('--headless','--script','res://tests/legacy/h1_test.gd') }
-    'walkthrough' { $arguments += @('--script','res://tests/legacy/walkthrough_test.gd') }
-    'audio-test' { $arguments += @('--headless','--script','res://tests/legacy/audio_test.gd') }
-    'build' { $arguments += @('--headless','--script','res://tools/legacy/build_scene.gd') }
-    'capture' { $arguments += @('res://legacy/fuse_prototype/main.tscn','--','--capture=' + (Join-Path $projectPath 'evidence/corridor.png')) }
     'export' {
         New-Item -ItemType Directory -Force (Join-Path $projectPath 'exports/windows') | Out-Null
         # Godot caches every scene it converts for export and only redoes one

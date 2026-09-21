@@ -53,7 +53,7 @@ F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. 
 
 ## Ejecutable para Windows
 
-`./tools/godot.ps1 export` genera `exports/windows/TheFour.exe`: un único archivo con todo el juego (plantilla release de Godot 4.7.2, sin consola ni atajos de depuración como F9). La configuración está en `export_presets.cfg`, que excluye `tests/`, `tools/`, `legacy/`, `evidence/`, `models/`, `sfx/`, `source_assets/`, `exports/`, `docs/` y los `.zip` de origen; `evidence/`, `models/`, `sfx/` y `exports/` llevan además un `.gdignore` para que Godot ni siquiera los importe. `exports/` no se versiona.
+`./tools/godot.ps1 export` genera `exports/windows/TheFour.exe`: un único archivo con todo el juego (plantilla release de Godot 4.7.2, sin consola ni atajos de depuración como F9). La configuración está en `export_presets.cfg`, que excluye `tests/`, `tools/`, `evidence/`, `models/`, `sfx/`, `source_assets/`, `exports/`, `docs/` y los `.zip` de origen; `evidence/`, `models/`, `sfx/` y `exports/` llevan además un `.gdignore` para que Godot ni siquiera los importe. `exports/` no se versiona.
 
 **Pesa unos 970 MB**, demasiado: el paquete lleva a la vez los archivos de origen y su copia ya importada, y las texturas de los personajes son de 4K. Está anotado como pendiente en [docs/PLAN.md](docs/PLAN.md). Antes de distribuirlo deben resolverse los permisos de los assets.
 
@@ -81,22 +81,17 @@ Desde PowerShell en la carpeta del proyecto:
 ./tools/benchmarks/run_bench.ps1 -Label prueba
 ```
 
-`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, intro, visión de eco, bucle de partida, audio, audio espacial, regresión del prototipo histórico, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro; `execution` monta la escena de la muerte —la criatura enfrente, te ve, gruñe, te persigue y te ejecuta— y escribe cada golpe en la consola con el segundo en que ocurre, volviéndola a montar cada vez que mueres.
+`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, intro, visión de eco, bucle de partida, audio, audio espacial, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro; `execution` monta la escena de la muerte —la criatura enfrente, te ve, gruñe, te persigue y te ejecuta— y escribe cada golpe en la consola con el segundo en que ocurre, volviéndola a montar cada vez que mueres.
 
 Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. Las regresiones de arquitectura usan `--no-enemy`; `survival-test` mantiene la IA real. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
 
 Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle del ambiente; `hotel_benchmark.gd` mide tres vistas quietas y un tramo caminando con cada preset gráfico a 1080p (`tools/benchmarks/run_bench.ps1` lo lanza). Ejecutarlas con Godot, `--path` al proyecto, `--script res://tests/hotel/hotel_audio_test.gd o res://tools/benchmarks/hotel_benchmark.gd` y, tras `--`, `--automation --test-profile --silent`.
-
-## Prototipo anterior
-
-`./tools/godot.ps1 legacy` abre el H1 de fusibles con Locust estático. `legacy-test`, `h1-test`, `audio-test` y `walkthrough` conservan sus pruebas históricas. `build` reconstruye exclusivamente la escena histórica y sobrescribe esa escena; no genera el hotel actual.
 
 ## Estructura y documentación
 
 - `game/`: escenas, scripts y recursos agrupados por función. Entrada: `game/app/hotel.tscn`.
 - `tools/workbenches/module_gallery.tscn`: galería de los veinte módulos.
 - `docs/DEVELOPMENT.md`: guía para localizar, editar y comprobar cada sistema.
-- `legacy/fuse_prototype/main.tscn` y scripts anteriores: prototipo histórico de fusibles.
 - `docs/README.md`: índice de la documentación, por si no sabes dónde mirar.
 - `docs/GAME_DESIGN.md`: el diseño vigente. `docs/PLAN.md`: estado, orden de trabajo y pendientes, en un solo documento.
 - `docs/VISION_LOCUST.md`, `docs/AUDIO.md`, `docs/PERFORMANCE.md`, `docs/REALISM.md`: la visión de la criatura, el sonido, el rendimiento medido y el plan de imagen.
