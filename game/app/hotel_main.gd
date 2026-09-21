@@ -319,7 +319,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.sanity = 100.0
 	player.set_burnt(false)
 	player.camera.rotation = Vector3.ZERO
-	player.handheld = Vector3.ZERO
+	player.reset_handheld()
 	player.torch.visible = false
 	player.rotation.y = -PI / 2 if manifest.adjacency[0].has(1) else PI
 	visibility_clock = 1
@@ -960,6 +960,7 @@ func restore_local_player(point: Vector3) -> void:
 	player.visible = true
 	player.collision_layer = 4
 	player.velocity = Vector3.ZERO
+	player.reset_handheld()
 	player.global_position = point
 	# Whoever closed the stage is put on their feet by the session at the same
 	# moment their lift is carrying them: the ride keeps the hold and the

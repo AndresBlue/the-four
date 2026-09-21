@@ -42,23 +42,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que rompe una partida
 
-- [ ] **La cámara se desboca a pocos FPS y acaba en negro hasta reiniciar el
-  juego.** En una máquina modesta, al empezar la partida, la cámara da vueltas
-  en círculos de arriba abajo cada vez más rápido y acaba en negro entero, sin
-  linterna ni nada, y **sigue negra al salir al menú y empezar otra partida**.
-  Es el muelle de la cámara en mano (`hotel_player.update_handheld()`): un
-  Euler explícito con rigidez 110 y amortiguamiento 13 multiplicados por el
-  `delta` real, sin límite. Simulado con esos números aguanta hasta unos 10 FPS
-  y **por debajo de 8 se dispara** (revienta en 137 cuadros a 8 FPS y en 44 a
-  5); cuando el valor sale del rango del float, `camera.rotation` se queda en
-  NaN, y una cámara en NaN no dibuja nada. Y se queda: `sway` y `sway_velocity`
-  no se reponen en ningún sitio —ni al construir un piso, ni al revivir, ni en
-  un armario, donde sí se limpian `camera.rotation` y `handheld`— y el jugador
-  es el mismo nodo de una partida a otra. De paso, `look_pitch()` devuelve NaN,
-  que en cooperativo viaja a las otras máquinas.
-  **Qué hacer:** integrar con paso acotado (o implícito, que a esta rigidez
-  sale gratis), reponer el muelle donde se repone lo demás, y no dejar salir de
-  ahí un valor que no sea finito. Comprobarlo con `--fixed-fps 5`.
 - [ ] **La linterna se pierde al revivir.** Quien vuelve de pie se queda sin la
   suya, aunque siga viendo las de los demás. La del cuerpo propio es
   `top_level` (va detrás de la cámara con retardo, no colgada de ella) y

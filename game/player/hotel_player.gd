@@ -87,6 +87,17 @@ var torch_clock := 0.0
 const TREMOR := Vector3(0.0016, 0.0013, 0.0011)
 const BREATH := Vector3(0.0022, 0.0, 0.0009)
 const GAIT := Vector3(0.0055, 0.0022, 0.0035)
+## The spring that trails the picture behind a turn: how stiff it is, how much
+## it is damped, and how far it may ever throw the camera (radians, four times
+## the largest target, so nothing normal comes near it). It is integrated
+## implicitly, which at this stiffness costs one division and holds at any
+## frame time. The explicit form this replaces diverged below about 8 FPS, and
+## a spring that diverges writes infinity into the camera's rotation, which
+## becomes NaN -- and a camera in NaN draws nothing at all, not for this match
+## and not for the next, because the body is the same node throughout.
+const SWAY_STIFFNESS := 110.0
+const SWAY_DAMPING := 13.0
+const SWAY_LIMIT := 0.1
 var handheld_enabled := true
 ## Rotation offset applied last frame.
 var handheld := Vector3.ZERO
@@ -294,8 +305,12 @@ func update_handheld(delta: float) -> void:
 	# slightly underdamped spring brings the camera back with a hint of
 	# overshoot. Clamped: a flick never throws the picture far.
 	var target := Vector3(clampf(-turn_rate.y * 0.01, -0.02, 0.02), clampf(-turn_rate.x * 0.008, -0.02, 0.02), clampf(turn_rate.x * 0.012, -0.025, 0.025))
-	sway_velocity += ((target - sway) * 110.0 - sway_velocity * 13.0) * delta
+	# Backward Euler: the velocity is solved at the end of the step rather than
+	# taken from its start, so a long frame settles the spring instead of
+	# overshooting further every time.
+	sway_velocity = (sway_velocity + (target - sway) * SWAY_STIFFNESS * delta) / (1.0 + delta * SWAY_DAMPING + delta * delta * SWAY_STIFFNESS)
 	sway += sway_velocity * delta
+	sway = sway.clampf(-SWAY_LIMIT, SWAY_LIMIT)
 	var tremor := Vector3(tremor_noise(hand_clock, 0), tremor_noise(hand_clock, 1), tremor_noise(hand_clock, 2)) * TREMOR
 	# Breathing: slow, deeper when winded.
 	var winded := 1.0 + (1.0 - stamina / 100.0) * 2.0
@@ -305,8 +320,26 @@ func update_handheld(delta: float) -> void:
 	var strike := pow(1.0 - absf(sin(step_phase)), 5.0)
 	var gait := Vector3(strike, sin(step_phase), sin(step_phase)) * GAIT * bob_weight * (1.7 if velocity.length() > 4.5 else 0.6 if crouched else 1.0)
 	var offset := (sway + tremor + breath + gait) * strength
+	# Nothing that is not a number leaves here. It should not be reachable any
+	# more, but what it costs to be wrong is a black screen that outlives the
+	# match: back to the menu, into a new floor, and still black.
+	if not offset.is_finite() or not camera.rotation.is_finite():
+		reset_handheld()
+		return
 	camera.rotation += offset - handheld
 	handheld = offset
+
+## The hand back at rest. Wherever the body is put somewhere new -- a floor
+## built, a revival, a wardrobe -- the spring starts again with it: the player
+## is the same node from one match to the next, and anything it was doing
+## would otherwise be carried across.
+func reset_handheld() -> void:
+	sway = Vector3.ZERO
+	sway_velocity = Vector3.ZERO
+	turn_delta = Vector2.ZERO
+	turn_rate = Vector2.ZERO
+	handheld = Vector3.ZERO
+	if is_instance_valid(camera) and not camera.rotation.is_finite(): camera.rotation = Vector3.ZERO
 
 func update_focus(delta: float) -> void:
 	if not autofocus:
@@ -460,7 +493,7 @@ func enter_hide(place: Node3D) -> bool:
 	rotation.y = place.global_rotation.y + PI
 	hide_yaw = rotation.y
 	camera.rotation = Vector3.ZERO
-	handheld = Vector3.ZERO
+	reset_handheld()
 	torch.visible = false
 	hiding_changed.emit(true, global_position)
 	return true
@@ -499,6 +532,7 @@ func reset_survival() -> void:
 	recovery_delay = 0
 	exhausted = false
 	step_phase = 0
+	reset_handheld()
 
 func set_character(index: int) -> void:
 	if avatar != null and avatar.character != index: avatar.configure(index, true)

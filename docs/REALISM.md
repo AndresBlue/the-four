@@ -98,6 +98,8 @@ La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no u
    - un muelle rígido y algo subamortiguado se queda atrás en los giros rápidos y se inclina hacia el lado;
    - temblor de mano 1/f, respiración (más honda sin resistencia), cabeceo en cada pisada y sacudida al aterrizar;
    - el temblor se quita y se repone en cada fotograma, así que la mirada nunca lo acumula, y la red envía la mirada limpia (`look_pitch()`);
+   - el muelle se integra de forma **implícita** (Euler hacia atrás, una división), así que no hay velocidad de fotogramas a la que se dispare: medido en un piso de verdad con `tools/dev/low_fps_camera.gd`, 600 cuadros a 3 y a 5 FPS sin salirse (la forma explícita anterior dejaba la cámara en NaN en el cuadro 54 a 5 FPS, y a 60 FPS las dos dan lo mismo, 0,0219 frente a 0,0220 rad);
+   - se repone con el cuerpo (`reset_handheld()`: piso nuevo, resurrección, armario) y no deja salir de ahí un valor que no sea finito, porque una cámara en NaN no dibuja nada y el jugador es el mismo nodo de una partida a otra;
    - lo escala «Movimiento de cámara», «Efectos reducidos» lo quita, y las pruebas lo apagan salvo con `--handheld`.
 2. **Óptica y sensor en el lienzo** (`lens.gdshader`, capa 2, entre la imagen 3D y el OSD):
    - distorsión de barril: se renderiza más ancho y se remapea, y el centro conserva los 78° de siempre (`camcorder_look.gd`, que da el FOV a todas las cámaras que filma: jugador, observación, entrada y portada);

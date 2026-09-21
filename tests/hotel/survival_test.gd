@@ -252,6 +252,28 @@ func run() -> void:
 	level.hotel.update_visibility(player.position, true)
 	check("Efectos reducidos apagan polvo y movimiento de cortinas", not level.hotel.dust.visible and level.hotel.curtain_material.get_shader_parameter("motion") == 0.0)
 	level.settings.set_value("reduced", false)
+	# The hand-held camera at a frame time no machine should ever see. The
+	# explicit integration this replaced gained energy every frame below about
+	# 8 FPS: measured on a real floor it left the camera in NaN at frame 54 at
+	# 5 FPS, and a camera in NaN draws nothing -- back through the menu and
+	# into the next match, because the body is the same node.
+	player.handheld_enabled = true
+	player.reset_handheld()
+	var worst_sway := 0.0
+	var worst_speed := 0.0
+	for i in 200:
+		player.turn_delta = Vector2(0.6 if i % 2 == 0 else -0.6, 0.35 if i % 3 == 0 else -0.35)
+		player.update_handheld(0.2)
+		worst_sway = maxf(worst_sway, player.sway.length())
+		worst_speed = maxf(worst_speed, player.sway_velocity.length())
+	check("El muelle de la cámara aguanta 5 FPS sin dispararse", player.camera.rotation.is_finite() and worst_sway < 0.06 and worst_speed < 1.0)
+	# And whatever else might ever write an impossible number into the camera,
+	# the picture comes back by itself instead of staying black until the game
+	# is started again.
+	player.camera.rotation = Vector3(NAN, 0.0, 0.0)
+	player.update_handheld(1.0 / 60.0)
+	check("Una cámara en NaN se repone sola", player.camera.rotation.is_finite() and is_finite(player.look_pitch()) and player.sway == Vector3.ZERO)
+	player.handheld_enabled = false
 	var file := FileAccess.open("res://evidence/survival_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed":failed == 0,"checks": checks}, "\t"))
 	file.close()
