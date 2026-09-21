@@ -150,8 +150,10 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
   `audio_test.gd` y `h1_test.gd` no están en `verify.ps1`. O se corren o se
   archivan como registro histórico.
 - [ ] **Comprobaciones de red que fallan de vez en cuando** («Una puerta cambia
-  a petición de un invitado»): el invitado no llega a tiempo y al repetir el
-  escenario pasa entero. Hay que darles arranque con reintento en vez de un
+  a petición de un invitado»; en el versus, «Los ruidos de los supervivientes
+  le llegan como contactos», que depende de un único ruido lanzado un segundo
+  después del gruñido): no llegan a tiempo y al repetir el escenario pasan
+  enteras. Hay que darles arranque con reintento en vez de un
   plazo fijo, para no acostumbrarse a repetir la verificación.
 - [ ] **La vista de la criatura solo está validada en Forward+.** En
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas

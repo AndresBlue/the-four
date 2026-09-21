@@ -136,8 +136,24 @@ func run() -> void:
 	var door = scene.hotel.doors[0]
 	door.open_immediately()
 	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
-	scene.player.position = door.doorway + across * 0.15 + Vector3(0, 0.04, 0)
-	check("Puerta no cierra con jugador en el umbral", not door.toggle())
+	# Somebody standing in the frame: the door shuts all the same, does not
+	# move them, and stays a ghost to them until they have stepped out of it.
+	for frame in 4: await physics_frame
+	scene.player.position = door.doorway + across * 0.1 + Vector3(0, 0.04, 0)
+	for frame in 4: await physics_frame
+	var standing: Vector3 = scene.player.global_position
+	check("La puerta cierra aunque haya alguien en el umbral", door.toggle(false, false))
+	for frame in 45: await physics_frame
+	check("Y no lo empuja: se queda donde estaba", not door.opened and scene.player.global_position.distance_to(standing) < 0.05)
+	check("Mientras está dentro de la hoja la puerta no es sólida", door.collision_layer == door.GHOST)
+	scene.player.rotation.y = door.closed_rotation
+	scene.player.camera.rotation = Vector3.ZERO
+	await physics_frame
+	check("Y se puede volver a abrir desde dentro", scene.focused_door() == door)
+	scene.player.position = Vector3(0, 0.04, 0)
+	for frame in 4: await physics_frame
+	check("En cuanto sale, la puerta cerrada recupera colisión", not door.opened and door.collision_layer == door.SOLID)
+	door.open_immediately()
 	scene.player.position = door.doorway + across * 0.8 + Vector3(0, 0.04, 0)
 	check("Puerta cierra con el jugador ya pasado el marco", door.toggle(false, false))
 	scene.player.position = Vector3(0, 0.04, 0)

@@ -461,7 +461,6 @@ func begin_online_play(config: Dictionary) -> void:
 		locust.camera.current = true
 		# The hunter does not hear its own presence or dread.
 		world_audio.set_creature(null)
-		ui.flash("ERES THE LOCUST", 4.0)
 	# Re-derived, never remembered: the Environment is shared, so the hunter's
 	# grade has to come back out of apply_settings() on the way in and out.
 	apply_settings()
@@ -595,8 +594,6 @@ func apply_television(index: int, value: bool) -> void:
 	if value:
 		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, set.global_position + Vector3(0, 1.4, 0), -8.0)
 		if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
-		if session.stage >= 2 and not match_net.local_is_locust():
-			ui.flash("TELEVISORES %d/%d" % [televisions_on(), TV_PLACEMENT.needed(session.roster_count)], 2.5)
 
 ## Travelling by television: a lit set is a way in and a way out. The creature
 ## steps out of another lit one, wherever it is, which is why lighting them is
@@ -720,7 +717,6 @@ func apply_search(index: int, value: bool) -> void:
 		# on the tape until the floor is over.
 		piece.take_note()
 		if not match_net.local_is_locust():
-			ui.flash("NÚMERO %d DEL CÓDIGO: %d" % [piece.slot, piece.digit], 4.0)
 			camcorder.write_code(noted_code())
 
 ## The stage's own sets, all of them on. A stage with no sets of its own asks
@@ -762,8 +758,7 @@ func open_document(document: Node3D) -> void:
 	player.reading = true
 	ui.show_document(CATALOG.entry(document.entry_id))
 	if world_audio.enabled: paper_sound.play()
-	if discoveries.record(document.entry_id):
-		ui.flash("ARCHIVADO  %d/%d" % [discoveries.found.size(), CATALOG.TOTAL], 3.0)
+	discoveries.record(document.entry_id)
 
 func close_document() -> void:
 	reading_document = null
@@ -1026,7 +1021,6 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 		if seat == player.slot: restore_local_player(places[seat_key])
 		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(places[seat_key], 0.0)
 	if restart:
-		ui.flash("OTRA VEZ", 3.0)
 		# The stage as it was found: its own wing's sets go out again. What was
 		# lit in the wings behind is not this stage's to undo.
 		for index in stage_televisions():
@@ -1038,7 +1032,6 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 		if not net.is_client() and bool(session.goal.get("blackout", false)):
 			session.goal["blackout"] = false
 			session.changed.emit()
-	else: ui.flash("ETAPA %d · DE PIE" % session.stage, 3.0)
 
 ## The inverse of watching a teammate: its own body, its own camera.
 func restore_local_player(point: Vector3) -> void:
@@ -1408,9 +1401,17 @@ const DOOR_BEHIND_REACH := 3.0
 
 func focused_door():
 	var from: Vector3 = player.camera.global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * DOOR_REACH, 1 | 8)
+	# 64 too: a leaf somebody is standing in is not solid yet, and it must
+	# still be there to be used -- to open again the door just shut on you.
+	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * DOOR_REACH, 1 | 8 | 64)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	return hit.collider if not hit.is_empty() and hit.collider is DOOR else null
+	if not hit.is_empty() and hit.collider is DOOR: return hit.collider
+	# And from inside it, doors only: the head can be in the leaf of a door
+	# shut on it, and a ray starting inside a shape does not see that shape.
+	query.collision_mask = 8 | 64
+	query.hit_from_inside = true
+	hit = get_world_3d().direct_space_state.intersect_ray(query)
+	return hit.collider if not hit.is_empty() and hit.collider is DOOR and hit.position.distance_to(from) < 0.01 else null
 
 ## Nearest open door within reach, for closing it without looking at it.
 func door_behind():
@@ -1551,7 +1552,7 @@ func drive_local(delta: float) -> void:
 		if is_instance_valid(pressed_door) and target == pressed_door and not slow_used:
 			# Running into a door pushes it open (or shut) with a slam.
 			var running := Vector2(player.velocity.x, player.velocity.z).length() > 4.6
-			if not match_net.use_door(pressed_door, false, running): ui.flash("DEJA LIBRE EL UMBRAL")
+			match_net.use_door(pressed_door, false, running)
 		pressed_door = null
 	was_held = held
 	# Nothing is held down at the refuge any more: with everyone inside, the
@@ -1739,7 +1740,6 @@ func ride_along(delta: float) -> void:
 	player.held = false
 	boarding = {}
 	ui.hide_transit()
-	ui.flash("EL ASCENSOR SE ABRE", 2.5)
 
 ## How much of the picture the ride is taking: it goes as the doors shut and
 ## comes back as they open.
@@ -2154,10 +2154,8 @@ func sanity_tick(delta: float) -> void:
 		player.sanity = maxf(0.0, player.sanity - SANITY_SIGHT)
 	if player.burnt and player.sanity >= SANITY_BACK:
 		player.set_burnt(false)
-		ui.flash("VUELVES EN TI", 3.0)
 	elif not player.burnt and player.sanity <= 0.0:
 		player.set_burnt(true)
-		ui.flash("SABE DÓNDE ESTÁS", 3.5)
 	hallucinate(delta)
 	phantom_quiet(delta)
 

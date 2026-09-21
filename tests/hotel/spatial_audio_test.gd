@@ -71,8 +71,6 @@ func run() -> void:
 	door.sound_requested.connect(func(opening, slow, point, _rid, forceful): events.append({"opening": opening, "slow": slow, "point": point, "forceful": forceful}))
 	door.open_immediately()
 	check("Map initialization emits no door sound", events.is_empty())
-	level.player.position = door.doorway
-	check("Occupied close emits no false latch", not door.toggle() and events.is_empty())
 	level.player.position = Vector3(500, 0, 4)
 	door.toggle()
 	check("Closing sound waits for physical completion", events.is_empty())
@@ -81,10 +79,10 @@ func run() -> void:
 	door.toggle()
 	await wait(0.8)
 	events.clear()
-	door.toggle()
 	level.player.position = door.doorway
+	door.toggle()
 	await wait(0.8)
-	check("Blocked closing reopens without a latch sound", door.opened and events.is_empty())
+	check("Closing on somebody in the frame still latches, once", not door.opened and events.size() == 1 and not events[0].opening)
 	level.player.position = Vector3(500, 0, 4)
 	var hide = get_nodes_in_group("hotel_hides")[0]
 	var entered: bool = level.player.enter_hide(hide)
