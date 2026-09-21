@@ -12,19 +12,19 @@ Hay un piso jugable de principio a fin, solo o acompañado:
 - **Individual, cooperativo de 2 a 5 y versus** por ENet (IP directa o LAN, UDP 38430), con autoridad del anfitrión, reconexión de 60 s, hoja compartida y observación tras morir. Ya se ha jugado con gente real en LAN y por Internet.
 - **The Locust:** IA que patrulla, oye por rutas caminables, investiga, persigue y registra armarios; ejecución de tres estocadas; y, en versus, un jugador lo lleva con su propia vista de ecolocalización, sin ver el hotel ([detalles](VISION_LOCUST.md)).
 - **Supervivencia:** resistencia, agacharse, armarios con puertas y asomarse, linterna, puertas normales/lentas/portazos y ruido que la criatura escucha de verdad.
-- **Presentación:** cuatro presets gráficos y dos renderizadores, filtro de videocámara, materiales procedurales, oscuridad real (salas apagadas sin luz ambiente, sin fugas por las puertas) y puerta de madera con marco.
+- **Presentación:** cuatro presets gráficos y dos renderizadores, filtro de videocámara, materiales procedurales, oscuridad real (salas apagadas sin luz ambiente, sin fugas por las puertas) y puerta de madera con marco. En partida aparecieron fugas entre salas y lámparas que siguen brillando con la corriente cortada: ver los fallos abiertos.
 - **Empaquetado:** `./tools/godot.ps1 export` produce un ejecutable de Windows que funciona.
 
 Y esto es lo que hoy no está bien, que es de donde sale el orden de abajo:
 
-- Las partidas se acaban demasiado pronto (desde 1 min 30 s, media de 5 a 8 min frente a la meta de 25–40) y muchas veces sin cruzarse con la criatura: el piso se resuelve siguiendo la numeración de las puertas.
-- Falta la estructura que convierte el piso en una partida: las tres etapas, las teles, la cerradura de código y el apagón.
-- Las animaciones de los supervivientes son malas, la ejecución vista desde el cazador no comunica lo suficiente y el ejecutable pesa ~1 GB.
+- **Las partidas se acababan demasiado pronto** (desde 1 min 30 s, media de 5 a 8 min frente a la meta de 25–40) y muchas veces sin cruzarse con la criatura, porque el piso se resolvía siguiendo la numeración de las puertas. Lo que debía arreglarlo —tres etapas, teles, cerradura de código, apagón, y una planta donde ni los números ni la pared derecha llevan a la salida— ya está puesto y medido; **falta volver a jugarlo con gente y ver si ahora dura lo que debe**.
+- **Jugado entero el 21 de septiembre**, y de ahí salieron seis fallos abiertos (linterna al revivir, puertas que atrapan a la criatura, lámparas encendidas durante el apagón, fugas de luz, texturas rotas por la linterna en Compatibilidad y el cazador que no cruza de ala) y cuatro ajustes de interfaz y presentación (reconexión, paso de ala, inventario de notas y la hoja compartida).
+- La ejecución vista desde el cazador y el nivel de los gruñidos siguen sin juicio humano, y el detective masculino sigue siendo un modelo sin esqueleto.
 - Solo existe un piso de los cuatro; Sunman, The Boiled One y Guilt no están.
 
 ## Orden de trabajo
 
-1. **[P0 — Cierre del Early Access](#p0--cierre-del-early-access-prioridad-alta):** lo que se está haciendo ahora. Etapas, ritmo del mapa, la criatura que se oye y se entiende, cordura, animaciones y tamaño del paquete.
+1. **[P0 — Cierre del Early Access](#p0--cierre-del-early-access-prioridad-alta):** lo que se está haciendo ahora. Etapas, ritmo del mapa, la criatura que se oye y se entiende, cordura, animaciones, tamaño del paquete y [lo que salió de jugarlo](#lo-que-salió-de-la-segunda-partida-21-de-septiembre-de-2026).
 2. **[P1 — Niveles y base](#p1--niveles-y-base-de-presentación):** cerrado salvo la aceptación de duración y orientación con partidas humanas, que P0 aborda.
 3. **[P2 — Atmósfera analógica](#p2--atmósfera-analógica):** implementada; quedan escucha crítica, acabado PBR y sustitución del mobiliario provisional.
 4. **[P3 — Cooperativo y hoja](#p3--cooperativo-y-hoja-paranormal):** cerrado, con sesiones humanas hechas.
@@ -112,6 +112,78 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
   2. **Mapas de detalle a 512** (normales, rugosidad, metálico y oclusión: 173 archivos): de 463 a 291 MB. El albedo se queda en 1024.
   3. **Fuera el rig facial de los modelos comprados** (`tools/import/strip_blend_shapes.gd`, enganchado en el `.import` de cada modelo): 585 blend shapes en la Exploradora y 154 en la Detective, que el juego no usa —los supervivientes se posan por huesos— y que eran casi todo el peso: ese modelo pasó de 50,3 MB a 3,4 y el otro de 8,9 a 0,8. El esqueleto, los materiales y los pesos de piel se conservan; comprobado a ojo en la pantalla de personaje, con y sin el recorte.
   Comprobado además arrancando el ejecutable exportado y jugando un piso real (`--playtest-seed=81`): cero errores en su registro. Lo que queda son 295 MB de assets alcanzables (lo más pesado ahora es el audio: 8,3 MB de `dark_hotel.wav` y 5,9 del tema) más el motor. Los `.zip` de origen (408 MB) ya no entraban.
+
+### Lo que salió de la segunda partida (21 de septiembre de 2026)
+
+Jugada entera con las etapas nuevas, en cooperativo y en versus. Ninguna de
+estas está arreglada todavía; están en orden de gravedad, y donde ya se ha
+mirado el código se dice dónde vive.
+
+**Fallos**
+
+- [ ] **La linterna se pierde al revivir.** Quien vuelve de pie se queda sin la
+  suya, aunque siga viendo las de los demás. La linterna del cuerpo propio es
+  `top_level` (va detrás de la cámara con retardo, no colgada de ella) y
+  `restore_local_player()` mueve el cuerpo sin llamar a `snap_torch()`, así que
+  la luz se queda donde estaba: la de los compañeros, que sí cuelga de su
+  cámara (`remote_player.gd`), viaja con ellos y por eso se ve. Falta
+  reproducirlo y, si es eso, arrastrar la linterna con el cuerpo en todos los
+  saltos (revivir, ascensor, reconexión).
+- [ ] **Las puertas atrapan a The Locust.** Se la ve encajada en la hoja, con la
+  puerta atravesándola (captura de la partida). La criatura choca con las hojas
+  cerradas: `locust.tscn` tiene `collision_mask = 9`, o sea el mundo (1) más las
+  hojas de puerta (8). La puerta ya se aparta de los cuerpos mientras gira
+  (`hotel_door.swing_to()` la pasa a la capa 64 y `_physics_process` la vuelve
+  sólida cuando nadie la ocupa), pero eso no basta cuando la criatura empuja
+  contra la hoja quieta. Lo pedido: que los colisionadores de las puertas no le
+  afecten (máscara 9 → 1), comprobando antes que sin ellos no cruza puertas
+  cerradas por su cuenta —hoy su navegación las trata como abiertas—.
+- [ ] **Lámparas y apliques siguen brillando con el piso a oscuras.** En el
+  apagón se apagan las luces pero no los materiales: `hotel_geometry.blackout()`
+  esconde focos, apliques, fluorescentes y baliza (y de la baliza sí baja la
+  emisión), pero las pantallas y bombillas de los plafones y de las lámparas de
+  mueble siguen emitiendo. La herramienta ya existe —`switch_off()`, que hoy
+  solo se usa al construir una sala apagada— y hay que pasarla por todo lo que
+  emite al cortarse la corriente, y devolverla al volver.
+- [ ] **Fugas de luz entre salas.** Hay habitaciones que se iluminan desde el
+  otro lado de su pared (se ve el patrón de listas de la sala vecina sobre el
+  tabique). Mirar el desvanecido de las luces frente a sus sombras
+  (`set_fade`/`practical_fade`: una luz que sigue alumbrando después de que su
+  sombra se apagó atraviesa paredes) y el rebote horneado (`bounce_light.gd`).
+- [ ] **La linterna rompe texturas en Compatibilidad y calidad Baja.** Bandas
+  diagonales enormes sobre las paredes y el techo, y un foco gigante que no
+  corresponde al haz (capturas). Solo se ha visto con el renderizador de
+  Compatibilidad en Bajo; sospechas por orden: el proyector del haz
+  (`beam_pattern()`), el sesgo de sombra sin penumbra en ese preset y el
+  detalle de superficie a 0 (`surface_detail`).
+- [ ] **En versus, el cazador no cruza de ala.** Se juega sin estar donde están
+  las víctimas y sin forma de llegar. `hotel_main.follow_players()` mueve la
+  criatura al ala nueva, pero en versus la posición la manda la máquina del
+  cazador (`match_net.locust_state`), así que el anfitrión mueve su propia
+  réplica y el cazador la pisa al fotograma siguiente; el ascensor solo lo
+  toman los supervivientes (`ride_lifts()` recorre `survivors()`) y las alas no
+  comparten pared. El camino dibujado en su lectura (`tell_stage`) se calcula
+  además desde la posición de esa réplica, así que tampoco lleva a ninguna
+  parte. Hace falta llevar al cazador de verdad —colocar su propia criatura por
+  RPC al cerrarse la etapa— y decidir si eso es un viaje con su imagen, como el
+  ascensor de los supervivientes.
+
+**Ajustes pedidos**
+
+- [ ] **Reconectar debe devolverte donde estabas.** Hay código y prueba para
+  eso (`match_net.catch_up()`/`restore()` reponen la posición desde el cuerpo
+  que guarda el anfitrión, y `net_test` lo comprueba), pero en partida no pasó:
+  lo primero es reproducirlo —quizá con una caída larga, o cruzando de ala
+  mientras se está fuera— y arreglar el caso real.
+- [ ] **Pantalla de carga al cambiar de ala**, para que el paso de un lado a
+  otro se marque. Hoy son segundo y medio de imagen perdida dentro del
+  ascensor; se pide algo que se lea como un corte de verdad.
+- [ ] **Inventario para releer las notas**, animado y con la estética del juego.
+  Hoy los números encontrados solo se escriben en la cinta y en el teclado.
+- [ ] **La hoja compartida no pega con el juego.** Es fea y no tiene nada que
+  ver con la estética de cinta VHS. Hay que rehacerla junto con las notas y el
+  inventario: una sola idea de cómo se ve lo que el jugador escribe, lee y
+  comparte, en vez de tres piezas con estilos distintos.
 
 ### Cierre
 
