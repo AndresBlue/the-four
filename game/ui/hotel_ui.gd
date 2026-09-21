@@ -1013,10 +1013,16 @@ func show_transit(title: String, errand: String, seconds: float) -> void:
 	transit_tween.tween_callback(hide_transit)
 
 ## The notice of a sector, once the card is gone and the picture is back: what
-## this one wants, for six seconds, and then the tape lets it go the way an
-## analogue set does when it is switched off -- the picture falls into a bright
-## line, the line into a point, and the point goes out.
+## this one wants, small in the top right corner under the REC, for six
+## seconds. It comes in out of the snow and goes back into it the way a weak
+## analogue signal goes -- the lines roll like water, the picture smears and the
+## static eats it -- which is why it is drawn into its own little picture first:
+## the shader works on that picture as a whole, not letter by letter.
 const BRIEF_HOLD := 6.0
+const BRIEF_IN := 0.45
+const BRIEF_OUT := 1.5
+const BRIEF_SIZE := Vector2i(560, 170)
+const WASH := preload("res://game/ui/shaders/signal_wash.gdshader")
 var brief: Control
 var brief_tween: Tween
 ## What the pause screen keeps of it: the sector, what it asks for, and how it
@@ -1033,44 +1039,60 @@ func show_brief(sector: String, words: String) -> void:
 	# Under the sheet: whoever opens it is looking at the sheet, and a notice
 	# on top of the page would be written over what they are drawing.
 	if is_instance_valid(sheet): move_child(brief, sheet.get_index())
-	var holder := CenterContainer.new()
-	holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	holder.offset_top = 140
-	holder.offset_bottom = 420
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	brief.add_child(holder)
-	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", STYLE.flat(Color(0.03, 0.03, 0.03, 0.82), STYLE.FAINT, 1, 24.0))
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(box)
+	var picture := SubViewport.new()
+	picture.size = BRIEF_SIZE
+	picture.transparent_bg = true
+	picture.disable_3d = true
+	picture.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	brief.add_child(picture)
+	# A smudge of shade behind the words, soft all round and darkest behind
+	# them, so they read over a lit wall as well as over a dark corridor.
+	var smudge := Gradient.new()
+	smudge.set_color(0, Color(0, 0, 0, 0.66))
+	smudge.set_color(1, Color(0, 0, 0, 0))
+	var soft := GradientTexture2D.new()
+	soft.gradient = smudge
+	soft.fill = GradientTexture2D.FILL_RADIAL
+	soft.fill_from = Vector2(0.72, 0.5)
+	soft.fill_to = Vector2(0.02, 0.5)
+	var shade := TextureRect.new()
+	shade.texture = soft
+	shade.size = Vector2(BRIEF_SIZE)
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.add_child(shade)
+	# Room is left round the words so the swell has somewhere to roll to.
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
-	box.add_child(column)
-	var head := STYLE.text("OBJETIVO · %s" % sector, 20, STYLE.AMBER)
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.position = Vector2(18, 16)
+	column.size = Vector2(BRIEF_SIZE.x - 36, BRIEF_SIZE.y - 32)
+	column.add_theme_constant_override("separation", 4)
+	picture.add_child(column)
+	var head := STYLE.text("OBJETIVO · %s" % sector, 18, STYLE.AMBER)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	column.add_child(head)
-	var line := STYLE.text(words, 26)
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var line := STYLE.text(words, 24)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	line.custom_minimum_size.x = 720
+	line.custom_minimum_size.x = BRIEF_SIZE.x - 36
 	column.add_child(line)
-	# What the tube does as it goes: the picture burns white on its way down.
-	var glare := ColorRect.new()
-	glare.color = Color(0.96, 0.96, 0.92)
-	glare.modulate.a = 0.0
-	glare.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(glare)
-	brief.modulate.a = 0.0
+	var screen := TextureRect.new()
+	screen.texture = picture.get_texture()
+	screen.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	screen.offset_left = -BRIEF_SIZE.x - 24
+	screen.offset_right = -24
+	screen.offset_top = 112
+	screen.offset_bottom = 112 + BRIEF_SIZE.y
+	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var look := ShaderMaterial.new()
+	look.shader = WASH
+	look.set_shader_parameter("wash", 1.0)
+	screen.material = look
+	brief.add_child(screen)
+	var wash := func(amount: float): look.set_shader_parameter("wash", amount)
 	brief_tween = create_tween()
-	brief_tween.tween_property(brief, "modulate:a", 1.0, 0.25)
-	brief_tween.tween_interval(BRIEF_HOLD - 0.65)
-	# The set going off: down to a line, white, and then the line closes. It is
-	# the holder that is squashed, not the box: a container puts its children's
-	# scale back to one every time it lays them out.
-	brief_tween.tween_callback(func(): holder.pivot_offset = holder.size * 0.5)
-	brief_tween.tween_property(holder, "scale", Vector2(1.0, 0.035), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	brief_tween.parallel().tween_property(glare, "modulate:a", 1.0, 0.16)
-	brief_tween.tween_property(holder, "scale", Vector2(0.0, 0.035), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	brief_tween.tween_method(wash, 1.0, 0.0, BRIEF_IN).set_ease(Tween.EASE_OUT)
+	brief_tween.tween_interval(BRIEF_HOLD - BRIEF_IN - BRIEF_OUT)
+	brief_tween.tween_method(wash, 0.0, 1.0, BRIEF_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	brief_tween.tween_callback(hide_brief)
 
 func hide_brief() -> void:

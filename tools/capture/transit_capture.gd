@@ -14,7 +14,7 @@ func shot(name: String) -> void:
 	root.get_texture().get_image().save_png("res://evidence/transit_%s.png" % name)
 	var brief = level.ui.brief
 	print("SHOT %s · %.2f s de viaje · aviso %s" % [name, float(level.boarding.get("time", -1.0)),
-		("%d escala %s" % [brief.get_instance_id(), str(brief.get_child(0).scale)]) if is_instance_valid(brief) else "no"])
+		("lavado %.2f" % float(brief.get_child(1).material.get_shader_parameter("wash"))) if is_instance_valid(brief) else "no"])
 
 func frames(count: int) -> void:
 	for i in count: await process_frame
@@ -50,13 +50,14 @@ func run() -> void:
 	# end of it.
 	await seconds(1.0)
 	await shot("brief")
-	# The set going off: a quarter of a second of fade in, the hold, and then
-	# the picture falls to a line (0.22 s) and the line closes (0.16 s).
-	var off_at: float = 0.25 + level.ui.BRIEF_HOLD - 0.65
-	await seconds(off_at + 0.12 - 1.0)
-	await shot("brief_off")
-	await seconds(0.17)
-	await shot("brief_line")
+	# Going the way a weak signal goes: the last second and a half the lines
+	# roll, the picture smears and the snow takes it, a third of the way and
+	# two thirds of the way in.
+	var out_at: float = level.ui.BRIEF_HOLD - level.ui.BRIEF_OUT
+	await seconds(out_at + level.ui.BRIEF_OUT * 0.4 - 1.0)
+	await shot("brief_wash")
+	await seconds(level.ui.BRIEF_OUT * 0.3)
+	await shot("brief_gone")
 	# And where it is kept afterwards: the pause screen.
 	level.session.pause()
 	await frames(20)
