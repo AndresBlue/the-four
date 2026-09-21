@@ -103,6 +103,12 @@ piso que todavía falla es multiplicar los fallos por cuatro.
   ver con la estética de cinta VHS. Hay que rehacerla junto con las notas y el
   inventario: una sola idea de cómo se ve lo que el jugador escribe, lee y
   comparte, en vez de tres piezas con estilos distintos.
+- [ ] **«AURICULARES SUGERIDOS» en la pantalla de inicio**, antes del `▶ PLAY`
+  de la cinta (`hotel_ui.play_intro()`). El juego se juega por el oído —las
+  distancias, la dirección de la criatura, las puertas lejanas— y quien lo abre
+  por altavoces no se entera de que se está perdiendo la mitad. Va en la pantalla
+  azul de vídeo, con la tipografía y el tiempo de la propia cinta, y desaparece
+  con ella: un aviso, no un menú.
 
 ## 3 · Lo que solo se decide jugando
 
