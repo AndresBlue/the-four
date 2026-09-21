@@ -38,6 +38,7 @@ func run() -> void:
 	ui.sheet.open(true, "TAB", [
 		{"slot": 1, "digit": 4, "where": "HABITACIÓN 214"},
 		{"slot": 2, "digit": 7, "where": "LAVANDERÍA"},
+		{"slot": 3, "digit": 9, "where": "PASILLO"},
 		{"slot": 4, "digit": 0, "where": "COMEDOR"}])
 	await shot("notes")
 	# And four hands on the page.

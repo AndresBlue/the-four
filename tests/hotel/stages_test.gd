@@ -19,6 +19,16 @@ func check(title: String, passed: bool) -> void:
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
+## Every piece of text under a node, which is how a screen is read back.
+func words_under(node: Node) -> String:
+	var found := ""
+	var stack: Array = [node]
+	while not stack.is_empty():
+		var next: Node = stack.pop_back()
+		if next is Label: found += (next as Label).text + " · "
+		stack.append_array(next.get_children())
+	return found
+
 ## How many surfaces of the hotel are still giving off light of their own:
 ## the domes and the shades and the battens (materials of this floor), the
 ## exit signs (a shader) and the wall lamps (the glow is inside the model, so
@@ -100,8 +110,12 @@ func run() -> void:
 		if i > 2 and level.boarding.is_empty(): break
 		await physics_frame
 	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
-	check("Y el corte dice a qué ala se va y qué pide", card.contains("SECTOR 2") and card.contains("ETAPA 2") and card.contains(level.stage_errand(2)))
+	check("Y el corte dice a qué sector se va y qué pide, sin repetir la etapa", card.contains("SECTOR 2") and not card.contains("ETAPA") and card.contains(level.stage_errand(2)))
 	check("Al abrirse las puertas la tarjeta ya no está", not is_instance_valid(level.ui.transit))
+	# Out of the car, the notice of the sector: what it wants, said whole, for
+	# six seconds, and gone the way an analogue set goes off.
+	await frames(4)
+	check("Al salir del ascensor aparece el objetivo del sector", is_instance_valid(level.ui.brief) and words_under(level.ui.brief).contains(level.stage_brief(2)) and words_under(level.ui.brief).contains("SECTOR 2"))
 	var arrival: Dictionary = level.manifest.rooms[int(level.manifest.gates[0].arrive)]
 	# It comes out in the wing the lift serves. Where exactly is the session's
 	# business: closing a stage puts everybody on their feet at the way in.
@@ -126,6 +140,13 @@ func run() -> void:
 	check("Y el coche vuelve a irse con él", level.lift_gone(0))
 	level.locust.global_position = Vector3(0, -80, 0)
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
+	# The notice of the sector goes by itself, about six seconds after it came.
+	await frames(int((level.ui.BRIEF_HOLD + 0.6) * 60))
+	check("Y se va solo a los seis segundos", not is_instance_valid(level.ui.brief))
+	# The pause screen keeps it, with how the sector is going.
+	level.refresh_briefing()
+	check("La pausa guarda el objetivo del sector", level.ui.briefing.sector == "SECTOR 2" and level.ui.briefing.objective == level.stage_brief(2))
+	check("Y en el sector 2 cuenta los televisores", level.ui.briefing.progress.size() == 1 and String(level.ui.briefing.progress[0][0]) == "TELEVISORES")
 	# Second stage: the sets of that wing, and it asks for as many as there
 	# are survivors, with two spare.
 	# A few frames for the authority to look at the new stage.
@@ -224,13 +245,13 @@ func run() -> void:
 	# the number and the room it came out of. Nobody has to remember a thing.
 	level.ui.sheet.seat = 1
 	level.ui.sheet.open(true, "TAB", level.notes_found())
-	var slip_text := ""
-	for node in level.ui.sheet.slips.get_children():
-		if node is Label: slip_text += node.text + " · "
-		else:
-			for line in node.get_child(0).get_children(): slip_text += line.text + " · "
-	check("Las notas se pueden releer en la hoja, con su habitación", slip_text.contains("TUS NOTAS") and slip_text.contains("NÚMERO 4 DEL CÓDIGO") and not String(level.found_where.get(4, "")).is_empty() and slip_text.contains(String(level.found_where[4])) and slip_text.contains(str(level.found_digits[4])))
-	check("Y cada mano escribe en su color", level.ui.sheet.ink_of(1) != level.ui.sheet.ink_of(2) and level.ui.sheet.ink_of(2) != level.ui.sheet.ink_of(3))
+	var slip_text := words_under(level.ui.sheet.slips)
+	check("Las notas se pueden releer en la hoja, con su habitación", slip_text.contains("TUS NOTAS") and not String(level.found_where.get(4, "")).is_empty() and slip_text.contains(String(level.found_where[4])))
+	check("Y son cuatro páginas, una por número del código", level.ui.sheet.pages.get_child_count() == DIG.COUNT)
+	# The third sector counts both: the sets, and the numbers found.
+	level.refresh_briefing()
+	check("En el sector 3 la pausa cuenta televisores y números", level.ui.briefing.progress.size() == 2 and String(level.ui.briefing.progress[1][1]) == "%d / %d" % [DIG.COUNT, DIG.COUNT])
+	check("Y cada mano escribe con su lápiz, el anfitrión en negro", level.ui.sheet.ink_of(1) != level.ui.sheet.ink_of(2) and level.ui.sheet.ink_of(2) != level.ui.sheet.ink_of(3) and level.ui.sheet.ink_of(1).get_luminance() < 0.15)
 	level.ui.sheet.close()
 	# Alone there is nothing to forgive: caught is the end of that floor.
 	var before_stage: int = session.stage

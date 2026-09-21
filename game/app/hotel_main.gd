@@ -233,7 +233,9 @@ func on_action(action: String) -> void:
 			ui.menu("multiplayer")
 		"online_resume": close_online_menu()
 		"online_settings": ui.show_settings("online_pause")
-		"online_pause": ui.menu("online_pause")
+		"online_pause":
+			refresh_briefing()
+			ui.menu("online_pause")
 		"lobby": ui.menu("lobby")
 		"lobby_character": ui.show_characters("lobby")
 		"online_retry": net.start_match(int(match_net.config.get("seed", -1)))
@@ -404,6 +406,12 @@ func populate_floor(with_director: bool) -> void:
 		ambience.play()
 		theme.play()
 		ventilation.play()
+	# A floor opens on the same card as every sector after it, and the notice
+	# of what this one wants follows once the card is gone.
+	if not automation and not match_net.local_is_locust():
+		ui.show_transit("SECTOR %d" % session.stage, stage_errand(session.stage), OPENING_CARD)
+	pending_brief = session.stage
+	brief_wait = OPENING_CARD if not automation else 0.0
 
 # --- Online floors ---------------------------------------------------------------
 
@@ -483,7 +491,13 @@ func open_online_menu() -> void:
 	online_menu = true
 	player.active = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	refresh_briefing()
 	ui.menu("online_pause")
+
+## What the pause screens show of the sector in hand. The hunter has no errand.
+func refresh_briefing() -> void:
+	if match_net.local_is_locust() or manifest.is_empty(): ui.set_briefing("", "", [])
+	else: ui.set_briefing("SECTOR %d" % session.stage, stage_brief(session.stage), stage_progress())
 
 func close_online_menu() -> void:
 	if not online_menu: return
@@ -794,7 +808,9 @@ func on_state() -> void:
 			else:
 				var saved: Dictionary = session.checkpoint()
 				ui.menu("main", not saved.is_empty(), save_error if not save_error.is_empty() else session.message)
-		session.State.PAUSED: ui.menu("pause")
+		session.State.PAUSED:
+			refresh_briefing()
+			ui.menu("pause")
 		session.State.LOADING: ui.menu("loading")
 		session.State.TRANSITION:
 			# Between stages the floor goes on: a held beat and a notice, not
@@ -803,7 +819,7 @@ func on_state() -> void:
 				ui.overlay.hide()
 				ui.settings_open = false
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				ui.flash("ETAPA %d · %s" % [session.stage + 1, stage_errand(session.stage + 1)], 4.5)
+				pending_brief = session.stage + 1
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
@@ -818,15 +834,45 @@ func on_state() -> void:
 ## The stage the floor was on when it was last looked at, to tell a change.
 var last_stage := 1
 
-## What a stage asks for, in the fewest words that can be acted on. The floor
-## explains nothing else, but nobody guesses on their own that the numbers of
-## the last door are inside the furniture of that wing: a whole stage spent
-## opening drawers at random is not a mystery, it is a wasted evening.
+## What a sector asks for, in the fewest words that fit on the tape's card.
+## The floor explains nothing else, but nobody guesses on their own that the
+## numbers of the last door are inside the furniture of that wing: a whole
+## sector spent opening drawers at random is not a mystery, it is a wasted
+## evening.
 func stage_errand(stage: int) -> String:
 	match stage:
 		2: return "ENCIENDE LOS TELEVISORES"
-		3: return "TELEVISORES, Y EL CÓDIGO EN LOS MUEBLES"
-	return "AL REFUGIO"
+		3: return "DESCUBRE EL CÓDIGO"
+	return "ENCUENTRA LA SALIDA"
+
+## And the same thing said whole, which is what the notice on arriving says and
+## what the pause screen keeps for anybody who wants to check.
+func stage_brief(stage: int) -> String:
+	match stage:
+		2: return "Enciende los televisores y busca la salida."
+		3: return "Busca las notas con el código, enciende televisores y sal del piso."
+	return "Encuentra la salida del sector."
+
+## How the sector is going, in the lines the pause screen shows under it: the
+## sets that are on from the second sector, and the numbers found from the
+## third. Nothing that cannot be counted by looking at the floor.
+func stage_progress() -> Array:
+	var lines: Array = []
+	if session.stage >= 2 and not stage_televisions().is_empty():
+		lines.append(["TELEVISORES", "%d / %d" % [televisions_on(), TV_PLACEMENT.needed(session.roster_count)]])
+	if session.stage >= 3:
+		lines.append(["NÚMEROS DEL CÓDIGO", "%d / %d" % [found_digits.size(), DIGITS.COUNT]])
+	return lines
+
+## The notice of a sector, once its lift has opened and the picture is back:
+## six seconds of what this one wants, and then the tape lets it go.
+var pending_brief := 0
+var brief_wait := 0.0
+func announce_sector(delta := 0.0) -> void:
+	brief_wait = maxf(0.0, brief_wait - delta)
+	if pending_brief <= 0 or brief_wait > 0.0 or not boarding.is_empty(): return
+	if not match_net.local_is_locust(): ui.show_brief("SECTOR %d" % pending_brief, stage_brief(pending_brief))
+	pending_brief = 0
 
 ## A stage has closed: the creature is put on the trail of the lift the
 ## survivors took, instead of hunting a wing nobody will come back to. It is
@@ -1388,6 +1434,9 @@ func _physics_process(delta: float) -> void:
 	# lift that stopped counting would hold somebody in the dark for good.
 	ride_along(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
+	# The notice of the sector waits for the card to be gone and for the lift
+	# to have opened its doors: it is what the picture comes back to.
+	announce_sector(delta)
 	drive_local(delta)
 	sanity_tick(delta)
 	# Whoever is in charge counts the hold at the exit once a frame, whatever
@@ -1653,7 +1702,7 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		# The stage has not turned over yet -- the session holds its beat of
 		# transition first -- so the wing being arrived at is the next one.
 		var arriving: int = mini(session.stage + 1, session.STAGES)
-		ui.show_transit("SECTOR %d" % arriving, "ETAPA %d · %s" % [arriving, stage_errand(arriving)], RIDE_TIME)
+		ui.show_transit("SECTOR %d" % arriving, stage_errand(arriving), RIDE_TIME)
 	elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(point, 0.0)
 
 ## The ride itself, on the machine of whoever is taking it: a second and a bit
@@ -1670,6 +1719,9 @@ const RIDE_BLIND := 0.35
 ## picture that is all snow: the tape breaks up, settles on it, breaks up
 ## again as the doors open.
 const RIDE_CARD := 0.2
+## How long the card of the first sector is held at the start of a floor.
+## There is no car to ride into it, so it is its own beat.
+const OPENING_CARD := 2.6
 var boarding := {}
 func ride_along(delta: float) -> void:
 	if boarding.is_empty(): return

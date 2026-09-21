@@ -5,10 +5,11 @@ extends Control
 ## exit or creatures): only what players draw, and what they found themselves.
 ## Opening it stops your character but not the world.
 ##
-## It is drawn as the tape draws everything else -- light on dark, the OSD's
-## own type, scanlines across it -- because it is the same camcorder looking at
-## it. Each seat writes in its own colour, which is how a sheet with four hands
-## on it stays readable.
+## It is a real sheet of paper, cream and worn from being carried about, filmed
+## by the same camcorder as everything else (the interface is under the tape).
+## Each seat writes with its own pencil -- the host in black, the others in
+## navy, dark red and dark green -- which is how a sheet with four hands on it
+## stays readable, and the pages the code was written on hang beside it.
 ##
 ## Strokes are operations in an order everyone agrees on: the host's. Your own
 ## strokes show at once (pending) and take their place in that order when the
@@ -17,11 +18,14 @@ extends Control
 signal chunk_drawn(op_id: String, kind: int, points: PackedVector2Array)
 enum Kind { DRAW, ERASE }
 const STYLE := preload("res://game/ui/osd_style.gd")
+const HAND := preload("res://game/ui/handwork.gd")
 const PAGE := Vector2(980, 640)
-## The page itself, and the four hands that can write on it: white, amber,
-## video blue and phosphor green, in seat order.
-const PAPER := Color(0.055, 0.055, 0.05)
-const INKS := [Color(0.94, 0.94, 0.9), Color(0.96, 0.78, 0.4), Color(0.52, 0.82, 0.96), Color(0.58, 0.92, 0.6)]
+## The page itself, and the four pencils that can write on it, in seat order:
+## black for the host, then navy, dark red and dark green.
+const PAPER := Color(0.86, 0.82, 0.71)
+const INKS := [Color(0.1, 0.1, 0.11), Color(0.11, 0.16, 0.38), Color(0.44, 0.09, 0.09), Color(0.09, 0.29, 0.13)]
+## Graphite, for the pages the numbers of the code are written on.
+const GRAPHITE := Color(0.13, 0.12, 0.12)
 const PEN := 3.0
 const ERASER := 30.0
 ## The strip of slips hanging off the page's right edge.
@@ -39,7 +43,9 @@ var ink: Control
 var caption: Label
 ## Which colour this seat writes in, and the slips taken by this player.
 var hand: Label
+var swatch: Control
 var slips: VBoxContainer
+var pages: GridContainer
 var opening: Tween
 ## op_id -> Line2D
 var lines := {}
@@ -71,7 +77,7 @@ func _ready() -> void:
 	page = Panel.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = PAPER
-	style.border_color = STYLE.FAINT
+	style.border_color = Color(0.62, 0.55, 0.42)
 	style.set_border_width_all(1)
 	style.shadow_color = Color(0, 0, 0, 0.6)
 	style.shadow_size = 22
@@ -91,33 +97,53 @@ func _ready() -> void:
 	ink.mouse_filter = Control.MOUSE_FILTER_STOP
 	ink.gui_input.connect(_ink_input)
 	page.add_child(ink)
-	# Over the ink, so erasing never wipes the page itself: the scan of the
-	# tape, a ruled line every so often, and the margin.
+	# Over the pencil, so rubbing out never rubs out the page itself: the
+	# ruled lines, the margin, and the wear of a sheet carried in a pocket.
 	var rules := Control.new()
 	rules.size = PAGE
 	rules.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rules.draw.connect(func():
-		for y in range(0, int(PAGE.y), 4): rules.draw_line(Vector2(0, y), Vector2(PAGE.x, y), Color(0.6, 0.7, 0.85, 0.05), 1.0)
-		for y in range(48, int(PAGE.y), 36): rules.draw_line(Vector2(24, y), Vector2(PAGE.x - 24, y), Color(0.55, 0.65, 0.85, 0.09), 1.0)
-		rules.draw_line(Vector2(72, 12), Vector2(72, PAGE.y - 12), Color(0.96, 0.78, 0.4, 0.16), 1.0))
+		for y in range(48, int(PAGE.y), 36): rules.draw_line(Vector2(24, y), Vector2(PAGE.x - 24, y), Color(0.32, 0.42, 0.66, 0.2), 1.0)
+		rules.draw_line(Vector2(72, 12), Vector2(72, PAGE.y - 12), Color(0.66, 0.18, 0.14, 0.32), 1.0))
 	page.add_child(rules)
+	var wear := TextureRect.new()
+	wear.texture = HAND.wear(Vector2i(256, 168), 1187)
+	wear.size = PAGE
+	wear.stretch_mode = TextureRect.STRETCH_SCALE
+	wear.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(wear)
 	# What it is, in the corner, the way the tape labels everything.
 	var heading := STYLE.text("HOJA COMPARTIDA", 18, STYLE.SOFT)
 	heading.position = Vector2(20, -30)
 	page.add_child(heading)
-	hand = STYLE.text("", 18)
-	hand.position = Vector2(PAGE.x - 200, -30)
+	hand = STYLE.text("TU LÁPIZ", 18, STYLE.SOFT)
+	hand.position = Vector2(PAGE.x - 250, -30)
 	hand.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	hand.size.x = 200
+	hand.size.x = 190
 	page.add_child(hand)
+	# A stroke of it beside the words: the pencils are dark and so is what the
+	# words are written on, so the colour is shown on a scrap of the paper.
+	swatch = Control.new()
+	swatch.position = Vector2(PAGE.x - 52, -26)
+	swatch.size = Vector2(52, 20)
+	swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	swatch.draw.connect(func():
+		swatch.draw_rect(Rect2(Vector2.ZERO, swatch.size), PAPER)
+		swatch.draw_line(Vector2(6, 13), Vector2(46, 7), ink_of(seat), PEN + 1.0, true))
+	page.add_child(swatch)
 	# The slips, hanging off the right edge.
 	slips = VBoxContainer.new()
 	slips.name = "Slips"
 	slips.position = Vector2(PAGE.x + 26, -30)
 	slips.custom_minimum_size = Vector2(STRIP - 44, 0)
-	slips.add_theme_constant_override("separation", 12)
+	slips.add_theme_constant_override("separation", 14)
 	slips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(slips)
+	pages = GridContainer.new()
+	pages.columns = 2
+	pages.add_theme_constant_override("h_separation", 14)
+	pages.add_theme_constant_override("v_separation", 16)
+	pages.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	caption = Label.new()
 	caption.add_theme_font_override("font", preload("res://game/ui/osd_style.gd").font())
 	caption.add_theme_font_size_override("font_size", 16)
@@ -139,8 +165,7 @@ func open(can_edit: bool, key_name: String, notes := []) -> void:
 	page.pivot_offset = PAGE * 0.5
 	var shown := maxf(fit, 0.4)
 	page.scale = Vector2.ONE * shown
-	hand.text = "TU TRAZO"
-	hand.add_theme_color_override("font_color", ink_of(seat))
+	swatch.queue_redraw()
 	caption.text = ("IZQUIERDO DIBUJA · DERECHO BORRA · %s CIERRA" % key_name) if editable else ("SOLO PUEDES MIRAR · %s CIERRA" % key_name)
 	fill_slips(notes)
 	# It comes up the way the tape cuts to anything: quick, and from nothing.
@@ -151,7 +176,8 @@ func open(can_edit: bool, key_name: String, notes := []) -> void:
 	opening.tween_property(page, "modulate:a", 1.0, 0.12)
 	opening.parallel().tween_property(page, "scale", Vector2.ONE * shown, 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var wait := 0.1
-	for slip in slips.get_children():
+	for slip in slips.get_children() + pages.get_children():
+		if slip == pages: continue
 		slip.modulate.a = 0.0
 		opening.parallel().tween_property(slip, "modulate:a", 1.0, 0.14).set_delay(wait)
 		wait += 0.07
@@ -160,30 +186,58 @@ func open(can_edit: bool, key_name: String, notes := []) -> void:
 func ink_of(who: int) -> Color:
 	return INKS[maxi(0, who - 1) % INKS.size()]
 
-## The slips taken by this player, as they would be if they were pinned up
-## beside the sheet: the place of the code, the number, and the room it came
-## out of. Nobody else's, because telling them is the other half of the game.
+## The pages this player took, pinned up beside the sheet as they are: the
+## number written large in pencil, and under it, small, the page number --
+## which is which place of the code it is, so the four can be put in order.
+## Under each one, in the tape's own type, the room it came out of. Nobody
+## else's pages: telling them is the other half of the game.
+const LEAF := Vector2(118, 150)
 func fill_slips(notes: Array) -> void:
-	for old in slips.get_children(): old.queue_free()
+	for old in slips.get_children():
+		if old == pages: slips.remove_child(pages)
+		else: old.queue_free()
+	for old in pages.get_children(): old.queue_free()
 	var title := STYLE.text("TUS NOTAS", 18, STYLE.SOFT)
 	slips.add_child(title)
 	if notes.is_empty():
 		var empty := STYLE.text("NADA TODAVÍA", 16, STYLE.FAINT)
 		slips.add_child(empty)
 		return
+	slips.add_child(pages)
 	for note in notes:
-		var slip := PanelContainer.new()
-		slip.add_theme_stylebox_override("panel", STYLE.flat(Color(0.1, 0.1, 0.09, 0.9), STYLE.FAINT, 1, 12.0))
-		slip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var column := VBoxContainer.new()
-		column.add_theme_constant_override("separation", 2)
-		slip.add_child(column)
-		column.add_child(STYLE.text("NÚMERO %d DEL CÓDIGO" % int(note.slot), 14, STYLE.SOFT))
-		var figure := STYLE.text(str(int(note.digit)), 44, STYLE.AMBER)
-		column.add_child(figure)
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 4)
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pages.add_child(cell)
+		cell.add_child(leaf(int(note.digit), int(note.slot)))
 		var where := String(note.get("where", ""))
-		column.add_child(STYLE.text(where if not where.is_empty() else "NO APUNTASTE DÓNDE", 14, STYLE.FAINT))
-		slips.add_child(slip)
+		var label := STYLE.text(where if not where.is_empty() else "¿DÓNDE?", 12, STYLE.SOFT)
+		label.custom_minimum_size.x = LEAF.x
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cell.add_child(label)
+
+## One of the pages: a scrap of the same worn paper, not quite square to the
+## others, with its number and its page number in pencil.
+func leaf(digit: int, place: int) -> Control:
+	var scrap := Control.new()
+	scrap.custom_minimum_size = LEAF
+	scrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var worn := HAND.wear(Vector2i(48, 61), 311 + place * 97)
+	var tilt := HAND.jitter(float(place), 4.2) * 0.09
+	scrap.draw.connect(func() -> void:
+		# Drawn turned a little about its middle: inside a grid a control's own
+		# rotation is put back to nothing every time the grid lays it out.
+		var middle := LEAF * 0.5
+		scrap.draw_set_transform(middle, tilt, Vector2.ONE)
+		var corner := -middle
+		scrap.draw_rect(Rect2(corner + Vector2(3, 4), LEAF), Color(0, 0, 0, 0.35))
+		scrap.draw_rect(Rect2(corner, LEAF), PAPER)
+		scrap.draw_texture_rect(worn, Rect2(corner, LEAF), false)
+		var figure := Rect2(corner + Vector2(LEAF.x * 0.2, LEAF.y * 0.1), Vector2(LEAF.x * 0.6, LEAF.y * 0.62))
+		HAND.write_digit(scrap, digit, figure, GRAPHITE, LEAF.x * 0.075, place * 13 + digit)
+		HAND.write_page(scrap, place, Vector2(0.0, LEAF.y * 0.39), 11.0, GRAPHITE, place * 7)
+		scrap.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE))
+	return scrap
 
 func close() -> void:
 	finish_stroke()

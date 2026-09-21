@@ -357,6 +357,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			set_osd("❚❚ PAUSA", "", "", "")
 			backdrop.modulate.a = 0.9
 			title(column, "PAUSA", 72)
+			briefing_panel(column)
 			spacer(column, 28)
 			action("Continuar", "resume")
 			action("Ajustes", "settings")
@@ -442,6 +443,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			backdrop.modulate.a = 0.75
 			title(column, "MENÚ", 72)
 			label(column, "LA PARTIDA NO SE DETIENE", 20).add_theme_color_override("font_color", STYLE.AMBER)
+			briefing_panel(column)
 			spacer(column, 24)
 			action("Continuar", "online_resume")
 			action("Ajustes", "online_settings")
@@ -662,6 +664,24 @@ func hide_document() -> void:
 func tape_time(seconds: float) -> String:
 	var total := int(seconds)
 	return "%d:%02d:%02d" % [total / 3600, (total / 60) % 60, total % 60]
+
+## The sector's errand, kept where anybody can go and look at it again, with
+## what is counted in this one: the sets that are on, and the numbers found.
+func briefing_panel(parent: Node) -> void:
+	if String(briefing.get("objective", "")).is_empty(): return
+	spacer(parent, 18)
+	label(parent, String(briefing.sector), 22).add_theme_color_override("font_color", STYLE.AMBER)
+	spacer(parent, 4)
+	paragraph(parent, String(briefing.objective), 20, 620, STYLE.INK)
+	for row in briefing.get("progress", []):
+		spacer(parent, 6)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 14)
+		parent.add_child(line)
+		var key := label(line, String(row[0]), 18)
+		key.custom_minimum_size.x = 260
+		key.add_theme_color_override("font_color", STYLE.SOFT)
+		label(line, String(row[1]), 18).add_theme_color_override("font_color", STYLE.AMBER)
 
 func controls_panel(parent: Node) -> void:
 	if settings == null: return
@@ -991,6 +1011,76 @@ func show_transit(title: String, errand: String, seconds: float) -> void:
 	transit_tween.tween_interval(span * 0.5)
 	transit_tween.tween_property(transit, "modulate:a", 0.0, span * 0.16)
 	transit_tween.tween_callback(hide_transit)
+
+## The notice of a sector, once the card is gone and the picture is back: what
+## this one wants, for six seconds, and then the tape lets it go the way an
+## analogue set does when it is switched off -- the picture falls into a bright
+## line, the line into a point, and the point goes out.
+const BRIEF_HOLD := 6.0
+var brief: Control
+var brief_tween: Tween
+## What the pause screen keeps of it: the sector, what it asks for, and how it
+## is going, set by the level before the screen is built.
+var briefing := {"sector": "", "objective": "", "progress": []}
+
+func show_brief(sector: String, words: String) -> void:
+	hide_brief()
+	brief = Control.new()
+	brief.name = "Brief"
+	brief.set_anchors_preset(Control.PRESET_FULL_RECT)
+	brief.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(brief)
+	# Under the sheet: whoever opens it is looking at the sheet, and a notice
+	# on top of the page would be written over what they are drawing.
+	if is_instance_valid(sheet): move_child(brief, sheet.get_index())
+	var holder := CenterContainer.new()
+	holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	holder.offset_top = 140
+	holder.offset_bottom = 420
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	brief.add_child(holder)
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", STYLE.flat(Color(0.03, 0.03, 0.03, 0.82), STYLE.FAINT, 1, 24.0))
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(box)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	box.add_child(column)
+	var head := STYLE.text("OBJETIVO · %s" % sector, 20, STYLE.AMBER)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(head)
+	var line := STYLE.text(words, 26)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = 720
+	column.add_child(line)
+	# What the tube does as it goes: the picture burns white on its way down.
+	var glare := ColorRect.new()
+	glare.color = Color(0.96, 0.96, 0.92)
+	glare.modulate.a = 0.0
+	glare.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(glare)
+	brief.modulate.a = 0.0
+	brief_tween = create_tween()
+	brief_tween.tween_property(brief, "modulate:a", 1.0, 0.25)
+	brief_tween.tween_interval(BRIEF_HOLD - 0.65)
+	# The set going off: down to a line, white, and then the line closes. It is
+	# the holder that is squashed, not the box: a container puts its children's
+	# scale back to one every time it lays them out.
+	brief_tween.tween_callback(func(): holder.pivot_offset = holder.size * 0.5)
+	brief_tween.tween_property(holder, "scale", Vector2(1.0, 0.035), 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	brief_tween.parallel().tween_property(glare, "modulate:a", 1.0, 0.16)
+	brief_tween.tween_property(holder, "scale", Vector2(0.0, 0.035), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	brief_tween.tween_callback(hide_brief)
+
+func hide_brief() -> void:
+	if is_instance_valid(brief_tween): brief_tween.kill()
+	brief_tween = null
+	if is_instance_valid(brief): brief.queue_free()
+	brief = null
+
+func set_briefing(sector: String, objective: String, progress: Array) -> void:
+	briefing = {"sector": sector, "objective": objective, "progress": progress}
 
 func hide_transit() -> void:
 	if is_instance_valid(transit_tween): transit_tween.kill()
