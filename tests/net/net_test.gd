@@ -168,6 +168,18 @@ func host() -> void:
 	check("Un muerto no puede dibujar en la hoja", not level.ui.sheet.log_index.has("%d:1" % bravo))
 	check("El cuerpo del muerto desaparece y no estorba", await wait_for(func(): return match_net.bodies[bravo].dead and match_net.bodies[bravo].collision_layer == 0 and not match_net.bodies[bravo].visible, 10.0))
 	check("El armario queda libre al salir el invitado", await wait_for(func(): return not is_instance_valid(hide.occupant), 30.0))
+	# The host goes down as well: one of three is under the quota, so the floor
+	# gives the stage back instead of ending and everybody gets up. What is
+	# being looked at is what that does on a guest's own machine, which is
+	# where the body was put away when it died.
+	check("Perder la cuota devuelve la etapa en vez de terminar el piso", level.session.capture(1) and playing() and level.session.restart_wait > 0.0)
+	check("Con la etapa devuelta se levantan todos", await wait_for(func(): return level.session.participants[bravo] == level.session.Life.EXPLORING and level.local_alive() and level.player.visible, 25.0))
+	check("Y el anfitrión vuelve a su propia cámara", level.player.camera.current and not is_instance_valid(level.watch_rig))
+	# Long enough for the guest to see itself on its feet, and down it goes
+	# again: with two of three alive the floor carries on as it did before.
+	await pause_for(3.0)
+	check("Y se puede volver a caer sin hundir el piso", level.session.capture(bravo) and playing())
+	await pause_for(1.0)
 	level.player.global_position = refuge_point(Vector3(0.8, 0, 0))
 	check("El superviviente invitado llega al refugio", await wait_for(func(): return level.point_in_refuge(match_net.bodies[alpha].global_position), 30.0))
 	await pause_for(0.5)
@@ -262,6 +274,16 @@ func bravo_part() -> void:
 	var match_net = level.match_net
 	check("Muere y observa a un compañero vivo desde detrás", await wait_for(func(): return not level.local_alive() and not level.player.active and match_net.watched_body() != null and is_instance_valid(level.watch_camera) and level.watch_camera.current, 60.0))
 	check("La cámara de observación no atraviesa paredes", level.watch_camera.global_position.distance_to(match_net.watched_body().global_position) < 3.2)
+	# The stage is given back and this body has to come back whole. Its own
+	# camera, its own body, and the torch in the hand: the torch trails the
+	# camera instead of hanging from it, and it is hidden along with the body,
+	# so what it looks like from inside is a light that everybody else can see
+	# and its owner cannot. The word arrives before the replicated session
+	# says so, which is the half second this used to be lost in.
+	level.player.torch.visible = true
+	var raised: bool = await wait_for(func(): return level.local_alive() and level.player.visible and level.player.camera.current and not is_instance_valid(level.watch_rig), 30.0)
+	check("Al devolver la etapa recupera su cuerpo y su cámara", raised)
+	check("Y su linterna vuelve con él en vez de quedarse donde murió", level.player.torch.is_visible_in_tree() and level.player.torch.global_position.distance_to(level.player.camera.global_position) < 1.5)
 	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.5, 0.5), Vector2(0.9, 0.9)]))
 	check("Ve terminar el piso aunque haya muerto", await wait_for(func(): return level.session.state == level.session.State.WON, 120.0))
 	check("Segundo piso", await wait_for(playing, 90.0))

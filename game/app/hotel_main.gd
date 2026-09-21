@@ -931,6 +931,18 @@ func revival_point() -> Vector3:
 ## Applied on every machine: the local body comes back where it is told, the
 ## others are placed, and a stage that was lost starts again as it was found.
 func apply_revival(places: Dictionary, restart: bool) -> void:
+	# The message itself says these seats are up. A guest's session is pushed
+	# twice a second, so waiting for it to say so leaves up to half a second in
+	# which the body is put away again every frame -- and its torch with it,
+	# because the light hangs off the camera: hidden for its owner and lit for
+	# everybody else.
+	var raised := false
+	for seat_key in places:
+		var seat := int(seat_key)
+		if session.participants.get(seat, session.Life.DEAD) == session.Life.DEAD:
+			session.participants[seat] = session.Life.EXPLORING
+			raised = true
+	if raised: session.changed.emit()
 	for seat_key in places:
 		var seat := int(seat_key)
 		if seat == player.slot: restore_local_player(places[seat_key])
@@ -957,8 +969,6 @@ func restore_local_player(point: Vector3) -> void:
 	player.sanity = 100.0
 	player.set_burnt(false)
 	player.active = session.state == session.State.PLAYING and not online_menu and not match_net.local_is_locust()
-	player.visible = true
-	player.collision_layer = 4
 	player.velocity = Vector3.ZERO
 	player.reset_handheld()
 	player.global_position = point
@@ -967,7 +977,21 @@ func restore_local_player(point: Vector3) -> void:
 	# picture until the doors open.
 	player.held = not boarding.is_empty()
 	if player.hidden: player.force_leave_hide()
-	if is_instance_valid(player.camera): player.camera.current = not match_net.local_is_locust()
+	stop_watching()
+	clear_screen_cues()
+
+## Back behind its own eyes. Everything watching a teammate did to the body --
+## hidden, without collision, with somebody else's camera in front -- is undone
+## here, and the torch is brought back to the hand: it is not parented to the
+## camera but trails it, so a body that jumps leaves its own light behind.
+## Called on a revival and again from the loop, because a single frame spent
+## believing it was dead would otherwise leave the body away for the rest of
+## the floor.
+func stop_watching() -> void:
+	var hunter: bool = match_net.local_is_locust()
+	player.visible = not hunter
+	player.collision_layer = 0 if hunter else 4
+	if is_instance_valid(player.camera): player.camera.current = not hunter
 	if is_instance_valid(watch_camera): watch_camera.current = false
 	if is_instance_valid(watch_rig):
 		watch_rig.queue_free()
@@ -975,7 +999,7 @@ func restore_local_player(point: Vector3) -> void:
 		watch_camera = null
 		watch_arm = null
 	match_net.watching = 0
-	clear_screen_cues()
+	player.snap_torch()
 
 ## The title room is shown only on the main menu; any other state gets the
 ## hotel's light back and, outside the opening scene, the player's camera.
@@ -1365,6 +1389,11 @@ func drive_local(delta: float) -> void:
 		watch_teammates()
 		return
 	if online_menu or match_net.local_is_locust(): return
+	# On its feet and still put away: whatever watching a teammate did to the
+	# body is undone now. The word that it is up and the replicated session
+	# that says so do not always arrive in that order, and a body left hidden
+	# is a body whose own torch only the others can see.
+	if is_instance_valid(watch_rig) or not player.visible: stop_watching()
 	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
 	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
 	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
@@ -1606,6 +1635,9 @@ func ride_along(delta: float) -> void:
 	if span >= RIDE_TIME * 0.5 and not boarding.get("moved", false):
 		boarding["moved"] = true
 		player.global_position = boarding.point
+		# The torch trails the camera instead of hanging from it: a body that
+		# jumps has to take its light with it.
+		player.snap_torch()
 		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, boarding.point + Vector3(0, 1.2, 0), -8.0)
 	if span < RIDE_TIME: return
 	player.held = false

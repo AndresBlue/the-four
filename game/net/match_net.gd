@@ -830,6 +830,9 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 		if seat == net.local_seat:
 			level.player.global_position = places[seat_key][0]
 			level.player.rotation.y = places[seat_key][1]
+			# Back where it was, torch and all: the light trails the camera
+			# rather than hanging from it.
+			level.player.snap_torch()
 		elif bodies.has(seat): bodies[seat].place(places[seat_key][0], places[seat_key][1])
 	for index in mini(hides.size(), level.hotel.hides.size()):
 		if int(hides[index]) != 0: hide_state(index, int(hides[index]))

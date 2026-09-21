@@ -211,12 +211,39 @@ func run() -> void:
 	await frames(8)
 	check("La tercera ala tiene su propio apagón", session.goal.get("blackout", false) and level.hotel.dark)
 	check("Con equipo, perder a uno no hunde el piso", session.capture(2) and session.state == session.State.PLAYING and session.restart_wait <= 0.0)
+	# With the torch in hand when it goes down: the light trails the camera
+	# instead of hanging from it, so a body that is put somewhere else leaves
+	# it behind unless somebody brings it.
+	level.player.torch.visible = true
 	check("Caer los dos se perdona una vez", session.capture(1) and session.state == session.State.PLAYING)
 	# It takes a moment: the death is seen and heard before anybody gets up.
 	check("La muerte se cuenta antes de levantar a nadie", session.participants[1] == session.Life.DEAD and session.restart_wait > 0.0)
 	await frames(int(session.RESTART_WAIT * 60) + 20)
 	check("Vuelven todos de pie, en la misma etapa", session.participants[1] == session.Life.EXPLORING and session.stage == before_stage and session.restarts == 1)
 	check("Y el jugador recupera su cuerpo y su cámara", level.player.visible and level.player.collision_layer == 4 and level.player.camera.current)
+	check("Y su linterna vuelve a la mano", level.player.torch.is_visible_in_tree() and level.player.torch.global_position.distance_to(level.player.camera.global_position) < 1.5)
+	# What a guest goes through, played out on one machine: the word that it
+	# is on its feet arrives before the session that says so, which is pushed
+	# twice a second. In between, the loop puts the body away every frame --
+	# and the torch with it, because the light trails the camera and is hidden
+	# along with the body: lit for everybody else, dark for its owner.
+	level.match_net.config = {"seed": 81, "mode": 0, "survivors": [1, 2], "locust_seat": 0}
+	session.participants[1] = session.Life.DEAD
+	level.drive_local(1.0 / 60.0)
+	check("Muerto en un invitado, el cuerpo y su luz se guardan", not level.player.visible and not level.player.torch.is_visible_in_tree())
+	level.apply_revival({1: Vector3(0, 0.04, 0)}, false)
+	check("La resurrección no espera a la sesión replicada", level.local_alive() and level.player.visible and level.player.torch.is_visible_in_tree())
+	level.drive_local(1.0 / 60.0)
+	check("Y el cuadro siguiente no vuelve a guardarlo", level.player.visible and level.player.camera.current)
+	# And a body put away by a single frame of believing itself dead comes
+	# back on its own as soon as the session catches up.
+	session.participants[1] = session.Life.DEAD
+	level.drive_local(1.0 / 60.0)
+	session.participants[1] = session.Life.EXPLORING
+	level.drive_local(1.0 / 60.0)
+	check("Un cuadro de más como muerto no deja el cuerpo escondido", level.player.visible and level.player.torch.is_visible_in_tree())
+	level.match_net.config = {}
+	level.player.torch.visible = false
 	# The stage is given back whole: its sets out and its power on.
 	check("Una etapa devuelta empieza con la luz otra vez", level.televisions_on() == 0 and not level.hotel.dark and not session.goal.get("blackout", false))
 	session.capture(2)

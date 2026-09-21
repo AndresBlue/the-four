@@ -42,13 +42,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que rompe una partida
 
-- [ ] **La linterna se pierde al revivir.** Quien vuelve de pie se queda sin la
-  suya, aunque siga viendo las de los demás. La del cuerpo propio es
-  `top_level` (va detrás de la cámara con retardo, no colgada de ella) y
-  `restore_local_player()` mueve el cuerpo sin llamar a `snap_torch()`, así que
-  la luz se queda donde estaba; la de los compañeros cuelga de su cámara
-  (`remote_player.gd`) y por eso sí viaja. Arrastrarla con el cuerpo en todos
-  los saltos: revivir, ascensor y reconexión.
 - [ ] **Lámparas y apliques siguen brillando con la corriente cortada.** En el
   apagón se apagan las luces pero no los materiales: `hotel_geometry.blackout()`
   esconde focos, apliques, fluorescentes y baliza —y de la baliza sí baja la
