@@ -263,6 +263,16 @@ func run() -> void:
 	torch_owner.shape_plain_beam(plain)
 	check("Y en Compatibilidad se dibuja con el cono y su propio sesgo", plain.light_projector == null and plain.spot_angle < 32.0 and plain.spot_angle_attenuation > 1.0 and plain.shadow_bias > 0.2 and plain.shadow_normal_bias > 2.0)
 	plain.free()
+	# The tape does not start until it has asked for headphones: the floor is
+	# played by ear, and whoever opens the game on speakers has no way of
+	# knowing what they are missing. It goes on the black, before the blue.
+	scene.ui.play_intro()
+	for i in 60: await scene.get_tree().process_frame
+	var notice: Control = scene.ui.intro.get_node_or_null("Headphones")
+	var tape: ColorRect = scene.ui.intro.get_node_or_null("Tape")
+	check("La cinta pide auriculares antes de arrancar", notice != null and notice.modulate.a > 0.5 and tape != null and tape.modulate.a == 0.0)
+	scene.ui.finish_intro()
+	check("Y saltar la entrada se lo lleva con ella", not is_instance_valid(scene.ui.intro))
 	settings.set_value("quality", 1)
 	var session = scene.session
 	check("Cuotas correctas", quota(session, 1) == 1 and quota(session, 2) == 1 and quota(session, 3) == 2 and quota(session, 4) == 2)

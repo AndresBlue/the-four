@@ -62,16 +62,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
   ver con la estética de cinta VHS. Hay que rehacerla junto con las notas y el
   inventario: una sola idea de cómo se ve lo que el jugador escribe, lee y
   comparte, en vez de tres piezas con estilos distintos.
-- [ ] **«AURICULARES SUGERIDOS» antes de que arranque la cinta.** Una pantalla
-  negra con el aviso y un símbolo de auriculares, los dos en gris claro, antes
-  del azul de VIDEO 1 (`hotel_ui.play_intro()`). El juego se juega por el oído
-  —las distancias, la dirección de la criatura, las puertas lejanas— y quien lo
-  abre por altavoces no se entera de que se está perdiendo la mitad. El negro ya
-  está ahí, pero dura 0,6 s: hay que darle tiempo de leerse (unos dos segundos y
-  medio) y fundirlo en el azul. Sin pedir nada, sin botón: se ve y se va. El
-  símbolo, dibujado como vectores con el grosor de la tipografía del menú, no
-  como un icono importado de otro sitio.
-
 ## 2 · Lo que solo se decide jugando
 
 No es trabajo de código: es tuyo, y sin ello no se cierra el Early Access. Las

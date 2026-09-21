@@ -8,6 +8,9 @@ const FAINT := Color(0.94, 0.94, 0.9, 0.22)
 const ALERT := Color(0.93, 0.22, 0.14)
 const AMBER := Color(0.96, 0.78, 0.4)
 const SHADE := Color(0.0, 0.0, 0.0, 0.85)
+## SOFT laid over black, but opaque: for marks drawn in overlapping pieces,
+## where a translucent ink piles up where they meet.
+const MUTED := Color(0.58, 0.58, 0.56)
 const VCR_BLUE := Color(0.09, 0.16, 0.62)
 static var cached_font: Font
 static var cached_theme: Theme
@@ -118,6 +121,27 @@ static func theme() -> Theme:
 	t.set_stylebox("grabber_pressed", "VScrollBar", flat(AMBER))
 	cached_theme = t
 	return t
+
+## A pair of headphones, drawn rather than imported: a band and two cups, in
+## the weight of the menu's own type, so it belongs beside the words instead of
+## looking like an icon borrowed from somewhere else. `size` is the width.
+static func headphones(size: float, color := MUTED) -> Control:
+	var mark := Control.new()
+	mark.custom_minimum_size = Vector2(size, size * 0.62)
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.draw.connect(func() -> void:
+		var stroke := maxf(2.0, size * 0.07)
+		var middle := Vector2(size * 0.5, size * 0.38)
+		var reach := size * 0.35
+		# The band over the top, and a cup hanging at each end of it.
+		mark.draw_arc(middle, reach, PI, TAU, 64, color, stroke, true)
+		for side in [-1.0, 1.0]:
+			var hinge := middle + Vector2(side * reach, 0.0)
+			var bottom := hinge + Vector2(0.0, size * 0.2)
+			mark.draw_line(hinge, bottom, color, stroke * 2.2, true)
+			# Rounded off: draw_line has square ends and a cup does not.
+			mark.draw_circle(bottom, stroke * 1.1, color))
+	return mark
 
 static func text(words: String, size := 20, color := INK) -> Label:
 	var result := Label.new()

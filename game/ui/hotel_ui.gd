@@ -1009,6 +1009,7 @@ func play_intro() -> void:
 	black.set_anchors_preset(Control.PRESET_FULL_RECT)
 	intro.add_child(black)
 	var blue := ColorRect.new()
+	blue.name = "Tape"
 	blue.color = STYLE.VCR_BLUE
 	blue.set_anchors_preset(Control.PRESET_FULL_RECT)
 	blue.modulate.a = 0.0
@@ -1024,6 +1025,26 @@ func play_intro() -> void:
 	play.offset_bottom = 30
 	play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	blue.add_child(play)
+	# Before the tape starts, on the black it opens with: put your headphones
+	# on. The floor is played by ear -- the distances, which way the creature
+	# is, a door two rooms off -- and whoever opens the game on speakers has no
+	# way of knowing what they are missing. A notice, not a menu: it is read,
+	# and it goes with the black.
+	var notice := CenterContainer.new()
+	notice.name = "Headphones"
+	notice.set_anchors_preset(Control.PRESET_FULL_RECT)
+	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notice.modulate.a = 0.0
+	intro.add_child(notice)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 30)
+	notice.add_child(column)
+	var mark := STYLE.headphones(104.0)
+	mark.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(mark)
+	var words := STYLE.text("AURICULARES SUGERIDOS", 30, STYLE.MUTED)
+	words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(words)
 	var static_layer := ColorRect.new()
 	static_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	static_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1038,7 +1059,13 @@ func play_intro() -> void:
 	intro.add_child(hiss)
 	var amount := func(value: float) -> void: material.set_shader_parameter("amount", value)
 	intro_tween = create_tween()
-	intro_tween.tween_interval(0.6)
+	# The notice comes up out of the black, is held long enough to read, and
+	# goes before anything else happens.
+	intro_tween.tween_interval(0.3)
+	intro_tween.tween_property(notice, "modulate:a", 1.0, 0.45)
+	intro_tween.tween_interval(1.6)
+	intro_tween.tween_property(notice, "modulate:a", 0.0, 0.45)
+	intro_tween.tween_interval(0.3)
 	intro_tween.tween_callback(func(): if sounds_enabled: confirm_player.play())
 	intro_tween.tween_property(blue, "modulate:a", 1.0, 0.05)
 	intro_tween.tween_interval(1.8)

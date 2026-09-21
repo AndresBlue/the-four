@@ -73,6 +73,8 @@ Checkpoint al inicio de cada piso; volver a Continuar o reintentar restaura esa 
 
 Menú principal: Nueva partida, Continuar, Multijugador, Archivo, Ajustes, Créditos y Salir. Personaje está dentro de Multijugador (ver «Multijugador en red»). Continuar solo se habilita con un checkpoint compatible. Preferencias locales separadas del guardado de campaña.
 
+Al abrir el juego, antes de nada, una pantalla negra con unos auriculares dibujados y «AURICULARES SUGERIDOS» en gris claro: el piso se juega por el oído —las distancias, hacia dónde está la criatura, una puerta a dos salas— y quien lo abra por altavoces se está perdiendo la mitad. Es un aviso, no un menú: sale del negro, se lee y se va antes de que arranque la cinta.
+
 Portada: detrás del menú se ve una habitación de hotel normal, iluminada por su lámpara, con una cámara en mano que deriva despacio. Al fondo, a la derecha y fuera del centro de la imagen, la puerta al pasillo está entreabierta (bisagra a la derecha) y The Locust se asoma desde detrás del marco izquierdo: por la rendija solo se ve la cara pálida, ladeada, con algún tic de cabeza. Es pequeño y oscuro a propósito, para que sorprenda a quien lo descubra.
 
 - Gráficos: ventana/pantalla completa, resolución, preset gráfico Bajo/Medio/Alto/Ultra (fija también la escala de render), renderizador Forward+/Compatibilidad (al reiniciar), escala de render, sombras, límite de FPS y sincronización vertical.
