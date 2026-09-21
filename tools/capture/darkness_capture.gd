@@ -9,6 +9,9 @@ extends SceneTree
 ##   darkness_cut     the same, with the floor's power cut: nothing should be
 ##                    giving off light of its own any more
 ##   darkness_restored and the same again with the power back
+##   darkness_refuge  the refuge, and darkness_refuge_cut the same with the
+##                    power cut: its exit signs stay lit, they are the one
+##                    thing here with a battery
 ## Pass "-- --prefix=name" to keep a second set beside the first.
 ##   godot --path . --script res://tools/capture/darkness_capture.gd -- --automation
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -106,6 +109,16 @@ func run() -> void:
 		level.hotel.blackout(false)
 		await shot("restored")
 		break
+	# The refuge with the power cut: the exit signs are the one thing on the
+	# floor with a battery, and they stay lit so it can still be found.
+	var refuge: Dictionary = level.manifest.rooms[int(level.manifest.refuges[0])]
+	var middle := FLOOR.position_of(refuge)
+	level.player.torch.visible = false
+	look(middle + Vector3(0, 1.6, 3.4), middle + Vector3(0, 2.3, -2.5))
+	await shot("refuge")
+	level.hotel.blackout(true)
+	await shot("refuge_cut")
+	level.hotel.blackout(false)
 	level.queue_free()
 	await process_frame
 	quit()

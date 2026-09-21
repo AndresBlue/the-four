@@ -18,10 +18,14 @@ tres alas y tres etapas, The Locust con su IA y su versus, supervivencia,
 cordura, ascensores, cuatro presets gráficos y un ejecutable de Windows de 432
 MB que funciona. Se ha jugado con gente real, en LAN y por Internet.
 
-Lo que no está bien, que es de donde sale el orden de abajo:
+Los **cinco fallos** que dejó la última partida están arreglados y medidos: la
+cámara que acababa en negro, la linterna que se perdía al revivir, las lámparas
+que seguían brillando con la corriente cortada, la luz que cruzaba las paredes y
+la linterna que rayaba las texturas en Compatibilidad. Lo que hicieron y cómo se
+comprobó está en la guía de desarrollo y en [REALISM.md](REALISM.md).
 
-- De la última partida quedan **cinco fallos**, uno de ellos capaz de dejar la
-  partida inservible hasta reiniciar el juego.
+Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
+
 - Hay cosas que **nadie entiende jugando** sin que se las cuenten.
 - Lo que debía arreglar que las partidas duraran cinco minutos en vez de
   treinta ya está puesto y medido, pero **nadie lo ha vuelto a jugar**.
@@ -31,8 +35,8 @@ Lo que no está bien, que es de donde sale el orden de abajo:
 ## El orden
 
 **Primero se deja fino lo que ya se puede tocar, y solo después se añade nada.**
-Dentro de eso: lo que rompe una partida antes que lo que molesta; lo que no se
-entiende antes que lo que no se ve; lo que solo se decide jugando antes que lo
+Dentro de eso: lo que rompe una partida antes que lo que molesta (ya no queda
+ninguno); lo que no se entiende antes que lo que no se ve; lo que solo se decide jugando antes que lo
 que se puede pulir a solas; y la deuda técnica antes de que crezca. El acabado
 —sonido, materiales, mobiliario— va después, porque afina algo que ya funciona.
 Los otros tres pisos van al final: son el doble de juego, y montarlos sobre un
@@ -40,9 +44,7 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ---
 
-## 1 · Lo que rompe una partida
-
-## 2 · Lo que no se entiende jugando
+## 1 · Lo que no se entiende jugando
 
 - [ ] **Reconectar debe devolverte donde estabas.** Hay código y prueba para
   eso —`match_net.catch_up()`/`restore()` reponen la posición desde el cuerpo
@@ -69,7 +71,7 @@ piso que todavía falla es multiplicar los fallos por cuatro.
   símbolo, dibujado como vectores con el grosor de la tipografía del menú, no
   como un icono importado de otro sitio.
 
-## 3 · Lo que solo se decide jugando
+## 2 · Lo que solo se decide jugando
 
 No es trabajo de código: es tuyo, y sin ello no se cierra el Early Access. Las
 herramientas para mirarlo están en la guía de desarrollo.
@@ -143,7 +145,7 @@ herramientas para mirarlo están en la guía de desarrollo.
   en uno de los de las pruebas con amigos, en Forward+ y en Compatibilidad, y
   anotarlo en [PERFORMANCE.md](PERFORMANCE.md).
 
-## 4 · Deuda técnica
+## 3 · Deuda técnica
 
 Nada de esto se ve jugando, y todo cuesta caro más adelante.
 
@@ -178,7 +180,7 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
   modestas, donde ya apareció el fallo de la linterna.
 
-## 5 · Acabado de lo que ya existe
+## 4 · Acabado de lo que ya existe
 
 Afina algo que funciona: va después de que funcione bien.
 
@@ -195,7 +197,7 @@ Afina algo que funciona: va después de que funcione bien.
 - [ ] **Accesibilidad, mezcla y rendimiento sostenido** en la escena más
   exigente.
 
-## 6 · Assets que faltan (tuyos)
+## 5 · Assets que faltan (tuyos)
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía.
@@ -205,7 +207,7 @@ Afina algo que funciona: va después de que funcione bien.
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.
 
-## 7 · Lo nuevo: los otros tres pisos
+## 6 · Lo nuevo: los otros tres pisos
 
 No empieza hasta que lo de arriba esté cerrado.
 
@@ -220,7 +222,7 @@ No empieza hasta que lo de arriba esté cerrado.
   los caídos y victoria final.
 - [ ] **Campañas completas de dos y cuatro jugadores sin bloqueos.**
 
-## 8 · Consolidación y cierre
+## 7 · Consolidación y cierre
 
 - [ ] **Los nueve eventos** de las otras criaturas.
 - [ ] **Los doce descubrimientos restantes**, registro de partidas y códigos

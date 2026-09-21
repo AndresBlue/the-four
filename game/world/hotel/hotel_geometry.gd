@@ -77,7 +77,11 @@ var unlit := {}
 ## ours (their glow lives inside the model), so they are held apart.
 var glows := {}
 var lit_sconces: Array[MeshInstance3D] = []
+## The exit signs, which are the one thing on the floor with a battery: they
+## stay lit when the power goes, sign and green spill both, and are kept out of
+## the lists the cut works through. A refuge one can still find in the dark.
 var exit_panels: Array[ShaderMaterial] = []
+var exit_lamps: Array[OmniLight3D] = []
 const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
 ## Service rooms (laundry, storeroom, maintenance, office) have a suspended
 ## ceiling of acoustic tiles; the empty lounge and the storeroom decrepit
@@ -524,7 +528,6 @@ func blackout(on: bool) -> void:
 	# the power cut ignored by the lamps it was supposed to put out.
 	for material in held_glows():
 		material.emission_energy_multiplier = 0.0 if on else glows[material]
-	for panel in exit_panels: panel.set_shader_parameter("level", 0.0 if on else 1.0)
 	for sconce in lit_sconces:
 		if on: switch_off(sconce)
 		else: switch_on(sconce)
@@ -1062,7 +1065,7 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
 	lamp.distance_fade_enabled = true
 	practical_fade(lamp)
 	board.add_child(lamp)
-	practicals.append(lamp)
+	exit_lamps.append(lamp)
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
@@ -1525,6 +1528,11 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	bounce.show_near(player_position, preset.bounce and not echo_view)
 	for lamp in practicals:
 		lamp.visible = not dark and not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
+		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
+	# The exit signs keep theirs through a power cut: they are the one thing
+	# here that would have a battery, and the refuge stays findable.
+	for lamp in exit_lamps:
+		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < maxf(preset.furniture_lamps, 12.0)
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).

@@ -28,9 +28,6 @@ func glowing() -> int:
 	var count := 0
 	for material in level.hotel.held_glows():
 		if material.emission_energy_multiplier > 0.0: count += 1
-	for panel in level.hotel.exit_panels:
-		var dimmed = panel.get_shader_parameter("level")
-		if dimmed == null or float(dimmed) > 0.0: count += 1
 	for sconce in level.hotel.lit_sconces:
 		for surface in sconce.mesh.get_surface_count():
 			var shade := sconce.mesh.surface_get_material(surface) as BaseMaterial3D
@@ -232,6 +229,9 @@ func run() -> void:
 	await frames(8)
 	check("La tercera ala tiene su propio apagón", session.goal.get("blackout", false) and level.hotel.dark)
 	check("Y con la corriente cortada no queda nada brillando", lit_surfaces > 0 and glowing() == 0)
+	# Except the exit signs, which are the one thing with a battery: sign and
+	# green spill both, so the refuge can still be found in the dark.
+	check("Salvo los carteles de salida, que siguen encendidos", not level.hotel.exit_panels.is_empty() and level.hotel.exit_panels.all(func(panel): return panel.get_shader_parameter("level") == null or float(panel.get_shader_parameter("level")) > 0.0))
 	check("Con equipo, perder a uno no hunde el piso", session.capture(2) and session.state == session.State.PLAYING and session.restart_wait <= 0.0)
 	# With the torch in hand when it goes down: the light trails the camera
 	# instead of hanging from it, so a body that is put somewhere else leaves
