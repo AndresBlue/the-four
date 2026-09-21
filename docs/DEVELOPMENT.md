@@ -89,7 +89,7 @@ Para otro equipo, configura la variable `GODOT_PATH` o pasa `-GodotPath` a los l
 - Si cambia la distribución reproducible, revisa explícitamente la versión del generador y la compatibilidad del checkpoint. El generador sigue en v3.
 - Importa copias de trabajo en `assets/`, guarda originales en `source_assets/` y registra procedencia/licencia en `docs/ASSETS.md` antes de distribuir.
 - No versionar `.godot/`, registros, preferencias o exportaciones. Sí versionar escenas, scripts, `.uid`, materiales y configuración de importación de assets activos.
-- Cuando algo se termine, márcalo en [PLAN.md](PLAN.md) con lo que se comprobó, y corrige cualquier documento que dijera lo contrario. Un documento que promete de más es peor que no tenerlo.
+- Cuando algo se termine, **quítalo de [PLAN.md](PLAN.md)** —ahí solo vive lo que falta— y escribe en [GAME_DESIGN.md](GAME_DESIGN.md) o aquí lo que ahora hace el juego, con lo que se comprobó. Corrige cualquier documento que dijera lo contrario: uno que promete de más es peor que no tenerlo.
 
 ## Límites que se mantienen
 

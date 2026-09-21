@@ -3,7 +3,7 @@
 Empieza por aquí según lo que busques:
 
 - **Qué es el juego y por qué reglas se rige:** [GAME_DESIGN.md](GAME_DESIGN.md).
-- **Cómo está hoy, en qué orden sigue y qué falta:** [PLAN.md](PLAN.md). Documento único; sustituye a la antigua hoja de ruta y a la lista de tareas.
+- **Qué falta y en qué orden:** [PLAN.md](PLAN.md). Solo lo pendiente, de lo más urgente a lo más lejano; lo terminado sale de ahí y se describe en el diseño. El registro de lo que se fue comprobando, con sus fechas y medidas, queda en [history/](history/).
 - **Dónde tocar cada sistema y cómo comprobarlo:** [DEVELOPMENT.md](DEVELOPMENT.md).
 - **Cómo se juega y cómo se lanza:** [README.md](../README.md), en la raíz del proyecto.
 
