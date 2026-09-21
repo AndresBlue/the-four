@@ -85,6 +85,11 @@ func run() -> void:
 	check("Cada refugio se entra por una sola puerta", one_door.is_empty())
 	check("Detrás de la puerta de cada refugio solo está su ascensor, sin otra entrada", sealed_landing.is_empty())
 	check("Ir pegado a una pared no encuentra ningún refugio", wall_solved.is_empty())
+	# The standby floor, drawn only if twenty tries all fail. It never is in a
+	# thousand seeds, which is exactly why it has to be held to the same
+	# promises here: nothing else would notice it had stopped keeping them.
+	var standby: Dictionary = generator.candidate(404, 0, true)
+	check("El piso de respaldo cumple lo mismo que los demás: válido, sin refugio a mano en la pared y con recorrido", VALIDATOR.new().validate(standby).is_empty() and int(standby.wall_hits.max()) == 0 and int(standby.walk) >= GEN.MIN_WALK)
 	check("La numeración es de hotel: una centena por ala, sin repetir y sin placa en servicio", number_faults.is_empty())
 	var drawn: float = float(climbing) / maxf(1.0, float(climbing + falling))
 	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)
