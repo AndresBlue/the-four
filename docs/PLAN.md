@@ -18,7 +18,7 @@ Hay un piso jugable de principio a fin, solo o acompañado:
 Y esto es lo que hoy no está bien, que es de donde sale el orden de abajo:
 
 - **Las partidas se acababan demasiado pronto** (desde 1 min 30 s, media de 5 a 8 min frente a la meta de 25–40) y muchas veces sin cruzarse con la criatura, porque el piso se resolvía siguiendo la numeración de las puertas. Lo que debía arreglarlo —tres etapas, teles, cerradura de código, apagón, y una planta donde ni los números ni la pared derecha llevan a la salida— ya está puesto y medido; **falta volver a jugarlo con gente y ver si ahora dura lo que debe**.
-- **Jugado entero el 21 de septiembre.** De ahí salieron seis fallos: dos ya arreglados (el paso de ala de la criatura, que ahora toma el ascensor andando, y las puertas que la dejaban clavada) y cuatro abiertos (linterna al revivir, lámparas encendidas durante el apagón, fugas de luz y texturas rotas por la linterna en Compatibilidad), más cuatro ajustes de interfaz y presentación (reconexión, paso de ala, inventario de notas y la hoja compartida).
+- **Jugado entero el 21 de septiembre.** De ahí salieron siete fallos: dos ya arreglados (el paso de ala de la criatura, que ahora toma el ascensor andando, y las puertas que la dejaban clavada) y cinco abiertos (la cámara que se desboca a pocos FPS y deja la pantalla en negro hasta reiniciar, la linterna al revivir, lámparas encendidas durante el apagón, fugas de luz y texturas rotas por la linterna en Compatibilidad), más cuatro ajustes de interfaz y presentación (reconexión, paso de ala, inventario de notas y la hoja compartida).
 - La ejecución vista desde el cazador y el nivel de los gruñidos siguen sin juicio humano, y el detective masculino sigue siendo un modelo sin esqueleto.
 - Solo existe un piso de los cuatro; Sunman, The Boiled One y Guilt no están.
 
@@ -115,13 +115,43 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 
 ### Lo que salió de la segunda partida (21 de septiembre de 2026)
 
-Jugada entera con las etapas nuevas, en cooperativo y en versus. Dos están
-arregladas —el paso de ala de la criatura, que se rehizo entero, y las puertas
-que la atrapaban, que salieron al medirlo—; las demás siguen abiertas, en orden
-de gravedad, y donde ya se ha mirado el código se dice dónde vive.
+Jugada entera con las etapas nuevas, en cooperativo y en versus, y en una
+máquina modesta aparte. Dos están arregladas —el paso de ala de la criatura,
+que se rehizo entero, y las puertas que la atrapaban, que salieron al medirlo—;
+las demás siguen abiertas, en orden de gravedad, y donde ya se ha mirado el
+código se dice dónde vive.
 
 **Fallos**
 
+- [ ] **A pocos FPS la cámara se vuelve loca y acaba en negro para siempre.**
+  En una máquina modesta, al empezar la partida —que es el momento más caro del
+  piso—, la cámara se puso a dar vueltas en círculos de arriba abajo, cada vez
+  más rápido; con el ratón se la podía enderezar a veces, y si se aceleraba del
+  todo la pantalla se iba a negro entera, sin linterna ni nada, y **seguía negra
+  al salir al menú y empezar otra partida**: solo se arreglaba reiniciando el
+  juego. Es el muelle de la cámara en mano (`hotel_player.update_handheld()`):
+
+      sway_velocity += ((target - sway) * 110.0 - sway_velocity * 13.0) * delta
+      sway += sway_velocity * delta
+
+  es un Euler explícito con la rigidez 110 y el amortiguamiento 13 multiplicados
+  por el `delta` real, sin límite. Simulado con esos mismos números: aguanta
+  hasta unos 10 FPS (oscila 1,2°, que es lo que debe), y **por debajo de 8 FPS
+  se dispara** —revienta en 137 cuadros a 8 FPS y en 44 a 5—. Cuando el valor
+  sale del rango del float, `camera.rotation += offset - handheld` mete un NaN
+  en la transformada de la cámara: no se dibuja nada, y la linterna, que la
+  sigue, tampoco. Y se queda: `sway` y `sway_velocity` **no se reponen en
+  ningún sitio** —ni al construir un piso, ni al revivir, ni al meterse en un
+  armario, donde sí se limpian `camera.rotation` y `handheld`—, y el jugador es
+  el mismo nodo de una partida a otra, así que el NaN vuelve a infectar la
+  cámara al primer cuadro. Solo lo limpia reiniciar el proceso. De paso,
+  `look_pitch()` devuelve NaN, que en cooperativo viaja a las otras máquinas
+  dentro del estado del jugador.
+  Lo que hay que hacer: integrar el muelle con un paso acotado (o de forma
+  implícita, que a esa rigidez no cuesta nada), reponer `sway`/`sway_velocity`
+  donde se repone lo demás, y no dejar salir de ahí un valor que no sea finito
+  —una cámara en NaN no se recupera sola—. Y comprobarlo forzando el caso:
+  `--fixed-fps 5` o un piso a 1080p con todo en Ultra en la máquina lenta.
 - [ ] **La linterna se pierde al revivir.** Quien vuelve de pie se queda sin la
   suya, aunque siga viendo las de los demás. La linterna del cuerpo propio es
   `top_level` (va detrás de la cámara con retardo, no colgada de ella) y
