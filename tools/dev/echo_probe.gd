@@ -24,6 +24,9 @@ func run() -> void:
 	DisplayServer.window_set_size(Vector2i(1280, 720))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The tape screen plays over everything for its first seconds and these
+	# shots are about what is behind it.
+	level.ui.finish_intro()
 	await level.take_locust(81)
 	level.settings.values.quality = 2
 	level.apply_settings()

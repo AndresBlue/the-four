@@ -10,6 +10,9 @@ func save_image(filename: String) -> void:
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The tape screen plays over everything for its first seconds and these
+	# shots are about what is behind it.
+	level.ui.finish_intro()
 	await save_image("hotel_final_menu.png")
 	await level.start_floor(81)
 	for room in level.manifest.rooms:

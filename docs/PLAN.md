@@ -100,7 +100,11 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 
 ### Empaquetado
 
-- [ ] **El ejecutable pesa ~1 GB.** El paquete lleva a la vez los archivos de origen (imágenes, modelos) y su copia ya importada, y las texturas de los personajes son de 4K. Bajarlo sin romper nada: comprobar qué carga el juego por ruta (`avatar_visual.gd` abre `model.fbx` en marcha), excluir originales o reducir tamaños de textura, y verificar el resultado con una partida real desde el ejecutable. `evidence/`, `models/`, `sfx/` y `exports/` ya se ignoran con `.gdignore` (eran otros 180 MB de importaciones inútiles) y los `.zip` de origen se excluyen en `export_presets.cfg`.
+- [x] **El ejecutable pasó de 975 MB a 432 MB** (−56 %), sin tocar una línea del juego. Tres cortes, medidos con `tools/dev/asset_weight.gd` (dice qué pesa cada cosa ya importada y qué no alcanza nadie):
+  1. **Texturas a 1024** (`process/size_limit` en 160 `.import` de 2K): la caché de importación bajó de 833 a 463 MB.
+  2. **Mapas de detalle a 512** (normales, rugosidad, metálico y oclusión: 173 archivos): de 463 a 291 MB. El albedo se queda en 1024.
+  3. **Fuera el rig facial de los modelos comprados** (`tools/import/strip_blend_shapes.gd`, enganchado en el `.import` de cada modelo): 585 blend shapes en la Exploradora y 154 en la Detective, que el juego no usa —los supervivientes se posan por huesos— y que eran casi todo el peso: ese modelo pasó de 50,3 MB a 3,4 y el otro de 8,9 a 0,8. El esqueleto, los materiales y los pesos de piel se conservan; comprobado a ojo en la pantalla de personaje, con y sin el recorte.
+  Comprobado además arrancando el ejecutable exportado y jugando un piso real (`--playtest-seed=81`): cero errores en su registro. Lo que queda son 295 MB de assets alcanzables (lo más pesado ahora es el audio: 8,3 MB de `dark_hotel.wav` y 5,9 del tema) más el motor. Los `.zip` de origen (408 MB) ya no entraban.
 
 ### Cierre
 

@@ -10,6 +10,9 @@ func shot(filename: String) -> void:
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The tape screen plays over everything for its first seconds and these
+	# shots are about what is behind it.
+	level.ui.finish_intro()
 	await level.start_floor(81)
 	level.locust.set_physics_process(false)
 	var bounds := AABB()

@@ -21,6 +21,9 @@ func run() -> void:
 		if argument == "--run": running = true
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The tape screen plays over everything for its first seconds and these
+	# shots are about what is behind it.
+	level.ui.finish_intro()
 	await level.start_floor(81)
 	level.settings.set_value("quality", quality)
 	# Presets with bounce light bake it now, on worker threads.
