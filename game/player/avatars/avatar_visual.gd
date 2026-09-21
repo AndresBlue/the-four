@@ -87,6 +87,7 @@ func configure(index: int, local_view: bool) -> void:
 		else: animation.stop()
 	if model is MeshInstance3D: meshes.append(model)
 	for mesh in model.find_children("*", "MeshInstance3D", true, false): meshes.append(mesh)
+	refine_materials()
 	var bounds := AABB()
 	var first := true
 	for mesh in meshes:
@@ -116,59 +117,65 @@ func configure(index: int, local_view: bool) -> void:
 	initialized = true
 	update_pose(Vector3.ZERO, false, 0)
 
-## The red motes of a mind that has gone: a few embers coming off the body.
-## These are the ones in the room -- a teammate standing next to you can see
-## them, and so can you, on your own hands. What the creature gets is not
-## this: it is the red grains its own reading puts over you from anywhere on
-## the floor (echo_view.bloom_motes), and that is why nobody waits a floor out
-## inside a wardrobe.
-var motes: GPUParticles3D
+## The bought models come out of the importer a little wrong, and these are
+## the fixes, made on a copy of each material as the body is put together.
+##
+## - Character Creator's eye occlusion is a shell over each eye meant to be a
+##   soft transparent shadow in the corners; it imports opaque and white, and
+##   the Exploradora looked out through two white balls. It is not drawn.
+## - Hair, brows and lashes are cut out with a hard alpha threshold, which
+##   leaves every strand a staircase of pixels. They are blended instead,
+##   with a depth pre-pass so the layers still sort, and softened on the
+##   cut when the screen has MSAA.
+## - Every surface came in at roughness 1 with no roughness map: skin, eyes
+##   and teeth like chalk. They get a plausible roughness of their own.
+## - The detective's own maps -- the relief of the coat, the face, the hat
+##   band -- came with it and were never hooked up: only its colour was
+##   drawn, flat as a cardboard cut-out. Each part finds its normal map by
+##   name beside its colour.
+## - Up close a survivor is never drawn with a reduced mesh: the level of
+##   detail that is fine for a chair turns a face into facets.
+const HAIRLIKE := ["hair", "brow", "lash", "scalp", "tearline"]
+## By the name of the material, first match wins: skin before body, so the
+## Exploradora's "Skin_Body" is skin and not clothes.
+const ROUGHNESS := {
+	"skin": 0.52, "eye": 0.12, "cornea": 0.05, "teeth": 0.35, "tongue": 0.4, "nails": 0.4,
+	"hair": 0.62, "brow": 0.7, "lash": 0.7, "scalp": 0.7,
+	"body": 0.74, "glove": 0.5, "shoe": 0.42, "heel": 0.3, "hat": 0.85, "eyewear": 0.15,
+	"top": 0.82, "shirt": 0.85, "bottom": 0.8, "denim": 0.88, "underwear": 0.8,
+}
+const AVATAR_LOD_BIAS := 6.0
 
-func set_burnt(on: bool) -> void:
-	if not on:
-		if is_instance_valid(motes): motes.emitting = false
-		return
-	if not is_instance_valid(motes): motes = build_motes()
-	motes.emitting = true
-
-func build_motes() -> GPUParticles3D:
-	var ember := StandardMaterial3D.new()
-	ember.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ember.albedo_color = Color(1.0, 0.13, 0.1)
-	ember.emission_enabled = true
-	ember.emission = Color(1.0, 0.1, 0.08)
-	ember.emission_energy_multiplier = 7.0
-	ember.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	ember.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	ember.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	ember.billboard_keep_scale = true
-	ember.disable_receive_shadows = true
-	ember.render_priority = 126
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.05, 0.05)
-	quad.material = ember
-	var drift := ParticleProcessMaterial.new()
-	drift.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	drift.emission_sphere_radius = 0.28
-	drift.direction = Vector3(0, 1, 0)
-	drift.spread = 22.0
-	drift.initial_velocity_min = 0.12
-	drift.initial_velocity_max = 0.3
-	drift.gravity = Vector3(0, 0.04, 0)
-	drift.scale_min = 0.6
-	drift.scale_max = 1.0
-	var dots := GPUParticles3D.new()
-	dots.name = "Motes"
-	dots.amount = 6
-	dots.lifetime = 2.6
-	dots.draw_pass_1 = quad
-	dots.process_material = drift
-	dots.position = Vector3(0, 1.1, 0)
-	dots.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# Stamped anywhere in the floor: never culled with the body's own box.
-	dots.visibility_aabb = AABB(Vector3(-3, -3, -3), Vector3(6, 6, 6))
-	add_child(dots)
-	return dots
+func refine_materials() -> void:
+	for mesh in meshes:
+		if String(mesh.name).to_lower().contains("eyeocclusion"):
+			mesh.visible = false
+			continue
+		mesh.lod_bias = AVATAR_LOD_BIAS
+		if mesh.mesh == null: continue
+		for surface in mesh.mesh.get_surface_count():
+			var original := mesh.get_active_material(surface) as StandardMaterial3D
+			if original == null: continue
+			var material := original.duplicate() as StandardMaterial3D
+			var name := original.resource_name.to_lower()
+			material.emission_enabled = false
+			if material.normal_texture == null and material.albedo_texture != null:
+				var relief := material.albedo_texture.resource_path.replace("_diffuse", "_normal")
+				if relief != material.albedo_texture.resource_path and ResourceLoader.exists(relief):
+					material.normal_enabled = true
+					material.normal_texture = load(relief)
+			for key in ROUGHNESS:
+				if name.contains(key):
+					material.roughness = ROUGHNESS[key]
+					break
+			# Skin is not a mirror: the default specular turned the detective's
+			# face to bronze once its relief was drawn.
+			if name.contains("skin") or name.contains("body"): material.metallic_specular = 0.3
+			if HAIRLIKE.any(func(word): return name.contains(word)) and original.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+				material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+				material.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
+				material.alpha_antialiasing_edge = 0.3
+			mesh.set_surface_override_material(surface, material)
 
 func set_body_shadow(on: bool) -> void:
 	body_shadow = on

@@ -40,6 +40,23 @@ func run() -> void:
 	var floors := gallery.find_children("Mesh_carpet_*", "MeshInstance3D", true, false)
 	check("Saved gallery retains nondegenerate floor geometry", floors.size() > 0 and absf(floors[0].transform.basis.determinant()) > 1.0)
 	gallery.free()
+	# The bought character models carry face rigs the game never uses, most
+	# of their weight. They are dropped as they are imported, by a script the
+	# model's .import has to name: if a model is replaced or reimported and
+	# the hook is lost, this is what turns red instead of the package quietly
+	# growing by 50 MB.
+	var hooked := true
+	var shapes := 0
+	for folder in DirAccess.get_directories_at("res://assets/players"):
+		var model := "res://assets/players/%s/model.fbx" % folder
+		if not FileAccess.file_exists(model): continue
+		var settings := ConfigFile.new()
+		if settings.load(model + ".import") != OK or String(settings.get_value("params", "import_script/path", "")) != "res://tools/import/strip_blend_shapes.gd": hooked = false
+		var body: Node = load(model).instantiate()
+		for mesh in body.find_children("*", "MeshInstance3D", true, false):
+			if mesh.mesh != null: shapes += mesh.mesh.get_blend_shape_count()
+		body.free()
+	check("Every character model is imported without its unused face rig", hooked and shapes == 0)
 	var file := FileAccess.open("res://evidence/scene_contracts.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failures.is_empty(), "checks": checks, "failures": failures}, "\t"))
 	file.close()

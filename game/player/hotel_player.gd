@@ -458,10 +458,10 @@ func _process(delta: float) -> void:
 
 ## Burnt out, or back from it. The motes are the only thing that says so to
 ## anybody else.
+## A mind that has gone out. Nothing shows on the body: it is the creature's
+## to know, from anywhere on the floor, not something anybody sees.
 func set_burnt(on: bool) -> void:
-	if burnt == on: return
 	burnt = on
-	if is_instance_valid(avatar): avatar.set_burnt(on)
 
 func can_stand() -> bool:
 	if not crouched: return true

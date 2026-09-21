@@ -119,12 +119,11 @@ func push_state(data: Array) -> void:
 	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right)
 	away = false
 
-## Its mind has gone, or come back: the motes are what the creature senses.
+## Its mind has gone, or come back. Nothing shows on the body: only the
+## creature senses it.
 var burnt := false
 func set_burnt(on: bool) -> void:
-	if burnt == on: return
 	burnt = on
-	if is_instance_valid(avatar): avatar.set_burnt(on)
 
 ## Snap straight to a position (spawn, or a teammate returning).
 func place(point: Vector3, yaw: float) -> void:

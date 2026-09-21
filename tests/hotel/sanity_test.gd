@@ -108,8 +108,8 @@ func run() -> void:
 	player.torch.visible = false
 	player.sanity = 0.0
 	await frames(4)
-	check("A cero, el cuerpo queda marcado", player.burnt and is_instance_valid(player.avatar.motes) and player.avatar.motes.emitting)
-	check("Las motas del cuerpo son una brasa roja en la sala", player.avatar.motes.draw_pass_1.material.emission.r > 0.9 and player.avatar.motes.draw_pass_1.material.emission.g < 0.2)
+	check("A cero, el cuerpo queda marcado", player.burnt)
+	check("Y no se le ve nada encima: es cosa de la criatura", player.avatar.find_children("*", "GPUParticles3D", true, false).is_empty())
 	check("La marca aparece en lo que el nivel le cuenta a la criatura", level.burnt_survivors().size() == 1)
 	# It is told where they are and it goes, however far away it is.
 	level.locust.global_position = FLOOR.position_of(room_far_from(player.global_position)) + Vector3(0, 0.04, 0)
@@ -128,7 +128,7 @@ func run() -> void:
 	player.global_position = FLOOR.position_of(lit) + Vector3(0, 0.04, 0)
 	player.sanity = level.SANITY_BACK + 1.0
 	await frames(4)
-	check("Con cordura suficiente las motas se apagan", not player.burnt and not player.avatar.motes.emitting)
+	check("Con cordura suficiente deja de estar marcado", not player.burnt)
 
 	# --- What the screen says -----------------------------------------------------
 	player.global_position = FLOOR.position_of(lit) + Vector3(0, 0.04, 0)

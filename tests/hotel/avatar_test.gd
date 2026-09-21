@@ -112,6 +112,29 @@ func run() -> void:
 	avatar.update_pose(Vector3(3.0, 0, 0), false, 1.0 / 60.0, true)
 	avatar.update_pose(Vector3.ZERO, true, 1.0 / 60.0, true)
 	check("El modelo sin esqueleto no se rompe", avatar.model != null and avatar.rig == null)
+	check("El detective lleva el relieve que trae su modelo", avatar.meshes[0].get_surface_override_material(0).normal_texture != null)
+	avatar.queue_free()
+	await process_frame
+	# What the importer gets wrong, put right as the body is put together.
+	avatar = AVATAR.new()
+	avatar.character = 2
+	body.add_child(avatar)
+	await process_frame
+	var occlusion: Array = avatar.meshes.filter(func(mesh): return String(mesh.name).to_lower().contains("eyeocclusion"))
+	check("La Exploradora no mira a través de dos bolas blancas", not occlusion.is_empty() and occlusion.all(func(mesh): return not mesh.visible))
+	var hair_ok := true
+	var chalk := false
+	for mesh in avatar.meshes:
+		if not mesh.visible: continue
+		if mesh.lod_bias < avatar.AVATAR_LOD_BIAS: hair_ok = false
+		for surface in mesh.mesh.get_surface_count():
+			var material := mesh.get_surface_override_material(surface) as StandardMaterial3D
+			if material == null: continue
+			var name := material.resource_name.to_lower()
+			if name.contains("hair") and material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS: hair_ok = false
+			if name.contains("skin") and material.roughness >= 0.99: chalk = true
+	check("Su pelo se funde en vez de cortarse en escalones, y nada se dibuja reducido de cerca", hair_ok)
+	check("Y la piel no es de tiza", not chalk)
 	var file := FileAccess.open("res://evidence/avatar_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	file.close()

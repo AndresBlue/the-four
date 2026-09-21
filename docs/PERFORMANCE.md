@@ -91,10 +91,7 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
 - **LOD en la hoja y el marco de puerta.** Se dejaron fuera a propósito, porque sellan la luz.
 - **Sombra del avatar en una sola superficie.** Son 14 llamadas por pasada de sombra al caminar. Queda como mejora opcional; los LOD ya reducen sus triángulos.
 - **Texturas ORM** (oclusión, rugosidad y metal empaquetados) para puertas, armario y aplique. Requiere rehacer los materiales.
-- **Exploradora.**
-  - `size_limit` 1024.
-  - Quitar sus 50 MB de blend shapes, que no se usan.
-  - `model_38`/`40` y `model_41`/`43` son idénticas.
+- **Exploradora.** `model_38`/`40` y `model_41`/`43` son idénticas. (Las blend shapes ya se quitan al importar; la cabeza vuelve a 2048 porque a 1024 la cara se veía borrosa de cerca, unos 8 MB más de vídeo.)
 - **Unos 111 MB de texturas no usadas en el PCK.** Solo afecta al tamaño del ejecutable, no al rendimiento. Reimportar un FBX vuelve a extraerlas.
 - **Grietas de la tele en la entrada.** `crack_pattern.gd` pinta píxel a píxel, con un tirón estimado de 50–300 ms en cada golpe. Se podría precalcular o mover a un hilo.
 - **CPU menor.**

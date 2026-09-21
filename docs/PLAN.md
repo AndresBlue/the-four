@@ -143,9 +143,6 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
   barato partir cordura y ascensores en los suyos.
 - [ ] **El tercer ascensor no tiene viaje.** Los dos primeros hacen su segundo y
   medio a oscuras; el último termina el piso en el acto (`ride_lifts()`).
-- [ ] **El recorte de blend shapes va enganchado a mano en cada `.import`.** Si
-  se reemplaza o reimporta un modelo se pierde el enganche en silencio y el
-  paquete vuelve a engordar 50 MB sin que nada se ponga rojo.
 - [ ] **La reconexión que falló una vez** («Reaparece donde estaba»): un
   invitado que se cae y vuelve apareció lejos de donde estaba una vez de cinco
   verificaciones, y no se ha vuelto a reproducir en seis pasadas seguidas del
@@ -176,8 +173,6 @@ Afina algo que funciona: va después de que funcione bien.
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía.
-- [ ] **Arte para las motas** de la cordura quemada: hoy son partículas
-  aditivas.
 - [ ] **Un detective masculino con esqueleto.** El de ahora es un OBJ sin
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.
