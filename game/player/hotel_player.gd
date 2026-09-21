@@ -179,7 +179,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 5.4
 		noise.emit(global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)
 	move_and_slide()
-	avatar.update_pose(velocity, crouched, delta)
+	avatar.update_pose(velocity, crouched, delta, is_on_floor())
 	if position.y < -5:
 		position = spawn
 		velocity = Vector3.ZERO

@@ -154,7 +154,9 @@ func _physics_process(delta: float) -> void:
 	camera.rotation.x = pitch
 	velocity = before.velocity.lerp(after.velocity, t)
 	avatar.visible = not hidden
-	avatar.update_pose(velocity if not hidden else Vector3.ZERO, crouched, delta)
+	# A puppet has no floor under it: it is on the ground unless it is clearly
+	# going up or coming down.
+	avatar.update_pose(velocity if not hidden else Vector3.ZERO, crouched, delta, absf(velocity.y) < 1.2)
 	update_steps(previous, delta)
 
 ## Footsteps from the distance walked, quieter crouched, louder running.

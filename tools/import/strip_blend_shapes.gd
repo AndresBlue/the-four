@@ -25,5 +25,17 @@ func _post_import(scene: Node) -> Object:
 			bare.surface_set_material(surface, mesh.surface_get_material(surface))
 			bare.surface_set_name(surface, mesh.surface_get_name(surface))
 		node.mesh = bare
-	if shapes > 0: print("strip_blend_shapes: ", shapes, " shapes dropped from ", scene.name)
+	# The clips that came with the model animate those shapes too, and a track
+	# pointing at a shape that is gone is an error every frame the mixer runs.
+	var tracks := 0
+	for player in scene.find_children("*", "AnimationPlayer", true, false):
+		for library_name in player.get_animation_library_list():
+			var library: AnimationLibrary = player.get_animation_library(library_name)
+			for clip_name in library.get_animation_list():
+				var clip: Animation = library.get_animation(clip_name)
+				for index in range(clip.get_track_count() - 1, -1, -1):
+					if clip.track_get_type(index) != Animation.TYPE_BLEND_SHAPE: continue
+					clip.remove_track(index)
+					tracks += 1
+	if shapes > 0: print("strip_blend_shapes: ", shapes, " shapes and ", tracks, " tracks dropped from ", scene.name)
 	return scene
