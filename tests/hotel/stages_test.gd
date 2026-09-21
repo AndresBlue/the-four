@@ -100,7 +100,7 @@ func run() -> void:
 		if i > 2 and level.boarding.is_empty(): break
 		await physics_frame
 	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
-	check("Y el corte dice a qué ala se va y qué pide", card.contains("ALA 2 DE 3") and card.contains("ETAPA 2") and card.contains(level.stage_errand(2)))
+	check("Y el corte dice a qué ala se va y qué pide", card.contains("SECTOR 2") and card.contains("ETAPA 2") and card.contains(level.stage_errand(2)))
 	check("Al abrirse las puertas la tarjeta ya no está", not is_instance_valid(level.ui.transit))
 	var arrival: Dictionary = level.manifest.rooms[int(level.manifest.gates[0].arrive)]
 	# It comes out in the wing the lift serves. Where exactly is the session's

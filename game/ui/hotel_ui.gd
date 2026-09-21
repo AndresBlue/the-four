@@ -119,7 +119,12 @@ const SHEET := preload("res://game/ui/paper_sheet.gd")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer = 20
+	# Over the OSD and under the tape (analog.gdshader, layer 5), like every
+	# other thing this camcorder shows. A lens does not bend a menu, but the
+	# tape records one: what is written on the screen is written on the tape,
+	# with its grain, its colour bleed and its scan, or it looks pasted on top
+	# of a film of something else.
+	layer = 4
 	var style := STYLE.theme()
 	$HUD.theme = style
 	hint = $HUD/InteractionHint

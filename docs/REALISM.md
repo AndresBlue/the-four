@@ -107,6 +107,7 @@ La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no u
    - ruido del sensor (fotónico con √señal y de lectura), que crece con la ganancia, con ruido de croma en la oscuridad;
    - realce de bordes de vídeo.
    Va después de TAA y por debajo del OSD. «Grano» y «Aberración cromática» pasan aquí; la vista de la criatura no tiene lente.
+   **El orden de las capas** es el orden en que una camcorder arma la imagen: 0 el mundo, 2 la lente, 3 el OSD (y los párpados de la escena de entrada), 4 la interfaz —menús, hoja, avisos, tarjetas— y 5 la cinta, que **graba todo lo que hay debajo**. La interfaz estaba por encima de la cinta y se veía pegada sobre una película de otra cosa; ahora se graba con su grano, su sangrado de color y su barrido, igual que el OSD. La lente no la deforma: una lente no dobla la fecha grabada, y tampoco un menú.
 3. **Etapa HDR** (`camera/camcorder_effect.gd`, compositor, antes de TAA):
    - medidor centrado e iris automático con ganancia: abre despacio, cierra más rápido y tiene un tope de +0,8 pasos, así que una sala sin luz sigue negra;
    - smear vertical de CCD en las luces saturadas (desde Medio);

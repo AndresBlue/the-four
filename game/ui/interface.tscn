@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://game/ui/hotel_ui.gd" id="1"]
 
 [node name="Interface" type="CanvasLayer"]
-layer = 20
+layer = 4
 process_mode = 3
 script = ExtResource("1")
 

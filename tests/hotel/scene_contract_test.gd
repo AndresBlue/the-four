@@ -28,7 +28,10 @@ func run() -> void:
 	root.add_child(scene)
 	check("Services are assigned before children are ready", scene.player.settings == scene.settings and scene.ui.settings == scene.settings)
 	check("Presentation uses AgX tone mapping and colour ambient", scene.environment.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and scene.environment.tonemap_mode == Environment.TONE_MAPPER_AGX)
-	check("Camcorder overlay sits below the analog filter", scene.get_node("Presentation/Camcorder").layer < scene.get_node("Presentation/Analog").layer and scene.get_node("Presentation/Analog").layer < scene.ui.layer)
+	# The tape records what the camera saw and everything written over it:
+	# the OSD first, the interface on top of that, and the analog filter
+	# above both, so a menu is on the tape and not on the glass.
+	check("The tape records the OSD and the interface alike", scene.get_node("Presentation/Camcorder").layer < scene.ui.layer and scene.ui.layer < scene.get_node("Presentation/Analog").layer)
 	scene.queue_free()
 	await process_frame
 	var gallery: Node = load("res://tools/workbenches/module_gallery.tscn").instantiate()

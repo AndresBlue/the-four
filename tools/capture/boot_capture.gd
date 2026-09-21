@@ -34,5 +34,13 @@ func run() -> void:
 	await shot("static")
 	await wait(2.6)
 	await shot("menu")
+	# The screens with the smallest type on them, to see that the tape's grain
+	# and colour bleed leave them readable.
+	level.ui.show_settings("main")
+	await wait(0.8)
+	await shot("settings")
+	level.ui.menu("multiplayer")
+	await wait(0.8)
+	await shot("multiplayer")
 	print("BOOT listo")
 	quit()

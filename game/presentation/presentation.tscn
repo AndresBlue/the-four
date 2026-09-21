@@ -35,5 +35,5 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 [node name="Camcorder" type="CanvasLayer" parent="."]
-layer = 4
+layer = 3
 script = ExtResource("3")

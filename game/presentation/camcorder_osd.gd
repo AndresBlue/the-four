@@ -52,7 +52,9 @@ var zoom_still := 9.0
 const ZOOM_HOLD := 1.6
 
 func _ready() -> void:
-	layer = 4
+	# Under the interface and under the tape: the OSD is burnt into the
+	# recording, and so is anything the game writes over it.
+	layer = 3
 	canvas = Control.new()
 	canvas.name = "Canvas"
 	canvas.set_anchors_preset(Control.PRESET_FULL_RECT)

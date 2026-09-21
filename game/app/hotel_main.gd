@@ -1653,7 +1653,7 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		# The stage has not turned over yet -- the session holds its beat of
 		# transition first -- so the wing being arrived at is the next one.
 		var arriving: int = mini(session.stage + 1, session.STAGES)
-		ui.show_transit("ALA %d DE %d" % [arriving, session.STAGES], "ETAPA %d · %s" % [arriving, stage_errand(arriving)], RIDE_TIME)
+		ui.show_transit("SECTOR %d" % arriving, "ETAPA %d · %s" % [arriving, stage_errand(arriving)], RIDE_TIME)
 	elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(point, 0.0)
 
 ## The ride itself, on the machine of whoever is taking it: a second and a bit
@@ -1665,6 +1665,11 @@ func apply_ride(seat: int, point: Vector3) -> void:
 ## a second and a half, which was only ever a stutter.
 const RIDE_TIME := 3.2
 const RIDE_BLIND := 0.35
+## How much tape noise is left over the card in the middle of the ride. The
+## card is recorded like everything else, so it cannot be read through a
+## picture that is all snow: the tape breaks up, settles on it, breaks up
+## again as the doors open.
+const RIDE_CARD := 0.2
 var boarding := {}
 func ride_along(delta: float) -> void:
 	if boarding.is_empty(): return
@@ -1690,8 +1695,10 @@ func ride_static() -> float:
 	if boarding.is_empty(): return 0.0
 	var span: float = float(boarding.time)
 	if span < RIDE_BLIND: return span / RIDE_BLIND
+	if span < RIDE_BLIND * 2.0: return lerpf(1.0, RIDE_CARD, (span - RIDE_BLIND) / RIDE_BLIND)
 	if span > RIDE_TIME - RIDE_BLIND: return maxf(0.0, (RIDE_TIME - span) / RIDE_BLIND)
-	return 1.0
+	if span > RIDE_TIME - RIDE_BLIND * 2.0: return lerpf(RIDE_CARD, 1.0, (span - (RIDE_TIME - RIDE_BLIND * 2.0)) / RIDE_BLIND)
+	return RIDE_CARD
 
 ## Dead online: the view follows a living teammate; a click switches to the next.
 func watch_teammates() -> void:
