@@ -812,8 +812,11 @@ func on_revived(restart: bool) -> void:
 ## Where a stage starts: just inside the wing it is played in.
 func revival_point() -> Vector3:
 	var gates_list: Array = manifest.get("gates", [])
-	if session.stage <= 1 or gates_list.size() < session.stage - 1: return Vector3(0, 0.04, 0)
-	var gate: Dictionary = gates_list[session.stage - 2]
+	# A negative index wraps round in GDScript, so the first stage asking for
+	# this would have been sent to the last gate of the floor.
+	var index: int = session.stage - 2
+	if index < 0 or index >= gates_list.size(): return Vector3(0, 0.04, 0)
+	var gate: Dictionary = gates_list[index]
 	var arrive := int(gate.get("arrive", -1))
 	if arrive < 0: return FLOOR.position_of(manifest.rooms[refuge_room()])
 	return FLOOR.position_of(manifest.rooms[arrive])
@@ -845,7 +848,10 @@ func restore_local_player(point: Vector3) -> void:
 	player.collision_layer = 4
 	player.velocity = Vector3.ZERO
 	player.global_position = point
-	player.held = false
+	# Whoever closed the stage is put on their feet by the session at the same
+	# moment their lift is carrying them: the ride keeps the hold and the
+	# picture until the doors open.
+	player.held = not boarding.is_empty()
 	if player.hidden: player.force_leave_hide()
 	if is_instance_valid(player.camera): player.camera.current = not match_net.local_is_locust()
 	if is_instance_valid(watch_camera): watch_camera.current = false
@@ -1201,6 +1207,10 @@ func _physics_process(delta: float) -> void:
 		skip_time = skip_time + delta if Input.is_action_pressed("interact") else 0.0
 		if skip_time >= SKIP_HOLD: finish_intro()
 		return
+	# The ride is counted before the rest: closing a stage puts the session
+	# into its transition for a moment, and everything below stops there -- a
+	# lift that stopped counting would hold somebody in the dark for good.
+	ride_along(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	drive_local(delta)
 	sanity_tick(delta)
@@ -1408,11 +1418,43 @@ func ride_lifts() -> void:
 func apply_ride(seat: int, point: Vector3) -> void:
 	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, point + Vector3(0, 1.2, 0), -6.0)
 	if seat == player.slot:
+		# Its own ride: the doors shut, the picture goes, and it comes out
+		# somewhere else. Nothing is said about how far it went.
 		if player.hidden: player.force_leave_hide()
 		player.velocity = Vector3.ZERO
-		player.global_position = point
-		ui.flash("EL ASCENSOR SE ABRE", 2.5)
+		player.held = true
+		boarding = {"point": point, "time": 0.0}
 	elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(point, 0.0)
+
+## The ride itself, on the machine of whoever is taking it: a second and a bit
+## with the doors shut and no picture, which is all a lift is from inside. It
+## has no sound of its own yet -- what is heard is the door, the one that
+## shuts here and the one that opens there.
+const RIDE_TIME := 1.5
+const RIDE_BLIND := 0.35
+var boarding := {}
+func ride_along(delta: float) -> void:
+	if boarding.is_empty(): return
+	boarding.time = float(boarding.time) + delta
+	var span: float = float(boarding.time)
+	# Halfway through, the body is moved: the picture is out by then.
+	if span >= RIDE_TIME * 0.5 and not boarding.get("moved", false):
+		boarding["moved"] = true
+		player.global_position = boarding.point
+		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, boarding.point + Vector3(0, 1.2, 0), -8.0)
+	if span < RIDE_TIME: return
+	player.held = false
+	boarding = {}
+	ui.flash("EL ASCENSOR SE ABRE", 2.5)
+
+## How much of the picture the ride is taking: it goes as the doors shut and
+## comes back as they open.
+func ride_static() -> float:
+	if boarding.is_empty(): return 0.0
+	var span: float = float(boarding.time)
+	if span < RIDE_BLIND: return span / RIDE_BLIND
+	if span > RIDE_TIME - RIDE_BLIND: return maxf(0.0, (RIDE_TIME - span) / RIDE_BLIND)
+	return 1.0
 
 ## Dead online: the view follows a living teammate; a click switches to the next.
 func watch_teammates() -> void:
@@ -1926,12 +1968,14 @@ func update_screen_cues(delta: float) -> void:
 	lost_signal = maxf(0.0, lost_signal - delta)
 	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
 	var dying: bool = mine and float(execution.time) >= SIGNAL_TIME
-	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else 0.0
+	var riding_now := ride_static()
+	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else riding_now
 	# Straight to static once the arm has landed: the picture does not fade,
 	# it goes. Coming back (a new floor) it clears gently.
 	# Gone at once when the view is already somebody else's camera; otherwise
 	# it comes in hard and clears gently.
 	if wanted_static <= 0.0 and not local_alive() and execution.is_empty(): static_level = 0.0
+	elif riding_now > 0.0 or not boarding.is_empty(): static_level = wanted_static
 	else: static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
 	post_material.set_shader_parameter("signal_loss", static_level * (0.75 if settings.values.reduced else 1.0))
 	# The arm arriving: black spreading from where its hand is on screen.

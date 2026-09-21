@@ -27,6 +27,12 @@ func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 	var car: Vector3 = level.hotel.lifts[session.stage - 1]
 	while left > 0.0:
 		if session.stage >= stage and session.state == session.State.PLAYING: return true
+		# Once the lift has them, it is carrying them: pushing the body about
+		# from here would undo the ride.
+		if not level.boarding.is_empty():
+			await physics_frame
+			left -= 1.0 / 60.0
+			continue
 		if session.goal.get("ready", false):
 			# Into the car: the lift takes it from there.
 			level.player.global_position = car + Vector3(0, 0.04, 0)
@@ -62,6 +68,22 @@ func run() -> void:
 	check("Fuera del refugio la puerta sigue cerrada", session.stage == 1 and not session.goal.ready and gate.locked)
 	check("Cerrar la etapa 1 no termina el piso", await cross_to_stage(2))
 	check("Sigue jugándose, en la etapa 2", session.state == session.State.PLAYING and session.stage == 2)
+	# The ride itself: held with no picture for a moment, and then standing in
+	# the wing the lift arrives at. Counted by watching it happen, because a
+	# busy frame runs several physics ticks at once.
+	var blinded := 0.0
+	var held_ticks := 0
+	for i in 240:
+		blinded = maxf(blinded, level.ride_static())
+		if level.player.held: held_ticks += 1
+		if i > 2 and level.boarding.is_empty(): break
+		await physics_frame
+	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
+	var arrival: Dictionary = level.manifest.rooms[int(level.manifest.gates[0].arrive)]
+	# It comes out in the wing the lift serves. Where exactly is the session's
+	# business: closing a stage puts everybody on their feet at the way in.
+	var landed: Dictionary = FLOOR.room_at(level.manifest.rooms, level.player.global_position)
+	check("Y le deja en el ala que abre ese ascensor", not level.player.held and int(landed.get("wing", -1)) == int(arrival.wing))
 	check("La puerta de la etapa cumplida queda abierta", not gate.locked and gate.opened)
 	check("El refugio pasa a ser el de la etapa nueva", level.refuge_room() == int(level.manifest.gates[1].room) and level.refuge_room() != int(level.manifest.gates[0].room))
 	check("Y el anterior deja de proteger", not level.point_in_refuge(FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].room)])))
