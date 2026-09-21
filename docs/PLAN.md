@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v3**, protocolo de red
-**the-four-net-3**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-5**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -126,13 +126,6 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 Nada de esto se ve jugando, y todo cuesta caro más adelante.
 
-- [ ] **La cordura y el «quemado» los calcula cada máquina y el anfitrión se los
-  cree.** El estado quemado viaja como un bit de banderas del cliente
-  (`match_net.pack_local()`). Todo lo demás de las etapas lo juzga el anfitrión
-  —el código de la cerradura a propósito—; esto no, así que un cliente
-  modificado no se quema nunca y la criatura no lo huele. Decidir si se acepta
-  (la oscuridad se mide en la cámara local, y moverlo al anfitrión no es
-  gratis) o se comprueba desde fuera.
 - [ ] **La vista de la criatura solo está validada en Forward+.** En
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
   modestas, donde ya apareció el fallo de la linterna.

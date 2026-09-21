@@ -16,7 +16,7 @@ const PORT := 38430
 const MAX_PLAYERS := 5
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-4"
+const PROTOCOL := "the-four-net-5"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 enum Mode { COOP, VERSUS }
 const MODE_NAMES := ["Cooperativo contra IA", "Versus: un jugador es The Locust"]

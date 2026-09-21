@@ -244,7 +244,9 @@ func _physics_process(delta: float) -> void:
 
 func pack_local() -> Array:
 	var player = level.player
-	var flags := (1 if player.crouched else 0) | (2 if player.torch.visible else 0) | (4 if player.burnt else 0) | (8 if player.reading else 0)
+	# Bit 4 used to be this guest's own word that its mind had gone. The host
+	# keeps everybody's mind now (sanity.gd), so it is not sent.
+	var flags := (1 if player.crouched else 0) | (2 if player.torch.visible else 0) | (8 if player.reading else 0)
 	var left := 0.0
 	var right := 0.0
 	var hide_index := -1
@@ -273,6 +275,12 @@ func push_session() -> void:
 	if not net.is_host or not in_match(): return
 	var session = level.session
 	session_state.rpc(session.state, session.participants, session.elapsed, session.message, session.stage, session.goal)
+	minds_state.rpc(level.sanity.pack())
+
+## Everybody's mind, as the host keeps it: each one's meter and who has gone.
+@rpc("authority", "call_remote", "unreliable_ordered")
+func minds_state(told: Dictionary) -> void:
+	if in_match() and floor_live: level.sanity.apply(told)
 
 @rpc("authority", "call_remote", "reliable")
 func session_state(state: int, participants: Dictionary, elapsed: float, message: String, stage: int, goal: Dictionary) -> void:

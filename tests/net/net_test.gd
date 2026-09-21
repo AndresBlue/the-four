@@ -158,6 +158,10 @@ func host() -> void:
 	check("Una puerta cambia a petición de un invitado", await wait_for(func(): return door.opened != was_open and not door.moving, 25.0))
 	var hide = level.hotel.hides[0]
 	check("Un invitado ocupa un armario a través del anfitrión", await wait_for(func(): return hide.occupant == match_net.bodies[alpha], 25.0))
+	# Its mind is the host's to keep: the host has been wearing it down from
+	# what it knows of that body, and here it is taken to the bottom.
+	check("El anfitrión lleva la cordura de cada invitado", level.sanity.minds.has(alpha))
+	level.sanity.minds[alpha] = {"sanity": 0.0, "rest": 0.0}
 	check("Un trazo de un invitado entra en la hoja del anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has("%d:1" % alpha), 15.0))
 	check("Aquí se ve que a ese invitado se le fue la cabeza", await wait_for(func(): return match_net.bodies[alpha].burnt, 20.0))
 	check("Y la criatura sabe dónde está sin oírle", not level.sanity.burnt_survivors().is_empty())
@@ -251,10 +255,9 @@ func alpha_part() -> void:
 	await pause_for(0.8)
 	match_net.use_hide(hide, true)
 	check("El anfitrión le deja entrar al armario", await wait_for(func(): return level.player.hidden, 15.0))
-	# Shut in the dark with nothing left: the meter reaches the bottom and the
-	# body starts giving off motes, which is what the others have to see.
-	level.player.sanity = 0.0
-	check("Encerrado y sin cabeza, se marca solo", await wait_for(func(): return level.player.burnt, 5.0))
+	# Shut in the dark with nothing left: the host says so, and this machine
+	# takes its word for it -- the meter and the mark are both the host's.
+	check("Encerrado y sin cabeza, el anfitrión se lo dice", await wait_for(func(): return level.player.burnt and level.player.sanity < 1.0, 20.0))
 	var mine := "%d:1" % level.net.local_seat
 	match_net.sheet_local(mine, 0, PackedVector2Array([Vector2(0.2, 0.2), Vector2(0.6, 0.4)]))
 	check("Su trazo vuelve confirmado por el anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has(mine), 15.0))

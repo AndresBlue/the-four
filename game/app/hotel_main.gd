@@ -340,6 +340,8 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	lifts.cross_clock = 0.0
 	player.sanity = 100.0
 	player.set_burnt(false)
+	sanity.minds.clear()
+	sanity.sight_rest = 0.0
 	player.camera.rotation = Vector3.ZERO
 	player.reset_handheld()
 	player.torch.visible = false
@@ -912,7 +914,11 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 	for seat_key in places:
 		var seat := int(seat_key)
 		if seat == player.slot: restore_local_player(places[seat_key])
-		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(places[seat_key], 0.0)
+		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]):
+			match_net.bodies[seat].place(places[seat_key], 0.0)
+			# Its head clear too, the same as the local one's.
+			sanity.minds.erase(seat)
+			match_net.bodies[seat].set_burnt(false)
 	if restart:
 		# The stage as it was found: its own wing's sets go out again. What was
 		# lit in the wings behind is not this stage's to undo.

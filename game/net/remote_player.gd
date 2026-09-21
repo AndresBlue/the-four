@@ -113,7 +113,6 @@ func push_state(data: Array) -> void:
 	crouched = flags & 1 != 0
 	torch.visible = flags & 2 != 0 and not hidden
 	reading = flags & 8 != 0
-	set_burnt(flags & 4 != 0)
 	peek_left = data[6]
 	peek_right = data[7]
 	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right)
