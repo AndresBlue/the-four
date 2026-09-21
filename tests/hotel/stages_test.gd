@@ -19,6 +19,24 @@ func check(title: String, passed: bool) -> void:
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
+## How many surfaces of the hotel are still giving off light of their own:
+## the domes and the shades and the battens (materials of this floor), the
+## exit signs (a shader) and the wall lamps (the glow is inside the model, so
+## it is put out with an override). A lamp that stops lighting the room but
+## keeps glowing is the only thing left visible in a room nothing else lights.
+func glowing() -> int:
+	var count := 0
+	for material in level.hotel.held_glows():
+		if material.emission_energy_multiplier > 0.0: count += 1
+	for panel in level.hotel.exit_panels:
+		var dimmed = panel.get_shader_parameter("level")
+		if dimmed == null or float(dimmed) > 0.0: count += 1
+	for sconce in level.hotel.lit_sconces:
+		for surface in sconce.mesh.get_surface_count():
+			var shade := sconce.mesh.surface_get_material(surface) as BaseMaterial3D
+			if shade != null and shade.emission_enabled and sconce.get_surface_override_material(surface) == null: count += 1
+	return count
+
 ## Walks into the refuge of the stage in hand, waits for the door on to
 ## unlock and steps into the lift behind it, which is what closes a stage now.
 func cross_to_stage(stage: int, seconds := 12.0) -> bool:
@@ -205,11 +223,15 @@ func run() -> void:
 	session.set_state(session.State.PLAYING)
 	session.participants = {1: session.Life.EXPLORING, 2: session.Life.EXPLORING}
 	session.roster_count = 2
+	# What glows with the floor's power on, to be compared with what glows
+	# without it.
+	var lit_surfaces := glowing()
 	# One set lit in this wing takes its power, the way it does in the second.
 	var third_sets: Array = level.stage_televisions()
 	level.switch_television(level.televisions[int(third_sets[0])])
 	await frames(8)
 	check("La tercera ala tiene su propio apagón", session.goal.get("blackout", false) and level.hotel.dark)
+	check("Y con la corriente cortada no queda nada brillando", lit_surfaces > 0 and glowing() == 0)
 	check("Con equipo, perder a uno no hunde el piso", session.capture(2) and session.state == session.State.PLAYING and session.restart_wait <= 0.0)
 	# With the torch in hand when it goes down: the light trails the camera
 	# instead of hanging from it, so a body that is put somewhere else leaves
@@ -246,6 +268,7 @@ func run() -> void:
 	level.player.torch.visible = false
 	# The stage is given back whole: its sets out and its power on.
 	check("Una etapa devuelta empieza con la luz otra vez", level.televisions_on() == 0 and not level.hotel.dark and not session.goal.get("blackout", false))
+	check("Y las lámparas vuelven a brillar donde brillaban", glowing() == lit_surfaces)
 	session.capture(2)
 	check("La segunda vez sí se acaba", session.capture(1) and session.state == session.State.FAILED)
 	await frames(10)

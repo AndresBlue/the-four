@@ -5,6 +5,10 @@ extends SceneTree
 ##   darkness_torch   the same dark room, torch on
 ##   darkness_wall    the wall between two rooms while a teammate in the next
 ##                    room points a torch at it from the other side
+##   darkness_powered a lit room with a wall lamp in it, torch off
+##   darkness_cut     the same, with the floor's power cut: nothing should be
+##                    giving off light of its own any more
+##   darkness_restored and the same again with the power back
 ## Pass "-- --prefix=name" to keep a second set beside the first.
 ##   godot --path . --script res://tools/capture/darkness_capture.gd -- --automation
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -85,6 +89,22 @@ func run() -> void:
 			await physics_frame
 		look(wall + Vector3(-3.5, 1.6, 1.5), wall + Vector3(0, 1.2, 1.5))
 		await shot("wall")
+		break
+	# The power cut. What is left giving off light of its own when nothing is
+	# lighting the floor any more: a shade, a dome or a wall lamp that stops
+	# lighting the room but keeps glowing ends up the only thing visible in it.
+	for room in level.manifest.rooms:
+		# A lit room, looking up at its dome from across it: the ceiling lamp,
+		# and the wall lamps of a public room if it has any, all in frame.
+		if dark(room) or int(room.type) in [4, 7, 8, 9] or FLOOR.size_of(room).x < 9.0: continue
+		var centre := FLOOR.position_of(room)
+		level.player.torch.visible = false
+		look(centre + Vector3(3.4, 1.6, 0), centre + Vector3(0, 2.8, 0))
+		await shot("powered")
+		level.hotel.blackout(true)
+		await shot("cut")
+		level.hotel.blackout(false)
+		await shot("restored")
 		break
 	level.queue_free()
 	await process_frame

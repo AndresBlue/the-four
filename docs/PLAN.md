@@ -42,13 +42,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que rompe una partida
 
-- [ ] **Lámparas y apliques siguen brillando con la corriente cortada.** En el
-  apagón se apagan las luces pero no los materiales: `hotel_geometry.blackout()`
-  esconde focos, apliques, fluorescentes y baliza —y de la baliza sí baja la
-  emisión—, pero las pantallas y bombillas de plafones y lámparas de mueble
-  siguen emitiendo. La herramienta ya existe, `switch_off()`, y hoy solo se usa
-  al construir una sala apagada: hay que pasarla por todo lo que emite al
-  cortarse la corriente, y devolverla cuando vuelve.
 - [ ] **Fugas de luz entre salas.** Hay habitaciones que se iluminan desde el
   otro lado de su pared (se ve el patrón de listas de la sala vecina sobre el
   tabique). Sospechas por orden: el desvanecido de las luces frente al de sus

@@ -69,6 +69,15 @@ var building_dark := false
 var building_type := -1
 ## Glowing materials and their unlit copies (switch_off).
 var unlit := {}
+## What glows by itself when the floor has power -- the frosted domes, the
+## lampshades, the battens, the beacon glass -- and how brightly, so a power
+## cut can take it away and give it back. Filled the first time it is needed:
+## these materials belong to this hotel (duplicated in _init), so nothing here
+## reaches another floor. The wall lamps are meshes rather than materials of
+## ours (their glow lives inside the model), so they are held apart.
+var glows := {}
+var lit_sconces: Array[MeshInstance3D] = []
+var exit_panels: Array[ShaderMaterial] = []
 const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
 ## Service rooms (laundry, storeroom, maintenance, office) have a suspended
 ## ceiling of acoustic tiles; the empty lounge and the storeroom decrepit
@@ -497,9 +506,31 @@ func blackout(on: bool) -> void:
 	for entry in beacons:
 		# A beacon hangs off its room and nobody shows it again frame by frame.
 		entry.light.visible = not on
-		if on and entry.has("material"): entry.material.emission_energy_multiplier = 0.0
+	# Lamps stop glowing as well as stop lighting. A dome, a shade, a batten or
+	# a wall lamp is a lit surface in its own right, and one left glowing over
+	# a room that nothing else lights is the only thing still visible in it:
+	# the power cut ignored by the lamps it was supposed to put out.
+	for material in held_glows():
+		material.emission_energy_multiplier = 0.0 if on else glows[material]
+	for panel in exit_panels: panel.set_shader_parameter("level", 0.0 if on else 1.0)
+	for sconce in lit_sconces:
+		if on: switch_off(sconce)
+		else: switch_on(sconce)
 	# The bounce baked for the lit rooms would keep lighting them.
 	if on and is_instance_valid(bounce): bounce.show_near(Vector3(0, -9000, 0), false)
+
+## Every glow this floor owns, with the strength it was built at. The ones that
+## are animated (the battens' flicker, the beacon's blink) are written again
+## from scratch every frame once the power is back, so what is kept for them is
+## only a starting point.
+func held_glows() -> Array:
+	if glows.is_empty():
+		for key in materials:
+			var surface := materials[key] as BaseMaterial3D
+			if surface != null and surface.emission_enabled: glows[surface] = surface.emission_energy_multiplier
+		for entry in beacons:
+			if entry.has("material"): glows[entry.material] = entry.material.emission_energy_multiplier
+	return glows.keys()
 
 ## Puts out whatever glows on a mesh (lamp shades, bulbs): same surfaces,
 ## emission off.
@@ -513,6 +544,10 @@ func switch_off(instance: MeshInstance3D) -> void:
 			dark.albedo_color = dark.albedo_color.darkened(0.3)
 			unlit[material] = dark
 		instance.set_surface_override_material(surface, unlit[material])
+
+## The other way round: the mesh glows with its own materials again.
+func switch_on(instance: MeshInstance3D) -> void:
+	for surface in instance.mesh.get_surface_count(): instance.set_surface_override_material(surface, null)
 
 func shadow_block(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
 	var block := MeshInstance3D.new()
@@ -669,6 +704,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 					# In a dark room its shade and bulb are out: an emissive
 					# shade lit the walls round it by bounce light.
 					if dark_room(room): switch_off(sconce)
+					else: lit_sconces.append(sconce)
 					sconce.position = Vector3(side * 3.5 + flank * 0.98, 1.6, inner * 0.09)
 					# The model faces +Z: turned to face into this room.
 					sconce.rotation.y = PI if inner < 0 else 0.0
@@ -990,6 +1026,7 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
 	quad.size = PANEL_SIZE
 	sheet.mesh = quad
 	sheet.material_override = glass
+	exit_panels.append(glass)
 	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sheet.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	board.add_child(sheet)
