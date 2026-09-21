@@ -583,6 +583,11 @@ CORRECCIÓN:
 ACTUAL: CÓDIGO  4–7––
 CORRECCIÓN:
 
+[HUD.06] Delante del ascensor, cuando el coche está arriba con los que se
+| adelantaron (cuenta atrás de quince segundos)
+ACTUAL: EL ASCENSOR VUELVE EN 9
+CORRECCIÓN:
+
 [CORDURA.01] Aviso al quedarse sin cordura: el cuerpo empieza a soltar motas que
 | la criatura percibe desde cualquier parte del piso
 ACTUAL: SABE DÓNDE ESTÁS

@@ -7,7 +7,11 @@ radius = 0.4
 height = 2.4
 [node name="Locust" type="CharacterBody3D"]
 collision_layer = 32
-collision_mask = 9
+; Walls and furniture (1), and nothing else. Door leaves (8) are not in the
+; mask on purpose: it opens every door it walks into (hotel_locust.move_on_path)
+; and a leaf it cannot push through was jamming it against the frame -- a
+; creature stuck at an open door never reaches the lift of the next wing.
+collision_mask = 1
 script = ExtResource("1")
 [node name="BodyShape" type="CollisionShape3D" parent="."]
 position = Vector3(0, 1.22, 0)

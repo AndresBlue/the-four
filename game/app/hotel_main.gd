@@ -310,6 +310,12 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
+	# Nothing of the last floor's lifts survives into this one: a ride still
+	# counting would move the body to a room that no longer exists.
+	boarding = {}
+	riding.clear()
+	lift_away.clear()
+	cross_clock = 0.0
 	player.sanity = 100.0
 	player.set_burnt(false)
 	player.camera.rotation = Vector3.ZERO
@@ -801,39 +807,87 @@ func stage_errand(stage: int) -> String:
 		3: return "TELEVISORES, Y EL CÓDIGO EN LOS MUEBLES"
 	return "AL REFUGIO"
 
-## A stage has closed: the creature is sent through the gate after the players
-## instead of hunting a wing that nobody will come back to.
+## A stage has closed: the creature is put on the trail of the lift the
+## survivors took, instead of hunting a wing nobody will come back to. It is
+## not moved anywhere -- it has to walk there and ride it, like they did.
 func follow_players(stage: int) -> void:
 	if net.is_client() or not is_instance_valid(locust) or manifest.is_empty(): return
+	var index := stage - 2
+	if index < 0 or index >= hotel.lifts.size(): return
+	# It is told in the only language it has: its own voice, and the road to
+	# the car laid out in its reading, from where it happens to be standing.
+	locust.grunt()
+	aim_at_lift(index)
+	var road := FLOOR.navigation_path(get_world_3d().navigation_map, locust.global_position, hotel.lifts[index])
+	if road.size() >= 2: match_net.tell_stage(road)
+
+## Seconds the car spends up there before it comes back down for whoever is
+## left -- a straggler, or the creature. It is the head start the survivors
+## buy by being first into it.
+const LIFT_RETURN := 15.0
+## Lift index -> seconds until the car is back on this floor.
+var lift_away := {}
+
+## True while that car is away and nobody can step into it.
+func lift_gone(index: int) -> bool: return float(lift_away.get(index, 0.0)) > 0.0
+
+## Points the creature at a car, without taking it off anything it is already
+## doing: somebody left behind in this wing comes before the lift.
+func aim_at_lift(index: int) -> void:
+	if locust.control != "ai" or index < 0 or index >= hotel.lifts.size(): return
+	if locust.mode not in [locust.Mode.PATROL, locust.Mode.SEARCH, locust.Mode.INVESTIGATE]: return
+	if locust.detection >= locust.SUSPICION: return
+	var car: Vector3 = hotel.lifts[index]
+	if locust.mode == locust.Mode.INVESTIGATE and locust.destination.distance_to(car) < 1.0: return
+	locust.set_mode(locust.Mode.INVESTIGATE)
+	locust.destination = car
+	# Its patrolling belongs to the wing it is in; the lobby of the lift is
+	# where it should be wandering while it waits for the car.
 	var gates: Array = manifest.get("gates", [])
-	if stage - 2 < 0 or stage - 2 >= gates.size(): return
-	var gate: Dictionary = gates[stage - 2]
-	var arrive := int(gate.get("arrive", -1))
-	if arrive < 0: return
-	# The wings share no wall, so it cannot walk there: it takes the service
-	# lift as well, and steps out a few rooms from where the survivors did --
-	# near enough to be a problem, far enough not to land on top of them.
-	var spans := GENERATOR.distance_map(manifest.adjacency, arrive)
-	var start := arrive
-	for room in manifest.rooms:
-		if int(room.wing) != int(manifest.rooms[arrive].wing) or bool(room.get("landing", false)): continue
-		if spans[int(room.id)] < 0 or spans[int(room.id)] > 6: continue
-		if spans[int(room.id)] > spans[start]: start = int(room.id)
-	locust.global_position = FLOOR.position_of(manifest.rooms[start]) + Vector3(0, 0.04, 0)
+	if index < gates.size(): locust.patrol_room = int(gates[index].get("beyond", locust.patrol_room))
+	locust.repath = 0
+
+## The creature crossing on its own two feet: a wing behind, it makes for the
+## car, waits for it to come back down and rides it. Nothing carries it and
+## nothing waits for it -- if it stops to chase somebody who stayed behind,
+## the wing ahead is that much quieter for a while.
+const CROSS_AIM := 2.5
+var cross_clock := 0.0
+func creature_crossing(delta: float) -> void:
+	if not is_instance_valid(locust) or manifest.is_empty() or hotel.lifts.is_empty(): return
+	var index: int = session.stage - 2
+	if index < 0 or index >= hotel.lifts.size() or index >= hotel.arrivals.size(): return
+	if hotel.arrivals[index] == Vector3.ZERO: return
+	var here: Dictionary = FLOOR.room_at(manifest.rooms, locust.global_position)
+	# Already across, or standing nowhere the floor knows about.
+	if here.is_empty() or int(here.get("wing", 0)) >= session.stage - 1: return
+	if locust.global_position.distance_to(hotel.lifts[index]) <= RIDE_REACH + 0.6 and not lift_gone(index):
+		lift_away[index] = LIFT_RETURN
+		match_net.locust_ride(hotel.arrivals[index] + Vector3(0, 0.04, 0))
+		return
+	cross_clock -= delta
+	if cross_clock > 0.0: return
+	cross_clock = CROSS_AIM
+	aim_at_lift(index)
+
+## The creature steps out of the car in the wing ahead. Applied on every
+## machine, including the hunter's, which is the one that owns where it
+## stands the rest of the time.
+func apply_locust_ride(point: Vector3) -> void:
+	if not is_instance_valid(locust): return
+	locust.global_position = point
 	locust.velocity = Vector3.ZERO
 	locust.net_states.clear()
 	locust.net_clock = 0.0
-	if locust.mode in [locust.Mode.PATROL, locust.Mode.SEARCH]: locust.set_mode(locust.Mode.INVESTIGATE)
-	# After set_mode, which clears a guided route of its own.
-	locust.patrol_room = start
-	locust.destination = FLOOR.position_of(manifest.rooms[arrive])
-	locust.guided = true
-	locust.repath = 0
-	# And it is told, in the only language it has: its own voice, and the road
-	# to the lift they came out of laid out in its reading.
-	locust.grunt()
-	var road := FLOOR.navigation_path(get_world_3d().navigation_map, locust.global_position, FLOOR.position_of(manifest.rooms[arrive]))
-	if road.size() >= 2: match_net.tell_stage(road)
+	if locust.control == "ai":
+		var room: Dictionary = FLOOR.room_at(manifest.rooms, point)
+		if not room.is_empty(): locust.patrol_room = int(room.id)
+		if locust.mode in [locust.Mode.PATROL, locust.Mode.SEARCH, locust.Mode.INVESTIGATE]:
+			locust.set_mode(locust.Mode.SEARCH)
+			locust.destination = point
+	# The doors of the car: whoever is near enough in the new wing hears the
+	# lift arrive, which is all the warning there is.
+	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, point + Vector3(0, 1.2, 0), -4.0)
 
 ## The power goes, everywhere at once. Nothing says so in words: the hotel
 ## drops into the dark with a sound, and in the creature's reading the ceilings
@@ -1396,10 +1450,24 @@ func drive_local(delta: float) -> void:
 	if inside and not session.more_stages(): ui.hint.text = "SALIENDO DEL PISO" if ready else "REFUGIO · " + missing
 	elif inside: ui.hint.text = "LA PUERTA DE LA ETAPA ESTÁ ABIERTA" if ready else "REFUGIO · " + missing
 	else: ui.hint.text = ""
+	# Standing where the car was, with the car upstairs: it is coming back,
+	# and how long it takes is the head start the first ones bought.
+	var waiting := waiting_for_lift()
+	if waiting > 0.0: ui.hint.text = "EL ASCENSOR VUELVE EN %d" % ceili(waiting)
 	ui.subtitle.text = ""
 	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
 		ui.subtitle.text = "[Ventilación constante]"
 	if not save_error.is_empty(): ui.subtitle.text = save_error
+
+## Seconds left on the car this body is standing in front of, or 0. Only the
+## machine that runs the lifts knows the clock, so a guest is told nothing --
+## it sees the doors shut and waits, which is what a lift is.
+func waiting_for_lift() -> float:
+	if not boarding.is_empty() or lift_away.is_empty() or not is_instance_valid(hotel): return 0.0
+	for index in hotel.lifts.size():
+		if not lift_gone(index): continue
+		if player.global_position.distance_to(hotel.lifts[index]) <= RIDE_REACH + 1.4: return float(lift_away[index])
+	return 0.0
 
 ## What the stage in hand is still waiting for. The last stage waits for two
 ## things at once, and saying only one of them is how somebody ends up typing
@@ -1481,12 +1549,19 @@ const RIDE_REACH := 1.4
 const RIDE_REST := 3.0
 var riding := {}
 func ride_lifts() -> void:
+	var delta := get_physics_process_delta_time()
 	for seat in riding.keys():
-		riding[seat] = riding[seat] - get_physics_process_delta_time()
+		riding[seat] = riding[seat] - delta
 		if riding[seat] <= 0.0: riding.erase(seat)
+	# The car is a car: it goes up with whoever stepped into it and comes back
+	# down a quarter of a minute later.
+	for index in lift_away.keys():
+		lift_away[index] = float(lift_away[index]) - delta
+		if lift_away[index] <= 0.0: lift_away.erase(index)
+	creature_crossing(delta)
 	for index in hotel.lifts.size():
 		var door = hotel.gates[index] if hotel.gates.size() > index else null
-		if not is_instance_valid(door) or door.locked: continue
+		if not is_instance_valid(door) or door.locked or lift_gone(index): continue
 		for body in survivors():
 			var seat := int(body.slot)
 			if riding.has(seat) or body.global_position.distance_to(hotel.lifts[index]) > RIDE_REACH: continue
@@ -1496,6 +1571,7 @@ func ride_lifts() -> void:
 				return
 			var point: Vector3 = hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
 			riding[seat] = RIDE_REST
+			lift_away[index] = LIFT_RETURN
 			apply_ride(seat, point)
 			if match_net.in_match(): match_net.ride_lift(seat, point)
 			if session.stage == index + 1: session.finish_stage()

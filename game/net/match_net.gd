@@ -428,6 +428,17 @@ func ride_lift(seat: int, point: Vector3) -> void:
 func ride_state(seat: int, point: Vector3) -> void:
 	level.apply_ride(seat, point)
 
+## The creature took it too. In versus the machine that drives it owns where
+## it stands, so this is the one move the host gets to make for it: everybody
+## is told, and the hunter's own body goes with the car like anybody else's.
+func locust_ride(point: Vector3) -> void:
+	level.apply_locust_ride(point)
+	if in_match(): locust_rode.rpc(point)
+
+@rpc("authority", "call_remote", "reliable")
+func locust_rode(point: Vector3) -> void:
+	level.apply_locust_ride(point)
+
 # --- Wardrobes -------------------------------------------------------------------
 
 ## Enter or leave a wardrobe; online, the host decides who gets in.

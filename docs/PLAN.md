@@ -18,7 +18,7 @@ Hay un piso jugable de principio a fin, solo o acompañado:
 Y esto es lo que hoy no está bien, que es de donde sale el orden de abajo:
 
 - **Las partidas se acababan demasiado pronto** (desde 1 min 30 s, media de 5 a 8 min frente a la meta de 25–40) y muchas veces sin cruzarse con la criatura, porque el piso se resolvía siguiendo la numeración de las puertas. Lo que debía arreglarlo —tres etapas, teles, cerradura de código, apagón, y una planta donde ni los números ni la pared derecha llevan a la salida— ya está puesto y medido; **falta volver a jugarlo con gente y ver si ahora dura lo que debe**.
-- **Jugado entero el 21 de septiembre**, y de ahí salieron seis fallos abiertos (linterna al revivir, puertas que atrapan a la criatura, lámparas encendidas durante el apagón, fugas de luz, texturas rotas por la linterna en Compatibilidad y el cazador que no cruza de ala) y cuatro ajustes de interfaz y presentación (reconexión, paso de ala, inventario de notas y la hoja compartida).
+- **Jugado entero el 21 de septiembre.** De ahí salieron seis fallos: dos ya arreglados (el paso de ala de la criatura, que ahora toma el ascensor andando, y las puertas que la dejaban clavada) y cuatro abiertos (linterna al revivir, lámparas encendidas durante el apagón, fugas de luz y texturas rotas por la linterna en Compatibilidad), más cuatro ajustes de interfaz y presentación (reconexión, paso de ala, inventario de notas y la hoja compartida).
 - La ejecución vista desde el cazador y el nivel de los gruñidos siguen sin juicio humano, y el detective masculino sigue siendo un modelo sin esqueleto.
 - Solo existe un piso de los cuatro; Sunman, The Boiled One y Guilt no están.
 
@@ -69,7 +69,7 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 
 - [x] **La numeración ya no es una brújula.** Cada ala tiene su centena y los números corren a lo largo de los pasillos, impares a un lado y pares al otro, con el sentido sorteado por ala; servicio, circulación y refugio no llevan placa. El número vive en el manifiesto (`room.number`) en vez de salir del identificador de la sala. Comprobado en mil semillas: una centena por ala, sin repetir, y subir de número lleva hacia dentro tantas veces como hacia fuera (entre el 35 y el 65 %).
 - [x] **La planta se rehizo entera** (`map_generator.gd`). Hay un campo de orden por celda —base que cae con lo recorrido más ruido propio en manchas— que decide si una celda es pasillo, si dos habitaciones se comunican y dónde hay anillos; una red de pasillos por ala con tramos que giran; un bloque de servicio marcado en la mancha más ordenada del ala primera; y habitaciones que cuelgan de los pasillos con más puertas entre ellas cuanto menos orden queda. Medido en 300 pisos: 37/22/36 % de pasillo por ala, orden medio 0,70/0,42/0,24 (con la mitad del ala primera por encima de 0,7 y el 82 % de la tercera por debajo de 0,4), 6–9 anillos por ala y 17/26/17 puertas de habitación a habitación.
-- [x] **Las alas se cruzan en ascensor.** La puerta de acceso de cada etapa da a un vestíbulo con el coche esperando; meterse en él cierra la etapa y se sale en el vestíbulo del ala siguiente, y el tercero saca del piso. El coche se queda para quien venga detrás, y la criatura cruza igual (no puede caminar: aparece unas salas más allá de donde salieron). Con esto las alas dejan de compartir pared, que era lo que impedía esconder los dos primeros refugios.
+- [x] **Las alas se cruzan en ascensor.** La puerta de acceso de cada etapa da a un vestíbulo con el coche esperando; meterse en él cierra la etapa y se sale en el vestíbulo del ala siguiente, y el tercero saca del piso. El coche **sube con ellos y tarda quince segundos en volver**, que es la ventaja de los primeros y la espera del que se quedó atrás; la criatura lo toma igual, andando hasta él (ver el ascensor de la criatura, más abajo). Con esto las alas dejan de compartir pared, que era lo que impedía esconder los dos primeros refugios.
 - [x] **Ningún refugio se resuelve pegado a una pared** (antes solo el último). Los tres son islas de dos celdas —la sala y el vestíbulo del ascensor— rodeadas por un anillo cerrado de diez, con una sola puerta a la cara interior. En mil semillas, ninguna de las ocho formas de ir con la mano en la pared encuentra ninguno de los tres, aunque el recorrido vea del 87 al 90 % del ala.
 - [x] **La navegación se hornea más fina** (celdas de 10 cm en vez de 20). El lote de mil pisos encontró uno —la semilla 213— en el que la malla quedaba partida dentro de una sala amueblada y el refugio del ala tercera era inalcanzable; el lote ahora comprueba que todas las salas de cada ala se caminan desde su ascensor, y pasa limpio.
 - [x] **La habitación de salida no se resuelve pegado a una pared.** Fue el primer refugio escondido, cuando todavía se cruzaba de ala por una puerta y solo el último podía ser isla; con los ascensores la misma garantía vale para los tres.
@@ -115,9 +115,10 @@ Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva e
 
 ### Lo que salió de la segunda partida (21 de septiembre de 2026)
 
-Jugada entera con las etapas nuevas, en cooperativo y en versus. Ninguna de
-estas está arreglada todavía; están en orden de gravedad, y donde ya se ha
-mirado el código se dice dónde vive.
+Jugada entera con las etapas nuevas, en cooperativo y en versus. Dos están
+arregladas —el paso de ala de la criatura, que se rehizo entero, y las puertas
+que la atrapaban, que salieron al medirlo—; las demás siguen abiertas, en orden
+de gravedad, y donde ya se ha mirado el código se dice dónde vive.
 
 **Fallos**
 
@@ -129,15 +130,6 @@ mirado el código se dice dónde vive.
   cámara (`remote_player.gd`), viaja con ellos y por eso se ve. Falta
   reproducirlo y, si es eso, arrastrar la linterna con el cuerpo en todos los
   saltos (revivir, ascensor, reconexión).
-- [ ] **Las puertas atrapan a The Locust.** Se la ve encajada en la hoja, con la
-  puerta atravesándola (captura de la partida). La criatura choca con las hojas
-  cerradas: `locust.tscn` tiene `collision_mask = 9`, o sea el mundo (1) más las
-  hojas de puerta (8). La puerta ya se aparta de los cuerpos mientras gira
-  (`hotel_door.swing_to()` la pasa a la capa 64 y `_physics_process` la vuelve
-  sólida cuando nadie la ocupa), pero eso no basta cuando la criatura empuja
-  contra la hoja quieta. Lo pedido: que los colisionadores de las puertas no le
-  afecten (máscara 9 → 1), comprobando antes que sin ellos no cruza puertas
-  cerradas por su cuenta —hoy su navegación las trata como abiertas—.
 - [ ] **Lámparas y apliques siguen brillando con el piso a oscuras.** En el
   apagón se apagan las luces pero no los materiales: `hotel_geometry.blackout()`
   esconde focos, apliques, fluorescentes y baliza (y de la baliza sí baja la
@@ -156,17 +148,36 @@ mirado el código se dice dónde vive.
   Compatibilidad en Bajo; sospechas por orden: el proyector del haz
   (`beam_pattern()`), el sesgo de sombra sin penumbra en ese preset y el
   detalle de superficie a 0 (`surface_detail`).
-- [ ] **En versus, el cazador no cruza de ala.** Se juega sin estar donde están
-  las víctimas y sin forma de llegar. `hotel_main.follow_players()` mueve la
-  criatura al ala nueva, pero en versus la posición la manda la máquina del
-  cazador (`match_net.locust_state`), así que el anfitrión mueve su propia
-  réplica y el cazador la pisa al fotograma siguiente; el ascensor solo lo
-  toman los supervivientes (`ride_lifts()` recorre `survivors()`) y las alas no
-  comparten pared. El camino dibujado en su lectura (`tell_stage`) se calcula
-  además desde la posición de esa réplica, así que tampoco lleva a ninguna
-  parte. Hace falta llevar al cazador de verdad —colocar su propia criatura por
-  RPC al cerrarse la etapa— y decidir si eso es un viaje con su imagen, como el
-  ascensor de los supervivientes.
+- [x] **El cazador no cruzaba de ala, y ahora el ascensor es de verdad.** Se
+  jugaba sin estar donde estaban las víctimas: `follow_players()` teletransportaba
+  la criatura al ala nueva, pero en versus la posición la manda la máquina del
+  cazador (`match_net.locust_state`), así que el anfitrión movía su propia
+  réplica y el cazador la pisaba al fotograma siguiente. Rehecho como se pidió:
+  **nadie teletransporta a nadie**. Al cerrarse una etapa la criatura recibe su
+  gruñido y el camino hasta el coche dibujado en su lectura desde donde esté
+  (`tell_stage`, ahora hasta el ascensor de su propia ala en vez de hasta una
+  sala del ala siguiente, que no era caminable); va andando —`aim_at_lift()` la
+  reorienta cada 2,5 s mientras no esté persiguiendo a nadie, así que un
+  superviviente rezagado sigue siendo lo primero—; espera a que el coche baje;
+  y al meterse sale en el vestíbulo del ala nueva (`creature_crossing()`), con
+  el ruido de las puertas del ascensor, que es todo el aviso que hay. El
+  cazador humano cruza por la misma regla, con el anfitrión colocándolo por RPC
+  (`match_net.locust_ride`), que es la única vez que el anfitrión decide dónde
+  está la criatura de otro. **El coche tarda quince segundos en volver**, para
+  todos: es la ventaja que compran los primeros.
+  Medido en veinte plantas (`tools/dev/creature_crossing.gd`, que juega el paso
+  de ala sin tocar nada a mano): cruza en las veinte, entre 13,9 y 50,6 s,
+  mediana 26. Comprobado en `stages_test` (76 comprobaciones): se queda en el
+  ala de atrás yendo a por el coche, no puede seguirlos mientras el coche está
+  arriba, lo toma cuando baja, y un cazador humano cruza igual.
+- [x] **Las puertas ya no atrapan a la criatura.** Salió al medir lo anterior:
+  en la semilla 777 se quedaba quieta 150 segundos con la ruta al ascensor
+  delante, a 1,2 m de una puerta abierta y con dos contactos de colisión. Era
+  la hoja: `locust.tscn` tenía `collision_mask = 9` (mundo más hojas de
+  puerta), y una hoja abierta contra la que empujaba la dejaba clavada. Ahora
+  la máscara es 1. No cruza puertas cerradas por su cuenta —abre cualquiera a
+  la que se acerca (`move_on_path`) y espera a que gire—, pero ya no se queda
+  encajada en ninguna. Con eso, las veinte semillas cruzan.
 
 **Ajustes pedidos**
 

@@ -87,7 +87,21 @@ func run() -> void:
 	check("La puerta de la etapa cumplida queda abierta", not gate.locked and gate.opened)
 	check("El refugio pasa a ser el de la etapa nueva", level.refuge_room() == int(level.manifest.gates[1].room) and level.refuge_room() != int(level.manifest.gates[0].room))
 	check("Y el anterior deja de proteger", not level.point_in_refuge(FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].room)])))
-	check("La criatura se va detrás de los jugadores al ala nueva", int(level.manifest.rooms[level.locust.patrol_room].wing) == 1)
+	# The creature is not carried anywhere: it is put on the trail of the car
+	# they took, and it has to walk there and ride it like they did.
+	check("La criatura se queda en el ala de atrás, yendo a por el ascensor", int(level.manifest.rooms[level.locust.patrol_room].wing) == 0 and level.locust.destination.distance_to(level.hotel.lifts[0]) < 1.0)
+	check("El coche se ha ido con ellos", level.lift_gone(0))
+	# Standing in the lobby with the car upstairs: it waits, like anybody else.
+	level.locust.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
+	await frames(20)
+	check("Con el coche arriba no puede seguirlos", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 0)
+	check("Y quince segundos son quince segundos", level.LIFT_RETURN == 15.0 and float(level.lift_away[0]) > 12.0)
+	# The car comes back down.
+	level.lift_away[0] = 0.02
+	await frames(20)
+	check("Cuando vuelve el ascensor, lo toma y sale en el ala nueva", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 1 and level.locust.global_position.distance_to(level.hotel.arrivals[0]) < 1.5)
+	check("Y el coche vuelve a irse con él", level.lift_gone(0))
+	level.locust.global_position = Vector3(0, -80, 0)
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
 	# Second stage: the sets of that wing, and it asks for as many as there
 	# are survivors, with two spare.
@@ -153,6 +167,15 @@ func run() -> void:
 	if lamp_room >= 0: level.hotel.update_visibility(FLOOR.position_of(level.manifest.rooms[lamp_room]), true)
 	check("Las lámparas del ala nueva alumbran otra vez", lamp_room >= 0 and level.hotel.lights[lamp_room].visible)
 	check("La etapa 3 tiene su propia tanda de teles, apagadas", level.stage_televisions().size() == needed + TV.SPARE and level.televisions_on() == 0)
+	# The hunter crosses by the same car: the machine that drives the creature
+	# owns where it stands, so the floor has to carry it over by hand.
+	level.locust.control = "player"
+	level.lift_away.erase(1)
+	level.locust.global_position = level.hotel.lifts[1] + Vector3(0, 0.04, 0)
+	await frames(20)
+	check("Un cazador humano también cruza en el ascensor", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 2)
+	level.locust.control = "ai"
+	level.locust.global_position = Vector3(0, -80, 0)
 	# Third stage: four numbers hidden in drawers and shelves of its wing.
 	var hidden: Array = level.containers.filter(func(piece): return piece.digit >= 0)
 	check("Hay cuatro números escondidos", hidden.size() == DIG.COUNT)
