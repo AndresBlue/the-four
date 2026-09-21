@@ -22,7 +22,6 @@ const PAGE := Vector2(980, 640)
 ## video blue and phosphor green, in seat order.
 const PAPER := Color(0.055, 0.055, 0.05)
 const INKS := [Color(0.94, 0.94, 0.9), Color(0.96, 0.78, 0.4), Color(0.52, 0.82, 0.96), Color(0.58, 0.92, 0.6)]
-const INK := Color(0.94, 0.94, 0.9)
 const PEN := 3.0
 const ERASER := 30.0
 ## The strip of slips hanging off the page's right edge.
