@@ -1449,7 +1449,6 @@ func _physics_process(delta: float) -> void:
 ## This machine's own player: looking, opening, reading, hiding, or watching a
 ## teammate once it is dead.
 func drive_local(delta: float) -> void:
-	var inside := in_refuge()
 	if not net.is_client():
 		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
 	if not execution.is_empty() and int(execution.seat) == player.slot:
@@ -1555,45 +1554,14 @@ func drive_local(delta: float) -> void:
 			match_net.use_door(pressed_door, false, running)
 		pressed_door = null
 	was_held = held
-	# Nothing is held down at the refuge any more: with everyone inside, the
-	# door on unlocks itself and crossing it is what takes you on.
-	var ready: bool = session.goal.get("ready", false)
-	var missing: String = what_is_missing()
-	if inside and not session.more_stages(): ui.hint.text = "SALIENDO DEL PISO" if ready else "REFUGIO · " + missing
-	elif inside: ui.hint.text = "LA PUERTA DE LA ETAPA ESTÁ ABIERTA" if ready else "REFUGIO · " + missing
-	else: ui.hint.text = ""
-	# Standing where the car was, with the car upstairs: it is coming back,
-	# and how long it takes is the head start the first ones bought.
-	var waiting := waiting_for_lift()
-	if waiting > 0.0: ui.hint.text = "EL ASCENSOR VUELVE EN %d" % ceili(waiting)
+	# Nothing is written about where the survivor stands: not the refuge and
+	# what it still waits for, not the open door, not the car on its way back.
+	# The door that opens and the lift that is not there say it themselves.
+	ui.hint.text = ""
 	ui.subtitle.text = ""
 	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
 		ui.subtitle.text = "[Ventilación constante]"
 	if not save_error.is_empty(): ui.subtitle.text = save_error
-
-## Seconds left on the car this body is standing in front of, or 0. Only the
-## machine that runs the lifts knows the clock, so a guest is told nothing --
-## it sees the doors shut and waits, which is what a lift is.
-func waiting_for_lift() -> float:
-	if not boarding.is_empty() or lift_away.is_empty() or not is_instance_valid(hotel): return 0.0
-	for index in hotel.lifts.size():
-		if not lift_gone(index): continue
-		if player.global_position.distance_to(hotel.lifts[index]) <= RIDE_REACH + 1.4: return float(lift_away[index])
-	return 0.0
-
-## What the stage in hand is still waiting for. The last stage waits for two
-## things at once, and saying only one of them is how somebody ends up typing
-## the right code into a door that will not move.
-func what_is_missing() -> String:
-	var kind: String = str(session.goal.get("kind", ""))
-	var sets_short: bool = int(session.goal.get("sets_done", 0)) < int(session.goal.get("sets_needed", 0))
-	if kind == "code":
-		if sets_short and found_digits.size() < DIGITS.COUNT: return "FALTAN TELEVISORES Y NÚMEROS"
-		if sets_short: return "FALTAN TELEVISORES"
-		if not code_entered: return "FALTA EL CÓDIGO"
-		return "FALTAN SUPERVIVIENTES"
-	if kind == "televisions": return "FALTAN TELEVISORES"
-	return "FALTAN SUPERVIVIENTES"
 
 ## The authority, every frame: whether the stage in hand is met -- which
 ## unlocks the door on -- and whether somebody has already crossed it, which

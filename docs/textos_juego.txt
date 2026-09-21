@@ -333,7 +333,8 @@ ACTUAL: No se pudo conectar con esa dirección. / Se perdió la conexión con el
 CORRECCIÓN:
 
 [MP.12] Durante la partida
-ACTUAL: Esperando a los demás jugadores… / HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR / ERES THE LOCUST
+ACTUAL: Esperando a los demás jugadores… / HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR
+OBS: «ERES THE LOCUST» se retiró; la vista del cazador ya lo dice.
 CORRECCIÓN:
 
 [MP.13] Menú en partida
@@ -560,22 +561,26 @@ ACTUAL: (retirado: la recepción se señala con una luz roja)
 CORRECCIÓN:
 
 [HUD.02] Mensaje breve si intentas cerrar una puerta con alguien en el umbral
-ACTUAL: DEJA LIBRE EL UMBRAL
+ACTUAL: (retirado: las puertas ya cierran con alguien en el marco)
 CORRECCIÓN:
 
 [HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
-ACTUAL: LA PUERTA DE LA ETAPA ESTÁ ABIERTA / REFUGIO · FALTAN SUPERVIVIENTES /
-| REFUGIO · FALTAN TELEVISORES / REFUGIO · FALTA EL CÓDIGO /
-| REFUGIO · FALTAN TELEVISORES Y NÚMEROS / SALIENDO DEL PISO
-OBS: también aparece brevemente «TELEVISORES 2/4» al encender uno, «NÚMERO 3 DEL
-| CÓDIGO: 7» al registrar un mueble y «EL ASCENSOR SE ABRE» al salir del ascensor
-| en el ala siguiente.
+ACTUAL: (retirado, igual que los avisos breves «TELEVISORES 2/4» al encender uno,
+| «NÚMERO 3 DEL CÓDIGO: 7» al registrar un mueble, «EL ASCENSOR SE ABRE» al salir
+| del ascensor, «OTRA VEZ» al repetir una etapa y «ETAPA 2 · DE PIE» al volver
+| los caídos. Las cuentas del sector están en la pausa.)
 
-[HUD.04] Aviso al empezar una etapa, al salir del ascensor (4,5 s). Es lo único
-| que dice qué pide la etapa; sin él nadie adivina que el código está dentro de
-| los muebles.
-ACTUAL: ETAPA 2 · ENCIENDE LOS TELEVISORES /
-| ETAPA 3 · TELEVISORES, Y EL CÓDIGO EN LOS MUEBLES
+[HUD.04] Tarjeta del sector, a oscuras al empezar el piso y durante el viaje
+| en ascensor
+ACTUAL: SECTOR 1 · ENCUENTRA LA SALIDA / SECTOR 2 · ENCIENDE LOS TELEVISORES /
+| SECTOR 3 · DESCUBRE EL CÓDIGO
+CORRECCIÓN:
+
+[HUD.04b] Objetivo del sector, arriba a la izquierda al volver la imagen (6 s),
+| y en la pausa con el progreso (TELEVISORES n / m, NÚMEROS DEL CÓDIGO n / 4)
+ACTUAL: OBJETIVO · SECTOR 1 · Encuentra la salida del sector. /
+| OBJETIVO · SECTOR 2 · Enciende los televisores y busca la salida. /
+| OBJETIVO · SECTOR 3 · Busca las notas con el código, enciende televisores y sal del piso.
 CORRECCIÓN:
 
 [HUD.05] Los números del código que ya se tienen, escritos abajo a la izquierda
@@ -585,16 +590,16 @@ CORRECCIÓN:
 
 [HUD.06] Delante del ascensor, cuando el coche está arriba con los que se
 | adelantaron (cuenta atrás de quince segundos)
-ACTUAL: EL ASCENSOR VUELVE EN 9
+ACTUAL: (retirado: el coche que no está lo dice solo)
 CORRECCIÓN:
 
 [CORDURA.01] Aviso al quedarse sin cordura: el cuerpo empieza a soltar motas que
 | la criatura percibe desde cualquier parte del piso
-ACTUAL: SABE DÓNDE ESTÁS
+ACTUAL: (retirado)
 CORRECCIÓN:
 
 [CORDURA.02] Aviso al recuperarse lo suficiente para dejar de soltarlas
-ACTUAL: VUELVES EN TI
+ACTUAL: (retirado)
 CORRECCIÓN:
 
 [REFUGIO.02] Teclado de la última puerta. «FALTAN TELEVISORES» sale cuando el
@@ -792,7 +797,7 @@ ACTUAL: [TECLA] GUARDAR
 CORRECCIÓN:
 
 [DOC.06] Aviso al leer un documento nuevo
-ACTUAL: ARCHIVADO  %d/%d
+ACTUAL: (retirado: la entrada queda en Archivo del menú)
 CORRECCIÓN:
 
 [DOC.07] Corchetes de enfoque sobre un documento
@@ -823,6 +828,6 @@ CORRECCIÓN:
 ---------------------------------
 
 [ECO.01] Aviso al abrir la prueba local de la vista acustica (./tools/godot.ps1 locust)
-OBS: solo aparece en la prueba en solitario; en partida normal el aviso es MP.xx "ERES THE LOCUST".
+OBS: solo aparece en la prueba en solitario; en partida normal no hay aviso.
 ACTUAL: VISION ACUSTICA - PRUEBA LOCAL
 CORRECCIÓN:

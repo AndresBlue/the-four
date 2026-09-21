@@ -152,8 +152,11 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
 - [ ] **Comprobaciones de red que fallan de vez en cuando** («Una puerta cambia
   a petición de un invitado»; en el versus, «Los ruidos de los supervivientes
   le llegan como contactos», que depende de un único ruido lanzado un segundo
-  después del gruñido): no llegan a tiempo y al repetir el escenario pasan
-  enteras. Hay que darles arranque con reintento en vez de un
+  después del gruñido; y en la reconexión, «Reaparece donde estaba», que falló
+  una vez de cinco sin que el cambio de ese momento tocara posiciones ni red):
+  no llegan a tiempo y al repetir el escenario pasan enteras. La de la
+  reconexión hay que mirarla aparte: si no es solo tiempo, alguien que vuelve
+  puede aparecer en otro sitio. Hay que darles arranque con reintento en vez de un
   plazo fijo, para no acostumbrarse a repetir la verificación.
 - [ ] **La vista de la criatura solo está validada en Forward+.** En
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
