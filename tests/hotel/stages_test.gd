@@ -250,6 +250,23 @@ func run() -> void:
 	# and the torch with it, because the light trails the camera and is hidden
 	# along with the body: lit for everybody else, dark for its owner.
 	level.match_net.config = {"seed": 81, "mode": 0, "survivors": [1, 2], "locust_seat": 0}
+	# Somebody who dropped comes back where they were -- unless the floor has
+	# crossed to another wing while they were away, in which case where they
+	# were is behind a stage door with half a hotel in between, and nobody
+	# would call that coming back.
+	var in_play := Vector3.ZERO
+	var left_behind := Vector3.ZERO
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) == session.stage - 1:
+			in_play = FLOOR.position_of(room)
+			break
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) == 0:
+			left_behind = FLOOR.position_of(room)
+			break
+	check("Quien vuelve de una caída vuelve donde estaba", level.return_place(in_play).distance_to(in_play) < 0.2)
+	var brought: Vector3 = level.return_place(left_behind)
+	check("Y si el piso cambió de ala sin él, al ala que se juega", brought.distance_to(left_behind) > 10.0 and int(FLOOR.room_at(level.manifest.rooms, brought).get("wing", -1)) == session.stage - 1)
 	session.participants[1] = session.Life.DEAD
 	level.drive_local(1.0 / 60.0)
 	check("Muerto en un invitado, el cuerpo y su luz se guardan", not level.player.visible and not level.player.torch.is_visible_in_tree())

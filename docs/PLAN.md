@@ -47,11 +47,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que no se entiende jugando
 
-- [ ] **Reconectar debe devolverte donde estabas.** Hay código y prueba para
-  eso —`match_net.catch_up()`/`restore()` reponen la posición desde el cuerpo
-  que guarda el anfitrión, y `net_test` lo comprueba—, pero en partida no pasó.
-  Lo primero es reproducirlo (quizá con una caída larga, o cruzando de ala
-  mientras se está fuera) y arreglar el caso real.
 - [ ] **Pantalla de carga al cambiar de ala.** Hoy el paso son segundo y medio
   de imagen perdida dentro del ascensor; se pide algo que se lea como un corte
   de verdad entre un ala y la siguiente.

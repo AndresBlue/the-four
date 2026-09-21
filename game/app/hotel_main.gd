@@ -414,7 +414,9 @@ func start_online_floor(config: Dictionary) -> void:
 	if not await build_floor(int(config.seed)):
 		net.shutdown("No se pudo construir el piso de la partida.")
 		return
-	ui.menu("loading", false, "Esperando a los demás jugadores…")
+	# Coming back into a floor that is already being played says so: the wait
+	# is the same, what it means is not.
+	ui.menu("loading", false, "Volviendo a la partida…" if match_net.rejoin_snapshot.get("returning", false) else "Esperando a los demás jugadores…")
 	player.visible = true
 	player.collision_layer = 4
 	player.camera.current = true
@@ -915,6 +917,17 @@ func on_revived(restart: bool) -> void:
 	for seat in session.participants: places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
 	apply_revival(places, restart)
 	if match_net.in_match(): match_net.revive_everyone(places, restart)
+
+## Where somebody who comes back after dropping is put: the place the floor
+## remembers for them. Unless the floor crossed to another wing while they were
+## away -- their old place is then behind a stage door with half a hotel
+## between them and everybody else, and nobody would call that coming back.
+## The stage in hand starts them where a revival would.
+func return_place(remembered: Vector3) -> Vector3:
+	if manifest.is_empty(): return remembered
+	var wing := int(FLOOR.room_at(manifest.rooms, remembered).get("wing", -1))
+	if wing == session.stage - 1: return remembered
+	return revival_point() + Vector3(0, 0.1, 0)
 
 ## Where a stage starts: just inside the wing it is played in.
 func revival_point() -> Vector3:

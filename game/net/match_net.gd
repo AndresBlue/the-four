@@ -815,6 +815,9 @@ func catch_up(seat: int, id: int) -> void:
 	for other in config.survivors:
 		var body := body_of(other)
 		if body != null: places[other] = [body.global_position, body.rotation.y]
+	# The one coming back gets a second look: where it was may be a wing the
+	# floor has already left.
+	if places.has(seat): places[seat][0] = level.return_place(places[seat][0])
 	var creature = level.locust
 	var sets: Array = []
 	for set in level.televisions: sets.append(is_instance_valid(set) and set.on)

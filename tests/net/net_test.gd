@@ -288,7 +288,18 @@ func bravo_part() -> void:
 	check("Ve terminar el piso aunque haya muerto", await wait_for(func(): return level.session.state == level.session.State.WON, 120.0))
 	check("Segundo piso", await wait_for(playing, 90.0))
 	await pause_for(2.0)
+	# Somewhere it would not be standing anyway: coming back where you were is
+	# only proved by having been somewhere else first. Its spawn point is where
+	# a floor puts it, and where it would end up if nothing restored anything.
+	var FLOOR := preload("res://game/world/generation/floor_definition.gd")
+	for room in level.manifest.rooms:
+		var here: Vector3 = FLOOR.position_of(room)
+		if int(room.get("wing", 0)) == 0 and here.distance_to(level.player.spawn) > 25.0:
+			level.player.global_position = here + Vector3(0.6, 0.1, 0.6)
+			break
+	await pause_for(1.5)
 	var spot: Vector3 = level.player.global_position
+	check("Se va lejos de donde le puso el piso", spot.distance_to(level.player.spawn) > 25.0)
 	# Loses the connection and comes back with the same name.
 	level.net.shutdown("")
 	await pause_for(3.0)
