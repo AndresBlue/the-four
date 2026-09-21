@@ -88,12 +88,20 @@ func run() -> void:
 	# busy frame runs several physics ticks at once.
 	var blinded := 0.0
 	var held_ticks := 0
+	var card := ""
 	for i in 240:
 		blinded = maxf(blinded, level.ride_static())
 		if level.player.held: held_ticks += 1
+		# The cut itself: what the tape puts up on the black while the car
+		# moves, which is the one moment the next stage can be read.
+		if is_instance_valid(level.ui.transit) and card.is_empty():
+			for node in level.ui.transit.get_child(0).get_children():
+				if node is Label: card += node.text + " · "
 		if i > 2 and level.boarding.is_empty(): break
 		await physics_frame
 	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
+	check("Y el corte dice a qué ala se va y qué pide", card.contains("ALA 2 DE 3") and card.contains("ETAPA 2") and card.contains(level.stage_errand(2)))
+	check("Al abrirse las puertas la tarjeta ya no está", not is_instance_valid(level.ui.transit))
 	var arrival: Dictionary = level.manifest.rooms[int(level.manifest.gates[0].arrive)]
 	# It comes out in the wing the lift serves. Where exactly is the session's
 	# business: closing a stage puts everybody on their feet at the way in.

@@ -1631,13 +1631,20 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		player.velocity = Vector3.ZERO
 		player.held = true
 		boarding = {"point": point, "time": 0.0}
+		# The stage has not turned over yet -- the session holds its beat of
+		# transition first -- so the wing being arrived at is the next one.
+		var arriving: int = mini(session.stage + 1, session.STAGES)
+		ui.show_transit("ALA %d DE %d" % [arriving, session.STAGES], "ETAPA %d · %s" % [arriving, stage_errand(arriving)], RIDE_TIME)
 	elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(point, 0.0)
 
 ## The ride itself, on the machine of whoever is taking it: a second and a bit
 ## with the doors shut and no picture, which is all a lift is from inside. It
 ## has no sound of its own yet -- what is heard is the door, the one that
 ## shuts here and the one that opens there.
-const RIDE_TIME := 1.5
+## Long enough to be a cut and not a hiccup: the picture goes, the card of the
+## wing ahead is read, and the picture comes back somewhere else. It used to be
+## a second and a half, which was only ever a stutter.
+const RIDE_TIME := 3.2
 const RIDE_BLIND := 0.35
 var boarding := {}
 func ride_along(delta: float) -> void:
@@ -1655,6 +1662,7 @@ func ride_along(delta: float) -> void:
 	if span < RIDE_TIME: return
 	player.held = false
 	boarding = {}
+	ui.hide_transit()
 	ui.flash("EL ASCENSOR SE ABRE", 2.5)
 
 ## How much of the picture the ride is taking: it goes as the doors shut and

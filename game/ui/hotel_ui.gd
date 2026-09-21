@@ -945,6 +945,54 @@ func show_skip(key: String, seconds := 6.0) -> void:
 func hide_skip() -> void:
 	skip_label.text = ""
 
+## The cut between one wing and the next. The car takes the picture with it,
+## and on that black the tape puts up where this is and what the stage wants.
+## It is the only pause a floor has: the one moment an errand can be read
+## instead of glimpsed over a shoulder while something walks towards you.
+var transit: Control
+var transit_tween: Tween
+
+func show_transit(title: String, errand: String, seconds: float) -> void:
+	hide_transit()
+	transit = ColorRect.new()
+	transit.name = "Transit"
+	transit.color = Color.BLACK
+	transit.set_anchors_preset(Control.PRESET_FULL_RECT)
+	transit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	transit.modulate.a = 0.0
+	add_child(transit)
+	var column := VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 20)
+	transit.add_child(column)
+	var head := STYLE.text(title, 54)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(head)
+	var rule := ColorRect.new()
+	rule.color = STYLE.FAINT
+	rule.custom_minimum_size = Vector2(280, 2)
+	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(rule)
+	var line := STYLE.text(errand, 26, STYLE.AMBER)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(line)
+	# Up after the picture has gone, and down before it comes back, so the
+	# card is the whole of what there is to look at while it is up.
+	var span := maxf(1.2, seconds)
+	transit_tween = create_tween()
+	transit_tween.tween_interval(span * 0.12)
+	transit_tween.tween_property(transit, "modulate:a", 1.0, span * 0.14)
+	transit_tween.tween_interval(span * 0.5)
+	transit_tween.tween_property(transit, "modulate:a", 0.0, span * 0.16)
+	transit_tween.tween_callback(hide_transit)
+
+func hide_transit() -> void:
+	if is_instance_valid(transit_tween): transit_tween.kill()
+	transit_tween = null
+	if is_instance_valid(transit): transit.queue_free()
+	transit = null
+
 func flash(words: String, seconds := 2.5) -> void:
 	flash_label.text = words
 	flash_time = seconds

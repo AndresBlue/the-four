@@ -47,9 +47,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que no se entiende jugando
 
-- [ ] **Pantalla de carga al cambiar de ala.** Hoy el paso son segundo y medio
-  de imagen perdida dentro del ascensor; se pide algo que se lea como un corte
-  de verdad entre un ala y la siguiente.
 - [ ] **Inventario para releer las notas**, animado y con la estética del
   juego. Hoy los números encontrados solo se escriben en la cinta y en el
   teclado.
