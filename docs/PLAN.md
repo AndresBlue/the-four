@@ -149,15 +149,11 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
 - [ ] **Pruebas que no corre nadie:** `tests/legacy/walkthrough_test.gd`,
   `audio_test.gd` y `h1_test.gd` no están en `verify.ps1`. O se corren o se
   archivan como registro histórico.
-- [ ] **Comprobaciones de red que fallan de vez en cuando** («Una puerta cambia
-  a petición de un invitado»; en el versus, «Los ruidos de los supervivientes
-  le llegan como contactos», que depende de un único ruido lanzado un segundo
-  después del gruñido; y en la reconexión, «Reaparece donde estaba», que falló
-  una vez de cinco sin que el cambio de ese momento tocara posiciones ni red):
-  no llegan a tiempo y al repetir el escenario pasan enteras. La de la
-  reconexión hay que mirarla aparte: si no es solo tiempo, alguien que vuelve
-  puede aparecer en otro sitio. Hay que darles arranque con reintento en vez de un
-  plazo fijo, para no acostumbrarse a repetir la verificación.
+- [ ] **La reconexión que falló una vez** («Reaparece donde estaba»): un
+  invitado que se cae y vuelve apareció lejos de donde estaba una vez de cinco
+  verificaciones, y no se ha vuelto a reproducir en seis pasadas seguidas del
+  cooperativo. La prueba dice ahora dónde apareció, dónde estaba y dónde lo
+  pone el piso, así que la próxima vez que falle dirá si es un fallo real.
 - [ ] **La vista de la criatura solo está validada en Forward+.** En
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
   modestas, donde ya apareció el fallo de la linterna.

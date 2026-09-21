@@ -15,10 +15,10 @@ var failed := 0
 
 func _initialize() -> void: run.call_deferred()
 
-func check(title: String, passed: bool) -> void:
-	checks.append({"check": title, "passed": passed})
+func check(title: String, passed: bool, detail := "") -> void:
+	checks.append({"check": title, "passed": passed, "detail": detail})
 	if not passed: failed += 1
-	print("PASS " if passed else "FAIL ", "[", role, "] ", title)
+	print("PASS " if passed else "FAIL ", "[", role, "] ", title, "" if passed or detail.is_empty() else " · " + detail)
 
 ## Waits for a value that satisfies a test, and returns it (or the last one).
 func wait_for_value(read: Callable, test: Callable, seconds: float):
@@ -235,9 +235,17 @@ func alpha_part() -> void:
 	var door = level.hotel.doors[3]
 	var was_open: bool = door.opened
 	level.player.global_position = door.doorway + Basis(Vector3.UP, door.closed_rotation).z * 2.0 + Vector3(0, 0.1, 0)
-	await pause_for(0.8)
-	match_net.use_door(door, false, false)
-	check("La puerta pedida se mueve también aquí", await wait_for(func(): return door.opened != was_open and not door.moving, 15.0))
+	# Asked again every second until it moves: the host only answers a guest
+	# it knows to be near, and where the guest stands reaches it a moment
+	# after the guest has moved. A single request was sometimes judged from
+	# where it had been before.
+	var asked := {"at": -10.0}
+	check("La puerta pedida se mueve también aquí", await wait_for(func():
+		var now := Time.get_ticks_msec() / 1000.0
+		if door.opened == was_open and not door.moving and now - float(asked.at) > 1.0:
+			asked.at = now
+			match_net.use_door(door, false, false)
+		return door.opened != was_open and not door.moving, 15.0))
 	var hide = level.hotel.hides[0]
 	level.player.global_position = hide.to_global(hide.exit_offset) + Vector3(0, 0.1, 0)
 	await pause_for(0.8)
@@ -308,7 +316,8 @@ func bravo_part() -> void:
 	check("Recupera la misma plaza", await wait_for(func(): return level.net.local_seat == 3, 20.0))
 	check("Vuelve al piso en curso", await wait_for(playing, 90.0))
 	await pause_for(1.0)
-	check("Reaparece donde estaba", level.player.global_position.distance_to(spot) < 2.5)
+	var came_back: Vector3 = level.player.global_position
+	check("Reaparece donde estaba", came_back.distance_to(spot) < 2.5, "en %s, estaba en %s, salida del piso en %s" % [came_back, spot, level.player.spawn])
 	check("Recupera la hoja con los trazos de los demás", level.ui.sheet.log_index.has("%d:1" % seat_named("Alpha")))
 	check("Ve morir al anfitrión", await wait_for(func(): return level.session.participants.get(1) == level.session.Life.DEAD, 90.0))
 	await pause_for(1.0)
@@ -335,13 +344,18 @@ func versus_host() -> void:
 	check("La protección inicial termina cuando el cazador la termina", await wait_for(func(): return level.locust.grace <= 0.0, 20.0))
 	# The hunt is audible from here, and what arrives is a grunt, not a shriek.
 	check("Los gruñidos de caza del cazador llegan aquí", await wait_for(func(): return level.locust.last_call == "grunt", 30.0))
-	# A noise the hunter should hear as a contact.
-	await pause_for(1.0)
-	level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
 	# Kept walking while the hunter shrieks: its cry only finds what is moving,
-	# so a survivor standing still would give it nothing to mark.
+	# so a survivor standing still would give it nothing to mark. And a noise
+	# the hunter should hear as a contact, made again every second while this
+	# waits: a single noise at one moment sometimes went out before the
+	# hunter was listening for it.
+	var noised := {"at": -10.0}
 	check("Oye el chillido del cazador", await wait_for(func():
 		sway()
+		var now := Time.get_ticks_msec() / 1000.0
+		if now - float(noised.at) >= 1.0:
+			noised.at = now
+			level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
 		return level.locust.calls_heard > 0, 25.0))
 	# Two sets lit, so the hunter has channels to travel by. The channels are
 	# the ones of the stage being played -- a set burning in a wing nobody is
