@@ -334,6 +334,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	# Nothing of the last floor's lifts survives into this one: a ride still
 	# counting would move the body to a room that no longer exists.
 	lifts.boarding = {}
+	lifts.leaving = -1.0
 	lifts.riding.clear()
 	lifts.lift_away.clear()
 	lifts.cross_clock = 0.0
@@ -938,7 +939,7 @@ func restore_local_player(point: Vector3) -> void:
 	# Whoever closed the stage is put on their feet by the session at the same
 	# moment their lift is carrying them: the ride keeps the hold and the
 	# picture until the doors open.
-	player.held = not lifts.boarding.is_empty()
+	player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
 	if player.hidden: player.force_leave_hide()
 	stop_watching()
 	clear_screen_cues()
@@ -1326,6 +1327,7 @@ func _physics_process(delta: float) -> void:
 	# into its transition for a moment, and everything below stops there -- a
 	# lift that stopped counting would hold somebody in the dark for good.
 	lifts.ride_along(delta)
+	lifts.ride_out(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	# The notice of the sector waits for the card to be gone and for the lift
 	# to have opened its doors: it is what the picture comes back to.

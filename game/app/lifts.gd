@@ -155,9 +155,10 @@ func ride_lifts() -> void:
 		for body in level.survivors():
 			var seat := int(body.slot)
 			if riding.has(seat) or body.global_position.distance_to(level.hotel.lifts[index]) > RIDE_REACH: continue
-			# The last one does not arrive anywhere on this floor.
+			# The last one does not arrive anywhere on this floor: it is a ride
+			# into the dark, for everybody, and then the floor is over.
 			if index >= level.hotel.arrivals.size() or level.hotel.arrivals[index] == Vector3.ZERO:
-				level.session.finish_stage()
+				leave_floor()
 				return
 			var point: Vector3 = level.hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
 			riding[seat] = RIDE_REST
@@ -222,6 +223,7 @@ func ride_along(delta: float) -> void:
 ## How much of the picture the ride is taking: it goes as the doors shut and
 ## comes back as they open.
 func ride_static() -> float:
+	if leaving >= 0.0: return clampf(leaving / RIDE_BLIND, 0.0, 1.0)
 	if boarding.is_empty(): return 0.0
 	var span: float = float(boarding.time)
 	if span < RIDE_BLIND: return span / RIDE_BLIND
@@ -229,3 +231,31 @@ func ride_static() -> float:
 	if span > RIDE_TIME - RIDE_BLIND: return maxf(0.0, (RIDE_TIME - span) / RIDE_BLIND)
 	if span > RIDE_TIME - RIDE_BLIND * 2.0: return lerpf(RIDE_CARD, 1.0, (span - (RIDE_TIME - RIDE_BLIND * 2.0)) / RIDE_BLIND)
 	return RIDE_CARD
+
+## The last car. Whoever steps into it takes the floor with them, as before --
+## but not in the same frame any more: the doors shut, the picture goes to
+## black and static for as long as any other ride, on every machine at once,
+## and only then is the floor over. No card: there is no sector to arrive in.
+## Seconds into that ride, or -1 while nobody has taken it.
+var leaving := -1.0
+
+## The authority's side: once, however many step in together.
+func leave_floor() -> void:
+	if leaving >= 0.0: return
+	begin_leaving()
+	if level.match_net.in_match(): level.match_net.leave_floor()
+
+## Every machine's side: hold the body and let the picture go.
+func begin_leaving() -> void:
+	if leaving >= 0.0: return
+	leaving = 0.0
+	if level.player.hidden: level.player.force_leave_hide()
+	level.player.velocity = Vector3.ZERO
+	level.player.held = true
+	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, level.player.global_position + Vector3(0, 1.2, 0), -6.0)
+
+## Counted on every machine; the one that runs the floor ends it.
+func ride_out(delta: float) -> void:
+	if leaving < 0.0: return
+	leaving += delta
+	if leaving >= RIDE_TIME and not level.net.is_client(): level.session.finish_stage()

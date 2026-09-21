@@ -133,13 +133,6 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
   modificado no se quema nunca y la criatura no lo huele. Decidir si se acepta
   (la oscuridad se mide en la cámara local, y moverlo al anfitrión no es
   gratis) o se comprueba desde fuera.
-- [ ] **El tercer ascensor no tiene viaje.** Los dos primeros hacen su segundo y
-  medio a oscuras; el último termina el piso en el acto (`ride_lifts()`).
-- [ ] **La reconexión que falló una vez** («Reaparece donde estaba»): un
-  invitado que se cae y vuelve apareció lejos de donde estaba una vez de cinco
-  verificaciones, y no se ha vuelto a reproducir en seis pasadas seguidas del
-  cooperativo. La prueba dice ahora dónde apareció, dónde estaba y dónde lo
-  pone el piso, así que la próxima vez que falle dirá si es un fallo real.
 - [ ] **La vista de la criatura solo está validada en Forward+.** En
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
   modestas, donde ya apareció el fallo de la linterna.

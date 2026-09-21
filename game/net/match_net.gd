@@ -41,6 +41,13 @@ var watching := 0
 var manifest_hash := 0
 ## Snapshot to apply once the floor is built (coming back after a drop).
 var rejoin_snapshot := {}
+## Whether this machine's floor is being played yet: set by go() on a normal
+## start, and by restore() for somebody coming back. Until then the session
+## the host pushes twice a second is not for it. A returning guest used to
+## take the host's "playing" within milliseconds of starting to load, drop
+## its loading screen on a floor still being built, and stand at its spawn
+## point until the catch-up arrived a second or more later.
+var floor_live := false
 var checkpoint_path := CHECKPOINT
 
 func _ready() -> void:
@@ -82,6 +89,7 @@ func end() -> void:
 	away.clear()
 	waiting_time = -1.0
 	rejoin_snapshot = {}
+	floor_live = false
 	watching = 0
 
 # --- Start ---------------------------------------------------------------------
@@ -184,6 +192,7 @@ func check_ready() -> void:
 @rpc("authority", "call_remote", "reliable")
 func go() -> void:
 	level.begin_online_play(config)
+	floor_live = true
 	if net.is_host:
 		write_checkpoint()
 		for seat in config.survivors:
@@ -268,7 +277,7 @@ func push_session() -> void:
 @rpc("authority", "call_remote", "reliable")
 func session_state(state: int, participants: Dictionary, elapsed: float, message: String, stage: int, goal: Dictionary) -> void:
 	var session = level.session
-	if not in_match() or session.state in [session.State.LOADING, session.State.MENU] and state != session.State.PLAYING: return
+	if not in_match() or not floor_live or session.state in [session.State.LOADING, session.State.MENU] and state != session.State.PLAYING: return
 	var stage_changed: bool = stage != session.stage or goal != session.goal
 	session.stage = stage
 	session.goal = goal
@@ -427,6 +436,15 @@ func ride_lift(seat: int, point: Vector3) -> void:
 @rpc("authority", "call_remote", "reliable")
 func ride_state(seat: int, point: Vector3) -> void:
 	level.lifts.apply_ride(seat, point)
+
+## Somebody took the last car: everybody's picture goes, and the host ends
+## the floor when the ride is over.
+func leave_floor() -> void:
+	if in_match(): floor_left.rpc()
+
+@rpc("authority", "call_remote", "reliable")
+func floor_left() -> void:
+	level.lifts.begin_leaving()
 
 ## The creature took it too. In versus the machine that drives it owns where
 ## it stands, so this is the one move the host gets to make for it: everybody
@@ -827,6 +845,7 @@ func catch_up(seat: int, id: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array, sets: Array) -> void:
 	level.begin_online_play(config)
+	floor_live = true
 	for index in mini(doors.size(), level.hotel.doors.size()): level.hotel.doors[index].set_state(doors[index])
 	for seat_key in places:
 		var seat := int(seat_key)

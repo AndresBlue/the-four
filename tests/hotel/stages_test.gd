@@ -364,12 +364,17 @@ func run() -> void:
 	await frames(4)
 	check("Con el código puesto la puerta se abre", level.code_entered and not exit_door.locked)
 	var won := false
-	for i in 300:
+	var dark_first := false
+	var went_black := false
+	for i in 480:
 		level.player.global_position = level.hotel.lifts[level.hotel.lifts.size() - 1] + Vector3(0, 0.1, 0)
 		await physics_frame
+		if i == 10: dark_first = session.state == session.State.PLAYING and level.lifts.leaving >= 0.0
+		went_black = went_black or level.lifts.ride_static() >= 1.0
 		if session.state == session.State.WON:
 			won = true
 			break
+	check("El último ascensor también es un viaje: a oscuras antes del fin", dark_first and went_black)
 	check("Salir por esa puerta termina el piso", won and session.stage == 3)
 	check("Y entonces sale la pantalla de fin", level.ui.screen == "won")
 	# A floor started again begins at the first stage.
