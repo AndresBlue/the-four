@@ -24,7 +24,7 @@ Y esto es lo que hoy no está bien, que es de donde sale el orden de abajo:
 
 ## Orden de trabajo
 
-1. **[P0 — Cierre del Early Access](#p0--cierre-del-early-access-prioridad-alta):** lo que se está haciendo ahora. Etapas, ritmo del mapa, la criatura que se oye y se entiende, cordura, animaciones, tamaño del paquete y [lo que salió de jugarlo](#lo-que-salió-de-la-segunda-partida-21-de-septiembre-de-2026).
+1. **[P0 — Cierre del Early Access](#p0--cierre-del-early-access-prioridad-alta):** lo que se está haciendo ahora. Etapas, ritmo del mapa, la criatura que se oye y se entiende, cordura, animaciones, tamaño del paquete y [lo que salió de jugarlo](#lo-que-salió-de-la-segunda-partida-21-de-septiembre-de-2026). Todo lo que queda por arreglar, junto, está en [una sola lista](#todo-lo-que-queda-por-arreglar-en-una-lista).
 2. **[P1 — Niveles y base](#p1--niveles-y-base-de-presentación):** cerrado salvo la aceptación de duración y orientación con partidas humanas, que P0 aborda.
 3. **[P2 — Atmósfera analógica](#p2--atmósfera-analógica):** implementada; quedan escucha crítica, acabado PBR y sustitución del mobiliario provisional.
 4. **[P3 — Cooperativo y hoja](#p3--cooperativo-y-hoja-paranormal):** cerrado, con sesiones humanas hechas.
@@ -40,12 +40,59 @@ Pedido del 19/09/2026 tras las pruebas con amigos. Es lo que cierra la etapa de 
 
 Orden acordado: primero lo sensorial (gruñidos, chillido con distancia, nueva ejecución), que cambia la próxima partida sin esperar a lo estructural; después las tres etapas; después mapa y ritmo, supervivientes y empaquetado. Decisiones tomadas: el refugio es la meta de la etapa 1 y luego deja de ser seguro; las teles exigidas son `max(2, jugadores)` y se generan dos más; si en una etapa no queda gente para la cuota, la etapa se reinicia con todos vivos; las animaciones parten de un pack externo con los retoques procedurales encima, y el personaje «detective» se sustituye por uno con esqueleto (hoy es un OBJ sin huesos).
 
+### Todo lo que queda por arreglar, en una lista
+
+El trabajo de código que está pendiente, junto y sin buscarlo por el
+documento. Lo que hay que **jugar y juzgar** (ocho casillas repartidas por las
+secciones de abajo, más las partidas de prueba del [cierre](#cierre)) y lo que
+espera **assets** van aparte, al final de esta lista. Fuera de P0 quedan las
+suyas: el acabado de P2, los otros tres pisos de P5 y el balance de P6.
+
+**Fallos** (de la partida del 21 de septiembre; el detalle de cada uno, con
+dónde vive en el código, está [más abajo](#lo-que-salió-de-la-segunda-partida-21-de-septiembre-de-2026))
+
+1. La cámara se desboca por debajo de 10 FPS y acaba en negro hasta reiniciar el juego. **El más grave: deja la partida inservible.**
+2. La linterna propia se pierde al revivir.
+3. Lámparas y apliques siguen brillando con la corriente cortada.
+4. Fugas de luz entre salas vecinas.
+5. La linterna rompe texturas en Compatibilidad con calidad Baja.
+
+**Ajustes pedidos** (mismo sitio)
+
+6. Reconectar debe devolverte donde estabas.
+7. Pantalla de carga al cambiar de ala.
+8. Inventario para releer las notas, animado y con la estética del juego.
+9. La hoja compartida, rehecha para que pegue con la cinta; notas, inventario y hoja como una sola idea.
+
+**Deuda técnica** (nada de esto se ve jugando, y todo cuesta caro más adelante)
+
+10. **La cordura y el «quemado» los calcula cada máquina y el anfitrión se los cree.** El estado quemado viaja como un bit de banderas del cliente (`match_net.gd`, `pack_local()`). Todo lo demás de las etapas lo juzga el anfitrión —el código de la cerradura a propósito—; esto no, así que un cliente modificado no se quema nunca y la criatura no lo huele. Decidir si se acepta (la oscuridad se mide en la cámara local y moverlo al anfitrión no es gratis) o se comprueba desde fuera.
+11. **El piso de respaldo no pasa por la garantía de la pared.** Si las veinte tentativas fallan, `map_generator.generate()` devuelve el piso fijo 404, que solo pasa el validador: ni mano en la pared ni recorrido mínimo. En mil semillas no se usa nunca, pero si se usara, el contrato grande de P0 se caería sin avisar. Al menos debería avisarlo.
+12. **`hotel_main.gd` pasa de 2.200 líneas.** Cordura, ascensores, etapas, apagón, documentos, observación, alucinaciones y red en un archivo; cada bloque de P0 lo ha engordado. Sale barato partir cordura y ascensores en sus propios archivos.
+13. **El tercer ascensor no tiene viaje.** Los dos primeros hacen su segundo y medio a oscuras; el último termina el piso en el acto (`ride_lifts()`). Se nota si se juega seguido.
+14. **El recorte de blend shapes va enganchado a mano en cada `.import`.** Si se reemplaza o reimporta un modelo, se pierde el enganche en silencio y el paquete vuelve a engordar 50 MB sin que nada se ponga rojo.
+15. **Pruebas que no corre nadie:** `tests/legacy/walkthrough_test.gd`, `audio_test.gd` y `h1_test.gd` no están en `verify.ps1`. O se corren o se archivan como registro histórico.
+16. **Comprobaciones de red que fallan de vez en cuando** por plazos fijos en vez de reintentos (ver [P3](#p3--cooperativo-y-hoja-paranormal)): acostumbran a repetir la verificación, que es como se dejan de mirar los fallos de verdad.
+17. **La vista de la criatura solo está validada en Forward+** (ver [P4b](#p4b--visión-de-the-locust--implementada-pendiente-de-ajuste-humano)); en Compatibilidad no la ha mirado nadie, y es justo el renderizador de las máquinas modestas, donde ya apareció el fallo 5.
+
+**Esperando assets tuyos**
+
+18. El sonido propio del ascensor (motor y hojas; hoy solo suena la puerta).
+19. Arte para las motas de la cordura quemada: hoy son partículas aditivas.
+20. Un detective masculino con esqueleto: el de ahora es un OBJ sin huesos y se queda con su movimiento viejo.
+
+**Y lo que solo se decide jugando**, que no es trabajo de código y por eso no
+entra en esta lista: el ritmo de las tres alas, el apagón, el reinicio de
+etapa, los gruñidos, las distancias con auriculares, el grito de la ejecución,
+los números de la cordura, cómo se ven las animaciones, si el piso se siente
+un hotel y si la partida dura ya 25–40 minutos.
+
 ### El piso de The Locust en tres etapas
 
 - [x] **Tres etapas encadenadas** en la sesión y en la red: `stage` y su objetivo viajan con el resto del estado (`push_session`), el latido de `State.TRANSITION` lleva de una etapa a la siguiente y solo la última termina el piso. Protocolo subido a `the-four-net-3`. Comprobado en `tests/hotel/stages_test.gd` (11 comprobaciones) y en el cooperativo de `tests/net/net_test.gd`.
 - [x] **Etapa 1:** el refugio con la cuota dentro. Sin mantener nada: al cumplirse, la puerta de acceso se abre y **cruzarla** es lo que cierra la etapa; el refugio deja de proteger en cuanto alguien pasa. La última etapa, que todavía no tiene su puerta con cerradura, se cierra estando dentro con la cuota unos segundos.
-- [x] **El piso se genera en tres alas** que no se comunican salvo por la puerta de acceso de cada etapa, con su refugio en la sala que la contiene (`map_generator.candidate()`: un laberinto por ala y dos puertas de paso; `map_validator.wings()` comprueba que no hay más pasos, que cada ala es de una pieza y que ninguna se queda sin habitaciones). Medido en mil semillas: alas de 42/38/35 salas y un recorrido mínimo de 41 salas para las tres etapas.
-- [x] **Las puertas de etapa están cerradas con llave** hasta que su etapa se cumple (`hotel_door.locked`, `hotel_geometry.open_gates()`), el refugio es el de la etapa en curso y deja de proteger al cruzar (`hotel_main.refuge_room()`), y la criatura se va detrás de los jugadores al ala nueva (`follow_players()`). 22 comprobaciones en `tests/hotel/stages_test.gd`.
+- [x] **El piso se genera en tres alas** que no se comunican salvo por la puerta de acceso de cada etapa, con su refugio en la sala que la contiene (`map_generator.candidate()`: un laberinto por ala y dos puertas de paso; `map_validator.wings()` comprueba que no hay más pasos, que cada ala es de una pieza y que ninguna se queda sin habitaciones). Medido entonces en mil semillas: alas de 42/38/35 salas y un recorrido mínimo de 41 para las tres etapas (la planta se rehizo después; los números de hoy están en «Mapa y ritmo»).
+- [x] **Las puertas de etapa están cerradas con llave** hasta que su etapa se cumple (`hotel_door.locked`, `hotel_geometry.open_gates()`), el refugio es el de la etapa en curso y deja de proteger al cruzar (`hotel_main.refuge_room()`), y la criatura se va detrás de los jugadores (`follow_players()` le pone el camino hasta el ascensor; cruza andando, ver más abajo). Comprobado en `tests/hotel/stages_test.gd`.
 - [x] La criatura no patrulla hacia una puerta que no puede abrir ni hacia el refugio que protege esa etapa, y empieza en el ala primera, lo más adentro que esa ala llega (61 a 112 m del jugador en las semillas medidas).
 - [ ] Juzgar en partida el ritmo de las tres alas: cuánto se tarda en cada una, si se entiende que la puerta se abrió y si la criatura llega demasiado pronto o demasiado tarde al ala nueva.
 - [x] **Etapa 2: encender televisores**, `max(2, jugadores)` exigidos y dos de más, en el ala que abre esa etapa, repartidos por sectores y lejos de su entrada (`tv_placement.gd`, determinista por semilla y número de supervivientes, sin mandar lista). Se encienden con E, dan luz fría parpadeante y hacen un ruido que la criatura oye; no se apagan. El generador garantiza ocho salas con tele en las alas de las etapas 2 y 3, y el validador lo comprueba. En red van por índice como las puertas (`use_television`/`request_television`/`television_state`) y quien reconecta recibe cuáles están encendidas. Cada etapa cuenta las suyas. Comprobado en `stages_test` y en el cooperativo, donde un invitado enciende por petición al anfitrión.
