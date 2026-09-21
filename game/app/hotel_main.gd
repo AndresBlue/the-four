@@ -92,6 +92,12 @@ var skip_time := 0.0
 ## Online play (net_session.gd) and its in-match replication (match_net.gd).
 var net
 var match_net
+## The mind of the local survivor (sanity.gd).
+const MIND := preload("res://game/app/sanity.gd")
+var sanity
+## The lifts, the rides and the sectors' words (lifts.gd).
+const LIFTS := preload("res://game/app/lifts.gd")
+var lifts
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
 ## Online, Esc opens a menu over the running match instead of pausing it.
@@ -153,6 +159,14 @@ func _enter_tree() -> void:
 	if OS.get_cmdline_user_args().has("--test-profile"): match_net.checkpoint_path = "user://test_coop_%s_checkpoint.json" % test_name
 	$Services.add_child(net)
 	ui.net = net
+	sanity = MIND.new()
+	sanity.name = "Sanity"
+	sanity.level = self
+	$Services.add_child(sanity)
+	lifts = LIFTS.new()
+	lifts.name = "Lifts"
+	lifts.level = self
+	$Services.add_child(lifts)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -319,10 +333,10 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.velocity = Vector3.ZERO
 	# Nothing of the last floor's lifts survives into this one: a ride still
 	# counting would move the body to a room that no longer exists.
-	boarding = {}
-	riding.clear()
-	lift_away.clear()
-	cross_clock = 0.0
+	lifts.boarding = {}
+	lifts.riding.clear()
+	lifts.lift_away.clear()
+	lifts.cross_clock = 0.0
 	player.sanity = 100.0
 	player.set_burnt(false)
 	player.camera.rotation = Vector3.ZERO
@@ -409,9 +423,9 @@ func populate_floor(with_director: bool) -> void:
 	# A floor opens on the same card as every sector after it, and the notice
 	# of what this one wants follows once the card is gone.
 	if not automation and not match_net.local_is_locust():
-		ui.show_transit("SECTOR %d" % session.stage, stage_errand(session.stage), OPENING_CARD)
-	pending_brief = session.stage
-	brief_wait = OPENING_CARD if not automation else 0.0
+		ui.show_transit("SECTOR %d" % session.stage, lifts.stage_errand(session.stage), lifts.OPENING_CARD)
+	lifts.pending_brief = session.stage
+	lifts.brief_wait = lifts.OPENING_CARD if not automation else 0.0
 
 # --- Online floors ---------------------------------------------------------------
 
@@ -496,7 +510,7 @@ func open_online_menu() -> void:
 ## What the pause screens show of the sector in hand. The hunter has no errand.
 func refresh_briefing() -> void:
 	if match_net.local_is_locust() or manifest.is_empty(): ui.set_briefing("", "", [])
-	else: ui.set_briefing("SECTOR %d" % session.stage, stage_brief(session.stage), stage_progress())
+	else: ui.set_briefing("SECTOR %d" % session.stage, lifts.stage_brief(session.stage), lifts.stage_progress())
 
 func close_online_menu() -> void:
 	if not online_menu: return
@@ -780,7 +794,7 @@ func on_state() -> void:
 		hotel.open_gates(session.stage, session.goal.get("ready", false))
 		if session.goal.get("blackout", false) and not hotel.dark: apply_blackout()
 		elif not session.goal.get("blackout", false) and hotel.dark: restore_power()
-		if playing and session.stage > last_stage: follow_players(session.stage)
+		if playing and session.stage > last_stage: lifts.follow_players(session.stage)
 	last_stage = session.stage
 	press_time = 0
 	pressed_door = null
@@ -814,7 +828,7 @@ func on_state() -> void:
 				ui.overlay.hide()
 				ui.settings_open = false
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				pending_brief = session.stage + 1
+				lifts.pending_brief = session.stage + 1
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
@@ -828,128 +842,6 @@ func on_state() -> void:
 
 ## The stage the floor was on when it was last looked at, to tell a change.
 var last_stage := 1
-
-## What a sector asks for, in the fewest words that fit on the tape's card.
-## The floor explains nothing else, but nobody guesses on their own that the
-## numbers of the last door are inside the furniture of that wing: a whole
-## sector spent opening drawers at random is not a mystery, it is a wasted
-## evening.
-func stage_errand(stage: int) -> String:
-	match stage:
-		2: return "ENCIENDE LOS TELEVISORES"
-		3: return "DESCUBRE EL CÓDIGO"
-	return "ENCUENTRA LA SALIDA"
-
-## And the same thing said whole, which is what the notice on arriving says and
-## what the pause screen keeps for anybody who wants to check.
-func stage_brief(stage: int) -> String:
-	match stage:
-		2: return "Enciende los televisores y busca la salida."
-		3: return "Busca las notas con el código, enciende televisores y sal del piso."
-	return "Encuentra la salida del sector."
-
-## How the sector is going, in the lines the pause screen shows under it: the
-## sets that are on from the second sector, and the numbers found from the
-## third. Nothing that cannot be counted by looking at the floor.
-func stage_progress() -> Array:
-	var lines: Array = []
-	if session.stage >= 2 and not stage_televisions().is_empty():
-		lines.append(["TELEVISORES", "%d / %d" % [televisions_on(), TV_PLACEMENT.needed(session.roster_count)]])
-	if session.stage >= 3:
-		lines.append(["NÚMEROS DEL CÓDIGO", "%d / %d" % [found_digits.size(), DIGITS.COUNT]])
-	return lines
-
-## The notice of a sector, once its lift has opened and the picture is back:
-## six seconds of what this one wants, and then the tape lets it go.
-var pending_brief := 0
-var brief_wait := 0.0
-func announce_sector(delta := 0.0) -> void:
-	brief_wait = maxf(0.0, brief_wait - delta)
-	if pending_brief <= 0 or brief_wait > 0.0 or not boarding.is_empty(): return
-	if not match_net.local_is_locust(): ui.show_brief("SECTOR %d" % pending_brief, stage_brief(pending_brief))
-	pending_brief = 0
-
-## A stage has closed: the creature is put on the trail of the lift the
-## survivors took, instead of hunting a wing nobody will come back to. It is
-## not moved anywhere -- it has to walk there and ride it, like they did.
-func follow_players(stage: int) -> void:
-	if net.is_client() or not is_instance_valid(locust) or manifest.is_empty(): return
-	var index := stage - 2
-	if index < 0 or index >= hotel.lifts.size(): return
-	# It is told in the only language it has: its own voice, and the road to
-	# the car laid out in its reading, from where it happens to be standing.
-	locust.grunt()
-	aim_at_lift(index)
-	var road := FLOOR.navigation_path(get_world_3d().navigation_map, locust.global_position, hotel.lifts[index])
-	if road.size() >= 2: match_net.tell_stage(road)
-
-## Seconds the car spends up there before it comes back down for whoever is
-## left -- a straggler, or the creature. It is the head start the survivors
-## buy by being first into it.
-const LIFT_RETURN := 15.0
-## Lift index -> seconds until the car is back on this floor.
-var lift_away := {}
-
-## True while that car is away and nobody can step into it.
-func lift_gone(index: int) -> bool: return float(lift_away.get(index, 0.0)) > 0.0
-
-## Points the creature at a car, without taking it off anything it is already
-## doing: somebody left behind in this wing comes before the lift.
-func aim_at_lift(index: int) -> void:
-	if locust.control != "ai" or index < 0 or index >= hotel.lifts.size(): return
-	if locust.mode not in [locust.Mode.PATROL, locust.Mode.SEARCH, locust.Mode.INVESTIGATE]: return
-	if locust.detection >= locust.SUSPICION: return
-	var car: Vector3 = hotel.lifts[index]
-	if locust.mode == locust.Mode.INVESTIGATE and locust.destination.distance_to(car) < 1.0: return
-	locust.set_mode(locust.Mode.INVESTIGATE)
-	locust.destination = car
-	# Its patrolling belongs to the wing it is in; the lobby of the lift is
-	# where it should be wandering while it waits for the car.
-	var gates: Array = manifest.get("gates", [])
-	if index < gates.size(): locust.patrol_room = int(gates[index].get("beyond", locust.patrol_room))
-	locust.repath = 0
-
-## The creature crossing on its own two feet: a wing behind, it makes for the
-## car, waits for it to come back down and rides it. Nothing carries it and
-## nothing waits for it -- if it stops to chase somebody who stayed behind,
-## the wing ahead is that much quieter for a while.
-const CROSS_AIM := 2.5
-var cross_clock := 0.0
-func creature_crossing(delta: float) -> void:
-	if not is_instance_valid(locust) or manifest.is_empty() or hotel.lifts.is_empty(): return
-	var index: int = session.stage - 2
-	if index < 0 or index >= hotel.lifts.size() or index >= hotel.arrivals.size(): return
-	if hotel.arrivals[index] == Vector3.ZERO: return
-	var here: Dictionary = FLOOR.room_at(manifest.rooms, locust.global_position)
-	# Already across, or standing nowhere the floor knows about.
-	if here.is_empty() or int(here.get("wing", 0)) >= session.stage - 1: return
-	if locust.global_position.distance_to(hotel.lifts[index]) <= RIDE_REACH + 0.6 and not lift_gone(index):
-		lift_away[index] = LIFT_RETURN
-		match_net.locust_ride(hotel.arrivals[index] + Vector3(0, 0.04, 0))
-		return
-	cross_clock -= delta
-	if cross_clock > 0.0: return
-	cross_clock = CROSS_AIM
-	aim_at_lift(index)
-
-## The creature steps out of the car in the wing ahead. Applied on every
-## machine, including the hunter's, which is the one that owns where it
-## stands the rest of the time.
-func apply_locust_ride(point: Vector3) -> void:
-	if not is_instance_valid(locust): return
-	locust.global_position = point
-	locust.velocity = Vector3.ZERO
-	locust.net_states.clear()
-	locust.net_clock = 0.0
-	if locust.control == "ai":
-		var room: Dictionary = FLOOR.room_at(manifest.rooms, point)
-		if not room.is_empty(): locust.patrol_room = int(room.id)
-		if locust.mode in [locust.Mode.PATROL, locust.Mode.SEARCH, locust.Mode.INVESTIGATE]:
-			locust.set_mode(locust.Mode.SEARCH)
-			locust.destination = point
-	# The doors of the car: whoever is near enough in the new wing hears the
-	# lift arrive, which is all the warning there is.
-	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, point + Vector3(0, 1.2, 0), -4.0)
 
 ## The power goes, everywhere at once. Nothing says so in words: the hotel
 ## drops into the dark with a sound, and in the creature's reading the ceilings
@@ -1046,7 +938,7 @@ func restore_local_player(point: Vector3) -> void:
 	# Whoever closed the stage is put on their feet by the session at the same
 	# moment their lift is carrying them: the ride keeps the hold and the
 	# picture until the doors open.
-	player.held = not boarding.is_empty()
+	player.held = not lifts.boarding.is_empty()
 	if player.hidden: player.force_leave_hide()
 	stop_watching()
 	clear_screen_cues()
@@ -1433,13 +1325,13 @@ func _physics_process(delta: float) -> void:
 	# The ride is counted before the rest: closing a stage puts the session
 	# into its transition for a moment, and everything below stops there -- a
 	# lift that stopped counting would hold somebody in the dark for good.
-	ride_along(delta)
+	lifts.ride_along(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	# The notice of the sector waits for the card to be gone and for the lift
 	# to have opened its doors: it is what the picture comes back to.
-	announce_sector(delta)
+	lifts.announce_sector(delta)
 	drive_local(delta)
-	sanity_tick(delta)
+	sanity.tick(delta)
 	# Whoever is in charge counts the hold at the exit once a frame, whatever
 	# its own player happens to be doing. It used to be called from inside the
 	# branches below, and the one for a dead player had no call: with the host
@@ -1587,7 +1479,7 @@ func creature_channel_hop(delta: float) -> void:
 
 func host_gate(delta: float) -> void:
 	creature_channel_hop(delta)
-	haunt_burnt(delta)
+	sanity.haunt_burnt(delta)
 	# From the second stage on, the wing is played on its own sets: each stage
 	# counts the ones standing in its wing and starts from nothing.
 	var sets: Array = stage_televisions() if session.stage >= 2 else []
@@ -1617,108 +1509,7 @@ func host_gate(delta: float) -> void:
 		session.goal["needed"] = int(session.goal.get("sets_needed", 0))
 		session.update_goal(delta, lit_enough)
 	else: session.update_goal(delta, session.can_depart())
-	ride_lifts()
-
-## Whoever steps into a lift takes it. The stage that lift belongs to closes
-## behind them -- what walking through the door used to do -- and they come
-## out in front of the car at the way into the next wing; the last lift leaves
-## the floor. The car stays there for the rest of the floor, so anybody left
-## behind rides after them. It is the only way from one wing to the next: they
-## share no wall.
-const RIDE_REACH := 1.4
-const RIDE_REST := 3.0
-var riding := {}
-func ride_lifts() -> void:
-	var delta := get_physics_process_delta_time()
-	for seat in riding.keys():
-		riding[seat] = riding[seat] - delta
-		if riding[seat] <= 0.0: riding.erase(seat)
-	# The car is a car: it goes up with whoever stepped into it and comes back
-	# down a quarter of a minute later.
-	for index in lift_away.keys():
-		lift_away[index] = float(lift_away[index]) - delta
-		if lift_away[index] <= 0.0: lift_away.erase(index)
-	creature_crossing(delta)
-	for index in hotel.lifts.size():
-		var door = hotel.gates[index] if hotel.gates.size() > index else null
-		if not is_instance_valid(door) or door.locked or lift_gone(index): continue
-		for body in survivors():
-			var seat := int(body.slot)
-			if riding.has(seat) or body.global_position.distance_to(hotel.lifts[index]) > RIDE_REACH: continue
-			# The last one does not arrive anywhere on this floor.
-			if index >= hotel.arrivals.size() or hotel.arrivals[index] == Vector3.ZERO:
-				session.finish_stage()
-				return
-			var point: Vector3 = hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
-			riding[seat] = RIDE_REST
-			lift_away[index] = LIFT_RETURN
-			apply_ride(seat, point)
-			if match_net.in_match(): match_net.ride_lift(seat, point)
-			if session.stage == index + 1: session.finish_stage()
-
-## The lift has moved somebody: on their own machine the body goes with it, on
-## the others the puppet is put where it is told. Both doors are heard, the
-## one that shuts here and the one that opens there.
-func apply_ride(seat: int, point: Vector3) -> void:
-	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, point + Vector3(0, 1.2, 0), -6.0)
-	if seat == player.slot:
-		# Its own ride: the doors shut, the picture goes, and it comes out
-		# somewhere else. Nothing is said about how far it went.
-		if player.hidden: player.force_leave_hide()
-		player.velocity = Vector3.ZERO
-		player.held = true
-		boarding = {"point": point, "time": 0.0}
-		# The stage has not turned over yet -- the session holds its beat of
-		# transition first -- so the wing being arrived at is the next one.
-		var arriving: int = mini(session.stage + 1, session.STAGES)
-		ui.show_transit("SECTOR %d" % arriving, stage_errand(arriving), RIDE_TIME)
-	elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(point, 0.0)
-
-## The ride itself, on the machine of whoever is taking it: a second and a bit
-## with the doors shut and no picture, which is all a lift is from inside. It
-## has no sound of its own yet -- what is heard is the door, the one that
-## shuts here and the one that opens there.
-## Long enough to be a cut and not a hiccup: the picture goes, the card of the
-## wing ahead is read, and the picture comes back somewhere else. It used to be
-## a second and a half, which was only ever a stutter.
-const RIDE_TIME := 3.2
-const RIDE_BLIND := 0.35
-## How much tape noise is left over the card in the middle of the ride. The
-## card is recorded like everything else, so it cannot be read through a
-## picture that is all snow: the tape breaks up, settles on it, breaks up
-## again as the doors open.
-const RIDE_CARD := 0.2
-## How long the card of the first sector is held at the start of a floor.
-## There is no car to ride into it, so it is its own beat.
-const OPENING_CARD := 2.6
-var boarding := {}
-func ride_along(delta: float) -> void:
-	if boarding.is_empty(): return
-	boarding.time = float(boarding.time) + delta
-	var span: float = float(boarding.time)
-	# Halfway through, the body is moved: the picture is out by then.
-	if span >= RIDE_TIME * 0.5 and not boarding.get("moved", false):
-		boarding["moved"] = true
-		player.global_position = boarding.point
-		# The torch trails the camera instead of hanging from it: a body that
-		# jumps has to take its light with it.
-		player.snap_torch()
-		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, boarding.point + Vector3(0, 1.2, 0), -8.0)
-	if span < RIDE_TIME: return
-	player.held = false
-	boarding = {}
-	ui.hide_transit()
-
-## How much of the picture the ride is taking: it goes as the doors shut and
-## comes back as they open.
-func ride_static() -> float:
-	if boarding.is_empty(): return 0.0
-	var span: float = float(boarding.time)
-	if span < RIDE_BLIND: return span / RIDE_BLIND
-	if span < RIDE_BLIND * 2.0: return lerpf(1.0, RIDE_CARD, (span - RIDE_BLIND) / RIDE_BLIND)
-	if span > RIDE_TIME - RIDE_BLIND: return maxf(0.0, (RIDE_TIME - span) / RIDE_BLIND)
-	if span > RIDE_TIME - RIDE_BLIND * 2.0: return lerpf(RIDE_CARD, 1.0, (span - (RIDE_TIME - RIDE_BLIND * 2.0)) / RIDE_BLIND)
-	return RIDE_CARD
+	lifts.ride_lifts()
 
 ## Dead online: the view follows a living teammate; a click switches to the next.
 func watch_teammates() -> void:
@@ -2071,149 +1862,6 @@ func configure_hotel() -> void:
 	hotel.echo_view = hunter_seat()
 	hotel.apply_quality(PRESETS.of(settings.values.quality))
 
-# --- The mind -------------------------------------------------------------------
-## A meter with no bar. It falls in the dark -- faster shut inside a wardrobe,
-## and half as fast with the torch on, because a torch is something to hold on
-## to -- and it comes back in a lit room. Seeing the creature takes a lump out
-## of it at once.
-##
-## Under UNEASY the floor starts lying: doors and wardrobes open where nobody
-## is, and further down the creature calls from somewhere it is not. The tape
-## frays along with it, which is the only thing on screen that says any of this
-## is happening.
-##
-## At zero the body gives off motes the creature senses from anywhere, and it
-## takes the better part of a minute in the light to stop giving them off.
-## Waiting a floor out inside a wardrobe is not a plan.
-const SANITY_DARK := 100.0 / 150.0
-const SANITY_HIDDEN := 1.3
-const SANITY_TORCH := 0.45
-const SANITY_LIGHT := 100.0 / 240.0
-const SANITY_SIGHT := 14.0
-const SANITY_SIGHT_REST := 5.0
-const SANITY_UNEASY := 60.0
-const SANITY_BACK := 25.0
-const SANITY_SEEN := 28.0
-const HALLUCINATION_WAIT := Vector2(13.0, 42.0)
-const GRUNTS := preload("res://game/audio/grunt_segments.gd")
-const PHANTOM_CLIP := "res://assets/audio/sfx/chase/grunts.ogg"
-var sight_rest := 0.0
-var hallucination_wait := 0.0
-var phantom: AudioStreamPlayer3D
-var phantom_left := 0.0
-
-func sanity_tick(delta: float) -> void:
-	if manifest.is_empty() or not is_instance_valid(hotel) or match_net.local_is_locust(): return
-	if not local_alive():
-		phantom_quiet(delta)
-		return
-	var room: Dictionary = FLOOR.room_at(manifest.rooms, player.global_position)
-	var lit: bool = not hotel.dark and not room.is_empty() and not hotel.dark_ids.has(int(room.id))
-	if player.hidden or not lit:
-		var rate := SANITY_DARK
-		if player.hidden: rate *= SANITY_HIDDEN
-		elif player.torch.visible: rate *= SANITY_TORCH
-		player.sanity = maxf(0.0, player.sanity - rate * delta)
-	else: player.sanity = minf(100.0, player.sanity + SANITY_LIGHT * delta)
-	# A long look at it is one fright, not one a frame.
-	sight_rest = maxf(0.0, sight_rest - delta)
-	if sight_rest <= 0.0 and sees_creature(lit):
-		sight_rest = SANITY_SIGHT_REST
-		player.sanity = maxf(0.0, player.sanity - SANITY_SIGHT)
-	if player.burnt and player.sanity >= SANITY_BACK:
-		player.set_burnt(false)
-	elif not player.burnt and player.sanity <= 0.0:
-		player.set_burnt(true)
-	hallucinate(delta)
-	phantom_quiet(delta)
-
-## The creature in plain view: in the picture, near enough to make out, lit by
-## something, and nothing in between. In the pitch dark with the torch off
-## there is nothing to see and nothing to be frightened by.
-func sees_creature(lit: bool) -> bool:
-	if not is_instance_valid(locust) or locust.grace > 0.0 or not is_instance_valid(player.camera): return false
-	var eye: Vector3 = player.camera.global_position
-	var towards: Vector3 = locust.global_position + Vector3(0, 1.2, 0) - eye
-	var gap := towards.length()
-	if gap > SANITY_SEEN or gap < 0.01: return false
-	if not lit and not player.torch.visible and gap > 6.0: return false
-	if -player.camera.global_basis.z.dot(towards / gap) < 0.72: return false
-	var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1)
-	query.exclude = [player.get_rid()]
-	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
-
-## The floor lying: a door, a wardrobe or the creature's own call, somewhere
-## nobody is. Local to this machine -- it is not a noise, nothing hears it and
-## nobody else does either.
-var last_lie := {}
-func hallucinate(delta: float) -> void:
-	if player.sanity > SANITY_UNEASY or player.reading: return
-	hallucination_wait -= delta
-	if hallucination_wait > 0.0: return
-	var gone: float = 1.0 - player.sanity / SANITY_UNEASY
-	hallucination_wait = lerpf(HALLUCINATION_WAIT.y, HALLUCINATION_WAIT.x, gone) * randf_range(0.7, 1.3)
-	var point := hallucination_point(randf_range(4.0, 14.0))
-	var voice: bool = gone > 0.5 and randf() < gone * 0.45
-	last_lie = {"point": point, "voice": voice, "time": Time.get_ticks_msec() / 1000.0}
-	# A silent run (tests, captures) keeps the cadence: the lie counts as told.
-	if not world_audio.enabled: return
-	if voice: false_call(point)
-	else: world_audio.play_at(world_audio.choose(["close_far", "open_far", "hide_leave", "open_slow"][randi() % 4]), point, -4.0)
-
-## Somewhere on the floor around, in a room and not inside a wall.
-func hallucination_point(reach: float) -> Vector3:
-	var angle := randf() * TAU
-	var point: Vector3 = player.global_position + Vector3(sin(angle), 0, cos(angle)) * reach
-	return NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, point)
-
-## Its voice, from where it is not. Its own throat is elsewhere: this one has
-## a player of its own so the real call is never cut short by a made-up one.
-func false_call(point: Vector3) -> void:
-	if not is_instance_valid(phantom):
-		phantom = AudioStreamPlayer3D.new()
-		phantom.name = "Phantom"
-		phantom.bus = "Threat"
-		phantom.stream = load(PHANTOM_CLIP)
-		phantom.unit_size = 7.0
-		phantom.max_distance = 40.0
-		add_child(phantom)
-	var segment: Array = GRUNTS.SEGMENTS[randi() % GRUNTS.SEGMENTS.size()]
-	phantom.global_position = point + Vector3(0, 1.6, 0)
-	phantom.pitch_scale = randf_range(0.8, 0.95)
-	phantom.volume_db = -4.0
-	phantom.play(segment[0])
-	phantom_left = float(segment[1]) / phantom.pitch_scale
-
-## A made-up call lasts as long as the piece of the recording it came from.
-func phantom_quiet(delta: float) -> void:
-	if not is_instance_valid(phantom) or not phantom.playing: return
-	phantom_left -= delta
-	if phantom_left <= 0.0: phantom.stop()
-
-## The creature is told, over and over, where the burnt-out minds are. Only
-## the machine in charge of it does this, and only while it drives itself: in
-## versus the motes are on the hunter's screen instead.
-const SMELL_EVERY := 1.5
-var smell_rest := 0.0
-func haunt_burnt(delta: float) -> void:
-	smell_rest -= delta
-	if smell_rest > 0.0 or not is_instance_valid(locust) or locust.control != "ai": return
-	var marked := burnt_survivors()
-	if marked.is_empty(): return
-	smell_rest = SMELL_EVERY
-	var nearest: Vector3 = marked[0]
-	for point in marked:
-		if locust.global_position.distance_to(point) < locust.global_position.distance_to(nearest): nearest = point
-	locust.smell_burnt(nearest)
-
-## Everybody whose mind has gone, wherever they are. The creature is told
-## where they are however far away it is: that is what the motes are.
-func burnt_survivors() -> Array:
-	var marked: Array = []
-	for body in survivors():
-		if bool(body.get("burnt")): marked.append(body.global_position)
-	return marked
-
 ## Wardrobe enclosure, strike glitch and lost signal on the analog filter.
 ## The first two are off with reduced effects; the picture going is not an
 ## effect, it is how a victim is told it died, so it stays (milder).
@@ -2230,14 +1878,14 @@ func update_screen_cues(delta: float) -> void:
 	lost_signal = maxf(0.0, lost_signal - delta)
 	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
 	var dying: bool = mine and float(execution.time) >= SIGNAL_TIME
-	var riding_now := ride_static()
+	var riding_now: float = lifts.ride_static()
 	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else riding_now
 	# Straight to static once the arm has landed: the picture does not fade,
 	# it goes. Coming back (a new floor) it clears gently.
 	# Gone at once when the view is already somebody else's camera; otherwise
 	# it comes in hard and clears gently.
 	if wanted_static <= 0.0 and not local_alive() and execution.is_empty(): static_level = 0.0
-	elif riding_now > 0.0 or not boarding.is_empty(): static_level = wanted_static
+	elif riding_now > 0.0 or not lifts.boarding.is_empty(): static_level = wanted_static
 	else: static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
 	post_material.set_shader_parameter("signal_loss", static_level * (0.75 if settings.values.reduced else 1.0))
 	# The arm arriving: black spreading from where its hand is on screen.
@@ -2255,7 +1903,7 @@ func update_screen_cues(delta: float) -> void:
 	# The tape frays with the mind: the picture drags and the colours start to
 	# run. With no bar anywhere, this is what says the meter is there at all.
 	if not hunter_seat():
-		var frayed: float = clampf(1.0 - player.sanity / SANITY_UNEASY, 0.0, 1.0)
+		var frayed: float = clampf(1.0 - player.sanity / sanity.SANITY_UNEASY, 0.0, 1.0)
 		post_material.set_shader_parameter("vhs", settings.values.vhs * (1.0 + frayed * 1.6))
 		post_material.set_shader_parameter("chromatic", settings.values.chromatic * frayed * 0.7)
 

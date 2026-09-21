@@ -62,12 +62,12 @@ func run() -> void:
 	check("En una sala encendida se recupera", lost < 0.0 and player.sanity > 40.0)
 	# Time to burn out in the worst case, as the design says: minutes, not
 	# seconds, and a wardrobe is the fastest way there.
-	var wardrobe_seconds: float = 100.0 / (level.SANITY_DARK * level.SANITY_HIDDEN)
+	var wardrobe_seconds: float = 100.0 / (level.sanity.SANITY_DARK * level.sanity.SANITY_HIDDEN)
 	check("Quemarse del todo cuesta minutos, no segundos", wardrobe_seconds > 90.0 and wardrobe_seconds < 180.0)
 
 	# --- Seeing it ----------------------------------------------------------------
 	player.sanity = 100.0
-	level.sight_rest = 0.0
+	level.sanity.sight_rest = 0.0
 	level.locust.global_position = FLOOR.position_of(lit) + Vector3(3.0, 0.04, 0)
 	level.locust.grace = 0.0
 	player.global_position = FLOOR.position_of(lit) + Vector3(-1.5, 0.04, 0)
@@ -76,7 +76,7 @@ func run() -> void:
 	player.torch.visible = true
 	await frames(4)
 	var frightened: float = 100.0 - player.sanity
-	check("Verla de cerca cuesta un mordisco de cordura", frightened >= level.SANITY_SIGHT * 0.9)
+	check("Verla de cerca cuesta un mordisco de cordura", frightened >= level.sanity.SANITY_SIGHT * 0.9)
 	var again: float = player.sanity
 	await frames(30)
 	# Standing in a lit room it is coming back, so what is checked is that
@@ -86,17 +86,17 @@ func run() -> void:
 
 	# --- The floor lying ----------------------------------------------------------
 	player.sanity = 100.0
-	level.hallucination_wait = 0.0
+	level.sanity.hallucination_wait = 0.0
 	await frames(8)
-	check("Con la cabeza entera el piso no miente", level.hallucination_wait <= 0.0)
+	check("Con la cabeza entera el piso no miente", level.sanity.hallucination_wait <= 0.0)
 	player.sanity = 5.0
-	level.hallucination_wait = 0.0
+	level.sanity.hallucination_wait = 0.0
 	player.global_position = FLOOR.position_of(lit) + Vector3(0, 0.04, 0)
 	await frames(8)
-	check("Con la cordura baja suenan cosas que no están", level.hallucination_wait > 0.0)
+	check("Con la cordura baja suenan cosas que no están", level.sanity.hallucination_wait > 0.0)
 	var heard_before: int = level.locust.driver.heard.size() if is_instance_valid(level.locust.driver) else 0
 	for i in 12:
-		level.hallucination_wait = 0.0
+		level.sanity.hallucination_wait = 0.0
 		await frames(4)
 	var heard_after: int = level.locust.driver.heard.size() if is_instance_valid(level.locust.driver) else 0
 	check("Las alucinaciones no son ruido: la criatura no oye ninguna", heard_after == heard_before)
@@ -110,7 +110,7 @@ func run() -> void:
 	await frames(4)
 	check("A cero, el cuerpo queda marcado", player.burnt)
 	check("Y no se le ve nada encima: es cosa de la criatura", player.avatar.find_children("*", "GPUParticles3D", true, false).is_empty())
-	check("La marca aparece en lo que el nivel le cuenta a la criatura", level.burnt_survivors().size() == 1)
+	check("La marca aparece en lo que el nivel le cuenta a la criatura", level.sanity.burnt_survivors().size() == 1)
 	# It is told where they are and it goes, however far away it is.
 	level.locust.global_position = FLOOR.position_of(room_far_from(player.global_position)) + Vector3(0, 0.04, 0)
 	level.locust.set_mode(level.locust.Mode.PATROL)
@@ -122,11 +122,11 @@ func run() -> void:
 	level.locust.smell_burnt(refuge)
 	check("Pero no entra al refugio por ellas", level.locust.mode == level.locust.Mode.PATROL)
 	# Coming back takes light and time, not a step into a lit room.
-	player.sanity = level.SANITY_BACK - 1.0
+	player.sanity = level.sanity.SANITY_BACK - 1.0
 	await frames(4)
 	check("Volver en sí no es instantáneo", player.burnt)
 	player.global_position = FLOOR.position_of(lit) + Vector3(0, 0.04, 0)
-	player.sanity = level.SANITY_BACK + 1.0
+	player.sanity = level.sanity.SANITY_BACK + 1.0
 	await frames(4)
 	check("Con cordura suficiente deja de estar marcado", not player.burnt)
 

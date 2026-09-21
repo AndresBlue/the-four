@@ -54,7 +54,7 @@ func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 		if session.stage >= stage and session.state == session.State.PLAYING: return true
 		# Once the lift has them, it is carrying them: pushing the body about
 		# from here would undo the ride.
-		if not level.boarding.is_empty():
+		if not level.lifts.boarding.is_empty():
 			await physics_frame
 			left -= 1.0 / 60.0
 			continue
@@ -100,22 +100,22 @@ func run() -> void:
 	var held_ticks := 0
 	var card := ""
 	for i in 240:
-		blinded = maxf(blinded, level.ride_static())
+		blinded = maxf(blinded, level.lifts.ride_static())
 		if level.player.held: held_ticks += 1
 		# The cut itself: what the tape puts up on the black while the car
 		# moves, which is the one moment the next stage can be read.
 		if is_instance_valid(level.ui.transit) and card.is_empty():
 			for node in level.ui.transit.get_child(0).get_children():
 				if node is Label: card += node.text + " · "
-		if i > 2 and level.boarding.is_empty(): break
+		if i > 2 and level.lifts.boarding.is_empty(): break
 		await physics_frame
 	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
-	check("Y el corte dice a qué sector se va y qué pide, sin repetir la etapa", card.contains("SECTOR 2") and not card.contains("ETAPA") and card.contains(level.stage_errand(2)))
+	check("Y el corte dice a qué sector se va y qué pide, sin repetir la etapa", card.contains("SECTOR 2") and not card.contains("ETAPA") and card.contains(level.lifts.stage_errand(2)))
 	check("Al abrirse las puertas la tarjeta ya no está", not is_instance_valid(level.ui.transit))
 	# Out of the car, the notice of the sector: what it wants, said whole, for
 	# six seconds, and gone the way an analogue set goes off.
 	await frames(4)
-	check("Al salir del ascensor aparece el objetivo del sector", is_instance_valid(level.ui.brief) and words_under(level.ui.brief).contains(level.stage_brief(2)) and words_under(level.ui.brief).contains("SECTOR 2"))
+	check("Al salir del ascensor aparece el objetivo del sector", is_instance_valid(level.ui.brief) and words_under(level.ui.brief).contains(level.lifts.stage_brief(2)) and words_under(level.ui.brief).contains("SECTOR 2"))
 	var arrival: Dictionary = level.manifest.rooms[int(level.manifest.gates[0].arrive)]
 	# It comes out in the wing the lift serves. Where exactly is the session's
 	# business: closing a stage puts everybody on their feet at the way in.
@@ -127,17 +127,17 @@ func run() -> void:
 	# The creature is not carried anywhere: it is put on the trail of the car
 	# they took, and it has to walk there and ride it like they did.
 	check("La criatura se queda en el ala de atrás, yendo a por el ascensor", int(level.manifest.rooms[level.locust.patrol_room].wing) == 0 and level.locust.destination.distance_to(level.hotel.lifts[0]) < 1.0)
-	check("El coche se ha ido con ellos", level.lift_gone(0))
+	check("El coche se ha ido con ellos", level.lifts.lift_gone(0))
 	# Standing in the lobby with the car upstairs: it waits, like anybody else.
 	level.locust.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
 	await frames(20)
 	check("Con el coche arriba no puede seguirlos", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 0)
-	check("Y quince segundos son quince segundos", level.LIFT_RETURN == 15.0 and float(level.lift_away[0]) > 12.0)
+	check("Y quince segundos son quince segundos", level.lifts.LIFT_RETURN == 15.0 and float(level.lifts.lift_away[0]) > 12.0)
 	# The car comes back down.
-	level.lift_away[0] = 0.02
+	level.lifts.lift_away[0] = 0.02
 	await frames(20)
 	check("Cuando vuelve el ascensor, lo toma y sale en el ala nueva", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 1 and level.locust.global_position.distance_to(level.hotel.arrivals[0]) < 1.5)
-	check("Y el coche vuelve a irse con él", level.lift_gone(0))
+	check("Y el coche vuelve a irse con él", level.lifts.lift_gone(0))
 	level.locust.global_position = Vector3(0, -80, 0)
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
 	# The notice of the sector goes by itself, about six seconds after it came.
@@ -145,7 +145,7 @@ func run() -> void:
 	check("Y se va solo a los seis segundos", not is_instance_valid(level.ui.brief))
 	# The pause screen keeps it, with how the sector is going.
 	level.refresh_briefing()
-	check("La pausa guarda el objetivo del sector", level.ui.briefing.sector == "SECTOR 2" and level.ui.briefing.objective == level.stage_brief(2))
+	check("La pausa guarda el objetivo del sector", level.ui.briefing.sector == "SECTOR 2" and level.ui.briefing.objective == level.lifts.stage_brief(2))
 	check("Y en el sector 2 cuenta los televisores", level.ui.briefing.progress.size() == 1 and String(level.ui.briefing.progress[0][0]) == "TELEVISORES")
 	# Second stage: the sets of that wing, and it asks for as many as there
 	# are survivors, with two spare.
@@ -214,7 +214,7 @@ func run() -> void:
 	# The hunter crosses by the same car: the machine that drives the creature
 	# owns where it stands, so the floor has to carry it over by hand.
 	level.locust.control = "player"
-	level.lift_away.erase(1)
+	level.lifts.lift_away.erase(1)
 	level.locust.global_position = level.hotel.lifts[1] + Vector3(0, 0.04, 0)
 	await frames(20)
 	check("Un cazador humano también cruza en el ascensor", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 2)

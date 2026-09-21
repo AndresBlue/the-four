@@ -160,7 +160,7 @@ func host() -> void:
 	check("Un invitado ocupa un armario a través del anfitrión", await wait_for(func(): return hide.occupant == match_net.bodies[alpha], 25.0))
 	check("Un trazo de un invitado entra en la hoja del anfitrión", await wait_for(func(): return level.ui.sheet.log_index.has("%d:1" % alpha), 15.0))
 	check("Aquí se ve que a ese invitado se le fue la cabeza", await wait_for(func(): return match_net.bodies[alpha].burnt, 20.0))
-	check("Y la criatura sabe dónde está sin oírle", not level.burnt_survivors().is_empty())
+	check("Y la criatura sabe dónde está sin oírle", not level.sanity.burnt_survivors().is_empty())
 	# Bravo is struck down: with three survivors the floor goes on (two needed).
 	await pause_for(1.0)
 	check("Una muerte no termina el piso de tres", level.session.capture(bravo) and playing())

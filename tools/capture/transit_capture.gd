@@ -13,7 +13,7 @@ func shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://evidence/transit_%s.png" % name)
 	var brief = level.ui.brief
-	print("SHOT %s · %.2f s de viaje · aviso %s" % [name, float(level.boarding.get("time", -1.0)),
+	print("SHOT %s · %.2f s de viaje · aviso %s" % [name, float(level.lifts.boarding.get("time", -1.0)),
 		("lavado %.2f" % float(brief.get_child(1).material.get_shader_parameter("wash"))) if is_instance_valid(brief) else "no"])
 
 func frames(count: int) -> void:

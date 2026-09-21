@@ -12,7 +12,7 @@ signal hiding_changed(entering: bool, point: Vector3)
 var active := false
 var stamina := 100.0
 ## How much of a mind is left, 100 down to 0. It falls in the dark and comes
-## back in the light; the level keeps it (hotel_main.sanity_tick). At zero the
+## back in the light; the level keeps it (sanity.gd, tick). At zero the
 ## body gives off motes the creature senses from anywhere.
 var sanity := 100.0
 var burnt := false

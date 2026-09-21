@@ -926,7 +926,7 @@ func bloom_hums() -> void:
 ## able to think -- which is what standing in the dark long enough does.
 func bloom_motes() -> void:
 	if motes.multimesh.instance_count == 0 or not is_instance_valid(level): return
-	for point in level.burnt_survivors():
+	for point in level.sanity.burnt_survivors():
 		scatter(motes, point + Vector3(0, 1.15, 0), MOTE_SPREAD, MOTE_GRAINS, 1.0, 1.0, clock)
 
 ## What the shriek came back with: a dense cloud over each survivor it found,

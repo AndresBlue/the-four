@@ -133,14 +133,6 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
   modificado no se quema nunca y la criatura no lo huele. Decidir si se acepta
   (la oscuridad se mide en la cámara local, y moverlo al anfitrión no es
   gratis) o se comprueba desde fuera.
-- [ ] **El piso de respaldo no pasa por la garantía de la pared.** Si las veinte
-  tentativas fallan, `map_generator.generate()` devuelve el piso fijo 404, que
-  solo pasa el validador: ni mano en la pared ni recorrido mínimo. En mil
-  semillas no se usa nunca, pero si se usara, el contrato grande del mapa se
-  caería sin avisar.
-- [ ] **`hotel_main.gd` pasa de 2.200 líneas.** Cordura, ascensores, etapas,
-  apagón, documentos, observación, alucinaciones y red en un archivo. Sale
-  barato partir cordura y ascensores en los suyos.
 - [ ] **El tercer ascensor no tiene viaje.** Los dos primeros hacen su segundo y
   medio a oscuras; el último termina el piso en el acto (`ride_lifts()`).
 - [ ] **La reconexión que falló una vez** («Reaparece donde estaba»): un

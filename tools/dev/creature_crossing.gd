@@ -58,7 +58,7 @@ func run() -> void:
 					level.locust.global_position.distance_to(level.hotel.lifts[0]),
 					level.locust.destination.distance_to(level.hotel.lifts[0]),
 					level.locust.velocity.length(),
-					("coche arriba %.1f s" % float(level.lift_away.get(0, 0.0))) if level.lift_gone(0) else "coche abajo"])
+					("coche arriba %.1f s" % float(level.lifts.lift_away.get(0, 0.0))) if level.lifts.lift_gone(0) else "coche abajo"])
 			if boarded < 0.0 and level.locust.global_position.distance_to(level.hotel.lifts[0]) < 2.0: boarded = seconds
 			if creature_wing() == 1:
 				crossed = seconds
