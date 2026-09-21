@@ -126,10 +126,13 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 Nada de esto se ve jugando, y todo cuesta caro más adelante.
 
-- [ ] **La vista de la criatura solo está validada en Forward+.** En
-  Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
-  modestas, donde ya apareció el fallo de la linterna.
-
+- [ ] **La linterna no interfiere en la vista de la criatura en Compatibilidad.**
+  En Forward+ el haz de un superviviente se ve como un cono gris que ensucia
+  la lectura; ese cono sale de la niebla volumétrica, que Compatibilidad no
+  tiene, así que allí el cazador no lo ve. El resto de la vista ya se lee
+  igual en los dos (tomas `echo_fp_*` y `echo_gl_*` de `echo_capture.gd`).
+  Decidir si hace falta dar la interferencia por otro camino en ese
+  renderizador.
 ## 3 · Acabado de lo que ya existe
 
 Afina algo que funciona: va después de que funcione bien.

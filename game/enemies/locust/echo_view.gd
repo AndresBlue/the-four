@@ -292,7 +292,7 @@ func setup(owner_driver) -> void:
 	self_material.render_priority = 127
 	# Its own body is a presence, not the picture: kept well under the reading
 	# so it never blinds the middle of the frame.
-	self_material.set_shader_parameter("gain", 0.08)
+	self_material.set_shader_parameter("gain", 0.08 * lift() * lift())
 	build_landmarks()
 	build_reflectors()
 	apply_quality()
@@ -316,6 +316,17 @@ func build_field() -> void:
 	camera.add_child(field)
 
 ## One shader, three clouds; they differ only in uniforms and draw priority.
+## How much brighter every grain is drawn on Compatibility. Forward+ adds the
+## grains up in HDR and tonemaps the sum; Compatibility tonemaps each grain as
+## it is drawn and adds what is left, which is darker: the same reading came
+## out about a third dimmer, and with reduced effects nearly black. Measured
+## against Forward+ with tools/capture/echo_capture.gd in both renderers.
+const COMPAT_LIFT := 1.6
+static func lift() -> float:
+	return COMPAT_LIFT if RenderingServer.get_current_rendering_method() == "gl_compatibility" else 1.0
+## (Its own body is lifted twice over: it is drawn in faint strokes that each
+## lose more to that per-grain tonemap than a grain does.)
+
 func make_cloud(title: String, priority: int, through: float) -> MultiMeshInstance3D:
 	var material := ShaderMaterial.new()
 	material.shader = POINT_SHADER
@@ -373,7 +384,7 @@ func build_clouds() -> void:
 	mote_material.set_shader_parameter("flare", 2.2)
 	# Lifted well past the tone of the rest of the image, so a handful of
 	# grains at the far end of a wing still reads as something red.
-	mote_material.set_shader_parameter("gain", 2.6)
+	mote_material.set_shader_parameter("gain", (2.6) * lift())
 	frame_material = frames.material_override as ShaderMaterial
 	# Strong reflectors keep a body of light between fronts and come back warm
 	# white, so a doorway or a wardrobe stands out from the room around it.
@@ -594,7 +605,7 @@ func apply_quality() -> void:
 		frames.multimesh.instance_count = budget.frames
 		frame_at = 0
 	per_tick = maxi(1, int(ceil(float(budget.rays + budget.aimed) / (60.0 / CLICK_RATE))))
-	field_material.set_shader_parameter("presence", PRESENCE_CALM if calm else PRESENCE)
+	field_material.set_shader_parameter("presence", (PRESENCE_CALM if calm else PRESENCE) * lift())
 	# With nothing drawn from the depth buffer, the grains have to carry the
 	# room between clicks, so they keep more of themselves alight than a
 	# wavefront-lit stipple needed to.
@@ -604,16 +615,16 @@ func apply_quality() -> void:
 	wall_material.set_shader_parameter("flare", 1.2 if calm else 1.9)
 	field_material.set_shader_parameter("grain_amount", 0.0 if calm else 1.0)
 	field_material.set_shader_parameter("jitter_amount", 0.0 if calm else 1.0)
-	mark_material.set_shader_parameter("gain", 1.8 if calm else 1.0)
+	mark_material.set_shader_parameter("gain", (1.8 if calm else 1.0) * lift())
 	# The cloud carries most of the picture now that the clicks are slow.
-	wall_material.set_shader_parameter("gain", 0.95)
-	frame_material.set_shader_parameter("gain", 1.5)
-	body_material.set_shader_parameter("gain", 1.6)
+	wall_material.set_shader_parameter("gain", (0.95) * lift())
+	frame_material.set_shader_parameter("gain", (1.5) * lift())
+	body_material.set_shader_parameter("gain", (1.6) * lift())
 	# A heard noise has to stand out from the architecture round it, which a
 	# door's own reflector grains made hard: brighter and coarser than both.
-	puff_material.set_shader_parameter("gain", PUFF_GAIN)
+	puff_material.set_shader_parameter("gain", (PUFF_GAIN) * lift())
 	puff_material.set_shader_parameter("twinkle", PUFF_TWINKLE)
-	find_material.set_shader_parameter("gain", 1.35)
+	find_material.set_shader_parameter("gain", (1.35) * lift())
 	var height: float = maxf(1.0, level.get_viewport().get_visible_rect().size.y)
 	# Fewer grains read as a room when each is bigger, and the other way round
 	# (budget.grain, per preset): the same share of the screen is covered.

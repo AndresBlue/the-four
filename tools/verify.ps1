@@ -31,15 +31,19 @@ foreach ($test in $tests) {
 # Shaders: only a real device compiles them, so this one runs with a window and
 # is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
 # and counts as passed, because a skipped check is not a failed one.
-$shaderLog = Join-Path $projectPath 'evidence/verify_shaders.log'
-$shaderArguments = (@('--path',$projectPath,'--rendering-method','forward_plus','--script','res://tools/dev/check_shaders.gd','--log-file',$shaderLog) | ForEach-Object { '"' + $_ + '"' }) -join ' '
-$shaderProcess = Start-Process -FilePath $GodotPath -ArgumentList $shaderArguments -WindowStyle Hidden -PassThru
-if (-not $shaderProcess.WaitForExit(180000)) { $shaderProcess.Kill(); throw "Tiempo agotado en shaders. Consulta $shaderLog" }
-$shaderText = Get-Content -LiteralPath $shaderLog -Raw
-$shaderPassed = $shaderProcess.ExitCode -eq 0 -and $shaderText -notmatch 'SHADER ERROR|Shader compilation failed|SCRIPT ERROR:'
-$results += [PSCustomObject]@{ test='dev/check_shaders'; passed=$shaderPassed; exit_code=$shaderProcess.ExitCode }
-Write-Output "shaders : $shaderPassed"
-if (-not $shaderPassed) { Write-Output $shaderText }
+# Every shader drawn once in each renderer: Forward+, and Compatibility, which
+# is what modest machines get and compiles its own GLSL.
+foreach ($renderer in @('forward_plus','gl_compatibility')) {
+    $shaderLog = Join-Path $projectPath "evidence/verify_shaders_$renderer.log"
+    $shaderArguments = (@('--path',$projectPath,'--rendering-method',$renderer,'--script','res://tools/dev/check_shaders.gd','--log-file',$shaderLog) | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    $shaderProcess = Start-Process -FilePath $GodotPath -ArgumentList $shaderArguments -WindowStyle Hidden -PassThru
+    if (-not $shaderProcess.WaitForExit(180000)) { $shaderProcess.Kill(); throw "Tiempo agotado en shaders. Consulta $shaderLog" }
+    $shaderText = Get-Content -LiteralPath $shaderLog -Raw
+    $shaderPassed = $shaderProcess.ExitCode -eq 0 -and $shaderText -notmatch 'SHADER ERROR|Shader compilation failed|SCRIPT ERROR:'
+    $results += [PSCustomObject]@{ test="dev/check_shaders ($renderer)"; passed=$shaderPassed; exit_code=$shaderProcess.ExitCode }
+    Write-Output "shaders_$renderer : $shaderPassed"
+    if (-not $shaderPassed) { Write-Output $shaderText }
+}
 
 # Online play: real host and guest processes over 127.0.0.1.
 foreach ($scenario in @('coop', 'versus')) {

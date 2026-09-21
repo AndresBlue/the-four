@@ -111,8 +111,17 @@ void fragment() {
 		// memory of three rooms away straight over the wall in front of you;
 		// this way it only whispers through it.
 		float raw = texture(depth_map, SCREEN_UV).x;
-		if (raw > 0.0000001) {
-			vec4 probe = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, raw, 1.0);
+		// The same reading of the buffer as echo_field: reversed Z in 0..1 on
+		// Forward+, OpenGL's range with the far plane at 1 on Compatibility.
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+		bool drawn = raw < 0.9999999;
+		vec4 ndc = vec4(vec3(SCREEN_UV, raw) * 2.0 - 1.0, 1.0);
+#else
+		bool drawn = raw > 0.0000001;
+		vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, raw, 1.0);
+#endif
+		if (drawn) {
+			vec4 probe = INV_PROJECTION_MATRIX * ndc;
 			float wall = length(probe.xyz / probe.w);
 			weight *= mix(1.0, through, smoothstep(0.15, 0.9, from_eye - wall));
 		}

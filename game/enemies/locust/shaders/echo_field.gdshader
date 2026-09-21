@@ -52,9 +52,19 @@ void fragment() {
 	uv.x += (hash12(vec2(floor(uv.y * 240.0), floor(now * 24.0))) - 0.5) * 0.0016 * jitter_amount;
 	float raw = texture(depth_map, uv).x;
 	vec3 colour = vec3(0.0);
-	// Reversed Z: 0.0 is the far plane, so nothing was drawn on that pixel.
-	if (raw > 0.0000001) {
-		vec4 view = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, raw, 1.0);
+	// Forward+ has reversed Z in 0..1: 0.0 is the far plane, so nothing was
+	// drawn on that pixel. Compatibility is OpenGL's: 1.0 is the far plane,
+	// and the buffer holds 0..1 of a -1..1 range. Read as Forward+'s, every
+	// wall came out in the wrong place and the reading went almost black.
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	bool drawn = raw < 0.9999999;
+	vec4 ndc = vec4(vec3(uv, raw) * 2.0 - 1.0, 1.0);
+#else
+	bool drawn = raw > 0.0000001;
+	vec4 ndc = vec4(uv * 2.0 - 1.0, raw, 1.0);
+#endif
+	if (drawn) {
+		vec4 view = INV_PROJECTION_MATRIX * ndc;
 		float eye_distance = length(view.xyz / view.w);
 		// Falls away with distance and never varies across a surface, so it can
 		// suggest "solid" without ever drawing an edge or a shape.
