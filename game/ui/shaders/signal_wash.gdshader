@@ -44,7 +44,7 @@ void fragment() {
 	col.a *= 1.0 - w * w * 0.6;
 	// Snow in the space the notice held, where there was nothing written.
 	// It thins out towards the edges, so there is no box to see.
-	float edge = smoothstep(0.0, 0.25, UV.x) * smoothstep(0.0, 0.08, 1.0 - UV.x) * smoothstep(0.0, 0.3, UV.y) * smoothstep(0.0, 0.3, 1.0 - UV.y);
+	float edge = smoothstep(0.0, 0.08, UV.x) * smoothstep(0.0, 0.25, 1.0 - UV.x) * smoothstep(0.0, 0.3, UV.y) * smoothstep(0.0, 0.3, 1.0 - UV.y);
 	float haze = snow * w * (1.0 - w) * 1.8 * edge * (0.6 + 0.4 * sin(uv.y * 12.0 + TIME * 6.0));
 	col = vec4(mix(vec3(snow), col.rgb, col.a), max(col.a, haze));
 	COLOR = col * COLOR;

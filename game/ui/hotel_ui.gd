@@ -672,7 +672,7 @@ func briefing_panel(parent: Node) -> void:
 	spacer(parent, 18)
 	label(parent, String(briefing.sector), 22).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(parent, 4)
-	paragraph(parent, String(briefing.objective), 20, 620, STYLE.INK)
+	paragraph(parent, String(briefing.objective), 20, 520, STYLE.INK)
 	for row in briefing.get("progress", []):
 		spacer(parent, 6)
 		var line := HBoxContainer.new()
@@ -683,11 +683,15 @@ func briefing_panel(parent: Node) -> void:
 		key.add_theme_color_override("font_color", STYLE.SOFT)
 		label(line, String(row[1]), 18).add_theme_color_override("font_color", STYLE.AMBER)
 
+## The keys, beside the pause menu. It sits over the right of the screen,
+## where the menu's shade has thinned to almost nothing, so its own backing is
+## nearly opaque, and every column has a fixed width with the words wrapping
+## inside it: nothing here may run off the edge of the screen.
 func controls_panel(parent: Node) -> void:
 	if settings == null: return
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
-	panel.custom_minimum_size.x = 420
+	panel.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.86), STYLE.FAINT, 1, 20))
 	parent.add_child(panel)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 6)
@@ -698,9 +702,10 @@ func controls_panel(parent: Node) -> void:
 	for row in [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["ESC", "Pausa"]]:
 		var line := HBoxContainer.new()
 		list.add_child(line)
+		line.add_theme_constant_override("separation", 12)
 		var key := label(line, row[0].to_upper(), 17)
-		key.custom_minimum_size.x = 190
-		label(line, row[1], 17).add_theme_color_override("font_color", STYLE.SOFT)
+		key.custom_minimum_size.x = 150
+		paragraph(line, row[1], 17, 250, Color(STYLE.INK, 0.78))
 
 func show_settings(back: String) -> void:
 	clear()
@@ -1013,7 +1018,7 @@ func show_transit(title: String, errand: String, seconds: float) -> void:
 	transit_tween.tween_callback(hide_transit)
 
 ## The notice of a sector, once the card is gone and the picture is back: what
-## this one wants, small in the top right corner under the REC, for six
+## this one wants, small in the top left corner under the OSD line, for six
 ## seconds. It comes in out of the snow and goes back into it the way a weak
 ## analogue signal goes -- the lines roll like water, the picture smears and the
 ## static eats it -- which is why it is drawn into its own little picture first:
@@ -1053,8 +1058,8 @@ func show_brief(sector: String, words: String) -> void:
 	var soft := GradientTexture2D.new()
 	soft.gradient = smudge
 	soft.fill = GradientTexture2D.FILL_RADIAL
-	soft.fill_from = Vector2(0.72, 0.5)
-	soft.fill_to = Vector2(0.02, 0.5)
+	soft.fill_from = Vector2(0.28, 0.5)
+	soft.fill_to = Vector2(0.98, 0.5)
 	var shade := TextureRect.new()
 	shade.texture = soft
 	shade.size = Vector2(BRIEF_SIZE)
@@ -1068,18 +1073,19 @@ func show_brief(sector: String, words: String) -> void:
 	column.add_theme_constant_override("separation", 4)
 	picture.add_child(column)
 	var head := STYLE.text("OBJETIVO · %s" % sector, 18, STYLE.AMBER)
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	column.add_child(head)
 	var line := STYLE.text(words, 24)
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line.custom_minimum_size.x = BRIEF_SIZE.x - 36
 	column.add_child(line)
 	var screen := TextureRect.new()
 	screen.texture = picture.get_texture()
-	screen.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	screen.offset_left = -BRIEF_SIZE.x - 24
-	screen.offset_right = -24
+	screen.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	# The words start where the OSD's own line starts.
+	screen.offset_left = 30
+	screen.offset_right = 30 + BRIEF_SIZE.x
 	screen.offset_top = 112
 	screen.offset_bottom = 112 + BRIEF_SIZE.y
 	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
