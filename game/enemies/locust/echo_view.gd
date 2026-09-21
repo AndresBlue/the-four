@@ -917,7 +917,7 @@ func push_uniforms() -> void:
 	puff_material.set_shader_parameter("age_limit", PUFF_LIFE)
 	frame_material.set_shader_parameter("age_limit", FRAME_MEMORY)
 	find_material.set_shader_parameter("age_limit", FIND_LIFE)
-	field_material.set_shader_parameter("glare", torch_glare())
+	push_beam()
 	for material in [field_material, wall_material, frame_material, body_material, puff_material, find_material, mark_material, self_material]:
 		material.set_shader_parameter("now", clock)
 		material.set_shader_parameter("shriek", shriek)
@@ -950,15 +950,22 @@ func mark_found(points: PackedVector3Array) -> void:
 
 ## A survivor's lit torch pointed this way. It cannot see light, but the beam
 ## disturbs the reading from that direction: turning it off still matters.
-func torch_glare() -> Vector3:
+## The beam of a torch pointed at it, handed to the field in the camera's own
+## space: where the lamp is, which way it points, how wide and how far. The
+## field draws the cone from that, so it is where the light really is.
+func push_beam() -> void:
 	var lit = creature.lit_by_torch()
-	if lit == null or not is_instance_valid(camera): return Vector3.ZERO
-	var local: Vector3 = camera.global_basis.inverse() * (lit.global_position - camera.global_position)
-	var aim := Vector2(local.x, -local.y)
-	if aim.length() < 0.001: aim = Vector2(0.0, -1.0)
-	aim = aim.normalized()
-	var near := clampf(1.0 - local.length() / 45.0, 0.0, 1.0)
-	return Vector3(aim.x, aim.y, near)
+	if lit == null or not is_instance_valid(camera) or not is_instance_valid(lit.torch):
+		field_material.set_shader_parameter("beam_origin", Vector4.ZERO)
+		return
+	var torch: SpotLight3D = lit.torch
+	var to_view := camera.global_transform.affine_inverse()
+	var origin: Vector3 = to_view * torch.global_position
+	var axis: Vector3 = (to_view.basis * -torch.global_basis.z).normalized()
+	var strength := clampf(1.0 - origin.length() / 45.0, 0.0, 1.0)
+	field_material.set_shader_parameter("beam_origin", Vector4(origin.x, origin.y, origin.z, strength))
+	field_material.set_shader_parameter("beam_axis", Vector4(axis.x, axis.y, axis.z, cos(deg_to_rad(torch.spot_angle))))
+	field_material.set_shader_parameter("beam_range", torch.spot_range)
 
 ## It shrieked: the reading floods red and it clicks at once, hard.
 func flash_shriek() -> void:

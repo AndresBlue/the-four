@@ -31,8 +31,15 @@ uniform float presence : hint_range(0.0, 0.05) = 0.006;
 uniform float grain_amount : hint_range(0.0, 1.0) = 1.0;
 uniform float jitter_amount : hint_range(0.0, 1.0) = 1.0;
 // A survivor's torch is light, which it cannot see, but the beam disturbs the
-// reading: xy is the direction on screen, z the strength.
-uniform vec3 glare = vec3(0.0);
+// reading. It is the beam as it really is, in the view's own space: where the
+// torch is (xyz) and how strongly it disturbs (w), which way it points (xyz)
+// and the cosine of its half-angle (w), and how far it reaches. It used to be
+// a fan drawn out from the middle of the screen towards the torch, which had
+// nothing to do with where the light actually went.
+uniform vec4 beam_origin = vec4(0.0);
+uniform vec4 beam_axis = vec4(0.0, 0.0, -1.0, 0.9);
+uniform float beam_range = 20.0;
+const int BEAM_STEPS = 24;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -52,6 +59,7 @@ void fragment() {
 	uv.x += (hash12(vec2(floor(uv.y * 240.0), floor(now * 24.0))) - 0.5) * 0.0016 * jitter_amount;
 	float raw = texture(depth_map, uv).x;
 	vec3 colour = vec3(0.0);
+	float wall_distance = 1.0e6;
 	// Forward+ has reversed Z in 0..1: 0.0 is the far plane, so nothing was
 	// drawn on that pixel. Compatibility is OpenGL's: 1.0 is the far plane,
 	// and the buffer holds 0..1 of a -1..1 range. Read as Forward+'s, every
@@ -66,18 +74,47 @@ void fragment() {
 	if (drawn) {
 		vec4 view = INV_PROJECTION_MATRIX * ndc;
 		float eye_distance = length(view.xyz / view.w);
+		wall_distance = eye_distance;
 		// Falls away with distance and never varies across a surface, so it can
 		// suggest "solid" without ever drawing an edge or a shape.
 		colour = mix(vec3(0.74, 0.79, 0.82), vec3(1.35, 0.05, 0.02), shriek)
 			* presence / (1.0 + eye_distance * 0.35);
 	}
 
-	// A lit torch pointed this way is interference, not an image.
-	if (glare.z > 0.001) {
-		vec2 from_centre = SCREEN_UV - 0.5;
-		float aim = clamp(dot(normalize(from_centre + vec2(0.0001)), normalize(glare.xy + vec2(0.0001))), 0.0, 1.0);
-		float bloom = glare.z * pow(aim, 3.0) * (0.35 + 0.65 * hash12(SCREEN_UV * 260.0 + now * 31.0));
-		colour += mix(vec3(0.9, 0.93, 1.0), vec3(1.2, 0.08, 0.05), shriek) * bloom * 0.16;
+	// A lit torch pointed this way is interference, not an image: the cone of
+	// its beam, walked along this pixel's line of sight up to the first thing
+	// in the way, so it has the shape and place the light really has, is cut
+	// by walls like anything else, and is thickest looking into the lamp.
+	if (beam_origin.w > 0.001) {
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+		vec4 far_point = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, 0.0, 1.0);
+#else
+		vec4 far_point = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, 0.5, 1.0);
+#endif
+		vec3 ray = normalize(far_point.xyz / far_point.w);
+		float reach = min(wall_distance, length(beam_origin.xyz) + beam_range);
+		float step_length = reach / float(BEAM_STEPS);
+		float jitter = hash12(SCREEN_UV * 311.0 + now * 7.0);
+		float through_beam = 0.0;
+		for (int i = 0; i < BEAM_STEPS; i++) {
+			vec3 point = ray * (float(i) + jitter) * step_length;
+			vec3 from_lamp = point - beam_origin.xyz;
+			float along = dot(from_lamp, beam_axis.xyz);
+			if (along <= 0.0 || along > beam_range) continue;
+			float cosine = along / max(length(from_lamp), 0.0001);
+			// Brightest along the axis and soft at the rim, and thinning out
+			// with distance from the lamp, the way a torch's light does.
+			float inside = smoothstep(beam_axis.w, mix(beam_axis.w, 1.0, 0.7), cosine);
+			through_beam += inside * inside / (1.0 + along * along * 0.08) * step_length;
+		}
+		float bloom = beam_origin.w * through_beam * (0.45 + 0.55 * hash12(SCREEN_UV * 260.0 + now * 31.0)) * 0.03;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+		// Compatibility does not brighten faint values on the way to the
+		// screen the way Forward+'s linear output does, so a beam this faint
+		// vanished there: it is brought up by hand.
+		bloom = pow(clamp(bloom, 0.0, 1.0), 0.4545);
+#endif
+		colour += mix(vec3(0.9, 0.93, 1.0), vec3(1.2, 0.08, 0.05), shriek) * bloom;
 	}
 
 	// Auto-gain grain: the noise floor of its own hearing.
