@@ -82,6 +82,9 @@ var lit_sconces: Array[MeshInstance3D] = []
 ## the lists the cut works through. A refuge one can still find in the dark.
 var exit_panels: Array[ShaderMaterial] = []
 var exit_lamps: Array[OmniLight3D] = []
+## And how far one is seen from. Its own, not the furniture lamps' (which are
+## off altogether on Low): an emergency light is not decoration.
+const EXIT_REACH := 14.0
 const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
 ## Service rooms (laundry, storeroom, maintenance, office) have a suspended
 ## ceiling of acoustic tiles; the empty lounge and the storeroom decrepit
@@ -1063,7 +1066,7 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
 	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.light_volumetric_fog_energy = 0.12
 	lamp.distance_fade_enabled = true
-	practical_fade(lamp)
+	set_fade(lamp, EXIT_REACH - 4.0, 3.0)
 	board.add_child(lamp)
 	exit_lamps.append(lamp)
 
@@ -1305,6 +1308,9 @@ func apply_quality(new_preset: Dictionary) -> void:
 		practical_fade(lamp)
 		var size: float = PRACTICAL_SIZE * preset.penumbra
 		if lamp.light_size != size: lamp.light_size = size
+	for lamp in exit_lamps:
+		var size: float = PRACTICAL_SIZE * preset.penumbra
+		if lamp.light_size != size: lamp.light_size = size
 	# Baked once, the first time a preset asks for it (only where a GPU can
 	# draw it: not headless, not Compatibility).
 	if preset.bounce and RenderingServer.get_rendering_device() != null: start_bounce()
@@ -1532,7 +1538,7 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	# The exit signs keep theirs through a power cut: they are the one thing
 	# here that would have a battery, and the refuge stays findable.
 	for lamp in exit_lamps:
-		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < maxf(preset.furniture_lamps, 12.0)
+		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < EXIT_REACH
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).

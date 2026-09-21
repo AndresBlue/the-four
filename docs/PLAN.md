@@ -35,9 +35,10 @@ Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
 ## El orden
 
 **Primero se deja fino lo que ya se puede tocar, y solo después se añade nada.**
-Dentro de eso: lo que rompe una partida antes que lo que molesta (ya no queda
-ninguno); lo que no se entiende antes que lo que no se ve; lo que solo se decide jugando antes que lo
-que se puede pulir a solas; y la deuda técnica antes de que crezca. El acabado
+Dentro de eso: lo que rompe una partida antes que lo que molesta —de eso ya no
+queda ninguno—; lo que no se entiende antes que lo que no se ve; lo que solo se
+decide jugando antes que lo que se puede pulir a solas; y la deuda técnica antes
+de que crezca. El acabado
 —sonido, materiales, mobiliario— va después, porque afina algo que ya funciona.
 Los otros tres pisos van al final: son el doble de juego, y montarlos sobre un
 piso que todavía falla es multiplicar los fallos por cuatro.
