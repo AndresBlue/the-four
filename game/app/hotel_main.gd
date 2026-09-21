@@ -73,6 +73,11 @@ var televisions: Array = []
 ## in them so far, by place in the code.
 var containers: Array = []
 var found_digits := {}
+## And where each one was found, as it would be said out loud: the number on
+## that door, or what the room is when it has no plaque (service rooms, halls
+## and corridors carry none). A number without a place is a number nobody can
+## check, and checking is what the others are for.
+var found_where := {}
 ## Whether the code has been read into the lock: from then on the last door
 ## opens and the floor is left by stepping through it.
 var code_entered := false
@@ -529,7 +534,7 @@ func toggle_sheet() -> void:
 		return
 	if match_net.local_is_locust() or is_instance_valid(reading_document): return
 	ui.sheet.seat = player.slot
-	ui.sheet.open(local_alive(), settings.key_name("sheet"))
+	ui.sheet.open(local_alive(), settings.key_name("sheet"), notes_found())
 	player.reading = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if world_audio.enabled: paper_sound.play()
@@ -639,6 +644,7 @@ func televisions_on() -> int:
 func place_containers() -> void:
 	containers.clear()
 	found_digits.clear()
+	found_where.clear()
 	code_entered = false
 	typed = ""
 	lock = null
@@ -693,6 +699,9 @@ func apply_search(index: int, value: bool) -> void:
 	if not net.is_client(): on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
+		var room: Dictionary = FLOOR.room_at(manifest.rooms, piece.global_position)
+		var number := int(room.get("number", 0))
+		found_where[piece.slot] = ("HABITACIÓN %d" % number) if number > 0 else String(FLOOR.NAMES[int(room.get("type", 0))]).to_upper()
 		# The paper leaves with whoever took it, and what it said stays written
 		# on the tape until the floor is over.
 		piece.take_note()
@@ -704,6 +713,16 @@ func apply_search(index: int, value: bool) -> void:
 ## for nothing here.
 func sets_lit() -> bool:
 	return stage_televisions().is_empty() or televisions_on() >= TV_PLACEMENT.needed(session.roster_count)
+
+## The slips this player took, in the order the code reads: which place, the
+## number on it, and the room it came out of. Only its own -- what the others
+## found is theirs to say out loud, which is half of playing together.
+func notes_found() -> Array:
+	var slips: Array = []
+	for slot in range(1, DIGITS.COUNT + 1):
+		if not found_digits.has(slot): continue
+		slips.append({"slot": slot, "digit": int(found_digits[slot]), "where": String(found_where.get(slot, ""))})
+	return slips
 
 ## What is written down: nothing until the first number turns up, and from
 ## then on the code with a dash in the places still missing.

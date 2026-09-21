@@ -24,9 +24,12 @@ que seguían brillando con la corriente cortada, la luz que cruzaba las paredes 
 la linterna que rayaba las texturas en Compatibilidad. Lo que hicieron y cómo se
 comprobó está en la guía de desarrollo y en [REALISM.md](REALISM.md).
 
+Y con ellos lo que **nadie entendía jugando**: el aviso de auriculares antes de
+la cinta, volver donde estabas después de una caída, el corte entre alas y la
+hoja compartida rehecha con las notas colgando de ella.
+
 Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
 
-- Hay cosas que **nadie entiende jugando** sin que se las cuenten.
 - Lo que debía arreglar que las partidas duraran cinco minutos en vez de
   treinta ya está puesto y medido, pero **nadie lo ha vuelto a jugar**.
 - Solo existe **un piso de los cuatro**: Sunman, The Boiled One y Guilt no
@@ -35,26 +38,17 @@ Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
 ## El orden
 
 **Primero se deja fino lo que ya se puede tocar, y solo después se añade nada.**
-Dentro de eso: lo que rompe una partida antes que lo que molesta —de eso ya no
-queda ninguno—; lo que no se entiende antes que lo que no se ve; lo que solo se
-decide jugando antes que lo que se puede pulir a solas; y la deuda técnica antes
-de que crezca. El acabado
+Dentro de eso: lo que rompe una partida antes que lo que molesta y lo que no se
+entiende antes que lo que no se ve —de esos dos ya no queda ninguno—; lo que
+solo se decide jugando antes que lo que se puede pulir a solas; y la deuda
+técnica antes de que crezca. El acabado
 —sonido, materiales, mobiliario— va después, porque afina algo que ya funciona.
 Los otros tres pisos van al final: son el doble de juego, y montarlos sobre un
 piso que todavía falla es multiplicar los fallos por cuatro.
 
 ---
 
-## 1 · Lo que no se entiende jugando
-
-- [ ] **Inventario para releer las notas**, animado y con la estética del
-  juego. Hoy los números encontrados solo se escriben en la cinta y en el
-  teclado.
-- [ ] **La hoja compartida no pega con el juego.** Es fea y no tiene nada que
-  ver con la estética de cinta VHS. Hay que rehacerla junto con las notas y el
-  inventario: una sola idea de cómo se ve lo que el jugador escribe, lee y
-  comparte, en vez de tres piezas con estilos distintos.
-## 2 · Lo que solo se decide jugando
+## 1 · Lo que solo se decide jugando
 
 No es trabajo de código: es tuyo, y sin ello no se cierra el Early Access. Las
 herramientas para mirarlo están en la guía de desarrollo.
@@ -128,7 +122,7 @@ herramientas para mirarlo están en la guía de desarrollo.
   en uno de los de las pruebas con amigos, en Forward+ y en Compatibilidad, y
   anotarlo en [PERFORMANCE.md](PERFORMANCE.md).
 
-## 3 · Deuda técnica
+## 2 · Deuda técnica
 
 Nada de esto se ve jugando, y todo cuesta caro más adelante.
 
@@ -163,7 +157,7 @@ Nada de esto se ve jugando, y todo cuesta caro más adelante.
   Compatibilidad no la ha mirado nadie, y es el renderizador de las máquinas
   modestas, donde ya apareció el fallo de la linterna.
 
-## 4 · Acabado de lo que ya existe
+## 3 · Acabado de lo que ya existe
 
 Afina algo que funciona: va después de que funcione bien.
 
@@ -180,7 +174,7 @@ Afina algo que funciona: va después de que funcione bien.
 - [ ] **Accesibilidad, mezcla y rendimiento sostenido** en la escena más
   exigente.
 
-## 5 · Assets que faltan (tuyos)
+## 4 · Assets que faltan (tuyos)
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía.
@@ -190,7 +184,7 @@ Afina algo que funciona: va después de que funcione bien.
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.
 
-## 6 · Lo nuevo: los otros tres pisos
+## 5 · Lo nuevo: los otros tres pisos
 
 No empieza hasta que lo de arriba esté cerrado.
 
@@ -205,7 +199,7 @@ No empieza hasta que lo de arriba esté cerrado.
   los caídos y victoria final.
 - [ ] **Campañas completas de dos y cuatro jugadores sin bloqueos.**
 
-## 7 · Consolidación y cierre
+## 6 · Consolidación y cierre
 
 - [ ] **Los nueve eventos** de las otras criaturas.
 - [ ] **Los doce descubrimientos restantes**, registro de partidas y códigos

@@ -164,6 +164,10 @@ Empezar exige al menos dos jugadores conectados. Nombres repetidos se numeran.
 
 Hoja vacía por piso, abierta con **Tab** (reasignable). Botón izquierdo dibuja y derecho borra bajo el cursor. Sin mapa, posiciones, norte, salida ni enemigos automáticos. Abrirla detiene al personaje y oscurece la vista, pero no pausa el mundo; suena el papel una vez al abrirla. También existe en individual.
 
+**Se dibuja como dibuja la cinta todo lo demás:** claro sobre oscuro, la tipografía del OSD, el barrido del vídeo cruzándola y su margen en ámbar. Era una hoja de papel crema con renglones, que no tenía nada que ver con el resto del juego. **Cada plaza escribe en su propio color** —blanco, ámbar, azul de vídeo y verde de fósforo—, que es lo único que hace legible una hoja con cuatro manos encima; el tuyo se dice arriba a la derecha.
+
+**Colgando de su borde derecho, tus notas:** los números del código que hayas encontrado tú, cada uno con su sitio en el código y la habitación de la que salió (o qué sala era, cuando esa puerta no lleva placa: lavandería, comedor, pasillo). Solo las tuyas: lo que encontraron los demás lo tienen que decir ellos, que es la otra mitad de jugar juntos. Abrir la hoja es, entonces, el inventario de notas: no hay nada que recordar de memoria.
+
 En línea es compartida por los supervivientes vivos: el anfitrión ordena trazos y borrados, quien dibuja los ve al instante y ocupan su lugar al confirmarse. Los trazos viajan en fragmentos diez veces por segundo con un límite de 30 fragmentos por segundo por jugador y 3.000 operaciones por hoja. Los muertos pueden mirarla sin editar; The Locust nunca la ve. Se restaura al reconectar y empieza vacía en cada piso o reintento. Guilt nunca falsifica esta superficie.
 
 ## Criaturas y ritmo — The Locust implementado; las otras tres criaturas, pendientes

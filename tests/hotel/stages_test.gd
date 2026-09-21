@@ -220,6 +220,18 @@ func run() -> void:
 	check("Y los números quedan escritos en la cinta", level.camcorder.code_note.text.contains(level.code_so_far()))
 	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
 	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
+	# And they can be read back: the slips hang beside the shared sheet, with
+	# the number and the room it came out of. Nobody has to remember a thing.
+	level.ui.sheet.seat = 1
+	level.ui.sheet.open(true, "TAB", level.notes_found())
+	var slip_text := ""
+	for node in level.ui.sheet.slips.get_children():
+		if node is Label: slip_text += node.text + " · "
+		else:
+			for line in node.get_child(0).get_children(): slip_text += line.text + " · "
+	check("Las notas se pueden releer en la hoja, con su habitación", slip_text.contains("TUS NOTAS") and slip_text.contains("NÚMERO 4 DEL CÓDIGO") and not String(level.found_where.get(4, "")).is_empty() and slip_text.contains(String(level.found_where[4])) and slip_text.contains(str(level.found_digits[4])))
+	check("Y cada mano escribe en su color", level.ui.sheet.ink_of(1) != level.ui.sheet.ink_of(2) and level.ui.sheet.ink_of(2) != level.ui.sheet.ink_of(3))
+	level.ui.sheet.close()
 	# Alone there is nothing to forgive: caught is the end of that floor.
 	var before_stage: int = session.stage
 	check("En solitario, que te cojan termina el piso", session.capture(1) and session.state == session.State.FAILED and session.restarts == 0)
