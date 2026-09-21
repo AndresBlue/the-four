@@ -16,7 +16,9 @@ var state := State.MENU
 const STAGES := 3
 var stage := 1
 ## A floor forgives one collapse: the stage starts again with everyone alive.
-## The second time there is nobody left to start it again for.
+## The second time there is nobody left to start it again for. Alone there is
+## nothing to forgive -- a team can lose somebody and go on, one person caught
+## is the end of that floor.
 const RESTARTS := 1
 var restarts := 0
 ## Seconds between the floor collapsing and everybody getting up again: long
@@ -121,7 +123,7 @@ func check_quota() -> bool:
 	if alive >= minimum_survivors():
 		changed.emit()
 		return true
-	if restarts < RESTARTS and state == State.PLAYING:
+	if roster_count > 1 and restarts < RESTARTS and state == State.PLAYING:
 		# One more go at this stage, with everybody on their feet again -- but
 		# not this instant: the last one down has earned its own death first.
 		restarts += 1
@@ -190,7 +192,9 @@ func _process(delta: float) -> void:
 				# Whoever died in the wing left behind comes back for the next.
 				var dead: bool = participants.values().has(Life.DEAD)
 				if dead: raise_everyone()
-				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": bool(goal.get("blackout", false)) and false, "blackout": goal.get("blackout", false)}
+				# A clean goal for the wing ahead, the blackout included: the
+				# power that went in the wing behind is not this one's.
+				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 				set_state(State.PLAYING)
 				if dead: revived.emit(false)
 				return

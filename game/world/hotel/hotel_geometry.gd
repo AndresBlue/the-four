@@ -47,7 +47,7 @@ var tubes: Array = []
 var flicker_clock := 0.0
 ## Red start lamps in the reception: {light, material, energy}.
 var beacons: Array = []
-## The floor has gone dark for good (the blackout of the second stage).
+## The floor has lost its power (the blackout of the wing being played).
 var dark := false
 ## Share of eligible rooms (private rooms, lounges, corridors; never the
 ## reception, service rooms, halls or the refuge) whose lamps are all out.
@@ -475,10 +475,15 @@ func door_stop() -> MeshInstance3D:
 	block.material_override = DOOR_FRAME.surface_get_material(0)
 	return block
 
-## The power goes. Every light in the hotel dies at once and stays dead: the
-## ceilings, the lamps inside the furniture, the wall sconces, the service
-## battens and the red lamp of the reception. The televisions are not touched
-## (they have their own set) and neither is anybody's torch.
+## The power goes. Every light in the hotel dies at once: the ceilings, the
+## lamps inside the furniture, the wall sconces, the service battens and the
+## red lamp of the reception. The televisions are not touched (they have their
+## own set) and neither is anybody's torch.
+##
+## It comes back the same way. The power belongs to the wing that lost it, so
+## the next one is found lit: `blackout(false)` hands the ceilings back to the
+## room culling (which only shows a lamp that is not marked out), and the
+## battens and the beacon, that nothing else looks after, are lit here.
 func blackout(on: bool) -> void:
 	if dark == on: return
 	dark = on
@@ -490,7 +495,8 @@ func blackout(on: bool) -> void:
 	for lamp in sconce_lights: lamp.visible = lamp.visible and not on
 	for entry in tubes: entry.light.visible = entry.light.visible and not on
 	for entry in beacons:
-		entry.light.visible = entry.light.visible and not on
+		# A beacon hangs off its room and nobody shows it again frame by frame.
+		entry.light.visible = not on
 		if on and entry.has("material"): entry.material.emission_energy_multiplier = 0.0
 	# The bounce baked for the lit rooms would keep lighting them.
 	if on and is_instance_valid(bounce): bounce.show_near(Vector3(0, -9000, 0), false)

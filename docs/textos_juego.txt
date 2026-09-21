@@ -565,10 +565,23 @@ CORRECCIÓN:
 
 [HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
 ACTUAL: LA PUERTA DE LA ETAPA ESTÁ ABIERTA / REFUGIO · FALTAN SUPERVIVIENTES /
-| REFUGIO · FALTAN TELEVISORES / SALIENDO DEL PISO
+| REFUGIO · FALTAN TELEVISORES / REFUGIO · FALTA EL CÓDIGO /
+| REFUGIO · FALTAN TELEVISORES Y NÚMEROS / SALIENDO DEL PISO
 OBS: también aparece brevemente «TELEVISORES 2/4» al encender uno, «NÚMERO 3 DEL
-| CÓDIGO: 7» al registrar un mueble, «ETAPA 2» al cambiar de ala y «EL ASCENSOR SE
-| ABRE» al salir del ascensor en el ala siguiente.
+| CÓDIGO: 7» al registrar un mueble y «EL ASCENSOR SE ABRE» al salir del ascensor
+| en el ala siguiente.
+
+[HUD.04] Aviso al empezar una etapa, al salir del ascensor (4,5 s). Es lo único
+| que dice qué pide la etapa; sin él nadie adivina que el código está dentro de
+| los muebles.
+ACTUAL: ETAPA 2 · ENCIENDE LOS TELEVISORES /
+| ETAPA 3 · TELEVISORES, Y EL CÓDIGO EN LOS MUEBLES
+CORRECCIÓN:
+
+[HUD.05] Los números del código que ya se tienen, escritos abajo a la izquierda
+| de la cinta hasta que termina el piso (el guion es un número que falta)
+ACTUAL: CÓDIGO  4–7––
+CORRECCIÓN:
 
 [CORDURA.01] Aviso al quedarse sin cordura: el cuerpo empieza a soltar motas que
 | la criatura percibe desde cualquier parte del piso
@@ -579,8 +592,11 @@ CORRECCIÓN:
 ACTUAL: VUELVES EN TI
 CORRECCIÓN:
 
-[REFUGIO.02] Teclado de la última puerta
-ACTUAL: TECLEA EL CÓDIGO · [ESC] SALIR / NO ES / ABIERTA
+[REFUGIO.02] Teclado de la última puerta. «FALTAN TELEVISORES» sale cuando el
+| código es el correcto pero quedan teles por encender en esa ala; «ANOTADO» es
+| lo que se lleva apuntado, bajo las cuatro casillas.
+ACTUAL: TECLEA EL CÓDIGO · [ESC] SALIR / NO ES / ABIERTA / FALTAN TELEVISORES /
+| ANOTADO  4–7––
 CORRECCIÓN:
 CORRECCIÓN:
 

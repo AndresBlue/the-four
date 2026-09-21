@@ -1,6 +1,9 @@
 extends Area3D
-## A television of the second stage: dead until somebody switches it on, and
-## then it stays on. The set itself is the room's own prop, built into the
+## A television of a stage: dead until somebody switches it on, and then it
+## stays on. Each stage from the second on has its own sets, in its own wing,
+## counted apart -- `stage` says which ones these are.
+##
+## The set itself is the room's own prop, built into the
 ## batched geometry; this node is the interaction target and the parts that
 ## have to change at runtime -- the lit screen and the light it throws into the
 ## room -- which cannot live in a MultiMesh.
@@ -17,6 +20,8 @@ const SCREEN_SIZE := Vector2(0.78, 0.6)
 const GLOW := Color(0.72, 0.82, 1.0)
 const RANGE := 7.0
 var on := false
+## The stage this set belongs to (2 or 3): the wing it stands in.
+var stage := 2
 var screen: MeshInstance3D
 var lamp: OmniLight3D
 var flicker := 0.0

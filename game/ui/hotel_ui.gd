@@ -612,9 +612,10 @@ func show_document(item: Dictionary) -> void:
 	var key: String = settings.key_name("interact") if settings != null else "E"
 	label(text, "[%s] GUARDAR" % key, 16).add_theme_color_override("font_color", STYLE.FAINT)
 
-## The keypad of the last door: four places, what has been typed so far, and a
-## word when it refuses or gives way.
-func show_lock(entered: String, places: int, word: String) -> void:
+## The keypad of the last door: four places, what has been typed so far, a
+## word when it refuses or gives way, and the numbers already written down --
+## standing at the keypad is exactly where nobody should have to remember them.
+func show_lock(entered: String, places: int, word: String, known := "") -> void:
 	hide_lock()
 	lock_panel = Control.new()
 	lock_panel.name = "Lock"
@@ -636,6 +637,10 @@ func show_lock(entered: String, places: int, word: String) -> void:
 	var slots := ""
 	for place in places: slots += (entered[place] if place < entered.length() else "_") + "  "
 	label(column, slots.strip_edges(), 64).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if not known.is_empty():
+		var note := label(column, "ANOTADO  " + known, 22)
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.add_theme_color_override("font_color", STYLE.SOFT)
 	var key: String = settings.key_name("interact") if settings != null else "E"
 	var foot := label(column, word if not word.is_empty() else "TECLEA EL CÓDIGO · [ESC] SALIR", 18)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

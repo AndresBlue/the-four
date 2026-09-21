@@ -155,21 +155,22 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 	for gate in gates:
 		var arrive := int(gate.get("arrive", -1))
 		if arrive >= 0 and not refuges.has(arrive): rooms[arrive].type = 10
-	# The second stage is played on the sets of its wing, and it asks for as
-	# many as there are survivors: a wing has to hold enough of them whatever
-	# the room types rolled, so the ones missing are given a television room.
-	var tv_wing := 1
-	var with_tv: Array[int] = []
-	var plain: Array[int] = []
-	for room in rooms:
-		if int(room.wing) != tv_wing or refuges.has(room.id) or int(room.hall) >= 0 or bool(room.corridor) or bool(room.service) or bool(room.get("landing", false)): continue
-		if FLOOR.RECIPES[room.type].has("tv"): with_tv.append(int(room.id))
-		elif not int(room.type) in [0, 10, 19]: plain.append(int(room.id))
-	while with_tv.size() < TV_ROOMS and not plain.is_empty():
-		var pick: int = plain[decoration.randi_range(0, plain.size() - 1)]
-		plain.erase(pick)
-		rooms[pick].type = 14
-		with_tv.append(pick)
+	# The second and third stages are played on the sets of their own wing, and
+	# each asks for as many as there are survivors: both wings have to hold
+	# enough of them whatever the room types rolled, so the ones missing are
+	# given a television room.
+	for tv_wing in [1, 2]:
+		var with_tv: Array[int] = []
+		var plain: Array[int] = []
+		for room in rooms:
+			if int(room.wing) != tv_wing or refuges.has(room.id) or int(room.hall) >= 0 or bool(room.corridor) or bool(room.service) or bool(room.get("landing", false)): continue
+			if FLOOR.RECIPES[room.type].has("tv"): with_tv.append(int(room.id))
+			elif not int(room.type) in [0, 10, 19]: plain.append(int(room.id))
+		while with_tv.size() < TV_ROOMS and not plain.is_empty():
+			var pick: int = plain[decoration.randi_range(0, plain.size() - 1)]
+			plain.erase(pick)
+			rooms[pick].type = 14
+			with_tv.append(pick)
 	# Its own draw, so a change in the numbering never moves the furniture.
 	var plaques := RandomNumberGenerator.new()
 	plaques.seed = run_seed + 3000017 + attempt * 104729

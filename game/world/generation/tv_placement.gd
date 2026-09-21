@@ -1,9 +1,11 @@
 extends RefCounted
-## Which televisions a floor's second stage is played on: the sets that sit in
-## the wing that stage opens, spread across it, away from the door everyone
-## comes in by. Deterministic per seed and per number of survivors, and
-## independent of the map generator's own random sequence, so every machine
-## picks the same ones without sending a list.
+## Which televisions a stage is played on: the sets that sit in the wing that
+## stage opens, spread across it, away from the door everyone comes in by.
+## The second and third stages each get their own, counted apart -- lighting
+## the sets of one wing says nothing about the next. Deterministic per seed,
+## per stage and per number of survivors, and independent of the map
+## generator's own random sequence, so every machine picks the same ones
+## without sending a list.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 ## Two more than the stage asks for, so there is always a choice of which one
@@ -19,7 +21,7 @@ const MIN_FROM_ENTRANCE := 14.0
 static func needed(survivors: int) -> int: return maxi(LEAST, survivors)
 
 ## Returns [{room, position (world), yaw}] for the wing of a stage, as many as
-## needed plus the spares.
+## needed plus the spares. Stage 2 is the second wing, stage 3 the third.
 static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([manifest.seed, "televisions", survivors, stage])

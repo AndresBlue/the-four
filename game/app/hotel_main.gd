@@ -527,19 +527,33 @@ func toggle_sheet() -> void:
 	if world_audio.enabled: paper_sound.play()
 
 ## This floor's documents, lying on furniture (freed with the hotel).
-## The sets of the second stage, in the wing that stage opens. Everyone works
-## out the same list from the seed and the number of survivors, so nothing has
-## to be sent: only which ones are on travels.
+## The sets of the second and third stages, each lot in the wing its stage
+## opens. Everyone works out the same list from the seed and the number of
+## survivors, so nothing has to be sent: only which ones are on travels. They
+## go into one array, stage by stage, so an index means the same set on every
+## machine; each one remembers which stage it belongs to.
 func place_televisions() -> void:
 	televisions.clear()
 	if manifest.get("gates", []).is_empty(): return
-	for spot in TV_PLACEMENT.choose(manifest, session.roster_count):
-		var set := TELEVISION.new()
-		set.name = "Television_%d" % televisions.size()
-		set.position = spot.position
-		set.rotation.y = spot.yaw
-		hotel.add_child(set)
-		televisions.append(set)
+	for stage in [2, 3]:
+		for spot in TV_PLACEMENT.choose(manifest, session.roster_count, stage):
+			var set := TELEVISION.new()
+			set.name = "Television_%d" % televisions.size()
+			set.stage = stage
+			set.position = spot.position
+			set.rotation.y = spot.yaw
+			hotel.add_child(set)
+			televisions.append(set)
+
+## The sets a stage is played on, by index into `televisions`. A stage lights
+## its own wing's sets and nobody else's: what was left on behind you neither
+## counts for the wing you are in nor is anywhere the creature could step out.
+func stage_televisions(stage := -1) -> Array:
+	var wanted: int = session.stage if stage < 0 else stage
+	var result: Array = []
+	for index in televisions.size():
+		if is_instance_valid(televisions[index]) and int(televisions[index].stage) == wanted: result.append(index)
+	return result
 
 ## Switching one on: the host decides, and the noise is made once, there.
 func switch_television(set: Node3D) -> void:
@@ -554,7 +568,7 @@ func apply_television(index: int, value: bool) -> void:
 	if value:
 		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, set.global_position + Vector3(0, 1.4, 0), -8.0)
 		if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
-		if session.stage == 2 and not match_net.local_is_locust():
+		if session.stage >= 2 and not match_net.local_is_locust():
 			ui.flash("TELEVISORES %d/%d" % [televisions_on(), TV_PLACEMENT.needed(session.roster_count)], 2.5)
 
 ## Travelling by television: a lit set is a way in and a way out. The creature
@@ -563,19 +577,21 @@ func apply_television(index: int, value: bool) -> void:
 const WARP_REACH := 3.4
 const WARP_SOUND := "res://assets/audio/events/execution_static.ogg"
 
-## The sets it could step out of, by index, from the one it is standing at.
+## The sets it could step out of, by index, from the one it is standing at:
+## the ones of the stage in hand, so it never travels into a wing that is
+## already behind everybody.
 func lit_televisions() -> Array:
 	var result: Array = []
-	for index in televisions.size():
-		if is_instance_valid(televisions[index]) and televisions[index].on: result.append(index)
+	for index in stage_televisions():
+		if televisions[index].on: result.append(index)
 	return result
 
 ## The lit set the creature is standing at, or -1.
 func creature_at_television() -> int:
 	if not is_instance_valid(locust): return -1
-	for index in televisions.size():
+	for index in stage_televisions():
 		var set = televisions[index]
-		if is_instance_valid(set) and set.on and set.global_position.distance_to(locust.global_position) < WARP_REACH: return index
+		if set.on and set.global_position.distance_to(locust.global_position) < WARP_REACH: return index
 	return -1
 
 ## It comes out of the set at `index`, a step in front of it, looking into the
@@ -601,11 +617,12 @@ func warp_creature(index: int) -> void:
 	# Where it comes out is a noise of its own: the set it steps from spits.
 	if not net.is_client(): on_noise(locust.global_position + Vector3(0, 1.4, 0), NOISE.radius("door"), NOISE.Kind.DOOR)
 
-## How many of the stage's sets are on, and how many it asks for.
+## How many of the stage's own sets are on. What burns in another wing is not
+## counted: every stage from the second starts its tally at nothing.
 func televisions_on() -> int:
 	var count := 0
-	for set in televisions:
-		if is_instance_valid(set) and set.on: count += 1
+	for index in stage_televisions():
+		if televisions[index].on: count += 1
 	return count
 
 ## The drawers, shelves and cupboards of the floor, and the four numbers hidden
@@ -649,6 +666,9 @@ func place_containers() -> void:
 		if index < 0 or index >= containers.size(): continue
 		containers[index].digit = int(hidden.digit)
 		containers[index].slot = int(hidden.slot)
+		# The four that hold something say so: a slip of paper left showing.
+		containers[index].plant_note()
+	camcorder.write_code("")
 
 ## Going through one: the host decides, as with everything else.
 func search_container(piece: Node3D) -> void:
@@ -665,7 +685,21 @@ func apply_search(index: int, value: bool) -> void:
 	if not net.is_client(): on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
-		if not match_net.local_is_locust(): ui.flash("NÚMERO %d DEL CÓDIGO: %d" % [piece.slot, piece.digit], 4.0)
+		# The paper leaves with whoever took it, and what it said stays written
+		# on the tape until the floor is over.
+		piece.take_note()
+		if not match_net.local_is_locust():
+			ui.flash("NÚMERO %d DEL CÓDIGO: %d" % [piece.slot, piece.digit], 4.0)
+			camcorder.write_code(noted_code())
+
+## The stage's own sets, all of them on. A stage with no sets of its own asks
+## for nothing here.
+func sets_lit() -> bool:
+	return stage_televisions().is_empty() or televisions_on() >= TV_PLACEMENT.needed(session.roster_count)
+
+## What is written down: nothing until the first number turns up, and from
+## then on the code with a dash in the places still missing.
+func noted_code() -> String: return "" if found_digits.is_empty() else code_so_far()
 
 ## The code as it is known so far, with a dash where a number is missing.
 func code_so_far() -> String:
@@ -709,6 +743,7 @@ func on_state() -> void:
 	if is_instance_valid(hotel) and not manifest.is_empty():
 		hotel.open_gates(session.stage, session.goal.get("ready", false))
 		if session.goal.get("blackout", false) and not hotel.dark: apply_blackout()
+		elif not session.goal.get("blackout", false) and hotel.dark: restore_power()
 		if playing and session.stage > last_stage: follow_players(session.stage)
 	last_stage = session.stage
 	press_time = 0
@@ -741,7 +776,7 @@ func on_state() -> void:
 				ui.overlay.hide()
 				ui.settings_open = false
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				ui.flash("ETAPA %d" % (session.stage + 1), 3.0)
+				ui.flash("ETAPA %d · %s" % [session.stage + 1, stage_errand(session.stage + 1)], 4.5)
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
@@ -755,6 +790,16 @@ func on_state() -> void:
 
 ## The stage the floor was on when it was last looked at, to tell a change.
 var last_stage := 1
+
+## What a stage asks for, in the fewest words that can be acted on. The floor
+## explains nothing else, but nobody guesses on their own that the numbers of
+## the last door are inside the furniture of that wing: a whole stage spent
+## opening drawers at random is not a mystery, it is a wasted evening.
+func stage_errand(stage: int) -> String:
+	match stage:
+		2: return "ENCIENDE LOS TELEVISORES"
+		3: return "TELEVISORES, Y EL CÓDIGO EN LOS MUEBLES"
+	return "AL REFUGIO"
 
 ## A stage has closed: the creature is sent through the gate after the players
 ## instead of hunting a wing that nobody will come back to.
@@ -798,6 +843,14 @@ func apply_blackout() -> void:
 	if world_audio.enabled: world_audio.play_at(BLACKOUT_SOUND, player.global_position + Vector3(0, 2.5, 0), 0.0)
 	if is_instance_valid(locust) and is_instance_valid(locust.driver) and locust.driver.has_method("mark_blackout"): locust.driver.mark_blackout()
 
+## And the power comes back, in the wing ahead. What went out belonged to the
+## wing where the last set was lit: crossing into the next one finds its lights
+## on, with the same clunk of a board being thrown. A stage played in the dark
+## is that stage's doing, not a floor that never recovers.
+func restore_power() -> void:
+	hotel.blackout(false)
+	if world_audio.enabled: world_audio.play_at(BLACKOUT_SOUND, player.global_position + Vector3(0, 2.5, 0), -4.0)
+
 ## Everybody is on their feet again: between stages, or because the floor gave
 ## this stage back after it was lost. The authority says where, and every
 ## machine puts the bodies there.
@@ -830,11 +883,17 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]): match_net.bodies[seat].place(places[seat_key], 0.0)
 	if restart:
 		ui.flash("OTRA VEZ", 3.0)
-		if session.stage == 2:
-			for index in televisions.size():
-				if is_instance_valid(televisions[index]) and televisions[index].on:
-					apply_television(index, false)
-					if not net.is_client() and match_net.in_match(): match_net.television_state.rpc(index, false)
+		# The stage as it was found: its own wing's sets go out again. What was
+		# lit in the wings behind is not this stage's to undo.
+		for index in stage_televisions():
+			if televisions[index].on:
+				apply_television(index, false)
+				if not net.is_client() and match_net.in_match(): match_net.television_state.rpc(index, false)
+		# And the power with them: the cut came with the sets, and a stage
+		# given back is given back whole. The authority says so, as always.
+		if not net.is_client() and bool(session.goal.get("blackout", false)):
+			session.goal["blackout"] = false
+			session.changed.emit()
 	else: ui.flash("ETAPA %d · DE PIE" % session.stage, 3.0)
 
 ## The inverse of watching a teammate: its own body, its own camera.
@@ -1138,23 +1197,29 @@ func type_code(character: String) -> void:
 	if character == "borrar": typed = typed.substr(0, maxi(0, typed.length() - 1))
 	elif typed.length() < DIGITS.COUNT: typed += character
 	if typed.length() < DIGITS.COUNT:
-		ui.show_lock(typed, DIGITS.COUNT, "")
+		ui.show_lock(typed, DIGITS.COUNT, "", noted_code())
 		return
 	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
+	# The right code on a wing whose sets are still dark: the door is not
+	# going to move, and it is better said here than guessed at the door.
+	if typed == right and not sets_lit():
+		typed = ""
+		ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code())
+		return
 	if typed == right:
 		match_net.use_code()
-		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA")
+		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code())
 		close_lock()
 	else:
 		typed = ""
-		ui.show_lock("", DIGITS.COUNT, "NO ES")
+		ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code())
 		if world_audio.enabled: world_audio.play_at(SEARCH_SOUND, lock.global_position, -12.0)
 
 func open_lock() -> void:
 	lock_open = true
 	typed = ""
 	player.reading = true
-	ui.show_lock("", DIGITS.COUNT, "")
+	ui.show_lock("", DIGITS.COUNT, "", noted_code())
 
 func close_lock() -> void:
 	lock_open = false
@@ -1327,7 +1392,7 @@ func drive_local(delta: float) -> void:
 	# Nothing is held down at the refuge any more: with everyone inside, the
 	# door on unlocks itself and crossing it is what takes you on.
 	var ready: bool = session.goal.get("ready", false)
-	var missing: String = "FALTAN TELEVISORES" if session.goal.get("kind", "") == "televisions" else "FALTAN SUPERVIVIENTES"
+	var missing: String = what_is_missing()
 	if inside and not session.more_stages(): ui.hint.text = "SALIENDO DEL PISO" if ready else "REFUGIO · " + missing
 	elif inside: ui.hint.text = "LA PUERTA DE LA ETAPA ESTÁ ABIERTA" if ready else "REFUGIO · " + missing
 	else: ui.hint.text = ""
@@ -1335,6 +1400,20 @@ func drive_local(delta: float) -> void:
 	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
 		ui.subtitle.text = "[Ventilación constante]"
 	if not save_error.is_empty(): ui.subtitle.text = save_error
+
+## What the stage in hand is still waiting for. The last stage waits for two
+## things at once, and saying only one of them is how somebody ends up typing
+## the right code into a door that will not move.
+func what_is_missing() -> String:
+	var kind: String = str(session.goal.get("kind", ""))
+	var sets_short: bool = int(session.goal.get("sets_done", 0)) < int(session.goal.get("sets_needed", 0))
+	if kind == "code":
+		if sets_short and found_digits.size() < DIGITS.COUNT: return "FALTAN TELEVISORES Y NÚMEROS"
+		if sets_short: return "FALTAN TELEVISORES"
+		if not code_entered: return "FALTA EL CÓDIGO"
+		return "FALTAN SUPERVIVIENTES"
+	if kind == "televisions": return "FALTAN TELEVISORES"
+	return "FALTAN SUPERVIVIENTES"
 
 ## The authority, every frame: whether the stage in hand is met -- which
 ## unlocks the door on -- and whether somebody has already crossed it, which
@@ -1361,25 +1440,34 @@ func creature_channel_hop(delta: float) -> void:
 func host_gate(delta: float) -> void:
 	creature_channel_hop(delta)
 	haunt_burnt(delta)
-	if session.stage == session.STAGES and not containers.is_empty():
-		session.goal["kind"] = "code"
-		session.goal["done"] = found_digits.size()
-		session.goal["needed"] = DIGITS.COUNT
-		session.update_goal(delta, code_entered)
-		ride_lifts()
-		return
-	if session.stage == 2 and not televisions.is_empty():
+	# From the second stage on, the wing is played on its own sets: each stage
+	# counts the ones standing in its wing and starts from nothing.
+	var sets: Array = stage_televisions() if session.stage >= 2 else []
+	var lit_enough := true
+	if not sets.is_empty():
 		var needed: int = TV_PLACEMENT.needed(session.roster_count)
 		var done: int = televisions_on()
-		session.goal["kind"] = "televisions"
-		session.goal["done"] = done
-		session.goal["needed"] = needed
-		# With one set left to light, the floor loses its power for good and
-		# the creature hunts without tiring.
+		lit_enough = done >= needed
+		session.goal["sets_done"] = done
+		session.goal["sets_needed"] = needed
+		# With one set left to light, this wing loses its power and the
+		# creature hunts without tiring. It is the wing's power, not the
+		# floor's: the next one is found lit.
 		if done >= needed - 1 and not session.goal.get("blackout", false):
 			session.goal["blackout"] = true
 			session.changed.emit()
-		session.update_goal(delta, done >= needed)
+	if session.stage == session.STAGES and not containers.is_empty():
+		# The last stage asks for both: the sets of its wing lit, and the four
+		# numbers read into the keypad.
+		session.goal["kind"] = "code"
+		session.goal["done"] = found_digits.size()
+		session.goal["needed"] = DIGITS.COUNT
+		session.update_goal(delta, code_entered and lit_enough)
+	elif not sets.is_empty():
+		session.goal["kind"] = "televisions"
+		session.goal["done"] = int(session.goal.get("sets_done", 0))
+		session.goal["needed"] = int(session.goal.get("sets_needed", 0))
+		session.update_goal(delta, lit_enough)
 	else: session.update_goal(delta, session.can_depart())
 	ride_lifts()
 

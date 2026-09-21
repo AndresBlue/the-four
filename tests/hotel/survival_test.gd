@@ -213,9 +213,9 @@ func run() -> void:
 	check("Durante la ejecución la víctima queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
 	# The execution is longer now: the scream, the mask coming in, the blow.
 	await frames(300)
-	# A floor forgives one collapse: the death lands, and a moment later
-	# everybody is on their feet again for the same stage.
-	check("La ejecución acaba con el superviviente", level.session.participants[1] == level.session.Life.DEAD and level.session.restarts == 1)
+	# Alone there is nobody to be forgiven with: the death lands and the floor
+	# is over.
+	check("La ejecución acaba con el superviviente", level.session.participants[1] == level.session.Life.DEAD and level.session.state == level.session.State.FAILED and level.session.restarts == 0)
 	check("Al morir la imagen se pierde en estática", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) > 0.5)
 	# The picture is not lost for ever: it clears itself even though the floor
 	# is over and nobody is being driven any more.

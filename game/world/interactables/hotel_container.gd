@@ -36,3 +36,44 @@ func set_searched(value: bool) -> bool:
 
 ## Heard like a door opened slowly: enough to say somebody is in this room.
 func noise_radius() -> float: return NOISE.radius("door_slow")
+
+## The slip of paper one of the four hides, left showing: a corner of it out of
+## the drawer, pale enough to catch a torch from across the room. Four numbers
+## among two hundred pieces of furniture are not found by opening all of them,
+## and this is what says which one is worth the second it takes.
+##
+## Taking it is going through the piece as usual; the paper leaves with it,
+## which is the other half of the answer -- you can see, from the doorway,
+## which rooms you have already been through.
+var note: MeshInstance3D
+func plant_note() -> void:
+	if is_instance_valid(note): return
+	var paper := BoxMesh.new()
+	paper.size = Vector3(0.16, 0.21, 0.004)
+	var sheet := StandardMaterial3D.new()
+	sheet.albedo_color = Color(0.9, 0.87, 0.78)
+	sheet.roughness = 0.95
+	# Barely lit of its own: enough to be picked out in a dark room without
+	# turning a drawer into a lamp.
+	sheet.emission_enabled = true
+	sheet.emission = Color(0.85, 0.82, 0.7)
+	sheet.emission_energy_multiplier = 0.5
+	note = MeshInstance3D.new()
+	note.name = "Note"
+	note.mesh = paper
+	note.material_override = sheet
+	# Out of the front of the piece, about drawer height, leaning out the way
+	# a sheet caught in one does. Not on top of it: a commode, a bookcase and
+	# a stack of boxes are all "a piece with drawers" here, their tops stand
+	# between half a metre and two, and a paper laid on one would be buried in
+	# the wood on one piece and out of sight above the head on the next. On
+	# the front it is the same height on all of them, and in the eye.
+	note.position = Vector3(0.02, 0.46, 0.5)
+	note.rotation = Vector3(-0.32, 0.0, 0.11)
+	note.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(note)
+
+## Gone through: whoever did it took the paper with them.
+func take_note() -> void:
+	if is_instance_valid(note): note.queue_free()
+	note = null

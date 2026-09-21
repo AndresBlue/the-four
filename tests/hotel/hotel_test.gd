@@ -269,11 +269,10 @@ func run() -> void:
 	session._process(1.3)
 	check("Victoria y eliminación de checkpoint completado", session.state == session.State.WON and session.checkpoint().is_empty())
 	await scene.start_floor(81)
-	# The first collapse of a floor is forgiven; the second ends it.
+	# Alone there is nobody to be forgiven with: the floor ends at the first
+	# collapse (a team gets one over, which stages_test drives).
 	session.capture(1)
-	session._process(session.RESTART_WAIT + 0.1)
-	session.capture(1)
-	check("Muerte de prueba permite reintento", session.state == session.State.FAILED)
+	check("Muerte de prueba permite reintento", session.state == session.State.FAILED and session.restarts == 0)
 	await scene.start_floor(81)
 	check("Reintento reproduce piso y limpia estado", session.state == session.State.PLAYING and scene.manifest.seed == 81 and session.stage == 1 and not session.goal.ready)
 	var file := FileAccess.open(session.checkpoint_path, FileAccess.WRITE)

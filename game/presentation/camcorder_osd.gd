@@ -26,6 +26,10 @@ func show_channels(points: Array, look: Vector2, target: int) -> void:
 	channel_look = look
 	channel_target = target
 	canvas.queue_redraw()
+## The numbers of the code already in hand, kept on the tape so nobody has to
+## hold four digits in their head across a wing. Empty until the first one
+## turns up, and it goes with the floor.
+var code_note: Label
 var start_seconds := 0
 var date_text := ""
 var blink := 0.0
@@ -82,6 +86,13 @@ func _ready() -> void:
 	clock.offset_right = 520
 	clock.offset_bottom = -52
 	add_child(clock)
+	code_note = STYLE.text("", 26)
+	code_note.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	code_note.offset_left = 48
+	code_note.offset_top = -160
+	code_note.offset_right = 520
+	code_note.offset_bottom = -120
+	add_child(code_note)
 	focus_label = STYLE.text("", 20)
 	focus_label.set_anchors_preset(Control.PRESET_CENTER)
 	focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -113,6 +124,7 @@ func start_tape(run_seed: int) -> void:
 	stamina_alpha = 0.0
 	full_time = 99.0
 	focus_word = ""
+	code_note.text = ""
 
 func set_stamina(value: float, is_exhausted: bool) -> void:
 	stamina = clampf(value, 0.0, 1.0)
@@ -135,12 +147,17 @@ func announce(words: String) -> void:
 func focus(word: String) -> void:
 	focus_word = word
 
+## The code as far as it is known ("4–7––"); empty takes the line away.
+func write_code(text: String) -> void:
+	code_note.text = "" if text.is_empty() else "CÓDIGO  " + text
+
 func show_tape(elapsed: float, delta: float) -> void:
 	blink = fposmod(blink + delta, 1.0)
 	var tape := marks and not hunter and not signal_lost
 	rec.visible = tape
 	dot.visible = tape and blink < 0.6
 	clock.visible = tape
+	code_note.visible = tape and not code_note.text.is_empty()
 	notice.visible = not notice.text.is_empty()
 	if hunter or signal_lost: focus_word = ""
 	var total := start_seconds + int(elapsed)

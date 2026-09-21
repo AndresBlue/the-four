@@ -135,16 +135,17 @@ func wings(data: Dictionary) -> Array[String]:
 		var refuge: int = int(refuges[wing])
 		if int(rooms[refuge].wing) != wing: errors.append("refuge_wing_%d" % wing)
 		elif not seen.has(refuge): errors.append("refuge_unreachable_%d" % wing)
-	# The wing of the second stage has to hold the sets that stage is played
-	# on, whatever the room types rolled.
-	var sets := 0
-	for room in rooms:
-		if int(room.wing) != 1 or int(refuges[1]) == int(room.id): continue
-		for prop in room.props:
-			if prop.kind == "tv":
-				sets += 1
-				break
-	if sets < GENERATOR_TV_ROOMS: errors.append("few_televisions_%d" % sets)
+	# The wings of the second and third stages have to hold the sets those
+	# stages are played on, whatever the room types rolled.
+	for wing in [1, 2]:
+		var sets := 0
+		for room in rooms:
+			if int(room.wing) != wing or int(refuges[wing]) == int(room.id): continue
+			for prop in room.props:
+				if prop.kind == "tv":
+					sets += 1
+					break
+		if sets < GENERATOR_TV_ROOMS: errors.append("few_televisions_%d_%d" % [wing, sets])
 	return errors
 
 const GENERATOR_TV_ROOMS := 8

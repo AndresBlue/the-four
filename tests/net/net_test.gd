@@ -95,10 +95,13 @@ func cross_to_the_end(offset: Vector3, seconds: float) -> bool:
 		var stage: int = level.session.stage
 		var gate: Dictionary = level.manifest.gates[stage - 1]
 		var door = level.hotel.gates[stage - 1] if level.hotel.gates.size() >= stage else null
-		# A stage played on televisions: go and switch one on. A guest asks the
-		# host, which is the path worth exercising here.
-		if level.session.goal.get("kind", "") == "televisions" and not level.session.goal.get("ready", false):
-			for set in level.televisions:
+		# Any stage played on televisions: go and switch one on. A guest asks
+		# the host, which is the path worth exercising here. From the second
+		# stage on every wing has its own sets, the last one included, where
+		# they are asked for along with the code.
+		if not level.sets_lit():
+			for index in level.stage_televisions():
+				var set = level.televisions[int(index)]
 				if is_instance_valid(set) and not set.on:
 					level.player.global_position = set.global_position + Vector3(0.9, 0.1, 0.9)
 					await pause_for(0.2)
@@ -307,11 +310,15 @@ func versus_host() -> void:
 	check("Oye el chillido del cazador", await wait_for(func():
 		sway()
 		return level.locust.calls_heard > 0, 25.0))
-	# Two sets lit, so the hunter has channels to travel by.
-	for index in 2:
-		if index < level.televisions.size():
-			level.apply_television(index, true)
-			match_net.television_state.rpc(index, true)
+	# Two sets lit, so the hunter has channels to travel by. The channels are
+	# the ones of the stage being played -- a set burning in a wing nobody is
+	# in is no way out -- so the floor is moved on to the stage of that wing.
+	level.session.stage = 2
+	level.session.changed.emit()
+	await pause_for(1.0)
+	for index in level.stage_televisions(2).slice(0, 2):
+		level.apply_television(int(index), true)
+		match_net.television_state.rpc(int(index), true)
 	check("Las teles encendidas llegan a la máquina del cazador", level.lit_televisions().size() >= 2)
 	check("El viaje del cazador por las teles se ve aquí", await wait_for(func():
 		sway()
@@ -326,11 +333,9 @@ func versus_host() -> void:
 	check("Abre el armario puerta a puerta", await wait_for(func(): return hide.wide.right > 0.5, 30.0) and await wait_for(func(): return hide.wide.left > 0.5, 5.0))
 	check("Lo saca del armario y lo ejecuta en el aire", await wait_for(func(): return not level.execution.is_empty() and not level.player.hidden, 10.0) and await wait_for(func(): return level.player.global_position.y > 0.8, 3.0))
 	check("La ejecución no es instantánea", level.session.state == level.session.State.PLAYING)
-	# A floor forgives one collapse, so the first death gives the stage back.
-	check("Al final de la ejecución cae el superviviente", await wait_for(func(): return level.session.restarts >= 1, 15.0))
-	check("Y el piso le da otra oportunidad de pie", await wait_for(func(): return level.session.participants[1] == level.session.Life.EXPLORING, 15.0))
-	await pause_for(0.5)
-	check("La segunda vez termina el piso", level.session.capture(1) and await wait_for(func(): return level.session.state == level.session.State.FAILED, 15.0))
+	# One against one there is no team to forgive: the execution ends the floor.
+	check("Al final de la ejecución cae el superviviente", await wait_for(func(): return level.session.participants[1] == level.session.Life.DEAD, 15.0))
+	check("Y con un solo superviviente, el piso se acaba ahí", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.session.restarts == 0, 15.0))
 	await pause_for(2.0)
 	net.shutdown("")
 

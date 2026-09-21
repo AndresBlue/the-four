@@ -94,18 +94,28 @@ func run() -> void:
 	# A few frames for the authority to look at the new stage.
 	await frames(5)
 	var needed: int = TV.needed(session.roster_count)
+	var wing_of := func(index: int) -> int: return int(FLOOR.room_at(level.manifest.rooms, level.televisions[index].global_position).get("wing", -1))
+	var sets_two: Array = level.stage_televisions(2)
+	var sets_three: Array = level.stage_televisions(3)
 	check("La etapa 2 se juega con televisores", session.goal.kind == "televisions" and session.goal.needed == needed)
-	check("Hay dos teles de más y todas en el ala nueva", level.televisions.size() == needed + TV.SPARE and level.televisions.all(func(set): return int(FLOOR.room_at(level.manifest.rooms, set.global_position).get("wing", -1)) == 1))
+	check("Cada etapa tiene su tanda, con dos de más, en su ala", sets_two.size() == needed + TV.SPARE and sets_three.size() == needed + TV.SPARE and sets_two.all(func(i): return wing_of.call(i) == 1) and sets_three.all(func(i): return wing_of.call(i) == 2))
 	check("Ninguna está encendida al empezar la etapa", level.televisions_on() == 0 and not session.goal.ready)
+	# The tally is the wing's own: a set burning in the wing ahead is not this
+	# stage's business, and lighting one here says nothing about the next.
+	level.apply_television(int(sets_three[0]), true)
+	await frames(2)
+	check("Una tele del ala siguiente no cuenta en esta etapa", level.televisions_on() == 0 and not session.goal.ready)
+	level.apply_television(int(sets_three[0]), false)
+	await frames(2)
 	# Switching them on one by one: only the last one opens the door.
-	for index in needed:
-		level.switch_television(level.televisions[index])
+	for step in needed:
+		level.switch_television(level.televisions[int(sets_two[step])])
 		await frames(4)
-		if index < needed - 1: check("Con %d de %d encendidas la puerta sigue cerrada" % [index + 1, needed], not session.goal.ready and level.hotel.gates[1].locked)
+		if step < needed - 1: check("Con %d de %d encendidas la puerta sigue cerrada" % [step + 1, needed], not session.goal.ready and level.hotel.gates[1].locked)
 	await frames(6)
 	check("Encendidas las que pide, se abre la puerta de la etapa", session.goal.ready and session.goal.done >= needed and not level.hotel.gates[1].locked)
-	# The blackout: it fell when only the last set was left, and it does not
-	# come back.
+	# The blackout: it fell when only the last set was left. It belongs to this
+	# wing, and it is given back at the lift.
 	check("Se fue la luz del piso entero", session.goal.get("blackout", false) and level.hotel.dark)
 	check("Ninguna lámpara del hotel queda encendida", level.hotel.lights.all(func(light): return not light.visible) and level.hotel.practicals.all(func(lamp): return not lamp.visible) and level.hotel.sconce_lights.all(func(lamp): return not lamp.visible))
 	check("Las teles encendidas siguen dando luz", level.televisions[0].lamp.visible)
@@ -120,37 +130,73 @@ func run() -> void:
 	level.warp_creature(lit[1])
 	check("Sale por otra tele encendida, lejos de donde estaba", level.locust.global_position.distance_to(before) > 5.0 and level.creature_at_television() == lit[1])
 	var dark := -1
-	for index in level.televisions.size():
-		if not level.televisions[index].on: dark = index
+	for index in sets_two:
+		if not level.televisions[int(index)].on: dark = int(index)
 	var standing: Vector3 = level.locust.global_position
 	if dark >= 0: level.warp_creature(dark)
 	check("Y no puede salir por una apagada", dark < 0 or level.locust.global_position.is_equal_approx(standing))
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
 	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
 	await frames(5)
+	# The power that went belonged to the wing left behind: this one is found
+	# lit, with no lamp still marked out by the cut.
+	check("Al pasar de ala vuelve la corriente", not level.hotel.dark and not session.goal.get("blackout", false))
+	check("Y ninguna lámpara queda apagada por el corte", level.hotel.lights.filter(func(light): return light.has_meta("off")).size() == level.hotel.dark_ids.size())
+	# Stood in a room of the new wing that is not one of the dark ones: its
+	# ceiling lamp is lit again. (Asking whether any lamp anywhere is visible
+	# depended on where the lift happened to leave the body.)
+	var lamp_room := -1
+	for room in level.manifest.rooms:
+		if int(room.wing) == 2 and not level.hotel.dark_ids.has(int(room.id)) and not bool(room.get("landing", false)) and int(room.id) != int(level.manifest.refuges[2]):
+			lamp_room = int(room.id)
+			break
+	if lamp_room >= 0: level.hotel.update_visibility(FLOOR.position_of(level.manifest.rooms[lamp_room]), true)
+	check("Las lámparas del ala nueva alumbran otra vez", lamp_room >= 0 and level.hotel.lights[lamp_room].visible)
+	check("La etapa 3 tiene su propia tanda de teles, apagadas", level.stage_televisions().size() == needed + TV.SPARE and level.televisions_on() == 0)
 	# Third stage: four numbers hidden in drawers and shelves of its wing.
 	var hidden: Array = level.containers.filter(func(piece): return piece.digit >= 0)
 	check("Hay cuatro números escondidos", hidden.size() == DIG.COUNT)
 	check("Todos en el ala de la última etapa", hidden.all(func(piece): return int(FLOOR.room_at(level.manifest.rooms, piece.global_position).get("wing", -1)) == 2))
 	check("Cada uno en una sala distinta", hidden.map(func(piece): return int(FLOOR.room_at(level.manifest.rooms, piece.global_position).id)).size() == hidden.size())
 	check("Y cada uno ocupa su lugar del código", hidden.map(func(piece): return piece.slot).duplicate().size() == DIG.COUNT and hidden.all(func(piece): return piece.slot >= 1 and piece.slot <= DIG.COUNT))
-	check("El código no se sabe hasta registrar", level.code_so_far() == "––––")
+	check("El código no se sabe hasta registrar", level.code_so_far() == "––––" and level.noted_code().is_empty())
+	# Four pieces among more than two hundred: what says which four is a slip
+	# of paper left showing on them.
+	check("Los cuatro lo enseñan con una nota", hidden.all(func(piece): return is_instance_valid(piece.note)))
+	check("Y ningún otro mueble la lleva", level.containers.filter(func(piece): return is_instance_valid(piece.note)).size() == DIG.COUNT)
 	var muebles: int = level.containers.size()
 	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
 	for piece in hidden:
 		level.search_container(piece)
 		await frames(2)
 	check("Registrar los cuatro da el código entero", level.found_digits.size() == DIG.COUNT and not level.code_so_far().contains("–"))
+	check("Quien registra se lleva la nota", hidden.all(func(piece): return not is_instance_valid(piece.note)))
+	check("Y los números quedan escritos en la cinta", level.camcorder.code_note.text.contains(level.code_so_far()))
 	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
 	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
-	# A floor forgives one collapse: everybody up, the stage as it was found.
+	# Alone there is nothing to forgive: caught is the end of that floor.
 	var before_stage: int = session.stage
-	check("Morir sin cuota no termina el piso la primera vez", session.capture(1) and session.state == session.State.PLAYING)
+	check("En solitario, que te cojan termina el piso", session.capture(1) and session.state == session.State.FAILED and session.restarts == 0)
+	await frames(10)
+	# With a team it is another matter: the floor gives the stage back once.
+	session.set_state(session.State.PLAYING)
+	session.participants = {1: session.Life.EXPLORING, 2: session.Life.EXPLORING}
+	session.roster_count = 2
+	# One set lit in this wing takes its power, the way it does in the second.
+	var third_sets: Array = level.stage_televisions()
+	level.switch_television(level.televisions[int(third_sets[0])])
+	await frames(8)
+	check("La tercera ala tiene su propio apagón", session.goal.get("blackout", false) and level.hotel.dark)
+	check("Con equipo, perder a uno no hunde el piso", session.capture(2) and session.state == session.State.PLAYING and session.restart_wait <= 0.0)
+	check("Caer los dos se perdona una vez", session.capture(1) and session.state == session.State.PLAYING)
 	# It takes a moment: the death is seen and heard before anybody gets up.
 	check("La muerte se cuenta antes de levantar a nadie", session.participants[1] == session.Life.DEAD and session.restart_wait > 0.0)
 	await frames(int(session.RESTART_WAIT * 60) + 20)
 	check("Vuelven todos de pie, en la misma etapa", session.participants[1] == session.Life.EXPLORING and session.stage == before_stage and session.restarts == 1)
 	check("Y el jugador recupera su cuerpo y su cámara", level.player.visible and level.player.collision_layer == 4 and level.player.camera.current)
+	# The stage is given back whole: its sets out and its power on.
+	check("Una etapa devuelta empieza con la luz otra vez", level.televisions_on() == 0 and not level.hotel.dark and not session.goal.get("blackout", false))
+	session.capture(2)
 	check("La segunda vez sí se acaba", session.capture(1) and session.state == session.State.FAILED)
 	await frames(10)
 	# Back to a floor in hand for the rest of the checks.
@@ -169,8 +215,21 @@ func run() -> void:
 	var exit_door = level.hotel.gates[2]
 	check("La última puerta está cerrada con código", exit_door.locked and not exit_door.opened and is_instance_valid(level.lock))
 	check("Y el piso no termina por estar en el refugio", not session.goal.ready)
-	level.typed = "".join(DIG.code(level.manifest).map(func(d): return str(d)))
-	level.match_net.use_code()
+	# The last stage asks for two things: its wing's sets lit and the code. The
+	# right code typed into a dark wing says so instead of opening nothing.
+	var right: String = "".join(DIG.code(level.manifest).map(func(d): return str(d)))
+	var third: Array = level.stage_televisions()
+	level.open_lock()
+	for character in right: level.type_code(character)
+	await frames(4)
+	check("Con las teles del ala apagadas, el código no abre", not level.code_entered and exit_door.locked)
+	level.close_lock()
+	for step in TV.needed(session.roster_count):
+		level.switch_television(level.televisions[int(third[step])])
+		await frames(3)
+	check("Encender la tanda del ala no basta por sí sola", not session.goal.ready and exit_door.locked)
+	level.open_lock()
+	for character in right: level.type_code(character)
 	await frames(4)
 	check("Con el código puesto la puerta se abre", level.code_entered and not exit_door.locked)
 	var won := false
