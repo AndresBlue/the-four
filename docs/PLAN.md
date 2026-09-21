@@ -42,13 +42,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que rompe una partida
 
-- [ ] **La linterna rompe texturas en Compatibilidad con calidad Baja.** Bandas
-  diagonales enormes sobre paredes y techo, y un foco gigante que no
-  corresponde al haz. Sospechas por orden: el proyector del haz
-  (`beam_pattern()`), el sesgo de sombra sin penumbra en ese preset y el
-  detalle de superficie a 0 (`surface_detail`). Es el renderizador de las
-  máquinas modestas, así que no es un caso raro.
-
 ## 2 · Lo que no se entiende jugando
 
 - [ ] **Reconectar debe devolverte donde estabas.** Hay código y prueba para

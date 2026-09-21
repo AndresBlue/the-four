@@ -124,7 +124,8 @@ func _ready() -> void:
 	body_shape = $BodyShape
 	camera = $Camera
 	torch = $Camera/Flashlight
-	if torch.light_projector == null: torch.light_projector = beam_pattern()
+	if plain_beam(): shape_plain_beam(torch)
+	elif torch.light_projector == null: torch.light_projector = beam_pattern()
 	torch_energy = torch.light_energy
 	# The torch is carried, not bolted to the view: it trails the camera.
 	torch.top_level = true
@@ -229,6 +230,28 @@ func _physics_process(delta: float) -> void:
 	var grounded := is_on_floor()
 	if grounded and not was_on_floor: sway_velocity.x -= 0.35
 	was_on_floor = grounded
+
+## The beam's shape is a projector texture, and the Compatibility renderer --
+## the one the modest machines run -- does not draw projectors at all. There
+## the torch came out as a flat disc of light with a hard rim, a great deal
+## wider than the beam, and its shadow, biased for Forward+, striped every wall
+## it was pointed at with wide diagonal bands. On that renderer the beam is
+## shaped with the cone's own falloff instead and biased for the depth it has.
+## Found by looking, with tools/capture/torch_capture.gd: the bands are gone at
+## 0.3 and 4.0 (0.12 and 2.0 cleared them at two metres and not at eleven), and
+## 26 degrees with a falloff of 3 puts the pool of light where Forward+ has it.
+const PLAIN_BEAM := {"angle": 26.0, "falloff": 3.0, "energy": 11.0, "bias": 0.3, "normal_bias": 4.0}
+
+static func plain_beam() -> bool:
+	return RenderingServer.get_current_rendering_method() != "forward_plus"
+
+static func shape_plain_beam(lamp: SpotLight3D) -> void:
+	lamp.light_projector = null
+	lamp.spot_angle = PLAIN_BEAM.angle
+	lamp.spot_angle_attenuation = PLAIN_BEAM.falloff
+	lamp.light_energy = PLAIN_BEAM.energy
+	lamp.shadow_bias = PLAIN_BEAM.bias
+	lamp.shadow_normal_bias = PLAIN_BEAM.normal_bias
 
 # Incandescent torch: hot centre, faint reflector ring and a soft falloff.
 static func beam_pattern() -> Texture2D:

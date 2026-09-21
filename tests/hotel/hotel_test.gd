@@ -252,6 +252,17 @@ func run() -> void:
 			if lamp.visible: alight += 1
 		most_sconces = maxi(most_sconces, alight)
 	check("Nunca más de doce apliques encendidos a la vez", most_sconces > 0 and most_sconces <= scene.hotel.SCONCES_LIT)
+	# The torch on the renderer of the modest machines: Compatibility draws no
+	# light projectors at all, so there the beam is the cone itself, narrower
+	# and with its own falloff, and its shadow needs a bias for the depth it
+	# has or it stripes every wall it is pointed at.
+	var torch_owner := preload("res://game/player/hotel_player.gd")
+	check("En Forward+ el haz de la linterna lleva su proyector", not torch_owner.plain_beam() and scene.player.torch.light_projector != null)
+	var plain := SpotLight3D.new()
+	plain.light_projector = torch_owner.beam_pattern()
+	torch_owner.shape_plain_beam(plain)
+	check("Y en Compatibilidad se dibuja con el cono y su propio sesgo", plain.light_projector == null and plain.spot_angle < 32.0 and plain.spot_angle_attenuation > 1.0 and plain.shadow_bias > 0.2 and plain.shadow_normal_bias > 2.0)
+	plain.free()
 	settings.set_value("quality", 1)
 	var session = scene.session
 	check("Cuotas correctas", quota(session, 1) == 1 and quota(session, 2) == 1 and quota(session, 3) == 2 and quota(session, 4) == 2)

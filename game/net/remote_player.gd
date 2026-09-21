@@ -9,6 +9,7 @@ extends CharacterBody3D
 const AVATAR := preload("res://game/player/avatars/avatar_visual.tscn")
 const STEPS := preload("res://game/audio/footstep_segments.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const PLAYER := preload("res://game/player/hotel_player.gd")
 ## Seconds behind the newest state: smooths the gaps between packets.
 const DELAY := 0.1
 var slot := 0
@@ -79,6 +80,10 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	torch.shadow_enabled = true
 	torch.shadow_bias = 0.04
 	torch.light_size = 0.03
+	# A teammate's beam is the same lamp with the same shadow: on the
+	# Compatibility renderer it stripes the walls the same way, and it is
+	# shaped and biased the same way to stop it (hotel_player.PLAIN_BEAM).
+	if PLAYER.plain_beam(): PLAYER.shape_plain_beam(torch)
 	torch.position = Vector3(0.24, -0.3, -0.25)
 	camera.add_child(torch)
 	step_voice = AudioStreamPlayer3D.new()
