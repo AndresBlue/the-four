@@ -239,6 +239,19 @@ func run() -> void:
 	check("Medio: TAA, SSAO sin SSIL y lámparas hasta 42 m", viewport.use_taa and scene.environment.ssao_enabled and not scene.environment.ssil_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 42.0) and scene.player.avatar.meshes.all(func(mesh): return mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON))
 	settings.set_value("quality", 3)
 	check("Ultra: MSAA 4×, SSR, lámparas hasta 64 m y salas hasta 82 m", viewport.msaa_3d == Viewport.MSAA_4X and scene.environment.ssr_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 64.0) and scene.hotel.preset.room_reach == 82.0)
+	# Wall lamps are the many -- eight or sixteen to a public room -- and what
+	# does not fit in the shadow atlas Godot draws without a shadow, which goes
+	# straight through the wall into the dark room on the other side. Only the
+	# nearest twelve are lit, wherever the player stands.
+	var most_sconces := 0
+	var floor_plan := preload("res://game/world/generation/floor_definition.gd")
+	for room in scene.manifest.rooms:
+		scene.hotel.update_visibility(floor_plan.position_of(room) + Vector3(0, 1.6, 0), true)
+		var alight := 0
+		for lamp in scene.hotel.sconce_lights:
+			if lamp.visible: alight += 1
+		most_sconces = maxi(most_sconces, alight)
+	check("Nunca más de doce apliques encendidos a la vez", most_sconces > 0 and most_sconces <= scene.hotel.SCONCES_LIT)
 	settings.set_value("quality", 1)
 	var session = scene.session
 	check("Cuotas correctas", quota(session, 1) == 1 and quota(session, 2) == 1 and quota(session, 3) == 2 and quota(session, 4) == 2)

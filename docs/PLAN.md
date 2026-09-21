@@ -42,12 +42,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ## 1 · Lo que rompe una partida
 
-- [ ] **Fugas de luz entre salas.** Hay habitaciones que se iluminan desde el
-  otro lado de su pared (se ve el patrón de listas de la sala vecina sobre el
-  tabique). Sospechas por orden: el desvanecido de las luces frente al de sus
-  sombras (`set_fade`/`practical_fade`: una luz que sigue alumbrando después de
-  que su sombra se apagó atraviesa paredes) y el rebote horneado
-  (`bounce_light.gd`).
 - [ ] **La linterna rompe texturas en Compatibilidad con calidad Baja.** Bandas
   diagonales enormes sobre paredes y techo, y un foco gigante que no
   corresponde al haz. Sospechas por orden: el proyector del haz

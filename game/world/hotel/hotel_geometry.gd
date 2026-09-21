@@ -1,4 +1,4 @@
-extends Node3D
+﻿extends Node3D
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 var materials := {}
@@ -114,6 +114,18 @@ const LIGHTING := preload("res://game/world/hotel/lighting.gd")
 ## Lit wall lamps (preset sconce_lights) and how far away they go out.
 var sconce_lights: Array[OmniLight3D] = []
 const SCONCE_REACH := 24.0
+## And how many of them are lit at once. Wall lamps are the many: eight to a
+## public room, fifty-odd within reach standing in the middle of a floor, and
+## every one of them asks for a place in the shadow atlas along with the
+## ceiling and furniture lamps. Over the atlas, Godot draws what does not fit
+## **without a shadow** -- and an omni light with no shadow goes straight
+## through the wall: the lit room next door appearing on your side of the
+## partition, a frame at a time, as you walk and the lamps round you change.
+## Measured (tools/dev/light_leak.gd, seed 81): with all of them the worst
+## dark room read 0.030 where it should read 0; with the nearest twelve,
+## 0.00013; with sixteen it was back to 0.029. The nearest few are all
+## anybody sees, and they are the ones lit.
+const SCONCES_LIT := 12
 ## Bounce light round each lit room (preset bounce): bounce_light.gd.
 const BOUNCE := preload("res://game/world/hotel/bounce_light.gd")
 var bounce := BOUNCE.new()
@@ -1152,8 +1164,8 @@ func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
 	lamp.light_size = SCONCE_SIZE * preset.penumbra
 	lamp.light_specular = 0.3
 	lamp.shadow_enabled = true
-	lamp.shadow_bias = 0.04
-	lamp.shadow_normal_bias = 0.6
+	lamp.shadow_bias = 0.02
+	lamp.shadow_normal_bias = 0.05
 	lamp.light_volumetric_fog_energy = 0.0
 	lamp.light_projector = LIGHTING.profile("sconce")
 	# Out of the bounce light: a wall lamp sits 25 cm from the wall, and the
@@ -1504,8 +1516,12 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 	for k in wanted.size():
 		if wanted[k].probe == null and k < PROBES_SHOWN: make_probe(wanted[k])
 		elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
-	for lamp in sconce_lights:
-		lamp.visible = not dark and preset.sconce_lights and shadows and not echo_view and lamp.global_position.distance_to(player_position) < SCONCE_REACH
+	# The nearest SCONCES_LIT wall lamps and no more: over the atlas they lose
+	# their shadows and light the room on the other side of the wall.
+	var near_sconces := sconce_lights.duplicate()
+	near_sconces.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool: return sconce_order(a, player_position) < sconce_order(b, player_position))
+	for k in near_sconces.size():
+		near_sconces[k].visible = not dark and preset.sconce_lights and shadows and not echo_view and k < SCONCES_LIT and near_sconces[k].global_position.distance_to(player_position) < SCONCE_REACH
 	bounce.show_near(player_position, preset.bounce and not echo_view)
 	for lamp in practicals:
 		lamp.visible = not dark and not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
@@ -1516,6 +1532,13 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		var shown: bool = doors[i].doorway.distance_to(player_position) < reach
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
+
+## Where a wall lamp stands in the queue for the twelve. One already lit counts
+## as a metre and a half nearer, so the ones round a room do not swap places
+## every time the player takes a step: a lamp going on and off as you shift
+## your weight would be worse than one lamp fewer.
+func sconce_order(lamp: OmniLight3D, from: Vector3) -> float:
+	return lamp.global_position.distance_to(from) - (1.5 if lamp.visible else 0.0)
 
 func build_dust() -> void:
 	dust = CPUParticles3D.new()

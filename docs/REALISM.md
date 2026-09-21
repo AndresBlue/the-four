@@ -203,6 +203,16 @@ La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). 
 
 **Sin fugas:** con la puerta cerrada, la sala oscura contigua a una iluminada da lo mismo con la luz nueva que sin apliques, sondas, niebla iluminada ni rebote, en los cuatro presets (8,9–9,0 de 255 con el ruido del sensor, sin lente ni OSD).
 
+**Y volvieron, al crecer el piso** (21 de septiembre de 2026). Aquella prueba tenía 32 apliques en toda la planta; hoy un salón lleva dieciséis y en mitad de un piso llegaban a estar encendidos **más de cincuenta**, con hasta 73 luces con sombra a la vez. El atlas de sombras no da para tantas y lo que no cabe se dibuja **sin sombra**, que es la variante de la tabla de arriba que «atraviesa el muro hacia la sala vecina»: la sala iluminada aparecía en el lado oscuro del tabique un fotograma sí y otro no, según se andaba. Se encienden como mucho los doce más cercanos (`SCONCES_LIT`), con metro y medio de ventaja para el que ya estaba encendido, y así no bailan al moverse. Medido con `tools/dev/light_leak.gd`, el peor de diez fotogramas mirando a las cuatro paredes desde el centro de cada sala oscura, con todas las puertas cerradas, frente al mismo piso sin corriente:
+
+| Semilla | Antes | Ahora |
+|---|---|---|
+| 81 | 0,01229 | 0,00016 |
+| 404 | 0,02112 | 0,00010 |
+| 777 | 0,00920 | 0,00006 |
+
+La mediana de las salas oscuras es 0,00000 en las tres. Solo afectaba a Alto y Ultra: en Bajo y Medio el aplique es emisivo y no tiene luz.
+
 **Coste** (RTX 4060 Ti, 1080p, GPU caminando, frente a la fase 1):
 
 | Preset | GPU | p99 del fotograma |
