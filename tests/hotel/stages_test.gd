@@ -175,6 +175,8 @@ func run() -> void:
 	# The blackout: it fell when only the last set was left. It belongs to this
 	# wing, and it is given back at the lift.
 	check("Se fue la luz del piso entero", session.goal.get("blackout", false) and level.hotel.dark)
+	await frames(20)
+	check("Y la música se fue con ella", level.music_power < 0.05)
 	check("Ninguna lámpara del hotel queda encendida", level.hotel.lights.all(func(light): return not light.visible) and level.hotel.practicals.all(func(lamp): return not lamp.visible) and level.hotel.sconce_lights.all(func(lamp): return not lamp.visible))
 	check("Las teles encendidas siguen dando luz", level.televisions[0].lamp.visible)
 	check("Una tele encendida da luz y no se apaga", level.televisions[0].on and level.televisions[0].lamp.visible and not level.televisions[0].set_on(true))
@@ -199,6 +201,8 @@ func run() -> void:
 	# The power that went belonged to the wing left behind: this one is found
 	# lit, with no lamp still marked out by the cut.
 	check("Al pasar de ala vuelve la corriente", not level.hotel.dark and not session.goal.get("blackout", false))
+	await frames(150)
+	check("Y con la corriente vuelve la música", level.music_power > 0.95)
 	check("Y ninguna lámpara queda apagada por el corte", level.hotel.lights.filter(func(light): return light.has_meta("off")).size() == level.hotel.dark_ids.size())
 	# Stood in a room of the new wing that is not one of the dark ones: its
 	# ceiling lamp is lit again. (Asking whether any lamp anywhere is visible

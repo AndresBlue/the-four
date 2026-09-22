@@ -105,6 +105,7 @@ func run() -> void:
 	enemy.grunt_rest = 0.0
 	enemy.chase_voice(0.1)
 	check("La persecución tiene voz: gruñe mientras corre", enemy.calls_made == 1)
+	check("Y ese gruñido va dirigido a quien persigue", enemy.aimed)
 	enemy.chase_voice(0.1)
 	check("Pero nunca dos gruñidos pegados", enemy.calls_made == 1)
 	enemy.set_physics_process(true)

@@ -261,7 +261,7 @@ func run() -> void:
 		await physics_frame
 	var found: bool = not creature.driver.revealed.is_empty()
 	check("Moviéndose, el chillido lo marca", found)
-	check("Y la marca es una nube que dura", found and echo.finds.multimesh.instance_count > 0 and echo.find_at > 0 and echo.FIND_LIFE >= 3.0)
+	check("Y la marca es una nube que dura", found and echo.finds.multimesh.instance_count > 0 and echo.finds_written > 0 and echo.FIND_LIFE >= 3.0)
 	level.match_net.shriek_left = 0.0
 	level.match_net.bodies.erase(2)
 	level.session.participants.erase(2)

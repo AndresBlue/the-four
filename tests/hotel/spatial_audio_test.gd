@@ -106,9 +106,20 @@ func run() -> void:
 	level.locust.set_mode(level.locust.Mode.CHASE)
 	check("The chase calls again once that grunt ends", level.locust.grunt_clock > level.locust.grunt_left)
 	var first_grunt: int = level.locust.last_grunt
+	level.locust.focus = null
+	audio.duck_hold = 0.0
 	level.locust.grunt()
 	check("Grunts do not repeat back to back", level.locust.last_grunt != first_grunt)
+	var plain_db: float = level.locust.voice.volume_db
+	check("A grunt at somebody else is just another call", not level.locust.aimed and is_zero_approx(audio.duck_hold))
 	level.locust.voice.stop()
+	# Chasing this listener: the grunt is about them.
+	level.locust.focus = level.player
+	level.locust.grunt()
+	check("A chase grunt at you is louder and closer", level.locust.aimed and level.locust.voice.unit_size == level.locust.AIMED_UNIT and level.locust.voice.volume_db > plain_db + 3.0)
+	check("And everything else the creature brings steps back under it", audio.duck_hold > 0.0)
+	level.locust.voice.stop()
+	level.locust.focus = null
 	# Distance has to be audible as distance, not only as volume: ten metres,
 	# twenty and forty must read differently, and a shriek has to die before
 	# the reach it buys (26 m of listening) makes it useful as a bearing.

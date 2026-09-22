@@ -398,14 +398,28 @@ func versus_hunter() -> void:
 	check("Controla a The Locust", creature.control == "player" and creature.driver != null and creature.camera.current)
 	check("Su jugador no cuenta como superviviente", not level.survivors().has(level.player) and not level.player.visible)
 	creature.grace = 0.0
-	# Sprinting is the hunter's chase, and a chase has a voice: before this it
-	# only ever made a sound when it shrieked.
+	# Sprinting with nobody in sight is only running: no voice. It used to
+	# grunt at every press of the key, telling the floor where it was for
+	# nothing.
+	var prey: Node3D = level.match_net.bodies[1]
+	creature.global_position = prey.global_position + Vector3(5.0, 0.0, 0.0)
+	creature.look_at(prey.global_position + Vector3(10.0, 0.0, 0.0) * 2.0, Vector3.UP)
+	creature.calls_made = 0
+	Input.action_press("forward")
+	Input.action_press("sprint")
+	await pause_for(2.0)
+	Input.action_release("sprint")
+	Input.action_release("forward")
+	check("Correr sin nadie a la vista no le hace gruñir", creature.calls_made == 0)
+	# With a survivor in plain sight the run is a chase, and a chase has a voice.
+	creature.global_position = prey.global_position + Vector3(6.0, 0.0, 0.0)
+	creature.look_at(Vector3(prey.global_position.x, creature.global_position.y, prey.global_position.z), Vector3.UP)
 	Input.action_press("forward")
 	Input.action_press("sprint")
 	var grunted: bool = await wait_for(func(): return creature.calls_made > 0, 15.0)
 	Input.action_release("sprint")
 	Input.action_release("forward")
-	check("Gruñe mientras caza, no solo al chillar", grunted)
+	check("Gruñe cuando corre a por alguien que ve, no solo al chillar", grunted)
 	check("Los ruidos de los supervivientes le llegan como contactos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
 	check("El contacto trae su clase y sus metros de ruta", creature.driver.heard.is_empty() or (creature.driver.heard[0].has("kind") and creature.driver.heard[0].has("apparent") and creature.driver.heard[0].distance > 0.0))
 	# Close enough for the shriek to find the survivor.
@@ -417,7 +431,7 @@ func versus_hunter() -> void:
 	check("El chillido le revela a los supervivientes que se mueven", await wait_for(func():
 		if creature.driver.shriek_cooldown <= 0.0: creature.driver.shriek()
 		return not creature.driver.revealed.is_empty(), 15.0))
-	check("Y los deja marcados con una nube que dura", creature.driver.echo.find_at > 0)
+	check("Y los deja marcados con una nube que dura", creature.driver.echo.finds_written > 0)
 	# Travelling by television: the hunter asks, the host judges it.
 	var lit: Array = await wait_for_value(func(): return level.lit_televisions(), func(value): return value.size() >= 2, 30.0)
 	if lit.size() >= 2:

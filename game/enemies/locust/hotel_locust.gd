@@ -93,7 +93,22 @@ const GRUNT_MIN := 1.6
 ## loud but carries further, because it is meant to be heard coming.
 const VOICE_SHRIEK := {"unit": 5.5, "reach": 32.0, "level": 3.0}
 const VOICE_GRUNT := {"unit": 7.0, "reach": 40.0, "level": 0.0}
+## A chase grunt meant for the one who hears it. In the din of a creature
+## running at you -- claws, breath, drone, chitter, heart -- a grunt at the
+## level of any other call was one more layer. When it is after you it is
+## louder, falls off less with distance (so it sounds close, not across the
+## room), keeps its top end unless a wall is in the way, and everything else
+## it brings steps back while it lasts (world_audio.duck_under), so it takes
+## the scene. After you means: the AI chasing this machine's survivor, or --
+## where somebody else runs the creature -- it being close with you in plain
+## sight.
+const AIMED_GAIN := 7.0
+const AIMED_UNIT := 13.0
+const AIMED_REACH := 24.0
+const AIMED_CUTOFF := 12000.0
 var grunt_rest := 0.0
+## The last grunt was aimed at this machine's survivor.
+var aimed := false
 ## Seconds left of the bark that announces a strike (it lives inside the same
 ## long recording, so it has to be stopped where it ends).
 var warn_left := 0.0
@@ -206,7 +221,7 @@ func on_footfall(point: Vector3, strength: float) -> void:
 	if not route.audible: return
 	# Its own feet, right under the hunter's ear, would wear it out: quieter still.
 	var level_db := lerpf(-9.0, -1.0, strength) - (6.0 if control == "player" else 0.0)
-	level.world_audio.apply_route(footstep, route, level_db, "Threat", true)
+	level.world_audio.apply_route(footstep, route, level_db + level.world_audio.duck_db(), "Threat", true)
 	footstep.pitch_scale = rng.randf_range(0.82, 1.08)
 	footstep.play()
 
@@ -223,6 +238,7 @@ func grunt() -> float:
 	var pitch := rng.randf_range(0.85, 1.0)
 	# Everyone else hears the same call from their own place.
 	if "match_net" in level and level.match_net != null: level.match_net.creature_call("grunt", last_grunt, pitch)
+	aimed = aimed_at_local()
 	# Silent runs (tests, captures) keep the cadence: the call counts as made.
 	if not level.world_audio.enabled: return segment[1] / pitch
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
@@ -234,7 +250,24 @@ func grunt() -> float:
 	voice.play(segment[0])
 	# A lower pitch plays the segment slower: stop when it really ends.
 	grunt_left = segment[1] / voice.pitch_scale
+	aim_voice(route, grunt_left)
 	return grunt_left
+
+## Whether this machine's survivor is the one being called at.
+func aimed_at_local() -> bool:
+	if level == null or control == "player" or level.match_net.local_is_locust() or not level.local_alive(): return false
+	var me: Node3D = level.player
+	if control == "ai": return mode == Mode.CHASE and focus == me
+	return global_position.distance_to(me.global_position) < AIMED_REACH and clear_sight(me.camera.global_position)
+
+## The grunt that has just been routed, made the one that is about you.
+func aim_voice(route: Dictionary, seconds: float) -> void:
+	aimed = aimed_at_local()
+	if not aimed: return
+	voice.unit_size = AIMED_UNIT
+	voice.volume_db += AIMED_GAIN
+	if not route.get("echo", false): voice.attenuation_filter_cutoff_hz = maxf(voice.attenuation_filter_cutoff_hz, AIMED_CUTOFF)
+	level.world_audio.duck_under(seconds)
 
 ## How far the voice carries and how loud it starts, by what it is saying.
 ## Returns the level to route it at.
@@ -624,6 +657,7 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 	voice.pitch_scale = pitch
 	voice.play(GRUNTS.SEGMENTS[segment][0])
 	grunt_left = GRUNTS.SEGMENTS[segment][1] / pitch
+	aim_voice(route, grunt_left)
 
 func _physics_process(delta: float) -> void:
 	if level.session.state != level.session.State.PLAYING: return

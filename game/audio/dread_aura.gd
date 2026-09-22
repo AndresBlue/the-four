@@ -146,9 +146,9 @@ func apply_levels(shaped: float, _delta: float, _listener: Vector3) -> void:
 		elif not audible and player.playing: player.stop()
 	# The drone wavers slightly off pitch, which reads as wrong rather than musical.
 	# Pressure stays underneath: the directional layers must stay readable.
-	drone.volume_db = lerpf(-42.0, -15.0, shaped)
+	drone.volume_db = lerpf(-42.0, -15.0, shaped) + world_audio.duck_db()
 	drone.pitch_scale = 0.97 + sin(clock * 0.21) * 0.015 + shaped * 0.02
-	breath.volume_db = lerpf(-24.0, 6.0, shaped)
+	breath.volume_db = lerpf(-24.0, 6.0, shaped) + world_audio.duck_db()
 	breath.pitch_scale = 0.9 + sin(clock * 0.13) * 0.04
 	if muffle != null: muffle.cutoff_hz = lerpf(20000.0, 650.0, pow(intensity, 1.8))
 
@@ -160,7 +160,7 @@ func update_chitters(delta: float) -> void:
 	chitter.global_position = cue_point + jitter
 	chitter.stream = chitter_streams[rng.randi_range(0, chitter_streams.size() - 1)]
 	chitter.pitch_scale = rng.randf_range(0.82, 1.18)
-	chitter.volume_db = lerpf(-6.0, 6.0, intensity)
+	chitter.volume_db = lerpf(-6.0, 6.0, intensity) + world_audio.duck_db()
 	chitter.play()
 	chitter_clock = lerpf(5.5, 0.6, intensity) * rng.randf_range(0.6, 1.5)
 
@@ -175,6 +175,6 @@ func update_heart(delta: float) -> void:
 		# Each recording is a whole beat; alternate them and restart on tempo.
 		heart_clock = period
 		heart.stream = lub if heart.stream != lub else dub
-		heart.volume_db = lerpf(-20.0, -8.0, strength)
+		heart.volume_db = lerpf(-20.0, -8.0, strength) + world_audio.duck_db()
 		heart.pitch_scale = 1.0 + strength * 0.08
 		heart.play(TIMING.onset(heart.stream.resource_path))

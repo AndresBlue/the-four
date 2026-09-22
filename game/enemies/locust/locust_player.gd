@@ -168,7 +168,9 @@ func drive(delta: float) -> void:
 			# voice hang off it, and assigning the mode skipped both, which is
 			# why a human hunter only ever sounded when it shrieked.
 			if creature.mode != wanted_mode: creature.set_mode(wanted_mode)
-			if hunting: creature.chase_voice(delta)
+			# It grunts running at somebody, not running: sprinting down an empty
+			# corridor it only told everybody where it was for nothing.
+			if hunting and creature.seen_survivor() != null: creature.chase_voice(delta)
 			open_doors(hunting, heading)
 	update_channels()
 	creature.update_visual(delta)

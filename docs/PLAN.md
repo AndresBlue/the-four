@@ -82,7 +82,12 @@ herramientas para mirarlo están en la guía de desarrollo.
 ### Lo que hay que oír
 
 - [ ] **Los gruñidos:** nivel y frecuencia, sobre todo los del propio cazador
-  (se oyen 6 dB más bajos para quien lleva la criatura).
+  (se oyen 6 dB más bajos para quien lleva la criatura). Y los dirigidos a ti
+  en una persecución, que ahora suben 7 dB, suenan más cerca y apartan 9 dB
+  el aura, los pasos, el ambiente y la música: si dominan sin tapar hacia
+  dónde está.
+- [ ] **La música que se va con el apagón** y vuelve en el ala siguiente: si
+  el corte se nota como parte del apagón o como un fallo.
 - [ ] **Las distancias con auriculares:** si 10, 20 y 40 m se distinguen de
   verdad, si las puertas lejanas se siguen leyendo con la absorción nueva, y si
   la dirección de la criatura se acierta en esquinas y con dos puertas.

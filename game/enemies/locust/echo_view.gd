@@ -230,6 +230,9 @@ var body_at := 0
 var body_shown := 0
 var puff_at := 0
 var find_at := 0
+## Grains the shriek has left on this view since it opened. find_at is a ring
+## index and comes back round to 0, so it cannot say whether anything was.
+var finds_written := 0
 var frame_at := 0
 ## Noises already turned into a puff, so each one only blooms once.
 var puffed := 0
@@ -791,6 +794,7 @@ func write(cloud: MultiMeshInstance3D, point: Vector3, span: float, kind: float,
 	elif cloud == finds:
 		index = find_at
 		find_at = (find_at + 1) % multi.instance_count
+		finds_written += 1
 	elif cloud == motes:
 		index = mote_at
 		mote_at = (mote_at + 1) % multi.instance_count

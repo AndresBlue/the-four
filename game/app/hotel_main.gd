@@ -1584,8 +1584,12 @@ func _process(delta: float) -> void:
 	var warning_active: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
 	# The bed and music recede as the dread aura rises, leaving room for it.
 	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
-	ambience.volume_db = (-25.0 if warning_active else -17.0) - dread * 9.0
-	theme.volume_db = (-30.0 if warning_active else -24.0) - dread * 22.0
+	ambience.volume_db = (-25.0 if warning_active else -17.0) - dread * 9.0 + world_audio.duck_db()
+	# The music is on the hotel's power: it goes with the lights, at once, and
+	# comes back with them in the next wing, more gently.
+	var powered: bool = not (is_instance_valid(hotel) and hotel.dark)
+	music_power = move_toward(music_power, 1.0 if powered else 0.0, delta / (MUSIC_RETURN if powered else MUSIC_CUT))
+	theme.volume_db = (-30.0 if warning_active else -24.0) - dread * 22.0 + world_audio.duck_db() + linear_to_db(maxf(music_power, 0.0001))
 	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty() and not warning_active:
 		ui.subtitle.text = world_audio.caption_text
 	visibility_clock += delta
@@ -1979,6 +1983,12 @@ func build_audio() -> void:
 	menu_music.stream = load("res://assets/audio/the_four_theme.mp3").duplicate()
 	menu_music.stream.loop = true
 	add_child(menu_music)
+
+## How much of the music is left with the power (1 on, 0 cut), and how fast it
+## goes and comes back.
+var music_power := 1.0
+const MUSIC_CUT := 0.12
+const MUSIC_RETURN := 2.0
 
 # Quiet music behind the menus (the title room is its own scene).
 func update_menu_scene(_delta: float) -> void:

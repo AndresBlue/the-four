@@ -305,8 +305,27 @@ func reset() -> void:
 	caption_cooldown = 0
 	caption_text = ""
 
+## A grunt aimed at this listener takes the scene: everything else the
+## creature brings with it -- the aura, its feet -- and the hotel's own bed
+## and music step back for as long as it lasts, fast in and slower out, so
+## the voice is what is heard and not one more layer of the din.
+const DUCK_DEPTH := 9.0
+const DUCK_ATTACK := 0.08
+const DUCK_RELEASE := 0.6
+var duck := 0.0
+var duck_hold := 0.0
+
+func duck_under(seconds: float) -> void:
+	duck_hold = maxf(duck_hold, seconds)
+
+## What the ducked sounds lose right now, in dB (<= 0).
+func duck_db() -> float:
+	return -DUCK_DEPTH * duck
+
 func _physics_process(delta: float) -> void:
 	if level == null: return
+	duck_hold = maxf(0.0, duck_hold - delta)
+	duck = move_toward(duck, 1.0 if duck_hold > 0.0 else 0.0, delta / (DUCK_ATTACK if duck_hold > 0.0 else DUCK_RELEASE))
 	caption_time = maxf(0, caption_time - delta)
 	caption_cooldown = maxf(0, caption_cooldown - delta)
 	if caption_time <= 0: caption_text = ""
