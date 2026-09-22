@@ -101,12 +101,20 @@ func set_dead(value: bool) -> void:
 	visible = not value
 	collision_layer = 0 if value else 4
 	if value:
+		# A wardrobe it died in (dropped out while hiding) is empty again: kept
+		# taken, nobody could get in and the creature kept searching it.
+		if is_instance_valid(hiding_place) and hiding_place.occupant == self: hiding_place.leave()
 		hidden = false
 		hiding_place = null
 		torch.visible = false
 
 ## One state from the owner (see match_net.gd pack_local).
 func push_state(data: Array) -> void:
+	if ride_hold > 0.0:
+		if (data[0] as Vector3).distance_to(ride_point) > 3.0:
+			away = false
+			return
+		ride_hold = 0.0
 	states.append({"time": clock, "position": data[0], "yaw": data[1], "pitch": data[2], "velocity": data[3]})
 	while states.size() > 12: states.pop_front()
 	var flags: int = data[4]
@@ -129,9 +137,23 @@ func place(point: Vector3, yaw: float) -> void:
 	global_position = point
 	rotation.y = yaw
 	states.clear()
+	ride_hold = 0.0
+
+## Carried by a lift. Its owner only moves its own body half-way through the
+## ride and keeps sending the old car until then: those states are older than
+## the ride and are dropped, or the puppet jumped back into the car and out
+## again -- and on the host stood there to be caught.
+const RIDE_HOLD := 3.0
+var ride_hold := 0.0
+var ride_point := Vector3.ZERO
+func ride_to(point: Vector3) -> void:
+	place(point, rotation.y)
+	ride_point = point
+	ride_hold = RIDE_HOLD
 
 func _physics_process(delta: float) -> void:
 	clock += delta
+	ride_hold = maxf(0.0, ride_hold - delta)
 	if dead or states.is_empty():
 		velocity = Vector3.ZERO
 		avatar.update_pose(Vector3.ZERO, crouched, delta)

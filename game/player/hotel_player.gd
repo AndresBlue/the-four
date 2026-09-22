@@ -168,7 +168,11 @@ func _physics_process(delta: float) -> void:
 		return
 	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden and not reading else Vector2.ZERO
 	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized()
-	var wants_crouch := active and not hidden and Input.is_action_pressed("crouch")
+	# Reading (a document, the sheet, the keypad) keeps the body still: the
+	# keys that jump and crouch are read from the whole keyboard, so a space
+	# typed while reading used to jump -- and a jump is heard. It stays as it
+	# was, crouched or standing.
+	var wants_crouch: bool = crouched if reading else active and not hidden and Input.is_action_pressed("crouch")
 	if wants_crouch or can_stand(): crouched = wants_crouch
 	# Only on a change: every write rebuilds the physics shape.
 	if not is_equal_approx(body_shape.shape.height, 1.05 if crouched else 1.8):
@@ -187,7 +191,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, direction.x * speed, 22 * delta)
 	velocity.z = move_toward(velocity.z, direction.z * speed, 22 * delta)
 	if not is_on_floor(): velocity.y -= 20 * delta
-	if active and not hidden and not crouched and is_on_floor() and Input.is_action_just_pressed("jump"):
+	if active and not hidden and not reading and not crouched and is_on_floor() and Input.is_action_just_pressed("jump"):
 		velocity.y = 5.4
 		noise.emit(global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)
 	move_and_slide()

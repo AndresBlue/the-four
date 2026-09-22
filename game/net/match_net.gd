@@ -173,8 +173,10 @@ func judge_ready(seat: int, id: int, floor_hash: int) -> void:
 		push_warning("Seat %d built a different floor" % seat)
 		net.refuse(id, "Tu piso no coincide con el del anfitrión: usad todos el mismo exe.")
 		return
-	if level.session.state in [level.session.State.PLAYING, level.session.State.TRANSITION]:
-		# Coming back into a running floor: bring them up to date.
+	if level.session.state in [level.session.State.PLAYING, level.session.State.TRANSITION, level.session.State.WON, level.session.State.FAILED]:
+		# Coming back into a running floor, or one that has just ended (the
+		# host has not left its end screen yet): bring them up to date. Left
+		# to the ready count, which was over, they sat on the loading screen.
 		catch_up(seat, id)
 		return
 	ready_seats[seat] = floor_hash
@@ -191,6 +193,12 @@ func check_ready() -> void:
 ## Everyone has the floor: play.
 @rpc("authority", "call_remote", "reliable")
 func go() -> void:
+	# The host stops waiting after READY_TIMEOUT and starts without whoever
+	# is still putting its floor up. That machine must not start a floor it
+	# is in the middle of building (it ended up with two creatures): its
+	# report comes in late, and the host catches it up then like anybody
+	# coming back (judge_ready -> catch_up).
+	if not net.is_host and manifest_hash == 0: return
 	level.begin_online_play(config)
 	floor_live = true
 	if net.is_host:
@@ -222,7 +230,10 @@ func _process(delta: float) -> void:
 	if not net.is_host: return
 	for seat in away.keys():
 		away[seat] += delta
-		if away[seat] >= RECONNECT_GRACE:
+		# Only while the floor is being played: between stages the session
+		# cannot drop anybody, and the seat was left in limbo -- alive, never
+		# coming back, holding up a refuge with a body nobody could see.
+		if away[seat] >= RECONNECT_GRACE and level.session.state == level.session.State.PLAYING:
 			away.erase(seat)
 			level.session.drop(seat)
 			if bodies.has(seat): bodies[seat].visible = false
@@ -767,6 +778,15 @@ func execute_start(seat: int, point: Vector3, yaw: float) -> void:
 
 ## The victim was inside a wardrobe: it is pulled out of it first.
 func free_victim_hide(seat: int) -> void:
+	# The host's own survivor leaves its wardrobe on this machine as the
+	# execution starts (apply_execution); the others are told here. Left out,
+	# every guest kept that wardrobe taken by the host for the rest of the floor.
+	if seat == net.local_seat:
+		var own = level.player.hiding_place
+		if not level.player.hidden or not is_instance_valid(own): return
+		var own_index: int = level.hotel.hides.find(own)
+		if in_match() and own_index >= 0: hide_state.rpc(own_index, -seat)
+		return
 	var body = bodies.get(seat)
 	if body == null or not body.hidden or not is_instance_valid(body.hiding_place): return
 	var index: int = level.hotel.hides.find(body.hiding_place)
@@ -862,13 +882,21 @@ func catch_up(seat: int, id: int) -> void:
 	var creature = level.locust
 	var sets: Array = []
 	for set in level.televisions: sets.append(is_instance_valid(set) and set.on)
-	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot(), sets)
+	# And what the floor has been through that a rebuilt floor does not know:
+	# drawers searched (and so digits found), the code entered, cars away,
+	# and the sector it is on.
+	var searched: Array = []
+	for index in level.containers.size():
+		if is_instance_valid(level.containers[index]) and level.containers[index].searched: searched.append(index)
+	var progress := {"searched": searched, "code": level.code_entered, "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage}
+	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot(), sets, progress)
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 
 @rpc("authority", "call_remote", "reliable")
-func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array, sets: Array) -> void:
+func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array, sets: Array, progress: Dictionary = {}) -> void:
 	level.begin_online_play(config)
 	floor_live = true
+	level.catch_up_progress(progress)
 	for index in mini(doors.size(), level.hotel.doors.size()): level.hotel.doors[index].set_state(doors[index])
 	for seat_key in places:
 		var seat := int(seat_key)

@@ -313,6 +313,16 @@ func cut_short_checks() -> void:
 	check("La sesión de un invitado no avanza de etapa por su cuenta", session.stage == stage and session.state == session.State.TRANSITION)
 	session.authority = true
 	session.set_state(session.State.PLAYING)
+	# The keypad does not stay open under the pause, taking digits.
+	level.open_lock()
+	session.set_state(session.State.PAUSED)
+	check("Pausar cierra el teclado del código", not level.lock_open and not player.reading)
+	session.set_state(session.State.PLAYING)
+	# Nor over a death: caught at the keypad, it goes.
+	level.open_lock()
+	level.apply_execution(player.slot, player.global_position, 0.0)
+	check("Si te atrapan en el teclado, el teclado se cierra", not level.lock_open)
+	level.release_execution()
 	# On this seed the deepest room of the first wing is the lift lobby behind
 	# the refuge: the creature started there, shut in for the whole stage.
 	await level.start_floor(673128)

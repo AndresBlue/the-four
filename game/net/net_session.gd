@@ -149,6 +149,9 @@ func _peer_disconnected(id: int) -> void:
 		players[seat].connected = false
 		players[seat].peer = 0
 		match_net.seat_dropped(seat)
+		# Still waiting for everybody's floor: whoever left is not coming,
+		# and the others waited out the whole timeout for them.
+		match_net.check_ready()
 	else:
 		players.erase(seat)
 	broadcast_lobby()

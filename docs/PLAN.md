@@ -133,6 +133,15 @@ herramientas para mirarlo están en la guía de desarrollo.
   pulsando antes de tiempo.
 - [ ] **La linterna en Compatibilidad en Alto y Ultra**, a más de diez metros,
   ahora que el atlas de sombras se queda en 4096 en ese renderizador.
+- [ ] **La criatura persigue de verdad.** Hasta el 22 de septiembre, quien
+  seguía andando a su vista nunca era perseguido: cada paso que oía reiniciaba
+  su alerta, y se quedaba parada gruñendo. Ahora la alerta acaba en
+  persecución. Es otra dificultad, sobre todo en solitario: volver a medirla,
+  y ver si los gruñidos, que salían de ese bucle, se quedan en su sitio.
+- [ ] **Lo que se arregló de la revisión de fallos del 22 de septiembre**, en
+  partida online: el paso del sector 2 al 3 en los invitados (antes parpadeaban
+  las luces), volver a una partida (cajones, código y cartel del sector al
+  día), y los armarios de quien muere o se desconecta dentro.
 - [ ] **La linterna en la vista de la criatura**, vista de lado y no solo de
   frente, ahora que es el cono real del haz.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel
@@ -157,9 +166,36 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 ## 2 · Deuda técnica
 
-Nada de esto se ve jugando, y todo cuesta caro más adelante. **Hoy no queda
-nada**: lo que había está hecho y descrito en la guía de desarrollo. Lo que
-aparezca va aquí.
+Nada de esto se ve jugando, y todo cuesta caro más adelante. Lo que había está
+hecho y descrito en la guía de desarrollo. Lo que aparezca va aquí.
+
+### Fallos menores conocidos
+
+Salieron en la revisión del 22 de septiembre y se dejaron para más adelante:
+no rompen nada.
+
+- [ ] Los subtítulos no se borran al morir ni en las pantallas de pausa y fin
+  (`ui.subtitle` solo se limpia desde `drive_local` con el jugador vivo).
+- [ ] Al apagarse la luz, el volumen de luz rebotada se oculta y
+  `hotel.update_visibility` lo vuelve a mostrar a los 0,25 s: no mira `dark`.
+- [ ] El apagón también apaga el panel del coche del ascensor: comparte el
+  material `"light"` que `held_glows` pone a cero.
+- [ ] Los documentos pueden caer en los refugios de las alas 2 y 3:
+  `document_placement.gd` solo excluye `manifest.exit`.
+- [ ] Salas de pasillo de una sola celda (unas 0,9 por piso): `island_refuge`
+  saca del pasillo las celdas del anillo, pero deja marcadas las demás.
+- [ ] Los nombres de las teclas salen con la distribución de EE. UU. (en un
+  teclado español la Ñ se ve como «;»): `settings_service.key_name`.
+- [ ] Mover un deslizador de ajustes guarda en disco y reaplica la calidad de
+  todo el piso en cada paso.
+- [ ] Órdenes de red que se aceptan de cualquier peer y solo importan con un
+  cliente modificado: `locust_call` sin comprobar el remitente, y
+  `request_lift`, `request_container` y `request_television` aceptadas del
+  cazador.
+- [ ] «Reintentar» online falla sin avisar si el asiento del cazador se ha
+  ido (`start_match` devuelve un error que nadie mira).
+- [ ] El validador cuenta dos ciclos de más: `E − V + 1` sobre un grafo de tres
+  alas separadas.
 
 ## 3 · Acabado de lo que ya existe
 

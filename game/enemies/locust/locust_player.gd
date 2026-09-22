@@ -236,7 +236,9 @@ func open_doors(hunting: bool, heading: Vector3) -> void:
 			level.match_net.use_door(door, not hunting, hunting)
 
 func strike() -> void:
-	if cooldown > 0.0 or creature.grace > 0.0 or creature.mode in [creature.Mode.WINDUP, creature.Mode.RECOVER]: return
+	# Not out of a kill or a wardrobe either: a click there dropped what it was
+	# doing and walked off with the victim held in the air.
+	if cooldown > 0.0 or creature.grace > 0.0 or creature.mode in [creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.EXECUTE, creature.Mode.WARDROBE]: return
 	cooldown = COOLDOWN
 	struck = false
 	creature.set_mode(creature.Mode.WINDUP)

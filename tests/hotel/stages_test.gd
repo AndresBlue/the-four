@@ -234,7 +234,28 @@ func run() -> void:
 	await frames(20)
 	check("Un cazador humano también cruza en el ascensor", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 2)
 	level.locust.control = "ai"
+	# Two wings behind (it spent the whole second stage after a straggler):
+	# its own wing's car is the one that takes it on, not the last stage's.
+	level.lifts.lift_away.erase(0)
+	level.locust.set_mode(level.locust.Mode.EXECUTE)
+	level.locust.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
+	await frames(10)
+	check("En plena ejecución el ascensor no se la lleva", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 0)
+	level.locust.set_mode(level.locust.Mode.PATROL)
+	await frames(10)
+	check("Dos alas atrás toma el coche de su propia ala", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 1)
 	level.locust.global_position = Vector3(0, -80, 0)
+	# Held on the blade is not standing in the car.
+	var stood: Vector3 = level.player.global_position
+	# Just off the last ride: that one is over.
+	level.lifts.riding.erase(level.player.slot)
+	level.player.global_position = level.hotel.lifts[1] + Vector3(0, 0.1, 0)
+	level.execution = {"seat": level.player.slot, "time": 0.5, "point": level.player.global_position, "yaw": 0.0, "stabs": 0, "dropped": false}
+	var in_car_held: bool = level.lifts.inside(1).has(level.player)
+	level.execution = {}
+	var in_car_free: bool = level.lifts.inside(1).has(level.player)
+	check("Una víctima en plena ejecución no sube al coche", not in_car_held and in_car_free)
+	level.player.global_position = stood
 	# Third stage: four numbers hidden in drawers and shelves of its wing.
 	var hidden: Array = level.containers.filter(func(piece): return piece.digit >= 0)
 	check("Hay cuatro números escondidos", hidden.size() == DIG.COUNT)

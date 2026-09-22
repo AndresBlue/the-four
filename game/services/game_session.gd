@@ -104,6 +104,9 @@ func update_goal(delta: float, met: bool) -> void:
 func finish_stage() -> void:
 	if state != State.PLAYING: return
 	transition_time = 0
+	# A restart counting down when the stage is closed anyway (the last one
+	# standing rode the car) would have gone off in the next stage.
+	restart_wait = 0.0
 	set_state(State.TRANSITION)
 
 ## True while the floor goes on: the last stage is the one that ends it.

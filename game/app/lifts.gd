@@ -52,7 +52,7 @@ func announce_sector(delta := 0.0) -> void:
 ## not moved anywhere -- it has to walk there and ride it, like they did.
 func follow_players(stage: int) -> void:
 	if level.net.is_client() or not is_instance_valid(level.locust) or level.manifest.is_empty(): return
-	var index := stage - 2
+	var index := creature_car(stage)
 	if index < 0 or index >= level.hotel.lifts.size(): return
 	# It is told in the only language it has: its own voice, and the road to
 	# the car laid out in its reading, from where it happens to be standing.
@@ -70,6 +70,31 @@ var lift_away := {}
 
 ## True while that car is away and nobody can step into it.
 func lift_gone(index: int) -> bool: return float(lift_away.get(index, 0.0)) > 0.0
+
+## Counted on every machine: a guest has to know the car is away as well, or
+## it offers a button that does nothing.
+func count_away(delta: float) -> void:
+	for index in lift_away.keys():
+		lift_away[index] = float(lift_away[index]) - delta
+		if lift_away[index] <= 0.0: lift_away.erase(index)
+
+## The car that lets out at this point, or -1.
+func car_arriving_at(point: Vector3) -> int:
+	for index in level.hotel.arrivals.size():
+		var arrival: Vector3 = level.hotel.arrivals[index]
+		if arrival != Vector3.ZERO and Vector2(arrival.x - point.x, arrival.z - point.z).length() < 2.5: return index
+	return -1
+
+## The car out of the wing the creature is standing in, while that wing is
+## behind the one being played; -1 otherwise. Its own wing's car and not the
+## last stage's: a creature that stayed two wings back (chasing a straggler
+## through a whole stage) was aimed at a car it could never walk to.
+func creature_car(stage: int) -> int:
+	if not is_instance_valid(level.locust): return -1
+	var here: Dictionary = FLOOR.room_at(level.manifest.rooms, level.locust.global_position)
+	if here.is_empty(): return -1
+	var wing := int(here.get("wing", 0))
+	return wing if wing < stage - 1 else -1
 
 ## Points the creature at a car, without taking it off anything it is already
 ## doing: somebody left behind in this wing comes before the lift.
@@ -95,12 +120,16 @@ const CROSS_AIM := 2.5
 var cross_clock := 0.0
 func creature_crossing(delta: float) -> void:
 	if not is_instance_valid(level.locust) or level.manifest.is_empty() or level.hotel.lifts.is_empty(): return
-	var index: int = level.session.stage - 2
+	# Already across, or standing nowhere the floor knows about.
+	var index: int = creature_car(level.session.stage)
 	if index < 0 or index >= level.hotel.lifts.size() or index >= level.hotel.arrivals.size(): return
 	if level.hotel.arrivals[index] == Vector3.ZERO: return
-	var here: Dictionary = FLOOR.room_at(level.manifest.rooms, level.locust.global_position)
-	# Already across, or standing nowhere the floor knows about.
-	if here.is_empty() or int(here.get("wing", 0)) >= level.session.stage - 1: return
+	# Never in the middle of something: a kill by the car used to go up with
+	# it, the victim dragged through the walls after it. The machine hunts
+	# first and rides after; a player hunting rides when it is free to.
+	var busy: Array = [level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.WINDUP, level.locust.Mode.RECOVER]
+	if level.locust.control == "ai": busy += [level.locust.Mode.CHASE, level.locust.Mode.ALERT]
+	if level.locust.mode in busy: return
 	if level.locust.global_position.distance_to(level.hotel.lifts[index]) <= RIDE_REACH + 0.6 and not lift_gone(index):
 		lift_away[index] = LIFT_RETURN
 		level.match_net.locust_ride(level.hotel.arrivals[index] + Vector3(0, 0.04, 0))
@@ -115,6 +144,8 @@ func creature_crossing(delta: float) -> void:
 ## stands the rest of the time.
 func apply_locust_ride(point: Vector3) -> void:
 	if not is_instance_valid(level.locust): return
+	var car := car_arriving_at(point)
+	if car >= 0: lift_away[car] = LIFT_RETURN
 	level.locust.global_position = point
 	level.locust.velocity = Vector3.ZERO
 	level.locust.net_states.clear()
@@ -136,7 +167,13 @@ func apply_locust_ride(point: Vector3) -> void:
 ## behind rides after them. It is the only way from one wing to the next: they
 ## share no wall.
 const RIDE_REACH := 1.4
-const RIDE_REST := 3.0
+## Seconds a rider counts as riding once the car has gone: the ride itself
+## (RIDE_TIME) and a moment to step out. Nothing takes them meanwhile.
+const RIDE_REST := 3.7
+## A guest in the car is judged on the host's copy of its body, which is a
+## little behind: it is given this much more room, so pressing the button the
+## moment it is in does not leave it behind.
+const RIDE_SLACK := 0.5
 var riding := {}
 func ride_lifts() -> void:
 	var delta := get_physics_process_delta_time()
@@ -144,10 +181,7 @@ func ride_lifts() -> void:
 		riding[seat] = riding[seat] - delta
 		if riding[seat] <= 0.0: riding.erase(seat)
 	# The car is a car: it goes up with whoever stepped into it and comes back
-	# down a quarter of a minute later.
-	for index in lift_away.keys():
-		lift_away[index] = float(lift_away[index]) - delta
-		if lift_away[index] <= 0.0: lift_away.erase(index)
+	# down a quarter of a minute later (count_away, on every machine).
 	creature_crossing(delta)
 	for index in called.keys():
 		called.erase(index)
@@ -191,7 +225,10 @@ func inside(index: int) -> Array:
 	for body in level.survivors():
 		var seat := int(body.slot)
 		if riding.has(seat) or int(level.session.participants.get(seat, level.session.Life.DEAD)) == level.session.Life.DEAD: continue
-		if body.global_position.distance_to(level.hotel.lifts[index]) <= RIDE_REACH: bodies.append(body)
+		# Held on the blade is not in the car: the victim died in the next wing.
+		if not level.execution.is_empty() and int(level.execution.seat) == seat: continue
+		var reach: float = RIDE_REACH if body == level.player else RIDE_REACH + RIDE_SLACK
+		if body.global_position.distance_to(level.hotel.lifts[index]) <= reach: bodies.append(body)
 	return bodies
 
 ## The car this body is standing in, ready to go, or -1.
@@ -208,6 +245,8 @@ func press(index: int) -> void:
 ## the others the puppet is put where it is told. Both doors are heard, the
 ## one that shuts here and the one that opens there.
 func apply_ride(seat: int, point: Vector3) -> void:
+	var car := car_arriving_at(point)
+	if car >= 0: lift_away[car] = LIFT_RETURN
 	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), -6.0)
 	if seat == level.player.slot:
 		# Its own ride: the doors shut, the picture goes, and it comes out
@@ -223,7 +262,7 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		var arriving: int = clampi(wing + 1, 1, level.session.STAGES)
 		level.ui.show_transit("SECTOR %d" % arriving, stage_errand(arriving), RIDE_TIME)
 		pending_brief = arriving
-	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].place(point, 0.0)
+	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].ride_to(point)
 
 ## The ride itself, on the machine of whoever is taking it: a second and a bit
 ## with the doors shut and no picture, which is all a lift is from inside. It

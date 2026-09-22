@@ -724,14 +724,15 @@ func search_container(piece: Node3D) -> void:
 	if not is_instance_valid(piece) or piece.searched: return
 	match_net.use_container(piece)
 
-## Applied everywhere, whoever decided it.
-func apply_search(index: int, value: bool) -> void:
+## Applied everywhere, whoever decided it. Quiet: caught up on coming back,
+## not happening now.
+func apply_search(index: int, value: bool, quiet := false) -> void:
 	if index < 0 or index >= containers.size(): return
 	var piece = containers[index]
 	if not is_instance_valid(piece) or not piece.set_searched(value): return
 	if not value: return
-	if world_audio.enabled: world_audio.play_at(SEARCH_SOUND, piece.global_position + Vector3(0, 0.8, 0), -10.0)
-	if not net.is_client(): on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
+	if world_audio.enabled and not quiet: world_audio.play_at(SEARCH_SOUND, piece.global_position + Vector3(0, 0.8, 0), -10.0)
+	if not net.is_client() and not quiet: on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
 		var room: Dictionary = FLOOR.room_at(manifest.rooms, piece.global_position)
@@ -804,6 +805,9 @@ func on_state() -> void:
 	if not playing and ui.sheet.visible:
 		ui.sheet.close()
 		player.reading = false
+	# The keypad as well: left open under the pause it still took digits, and
+	# Escape shut it instead of resuming.
+	if not playing and lock_open: close_lock()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if playing and not online_menu and not ui.sheet.visible else Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = session.state in [session.State.MENU, session.State.PAUSED, session.State.WON, session.State.FAILED] and not match_net.in_match()
 	if session.state in [session.State.MENU, session.State.LOADING, session.State.CUTSCENE]: clear_screen_cues()
@@ -1031,14 +1035,16 @@ func local_alive() -> bool:
 	return not match_net.in_match() or match_net.local_is_locust() or session.participants.get(player.slot, session.Life.DEAD) != session.Life.DEAD
 
 ## Alive and outside the refuge: fair game.
+## Riding a lift is out of reach as well: the doors are shut.
 func survivor_active(body: Node3D) -> bool:
-	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position)
+	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position) and not lifts.riding.has(int(body.slot))
 
 ## The creature reached this survivor: the execution starts and the death is
 ## registered when it ends (host, or offline).
 func capture_survivor(body: Node3D) -> void:
 	if body == null or net.is_client() or not execution.is_empty() or not is_instance_valid(locust): return
 	if session.participants.get(body.slot, session.Life.DEAD) != session.Life.EXPLORING: return
+	if lifts.riding.has(int(body.slot)): return
 	if match_net.in_match(): match_net.free_victim_hide(body.slot)
 	var point: Vector3 = locust.global_position
 	var yaw: float = locust.rotation.y
@@ -1057,6 +1063,9 @@ func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 		player.velocity = Vector3.ZERO
 		if player.hidden: player.force_leave_hide()
 		if ui.sheet.visible: toggle_sheet()
+		# Nothing it was reading stays up over its death.
+		if lock_open: close_lock()
+		if is_instance_valid(reading_document): close_document()
 	# The scream is the moment it has you: flat and loud in the victim's own
 	# ears, and out in the room for everybody else.
 	if not world_audio.enabled: return
@@ -1097,10 +1106,13 @@ func update_execution(delta: float) -> void:
 			lost_signal = LOST_HOLD
 			ui.lost_signal(LOST_HOLD)
 		execution = {}
-		player.held = false
-		if player.avatar != null:
-			player.avatar.rotation.x = 0.0
-			player.avatar.rotation.z = 0.0
+		# Only the victim was held by it: somebody else's death let whoever
+		# was mid-ride walk about in the dark.
+		if seat == player.slot:
+			player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
+			if player.avatar != null:
+				player.avatar.rotation.x = 0.0
+				player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
 
 ## An execution cut short: the victim is let go alive, back on its feet with a
@@ -1327,6 +1339,25 @@ func close_lock() -> void:
 	ui.hide_lock()
 
 ## The code is in: the last door gives way, on every machine.
+## A player back in a running floor: what it rebuilt knows nothing of what
+## happened meanwhile (match_net.catch_up). Its card named sector 1, its
+## drawers were full again -- and the host would not let them be searched a
+## second time, so those digits were lost to it -- and its keypad was locked.
+func catch_up_progress(progress: Dictionary) -> void:
+	if progress.is_empty(): return
+	for index in progress.get("searched", []): apply_search(int(index), true, true)
+	if bool(progress.get("code", false)) and not code_entered:
+		code_entered = true
+		if is_instance_valid(lock): lock.set_open(true)
+	var away: Dictionary = progress.get("lift_away", {})
+	for index in away: lifts.lift_away[int(index)] = float(away[index])
+	var stage := int(progress.get("stage", session.stage))
+	if stage != session.stage:
+		session.stage = stage
+		if not automation and not match_net.local_is_locust():
+			ui.show_transit("SECTOR %d" % stage, lifts.stage_errand(stage), lifts.OPENING_CARD)
+		lifts.pending_brief = stage
+
 func apply_code() -> void:
 	if code_entered: return
 	code_entered = true
@@ -1386,6 +1417,7 @@ func _physics_process(delta: float) -> void:
 	lifts.ride_along(delta)
 	lifts.ride_out(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
+	lifts.count_away(delta)
 	# The notice of the sector waits for the card to be gone and for the lift
 	# to have opened its doors: it is what the picture comes back to.
 	lifts.announce_sector(delta)
@@ -1405,7 +1437,9 @@ func drive_local(delta: float) -> void:
 	if not execution.is_empty() and int(execution.seat) == player.slot:
 		hold_victim(delta)
 		return
-	if Input.is_action_just_pressed("sheet") and not online_menu: toggle_sheet()
+	# Not over the keypad: closing the sheet let the body walk off with the
+	# keypad still on screen taking digits.
+	if Input.is_action_just_pressed("sheet") and not online_menu and not lock_open: toggle_sheet()
 	if ui.sheet.visible:
 		# Looking at the sheet: the character stands still, the world goes on.
 		camcorder.focus("")
