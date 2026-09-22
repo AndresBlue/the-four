@@ -124,10 +124,14 @@ func _physics_process(delta: float) -> void:
 			update_route(listener, creature)
 		# Rises steadily with closeness instead of saturating early.
 		target = pow(clampf((start_distance - route_distance) / (start_distance - full_distance), 0.0, 1.0), 1.3)
+		var near := clampf((start_distance * 1.5 - route_distance) / (start_distance * 0.5), 0.0, 1.0)
 		# Its state sharpens the dread: hunting reads worse than wandering.
 		match creature.mode:
-			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.ALERT: target = maxf(target + 0.25, 0.7)
-			creature.Mode.INVESTIGATE, creature.Mode.SEARCH: target += 0.08
+			# Scaled by how near it is: at full strength anywhere, a hunter
+			# sprinting down an empty corridor across the floor told every
+			# survivor it was running.
+			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.ALERT: target = maxf(target + 0.25 * near, 0.7 * near)
+			creature.Mode.INVESTIGATE, creature.Mode.SEARCH: target += 0.08 * near
 		target = clampf(target, 0.0, 1.0)
 	var previous := intensity
 	intensity = move_toward(intensity, target, delta * (0.6 if target > intensity else 0.18))

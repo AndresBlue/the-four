@@ -16,7 +16,7 @@ const PORT := 38430
 const MAX_PLAYERS := 5
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-6"
+const PROTOCOL := "the-four-net-7"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 enum Mode { COOP, VERSUS }
 const MODE_NAMES := ["Cooperativo contra IA", "Versus: un jugador es The Locust"]
@@ -170,6 +170,15 @@ func register(protocol: String, generator: int, player_name: String, character: 
 		# Only someone who dropped can come back, under the same name.
 		for candidate in players:
 			if not players[candidate].connected and players[candidate].name == wanted: seat = candidate
+		# The room numbers repeated names ("Jugador 2"), and the one coming
+		# back asks with the name it has, not the one it was given: without
+		# this, nobody with a common name could ever come back.
+		if seat == 0:
+			for candidate in players:
+				var entry: Dictionary = players[candidate]
+				if entry.connected or not String(entry.name).begins_with(wanted + " "): continue
+				if not String(entry.name).trim_prefix(wanted + " ").is_valid_int(): continue
+				if seat == 0 or int(entry.character) == clampi(character, 0, 2): seat = candidate
 		if seat == 0:
 			refuse(id, "La partida ya empezó. Espera a que vuelvan a la sala.")
 			return

@@ -104,7 +104,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not can_act(): return
 	if event is InputEventMouseMotion:
 		var sensitivity: float = level.settings.values.sensitivity
-		creature.rotation.y -= event.relative.x * sensitivity
+		# Holding a victim, or pulling a wardrobe open, it does not turn: the
+		# victim hangs where it faces, and swung round with the mouse.
+		if creature.mode not in [creature.Mode.EXECUTE, creature.Mode.WARDROBE]: creature.rotation.y -= event.relative.x * sensitivity
 		pitch = clampf(pitch - event.relative.y * sensitivity * (-1 if level.settings.values.invert else 1), -1.1, 0.6)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT: strike()

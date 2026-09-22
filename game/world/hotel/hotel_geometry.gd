@@ -18,6 +18,9 @@ var arrivals: Array = []
 ## Every piece of furniture with drawers or shelves, as it is dressed:
 ## {room, position, yaw, kind}. Four of them hide the numbers of the code.
 var containers: Array = []
+## How far the solid piece being furnished reaches into the room, in its
+## stretch's space (room_dressing.put): where a container's front is.
+var piece_front := 0.0
 ## Wardrobes in build order: the same index names the same wardrobe on every
 ## machine in an online match (doors likewise).
 var hides: Array = []
@@ -910,6 +913,10 @@ func build_exit_door(data: Dictionary) -> void:
 	door.add_child(leaf)
 	door.add_child(light_seal())
 	var shape := CollisionShape3D.new()
+	# By this name the door finds it to tell whether somebody stands in the
+	# leaf (hotel_door.holds_somebody); unnamed, it never found it and went
+	# solid on top of whoever crowded the last door.
+	shape.name = "CollisionShape3D"
 	var body := BoxShape3D.new()
 	body.size = Vector3(FLOOR.LEAF_WIDTH, OPENING_HIGH, 0.12)
 	shape.shape = body
@@ -958,7 +965,11 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	var back := Vector3(-facing.x, 0, -facing.y)
 	var depth: float = span.y if absf(back.z) > 0.5 else span.x
 	var centre := back * (depth * 0.5 - CAR.z * 0.5 - 0.1)
-	var yaw := 0.0 if absf(back.z) > 0.5 else PI / 2
+	# The mirror wall is the car's -Z and has to face the wall it backs on to.
+	# The old two-way choice was right for -Z and -X only: a car backing on to
+	# +Z or +X was built the other way round, a shut box with its mirror to the
+	# room -- the "block, no lift" at the end of some floors.
+	var yaw := atan2(-back.x, -back.z)
 	var car := Node3D.new()
 	car.name = "Lift"
 	car.position = centre
@@ -1127,6 +1138,14 @@ func open_gates(stage: int, ready: bool) -> void:
 		if door.gate_stage > stage or (door.gate_stage == stage and not ready): continue
 		door.locked = false
 		if not door.opened and not door.moving: door.set_state(true)
+
+## A stage given back whole after a collapse: its door shut and locked again,
+## until its condition is met again. Only a restart does this.
+func relock_gate(stage: int) -> void:
+	for door in gates:
+		if not is_instance_valid(door) or door.gate_stage != stage or door.locked: continue
+		if door.opened or door.moving: door.set_state(false)
+		door.locked = true
 
 func build_occluder(node: Node3D) -> void:
 	if full_walls or blockers.is_empty(): return

@@ -64,7 +64,9 @@ func tick(delta: float) -> void:
 		visited[room.id] = true
 		last_new_room = clock
 	update_active()
-	if not active.is_empty() or hostile() or level.in_refuge(): return
+	# The survivor it plays for, not this machine's own: a host waiting in the
+	# refuge stopped every event for the ones still out there.
+	if not active.is_empty() or hostile() or level.point_in_refuge(level.pacing_anchor()): return
 	if clock - last_hostile < REST_AFTER_CHASE or clock - last_event < SEPARATION: return
 	if is_instance_valid(level.locust) and level.locust.grace > 0.0: return
 	roll_clock -= delta
@@ -108,7 +110,7 @@ func rooms_in_range() -> Array:
 	var here := FLOOR.room_at(level.manifest.rooms, level.pacing_anchor())
 	var result: Array = []
 	for room in level.manifest.rooms:
-		if room.id == level.manifest.exit or (not here.is_empty() and room.id == here.id): continue
+		if level.off_limits_rooms().has(int(room.id)) or (not here.is_empty() and room.id == here.id): continue
 		var centre := FLOOR.position_of(room)
 		if centre.distance_to(level.pacing_anchor()) > FAR: continue
 		var length := route_length(centre)

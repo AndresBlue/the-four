@@ -34,7 +34,7 @@ static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 		for prop in room.props:
 			if prop.kind != "tv": continue
 			var socket := GEOMETRY.prop_transform(room, prop)
-			spots.append({"room": int(room.id), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y})
+			spots.append({"room": int(room.id), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y, "scale": socket.basis.get_scale().x})
 	# Shuffled with its own generator, then taken one per sector while that
 	# lasts: the stage should not be four sets in the same corner.
 	for i in range(spots.size() - 1, 0, -1):

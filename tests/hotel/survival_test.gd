@@ -339,6 +339,27 @@ func cut_short_checks() -> void:
 	session.raise_everyone()
 	check("Si vuelve, cuenta otra vez desde el sector siguiente", session.participants[2] == session.Life.EXPLORING)
 	session.start(session.run_seed, false, [1])
+	# From stage 2 to 3 with somebody dead: nothing may be told about the new
+	# stage while the old goal, met, is still in hand -- the door of the stage
+	# ahead opened on its own.
+	session.start(session.run_seed, false, [1, 2])
+	session.stage = 2
+	session.goal = {"kind": "televisions", "done": 2, "needed": 2, "ready": true}
+	session.participants[2] = session.Life.DEAD
+	var told := {"early": false}
+	var listen := func(): if session.stage == 3 and bool(session.goal.get("ready", false)): told.early = true
+	session.changed.connect(listen)
+	session.set_state(session.State.TRANSITION)
+	session.transition_time = 5.0
+	session._process(0.1)
+	session.changed.disconnect(listen)
+	check("Pasar al sector 3 con un muerto no abre la puerta siguiente", session.stage == 3 and not told.early and session.participants[2] == session.Life.EXPLORING)
+	# Two of three lost for good: no restart can bring the quota back.
+	session.start(session.run_seed, false, [1, 2, 3])
+	session.drop(2)
+	session.drop(3)
+	check("Si ni reiniciando se llega a la cuota, el piso se pierde", session.state == session.State.FAILED)
+	session.start(session.run_seed, false, [1])
 	# The ride waits under the pause like everything else.
 	level.lifts.boarding = {"point": player.global_position + Vector3(4, 0, 0), "time": 0.0}
 	session.set_state(session.State.PAUSED)

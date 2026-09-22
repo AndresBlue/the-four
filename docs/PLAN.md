@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v3**, protocolo de red
-**the-four-net-6**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-7**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -142,6 +142,17 @@ herramientas para mirarlo están en la guía de desarrollo.
   partida online: el paso del sector 2 al 3 en los invitados (antes parpadeaban
   las luces), volver a una partida (cajones, código y cartel del sector al
   día), y los armarios de quien muere o se desconecta dentro.
+- [ ] **La segunda revisión de fallos (22 de septiembre)** cambió cosas que se
+  notan jugando y conviene mirar:
+  - La criatura ya no atraviesa puertas cerradas: ¿se atasca ahora en alguna?
+    Y se desatasca sola de las esquinas en las que antes se quedaba pegada.
+  - En cooperativo cada uno ve solo los números que encontró: ¿se entiende
+    que hay que decírselos?
+  - Una puerta cerrada ahora amortigua el sonido de verdad (8 dB y sin
+    agudos): ¿se sigue oyendo lo bastante a la criatura?
+  - El desgarro de la cinta y el silencio antes de un golpe solo salen si la
+    criatura está a menos de 10 m.
+  - La cordura sube también dentro del refugio.
 - [ ] **La linterna en la vista de la criatura**, vista de lado y no solo de
   frente, ahora que es el cono real del haz.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel

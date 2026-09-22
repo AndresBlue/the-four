@@ -205,6 +205,10 @@ func go() -> void:
 		write_checkpoint()
 		for seat in config.survivors:
 			if not net.connected_seats().has(seat): seat_dropped(seat)
+		# The hunter too, who is no survivor: gone while the floors were being
+		# built, its creature would stand as a puppet nobody sends for the
+		# whole floor.
+		if versus() and not net.connected_seats().has(locust_seat()): seat_dropped(locust_seat())
 		push_session()
 	started.emit()
 
@@ -277,9 +281,12 @@ func player_state(seat: int, data: Array) -> void:
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func locust_state(data: Array) -> void:
 	var creature = level.locust
-	if not is_instance_valid(creature) or creature.control != "puppet": return
+	if not is_instance_valid(creature): return
 	var author := 1 if not versus() else int(net.players.get(locust_seat(), {}).get("peer", -1))
 	if multiplayer.get_remote_sender_id() != author and net.is_host: return
+	# The hunter is back and driving: the host's stand-in lets go.
+	if net.is_host and versus() and creature.control == "ai" and not away.has(locust_seat()): creature.set_control("puppet")
+	if creature.control != "puppet": return
 	creature.push_state(data)
 
 # --- Session ---------------------------------------------------------------------
@@ -404,7 +411,7 @@ func use_container(piece: Node3D) -> void:
 	if index < 0: return
 	if not in_match() or net.is_host:
 		level.apply_search(index, true)
-		if in_match(): container_state.rpc(index, true)
+		if in_match(): container_state.rpc(index, true, level.player.slot)
 		return
 	request_container.rpc_id(1, index)
 
@@ -413,12 +420,14 @@ func request_container(index: int) -> void:
 	if not net.is_host or index < 0 or index >= level.containers.size(): return
 	var piece = level.containers[index]
 	if not is_instance_valid(piece) or piece.searched or not near_sender(piece.global_position): return
-	level.apply_search(index, true)
-	container_state.rpc(index, true)
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	level.apply_search(index, true, false, seat)
+	container_state.rpc(index, true, seat)
 
+## Who searched it goes with it: the number is written down for them alone.
 @rpc("authority", "call_remote", "reliable")
-func container_state(index: int, value: bool) -> void:
-	level.apply_search(index, value)
+func container_state(index: int, value: bool, seat: int) -> void:
+	level.apply_search(index, value, false, seat)
 
 ## The code read into the last door's keypad. A guest asks; the host checks the
 ## numbers itself, so a client cannot open a floor by saying it did.
@@ -659,7 +668,11 @@ func locust_shriek() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_shriek() -> void:
-	if net.is_host and versus() and multiplayer.get_remote_sender_id() == locust_peer(): shriek_left = SHRIEK_TIME
+	if net.is_host and versus() and multiplayer.get_remote_sender_id() == locust_peer():
+		shriek_left = SHRIEK_TIME
+		# Where they stood at the last shriek is no measure of stirring now:
+		# anybody who had moved since was found, standing still or not.
+		shriek_seen.clear()
 
 ## Metres per second below which a survivor is standing still enough that the
 ## shriek finds nothing to come back from. Holding still is the counter to
@@ -876,8 +889,9 @@ func seat_returned(seat: int, _peer_id: int) -> void:
 	away.erase(seat)
 	if is_instance_valid(level) and is_instance_valid(level.session): level.session.returned(seat)
 	if bodies.has(seat): bodies[seat].away = false
-	if seat == locust_seat() and versus() and net.is_host and is_instance_valid(level.locust) and level.locust.control == "ai":
-		level.locust.set_control("puppet")
+	# The creature is handed back on the hunter's first state after its floor
+	# is up again (locust_state); handed back now, it stood still on every
+	# screen for as long as the hunter took to reload.
 	if not in_match(): return
 	# They rebuild the same floor, then catch_up() fills in what changed.
 	begin.rpc_id(_peer_id, config, {"returning": true})
@@ -904,7 +918,9 @@ func catch_up(seat: int, id: int) -> void:
 	# and the sector it is on.
 	var searched: Array = []
 	for index in level.containers.size():
-		if is_instance_valid(level.containers[index]) and level.containers[index].searched: searched.append(index)
+		var piece = level.containers[index]
+		if is_instance_valid(piece) and piece.searched:
+			searched.append([index, int(level.found_by.get(piece.slot, 0)) if piece.digit >= 0 else 0])
 	var progress := {"searched": searched, "code": level.code_entered, "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage}
 	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot(), sets, progress)
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
@@ -928,9 +944,11 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 		if int(hides[index]) != 0: hide_state(index, int(hides[index]))
 	if not creature.is_empty() and is_instance_valid(level.locust):
 		if local_is_locust():
-			# Back in control where the creature was left standing.
+			# Back in control where the creature was left standing, and with
+			# the grace it had: a fresh creature's fifteen seconds came back.
 			level.locust.global_position = creature[0]
 			level.locust.rotation.y = creature[1]
+			if creature.size() > 4: level.locust.grace = float(creature[4])
 		else: level.locust.push_state(creature)
 	for index in mini(sets.size(), level.televisions.size()):
 		if bool(sets[index]): level.apply_television(index, true)

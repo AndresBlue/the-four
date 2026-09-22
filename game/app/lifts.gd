@@ -150,6 +150,9 @@ func apply_locust_ride(point: Vector3) -> void:
 	level.locust.velocity = Vector3.ZERO
 	level.locust.net_states.clear()
 	level.locust.net_clock = 0.0
+	if level.locust.control == "puppet":
+		level.locust.ride_point = point
+		level.locust.ride_hold = 2.0
 	if level.locust.control == "ai":
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
 		if not room.is_empty(): level.locust.patrol_room = int(room.id)

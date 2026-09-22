@@ -53,7 +53,9 @@ func tick(delta: float) -> void:
 	if level.manifest.is_empty() or not is_instance_valid(level.hotel): return
 	if not level.net.is_client():
 		for body in level.survivors():
-			if int(level.session.participants.get(int(body.slot), 2)) == level.session.Life.EXPLORING: wear(body, delta)
+			# In the refuge too: it is lit, and a lit room is where a mind
+			# comes back. Frozen there, nobody recovered where it was safest.
+			if int(level.session.participants.get(int(body.slot), 2)) in [level.session.Life.EXPLORING, level.session.Life.REFUGE]: wear(body, delta)
 	if level.match_net.local_is_locust(): return
 	if not level.local_alive():
 		phantom_quiet(delta)
@@ -180,7 +182,10 @@ var smell_rest := 0.0
 func haunt_burnt(delta: float) -> void:
 	smell_rest -= delta
 	if smell_rest > 0.0 or not is_instance_valid(level.locust) or level.locust.control != "ai": return
-	var marked := burnt_survivors()
+	# In the wing it is in: one in another wing is behind walls it cannot
+	# walk round, and it marched at the nearest wall for the whole stage.
+	var here := int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1))
+	var marked: Array = burnt_survivors().filter(func(point): return int(FLOOR.room_at(level.manifest.rooms, point).get("wing", -2)) == here)
 	if marked.is_empty(): return
 	smell_rest = SMELL_EVERY
 	var nearest: Vector3 = marked[0]
@@ -191,7 +196,10 @@ func haunt_burnt(delta: float) -> void:
 ## Everybody whose mind has gone, wherever they are. The creature is told
 ## where they are however far away it is: that is what the motes are.
 func burnt_survivors() -> Array:
+	# Only the living it can reach: a corpse kept pulling it back to the body
+	# for the rest of the stage, and one in the refuge or riding a car took
+	# the place of anybody else it could have gone after.
 	var marked: Array = []
 	for body in level.survivors():
-		if bool(body.get("burnt")): marked.append(body.global_position)
+		if bool(body.get("burnt")) and level.survivor_active(body): marked.append(body.global_position)
 	return marked

@@ -25,9 +25,10 @@ var motion: Tween
 ## the frame, it never shoves anybody, and nobody is ever shut inside it.
 const GHOST := 64
 const SOLID := 8
-## Bodies a solid leaf would trap: survivors, local or remote. The creature
-## does not collide with doors at all, so it never holds one open.
-const TRAPPED := 4
+## Bodies a solid leaf would trap: survivors, local or remote, and the
+## creature, which is stopped by a shut leaf like anybody (it used to walk
+## through them, locked gates included) and so must never be shut inside one.
+const TRAPPED := 4 | 32
 
 ## forceful: pushed while running; faster swing, a slam and a louder noise.
 func toggle(slow := false, emit_noise := true, forceful := false) -> bool:

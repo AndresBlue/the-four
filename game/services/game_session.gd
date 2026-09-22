@@ -147,7 +147,13 @@ func check_quota() -> bool:
 	if restart_wait > 0.0 and state == State.PLAYING:
 		changed.emit()
 		return true
-	if roster_count > 1 and restarts < RESTARTS and state == State.PLAYING:
+	# Up again, the ones lost for the floor stay lost: if even then there are
+	# too few, a restart would only leave them stuck in a stage they cannot
+	# close (the refuge asks for the quota).
+	var could_rise := 0
+	for id in participants:
+		if not dropped.has(id): could_rise += 1
+	if roster_count > 1 and restarts < RESTARTS and state == State.PLAYING and could_rise >= minimum_survivors():
 		# One more go at this stage, with everybody on their feet again -- but
 		# not this instant: the last one down has earned its own death first.
 		restarts += 1
@@ -159,10 +165,10 @@ func check_quota() -> bool:
 	return true
 
 ## Everyone back among the living (the authority decides when).
-func raise_everyone() -> void:
+func raise_everyone(announce := true) -> void:
 	for id in participants:
 		if not dropped.has(id): participants[id] = Life.EXPLORING
-	changed.emit()
+	if announce: changed.emit()
 
 func pause() -> void:
 	if state == State.PLAYING: set_state(State.PAUSED)
@@ -215,12 +221,15 @@ func _process(delta: float) -> void:
 		if transition_time >= 1.2:
 			if more_stages():
 				stage += 1
+				# A clean goal for the wing ahead, the blackout included: the
+				# power that went in the wing behind is not this one's. Set
+				# before anything is announced: raising the dead used to tell
+				# everybody first, with the new stage and the old goal still
+				# met, and the door of the stage ahead opened on its own.
+				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 				# Whoever died in the wing left behind comes back for the next.
 				var dead: bool = participants.values().has(Life.DEAD)
-				if dead: raise_everyone()
-				# A clean goal for the wing ahead, the blackout included: the
-				# power that went in the wing behind is not this one's.
-				goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
+				if dead: raise_everyone(false)
 				set_state(State.PLAYING)
 				if dead: revived.emit(false)
 				return

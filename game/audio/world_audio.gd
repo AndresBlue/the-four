@@ -264,6 +264,10 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 ## heard from the last opening visible from the listener (a doorway or corner),
 ## quieter, duller and with an echo for the extra distance. Walls never let
 ## sound through.
+## What a shut door between takes off a sound: this much quieter, and nothing
+## above this much of its top end gets through the wood.
+const SHUT_DOOR_LOSS := 8.0
+const SHUT_DOOR_CUTOFF := 1500.0
 func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	var listener := listener_position()
 	if not occluded(point, emitter):
@@ -288,7 +292,20 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 		if not space.intersect_ray(PhysicsRayQueryParameters3D.create(listener, probe, 1)).is_empty(): break
 		opening = probe
 	var detour := maxf(0.0, length - listener.distance_to(opening))
-	return {"audible": true, "position": opening, "gain": -3.0 - 20.0 * log(1.0 + detour / 5.0) / log(10.0), "cutoff": lerpf(5200.0, 900.0, clampf(detour / 25.0, 0.0, 1.0)), "echo": true, "distance": length}
+	# The route walks through doorways whether their doors are open or not
+	# (the navigation ignores them): a shut door on the way was heard almost
+	# as if it stood open. Each one it has to come through takes its share.
+	var shut := {}
+	for i in range(1, path.size()):
+		var through := PhysicsRayQueryParameters3D.create(path[i - 1] + Vector3.UP * 1.2, path[i] + Vector3.UP * 1.2, 8)
+		# Not the door making the sound: a door heard shutting is not behind itself.
+		if emitter.is_valid(): through.exclude = [emitter]
+		var hit := space.intersect_ray(through)
+		if not hit.is_empty(): shut[hit.collider] = true
+	var gain := -3.0 - 20.0 * log(1.0 + detour / 5.0) / log(10.0) - SHUT_DOOR_LOSS * shut.size()
+	var cutoff := lerpf(5200.0, 900.0, clampf(detour / 25.0, 0.0, 1.0))
+	if not shut.is_empty(): cutoff = minf(cutoff, SHUT_DOOR_CUTOFF)
+	return {"audible": true, "position": opening, "gain": gain, "cutoff": cutoff, "echo": true, "distance": length}
 
 ## Places a 3D player where the route says, on the echo bus when it travelled,
 ## duller and a little quieter when it comes from behind.

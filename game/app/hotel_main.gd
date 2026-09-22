@@ -73,6 +73,10 @@ var televisions: Array = []
 ## in them so far, by place in the code.
 var containers: Array = []
 var found_digits := {}
+## Code place -> seat of whoever found it. The goal counts every number the team
+## has; what is written down for a player -- the sheet, the keypad's notes, the
+## tape -- is only what that player found. The rest they have to be told.
+var found_by := {}
 ## And where each one was found, as it would be said out loud: the number on
 ## that door, or what the room is when it has no plaque (service rooms, halls
 ## and corridors carry none). A number without a place is a number nobody can
@@ -267,6 +271,7 @@ func start_intro(seed_value: int) -> void:
 	intro_seed = seed_value
 	skip_time = 0.0
 	intro = INTRO.new()
+	intro.motion = 0.0 if settings.values.reduced else clampf(settings.values.bob / 0.1, 0.0, 3.0)
 	intro.name = "Intro"
 	intro.position = INTRO_ORIGIN
 	add_child(intro)
@@ -315,6 +320,9 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	await get_tree().process_frame
 	world_audio.reset()
 	player.reset_survival()
+	# Every floor starts with the lens wide, online ones too.
+	player.zoom = 1.0
+	player.zoom_wanted = 1.0
 	if is_instance_valid(locust):
 		remove_child(locust)
 		locust.queue_free()
@@ -447,8 +455,12 @@ func start_online_floor(config: Dictionary) -> void:
 	if session.state == session.State.LOADING:
 		await session.changed
 	if not await build_floor(int(config.seed)):
-		net.shutdown("No se pudo construir el piso de la partida.")
+		if is_same(match_net.config, config): net.shutdown("No se pudo construir el piso de la partida.")
 		return
+	# The match this floor was for may have gone while it was being put up
+	# (the host left, or started again): reporting it then broke on an empty
+	# match and left the loading screen up over the menu.
+	if not match_net.in_match() or not is_same(match_net.config, config): return
 	# Coming back into a floor that is already being played says so: the wait
 	# is the same, what it means is not.
 	ui.menu("loading", false, "Volviendo a la partida…" if match_net.rejoin_snapshot.get("returning", false) else "Esperando a los demás jugadores…")
@@ -525,8 +537,7 @@ func refresh_briefing() -> void:
 func close_online_menu() -> void:
 	if not online_menu: return
 	online_menu = false
-	ui.overlay.hide()
-	ui.settings_open = false
+	ui.close_menus()
 	on_state()
 
 ## A player hunting hears a wardrobe door as far as an ordinary door: getting
@@ -592,6 +603,9 @@ func place_televisions() -> void:
 			set.stage = stage
 			set.position = spot.position
 			set.rotation.y = spot.yaw
+			# As big as the set it switches on: a socket that shrinks its
+			# furniture shrank the set and left the lit screen floating over it.
+			set.scale = Vector3.ONE * float(spot.get("scale", 1.0))
 			hotel.add_child(set)
 			televisions.append(set)
 
@@ -650,8 +664,18 @@ func warp_creature(index: int) -> void:
 	if not is_instance_valid(set) or not set.on: return
 	var facing := Vector3(sin(set.rotation.y), 0, cos(set.rotation.y))
 	var from: Vector3 = locust.global_position
-	locust.global_position = set.global_position + facing * 1.6 + Vector3(0, 0.04, 0)
-	locust.rotation.y = set.rotation.y
+	# Out in front of the set, on floor it can stand on: in a suite the set is
+	# in the alcove, and 1.6 m straight out was inside the partition.
+	var out: Vector3 = set.global_position + facing * 1.6
+	var map: RID = get_world_3d().navigation_map
+	if NavigationServer3D.map_get_iteration_id(map) > 0: out = NavigationServer3D.map_get_closest_point(map, out)
+	locust.global_position = out + Vector3(0, 0.04, 0)
+	# Facing the room it came out into, not back at the screen.
+	locust.rotation.y = set.rotation.y + PI
+	# A puppet ignores the states still on their way from beside the old set.
+	if locust.control == "puppet":
+		locust.ride_point = locust.global_position
+		locust.ride_hold = 2.0
 	locust.velocity = Vector3.ZERO
 	locust.speed = 0.0
 	# A puppet interpolates between the states it is sent: without this it
@@ -679,6 +703,7 @@ func televisions_on() -> int:
 func place_containers() -> void:
 	containers.clear()
 	found_digits.clear()
+	found_by.clear()
 	found_where.clear()
 	code_entered = false
 	typed = ""
@@ -689,6 +714,7 @@ func place_containers() -> void:
 		var piece := CONTAINER.new()
 		piece.name = "Container_%d" % containers.size()
 		piece.kind = str(spot.kind)
+		piece.front = float(spot.get("front", 0.5))
 		piece.position = spot.position
 		piece.rotation.y = spot.yaw
 		# Parented to its room, so it is culled with it, but placed by the
@@ -707,7 +733,9 @@ func place_containers() -> void:
 		var door_point: Vector3 = FLOOR.portal_between(manifest.rooms[int(last.room)], manifest.rooms[int(last.beyond)])
 		lock = LOCK.new()
 		lock.name = "CodeLock"
-		lock.position = door_point - away * 0.35 + Vector3(away.z, 0, -away.x) * 1.1
+		# Its back on the plaster (0.09 from the wall's centre line; the panel
+		# sits 0.05 in front of the node): at 0.35 it hung in the air.
+		lock.position = door_point - away * 0.07 + Vector3(away.z, 0, -away.x) * 1.1
 		lock.rotation.y = atan2(-away.x, -away.z)
 		hotel.add_child(lock)
 	for hidden in DIGITS.choose(manifest, hotel.containers):
@@ -726,7 +754,8 @@ func search_container(piece: Node3D) -> void:
 
 ## Applied everywhere, whoever decided it. Quiet: caught up on coming back,
 ## not happening now.
-func apply_search(index: int, value: bool, quiet := false) -> void:
+func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
+	if seat < 0: seat = player.slot
 	if index < 0 or index >= containers.size(): return
 	var piece = containers[index]
 	if not is_instance_valid(piece) or not piece.set_searched(value): return
@@ -735,13 +764,14 @@ func apply_search(index: int, value: bool, quiet := false) -> void:
 	if not net.is_client() and not quiet: on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
+		found_by[piece.slot] = seat
 		var room: Dictionary = FLOOR.room_at(manifest.rooms, piece.global_position)
 		var number := int(room.get("number", 0))
 		found_where[piece.slot] = ("HABITACIÓN %d" % number) if number > 0 else String(FLOOR.NAMES[int(room.get("type", 0))]).to_upper()
 		# The paper leaves with whoever took it, and what it said stays written
 		# on the tape until the floor is over.
 		piece.take_note()
-		if not match_net.local_is_locust():
+		if not match_net.local_is_locust() and seat == player.slot:
 			camcorder.write_code(noted_code())
 
 ## The stage's own sets, all of them on. A stage with no sets of its own asks
@@ -755,18 +785,21 @@ func sets_lit() -> bool:
 func notes_found() -> Array:
 	var slips: Array = []
 	for slot in range(1, DIGITS.COUNT + 1):
-		if not found_digits.has(slot): continue
+		if not found_digits.has(slot) or int(found_by.get(slot, player.slot)) != player.slot: continue
 		slips.append({"slot": slot, "digit": int(found_digits[slot]), "where": String(found_where.get(slot, ""))})
 	return slips
 
 ## What is written down: nothing until the first number turns up, and from
 ## then on the code with a dash in the places still missing.
-func noted_code() -> String: return "" if found_digits.is_empty() else code_so_far()
+func noted_code() -> String: return "" if notes_found().is_empty() else code_so_far(true)
 
-## The code as it is known so far, with a dash where a number is missing.
-func code_so_far() -> String:
+## The code as it is known so far, with a dash where a number is missing: the
+## team's, or with `own` only what this player found.
+func code_so_far(own := false) -> String:
 	var text := ""
-	for slot in range(1, DIGITS.COUNT + 1): text += str(found_digits[slot]) if found_digits.has(slot) else "–"
+	for slot in range(1, DIGITS.COUNT + 1):
+		var known: bool = found_digits.has(slot) and (not own or int(found_by.get(slot, player.slot)) == player.slot)
+		text += str(found_digits[slot]) if known else "–"
 	return text
 
 func place_documents() -> void:
@@ -816,7 +849,10 @@ func on_state() -> void:
 		if session.goal.get("blackout", false) and not hotel.dark: apply_blackout()
 		elif not session.goal.get("blackout", false) and hotel.dark: restore_power()
 		if playing and session.stage > last_stage: lifts.follow_players(session.stage)
-	last_stage = session.stage
+	# Only a stage being played counts as reached (a change announced in the
+	# transition used to count it, and the creature never got its road), and
+	# a new floor starts the count again.
+	if playing or session.stage < last_stage: last_stage = session.stage
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
@@ -828,8 +864,7 @@ func on_state() -> void:
 	$Presentation/Analog.visible = session.state != session.State.MENU
 	if playing and online_menu: return
 	if playing or session.state == session.State.CUTSCENE:
-		ui.overlay.hide()
-		ui.settings_open = false
+		ui.close_menus()
 		if not playing:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			get_tree().paused = false
@@ -848,8 +883,7 @@ func on_state() -> void:
 			# Between stages the floor goes on: a held beat and a notice, not
 			# the end-of-floor screen. Only the last stage brings that.
 			if session.more_stages():
-				ui.overlay.hide()
-				ui.settings_open = false
+				ui.close_menus()
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 				# Only for whoever is not left behind in the old wing: a
 				# survivor still there hears about the next sector when their
@@ -893,7 +927,10 @@ func on_revived(restart: bool) -> void:
 	if net.is_client() or manifest.is_empty(): return
 	var point := revival_point()
 	var places := {}
-	for seat in session.participants: places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
+	# Nobody for a seat lost for the floor: raised here, it was a body nobody
+	# drove, counted alive and never dropped again.
+	for seat in session.participants:
+		if not session.dropped.has(seat): places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
 	apply_revival(places, restart)
 	if match_net.in_match(): match_net.revive_everyone(places, restart)
 
@@ -939,11 +976,19 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 		var seat := int(seat_key)
 		if seat == player.slot: restore_local_player(places[seat_key])
 		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]):
-			match_net.bodies[seat].place(places[seat_key], 0.0)
+			# Out of any wardrobe first, as its owner is on its own machine:
+			# moved while still "inside", it went invisible and kept the
+			# wardrobe taken for the rest of the floor.
+			var body = match_net.bodies[seat]
+			if body.hidden and is_instance_valid(body.hiding_place): match_net.remote_leaves(body.hiding_place, body)
+			body.place(places[seat_key], 0.0)
 			# Its head clear too, the same as the local one's.
 			sanity.minds.erase(seat)
 			match_net.bodies[seat].set_burnt(false)
 	if restart:
+		# Its door too: shut and locked again, or the stage given back could
+		# be walked out of without doing it again.
+		hotel.relock_gate(session.stage)
 		# The stage as it was found: its own wing's sets go out again. What was
 		# lit in the wings behind is not this stage's to undo.
 		for index in stage_televisions():
@@ -973,6 +1018,12 @@ func restore_local_player(point: Vector3) -> void:
 	if player.hidden: player.force_leave_hide()
 	stop_watching()
 	clear_screen_cues()
+	# Put somewhere else: a cut, with the rooms there shown at once.
+	visibility_clock = 1.0
+	camera_cut()
+	# A sheet opened while dead was opened to look at only: up again, it is
+	# theirs to write on.
+	if ui.sheet.visible and not ui.sheet.editable: ui.sheet.open(true, settings.key_name("sheet"), notes_found())
 
 ## Back behind its own eyes. Everything watching a teammate did to the body --
 ## hidden, without collision, with somebody else's camera in front -- is undone
@@ -1345,7 +1396,9 @@ func close_lock() -> void:
 ## second time, so those digits were lost to it -- and its keypad was locked.
 func catch_up_progress(progress: Dictionary) -> void:
 	if progress.is_empty(): return
-	for index in progress.get("searched", []): apply_search(int(index), true, true)
+	for entry in progress.get("searched", []):
+		if entry is Array: apply_search(int(entry[0]), true, true, int(entry[1]))
+		else: apply_search(int(entry), true, true)
 	if bool(progress.get("code", false)) and not code_entered:
 		code_entered = true
 		if is_instance_valid(lock): lock.set_open(true)
@@ -1630,6 +1683,15 @@ func watch_teammates() -> void:
 
 ## Third person behind the teammate being watched: the arm keeps the camera
 ## out of walls and wardrobes, so nothing is seen through them.
+## The creature winding up a strike close enough to be this machine's
+## business: the tape tears and the house holds its breath. Everywhere at once,
+## a lunge on the far side of the floor tore every screen, the hunter's too.
+const WINDUP_NEAR := 10.0
+func winding_up_near() -> bool:
+	if not is_instance_valid(locust) or locust.mode != locust.Mode.WINDUP or match_net.local_is_locust(): return false
+	var eye: Vector3 = world_audio.listener_position()
+	return eye.distance_to(locust.global_position) < WINDUP_NEAR
+
 func watch_over(body: Node3D) -> void:
 	if not is_instance_valid(watch_rig):
 		watch_rig = Node3D.new()
@@ -1649,6 +1711,12 @@ func watch_over(body: Node3D) -> void:
 		watch_camera.far = 95.0
 		watch_camera.cull_mask = 1048573
 		watch_arm.add_child(watch_camera)
+	# Somebody else to watch is a cut: the rooms round them are shown at once,
+	# and no blur or combing is smeared across from the last view.
+	if watched_body != body:
+		watched_body = body
+		visibility_clock = 1.0
+		camera_cut()
 	watch_rig.global_position = body.global_position + Vector3(0, 1.5, 0)
 	watch_rig.rotation.y = body.rotation.y
 	watch_arm.rotation.x = clampf(body.pitch, -0.6, 0.5)
@@ -1680,7 +1748,7 @@ func _process(delta: float) -> void:
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	update_screen_cues(delta)
-	var warning_active: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
+	var warning_active: bool = winding_up_near()
 	# The bed and music recede as the dread aura rises, leaving room for it.
 	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
 	ambience.volume_db = (-25.0 if warning_active else -17.0) - dread * 9.0 + world_audio.duck_db()
@@ -1816,8 +1884,10 @@ func apply_camera(preset: Dictionary, hunter: bool) -> void:
 
 ## A cut (a new floor, the opening scene): the iris jumps to the new light
 ## instead of adjusting across it.
+var watched_body: Node3D
 func camera_cut() -> void:
 	if is_instance_valid(camera_effect): camera_effect.reset = true
+	if is_instance_valid(blur_effect): blur_effect.has_previous = false
 	field_camera = null
 
 ## Interlaced fields (lens.gdshader, field_shift): how far the picture moved in
@@ -1879,11 +1949,14 @@ func update_zoom_lens() -> void:
 	var aspect := size.x / maxf(size.y, 1.0)
 	# Written only when it moves: setting a camera's field of view rebuilds
 	# its projection, every frame, for nothing.
-	if is_equal_approx(player.zoom, lens_zoom) and is_equal_approx(aspect, lens_aspect): return
-	lens_zoom = player.zoom
+	# The zoom is the living player's own: over the menu, the opening scene or
+	# a teammate's shoulder the lens is wide, whatever it was left at.
+	var zoom: float = player.zoom if session.state in [session.State.PLAYING, session.State.PAUSED] and local_alive() else 1.0
+	if is_equal_approx(zoom, lens_zoom) and is_equal_approx(aspect, lens_aspect): return
+	lens_zoom = zoom
 	lens_aspect = aspect
-	var barrel: float = LOOK.barrel_for(player.zoom)
-	var design: float = LOOK.zoom_fov(player.zoom)
+	var barrel: float = LOOK.barrel_for(zoom)
+	var design: float = LOOK.zoom_fov(zoom)
 	lens_material.set_shader_parameter("barrel", barrel)
 	lens_material.set_shader_parameter("scale", LOOK.corner_scale(aspect, barrel))
 	var fov: float = LOOK.render_fov(aspect, design, barrel)
@@ -2003,7 +2076,7 @@ var static_level := 0.0
 func update_screen_cues(delta: float) -> void:
 	var wanted_enclosure: float = (1.0 - player.peek * 0.8) if player.hidden and session.state == session.State.PLAYING else 0.0
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
-	var striking: bool = is_instance_valid(locust) and locust.mode == locust.Mode.WINDUP
+	var striking: bool = winding_up_near()
 	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
 	lost_signal = maxf(0.0, lost_signal - delta)
 	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
@@ -2033,7 +2106,9 @@ func update_screen_cues(delta: float) -> void:
 	# The tape frays with the mind: the picture drags and the colours start to
 	# run. With no bar anywhere, this is what says the meter is there at all.
 	if not hunter_seat():
-		var frayed: float = clampf(1.0 - player.sanity / sanity.SANITY_UNEASY, 0.0, 1.0)
+		# Only over the floor being played: the last floor's mind frayed the
+		# tape of the opening scene of the next.
+		var frayed: float = clampf(1.0 - player.sanity / sanity.SANITY_UNEASY, 0.0, 1.0) if session.state in [session.State.PLAYING, session.State.PAUSED, session.State.FAILED] else 0.0
 		post_material.set_shader_parameter("vhs", settings.values.vhs * (1.0 + frayed * 1.6))
 		post_material.set_shader_parameter("chromatic", settings.values.chromatic * frayed * 0.7)
 

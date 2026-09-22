@@ -14,6 +14,11 @@ var digit := -1
 var slot := 0
 var searched := false
 var kind := ""
+## How far the piece's front stands from its stretch's wall (room_dressing).
+## The note and the hand's reach are measured from it: at a fixed half metre
+## the note was buried in most pieces, and a cabinet deeper than that could
+## not be searched from the front at all.
+var front := 0.5
 
 func _ready() -> void:
 	add_to_group("hotel_containers")
@@ -21,9 +26,10 @@ func _ready() -> void:
 	collision_mask = 0
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(1.1, 1.2, 0.8)
+	var reach := maxf(front, 0.3) + 0.25
+	box.size = Vector3(1.1, 1.2, reach + 0.2)
 	shape.shape = box
-	shape.position = Vector3(0, 0.6, 0.2)
+	shape.position = Vector3(0, 0.6, (reach - 0.2) * 0.5)
 	add_child(shape)
 
 ## Gone through. Returns whether this changed anything, so the noise and the
@@ -68,7 +74,7 @@ func plant_note() -> void:
 	# between half a metre and two, and a paper laid on one would be buried in
 	# the wood on one piece and out of sight above the head on the next. On
 	# the front it is the same height on all of them, and in the eye.
-	note.position = Vector3(0.02, 0.46, 0.5)
+	note.position = Vector3(0.02, 0.46, maxf(front, 0.3) + 0.012)
 	note.rotation = Vector3(-0.32, 0.0, 0.11)
 	note.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(note)

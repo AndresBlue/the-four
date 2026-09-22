@@ -347,6 +347,14 @@ func transition(strength := 0.5) -> void:
 	var tween := create_tween()
 	tween.tween_property(body, "modulate:a", 1.0, 0.28).set_delay(0.06)
 
+## Every menu off, and whatever one was waiting for with it: hidden without
+## this, a key being rebound kept listening in play and took the next key
+## pressed as the new binding.
+func close_menus() -> void:
+	overlay.hide()
+	settings_open = false
+	rebind_action = ""
+
 func menu(kind: String, can_continue := false, message := "") -> void:
 	settings_open = false
 	clear()

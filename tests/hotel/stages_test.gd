@@ -88,6 +88,38 @@ func run() -> void:
 	level.player.set_physics_process(false)
 	check("Un piso empieza en la etapa 1", session.stage == 1 and session.STAGES == 3)
 	check("Y su condición es la del refugio", session.goal.kind == "refuge")
+	# Every car opens on to its lobby. On this seed two of them backed on to
+	# a +X or +Z wall and were built the other way round: a shut box with the
+	# mirror to the room, which nobody could walk into.
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var open_cars := 0
+	for index in level.hotel.lifts.size():
+		var car: Vector3 = level.hotel.lifts[index]
+		var lobby: Vector3 = FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[index].beyond)])
+		var front: Vector3 = Vector3(lobby.x - car.x, 0, lobby.z - car.z).normalized()
+		var out := PhysicsRayQueryParameters3D.create(car + Vector3.UP, car + Vector3.UP + front * 1.4, 1)
+		if space.intersect_ray(out).is_empty(): open_cars += 1
+	check("Todos los coches se abren hacia su vestíbulo", open_cars == level.hotel.lifts.size())
+	# The last door finds its own collision shape, to know who stands in it.
+	check("La última puerta encuentra su colisión", level.hotel.gates[level.hotel.gates.size() - 1].get_node_or_null("CollisionShape3D") != null)
+	# Every piece with drawers is found by looking at its front, the way the
+	# hand finds it (hotel_main.focused_area): past the furniture's own box.
+	await frames(3)
+	var searchable := 0
+	for piece in level.containers:
+		var ahead: Vector3 = piece.global_transform * Vector3(0, 0.6, 1.4)
+		var look := PhysicsRayQueryParameters3D.create(ahead, piece.global_transform * Vector3(0, 0.6, -0.2), 1 | 8 | 16)
+		look.collide_with_areas = true
+		# Past any other target standing in front of it (a wardrobe, a set).
+		for attempt in 4:
+			var met: Dictionary = space.intersect_ray(look)
+			if met.is_empty(): break
+			if met.collider == piece:
+				searchable += 1
+				break
+			look.exclude = look.exclude + [met.rid]
+	check("Cada mueble con cajones se registra mirándolo de frente", searchable == level.containers.size())
+	check("Y la nota asoma por delante del mueble", level.containers.all(func(piece): return piece.note == null or piece.note.position.z > piece.front))
 	# Wings and gates: one door on, shut and locked until its stage is closed.
 	check("Tres alas, tres refugios y tres puertas de etapa", level.manifest.wings == 3 and level.manifest.refuges.size() == 3 and level.manifest.gates.size() == 3)
 	check("Cada refugio está en su ala", level.manifest.refuges.all(func(id): return int(level.manifest.rooms[int(id)].wing) == level.manifest.refuges.find(id)))

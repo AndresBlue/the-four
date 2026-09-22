@@ -142,10 +142,13 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		node.add_child(holder)
 		var seed_pos: Vector3 = node.position + frame.origin
 		var pick: String = sets[int(builder.vary(seed_pos, 31) * sets.size())] if not sets.is_empty() else ""
+		builder.piece_front = 0.0
 		furnish(builder, holder, pick, stretch[1], seed_pos, kept, room)
 		# Anything with drawers or shelves is somewhere a number could be
 		# hidden: the builder keeps the list so a floor can put four in them.
-		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick})
+		# With how far its front reaches: the note shows out of it and the
+		# hand finds it there, whatever the piece's depth.
+		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick, "front": builder.piece_front})
 		k += 1
 	decals(builder, node, room, kept)
 
@@ -215,6 +218,7 @@ static func put(builder, holder: Node3D, name: String, pos: Vector3, yaw: float,
 	if solid:
 		var size := mesh(name).get_aabb().size * s
 		builder.box(holder, pos + Vector3(0, size.y * 0.5, 0), size, "", true)
+		builder.piece_front = maxf(builder.piece_front, pos.z + size.z * 0.5)
 
 static func place(builder, holder: Node3D, name: String, xform: Transform3D, casts := true) -> void:
 	builder.place(holder, mesh(name), xform, casts)
@@ -274,6 +278,7 @@ static func stack(builder, holder: Node3D, seed_pos: Vector3, count: int) -> voi
 			y = 0.0
 		if x > 0.5: break
 	builder.box(holder, Vector3(0, 0.25, 0.28), Vector3(1.1, 0.5, 0.5), "", true)
+	builder.piece_front = maxf(builder.piece_front, 0.53)
 
 ## What lies about in a neglected (1) or abandoned (2) room: a tipped chair,
 ## bottles, a suitcase, papers, boxes.

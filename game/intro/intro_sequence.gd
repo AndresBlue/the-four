@@ -265,6 +265,11 @@ func sample_keys() -> Dictionary:
 ## Springs make the head arrive with weight (and overshoot on fast turns);
 ## the gait adds bob, sway and a dip at each footfall; a slow tremor keeps
 ## the view handheld.
+## How much of the hand-held motion to keep, from the settings the level
+## passes in: "Movimiento de cámara" scales it and "Efectos reducidos" takes it
+## away, as with the player's own camera. The scene is still walked through --
+## only the shake, bob, sway and kicks go.
+var motion := 1.0
 func update_camera(step: float) -> void:
 	var target := sample_keys()
 	var stiff: float = target.stiff
@@ -281,7 +286,7 @@ func update_camera(step: float) -> void:
 	var ground := Vector2(cam_vel.x, cam_vel.z).length()
 	var gait: String = target.gait
 	var stride: float = {"walk": 1.4, "heavy": 1.2, "run": 2.3}.get(gait, 1.4)
-	var amplitude: float = {"walk": 0.035, "heavy": 0.06, "run": 0.07}.get(gait, 0.0) * clampf(ground / 1.5, 0.0, 1.0)
+	var amplitude: float = {"walk": 0.035, "heavy": 0.06, "run": 0.07}.get(gait, 0.0) * clampf(ground / 1.5, 0.0, 1.0) * motion
 	var before := floori(gait_phase / PI)
 	if ground > 0.35 and not gait.is_empty():
 		gait_phase += ground * step / stride * TAU
@@ -291,20 +296,20 @@ func update_camera(step: float) -> void:
 	var offset := Vector3(sin(gait_phase) * amplitude * 0.6, -dip * amplitude + absf(sin(gait_phase)) * amplitude * 0.3, 0.0)
 	# Handheld tremor, stronger on the move and after a fright.
 	var clock := time * TAU
-	var tremor := 0.0035 + ground * 0.004 + shake * 0.02
+	var tremor := (0.0035 + ground * 0.004 + shake * 0.02) * motion
 	var wobble := Vector3(sin(clock * 0.23) * 0.6 + sin(clock * 0.61 + 1.3) * 0.4, sin(clock * 0.31 + 0.7) * 0.6 + sin(clock * 0.83) * 0.4, 0.0) * tremor
 	if time < 30.3: offset.y += sin(time * 1.6) * 0.008
 	# Leaning into turns.
-	var roll_target := clampf(-cam_yaw_vel * 0.05, -0.16, 0.16) + sin(gait_phase) * amplitude * 0.5
+	var roll_target := clampf(-cam_yaw_vel * 0.05, -0.16, 0.16) * minf(motion, 1.0) + sin(gait_phase) * amplitude * 0.5
 	cam_roll = lerpf(cam_roll, roll_target, minf(1.0, step * 8.0))
-	var jitter := shake * shake
+	var jitter := shake * shake * motion
 	var heading := Basis(Vector3.UP, cam_yaw)
 	camera.position = cam_pos + heading * (offset + wobble) + Vector3(rng.randf() - 0.5, rng.randf() - 0.5, 0) * 0.02 * jitter
 	camera.rotation = Vector3(
 		cam_pitch + look_offset.y - dip * amplitude * 0.5 + wobble.y * 0.8 + (rng.randf() - 0.5) * 0.04 * jitter,
 		cam_yaw + look_offset.x + wobble.x * 0.8 + (rng.randf() - 0.5) * 0.04 * jitter,
-		cam_roll + sin(clock * 0.17) * 0.006)
-	camera.fov = CAMCORDER.fov_for(get_viewport(), target.fov - jolt * 6.0)
+		cam_roll + sin(clock * 0.17) * 0.006 * motion)
+	camera.fov = CAMCORDER.fov_for(get_viewport(), target.fov - jolt * 6.0 * minf(motion, 1.0))
 
 func footfall(gait: String) -> void:
 	if not audible: return

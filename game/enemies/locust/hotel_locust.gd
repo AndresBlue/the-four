@@ -31,6 +31,10 @@ const ALERT_TIME := 1.2
 const CHASE_START_SPEED := 2.5
 const CHASE_ACCELERATION := 3.2
 const TORCH_NOTICE_RANGE := 45.0
+## The cone it notices a torch in, whatever the beam is drawn as: the drawn
+## beam is narrower on Compatibility (hotel_player.PLAIN_BEAM), and reading it
+## made a torch harder to be seen by on some machines than on others.
+const TORCH_NOTICE_ANGLE := 32.0
 ## Strike: starts within ATTACK_RANGE, lunges for WINDUP_TIME, kills within STRIKE_REACH.
 const ATTACK_RANGE := 2.4
 const STRIKE_REACH := 3.2
@@ -405,7 +409,7 @@ func lit_by_torch() -> Node3D:
 		var chest := global_position + Vector3(0, 1.6, 0)
 		var offset := chest - torch.global_position
 		if offset.length() > TORCH_NOTICE_RANGE or offset.length() < 5.0: continue
-		if (-torch.global_basis.z).angle_to(offset) > deg_to_rad(torch.spot_angle * 0.85): continue
+		if (-torch.global_basis.z).angle_to(offset) > deg_to_rad(TORCH_NOTICE_ANGLE * 0.85): continue
 		var ray := PhysicsRayQueryParameters3D.create(torch.global_position, chest, 1 | 8 | 64)
 		if get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): return player
 	return null
@@ -455,6 +459,9 @@ func hear_route(point: Vector3, radius: float) -> Dictionary:
 	var detour := maxf(0.0, length - global_position.distance_to(apparent))
 	return {"audible": true, "apparent": apparent, "distance": length, "muffle": clampf(detour / 25.0, 0.0, 1.0)}
 
+## How far from where it last knew its quarry to be a noise can be and still
+## be taken for that quarry, mid-chase.
+const CHASE_EARSHOT := 9.0
 func hear(point: Vector3, radius: float) -> void:
 	if control != "ai": return
 	# Holding a victim or pulling a wardrobe open, it finishes what it is doing:
@@ -462,9 +469,12 @@ func hear(point: Vector3, radius: float) -> void:
 	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
 	if not can_hear(point, radius): return
 	if mode == Mode.CHASE:
-		# While hunting, every noise tells it where the player is.
-		last_known = point
-		lost_time = minf(lost_time, 1.0)
+		# While hunting, a noise near the one it is after tells it where they
+		# went. Any noise at all used to: two survivors walking about kept a
+		# chase alive for ever, bounced between them, after nobody.
+		if point.distance_to(last_known) <= CHASE_EARSHOT:
+			last_known = point
+			lost_time = minf(lost_time, 1.0)
 		return
 	if mode == Mode.ALERT:
 		# Already turning to hunt: the noise only says where. Sending it to
@@ -591,8 +601,16 @@ func set_control(kind: String) -> void:
 func pack_state() -> Array:
 	return [global_position, rotation.y, velocity, mode, grace, visual.look_point if is_instance_valid(visual) and "look_point" in visual else Vector3.INF]
 
+## Carried by a lift on this machine: the hunter's own machine still sends
+## where it stood by the old car for a moment, and those states would pull it
+## back there and slide it across the floor (see remote_player.ride_to).
+var ride_hold := 0.0
+var ride_point := Vector3.ZERO
 func push_state(data: Array) -> void:
 	if data.size() < 6: return
+	if ride_hold > 0.0:
+		if (data[0] as Vector3).distance_to(ride_point) > 3.0: return
+		ride_hold = 0.0
 	net_states.append({"time": net_clock, "position": data[0], "yaw": data[1], "velocity": data[2]})
 	while net_states.size() > 10: net_states.pop_front()
 	var next: int = data[3]
@@ -605,6 +623,7 @@ func push_state(data: Array) -> void:
 ## Puppet: smoothed onto the received states, animated like the real thing.
 func follow_state(delta: float) -> void:
 	net_clock += delta
+	ride_hold = maxf(0.0, ride_hold - delta)
 	state_time += delta
 	if net_states.is_empty():
 		update_visual(delta)
@@ -652,7 +671,10 @@ func update_execution(delta: float) -> void:
 	speed = 0.0
 	velocity = Vector3(0, -2.0, 0)
 	move_and_slide()
-	if state_time >= EXECUTION_TIME and control != "puppet":
+	# Once the level has let the body fall and counted the death (it holds the
+	# victim 0.3 s past EXECUTION_TIME): let go earlier, it saw its still
+	# living victim and roared at the corpse.
+	if state_time >= EXECUTION_TIME + 0.35 and control != "puppet":
 		set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
 
 ## A call decided where the creature is controlled, replayed here.
@@ -675,7 +697,11 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 	aim_voice(route, grunt_left)
 
 func _physics_process(delta: float) -> void:
-	if level.session.state != level.session.State.PLAYING: return
+	# Between stages, and on an online end screen, the voice still counts
+	# down: left alone, a grunt ran on through the rest of its recording.
+	if level.session.state != level.session.State.PLAYING:
+		update_voice(delta)
+		return
 	if control == "puppet":
 		follow_state(delta)
 		return
@@ -884,10 +910,15 @@ func move_on_path(delta: float) -> void:
 		direction = Vector3.ZERO
 	# Hunting, it slams doors open; otherwise it eases them and waits.
 	var hunting := mode == Mode.CHASE
+	var at_door := false
 	for door in level.hotel.doors:
 		if door.doorway.distance_to(position) < (2.4 if hunting else 1.8) and (not door.opened or door.moving):
 			if not door.moving: door.toggle(not hunting, false, hunting)
 			direction = Vector3.ZERO
+			at_door = true
+	# Waiting at a door it stops there, instead of coasting on through the
+	# leaf for the two metres it takes to brake.
+	if at_door: speed = 0.0
 	var wanted := desired_speed() if direction.length() > 0.1 else 0.0
 	# Sharp turns cost speed: it has to swing its stilt legs around.
 	if direction.length() > 0.1:
@@ -900,3 +931,24 @@ func move_on_path(delta: float) -> void:
 	velocity.y = -2 if is_on_floor() else velocity.y - 20 * delta
 	if direction.length() > 0.1: rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1, delta * (8.0 if mode == Mode.CHASE else 4.5)))
 	move_and_slide()
+	unstick(delta, direction)
+
+## Pressed into a corner the path skims (the navigation leaves no room to
+## spare round a partition's end), it went on walking into it for as long as
+## the mode lasted. Going nowhere while meaning to move for a moment, it steps
+## sideways and takes the next point of its path instead.
+const STUCK_AFTER := 0.8
+var stuck_clock := 0.0
+func unstick(delta: float, direction: Vector3) -> void:
+	var moving: float = Vector2(get_real_velocity().x, get_real_velocity().z).length()
+	if direction.length() < 0.1 or speed < 1.0 or moving > 0.25:
+		stuck_clock = 0.0
+		return
+	stuck_clock += delta
+	if stuck_clock < STUCK_AFTER: return
+	stuck_clock = 0.0
+	var side := Vector3(-direction.z, 0, direction.x) * (1.0 if rng.randf() < 0.5 else -1.0)
+	velocity = side * 1.6 + Vector3(0, -2, 0)
+	move_and_slide()
+	path_index = mini(path_index + 1, path.size())
+	repath = 0.6
