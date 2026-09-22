@@ -971,6 +971,7 @@ func show_characters(back := "multiplayer") -> void:
 	camera.position = Vector3(0.35, 1.05, -3.3)
 	camera.look_at(Vector3(0, 0.92, 0))
 	camera.fov = 38
+	camera.current = true
 	chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[settings.values.character].to_upper()
 	chosen.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	chosen.size_flags_horizontal = Control.SIZE_SHRINK_END

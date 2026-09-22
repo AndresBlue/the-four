@@ -15,7 +15,13 @@ const DEPTH := 0.78
 const OPEN_ANGLE := 1.75
 const PEEK_ANGLE := 1.05
 ## Doors wider than this stop blocking movement so they never shove anyone.
+## They go on hiding what is behind them, like a door mid-swing: layer 64,
+## which sight looks for and bodies do not. Turned off altogether, the wood
+## still in front of somebody peeking stopped hiding them, and a creature saw
+## straight through a leaf open 24 degrees.
 const COLLISION_LIMIT := 0.3
+const SOLID := 8
+const SIGHT_ONLY := 64
 signal peek_started(point: Vector3)
 ## The creature pulled the doors open (online, the host relays it).
 signal forced
@@ -111,7 +117,7 @@ func apply_angles() -> void:
 	# Left leaf swings out with a negative turn, the right one with a positive turn.
 	pivots.left.rotation.y = -leaf_angle("left")
 	pivots.right.rotation.y = leaf_angle("right")
-	for side in leaf_bodies: leaf_bodies[side].collision_layer = 8 if leaf_angle(side) < COLLISION_LIMIT else 0
+	for side in leaf_bodies: leaf_bodies[side].collision_layer = SOLID if leaf_angle(side) < COLLISION_LIMIT else SIGHT_ONLY
 
 func swing(to: float, seconds: float) -> void:
 	if is_instance_valid(motion): motion.kill()

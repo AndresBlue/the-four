@@ -31,6 +31,10 @@ var restart_wait := 0.0
 ## carries the floor to the next stage.
 var goal := {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
 var participants := {1: Life.EXPLORING}
+## Seats lost for this floor (dropped out and never back within the grace).
+## Nobody raises them: a new stage revived them as bodies nobody drove, alive
+## for the quota and with no grace left to lose them again.
+var dropped := {}
 var roster_count := 1
 var run_seed := 0
 var map_fallback := false
@@ -57,6 +61,7 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	run_seed = seed_value
 	map_fallback = used_fallback
 	participants = {}
+	dropped = {}
 	for slot in slots: participants[int(slot)] = Life.EXPLORING
 	roster_count = slots.size()
 	elapsed = 0
@@ -122,7 +127,12 @@ func capture(id: int) -> bool:
 func drop(id: int) -> void:
 	if state != State.PLAYING or not participants.has(id) or participants[id] == Life.DEAD: return
 	participants[id] = Life.DEAD
+	dropped[id] = true
 	check_quota()
+
+## Back after all, too late for this stage: from the next one on, they count.
+func returned(id: int) -> void:
+	dropped.erase(id)
 
 func check_quota() -> bool:
 	var alive := 0
@@ -150,7 +160,8 @@ func check_quota() -> bool:
 
 ## Everyone back among the living (the authority decides when).
 func raise_everyone() -> void:
-	for id in participants: participants[id] = Life.EXPLORING
+	for id in participants:
+		if not dropped.has(id): participants[id] = Life.EXPLORING
 	changed.emit()
 
 func pause() -> void:

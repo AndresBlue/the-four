@@ -77,6 +77,14 @@ func configure(index: int, local_view: bool) -> void:
 		model.mesh = load("res://game/player/avatars/detective_relaxed.res")
 	else: model = load("res://assets/players/%s/model.fbx" % IDS[character]).instantiate()
 	model.name = "Model"
+	# The Exploradora's FBX brings the camera it was shown with ("Preview_Camera").
+	# First into a viewport, it became that viewport's camera: the character
+	# screen, opened with her already chosen, framed her from there, too close
+	# and off to one side. Whatever a model brings to look or light with is
+	# not the body.
+	for stray in model.find_children("*", "Camera3D", true, false) + model.find_children("*", "Light3D", true, false):
+		stray.get_parent().remove_child(stray)
+		stray.free()
 	add_child(model)
 	# Imported demonstration clips are preserved but never drive game root motion.
 	for animation in model.find_children("*", "AnimationPlayer", true, false):

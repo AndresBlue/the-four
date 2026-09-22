@@ -874,6 +874,7 @@ func seat_dropped(seat: int) -> void:
 
 func seat_returned(seat: int, _peer_id: int) -> void:
 	away.erase(seat)
+	if is_instance_valid(level) and is_instance_valid(level.session): level.session.returned(seat)
 	if bodies.has(seat): bodies[seat].away = false
 	if seat == locust_seat() and versus() and net.is_host and is_instance_valid(level.locust) and level.locust.control == "ai":
 		level.locust.set_control("puppet")

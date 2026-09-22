@@ -330,7 +330,42 @@ func cut_short_checks() -> void:
 	var restarting: bool = session.restart_wait > 0.0 and session.state == session.State.PLAYING
 	session.capture(1)
 	check("Una muerte durante la cuenta del reinicio no acaba el piso", restarting and session.state == session.State.PLAYING and session.restart_wait > 0.0)
+	# Lost for the floor stays lost: the next stage raises the others only.
+	session.start(session.run_seed, false, [1, 2])
+	session.drop(2)
+	session.raise_everyone()
+	check("Quien se cayó y no volvió no revive al cambiar de sector", session.participants[2] == session.Life.DEAD and session.participants[1] == session.Life.EXPLORING)
+	session.returned(2)
+	session.raise_everyone()
+	check("Si vuelve, cuenta otra vez desde el sector siguiente", session.participants[2] == session.Life.EXPLORING)
 	session.start(session.run_seed, false, [1])
+	# The ride waits under the pause like everything else.
+	level.lifts.boarding = {"point": player.global_position + Vector3(4, 0, 0), "time": 0.0}
+	session.set_state(session.State.PAUSED)
+	level._physics_process(2.0)
+	check("Un viaje en ascensor no avanza con el juego en pausa", float(level.lifts.boarding.get("time", -1.0)) == 0.0)
+	level.lifts.boarding = {}
+	player.held = false
+	session.set_state(session.State.PLAYING)
+	# A wardrobe leaf ajar is still wood in front of whoever is inside.
+	var wardrobe = get_nodes_in_group("hotel_hides")[0]
+	wardrobe.peek = {"left": 0.4, "right": 0.0}
+	wardrobe.apply_angles()
+	await frames(2)
+	var leaf: CollisionShape3D = wardrobe.leaf_bodies.left.get_child(0)
+	var front: Vector3 = wardrobe.global_basis.z.normalized()
+	var through := PhysicsRayQueryParameters3D.create(leaf.global_position + front * 2.0, leaf.global_position - front * 0.3, 1 | 8 | 64)
+	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(through)
+	check("Una hoja entreabierta del armario sigue tapando la vista", wardrobe.leaf_angle("left") > wardrobe.COLLISION_LIMIT and hit.get("collider") == wardrobe.leaf_bodies.left)
+	check("Y no estorba al moverse", wardrobe.leaf_bodies.left.collision_layer & 4 == 0 and wardrobe.leaf_bodies.left.collision_layer & 8 == 0)
+	wardrobe.peek = {"left": 0.0, "right": 0.0}
+	wardrobe.apply_angles()
+	# Whatever a model brings to look with stays out of the body.
+	var explorer = preload("res://game/player/avatars/avatar_visual.tscn").instantiate()
+	explorer.character = 2
+	root.add_child(explorer)
+	check("La Exploradora no trae su propia cámara", explorer.find_children("*", "Camera3D", true, false).is_empty())
+	explorer.queue_free()
 	# On this seed the deepest room of the first wing is the lift lobby behind
 	# the refuge: the creature started there, shut in for the whole stage.
 	await level.start_floor(673128)

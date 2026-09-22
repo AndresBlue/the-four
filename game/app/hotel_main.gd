@@ -1414,6 +1414,9 @@ func _physics_process(delta: float) -> void:
 	# The ride is counted before the rest: closing a stage puts the session
 	# into its transition for a moment, and everything below stops there -- a
 	# lift that stopped counting would hold somebody in the dark for good.
+	# But not under the pause (offline, where this node still runs): the ride
+	# went on without anybody, moving the body and ending the floor behind it.
+	if is_instance_valid(session) and session.state == session.State.PAUSED: return
 	lifts.ride_along(delta)
 	lifts.ride_out(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
