@@ -811,8 +811,9 @@ func show_settings(back: String) -> void:
 		box.pressed.connect(pair[1])
 		confirm_row.add_child(box)
 	var leave := func():
-		if not settings.previous_display.is_empty(): settings.revert_display()
+		# Closed first: the revert would otherwise reopen these settings.
 		settings_open = false
+		if not settings.previous_display.is_empty(): settings.revert_display()
 		action_requested.emit(return_action)
 	buttons["back"] = entry(column, "Volver", leave, false, 24)
 	_display_changed(int(ceil(settings.countdown)))

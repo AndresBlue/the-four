@@ -272,6 +272,10 @@ func start_intro(seed_value: int) -> void:
 	add_child(intro)
 	intro.finished.connect(finish_intro, CONNECT_ONE_SHOT)
 	if is_instance_valid(hotel): hotel.visible = false
+	# The floor played before is still standing behind the menu, and leaving
+	# the pause for this scene would let its music and air run on over it.
+	for loop in [ambience, theme, ventilation]: loop.stop()
+	world_audio.reset()
 	player.visible = false
 	# Only the television lights the room: no hotel ambient light.
 	environment.ambient_light_energy = 0.0
@@ -296,6 +300,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	player.zoom = 1.0
 	player.zoom_wanted = 1.0
 	session.online = false
+	session.authority = true
 	session.start(seed_value, manifest.get("fallback", false))
 	save_error = session.message
 	ui.sheet.clear()
@@ -459,6 +464,7 @@ func start_online_floor(config: Dictionary) -> void:
 func begin_online_play(config: Dictionary) -> void:
 	camcorder.start_tape(int(config.seed))
 	session.online = true
+	session.authority = not net.is_client()
 	session.start(int(config.seed), manifest.get("fallback", false), config.survivors)
 	save_error = ""
 	ui.sheet.clear()
@@ -494,6 +500,7 @@ func leave_online_floor() -> void:
 	player.slot = 1
 	solo_locust = false
 	session.online = false
+	session.authority = true
 	apply_settings()
 	session.set_state(session.State.MENU)
 
@@ -784,7 +791,14 @@ func close_document() -> void:
 
 func on_state() -> void:
 	var playing: bool = session.state == session.State.PLAYING
-	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]: world_audio.reset()
+	# The online menu belongs to the stretch of play it was opened in. Kept
+	# over a stage change or the end of the floor, it came back as a player
+	# frozen with a cursor and no menu, or under the next floor's loading screen.
+	if not playing: online_menu = false
+	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]:
+		world_audio.reset()
+		for cue in [scream_sound, blow_sound]:
+			if is_instance_valid(cue): cue.stop()
 	player.active = playing and not online_menu and local_alive() and not match_net.local_is_locust()
 	if not playing: player.velocity = Vector3.ZERO
 	if not playing and ui.sheet.visible:
@@ -1089,6 +1103,22 @@ func update_execution(delta: float) -> void:
 			player.avatar.rotation.z = 0.0
 		if not net.is_client(): session.capture(seat)
 
+## An execution cut short: the victim is let go alive, back on its feet with a
+## clean picture, and the creature leaves the kill.
+func release_execution() -> void:
+	var seat := int(execution.seat)
+	execution = {}
+	if seat == player.slot:
+		player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
+		if player.avatar != null:
+			player.avatar.rotation.x = 0.0
+			player.avatar.rotation.z = 0.0
+		if is_instance_valid(scream_sound): scream_sound.stop()
+		if is_instance_valid(blow_sound): blow_sound.stop()
+		clear_screen_cues()
+	if is_instance_valid(locust) and locust.control != "puppet" and locust.mode == locust.Mode.EXECUTE:
+		locust.set_mode(locust.Mode.SEARCH if locust.control == "ai" else locust.Mode.PATROL)
+
 ## Back to a clean picture: leaving for the menu, or starting a floor. The
 ## filter's material outlives the floor, so a signal that was lost when the
 ## hotel was freed would still be lost over the title room.
@@ -1168,6 +1198,14 @@ func open_wardrobe(hide: Node3D) -> void:
 ## The refuge of the stage in hand: the room holding the door on. Each one
 ## protects only while its stage lasts; once crossed it is a room like any
 ## other.
+## Rooms the creature is never sent to: every refuge, and the lift lobby each
+## one leads to.
+func off_limits_rooms() -> Array:
+	var rooms: Array = [int(manifest.exit)]
+	for refuge in manifest.get("refuges", []): rooms.append(int(refuge))
+	for gate in manifest.get("gates", []): rooms.append(int(gate.get("beyond", -1)))
+	return rooms
+
 func refuge_room() -> int:
 	var refuges: Array = manifest.get("refuges", [])
 	if refuges.is_empty(): return int(manifest.exit)
@@ -1186,14 +1224,19 @@ func spawn_locust() -> void:
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
 	# As far into the first wing as that wing goes: the stage is played there
 	# and the creature has to start away from the door everyone comes in by.
+	# Not in a refuge, and not in the lift lobby behind one: that lobby is often
+	# the deepest room of the wing, and its only way out is the refuge the
+	# creature will not cross -- it spent the stage shut in there, waiting
+	# right where everybody had to go.
 	var distances := GENERATOR.distance_map(manifest.adjacency, 0)
+	var shut_out := off_limits_rooms()
 	var reach := 0
 	for room in manifest.rooms:
-		if int(room.get("wing", 0)) == 0 and room.id != manifest.exit: reach = maxi(reach, int(distances[room.id]))
+		if int(room.get("wing", 0)) == 0 and not shut_out.has(int(room.id)): reach = maxi(reach, int(distances[room.id]))
 	var chosen := 0
 	var target := int(reach * 0.75)
 	for room in manifest.rooms:
-		if int(room.get("wing", 0)) != 0 or room.id == manifest.exit: continue
+		if int(room.get("wing", 0)) != 0 or shut_out.has(int(room.id)): continue
 		if distances[room.id] >= target and distances[room.id] > 3:
 			chosen = room.id
 			break
@@ -1577,7 +1620,10 @@ func watch_over(body: Node3D) -> void:
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
 	if session.state == session.State.PLAYING: update_execution(delta)
-	elif not execution.is_empty(): execution = {}
+	# Paused, it waits where it was. Anything else -- the stage closing under
+	# it, the floor ending -- lets the victim go: wiping it without that left
+	# them held in the air for good, neither dead nor able to move.
+	elif not execution.is_empty() and session.state != session.State.PAUSED: release_execution()
 	# A victim held up can be carried across a wall plane, and the walls are
 	# occluders: no occlusion culling while an execution lasts.
 	var cull: bool = execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
@@ -1639,6 +1685,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if session.state == session.State.CUTSCENE: finish_intro()
 		elif is_instance_valid(reading_document): close_document()
 		elif ui.settings_open:
+			# Closed first: the revert would otherwise reopen these settings.
+			ui.settings_open = false
 			if not settings.previous_display.is_empty(): settings.revert_display()
 			on_action(ui.return_action)
 		elif ui.screen == "join" and session.state == session.State.MENU: on_action("multiplayer")
@@ -1648,6 +1696,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		else: session.pause()
 	if event.physical_keycode == KEY_F9 and OS.is_debug_build() and not net.is_client(): session.capture(player.slot)
 	if event.physical_keycode == KEY_F11:
+		# Online nobody pauses the floor for everyone: the online menu opens
+		# over it instead. Between stages, at the end of a match, in the
+		# opening scene or while loading there is no menu to return to (from
+		# the opening scene, "back" went to the main menu with the scene still
+		# running, and its end started a floor behind it), so F11 waits.
+		if match_net.in_match():
+			if session.state != session.State.PLAYING: return
+			if not online_menu: open_online_menu()
+			settings.set_value("fullscreen", not settings.values.fullscreen)
+			ui.show_settings("online_pause")
+			return
+		if session.state not in [session.State.PLAYING, session.State.PAUSED, session.State.MENU]: return
 		session.pause()
 		settings.set_value("fullscreen", not settings.values.fullscreen)
 		ui.show_settings("pause" if session.state == session.State.PAUSED else "main")

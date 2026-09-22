@@ -222,6 +222,9 @@ func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0) -
 	var fall := -20.0 * log(1.0 + distance / EVERYWHERE_UNIT) / log(10.0)
 	voice.volume_db = gain + maxf(fall + (-6.0 if far else float(route.gain)), EVERYWHERE_FLOOR)
 	voice.finished.connect(voice.queue_free)
+	# Not in `voices`, which are recycled, but gone with them on a reset: a
+	# death heard as the floor ended used to finish over the next one.
+	voice.add_to_group("everywhere_cues")
 	voice.play(start)
 
 func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0) -> void:
@@ -329,6 +332,8 @@ func reset() -> void:
 		voice.stop()
 		voice.queue_free()
 	voices.clear()
+	for cue in get_tree().get_nodes_in_group("everywhere_cues"):
+		if is_ancestor_of(cue): cue.queue_free()
 	presence.stop()
 	presence_gain = 0
 	presence_route = {}
@@ -423,7 +428,9 @@ func update_ears(point: Vector3, delta: float) -> void:
 ## Moves the hum emitters to the closest fluorescent battens. A tube in another
 ## room is only heard through the opening, like any other sound.
 func update_ambient_sources() -> void:
-	if level.session.state != level.session.State.PLAYING or not is_instance_valid(level.hotel):
+	# With the power gone nothing hums: the tubes are hidden, not dimmed, so
+	# their energy alone kept the hum on through the blackout.
+	if level.session.state != level.session.State.PLAYING or not is_instance_valid(level.hotel) or level.hotel.dark:
 		for source in hums: source.stop()
 		return
 	var listener := listener_position()

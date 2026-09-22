@@ -457,12 +457,20 @@ func hear_route(point: Vector3, radius: float) -> Dictionary:
 
 func hear(point: Vector3, radius: float) -> void:
 	if control != "ai": return
-	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER]: return
+	# Holding a victim or pulling a wardrobe open, it finishes what it is doing:
+	# a noise used to send it off mid-kill with the victim dragged behind it.
+	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
 	if not can_hear(point, radius): return
 	if mode == Mode.CHASE:
 		# While hunting, every noise tells it where the player is.
 		last_known = point
 		lost_time = minf(lost_time, 1.0)
+		return
+	if mode == Mode.ALERT:
+		# Already turning to hunt: the noise only says where. Sending it to
+		# investigate restarted the alert, so a survivor who kept walking in
+		# sight was never chased -- every step put it back to square one.
+		last_known = point
 		return
 	last_known = point
 	set_mode(Mode.INVESTIGATE)
@@ -491,6 +499,7 @@ func smell_burnt(point: Vector3) -> void:
 	if mode == Mode.CHASE:
 		lost_time = minf(lost_time, 1.0)
 		return
+	if mode == Mode.ALERT: return
 	# Re-aimed as the body moves, without starting the behaviour over.
 	if mode != Mode.INVESTIGATE: set_mode(Mode.INVESTIGATE)
 	destination = point
@@ -500,7 +509,7 @@ func smell_burnt(point: Vector3) -> void:
 ## to look. Ignored while it is already hunting.
 func investigate(point: Vector3) -> void:
 	if control != "ai": return
-	if mode in [Mode.CHASE, Mode.ALERT, Mode.WINDUP, Mode.RECOVER]: return
+	if mode in [Mode.CHASE, Mode.ALERT, Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
 	last_known = point
 	set_mode(Mode.INVESTIGATE)
 	destination = point
@@ -512,6 +521,9 @@ func set_mode(next: Mode) -> void:
 	guided = false
 	repath = 0
 	pause_time = 0
+	# Back on its rounds it has forgotten the wardrobe it was looking at: kept,
+	# whoever hid there later was "seen" through the walls from across the floor.
+	if next == Mode.PATROL: observed_hide = null
 	if next == Mode.CHASE and previous != Mode.CHASE:
 		# It sets off from a stride and builds up to full speed.
 		speed = maxf(speed, CHASE_START_SPEED)
@@ -528,7 +540,10 @@ func choose_patrol() -> void:
 	# protecting the survivors this stage: it would stand at a door and wait.
 	var wing: int = int(level.manifest.rooms[patrol_room].get("wing", 0))
 	var refuge: int = level.refuge_room()
-	var choices: Array = level.manifest.adjacency[patrol_room].filter(func(id): return id != refuge and int(level.manifest.rooms[id].get("wing", 0)) == wing)
+	# Nor into a lift lobby: its only door is the refuge's, and it would be
+	# shut in there with no way on.
+	var lobbies: Array = level.manifest.get("gates", []).map(func(gate): return int(gate.get("beyond", -1)))
+	var choices: Array = level.manifest.adjacency[patrol_room].filter(func(id): return id != refuge and not lobbies.has(int(id)) and int(level.manifest.rooms[id].get("wing", 0)) == wing)
 	if choices.is_empty(): return
 	patrol_room = choices[rng.randi_range(0, choices.size() - 1)]
 	destination = FLOOR.position_of(level.manifest.rooms[patrol_room])

@@ -40,6 +40,11 @@ var message := ""
 var checkpoint_path := "user://hotel_checkpoint.json"
 ## An online floor: the single-player checkpoint is left alone.
 var online := false
+## Whether this machine moves the floor on by itself: offline and on the host.
+## A guest's session is a copy of the host's and only changes when told; left
+## to its own clock it advanced the stage a second time from a transition timer
+## nobody reset, and the host pulled it back, over and over, lights and all.
+var authority := true
 
 func _ready() -> void: process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -178,6 +183,7 @@ func write_checkpoint() -> bool:
 
 func _process(delta: float) -> void:
 	if state == State.PLAYING: elapsed += delta
+	if not authority: return
 	if restart_wait > 0.0 and state == State.PLAYING:
 		restart_wait -= delta
 		if restart_wait <= 0.0:

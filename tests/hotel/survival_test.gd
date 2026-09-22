@@ -97,6 +97,10 @@ func run() -> void:
 	check("Al verlo se detiene y chilla antes de correr", enemy.mode == enemy.Mode.ALERT)
 	enemy._physics_process(enemy.ALERT_TIME * 0.5)
 	check("La alerta da tiempo a reaccionar", enemy.mode == enemy.Mode.ALERT)
+	# A survivor who keeps walking in sight is heard at every step: the steps
+	# only say where, they must not start the alert over.
+	enemy.hear(player.position, 20)
+	check("Los pasos de quien ya ha visto no reinician la alerta", enemy.mode == enemy.Mode.ALERT)
 	enemy._physics_process(enemy.ALERT_TIME)
 	check("Tras la alerta persigue", enemy.mode == enemy.Mode.CHASE)
 	# The chase has a voice of its own, not only the shriek.
@@ -210,6 +214,8 @@ func run() -> void:
 	enemy.set_mode(enemy.Mode.WINDUP)
 	enemy._physics_process(enemy.WINDUP_TIME + 0.01)
 	check("El golpe encadena una ejecución en vez de matar al instante", enemy.mode == enemy.Mode.EXECUTE and not level.execution.is_empty() and level.session.state == level.session.State.PLAYING)
+	enemy.hear(player.position + Vector3(2, 0, 0), 20)
+	check("Un ruido no la saca de su ejecución", enemy.mode == enemy.Mode.EXECUTE)
 	await frames(30)
 	check("Durante la ejecución la víctima queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
 	# The execution is longer now: the scream, the mask coming in, the blow.
@@ -275,6 +281,7 @@ func run() -> void:
 	player.update_handheld(1.0 / 60.0)
 	check("Una cámara en NaN se repone sola", player.camera.rotation.is_finite() and is_finite(player.look_pitch()) and player.sway == Vector3.ZERO)
 	player.handheld_enabled = false
+	await cut_short_checks()
 	var file := FileAccess.open("res://evidence/survival_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed":failed == 0,"checks": checks}, "\t"))
 	file.close()
@@ -283,3 +290,31 @@ func run() -> void:
 	level.queue_free()
 	await process_frame
 	quit(0 if failed == 0 else 1)
+
+## What happens when the floor moves on in the middle of something.
+func cut_short_checks() -> void:
+	var player = level.player
+	var session = level.session
+	# An execution the stage closes under lets its victim go instead of
+	# leaving them held in the air, neither dead nor able to move.
+	level.execution = {"seat": player.slot, "time": 1.0, "point": player.global_position, "yaw": 0.0, "stabs": 0, "dropped": false}
+	player.held = true
+	level.online_menu = true
+	session.transition_time = 0.0
+	session.set_state(session.State.TRANSITION)
+	level._process(0.016)
+	check("Una ejecución cortada por el cambio de etapa suelta a la víctima", level.execution.is_empty() and not player.held)
+	check("El menú online no sobrevive al cambio de etapa", not level.online_menu)
+	# A guest's session only moves on when the host says so.
+	var stage: int = session.stage
+	session.authority = false
+	session.transition_time = 5.0
+	session._process(0.1)
+	check("La sesión de un invitado no avanza de etapa por su cuenta", session.stage == stage and session.state == session.State.TRANSITION)
+	session.authority = true
+	session.set_state(session.State.PLAYING)
+	# On this seed the deepest room of the first wing is the lift lobby behind
+	# the refuge: the creature started there, shut in for the whole stage.
+	await level.start_floor(673128)
+	var start := int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("id", -1))
+	check("La criatura no empieza en un refugio ni en el vestíbulo de un ascensor", start >= 0 and not level.off_limits_rooms().has(start))
