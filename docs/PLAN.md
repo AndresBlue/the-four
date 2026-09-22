@@ -153,11 +153,13 @@ herramientas para mirarlo están en la guía de desarrollo.
   - El desgarro de la cinta y el silencio antes de un golpe solo salen si la
     criatura está a menos de 10 m.
   - La cordura sube también dentro del refugio.
-- [ ] **El escalado nuevo**, en una máquina de verdad: si FSR 2.2 a escala 0,6
-  o 0,7 se ve bien en movimiento (los reescalados temporales pueden dejar
-  estelas detrás de la criatura corriendo o de la linterna), y si en Bajo
-  conviene FSR 1 o también el 2.2. Medido en una vista quieta a 1280 × 720,
-  FSR 2.2 a 0,6 dio un 74 % más de fotogramas que la resolución nativa.
+- [ ] **El escalado nuevo**, en una máquina de verdad. Medido: a 0,6 da un
+  74 % más de fotogramas que la resolución nativa, y con la criatura cruzando
+  la vista es el modo más fiel a la imagen entera de los cuatro
+  (`tools/capture/ghosting_capture.gd`), así que las estelas que se temían no
+  aparecen en la medida. Falta verlo jugando, sobre todo con la criatura
+  corriendo hacia ti y con la linterna barriendo, y decidir si en Bajo se
+  queda FSR 1 o pasa también a 2.2.
 - [ ] **La linterna en la vista de la criatura**, vista de lado y no solo de
   frente, ahora que es el cono real del haz.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel

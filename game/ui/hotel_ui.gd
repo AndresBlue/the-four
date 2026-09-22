@@ -758,7 +758,8 @@ func show_settings(back: String) -> void:
 	options(picture, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.fullscreen)
 	var forward: bool = RenderingServer.get_current_rendering_method() == "forward_plus"
 	options(picture, "Escalado", "upscaler", PRESETS.UPSCALER_NAMES, PRESETS.UPSCALERS, not forward)
-	slider(picture, "Escala de render", "scale", 0.5, 1.0, 0.05)
+	scaling_modes(picture)
+	slider(picture, "Escala de render", "scale", PRESETS.SCALING_MODES[PRESETS.SCALING_MODES.size() - 1], 1.0, 0.01, false, true)
 	var mode: int = PRESETS.scaling_mode(settings.values)
 	slider(picture, "Nitidez del escalado", "sharpness", 0.0, 1.0, 0.05, mode == Viewport.SCALING_3D_MODE_BILINEAR)
 	options(picture, "Suavizado de bordes", "aa", PRESETS.ANTIALIASING_NAMES, PRESETS.ANTIALIASING, mode == Viewport.SCALING_3D_MODE_FSR2)
@@ -887,6 +888,32 @@ func start_roll(roll: ScrollContainer, list: VBoxContainer) -> void:
 	roll.gui_input.connect(stop)
 	roll.get_v_scroll_bar().gui_input.connect(stop)
 
+## How much of the picture is drawn, in the modes a player knows by name, with
+## the slider under it for anything in between. A scale that is not one of them
+## reads as "Personalizada" and is kept until another is chosen.
+func scaling_modes(parent: Node) -> void:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	label(row, "Calidad del escalado", 19).custom_minimum_size.x = 340
+	var control := OptionButton.new()
+	control.custom_minimum_size.x = 300
+	control.add_theme_font_size_override("font_size", 19)
+	for words in PRESETS.SCALING_NAMES: control.add_item(words)
+	var chosen := -1
+	for index in PRESETS.SCALING_MODES.size():
+		if is_equal_approx(float(PRESETS.SCALING_MODES[index]), float(settings.values.scale)): chosen = index
+	if chosen < 0:
+		control.add_item("Personalizada (%d%%)" % roundi(settings.values.scale * 100))
+		chosen = PRESETS.SCALING_MODES.size()
+	control.select(chosen)
+	control.item_selected.connect(func(index):
+		tick()
+		if index >= PRESETS.SCALING_MODES.size(): return
+		settings.set_value("scale", PRESETS.SCALING_MODES[index])
+		show_settings.call_deferred(return_action)
+	)
+	row.add_child(control)
+
 func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
 	scroll.name = title_text
@@ -930,7 +957,10 @@ func options(parent: Node, title_text: String, key: String, labels: Array, value
 	)
 	row.add_child(control)
 
-func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float, disabled := false) -> void:
+## refresh: the rest of the screen depends on this value (the scale names the
+## quality of the reconstruction above it), so it is redrawn once the hand
+## lets the slider go -- not on every step of the drag.
+func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float, disabled := false, refresh := false) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	parent.add_child(row)
@@ -948,6 +978,7 @@ func slider(parent: Node, title_text: String, key: String, low: float, high: flo
 	var number := label(row, ("%d%%" % roundi(control.value * 100)) if percent else ("%.4f" % control.value), 17)
 	number.add_theme_color_override("font_color", STYLE.SOFT)
 	control.value_changed.connect(func(value): settings.set_value(key, value); number.text = ("%d%%" % roundi(value * 100)) if percent else ("%.4f" % value))
+	if refresh: control.drag_ended.connect(func(changed): if changed: show_settings.call_deferred(return_action))
 
 func show_characters(back := "multiplayer") -> void:
 	clear()

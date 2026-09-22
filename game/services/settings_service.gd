@@ -111,7 +111,7 @@ func sanitize(key: String, value: Variant) -> Variant:
 		"quality": return clampi(int(value), 0, PRESETS.count() - 1)
 		"fps": return int(value) if int(value) in [0, 30, 60, 120, 144] else 60
 		"sensitivity": return clampf(value, 0.0005, 0.008)
-		"scale": return clampf(value, 0.5, 1.0)
+		"scale": return clampf(value, PRESETS.SCALING_MODES[PRESETS.SCALING_MODES.size() - 1], 1.0)
 	return clampf(value, 0, 1)
 
 func set_value(key: String, value: Variant) -> void:

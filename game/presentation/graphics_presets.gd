@@ -182,6 +182,13 @@ static func scaling_mode(values: Dictionary) -> int:
 		"fsr2": return Viewport.SCALING_3D_MODE_FSR2
 	return Viewport.SCALING_3D_MODE_BILINEAR
 
+## What a reconstruction is given to work with, in the proportions AMD names
+## its own modes by: how much of each side is drawn before it is rebuilt up to
+## the window. Quality 67% draws about half the pixels; Performance 50% draws
+## a quarter. Anything else the slider is left at reads as "Personalizada".
+const SCALING_MODES := [1.0, 0.77, 0.67, 0.59, 0.5, 0.33]
+const SCALING_NAMES := ["Nativa (sin reescalado)", "Ultra calidad (77%)", "Calidad (67%)", "Equilibrado (59%)", "Rendimiento (50%)", "Ultra rendimiento (33%)"]
+
 ## Edge smoothing the player asks for over the preset's own (settings "aa").
 const ANTIALIASING := ["preset", "off", "fxaa", "smaa", "taa", "msaa2", "msaa4"]
 const ANTIALIASING_NAMES := ["Del preset", "Sin suavizado", "FXAA (rápido)", "SMAA (mejor)", "TAA (temporal)", "MSAA 2×", "MSAA 4×"]
