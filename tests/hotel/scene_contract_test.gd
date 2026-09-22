@@ -48,6 +48,29 @@ func run() -> void:
 	Input.parse_input_event(loose)
 	await process_frame
 	check("Running stays on while Shift is down and stops when the system says it is up", kept and not Input.is_action_pressed("sprint"))
+	# The picture settings: what the player asks for over the preset, and how
+	# the drawn picture is brought up to the window.
+	var presets := preload("res://game/presentation/graphics_presets.gd")
+	var forward: bool = RenderingServer.get_current_rendering_method() == "forward_plus"
+	check("Native resolution is drawn straight, under it FSR 2.2 takes over", presets.scaling_mode({"upscaler": "auto", "scale": 1.0}) == Viewport.SCALING_3D_MODE_BILINEAR and presets.scaling_mode({"upscaler": "auto", "scale": 0.7}) == (Viewport.SCALING_3D_MODE_FSR2 if forward else Viewport.SCALING_3D_MODE_BILINEAR))
+	check("And each upscaler can be asked for by name", presets.scaling_mode({"upscaler": "fsr1", "scale": 0.7}) == (Viewport.SCALING_3D_MODE_FSR if forward else Viewport.SCALING_3D_MODE_BILINEAR) and presets.scaling_mode({"upscaler": "bilinear", "scale": 0.7}) == Viewport.SCALING_3D_MODE_BILINEAR)
+	var with_fsr2: Dictionary = presets.of(presets.ULTRA, {"upscaler": "fsr2", "scale": 0.7})
+	check("FSR 2.2 is the smoothing: nothing else is drawn over it", not with_fsr2.taa and not with_fsr2.fxaa and not with_fsr2.smaa and with_fsr2.msaa == Viewport.MSAA_DISABLED)
+	var smoothed: Dictionary = presets.of(presets.LOW, {"aa": "smaa"})
+	check("A smoothing asked for by hand replaces the preset's", smoothed.smaa and not smoothed.fxaa and not smoothed.taa)
+	var heavy: Dictionary = presets.of(presets.LOW, {"ao": 1, "fog": 1, "reflections": 1, "blur": 1})
+	var light: Dictionary = presets.of(presets.ULTRA, {"ao": 0, "fog": 0, "reflections": 0, "blur": 0})
+	check("The heavy effects can be switched on over a modest preset", heavy.ssao >= 0 and heavy.fog_size > 0 and heavy.ssr_steps > 0 and heavy.motion_blur > 0)
+	check("And off over a generous one", light.ssao < 0 and light.ssil < 0 and light.fog_size == 0 and not light.floor_haze and light.ssr_steps == 0 and light.motion_blur == 0)
+	check("Left alone, a preset is its own", presets.of(presets.HIGH).ssao == presets.PRESETS[presets.HIGH].ssao)
+	# The window is the picture's, and the three modes are the three ways of
+	# showing it; a value from a broken file falls back to the default.
+	check("The window has its three modes and they survive a bad file", scene.settings.WINDOW_MODES.size() == 3 and scene.settings.sanitize("window_mode", 9) == 2 and scene.settings.sanitize("upscaler", "dlss") == "auto" and scene.settings.sanitize("aa", "nope") == "preset")
+	scene.settings.values.scale = 0.7
+	scene.settings.values.upscaler = "fsr2"
+	scene.settings.apply()
+	scene.apply_settings()
+	check("Choosing it reaches the viewport and takes TAA with it", (root.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR2 or not forward) and not root.use_taa and is_equal_approx(root.scaling_3d_scale, 0.7))
 	Input.action_release("sprint")
 	scene.queue_free()
 	await process_frame

@@ -80,6 +80,9 @@ var settings_open := false
 var rebind_action := ""
 var rebind_button: Button
 var display_label: Label
+## The pair of buttons that keep or revert a screen change, shown only while
+## one is waiting.
+var display_row: HBoxContainer
 var return_action := "main"
 var buttons := {}
 ## Text fields on the current screen, by setting key.
@@ -285,6 +288,7 @@ func clear() -> void:
 	buttons.clear()
 	fields.clear()
 	display_label = null
+	display_row = null
 	loading_label = null
 	rebind_action = ""
 	column.custom_minimum_size.x = 520
@@ -747,9 +751,26 @@ func show_settings(back: String) -> void:
 	tabs.custom_minimum_size = Vector2(1000, 380)
 	tabs.add_theme_font_size_override("font_size", 20)
 	column.add_child(tabs)
+	# IMAGEN is the screen: the window, how many pixels are drawn and how they
+	# are brought up to it. GRÁFICOS is what the picture looks like.
+	var picture := page(tabs, "IMAGEN")
+	options(picture, "Modo de ventana", "window_mode", settings.WINDOW_MODES, range(settings.WINDOW_MODES.size()))
+	options(picture, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.fullscreen)
+	var forward: bool = RenderingServer.get_current_rendering_method() == "forward_plus"
+	options(picture, "Escalado", "upscaler", PRESETS.UPSCALER_NAMES, PRESETS.UPSCALERS, not forward)
+	slider(picture, "Escala de render", "scale", 0.5, 1.0, 0.05)
+	var mode: int = PRESETS.scaling_mode(settings.values)
+	slider(picture, "Nitidez del escalado", "sharpness", 0.0, 1.0, 0.05, mode == Viewport.SCALING_3D_MODE_BILINEAR)
+	options(picture, "Suavizado de bordes", "aa", PRESETS.ANTIALIASING_NAMES, PRESETS.ANTIALIASING, mode == Viewport.SCALING_3D_MODE_FSR2)
+	if not forward:
+		paragraph(picture, "Compatibilidad no tiene FSR: la imagen se estira sin reconstruir. Cambia el renderizador en GRÁFICOS para usarlo.", 16, 900, STYLE.SOFT)
+	elif mode == Viewport.SCALING_3D_MODE_FSR2:
+		paragraph(picture, "FSR 2.2 reconstruye la imagen con el movimiento de cada píxel y hace de suavizado él mismo, así que el de abajo no se usa.", 16, 900, STYLE.SOFT)
+	elif settings.values.scale < 1.0 and mode == Viewport.SCALING_3D_MODE_BILINEAR:
+		paragraph(picture, "Por debajo de la resolución nativa, FSR 2.2 se ve bastante más nítido que este estirado.", 16, 900, STYLE.SOFT)
+	options(picture, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
+	check(picture, "Sincronización vertical", "vsync")
 	var graphics := page(tabs, "GRÁFICOS")
-	check(graphics, "Pantalla completa", "fullscreen")
-	options(graphics, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.values.fullscreen)
 	options(graphics, "Preset gráfico", "quality", PRESETS.NAMES, range(PRESETS.count()))
 	options(graphics, "Renderizador", "renderer", ["Forward+ (completo)", "Compatibilidad (gráfica integrada)"], ["forward_plus", "gl_compatibility"])
 	if settings.renderer_pending():
@@ -768,14 +789,13 @@ func show_settings(back: String) -> void:
 				get_tree().quit()
 			)
 			graphics.add_child(restart)
-	slider(graphics, "Escala de render", "scale", 0.5, 1.0, 0.05)
 	check(graphics, "Sombras", "shadows")
-	options(graphics, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
-	check(graphics, "Sincronización vertical", "vsync")
-	var picture := page(tabs, "IMAGEN")
-	for item in [["Cinta VHS", "vhs"], ["Grano", "grain"], ["Aberración cromática", "chromatic"], ["Líneas de barrido", "scanlines"], ["Movimiento de cámara", "bob"]]: slider(picture, item[0], item[1], 0, 1, 0.05)
-	check(picture, "Marcas de videocámara (REC, fecha y hora)", "osd")
-	check(picture, "Efectos reducidos", "reduced")
+	# The heavy ones, each one the preset's unless it is asked for by hand.
+	for key in PRESETS.SWITCHES: options(graphics, PRESETS.SWITCHES[key], key, ["Del preset", "Desactivado", "Activado"], [-1, 0, 1])
+	spacer(graphics, 6)
+	for item in [["Cinta VHS", "vhs"], ["Grano", "grain"], ["Aberración cromática", "chromatic"], ["Líneas de barrido", "scanlines"], ["Movimiento de cámara", "bob"]]: slider(graphics, item[0], item[1], 0, 1, 0.05)
+	check(graphics, "Marcas de videocámara (REC, fecha y hora)", "osd")
+	check(graphics, "Efectos reducidos", "reduced")
 	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")
@@ -811,6 +831,10 @@ func show_settings(back: String) -> void:
 	display_label = paragraph(column, "", 16, 900, STYLE.AMBER)
 	var confirm_row := HBoxContainer.new()
 	confirm_row.add_theme_constant_override("separation", 12)
+	# Only while a screen change is waiting to be kept: they did nothing the
+	# rest of the time, and stood where the eye looks for "Volver".
+	confirm_row.visible = not settings.previous_display.is_empty()
+	display_row = confirm_row
 	column.add_child(confirm_row)
 	for pair in [["CONSERVAR PANTALLA", func(): settings.confirm_display()], ["REVERTIR PANTALLA", func(): settings.revert_display(); show_settings.call_deferred(return_action)]]:
 		var box := Button.new()
@@ -901,12 +925,12 @@ func options(parent: Node, title_text: String, key: String, labels: Array, value
 		tick()
 		settings.set_value(key, values[index])
 		# A preset also moves the render scale slider: show it where it went. A
-		# renderer change shows its restart notice.
-		if key in ["quality", "renderer"]: show_settings.call_deferred(return_action)
+		# renderer, upscaler or window change redraws what depends on it.
+		if key in ["quality", "renderer", "upscaler", "window_mode"]: show_settings.call_deferred(return_action)
 	)
 	row.add_child(control)
 
-func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float) -> void:
+func slider(parent: Node, title_text: String, key: String, low: float, high: float, step: float, disabled := false) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	parent.add_child(row)
@@ -917,9 +941,10 @@ func slider(parent: Node, title_text: String, key: String, low: float, high: flo
 	control.max_value = high
 	control.step = step
 	control.value = settings.values[key]
+	control.editable = not disabled
 	row.add_child(control)
-	# Sliders from 0 to 1 read as percentages; others show their raw value.
-	var percent := low == 0.0 and high == 1.0
+	# Sliders that end at 1 read as percentages; others show their raw value.
+	var percent := high == 1.0
 	var number := label(row, ("%d%%" % roundi(control.value * 100)) if percent else ("%.4f" % control.value), 17)
 	number.add_theme_color_override("font_color", STYLE.SOFT)
 	control.value_changed.connect(func(value): settings.set_value(key, value); number.text = ("%d%%" % roundi(value * 100)) if percent else ("%.4f" % value))
@@ -1173,6 +1198,7 @@ func _process(delta: float) -> void:
 func _display_changed(seconds: int) -> void:
 	if is_instance_valid(display_label):
 		display_label.text = "Confirma la pantalla: se revertirá en %d s." % seconds if seconds > 0 else ""
+	if is_instance_valid(display_row): display_row.visible = seconds > 0
 	var refresh := seconds == 0 and display_was_pending and settings_open
 	display_was_pending = seconds > 0
 	if refresh: show_settings.call_deferred(return_action)

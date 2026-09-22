@@ -145,15 +145,66 @@ const PRESETS := [
 	},
 ]
 
+## --- The player's own picture and graphics settings -------------------------
+##
+## The preset says what a machine can afford; these say what the player wants
+## over it. `of()` takes them in, so everything that reads a preset sees one
+## picture of the settings and nowhere has to ask twice.
+
+## How the 3D picture is scaled up to the window (settings "upscaler").
+## - auto: native resolution is drawn straight (bilinear, nothing to rebuild);
+##   under it, FSR 2.2, which is the best the engine has -- except on Bajo,
+##   which is the preset for machines with no room to spare, where the
+##   rebuilding's own millisecond is better spent on the frame: there, FSR 1.
+## - fsr2: FidelityFX Super Resolution 2.2, temporal. It rebuilds the picture
+##   from the frames before it with the motion of every pixel, so at 60% it
+##   still reads sharper than a native 85% blown up. It does its own edge
+##   smoothing, so it replaces TAA, FXAA and SMAA (and the engine switches TAA
+##   off under it anyway). At scale 1 it is an antialiaser of its own.
+## - fsr1: spatial, a single frame sharpened. Cheaper and with no history, so
+##   nothing smears; it cannot invent the detail FSR 2.2 does.
+## - bilinear: the plain stretch.
+## Forward+ only: Compatibility has neither, and there everything is bilinear.
+## There is no DLSS: it is not in the engine, and it cannot be added from
+## outside one (it needs the renderer's own motion vectors and jitter), so it
+## would mean shipping a fork of Godot.
+const UPSCALERS := ["auto", "bilinear", "fsr1", "fsr2"]
+const UPSCALER_NAMES := ["Automático", "Bilineal (sin reconstrucción)", "FSR 1.0 (espacial)", "FSR 2.2 (temporal)"]
+
+static func scaling_mode(values: Dictionary) -> int:
+	if RenderingServer.get_current_rendering_method() != "forward_plus": return Viewport.SCALING_3D_MODE_BILINEAR
+	var choice := String(values.get("upscaler", "auto"))
+	if choice == "auto":
+		if float(values.get("scale", 1.0)) >= 0.999: choice = "bilinear"
+		else: choice = "fsr1" if int(values.get("quality", MEDIUM)) == LOW else "fsr2"
+	match choice:
+		"fsr1": return Viewport.SCALING_3D_MODE_FSR
+		"fsr2": return Viewport.SCALING_3D_MODE_FSR2
+	return Viewport.SCALING_3D_MODE_BILINEAR
+
+## Edge smoothing the player asks for over the preset's own (settings "aa").
+const ANTIALIASING := ["preset", "off", "fxaa", "smaa", "taa", "msaa2", "msaa4"]
+const ANTIALIASING_NAMES := ["Del preset", "Sin suavizado", "FXAA (rápido)", "SMAA (mejor)", "TAA (temporal)", "MSAA 2×", "MSAA 4×"]
+
+## The heavy effects, each one "del preset" (-1), off (0) or on (1).
+const SWITCHES := {
+	"ao": "Oclusión ambiental (SSAO/SSIL)",
+	"fog": "Niebla volumétrica",
+	"reflections": "Reflejos en superficies",
+	"blur": "Desenfoque de movimiento",
+}
+
 ## Values forced over every preset, for A/B measurements only
 ## (tools/benchmarks/hotel_benchmark.gd --set=key:value). Empty in play.
 static var overrides := {}
 
 ## The preset for a quality, with what the running renderer cannot do taken
 ## out: Compatibility has no screen-space effects, volumetric fog, TAA or FSR.
-static func of(quality: int) -> Dictionary:
+static func of(quality: int, values := {}) -> Dictionary:
 	var preset: Dictionary = PRESETS[clampi(quality, 0, PRESETS.size() - 1)].duplicate(true)
+	preset["smaa"] = false
 	for key in overrides: preset[key] = overrides[key]
+	apply_choices(preset, values)
 	if RenderingServer.get_current_rendering_method() != "forward_plus":
 		preset.ssao = -1
 		preset.ssil = -1
@@ -166,8 +217,48 @@ static func of(quality: int) -> Dictionary:
 		preset.sconce_lights = false
 		preset.bounce = false
 		# Without TAA, the plain edge smoothing.
-		if preset.msaa == Viewport.MSAA_DISABLED: preset.fxaa = true
+		if preset.msaa == Viewport.MSAA_DISABLED and not preset.smaa: preset.fxaa = true
+	# FSR 2.2 rebuilds the picture from its own history: it is the smoothing,
+	# and anything else on top of it only softens what it just resolved.
+	if scaling_mode(values) == Viewport.SCALING_3D_MODE_FSR2:
+		preset.taa = false
+		preset.fxaa = false
+		preset.smaa = false
+		preset.msaa = Viewport.MSAA_DISABLED
 	return preset
+
+## What the player asked for over the preset (see ANTIALIASING and SWITCHES).
+static func apply_choices(preset: Dictionary, values: Dictionary) -> void:
+	match String(values.get("aa", "preset")):
+		"off": preset.merge({"msaa": Viewport.MSAA_DISABLED, "fxaa": false, "smaa": false, "taa": false}, true)
+		"fxaa": preset.merge({"msaa": Viewport.MSAA_DISABLED, "fxaa": true, "smaa": false, "taa": false}, true)
+		"smaa": preset.merge({"msaa": Viewport.MSAA_DISABLED, "fxaa": false, "smaa": true, "taa": false}, true)
+		"taa": preset.merge({"msaa": Viewport.MSAA_DISABLED, "fxaa": false, "smaa": false, "taa": true}, true)
+		"msaa2": preset.merge({"msaa": Viewport.MSAA_2X, "fxaa": false, "smaa": false, "taa": false}, true)
+		"msaa4": preset.merge({"msaa": Viewport.MSAA_4X, "fxaa": false, "smaa": false, "taa": false}, true)
+	# Switched off, an effect goes; switched on, it comes in at the quality the
+	# preset above it would have given, so a modest machine asking for fog gets
+	# the cheap grid and not Ultra's.
+	match int(values.get("ao", -1)):
+		0:
+			preset.ssao = -1
+			preset.ssil = -1
+		1:
+			if preset.ssao < 0: preset.merge({"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true}, true)
+			if preset.ssil < 0: preset.merge({"ssil": RenderingServer.ENV_SSIL_QUALITY_LOW, "ssil_half": true}, true)
+	match int(values.get("fog", -1)):
+		0:
+			preset.merge({"fog_size": 0, "fog_depth": 0, "floor_haze": false, "lamp_fog": false}, true)
+		1:
+			if preset.fog_size <= 0: preset.merge({"fog_size": 48, "fog_depth": 48, "fog_filter": true, "lamp_fog": true}, true)
+	match int(values.get("reflections", -1)):
+		0: preset.ssr_steps = 0
+		1:
+			if preset.ssr_steps <= 0: preset.merge({"ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW}, true)
+	match int(values.get("blur", -1)):
+		0: preset.motion_blur = 0
+		1:
+			if preset.motion_blur <= 0: preset.motion_blur = 6
 
 ## How many presets there are (the saved setting is clamped to them).
 static func count() -> int:

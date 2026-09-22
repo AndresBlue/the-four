@@ -1809,12 +1809,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		if match_net.in_match():
 			if session.state != session.State.PLAYING: return
 			if not online_menu: open_online_menu()
-			settings.set_value("fullscreen", not settings.values.fullscreen)
+			settings.set_value("window_mode", settings.WINDOWED if settings.fullscreen else settings.FULLSCREEN)
 			ui.show_settings("online_pause")
 			return
 		if session.state not in [session.State.PLAYING, session.State.PAUSED, session.State.MENU]: return
 		session.pause()
-		settings.set_value("fullscreen", not settings.values.fullscreen)
+		settings.set_value("window_mode", settings.WINDOWED if settings.fullscreen else settings.FULLSCREEN)
 		ui.show_settings("pause" if session.state == session.State.PAUSED else "main")
 
 func _notification(what: int) -> void:
@@ -1975,7 +1975,7 @@ const COMPAT_SHADOW_ATLAS := 4096
 var torch_size := -1.0
 func apply_settings() -> void:
 	if not is_instance_valid(environment): return
-	var preset: Dictionary = PRESETS.of(settings.values.quality)
+	var preset: Dictionary = PRESETS.of(settings.values.quality, settings.values)
 	# Before any set is built (title, intro, floor): the size of the scans.
 	GEOMETRY.small_maps = preset.small_maps
 	# The acoustic view replaces the lit image entirely, so none of this would
@@ -2020,7 +2020,7 @@ func apply_settings() -> void:
 	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
 	RenderingServer.positional_soft_shadow_filter_set_quality(preset.shadow_filter)
 	viewport.msaa_3d = preset.msaa
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if preset.fxaa and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if preset.get("smaa", false) and not hunter else Viewport.SCREEN_SPACE_AA_FXAA if preset.fxaa and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
 	# Temporal accumulation has nothing to work with here: the echo field writes
 	# POSITION itself (no motion vectors) and the point cloud is restamped
 	# fifteen times a second, so TAA smears it into paste.
@@ -2063,7 +2063,7 @@ func configure_hotel() -> void:
 	if not is_instance_valid(hotel): return
 	hotel.reduced = settings.values.reduced
 	hotel.echo_view = hunter_seat()
-	hotel.apply_quality(PRESETS.of(settings.values.quality))
+	hotel.apply_quality(PRESETS.of(settings.values.quality, settings.values))
 
 ## Wardrobe enclosure, strike glitch and lost signal on the analog filter.
 ## The first two are off with reduced effects; the picture going is not an

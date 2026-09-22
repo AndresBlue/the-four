@@ -2,18 +2,26 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "fullscreen": true, "resolution": 0, "scale": 1.0, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 0, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB}
 const AUDIO_KEYS := ["master", "ambience", "music", "effects", "threat"]
 ## Saved-settings revision of the volume curve. Older files kept sliders tuned
 ## for a quieter curve, so their volumes are reset once.
 const AUDIO_CURVE := 2
 ## Saved-settings revision of the display defaults. Older files predate
-## starting in fullscreen, so their window choice is reset once.
-const DISPLAY_REVISION := 2
+## starting in fullscreen and the three window modes, so their window choice
+## is reset once.
+const DISPLAY_REVISION := 3
+## How the window is shown. Exclusive fullscreen hands the screen to the game
+## (the steadiest picture); borderless is the same size with the desktop still
+## under it, which is what you want to alt-tab; windowed uses the size below.
+const WINDOW_MODES := ["Pantalla completa", "Ventana sin bordes", "Ventana"]
+const FULLSCREEN := 0
+const BORDERLESS := 1
+const WINDOWED := 2
 ## Saved-settings revision of the subtitle default (now off); reset once.
 const SUBTITLE_REVISION := 1
-const DISPLAY_KEYS := ["fullscreen", "resolution"]
+const DISPLAY_KEYS := ["window_mode", "resolution"]
 ## Room left around a window for the title bar and taskbar.
 const WINDOW_MARGIN := Vector2i(48, 96)
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
@@ -90,11 +98,15 @@ func first_run() -> void:
 
 func sanitize(key: String, value: Variant) -> Variant:
 	if key == "renderer": return value if value in ["forward_plus", "gl_compatibility"] else DEFAULTS[key]
+	if key == "upscaler": return value if value in PRESETS.UPSCALERS else DEFAULTS[key]
+	if key == "aa": return value if value in PRESETS.ANTIALIASING else DEFAULTS[key]
 	if DEFAULTS[key] is bool: return value if value is bool else DEFAULTS[key]
 	if DEFAULTS[key] is String: return str(value).strip_edges().left(40) if value is String else DEFAULTS[key]
 	if not (value is float or value is int) or not is_finite(float(value)): return DEFAULTS[key]
 	match key:
 		"resolution": return clampi(int(value), 0, 3)
+		"window_mode": return clampi(int(value), 0, WINDOW_MODES.size() - 1)
+		"ao", "fog", "reflections", "blur": return clampi(int(value), -1, 1)
 		"character": return clampi(int(value), 0, 2)
 		"quality": return clampi(int(value), 0, PRESETS.count() - 1)
 		"fps": return int(value) if int(value) in [0, 30, 60, 120, 144] else 60
@@ -104,8 +116,8 @@ func sanitize(key: String, value: Variant) -> Variant:
 
 func set_value(key: String, value: Variant) -> void:
 	if not DEFAULTS.has(key): return
-	if key in ["resolution", "fullscreen"] and previous_display.is_empty():
-		previous_display = {"resolution": values.resolution, "fullscreen": values.fullscreen}
+	if key in DISPLAY_KEYS and previous_display.is_empty():
+		previous_display = {"resolution": values.resolution, "window_mode": values.window_mode}
 	values[key] = sanitize(key, value)
 	# A preset brings its own render scale; the slider can move it afterwards.
 	if key == "quality": values.scale = PRESETS.PRESETS[values.quality].scale
@@ -182,14 +194,18 @@ func _input(event: InputEvent) -> void:
 func apply() -> void:
 	apply_bindings()
 	Engine.max_fps = values.fps
+	# Whether the window is one of the two that cover the screen.
+	fullscreen = values.window_mode != WINDOWED
 	# Window mode and size are only touched by display settings (apply_display),
 	# so changing quality or shadows never resizes a maximised window.
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if values.vsync else DisplayServer.VSYNC_DISABLED)
 	get_viewport().scaling_3d_scale = values.scale
-	# Under native resolution FSR 1 sharpens the upscale (Forward+ only).
-	var upscale: bool = values.scale < 1.0 and RenderingServer.get_current_rendering_method() == "forward_plus"
-	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if upscale else Viewport.SCALING_3D_MODE_BILINEAR
+	# Which upscaler, and how hard it sharpens (graphics_presets.scaling_mode).
+	# Godot's own number is backwards -- 0 is sharpest, 2 is softest -- and a
+	# slider that goes the other way reads wrong, so the setting is "sharpness".
+	get_viewport().scaling_3d_mode = PRESETS.scaling_mode(values)
+	get_viewport().fsr_sharpness = lerpf(2.0, 0.0, values.sharpness)
 	# The player's own footsteps have their own drier bus, under the effects slider.
 	for pair in [["Master", "master"], ["Ambience", "ambience"], ["Music", "music"], ["Effects", "effects"], ["Threat", "threat"], ["Steps", "effects"]]:
 		var index := AudioServer.get_bus_index(pair[0])
@@ -207,15 +223,21 @@ static func manages_window() -> bool:
 	var args := OS.get_cmdline_user_args()
 	return DisplayServer.get_name() != "headless" and not args.has("--automation") and not args.has("--test-profile")
 
-## Fullscreen on the current screen, or a window of the chosen size that
-## fits the usable area (never under the taskbar) and is centred on it.
+## Whether the window covers the screen (either fullscreen mode). Kept as a
+## plain flag because it is read every frame by the menus and by F11.
+var fullscreen := true
+
+## Fullscreen (exclusive or borderless) on the current screen, or a window of
+## the chosen size that fits the usable area (never under the taskbar) and is
+## centred on it.
 func apply_display() -> void:
 	if DisplayServer.get_name() == "headless": return
 	if not manages_window():
 		if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		return
-	if values.fullscreen:
-		if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	if values.window_mode != WINDOWED:
+		var wanted := DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN if values.window_mode == FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN
+		if DisplayServer.window_get_mode() != wanted: DisplayServer.window_set_mode(wanted)
 		return
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	place_window()
@@ -230,7 +252,7 @@ func window_size_for(screen: int) -> Vector2i:
 	return Vector2i(int(wanted.x * fit), int(wanted.y * fit))
 
 func place_window() -> void:
-	if values.fullscreen or DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: return
+	if values.window_mode != WINDOWED or DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: return
 	var screen := DisplayServer.window_get_current_screen()
 	var usable := DisplayServer.screen_get_usable_rect(screen)
 	var size := window_size_for(screen)
