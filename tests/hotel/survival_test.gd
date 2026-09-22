@@ -323,6 +323,14 @@ func cut_short_checks() -> void:
 	level.apply_execution(player.slot, player.global_position, 0.0)
 	check("Si te atrapan en el teclado, el teclado se cierra", not level.lock_open)
 	level.release_execution()
+	# Four on the floor: the third death brings the restart, and a fourth
+	# during its countdown is part of the same collapse, not a second one.
+	session.start(session.run_seed, false, [1, 2, 3, 4])
+	for seat in [2, 3, 4]: session.capture(seat)
+	var restarting: bool = session.restart_wait > 0.0 and session.state == session.State.PLAYING
+	session.capture(1)
+	check("Una muerte durante la cuenta del reinicio no acaba el piso", restarting and session.state == session.State.PLAYING and session.restart_wait > 0.0)
+	session.start(session.run_seed, false, [1])
 	# On this seed the deepest room of the first wing is the lift lobby behind
 	# the refuge: the creature started there, shut in for the whole stage.
 	await level.start_floor(673128)

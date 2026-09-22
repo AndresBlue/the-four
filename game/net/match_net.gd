@@ -213,7 +213,9 @@ func go() -> void:
 func _process(delta: float) -> void:
 	# Wardrobes are searched, and the shriek listens, offline too: the local
 	# Locust preview is the same code path with nobody connected.
-	if is_instance_valid(level) and is_instance_valid(level.hotel) and in_charge():
+	# Not under the pause (offline, where this node still runs): a wardrobe
+	# search went on counting and resumed half done.
+	if is_instance_valid(level) and is_instance_valid(level.hotel) and in_charge() and not get_tree().paused:
 		update_wardrobe_jobs(delta)
 		if is_instance_valid(level.locust): update_shriek(delta)
 	if not in_match() or not net.active(): return
@@ -854,6 +856,18 @@ func watched_body() -> Node3D:
 
 func seat_dropped(seat: int) -> void:
 	if not in_match() or not config.survivors.has(seat) and seat != locust_seat(): return
+	if seat == locust_seat() and versus():
+		# The hunter is not among the survivors, so it used to be taken for a
+		# dead one and forgotten: the creature stood still for the rest of the
+		# floor. It gets the same grace as anybody, and meanwhile the host's
+		# machine hunts in its place; it hands the creature back on return.
+		away[seat] = 0.0
+		var creature = level.locust
+		if net.is_host and is_instance_valid(creature) and creature.control == "puppet":
+			creature.set_control("ai")
+			creature.patrol_room = creature.nearest_room()
+			if creature.mode not in [creature.Mode.EXECUTE, creature.Mode.WARDROBE]: creature.set_mode(creature.Mode.SEARCH)
+		return
 	if level.session.participants.get(seat, 2) == level.session.Life.DEAD: return
 	away[seat] = 0.0
 	if bodies.has(seat): bodies[seat].away = true
@@ -861,6 +875,8 @@ func seat_dropped(seat: int) -> void:
 func seat_returned(seat: int, _peer_id: int) -> void:
 	away.erase(seat)
 	if bodies.has(seat): bodies[seat].away = false
+	if seat == locust_seat() and versus() and net.is_host and is_instance_valid(level.locust) and level.locust.control == "ai":
+		level.locust.set_control("puppet")
 	if not in_match(): return
 	# They rebuild the same floor, then catch_up() fills in what changed.
 	begin.rpc_id(_peer_id, config, {"returning": true})

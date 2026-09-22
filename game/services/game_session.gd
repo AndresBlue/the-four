@@ -131,6 +131,12 @@ func check_quota() -> bool:
 	if alive >= minimum_survivors():
 		changed.emit()
 		return true
+	# The restart is already on its way: a death during its countdown belongs
+	# to the same collapse. Counted as a second one, it ended the floor with
+	# everybody about to get up again.
+	if restart_wait > 0.0 and state == State.PLAYING:
+		changed.emit()
+		return true
 	if roster_count > 1 and restarts < RESTARTS and state == State.PLAYING:
 		# One more go at this stage, with everybody on their feet again -- but
 		# not this instant: the last one down has earned its own death first.
