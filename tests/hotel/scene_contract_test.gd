@@ -32,6 +32,21 @@ func run() -> void:
 	# the OSD first, the interface on top of that, and the analog filter
 	# above both, so a menu is on the tape and not on the glass.
 	check("The tape records the OSD and the interface alike", scene.get_node("Presentation/Camcorder").layer < scene.ui.layer and scene.ui.layer < scene.get_node("Presentation/Analog").layer)
+	# A modifier key's release can be lost by the system; the next event that
+	# says the key is up lets the action go, and one that says it is down
+	# does not.
+	Input.action_press("sprint")
+	var held := InputEventMouseMotion.new()
+	held.shift_pressed = true
+	Input.parse_input_event(held)
+	await process_frame
+	var kept := Input.is_action_pressed("sprint")
+	var loose := InputEventMouseMotion.new()
+	loose.shift_pressed = false
+	Input.parse_input_event(loose)
+	await process_frame
+	check("Running stays on while Shift is down and stops when the system says it is up", kept and not Input.is_action_pressed("sprint"))
+	Input.action_release("sprint")
 	scene.queue_free()
 	await process_frame
 	var gallery: Node = load("res://tools/workbenches/module_gallery.tscn").instantiate()

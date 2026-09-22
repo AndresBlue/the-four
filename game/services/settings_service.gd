@@ -160,6 +160,25 @@ func apply_bindings() -> void:
 		key.physical_keycode = bindings[action]
 		InputMap.action_add_event(action, key)
 
+## Actions bound to a modifier key -- running on Shift, crouching on Ctrl --
+## could stay held after the key was let go: the key-up never reached the game
+## (Windows swallows it on some combinations, such as Ctrl+Shift, its own
+## keyboard-layout shortcut, or Alt+Shift), and every survivor and the hunter
+## went on running with nothing pressed. Every key press and every movement of
+## the mouse carries the system's own word on which modifiers are down, so
+## whenever one says the key is up, the action is let go.
+const MODIFIER_FLAGS := {KEY_SHIFT: "shift_pressed", KEY_CTRL: "ctrl_pressed", KEY_ALT: "alt_pressed", KEY_META: "meta_pressed"}
+
+func _input(event: InputEvent) -> void:
+	if not event is InputEventWithModifiers: return
+	for action in bindings:
+		var key: int = bindings[action]
+		if not MODIFIER_FLAGS.has(key) or not Input.is_action_pressed(action): continue
+		# The modifier's own key event may or may not count itself as held,
+		# depending on the system: it is not asked.
+		if event is InputEventKey and (event as InputEventKey).physical_keycode == key: continue
+		if not bool(event.get(MODIFIER_FLAGS[key])): Input.action_release(action)
+
 func apply() -> void:
 	apply_bindings()
 	Engine.max_fps = values.fps
