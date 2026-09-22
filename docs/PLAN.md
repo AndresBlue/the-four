@@ -205,6 +205,20 @@ no rompen nada.
   cazador.
 - [ ] «Reintentar» online falla sin avisar si el asiento del cazador se ha
   ido (`start_match` devuelve un error que nadie mira).
+- [ ] Los efectos de la cinta y la lente se miden en píxeles de pantalla
+  (`analog.gdshader`, `lens.gdshader`, el halo de `camcorder_effect.gd`): a
+  4K el borrón de color y el halo son unas tres veces más finos que a 720p.
+- [ ] El negro del golpe empieza unos centímetros al lado de la mano: se
+  proyecta antes de la curvatura de la lente (`strike_on_screen`).
+- [ ] El cazador oye como contactos las puertas que abre él mismo y el ruido
+  de su propia salida por una tele.
+- [ ] Cuando el anfitrión no oye un gruñido de la IA, lo reintenta a los 1,6 s
+  aunque ya se haya mandado a todos: los invitados la oyen gruñir más a menudo.
+- [ ] El bucle de presencia de la criatura sigue a su último nivel durante
+  los 1,2 s del cambio de etapa.
+- [ ] La navegación se hornea con el radio exacto de la criatura (0,4 m) y
+  roza las esquinas; ahora se desatasca sola (`hotel_locust.unstick()`), pero
+  un radio algo mayor lo evitaría, si los vanos lo permiten.
 - [ ] El validador cuenta dos ciclos de más: `E − V + 1` sobre un grafo de tres
   alas separadas.
 
