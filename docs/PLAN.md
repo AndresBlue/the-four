@@ -15,8 +15,8 @@ cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
 tres alas y tres etapas, The Locust con su IA y su versus, supervivencia,
-cordura, ascensores, cuatro presets gráficos y un ejecutable de Windows de 432
-MB que funciona. Se ha jugado con gente real, en LAN y por Internet.
+cordura, ascensores, cuatro presets gráficos y un ejecutable de Windows de 448
+MB que funciona (exportado el 21 de septiembre, con todo lo de abajo). Se ha jugado con gente real, en LAN y por Internet.
 
 Los **cinco fallos** que dejó la última partida están arreglados y medidos: la
 cámara que acababa en negro, la linterna que se perdía al revivir, las lámparas
@@ -27,6 +27,11 @@ comprobó está en la guía de desarrollo y en [REALISM.md](REALISM.md).
 Y con ellos lo que **nadie entendía jugando**: el aviso de auriculares antes de
 la cinta, volver donde estabas después de una caída, el corte entre alas y la
 hoja compartida rehecha con las notas colgando de ella.
+
+Y la **deuda técnica entera**: la cordura la lleva el anfitrión, el último
+ascensor es un viaje, `hotel_main.gd` está repartido, el prototipo de fusibles
+ya no está, la vista de la criatura se lee igual en Compatibilidad, un invitado
+que vuelve aparece donde estaba y Shift ya no se queda pegado.
 
 Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
 
@@ -102,6 +107,21 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **El armario:** comodidad del efecto de asomarse en partidas humanas y a
   distintas resoluciones.
 - [ ] **La escena de entrada:** ritmo y cámara.
+- [ ] **Los tres personajes dentro del hotel**, con la cinta encima y a
+  oscuras: los ojos de la Exploradora, el pelo fundido, el relieve del
+  detective y el brillo de la piel. Solo se han visto con luz de estudio
+  (`tools/capture/avatar_capture.gd`).
+- [ ] **Lo que se escribe en pantalla, ya jugando:** el objetivo de cada sector
+  arriba a la izquierda y cómo se deshace, la tarjeta de sector (también en
+  cada reintento, que añade 2,6 s de negro) y la pausa con su progreso.
+- [ ] **Las puertas que ya no se niegan:** cerrarlas estando en el marco,
+  volver a abrirlas desde dentro, y si poder atravesar una puerta que uno se
+  cerró encima se nota como trampa.
+- [ ] **Shift y Ctrl:** confirmar que correr ya no se queda pegado. El arreglo
+  suelta la tecla en cuanto el sistema avisa de que está arriba; si vuelve a
+  pasar, apuntar qué se estaba pulsando.
+- [ ] **La linterna en la vista de la criatura**, vista de lado y no solo de
+  frente, ahora que es el cono real del haz.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel
   superior, rendija de 1,2 cm, y las del dormitorio y la portada, que usan la
   misma hoja.
@@ -124,7 +144,9 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 ## 2 · Deuda técnica
 
-Nada de esto se ve jugando, y todo cuesta caro más adelante.
+Nada de esto se ve jugando, y todo cuesta caro más adelante. **Hoy no queda
+nada**: lo que había está hecho y descrito en la guía de desarrollo. Lo que
+aparezca va aquí.
 
 ## 3 · Acabado de lo que ya existe
 
