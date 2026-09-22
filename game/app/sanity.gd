@@ -120,7 +120,7 @@ func sees_creature(body: Node3D, lit: bool) -> bool:
 	if gap > SANITY_SEEN or gap < 0.01: return false
 	if not lit and not body.torch.visible and gap > 6.0: return false
 	if -body.camera.global_basis.z.dot(towards / gap) < 0.72: return false
-	var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1)
+	var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1 | 8 | 64)
 	query.exclude = [body.get_rid()]
 	return level.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 

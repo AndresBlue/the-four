@@ -37,6 +37,8 @@ func run() -> void:
 		session.changed.emit()
 		await frames(4)
 		level.player.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
+		await frames(2)
+		level.match_net.call_lift(0)
 		await frames(140)
 		if session.stage != 2:
 			print("SEED ", run_seed, " no cerró la etapa")

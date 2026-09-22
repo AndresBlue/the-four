@@ -84,6 +84,8 @@ func run() -> void:
 	check("Mirarla un rato es un susto, no uno por fotograma", player.sanity >= again)
 	level.locust.global_position = Vector3(0, -80, 0)
 
+	await door_sight_regression()
+
 	# --- The floor lying ----------------------------------------------------------
 	player.sanity = 100.0
 	level.sanity.hallucination_wait = 0.0
@@ -164,3 +166,39 @@ func room_far_from(point: Vector3) -> Dictionary:
 		if int(room.wing) != 0 or bool(room.get("landing", false)): continue
 		if FLOOR.position_of(room).distance_to(point) > FLOOR.position_of(best).distance_to(point): best = room
 	return best
+
+## A real swinging door in an isolated space: closed, moving, then clear.
+func door_sight_regression() -> void:
+	var player = level.player
+	var player_before: Transform3D = player.global_transform
+	var creature_before: Transform3D = level.locust.global_transform
+	player.set_physics_process(false)
+	player.global_position = Vector3(1, 100, 3)
+	player.rotation = Vector3.ZERO
+	level.locust.global_position = Vector3(1, 100, -3)
+	level.locust.grace = 0.0
+	var door = preload("res://game/world/interactables/hotel_door.gd").new()
+	var collision := CollisionShape3D.new()
+	collision.name = "CollisionShape3D"
+	var box := BoxShape3D.new()
+	box.size = Vector3(4, 4, 0.2)
+	collision.shape = box
+	door.add_child(collision)
+	level.add_child(door)
+	door.global_position = Vector3(0, 101.5, 0)
+	door.set_state(false)
+	await frames(3)
+	check("Una puerta cerrada impide el susto visual", not level.sanity.sees_creature(player, true))
+	# Its leaf remains an occluder while temporarily non-solid to bodies.
+	door.moving = true
+	door.collision_layer = door.GHOST
+	await frames(2)
+	check("La hoja en movimiento sigue ocultando a la criatura", not level.sanity.sees_creature(player, true))
+	door.set_state(true)
+	await frames(3)
+	check("Una puerta abierta permite verla por el hueco", level.sanity.sees_creature(player, true))
+	door.queue_free()
+	player.global_transform = player_before
+	level.locust.global_transform = creature_before
+	player.set_physics_process(true)
+	await frames(2)

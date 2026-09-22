@@ -40,6 +40,8 @@ func run() -> void:
 	level.session.changed.emit()
 	await frames(6)
 	level.player.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
+	await frames(2)
+	level.match_net.call_lift(0)
 	# The ride is 3.2 s: the picture goes over the first third of a second, the
 	# card is up for most of the middle, and it clears at the end.
 	var beats := {"board": 6, "dark": 24, "card": 60, "hold": 60, "clearing": 36, "out": 24}

@@ -833,7 +833,11 @@ func on_state() -> void:
 				ui.overlay.hide()
 				ui.settings_open = false
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				lifts.pending_brief = session.stage + 1
+				# Only for whoever is not left behind in the old wing: a
+				# survivor still there hears about the next sector when their
+				# own car takes them to it (lifts.apply_ride).
+				var here := int(FLOOR.room_at(manifest.rooms, player.global_position).get("wing", -1))
+				if not local_alive() or here != session.stage - 1: lifts.pending_brief = session.stage + 1
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
@@ -1409,6 +1413,14 @@ func drive_local(delta: float) -> void:
 			return
 		search_time = 0.0
 	else: search_time = 0.0
+	# Standing in a car that can go: the button. It leaves with everybody who
+	# is in it (lifts.gd), so a team waits for each other before pressing.
+	var car: int = lifts.car_at(player.global_position) if not player.hidden else -1
+	if car >= 0:
+		camcorder.focus("PULSAR")
+		if Input.is_action_just_pressed("interact"): match_net.call_lift(car)
+		was_held = Input.is_action_pressed("interact")
+		return
 	var television_target = focused_television()
 	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(television_target) and not television_target.on:
 		switch_television(television_target)
@@ -1788,6 +1800,7 @@ func hunter_seat() -> bool:
 
 ## Every value that changes with the quality setting (graphics_presets.gd).
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
+const COMPAT_SHADOW_ATLAS := 4096
 ## The torch's source size as built (player.tscn), for presets without penumbra.
 var torch_size := -1.0
 func apply_settings() -> void:
@@ -1828,8 +1841,12 @@ func apply_settings() -> void:
 	# Every lamp shares one shadow atlas. At 4096 the rooms further off got
 	# cells so coarse that shadows came out as saw-teeth along door frames and
 	# a lamp's shadow bias grew past a 7 cm leaf: light through shut doors.
-	# No preset goes under 4096.
-	viewport.positional_shadow_atlas_size = preset.shadow_atlas
+	# No preset goes under 4096. And none goes over it on Compatibility: there
+	# an 8192 atlas broke the torch's shadow into wide dark diagonal bands on
+	# every wall ten metres off and more (Alto and Ultra; Bajo and Medio, at
+	# 4096, were clean). Seen with tools/capture/torch_capture.gd, long_* shots.
+	var compatibility: bool = RenderingServer.get_current_rendering_method() == "gl_compatibility"
+	viewport.positional_shadow_atlas_size = mini(preset.shadow_atlas, COMPAT_SHADOW_ATLAS) if compatibility else preset.shadow_atlas
 	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
 	RenderingServer.positional_soft_shadow_filter_set_quality(preset.shadow_filter)
 	viewport.msaa_3d = preset.msaa

@@ -46,6 +46,8 @@ func glowing() -> int:
 
 ## Walks into the refuge of the stage in hand, waits for the door on to
 ## unlock and steps into the lift behind it, which is what closes a stage now.
+var waited_in_car := false
+var car_waits := false
 func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 	var session = level.session
 	var left := seconds
@@ -59,8 +61,16 @@ func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 			left -= 1.0 / 60.0
 			continue
 		if session.goal.get("ready", false):
-			# Into the car: the lift takes it from there.
+			# Into the car, and the button: the lift takes it from there. The
+			# first time, it stands in it a moment first -- a car no longer
+			# leaves with whoever steps in.
 			level.player.global_position = car + Vector3(0, 0.04, 0)
+			if not waited_in_car:
+				waited_in_car = true
+				var stage_before: int = session.stage
+				for i in 40: await physics_frame
+				car_waits = session.stage == stage_before and level.lifts.boarding.is_empty()
+			level.match_net.call_lift(session.stage - 1)
 		else:
 			level.player.global_position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
 		level.player.velocity = Vector3.ZERO
@@ -92,6 +102,7 @@ func run() -> void:
 	for i in 240: await physics_frame
 	check("Fuera del refugio la puerta sigue cerrada", session.stage == 1 and not session.goal.ready and gate.locked)
 	check("Cerrar la etapa 1 no termina el piso", await cross_to_stage(2))
+	check("El coche no sale solo: espera a que alguien pulse el botón", car_waits)
 	check("Sigue jugándose, en la etapa 2", session.state == session.State.PLAYING and session.stage == 2)
 	# The ride itself: held with no picture for a moment, and then standing in
 	# the wing the lift arrives at. Counted by watching it happen, because a
@@ -372,6 +383,7 @@ func run() -> void:
 	var went_black := false
 	for i in 480:
 		level.player.global_position = level.hotel.lifts[level.hotel.lifts.size() - 1] + Vector3(0, 0.1, 0)
+		level.match_net.call_lift(level.hotel.lifts.size() - 1)
 		await physics_frame
 		if i == 10: dark_first = session.state == session.State.PLAYING and level.lifts.leaving >= 0.0
 		went_black = went_black or level.lifts.ride_static() >= 1.0

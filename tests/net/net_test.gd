@@ -63,6 +63,8 @@ func run() -> void:
 		"bravo": await guest("Bravo", 2)
 		"vs_host": await versus_host()
 		"vs_hunter": await versus_hunter()
+		"late_host": await late_host()
+		"late_guest": await late_guest()
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -129,6 +131,7 @@ func cross_to_the_end(offset: Vector3, seconds: float) -> bool:
 		# is halved to stay inside it.
 		if is_instance_valid(door) and not door.locked and level.hotel.lifts.size() >= level.session.stage:
 			level.player.global_position = level.hotel.lifts[level.session.stage - 1] + offset * 0.5 + Vector3(0, 0.1, 0)
+			level.match_net.call_lift(level.session.stage - 1)
 		else:
 			level.player.global_position = refuge_point(offset)
 		await pause_for(0.1)
@@ -217,6 +220,69 @@ func host() -> void:
 	check("Todos vuelven a la sala", level.session.state == level.session.State.MENU and not net.in_match)
 	await pause_for(2.0)
 	net.shutdown("")
+
+# --- A lift taken one after the other ------------------------------------------------
+# The host takes the first car on its own; the guest follows it a car later,
+# once it has come back down. What the guest reads on the way, and whether the
+# two of them can still take the next car together, is what is looked at: the
+# late one used to arrive to "SECTOR 3" and the floor stopped short of the
+# last wing.
+
+func late_host() -> void:
+	var net = level.net
+	check("La sala se abre", net.host("Anfitrión", 0, port) == OK)
+	check("Llega el invitado", await wait_for(func(): return net.connected_seats().size() == 2, 40.0))
+	net.set_option("mode", net.Mode.COOP)
+	check("Empieza la partida", net.start_match(81))
+	check("Se juega", await wait_for(playing, 60.0))
+	level.locust.grace = 100000.0
+	level.player.global_position = refuge_point(Vector3(0.6, 0, 0))
+	check("Con los dos en el refugio se abre la puerta", await wait_for(func(): return not level.hotel.gates[0].locked, 40.0))
+	await pause_for(0.5)
+	level.player.global_position = level.hotel.lifts[0] + Vector3(0, 0.1, 0)
+	await pause_for(0.5)
+	level.match_net.call_lift(0)
+	check("El anfitrión sube solo y cierra el sector 1", await wait_for(func(): return level.session.stage == 2, 20.0))
+	var guest_seat: int = level.match_net.bodies.keys()[0]
+	check("El invitado llega después, en su propio viaje", await wait_for(func(): return level.match_net.bodies[guest_seat].global_position.distance_to(level.hotel.arrivals[0]) < 4.0, 60.0))
+	for index in level.stage_televisions():
+		var set = level.televisions[int(index)]
+		if is_instance_valid(set) and not set.on: level.switch_television(set)
+	check("Con las teles del sector 2 se abre su puerta", await wait_for(func(): return not level.hotel.gates[1].locked, 20.0))
+	# This time it waits for the guest in the car, and only then presses.
+	level.player.global_position = level.hotel.lifts[1] + Vector3(0.3, 0.1, 0)
+	check("Esperan juntos dentro del coche", await wait_for(func(): return level.match_net.bodies[guest_seat].global_position.distance_to(level.hotel.lifts[1]) < level.lifts.RIDE_REACH, 40.0))
+	check("Y el coche no se ha ido con el primero", level.session.stage == 2)
+	await pause_for(1.0)
+	level.match_net.call_lift(1)
+	check("El siguiente ascensor lleva al sector 3", await wait_for(func(): return level.session.stage == 3, 30.0))
+	await pause_for(8.0)
+
+func late_guest() -> void:
+	var net = level.net
+	await pause_for(1.0)
+	check("Se conecta", net.join("127.0.0.1", "Tarde", 1, port) == OK)
+	check("Entra en el piso", await wait_for(playing, 90.0))
+	level.player.global_position = refuge_point(Vector3(-0.6, 0, 0))
+	check("Ve cerrarse el sector 1 sin haber subido", await wait_for(func(): return level.session.stage == 2, 60.0))
+	var gate: Dictionary = level.manifest.gates[0]
+	# Back beside the first car, waiting for it to come down again.
+	await pause_for(17.0)
+	level.player.global_position = level.hotel.lifts[0] + Vector3(0, 0.1, 0)
+	await pause_for(0.5)
+	level.match_net.call_lift(0)
+	var card: bool = await wait_for(func(): return is_instance_valid(level.ui.transit), 10.0)
+	var words := ""
+	if card:
+		for node in level.ui.transit.find_children("*", "Label", true, false): words += node.text + " · "
+	print("LATE card: ", words)
+	check("Su tarjeta dice el sector al que llega, el 2", card and words.contains("SECTOR 2") and not words.contains("SECTOR 3"))
+	check("Y sale en el ala 2", await wait_for(func(): return level.lifts.boarding.is_empty() and level.player.global_position.distance_to(level.hotel.arrivals[0]) < 4.0, 15.0))
+	check("Espera abierta la puerta del sector 2", await wait_for(func(): return not level.hotel.gates[1].locked, 40.0))
+	await pause_for(1.5)
+	level.player.global_position = level.hotel.lifts[1] + Vector3(-0.3, 0.1, 0)
+	check("Y los dos llegan al sector 3, en el mismo viaje", await wait_for(func(): return level.session.stage == 3, 40.0) and await wait_for(func(): return level.lifts.boarding.is_empty() and int(preload("res://game/world/generation/floor_definition.gd").room_at(level.manifest.rooms, level.player.global_position).get("wing", -1)) == 2, 15.0))
+	print("LATE end: stage ", level.session.stage, " gates ", level.hotel.gates.map(func(door): return door.locked))
 
 # --- Guests ----------------------------------------------------------------------
 

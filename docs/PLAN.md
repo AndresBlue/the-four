@@ -128,6 +128,11 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **Shift y Ctrl:** confirmar que correr ya no se queda pegado. El arreglo
   suelta la tecla en cuanto el sistema avisa de que está arriba; si vuelve a
   pasar, apuntar qué se estaba pulsando.
+- [ ] **El botón del ascensor** en partida: si se encuentra sin que nadie lo
+  explique, y si esperar al equipo dentro del coche funciona o alguien acaba
+  pulsando antes de tiempo.
+- [ ] **La linterna en Compatibilidad en Alto y Ultra**, a más de diez metros,
+  ahora que el atlas de sombras se queda en 4096 en ese renderizador.
 - [ ] **La linterna en la vista de la criatura**, vista de lado y no solo de
   frente, ahora que es el cono real del haz.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel

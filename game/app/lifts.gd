@@ -149,23 +149,60 @@ func ride_lifts() -> void:
 		lift_away[index] = float(lift_away[index]) - delta
 		if lift_away[index] <= 0.0: lift_away.erase(index)
 	creature_crossing(delta)
-	for index in level.hotel.lifts.size():
-		var door = level.hotel.gates[index] if level.hotel.gates.size() > index else null
-		if not is_instance_valid(door) or door.locked or lift_gone(index): continue
-		for body in level.survivors():
+	for index in called.keys():
+		called.erase(index)
+		if not car_ready(index): continue
+		# The last one does not arrive anywhere on this floor: it is a ride
+		# into the dark, for everybody, and then the floor is over.
+		if index >= level.hotel.arrivals.size() or level.hotel.arrivals[index] == Vector3.ZERO:
+			leave_floor()
+			return
+		# Everybody standing in it goes, together; whoever is not in it stays
+		# for the car to come back down.
+		var went := false
+		for body in inside(index):
 			var seat := int(body.slot)
-			if riding.has(seat) or body.global_position.distance_to(level.hotel.lifts[index]) > RIDE_REACH: continue
-			# The last one does not arrive anywhere on this floor: it is a ride
-			# into the dark, for everybody, and then the floor is over.
-			if index >= level.hotel.arrivals.size() or level.hotel.arrivals[index] == Vector3.ZERO:
-				leave_floor()
-				return
 			var point: Vector3 = level.hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
 			riding[seat] = RIDE_REST
-			lift_away[index] = LIFT_RETURN
 			apply_ride(seat, point)
 			if level.match_net.in_match(): level.match_net.ride_lift(seat, point)
-			if level.session.stage == index + 1: level.session.finish_stage()
+			went = true
+		if not went: continue
+		lift_away[index] = LIFT_RETURN
+		if level.session.stage == index + 1: level.session.finish_stage()
+
+## The car does not leave the moment somebody steps in. It has a button: it
+## goes when somebody inside presses it, and takes everybody who is in it by
+## then. It used to leave with the first one through its doors, and whoever
+## came after rode a car later on their own -- to a card that named the wrong
+## sector, because the floor had already moved on. Now a team can wait for
+## each other in it. Lift index -> pressed, for ride_lifts() to act on.
+var called := {}
+
+## A car that can be ridden: its stage door open and the car down here.
+func car_ready(index: int) -> bool:
+	if index < 0 or index >= level.hotel.lifts.size(): return false
+	var door = level.hotel.gates[index] if level.hotel.gates.size() > index else null
+	return is_instance_valid(door) and not door.locked and not lift_gone(index)
+
+## The living survivors standing in that car, not already mid-ride.
+func inside(index: int) -> Array:
+	var bodies: Array = []
+	for body in level.survivors():
+		var seat := int(body.slot)
+		if riding.has(seat) or int(level.session.participants.get(seat, level.session.Life.DEAD)) == level.session.Life.DEAD: continue
+		if body.global_position.distance_to(level.hotel.lifts[index]) <= RIDE_REACH: bodies.append(body)
+	return bodies
+
+## The car this body is standing in, ready to go, or -1.
+func car_at(point: Vector3) -> int:
+	for index in level.hotel.lifts.size():
+		if car_ready(index) and point.distance_to(level.hotel.lifts[index]) <= RIDE_REACH: return index
+	return -1
+
+## The button, on the authority. A guest asks through match_net.call_lift.
+func press(index: int) -> void:
+	if car_ready(index): called[index] = true
 
 ## The lift has moved somebody: on their own machine the body goes with it, on
 ## the others the puppet is put where it is told. Both doors are heard, the
@@ -179,10 +216,13 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		level.player.velocity = Vector3.ZERO
 		level.player.held = true
 		boarding = {"point": point, "time": 0.0}
-		# The stage has not turned over yet -- the session holds its beat of
-		# transition first -- so the wing being arrived at is the next one.
-		var arriving: int = mini(level.session.stage + 1, level.session.STAGES)
+		# The sector of the wing being arrived in, read off where the car puts
+		# them -- not the stage in hand plus one, which is wrong for anybody
+		# riding a car after the floor has already moved on.
+		var wing := int(FLOOR.room_at(level.manifest.rooms, point).get("wing", level.session.stage))
+		var arriving: int = clampi(wing + 1, 1, level.session.STAGES)
 		level.ui.show_transit("SECTOR %d" % arriving, stage_errand(arriving), RIDE_TIME)
+		pending_brief = arriving
 	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].place(point, 0.0)
 
 ## The ride itself, on the machine of whoever is taking it: a second and a bit

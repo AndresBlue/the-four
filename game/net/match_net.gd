@@ -437,6 +437,21 @@ func revive_everyone(places: Dictionary, restart: bool) -> void:
 func revived_state(places: Dictionary, restart: bool) -> void:
 	level.apply_revival(places, restart)
 
+## The button in a car. Offline or on the host it is pressed now; a guest
+## asks, and the host judges it like a door: only from somebody standing in it.
+func call_lift(index: int) -> void:
+	if not in_match() or net.is_host:
+		level.lifts.press(index)
+		return
+	request_lift.rpc_id(1, index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_lift(index: int) -> void:
+	if not net.is_host or index < 0 or index >= level.hotel.lifts.size(): return
+	var body = body_of(net.seat_of_peer(multiplayer.get_remote_sender_id()))
+	if body == null or body.global_position.distance_to(level.hotel.lifts[index]) > level.lifts.RIDE_REACH + 0.5: return
+	level.lifts.press(index)
+
 ## Somebody took a lift: the host says who, and where they come out.
 func ride_lift(seat: int, point: Vector3) -> void:
 	if in_match(): ride_state.rpc(seat, point)

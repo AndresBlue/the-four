@@ -93,6 +93,26 @@ func run() -> void:
 		var span := FLOOR.size_of(hall)
 		await look(wide + Vector3(0, 1.6, span.y * 0.4), wide + Vector3(0, 1.3, -span.y * 0.5))
 		await shot("hall")
+		# Along one of its walls, close to it and nearly parallel: the wall ten
+		# and fifteen metres off is lit at a grazing angle, which is where a
+		# shadow with too little bias breaks into dark diagonal bands.
+		await look(wide + Vector3(span.x * 0.5 - 1.0, 1.6, span.y * 0.45), wide + Vector3(span.x * 0.5 - 0.2, 1.4, -span.y * 0.45))
+		await shot("graze")
+	# Down a corridor that goes on into the room beyond it: the walls of the
+	# far room, ten to twenty metres off, are where the bands were seen.
+	var shots := 0
+	for room in level.manifest.rooms:
+		if shots >= 3 or not int(room.type) in [11, 12]: continue
+		for other in level.manifest.adjacency[int(room.id)]:
+			var here := FLOOR.position_of(room)
+			var there := FLOOR.position_of(level.manifest.rooms[int(other)])
+			var way := there - here
+			if absf(way.x) > 0.5 and absf(way.z) > 0.5: continue
+			var dir := way.normalized()
+			await look(here - dir * 4.0 + Vector3(0, 1.6, 0), there + dir * 5.0 + Vector3(0, 1.3, 0))
+			await shot("long_%d" % shots)
+			shots += 1
+			break
 	level.queue_free()
 	await process_frame
 	quit()
