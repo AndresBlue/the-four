@@ -359,7 +359,7 @@ func versus_host() -> void:
 		if now - float(noised.at) >= 1.0:
 			noised.at = now
 			level.on_noise(level.locust.global_position + Vector3(2.0, 0.2, 0.0), 12.0)
-		return level.locust.calls_heard > 0, 25.0))
+		return level.locust.last_call == "howl", 25.0))
 	# Two sets lit, so the hunter has channels to travel by. The channels are
 	# the ones of the stage being played -- a set burning in a wing nobody is
 	# in is no way out -- so the floor is moved on to the stage of that wing.

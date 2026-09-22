@@ -191,6 +191,39 @@ func hide_cue(entering: bool, point: Vector3) -> void:
 	play_at(path, point + Vector3.UP, GAIN.hide, RID(), start)
 
 ## start: seconds into the recording; negative uses its measured onset.
+## A sound the whole floor hears: somebody being killed. It has no reach. Near,
+## it is placed like any other sound; past where a sound would carry, or with
+## no way for it to get here, it still arrives -- from the direction it happened
+## in, through the echo of the building, quieter the further off it is, but
+## never under EVERYWHERE_FLOOR below its own level. Nobody on the floor misses
+## that it happened, only how far away.
+const EVERYWHERE_FLOOR := -24.0
+const EVERYWHERE_UNIT := 8.0
+func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0) -> void:
+	if start < 0.0: start = TIMING.onset(path)
+	last_event = {"path": path, "position": point, "everywhere": true}
+	if not enabled: return
+	var straight := listener_position().distance_to(point)
+	var route: Dictionary = route_source(point) if straight <= ROUTE_LIMIT + ROUTE_SLACK else {"audible": false}
+	var far: bool = not route.audible
+	var distance: float = straight * 1.4 if far else float(route.get("distance", straight))
+	if not streams.has(path): streams[path] = load(path)
+	var voice := AudioStreamPlayer3D.new()
+	voice.name = "EverywhereCue"
+	voice.stream = streams[path]
+	# Its own fall-off, with a floor, instead of the player's, which ends.
+	voice.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+	voice.max_distance = 0.0
+	voice.area_mask = ACOUSTIC_MASK
+	add_child(voice)
+	voice.global_position = point if far else route.position
+	voice.bus = ECHO_BUS["Effects"] if far or route.echo else &"Effects"
+	voice.panning_strength = PANNING["Effects"]
+	var fall := -20.0 * log(1.0 + distance / EVERYWHERE_UNIT) / log(10.0)
+	voice.volume_db = gain + maxf(fall + (-6.0 if far else float(route.gain)), EVERYWHERE_FLOOR)
+	voice.finished.connect(voice.queue_free)
+	voice.play(start)
+
 func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0) -> void:
 	if start < 0.0: start = TIMING.onset(path)
 	last_event = {"path": path, "position": point}

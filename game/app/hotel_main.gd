@@ -806,6 +806,8 @@ func on_state() -> void:
 	# The aiming dot only while playing: not over the title room or the opening scene.
 	ui.get_node("HUD/Crosshair").visible = playing
 	update_title_scene()
+	# The title room behind the main menu is outside the game: no tape over it.
+	$Presentation/Analog.visible = session.state != session.State.MENU
 	if playing and online_menu: return
 	if playing or session.state == session.State.CUTSCENE:
 		ui.overlay.hide()
@@ -1042,7 +1044,9 @@ func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 	if not world_audio.enabled: return
 	if seat == player.slot:
 		if is_instance_valid(scream_sound): scream_sound.play()
-	else: world_audio.play_at(SCREAM, point + Vector3(0, 2.0, 0), -4.0, RID(), 0.0)
+	# Everybody else hears it wherever they are on the floor: somebody has been
+	# caught, and nobody should miss that it happened.
+	else: world_audio.play_everywhere(SCREAM, point + Vector3(0, 2.0, 0), -4.0, 0.0)
 
 ## Sounds, screen jolts and, on the host, the death at the end.
 func update_execution(delta: float) -> void:
@@ -1054,7 +1058,7 @@ func update_execution(delta: float) -> void:
 	if int(execution.stabs) == 0 and execution.time >= ARM_TIME:
 		if world_audio.enabled:
 			if int(execution.seat) == player.slot and is_instance_valid(blow_sound): blow_sound.play()
-			else: world_audio.play_at(KILL_BLOW, held, -1.0, RID(), 0.0)
+			else: world_audio.play_everywhere(KILL_BLOW, held, -1.0, 0.0)
 		execution.stabs = 1
 	if int(execution.stabs) == 1 and execution.time >= KILL_TIME:
 		glitch = 1.0

@@ -92,7 +92,10 @@ herramientas para mirarlo están en la guía de desarrollo.
   verdad, si las puertas lejanas se siguen leyendo con la absorción nueva, y si
   la dirección de la criatura se acierta en esquinas y con dos puertas.
 - [ ] **La ejecución:** el grito (¿asusta o solo molesta?), los 4,2 s, y si la
-  estática se entiende como «te mataron» sin leer nada.
+  estática se entiende como «te mataron» sin leer nada. Y la de otro, que
+  ahora se oye desde cualquier punto del piso: si a lo lejos (−24 dB como
+  mucho por debajo, con eco) se entiende como «han pillado a alguien» y hacia
+  dónde.
 - [ ] **Los pasos grabados y el zumbido de fondo**, en partida y no en una
   prueba.
 - [ ] **Escucha crítica del reparto de buses y del aura**, con los eventos

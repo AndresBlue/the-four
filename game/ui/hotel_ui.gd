@@ -65,6 +65,9 @@ const CREDITS := [
 ]
 var settings
 var overlay: Control
+## Above the tape (the analog filter is layer 5): see _ready.
+const OUTSIDE_LAYER := 6
+var outside: CanvasLayer
 var column: VBoxContainer
 var side: VBoxContainer
 var hint: Label
@@ -133,6 +136,18 @@ func _ready() -> void:
 	progress = $HUD/ExitProgress
 	overlay = $MenuOverlay
 	overlay.theme = style
+	# What is outside the game -- the menus, the loading and end screens, the
+	# boot with its headphones notice and its PLAY -- is drawn above the tape
+	# and is not filmed by it. What happens inside the floor (the OSD, the
+	# objective, the sector card, the sheet, the keypad, a document being
+	# read) stays under it, recorded like the picture.
+	outside = CanvasLayer.new()
+	outside.name = "Outside"
+	outside.layer = OUTSIDE_LAYER
+	outside.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(outside)
+	remove_child(overlay)
+	outside.add_child(overlay)
 	build_frame()
 	skip_label = STYLE.text("", 15)
 	skip_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -145,8 +160,9 @@ func _ready() -> void:
 	skip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(skip_label)
 	sheet = SHEET.new()
+	# Last in this layer: over the HUD, under the menus (which are above the
+	# tape, in their own layer).
 	add_child(sheet)
-	move_child(sheet, overlay.get_index())
 	tick_player = sound_player(STYLE.beep(2400.0, 0.018, 0.12))
 	confirm_player = sound_player(STYLE.beep(1250.0, 0.07, 0.25))
 	if settings != null: settings.display_pending.connect(_display_changed)
@@ -1174,7 +1190,7 @@ func play_intro() -> void:
 	intro.name = "Intro"
 	intro.set_anchors_preset(Control.PRESET_FULL_RECT)
 	intro.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(intro)
+	outside.add_child(intro)
 	var black := ColorRect.new()
 	black.color = Color.BLACK
 	black.set_anchors_preset(Control.PRESET_FULL_RECT)

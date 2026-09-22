@@ -217,6 +217,13 @@ func run() -> void:
 	var far_energy := await sample_at(listener + Vector3(20, 0, -2), capture)
 	check("Rendered audio pans left and right", left_energy.x > left_energy.y * 1.2 and right_energy.y > right_energy.x * 1.2 and minf(left_energy.x, right_energy.y) > 0.00000001)
 	check("Rendered audio attenuates at distance", far_energy.x + far_energy.y > 0.00000000001 and far_energy.x + far_energy.y < (right_energy.x + right_energy.y) * 0.5)
+	# Somebody killed two hundred metres away, far past where any sound
+	# carries: it is still heard, from over there, low but over the floor.
+	var faraway: Vector3 = listener + Vector3(200, 2, 0)
+	audio.play_everywhere("res://assets/audio/events/execution_scream.wav", faraway, -4.0, 0.0)
+	var cue: Node = audio.get_children().filter(func(child): return child.name.begins_with("EverywhereCue")).back() if audio.get_children().any(func(child): return child.name.begins_with("EverywhereCue")) else null
+	check("An execution is heard however far off it is", cue != null and cue.playing and cue.volume_db >= -4.0 + audio.EVERYWHERE_FLOOR - 0.01 and cue.volume_db < -10.0 and cue.global_position.distance_to(faraway) < 0.1)
+	if cue != null: cue.stop()
 	level.session.set_state(level.session.State.FAILED)
 	check("Death clears active cues", audio.voices.is_empty() and not audio.presence.playing)
 	AudioServer.remove_bus_effect(bus, 0)
