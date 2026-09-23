@@ -24,3 +24,6 @@ assets/props/**/*.zip
 evidence/bench/
 evidence/lookdev/
 evidence/reference/
+
+# Bot matches: their summaries, recordings and batches (tools/bots.ps1)
+evidence/bots/

@@ -1045,8 +1045,11 @@ func door_ahead():
 
 ## No way on from here: behind a locked door, or so jammed that the steps
 ## below ran out. What it does instead depends on what it was at; a chase is
-## never dropped, it only looks for its way again.
+## never dropped, it only looks for its way again. Said to whoever watches
+## (the test bots' watchdog): many in a row is a creature shut in somewhere.
+signal route_abandoned(where: Vector3)
 func give_up_route() -> void:
+	route_abandoned.emit(global_position)
 	crossings = []
 	repath = 0.0
 	match mode:

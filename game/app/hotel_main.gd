@@ -160,6 +160,10 @@ func _enter_tree() -> void:
 	var test_name := "default"
 	for argument in OS.get_cmdline_args():
 		if argument.ends_with(".gd"): test_name = argument.get_file().get_basename()
+	# Several runs of one script at once (tools/bots.ps1 -Parallel) each keep
+	# their own files: sharing them, each overwrote the others' settings.
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--profile-tag="): test_name += "_" + argument.trim_prefix("--profile-tag=").validate_filename()
 	if OS.get_cmdline_user_args().has("--test-profile"):
 		settings.save_path = "user://test_hotel_%s_settings.json" % test_name
 		session.checkpoint_path = "user://test_hotel_%s_checkpoint.json" % test_name
@@ -243,6 +247,18 @@ const OBSERVER_WAIT := 2.5
 var observer_address := "127.0.0.1"
 var observer_port := 0
 var observer_seed := -1
+## A floor played by test bots (tools/bots): this machine's player is not in
+## it -- parked, out of sight and out of reach -- and nothing it would do is
+## done. The bots are bodies like a teammate's (match_net.bodies).
+var bot_match := false
+## A recorded bot match being watched again (tools/bots/bot_replay.gd): the
+## floor is put up and nothing on it runs of itself.
+var replaying := false
+## Mercy for the bots (-Mercy): given the body the creature was about to take,
+## true when it is spared instead. Only a bot match sets it.
+var spare := Callable()
+## Seat -> seconds it cannot be taken: a bot just spared, getting away.
+var untouchable := {}
 const OBSERVER_KNOCK := 3.0
 var observer_knock := 0.0
 
@@ -416,7 +432,8 @@ func finish_intro() -> void:
 	player.camera.current = true
 	start_floor(intro_seed)
 
-func start_floor(seed_value: int, force_fallback := false) -> void:
+## slots: the seats playing it (session.start); the bots bring their own.
+func start_floor(seed_value: int, force_fallback := false, slots: Array = [1]) -> void:
 	if not await build_floor(seed_value, force_fallback): return
 	camcorder.start_tape(seed_value)
 	# A new tape starts with the lens wide.
@@ -424,7 +441,7 @@ func start_floor(seed_value: int, force_fallback := false) -> void:
 	player.zoom_wanted = 1.0
 	session.online = false
 	session.authority = true
-	session.start(seed_value, manifest.get("fallback", false))
+	session.start(seed_value, manifest.get("fallback", false), slots)
 	save_error = session.message
 	ui.sheet.clear()
 	populate_floor(true)
@@ -991,7 +1008,7 @@ func on_state() -> void:
 		world_audio.reset()
 		for cue in [scream_sound, blow_sound]:
 			if is_instance_valid(cue): cue.stop()
-	player.active = playing and not online_menu and local_alive() and not match_net.local_is_locust()
+	player.active = playing and not online_menu and local_alive() and not match_net.local_is_locust() and not bot_match
 	if not playing: player.velocity = Vector3.ZERO
 	if not playing and ui.sheet.visible:
 		ui.sheet.close()
@@ -1060,7 +1077,9 @@ func on_state() -> void:
 			if not net.is_client() and ui.summary.is_empty():
 				var line := close_run()
 				ui.summary = line
-				ui.places = records.record(line)
+				# A floor that is nobody's game (the bots, the observer's own)
+				# leaves no line on the board.
+				ui.places = records.record(line) if session.keeps_checkpoint else {}
 				if match_net.in_match(): match_net.tell_summary(line)
 			if match_net.in_match():
 				if net.is_host: match_net.clear_checkpoint()
@@ -1119,7 +1138,15 @@ func seat_name(seat: int) -> String:
 	var players: Dictionary = match_net.config.get("players", {}) if match_net.in_match() else {}
 	if players.has(seat) and not String(players[seat].get("name", "")).is_empty(): return String(players[seat].name)
 	if seat == player.slot: return AVATAR_NAMES[clampi(settings.values.character, 0, AVATAR_NAMES.size() - 1)]
+	var body = match_net.bodies.get(seat)
+	if is_instance_valid(body) and not String(body.player_name).is_empty(): return String(body.player_name)
 	return "Superviviente %d" % seat
+
+## The body sitting in a seat: this machine's player, or anybody else's.
+func body_of_seat(seat: int) -> Node3D:
+	if seat == player.slot and session.participants.has(seat): return player
+	var body = match_net.bodies.get(seat)
+	return body if is_instance_valid(body) else null
 
 const AVATAR_NAMES := ["Detective", "Detective", "Exploradora"]
 
@@ -1375,7 +1402,7 @@ func local_alive() -> bool:
 ## Alive and outside the refuge: fair game.
 ## Riding a lift is out of reach as well: the doors are shut.
 func survivor_active(body: Node3D) -> bool:
-	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position) and not lifts.riding.has(int(body.slot))
+	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position) and not lifts.riding.has(int(body.slot)) and not untouchable.has(int(body.slot))
 
 ## The creature reached this survivor: the execution starts and the death is
 ## registered when it ends (host, or offline).
@@ -1383,6 +1410,7 @@ func capture_survivor(body: Node3D) -> void:
 	if body == null or net.is_client() or not execution.is_empty() or not is_instance_valid(locust): return
 	if session.participants.get(body.slot, session.Life.DEAD) != session.Life.EXPLORING: return
 	if lifts.riding.has(int(body.slot)): return
+	if spare.is_valid() and bool(spare.call(body)): return
 	if match_net.in_match(): match_net.free_victim_hide(body.slot)
 	var point: Vector3 = locust.global_position
 	var yaw: float = locust.rotation.y
@@ -1519,14 +1547,9 @@ func strike_on_screen() -> Vector2:
 ## The victim: held in the air in front of the creature, looking at it.
 func hold_victim(delta: float) -> void:
 	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
-	var yaw: float = locust.rotation.y if is_instance_valid(locust) else execution.yaw
-	var forward := -Basis(Vector3.UP, yaw).z
 	var time: float = execution.time
-	var lift := clampf(time / 0.5, 0.0, 1.0) - clampf((time - DROP_TIME) / 0.4, 0.0, 1.0)
-	# Held on the blade at the creature's chest height, and drawn slowly in:
-	# the mask arriving is the whole point of the wait before the blow.
-	var closing := ease(clampf((time - 0.5) / maxf(KILL_TIME - 0.5, 0.01), 0.0, 1.0), 0.45)
-	var wanted := point + forward * lerpf(1.15, 0.6, closing) + Vector3(0, 0.1 + lift * 1.0, 0)
+	var lift := victim_lift(time)
+	var wanted := victim_hold_point()
 	player.velocity = Vector3.ZERO
 	player.global_position = player.global_position.lerp(wanted, minf(1.0, delta * 10.0))
 	# Run through on the blade: the body hangs back and sags, and goes limp
@@ -1543,6 +1566,22 @@ func hold_victim(delta: float) -> void:
 	camcorder.focus("")
 	ui.hint.text = ""
 	ui.progress.visible = false
+
+## How high the victim is held at this moment of it: up, and let fall.
+func victim_lift(time: float) -> float:
+	return clampf(time / 0.5, 0.0, 1.0) - clampf((time - DROP_TIME) / 0.4, 0.0, 1.0)
+
+## Where the victim of the execution in hand is held: on the blade at the
+## creature's chest height, and drawn slowly in -- the mask arriving is the
+## whole point of the wait before the blow. The local player is put there,
+## and so is a test bot's body.
+func victim_hold_point() -> Vector3:
+	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
+	var yaw: float = locust.rotation.y if is_instance_valid(locust) else execution.yaw
+	var forward := -Basis(Vector3.UP, yaw).z
+	var time: float = execution.time
+	var closing := ease(clampf((time - 0.5) / maxf(KILL_TIME - 0.5, 0.01), 0.0, 1.0), 0.45)
+	return point + forward * lerpf(1.15, 0.6, closing) + Vector3(0, 0.1 + victim_lift(time) * 1.0, 0)
 
 ## The creature searches a wardrobe: the host opens it leaf by leaf and, if
 ## somebody is inside, that is where the execution starts.
@@ -1666,17 +1705,17 @@ func type_code(character: String) -> void:
 		ui.keypad("key")
 		ui.show_lock(typed, DIGITS.COUNT, "", noted_code(), lock_digit)
 		return
-	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
+	var verdict := code_verdict(typed)
 	# The right code on a wing whose sets are still dark: the door is not
 	# going to move, and it is better said here than guessed at the door.
-	if typed == right and not sets_lit():
+	if verdict == "sets":
 		typed = ""
 		ui.keypad("wrong")
 		ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code(), lock_digit)
 		return
 	# Only the keypad is heard: a try is not a door. It used to creak like one
 	# on every wrong code, and latch on the right one, with nothing moving.
-	if typed == right:
+	if verdict == "right":
 		ui.keypad("right")
 		match_net.use_code()
 		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code(), lock_digit)
@@ -1685,6 +1724,14 @@ func type_code(character: String) -> void:
 		typed = ""
 		ui.keypad("wrong")
 		ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code(), lock_digit)
+
+## What the keypad makes of a code: "right", "sets" (right, but the stage's
+## sets are still dark, so the door would not move) or "wrong". The keypad on
+## screen asks here, and so do the test bots, which have no screen.
+func code_verdict(text: String) -> String:
+	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
+	if text != right: return "wrong"
+	return "right" if sets_lit() else "sets"
 
 func open_lock() -> void:
 	lock_open = true
@@ -1770,6 +1817,8 @@ func door_behind():
 	return best
 
 func _physics_process(delta: float) -> void:
+	# Watching a recording: what moves is what was recorded (bot_replay.gd).
+	if replaying: return
 	# Watching: the floor runs itself (online it is the host's, alone it is the
 	# creature's own), and this machine only counts the lifts and looks.
 	if observer:
@@ -1810,6 +1859,10 @@ func _physics_process(delta: float) -> void:
 func drive_local(delta: float) -> void:
 	if not net.is_client():
 		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+	# The bots drive their own bodies; this machine's player is parked, and
+	# everything below is for a player who is playing. Run, it put the parked
+	# body back in sight and in reach every frame (stop_watching).
+	if bot_match: return
 	if not execution.is_empty() and int(execution.seat) == player.slot:
 		hold_victim(delta)
 		return
@@ -1955,6 +2008,9 @@ func creature_channel_hop(delta: float) -> void:
 	if match_net.in_match(): match_net.warp_state.rpc(pick)
 
 func host_gate(delta: float) -> void:
+	for seat in untouchable.keys():
+		untouchable[seat] = float(untouchable[seat]) - delta
+		if untouchable[seat] <= 0.0: untouchable.erase(seat)
 	creature_channel_hop(delta)
 	sanity.haunt_burnt(delta)
 	# From the second stage on, the wing is played on its own sets: each stage

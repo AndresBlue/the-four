@@ -415,13 +415,15 @@ func warp_state(index: int) -> void:
 # --- Drawers and shelves ---------------------------------------------------------
 
 ## Going through a piece of furniture. Like a television, it only ever goes one
-## way, so there is nothing to undo.
-func use_container(piece: Node3D) -> void:
+## way, so there is nothing to undo. `seat`: whose hands, when not this
+## machine's player's (a test bot's); the number found is theirs.
+func use_container(piece: Node3D, seat := -1) -> void:
 	var index: int = level.containers.find(piece)
 	if index < 0: return
+	if seat < 0: seat = level.player.slot
 	if not in_match() or net.is_host:
-		level.apply_search(index, true)
-		if in_match(): container_state.rpc(index, true, level.player.slot)
+		level.apply_search(index, true, false, seat)
+		if in_match(): container_state.rpc(index, true, seat)
 		return
 	request_container.rpc_id(1, index)
 
