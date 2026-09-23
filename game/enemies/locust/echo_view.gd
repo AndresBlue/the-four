@@ -466,13 +466,17 @@ func build_clouds() -> void:
 	mark_material.set_shader_parameter("steady_fade_from", LANDMARK_NEAR)
 	mark_material.set_shader_parameter("steady_fade_to", LANDMARK_REACH)
 
-## It lives here: the doors and wardrobes of the floor are drawn faintly and
-## for good, so it can still find its way between clicks. Built once, never
-## touched again, faded by distance in the shader.
+## It lives here: the doors and wardrobes of its planta are drawn faintly and
+## for good, so it can still find its way between clicks. Built for the planta
+## it is on and again when it rides to another (advance), faded by distance in
+## the shader: the ones of the planta under it would show through the floor.
+var landmark_planta := -1
 func build_landmarks() -> void:
 	var places := PackedVector3Array()
 	if not is_instance_valid(level.hotel): return
+	landmark_planta = FLOOR.planta_of(creature.global_position.y)
 	for door in level.hotel.doors:
+		if FLOOR.planta_of(door.doorway.y) != landmark_planta: continue
 		# The frame traced all the way round, on both faces of the reveal, so a
 		# doorway is a shape and not four dots. A door is the thing it needs to
 		# read at a glance while it hunts, so this is the one place where the
@@ -490,6 +494,7 @@ func build_landmarks() -> void:
 				var over := lerpf(-1.0, 1.0, rng.randf())
 				places.append(door.doorway + across * over + depth + Vector3(0, DOORWAY_HIGH + 0.04, 0))
 	for hide in level.hotel.hides:
+		if FLOOR.planta_of(hide.global_position.y) != landmark_planta: continue
 		# On the front of the wardrobe (hiding_place.gd: HINGE.z, WIDTH, HEIGHT),
 		# not inside it.
 		var frame: Basis = hide.global_basis
@@ -569,9 +574,13 @@ func aim_reflectors(from: Vector3) -> void:
 	if aimed == 0: return
 	var forward: Vector3 = -camera.global_basis.z
 	var near: Array = []
+	var planta := FLOOR.planta_of(from.y - driver.EYE.y)
 	for index in reflectors.size():
 		var one: Dictionary = reflectors[index]
 		if not is_instance_valid(one.node): continue
+		# Only its own planta's: a frame under the floor would spend a ray on a
+		# slab for nothing.
+		if FLOOR.planta_of(one.centre.y - 1.0) != planta: continue
 		var offset: Vector3 = one.centre - from
 		var span := offset.length()
 		if span > REACH: continue
@@ -701,6 +710,8 @@ func apply_quality() -> void:
 ## Called from the driver's physics step.
 func advance(delta: float, hunting: bool) -> void:
 	if not enabled: return
+	# Ridden to another planta: the doors it simply knows are the ones there.
+	if FLOOR.planta_of(creature.global_position.y) != landmark_planta: build_landmarks()
 	clock += delta
 	rate_clock += delta
 	if rate_clock >= 1.0:

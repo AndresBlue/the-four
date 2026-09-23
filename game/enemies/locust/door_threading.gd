@@ -11,6 +11,7 @@ extends RefCounted
 ## happens.
 ##
 ## For moving only: its hearing and the audio measure the plain route.
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const APPROACH := 0.8
 ## On the side the open leaf stands in, far enough out to clear it: the leaf,
 ## the creature's radius and a margin.
@@ -64,7 +65,7 @@ static func line_up(door, side: float, map: RID, height: float) -> Vector3:
 	while reach >= APPROACH - 0.01:
 		var point: Vector3 = door.doorway + door.across() * (side * reach) + door.along() * (latch * LATCH_SHIFT)
 		point.y = height
-		var snapped: Vector3 = NavigationServer3D.map_get_closest_point(map, point)
+		var snapped: Vector3 = FLOOR.closest(map, point)
 		if Vector2(snapped.x - point.x, snapped.z - point.z).length() <= SNAP_SLACK: return snapped
 		reach -= 0.3
 	return Vector3.INF
@@ -156,7 +157,7 @@ static func round_point(leaf: Array, map: RID, height: float) -> Vector3:
 	var tip: Vector3 = leaf[1]
 	var out: Vector3 = tip + (tip - hinge).normalized() * TIP_CLEAR
 	out.y = height
-	var snapped: Vector3 = NavigationServer3D.map_get_closest_point(map, out)
+	var snapped: Vector3 = FLOOR.closest(map, out)
 	if Vector2(snapped.x - out.x, snapped.z - out.z).length() > SNAP_SLACK: return Vector3.INF
 	return snapped
 

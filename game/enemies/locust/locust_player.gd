@@ -357,7 +357,7 @@ func set_front(index: int) -> Vector3:
 	var facing: Vector3 = set.global_basis.z
 	facing.y = 0.0
 	var out: Vector3 = set.global_position + facing.normalized() * 1.6
-	return NavigationServer3D.map_get_closest_point(creature.get_world_3d().navigation_map, out)
+	return FLOOR.closest(creature.get_world_3d().navigation_map, out)
 
 ## The yellow way, while it lasts: to the set it asked for, from where it
 ## stands. Over once it gets there, or if the set goes out.

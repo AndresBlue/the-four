@@ -81,7 +81,9 @@ func count_away(delta: float) -> void:
 func car_arriving_at(point: Vector3) -> int:
 	for index in level.hotel.arrivals.size():
 		var arrival: Vector3 = level.hotel.arrivals[index]
-		if arrival != Vector3.ZERO and Vector2(arrival.x - point.x, arrival.z - point.z).length() < 2.5: return index
+		# In three dimensions: the car arriving on one planta can stand right over
+		# the one leaving from the planta under it.
+		if arrival != Vector3.ZERO and arrival.distance_to(point) < 2.5: return index
 	return -1
 
 ## The car out of the wing the creature is standing in, while that wing is
@@ -306,6 +308,8 @@ func ride_along(delta: float) -> void:
 	if span >= RIDE_TIME * 0.5 and not boarding.get("moved", false):
 		boarding["moved"] = true
 		level.player.global_position = boarding.point
+		# Falling out of the floor from here puts it back here, on this planta.
+		level.player.spawn = boarding.point
 		# The torch trails the camera instead of hanging from it: a body that
 		# jumps has to take its light with it.
 		level.player.snap_torch()

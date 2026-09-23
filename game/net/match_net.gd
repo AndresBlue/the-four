@@ -353,7 +353,7 @@ func door_settled(index: int, opened: bool) -> void:
 func near_sender(point: Vector3) -> bool:
 	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
 	var body = body_of(seat)
-	return body != null and Vector2(body.global_position.x - point.x, body.global_position.z - point.z).length() < REACH
+	return body != null and body.global_position.distance_to(point) < REACH
 
 func body_of(seat: int) -> Node3D:
 	if seat == net.local_seat: return level.locust if local_is_locust() else level.player

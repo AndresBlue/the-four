@@ -64,6 +64,10 @@ var pitch := -0.15
 ## Whose shoulder it is riding, or null for the free camera.
 var following: Node3D
 var map_view := false
+## The planta being looked at: the only one drawn (hotel_geometry
+## update_visibility), chosen with RePág/AvPág, or the one the body followed
+## is on. Free, the camera is on whichever its height puts it on.
+var planta := 0
 ## Its own light. Without it there is nothing to see: the hotel is meant to be
 ## walked with a torch, and this camera has none.
 var lit := true
@@ -155,6 +159,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		note("capa %s %s" % [name, "sí" if gizmos.shown[name] else "no"])
 		return
 	match key:
+		KEY_PAGEUP: change_planta(-1)
+		KEY_PAGEDOWN: change_planta(1)
 		KEY_TAB: follow_next()
 		KEY_F: following = null
 		KEY_M: toggle_map()
@@ -177,6 +183,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			if alone(): set_time(minf(4.0, maxf(Engine.time_scale, 0.1) * 2.0))
 		KEY_F5: snapshot()
 		KEY_ESCAPE: step_out()
+
+## Up or down a planta: the plan is redrawn over it, and the free camera is
+## taken down (or up) with it, at the same height over its floor.
+func change_planta(step: int) -> void:
+	var next := clampi(planta + step, 0, FLOOR.PLANTAS - 1)
+	if next == planta: return
+	following = null
+	global_position.y += FLOOR.planta_y(next) - FLOOR.planta_y(planta)
+	planta = next
+	if map_view:
+		map_view = false
+		toggle_map()
+	note("planta %d" % (planta + 1))
 
 ## Escape: the mouse back, so the window can be left; and again, out. A tool
 ## that swallowed Escape was a tool you had to kill from the task bar.
@@ -252,14 +271,21 @@ func toggle_map() -> void:
 	gizmos.scale_hint = 6.0 if map_view else 1.0
 	if not map_view:
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		# Down to the planta it was showing, at eye height: from the height of
+		# the plan the free camera would count as on the top planta.
+		global_position.y = FLOOR.planta_y(planta) + 1.7
 		return
 	following = null
-	var middle := Vector3.ZERO
+	# The plan of the planta being looked at, and only that one.
+	var middle := Vector3(0, FLOOR.planta_y(planta), 0)
 	var span := 40.0
 	if not level.manifest.is_empty():
-		for room in level.manifest.rooms: middle += FLOOR.position_of(room)
-		middle /= float(level.manifest.rooms.size())
-		for room in level.manifest.rooms: span = maxf(span, FLOOR.position_of(room).distance_to(middle))
+		var here: Array = level.manifest.rooms.filter(func(room): return FLOOR.planta_of(FLOOR.position_of(room).y) == planta)
+		if not here.is_empty():
+			middle = Vector3.ZERO
+			for room in here: middle += FLOOR.position_of(room)
+			middle /= float(here.size())
+			for room in here: span = maxf(span, FLOOR.position_of(room).distance_to(middle))
 	global_position = middle + Vector3(0, MAP_HEIGHT, 0.01)
 	rotation = Vector3.ZERO
 	pitch = -PI / 2
@@ -311,6 +337,7 @@ func fly(delta: float) -> void:
 	# Its reading is drawn from its head: to see what it hears, you stand where
 	# it stands and look where it looks, which is what the hunter does.
 	if echoing and is_instance_valid(level.locust):
+		planta = FLOOR.planta_of(level.locust.global_position.y)
 		global_position = level.locust.global_position + Ears.EYE
 		rotation.y = level.locust.rotation.y
 		camera.position = Vector3(Ears.SHOULDER, 0.0, Ears.ARM)
@@ -318,11 +345,15 @@ func fly(delta: float) -> void:
 		return
 	camera.position = Vector3.ZERO
 	if is_instance_valid(following):
+		planta = FLOOR.planta_of(following.global_position.y)
 		var behind: Vector3 = following.global_position + Vector3(0, 2.4, 0) + following.global_basis.z * 3.2
 		global_position = global_position.lerp(behind, minf(1.0, delta * 6.0))
 		look_at(following.global_position + Vector3(0, 1.6, 0))
 		camera.rotation.x = 0.0
 		return
+	# Free, it is on the planta its height puts it on; from above, on the one
+	# chosen.
+	if not map_view: planta = FLOOR.planta_of(global_position.y)
 	var axis := Input.get_vector("left", "right", "forward", "backward")
 	var lift := (1.0 if Input.is_action_pressed("jump") else 0.0) - (1.0 if Input.is_action_pressed("crouch") else 0.0)
 	var quick: float = QUICK if Input.is_action_pressed("sprint") else 1.0
@@ -361,7 +392,7 @@ func report() -> String:
 	var lines: PackedStringArray = []
 	var where: String = "libre" if not is_instance_valid(following) else "siguiendo a %s" % following.name
 	lines.append("OBSERVADOR · %s%s%s · %0.0f m/s%s" % [where, " · mapa" if map_view else "", " · lectura" if echoing else "", speed, "" if is_equal_approx(Engine.time_scale, 1.0) else " · tiempo ×%0.2f" % Engine.time_scale])
-	lines.append("TAB seguir · F soltar · M mapa · V lectura · C techos · L luz · 1-6 capas · H panel · R piso · P/[/] tiempo")
+	lines.append("TAB seguir · F soltar · M mapa · RePág/AvPág planta · V lectura · C techos · L luz · 1-6 capas · H panel · R piso · P/[/] tiempo")
 	lines.append("F5 volcar · ESC ratón, y otra vez cerrar")
 	lines.append("")
 	# Which floor this is and where it came from, which is the first thing to
@@ -369,7 +400,7 @@ func report() -> String:
 	var source := "piso propio · buscando partida en %s" % level.observer_address
 	if level.net.observing and level.match_net.in_match(): source = "la partida · %s" % ("versus" if level.match_net.versus() else "cooperativo")
 	elif level.net.observing: source = "piso propio · en la sala, esperando a que empiecen"
-	lines.append("Piso 1 · semilla %d · %s" % [int(session.run_seed), source])
+	lines.append("Piso 1 · semilla %d · %s · mirando la planta %d de %d" % [int(session.run_seed), source, planta + 1, FLOOR.PLANTAS])
 	lines.append("Sector %d/%d · %s · %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
 	lines.append("Meta %s %d/%d%s · código %s · teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), " · apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
 	lines.append("")

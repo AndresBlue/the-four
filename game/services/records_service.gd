@@ -9,6 +9,7 @@ extends Node
 ## has to get more people out -- so they are two boards, and a floor keeps its
 ## own (this hotel is floor 1; the other three will use the same shelf).
 signal changed
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var save_path := "user://records.json"
 const VERSION := 1
 ## Lines kept per floor and company. Past this the slowest of them falls off,
@@ -51,6 +52,9 @@ func record(run: Dictionary) -> Dictionary:
 		"hides": int(run.get("hides", 0)),
 		"escaped": int(run.get("escaped", 1)),
 		"seed": int(run.get("seed", 0)),
+		# The same seed is another floor under another generator, and a floor of
+		# three plantas is not timed against one of three wings side by side.
+		"generator": FLOOR.VERSION,
 		"date": Time.get_datetime_string_from_system(false, true),
 		"team": run.get("team", []),
 	}
@@ -66,9 +70,10 @@ func record(run: Dictionary) -> Dictionary:
 	return places
 
 ## The lines of one table, best first: every run of that floor and company that
-## belongs in it, by time.
+## belongs in it, by time. Only the floors this generator makes: the lines of an
+## older one stay in the file and off the board.
 func table_of(id: String, floor_number: int, company: String) -> Array:
-	var board: Array = runs.filter(func(line): return int(line.get("floor", 1)) == floor_number and String(line.get("company", SOLO)) == company and belongs(id, line))
+	var board: Array = runs.filter(func(line): return current(line) and int(line.get("floor", 1)) == floor_number and String(line.get("company", SOLO)) == company and belongs(id, line))
 	board.sort_custom(func(a, b): return float(a.time) < float(b.time))
 	return board
 
@@ -88,7 +93,12 @@ static func badges(line: Dictionary) -> Array:
 
 ## Whether anything has been written down for a floor at all.
 func any(floor_number := 1) -> bool:
-	return runs.any(func(line): return int(line.get("floor", 1)) == floor_number)
+	return runs.any(func(line): return current(line) and int(line.get("floor", 1)) == floor_number)
+
+## A line of the floors this generator makes (lines from before it was written
+## down were generator 4).
+static func current(line: Dictionary) -> bool:
+	return int(line.get("generator", 4)) == FLOOR.VERSION
 
 func trim() -> void:
 	for floor_number in [1, 2, 3, 4]:

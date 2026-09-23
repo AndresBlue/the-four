@@ -812,7 +812,7 @@ func warp_creature(index: int) -> void:
 	# in the alcove, and 1.6 m straight out was inside the partition.
 	var out: Vector3 = set.global_position + facing * 1.6
 	var map: RID = get_world_3d().navigation_map
-	if NavigationServer3D.map_get_iteration_id(map) > 0: out = NavigationServer3D.map_get_closest_point(map, out)
+	if NavigationServer3D.map_get_iteration_id(map) > 0: out = FLOOR.closest(map, out)
 	locust.global_position = out + Vector3(0, 0.04, 0)
 	# Facing the room it came out into, not back at the screen.
 	locust.rotation.y = set.rotation.y + PI
@@ -1558,7 +1558,10 @@ func point_in_refuge(point: Vector3) -> bool:
 	var room: Dictionary = manifest.rooms[refuge_room()]
 	var center := FLOOR.position_of(room)
 	var span := FLOOR.size_of(room)
-	return absf(point.x - center.x) < span.x * 0.5 - 0.55 and absf(point.z - center.z) < span.y * 0.5 - 0.55 and point.y >= -0.1 and point.y < 2.0
+	# Standing in it, on its own planta: the refuge of the floor above or below
+	# is the same square in plan.
+	var rise := point.y - center.y
+	return absf(point.x - center.x) < span.x * 0.5 - 0.55 and absf(point.z - center.z) < span.y * 0.5 - 0.55 and rise >= -0.1 and rise < 2.0
 
 func spawn_locust() -> void:
 	locust = LOCUST.instantiate()
@@ -2066,8 +2069,10 @@ func _process(delta: float) -> void:
 			# Watching, nothing is hidden: the whole floor is drawn wherever the
 			# camera is, which is the point of looking at it from outside.
 			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else world_audio.listener_position()
-			hotel.update_visibility(eye, settings.values.shadows and not hunter_seat() and not observer, 0.0, observer)
-		ventilation.position = Vector3(round(player.position.x / 12) * 12, 2.8, round(player.position.z / 12) * 12)
+			# One planta at a time: the watcher's, or the one the eye is on.
+			var shown: int = observer_view.planta if observer and observer_view != null else -1
+			hotel.update_visibility(eye, settings.values.shadows and not hunter_seat() and not observer, 0.0, observer, shown)
+		ventilation.position = Vector3(round(player.position.x / 12) * 12, FLOOR.planta_y(FLOOR.planta_of(player.position.y)) + 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Watching: the keys belong to the observer's own camera and panels.

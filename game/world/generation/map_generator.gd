@@ -68,6 +68,9 @@ func candidate(run_seed: int, attempt: int, full_grid := false) -> Dictionary:
 		rooms.append({"id": i, "x": i % width, "z": i / width, "type": 0, "sector": mini(4, (i % width) * 5 / width), "wing": mini(WINGS - 1, (i % width) * WINGS / width), "props": [], "px": x_centers[i % width], "pz": z_centers[i / width], "span_x": x_sizes[i % width], "span_z": z_sizes[i / width], "hall": -1, "corridor": false, "service": false})
 		adjacency.append([])
 	order_field(rooms, width, run_seed + attempt * 104729)
+	# Each wing on its own planta, going down: the stage after one is the floor
+	# under it. Where it stands in plan is as before; only its height changes.
+	for room in rooms: room["py"] = FLOOR.planta_y(int(room.wing))
 	var edges: Array = []
 	if full_grid:
 		# The standby floor: no plan at all, every wall that can be a doorway

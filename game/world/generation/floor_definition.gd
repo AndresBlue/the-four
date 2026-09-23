@@ -1,6 +1,12 @@
 extends RefCounted
 
-const VERSION := 4
+const VERSION := 5
+## A floor is three plantas, one per stage, stacked and going down: the first
+## at 0 and each next one PITCH below the one before. Enough for the tallest
+## ceiling (the 4.8 m halls) and both slabs. What joins them is the lift, and
+## nothing else: no stairs, no route a body could walk.
+const PITCH := 6.0
+const PLANTAS := 3
 const CELL := 12.0
 ## Clear width of a doorway: a hotel door with room for the creature to pass.
 const PORTAL := 1.3
@@ -38,15 +44,37 @@ const RECIPES := [
 ]
 
 static func position_of(room: Dictionary) -> Vector3:
-	return Vector3(room.get("px", room.x * CELL), 0, room.get("pz", room.z * CELL))
+	return Vector3(room.get("px", room.x * CELL), float(room.get("py", 0.0)), room.get("pz", room.z * CELL))
+
+static func planta_y(index: int) -> float:
+	return -PITCH * float(index)
+
+## The planta a height belongs to: from a metre under its floor up to the air
+## under the slab of the one above.
+static func planta_of(y: float) -> int:
+	return clampi(int(floor((PITCH - 1.0 - y) / PITCH)), 0, PLANTAS - 1)
+
+## A point brought down to the floor of its own planta. The navigation is one
+## map for the three: left as it was, a lamp at the ceiling was nearer the
+## floor of the planta above than its own, and a sound from it was routed up
+## there.
+static func floor_point(point: Vector3) -> Vector3:
+	return Vector3(point.x, planta_y(planta_of(point.y)) + 0.3, point.z)
+
+## The nearest walkable point on the point's own planta.
+static func closest(map: RID, point: Vector3) -> Vector3:
+	return NavigationServer3D.map_get_closest_point(map, floor_point(point))
 
 static func size_of(room: Dictionary) -> Vector2:
 	return Vector2(room.get("span_x", CELL), room.get("span_z", CELL))
 
-## The module whose footprint contains a world point, or {} outside the plan.
+## The module whose footprint contains a world point, on the planta the point
+## is on, or {} outside the plan.
 static func room_at(rooms: Array, point: Vector3) -> Dictionary:
+	var planta := planta_of(point.y)
 	for room in rooms:
 		var center := position_of(room)
+		if planta_of(center.y) != planta: continue
 		var span := size_of(room)
 		if absf(point.x - center.x) <= span.x * 0.5 and absf(point.z - center.z) <= span.y * 0.5: return room
 	return {}
@@ -89,11 +117,15 @@ static func portal_between(a: Dictionary, b: Dictionary) -> Vector3:
 	else: point.z += sign(b.z - a.z) * size.y * 0.5
 	return point
 
+## A walkable route, or nothing between two plantas: they are joined only by
+## the lift, and a route that stopped at the nearest point under the target
+## was taken for one that got there (a sound heard through the slab).
 static func navigation_path(map: RID, origin: Vector3, target: Vector3) -> PackedVector3Array:
+	if planta_of(origin.y) != planta_of(target.y): return PackedVector3Array()
 	var query := NavigationPathQueryParameters3D.new()
 	query.map = map
-	query.start_position = origin
-	query.target_position = target
+	query.start_position = floor_point(origin)
+	query.target_position = floor_point(target)
 	query.path_search_max_polygons = 0
 	query.simplify_path = true
 	query.simplify_epsilon = 0.02

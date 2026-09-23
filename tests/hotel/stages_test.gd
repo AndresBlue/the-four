@@ -88,7 +88,10 @@ func run() -> void:
 	await level.start_floor(81)
 	var session = level.session
 	level.locust.set_physics_process(false)
-	level.locust.global_position = Vector3(0, -80, 0)
+	# Out of the way, where it was born: deep in the first wing, on its planta.
+	# (Parked under the floor, as it used to be, it would be on no planta and in
+	# no wing at all, now that there are three of them stacked.)
+	var den: Vector3 = level.locust.global_position
 	level.player.set_physics_process(false)
 	check("Un piso empieza en la etapa 1", session.stage == 1 and session.STAGES == 3)
 	check("Y su condición es la del refugio", session.goal.kind == "refuge")
@@ -185,7 +188,7 @@ func run() -> void:
 	await frames(20)
 	check("Cuando vuelve el ascensor, lo toma y sale en el ala nueva", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 1 and level.locust.global_position.distance_to(level.hotel.arrivals[0]) < 1.5)
 	check("Y el coche vuelve a irse con él", level.lifts.lift_gone(0))
-	level.locust.global_position = Vector3(0, -80, 0)
+	level.locust.global_position = den
 	check("La puerta de la tercera ala sigue cerrada", level.hotel.gates[1].locked)
 	# The notice of the sector goes by itself, about six seconds after it came.
 	await frames(int((level.ui.BRIEF_HOLD + 0.6) * 60))
@@ -280,7 +283,7 @@ func run() -> void:
 	level.locust.set_mode(level.locust.Mode.PATROL)
 	await frames(10)
 	check("Dos alas atrás toma el coche de su propia ala", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 1)
-	level.locust.global_position = Vector3(0, -80, 0)
+	level.locust.global_position = den
 	# Held on the blade is not standing in the car.
 	var stood: Vector3 = level.player.global_position
 	# Just off the last ride: that one is over.
@@ -406,7 +409,7 @@ func run() -> void:
 	await level.start_floor(81)
 	session = level.session
 	level.locust.set_physics_process(false)
-	level.locust.global_position = Vector3(0, -80, 0)
+	den = level.locust.global_position
 	level.player.set_physics_process(false)
 	check("Un piso nuevo perdona otra vez", session.restarts == 0)
 	# Straight to the last stage: the numbers and the door are the point here.

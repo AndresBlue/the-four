@@ -98,6 +98,11 @@ func update_route(listener: Vector3, creature: Node3D) -> void:
 		cue_point = listener + (creature.global_position - listener).normalized() * cue_distance_far
 		return
 	var level = world_audio.level
+	# On another planta it is not coming: nothing but the lift joins them.
+	if FLOOR.planta_of(listener.y) != FLOOR.planta_of(creature.global_position.y):
+		route_distance = INF
+		cue_point = creature.global_position
+		return
 	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, listener, creature.global_position)
 	if path.size() < 2:
 		route_distance = straight * 1.3

@@ -44,7 +44,8 @@ func run() -> void:
 	var again := PLACEMENT.choose(level.manifest, "locust")
 	check("Colocación reproducible por semilla", again.size() == documents.size() and again.all(func(spot): return documents.any(func(d): return d.entry_id == spot.entry and d.position.is_equal_approx(spot.position))))
 	check("Documentos lejos de la salida inicial y fuera del refugio", documents.all(func(d): return d.position.length() >= PLACEMENT.MIN_FROM_START and not level.point_in_refuge(d.position)))
-	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y > 0.6 and d.position.y < 0.9))
+	# Measured from the floor of their own planta: the plantas are stacked.
+	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) > 0.6 and d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) < 0.9))
 	check("Documentos distintos entre sí", documents[0].entry_id != documents[1].entry_id)
 	var document = documents[0]
 	# Walked up to from the middle of the room and looked at, the way it is
@@ -59,7 +60,7 @@ func run() -> void:
 	var readable := false
 	for step in [1.0, 1.3, 1.6, 1.9]:
 		player.position = document.position + inward.normalized() * step
-		player.position.y = 0.04
+		player.position.y = FLOOR.planta_y(FLOOR.planta_of(document.position.y)) + 0.04
 		player.rotation.y = 0.0
 		var eye: Vector3 = player.position + Vector3(0, player.eye_height, 0)
 		var to_doc: Vector3 = document.position - eye

@@ -800,7 +800,7 @@ func _physics_process(delta: float) -> void:
 				choose_patrol()
 			elif pause_time <= 0 and position.distance_to(destination) < 0.7:
 				var angle := rng.randf() * TAU
-				destination = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
+				destination = FLOOR.closest(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
 				pause_time = rng.randf_range(0.4, 1.6)
 				repath = 0
 		Mode.WINDUP:
@@ -889,10 +889,17 @@ func near_doorway() -> bool:
 	return false
 
 func nearest_room() -> int:
+	# The room it stands in, when it stands in one; otherwise the nearest on its
+	# own planta. By distance alone the room under its feet on the planta below
+	# could be nearer than the middle of a big room it is in.
+	var here: Dictionary = FLOOR.room_at(level.manifest.rooms, global_position)
+	if not here.is_empty() and here.id != level.manifest.exit: return int(here.id)
 	var best := 0
 	var distance := INF
+	var planta := FLOOR.planta_of(global_position.y)
 	for room in level.manifest.rooms:
 		if room.id == level.manifest.exit: continue
+		if FLOOR.planta_of(FLOOR.position_of(room).y) != planta: continue
 		var d := position.distance_squared_to(FLOOR.position_of(room))
 		if d < distance:
 			distance = d
@@ -1028,7 +1035,7 @@ func give_up_route() -> void:
 			choose_patrol()
 		Mode.SEARCH:
 			var angle := rng.randf() * TAU
-			destination = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
+			destination = FLOOR.closest(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
 
 ## How far short of where it was going a route may end and still count as
 ## going there: past this there is no way, and it stops trying.
@@ -1157,7 +1164,7 @@ func detour(direction: Vector3) -> bool:
 		var angle := rng.randf() * TAU
 		var way := Vector3(cos(angle), 0, sin(angle))
 		if way.dot(direction) > 0.3: continue
-		var point: Vector3 = NavigationServer3D.map_get_closest_point(map, position + way * rng.randf_range(2.0, 3.0))
+		var point: Vector3 = FLOOR.closest(map, position + way * rng.randf_range(2.0, 3.0))
 		if point.distance_to(position) < 1.2 or absf(point.y - position.y) > 1.0: continue
 		var query := PhysicsRayQueryParameters3D.create(position + Vector3.UP, point + Vector3.UP, 1 | 8)
 		query.exclude = [get_rid()]
@@ -1185,7 +1192,7 @@ func hop() -> bool:
 			break
 		left -= step
 		line.append(path[i])
-	var target: Vector3 = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, line[line.size() - 1])
+	var target: Vector3 = FLOOR.closest(get_world_3d().navigation_map, line[line.size() - 1])
 	if target.distance_to(position) < 0.5 or absf(target.y - position.y) > 1.0 or level.point_in_refuge(target): return false
 	for door in level.hotel.doors:
 		if door.opened and not door.moving: continue

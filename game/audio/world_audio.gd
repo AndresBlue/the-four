@@ -391,8 +391,11 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	var straight := listener.distance_to(point)
 	if straight > ROUTE_LIMIT + ROUTE_SLACK: return {"audible": false, "distance": straight}
 	var map: RID = level.get_world_3d().navigation_map
-	var from := NavigationServer3D.map_get_closest_point(map, listener_position())
-	var to := NavigationServer3D.map_get_closest_point(map, point)
+	# Each end on its own planta: a sound from the floor above or below has no
+	# way here but the slab, and the slab lets nothing through.
+	if FLOOR.planta_of(listener.y) != FLOOR.planta_of(point.y): return {"audible": false, "distance": INF}
+	var from := FLOOR.closest(map, listener_position())
+	var to := FLOOR.closest(map, point)
 	var path := FLOOR.navigation_path(map, from, to)
 	if path.size() < 2: return {"audible": false, "distance": INF}
 	var length := 0.0

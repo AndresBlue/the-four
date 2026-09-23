@@ -96,6 +96,13 @@ func remember(delta: float) -> void:
 		points.append(body.global_position)
 		while points.size() > int(TRAIL_TIME / TRAIL_EVERY): points.pop_front()
 
+## Only what is on the planta being looked at: the others are not drawn, and
+## their marks would float in the air over this one.
+func here(point: Vector3) -> bool:
+	var view = level.get("observer_view")
+	var planta: int = view.planta if view != null and is_instance_valid(view) else 0
+	return FLOOR.planta_of(point.y) == planta
+
 func line(from: Vector3, to: Vector3, colour: Color) -> void:
 	mesh.surface_set_color(colour)
 	mesh.surface_add_vertex(from)
@@ -119,7 +126,7 @@ func ring(point: Vector3, radius: float, colour: Color, steps := 24) -> void:
 
 func draw_creature() -> void:
 	var creature = level.locust
-	if not is_instance_valid(creature): return
+	if not is_instance_valid(creature) or not here(creature.global_position): return
 	lift_route_clock -= get_process_delta_time()
 	if lift_route_clock <= 0.0:
 		lift_route_clock = 0.5
@@ -138,6 +145,7 @@ func draw_trails() -> void:
 		var points: Array = trails[key].points
 		var colour: Color = COLOURS.locust_trail if trails[key].locust else COLOURS.trail
 		for index in range(1, points.size()):
+			if not here(points[index]) or not here(points[index - 1]): continue
 			var fade: float = float(index) / maxf(float(points.size()), 1.0)
 			line(points[index - 1] + Vector3(0, 0.08, 0), points[index] + Vector3(0, 0.08, 0), Color(colour, fade))
 
@@ -148,29 +156,30 @@ func draw_noises(delta: float) -> void:
 			noises.erase(entry)
 			continue
 		var fade: float = entry.left / NOISE_TIME
-		ring(entry.point, entry.radius * (1.0 - fade) + 0.4, Color(COLOURS.noise, fade), 20)
+		if here(entry.point): ring(entry.point, entry.radius * (1.0 - fade) + 0.4, Color(COLOURS.noise, fade), 20)
 
 func draw_doors() -> void:
 	for door in level.hotel.doors:
-		if not is_instance_valid(door): continue
+		if not is_instance_valid(door) or not here(door.doorway): continue
 		var colour: Color = COLOURS.locked if door.locked else (COLOURS.door if door.opened else COLOURS.shut)
 		mark(door.doorway, colour, 0.35)
 	for hide in get_tree().get_nodes_in_group("hotel_hides"):
-		mark(hide.global_position, Color(COLOURS.hide, 1.0 if is_instance_valid(hide.occupant) else 0.45), 0.3)
+		if here(hide.global_position): mark(hide.global_position, Color(COLOURS.hide, 1.0 if is_instance_valid(hide.occupant) else 0.45), 0.3)
 	for index in level.hotel.lifts.size():
-		ring(level.hotel.lifts[index], 1.4, Color(COLOURS.lift, 0.35 if level.lifts.lift_gone(index) else 1.0), 16)
+		if here(level.hotel.lifts[index]): ring(level.hotel.lifts[index], 1.4, Color(COLOURS.lift, 0.35 if level.lifts.lift_gone(index) else 1.0), 16)
 	for arrival in level.hotel.arrivals:
-		if arrival != Vector3.ZERO: ring(arrival, 0.8, Color(COLOURS.lift, 0.6), 12)
+		if arrival != Vector3.ZERO and here(arrival): ring(arrival, 0.8, Color(COLOURS.lift, 0.6), 12)
 
 func draw_errand() -> void:
 	for index in level.televisions.size():
 		var set = level.televisions[index]
-		if not is_instance_valid(set): continue
+		if not is_instance_valid(set) or not here(set.global_position): continue
 		var stage_now: bool = int(set.stage) == int(level.session.stage)
 		mark(set.global_position, Color(COLOURS.tv, 1.0 if set.on else (0.6 if stage_now else 0.2)), 0.4)
 	for piece in level.containers:
-		if is_instance_valid(piece) and piece.digit >= 0: mark(piece.global_position, Color(COLOURS.digit, 0.3 if piece.searched else 1.0), 0.35)
-	for document in get_tree().get_nodes_in_group("hotel_documents"): mark(document.global_position, COLOURS.document, 0.25)
+		if is_instance_valid(piece) and piece.digit >= 0 and here(piece.global_position): mark(piece.global_position, Color(COLOURS.digit, 0.3 if piece.searched else 1.0), 0.35)
+	for document in get_tree().get_nodes_in_group("hotel_documents"):
+		if here(document.global_position): mark(document.global_position, COLOURS.document, 0.25)
 
 ## What the creature can see: the edges of its cone, and a line to whoever it
 ## is after while it can see them.
@@ -178,7 +187,7 @@ func draw_sight() -> void:
 	var creature = level.locust
 	# Asking what it can see is a question for the physics of a floor that is
 	# being played, and it answers with rays.
-	if not is_instance_valid(creature) or not creature.is_inside_tree(): return
+	if not is_instance_valid(creature) or not creature.is_inside_tree() or not here(creature.global_position): return
 	if level.session.state != level.session.State.PLAYING: return
 	var eye: Vector3 = creature.global_position + Vector3(0, creature.EYE_HEIGHT, 0)
 	var half := deg_to_rad(creature.SIGHT_HALF_ANGLE)

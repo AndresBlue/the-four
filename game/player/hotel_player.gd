@@ -1,5 +1,6 @@
 extends CharacterBody3D
 const NOISE := preload("res://game/audio/noise_kinds.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var avatar
 ## Seat in the match (session participant key). Single player is seat 1.
 var slot := 1
@@ -217,7 +218,9 @@ func _physics_process(delta: float) -> void:
 		noise.emit(global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)
 	move_and_slide()
 	avatar.update_pose(velocity, crouched, delta, is_on_floor())
-	if position.y < -5:
+	# Out of the floor: under the lowest planta, not under the first one, which
+	# is where everybody arriving at the second planta would already be.
+	if position.y < FLOOR.planta_y(FLOOR.PLANTAS - 1) - 5.0:
 		position = spawn
 		velocity = Vector3.ZERO
 	# Footfalls come from distance covered: one step per stride length, so

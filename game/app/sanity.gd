@@ -149,7 +149,7 @@ func hallucinate(delta: float) -> void:
 func hallucination_point(reach: float) -> Vector3:
 	var angle := randf() * TAU
 	var point: Vector3 = level.player.global_position + Vector3(sin(angle), 0, cos(angle)) * reach
-	return NavigationServer3D.map_get_closest_point(level.get_world_3d().navigation_map, point)
+	return FLOOR.closest(level.get_world_3d().navigation_map, point)
 
 ## Its voice, from where it is not. Its own throat is elsewhere: this one has
 ## a level.player of its own so the real call is never cut short by a made-up one.

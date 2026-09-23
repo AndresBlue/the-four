@@ -4,6 +4,10 @@ const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 var materials := {}
 var batches := {}
 var room_nodes: Array[Node3D] = []
+## The planta each room and each door stands on (FLOOR.planta_of), in their
+## build order: only the one being looked from is ever drawn.
+var room_planta := PackedInt32Array()
+var door_planta := PackedInt32Array()
 var doors: Array = []
 ## The doors that lead from one wing to the next, one per stage.
 var gates: Array = []
@@ -592,6 +596,7 @@ func build(data: Dictionary) -> void:
 		node.position = FLOOR.position_of(room)
 		add_child(node)
 		room_nodes.append(node)
+		room_planta.append(FLOOR.planta_of(node.position.y))
 		build_room(node, room)
 	for edge in data.edges:
 		var a: Dictionary = data.rooms[edge[0]]
@@ -672,6 +677,7 @@ func build(data: Dictionary) -> void:
 	# Last, so the gates stay in the order of their stages and the doors keep
 	# the indices the network knows them by.
 	build_exit_door(data)
+	for door in doors: door_planta.append(FLOOR.planta_of(door.doorway.y))
 	build_lifts(data)
 	flush()
 	build_navigation()
@@ -1467,13 +1473,21 @@ func build_navigation() -> void:
 	# and the radius comes out exact instead of being ceiled to voxels.
 	nav.cell_size = 0.1
 	nav.cell_height = 0.1
-	nav.filter_baking_aabb = AABB(Vector3(-12, -0.5, -12), Vector3(300, 3, 300))
 	var source := NavigationMeshSourceGeometryData3D.new()
 	NavigationServer3D.parse_source_geometry_data(nav, source, self)
-	NavigationServer3D.bake_from_source_geometry_data(nav, source)
-	var region := NavigationRegion3D.new()
-	region.navigation_mesh = nav
-	add_child(region)
+	# One region per planta, each baked from the floor it stands on. Nothing
+	# joins them but the lift, so nothing a route could follow does either:
+	# they are PITCH apart, far past where two regions' edges would meet.
+	var plantas := {}
+	for index in room_planta: plantas[index] = true
+	for planta in plantas:
+		var mesh: NavigationMesh = nav.duplicate()
+		mesh.filter_baking_aabb = AABB(Vector3(-12, FLOOR.planta_y(planta) - 0.5, -12), Vector3(300, 3, 300))
+		NavigationServer3D.bake_from_source_geometry_data(mesh, source)
+		var region := NavigationRegion3D.new()
+		region.name = "Navigation_%d" % planta
+		region.navigation_mesh = mesh
+		add_child(region)
 
 ## Whether this room's ceiling lamp is out (deterministic per position).
 func dark_room(room: Dictionary) -> bool:
@@ -1508,7 +1522,10 @@ func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array
 ## fixtures, every lamp that is not switched off, wherever they are. It is for
 ## looking at a floor (--observer), never for playing one: what it costs is
 ## exactly what the distances above exist to avoid.
-func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false) -> void:
+## planta: the one drawn; by default the one the eye is on. Only one ever is:
+## the others are under a slab, and their lamps would light through it.
+func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false, planta := -1) -> void:
+	var here: int = planta if planta >= 0 else FLOOR.planta_of(player_position.y)
 	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
@@ -1521,7 +1538,11 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
-		room_nodes[i].visible = distance < reach
+		var on_planta: bool = i >= room_planta.size() or room_planta[i] == here
+		room_nodes[i].visible = on_planta and distance < reach
+		if not on_planta:
+			lights[i].visible = false
+			continue
 		if show_all:
 			# Every lamp of the floor at once, and none of them with a shadow:
 			# a hundred shadowed lamps do not fit in the atlas, and what falls
@@ -1560,11 +1581,13 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
 	# The nearest SCONCES_LIT wall lamps and no more: over the atlas they lose
 	# their shadows and light the room on the other side of the wall.
-	var near_sconces := sconce_lights.duplicate()
+	var near_sconces := sconce_lights.filter(func(lamp: OmniLight3D) -> bool: return FLOOR.planta_of(lamp.global_position.y) == here)
+	for lamp in sconce_lights:
+		if FLOOR.planta_of(lamp.global_position.y) != here: lamp.visible = false
 	near_sconces.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool: return sconce_order(a, player_position) < sconce_order(b, player_position))
 	for k in near_sconces.size():
 		near_sconces[k].visible = not dark and preset.sconce_lights and shadows and not echo_view and k < SCONCES_LIT and near_sconces[k].global_position.distance_to(player_position) < SCONCE_REACH
-	bounce.show_near(player_position, preset.bounce and not echo_view)
+	bounce.show_near(player_position, preset.bounce and not echo_view, here)
 	for lamp in practicals:
 		lamp.visible = not dark and not echo_view and (show_all or lamp.global_position.distance_to(player_position) < preset.furniture_lamps)
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
@@ -1576,7 +1599,8 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).
 	for i in doors.size():
-		var shown: bool = show_all or doors[i].doorway.distance_to(player_position) < reach
+		var on_planta: bool = i >= door_planta.size() or door_planta[i] == here
+		var shown: bool = on_planta and (show_all or doors[i].doorway.distance_to(player_position) < reach)
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
 

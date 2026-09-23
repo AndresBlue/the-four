@@ -99,8 +99,8 @@ func start(type: String) -> bool:
 
 func route_length(to: Vector3) -> float:
 	var map: RID = level.get_world_3d().navigation_map
-	var path := FLOOR.navigation_path(map, NavigationServer3D.map_get_closest_point(map, level.pacing_anchor()), NavigationServer3D.map_get_closest_point(map, to))
-	if path.size() < 2 or path[-1].distance_to(NavigationServer3D.map_get_closest_point(map, to)) > 0.6: return INF
+	var path := FLOOR.navigation_path(map, FLOOR.closest(map, level.pacing_anchor()), FLOOR.closest(map, to))
+	if path.size() < 2 or path[-1].distance_to(FLOOR.closest(map, to)) > 0.6: return INF
 	var length := 0.0
 	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])
 	return length
@@ -118,9 +118,11 @@ func rooms_in_range() -> Array:
 	return result
 
 func start_raps() -> bool:
+	var planta := FLOOR.planta_of(level.pacing_anchor().y)
 	var doors: Array = level.hotel.doors.filter(func(door):
 		var d: float = door.doorway.distance_to(level.pacing_anchor())
-		return d >= NEAR and d <= FAR and not level.point_in_refuge(door.doorway))
+		# On the planta the player is on: raps under the floor are not heard.
+		return d >= NEAR and d <= FAR and FLOOR.planta_of(door.doorway.y) == planta and not level.point_in_refuge(door.doorway))
 	if doors.is_empty(): return false
 	var door = doors[rng.randi_range(0, doors.size() - 1)]
 	var point: Vector3 = door.doorway + Vector3.UP * 1.3
@@ -137,7 +139,7 @@ func start_fall() -> bool:
 	if rooms.is_empty(): return false
 	var room: Dictionary = rooms[rng.randi_range(0, rooms.size() - 1)]
 	var map: RID = level.get_world_3d().navigation_map
-	var point := NavigationServer3D.map_get_closest_point(map, FLOOR.position_of(room) + Vector3(rng.randf_range(-2.0, 2.0), 0, rng.randf_range(-2.0, 2.0)))
+	var point := FLOOR.closest(map, FLOOR.position_of(room) + Vector3(rng.randf_range(-2.0, 2.0), 0, rng.randf_range(-2.0, 2.0)))
 	var sound := pick("fall")
 	level.world_audio.play_at(sound, point + Vector3.UP * 0.4, -2.0, RID(), 0.0)
 	level.match_net.world_sound(sound, point + Vector3.UP * 0.4, -2.0, 0.0)

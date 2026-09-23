@@ -6,7 +6,7 @@ montado en [la guía de desarrollo](DEVELOPMENT.md), y el registro de cómo se
 llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
-Estado: juego **0.5**, generador de mapas **v3**, protocolo de red
+Estado: juego **0.5**, generador de mapas **v5** (tres plantas), protocolo de red
 **the-four-net-9**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
@@ -99,17 +99,16 @@ resolver siempre. Hoy el mapa sale casi siempre igual: la salida en la misma
 esquina, el refugio en el fondo más hondo del ala, y muchas cosas decididas por
 la posición y no por la semilla.
 
-- [ ] **Costuras sin cambiar el mapa:** plantas en `floor_definition`,
-  navegación por planta, y puertas, armarios y salas oscuras explícitas en el
-  manifiesto.
-- [ ] **Tres plantas apiladas** con el generador de hoy, y todo el juego
-  entendiendo plantas: visibilidad, navegación, audio, la criatura, la lectura
-  del cazador, el observador, la red y los tiempos del Archivo.
+Las tres plantas apiladas ya están, con todo el juego entendiéndolas (en la
+guía de desarrollo): hoy cada planta es una de las alas de antes, bajada a su
+altura. Lo que falta es que cada una sea un hotel entero:
+
 - [ ] **El generador de pasillos:** rejilla con carriles, ocho arquetipos de
   planta, conteo exacto de habitaciones, refugio sin patrón, objetivos por
   zonas.
 - [ ] **Variedad por semilla:** salas oscuras, estado, puertas (abiertas,
-  bisagra, giro y sitio en la pared), armarios y muebles.
+  bisagra, giro y sitio en la pared), armarios y muebles, explícitos en el
+  manifiesto para que la huella de red los cubra.
 - [ ] **Métricas de variedad y de resolubilidad** con umbrales, rendimiento
   medido con tres plantas y documentos al día.
 

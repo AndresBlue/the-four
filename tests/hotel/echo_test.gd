@@ -409,12 +409,16 @@ func run() -> void:
 	# --- Landmarks ----------------------------------------------------------------
 	# Both faces of a door reveal: two jambs and a lintel each. A wardrobe gets
 	# its two sides and a rail top and bottom.
+	# Only those of its own planta: the ones under the floor would show through it.
 	var per_door: int = 2 * (2 * echo.JAMB_GRAINS + echo.LINTEL_GRAINS)
 	var per_hide: int = 2 * echo.JAMB_GRAINS + 2 * echo.LINTEL_GRAINS
-	var wanted: int = level.hotel.doors.size() * per_door + level.hotel.hides.size() * per_hide
+	var own_planta: int = FLOOR.planta_of(creature.global_position.y)
+	var own_doors: int = level.hotel.doors.filter(func(door): return FLOOR.planta_of(door.doorway.y) == own_planta).size()
+	var own_hides: int = level.hotel.hides.filter(func(hide): return FLOOR.planta_of(hide.global_position.y) == own_planta).size()
+	var wanted: int = own_doors * per_door + own_hides * per_hide
 	var marks: int = echo.marks.multimesh.instance_count
 	await frames(60)
-	check("Conoce sus puertas y armarios, con el marco entero", marks == wanted and marks > level.hotel.doors.size() * 40)
+	check("Conoce las puertas y armarios de su planta, con el marco entero", marks == wanted and marks > own_doors * 40 and own_doors < level.hotel.doors.size())
 	check("Y esos hitos no cambian", echo.marks.multimesh.instance_count == marks)
 
 	# --- Settings -----------------------------------------------------------------

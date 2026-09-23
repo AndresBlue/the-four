@@ -29,6 +29,7 @@ extends RefCounted
 ## complains about each one: the stand-in is given in the volume's own frame,
 ## and error printing is off while the bake runs.
 const ALBEDO := preload("res://game/world/hotel/material_albedo.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const STAND_IN := preload("res://game/world/hotel/stand_in_mesh.gd")
 ## Lamp glass, tubes and shades stay out of the stand-in: they enclose their
 ## own light, which the voxels round it would smother.
@@ -141,9 +142,15 @@ func finish() -> void:
 ## Shows the nearest rooms' volumes, as many as Godot draws. Only a shown
 ## volume has its data: a volume with data keeps its textures in video
 ## memory, shown or not, some 56 MB each (the 51 of a floor took 2.9 GB).
-func show_near(position: Vector3, on: bool) -> void:
+func show_near(position: Vector3, on: bool, planta := -1) -> void:
 	if volumes.is_empty(): return
-	var nearest := volumes.duplicate()
+	# Only the planta being looked from: one under the slab is never seen, and
+	# its volumes would take the places (and the video memory) of this one's.
+	var nearest := volumes.filter(func(volume: VoxelGI) -> bool: return planta < 0 or FLOOR.planta_of(volume.global_position.y) == planta)
+	for volume in volumes:
+		if nearest.has(volume) or not volume.visible: continue
+		volume.data = null
+		volume.visible = false
 	nearest.sort_custom(func(a: VoxelGI, b: VoxelGI) -> bool: return a.global_position.distance_squared_to(position) < b.global_position.distance_squared_to(position))
 	for k in nearest.size():
 		var shown: bool = on and k < SHOWN
