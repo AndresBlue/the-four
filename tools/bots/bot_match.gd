@@ -10,6 +10,10 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const BODY := preload("res://tools/bots/bot_body.gd")
 const BRAIN := preload("res://tools/bots/bot_brain.gd")
 const TEAM := preload("res://tools/bots/bot_team.gd")
+const WATCHDOG := preload("res://tools/bots/bot_watchdog.gd")
+const RECORDER := preload("res://tools/bots/bot_recorder.gd")
+const ERROR_TAP := preload("res://tools/bots/bot_error_tap.gd")
+const THREAT := preload("res://tools/bots/bot_threat.gd")
 const NAMES := ["Bot 1", "Bot 2", "Bot 3", "Bot 4", "Bot 5"]
 ## Caps of simulated time: a stage, and the whole floor.
 const STAGE_CAP := 1800.0
@@ -19,6 +23,8 @@ var options := {}
 var bodies: Array = []
 var brains: Array = []
 var team
+var threat
+var threat_clock := 0.0
 var rng := RandomNumberGenerator.new()
 ## Simulated seconds since the floor started (playing and between stages).
 var clock := 0.0
@@ -33,9 +39,13 @@ var outcome := ""
 var started_msec := 0
 var team_clock := 0.0
 var look_frame := 0
-## Components added by later phases, when present.
+## The watchdog's second half, the recording (only with somewhere to put it),
+## and what the engine reports going wrong.
 var watchdog
 var recorder
+var error_tap
+## Faults put in on purpose, to see the watchdog catch them (--fault=).
+var faults_done := {}
 signal ended(summary: Dictionary)
 
 func setup(owner_level, given: Dictionary) -> void:
@@ -71,6 +81,14 @@ func begin() -> bool:
 	spawn_bodies()
 	team = TEAM.new(self)
 	team.brains = brains
+	watchdog = WATCHDOG.new(self)
+	error_tap = ERROR_TAP.new()
+	OS.add_logger(error_tap)
+	if not String(options.get("out", "")).is_empty():
+		recorder = RECORDER.new(self, String(options.out))
+		recorder.start()
+	threat = THREAT.new(level)
+	threat.refresh()
 	note("piso", null, {"seed": int(level.session.run_seed), "fallback": bool(level.manifest.get("fallback", false)), "bots": bodies.size()})
 	return true
 
@@ -116,6 +134,10 @@ func _physics_process(delta: float) -> void:
 		note("sector", null, {"stage": stage_seen})
 	stage_clock += delta
 	if state == level.session.State.PLAYING:
+		threat_clock -= delta
+		if threat_clock <= 0.0:
+			threat_clock = 0.2
+			threat.refresh()
 		team_clock -= delta
 		if team_clock <= 0.0:
 			team_clock = 0.5
@@ -127,6 +149,9 @@ func _physics_process(delta: float) -> void:
 			if (look_frame + i * 2) % 12 == 0: team.look(brains[i])
 	if watchdog != null: watchdog.tick(delta)
 	if recorder != null: recorder.tick(delta)
+	watch_deaths()
+	engine_errors()
+	inject_faults()
 	if stage_clock > float(options.get("stage_cap", STAGE_CAP)):
 		report("tiempo", "grave", null, "el sector %d pasa de %d s" % [stage_seen, int(options.get("stage_cap", STAGE_CAP))])
 		outcome = "tiempo_agotado"
@@ -134,9 +159,22 @@ func _physics_process(delta: float) -> void:
 		report("tiempo", "grave", null, "la partida pasa de %d s" % int(options.get("run_cap", RUN_CAP)))
 		outcome = "tiempo_agotado"
 
-## The pace a bot walks at on its way. Without the creature to mind, it walks.
-func pace_for(_brain) -> int:
-	return BODY.Pace.WALK
+## The pace a bot walks at on its way: walking where the creature would not
+## hear it, crouched where only that is not heard, and not a step where even
+## that would be. Chosen four times a second (each choice asks the creature's
+## own hearing along the routes).
+func pace_for(brain) -> int:
+	if not threat.near_planta(brain.body.global_position): return BODY.Pace.WALK
+	if brain.bold(): return BODY.Pace.CROUCH if threat.position.distance_to(brain.body.global_position) < 30.0 else BODY.Pace.WALK
+	brain.pace_clock -= 1.0 / 60.0
+	if brain.pace_clock > 0.0: return brain.pace_now
+	brain.pace_clock = 0.25
+	var hard := "_hard" if brain.body.hard_floor else ""
+	var ahead: Vector3 = brain.nav.next_point() if brain.nav.active() else brain.body.global_position
+	if not threat.audible(brain.body.global_position, "walk" + hard) and not threat.audible(ahead, "walk" + hard): brain.pace_now = BODY.Pace.WALK
+	elif not threat.audible(brain.body.global_position, "crouch" + hard) and not threat.audible(ahead, "crouch" + hard): brain.pace_now = BODY.Pace.CROUCH
+	else: brain.pace_now = BODY.Pace.STILL
+	return brain.pace_now
 
 # --- What happened ------------------------------------------------------------------
 
@@ -172,7 +210,7 @@ func report(kind: String, severity: String, brain, words: String, extra := {}) -
 		entry[field] = [snappedf(value.x, 0.01), snappedf(value.y, 0.01), snappedf(value.z, 0.01)] if value is Vector3 else value
 	incidents.append(entry)
 	events.append({"t": entry.t, "kind": "incidencia", "entry": entry})
-	if recorder != null: recorder.event("incidencia", entry)
+	if recorder != null: recorder.event("incidencia", {"entry": entry})
 	if bool(options.get("verbose", true)):
 		print("BOT %s %s · %s · %s%s · %s" % [clock_text(clock), severity.to_upper(), kind, entry.bot + " · " if not entry.bot.is_empty() else "", entry.room_name, words])
 
@@ -218,9 +256,123 @@ func spare_survivor(body) -> bool:
 	if is_instance_valid(creature):
 		creature.focus = null
 		creature.detection = 0.0
+		# Taken off somewhere else for a moment, or a spared bot is only spared
+		# again six seconds later, and again, and the floor never goes on.
+		var away := far_room(creature.global_position)
+		if away != Vector3.INF: creature.global_position = away + Vector3(0, 0.04, 0)
 		creature.last_known = creature.global_position
-		creature.set_mode(creature.Mode.SEARCH)
+		creature.set_mode(creature.Mode.PATROL)
+		creature.grace = SPARED_FOR
+		note("criatura_apartada", brain, {"to": RECORDER.vec(creature.global_position)})
 	return true
+
+## With mercy, a creature found shut in is taken somewhere else once it has
+## been said: the finding is made, and the floor goes on.
+func free_creature() -> void:
+	if not bool(options.get("mercy", false)) or not is_instance_valid(level.locust): return
+	var away := far_room(level.locust.global_position)
+	if away == Vector3.INF: return
+	level.locust.global_position = away + Vector3(0, 0.04, 0)
+	level.locust.last_known = level.locust.global_position
+	level.locust.set_mode(level.locust.Mode.PATROL)
+	note("criatura_apartada", null, {"to": RECORDER.vec(level.locust.global_position), "why": "encerrada"})
+
+## A room of the creature's planta at least SPARE_AWAY metres of walking from
+## every living bot, the nearest such; INF when there is none.
+const SPARE_AWAY := 40.0
+func far_room(from: Vector3) -> Vector3:
+	var map: RID = level.get_world_3d().navigation_map
+	var planta := FLOOR.planta_of(from.y)
+	var best := Vector3.INF
+	var best_gap := INF
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) != planta or FLOOR.is_void(room) or level.off_limits_rooms().has(int(room.id)): continue
+		var centre := FLOOR.closest(map, FLOOR.position_of(room))
+		var near_bot := false
+		for other in bodies:
+			if other.dead or FLOOR.planta_of(other.global_position.y) != planta: continue
+			if other.global_position.distance_to(centre) < SPARE_AWAY: near_bot = true
+		if near_bot: continue
+		var gap: float = centre.distance_to(from)
+		if gap < best_gap:
+			best_gap = gap
+			best = centre
+	return best
+
+## A bot the creature took for good (no mercy): an incident like a spared
+## one, with what the creature was doing.
+var lives_seen := {}
+func watch_deaths() -> void:
+	for i in brains.size():
+		var seat: int = brains[i].seat
+		var life = level.session.participants.get(seat, level.session.Life.DEAD)
+		if life == level.session.Life.DEAD and lives_seen.has(seat) and lives_seen[seat] != life:
+			report("muerte", "grave", brains[i], "muerto: la criatura lo ejecutó (la persecución, en el registro de modos de la grabación)")
+		lives_seen[seat] = life
+
+## Whatever the engine or a script reported since the last frame, as an
+## incident with its second. Warnings are left to the log.
+func engine_errors() -> void:
+	if error_tap == null: return
+	for entry in error_tap.drain():
+		if String(entry.type) == "warning": continue
+		var text := String(entry.rationale) if not String(entry.rationale).is_empty() else String(entry.code)
+		report("error_motor", "grave", null, "%s (%s:%d, %s)" % [text, String(entry.file).get_file(), int(entry.line), entry.function])
+
+## --fault=block: a wall across the first bot's way at 20 s; error: a script
+## error at 30 s; hang: this process stops answering at 20 s. For testing that
+## the watchdog and the runner catch each.
+func inject_faults() -> void:
+	var fault := String(options.get("faults", ""))
+	if fault.is_empty(): return
+	if fault == "block" and clock > 20.0 and not faults_done.has("block") and not brains.is_empty() and brains[0].nav.active():
+		faults_done["block"] = true
+		var brain = brains[0]
+		var ahead: Vector3 = brain.nav.next_point()
+		var way := Vector3(ahead.x - brain.body.global_position.x, 0, ahead.z - brain.body.global_position.z).normalized()
+		if way == Vector3.ZERO: way = Vector3.FORWARD
+		var wall := StaticBody3D.new()
+		wall.name = "InjectedWall"
+		wall.collision_layer = 1
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(6.0, 2.5, 0.3)
+		shape.shape = box
+		wall.add_child(shape)
+		level.add_child(wall)
+		wall.global_position = brain.body.global_position + way * 1.2 + Vector3(0, 1.25, 0)
+		wall.look_at(wall.global_position + way, Vector3.UP)
+		note("fallo", null, {"fault": "block", "where": RECORDER.vec(wall.global_position)})
+	elif fault == "error" and clock > 30.0 and not faults_done.has("error"):
+		faults_done["error"] = true
+		push_error("fallo inyectado por --fault=error")
+	elif fault == "hang" and clock > 20.0:
+		while true: OS.delay_msec(1000)
+
+## The whole floor as it stands: what a keyframe of the recording keeps and
+## what a replay jumps to. Doors (open or not) and which are locked, the sets,
+## the drawers gone through, the numbers and whose, the code, the power, the
+## stage, lives, and who is in which wardrobe.
+func snapshot() -> Dictionary:
+	var doors := PackedByteArray()
+	var locked: Array = []
+	for index in level.hotel.doors.size():
+		var door = level.hotel.doors[index]
+		# A leaf swinging counts as where it is going: the event that sent it
+		# is before this picture, and a jump here must not leave it behind.
+		doors.append(1 if door.opened != door.moving else 0)
+		if door.locked: locked.append(index)
+	var sets: Array = []
+	for index in level.televisions.size():
+		if level.televisions[index].on: sets.append(index)
+	var searched: Array = []
+	for index in level.containers.size():
+		if level.containers[index].searched: searched.append(index)
+	var hides := {}
+	for index in level.hotel.hides.size():
+		var occupant = level.hotel.hides[index].occupant
+		if is_instance_valid(occupant) and "slot" in occupant: hides[index] = int(occupant.slot)
+	return {"doors": doors, "locked": locked, "tvs": sets, "searched": searched, "digits": level.found_digits.duplicate(), "found_by": level.found_by.duplicate(), "code": bool(level.code_entered), "blackout": bool(level.hotel.dark), "stage": int(level.session.stage), "lives": level.session.participants.duplicate(), "hides": hides}
 
 # --- The end ------------------------------------------------------------------------
 
@@ -237,7 +389,7 @@ func finish() -> Dictionary:
 		"sim_seconds": snappedf(clock, 0.1),
 		"wall_seconds": snappedf((Time.get_ticks_msec() - started_msec) / 1000.0, 0.1),
 		"stage": int(level.session.stage),
-		"sectors": level.run_stats.get("sectors", []).duplicate(),
+		"sectors": level.run_stats.get("sectors", []).duplicate() + ([level.session.elapsed] if outcome == "ganada" else []),
 		"deaths": int(level.run_stats.get("deaths", 0)),
 		"hides": int(level.run_stats.get("hides", 0)),
 		"incidents": incidents,
@@ -245,6 +397,15 @@ func finish() -> Dictionary:
 		"states": brains.map(func(brain): return brain.state_seconds.duplicate()),
 	}
 	summary["realtime_factor"] = snappedf(float(summary.sim_seconds) / maxf(float(summary.wall_seconds), 0.001), 0.01)
+	summary["revealed"] = team.revealed if team != null else []
+	for entry in incidents: entry["replay_at"] = maxf(0.0, float(entry.t) - 8.0)
+	engine_errors()
+	if recorder != null:
+		recorder.event("fin", {"result": outcome})
+		recorder.close()
+	if error_tap != null:
+		OS.remove_logger(error_tap)
+		error_tap = null
 	ended.emit(summary)
 	return summary
 

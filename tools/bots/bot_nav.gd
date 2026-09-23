@@ -34,15 +34,24 @@ func _init(owner_level, owner_body) -> void:
 func map() -> RID: return level.get_world_3d().navigation_map
 
 ## A route from where the body stands to `to`. False when there is none on
-## this planta (the mesh gives nothing across plantas).
-func plan(to: Vector3, clock: float) -> bool:
+## this planta (the mesh gives nothing across plantas). With `threat`
+## (bot_threat.gd) minding the creature: a route that walks into its sight or
+## through where it is going is worked out again room by room, round those;
+## `blocked` says when there was no way round.
+var blocked := false
+func plan(to: Vector3, clock: float, threat = null) -> bool:
 	target = to
 	planned_at = clock
+	blocked = false
 	var route := FLOOR.navigation_path(map(), body.global_position, to)
 	if route.size() < 2:
 		clear()
 		end_gap = INF
 		return false
+	if threat != null and threat.near_planta(body.global_position) and risky(route, threat):
+		var around := detour(to, threat)
+		if around.size() >= 2: route = around
+		else: blocked = true
 	var near := FLOOR.floor_point(to)
 	end_gap = Vector2(route[route.size() - 1].x - near.x, route[route.size() - 1].z - near.z).length()
 	var threaded: Dictionary = THREAD.thread(route, level.hotel.doors, map())
@@ -54,6 +63,73 @@ func plan(to: Vector3, clock: float) -> bool:
 	for crossing in crossings:
 		if is_instance_valid(crossing.door): door_states[crossing.door] = crossing.door.opened
 	return true
+
+## Whether a route goes where the creature would see it or is going.
+const SEEN_STEP := 2.0
+func risky(route: PackedVector3Array, threat) -> bool:
+	var rooms: Array = level.manifest.rooms
+	for i in range(1, route.size()):
+		var from: Vector3 = route[i - 1]
+		var leg: float = from.distance_to(route[i])
+		var steps := maxi(1, int(leg / SEEN_STEP))
+		for s in steps:
+			var point := from.lerp(route[i], float(s + 1) / float(steps))
+			var id := int(FLOOR.room_at(rooms, point).get("id", -1))
+			if id >= 0 and float(threat.danger.get(id, 0.0)) > 0.0: return true
+			if point.distance_to(threat.position) < 90.0 and threat.watched(point): return true
+	return false
+
+## The way to `to` room by room, each room costing what the creature makes it
+## cost (bot_threat.room_cost), through the doorways between them. Empty when
+## every way goes where it stands, or the mesh has no leg of it.
+func detour(to: Vector3, threat) -> PackedVector3Array:
+	var rooms: Array = level.manifest.rooms
+	var start := int(FLOOR.room_at(rooms, body.global_position).get("id", -1))
+	var goal := int(FLOOR.room_at(rooms, to).get("id", -1))
+	if start < 0 or goal < 0: return PackedVector3Array()
+	var cost := {start: 0.0}
+	var back := {}
+	var open: Array = [start]
+	var done := {}
+	var extra := {}
+	while not open.is_empty():
+		var current: int = open[0]
+		for candidate in open:
+			if float(cost[candidate]) < float(cost[current]): current = candidate
+		open.erase(current)
+		if current == goal: break
+		done[current] = true
+		for other in level.manifest.adjacency[current]:
+			var next := int(other)
+			if done.has(next): continue
+			if not extra.has(next): extra[next] = threat.room_cost(next) if next != goal else 0.0
+			if float(extra[next]) == INF: continue
+			var step: float = FLOOR.position_of(rooms[current]).distance_to(FLOOR.position_of(rooms[next])) + float(extra[next])
+			if float(cost[current]) + step < float(cost.get(next, INF)):
+				cost[next] = float(cost[current]) + step
+				back[next] = current
+				if not open.has(next): open.append(next)
+	if not back.has(goal) and goal != start: return PackedVector3Array()
+	var chain: Array = [goal]
+	while chain[0] != start: chain.push_front(back[chain[0]])
+	var points: Array = [body.global_position]
+	for i in range(1, chain.size()):
+		var a: Dictionary = rooms[chain[i - 1]]
+		var b: Dictionary = rooms[chain[i]]
+		var doorway := FLOOR.portal_between(a, b)
+		var through := FLOOR.position_of(b) - FLOOR.position_of(a)
+		through = Vector3(through.x, 0, through.z).normalized()
+		points.append(FLOOR.closest(map(), doorway - through * 0.9))
+		points.append(FLOOR.closest(map(), doorway + through * 0.9))
+	points.append(to)
+	var route := PackedVector3Array()
+	for i in range(1, points.size()):
+		var leg := FLOOR.navigation_path(map(), points[i - 1], points[i])
+		if leg.size() < 2: return PackedVector3Array()
+		for k in leg.size():
+			if route.size() > 0 and k == 0: continue
+			route.append(leg[k])
+	return route
 
 func clear() -> void:
 	path = PackedVector3Array()

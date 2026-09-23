@@ -284,3 +284,18 @@ Desde el 23 de septiembre de 2026 un piso son tres plantas y cada una es un hote
 - **El rebote de luz**, en Alto y Ultra, solo se hornea para la planta desde la que se mira (`start_bounce(planta)`, [REALISM.md](REALISM.md)): antes se horneaban las tres al empezar, a unos 55 ms por sala, y sus datos se quedaban para siempre.
 
 **La espera de la red** (`READY_TIMEOUT`) se queda en 30 s: aquí un piso tarda unos 6 s en montarse, y el anfitrión espera a los invitados hasta cinco veces eso.
+
+## 8. Bots de prueba
+
+Medido el 23 de septiembre de 2026 en este PC (24 hilos), con `./tools/bots.ps1`: cada piso es un proceso de Godot sin ventana a `--fixed-fps 60`, así que corre tan deprisa como da la máquina.
+
+| Partida | Tiempo de juego por segundo real |
+|---|---|
+| Sin criatura, sabiéndolo todo (1 / 3 / 5 bots) | ×10–11 / ×7–7,5 / ×5,5–6 |
+| Sin criatura, descubriéndolo todo (1 / 3 / 5 bots) | ×12–14 / ×9–10 / ×7–8 |
+| Con criatura, 3 bots, cinco pisos a la vez | ×3,5–4,5 |
+
+- **Lo que cuesta con criatura** es mirarla: cada bot pregunta varias veces por segundo si alguno de sus ojos (el de ahora, los de su camino y su destino) lo vería, y si su oído llegaría a sus pasos, que es una ruta de la malla cada vez.
+- **Montar el piso** son los mismos 6 s de siempre, más el arranque del proceso.
+- **La grabación** ocupa unos 90 KB por minuto de juego con tres bots: 2,7 MB una partida de 36 minutos, la mayor parte en `events.jsonl` (cada pisada es una línea, para dibujar sus ruidos en el repaso).
+- **Varios a la vez:** con `-Parallel 4` o `5` los pisos van un poco más lentos cada uno, pero el lote entero termina mucho antes.

@@ -533,11 +533,13 @@ func report() -> String:
 	lines.append("Meta %s %d/%d%s · código %s · teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), " · apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
 	lines.append("")
 	lines.append("SUPERVIVIENTES")
-	if not level.match_net.in_match() and not level.player.visible:
-		lines.append("  ninguno · piso de prueba, solo la criatura")
+	# Offline the bodies are the level's: this machine's player on a floor it
+	# plays, or bots (tools/bots) on one they play or one watched again.
+	var anybody := false
 	for seat in session.participants:
-		if not level.match_net.in_match() and not level.player.visible: break
-		var body: Node3D = level.match_net.body_of(int(seat)) if level.match_net.in_match() else level.player
+		var body: Node3D = level.match_net.body_of(int(seat)) if level.match_net.in_match() else level.body_of_seat(int(seat))
+		if not level.match_net.in_match() and (body == null or (body == level.player and not level.player.visible)): continue
+		anybody = true
 		var life: String = ["explorando", "en refugio", "muerto"][int(session.participants[seat])]
 		var spot := "?"
 		var mind := ""
@@ -550,6 +552,7 @@ func report() -> String:
 		elif int(seat) == level.player.slot: mind = " · cordura %0.0f" % level.player.sanity
 		var riding: String = " · en ascensor" if level.lifts.riding.has(int(seat)) else ""
 		lines.append("  %d %s · %s · %s%s%s" % [int(seat), level.seat_name(int(seat)), life, spot, mind, riding])
+	if not anybody: lines.append("  ninguno · piso de prueba, solo la criatura")
 	lines.append("")
 	var creature = live_locust()
 	if creature != null:

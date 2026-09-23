@@ -263,38 +263,30 @@ hecho y descrito en la guía de desarrollo. Lo que aparezca va aquí.
 
 ### Bots de prueba
 
-De uno a cinco supervivientes que juegan el piso entero solos, en cadena y
-sin ventana, para encontrar lo que se rompe sin nadie delante: rutas raras,
-la criatura encerrada, una nota que no se ve. Conocen el plano y siempre
-saben dónde está la criatura, pero el refugio, las teles, las notas y el
-teclado los tienen que ver con su cámara y su linterna. Mueren de verdad, o
-con `-Mercy` la captura solo se anota y siguen. Cada partida se graba y se
-vuelve a ver en el observador.
+Juegan el piso entero solos, lo recorren mirando, se graban y se repasan en el
+observador (todo descrito en la guía de desarrollo). Falta:
 
-- [x] **Una sola regla para caminar:** la resistencia, las velocidades, la
-  cápsula y las pisadas del superviviente, compartidas por el jugador y los
-  bots (`game/player/survivor_gait.gd`), sin cambiar nada de cómo se juega.
-- [x] **Los ganchos del juego:** un piso con los asientos que se le den, el
-  jugador local fuera de la partida, el código validado fuera de la pantalla
-  del teclado, los hallazgos acreditados a quien busca, la captura perdonada
-  y nada escrito en el punto de control ni en el tablón.
-- [x] **Cuerpos, rutas, interacción y muertes** (`tools/bots/`), primero
-  sabiéndolo todo y sin criatura: 1, 3 y 5 bots ganan en las semillas 81, 213
-  y 404.
-- [x] **Ver para saber:** lo que se ve con luz, a oscuras con y sin linterna,
-  los barridos al entrar, el reparto de salas y el «no encontrado» con la
-  mejor ocasión que tuvo el equipo.
-- [ ] **La criatura:** no dejarse ver, no hacerse oír, esconderse bien, huir
-  cortando la vista, la cordura, y el modo clemente.
-- [ ] **El vigilante, la grabación y el lote** (`tools/bots.ps1`): atascos de
-  los bots con su escalada, la criatura encerrada o rezagada, errores del
-  motor con su segundo, procesos colgados, y un resumen con el comando para
-  repetir cada incidencia.
-- [ ] **La repetición en el observador** (`./tools/godot.ps1 bots-replay`):
-  pausa, velocidad, saltos, de incidencia en incidencia, rastros enteros y los
-  objetivos encontrados o no.
-- [ ] **Cerrarlo:** la guía de desarrollo, el rendimiento medido y una prueba
-  en `verify.ps1`.
+- [ ] **Que sobrevivan sin clemencia.** Hoy no: en cinco pisos con tres bots
+  (semillas 91 a 95), los cinco se perdieron, con 4 o 5 muertes cada uno. Con
+  `-Mercy`, de diez pisos (81 a 90) terminaron siete, y los otros tres
+  también tras arreglar la escalera de atascos del bot, con 17 a 41 capturas
+  perdonadas por piso.
+  Casi todas empiezan igual: la criatura va a mirar un ruido o donde la manda
+  el director, se encuentra con el bot, y una vez lo ve lo alcanza (6,4 m/s
+  contra 6,0). Lo que falta es esconderse mejor cuando viene hacia ellos, y
+  que la huida corte su vista de verdad (puertas cerradas detrás, armarios en
+  los que no los vio entrar).
+- [ ] **Mirar con la repetición lo que ya encontraron** (lote
+  `20260923-165656-f4_clemencia_v2` y siguientes): bots que se atascan contra
+  una puerta abierta con el siguiente punto de su ruta a medio metro
+  (habitación 121 de la planta 1 en la semilla 86, habitación 218 de la
+  planta 2 en la 82) —en la 82, la criatura agota su protocolo de atascos en
+  esa misma sala y el vigilante la da por encerrada—, y la criatura
+  encerrada o atascada en otras semillas (83, 90). Decidir cuáles son del
+  juego y cuáles del bot.
+- [ ] **La tabla de lo que se ve** (`tools/bots/bot_senses.gd`): contrastarla
+  con una partida de verdad, sobre todo las notas (9 m con luz, 12 con
+  linterna, 1,5 a oscuras) y las teles en el nicho de las suites.
 
 ### Fallos menores conocidos
 

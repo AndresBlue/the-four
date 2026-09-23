@@ -1,8 +1,12 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots-run','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots-run','bots-replay','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
+    # bots-replay: the folder of one recorded floor (tools/bots.ps1 prints it)
+    # and the second to open it at.
+    [string]$Run = '',
+    [double]$At = 0,
     [string]$GodotPath = $env:GODOT_PATH
 )
 $ErrorActionPreference = 'Stop'
@@ -17,7 +21,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','observer','export')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','observer','bots-replay','export')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -39,6 +43,12 @@ switch ($Mode) {
     'hotel-audio' { $arguments += @('--headless','--script','res://tests/hotel/hotel_audio_test.gd','--','--test-profile','--automation','--silent') }
     'hotel-benchmark' { $arguments += @('--script','res://tools/benchmarks/hotel_benchmark.gd','--','--test-profile','--automation','--no-enemy','--silent') }
     'compatibility' { $arguments += @('--rendering-method','gl_compatibility') }
+    # A recorded bot floor, watched again in the observer (tools/bots/bot_replay.gd).
+    'bots-replay' {
+        if (-not $Run) { throw 'Indica la carpeta de la partida con -Run.' }
+        $folder = (Resolve-Path -LiteralPath $Run).Path
+        $arguments += @('--', ('--bots-replay=' + $folder), ('--bots-at=' + [string]$At), '--test-profile', '--profile-tag=replay')
+    }
     # One floor played by test bots, headless (tools/bots/bot_run.gd): -Extra
     # '--bots=3 --mercy --knowledge=oracle --no-enemy'. Many in a row, with the
     # watchdog and the summary: ./tools/bots.ps1.

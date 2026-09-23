@@ -7,10 +7,15 @@ const MATCH := preload("res://tools/bots/bot_match.gd")
 const TV_PLACEMENT := preload("res://game/world/generation/tv_placement.gd")
 const DIGITS := preload("res://game/world/generation/digit_placement.gd")
 const SENSES := preload("res://tools/bots/bot_senses.gd")
+const BODY := preload("res://tools/bots/bot_body.gd")
+const REPLAY := preload("res://tools/bots/bot_replay.gd")
+const RECORDING := "res://evidence/bots/test_recording"
 var level
 var bot_match
 var checks: Array = []
 var failed := 0
+## Doors this test put open by hand, which no recording hears about.
+var forced_doors: Array = []
 
 func _initialize() -> void: run.call_deferred()
 
@@ -39,7 +44,10 @@ func run() -> void:
 		if FileAccess.file_exists(path): DirAccess.remove_absolute(path)
 	var board: int = level.records.runs.size()
 	bot_match = MATCH.new()
-	bot_match.setup(level, {"bots": 2, "seed": 81, "knowledge": "oracle", "verbose": true})
+	var recording := ProjectSettings.globalize_path(RECORDING)
+	if DirAccess.dir_exists_absolute(recording):
+		for file in DirAccess.get_files_at(recording): DirAccess.remove_absolute(recording.path_join(file))
+	bot_match.setup(level, {"bots": 2, "seed": 81, "knowledge": "oracle", "verbose": true, "out": recording})
 	root.add_child(bot_match)
 	var began: bool = await bot_match.begin()
 	check("El piso se levanta con los asientos de los bots", began and level.session.participants.keys() == [2, 3] and level.session.roster_count == 2, str(level.session.participants))
@@ -63,6 +71,7 @@ func run() -> void:
 	level.session.stage = 1
 	check("Y que faltan teles al bueno con las teles del sector apagadas, y que sí con ellas encendidas", dark == "sets" and lit == "right", "%s, %s" % [dark, lit])
 	await seeing()
+	await minding()
 	# Somebody else's hands on a drawer: the number is theirs.
 	var holder := -1
 	for index in level.containers.size():
@@ -82,13 +91,45 @@ func run() -> void:
 	await wait_for(func(): return level.session.participants.get(3) == level.session.Life.DEAD, 400)
 	await frames(2)
 	check("Y muere, fuera de la vista y sin cuerpo que estorbe", level.session.participants.get(3) == level.session.Life.DEAD and victim.dead and victim.collision_layer == 0 and not victim.visible)
-	# The other one closes the stage on its own feet.
+	# The other one closes the stage on its own feet. Half way, and once it is
+	# through, the floor as it stands, to hold the recording to.
+	var pictures: Array = []
+	var halfway: bool = await wait_for(func(): return bot_match.clock > 40.0, 60 * 120)
+	if halfway: pictures.append([bot_match.clock, bot_match.snapshot(), moving_doors()])
 	var through: bool = await wait_for(func(): return int(level.session.stage) >= 2 and level.session.state == level.session.State.PLAYING, 60 * 480)
+	await frames(30)
+	pictures.append([bot_match.clock, bot_match.snapshot(), moving_doors()])
 	check("Un bot solo llega al refugio, se abre su puerta y toma el ascensor", through, "sector %d a los %d s · %s" % [level.session.stage, int(bot_match.clock), incidents_text()])
 	await frames(10)
 	check("Y el caído vuelve con el sector nuevo, en la planta de abajo", not victim.dead and victim.collision_layer == 4 and FLOOR.planta_of(victim.global_position.y) == 1, str(victim.global_position))
-	var graves: Array = bot_match.incidents.filter(func(entry): return entry.severity == "grave")
+	# The death this test brought about itself is not one of them.
+	var graves: Array = bot_match.incidents.filter(func(entry): return entry.severity == "grave" and entry.kind != "muerte")
+	check("La muerte que la prueba provocó queda anotada", bot_match.incidents.any(func(entry): return entry.kind == "muerte" and entry.seat == 3))
 	check("Sin incidencias graves por el camino", graves.is_empty(), incidents_text())
+	# What was recorded says what happened: the floor worked out from the
+	# recording at those two moments is the floor as it was then.
+	bot_match.finish()
+	var replay := REPLAY.new()
+	replay.setup(level, recording)
+	var read: bool = replay.read()
+	var same := read and pictures.size() == 2
+	var differences: Array = []
+	for picture in pictures:
+		if not read: break
+		var recorded: Dictionary = replay.state_at(float(picture[0]))
+		var live: Dictionary = picture[1]
+		for field in ["tvs", "searched", "code", "stage", "blackout"]:
+			if str(recorded.get(field)) != str(live.get(field)): differences.append("%s a %d s: %s / %s" % [field, int(picture[0]), recorded.get(field), live.get(field)])
+		var lives := {}
+		for seat in live.lives: lives[int(seat)] = int(live.lives[seat])
+		if pairs(recorded.lives) != pairs(lives): differences.append("vidas a %d s: %s / %s" % [int(picture[0]), recorded.lives, lives])
+		var doors: PackedByteArray = recorded.doors
+		for index in doors.size():
+			if picture[2].has(index) or forced_doors.has(index): continue
+			if doors[index] != live.doors[index]: differences.append("puerta %d a %d s" % [index, int(picture[0])])
+	same = same and differences.is_empty()
+	check("La grabación dice lo que pasó: el piso rehecho de ella es el que había", same, ", ".join(differences.slice(0, 6)) if read else replay.problem)
+	replay.free()
 	bot_match.teardown()
 	check("Y la tabla de mejores tiempos, intacta", level.records.runs.size() == board)
 	var file := FileAccess.open("res://evidence/bots_tests.json", FileAccess.WRITE)
@@ -134,7 +175,9 @@ func seeing() -> void:
 	out = Vector3(out.x, 0, out.z).normalized()
 	await stand_looking(body, FLOOR.closest(map, portal + out * 1.0), FLOOR.position_of(refuge) + Vector3(0, 1.4, 0))
 	for door in level.hotel.doors:
-		if door.doorway.distance_to(portal) < 0.5 and not door.opened: door.open_immediately()
+		if door.doorway.distance_to(portal) < 0.5 and not door.opened:
+			door.open_immediately()
+			forced_doors.append(level.hotel.doors.find(door))
 	await frames(2)
 	for look in 3: team.look(brain)
 	check("Un bot en el vano del refugio lo ve", team.knowledge.refuges.has(0), str(body.global_position))
@@ -177,6 +220,108 @@ func seeing() -> void:
 	body.place(level.match_net.spawn_point(body.slot), 0.0)
 	await frames(2)
 	bot_match.set_physics_process(true)
+
+## The creature, with the match held still: the pace a bot keeps by what the
+## creature would hear, one run down near the refuge getting into it, and
+## mercy taking a strike that would have killed.
+func minding() -> void:
+	bot_match.set_physics_process(false)
+	var body = bot_match.bodies[0]
+	var brain = bot_match.brains[0]
+	var creature = level.locust
+	var map: RID = level.get_world_3d().navigation_map
+	var refuge: Dictionary = level.manifest.rooms[int(level.manifest.refuges[0])]
+	var lobby := int(level.manifest.gates[0].beyond)
+	var outside := {}
+	for doorway in FLOOR.doorways(refuge):
+		if int(doorway.other) != lobby: outside = level.manifest.rooms[int(doorway.other)]
+	var portal := FLOOR.portal_between(refuge, outside)
+	var out := (FLOOR.position_of(outside) - FLOOR.position_of(refuge))
+	out = Vector3(out.x, 0, out.z).normalized()
+	for door in level.hotel.doors:
+		if door.doorway.distance_to(portal) < 0.5 and not door.opened:
+			door.open_immediately()
+			forced_doors.append(level.hotel.doors.find(door))
+	var spot := FLOOR.closest(map, portal + out * 4.0)
+	await stand_looking(body, spot, portal + Vector3(0, 1.4, 0))
+	creature.set_physics_process(true)
+	creature.grace = 0.0
+	# Far off, it walks; near enough to be heard walking, it does not.
+	creature.global_position = FLOOR.closest(map, spot + out * 60.0) + Vector3(0, 0.04, 0)
+	bot_match.threat.refresh()
+	brain.pace_clock = 0.0
+	var far: int = bot_match.pace_for(brain)
+	creature.global_position = along(spot, 9.0) + Vector3(0, 0.04, 0)
+	bot_match.threat.refresh()
+	brain.pace_clock = 0.0
+	var near: int = bot_match.pace_for(brain)
+	check("Lejos de la criatura anda; donde lo oiría andar, se agacha o se para", far == BODY.Pace.WALK and near != BODY.Pace.WALK, "%d, %d · activa %s, en planta %s, oye %s, a %.1f m" % [far, near, bot_match.threat.active, bot_match.threat.near_planta(body.global_position), bot_match.threat.audible(body.global_position, "walk"), creature.global_position.distance_to(body.global_position)])
+	# Hunted four metres from the refuge's door: into the refuge, where it is safe.
+	creature.global_position = along(spot, 9.0) + Vector3(0, 0.04, 0)
+	creature.look_at(Vector3(spot.x, creature.global_position.y, spot.z), Vector3.UP)
+	creature.focus = body
+	creature.last_known = spot
+	creature.set_mode(creature.Mode.CHASE)
+	bot_match.team.knowledge.refuges[0] = true
+	level.spare = bot_match.spare_survivor
+	var start: int = bot_match.incidents.size()
+	# No errands meanwhile: what moves it is the creature.
+	for brain_each in bot_match.brains: brain_each.set_task({})
+	bot_match.team_clock = 1.0e9
+	bot_match.set_physics_process(true)
+	var safe: bool = await wait_for(func(): return level.point_in_refuge(body.global_position), 60 * 12)
+	var caught: bool = bot_match.incidents.slice(start).any(func(entry): return entry.kind == "captura")
+	check("Cazado junto al refugio, corre a él y queda a salvo", safe and not caught, "%s%s" % [body.global_position, " · atrapado" if caught else ""])
+	bot_match.set_physics_process(false)
+	bot_match.team_clock = 0.0
+	level.untouchable.clear()
+	# Mercy: the strike is noted and nobody dies.
+	var before: int = bot_match.incidents.size()
+	body.place(spot + Vector3(0, 0.05, 0), 0.0)
+	await frames(2)
+	level.capture_survivor(body)
+	var spared: bool = level.execution.is_empty() and level.untouchable.has(int(body.slot)) and level.session.participants.get(body.slot) != level.session.Life.DEAD
+	var noted: bool = bot_match.incidents.slice(before).any(func(entry): return entry.kind == "captura")
+	check("Con clemencia, la captura se anota y no mata", spared and noted)
+	bot_match.incidents.resize(start)
+	level.spare = Callable()
+	level.untouchable.clear()
+	# As it was for the rest: the creature out of the way, the bot at the start.
+	creature.set_physics_process(false)
+	creature.set_mode(creature.Mode.PATROL)
+	creature.focus = null
+	creature.global_position = FLOOR.position_of(level.manifest.rooms[int(level.manifest.refuges[2])]) + Vector3(0, 0.04, 0)
+	bot_match.threat.refresh()
+	for brain_each in bot_match.brains: brain_each.set_task({})
+	body.place(level.match_net.spawn_point(body.slot), 0.0)
+	await frames(2)
+	bot_match.set_physics_process(true)
+
+## A dictionary of seats as a sorted list, so two with the same contents in
+## another order read the same.
+func pairs(values: Dictionary) -> Array:
+	var out: Array = []
+	for key in values: out.append([int(key), int(values[key])])
+	out.sort()
+	return out
+
+## The point `metres` of walking from `from` towards the reception: a place
+## that is that far by the way a noise travels, not through a wall.
+func along(from: Vector3, metres: float) -> Vector3:
+	var route := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, Vector3(0, 0.04, 0))
+	var left := metres
+	for i in range(1, route.size()):
+		var leg: float = route[i - 1].distance_to(route[i])
+		if leg >= left: return route[i - 1].lerp(route[i], left / leg)
+		left -= leg
+	return route[route.size() - 1] if route.size() > 0 else from
+
+## Doors mid-swing: a picture taken then counts them where they are going.
+func moving_doors() -> Array:
+	var out: Array = []
+	for index in level.hotel.doors.size():
+		if level.hotel.doors[index].moving: out.append(index)
+	return out
 
 func incidents_text() -> String:
 	return ", ".join(bot_match.incidents.map(func(entry): return "%s %s: %s" % [entry.kind, entry.bot, entry.words]))

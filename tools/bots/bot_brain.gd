@@ -9,6 +9,7 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const NAV := preload("res://tools/bots/bot_nav.gd")
 const BODY := preload("res://tools/bots/bot_body.gd")
 const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
+const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 enum State { IDLE, MOVE, DOOR, ACT, WAIT, UNSTICK, OUT, HIDDEN, SWEEP }
 const STATE_NAMES := ["quieto", "va", "puerta", "usa", "espera", "desatasca", "fuera", "escondido", "mira"]
 ## Looking round a room from where it stands: to one side, the other, and
@@ -45,6 +46,7 @@ var state := State.IDLE
 var timer := 0.0
 var door = null
 var door_pressed := false
+var door_wait := 0.0
 var typed := ""
 var clock := 0.0
 ## Which of the task's places to stand it is trying.
@@ -62,6 +64,9 @@ var unstick_left := 0.0
 var unstick_replan := false
 var walked := 0.0
 var last_position := Vector3.INF
+## Where and when it last gave a task up for being stuck.
+var gave_up_at := Vector3.INF
+var gave_up_clock := -INF
 ## Seconds spent in each state, for the summary: where a slow floor went.
 var state_seconds := {}
 var sweep_from := 0.0
@@ -119,6 +124,23 @@ func tick(delta: float) -> void:
 	var named: String = STATE_NAMES[state]
 	state_seconds[named] = float(state_seconds.get(named, 0.0)) + delta
 	body.torch_wanted = wants_torch()
+	minding = ""
+	var took := mind_creature(delta)
+	# Minding it for most of a minute with the errand not moving on: a
+	# person takes the risk sooner or later, and so does a bot, for a while.
+	if took and minding != "escondido": wary += delta
+	else: wary = maxf(0.0, wary - delta * 0.75)
+	if wary > WARY_LIMIT:
+		wary = 0.0
+		bold_until = clock + BOLD_FOR
+		owner_match.note("audaz", self, {})
+	# What the creature made it do, said when it changes (for the recording).
+	if minding != minded:
+		minded = minding
+		owner_match.note("mente", self, {"value": minding})
+	if took:
+		state_seconds["criatura"] = float(state_seconds.get("criatura", 0.0)) + delta
+		return
 	match state:
 		State.IDLE: halt()
 		State.MOVE: move(delta)
@@ -155,6 +177,9 @@ func walk_towards(direction: Vector3, pace: int) -> void:
 # --- Going somewhere ------------------------------------------------------------
 
 func move(delta: float) -> void:
+	if clock < wait_until:
+		halt()
+		return
 	var goal := stand()
 	# A place on another planta is a task from before a lift: the team gives
 	# another one on its next round.
@@ -165,8 +190,15 @@ func move(delta: float) -> void:
 		arrive()
 		return
 	if not nav.active() or nav.stale() or clock - nav.planned_at > 2.0 or nav.target.distance_to(goal) > 0.05:
-		if not nav.plan(goal, clock):
+		if not nav.plan(goal, clock, null if bold() else owner_match.threat):
 			give_up("unreachable", "sin ruta hasta %s" % describe())
+			return
+		# Every way there goes where the creature is or is going: not now,
+		# and not asked again for a second.
+		if nav.blocked and String(task.get("kind", "")) != "lift":
+			halt()
+			nav.clear()
+			wait_until = clock + 1.0
 			return
 		if nav.end_gap > 1.2 and not try_next_stand("la ruta se queda a %.1f m" % nav.end_gap): return
 	var shut = nav.door_ahead()
@@ -202,7 +234,24 @@ func move(delta: float) -> void:
 			nav.clear()
 		watch_progress(delta)
 		return
-	walk_towards(direction, owner_match.pace_for(self))
+	var pace: int = owner_match.pace_for(self)
+	# A look before the step: a metre and a half on would be in its line, and
+	# here is not. Wait, and find the way again -- round, if there is one.
+	var threat = owner_match.threat
+	if threat.near_planta(body.global_position) and not bold():
+		var ahead: Vector3 = body.global_position + direction * 1.5
+		if threat.visible(ahead) and not threat.visible(body.global_position) or ahead_watched(ahead):
+			halt()
+			reset_stuck()
+			nav.clear()
+			wait_until = clock + 0.5
+			return
+	# Still on purpose, so as not to be heard: waiting, not stuck.
+	if pace == BODY.Pace.STILL:
+		halt()
+		reset_stuck()
+		return
+	walk_towards(direction, pace)
 	watch_progress(delta)
 
 func flat_gap(a: Vector3, b: Vector3) -> float:
@@ -283,8 +332,18 @@ func open_door(delta: float) -> void:
 		if door.moving:
 			if timer > DOOR_SWING: owner_match.report("puerta", "leve", self, "una puerta que no termina de moverse")
 			return
-		if timer < DOOR_HOLD: return
-		if not level.match_net.use_door(door, true, false):
+		# Quietly only if a door opened the ordinary way would be heard: held
+		# a second, it swings slowly and carries 9 m instead of 45. If even
+		# that would be heard, it waits for the creature to be elsewhere.
+		var threat = owner_match.threat
+		var slow: bool = threat.audible(door.doorway, "door")
+		if slow and threat.audible(door.doorway, "door_slow") and timer < 20.0:
+			timer = minf(timer, 0.0)
+			door_wait += delta
+			if door_wait < 20.0: return
+		if slow and timer < DOOR_HOLD: return
+		door_wait = 0.0
+		if not level.match_net.use_door(door, slow, false):
 			owner_match.report("puerta", "media", self, "una puerta que no se deja abrir")
 			give_up("stuck", "no pudo abrir una puerta")
 			return
@@ -406,6 +465,9 @@ func watch_progress(delta: float) -> void:
 
 func escalate() -> void:
 	if not is_finite(stuck_origin.x): stuck_origin = body.global_position
+	# Stuck again right where it just gave up: the ladder goes on from there,
+	# or it gave up and was sent back for good.
+	if stuck_level == 0 and clock - gave_up_clock < 60.0 and flat_gap(body.global_position, gave_up_at) < STUCK_FREE: stuck_level = 4
 	stuck_level += 1
 	stuck_clock = 0.0
 	linger_clock = 0.0
@@ -436,6 +498,8 @@ func escalate() -> void:
 			unstick_replan = true
 			state = State.UNSTICK
 		4:
+			gave_up_at = body.global_position
+			gave_up_clock = clock
 			give_up("stuck", "atascado yendo a %s" % describe())
 		_:
 			hop()
@@ -552,8 +616,329 @@ func fits(point: Vector3) -> bool:
 
 func state_name() -> String: return STATE_NAMES[state]
 
-## The torch where there is no light to see by, and never while hidden.
+# --- The creature ------------------------------------------------------------------
+
+## Seconds it has been hiding, the wardrobe it is going to, and when it last
+## chose its pace (the ear checks cost a route each).
+var hidden_since := -1.0
+var hide_target = null
+var pace_clock := 0.0
+var pace_now := BODY.Pace.WALK
+var fleeing := false
+var flee_point := Vector3.INF
+var flee_clock := 0.0
+var seen_clock := 0.0
+var wait_until := -INF
+var hide_check := 0.0
+var watch_clock := 0.0
+## Seconds lately spent minding the creature instead of the errand, and until
+## when it goes on regardless (bold()).
+var wary := 0.0
+var bold_until := -INF
+const WARY_LIMIT := 45.0
+const BOLD_FOR := 40.0
+func bold() -> bool: return clock < bold_until
+var cover_from := Vector3.ZERO
+var cover_clock := 0.0
+var cover_refused := -INF
+## What minding the creature is doing this frame, and what it was last said
+## to be doing: "", "escondido", "huye", "aparta", "cubre", "quieto".
+var minding := ""
+var minded := ""
+var in_line := false
+var cover := Vector3.INF
+var ahead_clock := 0.0
+var ahead_seen := false
+
+## The step ahead in the line of its eyes on its way: asked five times a
+## second (a ray to each of them).
+func ahead_watched(ahead: Vector3) -> bool:
+	ahead_clock -= 1.0 / 60.0
+	if ahead_clock <= 0.0:
+		ahead_clock = 0.2
+		var threat = owner_match.threat
+		ahead_seen = threat.watched(ahead) and not threat.watched(body.global_position)
+	return ahead_seen
+
+## What the creature makes it do before anything else: stay hidden, run, or
+## get out of its sight. True when that took the frame.
+func mind_creature(delta: float) -> bool:
+	var threat = owner_match.threat
+	if body.hidden:
+		minding = "escondido"
+		state = State.HIDDEN
+		halt()
+		hide_check -= delta
+		if hide_check <= 0.0:
+			hide_check = 0.5
+			if leave_hide_now(): body.leave_wardrobe()
+		if not body.hidden:
+			hidden_since = -1.0
+			state = State.MOVE if not task.is_empty() else State.IDLE
+		return true
+	if not threat.near_planta(body.global_position):
+		fleeing = false
+		return false
+	if level.point_in_refuge(body.global_position) and not threat.hunted(body):
+		fleeing = false
+		return false
+	if threat.hunted(body):
+		flee(delta, true)
+		return true
+	# Bold for a while: on with the errand, crouched, minding only being run
+	# down. Going back to cover at each look was what kept it from ever
+	# getting anywhere.
+	if bold():
+		fleeing = false
+		return false
+	# In the line of its eyes, now or where it is going: out of it, crouched,
+	# before it turns or gets there; then still until it has gone by.
+	watch_clock -= delta
+	if watch_clock <= 0.0:
+		watch_clock = 0.2
+		in_line = threat.watched(body.global_position, 1.64)
+		if in_line and (cover == Vector3.INF or threat.watched(cover, 1.64)) and clock > cover_refused: cover = cover_point()
+		if not in_line: cover = Vector3.INF
+	if in_line:
+		seen_clock += delta
+		if cover != Vector3.INF and flat_gap(cover, body.global_position) > 0.3:
+			minding = "cubre"
+			# By the walkable way, not straight at it through the furniture;
+			# not getting there is no cover, and something else is tried.
+			if nav.target.distance_to(cover) > 0.3 or not nav.active() or clock - nav.planned_at > 1.0: nav.plan(cover, clock)
+			var direction: Vector3 = nav.steer()
+			if direction == Vector3.ZERO: direction = Vector3(cover.x - body.global_position.x, 0, cover.z - body.global_position.z).normalized()
+			walk_towards(direction, BODY.Pace.CROUCH)
+			if flat_gap(body.global_position, cover_from) > 0.4:
+				cover_from = body.global_position
+				cover_clock = 0.0
+			cover_clock += delta
+			if cover_clock < 1.5: return true
+			cover = Vector3.INF
+			cover_refused = clock + 3.0
+			cover_clock = 0.0
+		if try_hide(): return true
+		# Nowhere out of its line near: away from where it is going, quietly.
+		flee(delta, false)
+		return true
+	seen_clock = 0.0
+	# Somewhere it is not seen, with the creature near or coming: still, so as
+	# not to be heard, until it has gone.
+	if threat.position.distance_to(body.global_position) < 20.0 or coming_for_me():
+		if coming_for_me() and try_hide(): return true
+		if threat.audible(body.global_position, "crouch" + ("_hard" if body.hard_floor else "")):
+			fleeing = false
+			minding = "quieto"
+			halt()
+			return true
+	fleeing = false
+	# Coming this way, and a wardrobe to be had in time: in it.
+	if coming_for_me() and try_hide(): return true
+	return false
+
+## Somewhere a step or two away the creature does not see.
+func cover_point() -> Vector3:
+	var threat = owner_match.threat
+	var map: RID = level.get_world_3d().navigation_map
+	var best := Vector3.INF
+	var best_gap := INF
+	for ring in [1.0, 2.0, 3.0]:
+		for step in 10:
+			var angle := TAU * float(step) / 10.0
+			var point := FLOOR.closest(map, body.global_position + Vector3(cos(angle), 0, sin(angle)) * float(ring))
+			if flat_gap(point, body.global_position) < 0.5 or threat.watched(point, 1.64): continue
+			var gap: float = NAV.route_length(level, body.global_position, point)
+			if gap > float(ring) * 2.5: continue
+			if gap < best_gap:
+				best_gap = gap
+				best = point
+		if best != Vector3.INF: return best
+	return best
+
+## The creature's way goes through here, or it is heading for this room.
+func coming_for_me() -> bool:
+	var threat = owner_match.threat
+	var here := int(FLOOR.room_at(level.manifest.rooms, body.global_position).get("id", -1))
+	if here < 0: return false
+	if threat.path_rooms.has(here): return threat.position.distance_to(body.global_position) < 30.0
+	return threat.room == here
+
+## Run: to the refuge if it is near and not past the creature, or else away
+## from it through the nearest doorway it does not see, shutting the door
+## behind. A wardrobe only where it did not see it get in.
+const REFUGE_NEAR := 20.0
+func flee(delta: float, run: bool) -> void:
+	var threat = owner_match.threat
+	minding = "huye" if run else "aparta"
+	if not fleeing:
+		fleeing = true
+		flee_clock = 0.0
+		owner_match.note("huye" if run else "se_aparta", self, {"mode": threat.mode})
+	flee_clock += delta
+	# Out of its line and not right on top of it: running is what it hears
+	# now (it listens round where it last knew it was), so the rest of the
+	# way is crouched, or into a wardrobe it did not see it get into.
+	var seen: bool = threat.visible(body.global_position)
+	if run and not seen and threat.position.distance_to(body.global_position) > 9.0:
+		if try_hide(): return
+		run = false
+	if flee_point == Vector3.INF or flat_gap(body.global_position, flee_point) < 1.0 or flee_clock > 3.0:
+		flee_point = escape_point()
+		flee_clock = 0.0
+		# The refuge a few steps off beats any way out of its line: in there
+		# nothing takes anybody.
+		if owner_match.team.knowledge.refuges.has(int(level.session.stage) - 1):
+			var inside := FLOOR.closest(level.get_world_3d().navigation_map, FLOOR.position_of(level.manifest.rooms[int(level.refuge_room())]))
+			if NAV.route_length(level, body.global_position, inside) <= REFUGE_NEAR: flee_point = inside
+	var way: Vector3 = flee_point
+	if way == Vector3.INF:
+		if try_hide(): return
+		halt()
+		return
+	if nav.target.distance_to(way) > 0.5 or not nav.active() or clock - nav.planned_at > 0.6: nav.plan(way, clock)
+	var direction: Vector3 = nav.steer()
+	if direction == Vector3.ZERO: direction = Vector3(way.x - body.global_position.x, 0, way.z - body.global_position.z).normalized()
+	walk_towards(direction, BODY.Pace.RUN if run else BODY.Pace.CROUCH)
+	if not run: return
+	# A door just gone through, the creature not in it yet: shut behind.
+	for crossing in nav.crossings:
+		var door = crossing.door
+		if not is_instance_valid(door) or not door.opened or door.moving or door.locked: continue
+		var gap := flat_gap(door.doorway, body.global_position)
+		if gap > 1.2 and gap < 2.5 and (body.global_position - door.doorway).dot(threat.position - door.doorway) < 0.0 and threat.position.distance_to(door.doorway) > 4.0:
+			level.match_net.use_door(door, false, false)
+			owner_match.note("cierra", self, {"door": level.hotel.doors.find(door)})
+			break
+
+## Where to run: of the refuge (when near) and the rooms one and two doors
+## away from the creature's side, the one whose way leaves its line soonest;
+## a way that stays in its line is a way it runs down.
+func escape_point() -> Vector3:
+	var threat = owner_match.threat
+	var rooms: Array = level.manifest.rooms
+	var candidates: Array = []
+	if owner_match.team.knowledge.refuges.has(int(level.session.stage) - 1):
+		candidates.append(FLOOR.position_of(rooms[int(level.refuge_room())]))
+	var here := int(FLOOR.room_at(rooms, body.global_position).get("id", -1))
+	if here >= 0:
+		for first in level.manifest.adjacency[here]:
+			for second in [int(first)] + Array(level.manifest.adjacency[int(first)]):
+				var room: Dictionary = rooms[int(second)]
+				if int(second) == here or int(room.get("wing", -1)) != planta() or int(second) == threat.room: continue
+				candidates.append(FLOOR.position_of(room))
+	var map: RID = level.get_world_3d().navigation_map
+	var best := Vector3.INF
+	var best_score := INF
+	for candidate in candidates:
+		var route := FLOOR.navigation_path(map, body.global_position, candidate)
+		if route.size() < 2: continue
+		# Metres along it until the creature's line is left behind.
+		var walked_on := 0.0
+		var out_of_line := INF
+		var toward := 0.0
+		for i in range(1, route.size()):
+			var leg: float = route[i - 1].distance_to(route[i])
+			var steps := maxi(1, int(leg))
+			for s in steps:
+				var point: Vector3 = route[i - 1].lerp(route[i], float(s + 1) / float(steps))
+				walked_on += leg / float(steps)
+				if not threat.visible(point, 1.2):
+					out_of_line = walked_on
+					break
+			if out_of_line < INF or walked_on > 20.0: break
+		# A way that starts towards it is no way at all.
+		var first_leg: Vector3 = route[1] - route[0]
+		toward = (threat.position - body.global_position).normalized().dot(Vector3(first_leg.x, 0, first_leg.z).normalized())
+		var score: float = (out_of_line if out_of_line < INF else 40.0) + maxf(toward, 0.0) * 25.0
+		if score < best_score:
+			best_score = score
+			best = FLOOR.closest(map, candidate)
+	return best
+
+## A point two rooms away, on the side away from the creature.
+func away_point() -> Vector3:
+	var threat = owner_match.threat
+	var rooms: Array = level.manifest.rooms
+	var here := int(FLOOR.room_at(rooms, body.global_position).get("id", -1))
+	if here < 0: return Vector3.INF
+	var best := Vector3.INF
+	var best_score := -INF
+	for first in level.manifest.adjacency[here]:
+		for second in [int(first)] + Array(level.manifest.adjacency[int(first)]):
+			var room: Dictionary = rooms[int(second)]
+			if int(second) == here or int(room.get("wing", -1)) != planta() or int(second) == threat.room: continue
+			var centre := FLOOR.position_of(room)
+			var score: float = centre.distance_to(threat.creature.destination) + centre.distance_to(threat.position) - centre.distance_to(body.global_position) * 0.5
+			if threat.path_rooms.has(int(second)): score -= 30.0
+			if score > best_score:
+				best_score = score
+				best = FLOOR.closest(level.get_world_3d().navigation_map, centre)
+	return best
+
+## Into a wardrobe, when there is one it gets to well before the creature,
+## unseen and unheard, away from where the creature is looking.
+const HIDE_MARGIN := 3.5
+func try_hide() -> bool:
+	var threat = owner_match.threat
+	if body.mind() < 40.0: return false
+	if hide_target == null or not is_instance_valid(hide_target) or is_instance_valid(hide_target.occupant):
+		hide_target = choose_hide()
+		if hide_target == null: return false
+	var front: Vector3 = hide_target.to_global(hide_target.exit_offset)
+	if flat_gap(front, body.global_position) < 0.6:
+		if threat.audible(front, "wardrobe") and not threat.hunted(body):
+			halt()
+			return true
+		if body.enter_wardrobe(hide_target):
+			hidden_since = clock
+			owner_match.note("se_esconde", self, {"hide": level.hotel.hides.find(hide_target)})
+			hide_target = null
+			return true
+		hide_target = null
+		return false
+	if nav.target.distance_to(front) > 0.3 or not nav.active(): nav.plan(front, clock)
+	var direction: Vector3 = nav.steer()
+	if direction == Vector3.ZERO: direction = Vector3(front.x - body.global_position.x, 0, front.z - body.global_position.z).normalized()
+	walk_towards(direction, BODY.Pace.RUN if threat.hunted(body) else BODY.Pace.CROUCH)
+	return true
+
+func choose_hide():
+	var threat = owner_match.threat
+	var best = null
+	var best_time := INF
+	for hide in level.hotel.hides:
+		if not is_instance_valid(hide) or is_instance_valid(hide.occupant): continue
+		var front: Vector3 = hide.to_global(hide.exit_offset)
+		if FLOOR.planta_of(front.y) != planta() or flat_gap(front, body.global_position) > 18.0: continue
+		if flat_gap(front, threat.creature.last_known) < 2.5 or flat_gap(front, threat.creature.destination) < 2.5: continue
+		if owner_match.bodies.any(func(other): return other != body and not other.dead and flat_gap(other.global_position, front) < 2.5): continue
+		var metres := NAV.route_length(level, body.global_position, front)
+		if metres == INF: continue
+		var mine: float = metres / 2.0
+		if threat.eta(front) - mine < HIDE_MARGIN: continue
+		if threat.exposed(front, 1.2): continue
+		if mine < best_time:
+			best_time = mine
+			best = hide
+	return best
+
+## Out of the wardrobe once the creature is well away and not coming, or the
+## mind is going, or it has been long enough -- and only if leaving is not
+## heard.
+func leave_hide_now() -> bool:
+	var threat = owner_match.threat
+	var stayed: float = clock - hidden_since if hidden_since >= 0.0 else 0.0
+	var point: Vector3 = body.global_position
+	if not threat.near_planta(point): return stayed > 2.0
+	if threat.audible(point, "wardrobe"): return false
+	if body.mind() < 35.0: return true
+	var away: float = threat.route_to(point)
+	return (away > 25.0 and not threat.path_rooms.has(int(FLOOR.room_at(level.manifest.rooms, point).get("id", -1)))) or stayed > 90.0
+
+## The torch where there is no light to see by, never while hidden, and never
+## where its beam would fall on the creature (which it notices).
 func wants_torch() -> bool:
 	if body.hidden: return false
+	if owner_match.threat != null and owner_match.threat.torch_catches(body): return false
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)
 	return level.hotel.dark or (not room.is_empty() and level.hotel.dark_ids.has(int(room.id)))

@@ -225,7 +225,15 @@ func _ready() -> void:
 	on_state()
 	# The observer opens on what it watches: the tape's boot is the game's, and
 	# stayed up over the tool until a key -- the first one it was given -- put it away.
-	if not automation and not OS.get_cmdline_user_args().has("--observer"): ui.play_intro()
+	var replay_folder := ""
+	var replay_at := 0.0
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--bots-replay="): replay_folder = argument.trim_prefix("--bots-replay=")
+		if argument.begins_with("--bots-at="): replay_at = float(argument.trim_prefix("--bots-at="))
+	if not automation and not OS.get_cmdline_user_args().has("--observer") and replay_folder.is_empty(): ui.play_intro()
+	if not replay_folder.is_empty():
+		await begin_replay(replay_folder, replay_at)
+		return
 	var seed_wanted := -1
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--playtest-seed="):
@@ -236,6 +244,19 @@ func _ready() -> void:
 	elif seed_wanted >= 0:
 		if OS.get_cmdline_user_args().has("--locust"): await take_locust(seed_wanted)
 		else: start_floor(seed_wanted)
+
+## --bots-replay=<folder> [--bots-at=<second>]: a recorded bot match watched
+## again in the observer. The replay lives with the test bots (tools/bots),
+## which the exported game does not carry.
+const REPLAY_SCRIPT := "res://tools/bots/bot_replay.gd"
+func begin_replay(folder: String, at: float) -> void:
+	if not ResourceLoader.exists(REPLAY_SCRIPT):
+		ui.menu("main", false, "El repaso de partidas de bots no viene con el juego.")
+		return
+	var replay = load(REPLAY_SCRIPT).new()
+	replay.setup(self, folder)
+	add_child(replay)
+	await replay.begin(at)
 
 ## --observer: knock on a room on this machine (or wherever --address says),
 ## and if nobody answers within OBSERVER_WAIT seconds, build a floor here and

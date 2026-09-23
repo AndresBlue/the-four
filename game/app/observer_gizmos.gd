@@ -196,6 +196,9 @@ func draw_sight() -> void:
 	# being played, and it answers with rays.
 	if not is_instance_valid(creature) or not creature.is_inside_tree() or not here(creature.global_position): return
 	if level.session.state != level.session.State.PLAYING: return
+	# Watching a recording, what it saw is what was recorded (bot_replay.gd
+	# draws it): asked now, the rays would make it up from puppets.
+	if level.replaying: return
 	var eye: Vector3 = creature.global_position + Vector3(0, creature.EYE_HEIGHT, 0)
 	var half := deg_to_rad(creature.SIGHT_HALF_ANGLE)
 	var reach: float = minf(creature.SIGHT_RANGE, 22.0)
