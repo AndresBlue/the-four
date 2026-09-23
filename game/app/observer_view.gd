@@ -43,8 +43,12 @@ class Ears extends Node:
 	var level
 	var camera: Camera3D
 	var heard: Array = []
-const SPEED := 9.0
-const SPEED_RANGE := Vector2(1.5, 60.0)
+## How fast it flies, and what the wheel can take it to. A hotel is a hundred
+## metres across and this is not a walk.
+const SPEED := 22.0
+const SPEED_RANGE := Vector2(2.0, 200.0)
+## What running multiplies it by.
+const QUICK := 4.0
 ## How far above the floor the map view sits.
 const MAP_HEIGHT := 150.0
 ## How many things that happened are kept on screen.
@@ -315,7 +319,7 @@ func fly(delta: float) -> void:
 		return
 	var axis := Input.get_vector("left", "right", "forward", "backward")
 	var lift := (1.0 if Input.is_action_pressed("jump") else 0.0) - (1.0 if Input.is_action_pressed("crouch") else 0.0)
-	var quick: float = 3.0 if Input.is_action_pressed("sprint") else 1.0
+	var quick: float = QUICK if Input.is_action_pressed("sprint") else 1.0
 	var wanted: Vector3 = Vector3(axis.x, lift, axis.y).rotated(Vector3.UP, rotation.y) if map_view else (camera.global_basis * Vector3(axis.x, 0, axis.y)) + Vector3(0, lift, 0)
 	global_position += wanted * speed * quick * delta
 

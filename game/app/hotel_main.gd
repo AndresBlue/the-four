@@ -1963,7 +1963,8 @@ func _process(delta: float) -> void:
 	elif not execution.is_empty() and session.state != session.State.PAUSED: release_execution()
 	# A victim held up can be carried across a wall plane, and the walls are
 	# occluders: no occlusion culling while an execution lasts.
-	var cull: bool = execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
+	# Watching, walls must not hide what is behind them either.
+	var cull: bool = not observer and execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
 	if get_viewport().use_occlusion_culling != cull: get_viewport().use_occlusion_culling = cull
 	# The camera stage runs on the game's clock (what Movie Maker records).
 	if is_instance_valid(camera_effect):
@@ -1998,9 +1999,10 @@ func _process(delta: float) -> void:
 		# observer's camera and not the body it does not have; from above it
 		# asks for the whole floor at once.
 		if is_instance_valid(hotel):
+			# Watching, nothing is hidden: the whole floor is drawn wherever the
+			# camera is, which is the point of looking at it from outside.
 			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else world_audio.listener_position()
-			var over: float = 500.0 if observer and observer_view != null and observer_view.map_view else 0.0
-			hotel.update_visibility(eye, settings.values.shadows and not hunter_seat(), over)
+			hotel.update_visibility(eye, settings.values.shadows and not hunter_seat() and not observer, 0.0, observer)
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:

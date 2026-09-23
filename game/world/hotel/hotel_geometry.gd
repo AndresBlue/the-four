@@ -1504,7 +1504,11 @@ func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array
 
 ## reach_over: the observer looking at the whole floor from above asks for
 ## everything to be drawn, whatever the preset would hide (0: the preset's).
-func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0) -> void:
+## show_all: nothing is hidden at all -- every room, every door with its
+## fixtures, every lamp that is not switched off, wherever they are. It is for
+## looking at a floor (--observer), never for playing one: what it costs is
+## exactly what the distances above exist to avoid.
+func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false) -> void:
 	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
@@ -1513,10 +1517,18 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	# Hall haze only exists in Forward+ (the preset has it off elsewhere).
 	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
 	var reach: float = maxf(preset.room_reach, reach_over)
+	if show_all: reach = 100000.0
 	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)
 		room_nodes[i].visible = distance < reach
+		if show_all:
+			# Every lamp of the floor at once, and none of them with a shadow:
+			# a hundred shadowed lamps do not fit in the atlas, and what falls
+			# out of it shines through the walls.
+			lights[i].visible = not lights[i].has_meta("off") and not echo_view
+			if lights[i].shadow_enabled: lights[i].shadow_enabled = false
+			continue
 		# A lamp only shines while every wall round it is still drawn: a hidden
 		# room casts no shadow, and a lamp left on among hidden walls poured its
 		# light into the dark rooms beside it (far walls of a shut dark room lit).
@@ -1554,17 +1566,17 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		near_sconces[k].visible = not dark and preset.sconce_lights and shadows and not echo_view and k < SCONCES_LIT and near_sconces[k].global_position.distance_to(player_position) < SCONCE_REACH
 	bounce.show_near(player_position, preset.bounce and not echo_view)
 	for lamp in practicals:
-		lamp.visible = not dark and not echo_view and lamp.global_position.distance_to(player_position) < preset.furniture_lamps
+		lamp.visible = not dark and not echo_view and (show_all or lamp.global_position.distance_to(player_position) < preset.furniture_lamps)
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# The exit signs keep theirs through a power cut: they are the one thing
 	# here that would have a battery, and the refuge stays findable.
 	for lamp in exit_lamps:
-		lamp.visible = not echo_view and lamp.global_position.distance_to(player_position) < EXIT_REACH
+		lamp.visible = not echo_view and (show_all or lamp.global_position.distance_to(player_position) < EXIT_REACH)
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).
 	for i in doors.size():
-		var shown: bool = doors[i].doorway.distance_to(player_position) < reach
+		var shown: bool = show_all or doors[i].doorway.distance_to(player_position) < reach
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
 
