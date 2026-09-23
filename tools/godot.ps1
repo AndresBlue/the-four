@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots-run','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -39,6 +39,10 @@ switch ($Mode) {
     'hotel-audio' { $arguments += @('--headless','--script','res://tests/hotel/hotel_audio_test.gd','--','--test-profile','--automation','--silent') }
     'hotel-benchmark' { $arguments += @('--script','res://tools/benchmarks/hotel_benchmark.gd','--','--test-profile','--automation','--no-enemy','--silent') }
     'compatibility' { $arguments += @('--rendering-method','gl_compatibility') }
+    # One floor played by test bots, headless (tools/bots/bot_run.gd): -Extra
+    # '--bots=3 --mercy --knowledge=oracle --no-enemy'. Many in a row, with the
+    # watchdog and the summary: ./tools/bots.ps1.
+    'bots-run' { $arguments += @('--headless','--fixed-fps','60','--script','res://tools/bots/bot_run.gd','--','--test-profile','--automation','--silent',('--seed=' + $Seed)) }
     'export' {
         New-Item -ItemType Directory -Force (Join-Path $projectPath 'exports/windows') | Out-Null
         # Godot caches every scene it converts for export and only redoes one

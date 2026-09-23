@@ -271,17 +271,17 @@ teclado los tienen que ver con su cámara y su linterna. Mueren de verdad, o
 con `-Mercy` la captura solo se anota y siguen. Cada partida se graba y se
 vuelve a ver en el observador.
 
-- [ ] **Una sola regla para caminar:** la resistencia, las velocidades, la
+- [x] **Una sola regla para caminar:** la resistencia, las velocidades, la
   cápsula y las pisadas del superviviente, compartidas por el jugador y los
   bots (`game/player/survivor_gait.gd`), sin cambiar nada de cómo se juega.
-- [ ] **Los ganchos del juego:** un piso con los asientos que se le den, el
+- [x] **Los ganchos del juego:** un piso con los asientos que se le den, el
   jugador local fuera de la partida, el código validado fuera de la pantalla
   del teclado, los hallazgos acreditados a quien busca, la captura perdonada
   y nada escrito en el punto de control ni en el tablón.
-- [ ] **Cuerpos, rutas, interacción y muertes** (`tools/bots/`), primero
+- [x] **Cuerpos, rutas, interacción y muertes** (`tools/bots/`), primero
   sabiéndolo todo y sin criatura: 1, 3 y 5 bots ganan en las semillas 81, 213
   y 404.
-- [ ] **Ver para saber:** lo que se ve con luz, a oscuras con y sin linterna,
+- [x] **Ver para saber:** lo que se ve con luz, a oscuras con y sin linterna,
   los barridos al entrar, el reparto de salas y el «no encontrado» con la
   mejor ocasión que tuvo el equipo.
 - [ ] **La criatura:** no dejarse ver, no hacerse oír, esconderse bien, huir

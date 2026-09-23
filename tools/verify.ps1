@@ -16,6 +16,9 @@ foreach ($test in $tests) {
     if ($name -notin @('hotel_audio_test','spatial_audio_test')) { $arguments += @('--fixed-fps','60') }
     $arguments += @('--','--automation','--test-profile','--silent')
     if ($name -in @('hotel_test','intro_test')) { $arguments += '--no-enemy' }
+    # Its own port: a game left open on this machine hosts on the default one,
+    # and the observer went and watched that instead of building its floors.
+    if ($name -eq 'observer_test') { $arguments += '--port=24640' }
     $quotedArguments = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $process = Start-Process -FilePath $GodotPath -ArgumentList $quotedArguments -WindowStyle Hidden -PassThru
     if (-not $process.WaitForExit(180000)) {
@@ -40,6 +43,20 @@ $probePassed = $probeProcess.ExitCode -eq 0 -and $probeText -notmatch 'SCRIPT ER
 $results += [PSCustomObject]@{ test='dev/creature_stuck_probe'; passed=$probePassed; exit_code=$probeProcess.ExitCode }
 Write-Output "stuck_probe : $probePassed"
 if (-not $probePassed) { Write-Output $probeText }
+# The test bots (tools/bots): a floor built for their seats, the game's own
+# rules on their bodies, and a bot that closes a stage on its own feet
+# (tests/hotel/bots_test.gd). Its own timeout, and one that runs out is a
+# failure here rather than the end of the whole run.
+$botsLog = Join-Path $projectPath 'evidence/verify_bots_test.log'
+$botsArguments = (@('--headless','--path',$projectPath,'--rendering-method','forward_plus','--fixed-fps','60','--script','res://tests/hotel/bots_test.gd','--log-file',$botsLog,'--','--automation','--test-profile','--silent') | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$botsProcess = Start-Process -FilePath $GodotPath -ArgumentList $botsArguments -WindowStyle Hidden -PassThru
+$botsFinished = $botsProcess.WaitForExit(420000)
+if (-not $botsFinished) { $botsProcess.Kill() }
+$botsText = Get-Content -LiteralPath $botsLog -Raw
+$botsPassed = $botsFinished -and $botsProcess.ExitCode -eq 0 -and $botsText -notmatch 'SCRIPT ERROR:|ERROR:'
+$results += [PSCustomObject]@{ test='hotel/bots_test'; passed=$botsPassed; exit_code=$(if ($botsFinished) { $botsProcess.ExitCode } else { -1 }) }
+Write-Output "bots_test : $botsPassed"
+if (-not $botsPassed) { if (-not $botsFinished) { Write-Output "Tiempo agotado en bots_test. Consulta $botsLog" }; Write-Output $botsText }
 # Shaders: only a real device compiles them, so this one runs with a window and
 # is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
 # and counts as passed, because a skipped check is not a failed one.
