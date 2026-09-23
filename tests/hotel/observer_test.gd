@@ -2,7 +2,8 @@ extends SceneTree
 ## The observer with nobody hosting, looking at floors of its own
 ## (game/app/observer_view.gd): R puts up another one with the view as it was,
 ## Shift+R goes back to the one before, a knock nobody answers leaves the
-## floor alone, and none of its floors is anybody's game.
+## floor alone, the planta is the one chosen however high it flies, and
+## none of its floors is anybody's game.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const VIEW := preload("res://game/app/observer_view.gd")
 const FIRST := 4242
@@ -86,6 +87,13 @@ func run() -> void:
 	level.net.shutdown("No se pudo conectar con esa dirección.")
 	await wait_for(func(): return false, 30)
 	check("Una llamada sin respuesta deja su piso en paz", settled(FIRST) and view.live_locust() != null and not paused and view.map_view)
+	# Off the plan and flying up to look at the planta from above: it stays
+	# the one RePág/AvPág chose, not the one the height is on.
+	press(KEY_M)
+	view.global_position.y += 40.0
+	await wait_for(func(): return false, 10)
+	check("Sin el plano y subiendo, sigue en la planta elegida", not view.map_view and view.planta == 1 and level.hotel.eye_planta == 1)
+	check("Y se mira sin la lente de la cámara", not level.lens_layer.visible)
 	var file := FileAccess.open("res://evidence/observer_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	file.close()

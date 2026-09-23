@@ -94,7 +94,8 @@ var map_view := false
 var map_span := 40.0
 ## The planta being looked at: the only one drawn (hotel_geometry
 ## update_visibility), chosen with RePág/AvPág, or the one the body followed
-## is on. Free, the camera is on whichever its height puts it on.
+## is on. Never from the camera's height: flying up over a planta keeps it.
+## A planta change takes the camera down (or up) with it.
 var planta := 0
 ## Its own light. Without it there is nothing to see: the hotel is meant to be
 ## walked with a torch, and this camera has none.
@@ -472,9 +473,8 @@ func fly(delta: float) -> void:
 		look_at(following.global_position + Vector3(0, 1.6, 0))
 		camera.rotation.x = 0.0
 		return
-	# Free, it is on the planta its height puts it on; from above, on the one
-	# chosen.
-	if not map_view: planta = FLOOR.planta_of(global_position.y)
+	# Free, it stays on the planta chosen, however high it flies: taken from its
+	# height, going up to look at a planta from above brought back the top one.
 	var axis := Input.get_vector("left", "right", "forward", "backward")
 	var lift := (1.0 if Input.is_action_pressed("jump") else 0.0) - (1.0 if Input.is_action_pressed("crouch") else 0.0)
 	var quick: float = QUICK if Input.is_action_pressed("sprint") else 1.0

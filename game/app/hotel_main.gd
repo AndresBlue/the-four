@@ -304,6 +304,7 @@ func enter_observer_mode() -> void:
 	ui.overlay.hide()
 	camcorder.visible = false
 	$Presentation/Analog.visible = false
+	lens_layer.visible = false
 	if observer_view == null:
 		observer_view = OBSERVER.new()
 		observer_view.setup(self)
@@ -2250,7 +2251,8 @@ func apply_lens(hunter: bool, reduced: bool) -> void:
 	if not is_instance_valid(lens_material): return
 	var size := get_viewport().get_visible_rect().size
 	var aspect := size.x / maxf(size.y, 1.0)
-	lens_layer.visible = not hunter
+	# The observer looks through no lens either: the barrel bent the plan.
+	lens_layer.visible = not hunter and not observer
 	update_zoom_lens()
 	lens_material.set_shader_parameter("noise", 0.0 if reduced else settings.values.grain)
 	lens_material.set_shader_parameter("chromatic", 0.0 if reduced else settings.values.chromatic)
