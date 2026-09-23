@@ -4,7 +4,9 @@ extends SceneTree
 ## straight open runs, rings and dead ends, where the refuge is and how far,
 ## where the floor starts, whether a fixed way of walking a planta finds the
 ## refuge cheaply, how alike the corridor plans are, which plans come up and
-## how long a floor takes to draw. Only the manifests: nothing is built.
+## how long a floor takes to draw, and whether what is drawn per room (dark
+## rooms, how kept they are, and what vary() dresses them with) has anything
+## to do with where the room is. Only the manifests: nothing is built.
 ##
 ##   godot --headless --script tools/dev/map_metrics.gd -- 1000
 ## Prints each measure with its threshold and PASS or FAIL, and writes
@@ -13,6 +15,12 @@ const GEN := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
+## The points a floor is sampled at to compare what two floors have in the
+## same place: every SAMPLE metres over a square SPREAD either way of the
+## reception, on each planta.
+const SAMPLE := 6.0
+const SPREAD := 90.0
 ## A planta's corridors drawn on a square this many cells a side, to compare
 ## plans of different sizes: a cell about as wide as a corridor (the plan of a
 ## floor is 150 to 250 m across, a corridor 3 to 4 m), so that two corridors
@@ -65,6 +73,9 @@ func _initialize() -> void:
 	var rasters: Array = []
 	var together: Array = []
 	var plantas := 0
+	# What each floor has at the sample points, per planta: dark (1 or 0) and
+	# kept (0 to 2), or -1 where it has no room.
+	var sampled: Array = []
 	for seed_value in floors:
 		var began := Time.get_ticks_usec()
 		var data := generator.generate(seed_value)
@@ -155,6 +166,7 @@ func _initialize() -> void:
 		starts[row * 3 + column] = int(starts.get(row * 3 + column, 0)) + 1
 		var facing := int(round(fposmod(float(data.start_facing), TAU) / (PI / 2.0))) % 4
 		start_doors[facing] = int(start_doors.get(facing, 0)) + 1
+		if seed_value < 500: sampled.append(samples(data))
 	# Alike plans: pairs of plantas from different floors, and the three of
 	# each floor, compared at their best of the eight turns and mirrors.
 	var rng := RandomNumberGenerator.new()
@@ -165,6 +177,31 @@ func _initialize() -> void:
 		var two: Dictionary = rasters[rng.randi_range(0, rasters.size() - 1)]
 		if one.floor == two.floor: continue
 		apart.append(best_overlap(one.raster, two.raster))
+	# The same place on two floors: dark or not, kept or not, and vary() (the
+	# paintings, the furniture along the walls) there, one floor after the
+	# next.
+	var dark_alike: Array = []
+	var kept_alike: Array = []
+	var looks_alike: Array = []
+	for index in sampled.size() - 1:
+		for planta in 3:
+			dark_alike.append(correlation(sampled[index][planta].dark, sampled[index + 1][planta].dark))
+			kept_alike.append(correlation(sampled[index][planta].kept, sampled[index + 1][planta].kept))
+	var one = GEOMETRY.new()
+	var two = GEOMETRY.new()
+	for index in 200:
+		one.looks = GEOMETRY.looks_of(index)
+		two.looks = GEOMETRY.looks_of(index + 1)
+		var first: Array = []
+		var second: Array = []
+		for x in range(-15, 16):
+			for z in range(-15, 16):
+				var at := Vector3(x * SAMPLE, 0.0, z * SAMPLE)
+				first.append(one.vary(at, 13))
+				second.append(two.vary(at, 13))
+		looks_alike.append(correlation(first, second))
+	one.free()
+	two.free()
 	print("pisos ", floors, " · plantas ", plantas, " · por qué se volvió a dibujar algo: ", generator.stats)
 	judge("habitaciones por planta, mínimo", rooms_all.min(), rooms_all.min() >= 81, ">= 81")
 	judge("habitaciones por planta, máximo", rooms_all.max(), rooms_all.max() <= 99, "<= 99")
@@ -200,6 +237,10 @@ func _initialize() -> void:
 	for plan in ["spine", "twin", "ring", "comb", "blocks", "arms", "warren", "rot"]:
 		var used: float = float(plans.get(plan, 0)) / plantas
 		judge("uso del plano %s" % plan, snappedf(used, 0.001), used >= 0.08 and used <= 0.2, "8–20 %")
+	var mean := func(values: Array) -> float: return values.reduce(func(a, b): return a + b, 0.0) / maxf(1.0, values.size())
+	judge("salas oscuras en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(dark_alike), 0.001), absf(mean.call(dark_alike)) <= 0.05, "<= 0,05")
+	judge("estado de las salas en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(kept_alike), 0.001), absf(mean.call(kept_alike)) <= 0.05, "<= 0,05")
+	judge("vary() en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(looks_alike), 0.001), absf(mean.call(looks_alike)) <= 0.05, "<= 0,05")
 	judge("generación, mediana (ms)", snappedf(quantile(times, 0.5), 0.1), true, "informativo")
 	judge("generación, p99 (ms)", snappedf(quantile(times, 0.99), 0.1), quantile(times, 0.99) <= 250.0, "<= 250 ms")
 	var file := FileAccess.open("res://evidence/map_metrics.json", FileAccess.WRITE)
@@ -208,6 +249,44 @@ func _initialize() -> void:
 		file.close()
 	print("MAP_METRICS ", "PASS" if failed == 0 else "FAIL", " · ", results.size() - failed, "/", results.size())
 	quit(0 if failed == 0 else 1)
+
+## A floor at the sample points of each planta: {dark, kept}, each a list
+## with -1 where the floor has no room.
+static func samples(data: Dictionary) -> Array:
+	var out: Array = []
+	var steps := int(SPREAD / SAMPLE)
+	for planta in 3:
+		var dark: Array = []
+		var kept: Array = []
+		for x in range(-steps, steps + 1):
+			for z in range(-steps, steps + 1):
+				var room := FLOOR.room_at(data.rooms, Vector3(x * SAMPLE, FLOOR.planta_y(planta) + 0.5, z * SAMPLE))
+				dark.append(-1 if room.is_empty() else (1 if bool(room.dark) else 0))
+				kept.append(-1 if room.is_empty() else int(room.kept))
+		out.append({"dark": dark, "kept": kept})
+	return out
+
+## Pearson's correlation of two lists over the places both have something
+## (-1 is nothing); 0 when either is the same everywhere.
+static func correlation(one: Array, two: Array) -> float:
+	var xs: Array = []
+	var ys: Array = []
+	for index in one.size():
+		if float(one[index]) < 0.0 or float(two[index]) < 0.0: continue
+		xs.append(float(one[index]))
+		ys.append(float(two[index]))
+	if xs.size() < 2: return 0.0
+	var mx: float = xs.reduce(func(a, b): return a + b, 0.0) / xs.size()
+	var my: float = ys.reduce(func(a, b): return a + b, 0.0) / ys.size()
+	var sxy := 0.0
+	var sxx := 0.0
+	var syy := 0.0
+	for index in xs.size():
+		sxy += (xs[index] - mx) * (ys[index] - my)
+		sxx += (xs[index] - mx) * (xs[index] - mx)
+		syy += (ys[index] - my) * (ys[index] - my)
+	if sxx <= 0.0 or syy <= 0.0: return 0.0
+	return sxy / sqrt(sxx * syy)
 
 ## The plan's footprint: every cell of the grid, whatever the plantas use.
 static func plan_box(data: Dictionary) -> Rect2:

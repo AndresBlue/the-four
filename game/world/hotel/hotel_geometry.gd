@@ -56,19 +56,8 @@ var flicker_clock := 0.0
 var beacons: Array = []
 ## The floor has lost its power (the blackout of the wing being played).
 var dark := false
-## Share of eligible rooms (private rooms, lounges, corridors; never the
-## reception, service rooms, halls or the refuge) whose lamps are all out.
-## Darkness spreads: an eligible room beside a dark one goes dark as well with
-## NEIGHBOUR_DARK, so dark rooms come in stretches where the torch is the only
-## light, not as isolated black boxes.
-## A corridor is the last thing a hotel stops lighting, and it is what makes
-## the floor readable at all, so it goes dark far less often than a room and
-## catches it from a neighbour far less easily.
-const DARK_SHARE := 0.4
-const NEIGHBOUR_DARK := 0.55
-const DARK_CORRIDOR := 0.18
-const NEIGHBOUR_CORRIDOR := 0.25
-## Room ids whose lamps are out, decided once per floor in build().
+## Room ids whose lamps are out: the floor's `dark` rooms (map_generator.
+## light_rooms()), read once in build().
 var dark_ids := {}
 ## Set while a dark room's furniture is built: its lamps stay out.
 var building_dark := false
@@ -202,9 +191,18 @@ static func scan_maps(set_name: String, small: bool) -> Dictionary:
 		for kind in ["albedo", "normal", "orm"]: scans[key][kind] = load(folder + kind + suffix + ".jpg")
 	return scans[key]
 
-# Deterministic per-position variation; never consumes generator randomness.
-static func vary(value: Vector3, salt := 0) -> float:
-	return fposmod(sin(value.x * 12.9898 + value.z * 78.233 + value.y * 37.719 + salt * 11.31) * 43758.5453, 1.0)
+## The floor's share of vary(), from its seed.
+static func looks_of(run_seed: int) -> float:
+	return float(posmod(hash([run_seed, "looks"]), 100003)) * 0.0137
+
+# Deterministic variation for what is only looked at (paintings, what stands
+# along the walls, a flickering batten): from a position and the floor's seed
+# (looks, set in build()), so every machine dresses a room the same and the
+# same corner of two floors is not dressed alike. It never consumes the
+# generator's randomness. Staged sets (intro, title) keep looks at 0.
+var looks := 0.0
+func vary(value: Vector3, salt := 0) -> float:
+	return fposmod(sin(value.x * 12.9898 + value.z * 78.233 + value.y * 37.719 + salt * 11.31 + looks) * 43758.5453, 1.0)
 
 ## Nodes whose whole subtree is batched together (a room: its walls and its
 ## furniture). One MultiMesh per material for the room instead of one per
@@ -595,6 +593,7 @@ var open_pairs := {}
 
 func build(data: Dictionary) -> void:
 	manifest = data
+	looks = looks_of(int(data.get("seed", 0)))
 	open_pairs.clear()
 	for pair in data.get("merged", []): open_pairs[Vector2i(int(pair[0]), int(pair[1]))] = true
 	decide_dark(data)
@@ -626,8 +625,9 @@ func build(data: Dictionary) -> void:
 		# The last door of the floor, the one with the lock, is built at the
 		# end so the gates keep the order of their stages.
 		if gate_stage(data, int(a.id), int(b.id)) == int(data.get("wings", 3)): continue
+		var spec: Dictionary = data.get("doors", {}).get("%d:%d" % [int(a.id), int(b.id)], {})
 		var center := FLOOR.portal_between(a, b)
-		var yaw := PI / 2 if a.x != b.x else 0.0
+		var yaw := FLOOR.leaf_yaw(a, b, spec)
 		# In each room's bounce stand-in the doorway is shut (bounce_light.gd):
 		# through a hole in it the voxels there took the next room's lamps
 		# and lit the leaf's face on this side, door closed.
@@ -642,6 +642,7 @@ func build(data: Dictionary) -> void:
 		door.position = center + Basis(Vector3.UP, yaw) * Vector3(-half, 0, 0)
 		door.rotation.y = yaw
 		door.closed_rotation = yaw
+		door.open_turn = DOOR.OPEN_TURN * FLOOR.leaf_turn(a, b, spec, center, yaw)
 		door.doorway = center
 		add_child(door)
 		var leaf := MeshInstance3D.new()
@@ -692,7 +693,7 @@ func build(data: Dictionary) -> void:
 			door.gate_stage = stage
 			door.locked = true
 			gates.append(door)
-		elif int(a.id + b.id) % 3 != 0: door.open_immediately()
+		elif bool(spec.get("open", false)): door.open_immediately()
 		doors.append(door)
 	# Last, so the gates stay in the order of their stages and the doors keep
 	# the indices the network knows them by.
@@ -702,6 +703,10 @@ func build(data: Dictionary) -> void:
 	flush()
 	build_navigation()
 	build_dust()
+
+## How far from a doorway's middle the middle of a painting keeps: its lamps
+## (0.98 m either side) would be on the casing.
+const PAINTING_CLEAR := 2.2
 
 func build_room(node: Node3D, room: Dictionary) -> void:
 	var height: float = room.height
@@ -729,22 +734,32 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		node.add_child(boundary)
 		# Local face pointing into this room; a neighbour may have another height.
 		var inner: int = -(direction.x + direction.y)
+		# Where the doorway is along the wall, in the wall's own x: on a wall
+		# between cells side by side in x (turned a quarter) that runs the
+		# other way to the world's z (FLOOR.door_offset()).
+		var door_at := 0.0
 		if connected:
+			door_at = FLOOR.door_offset(room, neighbor) * (-1.0 if direction.x != 0 else 1.0)
 			for side in [-1, 1]:
-				wall_run(boundary, side * (length + FLOOR.PORTAL) * 0.25, (length - FLOOR.PORTAL) * 0.5, height, inner)
+				# From the jamb on that side to the end of the wall.
+				var run: float = length * 0.5 - side * door_at - FLOOR.PORTAL * 0.5
+				if run > 0.01: wall_run(boundary, door_at + side * (FLOOR.PORTAL * 0.5 + run * 0.5), run, height, inner)
 			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
-			wall_core(boundary, Vector3(0, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), inner)
-			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
+			wall_core(boundary, Vector3(door_at, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), inner)
+			box(boundary, Vector3(door_at, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
 		# The end of a corridor, three or four metres across, has no room for
 		# a painting either side of its middle, nor for the lamps beside one.
 		if length < 9.0: continue
 		for side in [-1, 1]:
-			# Framed hotel art on this room's face of the wall (inner); each canvas
-			# composition varies with its position. It used to hang on local -Z,
-			# which on west and north walls is the next room's face, on top of that
-			# room's own prints (two frames z-fighting, this room's wall bare).
+			# Nor on the side a doorway was moved to.
+			if connected and absf(side * 3.5 - door_at) < PAINTING_CLEAR: continue
+			# Framed hotel art on this room's face of the wall (inner); vary()
+			# picks each canvas, by its position and the floor. It used to hang
+			# on local -Z, which on west and north walls is the next room's
+			# face, on top of that room's own prints (two frames z-fighting,
+			# this room's wall bare).
 			hang_painting(boundary, Vector3(side * 3.5, 2.02, 0), inner, int(room.variant) % 2 == 0)
 			# Public spaces: a pair of cloth-shaded wall lamps beside each print.
 			if room.type in SCONCE_ROOMS and length > 9.0:
@@ -923,8 +938,16 @@ func build_exit_door(data: Dictionary) -> void:
 	# The cell behind that door is the lift lobby, and its doorway is the wall
 	# the two of them share.
 	var beyond := int(last.get("beyond", -1))
-	if beyond >= 0: centre = FLOOR.portal_between(room, data.rooms[beyond])
 	var yaw := PI / 2 if direction.x != 0 else 0.0
+	var turn: float = DOOR.OPEN_TURN
+	if beyond >= 0:
+		centre = FLOOR.portal_between(room, data.rooms[beyond])
+		# Hung like any other door (build()): it swings into the lobby.
+		var a: Dictionary = data.rooms[mini(int(room.id), beyond)]
+		var b: Dictionary = data.rooms[maxi(int(room.id), beyond)]
+		var spec: Dictionary = data.get("doors", {}).get("%d:%d" % [int(a.id), int(b.id)], {})
+		yaw = FLOOR.leaf_yaw(a, b, spec)
+		turn = DOOR.OPEN_TURN * FLOOR.leaf_turn(a, b, spec, centre, yaw)
 	var door = DOOR.new()
 	door.name = "ExitDoor"
 	door.collision_layer = 8
@@ -933,6 +956,7 @@ func build_exit_door(data: Dictionary) -> void:
 	door.position = centre + Basis(Vector3.UP, yaw) * Vector3(-half, 0, 0)
 	door.rotation.y = yaw
 	door.closed_rotation = yaw
+	door.open_turn = turn
 	door.doorway = centre
 	door.locked = true
 	door.gate_stage = int(last.stage)
@@ -1517,23 +1541,12 @@ func build_navigation() -> void:
 func dark_room(room: Dictionary) -> bool:
 	return dark_ids.has(int(room.id))
 
-static func may_be_dark(room: Dictionary) -> bool:
-	return not (int(room.type) in [0, 4, 7, 8, 9, 19, FLOOR.VOID] or int(room.get("hall", -1)) >= 0)
-
-## Which rooms are dark: a share of the eligible ones, then their eligible
-## neighbours with NEIGHBOUR_DARK. Deterministic from positions, like the
-## rest of the floor, so every machine agrees.
+## Which rooms are dark: the ones the floor says (it draws them by seed, so
+## every machine has the same).
 func decide_dark(data: Dictionary) -> void:
 	dark_ids.clear()
 	for room in data.rooms:
-		var share: float = DARK_CORRIDOR if bool(room.get("corridor", false)) else DARK_SHARE
-		if may_be_dark(room) and vary(FLOOR.position_of(room), 7) < share: dark_ids[int(room.id)] = true
-	var seeds: Array = dark_ids.keys()
-	for id in seeds:
-		for neighbour in data.adjacency[id]:
-			var other: Dictionary = data.rooms[int(neighbour)]
-			var catches: float = NEIGHBOUR_CORRIDOR if bool(other.get("corridor", false)) else NEIGHBOUR_DARK
-			if may_be_dark(other) and vary(FLOOR.position_of(other), 13) < catches: dark_ids[int(neighbour)] = true
+		if bool(room.get("dark", false)): dark_ids[int(room.id)] = true
 
 func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array], center: Vector3, low: Vector2, high: Vector2) -> void:
 	var first := vertices.size()

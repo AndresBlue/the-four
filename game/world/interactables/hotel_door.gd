@@ -18,6 +18,11 @@ var moving := false
 var locked := false
 var gate_stage := 0
 var closed_rotation := 0.0
+## Which way this leaf swings open: OPEN_TURN one way or the other, so that
+## it opens into the room the floor says (hotel_geometry.build(), from the
+## manifest's doors). Into a room from its corridor, into the lift lobby from
+## the refuge, flat against the wall across a corridor.
+var open_turn := OPEN_TURN
 var doorway := Vector3.ZERO
 var motion: Tween
 
@@ -58,7 +63,7 @@ func swing_to(target: bool, slow: bool, forceful: bool) -> void:
 	swung.emit(target, slow, forceful)
 	if target: sound_requested.emit(true, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
 	motion = create_tween()
-	motion.tween_property(self, "rotation:y", closed_rotation + (OPEN_TURN if target else 0.0), 1.5 if slow else 0.32 if forceful else 0.55).set_trans(Tween.TRANS_QUAD if forceful else Tween.TRANS_SINE)
+	motion.tween_property(self, "rotation:y", closed_rotation + (open_turn if target else 0.0), 1.5 if slow else 0.32 if forceful else 0.55).set_trans(Tween.TRANS_QUAD if forceful else Tween.TRANS_SINE)
 	# It always ends where it was sent: whoever stands in it is let out by
 	# _physics_process, never by sending the door back. (A door that bounced
 	# open again also bounced differently on each machine, since each one
@@ -73,7 +78,7 @@ func swing_to(target: bool, slow: bool, forceful: bool) -> void:
 ## Snaps to a state decided elsewhere (the host's door after its swing).
 func set_state(open: bool) -> void:
 	if is_instance_valid(motion): motion.kill()
-	rotation.y = closed_rotation + (OPEN_TURN if open else 0.0)
+	rotation.y = closed_rotation + (open_turn if open else 0.0)
 	opened = open
 	moving = false
 	# Solid again once nobody stands in the leaf (see _physics_process).
@@ -104,12 +109,12 @@ func along() -> Vector3: return Basis(Vector3.UP, closed_rotation) * Vector3.RIG
 ## to its free end, at the height of the doorway. What a route has to go round.
 func leaf_line(open := true) -> Array:
 	var hinge := Vector3(global_position.x, doorway.y, global_position.z)
-	var turn: float = closed_rotation + OPEN_TURN if open else rotation.y
+	var turn: float = closed_rotation + open_turn if open else rotation.y
 	return [hinge, hinge + Basis(Vector3.UP, turn) * Vector3.RIGHT * FLOOR.LEAF_WIDTH]
 
 func open_immediately() -> void:
 	if is_instance_valid(motion): motion.kill()
-	rotation.y = closed_rotation + OPEN_TURN
+	rotation.y = closed_rotation + open_turn
 	opened = true
 	moving = false
 	# Wherever it was left, it turns solid only once it holds nobody.

@@ -2,6 +2,7 @@ extends SceneTree
 const GEN := preload("res://game/world/generation/map_generator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var checks: Array = []
 var failed := 0
 
@@ -34,14 +35,21 @@ static func rooms_on(data: Dictionary, planta: int) -> int:
 ## wall or a shut door.
 func clearest_heading(scene) -> float:
 	var space: PhysicsDirectSpaceState3D = scene.get_world_3d().direct_space_state
-	var from: Vector3 = scene.player.global_position + Vector3(0, 1.0, 0)
+	# A body, not a ray: a ray through a doorway at a slant clears the jamb
+	# and the open leaf beside it (128: solid to survivors) that a body hits.
+	var body := CapsuleShape3D.new()
+	body.radius = 0.4
+	body.height = 1.6
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = body
+	query.collision_mask = 1 | 8 | 128
+	query.transform = Transform3D(Basis.IDENTITY, scene.player.global_position + Vector3(0, 0.95, 0))
 	var best := 0.0
 	var best_length := -1.0
 	for step in 16:
 		var yaw := TAU * step / 16.0
-		var query := PhysicsRayQueryParameters3D.create(from, from + Basis(Vector3.UP, yaw) * Vector3(0, 0, -30.0), 1 | 8)
-		var hit := space.intersect_ray(query)
-		var length: float = 30.0 if hit.is_empty() else from.distance_to(hit.position)
+		query.motion = Basis(Vector3.UP, yaw) * Vector3(0, 0, -30.0)
+		var length: float = space.cast_motion(query)[0] * 30.0
 		if length > best_length:
 			best_length = length
 			best = yaw
@@ -62,6 +70,14 @@ func run() -> void:
 	var wall_solved: Array = []
 	var sealed_landing: Array = []
 	var misaligned: Array = []
+	# What 4.C draws by seed: doors along their walls, dark rooms by planta,
+	# dark corridors now and then.
+	var off_middle := 0
+	var room_doors := 0
+	var dark_by_planta := [0, 0, 0]
+	var can_be_dark := [0, 0, 0]
+	var dark_corridors := 0
+	var corridors := 0
 	for seed_value in SEEDS:
 		var data := generator.generate(seed_value)
 		if data.fallback: fallback_count += 1
@@ -83,6 +99,18 @@ func run() -> void:
 				var below: Dictionary = data.rooms[arrive]
 				if absf(float(above.px) - float(below.px)) > 0.001 or absf(float(above.pz) - float(below.pz)) > 0.001 or int(below.wing) != int(above.wing) + 1: misaligned.append(seed_value)
 		walked.append(rooms_walked)
+		for key in data.doors:
+			var pair: PackedStringArray = String(key).split(":")
+			if bool(data.rooms[int(pair[0])].corridor) and bool(data.rooms[int(pair[1])].corridor): continue
+			room_doors += 1
+			if absf(float(data.doors[key].offset)) > 0.1: off_middle += 1
+		for room in data.rooms:
+			if bool(room.get("corridor", false)):
+				corridors += 1
+				if bool(room.dark): dark_corridors += 1
+			elif FLOOR.may_be_dark(room):
+				can_be_dark[int(room.wing)] += 1
+				if bool(room.dark): dark_by_planta[int(room.wing)] += 1
 		# Every refuge is entered by one door and no other, with the locked
 		# door to its lift lobby besides, and that lobby is a dead end:
 		# nothing else opens on to it. And none of the three is found by a
@@ -126,6 +154,10 @@ func run() -> void:
 	check("Detrás de la puerta de cada refugio solo está su ascensor, sin otra entrada", sealed_landing.is_empty())
 	check("Ir pegado a una pared no encuentra ningún refugio", wall_solved.is_empty())
 	check("Cada ascensor baja al vestíbulo que tiene justo debajo", misaligned.is_empty())
+	check("Más de la mitad de las puertas no están en el centro de su pared", float(off_middle) / room_doors > 0.5)
+	var dark_share: Array = [0, 1, 2].map(func(planta): return float(dark_by_planta[planta]) / can_be_dark[planta])
+	check("Cuanto más abajo, más salas a oscuras (entre el 20 y el 55 %%): %s" % str(dark_share.map(func(share): return snappedf(share, 0.01))), dark_share[0] < dark_share[1] and dark_share[1] < dark_share[2] and dark_share[0] > 0.2 and dark_share[2] < 0.55)
+	check("Un pasillo a oscuras es un suceso (menos del 10 % de los tramos)", float(dark_corridors) / corridors < 0.1)
 	# The standby floor, drawn only if every try fails. It never is here,
 	# which is exactly why it has to be held to its promises: that it is a
 	# floor like the others to walk, whatever else it gives up.
@@ -155,7 +187,6 @@ func run() -> void:
 	check("Se inicia un hotel grande y libre de objetivos", scene.manifest.rooms.size() >= 100 and scene.session.state == scene.session.State.PLAYING)
 	check("Validación física de todos los pasos y coberturas", scene.physical_errors.is_empty())
 	# Each face of a door shows the number of the room behind it.
-	var FLOOR := preload("res://game/world/generation/floor_definition.gd")
 	var numbers_ok := true
 	var plaques_ok := true
 	for each in scene.hotel.doors:

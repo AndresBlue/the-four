@@ -28,6 +28,24 @@ func route(data: Dictionary) -> Array[int]:
 	path.reverse()
 	return path
 
+## Where to walk to follow a route of rooms: into each through its doorway
+## (a metre short of it, a metre past it) and on to its middle. A door stands
+## anywhere along its wall, and a straight line between the middles of two
+## rooms ran into the wall beside it.
+static func waypoints(data: Dictionary, path: Array) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for index in path.size():
+		var room: Dictionary = data.rooms[int(path[index])]
+		if index > 0:
+			var before: Dictionary = data.rooms[int(path[index - 1])]
+			var doorway := FLOOR.portal_between(before, room)
+			var through := FLOOR.position_of(room) - FLOOR.position_of(before)
+			through = Vector3(through.x, 0, through.z).normalized()
+			points.append(doorway - through)
+			points.append(doorway + through)
+		points.append(FLOOR.position_of(room))
+	return points
+
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -48,9 +66,8 @@ func run() -> void:
 	var path := route(level.manifest)
 	var screenshot_count := 0
 	var timings: Array[float] = []
-	for id in path:
-		var room: Dictionary = level.manifest.rooms[id]
-		var destination := FLOOR.position_of(room)
+	for destination in waypoints(level.manifest, path):
+		var id: int = int(FLOOR.room_at(level.manifest.rooms, destination).get("id", -1))
 		var frames := 0
 		while Vector2(level.player.position.x - destination.x, level.player.position.z - destination.z).length() > 0.22 and frames < 1000:
 			var direction: Vector3 = destination - level.player.position
@@ -79,7 +96,7 @@ func run() -> void:
 				if door.doorway.distance_to(level.player.position) < 4: print("DOOR ", door.name, " open=", door.opened, " moving=", door.moving, " angle=", door.rotation.y)
 			await capture_image("stuck")
 			break
-		if screenshot_count < 3 and id != 0:
+		if screenshot_count < 3 and id != int(level.manifest.start) and destination.is_equal_approx(FLOOR.position_of(level.manifest.rooms[id])):
 			level.player.rotation.y += 0.6
 			await capture_image("room_%d" % screenshot_count)
 			screenshot_count += 1

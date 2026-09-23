@@ -6,7 +6,7 @@ montado en [la guía de desarrollo](DEVELOPMENT.md), y el registro de cómo se
 llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
-Estado: juego **0.5**, generador de mapas **v6** (tres plantas enteras), protocolo de red
+Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protocolo de red
 **the-four-net-9**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
@@ -90,23 +90,16 @@ Lo que ve el cazador, también (en [VISION_LOCUST.md](VISION_LOCUST.md)): la
 ruta azul al ascensor, las teles amarillas, la Q y los enfriamientos en
 pantalla. Queda jugarlo (apartado 1).
 
-### Un piso de tres plantas (generadores 5 y 6)
+### Un piso de tres plantas (generadores 5 a 7)
 
-Las tres plantas apiladas y el generador de pasillos ya están (en la guía de
-desarrollo y en el diseño): cada planta es un hotel entero sobre su propia
-rejilla, con uno de ocho planos de pasillos, entre 81 y 99 habitaciones y un
-refugio que no se repite, y `tools/dev/map_metrics.gd` comprueba sus 36
-umbrales sobre mil pisos. Lo que falta es que lo que hay dentro tampoco se
-repita —hoy muchas cosas se deciden por la posición y no por la semilla— y que
-un piso tan grande pese lo que debe:
+Las tres plantas apiladas, el generador de pasillos y lo que se sortea dentro
+ya están (en la guía de desarrollo y en el diseño): cada planta es un hotel
+entero sobre su propia rejilla, con uno de ocho planos de pasillos, entre 81 y
+99 habitaciones y un refugio que no se repite; y salas oscuras, estado,
+puertas, armarios y muebles salen de la semilla, no del sitio.
+`tools/dev/map_metrics.gd` comprueba sus 39 umbrales sobre mil pisos. Falta
+que un piso tan grande pese lo que debe:
 
-- [ ] **Variedad por semilla:** salas oscuras, estado, puertas (abiertas,
-  bisagra, giro y sitio en la pared), armarios y muebles, explícitos en el
-  manifiesto para que la huella de red los cubra. Con dos cosas que han
-  salido de las plantas enteras: un pasillo a oscuras tiene que volver a ser
-  un suceso (hoy el contagio de las salas apaga uno de cada cuatro tramos), y
-  las puertas cortafuegos tienen que abrir contra la pared del pasillo (hoy
-  su hoja queda de pie en medio y deja detrás un bolsillo de metro y medio).
 - [ ] **Rendimiento con plantas enteras:** montar un piso ya tarda de 5,8 a
   6,8 s sin ventana (el tope era 8), pero el hotel tiene de 51 000 a 56 000
   nodos y el tope era 40 000; bajarlos, y medir memoria y FPS con ventana y
@@ -181,6 +174,11 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **La vista de la criatura:** término base, separación de los frentes,
   legibilidad en salones grandes (ver [VISION_LOCUST.md](VISION_LOCUST.md)) y
   el peso de cada tipo de ruido en la imagen, con `./tools/godot.ps1 rehearsal`.
+- [ ] **Lo que se sortea dentro de las plantas:** si las puertas desplazadas y
+  sus giros se leen como un hotel, si seis de cada diez abiertas al empezar
+  son muchas o pocas, si la tercera planta (casi la mitad de las salas a
+  oscuras) pesa demasiado, y si un pasillo apagado de vez en cuando asusta
+  como suceso.
 - [ ] **La oscuridad nueva:** sin luz ambiente, los rincones en sombra de las
   salas iluminadas también son negros. Si resulta excesivo, no conviene subir
   `ambient_light_energy` (aclara también las salas apagadas): mejor dar relleno

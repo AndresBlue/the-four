@@ -179,10 +179,14 @@ func run() -> void:
 	portal.open_immediately()
 	var across: Vector3 = Basis(Vector3.UP, portal.closed_rotation) * Vector3(0, 0, 1)
 	var sideways: Vector3 = across.cross(Vector3.UP).normalized()
-	level.player.position = portal.doorway - across * 3.0 + sideways * 3.5 + Vector3(0, 0.04, 0)
+	# Aside of the doorway towards the middle of its wall: a door stands up to
+	# 2 m from it, and further out, at the corners, is the furniture.
+	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, portal.doorway - across)
+	if (portal.doorway - FLOOR.position_of(room)).dot(sideways) > 0.0: sideways = -sideways
+	level.player.position = portal.doorway - across * 2.5 + sideways * 2.0 + Vector3(0, 0.04, 0)
 	await physics_frame
 	# Same side as the listener: the straight line meets the wall, not the doorway.
-	var hidden_point: Vector3 = portal.doorway + across * 3.0 + sideways * 3.5 + Vector3.UP * 1.4
+	var hidden_point: Vector3 = portal.doorway + across * 2.5 + sideways * 2.0 + Vector3.UP * 1.4
 	var heard: Dictionary = audio.route_source(hidden_point)
 	check("Walls never pass sound: it arrives from the opening", heard.audible and heard.echo and heard.position.distance_to(portal.doorway + Vector3.UP * 1.5) < 2.5 and heard.gain < -3.0)
 	var visible_point: Vector3 = level.player.global_position - across * 1.5 + Vector3(0, 1.4, 0)

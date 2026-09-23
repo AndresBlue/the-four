@@ -83,9 +83,8 @@ func walk(level) -> bool:
 	var path: Array[int] = [int(level.manifest.exit)]
 	while parents[path.back()] != -1: path.append(parents[path.back()])
 	path.reverse()
-	for id in path:
-		var room: Dictionary = level.manifest.rooms[id]
-		var destination := FLOOR.position_of(room)
+	# Through each doorway, wherever along its wall it is.
+	for destination in WALK.waypoints(level.manifest, path):
 		var frames := 0
 		while Vector2(level.player.position.x - destination.x, level.player.position.z - destination.z).length() > 0.22 and frames < 700:
 			var direction: Vector3 = destination - level.player.position

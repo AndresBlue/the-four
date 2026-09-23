@@ -1,9 +1,11 @@
 extends RefCounted
 
 ## 5 stacked the three wings of before as plantas; 6 makes each planta a
-## hotel of its own (map_generator.gd). A checkpoint or a record of another
+## hotel of its own (map_generator.gd); 7 draws what is in it by seed: where
+## each door stands in its wall and which way it swings, the wardrobes, the
+## dark rooms and how kept each one is. A checkpoint or a record of another
 ## version is refused rather than rebuilt as a different floor.
-const VERSION := 6
+const VERSION := 7
 ## A floor is three plantas, one per stage, stacked and going down: the first
 ## at 0 and each next one PITCH below the one before. Enough for the tallest
 ## ceiling (the 4.8 m halls) and both slabs. What joins them is the lift, and
@@ -187,11 +189,18 @@ static func entry_of(manifest: Dictionary, planta: int) -> int:
 	return int(entries[planta]) if planta < entries.size() else int(manifest.get("start", 0))
 
 static func hiding_count(room: Dictionary) -> int:
+	if room.has("hides"): return room.hides.size()
 	if int(room.get("hall", -1)) >= 0: return 0
 	return WARDROBES.get(int(room.type), 0)
 
-## Wardrobe spots against the walls; with two, they go on opposite walls.
+## Wardrobe spots against the walls; with two, they go on opposite walls. A
+## floor that says where its wardrobes are (each room's `hides`, drawn clear
+## of every doorway by map_generator.place_hides()) is taken at its word.
 static func hiding_positions(room: Dictionary) -> Array[Vector3]:
+	if room.has("hides"):
+		var told: Array[Vector3] = []
+		for spot in room.hides: told.append(Vector3(float(spot[0]), 0.0, float(spot[1])))
+		return told
 	var span := size_of(room) * 0.5 - Vector2.ONE * 0.8
 	var open: Array = room.get("open_sides", [])
 	var candidates: Array[Vector3] = []
@@ -217,12 +226,66 @@ static func hiding_yaw(spot: Vector3) -> float:
 static func hiding_approach(spot: Vector3) -> Vector3:
 	return spot + Basis(Vector3.UP, hiding_yaw(spot)) * Vector3(0, 0, 1.1)
 
+## The middle of the doorway between two cells side by side: on the wall they
+## share, as far along it from its middle as that door stands (door_offset).
 static func portal_between(a: Dictionary, b: Dictionary) -> Vector3:
 	var point := position_of(a)
 	var size := size_of(a)
-	if a.x != b.x: point.x += sign(b.x - a.x) * size.x * 0.5
-	else: point.z += sign(b.z - a.z) * size.y * 0.5
+	var offset := door_offset(a, int(b.id))
+	if a.x != b.x:
+		point.x += sign(b.x - a.x) * size.x * 0.5
+		point.z += offset
+	else:
+		point.z += sign(b.z - a.z) * size.y * 0.5
+		point.x += offset
 	return point
+
+## How far the door to a neighbour stands from the middle of the wall they
+## share, in metres along the world axis that wall runs on: +z for a wall
+## between cells side by side in x, +x for one between cells one behind the
+## other in z. The same number seen from either room; 0 for a floor that does
+## not say.
+static func door_offset(room: Dictionary, other: int) -> float:
+	for entry in room.get("doors", []):
+		if int(entry[0]) == other: return float(entry[1])
+	return 0.0
+
+## A room's doorways: the wall each is in ("west", "east", "north" or
+## "south"), where along it (`along`, as door_offset gives it: z on the west
+## and east walls, x on the north and south ones) and the room behind it.
+static func doorways(room: Dictionary) -> Array:
+	var out: Array = []
+	for entry in room.get("doors", []):
+		var other := int(entry[0])
+		var step := other - int(room.id)
+		# Beside it in its row the ids are one apart; in the next row, a
+		# whole row of the grid.
+		var wall := "east" if step == 1 else "west" if step == -1 else "south" if step > 0 else "north"
+		out.append({"wall": wall, "along": float(entry[1]), "other": other})
+	return out
+
+## A shut door leaf's yaw, as the floor hangs it (the manifest's `doors`,
+## by "a:b"). A leaf runs from its hinge along its own +X, so the jamb it hangs
+## from (hinge: +1 the one at +z on a wall between cells side by side in x, at
+## +x on the others) decides which of the two ways along the wall it faces.
+static func leaf_yaw(a: Dictionary, b: Dictionary, spec: Dictionary) -> float:
+	var hinge := int(spec.get("hinge", 1))
+	if int(a.x) != int(b.x): return PI / 2 if hinge > 0 else -PI / 2
+	return PI if hinge > 0 else 0.0
+
+## Which way (+1 or -1) a leaf hung at `yaw` in the doorway `centre` turns to
+## open, so that it swings into the room the floor says (swing: +1 the pair's
+## second room, -1 its first). Turned the positive way, a leaf goes to -Z of
+## itself shut (hotel_door.gd: OPEN_TURN times this).
+static func leaf_turn(a: Dictionary, b: Dictionary, spec: Dictionary, centre: Vector3, yaw: float) -> float:
+	var into: Dictionary = b if int(spec.get("swing", 1)) > 0 else a
+	return -signf((position_of(into) - centre).dot(Basis(Vector3.UP, yaw).z))
+
+## Whether a room can have its lamps out: never the reception, the baths,
+## laundry and service rooms, the lift lobbies, a salon of several modules or
+## the refuge.
+static func may_be_dark(room: Dictionary) -> bool:
+	return not (int(room.type) in [0, 4, 7, 8, 9, 10, 19, VOID] or int(room.get("hall", -1)) >= 0)
 
 ## A walkable route, or nothing between two plantas: they are joined only by
 ## the lift, and a route that stopped at the nearest point under the target

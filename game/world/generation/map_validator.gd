@@ -9,6 +9,12 @@ const ROOMS_MOST := 99
 const OPEN_RUN := 45.0
 const CYCLES := 6
 const TV_ROOMS := 8
+## A doorway keeps this much wall between it and the end of its wall.
+const JAMB := 0.15
+## A fire door's hinge jamb is at most this far from the side wall.
+const FIRE_JAMB := 0.3
+## A wardrobe keeps this far from the middle of a doorway in its wall.
+const HIDE_CLEAR := 1.75
 
 func validate(data: Dictionary) -> Array[String]:
 	var errors: Array[String] = []
@@ -44,6 +50,60 @@ func validate(data: Dictionary) -> Array[String]:
 	errors.append_array(plantas(data))
 	errors.append_array(open_runs(data))
 	errors.append_array(lifts(data))
+	errors.append_array(fittings(data))
+	return errors
+
+## The doors as the floor hangs them (map_generator.hang_doors()): one for
+## every connection with a wall in it, inside that wall and at the same place
+## seen from either room; a fire door by a side wall and hung from the jamb
+## there; from a corridor, opening into the room; a refuge's in the middle of
+## its wall, shut, opening into the lobby. And what is drawn per room: its
+## wardrobes on closed walls clear of every doorway, its lamp out only where
+## a lamp can be, and how kept it is.
+func fittings(data: Dictionary) -> Array[String]:
+	var errors: Array[String] = []
+	var rooms: Array = data.rooms
+	var specs: Dictionary = data.get("doors", {})
+	var merged := {}
+	for pair in data.get("merged", []): merged["%d:%d" % [int(pair[0]), int(pair[1])]] = true
+	var lobbies := {}
+	for gate in data.get("gates", []): lobbies["%d:%d" % [mini(int(gate.room), int(gate.beyond)), maxi(int(gate.room), int(gate.beyond))]] = int(gate.beyond)
+	var walled := 0
+	for edge in data.edges:
+		var key := "%d:%d" % [int(edge[0]), int(edge[1])]
+		if merged.has(key): continue
+		walled += 1
+		if not specs.has(key):
+			errors.append("door_missing_%d" % int(edge[0]))
+			continue
+		var a: Dictionary = rooms[edge[0]]
+		var b: Dictionary = rooms[edge[1]]
+		var spec: Dictionary = specs[key]
+		var offset := float(spec.offset)
+		var wall: float = float(a.span_z) if int(a.x) != int(b.x) else float(a.span_x)
+		if absf(offset) + FLOOR.PORTAL * 0.5 + JAMB > wall * 0.5 + 0.001: errors.append("door_wall_%d" % int(a.id))
+		if absf(FLOOR.door_offset(a, int(b.id)) - offset) > 0.001 or absf(FLOOR.door_offset(b, int(a.id)) - offset) > 0.001: errors.append("door_sides_%d" % int(a.id))
+		if absi(int(spec.hinge)) != 1 or absi(int(spec.swing)) != 1: errors.append("door_hang_%d" % int(a.id))
+		var into: Dictionary = b if int(spec.swing) > 0 else a
+		if lobbies.has(key):
+			if absf(offset) > 0.001 or bool(spec.open) or int(into.id) != int(lobbies[key]): errors.append("gate_door_%d" % int(a.id))
+		elif bool(a.corridor) and bool(b.corridor):
+			if int(spec.hinge) != int(signf(offset)) or wall * 0.5 - absf(offset) - FLOOR.PORTAL * 0.5 > FIRE_JAMB or into.kind == "cross": errors.append("fire_door_%d" % int(a.id))
+		elif bool(into.corridor): errors.append("door_into_corridor_%d" % int(a.id))
+	if walled != specs.size(): errors.append("door_count")
+	for room in rooms:
+		if FLOOR.is_void(room): continue
+		if int(room.get("kept", -1)) < 0 or int(room.get("kept", -1)) > 2: errors.append("kept_%d" % int(room.id))
+		if bool(room.get("dark", false)) and not FLOOR.may_be_dark(room): errors.append("dark_%d" % int(room.id))
+		var wanted: int = 0 if int(room.hall) >= 0 or int(room.type) == 19 else FLOOR.WARDROBES.get(int(room.type), 0)
+		if room.get("hides", []).size() > wanted: errors.append("hides_%d" % int(room.id))
+		var ways := FLOOR.doorways(room)
+		for spot in room.get("hides", []):
+			var x := float(spot[0])
+			var z := float(spot[1])
+			var side := ("east" if x > 0.0 else "west") if absf(x) > absf(z) else ("south" if z > 0.0 else "north")
+			var along := z if absf(x) > absf(z) else x
+			if room.open_sides.has(side) or ways.any(func(way): return way.wall == side and absf(float(way.along) - along) < HIDE_CLEAR - 0.001): errors.append("hide_door_%d" % int(room.id))
 	return errors
 
 ## Each planta: of a piece from where it is walked into, between 81 and 99
@@ -190,10 +250,43 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 				query.transform = Transform3D(Basis.IDENTITY, center + approach)
 				query.motion = spot - approach
 				if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("hide_entry_%d" % room.id)
+	# A door leaf, a little short of its ends, for its sweep: it has to open
+	# without going through a wall, a piece of furniture or a wardrobe.
+	var leaf := BoxShape3D.new()
+	leaf.size = Vector3(FLOOR.LEAF_WIDTH - 0.3, 2.3, 0.05)
+	var sweep := PhysicsShapeQueryParameters3D.new()
+	sweep.shape = leaf
+	sweep.collision_mask = 1 | 8
+	var specs: Dictionary = data.get("doors", {})
 	for edge in data.edges:
 		var a: Dictionary = data.rooms[edge[0]]
 		var b: Dictionary = data.rooms[edge[1]]
-		query.transform = Transform3D(Basis.IDENTITY, FLOOR.position_of(a) + Vector3(0, 0.94, 0))
-		query.motion = FLOOR.position_of(b) - FLOOR.position_of(a)
-		if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("passage_%d_%d" % [a.id, b.id])
+		# Through the doorway: from the middle of one to a metre short of the
+		# doorway, across it, and on to the middle of the other. A straight
+		# line from middle to middle misses a door moved along its wall.
+		var door := FLOOR.portal_between(a, b) + Vector3(0, 0.94, 0)
+		var through := FLOOR.position_of(b) - FLOOR.position_of(a)
+		through = Vector3(through.x, 0, through.z).normalized()
+		var path := [FLOOR.position_of(a) + Vector3(0, 0.94, 0), door - through, door + through, FLOOR.position_of(b) + Vector3(0, 0.94, 0)]
+		for leg in 3:
+			query.transform = Transform3D(Basis.IDENTITY, path[leg])
+			query.motion = path[leg + 1] - path[leg]
+			if world.direct_space_state.cast_motion(query)[0] < 0.99:
+				errors.append("passage_%d_%d" % [a.id, b.id])
+				break
+		var key := "%d:%d" % [int(a.id), int(b.id)]
+		if not specs.has(key): continue
+		# The leaf from a third of the way open to open (nearer shut it is
+		# still in its own frame).
+		var spec: Dictionary = specs[key]
+		var centre := FLOOR.portal_between(a, b)
+		var yaw := FLOOR.leaf_yaw(a, b, spec)
+		var turn := FLOOR.leaf_turn(a, b, spec, centre, yaw)
+		var hinge := centre + Basis(Vector3.UP, yaw) * Vector3(-FLOOR.LEAF_WIDTH * 0.5, 0, 0)
+		for angle in [0.6, 0.9, 1.2, 1.48]:
+			var turned := Basis(Vector3.UP, yaw + turn * angle)
+			sweep.transform = Transform3D(turned, hinge + turned * Vector3(FLOOR.LEAF_WIDTH * 0.5, 1.25, 0))
+			if not world.direct_space_state.intersect_shape(sweep, 1).is_empty():
+				errors.append("leaf_arc_%d_%d" % [a.id, b.id])
+				break
 	return errors

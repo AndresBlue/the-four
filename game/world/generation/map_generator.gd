@@ -103,6 +103,45 @@ const LOOPS := CYCLES + 4
 ## rooms giving on to rooms.
 const ROOM_DOORS := {"warren": 1.8, "rot": 1.25}
 const WAYS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+## Where a door can stand in the wall of a room, in metres from the middle of
+## the wall, either way. A door off the middle leaves that wall its furniture
+## on the far side only. Rooms with the domestic alcoves (2.8 m out from the
+## middle: hotel_geometry.build_room()) keep it nearer, beside them.
+const DOOR_PLACES := [0.0, 0.0, 1.5, -1.5, 2.0, -2.0]
+const DOOR_PLACES_DOMESTIC := [0.0, 1.5, -1.5]
+const DOMESTIC := [1, 2, 3, 4, 7, 15, 16]
+## A fire door across a corridor hangs from the jamb next to one of its side
+## walls, this far from it, so that open it lies flat against that wall: in
+## the middle, its leaf stood across half the corridor with a pocket behind it.
+const FIRE_JAMB := 0.2
+## A wall shorter than this is the end of a corridor lane, not a room's side.
+const LANE_WALL := 6.0
+## Found open: a door between rooms, more often the less kept the rooms
+## either side are (from the first to the second, by the tidier of the two);
+## a fire door, mostly shut.
+const OPEN_DOORS := Vector2(0.8, 0.5)
+const FIRE_OPEN := 0.3
+## Wardrobe spots along a wall, from its middle, and how far one keeps from
+## the middle of a doorway in the same wall: the doorway, what the leaf sweeps
+## and the wardrobe's own half width (hiding_place.gd).
+const HIDE_SPOTS := [-1.8, 0.0, 1.8]
+const HIDE_CLEAR := 1.75
+## Two wardrobes on the same wall stand this far apart at the least, so both
+## pairs of doors can open.
+const HIDE_APART := 3.0
+## The dark rooms. Each room that can be dark (FLOOR.may_be_dark()) is on its
+## own with DARK_OWN, more the lower the planta; each one that is puts out the
+## rooms it opens on to with DARK_SPREAD, so they come in stretches. A
+## corridor is the last thing a hotel stops lighting and what makes a planta
+## legible, so one goes dark rarely: on its own or beside a dark room.
+const DARK_OWN := [0.23, 0.29, 0.36]
+const DARK_SPREAD := 0.45
+const DARK_CORRIDOR := Vector2(0.03, 0.05)
+## How kept a room is (0 kept, 1 neglected, 2 abandoned) goes with its order,
+## give or take WEAR: kept over the second number, abandoned under the first.
+const WEAR := 0.25
+const KEPT := Vector2(0.25, 0.55)
+const EMPTY_SALON := 18
 
 ## Why tries came out empty, by reason, for the tools that measure the
 ## generator (tools/dev/map_metrics.gd).
@@ -185,10 +224,18 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	var plaques := RandomNumberGenerator.new()
 	plaques.seed = hash([run_seed, "plaques", attempt])
 	number_rooms(f, plaques)
+	# Doors and wardrobes, then lamps and wear, each on a draw of its own.
+	var fittings := RandomNumberGenerator.new()
+	fittings.seed = hash([run_seed, "fittings", attempt])
+	var doors := hang_doors(f, gates, fittings)
+	place_hides(f, fittings)
+	var wear := RandomNumberGenerator.new()
+	wear.seed = hash([run_seed, "wear", attempt])
+	light_rooms(f, wear)
 	var merged: Array = f.merged.values()
 	merged.sort_custom(func(a, b): return int(a[0]) < int(b[0]) or (int(a[0]) == int(b[0]) and int(a[1]) < int(b[1])))
 	var grids: Array = f.plantas.map(func(dims): return {"base": dims.base, "width": dims.width, "height": dims.height})
-	return {"version": FLOOR.VERSION, "seed": run_seed, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
+	return {"version": FLOOR.VERSION, "seed": run_seed, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
 
 # --- The grid --------------------------------------------------------------------------
 
@@ -1469,8 +1516,12 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		# A corridor is a lane of three or four metres: nothing in its corners.
 		if room.corridor: continue
 		room.cover_slots = 4
+		# The recipe's four pieces go to the four corners in an order of the
+		# room's own: the bed is not always in the same corner of a bedroom.
+		var kinds: Array = FLOOR.RECIPES[int(room.type)].duplicate()
+		shuffle(kinds, decoration)
 		for slot in 4:
-			var kind: String = FLOOR.RECIPES[int(room.type)][slot]
+			var kind: String = kinds[slot]
 			var rotation := decoration.randi_range(0, 3)
 			if kind in ["bed", "sofa", "desk", "tv", "reception", "washer", "basin", "shelf"]: rotation = 0 if slot < 2 else 2
 			if kind in ["wardrobe", "curtain"]: rotation = 1 if slot % 2 == 0 else 3
@@ -1527,8 +1578,118 @@ func facing(f: Dictionary, start: int) -> float:
 		if f.rooms[int(other)].corridor:
 			pick = int(other)
 			break
-	var way := Vector2(float(f.rooms[pick].px) - float(room.px), float(f.rooms[pick].pz) - float(room.pz))
-	return atan2(-way.x, -way.y)
+	var door := FLOOR.portal_between(room, f.rooms[pick]) - FLOOR.position_of(room)
+	return atan2(-door.x, -door.z)
+
+# --- Doors, wardrobes, lamps and wear --------------------------------------------
+
+## Every door of the floor: where it stands in its wall, the jamb it hangs
+## from, which way it swings and whether it is found open, by "a:b" (the
+## pair's ids, lower first) for the manifest's `doors`, so every machine hangs
+## them alike; and each room's `doors` ([neighbour, offset]) for FLOOR.
+## portal_between() and whatever looks for a doorway.
+##  - offset: metres from the middle of the wall, along +z for a wall between
+##    cells side by side in x and along +x for one between cells one behind
+##    the other. A fire door, across a corridor, stands by a side wall.
+##  - hinge: the jamb it hangs from, +1 the one that way along the wall.
+##  - swing: +1 it opens into the second room of the pair, -1 into the first.
+##    Into the room from a corridor, never across the corridor; into the lift
+##    lobby from a refuge; between two rooms, either way.
+func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dictionary:
+	var doors := {}
+	for room in f.rooms: room["doors"] = []
+	var lobbies := {}
+	for gate in gates: lobbies[pair_key(int(gate.room), int(gate.beyond))] = int(gate.beyond)
+	for edge in f.edges:
+		var a: Dictionary = f.rooms[int(edge[0])]
+		var b: Dictionary = f.rooms[int(edge[1])]
+		var key := pair_key(int(a.id), int(b.id))
+		if f.merged.has(key): continue
+		var wall: float = float(a.span_z) if int(a.x) != int(b.x) else float(a.span_x)
+		var room_most := wall * 0.5 - FLOOR.PORTAL * 0.5 - FIRE_JAMB
+		var spec := {"offset": 0.0, "hinge": 1 if rng.randf() < 0.5 else -1, "swing": 1, "open": false}
+		if lobbies.has(key):
+			# A refuge's door: in the middle, beside its keypad, shut, and
+			# opening into the lobby, away from whoever waits in the refuge.
+			spec.swing = 1 if int(lobbies[key]) == int(b.id) else -1
+		elif bool(a.corridor) and bool(b.corridor) and wall < LANE_WALL:
+			var side := 1 if rng.randf() < 0.5 else -1
+			spec.offset = side * room_most
+			spec.hinge = side
+			# Into the lane, whose sides are walls: a crossing's sides are
+			# the other corridor going on, and a leaf open there stood in it.
+			spec.swing = 1 if rng.randf() < 0.5 else -1
+			if a.kind == "cross": spec.swing = 1
+			elif b.kind == "cross": spec.swing = -1
+			spec.open = rng.randf() < FIRE_OPEN
+		else:
+			var places: Array = DOOR_PLACES_DOMESTIC if int(a.type) in DOMESTIC or int(b.type) in DOMESTIC else DOOR_PLACES
+			spec.offset = clampf(float(places[rng.randi_range(0, places.size() - 1)]), -room_most, room_most)
+			if bool(a.corridor) != bool(b.corridor): spec.swing = -1 if bool(b.corridor) else 1
+			else: spec.swing = 1 if rng.randf() < 0.5 else -1
+			spec.open = rng.randf() < lerpf(OPEN_DOORS.x, OPEN_DOORS.y, minf(float(a.order), float(b.order)))
+		doors["%d:%d" % [int(a.id), int(b.id)]] = spec
+		a.doors.append([int(b.id), spec.offset])
+		b.doors.append([int(a.id), spec.offset])
+	return doors
+
+## Where each room's wardrobes stand (`hides`, room space), as many as its
+## type has (FLOOR.WARDROBES): on closed walls, at the middle or 1.8 m either
+## side of it, clear of that wall's doorway and of what its leaf sweeps; with
+## two, on opposite walls where there can be, or else well apart.
+func place_hides(f: Dictionary, rng: RandomNumberGenerator) -> void:
+	var opposite := {"west": "east", "east": "west", "north": "south", "south": "north"}
+	for room in f.rooms:
+		room["hides"] = []
+		if int(room.type) in [VOID, REFUGE] or int(room.hall) >= 0: continue
+		var wanted: int = FLOOR.WARDROBES.get(int(room.type), 0)
+		if wanted == 0: continue
+		var ways := FLOOR.doorways(room)
+		var free := {}
+		for wall in ["west", "east", "north", "south"]:
+			if room.open_sides.has(wall): continue
+			var spots: Array = []
+			for along in HIDE_SPOTS:
+				if not ways.any(func(way): return way.wall == wall and absf(float(way.along) - float(along)) < HIDE_CLEAR): spots.append(along)
+			if not spots.is_empty(): free[wall] = spots
+		var span := FLOOR.size_of(room) * 0.5 - Vector2.ONE * 0.8
+		var taken: Array = []
+		while taken.size() < wanted and not free.is_empty():
+			var walls: Array = free.keys()
+			if not taken.is_empty() and free.has(opposite[taken[0][0]]): walls = [opposite[taken[0][0]]]
+			var wall: String = walls[rng.randi_range(0, walls.size() - 1)]
+			var along: float = free[wall][rng.randi_range(0, free[wall].size() - 1)]
+			taken.append([wall, along])
+			free[wall] = free[wall].filter(func(other): return absf(float(other) - along) >= HIDE_APART)
+			if free[wall].is_empty(): free.erase(wall)
+		for spot in taken:
+			match spot[0]:
+				"west": room.hides.append([-span.x, spot[1]])
+				"east": room.hides.append([span.x, spot[1]])
+				"north": room.hides.append([spot[1], -span.y])
+				"south": room.hides.append([spot[1], span.y])
+
+## Which rooms have their lamps out (`dark`) and how kept each one is
+## (`kept`), by seed: the same corner of two floors has nothing to do with
+## each other. See DARK_OWN and WEAR.
+func light_rooms(f: Dictionary, rng: RandomNumberGenerator) -> void:
+	var seeds: Array = []
+	for room in f.rooms:
+		room["dark"] = false
+		room["kept"] = 0
+		if int(room.type) == VOID: continue
+		var kept := float(room.order) + rng.randf_range(-WEAR, WEAR)
+		room.kept = 0 if kept > KEPT.y else 1 if kept > KEPT.x else 2
+		if int(room.type) == EMPTY_SALON: room.kept = maxi(int(room.kept), 1)
+		if not FLOOR.may_be_dark(room): continue
+		if rng.randf() < (DARK_CORRIDOR.x if bool(room.corridor) else float(DARK_OWN[int(room.wing)])):
+			room.dark = true
+			seeds.append(int(room.id))
+	for id in seeds:
+		for other in f.adjacency[id]:
+			var next: Dictionary = f.rooms[int(other)]
+			if bool(next.dark) or not FLOOR.may_be_dark(next): continue
+			if rng.randf() < (DARK_CORRIDOR.y if bool(next.corridor) else DARK_SPREAD): next.dark = true
 
 ## The numbers on the doors. Each planta has its own hundred and the numbers
 ## run across it in rows, odd on one side of a corridor and even on the other,

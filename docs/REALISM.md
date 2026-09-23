@@ -361,14 +361,14 @@ Arreglos del camino:
 - estanterías rellenas: metálicas con cajas y botes en las salas de servicio, librerías con enciclopedias en el resto;
 - caja registradora en recepción, maletas, papeleras metálicas y carro metálico en servicio.
 
-**3. Paredes** (`room_dressing.gd`). Cada pared cerrada tiene dos tramos libres: desde pasado el vano (la hoja nunca barre más allá de su bisagra) hasta antes del hueco de la esquina o del tabique de la alcoba, y nunca donde hay un armario-escondite.
+**3. Paredes** (`room_dressing.gd`). Cada pared cerrada tiene dos tramos libres, a los lados de su centro, hasta antes del hueco de la esquina o del tabique de la alcoba; no se usa el que queda a menos de 1,35 m del centro del vano de esa pared, esté donde esté la puerta (la hoja nunca barre más allá de su bisagra), ni donde hay un armario-escondite.
 - Cada tipo de sala tiene su juego de piezas: cómoda con espejo, consola, butaca con velador, sillas, maletas, planta, librería, estanterías, cajas, papeleras, cestos...
 - Encima o dentro van jarrones, relojes, libros, cajas y botes, colocados en las alturas reales de cada modelo: `shelves()` busca sus caras planas hacia arriba.
 - Las piezas grandes llevan colisionador de caja; lo de menos de unos 30 cm, no.
 - **Validación física: 0 errores en 8 semillas**, sin caer al piso de reserva.
 
-**4. Estado de cada sala** (por posición):
-- cuidada (50 %), descuidada (35 %) o abandonada (15 %); el salón vacío nunca está cuidado;
+**4. Estado de cada sala** (lo dice el piso: `kept`, del orden de la sala con algo de azar):
+- cuidada, descuidada o abandonada; en la primera planta, 83, 16 y 1 %; en la segunda, 56, 37 y 7 %; en la tercera, 29, 47 y 24 %; el salón vacío nunca está cuidado;
 - en los tramos vacíos, lo descuidado deja botellas, papeles, cajas y colillas, y lo abandonado además alguna silla volcada.
 
 **5. Densidad:** mediana de 35–43 objetos por sala (entre 7 y 151; lo alto son las estanterías llenas).
@@ -376,7 +376,7 @@ Arreglos del camino:
 **6. Cuadros:** 14 obras de dominio público en `assets/paintings/`.
 - En el marco tallado de Poly Haven, sin su lienzo, o en uno de madera lisa.
 - Los retratos cuelgan en vertical, con el marco girado en lugar de estirado, y se recortan conservando la parte de arriba.
-- Qué cuadro va en cada sitio sale de la posición.
+- Qué cuadro va en cada sitio sale de la posición y de la semilla del piso.
 
 **7. Decals** (prueba 5), 13 de ambientCG preparados por `tools/textures/ingest_dressing.py`: 512 px, alfa desde su opacidad (las pisadas desde el relieve y la mancha desde la rugosidad) y bordes difuminados.
 - **Dónde:** humedad bajo el techo y desde el suelo, huellas junto a los vanos, manchas, chicles en zonas públicas y pisadas en salas abandonadas.

@@ -1,15 +1,17 @@
 extends RefCounted
 ## A room's dressing (docs/REALISM.md, phase 4): furniture along the free
 ## stretches of its walls, things on tops and shelves, clutter and decals as
-## worn as the room is kept. Everything comes from vary() on positions, never
-## from the generator's random sequence, so every machine builds the same room.
+## worn as the room is kept. How kept it is comes with the floor (`kept`);
+## the rest from the builder's vary(), on positions and the floor's seed,
+## never from the generator's random sequence, so every machine builds the
+## same room.
 ##
 ## The corner sockets (prop_factory.gd) and the central cross stay as they
-## were: a stretch runs along a wall from past the doorway (the leaf never
-## swings beyond its hinge) to before the corner socket, and none is used
-## where a wardrobe stands. Big pieces get a box collider in the stretch's
-## frame; nothing under about 30 cm collides. Models are baked by
-## tools/props/build_catalogue.gd into assets/props/hotel/.
+## were: a stretch runs along a wall between NEAR and FAR from its middle,
+## and none is used within NEAR of a doorway in that wall (the leaf never
+## swings beyond its hinge) or where a wardrobe stands. Big pieces get a box
+## collider in the stretch's frame; nothing under about 30 cm collides.
+## Models are baked by tools/props/build_catalogue.gd into assets/props/hotel/.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const HOTEL := "res://assets/props/hotel/%s.res"
 const MONSTERA := preload("res://assets/props/monstera/monstera.res")
@@ -49,8 +51,8 @@ const ORNAMENTS := ["ceramic_vase_01", "brass_vase_02", "jug_01", "book_encyclop
 const DESK_THINGS := ["office_notepads_pad", "stationery_supplies", "clipboard", "cigarette_pack", "alarm_clock_01"]
 const STORE_THINGS := ["cardboard_box_01", "plastic_crate_02", "bleach_bottle", "multi_cleaner_bottle", "wicker_basket_02", "cardboard_box_01"]
 const BOTTLES := ["wine_bottles_01_bordeaux", "wine_bottles_01_alsace", "wine_bottles_01_burgundy", "wine_bottles_01_champagne"]
-## Kept (0), neglected (1) or abandoned (2), by share of rooms.
-const STATE_SHARES := [0.5, 0.85]
+## Half a wardrobe's width, and a little (hiding_place.gd).
+const WARDROBE_HALF := 0.75
 
 static var meshes := {}
 static var levels := {}
@@ -59,12 +61,10 @@ static func mesh(name: String) -> Mesh:
 	if not meshes.has(name): meshes[name] = MONSTERA if name == "monstera" else load(HOTEL % name)
 	return meshes[name]
 
-## How kept a room is: 0 kept, 1 neglected, 2 abandoned. The empty lounge is
-## never better than neglected.
-static func state(builder, room: Dictionary) -> int:
-	var v: float = builder.vary(FLOOR.position_of(room), 21)
-	var result := 0 if v < STATE_SHARES[0] else 1 if v < STATE_SHARES[1] else 2
-	return maxi(result, 1) if int(room.type) == 18 else result
+## How kept a room is: 0 kept, 1 neglected, 2 abandoned, as the floor says
+## (map_generator.light_rooms(): with the room's order, give or take).
+static func state(room: Dictionary) -> int:
+	return int(room.get("kept", 0))
 
 ## The heights a model's things can stand on: its flat tops and shelves, the
 ## upward faces over the middle of its footprint, lowest first.
@@ -110,21 +110,42 @@ static func stretches(room: Dictionary) -> Array:
 	var far := FAR_DOMESTIC if int(room.type) in DOMESTIC else FAR
 	var open: Array = room.get("open_sides", [])
 	var hides: Array = [] if int(room.type) == 19 else FLOOR.hiding_positions(room)
+	var ways := FLOOR.doorways(room)
+	var half := (far - NEAR) * 0.5
 	var result := []
 	for wall in walls(span):
 		if open.has(wall[0]) or float(wall[3]) < far * 2.0 + 1.0: continue
 		var inward: Vector3 = wall[1]
 		var along := Vector3.UP.cross(inward)
+		var axis := axis_of(inward)
 		for side in [-1, 1]:
 			var middle: float = side * (NEAR + far) * 0.5
+			# Where it is along the world's axis, as doorways are measured.
+			var at: float = middle * along.dot(axis)
 			var taken := false
+			for way in ways:
+				# Nearer a doorway in this wall than NEAR: in its way, or
+				# where its leaf swings.
+				if way.wall == wall[0] and absf(at - float(way.along)) - half < NEAR - 0.01: taken = true
 			for spot: Vector3 in hides:
-				# A wardrobe on this wall, on this side of its doorway.
-				if spot.normalized().dot(-inward) > 0.7 and signf(spot.dot(along)) == signf(middle): taken = true
+				# A wardrobe on this wall, where the stretch would be.
+				if spot.normalized().dot(-inward) > 0.7 and absf(at - spot.dot(axis)) < half + WARDROBE_HALF: taken = true
 			if taken: continue
 			var origin: Vector3 = -inward * (wall[2] * 0.5 - INSET) + along * middle
 			result.append([Transform3D(Basis(along, Vector3.UP, inward), origin), far - NEAR])
 	return result
+
+## The world axis a wall runs along, by which way is into the room: z for the
+## west and east walls, x for the north and south ones.
+static func axis_of(inward: Vector3) -> Vector3:
+	return Vector3(0, 0, 1) if absf(inward.x) > 0.5 else Vector3(1, 0, 0)
+
+## Whether a mark `reach` either side of `at` (along the world axis of the
+## wall `side`) keeps off every doorway in that wall.
+static func off_doorways(ways: Array, side: String, at: float, reach: float) -> bool:
+	for way in ways:
+		if way.wall == side and absf(at - float(way.along)) < reach + FLOOR.PORTAL * 0.5: return false
+	return true
 
 ## A room's four walls: [side, inward, distance across, length].
 static func walls(span: Vector2) -> Array:
@@ -138,7 +159,7 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 	# Neither the refuge nor the lift lobby is furnished: one is bare by
 	# design and the other has nothing in it but the car.
 	if int(room.type) == 19 or bool(room.get("landing", false)): return
-	var kept := state(builder, room)
+	var kept := state(room)
 	var set_name: String = MODULE_SET.get(int(room.type), "")
 	# A corridor of three or four metres keeps to what stands flat against a
 	# wall: an armchair and its table would half close it.
@@ -326,6 +347,7 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 	var open: Array = room.get("open_sides", [])
 	var count: int = [4, 9, 16][kept]
 	var base := node.position
+	var ways := FLOOR.doorways(room)
 	for i in count:
 		var roll: float = builder.vary(base, 200 + i)
 		var along: float = builder.vary(base, 220 + i) * 2.0 - 1.0
@@ -342,25 +364,43 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 			builder.decal(node, pick, Transform3D(Basis(Vector3.UP, builder.vary(base, 265 + i) * TAU), at), Vector3(size, 0.3, size), 0.55 + kept * 0.15, float(i) / count)
 			continue
 		var wall: Array = sides[int(builder.vary(base, 270 + i) * sides.size())]
+		if roll >= 0.7 and roll < 0.85 and not ways.is_empty():
+			# Fingerprints go on a wall with a doorway in it.
+			var way: Dictionary = ways[int(builder.vary(base, 310 + i) * ways.size())]
+			for each in sides:
+				if each[0] == way.wall: wall = each
 		var inward: Vector3 = wall[1]
 		var along_axis := Vector3.UP.cross(inward)
+		var sense: float = along_axis.dot(axis_of(inward))
 		var surface: Vector3 = -inward * (float(wall[2]) * 0.5 - 0.16)
 		# A decal projects along its -Y, into the wall; its image's top (-Z) up.
 		var facing := Basis(along_axis, inward, along_axis.cross(inward))
+		# Where along the wall (from its middle) a mark that is not about a
+		# doorway goes; none is put over one, where it would be drawn on the
+		# leaf.
+		var spread: float = along * (float(wall[3]) * 0.42)
 		if roll < 0.55:
 			var pick: String = ["Leaking001", "Leaking003", "Leaking005"][int(builder.vary(base, 280 + i) * 3)]
 			var size: float = 1.4 + builder.vary(base, 285 + i) * 1.2
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[3]) * 0.42) + Vector3(0, height - size * 0.5, 0)), Vector3(size, 0.5, size), 0.5 + kept * 0.2, float(i) / count)
+			if not off_doorways(ways, wall[0], spread * sense, size * 0.5): continue
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * spread + Vector3(0, height - size * 0.5, 0)), Vector3(size, 0.5, size), 0.5 + kept * 0.2, float(i) / count)
 		elif roll < 0.7:
 			var pick: String = ["Leaking008", "Leaking009"][int(builder.vary(base, 290 + i) * 2)]
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[3]) * 0.42) + Vector3(0, 0.55, 0)), Vector3(1.6, 0.5, 1.1), 0.45 + kept * 0.2, float(i) / count)
+			if not off_doorways(ways, wall[0], spread * sense, 0.8): continue
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * spread + Vector3(0, 0.55, 0)), Vector3(1.6, 0.5, 1.1), 0.45 + kept * 0.2, float(i) / count)
 		elif roll < 0.85:
-			# Beside a doorway, where hands push.
+			# Beside a doorway, where hands push: a metre from its middle, on
+			# whichever side there is wall for them.
 			var pick: String = "Fingerprints004" if kept == 2 and builder.vary(base, 295 + i) < 0.5 else "Fingerprints002"
 			var side := 1.0 if along > 0.0 else -1.0
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * side * 1.0 + Vector3(0, 1.15, 0)), Vector3(0.5, 0.4, 0.5), 0.5 + kept * 0.15, float(i) / count)
+			var door_at := 0.0
+			for way in ways:
+				if way.wall == wall[0]: door_at = float(way.along) * sense
+			if absf(door_at + side) > float(wall[3]) * 0.5 - 0.3: side = -side
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * (door_at + side * 1.0) + Vector3(0, 1.15, 0)), Vector3(0.5, 0.4, 0.5), 0.5 + kept * 0.15, float(i) / count)
 		else:
 			# Smears where there is tile or metal to smear.
 			var stains := ["SurfaceImperfections001", "SurfaceImperfections013", "Smear003"] if int(room.type) in [4, 7, 8, 9] else ["SurfaceImperfections001", "SurfaceImperfections013"]
 			var pick: String = stains[int(builder.vary(base, 300 + i) * stains.size())]
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[3]) * 0.42) + Vector3(0, 0.6 + builder.vary(base, 305 + i) * 1.4, 0)), Vector3(1.0, 0.4, 1.0), 0.3 + kept * 0.15, float(i) / count)
+			if not off_doorways(ways, wall[0], spread * sense, 0.5): continue
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * spread + Vector3(0, 0.6 + builder.vary(base, 305 + i) * 1.4, 0)), Vector3(1.0, 0.4, 1.0), 0.3 + kept * 0.15, float(i) / count)
