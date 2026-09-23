@@ -71,7 +71,14 @@ func run() -> void:
 			if argument.begins_with("--shadow-filter="):
 				RenderingServer.positional_soft_shadow_filter_set_quality(int(argument.trim_prefix("--shadow-filter=")))
 		var all_frames: Array = []
-		for id in [0, 36, int(level.manifest.exit)]:
+		# The reception, a room halfway to the first refuge, and the refuge.
+		var hops: Array = preload("res://game/world/generation/map_generator.gd").distance_map(level.manifest.adjacency, int(level.manifest.start))
+		var halfway := int(level.manifest.start)
+		for room in level.manifest.rooms:
+			if int(room.wing) == 0 and hops[int(room.id)] == hops[int(level.manifest.exit)] / 2:
+				halfway = int(room.id)
+				break
+		for id in [int(level.manifest.start), halfway, int(level.manifest.exit)]:
 			var room: Dictionary = level.manifest.rooms[id]
 			level.player.position = FLOOR.position_of(room) + Vector3(0, 0.04, 0)
 			level.player.rotation.y = 0.65

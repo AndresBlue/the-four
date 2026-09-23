@@ -107,6 +107,7 @@ func aim_at_lift(index: int) -> void:
 	if level.locust.mode == level.locust.Mode.INVESTIGATE and level.locust.destination.distance_to(car) < 1.0: return
 	level.locust.set_mode(level.locust.Mode.INVESTIGATE)
 	level.locust.destination = car
+	level.locust.lift_bound = true
 	# Its patrolling belongs to the wing it is in; the lobby of the lift is
 	# where it should be wandering while it waits for the car.
 	var gates: Array = level.manifest.get("gates", [])

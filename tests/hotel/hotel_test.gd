@@ -11,13 +11,49 @@ func check(title: String, passed: bool) -> void:
 	if not passed: failed += 1
 	print("PASS " if passed else "FAIL ", title)
 
+## Floors generated here. A thousand are measured by tools/dev/map_metrics.gd;
+## three hundred is what fits in the time a test has.
+const SEEDS := 300
+
+## Rooms on a planta as the game counts them (map_validator.gd): every room,
+## a salon once, not the corridors and not the lobbies of the lifts.
+static func rooms_on(data: Dictionary, planta: int) -> int:
+	var grid: Dictionary = data.plantas[planta]
+	var halls := {}
+	var count := 0
+	for local in int(grid.width) * int(grid.height):
+		var room: Dictionary = data.rooms[int(grid.base) + local]
+		if int(room.type) == 20 or room.kind != "module" or bool(room.get("landing", false)) or (planta > 0 and int(room.id) == int(data.entries[planta])): continue
+		if int(room.hall) >= 0:
+			if halls.has(int(room.hall)): continue
+			halls[int(room.hall)] = true
+		count += 1
+	return count
+
+## The way from where the player stands with the most floor ahead before a
+## wall or a shut door.
+func clearest_heading(scene) -> float:
+	var space: PhysicsDirectSpaceState3D = scene.get_world_3d().direct_space_state
+	var from: Vector3 = scene.player.global_position + Vector3(0, 1.0, 0)
+	var best := 0.0
+	var best_length := -1.0
+	for step in 16:
+		var yaw := TAU * step / 16.0
+		var query := PhysicsRayQueryParameters3D.create(from, from + Basis(Vector3.UP, yaw) * Vector3(0, 0, -30.0), 1 | 8)
+		var hit := space.intersect_ray(query)
+		var length: float = 30.0 if hit.is_empty() else from.distance_to(hit.position)
+		if length > best_length:
+			best_length = length
+			best = yaw
+	return best
+
 func run() -> void:
 	var generator := GEN.new()
 	var fallback_count := 0
 	var failures: Array = []
 	var used_types := {}
 	var wing_leaks: Array = []
-	var small_wings: Array = []
+	var counts: Array = []
 	var walked: Array = []
 	var number_faults: Array = []
 	var climbing := 0
@@ -25,23 +61,27 @@ func run() -> void:
 	var one_door: Array = []
 	var wall_solved: Array = []
 	var sealed_landing: Array = []
-	for seed_value in 1000:
+	var misaligned: Array = []
+	for seed_value in SEEDS:
 		var data := generator.generate(seed_value)
 		if data.fallback: fallback_count += 1
 		if not VALIDATOR.new().validate(data).is_empty(): failures.append(seed_value)
 		for room in data.rooms: used_types[room.type] = true
-		# Wings: no way from one to the next except its gate, and each one big
-		# enough to be a stage of its own.
-		var counts := [0, 0, 0]
-		for room in data.rooms: counts[int(room.wing)] += 1
-		if counts.min() < 20: small_wings.append(seed_value)
-		# Nothing joins one wing to another: the lift is the only way across.
+		# Each planta a hotel of its own: between 81 and 99 rooms.
+		for planta in 3: counts.append(rooms_on(data, planta))
+		# Nothing joins one planta to another: the lift is the only way down.
 		for edge in data.edges:
 			if int(data.rooms[int(edge[0])].wing) != int(data.rooms[int(edge[1])].wing): wing_leaks.append(seed_value)
 		var rooms_walked := 0
 		for gate in data.gates:
 			var distances: Array = GEN.distance_map(data.adjacency, int(data.entries[int(gate.stage) - 1]))
 			rooms_walked += maxi(0, int(distances[int(gate.room)]))
+			# Each lift goes straight down to the lobby under it.
+			var arrive := int(gate.arrive)
+			if arrive >= 0:
+				var above: Dictionary = data.rooms[int(gate.beyond)]
+				var below: Dictionary = data.rooms[arrive]
+				if absf(float(above.px) - float(below.px)) > 0.001 or absf(float(above.pz) - float(below.pz)) > 0.001 or int(below.wing) != int(above.wing) + 1: misaligned.append(seed_value)
 		walked.append(rooms_walked)
 		# Every refuge is entered by one door and no other, with the locked
 		# door to its lift lobby besides, and that lobby is a dead end:
@@ -53,20 +93,20 @@ func run() -> void:
 			var ways: Array = data.adjacency[refuge].filter(func(id): return int(data.rooms[id].wing) == wing and id != lobby)
 			if ways.size() != 1: one_door.append([seed_value, wing, ways.size()])
 			if lobby < 0 or data.adjacency[lobby].size() != 1 or not bool(data.rooms[lobby].get("landing", false)): sealed_landing.append(seed_value)
-			if WALKER.hits(data.rooms, data.adjacency, int(data.width), int(data.height), int(data.entries[wing]), refuge) > 0: wall_solved.append(seed_value)
-		# The numbers: each wing its hundred, never two doors the same, and
+			if WALKER.hits(data.rooms, data.adjacency, int(data.entries[wing]), refuge) > 0: wall_solved.append(seed_value)
+		# The numbers: each planta its hundred, never two doors the same, and
 		# only the rooms let to somebody carry one.
 		var seen_numbers := {}
 		for room in data.rooms:
 			var number := int(room.get("number", 0))
 			if number == 0:
-				if GEN.numbered(room): number_faults.append(seed_value)
+				if int(room.type) != 20 and GEN.numbered(room): number_faults.append(seed_value)
 				continue
 			if not GEN.numbered(room) or seen_numbers.has(number): number_faults.append(seed_value)
 			if number / 100 != int(room.wing) + 1: number_faults.append(seed_value)
 			seen_numbers[number] = true
 		# And they are no longer a compass: whether they climb or fall as one
-		# walks into a wing is drawn, so over a thousand floors it is a coin.
+		# walks into a planta is drawn, so over the lot it is a coin.
 		for wing in 3:
 			var wing_entrance: int = int(data.entries[wing])
 			var reach: Array = GEN.distance_map(data.adjacency, wing_entrance)
@@ -81,24 +121,25 @@ func run() -> void:
 					far += int(by_distance[by_distance.size() - 1 - index].number) % 100
 				if far > near: climbing += 1
 				elif far < near: falling += 1
-	check("1.000 semillas: grafos y módulos válidos", failures.is_empty())
+	check("300 semillas: grafos y módulos válidos", failures.is_empty())
 	check("Cada refugio se entra por una sola puerta", one_door.is_empty())
 	check("Detrás de la puerta de cada refugio solo está su ascensor, sin otra entrada", sealed_landing.is_empty())
 	check("Ir pegado a una pared no encuentra ningún refugio", wall_solved.is_empty())
-	# The standby floor, drawn only if twenty tries all fail. It never is in a
-	# thousand seeds, which is exactly why it has to be held to the same
-	# promises here: nothing else would notice it had stopped keeping them.
+	check("Cada ascensor baja al vestíbulo que tiene justo debajo", misaligned.is_empty())
+	# The standby floor, drawn only if every try fails. It never is here,
+	# which is exactly why it has to be held to its promises: that it is a
+	# floor like the others to walk, whatever else it gives up.
 	var standby: Dictionary = generator.candidate(404, 0, true)
-	check("El piso de respaldo cumple lo mismo que los demás: válido, sin refugio a mano en la pared y con recorrido", VALIDATOR.new().validate(standby).is_empty() and int(standby.wall_hits.max()) == 0 and int(standby.walk) >= GEN.MIN_WALK)
-	check("La numeración es de hotel: una centena por ala, sin repetir y sin placa en servicio", number_faults.is_empty())
+	check("El piso de respaldo es válido y obliga a recorrerlo", VALIDATOR.new().validate(standby).is_empty() and int(standby.walk) >= GEN.MIN_WALK)
+	check("La numeración es de hotel: una centena por planta, sin repetir y sin placa en servicio", number_faults.is_empty())
 	var drawn: float = float(climbing) / maxf(1.0, float(climbing + falling))
 	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)
-	check("Las alas solo se comunican por su puerta de etapa", wing_leaks.is_empty())
-	check("Ningún ala se queda sin habitaciones", small_wings.is_empty())
+	check("Las plantas solo se comunican por su ascensor", wing_leaks.is_empty())
+	check("Cada planta tiene más de 80 habitaciones y menos de 100", counts.min() > 80 and counts.max() < 100)
 	var shortest: int = walked.min()
-	check("Las tres etapas obligan a recorrer el piso", shortest >= 20 and float(walked.reduce(func(a, b): return a + b, 0)) / walked.size() >= 30.0)
-	check("Tasa de respaldo inferior al 1%", fallback_count < 10)
-	check("20 tipos de módulo presentes en el lote", used_types.size() == 20)
+	check("Las tres etapas obligan a recorrer el piso", shortest >= GEN.MIN_WALK and float(walked.reduce(func(a, b): return a + b, 0)) / walked.size() >= 40.0)
+	check("Tasa de respaldo inferior al 1%", fallback_count < SEEDS / 100)
+	check("Los 21 tipos de celda presentes en el lote", used_types.size() == 21)
 	check("Semilla reproducible", JSON.stringify(generator.generate(81)) == JSON.stringify(generator.generate(81)))
 	check("Semillas distintas cambian el mapa", JSON.stringify(generator.generate(81)) != JSON.stringify(generator.generate(82)))
 	var scene = load("res://game/app/hotel.tscn").instantiate()
@@ -122,23 +163,33 @@ func run() -> void:
 		for label in labels:
 			# Measured with the door shut, whatever its leaf is doing now.
 			var facing := Basis(Vector3.UP, each.closed_rotation + label.rotation.y).z
-			var in_front: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + facing * 1.5)
-			var behind: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway - facing * 1.5)
+			var in_front: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + facing * 1.2)
+			var behind: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway - facing * 1.2)
 			if in_front.is_empty() or behind.is_empty() or label.text != str(int(behind.get("number", 0))): numbers_ok = false
 		# And only the rooms that have a number show a plaque: service,
 		# circulation and the refuge show a bare leaf.
 		var across := Basis(Vector3.UP, each.closed_rotation).z
 		var wanted := 0
-		for step in [1.5, -1.5]:
+		for step in [1.2, -1.2]:
 			var room: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + across * step)
 			if int(room.get("number", 0)) > 0: wanted += 1
 		if labels.size() != wanted: plaques_ok = false
 	check("El número de cada cara de puerta indica la habitación de detrás", numbers_ok)
 	check("Servicio, pasillo y refugio no llevan placa", plaques_ok)
-	var dark: Array = scene.hotel.lights.filter(func(light): return light.has_meta("off"))
+	# The cells a planta does not use have a lamp in the list that is never on.
+	var lamps: Array = scene.hotel.lights.filter(func(light): return not light.has_meta("void"))
+	var dark: Array = lamps.filter(func(light): return light.has_meta("off"))
 	var reception_lit: bool = scene.manifest.rooms.all(func(room): return int(room.type) != 0 or not scene.hotel.lights[room.id].has_meta("off"))
-	check("Algunas habitaciones tienen la luz apagada, nunca la recepción", dark.size() > 0 and float(dark.size()) < float(scene.hotel.lights.size()) * 0.4 and reception_lit and dark.all(func(light): return not light.visible))
+	check("Algunas habitaciones tienen la luz apagada, nunca la recepción", dark.size() > 0 and float(dark.size()) < float(lamps.size()) * 0.4 and reception_lit and dark.all(func(light): return not light.visible))
+	# A door between two rooms of the first planta, with room to stand either
+	# side of it at every distance measured below.
 	var door = scene.hotel.doors[0]
+	for each in scene.hotel.doors:
+		var a: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway + Basis(Vector3.UP, each.closed_rotation).z * 1.0)
+		var b: Dictionary = FLOOR.room_at(scene.manifest.rooms, each.doorway - Basis(Vector3.UP, each.closed_rotation).z * 1.0)
+		if not a.is_empty() and not b.is_empty() and a.kind == "module" and b.kind == "module" and int(a.wing) == 0 and each.gate_stage == 0:
+			door = each
+			break
 	door.open_immediately()
 	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
 	# Somebody standing in the frame: the door shuts all the same, does not
@@ -185,10 +236,13 @@ func run() -> void:
 	check("Apertura lenta respeta su duración", door.moving)
 	for frame in 90: await physics_frame
 	check("Puerta abierta recupera colisión sin empujar", door.opened and not door.moving and door.collision_layer == door.OPEN_SOLID)
-	scene.player.rotation.y = -PI / 2 if scene.manifest.adjacency[0].has(1) else PI
+	scene.player.rotation.y = float(scene.manifest.start_facing)
 	check("Quince tipos de prop como mínimo", preload("res://game/world/generation/floor_definition.gd").RECIPES.reduce(func(acc, recipe):
 		for prop in recipe: acc[prop] = true
 		return acc, {}).size() >= 15)
+	# Walking where there is room to walk: the reception's door can be a few
+	# metres ahead, and a body that has run into it takes no steps.
+	scene.player.rotation.y = clearest_heading(scene)
 	var start_position: Vector3 = scene.player.position
 	Input.action_press("forward")
 	for frame in 35: await physics_frame

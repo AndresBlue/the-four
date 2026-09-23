@@ -110,7 +110,7 @@ La pantalla del cazador enseña además, bajo el filtro y solo mientras se recar
 
 ## El sonido
 
-El ruido lo confirma la máquina que manda, con la misma medición que usa el oído de la criatura: `hotel_locust.hear_route()` devuelve si lo oye, el punto aparente, los metros de ruta y cuánto llega amortiguado. `can_hear()` es ahora esa misma función, así que el oído tiene un solo dueño y se hace una sola consulta de navegación por ruido.
+El ruido lo confirma la máquina que manda, con la misma medición que usa el oído de la criatura: `hotel_locust.hear_route()` devuelve si lo oye, el punto aparente, los metros de ruta y cuánto llega amortiguado; un ruido al que la ruta no llega (la malla da el camino hasta el punto más cercano que alcanza, y desde un trozo de suelo aislado ese punto era donde estaba la criatura) no se oye. `can_hear()` es ahora esa misma función, así que el oído tiene un solo dueño y se hace una sola consulta de navegación por ruido.
 
 El contacto viaja con la posición real **y** la aparente (`match_net.heard_contact`), y el dibujo se desliza de una a otra entre **8 y 14 m de ruta**, con el borrón creciendo con los metros: cerca sabes *dónde*, lejos sabes *por dónde*. Un portazo al otro lado de una pared se pinta en la puerta por la que entra, no encima del superviviente.
 

@@ -7,6 +7,7 @@ extends SceneTree
 ##  wardrobe used through the host, a death watched from a teammate, leaving
 ##  the floor together, a dropped player coming back mid-floor, and everyone
 ##  sent back to the menu when the host closes the room.
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 var role := "host"
 var port := 24600
@@ -526,7 +527,10 @@ func versus_hunter() -> void:
 	# grunt at every press of the key, telling the floor where it was for
 	# nothing.
 	var prey: Node3D = level.match_net.bodies[1]
-	creature.global_position = prey.global_position + Vector3(5.0, 0.0, 0.0)
+	# On walkable floor: the reception has its furniture, and a creature put
+	# down inside a sofa hears from a scrap of floor of its own.
+	var floor_map: RID = level.get_world_3d().navigation_map
+	creature.global_position = FLOOR.closest(floor_map, prey.global_position + Vector3(5.0, 0.0, 0.0)) + Vector3(0, 0.04, 0)
 	creature.look_at(prey.global_position + Vector3(10.0, 0.0, 0.0) * 2.0, Vector3.UP)
 	creature.calls_made = 0
 	Input.action_press("forward")
@@ -536,7 +540,9 @@ func versus_hunter() -> void:
 	Input.action_release("forward")
 	check("Correr sin nadie a la vista no le hace gruñir", creature.calls_made == 0)
 	# With a survivor in plain sight the run is a chase, and a chase has a voice.
-	creature.global_position = prey.global_position + Vector3(6.0, 0.0, 0.0)
+	# Four metres off: the reception is twelve metres across at the least, and
+	# six would put it in the wall.
+	creature.global_position = FLOOR.closest(floor_map, prey.global_position + Vector3(4.0, 0.0, 0.0)) + Vector3(0, 0.04, 0)
 	creature.look_at(Vector3(prey.global_position.x, creature.global_position.y, prey.global_position.z), Vector3.UP)
 	Input.action_press("forward")
 	Input.action_press("sprint")
@@ -544,8 +550,12 @@ func versus_hunter() -> void:
 	Input.action_release("sprint")
 	Input.action_release("forward")
 	check("Gruñe cuando corre a por alguien que ve, no solo al chillar", grunted)
+	# Back off a few metres: run into the survivor, what it hears is where it
+	# stands, and a contact nought metres away says nothing of the route.
+	creature.global_position = FLOOR.closest(floor_map, prey.global_position + Vector3(4.0, 0.0, 0.0)) + Vector3(0, 0.04, 0)
+	creature.driver.heard.clear()
 	check("Los ruidos de los supervivientes le llegan como contactos", await wait_for(func(): return not creature.driver.heard.is_empty(), 20.0))
-	check("El contacto trae su clase y sus metros de ruta", creature.driver.heard.is_empty() or (creature.driver.heard[0].has("kind") and creature.driver.heard[0].has("apparent") and creature.driver.heard[0].distance > 0.0))
+	check("El contacto trae su clase y sus metros de ruta", creature.driver.heard.is_empty() or (creature.driver.heard[0].has("kind") and creature.driver.heard[0].has("apparent") and creature.driver.heard[0].distance > 0.0), "" if creature.driver.heard.is_empty() else "%s · criatura en %s" % [str(creature.driver.heard[0]), str(creature.global_position)])
 	# Close enough for the shriek to find the survivor.
 	creature.global_position = level.match_net.bodies[1].global_position + Vector3(2.5, 0, 0)
 	await pause_for(0.6)

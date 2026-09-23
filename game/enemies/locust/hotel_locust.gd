@@ -25,6 +25,10 @@ const LOSE_AFTER := 7.0
 const CHASE_SPEED := 6.4
 ## Speed while heading to the last place it saw or heard the player.
 const TRACK_SPEED := 5.2
+## Making for the lift the survivors took: a lope, not a chase. A whole
+## planta is a couple of hundred metres of rooms and corridors to the car,
+## which walking took it two minutes and more.
+const LIFT_PACE := 4.0
 ## On first spotting the player it freezes, turns and shrieks before it runs:
 ## the moment the player hears it is the moment to break line of sight.
 const ALERT_TIME := 1.2
@@ -76,6 +80,9 @@ var patrol_room := 0
 var footstep: AudioStreamPlayer3D
 ## Current ground speed; accelerates toward the speed each behaviour wants.
 var speed := 0.0
+## Making for the car of the lift the survivors took (lifts.aim_at_lift):
+## until anything else sets its mode.
+var lift_bound := false
 var pause_time := 0.0
 var light_exposure := 0.0
 var wander_clock := 0.0
@@ -447,6 +454,13 @@ func hear_route(point: Vector3, radius: float) -> Dictionary:
 		return {"audible": true, "apparent": point, "distance": straight, "muffle": 0.0}
 	var route := FLOOR.navigation_path(get_world_3d().navigation_map, position, point)
 	if route.size() < 2: return missed
+	# A route that stops short of the noise does not carry it: the mesh gives
+	# the way to the nearest point it can reach, and from a scrap of floor cut
+	# off from the rest that was where it stood, a noise five metres away
+	# heard as if at its feet.
+	var end := route[route.size() - 1]
+	var near := FLOOR.floor_point(point)
+	if Vector2(end.x - near.x, end.z - near.z).length() > 1.5: return missed
 	var length := 0.0
 	for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
 	if length > reach: return missed
@@ -538,6 +552,7 @@ func set_mode(next: Mode) -> void:
 	mode = next
 	state_time = 0
 	guided = false
+	lift_bound = false
 	repath = 0
 	pause_time = 0
 	# Back on its rounds it has forgotten the wardrobe it was looking at: kept,
@@ -586,8 +601,8 @@ func desired_speed() -> float:
 		Mode.PATROL:
 			return 0.0 if pause_time > 0 else 1.9 + sin(wander_clock * 0.37) * 0.5 + sin(wander_clock * 1.13) * 0.2
 		Mode.INVESTIGATE:
-			# Cautious when close to what it heard.
-			return lerpf(1.2, 2.9, clampf((position.distance_to(destination) - 1.5) / 5.0, 0.0, 1.0))
+			# Cautious when close to what it heard; loping to a lift.
+			return lerpf(1.2, LIFT_PACE if lift_bound else 2.9, clampf((position.distance_to(destination) - 1.5) / 5.0, 0.0, 1.0))
 		Mode.CHASE:
 			return CHASE_SPEED if lost_time < 0.4 else TRACK_SPEED
 		Mode.SEARCH:
@@ -898,7 +913,7 @@ func nearest_room() -> int:
 	var distance := INF
 	var planta := FLOOR.planta_of(global_position.y)
 	for room in level.manifest.rooms:
-		if room.id == level.manifest.exit: continue
+		if room.id == level.manifest.exit or FLOOR.is_void(room): continue
 		if FLOOR.planta_of(FLOOR.position_of(room).y) != planta: continue
 		var d := position.distance_squared_to(FLOOR.position_of(room))
 		if d < distance:
@@ -909,6 +924,10 @@ func nearest_room() -> int:
 ## The doorways on its route and where it lines up with each and comes out of
 ## it: {door, enter, exit}, indices into `path` (door_threading.thread).
 var crossings: Array = []
+## The points of the route that go round an open leaf: reached, never cut.
+## Taken as passed from a metre off, the corner it cut took it through the
+## end of the leaf.
+var rounds := {}
 ## How long it has been between lining up with a doorway and coming out.
 var passing_time := 0.0
 ## A point of the route counts as reached this close to it, or once walked
@@ -932,6 +951,8 @@ func move_on_path(delta: float) -> void:
 		var threaded: Dictionary = THREAD.thread(raw, level.hotel.doors, map)
 		path = threaded.path
 		crossings = threaded.crossings
+		rounds.clear()
+		for index in threaded.get("rounds", []): rounds[int(index)] = true
 		path_index = 0
 		repath = 0.45
 		# Nowhere it can walk to (the way is another wing's, or behind a
@@ -997,7 +1018,7 @@ func advance_path() -> void:
 			path_index += 1
 			continue
 		# Past it: further on than the point, along the stretch leading to it.
-		if path_index > 0 and gap.length() < 1.0:
+		if path_index > 0 and gap.length() < 1.0 and not rounds.has(path_index):
 			var stretch: Vector3 = point - path[path_index - 1]
 			if Vector2(stretch.x, stretch.z).dot(-gap) > 0.0:
 				path_index += 1
@@ -1055,10 +1076,16 @@ const UNREACHABLE := 2.5
 ## Seconds without moving STUCK_GAIN before each next step.
 const STUCK_STEPS := [0.6, 0.9, 1.5, 2.0, 3.0]
 const STUCK_GAIN := 0.3
-## Rocking back and forth near the same spot is stuck too: this long within
-## STUCK_FREE of where it got stuck is another step. Further than that, it is
-## over.
+## Getting no nearer the end of its route is stuck too, whatever it does on
+## the way: this long wanting to move without the route left to walk getting
+## LINGER_GAIN shorter is another step. Rocking back and forth moves it more
+## than STUCK_GAIN each swing, so the clock above never sees it (a route bent
+## back and forth under a door on the planta above kept it at it for good);
+## and it is not how far it wanders that tells, since going round a leaf is
+## a few metres there and back in the same corner. Further than STUCK_FREE
+## from where it got stuck, it is over.
 const STUCK_LINGER := 5.0
+const LINGER_GAIN := 0.5
 const STUCK_FREE := 2.5
 ## How long a step aside lasts, and backing off.
 const DODGE_TIME := 0.5
@@ -1072,6 +1099,10 @@ var stuck_linger := 0.0
 var stuck_level := 0
 var stuck_anchor := Vector3.ZERO
 var stuck_origin := Vector3.INF
+## Where the route it is measured on goes, and the least it has had left to
+## walk of it.
+var linger_goal := Vector3.INF
+var linger_best := INF
 ## Which way it stepped last time, so when both sides look alike a second
 ## attempt tries the other one instead of rocking against the same edge.
 var stuck_side := 1.0
@@ -1097,8 +1128,21 @@ func watch_progress(delta: float, direction: Vector3, wanted: float) -> void:
 		stuck_anchor = position
 		stuck_clock = 0.0
 	else: stuck_clock += step
-	if stuck_origin != Vector3.INF: stuck_linger += step
+	var left := route_left()
+	if destination.distance_to(linger_goal) > 1.0 or left < linger_best - LINGER_GAIN:
+		linger_goal = destination
+		linger_best = left
+		stuck_linger = 0.0
+	else: stuck_linger += step
 	if stuck_clock >= float(STUCK_STEPS[mini(stuck_level, STUCK_STEPS.size() - 1)]) or stuck_linger >= STUCK_LINGER: escalate(direction)
+
+## How far it still has to go along its route, from where it stands.
+func route_left() -> float:
+	if path_index >= path.size(): return 0.0
+	var left := Vector2(path[path_index].x - position.x, path[path_index].z - position.z).length()
+	for index in range(path_index + 1, path.size()):
+		left += Vector2(path[index].x - path[index - 1].x, path[index].z - path[index - 1].z).length()
+	return left
 
 func escalate(direction: Vector3) -> void:
 	stuck_level = mini(stuck_level + 1, 5)
@@ -1152,7 +1196,7 @@ func free_side(direction: Vector3) -> Vector3:
 func shut_door_at_hand():
 	for door in level.hotel.doors:
 		if door.locked or door.opened or door.moving: continue
-		if Vector2(door.doorway.x - position.x, door.doorway.z - position.z).length() < 1.6: return door
+		if absf(door.doorway.y - position.y) < 2.0 and Vector2(door.doorway.x - position.x, door.doorway.z - position.z).length() < 1.6: return door
 	return null
 
 ## Open floor a couple of metres off, not the way it was pushing: it walks
@@ -1172,6 +1216,7 @@ func detour(direction: Vector3) -> bool:
 		path = PackedVector3Array([position, point])
 		path_index = 1
 		crossings = []
+		rounds.clear()
 		repath = 1.5
 		return true
 	return false

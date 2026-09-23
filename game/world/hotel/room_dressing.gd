@@ -38,6 +38,7 @@ const SETS := {
 	"office": ["drawers", "steel", "chairs", "boxes", ""],
 	"bath": ["bins", "", "chairs"],
 	"corridor": ["console", "chairs", "bins", "plant", "armchair", ""],
+	"passage": ["console", "bins", "plant", "", ""],
 	"garden": ["plant", "plant", "armchair", ""],
 	"empty": ["boxes", "chairs", "cabinet", "", ""],
 	"wardrobe": ["luggage", "rack", "luggage", ""],
@@ -100,15 +101,18 @@ static func shelves(name: String) -> Array:
 	return result
 
 ## The free stretches of a room's walls: [frame (room space; origin on the
-## floor against the wall, +Z into the room, +X along it), width].
+## floor against the wall, +Z into the room, +X along it), width]. Each wall
+## is [side, inward, how far it is across the room, how long it is]; a wall
+## too short for a stretch either side of its doorway -- the end of a
+## corridor -- has none.
 static func stretches(room: Dictionary) -> Array:
 	var span := FLOOR.size_of(room)
 	var far := FAR_DOMESTIC if int(room.type) in DOMESTIC else FAR
 	var open: Array = room.get("open_sides", [])
 	var hides: Array = [] if int(room.type) == 19 else FLOOR.hiding_positions(room)
 	var result := []
-	for wall in [["west", Vector3(1, 0, 0), span.x], ["east", Vector3(-1, 0, 0), span.x], ["north", Vector3(0, 0, 1), span.y], ["south", Vector3(0, 0, -1), span.y]]:
-		if open.has(wall[0]): continue
+	for wall in walls(span):
+		if open.has(wall[0]) or float(wall[3]) < far * 2.0 + 1.0: continue
 		var inward: Vector3 = wall[1]
 		var along := Vector3.UP.cross(inward)
 		for side in [-1, 1]:
@@ -122,6 +126,10 @@ static func stretches(room: Dictionary) -> Array:
 			result.append([Transform3D(Basis(along, Vector3.UP, inward), origin), far - NEAR])
 	return result
 
+## A room's four walls: [side, inward, distance across, length].
+static func walls(span: Vector2) -> Array:
+	return [["west", Vector3(1, 0, 0), span.x, span.y], ["east", Vector3(-1, 0, 0), span.x, span.y], ["north", Vector3(0, 0, 1), span.y, span.x], ["south", Vector3(0, 0, -1), span.y, span.x]]
+
 ## Dresses a room (called by hotel_geometry.build_room(), after its sockets).
 ## The pieces you can go through: drawers, shelves and cupboards.
 const CONTAINERS := ["commode", "console", "drawers", "bookcase", "cabinet", "boxes"]
@@ -132,6 +140,9 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 	if int(room.type) == 19 or bool(room.get("landing", false)): return
 	var kept := state(builder, room)
 	var set_name: String = MODULE_SET.get(int(room.type), "")
+	# A corridor of three or four metres keeps to what stands flat against a
+	# wall: an armchair and its table would half close it.
+	if set_name == "corridor" and minf(FLOOR.size_of(room).x, FLOOR.size_of(room).y) < 5.0: set_name = "passage"
 	var sets: Array = SETS.get(set_name, [])
 	var k := 0
 	for stretch in stretches(room):
@@ -318,10 +329,10 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 	for i in count:
 		var roll: float = builder.vary(base, 200 + i)
 		var along: float = builder.vary(base, 220 + i) * 2.0 - 1.0
-		var walls := []
-		for wall in [["west", Vector3(1, 0, 0), span.x], ["east", Vector3(-1, 0, 0), span.x], ["north", Vector3(0, 0, 1), span.y], ["south", Vector3(0, 0, -1), span.y]]:
-			if not open.has(wall[0]): walls.append(wall)
-		if walls.is_empty() or roll < 0.3:
+		var sides := []
+		for wall in walls(span):
+			if not open.has(wall[0]): sides.append(wall)
+		if sides.is_empty() or roll < 0.3:
 			# On the floor: stains, gum in public rooms, footprints where it is abandoned.
 			var pick: String = ["SurfaceImperfections001", "SurfaceImperfections013", "SurfaceImperfections017"][int(builder.vary(base, 240 + i) * 3)]
 			if kept == 2 and builder.vary(base, 245 + i) < 0.4: pick = "Footsteps003"
@@ -330,7 +341,7 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 			var size: float = 1.6 if pick == "Footsteps003" else 1.2 + builder.vary(base, 260 + i) * 1.4
 			builder.decal(node, pick, Transform3D(Basis(Vector3.UP, builder.vary(base, 265 + i) * TAU), at), Vector3(size, 0.3, size), 0.55 + kept * 0.15, float(i) / count)
 			continue
-		var wall: Array = walls[int(builder.vary(base, 270 + i) * walls.size())]
+		var wall: Array = sides[int(builder.vary(base, 270 + i) * sides.size())]
 		var inward: Vector3 = wall[1]
 		var along_axis := Vector3.UP.cross(inward)
 		var surface: Vector3 = -inward * (float(wall[2]) * 0.5 - 0.16)
@@ -339,10 +350,10 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 		if roll < 0.55:
 			var pick: String = ["Leaking001", "Leaking003", "Leaking005"][int(builder.vary(base, 280 + i) * 3)]
 			var size: float = 1.4 + builder.vary(base, 285 + i) * 1.2
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[2]) * 0.42) + Vector3(0, height - size * 0.5, 0)), Vector3(size, 0.5, size), 0.5 + kept * 0.2, float(i) / count)
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[3]) * 0.42) + Vector3(0, height - size * 0.5, 0)), Vector3(size, 0.5, size), 0.5 + kept * 0.2, float(i) / count)
 		elif roll < 0.7:
 			var pick: String = ["Leaking008", "Leaking009"][int(builder.vary(base, 290 + i) * 2)]
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[2]) * 0.42) + Vector3(0, 0.55, 0)), Vector3(1.6, 0.5, 1.1), 0.45 + kept * 0.2, float(i) / count)
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[3]) * 0.42) + Vector3(0, 0.55, 0)), Vector3(1.6, 0.5, 1.1), 0.45 + kept * 0.2, float(i) / count)
 		elif roll < 0.85:
 			# Beside a doorway, where hands push.
 			var pick: String = "Fingerprints004" if kept == 2 and builder.vary(base, 295 + i) < 0.5 else "Fingerprints002"
@@ -352,4 +363,4 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 			# Smears where there is tile or metal to smear.
 			var stains := ["SurfaceImperfections001", "SurfaceImperfections013", "Smear003"] if int(room.type) in [4, 7, 8, 9] else ["SurfaceImperfections001", "SurfaceImperfections013"]
 			var pick: String = stains[int(builder.vary(base, 300 + i) * stains.size())]
-			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[2]) * 0.42) + Vector3(0, 0.6 + builder.vary(base, 305 + i) * 1.4, 0)), Vector3(1.0, 0.4, 1.0), 0.3 + kept * 0.15, float(i) / count)
+			builder.decal(node, pick, Transform3D(facing, surface + along_axis * along * (float(wall[3]) * 0.42) + Vector3(0, 0.6 + builder.vary(base, 305 + i) * 1.4, 0)), Vector3(1.0, 0.4, 1.0), 0.3 + kept * 0.15, float(i) / count)

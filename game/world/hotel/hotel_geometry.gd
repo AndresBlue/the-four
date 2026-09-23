@@ -523,6 +523,8 @@ func blackout(on: bool) -> void:
 	if dark == on: return
 	dark = on
 	for light in lights:
+		# The lamp of a cell with nothing in it is out for good.
+		if light.has_meta("void"): continue
 		if on: light.set_meta("off", true)
 		elif not dark_ids.has(int(light.get_meta("room", -1))): light.remove_meta("off")
 		light.visible = light.visible and not on
@@ -587,8 +589,14 @@ func shadow_block(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
 	block.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 	return block
 
+## The pairs of cells with no wall between them (corridor running on, or a
+## salon), by pair: looked up for every wall and every door.
+var open_pairs := {}
+
 func build(data: Dictionary) -> void:
 	manifest = data
+	open_pairs.clear()
+	for pair in data.get("merged", []): open_pairs[Vector2i(int(pair[0]), int(pair[1]))] = true
 	decide_dark(data)
 	for room in data.rooms:
 		var node := Node3D.new()
@@ -597,12 +605,24 @@ func build(data: Dictionary) -> void:
 		add_child(node)
 		room_nodes.append(node)
 		room_planta.append(FLOOR.planta_of(node.position.y))
+		# A cell its planta does not use: nothing is built there. Its lamp
+		# stands in the list, off, so a room's lamp is still lights[id].
+		if FLOOR.is_void(room):
+			var lamp := OmniLight3D.new()
+			lamp.visible = false
+			lamp.light_energy = 0.0
+			lamp.set_meta("off", true)
+			lamp.set_meta("void", true)
+			lamp.set_meta("room", int(room.id))
+			node.add_child(lamp)
+			lights.append(lamp)
+			continue
 		build_room(node, room)
 	for edge in data.edges:
 		var a: Dictionary = data.rooms[edge[0]]
 		var b: Dictionary = data.rooms[edge[1]]
 		# One door per connection, with a physical leaf and a stable identifier.
-		if data.get("merged", []).has(edge): continue
+		if open_pairs.has(Vector2i(int(edge[0]), int(edge[1]))): continue
 		# The last door of the floor, the one with the lock, is built at the
 		# end so the gates keep the order of their stages.
 		if gate_stage(data, int(a.id), int(b.id)) == int(data.get("wings", 3)): continue
@@ -693,10 +713,10 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in FLOOR.HARD_FLOORS else "carpet", true)
 	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in SERVICE_CEILINGS else "ceiling", true)
 	for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var neighbor: int = room.id + direction.x + direction.y * int(manifest.width)
-		var connected: bool = manifest.adjacency[room.id].has(neighbor) and (direction.y != 0 or abs(int(room.x) - neighbor % int(manifest.width)) == 1)
-		var edge := [mini(room.id, neighbor), maxi(room.id, neighbor)]
-		if connected and manifest.get("merged", []).has(edge):
+		# The cell beside it on its planta's grid (none past the edge).
+		var neighbor: int = FLOOR.beside(room, direction)
+		var connected: bool = neighbor >= 0 and manifest.adjacency[room.id].has(neighbor)
+		if connected and open_pairs.has(Vector2i(mini(room.id, neighbor), maxi(room.id, neighbor))):
 			# 1 -x, 2 +x, 4 -z, 8 +z (surface.gdshaderinc room_edge()).
 			var bit: int = {Vector2i(-1, 0): 1, Vector2i(1, 0): 2, Vector2i(0, -1): 4, Vector2i(0, 1): 8}[direction]
 			batch_roots[node.get_instance_id()].a += bit
@@ -717,6 +737,9 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
+		# The end of a corridor, three or four metres across, has no room for
+		# a painting either side of its middle, nor for the lamps beside one.
+		if length < 9.0: continue
 		for side in [-1, 1]:
 			# Framed hotel art on this room's face of the wall (inner); each canvas
 			# composition varies with its position. It used to hang on local -Z,
@@ -958,7 +981,10 @@ func build_lifts(data: Dictionary) -> void:
 		if arrive < 0:
 			arrivals.append(Vector3.ZERO)
 			continue
-		var facing := free_side(data, arrive)
+		# The lobby it arrives at is the one straight under this one, and the
+		# car stands against the same wall: it goes down, it does not move
+		# across. That wall has no door (map_generator.gd).
+		var facing := Vector2i(-int(out[0]), -int(out[1]))
 		var car := build_car(data.rooms[arrive], facing)
 		# People are put down in front of it, not inside it.
 		arrivals.append(car + Vector3(facing.x, 0, facing.y) * 1.8)
@@ -1015,16 +1041,6 @@ func box_light(car: Node3D, at: Vector3) -> OmniLight3D:
 	lamp.shadow_enabled = false
 	lamp.light_volumetric_fog_energy = 0.0
 	return lamp
-
-## A side of this cell with no door in it, for the car to back on to.
-static func free_side(data: Dictionary, id: int) -> Vector2i:
-	var width := int(data.width)
-	for way: Vector2i in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
-		var x: int = int(data.rooms[id].x) + way.x
-		var z: int = int(data.rooms[id].z) + way.y
-		if x < 0 or x >= width or z < 0 or z >= int(data.height): return Vector2i(-way.x, -way.y)
-		if not data.adjacency[id].has(z * width + x): return Vector2i(-way.x, -way.y)
-	return Vector2i(0, 1)
 
 ## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
 ## its top edge, engraved SALIDA with an arrow pointing down at the room the
@@ -1249,7 +1265,7 @@ func start_bounce() -> void:
 	var wanted := []
 	for i in room_nodes.size():
 		var room: Dictionary = manifest.rooms[i]
-		if dark_room(room): continue
+		if dark_room(room) or FLOOR.is_void(room): continue
 		var hall := int(room.get("hall", -1))
 		if hall >= 0:
 			if not halls.has(hall): halls[hall] = []
@@ -1480,9 +1496,17 @@ func build_navigation() -> void:
 	# they are PITCH apart, far past where two regions' edges would meet.
 	var plantas := {}
 	for index in room_planta: plantas[index] = true
+	# The whole plan, wherever the reception put the origin.
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for room in manifest.rooms:
+		var at := FLOOR.position_of(room)
+		var half := FLOOR.size_of(room) * 0.5
+		low = Vector2(minf(low.x, at.x - half.x), minf(low.y, at.z - half.y))
+		high = Vector2(maxf(high.x, at.x + half.x), maxf(high.y, at.z + half.y))
 	for planta in plantas:
 		var mesh: NavigationMesh = nav.duplicate()
-		mesh.filter_baking_aabb = AABB(Vector3(-12, FLOOR.planta_y(planta) - 0.5, -12), Vector3(300, 3, 300))
+		mesh.filter_baking_aabb = AABB(Vector3(low.x - 2.0, FLOOR.planta_y(planta) - 0.5, low.y - 2.0), Vector3(high.x - low.x + 4.0, 3, high.y - low.y + 4.0))
 		NavigationServer3D.bake_from_source_geometry_data(mesh, source)
 		var region := NavigationRegion3D.new()
 		region.name = "Navigation_%d" % planta
@@ -1494,7 +1518,7 @@ func dark_room(room: Dictionary) -> bool:
 	return dark_ids.has(int(room.id))
 
 static func may_be_dark(room: Dictionary) -> bool:
-	return not (int(room.type) in [0, 4, 7, 8, 9, 19] or int(room.get("hall", -1)) >= 0)
+	return not (int(room.type) in [0, 4, 7, 8, 9, 19, FLOOR.VOID] or int(room.get("hall", -1)) >= 0)
 
 ## Which rooms are dark: a share of the eligible ones, then their eligible
 ## neighbours with NEIGHBOUR_DARK. Deterministic from positions, like the
@@ -1540,6 +1564,7 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		var distance := room_nodes[i].position.distance_to(player_position)
 		var on_planta: bool = i >= room_planta.size() or room_planta[i] == here
 		room_nodes[i].visible = on_planta and distance < reach
+		if lights[i].has_meta("void"): continue
 		if not on_planta:
 			lights[i].visible = false
 			continue

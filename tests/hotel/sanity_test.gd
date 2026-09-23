@@ -21,7 +21,9 @@ func frames(count: int) -> void:
 ## A room of the floor with its lamps out, and one with them on.
 func room_of(dark: bool) -> Dictionary:
 	for room in level.manifest.rooms:
-		if int(room.type) == 19 or bool(room.get("landing", false)): continue
+		# A room to stand in: not the refuge, its lobby, a corridor or a cell
+		# the planta does not use.
+		if int(room.type) == 19 or bool(room.get("landing", false)) or bool(room.get("corridor", false)) or FLOOR.is_void(room): continue
 		if level.hotel.dark_ids.has(int(room.id)) == dark: return room
 	return {}
 
@@ -161,9 +163,9 @@ func run() -> void:
 
 ## A room of the first wing as far from a point as the floor allows.
 func room_far_from(point: Vector3) -> Dictionary:
-	var best: Dictionary = level.manifest.rooms[0]
+	var best: Dictionary = level.manifest.rooms[int(level.manifest.start)]
 	for room in level.manifest.rooms:
-		if int(room.wing) != 0 or bool(room.get("landing", false)): continue
+		if int(room.wing) != 0 or bool(room.get("landing", false)) or FLOOR.is_void(room): continue
 		if FLOOR.position_of(room).distance_to(point) > FLOOR.position_of(best).distance_to(point): best = room
 	return best
 

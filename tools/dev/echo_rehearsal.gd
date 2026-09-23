@@ -59,8 +59,8 @@ func somewhere() -> Vector3:
 	for attempt in 12:
 		var room: Dictionary = level.manifest.rooms[rng.randi() % level.manifest.rooms.size()]
 		var point: Vector3 = FLOOR.position_of(room)
-		if not level.point_in_refuge(point): return point
-	return FLOOR.position_of(level.manifest.rooms[0])
+		if not FLOOR.is_void(room) and not level.point_in_refuge(point): return point
+	return FLOOR.position_of(level.manifest.rooms[int(level.manifest.start)])
 
 func retarget(walker: Dictionary) -> void:
 	walker.bound_for = null

@@ -41,7 +41,7 @@ func run() -> void:
 			# never look into.
 			var stranded := 0
 			for other in level.manifest.rooms:
-				if int(other.wing) != stage: continue
+				if int(other.wing) != stage or FLOOR.is_void(other): continue
 				var point := FLOOR.position_of(other)
 				var route := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, point)
 				if route.size() < 2 or route[route.size() - 1].distance_to(point) > 1.5: stranded += 1
@@ -69,8 +69,9 @@ func run() -> void:
 
 func walk(level) -> bool:
 	# BFS selects a route; movement and door interaction use the actual player.
-	var parents := {0: -1}
-	var queue: Array[int] = [0]
+	var start := int(level.manifest.start)
+	var parents := {start: -1}
+	var queue: Array[int] = [start]
 	var index := 0
 	while index < queue.size():
 		var current := queue[index]

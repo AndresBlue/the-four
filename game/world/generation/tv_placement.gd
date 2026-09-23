@@ -1,11 +1,11 @@
 extends RefCounted
-## Which televisions a stage is played on: the sets that sit in the wing that
-## stage opens, spread across it, away from the door everyone comes in by.
-## The second and third stages each get their own, counted apart -- lighting
-## the sets of one wing says nothing about the next. Deterministic per seed,
-## per stage and per number of survivors, and independent of the map
-## generator's own random sequence, so every machine picks the same ones
-## without sending a list.
+## Which televisions a stage is played on: the sets that sit on the planta that
+## stage opens, spread across its zones, well in from the lobby everyone comes
+## out of the lift into. The second and third stages each get their own,
+## counted apart -- lighting the sets of one planta says nothing about the
+## next. Deterministic per seed, per stage and per number of survivors, and
+## independent of the map generator's own random sequence, so every machine
+## picks the same ones without sending a list.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 ## Two more than the stage asks for, so there is always a choice of which one
@@ -14,34 +14,45 @@ const SPARE := 2
 ## However few play, a stage of one television would be a corridor with a
 ## light switch.
 const LEAST := 2
-## Route metres from the wing's entrance below which a set is too easy.
-const MIN_FROM_ENTRANCE := 14.0
+## How far in a set has to be, walking from the lobby: this many metres, or
+## this share of the way to the farthest room of the planta if that is more.
+const MIN_FROM_ENTRANCE := 25.0
+const SHARE_IN := 0.2
 
 ## How many have to be on for the stage to be met.
 static func needed(survivors: int) -> int: return maxi(LEAST, survivors)
 
-## Returns [{room, position (world), yaw}] for the wing of a stage, as many as
-## needed plus the spares. Stage 2 is the second wing, stage 3 the third.
+## Returns [{room, position (world), yaw}] for the planta of a stage, as many
+## as needed plus the spares. Stage 2 is the second planta, stage 3 the third.
 static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([manifest.seed, "televisions", survivors, stage])
 	var wing := stage - 1
-	var entrance: Vector3 = FLOOR.position_of(manifest.rooms[int(manifest.entries[wing])]) if wing > 0 and manifest.get("entries", []).size() > wing else Vector3.ZERO
+	var metres := FLOOR.route_metres(manifest, FLOOR.entry_of(manifest, wing))
+	var deepest := 0.0
+	for id in metres: deepest = maxf(deepest, float(metres[id]))
+	var least := maxf(MIN_FROM_ENTRANCE, deepest * SHARE_IN)
 	var spots: Array = []
+	var near: Array = []
 	for room in manifest.rooms:
 		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id) or bool(room.get("landing", false)): continue
-		if FLOOR.position_of(room).distance_to(entrance) < MIN_FROM_ENTRANCE: continue
 		for prop in room.props:
 			if prop.kind != "tv": continue
 			var socket := GEOMETRY.prop_transform(room, prop)
-			spots.append({"room": int(room.id), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y, "scale": socket.basis.get_scale().x})
-	# Shuffled with its own generator, then taken one per sector while that
+			var spot := {"room": int(room.id), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y, "scale": socket.basis.get_scale().x, "metres": float(metres.get(int(room.id), 0.0))}
+			if float(spot.metres) >= least: spots.append(spot)
+			else: near.append(spot)
+	# Shuffled with its own generator, then taken one per zone while that
 	# lasts: the stage should not be four sets in the same corner.
 	for i in range(spots.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var swap: Dictionary = spots[i]
 		spots[i] = spots[j]
 		spots[j] = swap
+	# A planta that had to put a set near the lobby still has its stage: the
+	# farthest of those come after all the rest.
+	near.sort_custom(func(one, two): return float(one.metres) > float(two.metres))
+	spots.append_array(near)
 	var wanted := needed(survivors) + SPARE
 	var chosen: Array = []
 	var used := {}
@@ -49,7 +60,8 @@ static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 		for spot in spots:
 			if chosen.size() >= wanted: break
 			if chosen.has(spot): continue
-			if pass_index == 0 and used.has(spot.sector): continue
+			if pass_index == 0 and (used.has(spot.sector) or float(spot.metres) < least): continue
 			used[spot.sector] = true
 			chosen.append(spot)
+	for spot in chosen: spot.erase("metres")
 	return chosen

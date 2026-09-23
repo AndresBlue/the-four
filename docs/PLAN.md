@@ -6,7 +6,7 @@ montado en [la guía de desarrollo](DEVELOPMENT.md), y el registro de cómo se
 llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
-Estado: juego **0.5**, generador de mapas **v5** (tres plantas), protocolo de red
+Estado: juego **0.5**, generador de mapas **v6** (tres plantas enteras), protocolo de red
 **the-four-net-9**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
@@ -14,7 +14,7 @@ cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 ## Dónde estamos (22 de septiembre de 2026)
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
-tres alas y tres etapas, The Locust con su IA y su versus, supervivencia,
+tres plantas y tres etapas, The Locust con su IA y su versus, supervivencia,
 cordura, ascensores con botón, cuatro presets gráficos y un ejecutable de
 Windows de 448 MB que funciona (exportado el 22 de septiembre; lo de después de
 esa hora pide volver a exportar). Se ha jugado con gente real, en LAN y por
@@ -90,27 +90,27 @@ Lo que ve el cazador, también (en [VISION_LOCUST.md](VISION_LOCUST.md)): la
 ruta azul al ascensor, las teles amarillas, la Q y los enfriamientos en
 pantalla. Queda jugarlo (apartado 1).
 
-### Un piso de tres plantas (generador v5)
+### Un piso de tres plantas (generadores 5 y 6)
 
-Un piso pasa a ser tres plantas físicas apiladas, una por etapa, que se bajan
-en el ascensor. Cada una del tamaño del mapa entero de hoy, con pasillos de
-verdad y entre 81 y 99 habitaciones; que no se parezcan entre sí y se puedan
-resolver siempre. Hoy el mapa sale casi siempre igual: la salida en la misma
-esquina, el refugio en el fondo más hondo del ala, y muchas cosas decididas por
-la posición y no por la semilla.
+Las tres plantas apiladas y el generador de pasillos ya están (en la guía de
+desarrollo y en el diseño): cada planta es un hotel entero sobre su propia
+rejilla, con uno de ocho planos de pasillos, entre 81 y 99 habitaciones y un
+refugio que no se repite, y `tools/dev/map_metrics.gd` comprueba sus 36
+umbrales sobre mil pisos. Lo que falta es que lo que hay dentro tampoco se
+repita —hoy muchas cosas se deciden por la posición y no por la semilla— y que
+un piso tan grande pese lo que debe:
 
-Las tres plantas apiladas ya están, con todo el juego entendiéndolas (en la
-guía de desarrollo): hoy cada planta es una de las alas de antes, bajada a su
-altura. Lo que falta es que cada una sea un hotel entero:
-
-- [ ] **El generador de pasillos:** rejilla con carriles, ocho arquetipos de
-  planta, conteo exacto de habitaciones, refugio sin patrón, objetivos por
-  zonas.
 - [ ] **Variedad por semilla:** salas oscuras, estado, puertas (abiertas,
   bisagra, giro y sitio en la pared), armarios y muebles, explícitos en el
-  manifiesto para que la huella de red los cubra.
-- [ ] **Métricas de variedad y de resolubilidad** con umbrales, rendimiento
-  medido con tres plantas y documentos al día.
+  manifiesto para que la huella de red los cubra. Con dos cosas que han
+  salido de las plantas enteras: un pasillo a oscuras tiene que volver a ser
+  un suceso (hoy el contagio de las salas apaga uno de cada cuatro tramos), y
+  las puertas cortafuegos tienen que abrir contra la pared del pasillo (hoy
+  su hoja queda de pie en medio y deja detrás un bolsillo de metro y medio).
+- [ ] **Rendimiento con plantas enteras:** montar un piso ya tarda de 5,8 a
+  6,8 s sin ventana (el tope era 8), pero el hotel tiene de 51 000 a 56 000
+  nodos y el tope era 40 000; bajarlos, y medir memoria y FPS con ventana y
+  apuntarlo todo en [PERFORMANCE.md](PERFORMANCE.md).
 
 ---
 
@@ -276,10 +276,6 @@ no rompen nada.
   `hotel.update_visibility` lo vuelve a mostrar a los 0,25 s: no mira `dark`.
 - [ ] El apagón también apaga el panel del coche del ascensor: comparte el
   material `"light"` que `held_glows` pone a cero.
-- [ ] Los documentos pueden caer en los refugios de las alas 2 y 3:
-  `document_placement.gd` solo excluye `manifest.exit`.
-- [ ] Salas de pasillo de una sola celda (unas 0,9 por piso): `island_refuge`
-  saca del pasillo las celdas del anillo, pero deja marcadas las demás.
 - [ ] Los nombres de las teclas salen con la distribución de EE. UU. (en un
   teclado español la Ñ se ve como «;»): `settings_service.key_name`.
 - [ ] Mover un deslizador de ajustes guarda en disco y reaplica la calidad de
@@ -305,8 +301,6 @@ no rompen nada.
   la del cazador: los granos se escriben (8000 cerca de la cámara, medidos)
   pero apenas se dibujan. Mientras, la vista de verdad es
   `./tools/godot.ps1 locust`.
-- [ ] El validador cuenta dos ciclos de más: `E − V + 1` sobre un grafo de tres
-  alas separadas.
 
 ## 3 · Acabado de lo que ya existe
 

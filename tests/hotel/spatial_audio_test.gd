@@ -25,6 +25,17 @@ func sample_at(point: Vector3, capture: AudioEffectCapture) -> Vector2:
 	level.world_audio.voices[-1].pitch_scale = 1.0
 	await wait(0.9)
 	return energy(capture)
+## A door between two rooms of the first planta (not corridors: three metres
+## across a corridor is its far wall), with the room either side of it.
+func room_door(level) -> Node:
+	for door in level.hotel.doors:
+		if door.gate_stage != 0: continue
+		var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
+		var one: Dictionary = FLOOR.room_at(level.manifest.rooms, door.doorway + across)
+		var two: Dictionary = FLOOR.room_at(level.manifest.rooms, door.doorway - across)
+		if not one.is_empty() and not two.is_empty() and one.kind == "module" and two.kind == "module" and int(one.wing) == 0: return door
+	return level.hotel.doors[0]
+
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -164,7 +175,7 @@ func run() -> void:
 	wall.queue_free()
 	await physics_frame
 	# Propagation: behind a wall a sound arrives from the doorway, with echo.
-	var portal = level.hotel.doors[0]
+	var portal = room_door(level)
 	portal.open_immediately()
 	var across: Vector3 = Basis(Vector3.UP, portal.closed_rotation) * Vector3(0, 0, 1)
 	var sideways: Vector3 = across.cross(Vector3.UP).normalized()
@@ -174,7 +185,7 @@ func run() -> void:
 	var hidden_point: Vector3 = portal.doorway + across * 3.0 + sideways * 3.5 + Vector3.UP * 1.4
 	var heard: Dictionary = audio.route_source(hidden_point)
 	check("Walls never pass sound: it arrives from the opening", heard.audible and heard.echo and heard.position.distance_to(portal.doorway + Vector3.UP * 1.5) < 2.5 and heard.gain < -3.0)
-	var visible_point: Vector3 = level.player.global_position + Vector3(0, 1.4, -2.0)
+	var visible_point: Vector3 = level.player.global_position - across * 1.5 + Vector3(0, 1.4, 0)
 	var direct: Dictionary = audio.route_source(visible_point)
 	check("In the open a sound comes straight from its source", direct.audible and not direct.echo and direct.position == visible_point)
 	# Dread aura: follows the walkable route and points toward the creature.

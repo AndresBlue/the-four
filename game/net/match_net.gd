@@ -204,6 +204,11 @@ func go() -> void:
 	# report comes in late, and the host catches it up then like anybody
 	# coming back (judge_ready -> catch_up).
 	if not net.is_host and manifest_hash == 0: return
+	# Already started by a catch-up (restore): somebody watching is caught up
+	# the moment its floor is ready, and the start everybody gets can come
+	# after that. Started twice, the floor had two creatures, every door told
+	# the level about its noises twice and the watcher was handed back a body.
+	if floor_live: return
 	level.begin_online_play(config)
 	floor_live = true
 	if net.is_host:
@@ -930,7 +935,9 @@ func catch_up(seat: int, id: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array, sets: Array, progress: Dictionary = {}) -> void:
-	level.begin_online_play(config)
+	# The start everybody gets may have come first (go): then there is only
+	# the state to bring in.
+	if not floor_live: level.begin_online_play(config)
 	floor_live = true
 	level.catch_up_progress(progress)
 	for index in mini(doors.size(), level.hotel.doors.size()): level.hotel.doors[index].set_state(doors[index])

@@ -276,6 +276,8 @@ func open_doors(hunting: bool, heading: Vector3) -> void:
 		# on a guest that was a request over the network each time.
 		if door.opened or door.moving or door.locked: continue
 		var offset: Vector3 = door.doorway - creature.global_position
+		# The door straight overhead is on another planta.
+		if absf(offset.y) > 2.0: continue
 		offset.y = 0.0
 		if offset.length() < (2.4 if hunting else 1.8) and heading.dot(offset.normalized()) > 0.3:
 			level.match_net.use_door(door, not hunting, hunting)

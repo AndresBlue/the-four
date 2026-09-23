@@ -31,9 +31,11 @@ func run() -> void:
 	level.settings.values.quality = 2
 	level.apply_settings()
 	var echo = level.locust.driver.echo
-	var corridor: Dictionary = level.manifest.rooms[0]
+	# A stretch of corridor on the first planta that runs north to south,
+	# long enough to stand four metres apart in.
+	var corridor: Dictionary = level.manifest.rooms[int(level.manifest.start)]
 	for room in level.manifest.rooms:
-		if int(room.type) in [11, 12] and int(room.get("hall", -1)) == -1:
+		if int(room.type) in [11, 12] and int(room.get("hall", -1)) == -1 and int(room.wing) == 0 and float(room.span_z) >= 10.0:
 			corridor = room
 			break
 	var centre: Vector3 = FLOOR.position_of(corridor)

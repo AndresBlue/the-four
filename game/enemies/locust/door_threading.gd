@@ -23,7 +23,8 @@ const LATCH_SHIFT := 0.15
 ## corner it cuts on reaching the point (hotel_locust.REACHED) took it within
 ## a hand's width of the wood.
 const TIP_CLEAR := 0.9
-## A stretch of route that comes nearer a leaf than this brushes it.
+## A stretch of route that goes round the free end of a leaf nearer than
+## this goes round it wider.
 const LEAF_MARGIN := 0.5
 ## A point the walkable floor moves by more than this was inside something.
 const SNAP_SLACK := 0.3
@@ -72,11 +73,12 @@ static func line_up(door, side: float, map: RID, height: float) -> Vector3:
 
 ## `route` threaded through each doorway it goes through and bent round every
 ## open leaf in its way. `doors`: the floor's; `map`: its navigation.
-## Returns {"path", "crossings"}: per doorway, in order, {"door", "enter",
-## "exit"}, the indices of the points in front of it and past it (-1 when the
-## route needed none).
+## Returns {"path", "crossings", "rounds"}: per doorway, in order, {"door",
+## "enter", "exit"}, the indices of the points in front of it and past it (-1
+## when the route needed none); and the indices of the points that go round a
+## leaf, which have to be reached and not cut (hotel_locust.advance_path).
 static func thread(route: PackedVector3Array, doors: Array, map: RID) -> Dictionary:
-	if route.size() < 2 or doors.is_empty(): return {"path": route, "crossings": []}
+	if route.size() < 2 or doors.is_empty(): return {"path": route, "crossings": [], "rounds": []}
 	var passes: Array = []
 	for i in range(1, route.size()):
 		for door in doors:
@@ -106,15 +108,20 @@ static func thread(route: PackedVector3Array, doors: Array, map: RID) -> Diction
 			if mark.enter != Vector3.INF: path.append(mark.enter)
 			if mark.exit != Vector3.INF: path.append(mark.exit)
 			marks.append(mark)
+	# Only the leaves of its own planta: the plantas share their plan, and an
+	# open door straight overhead bent the route round a board that is not
+	# there (it went back and forth under it for good).
+	var planta := FLOOR.planta_of(route[0].y)
 	var leaves: Array = []
 	for door in doors:
-		if not is_instance_valid(door): continue
+		if not is_instance_valid(door) or FLOOR.planta_of(door.doorway.y) != planta: continue
 		if door.opened or marks.any(func(mark): return mark.door == door): leaves.append(door.leaf_line(true))
-	path = bend(path, leaves, map)
+	var rounds: Array = []
+	path = bend(path, leaves, map, rounds)
 	var crossings: Array = []
 	for mark in marks:
 		crossings.append({"door": mark.door, "enter": find_point(path, mark.enter), "exit": find_point(path, mark.exit)})
-	return {"path": path, "crossings": crossings}
+	return {"path": path, "crossings": crossings, "rounds": rounds}
 
 static func find_point(path: PackedVector3Array, point: Vector3) -> int:
 	if point == Vector3.INF: return -1
@@ -125,7 +132,7 @@ static func find_point(path: PackedVector3Array, point: Vector3) -> int:
 ## Every stretch of the route that brushes an open leaf goes round its free end
 ## instead: the leaf is a board standing out of the wall, so round its end is
 ## the only way past it that does not go through it.
-static func bend(path: PackedVector3Array, leaves: Array, map: RID) -> PackedVector3Array:
+static func bend(path: PackedVector3Array, leaves: Array, map: RID, rounds: Array = []) -> PackedVector3Array:
 	if leaves.is_empty() or path.size() < 2: return path
 	var out := PackedVector3Array([path[0]])
 	for i in range(1, path.size()):
@@ -136,16 +143,17 @@ static func bend(path: PackedVector3Array, leaves: Array, map: RID) -> PackedVec
 			if leaf == null: break
 			var round_it := round_point(leaf, map, from.y)
 			if round_it == Vector3.INF or round_it.distance_to(from) < 0.05: break
+			rounds.append(out.size())
 			out.append(round_it)
 		out.append(target)
 	return out
 
-## The leaf a stretch comes too near, the one nearest its start; or null.
+## The leaf a stretch goes through, the one nearest its start; or null.
 static func brushed(a: Vector3, b: Vector3, leaves: Array):
 	var best = null
 	var nearest := INF
 	for leaf in leaves:
-		if gap(a, b, leaf[0], leaf[1]) >= LEAF_MARGIN: continue
+		if not crosses(a, b, leaf): continue
 		var d := Vector2(a.x, a.z).distance_to(Vector2(leaf[1].x, leaf[1].z))
 		if d < nearest:
 			nearest = d
@@ -161,23 +169,19 @@ static func round_point(leaf: Array, map: RID, height: float) -> Vector3:
 	if Vector2(snapped.x - out.x, snapped.z - out.z).length() > SNAP_SLACK: return Vector3.INF
 	return snapped
 
-## Shortest distance on the floor between segments a-b and c-d.
-static func gap(a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> float:
+## Whether a stretch goes from one side of a leaf to the other through the
+## board, or round its free end by less than LEAF_MARGIN. One that stays on
+## one side does not go through it, however near it passes: counted as
+## brushing it, a creature that had already turned the end of a leaf and was
+## behind it was sent back out round the end, and in again, for good.
+static func crosses(a: Vector3, b: Vector3, leaf: Array) -> bool:
+	var hinge := Vector2(leaf[0].x, leaf[0].z)
+	var board := Vector2(leaf[1].x, leaf[1].z) - hinge
 	var p := Vector2(a.x, a.z)
 	var q := Vector2(b.x, b.z)
-	var r := Vector2(c.x, c.z)
-	var s := Vector2(d.x, d.z)
-	if segments_cross(p, q, r, s): return 0.0
-	return minf(minf(point_gap(p, r, s), point_gap(q, r, s)), minf(point_gap(r, p, q), point_gap(s, p, q)))
-
-static func point_gap(point: Vector2, a: Vector2, b: Vector2) -> float:
-	var span := b - a
-	var t := 0.0 if span.length_squared() < 0.000001 else clampf((point - a).dot(span) / span.length_squared(), 0.0, 1.0)
-	return point.distance_to(a + span * t)
-
-static func segments_cross(p: Vector2, q: Vector2, r: Vector2, s: Vector2) -> bool:
-	var one := (q - p).cross(r - p)
-	var two := (q - p).cross(s - p)
-	var three := (s - r).cross(p - r)
-	var four := (s - r).cross(q - r)
-	return one * two < 0.0 and three * four < 0.0
+	var from := board.cross(p - hinge)
+	var to := board.cross(q - hinge)
+	if from * to > 0.0 or absf(from - to) < 0.000001: return false
+	var hit := p + (q - p) * (from / (from - to))
+	var along := (hit - hinge).dot(board) / board.length_squared()
+	return along >= 0.0 and along <= 1.0 + LEAF_MARGIN / board.length()

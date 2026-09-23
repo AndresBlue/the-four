@@ -470,7 +470,8 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.camera.rotation = Vector3.ZERO
 	player.reset_handheld()
 	player.torch.visible = false
-	player.rotation.y = -PI / 2 if manifest.adjacency[0].has(1) else PI
+	# Looking at the reception's door, whichever way the floor put it.
+	player.rotation.y = float(manifest.get("start_facing", PI))
 	visibility_clock = 1
 	# Physics validation ignores closed door leaves (layer 8), which are openable.
 	get_tree().paused = false
@@ -1567,24 +1568,30 @@ func spawn_locust() -> void:
 	locust = LOCUST.instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
-	# As far into the first wing as that wing goes: the stage is played there
-	# and the creature has to start away from the door everyone comes in by.
-	# Not in a refuge, and not in the lift lobby behind one: that lobby is often
-	# the deepest room of the wing, and its only way out is the refuge the
-	# creature will not cross -- it spent the stage shut in there, waiting
-	# right where everybody had to go.
-	var distances := GENERATOR.distance_map(manifest.adjacency, 0)
+	# Well into the first planta, between half and four fifths of the way to
+	# its farthest room, so the stage starts away from the door everyone comes
+	# in by; which room of those is drawn from the floor's seed, not the first
+	# one in the list (that put it in the same corner every time). Not in a
+	# refuge nor next to one, and not in the lift lobby behind one: that lobby's
+	# only way out is the refuge the creature will not cross -- it spent the
+	# stage shut in there, waiting right where everybody had to go.
+	var start := int(manifest.get("start", 0))
+	var distances := GENERATOR.distance_map(manifest.adjacency, start)
+	var near_refuge := GENERATOR.distance_map(manifest.adjacency, int(manifest.exit))
 	var shut_out := off_limits_rooms()
 	var reach := 0
 	for room in manifest.rooms:
 		if int(room.get("wing", 0)) == 0 and not shut_out.has(int(room.id)): reach = maxi(reach, int(distances[room.id]))
-	var chosen := 0
-	var target := int(reach * 0.75)
+	var dens: Array = []
 	for room in manifest.rooms:
-		if int(room.get("wing", 0)) != 0 or shut_out.has(int(room.id)): continue
-		if distances[room.id] >= target and distances[room.id] > 3:
-			chosen = room.id
-			break
+		var hops: int = distances[room.id]
+		if int(room.get("wing", 0)) != 0 or shut_out.has(int(room.id)) or FLOOR.is_void(room) or hops <= 3: continue
+		if hops >= int(reach * 0.5) and hops <= int(ceil(reach * 0.8)) and near_refuge[room.id] > 2: dens.append(int(room.id))
+	var chosen := start
+	if not dens.is_empty():
+		var draw := RandomNumberGenerator.new()
+		draw.seed = hash([int(manifest.seed), "den"])
+		chosen = int(dens[draw.randi_range(0, dens.size() - 1)])
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
 	locust.patrol_room = chosen
 	add_child(locust)
@@ -1743,6 +1750,8 @@ func door_behind():
 	for door in hotel.doors:
 		if not door.opened or door.moving: continue
 		var distance := Vector2(door.doorway.x - player.global_position.x, door.doorway.z - player.global_position.z).length()
+		# Not the one on the planta above or below, straight overhead.
+		if absf(door.doorway.y - player.global_position.y) > 2.0: continue
 		if distance < best_distance:
 			best = door
 			best_distance = distance

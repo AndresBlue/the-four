@@ -1,6 +1,9 @@
 extends RefCounted
 
-const VERSION := 5
+## 5 stacked the three wings of before as plantas; 6 makes each planta a
+## hotel of its own (map_generator.gd). A checkpoint or a record of another
+## version is refused rather than rebuilt as a different floor.
+const VERSION := 6
 ## A floor is three plantas, one per stage, stacked and going down: the first
 ## at 0 and each next one PITCH below the one before. Enough for the tallest
 ## ceiling (the 4.8 m halls) and both slabs. What joins them is the lift, and
@@ -17,8 +20,11 @@ const LEAF_WIDTH := 1.2
 const WARDROBES := {1: 2, 2: 2, 3: 2, 16: 2, 13: 1, 14: 1, 15: 1, 8: 1}
 ## Tiled floors (baths, laundry, maintenance); every other module is carpeted.
 const HARD_FLOORS := [4, 7, 9]
-const TYPES := ["recepcion", "habitacion_doble", "habitacion_simple", "suite", "bano", "salon", "comedor", "lavanderia", "almacen", "mantenimiento", "vestibulo", "pasillo", "galeria", "sala_lectura", "sala_tv", "oficina", "guardarropa", "sala_plantas", "salon_vacio", "refugio"]
-const NAMES := ["Recepción", "Habitación doble", "Habitación", "Suite", "Baños", "Salón", "Comedor", "Lavandería", "Almacén", "Mantenimiento", "Vestíbulo", "Pasillo", "Galería", "Sala de lectura", "Sala de televisión", "Oficina", "Guardarropa", "Jardín interior", "Salón vacío", "Refugio"]
+const TYPES := ["recepcion", "habitacion_doble", "habitacion_simple", "suite", "bano", "salon", "comedor", "lavanderia", "almacen", "mantenimiento", "vestibulo", "pasillo", "galeria", "sala_lectura", "sala_tv", "oficina", "guardarropa", "sala_plantas", "salon_vacio", "refugio", "vacio"]
+const NAMES := ["Recepción", "Habitación doble", "Habitación", "Suite", "Baños", "Salón", "Comedor", "Lavandería", "Almacén", "Mantenimiento", "Vestíbulo", "Pasillo", "Galería", "Sala de lectura", "Sala de televisión", "Oficina", "Guardarropa", "Jardín interior", "Salón vacío", "Refugio", "Vacío"]
+## A cell of the grid a planta does not use: nothing is built there, nobody
+## walks there. It stays in the list so a room's id is still its index.
+const VOID := 20
 # Each corner is a reserved furnishing socket; the central cross remains clear.
 const RECIPES := [
 	["reception", "sofa", "plant", "luggage"],
@@ -40,8 +46,12 @@ const RECIPES := [
 	["wardrobe", "wardrobe", "luggage", "sofa"],
 	["plant", "plant", "sofa", "lamp"],
 	["curtain", "lamp", "bin", "sofa"],
-	["sofa", "lamp", "phone", "plant"]
+	["sofa", "lamp", "phone", "plant"],
+	[]
 ]
+
+static func is_void(room: Dictionary) -> bool:
+	return int(room.get("type", 0)) == VOID
 
 static func position_of(room: Dictionary) -> Vector3:
 	return Vector3(room.get("px", room.x * CELL), float(room.get("py", 0.0)), room.get("pz", room.z * CELL))
@@ -69,15 +79,112 @@ static func size_of(room: Dictionary) -> Vector2:
 	return Vector2(room.get("span_x", CELL), room.get("span_z", CELL))
 
 ## The module whose footprint contains a world point, on the planta the point
-## is on, or {} outside the plan.
+## is on, or {} outside the plan (and in a cell its planta does not use).
 static func room_at(rooms: Array, point: Vector3) -> Dictionary:
+	if rooms.is_empty(): return {}
+	if not is_same(rooms, index_rooms): build_index(rooms)
+	if grid_index.is_empty(): return scan(rooms, point)
+	var grid: Dictionary = grid_index.get(planta_of(point.y), {})
+	if grid.is_empty(): return {}
+	var x := bisect(grid.xs, point.x)
+	var z := bisect(grid.zs, point.z)
+	if x < 0 or z < 0: return {}
+	var id: int = int(grid.base) + z * int(grid.width) + x
+	if id >= rooms.size() or is_void(rooms[id]): return {}
+	return rooms[id]
+
+## The cell next to a room on its planta's grid, one step `way` away, or -1
+## off the grid.
+static func beside(room: Dictionary, way: Vector2i) -> int:
+	var x := int(room.x) + way.x
+	var z := int(room.z) + way.y
+	var cols := int(room.get("cols", 0))
+	if x < 0 or z < 0 or x >= cols or z >= int(room.get("rows", 0)): return -1
+	return int(room.id) + way.x + way.y * cols
+
+## room_at's index of the last list of rooms it was asked about: per planta,
+## where its grid starts in the list and where its columns and rows begin and
+## end, so a point finds its cell by halving instead of going through several
+## hundred rooms. {} when the list is not laid out as grids (then every room
+## is looked at).
+static var index_rooms: Array = []
+static var grid_index := {}
+
+static func build_index(rooms: Array) -> void:
+	index_rooms = rooms
+	grid_index = {}
+	var index := {}
+	var at := 0
+	while at < rooms.size():
+		var first: Dictionary = rooms[at]
+		var width := int(first.get("cols", 0))
+		var height := int(first.get("rows", 0))
+		if width <= 0 or height <= 0 or int(first.get("id", -1)) != at or int(first.x) != 0 or int(first.z) != 0 or at + width * height > rooms.size(): return
+		for local in width * height:
+			var room: Dictionary = rooms[at + local]
+			if int(room.id) != at + local or int(room.x) != local % width or int(room.z) != local / width or int(room.wing) != int(first.wing): return
+		var xs: Array = []
+		for x in width: xs.append(float(position_of(rooms[at + x]).x) - size_of(rooms[at + x]).x * 0.5)
+		xs.append(float(position_of(rooms[at + width - 1]).x) + size_of(rooms[at + width - 1]).x * 0.5)
+		var zs: Array = []
+		for z in height: zs.append(float(position_of(rooms[at + z * width]).z) - size_of(rooms[at + z * width]).y * 0.5)
+		zs.append(float(position_of(rooms[at + (height - 1) * width]).z) + size_of(rooms[at + (height - 1) * width]).y * 0.5)
+		index[int(first.wing)] = {"base": at, "width": width, "height": height, "xs": xs, "zs": zs}
+		at += width * height
+	grid_index = index
+
+## Which of the spans between consecutive edges holds the value, or -1 off
+## both ends (an edge counts for the span on either side, as a footprint
+## includes its border).
+static func bisect(edges: Array, value: float) -> int:
+	var last := edges.size() - 2
+	if last < 0 or value < float(edges[0]) - 0.001 or value > float(edges[last + 1]) + 0.001: return -1
+	var low := 0
+	var high := last
+	while low < high:
+		var middle := (low + high + 1) / 2
+		if float(edges[middle]) <= value: low = middle
+		else: high = middle - 1
+	return low
+
+static func scan(rooms: Array, point: Vector3) -> Dictionary:
 	var planta := planta_of(point.y)
 	for room in rooms:
+		if is_void(room): continue
 		var center := position_of(room)
 		if planta_of(center.y) != planta: continue
 		var span := size_of(room)
 		if absf(point.x - center.x) <= span.x * 0.5 and absf(point.z - center.z) <= span.y * 0.5: return room
 	return {}
+
+## Metres from a room to every room of its planta, walking centre to centre
+## through the doors: how far in something is, which a straight line across a
+## plan full of walls does not say. {id: metres}.
+static func route_metres(manifest: Dictionary, from: int) -> Dictionary:
+	var rooms: Array = manifest.rooms
+	var metres := {from: 0.0}
+	var open: Array = [from]
+	while not open.is_empty():
+		var best := 0
+		for index in open.size():
+			if float(metres[open[index]]) < float(metres[open[best]]): best = index
+		var at: int = open[best]
+		open.remove_at(best)
+		var here := position_of(rooms[at])
+		for other in manifest.adjacency[at]:
+			var next := int(other)
+			var length: float = float(metres[at]) + here.distance_to(position_of(rooms[next]))
+			if not metres.has(next):
+				open.append(next)
+				metres[next] = length
+			elif length < float(metres[next]) - 0.001: metres[next] = length
+	return metres
+
+## The room a planta is walked into from: the reception on the first, the
+## lobby its lift arrives at on the others.
+static func entry_of(manifest: Dictionary, planta: int) -> int:
+	var entries: Array = manifest.get("entries", [])
+	return int(entries[planta]) if planta < entries.size() else int(manifest.get("start", 0))
 
 static func hiding_count(room: Dictionary) -> int:
 	if int(room.get("hall", -1)) >= 0: return 0

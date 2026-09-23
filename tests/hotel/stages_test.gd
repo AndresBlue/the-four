@@ -253,13 +253,13 @@ func run() -> void:
 	check("Al pasar de ala vuelve la corriente", not level.hotel.dark and not session.goal.get("blackout", false))
 	await frames(150)
 	check("Y con la corriente vuelve la música", level.music_power > 0.95)
-	check("Y ninguna lámpara queda apagada por el corte", level.hotel.lights.filter(func(light): return light.has_meta("off")).size() == level.hotel.dark_ids.size())
+	check("Y ninguna lámpara queda apagada por el corte", level.hotel.lights.filter(func(light): return light.has_meta("off") and not light.has_meta("void")).size() == level.hotel.dark_ids.size())
 	# Stood in a room of the new wing that is not one of the dark ones: its
 	# ceiling lamp is lit again. (Asking whether any lamp anywhere is visible
 	# depended on where the lift happened to leave the body.)
 	var lamp_room := -1
 	for room in level.manifest.rooms:
-		if int(room.wing) == 2 and not level.hotel.dark_ids.has(int(room.id)) and not bool(room.get("landing", false)) and int(room.id) != int(level.manifest.refuges[2]):
+		if int(room.wing) == 2 and not FLOOR.is_void(room) and not level.hotel.dark_ids.has(int(room.id)) and not bool(room.get("landing", false)) and int(room.id) != int(level.manifest.refuges[2]):
 			lamp_room = int(room.id)
 			break
 	if lamp_room >= 0: level.hotel.update_visibility(FLOOR.position_of(level.manifest.rooms[lamp_room]), true)
@@ -373,11 +373,11 @@ func run() -> void:
 	var in_play := Vector3.ZERO
 	var left_behind := Vector3.ZERO
 	for room in level.manifest.rooms:
-		if int(room.get("wing", -1)) == session.stage - 1:
+		if int(room.get("wing", -1)) == session.stage - 1 and not FLOOR.is_void(room):
 			in_play = FLOOR.position_of(room)
 			break
 	for room in level.manifest.rooms:
-		if int(room.get("wing", -1)) == 0:
+		if int(room.get("wing", -1)) == 0 and not FLOOR.is_void(room):
 			left_behind = FLOOR.position_of(room)
 			break
 	check("Quien vuelve de una caída vuelve donde estaba", level.return_place(in_play).distance_to(in_play) < 0.2)

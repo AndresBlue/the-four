@@ -143,7 +143,29 @@ func run() -> void:
 	check("Ataque cercano tampoco atraviesa paredes", not enemy.can_attack())
 	wall.queue_free()
 	await frames(2)
+	# A door between two rooms of the first planta, with open floor where the
+	# leaf opens and three metres out the other side: the corner behind its
+	# open leaf is part of a room, not the width of a corridor nor a piece of
+	# furniture. (Those are other cases; this one is the leaf.)
 	var door = level.hotel.doors[0]
+	var nav_map: RID = level.get_world_3d().navigation_map
+	for each in level.hotel.doors:
+		var side: Vector3 = Basis(Vector3.UP, each.closed_rotation).z
+		var one: Dictionary = FLOOR.room_at(level.manifest.rooms, each.doorway + side * 1.0)
+		var two: Dictionary = FLOOR.room_at(level.manifest.rooms, each.doorway - side * 1.0)
+		if each.gate_stage != 0 or one.is_empty() or two.is_empty() or one.kind != "module" or two.kind != "module" or int(one.wing) != 0: continue
+		var open_leaf: Array = each.leaf_line(true)
+		var leaf_way: float = signf((open_leaf[1] - each.doorway).dot(side))
+		var hinge_way: float = signf((open_leaf[0] - each.doorway).dot(each.along()))
+		var corner: Vector3 = each.doorway + side * (leaf_way * 0.75) + each.along() * (hinge_way * 1.35)
+		var out_there: Vector3 = each.doorway - side * (leaf_way * 3.0)
+		var free := true
+		for spot in [corner, out_there, corner + side * (leaf_way * 1.0)]:
+			var snapped := NavigationServer3D.map_get_closest_point(nav_map, spot)
+			if Vector2(snapped.x - spot.x, snapped.z - spot.z).length() > 0.05: free = false
+		if free:
+			door = each
+			break
 	var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
 	player.position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
 	enemy.position = door.doorway - across * 2.6 + Vector3(0, 0.04, 0)
@@ -188,18 +210,21 @@ func run() -> void:
 		enemy.stuck_level = 0
 		enemy.stuck_origin = Vector3.INF
 		var closest := INF
+		var closest_at := Vector3.ZERO
 		var arrived := false
 		enemy.set_physics_process(true)
 		for i in 600:
 			await physics_frame
-			closest = minf(closest, door_gap(enemy.global_position, leaf))
+			if door_gap(enemy.global_position, leaf) < closest:
+				closest = door_gap(enemy.global_position, leaf)
+				closest_at = enemy.global_position
 			if Vector2(enemy.global_position.x - trip[1].x, enemy.global_position.z - trip[1].z).length() < 0.9:
 				arrived = true
 				break
 		enemy.set_physics_process(false)
 		var jammed: int = enemy.stuck_counts[3] + enemy.stuck_counts[4] + enemy.stuck_counts[5]
 		check(trip[2], arrived and closest > 0.25 and jammed == 0)
-		if not arrived or closest <= 0.25 or jammed > 0: print("LEAF_DEBUG ", trip[2], " at=", enemy.global_position, " to=", trip[1], " closest=", closest, " counts=", enemy.stuck_counts, " path=", enemy.path)
+		if not arrived or closest <= 0.25 or jammed > 0: print("LEAF_DEBUG ", trip[2], " at=", enemy.global_position, " to=", trip[1], " closest=", closest, " at ", closest_at, " leaf=", leaf, " doorway=", door.doorway, " counts=", enemy.stuck_counts, " path=", enemy.path)
 	# A shut door with a lock on it still stops it: it gives that way up instead
 	# of pressing into the wood for the rest of the mode.
 	door.set_state(false)

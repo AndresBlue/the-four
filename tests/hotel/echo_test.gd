@@ -100,9 +100,11 @@ func run() -> void:
 	check("Los puntos se apagan antes de ser sobrescritos", span <= float(maxi(echo.wall_shown, 1)) / maxf(echo.write_rate, 1.0) + 0.001 and span <= echo.MEMORY)
 
 	# --- Bodies -------------------------------------------------------------------
-	var corridor: Dictionary = level.manifest.rooms[0]
+	# A stretch of corridor on the first planta that runs north to south,
+	# long enough to stand four metres apart in.
+	var corridor: Dictionary = level.manifest.rooms[int(level.manifest.start)]
 	for room in level.manifest.rooms:
-		if int(room.type) in [11, 12] and int(room.get("hall", -1)) == -1:
+		if int(room.type) in [11, 12] and int(room.get("hall", -1)) == -1 and int(room.wing) == 0 and float(room.span_z) >= 10.0:
 			corridor = room
 			break
 	var centre: Vector3 = FLOOR.position_of(corridor)
@@ -128,7 +130,8 @@ func run() -> void:
 
 	# --- Sound contacts -----------------------------------------------------------
 	creature.driver.heard.clear()
-	var near_point: Vector3 = creature.global_position + Vector3(1.6, 0.2, 0.0)
+	# Along the corridor: across it, a metre and a half is the wall.
+	var near_point: Vector3 = creature.global_position + Vector3(0.0, 0.2, -1.6)
 	level.on_noise(near_point, 12.0, NOISE.Kind.SLAM)
 	await frames(4)
 	var close: Dictionary = creature.driver.heard[0] if not creature.driver.heard.is_empty() else {}

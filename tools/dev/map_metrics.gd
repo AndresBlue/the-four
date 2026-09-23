@@ -1,100 +1,333 @@
 extends SceneTree
-## What the floors actually come out like, in numbers: how much of a wing is
-## corridor, how many rings it has, how far the refuge is, how many dead ends,
-## how the order field falls -- and whether walking with one hand on the wall
-## finds the refuge, which is the thing the layout is meant to defeat.
+## What the floors come out like, in numbers, against what the generator
+## promises (docs/DEVELOPMENT.md, "Generador de plantas"): rooms per planta,
+## straight open runs, rings and dead ends, where the refuge is and how far,
+## where the floor starts, whether a fixed way of walking a planta finds the
+## refuge cheaply, how alike the corridor plans are, which plans come up and
+## how long a floor takes to draw. Only the manifests: nothing is built.
 ##
-## Run it before and after touching the generator:
-##   godot --headless --script tools/dev/map_metrics.gd
-## A number of floors can be asked for with `-- 200`.
+##   godot --headless --script tools/dev/map_metrics.gd -- 1000
+## Prints each measure with its threshold and PASS or FAIL, and writes
+## evidence/map_metrics.json; exits with 1 if anything fails.
 const GEN := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+## A planta's corridors drawn on a square this many cells a side, to compare
+## plans of different sizes: a cell about as wide as a corridor (the plan of a
+## floor is 150 to 250 m across, a corridor 3 to 4 m), so that two corridors
+## count as the same one only where they are.
+const RASTER := 48
+## A fixed way of walking solves a planta if it finds the refuge having looked
+## into fewer than this share of it.
+const CHEAP := 0.3
+
+var results: Array = []
+var failed := 0
+
+func judge(title: String, value, passed: bool, threshold: String) -> void:
+	results.append({"measure": title, "value": value, "threshold": threshold, "passed": passed})
+	if not passed: failed += 1
+	print("%s  %s = %s  (%s)" % ["PASS" if passed else "FAIL", title, str(value), threshold])
+
+static func quantile(values: Array, share: float) -> float:
+	if values.is_empty(): return 0.0
+	var sorted := values.duplicate()
+	sorted.sort()
+	return float(sorted[clampi(int(floor(share * float(sorted.size() - 1) + 0.5)), 0, sorted.size() - 1)])
+
+static func share_of(count: int, total: int) -> float:
+	return snappedf(float(count) / maxf(1.0, float(total)), 0.001)
 
 func _initialize() -> void:
 	var floors := 200
 	for argument in OS.get_cmdline_user_args():
 		if argument.is_valid_int(): floors = argument.to_int()
 	var generator := GEN.new()
-	var failures: Array = []
+	var times: Array = []
 	var fallbacks := 0
-	var elapsed := Time.get_ticks_msec()
-	# Everything is gathered per wing, because that is the shape of the run.
-	var corridor := [0.0, 0.0, 0.0]
-	var service := [0.0, 0.0, 0.0]
-	var rings := [0.0, 0.0, 0.0]
-	var dead_ends := [0.0, 0.0, 0.0]
-	var doors := [0.0, 0.0, 0.0]
-	var between_rooms := [0.0, 0.0, 0.0]
-	var to_refuge := [0.0, 0.0, 0.0]
-	var tidy := [0.0, 0.0, 0.0]
-	var unruly := [0.0, 0.0, 0.0]
-	var order_mean := [0.0, 0.0, 0.0]
-	var refuge_doors := [0.0, 0.0, 0.0]
-	var joined := [0.0, 0.0, 0.0]
-	var middling := [0.0, 0.0, 0.0]
-	var walker_found := [0, 0, 0]
-	var walker_seen := [0.0, 0.0, 0.0]
+	var invalid := 0
+	var worst_lift := 0.0
+	var rooms_all: Array = []
+	var runs: Array = []
+	var rings: Array = []
+	var dead: Array = []
+	var bearings := {}
+	var shared_bearing := 0
+	var deepest := 0
+	var depth_shares: Array = []
+	var routes: Array = []
+	var ratios: Array = []
+	var starts := {}
+	var start_doors := {}
+	var solved := {"mano derecha": 0, "mano izquierda": 0, "barrer pasillos": 0, "esquina lejana": 0}
+	var plans := {}
+	var rasters: Array = []
+	var together: Array = []
+	var plantas := 0
 	for seed_value in floors:
+		var began := Time.get_ticks_usec()
 		var data := generator.generate(seed_value)
+		times.append((Time.get_ticks_usec() - began) / 1000.0)
 		if data.fallback: fallbacks += 1
-		var errors := VALIDATOR.new().validate(data)
-		if not errors.is_empty(): failures.append([seed_value, errors])
-		var entrance: int = int(data.entries[0])
-		for wing in 3:
-			var band: Array = data.rooms.filter(func(room): return int(room.wing) == wing)
-			var inside := 0
-			for room in band:
-				if bool(room.corridor): corridor[wing] += 1.0 / float(band.size()) * 100.0 / float(floors)
-				if bool(room.service): service[wing] += 1.0 / float(band.size()) * 100.0 / float(floors)
-				if float(room.order) > 0.7: tidy[wing] += 1.0 / float(band.size()) * 100.0 / float(floors)
-				elif float(room.order) < 0.4: unruly[wing] += 1.0 / float(band.size()) * 100.0 / float(floors)
-				else: middling[wing] += 1.0 / float(band.size()) * 100.0 / float(floors)
-				order_mean[wing] += float(room.order) / float(band.size()) / float(floors)
-				var degree := 0
-				for n in data.adjacency[int(room.id)]:
-					if int(data.rooms[n].wing) == wing: degree += 1
-				if degree == 1: dead_ends[wing] += 1.0 / float(floors)
-				inside += degree
-			doors[wing] += float(inside) / 2.0 / float(floors)
-			var walls := 0
-			var pairs := 0
-			for edge in data.edges:
-				var a: Dictionary = data.rooms[int(edge[0])]
-				var b: Dictionary = data.rooms[int(edge[1])]
-				if int(a.wing) != wing or int(b.wing) != wing: continue
-				pairs += 1
-				if not bool(a.corridor) and not bool(b.corridor): walls += 1
-			between_rooms[wing] += float(walls) / float(floors)
-			# Out of every wall two rooms share, how many have a door in them:
-			# that is what tells a tidy stretch from a tangled one, and the
-			# bare count does not, because wings differ in size.
-			var shared := 0
-			for room in band:
-				for step in [1, int(data.width)]:
-					var next: int = int(room.id) + step
-					if next >= data.rooms.size() or int(data.rooms[next].wing) != wing: continue
-					if step == 1 and int(data.rooms[next].z) != int(room.z): continue
-					if bool(room.corridor) or bool(data.rooms[next].corridor): continue
-					shared += 1
-			if shared > 0: joined[wing] += float(walls) / float(shared) * 100.0 / float(floors)
-			rings[wing] += float(pairs - band.size() + 1) / float(floors)
-			var refuge: int = int(data.refuges[wing])
-			var reach := GEN.distance_map(data.adjacency, entrance)
-			to_refuge[wing] += float(maxi(0, reach[refuge])) / float(floors)
-			var ways := 0
-			for n in data.adjacency[refuge]:
-				if int(data.rooms[n].wing) == wing: ways += 1
-			refuge_doors[wing] += float(ways) / float(floors)
-			# One hand on the wall, from the way into the wing: both hands and
-			# all four ways of setting off, because a player picks one.
-			var walk: Dictionary = WALKER.follow(data, entrance, refuge)
-			if WALKER.reaches(data.rooms, data.adjacency, int(data.width), int(data.height), entrance, refuge): walker_found[wing] += 1
-			walker_seen[wing] += float(walk.rooms) / float(band.size()) * 100.0 / float(floors)
-			if wing + 1 < 3: entrance = int(data.entries[wing + 1])
-	print("%d pisos en %.1f s, respaldo %d, invalidos %d" % [floors, float(Time.get_ticks_msec() - elapsed) / 1000.0, fallbacks, failures.size()])
-	for failure in failures.slice(0, 5): print("  semilla ", failure[0], " ", failure[1])
-	print("ala | pasillo | servicio | orden | ordenado | medio | revuelto | puertas | entre salas | de las que se pueden | anillos | sin salida | al refugio | puertas refugio | mano en la pared | visto")
-	for wing in 3:
-		print("  %d | %5.1f%% | %5.1f%% | %.2f | %5.1f%% | %5.1f%% | %5.1f%% | %5.1f | %5.1f | %5.1f%% | %4.1f | %4.1f | %5.1f | %.2f | %3d/%d | %4.1f%%" % [wing + 1, corridor[wing], service[wing], order_mean[wing], tidy[wing], middling[wing], unruly[wing], doors[wing], between_rooms[wing], joined[wing], rings[wing], dead_ends[wing], to_refuge[wing], refuge_doors[wing], walker_found[wing], floors, walker_seen[wing]])
-	quit()
+		if not VALIDATOR.new().validate(data).is_empty(): invalid += 1
+		var open := {}
+		for pair in data.merged: open[Vector2i(int(pair[0]), int(pair[1]))] = true
+		var box := plan_box(data)
+		var floor_bearings := {}
+		for gate in data.gates:
+			var arrive := int(gate.arrive)
+			if arrive < 0: continue
+			var above := FLOOR.position_of(data.rooms[int(gate.beyond)])
+			var below := FLOOR.position_of(data.rooms[arrive])
+			worst_lift = maxf(worst_lift, Vector2(above.x - below.x, above.z - below.z).length())
+		for planta in 3:
+			plantas += 1
+			var base := int(data.plantas[planta].base)
+			var per := int(data.plantas[planta].width) * int(data.plantas[planta].height)
+			var entry := int(data.entries[planta])
+			var refuge := int(data.refuges[planta])
+			var plan: String = data.plans[planta].plan
+			plans[plan] = int(plans.get(plan, 0)) + 1
+			# Rooms as they are counted, cells, doors and dead ends.
+			var halls := {}
+			var counted := 0
+			var cells := 0
+			var doors := 0
+			var single := 0
+			for local in per:
+				var room: Dictionary = data.rooms[base + local]
+				if FLOOR.is_void(room): continue
+				cells += 1
+				doors += data.adjacency[base + local].size()
+				if room.kind != "module" or bool(room.get("landing", false)) or (planta > 0 and base + local == entry): continue
+				if int(room.hall) >= 0:
+					if halls.has(int(room.hall)): continue
+					halls[int(room.hall)] = true
+				counted += 1
+				if data.adjacency[base + local].size() == 1 and base + local != refuge: single += 1
+			rooms_all.append(counted)
+			rings.append(doors / 2 - cells + 1)
+			dead.append(float(single) / maxf(1.0, float(counted)))
+			runs.append(longest_run(data, open, planta))
+			# The refuge: how far in, which way, and whether it is the deepest.
+			var metres := FLOOR.route_metres(data, entry)
+			var far := 0.0
+			var farthest := entry
+			for id in metres:
+				if float(metres[id]) > far:
+					far = float(metres[id])
+					farthest = int(id)
+			var at: float = float(metres.get(refuge, 0.0))
+			depth_shares.append(at / maxf(1.0, far))
+			if farthest == refuge: deepest += 1
+			routes.append(at)
+			var from := FLOOR.position_of(data.rooms[entry])
+			var to := FLOOR.position_of(data.rooms[refuge])
+			var straight := Vector2(to.x - from.x, to.z - from.z)
+			ratios.append(at / maxf(1.0, straight.length()))
+			var bearing := int(floor(fposmod(straight.angle() + PI / 8.0, TAU) / (PI / 4.0))) % 8
+			bearings[bearing] = int(bearings.get(bearing, 0)) + 1
+			if floor_bearings.has(bearing): shared_bearing += 1
+			floor_bearings[bearing] = true
+			# The fixed ways of walking a planta.
+			for hand in [1, -1]:
+				var cheapest := INF
+				for heading in WALKER.HEADINGS:
+					var walk := WALKER.walk(data.rooms, data.adjacency, entry, heading, hand, refuge)
+					if bool(walk.found): cheapest = minf(cheapest, float(walk.rooms))
+				if cheapest < CHEAP * cells: solved["mano derecha" if hand == 1 else "mano izquierda"] += 1
+			if sweep(data, base, per, entry, refuge) < CHEAP * cells: solved["barrer pasillos"] += 1
+			if far_corner(data, base, per, entry, refuge) < CHEAP * counted: solved["esquina lejana"] += 1
+			rasters.append({"floor": seed_value, "raster": raster(data, base, per, box)})
+		# The plantas of one floor two by two, each pair on a square over the
+		# two of them: whatever the third is like has nothing to do with it.
+		for pair in [[0, 1], [0, 2], [1, 2]]:
+			var both := pair_box(data, pair[0], pair[1])
+			var one := raster(data, int(data.plantas[pair[0]].base), int(data.plantas[pair[0]].width) * int(data.plantas[pair[0]].height), both)
+			var two := raster(data, int(data.plantas[pair[1]].base), int(data.plantas[pair[1]].width) * int(data.plantas[pair[1]].height), both)
+			together.append(best_overlap(one, two))
+		# Where the floor starts, on the plan of the first planta, and which
+		# way its reception's door faces.
+		var start := FLOOR.position_of(data.rooms[int(data.start)])
+		var column := clampi(int((start.x - box.position.x) / box.size.x * 3.0), 0, 2)
+		var row := clampi(int((start.z - box.position.y) / box.size.y * 3.0), 0, 2)
+		starts[row * 3 + column] = int(starts.get(row * 3 + column, 0)) + 1
+		var facing := int(round(fposmod(float(data.start_facing), TAU) / (PI / 2.0))) % 4
+		start_doors[facing] = int(start_doors.get(facing, 0)) + 1
+	# Alike plans: pairs of plantas from different floors, and the three of
+	# each floor, compared at their best of the eight turns and mirrors.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var apart: Array = []
+	for pair in 400:
+		var one: Dictionary = rasters[rng.randi_range(0, rasters.size() - 1)]
+		var two: Dictionary = rasters[rng.randi_range(0, rasters.size() - 1)]
+		if one.floor == two.floor: continue
+		apart.append(best_overlap(one.raster, two.raster))
+	print("pisos ", floors, " · plantas ", plantas, " · por qué se volvió a dibujar algo: ", generator.stats)
+	judge("habitaciones por planta, mínimo", rooms_all.min(), rooms_all.min() >= 81, ">= 81")
+	judge("habitaciones por planta, máximo", rooms_all.max(), rooms_all.max() <= 99, "<= 99")
+	judge("pisos de respaldo", share_of(fallbacks, floors), float(fallbacks) / floors < 0.005, "< 0,5 %")
+	var redrawn := 0
+	for reason in generator.stats: if not String(reason).begins_with("island"): redrawn += int(generator.stats[reason])
+	judge("plantas dibujadas otra vez", share_of(redrawn, plantas), true, "informativo")
+	judge("pisos que no valida el validador", invalid, invalid == 0, "0")
+	judge("desvío entre coche y vestíbulo de llegada (m)", snappedf(worst_lift, 0.0001), worst_lift < 0.001, "< 1 mm")
+	judge("recta abierta más larga (m)", snappedf(runs.max(), 0.1), runs.max() <= 45.01, "<= 45 m")
+	judge("anillos por planta, mínimo", rings.min(), rings.min() >= 6, ">= 6")
+	judge("habitaciones sin salida, mediana", snappedf(quantile(dead, 0.5), 0.01), quantile(dead, 0.5) >= 0.2 and quantile(dead, 0.5) <= 0.45, "20–45 %")
+	var worst_bearing := 0
+	for bin in bearings: worst_bearing = maxi(worst_bearing, int(bearings[bin]))
+	judge("dirección del refugio, sector más repetido", share_of(worst_bearing, plantas), float(worst_bearing) / plantas <= 0.2, "<= 20 %")
+	judge("pisos con dos refugios en la misma dirección", shared_bearing, shared_bearing == 0, "0")
+	judge("refugio en la sala más honda", share_of(deepest, plantas), deepest == 0, "0 %")
+	judge("hondura del refugio (fracción del recorrido más largo), mínimo", snappedf(depth_shares.min(), 0.01), depth_shares.min() >= 0.55 - 0.001, ">= 0,55")
+	judge("hondura del refugio, máximo", snappedf(depth_shares.max(), 0.01), depth_shares.max() <= 0.9 + 0.001, "<= 0,90")
+	judge("recorrido llegada → refugio, p5 (m)", snappedf(quantile(routes, 0.05), 1.0), quantile(routes, 0.05) >= 90.0, ">= 90 m")
+	judge("recorrido llegada → refugio, mediana (m)", snappedf(quantile(routes, 0.5), 1.0), quantile(routes, 0.5) >= 140.0 and quantile(routes, 0.5) <= 260.0, "140–260 m")
+	judge("recorrido / línea recta, p5", snappedf(quantile(ratios, 0.05), 0.01), quantile(ratios, 0.05) >= 1.5, ">= 1,5")
+	var worst_start := 0
+	for bin in starts: worst_start = maxi(worst_start, int(starts[bin]))
+	judge("recepción, casilla 3×3 más repetida", share_of(worst_start, floors), float(worst_start) / floors <= 0.2, "<= 20 %")
+	var worst_door := 0
+	for bin in start_doors: worst_door = maxi(worst_door, int(start_doors[bin]))
+	judge("puerta de la recepción, dirección más repetida", share_of(worst_door, floors), float(worst_door) / floors <= 0.35, "<= 35 %")
+	for way in solved: judge("plantas que resuelve «%s» con menos del 30 %%" % way, share_of(int(solved[way]), plantas), float(solved[way]) / plantas <= 0.2, "<= 20 %")
+	judge("parecido de planos al azar (IoU), media", snappedf(quantile(apart, 0.5) if apart.is_empty() else apart.reduce(func(a, b): return a + b, 0.0) / apart.size(), 0.001), apart.reduce(func(a, b): return a + b, 0.0) / maxf(1.0, apart.size()) <= 0.12, "<= 0,12")
+	judge("parecido de planos al azar (IoU), p95", snappedf(quantile(apart, 0.95), 0.001), quantile(apart, 0.95) <= 0.25, "<= 0,25")
+	judge("parecido de las plantas de un piso (IoU), máximo", snappedf(together.max() if not together.is_empty() else 0.0, 0.001), together.is_empty() or together.max() <= 0.35, "<= 0,35")
+	for plan in ["spine", "twin", "ring", "comb", "blocks", "arms", "warren", "rot"]:
+		var used: float = float(plans.get(plan, 0)) / plantas
+		judge("uso del plano %s" % plan, snappedf(used, 0.001), used >= 0.08 and used <= 0.2, "8–20 %")
+	judge("generación, mediana (ms)", snappedf(quantile(times, 0.5), 0.1), true, "informativo")
+	judge("generación, p99 (ms)", snappedf(quantile(times, 0.99), 0.1), quantile(times, 0.99) <= 250.0, "<= 250 ms")
+	var file := FileAccess.open("res://evidence/map_metrics.json", FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify({"floors": floors, "passed": failed == 0, "stats": generator.stats, "measures": results}, "\t"))
+		file.close()
+	print("MAP_METRICS ", "PASS" if failed == 0 else "FAIL", " · ", results.size() - failed, "/", results.size())
+	quit(0 if failed == 0 else 1)
+
+## The plan's footprint: every cell of the grid, whatever the plantas use.
+static func plan_box(data: Dictionary) -> Rect2:
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for room in data.rooms:
+		var at := FLOOR.position_of(room)
+		var half := FLOOR.size_of(room) * 0.5
+		low = Vector2(minf(low.x, at.x - half.x), minf(low.y, at.z - half.y))
+		high = Vector2(maxf(high.x, at.x + half.x), maxf(high.y, at.z + half.y))
+	return Rect2(low, high - low)
+
+## The box over two plantas of a floor, every cell of either.
+static func pair_box(data: Dictionary, one: int, two: int) -> Rect2:
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for room in data.rooms:
+		if int(room.wing) != one and int(room.wing) != two: continue
+		var at := FLOOR.position_of(room)
+		var half := FLOOR.size_of(room) * 0.5
+		low = Vector2(minf(low.x, at.x - half.x), minf(low.y, at.z - half.y))
+		high = Vector2(maxf(high.x, at.x + half.x), maxf(high.y, at.z + half.y))
+	return Rect2(low, high - low)
+
+## Longest a row or a column of cells runs with no wall between them.
+static func longest_run(data: Dictionary, open: Dictionary, planta: int) -> float:
+	var base := int(data.plantas[planta].base)
+	var width := int(data.plantas[planta].width)
+	var height := int(data.plantas[planta].height)
+	var longest := 0.0
+	for across in [true, false]:
+		for line in (height if across else width):
+			var run := 0.0
+			var previous := -1
+			for along in (width if across else height):
+				var id: int = base + (line * width + along if across else along * width + line)
+				var room: Dictionary = data.rooms[id]
+				var size: float = float(room.span_x) if across else float(room.span_z)
+				if previous >= 0 and open.has(Vector2i(previous, id)): run += size
+				else: run = size
+				if not FLOOR.is_void(room): longest = maxf(longest, run)
+				previous = id
+	return longest
+
+## Walking the corridors and looking into every room that opens on to them,
+## from the ones at the way in: how many cells it has looked at when it sees
+## the refuge, INF if it never does.
+static func sweep(data: Dictionary, base: int, per: int, entry: int, refuge: int) -> float:
+	var seen := {entry: true}
+	var queue: Array = []
+	for other in data.adjacency[entry]:
+		if bool(data.rooms[int(other)].corridor): queue.append(int(other))
+	if bool(data.rooms[entry].corridor): queue.append(entry)
+	var walked := {}
+	var cursor := 0
+	while cursor < queue.size():
+		var at: int = queue[cursor]
+		cursor += 1
+		if walked.has(at): continue
+		walked[at] = true
+		seen[at] = true
+		for other in data.adjacency[at]:
+			var next := int(other)
+			seen[next] = true
+			if next == refuge: return float(seen.size())
+			if bool(data.rooms[next].corridor) and not walked.has(next): queue.append(next)
+	return INF
+
+## Going to the far side of the planta first: rooms in order of how far they
+## are in a straight line from the way in. Where the refuge is in that order.
+static func far_corner(data: Dictionary, base: int, per: int, entry: int, refuge: int) -> float:
+	var from := FLOOR.position_of(data.rooms[entry])
+	var rooms: Array = []
+	for local in per:
+		var room: Dictionary = data.rooms[base + local]
+		if FLOOR.is_void(room) or room.kind != "module": continue
+		rooms.append(base + local)
+	rooms.sort_custom(func(a, b): return FLOOR.position_of(data.rooms[a]).distance_to(from) > FLOOR.position_of(data.rooms[b]).distance_to(from))
+	return float(rooms.find(refuge) + 1)
+
+## The planta's corridors on a RASTER × RASTER square laid over the plan.
+static func raster(data: Dictionary, base: int, per: int, box: Rect2) -> PackedByteArray:
+	var cells := PackedByteArray()
+	cells.resize(RASTER * RASTER)
+	for local in per:
+		var room: Dictionary = data.rooms[base + local]
+		if FLOOR.is_void(room) or not bool(room.corridor): continue
+		var at := FLOOR.position_of(room)
+		var half := FLOOR.size_of(room) * 0.5
+		var x0 := clampi(int((at.x - half.x - box.position.x) / box.size.x * RASTER), 0, RASTER - 1)
+		var x1 := clampi(int((at.x + half.x - box.position.x) / box.size.x * RASTER), 0, RASTER - 1)
+		var z0 := clampi(int((at.z - half.y - box.position.y) / box.size.y * RASTER), 0, RASTER - 1)
+		var z1 := clampi(int((at.z + half.y - box.position.y) / box.size.y * RASTER), 0, RASTER - 1)
+		for z in range(z0, z1 + 1):
+			for x in range(x0, x1 + 1): cells[z * RASTER + x] = 1
+	return cells
+
+## Intersection over union of two plans, at the best of the eight ways of
+## turning and mirroring the second.
+static func best_overlap(one: PackedByteArray, two: PackedByteArray) -> float:
+	var side := RASTER
+	var count_one := 0
+	for value in one: count_one += value
+	var marks := PackedInt32Array()
+	for index in two.size():
+		if two[index]: marks.append(index)
+	if count_one + marks.size() == 0: return 0.0
+	var best := 0.0
+	for turn in 8:
+		# Each cell of the second, turned back to where it lands on the first.
+		var both := 0
+		for index in marks:
+			var u := index % side
+			var v := index / side
+			if turn & 4:
+				var swap := u
+				u = v
+				v = swap
+			if turn & 1: u = side - 1 - u
+			if turn & 2: v = side - 1 - v
+			both += one[v * side + u]
+		best = maxf(best, float(both) / float(count_one + marks.size() - both))
+	return best

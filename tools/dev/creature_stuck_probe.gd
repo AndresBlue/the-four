@@ -52,7 +52,7 @@ func run() -> void:
 			if outcome.arrived: floor_result.arrived += 1
 			floor_result.stops += int(outcome.stops)
 			floor_result.hops += int(outcome.hops)
-			if trace: print("   %s %s · %0.0f m · %s en %0.1f s · paradas %d" % ["caza" if hunting else "anda", str(Vector2(ends[0].x, ends[0].z).round()), ends[0].distance_to(ends[1]), "llegó" if outcome.arrived else "NO LLEGÓ", outcome.seconds, outcome.stops])
+			if trace: print("   %s %s · %0.0f m en línea, %0.0f de ruta · %s en %0.1f s (%0.1f s ante puertas) · paradas %d" % ["caza" if hunting else "anda", str(Vector2(ends[0].x, ends[0].z).round()), ends[0].distance_to(ends[1]), outcome.length, "llegó" if outcome.arrived else "NO LLEGÓ", outcome.seconds, outcome.at_doors, outcome.stops])
 		var steps: Array = []
 		for i in 6: steps.append(int(creature.stuck_counts[i]) - int(counts_before[i]))
 		print("SEED %d · %d trayectos · llegó a %d · paradas de más de %0.0f s: %d · saltos: %d · pasos del protocolo 1-5: %d/%d/%d/%d/%d" % [run_seed, floor_result.trips, floor_result.arrived, STOP, floor_result.stops, floor_result.hops, steps[1], steps[2], steps[3], steps[4], steps[5]])
@@ -67,7 +67,7 @@ func run() -> void:
 func journey(rng: RandomNumberGenerator) -> Array:
 	var map: RID = level.get_world_3d().navigation_map
 	var refuges: Array = level.manifest.get("refuges", [])
-	var rooms: Array = level.manifest.rooms.filter(func(room): return not refuges.has(int(room.id)) and not bool(room.get("landing", false)))
+	var rooms: Array = level.manifest.rooms.filter(func(room): return not FLOOR.is_void(room) and not refuges.has(int(room.id)) and not bool(room.get("landing", false)))
 	for attempt in 40:
 		var a: Dictionary = rooms[rng.randi_range(0, rooms.size() - 1)]
 		var b: Dictionary = rooms[rng.randi_range(0, rooms.size() - 1)]
@@ -95,7 +95,7 @@ func walk(creature, from: Vector3, to: Vector3, hunting: bool) -> Dictionary:
 	creature.last_known = to
 	creature.focus = level.player
 	var budget: float = length / (4.0 if hunting else 1.2) + 20.0
-	var result := {"arrived": false, "stops": 0, "hops": 0, "seconds": 0.0}
+	var result := {"arrived": false, "stops": 0, "hops": 0, "seconds": 0.0, "length": length, "at_doors": 0.0}
 	var still := 0.0
 	var counted := false
 	var hops_before: int = int(creature.stuck_counts[5])
@@ -118,6 +118,7 @@ func walk(creature, from: Vector3, to: Vector3, hunting: bool) -> Dictionary:
 			break
 		var moving: float = Vector2(creature.velocity.x, creature.velocity.z).length()
 		var waiting: bool = creature.door_ahead() != null and moving < 0.1
+		if waiting: result.at_doors += 1.0 / 60.0
 		if moving < 0.15 and not waiting:
 			still += 1.0 / 60.0
 			if still > STOP and not counted:

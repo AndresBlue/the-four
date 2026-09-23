@@ -110,7 +110,7 @@ func rooms_in_range() -> Array:
 	var here := FLOOR.room_at(level.manifest.rooms, level.pacing_anchor())
 	var result: Array = []
 	for room in level.manifest.rooms:
-		if level.off_limits_rooms().has(int(room.id)) or (not here.is_empty() and room.id == here.id): continue
+		if FLOOR.is_void(room) or level.off_limits_rooms().has(int(room.id)) or (not here.is_empty() and room.id == here.id): continue
 		var centre := FLOOR.position_of(room)
 		if centre.distance_to(level.pacing_anchor()) > FAR: continue
 		var length := route_length(centre)

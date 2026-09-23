@@ -25,6 +25,18 @@ func advance(director, seconds: float) -> void:
 func started(director, type := "") -> Array:
 	return director.history.filter(func(item): return item.started and (type.is_empty() or item.type == type))
 
+## Each document well in from where its planta is walked into (walking), no
+## two on one planta, and none in a refuge.
+func documents_placed(documents: Array) -> bool:
+	var plantas := {}
+	for document in documents:
+		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, document.position)
+		if room.is_empty() or level.manifest.refuges.has(int(room.id)) or plantas.has(int(room.wing)): return false
+		plantas[int(room.wing)] = true
+		var metres := FLOOR.route_metres(level.manifest, FLOOR.entry_of(level.manifest, int(room.wing)))
+		if float(metres.get(int(room.id), 0.0)) < PLACEMENT.MIN_FROM_START: return false
+	return true
+
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -43,7 +55,7 @@ func run() -> void:
 	check("Dos documentos por piso", documents.size() == PLACEMENT.PER_FLOOR)
 	var again := PLACEMENT.choose(level.manifest, "locust")
 	check("Colocación reproducible por semilla", again.size() == documents.size() and again.all(func(spot): return documents.any(func(d): return d.entry_id == spot.entry and d.position.is_equal_approx(spot.position))))
-	check("Documentos lejos de la salida inicial y fuera del refugio", documents.all(func(d): return d.position.length() >= PLACEMENT.MIN_FROM_START and not level.point_in_refuge(d.position)))
+	check("Documentos bien dentro de su planta, uno por planta y en ningún refugio", documents_placed(documents))
 	# Measured from the floor of their own planta: the plantas are stacked.
 	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) > 0.6 and d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) < 0.9))
 	check("Documentos distintos entre sí", documents[0].entry_id != documents[1].entry_id)
@@ -104,7 +116,7 @@ func run() -> void:
 	advance(director, 40)
 	check("Ningún evento en los primeros 45 s", started(director).is_empty())
 	# Keep exploring: a new room every few seconds.
-	var rooms: Array = level.manifest.rooms.filter(func(r): return r.id != level.manifest.exit and FLOOR.position_of(r).length() < 40.0)
+	var rooms: Array = level.manifest.rooms.filter(func(r): return r.id != level.manifest.exit and int(r.wing) == 0 and not FLOOR.is_void(r) and not bool(r.get("landing", false)) and FLOOR.position_of(r).length() < 40.0)
 	player.position = FLOOR.position_of(rooms[1]) + Vector3(0, 0.04, 0)
 	await frames(2)
 	advance(director, 8)
