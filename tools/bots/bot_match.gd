@@ -44,6 +44,8 @@ var look_frame := 0
 var watchdog
 var recorder
 var error_tap
+## Told of every incident as it happens (bot_watch.gd, live in the observer).
+var report_to
 ## Faults put in on purpose, to see the watchdog catch them (--fault=).
 var faults_done := {}
 signal ended(summary: Dictionary)
@@ -211,6 +213,7 @@ func report(kind: String, severity: String, brain, words: String, extra := {}) -
 	incidents.append(entry)
 	events.append({"t": entry.t, "kind": "incidencia", "entry": entry})
 	if recorder != null: recorder.event("incidencia", {"entry": entry})
+	if report_to != null: report_to.incident(entry)
 	if bool(options.get("verbose", true)):
 		print("BOT %s %s · %s · %s%s · %s" % [clock_text(clock), severity.to_upper(), kind, entry.bot + " · " if not entry.bot.is_empty() else "", entry.room_name, words])
 

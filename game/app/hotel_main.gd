@@ -230,9 +230,13 @@ func _ready() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--bots-replay="): replay_folder = argument.trim_prefix("--bots-replay=")
 		if argument.begins_with("--bots-at="): replay_at = float(argument.trim_prefix("--bots-at="))
-	if not automation and not OS.get_cmdline_user_args().has("--observer") and replay_folder.is_empty(): ui.play_intro()
+	var watching_bots: bool = OS.get_cmdline_user_args().has("--bots-watch")
+	if not automation and not OS.get_cmdline_user_args().has("--observer") and replay_folder.is_empty() and not watching_bots: ui.play_intro()
 	if not replay_folder.is_empty():
 		await begin_replay(replay_folder, replay_at)
+		return
+	if watching_bots:
+		begin_bot_watch()
 		return
 	var seed_wanted := -1
 	for argument in OS.get_cmdline_user_args():
@@ -257,6 +261,34 @@ func begin_replay(folder: String, at: float) -> void:
 	replay.setup(self, folder)
 	add_child(replay)
 	await replay.begin(at)
+
+## --bots-watch [--bots=N] [--seed=S] [--mercy]: test bots playing floor after
+## floor, watched live in the observer (tools/bots/bot_watch.gd, which ships
+## with the tools and not the game).
+const WATCH_SCRIPT := "res://tools/bots/bot_watch.gd"
+var bot_watch
+func begin_bot_watch() -> void:
+	if not ResourceLoader.exists(WATCH_SCRIPT):
+		ui.menu("main", false, "Los bots de prueba no vienen con el juego.")
+		return
+	observer = true
+	session.keeps_checkpoint = false
+	settings.force_window = true
+	settings.apply_display()
+	var options := {"bots": 3, "seed": 81, "mercy": OS.get_cmdline_user_args().has("--mercy"), "knowledge": "discover"}
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--bots="): options.bots = clampi(int(argument.trim_prefix("--bots=")), 1, 5)
+		if argument.begins_with("--seed="): options.seed = int(argument.trim_prefix("--seed="))
+		if argument.begins_with("--knowledge="): options.knowledge = argument.trim_prefix("--knowledge=")
+	bot_watch = load(WATCH_SCRIPT).new()
+	bot_watch.setup(self, options)
+	add_child(bot_watch)
+	bot_watch.run()
+
+## R in the observer while bots play: the floor on screen ends, the next one
+## starts.
+func skip_bot_floor() -> void:
+	if is_instance_valid(bot_watch): bot_watch.skip()
 
 ## --observer: knock on a room on this machine (or wherever --address says),
 ## and if nobody answers within OBSERVER_WAIT seconds, build a floor here and
@@ -353,7 +385,7 @@ func enter_observer_mode() -> void:
 ## R on the observer: another floor, when there is no match to watch (Shift+R:
 ## the one before). This is what watching floors being generated is.
 func observer_rebuild(seed_value: int) -> void:
-	if match_net.in_match() or session.state == session.State.LOADING: return
+	if match_net.in_match() or session.state == session.State.LOADING or bot_match or is_instance_valid(bot_watch): return
 	await start_floor(seed_value)
 	enter_observer_mode()
 
@@ -1843,11 +1875,16 @@ func _physics_process(delta: float) -> void:
 	# Watching: the floor runs itself (online it is the host's, alone it is the
 	# creature's own), and this machine only counts the lifts and looks.
 	if observer:
-		observer_seek(delta)
+		# Bots playing under the observer: nobody to knock for, and their
+		# floor needs what a player's would (the refuge and minds).
+		if not bot_match and not is_instance_valid(bot_watch): observer_seek(delta)
 		lifts.ride_along(delta)
 		lifts.ride_out(delta)
 		if is_instance_valid(session) and session.state == session.State.PLAYING:
 			lifts.count_away(delta)
+			if bot_match:
+				track_refuges()
+				sanity.tick(delta)
 			if not net.active(): host_gate(delta)
 		return
 	if is_instance_valid(session) and session.state == session.State.CUTSCENE:
@@ -1875,11 +1912,16 @@ func _physics_process(delta: float) -> void:
 	# dead, its guests could hold at the refuge for ever and never leave.
 	if not net.is_client(): host_gate(delta)
 
+## Who of the survivors is in the refuge of the stage in hand, for the
+## session (the machine in charge).
+func track_refuges() -> void:
+	if net.is_client(): return
+	for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+
 ## This machine's own player: looking, opening, reading, hiding, or watching a
 ## teammate once it is dead.
 func drive_local(delta: float) -> void:
-	if not net.is_client():
-		for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
+	track_refuges()
 	# The bots drive their own bodies; this machine's player is parked, and
 	# everything below is for a player who is playing. Run, it put the parked
 	# body back in sight and in reach every frame (stop_watching).

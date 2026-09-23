@@ -222,7 +222,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			note("techos %s" % ("no" if roofless else "sí"))
 		KEY_V: toggle_echo()
 		KEY_R:
-			if not alone(): note("R: solo sin partida")
+			if level.bot_match or is_instance_valid(level.bot_watch): level.skip_bot_floor()
+			elif not alone(): note("R: solo sin partida")
 			elif not (event as InputEventKey).shift_pressed: rebuild(randi_range(0, 2147483647))
 			elif seed_before >= 0: rebuild(seed_before)
 			else: note("no hay piso anterior")
