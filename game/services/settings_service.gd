@@ -309,6 +309,10 @@ func apply() -> void:
 		AudioServer.set_bus_mute(index, volume == 0.0)
 	changed.emit()
 
+## The observer keeps the game in a window whatever the saved setting says,
+## without touching it: it is a tool, looked at beside something else.
+var force_window := false
+
 ## Tests and capture tools size their own window and must not go fullscreen.
 static func manages_window() -> bool:
 	var args := OS.get_cmdline_user_args()
@@ -326,7 +330,7 @@ func apply_display() -> void:
 	if not manages_window():
 		if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		return
-	if values.window_mode != WINDOWED:
+	if values.window_mode != WINDOWED and not force_window:
 		var wanted := DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN if values.window_mode == FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN
 		if DisplayServer.window_get_mode() != wanted: DisplayServer.window_set_mode(wanted)
 		return
@@ -343,7 +347,7 @@ func window_size_for(screen: int) -> Vector2i:
 	return Vector2i(int(wanted.x * fit), int(wanted.y * fit))
 
 func place_window() -> void:
-	if values.window_mode != WINDOWED or DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: return
+	if (values.window_mode != WINDOWED and not force_window) or DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: return
 	var screen := DisplayServer.window_get_current_screen()
 	var usable := DisplayServer.screen_get_usable_rect(screen)
 	var size := window_size_for(screen)

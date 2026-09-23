@@ -235,6 +235,10 @@ func _ready() -> void:
 const OBSERVER_WAIT := 2.5
 func begin_observing(seed_value: int) -> void:
 	observer = true
+	# A tool belongs in a window: it is looked at beside the game, and the
+	# player's own screen setting is left alone (settings.force_window).
+	settings.force_window = true
+	settings.apply_display()
 	var address := "127.0.0.1"
 	var port: int = net.PORT
 	for argument in OS.get_cmdline_user_args():
@@ -259,6 +263,15 @@ func enter_observer_mode() -> void:
 	player.visible = false
 	player.collision_layer = 0
 	player.torch.visible = false
+	# Watching is not being hunted: the creature's own presence, its aura and
+	# everything on the threat bus are off here. They are made for whoever it
+	# is coming for, and this machine is nobody.
+	world_audio.set_creature(null)
+	if world_audio.aura != null:
+		world_audio.aura.reset()
+		world_audio.aura.process_mode = Node.PROCESS_MODE_DISABLED
+	var threat := AudioServer.get_bus_index("Threat")
+	if threat >= 0: AudioServer.set_bus_mute(threat, true)
 	ui.close_menus()
 	ui.overlay.hide()
 	camcorder.visible = false
@@ -504,7 +517,9 @@ func populate_floor(with_director: bool) -> void:
 		director.name = "Director"
 		director.setup(self, int(manifest.seed))
 		hotel.add_child(director)
-	world_audio.set_creature(locust.sound_profile)
+	# Watching, its presence is nobody's: a floor built again (the host started
+	# another one) would otherwise bring the sound back.
+	world_audio.set_creature(null if observer else locust.sound_profile)
 	for door in hotel.doors: door.sound_requested.connect(world_audio.door_cue)
 	# Easing wardrobe doors creaks: a quiet noise the creature can pick up.
 	for hide in hotel.hides: hide.peek_started.connect(on_peek)

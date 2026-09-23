@@ -23,7 +23,8 @@ extends Node3D
 ##   H            esconder los paneles
 ##   R            otro piso (solo sin partida)
 ##   P  [  ]      parar el tiempo, más lento, más rápido (solo sin partida)
-##   F5           guarda lo que se ve en evidence/observer_<hora>.json
+##   ESC          devuelve el ratón; pulsada otra vez, cierra la herramienta
+##   F5           guarda lo que se ve en user://observer_<hora>.json
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GIZMOS := preload("res://game/app/observer_gizmos.gd")
 const ECHO := preload("res://game/enemies/locust/echo_view.gd")
@@ -135,6 +136,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * 0.0022)
 		pitch = clampf(pitch - event.relative.y * 0.0022, -1.5, 1.5)
 		camera.rotation.x = pitch
+	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and event.button_index == MOUSE_BUTTON_LEFT:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP: speed = clampf(speed * 1.25, SPEED_RANGE.x, SPEED_RANGE.y)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN: speed = clampf(speed / 1.25, SPEED_RANGE.x, SPEED_RANGE.y)
@@ -168,6 +172,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_BRACKETRIGHT:
 			if alone(): set_time(minf(4.0, maxf(Engine.time_scale, 0.1) * 2.0))
 		KEY_F5: snapshot()
+		KEY_ESCAPE: step_out()
+
+## Escape: the mouse back, so the window can be left; and again, out. A tool
+## that swallowed Escape was a tool you had to kill from the task bar.
+func step_out() -> void:
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		note("ratón libre · ESC otra vez para cerrar")
+		return
+	get_tree().quit()
 
 func set_time(scale: float) -> void:
 	Engine.time_scale = scale
@@ -337,7 +351,8 @@ func report() -> String:
 	var lines: PackedStringArray = []
 	var where: String = "libre" if not is_instance_valid(following) else "siguiendo a %s" % following.name
 	lines.append("OBSERVADOR · %s%s%s · %0.0f m/s%s" % [where, " · mapa" if map_view else "", " · lectura" if echoing else "", speed, "" if is_equal_approx(Engine.time_scale, 1.0) else " · tiempo ×%0.2f" % Engine.time_scale])
-	lines.append("TAB seguir · F soltar · M mapa · V lectura · C techos · 1-6 capas · H panel · R piso · P/[/] tiempo · F5 volcar")
+	lines.append("TAB seguir · F soltar · M mapa · V lectura · C techos · L luz · 1-6 capas · H panel · R piso · P/[/] tiempo")
+	lines.append("F5 volcar · ESC ratón, y otra vez cerrar")
 	lines.append("")
 	lines.append("Piso 1 · semilla %d · %s · %s" % [int(session.run_seed), "en red" if level.match_net.in_match() else "local", "versus" if level.match_net.versus() else "cooperativo"])
 	lines.append("Sector %d/%d · %s · %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
