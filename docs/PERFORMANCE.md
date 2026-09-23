@@ -245,8 +245,41 @@ Detalle en [VISION_LOCUST.md](VISION_LOCUST.md). Capturas: `echo_capture.gd` (`p
 
 ### Pendiente
 
-- Medir Bajo, en Forward+ y en Compatibilidad, en un PC con gráfica integrada, y Ultra en una gráfica de gama media a 1440p.
+- Medir Bajo, en Forward+ y en Compatibilidad, en un PC con gráfica integrada, y Ultra en una gráfica de gama media a 1440p. Con las plantas enteras (apartado 7), medir también cuánto tarda en montarse un piso en un PC como los de las pruebas con amigos.
 - Revisar en partida:
   - TAA de Medio en movimiento (estela del polvo y de la linterna);
   - penumbras anchas de Ultra con las lámparas que parpadean;
   - la visión de eco de Bajo y el halo de Ultra con jugadores reales.
+
+## 7. Un piso de tres plantas enteras (generadores 5 a 7)
+
+Desde el 23 de septiembre de 2026 un piso son tres plantas y cada una es un hotel entero: unas 410 salas en lugar de 121, y tres mallas de navegación. Medido en este PC.
+
+**Montar un piso** (`start_floor`, sin ventana, ocho semillas): de 5,1 a 5,9 s, mediana 5,7 (con el generador 6 eran de 5,8 a 6,8); antes de las plantas eran 3,9 s. En la semilla 81:
+- generar el manifiesto, unos 0,1 s;
+- `hotel_geometry.build()`, 3,1 s: salas y puertas de las tres plantas, 1,0; los lotes y los cuerpos, 0,15; leer la geometría para la navegación, 0,04; hornear las tres mallas, 1,9;
+- la validación física, 23 ms;
+- esperar a que el servidor de navegación acepte las tres mallas, 2,8 s. Son fotogramas de espera: la ventana sigue respondiendo.
+
+**Sin «No responde».** Windows marca así una ventana que no atiende nada durante cinco segundos. `build()` devuelve un fotograma entre planta y planta y antes de la navegación (`building`: mientras dura, el hotel está oculto y `update_visibility()` no lo toca). Lo más largo que queda sin soltar son los tres horneados juntos, unos 2 s; antes eran 2,9 s de una vez, y más en un PC lento. Un fotograma entre horneado y horneado, en cambio, hacía que la navegación tomara cada planta por separado, y el piso tardaba 2,2 s más en estar listo.
+
+**Nodos** (semilla 81): de 50.616 a 36.220, y de 35.000 a 38.000 en las ocho semillas. El tope del plan era 40.000; antes de las plantas eran 14.761.
+- **Un cuerpo por sala.** Cada caja sólida era un `StaticBody3D` con su `CollisionShape3D`. Ahora es una forma del cuerpo `Solid` de su sala: los cuerpos estáticos pasan de 11.563 a 1.705, las formas no cambian, y la navegación y la validación física salen igual.
+- **Fuera los contenedores vacíos.** Paredes, tramos de muebles y muebles eran nodos solo por su transformación mientras se construía la sala. Lo que dibujan va en los lotes de la sala, así que al terminar (`drop_empty()`) se quitan los que se quedan vacíos: los `Node3D` pasan de 6.135 a 1.597.
+- **Topes de puerta** sin nodo propio: la franja es la malla misma (369 menos).
+
+**Con ventana, 1080p** (`run_bench.ps1 -Label plantas`, semilla 81):
+
+| Preset | Fotograma caminando (media / p99) | GPU caminando | Memoria de vídeo |
+|---|---|---|---|
+| Bajo | 3,1 / 7,3 ms (unos 325 FPS) | 1,40 ms | 520 MB |
+| Medio | 5,8 / 11,9 ms (unos 170 FPS) | 4,68 ms | 713 MB |
+| Alto | 10,8 / 15,4 ms (unos 93 FPS) | 9,75 ms | 1.873 MB |
+| Ultra | 14,1 / 19,0 ms (unos 71 FPS) | 13,15 ms | 2.031 MB |
+
+- **No es la misma medida que la de la sección 6:** el recorrido es otro, por otro hotel, así que la comparación es orientativa. Caminando, la GPU sube entre un 9 y un 32 % según el preset, y el p99 de Bajo y Medio pasa de 3,8 y 6,4 ms a 7,3 y 11,9, con muchos más redibujados de sombra (llamadas de sombra caminando: de 24 a 931 en Bajo y de 469 a 1.507 en Medio).
+- **Cargar el primer piso con el juego recién abierto: 8,9 s.** De ellos, 2,1 s son los dos primeros fotogramas del render, antes de generar nada. El montaje son 3,8 s (3,1 sin ventana) y la espera de la navegación, 2,8 s.
+- **Memoria estática máxima:** de 0,88 a 1,05 GB en dos medidas; antes de las plantas, 0,70 GB.
+- **El rebote de luz**, en Alto y Ultra, solo se hornea para la planta desde la que se mira (`start_bounce(planta)`, [REALISM.md](REALISM.md)): antes se horneaban las tres al empezar, a unos 55 ms por sala, y sus datos se quedaban para siempre.
+
+**La espera de la red** (`READY_TIMEOUT`) se queda en 30 s: aquí un piso tarda unos 6 s en montarse, y el anfitrión espera a los invitados hasta cinco veces eso.

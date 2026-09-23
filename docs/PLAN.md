@@ -90,20 +90,13 @@ Lo que ve el cazador, también (en [VISION_LOCUST.md](VISION_LOCUST.md)): la
 ruta azul al ascensor, las teles amarillas, la Q y los enfriamientos en
 pantalla. Queda jugarlo (apartado 1).
 
-### Un piso de tres plantas (generadores 5 a 7)
-
-Las tres plantas apiladas, el generador de pasillos y lo que se sortea dentro
-ya están (en la guía de desarrollo y en el diseño): cada planta es un hotel
-entero sobre su propia rejilla, con uno de ocho planos de pasillos, entre 81 y
-99 habitaciones y un refugio que no se repite; y salas oscuras, estado,
-puertas, armarios y muebles salen de la semilla, no del sitio.
-`tools/dev/map_metrics.gd` comprueba sus 39 umbrales sobre mil pisos. Falta
-que un piso tan grande pese lo que debe:
-
-- [ ] **Rendimiento con plantas enteras:** montar un piso ya tarda de 5,8 a
-  6,8 s sin ventana (el tope era 8), pero el hotel tiene de 51 000 a 56 000
-  nodos y el tope era 40 000; bajarlos, y medir memoria y FPS con ventana y
-  apuntarlo todo en [PERFORMANCE.md](PERFORMANCE.md).
+Y el piso de tres plantas (generadores 5 a 7; en la guía de desarrollo, en el
+diseño y en [PERFORMANCE.md](PERFORMANCE.md)): cada planta es un hotel entero
+sobre su propia rejilla, con uno de ocho planos de pasillos, entre 81 y 99
+habitaciones y un refugio que no se repite; salas oscuras, estado, puertas,
+armarios y muebles salen de la semilla, no del sitio; `tools/dev/map_metrics.gd`
+comprueba sus 39 umbrales sobre mil pisos; y un piso se monta en unos 6 s con
+unos 36 000 nodos. Queda jugarlo (apartado 1).
 
 ---
 

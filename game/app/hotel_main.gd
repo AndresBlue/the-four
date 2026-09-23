@@ -451,7 +451,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	hotel.name = "GeneratedHotel"
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(hotel)
-	hotel.build(manifest)
+	await hotel.build(manifest)
 	configure_hotel()
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
@@ -489,7 +489,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 		hotel.name = "GeneratedHotel"
 		hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(hotel)
-		hotel.build(manifest)
+		await hotel.build(manifest)
 		configure_hotel()
 		await get_tree().physics_frame
 		await get_tree().physics_frame
@@ -1336,7 +1336,8 @@ func update_title_scene() -> void:
 		# Leaving the menu: the hotel's own light back, unless the creature is
 		# being driven from here, in which case it has none and keeps its camera.
 		environment.ambient_light_energy = 0.0 if hunter_seat() else ambient_energy
-		if is_instance_valid(hotel): hotel.visible = true
+		# Not while it is still being put up: it shows itself when it is done.
+		if is_instance_valid(hotel): hotel.visible = not hotel.building
 		player.visible = not hunter_seat()
 		player.camera.current = not hunter_seat()
 		if hunter_seat() and is_instance_valid(locust) and is_instance_valid(locust.camera): locust.camera.current = true

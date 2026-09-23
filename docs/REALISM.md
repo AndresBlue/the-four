@@ -175,6 +175,7 @@ La luz se describe como la de aparatos reales (`game/world/hotel/lighting.gd`). 
    - El volumen termina en las paredes de su sala: el rebote no llega a la contigua, y una sala oscura no tiene.
    - Las lámparas se inyectan en vivo, así que un tubo que falla o una lámpara que se apaga se llevan su rebote.
    - Alto lo dibuja a media resolución (`bounce_half`), sin diferencia visible; Ultra, a resolución completa.
+   - **Solo la planta desde la que se mira** (`start_bounce(planta)`). Un piso son tres plantas enteras: hornear todas, a unos 55 ms por sala, triplicaba la espera de un piso con rebote, y sus datos no se soltaban nunca. Al bajar a otra planta, o al mirar otra desde el observador, `update_visibility()` hornea la nueva y suelta los volúmenes de las demás (`bounce_light.release()`); mientras tanto no hay rebote, un segundo o dos.
 5. **Reflejos:** una sonda por sala iluminada en Alto y Ultra, renderizada con sombras, y una de cada tres salas de pasillo en Medio. Solo se crea con la lámpara de su sala encendida, para que la única captura que hace no se quede a oscuras. Su luz ambiente solo se usa si se quita el rebote.
    - **Solo existen las cercanas:** se crean las 24 más próximas y una ya creada se conserva mientras esté entre las 32 más próximas; las demás se destruyen.
    - **Por qué:** Godot reserva a cada sonda un hueco de su atlas de reflejos (64) la primera vez que la dibuja, y no lo devuelve hasta destruirla, aunque se oculte. Con una sonda en cada sala iluminada, al explorar un piso grande se llenaba el atlas:

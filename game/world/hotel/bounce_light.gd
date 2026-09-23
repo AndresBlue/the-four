@@ -19,10 +19,12 @@ extends RefCounted
 ## its corner, so those have no bounce. A volume more than BIG_SIDE metres
 ## long bakes at subdivision 128, not to lose detail.
 ##
-## A room takes some 55 ms to bake, about 5 s for a floor, so the rooms are
-## baked on worker threads, detached from the scene tree (a node in the tree
-## cannot be touched off the main thread), and handed to their rooms when all
-## are done: about 1.3 s for a floor, while the game keeps running. The
+## A room takes some 55 ms to bake, about 5 s for a floor of 121 rooms, so the
+## rooms are baked on worker threads, detached from the scene tree (a node in
+## the tree cannot be touched off the main thread), and handed to their rooms
+## when all are done: about 1.3 s for that floor, while the game keeps
+## running. A floor is three whole plantas now, and only the one looked from
+## is baked (hotel_geometry.start_bounce(): release() lets the others go). The
 ## stand-in never reaches the GPU (stand_in_mesh.gd), so a worker never waits
 ## for the main thread and the main thread can always wait for the workers.
 ## Detached, the baker reads every global transform as the identity and
@@ -69,9 +71,9 @@ func baking() -> bool:
 ## volume goes under it), "centre": Vector3 (the volume's middle on the floor,
 ## in node's space), "size": Vector2, "height": float, "parts": [[room node,
 ## offset of that room from the centre]]}]; unit_mesh(group) gives a group's
-## unit shape. Only once per floor.
+## unit shape. One bake at a time (a planta's: hotel_geometry.start_bounce()).
 func start(volumes_wanted: Array, unit_mesh: Callable) -> void:
-	if baking() or not volumes.is_empty(): return
+	if baking(): return
 	for entry in volumes_wanted:
 		var boxes := []
 		for part in entry.parts:
@@ -138,6 +140,16 @@ func finish() -> void:
 		volumes.append(volume)
 	print_verbose("Bounce light: %d volumes baked" % volumes.size())
 	jobs.clear()
+
+## Lets go of every volume that is not on `planta`, and what it baked.
+func release(planta: int) -> void:
+	for volume in volumes.duplicate():
+		if not is_instance_valid(volume):
+			volumes.erase(volume)
+			continue
+		if FLOOR.planta_of(volume.global_position.y) == planta: continue
+		volumes.erase(volume)
+		volume.queue_free()
 
 ## Shows the nearest rooms' volumes, as many as Godot draws. Only a shown
 ## volume has its data: a volume with data keeps its textures in video

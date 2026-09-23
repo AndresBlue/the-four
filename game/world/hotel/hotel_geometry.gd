@@ -223,10 +223,15 @@ func batch_target(parent: Node3D) -> Array:
 		node = node.get_parent()
 	return [parent, Transform3D.IDENTITY]
 
+## A room's solid boxes, every one a shape of one body the room has, by the
+## room's instance id: a body for each box was a fifth of the nodes of a
+## floor of three whole plantas.
+var solids := {}
+
 func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid := false, form := "box", euler := Vector3.ZERO) -> void:
 	# An empty material creates only the collider (detailed visuals stay separate).
+	var target := batch_target(parent)
 	if not material.is_empty():
-		var target := batch_target(parent)
 		var key: int = target[0].get_instance_id()
 		if not batches.has(key): batches[key] = {"parent": target[0], "groups": {}}
 		var groups: Dictionary = batches[key].groups
@@ -234,15 +239,27 @@ func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid :=
 		if not groups.has(group): groups[group] = []
 		groups[group].append(target[1] * Transform3D(Basis.from_euler(euler) * Basis.from_scale(size), pos))
 	if solid:
-		var body := StaticBody3D.new()
-		body.position = pos
 		var shape := CollisionShape3D.new()
-		shape.name = "CollisionShape3D"
 		var cube := BoxShape3D.new()
 		cube.size = size
 		shape.shape = cube
-		body.add_child(shape)
-		parent.add_child(body)
+		var room: Node3D = target[0]
+		if batch_roots.has(room.get_instance_id()):
+			var body: StaticBody3D = solids.get(room.get_instance_id())
+			if body == null:
+				body = StaticBody3D.new()
+				body.name = "Solid"
+				room.add_child(body)
+				solids[room.get_instance_id()] = body
+			shape.transform = target[1] * Transform3D(Basis.IDENTITY, pos)
+			body.add_child(shape)
+		else:
+			# Outside a room (the staged sets): a body of its own, as ever.
+			var single := StaticBody3D.new()
+			single.position = pos
+			shape.name = "CollisionShape3D"
+			single.add_child(shape)
+			parent.add_child(single)
 
 func cylinder(parent: Node3D, pos: Vector3, radius: float, height: float, material: String, euler := Vector3.ZERO) -> void:
 	box(parent, pos, Vector3(radius * 2, height, radius * 2), material, false, "cylinder", euler)
@@ -325,6 +342,20 @@ func flush() -> void:
 				instance.visibility_range_end_margin = 2.0
 			batch.parent.add_child(instance)
 	model_batches.clear()
+	solids.clear()
+	# What held walls, stretches and pieces of furniture only for their
+	# transform while a room was built, and has nothing of its own left.
+	for room in room_nodes: drop_empty(room)
+
+## Frees the plain holders under `node` that are left with nothing in them
+## (batch_target() walked through them while the room was built), from the
+## deepest up.
+func drop_empty(node: Node) -> void:
+	for child in node.get_children():
+		drop_empty(child)
+		if child.get_child_count() == 0 and child.get_class() == "Node3D" and child.get_script() == null:
+			node.remove_child(child)
+			child.free()
 
 ## Baked models (assets/props/hotel, room_dressing.gd), batched per room and
 ## per mesh like the boxes: one MultiMesh each. Nothing under SHADOW_MODEL
@@ -477,12 +508,11 @@ func light_seal() -> MeshInstance3D:
 	return shadow_block("LightSeal", Vector3(bounds.size.x - 0.02, bounds.size.y - 0.02, SEAL_DEPTH), bounds.get_center() * Vector3(1, 1, 0))
 
 func jamb_seal(center: Vector3, yaw: float) -> Node3D:
-	var holder := Node3D.new()
-	holder.name = "JambSeal"
-	holder.position = center
-	holder.rotation.y = yaw
-	holder.add_child(door_stop())
-	return holder
+	var stop := door_stop()
+	stop.name = "JambSeal"
+	stop.position = center
+	stop.rotation.y = yaw
+	return stop
 
 ## The jamb strips are drawn, like the stop of a real door frame: through the
 ## crack beside a shut leaf you saw straight into the lit room next door.
@@ -590,14 +620,31 @@ func shadow_block(title: String, size: Vector3, at: Vector3) -> MeshInstance3D:
 ## The pairs of cells with no wall between them (corridor running on, or a
 ## salon), by pair: looked up for every wall and every door.
 var open_pairs := {}
+## While a floor is put up. build() hands a frame back between plantas and
+## before the navigation: a window that answers nothing for five seconds is
+## "not responding" to Windows, and all in one go a floor of three whole
+## plantas held it three seconds on this PC, more on a slower one. The three
+## navigation bakes go together (two seconds): with a frame between them, the
+## navigation took in each planta on its own and the floor was ready two
+## seconds later. Meanwhile nothing of the floor is drawn: it is hidden, and
+## update_visibility() leaves it be (the frames in between drew every room
+## built so far, lamps and all).
+var building := false
 
 func build(data: Dictionary) -> void:
+	building = true
+	visible = false
 	manifest = data
 	looks = looks_of(int(data.get("seed", 0)))
 	open_pairs.clear()
 	for pair in data.get("merged", []): open_pairs[Vector2i(int(pair[0]), int(pair[1]))] = true
 	decide_dark(data)
+	var planta := int(data.rooms[0].get("wing", 0)) if not data.rooms.is_empty() else 0
 	for room in data.rooms:
+		# One planta at a time, with a frame between them.
+		if int(room.get("wing", 0)) != planta:
+			planta = int(room.get("wing", 0))
+			await get_tree().process_frame
 		var node := Node3D.new()
 		node.name = "Room_%d_%s" % [room.id, FLOOR.TYPES[room.type]]
 		node.position = FLOOR.position_of(room)
@@ -701,8 +748,11 @@ func build(data: Dictionary) -> void:
 	for door in doors: door_planta.append(FLOOR.planta_of(door.doorway.y))
 	build_lifts(data)
 	flush()
+	await get_tree().process_frame
 	build_navigation()
 	build_dust()
+	building = false
+	visible = true
 
 ## How far from a doorway's middle the middle of a painting keeps: its lamps
 ## (0.98 m either side) would be on the casing.
@@ -1281,15 +1331,28 @@ func practical_fade(lamp: OmniLight3D) -> void:
 	var out: float = preset.furniture_lamps
 	if out > 0.0: set_fade(lamp, out - 10.0, 8.0)
 
-## Bakes the lit rooms' bounce light on worker threads (bounce_light.gd), once.
-## A room alone, or a hall's cells together (one volume over the hall, if it
-## is a rectangle; an L-shaped hall has none: see bounce_light.gd).
-func start_bounce() -> void:
+## The planta whose bounce light is baked (or baking), -1 for none. Only one
+## at a time: a planta is some 140 lit rooms and 55 ms each on one core, the
+## three of them held up the start of a floor by four seconds and their
+## volumes' data never went, and the others are under a slab anyway.
+var bounce_planta := -1
+## The planta the last look was from (update_visibility()).
+var eye_planta := 0
+
+## Bakes a planta's lit rooms' bounce light on worker threads
+## (bounce_light.gd), letting the other plantas' volumes go. A room alone, or
+## a hall's cells together (one volume over the hall, if it is a rectangle; an
+## L-shaped hall has none: see bounce_light.gd). update_visibility() asks for
+## the planta the eye goes to.
+func start_bounce(planta: int) -> void:
+	if planta == bounce_planta or bounce.baking(): return
+	bounce_planta = planta
+	bounce.release(planta)
 	var halls := {}
 	var wanted := []
 	for i in room_nodes.size():
 		var room: Dictionary = manifest.rooms[i]
-		if dark_room(room) or FLOOR.is_void(room): continue
+		if dark_room(room) or FLOOR.is_void(room) or room_planta[i] != planta: continue
 		var hall := int(room.get("hall", -1))
 		if hall >= 0:
 			if not halls.has(hall): halls[hall] = []
@@ -1376,9 +1439,9 @@ func apply_quality(new_preset: Dictionary) -> void:
 	for lamp in exit_lamps:
 		var size: float = PRACTICAL_SIZE * preset.penumbra
 		if lamp.light_size != size: lamp.light_size = size
-	# Baked once, the first time a preset asks for it (only where a GPU can
-	# draw it: not headless, not Compatibility).
-	if preset.bounce and RenderingServer.get_rendering_device() != null: start_bounce()
+	# Baked the first time a preset asks for it, for the planta looked from
+	# (only where a GPU can draw it: not headless, not Compatibility).
+	if preset.bounce and RenderingServer.get_rendering_device() != null: start_bounce(maxi(eye_planta, 0))
 	# Every lit room's probe, rendered with shadows, also lights its room
 	# (probes 2); otherwise only reflections. The bounce volumes take over
 	# from it (a probe's ambient light would replace theirs).
@@ -1562,7 +1625,11 @@ func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array
 ## planta: the one drawn; by default the one the eye is on. Only one ever is:
 ## the others are under a slab, and their lamps would light through it.
 func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false, planta := -1) -> void:
+	if building: return
 	var here: int = planta if planta >= 0 else FLOOR.planta_of(player_position.y)
+	eye_planta = here
+	# The eye has gone down a planta (or the observer to another): its bounce.
+	if preset.bounce and here != bounce_planta and RenderingServer.get_rendering_device() != null: start_bounce(here)
 	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
