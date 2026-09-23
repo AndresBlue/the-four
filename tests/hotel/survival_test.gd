@@ -155,6 +155,20 @@ func run() -> void:
 			break
 	enemy.set_physics_process(false)
 	check("Criatura abre lentamente puerta y cruza sin atravesarla", door.opened and crossed)
+	# Wedged against the leaf of a door already open, which is what the shut
+	# doors that stop it made possible: it steps round it instead of standing
+	# there pressed into the wood for the rest of the mode.
+	door.open_immediately()
+	await frames(4)
+	enemy.position = door.doorway - across * 0.4 + Basis(Vector3.UP, door.closed_rotation) * Vector3(0.55, 0.04, 0)
+	enemy.set_mode(enemy.Mode.INVESTIGATE)
+	enemy.destination = door.doorway + across * 4.0
+	enemy.repath = 0.0
+	var wedged: Vector3 = enemy.position
+	enemy.set_physics_process(true)
+	for i in 240: await physics_frame
+	enemy.set_physics_process(false)
+	check("Y si se encaja en una puerta abierta, se despega sola", enemy.position.distance_to(wedged) > 1.0)
 	if not crossed: print("DOOR_DEBUG ",door.doorway," enemy=",enemy.position," target=",enemy.destination," mode=",enemy.mode," moving=",door.moving," opened=",door.opened," path=",enemy.path)
 	player.position = Vector3(0, 0.04, 0)
 	await frames(2)

@@ -896,12 +896,25 @@ func move_on_path(delta: float) -> void:
 		path = FLOOR.navigation_path(get_world_3d().navigation_map, position, destination)
 		path_index = 0
 		repath = 0.45
+		# Nowhere it can walk to (the way is another wing's, or behind a
+		# locked door): it used to walk to the nearest wall and stand there
+		# until the mode ran out. It gives up where it is instead.
+		if not path.is_empty() and path[path.size() - 1].distance_to(destination) > UNREACHABLE:
+			if mode == Mode.INVESTIGATE: set_mode(Mode.SEARCH)
+			elif mode == Mode.PATROL:
+				patrol_room = nearest_room()
+				choose_patrol()
 	while path_index < path.size() and Vector2(path[path_index].x - position.x, path[path_index].z - position.z).length() < 0.06: path_index += 1
 	var direction := Vector3.ZERO
 	if path_index < path.size():
 		direction = path[path_index] - position
 		direction.y = 0
 		direction = direction.normalized()
+	# Stepping round whatever it was pressed against (see unstick): for as
+	# long as the step lasts, that is where it is going.
+	if dodge_left > 0.0:
+		dodge_left -= delta
+		if direction.length() > 0.1 or dodge_left > 0.0: direction = dodge
 	# The refuge is excluded even when the shortest path would cross it.
 	if level.point_in_refuge(position + direction * 0.8):
 		patrol_room = nearest_room()
@@ -912,6 +925,9 @@ func move_on_path(delta: float) -> void:
 	var hunting := mode == Mode.CHASE
 	var at_door := false
 	for door in level.hotel.doors:
+		# A door with a lock on it is a wall: waiting for one it cannot open
+		# left it standing there for the rest of the floor.
+		if door.locked: continue
 		if door.doorway.distance_to(position) < (2.4 if hunting else 1.8) and (not door.opened or door.moving):
 			if not door.moving: door.toggle(not hunting, false, hunting)
 			direction = Vector3.ZERO
@@ -937,18 +953,34 @@ func move_on_path(delta: float) -> void:
 ## spare round a partition's end), it went on walking into it for as long as
 ## the mode lasted. Going nowhere while meaning to move for a moment, it steps
 ## sideways and takes the next point of its path instead.
-const STUCK_AFTER := 0.8
+## How far short of where it was going a route may end and still count as
+## going there: past this there is no way, and it stops trying.
+const UNREACHABLE := 2.5
+const STUCK_AFTER := 0.6
+## How long a step round something lasts.
+const DODGE_TIME := 0.5
+var dodge := Vector3.ZERO
+var dodge_left := 0.0
 var stuck_clock := 0.0
+## Which way it stepped last time, so a second attempt tries the other side
+## instead of rocking against the same edge.
+var stuck_side := 1.0
 func unstick(delta: float, direction: Vector3) -> void:
 	var moving: float = Vector2(get_real_velocity().x, get_real_velocity().z).length()
-	if direction.length() < 0.1 or speed < 1.0 or moving > 0.25:
+	# Meaning to move is enough: turning towards what is stopping it, its
+	# speed is cut to a third and never reached the old threshold, which is
+	# how it stood in an open doorway pressed against the leaf.
+	if direction.length() < 0.1 or speed <= 0.01 or moving > 0.25:
 		stuck_clock = 0.0
 		return
 	stuck_clock += delta
 	if stuck_clock < STUCK_AFTER: return
 	stuck_clock = 0.0
-	var side := Vector3(-direction.z, 0, direction.x) * (1.0 if rng.randf() < 0.5 else -1.0)
-	velocity = side * 1.6 + Vector3(0, -2, 0)
-	move_and_slide()
+	stuck_side = -stuck_side
+	# Sideways and a little on, which is what clears a door frame or a corner,
+	# and held for half a second: a single frame of it moved four centimetres
+	# and it pressed straight back into the same edge.
+	dodge = (Vector3(-direction.z, 0, direction.x) * stuck_side + direction * 0.45).normalized()
+	dodge_left = DODGE_TIME
 	path_index = mini(path_index + 1, path.size())
-	repath = 0.6
+	repath = DODGE_TIME
