@@ -20,6 +20,11 @@ extends SceneTree
 ##   preset_0..3   the corridor on each graphics preset: Bajo coarser grains,
 ##                 Ultra finer ones with its brightest grains blooming
 ##   lit           a survivor's torch as interference
+##   guide_lift    the survivors have gone on and it has not: the way to its
+##                 car in blue, through the walls, flowing towards the car
+##   guide_tv      in the next wing: the lit sets in yellow and, after Q, the
+##                 way to the nearest one
+##   guide_screen  a lit set seen from a few metres, through the wall or not
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
@@ -133,6 +138,31 @@ func run() -> void:
 	await listen(0.1)
 	await shot("memory")
 
+	# The survivors have gone on and it has not: the way to its car, in blue.
+	level.session.stage = 2
+	var car: int = level.lifts.creature_car(2)
+	look(Vector3(0, 0, 0), level.hotel.lifts[maxi(car, 0)] if car >= 0 else centre)
+	await listen(2.5)
+	await shot("guide_lift")
+	# In the next wing: the lit sets burn yellow, and Q lays the way to one.
+	level.lifts.apply_locust_ride(level.hotel.arrivals[0] + Vector3(0, 0.04, 0))
+	level.lifts.lift_away.clear()
+	for index in level.stage_televisions(2).slice(0, 3): level.apply_television(int(index), true)
+	level.locust.grace = 0.0
+	level.locust.driver.trace_cooldown = 0.0
+	level.locust.driver.trace()
+	var aimed: int = level.locust.driver.trace_target
+	look(level.hotel.arrivals[0], level.televisions[aimed].global_position if aimed >= 0 else centre)
+	await listen(2.5)
+	await shot("guide_tv")
+	if aimed >= 0:
+		var screen_at: Vector3 = level.televisions[aimed].screen_point()
+		look(level.locust.driver.set_front(aimed) + (level.locust.driver.set_front(aimed) - level.televisions[aimed].global_position).normalized() * 3.0, screen_at, 0.0)
+		await listen(1.5)
+		await shot("guide_screen")
+	for index in level.stage_televisions(2): level.apply_television(int(index), false)
+	level.locust.driver.trace_left = 0.0
+	level.session.stage = 1
 	look(centre + Vector3(0, 0, 3.0), centre + Vector3(0, 0, -6.0))
 	level.settings.values.reduced = true
 	level.apply_settings()

@@ -556,8 +556,12 @@ func versus_hunter() -> void:
 		if creature.driver.shriek_cooldown <= 0.0: creature.driver.shriek()
 		return not creature.driver.revealed.is_empty(), 15.0))
 	check("Y los deja marcados con una nube que dura", creature.driver.echo.finds_written > 0)
+	# The floor has moved on to the second stage and it has not: the way to its
+	# car shows in blue, worked out on this machine with nothing sent for it.
+	check("Con la etapa cerrada ve el camino al coche sin que se lo manden", await wait_for(func(): return level.session.stage == 2 and creature.driver.echo.guide_routes.lift > 1, 30.0))
 	# Travelling by television: the hunter asks, the host judges it.
 	var lit: Array = await wait_for_value(func(): return level.lit_televisions(), func(value): return value.size() >= 2, 30.0)
+	check("Y las teles encendidas brillan en su lectura", await wait_for(func(): return creature.driver.echo.guide_routes.screens >= 2, 10.0))
 	if lit.size() >= 2:
 		creature.global_position = level.televisions[lit[0]].global_position + Vector3(1.0, 0.04, 0)
 		await pause_for(0.4)

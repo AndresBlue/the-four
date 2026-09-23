@@ -44,6 +44,10 @@ var focus_amount := 0.0
 ## the stamina meter and a short notice (the countdown to the hunt).
 var hunter := false
 var notice: Label
+## The hunter's two waits, as the share still to go (1 just used, 0 ready): the
+## shriek and the trace to a set. Two short bars over the stamina meter, only
+## while they recharge, like the stamina itself.
+var waits := {"CHILLIDO": 0.0, "RASTRO": 0.0}
 ## The zoom rocker: where it stands (0 wide, 1 telephoto) and how long the
 ## bar stays up after it last moved, as on a camcorder.
 var zoom := 0.0
@@ -125,8 +129,13 @@ func start_tape(run_seed: int) -> void:
 	stamina = 1.0
 	stamina_alpha = 0.0
 	full_time = 99.0
+	for title in waits: waits[title] = 0.0
 	focus_word = ""
 	code_note.text = ""
+
+func set_cooldowns(shriek: float, trace: float) -> void:
+	waits["CHILLIDO"] = clampf(shriek, 0.0, 1.0)
+	waits["RASTRO"] = clampf(trace, 0.0, 1.0)
 
 func set_stamina(value: float, is_exhausted: bool) -> void:
 	stamina = clampf(value, 0.0, 1.0)
@@ -221,6 +230,23 @@ func draw_overlay() -> void:
 			ink.a = stamina_alpha * (0.9 if i < lit and not flash else 0.18)
 			canvas.draw_rect(Rect2(rect.position + Vector2(2, 2), rect.size), Color(0, 0, 0, stamina_alpha * 0.6))
 			canvas.draw_rect(rect, ink)
+	if hunter:
+		# Its waits: a word and a bar that fills as it comes back.
+		var font := STYLE.font()
+		var right := size.x - 48.0
+		var row := size.y - 60.0 - 22.0 - 22.0
+		for title in waits:
+			var left: float = waits[title]
+			if left <= 0.001: continue
+			var bar := Rect2(Vector2(right - 150.0, row - 6.0), Vector2(150.0, 6.0))
+			var word_width := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+			for pass_index in 2:
+				var shift := Vector2(2, 2) if pass_index == 0 else Vector2.ZERO
+				var ink := Color(0, 0, 0, 0.6) if pass_index == 0 else Color(STYLE.INK, 0.9)
+				canvas.draw_string(font, Vector2(bar.position.x - 12.0 - word_width, row) + shift, title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, ink)
+				canvas.draw_rect(Rect2(bar.position + shift, bar.size), Color(ink, ink.a * 0.25))
+				canvas.draw_rect(Rect2(bar.position + shift, Vector2(bar.size.x * (1.0 - left), bar.size.y)), ink)
+			row -= 26.0
 	if focus_amount > 0.01:
 		# Four corner brackets that settle in as focus is acquired.
 		var center := size * 0.5

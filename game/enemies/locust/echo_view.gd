@@ -216,6 +216,41 @@ const MOTE_SPREAD := 0.38
 var motes: MultiMeshInstance3D
 var mote_material: ShaderMaterial
 var mote_at := 0
+## Guides: what the floor lays out for it in coloured grains, through
+## everything and at any distance (the cloud is fully "through", like the
+## motes). Blue is the way to the lift while the survivors have gone on and it
+## has not; yellow, the lit sets it can travel through, and the way to the
+## nearest one when it asks for it (locust_player.trace). All of it is laid
+## again on every click from where it stands, and it is the same on every
+## preset: the quality of the picture never gives it more to go on.
+const GUIDE_GRAINS := 2400
+## Grains every this many metres of route, on the floor.
+const GUIDE_STEP := 0.35
+const GUIDE_PER_STEP := 3
+const GUIDE_HEIGHT := 0.08
+const GUIDE_SCATTER := 0.06
+## Each laying sends a front down the route from the creature to its end, so
+## the line runs the way to go, like the racing line of a driving game.
+const GUIDE_FLOW := 9.0
+## Where a route ends, a column of grains that reads from afar; while the car
+## is away it beats, bright one click and dim the next, until it is back down.
+const GUIDE_END_GRAINS := 24
+## Strong but not blinding: past about one and a half the tonemapper takes a
+## saturated grain to white (at three, the first version, blue read as white).
+const GUIDE_BLUE := Color(0.02, 0.22, 1.6)
+const GUIDE_YELLOW := Color(1.5, 1.05, 0.03)
+## Grains over each lit set's screen, round it, and in a thin column over it,
+## the way the end of a route stands up: a set has to read from anywhere on
+## the floor, and a screen-sized patch alone was a speck from a room away.
+const SCREEN_GRAINS := 48
+const SCREEN_HALO := 16
+const SCREEN_BEACON := 14
+var guides: MultiMeshInstance3D
+var guide_material: ShaderMaterial
+## What the last laying put down: grains in all, and route points and screens,
+## for the regression (instance data cannot be read back without a GPU).
+var guide_count := 0
+var guide_routes := {"lift": 0, "trace": 0, "screens": 0}
 var wall_material: ShaderMaterial
 var body_material: ShaderMaterial
 var puff_material: ShaderMaterial
@@ -388,6 +423,19 @@ func build_clouds() -> void:
 	# Lifted well past the tone of the rest of the image, so a handful of
 	# grains at the far end of a wing still reads as something red.
 	mote_material.set_shader_parameter("gain", (2.6) * lift())
+	guides = make_cloud("EchoGuides", 125, 1.0)
+	guide_material = guides.material_override as ShaderMaterial
+	guides.multimesh.instance_count = GUIDE_GRAINS
+	guides.multimesh.visible_instance_count = 0
+	guide_material.set_shader_parameter("wave_speed", GUIDE_FLOW)
+	guide_material.set_shader_parameter("residue", 0.9)
+	guide_material.set_shader_parameter("flare", 1.6)
+	# Laid again every click: nothing of it is meant to fade in between.
+	guide_material.set_shader_parameter("age_limit", 60.0)
+	# The shriek turns every reading red, but not the way to go.
+	for key in ["tone_cold", "shriek_cold"]: guide_material.set_shader_parameter(key, GUIDE_BLUE)
+	for key in ["tone_hot", "shriek_hot"]: guide_material.set_shader_parameter(key, GUIDE_YELLOW)
+	guide_material.set_shader_parameter("gain", 1.2 * lift())
 	frame_material = frames.material_override as ShaderMaterial
 	# Strong reflectors keep a body of light between fronts and come back warm
 	# white, so a doorway or a wardrobe stands out from the room around it.
@@ -640,6 +688,12 @@ func apply_quality() -> void:
 		material.set_shader_parameter("halo", budget.halo)
 	# Reflector grains a touch bigger than the room's.
 	frame_material.set_shader_parameter("point_scale", span * FRAME_PIXELS / POINT_PIXELS)
+	# The guides one size on every preset, a little coarser than a room grain,
+	# and that size on screen however far off: with the room's cap they shrank
+	# to nothing past a dozen metres, and a lit set has to read from anywhere.
+	guide_material.set_shader_parameter("point_scale", 2.0 * tan(deg_to_rad(camera.fov * 0.5)) * POINT_PIXELS * 1.6 / height)
+	guide_material.set_shader_parameter("point_min", 0.012)
+	guide_material.set_shader_parameter("point_max", 1.0)
 	puff_material.set_shader_parameter("point_scale", span * PUFF_PIXELS / POINT_PIXELS)
 
 # --- The clicks ---------------------------------------------------------------------
@@ -693,6 +747,7 @@ func click(hunting: bool) -> void:
 	if clicks % BODY_EVERY == 0: stamp_bodies(from, reach)
 	bloom_contacts()
 	bloom_motes()
+	bloom_guides()
 
 ## Directions for one click: a Fibonacci sphere, turned by a fresh angle every
 ## time so successive clicks fill in each other's gaps, with most of the rays
@@ -922,7 +977,7 @@ func push_uniforms() -> void:
 	frame_material.set_shader_parameter("age_limit", FRAME_MEMORY)
 	find_material.set_shader_parameter("age_limit", FIND_LIFE)
 	push_beam()
-	for material in [field_material, wall_material, frame_material, body_material, puff_material, find_material, mark_material, self_material]:
+	for material in [field_material, wall_material, frame_material, body_material, puff_material, find_material, mark_material, self_material, guide_material]:
 		material.set_shader_parameter("now", clock)
 		material.set_shader_parameter("shriek", shriek)
 
@@ -943,6 +998,81 @@ func bloom_motes() -> void:
 	if motes.multimesh.instance_count == 0 or not is_instance_valid(level): return
 	for point in level.sanity.burnt_survivors():
 		scatter(motes, point + Vector3(0, 1.15, 0), MOTE_SPREAD, MOTE_GRAINS, 1.0, 1.0, clock)
+
+## The guides of this click, laid whole: every lit set of the stage first (a
+## handful of grains each), then the way to the lift and the way to the set it
+## asked for, with what is left.
+func bloom_guides() -> void:
+	var count := 0
+	var screens: Array = driver.lit_screens()
+	guide_routes.screens = screens.size()
+	for screen in screens: count = lay_screen(screen, count)
+	var lift: PackedVector3Array = driver.lift_route()
+	guide_routes.lift = lift.size()
+	if lift.size() >= 2: count = lay_route(lift, 0.0, count, driver.lift_away_now())
+	var trace: PackedVector3Array = driver.trace_route()
+	guide_routes.trace = trace.size()
+	if trace.size() >= 2: count = lay_route(trace, 1.0, count, false)
+	guide_count = count
+	guides.multimesh.visible_instance_count = count
+
+## A route as a line of grains on the floor, each carrying how far along the
+## route it lies, so this click's front runs from the creature to the end.
+## Coarser when the route is too long for the grains left. Returns where the
+## next grains go.
+func lay_route(route: PackedVector3Array, kind: float, at: int, waiting: bool) -> int:
+	var multi: MultiMesh = guides.multimesh
+	var length := 0.0
+	for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
+	var room: int = multi.instance_count - at - GUIDE_END_GRAINS
+	if room <= GUIDE_PER_STEP: return at
+	var step: float = maxf(GUIDE_STEP, length * GUIDE_PER_STEP / float(room))
+	var along := 0.0
+	var next := 0.0
+	for i in range(1, route.size()):
+		var a: Vector3 = route[i - 1]
+		var b: Vector3 = route[i]
+		var span: float = a.distance_to(b)
+		while next <= along + span and at + GUIDE_PER_STEP <= multi.instance_count - GUIDE_END_GRAINS:
+			var point: Vector3 = a.lerp(b, clampf((next - along) / maxf(span, 0.001), 0.0, 1.0))
+			for k in GUIDE_PER_STEP:
+				var grain := point + Vector3(rng.randfn(0.0, GUIDE_SCATTER), GUIDE_HEIGHT + absf(rng.randfn(0.0, 0.02)), rng.randfn(0.0, GUIDE_SCATTER))
+				multi.set_instance_transform(at, Transform3D(Basis(), grain))
+				multi.set_instance_custom_data(at, Color(clock, next, kind, 1.0))
+				at += 1
+			next += step
+		along += span
+	var end: Vector3 = route[route.size() - 1]
+	var beat: float = 0.35 if waiting and clicks % 2 == 1 else 1.6
+	for k in GUIDE_END_GRAINS:
+		if at >= multi.instance_count: break
+		var grain := end + Vector3(rng.randfn(0.0, 0.22), GUIDE_HEIGHT + rng.randf() * 1.6, rng.randfn(0.0, 0.22))
+		multi.set_instance_transform(at, Transform3D(Basis(), grain))
+		multi.set_instance_custom_data(at, Color(clock, length, kind, beat))
+		at += 1
+	return at
+
+## A lit set as it has it: its screen full of yellow grains and a few round it,
+## lit afresh on every click.
+func lay_screen(screen: Array, at: int) -> int:
+	var multi: MultiMesh = guides.multimesh
+	var centre: Vector3 = screen[0]
+	var right: Vector3 = screen[1]
+	var up: Vector3 = screen[2]
+	for k in SCREEN_GRAINS + SCREEN_HALO + SCREEN_BEACON:
+		if at >= multi.instance_count: break
+		var grain: Vector3 = centre + right * rng.randf_range(-1.0, 1.0) + up * rng.randf_range(-1.0, 1.0)
+		var energy := 1.6
+		if k >= SCREEN_GRAINS + SCREEN_HALO:
+			grain = centre + Vector3(rng.randfn(0.0, 0.05), up.length() + rng.randf() * 1.4, rng.randfn(0.0, 0.05))
+			energy = 1.2
+		elif k >= SCREEN_GRAINS:
+			grain = centre + Vector3(rng.randfn(0.0, 0.45), rng.randfn(0.0, 0.35), rng.randfn(0.0, 0.45))
+			energy = 0.8
+		multi.set_instance_transform(at, Transform3D(Basis(), grain))
+		multi.set_instance_custom_data(at, Color(clock, 0.0, 1.0, energy))
+		at += 1
+	return at
 
 ## What the shriek came back with: a dense cloud over each survivor it found,
 ## which stays for seconds after the cry itself has died away. This is what the

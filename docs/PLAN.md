@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v3**, protocolo de red
-**the-four-net-8**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-9**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -86,16 +86,9 @@ hoja abierta ya no la para y su ruta la rodea, solo se detiene ante puertas de
 su ruta, y tiene un protocolo de atascos medido con una sonda que corre en
 `verify.ps1`. Queda verlo jugando (apartado 1).
 
-### Lo que ve el cazador
-
-- [ ] **Ruta azul hasta el ascensor** mientras va atrasada: una línea de
-  carreras hecha de motas que fluye hacia el coche, recalculada en cada clic
-  desde donde esté. Sustituye a los ruidos sueltos de hoy.
-- [ ] **Teles encendidas en amarillo**, desde todo el piso.
-- [ ] **Q: rastro amarillo a la tele encendida más cercana**, 15 s, cada 20 s
-  desde que se usa.
-- [ ] **Enfriamientos en pantalla**, y estocada y chillido en los gatillos del
-  mando (hoy solo van con ratón).
+Lo que ve el cazador, también (en [VISION_LOCUST.md](VISION_LOCUST.md)): la
+ruta azul al ascensor, las teles amarillas, la Q y los enfriamientos en
+pantalla. Queda jugarlo (apartado 1).
 
 ### Un piso de tres plantas (generador v5)
 
@@ -139,7 +132,7 @@ herramientas para mirarlo están en la guía de desarrollo.
   que la puerta se abrió, y si la criatura llega demasiado pronto o demasiado
   tarde al ala nueva ahora que cruza andando (13,9–50,6 s medidos, mediana 26).
 - [ ] **El bloque de etapas entero:** si el apagón asusta o solo estorba, si el
-  reinicio de etapa perdona demasiado, y si el camino marcado en la lectura de
+  reinicio de etapa perdona demasiado, y si el camino azul al ascensor en la lectura de
   la criatura le da demasiada ventaja.
 - [ ] **Si el piso se siente un hotel explorable** o un laberinto arbitrario, y
   si hay que ajustar tamaño y referencias. Lo medido dice que la numeración ya
@@ -181,6 +174,11 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 - [ ] **Cómo se ven las animaciones de los supervivientes** ahora que van por
   pies plantados e IK.
+- [ ] **Las guías del cazador (23 de septiembre):** si la ruta azul al
+  ascensor se lee como un camino que seguir, si las teles amarillas desde todo
+  el piso le dan demasiado (hoy sabe siempre dónde se han encendido), y si la Q
+  —15 s cada 20— se usa o sobra. Y si el azul lejano, donde los granos se
+  amontonan, se sigue viendo azul en una pantalla de verdad.
 - [ ] **La vista de la criatura:** término base, separación de los frentes,
   legibilidad en salones grandes (ver [VISION_LOCUST.md](VISION_LOCUST.md)) y
   el peso de cada tipo de ruido en la imagen, con `./tools/godot.ps1 rehearsal`.

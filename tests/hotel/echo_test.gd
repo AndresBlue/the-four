@@ -207,11 +207,58 @@ func run() -> void:
 	# Asked straight away: a contact lives CONTACT_LIFE seconds, and waiting
 	# for a couple of clicks first is long enough to lose it.
 	check("Un armario se oye desde otra habitación", far_hide != null and far_gap > 8.0 and creature.driver.heard.any(func(mark): return int(mark.kind) == NOISE.Kind.WARDROBE))
-	# The way on has moved: the road to it is laid out in the reading.
-	var before_road: int = echo.find_at
-	creature.driver.mark_stage(PackedVector3Array([creature.global_position, creature.global_position + Vector3(0, 0, -12.0), creature.global_position + Vector3(8.0, 0, -12.0)]))
+	# The way on has moved: while the survivors have gone on and it has not, the
+	# way to its car is laid out in blue in its reading, worked out here from
+	# where it stands on every click. Nothing is sent for it.
+	var stage_before: int = level.session.stage
+	var creature_before: Vector3 = creature.global_position
+	creature.global_position = Vector3(0, 0.04, 0)
+	level.session.stage = 2
+	var car_index: int = level.lifts.creature_car(2)
 	await click_passes(echo)
-	check("El camino a la etapa nueva se dibuja en su lectura", echo.find_at != before_road)
+	await click_passes(echo)
+	check("Con la etapa cerrada y ella atrás, ve en azul el camino al coche", car_index == 0 and echo.guide_routes.lift > 1 and echo.guide_count > echo.guide_routes.lift and echo.guide_material.get_shader_parameter("tone_cold").b > 1.0 and is_equal_approx(echo.guide_material.get_shader_parameter("through"), 1.0))
+	check("Y el chillido no lo tiñe de rojo", echo.guide_material.get_shader_parameter("shriek_cold") == echo.guide_material.get_shader_parameter("tone_cold"))
+	level.lifts.apply_locust_ride(level.hotel.arrivals[car_index] + Vector3(0, 0.04, 0))
+	await click_passes(echo)
+	check("En cuanto toma el coche el camino desaparece", echo.guide_routes.lift == 0)
+	level.lifts.lift_away.clear()
+	# Now in the wing of the second stage: its lit sets burn yellow from anywhere
+	# on the floor, and Q lays the way to the nearest it can walk to, for
+	# fifteen seconds, once every twenty from when it is asked for.
+	var stage_sets: Array = level.stage_televisions(2)
+	creature.grace = 0.0
+	creature.driver.trace_cooldown = 0.0
+	creature.driver.trace()
+	check("Sin teles encendidas, Q no gasta nada", creature.driver.trace_cooldown == 0.0 and creature.driver.trace_left == 0.0)
+	for index in stage_sets.slice(0, 2): level.apply_television(int(index), true)
+	await click_passes(echo)
+	check("Las teles encendidas brillan en amarillo en su lectura", echo.guide_routes.screens == 2 and echo.guide_material.get_shader_parameter("tone_hot").r > 1.0)
+	creature.driver.trace()
+	var asked: int = creature.driver.trace_target
+	var nav_map: RID = level.get_world_3d().navigation_map
+	var nearest := -1
+	var shortest := INF
+	for index in stage_sets.slice(0, 2):
+		var way := FLOOR.navigation_path(nav_map, creature.global_position, creature.driver.set_front(int(index)))
+		var length := 0.0
+		for i in range(1, way.size()): length += way[i].distance_to(way[i - 1])
+		if way.size() >= 2 and length < shortest:
+			shortest = length
+			nearest = int(index)
+	await click_passes(echo)
+	check("Q traza en amarillo el camino a la tele encendida más cercana", asked >= 0 and asked == nearest and echo.guide_routes.trace > 1 and creature.driver.trace_left > 13.0)
+	var waited: float = creature.driver.trace_cooldown
+	creature.driver.trace()
+	check("Y no se puede volver a pedir hasta veinte segundos después de pedirlo", is_equal_approx(creature.driver.TRACE_COOLDOWN, 20.0) and waited > 18.0 and creature.driver.trace_cooldown <= waited)
+	creature.driver.trace_left = 0.01
+	await click_passes(echo)
+	check("A los quince segundos el rastro se va", echo.guide_routes.trace == 0)
+	for index in stage_sets.slice(0, 2): level.apply_television(int(index), false)
+	await click_passes(echo)
+	check("Y una tele apagada deja de brillar", echo.guide_routes.screens == 0)
+	level.session.stage = stage_before
+	creature.global_position = creature_before
 	var before_dark: int = echo.find_at
 	creature.driver.mark_blackout()
 	await click_passes(echo)

@@ -19,6 +19,7 @@ const TRAIL_EVERY := 0.25
 const NOISE_TIME := 2.5
 const COLOURS := {
 	"path": Color(0.35, 0.85, 1.0),
+	"lift_route": Color(0.2, 0.4, 1.0),
 	"aim": Color(1.0, 0.45, 0.35),
 	"trail": Color(0.6, 1.0, 0.6),
 	"locust_trail": Color(1.0, 0.5, 0.5),
@@ -41,6 +42,11 @@ var noises: Array = []
 var shown := {"path": true, "trails": true, "noises": true, "doors": true, "errand": true, "sight": true}
 ## Marks are drawn this much bigger, for the floor seen from above.
 var scale_hint := 1.0
+## The way to the car the creature has to take, while it is on a floor the
+## survivors have left: what a hunter sees in blue (locust_player.lift_route),
+## worked out again twice a second.
+var lift_route := PackedVector3Array()
+var lift_route_clock := 0.0
 
 func setup(owner_level) -> void:
 	name = "ObserverGizmos"
@@ -114,6 +120,12 @@ func ring(point: Vector3, radius: float, colour: Color, steps := 24) -> void:
 func draw_creature() -> void:
 	var creature = level.locust
 	if not is_instance_valid(creature): return
+	lift_route_clock -= get_process_delta_time()
+	if lift_route_clock <= 0.0:
+		lift_route_clock = 0.5
+		var car: int = level.lifts.creature_car(level.session.stage)
+		lift_route = FLOOR.navigation_path(level.get_world_3d().navigation_map, creature.global_position, level.hotel.lifts[car]) if car >= 0 and car < level.hotel.lifts.size() else PackedVector3Array()
+	for i in range(1, lift_route.size()): line(lift_route[i - 1] + Vector3(0, 0.2, 0), lift_route[i] + Vector3(0, 0.2, 0), COLOURS.lift_route)
 	var before: Vector3 = creature.global_position + Vector3(0, 0.1, 0)
 	for point in creature.path:
 		line(before, point + Vector3(0, 0.1, 0), COLOURS.path)

@@ -30,6 +30,7 @@ Todo lo demás —suelo, paredes, techo, muebles, puertas y cuerpos— **son gra
 | 123 | **Reflectores fuertes** | rayos dirigidos a puertas y armarios | apenas |
 | 124 | **Nubes de sonido** | cada ruido que oye | sí: es sonido |
 | 125 | **Lo que halló el chillido** | los supervivientes que encontró | sí, y dura |
+| 125 | **Guías** | el camino al ascensor, las teles encendidas y el rastro de la Q | sí, del todo |
 | 126 | **Cuerpos** | la superficie del superviviente | **no, nunca** |
 | 127 | **Su cuerpo** | sus propias mallas | — |
 
@@ -94,6 +95,18 @@ Sus mallas reciben un material aditivo propio mientras conduce, y se restaura el
 Vive aquí. Las puertas y los armarios del piso se dibujan tenues y para siempre, atenuándose entre 14 y 28 m, construidos una vez por piso y sin coste por fotograma. Es lo que le permite seguir orientándose entre clics.
 
 **El marco de una puerta va deliberadamente cargado de granos**: las dos jambas y el dintel, en las dos caras del vano, con una pizca de dispersión para que se lea como algo que la sala devuelve y no como una línea dibujada. Una puerta es lo que necesita reconocer de un vistazo mientras caza, así que es el único sitio donde la densidad se agrupa a propósito. Los armarios llevan su propio contorno, más sobrio. Son unos ciento setenta granos por puerta y unos setenta por armario, sobre el frente real del armario, todos estáticos: no cuestan nada por fotograma. Ubican una puerta aunque todavía no se haya barrido; los reflectores fuertes son los que la encienden cuando la tiene delante.
+
+### Guías: el camino al ascensor, las teles y la Q
+
+Lo único en color además del rojo: lo que el piso le marca para orientarse, en su propia nube (`EchoGuides`, `through` 1, como las motas: se ve a través de todo y a cualquier distancia). Se vuelve a poner entera en cada clic desde donde está (`bloom_guides()`), con el mismo presupuesto en todos los presets (2.400 granos), porque la calidad de la imagen no puede darle más información.
+
+- **Azul, el camino a su coche**, mientras los supervivientes han seguido y ella no (`locust_player.lift_route()`, con `lifts.creature_car()`): una línea de motas sobre el suelo cada 35 cm, tres por paso, calculada por la malla, que no sabe de puertas y por tanto no las trata como obstáculo. Cada grano lleva los metros de ruta a los que está, así que el frente de cada clic la recorre de la criatura al coche a 9 m/s: la línea corre hacia donde hay que ir, como la de un juego de carreras. En el coche termina en una columna de granos que se ve desde lejos y que **late** (fuerte un clic, flojo el siguiente) mientras el coche está arriba. Desaparece en cuanto sube. No se manda nada por la red: la máquina del cazador tiene el mismo piso, la misma etapa y los mismos coches.
+- **Amarillo, las teles encendidas de la etapa**, desde cualquier punto del piso: la pantalla llena de granos, un halo y una columna fina encima, para que se lea como un faro también de lejos.
+- **Amarillo, el rastro de la Q** (`locust_player.trace()`, o el botón de la linterna en el mando): el camino a la tele encendida de su planta a la que llega antes andando, medido por la malla, durante 15 s; se puede volver a pedir a los 20 s de pedirlo. Se acaba al llegar a la tele o si se apaga. Sin teles encendidas en su planta suena un pitido seco y no gasta nada.
+
+El chillido no las tiñe de rojo (sus tonos de chillido son los mismos). Colores: azul (0,02; 0,22; 1,6) y amarillo (1,5; 1,05; 0,03), fuertes pero sin pasar de 1,5: más arriba el tonemapper los lleva a blanco (con 3,0, el primer azul se veía blanco). Los granos conservan su tamaño en pantalla a cualquier distancia (`point_max` 1): con el tope del resto de la imagen desaparecían pasada una docena de metros. Comprobado con `tools/capture/echo_capture.gd` (`echo_guide_lift`, `echo_guide_tv`, `echo_guide_screen`).
+
+La pantalla del cazador enseña además, bajo el filtro y solo mientras se recargan, dos barras cortas sobre la resistencia: **CHILLIDO** (10 s) y **RASTRO** (20 s) (`camcorder_osd.set_cooldowns()`).
 
 ## El sonido
 

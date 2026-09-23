@@ -3,7 +3,7 @@ const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
 const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "renderer": "forward_plus"}
-const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB}
+const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. The layout is the one every
 ## other game uses, so a hand that has played anything else already knows it:
@@ -13,6 +13,12 @@ const PAD_KEYS := {"interact": JOY_BUTTON_A, "crouch": JOY_BUTTON_B, "flashlight
 ## Buttons the game keeps for itself, so nothing can be bound over them: the
 ## menu button pauses, and B is how a menu is left.
 const PAD_RESERVED := [JOY_BUTTON_START, JOY_BUTTON_BACK]
+## The hunter's triggers, read as presses: the right one strikes and the left
+## one shrieks, which on a keyboard are the mouse buttons. Built here, never
+## saved. (Its trace to a set is the torch button, locust_player.gd: the
+## creature carries no torch.)
+const PAD_TRIGGERS := {"locust_strike": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "locust_shriek": [JOY_AXIS_TRIGGER_LEFT, 1.0]}
+const TRIGGER_DEADZONE := 0.5
 ## The menus' own actions and the pad buttons they answer to. Godot builds
 ## these actions itself, and in this project ui_accept came without any pad
 ## button: the cross moved the highlight and nothing could be chosen. Added
@@ -104,8 +110,16 @@ func load_settings() -> void:
 	if keys is Dictionary:
 		var used := {}
 		for action in KEYS:
-			var code: int = int(keys.get(action, KEYS[action])) if keys.get(action, KEYS[action]) is float or keys.get(action, KEYS[action]) is int else KEYS[action]
-			if code <= 0 or code in [KEY_ESCAPE, KEY_F9, KEY_F11] or used.has(code):
+			var saved_key = keys.get(action, null)
+			var code: int = int(saved_key) if saved_key is float or saved_key is int else KEYS[action]
+			# A control added since this file was saved, whose key the player had
+			# already given to something else, is left without one: it used to
+			# throw away every binding they had made.
+			if saved_key == null and used.has(code): code = 0
+			if code == 0:
+				bindings[action] = 0
+				continue
+			if code < 0 or code in [KEY_ESCAPE, KEY_F9, KEY_F11] or used.has(code):
 				bindings = KEYS.duplicate()
 				break
 			used[code] = true
@@ -222,6 +236,7 @@ func reset_controls() -> void:
 	save_settings()
 
 func key_name(action: String) -> String:
+	if int(bindings.get(action, 0)) <= 0: return "—"
 	return OS.get_keycode_string(bindings[action])
 
 func apply_bindings() -> void:
@@ -229,9 +244,11 @@ func apply_bindings() -> void:
 		if not InputMap.has_action(action): InputMap.add_action(action)
 		InputMap.action_erase_events(action)
 		InputMap.action_set_deadzone(action, STICK_DEADZONE)
-		var key := InputEventKey.new()
-		key.physical_keycode = bindings[action]
-		InputMap.action_add_event(action, key)
+		# A control can be left without a key (see load_settings).
+		if int(bindings[action]) > 0:
+			var key := InputEventKey.new()
+			key.physical_keycode = bindings[action]
+			InputMap.action_add_event(action, key)
 		# And on a pad: moving is the left stick, the rest are buttons.
 		if MOVE_AXES.has(action): InputMap.action_add_event(action, stick(MOVE_AXES[action]))
 		if pad_bindings.has(action):
@@ -249,6 +266,11 @@ func apply_bindings() -> void:
 		var pair: Array = UI_STICK[action]
 		if not InputMap.action_get_events(action).any(func(event): return event is InputEventJoypadMotion and int(event.axis) == int(pair[0]) and signf(event.axis_value) == signf(pair[1])):
 			InputMap.action_add_event(action, stick(pair))
+	for action in PAD_TRIGGERS:
+		if not InputMap.has_action(action): InputMap.add_action(action)
+		InputMap.action_erase_events(action)
+		InputMap.action_set_deadzone(action, TRIGGER_DEADZONE)
+		InputMap.action_add_event(action, stick(PAD_TRIGGERS[action]))
 	# Looking is the right stick and nothing else: it is read as a direction
 	# every frame (hotel_player.pad_look), not as a press.
 	for action in LOOK_ACTIONS:

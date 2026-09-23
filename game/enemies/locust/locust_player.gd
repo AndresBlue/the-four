@@ -6,9 +6,12 @@ extends Node
 ## the AI uses.
 ##
 ## Controls: move and look as usual; sprint hunts at full speed while its
-## hunting stamina lasts; left button strikes; right button shrieks; interact
-## opens doors and pulls wardrobes open. Noises survivors make within its
-## hearing show in its acoustic view as clouds of grains (echo_view.gd).
+## hunting stamina lasts; left button (right trigger) strikes; right button
+## (left trigger) shrieks; Q (the torch button) lays the way to the nearest lit
+## set; interact opens doors and pulls wardrobes open. Noises survivors make
+## within its hearing show in its acoustic view as clouds of grains
+## (echo_view.gd), and so does what the floor guides it with: the way to the
+## lift in blue, the lit sets and the way to one of them in yellow.
 const WALK_SPEED := 2.8
 const HUNT_SPEED := 6.4
 ## Hunting lasts long and comes back quickly: a survivor cannot simply outrun
@@ -25,9 +28,15 @@ const COOLDOWN := 1.2
 ## lasts about six, so it can no longer be chained: at three it could, and a
 ## hunter holding the button never stopped crying.
 const SHRIEK_COOLDOWN := 10.0
+## Q: the way to the nearest lit set it can walk to, laid out in yellow for
+## TRACE_TIME seconds, once every TRACE_COOLDOWN seconds from when it is asked
+## for. Only a set on its own floor: one above or below is no way to walk to.
+const TRACE_TIME := 15.0
+const TRACE_COOLDOWN := 20.0
 ## Wardrobes within this distance can be pulled open.
 const WARDROBE_REACH := 2.6
 const ECHO := preload("res://game/enemies/locust/echo_view.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const EYE := Vector3(0.0, 2.35, 0.0)
 const ARM := 2.8
 ## How far to the side the camera rides. Far enough that the middle of the
@@ -50,6 +59,10 @@ var stamina := 100.0
 var recovery := 0.0
 var cooldown := 0.0
 var shriek_cooldown := 0.0
+var trace_left := 0.0
+var trace_cooldown := 0.0
+## The set the trace leads to (an index into level.televisions), or -1.
+var trace_target := -1
 var struck := false
 ## Heard noises, as the creature hears them:
 ## {id, point, apparent, at, time, strength, kind, distance, muffle, blur}.
@@ -107,6 +120,10 @@ func setup(owner) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not can_act(): return
+	# On a pad the torch button asks for the trace: the creature has no torch.
+	if event is InputEventJoypadButton and event.pressed and event.is_action("flashlight"):
+		trace()
+		return
 	if event is InputEventMouseMotion:
 		var sensitivity: float = level.settings.values.sensitivity
 		look_by(Vector2(-event.relative.x, -event.relative.y) * sensitivity)
@@ -139,6 +156,12 @@ func drive(delta: float) -> void:
 	creature.state_time += delta
 	cooldown = maxf(0.0, cooldown - delta)
 	shriek_cooldown = maxf(0.0, shriek_cooldown - delta)
+	trace_cooldown = maxf(0.0, trace_cooldown - delta)
+	trace_left = maxf(0.0, trace_left - delta)
+	if can_act():
+		if pressed("locust_trace"): trace()
+		if pressed("locust_strike"): strike()
+		if pressed("locust_shriek"): shriek()
 	pivot.rotation.x = pitch
 	place_shoulder(delta)
 	var free: bool = can_act() and creature.grace <= 0.0
@@ -278,20 +301,83 @@ func shriek() -> void:
 	if is_instance_valid(echo): echo.flash_shriek()
 	level.match_net.locust_shriek()
 
-## A stage has closed and the way on is elsewhere: the road to it is laid out
-## in the reading as a line of grains, thicker where the door is. Nothing is
-## written: it is a thing it hears coming back from a direction, and it can
-## follow it or ignore it.
-func mark_stage(points: PackedVector3Array) -> void:
-	if not is_instance_valid(echo) or points.size() < 2: return
-	var road := PackedVector3Array()
-	for i in range(1, points.size()):
-		var step: float = points[i - 1].distance_to(points[i])
-		var count: int = maxi(1, int(step / 2.5))
-		for k in count: road.append(points[i - 1].lerp(points[i], float(k) / float(count)) + Vector3(0, 1.2, 0))
-	# The door itself, three times over, so the end of the road reads louder.
-	for i in 3: road.append(points[points.size() - 1] + Vector3(0, 1.2, 0))
-	echo.mark_found(road)
+func pressed(action: String) -> bool:
+	return InputMap.has_action(action) and Input.is_action_just_pressed(action)
+
+## The blue way: to the car it has to take while the survivors have gone on
+## without it (lifts.creature_car), from where it stands. Worked out on this
+## machine, which has the same floor, stage and cars as the one that runs it,
+## so nothing is sent for it. Empty while it is on the floor being played.
+## It replaces a road of grains sent once when the stage closed, which lasted
+## three seconds and only had room for its last stretch: the hunter saw a few
+## noises round the car and the last doors, and no way to them.
+func lift_route() -> PackedVector3Array:
+	var car: int = level.lifts.creature_car(level.session.stage)
+	if car < 0 or car >= level.hotel.lifts.size(): return PackedVector3Array()
+	return FLOOR.navigation_path(creature.get_world_3d().navigation_map, creature.global_position, level.hotel.lifts[car])
+
+## The car it has to take is up there, and the route's end beats until it is
+## back down.
+func lift_away_now() -> bool:
+	var car: int = level.lifts.creature_car(level.session.stage)
+	return car >= 0 and level.lifts.lift_gone(car)
+
+## Q. Nothing lit on its floor: a dull note, and nothing spent.
+func trace() -> void:
+	if not can_act() or trace_cooldown > 0.0 or creature.grace > 0.0: return
+	var best := nearest_lit_set()
+	if best < 0:
+		level.ui.keypad("wrong")
+		return
+	trace_target = best
+	trace_left = TRACE_TIME
+	trace_cooldown = TRACE_COOLDOWN
+
+## The lit set of the stage it can walk to soonest, measured along the floor,
+## not through the walls; -1 when there is none it can reach from here.
+func nearest_lit_set() -> int:
+	var map: RID = creature.get_world_3d().navigation_map
+	var best := -1
+	var shortest := INF
+	for index in level.lit_televisions():
+		var goal := set_front(index)
+		var route := FLOOR.navigation_path(map, creature.global_position, goal)
+		if route.size() < 2 or route[route.size() - 1].distance_to(goal) > 1.5: continue
+		var length := 0.0
+		for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
+		if length < shortest:
+			shortest = length
+			best = index
+	return best
+
+## Where it stands to use a set: in front of the screen, on floor it can
+## stand on (as hotel_main.warp_creature puts it down).
+func set_front(index: int) -> Vector3:
+	var set = level.televisions[index]
+	var facing: Vector3 = set.global_basis.z
+	facing.y = 0.0
+	var out: Vector3 = set.global_position + facing.normalized() * 1.6
+	return NavigationServer3D.map_get_closest_point(creature.get_world_3d().navigation_map, out)
+
+## The yellow way, while it lasts: to the set it asked for, from where it
+## stands. Over once it gets there, or if the set goes out.
+func trace_route() -> PackedVector3Array:
+	if trace_left <= 0.0 or trace_target < 0 or trace_target >= level.televisions.size(): return PackedVector3Array()
+	var set = level.televisions[trace_target]
+	if not is_instance_valid(set) or not set.on or set.global_position.distance_to(creature.global_position) < level.WARP_REACH:
+		trace_left = 0.0
+		return PackedVector3Array()
+	return FLOOR.navigation_path(creature.get_world_3d().navigation_map, creature.global_position, set_front(trace_target))
+
+## Every lit set of the stage, as [screen centre, half its width, half its
+## height] in the world: they burn yellow in its reading from anywhere.
+func lit_screens() -> Array:
+	var out: Array = []
+	for index in level.lit_televisions():
+		var set = level.televisions[index]
+		if not is_instance_valid(set): continue
+		out.append([set.screen_point(), set.global_basis.x * (set.SCREEN_SIZE.x * 0.5), set.global_basis.y * (set.SCREEN_SIZE.y * 0.5)])
+	return out
 
 ## The power has gone: nothing is written on screen, the ceilings that were
 ## there simply come back at it in one burst, from every side at once, and the
@@ -365,6 +451,7 @@ func update_hud() -> void:
 	# under the same analog filter as the image (camcorder_osd.gd).
 	level.ui.hint.text = ""
 	level.camcorder.set_stamina(stamina / 100.0, stamina <= 0.0)
+	level.camcorder.set_cooldowns(shriek_cooldown / SHRIEK_COOLDOWN, trace_cooldown / TRACE_COOLDOWN)
 	level.camcorder.announce("LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace)) if creature.grace > 0.0 else "")
 	var now := Time.get_ticks_msec() / 1000.0
 	revealed = revealed.filter(func(entry): return now - entry.time < 1.2)

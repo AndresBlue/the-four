@@ -54,12 +54,11 @@ func follow_players(stage: int) -> void:
 	if level.net.is_client() or not is_instance_valid(level.locust) or level.manifest.is_empty(): return
 	var index := creature_car(stage)
 	if index < 0 or index >= level.hotel.lifts.size(): return
-	# It is told in the only language it has: its own voice, and the road to
-	# the car laid out in its reading, from where it happens to be standing.
+	# It is told in the only language it has: its own voice. A hunter also sees
+	# the way to the car, laid out in blue in its reading for as long as it has
+	# not taken it -- worked out on its own machine (locust_player.lift_route).
 	level.locust.grunt()
 	aim_at_lift(index)
-	var road := FLOOR.navigation_path(level.get_world_3d().navigation_map, level.locust.global_position, level.hotel.lifts[index])
-	if road.size() >= 2: level.match_net.tell_stage(road)
 
 ## Seconds the car spends up there before it comes back down for whoever is
 ## left -- a straggler, or the creature. It is the head start the survivors

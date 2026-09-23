@@ -962,7 +962,7 @@ func show_settings(back: String) -> void:
 		slider(controls, "Sensibilidad del mando", "pad_look", 0.6, 6.0, 0.2)
 		check(controls, "Vibración del mando", "rumble")
 		paragraph(controls, "El stick izquierdo anda, el derecho mira, y el botón de menú hace de pausa. Mover y mirar son los sticks y no se cambian.", 16, 900, STYLE.SOFT)
-	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja"}
+	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "locust_trace": "The Locust: rastro a la tele"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)
@@ -984,7 +984,8 @@ func show_settings(back: String) -> void:
 		pad_button.theme_type_variation = "BoxButton"
 		pad_button.custom_minimum_size = Vector2(200, 38)
 		pad_button.disabled = not settings.PAD_KEYS.has(id)
-		pad_button.text = settings.pad_name(id) if settings.PAD_KEYS.has(id) else "STICK IZQ."
+		# The trace is the torch's button: the creature has no torch.
+		pad_button.text = settings.pad_name(id) if settings.PAD_KEYS.has(id) else ("EL DE LA LINTERNA" if id == "locust_trace" else "STICK IZQ.")
 		row.add_child(pad_button)
 		if pad_button.disabled: continue
 		pad_button.pressed.connect(func():
