@@ -219,7 +219,9 @@ func _ready() -> void:
 	var saved: Dictionary = session.checkpoint()
 	ui.menu("main", not saved.is_empty(), session.message)
 	on_state()
-	if not automation: ui.play_intro()
+	# The observer opens on what it watches: the tape's boot is the game's, and
+	# stayed up over the tool until a key -- the first one it was given -- put it away.
+	if not automation and not OS.get_cmdline_user_args().has("--observer"): ui.play_intro()
 	var seed_wanted := -1
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--playtest-seed="):
@@ -250,6 +252,9 @@ func begin_observing(seed_value: int) -> void:
 	# player's own screen setting is left alone (settings.force_window).
 	settings.force_window = true
 	settings.apply_display()
+	# The floors it builds to look at are nobody's game: each one used to take
+	# the menu's Continue (session.keeps_checkpoint).
+	session.keeps_checkpoint = false
 	observer_port = net.PORT
 	observer_seed = seed_value if seed_value >= 0 else randi_range(0, 2147483647)
 	for argument in OS.get_cmdline_user_args():
@@ -307,11 +312,11 @@ func enter_observer_mode() -> void:
 	observer_view.apply_roof()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
-## R on the observer: another floor, another seed, when there is no match to
-## watch. This is what watching floors being generated is.
-func observer_rebuild() -> void:
-	if match_net.in_match(): return
-	await start_floor(randi_range(0, 2147483647))
+## R on the observer: another floor, when there is no match to watch (Shift+R:
+## the one before). This is what watching floors being generated is.
+func observer_rebuild(seed_value: int) -> void:
+	if match_net.in_match() or session.state == session.State.LOADING: return
+	await start_floor(seed_value)
 	enter_observer_mode()
 
 ## The local hunter preview: build a floor and hand the creature to this player.
@@ -552,8 +557,9 @@ func populate_floor(with_director: bool) -> void:
 		theme.play()
 		ventilation.play()
 	# A floor opens on the same card as every sector after it, and the notice
-	# of what this one wants follows once the card is gone.
-	if not automation and not match_net.local_is_locust():
+	# of what this one wants follows once the card is gone. Not over the
+	# observer: watching is not filming, and the card covered every floor R put up.
+	if not automation and not observer and not match_net.local_is_locust():
 		ui.show_transit("SECTOR %d" % session.stage, lifts.stage_errand(session.stage), lifts.OPENING_CARD)
 	lifts.pending_brief = session.stage
 	lifts.brief_wait = lifts.OPENING_CARD if not automation else 0.0
@@ -636,14 +642,19 @@ func leave_online_floor() -> void:
 	session.set_state(session.State.MENU)
 
 func on_net_closed(reason: String) -> void:
-	if match_net.in_match() or session.state != session.State.MENU:
+	# Watching a floor of its own, what closed was a knock nobody answered (or
+	# a room that shut before its match): the floor goes on as it was. Taken
+	# down like a match's, it lost its creature and was left paused about every
+	# half minute while nobody was hosting.
+	var own_floor: bool = observer and not session.online and session.state == session.State.PLAYING
+	if match_net.in_match() or (session.state != session.State.MENU and not own_floor):
 		match_net.end()
 		leave_online_floor()
 	# Watching: a room that closed, or a knock nobody answered, leaves the tool
 	# as it was -- looking at a floor of its own and knocking again.
 	if observer:
 		if manifest.is_empty(): await start_floor(observer_seed)
-		enter_observer_mode()
+		if not own_floor: enter_observer_mode()
 		if observer_view != null and not reason.is_empty(): observer_view.note("sin partida: %s" % reason)
 		return
 	ui.menu("multiplayer", false, reason)
@@ -2130,7 +2141,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		ui.show_settings("pause" if session.state == session.State.PAUSED else "main")
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(session) and not automation and not match_net.in_match(): session.pause()
+	# Not the observer's floor: the tool is looked at beside something else, and
+	# going to that paused the floor and put the pause menu over it, out of reach
+	# of its keys (it stops time with P).
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(session) and not automation and not observer and not match_net.in_match(): session.pause()
 
 func _exit_tree() -> void:
 	get_tree().paused = false

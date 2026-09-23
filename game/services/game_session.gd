@@ -44,6 +44,9 @@ var message := ""
 var checkpoint_path := "user://hotel_checkpoint.json"
 ## An online floor: the single-player checkpoint is left alone.
 var online := false
+## Off for the observer (hotel_main.begin_observing): the floors it builds to
+## look at leave the checkpoint alone as well.
+var keeps_checkpoint := true
 ## Whether this machine moves the floor on by itself: offline and on the host.
 ## A guest's session is a copy of the host's and only changes when told; left
 ## to its own clock it advanced the stage a second time from a transition timer
@@ -71,7 +74,7 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	restarts = 0
 	restart_wait = 0.0
 	goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
-	if not online: write_checkpoint()
+	if not online and keeps_checkpoint: write_checkpoint()
 	set_state(State.PLAYING)
 
 func minimum_survivors() -> int: return maxi(1, int(ceil(roster_count / 2.0)))
@@ -233,5 +236,5 @@ func _process(delta: float) -> void:
 				set_state(State.PLAYING)
 				if dead: revived.emit(false)
 				return
-			if FileAccess.file_exists(checkpoint_path) and not online: DirAccess.remove_absolute(checkpoint_path)
+			if FileAccess.file_exists(checkpoint_path) and not online and keeps_checkpoint: DirAccess.remove_absolute(checkpoint_path)
 			set_state(State.WON)

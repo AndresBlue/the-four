@@ -119,6 +119,12 @@ herramientas para mirarlo están en la guía de desarrollo.
   referencias. Lo medido dice que la numeración ya
   no lleva a ninguna parte y que ir pegado a la pared no encuentra ningún
   refugio; lo que no dice es cómo se siente.
+- [ ] **Si los pisos se parecen entre sí a simple vista**, que era la queja de
+  la partida del 23: con el observador (`./tools/godot.ps1 observer`), M para
+  el plano de una planta, R para otro piso y Mayús+R para volver al anterior;
+  el panel dice el plano de pasillos, el contorno, las habitaciones y el
+  tamaño de la planta que se mira. Lo medido (`tools/dev/map_metrics.gd`) dice
+  que se parecen poco; lo que no dice es si lo parece.
 - [ ] **Si se entiende quién murió y por qué** en cooperativo, ahora que no hay
   avisos de texto.
 
@@ -288,6 +294,10 @@ no rompen nada.
   la del cazador: los granos se escriben (8000 cerca de la cámara, medidos)
   pero apenas se dibujan. Mientras, la vista de verdad es
   `./tools/godot.ps1 locust`.
+- [ ] Cuando se cierra la sala de una partida que el observador miraba, se
+  queda en ese piso, parado y sin criatura, y el panel sigue diciendo «en la
+  sala» (`net.observing` no se apaga al salir). Debería volver a un piso suyo;
+  mientras, R.
 
 ## 3 · Acabado de lo que ya existe
 

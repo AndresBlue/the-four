@@ -11,6 +11,9 @@ extends Node3D
 ## - Watching a floor on its own, with nobody connected: it builds one, the
 ##   creature walks it, and R builds another. Time can be slowed or stopped
 ##   here, which online would only desync.
+## - Comparing floors by eye: R and Shift+R go from one floor to another and
+##   back with the view as it was (the plan, the planta), and the panel names
+##   what the generator made of the planta on screen.
 ##
 ## Keys
 ##   movimiento   vuela (correr: más rápido; saltar/agacharse: subir y bajar)
@@ -21,7 +24,8 @@ extends Node3D
 ##   C            quitar los techos, para mirar el piso desde arriba
 ##   V            su lectura acústica: lo que oye la criatura, desde su sitio
 ##   H            esconder los paneles
-##   R            otro piso (solo sin partida)
+##   R            otro piso, con otra semilla (solo sin partida)
+##   Mayús+R      el piso de antes; pulsada otra vez, el que se dejó
 ##   P  [  ]      parar el tiempo, más lento, más rápido (solo sin partida)
 ##   ESC          devuelve el ratón; pulsada otra vez, cierra la herramienta
 ##   F5           guarda lo que se ve en user://observer_<hora>.json
@@ -43,6 +47,24 @@ class Ears extends Node:
 	var level
 	var camera: Camera3D
 	var heard: Array = []
+	## The guides the reading draws (echo_view.bloom_guides), as the hunter's
+	## locust_player gives them: without them every click was an error. There
+	## is no Q from here, so no trace.
+	func lit_screens() -> Array:
+		var out: Array = []
+		for index in level.lit_televisions():
+			var set = level.televisions[index]
+			if is_instance_valid(set): out.append([set.screen_point(), set.global_basis.x * (set.SCREEN_SIZE.x * 0.5), set.global_basis.y * (set.SCREEN_SIZE.y * 0.5)])
+		return out
+	func lift_route() -> PackedVector3Array:
+		var car: int = level.lifts.creature_car(level.session.stage)
+		if car < 0 or car >= level.hotel.lifts.size(): return PackedVector3Array()
+		return FLOOR.navigation_path(creature.get_world_3d().navigation_map, creature.global_position, level.hotel.lifts[car])
+	func lift_away_now() -> bool:
+		var car: int = level.lifts.creature_car(level.session.stage)
+		return car >= 0 and level.lifts.lift_gone(car)
+	func trace_route() -> PackedVector3Array:
+		return PackedVector3Array()
 ## How fast it flies, and what the wheel can take it to. A hotel is a hundred
 ## metres across and this is not a walk.
 const SPEED := 22.0
@@ -53,6 +75,10 @@ const QUICK := 4.0
 const MAP_HEIGHT := 150.0
 ## How many things that happened are kept on screen.
 const LOG_KEPT := 16
+## A planta's plan and outline as the generator names them (map_generator
+## DECKS and SHAPES), in the words of the design document.
+const PLAN_NAMES := {"spine": "espina", "twin": "doble", "ring": "anillo", "comb": "peine", "blocks": "manzanas", "arms": "brazos", "warren": "madriguera", "rot": "podrido"}
+const SHAPE_NAMES := {"rect": "rectángulo", "notch": "con muesca", "ell": "en L", "you": "en U", "court": "con patio", "aitch": "en H"}
 var level
 var camera: Camera3D
 var panel: Label
@@ -64,6 +90,8 @@ var pitch := -0.15
 ## Whose shoulder it is riding, or null for the free camera.
 var following: Node3D
 var map_view := false
+## How far the plan on screen reaches from its middle (frame_map()).
+var map_span := 40.0
 ## The planta being looked at: the only one drawn (hotel_geometry
 ## update_visibility), chosen with RePág/AvPág, or the one the body followed
 ## is on. Free, the camera is on whichever its height puts it on.
@@ -88,6 +116,13 @@ var clock := 0.0
 var events: Array = []
 ## The last value of everything the log watches, to tell a change.
 var before := {}
+## The floor on screen, to tell when another one is up (R, a match beginning);
+## its seed and the seed of the one before it, which Shift+R goes back to; and
+## what each of its plantas is, worked out once a floor.
+var floor_seen := {}
+var seed_shown := -1
+var seed_before := -1
+var planta_notes := PackedStringArray()
 
 func setup(owner_level) -> void:
 	name = "Observer"
@@ -105,7 +140,7 @@ func setup(owner_level) -> void:
 	layer.name = "ObserverPanel"
 	layer.layer = 7
 	add_child(layer)
-	panel = write_panel(Vector2(18, 18), Vector2(600, 660))
+	panel = write_panel(Vector2(18, 18), Vector2(600, 700))
 	metrics = write_panel(Vector2(-560, 18), Vector2(540, 460), Control.PRESET_TOP_RIGHT)
 	lamp = DirectionalLight3D.new()
 	lamp.name = "ObserverLamp"
@@ -138,6 +173,18 @@ func write_panel(at: Vector2, size: Vector2, preset := Control.PRESET_TOP_LEFT) 
 
 func alone() -> bool:
 	return not level.match_net.in_match()
+
+## The creature, while it is in the floor. One going with its floor (R, the
+## end of a match) is still there out of the tree until the frame ends, and
+## asking it where it stood then only raised errors.
+func live_locust():
+	return level.locust if is_instance_valid(level.locust) and level.locust.is_inside_tree() else null
+
+## Another floor to look at, the view left as it is (arrived()).
+func rebuild(seed_value: int) -> void:
+	if level.session.state == level.session.State.LOADING: return
+	note("construyendo el piso %d" % seed_value)
+	level.observer_rebuild(seed_value)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not map_view:
@@ -174,7 +221,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			note("techos %s" % ("no" if roofless else "sí"))
 		KEY_V: toggle_echo()
 		KEY_R:
-			if alone(): level.observer_rebuild()
+			if not alone(): note("R: solo sin partida")
+			elif not (event as InputEventKey).shift_pressed: rebuild(randi_range(0, 2147483647))
+			elif seed_before >= 0: rebuild(seed_before)
+			else: note("no hay piso anterior")
 		KEY_P:
 			if alone(): set_time(0.0 if Engine.time_scale > 0.0 else 1.0)
 		KEY_BRACKETLEFT:
@@ -192,9 +242,7 @@ func change_planta(step: int) -> void:
 	following = null
 	global_position.y += FLOOR.planta_y(next) - FLOOR.planta_y(planta)
 	planta = next
-	if map_view:
-		map_view = false
-		toggle_map()
+	if map_view: frame_map()
 	note("planta %d" % (planta + 1))
 
 ## Escape: the mouse back, so the window can be left; and again, out. A tool
@@ -216,7 +264,7 @@ func watchable() -> Array:
 	for seat in level.match_net.bodies:
 		if is_instance_valid(level.match_net.bodies[seat]): bodies.append(level.match_net.bodies[seat])
 	if is_instance_valid(level.player) and level.player.visible: bodies.append(level.player)
-	if is_instance_valid(level.locust): bodies.append(level.locust)
+	if live_locust() != null: bodies.append(live_locust())
 	return bodies
 
 func follow_next() -> void:
@@ -230,7 +278,7 @@ func follow_next() -> void:
 ## whoever drives the creature; here nobody does, so it is given the same three
 ## things a driver gives it (Ears) and this camera to draw into.
 func toggle_echo() -> void:
-	if not is_instance_valid(level.locust):
+	if live_locust() == null:
 		note("no hay criatura que oír")
 		return
 	echoing = not echoing
@@ -276,7 +324,11 @@ func toggle_map() -> void:
 		global_position.y = FLOOR.planta_y(planta) + 1.7
 		return
 	following = null
-	# The plan of the planta being looked at, and only that one.
+	frame_map()
+
+## The plan of the planta being looked at, and only that one, framed on the
+## floor that is up now.
+func frame_map() -> void:
 	var middle := Vector3(0, FLOOR.planta_y(planta), 0)
 	var span := 40.0
 	if not level.manifest.is_empty():
@@ -291,9 +343,67 @@ func toggle_map() -> void:
 	pitch = -PI / 2
 	camera.rotation.x = pitch
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = span * 2.3
+	map_span = span
+	fit_map()
+
+## The plan in the part of the window the panel leaves free, every frame (the
+## window can change, and H takes the panel away). The other panel is about
+## the machine and goes while the plan is up: between the two there was a
+## strip of the plan to see.
+func fit_map() -> void:
+	var window := get_viewport().get_visible_rect().size
+	var left: float = panel.get_parent().get_rect().end.x if layer.visible else 0.0
+	var free := maxf(window.x - left, window.x * 0.3)
+	camera.size = map_span * 2.3 * maxf(1.0, window.y / free)
+	# Moved over so its middle is the middle of what is free.
+	camera.h_offset = -0.5 * (window.x - free) * camera.size / window.y
+
+## A floor has just been put up (R, Shift+R, a match beginning): the view is
+## kept and turned on it. The plan is framed on this floor's planta, and the
+## free camera goes to where that planta is walked into -- its old spot could
+## be inside a wall of this floor, or outside it.
+func arrived() -> void:
+	var seed_now := int(level.session.run_seed)
+	if seed_shown >= 0 and seed_now != seed_shown: seed_before = seed_shown
+	seed_shown = seed_now
+	floor_seen = level.manifest
+	following = null
+	# What was drawn over the last floor is not this one's.
+	gizmos.trails.clear()
+	gizmos.noises.clear()
+	gizmos.lift_route = PackedVector3Array()
+	# The reading was built round the creature and the hotel that went.
+	if echo != null:
+		if echoing:
+			echoing = false
+			echo.disable()
+			level.apply_settings()
+		ears.queue_free()
+		ears = null
+		echo = null
+	planta_notes = PackedStringArray()
+	var plans: Array = level.manifest.get("plans", [])
+	for index in plans.size():
+		var plan: Dictionary = plans[index]
+		# Its size as it stands, from the cells it uses.
+		var low := Vector2(INF, INF)
+		var high := -low
+		for room in level.manifest.rooms:
+			if FLOOR.is_void(room) or FLOOR.planta_of(FLOOR.position_of(room).y) != index: continue
+			var at := Vector2(FLOOR.position_of(room).x, FLOOR.position_of(room).z)
+			low = low.min(at - FLOOR.size_of(room) * 0.5)
+			high = high.max(at + FLOOR.size_of(room) * 0.5)
+		planta_notes.append("%s · %s · %d habitaciones · %0.0f × %0.0f m" % [PLAN_NAMES.get(plan.plan, plan.plan), SHAPE_NAMES.get(plan.shape, plan.shape), int(plan.rooms), high.x - low.x, high.y - low.y])
+	if map_view: frame_map()
+	else: global_position = FLOOR.position_of(level.manifest.rooms[int(level.manifest.entries[planta])]) + Vector3(0, 1.7, 0)
+	var names: PackedStringArray = []
+	for plan in plans: names.append(PLAN_NAMES.get(plan.plan, plan.plan))
+	note("piso %d · %s%s" % [seed_now, ", ".join(names), " · de respaldo" if level.manifest.get("fallback", false) else ""])
 
 func note(words: String) -> void:
+	# The same thing twice running is said once: a knock nobody answers comes
+	# back every half minute while a floor is looked at alone.
+	if not events.is_empty() and events[-1].ends_with("  " + words): return
 	events.append("%s  %s" % [stamp(), words])
 	while events.size() > LOG_KEPT * 4: events.pop_front()
 
@@ -325,10 +435,20 @@ func _process(delta: float) -> void:
 		level.environment.volumetric_fog_enabled = level.environment.volumetric_fog_enabled and not lit
 		lamp.light_energy = 2.2 if map_view else 1.1
 		lamp.rotation_degrees = Vector3(-90, 0, 0) if map_view else Vector3(-55, 35, 0)
+	if not level.manifest.is_empty() and not is_same(level.manifest, floor_seen) and level.session.state != level.session.State.LOADING and is_instance_valid(level.hotel) and not level.hotel.building: arrived()
 	# The reading is clicked by whoever drives the creature; watching, nobody
 	# does, so it is clicked here (echo_view.advance).
-	if echoing and echo != null and is_instance_valid(level.locust): echo.advance(delta, level.locust.mode == level.locust.Mode.CHASE)
+	var creature = live_locust()
+	if echoing and echo != null and creature != null: echo.advance(delta, creature.mode == creature.Mode.CHASE)
 	fly(delta)
+	# Whatever took the view off the plan (M, TAB, V), what the plan changed
+	# goes with it: TAB used to follow a body with the plan's flat camera.
+	metrics.get_parent().visible = not map_view
+	gizmos.scale_hint = 6.0 if map_view else 1.0
+	if map_view: fit_map()
+	else:
+		camera.h_offset = 0.0
+		if camera.projection != Camera3D.PROJECTION_PERSPECTIVE: camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 	watch_changes()
 	panel.text = report()
 	metrics.text = readings()
@@ -336,15 +456,16 @@ func _process(delta: float) -> void:
 func fly(delta: float) -> void:
 	# Its reading is drawn from its head: to see what it hears, you stand where
 	# it stands and look where it looks, which is what the hunter does.
-	if echoing and is_instance_valid(level.locust):
-		planta = FLOOR.planta_of(level.locust.global_position.y)
-		global_position = level.locust.global_position + Ears.EYE
-		rotation.y = level.locust.rotation.y
+	var creature = live_locust()
+	if echoing and creature != null:
+		planta = FLOOR.planta_of(creature.global_position.y)
+		global_position = creature.global_position + Ears.EYE
+		rotation.y = creature.rotation.y
 		camera.position = Vector3(Ears.SHOULDER, 0.0, Ears.ARM)
 		camera.rotation.x = 0.0
 		return
 	camera.position = Vector3.ZERO
-	if is_instance_valid(following):
+	if is_instance_valid(following) and following.is_inside_tree():
 		planta = FLOOR.planta_of(following.global_position.y)
 		var behind: Vector3 = following.global_position + Vector3(0, 2.4, 0) + following.global_basis.z * 3.2
 		global_position = global_position.lerp(behind, minf(1.0, delta * 6.0))
@@ -376,9 +497,10 @@ func watch_changes() -> void:
 		"ejecución": int(level.execution.get("seat", -1)) if not level.execution.is_empty() else -1,
 		"saliendo": level.lifts.leaving >= 0.0,
 	}
-	if is_instance_valid(level.locust):
-		now["criatura"] = "%s en ala %d" % [modo(level.locust.mode), wing_of(level.locust.global_position)]
-		now["mando"] = String(level.locust.control)
+	var creature = live_locust()
+	if creature != null:
+		now["criatura"] = "%s en ala %d" % [modo(creature.mode), wing_of(creature.global_position)]
+		now["mando"] = String(creature.control)
 	for seat in session.participants: now["vida %d" % int(seat)] = ["explorando", "en refugio", "muerto"][int(session.participants[seat])]
 	for index in level.hotel.lifts.size(): now["coche %d" % index] = level.lifts.lift_gone(index)
 	for key in now:
@@ -388,19 +510,25 @@ func watch_changes() -> void:
 ## The floor, in the words that answer what this was made for.
 func report() -> String:
 	if level == null or level.manifest.is_empty() or not is_instance_valid(level.hotel): return "Sin piso todavía."
+	# While a floor is being put up there is nothing on it to read yet.
+	if level.session.state == level.session.State.LOADING: return "OBSERVADOR · construyendo un piso…"
 	var session = level.session
 	var lines: PackedStringArray = []
 	var where: String = "libre" if not is_instance_valid(following) else "siguiendo a %s" % following.name
 	lines.append("OBSERVADOR · %s%s%s · %0.0f m/s%s" % [where, " · mapa" if map_view else "", " · lectura" if echoing else "", speed, "" if is_equal_approx(Engine.time_scale, 1.0) else " · tiempo ×%0.2f" % Engine.time_scale])
-	lines.append("TAB seguir · F soltar · M mapa · RePág/AvPág planta · V lectura · C techos · L luz · 1-6 capas · H panel · R piso · P/[/] tiempo")
-	lines.append("F5 volcar · ESC ratón, y otra vez cerrar")
+	lines.append("TAB seguir · F soltar · M mapa · RePág/AvPág planta · C techos · L luz · H panel")
+	lines.append("R otro piso%s · V lectura · 1-6 capas" % ((" · Mayús+R vuelve al %d" % seed_before) if seed_before >= 0 else ""))
+	lines.append("P [ ] tiempo · F5 volcar · ESC ratón, y otra vez cerrar")
 	lines.append("")
 	# Which floor this is and where it came from, which is the first thing to
 	# know when a tool shows you a hotel.
 	var source := "piso propio · buscando partida en %s" % level.observer_address
 	if level.net.observing and level.match_net.in_match(): source = "la partida · %s" % ("versus" if level.match_net.versus() else "cooperativo")
 	elif level.net.observing: source = "piso propio · en la sala, esperando a que empiecen"
-	lines.append("Piso 1 · semilla %d · %s · mirando la planta %d de %d" % [int(session.run_seed), source, planta + 1, FLOOR.PLANTAS])
+	lines.append("Piso 1 · semilla %d · %s" % [int(session.run_seed), source])
+	# What the generator made of the planta on screen, to put a name to what
+	# the plan shows when floors are compared.
+	lines.append("Planta %d de %d%s" % [planta + 1, FLOOR.PLANTAS, (" · " + planta_notes[planta]) if planta < planta_notes.size() else ""])
 	lines.append("Sector %d/%d · %s · %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
 	lines.append("Meta %s %d/%d%s · código %s · teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), " · apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
 	lines.append("")
@@ -415,7 +543,7 @@ func report() -> String:
 		var mind := ""
 		if is_instance_valid(body):
 			spot = "ala %d · %0.0f, %0.0f" % [wing_of(body.global_position), body.global_position.x, body.global_position.z]
-			if is_instance_valid(level.locust): spot += " · a %0.0f m" % body.global_position.distance_to(level.locust.global_position)
+			if live_locust() != null: spot += " · a %0.0f m" % body.global_position.distance_to(live_locust().global_position)
 			if body.get("hidden"): spot += " · escondido"
 		var minds: Dictionary = level.sanity.minds if level.sanity != null else {}
 		if minds.has(int(seat)): mind = " · cordura %0.0f" % float(minds[int(seat)].get("sanity", 100.0))
@@ -423,8 +551,8 @@ func report() -> String:
 		var riding: String = " · en ascensor" if level.lifts.riding.has(int(seat)) else ""
 		lines.append("  %d %s · %s · %s%s%s" % [int(seat), level.seat_name(int(seat)), life, spot, mind, riding])
 	lines.append("")
-	var creature = level.locust
-	if is_instance_valid(creature):
+	var creature = live_locust()
+	if creature != null:
 		lines.append("THE LOCUST (%s)" % creature.control)
 		lines.append("  %s · gracia %0.1f · velocidad %0.1f · detección %0.2f" % [modo(creature.mode), creature.grace, creature.speed, creature.detection])
 		lines.append("  ala %d · %0.0f, %0.0f · sin ver %0.1f s" % [wing_of(creature.global_position), creature.global_position.x, creature.global_position.z, creature.lost_time])
@@ -488,6 +616,8 @@ func snapshot() -> void:
 	var data := {
 		"cuando": Time.get_datetime_string_from_system(false, true),
 		"semilla": int(level.session.run_seed),
+		"semilla_anterior": seed_before,
+		"plantas": Array(planta_notes),
 		"sector": level.session.stage,
 		"estado": estado(level.session.state),
 		"meta": level.session.goal,
@@ -497,8 +627,9 @@ func snapshot() -> void:
 	for seat in level.session.participants:
 		var body: Node3D = level.match_net.body_of(int(seat)) if level.match_net.in_match() else level.player
 		if is_instance_valid(body): data.cuerpos[str(seat)] = {"vida": int(level.session.participants[seat]), "donde": [body.global_position.x, body.global_position.y, body.global_position.z], "ala": wing_of(body.global_position)}
-	if is_instance_valid(level.locust):
-		data["criatura"] = {"modo": modo(level.locust.mode), "mando": level.locust.control, "donde": [level.locust.global_position.x, level.locust.global_position.y, level.locust.global_position.z], "ala": wing_of(level.locust.global_position), "destino": [level.locust.destination.x, level.locust.destination.z], "camino": level.locust.path.size(), "atascos": level.locust.stuck_counts, "paso": level.locust.stuck_level}
+	var creature = live_locust()
+	if creature != null:
+		data["criatura"] = {"modo": modo(creature.mode), "mando": creature.control, "donde": [creature.global_position.x, creature.global_position.y, creature.global_position.z], "ala": wing_of(creature.global_position), "destino": [creature.destination.x, creature.destination.z], "camino": creature.path.size(), "atascos": creature.stuck_counts, "paso": creature.stuck_level}
 	data["ascensores"] = {}
 	for index in level.hotel.lifts.size(): data.ascensores[str(index)] = {"arriba": level.lifts.lift_gone(index), "llave": level.hotel.gates[index].locked if level.hotel.gates.size() > index else null}
 	var path := "user://observer_%d.json" % int(Time.get_unix_time_from_system())

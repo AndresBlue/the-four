@@ -51,6 +51,10 @@ var lift_route_clock := 0.0
 func setup(owner_level) -> void:
 	name = "ObserverGizmos"
 	level = owner_level
+	# The marks are world points, and this hangs from the observer, which is
+	# the camera and flies: under it they were moved and turned with the
+	# camera, and over the plan they sat off by as much as the planta's middle.
+	top_level = true
 	var view := MeshInstance3D.new()
 	view.name = "Lines"
 	view.mesh = mesh
@@ -68,8 +72,11 @@ func note_noise(point: Vector3, radius: float) -> void:
 	noises.append({"point": point, "radius": radius, "left": NOISE_TIME})
 
 func _process(delta: float) -> void:
-	# Nothing to draw over a floor that is being taken down.
-	if level == null or level.manifest.is_empty() or not is_instance_valid(level.hotel) or not is_inside_tree(): return
+	# Nothing to draw over a floor that is being taken down or put up: the
+	# marks of the one that went would hang over it while it is built.
+	if level == null or level.manifest.is_empty() or not is_instance_valid(level.hotel) or not is_inside_tree() or level.session.state == level.session.State.LOADING:
+		mesh.clear_surfaces()
+		return
 	remember(delta)
 	mesh.clear_surfaces()
 	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
@@ -87,7 +94,7 @@ func remember(delta: float) -> void:
 	if trail_clock > 0.0: return
 	trail_clock = TRAIL_EVERY
 	var bodies: Array = level.survivors()
-	if is_instance_valid(level.locust): bodies.append(level.locust)
+	if is_instance_valid(level.locust) and level.locust.is_inside_tree(): bodies.append(level.locust)
 	for body in bodies:
 		if not is_instance_valid(body): continue
 		var key: int = body.get_instance_id()
@@ -126,7 +133,7 @@ func ring(point: Vector3, radius: float, colour: Color, steps := 24) -> void:
 
 func draw_creature() -> void:
 	var creature = level.locust
-	if not is_instance_valid(creature) or not here(creature.global_position): return
+	if not is_instance_valid(creature) or not creature.is_inside_tree() or not here(creature.global_position): return
 	lift_route_clock -= get_process_delta_time()
 	if lift_route_clock <= 0.0:
 		lift_route_clock = 0.5
