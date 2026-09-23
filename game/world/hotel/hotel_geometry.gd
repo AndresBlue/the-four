@@ -1502,7 +1502,9 @@ func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array
 	vertices.append_array(PackedVector3Array([center + Vector3(low.x, 0.04, low.y), center + Vector3(low.x, 0.04, high.y), center + Vector3(high.x, 0.04, high.y), center + Vector3(high.x, 0.04, low.y)]))
 	polygons.append(PackedInt32Array([first, first + 1, first + 2, first + 3]))
 
-func update_visibility(player_position: Vector3, shadows: bool) -> void:
+## reach_over: the observer looking at the whole floor from above asks for
+## everything to be drawn, whatever the preset would hide (0: the preset's).
+func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0) -> void:
 	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
@@ -1510,7 +1512,7 @@ func update_visibility(player_position: Vector3, shadows: bool) -> void:
 		dust.visible = dust.emitting
 	# Hall haze only exists in Forward+ (the preset has it off elsewhere).
 	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
-	var reach: float = preset.room_reach
+	var reach: float = maxf(preset.room_reach, reach_over)
 	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
 	for i in room_nodes.size():
 		var distance := room_nodes[i].position.distance_to(player_position)

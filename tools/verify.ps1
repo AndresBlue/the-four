@@ -46,8 +46,8 @@ foreach ($renderer in @('forward_plus','gl_compatibility')) {
 }
 
 # Online play: real host and guest processes over 127.0.0.1.
-foreach ($scenario in @('coop', 'versus', 'late')) {
-    $port = @{ coop = 24600; versus = 24610; late = 24620 }[$scenario]
+foreach ($scenario in @('coop', 'versus', 'late', 'observer')) {
+    $port = @{ coop = 24600; versus = 24610; late = 24620; observer = 24630 }[$scenario]
     $passed = $true
     try { & (Join-Path $PSScriptRoot 'net_test.ps1') -GodotPath $GodotPath -Scenario $scenario -Port $port | Write-Output } catch { $passed = $false; Write-Output $_ }
     $results += [PSCustomObject]@{ test="net/$scenario"; passed=$passed; exit_code=0 }

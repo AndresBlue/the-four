@@ -22,6 +22,8 @@ const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
 ## The tapes that got out, and the board they make (records_service.gd).
 const RECORDS := preload("res://game/services/records_service.gd")
+## Watching from outside (observer_view.gd), with --observer.
+const OBSERVER := preload("res://game/app/observer_view.gd")
 const NET := preload("res://game/net/net_session.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 ## The opening scene is built far from the hotel so the two never overlap.
@@ -46,6 +48,13 @@ var ventilation: AudioStreamPlayer3D
 # Quiet theme behind the menus; the in-game players pause with the tree.
 var menu_music: AudioStreamPlayer
 var automation := false
+## Watching, not playing (--observer): no body, a camera that goes where it
+## likes and everything the floor is doing written down the side
+## (observer_view.gd). If a room is open on this machine it joins it without
+## taking a seat; if there is none, it builds a floor of its own to walk.
+var observer := false
+var observer_view
+
 ## Local preview of the hunter's seat (--locust): this machine drives The
 ## Locust against an idle survivor, with no connection. Everything the hunter
 ## sees and hears runs in one process, so the acoustic view can be looked at
@@ -209,12 +218,65 @@ func _ready() -> void:
 	ui.menu("main", not saved.is_empty(), session.message)
 	on_state()
 	if not automation: ui.play_intro()
+	var seed_wanted := -1
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--playtest-seed="):
 			var value := argument.trim_prefix("--playtest-seed=")
-			if value.is_valid_int() and int(value) >= 0 and int(value) <= 2147483647:
-				if OS.get_cmdline_user_args().has("--locust"): await take_locust(int(value))
-				else: start_floor(int(value))
+			if value.is_valid_int() and int(value) >= 0 and int(value) <= 2147483647: seed_wanted = int(value)
+	if OS.get_cmdline_user_args().has("--observer"):
+		await begin_observing(seed_wanted)
+	elif seed_wanted >= 0:
+		if OS.get_cmdline_user_args().has("--locust"): await take_locust(seed_wanted)
+		else: start_floor(seed_wanted)
+
+## --observer: knock on a room on this machine (or wherever --address says),
+## and if nobody answers within OBSERVER_WAIT seconds, build a floor here and
+## watch that instead.
+const OBSERVER_WAIT := 2.5
+func begin_observing(seed_value: int) -> void:
+	observer = true
+	var address := "127.0.0.1"
+	var port: int = net.PORT
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--address="): address = argument.trim_prefix("--address=")
+		if argument.begins_with("--port="): port = int(argument.trim_prefix("--port="))
+	ui.menu("loading", false, "Buscando una partida en %s…" % address)
+	if net.join_observer(address, port) == OK:
+		var waited := 0.0
+		while waited < OBSERVER_WAIT and not net.observing:
+			await get_tree().process_frame
+			waited += get_process_delta_time()
+	if not net.observing:
+		net.shutdown("")
+		await start_floor(seed_value if seed_value >= 0 else randi_range(0, 2147483647))
+	enter_observer_mode()
+
+## No body of its own: the player is put away and the observer's camera takes
+## over. Called on connecting, and after every floor this machine builds.
+func enter_observer_mode() -> void:
+	observer = true
+	player.active = false
+	player.visible = false
+	player.collision_layer = 0
+	player.torch.visible = false
+	ui.close_menus()
+	ui.overlay.hide()
+	camcorder.visible = false
+	$Presentation/Analog.visible = false
+	if observer_view == null:
+		observer_view = OBSERVER.new()
+		observer_view.setup(self)
+		add_child(observer_view)
+	observer_view.camera.current = true
+	observer_view.apply_roof()
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## R on the observer: another floor, another seed, when there is no match to
+## watch. This is what watching floors being generated is.
+func observer_rebuild() -> void:
+	if match_net.in_match(): return
+	await start_floor(randi_range(0, 2147483647))
+	enter_observer_mode()
 
 ## The local hunter preview: build a floor and hand the creature to this player.
 func take_locust(seed_value: int) -> void:
@@ -878,7 +940,8 @@ func on_state() -> void:
 	ui.get_node("HUD/Crosshair").visible = playing
 	update_title_scene()
 	# The title room behind the main menu is outside the game: no tape over it.
-	$Presentation/Analog.visible = session.state != session.State.MENU
+	# Watching is not filming: the observer sees the hotel, not the tape.
+	$Presentation/Analog.visible = session.state != session.State.MENU and not observer
 	if playing and online_menu: return
 	if playing or session.state == session.State.CUTSCENE:
 		ui.close_menus()
@@ -1468,6 +1531,7 @@ func on_hide_changed(entering: bool, point: Vector3) -> void:
 
 ## Kind defaults to a footstep so older callers (and the tests) still work.
 func on_noise(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:
+	if observer_view != null: observer_view.gizmos.note_noise(point, radius)
 	match_net.noise(point, radius, kind)
 
 func focused_area():
@@ -1604,6 +1668,15 @@ func door_behind():
 	return best
 
 func _physics_process(delta: float) -> void:
+	# Watching: the floor runs itself (online it is the host's, alone it is the
+	# creature's own), and this machine only counts the lifts and looks.
+	if observer:
+		lifts.ride_along(delta)
+		lifts.ride_out(delta)
+		if is_instance_valid(session) and session.state == session.State.PLAYING:
+			lifts.count_away(delta)
+			if not net.active(): host_gate(delta)
+		return
 	if is_instance_valid(session) and session.state == session.State.CUTSCENE:
 		skip_time = skip_time + delta if Input.is_action_pressed("interact") else 0.0
 		if skip_time >= SKIP_HOLD: finish_intro()
@@ -1882,7 +1955,7 @@ func _process(delta: float) -> void:
 		camera_effect.frame_delta = delta
 		blur_effect.frame_delta = delta
 	update_fields(delta)
-	camcorder.visible = session.state == session.State.PLAYING
+	camcorder.visible = session.state == session.State.PLAYING and not observer
 	# The creature records nothing: its seat keeps only the meter and notices.
 	camcorder.hunter = hunter_seat()
 	if not camcorder.hunter: camcorder.announce("")
@@ -1906,10 +1979,18 @@ func _process(delta: float) -> void:
 	visibility_clock += delta
 	if visibility_clock > 0.25:
 		visibility_clock = 0
-		if is_instance_valid(hotel): hotel.update_visibility(world_audio.listener_position(), settings.values.shadows and not hunter_seat())
+		# Rooms are drawn round whoever is looking, and watching, that is the
+		# observer's camera and not the body it does not have; from above it
+		# asks for the whole floor at once.
+		if is_instance_valid(hotel):
+			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else world_audio.listener_position()
+			var over: float = 500.0 if observer and observer_view != null and observer_view.map_view else 0.0
+			hotel.update_visibility(eye, settings.values.shadows and not hunter_seat(), over)
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Watching: the keys belong to the observer's own camera and panels.
+	if observer: return
 	if event is InputEventMouseButton and event.pressed and not local_alive() and session.state == session.State.PLAYING and not online_menu:
 		match_net.next_watch()
 		return
@@ -2100,7 +2181,10 @@ func update_zoom_lens() -> void:
 
 ## This machine drives The Locust: the hunter's seat online, or the local
 ## preview. Its screen is the acoustic image, not the lit hotel.
+## This machine is drawing the creature's acoustic reading instead of the lit
+## hotel: the hunter, or the observer while it is looking through its ears.
 func hunter_seat() -> bool:
+	if observer and observer_view != null and observer_view.echoing: return true
 	return is_instance_valid(net) and match_net.local_is_locust()
 
 ## Every value that changes with the quality setting (graphics_presets.gd).

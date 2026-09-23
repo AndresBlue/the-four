@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -17,7 +17,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','export')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','observer','export')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -25,6 +25,10 @@ switch ($Mode) {
     # @('--', 'x=' + $Seed) as @('--','x=') + $Seed and splits it in two.
     'playtest' { $arguments += @('--', ('--playtest-seed=' + $Seed)) }
     'locust' { $arguments += @('--', '--locust', ('--playtest-seed=' + $Seed)) }
+    # Watching, not playing: it joins a room open on this machine (or the one
+    # -Extra '--address=...' names) and takes no seat; with nobody hosting it
+    # builds a floor of its own to walk (game/app/observer_view.gd).
+    'observer' { $arguments += @('--', '--observer', ('--playtest-seed=' + $Seed)) }
     'rehearsal' { $arguments += @('--script','res://tools/dev/echo_rehearsal.gd','--',('--rehearsal-seed=' + $Seed)) }
     'execution' { $arguments += @('--script','res://tools/dev/execution_rehearsal.gd','--',('--rehearsal-seed=' + $Seed)) }
     'survival-test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/survival_test.gd','--','--test-profile','--automation') }

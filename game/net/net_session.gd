@@ -14,6 +14,11 @@ signal joined
 const MATCH := preload("res://game/net/match_net.gd")
 const PORT := 38430
 const MAX_PLAYERS := 5
+## A room keeps one slot over its seats for somebody who only watches: the
+## observer (tools, --observer) connects like anybody else, takes no seat,
+## has no body and is nobody's business in the match -- it is sent everything
+## and sends nothing back.
+const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
 const PROTOCOL := "the-four-net-8"
@@ -34,6 +39,10 @@ var options := {"mode": Mode.COOP, "locust": RANDOM, "resume": false}
 var in_match := false
 var local_seat := 0
 var status := ""
+## This machine is only watching (no seat, no body).
+var observing := false
+## Host: peer ids that are only watching.
+var observers := {}
 
 func _init() -> void:
 	name = "Net"
@@ -60,7 +69,7 @@ func is_client() -> bool:
 func host(player_name: String, character: int, port := PORT) -> Error:
 	shutdown("")
 	peer = ENetMultiplayerPeer.new()
-	var error := peer.create_server(port, MAX_PLAYERS - 1)
+	var error := peer.create_server(port, MAX_PLAYERS - 1 + OBSERVERS)
 	if error != OK:
 		peer = null
 		status = "No se pudo abrir la sala en el puerto %d (¿ya hay otra abierta?)." % port
@@ -69,10 +78,18 @@ func host(player_name: String, character: int, port := PORT) -> Error:
 	is_host = true
 	local_seat = 1
 	players = {1: {"name": clean_name(player_name), "character": character, "peer": 1, "connected": true}}
+	observers.clear()
 	options = {"mode": Mode.COOP, "locust": RANDOM, "resume": false}
 	status = ""
 	lobby_changed.emit()
 	return OK
+
+## Watch a room without playing in it: the same connection, and the host is
+## told that this one is not asking for a seat.
+func join_observer(address: String, port := PORT) -> Error:
+	var error := join(address, "Observador", 0, port)
+	if error == OK: pending_profile["observer"] = true
+	return error
 
 func join(address: String, player_name: String, character: int, port := PORT) -> Error:
 	shutdown("")
@@ -136,13 +153,14 @@ func player_name(seat: int) -> String:
 
 func _connected() -> void:
 	status = "Conectado. Entrando en la sala…"
-	register.rpc_id(1, PROTOCOL, FLOOR.VERSION, pending_profile.name, pending_profile.character)
+	register.rpc_id(1, PROTOCOL, FLOOR.VERSION, pending_profile.name, pending_profile.character, bool(pending_profile.get("observer", false)))
 
 func _peer_connected(_id: int) -> void:
 	pass
 
 func _peer_disconnected(id: int) -> void:
 	if not is_host: return
+	if observers.erase(id): return
 	var seat := seat_of_peer(id)
 	if seat == 0: return
 	if in_match:
@@ -158,12 +176,19 @@ func _peer_disconnected(id: int) -> void:
 
 ## A guest introduces itself. The host seats it, or refuses with a reason.
 @rpc("any_peer", "call_remote", "reliable")
-func register(protocol: String, generator: int, player_name: String, character: int) -> void:
+func register(protocol: String, generator: int, player_name: String, character: int, observer := false) -> void:
 	if not is_host: return
 	var id := multiplayer.get_remote_sender_id()
 	var wanted := clean_name(player_name)
 	if protocol != PROTOCOL or generator != FLOOR.VERSION:
 		refuse(id, "Versiones distintas del juego: actualizad todos al mismo exe.")
+		return
+	if observer:
+		# It takes no seat and is not in the room: it is only sent what is
+		# already being sent to everybody, and the floor if one is being played.
+		observers[id] = true
+		welcome.rpc_id(id, 0)
+		if in_match and not match_net.config.is_empty(): match_net.begin.rpc_id(id, match_net.config, {"observer": true})
 		return
 	var seat := 0
 	if in_match:
@@ -216,6 +241,7 @@ func refused(reason: String) -> void:
 @rpc("authority", "call_remote", "reliable")
 func welcome(seat: int) -> void:
 	local_seat = seat
+	observing = seat == 0
 	status = ""
 	joined.emit()
 

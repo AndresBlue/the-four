@@ -244,6 +244,10 @@ no rompen nada.
 - [ ] La navegación se hornea con el radio exacto de la criatura (0,4 m) y
   roza las esquinas; ahora se desatasca sola (`hotel_locust.unstick()`), pero
   un radio algo mayor lo evitaría, si los vanos lo permiten.
+- [ ] La lectura acústica dentro del observador (`V`) sale mucho más pobre que
+  la del cazador: los granos se escriben (8000 cerca de la cámara, medidos)
+  pero apenas se dibujan. Mientras, la vista de verdad es
+  `./tools/godot.ps1 locust`.
 - [ ] El validador cuenta dos ciclos de más: `E − V + 1` sobre un grafo de tres
   alas separadas.
 

@@ -65,6 +65,9 @@ func run() -> void:
 		"vs_hunter": await versus_hunter()
 		"late_host": await late_host()
 		"late_guest": await late_guest()
+		"watch_host": await watch_host()
+		"watch_guest": await watch_guest()
+		"watcher": await watcher()
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -74,6 +77,54 @@ func run() -> void:
 	level.queue_free()
 	await process_frame
 	quit(0 if failed == 0 else 1)
+
+## Somebody watching from outside (--observer): it connects like a guest, takes
+## no seat, has no body, and is sent everything.
+func watch_host() -> void:
+	var net = level.net
+	check("La sala se abre para que la miren", net.host("Anfitrión", 0, port) == OK)
+	check("Un jugador en la sala", await wait_for(func(): return net.connected_seats().size() == 2, 40.0))
+	check("Y quien mira no ocupa plaza", await wait_for(func(): return not net.observers.is_empty(), 30.0) and net.connected_seats().size() == 2 and net.players.size() == 2)
+	net.set_option("mode", net.Mode.COOP)
+	check("Empieza la partida con quien mira dentro", net.start_match(81))
+	check("Se juega", await wait_for(playing, 60.0))
+	level.locust.grace = 0.0
+	# Something for the watcher to see: the creature walks, a door swings.
+	await pause_for(6.0)
+	level.hotel.doors[3].toggle()
+	await pause_for(12.0)
+	check("El piso sigue en pie con un observador dentro", playing() and level.session.participants.size() == 2)
+
+func watch_guest() -> void:
+	var net = level.net
+	check("Un jugador se une", net.join("127.0.0.1", "Alpha", 1, port) == OK)
+	check("Y juega", await wait_for(playing, 90.0))
+	var walked := 0.0
+	while walked < 16.0:
+		level.player.global_position += Vector3(0.1, 0, 0)
+		await pause_for(0.25)
+		walked += 0.25
+	check("Sigue jugando mientras lo miran", playing())
+
+func watcher() -> void:
+	var net = level.net
+	await pause_for(2.5)
+	check("Se conecta a la partida sin pedir plaza", net.join_observer("127.0.0.1", port) == OK)
+	check("Y el anfitrión lo admite como observador", await wait_for(func(): return net.observing, 30.0))
+	check("Recibe el piso que se está jugando", await wait_for(func(): return not level.manifest.is_empty() and int(level.session.run_seed) == 81, 90.0))
+	level.enter_observer_mode()
+	check("No tiene cuerpo ni cámara de jugador", level.observer and not level.player.visible and not level.player.active and level.observer_view.camera.current)
+	check("Ve a los dos que juegan", await wait_for(func(): return level.match_net.bodies.size() == 2, 30.0))
+	check("Y les llegan sus movimientos", await wait_for(func(): return level.match_net.bodies.values().any(func(body): return not body.states.is_empty()), 30.0))
+	check("Ve a la criatura", is_instance_valid(level.locust) and level.locust.control == "puppet")
+	var stood: Vector3 = level.locust.global_position
+	check("Y la ve moverse", await wait_for(func(): return level.locust.global_position.distance_to(stood) > 1.0, 40.0))
+	check("La sesión replicada le llega entera", level.session.state == level.session.State.PLAYING and level.session.participants.size() == 2)
+	# What the tool is for: the panel says what the floor is doing.
+	var words: String = level.observer_view.report()
+	check("Y el panel lo cuenta", words.contains("THE LOCUST") and words.contains("ASCENSORES") and words.contains("semilla 81"))
+	level.observer_view.snapshot()
+	await pause_for(2.0)
 
 func playing() -> bool:
 	return level.session.state == level.session.State.PLAYING

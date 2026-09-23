@@ -162,6 +162,11 @@ func report_ready(floor_hash: int) -> void:
 	if not net.is_host: return
 	var id := multiplayer.get_remote_sender_id()
 	var seat: int = net.seat_of_peer(id)
+	# Somebody only watching has no seat and nobody waits for it: its floor is
+	# put in step the moment it says it has one, whenever that is.
+	if net.observers.has(id):
+		if in_match() and floor_hash == manifest_hash: catch_up(0, id)
+		return
 	if seat == 0: return
 	if manifest_hash == 0:
 		pending_ready[seat] = [id, floor_hash]
