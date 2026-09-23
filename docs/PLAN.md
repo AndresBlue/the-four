@@ -231,8 +231,29 @@ no rompen nada.
 
 ## 3 · Acabado de lo que ya existe
 
-Afina algo que funciona: va después de que funcione bien.
+Afina algo que funciona: va después de que funcione bien. Los tres primeros son
+lo que le falta al piso de The Locust para darlo por cerrado, en ese orden: el
+mando cambia quién puede jugarlo, el parte hace que apetezca repetirlo, y el
+sonido del ascensor tapa un silencio que hoy se oye raro al cerrar cada sector.
 
+- [ ] **Jugar con mando.** Hoy no hay ninguno: las acciones se arman solo desde
+  teclas (`settings_service.KEYS`) y `project.godot` no tiene ni sección de
+  entrada. Hace falta mirada analógica (zona muerta, curva y aceleración),
+  mover y agacharse con el stick, los botones para interactuar, linterna,
+  correr y hoja, navegar los menús con la cruceta —que ya van por foco, así
+  que es poco— y reasignar desde Ajustes, con el nombre del botón en pantalla
+  como ya pasa con las teclas. Incluye al cazador, que comparte los mismos
+  ajustes de sensibilidad e inversión.
+- [ ] **El parte al salir del piso.** La pantalla de victoria (`hotel_ui`,
+  `"won"`) dice solo el tiempo de grabación. Con lo que ya se guarda se puede
+  contar la partida: quién salió y quién no y de qué murió cada uno, los
+  números que encontró cada cual, cuánto duró cada sector, y **la semilla con
+  su código** para repetir la misma planta y compararse. Enlaza con el registro
+  de partidas y los códigos del apartado 6.
+- [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
+  siempre refugio, televisores y código, y en ese orden: la planta cambia y la
+  partida no. Basta una condición alternativa que pueda salir en el sector 2 o
+  en el 3. Es la única de esta lista que es decisión de diseño, no de código.
 - [ ] **Sonido del hotel:** fuentes espaciales fijas, acústica por recinto,
   pasos, conductos, tuberías y silencio contextual.
 - [ ] **Los cinco audios aportados:** escucha y selección definitiva, edición de
@@ -249,7 +270,8 @@ Afina algo que funciona: va después de que funcione bien.
 ## 4 · Assets que faltan (tuyos)
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
-  puerta que ya existía.
+  puerta que ya existía, y es el silencio más audible del piso: cada cierre de
+  sector pasa por él.
 - [ ] **Un detective masculino con esqueleto.** El de ahora es un OBJ sin
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.
