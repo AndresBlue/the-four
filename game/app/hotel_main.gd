@@ -872,6 +872,7 @@ func place_containers() -> void:
 		piece.name = "Container_%d" % containers.size()
 		piece.kind = str(spot.kind)
 		piece.front = float(spot.get("front", 0.5))
+		piece.note_spot = spot.get("note", {})
 		piece.position = spot.position
 		piece.rotation.y = spot.yaw
 		# Parented to its room, so it is culled with it, but placed by the

@@ -20,11 +20,15 @@ var lifts: Array = []
 ## leaves the floor instead.
 var arrivals: Array = []
 ## Every piece of furniture with drawers or shelves, as it is dressed:
-## {room, position, yaw, kind}. Four of them hide the numbers of the code.
+## {room, position, yaw, kind, front, note}. Four of them hide the numbers of
+## the code.
 var containers: Array = []
 ## How far the solid piece being furnished reaches into the room, in its
 ## stretch's space (room_dressing.put): where a container's front is.
 var piece_front := 0.0
+## Where a note would sit on the piece being furnished, in its stretch's space
+## (room_dressing.note_fold()): empty if it takes none.
+var note_spot := {}
 ## Wardrobes in build order: the same index names the same wardrobe on every
 ## machine in an online match (doors likewise).
 var hides: Array = []

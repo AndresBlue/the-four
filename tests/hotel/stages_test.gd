@@ -16,6 +16,41 @@ func check(title: String, passed: bool) -> void:
 	if not passed: failed += 1
 	print("PASS " if passed else "FAIL ", title)
 
+## How many containers have a place for a note, and on how many the fold
+## touches the piece's mesh (within 2 cm): the models are given a collider of
+## their own triangles, just for this, where the floor stands them.
+func notes_resting() -> Array:
+	var placed := 0
+	var resting := 0
+	var bodies: Array = []
+	var shapes := {}
+	for piece in level.containers:
+		var spot: Dictionary = piece.note_spot
+		if spot.is_empty() or not spot.has("model"): continue
+		placed += 1
+		if not shapes.has(spot.model): shapes[spot.model] = load("res://assets/props/hotel/%s.res" % spot.model).create_trimesh_shape()
+		var body := StaticBody3D.new()
+		body.collision_layer = 1 << 19
+		var shape := CollisionShape3D.new()
+		shape.shape = shapes[spot.model]
+		body.add_child(shape)
+		root.add_child(body)
+		body.global_transform = piece.global_transform * (spot.piece as Transform3D)
+		bodies.append([body, piece])
+	await physics_frame
+	await physics_frame
+	var space: PhysicsDirectSpaceState3D = root.get_world_3d().direct_space_state
+	var probe := SphereShape3D.new()
+	probe.radius = 0.02
+	for pair in bodies:
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = probe
+		query.collision_mask = 1 << 19
+		query.transform = Transform3D(Basis.IDENTITY, pair[1].global_transform * (pair[1].note_spot.at as Vector3))
+		if space.intersect_shape(query, 8).any(func(hit): return hit.collider == pair[0]): resting += 1
+	for pair in bodies: pair[0].queue_free()
+	return [placed, resting]
+
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
@@ -126,7 +161,11 @@ func run() -> void:
 				break
 			look.exclude = look.exclude + [met.rid]
 	check("Cada mueble con cajones se registra mirándolo de frente", searchable == level.containers.size())
-	check("Y la nota asoma por delante del mueble", level.containers.all(func(piece): return piece.note == null or piece.note.position.z > piece.front))
+	# Every piece's note would sit on the piece and not in the air beside it:
+	# its fold touches the model's own mesh, set where the dressing set it.
+	var resting: Array = await notes_resting()
+	check("Cada mueble sabe dónde dejar su nota", resting[0] == level.containers.size())
+	check("Y la nota se apoya en el mueble, no flota", resting[1] == level.containers.size())
 	# Wings and gates: one door on, shut and locked until its stage is closed.
 	check("Tres alas, tres refugios y tres puertas de etapa", level.manifest.wings == 3 and level.manifest.refuges.size() == 3 and level.manifest.gates.size() == 3)
 	check("Cada refugio está en su ala", level.manifest.refuges.all(func(id): return int(level.manifest.rooms[int(id)].wing) == level.manifest.refuges.find(id)))

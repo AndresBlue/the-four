@@ -175,12 +175,14 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		var seed_pos: Vector3 = node.position + frame.origin
 		var pick: String = sets[int(builder.vary(seed_pos, 31) * sets.size())] if not sets.is_empty() else ""
 		builder.piece_front = 0.0
+		builder.note_spot = {}
 		furnish(builder, holder, pick, stretch[1], seed_pos, kept, room)
 		# Anything with drawers or shelves is somewhere a number could be
 		# hidden: the builder keeps the list so a floor can put four in them.
 		# With how far its front reaches: the note shows out of it and the
 		# hand finds it there, whatever the piece's depth.
-		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick, "front": builder.piece_front})
+		# And where a note of the code would be left in it (note_fold()).
+		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick, "front": builder.piece_front, "note": builder.note_spot})
 		k += 1
 	decals(builder, node, room, kept)
 
@@ -192,12 +194,17 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 		"commode":
 			var s := minf(1.0, width / 1.25)
 			put(builder, holder, "GothicCommode_01", Vector3(0, 0, 0.3 * s), 0.0, s, true)
+			commode_note(builder, Vector3(0, 0, 0.3 * s), s, seed_pos)
 			dress_top(builder, holder, "GothicCommode_01", Vector3(0, 0, 0.3 * s), s, ORNAMENTS, seed_pos, 2)
 			hang_mirror(builder, holder, room, 1.62, seed_pos)
 		"console":
 			var s := minf(0.85, width / 1.6)
 			put(builder, holder, "ClassicConsole_01", Vector3(0, 0, 0.3 * s), 0.0, s, true)
 			dress_top(builder, holder, "ClassicConsole_01", Vector3(0, 0, 0.3 * s), s, ORNAMENTS, seed_pos, 2)
+			# No drawer: on the top (0.949), between its two ornaments, and from
+			# the top's edge (0.236) out over the moulded lip in front of it,
+			# 2 cm lower (0.93 at 0.29), past the slab's front (0.295).
+			note_fold(builder, "ClassicConsole_01", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.3 * s)), Vector3(v.call(120) * 0.16 - 0.08, 0.951, 0.236), v.call(121) * 0.3 - 0.15, 0.12, 0.09, 0.0, 1.2)
 			hang_mirror(builder, holder, room, 1.45, seed_pos)
 		"armchair":
 			var chair: String = "ArmChair_01" if v.call(32) < 0.5 else "GreenChair_01"
@@ -220,10 +227,29 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			var s := minf(0.9, width / 1.4)
 			put(builder, holder, "wooden_bookshelf_worn", Vector3(0, 0, 0.3 * s), 0.0, s, true)
 			fill_shelves(builder, holder, "wooden_bookshelf_worn", Vector3(0, 0, 0.3 * s), s, ["book_encyclopedia_set_01", "book_encyclopedia_set_01", "ceramic_vase_01", "cardboard_box_01"], seed_pos)
+			# Laid on one of the three middle shelves (their boards' tops, and
+			# the lip in front at 0.272), pushed under what stands on it, the
+			# end come down over the edge.
+			var shelf: float = [0.671, 0.961, 1.276][int(v.call(122) * 3.0)]
+			note_fold(builder, "wooden_bookshelf_worn", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.3 * s)), Vector3(v.call(123) * 0.6 - 0.3, shelf + 0.002, 0.274), v.call(124) * 0.3 - 0.15, 0.14, 0.07)
 		"cabinet":
-			put(builder, holder, "painted_wooden_cabinet" if kept >= 1 else "GothicCommode_01", Vector3(0, 0, 0.32), 0.0, minf(1.0, width / 1.25), true)
+			var s := minf(1.0, width / 1.25)
+			put(builder, holder, "painted_wooden_cabinet" if kept >= 1 else "GothicCommode_01", Vector3(0, 0, 0.32), 0.0, s, true)
+			if kept >= 1:
+				# Left on its top, which is dark wood (1.182, the edge at 0.237),
+				# the end come down over the edge: on the painted front, as pale
+				# as the paper, it was not seen. On the side of the shut drawer
+				# (the left one stands out of the carcass, 0.277), clear of that
+				# drawer's handle at a quarter of the width.
+				note_fold(builder, "painted_wooden_cabinet", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.32)), Vector3(0.1 + v.call(120) * 0.06, 1.184, 0.239), v.call(121) * 0.24 - 0.12, 0.13, 0.08, 0.0, 0.05)
+			else: commode_note(builder, Vector3(0, 0, 0.32), s, seed_pos)
 		"drawers":
-			put(builder, holder, "drawer_cabinet", Vector3(0, 0, 0.26), 0.0, minf(1.0, width / 1.2), true)
+			var s := minf(1.0, width / 1.2)
+			put(builder, holder, "drawer_cabinet", Vector3(0, 0, 0.26), 0.0, s, true)
+			# Shut in the third drawer: out of the slit above it (0.928 to
+			# 0.953), hanging down its front (0.244). The drawers are flush,
+			# with no handles.
+			note_fold(builder, "drawer_cabinet", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.26)), Vector3(v.call(120) * 0.5 - 0.25, 0.94, 0.246), v.call(121) * 0.16 - 0.08, 0.12, 0.09, 0.0, 0.05)
 		"steel", "rack":
 			var name := "steel_frame_shelves_01" if pick == "steel" else "worn_metal_rack"
 			put(builder, holder, name, Vector3(0, 0, 0.3), 0.0, 1.0, true)
@@ -298,11 +324,17 @@ static func hang_mirror(builder, holder: Node3D, room: Dictionary, bottom: float
 static func stack(builder, holder: Node3D, seed_pos: Vector3, count: int) -> void:
 	var x := -0.55
 	var y := 0.0
+	# The one a note would be left on: a cardboard box before any crate (a
+	# crate is open, and lower than the note is long), the highest of them.
+	var top := {}
 	for i in count:
 		var name: String = ["cardboard_box_01", "plastic_crate_02", "cardboard_box_01"][int(builder.vary(seed_pos, 70 + i) * 3)]
 		var size := mesh(name).get_aabb().size
 		var yaw: float = builder.vary(seed_pos, 75 + i) * 0.5 - 0.25
-		place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw), Vector3(x + size.x * 0.5, y, size.z * 0.5 + 0.02)))
+		var xform := Transform3D(Basis(Vector3.UP, yaw), Vector3(x + size.x * 0.5, y, size.z * 0.5 + 0.02))
+		place(builder, holder, name, xform)
+		var rank: float = y + size.y + (10.0 if name == "cardboard_box_01" else 0.0)
+		if top.is_empty() or rank > float(top.rank): top = {"name": name, "xform": xform, "rank": rank}
 		if y == 0.0 and builder.vary(seed_pos, 80 + i) < 0.5:
 			y = size.y
 		else:
@@ -311,6 +343,37 @@ static func stack(builder, holder: Node3D, seed_pos: Vector3, count: int) -> voi
 		if x > 0.5: break
 	builder.box(holder, Vector3(0, 0.25, 0.28), Vector3(1.1, 0.5, 0.5), "", true)
 	builder.piece_front = maxf(builder.piece_front, 0.53)
+	if top.is_empty(): return
+	var across: float = builder.vary(seed_pos, 125) * 0.12 - 0.06
+	if top.name == "cardboard_box_01":
+		# On the lid, whose flaps dip from the front edge (0.324) to the
+		# middle (0.29), and over that edge down the front (0.245).
+		note_fold(builder, top.name, top.xform, Vector3(across, 0.326, 0.254), builder.vary(seed_pos, 126) * 0.3 - 0.15, 0.13, 0.08, 0.27)
+	else:
+		# Only crates: across the open top from the front rim (0.221, its
+		# ribs out to 0.203), and down the front.
+		note_fold(builder, top.name, top.xform, Vector3(across, 0.224, 0.205), builder.vary(seed_pos, 126) * 0.2 - 0.1, 0.13, 0.08)
+
+## A commode's note: shut in its middle drawer, out of the slit under the
+## moulding above it and down the drawer's front, clear of the knobs (at a
+## quarter of the width either side). `at` and `s` place the piece.
+static func commode_note(builder, at: Vector3, s: float, seed_pos: Vector3) -> void:
+	# The slit is at 0.781, under the moulding (0.25 out); the drawer's face
+	# is at 0.216, its top edge rounding out to 0.227.
+	note_fold(builder, "GothicCommode_01", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), at), Vector3(builder.vary(seed_pos, 120) * 0.16 - 0.08, 0.781, 0.229), builder.vary(seed_pos, 121) * 0.16 - 0.08, 0.12, 0.09, 0.0, 0.06)
+
+## Where a note of the code sits on the piece just placed, for the container
+## (hotel_container.plant_note()). A slip folded once over an edge that runs
+## across the piece: `lie` metres of it back from the fold, down by `lie_tilt`
+## (into a drawer, under the books), and `hang` metres down in front of it, its
+## foot out by `hang_tilt`; `skew` turns the slip in its own plane, so it lies
+## askew and still flat on both faces. `fold` is in the model's own space,
+## measured on its mesh;
+## `piece` is how that model stands on the stretch, kept with the spot so the
+## fold can be checked against the mesh (tests/hotel/stages_test.gd).
+## Whatever scale the piece has, the paper keeps its size.
+static func note_fold(builder, model: String, piece: Transform3D, fold: Vector3, skew: float, lie: float, hang: float, lie_tilt := 0.0, hang_tilt := 0.1) -> void:
+	builder.note_spot = {"at": piece * fold, "yaw": piece.basis.orthonormalized().get_euler().y, "skew": skew, "lie": lie, "hang": hang, "lie_tilt": lie_tilt, "hang_tilt": hang_tilt, "model": model, "piece": piece}
 
 ## What lies about in a neglected (1) or abandoned (2) room: a tipped chair,
 ## bottles, a suitcase, papers, boxes.
