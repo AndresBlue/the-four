@@ -397,7 +397,11 @@ func report() -> String:
 		lines.append("THE LOCUST (%s)" % creature.control)
 		lines.append("  %s · gracia %0.1f · velocidad %0.1f · detección %0.2f" % [modo(creature.mode), creature.grace, creature.speed, creature.detection])
 		lines.append("  ala %d · %0.0f, %0.0f · sin ver %0.1f s" % [wing_of(creature.global_position), creature.global_position.x, creature.global_position.z, creature.lost_time])
-		lines.append("  destino a %0.1f m · camino %d puntos · repath %0.2f" % [creature.global_position.distance_to(creature.destination), creature.path.size(), creature.repath])
+		lines.append("  destino a %0.1f m · camino %d puntos · repath %0.2f · %d puertas en la ruta" % [creature.global_position.distance_to(creature.destination), creature.path.size(), creature.repath, creature.crossings.size()])
+		# Its protocol for getting unstuck (hotel_locust.escalate): the step it
+		# is on and how many times each has been reached this floor.
+		var counts: Array = creature.stuck_counts
+		lines.append("  atascos · paso %d ahora · %d/%d/%d/%d/%d (pasos 1 a 5)" % [creature.stuck_level, counts[1], counts[2], counts[3], counts[4], counts[5]])
 		var nearest := -1
 		var gap := INF
 		for index in level.hotel.lifts.size():
@@ -463,7 +467,7 @@ func snapshot() -> void:
 		var body: Node3D = level.match_net.body_of(int(seat)) if level.match_net.in_match() else level.player
 		if is_instance_valid(body): data.cuerpos[str(seat)] = {"vida": int(level.session.participants[seat]), "donde": [body.global_position.x, body.global_position.y, body.global_position.z], "ala": wing_of(body.global_position)}
 	if is_instance_valid(level.locust):
-		data["criatura"] = {"modo": modo(level.locust.mode), "mando": level.locust.control, "donde": [level.locust.global_position.x, level.locust.global_position.y, level.locust.global_position.z], "ala": wing_of(level.locust.global_position), "destino": [level.locust.destination.x, level.locust.destination.z], "camino": level.locust.path.size()}
+		data["criatura"] = {"modo": modo(level.locust.mode), "mando": level.locust.control, "donde": [level.locust.global_position.x, level.locust.global_position.y, level.locust.global_position.z], "ala": wing_of(level.locust.global_position), "destino": [level.locust.destination.x, level.locust.destination.z], "camino": level.locust.path.size(), "atascos": level.locust.stuck_counts, "paso": level.locust.stuck_level}
 	data["ascensores"] = {}
 	for index in level.hotel.lifts.size(): data.ascensores[str(index)] = {"arriba": level.lifts.lift_gone(index), "llave": level.hotel.gates[index].locked if level.hotel.gates.size() > index else null}
 	var path := "user://observer_%d.json" % int(Time.get_unix_time_from_system())

@@ -1,6 +1,7 @@
 extends CharacterBody3D
 @export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const THREAD := preload("res://game/enemies/locust/door_threading.gd")
 enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT, WARDROBE, EXECUTE }
 ## Perception and pacing. Distances in metres, speeds in m/s.
 ## It perceives the player from much farther than the player can sense it:
@@ -898,28 +899,46 @@ func nearest_room() -> int:
 			best = room.id
 	return best
 
+## The doorways on its route and where it lines up with each and comes out of
+## it: {door, enter, exit}, indices into `path` (door_threading.thread).
+var crossings: Array = []
+## How long it has been between lining up with a doorway and coming out.
+var passing_time := 0.0
+## A point of the route counts as reached this close to it, or once walked
+## past: exactly on it (the six centimetres it used to be) was a target it
+## could slide round against a corner for as long as the mode lasted.
+const REACHED := 0.3
+## Longest it keeps to a doorway it has started through before it lets a new
+## route take over anyway.
+const PASSING_MOST := 2.5
+
 func move_on_path(delta: float) -> void:
 	repath -= delta
-	if repath <= 0:
-		path = FLOOR.navigation_path(get_world_3d().navigation_map, position, destination)
+	passing_time = passing_time + delta if passing_door() else 0.0
+	if passing_time > PASSING_MOST: crossings = []
+	# Half way through a doorway it finishes going through before it looks for
+	# a new way: a route found from inside the frame lined it up again from
+	# wherever it stood, back towards the leaf.
+	if repath <= 0 and not passing_door():
+		var map: RID = get_world_3d().navigation_map
+		var raw := FLOOR.navigation_path(map, position, destination)
+		var threaded: Dictionary = THREAD.thread(raw, level.hotel.doors, map)
+		path = threaded.path
+		crossings = threaded.crossings
 		path_index = 0
 		repath = 0.45
 		# Nowhere it can walk to (the way is another wing's, or behind a
 		# locked door): it used to walk to the nearest wall and stand there
 		# until the mode ran out. It gives up where it is instead.
-		if not path.is_empty() and path[path.size() - 1].distance_to(destination) > UNREACHABLE:
-			if mode == Mode.INVESTIGATE: set_mode(Mode.SEARCH)
-			elif mode == Mode.PATROL:
-				patrol_room = nearest_room()
-				choose_patrol()
-	while path_index < path.size() and Vector2(path[path_index].x - position.x, path[path_index].z - position.z).length() < 0.06: path_index += 1
+		if not raw.is_empty() and raw[raw.size() - 1].distance_to(destination) > UNREACHABLE: give_up_route()
+	advance_path()
 	var direction := Vector3.ZERO
 	if path_index < path.size():
 		direction = path[path_index] - position
 		direction.y = 0
 		direction = direction.normalized()
-	# Stepping round whatever it was pressed against (see unstick): for as
-	# long as the step lasts, that is where it is going.
+	# Stepping round whatever it was pressed against (see watch_progress): for
+	# as long as the step lasts, that is where it is going.
 	if dodge_left > 0.0:
 		dodge_left -= delta
 		if direction.length() > 0.1 or dodge_left > 0.0: direction = dodge
@@ -929,15 +948,20 @@ func move_on_path(delta: float) -> void:
 		set_mode(Mode.PATROL)
 		choose_patrol()
 		direction = Vector3.ZERO
-	# Hunting, it slams doors open; otherwise it eases them and waits.
+	# The door its route goes through, never one it merely passes: in a
+	# corridor every door along it was near enough to stop for. Hunting, it
+	# slams it open; otherwise it eases it and waits.
 	var hunting := mode == Mode.CHASE
 	var at_door := false
-	for door in level.hotel.doors:
-		# A door with a lock on it is a wall: waiting for one it cannot open
-		# left it standing there for the rest of the floor.
-		if door.locked: continue
-		if door.doorway.distance_to(position) < (2.4 if hunting else 1.8) and (not door.opened or door.moving):
-			if not door.moving: door.toggle(not hunting, false, hunting)
+	var ahead = door_ahead()
+	if ahead != null and Vector2(ahead.doorway.x - position.x, ahead.doorway.z - position.z).length() < (2.4 if hunting else 1.8):
+		if ahead.locked:
+			# A lock on its way: the mesh does not know doors and goes through,
+			# but there is no way on here. A chase stands and loses the scent.
+			if not hunting: give_up_route()
+			direction = Vector3.ZERO
+		else:
+			if not ahead.moving: ahead.toggle(not hunting, false, hunting)
 			direction = Vector3.ZERO
 			at_door = true
 	# Waiting at a door it stops there, instead of coasting on through the
@@ -955,40 +979,248 @@ func move_on_path(delta: float) -> void:
 	velocity.y = -2 if is_on_floor() else velocity.y - 20 * delta
 	if direction.length() > 0.1: rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1, delta * (8.0 if mode == Mode.CHASE else 4.5)))
 	move_and_slide()
-	unstick(delta, direction)
+	watch_progress(delta, direction, 0.0 if at_door else wanted)
 
-## Pressed into a corner the path skims (the navigation leaves no room to
-## spare round a partition's end), it went on walking into it for as long as
-## the mode lasted. Going nowhere while meaning to move for a moment, it steps
-## sideways and takes the next point of its path instead.
+## On to the next point of the route once this one is reached, or walked past.
+func advance_path() -> void:
+	while path_index < path.size():
+		var point: Vector3 = path[path_index]
+		var gap := Vector2(point.x - position.x, point.z - position.z)
+		if gap.length() < REACHED:
+			path_index += 1
+			continue
+		# Past it: further on than the point, along the stretch leading to it.
+		if path_index > 0 and gap.length() < 1.0:
+			var stretch: Vector3 = point - path[path_index - 1]
+			if Vector2(stretch.x, stretch.z).dot(-gap) > 0.0:
+				path_index += 1
+				continue
+		break
+
+## Between lining up with a doorway and coming out past its leaf.
+func passing_door() -> bool:
+	for crossing in crossings:
+		var leave := int(crossing.exit)
+		if leave >= 0 and path_index > int(crossing.enter) and path_index <= leave: return true
+	return false
+
+## The first door of its route still to go through that is not simply open:
+## shut, locked, or swinging. Null while the way is clear.
+func door_ahead():
+	for crossing in crossings:
+		var leave := int(crossing.exit)
+		if leave < 0 or leave < path_index: continue
+		var door = crossing.door
+		if not is_instance_valid(door) or (door.opened and not door.moving): continue
+		return door
+	return null
+
+## No way on from here: behind a locked door, or so jammed that the steps
+## below ran out. What it does instead depends on what it was at; a chase is
+## never dropped, it only looks for its way again.
+func give_up_route() -> void:
+	crossings = []
+	repath = 0.0
+	match mode:
+		Mode.INVESTIGATE: set_mode(Mode.SEARCH)
+		Mode.PATROL:
+			patrol_room = nearest_room()
+			choose_patrol()
+		Mode.SEARCH:
+			var angle := rng.randf() * TAU
+			destination = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
+
 ## How far short of where it was going a route may end and still count as
 ## going there: past this there is no way, and it stops trying.
 const UNREACHABLE := 2.5
-const STUCK_AFTER := 0.6
-## How long a step round something lasts.
+## Stuck: meaning to move and not getting anywhere. It used to step aside and
+## take the same route again, straight back into whatever had stopped it,
+## round and round for as long as the mode lasted -- the creature pressed into
+## an open leaf that every playtest found. Now each time it is still stuck it
+## goes one step further, and every step is written down (stuck_counts and the
+## observer's log):
+##   1  a step to whichever side has room
+##   2  back off, and find the way again from there
+##   3  open a shut door at hand; with none, a detour to open floor near by
+##   4  another destination (a chase is kept: it only looks for the way again)
+##   5  the last resort, and only where nobody is looking: a hop of up to two
+##      metres along its own route
+## Seconds without moving STUCK_GAIN before each next step.
+const STUCK_STEPS := [0.6, 0.9, 1.5, 2.0, 3.0]
+const STUCK_GAIN := 0.3
+## Rocking back and forth near the same spot is stuck too: this long within
+## STUCK_FREE of where it got stuck is another step. Further than that, it is
+## over.
+const STUCK_LINGER := 5.0
+const STUCK_FREE := 2.5
+## How long a step aside lasts, and backing off.
 const DODGE_TIME := 0.5
+const BACK_TIME := 0.6
+## The longest hop, and how near a shut door it may not land.
+const HOP := 2.0
 var dodge := Vector3.ZERO
 var dodge_left := 0.0
 var stuck_clock := 0.0
-## Which way it stepped last time, so a second attempt tries the other side
-## instead of rocking against the same edge.
+var stuck_linger := 0.0
+var stuck_level := 0
+var stuck_anchor := Vector3.ZERO
+var stuck_origin := Vector3.INF
+## Which way it stepped last time, so when both sides look alike a second
+## attempt tries the other one instead of rocking against the same edge.
 var stuck_side := 1.0
-func unstick(delta: float, direction: Vector3) -> void:
-	var moving: float = Vector2(get_real_velocity().x, get_real_velocity().z).length()
-	# Meaning to move is enough: turning towards what is stopping it, its
-	# speed is cut to a third and never reached the old threshold, which is
-	# how it stood in an open doorway pressed against the leaf.
-	if direction.length() < 0.1 or speed <= 0.01 or moving > 0.25:
+## How many times each step (1 to 5) was reached this floor.
+var stuck_counts := [0, 0, 0, 0, 0, 0]
+signal stuck_escalated(step: int, where: Vector3)
+
+func watch_progress(delta: float, direction: Vector3, wanted: float) -> void:
+	if stuck_origin != Vector3.INF and position.distance_to(stuck_origin) > STUCK_FREE:
+		stuck_level = 0
+		stuck_origin = Vector3.INF
+		stuck_linger = 0.0
+	# Standing to listen, waiting at a door, or already stepping round: not
+	# stuck, and nothing counts.
+	if direction.length() < 0.1 or wanted < 0.05 or dodge_left > 0.0:
 		stuck_clock = 0.0
+		stuck_anchor = position
 		return
-	stuck_clock += delta
-	if stuck_clock < STUCK_AFTER: return
+	# A long frame is not a long time stuck: one hitch (or a test stepping it
+	# seven seconds at once) counted whole took it straight to backing off.
+	var step := minf(delta, 0.1)
+	if position.distance_to(stuck_anchor) >= STUCK_GAIN:
+		stuck_anchor = position
+		stuck_clock = 0.0
+	else: stuck_clock += step
+	if stuck_origin != Vector3.INF: stuck_linger += step
+	if stuck_clock >= float(STUCK_STEPS[mini(stuck_level, STUCK_STEPS.size() - 1)]) or stuck_linger >= STUCK_LINGER: escalate(direction)
+
+func escalate(direction: Vector3) -> void:
+	stuck_level = mini(stuck_level + 1, 5)
+	stuck_counts[stuck_level] += 1
+	if stuck_origin == Vector3.INF: stuck_origin = position
 	stuck_clock = 0.0
-	stuck_side = -stuck_side
-	# Sideways and a little on, which is what clears a door frame or a corner,
-	# and held for half a second: a single frame of it moved four centimetres
-	# and it pressed straight back into the same edge.
-	dodge = (Vector3(-direction.z, 0, direction.x) * stuck_side + direction * 0.45).normalized()
-	dodge_left = DODGE_TIME
-	path_index = mini(path_index + 1, path.size())
-	repath = DODGE_TIME
+	stuck_linger = 0.0
+	stuck_anchor = position
+	stuck_escalated.emit(stuck_level, global_position)
+	var view = level.get("observer_view") if level != null else null
+	if view != null and is_instance_valid(view): view.note("atasco · paso %d · %0.0f, %0.0f · %s" % [stuck_level, position.x, position.z, Mode.keys()[mode]])
+	match stuck_level:
+		1:
+			dodge = (free_side(direction) + direction * 0.45).normalized()
+			dodge_left = DODGE_TIME
+		2:
+			dodge = -direction
+			dodge_left = BACK_TIME
+			crossings = []
+			repath = BACK_TIME
+		3:
+			var door = shut_door_at_hand()
+			if door != null: door.toggle(mode != Mode.CHASE, false, mode == Mode.CHASE)
+			else: detour(direction)
+		4:
+			if mode == Mode.CHASE:
+				crossings = []
+				repath = 0.0
+			else: give_up_route()
+		_:
+			hop()
+			stuck_level = 0
+			stuck_origin = Vector3.INF
+
+## The side with more room before a wall or a shut leaf; when there is no
+## telling them apart, the other side from last time.
+func free_side(direction: Vector3) -> Vector3:
+	var right := Vector3(-direction.z, 0, direction.x)
+	var space := get_world_3d().direct_space_state
+	var from := global_position + Vector3.UP
+	var room := {}
+	for side in [1.0, -1.0]:
+		var query := PhysicsRayQueryParameters3D.create(from, from + right * side * 1.5, 1 | 8)
+		query.exclude = [get_rid()]
+		var hit := space.intersect_ray(query)
+		room[side] = 1.5 if hit.is_empty() else from.distance_to(hit.position)
+	if absf(float(room[1.0]) - float(room[-1.0])) < 0.2: stuck_side = -stuck_side
+	else: stuck_side = 1.0 if float(room[1.0]) > float(room[-1.0]) else -1.0
+	return right * stuck_side
+
+func shut_door_at_hand():
+	for door in level.hotel.doors:
+		if door.locked or door.opened or door.moving: continue
+		if Vector2(door.doorway.x - position.x, door.doorway.z - position.z).length() < 1.6: return door
+	return null
+
+## Open floor a couple of metres off, not the way it was pushing: it walks
+## there, and looks for its way again from a new place.
+func detour(direction: Vector3) -> bool:
+	var map: RID = get_world_3d().navigation_map
+	var space := get_world_3d().direct_space_state
+	for attempt in 10:
+		var angle := rng.randf() * TAU
+		var way := Vector3(cos(angle), 0, sin(angle))
+		if way.dot(direction) > 0.3: continue
+		var point: Vector3 = NavigationServer3D.map_get_closest_point(map, position + way * rng.randf_range(2.0, 3.0))
+		if point.distance_to(position) < 1.2 or absf(point.y - position.y) > 1.0: continue
+		var query := PhysicsRayQueryParameters3D.create(position + Vector3.UP, point + Vector3.UP, 1 | 8)
+		query.exclude = [get_rid()]
+		if not space.intersect_ray(query).is_empty(): continue
+		path = PackedVector3Array([position, point])
+		path_index = 1
+		crossings = []
+		repath = 1.5
+		return true
+	return false
+
+## The last resort: up to HOP metres along its own route, onto open floor,
+## never through a shut door, into the refuge or onto another planta, and only
+## where no survivor can see where it was or where it lands. Only the machine
+## that runs it does this; the others see it move the way they see any move.
+func hop() -> bool:
+	if control != "ai" or path_index >= path.size(): return false
+	var line := PackedVector3Array([position])
+	var left := HOP
+	for i in range(path_index, path.size()):
+		var from: Vector3 = line[line.size() - 1]
+		var step: float = from.distance_to(path[i])
+		if step >= left:
+			line.append(from + (path[i] - from).normalized() * left)
+			break
+		left -= step
+		line.append(path[i])
+	var target: Vector3 = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, line[line.size() - 1])
+	if target.distance_to(position) < 0.5 or absf(target.y - position.y) > 1.0 or level.point_in_refuge(target): return false
+	for door in level.hotel.doors:
+		if door.opened and not door.moving: continue
+		for i in range(1, line.size()):
+			if THREAD.crossing(door, line[i - 1], line[i]) >= 0.0: return false
+	if not body_fits(target) or watched(position) or watched(target): return false
+	global_position = target + Vector3(0, 0.04, 0)
+	velocity = Vector3.ZERO
+	speed = 0.0
+	crossings = []
+	repath = 0.0
+	return true
+
+func body_fits(point: Vector3) -> bool:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.4
+	capsule.height = 2.4
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = capsule
+	query.transform = Transform3D(Basis.IDENTITY, point + Vector3(0, 1.26, 0))
+	query.collision_mask = 1 | 8
+	query.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+## Whether any survivor, from where its eyes are and the way it is looking,
+## has this spot in view.
+func watched(point: Vector3) -> bool:
+	for body in level.survivors():
+		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera): continue
+		var eye: Vector3 = body.camera.global_position
+		var towards: Vector3 = point + Vector3(0, 1.2, 0) - eye
+		var gap := towards.length()
+		if gap > SIGHT_RANGE or gap < 0.01: continue
+		if -body.camera.global_basis.z.dot(towards / gap) < 0.35: continue
+		var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1 | 8 | 64)
+		query.exclude = [body.get_rid(), get_rid()]
+		if get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return true
+	return false

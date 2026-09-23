@@ -497,7 +497,7 @@ func can_stand() -> bool:
 	query.shape = capsule
 	# Query above the contact margin: touching the floor must not forbid standing.
 	query.transform = Transform3D(Basis.IDENTITY, global_position + Vector3(0, 0.95, 0))
-	query.collision_mask = 1 | 8
+	query.collision_mask = 1 | 8 | 128
 	return get_world_3d().direct_space_state.intersect_shape(query).is_empty()
 
 ## Hold forward to ease the doors open, release to let them fall shut. Looking

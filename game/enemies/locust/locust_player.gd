@@ -80,7 +80,9 @@ func setup(owner) -> void:
 	creature.add_child(pivot)
 	arm = SpringArm3D.new()
 	arm.spring_length = ARM
-	arm.collision_mask = 1 | 8
+	# Open leaves (128) too: the creature walks past them, its camera does not
+	# go into the wood.
+	arm.collision_mask = 1 | 8 | 128
 	arm.margin = 0.2
 	arm.position = Vector3(SHOULDER, 0, 0)
 	var sphere := SphereShape3D.new()
@@ -236,7 +238,7 @@ func update_channels() -> void:
 func place_shoulder(delta: float) -> void:
 	var from: Vector3 = pivot.global_position
 	var side: Vector3 = pivot.global_basis.x * SHOULDER
-	var query := PhysicsRayQueryParameters3D.create(from, from + side, 1 | 8)
+	var query := PhysicsRayQueryParameters3D.create(from, from + side, 1 | 8 | 128)
 	query.exclude = [creature.get_rid()]
 	var hit: Dictionary = creature.get_world_3d().direct_space_state.intersect_ray(query)
 	var room: float = SHOULDER if hit.is_empty() else maxf(0.0, from.distance_to(hit.position) - 0.3)

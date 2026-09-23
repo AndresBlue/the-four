@@ -7,10 +7,12 @@ radius = 0.4
 height = 2.4
 [node name="Locust" type="CharacterBody3D"]
 collision_layer = 32
-; Walls and furniture (1), and nothing else. Door leaves (8) are not in the
-; mask on purpose: it opens every door it walks into (hotel_locust.move_on_path)
-; and a leaf it cannot push through was jamming it against the frame -- a
-; creature stuck at an open door never reaches the lift of the next wing.
+; Walls and furniture (1) and shut door leaves (8): a shut door stops it like
+; anybody, and it opens the ones on its route (hotel_locust.move_on_path). An
+; open leaf at rest is not in its mask (hotel_door.OPEN_SOLID, layers 64 and
+; 128): standing beside the doorway where routes round the jamb go, it kept
+; the creature pressed into the wood. Its route goes round the leaf instead
+; (door_threading.gd).
 collision_mask = 9
 script = ExtResource("1")
 [node name="BodyShape" type="CollisionShape3D" parent="."]

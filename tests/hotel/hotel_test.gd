@@ -184,7 +184,7 @@ func run() -> void:
 	for frame in 20: await physics_frame
 	check("Apertura lenta respeta su duración", door.moving)
 	for frame in 90: await physics_frame
-	check("Puerta abierta recupera colisión sin empujar", door.opened and not door.moving and door.collision_layer == 8)
+	check("Puerta abierta recupera colisión sin empujar", door.opened and not door.moving and door.collision_layer == door.OPEN_SOLID)
 	scene.player.rotation.y = -PI / 2 if scene.manifest.adjacency[0].has(1) else PI
 	check("Quince tipos de prop como mínimo", preload("res://game/world/generation/floor_definition.gd").RECIPES.reduce(func(acc, recipe):
 		for prop in recipe: acc[prop] = true

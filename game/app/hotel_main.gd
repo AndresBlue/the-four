@@ -1995,7 +1995,7 @@ func watch_over(body: Node3D) -> void:
 		add_child(watch_rig)
 		watch_arm = SpringArm3D.new()
 		watch_arm.spring_length = 2.6
-		watch_arm.collision_mask = 1 | 8
+		watch_arm.collision_mask = 1 | 8 | 128
 		watch_arm.margin = 0.25
 		var ball := SphereShape3D.new()
 		ball.radius = 0.25

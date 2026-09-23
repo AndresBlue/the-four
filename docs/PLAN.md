@@ -81,18 +81,10 @@ El audio y el chillido de esa partida ya están (descritos en
 [AUDIO.md](AUDIO.md) y en el diseño); lo que queda de ellos es escucharlos,
 en el apartado 1.
 
-### La criatura y las puertas
-
-- [ ] **Una hoja abierta ya no la para.** Es sólida solo para los
-  supervivientes (capa 128 nueva); cerrada la sigue frenando como ahora. Y
-  cruza cada vano de su ruta enhebrado, para no atravesar la hoja a la vista.
-- [ ] **Solo se para ante puertas cerradas que están en su ruta**, no ante
-  cualquiera que tenga cerca.
-- [ ] **Protocolo de atascos** por niveles: paso al lado libre, retroceso con
-  desvío, atravesar esa hoja, otro destino y, como último recurso y sin que
-  nadie la vea, un salto de dos metros por su ruta.
-- [ ] **Sonda de atascos** en el repositorio y una versión corta en
-  `verify.ps1`.
+La criatura y las puertas también (descrito en la guía de desarrollo): la
+hoja abierta ya no la para y su ruta la rodea, solo se detiene ante puertas de
+su ruta, y tiene un protocolo de atascos medido con una sonda que corre en
+`verify.ps1`. Queda verlo jugando (apartado 1).
 
 ### Lo que ve el cazador
 
@@ -228,8 +220,11 @@ herramientas para mirarlo están en la guía de desarrollo.
   día), y los armarios de quien muere o se desconecta dentro.
 - [ ] **La segunda revisión de fallos (22 de septiembre)** cambió cosas que se
   notan jugando y conviene mirar:
-  - La criatura ya no atraviesa puertas cerradas: ¿se atasca ahora en alguna?
-    Y se desatasca sola de las esquinas en las que antes se quedaba pegada.
+  - La criatura ya no atraviesa puertas cerradas. Y desde el 23 de
+    septiembre las abiertas no la frenan: su ruta rodea la hoja. Mirar que no
+    se la vea atravesar ninguna, que no dé rodeos raros al cruzar un vano y
+    que no se quede quieta en ningún sitio (80 trayectos medidos sin una sola
+    parada).
   - En cooperativo cada uno ve solo los números que encontró: ¿se entiende
     que hay que decírselos?
   - Una puerta cerrada ahora amortigua el sonido de verdad (8 dB y sin
@@ -309,9 +304,6 @@ no rompen nada.
   aunque ya se haya mandado a todos: los invitados la oyen gruñir más a menudo.
 - [ ] El bucle de presencia de la criatura sigue a su último nivel durante
   los 1,2 s del cambio de etapa.
-- [ ] La navegación se hornea con el radio exacto de la criatura (0,4 m) y
-  roza las esquinas; ahora se desatasca sola (`hotel_locust.unstick()`), pero
-  un radio algo mayor lo evitaría, si los vanos lo permiten.
 - [ ] La lectura acústica dentro del observador (`V`) sale mucho más pobre que
   la del cazador: los granos se escriben (8000 cerca de la cámara, medidos)
   pero apenas se dibujan. Mientras, la vista de verdad es

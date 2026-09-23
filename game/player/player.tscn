@@ -10,7 +10,9 @@ height = 1.8
 [node name="Player" type="CharacterBody3D"]
 process_mode = 1
 collision_layer = 4
-collision_mask = 41
+; World (1), shut door leaves (8), the creature (32) and open leaves (128):
+; an open leaf at rest is solid for survivors only (hotel_door.OPEN_SOLID).
+collision_mask = 169
 script = ExtResource("1")
 
 [node name="BodyShape" type="CollisionShape3D" parent="."]

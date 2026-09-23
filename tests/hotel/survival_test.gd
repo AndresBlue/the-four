@@ -13,6 +13,13 @@ func frames(count: int) -> void:
 func face(enemy, point: Vector3) -> void:
 	var d: Vector3 = point - enemy.position
 	enemy.rotation.y = atan2(-d.x, -d.z)
+## Distance on the floor from a point to a door's leaf (hotel_door.leaf_line).
+func door_gap(point: Vector3, leaf: Array) -> float:
+	var p := Vector2(point.x, point.z)
+	var a := Vector2(leaf[0].x, leaf[0].z)
+	var span := Vector2(leaf[1].x, leaf[1].z) - a
+	var t := clampf((p - a).dot(span) / span.length_squared(), 0.0, 1.0)
+	return p.distance_to(a + span * t)
 func obstacle(at: Vector3) -> StaticBody3D:
 	var wall := StaticBody3D.new()
 	wall.position = at
@@ -155,21 +162,62 @@ func run() -> void:
 			break
 	enemy.set_physics_process(false)
 	check("Criatura abre lentamente puerta y cruza sin atravesarla", door.opened and crossed)
-	# Wedged against the leaf of a door already open, which is what the shut
-	# doors that stop it made possible: it steps round it instead of standing
-	# there pressed into the wood for the rest of the mode.
+	if not crossed: print("DOOR_DEBUG ",door.doorway," enemy=",enemy.position," target=",enemy.destination," mode=",enemy.mode," moving=",door.moving," opened=",door.opened," path=",enemy.path)
+	# An open leaf is solid for survivors and not for it. Standing beside the
+	# doorway, where every route round the jamb goes, it kept the creature
+	# pressed into the wood: the stuck creature of every playtest.
 	door.open_immediately()
 	await frames(4)
-	enemy.position = door.doorway - across * 0.4 + Basis(Vector3.UP, door.closed_rotation) * Vector3(0.55, 0.04, 0)
+	check("Una hoja abierta frena a los supervivientes y no a la criatura", door.collision_layer == door.OPEN_SOLID and (player.collision_mask & door.collision_layer) != 0 and (enemy.collision_mask & door.collision_layer) == 0)
+	# And its route goes round the leaf, not through it: in through the doorway
+	# to the corner behind the leaf, and from that corner back out across. The
+	# two ways it used to end up against the wood.
+	var map: RID = level.get_world_3d().navigation_map
+	var leaf: Array = door.leaf_line(true)
+	var leaf_side: float = signf((leaf[1] - door.doorway).dot(across))
+	var hinge_side: float = signf((leaf[0] - door.doorway).dot(door.along()))
+	var pocket: Vector3 = NavigationServer3D.map_get_closest_point(map, door.doorway + across * (leaf_side * 0.75) + door.along() * (hinge_side * 1.35))
+	var beyond: Vector3 = NavigationServer3D.map_get_closest_point(map, door.doorway - across * (leaf_side * 3.0))
+	for trip in [[beyond, pocket, "Entra por el vano y rodea la hoja hasta el rincón de detrás"], [pocket, beyond, "Sale de detrás de la hoja y cruza sin atravesarla"]]:
+		enemy.position = trip[0] + Vector3(0, 0.04, 0)
+		enemy.velocity = Vector3.ZERO
+		enemy.speed = 0.0
+		enemy.set_mode(enemy.Mode.INVESTIGATE)
+		enemy.destination = trip[1]
+		enemy.stuck_counts = [0, 0, 0, 0, 0, 0]
+		enemy.stuck_level = 0
+		enemy.stuck_origin = Vector3.INF
+		var closest := INF
+		var arrived := false
+		enemy.set_physics_process(true)
+		for i in 600:
+			await physics_frame
+			closest = minf(closest, door_gap(enemy.global_position, leaf))
+			if Vector2(enemy.global_position.x - trip[1].x, enemy.global_position.z - trip[1].z).length() < 0.9:
+				arrived = true
+				break
+		enemy.set_physics_process(false)
+		var jammed: int = enemy.stuck_counts[3] + enemy.stuck_counts[4] + enemy.stuck_counts[5]
+		check(trip[2], arrived and closest > 0.25 and jammed == 0)
+		if not arrived or closest <= 0.25 or jammed > 0: print("LEAF_DEBUG ", trip[2], " at=", enemy.global_position, " to=", trip[1], " closest=", closest, " counts=", enemy.stuck_counts, " path=", enemy.path)
+	# A shut door with a lock on it still stops it: it gives that way up instead
+	# of pressing into the wood for the rest of the mode.
+	door.set_state(false)
+	door.locked = true
+	await frames(3)
+	enemy.position = door.doorway - across * 2.6 + Vector3(0, 0.04, 0)
+	enemy.velocity = Vector3.ZERO
 	enemy.set_mode(enemy.Mode.INVESTIGATE)
-	enemy.destination = door.doorway + across * 4.0
-	enemy.repath = 0.0
-	var wedged: Vector3 = enemy.position
+	enemy.destination = door.doorway + across * 3.0
+	var start_side := signf((enemy.position - door.doorway).dot(across))
+	var went_through := false
 	enemy.set_physics_process(true)
-	for i in 240: await physics_frame
+	for i in 240:
+		await physics_frame
+		if signf((enemy.position - door.doorway).dot(across)) != start_side: went_through = true
 	enemy.set_physics_process(false)
-	check("Y si se encaja en una puerta abierta, se despega sola", enemy.position.distance_to(wedged) > 1.0)
-	if not crossed: print("DOOR_DEBUG ",door.doorway," enemy=",enemy.position," target=",enemy.destination," mode=",enemy.mode," moving=",door.moving," opened=",door.opened," path=",enemy.path)
+	check("Una puerta cerrada con llave la sigue parando, y busca otra cosa", not went_through and enemy.mode != enemy.Mode.INVESTIGATE)
+	door.locked = false
 	player.position = Vector3(0, 0.04, 0)
 	await frames(2)
 	var hide = get_nodes_in_group("hotel_hides")[0]
