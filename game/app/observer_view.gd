@@ -647,5 +647,7 @@ func wing_of(point: Vector3) -> int:
 func estado(state: int) -> String:
 	return ["menú", "cargando", "jugando", "en pausa", "cambio de sector", "ganado", "perdido", "escena"][clampi(state, 0, 7)]
 
+## In the order of hotel_locust.Mode. It was once in another, and the panel
+## said "busca" of a creature running somebody down.
 func modo(mode: int) -> String:
-	return ["patrulla", "investiga", "busca", "alerta", "persigue", "prepara", "se repone", "ejecuta", "armario"][clampi(mode, 0, 8)]
+	return ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta"][clampi(mode, 0, 8)]

@@ -6,6 +6,7 @@ extends SceneTree
 ## none of its floors is anybody's game.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const VIEW := preload("res://game/app/observer_view.gd")
+const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const FIRST := 4242
 var level
 var view
@@ -94,6 +95,8 @@ func run() -> void:
 	await wait_for(func(): return false, 10)
 	check("Sin el plano y subiendo, sigue en la planta elegida", not view.map_view and view.planta == 1 and level.hotel.eye_planta == 1)
 	check("Y se mira sin la lente de la cámara", not level.lens_layer.visible)
+	var named: Array = [LOCUST.Mode.PATROL, LOCUST.Mode.CHASE, LOCUST.Mode.SEARCH, LOCUST.Mode.ALERT, LOCUST.Mode.WARDROBE, LOCUST.Mode.EXECUTE].map(func(mode: int): return view.modo(mode))
+	check("El panel nombra cada modo de la criatura por el suyo", named == ["patrulla", "persigue", "busca", "alerta", "armario", "ejecuta"], str(named))
 	var file := FileAccess.open("res://evidence/observer_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	file.close()
