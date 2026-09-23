@@ -244,13 +244,27 @@ func car_at(point: Vector3) -> int:
 func press(index: int) -> void:
 	if car_ready(index): called[index] = true
 
+## The doors of a car, heard where the car is: once however many ride in it.
+## apply_ride runs once per rider, and a team of four used to shut the same
+## doors four times at the same instant. Rounded place -> when last heard.
+var doors_heard := {}
+const DOORS_ONCE := 0.6
+func car_doors(point: Vector3, gain: float) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	var key := "%d,%d,%d" % [roundi(point.x * 2.0), roundi(point.y * 2.0), roundi(point.z * 2.0)]
+	if now - float(doors_heard.get(key, -100.0)) < DOORS_ONCE: return
+	doors_heard[key] = now
+	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), gain)
+
 ## The lift has moved somebody: on their own machine the body goes with it, on
 ## the others the puppet is put where it is told. Both doors are heard, the
-## one that shuts here and the one that opens there.
+## one that shuts here -- at the car being left, which used to be silent -- and
+## the one that opens there.
 func apply_ride(seat: int, point: Vector3) -> void:
 	var car := car_arriving_at(point)
 	if car >= 0: lift_away[car] = LIFT_RETURN
-	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), -6.0)
+	if car >= 0 and car < level.hotel.lifts.size(): car_doors(level.hotel.lifts[car], -6.0)
+	car_doors(level.hotel.arrivals[car] if car >= 0 else point, -6.0)
 	if seat == level.player.slot:
 		# Its own ride: the doors shut, the picture goes, and it comes out
 		# somewhere else. Nothing is said about how far it went.
@@ -334,7 +348,9 @@ func begin_leaving() -> void:
 	if level.player.hidden: level.player.force_leave_hide()
 	level.player.velocity = Vector3.ZERO
 	level.player.held = true
-	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, level.player.global_position + Vector3(0, 1.2, 0), -6.0)
+	# Its doors, where the car is: heard by whoever rode it and whoever stands
+	# near. It used to sound at every machine's own player, wherever that was.
+	if not level.hotel.lifts.is_empty(): car_doors(level.hotel.lifts[level.hotel.lifts.size() - 1], -6.0)
 
 ## Counted on every machine; the one that runs the floor ends it.
 func ride_out(delta: float) -> void:

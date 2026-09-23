@@ -71,6 +71,65 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ---
 
+## 0 · Lo que salió de la partida del 23 de septiembre
+
+Va antes que todo lo demás: rompe partidas (la criatura atascada), no se
+entiende (el cazador no ve adónde ir) o hace que un piso se resuelva siempre
+igual. En este orden, y cada bloque se puede jugar en cuanto está.
+
+El audio y el chillido de esa partida ya están (descritos en
+[AUDIO.md](AUDIO.md) y en el diseño); lo que queda de ellos es escucharlos,
+en el apartado 1.
+
+### La criatura y las puertas
+
+- [ ] **Una hoja abierta ya no la para.** Es sólida solo para los
+  supervivientes (capa 128 nueva); cerrada la sigue frenando como ahora. Y
+  cruza cada vano de su ruta enhebrado, para no atravesar la hoja a la vista.
+- [ ] **Solo se para ante puertas cerradas que están en su ruta**, no ante
+  cualquiera que tenga cerca.
+- [ ] **Protocolo de atascos** por niveles: paso al lado libre, retroceso con
+  desvío, atravesar esa hoja, otro destino y, como último recurso y sin que
+  nadie la vea, un salto de dos metros por su ruta.
+- [ ] **Sonda de atascos** en el repositorio y una versión corta en
+  `verify.ps1`.
+
+### Lo que ve el cazador
+
+- [ ] **Ruta azul hasta el ascensor** mientras va atrasada: una línea de
+  carreras hecha de motas que fluye hacia el coche, recalculada en cada clic
+  desde donde esté. Sustituye a los ruidos sueltos de hoy.
+- [ ] **Teles encendidas en amarillo**, desde todo el piso.
+- [ ] **Q: rastro amarillo a la tele encendida más cercana**, 15 s, cada 20 s
+  desde que se usa.
+- [ ] **Enfriamientos en pantalla**, y estocada y chillido en los gatillos del
+  mando (hoy solo van con ratón).
+
+### Un piso de tres plantas (generador v5)
+
+Un piso pasa a ser tres plantas físicas apiladas, una por etapa, que se bajan
+en el ascensor. Cada una del tamaño del mapa entero de hoy, con pasillos de
+verdad y entre 81 y 99 habitaciones; que no se parezcan entre sí y se puedan
+resolver siempre. Hoy el mapa sale casi siempre igual: la salida en la misma
+esquina, el refugio en el fondo más hondo del ala, y muchas cosas decididas por
+la posición y no por la semilla.
+
+- [ ] **Costuras sin cambiar el mapa:** plantas en `floor_definition`,
+  navegación por planta, y puertas, armarios y salas oscuras explícitas en el
+  manifiesto.
+- [ ] **Tres plantas apiladas** con el generador de hoy, y todo el juego
+  entendiendo plantas: visibilidad, navegación, audio, la criatura, la lectura
+  del cazador, el observador, la red y los tiempos del Archivo.
+- [ ] **El generador de pasillos:** rejilla con carriles, ocho arquetipos de
+  planta, conteo exacto de habitaciones, refugio sin patrón, objetivos por
+  zonas.
+- [ ] **Variedad por semilla:** salas oscuras, estado, puertas (abiertas,
+  bisagra, giro y sitio en la pared), armarios y muebles.
+- [ ] **Métricas de variedad y de resolubilidad** con umbrales, rendimiento
+  medido con tres plantas y documentos al día.
+
+---
+
 ## 1 · Lo que solo se decide jugando
 
 No es trabajo de código: es tuyo, y sin ello no se cierra el Early Access. Las
@@ -118,6 +177,13 @@ herramientas para mirarlo están en la guía de desarrollo.
   prueba.
 - [ ] **Escucha crítica del reparto de buses y del aura**, con los eventos
   ambientales de los salones.
+- [ ] **Las teles y el teclado nuevos (23 de septiembre):** si los 14 s de
+  estática al encender una tele (−6 dB desde la pantalla) cansan o tapan a la
+  criatura, si el siseo que queda (−27 dB, 11 m) se oye como una tele y no
+  como una avería, y si los pitidos del teclado dicen «no» y «sí» sin leer la
+  pantalla.
+- [ ] **El viaje en ascensor**, que suena a la nieve que se ve mientras llega
+  su sonido propio: si se entiende como el viaje o molesta.
 
 ### Lo que hay que mirar
 
@@ -196,6 +262,8 @@ herramientas para mirarlo están en la guía de desarrollo.
   alucinaciones sueltas.
 - [ ] **La criatura:** balance de su alerta, de su agresividad y de la
   propagación del ruido, en partidas humanas.
+- [ ] **El chillido del cazador cada 10 s** (antes 3 s, y se encadenaba): si
+  sigue valiendo lo que cuesta o se queda corto para encontrar a nadie.
 - [ ] **Rendimiento en un PC modesto:** medir `tools/benchmarks/run_bench.ps1`
   en uno de los de las pruebas con amigos, en Forward+ y en Compatibilidad, y
   anotarlo en [PERFORMANCE.md](PERFORMANCE.md).

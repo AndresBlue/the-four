@@ -196,6 +196,13 @@ func warn() -> void:
 	if choices.is_empty() or signal_player.stream == null: return
 	var segment: Array = GRUNTS.SEGMENTS[choices[rng.randi_range(0, choices.size() - 1)]]
 	signal_player.pitch_scale = rng.randf_range(0.78, 0.9)
+	# Routed like its grunts and its feet: behind a wall the bark comes round
+	# through the doorway, or does not come at all. It used to go straight
+	# through walls, the only one of its sounds that did.
+	if level != null and level.world_audio.enabled:
+		var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
+		if route.audible: level.world_audio.apply_route(signal_player, route, 0.0, "Threat", true)
+		else: signal_player.volume_db = -80.0
 	signal_player.play(segment[0])
 	warn_left = segment[1] / signal_player.pitch_scale
 
@@ -292,10 +299,11 @@ func chase_voice(delta: float) -> void:
 	grunt_clock = rng.randf_range(GRUNT_WAIT.x, GRUNT_WAIT.y) if grunt() > 0.0 else GRUNT_RETRY
 
 ## The shriek of a player hunting: it cries for `hold` seconds and fades over
-## `fade`, the same curve as the red of its acoustic view. Shrieking again
-## while it lasts starts a fresh cry and stretches it, so a hunter who keeps
-## shrieking keeps sounding, one grunt after another. `tell` sends it to the
-## other machines, which replay it at their own place.
+## `fade`, the same curve as the red of its acoustic view, one grunt after
+## another. A second howl while one lasts would stretch it; the hunter's own
+## cooldown (locust_player.SHRIEK_COOLDOWN, longer than the cry) keeps that
+## from happening. `tell` sends it to the other machines, which replay it at
+## their own place.
 func howl(hold: float, fade: float, tell := true) -> void:
 	howl_fade = maxf(fade, 0.05)
 	howl_left = maxf(howl_left, hold + howl_fade)

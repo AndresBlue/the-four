@@ -39,6 +39,7 @@ const SANITY_BACK := 25.0
 const SANITY_SEEN := 28.0
 const HALLUCINATION_WAIT := Vector2(13.0, 42.0)
 const GRUNTS := preload("res://game/audio/grunt_segments.gd")
+const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const PHANTOM_CLIP := "res://assets/audio/sfx/chase/grunts.ogg"
 ## The local survivor's rest between frights. Everybody else's lives in minds.
 var sight_rest := 0.0
@@ -152,6 +153,10 @@ func hallucination_point(reach: float) -> Vector3:
 
 ## Its voice, from where it is not. Its own throat is elsewhere: this one has
 ## a level.player of its own so the real call is never cut short by a made-up one.
+## A call, never one of the short barks: those are the tell of a strike
+## (hotel_locust.warn), and the floor lies about where it is, not about that.
+## And heard the way a real one would be, round through a doorway: it used to
+## come straight through the walls.
 func false_call(point: Vector3) -> void:
 	if not is_instance_valid(phantom):
 		phantom = AudioStreamPlayer3D.new()
@@ -161,10 +166,15 @@ func false_call(point: Vector3) -> void:
 		phantom.unit_size = 7.0
 		phantom.max_distance = 40.0
 		add_child(phantom)
-	var segment: Array = GRUNTS.SEGMENTS[randi() % GRUNTS.SEGMENTS.size()]
-	phantom.global_position = point + Vector3(0, 1.6, 0)
+	var calls: Array = []
+	for segment in GRUNTS.SEGMENTS:
+		if float(segment[1]) >= LOCUST.AGGRESSIVE_GRUNT: calls.append(segment)
+	if calls.is_empty(): return
+	var segment: Array = calls[randi() % calls.size()]
+	var route: Dictionary = level.world_audio.route_source(point + Vector3(0, 1.6, 0))
+	if not route.audible: return
+	level.world_audio.apply_route(phantom, route, -4.0, "Threat")
 	phantom.pitch_scale = randf_range(0.8, 0.95)
-	phantom.volume_db = -4.0
 	phantom.play(segment[0])
 	phantom_left = float(segment[1]) / phantom.pitch_scale
 

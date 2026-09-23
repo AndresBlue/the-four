@@ -306,12 +306,15 @@ func apply() -> void:
 			AudioServer.set_bus_name(index, pair[0])
 		var volume: float = values[pair[1]]
 		AudioServer.set_bus_volume_db(index, slider_db(volume))
-		AudioServer.set_bus_mute(index, volume == 0.0)
+		AudioServer.set_bus_mute(index, volume == 0.0 or (mute_threat and pair[0] == "Threat"))
 	changed.emit()
 
 ## The observer keeps the game in a window whatever the saved setting says,
 ## without touching it: it is a tool, looked at beside something else.
 var force_window := false
+## And it keeps the creature's bus silent, also without touching the saved
+## slider: muting the bus by hand was undone by the next change of settings.
+var mute_threat := false
 
 ## Tests and capture tools size their own window and must not go fullscreen.
 static func manages_window() -> bool:

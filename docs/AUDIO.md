@@ -9,8 +9,8 @@ Se catalogaron 33 archivos aportados en `sfx/`. Se asignaron **30** a funciones 
 - **Cierre coherente:** el golpe de cierre espera a que termine el movimiento y la grabación arranca justo antes de su impacto, para que el pestillo coincida con la hoja. Una puerta ya no se niega a cerrar ni rebota abierta con alguien en el marco, así que el pestillo suena siempre al terminar el cierre, una sola vez. Abrir puertas durante la construcción del mapa no produce sonidos.
 - **Escondites:** cuatro entradas y cuatro salidas de armario, ligadas a las acciones que realmente se completan. Los armarios son ya los de doble puerta: solo la primera apertura de cada estancia cruje, y asomarse abriendo las hojas tiene su propio sonido.
 - **Ambiente:** `dark terror ambience.wav` sustituye la cama ambiental global por una copia de trabajo estéreo. La ventilación conserva el audio anterior como fuente localizada. La música anterior sigue disponible a un nivel más bajo.
-- **Identidad de Locust:** `terror ambience (dark presence).wav` es su presencia espacial, con origen en la criatura. Se oye dentro de 26 m, entra/sale gradualmente y no se activa durante la protección inicial ni dentro del refugio. Deja de sonar al terminar el desvanecimiento al entrar en refugio. Las paredes reducen su nivel y agudos. El aviso de ataque original se conserva y la presencia baja 16 dB durante su preparación.
-- **Mezcla:** puertas/escondites en Effects, ambiente en Ambience, música en Music y presencia/aviso de amenaza en Threat. Máximo ocho efectos de interacción simultáneos; la presencia tiene su propio reproductor. Pausa conserva el estado; muerte, menú y reintento limpian los efectos.
+- **Identidad de Locust:** `terror ambience (dark presence).wav` es su presencia espacial, con origen en la criatura. Se oye dentro de 24 m (`audible_distance` de `profiles/locust.tres`), entra/sale gradualmente y no se activa durante la protección inicial ni dentro del refugio. Deja de sonar al terminar el desvanecimiento al entrar en refugio. Las paredes reducen su nivel y agudos. El aviso de ataque original se conserva y la presencia baja 16 dB durante su preparación.
+- **Mezcla:** puertas/escondites en Effects, ambiente en Ambience, música en Music y presencia/aviso de amenaza en Threat. Máximo ocho efectos de interacción simultáneos; la presencia tiene su propio reproductor, y los sonidos largos también (ver «Sonidos largos»). Pausa conserva el estado; muerte, menú y reintento limpian los efectos.
 - **Subtítulos:** puertas y presencia tienen texto, sujeto a los ajustes. Las señales de presencia no se repiten continuamente y no reemplazan el aviso de ataque.
 
 La atenuación direccional usa AudioStreamPlayer3D; la oclusión por pared es una aproximación mediante rayo y reducción de nivel/agudos, no una simulación completa de acústica por habitaciones. Referencia técnica: [AudioStreamPlayer3D en Godot](https://docs.godotengine.org/en/stable/classes/class_audiostreamplayer3d.html).
@@ -18,7 +18,7 @@ La atenuación direccional usa AudioStreamPlayer3D; la oclusión por pared es un
 ## Preparados o reservados
 
 - `paper/paper.ogg`: suena al leer un documento (sonido local, no es un ruido para la IA). También está previsto para abrir la futura hoja de dibujo.
-- `heartbeat/1.ogg` y `2.ogg`: preparados para evaluar tensión/claustrofobia, sin reproducción automática por ahora.
+- `heartbeat/1.ogg` y `2.ogg`: son los latidos del aura (`dread_aura.gd`, ver «Aura de The Locust»).
 - Cuatro grabaciones `hard-*`: se usan como portazo cuando el jugador abre o cierra una puerta mientras corre. Ese giro es más rápido y su ruido jugable llega a 18 m (normal: 12 m; lento: 3 m).
 - `sub-riser-presence.wav`: reservado para una transición de presencia anunciada; no se suma al aviso corto de ataque para no ocultarlo.
 - `big-hall-far-prop-glass-noise.wav`: reservado para un evento ambiental con origen válido en un salón existente.
@@ -50,7 +50,7 @@ Para reproducir las copias desde los originales: `tools/audio/prepare_sfx.py` (P
 
 `tools/audio/analyze_cue_timing.gd` reproduce cada efecto por el mezclador y mide su inicio audible (−24 dB respecto al máximo) y el momento de mayor energía. Genera `game/audio/cue_timing.gd`; no hay que editarlo a mano. `world_audio.gd` empieza las aperturas y salidas de escondite en su inicio audible, los cierres 0,08 s antes del impacto y las entradas a escondite 0,3 s antes. Las grabaciones no se modifican. Si se añaden o cambian sonidos, vuelve a ejecutar la herramienta con Godot en modo `--headless`.
 
-Ganancias actuales: apertura −5 dB, portazo −1 dB, apertura lenta −12 dB y escondites −13 dB. La escucha crítica con auriculares sigue pendiente.
+Ganancias actuales (`GAIN` en `world_audio.gd`): apertura +1 dB, portazo 0 dB, apertura lenta −12 dB, cierre −11 dB y escondites −8 dB. La escucha crítica con auriculares sigue pendiente.
 
 ## Mezcla y volumen (revisión de audio espacial)
 
@@ -69,7 +69,7 @@ Medido con `tools/audio/measure_spatial.gd` (pisadas de la criatura a 3,5 m de u
 
 ## Aura de The Locust
 
-`game/audio/dread_aura.gd` (nodo `WorldAudio/DreadAura`) calcula cada 0,25 s la distancia **por ruta caminable** entre jugador y criatura. La intensidad crece desde 38 m hasta 5 m y aumenta si investiga o persigue; es cero durante la protección inicial y en el refugio.
+`game/audio/dread_aura.gd` (nodo `WorldAudio/DreadAura`) calcula cada 0,25 s la distancia **por ruta caminable** entre jugador y criatura. La intensidad crece desde 30 m hasta 4 m (`start_distance`, `full_distance`) y aumenta si investiga o persigue; es cero durante la protección inicial y en el refugio.
 
 - **Dirección sin revelar la posición:** respiración y chasquidos suenan unos metros por delante del jugador (7,5 m lejos, 2,5 m cerca) **sobre la ruta por la que llegaría**. Se oye por qué puerta o pasillo viene aunque haya paredes, pero no dónde está exactamente.
 - **Presión:** dron grave desafinado (no direccional), ambiente amortiguado y música que se retira. Latidos desde intensidad 0,5, de 64 a 128 ppm.
@@ -97,7 +97,7 @@ Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Loc
 
 ## Gruñidos de persecución
 
-**El aviso de la estocada también sale de la misma grabación**: 0,3 s antes de embestir suena uno de los trozos cortos de `grunts.ogg` (los que no llegan a 1,4 s: ladridos y respiraciones), con el tono bajado entre 0,78 y 0,9. Antes era un barrido sintetizado de 190 Hz hacia arriba, que no sonaba a animal. Sigue siendo la señal que te dice que esquives, y no la tapa nada: va por su propio reproductor (`$Warning`).
+**El aviso de la estocada también sale de la misma grabación**: 0,3 s antes de embestir suena uno de los trozos cortos de `grunts.ogg` (los que no llegan a 1,4 s: ladridos y respiraciones), con el tono bajado entre 0,78 y 0,9. Antes era un barrido sintetizado de 190 Hz hacia arriba, que no sonaba a animal. Sigue siendo la señal que te dice que esquives, y no la tapa nada: va por su propio reproductor (`$Warning`). **Se enruta como sus gruñidos y sus pasos** (`hotel_locust.warn()`): tras una pared llega por el vano o no llega. Hasta septiembre de 2026 era el único sonido suyo que atravesaba muros.
 
 `assets/audio/sfx/chase/grunts.ogg` (aportado) se divide en gruñidos sueltos con `tools/audio/analyze_grunts.gd`, que escribe `game/audio/grunt_segments.gd`. Solo se usan los gruñidos completos (1,4 s o más; los trozos cortos son respiraciones), sin repetir el mismo dos veces seguidas. Suena uno en cuanto la criatura te ve y se gira hacia ti (alerta), el siguiente cuando termina ese y después uno cada 2,5–5 s mientras persigue, con la misma propagación. El corte respeta el tono aleatorio, así que no se truncan. Si cambias la grabación, vuelve a ejecutar el analizador.
 
@@ -107,7 +107,7 @@ Gruñe también el cazador humano en versus mientras corre (antes solo sonaba al
 
 ## Lo que se oye con la cordura baja
 
-Por debajo de 60 de cordura el piso empieza a mentirle a quien la está perdiendo: cada cierto tiempo suena una puerta lejana (`close_far`, `open_far`), un armario abriéndose (`hide_leave`) o una puerta lenta (`open_slow`) en un punto sorteado a 4–14 m, **puesto siempre sobre la malla de navegación** para que salga de una sala y no de dentro de un muro. Con menos de 30 empieza a sonar también **la voz de la criatura** —un trozo cualquiera de `grunts.ogg`, con el tono entre 0,8 y 0,95— desde donde la criatura no está; va por su propio reproductor (`$Phantom`, bus Threat) para no cortar nunca una llamada de verdad, y se para al terminar el trozo. La espera entre mentiras va de 40 s a 13 s según lo baja que esté la cordura, con un ±30 % de azar.
+Por debajo de 60 de cordura el piso empieza a mentirle a quien la está perdiendo: cada cierto tiempo suena una puerta lejana (`close_far`, `open_far`), un armario abriéndose (`hide_leave`) o una puerta lenta (`open_slow`) en un punto sorteado a 4–14 m, **puesto siempre sobre la malla de navegación** para que salga de una sala y no de dentro de un muro. Con menos de 30 empieza a sonar también **la voz de la criatura** —un gruñido completo de `grunts.ogg`, con el tono entre 0,8 y 0,95— desde donde la criatura no está; va por su propio reproductor (`$Phantom`, bus Threat) para no cortar nunca una llamada de verdad, se enruta como cualquier sonido (tras una pared llega por el vano) y se para al terminar el trozo. **Nunca es uno de los ladridos cortos**, que son el aviso de la estocada: el piso miente sobre dónde está la criatura, no sobre eso. La espera entre mentiras va de 40 s a 13 s según lo baja que esté la cordura, con un ±30 % de azar.
 
 Son **locales de cada máquina**: no pasan por `match_net.noise()`, así que la criatura no las oye, no la mandan a ninguna parte y los compañeros no las oyen tampoco. En una ejecución silenciosa (pruebas, capturas) la cadencia se cuenta igual aunque no suene nada, como con los gruñidos.
 
@@ -156,6 +156,31 @@ La ruta de los sonidos ocluidos se calcula desde la cámara que escucha, no desd
 `hotel_locust.hear_route(point, radius)` es la única medición de su oído: si lo oye, por qué abertura le llega, cuántos metros de ruta ha recorrido el sonido y cuánto llega amortiguado. `can_hear()` es esa misma función, así que ya no se consulta la navegación dos veces por ruido. Es el equivalente de `world_audio.route_source()` pero anclado en la criatura en vez de en quien escucha, y deliberadamente separado: el mezclador de audio no debe conocer la percepción de la criatura.
 
 Cada ruido lleva además su clase (`game/audio/noise_kinds.gd`), que el audio ignora y la vista acústica del cazador usa para responder «qué lo produjo». El zumbido de las balastras que `update_ambient_sources()` ya enruta hace doble trabajo: en la máquina del cazador aparece también como contacto débil en su imagen (`docs/VISION_LOCUST.md`).
+
+## Sonidos largos
+
+Los sonidos de más de unos segundos —la estática de una tele que se enciende, la del apagón, la del salto por tele— no van por el grupo de ocho voces de los efectos cortos: con catorce segundos eran siempre los más viejos de ese grupo y las siguientes puertas los cortaban a medias. Tienen reproductores propios (`world_audio.play_long()`, `long_cues`), que se vuelven a enrutar cada 0,25 s mientras el oyente se mueve (como los zumbidos) y se quedan mudos, no parados, mientras la ruta no llega. Se pueden parar antes (`stop_long()`) y darles una duración con desvanecido final. Los que suenan «desde arriba, estés donde estés» (el apagón) siguen al oyente en vez de quedarse en un sitio. `long_playing()` dice si la misma grabación acaba de empezar y se oye aquí, para no tocarla dos veces.
+
+## Las teles
+
+Encender una tele suena a **tele**: la estática entera del canal muerto del apagón (`execution_static.ogg`, unos 14 s) desde su pantalla, a −6 dB y enrutada como todo (paredes y puertas cerradas la tapan). Cuando se acaba, la tele **se queda siseando** mientras siga encendida: `assets/audio/intro/tv_static.wav` en bucle, a −27 dB y con 11 m de alcance, en las dos teles encendidas más cercanas a quien escucha (`world_audio.update_tv_hiss()`, como los zumbidos de los fluorescentes), que sube en 1,5 s bajo la cola de la estática. Las teles siguen encendidas durante el apagón, así que su siseo no se corta con la luz.
+
+- Hasta septiembre de 2026 encender una tele sonaba a `closing1.ogg`, el pestillo de una puerta, más fuerte que el cierre de una puerta de verdad: parecía un portazo. Nunca tuvo otro sonido. La estática que se oía era la del apagón, que con uno o dos supervivientes salta al encender la primera tele.
+- **El apagón que dispara una tele no suena dos veces:** si la misma estática acaba de empezar y se oye aquí, `apply_blackout()` no la repite. Si no (lejos de esa tele), suena desde encima de quien escucha, esté donde esté.
+- **Al volver la luz**, en el ala siguiente, quien va en el ascensor oye 1,6 s de esa estática encima (`restore_power()`); antes se colocaba en el cuerpo, que en ese momento del viaje sigue en el coche que se deja.
+- Una tele que se apaga (una etapa que se vuelve a jugar) calla al instante. Quien vuelve a una partida recibe las teles encendidas sin oírlas encenderse.
+- Para la criatura nada cambia: encender una tele sigue siendo un ruido de puerta abierta despacio (9 m).
+
+## El teclado del código
+
+El teclado suena a teclado: un clic por tecla, un zumbido grave doble para «NO ES» y «FALTAN TELEVISORES» y dos tonos subiendo para el código bueno, sintetizados como los pitidos del menú (`osd_style.tones()`, `hotel_ui.keypad()`). Los oye solo quien teclea y no son ruido para la criatura. Hasta septiembre de 2026 un código erróneo sonaba al crujido de una puerta y el bueno al pestillo del último coche: parecía que se estaba probando una puerta sin que nada se moviera.
+
+## El ascensor
+
+Todavía no tiene grabación propia (la aportará el usuario; `metalic-sliding-long-door.wav` sigue reservado para él). Hasta entonces:
+
+- **Sus puertas** son el pestillo de siempre (`closing1.ogg`), **una vez por viaje** aunque vayan cuatro (`lifts.car_doors()`; antes sonaba una por pasajero, todas a la vez), y en los dos coches: el que se deja, que antes callaba, y el de llegada. Las del último ascensor suenan en ese coche, no en el cuerpo de cada máquina.
+- **El viaje** suena a la nieve que se ve: `tv_static.wav` a −20 dB siguiendo la imagen (entera al cerrarse y abrirse las puertas, baja bajo la tarjeta), en `hotel_main.update_ride_hiss()`. Antes el corte de 3,2 s era silencio.
 
 ## Eventos del director
 

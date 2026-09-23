@@ -21,7 +21,10 @@ const FRENZY_TIME := 6.0
 const FRENZY_STAMINA := 30.0
 ## A strike: the same wind-up and recovery as the AI's.
 const COOLDOWN := 1.2
-const SHRIEK_COOLDOWN := 3.0
+## Seconds from one shriek to the next, counted from when it starts. The cry
+## lasts about six, so it can no longer be chained: at three it could, and a
+## hunter holding the button never stopped crying.
+const SHRIEK_COOLDOWN := 10.0
 ## Wardrobes within this distance can be pulled open.
 const WARDROBE_REACH := 2.6
 const ECHO := preload("res://game/enemies/locust/echo_view.gd")
@@ -244,7 +247,9 @@ func place_shoulder(delta: float) -> void:
 func open_doors(hunting: bool, heading: Vector3) -> void:
 	if heading.length() < 0.1: return
 	for door in level.hotel.doors:
-		if door.opened or door.moving: continue
+		# A locked one would be asked for every frame it stood near, for nothing:
+		# on a guest that was a request over the network each time.
+		if door.opened or door.moving or door.locked: continue
 		var offset: Vector3 = door.doorway - creature.global_position
 		offset.y = 0.0
 		if offset.length() < (2.4 if hunting else 1.8) and heading.dot(offset.normalized()) > 0.3:
@@ -265,7 +270,7 @@ func shriek() -> void:
 	if shriek_cooldown > 0.0 or creature.grace > 0.0 or creature.mode in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: return
 	shriek_cooldown = SHRIEK_COOLDOWN
 	# The cry lasts exactly as long as the red it floods the reading with, and
-	# fades out with it; shrieking again stretches both.
+	# fades out with it.
 	creature.howl(ECHO.SHRIEK_HOLD, 1.0 / ECHO.SHRIEK_FALL)
 	# The reading floods red and one enormous shell goes out with the cry.
 	if is_instance_valid(echo): echo.flash_shriek()

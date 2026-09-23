@@ -103,6 +103,8 @@ var lock_open := false
 var typed := ""
 var blow_sound: AudioStreamPlayer
 var static_sound: AudioStreamPlayer
+## The snow of a lift ride, heard as well as seen (update_ride_hiss).
+var ride_hiss: AudioStreamPlayer
 var intro_seed := 0
 var skip_time := 0.0
 ## Online play (net_session.gd) and its in-match replication (match_net.gd).
@@ -290,6 +292,7 @@ func enter_observer_mode() -> void:
 	if world_audio.aura != null:
 		world_audio.aura.reset()
 		world_audio.aura.process_mode = Node.PROCESS_MODE_DISABLED
+	settings.mute_threat = true
 	var threat := AudioServer.get_bus_index("Threat")
 	if threat >= 0: AudioServer.set_bus_mute(threat, true)
 	ui.close_menus()
@@ -746,14 +749,33 @@ func switch_television(set: Node3D) -> void:
 	if not is_instance_valid(set) or set.on: return
 	match_net.use_television(set)
 
-## Applied everywhere, whoever decided it.
-func apply_television(index: int, value: bool) -> void:
+## A set coming to life plays the whole dead channel the blackout plays, from
+## its screen, and then hisses softly for as long as it stays on
+## (world_audio.update_tv_hiss). It used to be a door's latch, louder than a
+## door shutting, so every set switched on sounded like somebody slamming one.
+const TV_BURST := "res://assets/audio/events/execution_static.ogg"
+const TV_BURST_GAIN := -6.0
+
+## Applied everywhere, whoever decided it. quiet: a returning player is told
+## the set is on, not made to hear it come on.
+func apply_television(index: int, value: bool, quiet := false) -> void:
 	if index < 0 or index >= televisions.size(): return
 	var set = televisions[index]
 	if not is_instance_valid(set) or not set.set_on(value): return
-	if value:
-		if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, set.global_position + Vector3(0, 1.4, 0), -8.0)
-		if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
+	if not value:
+		world_audio.stop_long(set.burst)
+		set.burst = null
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	set.hiss_after = now
+	if quiet: return
+	# Not twice: the blackout it trips plays the same static, and on a guest the
+	# two can arrive in either order.
+	var stream: AudioStream = load(TV_BURST)
+	if world_audio.enabled and not world_audio.long_playing(TV_BURST, 1.5):
+		set.burst = world_audio.play_long(TV_BURST, set.screen_point(), TV_BURST_GAIN)
+	set.hiss_after = now + stream.get_length()
+	if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
 
 ## Travelling by television: a lit set is a way in and a way out. The creature
 ## steps out of another lit one, wherever it is, which is why lighting them is
@@ -805,9 +827,11 @@ func warp_creature(index: int) -> void:
 	locust.net_states.clear()
 	locust.net_clock = 0.0
 	if is_instance_valid(locust.driver): locust.driver.channel_open = false
+	# On players of their own: in the pool of short cues the next doors cut
+	# fourteen seconds of static off after one or two.
 	if world_audio.enabled:
-		world_audio.play_at(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0)
-		world_audio.play_at(WARP_SOUND, locust.global_position + Vector3(0, 1.4, 0), -4.0)
+		world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0)
+		world_audio.play_long(WARP_SOUND, locust.global_position + Vector3(0, 1.4, 0), -4.0)
 	# Where it comes out is a noise of its own: the set it steps from spits.
 	if not net.is_client(): on_noise(locust.global_position + Vector3(0, 1.4, 0), NOISE.radius("door"), NOISE.Kind.DOOR)
 
@@ -1149,22 +1173,26 @@ var lock_digit := 0
 var last_stage := 1
 
 ## The power goes, everywhere at once. Nothing says so in words: the hotel
-## drops into the dark with a sound, and in the creature's reading the ceilings
-## it can no longer hear humming come back at it in one burst. In the hands,
-## the board being thrown is one short knock.
+## drops into the dark with a dead channel from overhead, wherever you are, and
+## in the creature's reading the ceilings it can no longer hear humming come
+## back at it in one burst. In the hands, the board being thrown is one short
+## knock. The set that tripped it plays that same static: beside it, it is not
+## played twice.
 func apply_blackout() -> void:
 	rumble(0.35, 0.0, 0.25)
 	hotel.blackout(true)
-	if world_audio.enabled: world_audio.play_at(BLACKOUT_SOUND, player.global_position + Vector3(0, 2.5, 0), 0.0)
+	if world_audio.enabled and not world_audio.long_playing(BLACKOUT_SOUND, 1.5): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), 0.0, RID(), true)
 	if is_instance_valid(locust) and is_instance_valid(locust.driver) and locust.driver.has_method("mark_blackout"): locust.driver.mark_blackout()
 
 ## And the power comes back, in the wing ahead. What went out belonged to the
 ## wing where the last set was lit: crossing into the next one finds its lights
-## on, with the same clunk of a board being thrown. A stage played in the dark
-## is that stage's doing, not a floor that never recovers.
+## on. Whoever is riding into it hears a moment of the dead channel overhead,
+## the board thrown back on. It used to be placed at the body, which at this
+## point of the ride is still standing in the car being left behind.
+const POWER_BACK := 1.6
 func restore_power() -> void:
 	hotel.blackout(false)
-	if world_audio.enabled: world_audio.play_at(BLACKOUT_SOUND, player.global_position + Vector3(0, 2.5, 0), -4.0)
+	if world_audio.enabled and not lifts.boarding.is_empty(): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), -4.0, RID(), true, POWER_BACK)
 
 ## Everybody is on their feet again: between stages, or because the floor gave
 ## this stage back after it was lost. The authority says where, and every
@@ -1613,6 +1641,7 @@ func type_code(character: String) -> void:
 	if character == "borrar": typed = typed.substr(0, maxi(0, typed.length() - 1))
 	elif typed.length() < DIGITS.COUNT: typed += character
 	if typed.length() < DIGITS.COUNT:
+		ui.keypad("key")
 		ui.show_lock(typed, DIGITS.COUNT, "", noted_code(), lock_digit)
 		return
 	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
@@ -1620,16 +1649,20 @@ func type_code(character: String) -> void:
 	# going to move, and it is better said here than guessed at the door.
 	if typed == right and not sets_lit():
 		typed = ""
+		ui.keypad("wrong")
 		ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code(), lock_digit)
 		return
+	# Only the keypad is heard: a try is not a door. It used to creak like one
+	# on every wrong code, and latch on the right one, with nothing moving.
 	if typed == right:
+		ui.keypad("right")
 		match_net.use_code()
 		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code(), lock_digit)
 		close_lock()
 	else:
 		typed = ""
+		ui.keypad("wrong")
 		ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code(), lock_digit)
-		if world_audio.enabled: world_audio.play_at(SEARCH_SOUND, lock.global_position, -12.0)
 
 func open_lock() -> void:
 	lock_open = true
@@ -1669,7 +1702,6 @@ func apply_code() -> void:
 	if code_entered: return
 	code_entered = true
 	if is_instance_valid(lock): lock.set_open(true)
-	if world_audio.enabled: world_audio.play_at(SWITCH_SOUND, hotel.lifts[hotel.lifts.size() - 1] if not hotel.lifts.is_empty() else player.global_position, -4.0)
 
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
@@ -2350,6 +2382,7 @@ func update_screen_cues(delta: float) -> void:
 	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
 	var dying: bool = mine and float(execution.time) >= SIGNAL_TIME
 	var riding_now: float = lifts.ride_static()
+	update_ride_hiss(riding_now)
 	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else riding_now
 	# Straight to static once the arm has landed: the picture does not fade,
 	# it goes. Coming back (a new floor) it clears gently.
@@ -2380,6 +2413,19 @@ func update_screen_cues(delta: float) -> void:
 		post_material.set_shader_parameter("vhs", settings.values.vhs * (1.0 + frayed * 1.6))
 		post_material.set_shader_parameter("chromatic", settings.values.chromatic * frayed * 0.7)
 
+## A lift ride has no sound of its own yet (the recording is still to come):
+## until then its snow is heard softly, following the picture -- full as the
+## doors shut and open, low under the card -- instead of a silence that read
+## as the game hanging.
+const RIDE_HISS_DB := -20.0
+func update_ride_hiss(amount: float) -> void:
+	if not is_instance_valid(ride_hiss): return
+	if amount <= 0.02 or not world_audio.enabled:
+		if ride_hiss.playing: ride_hiss.stop()
+		return
+	ride_hiss.volume_db = RIDE_HISS_DB + linear_to_db(amount)
+	if not ride_hiss.playing: ride_hiss.play()
+
 func build_audio() -> void:
 	# Handling a document: a local sound, not a noise the creature can hear.
 	paper_sound = AudioStreamPlayer.new()
@@ -2408,6 +2454,12 @@ func build_audio() -> void:
 	static_sound.volume_db = -2.0
 	static_sound.stream = load(DEAD_CHANNEL)
 	add_child(static_sound)
+	ride_hiss = AudioStreamPlayer.new()
+	ride_hiss.name = "RideHiss"
+	ride_hiss.bus = "Effects"
+	ride_hiss.volume_db = -80.0
+	ride_hiss.stream = preload("res://game/audio/world_audio.gd").loop_stream(load("res://assets/audio/intro/tv_static.wav"))
+	add_child(ride_hiss)
 	ambience = AudioStreamPlayer.new()
 	ambience.name = "AmbientLoop"
 	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE

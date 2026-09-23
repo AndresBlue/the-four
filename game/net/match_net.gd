@@ -956,6 +956,9 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 			# rather than hanging from it.
 			level.player.snap_torch()
 		elif bodies.has(seat): bodies[seat].place(places[seat_key][0], places[seat_key][1])
+	# What happened while it was away is told, not heard: every occupied
+	# wardrobe and every lit set used to sound at once the moment it arrived.
+	level.world_audio.hush = true
 	for index in mini(hides.size(), level.hotel.hides.size()):
 		if int(hides[index]) != 0: hide_state(index, int(hides[index]))
 	if not creature.is_empty() and is_instance_valid(level.locust):
@@ -967,7 +970,8 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 			if creature.size() > 4: level.locust.grace = float(creature[4])
 		else: level.locust.push_state(creature)
 	for index in mini(sets.size(), level.televisions.size()):
-		if bool(sets[index]): level.apply_television(index, true)
+		if bool(sets[index]): level.apply_television(index, true, true)
+	level.world_audio.hush = false
 	level.restore_sheet(sheet)
 
 @rpc("authority", "call_remote", "reliable")

@@ -116,6 +116,10 @@ var flash_time := 0.0
 var loading_label: Label
 var tick_player: AudioStreamPlayer
 var confirm_player: AudioStreamPlayer
+## The keypad of the last door speaks for itself: a key, a code that is not
+## it, and the one that is. It used to borrow a door's creak and latch, which
+## sounded like a door being tried when nothing moved.
+var keypad_players := {}
 var quiet_focus := false
 var intro: Control
 ## Open document sheet during play, and the record of found documents.
@@ -179,6 +183,11 @@ func _ready() -> void:
 	add_child(sheet)
 	tick_player = sound_player(STYLE.beep(2400.0, 0.018, 0.12))
 	confirm_player = sound_player(STYLE.beep(1250.0, 0.07, 0.25))
+	keypad_players = {
+		"key": sound_player(STYLE.tones([[1900.0, 0.035]], 0.2)),
+		"wrong": sound_player(STYLE.tones([[190.0, 0.13], [0.0, 0.07], [190.0, 0.17]], 0.26, 0.6)),
+		"right": sound_player(STYLE.tones([[1046.5, 0.08], [0.0, 0.03], [1568.0, 0.15]], 0.24)),
+	}
 	if settings != null: settings.display_pending.connect(_display_changed)
 
 func sound_player(stream: AudioStream) -> AudioStreamPlayer:
@@ -194,6 +203,10 @@ func tick() -> void:
 
 func confirm() -> void:
 	if sounds_enabled: confirm_player.play()
+
+## "key", "wrong" or "right": only whoever is typing hears it.
+func keypad(kind: String) -> void:
+	if sounds_enabled and keypad_players.has(kind): keypad_players[kind].play()
 
 # Persistent menu frame: backdrop, tape static, OSD corners and content columns.
 func build_frame() -> void:

@@ -283,6 +283,21 @@ func run() -> void:
 	check("Chillar otra vez lo alarga", absf(creature.howl_left - cry) < 0.05 and creature.grunt_left > 0.0)
 	await frames(int(cry * 60.0) + 20)
 	check("Y termina callado", creature.howl_left == 0.0 and creature.grunt_left == 0.0)
+	# From the hunter's own button, once every ten seconds counted from when it
+	# starts: longer than the cry, so it can no longer be chained. At three it
+	# could, and a hunter holding the button never stopped crying.
+	creature.grace = 0.0
+	creature.driver.shriek_cooldown = 0.0
+	creature.driver.shriek()
+	var first_cry: float = creature.howl_left
+	await frames(120)
+	creature.driver.shriek()
+	check("El chillido tiene diez segundos de enfriamiento desde que se usa", is_equal_approx(creature.driver.SHRIEK_COOLDOWN, 10.0) and creature.driver.shriek_cooldown > 7.0 and creature.driver.shriek_cooldown < 8.5 and creature.howl_left < first_cry - 1.5)
+	creature.howl_left = 0.0
+	creature.grunt_left = 0.0
+	creature.voice.stop()
+	echo.shriek_hold = 0.0
+	level.match_net.shriek_left = 0.0
 
 	# --- Strong reflectors ---------------------------------------------------------
 	# A door in plain view answers on its own: its frame fills with grains.

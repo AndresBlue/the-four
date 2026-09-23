@@ -86,6 +86,30 @@ const HUM_REACH := 13.0
 var ambient_clock := 0.0
 var route_clock := 0.0
 var presence_route := {}
+## A lit set hisses, softly, once the burst of static it came on with has died
+## down: the nearest few of them, placed like the hums.
+const TV_HISS := "res://assets/audio/intro/tv_static.wav"
+const TV_HISS_DB := -27.0
+const TV_HISS_UNIT := 3.0
+const TV_HISS_REACH := 11.0
+## How long the hiss takes to come up under the end of the burst.
+const TV_HISS_RISE := 1.5
+var tv_hiss: Array[AudioStreamPlayer3D] = []
+## Long sounds -- a set coming to life, the power going, a warp -- get players
+## of their own, outside `voices`: at fourteen seconds they were the oldest in
+## that pool by far, and the next doors cut them off mid-hiss. Each is routed
+## again as the listener moves, like the hums, and goes quiet (not off) while
+## the route does not reach. {player, point, gain, emitter, path, started,
+## follow, base_db, audible, length}
+var long_cues: Array = []
+const LONG_REROUTE := 0.25
+## A cue given a length fades out over this much at its end.
+const LONG_FADE := 0.4
+var long_clock := 0.0
+## While set, nothing new is heard: a player coming back into a running floor
+## is told what already happened (wardrobes taken, sets lit), and hearing all
+## of it at once was a burst of doors from nowhere.
+var hush := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -105,6 +129,10 @@ func _ready() -> void:
 		# Capped so standing right under a tube is never harsh.
 		hum.max_db = HUM_DB + 3.0
 		hums.append(hum)
+	for i in 2:
+		var hiss := make_source("TelevisionHiss", "Ambience", loop_stream(load(TV_HISS)), TV_HISS_UNIT, TV_HISS_REACH)
+		hiss.max_db = TV_HISS_DB + 3.0
+		tv_hiss.append(hiss)
 
 func make_source(title: String, bus: String, stream: AudioStream, unit: float, reach: float) -> AudioStreamPlayer3D:
 	var source := AudioStreamPlayer3D.new()
@@ -227,10 +255,95 @@ func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0) -
 	voice.add_to_group("everywhere_cues")
 	voice.play(start)
 
+## A long sound on a player of its own (see long_cues). follow: `point` is an
+## offset from the listener instead of a place, for what is heard from above
+## wherever you are (the power going). length: seconds before it fades out, 0
+## for the whole recording. Returns the player, or null when nothing plays.
+func play_long(path: String, point: Vector3, gain: float, emitter := RID(), follow := false, length := 0.0) -> AudioStreamPlayer3D:
+	last_event = {"path": path, "position": point, "long": true}
+	if not enabled or hush: return null
+	if not streams.has(path): streams[path] = load(path)
+	var voice := AudioStreamPlayer3D.new()
+	voice.name = "LongCue"
+	voice.stream = streams[path]
+	voice.unit_size = 6.0
+	voice.max_distance = 40.0
+	voice.max_db = 6.0
+	voice.area_mask = ACOUSTIC_MASK
+	add_child(voice)
+	var cue := {"player": voice, "point": point, "gain": gain, "emitter": emitter, "path": path, "started": Time.get_ticks_msec() / 1000.0, "follow": follow, "base_db": -80.0, "audible": false, "length": length}
+	long_cues.append(cue)
+	route_long(cue)
+	voice.volume_db = float(cue.base_db)
+	voice.finished.connect(func(): stop_long(voice))
+	voice.play(TIMING.onset(path))
+	return voice
+
+## Stops a long cue early (a set switched off again).
+func stop_long(voice: AudioStreamPlayer3D) -> void:
+	if voice == null: return
+	for cue in long_cues.duplicate():
+		if cue.player != voice: continue
+		long_cues.erase(cue)
+		if is_instance_valid(voice):
+			voice.stop()
+			voice.queue_free()
+
+## Whether a long cue of this recording started within `within` seconds and
+## reaches this listener: the same dead channel is not played twice over.
+func long_playing(path: String, within: float) -> bool:
+	var now := Time.get_ticks_msec() / 1000.0
+	for cue in long_cues:
+		if cue.path == path and bool(cue.audible) and now - float(cue.started) <= within and is_instance_valid(cue.player) and cue.player.playing: return true
+	return false
+
+func route_long(cue: Dictionary) -> void:
+	var voice: AudioStreamPlayer3D = cue.player
+	if not is_instance_valid(voice): return
+	if cue.follow:
+		voice.global_position = listener_position() + cue.point
+		voice.bus = &"Effects"
+		voice.panning_strength = PANNING["Effects"]
+		voice.attenuation_filter_cutoff_hz = 20000.0
+		cue.base_db = float(cue.gain)
+		cue.audible = true
+		return
+	var point: Vector3 = cue.point
+	var route: Dictionary = route_source(point, cue.emitter) if listener_position().distance_to(point) <= ROUTE_LIMIT else {"audible": false}
+	cue.audible = route.audible
+	if not route.audible:
+		cue.base_db = -80.0
+		return
+	apply_route(voice, route, float(cue.gain), "Effects")
+	cue.base_db = voice.volume_db
+
+## Every frame: the level (with the fade of a cue given a length); every
+## LONG_REROUTE seconds: where it is heard from.
+func update_long(delta: float) -> void:
+	if long_cues.is_empty(): return
+	long_clock -= delta
+	var reroute := long_clock <= 0.0
+	if reroute: long_clock = LONG_REROUTE
+	var now := Time.get_ticks_msec() / 1000.0
+	for cue in long_cues.duplicate():
+		var voice: AudioStreamPlayer3D = cue.player
+		if not is_instance_valid(voice):
+			long_cues.erase(cue)
+			continue
+		if reroute or cue.follow: route_long(cue)
+		var fade := 0.0
+		if float(cue.length) > 0.0:
+			var left := float(cue.length) - (now - float(cue.started))
+			if left <= 0.0:
+				stop_long(voice)
+				continue
+			fade = linear_to_db(clampf(left / LONG_FADE, 0.001, 1.0))
+		voice.volume_db = float(cue.base_db) + fade
+
 func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0) -> void:
 	if start < 0.0: start = TIMING.onset(path)
 	last_event = {"path": path, "position": point}
-	if not enabled or listener_position().distance_to(point) > ROUTE_LIMIT: return
+	if not enabled or hush or listener_position().distance_to(point) > ROUTE_LIMIT: return
 	var route := route_source(point, emitter)
 	if not route.audible: return
 	if not streams.has(path): streams[path] = load(path)
@@ -351,10 +464,14 @@ func reset() -> void:
 	voices.clear()
 	for cue in get_tree().get_nodes_in_group("everywhere_cues"):
 		if is_ancestor_of(cue): cue.queue_free()
+	for cue in long_cues.duplicate(): stop_long(cue.player)
+	long_cues.clear()
+	hush = false
 	presence.stop()
 	presence_gain = 0
 	presence_route = {}
 	for source in hums: source.stop()
+	for source in tv_hiss: source.stop()
 	if aura != null: aura.reset()
 	caption_time = 0
 	caption_cooldown = 0
@@ -385,11 +502,14 @@ func _physics_process(delta: float) -> void:
 	caption_cooldown = maxf(0, caption_cooldown - delta)
 	if caption_time <= 0: caption_text = ""
 	if not enabled: return
+	update_long(delta)
 	ambient_clock -= delta
 	if ambient_clock <= 0.0:
 		ambient_clock = 0.5
+		update_tv_hiss()
 		update_ambient_sources()
 	update_hum_levels()
+	update_hiss_levels()
 	update_space(delta)
 	if not is_instance_valid(level.locust) or level.session.state != level.session.State.PLAYING: return
 	var creature = level.locust
@@ -465,6 +585,41 @@ func update_ambient_sources() -> void:
 		else:
 			hum.set_meta("entry", null)
 			hum.stop()
+
+## The hiss of the lit sets nearest the listener, once each one's burst of
+## static is over (hotel_television.hiss_after). The sets stay lit through the
+## blackout, so unlike the hums this does not stop with the power.
+func update_tv_hiss() -> void:
+	var lit: Array = []
+	var sets = level.get("televisions") if level != null else null
+	if sets != null and level.session.state == level.session.State.PLAYING:
+		var listener := listener_position()
+		var now := Time.get_ticks_msec() / 1000.0
+		for set in sets:
+			if not is_instance_valid(set) or not set.on or now < float(set.hiss_after): continue
+			var point: Vector3 = set.screen_point()
+			if point.distance_to(listener) < TV_HISS_REACH: lit.append({"point": point, "since": float(set.hiss_after)})
+		lit.sort_custom(func(a, b): return a.point.distance_to(listener) < b.point.distance_to(listener))
+	for i in tv_hiss.size():
+		var hiss := tv_hiss[i]
+		var route: Dictionary = route_source(lit[i].point) if i < lit.size() else {"audible": false}
+		if route.audible:
+			hiss.set_meta("route_gain", route.gain)
+			hiss.set_meta("since", lit[i].since)
+			hiss.global_position = route.position
+			hiss.attenuation_filter_cutoff_hz = route.cutoff
+			if not hiss.playing:
+				hiss.volume_db = -80.0
+				hiss.play(rng.randf() * 2.0)
+		else: hiss.stop()
+
+## The hiss comes up under the tail of the burst instead of starting on a cut.
+func update_hiss_levels() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	for hiss in tv_hiss:
+		if not hiss.playing: continue
+		var rise := clampf((now - float(hiss.get_meta("since", 0.0))) / TV_HISS_RISE, 0.001, 1.0)
+		hiss.volume_db = TV_HISS_DB + float(hiss.get_meta("route_gain", 0.0)) + linear_to_db(rise)
 
 ## Hum follows the tube: it drops out with the light when it flickers.
 func update_hum_levels() -> void:

@@ -64,6 +64,13 @@ func run() -> void:
 	check("Closing cue starts near its impact", audio.voices[-1].get_meta("start") >= preload("res://game/audio/cue_timing.gd").hit(audio.last_event.path) - audio.CLOSE_PREROLL - 0.001)
 	for i in 20: audio.play_at(audio.choose("close_near"), listener, -16)
 	check("Effects have bounded simultaneous voices", audio.voices.size() == audio.maximum_voices)
+	# A long sound (a set's static, the power going) has a player of its own:
+	# in the pool the next few doors cut fourteen seconds off after one or two.
+	var long_cue = audio.play_long(level.TV_BURST, listener + Vector3(0, 0, -3), -12.0)
+	for i in 20: audio.play_at(audio.choose("close_near"), listener, -16)
+	check("A long sound outlasts any number of short ones", is_instance_valid(long_cue) and long_cue.playing and audio.voices.size() == audio.maximum_voices)
+	audio.stop_long(long_cue)
+	check("And stops when it is told to", audio.long_cues.is_empty())
 	var door := preload("res://game/world/interactables/hotel_door.gd").new()
 	level.add_child(door)
 	door.doorway = Vector3(500, 0, 0)
@@ -203,6 +210,47 @@ func run() -> void:
 	level.player.position = FLOOR.position_of(level.manifest.rooms[level.manifest.exit]) + Vector3(0, 0.04, 0)
 	await wait(0.4)
 	check("Refuge releases the aura", aura.target == 0.0)
+	# A set coming on sounds like a television: the dead channel from its
+	# screen, then a soft hiss. It used to be a door's latch.
+	var map: RID = level.get_world_3d().navigation_map
+	var set_index := int(level.stage_televisions(2)[0])
+	var set = level.televisions[set_index]
+	var front := Vector3(sin(set.rotation.y), 0, cos(set.rotation.y))
+	level.player.position = NavigationServer3D.map_get_closest_point(map, set.global_position + front * 1.8) + Vector3(0, 0.04, 0)
+	await physics_frame
+	audio.reset()
+	level.apply_television(set_index, true)
+	check("A set coming on plays its static from the screen, and no latch", audio.long_cues.size() == 1 and audio.long_cues[0].path == level.TV_BURST and audio.long_cues[0].point.distance_to(set.screen_point()) < 0.01 and audio.voices.is_empty())
+	level.apply_blackout()
+	check("The blackout it trips does not play that static twice", audio.long_cues.size() == 1)
+	level.hotel.blackout(false)
+	set.hiss_after = Time.get_ticks_msec() / 1000.0 - 5.0
+	audio.update_tv_hiss()
+	check("Once the static is over it hisses softly", audio.tv_hiss.any(func(hiss): return hiss.playing))
+	level.apply_television(set_index, false)
+	audio.update_tv_hiss()
+	check("Switched off again it goes quiet at once", audio.long_cues.is_empty() and not audio.tv_hiss.any(func(hiss): return hiss.playing))
+	level.apply_television(set_index, true, true)
+	check("A returning player is told the set is on without hearing it come on", set.on and audio.long_cues.is_empty() and set.hiss_after <= Time.get_ticks_msec() / 1000.0)
+	level.apply_television(set_index, false)
+	# The keypad is heard as a keypad: a wrong code is not a door being tried.
+	audio.reset()
+	var right_code: String = "".join(level.DIGITS.code(level.manifest).map(func(digit): return str(digit)))
+	var wrong_code := "1111" if right_code != "1111" else "2222"
+	level.open_lock()
+	for character in wrong_code: level.type_code(character)
+	check("A wrong code makes no door sound", audio.voices.is_empty() and audio.long_cues.is_empty())
+	level.close_lock()
+	# Three riding one car: its doors are heard once, not three times at once.
+	audio.reset()
+	var arrival: Vector3 = level.hotel.arrivals[0]
+	level.player.position = arrival + Vector3(0, 0.04, 0)
+	await physics_frame
+	for seat in [2, 3, 4]: level.lifts.apply_ride(seat, arrival + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6)))
+	var latches: int = audio.voices.filter(func(voice): return voice.global_position.distance_to(arrival + Vector3(0, 1.2, 0)) < 3.0).size()
+	check("A car taking three shuts its doors once", latches == 1)
+	level.lifts.lift_away.clear()
+	level.lifts.doors_heard.clear()
 	level.player.position = Vector3(500, 0, 4)
 	level.locust.position = Vector3(500, 0, 0)
 	audio.reset()

@@ -25,6 +25,15 @@ var stage := 2
 var screen: MeshInstance3D
 var lamp: OmniLight3D
 var flicker := 0.0
+## What it sounds like (hotel_main.apply_television): the burst of dead
+## channel it comes on with, while that lasts, and from this moment on (in
+## Time.get_ticks_msec() seconds) the soft hiss world_audio gives lit sets.
+var burst: AudioStreamPlayer3D
+var hiss_after := 0.0
+
+## Where the sound and the glow come from: the middle of the screen.
+func screen_point() -> Vector3:
+	return to_global(SCREEN)
 
 func _ready() -> void:
 	add_to_group("hotel_televisions")
@@ -74,8 +83,9 @@ func set_on(value: bool) -> bool:
 	switched.emit(value)
 	return true
 
-## The noise a set makes when it comes to life, heard like a door opening
-## slowly: enough to say somebody is in this wing.
+## The noise a set makes when it comes to life, for the creature: as far as a
+## door opening slowly, enough to say somebody is in this wing. (What people
+## hear is its static, which carries like any other sound.)
 func click_radius() -> float: return NOISE.radius("door_slow")
 
 func _process(delta: float) -> void:

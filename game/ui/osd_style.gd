@@ -169,3 +169,30 @@ static func beep(frequency: float, seconds: float, level := 0.35) -> AudioStream
 		bytes.encode_s16(i * 2, int(sin(TAU * frequency * t) * envelope * level * 32767.0))
 	audio.data = bytes
 	return audio
+
+## A few beeps in a row, each [frequency, seconds]; a frequency of zero is a
+## gap. `edge` squares the wave off towards a buzz: the keypad saying no.
+static func tones(steps: Array, level := 0.3, edge := 0.0) -> AudioStreamWAV:
+	var audio := AudioStreamWAV.new()
+	audio.format = AudioStreamWAV.FORMAT_16_BITS
+	audio.mix_rate = 44100
+	var total := 0
+	for step in steps: total += int(44100 * float(step[1]))
+	var bytes := PackedByteArray()
+	bytes.resize(total * 2)
+	var at := 0
+	for step in steps:
+		var frequency: float = step[0]
+		var seconds: float = step[1]
+		var count := int(44100 * seconds)
+		for i in count:
+			var value := 0.0
+			if frequency > 0.0:
+				var t := float(i) / 44100.0
+				var envelope := minf(1.0, t * 800.0) * minf(1.0, (seconds - t) * 300.0)
+				var wave := sin(TAU * frequency * t)
+				value = lerpf(wave, signf(wave), edge) * envelope * level
+			bytes.encode_s16((at + i) * 2, int(value * 32767.0))
+		at += count
+	audio.data = bytes
+	return audio
