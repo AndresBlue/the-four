@@ -396,6 +396,9 @@ func start_intro(seed_value: int) -> void:
 	# the pause for this scene would let its music and air run on over it.
 	for loop in [ambience, theme, ventilation]: loop.stop()
 	world_audio.reset()
+	# The last floor's final ride still gave its static, and the scene played
+	# under it until the floor was built.
+	lifts.reset()
 	player.visible = false
 	# Only the television lights the room: no hotel ambient light.
 	environment.ambient_light_energy = 0.0
@@ -462,13 +465,8 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.spawn = Vector3(0, 0.04, 0)
 	player.position = player.spawn
 	player.velocity = Vector3.ZERO
-	# Nothing of the last floor's lifts survives into this one: a ride still
-	# counting would move the body to a room that no longer exists.
-	lifts.boarding = {}
-	lifts.leaving = -1.0
-	lifts.riding.clear()
-	lifts.lift_away.clear()
-	lifts.cross_clock = 0.0
+	# Nothing of the last floor's lifts survives into this one.
+	lifts.reset()
 	player.sanity = 100.0
 	player.set_burnt(false)
 	sanity.minds.clear()
@@ -2348,6 +2346,12 @@ func apply_settings() -> void:
 	# 4096, were clean). Seen with tools/capture/torch_capture.gd, long_* shots.
 	var compatibility: bool = RenderingServer.get_current_rendering_method() == "gl_compatibility"
 	viewport.positional_shadow_atlas_size = mini(preset.shadow_atlas, COMPAT_SHADOW_ATLAS) if compatibility else preset.shadow_atlas
+	# And its depth in 32 bits there. The bands are the torch shadowing the wall
+	# it lights, where 16 bits cannot tell the wall's depth from its own: at 9
+	# and 12 m with the bias low they come back on a 16-bit atlas and not on a
+	# 32-bit one, and 0.3/4.0 only just cleared them here -- on another card
+	# they were seen at those very distances. Some 32 MB more at 4096.
+	viewport.positional_shadow_atlas_16_bits = not compatibility
 	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
 	RenderingServer.positional_soft_shadow_filter_set_quality(preset.shadow_filter)
 	viewport.msaa_3d = preset.msaa

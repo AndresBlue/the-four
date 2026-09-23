@@ -44,9 +44,14 @@ func run() -> void:
 	check("La portada queda oculta durante la partida", not level.title_scene.visible)
 	# Skipping: holding interact ends the scene early.
 	level.session.set_state(level.session.State.MENU)
+	# As a floor that was left in its last car: that ride kept counting after
+	# the end, and its static played over the whole of the next opening scene.
+	level.lifts.leaving = level.lifts.RIDE_TIME + 1.0
 	await process_frame
 	level.on_action("new")
 	check("Se puede volver a abrir desde el menú", is_instance_valid(level.intro))
+	await wait_for(func(): return false, 20)
+	check("Sin la estática del último ascensor del piso anterior", level.static_level == 0.0 and float(level.post_material.get_shader_parameter("signal_loss")) == 0.0)
 	Input.action_press("interact")
 	var skipped: bool = await wait_for(func(): return not is_instance_valid(level.intro), 120)
 	Input.action_release("interact")

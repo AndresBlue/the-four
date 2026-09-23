@@ -81,6 +81,10 @@ var exit_lamps: Array[OmniLight3D] = []
 ## And how far one is seen from. Its own, not the furniture lamps' (which are
 ## off altogether on Low): an emergency light is not decoration.
 const EXIT_REACH := 14.0
+## The lamp in each lift car's ceiling. A car stands a hand from the wall it
+## backs on to, and its lamp, without a shadow, lit the room on the other side
+## of that wall: a pool on a dark room's ceiling, from nowhere.
+var car_lamps: Array[OmniLight3D] = []
 const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
 ## Service rooms (laundry, storeroom, maintenance, office) have a suspended
 ## ceiling of acoustic tiles; the empty lounge and the storeroom decrepit
@@ -1112,8 +1116,11 @@ func box_light(car: Node3D, at: Vector3) -> OmniLight3D:
 	lamp.light_color = Color(0.96, 0.94, 0.86)
 	lamp.light_energy = 2.4
 	lamp.omni_range = 5.5
-	lamp.shadow_enabled = false
+	lamp.shadow_enabled = true
+	lamp.shadow_bias = 0.04
+	lamp.shadow_normal_bias = 0.6
 	lamp.light_volumetric_fog_energy = 0.0
+	car_lamps.append(lamp)
 	return lamp
 
 ## The refuge's sign: a sheet of clear acrylic lit from the diodes buried in
@@ -1701,6 +1708,10 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	for lamp in exit_lamps:
 		lamp.visible = not echo_view and (show_all or lamp.global_position.distance_to(player_position) < EXIT_REACH)
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
+	# The cars' lamps keep theirs looking at the whole floor as well: there are
+	# a handful, and they fit in the atlas where a hundred room lamps do not.
+	for lamp in car_lamps:
+		if lamp.shadow_enabled != (shadows or show_all): lamp.shadow_enabled = shadows or show_all
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).
 	for i in doors.size():

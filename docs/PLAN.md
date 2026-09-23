@@ -197,8 +197,11 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **El botón del ascensor** en partida: si se encuentra sin que nadie lo
   explique, y si esperar al equipo dentro del coche funciona o alguien acaba
   pulsando antes de tiempo.
-- [ ] **La linterna en Compatibilidad en Alto y Ultra**, a más de diez metros,
-  ahora que el atlas de sombras se queda en 4096 en ese renderizador.
+- [ ] **La linterna en Compatibilidad**, a más de diez metros y de frente a
+  una pared, ahora que el atlas de sombras se queda en 4096 y guarda la
+  profundidad en 32 bits: las bandas diagonales del 23 de septiembre (en
+  Medio, a un módulo de distancia) eran la precisión de 16 bits, y en este PC
+  no salían. Mirarlo en la máquina donde se vieron.
 - [ ] **La criatura persigue de verdad.** Hasta el 22 de septiembre, quien
   seguía andando a su vista nunca era perseguido: cada paso que oía reiniciaba
   su alerta, y se quedaba parada gruñendo. Ahora la alerta acaba en
@@ -294,6 +297,11 @@ no rompen nada.
   la del cazador: los granos se escriben (8000 cerca de la cámara, medidos)
   pero apenas se dibujan. Mientras, la vista de verdad es
   `./tools/godot.ps1 locust`.
+- [ ] En Compatibilidad en Ultra, en una de dos capturas iguales la linterna
+  no alumbró nada en dos tomas de cuatro (sala oscura, 65 luces con sombra a
+  la vista); en la otra, sí. No es el límite de luces por objeto (se probó con
+  32). Puede ser la compilación de una variante de shader: mirar si se ve
+  jugando.
 - [ ] Cuando se cierra la sala de una partida que el observador miraba, se
   queda en ese piso, parado y sin criatura, y el panel sigue diciendo «en la
   sala» (`net.observing` no se apaga al salir). Debería volver a un piso suyo;

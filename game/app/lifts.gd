@@ -70,6 +70,17 @@ var lift_away := {}
 ## True while that car is away and nobody can step into it.
 func lift_gone(index: int) -> bool: return float(lift_away.get(index, 0.0)) > 0.0
 
+## Nothing of a floor's lifts left over: a ride still counting would move the
+## body to a room that no longer exists, and the last car never stops counting
+## by itself -- after the floor it went on giving its full static
+## (ride_static()), over the opening scene of the next game.
+func reset() -> void:
+	boarding = {}
+	leaving = -1.0
+	riding.clear()
+	lift_away.clear()
+	cross_clock = 0.0
+
 ## Counted on every machine: a guest has to know the car is away as well, or
 ## it offers a button that does nothing.
 func count_away(delta: float) -> void:

@@ -57,13 +57,10 @@ func plant_note() -> void:
 	var paper := BoxMesh.new()
 	paper.size = Vector3(0.16, 0.21, 0.004)
 	var sheet := StandardMaterial3D.new()
-	sheet.albedo_color = Color(0.9, 0.87, 0.78)
+	# The palest thing in the room, and no light of its own: the torch is what
+	# picks it out. Lit of itself it hung in a pitch-dark room like a lamp.
+	sheet.albedo_color = Color(0.96, 0.94, 0.87)
 	sheet.roughness = 0.95
-	# Barely lit of its own: enough to be picked out in a dark room without
-	# turning a drawer into a lamp.
-	sheet.emission_enabled = true
-	sheet.emission = Color(0.85, 0.82, 0.7)
-	sheet.emission_energy_multiplier = 0.5
 	note = MeshInstance3D.new()
 	note.name = "Note"
 	note.mesh = paper
