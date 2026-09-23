@@ -1,5 +1,7 @@
 extends CharacterBody3D
 const NOISE := preload("res://game/audio/noise_kinds.gd")
+## How the body moves, shared with the test bots (tools/bots).
+const MOVEMENT := preload("res://game/player/survivor_gait.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var avatar
 ## Seat in the match (session participant key). Single player is seat 1.
@@ -57,21 +59,6 @@ var step_impact_frame := -1.0
 const STEPS := preload("res://game/audio/footstep_segments.gd")
 var settings
 var spawn := Vector3.ZERO
-# Stamina: long sprints, slow and delayed recovery.
-const STAMINA_DRAIN := 8.0
-# Metres covered per footfall for each gait.
-# Adult cadence at each gait's speed (steps per second). Footfalls still come
-# from distance covered, so the stride is speed / cadence: long strides
-# walking, longer and slightly quicker ones running.
-const CADENCE_WALK := 2.0
-const CADENCE_RUN := 2.5
-const CADENCE_CROUCH := 1.5
-const STRIDE_WALK := 3.8 / CADENCE_WALK
-const STRIDE_RUN := 6.0 / CADENCE_RUN
-const STRIDE_CROUCH := 2.0 / CADENCE_CROUCH
-const STAMINA_RECOVERY := 6.0
-const RECOVERY_DELAY := 3.0
-const EXHAUSTED_UNTIL := 30.0
 # Hand-held torch: position relative to the camera and how loosely it follows.
 const HAND_OFFSET := Vector3(0.24, -0.3, -0.25)
 var torch_follow := 9.0
@@ -195,24 +182,9 @@ func _physics_process(delta: float) -> void:
 	# typed while reading used to jump -- and a jump is heard. It stays as it
 	# was, crouched or standing.
 	var wants_crouch: bool = crouched if reading else active and not hidden and Input.is_action_pressed("crouch")
-	if wants_crouch or can_stand(): crouched = wants_crouch
-	# Only on a change: every write rebuilds the physics shape.
-	if not is_equal_approx(body_shape.shape.height, 1.05 if crouched else 1.8):
-		body_shape.shape.height = 1.05 if crouched else 1.8
-		body_shape.position.y = 0.54 if crouched else 0.91
-	var running := active and not hidden and not crouched and axis.length() > 0.1 and Input.is_action_pressed("sprint") and stamina > 0 and not exhausted
-	if running:
-		stamina = maxf(0, stamina - STAMINA_DRAIN * delta)
-		recovery_delay = RECOVERY_DELAY
-		if stamina <= 0: exhausted = true
-	else:
-		recovery_delay = maxf(0, recovery_delay - delta)
-		if recovery_delay <= 0: stamina = minf(100, stamina + STAMINA_RECOVERY * delta)
-		if stamina >= EXHAUSTED_UNTIL: exhausted = false
-	var speed := 2.0 if crouched else 6.0 if running else 3.8
-	velocity.x = move_toward(velocity.x, direction.x * speed, 22 * delta)
-	velocity.z = move_toward(velocity.z, direction.z * speed, 22 * delta)
-	if not is_on_floor(): velocity.y -= 20 * delta
+	MOVEMENT.set_crouch(self, wants_crouch)
+	var running := MOVEMENT.tire(self, active and not hidden and axis.length() > 0.1 and Input.is_action_pressed("sprint"), delta)
+	MOVEMENT.accelerate(self, direction, running, delta)
 	if active and not hidden and not reading and not crouched and is_on_floor() and Input.is_action_just_pressed("jump"):
 		velocity.y = 5.4
 		noise.emit(global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)
@@ -227,15 +199,15 @@ func _physics_process(delta: float) -> void:
 	# cadence and camera motion always match the actual ground speed.
 	var planar := Vector2(velocity.x, velocity.z).length()
 	if planar > 0.25 and is_on_floor() and not hidden:
-		var stride := STRIDE_CROUCH if crouched else STRIDE_RUN if running else STRIDE_WALK
+		var stride := MOVEMENT.stride(crouched, running)
 		var previous := floori(step_phase / PI)
 		var rate := planar / stride * PI
 		step_phase += rate * delta
 		bob_weight = move_toward(bob_weight, 1.0, delta * 5.0)
 		var index := floori(step_phase / PI)
 		if index != previous:
-			# Tiles carry a step further than carpet.
-			noise.emit(global_position, NOISE.radius(("crouch" if crouched else "run" if running else "walk") + ("_hard" if hard_floor else "")), NOISE.Kind.RUN if running and not crouched else NOISE.Kind.FOOTSTEP)
+			var heard := MOVEMENT.footfall(crouched, running, hard_floor)
+			noise.emit(global_position, heard.radius, heard.kind)
 			if step_scheduled != index: play_step(running, 0.0)
 		# Recorded steps have their impact some way into the clip: start the next
 		# one early so the impact lands exactly on the footfall (and the head dip).
@@ -491,17 +463,7 @@ func _process(delta: float) -> void:
 func set_burnt(on: bool) -> void:
 	burnt = on
 
-func can_stand() -> bool:
-	if not crouched: return true
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = 0.3
-	capsule.height = 1.8
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = capsule
-	# Query above the contact margin: touching the floor must not forbid standing.
-	query.transform = Transform3D(Basis.IDENTITY, global_position + Vector3(0, 0.95, 0))
-	query.collision_mask = 1 | 8 | 128
-	return get_world_3d().direct_space_state.intersect_shape(query).is_empty()
+func can_stand() -> bool: return MOVEMENT.can_stand(self)
 
 ## Hold forward to ease the doors open, release to let them fall shut. Looking
 ## to one side opens the opposite leaf wider: its open door screens the near
