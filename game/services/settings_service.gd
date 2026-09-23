@@ -2,8 +2,23 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB}
+## The same actions on a pad. Moving and looking are the two sticks and are not
+## rebound: what is bound is what a button does. The layout is the one every
+## other game uses, so a hand that has played anything else already knows it:
+## the bottom button acts, the right one crouches, the left one lights the
+## torch, the top one jumps, the shoulders run and open the sheet.
+const PAD_KEYS := {"interact": JOY_BUTTON_A, "crouch": JOY_BUTTON_B, "flashlight": JOY_BUTTON_X, "jump": JOY_BUTTON_Y, "sprint": JOY_BUTTON_LEFT_SHOULDER, "sheet": JOY_BUTTON_RIGHT_SHOULDER}
+## Buttons the game keeps for itself, so nothing can be bound over them: the
+## menu button pauses, and B is how a menu is left.
+const PAD_RESERVED := [JOY_BUTTON_START, JOY_BUTTON_BACK]
+## How far a stick has to leave its middle before it counts, and the actions
+## the right stick looks with (built here, never saved: they are the stick).
+const STICK_DEADZONE := 0.22
+const LOOK_ACTIONS := {"look_left": [JOY_AXIS_RIGHT_X, -1.0], "look_right": [JOY_AXIS_RIGHT_X, 1.0], "look_up": [JOY_AXIS_RIGHT_Y, -1.0], "look_down": [JOY_AXIS_RIGHT_Y, 1.0]}
+const MOVE_AXES := {"forward": [JOY_AXIS_LEFT_Y, -1.0], "backward": [JOY_AXIS_LEFT_Y, 1.0], "left": [JOY_AXIS_LEFT_X, -1.0], "right": [JOY_AXIS_LEFT_X, 1.0]}
+var pad_bindings := PAD_KEYS.duplicate()
 const AUDIO_KEYS := ["master", "ambience", "music", "effects", "threat"]
 ## Saved-settings revision of the volume curve. Older files kept sliders tuned
 ## for a quieter curve, so their volumes are reset once.
@@ -65,6 +80,16 @@ func load_settings() -> void:
 			if key in DISPLAY_KEYS and not current_display: continue
 			if key == "subtitles" and not current_subtitles: continue
 			if stored.has(key): values[key] = sanitize(key, stored[key])
+	var pads = data.get("pad_bindings", {})
+	if pads is Dictionary:
+		var taken := {}
+		for action in PAD_KEYS:
+			var button: int = int(pads.get(action, PAD_KEYS[action])) if pads.get(action, PAD_KEYS[action]) is float or pads.get(action, PAD_KEYS[action]) is int else PAD_KEYS[action]
+			if button < 0 or button in PAD_RESERVED or taken.has(button):
+				pad_bindings = PAD_KEYS.duplicate()
+				break
+			taken[button] = true
+			pad_bindings[action] = button
 	var keys = data.get("bindings", {})
 	if keys is Dictionary:
 		var used := {}
@@ -111,6 +136,7 @@ func sanitize(key: String, value: Variant) -> Variant:
 		"quality": return clampi(int(value), 0, PRESETS.count() - 1)
 		"fps": return int(value) if int(value) in [0, 30, 60, 120, 144] else 60
 		"sensitivity": return clampf(value, 0.0005, 0.008)
+		"pad_look": return clampf(value, 0.6, 6.0)
 		"scale": return clampf(value, PRESETS.SCALING_MODES[PRESETS.SCALING_MODES.size() - 1], 1.0)
 	return clampf(value, 0, 1)
 
@@ -144,6 +170,28 @@ func revert_display() -> void:
 	save_settings()
 	display_pending.emit(0)
 
+## A button for an action. Refused if it is one the game keeps, or one already
+## doing something else, the same as a key.
+func bind_pad(action: String, button: int) -> bool:
+	if not PAD_KEYS.has(action) or button < 0 or button in PAD_RESERVED: return false
+	for other in pad_bindings:
+		if other != action and pad_bindings[other] == button: return false
+	pad_bindings[action] = button
+	apply_bindings()
+	save_settings()
+	changed.emit()
+	return true
+
+## What a pad button is called on screen, in the letters printed on it.
+const PAD_NAMES := {JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y", JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB", JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3", JOY_BUTTON_DPAD_UP: "CRUZ ↑", JOY_BUTTON_DPAD_DOWN: "CRUZ ↓", JOY_BUTTON_DPAD_LEFT: "CRUZ ←", JOY_BUTTON_DPAD_RIGHT: "CRUZ →"}
+
+func pad_name(action: String) -> String:
+	return String(PAD_NAMES.get(int(pad_bindings.get(action, -1)), "—"))
+
+## Whether there is a pad plugged in at all (the menus only offer its rows then).
+func pad_present() -> bool:
+	return not Input.get_connected_joypads().is_empty()
+
 func bind(action: String, code: int) -> bool:
 	if not KEYS.has(action) or code <= 0 or code in [KEY_ESCAPE, KEY_F9, KEY_F11]: return false
 	for other in bindings:
@@ -156,6 +204,8 @@ func bind(action: String, code: int) -> bool:
 
 func reset_controls() -> void:
 	bindings = KEYS.duplicate()
+	pad_bindings = PAD_KEYS.duplicate()
+	values.pad_look = DEFAULTS.pad_look
 	values.sensitivity = DEFAULTS.sensitivity
 	values.invert = false
 	apply()
@@ -168,9 +218,29 @@ func apply_bindings() -> void:
 	for action in bindings:
 		if not InputMap.has_action(action): InputMap.add_action(action)
 		InputMap.action_erase_events(action)
+		InputMap.action_set_deadzone(action, STICK_DEADZONE)
 		var key := InputEventKey.new()
 		key.physical_keycode = bindings[action]
 		InputMap.action_add_event(action, key)
+		# And on a pad: moving is the left stick, the rest are buttons.
+		if MOVE_AXES.has(action): InputMap.action_add_event(action, stick(MOVE_AXES[action]))
+		if pad_bindings.has(action):
+			var press := InputEventJoypadButton.new()
+			press.button_index = pad_bindings[action]
+			InputMap.action_add_event(action, press)
+	# Looking is the right stick and nothing else: it is read as a direction
+	# every frame (hotel_player.pad_look), not as a press.
+	for action in LOOK_ACTIONS:
+		if not InputMap.has_action(action): InputMap.add_action(action)
+		InputMap.action_erase_events(action)
+		InputMap.action_set_deadzone(action, STICK_DEADZONE)
+		InputMap.action_add_event(action, stick(LOOK_ACTIONS[action]))
+
+static func stick(pair: Array) -> InputEventJoypadMotion:
+	var motion := InputEventJoypadMotion.new()
+	motion.axis = int(pair[0])
+	motion.axis_value = float(pair[1])
+	return motion
 
 ## Actions bound to a modifier key -- running on Shift, crouching on Ctrl --
 ## could stay held after the key was let go: the key-up never reached the game
@@ -270,7 +340,7 @@ static func slider_db(volume: float) -> float:
 
 func save_settings() -> void:
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION}))
+	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION}))
 
 func _process(delta: float) -> void:
 	if countdown > 0:

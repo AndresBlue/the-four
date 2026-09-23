@@ -104,10 +104,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not can_act(): return
 	if event is InputEventMouseMotion:
 		var sensitivity: float = level.settings.values.sensitivity
-		# Holding a victim, or pulling a wardrobe open, it does not turn: the
-		# victim hangs where it faces, and swung round with the mouse.
-		if creature.mode not in [creature.Mode.EXECUTE, creature.Mode.WARDROBE]: creature.rotation.y -= event.relative.x * sensitivity
-		pitch = clampf(pitch - event.relative.y * sensitivity * (-1 if level.settings.values.invert else 1), -1.1, 0.6)
+		look_by(Vector2(-event.relative.x, -event.relative.y) * sensitivity)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT: strike()
 		elif event.button_index == MOUSE_BUTTON_RIGHT: shriek()
@@ -116,7 +113,23 @@ func can_act() -> bool:
 	return active and creature.control == "player" and level.session.state == level.session.State.PLAYING and not level.online_menu
 
 ## Called from the creature's physics step.
+## Turning, from the mouse or from the stick. Holding a victim, or pulling a
+## wardrobe open, it does not turn: the victim hangs where it faces, and used
+## to be swung round with it.
+func look_by(amount: Vector2) -> void:
+	if creature.mode not in [creature.Mode.EXECUTE, creature.Mode.WARDROBE]: creature.rotation.y += amount.x
+	pitch = clampf(pitch + amount.y * (-1.0 if level.settings.values.invert else 1.0), -1.1, 0.6)
+
+## The right stick, like the survivor's (hotel_player.pad_look).
+func pad_look(delta: float) -> void:
+	if not can_act() or level.settings == null: return
+	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	var push := stick.length()
+	if push < 0.001: return
+	look_by(-stick.normalized() * push * push * level.settings.values.pad_look * delta)
+
 func drive(delta: float) -> void:
+	pad_look(delta)
 	creature.grace = maxf(0.0, creature.grace - delta)
 	creature.state_time += delta
 	cooldown = maxf(0.0, cooldown - delta)

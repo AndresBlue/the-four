@@ -78,6 +78,8 @@ var lock_panel: Control
 var progress: ProgressBar
 var settings_open := false
 var rebind_action := ""
+## The action waiting for a pad button, the same way rebind_action waits for a key.
+var rebind_pad := ""
 var rebind_button: Button
 var display_label: Label
 ## The pair of buttons that keep or revert a screen change, shown only while
@@ -300,6 +302,7 @@ func clear() -> void:
 	display_row = null
 	loading_label = null
 	rebind_action = ""
+	rebind_pad = ""
 	column.custom_minimum_size.x = 520
 	side.visible = true
 	noise_floor = 0.0
@@ -367,6 +370,7 @@ func close_menus() -> void:
 	overlay.hide()
 	settings_open = false
 	rebind_action = ""
+	rebind_pad = ""
 
 func menu(kind: String, can_continue := false, message := "") -> void:
 	settings_open = false
@@ -771,7 +775,7 @@ func show_document(item: Dictionary) -> void:
 ## The keypad of the last door: four places, what has been typed so far, a
 ## word when it refuses or gives way, and the numbers already written down --
 ## standing at the keypad is exactly where nobody should have to remember them.
-func show_lock(entered: String, places: int, word: String, known := "") -> void:
+func show_lock(entered: String, places: int, word: String, known := "", dial := -1) -> void:
 	hide_lock()
 	lock_panel = Control.new()
 	lock_panel.name = "Lock"
@@ -797,8 +801,20 @@ func show_lock(entered: String, places: int, word: String, known := "") -> void:
 		var note := label(column, "ANOTADO  " + known, 22)
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		note.add_theme_color_override("font_color", STYLE.SOFT)
-	var key: String = settings.key_name("interact") if settings != null else "E"
-	var foot := label(column, word if not word.is_empty() else "TECLEA EL CÓDIGO · [ESC] SALIR", 18)
+	# With a pad there is nowhere to type: the numbers are dialled with the
+	# cross and pressed with the bottom button.
+	var padded: bool = dial >= 0 and settings != null and settings.pad_present()
+	if padded:
+		var strip := HBoxContainer.new()
+		strip.add_theme_constant_override("separation", 14)
+		strip.alignment = BoxContainer.ALIGNMENT_CENTER
+		column.add_child(strip)
+		for digit in 10:
+			var one := label(strip, str(digit), 30)
+			one.add_theme_color_override("font_color", STYLE.AMBER if digit == dial else STYLE.SOFT)
+	var foot_words := word
+	if foot_words.is_empty(): foot_words = "CRUZ: ELIGE · A: MARCA · X: BORRA · B: SALIR" if padded else "TECLEA EL CÓDIGO · [ESC] SALIR"
+	var foot := label(column, foot_words, 18)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	foot.add_theme_color_override("font_color", STYLE.ALERT if word == "NO ES" else STYLE.SOFT)
 
@@ -921,21 +937,40 @@ func show_settings(back: String) -> void:
 	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")
+	if settings.pad_present():
+		slider(controls, "Sensibilidad del mando", "pad_look", 0.6, 6.0, 0.2)
+		check(controls, "Vibración del mando", "rumble")
+		paragraph(controls, "El stick izquierdo anda, el derecho mira, y el botón de menú hace de pausa. Mover y mirar son los sticks y no se cambian.", 16, 900, STYLE.SOFT)
 	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)
-		label(row, titles[id], 19).custom_minimum_size.x = 340
+		label(row, titles[id], 19).custom_minimum_size.x = 300
 		var key_button := Button.new()
 		key_button.theme_type_variation = "BoxButton"
 		key_button.text = settings.key_name(id)
-		key_button.custom_minimum_size = Vector2(300, 38)
+		key_button.custom_minimum_size = Vector2(240, 38)
 		row.add_child(key_button)
 		key_button.pressed.connect(func():
 			confirm()
 			rebind_action = id
 			rebind_button = key_button
 			key_button.text = "PULSA UNA TECLA · ESC CANCELA"
+		)
+		# And what the same thing is on a pad, where it is a button at all.
+		if not settings.pad_present(): continue
+		var pad_button := Button.new()
+		pad_button.theme_type_variation = "BoxButton"
+		pad_button.custom_minimum_size = Vector2(200, 38)
+		pad_button.disabled = not settings.PAD_KEYS.has(id)
+		pad_button.text = settings.pad_name(id) if settings.PAD_KEYS.has(id) else "STICK IZQ."
+		row.add_child(pad_button)
+		if pad_button.disabled: continue
+		pad_button.pressed.connect(func():
+			confirm()
+			rebind_pad = id
+			rebind_button = pad_button
+			pad_button.text = "PULSA UN BOTÓN · B CANCELA"
 		)
 	var reset := Button.new()
 	reset.theme_type_variation = "BoxButton"
@@ -1359,6 +1394,14 @@ func _input(event: InputEvent) -> void:
 	if is_instance_valid(intro) and event is InputEventKey and event.pressed:
 		get_viewport().set_input_as_handled()
 		finish_intro()
+		return
+	if not rebind_pad.is_empty() and event is InputEventJoypadButton and event.pressed:
+		get_viewport().set_input_as_handled()
+		var button := int((event as InputEventJoypadButton).button_index)
+		if button == JOY_BUTTON_B or settings.bind_pad(rebind_pad, button):
+			rebind_button.text = settings.pad_name(rebind_pad)
+			rebind_pad = ""
+		else: rebind_button.text = "BOTÓN RESERVADO · B CANCELA"
 		return
 	if rebind_action.is_empty() or not event is InputEventKey or not event.pressed: return
 	get_viewport().set_input_as_handled()

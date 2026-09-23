@@ -48,6 +48,18 @@ func run() -> void:
 	Input.parse_input_event(loose)
 	await process_frame
 	check("Running stays on while Shift is down and stops when the system says it is up", kept and not Input.is_action_pressed("sprint"))
+	# The pad: the same actions a key does, on the sticks and buttons, and what
+	# it refuses to bind.
+	var pad_settings = scene.settings
+	pad_settings.apply_bindings()
+	var walking: Array = InputMap.action_get_events("forward")
+	check("Andar es también el stick izquierdo", walking.any(func(event): return event is InputEventJoypadMotion and event.axis == JOY_AXIS_LEFT_Y and event.axis_value < 0.0))
+	check("Y mirar es el derecho, con su zona muerta", InputMap.has_action("look_right") and InputMap.action_get_events("look_right").any(func(event): return event is InputEventJoypadMotion and event.axis == JOY_AXIS_RIGHT_X) and is_equal_approx(InputMap.action_get_deadzone("look_right"), pad_settings.STICK_DEADZONE))
+	check("Interactuar es el botón de abajo", InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A))
+	check("Un botón se puede cambiar", pad_settings.bind_pad("interact", JOY_BUTTON_RIGHT_STICK) and int(pad_settings.pad_bindings.interact) == JOY_BUTTON_RIGHT_STICK and InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_RIGHT_STICK))
+	check("Pero no al de menú ni a uno que ya hace otra cosa", not pad_settings.bind_pad("interact", JOY_BUTTON_START) and not pad_settings.bind_pad("interact", int(pad_settings.pad_bindings.crouch)))
+	pad_settings.reset_controls()
+	check("Y restaurar controles los devuelve todos", int(pad_settings.pad_bindings.interact) == JOY_BUTTON_A and int(pad_settings.bindings.forward) == KEY_W)
 	# The board of tapes that got out: what goes in which table, in what order,
 	# and how much is kept.
 	var records := preload("res://game/services/records_service.gd").new()

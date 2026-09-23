@@ -147,13 +147,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and not reading:
 		# Zoomed in, the same hand movement swings the picture as much more,
 		# so the look slows down with the lens.
-		var aim: float = settings.values.sensitivity / zoom
-		turn_delta += Vector2(-event.relative.x, -event.relative.y * (-1 if settings.values.invert else 1)) * aim
-		rotate_y(-event.relative.x * aim)
-		if hidden:
-			var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
-			rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
-		camera.rotation.x = clampf(camera.rotation.x - event.relative.y * aim * (-1 if settings.values.invert else 1), -1.45, 1.45)
+		look_by(Vector2(-event.relative.x, -event.relative.y) * (settings.values.sensitivity / zoom))
 	if event is InputEventMouseButton and event.pressed and not reading:
 		# The zoom rocker: the wheel forward is T, back is W.
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_to(zoom_wanted * ZOOM_STEP)
@@ -162,7 +156,34 @@ func _unhandled_input(event: InputEvent) -> void:
 		torch.visible = not torch.visible
 		torch_warmup = 0.0
 
+## Turning the head, however it was asked for: the mouse in pixels moved, the
+## pad in how far the stick is pushed. Positive x turns left, positive y looks
+## up; inverting the vertical is the player's own setting and belongs here, at
+## the one place the picture is actually turned.
+func look_by(amount: Vector2) -> void:
+	var up: float = amount.y * (-1.0 if settings.values.invert else 1.0)
+	turn_delta += Vector2(amount.x, up)
+	rotate_y(amount.x)
+	if hidden:
+		var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
+		rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
+	camera.rotation.x = clampf(camera.rotation.x + up, -1.45, 1.45)
+
+## The right stick, read every frame and not as presses: a stick that is barely
+## pushed turns slowly and one pushed to the rim turns fast (the square makes
+## the middle of its travel gentle, which is what makes a pad aimable), and
+## the zoomed lens slows it the same way it slows the mouse.
+func pad_look(delta: float) -> void:
+	if not active or reading or settings == null: return
+	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	var push := stick.length()
+	if push < 0.001: return
+	var speed: float = settings.values.pad_look * delta / zoom
+	# The stick reads +x to the right and +y down; the picture turns the other way.
+	look_by(-stick.normalized() * push * push * speed)
+
 func _physics_process(delta: float) -> void:
+	pad_look(delta)
 	if held:
 		velocity = Vector3.ZERO
 		return

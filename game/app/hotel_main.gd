@@ -978,13 +978,63 @@ func seat_name(seat: int) -> String:
 
 const AVATAR_NAMES := ["Detective", "Detective", "Exploradora"]
 
+## The pad in the hands, when something happens to the body it is holding: the
+## creature's grip, each stab, and the board being thrown. Off by the player's
+## own setting, and nothing at all when there is no pad.
+func rumble(weak: float, strong: float, seconds: float) -> void:
+	if settings == null or not settings.values.rumble or not settings.pad_present(): return
+	for pad in Input.get_connected_joypads(): Input.start_joy_vibration(pad, weak, strong, seconds)
+
+## A pad button the game itself answers, wherever it is pressed: the menu
+## button is the pause (the Escape of a pad), and while the keypad is up the
+## cross and the two face buttons work its numbers, because a pad has nowhere
+## to type a code. Everything else a pad does is bound to an action and
+## arrives as one (settings_service.PAD_KEYS).
+func pad_pressed(button: int) -> void:
+	if lock_open:
+		match button:
+			JOY_BUTTON_DPAD_LEFT: lock_digit = (lock_digit + 9) % 10
+			JOY_BUTTON_DPAD_RIGHT: lock_digit = (lock_digit + 1) % 10
+			JOY_BUTTON_DPAD_UP: lock_digit = (lock_digit + 5) % 10
+			JOY_BUTTON_DPAD_DOWN: lock_digit = (lock_digit + 5) % 10
+			JOY_BUTTON_A: type_code(str(lock_digit))
+			JOY_BUTTON_X: type_code("borrar")
+			JOY_BUTTON_B, JOY_BUTTON_START: close_lock()
+			_: return
+		if lock_open: ui.show_lock(typed, DIGITS.COUNT, "", noted_code(), lock_digit)
+		return
+	if button == JOY_BUTTON_B and is_instance_valid(reading_document):
+		close_document()
+		return
+	if button == JOY_BUTTON_B and ui.sheet.visible:
+		toggle_sheet()
+		return
+	if button != JOY_BUTTON_START: return
+	# The same as Escape, and by the same rules.
+	if session.state == session.State.CUTSCENE: finish_intro()
+	elif ui.settings_open:
+		ui.settings_open = false
+		if not settings.previous_display.is_empty(): settings.revert_display()
+		on_action(ui.return_action)
+	elif match_net.in_match() and session.state == session.State.PLAYING:
+		if online_menu: close_online_menu()
+		else: open_online_menu()
+	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
+	elif session.state == session.State.PLAYING: session.pause()
+
+## The number the cross is resting on while the keypad is up (a pad has no
+## number keys, so it is dialled).
+var lock_digit := 0
+
 ## The stage the floor was on when it was last looked at, to tell a change.
 var last_stage := 1
 
 ## The power goes, everywhere at once. Nothing says so in words: the hotel
 ## drops into the dark with a sound, and in the creature's reading the ceilings
-## it can no longer hear humming come back at it in one burst.
+## it can no longer hear humming come back at it in one burst. In the hands,
+## the board being thrown is one short knock.
 func apply_blackout() -> void:
+	rumble(0.35, 0.0, 0.25)
 	hotel.blackout(true)
 	if world_audio.enabled: world_audio.play_at(BLACKOUT_SOUND, player.global_position + Vector3(0, 2.5, 0), 0.0)
 	if is_instance_valid(locust) and is_instance_valid(locust.driver) and locust.driver.has_method("mark_blackout"): locust.driver.mark_blackout()
@@ -1186,6 +1236,8 @@ func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
 	strike_uv = Vector2(0.35, 0.55)
 	if is_instance_valid(locust) and locust.control != "puppet": locust.begin_execution()
 	if seat == player.slot:
+		# The grip: a long, deep shake, and each stab lands on top of it.
+		rumble(0.5, 0.9, 0.7)
 		player.active = false
 		player.held = true
 		player.velocity = Vector3.ZERO
@@ -1217,6 +1269,7 @@ func update_execution(delta: float) -> void:
 		execution.stabs = 1
 	if int(execution.stabs) == 1 and execution.time >= KILL_TIME:
 		glitch = 1.0
+		if int(execution.seat) == player.slot: rumble(0.2, 1.0, 0.35)
 		execution.stabs = 2
 	# The dead channel starts with the snow, not before it: sound and picture
 	# are the same event.
@@ -1440,29 +1493,30 @@ func type_code(character: String) -> void:
 	if character == "borrar": typed = typed.substr(0, maxi(0, typed.length() - 1))
 	elif typed.length() < DIGITS.COUNT: typed += character
 	if typed.length() < DIGITS.COUNT:
-		ui.show_lock(typed, DIGITS.COUNT, "", noted_code())
+		ui.show_lock(typed, DIGITS.COUNT, "", noted_code(), lock_digit)
 		return
 	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
 	# The right code on a wing whose sets are still dark: the door is not
 	# going to move, and it is better said here than guessed at the door.
 	if typed == right and not sets_lit():
 		typed = ""
-		ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code())
+		ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code(), lock_digit)
 		return
 	if typed == right:
 		match_net.use_code()
-		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code())
+		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code(), lock_digit)
 		close_lock()
 	else:
 		typed = ""
-		ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code())
+		ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code(), lock_digit)
 		if world_audio.enabled: world_audio.play_at(SEARCH_SOUND, lock.global_position, -12.0)
 
 func open_lock() -> void:
 	lock_open = true
 	typed = ""
+	lock_digit = 0
 	player.reading = true
-	ui.show_lock("", DIGITS.COUNT, "", noted_code())
+	ui.show_lock("", DIGITS.COUNT, "", noted_code(), lock_digit)
 
 func close_lock() -> void:
 	lock_open = false
@@ -1848,6 +1902,9 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and not local_alive() and session.state == session.State.PLAYING and not online_menu:
 		match_net.next_watch()
+		return
+	if event is InputEventJoypadButton and event.pressed:
+		pad_pressed(int((event as InputEventJoypadButton).button_index))
 		return
 	if not event is InputEventKey or not event.pressed or event.echo: return
 	if lock_open:

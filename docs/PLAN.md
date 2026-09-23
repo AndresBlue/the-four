@@ -231,20 +231,13 @@ no rompen nada.
 
 ## 3 · Acabado de lo que ya existe
 
-Afina algo que funciona: va después de que funcione bien. Los dos primeros son
-lo que le queda al piso de The Locust para darlo por cerrado: el mando cambia
-quién puede jugarlo, y el sonido del ascensor (apartado 4) tapa un silencio que
-hoy se oye raro al cerrar cada sector. El parte al salir del piso y los mejores
-tiempos ya están, y se describen en el diseño.
+Afina algo que funciona: va después de que funcione bien. Del cierre del piso
+de The Locust ya están el mando, el parte al salir y los mejores tiempos, todos
+descritos en el diseño; queda el sonido del ascensor (apartado 4), que tapa un
+silencio que hoy se oye raro al cerrar cada sector, y probar el mando en
+partida: que la sensibilidad por defecto no se quede corta ni larga, y que se
+pueda jugar entero sin tocar el teclado.
 
-- [ ] **Jugar con mando.** Hoy no hay ninguno: las acciones se arman solo desde
-  teclas (`settings_service.KEYS`) y `project.godot` no tiene ni sección de
-  entrada. Hace falta mirada analógica (zona muerta, curva y aceleración),
-  mover y agacharse con el stick, los botones para interactuar, linterna,
-  correr y hoja, navegar los menús con la cruceta —que ya van por foco, así
-  que es poco— y reasignar desde Ajustes, con el nombre del botón en pantalla
-  como ya pasa con las teclas. Incluye al cazador, que comparte los mismos
-  ajustes de sensibilidad e inversión.
 - [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
   siempre refugio, televisores y código, y en ese orden: la planta cambia y la
   partida no. Basta una condición alternativa que pueda salir en el sector 2 o
