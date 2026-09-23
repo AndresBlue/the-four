@@ -348,11 +348,19 @@ func set_osd(left: String, right := "", clock_text := "", footer_text := "") -> 
 	menu_clock.text = clock_text
 	footer.text = footer_text
 
+## The first thing a pad can press on this screen. Without it a screen built
+## out of plain entries (the board of times) came up with nothing highlighted,
+## and a pad had no way in at all.
 func focus_first() -> void:
 	quiet_focus = true
 	for id in buttons:
 		if not buttons[id].disabled:
 			buttons[id].grab_focus()
+			quiet_focus = false
+			return
+	for node in overlay.find_children("*", "Button", true, false):
+		if not (node as Button).disabled and (node as Button).is_visible_in_tree():
+			(node as Button).grab_focus()
 			break
 	quiet_focus = false
 

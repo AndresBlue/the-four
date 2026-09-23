@@ -13,6 +13,16 @@ const PAD_KEYS := {"interact": JOY_BUTTON_A, "crouch": JOY_BUTTON_B, "flashlight
 ## Buttons the game keeps for itself, so nothing can be bound over them: the
 ## menu button pauses, and B is how a menu is left.
 const PAD_RESERVED := [JOY_BUTTON_START, JOY_BUTTON_BACK]
+## The menus' own actions and the pad buttons they answer to. Godot builds
+## these actions itself, and in this project ui_accept came without any pad
+## button: the cross moved the highlight and nothing could be chosen. Added
+## only if the action does not have that button already, so the engine's
+## defaults are kept.
+const UI_PAD := {"ui_accept": JOY_BUTTON_A, "ui_cancel": JOY_BUTTON_B, "ui_up": JOY_BUTTON_DPAD_UP, "ui_down": JOY_BUTTON_DPAD_DOWN, "ui_left": JOY_BUTTON_DPAD_LEFT, "ui_right": JOY_BUTTON_DPAD_RIGHT}
+## And on the left stick, so the menus are walked with the same hand that walks
+## the hotel.
+const UI_STICK := {"ui_up": [JOY_AXIS_LEFT_Y, -1.0], "ui_down": [JOY_AXIS_LEFT_Y, 1.0], "ui_left": [JOY_AXIS_LEFT_X, -1.0], "ui_right": [JOY_AXIS_LEFT_X, 1.0]}
+
 ## How far a stick has to leave its middle before it counts, and the actions
 ## the right stick looks with (built here, never saved: they are the stick).
 const STICK_DEADZONE := 0.22
@@ -228,6 +238,17 @@ func apply_bindings() -> void:
 			var press := InputEventJoypadButton.new()
 			press.button_index = pad_bindings[action]
 			InputMap.action_add_event(action, press)
+	for action in UI_PAD:
+		if not InputMap.has_action(action): continue
+		var button: int = UI_PAD[action]
+		if not InputMap.action_get_events(action).any(func(event): return event is InputEventJoypadButton and int(event.button_index) == button):
+			var press := InputEventJoypadButton.new()
+			press.button_index = button
+			InputMap.action_add_event(action, press)
+		if not UI_STICK.has(action): continue
+		var pair: Array = UI_STICK[action]
+		if not InputMap.action_get_events(action).any(func(event): return event is InputEventJoypadMotion and int(event.axis) == int(pair[0]) and signf(event.axis_value) == signf(pair[1])):
+			InputMap.action_add_event(action, stick(pair))
 	# Looking is the right stick and nothing else: it is read as a direction
 	# every frame (hotel_player.pad_look), not as a press.
 	for action in LOOK_ACTIONS:

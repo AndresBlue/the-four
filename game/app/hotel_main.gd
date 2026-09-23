@@ -985,6 +985,27 @@ func rumble(weak: float, strong: float, seconds: float) -> void:
 	if settings == null or not settings.values.rumble or not settings.pad_present(): return
 	for pad in Input.get_connected_joypads(): Input.start_joy_vibration(pad, weak, strong, seconds)
 
+## Out of whatever is open, and one step at a time: the opening scene, a
+## document, the settings, the screen before this one, the pause. Escape and
+## the pad's own way back are the same thing and go through here.
+func step_back() -> void:
+	if session.state == session.State.CUTSCENE: finish_intro()
+	elif is_instance_valid(reading_document): close_document()
+	elif ui.settings_open:
+		# Closed first: the revert would otherwise reopen these settings.
+		ui.settings_open = false
+		if not settings.previous_display.is_empty(): settings.revert_display()
+		on_action(ui.return_action)
+	elif match_net.in_match() and session.state == session.State.PLAYING:
+		if online_menu: close_online_menu()
+		else: open_online_menu()
+	elif net.active() and session.state == session.State.MENU and ui.screen in ["lobby", "join"]: on_action("lobby_leave")
+	elif ui.screen == "join" and session.state == session.State.MENU: on_action("multiplayer")
+	elif ui.screen == "characters" and session.state == session.State.MENU: on_action("lobby" if net.active() else "multiplayer")
+	elif ui.screen in ["credits", "multiplayer", "records", "archive"] and session.state == session.State.MENU: on_action("main")
+	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
+	elif session.state == session.State.PLAYING: session.pause()
+
 ## A pad button the game itself answers, wherever it is pressed: the menu
 ## button is the pause (the Escape of a pad), and while the keypad is up the
 ## cross and the two face buttons work its numbers, because a pad has nowhere
@@ -1003,24 +1024,13 @@ func pad_pressed(button: int) -> void:
 			_: return
 		if lock_open: ui.show_lock(typed, DIGITS.COUNT, "", noted_code(), lock_digit)
 		return
-	if button == JOY_BUTTON_B and is_instance_valid(reading_document):
-		close_document()
-		return
 	if button == JOY_BUTTON_B and ui.sheet.visible:
 		toggle_sheet()
 		return
-	if button != JOY_BUTTON_START: return
-	# The same as Escape, and by the same rules.
-	if session.state == session.State.CUTSCENE: finish_intro()
-	elif ui.settings_open:
-		ui.settings_open = false
-		if not settings.previous_display.is_empty(): settings.revert_display()
-		on_action(ui.return_action)
-	elif match_net.in_match() and session.state == session.State.PLAYING:
-		if online_menu: close_online_menu()
-		else: open_online_menu()
-	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
-	elif session.state == session.State.PLAYING: session.pause()
+	# B goes back, the menu button pauses; in play they meet at the same place.
+	if button not in [JOY_BUTTON_B, JOY_BUTTON_START]: return
+	if button == JOY_BUTTON_B and session.state == session.State.PLAYING and not ui.settings_open and not online_menu and not is_instance_valid(reading_document): return
+	step_back()
 
 ## The number the cross is resting on while the keypad is up (a pad has no
 ## number keys, so it is dialled).
@@ -1923,19 +1933,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.physical_keycode == KEY_ESCAPE and net.active() and session.state == session.State.MENU and ui.screen in ["lobby", "join"] and not ui.settings_open:
 		on_action("lobby_leave")
 		return
-	if event.physical_keycode == KEY_ESCAPE:
-		if session.state == session.State.CUTSCENE: finish_intro()
-		elif is_instance_valid(reading_document): close_document()
-		elif ui.settings_open:
-			# Closed first: the revert would otherwise reopen these settings.
-			ui.settings_open = false
-			if not settings.previous_display.is_empty(): settings.revert_display()
-			on_action(ui.return_action)
-		elif ui.screen == "join" and session.state == session.State.MENU: on_action("multiplayer")
-		elif ui.screen == "characters" and session.state == session.State.MENU: on_action("lobby" if net.active() else "multiplayer")
-		elif ui.screen in ["credits", "multiplayer"] and session.state == session.State.MENU: on_action("main")
-		elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
-		else: session.pause()
+	if event.physical_keycode == KEY_ESCAPE: step_back()
 	if event.physical_keycode == KEY_F9 and OS.is_debug_build() and not net.is_client(): session.capture(player.slot)
 	if event.physical_keycode == KEY_F11:
 		# Online nobody pauses the floor for everyone: the online menu opens

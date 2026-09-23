@@ -58,6 +58,22 @@ func run() -> void:
 	check("Interactuar es el botón de abajo", InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A))
 	check("Un botón se puede cambiar", pad_settings.bind_pad("interact", JOY_BUTTON_RIGHT_STICK) and int(pad_settings.pad_bindings.interact) == JOY_BUTTON_RIGHT_STICK and InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_RIGHT_STICK))
 	check("Pero no al de menú ni a uno que ya hace otra cosa", not pad_settings.bind_pad("interact", JOY_BUTTON_START) and not pad_settings.bind_pad("interact", int(pad_settings.pad_bindings.crouch)))
+	# The menus have to be usable with a pad alone: this project's ui_accept
+	# came with no pad button at all, so the cross moved the highlight and
+	# nothing could be chosen.
+	check("Elegir en los menús es el botón de abajo", InputMap.action_get_events("ui_accept").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A))
+	check("Y salir de ellos, el de la derecha", InputMap.action_get_events("ui_cancel").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_B))
+	check("El menú se recorre con la cruceta y con el stick", InputMap.action_get_events("ui_down").any(func(event): return event is InputEventJoypadMotion and event.axis == JOY_AXIS_LEFT_Y and event.axis_value > 0.0))
+	# And something has to be highlighted, or a pad has no way in.
+	var unfocused: Array = []
+	for kind in ["main", "multiplayer", "join", "credits", "archive", "records"]:
+		scene.ui.menu(kind)
+		await process_frame
+		if scene.get_viewport().gui_get_focus_owner() == null: unfocused.append(kind)
+	scene.ui.show_characters()
+	await process_frame
+	if scene.get_viewport().gui_get_focus_owner() == null: unfocused.append("characters")
+	check("Y toda pantalla abre con algo marcado", unfocused.is_empty())
 	pad_settings.reset_controls()
 	check("Y restaurar controles los devuelve todos", int(pad_settings.pad_bindings.interact) == JOY_BUTTON_A and int(pad_settings.bindings.forward) == KEY_W)
 	# The board of tapes that got out: what goes in which table, in what order,

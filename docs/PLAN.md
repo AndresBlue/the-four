@@ -11,32 +11,50 @@ Estado: juego **0.5**, generador de mapas **v3**, protocolo de red
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
-## Dónde estamos (21 de septiembre de 2026)
+## Dónde estamos (22 de septiembre de 2026)
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
 tres alas y tres etapas, The Locust con su IA y su versus, supervivencia,
-cordura, ascensores, cuatro presets gráficos y un ejecutable de Windows de 448
-MB que funciona (exportado el 21 de septiembre, con todo lo de abajo). Se ha jugado con gente real, en LAN y por Internet.
+cordura, ascensores con botón, cuatro presets gráficos y un ejecutable de
+Windows de 448 MB que funciona (exportado el 22 de septiembre; lo de después de
+esa hora pide volver a exportar). Se ha jugado con gente real, en LAN y por
+Internet, pero **no desde todo lo de abajo**.
 
-Los **cinco fallos** que dejó la última partida están arreglados y medidos: la
-cámara que acababa en negro, la linterna que se perdía al revivir, las lámparas
-que seguían brillando con la corriente cortada, la luz que cruzaba las paredes y
-la linterna que rayaba las texturas en Compatibilidad. Lo que hicieron y cómo se
-comprobó está en la guía de desarrollo y en [REALISM.md](REALISM.md).
+Antes del 21 ya estaban arreglados los cinco fallos de la última partida, lo
+que nadie entendía jugando y la deuda técnica entera; el detalle está en la
+guía de desarrollo, en [REALISM.md](REALISM.md) y en
+[history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
-Y con ellos lo que **nadie entendía jugando**: el aviso de auriculares antes de
-la cinta, volver donde estabas después de una caída, el corte entre alas y la
-hoja compartida rehecha con las notas colgando de ella.
+El 22 entraron, y **nadie los ha jugado todavía**:
 
-Y la **deuda técnica entera**: la cordura la lleva el anfitrión, el último
-ascensor es un viaje, `hotel_main.gd` está repartido, el prototipo de fusibles
-ya no está, la vista de la criatura se lee igual en Compatibilidad, un invitado
-que vuelve aparece donde estaba y Shift ya no se queda pegado.
+- **Dos revisiones de fallos**, una general y otra más profunda, con unos
+  cuarenta fallos reales arreglados y su prueba cada uno. Los que más se van a
+  notar: la criatura **persigue de verdad** (quien seguía andando a su vista
+  nunca era perseguido, porque cada paso reiniciaba su alerta), los coches de
+  ascensor que se construían al revés y no se podían tomar —el «bloque sin
+  ascensor» de la última partida—, la puerta del código que se abría sola al
+  pasar al sector 3 con un muerto, las puertas que ahora frenan a la criatura
+  (y las tres reglas para que no se quede plantada en ninguna), el sonido que
+  de verdad se amortigua tras una puerta cerrada, la cordura que sube en el
+  refugio y, en red, el parpadeo de las luces al cambiar de sector, las
+  reconexiones y los armarios que se quedaban ocupados.
+- **Ajustes repartidos en dos pestañas**: IMAGEN es la pantalla (modo de
+  ventana, tamaño, escalado, escala, nitidez, suavizado, FPS, vsync) y
+  GRÁFICOS es cómo se ve (preset, renderizador, sombras, los cuatro efectos
+  pesados y la estética de la cinta). Con **FSR 2.2**, que a escala 0,6 da un
+  74 % más de fotogramas que la resolución nativa y, con algo moviéndose, es el
+  más fiel de los cuatro modos medidos. DLSS no se puede: no está en el motor y
+  no se añade desde fuera.
+- **El parte al salir del piso y los mejores tiempos**: la cinta que sale queda
+  anotada, y hay dos tablones —en solitario y acompañado— con tres tablas cada
+  uno.
+- **Se juega entero con mando**, menús incluidos, con vibración y con el
+  teclado del código marcable con la cruceta.
 
 Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
 
-- Lo que debía arreglar que las partidas duraran cinco minutos en vez de
-  treinta ya está puesto y medido, pero **nadie lo ha vuelto a jugar**.
+- **Nadie ha jugado nada de esto.** Es un piso distinto del que se jugó: la
+  criatura persigue, las puertas la frenan y el equilibrio cambió con ellas.
 - Solo existe **un piso de los cuatro**: Sunman, The Boiled One y Guilt no
   están.
 
