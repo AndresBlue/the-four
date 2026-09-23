@@ -9,7 +9,7 @@ if (-not $GodotPath) {
 }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
 $processes = @()
-$roles = if ($Scenario -eq 'versus') { @('vs_host', 'vs_hunter') } elseif ($Scenario -eq 'late') { @('late_host', 'late_guest') } elseif ($Scenario -eq 'observer') { @('watch_host', 'watch_guest', 'watcher') } else { @('host', 'alpha', 'bravo') }
+$roles = if ($Scenario -eq 'versus') { @('vs_host', 'vs_hunter') } elseif ($Scenario -eq 'late') { @('late_host', 'late_guest') } elseif ($Scenario -eq 'observer') { @('watcher', 'watch_host', 'watch_guest') } else { @('host', 'alpha', 'bravo') }
 foreach ($role in $roles) {
     $json = Join-Path $projectPath "evidence/net_$role.json"
     if (Test-Path $json) { Remove-Item $json }

@@ -108,11 +108,18 @@ func watch_guest() -> void:
 
 func watcher() -> void:
 	var net = level.net
-	await pause_for(2.5)
-	check("Se conecta a la partida sin pedir plaza", net.join_observer("127.0.0.1", port) == OK)
-	check("Y el anfitrión lo admite como observador", await wait_for(func(): return net.observing, 30.0))
-	check("Recibe el piso que se está jugando", await wait_for(func(): return not level.manifest.is_empty() and int(level.session.run_seed) == 81, 90.0))
-	level.enter_observer_mode()
+	# It opens before anybody is hosting: nobody answers, so it looks at a
+	# floor of its own and keeps knocking until a room opens.
+	level.observer_port = port
+	await level.begin_observing(4242)
+	# Whether a room was open by the time it knocked is a matter of a second:
+	# either it is already in, or it is looking at a floor of its own.
+	check("Abre sin depender de que haya sala", level.observer and (net.observing or int(level.session.run_seed) == 4242))
+	check("Y sigue llamando hasta que se abre una", await wait_for(func(): return net.observing, 60.0))
+	check("Al empezar la partida recibe su piso, sin que nadie lo reabra", await wait_for(func(): return int(level.session.run_seed) == 81, 120.0))
+	# The floor arriving sets the player's own camera up again, and the next
+	# frame takes it back (observer_view._process).
+	await pause_for(0.5)
 	check("No tiene cuerpo ni cámara de jugador", level.observer and not level.player.visible and not level.player.active and level.observer_view.camera.current)
 	check("Ve a los dos que juegan", await wait_for(func(): return level.match_net.bodies.size() == 2, 30.0))
 	check("Y les llegan sus movimientos", await wait_for(func(): return level.match_net.bodies.values().any(func(body): return not body.states.is_empty()), 30.0))

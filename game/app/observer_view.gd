@@ -276,6 +276,12 @@ func stamp() -> String:
 
 func _process(delta: float) -> void:
 	clock += delta
+	# A floor arriving from a room sets the player's own camera up again: this
+	# one takes it back, every frame, because there is no player here.
+	if not camera.current: camera.current = true
+	if is_instance_valid(level.player) and level.player.visible:
+		level.player.visible = false
+		level.player.active = false
 	# Its own light, over whatever the floor is doing with its lamps.
 	lamp.visible = lit
 	if is_instance_valid(level.environment):
@@ -358,7 +364,12 @@ func report() -> String:
 	lines.append("TAB seguir · F soltar · M mapa · V lectura · C techos · L luz · 1-6 capas · H panel · R piso · P/[/] tiempo")
 	lines.append("F5 volcar · ESC ratón, y otra vez cerrar")
 	lines.append("")
-	lines.append("Piso 1 · semilla %d · %s · %s" % [int(session.run_seed), "en red" if level.match_net.in_match() else "local", "versus" if level.match_net.versus() else "cooperativo"])
+	# Which floor this is and where it came from, which is the first thing to
+	# know when a tool shows you a hotel.
+	var source := "piso propio · buscando partida en %s" % level.observer_address
+	if level.net.observing and level.match_net.in_match(): source = "la partida · %s" % ("versus" if level.match_net.versus() else "cooperativo")
+	elif level.net.observing: source = "piso propio · en la sala, esperando a que empiecen"
+	lines.append("Piso 1 · semilla %d · %s" % [int(session.run_seed), source])
 	lines.append("Sector %d/%d · %s · %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
 	lines.append("Meta %s %d/%d%s · código %s · teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), " · apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
 	lines.append("")

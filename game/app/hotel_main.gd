@@ -233,27 +233,47 @@ func _ready() -> void:
 ## and if nobody answers within OBSERVER_WAIT seconds, build a floor here and
 ## watch that instead.
 const OBSERVER_WAIT := 2.5
+## Where it knocks, and how often it knocks again while nobody answers: the
+## room may not be open yet, and a tool that only asked once had to be closed
+## and opened again to catch a match.
+var observer_address := "127.0.0.1"
+var observer_port := 0
+var observer_seed := -1
+const OBSERVER_KNOCK := 3.0
+var observer_knock := 0.0
+
 func begin_observing(seed_value: int) -> void:
 	observer = true
 	# A tool belongs in a window: it is looked at beside the game, and the
 	# player's own screen setting is left alone (settings.force_window).
 	settings.force_window = true
 	settings.apply_display()
-	var address := "127.0.0.1"
-	var port: int = net.PORT
+	observer_port = net.PORT
+	observer_seed = seed_value if seed_value >= 0 else randi_range(0, 2147483647)
 	for argument in OS.get_cmdline_user_args():
-		if argument.begins_with("--address="): address = argument.trim_prefix("--address=")
-		if argument.begins_with("--port="): port = int(argument.trim_prefix("--port="))
-	ui.menu("loading", false, "Buscando una partida en %s…" % address)
-	if net.join_observer(address, port) == OK:
+		if argument.begins_with("--address="): observer_address = argument.trim_prefix("--address=")
+		if argument.begins_with("--port="): observer_port = int(argument.trim_prefix("--port="))
+	ui.menu("loading", false, "Buscando una partida en %s…" % observer_address)
+	if net.join_observer(observer_address, observer_port) == OK:
 		var waited := 0.0
 		while waited < OBSERVER_WAIT and not net.observing:
 			await get_tree().process_frame
 			waited += get_process_delta_time()
-	if not net.observing:
-		net.shutdown("")
-		await start_floor(seed_value if seed_value >= 0 else randi_range(0, 2147483647))
+	if not net.observing: net.shutdown("")
+	# Whatever happened, there is something to look at: a floor of this
+	# machine's own until a match starts. When one does, the room's own floor
+	# replaces it on its own (match_net.begin).
+	if not match_net.in_match(): await start_floor(observer_seed)
 	enter_observer_mode()
+
+## Knocking again while nobody has answered. The moment a room opens, this is
+## what gets in without anybody having to reopen the tool.
+func observer_seek(delta: float) -> void:
+	if not observer or net.active(): return
+	observer_knock -= delta
+	if observer_knock > 0.0: return
+	observer_knock = OBSERVER_KNOCK
+	net.join_observer(observer_address, observer_port)
 
 ## No body of its own: the player is put away and the observer's camera takes
 ## over. Called on connecting, and after every floor this machine builds.
@@ -561,6 +581,10 @@ func start_online_floor(config: Dictionary) -> void:
 	player.slot = net.local_seat
 	player.spawn = match_net.spawn_point(net.local_seat)
 	player.position = player.spawn
+	# Watching: the floor just built is the room's, and this machine still has
+	# no body in it. Without this, a match starting over a floor of its own
+	# handed the camera back to a player nobody is playing.
+	if observer: enter_observer_mode()
 	match_net.floor_built()
 
 ## Everyone has the floor: the session, the creature and who controls it.
@@ -611,6 +635,13 @@ func on_net_closed(reason: String) -> void:
 	if match_net.in_match() or session.state != session.State.MENU:
 		match_net.end()
 		leave_online_floor()
+	# Watching: a room that closed, or a knock nobody answered, leaves the tool
+	# as it was -- looking at a floor of its own and knocking again.
+	if observer:
+		if manifest.is_empty(): await start_floor(observer_seed)
+		enter_observer_mode()
+		if observer_view != null and not reason.is_empty(): observer_view.note("sin partida: %s" % reason)
+		return
 	ui.menu("multiplayer", false, reason)
 
 func open_online_menu() -> void:
@@ -1686,6 +1717,7 @@ func _physics_process(delta: float) -> void:
 	# Watching: the floor runs itself (online it is the host's, alone it is the
 	# creature's own), and this machine only counts the lifts and looks.
 	if observer:
+		observer_seek(delta)
 		lifts.ride_along(delta)
 		lifts.ride_out(delta)
 		if is_instance_valid(session) and session.state == session.State.PLAYING:
