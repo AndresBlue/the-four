@@ -31,7 +31,7 @@ The Locust usa en todo el juego un aspecto basado en la imagen de referencia `as
 
 Cada refugio protege solo durante su etapa: mientras se espera a pasar, quien está dentro está a salvo; una vez cruzada la puerta, esa sala es una sala más.
 
-Medido sobre mil semillas: 42, 38 y 35 habitaciones por ala de media (nunca menos de 30), y el camino más corto que recorre las tres etapas pasa por 41 habitaciones de media, nunca menos de 20. Antes, una partida entera terminaba en un solo trayecto hasta la salida.
+Medido sobre mil pisos del generador 7: 90 habitaciones por planta de media (de 84 a 96), y el camino más corto que recorre las tres etapas mide 594 m de media, nunca menos de 378, y pasa por unas 23 habitaciones: el resto es pasillo. Antes, una partida entera terminaba en un solo trayecto hasta la salida.
 
 Entre etapa y etapa hay un latido de 1,2 s: el personaje se queda quieto, sale el objetivo del sector nuevo y se sigue jugando en el mismo hotel, sin pantallas por el medio. **No hay avisos de texto pasajeros**: ni «el ascensor se abre», ni la cuenta de televisores al encender uno, ni el número del código al encontrarlo, ni «vuelves en ti», «sabe dónde estás», «otra vez», «de pie», «archivado» o «eres The Locust». **Tampoco hay estados fijos del superviviente**: el refugio no dice qué le falta ni que su puerta está abierta, y delante del ascensor que se fue no hay cuenta atrás. Lo que dicen ya se ve u oye —el código queda escrito en la cinta y en tus páginas, las cuentas están en la pausa—, y lo que no, se descubre jugando.
 

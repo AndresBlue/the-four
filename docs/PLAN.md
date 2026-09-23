@@ -11,7 +11,7 @@ Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protoco
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
-## Dónde estamos (22 de septiembre de 2026)
+## Dónde estamos (23 de septiembre de 2026)
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
 tres plantas y tres etapas, The Locust con su IA y su versus, supervivencia,
@@ -51,10 +51,33 @@ El 22 entraron, y **nadie los ha jugado todavía**:
 - **Se juega entero con mando**, menús incluidos, con vibración y con el
   teclado del código marcable con la cruceta.
 
+El 23, después de la partida de ese día, entró lo que pedía, y **tampoco se
+ha jugado**:
+
+- **La criatura ya no se atasca en las puertas**: una hoja abierta no la para,
+  su ruta la rodea, solo se detiene ante las puertas de su ruta y tiene un
+  protocolo de cinco pasos para salir de cualquier atasco (300 trayectos
+  medidos sin una sola parada).
+- **El cazador ve adónde ir**: la ruta azul al ascensor, las teles encendidas
+  en amarillo desde todo el piso, el rastro de la Q hasta la más cercana y los
+  enfriamientos en pantalla; el chillido, cada 10 s.
+- **El audio de esa partida**: el teclado del código suena a teclado, una tele
+  que se enciende suena a la estática del apagón y luego sisea, y el ascensor
+  cierra sus puertas una vez por viaje.
+- **Un piso de tres plantas enteras**, una debajo de otra: cada una es un
+  hotel de 84 a 96 habitaciones con sus pasillos, un refugio que no se repite
+  y lo de dentro sorteado (puertas, salas oscuras, armarios, muebles). Se
+  monta en unos 6 s.
+
+Todo está descrito en el diseño, la guía de desarrollo, [AUDIO.md](AUDIO.md),
+[VISION_LOCUST.md](VISION_LOCUST.md) y [PERFORMANCE.md](PERFORMANCE.md).
+
 Lo que sigue sin estar bien, que es de donde sale el orden de abajo:
 
-- **Nadie ha jugado nada de esto.** Es un piso distinto del que se jugó: la
-  criatura persigue, las puertas la frenan y el equilibrio cambió con ellas.
+- **Nadie ha jugado nada de esto.** Es un piso distinto del que se jugó: tres
+  plantas enteras en lugar de tres alas, una criatura que persigue, se para
+  ante las puertas cerradas y rodea las abiertas, y un equilibrio que cambió
+  con todo ello.
 - Solo existe **un piso de los cuatro**: Sunman, The Boiled One y Guilt no
   están.
 
@@ -71,35 +94,6 @@ piso que todavía falla es multiplicar los fallos por cuatro.
 
 ---
 
-## 0 · Lo que salió de la partida del 23 de septiembre
-
-Va antes que todo lo demás: rompe partidas (la criatura atascada), no se
-entiende (el cazador no ve adónde ir) o hace que un piso se resuelva siempre
-igual. En este orden, y cada bloque se puede jugar en cuanto está.
-
-El audio y el chillido de esa partida ya están (descritos en
-[AUDIO.md](AUDIO.md) y en el diseño); lo que queda de ellos es escucharlos,
-en el apartado 1.
-
-La criatura y las puertas también (descrito en la guía de desarrollo): la
-hoja abierta ya no la para y su ruta la rodea, solo se detiene ante puertas de
-su ruta, y tiene un protocolo de atascos medido con una sonda que corre en
-`verify.ps1`. Queda verlo jugando (apartado 1).
-
-Lo que ve el cazador, también (en [VISION_LOCUST.md](VISION_LOCUST.md)): la
-ruta azul al ascensor, las teles amarillas, la Q y los enfriamientos en
-pantalla. Queda jugarlo (apartado 1).
-
-Y el piso de tres plantas (generadores 5 a 7; en la guía de desarrollo, en el
-diseño y en [PERFORMANCE.md](PERFORMANCE.md)): cada planta es un hotel entero
-sobre su propia rejilla, con uno de ocho planos de pasillos, entre 81 y 99
-habitaciones y un refugio que no se repite; salas oscuras, estado, puertas,
-armarios y muebles salen de la semilla, no del sitio; `tools/dev/map_metrics.gd`
-comprueba sus 39 umbrales sobre mil pisos; y un piso se monta en unos 6 s con
-unos 36 000 nodos. Queda jugarlo (apartado 1).
-
----
-
 ## 1 · Lo que solo se decide jugando
 
 No es trabajo de código: es tuyo, y sin ello no se cierra el Early Access. Las
@@ -113,14 +107,16 @@ herramientas para mirarlo están en la guía de desarrollo.
   frente a la meta de 25–40— está resuelto de verdad. Incluye los veinte
   recorridos y las cinco partidas de exploración que P1 dejó pendientes: no los
   sustituye el lote automático.
-- [ ] **El ritmo de las tres alas:** cuánto se tarda en cada una, si se entiende
-  que la puerta se abrió, y si la criatura llega demasiado pronto o demasiado
-  tarde al ala nueva ahora que cruza andando (13,9–50,6 s medidos, mediana 26).
+- [ ] **El ritmo de las tres plantas**, ahora de 84 a 96 habitaciones cada una:
+  cuánto se tarda en cada una, si se entiende que la puerta se abrió, y si la
+  criatura llega demasiado pronto o demasiado tarde a la planta nueva ahora que
+  va a trote hasta el ascensor (entre 15 y 111 s medidos, 32 de mediana).
 - [ ] **El bloque de etapas entero:** si el apagón asusta o solo estorba, si el
   reinicio de etapa perdona demasiado, y si el camino azul al ascensor en la lectura de
   la criatura le da demasiada ventaja.
-- [ ] **Si el piso se siente un hotel explorable** o un laberinto arbitrario, y
-  si hay que ajustar tamaño y referencias. Lo medido dice que la numeración ya
+- [ ] **Si el piso se siente un hotel explorable** o un laberinto arbitrario, si
+  los pasillos se leen como los de un hotel, y si hay que ajustar tamaño y
+  referencias. Lo medido dice que la numeración ya
   no lleva a ninguna parte y que ir pegado a la pared no encuentra ningún
   refugio; lo que no dice es cómo se siente.
 - [ ] **Si se entiende quién murió y por qué** en cooperativo, ahora que no hay
@@ -211,7 +207,7 @@ herramientas para mirarlo están en la guía de desarrollo.
   - La criatura ya no atraviesa puertas cerradas. Y desde el 23 de
     septiembre las abiertas no la frenan: su ruta rodea la hoja. Mirar que no
     se la vea atravesar ninguna, que no dé rodeos raros al cruzar un vano y
-    que no se quede quieta en ningún sitio (80 trayectos medidos sin una sola
+    que no se quede quieta en ningún sitio (300 trayectos medidos sin una sola
     parada).
   - En cooperativo cada uno ve solo los números que encontró: ¿se entiende
     que hay que decírselos?
