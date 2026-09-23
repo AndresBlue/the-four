@@ -81,6 +81,10 @@ func cross_to_stage(stage: int, seconds := 12.0) -> bool:
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The board is written to disk and outlives a run: this one starts empty,
+	# or what it counts would be whatever the last run left there.
+	level.records.runs.clear()
+	level.records.save()
 	await level.start_floor(81)
 	var session = level.session
 	level.locust.set_physics_process(false)
@@ -446,6 +450,20 @@ func run() -> void:
 	check("El último ascensor también es un viaje: a oscuras antes del fin", dark_first and went_black)
 	check("Salir por esa puerta termina el piso", won and session.stage == 3)
 	check("Y entonces sale la pantalla de fin", level.ui.screen == "won")
+	# The tape that got out is written down: its three sectors, who walked out
+	# and what it earned, and it takes its place on the board.
+	var line: Dictionary = level.ui.summary
+	check("La cinta queda anotada, con su tiempo y su número", int(line.get("seed", 0)) == 81 and float(line.get("time", 0.0)) > 0.0 and not line.get("sectors", []).is_empty() and is_equal_approx(float(line.sectors[line.sectors.size() - 1]), float(line.time)))
+	check("Y con quién la jugó y si salió", line.get("team", []).size() == 1 and bool(line.team[0].escaped))
+	check("Sola cuenta como solitario y sin bajas", String(line.get("company", "")) == level.records.SOLO and int(line.get("deaths", 0)) == 0 and level.records.badges(line).has("SIN BAJAS"))
+	check("Y entra en el tablón, la primera de su tabla", level.records.table_of("time", 1, level.records.SOLO).size() == 1 and int(level.ui.places.get("time", 0)) == 1)
+	# The board is read from what is saved, not from what is in hand.
+	var kept = load("res://game/services/records_service.gd").new()
+	kept.save_path = level.records.save_path
+	kept.load_records()
+	check("El tablón sobrevive a cerrar el juego", kept.table_of("time", 1, kept.SOLO).size() == 1)
+	level.ui.menu("records")
+	check("Y el menú lo enseña", level.ui.screen == "records" and words_under(level.ui.column).contains("MÁS RÁPIDOS"))
 	# A floor started again begins at the first stage.
 	await level.start_floor(81)
 	check("Un piso nuevo vuelve a la etapa 1", level.session.stage == 1 and level.session.state == level.session.State.PLAYING)

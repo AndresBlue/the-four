@@ -92,6 +92,13 @@ var display_was_pending := false
 var screen := ""
 ## Seconds on the floor, shown on the end screens.
 var elapsed := 0.0
+## The floor just finished, as records_service wrote it down, and the places it
+## took in the boards (table id -> place). Empty until a floor ends.
+var summary := {}
+var places := {}
+var records
+## Where "Volver" goes from the board: whatever screen sent us there.
+var records_back := "main"
 var sounds_enabled := true
 var backdrop: TextureRect
 var noise: ColorRect
@@ -116,6 +123,8 @@ var discoveries
 var net
 const NET := preload("res://game/net/net_session.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
+## The board of tapes that got out (records_service.gd).
+const RECORDS := preload("res://game/services/records_service.gd")
 var intro_tween: Tween
 ## Small corner note during the opening scene: which key skips it.
 var skip_label: Label
@@ -395,11 +404,9 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"won":
 			set_osd("■ STOP", "", "", "")
 			title(column, "SALISTE DEL PISO", 58)
-			spacer(column, 8)
-			label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 24).add_theme_color_override("font_color", STYLE.AMBER)
-			spacer(column, 10)
-			paragraph(column, "El hotel queda atrás. Por ahora.")
-			spacer(column, 28)
+			run_report(column)
+			spacer(column, 16)
+			if records != null and records.any(): action("Mejores tiempos", "records")
 			action("Nueva partida", "new")
 			action("Menú principal", "main")
 		"failed":
@@ -439,7 +446,26 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 					shown = true
 			if not shown: paragraph(side, "Los documentos que leas en el hotel se guardan aquí, también entre partidas.", 18, 560)
 			spacer(column, 20)
+			action("Mejores tiempos", "records")
 			action("Volver", "main")
+		"records":
+			set_osd("▶ PLAY", "", "", "")
+			title(column, "MEJORES TIEMPOS", 58)
+			label(column, "PISO 1 · EL HOTEL", 20).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 10)
+			# The board is longer than any screen: it scrolls on its own, and
+			# "Volver" stays where the eye looks for it.
+			var scroll := ScrollContainer.new()
+			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			scroll.custom_minimum_size = Vector2(1000, 380)
+			column.add_child(scroll)
+			var sheet := VBoxContainer.new()
+			sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll.add_child(sheet)
+			board(sheet)
+			spacer(column, 16)
+			var back_to: String = records_back
+			entry(column, "Volver", func(): menu(back_to), false, 24)
 		"multiplayer":
 			set_osd("MENU ▸ MULTIJUGADOR", "", "", "")
 			title(column, "MULTIJUGADOR", 64)
@@ -593,9 +619,12 @@ func online_end(won: bool) -> void:
 	set_osd("■ STOP" if not bad else "SEÑAL PERDIDA", "", "", "")
 	if bad: osd_left.add_theme_color_override("font_color", STYLE.ALERT)
 	title(column, headline, 58, STYLE.ALERT if bad else STYLE.INK)
-	spacer(column, 8)
-	label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
-	spacer(column, 28)
+	if won and not hunter: run_report(column)
+	else:
+		spacer(column, 8)
+		label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
+	spacer(column, 20)
+	if won and not hunter and records != null and records.any(): action("Mejores tiempos", "records")
 	if net.is_host:
 		if not won: action("Reintentar piso", "online_retry")
 		action("Nueva partida", "online_new")
@@ -605,6 +634,98 @@ func online_end(won: bool) -> void:
 		label(column, "El anfitrión decide cómo seguir…", 19).add_theme_color_override("font_color", STYLE.SOFT)
 		action("Salir de la sala", "online_quit")
 	side.visible = false
+
+## What the floor just played was: its tape number, what each sector took, who
+## walked out and with how many numbers, and what it earned. The time counts
+## itself up as it is read, the way a counter does when a tape is rewound.
+func run_report(parent: Node) -> void:
+	spacer(parent, 6)
+	var clock := label(parent, "TIEMPO DE GRABACIÓN  0:00:00", 26)
+	clock.add_theme_color_override("font_color", STYLE.AMBER)
+	var counting := clock.create_tween()
+	counting.tween_method(func(value): clock.text = "TIEMPO DE GRABACIÓN  %s" % tape_time(value), 0.0, elapsed, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if summary.is_empty():
+		spacer(parent, 10)
+		paragraph(parent, "El hotel queda atrás. Por ahora.")
+		return
+	label(parent, "CINTA Nº %d" % int(summary.get("seed", 0)), 17).add_theme_color_override("font_color", STYLE.SOFT)
+	spacer(parent, 12)
+	# Each sector's own time, from the one before it.
+	var sectors: Array = summary.get("sectors", [])
+	var before := 0.0
+	for index in sectors.size():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		parent.add_child(row)
+		label(row, "SECTOR %d" % (index + 1), 18).custom_minimum_size.x = 160
+		label(row, tape_time(float(sectors[index]) - before), 18).add_theme_color_override("font_color", STYLE.SOFT)
+		before = float(sectors[index])
+	spacer(parent, 12)
+	for member in summary.get("team", []):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		parent.add_child(row)
+		var name_label := label(row, String(member.get("name", "")), 18)
+		name_label.custom_minimum_size.x = 260
+		if not bool(member.get("escaped", true)): name_label.add_theme_color_override("font_color", STYLE.ALERT)
+		label(row, "SALIÓ" if bool(member.get("escaped", true)) else "SE QUEDÓ", 18).custom_minimum_size.x = 120
+		var digits := int(member.get("digits", 0))
+		label(row, ("%d número%s del código" % [digits, "" if digits == 1 else "s"]) if digits > 0 else "—", 17).add_theme_color_override("font_color", STYLE.SOFT)
+	# What it earned, stamped on one at a time.
+	var marks: Array = RECORDS.badges(summary)
+	if not marks.is_empty():
+		spacer(parent, 10)
+		var stamps := HBoxContainer.new()
+		stamps.add_theme_constant_override("separation", 10)
+		parent.add_child(stamps)
+		var delay := 0.9
+		for mark in marks:
+			var stamp := label(stamps, "· %s ·" % mark, 19)
+			stamp.add_theme_color_override("font_color", STYLE.AMBER)
+			stamp.modulate.a = 0.0
+			var press := stamp.create_tween()
+			press.tween_interval(delay)
+			press.tween_property(stamp, "modulate:a", 1.0, 0.18)
+			delay += 0.35
+	for table in RECORDS.TABLES:
+		if not places.has(table.id): continue
+		var place := int(places[table.id])
+		if place > RECORDS.KEPT: continue
+		spacer(parent, 6)
+		var line := label(parent, "Nº %d EN %s · %s" % [place, table.title, "EN SOLITARIO" if String(summary.get("company", "")) == RECORDS.SOLO else "ACOMPAÑADO"], 20)
+		line.add_theme_color_override("font_color", STYLE.AMBER if place > 1 else STYLE.INK)
+
+## The board: each table of each company, best first, with the run just played
+## picked out of the list.
+func board(parent: Node) -> void:
+	if records == null: return
+	var mine: String = String(summary.get("date", ""))
+	for company in [RECORDS.SOLO, RECORDS.COOP]:
+		var any := false
+		for table in RECORDS.TABLES:
+			var lines: Array = records.table_of(String(table.id), 1, company)
+			if lines.is_empty(): continue
+			if not any:
+				spacer(parent, 10)
+				label(parent, "EN SOLITARIO" if company == RECORDS.SOLO else "ACOMPAÑADO", 24).add_theme_color_override("font_color", STYLE.AMBER)
+				any = true
+			spacer(parent, 6)
+			label(parent, table.title, 20)
+			label(parent, table.note, 15).add_theme_color_override("font_color", STYLE.SOFT)
+			for index in mini(lines.size(), 5):
+				var line: Dictionary = lines[index]
+				var row := HBoxContainer.new()
+				row.add_theme_constant_override("separation", 14)
+				parent.add_child(row)
+				var own: bool = not mine.is_empty() and String(line.get("date", "")) == mine
+				label(row, "%d." % (index + 1), 18).custom_minimum_size.x = 40
+				var time_label := label(row, tape_time(float(line.get("time", 0.0))), 18)
+				time_label.custom_minimum_size.x = 120
+				if own: time_label.add_theme_color_override("font_color", STYLE.AMBER)
+				label(row, "%d superviviente%s" % [int(line.get("players", 1)), "" if int(line.get("players", 1)) == 1 else "s"], 16).custom_minimum_size.x = 180
+				label(row, "cinta nº %d" % int(line.get("seed", 0)), 16).custom_minimum_size.x = 160
+				label(row, String(line.get("date", "")).left(10), 16).add_theme_color_override("font_color", STYLE.SOFT)
+		if not any and company == RECORDS.SOLO: paragraph(parent, "Todavía no hay ninguna cinta que saliera del hotel en solitario.", 18, 700, STYLE.SOFT)
 
 func show_archive_entry(item: Dictionary) -> void:
 	for child in side.get_children():

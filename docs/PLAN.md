@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v3**, protocolo de red
-**the-four-net-7**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-8**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -231,10 +231,11 @@ no rompen nada.
 
 ## 3 · Acabado de lo que ya existe
 
-Afina algo que funciona: va después de que funcione bien. Los tres primeros son
-lo que le falta al piso de The Locust para darlo por cerrado, en ese orden: el
-mando cambia quién puede jugarlo, el parte hace que apetezca repetirlo, y el
-sonido del ascensor tapa un silencio que hoy se oye raro al cerrar cada sector.
+Afina algo que funciona: va después de que funcione bien. Los dos primeros son
+lo que le queda al piso de The Locust para darlo por cerrado: el mando cambia
+quién puede jugarlo, y el sonido del ascensor (apartado 4) tapa un silencio que
+hoy se oye raro al cerrar cada sector. El parte al salir del piso y los mejores
+tiempos ya están, y se describen en el diseño.
 
 - [ ] **Jugar con mando.** Hoy no hay ninguno: las acciones se arman solo desde
   teclas (`settings_service.KEYS`) y `project.godot` no tiene ni sección de
@@ -244,12 +245,6 @@ sonido del ascensor tapa un silencio que hoy se oye raro al cerrar cada sector.
   que es poco— y reasignar desde Ajustes, con el nombre del botón en pantalla
   como ya pasa con las teclas. Incluye al cazador, que comparte los mismos
   ajustes de sensibilidad e inversión.
-- [ ] **El parte al salir del piso.** La pantalla de victoria (`hotel_ui`,
-  `"won"`) dice solo el tiempo de grabación. Con lo que ya se guarda se puede
-  contar la partida: quién salió y quién no y de qué murió cada uno, los
-  números que encontró cada cual, cuánto duró cada sector, y **la semilla con
-  su código** para repetir la misma planta y compararse. Enlaza con el registro
-  de partidas y los códigos del apartado 6.
 - [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
   siempre refugio, televisores y código, y en ese orden: la planta cambia y la
   partida no. Basta una condición alternativa que pueda salir en el sector 2 o

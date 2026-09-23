@@ -20,6 +20,8 @@ const DIGITS := preload("res://game/world/generation/digit_placement.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const DISCOVERIES := preload("res://game/services/discovery_service.gd")
+## The tapes that got out, and the board they make (records_service.gd).
+const RECORDS := preload("res://game/services/records_service.gd")
 const NET := preload("res://game/net/net_session.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 ## The opening scene is built far from the hotel so the two never overlap.
@@ -60,6 +62,7 @@ var intro: Node3D
 var title_scene: Node3D
 var director
 var discoveries
+var records
 ## The document being read, if any.
 var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
@@ -153,9 +156,14 @@ func _enter_tree() -> void:
 	discoveries.name = "Discoveries"
 	if OS.get_cmdline_user_args().has("--test-profile"): discoveries.save_path = "user://test_hotel_%s_discoveries.json" % test_name
 	$Services.add_child(discoveries)
+	records = RECORDS.new()
+	records.name = "Records"
+	if OS.get_cmdline_user_args().has("--test-profile"): records.save_path = "user://test_hotel_%s_records.json" % test_name
+	$Services.add_child(records)
 	player.settings = settings
 	ui.settings = settings
 	ui.discoveries = discoveries
+	ui.records = records
 	net = NET.new()
 	net.level = self
 	match_net = net.match_net
@@ -263,6 +271,9 @@ func on_action(action: String) -> void:
 			net.shutdown("")
 			leave_online_floor()
 		"archive": ui.menu("archive")
+		"records":
+			ui.records_back = ui.screen
+			ui.menu("records")
 		"quit": get_tree().quit()
 
 ## A new game opens with the bedroom scene; its floor is built when it ends.
@@ -323,6 +334,9 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	# Every floor starts with the lens wide, online ones too.
 	player.zoom = 1.0
 	player.zoom_wanted = 1.0
+	run_stats = {"sectors": [], "deaths": 0, "hides": 0}
+	ui.summary = {}
+	ui.places = {}
 	if is_instance_valid(locust):
 		remove_child(locust)
 		locust.queue_free()
@@ -848,7 +862,10 @@ func on_state() -> void:
 		hotel.open_gates(session.stage, session.goal.get("ready", false))
 		if session.goal.get("blackout", false) and not hotel.dark: apply_blackout()
 		elif not session.goal.get("blackout", false) and hotel.dark: restore_power()
-		if playing and session.stage > last_stage: lifts.follow_players(session.stage)
+		if playing and session.stage > last_stage:
+			lifts.follow_players(session.stage)
+			# What the sector just closed took, for the line this floor leaves.
+			run_stats.sectors.append(session.elapsed)
 	# Only a stage being played counts as reached (a change announced in the
 	# transition used to count it, and the creature never got its road), and
 	# a new floor starts the count again.
@@ -893,6 +910,13 @@ func on_state() -> void:
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
+			# The line the floor leaves: written by whoever ran it, and sent
+			# to the rest so every board has the same run.
+			if not net.is_client() and ui.summary.is_empty():
+				var line := close_run()
+				ui.summary = line
+				ui.places = records.record(line)
+				if match_net.in_match(): match_net.tell_summary(line)
 			if match_net.in_match():
 				if net.is_host: match_net.clear_checkpoint()
 				ui.menu("online_won")
@@ -900,6 +924,59 @@ func on_state() -> void:
 		session.State.FAILED:
 			ui.elapsed = session.elapsed
 			ui.menu("online_failed" if match_net.in_match() else "failed")
+
+## What this floor has been: how long each sector took, how many fell, how
+## many hid. Counted by whoever runs the floor (the host, or nobody online),
+## and written down when the last lift leaves (close_run).
+var run_stats := {"sectors": [], "deaths": 0, "hides": 0}
+
+## A survivor has climbed into a wardrobe. Only the machine in charge counts.
+func note_hide() -> void:
+	if not net.is_client(): run_stats.hides = int(run_stats.hides) + 1
+
+## The floor is over and everybody who was going to get out is out. The line
+## is written on every machine, so a guest's board has the run too, but only
+## the one in charge decides what it says.
+func close_run() -> Dictionary:
+	var players: Array = session.participants.keys()
+	var escaped := 0
+	for seat in players:
+		if int(session.participants[seat]) != session.Life.DEAD: escaped += 1
+	var sectors: Array = run_stats.sectors.duplicate()
+	sectors.append(session.elapsed)
+	var team: Array = []
+	for seat in players:
+		var digits := 0
+		for slot in found_by:
+			if int(found_by[slot]) == int(seat): digits += 1
+		team.append({
+			"seat": int(seat),
+			"name": seat_name(int(seat)),
+			"escaped": int(session.participants[seat]) != session.Life.DEAD,
+			"digits": digits,
+		})
+	return {
+		"floor": 1,
+		"company": RECORDS.SOLO if players.size() < 2 else RECORDS.COOP,
+		"players": players.size(),
+		"time": session.elapsed,
+		"sectors": sectors,
+		"deaths": int(run_stats.deaths),
+		"hides": int(run_stats.hides),
+		"escaped": escaped,
+		"seed": int(session.run_seed),
+		"team": team,
+	}
+
+## What to call a seat on the board: the name it joined under, or the survivor
+## it is playing, which is all there is on your own.
+func seat_name(seat: int) -> String:
+	var players: Dictionary = match_net.config.get("players", {}) if match_net.in_match() else {}
+	if players.has(seat) and not String(players[seat].get("name", "")).is_empty(): return String(players[seat].name)
+	if seat == player.slot: return AVATAR_NAMES[clampi(settings.values.character, 0, AVATAR_NAMES.size() - 1)]
+	return "Superviviente %d" % seat
+
+const AVATAR_NAMES := ["Detective", "Detective", "Exploradora"]
 
 ## The stage the floor was on when it was last looked at, to tell a change.
 var last_stage := 1
@@ -1164,7 +1241,9 @@ func update_execution(delta: float) -> void:
 			if player.avatar != null:
 				player.avatar.rotation.x = 0.0
 				player.avatar.rotation.z = 0.0
-		if not net.is_client(): session.capture(seat)
+		if not net.is_client():
+			run_stats.deaths = int(run_stats.deaths) + 1
+			session.capture(seat)
 
 ## An execution cut short: the victim is let go alive, back on its feet with a
 ## clean picture, and the creature leaves the kill.
@@ -1322,6 +1401,7 @@ func on_peek(point: Vector3) -> void:
 func on_hide_changed(entering: bool, point: Vector3) -> void:
 	# Climbing in or out of a wardrobe is not silent.
 	on_noise(point, NOISE.radius("wardrobe"), NOISE.Kind.WARDROBE)
+	if entering: note_hide()
 
 ## Kind defaults to a footstep so older callers (and the tests) still work.
 func on_noise(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:

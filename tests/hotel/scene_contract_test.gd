@@ -48,6 +48,28 @@ func run() -> void:
 	Input.parse_input_event(loose)
 	await process_frame
 	check("Running stays on while Shift is down and stops when the system says it is up", kept and not Input.is_action_pressed("sprint"))
+	# The board of tapes that got out: what goes in which table, in what order,
+	# and how much is kept.
+	var records := preload("res://game/services/records_service.gd").new()
+	records.save_path = "user://test_records_contract.json"
+	records.runs = []
+	var quick := {"floor": 1, "company": records.SOLO, "players": 1, "time": 400.0, "deaths": 0, "hides": 0, "escaped": 1}
+	var slow := {"floor": 1, "company": records.SOLO, "players": 1, "time": 900.0, "deaths": 0, "hides": 0, "escaped": 1}
+	var hidden_run := {"floor": 1, "company": records.SOLO, "players": 1, "time": 200.0, "deaths": 0, "hides": 3, "escaped": 1}
+	var lost := {"floor": 1, "company": records.COOP, "players": 3, "time": 300.0, "deaths": 2, "hides": 0, "escaped": 2}
+	for line in [slow, quick, hidden_run, lost]: records.record(line)
+	var fastest: Array = records.table_of("time", 1, records.SOLO)
+	check("La tabla de tiempos va del más rápido al más lento", fastest.size() == 3 and is_equal_approx(float(fastest[0].time), 200.0) and is_equal_approx(float(fastest[2].time), 900.0))
+	check("Acompañado es otro tablón", records.table_of("time", 1, records.COOP).size() == 1)
+	check("Quien se escondió no sale en «sin esconderse»", records.table_of("brave", 1, records.SOLO).size() == 2)
+	check("Ni quien perdió a alguien en «sin bajas»", records.table_of("clean", 1, records.COOP).is_empty() and records.table_of("clean", 1, records.SOLO).size() == 3)
+	check("Y una cinta lleva sus distintivos", records.badges(quick).has("SIN BAJAS") and not records.badges(hidden_run).has("SIN ESCONDERSE"))
+	var places: Dictionary = records.record({"floor": 1, "company": records.SOLO, "players": 1, "time": 100.0, "deaths": 0, "hides": 0, "escaped": 1})
+	check("Una marca nueva sabe en qué puesto entró", int(places.get("time", 0)) == 1 and int(places.get("brave", 0)) == 1)
+	for i in records.KEPT + 4: records.record({"floor": 1, "company": records.SOLO, "players": 1, "time": 1000.0 + i, "deaths": 0, "hides": 0, "escaped": 1})
+	check("El tablón no crece sin fin", records.table_of("time", 1, records.SOLO).size() == records.KEPT)
+	records.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_records_contract.json"))
 	# The picture settings: what the player asks for over the preset, and how
 	# the drawn picture is brought up to the window.
 	var presets := preload("res://game/presentation/graphics_presets.gd")

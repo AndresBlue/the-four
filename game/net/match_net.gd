@@ -551,6 +551,7 @@ func hide_state(index: int, seat: int) -> void:
 		remote_leaves(hide, bodies[-seat])
 
 func remote_enters(hide: Node3D, body: Node3D) -> void:
+	level.note_hide()
 	hide.enter(body)
 	body.hidden = true
 	body.hiding_place = hide
@@ -807,6 +808,16 @@ func free_victim_hide(seat: int) -> void:
 	var index: int = level.hotel.hides.find(body.hiding_place)
 	remote_leaves(body.hiding_place, body)
 	if in_match() and index >= 0: hide_state.rpc(index, -seat)
+
+## The floor is over: what it was, for everybody's board.
+func tell_summary(line: Dictionary) -> void:
+	if in_match(): floor_summary.rpc(line)
+
+@rpc("authority", "call_remote", "reliable")
+func floor_summary(line: Dictionary) -> void:
+	if not level.ui.summary.is_empty(): return
+	level.ui.summary = line
+	level.ui.places = level.records.record(line)
 
 # --- The shared sheet ----------------------------------------------------------------
 
