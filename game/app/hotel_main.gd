@@ -541,6 +541,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 	player.set_burnt(false)
 	sanity.minds.clear()
 	sanity.sight_rest = 0.0
+	sanity.sight_paid = 0.0
 	player.camera.rotation = Vector3.ZERO
 	player.reset_handheld()
 	player.torch.visible = false

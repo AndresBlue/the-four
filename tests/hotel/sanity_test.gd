@@ -58,27 +58,38 @@ func run() -> void:
 	var shut_in: float = await stand(dark, 2.0, false, true)
 	check("A oscuras la cordura baja", in_dark > 0.0)
 	check("La linterna la frena sin detenerla", with_torch > 0.0 and with_torch < in_dark * 0.6)
-	check("Encerrado en un armario baja más deprisa que a oscuras", shut_in > in_dark)
+	check("Encerrado en un armario baja lo mismo que a oscuras", absf(shut_in - in_dark) < in_dark * 0.1)
 	player.sanity = 40.0
 	var lost: float = await stand(lit, 2.0)
 	check("En una sala encendida se recupera", lost < 0.0 and player.sanity > 40.0)
-	# Time to burn out in the worst case, as the design says: minutes, not
-	# seconds, and a wardrobe is the fastest way there.
-	var wardrobe_seconds: float = 100.0 / (level.sanity.SANITY_DARK * level.sanity.SANITY_HIDDEN)
-	check("Quemarse del todo cuesta minutos, no segundos", wardrobe_seconds > 90.0 and wardrobe_seconds < 180.0)
+	# Time to burn out, as the design says: seven and a half minutes of dark
+	# (or wardrobe), and with the torch on well over a quarter of an hour.
+	var dark_seconds: float = 100.0 / level.sanity.SANITY_DARK
+	var torch_seconds: float = dark_seconds / level.sanity.SANITY_TORCH
+	check("A oscuras, quemarse del todo cuesta siete minutos y medio", dark_seconds > 420.0 and dark_seconds < 480.0 and absf(in_dark - 2.0 * level.sanity.SANITY_DARK) < 0.05)
+	check("Con la linterna, casi veinte", torch_seconds > 1000.0 and torch_seconds < 1250.0)
 
 	# --- Seeing it ----------------------------------------------------------------
 	player.sanity = 100.0
 	level.sanity.sight_rest = 0.0
 	level.locust.global_position = FLOOR.position_of(lit) + Vector3(3.0, 0.04, 0)
 	level.locust.grace = 0.0
+	# Its back to the player, looking at nothing in particular.
+	level.locust.rotation.y = 0.0
+	level.locust.visual.look_point = Vector3.INF
 	player.global_position = FLOOR.position_of(lit) + Vector3(-1.5, 0.04, 0)
 	player.rotation.y = -PI / 2
 	player.camera.rotation.x = 0.0
 	player.torch.visible = true
 	await frames(4)
 	var frightened: float = 100.0 - player.sanity
-	check("Verla de cerca cuesta un mordisco de cordura", frightened >= level.sanity.SANITY_SIGHT * 0.9)
+	check("Verla de refilón cuesta poco", frightened >= level.sanity.SANITY_GLIMPSE * 0.9 and frightened < level.sanity.SANITY_GLIMPSE * 1.5)
+	# And then it turns its head to the player: the bigger fright, charged
+	# once and only for what the glimpse did not cost.
+	level.locust.visual.look_point = player.camera.global_position
+	await frames(4)
+	var stared: float = 100.0 - player.sanity
+	check("Que te mire de cara cuesta mucho más", stared >= level.sanity.SANITY_STARE * 0.9 and stared < level.sanity.SANITY_STARE * 1.2)
 	var again: float = player.sanity
 	await frames(30)
 	# Standing in a lit room it is coming back, so what is checked is that
