@@ -2137,7 +2137,6 @@ func host_gate(delta: float) -> void:
 		untouchable[seat] = float(untouchable[seat]) - delta
 		if untouchable[seat] <= 0.0: untouchable.erase(seat)
 	creature_channel_hop(delta)
-	sanity.haunt_burnt(delta)
 	# From the second stage on, the wing is played on its own sets: each stage
 	# counts the ones standing in its wing and starts from nothing.
 	var sets: Array = stage_televisions() if session.stage >= 2 else []
@@ -2626,7 +2625,7 @@ func update_screen_cues(delta: float) -> void:
 	if not hunter_seat():
 		# Only over the floor being played: the last floor's mind frayed the
 		# tape of the opening scene of the next.
-		var frayed: float = clampf(1.0 - player.sanity / sanity.SANITY_UNEASY, 0.0, 1.0) if session.state in [session.State.PLAYING, session.State.PAUSED, session.State.FAILED] else 0.0
+		var frayed: float = clampf(1.0 - player.sanity / sanity.SANITY_UNEASY + sanity.glitch, 0.0, 1.0) if session.state in [session.State.PLAYING, session.State.PAUSED, session.State.FAILED] else 0.0
 		post_material.set_shader_parameter("vhs", settings.values.vhs * (1.0 + frayed * 1.6))
 		post_material.set_shader_parameter("chromatic", settings.values.chromatic * frayed * 0.7)
 

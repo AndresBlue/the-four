@@ -91,47 +91,54 @@ static func along(path: PackedVector3Array, distance: float) -> Vector3:
 		left -= segment
 	return path[path.size() - 1]
 
-func update_route(listener: Vector3, creature: Node3D) -> void:
-	var straight := listener.distance_to(creature.global_position)
-	if straight > start_distance * 1.3:
-		route_distance = straight * 1.3
-		cue_point = listener + (creature.global_position - listener).normalized() * cue_distance_far
-		return
+## How far it is walking from the listener to `source`, and where the cues
+## sit for it: [metres, cue point].
+func route_to(listener: Vector3, source: Vector3) -> Array:
+	var straight := listener.distance_to(source)
+	if straight > start_distance * 1.3: return [straight * 1.3, listener + (source - listener).normalized() * cue_distance_far]
 	var level = world_audio.level
 	# On another planta it is not coming: nothing but the lift joins them.
-	if FLOOR.planta_of(listener.y) != FLOOR.planta_of(creature.global_position.y):
-		route_distance = INF
-		cue_point = creature.global_position
-		return
-	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, listener, creature.global_position)
-	if path.size() < 2:
-		route_distance = straight * 1.3
-		cue_point = creature.global_position
-		return
+	if FLOOR.planta_of(listener.y) != FLOOR.planta_of(source.y): return [INF, source]
+	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, listener, source)
+	if path.size() < 2: return [straight * 1.3, source]
 	var length := 0.0
 	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])
-	route_distance = length
-	var ahead := minf(lerpf(cue_distance_far, cue_distance_near, intensity), length)
-	cue_point = along(path, ahead)
+	return [length, along(path, minf(lerpf(cue_distance_far, cue_distance_near, intensity), length))]
+
+## The creature, or the one a mind going imagines walking past
+## (world_audio.phantom_point), whichever is nearer: the aura is the same.
+var from_phantom := false
+func update_route(listener: Vector3, creature: Node3D, real: bool) -> void:
+	var best: Array = route_to(listener, creature.global_position) if real else [INF, Vector3.INF]
+	from_phantom = false
+	if world_audio.phantom_point != Vector3.INF:
+		var imagined := route_to(listener, world_audio.phantom_point)
+		if float(imagined[0]) < float(best[0]):
+			best = imagined
+			from_phantom = true
+	route_distance = best[0]
+	cue_point = best[1]
 
 func _physics_process(delta: float) -> void:
 	var level = world_audio.level
 	if level == null or not world_audio.enabled: return
 	clock += delta
 	var creature = level.locust
-	var active: bool = is_instance_valid(creature) and level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and not level.match_net.local_is_locust()
+	var playing: bool = is_instance_valid(creature) and level.session.state == level.session.State.PLAYING and not level.in_refuge() and not level.match_net.local_is_locust()
+	var real: bool = playing and creature.grace <= 0
+	var active: bool = real or (playing and world_audio.phantom_point != Vector3.INF)
 	var listener: Vector3 = world_audio.listener_position()
 	target = 0.0
 	if active:
 		route_clock -= delta
 		if route_clock <= 0.0:
 			route_clock = 0.25
-			update_route(listener, creature)
+			update_route(listener, creature, real)
 		# Rises steadily with closeness instead of saturating early.
 		target = pow(clampf((start_distance - route_distance) / (start_distance - full_distance), 0.0, 1.0), 1.3)
 		var near := clampf((start_distance * 1.5 - route_distance) / (start_distance * 0.5), 0.0, 1.0)
 		# Its state sharpens the dread: hunting reads worse than wandering.
-		match creature.mode:
+		match -1 if from_phantom else int(creature.mode):
 			# Scaled by how near it is: at full strength anywhere, a hunter
 			# sprinting down an empty corridor across the floor told every
 			# survivor it was running.

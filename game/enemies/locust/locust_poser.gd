@@ -68,6 +68,36 @@ func reach(side: String, target: Vector3, pole: Vector3, blade := BLADE) -> void
 	aim(upper, fore, elbow - shoulder)
 	aim(fore, hand, (shoulder + direction * d) - elbow)
 
+## Leaning out from behind a jamb into a doorway, the way it waits on the
+## title screen: `lean` radians of spine towards the model's +X (`side` -1:
+## towards -X), the head cocked hard and turned out of the gap, `twitch` (0..1)
+## a sudden tilt of it, the long arms hanging.
+func pose_peek(lean: float, twitch := 0.0, side := 1.0, sway := 0.0) -> void:
+	reset()
+	turn("Spine", Vector3(0, 0, 1), -lean * side)
+	turn("Spine2", Vector3(0, 0, 1), -lean * side)
+	turn("Spine2", Vector3(1, 0, 0), 0.15)
+	turn("Spine4", Vector3(0, 0, 1), -lean * 0.5 * side)
+	turn("Neck1", Vector3(0, 1, 0), -0.35 * side)
+	turn("Neck1", Vector3(0, 0, 1), lean * 0.4 * side)
+	turn("Head1", Vector3(0, 0, 1), (0.5 + twitch * 0.14 + sway) * side)
+	turn("Head1", Vector3(1, 0, 0), 0.15)
+	hang_arms()
+
+## Standing, staring straight ahead with the head cocked, arms hanging.
+func pose_stare(twitch := 0.0) -> void:
+	reset()
+	turn("Spine2", Vector3(1, 0, 0), 0.12)
+	turn("Neck1", Vector3(1, 0, 0), 0.1)
+	turn("Head1", Vector3(0, 0, 1), 0.38 + twitch * 0.18)
+	hang_arms()
+
+func hang_arms() -> void:
+	aim("L_UpperArm", "L_Forearm", Vector3(0.08, -1.0, 0.12))
+	aim("L_Forearm", "L_Hand", Vector3(-0.02, -1.0, 0.2))
+	aim("R_UpperArm", "R_Forearm", Vector3(-0.15, -1.0, 0.0))
+	aim("R_Forearm", "R_Hand", Vector3(-0.05, -1.0, 0.1))
+
 static func ease_out(t: float) -> float:
 	t = clampf(t, 0.0, 1.0)
 	return 1.0 - (1.0 - t) * (1.0 - t)

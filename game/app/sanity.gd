@@ -1,7 +1,7 @@
 extends Node
 ## The mind of the survivor on this machine, and what the creature is told
 ## about the ones that have gone. Split out of hotel_main.gd, which owns it
-## (`level.sanity`) and calls tick() and haunt_burnt() from its own loop.
+## (`level.sanity`) and calls tick() from its own loop.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 
@@ -55,6 +55,18 @@ const HALLUCINATION_WAIT := Vector2(13.0, 42.0)
 const GRUNTS := preload("res://game/audio/grunt_segments.gd")
 const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const PHANTOM_CLIP := "res://assets/audio/sfx/chase/grunts.ogg"
+const PASSAGE := preload("res://game/app/phantom_passage.gd")
+const SIGHT := preload("res://game/app/phantom_sight.gd")
+## Of the lies told, how often it is the creature walking past, from the top
+## of UNEASY to the bottom of the meter.
+const PASSAGE_SHARE := Vector2(0.2, 0.45)
+## The creature walking past that is not there, and the tape's jolt when a
+## thing that was not there goes (phantom_sight), easing off.
+var passage
+var glitch := 0.0
+## The creature seen where it is not (phantom_sight): made the first time the
+## mind of this machine's survivor starts to go.
+var sight
 ## The local survivor's rest between frights, and what the fright it rests
 ## from cost. Everybody else's lives in minds.
 var sight_rest := 0.0
@@ -67,6 +79,7 @@ var phantom: AudioStreamPlayer3D
 var phantom_left := 0.0
 
 func tick(delta: float) -> void:
+	glitch = maxf(0.0, glitch - delta * 2.0)
 	if level.manifest.is_empty() or not is_instance_valid(level.hotel): return
 	if not level.net.is_client():
 		for body in level.survivors():
@@ -79,6 +92,7 @@ func tick(delta: float) -> void:
 		return
 	hallucinate(delta)
 	phantom_quiet(delta)
+	if level.player.sanity < SANITY_UNEASY and not is_instance_valid(sight): ensure_sight()
 
 ## One survivor's mind, one frame of it, on the authority.
 func wear(body: Node3D, delta: float) -> void:
@@ -178,11 +192,30 @@ func hallucinate(delta: float) -> void:
 	hallucination_wait = lerpf(HALLUCINATION_WAIT.y, HALLUCINATION_WAIT.x, gone) * randf_range(0.7, 1.3)
 	var point := hallucination_point(randf_range(4.0, 14.0))
 	var voice: bool = gone > 0.5 and randf() < gone * 0.45
+	# The creature walking past, the whole sound of it near.
+	if not voice and randf() < lerpf(PASSAGE_SHARE.x, PASSAGE_SHARE.y, gone) and walk_past():
+		last_lie = {"point": passage.path[0], "voice": false, "passage": true, "time": Time.get_ticks_msec() / 1000.0}
+		return
 	last_lie = {"point": point, "voice": voice, "time": Time.get_ticks_msec() / 1000.0}
 	# A silent run (tests, captures) keeps the cadence: the lie counts as told.
 	if not level.world_audio.enabled: return
 	if voice: false_call(point)
 	else: level.world_audio.play_at(level.world_audio.choose(["close_far", "open_far", "hide_leave", "open_slow"][randi() % 4]), point, -4.0)
+
+func ensure_sight():
+	if not is_instance_valid(sight):
+		sight = SIGHT.new()
+		add_child(sight)
+		sight.setup(level)
+	return sight
+
+## Starts the creature that is not there walking past (phantom_passage).
+func walk_past() -> bool:
+	if not is_instance_valid(passage):
+		passage = PASSAGE.new()
+		add_child(passage)
+		passage.setup(level)
+	return passage.begin()
 
 ## Somewhere on the floor around, in a room and not inside a wall.
 func hallucination_point(reach: float) -> Vector3:
@@ -223,27 +256,8 @@ func phantom_quiet(delta: float) -> void:
 	phantom_left -= delta
 	if phantom_left <= 0.0: phantom.stop()
 
-## The creature is told, over and over, where the burnt-out minds are. Only
-## the machine in charge of it does this, and only while it drives itself: in
-## versus the motes are on the hunter's screen instead.
-const SMELL_EVERY := 1.5
-var smell_rest := 0.0
-func haunt_burnt(delta: float) -> void:
-	smell_rest -= delta
-	if smell_rest > 0.0 or not is_instance_valid(level.locust) or level.locust.control != "ai": return
-	# In the wing it is in: one in another wing is behind walls it cannot
-	# walk round, and it marched at the nearest wall for the whole stage.
-	var here := int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1))
-	var marked: Array = burnt_survivors().filter(func(point): return int(FLOOR.room_at(level.manifest.rooms, point).get("wing", -2)) == here)
-	if marked.is_empty(): return
-	smell_rest = SMELL_EVERY
-	var nearest: Vector3 = marked[0]
-	for point in marked:
-		if level.locust.global_position.distance_to(point) < level.locust.global_position.distance_to(nearest): nearest = point
-	level.locust.smell_burnt(nearest)
-
-## Everybody whose mind has gone, wherever they are. The creature is told
-## where they are however far away it is: that is what the motes are.
+## Everybody whose mind has gone, wherever they are: what the pacing director
+## plays on (never the creature's to know) and, in versus, the motes.
 func burnt_survivors() -> Array:
 	# Only the living it can reach: a corpse kept pulling it back to the body
 	# for the rest of the stage, and one in the refuge or riding a car took

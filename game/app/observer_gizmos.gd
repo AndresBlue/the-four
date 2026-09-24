@@ -33,6 +33,8 @@ const COLOURS := {
 	"digit": Color(1.0, 0.85, 0.4),
 	"document": Color(0.9, 0.9, 0.9),
 	"sight": Color(1.0, 0.8, 0.5),
+	"lead": Color(1.0, 0.35, 0.9),
+	"search": Color(1.0, 0.6, 0.2),
 }
 var level
 var mesh := ImmediateMesh.new()
@@ -146,6 +148,9 @@ func draw_creature() -> void:
 		before = point + Vector3(0, 0.1, 0)
 	mark(creature.destination, COLOURS.path, 0.7)
 	mark(creature.last_known, COLOURS.aim, 0.4)
+	# The pacing director's lead, and the place it is searching.
+	if creature.lead_active() and here(creature.lead.point): ring(creature.lead.point, float(creature.lead.radius), COLOURS.lead, 32)
+	if creature.search_origin != Vector3.INF and here(creature.search_origin): ring(creature.search_origin, creature.AREA_SAME, COLOURS.search, 28)
 
 func draw_trails() -> void:
 	for key in trails:

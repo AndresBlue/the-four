@@ -200,16 +200,14 @@ var clue_idle := 0.0
 var area_spent := 0.0
 var last_heading := Vector3.ZERO
 ## A part of the floor the pacing director has sent it to go round, for a
-## while: {point, radius, until, kind, rooms, once}. Its rounds keep to those
-## rooms until then (once: until it gets to one). It is never told where
-## anybody is: that is the director's to know.
+## while: {point, radius, until, kind, rooms, once, sniff}. Its rounds keep to
+## those rooms until then (once: until it gets to one; sniff: it opens one of
+## their wardrobes, drawn). It is never told where anybody is: that is the
+## director's to know.
 var lead := {}
-## Whether it is on a lead: what the director used to call being guided.
-var guided: bool:
-	get:
-		return lead_active()
-	set(value):
-		if not value: lead = {}
+## The wardrobe a sniffing lead has it going to open.
+var sniff_hide: Node3D
+
 ## The survivor it is watching or hunting (see level.survivors()); several
 ## players can be on the floor, it only ever pursues one at a time.
 var focus: Node3D
@@ -588,16 +586,12 @@ func hear(point: Vector3, radius: float) -> void:
 	set_mode(Mode.INVESTIGATE)
 	destination = point
 
-## Walks its patrol to a given room and only then resumes its rounds.
-func guide(room_id: int) -> void:
-	if room_id < 0 or room_id >= level.manifest.rooms.size(): return
-	lead_to(FLOOR.position_of(level.manifest.rooms[room_id]), 1.0, 35.0, "steps", true)
-
 ## Sent by the pacing director to go round the rooms within `radius` of
-## `point` for `seconds` (once: until it reaches one of them). Only on its
-## rounds and only where it drives itself; never a refuge or a lift lobby, and
-## only in the wing it is in. False when it cannot take the lead.
-func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once := false) -> bool:
+## `point` for `seconds` (once: until it reaches one of them; sniff: and open
+## one of their wardrobes). Only on its rounds and only where it drives
+## itself; never a refuge, a lift lobby or a room in `avoid`, and only in the
+## wing it is in. False when it cannot take the lead.
+func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once := false, avoid: Array = [], sniff := false) -> bool:
 	if control != "ai" or mode != Mode.PATROL or lift_bound: return false
 	var here := FLOOR.room_at(level.manifest.rooms, global_position)
 	var wing: int = int(here.get("wing", level.manifest.rooms[patrol_room].get("wing", 0)))
@@ -605,11 +599,12 @@ func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once :
 	var shut_out: Array = level.off_limits_rooms()
 	var rooms: Array = []
 	for room in level.manifest.rooms:
-		if FLOOR.is_void(room) or shut_out.has(int(room.id)) or int(room.get("wing", -1)) != wing: continue
+		if FLOOR.is_void(room) or shut_out.has(int(room.id)) or avoid.has(int(room.id)) or int(room.get("wing", -1)) != wing: continue
 		var centre := FLOOR.position_of(room)
 		if FLOOR.planta_of(centre.y) == planta and centre.distance_to(point) <= maxf(radius, 0.5): rooms.append(int(room.id))
 	if rooms.is_empty(): return false
-	lead = {"point": point, "radius": radius, "until": clock + seconds, "kind": kind, "rooms": rooms, "once": once}
+	lead = {"point": point, "radius": radius, "until": clock + seconds, "kind": kind, "rooms": rooms, "once": once, "sniff": sniff}
+	sniff_hide = null
 	leaving = false
 	pause_time = 0.0
 	state_time = 0.0
@@ -618,28 +613,36 @@ func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once :
 
 func clear_lead() -> void:
 	lead = {}
+	sniff_hide = null
+
+## On a sniffing lead (a burnt-out mind somewhere about): once in the lead's
+## rooms, to one of their wardrobes, drawn -- occupied or not, it does not
+## know -- and open it. True while that is what it is doing.
+func sniffing() -> bool:
+	if not lead_active() or not bool(lead.get("sniff", false)): return false
+	if is_instance_valid(sniff_hide):
+		destination = sniff_hide.to_global(sniff_hide.exit_offset)
+		if pause_time <= 0.0 and global_position.distance_to(destination) < 0.9:
+			var hide := sniff_hide
+			sniff_hide = null
+			lead.sniff = false
+			last_known = hide.global_position
+			begin_wardrobe(hide)
+		return true
+	var here := FLOOR.room_at(level.manifest.rooms, global_position)
+	if here.is_empty() or not lead.rooms.has(int(here.id)): return false
+	var found: Array = []
+	for hide in get_tree().get_nodes_in_group("hotel_hides"):
+		if lead.rooms.has(int(FLOOR.room_at(level.manifest.rooms, hide.global_position).get("id", -1))): found.append(hide)
+	if found.is_empty():
+		lead.sniff = false
+		return false
+	sniff_hide = found[rng.randi_range(0, found.size() - 1)]
+	repath = 0
+	return true
 
 func lead_active() -> bool:
 	return not lead.is_empty() and clock < float(lead.until)
-
-## A mind that has gone out. The motes it gives off reach the creature from
-## anywhere on the floor and through anything, so this is not hearing and does
-## not care about walls or distance: it is told where, and it goes. It will
-## not walk into a refuge for it, and it does not drop somebody it is already
-## chasing -- it only learns where that one is.
-func smell_burnt(point: Vector3) -> void:
-	if control != "ai" or grace > 0: return
-	if mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
-	if level.point_in_refuge(point): return
-	last_known = point
-	if mode == Mode.CHASE:
-		lost_time = minf(lost_time, 1.0)
-		return
-	if mode == Mode.ALERT: return
-	# Re-aimed as the body moves, without starting the behaviour over.
-	if mode != Mode.INVESTIGATE: set_mode(Mode.INVESTIGATE)
-	destination = point
-	guided = false
 
 ## Put somewhere else at once, having forgotten everybody, with `rest` seconds
 ## before it moves again. A stage given back after the team fell raises
@@ -1082,7 +1085,8 @@ func _physics_process(delta: float) -> void:
 	if mode in [Mode.INVESTIGATE, Mode.SEARCH] and search_origin != Vector3.INF: area_spent += delta
 	match mode:
 		Mode.PATROL:
-			if pause_time <= 0 and (position.distance_to(destination) < 0.6 or state_time > patrol_limit):
+			if sniffing(): pass
+			elif pause_time <= 0 and (position.distance_to(destination) < 0.6 or state_time > patrol_limit):
 				var arrived := position.distance_to(destination) < 0.6
 				leaving = false
 				if arrived and lead_active() and bool(lead.get("once", false)): lead = {}

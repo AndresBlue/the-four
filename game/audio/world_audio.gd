@@ -75,6 +75,11 @@ var caption_cooldown := 0.0
 var presence_gain := 0.0
 var clock := 0.0
 var aura
+## Where a creature that is not there is walking (sanity's phantom_passage):
+## the presence and the aura take it whenever it is nearer than the real one.
+## INF when nobody is imagining one. This machine's only.
+var phantom_point := Vector3.INF
+var presence_phantom := false
 ## Fluorescent hum from the nearest battens.
 var hums: Array[AudioStreamPlayer3D] = []
 ## Hum level at the reference mix and its distance scale: clearly there under
@@ -519,16 +524,20 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(level.locust) or level.session.state != level.session.State.PLAYING: return
 	var creature = level.locust
 	var voice_point: Vector3 = creature.global_position + Vector3(0, 1.4, 0)
+	# A creature imagined nearer than the real one is the one heard.
+	var listener := listener_position()
+	presence_phantom = phantom_point != Vector3.INF and (creature.grace > 0.0 or phantom_point.distance_to(listener) < creature.global_position.distance_to(listener))
+	if presence_phantom: voice_point = phantom_point + Vector3(0, 1.4, 0)
 	route_clock -= delta
 	if route_clock <= 0.0 or presence_route.is_empty():
 		route_clock = 0.25
-		presence_route = route_source(voice_point, creature.get_rid())
+		presence_route = route_source(voice_point, RID() if presence_phantom else creature.get_rid())
 	# Heard straight, it sits on the creature; heard around corners, it drifts to the opening.
 	var target: Vector3 = voice_point if not presence_route.get("echo", false) else presence_route.position
 	update_ears(target, delta)
 	if profile == null: return
 	var distance: float = presence_route.get("distance", INF)
-	var audible: bool = level.session.state == level.session.State.PLAYING and creature.grace <= 0 and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
+	var audible: bool = level.session.state == level.session.State.PLAYING and (creature.grace <= 0 or presence_phantom) and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
 	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
 	presence.bus = CREATURE_BUS[presence_route.get("echo", false)]
 	if audible and not presence.playing: presence.play()
@@ -538,7 +547,7 @@ func _physics_process(delta: float) -> void:
 	if clock < 0.1: return
 	clock = 0
 	var rear := behind(presence.global_position)
-	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if creature.mode == creature.Mode.WINDUP else 0.0)
+	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if creature.mode == creature.Mode.WINDUP and not presence_phantom else 0.0)
 	presence.attenuation_filter_cutoff_hz = minf(presence_route.get("cutoff", 20000.0), lerpf(20000.0, REAR_CUTOFF, rear))
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
 

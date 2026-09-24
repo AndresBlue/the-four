@@ -125,17 +125,13 @@ func run() -> void:
 	await frames(4)
 	check("A cero, el cuerpo queda marcado", player.burnt)
 	check("Y no se le ve nada encima: es cosa de la criatura", player.avatar.find_children("*", "GPUParticles3D", true, false).is_empty())
-	check("La marca aparece en lo que el nivel le cuenta a la criatura", level.sanity.burnt_survivors().size() == 1)
-	# It is told where they are and it goes, however far away it is.
+	check("La marca aparece en lo que sabe el director", level.sanity.burnt_survivors().size() == 1)
+	# The creature is no longer told where: the director is, and plays it
+	# (loop_test checks how). Standing still for a while, it is not sent here.
 	level.locust.global_position = FLOOR.position_of(room_far_from(player.global_position)) + Vector3(0, 0.04, 0)
 	level.locust.set_mode(level.locust.Mode.PATROL)
-	level.locust.smell_burnt(player.global_position)
-	check("La criatura sabe dónde está y va", level.locust.mode == level.locust.Mode.INVESTIGATE and level.locust.destination.distance_to(player.global_position) < 0.5)
-	# Not into the refuge: that is still the one safe room.
-	level.locust.set_mode(level.locust.Mode.PATROL)
-	var refuge: Vector3 = FLOOR.position_of(level.manifest.rooms[level.refuge_room()])
-	level.locust.smell_burnt(refuge)
-	check("Pero no entra al refugio por ellas", level.locust.mode == level.locust.Mode.PATROL)
+	await frames(90)
+	check("La criatura no recibe el sitio de quien se quemó", not level.locust.has_method("smell_burnt") and level.locust.mode == level.locust.Mode.PATROL and level.locust.destination.distance_to(player.global_position) > 3.0)
 	# Coming back takes light and time, not a step into a lit room.
 	player.sanity = level.sanity.SANITY_BACK - 1.0
 	await frames(4)
@@ -160,6 +156,10 @@ func run() -> void:
 	check("Con efectos reducidos no se toca la imagen", is_equal_approx(level.post_material.get_shader_parameter("vhs"), 0.0))
 	level.settings.values.reduced = false
 	level.apply_settings()
+
+	# --- The creature where it is not ------------------------------------------------
+	await phantom_passage_checks(lit)
+	await phantom_sight_checks()
 
 	# --- A new floor ---------------------------------------------------------------
 	await level.start_floor(81)
@@ -215,3 +215,104 @@ func door_sight_regression() -> void:
 	level.locust.global_transform = creature_before
 	player.set_physics_process(true)
 	await frames(2)
+
+## The creature that walks past and is not there: heard like the real one,
+## the aura and all, and nothing on the floor hears it.
+func phantom_passage_checks(lit: Dictionary) -> void:
+	var player = level.player
+	var audio = level.world_audio
+	var was_enabled: bool = audio.enabled
+	audio.enabled = true
+	player.global_position = FLOOR.position_of(lit) + Vector3(0, 0.04, 0)
+	player.sanity = 20.0
+	level.locust.global_position = Vector3(0, -80, 0)
+	var known_before: Vector3 = level.locust.last_known
+	var mode_before: int = level.locust.mode
+	# One may be walking already, from the lies told above.
+	if is_instance_valid(level.sanity.passage): level.sanity.passage.stop()
+	audio.aura.reset()
+	var started: bool = level.sanity.walk_past()
+	check("Con la cabeza yéndose, la criatura pasa cerca sin estar", started and level.sanity.passage.walking())
+	var peak := 0.0
+	var nearest := INF
+	var presence := false
+	for i in 240:
+		await physics_frame
+		peak = maxf(peak, float(audio.aura.intensity))
+		presence = presence or audio.presence_phantom
+		if audio.phantom_point != Vector3.INF: nearest = minf(nearest, audio.phantom_point.distance_to(player.global_position))
+	check("Y suena como ella: el aura sube sin criatura cerca (%.2f)" % peak, peak > 0.1 and presence)
+	check("Sin acercarse nunca a menos de 8 m", nearest >= level.sanity.passage.CLOSEST - 0.5)
+	check("Pero no es un ruido: la criatura no se entera", level.locust.last_known == known_before and int(level.locust.mode) == mode_before)
+	level.sanity.passage.stop()
+	await frames(2)
+	check("Y al acabar no queda nada", audio.phantom_point == Vector3.INF)
+	audio.enabled = was_enabled
+
+## The creature seen where it is not: only where it could be (its head round
+## an open door with its body behind the wall, or at the end of a long
+## corridor), gone at a quick turn or out of view, and nothing of it is
+## anything to anybody else.
+func phantom_sight_checks() -> void:
+	var player = level.player
+	var camera: Camera3D = player.camera
+	player.sanity = 20.0
+	player.torch.visible = true
+	var sight = level.sanity.ensure_sight()
+	sight.ensure_model()
+	var placed := 0
+	var wrong := 0
+	var peeks := 0
+	var kept := {}
+	for room in level.manifest.rooms:
+		if int(room.wing) != 0 or FLOOR.is_void(room) or level.off_limits_rooms().has(int(room.id)): continue
+		for turn in 12:
+			player.global_position = FLOOR.closest(level.get_world_3d().navigation_map, FLOOR.position_of(room)) + Vector3(0, 0.04, 0)
+			player.rotation.y = TAU * turn / 12.0
+			camera.rotation.x = 0.0
+			if not sight.place(camera): continue
+			placed += 1
+			var eye: Vector3 = camera.global_position
+			var gap: float = sight.face_point.distance_to(eye)
+			if sight.kind == "peek":
+				peeks += 1
+				if not sight.clear(eye, sight.face_point) or not sight.hidden_body(eye) or gap < sight.PEEK_RANGE.x - 2.0 or gap > sight.PEEK_RANGE.y + 3.0:
+					wrong += 1
+					print("MAL asomada a %.1f m · cabeza %s · cuerpo tapado %s" % [gap, sight.clear(eye, sight.face_point), sight.hidden_body(eye)])
+			elif gap < sight.STAND_RANGE.x - 2.0 or gap > sight.STAND_RANGE.y + 3.0:
+				wrong += 1
+				print("MAL de pie a %.1f m" % gap)
+			if kept.is_empty(): kept = {"position": player.global_position, "yaw": player.rotation.y, "kind": sight.kind}
+			sight.kind = ""
+	check("La bestia imaginada tiene dónde asomarse (%d sitios, %d puertas)" % [placed, peeks], placed > 0)
+	check("Y solo donde puede: la cabeza a la vista y el cuerpo tras la pared, o al fondo de un pasillo", wrong == 0)
+	# Put back where it was found, then looked at, then the head turned away fast.
+	player.global_position = kept.get("position", player.global_position)
+	player.rotation.y = float(kept.get("yaw", 0.0))
+	var again: bool = sight.place(camera)
+	if again:
+		sight.begin()
+		var towards: Vector3 = sight.face_point - camera.global_position
+		player.rotation.y = atan2(-towards.x, -towards.z)
+		await frames(3)
+		check("Mirada, se deja ver", sight.showing() and sight.seen_for >= 0.0 and sight.model.visible)
+		check("Y no es de nadie más: sin cuerpo, sin grupos, fuera de los supervivientes", sight.model.find_children("*", "CollisionObject3D", true, false).is_empty() and sight.model.get_groups().is_empty() and not level.survivors().has(sight.model))
+		player.rotation.y += deg_to_rad(12.0)
+		await frames(2)
+		check("Un giro rápido de cabeza y se esfuma", not sight.showing() and not sight.model.visible and sight.last_end in ["giro", "fuera de vista"])
+		sight.rest = 0.0
+		player.rotation.y = float(kept.get("yaw", 0.0))
+		if sight.place(camera):
+			sight.begin()
+			towards = sight.face_point - camera.global_position
+			player.rotation.y = atan2(-towards.x, -towards.z)
+			await frames(3)
+			player.rotation.y += PI
+			await frames(2)
+			check("Y en cuanto sale de la vista, también", not sight.showing() and sight.last_end == "fuera de vista")
+	else: check("Mirada, se deja ver", false)
+	level.bot_match = true
+	check("Nunca para los bots ni el observador", not sight.allowed())
+	level.bot_match = false
+	player.sanity = 100.0
+	player.torch.visible = false

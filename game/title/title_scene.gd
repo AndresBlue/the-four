@@ -152,22 +152,11 @@ func pose_locust(delta: float) -> void:
 		twitch_sign = 1.0 if rng.randf() < 0.5 else -1.0
 	twitch = maxf(0.0, twitch - delta * 5.0)
 	var lean := 0.36 + sin(clock * 0.21) * 0.04 + sin(clock * 0.077) * 0.03
-	poser.reset()
-	# Leans right (+X) from behind the left jamb into the gap.
-	poser.turn("Spine", Vector3(0, 0, 1), -lean)
-	poser.turn("Spine2", Vector3(0, 0, 1), -lean)
-	poser.turn("Spine2", Vector3(1, 0, 0), 0.15)
-	poser.turn("Spine4", Vector3(0, 0, 1), -lean * 0.5)
-	# Looks out of the gap towards the camera, head cocked hard.
-	poser.turn("Neck1", Vector3(0, 1, 0), -0.35)
-	poser.turn("Neck1", Vector3(0, 0, 1), lean * 0.4)
-	poser.turn("Head1", Vector3(0, 0, 1), 0.5 + twitch * twitch_sign * 0.14 + sin(clock * 0.6) * 0.02)
-	poser.turn("Head1", Vector3(1, 0, 0), 0.15)
-	# The long arms hang straight down, the near one showing in the gap.
-	poser.aim("L_UpperArm", "L_Forearm", Vector3(0.08, -1.0, 0.12))
-	poser.aim("L_Forearm", "L_Hand", Vector3(-0.02, -1.0, 0.2))
-	poser.aim("R_UpperArm", "R_Forearm", Vector3(-0.15, -1.0, 0.0))
-	poser.aim("R_Forearm", "R_Hand", Vector3(-0.05, -1.0, 0.1))
+	# Leans right (+X) from behind the left jamb into the gap, looking out of
+	# it towards the camera with the head cocked hard, the long arms hanging
+	# (the near one showing in the gap). The same pose a mind going sees in the
+	# hotel (phantom_sight).
+	poser.pose_peek(lean, twitch * twitch_sign, 1.0, sin(clock * 0.6) * 0.02)
 
 ## Menu on: this camera takes over. Off: hidden and idle.
 func set_active(active: bool) -> void:

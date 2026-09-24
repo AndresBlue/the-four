@@ -389,7 +389,9 @@ No empieza hasta que lo de arriba esté cerrado.
 - [ ] **Los nueve eventos** de las otras criaturas.
 - [ ] **Los doce descubrimientos restantes**, registro de partidas y códigos
   compatibles, sin progresión de poder.
-- [ ] **Balance del director** (frecuencia y distancia de los eventos) y
+- [ ] **Balance del director**, jugado por personas: si las pistas acercan
+  demasiado o demasiado poco, si el pico dura lo que tiene que durar y si el
+  respiro se nota (constantes al principio de `pacing_director.gd`); y
   revisión de los textos de los documentos.
 - [ ] **Desafíos opcionales** sin condiciones ocultas de derrota.
 - [ ] **Balance con datos locales:** objetivo 60 FPS a 1080p y perfiles

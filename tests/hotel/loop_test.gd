@@ -18,12 +18,38 @@ func check(title: String, passed: bool) -> void:
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
-## Runs the director for some seconds in one-second steps.
+## Runs the director for some seconds in one-second steps, the creature kept
+## on its rounds where it stands (it does not walk here: the test moves it).
 func advance(director, seconds: float) -> void:
-	for i in int(seconds): director.tick(1.0)
+	var creature = level.locust
+	for i in int(seconds):
+		if creature.mode != creature.Mode.PATROL: creature.set_mode(creature.Mode.PATROL)
+		director.tick(1.0)
 
-func started(director, type := "") -> Array:
-	return director.history.filter(func(item): return item.started and (type.is_empty() or item.type == type))
+## The leads the director gave (and the creature took), of a kind or any.
+const LEAD_KINDS := ["merodea", "emboscada", "pasa", "retirada", "quieto", "vuelve", "entre bastidores", "cordura"]
+func leads(director, kind := "") -> Array:
+	return director.history.filter(func(item): return bool(item.get("ok", false)) and item.kind in LEAD_KINDS and (kind.is_empty() or item.kind == kind))
+
+## Rooms of the first planta to stand in: not a refuge, its lobby or the void.
+func standing_rooms() -> Array:
+	var shut: Array = level.off_limits_rooms()
+	return level.manifest.rooms.filter(func(r): return int(r.wing) == 0 and not FLOOR.is_void(r) and not shut.has(int(r.id)) and not bool(r.get("landing", false)))
+
+## Every hard rule of a lead, checked from outside against where the player
+## stood when it was given.
+func lead_fair(entry: Dictionary, player_at: Vector3, hidden: bool) -> bool:
+	var point: Vector3 = entry.point
+	var room := FLOOR.room_at(level.manifest.rooms, point)
+	var theirs := FLOOR.room_at(level.manifest.rooms, player_at)
+	if room.is_empty() or level.off_limits_rooms().has(int(room.id)): return false
+	if not theirs.is_empty() and int(room.id) == int(theirs.id): return false
+	if String(entry.kind) == "cordura": return true
+	if point.distance_to(player_at) < 10.0: return false
+	var walk := float(FLOOR.route_metres(level.manifest, int(theirs.id)).get(int(room.id), INF)) if not theirs.is_empty() else INF
+	if walk < 12.0: return false
+	if hidden and point.distance_to(player_at) < 20.0: return false
+	return true
 
 ## Each document well in from where its planta is walked into (walking), no
 ## two on one planta, and none in a refuge.
@@ -36,6 +62,111 @@ func documents_placed(documents: Array) -> bool:
 		var metres := FLOOR.route_metres(level.manifest, FLOOR.entry_of(level.manifest, int(room.wing)))
 		if float(metres.get(int(room.id), 0.0)) < PLACEMENT.MIN_FROM_START: return false
 	return true
+
+## The director's rules, played out on its own clock: quiet when it has
+## nothing to direct, leads that never point at the player, phases that rest
+## after a chase or a death, a distraction for a team that hides, and the
+## burnt-out mind played through it instead of told to the creature.
+func director_rules(player, creature, director) -> void:
+	creature.set_physics_process(false)
+	player.set_physics_process(false)
+	player.reading = false
+	var rooms := standing_rooms()
+	# The player in one room, the creature far off (it never walks here).
+	var home: Dictionary = rooms[rooms.size() / 3]
+	var metres := FLOOR.route_metres(level.manifest, int(home.id))
+	var far: Dictionary = home
+	for room in rooms:
+		if float(metres.get(int(room.id), 0.0)) > float(metres.get(int(far.id), 0.0)): far = room
+	player.global_position = FLOOR.position_of(home) + Vector3(0, 0.04, 0)
+	creature.global_position = FLOOR.position_of(far) + Vector3(0, 0.04, 0)
+	creature.set_mode(creature.Mode.PATROL)
+	creature.grace = 10.0
+	director.force = true
+	advance(director, 5)
+	check("En la gracia de la criatura el director calla", leads(director).is_empty() and director.silent())
+	creature.grace = 0.0
+	# A long stretch of play, the player moving about now and then and
+	# sometimes hiding: every lead within the rules, and the moves varied.
+	var unfair := 0
+	var count_before := 0
+	var hidden := false
+	for second in 600:
+		if second % 40 == 0:
+			var next: Dictionary = rooms[(second / 40 * 7) % rooms.size()]
+			player.global_position = FLOOR.position_of(next) + Vector3(0, 0.04, 0)
+			hidden = second % 120 == 80
+			player.hidden = hidden
+		creature.global_position = FLOOR.position_of(far) + Vector3(0, 0.04, 0)
+		advance(director, 1)
+		var given := leads(director)
+		for entry in given.slice(count_before):
+			if not lead_fair(entry, player.global_position, hidden): unfair += 1
+		count_before = given.size()
+	player.hidden = false
+	var kinds := {}
+	for entry in leads(director): kinds[entry.kind] = true
+	check("En diez minutos da pistas (%d)" % leads(director).size(), leads(director).size() >= 8)
+	check("Ninguna apunta a la sala del jugador ni a su lado, ni cerca de un escondido", unfair == 0)
+	check("Y juega jugadas distintas (%s)" % ", ".join(kinds.keys()), kinds.size() >= 3)
+	check("La criatura sigue la pista: su destino queda en la zona", not creature.lead_active() or creature.lead.rooms.has(int(FLOOR.room_at(level.manifest.rooms, creature.destination).get("id", -1))))
+	# A chase: hands off while it lasts, then a rest with only backstage leads.
+	creature.set_mode(creature.Mode.CHASE)
+	director.tick(1.0)
+	check("Durante una persecución, pico y manos fuera", director.phase == director.Phase.PEAK)
+	var before: int = leads(director).size()
+	creature.set_mode(creature.Mode.PATROL)
+	advance(director, 25)
+	var during_rest := leads(director).slice(before)
+	var from_room := int(FLOOR.room_at(level.manifest.rooms, player.global_position).get("id", -1))
+	check("Tras la persecución descansa: solo la manda lejos", director.phase == director.Phase.RELIEF and during_rest.all(func(entry): return entry.kind == "entre bastidores"))
+	check("Y lejos de verdad: a más de 45 m andando del jugador", during_rest.all(func(entry): return float(FLOOR.route_metres(level.manifest, from_room).get(int(entry.room), 0.0)) >= director.BACKSTAGE_MIN))
+	advance(director, 10)
+	check("Pasado el descanso vuelve a acechar", director.phase == director.Phase.BUILD)
+	# A death: a longer rest, and the leads keep further off for a while.
+	level.session.participants[1] = level.session.Life.DEAD
+	director.tick(1.0)
+	level.session.participants[1] = level.session.Life.EXPLORING
+	check("Tras una muerte, respiro largo y pistas más lejos", director.phase == director.Phase.RELIEF and director.rest_until - director.clock >= director.REST_AFTER_DEATH - 1.5 and director.nearest_prowl() > director.PROWL_MIN)
+	# The team hidden and the creature walking up to it having seen nobody:
+	# something falls over far away, and it goes to look.
+	var near_room: Dictionary = home
+	for room in rooms:
+		var gap := float(metres.get(int(room.id), INF))
+		if gap > 6.0 and gap < 14.0:
+			near_room = room
+			break
+	player.global_position = FLOOR.position_of(home) + Vector3(0, 0.04, 0)
+	player.hidden = true
+	creature.global_position = FLOOR.position_of(near_room) + Vector3(0, 0.04, 0)
+	creature.detection = 0.0
+	director.last_distraction = -INF
+	director.rest(30.0)
+	director.tick(1.0)
+	var fell: Array = director.history.filter(func(entry): return entry.kind == "distracción")
+	check("A un equipo escondido le distrae a la criatura, lejos", fell.size() == 1 and creature.mode == creature.Mode.INVESTIGATE and creature.destination.distance_to(player.global_position) >= director.DISTRACT_FAR - 3.0)
+	player.hidden = false
+	creature.set_mode(creature.Mode.PATROL)
+	# A burnt-out mind: the creature is sent round the rooms near it -- never
+	# its own -- and opens a wardrobe there, instead of being told the spot.
+	player.global_position = FLOOR.position_of(home) + Vector3(0, 0.04, 0)
+	player.set_burnt(true)
+	creature.global_position = FLOOR.position_of(far) + Vector3(0, 0.04, 0)
+	director.rest_until = director.clock
+	director.set_phase(director.Phase.BUILD)
+	director.burnt_next = director.clock
+	advance(director, 2)
+	var burnt: Array = leads(director, "cordura")
+	check("Con la cordura a cero, el director la acerca a su zona sin darle el sitio", not burnt.is_empty() and lead_fair(burnt[-1], player.global_position, false) and bool(creature.lead.get("sniff", false)))
+	player.set_burnt(false)
+	# The refuge stays calm: nothing is played for somebody in there.
+	player.global_position = FLOOR.position_of(level.manifest.rooms[level.refuge_room()]) + Vector3(0, 0.04, 0)
+	var calm: int = director.history.size()
+	advance(director, 120)
+	check("En el refugio no se juega nada", director.history.slice(calm).all(func(entry): return entry.kind == "fase"))
+	director.force = false
+	creature.set_physics_process(true)
+	player.set_physics_process(true)
 
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
@@ -107,79 +238,9 @@ func run() -> void:
 	check("El archivo del menú lista la entrada leída", level.ui.buttons.has(document.entry_id) and not level.ui.buttons[document.entry_id].disabled)
 	level.ui.overlay.hide()
 	# --- Director ---
-	player.reading = false
-	player.position = Vector3(0, 0.04, 0)
-	await frames(2)
-	creature.set_mode(creature.Mode.PATROL)
-	creature.position = Vector3(400, 0.04, 400)
-	director.tick(1.0)
-	advance(director, 40)
-	check("Ningún evento en los primeros 45 s", started(director).is_empty())
-	# Keep exploring: a new room every few seconds.
-	var rooms: Array = level.manifest.rooms.filter(func(r): return r.id != level.manifest.exit and int(r.wing) == 0 and not FLOOR.is_void(r) and not bool(r.get("landing", false)) and FLOOR.position_of(r).length() < 40.0)
-	player.position = FLOOR.position_of(rooms[1]) + Vector3(0, 0.04, 0)
-	await frames(2)
-	advance(director, 8)
-	var first := started(director)
-	check("Explorando llega un evento con consecuencias", first.size() == 1 and first[0].type in ["fall", "steps"])
-	check("Nunca apunta a la posición del jugador", first.size() == 1 and first[0].point.distance_to(player.global_position) >= 5.0)
-	check("Evento en otra sala distinta a la del jugador", first.size() == 1 and FLOOR.room_at(level.manifest.rooms, first[0].point).get("id", -1) != FLOOR.room_at(level.manifest.rooms, player.global_position).get("id", -2))
-	if first.size() == 1 and first[0].type == "fall":
-		check("Un objeto que cae hace que investigue ese punto", creature.mode == creature.Mode.INVESTIGATE and creature.destination.distance_to(first[0].point) < 0.5)
-	elif first.size() == 1:
-		check("Los pasos guían su patrulla a una sala vecina", creature.mode == creature.Mode.PATROL and creature.guided and creature.destination.distance_to(first[0].point) < 0.5)
-	advance(director, 3)
-	check("Solo un evento activo a la vez", started(director).size() == 1)
-	# A chase: nothing during it, then 30 s of rest after it ends.
-	director.active = {}
-	creature.set_mode(creature.Mode.CHASE)
-	advance(director, 60)
-	check("Nada durante la persecución", started(director).size() == 1)
-	creature.set_mode(creature.Mode.PATROL)
-	player.position = FLOOR.position_of(rooms[2]) + Vector3(0, 0.04, 0)
-	await frames(2)
-	advance(director, 29)
-	check("Descanso de 30 s tras la persecución", started(director).size() == 1)
-	advance(director, 3)
-	check("Tras el descanso vuelve a haber eventos", started(director).size() == 2)
-	# Staying put: only an ambient signal, the creature is left alone.
-	director.active = {}
-	creature.set_mode(creature.Mode.PATROL)
-	creature.guided = false
-	var patrol_before: Vector3 = creature.destination
-	advance(director, 70)
-	var ambient := started(director).slice(2)
-	check("Quedarse quieto solo trae una señal ambiental", ambient.size() >= 1 and ambient.all(func(item): return item.type == "raps"))
-	check("La señal ambiental no mueve a la criatura", creature.mode == creature.Mode.PATROL and creature.destination == patrol_before and not creature.guided)
-	check("Los eventos se separan al menos 45 s", started(director).reduce(func(acc, item): return {"ok": acc.ok and item.time - acc.last >= director.SEPARATION, "last": item.time}, {"ok": true, "last": -INF}).ok)
-	# Steps: the patrol is sent through a room next to the player's, not to the player.
-	director.active = {}
-	creature.set_mode(creature.Mode.PATROL)
-	player.position = FLOOR.position_of(rooms[1]) + Vector3(0, 0.04, 0)
-	await frames(2)
-	var here := FLOOR.room_at(level.manifest.rooms, player.global_position)
-	var guided_ok: bool = director.start("steps")
-	var target := FLOOR.room_at(level.manifest.rooms, creature.destination)
-	check("Los pasos guían la patrulla a una sala cercana que no es la del jugador", guided_ok and creature.guided and target.get("id", -1) != here.id and target.get("id", -1) >= 0)
-	director.update_active()
-	check("El evento de pasos sigue activo mientras camina", director.active.get("type", "") == "steps")
-	creature.set_mode(creature.Mode.CHASE)
-	director.update_active()
-	check("Si se interrumpe, el evento termina", director.active.is_empty() and not creature.guided)
-	creature.set_mode(creature.Mode.PATROL)
-	director.force = false
-	director.active = {}
-	director.last_event = director.clock
-	director.last_hostile = director.clock
-	# The refuge stays calm.
-	director.force = true
-	var count := started(director).size()
-	player.position = FLOOR.position_of(level.manifest.rooms[level.manifest.exit]) + Vector3(0, 0.04, 0)
-	director.active = {}
-	advance(director, 120)
-	check("En el refugio no hay eventos", started(director).size() == count)
+	await director_rules(player, creature, director)
 	var file := FileAccess.open("res://evidence/loop_tests.json", FileAccess.WRITE)
-	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks, "director_history": director.history.map(func(item): return {"type": item.type, "time": item.time, "started": item.started})}, "\t"))
+	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks, "director_history": director.history.map(func(item): return {"kind": item.kind, "time": item.t, "phase": item.phase})}, "\t"))
 	file.close()
 	print("LOOP_RESULT ", checks.size() - failed, "/", checks.size())
 	paused = false

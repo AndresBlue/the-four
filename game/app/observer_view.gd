@@ -575,7 +575,12 @@ func report() -> String:
 		if nearest >= 0: lines.append("  ascensor más cerca: %d a %0.1f m%s" % [nearest, gap, " (arriba)" if level.lifts.lift_gone(nearest) else ""])
 		lines.append("  el coche que le toca: %s" % ("ninguno · ya está en el ala en juego" if level.lifts.creature_car(session.stage) < 0 else str(level.lifts.creature_car(session.stage))))
 		if is_instance_valid(creature.focus): lines.append("  va a por %s" % creature.focus.name)
+		if creature.leaving: lines.append("  se va: dejó una zona sin encontrar nada")
+		if creature.mode == creature.Mode.SEARCH: lines.append("  busca · %d sitios por mirar · %0.1f s sin pistas" % [creature.search_plan.size(), creature.clue_idle])
 	lines.append("")
+	if is_instance_valid(level.director) and level.director.has_method("status_lines"):
+		lines.append_array(level.director.status_lines())
+		lines.append("")
 	lines.append("ASCENSORES")
 	for index in level.hotel.lifts.size():
 		var away: float = float(level.lifts.lift_away.get(index, 0.0))

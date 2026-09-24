@@ -92,6 +92,15 @@ func start() -> void:
 		# it was (apply_search), and that is what the event keeps.
 		piece.searched_changed.connect(func(): event("mueble", {"index": index, "searched": piece.searched, "slot": int(piece.slot), "digit": int(piece.digit), "by": int(level.found_by.get(int(piece.slot), -1)) if int(piece.slot) > 0 else -1}), CONNECT_DEFERRED)
 	for body in owner_match.bodies: body.footfall.connect(func(point, radius): event("ruido", {"seat": int(body.slot), "at": vec(point), "radius": snappedf(radius, 0.1)}))
+	# What the pacing director played, and every place the creature gave up.
+	if is_instance_valid(level.director) and level.director.has_signal("decided"):
+		level.director.decided.connect(func(entry):
+			var data: Dictionary = entry.duplicate()
+			if data.has("point"): data.point = vec(data.point)
+			data.erase("t")
+			event("director", data))
+	if is_instance_valid(level.locust) and level.locust.has_signal("area_abandoned"):
+		level.locust.area_abandoned.connect(func(origin, next): event("abandona", {"from": vec(origin), "to": vec(next)}))
 	beat_msec = Time.get_ticks_msec()
 	keyframe()
 	frame()
