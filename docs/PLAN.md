@@ -11,7 +11,7 @@ Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protoco
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
-## Dónde estamos (23 de septiembre de 2026)
+## Dónde estamos (24 de septiembre de 2026)
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
 tres plantas y tres etapas, The Locust con su IA y su versus, supervivencia,
@@ -50,6 +50,20 @@ El 22 entraron, y **nadie los ha jugado todavía**:
   uno.
 - **Se juega entero con mando**, menús incluidos, con vibración y con el
   teclado del código marcable con la cruceta.
+
+El 24 entró una vuelta entera a la criatura, al director, a la cordura y a
+las alucinaciones, y **tampoco se ha jugado** (descrito en el diseño):
+
+- **La criatura recorre el ala** en vez de ir y volver entre dos salas, y
+  **se rinde** si en 8–10 s no encuentra pistas: marca la zona como
+  registrada y se va a otra parte. Un hundimiento la aleja de la entrada.
+- **El director juega a la criatura** con pistas de zonas, nunca con la
+  posición de nadie, en fases de acecho, pico y respiro; con la cordura a 0
+  ya no le dice a la criatura dónde está nadie, solo la acerca a su zona.
+- **La cordura dura tres veces más**, y verla de cara asusta más que verla de
+  refilón.
+- **Alucinaciones de la criatura**: la que pasa cerca (se oye igual que la de
+  verdad) y la que se asoma por una puerta o espera al fondo de un pasillo.
 
 El 23, después de la partida de ese día, entró lo que pedía, y **tampoco se
 ha jugado**:
@@ -244,12 +258,15 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 ### Números que salen del diseño y no de jugar
 
-- [ ] **La cordura:** dos minutos de armario, dos y medio a oscuras, cuatro de
-  luz para recuperarse, y la frecuencia de las alucinaciones. Decidir además si
-  el aura (`dread_aura.gd`) debe mentir con la cordura baja, como las
-  alucinaciones sueltas.
+- [ ] **La cordura:** siete minutos y medio a oscuras o en un armario, casi
+  veinte con linterna, cuatro de luz para recuperarse, 4 puntos por verla de
+  refilón y 15 de cara, y la frecuencia de las alucinaciones: la criatura que
+  pasa (con su aura entera, que ahora sí miente) y la que se asoma por una
+  puerta o espera al fondo de un pasillo.
 - [ ] **La criatura:** balance de su alerta, de su agresividad y de la
-  propagación del ruido, en partidas humanas.
+  propagación del ruido, en partidas humanas; y su ronda nueva y su búsqueda
+  (se rinde a los 8–10 s sin pistas y se va a más de 38 m): si se siente
+  menos tonta y si esconderse ahora sirve lo que tiene que servir.
 - [ ] **El chillido del cazador cada 10 s** (antes 3 s, y se encadenaba): si
   sigue valiendo lo que cuesta o se queda corto para encontrar a nadie.
 - [ ] **Rendimiento en un PC modesto:** medir `tools/benchmarks/run_bench.ps1`
@@ -266,16 +283,23 @@ hecho y descrito en la guía de desarrollo. Lo que aparezca va aquí.
 Juegan el piso entero solos, lo recorren mirando, se graban y se repasan en el
 observador (todo descrito en la guía de desarrollo). Falta:
 
-- [ ] **Que sobrevivan sin clemencia.** Hoy no: en cinco pisos con tres bots
-  (semillas 91 a 95), los cinco se perdieron, con 4 o 5 muertes cada uno. Con
-  `-Mercy`, de diez pisos (81 a 90) terminaron siete, y los otros tres
-  también tras arreglar la escalera de atascos del bot, con 17 a 41 capturas
-  perdonadas por piso.
-  Casi todas empiezan igual: la criatura va a mirar un ruido o donde la manda
-  el director, se encuentra con el bot, y una vez lo ve lo alcanza (6,4 m/s
-  contra 6,0). Lo que falta es esconderse mejor cuando viene hacia ellos, y
-  que la huida corte su vista de verdad (puertas cerradas detrás, armarios en
-  los que no los vio entrar).
+- [ ] **Que sobrevivan sin clemencia: meta, la mitad de los pisos con tres
+  bots.** Hoy, con la criatura y el director nuevos (24 de septiembre), ganan
+  **16 de 40 pisos de semillas que no se usaron para ajustarlos** (7 de 20
+  en las 500 a 519 y 9 de 20 en las 600 a 619) y 13 de 20 en las de ajuste
+  (200 a 219); antes, 0 de 8. Mueren casi siempre igual: la ven moverse —
+  apartándose de su camino o haciendo una tarea— cuando cambia de rumbo sin
+  aviso (una pista del director, un ruido), y de una persecución solo se
+  escapa una de cada cuatro (6,4 m/s contra 6,0, y cada paso cerca de donde
+  los perdió la lleva a ellos). Además, 1 de cada 20 pisos se queda sin
+  tiempo en una etapa: el director trae a la criatura a rondar a un equipo
+  que se esconde, y se esconden otra vez. Probado y descartado: meter el
+  sector de la pista del director en lo que prevén (bajó a 6 de 20) y correr
+  al refugio en cuanto está cerca (7 de 20). Lo que queda por probar: que un
+  solo bot haga los recados mientras los demás esperan escondidos, y la
+  huida por puertas que se cierran detrás. Si ni así, es cosa de decidir si
+  el director aprieta demasiado (sus constantes, `pacing_director.gd`),
+  jugándolo con personas.
 - [ ] **Mirar con la repetición lo que ya encontraron** (lote
   `20260923-165656-f4_clemencia_v2` y siguientes): bots que se atascan contra
   una puerta abierta con el siguiente punto de su ruta a medio metro

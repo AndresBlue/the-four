@@ -71,8 +71,10 @@ const PEAK_MAX_TENSE := 15.0
 const REST_AFTER_CHASE := 30.0
 const REST_AFTER_DEATH := 45.0
 const REST_AFTER_RESTART := 60.0
-## Backstage: at least this far from everybody.
+## Backstage: at least this far from everybody, and not by way of anybody
+## (its walk there no more than this short of one through their room).
 const BACKSTAGE_MIN := 45.0
+const BY_THE_WAY := 12.0
 ## The hard rules of a lead (validate_lead): metres from every active survivor
 ## in a straight line and walking, and from any wardrobe with somebody in it.
 const CLEAR_STRAIGHT := 10.0
@@ -297,7 +299,9 @@ func build() -> void:
 	var moves: Array = []
 	if stalled(): moves = [["quieto", 3.0]]
 	else: moves = [["merodea", 3.0], ["emboscada", 2.0], ["pasa", 1.5], ["retirada", 1.0], ["golpes", 0.7]]
-	moves = moves.filter(func(move): return move[0] != last_kind)
+	# Never the one just played -- unless it is the only one there is.
+	var fresh: Array = moves.filter(func(move): return move[0] != last_kind)
+	if not fresh.is_empty(): moves = fresh
 	var total := 0.0
 	for move in moves: total += float(move[1])
 	var roll := rng.randf() * total
@@ -381,17 +385,24 @@ func backstage() -> void:
 	if String(current.get("kind", "")) in ["entre bastidores"] and clock < float(current.get("until", 0.0)): return
 	far_lead("entre bastidores")
 
+## A lead far from everybody -- and got to without going by any of them: the
+## way to a room far off could run straight through the team, and a rest
+## that walked the creature past them was no rest (the test bots were
+## caught on the way to "backstage" more than anywhere else).
 func far_lead(kind: String) -> bool:
 	var it = creature()
 	var wing := wing_of(it.global_position)
+	var from := room_id(it.global_position)
 	var bodies := active_survivors()
 	var candidates: Array = []
 	for room in level.manifest.rooms:
 		if int(room.get("wing", -1)) != wing: continue
 		var centre := FLOOR.position_of(room)
+		var there := walk(from, int(room.id))
 		var clear := true
 		for body in bodies:
-			if walk(room_id(body.global_position), int(room.id)) < BACKSTAGE_MIN:
+			var theirs := room_id(body.global_position)
+			if walk(theirs, int(room.id)) < BACKSTAGE_MIN or there >= walk(from, theirs) + walk(theirs, int(room.id)) - BY_THE_WAY:
 				clear = false
 				break
 		if clear and validate_lead(centre): candidates.append(centre)

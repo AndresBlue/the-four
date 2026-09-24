@@ -98,6 +98,9 @@ func start() -> void:
 			var data: Dictionary = entry.duplicate()
 			if data.has("point"): data.point = vec(data.point)
 			data.erase("t")
+			# Its own kind is the move played; the event's kind is "director".
+			data["move"] = data.get("kind", "")
+			data.erase("kind")
 			event("director", data))
 	if is_instance_valid(level.locust) and level.locust.has_signal("area_abandoned"):
 		level.locust.area_abandoned.connect(func(origin, next): event("abandona", {"from": vec(origin), "to": vec(next)}))

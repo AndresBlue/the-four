@@ -20,7 +20,7 @@ param(
     # No creature at all, and bots that know everything: routes and doors only.
     [switch]$NoEnemy,
     [switch]$Oracle,
-    [ValidateRange(1,8)][int]$Parallel = 2,
+    [ValidateRange(1,20)][int]$Parallel = 2,
     [ValidateRange(1,600)][int]$MaxMinutes = 45,
     [ValidateRange(20,3600)][int]$StallSeconds = 120,
     [string]$Label = '',

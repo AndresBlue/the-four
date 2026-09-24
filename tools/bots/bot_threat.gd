@@ -40,6 +40,27 @@ var danger := {}
 ## of them is a bot it is about to see.
 var vantages: Array = []
 const VANTAGE_STEP := 5.0
+## Its future: where its eyes will be for the next FUTURE seconds -- every
+## FUTURE_STEP metres of the whole way it is taking, where that way ends, and
+## the rest of its search -- each with when it gets there: {eye, t}, in order
+## of t. What the bots plan against, not only where it looks now.
+const FUTURE := 24.0
+const FUTURE_STEP := 4.0
+var future: Array = []
+## The pace that future is walked at, and the rest of what it is doing.
+var pace := 2.0
+var hostile := false
+var busy := false
+var lost_time := 0.0
+var last_known := Vector3.ZERO
+var destination := Vector3.ZERO
+## Where its search will look (last_known and what is left of its plan).
+var search_points: Array = []
+## Where it will come out of a lift after the survivors (its car's arrival on
+## the planta in play), while it is still in a wing behind; INF otherwise.
+var landing := Vector3.INF
+## Rays already cast this refresh: {key: result}.
+var sight_cache := {}
 
 func _init(owner_level) -> void:
 	level = owner_level
@@ -52,7 +73,13 @@ func refresh() -> void:
 	path_rooms.clear()
 	danger.clear()
 	vantages.clear()
+	future.clear()
+	search_points.clear()
+	sight_cache.clear()
+	landing = Vector3.INF
 	if not active: return
+	var car: int = level.lifts.creature_car(int(level.session.stage))
+	if car >= 0 and car < level.hotel.arrivals.size() and level.hotel.arrivals[car] != Vector3.ZERO: landing = level.hotel.arrivals[car]
 	position = creature.global_position
 	eye = position + Vector3(0, LOCUST.EYE_HEIGHT, 0)
 	forward = -creature.global_basis.z
@@ -91,6 +118,101 @@ func refresh() -> void:
 		if walked > PATH_AHEAD: break
 	if mode in [LOCUST.Mode.INVESTIGATE, LOCUST.Mode.SEARCH, LOCUST.Mode.CHASE] and FLOOR.planta_of(creature.destination.y) == planta:
 		vantages.append(creature.destination + Vector3(0, LOCUST.EYE_HEIGHT, 0))
+	see_ahead()
+
+## Its future (see FUTURE): along its route at the pace it keeps in what it is
+## doing, then the end of it, then the points its search has still to look at.
+func see_ahead() -> void:
+	hostile = mode in [LOCUST.Mode.ALERT, LOCUST.Mode.CHASE, LOCUST.Mode.WINDUP, LOCUST.Mode.RECOVER]
+	busy = mode in [LOCUST.Mode.EXECUTE, LOCUST.Mode.WARDROBE]
+	lost_time = float(creature.lost_time)
+	last_known = creature.last_known
+	destination = creature.destination
+	match mode:
+		LOCUST.Mode.CHASE: pace = LOCUST.CHASE_SPEED if lost_time < 0.4 else LOCUST.TRACK_SPEED
+		LOCUST.Mode.INVESTIGATE: pace = 2.9
+		LOCUST.Mode.SEARCH: pace = 1.5
+		LOCUST.Mode.PATROL: pace = LOCUST.LEAVE_PACE if bool(creature.leaving) else 2.2
+		_: pace = 2.0
+	pace = maxf(pace, float(creature.speed))
+	# Standing still for a while yet: what it does then starts later.
+	var wait := 0.0
+	if busy: wait = maxf(0.0, (LOCUST.EXECUTION_TIME + 0.35 if mode == LOCUST.Mode.EXECUTE else float(LOCUST.WARDROBE_TIME.done)) - float(creature.state_time))
+	elif mode in [LOCUST.Mode.PATROL, LOCUST.Mode.SEARCH]: wait = float(creature.pause_time)
+	future.append({"eye": eye, "t": 0.0})
+	var walked := 0.0
+	var next_mark := FUTURE_STEP
+	var from := position
+	for i in range(int(creature.path_index), creature.path.size()):
+		var point: Vector3 = creature.path[i]
+		var leg := from.distance_to(point)
+		while walked + leg >= next_mark:
+			var t := wait + next_mark / pace
+			if t > FUTURE: break
+			future.append({"eye": from.lerp(point, (next_mark - walked) / maxf(leg, 0.001)) + Vector3(0, LOCUST.EYE_HEIGHT, 0), "t": t})
+			next_mark += FUTURE_STEP
+		walked += leg
+		from = point
+		if wait + walked / pace > FUTURE: break
+	var at_end := wait + walked / pace
+	if FLOOR.planta_of(destination.y) == planta and at_end <= FUTURE:
+		future.append({"eye": destination + Vector3(0, LOCUST.EYE_HEIGHT, 0), "t": at_end})
+		# Where it goes on from there is its own to choose, but it goes out by
+		# a doorway of that room: its eyes in each of them, a little after.
+		var there := FLOOR.room_at(level.manifest.rooms, destination)
+		if not there.is_empty() and mode in [LOCUST.Mode.PATROL, LOCUST.Mode.INVESTIGATE, LOCUST.Mode.SEARCH]:
+			for other in level.manifest.adjacency[int(there.id)]:
+				var portal := FLOOR.portal_between(there, level.manifest.rooms[int(other)])
+				var t := at_end + 1.5 + destination.distance_to(portal) / maxf(pace, 1.5)
+				if t <= FUTURE: future.append({"eye": portal + Vector3(0, LOCUST.EYE_HEIGHT, 0), "t": t})
+	future.sort_custom(func(a, b): return float(a.t) < float(b.t))
+	if mode in [LOCUST.Mode.SEARCH, LOCUST.Mode.CHASE, LOCUST.Mode.INVESTIGATE]: search_points.append(last_known)
+	if mode == LOCUST.Mode.SEARCH:
+		var before: Vector3 = destination
+		var t := at_end
+		for item in creature.search_plan:
+			var point: Vector3 = item.point
+			search_points.append(point)
+			t += before.distance_to(point) * 1.3 / 1.5 + 1.0
+			before = point
+			if t <= FUTURE: future.append({"eye": point + Vector3(0, LOCUST.EYE_HEIGHT, 0), "t": t})
+
+## Seconds until any of its eyes (now or on its way, see FUTURE) has a line to
+## somebody standing at `point`; INF if none within FUTURE. Now is 0.
+func time_to_sight(point: Vector3, height := 1.64) -> float:
+	if not near_planta(point): return INF
+	var key := Vector3i(roundi(point.x * 2.0), roundi(point.z * 2.0), roundi(height * 10.0 + point.y))
+	if sight_cache.has(key): return sight_cache[key]
+	var target := point + Vector3(0, height, 0)
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var found := INF
+	for vantage in future:
+		if target.distance_to(vantage.eye) > LOCUST.SIGHT_RANGE: continue
+		if space.intersect_ray(PhysicsRayQueryParameters3D.create(vantage.eye, target, SIGHT_MASK)).is_empty():
+			found = float(vantage.t)
+			break
+	sight_cache[key] = found
+	return found
+
+## Seconds until it passes within `near` metres of `point` (INF: not within
+## FUTURE): coming here, whatever it can see.
+func arrival(point: Vector3, near := 5.0) -> float:
+	if not near_planta(point): return INF
+	for vantage in future:
+		var ground: Vector3 = vantage.eye - Vector3(0, LOCUST.EYE_HEIGHT, 0)
+		if Vector2(ground.x - point.x, ground.z - point.z).length() < near and absf(ground.y - point.y) < 2.0: return float(vantage.t)
+	return INF
+
+## Its ears are shut here: it is running somebody down (or tracking them)
+## and only hears what is within CHASE_EARSHOT of where it last knew them.
+func deaf_to(point: Vector3) -> bool:
+	return mode == LOCUST.Mode.CHASE and point.distance_to(last_known) > LOCUST.CHASE_EARSHOT + 1.5 or busy
+
+## Near a place its search is going to look.
+func searched_near(point: Vector3, near := 5.0) -> bool:
+	for spot in search_points:
+		if Vector2(spot.x - point.x, spot.z - point.z).length() < near: return true
+	return false
 
 ## Whether it is a thing to mind at all where this body is.
 func near_planta(point: Vector3) -> bool:

@@ -130,7 +130,7 @@ func plan_objectives(here: Array) -> void:
 		var best_cost := INF
 		for brain in free:
 			if clock < float(dropped.get("%d|%s" % [brain.seat, errand.key], -1.0)): continue
-			var cost: float = NAV.route_length(level, brain.body.global_position, errand.stands[0]) if FLOOR.planta_of(brain.body.global_position.y) == FLOOR.planta_of(errand.stands[0].y) else INF
+			var cost: float = NAV.route_length(level, brain.body.global_position, errand.stands[0]) + owner_match.task_danger(errand.stands[0]) if FLOOR.planta_of(brain.body.global_position.y) == FLOOR.planta_of(errand.stands[0].y) else INF
 			if cost < best_cost:
 				best_cost = cost
 				best = brain
@@ -204,6 +204,7 @@ func explore_room(brain) -> int:
 	if here.is_empty(): return -1
 	var wing: int = stage - 1
 	# Dijkstra over the plan, room middle to room middle.
+	var fallback := -1
 	var cost := {int(here.id): 0.0}
 	var open: Array = [int(here.id)]
 	var done := {}
@@ -214,7 +215,11 @@ func explore_room(brain) -> int:
 		open.erase(current)
 		done[current] = true
 		var room: Dictionary = rooms[current]
-		if not cleared.has(current) and not blocked.has(current) and not claims.has("explore:%d" % current) and int(room.get("wing", -1)) == wing and not FLOOR.is_void(room): return current
+		# Where the creature's eyes will soon be, or where it is going, is looked
+		# round later: the next room on is taken instead.
+		if not cleared.has(current) and not blocked.has(current) and not claims.has("explore:%d" % current) and int(room.get("wing", -1)) == wing and not FLOOR.is_void(room):
+			if owner_match.task_danger(FLOOR.position_of(room)) < 60.0: return current
+			if fallback < 0: fallback = current
 		for other in level.manifest.adjacency[current]:
 			var next := int(other)
 			if done.has(next) or (blocked.has(next) and not cleared.has(next)): continue
@@ -222,7 +227,7 @@ func explore_room(brain) -> int:
 			if float(cost[current]) + step < float(cost.get(next, INF)):
 				cost[next] = float(cost[current]) + step
 				if not open.has(next): open.append(next)
-	return -1
+	return fallback
 
 func explore_task(room_id: int) -> Dictionary:
 	var room: Dictionary = level.manifest.rooms[room_id]

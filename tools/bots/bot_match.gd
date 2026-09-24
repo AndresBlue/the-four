@@ -164,19 +164,54 @@ func _physics_process(delta: float) -> void:
 ## The pace a bot walks at on its way: walking where the creature would not
 ## hear it, crouched where only that is not heard, and not a step where even
 ## that would be. Chosen four times a second (each choice asks the creature's
-## own hearing along the routes).
-func pace_for(brain) -> int:
+## own hearing along the routes). Coming nearer (on its way past within a few
+## seconds), a walk it does not hear yet is one it is about to: crouched.
+## `quiet`: asked while keeping out of its way, never bold.
+func pace_for(brain, quiet := false) -> int:
 	if not threat.near_planta(brain.body.global_position): return BODY.Pace.WALK
-	if brain.bold(): return BODY.Pace.CROUCH if threat.position.distance_to(brain.body.global_position) < 30.0 else BODY.Pace.WALK
+	if brain.bold() and not quiet: return BODY.Pace.CROUCH if threat.position.distance_to(brain.body.global_position) < 30.0 else BODY.Pace.WALK
 	brain.pace_clock -= 1.0 / 60.0
 	if brain.pace_clock > 0.0: return brain.pace_now
 	brain.pace_clock = 0.25
 	var hard := "_hard" if brain.body.hard_floor else ""
-	var ahead: Vector3 = brain.nav.next_point() if brain.nav.active() else brain.body.global_position
-	if not threat.audible(brain.body.global_position, "walk" + hard) and not threat.audible(ahead, "walk" + hard): brain.pace_now = BODY.Pace.WALK
-	elif not threat.audible(brain.body.global_position, "crouch" + hard) and not threat.audible(ahead, "crouch" + hard): brain.pace_now = BODY.Pace.CROUCH
+	var here: Vector3 = brain.body.global_position
+	var ahead: Vector3 = brain.nav.next_point() if brain.nav.active() else here
+	# Its ears are shut here (a chase listens only round where it lost them,
+	# and holding somebody it hears nothing): any pace.
+	if threat.deaf_to(here) and threat.deaf_to(ahead):
+		brain.pace_now = BODY.Pace.WALK
+		return brain.pace_now
+	var closing: bool = threat.arrival(here, 20.0) < 5.0
+	if not closing and not threat.audible(here, "walk" + hard) and not threat.audible(ahead, "walk" + hard): brain.pace_now = BODY.Pace.WALK
+	elif not threat.audible(here, "crouch" + hard) and not threat.audible(ahead, "crouch" + hard): brain.pace_now = BODY.Pace.CROUCH
 	else: brain.pace_now = BODY.Pace.STILL
 	return brain.pace_now
+
+## What sending a bot to `point` now would cost it in risk, in metres of
+## walking: its eyes there soon, it coming past, or where it is going.
+func task_danger(point: Vector3) -> float:
+	if threat == null or not threat.near_planta(point): return 0.0
+	var extra := 0.0
+	if threat.time_to_sight(point) < 15.0: extra += 60.0
+	if threat.arrival(point, 8.0) < 20.0: extra += 60.0
+	if point.distance_to(threat.destination) < 12.0: extra += 60.0
+	return extra
+
+## Whether another bot stands, or is going to stand, within SPOT_APART of a
+## place (its escape, bot_brain.safe_place).
+const SPOT_APART := 4.0
+func spot_taken(point: Vector3, asking) -> bool:
+	for brain in brains:
+		if brain == asking or not brain.alive(): continue
+		if brain.body.global_position.distance_to(point) < SPOT_APART: return true
+		if brain.escape != Vector3.INF and brain.escape.distance_to(point) < SPOT_APART: return true
+	return false
+
+## Metres of walking from a room to every room of its planta (kept).
+var walks := {}
+func walks_from(room_id: int) -> Dictionary:
+	if not walks.has(room_id): walks[room_id] = FLOOR.route_metres(level.manifest, room_id)
+	return walks[room_id]
 
 # --- What happened ------------------------------------------------------------------
 
