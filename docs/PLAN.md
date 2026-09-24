@@ -283,23 +283,6 @@ hecho y descrito en la guía de desarrollo. Lo que aparezca va aquí.
 Juegan el piso entero solos, lo recorren mirando, se graban y se repasan en el
 observador (todo descrito en la guía de desarrollo). Falta:
 
-- [ ] **Que sobrevivan sin clemencia: meta, la mitad de los pisos con tres
-  bots.** Hoy, con la criatura y el director nuevos (24 de septiembre), ganan
-  **16 de 40 pisos de semillas que no se usaron para ajustarlos** (7 de 20
-  en las 500 a 519 y 9 de 20 en las 600 a 619) y 13 de 20 en las de ajuste
-  (200 a 219); antes, 0 de 8. Mueren casi siempre igual: la ven moverse —
-  apartándose de su camino o haciendo una tarea— cuando cambia de rumbo sin
-  aviso (una pista del director, un ruido), y de una persecución solo se
-  escapa una de cada cuatro (6,4 m/s contra 6,0, y cada paso cerca de donde
-  los perdió la lleva a ellos). Además, 1 de cada 20 pisos se queda sin
-  tiempo en una etapa: el director trae a la criatura a rondar a un equipo
-  que se esconde, y se esconden otra vez. Probado y descartado: meter el
-  sector de la pista del director en lo que prevén (bajó a 6 de 20) y correr
-  al refugio en cuanto está cerca (7 de 20). Lo que queda por probar: que un
-  solo bot haga los recados mientras los demás esperan escondidos, y la
-  huida por puertas que se cierran detrás. Si ni así, es cosa de decidir si
-  el director aprieta demasiado (sus constantes, `pacing_director.gd`),
-  jugándolo con personas.
 - [ ] **Mirar con la repetición lo que ya encontraron** (lote
   `20260923-165656-f4_clemencia_v2` y siguientes): bots que se atascan contra
   una puerta abierta con el siguiente punto de su ruta a medio metro
