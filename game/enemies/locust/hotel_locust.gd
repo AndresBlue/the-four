@@ -21,6 +21,44 @@ const HEARING_SCALE := NOISE_TABLE.HEARING_SCALE
 const APPARENT_NEAREST := 3.5
 ## Lost sight for longer than this, the chase becomes a search.
 const LOSE_AFTER := 7.0
+## Its rounds. It walks to a room PATROL_NEAR..PATROL_FAR metres of walking
+## away, not to the next one: one room at a time, drawn at random with no
+## memory, it went into a bedroom and straight back out, round and round the
+## same few cells, and only seemed to wake up when something else sent it
+## further. It prefers the rooms it has not seen for longest (STALE_FULL
+## seconds is as stale as a room gets) over those it has just searched or just
+## walked through, and a bedroom with a single door only now and then.
+const PATROL_NEAR := 20.0
+const PATROL_FAR := 60.0
+const STALE_FULL := 150.0
+const DEAD_END_PEEK := 0.35
+const RECENT_ROOMS := 6
+## Seconds it stands looking round a room it has walked to.
+const SCAN_TIME := Vector2(1.0, 2.5)
+## Its search, once it has lost somebody or found nobody where it heard them:
+## where they were, the doorway they were heading for, the room beyond it and
+## one more room next door -- a look, not a siege. GIVE_UP seconds without a
+## clue once it has looked (GIVE_UP_HARD whatever is left to look at) and it
+## gives the place up: the rooms within SEARCHED_RADIUS count as searched for
+## SEARCHED_FOR seconds, and it walks off at LEAVE_PACE to somewhere at least
+## LEAVE_MIN metres away. It used to pace a ring round the last place it knew
+## for ten seconds and then wander off from there one room at a time, so
+## whoever hid near by had it walking past their wardrobe for minutes.
+const GIVE_UP := 8.0
+const GIVE_UP_HARD := 10.0
+const SEARCHED_RADIUS := 18.0
+const SEARCHED_FOR := 75.0
+const LEAVE_MIN := 38.0
+const LEAVE_PACE := 2.6
+## How often a search opens a wardrobe in the room the quarry was heading for.
+const SEARCH_PEEK_CHANCE := 0.2
+## However noisy a place, it spends no more than AREA_CAP seconds there: after
+## that only seeing somebody or a loud noise (heard LOUD metres off and more:
+## a run, a jump, a door flung open) is worth staying for. Two points within
+## AREA_SAME metres are the same place.
+const AREA_CAP := 40.0
+const AREA_SAME := 15.0
+const LOUD := 30.0
 ## Faster than a sprinting player: breaking line of sight is the only escape.
 const CHASE_SPEED := 6.4
 ## Speed while heading to the last place it saw or heard the player.
@@ -135,8 +173,43 @@ var howl_left := 0.0
 var howl_fade := 1.0
 var howl_db := 0.0
 var last_grunt := -1
-## A patrol route set by the pacing director: kept until it gets there.
-var guided := false
+## A clock of its own, for how long ago it saw each room.
+var clock := 0.0
+## Room id -> clock when it last stood in it or looked into it.
+var room_seen := {}
+## Room id -> clock until which it keeps away: the rooms round a place it gave up.
+var searched_until := {}
+## The last few rooms it stood in, oldest first.
+var recent_rooms: Array = []
+## Metres of walking from a room to every room of its planta, by room.
+var walks := {}
+var mark_clock := 0.0
+## How long this leg of its rounds may take before it picks another.
+var patrol_limit := 14.0
+## Walking off from a place it gave up: brisk, and not turning back for anything
+## short of a clue.
+var leaving := false
+## The search: what is left to look at ({point, hide}), the wardrobe it is on
+## its way to open, where the place it is searching is, how long since the
+## last clue, how long it has spent on the place, and the way its quarry was
+## last going.
+var search_plan: Array = []
+var search_hide: Node3D
+var search_origin := Vector3.INF
+var clue_idle := 0.0
+var area_spent := 0.0
+var last_heading := Vector3.ZERO
+## A part of the floor the pacing director has sent it to go round, for a
+## while: {point, radius, until, kind, rooms, once}. Its rounds keep to those
+## rooms until then (once: until it gets to one). It is never told where
+## anybody is: that is the director's to know.
+var lead := {}
+## Whether it is on a lead: what the director used to call being guided.
+var guided: bool:
+	get:
+		return lead_active()
+	set(value):
+		if not value: lead = {}
 ## The survivor it is watching or hunting (see level.survivors()); several
 ## players can be on the floor, it only ever pursues one at a time.
 var focus: Node3D
@@ -491,6 +564,12 @@ func hear(point: Vector3, radius: float) -> void:
 	# a noise used to send it off mid-kill with the victim dragged behind it.
 	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
 	if not can_hear(point, radius): return
+	# A place it has given long enough: only something loud keeps it there.
+	if area_spent > AREA_CAP and search_origin != Vector3.INF and point.distance_to(search_origin) < AREA_SAME and radius * HEARING_SCALE < LOUD: return
+	clue()
+	var going := point - last_known
+	going.y = 0.0
+	if going.length() > 1.0: last_heading = going.normalized()
 	if mode == Mode.CHASE:
 		# While hunting, a noise near the one it is after tells it where they
 		# went. Any noise at all used to: two survivors walking about kept a
@@ -509,15 +588,39 @@ func hear(point: Vector3, radius: float) -> void:
 	set_mode(Mode.INVESTIGATE)
 	destination = point
 
-## Walks its patrol to a given room and only then resumes wandering.
+## Walks its patrol to a given room and only then resumes its rounds.
 func guide(room_id: int) -> void:
-	if mode != Mode.PATROL or control != "ai": return
-	patrol_room = room_id
-	destination = FLOOR.position_of(level.manifest.rooms[room_id])
-	guided = true
+	if room_id < 0 or room_id >= level.manifest.rooms.size(): return
+	lead_to(FLOOR.position_of(level.manifest.rooms[room_id]), 1.0, 35.0, "steps", true)
+
+## Sent by the pacing director to go round the rooms within `radius` of
+## `point` for `seconds` (once: until it reaches one of them). Only on its
+## rounds and only where it drives itself; never a refuge or a lift lobby, and
+## only in the wing it is in. False when it cannot take the lead.
+func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once := false) -> bool:
+	if control != "ai" or mode != Mode.PATROL or lift_bound: return false
+	var here := FLOOR.room_at(level.manifest.rooms, global_position)
+	var wing: int = int(here.get("wing", level.manifest.rooms[patrol_room].get("wing", 0)))
+	var planta := FLOOR.planta_of(point.y)
+	var shut_out: Array = level.off_limits_rooms()
+	var rooms: Array = []
+	for room in level.manifest.rooms:
+		if FLOOR.is_void(room) or shut_out.has(int(room.id)) or int(room.get("wing", -1)) != wing: continue
+		var centre := FLOOR.position_of(room)
+		if FLOOR.planta_of(centre.y) == planta and centre.distance_to(point) <= maxf(radius, 0.5): rooms.append(int(room.id))
+	if rooms.is_empty(): return false
+	lead = {"point": point, "radius": radius, "until": clock + seconds, "kind": kind, "rooms": rooms, "once": once}
+	leaving = false
 	pause_time = 0.0
 	state_time = 0.0
-	repath = 0.0
+	choose_patrol()
+	return true
+
+func clear_lead() -> void:
+	lead = {}
+
+func lead_active() -> bool:
+	return not lead.is_empty() and clock < float(lead.until)
 
 ## A mind that has gone out. The motes it gives off reach the creature from
 ## anywhere on the floor and through anything, so this is not hearing and does
@@ -572,7 +675,9 @@ func set_mode(next: Mode) -> void:
 	var previous := mode
 	mode = next
 	state_time = 0
-	guided = false
+	leaving = false
+	# Anything that takes it off its rounds ends the director's lead with them.
+	if next != Mode.PATROL: lead = {}
 	lift_bound = false
 	repath = 0
 	pause_time = 0
@@ -584,25 +689,182 @@ func set_mode(next: Mode) -> void:
 		speed = maxf(speed, CHASE_START_SPEED)
 		# Coming out of the alert, the next call waits for the first to finish.
 		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT else 0.0
+	# Lost them, or found nobody: a search of its own, from where it last knew.
+	# Out of a wardrobe it opened on the way, the same search goes on.
+	if next == Mode.SEARCH and control == "ai": begin_search(last_known, last_heading, previous != Mode.WARDROBE)
 	# Spotting the player: an aggressive grunt as it turns to hunt.
 	if next == Mode.ALERT: grunt()
 	if next == Mode.WINDUP:
 		warn()
 		if "match_net" in level and level.match_net != null: level.match_net.creature_call("warning", 0, 1.0)
 
-func choose_patrol() -> void:
-	# Never through a gate it cannot open, and never into the refuge that is
-	# protecting the survivors this stage: it would stand at a door and wait.
-	var wing: int = int(level.manifest.rooms[patrol_room].get("wing", 0))
-	var refuge: int = level.refuge_room()
-	# Nor into a lift lobby: its only door is the refuge's, and it would be
-	# shut in there with no way on.
-	var lobbies: Array = level.manifest.get("gates", []).map(func(gate): return int(gate.get("beyond", -1)))
-	var choices: Array = level.manifest.adjacency[patrol_room].filter(func(id): return id != refuge and not lobbies.has(int(id)) and int(level.manifest.rooms[id].get("wing", 0)) == wing)
-	if choices.is_empty(): return
-	patrol_room = choices[rng.randi_range(0, choices.size() - 1)]
+## The next leg of its rounds (see PATROL_NEAR): among the rooms of its wing
+## at a walk's distance, the ones it has not seen for longest, drawn among the
+## best few so it is not predictable. On a lead, the lead's rooms whatever the
+## distance. Walking off from `away_from` (a place it gave up), the rooms at
+## least LEAVE_MIN from there. Never through a gate it cannot open, into a
+## refuge -- it would stand at the door and wait -- or into a lift lobby,
+## whose only door is the refuge's.
+func choose_patrol(away_from := Vector3.INF) -> void:
+	var standing := FLOOR.room_at(level.manifest.rooms, global_position)
+	var here: int = int(standing.id) if not standing.is_empty() else patrol_room
+	var wing: int = int(level.manifest.rooms[here].get("wing", 0))
+	var shut_out: Array = level.off_limits_rooms()
+	var metres := walk_from(here)
+	var in_lead := lead_active()
+	var scored: Array = []
+	var spare: Array = []
+	for key in metres:
+		var id := int(key)
+		if shut_out.has(id) or (id == here and not in_lead): continue
+		var room: Dictionary = level.manifest.rooms[id]
+		if FLOOR.is_void(room) or int(room.get("wing", -1)) != wing: continue
+		var walk := float(metres[key])
+		if in_lead:
+			if not lead.rooms.has(id): continue
+		elif away_from != Vector3.INF:
+			var off := FLOOR.position_of(room).distance_to(away_from)
+			if off < LEAVE_MIN or walk > PATROL_FAR * 1.5:
+				spare.append([off, id])
+				continue
+		elif walk < PATROL_NEAR or walk > PATROL_FAR:
+			if walk >= 8.0: spare.append([rng.randf(), id])
+			continue
+		var weight := clampf((clock - float(room_seen.get(id, -INF))) / STALE_FULL, 0.05, 1.0)
+		if not in_lead and float(searched_until.get(id, -INF)) > clock: weight *= 0.05
+		if recent_rooms.has(id): weight *= 0.3
+		if level.manifest.adjacency[id].size() <= 1 and not bool(room.get("corridor", false)): weight *= DEAD_END_PEEK
+		scored.append([weight * rng.randf_range(0.7, 1.3), id])
+	# A small wing, or nowhere far enough: the best of what there is (for a
+	# place given up, the farthest from it).
+	if scored.is_empty(): scored = spare
+	if scored.is_empty():
+		var near: Array = level.manifest.adjacency[here].filter(func(id): return not shut_out.has(int(id)) and int(level.manifest.rooms[id].get("wing", -1)) == wing)
+		if near.is_empty(): return
+		scored = near.map(func(id): return [rng.randf(), int(id)])
+	scored.sort_custom(func(a, b): return a[0] > b[0])
+	var pick: Array = scored[rng.randi_range(0, mini(4, scored.size() - 1))]
+	patrol_room = int(pick[1])
 	destination = FLOOR.position_of(level.manifest.rooms[patrol_room])
+	patrol_limit = float(metres.get(patrol_room, 30.0)) / 1.4 + 10.0
 	repath = 0
+
+## Metres of walking from a room to every room of its planta (kept: the plan
+## of the floor does not change under it).
+func walk_from(room_id: int) -> Dictionary:
+	if not walks.has(room_id): walks[room_id] = FLOOR.route_metres(level.manifest, room_id)
+	return walks[room_id]
+
+## Twice a second: the room it stands in, and the rooms next door it can see
+## into, count as seen now.
+func mark_rooms(delta: float) -> void:
+	mark_clock -= delta
+	if mark_clock > 0.0: return
+	mark_clock = 0.5
+	var here := FLOOR.room_at(level.manifest.rooms, global_position)
+	if here.is_empty(): return
+	var id := int(here.id)
+	room_seen[id] = clock
+	if recent_rooms.is_empty() or int(recent_rooms[-1]) != id:
+		recent_rooms.append(id)
+		if recent_rooms.size() > RECENT_ROOMS: recent_rooms.pop_front()
+	for other in level.manifest.adjacency[id]:
+		var centre := FLOOR.position_of(level.manifest.rooms[int(other)])
+		if centre.distance_to(global_position) < 16.0 and clear_sight(centre + Vector3(0, 1.2, 0)): room_seen[int(other)] = clock
+
+## Something to go on: seen, heard, a torch on it. The search starts over.
+func clue() -> void:
+	clue_idle = 0.0
+
+## A search from `origin` (see GIVE_UP). The same place again (within
+## AREA_SAME) keeps the time already given to it; `fresh` false carries on
+## with what was left to look at (it opened a wardrobe on the way).
+func begin_search(origin: Vector3, heading: Vector3, fresh := true) -> void:
+	if search_origin == Vector3.INF or origin.distance_to(search_origin) >= AREA_SAME:
+		search_origin = origin
+		area_spent = 0.0
+	if not fresh and not search_plan.is_empty():
+		next_search_point()
+		return
+	# A new look starts the clock over, unless the place has had its time.
+	if area_spent < AREA_CAP: clue_idle = 0.0
+	search_plan = plan_search(origin, heading)
+	next_search_point()
+
+func next_search_point() -> void:
+	search_hide = null
+	if search_plan.is_empty():
+		destination = global_position
+		return
+	var item: Dictionary = search_plan.pop_front()
+	destination = item.point
+	search_hide = item.get("hide")
+	repath = 0
+
+## Where to look: the spot itself, the doorway of that room most along the
+## way the quarry was going, the room beyond it (and now and then a wardrobe
+## in it), and one other room next door. Room middles and doorways, on the
+## floor: points round the spot itself snapped to the other side of a wall,
+## and it walked round and back for each of them.
+func plan_search(origin: Vector3, heading: Vector3) -> Array:
+	var map: RID = get_world_3d().navigation_map
+	var plan: Array = [{"point": FLOOR.closest(map, origin)}]
+	var room := FLOOR.room_at(level.manifest.rooms, origin)
+	if room.is_empty(): return plan
+	var shut_out: Array = level.off_limits_rooms()
+	var ways: Array = []
+	for other in level.manifest.adjacency[room.id]:
+		var id := int(other)
+		var next: Dictionary = level.manifest.rooms[id]
+		if shut_out.has(id) or FLOOR.is_void(next) or int(next.get("wing", -1)) != int(room.get("wing", -2)): continue
+		var portal := FLOOR.portal_between(room, next)
+		var way := portal - origin
+		way.y = 0.0
+		var score := rng.randf() * 0.5
+		if heading.length() > 0.1 and way.length() > 0.1: score += heading.dot(way.normalized())
+		ways.append([score, id, portal])
+	if ways.is_empty(): return plan
+	ways.sort_custom(func(a, b): return a[0] > b[0])
+	var beyond: Dictionary = level.manifest.rooms[int(ways[0][1])]
+	plan.append({"point": FLOOR.closest(map, ways[0][2])})
+	plan.append({"point": FLOOR.closest(map, FLOOR.position_of(beyond))})
+	if rng.randf() < SEARCH_PEEK_CHANCE:
+		var hide := wardrobe_in(beyond)
+		if hide != null: plan.append({"point": hide.to_global(hide.exit_offset), "hide": hide})
+	if ways.size() > 1:
+		var aside: Array = ways[rng.randi_range(1, ways.size() - 1)]
+		plan.append({"point": FLOOR.closest(map, FLOOR.position_of(level.manifest.rooms[int(aside[1])]))})
+	return plan
+
+## One of the wardrobes of a room, drawn; null when it has none.
+func wardrobe_in(room: Dictionary) -> Node3D:
+	var found: Array = []
+	for hide in get_tree().get_nodes_in_group("hotel_hides"):
+		if int(FLOOR.room_at(level.manifest.rooms, hide.global_position).get("id", -1)) == int(room.id): found.append(hide)
+	return null if found.is_empty() else found[rng.randi_range(0, found.size() - 1)]
+
+## Nothing there: it gives the place up and goes somewhere else (see
+## GIVE_UP). Whatever it thought it had seen is forgotten with it.
+signal area_abandoned(origin: Vector3, next: Vector3)
+func give_up_area() -> void:
+	var origin: Vector3 = search_origin if search_origin != Vector3.INF else global_position
+	var planta := FLOOR.planta_of(origin.y)
+	for room in level.manifest.rooms:
+		if FLOOR.is_void(room): continue
+		var centre := FLOOR.position_of(room)
+		if FLOOR.planta_of(centre.y) == planta and centre.distance_to(origin) <= SEARCHED_RADIUS: searched_until[int(room.id)] = clock + SEARCHED_FOR
+	observed_hide = null
+	detection = minf(detection, 0.1)
+	search_plan.clear()
+	search_hide = null
+	lead = {}
+	patrol_room = nearest_room()
+	set_mode(Mode.PATROL)
+	leaving = true
+	choose_patrol(origin)
+	search_origin = Vector3.INF
+	area_spent = 0.0
+	area_abandoned.emit(origin, destination)
 
 func can_attack(reach := ATTACK_RANGE) -> bool:
 	var player := target()
@@ -620,7 +882,8 @@ func suspect_hide(point: Vector3) -> Node3D:
 func desired_speed() -> float:
 	match mode:
 		Mode.PATROL:
-			return 0.0 if pause_time > 0 else 1.9 + sin(wander_clock * 0.37) * 0.5 + sin(wander_clock * 1.13) * 0.2
+			if pause_time > 0: return 0.0
+			return LEAVE_PACE if leaving else 1.9 + sin(wander_clock * 0.37) * 0.5 + sin(wander_clock * 1.13) * 0.2
 		Mode.INVESTIGATE:
 			# Cautious when close to what it heard; loping to a lift.
 			return lerpf(1.2, LIFT_PACE if lift_bound else 2.9, clampf((position.distance_to(destination) - 1.5) / 5.0, 0.0, 1.0))
@@ -720,6 +983,15 @@ func update_execution(delta: float) -> void:
 	# victim 0.3 s past EXECUTION_TIME): let go earlier, it saw its still
 	# living victim and roared at the corpse.
 	if state_time >= EXECUTION_TIME + 0.35 and control != "puppet":
+		if control == "ai":
+			# Done with that one. What it half noticed of the others while it
+			# held it is gone too: it used to turn from the body already
+			# certain of the next one in view, and a team fell one after
+			# another in the same room.
+			detection = 0.0
+			focus = null
+			last_known = global_position
+			last_heading = Vector3.ZERO
 		set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
 
 ## A call decided where the creature is controlled, replayed here.
@@ -757,12 +1029,22 @@ func _physics_process(delta: float) -> void:
 	grace = maxf(0, grace - delta)
 	state_time += delta
 	wander_clock += delta
+	clock += delta
 	if grace > 0:
 		update_visual(delta)
 		return
+	mark_rooms(delta)
 	var seen := seen_survivor()
 	var visible_player := seen != null
 	if visible_player:
+		# Which way they were going, for the search if it loses them.
+		var going: Vector3 = seen.velocity if "velocity" in seen else Vector3.ZERO
+		going.y = 0.0
+		if going.length() < 0.5:
+			going = seen.global_position - last_known
+			going.y = 0.0
+		if going.length() > 0.3: last_heading = going.normalized()
+		clue()
 		focus = seen
 		detection = minf(1.5, detection + delta * notice_rate(seen))
 		last_known = seen.global_position
@@ -788,6 +1070,7 @@ func _physics_process(delta: float) -> void:
 	var lit_by := lit_by_torch()
 	light_exposure = light_exposure + delta if lit_by != null else maxf(0.0, light_exposure - delta * 0.5)
 	if light_exposure > 0.35 and mode in [Mode.PATROL, Mode.SEARCH, Mode.INVESTIGATE] and lit_by != null:
+		clue()
 		focus = lit_by
 		last_known = lit_by.global_position
 		if mode != Mode.INVESTIGATE or destination.distance_to(last_known) > 2.0:
@@ -795,12 +1078,16 @@ func _physics_process(delta: float) -> void:
 			destination = last_known
 		detection = maxf(detection, 0.3)
 	pause_time = maxf(0.0, pause_time - delta)
+	# The time it gives a place: looking and going to look, not hunting.
+	if mode in [Mode.INVESTIGATE, Mode.SEARCH] and search_origin != Vector3.INF: area_spent += delta
 	match mode:
 		Mode.PATROL:
-			if pause_time <= 0 and (position.distance_to(destination) < 0.6 or (state_time > 14 and not guided)):
-				guided = false
-				# Stops now and then to listen before moving on.
-				if rng.randf() < 0.45: pause_time = rng.randf_range(1.0, 3.0)
+			if pause_time <= 0 and (position.distance_to(destination) < 0.6 or state_time > patrol_limit):
+				var arrived := position.distance_to(destination) < 0.6
+				leaving = false
+				if arrived and lead_active() and bool(lead.get("once", false)): lead = {}
+				# It stands and looks round a room it has walked to.
+				if arrived: pause_time = rng.randf_range(SCAN_TIME.x, SCAN_TIME.y)
 				choose_patrol()
 				state_time = 0
 		Mode.INVESTIGATE:
@@ -829,16 +1116,18 @@ func _physics_process(delta: float) -> void:
 			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > LOSE_AFTER: set_mode(Mode.SEARCH)
 			elif can_attack(): set_mode(Mode.WINDUP)
 		Mode.SEARCH:
-			if state_time > 10:
-				observed_hide = null
-				patrol_room = nearest_room()
-				set_mode(Mode.PATROL)
-				choose_patrol()
+			clue_idle += delta
+			if (search_plan.is_empty() and clue_idle >= GIVE_UP) or clue_idle >= GIVE_UP_HARD:
+				give_up_area()
 			elif pause_time <= 0 and position.distance_to(destination) < 0.7:
-				var angle := rng.randf() * TAU
-				destination = FLOOR.closest(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
-				pause_time = rng.randf_range(0.4, 1.6)
-				repath = 0
+				if is_instance_valid(search_hide):
+					var hide := search_hide
+					search_hide = null
+					begin_wardrobe(hide)
+				elif not search_plan.is_empty():
+					next_search_point()
+					pause_time = rng.randf_range(0.6, 1.4)
+				else: pause_time = 1.0
 		Mode.WINDUP:
 			if state_time >= WINDUP_TIME:
 				# A hit starts an execution (which takes over the body).
@@ -1079,8 +1368,8 @@ func give_up_route() -> void:
 			patrol_room = nearest_room()
 			choose_patrol()
 		Mode.SEARCH:
-			var angle := rng.randf() * TAU
-			destination = FLOOR.closest(get_world_3d().navigation_map, last_known + Vector3(cos(angle), 0, sin(angle)) * 3.5)
+			if search_plan.is_empty(): give_up_area()
+			else: next_search_point()
 
 ## How far short of where it was going a route may end and still count as
 ## going there: past this there is no way, and it stops trying.

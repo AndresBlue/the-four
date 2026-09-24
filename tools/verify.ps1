@@ -7,7 +7,7 @@ if (-not $GodotPath) {
 if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) { throw 'Configura GODOT_PATH o pasa -GodotPath.' }
 New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
 # Sequential: audio capture needs real time and should not compete with map batches.
-$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test')
+$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/creature_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test')
 $results = @()
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]

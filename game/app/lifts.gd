@@ -170,8 +170,10 @@ func apply_locust_ride(point: Vector3) -> void:
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
 		if not room.is_empty(): level.locust.patrol_room = int(room.id)
 		if level.locust.mode in [level.locust.Mode.PATROL, level.locust.Mode.SEARCH, level.locust.Mode.INVESTIGATE]:
+			# It looks round where the car let it out, then goes about the wing.
+			level.locust.last_known = point
+			level.locust.last_heading = Vector3.ZERO
 			level.locust.set_mode(level.locust.Mode.SEARCH)
-			level.locust.destination = point
 	# The doors of the car: whoever is near enough in the new wing hears the
 	# lift arrive, which is all the warning there is.
 	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), -4.0)
