@@ -538,6 +538,27 @@ func smell_burnt(point: Vector3) -> void:
 	destination = point
 	guided = false
 
+## Put somewhere else at once, having forgotten everybody, with `rest` seconds
+## before it moves again. A stage given back after the team fell raises
+## everybody at the stage's door, and it used to be left wherever it had last
+## killed -- a metre from them, and the stage was lost again in two seconds.
+func relocate(point: Vector3, rest: float) -> void:
+	global_position = point
+	velocity = Vector3.ZERO
+	speed = 0.0
+	path = PackedVector3Array()
+	path_index = 0
+	wardrobe = null
+	focus = null
+	detection = 0.0
+	light_exposure = 0.0
+	last_known = point
+	var here := FLOOR.room_at(level.manifest.rooms, point)
+	if not here.is_empty(): patrol_room = int(here.id)
+	set_mode(Mode.PATROL)
+	destination = point
+	grace = maxf(grace, rest)
+
 ## A sound it did not have to hear through the player: something fell, it goes
 ## to look. Ignored while it is already hunting.
 func investigate(point: Vector3) -> void:

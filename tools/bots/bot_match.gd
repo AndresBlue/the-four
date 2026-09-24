@@ -257,15 +257,10 @@ func spare_survivor(body) -> bool:
 	if body.hidden and is_instance_valid(body.hiding_place): level.match_net.remote_leaves(body.hiding_place, body)
 	level.untouchable[int(body.slot)] = SPARED_FOR
 	if is_instance_valid(creature):
-		creature.focus = null
-		creature.detection = 0.0
 		# Taken off somewhere else for a moment, or a spared bot is only spared
 		# again six seconds later, and again, and the floor never goes on.
 		var away := far_room(creature.global_position)
-		if away != Vector3.INF: creature.global_position = away + Vector3(0, 0.04, 0)
-		creature.last_known = creature.global_position
-		creature.set_mode(creature.Mode.PATROL)
-		creature.grace = SPARED_FOR
+		creature.relocate(away + Vector3(0, 0.04, 0) if away != Vector3.INF else creature.global_position, SPARED_FOR)
 		note("criatura_apartada", brain, {"to": RECORDER.vec(creature.global_position)})
 	return true
 
@@ -275,9 +270,7 @@ func free_creature() -> void:
 	if not bool(options.get("mercy", false)) or not is_instance_valid(level.locust): return
 	var away := far_room(level.locust.global_position)
 	if away == Vector3.INF: return
-	level.locust.global_position = away + Vector3(0, 0.04, 0)
-	level.locust.last_known = level.locust.global_position
-	level.locust.set_mode(level.locust.Mode.PATROL)
+	level.locust.relocate(away + Vector3(0, 0.04, 0), 0.0)
 	note("criatura_apartada", null, {"to": RECORDER.vec(level.locust.global_position), "why": "encerrada"})
 
 ## A room of the creature's planta at least SPARE_AWAY metres of walking from

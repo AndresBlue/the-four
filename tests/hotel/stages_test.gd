@@ -392,6 +392,9 @@ func run() -> void:
 	# instead of hanging from it, so a body that is put somewhere else leaves
 	# it behind unless somebody brings it.
 	level.player.torch.visible = true
+	# Where it killed them is at the stage's door: that is where everybody is
+	# raised, and it used to be left there.
+	level.locust.global_position = level.revival_point() + Vector3(1.5, 0.04, 0)
 	check("Caer los dos se perdona una vez", session.capture(1) and session.state == session.State.PLAYING)
 	# It takes a moment: the death is seen and heard before anybody gets up.
 	check("La muerte se cuenta antes de levantar a nadie", session.participants[1] == session.Life.DEAD and session.restart_wait > 0.0)
@@ -399,6 +402,10 @@ func run() -> void:
 	check("Vuelven todos de pie, en la misma etapa", session.participants[1] == session.Life.EXPLORING and session.stage == before_stage and session.restarts == 1)
 	check("Y el jugador recupera su cuerpo y su cámara", level.player.visible and level.player.collision_layer == 4 and level.player.camera.current)
 	check("Y su linterna vuelve a la mano", level.player.torch.is_visible_in_tree() and level.player.torch.global_position.distance_to(level.player.camera.global_position) < 1.5)
+	var door_room: Dictionary = FLOOR.room_at(level.manifest.rooms, level.revival_point())
+	var den_room: Dictionary = FLOOR.room_at(level.manifest.rooms, level.locust.global_position)
+	var walk: float = float(FLOOR.route_metres(level.manifest, int(door_room.id)).get(den_room.get("id", -1), 0.0)) if not den_room.is_empty() else 0.0
+	check("Y la criatura, lejos de la puerta y quieta un momento", walk >= 40.0 and int(den_room.get("wing", -1)) == session.stage - 1 and level.locust.grace > 0.0 and level.locust.mode == level.locust.Mode.PATROL)
 	# What a guest goes through, played out on one machine: the word that it
 	# is on its feet arrives before the session that says so, which is pushed
 	# twice a second. In between, the loop puts the body away every frame --

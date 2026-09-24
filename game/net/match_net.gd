@@ -463,13 +463,14 @@ func code_state() -> void:
 	level.apply_code()
 
 ## Everybody up again, and where. The host decides; every machine puts its own
-## body back and the others where it is told.
-func revive_everyone(places: Dictionary, restart: bool) -> void:
-	if in_match(): revived_state.rpc(places, restart)
+## body back and the others where it is told -- and, when the stage is given
+## back, the creature where it has been sent (INF: it stays).
+func revive_everyone(places: Dictionary, restart: bool, creature_at := Vector3.INF) -> void:
+	if in_match(): revived_state.rpc(places, restart, creature_at)
 
 @rpc("authority", "call_remote", "reliable")
-func revived_state(places: Dictionary, restart: bool) -> void:
-	level.apply_revival(places, restart)
+func revived_state(places: Dictionary, restart: bool, creature_at: Vector3) -> void:
+	level.apply_revival(places, restart, creature_at)
 
 ## The button in a car. Offline or on the host it is pressed now; a guest
 ## asks, and the host judges it like a door: only from somebody standing in it.

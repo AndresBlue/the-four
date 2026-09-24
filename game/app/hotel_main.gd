@@ -1298,8 +1298,66 @@ func on_revived(restart: bool) -> void:
 	# drove, counted alive and never dropped again.
 	for seat in session.participants:
 		if not session.dropped.has(seat): places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
-	apply_revival(places, restart)
-	if match_net.in_match(): match_net.revive_everyone(places, restart)
+	# A stage given back is given back whole, the creature too: it goes to a
+	# den of the wing far from the door everybody is raised at. Left where it
+	# stood, it was often a metre from them. A creature somebody drives is
+	# theirs to walk back.
+	var den := Vector3.INF
+	if restart and is_instance_valid(locust) and locust.control == "ai": den = den_away(point, RESTART_DEN)
+	apply_revival(places, restart, den)
+	if match_net.in_match(): match_net.revive_everyone(places, restart, den)
+
+## How far (metres of walking) from the stage's door the creature is put when
+## a stage is given back, and how long it stands there before it moves.
+const RESTART_DEN := 45.0
+const RESTART_GRACE := 12.0
+
+## A place for the creature in the wing of the stage in hand, at least `least`
+## metres of walking from `away_from`: drawn among the rooms that far (the
+## farthest one when none is), never a refuge, a lift lobby or the void.
+## INF when there is no room to be had.
+func den_away(away_from: Vector3, least: float) -> Vector3:
+	var from := FLOOR.room_at(manifest.rooms, away_from)
+	if from.is_empty(): return Vector3.INF
+	var wing: int = session.stage - 1
+	var metres := FLOOR.route_metres(manifest, int(from.id))
+	var shut_out := off_limits_rooms()
+	var far_enough: Array = []
+	var farthest := -1
+	var farthest_metres := -1.0
+	for room in manifest.rooms:
+		var id := int(room.id)
+		if int(room.get("wing", 0)) != wing or shut_out.has(id) or FLOOR.is_void(room) or not metres.has(id): continue
+		var walk := float(metres[id])
+		if walk >= least: far_enough.append(id)
+		if walk > farthest_metres:
+			farthest_metres = walk
+			farthest = id
+	if far_enough.is_empty():
+		if farthest < 0: return Vector3.INF
+		far_enough.append(farthest)
+	var draw := RandomNumberGenerator.new()
+	draw.seed = hash([int(manifest.seed), "restart den", session.stage, session.restarts])
+	var point := FLOOR.position_of(manifest.rooms[far_enough[draw.randi_range(0, far_enough.size() - 1)]])
+	var map: RID = get_world_3d().navigation_map
+	if NavigationServer3D.map_get_iteration_id(map) > 0: point = FLOOR.closest(map, point)
+	return point + Vector3(0, 0.04, 0)
+
+## The creature put somewhere else at once, on every machine: where it is
+## driven it forgets everybody and waits `rest` seconds; a puppet drops the
+## states still on their way from where it was, or it would slide across the
+## floor to get there (the same as stepping out of a set, warp_creature).
+func relocate_creature(point: Vector3, rest: float) -> void:
+	if not is_instance_valid(locust) or point == Vector3.INF: return
+	if locust.control == "ai": locust.relocate(point, rest)
+	else: locust.global_position = point
+	locust.velocity = Vector3.ZERO
+	locust.speed = 0.0
+	if locust.control == "puppet":
+		locust.ride_point = point
+		locust.ride_hold = 2.0
+	locust.net_states.clear()
+	locust.net_clock = 0.0
 
 ## Where somebody who comes back after dropping is put: the place the floor
 ## remembers for them. Unless the floor crossed to another wing while they were
@@ -1326,7 +1384,7 @@ func revival_point() -> Vector3:
 
 ## Applied on every machine: the local body comes back where it is told, the
 ## others are placed, and a stage that was lost starts again as it was found.
-func apply_revival(places: Dictionary, restart: bool) -> void:
+func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF) -> void:
 	# The message itself says these seats are up. A guest's session is pushed
 	# twice a second, so waiting for it to say so leaves up to half a second in
 	# which the body is put away again every frame -- and its torch with it,
@@ -1367,6 +1425,8 @@ func apply_revival(places: Dictionary, restart: bool) -> void:
 		if not net.is_client() and bool(session.goal.get("blackout", false)):
 			session.goal["blackout"] = false
 			session.changed.emit()
+		relocate_creature(creature_at, RESTART_GRACE)
+		if director != null and director.has_method("on_restart"): director.on_restart()
 
 ## The inverse of watching a teammate: its own body, its own camera.
 func restore_local_player(point: Vector3) -> void:
