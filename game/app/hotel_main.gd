@@ -844,7 +844,8 @@ func apply_television(index: int, value: bool, quiet := false) -> void:
 	var set = televisions[index]
 	if not is_instance_valid(set) or not set.set_on(value): return
 	if not value:
-		world_audio.stop_long(set.burst)
+		# The static may have played out and freed itself long ago.
+		if is_instance_valid(set.burst): world_audio.stop_long(set.burst)
 		set.burst = null
 		return
 	var now := Time.get_ticks_msec() / 1000.0

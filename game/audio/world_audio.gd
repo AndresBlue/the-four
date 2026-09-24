@@ -279,9 +279,11 @@ func play_long(path: String, point: Vector3, gain: float, emitter := RID(), foll
 	voice.play(TIMING.onset(path))
 	return voice
 
-## Stops a long cue early (a set switched off again).
-func stop_long(voice: AudioStreamPlayer3D) -> void:
-	if voice == null: return
+## Stops a long cue early (a set switched off again). Untyped: whoever kept
+## the player may hand it over after it played out and freed itself, and a
+## typed argument refuses a freed one with a script error.
+func stop_long(voice) -> void:
+	if not is_instance_valid(voice): return
 	for cue in long_cues.duplicate():
 		if cue.player != voice: continue
 		long_cues.erase(cue)

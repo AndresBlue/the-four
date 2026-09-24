@@ -248,6 +248,15 @@ func run() -> void:
 	level.apply_television(set_index, true, true)
 	check("A returning player is told the set is on without hearing it come on", set.on and audio.long_cues.is_empty() and set.hiss_after <= Time.get_ticks_msec() / 1000.0)
 	level.apply_television(set_index, false)
+	# Its static played out and gone, the set switched off afterwards (the
+	# team revived, the sets of the stage reset) still keeps the gone player.
+	level.apply_television(set_index, true)
+	set.burst.finished.emit()
+	await process_frame
+	await process_frame
+	var gone: bool = not is_instance_valid(set.burst)
+	level.apply_television(set_index, false)
+	check("A set whose static has played out switches off", gone and not set.on and set.burst == null and audio.long_cues.is_empty())
 	# The keypad is heard as a keypad: a wrong code is not a door being tried.
 	audio.reset()
 	var right_code: String = "".join(level.DIGITS.code(level.manifest).map(func(digit): return str(digit)))
