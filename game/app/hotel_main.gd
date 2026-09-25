@@ -450,7 +450,9 @@ func on_action(action: String) -> void:
 		"connect":
 			if net.join(settings.values.join_address, settings.values.player_name, settings.values.character, port_setting("join_port")) != OK: ui.menu("join", false, net.status)
 			else: ui.menu("join")
-		"steam_invite": net.steam.invite_friends()
+		"steam_invite": ui.menu("steam_invite")
+		"steam_overlay_invite": net.steam.invite_friends()
+		"lobby_back": ui.menu("lobby")
 		"lobby_start":
 			if not net.start_match(): ui.menu("lobby", false, net.start_problem())
 		"lobby_leave":

@@ -138,7 +138,7 @@ Sunman se conserva como candidato para su piso. The Boy and The Bath es material
 
 Sin matchmaking público, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador, también en el lobby de Steam).
 
-**Menú Multijugador.** Nombre del jugador; la conexión, **Steam** o **IP / LAN** (Steam en gris, con el motivo, si no está), y en cada una **Crear sala** y **Unirse a una sala**; **Personaje** y Volver. Crear por IP pide puerto y red; unirse por IP, dirección y puerto; unirse por Steam lista las salas abiertas de los amigos. La **Sala** muestra las plazas (1 anfitrión, 2–5 invitados), su personaje y cómo entrar: las direcciones y el puerto, o, por Steam, el botón de invitar. Solo el anfitrión cambia las opciones:
+**Menú Multijugador.** Nombre del jugador («Jugador» si se deja vacío); la conexión, **Steam** o **IP / LAN** (Steam en gris, con el motivo, si no está), y en cada una **Crear sala** y **Unirse a una sala**. El personaje se elige en la sala. En una sala de Steam, **Invitar amigos** lista los amigos conectados y les manda la invitación a su chat de Steam. Crear por IP pide puerto y red; unirse por IP, dirección y puerto; unirse por Steam lista las salas abiertas de los amigos. La **Sala** muestra las plazas (1 anfitrión, 2–5 invitados), su personaje y cómo entrar: las direcciones y el puerto, o, por Steam, el botón de invitar. Solo el anfitrión cambia las opciones:
 - **Tipo de partida:** *Cooperativo contra IA* (todos sobreviven contra The Locust controlado por la IA) o *Versus* (un jugador es The Locust).
 - **The Locust (versus):** *Al azar* o un jugador concreto de la sala.
 - **Retomar el piso guardado** si existe su checkpoint en línea.

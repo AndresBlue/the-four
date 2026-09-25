@@ -508,15 +508,16 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			title(column, "MULTIJUGADOR", 64)
 			label(column, "DE 2 A %d JUGADORES · IP / LAN O STEAM" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
-			field(column, "", "player_name", "Jugador")
+			# Left empty, the room calls this player "Jugador" (clean_name).
+			field(column, "", "player_name", "Ingresa tu nombre")
 			spacer(column, 10)
 			# First the connection, then open a room or join one on it: the
-			# room itself is the same either way (net_session.gd).
+			# room itself is the same either way (net_session.gd). The
+			# character is chosen in the room.
 			var steam_ready: bool = net != null and net.steam.ready_to_play()
 			action("Steam", "mp_steam", not steam_ready)
 			if net != null and not steam_ready: paragraph(column, net.steam.problem(), 16, 560)
 			action("IP / LAN", "mp_ip")
-			action("Personaje", "characters")
 			spacer(column, 12)
 			action("Volver", "main")
 		"mp_steam":
@@ -573,6 +574,35 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			paragraph(column, "También puedes aceptar una invitación desde Steam (Mayús+Tab), o entrar desde el perfil de un amigo con «Unirse a la partida».", 16, 560)
 			spacer(column, 12)
 			action("Volver", "mp_steam")
+			side.visible = false
+		"steam_invite":
+			set_osd("SALA ▸ INVITAR", "", "", "STEAM")
+			title(column, "INVITAR", 64)
+			label(column, "TUS AMIGOS CONECTADOS A STEAM", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 14)
+			var friends: Array = net.steam.online_friends() if net != null else []
+			if friends.is_empty(): label(column, "Ninguno de tus amigos está conectado ahora.", 19).add_theme_color_override("font_color", STYLE.SOFT)
+			else:
+				# However many friends are online, the list scrolls inside the
+				# screen instead of pushing the buttons off it.
+				var scroll := ScrollContainer.new()
+				scroll.custom_minimum_size = Vector2(560, mini(friends.size(), 7) * 38)
+				scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+				column.add_child(scroll)
+				var list := VBoxContainer.new()
+				list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				scroll.add_child(list)
+				for friend in friends:
+					var who: String = friend.name
+					var id: int = friend.id
+					entry(list, who, func():
+						var sent: bool = net.steam.invite(id)
+						menu("steam_invite", false, ("Invitación enviada a %s: le llega al chat de Steam." % who) if sent else "Steam no dejó enviar la invitación a %s." % who), false, 22)
+			spacer(column, 10)
+			if net != null and net.steam.overlay_ready(): action("Abrir la ventana de Steam", "steam_overlay_invite")
+			action("Actualizar", "steam_invite")
+			spacer(column, 8)
+			action("Volver a la sala", "lobby_back")
 			side.visible = false
 		"steam_wait":
 			set_osd("MULTIJUGADOR ▸ STEAM", "", "", "")
@@ -711,7 +741,7 @@ func lobby_screen() -> void:
 		var how: Array = net.where_to_join()
 		paragraph(side, how[0], 17, LOBBY_SIDE, STYLE.AMBER)
 		paragraph(side, how[1], 15, LOBBY_SIDE)
-		if net.transport == "steam": button(side, "Invitar amigos", func(): action_requested.emit("steam_invite"))
+		if net.transport == "steam": button(side, "Invitar amigos", func(): menu("steam_invite"))
 
 func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable) -> void:
 	var row := HBoxContainer.new()

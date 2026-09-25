@@ -4,7 +4,7 @@ extends RefCounted
 ## with their arguments, and what Steam answers here. For support ("why does
 ## Steam not work for me?") and to check the transport against the plug-in
 ## actually shipped, never against a version remembered from somewhere else.
-const METHODS := ["steamInitEx", "run_callbacks", "isSteamRunning", "loggedOn", "getAppID", "getSteamID", "getPersonaName", "getFriendPersonaName", "createLobby", "joinLobby", "leaveLobby", "setLobbyData", "getLobbyData", "getLobbyOwner", "getNumLobbyMembers", "getLobbyMemberByIndex", "setLobbyJoinable", "activateGameOverlayInviteDialog", "setRichPresence", "clearRichPresence", "getFriendCount", "getFriendByIndex", "getFriendGamePlayed", "getLaunchCommandLine", "initRelayNetworkAccess"]
+const METHODS := ["steamInitEx", "run_callbacks", "isSteamRunning", "loggedOn", "getAppID", "getSteamID", "getPersonaName", "getFriendPersonaName", "createLobby", "joinLobby", "leaveLobby", "setLobbyData", "getLobbyData", "getLobbyOwner", "getNumLobbyMembers", "getLobbyMemberByIndex", "setLobbyJoinable", "activateGameOverlayInviteDialog", "setRichPresence", "clearRichPresence", "getFriendCount", "getFriendByIndex", "getFriendGamePlayed", "getLaunchCommandLine", "initRelayNetworkAccess", "isOverlayEnabled", "inviteUserToLobby", "getFriendPersonaState", "activateGameOverlay"]
 const SIGNALS := ["lobby_created", "lobby_joined", "lobby_chat_update", "join_requested", "persona_state_change", "steamworks_error"]
 
 static func args_of(entry: Dictionary) -> String:
@@ -27,7 +27,7 @@ static func run() -> void:
 		if signals.has(name): print("STEAM signal %s(%s)" % [name, args_of(signals[name])])
 		else: print("STEAM signal %s MISSING" % name)
 	for constant in ClassDB.class_get_integer_constant_list(api.get_class(), true):
-		if constant.begins_with("LOBBY_TYPE_") or constant.begins_with("STEAM_API_INIT_RESULT") or constant == "RESULT_OK" or constant.begins_with("CHAT_MEMBER_STATE_CHANGE_") or constant.begins_with("CHAT_ROOM_ENTER_RESPONSE_SUCCESS"):
+		if constant.begins_with("PERSONA_STATE_") or constant.begins_with("FRIEND_FLAG_IMMEDIATE") or constant.begins_with("LOBBY_TYPE_") or constant.begins_with("STEAM_API_INIT_RESULT") or constant == "RESULT_OK" or constant.begins_with("CHAT_MEMBER_STATE_CHANGE_") or constant.begins_with("CHAT_ROOM_ENTER_RESPONSE_SUCCESS"):
 			print("STEAM const %s = %d" % [constant, ClassDB.class_get_integer_constant(api.get_class(), constant)])
 	if ClassDB.class_exists("SteamMultiplayerPeer"):
 		print("STEAM peer parent: %s" % ClassDB.get_parent_class("SteamMultiplayerPeer"))

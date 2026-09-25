@@ -78,7 +78,8 @@ func start() -> void:
 		return
 	started = true
 	start_problem = ""
-	print("Steam: ready · AppID %d · SteamID %d · %s" % [api.getAppID(), api.getSteamID(), api.getPersonaName()])
+	print("Steam: ready · AppID %d · SteamID %d · %s · overlay %s" % [api.getAppID(), api.getSteamID(), api.getPersonaName(), "on" if api.isOverlayEnabled() else "off"])
+	if OS.get_cmdline_user_args().has("--steam-diagnose"): print("Steam: %d friend(s) online to invite" % online_friends().size())
 	# The relay network takes a few seconds to come up: start now, not when
 	# someone is waiting to get into a room.
 	api.initRelayNetworkAccess()
@@ -140,9 +141,37 @@ func _lobby_created(connect: int, lobby_id: int) -> void:
 	net.as_host(peer, "steam", pending.name, pending.character)
 	pending = {}
 
-## Steam's own invitation window (the overlay, Shift+Tab), for the host.
+## Whether Steam's overlay (Shift+Tab) is drawn over this game. It hooks the
+## renderer when Steam is started before the graphics device, or when Steam
+## launched the game; here Steam starts later, so outside a Steam launch it is
+## off, and the room invites through its own list (online_friends / invite).
+func overlay_ready() -> bool:
+	return started and api.isOverlayEnabled()
+
+## Steam's own invitation window, when the overlay is there to show it.
 func invite_friends() -> void:
-	if started and lobby != 0: api.activateGameOverlayInviteDialog(lobby)
+	if overlay_ready() and lobby != 0: api.activateGameOverlayInviteDialog(lobby)
+
+## This player's friends who are on Steam now, by name: [{name, id}].
+func online_friends() -> Array:
+	var friends: Array = []
+	if not started: return friends
+	var flags := constant("FRIEND_FLAG_IMMEDIATE", 4)
+	var offline := constant("PERSONA_STATE_OFFLINE", 0)
+	for i in api.getFriendCount(flags):
+		var friend: int = api.getFriendByIndex(i, flags)
+		if api.getFriendPersonaState(friend) == offline: continue
+		friends.append({"name": api.getFriendPersonaName(friend), "id": friend})
+	friends.sort_custom(func(a, b): return String(a.name).nocasecmp_to(b.name) < 0)
+	return friends
+
+## An invitation to this room, straight to a friend's Steam chat: no overlay
+## needed. Accepting it with the game open brings them in (join_requested).
+func invite(friend: int) -> bool:
+	if not started or lobby == 0: return false
+	var sent: bool = api.inviteUserToLobby(lobby, friend)
+	print("Steam: invitation to lobby %d for %s (SteamID %d) -> %s" % [lobby, api.getFriendPersonaName(friend), friend, "sent" if sent else "refused"])
+	return sent
 
 # --- Guest ------------------------------------------------------------------
 

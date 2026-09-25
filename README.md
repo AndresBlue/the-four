@@ -21,7 +21,7 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 ## Jugar en red
 
 **Multijugador** en el menú principal. Escribe tu nombre, elige cómo conectaros y después **Crear sala** o **Unirse a una sala**:
-- **Steam:** con Steam abierto, el anfitrión crea la sala y los amigos entran por invitación, desde su perfil (**Unirse a la partida**) o desde **Unirse a una sala**, que lista las salas abiertas de los amigos. No hay que abrir puertos.
+- **Steam:** con Steam abierto, el anfitrión crea la sala y en ella usa **Invitar amigos**; los amigos entran aceptando la invitación con el juego abierto, desde su perfil (**Unirse a la partida**) o desde **Unirse a una sala**, que lista las salas abiertas de los amigos. No hay que abrir puertos.
 - **IP / LAN:** el anfitrión elige el puerto (38430 por defecto) y la red de su equipo en que abrir la sala; los demás se unen con su dirección y ese puerto. En la misma red, la IP local que muestra la sala; por Internet, la IP pública del anfitrión con ese puerto UDP abierto en su router.
 
 De 2 a 5 jugadores, todos con el mismo exe.
