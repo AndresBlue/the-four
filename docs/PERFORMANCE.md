@@ -306,3 +306,38 @@ Medido el 23 de septiembre de 2026 en este PC (24 hilos), con `./tools/bots.ps1`
 - **Montar el piso** son los mismos 6 s de siempre, más el arranque del proceso.
 - **La grabación** ocupa unos 90 KB por minuto de juego con tres bots: 2,7 MB una partida de 36 minutos, la mayor parte en `events.jsonl` (cada pisada es una línea, para dibujar sus ruidos en el repaso).
 - **Varios a la vez:** con `-Parallel 4` o `5` los pisos van un poco más lentos cada uno, pero el lote entero termina mucho antes.
+
+## 9. Pipelines en la carga y relleno de apliques (A/B/C)
+
+Medido el 25 de septiembre de 2026 en este PC, con el juego cerrado: Ultra, semilla 81, 1080p, `run_bench.ps1 -Extra '--qualities=3'`. Cada estado se midió dos veces, con la caché de shaders y de pipelines borrada («fría») y llena («caliente»); abajo va la caliente, y la fría cuando dice algo distinto.
+
+- **A:** el estado de partida.
+- **B:** A más el calentamiento de pipelines en la carga (`presentation/shader_warmup.gd`).
+- **C:** B más los apliques que pasan del límite de doce iluminando solo el rebote (máscara de culling a cero, sin sombra). **Se probó y se retiró.**
+
+| | A | B | C |
+|---|---|---|---|
+| Carga del piso | 9,4 s | 13,6 s | 13,3 s |
+| Recorrido: media · p95 · p99 · máximo | 15,5 · 19,3 · 20,7 · 23,4 ms | 15,4 · 19,0 · 20,2 · 20,4 ms | 15,5 · 18,5 · 19,6 · 19,8 ms |
+| Recorrido: GPU · CPU de render (media) | 14,5 · 3,4 ms | 14,5 · 3,3 ms | 14,7 · 3,0 ms |
+| Llegadas: media · p95 · p99 · máximo | 9,0 · 14,6 · 29,5 · 36,7 ms | 8,6 · 15,1 · 24,7 · 26,3 ms | 8,6 · 15,0 · 29,0 · 30,6 ms |
+| Llegadas en frío: máximo | 35,6 ms | 28,9 ms | 28,4 ms |
+| Llegadas: fotogramas sobre 33 ms | 1 | 0 | 0 |
+| Pipelines construidos al llegar (de dibujo · todos) | 28 · 91 | 7 · 44 | 7 · 50 |
+| Fuga, `light_leak.gd --quality=3`: peor · mediana | = B (el calentamiento no toca la luz) | 0,0359 · 0,0085 | 0,0359 · 0,0157 |
+| Memoria de vídeo | 2058 MB | 2086 MB | 2087 MB |
+
+**B, el calentamiento: se queda.**
+- **Cuánto era crear pipelines:** una parte, no todo. Al llegar a salas nuevas Godot construía 28 pipelines de dibujo; con el calentamiento, 7. El peor fotograma baja de 36,7 a 26,3 ms y ninguno pasa de 33 ms; el peor del recorrido, de 23,4 a 20,4 ms.
+- **Lo que no era:** el resto del pico al llegar sigue ahí (p99 de 25 ms, cinco a siete fotogramas por encima del doble de la mediana) con los pipelines ya construidos. Es trabajo de CPU al entrar en una sala (visibilidad, sondas de reflexión, volúmenes de rebote), no compilación.
+- **Medias y GPU no cambian**, y la escena sale idéntica: las capturas de A y B solo difieren en el rótulo de objetivo del HUD, que aparece en otro momento porque la carga dura más.
+- **La carga:** unos 4 s más, fría o caliente (la mayor parte es recorrer las salas, no compilar). El fotograma más largo de la pantalla de carga es de 0,15 s, así que no parece colgada, y dice cuánto le falta.
+- Lo que queda sin cubrir son 7 pipelines en las ocho llegadas. Cubrirlos pediría visitar más salas o más ángulos, y no se hizo.
+
+**C, el relleno de los apliques lejanos: medido y descartado.**
+- **No arregla lo que se buscaba.** Desde un extremo del pasillo solo cuatro apliques más entran en el relleno, y el brillo medio del pasillo sube un 1,5 %. En el cuadro, como se juega, no se distingue de B: los apliques del fondo siguen siendo pantallas encendidas sin luz en la pared. VoxelGI solo da luz rebotada, suave y escasa para una lámpara de este tamaño.
+- **Coste:** ninguno relevante, ni siquiera con los 238 apliques de la planta en relleno (prueba `C_all`): todo dentro del ruido entre pasadas.
+- **Fugas:** la peor no cambia (0,0359, la misma en B, C y `C_all`). La mediana sube de 0,0085 a 0,0157 en C pero no en `C_all` (0,0089), que es un caso más amplio del mismo cambio, así que parece variación entre pasadas; no se repitió para confirmarlo.
+- Como no aporta a la vista, se retiró para no sumar complejidad. Capturas lado a lado en `evidence/abc_capturas.png`.
+
+**Pendiente de revisar, de antes de estos cambios:** la peor fuga del piso actual (tres plantas, 571 salas) es 0,0359 en B, y cuando se fijó el límite de doce apliques era 0,00013 (comentario de `SCONCES_LIT` en `hotel_geometry.gd`, con el piso de entonces). No la causó nada de esto (es igual con y sin relleno), pero conviene buscar qué sala es.

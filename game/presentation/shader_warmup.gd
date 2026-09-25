@@ -22,8 +22,10 @@ extends RefCounted
 ## creature, if it is already on the floor, is shown its frame too: meeting it
 ## is the worst possible moment for a stall.
 ##
-## Cost: a few seconds the first time a machine ever runs the game, and about
-## a second afterwards, when Godot's own disk cache answers instead.
+## Cost, measured at Ultra on seed 81 (docs/PERFORMANCE.md, section 9): some
+## 4 s more of loading, with a cold shader cache or a warm one alike -- most of
+## it is walking the rooms, not compiling -- and never more than 0.15 s
+## without a new frame, so the loading screen does not look hung.
 
 ## The shape of the real frame, small enough that drawing costs nothing.
 const SIZE := Vector2i(192, 108)
@@ -64,6 +66,10 @@ static func run(level) -> Dictionary:
 	level.add_child(viewport)
 	var stops := stops_of(level)
 	var drawn := 0
+	# The longest the loading screen went without a new frame: what the
+	# player would read as the game hanging.
+	var longest := 0
+	var tick := Time.get_ticks_usec()
 	for stop in stops:
 		torch.visible = stop.dark
 		level.hotel.update_visibility(stop.at, true)
@@ -74,6 +80,8 @@ static func run(level) -> Dictionary:
 			await RenderingServer.frame_post_draw
 			await tree.process_frame
 			drawn += 1
+			longest = maxi(longest, Time.get_ticks_usec() - tick)
+			tick = Time.get_ticks_usec()
 		if is_instance_valid(level.ui): level.ui.loading_note(progress(drawn, stops.size() * YAWS.size()))
 	# The creature, if this floor already has one: four metres ahead, the
 	# distance it is first seen from, and back where it was.
@@ -94,8 +102,8 @@ static func run(level) -> Dictionary:
 	if is_instance_valid(level.camera_effect): level.camera_effect.reset = true
 	if is_instance_valid(level.ui): level.ui.loading_note("")
 	var elapsed := Time.get_ticks_msec() - started
-	print_verbose("Shader warmup: %d rooms, %d frames, %d ms" % [stops.size(), drawn + creature_frames, elapsed])
-	return {"rooms": stops.size(), "frames": drawn + creature_frames, "ms": elapsed}
+	print_verbose("Shader warmup: %d rooms, %d frames, %d ms, longest frame %d ms" % [stops.size(), drawn + creature_frames, elapsed, longest / 1000])
+	return {"rooms": stops.size(), "frames": drawn + creature_frames, "ms": elapsed, "longest_ms": longest / 1000}
 
 ## Where to stand: a few rooms of each kind, dark ones included (they are the
 ## torch's variants), spread through the floor rather than taken in a row.
