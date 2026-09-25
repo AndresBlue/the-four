@@ -741,7 +741,11 @@ func lobby_screen() -> void:
 		var how: Array = net.where_to_join()
 		paragraph(side, how[0], 17, LOBBY_SIDE, STYLE.AMBER)
 		paragraph(side, how[1], 15, LOBBY_SIDE)
-		if net.transport == "steam": button(side, "Invitar amigos", func(): menu("steam_invite"))
+		# Steam's own invitation window, as in any Steam game; the game's
+		# list only where the overlay is off (turned off in the player's Steam).
+		if net.transport == "steam": button(side, "Invitar amigos", func():
+			if net.steam.overlay_ready(): action_requested.emit("steam_overlay_invite")
+			else: menu("steam_invite"))
 
 func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable) -> void:
 	var row := HBoxContainer.new()

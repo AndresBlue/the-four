@@ -69,3 +69,4 @@ surface_detail={
 [steam]
 
 initialization/app_data/app_id=480
+initialization/processes/initialize_on_startup=true

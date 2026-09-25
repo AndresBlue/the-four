@@ -64,14 +64,21 @@ func start() -> void:
 		start_problem = "Steam no se usa en pruebas automáticas."
 		return
 	api = Engine.get_singleton("Steam")
-	# What steam_appid.txt would say, so a build run from anywhere is this app.
-	OS.set_environment("SteamAppId", str(app_id()))
-	OS.set_environment("SteamGameId", str(app_id()))
-	var result: Dictionary = api.steamInitEx(app_id(), false)
-	print("Steam: init with AppID %d -> %s" % [app_id(), result])
-	if int(result.get("status", -1)) != constant("STEAM_API_INIT_RESULT_OK", 0):
-		start_problem = "No se pudo conectar con Steam: ¿está abierto y con la sesión iniciada? (%s)" % result.get("verbal", "sin respuesta")
-		return
+	# Normally the plug-in has already started Steam while the engine was
+	# booting (steam/initialization/processes/initialize_on_startup), before
+	# the graphics device existed: that is what lets Steam's overlay hook the
+	# renderer. Only if it did not is Steam started here, later.
+	if api.getAppID() > 0:
+		print("Steam: started at boot by the plug-in (AppID %d)" % api.getAppID())
+	else:
+		# What steam_appid.txt would say, so a build run from anywhere is this app.
+		OS.set_environment("SteamAppId", str(app_id()))
+		OS.set_environment("SteamGameId", str(app_id()))
+		var result: Dictionary = api.steamInitEx(app_id(), false)
+		print("Steam: init with AppID %d -> %s" % [app_id(), result])
+		if int(result.get("status", -1)) != constant("STEAM_API_INIT_RESULT_OK", 0):
+			start_problem = "No se pudo conectar con Steam: ¿está abierto y con la sesión iniciada? (%s)" % result.get("verbal", "sin respuesta")
+			return
 	if not api.loggedOn():
 		start_problem = "Steam está abierto pero sin conexión."
 		print("Steam: running but not logged on")
@@ -99,8 +106,18 @@ func start() -> void:
 			print("Steam: launched to join lobby %s" % id)
 			join_asked.emit.call_deferred(int(id))
 
-func _process(_delta: float) -> void:
-	if started and api != null: api.run_callbacks()
+## Seconds since Steam started, until the overlay's state is logged again (it
+## can take a moment to attach).
+var overlay_clock := 0.0
+
+func _process(delta: float) -> void:
+	if not started or api == null: return
+	api.run_callbacks()
+	if overlay_clock >= 0.0:
+		overlay_clock += delta
+		if overlay_clock > 3.0:
+			overlay_clock = -1.0
+			print("Steam: overlay after 3 s: %s" % ("on" if api.isOverlayEnabled() else "off"))
 
 ## Ready to host or join over Steam.
 func ready_to_play() -> bool:
@@ -141,16 +158,21 @@ func _lobby_created(connect: int, lobby_id: int) -> void:
 	net.as_host(peer, "steam", pending.name, pending.character)
 	pending = {}
 
-## Whether Steam's overlay (Shift+Tab) is drawn over this game. It hooks the
-## renderer when Steam is started before the graphics device, or when Steam
-## launched the game; here Steam starts later, so outside a Steam launch it is
-## off, and the room invites through its own list (online_friends / invite).
+## Whether Steam's overlay (Shift+Tab) is drawn over this game. With Vulkan
+## or D3D12 it can only hook the renderer if Steam was started before the
+## graphics device was made: that is why the plug-in starts Steam while the
+## engine boots (initialize_on_startup). Started later, it stayed off even
+## with the game launched from Steam. It takes a moment to attach, and a
+## player can turn it off in Steam: then the room invites through its own
+## list (online_friends / invite).
 func overlay_ready() -> bool:
 	return started and api.isOverlayEnabled()
 
-## Steam's own invitation window, when the overlay is there to show it.
+## Steam's own invitation window.
 func invite_friends() -> void:
-	if overlay_ready() and lobby != 0: api.activateGameOverlayInviteDialog(lobby)
+	if not overlay_ready() or lobby == 0: return
+	print("Steam: opening the invitation window for lobby %d" % lobby)
+	api.activateGameOverlayInviteDialog(lobby)
 
 ## This player's friends who are on Steam now, by name: [{name, id}].
 func online_friends() -> Array:
