@@ -11,7 +11,7 @@ Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protoco
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
-## Dónde estamos (24 de septiembre de 2026)
+## Dónde estamos (25 de septiembre de 2026)
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
 tres plantas y tres etapas, The Locust con su IA y su versus, supervivencia,
@@ -50,6 +50,25 @@ El 22 entraron, y **nadie los ha jugado todavía**:
   uno.
 - **Se juega entero con mando**, menús incluidos, con vibración y con el
   teclado del código marcable con la cruceta.
+
+El 25, con las notas de la partida del 24 (cooperativo y versus), entró esto,
+y **tampoco se ha jugado**:
+
+- **Los refugios, la salida y los vestíbulos de los ascensores protegen
+  siempre**, de pared a pared: pegado a una esquina de la salida ya no se
+  muere, y quien espera el coche en un refugio cruzado está a salvo.
+- **La criatura espera su turno en el ascensor**: 15 s en el vestíbulo y 20 s
+  desde que bajaron los supervivientes, lo último de las dos. Donde sale, el
+  hueco de una campanilla (falta el sonido).
+- **Grita en todo el piso cuando empieza la caza**, al acabarse su protección.
+- **El salto entre teles**: la IA ya no se queda plantada donde sale ni sale
+  encima de nadie, y lo hace de verdad (casi nunca lo hacía); el cazador abre
+  el armario al que apunta aunque tenga una tele al lado, y no salta a media
+  estocada.
+- **Fallos a la vista**: las motas rojas de quien muere sin cordura ya no se
+  quedan en la lectura del cazador, las manchas de humedad ya no le tapan la
+  pantalla contra una pared, y los pasillos ya no se ven por módulos en Alto
+  y Ultra.
 
 El 24 entró una vuelta entera a la criatura, al director, a la cordura y a
 las alucinaciones, y **tampoco se ha jugado** (descrito en el diseño):
