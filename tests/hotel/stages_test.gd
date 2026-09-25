@@ -260,6 +260,15 @@ func run() -> void:
 	var sets_two: Array = level.stage_televisions(2)
 	var sets_three: Array = level.stage_televisions(3)
 	check("La etapa 2 se juega con televisores", session.goal.kind == "televisions" and session.goal.needed == needed)
+	# No set on the floor that does not come on: the rest are only the
+	# cabinets they stood on, and every set stands on a cabinet of its own.
+	var sets_left := 0
+	var stands := 0
+	for room in level.manifest.rooms:
+		for prop in room.props:
+			if prop.kind == "tv": sets_left += 1
+			if prop.kind == "tv_stand": stands += 1
+	check("Las únicas teles del hotel son las que se encienden", sets_left == level.televisions.size() and stands > 0)
 	check("Cada etapa tiene su tanda, con dos de más, en su ala", sets_two.size() == needed + TV.SPARE and sets_three.size() == needed + TV.SPARE and sets_two.all(func(i): return wing_of.call(i) == 1) and sets_three.all(func(i): return wing_of.call(i) == 2))
 	check("Ninguna está encendida al empezar la etapa", level.televisions_on() == 0 and not session.goal.ready)
 	# The tally is the wing's own: a set burning in the wing ahead is not this

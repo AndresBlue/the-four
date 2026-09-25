@@ -74,14 +74,16 @@ var heard_count := 0
 var revealed: Array = []
 var frenzy := 0.0
 var active := true
-## Travelling by television. With the channels open the creature stands still
-## and the sets it could step out of are laid out on screen by where they
-## really are, relative to each other and to nothing else. Turning its head
-## picks one; interacting again steps through.
+## Travelling by television. With the channels open the sets it could step out
+## of are laid out by where they really are, relative to each other and to
+## nothing else, on a compass lying on the floor (camcorder_osd). Turning its
+## head picks one; interacting again steps through.
 var channel_open := false
 var channel_target := -1
-## Metres of the layout the map is drawn over, so far sets sit near the edge.
-const CHANNEL_SPAN := 70.0
+## The farthest set sits this far in from the rim of the compass, and a map of
+## sets all close by is not blown up past CHANNEL_LEAST metres to the rim.
+const CHANNEL_MARGIN := 1.15
+const CHANNEL_LEAST := 12.0
 
 func setup(owner) -> void:
 	creature = owner
@@ -227,36 +229,52 @@ func drive(delta: float) -> void:
 	heard = heard.filter(func(entry): return now - entry.time < 1.6)
 
 ## The map of lit sets, laid out by where they are in the world and nothing
-## else: no rooms, no walls, no numbers. The one it is looking most directly
-## towards is the one it would step out of.
+## else: no rooms, no walls, no numbers. It is a compass lying on the floor,
+## turned with the creature: ahead is the far side of the disk, and the one it
+## is looking most directly towards is the one it would step out of. The
+## whole map fits inside it, the farthest set near the rim. It used to be a
+## fixed 70 m to the rim, drawn flat and not turned: far sets fell off the
+## screen, and the one chosen was a line going out of the picture.
 func update_channels() -> void:
 	if not channel_open or not can_act():
-		if not channel_open: level.camcorder.show_channels([], Vector2.ZERO, -1)
+		if not channel_open: level.camcorder.show_channels([], 0.0, -1)
 		channel_open = false
 		return
 	var here: int = level.creature_at_television()
 	var lit: Array = level.lit_televisions()
 	if here < 0 or lit.size() < 2:
 		channel_open = false
-		level.camcorder.show_channels([], Vector2.ZERO, -1)
+		level.camcorder.show_channels([], 0.0, -1)
 		return
 	var origin: Vector3 = level.televisions[here].global_position
 	var look: Vector3 = -camera.global_basis.z
-	var flat := Vector2(look.x, look.z).normalized()
+	# Ahead and to the right on the floor. Looking straight down, ahead is
+	# where the top of the picture points.
+	var ahead := Vector2(look.x, look.z)
+	if ahead.length() < 0.05: ahead = Vector2(camera.global_basis.y.x, camera.global_basis.y.z)
+	ahead = ahead.normalized()
+	var right := Vector2(-ahead.y, ahead.x)
+	# How much of the disk is seen: none of it level with the horizon (a
+	# line), all of it looking down at its feet (a circle).
+	var tilt := clampf(-look.y, 0.0, 1.0)
+	var span := CHANNEL_LEAST
+	for index in lit:
+		var offset: Vector3 = level.televisions[index].global_position - origin
+		span = maxf(span, Vector2(offset.x, offset.z).length() * CHANNEL_MARGIN)
 	var points: Array = []
 	var best := -1.0
 	channel_target = -1
 	for index in lit:
-		var set = level.televisions[index]
-		var offset: Vector3 = set.global_position - origin
+		var offset: Vector3 = level.televisions[index].global_position - origin
 		var plane := Vector2(offset.x, offset.z)
-		points.append({"index": index, "at": plane / CHANNEL_SPAN, "here": index == here})
+		# On the disk: across to the right, and up the picture for ahead.
+		points.append({"index": index, "at": Vector2(plane.dot(right), -plane.dot(ahead)) / span, "here": index == here})
 		if index == here: continue
-		var aim: float = flat.dot(plane.normalized())
+		var aim: float = ahead.dot(plane.normalized())
 		if aim > best:
 			best = aim
 			channel_target = index
-	level.camcorder.show_channels(points, flat, channel_target)
+	level.camcorder.show_channels(points, tilt, channel_target)
 
 ## The spring arm only guards the length behind it, so the sideways step to
 ## the shoulder is checked here: against a wall it comes in, never through.

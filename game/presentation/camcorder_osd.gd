@@ -15,15 +15,22 @@ var marks := true
 ## The picture is gone (an execution): the tape marks go with it.
 var signal_lost := false
 ## The creature's channels: the lit sets laid out by where they are, nothing
-## else. [{index, at (plane, in screen spans), here}], which way it is looking
-## and which one it would step out of.
+## else, on a compass lying on the floor. [{index, at (on the disk, radius 1:
+## x to its right, y towards it), here}], how much of the disk it sees (0 level
+## with the horizon, 1 looking straight down) and which one it would step out
+## of.
 var channels: Array = []
-var channel_look := Vector2.ZERO
+var channel_tilt := 0.0
 var channel_target := -1
+## The compass's radius, as a share of the picture's short side, and its sets.
+const COMPASS_REACH := 0.46
+const COMPASS_SET := 3.2
+const COMPASS_HERE := 4.6
+const COMPASS_RING := 8.0
 
-func show_channels(points: Array, look: Vector2, target: int) -> void:
+func show_channels(points: Array, tilt: float, target: int) -> void:
 	channels = points
-	channel_look = look
+	channel_tilt = tilt
 	channel_target = target
 	canvas.queue_redraw()
 ## The numbers of the code already in hand, kept on the tape so nobody has to
@@ -265,22 +272,27 @@ func draw_overlay() -> void:
 	if not channels.is_empty():
 		# No rooms, no walls, no numbers: only how far and which way one set is
 		# from another, which is all it knows about a place it has never seen.
+		# A compass lying on the floor, seen from where it looks: squashed to a
+		# line level with the horizon, a circle looking down at its feet.
 		var center := size * 0.5
-		var reach: float = minf(size.x, size.y) * 0.34
-		canvas.draw_circle(center, reach + 26.0, Color(0, 0, 0, 0.45))
-		# Which way it is facing, so turning its head reads as aiming.
-		if channel_look.length() > 0.01:
-			var heading := Vector2(channel_look.x, channel_look.y).normalized() * (reach + 18.0)
-			canvas.draw_line(center, center + heading, Color(STYLE.INK, 0.25), 2.0)
+		var radius: float = minf(size.x, size.y) * COMPASS_REACH
+		var squash: float = channel_tilt
+		var rim := PackedVector2Array()
+		for k in 72: rim.append(center + Vector2(cos(TAU * k / 72.0), sin(TAU * k / 72.0) * squash) * radius)
+		if squash > 0.03: canvas.draw_colored_polygon(rim, Color(0, 0, 0, 0.45))
+		rim.append(rim[0])
+		canvas.draw_polyline(rim, Color(STYLE.INK, 0.4), 2.0, true)
+		# Ahead is the far side of the disk: turning its head reads as aiming.
+		canvas.draw_line(center, center + Vector2(0, -radius * squash), Color(STYLE.INK, 0.2), 2.0)
 		for point in channels:
 			var at: Vector2 = point.at
-			var spot := center + Vector2(at.x, at.y) * reach * 2.0
+			var spot := center + Vector2(at.x, at.y * squash) * radius
 			var here: bool = point.here
 			var chosen: bool = int(point.index) == channel_target
-			var ink := Color(STYLE.INK, 0.9 if here or chosen else 0.5)
-			canvas.draw_circle(spot + Vector2(2, 2), 7.0 if here else 5.0, Color(0, 0, 0, 0.6))
-			if here: canvas.draw_circle(spot, 7.0, ink)
-			else: canvas.draw_circle(spot, 5.0, ink)
+			var ink := Color(STYLE.INK, 0.9 if here or chosen else 0.55)
+			var dot: float = COMPASS_HERE if here else COMPASS_SET
+			canvas.draw_circle(spot + Vector2(1.5, 1.5), dot, Color(0, 0, 0, 0.6))
+			canvas.draw_circle(spot, dot, ink)
 			if chosen:
-				canvas.draw_arc(spot, 13.0, 0.0, TAU, 24, Color(STYLE.INK, 0.85), 2.0)
-				canvas.draw_line(center, spot, Color(STYLE.INK, 0.4), 2.0)
+				canvas.draw_arc(spot, COMPASS_RING, 0.0, TAU, 24, Color(STYLE.INK, 0.85), 1.5)
+				canvas.draw_line(center, spot, Color(STYLE.INK, 0.35), 1.5)

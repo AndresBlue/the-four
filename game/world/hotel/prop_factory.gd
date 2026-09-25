@@ -124,6 +124,11 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			builder.cylinder(node, Vector3(0, 0.86, 0), 0.018, 1.62, "gold")
 			builder.box(node, Vector3(0, 1.72, 0), Vector3(0.6, 0.42, 0.6), "shade_off" if builder.building_dark else "shade", false, "cone")
 			builder.practical(node, Vector3(0, 1.58, 0), Color("ffb36b"), 0.38, 3.6)
+		# The cabinet of a set no stage is played on, without the set: see
+		# tv_placement.settle().
+		"tv_stand":
+			builder.box(node, Vector3(0, 0.5, 0), Vector3(1.7, 1.0, 0.8), "wood", true)
+			for side in [-1, 1]: builder.box(node, Vector3(side * 0.42, 0.5, 0.41), Vector3(0.78, 0.86, 0.02), "panel")
 		"tv":
 			builder.box(node, Vector3(0, 0.5, 0), Vector3(1.7, 1.0, 0.8), "wood", true)
 			for side in [-1, 1]: builder.box(node, Vector3(side * 0.42, 0.5, 0.41), Vector3(0.78, 0.86, 0.02), "panel")

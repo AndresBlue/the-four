@@ -25,6 +25,8 @@ extends SceneTree
 ##   guide_tv      in the next wing: the lit sets in yellow and, after Q, the
 ##                 way to the nearest one
 ##   guide_screen  a lit set seen from a few metres, through the wall or not
+##   channels_*    at a lit set with the map of the others open: the compass
+##                 on the floor, level (a line), tilted, and looking down
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
@@ -160,6 +162,17 @@ func run() -> void:
 		look(level.locust.driver.set_front(aimed) + (level.locust.driver.set_front(aimed) - level.televisions[aimed].global_position).normalized() * 3.0, screen_at, 0.0)
 		await listen(1.5)
 		await shot("guide_screen")
+	# At a lit set with the map of the others open: a compass lying on the
+	# floor, flat as a line level with the horizon and round looking down.
+	var lit: Array = level.lit_televisions()
+	if lit.size() >= 2:
+		level.locust.global_position = level.television_exit(int(lit[0])) + Vector3(0, 0.04, 0)
+		level.locust.driver.channel_open = true
+		for view in [["level", 0.0], ["tilted", -0.55], ["down", -1.1]]:
+			level.locust.driver.pitch = view[1]
+			await listen(0.6)
+			await shot("channels_" + String(view[0]))
+		level.locust.driver.channel_open = false
 	for index in level.stage_televisions(2): level.apply_television(int(index), false)
 	level.locust.driver.trace_left = 0.0
 	level.session.stage = 1

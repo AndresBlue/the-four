@@ -22,8 +22,28 @@ const SHARE_IN := 0.2
 ## How many have to be on for the stage to be met.
 static func needed(survivors: int) -> int: return maxi(LEAST, survivors)
 
-## Returns [{room, position (world), yaw}] for the planta of a stage, as many
-## as needed plus the spares. Stage 2 is the second planta, stage 3 the third.
+## The floor keeps only the sets it is played on. Every other "tv" of the
+## hotel -- the first planta's, the refuges', the ones no stage chose -- is
+## built as the cabinet it stood on (prop_factory's "tv_stand"), with no set on
+## top: a dead set on a floor that asks for sets to be switched on was taken
+## for a bug ("why does this one not come on?"). Done to the manifest before
+## the hotel is built, the same on every machine (the seed and the number of
+## survivors). Returns the sets of each stage, {2: [...], 3: [...]}, for
+## hotel_main.place_televisions().
+static func settle(manifest: Dictionary, survivors: int) -> Dictionary:
+	var chosen := {}
+	var kept := {}
+	if not manifest.get("gates", []).is_empty():
+		for stage in [2, 3]:
+			chosen[stage] = choose(manifest, survivors, stage)
+			for spot in chosen[stage]: kept["%d:%d" % [int(spot.room), int(spot.slot)]] = true
+	for room in manifest.rooms:
+		for prop in room.props:
+			if prop.kind == "tv" and not kept.has("%d:%d" % [int(room.id), int(prop.slot)]): prop.kind = "tv_stand"
+	return chosen
+
+## Returns [{room, slot, position (world), yaw}] for the planta of a stage, as
+## many as needed plus the spares. Stage 2 is the second planta, stage 3 the third.
 static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([manifest.seed, "televisions", survivors, stage])
@@ -39,7 +59,7 @@ static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 		for prop in room.props:
 			if prop.kind != "tv": continue
 			var socket := GEOMETRY.prop_transform(room, prop)
-			var spot := {"room": int(room.id), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y, "scale": socket.basis.get_scale().x, "metres": float(metres.get(int(room.id), 0.0))}
+			var spot := {"room": int(room.id), "slot": int(prop.slot), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y, "scale": socket.basis.get_scale().x, "metres": float(metres.get(int(room.id), 0.0))}
 			if float(spot.metres) >= least: spots.append(spot)
 			else: near.append(spot)
 	# Shuffled with its own generator, then taken one per zone while that

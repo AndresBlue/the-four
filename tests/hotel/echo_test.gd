@@ -482,6 +482,8 @@ func run() -> void:
 	# --- It never touches the map's randomness ------------------------------------
 	var generator = GENERATOR.new()
 	var again: Dictionary = generator.generate(81)
+	# The floor keeps only the sets it is played on (tv_placement.settle).
+	preload("res://game/world/generation/tv_placement.gd").settle(again, level.session.roster_count)
 	check("El eco no consume el azar del mapa", JSON.stringify(again.rooms) == JSON.stringify(level.manifest.rooms))
 
 	# --- Leaving the seat ---------------------------------------------------------

@@ -536,7 +536,7 @@ func finish_intro() -> void:
 
 ## slots: the seats playing it (session.start); the bots bring their own.
 func start_floor(seed_value: int, force_fallback := false, slots: Array = [1]) -> void:
-	if not await build_floor(seed_value, force_fallback): return
+	if not await build_floor(seed_value, force_fallback, slots.size()): return
 	camcorder.start_tape(seed_value)
 	# A new tape starts with the lens wide.
 	player.zoom = 1.0
@@ -549,8 +549,9 @@ func start_floor(seed_value: int, force_fallback := false, slots: Array = [1]) -
 	populate_floor(true)
 
 ## Generates, builds and validates a floor. False (back in the menu) when it
-## could not be made playable.
-func build_floor(seed_value: int, force_fallback := false) -> bool:
+## could not be made playable. `survivors`: how many play it, which decides
+## how many sets each stage has (the rest of the hotel's are only cabinets).
+func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bool:
 	if session.state == session.State.LOADING: return false
 	session.set_state(session.State.LOADING)
 	await get_tree().process_frame
@@ -575,6 +576,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 		manifest = GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
+	tv_sets = TV_PLACEMENT.settle(manifest, survivors)
 	hotel = GEOMETRY.new()
 	hotel.name = "GeneratedHotel"
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -609,6 +611,7 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 		manifest = GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
+		tv_sets = TV_PLACEMENT.settle(manifest, survivors)
 		hotel = GEOMETRY.new()
 		hotel.name = "GeneratedHotel"
 		hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -700,7 +703,7 @@ func start_online_floor(config: Dictionary) -> void:
 	if is_instance_valid(reading_document): close_document()
 	if session.state == session.State.LOADING:
 		await session.changed
-	if not await build_floor(int(config.seed)):
+	if not await build_floor(int(config.seed), false, config.survivors.size()):
 		if is_same(match_net.config, config): net.shutdown("No se pudo construir el piso de la partida.")
 		return
 	# The match this floor was for may have gone while it was being put up
@@ -849,6 +852,10 @@ func toggle_sheet() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if world_audio.enabled: paper_sound.play()
 
+## The sets each stage is played on, chosen when the floor was built
+## (TV_PLACEMENT.settle), by stage.
+var tv_sets := {}
+
 ## This floor's documents, lying on furniture (freed with the hotel).
 ## The sets of the second and third stages, each lot in the wing its stage
 ## opens. Everyone works out the same list from the seed and the number of
@@ -859,7 +866,7 @@ func place_televisions() -> void:
 	televisions.clear()
 	if manifest.get("gates", []).is_empty(): return
 	for stage in [2, 3]:
-		for spot in TV_PLACEMENT.choose(manifest, session.roster_count, stage):
+		for spot in tv_sets.get(stage, []):
 			var set := TELEVISION.new()
 			set.name = "Television_%d" % televisions.size()
 			set.stage = stage
