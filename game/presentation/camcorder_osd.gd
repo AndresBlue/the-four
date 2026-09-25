@@ -27,6 +27,7 @@ const COMPASS_REACH := 0.46
 const COMPASS_SET := 3.2
 const COMPASS_HERE := 4.6
 const COMPASS_RING := 8.0
+const COMPASS_ARROW := 18.0
 
 func show_channels(points: Array, tilt: float, target: int) -> void:
 	channels = points
@@ -282,8 +283,6 @@ func draw_overlay() -> void:
 		if squash > 0.03: canvas.draw_colored_polygon(rim, Color(0, 0, 0, 0.45))
 		rim.append(rim[0])
 		canvas.draw_polyline(rim, Color(STYLE.INK, 0.4), 2.0, true)
-		# Ahead is the far side of the disk: turning its head reads as aiming.
-		canvas.draw_line(center, center + Vector2(0, -radius * squash), Color(STYLE.INK, 0.2), 2.0)
 		for point in channels:
 			var at: Vector2 = point.at
 			var spot := center + Vector2(at.x, at.y * squash) * radius
@@ -295,4 +294,13 @@ func draw_overlay() -> void:
 			canvas.draw_circle(spot, dot, ink)
 			if chosen:
 				canvas.draw_arc(spot, COMPASS_RING, 0.0, TAU, 24, Color(STYLE.INK, 0.85), 1.5)
-				canvas.draw_line(center, spot, Color(STYLE.INK, 0.35), 1.5)
+				# From here to there: an arrowhead halfway along says which way.
+				var ink_line := Color(STYLE.INK, 0.6)
+				canvas.draw_line(center, spot, ink_line, 1.5)
+				var way := spot - center
+				if way.length() > COMPASS_ARROW * 3.0:
+					var dir := way.normalized()
+					var tip := center + way * 0.5 + dir * COMPASS_ARROW * 0.5
+					var back := tip - dir * COMPASS_ARROW
+					var side := Vector2(-dir.y, dir.x) * COMPASS_ARROW * 0.5
+					canvas.draw_colored_polygon(PackedVector2Array([tip, back + side, back - side]), ink_line)

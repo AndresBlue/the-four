@@ -1042,6 +1042,7 @@ func bloom_guides() -> void:
 ## Coarser when the route is too long for the grains left. Returns where the
 ## next grains go.
 func lay_route(route: PackedVector3Array, kind: float, at: int, waiting: bool) -> int:
+	route = rounded(route)
 	var multi: MultiMesh = guides.multimesh
 	var length := 0.0
 	for i in range(1, route.size()): length += route[i].distance_to(route[i - 1])
@@ -1072,6 +1073,31 @@ func lay_route(route: PackedVector3Array, kind: float, at: int, waiting: bool) -
 		multi.set_instance_custom_data(at, Color(clock, length, kind, beat))
 		at += 1
 	return at
+
+## The guides' corners rounded off: each turn of the route becomes a curve
+## that starts and ends up to ROUND_CORNER metres either side of it (never
+## past half a leg), so the blue and yellow ways bend instead of snapping at
+## every corner of the navigation mesh. Only a look: the route is the same.
+const ROUND_CORNER := 1.2
+const ROUND_STEPS := 6
+static func rounded(route: PackedVector3Array) -> PackedVector3Array:
+	if route.size() < 3: return route
+	var out := PackedVector3Array([route[0]])
+	for i in range(1, route.size() - 1):
+		var a: Vector3 = route[i - 1]
+		var b: Vector3 = route[i]
+		var c: Vector3 = route[i + 1]
+		var cut: float = minf(ROUND_CORNER, minf(a.distance_to(b), b.distance_to(c)) * 0.5)
+		if cut < 0.05:
+			out.append(b)
+			continue
+		var from: Vector3 = b + (a - b).normalized() * cut
+		var to: Vector3 = b + (c - b).normalized() * cut
+		for k in ROUND_STEPS + 1:
+			var t := float(k) / float(ROUND_STEPS)
+			out.append(from.lerp(b, t).lerp(b.lerp(to, t), t))
+	out.append(route[route.size() - 1])
+	return out
 
 ## A lit set as it has it: its screen full of yellow grains and a few round it,
 ## lit afresh on every click.
