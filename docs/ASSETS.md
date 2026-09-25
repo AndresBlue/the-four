@@ -4,6 +4,7 @@ Procedencia, licencias y permisos pendientes de todo lo que entra en el juego. M
 
 ## Hotel actual
 
+- **GodotSteam 4.22.1** (GDExtension, `addons/godotsteam/`): © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores, licencia MIT (`addons/godotsteam/license.md`). Descargado el 25/09/2026 de la [Asset Library de Godot (ficha 2445)](https://godotengine.org/asset-library/asset/2445), que remite al [repositorio en Codeberg](https://codeberg.org/godotsteam/godotsteam); zip de 32.104.325 bytes, SHA-256 `aa31d7208c651f80ef1fccf1be96a4e476c1abf0fb018dd72d9db7bc2929971d`. Solo se conservan los binarios de Windows 64 bits, sin el actualizador del editor. Incluye `steam_api64.dll` de Valve (Steamworks SDK 1.65), redistribuible con el juego según el acuerdo del Steamworks SDK.
 - Cartel de salida del refugio: lámina, luminaria y grabado originales. Las letras y la flecha las dibuja `tools/textures/make_exit_sign.py` como contornos propios en `assets/props/exit_sign/engraving.png`; no se usa ni se embarca ningún archivo de fuente.
 - Arquitectura modular, veinte definiciones espaciales y mobiliario provisional: geometría original creada para este proyecto. No se atribuye a Sketchfab.
 - Materiales: shaders procedurales propios (motivo del papel, medallones de la moqueta, desgaste y suciedad) sobre materiales escaneados CC0, listados abajo en «Materiales escaneados». Las cortinas siguen siendo solo procedurales.

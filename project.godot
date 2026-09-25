@@ -65,3 +65,7 @@ surface_detail={
 "type": "float",
 "value": 4.0
 }
+
+[steam]
+
+initialization/app_data/app_id=480

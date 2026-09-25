@@ -132,9 +132,13 @@ Sunman se conserva como candidato para su piso. The Boy and The Bath es material
 
 ## Multijugador en red — implementado
 
-**Conexión.** ENet con un anfitrión y hasta cuatro invitados (**2–5 jugadores**), por IP directa o LAN, puerto UDP 38430. Por Internet, el anfitrión abre ese puerto en su router. Sin Steam, matchmaking, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador).
+**Conexión.** Un anfitrión y hasta cuatro invitados (**2–5 jugadores**), con el anfitrión como autoridad, por dos vías que llevan la misma partida:
+- **IP / LAN (ENet):** el anfitrión elige puerto (38430 por defecto) y red; por Internet, abre ese puerto UDP en su router.
+- **Steam:** un lobby solo para amigos, con invitaciones y «Unirse a la partida», sobre el relé de Steam (sin abrir puertos).
 
-**Menú Multijugador.** Nombre del jugador, **Crear sala**, **Unirse a una sala** (dirección del anfitrión), **Personaje** y Volver. La **Sala** muestra las plazas (1 anfitrión, 2–5 invitados), su personaje y las direcciones locales del anfitrión. Solo el anfitrión cambia las opciones:
+Sin matchmaking público, voz ni migración de anfitrión: para hablar, Discord o similar. Todos deben usar el mismo exe (se comprueba versión de red y del generador, también en el lobby de Steam).
+
+**Menú Multijugador.** Nombre del jugador; **Crear sala** y **Unirse**, cada una por **IP / LAN** o por **Steam** (las de Steam en gris, con el motivo, si Steam no está); **Personaje** y Volver. Crear por IP pide puerto y red; unirse por IP, dirección y puerto; unirse por Steam lista las salas abiertas de los amigos. La **Sala** muestra las plazas (1 anfitrión, 2–5 invitados), su personaje y cómo entrar: las direcciones y el puerto, o, por Steam, el botón de invitar. Solo el anfitrión cambia las opciones:
 - **Tipo de partida:** *Cooperativo contra IA* (todos sobreviven contra The Locust controlado por la IA) o *Versus* (un jugador es The Locust).
 - **The Locust (versus):** *Al azar* o un jugador concreto de la sala.
 - **Retomar el piso guardado** si existe su checkpoint en línea.

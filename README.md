@@ -20,7 +20,11 @@ Controles iniciales: WASD para moverte, ratón para mirar, Shift para correr, Es
 
 ## Jugar en red
 
-**Multijugador** en el menú principal. Escribe tu nombre y elige **Crear sala** (anfitrión) o **Unirse a una sala** con la dirección del anfitrión. En la misma red usad la IP local que aparece en la sala; por Internet, la IP pública del anfitrión con el puerto **38430 UDP** abierto en su router. De 2 a 5 jugadores, todos con el mismo exe.
+**Multijugador** en el menú principal. Escribe tu nombre y elige cómo conectaros:
+- **IP / LAN:** el anfitrión elige **Crear sala · IP / LAN**, con el puerto (38430 por defecto) y la red de su equipo en que abrirla; los demás, **Unirse · IP / LAN** con su dirección y ese puerto. En la misma red, la IP local que muestra la sala; por Internet, la IP pública del anfitrión con ese puerto UDP abierto en su router.
+- **Steam:** con Steam abierto, **Crear sala · Steam**; los amigos entran por invitación, desde el perfil del anfitrión (**Unirse a la partida**) o desde **Unirse · Steam**. No hay que abrir puertos.
+
+De 2 a 5 jugadores, todos con el mismo exe.
 
 El anfitrión elige **Cooperativo contra IA** o **Versus** (un jugador es The Locust: elegido o al azar). En cooperativo hay que llegar al refugio con al menos la mitad de los jugadores (redondeando hacia arriba) y todos los vivos dentro. Si mueres, observas a un compañero (clic para cambiar). **Tab** abre la hoja compartida: izquierdo dibuja, derecho borra. **Esc** abre un menú sin detener la partida. Si pierdes la conexión, vuelve a unirte con el mismo nombre antes de 60 s.
 

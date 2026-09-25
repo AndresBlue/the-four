@@ -17,6 +17,8 @@ const CREDITS := [
 	]],
 	["MOTOR", [
 		"Godot Engine 4.7 — © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.",
+		"GodotSteam 4.22.1 — © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores. Licencia MIT.",
+		"Steamworks SDK — © Valve Corporation. Steam y el logotipo de Steam son marcas de Valve Corporation.",
 	]],
 	["PERSONAJES", [
 		"The Locust — modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).",

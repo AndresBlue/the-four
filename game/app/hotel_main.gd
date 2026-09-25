@@ -210,6 +210,12 @@ func _ready() -> void:
 	# A seat means a room; until then, the screen that is waiting for one.
 	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join", "steam_wait"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else ("steam_wait" if ui.screen == "steam_wait" else "join")))
 	net.joined.connect(func(): if session.state == session.State.MENU: ui.menu("lobby"))
+	# An invitation accepted in Steam (or "Join game" on a friend's profile):
+	# straight into that room, from the menus; mid-floor it waits for later.
+	net.steam.join_asked.connect(func(lobby_id: int):
+		if session.state != session.State.MENU or net.active(): return
+		if net.join_steam(lobby_id, settings.values.player_name, settings.values.character): ui.menu("steam_wait")
+		else: ui.menu("multiplayer", false, net.status))
 	NavigationServer3D.map_set_use_async_iterations(get_world_3d().navigation_map, false)
 	build_environment()
 	build_audio()
@@ -240,6 +246,9 @@ func _ready() -> void:
 		begin_bot_watch()
 		return
 	var seed_wanted := -1
+	# --steam-host: straight into a Steam room from the menus, for testing
+	# Steam between two machines without clicking through them.
+	if OS.get_cmdline_user_args().has("--steam-host"): on_action.call_deferred("host_steam")
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--playtest-seed="):
 			var value := argument.trim_prefix("--playtest-seed=")
