@@ -11,7 +11,11 @@ extends SceneTree
 ##
 ##   godot --path . --rendering-method forward_plus \
 ##       --script tools/dev/light_leak.gd -- --automation --seed=81 [--rooms=12] [--shots]
+##       [--quality=3] [--set=key:value,...]
+## --quality puts the whole graphics preset, as the menu does; --set forces
+## preset values over it (graphics_presets.gd keys), as the benchmark's does.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 var level
 var view: SubViewport
 var lens: Camera3D
@@ -97,17 +101,25 @@ func worst_wall(room: Dictionary, tag := "") -> float:
 func run() -> void:
 	var run_seed := 81
 	var wanted := 12
+	var quality := -1
 	var without := []
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--without="): without = Array(argument.trim_prefix("--without=").split(","))
 		if argument.begins_with("--seed="): run_seed = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--rooms="): wanted = int(argument.trim_prefix("--rooms="))
 		if argument == "--shots": shots = true
+		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
+		if argument.begins_with("--set="):
+			for pair in argument.trim_prefix("--set=").split(","):
+				var key := pair.get_slice(":", 0)
+				var text := pair.get_slice(":", 1)
+				PRESETS.overrides[key] = (text == "true") if text in ["true", "false"] else (float(text) if "." in text else int(text))
 	DisplayServer.window_set_size(Vector2i(640, 360))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.ui.finish_intro()
 	await level.start_floor(run_seed)
+	if quality >= 0: level.settings.set_value("quality", quality)
 	level.locust.set_physics_process(false)
 	level.locust.position = Vector3(0, -80, 0)
 	level.player.set_physics_process(false)

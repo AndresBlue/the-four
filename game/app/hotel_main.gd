@@ -594,6 +594,12 @@ func build_floor(seed_value: int, force_fallback := false) -> bool:
 		return false
 	# The floor starts with its bounce light in place, not popping in.
 	await bounce_ready()
+	# And with its pipelines built: the loading screen pays for them, not the
+	# first step into a room (presentation/shader_warmup.gd). --no-warmup
+	# leaves them to be built during play, which is what it cost before.
+	# Nothing to warm up where nothing is drawn (headless tests).
+	if DisplayServer.get_name() != "headless" and not OS.get_cmdline_user_args().has("--no-warmup"):
+		await WARMUP.run(self)
 	return true
 
 ## Waits for the bounce light, which bakes on worker threads after a floor is
@@ -2340,6 +2346,7 @@ var ambient_energy := 0.16
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
 const CAMERA_EFFECT := preload("res://game/presentation/camera/camcorder_effect.gd")
 const BLUR_EFFECT := preload("res://game/presentation/camera/motion_blur_effect.gd")
+const WARMUP := preload("res://game/presentation/shader_warmup.gd")
 ## How deep the volumetric fog reaches when lamps light it.
 const LIT_FOG_LENGTH := 14.0
 var blur_effect: CompositorEffect

@@ -13,6 +13,13 @@ Cada vista mide, por calidad:
 
 Hay tres vistas quietas (recepción, sala 36 y salida) y un **tramo caminando** por la ruta desde la recepción, que reproduce los redibujados de sombra de una partida real. La medición espera 1,5 s antes de empezar: el atlas de sombras recoloca las luces 0,5 s después de asignarlas.
 
+Además, por vista:
+- **Llegadas** (`arrival`): la cámara aterriza en ocho salas que la pasada no ha dibujado nunca y se miden los 20 fotogramas siguientes **sin esperar a que nada se asiente**. Es lo que siente quien entra en una sala por primera vez.
+- **Tirones:** fotogramas por encima del doble de la mediana de la vista, por encima de 20 ms y de 33 ms, y los tres peores.
+- **Pipelines construidos** durante la vista (`pipelines_draw`, los que hacen esperar al fotograma, y `pipelines_all`), de los monitores `PIPELINE_COMPILATIONS_*` de Godot. Son totales acumulados desde el arranque: la herramienta resta fotograma a fotograma.
+
+Para medir sin caché de shaders hay que borrar antes `.godot/shader_cache` y, en los datos de usuario, `shader_cache` y `vulkan` (la caché de pipelines). **Con el juego abierto no se mide:** comparte la GPU y el mismo recorrido llegó a dar 14 ms de GPU en una pasada y 24 en la siguiente.
+
 Herramientas relacionadas:
 - `./tools/benchmarks/bench_table.ps1 base,final` pone dos informes en tabla.
 - `tools/benchmarks/compare_captures.gd` compara dos juegos de capturas: da la diferencia media y máxima y el porcentaje de píxeles que cambian, y escribe una imagen de diferencias.

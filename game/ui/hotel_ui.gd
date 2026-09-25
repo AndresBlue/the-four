@@ -114,6 +114,9 @@ var body: HBoxContainer
 var clock := 0.0
 var flash_time := 0.0
 var loading_label: Label
+## Second line of the loading screen: what the game is busy with now (the
+## shader warmup says how far along it is, so the screen is never still).
+var loading_step: Label
 var tick_player: AudioStreamPlayer
 var confirm_player: AudioStreamPlayer
 ## The keypad of the last door speaks for itself: a key, a code that is not
@@ -314,6 +317,7 @@ func clear() -> void:
 	display_label = null
 	display_row = null
 	loading_label = null
+	loading_step = null
 	rebind_action = ""
 	rebind_pad = ""
 	column.custom_minimum_size.x = 520
@@ -360,6 +364,10 @@ func set_osd(left: String, right := "", clock_text := "", footer_text := "") -> 
 	osd_right.text = right
 	menu_clock.text = clock_text
 	footer.text = footer_text
+
+## What the loading screen is waiting on; empty leaves the line blank.
+func loading_note(words: String) -> void:
+	if is_instance_valid(loading_step): loading_step.text = words
 
 ## The first thing a pad can press on this screen. Without it a screen built
 ## out of plain entries (the board of times) came up with nothing highlighted,
@@ -450,6 +458,8 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 6)
 			loading_label = label(column, "EL HOTEL ESTÁ TOMANDO FORMA", 22)
 			loading_label.add_theme_color_override("font_color", STYLE.SOFT)
+			loading_step = label(column, "", 18)
+			loading_step.add_theme_color_override("font_color", STYLE.AMBER)
 			controls_panel(side)
 		"transition":
 			set_osd("■ STOP", "", "", "")

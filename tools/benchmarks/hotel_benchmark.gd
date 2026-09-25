@@ -16,6 +16,10 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const STILL_FRAMES := 120
 const WALK_FRAMES := 240
+## Arriving in a room for the first time: how many rooms, and how many frames
+## are watched from the moment the camera lands (no settling, on purpose).
+const ARRIVALS := 8
+const ARRIVAL_FRAMES := 20
 ## Walking pace in metres per frame (6 m/s at 60 fps), whatever the real rate,
 ## so every run walks the same route.
 const WALK_STEP := 0.1
@@ -79,6 +83,7 @@ func run() -> void:
 				halfway = int(room.id)
 				break
 		for id in [int(level.manifest.start), halfway, int(level.manifest.exit)]:
+			drawn["%d:%d" % [quality, id]] = true
 			var room: Dictionary = level.manifest.rooms[id]
 			level.player.position = FLOOR.position_of(room) + Vector3(0, 0.04, 0)
 			level.player.rotation.y = 0.65
@@ -90,6 +95,20 @@ func run() -> void:
 			peak_memory = maxf(peak_memory, Performance.get_monitor(Performance.MEMORY_STATIC))
 			results.append(summary("still_room%d" % id, quality, frames))
 			all_frames.append_array(frames)
+		# Arriving somewhere the run has not drawn yet, with no settling: this
+		# is where a pipeline that has never been built shows up, and it is
+		# what a player feels walking into a room for the first time.
+		var arrivals: Array = []
+		for id in fresh_rooms(level, quality, ARRIVALS):
+			var room: Dictionary = level.manifest.rooms[id]
+			level.player.position = FLOOR.position_of(room) + Vector3(0, 0.04, 0)
+			level.player.rotation.y = 0.65
+			level.player.camera.rotation.x = -0.1
+			level.hotel.update_visibility(level.player.position, true)
+			arrivals.append_array(await sample(level, viewport_rid, ARRIVAL_FRAMES, Callable()))
+		if not arrivals.is_empty():
+			results.append(summary("arrival", quality, arrivals))
+			all_frames.append_array(arrivals)
 		# Walking: the body moves every frame, as in play.
 		level.player.position = route[0] if route.size() > 0 else Vector3(0, 0.04, 0)
 		await settle()
@@ -142,8 +161,16 @@ static func along(line: PackedVector3Array, distance: float) -> Vector3:
 		travelled += segment
 	return line[line.size() - 1]
 
+## Pipelines Godot has built since it started (its monitors are running
+## totals): a frame's own count is the difference from the frame before.
+static func pipelines_built() -> Vector2:
+	var draw := Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_DRAW)
+	var all := draw + Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_CANVAS) + Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_MESH) + Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_SURFACE) + Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_SPECIALIZATION)
+	return Vector2(draw, all)
+
 func sample(level: Node, viewport_rid: RID, count: int, step: Callable) -> Array:
 	var frames: Array = []
+	var before := pipelines_built()
 	for frame in count:
 		if step.is_valid(): step.call(frame)
 		var started := Time.get_ticks_usec()
@@ -159,8 +186,32 @@ func sample(level: Node, viewport_rid: RID, count: int, step: Callable) -> Array
 			"primitives": viewport.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
 			"shadow_draws": viewport.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME),
 			"shadow_primitives": viewport.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
+			# Pipelines built this frame: what a stall is usually made of.
+			# "draw" are the ones built because something was about to be
+			# drawn with them, the ones that make a frame wait.
+			"pipelines_draw": pipelines_built().x - before.x,
+			"pipelines_all": pipelines_built().y - before.y,
 		})
+		before = pipelines_built()
 	return frames
+
+## Rooms this quality has not drawn yet, spread over the floor: the stills
+## and the walk keep their own, so an arrival really is a first one.
+var drawn := {}
+
+func fresh_rooms(level: Node, quality: int, count: int) -> Array:
+	var out: Array = []
+	var ids: Array = range(level.manifest.rooms.size())
+	# Evenly spaced through the list, so they are not all in one wing.
+	var stride := maxi(1, ids.size() / (count * 2))
+	for i in range(0, ids.size(), stride):
+		var id: int = ids[i]
+		if drawn.has("%d:%d" % [quality, id]): continue
+		if level.hotel.dark_room(level.manifest.rooms[id]): continue
+		drawn["%d:%d" % [quality, id]] = true
+		out.append(id)
+		if out.size() >= count: break
+	return out
 
 static func mean(values: Array) -> float:
 	var total := 0.0
@@ -176,6 +227,23 @@ func summary(view: String, quality: int, frames: Array) -> Dictionary:
 		var values: Array = frames.map(func(f): return f[key])
 		values.sort()
 		entry[key] = {"mean": snappedf(mean(values), 0.001), "p95": snappedf(percentile(values, 0.95), 0.001), "p99": snappedf(percentile(values, 0.99), 0.001), "max": snappedf(values[-1], 0.001)}
+	# Hitches: frames that took far longer than this view's own normal frame,
+	# which is what a stall looks like from the player's seat.
+	var times: Array = frames.map(func(f): return f.frame_ms)
+	times.sort()
+	var middle: float = percentile(times, 0.5)
+	var hitches := {"over_twice_median": 0, "over_20ms": 0, "over_33ms": 0, "worst": []}
+	for value in times:
+		if value > middle * 2.0: hitches.over_twice_median += 1
+		if value > 20.0: hitches.over_20ms += 1
+		if value > 33.0: hitches.over_33ms += 1
+	for i in range(times.size() - 1, maxi(times.size() - 4, -1), -1): hitches.worst.append(snappedf(times[i], 0.001))
+	entry["hitches"] = hitches
+	for key in ["pipelines_draw", "pipelines_all"]:
+		var built: Array = frames.map(func(f): return f[key])
+		var total := 0.0
+		for value in built: total += float(value)
+		entry[key] = {"sum": int(total), "max": int(built.max())}
 	for key in ["draws", "objects", "primitives", "shadow_draws", "shadow_primitives"]:
 		var values: Array = frames.map(func(f): return f[key])
 		values.sort()
