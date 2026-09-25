@@ -268,8 +268,9 @@ func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0, p
 ## A long sound on a player of its own (see long_cues). follow: `point` is an
 ## offset from the listener instead of a place, for what is heard from above
 ## wherever you are (the power going). length: seconds before it fades out, 0
-## for the whole recording. Returns the player, or null when nothing plays.
-func play_long(path: String, point: Vector3, gain: float, emitter := RID(), follow := false, length := 0.0) -> AudioStreamPlayer3D:
+## for the whole recording. tag: what it is, for long_playing() to tell apart
+## two uses of one recording. Returns the player, or null when nothing plays.
+func play_long(path: String, point: Vector3, gain: float, emitter := RID(), follow := false, length := 0.0, tag := "") -> AudioStreamPlayer3D:
 	last_event = {"path": path, "position": point, "long": true}
 	if not enabled or hush: return null
 	if not streams.has(path): streams[path] = load(path)
@@ -281,7 +282,7 @@ func play_long(path: String, point: Vector3, gain: float, emitter := RID(), foll
 	voice.max_db = 6.0
 	voice.area_mask = ACOUSTIC_MASK
 	add_child(voice)
-	var cue := {"player": voice, "point": point, "gain": gain, "emitter": emitter, "path": path, "started": Time.get_ticks_msec() / 1000.0, "follow": follow, "base_db": -80.0, "audible": false, "length": length}
+	var cue := {"player": voice, "point": point, "gain": gain, "emitter": emitter, "path": path, "started": Time.get_ticks_msec() / 1000.0, "follow": follow, "base_db": -80.0, "audible": false, "length": length, "tag": tag}
 	long_cues.append(cue)
 	route_long(cue)
 	voice.volume_db = float(cue.base_db)
@@ -303,9 +304,12 @@ func stop_long(voice) -> void:
 
 ## Whether a long cue of this recording started within `within` seconds and
 ## reaches this listener: the same dead channel is not played twice over.
-func long_playing(path: String, within: float) -> bool:
+## Cues tagged `ignore` do not count (the creature stepping through a set is
+## the same static, and it silenced a set switched on just after).
+func long_playing(path: String, within: float, ignore := "") -> bool:
 	var now := Time.get_ticks_msec() / 1000.0
 	for cue in long_cues:
+		if not ignore.is_empty() and String(cue.get("tag", "")) == ignore: continue
 		if cue.path == path and bool(cue.audible) and now - float(cue.started) <= within and is_instance_valid(cue.player) and cue.player.playing: return true
 	return false
 

@@ -158,17 +158,15 @@ const AIMED_UNIT := 13.0
 const AIMED_REACH := 24.0
 const AIMED_CUTOFF := 12000.0
 var grunt_rest := 0.0
-## The cry it lets out when it sets off after somebody: heard over the whole
-## floor, like a death, so everybody knows a chase has started -- only not
+## The cry it lets out when its grace runs out and the hunt starts -- at the
+## start of a floor, and again after a stage given back: heard over the whole
+## floor, like a death, so everybody knows it is on its feet -- only not
 ## where, past the reach of an ordinary sound. The longest calls of the
-## recording (CRY_LONGEST), pitched down. The machine only: a player hunting
-## has its own shriek, and does not announce every run. Not again for
-## CRY_REST: a chase lost and picked up again at once is the same chase.
+## recording (CRY_LONGEST), pitched down. The machine and a player hunting
+## alike, cried where it is driven (count_grace) and told to everyone else.
 const CRY_LONGEST := 2.0
 const CRY_PITCH := Vector2(0.78, 0.88)
 const CRY_GAIN := 0.0
-const CRY_REST := 25.0
-var cry_rest := 0.0
 ## The last grunt was aimed at this machine's survivor.
 var aimed := false
 ## Seconds left of the bark that announces a strike (it lives inside the same
@@ -355,11 +353,10 @@ func grunt() -> float:
 	aim_voice(route, grunt_left)
 	return grunt_left
 
-## The cry of a chase setting off (see CRY_LONGEST), here and on every other
+## The cry of the hunt starting (see CRY_LONGEST), here and on every other
 ## machine. Returns how long it lasts.
 func cry() -> float:
 	if level == null: return 0.0
-	cry_rest = CRY_REST
 	var choices: Array = []
 	for index in GRUNTS.SEGMENTS.size():
 		if GRUNTS.SEGMENTS[index][1] >= CRY_LONGEST: choices.append(index)
@@ -374,6 +371,13 @@ func play_cry(segment: int, pitch: float) -> void:
 	if segment < 0 or segment >= GRUNTS.SEGMENTS.size(): return
 	var take: Array = GRUNTS.SEGMENTS[segment]
 	level.world_audio.play_everywhere(CRY_SOUND, global_position + Vector3.UP * 2.2, CRY_GAIN, take[0], pitch, take[1])
+
+## Its grace, counted where it is driven (here for the machine, in the
+## driver for a player hunting): when it runs out, the hunt starts with a cry.
+func count_grace(delta: float) -> void:
+	if grace <= 0.0: return
+	grace = maxf(0.0, grace - delta)
+	if grace <= 0.0: cry()
 
 ## Whether this machine's survivor is the one being called at.
 func aimed_at_local() -> bool:
@@ -444,7 +448,6 @@ func howl_next() -> void:
 ## the next one while a shriek lasts, and fades the shriek out at its end.
 func update_voice(delta: float) -> void:
 	grunt_rest = maxf(0.0, grunt_rest - delta)
-	cry_rest = maxf(0.0, cry_rest - delta)
 	if warn_left > 0.0:
 		warn_left -= delta
 		if warn_left <= 0.0: signal_player.stop()
@@ -617,7 +620,7 @@ func hear(point: Vector3, radius: float) -> void:
 		return
 	last_known = point
 	set_mode(Mode.INVESTIGATE)
-	destination = point
+	destination = standing_point(point)
 
 ## Sent by the pacing director to go round the rooms within `radius` of
 ## `point` for `seconds` (once: until it reaches one of them; sniff: and open
@@ -685,8 +688,7 @@ func relocate(point: Vector3, rest: float) -> void:
 	global_position = point
 	velocity = Vector3.ZERO
 	speed = 0.0
-	path = PackedVector3Array()
-	path_index = 0
+	forget_route()
 	wardrobe = null
 	focus = null
 	detection = 0.0
@@ -697,6 +699,34 @@ func relocate(point: Vector3, rest: float) -> void:
 	set_mode(Mode.PATROL)
 	destination = point
 	grace = maxf(grace, rest)
+
+## Nothing of the way it was walking survives being put somewhere else (a
+## stage given back, a set it stepped out of): the route, a doorway it was
+## half through -- which kept the old route for up to 2.5 s (passing_door) --
+## a step aside, and the stuck count of the old place.
+func forget_route() -> void:
+	path = PackedVector3Array()
+	path_index = 0
+	crossings = []
+	rounds = {}
+	passing_time = 0.0
+	dodge_left = 0.0
+	stuck_clock = 0.0
+	stuck_linger = 0.0
+	stuck_level = 0
+	stuck_origin = Vector3.INF
+	linger_goal = Vector3.INF
+	linger_best = INF
+	repath = 0
+
+## Where it can stand to look at something heard: a set, a drawer or a lamp
+## is heard from above the floor, often from against a wall, and 0.7 m from
+## that point was a spot it never reached -- it stood beside it the whole
+## twelve seconds an investigation lasts.
+func standing_point(point: Vector3) -> Vector3:
+	var map: RID = get_world_3d().navigation_map
+	if NavigationServer3D.map_get_iteration_id(map) == 0: return point
+	return FLOOR.closest(map, point)
 
 ## A sound it did not have to hear through the player: something fell, it goes
 ## to look. Ignored while it is already hunting.
@@ -723,11 +753,8 @@ func set_mode(next: Mode) -> void:
 	if next == Mode.CHASE and previous != Mode.CHASE:
 		# It sets off from a stride and builds up to full speed.
 		speed = maxf(speed, CHASE_START_SPEED)
-		# Setting off, not coming back from a strike: the cry, and the chase
-		# grunts wait for it to finish.
-		if control == "ai" and previous not in [Mode.WINDUP, Mode.RECOVER] and cry_rest <= 0.0: grunt_left = maxf(grunt_left, cry())
 		# Coming out of the alert, the next call waits for the first to finish.
-		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT or grunt_left > 0.0 else 0.0
+		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT else 0.0
 	# Lost them, or found nobody: a search of its own, from where it last knew.
 	# Out of a wardrobe it opened on the way, the same search goes on.
 	if next == Mode.SEARCH and control == "ai": begin_search(last_known, last_heading, previous != Mode.WARDROBE)
@@ -1068,7 +1095,7 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(driver): driver.drive(delta)
 		update_voice(delta)
 		return
-	grace = maxf(0, grace - delta)
+	count_grace(delta)
 	state_time += delta
 	wander_clock += delta
 	clock += delta

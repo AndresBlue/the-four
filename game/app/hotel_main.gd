@@ -889,7 +889,7 @@ func apply_television(index: int, value: bool, quiet := false) -> void:
 	# Not twice: the blackout it trips plays the same static, and on a guest the
 	# two can arrive in either order.
 	var stream: AudioStream = load(TV_BURST)
-	if world_audio.enabled and not world_audio.long_playing(TV_BURST, 1.5):
+	if world_audio.enabled and not world_audio.long_playing(TV_BURST, 1.5, "warp"):
 		set.burst = world_audio.play_long(TV_BURST, set.screen_point(), TV_BURST_GAIN)
 	set.hiss_after = now + stream.get_length()
 	if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
@@ -909,13 +909,24 @@ func lit_televisions() -> Array:
 		if televisions[index].on: result.append(index)
 	return result
 
-## The lit set the creature is standing at, or -1.
-func creature_at_television() -> int:
+## The lit set the creature is standing at, or -1. `reach`: the host judging
+## a hunter's request allows for its copy of the creature running behind.
+func creature_at_television(reach := WARP_REACH) -> int:
 	if not is_instance_valid(locust): return -1
 	for index in stage_televisions():
 		var set = televisions[index]
-		if set.on and set.global_position.distance_to(locust.global_position) < WARP_REACH: return index
+		if set.on and set.global_position.distance_to(locust.global_position) < reach: return index
 	return -1
+
+## Where the creature comes out of a set: a step in front of it, on floor it
+## can stand on -- in a suite the set is in the alcove, and 1.6 m straight out
+## was inside the partition.
+func television_exit(index: int) -> Vector3:
+	var set = televisions[index]
+	var out: Vector3 = set.global_position + Vector3(sin(set.rotation.y), 0, cos(set.rotation.y)) * 1.6
+	var map: RID = get_world_3d().navigation_map
+	if NavigationServer3D.map_get_iteration_id(map) > 0: out = FLOOR.closest(map, out)
+	return out
 
 ## It comes out of the set at `index`, a step in front of it, looking into the
 ## room. Applied on every machine, whoever decided it.
@@ -923,14 +934,8 @@ func warp_creature(index: int) -> void:
 	if index < 0 or index >= televisions.size() or not is_instance_valid(locust): return
 	var set = televisions[index]
 	if not is_instance_valid(set) or not set.on: return
-	var facing := Vector3(sin(set.rotation.y), 0, cos(set.rotation.y))
 	var from: Vector3 = locust.global_position
-	# Out in front of the set, on floor it can stand on: in a suite the set is
-	# in the alcove, and 1.6 m straight out was inside the partition.
-	var out: Vector3 = set.global_position + facing * 1.6
-	var map: RID = get_world_3d().navigation_map
-	if NavigationServer3D.map_get_iteration_id(map) > 0: out = FLOOR.closest(map, out)
-	locust.global_position = out + Vector3(0, 0.04, 0)
+	locust.global_position = television_exit(index) + Vector3(0, 0.04, 0)
 	# Facing the room it came out into, not back at the screen.
 	locust.rotation.y = set.rotation.y + PI
 	# A puppet ignores the states still on their way from beside the old set.
@@ -944,13 +949,22 @@ func warp_creature(index: int) -> void:
 	locust.net_states.clear()
 	locust.net_clock = 0.0
 	if is_instance_valid(locust.driver): locust.driver.channel_open = false
+	# The machine looks round the room it came out into, and then goes about
+	# the wing. Nothing of the old place comes with it: it used to hear its own
+	# arrival -- a noise 1.4 m over its head it never reached -- and stood
+	# twelve seconds where it stepped out, and a wardrobe beside the set was
+	# opened on the strength of it.
+	if locust.control == "ai":
+		locust.forget_route()
+		locust.last_known = locust.global_position
+		locust.last_heading = -locust.global_basis.z
+		locust.set_mode(locust.Mode.SEARCH)
 	# On players of their own: in the pool of short cues the next doors cut
-	# fourteen seconds of static off after one or two.
+	# fourteen seconds of static off after one or two. What the survivors hear
+	# is this static, from both sets; the creature hears nothing of itself.
 	if world_audio.enabled:
-		world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0)
-		world_audio.play_long(WARP_SOUND, locust.global_position + Vector3(0, 1.4, 0), -4.0)
-	# Where it comes out is a noise of its own: the set it steps from spits.
-	if not net.is_client(): on_noise(locust.global_position + Vector3(0, 1.4, 0), NOISE.radius("door"), NOISE.Kind.DOOR)
+		world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0, RID(), false, 0.0, "warp")
+		world_audio.play_long(WARP_SOUND, locust.global_position + Vector3(0, 1.4, 0), -4.0, RID(), false, 0.0, "warp")
 
 ## How many of the stage's own sets are on. What burns in another wing is not
 ## counted: every stage from the second starts its tally at nothing.
@@ -1309,7 +1323,7 @@ var last_stage := 1
 func apply_blackout() -> void:
 	rumble(0.35, 0.0, 0.25)
 	hotel.blackout(true)
-	if world_audio.enabled and not world_audio.long_playing(BLACKOUT_SOUND, 1.5): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), 0.0, RID(), true)
+	if world_audio.enabled and not world_audio.long_playing(BLACKOUT_SOUND, 1.5, "warp"): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), 0.0, RID(), true)
 	if is_instance_valid(locust) and is_instance_valid(locust.driver) and locust.driver.has_method("mark_blackout"): locust.driver.mark_blackout()
 
 ## And the power comes back, in the wing ahead. What went out belonged to the
@@ -2169,23 +2183,43 @@ func drive_local(delta: float) -> void:
 ## unlocks the door on -- and whether somebody has already crossed it, which
 ## is what carries the floor to the next stage. Nothing is held down any more.
 ## The AI travels by television too, so a lit set is never safe just because
-## the creature is far: after a while looking for nobody, standing at one, it
-## steps out of another. Seconds left before it may do that again.
+## the creature is far: looking for nobody at one -- come to see who switched
+## it on, or searching round it -- for HOP_PATIENCE, it steps out of another.
+## It used to need eight seconds of one search, and a search now gives up in
+## eight to ten and walks off: it all but never did. Seconds left before it
+## may do that again, and how long it has been looking at this one.
+## It comes out of a set with nobody active within HOP_CLEAR of where it
+## steps out and nobody looking there: out of a set on top of somebody was a
+## death nobody could do anything about.
 var hop_rest := 0.0
+var hop_wait := 0.0
 const HOP_REST := 25.0
-const HOP_PATIENCE := 8.0
+const HOP_PATIENCE := 4.0
+const HOP_CLEAR := 12.0
 func creature_channel_hop(delta: float) -> void:
 	hop_rest = maxf(0.0, hop_rest - delta)
-	if not is_instance_valid(locust) or locust.control != "ai" or hop_rest > 0.0: return
-	if locust.mode != locust.Mode.SEARCH or locust.state_time < HOP_PATIENCE: return
-	var here: int = creature_at_television()
+	if not is_instance_valid(locust) or locust.control != "ai": return
+	var looking: bool = locust.mode in [locust.Mode.SEARCH, locust.Mode.INVESTIGATE] and not locust.lift_bound
+	var here: int = creature_at_television() if looking else -1
+	hop_wait = hop_wait + delta if here >= 0 else 0.0
+	if hop_rest > 0.0 or hop_wait < HOP_PATIENCE: return
 	var lit: Array = lit_televisions()
-	if here < 0 or lit.size() < 2: return
-	var choices: Array = lit.filter(func(index): return index != here)
+	if lit.size() < 2: return
+	var choices: Array = lit.filter(func(index): return index != here and television_clear(index))
+	if choices.is_empty(): return
 	var pick: int = choices[locust.rng.randi_range(0, choices.size() - 1)]
+	hop_wait = 0.0
 	hop_rest = HOP_REST
 	warp_creature(pick)
 	if match_net.in_match(): match_net.warp_state.rpc(pick)
+
+## Nobody active near where it would step out of that set, and nobody
+## looking at the spot.
+func television_clear(index: int) -> bool:
+	var out := television_exit(index)
+	for body in survivors():
+		if survivor_active(body) and body.global_position.distance_to(out) < HOP_CLEAR: return false
+	return not locust.watched(out)
 
 func host_gate(delta: float) -> void:
 	for seat in untouchable.keys():

@@ -62,7 +62,7 @@ func run() -> void:
 	await searching()
 	await leading()
 	await after_a_kill()
-	crying()
+	await crying()
 	var file := FileAccess.open("res://evidence/creature_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	quit(0 if failed == 0 else 1)
@@ -145,22 +145,20 @@ func after_a_kill() -> void:
 	creature.update_execution(1.0 / 60.0)
 	check("Tras una ejecución empieza de cero", creature.mode == creature.Mode.SEARCH and creature.detection == 0.0 and creature.focus == null)
 
-## Setting off after somebody, it cries out over the whole floor; a strike it
-## missed and a chase picked up again at once are the same chase.
+## When its grace runs out the hunt starts, and it cries out over the whole
+## floor; not while it lasts, and not again once it is over.
 func crying() -> void:
 	var creature = level.locust
-	creature.cry_rest = 0.0
-	creature.set_mode(creature.Mode.ALERT)
+	creature.set_mode(creature.Mode.PATROL)
+	creature.grace = 0.5
 	var calls: int = creature.calls_made
-	creature.set_mode(creature.Mode.CHASE)
-	check("Al salir a perseguir grita", creature.calls_made == calls + 1 and creature.cry_rest > 0.0 and creature.grunt_left >= creature.CRY_LONGEST * 0.9)
+	await frames(15)
+	check("Mientras dura su gracia no grita", creature.grace > 0.0 and creature.calls_made == calls)
+	await frames(30)
+	check("Al acabarse la gracia grita", creature.grace == 0.0 and creature.calls_made == calls + 1)
 	check("Y el grito se oye en todo el piso", String(level.world_audio.last_event.get("path", "")) == creature.CRY_SOUND and bool(level.world_audio.last_event.get("everywhere", false)))
-	creature.set_mode(creature.Mode.RECOVER)
-	calls = creature.calls_made
-	creature.set_mode(creature.Mode.CHASE)
-	creature.set_mode(creature.Mode.SEARCH)
 	creature.set_mode(creature.Mode.ALERT)
-	calls += 1
 	creature.set_mode(creature.Mode.CHASE)
-	check("Tras un golpe fallido o perderla un momento no vuelve a gritar", creature.calls_made == calls)
+	# The alert's grunt is the only call more.
+	check("Salir a perseguir no es otro grito", creature.calls_made == calls + 2)
 	creature.set_mode(creature.Mode.PATROL)

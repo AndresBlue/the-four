@@ -395,7 +395,7 @@ func television_state(index: int, value: bool) -> void:
 ## any other lit one. The host judges it, as it judges a strike.
 func locust_warp(index: int) -> void:
 	if not in_match() or net.is_host:
-		if level.creature_at_television() >= 0:
+		if level.creature_at_television() >= 0 and not warp_busy():
 			level.warp_creature(index)
 			if in_match(): warp_state.rpc(index)
 		return
@@ -404,9 +404,16 @@ func locust_warp(index: int) -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func request_warp(index: int) -> void:
 	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
-	if level.creature_at_television() < 0 or not level.lit_televisions().has(index): return
+	# Its copy here runs behind the hunter's own: a quick E, E on arriving was
+	# refused for being a step short of the set.
+	if level.creature_at_television(level.WARP_REACH + WARP_SLACK) < 0 or not level.lit_televisions().has(index) or warp_busy(): return
 	level.warp_creature(index)
 	warp_state.rpc(index)
+
+const WARP_SLACK := 1.5
+## Mid-strike, holding somebody or opening a wardrobe: no stepping through a set.
+func warp_busy() -> bool:
+	return level.locust.mode in [level.locust.Mode.WINDUP, level.locust.Mode.RECOVER, level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE]
 
 @rpc("authority", "call_remote", "reliable")
 func warp_state(index: int) -> void:

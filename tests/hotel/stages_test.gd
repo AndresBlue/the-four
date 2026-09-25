@@ -293,12 +293,29 @@ func run() -> void:
 	var before: Vector3 = level.locust.global_position
 	level.warp_creature(lit[1])
 	check("Sale por otra tele encendida, lejos de donde estaba", level.locust.global_position.distance_to(before) > 5.0 and level.creature_at_television() == lit[1])
+	check("Y mira alrededor, sin ir a investigar su propia llegada", level.locust.mode == level.locust.Mode.SEARCH and level.locust.path.is_empty() and level.locust.crossings.is_empty())
 	var dark := -1
 	for index in sets_two:
 		if not level.televisions[int(index)].on: dark = int(index)
 	var standing: Vector3 = level.locust.global_position
 	if dark >= 0: level.warp_creature(dark)
 	check("Y no puede salir por una apagada", dark < 0 or level.locust.global_position.is_equal_approx(standing))
+	# On its own: looking for nobody at a lit set, it steps out of another --
+	# never one with somebody in front of it.
+	var parked: Vector3 = level.player.global_position
+	level.locust.global_position = level.television_exit(lit[0]) + Vector3(0, 0.04, 0)
+	level.locust.set_physics_process(false)
+	level.locust.set_mode(level.locust.Mode.SEARCH)
+	level.hop_rest = 0.0
+	level.hop_wait = 0.0
+	level.player.global_position = level.television_exit(lit[1]) + Vector3(0, 0.1, 0)
+	await frames(int((level.HOP_PATIENCE + 1.5) * 60))
+	check("No sale de una tele con alguien delante", level.creature_at_television() == lit[0])
+	level.player.global_position = Vector3(0, -200, 0)
+	await frames(int((level.HOP_PATIENCE + 1.0) * 60))
+	check("Buscando a nadie junto a una tele, sale por otra al rato", level.creature_at_television() == lit[1] and level.hop_rest > 0.0)
+	level.locust.set_physics_process(true)
+	level.player.global_position = parked
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
 	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
 	await frames(5)

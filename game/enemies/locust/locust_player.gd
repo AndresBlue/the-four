@@ -152,7 +152,7 @@ func pad_look(delta: float) -> void:
 
 func drive(delta: float) -> void:
 	pad_look(delta)
-	creature.grace = maxf(0.0, creature.grace - delta)
+	creature.count_grace(delta)
 	creature.state_time += delta
 	cooldown = maxf(0.0, cooldown - delta)
 	shriek_cooldown = maxf(0.0, shriek_cooldown - delta)
@@ -219,7 +219,9 @@ func drive(delta: float) -> void:
 	creature.update_visual(delta)
 	creature.visual.look_point = camera.global_position - camera.global_basis.z * 10.0
 	if is_instance_valid(echo): echo.advance(delta, hunting)
-	if free and Input.is_action_just_pressed("interact") and creature.mode not in [creature.Mode.WARDROBE, creature.Mode.EXECUTE]: use()
+	# Not mid-strike either: E after a click stepped it out of another set and
+	# the blow was judged there, on whoever had just switched that one on.
+	if free and Input.is_action_just_pressed("interact") and creature.mode not in [creature.Mode.WARDROBE, creature.Mode.EXECUTE, creature.Mode.WINDUP, creature.Mode.RECOVER]: use()
 	update_hud()
 	var now := Time.get_ticks_msec() / 1000.0
 	heard = heard.filter(func(entry): return now - entry.time < 1.6)
@@ -411,24 +413,26 @@ func use() -> void:
 		if channel_target >= 0: level.match_net.locust_warp(channel_target)
 		channel_open = false
 		return
-	if level.creature_at_television() >= 0 and level.lit_televisions().size() > 1:
-		channel_open = true
-		channel_target = -1
-		return
 	var from := camera.global_position
 	var query := PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * (ARM + 3.2), 1 | 8 | 16)
 	query.collide_with_areas = true
 	query.exclude = [creature.get_rid()]
 	var space: PhysicsDirectSpaceState3D = creature.get_world_3d().direct_space_state
 	var hit := space.intersect_ray(query)
-	if hit.is_empty(): return
-	var target = hit.collider
-	if target in level.hotel.doors and target.doorway.distance_to(creature.global_position) < 3.4:
+	var target = null if hit.is_empty() else hit.collider
+	if target != null and target in level.hotel.doors and target.doorway.distance_to(creature.global_position) < 3.4:
 		level.match_net.use_door(target, false, false)
-	elif target in level.hotel.hides and target.global_position.distance_to(creature.global_position) < WARDROBE_REACH + 0.8:
+	elif target != null and target in level.hotel.hides and target.global_position.distance_to(creature.global_position) < WARDROBE_REACH + 0.8:
 		# The ritual: it plants itself and opens the wardrobe leaf by leaf.
 		creature.begin_wardrobe(target)
 		level.match_net.locust_open_hide(target)
+	# Nothing it is looking at to open: at a lit set, the way through it. It
+	# used to come first, so beside a lit set E never opened the wardrobe it
+	# was aimed at -- the one somebody had just hidden in after switching the
+	# set on.
+	elif level.creature_at_television() >= 0 and level.lit_televisions().size() > 1:
+		channel_open = true
+		channel_target = -1
 
 ## A survivor's noise within its hearing, from the host (or measured locally
 ## when this machine is in charge). See match_net.tell_hunter.

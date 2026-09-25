@@ -94,7 +94,7 @@ func run() -> void:
 	wall.queue_free()
 	await frames(2)
 	enemy.hear(player.position, 7)
-	check("Ruido audible solicita investigación", enemy.mode == enemy.Mode.INVESTIGATE and enemy.destination.distance_to(player.position) < 0.1)
+	check("Ruido audible solicita investigación, al suelo junto a él", enemy.mode == enemy.Mode.INVESTIGATE and Vector2(enemy.destination.x - player.position.x, enemy.destination.z - player.position.z).length() < 0.6 and absf(enemy.destination.y - player.position.y) < 0.5)
 	enemy.set_mode(enemy.Mode.PATROL)
 	enemy.detection = 0
 	face(enemy, player.position)
