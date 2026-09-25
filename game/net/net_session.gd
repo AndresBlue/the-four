@@ -1,8 +1,18 @@
 extends Node
-## Online play over LAN or a direct IP (ENet): one host and up to four guests.
-## This node owns the connection and the room (lobby): who is in which seat,
-## their names and characters, and the host's match options. The in-match
-## replication lives in the child node "Match" (match_net.gd).
+## Online play: one host and up to four guests. This node owns the connection
+## and the room (lobby): who is in which seat, their names and characters, and
+## the host's match options. The in-match replication lives in the child node
+## "Match" (match_net.gd).
+##
+## Everything above the connection is Godot's MultiplayerAPI (RPCs, peer ids,
+## the host as authority), so the connection itself is interchangeable: a
+## MultiplayerPeer is made here and handed to `multiplayer`, and nothing else
+## in the game knows which one it is.
+##   ip     ENet, to an address and port (LAN, or the Internet with the
+##          host's port open). host() / join().
+##   steam  Steam's own relay, through a Steam lobby: no ports to open
+##          (steam_link.gd, only when GodotSteam is installed).
+##          host_steam() / join_steam().
 ##
 ## Seats are stable for the whole session: the host is seat 1, guests take
 ## 2..5. A guest who drops during a match keeps their seat and can come back
@@ -12,6 +22,8 @@ signal lobby_changed
 signal closed(reason: String)
 signal joined
 const MATCH := preload("res://game/net/match_net.gd")
+const STEAM_LINK := preload("res://game/net/steam_link.gd")
+## The port a room opens on unless the host picks another.
 const PORT := 38430
 const MAX_PLAYERS := 5
 ## A room keeps one slot over its seats for somebody who only watches: the
@@ -29,7 +41,14 @@ const MODE_NAMES := ["Cooperativo contra IA", "Versus: un jugador es The Locust"
 const RANDOM := 0
 var level
 var match_net
-var peer: ENetMultiplayerPeer
+## Steam's side of things (lobbies, invites, its MultiplayerPeer).
+var steam
+var peer: MultiplayerPeer
+## Which connection the room is on: "ip" or "steam".
+var transport := "ip"
+## Where an IP room can be reached, as the host's room shows it.
+var host_port := PORT
+var host_bind := "*"
 var is_host := false
 ## seat -> {name, character, peer, connected}
 var players := {}
@@ -50,6 +69,10 @@ func _init() -> void:
 	match_net.name = "Match"
 	match_net.net = self
 	add_child(match_net)
+	steam = STEAM_LINK.new()
+	steam.name = "Steam"
+	steam.net = self
+	add_child(steam)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -66,14 +89,28 @@ func active() -> bool:
 func is_client() -> bool:
 	return active() and not is_host
 
-func host(player_name: String, character: int, port := PORT) -> Error:
+## A room over IP, on `port` and the address `bind` ("*": every network this
+## machine is on).
+func host(player_name: String, character: int, port := PORT, bind := "*") -> Error:
 	shutdown("")
-	peer = ENetMultiplayerPeer.new()
-	var error := peer.create_server(port, MAX_PLAYERS - 1 + OBSERVERS)
+	if port < 1024 or port > 65535:
+		status = "El puerto tiene que estar entre 1024 y 65535."
+		return ERR_INVALID_PARAMETER
+	var enet := ENetMultiplayerPeer.new()
+	enet.set_bind_ip(bind if not bind.is_empty() else "*")
+	var error := enet.create_server(port, MAX_PLAYERS - 1 + OBSERVERS)
 	if error != OK:
-		peer = null
-		status = "No se pudo abrir la sala en el puerto %d (¿ya hay otra abierta?)." % port
+		status = "No se pudo abrir la sala en %s, puerto %d (¿ya hay otra abierta, o esa dirección no es de este equipo?)." % ["todas las redes" if bind == "*" else bind, port]
 		return error
+	host_port = port
+	host_bind = bind
+	as_host(enet, "ip", player_name, character)
+	return OK
+
+## Whichever connection it is, once it is open this is what makes it a room.
+func as_host(opened: MultiplayerPeer, kind: String, player_name: String, character: int) -> void:
+	peer = opened
+	transport = kind
 	multiplayer.multiplayer_peer = peer
 	is_host = true
 	local_seat = 1
@@ -82,7 +119,6 @@ func host(player_name: String, character: int, port := PORT) -> Error:
 	options = {"mode": Mode.COOP, "locust": RANDOM, "resume": false}
 	status = ""
 	lobby_changed.emit()
-	return OK
 
 ## Watch a room without playing in it: the same connection, and the host is
 ## told that this one is not asking for a seat.
@@ -93,19 +129,59 @@ func join_observer(address: String, port := PORT) -> Error:
 
 func join(address: String, player_name: String, character: int, port := PORT) -> Error:
 	shutdown("")
-	peer = ENetMultiplayerPeer.new()
-	var error := peer.create_client(address.strip_edges(), port)
+	if port < 1 or port > 65535:
+		status = "Puerto no válido."
+		return ERR_INVALID_PARAMETER
+	var enet := ENetMultiplayerPeer.new()
+	var error := enet.create_client(address.strip_edges(), port)
 	if error != OK:
-		peer = null
 		status = "Dirección no válida."
 		return error
+	as_guest(enet, "ip", player_name, character, "%s, puerto %d" % [address.strip_edges(), port])
+	return OK
+
+## Whichever connection it is, once it is dialling this is a guest waiting to
+## be seated (_connected() introduces it to the host).
+func as_guest(dialling: MultiplayerPeer, kind: String, player_name: String, character: int, where: String) -> void:
+	peer = dialling
+	transport = kind
 	multiplayer.multiplayer_peer = peer
 	is_host = false
 	local_seat = 0
 	pending_profile = {"name": clean_name(player_name), "character": character}
-	status = "Conectando con %s…" % address
+	status = "Conectando con %s…" % where
 	lobby_changed.emit()
-	return OK
+
+## A room on Steam: a lobby friends can be invited to, and Steam's relay in
+## place of an open port. The room itself is ready when the lobby is
+## (steam_link.gd calls as_host()); false if Steam is not there to ask.
+func host_steam(player_name: String, character: int) -> bool:
+	shutdown("")
+	if not steam.ready_to_play():
+		status = steam.problem()
+		return false
+	status = "Creando la sala en Steam…"
+	steam.create_lobby(player_name, character)
+	lobby_changed.emit()
+	return true
+
+## Steam could not make or find the room: back to the menu with the reason
+## (shutdown() only reports a connection that was already open).
+func steam_failed(reason: String) -> void:
+	shutdown("")
+	status = reason
+	closed.emit(reason)
+
+## Into a friend's Steam lobby (from the list, or an invitation).
+func join_steam(lobby_id: int, player_name: String, character: int) -> bool:
+	shutdown("")
+	if not steam.ready_to_play():
+		status = steam.problem()
+		return false
+	status = "Entrando en la sala de Steam…"
+	steam.join_lobby(lobby_id, player_name, character)
+	lobby_changed.emit()
+	return true
 
 var pending_profile := {}
 
@@ -117,6 +193,8 @@ func shutdown(reason: String) -> void:
 		peer.close()
 		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	peer = null
+	# A Steam room is also a lobby, which is left (or, for the host, closed).
+	if is_instance_valid(steam): steam.leave_lobby()
 	is_host = false
 	in_match = false
 	players = {}
@@ -127,6 +205,14 @@ func shutdown(reason: String) -> void:
 static func clean_name(words: String) -> String:
 	var result := words.strip_edges().replace("\n", " ").left(18)
 	return result if not result.is_empty() else "Jugador"
+
+## How the others get in, as the host's room shows it: what to type, and
+## what it takes over the Internet.
+func where_to_join() -> Array:
+	if transport == "steam": return ["Por Steam: invita a tus amigos.", "También pueden entrar desde tu perfil: Unirse a la partida."]
+	var addresses: Array = [host_bind] if host_bind != "*" else local_addresses()
+	var shown := " / ".join(addresses) if not addresses.is_empty() else "tu IP"
+	return ["Para unirse: %s · puerto %d" % [shown, host_port], "Por Internet: puerto %d UDP abierto hacia este equipo." % host_port]
 
 ## Private LAN addresses of this machine, to tell friends where to connect.
 static func local_addresses() -> Array:

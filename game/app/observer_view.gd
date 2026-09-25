@@ -604,7 +604,7 @@ func readings() -> String:
 	if level.net.active():
 		var peer = level.net.peer
 		var round_trip := 0.0
-		if peer != null and peer.get_peer(1) != null: round_trip = float(peer.get_peer(1).get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))
+		if peer is ENetMultiplayerPeer and peer.get_peer(1) != null: round_trip = float(peer.get_peer(1).get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))
 		lines.append("  observando · ida y vuelta %0.0f ms · %d jugadores" % [round_trip, level.net.players.size()])
 	else: lines.append("  sin conexión · piso local")
 	lines.append("")

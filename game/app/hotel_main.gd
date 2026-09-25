@@ -207,7 +207,8 @@ func _ready() -> void:
 	session.changed.connect(on_state)
 	session.revived.connect(on_revived)
 	net.closed.connect(on_net_closed)
-	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else "join"))
+	# A seat means a room; until then, the screen that is waiting for one.
+	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join", "steam_wait"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else ("steam_wait" if ui.screen == "steam_wait" else "join")))
 	net.joined.connect(func(): if session.state == session.State.MENU: ui.menu("lobby"))
 	NavigationServer3D.map_set_use_async_iterations(get_world_3d().navigation_map, false)
 	build_environment()
@@ -403,6 +404,12 @@ func take_locust(seed_value: int) -> void:
 	apply_settings()
 	ui.flash("VISION ACUSTICA - PRUEBA LOCAL", 4.0)
 
+## A port typed in the multiplayer menus (kept as text there), or the usual
+## one if what is typed is not a number.
+func port_setting(key: String) -> int:
+	var text := str(settings.values.get(key, "")).strip_edges()
+	return int(text) if text.is_valid_int() else net.PORT
+
 func on_action(action: String) -> void:
 	match action:
 		"new": start_intro(randi_range(0, 2147483647))
@@ -418,13 +425,21 @@ func on_action(action: String) -> void:
 		"credits": ui.menu("credits")
 		"characters": ui.show_characters()
 		"multiplayer": ui.menu("multiplayer")
-		"host":
-			if net.host(settings.values.player_name, settings.values.character) == OK: ui.menu("lobby")
+		# The four ways into a room: open one or join one, over IP / LAN or
+		# over Steam (net_session.gd). The room itself is the same either way.
+		"host": ui.menu("host_ip")
+		"host_open":
+			if net.host(settings.values.player_name, settings.values.character, port_setting("host_port"), str(settings.values.host_bind)) == OK: ui.menu("lobby")
+			else: ui.menu("host_ip", false, net.status)
+		"host_steam":
+			if net.host_steam(settings.values.player_name, settings.values.character): ui.menu("steam_wait")
 			else: ui.menu("multiplayer", false, net.status)
 		"join": ui.menu("join")
+		"join_steam": ui.menu("join_steam")
 		"connect":
-			if net.join(settings.values.join_address, settings.values.player_name, settings.values.character) != OK: ui.menu("join", false, net.status)
+			if net.join(settings.values.join_address, settings.values.player_name, settings.values.character, port_setting("join_port")) != OK: ui.menu("join", false, net.status)
 			else: ui.menu("join")
+		"steam_invite": net.steam.invite_friends()
 		"lobby_start":
 			if not net.start_match(): ui.menu("lobby", false, net.start_problem())
 		"lobby_leave":

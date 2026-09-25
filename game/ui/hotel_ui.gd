@@ -504,20 +504,71 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"multiplayer":
 			set_osd("MENU ▸ MULTIJUGADOR", "", "", "")
 			title(column, "MULTIJUGADOR", 64)
-			label(column, "DE 2 A %d JUGADORES · LAN O IP" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
+			label(column, "DE 2 A %d JUGADORES · IP / LAN O STEAM" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
 			field(column, "", "player_name", "Jugador")
 			spacer(column, 10)
-			action("Crear sala", "host")
-			action("Unirse a una sala", "join")
+			# The same room either way; only the way in differs (net_session.gd).
+			var steam_ready: bool = net != null and net.steam.ready_to_play()
+			action("Crear sala · IP / LAN", "host")
+			action("Crear sala · Steam", "host_steam", not steam_ready)
+			action("Unirse · IP / LAN", "join")
+			action("Unirse · Steam", "join_steam", not steam_ready)
+			if net != null and not steam_ready: paragraph(column, net.steam.problem(), 16, 560)
 			action("Personaje", "characters")
 			spacer(column, 12)
 			action("Volver", "main")
+		"host_ip":
+			set_osd("MULTIJUGADOR ▸ CREAR SALA", "", "", "")
+			title(column, "CREAR SALA", 64)
+			label(column, "IP / LAN", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 18)
+			field(column, "Puerto", "host_port", str(NET.PORT))
+			# Which of this machine's networks to open it on: all of them, or
+			# one (a machine on two networks, or a VPN such as Radmin/ZeroTier).
+			var networks: Array = ["*"] + NET.local_addresses()
+			var names: Array = ["Todas las redes de este equipo"] + NET.local_addresses()
+			var picked: String = str(settings.values.host_bind)
+			if not networks.has(picked): picked = "*"
+			choice(column, "Red", names, networks.find(picked), func(index): settings.set_value("host_bind", networks[index]))
+			spacer(column, 10)
+			action("Abrir la sala", "host_open")
+			paragraph(column, "En tu red local basta con esto. Para jugar por Internet, el puerto tiene que estar abierto en tu router hacia este equipo (UDP); si no puedes abrirlo, usa Steam.", 16, 560)
+			spacer(column, 12)
+			action("Volver", "multiplayer")
+			side.visible = false
+		"join_steam":
+			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "STEAM")
+			title(column, "UNIRSE", 64)
+			label(column, "STEAM · SALAS DE TUS AMIGOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 18)
+			var rooms: Array = net.steam.friend_rooms() if net != null else []
+			for room in rooms:
+				var lobby_id: int = room.lobby
+				entry(column, room.name, func(): if net.join_steam(lobby_id, settings.values.player_name, settings.values.character): menu("steam_wait"), false, 24)
+			if rooms.is_empty(): label(column, "Ningún amigo tiene una sala abierta ahora.", 19).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 10)
+			action("Actualizar", "join_steam")
+			paragraph(column, "También puedes aceptar una invitación desde Steam (Mayús+Tab), o entrar desde el perfil de un amigo con «Unirse a la partida».", 16, 560)
+			spacer(column, 12)
+			action("Volver", "multiplayer")
+			side.visible = false
+		"steam_wait":
+			set_osd("MULTIJUGADOR ▸ STEAM", "", "", "")
+			title(column, "STEAM", 64)
+			spacer(column, 18)
+			label(column, net.status if net != null and not net.status.is_empty() else "Conectando…", 20).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 12)
+			action("Cancelar", "lobby_leave")
+			side.visible = false
 		"join":
 			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "")
 			title(column, "UNIRSE", 64)
 			spacer(column, 18)
+			label(column, "IP / LAN", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 8)
 			field(column, "Dirección del anfitrión", "join_address", "192.168.1.20")
+			field(column, "Puerto", "join_port", str(NET.PORT))
 			spacer(column, 10)
 			if net != null and net.active():
 				label(column, net.status if not net.status.is_empty() else "Conectando…", 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -631,8 +682,10 @@ func lobby_screen() -> void:
 		paragraph(side, "%s%s" % [visual_script.NAMES[clampi(int(entry_data.character), 0, 2)], ("  ·  " + ", ".join(tags)) if not tags.is_empty() else ""], 16, 560)
 	if hosting:
 		spacer(side, 14)
-		var addresses: Array = NET.local_addresses()
-		paragraph(side, "Para unirse: %s · puerto %d" % [" / ".join(addresses) if not addresses.is_empty() else "tu IP", NET.PORT], 17, 560, STYLE.AMBER)
+		var how: Array = net.where_to_join()
+		paragraph(side, how[0], 17, 300, STYLE.AMBER)
+		paragraph(side, how[1], 15, 300)
+		if net.transport == "steam": button(side, "Invitar amigos (Steam)", func(): action_requested.emit("steam_invite"))
 
 func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable) -> void:
 	var row := HBoxContainer.new()
