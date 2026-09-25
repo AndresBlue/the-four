@@ -86,6 +86,7 @@ const RECOVER_TIME := 0.6
 ## Eye height of the creature for line-of-sight checks.
 const EYE_HEIGHT := 2.4
 const GRUNTS := preload("res://game/audio/grunt_segments.gd")
+const CRY_SOUND := "res://assets/audio/sfx/chase/grunts.ogg"
 ## Grunts at least this long are the full, aggressive ones; shorter pieces of
 ## the recording are breaths and clicks, not used as calls.
 const AGGRESSIVE_GRUNT := 1.4
@@ -157,6 +158,17 @@ const AIMED_UNIT := 13.0
 const AIMED_REACH := 24.0
 const AIMED_CUTOFF := 12000.0
 var grunt_rest := 0.0
+## The cry it lets out when it sets off after somebody: heard over the whole
+## floor, like a death, so everybody knows a chase has started -- only not
+## where, past the reach of an ordinary sound. The longest calls of the
+## recording (CRY_LONGEST), pitched down. The machine only: a player hunting
+## has its own shriek, and does not announce every run. Not again for
+## CRY_REST: a chase lost and picked up again at once is the same chase.
+const CRY_LONGEST := 2.0
+const CRY_PITCH := Vector2(0.78, 0.88)
+const CRY_GAIN := 0.0
+const CRY_REST := 25.0
+var cry_rest := 0.0
 ## The last grunt was aimed at this machine's survivor.
 var aimed := false
 ## Seconds left of the bark that announces a strike (it lives inside the same
@@ -343,6 +355,26 @@ func grunt() -> float:
 	aim_voice(route, grunt_left)
 	return grunt_left
 
+## The cry of a chase setting off (see CRY_LONGEST), here and on every other
+## machine. Returns how long it lasts.
+func cry() -> float:
+	if level == null: return 0.0
+	cry_rest = CRY_REST
+	var choices: Array = []
+	for index in GRUNTS.SEGMENTS.size():
+		if GRUNTS.SEGMENTS[index][1] >= CRY_LONGEST: choices.append(index)
+	var segment := int(choices[rng.randi_range(0, choices.size() - 1)])
+	var pitch := rng.randf_range(CRY_PITCH.x, CRY_PITCH.y)
+	calls_made += 1
+	if "match_net" in level and level.match_net != null: level.match_net.creature_call("cry", segment, pitch)
+	play_cry(segment, pitch)
+	return GRUNTS.SEGMENTS[segment][1] / pitch
+
+func play_cry(segment: int, pitch: float) -> void:
+	if segment < 0 or segment >= GRUNTS.SEGMENTS.size(): return
+	var take: Array = GRUNTS.SEGMENTS[segment]
+	level.world_audio.play_everywhere(CRY_SOUND, global_position + Vector3.UP * 2.2, CRY_GAIN, take[0], pitch, take[1])
+
 ## Whether this machine's survivor is the one being called at.
 func aimed_at_local() -> bool:
 	if level == null or control == "player" or level.match_net.local_is_locust() or not level.local_alive(): return false
@@ -412,6 +444,7 @@ func howl_next() -> void:
 ## the next one while a shriek lasts, and fades the shriek out at its end.
 func update_voice(delta: float) -> void:
 	grunt_rest = maxf(0.0, grunt_rest - delta)
+	cry_rest = maxf(0.0, cry_rest - delta)
 	if warn_left > 0.0:
 		warn_left -= delta
 		if warn_left <= 0.0: signal_player.stop()
@@ -517,7 +550,7 @@ func can_hear(point: Vector3, radius: float) -> bool:
 ##  muffle    - 0 direct, towards 1 as the detour grows
 func hear_route(point: Vector3, radius: float) -> Dictionary:
 	var missed := {"audible": false, "apparent": point, "distance": INF, "muffle": 1.0}
-	if level.point_in_refuge(point): return missed
+	if level.point_protected(point): return missed
 	var reach := radius * HEARING_SCALE
 	var straight := global_position.distance_to(point)
 	if straight > reach: return missed
@@ -690,8 +723,11 @@ func set_mode(next: Mode) -> void:
 	if next == Mode.CHASE and previous != Mode.CHASE:
 		# It sets off from a stride and builds up to full speed.
 		speed = maxf(speed, CHASE_START_SPEED)
+		# Setting off, not coming back from a strike: the cry, and the chase
+		# grunts wait for it to finish.
+		if control == "ai" and previous not in [Mode.WINDUP, Mode.RECOVER] and cry_rest <= 0.0: grunt_left = maxf(grunt_left, cry())
 		# Coming out of the alert, the next call waits for the first to finish.
-		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT else 0.0
+		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT or grunt_left > 0.0 else 0.0
 	# Lost them, or found nobody: a search of its own, from where it last knew.
 	# Out of a wardrobe it opened on the way, the same search goes on.
 	if next == Mode.SEARCH and control == "ai": begin_search(last_known, last_heading, previous != Mode.WARDROBE)
@@ -1006,6 +1042,9 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 		return
 	if kind == "howl":
 		howl(segment / 100.0, pitch, false)
+		return
+	if kind == "cry":
+		play_cry(segment, pitch)
 		return
 	if kind != "grunt" or segment < 0 or segment >= GRUNTS.SEGMENTS.size() or not level.world_audio.enabled: return
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())

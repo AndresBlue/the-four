@@ -212,7 +212,13 @@ func run() -> void:
 	check("Y le deja en el ala que abre ese ascensor", not level.player.held and int(landed.get("wing", -1)) == int(arrival.wing))
 	check("La puerta de la etapa cumplida queda abierta", not gate.locked and gate.opened)
 	check("El refugio pasa a ser el de la etapa nueva", level.refuge_room() == int(level.manifest.gates[1].room) and level.refuge_room() != int(level.manifest.gates[0].room))
-	check("Y el anterior deja de proteger", not level.point_in_refuge(FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].room)])))
+	# The creature may walk through the old one now (to its car), but whoever
+	# is in it, or in the lobby of that car, is as safe as before.
+	var old_refuge := FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].room)]) + Vector3(0, 0.1, 0)
+	var old_lobby := FLOOR.position_of(level.manifest.rooms[int(level.manifest.gates[0].beyond)]) + Vector3(0, 0.1, 0)
+	check("El anterior deja de ser el refugio de la etapa", not level.point_in_refuge(old_refuge))
+	check("Pero él y el vestíbulo de su ascensor siguen protegiendo", level.point_protected(old_refuge) and level.point_protected(old_lobby) and level.point_protected(level.hotel.lifts[0] + Vector3(0, 0.1, 0)))
+	check("Y una sala cualquiera no protege", not level.point_protected(den))
 	# The creature is not carried anywhere: it is put on the trail of the car
 	# they took, and it has to walk there and ride it like they did.
 	check("La criatura se queda en el ala de atrás, yendo a por el ascensor", int(level.manifest.rooms[level.locust.patrol_room].wing) == 0 and level.locust.destination.distance_to(level.hotel.lifts[0]) < 1.0)
@@ -222,8 +228,17 @@ func run() -> void:
 	await frames(20)
 	check("Con el coche arriba no puede seguirlos", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 0)
 	check("Y quince segundos son quince segundos", level.lifts.LIFT_RETURN == 15.0 and float(level.lifts.lift_away[0]) > 12.0)
-	# The car comes back down.
+	# The car back down is not enough: CREATURE_HOLD has to have gone by since
+	# they left, and it has to have stood CREATURE_WAIT at the doors.
 	level.lifts.lift_away[0] = 0.02
+	await frames(20)
+	var wing_now := func() -> int: return int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1))
+	check("Con el coche abajo, recién llegada tras ellos, espera", wing_now.call() == 0 and float(level.lifts.creature_hold.get(0, 0.0)) > 10.0 and float(level.lifts.lobby_time.get(0, 0.0)) > 0.3)
+	level.lifts.creature_hold.erase(0)
+	await frames(20)
+	check("Pasados sus veinte segundos, aún le faltan los quince en la puerta", wing_now.call() == 0 and float(level.lifts.lobby_time.get(0, 0.0)) < level.lifts.CREATURE_WAIT)
+	check("Y para ella el coche sigue arriba", not level.lifts.creature_may_ride(0))
+	level.lifts.lobby_time[0] = level.lifts.CREATURE_WAIT - 0.05
 	await frames(20)
 	check("Cuando vuelve el ascensor, lo toma y sale en el ala nueva", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 1 and level.locust.global_position.distance_to(level.hotel.arrivals[0]) < 1.5)
 	check("Y el coche vuelve a irse con él", level.lifts.lift_gone(0))
@@ -308,6 +323,8 @@ func run() -> void:
 	# owns where it stands, so the floor has to carry it over by hand.
 	level.locust.control = "player"
 	level.lifts.lift_away.erase(1)
+	level.lifts.creature_hold.erase(1)
+	level.lifts.lobby_time[1] = level.lifts.CREATURE_WAIT
 	level.locust.global_position = level.hotel.lifts[1] + Vector3(0, 0.04, 0)
 	await frames(20)
 	check("Un cazador humano también cruza en el ascensor", int(FLOOR.room_at(level.manifest.rooms, level.locust.global_position).get("wing", -1)) == 2)
@@ -315,6 +332,8 @@ func run() -> void:
 	# Two wings behind (it spent the whole second stage after a straggler):
 	# its own wing's car is the one that takes it on, not the last stage's.
 	level.lifts.lift_away.erase(0)
+	level.lifts.creature_hold.erase(0)
+	level.lifts.lobby_time[0] = level.lifts.CREATURE_WAIT
 	level.locust.set_mode(level.locust.Mode.EXECUTE)
 	level.locust.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
 	await frames(10)

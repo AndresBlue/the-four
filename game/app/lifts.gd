@@ -67,6 +67,35 @@ const LIFT_RETURN := 15.0
 ## Lift index -> seconds until the car is back on this floor.
 var lift_away := {}
 
+## The head start is the survivors', not the car's. When the creature reaches
+## the lobby of a car they took, the car is up there with its doors shut and it
+## waits: it may ride CREATURE_WAIT after it walked into that lobby, and never
+## sooner than CREATURE_HOLD after they left. Close behind them it waits the
+## full CREATURE_HOLD; walked there from across the wing, it still stands
+## CREATURE_WAIT at the doors. It used to take the car the moment it was back,
+## LIFT_RETURN after them, whatever it had spent getting there. A straggler's
+## car still comes back after LIFT_RETURN.
+const CREATURE_WAIT := 15.0
+const CREATURE_HOLD := 20.0
+## Lift index -> seconds before the creature may take that car (from the
+## survivors' leaving), and seconds it has stood in that car's lobby. Counted
+## on every machine like lift_away: the hunter's reading shows the car as up
+## there until it can take it.
+var creature_hold := {}
+var lobby_time := {}
+
+## The creature can take that car now.
+func creature_may_ride(index: int) -> bool:
+	return not lift_gone(index) and float(creature_hold.get(index, 0.0)) <= 0.0 and float(lobby_time.get(index, 0.0)) >= CREATURE_WAIT
+
+## A point in the lobby of that car: the room behind the refuge's gate, or the
+## car itself.
+func in_lobby(index: int, point: Vector3) -> bool:
+	if index < level.hotel.lifts.size() and point.distance_to(level.hotel.lifts[index]) <= RIDE_REACH + 1.0: return true
+	var gates: Array = level.manifest.get("gates", [])
+	if index >= gates.size(): return false
+	return int(FLOOR.room_at(level.manifest.rooms, point).get("id", -1)) == int(gates[index].get("beyond", -2))
+
 ## True while that car is away and nobody can step into it.
 func lift_gone(index: int) -> bool: return float(lift_away.get(index, 0.0)) > 0.0
 
@@ -79,6 +108,8 @@ func reset() -> void:
 	leaving = -1.0
 	riding.clear()
 	lift_away.clear()
+	creature_hold.clear()
+	lobby_time.clear()
 	cross_clock = 0.0
 
 ## Counted on every machine: a guest has to know the car is away as well, or
@@ -87,6 +118,15 @@ func count_away(delta: float) -> void:
 	for index in lift_away.keys():
 		lift_away[index] = float(lift_away[index]) - delta
 		if lift_away[index] <= 0.0: lift_away.erase(index)
+	for index in creature_hold.keys():
+		creature_hold[index] = float(creature_hold[index]) - delta
+		if creature_hold[index] <= 0.0: creature_hold.erase(index)
+	# Its time at the doors of the car it has to take, while it stands in
+	# that lobby; stepping out a moment (after somebody left behind) does not
+	# start it again.
+	if not is_instance_valid(level.locust) or level.manifest.is_empty(): return
+	var car := creature_car(level.session.stage)
+	if car >= 0 and in_lobby(car, level.locust.global_position): lobby_time[car] = float(lobby_time.get(car, 0.0)) + delta
 
 ## The car that lets out at this point, or -1.
 func car_arriving_at(point: Vector3) -> int:
@@ -143,7 +183,7 @@ func creature_crossing(delta: float) -> void:
 	var busy: Array = [level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.WINDUP, level.locust.Mode.RECOVER]
 	if level.locust.control == "ai": busy += [level.locust.Mode.CHASE, level.locust.Mode.ALERT]
 	if level.locust.mode in busy: return
-	if level.locust.global_position.distance_to(level.hotel.lifts[index]) <= RIDE_REACH + 0.6 and not lift_gone(index):
+	if level.locust.global_position.distance_to(level.hotel.lifts[index]) <= RIDE_REACH + 0.6 and creature_may_ride(index):
 		lift_away[index] = LIFT_RETURN
 		level.match_net.locust_ride(level.hotel.arrivals[index] + Vector3(0, 0.04, 0))
 		return
@@ -152,13 +192,21 @@ func creature_crossing(delta: float) -> void:
 	cross_clock = CROSS_AIM
 	aim_at_lift(index)
 
+## The bell of the car the creature rode, where it lets it out, heard over the
+## whole floor: everybody knows it has come down, and only near it where. The
+## recording is not there yet; until this file exists nothing plays.
+const LIFT_DING := "res://assets/audio/events/lift_ding.ogg"
+const DING_GAIN := 0.0
+
 ## The creature steps out of the car in the wing ahead. Applied on every
 ## machine, including the hunter's, which is the one that owns where it
 ## stands the rest of the time.
 func apply_locust_ride(point: Vector3) -> void:
 	if not is_instance_valid(level.locust): return
 	var car := car_arriving_at(point)
-	if car >= 0: lift_away[car] = LIFT_RETURN
+	if car >= 0:
+		lift_away[car] = LIFT_RETURN
+		lobby_time.erase(car)
 	level.locust.global_position = point
 	level.locust.velocity = Vector3.ZERO
 	level.locust.net_states.clear()
@@ -177,6 +225,7 @@ func apply_locust_ride(point: Vector3) -> void:
 	# The doors of the car: whoever is near enough in the new wing hears the
 	# lift arrive, which is all the warning there is.
 	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), -4.0)
+	if level.world_audio.enabled and ResourceLoader.exists(LIFT_DING): level.world_audio.play_everywhere(LIFT_DING, point + Vector3(0, 2.2, 0), DING_GAIN)
 
 ## Whoever steps into a lift takes it. The stage that lift belongs to closes
 ## behind them -- what walking through the door used to do -- and they come
@@ -277,7 +326,9 @@ func car_doors(point: Vector3, gain: float) -> void:
 ## the one that opens there.
 func apply_ride(seat: int, point: Vector3) -> void:
 	var car := car_arriving_at(point)
-	if car >= 0: lift_away[car] = LIFT_RETURN
+	if car >= 0:
+		lift_away[car] = LIFT_RETURN
+		creature_hold[car] = CREATURE_HOLD
 	if car >= 0 and car < level.hotel.lifts.size(): car_doors(level.hotel.lifts[car], -6.0)
 	car_doors(level.hotel.arrivals[car] if car >= 0 else point, -6.0)
 	if seat == level.player.slot:

@@ -1548,17 +1548,17 @@ func survivors() -> Array:
 func local_alive() -> bool:
 	return not match_net.in_match() or match_net.local_is_locust() or session.participants.get(player.slot, session.Life.DEAD) != session.Life.DEAD
 
-## Alive and outside the refuge: fair game.
+## Alive and outside every refuge and lift lobby: fair game.
 ## Riding a lift is out of reach as well: the doors are shut.
 func survivor_active(body: Node3D) -> bool:
-	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_in_refuge(body.global_position) and not lifts.riding.has(int(body.slot)) and not untouchable.has(int(body.slot))
+	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_protected(body.global_position) and not lifts.riding.has(int(body.slot)) and not untouchable.has(int(body.slot))
 
 ## The creature reached this survivor: the execution starts and the death is
 ## registered when it ends (host, or offline).
 func capture_survivor(body: Node3D) -> void:
 	if body == null or net.is_client() or not execution.is_empty() or not is_instance_valid(locust): return
 	if session.participants.get(body.slot, session.Life.DEAD) != session.Life.EXPLORING: return
-	if lifts.riding.has(int(body.slot)): return
+	if lifts.riding.has(int(body.slot)) or point_protected(body.global_position): return
 	if spare.is_valid() and bool(spare.call(body)): return
 	if match_net.in_match(): match_net.free_victim_hide(body.slot)
 	var point: Vector3 = locust.global_position
@@ -1738,9 +1738,6 @@ func open_wardrobe(hide: Node3D) -> void:
 	if net.is_client(): return
 	match_net.begin_wardrobe_job(hide)
 
-## The refuge of the stage in hand: the room holding the door on. Each one
-## protects only while its stage lasts; once crossed it is a room like any
-## other.
 ## Rooms the creature is never sent to: every refuge, and the lift lobby each
 ## one leads to.
 func off_limits_rooms() -> Array:
@@ -1749,6 +1746,30 @@ func off_limits_rooms() -> Array:
 	for gate in manifest.get("gates", []): rooms.append(int(gate.get("beyond", -1)))
 	return rooms
 
+## Where nobody can be touched, for the whole floor: those same rooms -- every
+## refuge, the exit and the lobby of every lift -- wall to wall. Nothing in
+## them is seen, heard or struck. The protection used to be the refuge of the
+## stage in hand only, and 0.55 m short of its walls: whoever waited in a
+## crossed refuge or a lobby for the car to come back was fair game, and
+## somebody pressed into a corner of the exit was heard, seen and killed from
+## outside. The footprint of a room runs to the middle of its walls, so a body
+## on the other side of one is never inside it.
+func point_protected(point: Vector3) -> bool:
+	if manifest.is_empty(): return false
+	# Asked for every survivor several times a frame: the rooms are kept for
+	# as long as the floor is the same one.
+	if not is_same(protected_for, manifest):
+		protected_for = manifest
+		protected_rooms = {}
+		for id in off_limits_rooms(): protected_rooms[int(id)] = true
+	var room: Dictionary = FLOOR.room_at(manifest.rooms, point)
+	return not room.is_empty() and protected_rooms.has(int(room.id))
+var protected_for = null
+var protected_rooms := {}
+
+## The refuge of the stage in hand: the room holding the door on. The creature
+## will not walk into it (it walks through a crossed one to reach its lift),
+## and it is where the stage is won; who is safe is point_protected().
 func refuge_room() -> int:
 	var refuges: Array = manifest.get("refuges", [])
 	if refuges.is_empty(): return int(manifest.exit)

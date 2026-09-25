@@ -209,7 +209,9 @@ var frames: MultiMeshInstance3D
 var frame_material: ShaderMaterial
 var marks: MultiMeshInstance3D
 ## The motes: a handful of red grains over everybody whose mind has gone out,
-## written again on every click so they never fade while it lasts.
+## laid again on every click so they never fade while it lasts. Their
+## material is never told the time (push_uniforms), so a grain never ages:
+## only the cloud's visible_instance_count, set by the last laying, ends it.
 const MOTE_GRAINS := 10
 const MOTE_BODIES := 5
 const MOTE_SPREAD := 0.38
@@ -416,6 +418,7 @@ func build_clouds() -> void:
 	mark_material = marks.material_override as ShaderMaterial
 	mote_material = motes.material_override as ShaderMaterial
 	motes.multimesh.instance_count = MOTE_GRAINS * MOTE_BODIES
+	motes.multimesh.visible_instance_count = 0
 	mote_material.set_shader_parameter("tone_cold", Color(1.5, 0.05, 0.03))
 	mote_material.set_shader_parameter("tone_hot", Color(1.6, 0.22, 0.12))
 	mote_material.set_shader_parameter("residue", 1.0)
@@ -1005,10 +1008,17 @@ func bloom_hums() -> void:
 ## with no sight check and no distance to it. This is the one thing the
 ## creature is given for free, and it is given because somebody stopped being
 ## able to think -- which is what standing in the dark long enough does.
+## Laid whole on every click, like the guides: when a mark goes out (killed,
+## back in the light, in the refuge or riding a car) its grains go with it.
+## Left in the ring, the last ones hung where it ended for the rest of the
+## match, on every planta after it too, since nothing ever aged them.
 func bloom_motes() -> void:
 	if motes.multimesh.instance_count == 0 or not is_instance_valid(level): return
-	for point in level.sanity.burnt_survivors():
+	var marked: Array = level.sanity.burnt_survivors().slice(0, MOTE_BODIES)
+	mote_at = 0
+	for point in marked:
 		scatter(motes, point + Vector3(0, 1.15, 0), MOTE_SPREAD, MOTE_GRAINS, 1.0, 1.0, clock)
+	motes.multimesh.visible_instance_count = marked.size() * MOTE_GRAINS
 
 ## The guides of this click, laid whole: every lit set of the stage first (a
 ## handful of grains each), then the way to the lift and the way to the set it

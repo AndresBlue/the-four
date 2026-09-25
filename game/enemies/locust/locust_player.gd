@@ -319,10 +319,10 @@ func lift_route() -> PackedVector3Array:
 	return FLOOR.navigation_path(creature.get_world_3d().navigation_map, creature.global_position, level.hotel.lifts[car])
 
 ## The car it has to take is up there, and the route's end beats until it is
-## back down.
+## back down for it (lifts.creature_may_ride: it waits at the doors as well).
 func lift_away_now() -> bool:
 	var car: int = level.lifts.creature_car(level.session.stage)
-	return car >= 0 and level.lifts.lift_gone(car)
+	return car >= 0 and not level.lifts.creature_may_ride(car)
 
 ## Q. Nothing lit on its floor: a dull note, and nothing spent.
 func trace() -> void:

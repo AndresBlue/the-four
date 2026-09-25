@@ -366,12 +366,22 @@ pueda jugar entero sin tocar el teclado.
   acreditados, poco a poco.
 - [ ] **Accesibilidad, mezcla y rendimiento sostenido** en la escena más
   exigente.
+- [ ] **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del
+  25 de septiembre): radios, despertadores y parecidos repartidos por el
+  piso, que un superviviente pone en marcha y suenan fuerte y seguido; la
+  criatura va a por ellos y tiene que romperlos para que callen. Por decidir:
+  cuántos por planta, si se gastan, cuánto la retienen y cómo lo usa el
+  director (que hoy tira sus propias distracciones).
 
 ## 4 · Assets que faltan (tuyos)
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía, y es el silencio más audible del piso: cada cierre de
   sector pasa por él.
+- [ ] **La campanilla del ascensor que trae a la criatura**
+  (`assets/audio/events/lift_ding.ogg`): el hueco está hecho
+  (`lifts.LIFT_DING`, en todo el piso donde sale) y suena en cuanto el
+  archivo exista; hasta entonces, silencio.
 - [ ] **Un detective masculino con esqueleto.** El de ahora es un OBJ sin
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.

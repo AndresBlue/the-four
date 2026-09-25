@@ -294,6 +294,19 @@ func run() -> void:
 	enemy.position = player.position + Vector3(0, 0, 1)
 	face(enemy, player.position)
 	check("Refugio impide percepción y captura", not enemy.sees_player() and not enemy.can_attack() and not level.session.capture(1))
+	# Pressed into a corner of it, where the refuge used to end 0.55 m short
+	# of the wall: still out of reach, not seen, not heard, not taken -- even
+	# with the session not counting it in (it did not, there).
+	var span := FLOOR.size_of(exit_room)
+	var corner: Vector3 = FLOOR.position_of(exit_room) + Vector3(span.x * 0.5 - 0.4, 0.04, span.y * 0.5 - 0.4)
+	player.position = corner
+	level.session.set_refuge(1, false)
+	enemy.position = corner - Vector3(1.0, 0, 1.0)
+	face(enemy, player.position)
+	check("Pegado a la pared del refugio sigue protegido", level.point_protected(corner) and not level.survivor_active(player))
+	check("Y la criatura no lo ve, no lo oye ni lo atrapa", not enemy.sees_player() and not enemy.can_attack() and not enemy.hear_route(corner, 12.0).audible)
+	level.capture_survivor(player)
+	check("Ni una ejecución empieza ahí", level.execution.is_empty())
 	player.position = Vector3(0, 0.04, 0)
 	level.session.set_refuge(1, false)
 	enemy.position = Vector3(0, 0.04, 0.9)

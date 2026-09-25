@@ -230,9 +230,12 @@ func hide_cue(entering: bool, point: Vector3) -> void:
 ## in, through the echo of the building, quieter the further off it is, but
 ## never under EVERYWHERE_FLOOR below its own level. Nobody on the floor misses
 ## that it happened, only how far away.
+## pitch plays it lower or higher (and slower or faster); length stops it that
+## many seconds of recording in, for one call out of a longer take (0 plays it
+## to the end).
 const EVERYWHERE_FLOOR := -24.0
 const EVERYWHERE_UNIT := 8.0
-func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0) -> void:
+func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0, pitch := 1.0, length := 0.0) -> void:
 	if start < 0.0: start = TIMING.onset(path)
 	last_event = {"path": path, "position": point, "everywhere": true}
 	if not enabled: return
@@ -258,7 +261,9 @@ func play_everywhere(path: String, point: Vector3, gain: float, start := -1.0) -
 	# Not in `voices`, which are recycled, but gone with them on a reset: a
 	# death heard as the floor ended used to finish over the next one.
 	voice.add_to_group("everywhere_cues")
+	voice.pitch_scale = pitch
 	voice.play(start)
+	if length > 0.0: get_tree().create_timer(length / pitch).timeout.connect(func(): if is_instance_valid(voice): voice.queue_free())
 
 ## A long sound on a player of its own (see long_cues). follow: `point` is an
 ## offset from the listener instead of a place, for what is heard from above

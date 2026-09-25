@@ -62,7 +62,7 @@ class Ears extends Node:
 		return FLOOR.navigation_path(creature.get_world_3d().navigation_map, creature.global_position, level.hotel.lifts[car])
 	func lift_away_now() -> bool:
 		var car: int = level.lifts.creature_car(level.session.stage)
-		return car >= 0 and level.lifts.lift_gone(car)
+		return car >= 0 and not level.lifts.creature_may_ride(car)
 	func trace_route() -> PackedVector3Array:
 		return PackedVector3Array()
 ## How fast it flies, and what the wheel can take it to. A hotel is a hundred
@@ -586,6 +586,10 @@ func report() -> String:
 		var away: float = float(level.lifts.lift_away.get(index, 0.0))
 		var gate = level.hotel.gates[index] if level.hotel.gates.size() > index else null
 		lines.append("  %d · %s · puerta %s%s" % [index, ("arriba %0.1f s" % away) if away > 0.0 else "abajo", "con llave" if is_instance_valid(gate) and gate.locked else "abierta", " · llamado" if level.lifts.called.has(index) else ""])
+		# The creature's own wait for it: after the survivors, and at its doors.
+		var hold: float = float(level.lifts.creature_hold.get(index, 0.0))
+		var waited: float = float(level.lifts.lobby_time.get(index, 0.0))
+		if hold > 0.0 or waited > 0.0: lines.append("    criatura: %s · en el vestíbulo %0.1f / %0.0f s" % [("no antes de %0.1f s" % hold) if hold > 0.0 else "ya puede", waited, level.lifts.CREATURE_WAIT])
 	if level.lifts.leaving >= 0.0: lines.append("  último coche saliendo · %0.1f s" % level.lifts.leaving)
 	if not level.execution.is_empty(): lines.append("\nEJECUCIÓN en curso · asiento %d · %0.1f s" % [int(level.execution.seat), float(level.execution.time)])
 	return "\n".join(lines)

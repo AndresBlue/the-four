@@ -349,6 +349,30 @@ func run() -> void:
 	echo.shriek_hold = 0.0
 	level.match_net.shriek_left = 0.0
 
+	# --- The motes ----------------------------------------------------------------
+	# Red over a burnt-out mind only while it is out: killed, what it left must
+	# not hang there for the rest of the match. The motes' material never ages
+	# a grain, so the cloud's visible count is what ends them.
+	var lost = REMOTE.new()
+	lost.setup(level, 3, "Quemado", 0)
+	level.add_child(lost)
+	lost.place(creature.global_position + Vector3(2.5, 0.0, 0.0), 0.0)
+	level.match_net.bodies[3] = lost
+	level.session.participants[3] = level.session.Life.EXPLORING
+	level.sanity.minds[3] = {"sanity": 0.0, "rest": 0.0, "paid": 0.0}
+	lost.set_burnt(true)
+	await click_passes(echo)
+	await click_passes(echo)
+	check("Una mente quemada lleva sus motas encima", echo.motes.multimesh.visible_instance_count == echo.MOTE_GRAINS)
+	level.session.participants[3] = level.session.Life.DEAD
+	await click_passes(echo)
+	check("Muerta, sus motas se van con ella", echo.motes.multimesh.visible_instance_count == 0)
+	level.match_net.bodies.erase(3)
+	level.session.participants.erase(3)
+	level.sanity.minds.erase(3)
+	lost.queue_free()
+	await physics_frame
+
 	# --- Strong reflectors ---------------------------------------------------------
 	# A door in plain view answers on its own: its frame fills with grains.
 	var door = null
