@@ -85,7 +85,9 @@ if ($Mode -eq 'export') {
     $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0) { throw "La exportación falló (código $($process.ExitCode))." }
-    Get-Item (Join-Path $projectPath 'exports/windows/TheFour.exe') | Select-Object FullName, LastWriteTime, Length
+    # The game is a folder: the engine, its data beside it, and Steam's two
+    # libraries. They go together, always.
+    Get-ChildItem (Join-Path $projectPath 'exports/windows') -File | Where-Object { $_.Extension -in '.exe', '.pck', '.dll' } | Select-Object Name, LastWriteTime, Length
 } else {
     & $GodotPath @arguments
 }
