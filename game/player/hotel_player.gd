@@ -112,6 +112,10 @@ func _ready() -> void:
 	body_shape = $BodyShape
 	camera = $Camera
 	torch = $Camera/Flashlight
+	# Out of the bounce light (bounce_light.gd): each volume took the beam in
+	# within its own walls only, so its glow stopped dead at a cell's edge, a
+	# corridor wall cut in two and the ceiling twice as bright on one side.
+	torch.light_bake_mode = Light3D.BAKE_DISABLED
 	if plain_beam(): shape_plain_beam(torch)
 	elif torch.light_projector == null: torch.light_projector = beam_pattern()
 	torch_energy = torch.light_energy

@@ -180,7 +180,8 @@ func run() -> void:
 	check("Menú principal y cursor libre", scene.ui.buttons.has("new") and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)
 	check("El menú principal lleva Multijugador y no Personaje", scene.ui.buttons.has("multiplayer") and not scene.ui.buttons.has("characters"))
 	scene.on_action("multiplayer")
-	check("Personaje está dentro de Multijugador", scene.ui.screen == "multiplayer" and scene.ui.buttons.has("characters"))
+	# The connection first (Steam or IP / LAN); the character is chosen in the room.
+	check("Multijugador pide primero la conexión", scene.ui.screen == "multiplayer" and scene.ui.buttons.has("mp_steam") and scene.ui.buttons.has("mp_ip") and not scene.ui.buttons.has("characters"))
 	scene.on_action("main")
 	await scene.start_floor(81)
 	await physics_frame

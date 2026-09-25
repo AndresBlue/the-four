@@ -1302,8 +1302,12 @@ func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
 	lamp.light_projector = LIGHTING.profile("sconce")
 	# Out of the bounce light: a wall lamp sits 25 cm from the wall, and the
 	# next room's volume (bounce_light.gd) took its light in through a half
-	# wall thinner than one of its voxels, lighting the far face yellow.
-	lamp.light_bake_mode = Light3D.BAKE_DYNAMIC
+	# wall thinner than one of its voxels, lighting the far face yellow. And
+	# only the nearest twelve are lit: in the bounce, one going out took its
+	# glow from its own volume alone, and the corridor came out lighter on
+	# one side of a cell's edge than on the other. BAKE_DYNAMIC (Godot's
+	# default) is what puts a light *in* a VoxelGI; disabled keeps it out.
+	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.distance_fade_enabled = true
 	set_fade(lamp, SCONCE_REACH - 8.0, 6.0)
 	lamp.visible = false
@@ -1323,7 +1327,7 @@ func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach:
 	lamp.light_size = PRACTICAL_SIZE * preset.penumbra
 	# Floor and desk lamps stand near walls: out of the bounce light, like the
 	# wall lamps (sconce_light()).
-	lamp.light_bake_mode = Light3D.BAKE_DYNAMIC
+	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.light_specular = 0.25
 	lamp.shadow_enabled = true
 	lamp.shadow_bias = 0.04
@@ -1353,18 +1357,23 @@ var eye_planta := 0
 ## Bakes a planta's lit rooms' bounce light on worker threads
 ## (bounce_light.gd), letting the other plantas' volumes go. A room alone, or
 ## a hall's cells together (one volume over the hall, if it is a rectangle; an
-## L-shaped hall has none: see bounce_light.gd). update_visibility() asks for
-## the planta the eye goes to.
+## L-shaped hall has none: see bounce_light.gd), or a straight stretch of
+## corridor (corridor_runs()). update_visibility() asks for the planta the eye
+## goes to.
 func start_bounce(planta: int) -> void:
 	if planta == bounce_planta or bounce.baking(): return
 	bounce_planta = planta
 	bounce.release(planta)
 	var halls := {}
 	var wanted := []
+	var runs := corridor_runs(planta)
 	for i in room_nodes.size():
 		var room: Dictionary = manifest.rooms[i]
 		if dark_room(room) or FLOOR.is_void(room) or room_planta[i] != planta: continue
 		var hall := int(room.get("hall", -1))
+		# Keyed by its first cell's index, which no hall uses (a hall is
+		# keyed by one of its own cells, and a corridor is never in one).
+		if hall < 0: hall = int(runs.get(i, -1))
 		if hall >= 0:
 			if not halls.has(hall): halls[hall] = []
 			halls[hall].append(i)
@@ -1389,6 +1398,50 @@ func start_bounce(planta: int) -> void:
 		var root: Node3D = room_nodes[cells[0]]
 		wanted.append({"room": cells[0], "node": root, "centre": middle - root.position, "size": size, "height": height, "parts": cells.map(func(i): return [room_nodes[i], room_nodes[i].position - middle])})
 	bounce.start(wanted, unit_mesh)
+
+## The planta's straight stretches of lit corridor, each baked as one volume
+## like a hall: room index -> the index of its stretch's first cell. With a
+## volume per cell, each was baked alone and lit by the lamps round it, and
+## Godot does not blend one volume into the next (a surface takes the ones it
+## lies in, normalised): walls, ceiling and floor were cut straight at every
+## cell's edge, one side up to four times brighter (seed 81, rooms 18 and 19).
+## A cell where two stretches cross goes to the longer; a stretch of one cell
+## keeps its own volume. Where two stretches meet the cut remains, at a turn.
+func corridor_runs(planta: int) -> Dictionary:
+	var lit := {}
+	for i in room_nodes.size():
+		var room: Dictionary = manifest.rooms[i]
+		if room_planta[i] == planta and bool(room.get("corridor", false)) and int(room.get("hall", -1)) < 0 and not dark_room(room) and not FLOOR.is_void(room): lit[i] = true
+	var runs := []
+	for way in [Vector2i(1, 0), Vector2i(0, 1)]:
+		for i in lit:
+			if open_between(i, FLOOR.beside(manifest.rooms[i], -way), lit): continue
+			var run := [i]
+			while open_between(run[-1], FLOOR.beside(manifest.rooms[run[-1]], way), lit): run.append(FLOOR.beside(manifest.rooms[run[-1]], way))
+			if run.size() > 1: runs.append(run)
+	runs.sort_custom(func(a: Array, b: Array) -> bool: return run_length(a) > run_length(b))
+	var first := {}
+	for run in runs:
+		var piece := []
+		for i in run + [-1]:
+			if i >= 0 and not first.has(i):
+				piece.append(i)
+				continue
+			if piece.size() > 1:
+				for cell in piece: first[cell] = piece[0]
+			piece = []
+	return first
+
+## Two cells of corridor open on to each other, both lit.
+func open_between(a: int, b: int, lit: Dictionary) -> bool:
+	return b >= 0 and lit.has(b) and open_pairs.has(Vector2i(mini(a, b), maxi(a, b)))
+
+func run_length(run: Array) -> float:
+	var metres := 0.0
+	for i in run:
+		var span := FLOOR.size_of(manifest.rooms[i])
+		metres += maxf(span.x, span.y)
+	return metres
 
 ## The floor goes mid-bake: the bake is waited for, which is safe (its workers
 ## never wait for the main thread), and error printing comes back on.
@@ -1703,7 +1756,9 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	near_sconces.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool: return sconce_order(a, player_position) < sconce_order(b, player_position))
 	for k in near_sconces.size():
 		near_sconces[k].visible = not dark and preset.sconce_lights and shadows and not echo_view and k < SCONCES_LIT and near_sconces[k].global_position.distance_to(player_position) < SCONCE_REACH
-	bounce.show_near(player_position, preset.bounce and not echo_view, here)
+	# Not with the power cut (blackout() hides them; this used to bring them
+	# back a quarter of a second later, lit by nothing but the torch).
+	bounce.show_near(player_position, preset.bounce and not echo_view and not dark, here)
 	for lamp in practicals:
 		lamp.visible = not dark and not echo_view and (show_all or lamp.global_position.distance_to(player_position) < preset.furniture_lamps)
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows

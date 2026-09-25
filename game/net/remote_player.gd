@@ -77,6 +77,8 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	# face of a wall brightened by two thirds with fog, not at all without).
 	# The haze of your own torch stays; only you see it, on your side.
 	torch.light_volumetric_fog_energy = 0.0
+	# Out of the bounce light, like your own (hotel_player._ready()).
+	torch.light_bake_mode = Light3D.BAKE_DISABLED
 	torch.shadow_enabled = true
 	torch.shadow_bias = 0.04
 	torch.light_size = 0.03

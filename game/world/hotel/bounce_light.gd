@@ -15,9 +15,11 @@ extends RefCounted
 ## own edge, the next cell's bounce came out different, and where one volume
 ## gave way to the next the ceiling showed a straight line (Godot gives a
 ## surface at most two volumes and normalises them, so the change is abrupt).
-## Only rectangular halls: an L-shaped hall's box would take in the room in
-## its corner, so those have no bounce. A volume more than BIG_SIDE metres
-## long bakes at subdivision 128, not to lose detail.
+## A straight stretch of corridor is one volume too, for the same reason
+## (hotel_geometry.corridor_runs()). Only rectangular halls: an L-shaped
+## hall's box would take in the room in its corner, so those have no bounce.
+## A volume more than BIG_SIDE metres long bakes at subdivision 128, not to
+## lose detail.
 ##
 ## A room takes some 55 ms to bake, about 5 s for a floor of 121 rooms, so the
 ## rooms are baked on worker threads, detached from the scene tree (a node in
@@ -163,12 +165,21 @@ func show_near(position: Vector3, on: bool, planta := -1) -> void:
 		if nearest.has(volume) or not volume.visible: continue
 		volume.data = null
 		volume.visible = false
-	nearest.sort_custom(func(a: VoxelGI, b: VoxelGI) -> bool: return a.global_position.distance_squared_to(position) < b.global_position.distance_squared_to(position))
+	nearest.sort_custom(func(a: VoxelGI, b: VoxelGI) -> bool: return reach(a, position) < reach(b, position))
 	for k in nearest.size():
 		var shown: bool = on and k < SHOWN
 		if nearest[k].visible == shown: continue
 		nearest[k].data = nearest[k].get_meta("baked") if shown else null
 		nearest[k].visible = shown
+
+## How far a point is from a volume's box, 0 inside it (the centre breaks
+## ties). By the centre alone, a corridor volume 40 m long that the eye stood
+## in came after the rooms round it and was left out of the eight.
+static func reach(volume: VoxelGI, point: Vector3) -> float:
+	var local := point - volume.global_position
+	var half := volume.size * 0.5
+	var outside := Vector3(maxf(absf(local.x) - half.x, 0.0), maxf(absf(local.y) - half.y, 0.0), maxf(absf(local.z) - half.z, 0.0))
+	return outside.length() + local.length() * 0.001
 
 ## A volume's boxes, one surface per material, moved into the volume's frame:
 ## by their room's offset from the centre, then by offset.
