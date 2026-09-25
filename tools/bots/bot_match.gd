@@ -127,6 +127,10 @@ func _physics_process(delta: float) -> void:
 	if state == level.session.State.FAILED:
 		outcome = "perdida"
 		return
+	# Somebody playing the creature against them went back to the menu.
+	if state == level.session.State.MENU:
+		outcome = "abandonada"
+		return
 	if state != level.session.State.PLAYING and state != level.session.State.TRANSITION: return
 	clock += delta
 	if int(level.session.stage) != stage_seen:

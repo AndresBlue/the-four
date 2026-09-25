@@ -7,9 +7,14 @@ extends Node
 ## can be watched again with ./tools/godot.ps1 bots-replay; resumen.txt keeps
 ## one line per floor and one per incident, with the command that opens it.
 ## R in the observer ends the floor on screen and goes on to the next.
+##   ./tools/godot.ps1 hunt [-Bots 5] [-Seed 81]
+## The same floors with this machine's player as The Locust, hunting the bots
+## (options.hunt): no observer, the hunter's own seat, and its floors kept in
+## evidence/bots/caza-<hora>/. Leaving for the menu ends it.
 const MATCH := preload("res://tools/bots/bot_match.gd")
 ## Real seconds between one floor and the next, to read how it went.
 const BETWEEN := 4.0
+const BETWEEN_HUNT := 10.0
 var level
 var options := {}
 var folder := ""
@@ -24,7 +29,8 @@ func setup(owner_level, given: Dictionary) -> void:
 	name = "BotWatch"
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed_value = int(options.get("seed", 81))
-	folder = ProjectSettings.globalize_path("res://evidence/bots/vivo-%s" % Time.get_datetime_string_from_system().replace(":", "").replace("T", "-"))
+	var prefix := "caza" if hunting() else "vivo"
+	folder = ProjectSettings.globalize_path("res://evidence/bots/%s-%s" % [prefix, Time.get_datetime_string_from_system().replace(":", "").replace("T", "-")])
 	DirAccess.make_dir_recursive_absolute(folder)
 
 func run() -> void:
@@ -39,22 +45,32 @@ func run() -> void:
 		add_child(current)
 		var began: bool = await current.begin()
 		if began:
-			# Every floor put up gives the player's camera back: the observer's again.
-			level.enter_observer_mode()
+			# Every floor put up gives the player's camera back: the observer's
+			# again, or the creature's to the one hunting.
+			if hunting(): level.hand_creature_to_player()
+			else: level.enter_observer_mode()
 			say("PISO %d · semilla %d · %d bots%s" % [played, seed_value, current.bodies.size(), " · clemencia" if bool(options.get("mercy", false)) else ""])
+			if hunting(): level.ui.flash("CAZA · %d BOTS · SEMILLA %d" % [current.bodies.size(), seed_value], 4.0)
 			current.report_to = self
 			while current.outcome.is_empty(): await get_tree().physics_frame
 		var summary: Dictionary = current.finish()
 		write(summary, String(run_options.out))
+		var outcome: String = String(summary.result)
 		current.teardown()
 		current.queue_free()
 		current = null
 		seed_value += 1
+		if outcome == "abandonada":
+			if hunting(): level.end_bot_hunt()
+			return
 		# A moment to read it, whatever the time scale the observer set.
-		var left := BETWEEN
+		var left := BETWEEN_HUNT if hunting() else BETWEEN
 		while left > 0.0:
 			await get_tree().process_frame
 			left -= get_process_delta_time() / maxf(Engine.time_scale, 0.01)
+
+func hunting() -> bool:
+	return bool(options.get("hunt", false))
 
 ## The floor on screen ends here (R in the observer): on to the next.
 func skip() -> void:

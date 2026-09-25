@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','bots-run','bots-replay','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -26,7 +26,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','observer','bots','bots-replay','export')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','observer','bots','hunt','bots-replay','export')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -53,6 +53,13 @@ switch ($Mode) {
     'bots' {
         $arguments += @('--', '--bots-watch', ('--bots=' + $Bots), ('--seed=' + $Seed), '--test-profile', '--profile-tag=vivo')
         if ($Mercy) { $arguments += '--mercy' }
+    }
+    # You are The Locust, hunting test bots floor after floor (five unless
+    # -Bots says otherwise), with your own settings: a bot floor keeps no
+    # checkpoint and no best time. Back to the menu ends it.
+    'hunt' {
+        $hunters = if ($PSBoundParameters.ContainsKey('Bots')) { $Bots } else { 5 }
+        $arguments += @('--', '--bots-hunt', ('--bots=' + $hunters), ('--seed=' + $Seed))
     }
     # A recorded bot floor, watched again in the observer (tools/bots/bot_replay.gd).
     'bots-replay' {

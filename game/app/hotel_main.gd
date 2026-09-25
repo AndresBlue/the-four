@@ -238,12 +238,13 @@ func _ready() -> void:
 		if argument.begins_with("--bots-replay="): replay_folder = argument.trim_prefix("--bots-replay=")
 		if argument.begins_with("--bots-at="): replay_at = float(argument.trim_prefix("--bots-at="))
 	var watching_bots: bool = OS.get_cmdline_user_args().has("--bots-watch")
-	if not automation and not OS.get_cmdline_user_args().has("--observer") and replay_folder.is_empty() and not watching_bots: ui.play_intro()
+	var hunting_bots: bool = OS.get_cmdline_user_args().has("--bots-hunt")
+	if not automation and not OS.get_cmdline_user_args().has("--observer") and replay_folder.is_empty() and not watching_bots and not hunting_bots: ui.play_intro()
 	if not replay_folder.is_empty():
 		await begin_replay(replay_folder, replay_at)
 		return
-	if watching_bots:
-		begin_bot_watch()
+	if watching_bots or hunting_bots:
+		begin_bot_watch(hunting_bots)
 		return
 	var seed_wanted := -1
 	# --steam-host: straight into a Steam room from the menus, for testing
@@ -275,17 +276,22 @@ func begin_replay(folder: String, at: float) -> void:
 ## --bots-watch [--bots=N] [--seed=S] [--mercy]: test bots playing floor after
 ## floor, watched live in the observer (tools/bots/bot_watch.gd, which ships
 ## with the tools and not the game).
+## --bots-hunt [--bots=N] [--seed=S]: the same floors, with this machine's
+## player as The Locust hunting the bots (hunt): a versus against bots, with
+## no connection -- the hunter's seat as in take_locust(), its grace and all.
 const WATCH_SCRIPT := "res://tools/bots/bot_watch.gd"
 var bot_watch
-func begin_bot_watch() -> void:
+func begin_bot_watch(hunt := false) -> void:
 	if not ResourceLoader.exists(WATCH_SCRIPT):
 		ui.menu("main", false, "Los bots de prueba no vienen con el juego.")
 		return
-	observer = true
 	session.keeps_checkpoint = false
-	settings.force_window = true
-	settings.apply_display()
-	var options := {"bots": 3, "seed": 81, "mercy": OS.get_cmdline_user_args().has("--mercy"), "knowledge": "discover"}
+	if hunt: solo_locust = true
+	else:
+		observer = true
+		settings.force_window = true
+		settings.apply_display()
+	var options := {"bots": 5 if hunt else 3, "seed": 81, "mercy": OS.get_cmdline_user_args().has("--mercy"), "knowledge": "discover", "hunt": hunt}
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--bots="): options.bots = clampi(int(argument.trim_prefix("--bots=")), 1, 5)
 		if argument.begins_with("--seed="): options.seed = int(argument.trim_prefix("--seed="))
@@ -404,14 +410,29 @@ func take_locust(seed_value: int) -> void:
 	solo_locust = true
 	await start_floor(seed_value)
 	if not is_instance_valid(locust): return
-	locust.set_control("player")
+	hand_creature_to_player()
 	locust.grace = 0.0
+	ui.flash("VISION ACUSTICA - PRUEBA LOCAL", 4.0)
+
+## This machine's player drives the creature of the floor up (solo_locust).
+func hand_creature_to_player() -> void:
+	if not is_instance_valid(locust): return
+	locust.set_control("player")
 	player.camera.current = false
 	locust.camera.current = true
 	# It never hears its own presence, online or here.
 	world_audio.set_creature(null)
 	apply_settings()
-	ui.flash("VISION ACUSTICA - PRUEBA LOCAL", 4.0)
+
+## Hunting bots given up (back to the menu): the player is its own again, and
+## the next floor started from the menu is an ordinary one.
+func end_bot_hunt() -> void:
+	solo_locust = false
+	player.visible = true
+	player.collision_layer = 4
+	player.held = false
+	player.camera.current = true
+	apply_settings()
 
 ## A port typed in the multiplayer menus (kept as text there), or the usual
 ## one if what is typed is not a number.
