@@ -10,6 +10,8 @@ param(
     # bots: how many play, and whether the creature only notes its captures.
     [ValidateRange(1,5)][int]$Bots = 3,
     [switch]$Mercy,
+    # export: skip the zip (a quicker export to try something locally).
+    [switch]$NoZip,
     [string]$GodotPath = $env:GODOT_PATH
 )
 $ErrorActionPreference = 'Stop'
@@ -87,7 +89,28 @@ if ($Mode -eq 'export') {
     if ($process.ExitCode -ne 0) { throw "La exportación falló (código $($process.ExitCode))." }
     # The game is a folder: the engine, its data beside it, and Steam's two
     # libraries. They go together, always.
-    Get-ChildItem (Join-Path $projectPath 'exports/windows') -File | Where-Object { $_.Extension -in '.exe', '.pck', '.dll' } | Select-Object Name, LastWriteTime, Length
+    $folder = Join-Path $projectPath 'exports/windows'
+    # What the exporter leaves behind while it writes the exe's resources
+    # (icon, version): not part of the game, which runs without it.
+    Get-ChildItem $folder -Filter '*.truncated' -File | Remove-Item -Force
+    $game = @('TheFour.exe', 'TheFour.pck', 'steam_api64.dll', 'libgodotsteam.windows.template_release.x86_64.dll') | ForEach-Object { Get-Item (Join-Path $folder $_) }
+    $game | Select-Object Name, LastWriteTime, Length | Format-Table -AutoSize | Out-String | Write-Output
+    if (-not $NoZip) {
+        # What is handed to players: those four files in a folder "The Four",
+        # named after the day and the commit, so two players can tell they
+        # have the same build (a different one is refused when joining). Only
+        # the newest zip is kept: each is some 300 MB.
+        Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+        $commit = (git -C $projectPath rev-parse --short HEAD).Trim()
+        $dirty = if (git -C $projectPath status --porcelain --untracked-files=no -- game assets addons project.godot export_presets.cfg) { '-cambios' } else { '' }
+        $zipPath = Join-Path $projectPath ("exports/TheFour-{0}-{1}{2}.zip" -f (Get-Date -Format 'yyyy-MM-dd'), $commit, $dirty)
+        Get-ChildItem (Join-Path $projectPath 'exports') -Filter 'TheFour-*.zip' -File | Remove-Item -Force
+        $zip = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+        try {
+            foreach ($file in $game) { [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, 'The Four/' + $file.Name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null }
+        } finally { $zip.Dispose() }
+        Get-Item $zipPath | Select-Object FullName, Length | Format-List | Out-String | Write-Output
+    }
 } else {
     & $GodotPath @arguments
 }
