@@ -403,11 +403,22 @@ func decal(parent: Node3D, name: String, xform: Transform3D, size: Vector3, stre
 	projector.distance_fade_begin = DECAL_REACH
 	projector.distance_fade_length = 4.0
 	projector.set_meta("rank", rank)
-	projector.visible = rank < float(preset.decals)
+	projector.visible = decal_shown(projector)
 	parent.add_child(projector)
 	decals.append(projector)
 
 var decals: Array[Decal] = []
+
+## Whether a decal is drawn: its share of the preset, and never while the
+## floor is drawn for the creature's ears (echo_view). Forward+ stamps a
+## decal on every fragment inside its box, unshaded and transparent ones
+## too, and the echo field is a quad sitting on the camera that echo_field
+## stretches over the whole frame: with the camera pressed against a damp
+## wall (the spring arm leaves it 0.2-0.3 m off, a wall decal reaches 0.32
+## m out), the stain was spread across the hunter's screen in olive streaks.
+## The grains and its own body standing in a box took the stain as well.
+func decal_shown(projector: Decal) -> bool:
+	return projector.get_meta("rank") < float(preset.decals) and not echo_view
 
 ## Decals scanned from something else: footprints in sand made mud, a white
 ## handprint made grime, the smear softened.
@@ -1486,7 +1497,7 @@ static func set_fade(lamp: Light3D, begin: float, length: float) -> void:
 func apply_quality(new_preset: Dictionary) -> void:
 	preset = new_preset
 	for projector in decals:
-		var shown: bool = projector.get_meta("rank") < float(preset.decals)
+		var shown: bool = decal_shown(projector)
 		if projector.visible != shown: projector.visible = shown
 	small_maps = preset.small_maps
 	if maps_small != small_maps:

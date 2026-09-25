@@ -54,6 +54,9 @@ func run() -> void:
 	# red, that goes through walls and is not gated on sight or distance.
 	check("La lectura tiene una nube propia para las motas, roja y a través de todo", echo.motes != null and echo.motes.multimesh.instance_count > 0 and echo.mote_material.get_shader_parameter("tone_cold").r > 1.0 and is_equal_approx(echo.mote_material.get_shader_parameter("through"), 1.0))
 	check("La vista trae su propio azar y no el del mapa", echo.rng != null and echo.rng.seed != 0)
+	# Forward+ stamps a decal on the echo field itself (a quad on the camera):
+	# pressed against a damp wall, the stain covered the hunter's screen.
+	check("Para el cazador no se dibuja ninguna mancha de las paredes", level.hotel.echo_view and level.hotel.decals.all(func(decal): return not decal.visible))
 	# The order the five readings stack in. The hotel's own transparents (the
 	# monstera leaves, the dust) all sit at 0, so the whole echo draws above
 	# them; within the echo, the field goes first and its own body last.

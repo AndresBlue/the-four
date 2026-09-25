@@ -146,6 +146,8 @@ Para el asiento del cazador, `hotel_main.apply_settings()` apaga SSAO, SSIL, glo
 
 También se apaga la **luz ambiental** para su asiento, que es la que alcanza cada superficie haya o no una lámpara: cualquier cosa que siga iluminada filtra el hotel visto dentro de una lectura que debe estar hecha de ecos.
 
+**Tampoco se dibujan las manchas de las paredes** (los decals de humedad, suciedad y huellas: `hotel_geometry.decal_shown()`). En Forward+ un decal se estampa en cualquier fragmento que caiga dentro de su caja, aunque su material no tenga luz o sea transparente, y el campo de eco es un cuadrado pegado a la cámara que su shader estira sobre toda la pantalla: con la cámara apretada contra una pared húmeda —el brazo la deja a 0,2–0,3 m y una mancha de pared sale 0,32 m—, la mancha cubría la lectura del cazador de chorretones oliva, borrosos, de media pantalla (visto jugando el 24 de septiembre). En Compatibilidad no hay decals.
+
 Presupuestos por calidad (0/1/2): rayos por clic `[0, 2200, 4200]`, granos recordados `[0, 24000, 46000]`, granos de cuerpo `[0, 700, 1400]`, granos de sonido `[0, 2600, 5200]`. No hay ajuste guardado nuevo. El presupuesto por clic es grande porque hay treinta fotogramas de física para repartirlo: el coste por fotograma es el mismo que tendría un pulso rápido, y lo que se gana es una escena hecha de puntos. Una sola consulta de rayo reutilizada.
 
 `reduced` **no deja la pantalla negra**: quita el temblor, la respiración y el grano, baja el contraste de los frentes y sube el término base y los hitos. Cambia el pulso por una imagen más plana y quieta, pero igual de navegable. Hay una prueba que comprueba justo eso, para que «reducido = pantalla negra» no pueda colarse como regresión.
