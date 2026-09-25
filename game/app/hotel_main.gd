@@ -434,6 +434,8 @@ func on_action(action: String) -> void:
 		"credits": ui.menu("credits")
 		"characters": ui.show_characters()
 		"multiplayer": ui.menu("multiplayer")
+		"mp_steam": ui.menu("mp_steam")
+		"mp_ip": ui.menu("mp_ip")
 		# The four ways into a room: open one or join one, over IP / LAN or
 		# over Steam (net_session.gd). The room itself is the same either way.
 		"host": ui.menu("host_ip")
@@ -442,7 +444,7 @@ func on_action(action: String) -> void:
 			else: ui.menu("host_ip", false, net.status)
 		"host_steam":
 			if net.host_steam(settings.values.player_name, settings.values.character): ui.menu("steam_wait")
-			else: ui.menu("multiplayer", false, net.status)
+			else: ui.menu("mp_steam", false, net.status)
 		"join": ui.menu("join")
 		"join_steam": ui.menu("join_steam")
 		"connect":

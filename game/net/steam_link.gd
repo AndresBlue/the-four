@@ -99,7 +99,7 @@ func start() -> void:
 			join_asked.emit.call_deferred(int(id))
 
 func _process(_delta: float) -> void:
-	if started: api.run_callbacks()
+	if started and api != null: api.run_callbacks()
 
 ## Ready to host or join over Steam.
 func ready_to_play() -> bool:

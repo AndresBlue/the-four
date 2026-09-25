@@ -510,16 +510,35 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 18)
 			field(column, "", "player_name", "Jugador")
 			spacer(column, 10)
-			# The same room either way; only the way in differs (net_session.gd).
+			# First the connection, then open a room or join one on it: the
+			# room itself is the same either way (net_session.gd).
 			var steam_ready: bool = net != null and net.steam.ready_to_play()
-			action("Crear sala · IP / LAN", "host")
-			action("Crear sala · Steam", "host_steam", not steam_ready)
-			action("Unirse · IP / LAN", "join")
-			action("Unirse · Steam", "join_steam", not steam_ready)
+			action("Steam", "mp_steam", not steam_ready)
 			if net != null and not steam_ready: paragraph(column, net.steam.problem(), 16, 560)
+			action("IP / LAN", "mp_ip")
 			action("Personaje", "characters")
 			spacer(column, 12)
 			action("Volver", "main")
+		"mp_steam":
+			set_osd("MULTIJUGADOR ▸ STEAM", "", "", "")
+			title(column, "STEAM", 64)
+			label(column, "CON TUS AMIGOS DE STEAM · SIN ABRIR PUERTOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 18)
+			action("Crear sala", "host_steam")
+			action("Unirse a una sala", "join_steam")
+			spacer(column, 12)
+			action("Volver", "multiplayer")
+			side.visible = false
+		"mp_ip":
+			set_osd("MULTIJUGADOR ▸ IP / LAN", "", "", "")
+			title(column, "IP / LAN", 64)
+			label(column, "EN TU RED LOCAL, O POR INTERNET CON UN PUERTO ABIERTO", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			spacer(column, 18)
+			action("Crear sala", "host")
+			action("Unirse a una sala", "join")
+			spacer(column, 12)
+			action("Volver", "multiplayer")
+			side.visible = false
 		"host_ip":
 			set_osd("MULTIJUGADOR ▸ CREAR SALA", "", "", "")
 			title(column, "CREAR SALA", 64)
@@ -537,7 +556,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Abrir la sala", "host_open")
 			paragraph(column, "En tu red local basta con esto. Para jugar por Internet, el puerto tiene que estar abierto en tu router hacia este equipo (UDP); si no puedes abrirlo, usa Steam.", 16, 560)
 			spacer(column, 12)
-			action("Volver", "multiplayer")
+			action("Volver", "mp_ip")
 			side.visible = false
 		"join_steam":
 			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "STEAM")
@@ -553,7 +572,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Actualizar", "join_steam")
 			paragraph(column, "También puedes aceptar una invitación desde Steam (Mayús+Tab), o entrar desde el perfil de un amigo con «Unirse a la partida».", 16, 560)
 			spacer(column, 12)
-			action("Volver", "multiplayer")
+			action("Volver", "mp_steam")
 			side.visible = false
 		"steam_wait":
 			set_osd("MULTIJUGADOR ▸ STEAM", "", "", "")
@@ -576,7 +595,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 				label(column, net.status if not net.status.is_empty() else "Conectando…", 20).add_theme_color_override("font_color", STYLE.AMBER)
 			else: action("Conectar", "connect")
 			spacer(column, 12)
-			action("Volver", "lobby_leave" if net != null and net.active() else "multiplayer")
+			action("Volver", "lobby_leave" if net != null and net.active() else "mp_ip")
 			side.visible = false
 		"lobby":
 			lobby_screen()
@@ -630,6 +649,11 @@ func field(parent: Node, title_text: String, key: String, placeholder: String) -
 	fields[key] = edit
 	return edit
 
+## Width of the room's right-hand column: what is left beside the options at
+## the 1280 px the menus are laid out in. Wider, it ran off the screen, and
+## every line in it wrapped at the wider width.
+const LOBBY_SIDE := 340
+
 ## The room: who is in, the host's options and the way into the match.
 func lobby_screen() -> void:
 	var hosting: bool = net.is_host
@@ -681,13 +705,13 @@ func lobby_screen() -> void:
 		if mode == NET.Mode.VERSUS and int(net.options.locust) == seat: tags.append("The Locust")
 		var line := label(side, "%d · %s" % [seat, entry_data.name.to_upper()], 22)
 		if seat == net.local_seat: line.add_theme_color_override("font_color", STYLE.AMBER)
-		paragraph(side, "%s%s" % [visual_script.NAMES[clampi(int(entry_data.character), 0, 2)], ("  ·  " + ", ".join(tags)) if not tags.is_empty() else ""], 16, 560)
+		paragraph(side, "%s%s" % [visual_script.NAMES[clampi(int(entry_data.character), 0, 2)], ("  ·  " + ", ".join(tags)) if not tags.is_empty() else ""], 16, LOBBY_SIDE)
 	if hosting:
 		spacer(side, 14)
 		var how: Array = net.where_to_join()
-		paragraph(side, how[0], 17, 300, STYLE.AMBER)
-		paragraph(side, how[1], 15, 300)
-		if net.transport == "steam": button(side, "Invitar amigos (Steam)", func(): action_requested.emit("steam_invite"))
+		paragraph(side, how[0], 17, LOBBY_SIDE, STYLE.AMBER)
+		paragraph(side, how[1], 15, LOBBY_SIDE)
+		if net.transport == "steam": button(side, "Invitar amigos", func(): action_requested.emit("steam_invite"))
 
 func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable) -> void:
 	var row := HBoxContainer.new()
