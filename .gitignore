@@ -27,3 +27,6 @@ evidence/reference/
 
 # Bot matches: their summaries, recordings and batches (tools/bots.ps1)
 evidence/bots/
+
+# Trailer renders: shots, audio stems and the cut (tools/trailer)
+evidence/trailer/
