@@ -163,7 +163,8 @@ LIMB = 30
 def figure(mask, x0, y0):
     """The running figure of the standard sign, in its own box: head, body
     leaning into the run, the front arm reaching straight ahead, the back arm
-    pumped back with its forearm up, one leg stepping out and the other kicking back, with no
+    out behind with the elbow level with the shoulder and the forearm falling
+    away diagonally, one leg stepping out and the other kicking back, with no
     feet, as the standard draws it. Stamped with a round pen."""
     layer = Image.new("L", SUPER, 0)
     pen = ImageDraw.Draw(layer)
@@ -180,7 +181,7 @@ def figure(mask, x0, y0):
 
     limb([(0.58, 0.28), (0.43, 0.57)], LIMB * 1.5)            # body, leaning in
     limb([(0.57, 0.31), (0.71, 0.37), (0.86, 0.36)])           # front arm, reaching ahead
-    limb([(0.54, 0.31), (0.39, 0.42), (0.27, 0.30)])           # back arm, pumped back, forearm up
+    limb([(0.54, 0.31), (0.38, 0.31), (0.27, 0.45)])           # back arm: elbow level with the shoulder, forearm falling
     limb([(0.46, 0.57), (0.65, 0.66), (0.62, 0.93)])           # front leg, no foot
     limb([(0.43, 0.58), (0.33, 0.77), (0.15, 0.83)])           # back leg, no foot
     mask.paste(ImageChops.lighter(mask, layer))
