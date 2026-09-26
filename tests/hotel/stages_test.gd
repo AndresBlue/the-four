@@ -411,6 +411,21 @@ func run() -> void:
 	level.refresh_briefing()
 	check("En el sector 3 la pausa cuenta televisores y números", level.ui.briefing.progress.size() == 2 and String(level.ui.briefing.progress[1][1]) == "%d / %d" % [DIG.COUNT, DIG.COUNT])
 	check("Y cada mano escribe con su lápiz, el anfitrión en negro", level.ui.sheet.ink_of(1) != level.ui.sheet.ink_of(2) and level.ui.sheet.ink_of(2) != level.ui.sheet.ink_of(3) and level.ui.sheet.ink_of(1).get_luminance() < 0.15)
+	# A stroke begun on the plan belongs to the building: it follows the walls
+	# as the plan is framed again, and shows only on its planta.
+	var sheet = level.ui.sheet
+	var plan_stroke := PackedVector2Array([Vector2(10.0, 20.0), Vector2(14.0, 20.0)])
+	sheet.apply_confirmed("2:900", sheet.MAP_KIND, plan_stroke)
+	sheet.map.origin = Vector2(100, 50)
+	sheet.map.fit = 5.0
+	sheet.map.lay_pencil(0)
+	var pencil: Line2D = sheet.map.pencil_lines["2:900"].line
+	var first := pencil.points[1]
+	sheet.map.fit = 10.0
+	sheet.map.lay_pencil(0)
+	check("Un trazo sobre el plano sigue al edificio al reencuadrarse", first.is_equal_approx(Vector2(170, 150)) and pencil.points[1].is_equal_approx(Vector2(240, 250)) and pencil.get_parent() == sheet.map_pencil)
+	sheet.map.lay_pencil(1)
+	check("Y en otra planta no se ve", not pencil.visible)
 	level.ui.sheet.close()
 	# Alone there is nothing to forgive: caught is the end of that floor.
 	var before_stage: int = session.stage

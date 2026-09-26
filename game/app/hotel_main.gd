@@ -14,6 +14,7 @@ const DOCUMENT := preload("res://game/world/interactables/hotel_document.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const TELEVISION := preload("res://game/world/interactables/hotel_television.gd")
 const TV_PLACEMENT := preload("res://game/world/generation/tv_placement.gd")
+const FLOOR_MAP := preload("res://game/app/floor_map.gd")
 const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
 const LOCK := preload("res://game/world/interactables/hotel_lock.gd")
 const DIGITS := preload("res://game/world/generation/digit_placement.gd")
@@ -116,6 +117,8 @@ var sanity
 ## The lifts, the rides and the sectors' words (lifts.gd).
 const LIFTS := preload("res://game/app/lifts.gd")
 var lifts
+## The plan the survivors' eyes draw on the shared sheet (floor_map.gd).
+var floor_map
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
 ## Online, Esc opens a menu over the running match instead of pausing it.
@@ -194,6 +197,10 @@ func _enter_tree() -> void:
 	lifts.name = "Lifts"
 	lifts.level = self
 	$Services.add_child(lifts)
+	floor_map = FLOOR_MAP.new()
+	floor_map.name = "FloorMap"
+	floor_map.level = self
+	$Services.add_child(floor_map)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -204,6 +211,7 @@ func _ready() -> void:
 	player.hiding_changed.connect(on_hide_changed)
 	ui.action_requested.connect(on_action)
 	ui.sheet.chunk_drawn.connect(func(op_id, kind, points): match_net.sheet_local(op_id, kind, points))
+	ui.sheet.map_source = floor_map
 	session.changed.connect(on_state)
 	session.revived.connect(on_revived)
 	net.closed.connect(on_net_closed)
@@ -2041,6 +2049,7 @@ func _physics_process(delta: float) -> void:
 		lifts.ride_out(delta)
 		if is_instance_valid(session) and session.state == session.State.PLAYING:
 			lifts.count_away(delta)
+			floor_map.tick(delta)
 			if bot_match:
 				track_refuges()
 				sanity.tick(delta)
@@ -2060,6 +2069,7 @@ func _physics_process(delta: float) -> void:
 	lifts.ride_out(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	lifts.count_away(delta)
+	floor_map.tick(delta)
 	# The notice of the sector waits for the card to be gone and for the lift
 	# to have opened its doors: it is what the picture comes back to.
 	lifts.announce_sector(delta)
@@ -2363,6 +2373,7 @@ func _process(delta: float) -> void:
 	camcorder.marks = settings.values.osd
 	update_zoom_lens()
 	camcorder.set_zoom(player.zoom_fraction(), delta)
+	camcorder.covered = ui.sheet.visible
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	update_screen_cues(delta)

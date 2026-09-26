@@ -66,13 +66,15 @@ static func write_page(on: CanvasItem, value: int, centre: Vector2, height: floa
 ## so rubbing something out never rubs the stains out with it. Built once per
 ## size and seed.
 static var worn := {}
-static func wear(size: Vector2i, seed_value: int) -> ImageTexture:
-	var key := "%d:%d:%d" % [size.x, size.y, seed_value]
+## `marked`: false for a page kept flat and clean -- the shared sheet, which
+## carries the plan: no coffee rings and no fold across it.
+static func wear(size: Vector2i, seed_value: int, marked := true) -> ImageTexture:
+	var key := "%d:%d:%d:%s" % [size.x, size.y, seed_value, marked]
 	if worn.has(key): return worn[key]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var rings: Array = []
-	for n in rng.randi_range(1, 3):
+	for n in (rng.randi_range(1, 3) if marked else 0):
 		rings.append([Vector2(rng.randf_range(0.08, 0.92), rng.randf_range(0.08, 0.92)), rng.randf_range(0.06, 0.13), rng.randf_range(0.5, 1.0)])
 	var blots: Array = []
 	for n in rng.randi_range(2, 5):
@@ -88,7 +90,7 @@ static func wear(size: Vector2i, seed_value: int) -> ImageTexture:
 			var edge := minf(minf(uv.x, 1.0 - uv.x) * aspect, minf(uv.y, 1.0 - uv.y))
 			amount += pow(clampf(1.0 - edge / 0.12, 0.0, 1.0), 2.0) * 0.45
 			# The fold across it, a darker line with a soft side.
-			amount += exp(-pow((uv.x - fold) * size.x / 2.2, 2.0)) * 0.22
+			if marked: amount += exp(-pow((uv.x - fold) * size.x / 2.2, 2.0)) * 0.22
 			for ring in rings:
 				var d: float = Vector2((uv.x - ring[0].x) * aspect, uv.y - ring[0].y).length() / ring[1]
 				# A coffee ring is darker at its rim than inside it.

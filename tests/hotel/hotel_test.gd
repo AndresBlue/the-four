@@ -205,6 +205,24 @@ func run() -> void:
 	check("Cada planta tiene de 3 a 5 carteles de salida en sus pasillos (%s)" % str(per_planta), per_planta.all(func(n): return n >= 3 and n <= 5))
 	check("Cada cartel cuelga en un pasillo y señala a lo largo de los pasillos, nunca a una habitación", signs_ok)
 	check("Una flecha hacia la derecha se lee a la izquierda desde el otro lado", ROUTE_SIGNS.way_for(Vector2i(0, -1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.RIGHT and ROUTE_SIGNS.way_for(Vector2i(0, 1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.LEFT and ROUTE_SIGNS.way_for(Vector2i(1, 0), Vector2i(1, 0)) == ROUTE_SIGNS.Way.AHEAD)
+	# The plan on the shared sheet: the walls of every planta, the plaster
+	# partitions of the alcoves among them, drawn by what the survivors see
+	# and gone three minutes after it was last seen.
+	var fmap = scene.floor_map
+	fmap.reset()
+	var alcoves: int = scene.hotel.plan_walls.filter(func(wall): return absf(wall[0].distance_to(wall[1]) - 3.2) < 0.01).size()
+	var per_planta_pieces := [0, 0, 0]
+	for planta in fmap.piece_planta: per_planta_pieces[planta] += 1
+	check("El plano tiene las paredes de las tres plantas, con los tabiques de yeso (%s, %d)" % [str(per_planta_pieces), alcoves], per_planta_pieces.all(func(n): return n > 200) and alcoves > 0)
+	scene.player.position = FLOOR.position_of(scene.manifest.rooms[int(scene.manifest.get("start", 0))]) + Vector3(0, 0.04, 0)
+	for turn in 4:
+		scene.player.rotation.y = TAU * turn / 4.0
+		await physics_frame
+		fmap.look_now()
+	var fresh_here := range(fmap.piece_a.size()).filter(func(index): return fmap.freshness(index) > 0.0)
+	check("Lo que el jugador tiene delante queda en el plano, y solo en su planta", fresh_here.size() > 10 and fresh_here.all(func(index): return fmap.piece_planta[index] == 0))
+	fmap.clock += fmap.FORGET + 1.0
+	check("Y a los tres minutos se ha borrado", range(fmap.piece_a.size()).all(func(index): return fmap.freshness(index) <= 0.0))
 	# Each face of a door shows the number of the room behind it.
 	var numbers_ok := true
 	var plaques_ok := true

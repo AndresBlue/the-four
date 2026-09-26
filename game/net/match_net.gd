@@ -847,7 +847,9 @@ func sheet_chunk(op_id: String, kind: int, points: PackedVector2Array) -> void:
 	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
 	# Only living survivors draw, under their own seat, within the traffic limit.
 	if not is_survivor(seat) or level.session.participants.get(seat, 2) == level.session.Life.DEAD: return
-	if not op_id.begins_with("%d:" % seat) or kind not in [0, 1] or points.size() > 128: return
+	# The page's pencil and rubber (0, 1), or the plan's, per planta.
+	var known: bool = kind in [0, 1] or (kind >= level.ui.sheet.MAP_KIND and kind < level.ui.sheet.MAP_KIND + 2 * FLOOR.PLANTAS)
+	if not op_id.begins_with("%d:" % seat) or not known or points.size() > 128: return
 	var now := Time.get_ticks_msec() / 1000.0
 	var budget: Array = sheet_budget.get(seat, [SHEET_RATE, now])
 	budget[0] = minf(SHEET_RATE, budget[0] + (now - budget[1]) * SHEET_RATE)

@@ -14,6 +14,8 @@ var canvas: Control
 var marks := true
 ## The picture is gone (an execution): the tape marks go with it.
 var signal_lost := false
+## The shared sheet is open over the picture: its marks step back from it.
+var covered := false
 ## The creature's channels: the lit sets laid out by where they are, nothing
 ## else, on a compass lying on the floor. [{index, at (on the disk, radius 1:
 ## x to its right, y towards it), here}], how much of the disk it sees (0 level
@@ -172,7 +174,7 @@ func write_code(text: String) -> void:
 
 func show_tape(elapsed: float, delta: float) -> void:
 	blink = fposmod(blink + delta, 1.0)
-	var tape := marks and not hunter and not signal_lost
+	var tape := marks and not hunter and not signal_lost and not covered
 	rec.visible = tape
 	dot.visible = tape and blink < 0.6
 	clock.visible = tape

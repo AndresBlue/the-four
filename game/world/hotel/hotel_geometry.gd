@@ -865,8 +865,10 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				if room.get("layout", 0) == 3 and side != end: continue
 				box(node, Vector3(side * 4.4, height / 2, end * 2.8), Vector3(3.2, height, 0.12), wall_material, true)
 				blocker(Transform3D.IDENTITY, Vector3(side * 4.4, height / 2, end * 2.8), Vector2(3.2, height))
+				plan_wall(node, Vector3(side * 2.8, 0, end * 2.8), Vector3(side * 6.0, 0, end * 2.8))
 				for z in [3.2, 5.6]:
 					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), wall_material, true)
+					plan_wall(node, Vector3(side * 2.8, 0, end * z - 0.4), Vector3(side * 2.8, 0, end * z + 0.4))
 				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), wall_material, true)
 	# Wardrobes only in room-like modules (see FLOOR.WARDROBES), against the walls.
 	if room.type != 19:
@@ -1252,12 +1254,34 @@ static func prop_transform(room: Dictionary, prop: Dictionary) -> Transform3D:
 
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
 	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
+	var room_node := boundary.get_parent() as Node3D
+	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
 	for face in ([-1, 1] if full_walls else [inner]):
 		box(boundary, Vector3(x, 0.48, face * 0.11), Vector3(length, 0.96, 0.07), "panel")
 		box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(length, 0.05, 0.035), "trim")
 		box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(length, 0.14, 0.03), "trim")
 	box(boundary, Vector3(x, height - 0.05, inner * 0.12), Vector3(length, 0.1, 0.06), "trim")
 	box(boundary, Vector3(x, height - 0.13, inner * 0.1), Vector3(length, 0.06, 0.03), "trim")
+
+## The floor as a plan (floor_map.gd): every stretch of wall that stands on
+## the floor -- the walls between cells, with their doorways left out, and the
+## plaster partitions of the rooms' alcoves -- as [a, b, planta], in the plan
+## (world x, z). A wall two rooms share is built twice, once from each side,
+## and kept once.
+var plan_walls: Array = []
+var plan_seen := {}
+
+func plan_wall(room_node: Node3D, from: Vector3, to: Vector3) -> void:
+	var a := Vector2(room_node.position.x + from.x, room_node.position.z + from.z)
+	var b := Vector2(room_node.position.x + to.x, room_node.position.z + to.z)
+	if a.distance_to(b) < 0.05: return
+	var planta := FLOOR.planta_of(room_node.position.y)
+	var ends := [Vector2i(roundi(a.x * 10.0), roundi(a.y * 10.0)), Vector2i(roundi(b.x * 10.0), roundi(b.y * 10.0))]
+	ends.sort()
+	var key := "%d:%s:%s" % [planta, ends[0], ends[1]]
+	if plan_seen.has(key): return
+	plan_seen[key] = true
+	plan_walls.append([a, b, planta])
 
 ## Occlusion culling: every wall of a room is also a quad of an occluder, so
 ## rooms and furniture hidden behind walls are not drawn by the camera. It
