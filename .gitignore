@@ -30,3 +30,4 @@ evidence/bots/
 
 # Trailer renders: shots, audio stems and the cut (tools/trailer)
 evidence/trailer/
+tools/trailer/__pycache__/

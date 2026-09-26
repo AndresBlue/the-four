@@ -2,7 +2,7 @@
 
 Un tráiler de unos 60 s que explica el juego como lo explicaría el propio hotel: **una grabación de orientación por la megafonía**, amable y demasiado tranquila, que dicta las normas mientras las imágenes enseñan por qué existen. Termina recordando que este es el primer piso y quedan tres. Todo sale del juego mismo: cada toma se filma en el motor, sobre un piso real (semilla 81), con la cámara, la criatura y los supervivientes colocados a mano; nada es un render aparte ni un vídeo de otra cosa.
 
-El resultado son 60 s exactos en `evidence/trailer/final/`: `The_Four_trailer_1080p.mp4` (1920×1080, 30 fps, H.264 a 14 Mb/s en dos pasadas, AAC) y `The_Four_trailer_720p.mp4` (6 Mb/s), a −14 LUFS integrados y −1 dBTP, sacados del máster `evidence/trailer/The_Four_trailer.mp4` (CRF 14, AAC 320 kb/s). No se versionan: `./tools/trailer/make.ps1` lo regenera todo (`-SkipShots` para no volver a filmar).
+El resultado son 60 s exactos en `evidence/trailer/final/`: `The_Four_trailer_1080p.mp4` (1920×1080, 30 fps, H.264 a 14 Mb/s en dos pasadas, AAC) `The_Four_trailer_720p.mp4` (6 Mb/s) y `The_Four_trailer_ligero.mp4` (720p a 3,3 Mb/s, unos 26 MB, para mandarlo a un móvil), a −14 LUFS integrados y −1 dBTP, sacados del máster `evidence/trailer/The_Four_trailer.mp4` (CRF 14, AAC 320 kb/s). No se versionan: `./tools/trailer/make.ps1` lo regenera todo (`-SkipShots` para no volver a filmar).
 
 ## Guion
 

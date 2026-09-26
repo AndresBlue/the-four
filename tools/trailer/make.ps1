@@ -37,6 +37,9 @@ try {
     & $FFmpeg -y -v error -i $master -c:v libx264 -preset slow -b:v 14M -maxrate 20M -bufsize 28M -pass 2 -pix_fmt yuv420p -colorspace bt709 -color_primaries bt709 -color_trc bt709 -c:a copy -movflags +faststart The_Four_trailer_1080p.mp4
     & $FFmpeg -y -v error -i $master -vf 'scale=1280:720:flags=lanczos' -c:v libx264 -preset slow -b:v 6M -pass 1 -an -f null NUL
     & $FFmpeg -y -v error -i $master -vf 'scale=1280:720:flags=lanczos' -c:v libx264 -preset slow -b:v 6M -maxrate 9M -bufsize 12M -pass 2 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart The_Four_trailer_720p.mp4
+    # And a light one, under the 30 MB a phone is sent.
+    & $FFmpeg -y -v error -i $master -vf 'scale=1280:720:flags=lanczos' -c:v libx264 -preset slow -b:v 3300k -pass 1 -an -f null NUL
+    & $FFmpeg -y -v error -i $master -vf 'scale=1280:720:flags=lanczos' -c:v libx264 -preset slow -b:v 3300k -maxrate 5M -bufsize 7M -pass 2 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart The_Four_trailer_ligero.mp4
     Remove-Item ffmpeg2pass-0.log* -ErrorAction SilentlyContinue
 } finally { Pop-Location }
 python (Join-Path $here 'sync_check.py') | Select-Object -Last 12
