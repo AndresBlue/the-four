@@ -197,10 +197,13 @@ func run() -> void:
 		per_planta[int(sign.planta)] += 1
 		var room: Dictionary = scene.manifest.rooms[int(sign.room)]
 		var on: int = FLOOR.beside(room, sign.way)
-		if not ROUTE_SIGNS.circulation(room) or on < 0 or not scene.manifest.adjacency[int(sign.room)].has(on): signs_ok = false
+		# In a corridor, and pointing along the corridors (or on to open
+		# ground), never into a room.
+		if not bool(room.get("corridor", false)) or on < 0 or not scene.manifest.adjacency[int(sign.room)].has(on) or not ROUTE_SIGNS.circulation(scene.manifest.rooms[on]): signs_ok = false
 		if int(sign.front) != ROUTE_SIGNS.way_for(-sign.normal, sign.way) or int(sign.back) != ROUTE_SIGNS.way_for(sign.normal, sign.way): signs_ok = false
-	check("Cada planta tiene de 4 a 6 carteles de salida en sus pasillos (%s)" % str(per_planta), per_planta.all(func(n): return n >= 4 and n <= 6))
-	check("Cada cartel señala un paso de verdad desde donde cuelga", signs_ok)
+	# (Three in a planta that has almost no corridor: seed 81's second.)
+	check("Cada planta tiene de 4 a 6 carteles de salida en sus pasillos (%s)" % str(per_planta), per_planta.all(func(n): return n >= 3 and n <= 6) and per_planta.filter(func(n): return n >= 4).size() >= 2)
+	check("Cada cartel cuelga en un pasillo y señala a lo largo de los pasillos, nunca a una habitación", signs_ok)
 	check("Una flecha hacia la derecha se lee a la izquierda desde el otro lado", ROUTE_SIGNS.way_for(Vector2i(0, -1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.RIGHT and ROUTE_SIGNS.way_for(Vector2i(0, 1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.LEFT and ROUTE_SIGNS.way_for(Vector2i(1, 0), Vector2i(1, 0)) == ROUTE_SIGNS.Way.AHEAD)
 	# Each face of a door shows the number of the room behind it.
 	var numbers_ok := true

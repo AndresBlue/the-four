@@ -23,7 +23,7 @@ func _initialize() -> void:
 				var here: int = int(sign.room)
 				var ahead: int = FLOOR.beside(m.rooms[here], sign.way)
 				# the way must be an open connection and lead nearer the refuge
-				if ahead < 0 or not m.adjacency[here].has(ahead) or float(metres.get(ahead, INF)) >= float(metres.get(here, INF)) + 12.5:
+				if not bool(m.rooms[here].corridor) or ahead < 0 or not m.adjacency[here].has(ahead) or not SIGNS.circulation(m.rooms[ahead]) or float(metres.get(ahead, INF)) >= float(metres.get(here, INF)) + 12.5:
 					bad += 1
 					print("seed %d planta %d sala %d: %s · vecino %d · adyacente %s · %.0f m -> %.0f m" % [s, planta, here, sign.way, ahead, ahead >= 0 and m.adjacency[here].has(ahead), float(metres.get(here, INF)), float(metres.get(ahead, INF))])
 	print("reparto ", counts, " · flechas malas ", bad, " de ", total)
