@@ -1210,7 +1210,8 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float, front: Te
 ## as the refuge's, hung across the way most people come by, a figure running
 ## out of a door and an arrow on each face -- ahead, left, right or back, for
 ## whoever reads that face. A metre off the middle of the cell along the way
-## it faces, clear of the ceiling lamp, and never lower than the refuge's.
+## it faces, clear of the ceiling lamp, and well over everybody's head:
+## at 2.4 m, like the refuge's, it hung at the height of the players' eyes.
 const ROUTE_SIGN := preload("res://game/world/generation/exit_route_signs.gd")
 const WAY_ENGRAVINGS := [
 	preload("res://assets/props/exit_sign/way_ahead.png"),
@@ -1221,7 +1222,7 @@ const WAY_ENGRAVINGS := [
 const ROUTE_SIGN_OFFSET := 1.0
 ## A third bigger than the refuge's: it is read from down the corridor.
 const ROUTE_PANEL := PANEL_SIZE * 1.35
-const ROUTE_SIGN_HEIGHT := 2.4
+const ROUTE_SIGN_HEIGHT := 2.65
 ## Where each way-out sign hangs: {room, position (world), normal, front, back}.
 var route_signs: Array = []
 
@@ -1232,7 +1233,7 @@ func route_sign(sign: Dictionary) -> void:
 	var span := FLOOR.size_of(room)
 	var reach: float = (span.x if sign.normal.x != 0 else span.y) * 0.5 - 0.45
 	var height: float = float(room.height)
-	var pos := normal * clampf(ROUTE_SIGN_OFFSET, 0.0, maxf(reach, 0.0)) + Vector3(0, minf(ROUTE_SIGN_HEIGHT, height - 0.6), 0)
+	var pos := normal * clampf(ROUTE_SIGN_OFFSET, 0.0, maxf(reach, 0.0)) + Vector3(0, minf(ROUTE_SIGN_HEIGHT, height - 0.45), 0)
 	# The sheet's front faces +Z of its own: turned to face along the normal.
 	exit_sign(node, pos, atan2(normal.x, normal.z), height, WAY_ENGRAVINGS[int(sign.front)], WAY_ENGRAVINGS[int(sign.back)], ROUTE_PANEL)
 	var placed := sign.duplicate()

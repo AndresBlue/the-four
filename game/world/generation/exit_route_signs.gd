@@ -1,5 +1,5 @@
 extends RefCounted
-## The emergency-exit signs of the corridors: four to six per planta, spread
+## The emergency-exit signs of the corridors: three to five per planta, spread
 ## over it, hung across the corridor so whoever walks along it reads them face
 ## on, each face saying which way along the corridors the way out is: ahead,
 ## to the left, to the right, or back the way you came. Only in corridors (not
@@ -18,17 +18,17 @@ extends RefCounted
 ## one is the best of the rest weighed by how far it is from the ones already
 ## hung (SPREAD), never nearer than APART (less only where the planta's
 ## corridors give no room), and not where the refuge is already in sight. A
-## planta with more corridor gets more (FIVE_FROM, SIX_FROM).
+## planta with more corridor gets more (MORE_FROM, MOST_FROM).
 ##
 ## Deterministic from the manifest alone: every machine hangs the same signs.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const FEWEST := 4
-const MOST := 6
-## A planta with more corridor gets more: FEWEST under FIVE_FROM corridor
-## cells, MOST from SIX_FROM (a quarter of plantas have under 33, half under
-## 42, three quarters under 50).
-const FIVE_FROM := 36
-const SIX_FROM := 48
+const FEWEST := 3
+const MOST := 5
+## A planta with more corridor gets more: FEWEST under MORE_FROM corridor
+## cells, one more up to MOST_FROM, MOST from there (a quarter of plantas have
+## under 33, half under 42, three quarters under 50).
+const MORE_FROM := 36
+const MOST_FROM := 48
 const ROOM_COST := 12.0
 const ENTRY_WEIGHT := 20.0
 ## Straight metres between two signs, the distance past which a candidate is
@@ -147,7 +147,7 @@ static func planta_signs(manifest: Dictionary, planta: int) -> Array:
 					arriving[at][axis] = float(arriving[at][axis]) + amount
 			came = at
 			at = int(next[at])
-	var chosen_count := MOST if corridors >= SIX_FROM else FEWEST + 1 if corridors >= FIVE_FROM else FEWEST
+	var chosen_count := MOST if corridors >= MOST_FROM else FEWEST + 1 if corridors >= MORE_FROM else FEWEST
 	var most := 0.0
 	for id in flow: most = maxf(most, float(flow[id]))
 	var signs: Array = []
