@@ -3,6 +3,7 @@ const GEN := preload("res://game/world/generation/map_generator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const ROUTE_SIGNS := preload("res://game/world/generation/exit_route_signs.gd")
 var checks: Array = []
 var failed := 0
 
@@ -187,6 +188,20 @@ func run() -> void:
 	await physics_frame
 	check("Se inicia un hotel grande y libre de objetivos", scene.manifest.rooms.size() >= 100 and scene.session.state == scene.session.State.PLAYING)
 	check("Validación física de todos los pasos y coberturas", scene.physical_errors.is_empty())
+	# The corridors' way-out signs: four to six a planta, in the circulation,
+	# each arrow a real way on, and the arrows followed from any of them end
+	# at that planta's refuge without going round.
+	var per_planta := [0, 0, 0]
+	var signs_ok := true
+	for sign in scene.hotel.route_signs:
+		per_planta[int(sign.planta)] += 1
+		var room: Dictionary = scene.manifest.rooms[int(sign.room)]
+		var on: int = FLOOR.beside(room, sign.way)
+		if not ROUTE_SIGNS.circulation(room) or on < 0 or not scene.manifest.adjacency[int(sign.room)].has(on): signs_ok = false
+		if int(sign.front) != ROUTE_SIGNS.way_for(-sign.normal, sign.way) or int(sign.back) != ROUTE_SIGNS.way_for(sign.normal, sign.way): signs_ok = false
+	check("Cada planta tiene de 4 a 6 carteles de salida en sus pasillos (%s)" % str(per_planta), per_planta.all(func(n): return n >= 4 and n <= 6))
+	check("Cada cartel señala un paso de verdad desde donde cuelga", signs_ok)
+	check("Una flecha hacia la derecha se lee a la izquierda desde el otro lado", ROUTE_SIGNS.way_for(Vector2i(0, -1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.RIGHT and ROUTE_SIGNS.way_for(Vector2i(0, 1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.LEFT and ROUTE_SIGNS.way_for(Vector2i(1, 0), Vector2i(1, 0)) == ROUTE_SIGNS.Way.AHEAD)
 	# Each face of a door shows the number of the room behind it.
 	var numbers_ok := true
 	var plaques_ok := true

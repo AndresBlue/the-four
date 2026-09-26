@@ -683,6 +683,8 @@ func build(data: Dictionary) -> void:
 			lights.append(lamp)
 			continue
 		build_room(node, room)
+	route_signs.clear()
+	for sign in ROUTE_SIGN.place(data): route_sign(sign)
 	for edge in data.edges:
 		var a: Dictionary = data.rooms[edge[0]]
 		var b: Dictionary = data.rooms[edge[1]]
@@ -1148,29 +1150,34 @@ const EXIT_PANEL := preload("res://game/presentation/shaders/exit_panel.gdshader
 const EXIT_ENGRAVING := preload("res://assets/props/exit_sign/engraving.png")
 const PANEL_SIZE := Vector2(0.62, 0.31)
 
-func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
+## `front` is what the sheet is engraved with, read from the side it faces;
+## `back`, when given, what its other face says (read from there).
+func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float, front: Texture2D = EXIT_ENGRAVING, back: Texture2D = null, size := PANEL_SIZE) -> void:
 	var board := Node3D.new()
 	board.name = "ExitSign"
 	board.position = pos
 	board.rotation.y = yaw
 	node.add_child(board)
-	var top := PANEL_SIZE.y * 0.5
+	var top := size.y * 0.5
 	# The channel the diodes sit in, its end clamps, and the stem and canopy
 	# that hang the whole thing from the ceiling.
-	box(board, Vector3(0, top + 0.03, 0), Vector3(PANEL_SIZE.x + 0.06, 0.055, 0.07), "metal")
-	box(board, Vector3(0, top + 0.058, 0), Vector3(PANEL_SIZE.x + 0.062, 0.006, 0.072), "black")
+	box(board, Vector3(0, top + 0.03, 0), Vector3(size.x + 0.06, 0.055, 0.07), "metal")
+	box(board, Vector3(0, top + 0.058, 0), Vector3(size.x + 0.062, 0.006, 0.072), "black")
 	for side in [-1.0, 1.0]:
-		box(board, Vector3(side * (PANEL_SIZE.x * 0.5 - 0.012), top - 0.022, 0), Vector3(0.05, 0.06, 0.034), "black")
+		box(board, Vector3(side * (size.x * 0.5 - 0.012), top - 0.022, 0), Vector3(0.05, 0.06, 0.034), "black")
 	var drop := ceiling - pos.y - top - 0.06
 	box(board, Vector3(0, top + 0.06 + drop * 0.5, 0), Vector3(0.016, drop, 0.016), "metal", false, "cylinder")
 	box(board, Vector3(0, ceiling - 0.01, 0), Vector3(0.1, 0.02, 0.1), "metal")
 	var glass := ShaderMaterial.new()
 	glass.shader = EXIT_PANEL
-	glass.set_shader_parameter("engraving", EXIT_ENGRAVING)
+	glass.set_shader_parameter("engraving", front)
+	if back != null:
+		glass.set_shader_parameter("two_faced", true)
+		glass.set_shader_parameter("engraving_back", back)
 	var sheet := MeshInstance3D.new()
 	sheet.name = "Panel"
 	var quad := QuadMesh.new()
-	quad.size = PANEL_SIZE
+	quad.size = size
 	sheet.mesh = quad
 	sheet.material_override = glass
 	exit_panels.append(glass)
@@ -1198,6 +1205,39 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float) -> void:
 	set_fade(lamp, EXIT_REACH - 4.0, 3.0)
 	board.add_child(lamp)
 	exit_lamps.append(lamp)
+
+## The corridors' way-out signs (exit_route_signs.gd): the same lit acrylic
+## as the refuge's, hung across the way most people come by, a figure running
+## out of a door and an arrow on each face -- ahead, left, right or back, for
+## whoever reads that face. A metre off the middle of the cell along the way
+## it faces, clear of the ceiling lamp, and never lower than the refuge's.
+const ROUTE_SIGN := preload("res://game/world/generation/exit_route_signs.gd")
+const WAY_ENGRAVINGS := [
+	preload("res://assets/props/exit_sign/way_ahead.png"),
+	preload("res://assets/props/exit_sign/way_left.png"),
+	preload("res://assets/props/exit_sign/way_right.png"),
+	preload("res://assets/props/exit_sign/way_back.png"),
+]
+const ROUTE_SIGN_OFFSET := 1.0
+## A third bigger than the refuge's: it is read from down the corridor.
+const ROUTE_PANEL := PANEL_SIZE * 1.35
+const ROUTE_SIGN_HEIGHT := 2.4
+## Where each way-out sign hangs: {room, position (world), normal, front, back}.
+var route_signs: Array = []
+
+func route_sign(sign: Dictionary) -> void:
+	var room: Dictionary = manifest.rooms[int(sign.room)]
+	var node: Node3D = room_nodes[int(sign.room)]
+	var normal := Vector3(float(sign.normal.x), 0.0, float(sign.normal.y))
+	var span := FLOOR.size_of(room)
+	var reach: float = (span.x if sign.normal.x != 0 else span.y) * 0.5 - 0.45
+	var height: float = float(room.height)
+	var pos := normal * clampf(ROUTE_SIGN_OFFSET, 0.0, maxf(reach, 0.0)) + Vector3(0, minf(ROUTE_SIGN_HEIGHT, height - 0.6), 0)
+	# The sheet's front faces +Z of its own: turned to face along the normal.
+	exit_sign(node, pos, atan2(normal.x, normal.z), height, WAY_ENGRAVINGS[int(sign.front)], WAY_ENGRAVINGS[int(sign.back)], ROUTE_PANEL)
+	var placed := sign.duplicate()
+	placed["position"] = node.position + pos
+	route_signs.append(placed)
 
 # One straight wall segment centred at x along the boundary: plaster core,
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.

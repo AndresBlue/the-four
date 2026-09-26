@@ -12,6 +12,10 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_disabled, unshaded, shadows_disabled;
 
 uniform sampler2D engraving : filter_linear_mipmap, repeat_disable;
+/// A sign whose two faces say different things (the corridors' way out:
+/// each face tells whoever looks at it where the exit is for them).
+uniform bool two_faced = false;
+uniform sampler2D engraving_back : filter_linear_mipmap, repeat_disable;
 /// The light the diodes put into the sheet, and the whiter core of it.
 uniform vec3 glow : source_color = vec3(0.07, 1.0, 0.33);
 uniform vec3 core : source_color = vec3(0.62, 1.0, 0.8);
@@ -30,7 +34,7 @@ void fragment() {
 	// round from behind.
 	vec2 uv = UV;
 	if (!FRONT_FACING) uv.x = 1.0 - uv.x;
-	vec4 cut = texture(engraving, uv);
+	vec4 cut = (two_faced && !FRONT_FACING) ? texture(engraving_back, uv) : texture(engraving, uv);
 	float depth = uv.y;
 	// The diodes: a bright point each at the top edge, and the cone each one
 	// throws down into the sheet, widening as it goes.
