@@ -55,7 +55,32 @@ func run() -> void:
 	var walking: Array = InputMap.action_get_events("forward")
 	check("Andar es también el stick izquierdo", walking.any(func(event): return event is InputEventJoypadMotion and event.axis == JOY_AXIS_LEFT_Y and event.axis_value < 0.0))
 	check("Y mirar es el derecho, con su zona muerta", InputMap.has_action("look_right") and InputMap.action_get_events("look_right").any(func(event): return event is InputEventJoypadMotion and event.axis == JOY_AXIS_RIGHT_X) and is_equal_approx(InputMap.action_get_deadzone("look_right"), pad_settings.STICK_DEADZONE))
-	check("Interactuar es el botón de abajo", InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A))
+	check("Interactuar es el botón de la izquierda y saltar el de abajo", InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_X) and InputMap.action_get_events("jump").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A))
+	check("La hoja es el botón pequeño de la izquierda, y el panel táctil también", InputMap.action_get_events("sheet").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_BACK) and InputMap.action_get_events("sheet").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_TOUCHPAD))
+	check("Los botones se llaman como en cada mando", pad_settings.PAD_NAMES.playstation[JOY_BUTTON_X] == "CUADRADO" and pad_settings.PAD_NAMES.nintendo[JOY_BUTTON_A] == "B" and pad_settings.PAD_NAMES.xbox[JOY_BUTTON_Y] == "Y" and pad_settings.pad_family() == "xbox")
+	# Running and crouching flip on a press, and running stops on its own once
+	# the stick is let go.
+	var feel = preload("res://game/player/pad_feel.gd").new()
+	var click := InputEventJoypadButton.new()
+	click.button_index = int(pad_settings.pad_bindings.sprint)
+	click.pressed = true
+	feel.pressed(click, pad_settings)
+	var running_on: bool = feel.wants("sprint", pad_settings)
+	feel.settle(true, false, 1.0)
+	var kept_moving: bool = feel.wants("sprint", pad_settings)
+	feel.settle(false, false, 0.5)
+	check("Correr con el mando se enciende con un toque y se apaga al soltar el stick", running_on and kept_moving and not feel.wants("sprint", pad_settings))
+	var duck := InputEventJoypadButton.new()
+	duck.button_index = int(pad_settings.pad_bindings.crouch)
+	duck.pressed = true
+	feel.pressed(duck, pad_settings)
+	var crouched_on: bool = feel.wants("crouch", pad_settings)
+	feel.pressed(duck, pad_settings)
+	check("Y agacharse se alterna", crouched_on and not feel.wants("crouch", pad_settings))
+	pad_settings.values.pad_crouch_toggle = false
+	feel.pressed(duck, pad_settings)
+	check("Salvo si se pide mantenerlo", not feel.wants("crouch", pad_settings))
+	pad_settings.values.pad_crouch_toggle = true
 	check("Un botón se puede cambiar", pad_settings.bind_pad("interact", JOY_BUTTON_RIGHT_STICK) and int(pad_settings.pad_bindings.interact) == JOY_BUTTON_RIGHT_STICK and InputMap.action_get_events("interact").any(func(event): return event is InputEventJoypadButton and event.button_index == JOY_BUTTON_RIGHT_STICK))
 	check("Pero no al de menú ni a uno que ya hace otra cosa", not pad_settings.bind_pad("interact", JOY_BUTTON_START) and not pad_settings.bind_pad("interact", int(pad_settings.pad_bindings.crouch)))
 	# The menus have to be usable with a pad alone: this project's ui_accept
@@ -74,8 +99,37 @@ func run() -> void:
 	await process_frame
 	if scene.get_viewport().gui_get_focus_owner() == null: unfocused.append("characters")
 	check("Y toda pantalla abre con algo marcado", unfocused.is_empty())
+	# Settings: down walks every row of a page before "Volver" (Godot's own
+	# search went to "Volver" from the last row the page showed), and the
+	# shoulders change tab.
+	scene.ui.show_settings("main")
+	await process_frame
+	var walk_ok := true
+	var ui_node = scene.ui
+	for rows in ui_node.settings_rows:
+		for i in rows.size():
+			var control: Control = rows[i][0]
+			var below: Node = control.get_node_or_null(control.focus_neighbor_bottom)
+			var wanted: Node = ui_node.buttons["back"] if i == rows.size() - 1 else rows[i + 1][0]
+			if below != wanted: walk_ok = false
+	check("En ajustes, bajar recorre todas las filas antes de Volver", walk_ok and ui_node.settings_rows.size() == ui_node.settings_tabs.get_tab_count() and ui_node.settings_rows.all(func(rows): return rows.size() > 2))
+	var before_tab: int = ui_node.settings_tabs.current_tab
+	var shoulder := InputEventJoypadButton.new()
+	shoulder.button_index = JOY_BUTTON_RIGHT_SHOULDER
+	shoulder.pressed = true
+	Input.parse_input_event(shoulder)
+	await process_frame
+	var after_tab: int = ui_node.settings_tabs.current_tab
+	var marked: Control = scene.get_viewport().gui_get_focus_owner()
+	check("R1 pasa a la pestaña siguiente con su primera fila marcada", after_tab == (before_tab + 1) % ui_node.settings_tabs.get_tab_count() and marked == ui_node.settings_rows[after_tab][0][0])
+	var shoulder_up := InputEventJoypadButton.new()
+	shoulder_up.button_index = JOY_BUTTON_RIGHT_SHOULDER
+	Input.parse_input_event(shoulder_up)
+	scene.ui.settings_open = false
+	scene.ui.menu("main")
+	await process_frame
 	pad_settings.reset_controls()
-	check("Y restaurar controles los devuelve todos", int(pad_settings.pad_bindings.interact) == JOY_BUTTON_A and int(pad_settings.bindings.forward) == KEY_W)
+	check("Y restaurar controles los devuelve todos", int(pad_settings.pad_bindings.interact) == JOY_BUTTON_X and int(pad_settings.bindings.forward) == KEY_W)
 	# The board of tapes that got out: what goes in which table, in what order,
 	# and how much is kept.
 	var records := preload("res://game/services/records_service.gd").new()

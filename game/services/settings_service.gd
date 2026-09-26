@@ -2,17 +2,28 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
-## rebound: what is bound is what a button does. The layout is the one every
-## other game uses, so a hand that has played anything else already knows it:
-## the bottom button acts, the right one crouches, the left one lights the
-## torch, the top one jumps, the shoulders run and open the sheet.
-const PAD_KEYS := {"interact": JOY_BUTTON_A, "crouch": JOY_BUTTON_B, "flashlight": JOY_BUTTON_X, "jump": JOY_BUTTON_Y, "sprint": JOY_BUTTON_LEFT_SHOULDER, "sheet": JOY_BUTTON_RIGHT_SHOULDER}
+## rebound: what is bound is what a button does. Named by where the button is
+## (Godot's A is the bottom one on every pad: the cross on a PlayStation, B on
+## a Nintendo): the left one acts, the top one lights the torch, the bottom one
+## jumps, the right one crouches, pressing the left stick runs -- those two
+## flip on and off rather than being held (pad_sprint_toggle and
+## pad_crouch_toggle, pad_feel.gd) -- and the small button left of the middle
+## (View, Share or Create, minus) opens the sheet, as a map is in most games; on
+## a PlayStation the touchpad's click opens it too (PAD_SHEET_TOO). The
+## shoulders are left for the menus, where they change tab. Still under review
+## with the players (PLAN.md).
+const PAD_KEYS := {"interact": JOY_BUTTON_X, "crouch": JOY_BUTTON_B, "flashlight": JOY_BUTTON_Y, "jump": JOY_BUTTON_A, "sprint": JOY_BUTTON_LEFT_STICK, "sheet": JOY_BUTTON_BACK}
+const PAD_SHEET_TOO := JOY_BUTTON_TOUCHPAD
+## Saved-settings revision of the pad layout: a file with an older one has its
+## buttons put back to these once (the old layout had the bottom button acting
+## and the shoulders running and opening the sheet).
+const PAD_REVISION := 2
 ## Buttons the game keeps for itself, so nothing can be bound over them: the
-## menu button pauses, and B is how a menu is left.
-const PAD_RESERVED := [JOY_BUTTON_START, JOY_BUTTON_BACK]
+## menu button pauses.
+const PAD_RESERVED := [JOY_BUTTON_START]
 ## The hunter's triggers, read as presses: the right one strikes and the left
 ## one shrieks, which on a keyboard are the mouse buttons. Built here, never
 ## saved. (Its trace to a set is the torch button, locust_player.gd: the
@@ -31,7 +42,7 @@ const UI_STICK := {"ui_up": [JOY_AXIS_LEFT_Y, -1.0], "ui_down": [JOY_AXIS_LEFT_Y
 
 ## How far a stick has to leave its middle before it counts, and the actions
 ## the right stick looks with (built here, never saved: they are the stick).
-const STICK_DEADZONE := 0.22
+const STICK_DEADZONE := 0.15
 const LOOK_ACTIONS := {"look_left": [JOY_AXIS_RIGHT_X, -1.0], "look_right": [JOY_AXIS_RIGHT_X, 1.0], "look_up": [JOY_AXIS_RIGHT_Y, -1.0], "look_down": [JOY_AXIS_RIGHT_Y, 1.0]}
 const MOVE_AXES := {"forward": [JOY_AXIS_LEFT_Y, -1.0], "backward": [JOY_AXIS_LEFT_Y, 1.0], "left": [JOY_AXIS_LEFT_X, -1.0], "right": [JOY_AXIS_LEFT_X, 1.0]}
 var pad_bindings := PAD_KEYS.duplicate()
@@ -97,7 +108,7 @@ func load_settings() -> void:
 			if key == "subtitles" and not current_subtitles: continue
 			if stored.has(key): values[key] = sanitize(key, stored[key])
 	var pads = data.get("pad_bindings", {})
-	if pads is Dictionary:
+	if pads is Dictionary and int(data.get("pad_rev", 0)) == PAD_REVISION:
 		var taken := {}
 		for action in PAD_KEYS:
 			var button: int = int(pads.get(action, PAD_KEYS[action])) if pads.get(action, PAD_KEYS[action]) is float or pads.get(action, PAD_KEYS[action]) is int else PAD_KEYS[action]
@@ -206,11 +217,60 @@ func bind_pad(action: String, button: int) -> bool:
 	changed.emit()
 	return true
 
-## What a pad button is called on screen, in the letters printed on it.
-const PAD_NAMES := {JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y", JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB", JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3", JOY_BUTTON_DPAD_UP: "CRUZ ↑", JOY_BUTTON_DPAD_DOWN: "CRUZ ↓", JOY_BUTTON_DPAD_LEFT: "CRUZ ←", JOY_BUTTON_DPAD_RIGHT: "CRUZ →"}
+## What a pad button is called on screen, in what is printed on it, for each
+## family of pad: the buttons are the same places on all of them and are
+## called something else on each. PlayStation's shapes are written as words:
+## the menu font has no guarantee of carrying them.
+const PAD_NAMES := {
+	"xbox": {JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y", JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB", JOY_BUTTON_BACK: "VISTA", JOY_BUTTON_START: "MENÚ"},
+	"playstation": {JOY_BUTTON_A: "CRUZ", JOY_BUTTON_B: "CÍRCULO", JOY_BUTTON_X: "CUADRADO", JOY_BUTTON_Y: "TRIÁNGULO", JOY_BUTTON_LEFT_SHOULDER: "L1", JOY_BUTTON_RIGHT_SHOULDER: "R1", JOY_BUTTON_BACK: "SHARE", JOY_BUTTON_START: "OPTIONS", JOY_BUTTON_TOUCHPAD: "PANEL TÁCTIL"},
+	"nintendo": {JOY_BUTTON_A: "B", JOY_BUTTON_B: "A", JOY_BUTTON_X: "Y", JOY_BUTTON_Y: "X", JOY_BUTTON_LEFT_SHOULDER: "L", JOY_BUTTON_RIGHT_SHOULDER: "R", JOY_BUTTON_BACK: "−", JOY_BUTTON_START: "+"},
+}
+## The same on every pad.
+const PAD_COMMON := {JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3", JOY_BUTTON_DPAD_UP: "CRUCETA ↑", JOY_BUTTON_DPAD_DOWN: "CRUCETA ↓", JOY_BUTTON_DPAD_LEFT: "CRUCETA ←", JOY_BUTTON_DPAD_RIGHT: "CRUCETA →", JOY_BUTTON_TOUCHPAD: "PANEL TÁCTIL", JOY_BUTTON_GUIDE: "GUÍA", JOY_BUTTON_MISC1: "CAPTURA"}
+const TRIGGER_NAMES := {"xbox": ["LT", "RT"], "playstation": ["L2", "R2"], "nintendo": ["ZL", "ZR"]}
+## Makers' USB vendor ids, for when the name alone does not tell.
+const SONY := 0x054C
+const NINTENDO := 0x057E
+
+## The pad last used, and whether the last thing touched was a pad at all:
+## what the prompts on screen name (prompt_name) follows the hands.
+var last_pad := -1
+var using_pad := false
+
+## Which kind of pad is in the hands: "playstation", "nintendo" or "xbox" (the
+## layout every other pad copies, and what is assumed when nothing says).
+func pad_family() -> String:
+	var pads := Input.get_connected_joypads()
+	if pads.is_empty(): return "xbox"
+	var device: int = last_pad if last_pad in pads else pads[0]
+	var name := Input.get_joy_name(device).to_lower()
+	var vendor := int(Input.get_joy_info(device).get("vendor_id", 0))
+	if vendor == SONY or ["playstation", "ps3", "ps4", "ps5", "dualsense", "dualshock", "sony"].any(func(word): return word in name): return "playstation"
+	if vendor == NINTENDO or ["nintendo", "switch", "joy-con", "joycon"].any(func(word): return word in name): return "nintendo"
+	return "xbox"
+
+func button_name(button: int) -> String:
+	var family := pad_family()
+	var names: Dictionary = PAD_NAMES[family]
+	if button == JOY_BUTTON_BACK and family == "playstation":
+		var device: int = last_pad if last_pad in Input.get_connected_joypads() else (Input.get_connected_joypads()[0] if pad_present() else -1)
+		var name := Input.get_joy_name(device).to_lower() if device >= 0 else ""
+		if "ps5" in name or "dualsense" in name: return "CREATE"
+	return String(names.get(button, PAD_COMMON.get(button, "—")))
+
+## The triggers, 0 left and 1 right.
+func trigger_name(right: bool) -> String:
+	return String(TRIGGER_NAMES[pad_family()][1 if right else 0])
 
 func pad_name(action: String) -> String:
-	return String(PAD_NAMES.get(int(pad_bindings.get(action, -1)), "—"))
+	if not pad_bindings.has(action): return "—"
+	return button_name(int(pad_bindings[action]))
+
+## What to call an action on screen: its button if the hands are on a pad,
+## its key otherwise.
+func prompt_name(action: String) -> String:
+	return pad_name(action) if using_pad and pad_present() and pad_bindings.has(action) else key_name(action)
 
 ## Whether there is a pad plugged in at all (the menus only offer its rows then).
 func pad_present() -> bool:
@@ -230,6 +290,8 @@ func reset_controls() -> void:
 	bindings = KEYS.duplicate()
 	pad_bindings = PAD_KEYS.duplicate()
 	values.pad_look = DEFAULTS.pad_look
+	values.pad_sprint_toggle = DEFAULTS.pad_sprint_toggle
+	values.pad_crouch_toggle = DEFAULTS.pad_crouch_toggle
 	values.sensitivity = DEFAULTS.sensitivity
 	values.invert = false
 	apply()
@@ -255,6 +317,12 @@ func apply_bindings() -> void:
 			var press := InputEventJoypadButton.new()
 			press.button_index = pad_bindings[action]
 			InputMap.action_add_event(action, press)
+		# The touchpad's click opens the sheet as well, unless it was given to
+		# something else.
+		if action == "sheet" and not pad_bindings.values().has(PAD_SHEET_TOO):
+			var touch := InputEventJoypadButton.new()
+			touch.button_index = PAD_SHEET_TOO
+			InputMap.action_add_event(action, touch)
 	for action in UI_PAD:
 		if not InputMap.has_action(action): continue
 		var button: int = UI_PAD[action]
@@ -295,6 +363,11 @@ static func stick(pair: Array) -> InputEventJoypadMotion:
 const MODIFIER_FLAGS := {KEY_SHIFT: "shift_pressed", KEY_CTRL: "ctrl_pressed", KEY_ALT: "alt_pressed", KEY_META: "meta_pressed"}
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf(event.axis_value) > 0.5):
+		using_pad = true
+		last_pad = event.device
+	elif event is InputEventKey or event is InputEventMouseButton or (event is InputEventMouseMotion and event.relative.length() > 4.0):
+		using_pad = false
 	if not event is InputEventWithModifiers: return
 	for action in bindings:
 		var key: int = bindings[action]
@@ -390,7 +463,7 @@ static func slider_db(volume: float) -> float:
 
 func save_settings() -> void:
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION}))
+	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "pad_rev": PAD_REVISION, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION}))
 
 func _process(delta: float) -> void:
 	if countdown > 0:

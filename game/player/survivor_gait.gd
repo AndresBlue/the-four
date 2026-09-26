@@ -73,8 +73,9 @@ static func tire(body, wants_run: bool, delta: float) -> bool:
 static func speed(crouched: bool, running: bool) -> float:
 	return SPEED_CROUCH if crouched else SPEED_RUN if running else SPEED_WALK
 
-## Towards `direction` (flat, unit or zero) at the gait's speed, and down
-## while off the floor. The caller moves the body.
+## Towards `direction` (flat, at most unit long: a pad pushed half way is half
+## the gait's speed) at the gait's speed, and down while off the floor. The
+## caller moves the body.
 static func accelerate(body, direction: Vector3, running: bool, delta: float) -> void:
 	var top := speed(body.crouched, running)
 	body.velocity.x = move_toward(body.velocity.x, direction.x * top, ACCELERATION * delta)

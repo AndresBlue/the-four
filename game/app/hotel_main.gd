@@ -529,7 +529,7 @@ func start_intro(seed_value: int) -> void:
 	# Only the television lights the room: no hotel ambient light.
 	environment.ambient_light_energy = 0.0
 	session.set_state(session.State.CUTSCENE)
-	ui.show_skip(settings.key_name("interact"))
+	ui.show_skip(settings.prompt_name("interact"))
 	camera_cut()
 
 func finish_intro() -> void:
@@ -855,7 +855,7 @@ func toggle_sheet() -> void:
 		return
 	if match_net.local_is_locust() or is_instance_valid(reading_document): return
 	ui.sheet.seat = player.slot
-	ui.sheet.open(local_alive(), settings.key_name("sheet"), notes_found())
+	ui.sheet.open(local_alive(), settings.prompt_name("sheet"), notes_found())
 	player.reading = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if world_audio.enabled: paper_sound.play()
@@ -1338,6 +1338,10 @@ func pad_pressed(button: int) -> void:
 	if button == JOY_BUTTON_B and ui.sheet.visible:
 		toggle_sheet()
 		return
+	# Dead and watching, the bottom button is the click that goes to the next.
+	if button == JOY_BUTTON_A and not local_alive() and session.state == session.State.PLAYING and not online_menu and not ui.sheet.visible:
+		match_net.next_watch()
+		return
 	# B goes back, the menu button pauses; in play they meet at the same place.
 	if button not in [JOY_BUTTON_B, JOY_BUTTON_START]: return
 	if button == JOY_BUTTON_B and session.state == session.State.PLAYING and not ui.settings_open and not online_menu and not is_instance_valid(reading_document): return
@@ -1535,7 +1539,7 @@ func restore_local_player(point: Vector3) -> void:
 	camera_cut()
 	# A sheet opened while dead was opened to look at only: up again, it is
 	# theirs to write on.
-	if ui.sheet.visible and not ui.sheet.editable: ui.sheet.open(true, settings.key_name("sheet"), notes_found())
+	if ui.sheet.visible and not ui.sheet.editable: ui.sheet.open(true, settings.prompt_name("sheet"), notes_found())
 
 ## Back behind its own eyes. Everything watching a teammate did to the body --
 ## hidden, without collision, with somebody else's camera in front -- is undone
@@ -2177,7 +2181,7 @@ func drive_local(delta: float) -> void:
 			match_net.use_hide(hiding_target, true)
 		pressed_door = null
 		was_held = true
-	var key: String = settings.key_name("interact")
+	var key: String = settings.prompt_name("interact")
 	if player.hidden:
 		camcorder.focus("SALIR")
 		ui.hint.text = ""
@@ -2306,7 +2310,7 @@ func watch_teammates() -> void:
 		ui.hint.text = "HAS MUERTO"
 		return
 	watch_over(body)
-	ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR" % body.player_name.to_upper()
+	ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · %s PARA CAMBIAR" % [body.player_name.to_upper(), (settings.button_name(JOY_BUTTON_A) if settings.using_pad and settings.pad_present() else "CLIC")]
 
 ## Third person behind the teammate being watched: the arm keeps the camera
 ## out of walls and wardrobes, so nothing is seen through them.

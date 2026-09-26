@@ -84,6 +84,20 @@ var map_pencil: Control
 var unsent := PackedVector2Array()
 var last_point := Vector2.INF
 var flush_clock := 0.0
+## A pad's pencil. A pad has no pointer, and Godot does not pass on where a
+## finger is on a PlayStation's touchpad (only its click), so the pencil is
+## steered: the left stick moves its tip over the page, quick pushed all the
+## way and slow barely pushed, and slower still while it draws; the right
+## trigger draws and the left one rubs out. It shows once the pad moves it and
+## goes when the mouse does.
+const TIP_SPEED := 820.0
+const TIP_DRAWING := 0.55
+const TRIGGER := 0.35
+var tip: Control
+var tip_at := PAGE * 0.5
+var tip_shown := false
+var tip_rubbing := false
+var pad_stroke := false
 
 func _ready() -> void:
 	name = "PaperSheet"
@@ -169,6 +183,16 @@ func _ready() -> void:
 	caption.offset_bottom = PAGE.y * 0.5 + 22
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(caption)
+	tip = Control.new()
+	tip.name = "PadPencil"
+	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tip.visible = false
+	tip.draw.connect(func() -> void:
+		var ink_colour: Color = PAPER.darkened(0.45) if tip_rubbing else ink_of(seat)
+		var reach := ERASER * 0.5 if tip_rubbing else 7.0
+		tip.draw_arc(Vector2.ZERO, reach, 0.0, TAU, 28, Color(ink_colour, 0.85), 1.6, true)
+		tip.draw_circle(Vector2.ZERO, 1.8, ink_colour, true, -1.0, true))
+	page.add_child(tip)
 
 func open(can_edit: bool, key_name: String, notes := []) -> void:
 	editable = can_edit
@@ -271,6 +295,9 @@ func leaf(digit: int, place: int) -> Control:
 
 func close() -> void:
 	finish_stroke()
+	pad_stroke = false
+	tip_shown = false
+	tip.visible = false
 	if is_instance_valid(opening): opening.kill()
 	page.modulate.a = 1.0
 	visible = false
@@ -290,19 +317,14 @@ func clear() -> void:
 
 func _ink_input(event: InputEvent) -> void:
 	if not editable: return
+	# The mouse takes the page back from the pad's pencil.
+	if event is InputEventMouseMotion and not pad_stroke and tip_shown:
+		tip_shown = false
+		tip.visible = false
+	if pad_stroke: return
 	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		if event.pressed and drawing_op.is_empty():
-			if log.size() >= MAX_OPS: return
-			drawing_kind = Kind.DRAW if event.button_index == MOUSE_BUTTON_LEFT else Kind.ERASE
-			# Begun on the plan, it is drawn on the building.
-			var on_plan: bool = map != null and map.framed_planta >= 0 and Rect2(map.position, map.size).has_point(event.position)
-			if on_plan: drawing_kind = MAP_KIND + map.framed_planta * 2 + (1 if drawing_kind == Kind.ERASE else 0)
-			counter += 1
-			drawing_op = "%d:%d" % [seat, counter]
-			drawn_here[drawing_op] = true
-			line_for(drawing_op, drawing_kind)
-			last_point = Vector2.INF
-			add_point(event.position)
+			begin_stroke(event.position, event.button_index == MOUSE_BUTTON_RIGHT)
 		elif not event.pressed:
 			add_point(event.position)
 			finish_stroke()
@@ -310,6 +332,57 @@ func _ink_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and not drawing_op.is_empty():
 		add_point(event.position)
 		accept_event()
+
+## A new stroke from a point of the page, by whatever hand: pencil or rubber.
+func begin_stroke(at: Vector2, erase: bool) -> void:
+	if log.size() >= MAX_OPS: return
+	drawing_kind = Kind.ERASE if erase else Kind.DRAW
+	# Begun on the plan, it is drawn on the building.
+	var on_plan: bool = map != null and map.framed_planta >= 0 and Rect2(map.position, map.size).has_point(at)
+	if on_plan: drawing_kind = MAP_KIND + map.framed_planta * 2 + (1 if erase else 0)
+	counter += 1
+	drawing_op = "%d:%d" % [seat, counter]
+	drawn_here[drawing_op] = true
+	line_for(drawing_op, drawing_kind)
+	last_point = Vector2.INF
+	add_point(at)
+
+## How far a trigger is pulled, on whichever pad pulls it most.
+static func trigger(axis: JoyAxis) -> float:
+	var most := 0.0
+	for pad in Input.get_connected_joypads(): most = maxf(most, Input.get_joy_axis(pad, axis))
+	return most
+
+## The pad's pencil, each frame the sheet is up.
+func steer_pencil(delta: float) -> void:
+	if not visible or not editable or Input.get_connected_joypads().is_empty():
+		if pad_stroke:
+			finish_stroke()
+			pad_stroke = false
+		tip.visible = false
+		return
+	var stick := Input.get_vector("left", "right", "forward", "backward")
+	var drawing := trigger(JOY_AXIS_TRIGGER_RIGHT) > TRIGGER
+	var rubbing := not drawing and trigger(JOY_AXIS_TRIGGER_LEFT) > TRIGGER
+	if stick.length() > 0.0 or drawing or rubbing: tip_shown = true
+	tip.visible = tip_shown
+	if not tip_shown: return
+	var push := minf(stick.length(), 1.0)
+	if push > 0.0:
+		var speed := TIP_SPEED * (TIP_DRAWING if pad_stroke else 1.0) * push * (0.25 + 0.75 * push)
+		tip_at = (tip_at + stick.normalized() * speed * delta).clamp(Vector2.ZERO, PAGE)
+	tip.position = tip_at
+	if pad_stroke:
+		add_point(tip_at)
+		if not (drawing or rubbing) or drawing_op.is_empty():
+			finish_stroke()
+			pad_stroke = false
+	elif (drawing or rubbing) and drawing_op.is_empty():
+		begin_stroke(tip_at, rubbing)
+		pad_stroke = not drawing_op.is_empty()
+	if tip_rubbing != (rubbing or (pad_stroke and erasing(drawing_kind))):
+		tip_rubbing = not tip_rubbing
+	tip.queue_redraw()
 
 func add_point(position: Vector2) -> void:
 	position = position.clamp(Vector2.ZERO, PAGE)
@@ -337,6 +410,7 @@ func flush() -> void:
 	chunk_drawn.emit(drawing_op, drawing_kind, points)
 
 func _process(delta: float) -> void:
+	steer_pencil(delta)
 	if drawing_op.is_empty(): return
 	flush_clock -= delta
 	if flush_clock <= 0.0: flush()

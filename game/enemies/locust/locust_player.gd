@@ -37,6 +37,10 @@ const TRACE_COOLDOWN := 20.0
 const WARDROBE_REACH := 2.6
 const ECHO := preload("res://game/enemies/locust/echo_view.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+## The same pad in the hands as the survivor's (pad_feel.gd): its look, and
+## the hunt flipped on with the stick's click rather than held.
+const PAD_FEEL := preload("res://game/player/pad_feel.gd")
+var pad := PAD_FEEL.new()
 const EYE := Vector3(0.0, 2.35, 0.0)
 const ARM := 2.8
 ## How far to the side the camera rides. Far enough that the middle of the
@@ -122,6 +126,7 @@ func setup(owner) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not can_act(): return
+	pad.pressed(event, level.settings)
 	# On a pad the torch button asks for the trace: the creature has no torch.
 	if event is InputEventJoypadButton and event.pressed and event.is_action("flashlight"):
 		trace()
@@ -143,17 +148,21 @@ func can_act() -> bool:
 func look_by(amount: Vector2) -> void:
 	if creature.mode not in [creature.Mode.EXECUTE, creature.Mode.WARDROBE]: creature.rotation.y += amount.x
 	pitch = clampf(pitch + amount.y * (-1.0 if level.settings.values.invert else 1.0), -1.1, 0.6)
+	if is_instance_valid(pivot): pivot.rotation.x = pitch
 
-## The right stick, like the survivor's (hotel_player.pad_look).
+## The right stick, like the survivor's (hotel_player.pad_look), every drawn
+## frame.
 func pad_look(delta: float) -> void:
-	if not can_act() or level.settings == null: return
-	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
-	var push := stick.length()
-	if push < 0.001: return
-	look_by(-stick.normalized() * push * push * level.settings.values.pad_look * delta)
+	if not can_act() or level.settings == null:
+		pad.stick = Vector2.ZERO
+		return
+	var turn := pad.look(delta, level.settings)
+	if turn != Vector2.ZERO: look_by(turn)
+
+func _process(delta: float) -> void:
+	if creature != null and level != null: pad_look(delta)
 
 func drive(delta: float) -> void:
-	pad_look(delta)
 	creature.count_grace(delta)
 	creature.state_time += delta
 	cooldown = maxf(0.0, cooldown - delta)
@@ -172,7 +181,8 @@ func drive(delta: float) -> void:
 	# With the floor dark there is no limit to the hunt: it has nothing left to
 	# fear and nothing to spend.
 	var free_hunt: bool = frenzy > 0.0 or level.session.goal.get("blackout", false)
-	var hunting := free and axis.length() > 0.1 and Input.is_action_pressed("sprint") and (stamina > 0.0 or free_hunt)
+	var hunting := free and axis.length() > 0.1 and pad.wants("sprint", level.settings) and (stamina > 0.0 or free_hunt)
+	pad.settle(axis.length() > 0.1, not free or (stamina <= 0.0 and not free_hunt), delta)
 	if hunting:
 		if not free_hunt: stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
 		recovery = RECOVERY_DELAY

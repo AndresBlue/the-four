@@ -3,6 +3,12 @@ const NOISE := preload("res://game/audio/noise_kinds.gd")
 ## How the body moves, shared with the test bots (tools/bots).
 const MOVEMENT := preload("res://game/player/survivor_gait.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const PAD_FEEL := preload("res://game/player/pad_feel.gd")
+## The pad's look and its running and crouching that flip (pad_feel.gd).
+var pad := PAD_FEEL.new()
+## Under this far pushed, a pad's toggled run walks: a light push creeps even
+## with running on.
+const RUN_PUSH := 0.55
 var avatar
 ## Seat in the match (session participant key). Single player is seat 1.
 var slot := 1
@@ -136,6 +142,7 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not active: return
+	if not reading and not hidden: pad.pressed(event, settings)
 	if event is InputEventMouseMotion and not reading:
 		# Zoomed in, the same hand movement swings the picture as much more,
 		# so the look slows down with the lens.
@@ -161,33 +168,34 @@ func look_by(amount: Vector2) -> void:
 		rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
 	camera.rotation.x = clampf(camera.rotation.x + up, -1.45, 1.45)
 
-## The right stick, read every frame and not as presses: a stick that is barely
-## pushed turns slowly and one pushed to the rim turns fast (the square makes
-## the middle of its travel gentle, which is what makes a pad aimable), and
-## the zoomed lens slows it the same way it slows the mouse.
+## The right stick, read every drawn frame (pad_feel.look: eased, gentle in
+## the middle, quicker held at the rim), and slowed by the zoomed lens the same
+## way the mouse is.
 func pad_look(delta: float) -> void:
-	if not active or reading or settings == null: return
-	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
-	var push := stick.length()
-	if push < 0.001: return
-	var speed: float = settings.values.pad_look * delta / zoom
-	# The stick reads +x to the right and +y down; the picture turns the other way.
-	look_by(-stick.normalized() * push * push * speed)
+	if not active or reading or settings == null:
+		pad.stick = Vector2.ZERO
+		return
+	var turn := pad.look(delta, settings, zoom)
+	if turn != Vector2.ZERO: look_by(turn)
 
 func _physics_process(delta: float) -> void:
-	pad_look(delta)
 	if held:
 		velocity = Vector3.ZERO
 		return
 	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden and not reading else Vector2.ZERO
-	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized()
+	# How far the stick is pushed is how fast: a keyboard is always all the way.
+	var push := minf(axis.length(), 1.0)
+	var direction := (basis * Vector3(axis.x, 0, axis.y)).normalized() * push
 	# Reading (a document, the sheet, the keypad) keeps the body still: the
 	# keys that jump and crouch are read from the whole keyboard, so a space
 	# typed while reading used to jump -- and a jump is heard. It stays as it
 	# was, crouched or standing.
-	var wants_crouch: bool = crouched if reading else active and not hidden and Input.is_action_pressed("crouch")
+	var wants_crouch: bool = crouched if reading else active and not hidden and pad.wants("crouch", settings)
 	MOVEMENT.set_crouch(self, wants_crouch)
-	var running := MOVEMENT.tire(self, active and not hidden and axis.length() > 0.1 and Input.is_action_pressed("sprint"), delta)
+	var running := MOVEMENT.tire(self, active and not hidden and push > RUN_PUSH and pad.wants("sprint", settings), delta)
+	pad.settle(push > 0.1, exhausted or hidden, delta)
+	# Out of the body (dead, watching, between floors): nothing stays flipped on.
+	if not active: pad.reset()
 	MOVEMENT.accelerate(self, direction, running, delta)
 	if active and not hidden and not reading and not crouched and is_on_floor() and Input.is_action_just_pressed("jump"):
 		velocity.y = 5.4
@@ -210,7 +218,9 @@ func _physics_process(delta: float) -> void:
 		bob_weight = move_toward(bob_weight, 1.0, delta * 5.0)
 		var index := floori(step_phase / PI)
 		if index != previous:
-			var heard := MOVEMENT.footfall(crouched, running, hard_floor)
+			# Standing but creeping (a pad pushed only a little) is as quiet as
+			# crouching at the same speed: the step is what is heard, not the pose.
+			var heard := MOVEMENT.footfall(crouched or (not running and planar <= MOVEMENT.SPEED_CROUCH + 0.1), running, hard_floor)
 			noise.emit(global_position, heard.radius, heard.kind)
 			if step_scheduled != index: play_step(running, 0.0)
 		# Recorded steps have their impact some way into the clip: start the next
@@ -425,6 +435,7 @@ func look_pitch() -> float:
 
 func _process(delta: float) -> void:
 	if is_instance_valid(camera) and settings != null:
+		pad_look(delta)
 		update_zoom(delta)
 		update_handheld(delta)
 		update_focus(delta)

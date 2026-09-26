@@ -70,6 +70,21 @@ y **tampoco se ha jugado**:
   pantalla contra una pared, y los pasillos ya no se ven por módulos en Alto
   y Ultra.
 
+El 26, con las notas de jugar con mando en la tele, entró esto, y **tampoco
+se ha jugado**:
+
+- **Andar con el stick es analógico** (antes era quieto o andando) y **la
+  cámara del mando se lee en cada fotograma**, suavizada y con aceleración al
+  fondo. Correr (stick izquierdo pulsado) y agacharse se alternan con un toque.
+- **Distribución nueva del mando:** cuadrado interactúa, triángulo linterna,
+  cruz salta, círculo agacha, la hoja en Share/Vista y en el panel táctil.
+  Los nombres de los botones siguen al mando (Xbox, PlayStation, Nintendo).
+- **Los menús con mando:** bajar ya no salta a «Volver» dejando opciones sin
+  alcanzar, y L1/R1 cambian de pestaña en Ajustes.
+- **Dibujar en la hoja con mando:** el stick lleva el lápiz, R2 dibuja y L2
+  borra. Con el dedo en el panel táctil no se puede: Godot 4.7 no da dónde
+  está el dedo, solo el clic.
+
 El 24 entró una vuelta entera a la criatura, al director, a la cordura y a
 las alucinaciones, y **tampoco se ha jugado** (descrito en el diseño):
 
@@ -213,6 +228,13 @@ herramientas para mirarlo están en la guía de desarrollo.
   propio a las salas iluminadas.
 - [ ] **El armario:** comodidad del efecto de asomarse en partidas humanas y a
   distintas resoluciones.
+- [ ] **Los controles del mando, en revisión** (26 de septiembre): la
+  distribución por defecto del superviviente y la de The Locust (hoy R2
+  estoca, L2 chilla, triángulo rastro, cuadrado puertas y teles, L3 caza),
+  si L1 y R1 deben hacer algo en partida (hoy nada: ¿zoom de la cámara?), la
+  sensibilidad por defecto y el empuje del borde, y la velocidad del lápiz en
+  la hoja. Queda por probar el giroscopio de los mandos de PlayStation y
+  Nintendo para el lápiz, que Godot sí lee.
 - [ ] **La escena de entrada:** ritmo y cámara.
 - [ ] **Los tres personajes dentro del hotel**, con la cinta encima y a
   oscuras: los ojos de la Exploradora, el pelo fundido, el relieve del

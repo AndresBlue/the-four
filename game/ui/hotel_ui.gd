@@ -496,6 +496,8 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 			scroll.custom_minimum_size = Vector2(1000, 380)
 			column.add_child(scroll)
+			# Nothing on it can be marked, so on a pad the right stick rolls it.
+			pad_scroll = scroll
 			var sheet := VBoxContainer.new()
 			sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			scroll.add_child(sheet)
@@ -586,6 +588,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 				# However many friends are online, the list scrolls inside the
 				# screen instead of pushing the buttons off it.
 				var scroll := ScrollContainer.new()
+				scroll.follow_focus = true
 				scroll.custom_minimum_size = Vector2(560, mini(friends.size(), 7) * 38)
 				scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 				column.add_child(scroll)
@@ -913,7 +916,7 @@ func show_document(item: Dictionary) -> void:
 	spacer(text, 6)
 	paragraph(text, item.body, 20, 640, STYLE.INK)
 	spacer(text, 10)
-	var key: String = settings.key_name("interact") if settings != null else "E"
+	var key: String = settings.prompt_name("interact") if settings != null else "E"
 	label(text, "[%s] GUARDAR" % key, 16).add_theme_color_override("font_color", STYLE.FAINT)
 
 ## The keypad of the last door: four places, what has been typed so far, a
@@ -957,7 +960,7 @@ func show_lock(entered: String, places: int, word: String, known := "", dial := 
 			var one := label(strip, str(digit), 30)
 			one.add_theme_color_override("font_color", STYLE.AMBER if digit == dial else STYLE.SOFT)
 	var foot_words := word
-	if foot_words.is_empty(): foot_words = "CRUZ: ELIGE · A: MARCA · X: BORRA · B: SALIR" if padded else "TECLEA EL CÓDIGO · [ESC] SALIR"
+	if foot_words.is_empty(): foot_words = "CRUCETA: ELIGE · %s: MARCA · %s: BORRA · %s: SALIR" % [settings.button_name(JOY_BUTTON_A), settings.button_name(JOY_BUTTON_X), settings.button_name(JOY_BUTTON_B)] if padded else "TECLEA EL CÓDIGO · [ESC] SALIR"
 	var foot := label(column, foot_words, 18)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	foot.add_theme_color_override("font_color", STYLE.ALERT if word == "NO ES" else STYLE.SOFT)
@@ -1008,7 +1011,12 @@ func controls_panel(parent: Node) -> void:
 	label(list, "CONTROLES", 20).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(list, 4)
 	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
-	for row in [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["ESC", "Pausa"]]:
+	var rows: Array = [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["ESC", "Pausa"]]
+	# Played on a pad, the card names its buttons, and says which ones flip.
+	if settings.using_pad and settings.pad_present():
+		var flip := func(action: String) -> String: return settings.pad_name(action) + (" (ALTERNA)" if settings.values.get("pad_%s_toggle" % action, false) else "")
+		rows = [["STICK IZQ.", "Moverse (cuanto más lo empujas, más deprisa)"], ["STICK DER.", "Mirar"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Puertas y escondites"], [settings.pad_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.pad_name("flashlight"), "Linterna"], [settings.pad_name("sheet"), "Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)" % [settings.trigger_name(true), settings.trigger_name(false)]], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
+	for row in rows:
 		var line := HBoxContainer.new()
 		list.add_child(line)
 		line.add_theme_constant_override("separation", 12)
@@ -1027,8 +1035,13 @@ func show_settings(back: String) -> void:
 	side.visible = false
 	column.custom_minimum_size.x = 1000
 	title(column, "AJUSTES", 58)
+	# On a pad the shoulders change tab (_input), from anywhere on the screen.
+	if settings.pad_present():
+		var hint := label(column, "%s  ·  CAMBIA DE PESTAÑA  ·  %s" % [settings.button_name(JOY_BUTTON_LEFT_SHOULDER), settings.button_name(JOY_BUTTON_RIGHT_SHOULDER)], 16)
+		hint.add_theme_color_override("font_color", STYLE.SOFT)
 	spacer(column, 10)
 	var tabs := TabContainer.new()
+	settings_tabs = tabs
 	tabs.custom_minimum_size = Vector2(1000, 380)
 	tabs.add_theme_font_size_override("font_size", 20)
 	column.add_child(tabs)
@@ -1083,8 +1096,10 @@ func show_settings(back: String) -> void:
 	check(controls, "Invertir mirada vertical", "invert")
 	if settings.pad_present():
 		slider(controls, "Sensibilidad del mando", "pad_look", 0.6, 6.0, 0.2)
+		check(controls, "Correr con el mando: pulsar para alternar", "pad_sprint_toggle")
+		check(controls, "Agacharse con el mando: pulsar para alternar", "pad_crouch_toggle")
 		check(controls, "Vibración del mando", "rumble")
-		paragraph(controls, "El stick izquierdo anda, el derecho mira, y el botón de menú hace de pausa. Mover y mirar son los sticks y no se cambian.", 16, 900, STYLE.SOFT)
+		paragraph(controls, "Mando: %s. El stick izquierdo anda —cuanto más lo empujas, más deprisa—, el derecho mira y %s hace de pausa; mover y mirar son los sticks y no se cambian. Con la hoja abierta, el stick izquierdo lleva el lápiz, %s dibuja y %s borra." % [FAMILY_NAMES[settings.pad_family()], settings.button_name(JOY_BUTTON_START), settings.trigger_name(true), settings.trigger_name(false)], 16, 900, STYLE.SOFT)
 	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "locust_trace": "The Locust: rastro a la tele"}
 	for id in titles:
 		var row := HBoxContainer.new()
@@ -1115,7 +1130,7 @@ func show_settings(back: String) -> void:
 			confirm()
 			rebind_pad = id
 			rebind_button = pad_button
-			pad_button.text = "PULSA UN BOTÓN · B CANCELA"
+			pad_button.text = "PULSA UN BOTÓN · %s CANCELA" % settings.button_name(JOY_BUTTON_B)
 		)
 	var reset := Button.new()
 	reset.theme_type_variation = "BoxButton"
@@ -1150,6 +1165,7 @@ func show_settings(back: String) -> void:
 		if not settings.previous_display.is_empty(): settings.revert_display()
 		action_requested.emit(return_action)
 	buttons["back"] = entry(column, "Volver", leave, false, 24)
+	chain_settings(tabs, buttons["back"])
 	_display_changed(int(ceil(settings.countdown)))
 	transition(0.3)
 	quiet_focus = true
@@ -1214,6 +1230,61 @@ func scaling_modes(parent: Node) -> void:
 		show_settings.call_deferred(return_action)
 	)
 	row.add_child(control)
+
+## The settings' tabs, and on each page the rows a pad can stop on.
+var settings_tabs: TabContainer
+var settings_rows: Array = []
+## A list with nothing to mark on it (the board of times): the right stick
+## rolls it.
+var pad_scroll: ScrollContainer
+const FAMILY_NAMES := {"xbox": "Xbox o compatible", "playstation": "PlayStation", "nintendo": "Nintendo"}
+
+## Down and up on a pad walk every row of a page, in order, and only then
+## reach "Volver"; the page rolls to follow what is marked. Left to Godot, the
+## next control down was looked for on the screen, and the rows the page had
+## not rolled to yet were not on it: at the last row showing, down went
+## straight to "Volver" and the rest could not be reached.
+func chain_settings(tabs: TabContainer, back: Control) -> void:
+	settings_rows.clear()
+	var bar := tabs.get_tab_bar()
+	for index in tabs.get_tab_count():
+		var scroll := tabs.get_tab_control(index) as ScrollContainer
+		scroll.follow_focus = true
+		var rows: Array = []
+		for child in scroll.get_child(0).get_children():
+			var row: Array = []
+			focusable(child, row)
+			if not row.is_empty(): rows.append(row)
+		settings_rows.append(rows)
+		for i in rows.size():
+			for k in rows[i].size():
+				var control: Control = rows[i][k]
+				var above: Control = bar if i == 0 else rows[i - 1][mini(k, rows[i - 1].size() - 1)]
+				var below: Control = back if i == rows.size() - 1 else rows[i + 1][mini(k, rows[i + 1].size() - 1)]
+				control.focus_neighbor_top = control.get_path_to(above)
+				control.focus_neighbor_bottom = control.get_path_to(below)
+	var aim := func(index: int) -> void:
+		var rows: Array = settings_rows[index] if index < settings_rows.size() else []
+		if rows.is_empty(): return
+		bar.focus_neighbor_bottom = bar.get_path_to(rows[0][0])
+		back.focus_neighbor_top = back.get_path_to(rows[rows.size() - 1][0])
+	aim.call(tabs.current_tab)
+	tabs.tab_changed.connect(aim)
+
+func focusable(node: Node, into: Array) -> void:
+	if node is Control and (node as Control).focus_mode != Control.FOCUS_NONE and (node as Control).visible: into.append(node)
+	for child in node.get_children(): focusable(child, into)
+
+## The shoulders: the tab before or after, its first row marked.
+func turn_tab(step: int) -> void:
+	if not is_instance_valid(settings_tabs): return
+	settings_tabs.current_tab = posmod(settings_tabs.current_tab + step, settings_tabs.get_tab_count())
+	tick()
+	var rows: Array = settings_rows[settings_tabs.current_tab] if settings_tabs.current_tab < settings_rows.size() else []
+	var scroll := settings_tabs.get_current_tab_control() as ScrollContainer
+	if scroll != null: scroll.scroll_vertical = 0
+	if rows.is_empty(): settings_tabs.get_tab_bar().grab_focus()
+	else: (rows[0][0] as Control).grab_focus()
 
 func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
@@ -1511,6 +1582,9 @@ func lost_signal(seconds := 2.6) -> void:
 
 func _process(delta: float) -> void:
 	clock += delta
+	if is_instance_valid(pad_scroll) and pad_scroll.is_visible_in_tree():
+		var roll := Input.get_axis("look_up", "look_down")
+		if absf(roll) > 0.0: pad_scroll.scroll_vertical += int(roll * 900.0 * delta)
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
 	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
 	if screen == "main" and overlay.visible:
@@ -1530,7 +1604,9 @@ func _process(delta: float) -> void:
 func _display_changed(seconds: int) -> void:
 	if is_instance_valid(display_label):
 		display_label.text = "Confirma la pantalla: se revertirá en %d s." % seconds if seconds > 0 else ""
-	if is_instance_valid(display_row): display_row.visible = seconds > 0
+	if is_instance_valid(display_row):
+		if seconds > 0 and not display_row.visible and settings.using_pad and display_row.get_child_count() > 0: (display_row.get_child(0) as Control).grab_focus.call_deferred()
+		display_row.visible = seconds > 0
 	var refresh := seconds == 0 and display_was_pending and settings_open
 	display_was_pending = seconds > 0
 	if refresh: show_settings.call_deferred(return_action)
@@ -1546,7 +1622,11 @@ func _input(event: InputEvent) -> void:
 		if button == JOY_BUTTON_B or settings.bind_pad(rebind_pad, button):
 			rebind_button.text = settings.pad_name(rebind_pad)
 			rebind_pad = ""
-		else: rebind_button.text = "BOTÓN RESERVADO · B CANCELA"
+		else: rebind_button.text = "BOTÓN RESERVADO · %s CANCELA" % settings.button_name(JOY_BUTTON_B)
+		return
+	if settings_open and screen == "settings" and event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]:
+		get_viewport().set_input_as_handled()
+		turn_tab(1 if event.button_index == JOY_BUTTON_RIGHT_SHOULDER else -1)
 		return
 	if rebind_action.is_empty() or not event is InputEventKey or not event.pressed: return
 	get_viewport().set_input_as_handled()
