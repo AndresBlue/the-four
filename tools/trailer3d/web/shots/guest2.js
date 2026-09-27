@@ -51,8 +51,16 @@ export function create(ctx) {
 			a.group.updateMatrixWorld(true);
 			// For the reverse: the snow's light thrown wide across the room from
 			// the glass, hard, so the shadow it casts is sharp on the far walls.
-			shot.cast = new THREE.SpotLight(new THREE.Color(0.72, 0.8, 1.0), 0, 12, 1.15, 0.35, 1.2);
+			shot.cast = new THREE.SpotLight(new THREE.Color(0.66, 0.76, 1.0), 0, 12, 1.15, 0.5, 1.4);
 			shot.cast.castShadow = true;
+			// The snow itself in the light it throws: a cookie of static, new
+			// every frame, soft at the edge.
+			shot.snow = document.createElement("canvas");
+			shot.snow.width = shot.snow.height = 256;
+			shot.snowTex = new THREE.CanvasTexture(shot.snow);
+			shot.snowTex.colorSpace = THREE.SRGBColorSpace;
+			shot.cast.map = shot.snowTex;
+			shot.snowField = -1;
 			shot.cast.shadow.mapSize.set(2048, 2048);
 			shot.cast.shadow.bias = -0.0008;
 			shot.cast.shadow.camera.near = 0.2;
@@ -127,9 +135,33 @@ export function create(ctx) {
 			const dz = t >= OUT ? PULL : 0;
 			for (const o of [a.commode, a.group, a.glow, a.fill, a.glow.target]) o.position.z = shot.base.get(o) + dz;
 			a.glow.target.updateMatrixWorld();
-			shot.cast.intensity = t >= OUT ? 34 * wave * (flash ? 2 : 1) : 0;
-			shot.cast.position.set(face.x, face.y, face.z + PULL + 0.05);
-			shot.cast.target.position.set(3.0, face.y + 0.4, face.z + PULL + 2.4);
+			// Dim, and never still: the snow's grain in the light, and now and then
+			// the set flaring.
+			const field = Math.floor(t * 30);
+			const grain = 0.7 + 0.6 * (Math.sin(field * 12.9898) * 43758.5453 % 1 + 1) % 1;
+			const flare = Math.sin(t * 7.3) * Math.sin(t * 3.1) > 0.6 ? 2.2 : 1;
+			shot.cast.intensity = t >= OUT ? 9 * wave * grain * flare * (flash ? 2 : 1) : 0;
+			if (t >= OUT && field !== shot.snowField) {
+				shot.snowField = field;
+				const g = shot.snow.getContext("2d");
+				const img = g.createImageData(256, 256);
+				let seed = field * 7919 + 17;
+				for (let i = 0; i < 256 * 256; i++) {
+					seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+					const x = i % 256 - 128;
+					const y = Math.floor(i / 256) - 128;
+					const edge = Math.max(0, 1 - Math.hypot(x, y) / 132);
+					const v = (185 + (seed % 70)) * Math.min(1, edge * 1.6);
+					img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+					img.data[i * 4 + 3] = 255;
+				}
+				g.putImageData(img, 0, 0);
+				shot.snowTex.needsUpdate = true;
+			}
+			// The glass is a broad source: moved about it a little every
+			// subframe, so the shadow's edge comes out soft.
+			shot.cast.position.set(face.x + (Math.random() - 0.5) * 0.4, face.y + (Math.random() - 0.5) * 0.3, face.z + PULL + 0.05);
+			shot.cast.target.position.set(3.0, face.y - 0.45, face.z + PULL + 2.4);
 			shot.cast.target.updateMatrixWorld();
 			if (t >= OUT) {
 				poseOut(locust, t);
@@ -150,6 +182,8 @@ export function create(ctx) {
 		look(t) {
 			// Night gain, kept low: the room stays dark round the set.
 			const L = tape({ exposure: 1.45, whiteBalance: [0.96, 1.0, 1.08], grain: 0.34, halation: 0.15, bloom: 0.035 });
+			// The wall: darker, greyer, the grain up, the corners gone.
+			if (t >= OUT) Object.assign(L, { exposure: 1.1, grain: 0.45, saturation: 0.7, vignette: 0.8 });
 			// Each flash: a burst of white snow, the picture thrown sideways, a
 			// frame too bright, and it drops back.
 			for (const f of FLASHES) {
@@ -189,13 +223,13 @@ function posePicture(b, t) {
 }
 
 // Out: between the set and the east wall, stooped over the set, the long
-// arms raised, the head on one side: all of it thrown up the wall in profile.
+// arms hanging, the head on one side: all of it thrown up the wall.
 function poseOut(L, t) {
 	L.root.rotation.set(0, -Math.PI / 2 - 0.35, 0);
 	L.root.position.set(1.9, 0, -3.55 + PULL + 1.0);
 	L.reset();
 	L.stand({ hunch: 0.55 });
-	L.poseArms({ aggression: 1, attack: 0.6 });
+	L.hangArms();
 	L.turn("Head1", [1, 0, 0], 0.25);
 	L.turn("Head1", [0, 0, 1], 0.4 + Math.sin(t * 29) * 0.05);
 	L.root.updateMatrixWorld(true);

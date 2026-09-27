@@ -89,13 +89,14 @@ export function create(ctx) {
 			kit.wall(18, 1.3, 18, 4.7, { dress: [-1] });
 			// A lamp further down the corridor, dim, behind where it will stand.
 			const behind = await kit.sconce(12.5, 1.6, 1.3, 0, 1, { intensity: 1.2 });
-			// Beyond the door, a tiled vestibule, lit, empty; its far wall.
-			kit.floor(-4.4, 0, 0, 6, kit.m.tile);
-			kit.ceilingSlab(-4.4, 0, 0, 6);
-			kit.wall(-4.4, -0.09, 0, -0.09, { dress: [1], finish: "tile" });
-			kit.wall(-4.4, 6.09, 0, 6.09, { dress: [-1], finish: "tile" });
-			kit.wall(-4.49, 0, -4.49, 6, { dress: [1], finish: "tile" });
-			const vest = kit.dome(-2.2, 3.0, { intensity: 3 });
+			// Beyond the door, a tiled passage going on into the dark: one lamp by
+			// the door, and past it nothing, no end to be seen.
+			kit.floor(-40, 1.5, 0, 4.5, kit.m.tile);
+			kit.ceilingSlab(-40, 1.5, 0, 4.5);
+			kit.wall(-40, 1.41, 0, 1.41, { dress: [1], finish: "tile" });
+			kit.wall(-40, 4.59, 0, 4.59, { dress: [-1], finish: "tile" });
+			const vest = kit.dome(-1.3, 3.0, { intensity: 1.6 });
+			vest.distance = 5;
 			carDoors = [];
 			// The keypad on the refuge's west wall, beside the door.
 			face = new THREE.MeshStandardMaterial({ map: keypadFace(null), roughness: 0.5, metalness: 0.3 });

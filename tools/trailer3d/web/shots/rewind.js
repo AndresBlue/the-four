@@ -1,15 +1,14 @@
 // A new hotel every tape. Three quick rewinds, a third of a second each,
 // and after each the tape plays a moment of a different building, clearly:
 // a straight clean corridor of paper and warm lamps; one that turns, doors
-// open, a fire door; rooms opening into rooms and a ruined lounge. The words
-// stay on it.
+// open, a fire door; rooms opening into rooms and a ruined lounge.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { corridor, hotelRoom } from "../engine/sets.js";
 import * as P from "../engine/props.js";
 import { polyhaven, shadows } from "../engine/assets.js";
 import { Volumetrics } from "../engine/volumetric.js";
-import { camcorder, text } from "../engine/osd.js";
+import { camcorder } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, tape } from "./common.js";
 
@@ -146,11 +145,7 @@ export function create(ctx) {
 		overlay(g, t, size) {
 			camcorder(g, t, size, { clock: 2 * 3600 + 5 * 60 + 2, date: "OCT. 27 1993" });
 		},
-		// Over the tape, not in it: the words hold still while it rewinds.
-		overlayClean(g, t, size) {
-			const u = size.h / 1080;
-			text(g, "A NEW HOTEL EVERY TAPE", size.w / 2, size.h * 0.64, { size: 34, align: "center", u: u * 1.5, spacing: 3 });
-		},
+
 	};
 	return shot;
 }
