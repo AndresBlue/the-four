@@ -1,8 +1,6 @@
-// GUEST 03 — he hid; it saw him go in. Inside a wardrobe: the gap between
-// its two doors lets the lamp-lit bedroom in. Steps. The Locust comes through
-// the room's door, stooping under the lintel; stops. Silence. It turns to the
-// wardrobe, comes close, its mask in the gap, the head tilting. One door
-// opens, then the other. Black.
+// GUEST 03 — he hid. Inside a wardrobe, in the dark: his breath. He pushes
+// one door a crack to look, and The Locust is there, bent to the doors,
+// waiting. He opens it. Black: it has him.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom } from "../engine/sets.js";
@@ -14,13 +12,10 @@ import { camcorder, burnIn, typed } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp, keys } from "../engine/util.js";
 import { V, handheld, aimCamera, tape } from "./common.js";
 
-export const ENTER = [0.55, 1.35];
-export const STOP = 1.65;
-export const TURN = [2.1, 2.7];
-export const CLOSE = [2.75, 3.35];
-export const DOOR1 = 4.5;
-export const DOOR2 = 4.66;
-export const BLACK = 4.84;
+export const AJAR = [1.35, 2.2];
+export const OPEN = 3.35;
+export const LUNGE = 3.5;
+export const CATCH = 3.7;
 
 // Room: x 0..5.6, z 0..6.4. The wardrobe on the east wall, doors facing -x;
 // the room's door on the west wall, straight across.
@@ -84,89 +79,77 @@ export function create(ctx) {
 			await kit.painting(2.6, 0, 0, 1, 4);
 			locust = await Locust.create();
 			scene.add(locust.root);
+			// The room's light off the open leaf, back onto its mask.
+			const bounce = new THREE.PointLight(new THREE.Color().setRGB(1, 0.78, 0.55, THREE.SRGBColorSpace), 0.9, 2.2, 2);
+			bounce.position.set(4.55, 1.75, 3.05);
+			scene.add(bounce);
 			shot.volumetrics = new Volumetrics(ctx.renderer, { density: 0.01, noise: 0.4, maxDist: 10, steps: 24 });
 			shot.volumetrics.addPoint(lampLight, { radius: 0.8, strength: 0.7 });
 			if (hall.light) shot.volumetrics.addPoint(hall.light, { radius: 0.8, strength: 0.6 });
 		},
 		update(t) {
-			// The doors: a crack between them, then flung open.
-			const d1 = smoothstep(DOOR1, DOOR1 + 0.14, t);
-			const d2 = smoothstep(DOOR2, DOOR2 + 0.14, t);
-			ward.left.rotation.y = -0.03 - d1 * 1.6;
-			ward.right.rotation.y = 0.05 + d2 * 1.6;
-			// Inside, against the back, looking out through the gap.
+			// Shut; pushed a crack; then pushed open, and it comes.
+			const crack = smoothstep(AJAR[0], AJAR[1], t) * 0.4;
+			const open = smoothstep(OPEN, OPEN + 0.18, t);
+			ward.left.rotation.y = -0.02;
+			ward.right.rotation.y = 0.02 + crack + open * 1.0;
+			// Inside, against the back, looking out; leaning to the crack.
 			const hh = handheld(t, { amp: 0.5, seed: 31 });
 			const breathe = Math.sin(t * 2.2) * 0.004;
-			aimCamera(camera, V(5.0, 1.63 + breathe, 3.3735).add(hh.pos), V(0.0, 1.55, 3.3735), { yaw: hh.yaw * 0.5, pitch: hh.pitch * 0.5, roll: hh.roll * 0.4 });
+			const lean = smoothstep(AJAR[0], AJAR[1] + 0.3, t) * 0.12;
+			aimCamera(camera, V(5.0 - lean, 1.6 + breathe, 3.36 + lean * 0.4).add(hh.pos), V(0.0, 1.62, 3.3), { yaw: hh.yaw * 0.5, pitch: hh.pitch * 0.5, roll: hh.roll * 0.4 });
 			poseLocust(locust, t);
 		},
 		look(t) {
-			const L = tape({ exposure: 2.6, enclosure: t < DOOR1 ? 1 : 1 - smoothstep(DOOR1, DOOR1 + 0.2, t), grain: 0.32 });
-			if (t >= BLACK) L.fade = 1;
+			const L = tape({ exposure: 2.2, enclosure: t < OPEN ? 1 : 1 - smoothstep(OPEN, OPEN + 0.2, t), grain: 0.32 });
+			// Shut in: black but for the grain.
+			L.fadeAll = 1 - smoothstep(AJAR[0] - 0.1, AJAR[0] + 0.4, t) * 0.97;
+			if (t < AJAR[0]) L.fadeAll = 0.96;
+			if (t >= LUNGE) L.threat_glitch = 0.7;
+			if (t >= CATCH) L.fadeAll = 1;
 			return L;
 		},
 		overlay(g, t, size) {
-			if (t < BLACK) camcorder(g, t, size, { clock: 2 * 3600 + 47 * 60 + 52, date: "OCT. 27 1993" });
+			if (t < CATCH) camcorder(g, t, size, { clock: 2 * 3600 + 47 * 60 + 52, date: "OCT. 27 1993" });
 			if (t < 1.4) burnIn(g, [typed("TAPE 81 · GUEST 03", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.1, 1.4, t) });
 		},
 	};
 	return shot;
 }
 
-// In through the door stooping, a few steps toward the bed, stops; turns
-// to the wardrobe; comes to it and bends to the gap.
-function poseLocust(L, t) {
-	const stop = V(2.15, 0, 3.32);
-	const gap = V(3.92, 0, 3.36);
-	let pos;
-	let yaw;
-	let speed = 0;
-	let phase = 0;
-	let duck = 0;
-	if (t < ENTER[0]) {
-		pos = V(-2.2, 0, 3.3);
-		yaw = Math.PI / 2;
-	} else if (t < STOP) {
-		const k = smoothstep(ENTER[0], STOP, t);
-		pos = V(lerp(-1.9, stop.x, k), 0, lerp(3.3, stop.z, k));
-		// Coming in facing the lens, then its head and body go toward the bed.
-		yaw = Math.PI / 2 - k * 1.1;
-		speed = 2.6 * (1 - smooth((t - (STOP - 0.3)) / 0.3));
-		phase = (t - ENTER[0]) * 1.5;
-		duck = 1 - smoothstep(0.1, 1.2, pos.x);
-	} else if (t < CLOSE[0]) {
-		pos = stop.clone();
-		const k = smoothstep(TURN[0], TURN[1], t);
-		yaw = Math.PI / 2 - 1.1 + k * 1.1;
-	} else {
-		const k = smoothstep(CLOSE[0], CLOSE[1], t);
-		pos = stop.clone().lerp(gap, k);
-		yaw = Math.PI / 2;
-		speed = 1.6 * Math.sin(Math.PI * k);
-		phase = (t - CLOSE[0]) * 1.2 + 0.2;
-	}
-	L.root.position.copy(pos);
-	L.root.rotation.y = yaw;
-	L.reset();
-	const bend = smoothstep(CLOSE[0] + 0.3, CLOSE[1], t);
-	if (speed > 0.1) L.poseGait(speed, phase, { duck });
-	else L.stand({ duck, hunch: 0.1 + bend * 0.35 });
-	L.hangArms();
-	// Close to the doors the long arms hang back, clear of the wood.
-	if (bend > 0) {
-		L.aim("L_UpperArm", "L_Forearm", [0.25, -1.0, -0.25 * bend]);
-		L.aim("R_UpperArm", "R_Forearm", [-0.25, -1.0, -0.25 * bend]);
-		L.aim("L_Forearm", "L_Hand", [0.1, -1.0, -0.3 * bend]);
-		L.aim("R_Forearm", "R_Hand", [-0.1, -1.0, -0.3 * bend]);
-	}
-	// Bent to the gap: the mask down level with the eye inside.
-	if (bend > 0) {
-		L.turn("Spine2", [1, 0, 0], bend * 0.42);
-		L.turn("Spine4", [1, 0, 0], bend * 0.3);
-		L.turn("Neck1", [1, 0, 0], -bend * 0.5);
-		L.turn("Head1", [1, 0, 0], -bend * 0.25);
-	}
-	const tilt = smoothstep(CLOSE[1] + 0.15, CLOSE[1] + 0.7, t);
-	L.turn("Head1", [0, 0, 1], tilt * 0.42 + Math.sin(t * 17) * 0.02 * tilt);
+// Bent to the doors, waiting, the mask level with the crack and turned to
+// it, the head on one side; when the door opens it comes through it.
+const MASK = V(4.12, 1.66, 3.2);
+const LENS = V(4.95, 1.6, 3.4);
 
+function poseLocust(L, t) {
+	const head = L.bones.Head1;
+	L.root.position.set(0, 0, 0);
+	L.root.rotation.set(0, Math.PI / 2, 0);
+	L.reset();
+	L.root.updateMatrixWorld(true);
+	const rest = head.getWorldQuaternion(new THREE.Quaternion());
+	L.stand({ duck: 0.55, hunch: 0.6 });
+	L.hangArms();
+	L.aim("L_UpperArm", "L_Forearm", [0.25, -1.0, -0.25]);
+	L.aim("R_UpperArm", "R_Forearm", [-0.25, -1.0, -0.25]);
+	L.turn("Spine2", [1, 0, 0], 0.42);
+	L.turn("Spine4", [1, 0, 0], 0.3);
+	const lunge = smoothstep(LUNGE, CATCH, t);
+	if (lunge > 0) L.poseArms({ attack: lunge, aggression: 1 });
+	L.root.updateMatrixWorld(true);
+	// Put the head where the crack is (the feet go where they must).
+	const want = MASK.clone().add(V(lunge * 0.7, 0, 0));
+	L.root.position.copy(want.sub(L.point("Head1")));
+	L.root.updateMatrixWorld(true);
+	// The mask to the crack; still, now and then the head ticks further over.
+	const tick = Math.sin(t * 1.7) > 0.93 ? 0.12 : 0;
+	const look = LENS.clone().sub(L.point("Head1")).normalize();
+	const turnTo = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), look);
+	const tilt = new THREE.Quaternion().setFromAxisAngle(look, 0.42 + tick + Math.sin(t * 17) * 0.015);
+	const wanted = tilt.multiply(turnTo).multiply(rest);
+	const parent = head.parent.getWorldQuaternion(new THREE.Quaternion());
+	head.quaternion.copy(parent.invert().multiply(wanted));
+	L.root.updateMatrixWorld(true);
+	if (lunge > 0) L.jaw(lunge);
 }

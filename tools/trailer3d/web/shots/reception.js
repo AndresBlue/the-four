@@ -14,7 +14,9 @@ import { camcorder } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp, fbm1 } from "../engine/util.js";
 import { V, handheld, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
-export const CLACK = 2.12;
+export const CLACK = 1.35;
+// Where the clack came from: the far side of the east wall.
+const SOUND = V(6.9, 1.4, -5.2);
 
 // Where each guest stands and where their torch wanders before the clack.
 // Backs to the lens, into the room, the beams crossing it: silhouettes
@@ -23,7 +25,7 @@ export const CLACK = 2.12;
 const GUESTS = [
 	{ at: V(-2.4, 0, -2.6), yaw: Math.PI - 0.62, aims: [V(2.6, 0.2, -10.6), V(4.6, 0.5, -9.2)], who: "man" },
 	{ at: V(2.3, 0, -1.6), yaw: -Math.PI + 0.8, aims: [V(-6.8, 2.6, -8.2), V(-4.2, 2.1, -10.8)], who: "man" },
-	{ at: V(5.0, 0, -7.0), yaw: Math.PI / 2 + 0.3, aims: [V(7.0, 2.1, -7.4), V(7.0, 1.4, -9.4)], who: "woman" },
+	{ at: V(0.7, 0, -5.6), yaw: Math.PI + 0.15, aims: [V(-1.8, 2.3, -10.8), V(1.9, 1.2, -10.8)], who: "woman" },
 ];
 
 export function create(ctx) {
@@ -81,35 +83,51 @@ export function create(ctx) {
 				const light = makeTorch(scene, { intensity: 110, angle: 24 });
 				guests.push({ ...g, s, lamp, light });
 			}
-			torch = makeTorch(scene, { intensity: 45, angle: 26 });
+			torch = makeTorch(scene, { intensity: 60, angle: 24 });
 			// Dust more than fog: it scatters as much back toward the lens as on,
 			// so beams pointed away still show as shafts.
 			shot.volumetrics = new Volumetrics(ctx.renderer, { density: 0.035, g: 0.15, noise: 0.85, noiseScale: 0.35, maxDist: 20, steps: 44 });
 			for (const g of guests) shot.volumetrics.addSpot(g.light, { strength: 0.85 });
+			shot.volumetrics.addSpot(torch, { strength: 0.3 });
 			shot.volumetrics.addPoint(beacon.light, { radius: 2.2, strength: 0.6 });
 		},
-		update(t) {
+		update(time) {
+			// Subframes can reach a hair before the shot's start.
+			const t = Math.max(0, time);
 			beacon.set(t + 0.6);
-			// Beams wander while nothing happens; at the clack they stop dead.
-			const frozen = Math.min(t, CLACK + 0.08);
+			// Searching, afraid: each beam darts from place to place and shakes
+			// where it rests. At the clack, every beam whips to the sound.
+			const heard = smoothstep(CLACK + 0.05, CLACK + 0.28, t);
 			for (const [i, g] of guests.entries()) {
-				const k = 0.5 + 0.5 * Math.sin(frozen * (0.55 + i * 0.13) + i * 2.1);
-				const aim = g.aims[0].clone().lerp(g.aims[1], k);
-				aim.y += fbm1(frozen * 0.7, 60 + i) * 0.25;
+				const pts = [g.aims[0], g.aims[1], g.aims[0].clone().lerp(g.aims[1], 0.5).add(V(0, 0.6, 0))];
+				const hop = t * (1.6 + i * 0.35) + i * 0.7;
+				const n = Math.floor(hop);
+				const f = hop - n;
+				const dart = f < 0.3 ? smooth(f / 0.3) : 1;
+				const aim = pts[n % 3].clone().lerp(pts[(n + 1) % 3], dart);
+				aim.add(V(fbm1(t * 6, 60 + i) * 0.18, fbm1(t * 5.5, 70 + i) * 0.14, 0));
+				aim.lerp(SOUND.clone().add(V(fbm1(t * 9, 80 + i) * 0.12, fbm1(t * 8, 90 + i) * 0.1, i * 0.4 - 0.4)), heard);
+				g.s.root.rotation.y = g.yaw + heard * (i === 1 ? 0.5 : 0.35);
 				const pose = g.who === "man" ? detectiveTorch : poseTorch;
-				const { hand, dir } = pose(g.s, aim, { breathe: Math.sin(t * 1.9 + i) });
+				const { hand, dir } = pose(g.s, aim, { breathe: Math.sin(t * 5 + i) });
 				g.lamp.position.copy(hand).add(dir.clone().multiplyScalar(0.08));
 				g.lamp.quaternion.setFromUnitVectors(V(0, 1, 0), dir);
 				g.light.position.copy(hand).add(dir.clone().multiplyScalar(0.2));
 				g.light.target.position.copy(aim);
 			}
-			const hh = handheld(t, { amp: 1.3, seed: 11 });
-			const pan = smoothstep(0.0, 2.0, t) * 0.18 - 0.09;
-			aimCamera(camera, V(0.6, 1.62, 1.8).add(hh.pos), V(-1.0 + pan * 10, 1.35, -8.0), { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
-			// The camera's own torch low, on the carpet ahead: the others stay
-			// shapes against what their beams find.
-			holdTorch(torch, camera, { ahead: 3, swayT: frozen, sway: 0.8, aimOffset: V(0, -1.9, 0) });
-			torch.intensity = 22;
+			// The camera's torch passes over the others' backs, looking too.
+			const hh = handheld(t, { amp: 1.8, seed: 11 });
+			const sweep = [V(-2.2, 1.4, -2.9), V(0.6, 1.3, -5.9), V(2.4, 1.5, -2.0), V(-1.5, 1.0, -9.5)];
+			const hop = t * 1.9;
+			const n = Math.floor(hop);
+			const f = hop - n;
+			const mine = sweep[n % 4].clone().lerp(sweep[(n + 1) % 4], f < 0.35 ? smooth(f / 0.35) : 1).lerp(SOUND, heard);
+			const look = V(-0.4, 1.4, -8.0).lerp(mine.clone().setY(1.35), 0.35);
+			aimCamera(camera, V(0.6, 1.62, 1.8).add(hh.pos), look, { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
+			holdTorch(torch, camera, { ahead: 3 });
+			torch.target.position.copy(mine.add(V(fbm1(t * 7, 5) * 0.1, fbm1(t * 6, 6) * 0.08, 0)));
+			torch.target.updateMatrixWorld();
+			torch.intensity = 60;
 		},
 		look(t) {
 			return tape({ exposure: 1.6, grain: 0.3, halation: 0.35 });

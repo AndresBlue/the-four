@@ -1,7 +1,5 @@
-// The code: beep 7, beep 3, beep 9, beep 1; a longer tone; UNLOCKED; the door
-// opens. Cut: into the lift car, turning round with another survivor; at the
-// far end, beyond the refuge, outside where it is safe: The Locust, still.
-// It does not run. It cannot come in. It watches. The doors close on it.
+// The code: beep 7, beep 3, beep 9, beep 1, each on its own; the tone;
+// UNLOCKED; the lock lets go and the last door opens on the lift's light.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom } from "../engine/sets.js";
@@ -12,12 +10,10 @@ import { camcorder } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
-export const KEYS = [0.1, 0.3, 0.5, 0.7];
-export const TONE = 0.85;
-export const OPEN = 1.1;
-export const CUT = 1.45;
-export const TURNED = 2.25;
-export const CLOSE = [3.15, 4.1];
+export const KEYS = [0.3, 0.65, 1.0, 1.35];
+export const TONE = 1.7;
+export const BOLT = 1.95;
+export const OPEN = 2.05;
 const CODE = [7, 3, 9, 1];
 
 function keypadFace(pressed) {
@@ -178,75 +174,23 @@ export function create(ctx) {
 			g.fillText(words, 160, 72);
 			display.t.needsUpdate = true;
 			// Wide open, flat to the wall, so the way back is in sight from the car.
-		door.leaf.rotation.y = -smooth((t - OPEN) / 0.45) * 1.55;
-			const hh = handheld(t, { amp: 1.0, seed: 71 });
-			if (t < CUT) {
-				camera.fov = 46;
-				beam.visible = false;
-				other.root.visible = false;
-				locust.root.visible = false;
-				aimCamera(camera, V(0.72, 1.46, 1.65).add(hh.pos.multiplyScalar(0.5)), V(0.0, 1.36, 2.15), { yaw: hh.yaw * 0.5, pitch: hh.pitch * 0.5, roll: hh.roll * 0.5 });
-				holdTorch(torch, camera, { ahead: 1, sway: 0.05 });
-				torch.intensity = 20;
-			} else {
-				// Running into the car, turning round to face out.
-				const k = smooth((t - CUT) / (TURNED - CUT));
-				const st = steps(t, { rate: 2.6, amp: 1.8 * (1 - k) });
-				const pos = V(lerp(-0.8, -3.1, smooth((t - CUT) / 0.55)), 1.6, lerp(3.2, 3.0, k)).add(st.pos).add(hh.pos);
-				// Into the car looking in, then round (by the -z side) to look out.
-				const dir = V(-Math.cos(k * Math.PI), -0.03, -Math.sin(k * Math.PI) * 0.6);
-				// Once round, on the mask in the far door.
-				const target = k < 0.999 ? pos.clone().add(dir) : V(6.4, 1.95, 3.0);
-				aimCamera(camera, pos, target, { yaw: hh.yaw, pitch: hh.pitch + st.pitch, roll: hh.roll + st.roll });
-				holdTorch(torch, camera, { ahead: 3, sway: 0.4, swayT: t, aimOffset: V(0, -1.6, 0) });
-				// The car is lit: the torch hangs off, pointing at the floor.
-				torch.intensity = 0;
-				// Once round, the camcorder closes in on the far door.
-				// And closer still as the doors come across, so the gap holds the mask.
-				camera.fov = lerp(50, 23, smoothstep(TURNED, TURNED + 0.55, t)) - 8 * smoothstep(CLOSE[0], CLOSE[1] - 0.2, t);
-				// The other survivor runs in ahead, to the back of the car, and turns.
-				other.root.visible = true;
-				const run = smooth((t - CUT) / 0.5);
-				other.root.position.set(lerp(-1.75, -3.65, run), 0, lerp(3.05, 2.45, run));
-				const round = smoothstep(CUT + 0.45, CUT + 0.85, t);
-				other.root.rotation.y = -Math.PI / 2 - round * Math.PI;
-				const mask = V(6.4, 2.0, 3.0);
-				beam.visible = round >= 0.2;
-				if (round < 0.2) detectiveRun(other, (t - CUT) * 15, { lean: 0.22 * (1 - round * 5) });
-				else {
-					// The torch comes up as he turns and finds it.
-					// Up as he turns and finds it; down again as the doors come across.
-					const up = smoothstep(CUT + 0.6, CUT + 1.0, t) * (1 - smoothstep(CLOSE[0] + 0.1, CLOSE[0] + 0.55, t));
-					const aim = V(2.0, 0.2, 3.0).lerp(mask, up);
-					const { hand, dir } = detectiveTorch(other, aim, { breathe: Math.sin(t * 3), raise: 0.3 + up * 0.35 });
-					beam.position.copy(hand).add(dir.clone().multiplyScalar(0.12));
-					beam.target.position.copy(aim);
-					beam.target.updateMatrixWorld();
-					beam.intensity = 160 * (0.3 + 0.7 * up);
-					// As the torch drops, the threshold's own light keeps the mask.
-					shot.doorway.intensity = 14 + 26 * smoothstep(CLOSE[0], CLOSE[0] + 0.5, t);
-				}
-				// Out there, beyond the refuge, standing, watching.
-				locust.root.visible = t > CUT + 0.4;
-				// Just outside the refuge's far door, in its light, framed by it:
-				// stooped to see in under the lintel, the head on one side.
-				locust.root.position.set(6.8, 0, 3.0);
-				locust.root.rotation.y = -Math.PI / 2;
-				locust.stand({ duck: 0.55, hunch: 0.35 });
-				locust.turn("Head1", [0, 0, 1], 0.34 + (Math.sin(t * 2) > 0.95 ? 0.16 : 0));
-				// The doors close on it.
-				// Quick to start, slow at the last of it: the gap narrows on the mask.
-				const c = 1 - Math.pow(1 - clamp((t - CLOSE[0]) / (CLOSE[1] - CLOSE[0])), 2.6);
-				for (const d of carDoors) d.leaf.position.z = 3.0 + d.s * lerp(1.62, 0.56, c);
-			}
+		door.leaf.rotation.y = -smooth((t - OPEN) / 0.6) * 1.2;
+			// Back from the wall: the keypad and the door beside it both in view.
+			const hh = handheld(t, { amp: 0.8, seed: 71 });
+			camera.fov = 50;
+			aimCamera(camera, V(1.85, 1.55, 1.05).add(hh.pos), V(0.0, 1.3, 2.55), { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
+			holdTorch(torch, camera, { ahead: 1.8, sway: 0.1, swayT: t });
+			torch.intensity = 16;
+			other.root.visible = false;
+			locust.root.visible = false;
+			beam.visible = false;
+			for (const d of carDoors) d.leaf.position.z = 3.0 + d.s * 1.62;
 		},
 		look(t) {
-			const L = tape({ exposure: t < CUT ? 1.6 : 1.5 });
-			if (t >= CUT && t < CUT + 0.06) L.tracking = 0.6;
-			return L;
+			return tape({ exposure: 1.6 });
 		},
 		overlay(g, t, size) {
-			camcorder(g, t, size, { clock: 3 * 3600 + 52 * 60 + 40, date: "OCT. 27 1993", focus: t < CUT ? 1 : 0, word: "KEYPAD" });
+			camcorder(g, t, size, { clock: 3 * 3600 + 52 * 60 + 40, date: "OCT. 27 1993", focus: 1, word: "KEYPAD" });
 		},
 	};
 	return shot;

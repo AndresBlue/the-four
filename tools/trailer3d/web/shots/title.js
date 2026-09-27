@@ -1,18 +1,18 @@
-// The title: four lamps light one after another on the four notes of the
-// motif — the fourth for the first time — and under them THE FOUR. Lamps 2,
-// 3 and 4 go out; only the first stays. FLOOR ONE: THE LOCUST. SOLO · ONLINE
-// CO-OP · VERSUS. IN DEVELOPMENT. The lamp's hum goes on. Cut to black.
+// The title: four lamps light one after another on the notes of the motif,
+// three, a pause, and the fourth with the fourth note, heard for the first
+// time. Lamps 2, 3 and 4 go out; only the first stays. FLOOR ONE: THE LOCUST.
+// SOLO · ONLINE CO-OP · VERSUS. IN DEVELOPMENT. The lamp's hum goes on. Cut
+// to black. The lamps are the name: no words for it.
 import * as THREE from "three";
 import { hotelMaterial } from "../engine/materials.js";
 import { text, INK, AMBER, SOFT } from "../engine/osd.js";
 import { smoothstep, smooth, clamp } from "../engine/util.js";
 
-export const LAMPS = [0.25, 0.63, 1.01, 1.62];
-export const TITLE = 1.72;
-export const OUT = 2.9;
-export const FLOOR = 3.05;
-export const MODES = 3.55;
-export const CUT = 4.35;
+export const LAMPS = [0.4, 0.95, 1.5, 2.35];
+export const OUT = 3.2;
+export const FLOOR = 3.35;
+export const MODES = 3.9;
+export const CUT = 4.9;
 
 export function create(ctx) {
 	const scene = new THREE.Scene();
@@ -61,21 +61,11 @@ export function create(ctx) {
 		},
 		overlay(g, t, { w, h }) {
 			const u = h / 720;
-			const a = smoothstep(TITLE, TITLE + 0.35, t);
-			if (a > 0) {
-				g.save();
-				g.font = `400 ${92 * u}px 'Perpetua Titling MT', 'Copperplate Gothic Light', Georgia, serif`;
-				g.textAlign = "center";
-				g.letterSpacing = `${22 * u}px`;
-				g.fillStyle = `rgba(236,230,214,${a})`;
-				g.fillText("THE FOUR", w / 2 + 11 * u, h * 0.62);
-				g.restore();
-			}
-			if (t >= FLOOR) text(g, "FLOOR ONE: THE LOCUST", w / 2, h * 0.72, { size: 22, align: "center", color: AMBER, u, alpha: smoothstep(FLOOR, FLOOR + 0.25, t), spacing: 3 });
+			if (t >= FLOOR) text(g, "FLOOR ONE: THE LOCUST", w / 2, h * 0.66, { size: 28, align: "center", color: AMBER, u, alpha: smoothstep(FLOOR, FLOOR + 0.35, t), spacing: 4 });
 			if (t >= MODES) {
-				const m = smoothstep(MODES, MODES + 0.25, t);
-				text(g, "SOLO · ONLINE CO-OP · VERSUS", w / 2, h * 0.8, { size: 18, align: "center", color: SOFT, u, alpha: m, spacing: 2 });
-				text(g, "IN DEVELOPMENT", w / 2, h * 0.85, { size: 14, align: "center", color: [0.94, 0.94, 0.9, 0.42], u, alpha: m, spacing: 3 });
+				const m = smoothstep(MODES, MODES + 0.35, t);
+				text(g, "SOLO · ONLINE CO-OP · VERSUS", w / 2, h * 0.75, { size: 18, align: "center", color: SOFT, u, alpha: m, spacing: 2 });
+				text(g, "IN DEVELOPMENT", w / 2, h * 0.8, { size: 14, align: "center", color: [0.94, 0.94, 0.9, 0.42], u, alpha: m, spacing: 3 });
 			}
 		},
 	};

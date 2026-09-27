@@ -54,7 +54,7 @@ def main():
     rest = music + fx
     print('voice over the rest (dB, while each line is spoken):')
     for ident, at in edit.voice_cues():
-        length = edit.trim(dsp.load(os.path.join(edit.VOICE_DIR, ident + '.wav'))).size / SR
+        length = edit.trim(edit.line(ident)).size / SR
         a, b = dsp.n_of(at), dsp.n_of(at + length)
         v, r = voice[a:b], rest[a:b]
         lv = -0.691 + 10 * np.log10(np.mean(k_weight(v) ** 2, axis=0).sum() + 1e-12)

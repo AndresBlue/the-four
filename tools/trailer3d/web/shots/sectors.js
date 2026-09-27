@@ -15,7 +15,8 @@ import { camcorder, sectorCard } from "../engine/osd.js";
 import { clamp, smooth, smoothstep } from "../engine/util.js";
 import { V, handheld, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
-export const HITS = [0.0, 1.1, 2.2];
+// The first comes out of black, after the voice has finished.
+export const HITS = [0.9, 1.65, 2.4];
 const CARDS = [["SECTOR 1", "FIND THE EXIT"], ["SECTOR 2", "TURN ON THE TELEVISIONS"], ["SECTOR 3", "FIND THE CODE"]];
 
 function notePage() {
@@ -109,6 +110,7 @@ export function create(ctx) {
 			const hit = t < HITS[1] ? 0 : t < HITS[2] ? 1 : 2;
 			const L = tape({ exposure: [2.2, 1.8, 1.6][hit] });
 			for (const h of HITS) if (t >= h && t < h + 0.07) L.tracking = 0.7;
+			if (t < HITS[0]) L.fadeAll = 1;
 			return L;
 		},
 		overlay(g, t, size) {

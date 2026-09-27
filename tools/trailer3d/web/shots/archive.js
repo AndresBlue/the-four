@@ -1,14 +1,12 @@
 // The archive, today: a desk in the dark, the game's own CRT set on it, a
 // VCR, an angled lamp, shelves of tapes behind (FLOOR 1 full; FLOOR 2, 3 and 4
-// empty). Four shots of the trailer happen here (timeline ids):
+// empty). Three shots of the trailer happen here (timeline ids):
 //   vcr       a gloved hand feeds in the tape labelled by hand; clack; motor.
 //   crt       the set comes on: snow, two frames of the mask, the signal holds:
 //             blue, PLAY, the tape's card; the lens goes in until the phosphor
 //             is all there is.
 //   database  the archive's list: FLOOR 1 recovered; 2, 3, 4 not, each with
 //             two frames of something that could not be read.
-//   endtape   End of tape. Snow. Then the mask in the snow, coming up to the
-//             glass from inside; a blow, the glass cracks under it; another. Black.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom, corridor } from "../engine/sets.js";
@@ -17,16 +15,14 @@ import { polyhaven, shadows, texture } from "../engine/assets.js";
 import { Locust } from "../engine/locust.js";
 import { Survivor } from "../engine/survivor.js";
 import { crtMaterial } from "../engine/screens.js";
-import { makeCracks } from "../engine/cracks.js";
 import { VCR_BLUE, INK, ALERT, css, FONT } from "../engine/osd.js";
-import { clamp, smooth, smoothstep, lerp, easeIn, easeOut, fbm1, keys } from "../engine/util.js";
+import { clamp, smooth, smoothstep, lerp, easeIn, fbm1, keys } from "../engine/util.js";
 import { V, aimCamera } from "./common.js";
 
 // Timings inside each shot.
-export const VCR = { IN: [0.25, 0.72], CLACK: 0.74, OUT: [0.8, 1.3] };
-export const CRT = { ON: 0.12, MASK: [0.44, 0.507], HOLD: 0.62, TEXT: 0.72, PUSH: [0.4, 2.55], DIVE: 1.75 };
-export const DB = { ROWS: [0.15, 0.55, 1.05, 1.55], FLASH: [0.72, 1.22, 1.72] };
-export const END = { SNOW: 0.0, EMERGE: [1.05, 2.1], NEAR: [1.9, 2.45], HITS: [2.62, 2.98], BLACK: 3.1 };
+export const VCR = { IN: [0.15, 0.6], CLACK: 0.62, OUT: [0.68, 1.1] };
+export const CRT = { ON: 0.15, MASK: [0.5, 0.567], HOLD: 0.8, TEXT: 0.95, PUSH: [0.5, 2.8], DIVE: 2.25 };
+export const DB = { ROWS: [0.5, 1.6, 2.8, 4.0], FLASH: [2.5, 3.7, 4.9] };
 
 const LABEL = ["HOTEL", "FLOOR 1", "TAPE 81"];
 
@@ -89,7 +85,6 @@ export function create(ctx) {
 	let crt;
 	let screen;
 	let broadcast;
-	let cracks;
 	let vcr;
 	let cassette;
 	let hand;
@@ -236,8 +231,7 @@ export function create(ctx) {
 				fill2.position.set(-0.2, 0.9, 0.75);
 				scene.add(fill2);
 			}
-			if (id === "crt" || id === "endtape") broadcast = await makeBroadcast(ctx);
-			if (id === "endtape") cracks = makeCracks();
+			if (id === "crt") broadcast = await makeBroadcast(ctx);
 			if (id === "database") for (const make of [glimpseWhite, glimpseSets, glimpseDoors]) glimpses.push(await make(ctx));
 		},
 		beforeRender() {
@@ -257,13 +251,10 @@ export function create(ctx) {
 			if (id === "vcr") updateVcr(t);
 			if (id === "crt") updateCrt(t);
 			if (id === "database") updateDatabase(t);
-			if (id === "endtape") updateEnd(t);
 		},
 		look(t) {
 			const base = { kind: "clean", exposure: 1.35, bloom: 0.06, halation: 0.25, contrast: 1.08, saturation: 0.95, grain: 0.04, vignette: 0.45, chromatic: 0.5 };
 			if (id === "crt" && t > CRT.PUSH[1] - 0.3) base.exposure = 1.35 + smoothstep(CRT.PUSH[1] - 0.3, CRT.PUSH[1], t) * 1.5;
-			if (id === "endtape" && t >= END.BLACK) base.fadeAll = 1;
-			if (id === "database" && t > 2.95) base.fadeAll = smoothstep(2.95, 3.15, t);
 			return base;
 		},
 	};
@@ -355,7 +346,7 @@ export function create(ctx) {
 		const rows = [["FLOOR 1", "TAPE 81 — RECOVERED", INK], ["FLOOR 2", "NOT RECOVERED", ALERT], ["FLOOR 3", "NOT RECOVERED", ALERT], ["FLOOR 4", "NOT RECOVERED", ALERT]];
 		rows.forEach(([a, b, color], i) => {
 			if (t < DB.ROWS[i]) return;
-			const n = Math.floor((t - DB.ROWS[i]) * 40);
+			const n = Math.floor((t - DB.ROWS[i]) * 26);
 			osdLine(g, a.slice(0, n), 50, 120 + i * 82, 30);
 			if (n > a.length) osdLine(g, b.slice(0, n - a.length), 70, 155 + i * 82, 24, color);
 		});
@@ -375,37 +366,8 @@ export function create(ctx) {
 		shot.crtLight.intensity = 0.35;
 		const drift = V(fbm1(t * 0.3, 7) * 0.01, fbm1(t * 0.25, 8) * 0.006, 0);
 		const c = shot.screenCentre;
-		aimCamera(camera, c.clone().add(V(0.08, 0.05, 0.7 - t * 0.05)).add(drift), c.clone().add(V(0, 0.005, 0)));
+		aimCamera(camera, c.clone().add(V(0.08, 0.05, 0.75 - t * 0.04)).add(drift), c.clone().add(V(0, 0.005, 0)));
 		camera.fov = 34;
-	}
-
-	function updateEnd(t) {
-		crt.uniforms.power.value = 1;
-		crt.uniforms.image.value = broadcast.rt.texture;
-		shot.drawBroadcast = true;
-		// The mask comes out of the snow; it was already there.
-		const emerge = smoothstep(END.EMERGE[0], END.EMERGE[1], t);
-		crt.uniforms.image_amount.value = emerge * 0.95;
-		crt.uniforms.static_amount.value = 1 - emerge * 0.55;
-		crt.uniforms.unstable.value = 0.2 + emerge * 0.3;
-		broadcast.pose(t);
-		// The blows: the glass cracks where they land.
-		let level = 0;
-		let flash = 0;
-		for (const [i, h] of END.HITS.entries()) {
-			if (t >= h) {
-				level = i + 1;
-				flash = Math.max(flash, Math.exp(-(t - h) * 16) * 0.22);
-			}
-		}
-		crt.uniforms.cracks.value = cracks.texture;
-		crt.uniforms.crack_level.value = level;
-		crt.uniforms.flash.value = flash;
-		shot.crtLight.intensity = 0.4 + flash * 2;
-		const c = shot.screenCentre;
-		const jolt = level > 0 ? Math.exp(-(t - END.HITS[level - 1]) * 18) * 0.004 : 0;
-		aimCamera(camera, c.clone().add(V(0.02, 0.02 + jolt, 0.62)), c.clone().add(V(0, 0.005, 0)));
-		camera.fov = 36;
 	}
 
 	return shot;
@@ -414,7 +376,7 @@ export function create(ctx) {
 // The creature on the other side of the glass, as the game's opening shows
 // it (game/intro/tv_broadcast.gd): a dim papered corner, The Locust with its
 // reference look, a hard key light from the camera side.
-async function makeBroadcast(ctx) {
+export async function makeBroadcast(ctx) {
 	const scene = new THREE.Scene();
 	const kit = await new Kit(scene).load();
 	kit.box(5.0, 4.0, 0.1, kit.m.wallpaper, -0.2, 2.0, -1.6);
@@ -437,48 +399,6 @@ async function makeBroadcast(ctx) {
 	rt.texture.colorSpace = THREE.LinearSRGBColorSpace;
 	const b = {
 		scene, camera, rt, locust,
-		// endtape: standing in the dark facing the lens, it comes up to the
-		// glass; the right arm winds up and stabs at the tube, twice.
-		pose(t) {
-			const near = smoothstep(END.NEAR[0], END.NEAR[1], t);
-			locust.root.position.set(0.06, 0, lerp(-0.6, 0.5, near));
-			locust.reset();
-			locust.aim("L_UpperArm", "L_Forearm", [0.25, -1.0, 0.15]);
-			locust.aim("R_UpperArm", "R_Forearm", [-0.25, -1.0, 0.15]);
-			locust.turn("Neck1", [0, 0, 1], Math.sin(t * 1.7) * 0.03);
-			locust.turn("Head1", [0, 0, 1], -0.18 + Math.sin(t * 23) * 0.02 * near);
-			locust.turn("Head1", [1, 0, 0], 0.12 + near * 0.1);
-			// The picture is framed on its face, as the opening's broadcast is
-			// (the mask sits a hand above the head's joint).
-			const head = locust.point("Head1");
-			camera.lookAt(head.x, head.y + 0.22, head.z);
-			// The blows: the hand itself onto the glass (not the game's blade
-			// reach), so it is the hand that fills the tube as it lands. Each
-			// wind-up starts from where the last blow left the arm.
-			const shoulder = locust.point("R_UpperArm");
-			// Wound up in front of the mask: a black hand against the pale face,
-			// the one thing in the picture it can be seen against.
-			const face = new THREE.Vector3(head.x, head.y + 0.22, head.z);
-			const cocked = camera.position.clone().lerp(face, 0.62).add(new THREE.Vector3(-0.03, 0.04, 0));
-			// Where each blow lands: under its crack on the tube (makeCracks' uv).
-			const glassAt = (i) => camera.position.clone().add(new THREE.Vector3(i ? 0.0156 : -0.014, i ? -0.0128 : 0.007, -0.25).applyQuaternion(camera.quaternion));
-			const starts = END.HITS.map((h, i) => (i === 0 ? h - 0.3 : Math.max(h - 0.24, END.HITS[i - 1] + 0.1)));
-			let active = -1;
-			for (let i = 0; i < END.HITS.length; i++) if (t >= starts[i]) active = i;
-			if (active >= 0) {
-				const h = END.HITS[active];
-				const start = starts[active];
-				const from = active === 0 ? shoulder : glassAt(active - 1);
-				const glass = glassAt(active);
-				const last = active === END.HITS.length - 1;
-				let target;
-				if (t < h - 0.1) target = from.clone().lerp(cocked, easeOut((t - start) / (h - 0.1 - start)));
-				else if (t < h) target = cocked.clone().lerp(glass, Math.pow((t - (h - 0.1)) / 0.1, 2.5));
-				else if (t < h + 0.1 || !last) target = glass;
-				else target = glass.clone().lerp(shoulder.clone().add(new THREE.Vector3(-0.2, -0.35, 0.15)), easeOut((t - h - 0.1) / 0.28));
-				locust.reach("R", target, [-1.0, -0.6, -0.3], 0.06);
-			}
-		},
 	};
 	// crt: a mask in the snow for two frames.
 	locust.root.position.set(0.06, 0, 0.0);

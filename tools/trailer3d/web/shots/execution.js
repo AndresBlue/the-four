@@ -13,9 +13,9 @@ import { clamp, smooth, smoothstep, lerp, easeOut, fbm1 } from "../engine/util.j
 import { V, aimCamera, makeTorch, tape } from "./common.js";
 
 export const LIFT = 0.35;
-export const ARM = 1.7;
-export const HIT = 1.93;
-export const STATIC = 1.97;
+export const ARM = 2.2;
+export const HIT = 2.43;
+export const STATIC = 2.47;
 
 // This shot's time onto the game's execution clock (grab 0, arm 2.58, kill 2.8).
 const gameTime = (t) => (t < ARM ? (t * 2.58) / ARM : 2.58 + ((t - ARM) * 0.22) / (HIT - ARM));

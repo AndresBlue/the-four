@@ -1,7 +1,7 @@
-// GUEST 01 — he ran. The run, first person, the torch swinging with each
-// step; then a long, perfectly still shot down a huge corridor: The Locust
-// with its back turned under a lamp, the steps still coming, it stops, the
-// head turns alone, it screams and comes. Snow.
+// GUEST 01 — he ran. One shot, first person: the run down the corridor, the
+// torch swinging with each step; he looks back over his shoulder and it is
+// there, running after him, closing; it throws itself at the lens. Black,
+// then snow.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { corridor } from "../engine/sets.js";
@@ -11,12 +11,13 @@ import { camcorder, burnIn, typed } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, easeIn, easeOut, keys, lerp, fbm1 } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
-export const CUT = 1.9;
-export const STOP = 2.35;
-export const TURN = [2.6, 3.45];
-export const SCREAM = 3.55;
-export const LAUNCH = 3.8;
-export const SNOW = 4.32;
+export const LOOK = [2.1, 2.55];
+export const LUNGE = 3.45;
+export const CATCH = 3.7;
+export const SNOW = 4.05;
+// How fast they go: him, and it gaining on him.
+const RUN = 5.6;
+const CHASE = 9.2;
 
 export function create(ctx) {
 	const scene = new THREE.Scene();
@@ -56,98 +57,59 @@ export function create(ctx) {
 			shot.volumetrics.addSpot(torch, { strength: 0.3 });
 		},
 		update(t) {
-			if (t < CUT) {
-				camera.fov = 56;
-				// The run: about 5.5 m/s down the corridor, the lens thrown about.
-				const z = -1.5 - t * 5.6;
-				const st = steps(t, { rate: 2.6, amp: 2.2 });
-				const hh = handheld(t, { amp: 3, seed: 5, rate: 2 });
-				const pos = V(-0.2 + Math.sin(t * 2.6 * Math.PI * 0.5) * 0.05, 1.6, z).add(st.pos).add(hh.pos);
-				aimCamera(camera, pos, V(0.1, 1.45, z - 12), { yaw: hh.yaw * 2 + Math.sin(t * 4.1) * 0.02, pitch: st.pitch + hh.pitch * 2, roll: st.roll + hh.roll * 2 });
-				torch.visible = true;
-				torch.intensity = 150;
-				holdTorch(torch, camera, { swayT: t * 3, sway: 2.2, ahead: 11 });
-				locust.root.visible = false;
-			} else {
-				// Still, zoomed in: the whole length of the corridor stacked up.
-				camera.fov = 24;
-				aimCamera(camera, V(-0.55, 1.45, -2.0), V(0.35, 1.55, -36.0));
-				torch.visible = false;
-				torch.intensity = 0;
-				locust.root.visible = true;
-				poseLocust(locust, t);
-			}
+			camera.fov = 56;
+			const k = Math.min(t, CATCH);
+			const z = -1.5 - k * RUN;
+			const st = steps(k, { rate: 2.6, amp: 2.2 });
+			const hh = handheld(k, { amp: 3, seed: 5, rate: 2 });
+			const pos = V(-0.2 + Math.sin(k * 2.6 * Math.PI * 0.5) * 0.05, 1.6, z).add(st.pos).add(hh.pos);
+			// Over his shoulder: the head comes round (by the right) and stays.
+			const back = smoothstep(LOOK[0], LOOK[1], k);
+			const yaw = back * Math.PI * 0.94;
+			const dir = V(Math.sin(yaw) * 0.9, -0.02 - back * 0.03, -Math.cos(yaw));
+			aimCamera(camera, pos, pos.clone().add(dir.multiplyScalar(12)), { yaw: hh.yaw * 2 + Math.sin(k * 4.1) * 0.02, pitch: st.pitch + hh.pitch * 2, roll: st.roll + hh.roll * 2 + back * 0.08 });
+			torch.visible = true;
+			torch.intensity = 150;
+			holdTorch(torch, camera, { swayT: k * 3, sway: 2.2 * (1 - back * 0.6), ahead: 9 });
+			// It: behind him from the start, seen once he looks.
+			const gap = lerp(7.5, 1.2, easeIn(clamp((k - LOOK[0]) / (LUNGE - LOOK[0]))));
+			locust.root.visible = k > LOOK[0];
+			poseLocust(locust, k, z + gap);
 		},
 		look(t) {
-			const L = tape({ exposure: t < CUT ? 1.05 : 1.15 });
-			if (t >= CUT && t < CUT + 0.1) L.tracking = 0.6;
-			if (t >= SCREAM && t < SCREAM + 0.3) L.threat_glitch = 0.5 * (1 - (t - SCREAM) / 0.3);
-			if (t >= LAUNCH) L.tracking = smoothstep(LAUNCH, SNOW, t) * 0.5;
+			const L = tape({ exposure: 1.05 });
+			if (t >= LOOK[0] && t < LOOK[0] + 0.1) L.tracking = 0.4;
+			if (t >= LUNGE) L.threat_glitch = 0.6;
+			// Caught: the picture shuts to black, then the tape shows only snow.
+			if (t >= CATCH) L.fadeAll = 1;
 			if (t >= SNOW) {
+				L.fadeAll = 0;
 				L.snow = 1;
 				L.signal_loss = 1;
 			}
 			return L;
 		},
 		overlay(g, t, size) {
-			if (t < SNOW) {
-				const running = t < CUT;
-				camcorder(g, t, size, { clock: 2 * 3600 + 14 * 60 + 37 + (running ? 0 : 3), date: "OCT. 27 1993", stamina: running ? clamp(0.93 - t * 0.08) : null });
-			}
+			if (t < CATCH) camcorder(g, t, size, { clock: 2 * 3600 + 14 * 60 + 37, date: "OCT. 27 1993", stamina: clamp(0.93 - t * 0.12) });
 			if (t < 1.7) burnIn(g, [typed("TAPE 81 · GUEST 01", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.4, 1.7, t) });
-			if (t >= SNOW + 0.08) {
+			if (t >= SNOW + 0.15) {
 				const u = size.h / 720;
-				burnIn(g, [typed("GUEST 01 — LOST", t, SNOW + 0.08, 45)], size, { x: size.w / 2 - 150 * u, y: size.h / 2 - 22 * u, size: 24 });
+				burnIn(g, [typed("GUEST 01 — LOST", t, SNOW + 0.15, 30)], size, { x: size.w / 2 - 150 * u, y: size.h / 2 - 22 * u, size: 24 });
 			}
 		},
 	};
 	return shot;
 }
 
-// Back turned under the far lamp; drifts a step, stops; the head alone turns
-// round to the lens; the scream; it wheels and runs at the camera.
-function poseLocust(L, t) {
-	const base = V(0.45, 0, -36.2);
-	let yaw = Math.PI; // back to the camera (the model faces +z)
-	let speed = 0;
-	let z = base.z;
-	if (t < STOP) {
-		// A slow step away, as it was going.
-		speed = 0.9 * (1 - smooth((t - CUT) / (STOP - CUT)));
-		z = base.z - (t - CUT) * 0.45;
-	} else z = base.z - (STOP - CUT) * 0.45;
-	let runPhase = 0;
-	if (t >= LAUNCH) {
-		const k = t - LAUNCH;
-		// It wheels round and comes, 2.5 m/s building at 3.2 m/s^2... faster, for the cut.
-		yaw = Math.PI - Math.PI * smooth(k / 0.16);
-		const v = Math.min(6.4, 3.0 + k * 9);
-		z += (3.0 * k + 4.5 * k * k);
-		speed = v;
-		runPhase = k * 2.3 + 0.2;
-	}
-	L.root.position.set(base.x, 0, z);
-	L.root.rotation.y = yaw;
-	if (t < LAUNCH) {
-		L.reset();
-		if (speed > 0.05) L.poseGait(speed, (t - CUT) * 1.1);
-		else L.stand({ hunch: 0.12 });
-		L.hangArms();
-		// The head alone: round toward the lens while the body keeps its way.
-		const turn = smoothstep(TURN[0], TURN[1], t);
-		const k = turn * turn * (3 - 2 * turn);
-		const twist = k * 2.55;
-		L.turn("Neck1", [0, 1, 0], twist * 0.45);
-		L.turn("Head1", [0, 1, 0], twist * 0.55);
-		L.turn("Head1", [0, 0, 1], k * 0.28 + Math.sin(t * 23) * 0.015 * k);
-		// The scream: the jaw drops, the head juts.
-		const s = smoothstep(SCREAM - 0.05, SCREAM + 0.12, t);
-		L.turn("Head1", [1, 0, 0], -s * 0.25);
-		L.jaw(s);
-		if (s > 0) L.poseArms({ aggression: s });
-	} else {
-		L.poseGait(speed, runPhase, { aggression: 1 });
-		L.turn("Head1", [1, 0, 0], -0.15);
-		L.jaw(1);
-	}
+// Running after him, flat out, arms up; the last strides a leap at the lens.
+function poseLocust(L, t, z) {
+	L.root.position.set(0.1 + Math.sin(t * 3.1) * 0.12, 0, z);
+	// Facing down the corridor after him (the model faces +z).
+	L.root.rotation.y = Math.PI;
+	L.reset();
+	L.poseGait(CHASE, t * 2.4, { aggression: 1 });
+	const leap = smoothstep(LUNGE - 0.1, CATCH, t);
+	if (leap > 0) L.poseArms({ aggression: 1, attack: leap });
+	L.turn("Head1", [1, 0, 0], -0.12 - leap * 0.15);
+	L.jaw(0.4 + leap * 0.6);
 }

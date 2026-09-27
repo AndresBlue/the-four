@@ -10,9 +10,11 @@ import { camcorder } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
-export const SLAM = 0.8;
-export const TURN = 1.1;
-export const THRUST = 1.42;
+// The torch looks for it in the dark first; finds it; it comes.
+export const FIND = 1.0;
+export const SLAM = 2.2;
+export const TURN = 2.7;
+export const THRUST = 3.15;
 
 export function create(ctx) {
 	const scene = new THREE.Scene();
@@ -50,20 +52,21 @@ export function create(ctx) {
 				// Backing off down the corridor, the torch sweeping, finding it.
 				const hh = handheld(t, { amp: 2.4, seed: 61, rate: 1.6 });
 				const st = steps(t, { rate: 2.4, amp: 1.2 });
-				aimCamera(camera, V(0.1, 1.55, -1.0 + t * 1.2).add(st.pos).add(hh.pos), V(0.3, 1.5, -16), { yaw: hh.yaw * 2, pitch: hh.pitch + st.pitch, roll: hh.roll + st.roll });
+				aimCamera(camera, V(0.1, 1.55, -1.0 + Math.max(0, t - FIND) * 1.2).add(st.pos).add(hh.pos), V(0.3, 1.5, -16), { yaw: hh.yaw * 2, pitch: hh.pitch + st.pitch, roll: hh.roll + st.roll });
 				holdTorch(torch, camera, { ahead: 12, swayT: t, sway: 0.2 });
-				// The sweep: from the right wall across to it.
-				const sweep = smooth(t / 0.35);
-				torch.target.position.add(V((1 - sweep) * 5.5, (1 - sweep) * -0.5, 0));
+				// Searching: the beam wanders from wall to wall, then snaps to it.
+				const search = Math.sin(t * 3.1) * 4.5 + Math.sin(t * 7.3) * 0.8;
+				const found = smoothstep(FIND - 0.12, FIND + 0.05, t);
+				torch.target.position.add(V(search * (1 - found), -0.4 * (1 - found), 0));
 				torch.visible = true;
 				torch.intensity = 120;
 				// It comes at 6.4 m/s, stooping under the fire door's head.
-				const z = -15.5 + t * 6.4;
-				locust.root.visible = true;
+				const z = -15.5 + Math.max(0, t - FIND) * 6.4;
+				locust.root.visible = t >= FIND - 0.1;
 				locust.root.position.set(-0.2, 0, z);
 				locust.root.rotation.y = 0;
 				const duck = 1 - smoothstep(0.6, 2.4, Math.abs(z + 11.0));
-				locust.poseGait(6.4, t * 2.3, { aggression: 1, duck });
+				locust.poseGait(6.4, Math.max(0, t - FIND) * 2.3, { aggression: 1, duck });
 				locust.turn("Head1", [1, 0, 0], -0.1);
 			} else if (t < TURN) {
 				// Slammed: the leaf flung shut, the frame jumping.
@@ -99,10 +102,12 @@ export function create(ctx) {
 			const L = tape({ exposure: t >= TURN ? 1.25 : 2.3, grain: 0.32 });
 			if (t < 0.05 || (t >= SLAM && t < SLAM + 0.06) || (t >= TURN && t < TURN + 0.05)) L.tracking = 0.8;
 			if (t >= THRUST - 0.1) L.threat_glitch = smoothstep(THRUST - 0.1, THRUST + 0.1, t);
+			// Taken: the picture goes to black.
+			if (t >= THRUST + 0.15) L.fadeAll = smoothstep(THRUST + 0.15, THRUST + 0.4, t);
 			return L;
 		},
 		overlay(g, t, size) {
-			camcorder(g, t, size, { clock: 3 * 3600 + 44 * 60 + 2, date: "OCT. 27 1993", stamina: t < SLAM ? 0.35 - t * 0.2 : null, exhausted: false });
+			camcorder(g, t, size, { clock: 3 * 3600 + 44 * 60 + 2, date: "OCT. 27 1993", stamina: t < SLAM ? 0.45 - t * 0.12 : null, exhausted: false });
 		},
 	};
 	return shot;

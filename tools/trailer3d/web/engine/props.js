@@ -261,7 +261,9 @@ export async function door() {
 	root.traverse((o) => { if (o.isMesh) all.push(o); });
 	const first = all.filter((o) => !o.name.endsWith("_2"));
 	const frameMeshes = first.filter((o) => o.name === "F");
-	const leafMeshes = first.filter((o) => o.name !== "F");
+	// The file's handle sits far off the leaf (a pivot three.js reads
+	// differently): it is left out, and the leaf gets its own knobs.
+	const leafMeshes = first.filter((o) => o.name === "door");
 	const frameBox = boundsOf(root, frameMeshes);
 	const leafBox = boundsOf(root, [...leafMeshes]);
 	// The leaf's thin axis tells which way the door faces.
@@ -294,10 +296,38 @@ export async function door() {
 		for (const piece of byGroup(p.geometry)) {
 			const mat = Array.isArray(p.material) ? p.material[piece.index] : p.material;
 			const isLeaf = mat && mat.name === "door";
-			piece.geometry.translate(OPEN_W / 2, 0, 0);
-			const mesh = new THREE.Mesh(piece.geometry, isLeaf ? m.doorLeaf : m.doorFrame);
+			// Its own copy: the baked pieces are cached and shared between doors,
+			// and moving them in place moved every other door's leaf too.
+			const geometry = piece.geometry.clone();
+			const mesh = new THREE.Mesh(geometry, isLeaf ? m.doorLeaf : m.doorFrame);
 			mesh.castShadow = mesh.receiveShadow = true;
 			leaf.add(mesh);
+		}
+	}
+	// The leaf's hinge edge on the group's origin, its thickness on the
+	// frame's middle.
+	const span = new THREE.Box3();
+	for (const mesh of leaf.children) {
+		mesh.geometry.computeBoundingBox();
+		span.union(mesh.geometry.boundingBox);
+	}
+	const middle = (span.min.z + span.max.z) / 2;
+	for (const mesh of leaf.children) mesh.geometry.translate(-span.min.x, 0, -middle);
+	// A brass knob each side, near the free edge.
+	const leafDepth = span.max.z - span.min.z;
+	const brass = new THREE.MeshStandardMaterial({ color: new THREE.Color().setRGB(0.62, 0.45, 0.2, THREE.SRGBColorSpace), metalness: 1, roughness: 0.35 });
+	for (const side of [1, -1]) {
+		const rose = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.012, 20), brass);
+		rose.rotation.x = Math.PI / 2;
+		rose.position.set(OPEN_W - 0.09, 1.0, side * (leafDepth / 2 + 0.006));
+		const knob = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 12), brass);
+		knob.position.set(OPEN_W - 0.09, 1.0, side * (leafDepth / 2 + 0.05));
+		const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.045, 10), brass);
+		neck.rotation.x = Math.PI / 2;
+		neck.position.set(OPEN_W - 0.09, 1.0, side * (leafDepth / 2 + 0.025));
+		for (const k of [rose, knob, neck]) {
+			k.castShadow = true;
+			leaf.add(k);
 		}
 	}
 	group.add(leaf);

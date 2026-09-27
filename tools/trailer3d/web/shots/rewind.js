@@ -1,22 +1,19 @@
-// A new hotel every tape. The same walk down a corridor, three times, the tape
-// rewound violently between them, and each time the building is another:
-// a straight clean corridor of paper and warm lamps; one that turns, doors
-// open, a fire door; rooms opening into rooms and a ruined lounge where the
-// corridor was.
+// A new hotel every tape. The tape rewound three times, a second each, and
+// each time the building going by backward is another: a straight clean
+// corridor of paper and warm lamps; one that turns, doors open, a fire door;
+// rooms opening into rooms and a ruined lounge. The words stay on it.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { corridor, hotelRoom } from "../engine/sets.js";
 import * as P from "../engine/props.js";
 import { polyhaven, shadows } from "../engine/assets.js";
 import { Volumetrics } from "../engine/volumetric.js";
-import { camcorder, text, typed } from "../engine/osd.js";
+import { camcorder, text } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, tape } from "./common.js";
 
-// [start, end] of each pass and of the two rewinds between them.
-export const PASSES = [[0, 0.95], [1.2, 2.05], [2.3, 3.4]];
-export const REWINDS = [[0.95, 1.2], [2.05, 2.3]];
-export const SUPER = 2.62;
+// Each rewind, through its hotel.
+export const REWINDS = [[0, 1], [1, 2], [2, 3]];
 const ORIGINS = [V(0, 0, 0), V(60, 0, 0), V(120, 0, 0)];
 
 export function create(ctx) {
@@ -118,44 +115,36 @@ export function create(ctx) {
 			for (const m of shot.moons) shot.volumetrics.addSpot(m, { strength: 0.35 });
 		},
 		update(t) {
-			// Which pass, and how far along it (the rewinds run the last one backward, fast).
-			let pass = 0;
-			let u = 0;
-			if (t < PASSES[0][1]) { pass = 0; u = t / 0.95; }
-			else if (t < REWINDS[0][1]) { pass = 0; u = 1 - (t - REWINDS[0][0]) / 0.25; }
-			else if (t < PASSES[1][1]) { pass = 1; u = (t - PASSES[1][0]) / 0.85; }
-			else if (t < REWINDS[1][1]) { pass = 1; u = 1 - (t - REWINDS[1][0]) / 0.25; }
-			else { pass = 2; u = (t - PASSES[2][0]) / 1.1; }
-			u = clamp(u);
+			// Which hotel, and the walk through it run backward, fast.
+			const pass = Math.max(0, Math.min(2, Math.floor(t)));
+			const u = 1 - clamp(t - pass);
 			const o = ORIGINS[pass];
-			// The third walk comes through the doorway into the lounge.
-			const z = pass === 2 ? -2.6 - u * 2.2 : -0.6 - u * 1.8;
-			const st = steps(u * 1.4, { rate: 1.8, amp: 0.7 });
+			const z = pass === 2 ? -2.6 - u * 4.4 : -0.6 - u * 6.0;
+			const st = steps(u * 4, { rate: 1.8, amp: 0.7 });
 			const hh = handheld(t, { amp: 1.2, seed: 7 });
 			const pos = V(o.x + 0.1, 1.62, z).add(st.pos).add(hh.pos);
 			const pan = [0, 0.18, -0.12][pass] * u;
 			aimCamera(camera, pos, V(o.x + 0.1 + pan * 20, 1.45, z - 20), { yaw: hh.yaw, pitch: hh.pitch + st.pitch, roll: hh.roll + st.roll });
 		},
 		look(t) {
-			const L = tape({ exposure: t >= PASSES[2][0] ? 1.9 : 1.3 });
-			for (const [a, b] of REWINDS) {
-				if (t >= a && t < b) {
-					const k = (t - a) / (b - a);
-					L.rewind = 0.6 + 0.4 * Math.sin(k * Math.PI);
-					L.tracking = 0.6;
-				}
-				if (t >= b && t < b + 0.08) L.tracking = 0.7;
+			const L = tape({ exposure: t >= 2 ? 1.9 : 1.3 });
+			const k = t - Math.floor(t);
+			L.rewind = 0.4 + 0.15 * Math.sin(k * Math.PI);
+			L.tracking = 0.35;
+			// The jump from one to the next.
+			if (k < 0.06 && t > 0.5) {
+				L.tracking = 1;
+				L.snow = 0.6;
 			}
 			return L;
 		},
 		overlay(g, t, size) {
 			camcorder(g, t, size, { clock: 2 * 3600 + 5 * 60 + 2, date: "OCT. 27 1993" });
-			if (t >= SUPER) {
-				const u = size.h / 720;
-				const words = typed("A NEW HOTEL EVERY TAPE", t, SUPER, 30);
-				const cursor = Math.floor(t * 3) % 2 === 0 ? "█" : " ";
-				text(g, words + (words.length < 22 ? cursor : ""), size.w / 2, size.h * 0.62, { size: 34, align: "center", u });
-			}
+		},
+		// Over the tape, not in it: the words hold still while it rewinds.
+		overlayClean(g, t, size) {
+			const u = size.h / 1080;
+			text(g, "A NEW HOTEL EVERY TAPE", size.w / 2, size.h * 0.64, { size: 34, align: "center", u: u * 1.5, spacing: 3 });
 		},
 	};
 	return shot;

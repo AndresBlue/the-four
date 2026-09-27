@@ -413,10 +413,10 @@ def screech(rng, dur=1.8, low=180.0, high=620.0):
 
 # --- The archive's motif and machines (tools/trailer3d) ------------------------------------
 
-## The four's motif: three notes of a plain minor chord climbing, and the
-## fourth, a minor sixth over the first, that turns the three into something
-## else. Only the title ever plays the fourth.
-MOTIF = ('E4', 'G4', 'B4', 'C5')
+## The four's motif, falling: B flat, G, E flat, and the fourth, C, below
+## them, that turns the three into something darker. Only the title ever
+## plays the fourth.
+MOTIF = ('Bb4', 'G4', 'Eb4', 'C4')
 
 
 def motif_note(k, rng, dur=5.0):

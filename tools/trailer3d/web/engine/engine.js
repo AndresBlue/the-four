@@ -167,7 +167,12 @@ export class Engine {
 		u.rect.value.set(x0, 0, 1 - x0, 1);
 		u.tear.value = params.frameTear ?? 0;
 		u.time.value = time;
-		u.fade.value = params.fadeAll ?? 0;
+		// The timeline's fades through black at either end of the shot.
+		const dur = entry.end - entry.start;
+		const fin = entry.in ? 1 - Math.min(1, t / entry.in) : 0;
+		const fout = entry.out ? Math.min(1, Math.max(0, (t - (dur - entry.out)) / entry.out)) : 0;
+		const edge = Math.max(fin * fin * (3 - 2 * fin), fout * fout * (3 - 2 * fout));
+		u.fade.value = Math.max(params.fadeAll ?? 0, edge);
 		this.renderer.setRenderTarget(null);
 		this.compose.render(this.renderer);
 		return { shot: entry.id, t };
