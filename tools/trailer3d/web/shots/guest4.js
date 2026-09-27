@@ -49,8 +49,9 @@ export function create(ctx) {
 			kit.wall(1.84, -9.0 - T / 2, 14.18, -9.0 - T / 2, { dress: [1] });
 			kit.wall(1.84, -6.2 + T / 2, 14.18, -6.2 + T / 2, { dress: [-1] });
 			// Its end: a wall facing us with a door stood ajar, hinged on the right.
-			kit.wall(14.0 + T / 2, -9.2, 14.0 + T / 2, -6.0, { openings: [[1.6 - 0.65 + 0.2, 1.6 + 0.65 + 0.2]], dress: [-1] });
-			shot.endDoor = await kit.door(14.0 + T / 2, -7.6, -Math.PI / 2, { open: 1.25, flip: true });
+			// The opening centred on the door (z -7.6), so frame and wall agree.
+			kit.wall(14.0 + T / 2, -9.2, 14.0 + T / 2, -6.0, { openings: [[1.6 - 0.65, 1.6 + 0.65]], dress: [-1] });
+			shot.endDoor = await kit.door(14.0 + T / 2, -7.6, -Math.PI / 2, { open: 1.25 });
 			// The dark room behind it.
 			kit.floor(14.18, -12, 20, -3);
 			kit.ceilingSlab(14.18, -12, 20, -3);
@@ -117,13 +118,19 @@ export function create(ctx) {
 				const seen = t - TURN[0] - 0.25;
 				const twitch = seen > 0.3 && seen % 0.9 < 0.12 ? 1 : 0;
 				peek.posePeek(lerp(0.03, 0.44, out), twitch, -1);
+				// Both arms kept back behind the wall (local +x is world +z here),
+				// so nothing but head and neck shows in the opening.
+				for (const side of ["L", "R"]) {
+					peek.aim(`${side}_UpperArm`, `${side}_Forearm`, [1.0, -0.5, -0.35]);
+					peek.aim(`${side}_Forearm`, `${side}_Hand`, [0.6, -1.0, -0.2]);
+				}
 				// Whatever the lean, the head ends clear of the jamb, inside the
 				// opening, the body behind the wall beside it.
 				peek.root.updateMatrixWorld(true);
 				const head = peek.point("Head1");
-				const want = lerp(-6.75, -7.28, out);
+				const want = lerp(-6.85, -7.22, out);
 				peek.root.position.z += want - head.z;
-				peek.root.position.x += 14.42 - head.x;
+				peek.root.position.x += 14.45 - head.x;
 			}
 			// At the end, standing, looking; gone at the blink.
 			const shownStand = t >= LOOK_END[0] && t < BLINK;

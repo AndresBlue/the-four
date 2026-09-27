@@ -151,7 +151,14 @@ export function create(ctx) {
 			// Back from the wall: the keypad and the door beside it both in view.
 			const hh = handheld(t, { amp: 0.8, seed: 71 });
 			camera.fov = 50;
-			aimCamera(camera, V(1.85, 1.55, 1.05).add(hh.pos), V(0.0, 1.3, 2.55), { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
+			// The moment it opens: running, through it, into the light, and gone.
+			const run = smoothstep(OPEN + 0.12, OPEN + 1.0, t);
+			const st = steps(t, { rate: 2.8, amp: 1.8 * run });
+			// Round in front of the door first, then straight through it.
+			const r = run;
+			const pos = (r < 0.25 ? V(1.85, 1.55, 1.05).lerp(V(0.9, 1.58, 3.0), r / 0.25) : V(0.9, 1.58, 3.0).lerp(V(-2.4, 1.6, 3.0), (r - 0.25) / 0.75)).add(hh.pos).add(st.pos);
+			const look = V(0.0, 1.3, 2.55).lerp(V(-4.5, 1.45, 3.0), smoothstep(OPEN + 0.05, OPEN + 0.3, t));
+			aimCamera(camera, pos, look, { yaw: hh.yaw, pitch: hh.pitch + st.pitch, roll: hh.roll + st.roll });
 			holdTorch(torch, camera, { ahead: 1.8, sway: 0.1, swayT: t });
 			torch.intensity = 16;
 			other.root.visible = false;

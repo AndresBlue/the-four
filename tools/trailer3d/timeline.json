@@ -201,81 +201,81 @@
       "id": "guest1",
       "module": "guest1",
       "start": 14.6,
-      "end": 19.6,
+      "end": 19.2,
       "in": 0.4
     },
     {
       "id": "guest2",
       "module": "guest2",
-      "start": 19.6,
-      "end": 24.6,
+      "start": 19.2,
+      "end": 24.2,
       "in": 0.5,
       "out": 0.5
     },
     {
       "id": "guest3",
       "module": "guest3",
-      "start": 24.6,
-      "end": 29.6
+      "start": 24.2,
+      "end": 29.2
     },
     {
       "id": "guest4",
       "module": "guest4",
-      "start": 29.6,
-      "end": 34.6,
+      "start": 29.2,
+      "end": 33.8,
       "in": 0.5,
       "out": 0.6
     },
     {
       "id": "occupant",
       "module": "occupant",
-      "start": 34.6,
-      "end": 37.6
+      "start": 33.8,
+      "end": 36.8
     },
     {
       "id": "versus",
       "module": "versus",
-      "start": 37.6,
-      "end": 42.4,
+      "start": 36.8,
+      "end": 41.6,
       "in": 0.3,
       "out": 0.5
     },
     {
       "id": "blackout",
       "module": "blackout",
-      "start": 42.4,
-      "end": 45.2,
+      "start": 41.6,
+      "end": 44.4,
       "in": 0.4
     },
     {
       "id": "chase",
       "module": "chase",
-      "start": 45.2,
-      "end": 49.2
+      "start": 44.4,
+      "end": 48.4
     },
     {
       "id": "keypad",
       "module": "keypad",
-      "start": 49.2,
-      "end": 53.6,
+      "start": 48.4,
+      "end": 52.8,
       "in": 0.1,
-      "out": 0.35
+      "out": 0.8
     },
     {
       "id": "database",
       "module": "archive",
-      "start": 53.6,
-      "end": 59.0,
+      "start": 52.8,
+      "end": 58.2,
       "in": 0.4,
       "out": 0.6
     },
     {
       "id": "title",
       "module": "title",
-      "start": 59.0,
+      "start": 58.2,
       "end": 65.0,
-      "in": 0.3,
-      "out": 1.6
+      "in": 0,
+      "out": 2.6
     }
   ]
 }

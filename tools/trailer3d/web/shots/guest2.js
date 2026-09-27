@@ -1,9 +1,9 @@
 // GUEST 02 — every live screen is a door. A dark room; click, the set comes
 // on and its snow lights the room blue. In the snow something comes up to
 // the glass: the mask, filling the picture, the picture breaking up in hard
-// flashes of static. The last one cuts round behind the set: the set's back
-// fills the frame, and all there is of it is its shadow, out in the room,
-// thrown up the whole far wall.
+// flashes of static. The last one cuts to the side wall: no set, no bed,
+// only the set's flicker on the paper, and across it the shadow of The Locust,
+// stooped over the set, huge.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom, tvSet } from "../engine/sets.js";
@@ -43,6 +43,7 @@ export function create(ctx) {
 			bed.position.set(2.0, 0, 0.4);
 			bed.rotation.y = -Math.PI / 2;
 			scene.add(bed);
+			shot.bed = bed;
 			const w = await P.wardrobe();
 			w.group.position.set(-2.55, 0, -1.2);
 			w.group.rotation.y = Math.PI / 2;
@@ -120,6 +121,7 @@ export function create(ctx) {
 			// creature out in the room is never seen, only its shadow, thrown by
 			// the snow up the far wall.
 			locust.root.visible = t >= OUT;
+			shot.bed.visible = t < OUT;
 			// For the reverse the set is brought out from the wall (the cut
 			// hides it), so there is room behind it for the lens.
 			const dz = t >= OUT ? PULL : 0;
@@ -127,14 +129,16 @@ export function create(ctx) {
 			a.glow.target.updateMatrixWorld();
 			shot.cast.intensity = t >= OUT ? 34 * wave * (flash ? 2 : 1) : 0;
 			shot.cast.position.set(face.x, face.y, face.z + PULL + 0.05);
-			shot.cast.target.position.set(face.x + 2.2, face.y + 0.6, face.z + PULL + 3.5);
+			shot.cast.target.position.set(3.0, face.y + 0.4, face.z + PULL + 2.4);
 			shot.cast.target.updateMatrixWorld();
 			if (t >= OUT) {
 				poseOut(locust, t);
-				eye.set(0.05 + hh.pos.x * 0.5, 1.3, -3.85);
+				// From the side, across the room at the east wall: the set out of
+				// frame to the right, its light and the shadow on the paper.
+				eye.set(-1.2 + hh.pos.x * 0.5, 1.45, 2.0);
 				camera.position.copy(eye);
-				aimCamera(camera, eye, V(2.3, 1.75, 2.2), { yaw: hh.yaw * 0.3, pitch: hh.pitch * 0.3, roll: hh.roll * 0.3 });
-				camera.fov = 70;
+				aimCamera(camera, eye, V(3.0, 1.95, -0.3), { yaw: hh.yaw * 0.3, pitch: hh.pitch * 0.3, roll: hh.roll * 0.3 });
+				camera.fov = 48;
 			} else {
 				aimCamera(camera, eye, V(0.35, 1.15, -3.6), { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
 				camera.fov = 50;
@@ -184,15 +188,15 @@ function posePicture(b, t) {
 	b.camera.lookAt(head.x, head.y + 0.22, head.z);
 }
 
-// Out: in the room just off the set's shoulder, stooped over it, the long
-// arms raised, the head on one side: all of it thrown up the far wall.
+// Out: between the set and the east wall, stooped over the set, the long
+// arms raised, the head on one side: all of it thrown up the wall in profile.
 function poseOut(L, t) {
-	L.root.rotation.set(0, Math.PI - 0.5, 0);
-	L.root.position.set(0.95, 0, -2.55 + PULL);
+	L.root.rotation.set(0, -Math.PI / 2 - 0.35, 0);
+	L.root.position.set(1.9, 0, -3.55 + PULL + 1.0);
 	L.reset();
-	L.stand({ hunch: 0.45 });
+	L.stand({ hunch: 0.55 });
 	L.poseArms({ aggression: 1, attack: 0.6 });
-	L.turn("Head1", [1, 0, 0], 0.2);
+	L.turn("Head1", [1, 0, 0], 0.25);
 	L.turn("Head1", [0, 0, 1], 0.4 + Math.sin(t * 29) * 0.05);
 	L.root.updateMatrixWorld(true);
 }

@@ -314,6 +314,12 @@ export async function door() {
 	}
 	const middle = (span.min.z + span.max.z) / 2;
 	for (const mesh of leaf.children) mesh.geometry.translate(-span.min.x, 0, -middle);
+	// Mirrored, so the mark the file's handle left on the wood is at the free
+	// edge, under the knobs, and not a grey smudge by the hinges.
+	for (const mesh of leaf.children) {
+		mesh.scale.x = -1;
+		mesh.position.x = OPEN_W;
+	}
 	// A brass knob each side, near the free edge.
 	const leafDepth = span.max.z - span.min.z;
 	const brass = new THREE.MeshStandardMaterial({ color: new THREE.Color().setRGB(0.62, 0.45, 0.2, THREE.SRGBColorSpace), metalness: 1, roughness: 0.35 });
