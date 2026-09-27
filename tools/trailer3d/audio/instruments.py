@@ -1,4 +1,4 @@
-"""The trailer's instruments and sound effects, synthesized (tools/trailer/dsp.py).
+"""The trailer's instruments and sound effects, synthesized (dsp.py).
 Each function returns a mono or stereo float signal at dsp.SR that starts at
 its onset. `rng` is a numpy Generator, so every sound is reproducible."""
 import numpy as np
@@ -409,3 +409,166 @@ def screech(rng, dur=1.8, low=180.0, high=620.0):
     x *= adsr(n, a=0.02, d=0.2, s=0.8, r=dur * 0.45)
     x += sub_drop(rng, dur, 70, 40, 0.3, 1.2) * 0.3
     return hp(x, 60)
+
+
+# --- The archive's motif and machines (tools/trailer3d) ------------------------------------
+
+## The four's motif: three notes of a plain minor chord climbing, and the
+## fourth, a minor sixth over the first, that turns the three into something
+## else. Only the title ever plays the fourth.
+MOTIF = ('E4', 'G4', 'B4', 'C5')
+
+
+def motif_note(k, rng, dur=5.0):
+    """Note k (0..3) of the motif: a struck bar, a music box's brightness on
+    top and a low body an octave down."""
+    f = note_hz(MOTIF[k])
+    bar = struck(f, dur, [(1.0, 1.0, 4.5), (2.0, 0.16, 2.0), (3.0, 0.07, 1.2), (4.2, 0.09, 0.6), (6.27, 0.06, 0.25)], rng, click=0.08, detune_cents=6.0)
+    body = struck(f / 2, dur, [(1.0, 0.6, 3.5), (2.0, 0.18, 1.5)], rng, click=0.0, detune_cents=3.0)
+    return bar + body * 0.5
+
+
+def tape_hiss(n, rng):
+    """A cassette dub's hiss: bright, soft, never quite steady."""
+    x = hp(noise(n, rng, 'pink'), 2400)
+    x = lp(x, 12000)
+    t = np.arange(n) / SR
+    return x * (0.85 + 0.15 * np.sin(2 * np.pi * 0.37 * t + rng.uniform(0, 6)))
+
+
+def key_beep(rng, freq=1900.0, dur=0.035):
+    """A keypad's key: a short square-ish tone off a piezo."""
+    n = n_of(dur + 0.01)
+    t = np.arange(n) / SR
+    x = np.tanh(3.0 * np.sin(2 * np.pi * freq * t)) * 0.4
+    env = np.clip(t / 0.002, 0, 1) * np.clip((dur - t) / 0.004, 0, 1)
+    return x * env
+
+
+def relay(rng, strength=1.0):
+    """A lamp's relay: the click of the contact and the thump behind it."""
+    k = n_of(0.25)
+    tt = np.arange(k) / SR
+    click = hp(rng.standard_normal(k), 2000) * np.exp(-tt / 0.003) * 0.8
+    thump = np.sin(2 * np.pi * 95 * tt) * np.exp(-tt / 0.03) * 0.5
+    ring = np.sin(2 * np.pi * 2300 * tt) * np.exp(-tt / 0.02) * 0.08
+    return (click + thump + ring) * strength
+
+
+def lamp_hum(rng, dur, freq=100.0):
+    """A lamp on the mains: its buzz, the harmonics a little rough."""
+    n = n_of(dur)
+    t = np.arange(n) / SR
+    x = np.zeros(n)
+    for h, a in ((1, 1.0), (2, 0.5), (3, 0.35), (5, 0.18), (7, 0.1)):
+        x += a * np.sin(2 * np.pi * freq * h * t + rng.uniform(0, 6))
+    x += bp(rng.standard_normal(n), 900, 3000) * 0.05
+    return x * 0.2
+
+
+def rewind(rng, dur=0.3):
+    """A tape rewinding through the heads: a whine climbing, the picture's
+    sound garbled into chirps, the motor under it."""
+    n = n_of(dur)
+    t = np.arange(n) / SR
+    k = t / dur
+    whine = np.sin(phase(2200 + 2400 * k, n)) * 0.12
+    chirps = bp(rng.standard_normal(n), 1500, 7000) * (0.5 + 0.5 * np.sign(np.sin(phase(30 + 70 * k, n))))
+    motor = lp(saw(110 + 70 * k, n, rng, harmonics=20), 900) * 0.25
+    env = np.clip(t / 0.015, 0, 1) * np.clip((dur - t) / 0.02, 0, 1)
+    return (whine + chirps * 0.3 + motor) * env
+
+
+def tear(rng, dur=0.6):
+    """The picture tearing: a rip of static through a buzz, falling apart."""
+    n = n_of(dur)
+    t = np.arange(n) / SR
+    rip = bp(rng.standard_normal(n), 700, 7000) * (rng.uniform(0, 1, n) > 0.25)
+    rip *= 0.6 + 0.4 * np.sign(np.sin(2 * np.pi * rng.uniform(18, 26) * t))
+    buzz = np.sign(np.sin(2 * np.pi * 60 * t)) * 0.25 + np.sign(np.sin(phase(900 - 700 * t / dur, n))) * 0.12
+    env = np.clip(t / 0.01, 0, 1) * np.exp(-np.maximum(t - dur * 0.5, 0) / (dur * 0.2))
+    return hp(rip * 0.5 + buzz, 120) * env
+
+
+def bolt(rng):
+    """A door's electric lock letting go: the solenoid's knock, the latch."""
+    k = n_of(0.35)
+    tt = np.arange(k) / SR
+    knock = np.sin(2 * np.pi * 170 * tt) * np.exp(-tt / 0.04) * 0.7
+    knock += bp(rng.standard_normal(k), 300, 1500) * np.exp(-tt / 0.025) * 0.6
+    latch = np.zeros(k)
+    at = n_of(0.05)
+    c = n_of(0.05)
+    tc = np.arange(c) / SR
+    latch[at:at + c] = (hp(rng.standard_normal(c), 2500) * np.exp(-tc / 0.004) * 0.6 + np.sin(2 * np.pi * 1350 * tc) * np.exp(-tc / 0.02) * 0.2)
+    return knock + latch
+
+
+def lift_doors(rng, dur=0.95):
+    """A lift car's doors running shut: the roller and the motor, then the
+    leaves meeting."""
+    n = n_of(dur + 0.6)
+    t = np.arange(n) / SR
+    run = (t < dur).astype(float)
+    slide = lp(rng.standard_normal(n), 500) * 0.5 + np.sin(2 * np.pi * 88 * t) * 0.1 + bp(rng.standard_normal(n), 800, 1600) * 0.06
+    slide *= run * np.clip(t / 0.08, 0, 1) * (1 - 0.5 * np.clip((t - dur * 0.6) / (dur * 0.4), 0, 1))
+    x = slide
+    s = n_of(dur)
+    k = n - s
+    tk = np.arange(k) / SR
+    clack = hp(rng.standard_normal(k), 1200) * np.exp(-tk / 0.006) * 1.2
+    clack += np.sin(2 * np.pi * 240 * tk) * np.exp(-tk / 0.07) * 0.8
+    clack += np.sin(2 * np.pi * 610 * tk) * np.exp(-tk / 0.12) * 0.25
+    x[s:] += clack
+    return x
+
+
+def lift_motor(rng, dur=1.5):
+    """The car setting off: the brake lifting, the motor's hum and the shaft."""
+    n = n_of(dur)
+    t = np.arange(n) / SR
+    hum = np.zeros(n)
+    for h, a in ((1, 1.0), (2, 0.45), (3, 0.25), (4, 0.12)):
+        hum += a * np.sin(2 * np.pi * 50 * h * t)
+    rumble = lp(rng.standard_normal(n), 90) * 1.2
+    x = (hum * 0.3 + rumble) * np.clip(t / 0.25, 0, 1)
+    k = n_of(0.2)
+    tk = np.arange(k) / SR
+    x[:k] += (np.sin(2 * np.pi * 70 * tk) * np.exp(-tk / 0.05) + hp(rng.standard_normal(k), 1500) * np.exp(-tk / 0.004) * 0.5) * 0.8
+    return x
+
+
+def data_burst(rng, dur=0.2):
+    """Corrupt data read off a tape: crushed, held, chirping."""
+    n = n_of(dur)
+    t = np.arange(n) / SR
+    held = np.repeat(rng.standard_normal(n // 12 + 1), 12)[:n]
+    crushed = np.round(held * 2.0) / 2.0
+    chirp = np.zeros(n)
+    step = n_of(0.018)
+    for s in range(0, n, step):
+        f = rng.uniform(700, 4200)
+        e = min(n, s + step)
+        chirp[s:e] = np.sign(np.sin(2 * np.pi * f * t[s:e]))
+    env = np.clip(t / 0.004, 0, 1) * np.clip((dur - t) / 0.01, 0, 1)
+    return hp(crushed * 0.35 + chirp * 0.2, 200) * env
+
+
+def cassette_slide(rng, dur=0.45):
+    """A cassette pushed into a deck's slot: plastic on the flap and the guides."""
+    n = n_of(dur)
+    t = np.arange(n) / SR
+    rub = bp(rng.standard_normal(n), 900, 5000) * (0.4 + 0.6 * rng.uniform(0, 1, n) ** 3)
+    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 0.8
+    flap = np.zeros(n)
+    k = n_of(0.03)
+    flap[:k] = bp(rng.standard_normal(k), 400, 2500) * np.exp(-np.arange(k) / n_of(0.006)) * 0.8
+    return rub * env * 0.25 + flap
+
+
+def tick(rng, strength=1.0):
+    """A character generator's letter going down: barely a tick."""
+    k = n_of(0.012)
+    tt = np.arange(k) / SR
+    return hp(rng.standard_normal(k), 3500) * np.exp(-tt / 0.0015) * 0.3 * strength
+

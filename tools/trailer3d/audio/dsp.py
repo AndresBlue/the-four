@@ -1,4 +1,4 @@
-"""Sound building blocks for the trailer (tools/trailer/audio.py): loading,
+"""Sound building blocks for the trailer (mix.py): loading,
 filters, envelopes, synthesis, reverb, dynamics and loudness. Everything is
 numpy/scipy and deterministic; nothing is downloaded.
 

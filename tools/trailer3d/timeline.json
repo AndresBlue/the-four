@@ -1,0 +1,209 @@
+{
+  "fps": 30,
+  "voice": {
+    "name": "bf_emma",
+    "speed": 0.92,
+    "lines": [
+      {
+        "id": "tape",
+        "text": "Tape eighty-one. Occupant: The Locust."
+      },
+      {
+        "id": "guests",
+        "text": "Four guests checked in."
+      },
+      {
+        "id": "different",
+        "text": "The hotel was different."
+      },
+      {
+        "id": "always",
+        "text": "It always is."
+      },
+      {
+        "id": "ran",
+        "text": "Guest one ran."
+      },
+      {
+        "id": "heard",
+        "text": "It heard him first."
+      },
+      {
+        "id": "door",
+        "text": "Every live screen is a door."
+      },
+      {
+        "id": "hid",
+        "text": "Guest three hid."
+      },
+      {
+        "id": "saw",
+        "text": "It saw him go in."
+      },
+      {
+        "id": "sighting",
+        "text": "Not every sighting was real."
+      },
+      {
+        "id": "harmless",
+        "text": "That didn't make them harmless."
+      },
+      {
+        "id": "occupant",
+        "text": "And the occupant..."
+      },
+      {
+        "id": "one_of",
+        "text": "wasn't one of them."
+      },
+      {
+        "id": "mapped",
+        "text": "They mapped what they saw."
+      },
+      {
+        "id": "forgot",
+        "text": "The paper forgot."
+      },
+      {
+        "id": "floors",
+        "text": "Floors two, three and four..."
+      },
+      {
+        "id": "recovered",
+        "text": "have not been recovered."
+      },
+      {
+        "id": "end",
+        "text": "End of tape."
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "headphones",
+      "module": "headphones",
+      "start": 0.0,
+      "end": 1.2
+    },
+    {
+      "id": "vcr",
+      "module": "archive",
+      "start": 1.2,
+      "end": 2.6
+    },
+    {
+      "id": "crt",
+      "module": "archive",
+      "start": 2.6,
+      "end": 5.1
+    },
+    {
+      "id": "reception",
+      "module": "reception",
+      "start": 5.1,
+      "end": 7.7
+    },
+    {
+      "id": "rewind",
+      "module": "rewind",
+      "start": 7.7,
+      "end": 11.1
+    },
+    {
+      "id": "sectors",
+      "module": "sectors",
+      "start": 11.1,
+      "end": 14.4
+    },
+    {
+      "id": "guest1",
+      "module": "guest1",
+      "start": 14.4,
+      "end": 19.2
+    },
+    {
+      "id": "guest2",
+      "module": "guest2",
+      "start": 19.2,
+      "end": 24.0
+    },
+    {
+      "id": "guest3",
+      "module": "guest3",
+      "start": 24.0,
+      "end": 29.0
+    },
+    {
+      "id": "guest4",
+      "module": "guest4",
+      "start": 29.0,
+      "end": 34.1
+    },
+    {
+      "id": "occupant",
+      "module": "occupant",
+      "start": 34.1,
+      "end": 36.1
+    },
+    {
+      "id": "versus",
+      "module": "versus",
+      "start": 36.1,
+      "end": 39.5
+    },
+    {
+      "id": "sheet",
+      "module": "sheet",
+      "start": 39.5,
+      "end": 43.1
+    },
+    {
+      "id": "blackout",
+      "module": "blackout",
+      "start": 43.1,
+      "end": 45.0
+    },
+    {
+      "id": "chase",
+      "module": "chase",
+      "start": 45.0,
+      "end": 46.7
+    },
+    {
+      "id": "execution",
+      "module": "execution",
+      "start": 46.7,
+      "end": 49.0
+    },
+    {
+      "id": "keypad",
+      "module": "keypad",
+      "start": 49.0,
+      "end": 53.3
+    },
+    {
+      "id": "lift",
+      "module": "lift",
+      "start": 53.3,
+      "end": 54.1
+    },
+    {
+      "id": "database",
+      "module": "archive",
+      "start": 54.1,
+      "end": 57.3
+    },
+    {
+      "id": "endtape",
+      "module": "archive",
+      "start": 57.3,
+      "end": 60.6
+    },
+    {
+      "id": "title",
+      "module": "title",
+      "start": 60.6,
+      "end": 65.0
+    }
+  ]
+}

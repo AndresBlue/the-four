@@ -1,0 +1,10 @@
+{
+  "name": "the-four-trailer",
+  "private": true,
+  "type": "module",
+  "description": "THE FOUR — Recovered Tape 81: the trailer, generated with Three.js (docs/TRAILER.md)",
+  "dependencies": {
+    "kokoro-js": "1.2.1",
+    "three": "0.186.1"
+  }
+}

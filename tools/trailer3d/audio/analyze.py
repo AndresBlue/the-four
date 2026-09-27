@@ -1,9 +1,9 @@
 """What the mix does, measured, since it cannot be listened to here: the
 loudness over time (momentary and short-term), how far the voice stands over
 everything else while it speaks, how hard the limiter worked, the balance of
-the spectrum, and a picture of it all (evidence/trailer/audio/analysis.png).
+the spectrum, and a picture of it all (evidence/trailer3d/audio/analysis.png).
 
-    python tools/trailer/analyze.py"""
+    python tools/trailer3d/audio/analyze.py"""
 import os
 import sys
 
@@ -11,12 +11,12 @@ import numpy as np
 import scipy.signal as sig
 from scipy.ndimage import maximum_filter1d
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dsp
-import timeline as tl
+import mix as edit
 from dsp import SR
 
-AUDIO = os.path.join(tl.ROOT, 'evidence', 'trailer', 'audio')
+AUDIO = edit.OUT
 
 
 def k_weight(x):
@@ -44,31 +44,23 @@ def main():
     mom = loudness_curve(mix, 0.4)
     short = loudness_curve(mix, 3.0)
     print('momentary max %.1f LUFS, short-term max %.1f LUFS, range (10-95%%) %.1f LU' % (mom.max(), short.max(), np.percentile(short, 95) - np.percentile(short[short > -60], 10)))
-    # Loudness by section of the edit.
-    names = {'hall': 'pasillo', 'together': 'juntos/versus', 'blackout': 'montaje', 'black': 'negro', 'floors': 'pisos', 'title': 'título', 'endcard': 'cierre'}
-    marks = [(0, 'arranque')]
-    cards = 0
-    for clip in tl.CLIPS:
-        if clip.get('shot') == 'card':
-            cards += 1
-            marks.append((clip['at'], 'norma %d' % cards))
-        elif clip.get('shot') in names: marks.append((clip['at'], names[clip['shot']]))
-    for (a, name), (b, _) in zip(marks, marks[1:] + [(tl.LENGTH, '')]):
+    # Loudness by shot.
+    for shot in edit.TIMELINE['shots']:
+        a, b = shot['start'], shot['end']
         part = mix[dsp.n_of(a):dsp.n_of(b)]
-        if len(part) > dsp.n_of(0.5):
-            print('  %-14s %5.1f-%5.1f s  %6.1f LUFS  peak %6.1f dBFS' % (name, a, b, dsp.lufs(part), 20 * np.log10(np.abs(part).max() + 1e-9)))
+        if len(part) > dsp.n_of(0.4):
+            print('  %-11s %5.1f-%5.1f s  %6.1f LUFS  peak %6.1f dBFS' % (shot['id'], a, b, dsp.lufs(part), 20 * np.log10(np.abs(part).max() + 1e-9)))
     # The voice over the rest, line by line (momentary loudness while it speaks).
     rest = music + fx
     print('voice over the rest (dB, while each line is spoken):')
-    for ident, at in tl.VOICE:
-        path = os.path.join(tl.ROOT, 'evidence', 'trailer', 'voice', ident + '.wav')
-        length = dsp.load(path).size / SR
+    for ident, at in edit.voice_cues():
+        length = edit.trim(dsp.load(os.path.join(edit.VOICE_DIR, ident + '.wav'))).size / SR
         a, b = dsp.n_of(at), dsp.n_of(at + length)
         v, r = voice[a:b], rest[a:b]
         lv = -0.691 + 10 * np.log10(np.mean(k_weight(v) ** 2, axis=0).sum() + 1e-12)
         lr = -0.691 + 10 * np.log10(np.mean(k_weight(r) ** 2, axis=0).sum() + 1e-12)
-        flag = '' if lv - lr >= 5.95 else '   <-- tapada'
-        print('  %-12s %5.2f s  voz %6.1f  resto %6.1f  margen %5.1f%s' % (ident, at, lv, lr, lv - lr, flag))
+        flag = '' if lv - lr >= 5.95 else '   <-- covered'
+        print('  %-12s %5.2f-%5.2f s  voice %6.1f  rest %6.1f  margin %5.1f%s' % (ident, at, at + length, lv, lr, lv - lr, flag))
     # How hard the limiter worked: the mix against the sum of its stems.
     summed = voice + music + fx
     scale = np.sqrt(np.mean(mix ** 2)) / max(np.sqrt(np.mean(summed ** 2)), 1e-9)
@@ -76,8 +68,7 @@ def main():
     env_sum = maximum_filter1d(np.abs(summed * scale).max(axis=1), dsp.n_of(0.01))
     gr = 20 * np.log10(np.maximum(env_mix, 1e-6) / np.maximum(env_sum, 1e-6))
     t_all = np.arange(len(env_sum)) / SR
-    black = next(c for c in tl.CLIPS if c.get('shot') == 'black')
-    loud = (env_sum > 0.1) & ~((t_all > black['at'] - 0.1) & (t_all < black['at'] + black['len'] + 0.1))
+    loud = env_sum > 0.1
     print('limiter: gain reduction over 3 dB for %.2f s, worst %.1f dB' % ((gr[loud] < -3).sum() / SR, gr[loud].min() if loud.any() else 0.0))
     # Spectral balance of the whole thing, by octave.
     f, p = sig.welch(dsp.mono(mix), SR, nperseg=8192)
@@ -92,16 +83,16 @@ def main():
         fig, axes = plt.subplots(4, 1, figsize=(20, 13), sharex=True)
         t = np.arange(len(mix)) / SR
         axes[0].plot(t[::40], dsp.mono(mix)[::40], lw=0.3, color='k')
-        axes[0].set_ylabel('onda')
+        axes[0].set_ylabel('wave')
         tm = np.arange(len(mom)) * 0.1 + 0.2
         ts = np.arange(len(short)) * 0.1 + 1.5
-        axes[1].plot(tm, mom, lw=0.8, label='momentánea')
-        axes[1].plot(ts, short, lw=1.5, label='corto plazo')
+        axes[1].plot(tm, mom, lw=0.8, label='momentary')
+        axes[1].plot(ts, short, lw=1.5, label='short-term')
         axes[1].axhline(-14, color='r', lw=0.5)
         axes[1].set_ylim(-50, -2)
         axes[1].legend(loc='lower left')
         axes[1].set_ylabel('LUFS')
-        for name, x, col in (('voz', voice, 'tab:blue'), ('música', music, 'tab:green'), ('efectos', fx, 'tab:red')):
+        for name, x, col in (('voice', voice, 'tab:blue'), ('music', music, 'tab:green'), ('effects', fx, 'tab:red')):
             c = loudness_curve(x, 0.4)
             axes[2].plot(np.arange(len(c)) * 0.1 + 0.2, c, lw=0.8, label=name, color=col)
         axes[2].set_ylim(-60, 0)
@@ -111,9 +102,10 @@ def main():
         axes[3].set_yscale('symlog', linthresh=200)
         axes[3].set_ylim(30, 20000)
         axes[3].set_ylabel('Hz')
-        for clip in tl.CLIPS:
-            for ax in axes: ax.axvline(clip['at'], color='gray', lw=0.4, alpha=0.6)
-        for ident, at in tl.VOICE:
+        for shot in edit.TIMELINE['shots']:
+            for ax in axes: ax.axvline(shot['start'], color='gray', lw=0.4, alpha=0.6)
+            axes[1].text(shot['start'] + 0.05, -4, shot['id'], fontsize=7, rotation=90, va='top')
+        for ident, at in edit.voice_cues():
             axes[2].text(at, -5, ident, fontsize=7, rotation=90, va='top')
         axes[3].set_xlabel('s')
         fig.tight_layout()
