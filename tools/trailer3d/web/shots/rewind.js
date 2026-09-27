@@ -1,7 +1,8 @@
-// A new hotel every tape. The tape rewound three times, a second each, and
-// each time the building going by backward is another: a straight clean
-// corridor of paper and warm lamps; one that turns, doors open, a fire door;
-// rooms opening into rooms and a ruined lounge. The words stay on it.
+// A new hotel every tape. Three quick rewinds, a third of a second each,
+// and after each the tape plays a moment of a different building, clearly:
+// a straight clean corridor of paper and warm lamps; one that turns, doors
+// open, a fire door; rooms opening into rooms and a ruined lounge. The words
+// stay on it.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { corridor, hotelRoom } from "../engine/sets.js";
@@ -12,8 +13,9 @@ import { camcorder, text } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, tape } from "./common.js";
 
-// Each rewind, through its hotel.
-export const REWINDS = [[0, 1], [1, 2], [2, 3]];
+// Each rewind, and the hotel that plays after it.
+export const REWINDS = [[0, 0.3], [1.0, 1.3], [2.0, 2.3]];
+export const PASSES = [[0.3, 1.0], [1.3, 2.0], [2.3, 3.0]];
 const ORIGINS = [V(0, 0, 0), V(60, 0, 0), V(120, 0, 0)];
 
 export function create(ctx) {
@@ -115,27 +117,30 @@ export function create(ctx) {
 			for (const m of shot.moons) shot.volumetrics.addSpot(m, { strength: 0.35 });
 		},
 		update(t) {
-			// Which hotel, and the walk through it run backward, fast.
+			// Which hotel: the one after the rewind in progress, run backward
+			// fast into its start; then played forward, slowly walked.
 			const pass = Math.max(0, Math.min(2, Math.floor(t)));
-			const u = 1 - clamp(t - pass);
+			const [r0, r1] = REWINDS[pass];
+			const [p0, p1] = PASSES[pass];
+			const u = t < r1 ? 0.35 * (1 - (t - r0) / (r1 - r0)) : ((t - p0) / (p1 - p0)) * 0.35;
 			const o = ORIGINS[pass];
 			const z = pass === 2 ? -2.6 - u * 4.4 : -0.6 - u * 6.0;
-			const st = steps(u * 4, { rate: 1.8, amp: 0.7 });
+			const st = steps(Math.max(0, t - p0), { rate: 1.8, amp: 0.7 });
 			const hh = handheld(t, { amp: 1.2, seed: 7 });
 			const pos = V(o.x + 0.1, 1.62, z).add(st.pos).add(hh.pos);
 			const pan = [0, 0.18, -0.12][pass] * u;
 			aimCamera(camera, pos, V(o.x + 0.1 + pan * 20, 1.45, z - 20), { yaw: hh.yaw, pitch: hh.pitch + st.pitch, roll: hh.roll + st.roll });
 		},
 		look(t) {
-			const L = tape({ exposure: t >= 2 ? 1.9 : 1.3 });
-			const k = t - Math.floor(t);
-			L.rewind = 0.4 + 0.15 * Math.sin(k * Math.PI);
-			L.tracking = 0.35;
-			// The jump from one to the next.
-			if (k < 0.06 && t > 0.5) {
-				L.tracking = 1;
-				L.snow = 0.6;
+			const pass = Math.max(0, Math.min(2, Math.floor(t)));
+			const L = tape({ exposure: pass === 2 ? 1.9 : 1.3 });
+			const [r0, r1] = REWINDS[pass];
+			if (t >= r0 && t < r1) {
+				const k = (t - r0) / (r1 - r0);
+				L.rewind = 0.7 + 0.3 * Math.sin(k * Math.PI);
+				L.tracking = 0.7;
 			}
+			if (t >= r1 && t < r1 + 0.06) L.tracking = 0.6;
 			return L;
 		},
 		overlay(g, t, size) {

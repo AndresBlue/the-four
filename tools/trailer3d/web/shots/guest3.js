@@ -1,6 +1,7 @@
-// GUEST 03 — he hid. Inside a wardrobe, in the dark: his breath. He pushes
-// one door a crack to look, and The Locust is there, bent to the doors,
-// waiting. He opens it. Black: it has him.
+// GUEST 03 — he hid. Inside a wardrobe, in the dark: his breath, his heart.
+// He pushes one door open a hair, slowly: nothing out there, nothing to see.
+// Then the door is torn open and it is on him, all at once, barely seen; the
+// picture goes dark at once.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom } from "../engine/sets.js";
@@ -12,10 +13,10 @@ import { camcorder, burnIn, typed } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp, keys } from "../engine/util.js";
 import { V, handheld, aimCamera, tape } from "./common.js";
 
-export const AJAR = [1.35, 2.2];
+export const AJAR = [0.9, 2.9];
 export const OPEN = 3.35;
-export const LUNGE = 3.5;
-export const CATCH = 3.7;
+export const LUNGE = 3.38;
+export const CATCH = 3.58;
 
 // Room: x 0..5.6, z 0..6.4. The wardrobe on the east wall, doors facing -x;
 // the room's door on the west wall, straight across.
@@ -88,11 +89,11 @@ export function create(ctx) {
 			if (hall.light) shot.volumetrics.addPoint(hall.light, { radius: 0.8, strength: 0.6 });
 		},
 		update(t) {
-			// Shut; pushed a crack; then pushed open, and it comes.
-			const crack = smoothstep(AJAR[0], AJAR[1], t) * 0.4;
-			const open = smoothstep(OPEN, OPEN + 0.18, t);
+			// Shut; pushed a hair open, slowly; then torn open from outside.
+			const crack = smoothstep(AJAR[0], AJAR[1], t) * 0.07;
+			const open = smoothstep(OPEN, OPEN + 0.06, t);
 			ward.left.rotation.y = -0.02;
-			ward.right.rotation.y = 0.02 + crack + open * 1.0;
+			ward.right.rotation.y = 0.02 + crack + open * 1.5;
 			// Inside, against the back, looking out; leaning to the crack.
 			const hh = handheld(t, { amp: 0.5, seed: 31 });
 			const breathe = Math.sin(t * 2.2) * 0.004;
@@ -102,10 +103,13 @@ export function create(ctx) {
 		},
 		look(t) {
 			const L = tape({ exposure: 2.2, enclosure: t < OPEN ? 1 : 1 - smoothstep(OPEN, OPEN + 0.2, t), grain: 0.32 });
-			// Shut in: black but for the grain.
-			L.fadeAll = 1 - smoothstep(AJAR[0] - 0.1, AJAR[0] + 0.4, t) * 0.97;
-			if (t < AJAR[0]) L.fadeAll = 0.96;
-			if (t >= LUNGE) L.threat_glitch = 0.7;
+			// Shut in: black but for the grain; the crack lets in a line.
+			L.fadeAll = t < AJAR[0] ? 0.96 : 0.96 - smoothstep(AJAR[0], AJAR[1], t) * 0.4;
+			if (t >= OPEN) {
+				L.fadeAll = smoothstep(OPEN + 0.08, CATCH, t);
+				L.threat_glitch = 0.8;
+				L.jerk = 0.8;
+			}
 			if (t >= CATCH) L.fadeAll = 1;
 			return L;
 		},
@@ -139,7 +143,9 @@ function poseLocust(L, t) {
 	if (lunge > 0) L.poseArms({ attack: lunge, aggression: 1 });
 	L.root.updateMatrixWorld(true);
 	// Put the head where the crack is (the feet go where they must).
-	const want = MASK.clone().add(V(lunge * 0.7, 0, 0));
+	// Out of sight of the crack, to one side, until the door goes; then
+	// straight at the lens.
+	const want = t < OPEN ? V(4.0, 1.66, 1.6) : MASK.clone().setY(1.42).lerp(LENS, 0.2 + lunge * 0.55);
 	L.root.position.copy(want.sub(L.point("Head1")));
 	L.root.updateMatrixWorld(true);
 	// The mask to the crack; still, now and then the head ticks further over.

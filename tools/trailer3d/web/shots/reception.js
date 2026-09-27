@@ -15,17 +15,17 @@ import { clamp, smooth, smoothstep, lerp, fbm1 } from "../engine/util.js";
 import { V, handheld, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
 export const CLACK = 1.35;
-// Where the clack came from: the far side of the east wall.
-const SOUND = V(6.9, 1.4, -5.2);
+// Where the clack came from: the far door, ahead on the right.
+const SOUND = V(4.2, 1.4, -10.6);
 
 // Where each guest stands and where their torch wanders before the clack.
-// Backs to the lens, into the room, the beams crossing it: silhouettes
-// against what their own beams find. Two
-// of them in the detective's hat and coat, the third the other detective.
+// Backs to the lens, all facing into the room, the beams searching ahead:
+// silhouettes against what their own beams find. Two of them in the
+// detective's hat and coat, the third the other detective.
 const GUESTS = [
-	{ at: V(-2.4, 0, -2.6), yaw: Math.PI - 0.62, aims: [V(2.6, 0.2, -10.6), V(4.6, 0.5, -9.2)], who: "man" },
-	{ at: V(2.3, 0, -1.6), yaw: -Math.PI + 0.8, aims: [V(-6.8, 2.6, -8.2), V(-4.2, 2.1, -10.8)], who: "man" },
-	{ at: V(0.7, 0, -5.6), yaw: Math.PI + 0.15, aims: [V(-1.8, 2.3, -10.8), V(1.9, 1.2, -10.8)], who: "woman" },
+	{ at: V(-2.4, 0, -2.6), yaw: Math.PI + 0.12, aims: [V(-3.6, 0.4, -10.6), V(-1.0, 1.2, -10.4)], who: "man" },
+	{ at: V(2.3, 0, -1.6), yaw: Math.PI - 0.12, aims: [V(3.8, 1.8, -10.6), V(1.2, 0.8, -10.2)], who: "man" },
+	{ at: V(0.7, 0, -5.6), yaw: Math.PI, aims: [V(-1.4, 2.2, -10.8), V(1.9, 1.2, -10.8)], who: "woman" },
 ];
 
 export function create(ctx) {
@@ -107,7 +107,8 @@ export function create(ctx) {
 				const aim = pts[n % 3].clone().lerp(pts[(n + 1) % 3], dart);
 				aim.add(V(fbm1(t * 6, 60 + i) * 0.18, fbm1(t * 5.5, 70 + i) * 0.14, 0));
 				aim.lerp(SOUND.clone().add(V(fbm1(t * 9, 80 + i) * 0.12, fbm1(t * 8, 90 + i) * 0.1, i * 0.4 - 0.4)), heard);
-				g.s.root.rotation.y = g.yaw + heard * (i === 1 ? 0.5 : 0.35);
+				// Facing into the room, all of them: only the beams go to the sound.
+				g.s.root.rotation.y = g.yaw;
 				const pose = g.who === "man" ? detectiveTorch : poseTorch;
 				const { hand, dir } = pose(g.s, aim, { breathe: Math.sin(t * 5 + i) });
 				g.lamp.position.copy(hand).add(dir.clone().multiplyScalar(0.08));

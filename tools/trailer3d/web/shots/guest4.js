@@ -2,8 +2,8 @@
 // the tape starting to drag its colours. A turn: far off, in an open door,
 // head and neck of The Locust out from behind the frame, cocked, looking
 // straight here — the title screen's pose (the game's phantom_sight). The
-// torch goes to it: the tape jerks, nothing. On; at the end of the straight
-// corridor it stands, still, looking. One blink of tracking: empty.
+// torch goes to it and the door slams shut. Back round: at the end of the
+// straight corridor it stands, looking — and at once it is not there.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { corridor } from "../engine/sets.js";
@@ -15,9 +15,9 @@ import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./com
 
 export const TURN = [0.55, 1.15];
 export const TORCH = 1.55;
-export const JERK = 1.92;
+export const SLAM = 1.92;
 export const LOOK_END = [2.35, 2.95];
-export const BLINK = 3.55;
+export const BLINK = 3.12;
 export const ZOOM_IN = [0.95, 1.45];
 export const ZOOM_OUT = [2.2, 2.75];
 const zoomAt = (t) => smooth((t - ZOOM_IN[0]) / (ZOOM_IN[1] - ZOOM_IN[0])) * (1 - smooth((t - ZOOM_OUT[0]) / (ZOOM_OUT[1] - ZOOM_OUT[0])));
@@ -50,7 +50,7 @@ export function create(ctx) {
 			kit.wall(1.84, -6.2 + T / 2, 14.18, -6.2 + T / 2, { dress: [-1] });
 			// Its end: a wall facing us with a door stood ajar, hinged on the right.
 			kit.wall(14.0 + T / 2, -9.2, 14.0 + T / 2, -6.0, { openings: [[1.6 - 0.65 + 0.2, 1.6 + 0.65 + 0.2]], dress: [-1] });
-			const endDoor = await kit.door(14.0 + T / 2, -7.6, -Math.PI / 2, { open: 0.44, flip: true });
+			shot.endDoor = await kit.door(14.0 + T / 2, -7.6, -Math.PI / 2, { open: 1.25, flip: true });
 			// The dark room behind it.
 			kit.floor(14.18, -12, 20, -3);
 			kit.ceilingSlab(14.18, -12, 20, -3);
@@ -104,7 +104,9 @@ export function create(ctx) {
 			if (onDoor > 0) torch.target.position.lerp(V(14.0, 1.9, -7.1), onDoor);
 			// The head in the door, out from behind the left jamb in 0.4 s once
 			// the lens has come round to it, twitching; gone at the jerk.
-			const shownPeek = t >= TURN[0] + 0.25 && t < JERK;
+			// Slammed: the leaf flung shut, the head behind it.
+			shot.endDoor.leaf.rotation.y = 1.25 * (1 - smoothstep(SLAM - 0.1, SLAM, t));
+			const shownPeek = t >= TURN[0] + 0.25 && t < SLAM - 0.05;
 			peek.root.visible = shownPeek;
 			if (shownPeek) {
 				// Behind the wall left of the doorway (seen head on, the wall hides the
@@ -129,9 +131,9 @@ export function create(ctx) {
 		look(t) {
 			// The mind going: the picture drags and its colour runs, more and more.
 			const L = tape({ exposure: 1.25, drag: 0.25 + smoothstep(0, 4.5, t) * 0.55 });
-			if (t >= JERK && t < JERK + 0.067) { L.jerk = 1; L.tracking = 0.8; }
-			if (t >= JERK + 0.067 && t < JERK + 0.2) L.tracking = 0.4;
-			if (t >= BLINK && t < BLINK + 0.1) { L.tracking = 1; L.roll = 0.02; }
+			if (t >= SLAM && t < SLAM + 0.08) { L.jerk = 0.6; L.tracking = 0.5; }
+			// Gone between one frame and the next, as if never there.
+			if (t >= BLINK && t < BLINK + 0.05) { L.tracking = 0.7; L.snow = 0.2; }
 			return L;
 		},
 		overlay(g, t, size) {

@@ -1,6 +1,6 @@
-// The blackout. A gloved hand presses the last set's button: click, it comes
-// on, and it draws the power: the picture flares, the lamp by it stutters
-// with the surge and dies. Cut to the corridor: its lamps shudder in time
+// The blackout. The last set comes on and it draws the power: the picture
+// flares, the lamp by it stutters with the surge and dies, and the room is
+// left black but for the set. Cut to the corridor: its lamps shudder in time
 // and go out one after the other, away down the hall. Black; what is left:
 // the sets, the torches, the green signs.
 import * as THREE from "three";
@@ -83,7 +83,7 @@ export function create(ctx) {
 			tvB.fill.intensity = 3 * wave;
 			if (t < CUT) {
 				// The button: the survivor stands out of frame, the gloved hand in it.
-				hand.root.visible = true;
+				hand.root.visible = false;
 				// Standing off to the right, only the arm reaching in.
 				hand.root.position.set(51.05, 0, -0.1);
 				hand.root.rotation.y = Math.PI + 0.35;
@@ -102,16 +102,17 @@ export function create(ctx) {
 				u.time.value = t;
 				u.brightness.value = 1 + surge * 1.6;
 				u.unstable.value = surge * 0.8;
-				tvA.glow.intensity = t > CLICK ? 22 * smooth(on) * wave * (1 + surge * 2) : 0;
-				tvA.fill.intensity = t > CLICK ? 3 * smooth(on) * (1 + surge * 2) : 0;
+				// A set lights little of the room: its glass, a glow on the cabinet.
+				tvA.glow.intensity = t > CLICK ? 3 * smooth(on) * wave * (1 + surge * 1.5) : 0;
+				tvA.fill.intensity = t > CLICK ? 0.35 * smooth(on) * (1 + surge * 1.5) : 0;
 				// The lamp by it stutters with the surge and dies.
 				const stutter = t >= SURGE && t < POP ? (Math.sin(t * 90) > 0.2 ? 0.25 : 1.3) : 1;
 				const lamp = t >= POP ? 0 : stutter;
 				shot.near.light.intensity = 2.4 * lamp;
 				for (const m of shot.nearMats) m.emissiveIntensity = m.userData.lit * lamp;
-				torch.visible = true;
-				torch.intensity = 26;
-				holdTorch(torch, camera, { ahead: 1.6, sway: 0.1, swayT: t });
+				// No torch here: the lamp, then the set alone.
+				torch.visible = false;
+				torch.intensity = 0;
 			} else {
 				hand.root.visible = false;
 				tvA.glow.intensity = 0;

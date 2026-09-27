@@ -9,6 +9,7 @@ import { Looks } from "./looks.js";
 const COMPOSE = /* glsl */ `
 uniform sampler2D look;
 uniform sampler2D over;
+uniform sampler2D subs;
 uniform vec4 rect;
 uniform float tear;
 uniform float time;
@@ -31,6 +32,9 @@ void main() {
 	vec4 o = texture2D(over, vUv);
 	c = mix(c, o.rgb, o.a);
 	c *= 1.0 - fade;
+	// The subtitles sit over everything, fades included.
+	vec4 sb = texture2D(subs, vUv);
+	c = mix(c, sb.rgb, sb.a);
 	gl_FragColor = vec4(c, 1.0);
 }`;
 
@@ -58,11 +62,25 @@ export class Engine {
 		this.renderer = renderer;
 		this.pipes = new Map();
 		this.looks = new Looks(renderer);
-		this.compose = shaderPass(COMPOSE, { look: { value: null }, over: { value: null }, rect: { value: new THREE.Vector4(0, 0, 1, 1) }, tear: { value: 0 }, time: { value: 0 }, fade: { value: 0 } });
+		this.compose = shaderPass(COMPOSE, { look: { value: null }, over: { value: null }, subs: { value: null }, rect: { value: new THREE.Vector4(0, 0, 1, 1) }, tear: { value: 0 }, time: { value: 0 }, fade: { value: 0 } });
 		this.copy = shaderPass(COPY, { src: { value: null } });
 		this.shots = new Map();
 		this.canvases = new Map();
 		this.over = this.canvas(this.W, this.H, "over");
+		this.subs = this.canvas(this.W, this.H, "subs");
+		// The voice's subtitles, on the edit's own clock (timeline.json voice.lines).
+		this.cues = [];
+		for (const line of timeline.voice?.lines ?? []) {
+			if (!line.shot) continue;
+			const shot = timeline.shots.find((s) => s.id === line.shot);
+			if (!shot) continue;
+			const t0 = shot.start + line.at;
+			const t1 = t0 + line.length + 0.35;
+			line.subs.forEach(([at, words], i) => {
+				const next = line.subs[i + 1];
+				this.cues.push({ words, from: t0 + at, to: next ? t0 + next[0] - 0.05 : t1 });
+			});
+		}
 		this.context = { THREE, engine: this, renderer, FPS, debug: new URLSearchParams(location.search).has("debug") };
 	}
 
@@ -163,6 +181,8 @@ export class Engine {
 		const u = this.compose.material.uniforms;
 		u.look.value = pipe.look.texture;
 		u.over.value = over.texture;
+		this.drawSubtitles(time);
+		u.subs.value = this.subs.texture;
 		const x0 = (this.W - w) / 2 / this.W;
 		u.rect.value.set(x0, 0, 1 - x0, 1);
 		u.tear.value = params.frameTear ?? 0;
@@ -176,6 +196,37 @@ export class Engine {
 		this.renderer.setRenderTarget(null);
 		this.compose.render(this.renderer);
 		return { shot: entry.id, t };
+	}
+
+	// Film subtitles: pale, small, a soft shadow; they come and go gently and
+	// breathe a little with the tape.
+	drawSubtitles(time) {
+		const { ctx: g, canvas, texture } = this.subs;
+		g.setTransform(1, 0, 0, 1, 0, 0);
+		g.clearRect(0, 0, canvas.width, canvas.height);
+		const u = this.H / 1080;
+		for (const c of this.cues) {
+			if (time < c.from || time > c.to) continue;
+			const k = Math.min(1, (time - c.from) / 0.14, (c.to - time) / 0.22);
+			const flicker = 0.94 + 0.06 * Math.sin(time * 37.0) * Math.sin(time * 11.3);
+			const a = Math.max(0, k) * flicker;
+			const jx = (Math.sin(Math.floor(time * 30) * 91.7) > 0.93 ? 1.2 : 0) * u;
+			g.save();
+			g.font = `italic 400 ${40 * u}px Georgia, 'Times New Roman', serif`;
+			g.textAlign = "center";
+			g.textBaseline = "alphabetic";
+			g.letterSpacing = `${1.2 * u}px`;
+			const x = this.W / 2 + jx;
+			const y = this.H * 0.885;
+			g.shadowColor = `rgba(0,0,0,${0.9 * a})`;
+			g.shadowBlur = 8 * u;
+			g.fillStyle = `rgba(160,40,30,${0.22 * a})`;
+			g.fillText(c.words, x + 1.6 * u, y);
+			g.fillStyle = `rgba(236,231,218,${a})`;
+			g.fillText(c.words, x, y);
+			g.restore();
+		}
+		texture.needsUpdate = true;
 	}
 
 	async save(path) {

@@ -1,5 +1,5 @@
 // The code: beep 7, beep 3, beep 9, beep 1, each on its own; the tone;
-// UNLOCKED; the lock lets go and the last door opens on the lift's light.
+// UNLOCKED; the last door is pulled open, quick, on the lift's light.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom } from "../engine/sets.js";
@@ -12,7 +12,6 @@ import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./com
 
 export const KEYS = [0.3, 0.65, 1.0, 1.35];
 export const TONE = 1.7;
-export const BOLT = 1.95;
 export const OPEN = 2.05;
 const CODE = [7, 3, 9, 1];
 
@@ -174,7 +173,7 @@ export function create(ctx) {
 			g.fillText(words, 160, 72);
 			display.t.needsUpdate = true;
 			// Wide open, flat to the wall, so the way back is in sight from the car.
-		door.leaf.rotation.y = -smooth((t - OPEN) / 0.6) * 1.2;
+		door.leaf.rotation.y = -smooth((t - OPEN) / 0.35) * 1.3;
 			// Back from the wall: the keypad and the door beside it both in view.
 			const hh = handheld(t, { amp: 0.8, seed: 71 });
 			camera.fov = 50;

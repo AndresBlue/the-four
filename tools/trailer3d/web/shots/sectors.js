@@ -86,7 +86,7 @@ export function create(ctx) {
 			const hit = t < HITS[1] ? 0 : t < HITS[2] ? 1 : 2;
 			const k = t - HITS[hit];
 			const hh = handheld(t, { amp: 0.8, seed: 3 });
-			const push = smooth(k / 1.1) * 0.35;
+			const push = smooth(k / (hit === 2 ? 1.6 : 1.1)) * 0.35;
 			torch.visible = hit === 2;
 			shot.aperture = hit === 2 ? 0.004 : 0;
 			if (hit === 0) {
@@ -117,7 +117,8 @@ export function create(ctx) {
 			const hit = t < HITS[1] ? 0 : t < HITS[2] ? 1 : 2;
 			const k = t - HITS[hit];
 			camcorder(g, t, size, { clock: 2 * 3600 + 9 * 60 + 30 + hit * 11 * 60, date: "OCT. 27 1993" });
-			const a = smoothstep(0.05, 0.2, k) * (1 - smoothstep(0.95, 1.08, k));
+			// The last card stays: FIND THE CODE holds to the fade.
+			const a = smoothstep(0.05, 0.2, k) * (hit === 2 ? 1 : 1 - smoothstep(0.95, 1.08, k));
 			sectorCard(g, size, { sector: CARDS[hit][0], errand: CARDS[hit][1], alpha: a, backdrop: 0.45 });
 		},
 	};

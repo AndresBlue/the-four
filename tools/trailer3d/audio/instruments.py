@@ -314,7 +314,7 @@ def pencil(rng, dur=1.4):
 # --- Machines and electricity -------------------------------------------------------------------
 
 def vcr_clunk(rng):
-    """The deck taking the tape: a mechanism, a thump, the drum spinning up."""
+    """The deck taking the tape: a mechanism and its thump."""
     n = n_of(1.4)
     t = np.arange(n) / SR
     x = np.zeros(n)
@@ -323,10 +323,7 @@ def vcr_clunk(rng):
         tt = np.arange(k) / SR
         s = n_of(at)
         x[s:s + k] += bp(rng.standard_normal(k), f * 0.6, f * 1.6) * np.exp(-tt / 0.02) * amp
-    motor_f = 60 + 90 * np.clip(t / 0.5, 0, 1)
-    motor = lp(saw(motor_f, n, rng, harmonics=30), 700) * np.clip((t - 0.15) / 0.3, 0, 1) * 0.15
-    motor *= np.exp(-np.maximum(t - 0.9, 0) / 0.3)
-    return x + motor
+    return x
 
 
 def tv_on(rng):

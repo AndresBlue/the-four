@@ -103,20 +103,10 @@ def cut(x, seconds, fout=0.02):
 
 # --- The voice -----------------------------------------------------------------------------
 
-## Each line and where it starts on the edit. The recorded lines are slow and
-## run on across the fades; the rest of the time is the dark between them.
+## Each line and where it starts: timeline.json places it (shot, at), so the
+## picture's subtitles and the sound read the same numbers.
 def voice_cues():
-    return [
-        ('tape', start('crt') + 0.05),
-        ('different', start('rewind') - 0.28),
-        ('always', start('rewind') + 2.35),
-        ('ran', start('guest1') + 0.4),
-        ('door', start('guest2') - 0.05),
-        ('hid', start('guest3') + 0.2),
-        ('sighting', at('guest4', 'JERK') + 0.1),
-        ('occupant', start('occupant') + 0.2),
-        ('floors', start('database') + 0.5),
-    ]
+    return [(l['id'], start(l['shot']) + l['at']) for l in TIMELINE['voice']['lines']]
 
 
 def line(ident):
@@ -228,7 +218,7 @@ def score(rng):
     # Risings into the dark before each guest is taken, and across the fades.
     music.add(dread(rng, at('guest1', 'CATCH') - start('guest1') - 0.3), start('guest1') + 0.3, -14.0)
     music.add(dread(rng, at('guest2', 'OUT') - start('guest2') - 0.4), start('guest2') + 0.4, -18.0)
-    music.add(dread(rng, at('guest3', 'CATCH') - start('guest3')), start('guest3'), -14.0)
+    music.add(dread(rng, at('guest3', 'OPEN') - start('guest3')), start('guest3'), -13.0)
     music.add(dread(rng, end('guest4') - start('guest4')), start('guest4'), -17.0)
     music.add(ins.strings(rng, 5.0, ('Eb2', 'Bb2', 'E3', 'G3'), tremolo=0.3, cutoff=1000, attack=2.0), start('guest3') + 0.1, -19.0)
     music.add(ins.strings(rng, 5.0, ('Eb2', 'C3', 'G3', 'Bb3'), tremolo=0.4, cutoff=1300, attack=1.6), start('guest4') + 0.1, -19.0)
@@ -324,11 +314,13 @@ def effects(rng):
     fx.add(far(bangs[0]), at('reception', 'CLACK'), -12.0, pan=0.45)
 
     # The rewinds: static under all three, the whine of each.
-    ra, rb = start('rewind'), end('rewind')
-    fx.add(dsp.fade(loop_to(static, rb - ra), 0.1, 0.3), ra, -17.0)
+    ra = start('rewind')
     for p, q in marks('rewind')['REWINDS']:
-        fx.add(ins.rewind(rng, q - p), ra + p, -14.0)
-        fx.add(ins.glitch(rng, 0.1), ra + p, -18.0)
+        fx.add(ins.rewind(rng, q - p), ra + p, -12.0)
+        fx.add(dsp.fade(static[:n_of(q - p)], 0.005, 0.02), ra + p, -16.0)
+    for p, q in marks('rewind')['PASSES']:
+        fx.add(dsp.lp(span(dsp.noise(n_of(1.0), rng, 'pink'), ra + p, ra + q, 0.02, 0.05), 300), ra + p, -26.0)
+        fx.add(span(hum, ra + p, ra + q, 0.02, 0.05), ra + p, -34.0)
 
     # The sectors: what each hit shows sounds with it.
     h = [start('sectors') + x for x in marks('sectors')['HITS']]
@@ -371,24 +363,24 @@ def effects(rng):
     for f in marks('guest2')['FLASHES']:
         fx.add(dsp.fade(static[:n_of(0.12)], 0.0, 0.05), start('guest2') + f, -11.0)
         fx.add(ins.glitch(rng, 0.12), start('guest2') + f, -15.0)
-    fx.add(ins.hit(rng, 2.0, metal=0.4, crack=0.3, sub=1.0, space=0.4), out, -10.0)
+    fx.add(ins.hit(rng, 2.4, metal=0.4, crack=0.3, sub=1.2, space=0.5), out, -9.0)
     fx.add(in_room(chitter[1], 0.3), out + 0.1, -12.0)
     fx.add(in_room(breath[:n_of(end('guest2') - out)], 0.3), out, -15.0)
 
-    # Guest three: shut in the wardrobe, his breath, his heart; the door a
-    # crack; it is there; the door opens and it has him.
+    # Guest three: shut in the wardrobe, his breath, his heart quickening; the
+    # door a hair open, nothing; torn open, and it has him.
     g3 = start('guest3')
-    caught = at('guest3', 'CATCH')
+    caught = at('guest3', 'OPEN')
     fx.add(dsp.fade(ins.breath(rng, caught - g3, rate=0.8, strength=0.6), 0.3, 0.05), g3, -20.0)
     beat = 60 / 64
     when = g3 + 0.3
     while when < caught - 0.2:
         fx.add(ins.heartbeat(rng, 1.0), when, -14.0)
         when += beat * (1 - 0.3 * (when - g3) / (caught - g3))
-    fx.add(in_room(ins.creak(rng, at('guest3', 'AJAR', 1) - at('guest3', 'AJAR', 0), 20, 8, 0.8), 0.2), at('guest3', 'AJAR', 0), -15.0)
-    fx.add(dsp.lp(breath[n_of(2.0):n_of(2.0 + at('guest3', 'OPEN') - at('guest3', 'AJAR', 1))], 1400), at('guest3', 'AJAR', 1), -14.0)
-    fx.add(in_room(ins.creak(rng, 0.25, 34, 16, 1.2), 0.2), at('guest3', 'OPEN'), -12.0)
-    taken(caught)
+    fx.add(in_room(ins.creak(rng, at('guest3', 'AJAR', 1) - at('guest3', 'AJAR', 0), 14, 5, 0.6), 0.2), at('guest3', 'AJAR', 0), -22.0)
+    # Torn open, and it has him at once.
+    fx.add(dsp.fade(ins.wood_close(rng, 1.2), 0.0, 0.1), at('guest3', 'OPEN'), -8.0)
+    taken(at('guest3', 'OPEN') + 0.02)
 
     # Guest four: the warm corridor; the zoom; the head that was not there.
     g4 = start('guest4')
@@ -398,10 +390,10 @@ def effects(rng):
     z0, z1 = at('guest4', 'ZOOM_OUT', 0), at('guest4', 'ZOOM_OUT', 1)
     fx.add(ins.zoom_motor(rng, z1 - z0), z0, -20.0)
     fx.add(ins.relay(rng, 0.5), at('guest4', 'TORCH'), -18.0)
-    fx.add(ins.glitch(rng, 0.3), at('guest4', 'JERK') - 0.03, -10.0)
-    fx.add(dsp.fade(ins.hit(rng, 1.2, metal=0.5, crack=0.3, sub=0.8, space=0.4), 0.0, 0.5), at('guest4', 'JERK'), -18.0)
-    fx.add(ins.reverse_swell(rng, 0.6), at('guest4', 'BLINK') - 0.6, -18.0)
-    fx.add(ins.glitch(rng, 0.18), at('guest4', 'BLINK') - 0.02, -11.0)
+    # The door slammed on the face in it: the game's own slam, down the hall.
+    fx.add(in_hall(asset('sfx', 'door', 'closing', 'close-hard-closing.ogg'), 0.35), at('guest4', 'SLAM') - 0.03, -11.0)
+    fx.add(ins.reverse_swell(rng, 0.5), at('guest4', 'BLINK') - 0.5, -20.0)
+    fx.add(ins.glitch(rng, 0.08), at('guest4', 'BLINK'), -16.0)
 
     # The occupant's black: only its breath, far off.
     fx.add(far(breath[n_of(3.0):n_of(3.0 + end('occupant') - start('occupant'))]), start('occupant'), -20.0)
@@ -458,17 +450,8 @@ def effects(rng):
     fx.add(in_hall(bangs[1], 0.25), at('chase', 'SLAM'), -7.0)
     fx.add(ins.whoosh(rng, 0.35, 400, 3200, 0.4, -0.4), at('chase', 'TURN') - 0.1, -9.0)
     fx.add(in_room(chitter[2], 0.2), at('chase', 'TURN') + 0.05, -10.0)
-    fx.add(ins.hit(rng, 1.6, metal=0.9, crack=0.9, sub=1.0, space=0.3), at('chase', 'THRUST'), -10.0)
-
-    # The execution: taken up with its screamer; its breath; the arm held
-    # back too long; the blow; the channel dead.
-    ex = start('execution')
-    fx.add(dsp.fade(scream[:n_of(1.05)], 0.0, 0.35), at('execution', 'LIFT') - 0.05, -12.0)
-    fx.add(in_room(breath[n_of(4.0):n_of(4.0 + at('execution', 'HIT') - ex)], 0.2), ex + 0.6, -14.0)
-    fx.add(in_room(ins.creak(rng, 0.25, 18, 8, 0.6), 0.2), at('execution', 'ARM'), -16.0)
-    fx.add(arm_hit, at('execution', 'HIT') - 0.22, -5.0)
-    fx.add(ins.hit(rng, 0.8, metal=0.6, crack=1.0, sub=1.2, space=0.2), at('execution', 'HIT'), -10.0)
-    fx.add(dsp.fade(dead[:n_of(end('execution') - at('execution', 'STATIC'))], 0.005, 0.2), at('execution', 'STATIC'), -14.0)
+    taken(at('chase', 'THRUST'), gain=-13.0)
+    fx.add(dsp.fade(dead[:n_of(end('chase') - at('chase', 'THRUST') - 0.3)], 0.005, 0.25), at('chase', 'THRUST') + 0.3, -24.0)
 
     # The code, every sound on its own: four keys, the tone, the lock, the door.
     for k in marks('keypad')['KEYS']:
@@ -476,13 +459,8 @@ def effects(rng):
     tone = at('keypad', 'TONE')
     fx.add(ins.key_beep(rng, ins.note_hz('C6'), 0.1), tone, -13.0)
     fx.add(ins.key_beep(rng, ins.note_hz('G6'), 0.16), tone + 0.12, -13.0)
-    fx.add(in_room(ins.bolt(rng), 0.2), at('keypad', 'BOLT'), -9.0)
-    fx.add(in_room(ins.creak(rng, 0.55, 26, 12, 0.8), 0.25), at('keypad', 'OPEN') + 0.05, -16.0)
-
-    # The car going down, and the picture going with it.
-    fx.add(ins.lift_motor(rng, end('lift') - at('lift', 'DOWN') + 0.2), at('lift', 'DOWN'), -12.0)
-    lose = at('lift', 'LOSE')
-    fx.add(ins.glitch(rng, end('lift') - lose), lose, -12.0)
+    # The door pulled open, quick: the game's own.
+    fx.add(in_room(asset('sfx', 'door', 'opening', 'opening2.ogg'), 0.2), at('keypad', 'OPEN') - 0.15, -6.0)
 
     # The archive: the rows written, the glimpses of what was not recovered.
     for r in marks('database')['ROWS']:

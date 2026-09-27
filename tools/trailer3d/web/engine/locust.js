@@ -36,10 +36,31 @@ async function referenceMaterial(original) {
 }
 
 export class Locust {
-	static async create() {
+	// Black as oil: the greys of its body pushed down to black, the pale of the
+	// mask kept, and a wet clear coat over all of it.
+	oil() {
+		for (const m of this.meshes) {
+			const old = m.material;
+			if (!old || old.name === "locust_fibers_mat") continue;
+			const oil = new THREE.MeshPhysicalMaterial({
+				map: old.map ?? null, normalMap: old.normalMap ?? null, color: old.color?.clone() ?? new THREE.Color(1, 1, 1),
+				metalness: 0, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.08, side: old.side ?? THREE.FrontSide,
+			});
+			if (old.normalScale) oil.normalScale.copy(old.normalScale);
+			oil.onBeforeCompile = (sh) => {
+				sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\n\tfloat lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));\n\tdiffuseColor.rgb *= mix(0.25, 1.0, smoothstep(0.03, 0.09, lum));");
+			};
+			if (old.name === "locust_black") oil.color.multiplyScalar(0.4);
+			oil.name = old.name;
+			m.material = oil;
+		}
+		return this;
+	}
+
+	static async create({ oil = true } = {}) {
 		const l = new Locust();
 		await l.load();
-		return l;
+		return oil ? l.oil() : l;
 	}
 
 	async load() {

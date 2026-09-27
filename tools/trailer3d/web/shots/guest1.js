@@ -17,7 +17,7 @@ export const CATCH = 3.7;
 export const SNOW = 4.05;
 // How fast they go: him, and it gaining on him.
 const RUN = 5.6;
-const CHASE = 9.2;
+const CHASE = 12.0;
 
 export function create(ctx) {
 	const scene = new THREE.Scene();
@@ -72,7 +72,7 @@ export function create(ctx) {
 			torch.intensity = 150;
 			holdTorch(torch, camera, { swayT: k * 3, sway: 2.2 * (1 - back * 0.6), ahead: 9 });
 			// It: behind him from the start, seen once he looks.
-			const gap = lerp(7.5, 1.2, easeIn(clamp((k - LOOK[0]) / (LUNGE - LOOK[0]))));
+			const gap = lerp(15.0, 1.2, easeIn(clamp((k - LOOK[0]) / (LUNGE - LOOK[0]))));
 			locust.root.visible = k > LOOK[0];
 			poseLocust(locust, k, z + gap);
 		},

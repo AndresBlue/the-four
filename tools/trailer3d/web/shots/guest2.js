@@ -1,8 +1,8 @@
 // GUEST 02 — every live screen is a door. A dark room; click, the set comes
 // on and its snow lights the room blue. In the snow something comes up to
-// the glass: the mask, filling the picture, the picture breaking up. A flash
-// of static: it is out, standing in front of the set. Another: it is over
-// the lens.
+// the glass: the mask, filling the picture, the picture breaking up in hard
+// flashes of static. The last one cuts round behind the set: it is out,
+// standing in its light, and its shadow is up the whole far wall.
 import * as THREE from "three";
 import { Kit } from "../engine/kit.js";
 import { hotelRoom, tvSet } from "../engine/sets.js";
@@ -19,9 +19,8 @@ export const CLICK = 0.5;
 // In the picture: it comes out of the snow and up to the glass.
 export const INSIDE = [1.0, 1.95];
 // The flashes of static; after each, it is further out.
-export const FLASHES = [1.95, 2.4, 2.8, 3.35];
-export const OUT = 2.8;
-export const CLOSER = 3.35;
+export const FLASHES = [1.95, 2.3, 2.6, 2.85];
+export const OUT = 2.85;
 
 export function create(ctx) {
 	const scene = new THREE.Scene();
@@ -78,7 +77,7 @@ export function create(ctx) {
 			camera.position.copy(eye);
 			const on = t >= CLICK;
 			const k = clamp((t - CLICK) / 0.35);
-			const flash = FLASHES.some((f) => t >= f && t < f + 0.07);
+			const flash = FLASHES.some((f) => t >= f && t < f + 0.1);
 			const swell = smoothstep(CLICK + 0.3, FLASHES[0], t);
 			const u = a.mat.uniforms;
 			u.power.value = on ? k : 0;
@@ -92,29 +91,45 @@ export function create(ctx) {
 			u.image_amount.value = shot.inPicture ? 0.25 + seen * 0.65 : 0;
 			u.static_amount.value = shot.inPicture ? 1 - seen * 0.55 : 1;
 			if (shot.inPicture) posePicture(broadcast, t);
-			a.glow.intensity = on ? 14 * smooth(k) * wave * (flash ? 3 : 1) : 0;
-			a.fill.intensity = on ? 2.2 * smooth(k) * wave * (flash ? 3 : 1) : 0;
-			// In the room: out in front of the set; at the last flash, over the lens.
+			// Once it is out the set is all the light there is, and plenty.
+			const out = t >= OUT ? 2.4 : 1;
+			a.glow.intensity = on ? 14 * smooth(k) * wave * (flash ? 3 : 1) * out : 0;
+			a.fill.intensity = on ? 2.2 * smooth(k) * wave * (flash ? 3 : 1) * (t >= OUT ? 0.5 : 1) : 0;
+			// Out: from behind the set, low, the set's back dark in the corner of
+			// the frame; it stands in the light of the snow, its shadow thrown
+			// up the far wall.
 			locust.root.visible = t >= OUT;
-			if (t >= OUT) poseOut(locust, face, t, eye, t >= CLOSER);
-			// The lens on the set; once it is out, up to its mask.
-			const mask = t >= OUT ? locust.point("Head1").add(V(0, 0.2, 0)) : V(0.35, 1.15, -3.6);
-			aimCamera(camera, eye, mask, { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
+			if (t >= OUT) {
+				poseOut(locust, t);
+				const drift = (t - OUT) * 0.05;
+				eye.set(1.3 + drift, 0.95, -3.85);
+				camera.position.copy(eye);
+				aimCamera(camera, eye, V(0.1, 1.95, 3.0), { yaw: hh.yaw * 0.5, pitch: hh.pitch * 0.5, roll: 0.03 + hh.roll * 0.5 });
+				camera.fov = 64;
+			} else {
+				aimCamera(camera, eye, V(0.35, 1.15, -3.6), { yaw: hh.yaw, pitch: hh.pitch, roll: hh.roll });
+				camera.fov = 50;
+			}
 			holdTorch(torch, camera, { ahead: 2.2, swayT: t * 1.5, sway: 0.6, aimOffset: V(0, 0.1, 0) });
-			torch.intensity = 22;
+			// Behind the set there is no torch: the set is the only light.
+			torch.intensity = t >= OUT ? 0 : 22;
 		},
 		look(t) {
 			// Night gain, kept low: the room stays dark round the set.
 			const L = tape({ exposure: 1.45, whiteBalance: [0.96, 1.0, 1.08], grain: 0.34, halation: 0.15, bloom: 0.035 });
+			// Each flash: a burst of white snow, the picture thrown sideways, a
+			// frame too bright, and it drops back.
 			for (const f of FLASHES) {
-				if (t >= f - 0.02 && t < f + 0.09) {
-					L.snow = 0.85;
+				const k = t - f;
+				if (k >= -0.02 && k < 0.12) {
+					L.snow = k < 0.07 ? 1 : 0.5;
 					L.tracking = 1;
-					L.jerk = 0.6;
-					L.exposure = 3.2;
+					L.jerk = 0.9;
+					L.roll = 0.03;
+					L.exposure = k < 0.04 ? 4.5 : 2.4;
+					L.threat_glitch = 0.5;
 				}
 			}
-			if (t >= OUT && t < OUT + 0.15) L.threat_glitch = 0.6;
 			return L;
 		},
 		overlay(g, t, size) {
@@ -140,25 +155,15 @@ function posePicture(b, t) {
 	b.camera.lookAt(head.x, head.y + 0.22, head.z);
 }
 
-// Out: standing in front of the set, stooped, the mask turned to the lens;
-// then right over it.
-function poseOut(L, face, t, lens, close) {
-	const head = L.bones.Head1;
-	L.root.rotation.set(0, 0, 0);
-	L.root.position.set(0, 0, 0);
+// Out: standing in front of the set, stooped over it, looking down into
+// the snow it came out of, the head on one side.
+function poseOut(L, t) {
+	L.root.rotation.set(0, Math.PI + 0.25, 0);
+	L.root.position.set(0.5, 0, -1.8);
 	L.reset();
-	L.root.updateMatrixWorld(true);
-	const rest = head.getWorldQuaternion(new THREE.Quaternion());
-	L.stand({ duck: 0.6, hunch: close ? 0.75 : 0.45 });
-	if (close) L.poseArms({ attack: 1 });
-	else L.hangArms();
-	L.root.position.set(face.x + 0.1, 0, close ? lens.z - 1.5 : face.z + 0.9);
-	L.root.updateMatrixWorld(true);
-	const look = lens.clone().sub(L.point("Head1")).normalize();
-	const turnTo = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), look);
-	const tilt = new THREE.Quaternion().setFromAxisAngle(look, 0.3 + Math.sin(t * 29) * 0.04);
-	const wanted = tilt.multiply(turnTo).multiply(rest);
-	const parent = head.parent.getWorldQuaternion(new THREE.Quaternion());
-	head.quaternion.copy(parent.invert().multiply(wanted));
+	L.stand({ hunch: 0.5 });
+	L.hangArms();
+	L.turn("Head1", [1, 0, 0], 0.25);
+	L.turn("Head1", [0, 0, 1], 0.35 + Math.sin(t * 29) * 0.03);
 	L.root.updateMatrixWorld(true);
 }
