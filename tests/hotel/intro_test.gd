@@ -46,7 +46,7 @@ func run() -> void:
 	level.session.set_state(level.session.State.MENU)
 	# As a floor that was left in its last car: that ride kept counting after
 	# the end, and its static played over the whole of the next opening scene.
-	level.lifts.leaving = level.lifts.RIDE_TIME + 1.0
+	level.lifts.leaving = level.lifts.LEAVE_TIME + 1.0
 	await process_frame
 	level.on_action("new")
 	check("Se puede volver a abrir desde el menú", is_instance_valid(level.intro))

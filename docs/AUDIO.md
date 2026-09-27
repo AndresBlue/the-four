@@ -22,7 +22,7 @@ La atenuación direccional usa AudioStreamPlayer3D; la oclusión por pared es un
 - Cuatro grabaciones `hard-*`: se usan como portazo cuando el jugador abre o cierra una puerta mientras corre. Ese giro es más rápido y su ruido jugable llega a 18 m (normal: 12 m; lento: 3 m).
 - `sub-riser-presence.wav`: reservado para una transición de presencia anunciada; no se suma al aviso corto de ataque para no ocultarlo.
 - `big-hall-far-prop-glass-noise.wav`: reservado para un evento ambiental con origen válido en un salón existente.
-- `metalic-sliding-long-door.wav`: reservado para un ascensor/puerta metálica compatible.
+- `metalic-sliding-long-door.wav`: sin uso (el ascensor tiene sus propias grabaciones, «El ascensor»).
 
 Los perfiles de Sunman, The Boiled One y Guilt se asignarán al integrar sus criaturas. No se reproduce una amenaza que todavía no existe en el nivel.
 
@@ -103,7 +103,7 @@ Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Loc
 
 **El grito del comienzo de la caza.** Cuando se acaba la protección del principio —los 15 s en los que la criatura no se mueve, y también los 12 tras una etapa devuelta— grita, y **ese grito se oye en todo el piso** como una muerte (`world_audio.play_everywhere`, con su suelo de volumen): todo el mundo sabe que ya se ha puesto en marcha, y solo de cerca dónde. Es uno de los gruñidos más largos de `grunts.ogg` (2 s o más) con el tono bajado entre 0,78 y 0,88. Grita igual la criatura de la máquina y la del cazador humano en versus: lo decide la máquina que la lleva (`hotel_locust.count_grace()`) y se oye igual en todas (`creature_call("cry", …)`). Salir a perseguir a alguien no es otro grito: eso sigue siendo el gruñido de la alerta.
 
-**La campanilla del ascensor** (`lifts.LIFT_DING`, `assets/audio/events/lift_ding.ogg`) suena en todo el piso donde el coche deja a la criatura en el ala siguiente. El hueco está hecho pero el sonido no: mientras ese archivo no exista, no suena nada.
+**La campana del ascensor** (`lifts.LIFT_DING`, `assets/audio/sfx/lift/bell.wav`) suena en todo el piso donde el coche deja a la criatura en el ala siguiente.
 
 Gruñe también el cazador humano en versus mientras corre (antes solo sonaba al chillar), con al menos 1,6 s entre llamadas y 6 dB más bajo para quien lleva la criatura, que la tiene en el oído. Un gruñido que nadie podía oír se reintenta a los 0,7 s en vez de gastar la espera entera, y recuperar de vista a la presa tras perderla más de 1,5 s vale otra llamada.
 
@@ -183,10 +183,7 @@ El teclado suena a teclado: un clic por tecla, un zumbido grave doble para «NO 
 
 ## El ascensor
 
-Todavía no tiene grabación propia (la aportará el usuario; `metalic-sliding-long-door.wav` sigue reservado para él). Hasta entonces:
-
-- **Sus puertas** son el pestillo de siempre (`closing1.ogg`), **una vez por viaje** aunque vayan cuatro (`lifts.car_doors()`; antes sonaba una por pasajero, todas a la vez), y en los dos coches: el que se deja, que antes callaba, y el de llegada. Las del último ascensor suenan en ese coche, no en el cuerpo de cada máquina.
-- **El viaje** suena a la nieve que se ve: `tv_static.wav` a −20 dB siguiendo la imagen (entera al cerrarse y abrirse las puertas, baja bajo la tarjeta), en `hotel_main.update_ride_hiss()`. Antes el corte de 3,2 s era silencio.
+Cuatro grabaciones aportadas en `sfx/elevator/` (las puertas y la bajada, CC0; la campana, «toaster oven or lift/elevator bell» de azumarill, CC BY 3.0), preparadas por `tools/audio/prepare_lift_sfx.py` en `assets/audio/sfx/lift/`: mono, cortadas de su primer sonido a donde se apagan, con fundidos y el mismo pico. **El viaje se mide en ellas** (`lifts.RIDE_*`): las puertas se cierran (`doors_close.wav`, 2,8 s, en el coche que se deja) mientras se ven cerrarse las hojas (1 s); a los 0,8 s empieza la bajada (`descent.wav`, 7,1 s, oída desde dentro, solo quien viaja); la campana a los 7,3 s y las puertas que se abren (`doors_open.wav`, 2 s) a los 7,7, las dos en el coche de llegada y oídas por quien esté allí; la imagen vuelve con ellas y a los 8,5 s el cuerpo se suelta. El último coche: puertas y 4 s de bajada. **Una vez por viaje** aunque vayan cuatro (`lifts.car_doors()`, por sonido y sitio). Cuando baja la criatura, se abren las puertas donde sale y **la campana suena en todo el piso** (`play_everywhere`). Durante el corte sigue la nieve que se ve: `tv_static.wav` a −20 dB siguiendo la imagen, en `hotel_main.update_ride_hiss()`.
 
 ## Eventos del director
 

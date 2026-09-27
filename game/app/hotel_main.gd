@@ -2051,6 +2051,7 @@ func _physics_process(delta: float) -> void:
 		if not bot_match and not is_instance_valid(bot_watch): observer_seek(delta)
 		lifts.ride_along(delta)
 		lifts.ride_out(delta)
+		lifts.update_cars(delta)
 		if is_instance_valid(session) and session.state == session.State.PLAYING:
 			lifts.count_away(delta)
 			floor_map.tick(delta)
@@ -2071,6 +2072,7 @@ func _physics_process(delta: float) -> void:
 	if is_instance_valid(session) and session.state == session.State.PAUSED: return
 	lifts.ride_along(delta)
 	lifts.ride_out(delta)
+	lifts.update_cars(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	lifts.count_away(delta)
 	floor_map.tick(delta)

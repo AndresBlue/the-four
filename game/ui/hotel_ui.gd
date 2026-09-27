@@ -31,6 +31,7 @@ const CREDITS := [
 		"«Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
 		"«Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).",
 		"«Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).",
+		"«Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el usuario; autoría y licencia pendientes de verificar.",
 	]],
 	["MATERIALES", [
@@ -50,6 +51,7 @@ const CREDITS := [
 		"«DOOR creak — multiple creaks wooden door» — mickfire (CC BY-NC 4.0).",
 		"«Sub Riser» — deleted_user_3277771 / Josh Mclelland (CC BY-NC 3.0).",
 		"«Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).",
+		"«toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).",
 		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).",
 		"«Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).",
 	]],

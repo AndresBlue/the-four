@@ -61,6 +61,11 @@ func run() -> void:
 		await shot("%d_lobby" % (stage + 1))
 		look_from(car + into * 2.2, car + Vector3(0, 1.2, 0))
 		await shot("%d_car" % (stage + 1))
+		# From inside, at the front either side of the doors: the panel is on one.
+		var across := Vector3(into.z, 0, -into.x)
+		for side in [1.0, -1.0]:
+			look_from(car - into * 0.5, car + into * 1.15 + across * side * 0.85 + Vector3(0, 1.3, 0), -0.05)
+			await shot("%d_inside_%s" % [stage + 1, "a" if side > 0.0 else "b"])
 		var arrival: Vector3 = level.hotel.arrivals[stage]
 		if arrival == Vector3.ZERO: continue
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, arrival)

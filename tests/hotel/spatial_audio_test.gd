@@ -267,12 +267,16 @@ func run() -> void:
 	level.close_lock()
 	# Three riding one car: its doors are heard once, not three times at once.
 	audio.reset()
+	# (Heard at the car they leave: the doors down there open later, cued.)
 	var arrival: Vector3 = level.hotel.arrivals[0]
-	level.player.position = arrival + Vector3(0, 0.04, 0)
+	var leaving: Vector3 = level.hotel.lifts[0]
+	level.player.position = leaving + Vector3(0, 0.04, 0)
 	await physics_frame
 	for seat in [2, 3, 4]: level.lifts.apply_ride(seat, arrival + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6)))
-	var latches: int = audio.voices.filter(func(voice): return voice.global_position.distance_to(arrival + Vector3(0, 1.2, 0)) < 3.0).size()
+	var latches: int = audio.voices.filter(func(voice): return voice.global_position.distance_to(leaving + Vector3(0, 1.2, 0)) < 3.0).size()
 	check("A car taking three shuts its doors once", latches == 1)
+	check("And the doors down there open once, later", level.lifts.cues.filter(func(pending): return pending.path == level.lifts.DOORS_OPEN).size() == 1)
+	level.lifts.cues.clear()
 	level.lifts.lift_away.clear()
 	level.lifts.doors_heard.clear()
 	level.player.position = Vector3(500, 0, 4)

@@ -34,6 +34,9 @@ Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se
 | `sofa` | Sofa (Game Ready / 2K PBR) | Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/sofa-game-ready-2k-pbr-959bc21f62964c068e441622e8d1103a) |
 | `monstera` | Monstera Deliciosa Potted Mid-Century plant | Giora (ChubbyPanda) | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/monstera-deliciosa-potted-mid-century-plant-1ab9bf841df04c07b1819be596327629) |
 | `wall_lamp` | Wall Lamp — 2048px² | Mark Peters | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/wall-lamp-2048px2-487c69d1748c46d2b3cc433fe6885a5e) |
+| `elevator` | Elevator with Animation LOWPOLY | EFX | CC Attribution | Sketchfab |
+
+Del ascensor se usan sus texturas (madera, suelo, metal, botonera, botones de llamada) sobre el coche que construye `hotel_geometry.build_car()` a la medida del juego: el modelo mide cuatro metros de ancho con la puerta a un lado. El archivo original (`assets/Elevator/elevator-with-animation-lowpoly.zip`) queda fuera de git.
 
 Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada, el dormitorio de esa misma escena, la puerta de madera y el armario.
 
@@ -52,6 +55,7 @@ El usuario aportó estos once. De los ocho primeros, el reparto archivo por arch
 | DOOR creak — multiple creaks wooden door | mickfire | **CC BY-NC 4.0** | [326416](https://freesound.org/people/mickfire/sounds/326416/) |
 | Sub Riser | deleted_user_3277771 (Josh Mclelland) | **CC BY-NC 3.0** | [185372](https://freesound.org/people/deleted_user_3277771/sounds/185372/) |
 | Jumpscare sound | EnclosureX_Studios | CC BY 4.0 | [865842](https://freesound.org/people/EnclosureX_Studios/sounds/865842/) |
+| toaster oven or lift/elevator bell | azumarill | CC BY 3.0 | Freesound |
 | custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025 | Artninja | CC BY 4.0 | [829590](https://freesound.org/people/Artninja/sounds/829590/) |
 | Radio Music — A MakeNoise Morphagene Reel | nlux | CC0 | [624412](https://freesound.org/people/nlux/sounds/624412/) |
 

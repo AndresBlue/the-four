@@ -68,17 +68,18 @@ const LIFT_RETURN := 15.0
 var lift_away := {}
 
 ## The head start is the survivors', not the car's. When the creature reaches
-## the lobby of a car they took, the car is up there with its doors shut and it
+## the lobby of a car they took, the car is away with its doors shut and it
 ## waits: it may ride CREATURE_WAIT after it walked into that lobby, and never
-## sooner than CREATURE_HOLD after they left. Close behind them it waits the
-## full CREATURE_HOLD; walked there from across the wing, it still stands
-## CREATURE_WAIT at the doors. It used to take the car the moment it was back,
-## LIFT_RETURN after them, whatever it had spent getting there. A straggler's
-## car still comes back after LIFT_RETURN.
+## sooner than CREATURE_HOLD after the car's doors opened on them down there
+## (set as they press the button, with the ride's RIDE_TIME on top). Close
+## behind them it waits the full CREATURE_HOLD; walked there from across the
+## wing, it still stands CREATURE_WAIT at the doors. It used to take the car the
+## moment it was back, LIFT_RETURN after them, whatever it had spent getting
+## there. A straggler's car comes back LIFT_RETURN after the ride.
 const CREATURE_WAIT := 15.0
 const CREATURE_HOLD := 20.0
-## Lift index -> seconds before the creature may take that car (from the
-## survivors' leaving), and seconds it has stood in that car's lobby. Counted
+## Lift index -> seconds before the creature may take that car (counted from
+## the survivors' pressing the button, the ride included), and seconds it has stood in that car's lobby. Counted
 ## on every machine like lift_away: the hunter's reading shows the car as up
 ## there until it can take it.
 var creature_hold := {}
@@ -87,6 +88,14 @@ var lobby_time := {}
 ## The creature can take that car now.
 func creature_may_ride(index: int) -> bool:
 	return not lift_gone(index) and float(creature_hold.get(index, 0.0)) <= 0.0 and float(lobby_time.get(index, 0.0)) >= CREATURE_WAIT
+
+## Seconds before the creature may take that car, and the longest that wait
+## can be: the car away, its hold since the survivors got out, and its own
+## time at the doors, whichever is last. For the hunter's dial (camcorder_osd).
+func creature_wait(index: int) -> Vector2:
+	var left := maxf(float(lift_away.get(index, 0.0)), float(creature_hold.get(index, 0.0)))
+	left = maxf(left, CREATURE_WAIT - float(lobby_time.get(index, 0.0)))
+	return Vector2(maxf(0.0, left), RIDE_TIME + maxf(CREATURE_HOLD, LIFT_RETURN))
 
 ## A point in the lobby of that car: the room behind the refuge's gate, or the
 ## car itself.
@@ -105,6 +114,9 @@ func lift_gone(index: int) -> bool: return float(lift_away.get(index, 0.0)) > 0.
 ## (ride_static()), over the opening scene of the next game.
 func reset() -> void:
 	boarding = {}
+	cues.clear()
+	arrived.clear()
+	for list in [door_state, arrival_state]: list.clear()
 	leaving = -1.0
 	riding.clear()
 	lift_away.clear()
@@ -192,11 +204,17 @@ func creature_crossing(delta: float) -> void:
 	cross_clock = CROSS_AIM
 	aim_at_lift(index)
 
-## The bell of the car the creature rode, where it lets it out, heard over the
-## whole floor: everybody knows it has come down, and only near it where. The
-## recording is not there yet; until this file exists nothing plays.
-const LIFT_DING := "res://assets/audio/events/lift_ding.ogg"
+## The lift's recordings (tools/audio/prepare_lift_sfx.py): its doors running
+## shut, the car going down, its doors opening where it arrives, and the bell
+## as it arrives, which is heard over the whole floor when the creature is in
+## it: everybody knows it has come down, and only near it where.
+const DOORS_CLOSE := "res://assets/audio/sfx/lift/doors_close.wav"
+const DESCENT := "res://assets/audio/sfx/lift/descent.wav"
+const DOORS_OPEN := "res://assets/audio/sfx/lift/doors_open.wav"
+const LIFT_DING := "res://assets/audio/sfx/lift/bell.wav"
 const DING_GAIN := 0.0
+const DOORS_GAIN := -4.0
+const DESCENT_GAIN := -6.0
 
 ## The creature steps out of the car in the wing ahead. Applied on every
 ## machine, including the hunter's, which is the one that owns where it
@@ -207,6 +225,8 @@ func apply_locust_ride(point: Vector3) -> void:
 	if car >= 0:
 		lift_away[car] = LIFT_RETURN
 		lobby_time.erase(car)
+		# Its doors there open on it as it is let out.
+		open_arrival(car, 0.0)
 	level.locust.global_position = point
 	level.locust.velocity = Vector3.ZERO
 	level.locust.net_states.clear()
@@ -222,10 +242,9 @@ func apply_locust_ride(point: Vector3) -> void:
 			level.locust.last_known = point
 			level.locust.last_heading = Vector3.ZERO
 			level.locust.set_mode(level.locust.Mode.SEARCH)
-	# The doors of the car: whoever is near enough in the new wing hears the
-	# lift arrive, which is all the warning there is.
-	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), -4.0)
-	if level.world_audio.enabled and ResourceLoader.exists(LIFT_DING): level.world_audio.play_everywhere(LIFT_DING, point + Vector3(0, 2.2, 0), DING_GAIN)
+	# The bell of the car, over the whole floor: the lift has come down, which
+	# is all the warning there is.
+	if level.world_audio.enabled: level.world_audio.play_everywhere(LIFT_DING, point + Vector3(0, 2.2, 0), DING_GAIN)
 
 ## Whoever steps into a lift takes it. The stage that lift belongs to closes
 ## behind them -- what walking through the door used to do -- and they come
@@ -236,7 +255,7 @@ func apply_locust_ride(point: Vector3) -> void:
 const RIDE_REACH := 1.4
 ## Seconds a rider counts as riding once the car has gone: the ride itself
 ## (RIDE_TIME) and a moment to step out. Nothing takes them meanwhile.
-const RIDE_REST := 3.7
+const RIDE_REST := RIDE_TIME + 0.5
 ## A guest in the car is judged on the host's copy of its body, which is a
 ## little behind: it is given this much more room, so pressing the button the
 ## moment it is in does not leave it behind.
@@ -263,14 +282,24 @@ func ride_lifts() -> void:
 		var went := false
 		for body in inside(index):
 			var seat := int(body.slot)
-			var point: Vector3 = level.hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
+			# Inside the car down there, whose doors open on them.
+			var point: Vector3 = arrival_spot(index)
 			riding[seat] = RIDE_REST
 			apply_ride(seat, point)
 			if level.match_net.in_match(): level.match_net.ride_lift(seat, point)
 			went = true
 		if not went: continue
-		lift_away[index] = LIFT_RETURN
+		lift_away[index] = RIDE_TIME + LIFT_RETURN
 		if level.session.stage == index + 1: level.session.finish_stage()
+
+## Somewhere to stand inside the car a ride arrives in: the doors open on
+## them. Still near enough the arrival point for car_arriving_at().
+func arrival_spot(index: int) -> Vector3:
+	var car: Vector3 = level.hotel.arrival_cars[index] if index < level.hotel.arrival_cars.size() else Vector3.ZERO
+	if car == Vector3.ZERO: return level.hotel.arrivals[index] + Vector3(randf_range(-0.6, 0.6), 0.1, randf_range(-0.6, 0.6))
+	var out: Vector3 = level.hotel.arrival_facing[index]
+	var across := Vector3(out.z, 0, -out.x)
+	return car + out * randf_range(0.0, 0.4) + across * randf_range(-0.6, 0.6) + Vector3(0, 0.1, 0)
 
 ## The car does not leave the moment somebody steps in. It has a button: it
 ## goes when somebody inside presses it, and takes everybody who is in it by
@@ -308,17 +337,73 @@ func car_at(point: Vector3) -> int:
 func press(index: int) -> void:
 	if car_ready(index): called[index] = true
 
-## The doors of a car, heard where the car is: once however many ride in it.
+## A sound of a car, heard where the car is: once however many ride in it.
 ## apply_ride runs once per rider, and a team of four used to shut the same
-## doors four times at the same instant. Rounded place -> when last heard.
+## doors four times at the same instant. Rounded place and sound -> when last
+## heard.
 var doors_heard := {}
 const DOORS_ONCE := 0.6
-func car_doors(point: Vector3, gain: float) -> void:
+func car_doors(point: Vector3, gain: float, path := DOORS_CLOSE) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
-	var key := "%d,%d,%d" % [roundi(point.x * 2.0), roundi(point.y * 2.0), roundi(point.z * 2.0)]
+	var key := "%s@%d,%d,%d" % [path.get_file(), roundi(point.x * 2.0), roundi(point.y * 2.0), roundi(point.z * 2.0)]
 	if now - float(doors_heard.get(key, -100.0)) < DOORS_ONCE: return
 	doors_heard[key] = now
-	if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, point + Vector3(0, 1.2, 0), gain)
+	if level.world_audio.enabled: level.world_audio.play_at(path, point + Vector3(0, 1.2, 0), gain)
+
+## The cars' doors. A car's doors are open while it is down here and shut while
+## it is away (lift_gone), and the last one's shut as it leaves the floor; a
+## car that others arrive in stays shut until the first ride into it ends, and
+## then stays open. Worked out on every machine from what each already counts,
+## so nothing about them is sent. Stage -> how open (0 shut, 1 open).
+var door_state := {}
+var arrival_state := {}
+## Arrival car -> seconds until its doors open (then open for good).
+var arrived := {}
+## Seconds the leaves take to run.
+const DOOR_TRAVEL := 1.0
+
+## Doors of that arrival car open after `wait` seconds, with their sound.
+func open_arrival(car: int, wait: float) -> void:
+	# Once: every rider of the same ride brings it here, and the doors that
+	# are already open stay so.
+	if arrived.has(car): return
+	arrived[car] = wait
+	if car < level.hotel.arrival_cars.size() and level.hotel.arrival_cars[car] != Vector3.ZERO:
+		cue(wait, DOORS_OPEN, level.hotel.arrival_cars[car], DOORS_GAIN)
+
+## Sounds to play a little later, where they are: {at, path, point, gain}.
+var cues: Array = []
+func cue(wait: float, path: String, point: Vector3, gain: float) -> void:
+	cues.append({"at": wait, "path": path, "point": point, "gain": gain})
+
+## Every frame, on every machine: the doors move and the cued sounds play.
+func update_cars(delta: float) -> void:
+	for pending in cues.duplicate():
+		pending.at = float(pending.at) - delta
+		if pending.at > 0.0: continue
+		cues.erase(pending)
+		car_doors(pending.point, pending.gain, pending.path)
+	for car in arrived.keys():
+		arrived[car] = float(arrived[car]) - delta
+	if not is_instance_valid(level.hotel): return
+	var last: int = level.hotel.lifts.size() - 1
+	for index in level.hotel.depart_leaves.size():
+		var open: bool = not lift_gone(index) and not (leaving >= 0.0 and index == last)
+		move_doors(level.hotel.depart_leaves[index], door_state, index, open, delta)
+	for index in level.hotel.arrive_leaves.size():
+		var open: bool = arrived.has(index) and float(arrived[index]) <= 0.0
+		move_doors(level.hotel.arrive_leaves[index], arrival_state, index, open, delta)
+
+func move_doors(leaves: Array, state: Dictionary, index: int, open: bool, delta: float) -> void:
+	if leaves.is_empty(): return
+	var was: float = float(state.get(index, 1.0 if open else 0.0))
+	var now: float = move_toward(was, 1.0 if open else 0.0, delta / DOOR_TRAVEL)
+	if state.has(index) and is_equal_approx(now, was): return
+	state[index] = now
+	var eased := now * now * (3.0 - 2.0 * now)
+	for leaf in leaves:
+		if not is_instance_valid(leaf.node): continue
+		leaf.node.position.x = lerpf(float(leaf.shut), float(leaf.open), eased)
 
 ## The lift has moved somebody: on their own machine the body goes with it, on
 ## the others the puppet is put where it is told. Both doors are heard, the
@@ -327,17 +412,22 @@ func car_doors(point: Vector3, gain: float) -> void:
 func apply_ride(seat: int, point: Vector3) -> void:
 	var car := car_arriving_at(point)
 	if car >= 0:
-		lift_away[car] = LIFT_RETURN
-		creature_hold[car] = CREATURE_HOLD
-	if car >= 0 and car < level.hotel.lifts.size(): car_doors(level.hotel.lifts[car], -6.0)
-	car_doors(level.hotel.arrivals[car] if car >= 0 else point, -6.0)
+		lift_away[car] = RIDE_TIME + LIFT_RETURN
+		creature_hold[car] = RIDE_TIME + CREATURE_HOLD
+		# The doors down there open as the ride ends, on every machine.
+		open_arrival(car, RIDE_OPEN)
+	# Its doors shut on them where they are; the bell and the doors opening
+	# are heard down there as they arrive.
+	if car >= 0 and car < level.hotel.lifts.size(): car_doors(level.hotel.lifts[car], DOORS_GAIN)
+	if car >= 0 and car < level.hotel.arrival_cars.size():
+		cue(RIDE_BELL, LIFT_DING, level.hotel.arrival_cars[car] + Vector3(0, 1.0, 0), DING_GAIN - 6.0)
 	if seat == level.player.slot:
 		# Its own ride: the doors shut, the picture goes, and it comes out
 		# somewhere else. Nothing is said about how far it went.
 		if level.player.hidden: level.player.force_leave_hide()
 		level.player.velocity = Vector3.ZERO
 		level.player.held = true
-		boarding = {"point": point, "time": 0.0}
+		boarding = {"point": point, "time": 0.0, "car": car}
 		# The sector of the wing being arrived in, read off where the car puts
 		# them -- not the stage in hand plus one, which is wrong for anybody
 		# riding a car after the floor has already moved on.
@@ -347,15 +437,20 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		pending_brief = arriving
 	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].ride_to(point)
 
-## The ride itself, on the machine of whoever is taking it: a second and a bit
-## with the doors shut and no picture, which is all a lift is from inside. It
-## has no sound of its own yet -- what is heard is the door, the one that
-## shuts here and the one that opens there.
-## Long enough to be a cut and not a hiccup: the picture goes, the card of the
-## wing ahead is read, and the picture comes back somewhere else. It used to be
-## a second and a half, which was only ever a stutter.
-const RIDE_TIME := 3.2
+## The ride itself, on the machine of whoever is taking it, timed on its
+## recordings: the doors run shut (DOOR_TRAVEL) and the picture goes, the car
+## goes down for as long as descent.wav lasts with the card of the wing ahead
+## over it, the bell, and the doors open on the lobby down there with the
+## picture coming back. The riders stand inside the car there, facing out.
+const RIDE_SHUT := 1.0
+const RIDE_DESCENT_AT := 0.8
+const RIDE_BELL := 7.3
+const RIDE_OPEN := 7.7
+const RIDE_TIME := 8.5
 const RIDE_BLIND := 0.35
+## The last car does not arrive anywhere: the doors shut, it goes down a while
+## in the dark, and the floor is over.
+const LEAVE_TIME := 4.0
 ## How much tape noise is left over the card in the middle of the ride. The
 ## card is recorded like everything else, so it cannot be read through a
 ## picture that is all snow: the tape breaks up, settles on it, breaks up
@@ -369,16 +464,24 @@ func ride_along(delta: float) -> void:
 	if boarding.is_empty(): return
 	boarding.time = float(boarding.time) + delta
 	var span: float = float(boarding.time)
+	# The car going down, heard from inside it.
+	if span >= RIDE_DESCENT_AT and not boarding.get("heard", false):
+		boarding["heard"] = true
+		if level.world_audio.enabled: level.world_audio.play_long(DESCENT, Vector3(0, 0.5, 0), DESCENT_GAIN, RID(), true)
 	# Halfway through, the body is moved: the picture is out by then.
 	if span >= RIDE_TIME * 0.5 and not boarding.get("moved", false):
 		boarding["moved"] = true
 		level.player.global_position = boarding.point
+		# Facing out of the car, at the doors that are about to open.
+		var car: int = int(boarding.get("car", -1))
+		if car >= 0 and car < level.hotel.arrival_facing.size() and level.hotel.arrival_facing[car] != Vector3.ZERO:
+			var out: Vector3 = level.hotel.arrival_facing[car]
+			level.player.rotation.y = atan2(-out.x, -out.z)
 		# Falling out of the floor from here puts it back here, on this planta.
 		level.player.spawn = boarding.point
 		# The torch trails the camera instead of hanging from it: a body that
 		# jumps has to take its light with it.
 		level.player.snap_torch()
-		if level.world_audio.enabled: level.world_audio.play_at(level.SWITCH_SOUND, boarding.point + Vector3(0, 1.2, 0), -8.0)
 	if span < RIDE_TIME: return
 	level.player.held = false
 	boarding = {}
@@ -386,14 +489,18 @@ func ride_along(delta: float) -> void:
 
 ## How much of the picture the ride is taking: it goes as the doors shut and
 ## comes back as they open.
+## The doors are seen shutting first (RIDE_SHUT), and opening down there at
+## the end (RIDE_OPEN): the picture is out only between.
 func ride_static() -> float:
-	if leaving >= 0.0: return clampf(leaving / RIDE_BLIND, 0.0, 1.0)
+	if leaving >= 0.0: return clampf((leaving - RIDE_SHUT) / RIDE_BLIND, 0.0, 1.0)
 	if boarding.is_empty(): return 0.0
-	var span: float = float(boarding.time)
+	var span: float = float(boarding.time) - RIDE_SHUT
+	var back: float = RIDE_OPEN - RIDE_SHUT
+	if span < 0.0: return 0.0
 	if span < RIDE_BLIND: return span / RIDE_BLIND
 	if span < RIDE_BLIND * 2.0: return lerpf(1.0, RIDE_CARD, (span - RIDE_BLIND) / RIDE_BLIND)
-	if span > RIDE_TIME - RIDE_BLIND: return maxf(0.0, (RIDE_TIME - span) / RIDE_BLIND)
-	if span > RIDE_TIME - RIDE_BLIND * 2.0: return lerpf(RIDE_CARD, 1.0, (span - (RIDE_TIME - RIDE_BLIND * 2.0)) / RIDE_BLIND)
+	if span > back: return maxf(0.0, 1.0 - (span - back) / RIDE_BLIND)
+	if span > back - RIDE_BLIND: return lerpf(RIDE_CARD, 1.0, (span - (back - RIDE_BLIND)) / RIDE_BLIND)
 	return RIDE_CARD
 
 ## The last car. Whoever steps into it takes the floor with them, as before --
@@ -418,10 +525,12 @@ func begin_leaving() -> void:
 	level.player.held = true
 	# Its doors, where the car is: heard by whoever rode it and whoever stands
 	# near. It used to sound at every machine's own player, wherever that was.
-	if not level.hotel.lifts.is_empty(): car_doors(level.hotel.lifts[level.hotel.lifts.size() - 1], -6.0)
+	# Then the car going down, from inside.
+	if not level.hotel.lifts.is_empty(): car_doors(level.hotel.lifts[level.hotel.lifts.size() - 1], DOORS_GAIN)
+	if level.world_audio.enabled: level.world_audio.play_long(DESCENT, Vector3(0, 0.5, 0), DESCENT_GAIN, RID(), true)
 
 ## Counted on every machine; the one that runs the floor ends it.
 func ride_out(delta: float) -> void:
 	if leaving < 0.0: return
 	leaving += delta
-	if leaving >= RIDE_TIME and not level.net.is_client(): level.session.finish_stage()
+	if leaving >= LEAVE_TIME and not level.net.is_client(): level.session.finish_stage()

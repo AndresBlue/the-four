@@ -188,8 +188,13 @@ func run() -> void:
 	var blinded := 0.0
 	var held_ticks := 0
 	var card := ""
-	for i in 240:
+	var doors_seen := false
+	# The ride is as long as its recordings: the doors, the car going down,
+	# the bell and the doors down there (lifts.RIDE_TIME, 8.5 s).
+	for i in 700:
 		blinded = maxf(blinded, level.lifts.ride_static())
+		# Seen shutting before the picture goes.
+		if level.lifts.ride_static() == 0.0 and float(level.lifts.door_state.get(0, 1.0)) < 0.5 and not level.lifts.boarding.is_empty(): doors_seen = true
 		if level.player.held: held_ticks += 1
 		# The cut itself: what the tape puts up on the black while the car
 		# moves, which is the one moment the next stage can be read.
@@ -201,6 +206,9 @@ func run() -> void:
 	check("El viaje sujeta al jugador y le quita la imagen", held_ticks > 0 and blinded > 0.8)
 	check("Y el corte dice a qué sector se va y qué pide, sin repetir la etapa", card.contains("SECTOR 2") and not card.contains("ETAPA") and card.contains(level.lifts.stage_errand(2)))
 	check("Al abrirse las puertas la tarjeta ya no está", not is_instance_valid(level.ui.transit))
+	check("Las puertas del coche se ven cerrarse antes de que se vaya la imagen", doors_seen)
+	check("Y abajo se abren las del coche al que llegan", float(level.lifts.arrival_state.get(0, 0.0)) > 0.5)
+	check("El viaje dura lo que su sonido: puertas, bajada, campana y puertas", level.lifts.RIDE_TIME >= 8.0 and level.lifts.RIDE_OPEN > level.lifts.RIDE_BELL)
 	# Out of the car, the notice of the sector: what it wants, said whole, for
 	# six seconds, and gone the way an analogue set goes off.
 	await frames(4)
@@ -223,6 +231,9 @@ func run() -> void:
 	# they took, and it has to walk there and ride it like they did.
 	check("La criatura se queda en el ala de atrás, yendo a por el ascensor", int(level.manifest.rooms[level.locust.patrol_room].wing) == 0 and level.locust.destination.distance_to(level.hotel.lifts[0]) < 1.0)
 	check("El coche se ha ido con ellos", level.lifts.lift_gone(0))
+	check("Y sus puertas, arriba, quedan cerradas", float(level.lifts.door_state.get(0, 1.0)) < 0.05)
+	# The creature's wait counts from the doors opening on them down there.
+	check("La espera de la criatura cuenta desde que se abren las puertas abajo", float(level.lifts.creature_hold.get(0, 0.0)) > level.lifts.CREATURE_HOLD - 3.0)
 	# Standing in the lobby with the car upstairs: it waits, like anybody else.
 	level.locust.global_position = level.hotel.lifts[0] + Vector3(0, 0.04, 0)
 	await frames(20)

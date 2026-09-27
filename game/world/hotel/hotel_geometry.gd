@@ -19,6 +19,14 @@ var lifts: Array = []
 ## cell the next wing is walked into from. Empty for the last one, which
 ## leaves the floor instead.
 var arrivals: Array = []
+## The cars' doors, to open and shut (lifts.gd): per stage, the leaves of the
+## car it leaves from and of the car it arrives at, each {node, shut, open}
+## with the leaf's x along the car in either state. And the middle of each
+## arriving car and the way out of it.
+var depart_leaves: Array = []
+var arrive_leaves: Array = []
+var arrival_cars: Array = []
+var arrival_facing: Array = []
 ## Every piece of furniture with drawers or shelves, as it is dressed:
 ## {room, position, yaw, kind, front, note}. Four of them hide the numbers of
 ## the code.
@@ -167,6 +175,7 @@ func _init() -> void:
 	# A lampshade whose bulb is out does not glow either.
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
+	lift_materials()
 
 ## Scanned maps (docs/REALISM.md, phase 3): a material's set is its "scan"
 ## metadata, a folder of assets/textures/ made by tools/textures/ingest_pbr.py
@@ -1063,10 +1072,27 @@ func build_exit_door(data: Dictionary) -> void:
 	gates.append(door)
 
 ## The cars themselves: one waiting in the lobby behind each refuge's door,
-## and one in the cell its lift arrives at. Brushed metal, a light of its own
-## and its doors stood open, because it is waiting for whoever closed the
-## stage. Stepping into one is taking it.
+## and one in the cell its lift arrives at. Built at the game's size from the
+## look of "Elevator with Animation LOWPOLY" (EFX, CC BY; assets/props/elevator):
+## wood walls, a diamond-plate floor, brushed steel, a strip of light round the
+## ceiling, sliding doors and a button panel beside them. The model itself is
+## four metres wide with its door to one side, so only its surfaces are used.
 const CAR := Vector3(2.6, 2.45, 2.3)
+## The opening in the car's front, and its doors: two leaves a side that
+## telescope into the front wall.
+const CAR_OPENING := Vector2(1.5, 2.15)
+const LEAF := Vector2(0.4, 2.13)
+## Which rows of the model's button panel are fitted, top to bottom, out of
+## its four: 0 = floors 2 and 3, 1 = B and the star, 2 = open and close,
+## 3 = alarm and key. Floor one has only the last two; a panel for more
+## floors is a longer list.
+const CAR_BUTTON_ROWS := [2, 3]
+## Where each row sits in buttons.jpg (its middle, as v from the top) and how
+## tall a row is.
+const BUTTON_ROW_V := [0.092, 0.371, 0.632, 0.893]
+const BUTTON_ROW_H := 0.23
+## What the car's displays show.
+const CAR_DISPLAY := "1"
 func build_lifts(data: Dictionary) -> void:
 	for gate in data.get("gates", []):
 		var out: Array = gate.get("out", [1, 0])
@@ -1074,17 +1100,27 @@ func build_lifts(data: Dictionary) -> void:
 		# In the lobby the car stands against the far wall, facing the door
 		# the refuge is behind.
 		lifts.append(build_car(data.rooms[lobby], Vector2i(-int(out[0]), -int(out[1]))) if lobby >= 0 else Vector3.ZERO)
+		depart_leaves.append(car_leaves.duplicate() if lobby >= 0 else [])
 		var arrive := int(gate.get("arrive", -1))
 		if arrive < 0:
 			arrivals.append(Vector3.ZERO)
+			arrive_leaves.append([])
+			arrival_cars.append(Vector3.ZERO)
+			arrival_facing.append(Vector3.ZERO)
 			continue
 		# The lobby it arrives at is the one straight under this one, and the
 		# car stands against the same wall: it goes down, it does not move
 		# across. That wall has no door (map_generator.gd).
 		var facing := Vector2i(-int(out[0]), -int(out[1]))
 		var car := build_car(data.rooms[arrive], facing)
+		arrive_leaves.append(car_leaves.duplicate())
+		arrival_cars.append(car)
+		arrival_facing.append(Vector3(facing.x, 0, facing.y))
 		# People are put down in front of it, not inside it.
 		arrivals.append(car + Vector3(facing.x, 0, facing.y) * 1.8)
+
+## The leaves of the car last built, for build_lifts to file.
+var car_leaves: Array = []
 
 ## A car standing against the wall its opening turns away from, in the cell
 ## given, and the middle of it in world space.
@@ -1104,26 +1140,146 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	car.position = centre
 	car.rotation.y = yaw
 	node.add_child(car)
-	# Floor, ceiling, the wall it backs on to and its two sides. The front is
-	# the opening, so nothing is built there.
 	var deep: float = CAR.z
-	box(car, Vector3(0, -0.15, 0), Vector3(CAR.x, 0.3, deep), "metal", true)
-	box(car, Vector3(0, CAR.y, 0), Vector3(CAR.x, 0.12, deep), "metal", true)
-	box(car, Vector3(0, CAR.y * 0.5, -deep * 0.5), Vector3(CAR.x, CAR.y, 0.12), "mirror", true)
+	var front := deep * 0.5
+	# Floor, ceiling, the back and the two sides, and the wood lining them
+	# between a steel skirting and the steel frieze under the ceiling.
+	box(car, Vector3(0, -0.15, 0), Vector3(CAR.x, 0.3, deep), "lift_metal", true)
+	box(car, Vector3(0, 0.002, 0), Vector3(CAR.x - 0.24, 0.004, deep - 0.1), "lift_floor")
+	box(car, Vector3(0, CAR.y, 0), Vector3(CAR.x, 0.12, deep), "lift_metal", true)
+	box(car, Vector3(0, CAR.y * 0.5, -front), Vector3(CAR.x, CAR.y, 0.12), "lift_metal", true)
+	box(car, Vector3(0, CAR.y * 0.5, -front + 0.065), Vector3(CAR.x - 0.3, CAR.y - 0.3, 0.02), "lift_wood")
 	for side in [-1.0, 1.0]:
-		box(car, Vector3(side * CAR.x * 0.5, CAR.y * 0.5, 0), Vector3(0.12, CAR.y, deep), "metal", true)
-		# The handrail down each side, and the panelling under it.
-		box(car, Vector3(side * (CAR.x * 0.5 - 0.1), 0.92, 0), Vector3(0.05, 0.05, deep - 0.2), "gold", false, "cylinder", Vector3(PI / 2, 0, 0))
-		box(car, Vector3(side * (CAR.x * 0.5 - 0.07), 0.45, 0), Vector3(0.03, 0.9, deep - 0.3), "panel")
-	box(car, Vector3(0, 0.45, -deep * 0.5 + 0.07), Vector3(CAR.x - 0.3, 0.9, 0.03), "panel")
-	# The leaves, slid back into the jambs, and the brass sill between them.
+		box(car, Vector3(side * CAR.x * 0.5, CAR.y * 0.5, 0), Vector3(0.12, CAR.y, deep), "lift_metal", true)
+		box(car, Vector3(side * (CAR.x * 0.5 - 0.065), CAR.y * 0.5, -0.05), Vector3(0.02, CAR.y - 0.3, deep - 0.4), "lift_wood")
+		# The handrail down each side.
+		box(car, Vector3(side * (CAR.x * 0.5 - 0.12), 0.95, -0.05), Vector3(0.04, deep - 0.5, 0.04), "lift_metal", false, "cylinder", Vector3(PI / 2, 0, 0))
+	box(car, Vector3(0, 0.95, -front + 0.11), Vector3(0.04, CAR.x - 0.5, 0.04), "lift_metal", false, "cylinder", Vector3(0, 0, PI / 2))
+	# The strip of light round the ceiling.
 	for side in [-1.0, 1.0]:
-		box(car, Vector3(side * (CAR.x * 0.5 - 0.16), CAR.y * 0.5, deep * 0.5), Vector3(0.28, CAR.y - 0.1, 0.1), "metal")
-	box(car, Vector3(0, 0.05, deep * 0.5), Vector3(CAR.x, 0.06, 0.16), "gold")
+		box(car, Vector3(side * (CAR.x * 0.5 - 0.16), CAR.y - 0.075, 0), Vector3(0.08, 0.02, deep - 0.3), "light")
+		box(car, Vector3(0, CAR.y - 0.075, side * (front - 0.16)), Vector3(CAR.x - 0.3, 0.02, 0.08), "light")
+	# The front: a wall each side of the opening and a head over it, the doors
+	# in pockets inside it, and the brass sill.
+	var jamb: float = (CAR.x - CAR_OPENING.x) * 0.5
+	for side in [-1.0, 1.0]:
+		box(car, Vector3(side * (CAR_OPENING.x * 0.5 + jamb * 0.5), CAR.y * 0.5, front), Vector3(jamb, CAR.y, 0.14), "lift_metal", true)
+	box(car, Vector3(0, (CAR.y + CAR_OPENING.y) * 0.5, front), Vector3(CAR_OPENING.x, CAR.y - CAR_OPENING.y, 0.14), "lift_metal", true)
+	box(car, Vector3(0, 0.02, front), Vector3(CAR_OPENING.x, 0.04, 0.14), "gold")
+	car_leaves = []
+	for side in [-1.0, 1.0]:
+		for lane in 2:
+			var leaf := MeshInstance3D.new()
+			leaf.name = "Leaf"
+			var slab := BoxMesh.new()
+			slab.size = Vector3(LEAF.x, LEAF.y, 0.025)
+			leaf.mesh = slab
+			leaf.material_override = materials.lift_metal
+			# Shut, the two leaves of a side cover its half of the opening;
+			# open, both are inside the wall beside it.
+			var shut: float = side * (LEAF.x * 0.5 + lane * (CAR_OPENING.x * 0.5 - LEAF.x))
+			var open: float = side * (CAR_OPENING.x * 0.5 + 0.05 + LEAF.x * 0.5 - lane * 0.06)
+			leaf.position = Vector3(open, LEAF.y * 0.5 + 0.01, front + (0.03 if lane == 0 else -0.03))
+			car.add_child(leaf)
+			car_leaves.append({"node": leaf, "shut": shut, "open": open})
+	# The panel inside, beside the opening, and the call plate and display
+	# outside.
+	car_panel(car, Vector3(CAR_OPENING.x * 0.5 + jamb * 0.5, 0.0, front - 0.076), PI)
+	car_call(car, Vector3(CAR_OPENING.x * 0.5 + jamb * 0.5, 1.12, front + 0.071))
+	car_display(car, Vector3(0, CAR_OPENING.y + 0.15, front + 0.071), 0.0)
 	# Its light, which is the only one it has and never goes out with the rest.
 	var panel := box_light(car, Vector3(0, CAR.y - 0.1, 0))
 	car.add_child(panel)
 	return node.position + centre
+
+## The model's own surfaces, on the game's boxes (in world space, so a wall
+## of any size is tiled rather than stretched).
+func lift_materials() -> void:
+	materials["lift_wood"] = lift_surface("res://assets/props/elevator/wood.jpg", 1.6, 0.55)
+	materials["lift_floor"] = lift_surface("res://assets/props/elevator/floor.jpg", 1.2, 0.6, 0.4)
+	materials["lift_metal"] = lift_surface("res://assets/props/elevator/metal.jpg", 0.8, 0.32, 0.85)
+
+func lift_surface(path: String, metres: float, rough: float, metal := 0.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = load(path)
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = true
+	m.uv1_scale = Vector3.ONE / metres
+	m.roughness = rough
+	m.metallic = metal
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return m
+
+## The buttons inside: a steel plate with the rows of CAR_BUTTON_ROWS cut from
+## the model's panel, one under the other, and a display over them.
+func car_panel(car: Node3D, at: Vector3, yaw: float) -> void:
+	var rows: int = CAR_BUTTON_ROWS.size()
+	var row_height := 0.11
+	var plate := MeshInstance3D.new()
+	plate.name = "ButtonPanel"
+	var slab := BoxMesh.new()
+	slab.size = Vector3(0.3, 0.42 + rows * row_height, 0.012)
+	plate.mesh = slab
+	plate.material_override = materials.lift_metal
+	plate.position = at + Vector3(0, 1.3, 0)
+	plate.rotation.y = yaw
+	car.add_child(plate)
+	for k in rows:
+		var row: int = CAR_BUTTON_ROWS[k]
+		var face := MeshInstance3D.new()
+		face.name = "Buttons"
+		var quad := QuadMesh.new()
+		quad.size = Vector2(0.22, row_height * 0.9)
+		face.mesh = quad
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = load("res://assets/props/elevator/buttons.jpg")
+		m.emission_enabled = true
+		m.emission_texture = load("res://assets/props/elevator/buttons_emission.jpg")
+		m.emission_energy_multiplier = 1.5
+		m.metallic = 0.4
+		m.roughness = 0.35
+		m.uv1_scale = Vector3(1.0, BUTTON_ROW_H, 1.0)
+		m.uv1_offset = Vector3(0.0, BUTTON_ROW_V[row] - BUTTON_ROW_H * 0.5, 0.0)
+		face.material_override = m
+		face.position = Vector3(0, -0.02 - k * row_height, 0.0075)
+		plate.add_child(face)
+	car_display(plate, Vector3(0, 0.1, 0.0075), 0.0, 0.16)
+
+## The call plate by the doors outside: up and down, as on the model.
+func car_call(car: Node3D, at: Vector3) -> void:
+	var plate := MeshInstance3D.new()
+	plate.name = "CallButtons"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.16, 0.22)
+	plate.mesh = quad
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = load("res://assets/props/elevator/call_buttons.jpg")
+	m.metallic = 0.4
+	m.roughness = 0.4
+	plate.material_override = m
+	plate.position = at
+	car.add_child(plate)
+
+## A small dot-matrix display: dark glass with the floor in violet light.
+func car_display(parent: Node3D, at: Vector3, yaw: float, width := 0.3) -> void:
+	var glass := MeshInstance3D.new()
+	glass.name = "Display"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(width, width * 0.36)
+	glass.mesh = quad
+	glass.material_override = materials.black
+	glass.position = at
+	glass.rotation.y = yaw
+	parent.add_child(glass)
+	var digits := Label3D.new()
+	digits.text = CAR_DISPLAY
+	digits.font_size = 64
+	digits.pixel_size = width * 0.0045
+	digits.modulate = Color(0.62, 0.55, 1.0)
+	digits.shaded = false
+	digits.double_sided = false
+	digits.position = Vector3(0, 0, 0.002)
+	glass.add_child(digits)
 
 ## The flat light in a car's ceiling: a small lamp and the panel it comes out
 ## of, which stays on whatever the floor is doing.

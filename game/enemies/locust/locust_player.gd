@@ -486,6 +486,10 @@ func update_hud() -> void:
 	level.ui.hint.text = ""
 	level.camcorder.set_stamina(stamina / 100.0, stamina <= 0.0)
 	level.camcorder.set_cooldowns(shriek_cooldown / SHRIEK_COOLDOWN, trace_cooldown / TRACE_COOLDOWN)
+	# The lift it has to take: a dial emptying until it may ride it.
+	var car: int = level.lifts.creature_car(level.session.stage)
+	var wait: Vector2 = level.lifts.creature_wait(car) if car >= 0 else Vector2.ZERO
+	level.camcorder.set_lift_wait(wait.x / wait.y if wait.x > 0.0 and wait.y > 0.0 else 0.0, wait.x)
 	level.camcorder.announce("LA CAZA EMPIEZA EN %d" % int(ceil(creature.grace)) if creature.grace > 0.0 else "")
 	var now := Time.get_ticks_msec() / 1000.0
 	revealed = revealed.filter(func(entry): return now - entry.time < 1.2)

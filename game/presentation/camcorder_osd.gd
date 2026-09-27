@@ -58,6 +58,10 @@ var notice: Label
 ## shriek and the trace to a set. Two short bars over the stamina meter, only
 ## while they recharge, like the stamina itself.
 var waits := {"CHILLIDO": 0.0, "RASTRO": 0.0}
+## And the lift it has to take: the share of the wait still to go (a dial
+## that empties), and the seconds, while it may not ride it yet.
+var lift_share := 0.0
+var lift_seconds := 0.0
 ## The zoom rocker: where it stands (0 wide, 1 telephoto) and how long the
 ## bar stays up after it last moved, as on a camcorder.
 var zoom := 0.0
@@ -140,12 +144,17 @@ func start_tape(run_seed: int) -> void:
 	stamina_alpha = 0.0
 	full_time = 99.0
 	for title in waits: waits[title] = 0.0
+	lift_share = 0.0
 	focus_word = ""
 	code_note.text = ""
 
 func set_cooldowns(shriek: float, trace: float) -> void:
 	waits["CHILLIDO"] = clampf(shriek, 0.0, 1.0)
 	waits["RASTRO"] = clampf(trace, 0.0, 1.0)
+
+func set_lift_wait(share: float, seconds: float) -> void:
+	lift_share = clampf(share, 0.0, 1.0)
+	lift_seconds = maxf(0.0, seconds)
 
 func set_stamina(value: float, is_exhausted: bool) -> void:
 	stamina = clampf(value, 0.0, 1.0)
@@ -257,6 +266,25 @@ func draw_overlay() -> void:
 				canvas.draw_rect(Rect2(bar.position + shift, bar.size), Color(ink, ink.a * 0.25))
 				canvas.draw_rect(Rect2(bar.position + shift, Vector2(bar.size.x * (1.0 - left), bar.size.y)), ink)
 			row -= 26.0
+		# The lift: a small pie that empties as its wait runs out, and the word.
+		if lift_share > 0.001:
+			var radius := 16.0
+			var centre := Vector2(right - radius, row - 6.0 - radius)
+			var title := "ASCENSOR %d" % int(ceil(lift_seconds))
+			var word_width := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+			for pass_index in 2:
+				var shift := Vector2(2, 2) if pass_index == 0 else Vector2.ZERO
+				var ink := Color(0, 0, 0, 0.6) if pass_index == 0 else Color(STYLE.INK, 0.9)
+				canvas.draw_string(font, Vector2(centre.x - radius - 12.0 - word_width, centre.y + 6.0) + shift, title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, ink)
+				canvas.draw_circle(centre + shift, radius, Color(ink, ink.a * 0.25))
+				# From twelve o'clock, clockwise, what is still to wait.
+				var wedge := PackedVector2Array([centre + shift])
+				var steps := maxi(2, int(48 * lift_share))
+				for k in steps + 1:
+					var angle := -PI * 0.5 + TAU * lift_share * float(k) / float(steps)
+					wedge.append(centre + shift + Vector2(cos(angle), sin(angle)) * radius)
+				canvas.draw_colored_polygon(wedge, ink)
+				canvas.draw_arc(centre + shift, radius, 0.0, TAU, 40, ink, 1.5, true)
 	if focus_amount > 0.01:
 		# Four corner brackets that settle in as focus is acquired.
 		var center := size * 0.5
