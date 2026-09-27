@@ -4,7 +4,9 @@
 [ext_resource type="Texture2D" path="res://assets/props/elevator/buttons_emission.jpg" id="2"]
 [ext_resource type="Texture2D" path="res://assets/props/elevator/buttons_metal.jpg" id="3"]
 
-; The car's button panel, its lit rings from the emission map.
+; The car's button panel, its lit rings from the emission map: multiplied by
+; the emission colour, not added to it (Godot's default), which lit every
+; button white.
 [resource]
 resource_name = "LiftButtons"
 texture_filter = 5
@@ -14,5 +16,6 @@ metallic_texture = ExtResource("3")
 roughness = 0.5
 emission_enabled = true
 emission = Color(1, 1, 1, 1)
-emission_energy_multiplier = 3.0
+emission_energy_multiplier = 2.5
+emission_operator = 1
 emission_texture = ExtResource("2")

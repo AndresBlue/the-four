@@ -312,11 +312,19 @@ static func fill_shelves(builder, holder: Node3D, base: String, at: Vector3, s: 
 			var name: String = choices[int(builder.vary(seed_pos + Vector3(level, 0, i), 60) * choices.size())]
 			var size := mesh(name).get_aabb().size
 			var fit := minf(1.0, (room_above - 0.03) / maxf(size.y, 0.01))
+			var turn: float = builder.vary(seed_pos + Vector3(level, 0, i), 62) * 0.3 - 0.15
+			# As wide as it stands turned: a thing that would reach past the
+			# side of the piece is not put there. A set of books used to be
+			# put down wherever its left end was still on the shelf, and hung
+			# in the air beside the bookcase.
+			var wide: float = (size.x * cos(turn) + size.z * absf(sin(turn))) * fit
 			if builder.vary(seed_pos + Vector3(level, 0, i), 61) < 0.2 or fit < 0.45:
 				x += 0.2
+			elif x + wide > box.size.x * s * 0.42:
+				break
 			else:
-				place(builder, holder, name, Transform3D(Basis(Vector3.UP, builder.vary(seed_pos + Vector3(level, 0, i), 62) * 0.3 - 0.15).scaled(Vector3.ONE * fit), at + Vector3(x + size.x * fit * 0.5, y, box.get_center().z * s)), false)
-				x += size.x * fit + 0.04
+				place(builder, holder, name, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * fit), at + Vector3(x + wide * 0.5, y, box.get_center().z * s)), false)
+				x += wide + 0.04
 			i += 1
 
 ## A mirror above a piece, where no wall lamp hangs.
