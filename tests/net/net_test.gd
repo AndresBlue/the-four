@@ -325,8 +325,11 @@ func late_guest() -> void:
 	level.player.global_position = refuge_point(Vector3(-0.6, 0, 0))
 	check("Ve cerrarse el sector 1 sin haber subido", await wait_for(func(): return level.session.stage == 2, 60.0))
 	var gate: Dictionary = level.manifest.gates[0]
-	# Back beside the first car, waiting for it to come down again.
-	await pause_for(17.0)
+	# Back beside the first car, waiting for it to come down again: the ride
+	# and LIFT_RETURN after the host pressed (it was a fixed 17 s, from when
+	# the car came back as soon as the ride began).
+	check("El coche vuelve a bajar", await wait_for(func(): return not level.lifts.lift_gone(0), 40.0))
+	await pause_for(0.5)
 	level.player.global_position = level.hotel.lifts[0] + Vector3(0, 0.1, 0)
 	await pause_for(0.5)
 	level.match_net.call_lift(0)

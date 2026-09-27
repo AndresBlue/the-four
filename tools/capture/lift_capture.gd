@@ -55,21 +55,32 @@ func run() -> void:
 		# From the middle of the refuge, looking at the door its lift is behind.
 		look_from(FLOOR.position_of(refuge), car)
 		await shot("%d_refuge" % (stage + 1))
-		# From the lobby, the car waiting across it, near and far.
-		var into: Vector3 = (FLOOR.position_of(refuge) - car).normalized()
-		look_from(car + into * 4.5, car + Vector3(0, 1.2, 0))
+		# The car's own space: its doorway at the origin, out along +Z.
+		var frame: Transform3D = level.hotel.car_frames[stage]
+		var door := frame.origin
+		var out := frame.basis.z.normalized()
+		var across := frame.basis.x.normalized()
+		# From the lobby: the lift wall across it, then the doorway close to.
+		look_from(door + out * 6.5, door + Vector3(0, 1.4, 0))
 		await shot("%d_lobby" % (stage + 1))
-		look_from(car + into * 2.2, car + Vector3(0, 1.2, 0))
+		look_from(door + out * 2.4 + across * 0.9, door + Vector3(0, 1.3, 0))
 		await shot("%d_car" % (stage + 1))
-		# From inside, at the front either side of the doors: the panel is on one.
-		var across := Vector3(into.z, 0, -into.x)
-		for side in [1.0, -1.0]:
-			look_from(car - into * 0.5, car + into * 1.15 + across * side * 0.85 + Vector3(0, 1.3, 0), -0.05)
-			await shot("%d_inside_%s" % [stage + 1, "a" if side > 0.0 else "b"])
+		# From inside: out through the doorway, the panel, and the back corner.
+		var middle := frame * Vector3(-0.7, 0, -1.3)
+		look_from(middle, door + Vector3(0, 1.2, 0), -0.05)
+		await shot("%d_inside_a" % (stage + 1))
+		look_from(frame * Vector3(0.2, 0, -1.4), frame * Vector3(-1.5, 1.6, -0.2), -0.1)
+		await shot("%d_inside_b" % (stage + 1))
+		look_from(frame * Vector3(0.3, 0, -0.5), frame * Vector3(-2.3, 0.9, -2.0), -0.2)
+		await shot("%d_inside_c" % (stage + 1))
 		var arrival: Vector3 = level.hotel.arrivals[stage]
 		if arrival == Vector3.ZERO: continue
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, arrival)
 		look_from(arrival + (FLOOR.position_of(room) - arrival).normalized() * 3.0, arrival)
 		await shot("%d_arrival" % (stage + 1))
+		# Its doors half open, then open (lifts.move_doors() does it in play).
+		for share in [0.5, 1.0]:
+			for leaf in level.hotel.arrive_leaves[stage]: leaf.node.position.x = lerpf(float(leaf.shut), float(leaf.open), share)
+			await shot("%d_arrival_%s" % [stage + 1, "opening" if share < 1.0 else "open"])
 	print("LIFT_SHOTS ok")
 	quit()

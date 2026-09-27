@@ -80,6 +80,18 @@ static func closest(map: RID, point: Vector3) -> Vector3:
 static func size_of(room: Dictionary) -> Vector2:
 	return Vector2(room.get("span_x", CELL), room.get("span_z", CELL))
 
+## How far in from the middle of the wall a lift's car backs on to its lobby's
+## lift wall stands (hotel_geometry.lift_wall()): the car, 2.13 m deep, fits
+## behind it with 20 cm to spare.
+const LIFT_DEPTH := 2.34
+
+## The wall of this lobby that its lift's car is behind (the gate's `out`,
+## set by the generator on the lobby left and the one arrived at), or zero in
+## any other room.
+static func lift_wall(room: Dictionary) -> Vector2i:
+	var lift: Array = room.get("lift", [])
+	return Vector2i(int(lift[0]), int(lift[1])) if lift.size() == 2 else Vector2i.ZERO
+
 ## The module whose footprint contains a world point, on the planta the point
 ## is on, or {} outside the plan (and in a cell its planta does not use).
 static func room_at(rooms: Array, point: Vector3) -> Dictionary:

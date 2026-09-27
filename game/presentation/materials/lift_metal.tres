@@ -1,0 +1,10 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; The car's brushed steel (the model's ElevatorMetal): a plain light grey. Half
+; metallic rather than all: a lift is often lit by its own lamp alone, with no
+; reflection to give a full metal anything to show, and it went black.
+[resource]
+resource_name = "LiftMetal"
+albedo_color = Color(0.62, 0.63, 0.64, 1)
+metallic = 0.55
+roughness = 0.34

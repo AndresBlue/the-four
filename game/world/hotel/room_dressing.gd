@@ -113,6 +113,9 @@ static func stretches(room: Dictionary) -> Array:
 	var ways := FLOOR.doorways(room)
 	var half := (far - NEAR) * 0.5
 	var result := []
+	# Along a lobby's lift wall the pieces stand against it, in front of the
+	# car (FLOOR.LIFT_DEPTH); its doorway is in the middle, inside NEAR.
+	var lift := FLOOR.lift_wall(room)
 	for wall in walls(span):
 		if open.has(wall[0]) or float(wall[3]) < far * 2.0 + 1.0: continue
 		var inward: Vector3 = wall[1]
@@ -131,7 +134,8 @@ static func stretches(room: Dictionary) -> Array:
 				# A wardrobe on this wall, where the stretch would be.
 				if spot.normalized().dot(-inward) > 0.7 and absf(at - spot.dot(axis)) < half + WARDROBE_HALF: taken = true
 			if taken: continue
-			var origin: Vector3 = -inward * (wall[2] * 0.5 - INSET) + along * middle
+			var inset: float = INSET + (FLOOR.LIFT_DEPTH - 0.09 if Vector3(lift.x, 0, lift.y) == -inward else 0.0)
+			var origin: Vector3 = -inward * (wall[2] * 0.5 - inset) + along * middle
 			result.append([Transform3D(Basis(along, Vector3.UP, inward), origin), far - NEAR])
 	return result
 

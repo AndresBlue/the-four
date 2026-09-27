@@ -491,7 +491,7 @@ func call_lift(index: int) -> void:
 func request_lift(index: int) -> void:
 	if not net.is_host or index < 0 or index >= level.hotel.lifts.size(): return
 	var body = body_of(net.seat_of_peer(multiplayer.get_remote_sender_id()))
-	if body == null or body.global_position.distance_to(level.hotel.lifts[index]) > level.lifts.RIDE_REACH + 0.5: return
+	if body == null or not level.hotel.in_car(index, body.global_position, level.lifts.RIDE_SLACK): return
 	level.lifts.press(index)
 
 ## Somebody took a lift: the host says who, and where they come out.

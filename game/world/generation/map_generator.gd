@@ -210,6 +210,11 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 		anchor = {"x": Vector2(float(lobby.px) - float(lobby.span_x) * 0.5, float(lobby.px) + float(lobby.span_x) * 0.5), "z": Vector2(float(lobby.pz) - float(lobby.span_z) * 0.5, float(lobby.pz) + float(lobby.span_z) * 0.5)}
 		back = out
 	for planta in range(WINGS - 1): gates[planta].arrive = entries[planta + 1]
+	# The lobbies with a car, and the wall it stands behind: the lobby left
+	# from and the one arrived at under it (FLOOR.lift_wall()).
+	for gate in gates:
+		f.rooms[int(gate.beyond)]["lift"] = gate.out.duplicate()
+		if int(gate.arrive) >= 0: f.rooms[int(gate.arrive)]["lift"] = gate.out.duplicate()
 	var start: int = entries[0]
 	# The floor is centred on the reception: that is where the night comes in,
 	# and where a body is put down when a floor starts.

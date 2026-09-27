@@ -36,7 +36,13 @@ Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se
 | `wall_lamp` | Wall Lamp — 2048px² | Mark Peters | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/wall-lamp-2048px2-487c69d1748c46d2b3cc433fe6885a5e) |
 | `elevator` | Elevator with Animation LOWPOLY | EFX | CC Attribution | Sketchfab |
 
-Del ascensor se usan sus texturas (madera, suelo, metal, botonera, botones de llamada) sobre el coche que construye `hotel_geometry.build_car()` a la medida del juego: el modelo mide cuatro metros de ancho con la puerta a un lado. El archivo original (`assets/Elevator/elevator-with-animation-lowpoly.zip`) queda fuera de git.
+El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque el coche va detrás de una pared del propio hotel. Su FBX está en `assets/props/elevator/elevator.fbx` y sus texturas en la misma carpeta (madera, suelo, metal, botonera con sus mapas de emisión y de metal, y botones de llamada), con los materiales `lift_*.tres`. `tools/props/build_elevator.gd` lo hornea a 0,8 de su tamaño en cinco piezas, todas en el espacio del coche:
+- `lift_car.res`: el coche con la botonera interior completa;
+- `lift_door_a.res` y `lift_door_b.res`: las dos hojas;
+- `lift_call.res`: los botones de llamada;
+- `lift_screen.res`: la pantalla de fuera.
+
+El archivo descargado (`assets/Elevator/elevator-with-animation-lowpoly.zip`) queda fuera de git.
 
 Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada, el dormitorio de esa misma escena, la puerta de madera y el armario.
 

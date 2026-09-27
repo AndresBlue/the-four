@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; The glass of the car's displays; the floor is drawn over it in light
+; (hotel_geometry.car_display).
+[resource]
+resource_name = "LiftScreen"
+albedo_color = Color(0.015, 0.015, 0.02, 1)
+metallic = 0.2
+roughness = 0.12

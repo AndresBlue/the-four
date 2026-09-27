@@ -175,7 +175,6 @@ func _init() -> void:
 	# A lampshade whose bulb is out does not glow either.
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
-	lift_materials()
 
 ## Scanned maps (docs/REALISM.md, phase 3): a material's set is its "scan"
 ## metadata, a folder of assets/textures/ made by tools/textures/ingest_pbr.py
@@ -797,6 +796,8 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	wall_material = "plaster_decrepit" if room.type in DECREPIT_WALLS else "plaster"
 	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in FLOOR.HARD_FLOORS else "carpet", true)
 	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in SERVICE_CEILINGS else "ceiling", true)
+	# The wall a lift's car is behind, in the lobbies that have one.
+	var lift_back := FLOOR.lift_wall(room)
 	for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		# The cell beside it on its planta's grid (none past the edge).
 		var neighbor: int = FLOOR.beside(room, direction)
@@ -814,6 +815,12 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		node.add_child(boundary)
 		# Local face pointing into this room; a neighbour may have another height.
 		var inner: int = -(direction.x + direction.y)
+		if direction == lift_back and not connected:
+			# The cell's own wall, bare: the lobby sees the lift wall standing
+			# in front of it, with the car between the two.
+			wall_core(boundary, Vector3(0, height / 2, 0), Vector3(length, height, 0.18), inner)
+			lift_wall(node, room, direction, length)
+			continue
 		# Where the doorway is along the wall, in the wall's own x: on a wall
 		# between cells side by side in x (turned a quarter) that runs the
 		# other way to the world's z (FLOOR.door_offset()).
@@ -835,26 +842,9 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		for side in [-1, 1]:
 			# Nor on the side a doorway was moved to.
 			if connected and absf(side * 3.5 - door_at) < PAINTING_CLEAR: continue
-			# Framed hotel art on this room's face of the wall (inner); vary()
-			# picks each canvas, by its position and the floor. It used to hang
-			# on local -Z, which on west and north walls is the next room's
-			# face, on top of that room's own prints (two frames z-fighting,
-			# this room's wall bare).
-			hang_painting(boundary, Vector3(side * 3.5, 2.02, 0), inner, int(room.variant) % 2 == 0)
-			# Public spaces: a pair of cloth-shaded wall lamps beside each print.
-			if room.type in SCONCE_ROOMS and length > 9.0:
-				for flank in [-1, 1]:
-					var sconce := MeshInstance3D.new()
-					sconce.mesh = WALL_LAMP
-					# In a dark room its shade and bulb are out: an emissive
-					# shade lit the walls round it by bounce light.
-					if dark_room(room): switch_off(sconce)
-					else: lit_sconces.append(sconce)
-					sconce.position = Vector3(side * 3.5 + flank * 0.98, 1.6, inner * 0.09)
-					# The model faces +Z: turned to face into this room.
-					sconce.rotation.y = PI if inner < 0 else 0.0
-					boundary.add_child(sconce)
-					if not dark_room(room): sconce_light(boundary, sconce)
+			# Nor behind a lift wall standing across the end of this one.
+			if not lift_clear(room, direction, lift_back, side * 3.5): continue
+			wall_art(boundary, room, side * 3.5, inner)
 	for prop in room.props:
 		var furniture := Node3D.new()
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
@@ -1002,6 +992,36 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.light_color = Color("b8d4b6")
 	build_occluder(node)
 
+## Framed hotel art on a room's face of a wall (inner), `at` along it; vary()
+## picks each canvas, by its position and the floor. It used to hang on local
+## -Z, which on west and north walls is the next room's face, on top of that
+## room's own prints (two frames z-fighting, this room's wall bare). Public
+## spaces have a pair of cloth-shaded wall lamps beside each print.
+func wall_art(boundary: Node3D, room: Dictionary, at: float, inner: int) -> void:
+	hang_painting(boundary, Vector3(at, 2.02, 0), inner, int(room.variant) % 2 == 0)
+	if not (room.type in SCONCE_ROOMS): return
+	for flank in [-1, 1]:
+		var sconce := MeshInstance3D.new()
+		sconce.mesh = WALL_LAMP
+		# In a dark room its shade and bulb are out: an emissive shade lit the
+		# walls round it by bounce light.
+		if dark_room(room): switch_off(sconce)
+		else: lit_sconces.append(sconce)
+		sconce.position = Vector3(at + flank * 0.98, 1.6, inner * 0.09)
+		# The model faces +Z: turned to face into this room.
+		sconce.rotation.y = PI if inner < 0 else 0.0
+		boundary.add_child(sconce)
+		if not dark_room(room): sconce_light(boundary, sconce)
+
+## Whether the print and lamps `at` along a side wall of a lobby stay clear of
+## its lift wall (FLOOR.LIFT_DEPTH in from the end of it), with 10 cm to spare.
+func lift_clear(room: Dictionary, direction: Vector2i, lift_back: Vector2i, at: float) -> bool:
+	if lift_back == Vector2i.ZERO or direction.x * lift_back.x + direction.y * lift_back.y != 0: return true
+	# A west or east wall is turned a quarter: its x runs along the world's -z.
+	var along: float = -at * lift_back.y if direction.x != 0 else at * lift_back.x
+	var half: float = (FLOOR.size_of(room).x if lift_back.x != 0 else FLOOR.size_of(room).y) * 0.5
+	return along + 1.2 <= half - FLOOR.LIFT_DEPTH - 0.1
+
 ## The door of the last stage: in the wall the last refuge shares with the
 ## landing, shut and locked until its code is read in. Behind it are the back
 ## stairs -- a room of the floor that nothing else opens on to -- and stepping
@@ -1072,34 +1092,50 @@ func build_exit_door(data: Dictionary) -> void:
 	gates.append(door)
 
 ## The cars themselves: one waiting in the lobby behind each refuge's door,
-## and one in the cell its lift arrives at. Built at the game's size from the
-## look of "Elevator with Animation LOWPOLY" (EFX, CC BY; assets/props/elevator):
-## wood walls, a diamond-plate floor, brushed steel, a strip of light round the
-## ceiling, sliding doors and a button panel beside them. The model itself is
-## four metres wide with its door to one side, so only its surfaces are used.
-const CAR := Vector3(2.6, 2.45, 2.3)
-## The opening in the car's front, and its doors: two leaves a side that
-## telescope into the front wall.
-const CAR_OPENING := Vector2(1.5, 2.15)
-const LEAF := Vector2(0.4, 2.13)
-## Which rows of the model's button panel are fitted, top to bottom, out of
-## its four: 0 = floors 2 and 3, 1 = B and the star, 2 = open and close,
-## 3 = alarm and key. Floor one has only the last two; a panel for more
-## floors is a longer list.
-const CAR_BUTTON_ROWS := [2, 3]
-## Where each row sits in buttons.jpg (its middle, as v from the top) and how
-## tall a row is.
-const BUTTON_ROW_V := [0.092, 0.371, 0.632, 0.893]
-const BUTTON_ROW_H := 0.23
-## What the car's displays show.
+## and one in the cell its lift arrives at. The car is "Elevator with
+## Animation LOWPOLY" (EFX, CC BY), baked by tools/props/build_elevator.gd into
+## its pieces at 0.8 of the model's size, every button of its panel included.
+## It stands behind a wall of the hotel's own built across the lobby
+## (lift_wall()), with only its doorway, its call buttons and its display in
+## that wall: not a box standing in the room.
+const LIFT_CAR := preload("res://assets/props/elevator/lift_car.res")
+const LIFT_LEAVES := [preload("res://assets/props/elevator/lift_door_a.res"), preload("res://assets/props/elevator/lift_door_b.res")]
+const LIFT_CALL := preload("res://assets/props/elevator/lift_call.res")
+const LIFT_SCREEN := preload("res://assets/props/elevator/lift_screen.res")
+## In the car's space (the middle of its doorway on its floor, the outer face
+## of its front at z = 0, the car towards -Z), as the baking prints them: the
+## inside, and the doorway (wide, high).
+const CAR_INSIDE := AABB(Vector3(-2.318, 0.0, -2.035), Vector3(3.211, 2.415, 1.861))
+const CAR_OPENING := Vector2(1.532, 2.23)
+## How far each leaf slides open, both into the front wall on the -X side, the
+## far one twice as far. The model's own animation stops them with a third of
+## the doorway still covered.
+const LEAF_TRAVEL := [-0.8, -1.56]
+## The lobby's wall stands this much proud of the car's front, and keeps
+## LIFT_RIM clear of its doorway all round: a thin edge of the car's steel
+## shows between the plaster and the doors, as on the model. Its casing
+## (wide, deep) is the hotel's dark wood, like every door's.
+const LIFT_PROUD := 0.006
+const LIFT_RIM := 0.02
+const LIFT_CASING := Vector2(0.09, 0.085)
+## The call buttons beside the doorway, clear of the casing, and the height of
+## the display over it.
+const CALL_AT := Vector2(-1.12, 1.21)
+const SCREEN_AT := 2.5
+## Where the display of the panel inside the car is (its glass, facing in).
+const PANEL_SCREEN := Vector3(-1.4975, 2.03, -0.192)
+## The floor both displays show.
 const CAR_DISPLAY := "1"
+## Each lift's car, its space in the world (in_car()).
+var car_frames: Array = []
 func build_lifts(data: Dictionary) -> void:
 	for gate in data.get("gates", []):
 		var out: Array = gate.get("out", [1, 0])
 		var lobby := int(gate.get("beyond", -1))
-		# In the lobby the car stands against the far wall, facing the door
+		# In the lobby the car stands behind its far wall, facing the door
 		# the refuge is behind.
 		lifts.append(build_car(data.rooms[lobby], Vector2i(-int(out[0]), -int(out[1]))) if lobby >= 0 else Vector3.ZERO)
+		car_frames.append(car_frame if lobby >= 0 else Transform3D())
 		depart_leaves.append(car_leaves.duplicate() if lobby >= 0 else [])
 		var arrive := int(gate.get("arrive", -1))
 		if arrive < 0:
@@ -1109,7 +1145,7 @@ func build_lifts(data: Dictionary) -> void:
 			arrival_facing.append(Vector3.ZERO)
 			continue
 		# The lobby it arrives at is the one straight under this one, and the
-		# car stands against the same wall: it goes down, it does not move
+		# car stands behind the same wall: it goes down, it does not move
 		# across. That wall has no door (map_generator.gd).
 		var facing := Vector2i(-int(out[0]), -int(out[1]))
 		var car := build_car(data.rooms[arrive], facing)
@@ -1119,175 +1155,131 @@ func build_lifts(data: Dictionary) -> void:
 		# People are put down in front of it, not inside it.
 		arrivals.append(car + Vector3(facing.x, 0, facing.y) * 1.8)
 
-## The leaves of the car last built, for build_lifts to file.
+## The leaves and the space of the car last built, for build_lifts to file.
 var car_leaves: Array = []
+var car_frame := Transform3D()
 
-## A car standing against the wall its opening turns away from, in the cell
-## given, and the middle of it in world space.
+## Whether a point is inside the car of that lift, or within `slack` of its
+## inside (out through the doorway, then). It used to be a metre and a half
+## from the car's middle; the model's car is 3.2 by 1.9 inside, its doorway
+## to one side.
+func in_car(index: int, point: Vector3, slack := 0.0) -> bool:
+	if index < 0 or index >= car_frames.size() or lifts[index] == Vector3.ZERO: return false
+	var local: Vector3 = (car_frames[index] as Transform3D).affine_inverse() * point
+	var inside := CAR_INSIDE.grow(slack)
+	return local.x >= inside.position.x and local.x <= inside.end.x and local.z >= inside.position.z and local.z <= inside.end.z and local.y > -1.0 and local.y < CAR_INSIDE.end.y + 0.5
+
+## A car behind the lift wall of the cell given (lift_wall(), built with the
+## room), its doorway in the middle of that wall; returns the middle of its
+## floor in world space.
 func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	var node: Node3D = room_nodes[int(room.id)]
 	var span := FLOOR.size_of(room)
 	var back := Vector3(-facing.x, 0, -facing.y)
 	var depth: float = span.y if absf(back.z) > 0.5 else span.x
-	var centre := back * (depth * 0.5 - CAR.z * 0.5 - 0.1)
-	# The mirror wall is the car's -Z and has to face the wall it backs on to.
-	# The old two-way choice was right for -Z and -X only: a car backing on to
-	# +Z or +X was built the other way round, a shut box with its mirror to the
-	# room -- the "block, no lift" at the end of some floors.
-	var yaw := atan2(-back.x, -back.z)
+	var across: float = (span.x if absf(back.z) > 0.5 else span.y) * 0.5
 	var car := Node3D.new()
 	car.name = "Lift"
-	car.position = centre
-	car.rotation.y = yaw
+	# Its front just behind the lift wall's face, its floor a few millimetres
+	# over the lobby's (the two were one plane, and fought).
+	car.position = back * (depth * 0.5 - FLOOR.LIFT_DEPTH + LIFT_PROUD) + Vector3(0, 0.006, 0)
+	car.rotation.y = atan2(-back.x, -back.z)
 	node.add_child(car)
-	var deep: float = CAR.z
-	var front := deep * 0.5
-	# Floor, ceiling, the back and the two sides, and the wood lining them
-	# between a steel skirting and the steel frieze under the ceiling.
-	box(car, Vector3(0, -0.15, 0), Vector3(CAR.x, 0.3, deep), "lift_metal", true)
-	box(car, Vector3(0, 0.002, 0), Vector3(CAR.x - 0.24, 0.004, deep - 0.1), "lift_floor")
-	box(car, Vector3(0, CAR.y, 0), Vector3(CAR.x, 0.12, deep), "lift_metal", true)
-	box(car, Vector3(0, CAR.y * 0.5, -front), Vector3(CAR.x, CAR.y, 0.12), "lift_metal", true)
-	box(car, Vector3(0, CAR.y * 0.5, -front + 0.065), Vector3(CAR.x - 0.3, CAR.y - 0.3, 0.02), "lift_wood")
-	for side in [-1.0, 1.0]:
-		box(car, Vector3(side * CAR.x * 0.5, CAR.y * 0.5, 0), Vector3(0.12, CAR.y, deep), "lift_metal", true)
-		box(car, Vector3(side * (CAR.x * 0.5 - 0.065), CAR.y * 0.5, -0.05), Vector3(0.02, CAR.y - 0.3, deep - 0.4), "lift_wood")
-		# The handrail down each side.
-		box(car, Vector3(side * (CAR.x * 0.5 - 0.12), 0.95, -0.05), Vector3(0.04, deep - 0.5, 0.04), "lift_metal", false, "cylinder", Vector3(PI / 2, 0, 0))
-	box(car, Vector3(0, 0.95, -front + 0.11), Vector3(0.04, CAR.x - 0.5, 0.04), "lift_metal", false, "cylinder", Vector3(0, 0, PI / 2))
-	# The strip of light round the ceiling.
-	for side in [-1.0, 1.0]:
-		box(car, Vector3(side * (CAR.x * 0.5 - 0.16), CAR.y - 0.075, 0), Vector3(0.08, 0.02, deep - 0.3), "light")
-		box(car, Vector3(0, CAR.y - 0.075, side * (front - 0.16)), Vector3(CAR.x - 0.3, 0.02, 0.08), "light")
-	# The front: a wall each side of the opening and a head over it, the doors
-	# in pockets inside it, and the brass sill.
-	var jamb: float = (CAR.x - CAR_OPENING.x) * 0.5
-	for side in [-1.0, 1.0]:
-		box(car, Vector3(side * (CAR_OPENING.x * 0.5 + jamb * 0.5), CAR.y * 0.5, front), Vector3(jamb, CAR.y, 0.14), "lift_metal", true)
-	box(car, Vector3(0, (CAR.y + CAR_OPENING.y) * 0.5, front), Vector3(CAR_OPENING.x, CAR.y - CAR_OPENING.y, 0.14), "lift_metal", true)
-	box(car, Vector3(0, 0.02, front), Vector3(CAR_OPENING.x, 0.04, 0.14), "gold")
+	car_frame = node.transform * car.transform
+	var body := MeshInstance3D.new()
+	body.name = "Car"
+	body.mesh = LIFT_CAR
+	car.add_child(body)
 	car_leaves = []
+	for k in LIFT_LEAVES.size():
+		var leaf := MeshInstance3D.new()
+		leaf.name = "Leaf"
+		leaf.mesh = LIFT_LEAVES[k]
+		car.add_child(leaf)
+		car_leaves.append({"node": leaf, "shut": 0.0, "open": LEAF_TRAVEL[k]})
+	var call := MeshInstance3D.new()
+	call.name = "CallButtons"
+	call.mesh = LIFT_CALL
+	call.position = Vector3(CALL_AT.x, CALL_AT.y, LIFT_PROUD - 0.001)
+	car.add_child(call)
+	var screen := MeshInstance3D.new()
+	screen.name = "Display"
+	screen.mesh = LIFT_SCREEN
+	screen.position = Vector3(0, SCREEN_AT, LIFT_PROUD - 0.001)
+	car.add_child(screen)
+	car_digits(screen, Vector3(0, 0, 0.027), 0.0)
+	car_digits(car, PANEL_SCREEN - Vector3(0, 0, 0.003), PI)
+	# What stops a body: the lift wall has the doorway, and behind it are the
+	# car's sides, back and ceiling. The rest of the space between the lift
+	# wall and the cell's own is filled, so nobody is ever in it and the
+	# navigation finds no floor there.
+	var inside := CAR_INSIDE
+	var reach: float = FLOOR.LIFT_DEPTH - LIFT_PROUD
+	var height: float = room.height
 	for side in [-1.0, 1.0]:
-		for lane in 2:
-			var leaf := MeshInstance3D.new()
-			leaf.name = "Leaf"
-			var slab := BoxMesh.new()
-			slab.size = Vector3(LEAF.x, LEAF.y, 0.025)
-			leaf.mesh = slab
-			leaf.material_override = materials.lift_metal
-			# Shut, the two leaves of a side cover its half of the opening;
-			# open, both are inside the wall beside it.
-			var shut: float = side * (LEAF.x * 0.5 + lane * (CAR_OPENING.x * 0.5 - LEAF.x))
-			var open: float = side * (CAR_OPENING.x * 0.5 + 0.05 + LEAF.x * 0.5 - lane * 0.06)
-			leaf.position = Vector3(open, LEAF.y * 0.5 + 0.01, front + (0.03 if lane == 0 else -0.03))
-			car.add_child(leaf)
-			car_leaves.append({"node": leaf, "shut": shut, "open": open})
-	# The panel inside, beside the opening, and the call plate and display
-	# outside.
-	car_panel(car, Vector3(CAR_OPENING.x * 0.5 + jamb * 0.5, 0.0, front - 0.076), PI)
-	car_call(car, Vector3(CAR_OPENING.x * 0.5 + jamb * 0.5, 1.12, front + 0.071))
-	car_display(car, Vector3(0, CAR_OPENING.y + 0.15, front + 0.071), 0.0)
+		var from: float = inside.end.x if side > 0.0 else -across
+		var to: float = across if side > 0.0 else inside.position.x
+		box(car, Vector3((from + to) * 0.5, height * 0.5, -reach * 0.5), Vector3(to - from, height, reach), "", true)
+	box(car, Vector3(inside.get_center().x, height * 0.5, (inside.position.z - reach) * 0.5), Vector3(inside.size.x, height, inside.position.z + reach), "", true)
+	box(car, Vector3(inside.get_center().x, (inside.end.y + height) * 0.5, inside.position.z * 0.5), Vector3(inside.size.x, height - inside.end.y, -inside.position.z), "", true)
+	# On the plan the car is a room of its own behind its doorway.
+	var corners := [Vector3(inside.position.x, 0, inside.end.z), Vector3(inside.position.x, 0, inside.position.z), Vector3(inside.end.x, 0, inside.position.z), Vector3(inside.end.x, 0, inside.end.z)]
+	for i in 3: plan_wall(node, car.transform * corners[i], car.transform * corners[i + 1])
 	# Its light, which is the only one it has and never goes out with the rest.
-	var panel := box_light(car, Vector3(0, CAR.y - 0.1, 0))
-	car.add_child(panel)
-	return node.position + centre
+	car.add_child(box_light(Vector3(inside.get_center().x, inside.end.y - 0.25, inside.get_center().z)))
+	return node.position + car.position + car.basis * Vector3(inside.get_center().x, 0, inside.get_center().z) - Vector3(0, 0.006, 0)
 
-## The model's own surfaces, on the game's boxes (in world space, so a wall
-## of any size is tiled rather than stretched).
-func lift_materials() -> void:
-	materials["lift_wood"] = lift_surface("res://assets/props/elevator/wood.jpg", 1.6, 0.55)
-	materials["lift_floor"] = lift_surface("res://assets/props/elevator/floor.jpg", 1.2, 0.6, 0.4)
-	materials["lift_metal"] = lift_surface("res://assets/props/elevator/metal.jpg", 0.8, 0.32, 0.85)
+## The lobby's wall with the lift in it: the width of the cell, FLOOR.LIFT_DEPTH
+## in from the wall the car backs on to, finished like every other wall
+## (wall_run(): plaster, the panelled dado and its rails, the cornice), with
+## the doorway cut in its middle and cased in wood, and its paintings and
+## lamps either side. The cell's own wall is still there behind it, bare.
+func lift_wall(node: Node3D, room: Dictionary, direction: Vector2i, length: float) -> void:
+	var height: float = room.height
+	var span := FLOOR.size_of(room)
+	var half: float = (span.x if direction.x != 0 else span.y) * 0.5
+	var boundary := Node3D.new()
+	boundary.name = "LiftWall"
+	var reach: float = half - FLOOR.LIFT_DEPTH + 0.09
+	boundary.position = Vector3(direction.x * reach, 0, direction.y * reach)
+	boundary.rotation.y = PI / 2 if direction.x != 0 else 0.0
+	node.add_child(boundary)
+	var inner: int = -(direction.x + direction.y)
+	var gap: float = CAR_OPENING.x * 0.5 + LIFT_RIM
+	var top: float = CAR_OPENING.y + LIFT_RIM
+	var run: float = length * 0.5 - gap
+	for side in [-1, 1]: wall_run(boundary, side * (gap + run * 0.5), run, height, inner)
+	wall_core(boundary, Vector3(0, (height + top) * 0.5, 0), Vector3(gap * 2.0, height - top, 0.18), inner)
+	box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(gap * 2.0, 0.1, 0.06), "trim")
+	box(boundary, Vector3(0, height - 0.13, inner * 0.1), Vector3(gap * 2.0, 0.06, 0.03), "trim")
+	# The casing stands out past the dado and its rails, which stop against it.
+	var out: float = inner * (0.09 + LIFT_CASING.y * 0.5)
+	for side in [-1, 1]:
+		box(boundary, Vector3(side * (gap + LIFT_CASING.x * 0.5), (top + LIFT_CASING.x) * 0.5, out), Vector3(LIFT_CASING.x, top + LIFT_CASING.x, LIFT_CASING.y), "trim")
+	box(boundary, Vector3(0, top + LIFT_CASING.x * 0.5, out), Vector3(gap * 2.0, LIFT_CASING.x, LIFT_CASING.y), "trim")
+	for side in [-1, 1]: wall_art(boundary, room, side * 3.5, inner)
 
-func lift_surface(path: String, metres: float, rough: float, metal := 0.0) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = load(path)
-	m.uv1_triplanar = true
-	m.uv1_world_triplanar = true
-	m.uv1_scale = Vector3.ONE / metres
-	m.roughness = rough
-	m.metallic = metal
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-	return m
-
-## The buttons inside: a steel plate with the rows of CAR_BUTTON_ROWS cut from
-## the model's panel, one under the other, and a display over them.
-func car_panel(car: Node3D, at: Vector3, yaw: float) -> void:
-	var rows: int = CAR_BUTTON_ROWS.size()
-	var row_height := 0.11
-	var plate := MeshInstance3D.new()
-	plate.name = "ButtonPanel"
-	var slab := BoxMesh.new()
-	slab.size = Vector3(0.3, 0.42 + rows * row_height, 0.012)
-	plate.mesh = slab
-	plate.material_override = materials.lift_metal
-	plate.position = at + Vector3(0, 1.3, 0)
-	plate.rotation.y = yaw
-	car.add_child(plate)
-	for k in rows:
-		var row: int = CAR_BUTTON_ROWS[k]
-		var face := MeshInstance3D.new()
-		face.name = "Buttons"
-		var quad := QuadMesh.new()
-		quad.size = Vector2(0.22, row_height * 0.9)
-		face.mesh = quad
-		var m := StandardMaterial3D.new()
-		m.albedo_texture = load("res://assets/props/elevator/buttons.jpg")
-		m.emission_enabled = true
-		m.emission_texture = load("res://assets/props/elevator/buttons_emission.jpg")
-		m.emission_energy_multiplier = 1.5
-		m.metallic = 0.4
-		m.roughness = 0.35
-		m.uv1_scale = Vector3(1.0, BUTTON_ROW_H, 1.0)
-		m.uv1_offset = Vector3(0.0, BUTTON_ROW_V[row] - BUTTON_ROW_H * 0.5, 0.0)
-		face.material_override = m
-		face.position = Vector3(0, -0.02 - k * row_height, 0.0075)
-		plate.add_child(face)
-	car_display(plate, Vector3(0, 0.1, 0.0075), 0.0, 0.16)
-
-## The call plate by the doors outside: up and down, as on the model.
-func car_call(car: Node3D, at: Vector3) -> void:
-	var plate := MeshInstance3D.new()
-	plate.name = "CallButtons"
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.16, 0.22)
-	plate.mesh = quad
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = load("res://assets/props/elevator/call_buttons.jpg")
-	m.metallic = 0.4
-	m.roughness = 0.4
-	plate.material_override = m
-	plate.position = at
-	car.add_child(plate)
-
-## A small dot-matrix display: dark glass with the floor in violet light.
-func car_display(parent: Node3D, at: Vector3, yaw: float, width := 0.3) -> void:
-	var glass := MeshInstance3D.new()
-	glass.name = "Display"
-	var quad := QuadMesh.new()
-	quad.size = Vector2(width, width * 0.36)
-	glass.mesh = quad
-	glass.material_override = materials.black
-	glass.position = at
-	glass.rotation.y = yaw
-	parent.add_child(glass)
+## The car's floor number in the violet light of the model's displays, over
+## the glass of one of them.
+func car_digits(parent: Node3D, at: Vector3, yaw: float) -> void:
 	var digits := Label3D.new()
+	digits.name = "Digits"
 	digits.text = CAR_DISPLAY
 	digits.font_size = 64
-	digits.pixel_size = width * 0.0045
+	digits.pixel_size = 0.0016
 	digits.modulate = Color(0.62, 0.55, 1.0)
 	digits.shaded = false
 	digits.double_sided = false
-	digits.position = Vector3(0, 0, 0.002)
-	glass.add_child(digits)
+	digits.position = at
+	digits.rotation.y = yaw
+	parent.add_child(digits)
 
-## The flat light in a car's ceiling: a small lamp and the panel it comes out
-## of, which stays on whatever the floor is doing.
-func box_light(car: Node3D, at: Vector3) -> OmniLight3D:
-	box(car, at + Vector3(0, 0.03, 0), Vector3(1.0, 0.04, 0.7), "light")
+## The lamp in a car's ceiling, behind the model's own strips of light. It
+## stays on whatever the floor is doing.
+func box_light(at: Vector3) -> OmniLight3D:
 	var lamp := OmniLight3D.new()
 	lamp.name = "CarLight"
-	lamp.position = at - Vector3(0, 0.1, 0)
+	lamp.position = at
 	lamp.light_color = Color(0.96, 0.94, 0.86)
 	lamp.light_energy = 2.4
 	lamp.omni_range = 5.5
@@ -1406,7 +1398,16 @@ static func prop_transform(room: Dictionary, prop: Dictionary) -> Transform3D:
 	var domestic: bool = room.type in [1, 2, 3, 4, 7, 15, 16]
 	var corner := 4.35 if domestic else 3.95
 	var basis := Basis(Vector3.UP, prop.rotation * PI / 2).scaled(Vector3.ONE * (0.85 if domestic else 1.0))
-	return Transform3D(basis, Vector3(-corner if prop.slot % 2 == 0 else corner, 0, -corner if prop.slot < 2 else corner))
+	var at := Vector3(-corner if prop.slot % 2 == 0 else corner, 0, -corner if prop.slot < 2 else corner)
+	# In a lobby with a lift the two corners at its end are in front of the
+	# lift wall, not behind it (FLOOR.LIFT_DEPTH).
+	var lift := FLOOR.lift_wall(room)
+	if lift != Vector2i.ZERO:
+		var axis := Vector3(lift.x, 0, lift.y)
+		var most: float = FLOOR.size_of(room).dot(Vector2(absf(lift.x), absf(lift.y))) * 0.5 - FLOOR.LIFT_DEPTH - 0.9
+		var along := at.dot(axis)
+		if along > most: at -= axis * (along - most)
+	return Transform3D(basis, at)
 
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
 	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
