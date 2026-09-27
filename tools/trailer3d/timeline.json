@@ -133,7 +133,7 @@
         "file": "floors two three and four have not been recovered.mp3",
         "text": "Floors two, three and four... have not been recovered.",
         "shot": "database",
-        "at": 0.5,
+        "at": 0.15,
         "subs": [
           [
             0.0,
@@ -153,129 +153,129 @@
       "id": "headphones",
       "module": "headphones",
       "start": 0.0,
-      "end": 2.0,
+      "end": 1.6,
       "in": 0.3,
       "out": 0.4
     },
     {
       "id": "vcr",
       "module": "archive",
-      "start": 2.0,
-      "end": 3.2,
+      "start": 1.6,
+      "end": 2.8,
       "in": 0.2,
       "out": 0.15
     },
     {
       "id": "crt",
       "module": "archive",
-      "start": 3.2,
-      "end": 6.0,
+      "start": 2.8,
+      "end": 5.6,
       "in": 0.15,
       "out": 0.25
     },
     {
       "id": "reception",
       "module": "reception",
-      "start": 6.0,
-      "end": 8.0,
+      "start": 5.6,
+      "end": 7.6,
       "in": 0.35,
       "out": 0.3
     },
     {
       "id": "rewind",
       "module": "rewind",
-      "start": 8.0,
-      "end": 11.0,
+      "start": 7.6,
+      "end": 10.6,
       "in": 0.2,
       "out": 0.4
     },
     {
       "id": "sectors",
       "module": "sectors",
-      "start": 11.0,
-      "end": 15.0,
+      "start": 10.6,
+      "end": 14.6,
       "in": 0.3,
       "out": 0.45
     },
     {
       "id": "guest1",
       "module": "guest1",
-      "start": 15.0,
-      "end": 20.0,
+      "start": 14.6,
+      "end": 19.6,
       "in": 0.4
     },
     {
       "id": "guest2",
       "module": "guest2",
-      "start": 20.0,
-      "end": 25.0,
+      "start": 19.6,
+      "end": 24.6,
       "in": 0.5,
       "out": 0.5
     },
     {
       "id": "guest3",
       "module": "guest3",
-      "start": 25.0,
-      "end": 30.0
+      "start": 24.6,
+      "end": 29.6
     },
     {
       "id": "guest4",
       "module": "guest4",
-      "start": 30.0,
-      "end": 35.0,
+      "start": 29.6,
+      "end": 34.6,
       "in": 0.5,
       "out": 0.6
     },
     {
       "id": "occupant",
       "module": "occupant",
-      "start": 35.0,
-      "end": 38.0
+      "start": 34.6,
+      "end": 37.6
     },
     {
       "id": "versus",
       "module": "versus",
-      "start": 38.0,
-      "end": 41.0,
+      "start": 37.6,
+      "end": 42.4,
       "in": 0.3,
       "out": 0.5
     },
     {
       "id": "blackout",
       "module": "blackout",
-      "start": 41.0,
-      "end": 44.0,
+      "start": 42.4,
+      "end": 45.2,
       "in": 0.4
     },
     {
       "id": "chase",
       "module": "chase",
-      "start": 44.0,
-      "end": 48.0
+      "start": 45.2,
+      "end": 49.2
     },
     {
       "id": "keypad",
       "module": "keypad",
-      "start": 48.0,
-      "end": 51.5,
-      "in": 0.4,
+      "start": 49.2,
+      "end": 53.6,
+      "in": 0.1,
       "out": 0.35
     },
     {
       "id": "database",
       "module": "archive",
-      "start": 51.5,
-      "end": 58.1,
+      "start": 53.6,
+      "end": 59.0,
       "in": 0.4,
       "out": 0.6
     },
     {
       "id": "title",
       "module": "title",
-      "start": 58.1,
+      "start": 59.0,
       "end": 65.0,
       "in": 0.3,
-      "out": 1.8
+      "out": 1.6
     }
   ]
 }

@@ -7,12 +7,15 @@ import { Locust } from "../engine/locust.js";
 import { Detective, detectiveTorch, detectiveRun } from "../engine/detective.js";
 import { Volumetrics } from "../engine/volumetric.js";
 import { camcorder } from "../engine/osd.js";
+import { writePage, GRAPHITE, PAPER, wear } from "../engine/handwork.js";
 import { clamp, smooth, smoothstep, lerp } from "../engine/util.js";
 import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./common.js";
 
-export const KEYS = [0.3, 0.65, 1.0, 1.35];
-export const TONE = 1.7;
-export const OPEN = 2.05;
+// Black; then the notes, flicked through fast as they are put away; then the code.
+export const NOTES = [0.6, 1.5];
+export const KEYS = [1.8, 2.12, 2.44, 2.76];
+export const TONE = 3.08;
+export const OPEN = 3.4;
 const CODE = [7, 3, 9, 1];
 
 function keypadFace(pressed) {
@@ -86,42 +89,14 @@ export function create(ctx) {
 			kit.wall(18, 1.3, 18, 4.7, { dress: [-1] });
 			// A lamp further down the corridor, dim, behind where it will stand.
 			const behind = await kit.sconce(12.5, 1.6, 1.3, 0, 1, { intensity: 1.2 });
-			// The vestibule, tiled and lit, and the car.
+			// Beyond the door, a tiled vestibule, lit, empty; its far wall.
 			kit.floor(-4.4, 0, 0, 6, kit.m.tile);
 			kit.ceilingSlab(-4.4, 0, 0, 6);
 			kit.wall(-4.4, -0.09, 0, -0.09, { dress: [1], finish: "tile" });
 			kit.wall(-4.4, 6.09, 0, 6.09, { dress: [-1], finish: "tile" });
-			const carX = -4.4 + 0.1 + 1.15;
-			// Car: 2.6 wide (along z), 2.45 high, 2.3 deep (along x), opening facing +x.
-			const cx0 = carX - 1.15;
-			const cx1 = carX + 1.15;
-			const metal = kit.m.metal;
-			kit.box(2.3, 0.3, 2.6, metal, carX, -0.15, 3.0, { cast: false });
-			kit.box(2.3, 0.12, 2.6, metal, carX, 2.51, 3.0);
-			kit.box(0.12, 2.45, 2.6, new THREE.MeshStandardMaterial({ color: 0x8c8c86, metalness: 1, roughness: 0.06 }), cx0 - 0.06, 1.225, 3.0);
-			for (const s of [-1, 1]) {
-				kit.box(2.3, 2.45, 0.12, metal, carX, 1.225, 3.0 + s * 1.36);
-				kit.box(2.0, 0.9, 0.03, kit.m.panel, carX, 0.45, 3.0 + s * 1.28);
-				kit.box(2.1, 0.05, 0.05, kit.m.brass, carX, 0.92, 3.0 + s * 1.24);
-			}
-			kit.box(0.16, 0.06, 2.6, kit.m.brass, cx1, 0.03, 3.0);
-			const panelLight = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 1.0), new THREE.MeshStandardMaterial({ color: 0xeed8b0, emissive: 0xffe0b0, emissiveIntensity: 2.2 }));
-			panelLight.position.set(carX, 2.43, 3.0);
-			scene.add(panelLight);
-			const carLamp = new THREE.PointLight(new THREE.Color().setRGB(0.96, 0.94, 0.86, THREE.SRGBColorSpace), 2.6, 6, 2);
-			carLamp.position.set(carX, 2.2, 3.0);
-			carLamp.castShadow = true;
-			carLamp.shadow.mapSize.set(1024, 1024);
-			scene.add(carLamp);
+			kit.wall(-4.49, 0, -4.49, 6, { dress: [1], finish: "tile" });
 			const vest = kit.dome(-2.2, 3.0, { intensity: 3 });
-			// The car's two leaves, sliding in from the sides of the opening.
 			carDoors = [];
-			// Brushed steel, the grain running up, as in the car from inside.
-			const brushed = new THREE.MeshPhysicalMaterial({ color: 0x8a8a84, metalness: 1, roughness: 0.36, anisotropy: 0.85, anisotropyRotation: Math.PI / 2 });
-			for (const s of [-1, 1]) {
-				const leaf = kit.box(0.06, 2.35, 1.12, brushed, cx1 + 0.02, 1.175, 3.0 + s * 1.62);
-				carDoors.push({ leaf, s });
-			}
 			// The keypad on the refuge's west wall, beside the door.
 			face = new THREE.MeshStandardMaterial({ map: keypadFace(null), roughness: 0.5, metalness: 0.3 });
 			const pad = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 0.22), [kit.m.black, kit.m.black, kit.m.black, kit.m.black, kit.m.black, kit.m.black]);
@@ -148,7 +123,6 @@ export function create(ctx) {
 			beam = makeTorch(scene, { intensity: 160, angle: 13, penumbra: 0.5 });
 			shot.volumetrics = new Volumetrics(ctx.renderer, { density: 0.012, noise: 0.6, maxDist: 20, steps: 28 });
 			shot.volumetrics.addPoint(lamp, { radius: 1.2 });
-			shot.volumetrics.addPoint(carLamp, { radius: 0.8, strength: 0.5 });
 			shot.volumetrics.addSpot(beam, { strength: 0.35 });
 		},
 		update(t) {
@@ -186,11 +160,71 @@ export function create(ctx) {
 			for (const d of carDoors) d.leaf.position.z = 3.0 + d.s * 1.62;
 		},
 		look(t) {
-			return tape({ exposure: 1.6 });
+			const L = tape({ exposure: 1.6 });
+			// Snatched past: the tape smears and tears as each page goes by.
+			if (t >= NOTES[0] && t < NOTES[1]) {
+				L.drag = 0.6;
+				L.tracking = (((t - NOTES[0]) * 4.4) % 1) < 0.15 ? 0.7 : 0.2;
+			}
+			if (t >= NOTES[1] && t < NOTES[1] + 0.06) L.tracking = 0.6;
+			return L;
 		},
 		overlay(g, t, size) {
+			// Before the code: black, then the notes from the drawers, one after
+			// another, snatched past the lens as they are put away.
+			if (t < NOTES[1]) {
+				g.fillStyle = "#000";
+				g.fillRect(0, 0, size.w, size.h);
+				if (t >= NOTES[0]) notes(g, t, size);
+				return;
+			}
 			camcorder(g, t, size, { clock: 3 * 3600 + 52 * 60 + 40, date: "OCT. 27 1993", focus: 1, word: "KEYPAD" });
 		},
 	};
 	return shot;
 }
+
+// The four pages, 7, 3, 9, 1, in pencil on worn cream paper, each slid in
+// under the last and gone, the hand shaking, the picture chasing them.
+const pages = new Map();
+function page(n, w, h) {
+	if (pages.has(n)) return pages.get(n);
+	const c = document.createElement("canvas");
+	c.width = w;
+	c.height = h;
+	const g = c.getContext("2d");
+	g.fillStyle = PAPER;
+	g.fillRect(0, 0, w, h);
+	wear(g, w, h, 300 + n, { marked: false });
+	writePage(g, n, w / 2, h * 0.46, h * 0.5, GRAPHITE, n * 3.1);
+	pages.set(n, c);
+	return c;
+}
+
+function notes(g, t, size) {
+	const k = (t - NOTES[0]) / (NOTES[1] - NOTES[0]);
+	const i = Math.min(3, Math.floor(k * 4));
+	const f = k * 4 - i;
+	const w = size.h * 0.46;
+	const h = size.h * 0.6;
+	for (let j = Math.max(0, i - 1); j <= i; j++) {
+		const slide = j === i ? 1 - Math.pow(1 - Math.min(1, f / 0.35), 3) : 1;
+		const off = j < i ? -size.w * 0.9 * Math.min(1, f / 0.3) : 0;
+		const x = size.w / 2 - w / 2 + (1 - slide) * size.w * 0.7 + off + Math.sin(t * 31 + j) * 6;
+		const y = size.h / 2 - h / 2 + Math.sin(t * 23 + j * 2) * 5 + j * 4;
+		g.save();
+		g.translate(x + w / 2, y + h / 2);
+		g.rotate(-0.06 + j * 0.035 + Math.sin(t * 17) * 0.01);
+		g.fillStyle = "rgba(0,0,0,0.6)";
+		g.fillRect(-w / 2 + 10, -h / 2 + 14, w, h);
+		g.drawImage(page([7, 3, 9, 1][j], 360, 470), -w / 2, -h / 2, w, h);
+		// The torch on it: a warm pool, falling off to the edges.
+		const r = g.createRadialGradient(0, 0, w * 0.1, 0, 0, w * 0.9);
+		r.addColorStop(0, "rgba(0,0,0,0)");
+		r.addColorStop(1, "rgba(0,0,0,0.7)");
+		g.fillStyle = r;
+		g.fillRect(-w / 2, -h / 2, w, h);
+		g.restore();
+	}
+}
+

@@ -81,9 +81,13 @@ export function create(ctx) {
 				// Turning round: it is right there.
 				const k = smooth((t - TURN) / 0.2);
 				const yaw = Math.PI * 0.85 * k;
-				const eye = V(0.1, 1.55, -6.0);
+				// Taken: the lens is dragged in to its face, too fast to see it.
+				const pull = smoothstep(TURN + 0.2, THRUST + 0.12, t);
+				const face = V(0.35, 2.15, -4.7);
+				const eye = V(0.1, 1.55, -6.0).lerp(face.clone().add(V(0, -0.05, -0.28)), pull * pull * 0.92);
 				const dir = V(Math.sin(yaw), -0.05 + k * 0.15, -Math.cos(yaw));
-				aimCamera(camera, eye, eye.clone().add(dir), { roll: (1 - k) * 0.12 });
+				const look = eye.clone().add(dir).lerp(face, pull);
+				aimCamera(camera, eye, look, { roll: (1 - k) * 0.12 + pull * 0.35 });
 				holdTorch(torch, camera, { ahead: 2, sway: 0.4, swayT: t * 3 });
 				torch.intensity = 26;
 				locust.root.visible = true;

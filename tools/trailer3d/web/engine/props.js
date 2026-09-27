@@ -291,7 +291,8 @@ export async function door() {
 		}
 	}
 	const leaf = new THREE.Group();
-	leaf.position.set(-OPEN_W / 2, 0, 0);
+	// A hair off the floor, so its bottom edge never fights the carpet.
+	leaf.position.set(-OPEN_W / 2, 0.012, 0);
 	for (const p of bake(root, leafMeshes, fit)) {
 		for (const piece of byGroup(p.geometry)) {
 			const mat = Array.isArray(p.material) ? p.material[piece.index] : p.material;

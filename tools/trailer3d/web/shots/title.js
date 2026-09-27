@@ -8,11 +8,11 @@ import { hotelMaterial } from "../engine/materials.js";
 import { text, INK, AMBER, SOFT } from "../engine/osd.js";
 import { smoothstep, smooth, clamp } from "../engine/util.js";
 
-export const LAMPS = [0.5, 1.2, 1.9, 3.0];
-export const OUT = 4.0;
-export const FLOOR = 4.2;
-export const MODES = 4.8;
-export const CUT = 6.9;
+export const LAMPS = [0.4, 1.0, 1.6, 2.5];
+export const OUT = 3.3;
+export const FLOOR = 3.45;
+export const MODES = 3.9;
+export const CUT = 6.0;
 
 export function create(ctx) {
 	const scene = new THREE.Scene();

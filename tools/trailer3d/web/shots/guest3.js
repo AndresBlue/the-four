@@ -129,10 +129,12 @@ const LENS = V(4.95, 1.6, 3.4);
 function poseLocust(L, t) {
 	const head = L.bones.Head1;
 	L.root.position.set(0, 0, 0);
-	L.root.rotation.set(0, Math.PI / 2, 0);
+	// The head's rest, taken facing +z: the turn below is measured from +z.
+	L.root.rotation.set(0, 0, 0);
 	L.reset();
 	L.root.updateMatrixWorld(true);
 	const rest = head.getWorldQuaternion(new THREE.Quaternion());
+	L.root.rotation.set(0, Math.PI / 2, 0);
 	L.stand({ duck: 0.55, hunch: 0.6 });
 	L.hangArms();
 	L.aim("L_UpperArm", "L_Forearm", [0.25, -1.0, -0.25]);
@@ -152,7 +154,8 @@ function poseLocust(L, t) {
 	const tick = Math.sin(t * 1.7) > 0.93 ? 0.12 : 0;
 	const look = LENS.clone().sub(L.point("Head1")).normalize();
 	const turnTo = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), look);
-	const tilt = new THREE.Quaternion().setFromAxisAngle(look, 0.42 + tick + Math.sin(t * 17) * 0.015);
+	// Level as it comes: the mask square to the lens, not on one side.
+	const tilt = new THREE.Quaternion().setFromAxisAngle(look, (0.42 + tick + Math.sin(t * 17) * 0.015) * (1 - smooth(clamp((t - OPEN) / 0.08))));
 	const wanted = tilt.multiply(turnTo).multiply(rest);
 	const parent = head.parent.getWorldQuaternion(new THREE.Quaternion());
 	head.quaternion.copy(parent.invert().multiply(wanted));

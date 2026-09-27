@@ -87,8 +87,8 @@ export function create(ctx) {
 			// Dust more than fog: it scatters as much back toward the lens as on,
 			// so beams pointed away still show as shafts.
 			shot.volumetrics = new Volumetrics(ctx.renderer, { density: 0.035, g: 0.15, noise: 0.85, noiseScale: 0.35, maxDist: 20, steps: 44 });
-			for (const g of guests) shot.volumetrics.addSpot(g.light, { strength: 0.85 });
-			shot.volumetrics.addSpot(torch, { strength: 0.3 });
+			for (const g of guests) shot.volumetrics.addSpot(g.light, { strength: 0.3 });
+			shot.volumetrics.addSpot(torch, { strength: 0.12 });
 			shot.volumetrics.addPoint(beacon.light, { radius: 2.2, strength: 0.6 });
 		},
 		update(time) {

@@ -13,7 +13,8 @@ import { V, handheld, steps, aimCamera, makeTorch, holdTorch, tape } from "./com
 
 export const LOOK = [2.1, 2.55];
 export const LUNGE = 3.45;
-export const CATCH = 3.7;
+// As soon as it reaches him.
+export const CATCH = 3.52;
 export const SNOW = 4.05;
 // How fast they go: him, and it gaining on him.
 const RUN = 5.6;
@@ -72,7 +73,7 @@ export function create(ctx) {
 			torch.intensity = 150;
 			holdTorch(torch, camera, { swayT: k * 3, sway: 2.2 * (1 - back * 0.6), ahead: 9 });
 			// It: behind him from the start, seen once he looks.
-			const gap = lerp(15.0, 1.2, easeIn(clamp((k - LOOK[0]) / (LUNGE - LOOK[0]))));
+			const gap = lerp(15.0, 0.9, easeIn(clamp((k - LOOK[0]) / (LUNGE - LOOK[0])))) - smoothstep(LUNGE, CATCH, k) * 0.5;
 			locust.root.visible = k > LOOK[0];
 			poseLocust(locust, k, z + gap);
 		},

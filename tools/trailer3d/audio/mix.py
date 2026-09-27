@@ -276,10 +276,17 @@ def effects(rng):
     def in_hall(x, wet=0.35): return dsp.convolve(x, hall, wet=wet)
     def far(x): return dsp.lp(in_hall(x, 0.7), 1800)
 
+    # A big, dark space for the kill to ring on in: long, low, slow to die.
+    cavern = dsp.impulse(5.5, 4.2, rng, damping=2200, predelay=0.04, width=1.0)
+
     def taken(when, gain=-9.0):
         """The game's execution, when it has someone: its screamer and the
-        blow, and the channel going dead after."""
-        fx.add(dsp.fade(scream[:n_of(1.1)], 0.0, 0.35), when - 0.02, gain)
+        blow, ringing on long after in a dark space, an echo coming back."""
+        cry = dsp.fade(scream[:n_of(1.1)], 0.0, 0.35)
+        fx.add(cry, when - 0.02, gain)
+        tail = dsp.convolve(dsp.fit(dsp.lp(cry, 5000), n_of(6.0)), cavern, wet=1.0, dry=0.0)
+        tail = dsp.delay(dsp.mono(tail), 0.33, feedback=0.45, mix=0.4, damp=1800)
+        fx.add(dsp.fade(tail, 0.0, 2.5), when - 0.02, gain - 5.0)
         fx.add(arm_hit, when + 0.18 - 0.22, gain + 2.0)
         fx.add(ins.hit(rng, 0.8, metal=0.6, crack=1.0, sub=1.2, space=0.2), when + 0.18, gain - 3.0)
 
@@ -411,8 +418,13 @@ def effects(rng):
         fx.add(in_hall(dsp.resample_speed(c, 0.7 + 0.1 * k), 0.4), shriek + k * 0.07, -8.0, pan=rng.uniform(-0.3, 0.3))
     fx.add(ins.hit(rng, 3.0, metal=0.5, crack=0.5, sub=1.1, space=0.5), shriek, -12.0)
     fx.add(ins.whoosh(rng, 0.45, 300, 3000, -0.2, 0.2), at('versus', 'LUNGE') - 0.1, -11.0)
-    for k in range(4):
-        fx.add(in_room(ins.claw_step(rng, 1.0)), at('versus', 'LUNGE') + k * 0.11, -13.0)
+    # Running him down: its claws, and a click at each look.
+    when = at('versus', 'LUNGE')
+    while when < end('versus') - 0.1:
+        fx.add(in_room(ins.claw_step(rng, 1.0)), when, -14.0)
+        when += 0.14
+    for c in marks('versus')['CHASE']:
+        fx.add(dsp.delay(ins.sonar_click(rng), 0.07, 0.45, 0.45), start('versus') + c, -12.0)
 
     # The blackout: the button, the last set; it draws the power: the surge
     # buzzing up, the lamp by it stuttering and popping; the corridor's lamps
@@ -447,7 +459,7 @@ def effects(rng):
     while when < at('chase', 'SLAM') - 0.05:
         fx.add(in_hall(ins.claw_step(rng, 0.8 + 0.3 * (when - find)), 0.3), when, -13.0)
         when += 0.13
-    fx.add(in_hall(bangs[1], 0.25), at('chase', 'SLAM'), -7.0)
+    fx.add(in_hall(asset('sfx', 'door', 'closing', 'close-hard-closing.ogg'), 0.3), at('chase', 'SLAM') - 0.03, -6.0)
     fx.add(ins.whoosh(rng, 0.35, 400, 3200, 0.4, -0.4), at('chase', 'TURN') - 0.1, -9.0)
     fx.add(in_room(chitter[2], 0.2), at('chase', 'TURN') + 0.05, -10.0)
     taken(at('chase', 'THRUST'), gain=-13.0)

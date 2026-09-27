@@ -79,8 +79,9 @@ export function create(ctx) {
 			const wave = channelWave(t);
 			tvB.mat.uniforms.power.value = 1;
 			tvB.mat.uniforms.time.value = t;
-			tvB.glow.intensity = 22 * wave;
-			tvB.fill.intensity = 3 * wave;
+			// The set on in the side room: in its room only, nothing on the corridor's ceiling.
+			tvB.glow.intensity = 0;
+			tvB.fill.intensity = 1.2 * wave;
 			if (t < CUT) {
 				// The button: the survivor stands out of frame, the gloved hand in it.
 				hand.root.visible = false;

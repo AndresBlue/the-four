@@ -130,6 +130,6 @@ export async function tvSet(scene, x, z, rotY, { strength = 1.4, size = 0.82 } =
 	const fill = new THREE.PointLight(GLOW, 0, 7, 2);
 	fill.position.copy(glow.position);
 	scene.add(fill);
-	return { mat, glow, fill, top, screen: t.screen, group: t.group };
+	return { mat, glow, fill, top, screen: t.screen, group: t.group, commode };
 }
 

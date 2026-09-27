@@ -5,9 +5,10 @@
 // frozen in its last pose; lit sets glowing yellow through everything. It
 // turns. It screams: the whole acoustic world goes red; the one who was
 // running shows as a cloud, the one standing still gives back nothing. It
-// goes for the first. VERSUS — PLAY AS THE LOCUST.
+// goes for the first, and runs him down the corridor, clicking as it goes,
+// the red cloud of him fleeing ahead. VERSUS — PLAY AS THE LOCUST.
 import * as THREE from "three";
-import { Survivor } from "../engine/survivor.js";
+import { Survivor, poseRun } from "../engine/survivor.js";
 import { text, AMBER } from "../engine/osd.js";
 import { clamp, smooth, smoothstep, lerp, rng, fbm1 } from "../engine/util.js";
 import { V, aimCamera, tape } from "./common.js";
@@ -17,8 +18,13 @@ export const TURN = [1.3, 1.6];
 export const SHRIEK = 1.78;
 export const LUNGE = 2.35;
 export const TITLE = 2.25;
+// The chase: clicks as it runs, each finding him further down, and nearer.
+export const CHASE = [2.8, 3.25, 3.7, 4.15];
+const RUN = 5.2;
 
 const WAVE = 16;
+// How far down the corridor it has run by time t.
+const chaseAt = (t) => (t > LUNGE ? RUN * (t - LUNGE) * smooth((t - LUNGE) / 0.4) : 0);
 const EYE = 2.35;
 
 const VERT = /* glsl */ `
@@ -127,7 +133,7 @@ function surfacePoint(r) {
 export function create(ctx) {
 	const scene = new THREE.Scene();
 	const camera = new THREE.PerspectiveCamera(66, 16 / 9, 0.05, 120);
-	const walls = cloud({ residue: 0.3, gain: 1.1 });
+	const walls = cloud({ residue: 0.3, gain: 1.1, capacity: 320000 });
 	const frames = cloud({ gain: 1.5, residue: 0.5, flare: 2.0, cold: [1.0, 0.97, 0.9], hot: [1.0, 0.97, 0.9], pixel: 3.0 });
 	const bodies = cloud({ gain: 1.6, residue: 0.32, flare: 2.4, pixel: 2.4 });
 	const finds = cloud({ gain: 1.35, residue: 0.85, flare: 1.1, wave: 4.5, cold: [0.86, 0.9, 0.95], hot: [1.0, 0.97, 0.92], sc: [1.4, 0.18, 0.1], sh: [1.5, 0.4, 0.24], pixel: 2.6 });
@@ -210,6 +216,34 @@ export function create(ctx) {
 					finds.add(w, SHRIEK + 0.05, w.clone().sub(origin).length() * 0.25, 1, 1, 3.2);
 				}
 			}
+			// Running him down: each click from where it is by then, the corridor
+			// red around it, and him a little further on, a little nearer.
+			const random3 = rng(19);
+			for (const [ci, click] of CHASE.entries()) {
+				const from = V(0, EYE, -chaseAt(click));
+				for (let i = 0; i < 16000; i++) {
+					const s = surfacePoint(random3);
+					const dir = s.p.clone().sub(from);
+					if (dir.z > 1.0 && random3() < 0.7) continue;
+					const d = dir.length();
+					dir.normalize();
+					walls.add(s.p, click, d, 0, (0.3 + 0.7 * Math.abs(s.n.dot(dir))) * (0.8 + random3() * 0.2), 3);
+				}
+				runner.root.position.set(0.35 + Math.sin(ci * 1.7) * 0.4, 0, -chaseAt(click) - lerp(7.0, 3.2, ci / (CHASE.length - 1)));
+				runner.root.rotation.y = Math.PI + Math.sin(ci * 2.3) * 0.2;
+				poseRun(runner, ci * 1.6 + 0.4);
+				runner.root.updateMatrixWorld(true);
+				for (const m of runner.meshes) {
+					if (!m.isSkinnedMesh) continue;
+					const v = new THREE.Vector3();
+					const count2 = m.geometry.attributes.position.count;
+					for (let k = 0; k < 220; k++) {
+						m.getVertexPosition(Math.floor(random3() * count2), v);
+						const w = v.clone().applyMatrix4(m.matrixWorld).add(V((random3() - 0.5) * 0.06, (random3() - 0.5) * 0.06, (random3() - 0.5) * 0.06));
+						finds.add(w, click, w.clone().sub(from).length() * 0.25, 1, 1, 0.9);
+					}
+				}
+			}
 			for (const c of [walls, frames, guides, finds, bodies]) c.done();
 		},
 		update(t) {
@@ -218,9 +252,10 @@ export function create(ctx) {
 				c.mat.uniforms.shriek.value = t < SHRIEK ? 0 : clamp((t - SHRIEK) * 6);
 			}
 			// Its eyes: a slow sway; the turn toward the room; then it goes.
-			const yaw = smoothstep(TURN[0], TURN[1], t) * -0.32;
-			const go = t > LUNGE ? (t - LUNGE) * (t - LUNGE) * 5.5 + (t - LUNGE) * 2 : 0;
-			const eye = V(0.15 + fbm1(t * 0.8, 3) * 0.04, EYE + Math.sin(t * 4.2) * 0.01, -go);
+			// Round to the room, then back down the corridor after him.
+			const yaw = smoothstep(TURN[0], TURN[1], t) * -0.32 * (1 - smoothstep(LUNGE, LUNGE + 0.45, t));
+			const go = chaseAt(t);
+			const eye = V(0.15 + fbm1(t * 0.8, 3) * 0.04, EYE + Math.sin(t * (go > 0 ? 9 : 4.2)) * (go > 0 ? 0.035 : 0.01), -go);
 			const dir = V(-Math.sin(yaw), -0.06, -Math.cos(yaw));
 			aimCamera(camera, eye, eye.clone().add(dir), { roll: fbm1(t * 0.6, 9) * 0.01 });
 		},
