@@ -62,10 +62,6 @@ var observer_view
 ## and tuned without gathering five players.
 var solo_locust := false
 var visibility_clock := 0.0
-var pressed_door
-var press_time := 0.0
-var was_held := false
-var slow_used := false
 var save_error := ""
 var physical_errors: Array[String] = []
 var intro: Node3D
@@ -73,35 +69,8 @@ var title_scene: Node3D
 var director
 var discoveries
 var records
-## The document being read, if any.
-var reading_document: Node3D
 var paper_sound: AudioStreamPlayer
 var scream_sound: AudioStreamPlayer
-## Seconds spent going through the piece of furniture in front.
-var search_time := 0.0
-## The sets of the stage in hand, in build order: the index is their name on
-## the wire, like doors and wardrobes.
-var televisions: Array = []
-## Everything with drawers or shelves, in build order, and the numbers found
-## in them so far, by place in the code.
-var containers: Array = []
-var found_digits := {}
-## Code place -> seat of whoever found it. The goal counts every number the team
-## has; what is written down for a player -- the sheet, the keypad's notes, the
-## tape -- is only what that player found. The rest they have to be told.
-var found_by := {}
-## And where each one was found, as it would be said out loud: the number on
-## that door, or what the room is when it has no plaque (service rooms, halls
-## and corridors carry none). A number without a place is a number nobody can
-## check, and checking is what the others are for.
-var found_where := {}
-## Whether the code has been read into the lock: from then on the last door
-## opens and the floor is left by stepping through it.
-var code_entered := false
-## The keypad of the last door, and what is being typed into it.
-var lock: Node3D
-var lock_open := false
-var typed := ""
 var blow_sound: AudioStreamPlayer
 var static_sound: AudioStreamPlayer
 ## The snow of a lift ride, heard as well as seen (update_ride_hiss).
@@ -119,37 +88,24 @@ const LIFTS := preload("res://game/app/lifts.gd")
 var lifts
 ## The plan the survivors' eyes draw on the shared sheet (floor_map.gd).
 var floor_map
+const TELEVISIONS := preload("res://game/app/televisions.gd")
+var tvs
+const CODE_LOCK := preload("res://game/app/code_lock.gd")
+var code
+const EXECUTIONS := preload("res://game/app/executions.gd")
+var executions
+const REVIVAL := preload("res://game/app/revival.gd")
+var revival
+const INTERACTION := preload("res://game/app/interaction.gd")
+var interaction
+const PRESENTATION_RIG := preload("res://game/app/presentation_rig.gd")
+var rig
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
 ## Online, Esc opens a menu over the running match instead of pausing it.
 var online_menu := false
-## A kill in progress: {seat, time, point, yaw, stabs, dropped}. The floor only
-## registers the death when the last blow lands.
-var execution := {}
-## The view of a dead player, over the shoulder of the teammate watched.
-var watch_rig: Node3D
-var watch_arm: SpringArm3D
-var watch_camera: Camera3D
-const SCREAM := "res://assets/audio/events/execution_scream.wav"
 ## The power going: the same dead channel the execution uses, from above.
 const BLACKOUT_SOUND := "res://assets/audio/events/execution_static.ogg"
-## Going through a drawer: the slow creak of a door, which is what it is.
-const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
-const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
-const DEAD_CHANNEL := "res://assets/audio/events/execution_static.ogg"
-## The beats of an execution, in seconds from the grab. The scream is at zero,
-## because that is the point of it; then it holds you and looks at you; then
-## the arm comes for the lens, covers it and lands; and the picture goes.
-const ARM_TIME := 2.58
-const KILL_TIME := 2.8
-const SIGNAL_TIME := 2.92
-const DROP_TIME := 3.1
-## How long the arm takes to go from a point to the whole screen.
-const ARM_SWING := KILL_TIME - ARM_TIME
-## How long the victim's own screen stays lost before it starts watching a
-## teammate. Alone, or with everyone else dead, the failure screen takes over
-## instead and this never runs out.
-const LOST_HOLD := 2.6
 
 func _enter_tree() -> void:
 	world_audio = $WorldAudio
@@ -199,6 +155,30 @@ func _enter_tree() -> void:
 	floor_map.name = "FloorMap"
 	floor_map.level = self
 	$Services.add_child(floor_map)
+	tvs = TELEVISIONS.new()
+	tvs.name = "Televisions"
+	tvs.level = self
+	$Services.add_child(tvs)
+	code = CODE_LOCK.new()
+	code.name = "CodeLock"
+	code.level = self
+	$Services.add_child(code)
+	executions = EXECUTIONS.new()
+	executions.name = "Executions"
+	executions.level = self
+	$Services.add_child(executions)
+	revival = REVIVAL.new()
+	revival.name = "Revival"
+	revival.level = self
+	$Services.add_child(revival)
+	interaction = INTERACTION.new()
+	interaction.name = "Interaction"
+	interaction.level = self
+	$Services.add_child(interaction)
+	rig = PRESENTATION_RIG.new()
+	rig.name = "PresentationRig"
+	rig.level = self
+	$Services.add_child(rig)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -836,297 +816,10 @@ func sheet_snapshot() -> Array:
 func restore_sheet(ops: Array) -> void:
 	ui.sheet.restore(ops)
 
-## Tab opens and closes the sheet. Dead players may look but not draw; The
-## Locust never sees it.
-func toggle_sheet() -> void:
-	if ui.sheet.visible:
-		ui.sheet.close()
-		player.reading = false
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		return
-	if match_net.local_is_locust() or is_instance_valid(reading_document): return
-	ui.sheet.seat = player.slot
-	ui.sheet.open(local_alive(), settings.prompt_name("sheet"), notes_found())
-	player.reading = true
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if world_audio.enabled: paper_sound.play()
-
-## The sets each stage is played on, chosen when the floor was built
-## (TV_PLACEMENT.settle), by stage.
-var tv_sets := {}
-
-## This floor's documents, lying on furniture (freed with the hotel).
-## The sets of the second and third stages, each lot in the wing its stage
-## opens. Everyone works out the same list from the seed and the number of
-## survivors, so nothing has to be sent: only which ones are on travels. They
-## go into one array, stage by stage, so an index means the same set on every
-## machine; each one remembers which stage it belongs to.
-func place_televisions() -> void:
-	televisions.clear()
-	if manifest.get("gates", []).is_empty(): return
-	for stage in [2, 3]:
-		for spot in tv_sets.get(stage, []):
-			var set := TELEVISION.new()
-			set.name = "Television_%d" % televisions.size()
-			set.stage = stage
-			set.position = spot.position
-			set.rotation.y = spot.yaw
-			# As big as the set it switches on: a socket that shrinks its
-			# furniture shrank the set and left the lit screen floating over it.
-			set.scale = Vector3.ONE * float(spot.get("scale", 1.0))
-			hotel.add_child(set)
-			televisions.append(set)
-
-## The sets a stage is played on, by index into `televisions`. A stage lights
-## its own wing's sets and nobody else's: what was left on behind you neither
-## counts for the wing you are in nor is anywhere the creature could step out.
-func stage_televisions(stage := -1) -> Array:
-	var wanted: int = session.stage if stage < 0 else stage
-	var result: Array = []
-	for index in televisions.size():
-		if is_instance_valid(televisions[index]) and int(televisions[index].stage) == wanted: result.append(index)
-	return result
-
-## Switching one on: the host decides, and the noise is made once, there.
-func switch_television(set: Node3D) -> void:
-	if not is_instance_valid(set) or set.on: return
-	match_net.use_television(set)
-
-## A set coming to life plays the whole dead channel the blackout plays, from
-## its screen, and then hisses softly for as long as it stays on
-## (world_audio.update_tv_hiss). It used to be a door's latch, louder than a
-## door shutting, so every set switched on sounded like somebody slamming one.
-const TV_BURST := "res://assets/audio/events/execution_static.ogg"
-const TV_BURST_GAIN := -6.0
-
-## Applied everywhere, whoever decided it. quiet: a returning player is told
-## the set is on, not made to hear it come on.
-func apply_television(index: int, value: bool, quiet := false) -> void:
-	if index < 0 or index >= televisions.size(): return
-	var set = televisions[index]
-	if not is_instance_valid(set) or not set.set_on(value): return
-	if not value:
-		# The static may have played out and freed itself long ago.
-		if is_instance_valid(set.burst): world_audio.stop_long(set.burst)
-		set.burst = null
-		return
-	var now := Time.get_ticks_msec() / 1000.0
-	set.hiss_after = now
-	if quiet: return
-	# Not twice: the blackout it trips plays the same static, and on a guest the
-	# two can arrive in either order.
-	var stream: AudioStream = load(TV_BURST)
-	if world_audio.enabled and not world_audio.long_playing(TV_BURST, 1.5, "warp"):
-		set.burst = world_audio.play_long(TV_BURST, set.screen_point(), TV_BURST_GAIN)
-	set.hiss_after = now + stream.get_length()
-	if not net.is_client(): on_noise(set.global_position + Vector3(0, 1.4, 0), set.click_radius(), NOISE.Kind.DOOR)
-
-## Travelling by television: a lit set is a way in and a way out. The creature
-## steps out of another lit one, wherever it is, which is why lighting them is
-## a risk and not only an errand.
-const WARP_REACH := 3.4
-const WARP_SOUND := "res://assets/audio/events/execution_static.ogg"
-
-## The sets it could step out of, by index, from the one it is standing at:
-## the ones of the stage in hand, so it never travels into a wing that is
-## already behind everybody.
-func lit_televisions() -> Array:
-	var result: Array = []
-	for index in stage_televisions():
-		if televisions[index].on: result.append(index)
-	return result
-
-## The lit set the creature is standing at, or -1. `reach`: the host judging
-## a hunter's request allows for its copy of the creature running behind.
-func creature_at_television(reach := WARP_REACH) -> int:
-	if not is_instance_valid(locust): return -1
-	for index in stage_televisions():
-		var set = televisions[index]
-		if set.on and set.global_position.distance_to(locust.global_position) < reach: return index
-	return -1
-
-## Where the creature comes out of a set: a step in front of it, on floor it
-## can stand on -- in a suite the set is in the alcove, and 1.6 m straight out
-## was inside the partition.
-func television_exit(index: int) -> Vector3:
-	var set = televisions[index]
-	var out: Vector3 = set.global_position + Vector3(sin(set.rotation.y), 0, cos(set.rotation.y)) * 1.6
-	var map: RID = get_world_3d().navigation_map
-	if NavigationServer3D.map_get_iteration_id(map) > 0: out = FLOOR.closest(map, out)
-	return out
-
-## It comes out of the set at `index`, a step in front of it, looking into the
-## room. Applied on every machine, whoever decided it.
-func warp_creature(index: int) -> void:
-	if index < 0 or index >= televisions.size() or not is_instance_valid(locust): return
-	var set = televisions[index]
-	if not is_instance_valid(set) or not set.on: return
-	var from: Vector3 = locust.global_position
-	locust.global_position = television_exit(index) + Vector3(0, 0.04, 0)
-	# Facing the room it came out into, not back at the screen.
-	locust.rotation.y = set.rotation.y + PI
-	# A puppet ignores the states still on their way from beside the old set.
-	if locust.control == "puppet":
-		locust.ride_point = locust.global_position
-		locust.ride_hold = 2.0
-	locust.velocity = Vector3.ZERO
-	locust.speed = 0.0
-	# A puppet interpolates between the states it is sent: without this it
-	# would slide across the floor instead of stepping out of a screen.
-	locust.net_states.clear()
-	locust.net_clock = 0.0
-	if is_instance_valid(locust.driver): locust.driver.channel_open = false
-	# The machine looks round the room it came out into, and then goes about
-	# the wing. Nothing of the old place comes with it: it used to hear its own
-	# arrival -- a noise 1.4 m over its head it never reached -- and stood
-	# twelve seconds where it stepped out, and a wardrobe beside the set was
-	# opened on the strength of it.
-	if locust.control == "ai":
-		locust.forget_route()
-		locust.last_known = locust.global_position
-		locust.last_heading = -locust.global_basis.z
-		locust.set_mode(locust.Mode.SEARCH)
-	# On players of their own: in the pool of short cues the next doors cut
-	# fourteen seconds of static off after one or two. What the survivors hear
-	# is this static, from both sets; the creature hears nothing of itself.
-	if world_audio.enabled:
-		world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0, RID(), false, 0.0, "warp")
-		world_audio.play_long(WARP_SOUND, locust.global_position + Vector3(0, 1.4, 0), -4.0, RID(), false, 0.0, "warp")
-
-## How many of the stage's own sets are on. What burns in another wing is not
-## counted: every stage from the second starts its tally at nothing.
-func televisions_on() -> int:
-	var count := 0
-	for index in stage_televisions():
-		if televisions[index].on: count += 1
-	return count
-
-## The drawers, shelves and cupboards of the floor, and the four numbers hidden
-## in four of them, in the wing of the last stage. Everyone works out the same
-## hiding places from the seed; only what has been gone through travels.
-func place_containers() -> void:
-	containers.clear()
-	found_digits.clear()
-	found_by.clear()
-	found_where.clear()
-	code_entered = false
-	typed = ""
-	lock = null
-	close_lock()
-	if manifest.get("gates", []).is_empty(): return
-	for spot in hotel.containers:
-		var piece := CONTAINER.new()
-		piece.name = "Container_%d" % containers.size()
-		piece.kind = str(spot.kind)
-		piece.front = float(spot.get("front", 0.5))
-		piece.note_spot = spot.get("note", {})
-		piece.position = spot.position
-		piece.rotation.y = spot.yaw
-		# Parented to its room, so it is culled with it, but placed by the
-		# world point the dressing worked out.
-		var room_node = hotel.room_nodes[int(spot.room)] if int(spot.room) < hotel.room_nodes.size() else hotel
-		piece.position = spot.position - room_node.position
-		room_node.add_child(piece)
-		containers.append(piece)
-	# The keypad, beside the last door, on the refuge's side of it.
-	if not hotel.lifts.is_empty() and not manifest.gates.is_empty():
-		var last: Dictionary = manifest.gates[manifest.gates.size() - 1]
-		var out: Array = last.get("out", [1, 0])
-		var away := Vector3(int(out[0]), 0, int(out[1]))
-		# On the wall the door is in, which is the one the refuge shares with
-		# the landing behind it.
-		var door_point: Vector3 = FLOOR.portal_between(manifest.rooms[int(last.room)], manifest.rooms[int(last.beyond)])
-		lock = LOCK.new()
-		lock.name = "CodeLock"
-		# Its back on the plaster (0.09 from the wall's centre line; the panel
-		# sits 0.05 in front of the node): at 0.35 it hung in the air.
-		lock.position = door_point - away * 0.07 + Vector3(away.z, 0, -away.x) * 1.1
-		lock.rotation.y = atan2(-away.x, -away.z)
-		hotel.add_child(lock)
-	for hidden in DIGITS.choose(manifest, hotel.containers):
-		var index := int(hidden.container)
-		if index < 0 or index >= containers.size(): continue
-		containers[index].digit = int(hidden.digit)
-		containers[index].slot = int(hidden.slot)
-		# The four that hold something say so: a slip of paper left showing.
-		containers[index].plant_note()
-	camcorder.write_code("")
-
-## Going through one: the host decides, as with everything else.
-func search_container(piece: Node3D) -> void:
-	if not is_instance_valid(piece) or piece.searched: return
-	match_net.use_container(piece)
-
-## Applied everywhere, whoever decided it. Quiet: caught up on coming back,
-## not happening now.
-func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
-	if seat < 0: seat = player.slot
-	if index < 0 or index >= containers.size(): return
-	var piece = containers[index]
-	if not is_instance_valid(piece) or not piece.set_searched(value): return
-	if not value: return
-	if world_audio.enabled and not quiet: world_audio.play_at(SEARCH_SOUND, piece.global_position + Vector3(0, 0.8, 0), -10.0)
-	if not net.is_client() and not quiet: on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
-	if piece.digit >= 0:
-		found_digits[piece.slot] = piece.digit
-		found_by[piece.slot] = seat
-		var room: Dictionary = FLOOR.room_at(manifest.rooms, piece.global_position)
-		var number := int(room.get("number", 0))
-		found_where[piece.slot] = ("HABITACIÓN %d" % number) if number > 0 else String(FLOOR.NAMES[int(room.get("type", 0))]).to_upper()
-		# The paper leaves with whoever took it, and what it said stays written
-		# on the tape until the floor is over.
-		piece.take_note()
-		if not match_net.local_is_locust() and seat == player.slot:
-			camcorder.write_code(noted_code())
-
 ## The stage's own sets, all of them on. A stage with no sets of its own asks
 ## for nothing here.
 func sets_lit() -> bool:
 	return stage_televisions().is_empty() or televisions_on() >= TV_PLACEMENT.needed(session.roster_count)
-
-## The slips this player took, in the order the code reads: which place, the
-## number on it, and the room it came out of. Only its own -- what the others
-## found is theirs to say out loud, which is half of playing together.
-func notes_found() -> Array:
-	var slips: Array = []
-	for slot in range(1, DIGITS.COUNT + 1):
-		if not found_digits.has(slot) or int(found_by.get(slot, player.slot)) != player.slot: continue
-		slips.append({"slot": slot, "digit": int(found_digits[slot]), "where": String(found_where.get(slot, ""))})
-	return slips
-
-## What is written down: nothing until the first number turns up, and from
-## then on the code with a dash in the places still missing.
-func noted_code() -> String: return "" if notes_found().is_empty() else code_so_far(true)
-
-## The code as it is known so far, with a dash where a number is missing: the
-## team's, or with `own` only what this player found.
-func code_so_far(own := false) -> String:
-	var text := ""
-	for slot in range(1, DIGITS.COUNT + 1):
-		var known: bool = found_digits.has(slot) and (not own or int(found_by.get(slot, player.slot)) == player.slot)
-		text += str(found_digits[slot]) if known else "–"
-	return text
-
-func place_documents() -> void:
-	for spot in PLACEMENT.choose(manifest, "locust"):
-		var document := DOCUMENT.new()
-		document.name = "Document_" + spot.entry
-		document.entry_id = spot.entry
-		document.position = spot.position
-		document.rotation.y = spot.yaw
-		hotel.add_child(document)
-
-func open_document(document: Node3D) -> void:
-	reading_document = document
-	player.reading = true
-	ui.show_document(CATALOG.entry(document.entry_id))
-	if world_audio.enabled: paper_sound.play()
-	discoveries.record(document.entry_id)
-
-func close_document() -> void:
-	reading_document = null
-	player.reading = false
-	ui.hide_document()
 
 func on_state() -> void:
 	var playing: bool = session.state == session.State.PLAYING
@@ -1338,10 +1031,6 @@ func pad_pressed(button: int) -> void:
 	if button == JOY_BUTTON_B and session.state == session.State.PLAYING and not ui.settings_open and not online_menu and not is_instance_valid(reading_document): return
 	step_back()
 
-## The number the cross is resting on while the keypad is up (a pad has no
-## number keys, so it is dialled).
-var lock_digit := 0
-
 ## The stage the floor was on when it was last looked at, to tell a change.
 var last_stage := 1
 
@@ -1366,192 +1055,6 @@ const POWER_BACK := 1.6
 func restore_power() -> void:
 	hotel.blackout(false)
 	if world_audio.enabled and not lifts.boarding.is_empty(): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), -4.0, RID(), true, POWER_BACK)
-
-## Everybody is on their feet again: between stages, or because the floor gave
-## this stage back after it was lost. The authority says where, and every
-## machine puts the bodies there.
-func on_revived(restart: bool) -> void:
-	if net.is_client() or manifest.is_empty(): return
-	var point := revival_point()
-	var places := {}
-	# Nobody for a seat lost for the floor: raised here, it was a body nobody
-	# drove, counted alive and never dropped again.
-	for seat in session.participants:
-		if not session.dropped.has(seat): places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
-	# A stage given back is given back whole, the creature too: it goes to a
-	# den of the wing far from the door everybody is raised at. Left where it
-	# stood, it was often a metre from them. A creature somebody drives is
-	# theirs to walk back.
-	var den := Vector3.INF
-	if restart and is_instance_valid(locust) and locust.control == "ai": den = den_away(point, RESTART_DEN)
-	apply_revival(places, restart, den)
-	if match_net.in_match(): match_net.revive_everyone(places, restart, den)
-
-## How far (metres of walking) from the stage's door the creature is put when
-## a stage is given back, and how long it stands there before it moves.
-const RESTART_DEN := 45.0
-const RESTART_GRACE := 12.0
-
-## A place for the creature in the wing of the stage in hand, at least `least`
-## metres of walking from `away_from`: drawn among the rooms that far (the
-## farthest one when none is), never a refuge, a lift lobby or the void.
-## INF when there is no room to be had.
-func den_away(away_from: Vector3, least: float) -> Vector3:
-	var from := FLOOR.room_at(manifest.rooms, away_from)
-	if from.is_empty(): return Vector3.INF
-	var wing: int = session.stage - 1
-	var metres := FLOOR.route_metres(manifest, int(from.id))
-	var shut_out := off_limits_rooms()
-	var far_enough: Array = []
-	var farthest := -1
-	var farthest_metres := -1.0
-	for room in manifest.rooms:
-		var id := int(room.id)
-		if int(room.get("wing", 0)) != wing or shut_out.has(id) or FLOOR.is_void(room) or not metres.has(id): continue
-		var walk := float(metres[id])
-		if walk >= least: far_enough.append(id)
-		if walk > farthest_metres:
-			farthest_metres = walk
-			farthest = id
-	if far_enough.is_empty():
-		if farthest < 0: return Vector3.INF
-		far_enough.append(farthest)
-	var draw := RandomNumberGenerator.new()
-	draw.seed = hash([int(manifest.seed), "restart den", session.stage, session.restarts])
-	var point := FLOOR.position_of(manifest.rooms[far_enough[draw.randi_range(0, far_enough.size() - 1)]])
-	var map: RID = get_world_3d().navigation_map
-	if NavigationServer3D.map_get_iteration_id(map) > 0: point = FLOOR.closest(map, point)
-	return point + Vector3(0, 0.04, 0)
-
-## The creature put somewhere else at once, on every machine: where it is
-## driven it forgets everybody and waits `rest` seconds; a puppet drops the
-## states still on their way from where it was, or it would slide across the
-## floor to get there (the same as stepping out of a set, warp_creature).
-func relocate_creature(point: Vector3, rest: float) -> void:
-	if not is_instance_valid(locust) or point == Vector3.INF: return
-	if locust.control == "ai": locust.relocate(point, rest)
-	else: locust.global_position = point
-	locust.velocity = Vector3.ZERO
-	locust.speed = 0.0
-	if locust.control == "puppet":
-		locust.ride_point = point
-		locust.ride_hold = 2.0
-	locust.net_states.clear()
-	locust.net_clock = 0.0
-
-## Where somebody who comes back after dropping is put: the place the floor
-## remembers for them. Unless the floor crossed to another wing while they were
-## away -- their old place is then behind a stage door with half a hotel
-## between them and everybody else, and nobody would call that coming back.
-## The stage in hand starts them where a revival would.
-func return_place(remembered: Vector3) -> Vector3:
-	if manifest.is_empty(): return remembered
-	var wing := int(FLOOR.room_at(manifest.rooms, remembered).get("wing", -1))
-	if wing == session.stage - 1: return remembered
-	return revival_point() + Vector3(0, 0.1, 0)
-
-## Where a stage starts: just inside the wing it is played in.
-func revival_point() -> Vector3:
-	var gates_list: Array = manifest.get("gates", [])
-	# A negative index wraps round in GDScript, so the first stage asking for
-	# this would have been sent to the last gate of the floor.
-	var index: int = session.stage - 2
-	if index < 0 or index >= gates_list.size(): return Vector3(0, 0.04, 0)
-	var gate: Dictionary = gates_list[index]
-	var arrive := int(gate.get("arrive", -1))
-	if arrive < 0: return FLOOR.position_of(manifest.rooms[refuge_room()])
-	return FLOOR.position_of(manifest.rooms[arrive])
-
-## Applied on every machine: the local body comes back where it is told, the
-## others are placed, and a stage that was lost starts again as it was found.
-func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF) -> void:
-	# The message itself says these seats are up. A guest's session is pushed
-	# twice a second, so waiting for it to say so leaves up to half a second in
-	# which the body is put away again every frame -- and its torch with it,
-	# because the light hangs off the camera: hidden for its owner and lit for
-	# everybody else.
-	var raised := false
-	for seat_key in places:
-		var seat := int(seat_key)
-		if session.participants.get(seat, session.Life.DEAD) == session.Life.DEAD:
-			session.participants[seat] = session.Life.EXPLORING
-			raised = true
-	if raised: session.changed.emit()
-	for seat_key in places:
-		var seat := int(seat_key)
-		if seat == player.slot: restore_local_player(places[seat_key])
-		elif match_net.bodies.has(seat) and is_instance_valid(match_net.bodies[seat]):
-			# Out of any wardrobe first, as its owner is on its own machine:
-			# moved while still "inside", it went invisible and kept the
-			# wardrobe taken for the rest of the floor.
-			var body = match_net.bodies[seat]
-			if body.hidden and is_instance_valid(body.hiding_place): match_net.remote_leaves(body.hiding_place, body)
-			body.place(places[seat_key], 0.0)
-			# Its head clear too, the same as the local one's.
-			sanity.minds.erase(seat)
-			match_net.bodies[seat].set_burnt(false)
-	if restart:
-		# Its door too: shut and locked again, or the stage given back could
-		# be walked out of without doing it again.
-		hotel.relock_gate(session.stage)
-		# The stage as it was found: its own wing's sets go out again. What was
-		# lit in the wings behind is not this stage's to undo.
-		for index in stage_televisions():
-			if televisions[index].on:
-				apply_television(index, false)
-				if not net.is_client() and match_net.in_match(): match_net.television_state.rpc(index, false)
-		# And the power with them: the cut came with the sets, and a stage
-		# given back is given back whole. The authority says so, as always.
-		if not net.is_client() and bool(session.goal.get("blackout", false)):
-			session.goal["blackout"] = false
-			session.changed.emit()
-		relocate_creature(creature_at, RESTART_GRACE)
-		if director != null and director.has_method("on_restart"): director.on_restart()
-
-## The inverse of watching a teammate: its own body, its own camera.
-func restore_local_player(point: Vector3) -> void:
-	# On its feet again with its head clear: what it went through belonged to
-	# the stage it lost.
-	player.sanity = 100.0
-	player.set_burnt(false)
-	player.active = session.state == session.State.PLAYING and not online_menu and not match_net.local_is_locust()
-	player.velocity = Vector3.ZERO
-	player.reset_handheld()
-	player.global_position = point
-	# Whoever closed the stage is put on their feet by the session at the same
-	# moment their lift is carrying them: the ride keeps the hold and the
-	# picture until the doors open.
-	player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
-	if player.hidden: player.force_leave_hide()
-	stop_watching()
-	clear_screen_cues()
-	# Put somewhere else: a cut, with the rooms there shown at once.
-	visibility_clock = 1.0
-	camera_cut()
-	# A sheet opened while dead was opened to look at only: up again, it is
-	# theirs to write on.
-	if ui.sheet.visible and not ui.sheet.editable: ui.sheet.open(true, settings.prompt_name("sheet"), notes_found())
-
-## Back behind its own eyes. Everything watching a teammate did to the body --
-## hidden, without collision, with somebody else's camera in front -- is undone
-## here, and the torch is brought back to the hand: it is not parented to the
-## camera but trails it, so a body that jumps leaves its own light behind.
-## Called on a revival and again from the loop, because a single frame spent
-## believing it was dead would otherwise leave the body away for the rest of
-## the floor.
-func stop_watching() -> void:
-	var hunter: bool = match_net.local_is_locust()
-	player.visible = not hunter
-	player.collision_layer = 0 if hunter else 4
-	if is_instance_valid(player.camera): player.camera.current = not hunter
-	if is_instance_valid(watch_camera): watch_camera.current = false
-	if is_instance_valid(watch_rig):
-		watch_rig.queue_free()
-		watch_rig = null
-		watch_camera = null
-		watch_arm = null
-	match_net.watching = 0
-	player.snap_torch()
 
 ## The title room is shown only on the main menu; any other state gets the
 ## hotel's light back and, outside the opening scene, the player's camera.
@@ -1598,104 +1101,6 @@ func local_alive() -> bool:
 func survivor_active(body: Node3D) -> bool:
 	return session.participants.get(body.slot, session.Life.DEAD) != session.Life.DEAD and not point_protected(body.global_position) and not lifts.riding.has(int(body.slot)) and not untouchable.has(int(body.slot))
 
-## The creature reached this survivor: the execution starts and the death is
-## registered when it ends (host, or offline).
-func capture_survivor(body: Node3D) -> void:
-	if body == null or net.is_client() or not execution.is_empty() or not is_instance_valid(locust): return
-	if session.participants.get(body.slot, session.Life.DEAD) != session.Life.EXPLORING: return
-	if lifts.riding.has(int(body.slot)) or point_protected(body.global_position): return
-	if spare.is_valid() and bool(spare.call(body)): return
-	if match_net.in_match(): match_net.free_victim_hide(body.slot)
-	var point: Vector3 = locust.global_position
-	var yaw: float = locust.rotation.y
-	apply_execution(body.slot, point, yaw)
-	if match_net.in_match(): match_net.execute_start.rpc(body.slot, point, yaw)
-
-## Everyone plays out the execution: the creature holds its victim up and
-## stabs three times. The victim's own machine takes over its body.
-func apply_execution(seat: int, point: Vector3, yaw: float) -> void:
-	execution = {"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false}
-	strike_uv = Vector2(0.35, 0.55)
-	if is_instance_valid(locust) and locust.control != "puppet": locust.begin_execution()
-	if seat == player.slot:
-		# The grip: a long, deep shake, and each stab lands on top of it.
-		rumble(0.5, 0.9, 0.7)
-		player.active = false
-		player.held = true
-		player.velocity = Vector3.ZERO
-		if player.hidden: player.force_leave_hide()
-		if ui.sheet.visible: toggle_sheet()
-		# Nothing it was reading stays up over its death.
-		if lock_open: close_lock()
-		if is_instance_valid(reading_document): close_document()
-	# The scream is the moment it has you: flat and loud in the victim's own
-	# ears, and out in the room for everybody else.
-	if not world_audio.enabled: return
-	if seat == player.slot:
-		if is_instance_valid(scream_sound): scream_sound.play()
-	# Everybody else hears it wherever they are on the floor: somebody has been
-	# caught, and nobody should miss that it happened.
-	else: world_audio.play_everywhere(SCREAM, point + Vector3(0, 2.0, 0), -4.0, 0.0)
-
-## Sounds, screen jolts and, on the host, the death at the end.
-func update_execution(delta: float) -> void:
-	if execution.is_empty(): return
-	execution.time += delta
-	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
-	var held := point + Vector3(0, 1.7, 0)
-	# The whoosh starts with the arm, so its impact lands as the lens goes.
-	if int(execution.stabs) == 0 and execution.time >= ARM_TIME:
-		if world_audio.enabled:
-			if int(execution.seat) == player.slot and is_instance_valid(blow_sound): blow_sound.play()
-			else: world_audio.play_everywhere(KILL_BLOW, held, -1.0, 0.0)
-		execution.stabs = 1
-	if int(execution.stabs) == 1 and execution.time >= KILL_TIME:
-		glitch = 1.0
-		if int(execution.seat) == player.slot: rumble(0.2, 1.0, 0.35)
-		execution.stabs = 2
-	# The dead channel starts with the snow, not before it: sound and picture
-	# are the same event.
-	if int(execution.stabs) == 2 and execution.time >= SIGNAL_TIME:
-		execution.stabs = 3
-		if int(execution.seat) == player.slot and world_audio.enabled and is_instance_valid(static_sound): static_sound.play()
-	# The body going down is not heard: right after the blow it read as a
-	# second stab, and nothing is lost by letting it fall in silence.
-	if not execution.dropped and execution.time >= DROP_TIME: execution.dropped = true
-	if execution.time >= locust.EXECUTION_TIME + 0.3:
-		var seat := int(execution.seat)
-		# Its own picture is gone: it keeps the lost signal a moment before it
-		# ends up watching somebody else's camera.
-		if seat == player.slot:
-			lost_signal = LOST_HOLD
-			ui.lost_signal(LOST_HOLD)
-		execution = {}
-		# Only the victim was held by it: somebody else's death let whoever
-		# was mid-ride walk about in the dark.
-		if seat == player.slot:
-			player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
-			if player.avatar != null:
-				player.avatar.rotation.x = 0.0
-				player.avatar.rotation.z = 0.0
-		if not net.is_client():
-			run_stats.deaths = int(run_stats.deaths) + 1
-			session.capture(seat)
-
-## An execution cut short: the victim is let go alive, back on its feet with a
-## clean picture, and the creature leaves the kill.
-func release_execution() -> void:
-	var seat := int(execution.seat)
-	execution = {}
-	if seat == player.slot:
-		player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
-		if player.avatar != null:
-			player.avatar.rotation.x = 0.0
-			player.avatar.rotation.z = 0.0
-		if is_instance_valid(scream_sound): scream_sound.stop()
-		if is_instance_valid(blow_sound): blow_sound.stop()
-		clear_screen_cues()
-	if is_instance_valid(locust) and locust.control != "puppet" and locust.mode == locust.Mode.EXECUTE:
-		locust.set_mode(locust.Mode.SEARCH if locust.control == "ai" else locust.Mode.PATROL)
-
 ## Back to a clean picture: leaving for the menu, or starting a floor. The
 ## filter's material outlives the floor, so a signal that was lost when the
 ## hotel was freed would still be lost over the title room.
@@ -1712,70 +1117,6 @@ func clear_screen_cues() -> void:
 		post_material.set_shader_parameter("strike_fill", 0.0)
 		post_material.set_shader_parameter("enclosure", 0.0)
 		post_material.set_shader_parameter("threat_glitch", 0.0)
-
-## Where the striking arm is on the victim's screen, as a UV: the black
-## spreads from there, so it reads as an arm arriving and not as a fade.
-var strike_uv := Vector2(0.35, 0.55)
-func strike_on_screen() -> Vector2:
-	if not is_instance_valid(locust) or not is_instance_valid(player.camera): return strike_uv
-	# The hand that is actually coming: the creature holds with its left and
-	# strikes with its right (locust_visual), and facing you its right is on
-	# your left, which is where the black has to start.
-	var hand: Vector3 = locust.global_position + Vector3(0, 2.0, 0) + locust.global_basis.x * 0.45
-	var visual = locust.visual
-	if is_instance_valid(visual) and "skeleton" in visual and "bones" in visual and visual.bones.has("R_Hand"):
-		hand = visual.skeleton.global_transform * visual.skeleton.get_bone_global_pose(int(visual.bones["R_Hand"])).origin
-	var size: Vector2 = player.camera.get_viewport().get_visible_rect().size
-	if size.x <= 0.0 or size.y <= 0.0: return strike_uv
-	# Once the hand is past the lens it would project inverted, so the last
-	# place it was seen is kept: the black goes on spreading from there instead
-	# of jumping to the middle of the screen.
-	if player.camera.is_position_behind(hand): return strike_uv
-	var point: Vector2 = player.camera.unproject_position(hand)
-	# Kept inside the frame and on the left half: the arm that strikes is the
-	# creature's right, which facing you is on your left, and a black growing
-	# from a corner reads as a shadow instead of as something arriving.
-	strike_uv = Vector2(clampf(point.x / size.x, 0.08, 0.5), clampf(point.y / size.y, 0.18, 0.82))
-	return strike_uv
-
-## The victim: held in the air in front of the creature, looking at it.
-func hold_victim(delta: float) -> void:
-	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
-	var time: float = execution.time
-	var lift := victim_lift(time)
-	var wanted := victim_hold_point()
-	player.velocity = Vector3.ZERO
-	player.global_position = player.global_position.lerp(wanted, minf(1.0, delta * 10.0))
-	# Run through on the blade: the body hangs back and sags, and goes limp
-	# once the arm is through its face.
-	var limp := clampf((time - KILL_TIME) / 0.35, 0.0, 1.0)
-	if player.avatar != null:
-		player.avatar.rotation.x = -(0.5 + 0.5 * limp) * lift
-		player.avatar.rotation.z = (0.12 + 0.25 * limp) * lift
-	# It is the last thing you see.
-	var head := point + Vector3(0, 2.3, 0)
-	var offset: Vector3 = head - player.camera.global_position
-	player.rotation.y = lerp_angle(player.rotation.y, atan2(-offset.x, -offset.z), minf(1.0, delta * 8.0))
-	player.camera.rotation.x = lerpf(player.camera.rotation.x, atan2(offset.y, Vector2(offset.x, offset.z).length()), minf(1.0, delta * 8.0))
-	camcorder.focus("")
-	ui.hint.text = ""
-	ui.progress.visible = false
-
-## How high the victim is held at this moment of it: up, and let fall.
-func victim_lift(time: float) -> float:
-	return clampf(time / 0.5, 0.0, 1.0) - clampf((time - DROP_TIME) / 0.4, 0.0, 1.0)
-
-## Where the victim of the execution in hand is held: on the blade at the
-## creature's chest height, and drawn slowly in -- the mask arriving is the
-## whole point of the wait before the blow. The local player is put there,
-## and so is a test bot's body.
-func victim_hold_point() -> Vector3:
-	var point: Vector3 = locust.global_position if is_instance_valid(locust) else execution.point
-	var yaw: float = locust.rotation.y if is_instance_valid(locust) else execution.yaw
-	var forward := -Basis(Vector3.UP, yaw).z
-	var time: float = execution.time
-	var closing := ease(clampf((time - 0.5) / maxf(KILL_TIME - 0.5, 0.01), 0.0, 1.0), 0.45)
-	return point + forward * lerpf(1.15, 0.6, closing) + Vector3(0, 0.1 + victim_lift(time) * 1.0, 0)
 
 ## The creature searches a wardrobe: the host opens it leaf by leaf and, if
 ## somebody is inside, that is where the execution starts.
@@ -1884,83 +1225,6 @@ func on_noise(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> voi
 	if observer_view != null: observer_view.gizmos.note_noise(point, radius)
 	match_net.noise(point, radius, kind)
 
-func focused_area():
-	var from: Vector3 = player.camera.global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * 2.0, 1 | 8 | 16)
-	query.collide_with_areas = true
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	return hit.collider if not hit.is_empty() else null
-
-func focused_hide():
-	var area = focused_area()
-	return area if area is HIDE else null
-
-func focused_document():
-	var area = focused_area()
-	return area if area is DOCUMENT else null
-
-func focused_television():
-	var area = focused_area()
-	return area if area is TELEVISION else null
-
-func focused_container():
-	var area = focused_area()
-	return area if area is CONTAINER else null
-
-func focused_lock():
-	var area = focused_area()
-	return area if area is LOCK else null
-
-## The keypad: numbers go in, a wrong code clears itself, the right one opens
-## the door for everybody.
-func type_code(character: String) -> void:
-	if character == "borrar": typed = typed.substr(0, maxi(0, typed.length() - 1))
-	elif typed.length() < DIGITS.COUNT: typed += character
-	if typed.length() < DIGITS.COUNT:
-		ui.keypad("key")
-		ui.show_lock(typed, DIGITS.COUNT, "", noted_code(), lock_digit)
-		return
-	var verdict := code_verdict(typed)
-	# The right code on a wing whose sets are still dark: the door is not
-	# going to move, and it is better said here than guessed at the door.
-	if verdict == "sets":
-		typed = ""
-		ui.keypad("wrong")
-		ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code(), lock_digit)
-		return
-	# Only the keypad is heard: a try is not a door. It used to creak like one
-	# on every wrong code, and latch on the right one, with nothing moving.
-	if verdict == "right":
-		ui.keypad("right")
-		match_net.use_code()
-		ui.show_lock(typed, DIGITS.COUNT, "ABIERTA", noted_code(), lock_digit)
-		close_lock()
-	else:
-		typed = ""
-		ui.keypad("wrong")
-		ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code(), lock_digit)
-
-## What the keypad makes of a code: "right", "sets" (right, but the stage's
-## sets are still dark, so the door would not move) or "wrong". The keypad on
-## screen asks here, and so do the test bots, which have no screen.
-func code_verdict(text: String) -> String:
-	var right: String = "".join(DIGITS.code(manifest).map(func(digit): return str(digit)))
-	if text != right: return "wrong"
-	return "right" if sets_lit() else "sets"
-
-func open_lock() -> void:
-	lock_open = true
-	typed = ""
-	lock_digit = 0
-	player.reading = true
-	ui.show_lock("", DIGITS.COUNT, "", noted_code(), lock_digit)
-
-func close_lock() -> void:
-	lock_open = false
-	player.reading = false
-	ui.hide_lock()
-
-## The code is in: the last door gives way, on every machine.
 ## A player back in a running floor: what it rebuilt knows nothing of what
 ## happened meanwhile (match_net.catch_up). Its card named sector 1, its
 ## drawers were full again -- and the host would not let them be searched a
@@ -1981,55 +1245,6 @@ func catch_up_progress(progress: Dictionary) -> void:
 		if not automation and not match_net.local_is_locust():
 			ui.show_transit("SECTOR %d" % stage, lifts.stage_errand(stage), lifts.OPENING_CARD)
 		lifts.pending_brief = stage
-
-func apply_code() -> void:
-	if code_entered: return
-	code_entered = true
-	if is_instance_valid(lock): lock.set_open(true)
-
-## Online: the name of the teammate straight ahead, within a few metres.
-func focused_teammate() -> String:
-	if match_net.bodies.is_empty(): return ""
-	var from: Vector3 = player.camera.global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * 8.0, 1 | 4 | 8)
-	query.exclude = [player.get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if hit.is_empty() or not "player_name" in hit.collider: return ""
-	return hit.collider.player_name.to_upper()
-
-## Doors are reached from further away than wardrobes.
-const DOOR_REACH := 3.2
-## An open door this close can be shut without looking at it, so it can be
-## pulled closed behind you while running away.
-const DOOR_BEHIND_REACH := 3.0
-
-func focused_door():
-	var from: Vector3 = player.camera.global_position
-	# 64 too: a leaf somebody is standing in is not solid yet, and it must
-	# still be there to be used -- to open again the door just shut on you.
-	var query := PhysicsRayQueryParameters3D.create(from, from - player.camera.global_basis.z * DOOR_REACH, 1 | 8 | 64)
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty() and hit.collider is DOOR: return hit.collider
-	# And from inside it, doors only: the head can be in the leaf of a door
-	# shut on it, and a ray starting inside a shape does not see that shape.
-	query.collision_mask = 8 | 64
-	query.hit_from_inside = true
-	hit = get_world_3d().direct_space_state.intersect_ray(query)
-	return hit.collider if not hit.is_empty() and hit.collider is DOOR and hit.position.distance_to(from) < 0.01 else null
-
-## Nearest open door within reach, for closing it without looking at it.
-func door_behind():
-	var best = null
-	var best_distance := DOOR_BEHIND_REACH
-	for door in hotel.doors:
-		if not door.opened or door.moving: continue
-		var distance := Vector2(door.doorway.x - player.global_position.x, door.doorway.z - player.global_position.z).length()
-		# Not the one on the planta above or below, straight overhead.
-		if absf(door.doorway.y - player.global_position.y) > 2.0: continue
-		if distance < best_distance:
-			best = door
-			best_distance = distance
-	return best
 
 func _physics_process(delta: float) -> void:
 	# Watching a recording: what moves is what was recorded (bot_replay.gd).
@@ -2084,178 +1299,6 @@ func track_refuges() -> void:
 	if net.is_client(): return
 	for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
 
-## This machine's own player: looking, opening, reading, hiding, or watching a
-## teammate once it is dead.
-func drive_local(delta: float) -> void:
-	track_refuges()
-	# The bots drive their own bodies; this machine's player is parked, and
-	# everything below is for a player who is playing. Run, it put the parked
-	# body back in sight and in reach every frame (stop_watching).
-	if bot_match: return
-	if not execution.is_empty() and int(execution.seat) == player.slot:
-		hold_victim(delta)
-		return
-	# Not over the keypad: closing the sheet let the body walk off with the
-	# keypad still on screen taking digits.
-	if Input.is_action_just_pressed("sheet") and not online_menu and not lock_open: toggle_sheet()
-	if ui.sheet.visible:
-		# Looking at the sheet: the character stands still, the world goes on.
-		camcorder.focus("")
-		if not local_alive(): watch_teammates()
-		return
-	if not local_alive():
-		# Its own picture went with it: the lost signal holds a moment before
-		# the view ends up over a teammate's shoulder.
-		if lost_signal > 0.0:
-			camcorder.focus("")
-			ui.hint.text = ""
-			return
-		watch_teammates()
-		return
-	if online_menu or match_net.local_is_locust(): return
-	# On its feet and still put away: whatever watching a teammate did to the
-	# body is undone now. The word that it is up and the replicated session
-	# that says so do not always arrive in that order, and a body left hidden
-	# is a body whose own torch only the others can see.
-	if is_instance_valid(watch_rig) or not player.visible: stop_watching()
-	camcorder.set_stamina(player.stamina / 100.0, player.exhausted)
-	var floor_room := FLOOR.room_at(manifest.rooms, player.global_position)
-	player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
-	if is_instance_valid(reading_document):
-		camcorder.focus("")
-		if Input.is_action_just_pressed("interact"): close_document()
-		was_held = true
-		return
-	if lock_open:
-		camcorder.focus("")
-		ui.hint.text = ""
-		return
-	var lock_target = focused_lock()
-	if Input.is_action_just_pressed("interact") and is_instance_valid(lock_target) and not code_entered:
-		open_lock()
-		was_held = true
-		return
-	var container_target = focused_container()
-	if is_instance_valid(container_target) and not container_target.searched:
-		if Input.is_action_pressed("interact"):
-			search_time += delta
-			if search_time >= CONTAINER.SEARCH_TIME:
-				search_container(container_target)
-				search_time = 0.0
-			camcorder.focus("REGISTRAR")
-			ui.hint.text = ""
-			was_held = true
-			return
-		search_time = 0.0
-	else: search_time = 0.0
-	# Standing in a car that can go: the button. It leaves with everybody who
-	# is in it (lifts.gd), so a team waits for each other before pressing.
-	var car: int = lifts.car_at(player.global_position) if not player.hidden else -1
-	if car >= 0:
-		camcorder.focus("PULSAR")
-		if Input.is_action_just_pressed("interact"): match_net.call_lift(car)
-		was_held = Input.is_action_pressed("interact")
-		return
-	var television_target = focused_television()
-	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(television_target) and not television_target.on:
-		switch_television(television_target)
-		was_held = true
-		return
-	var document_target = focused_document()
-	if Input.is_action_just_pressed("interact") and not player.hidden and is_instance_valid(document_target):
-		open_document(document_target)
-		was_held = true
-		return
-	var hiding_target = focused_hide()
-	if Input.is_action_just_pressed("interact") and (player.hidden or is_instance_valid(hiding_target)):
-		if player.hidden: match_net.use_hide(player.hiding_place, false)
-		else:
-			if is_instance_valid(locust) and locust.control == "ai" and locust.sees(player, true): locust.observed_hide = hiding_target
-			match_net.use_hide(hiding_target, true)
-		pressed_door = null
-		was_held = true
-	var key: String = settings.prompt_name("interact")
-	if player.hidden:
-		camcorder.focus("SALIR")
-		ui.hint.text = ""
-		ui.subtitle.text = ""
-		ui.progress.visible = false
-		return
-	var target = focused_door()
-	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
-	var held := Input.is_action_pressed("interact")
-	# Camcorder-style focus brackets replace the old control prompts.
-	camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
-	if held and not was_held:
-		pressed_door = target
-		press_time = 0
-		slow_used = false
-	if held and is_instance_valid(pressed_door) and target == pressed_door:
-		press_time += delta
-		if press_time >= 1 and not slow_used:
-			match_net.use_door(pressed_door, true, false)
-			slow_used = true
-	elif held:
-		pressed_door = null
-		press_time = 0
-	if was_held and not held:
-		if is_instance_valid(pressed_door) and target == pressed_door and not slow_used:
-			# Running into a door pushes it open (or shut) with a slam.
-			var running := Vector2(player.velocity.x, player.velocity.z).length() > 4.6
-			match_net.use_door(pressed_door, false, running)
-		pressed_door = null
-	was_held = held
-	# Nothing is written about where the survivor stands: not the refuge and
-	# what it still waits for, not the open door, not the car on its way back.
-	# The door that opens and the lift that is not there say it themselves.
-	ui.hint.text = ""
-	ui.subtitle.text = ""
-	if settings.values.subtitles and session.elapsed > 5 and session.elapsed < 10:
-		ui.subtitle.text = "[Ventilación constante]"
-	if not save_error.is_empty(): ui.subtitle.text = save_error
-
-## The authority, every frame: whether the stage in hand is met -- which
-## unlocks the door on -- and whether somebody has already crossed it, which
-## is what carries the floor to the next stage. Nothing is held down any more.
-## The AI travels by television too, so a lit set is never safe just because
-## the creature is far: looking for nobody at one -- come to see who switched
-## it on, or searching round it -- for HOP_PATIENCE, it steps out of another.
-## It used to need eight seconds of one search, and a search now gives up in
-## eight to ten and walks off: it all but never did. Seconds left before it
-## may do that again, and how long it has been looking at this one.
-## It comes out of a set with nobody active within HOP_CLEAR of where it
-## steps out and nobody looking there: out of a set on top of somebody was a
-## death nobody could do anything about.
-var hop_rest := 0.0
-var hop_wait := 0.0
-const HOP_REST := 25.0
-const HOP_PATIENCE := 4.0
-const HOP_CLEAR := 12.0
-func creature_channel_hop(delta: float) -> void:
-	hop_rest = maxf(0.0, hop_rest - delta)
-	if not is_instance_valid(locust) or locust.control != "ai": return
-	var looking: bool = locust.mode in [locust.Mode.SEARCH, locust.Mode.INVESTIGATE] and not locust.lift_bound
-	var here: int = creature_at_television() if looking else -1
-	hop_wait = hop_wait + delta if here >= 0 else 0.0
-	if hop_rest > 0.0 or hop_wait < HOP_PATIENCE: return
-	var lit: Array = lit_televisions()
-	if lit.size() < 2: return
-	var choices: Array = lit.filter(func(index): return index != here and television_clear(index))
-	if choices.is_empty(): return
-	var pick: int = choices[locust.rng.randi_range(0, choices.size() - 1)]
-	hop_wait = 0.0
-	hop_rest = HOP_REST
-	warp_creature(pick)
-	if match_net.in_match(): match_net.warp_state.rpc(pick)
-
-## Nobody active near where it would step out of that set, and nobody
-## looking at the spot.
-func television_clear(index: int) -> bool:
-	var out := television_exit(index)
-	for body in survivors():
-		if survivor_active(body) and body.global_position.distance_to(out) < HOP_CLEAR: return false
-	return not locust.watched(out)
-
 func host_gate(delta: float) -> void:
 	for seat in untouchable.keys():
 		untouchable[seat] = float(untouchable[seat]) - delta
@@ -2292,21 +1335,6 @@ func host_gate(delta: float) -> void:
 	else: session.update_goal(delta, session.can_depart())
 	lifts.ride_lifts()
 
-## Dead online: the view follows a living teammate; a click switches to the next.
-func watch_teammates() -> void:
-	player.active = false
-	player.visible = false
-	player.collision_layer = 0
-	var body: Node3D = match_net.watched_body()
-	camcorder.focus("")
-	if body == null:
-		ui.hint.text = "HAS MUERTO"
-		return
-	watch_over(body)
-	ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · %s PARA CAMBIAR" % [body.player_name.to_upper(), (settings.button_name(JOY_BUTTON_A) if settings.using_pad and settings.pad_present() else "CLIC")]
-
-## Third person behind the teammate being watched: the arm keeps the camera
-## out of walls and wardrobes, so nothing is seen through them.
 ## The creature winding up a strike close enough to be this machine's
 ## business: the tape tears and the house holds its breath. Everywhere at once,
 ## a lunge on the far side of the floor tore every screen, the hunter's too.
@@ -2315,36 +1343,6 @@ func winding_up_near() -> bool:
 	if not is_instance_valid(locust) or locust.mode != locust.Mode.WINDUP or match_net.local_is_locust(): return false
 	var eye: Vector3 = world_audio.listener_position()
 	return eye.distance_to(locust.global_position) < WINDUP_NEAR
-
-func watch_over(body: Node3D) -> void:
-	if not is_instance_valid(watch_rig):
-		watch_rig = Node3D.new()
-		watch_rig.name = "WatchRig"
-		add_child(watch_rig)
-		watch_arm = SpringArm3D.new()
-		watch_arm.spring_length = 2.6
-		watch_arm.collision_mask = 1 | 8 | 128
-		watch_arm.margin = 0.25
-		var ball := SphereShape3D.new()
-		ball.radius = 0.25
-		watch_arm.shape = ball
-		watch_rig.add_child(watch_arm)
-		watch_camera = Camera3D.new()
-		watch_camera.name = "WatchCamera"
-		watch_camera.fov = LOOK.fov_for(get_viewport(), 76.0)
-		watch_camera.far = 95.0
-		watch_camera.cull_mask = 1048573
-		watch_arm.add_child(watch_camera)
-	# Somebody else to watch is a cut: the rooms round them are shown at once,
-	# and no blur or combing is smeared across from the last view.
-	if watched_body != body:
-		watched_body = body
-		visibility_clock = 1.0
-		camera_cut()
-	watch_rig.global_position = body.global_position + Vector3(0, 1.5, 0)
-	watch_rig.rotation.y = body.rotation.y
-	watch_arm.rotation.x = clampf(body.pitch, -0.6, 0.5)
-	if not watch_camera.current: watch_camera.current = true
 
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
@@ -2461,393 +1459,197 @@ func _exit_tree() -> void:
 	for effect in [blur_effect, camera_effect]:
 		if is_instance_valid(effect): effect.release()
 
-var ambient_energy := 0.16
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
-const CAMERA_EFFECT := preload("res://game/presentation/camera/camcorder_effect.gd")
-const BLUR_EFFECT := preload("res://game/presentation/camera/motion_blur_effect.gd")
 const WARMUP := preload("res://game/presentation/shader_warmup.gd")
-## How deep the volumetric fog reaches when lamps light it.
-const LIT_FOG_LENGTH := 14.0
-var blur_effect: CompositorEffect
-## The camcorder's lens and sensor layer (lens.gdshader), under the OSD.
-var lens_material: ShaderMaterial
-var lens_layer: CanvasLayer
-## The camcorder's HDR stage (iris, video knee, CCD smear) as a compositor
-## effect on the world environment, and the tonemapper it replaces.
-var camera_effect: CompositorEffect
-var authored_tone := {}
-func build_environment() -> void:
-	environment = $Presentation/WorldEnvironment.environment
-	ambient_energy = environment.ambient_light_energy
-	post_material = $Presentation/Analog/Screen.material
-	lens_material = $Presentation/Lens/Screen.material
-	lens_layer = $Presentation/Lens
-	camcorder = $Presentation/Camcorder
-	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), settings.values.reduced))
-	authored_tone = {"mode": environment.tonemap_mode, "exposure": environment.tonemap_exposure, "glow": environment.glow_hdr_threshold, "fog_length": environment.volumetric_fog_length}
-	# Only where there is a RenderingDevice to run it (not headless, not
-	# Compatibility): elsewhere the game keeps AgX.
-	if RenderingServer.get_rendering_device() != null:
-		camera_effect = CAMERA_EFFECT.new()
-		# The light smears while it is being exposed: blur first, then the camera.
-		blur_effect = BLUR_EFFECT.new()
-		var compositor := Compositor.new()
-		compositor.compositor_effects = [blur_effect, camera_effect]
-		$Presentation/WorldEnvironment.compositor = compositor
-
-## The camera's HDR stage on or off, with the tonemapper that goes with it.
-func apply_camera(preset: Dictionary, hunter: bool) -> void:
-	var on := is_instance_valid(camera_effect) and not hunter
-	if is_instance_valid(camera_effect):
-		camera_effect.enabled = on
-		camera_effect.smear = preset.ccd_smear
-		camera_effect.glare = preset.glare
-		# Reduced effects: no smearing of the picture while turning.
-		blur_effect.samples = 0 if settings.values.reduced else preset.motion_blur
-		blur_effect.enabled = on and blur_effect.samples > 0
-	# The camera's own video knee does the tonemapping; Godot's stays linear.
-	# Its highlights end just under 1, so the bloom starts lower.
-	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if on else authored_tone.mode
-	environment.tonemap_exposure = 1.0 if on else authored_tone.exposure
-	environment.glow_hdr_threshold = 0.9 if on else authored_tone.glow
-	# The sensor's noise grows with the gain the iris had to add, which the
-	# lens reads straight from the camera stage on the GPU.
-	if is_instance_valid(lens_material): lens_material.set_shader_parameter("gain_map", camera_effect.exposure_texture if on else null)
-
-## A cut (a new floor, the opening scene): the iris jumps to the new light
-## instead of adjusting across it.
-var watched_body: Node3D
-func camera_cut() -> void:
-	if is_instance_valid(camera_effect): camera_effect.reset = true
-	if is_instance_valid(blur_effect): blur_effect.has_previous = false
-	field_camera = null
-
-## Interlaced fields (lens.gdshader, field_shift): how far the picture moved in
-## the 1/60 s between a frame's two fields, from the camera's turn since the
-## last frame. Only fast turns comb: under FIELD_FROM pixels (of a 1080-line
-## picture) nothing shows, from FIELD_TO the full offset, never past
-## FIELD_MAX. Reduced effects: none.
-const FIELD_TIME := 1.0 / 60.0
-const FIELD_FROM := 12.0
-const FIELD_TO := 30.0
-const FIELD_MAX := 48.0
-var field_camera: Camera3D
-var field_basis := Basis.IDENTITY
-func update_fields(delta: float) -> void:
-	if not is_instance_valid(lens_material): return
-	var camera := get_viewport().get_camera_3d()
-	var shift := Vector2.ZERO
-	if camera != null and camera == field_camera and delta > 0.0 and not settings.values.reduced:
-		# Last frame's view centre, seen from this frame's view.
-		var before: Vector3 = camera.global_basis.orthonormalized().inverse() * -field_basis.z
-		if before.z < -0.01:
-			var projection := camera.get_camera_projection()
-			var moved := Vector2(projection.x.x * before.x, -projection.y.y * before.y) / -before.z * 0.5 * FIELD_TIME / delta
-			var size := get_viewport().get_visible_rect().size
-			var pixels := Vector2(moved.x * size.x / maxf(size.y, 1.0), moved.y).length() * 1080.0
-			shift = moved * smoothstep(FIELD_FROM, FIELD_TO, pixels) * minf(1.0, FIELD_MAX / maxf(pixels, 0.001))
-	field_camera = camera
-	if camera != null: field_basis = camera.global_basis.orthonormalized()
-	lens_material.set_shader_parameter("field_shift", shift)
-
-## The lens remaps a picture rendered wider than the view (camcorder_look.gd):
-## the cameras that film the hotel render at the lens's field of view.
-func apply_lens(hunter: bool, reduced: bool) -> void:
-	if not is_instance_valid(lens_material): return
-	var size := get_viewport().get_visible_rect().size
-	var aspect := size.x / maxf(size.y, 1.0)
-	# The observer looks through no lens either: the barrel bent the plan.
-	lens_layer.visible = not hunter and not observer
-	update_zoom_lens()
-	lens_material.set_shader_parameter("noise", 0.0 if reduced else settings.values.grain)
-	lens_material.set_shader_parameter("chromatic", 0.0 if reduced else settings.values.chromatic)
-	lens_material.set_shader_parameter("vignette", 0.0 if reduced else 0.45)
-	lens_material.set_shader_parameter("detail", 0.0 if reduced else 0.35)
-	if hunter:
-		# The creature's view has no lens and no zoom; leaving that seat the
-		# lens is written again.
-		player.camera.fov = LOOK.VIEW_FOV
-		if is_instance_valid(watch_camera): watch_camera.fov = LOOK.VIEW_FOV
-		lens_zoom = -1.0
-
-## The lens as the zoom stands (hotel_player.zoom): the field of view it sees,
-## how wide the picture is rendered and how much the barrel bends it. A long
-## lens bends far less, so the remap follows the zoom (camcorder_look.gd).
-var lens_zoom := -1.0
-var lens_aspect := -1.0
-
-func update_zoom_lens() -> void:
-	if hunter_seat() or not is_instance_valid(player) or not is_instance_valid(lens_material): return
-	var size := get_viewport().get_visible_rect().size
-	var aspect := size.x / maxf(size.y, 1.0)
-	# Written only when it moves: setting a camera's field of view rebuilds
-	# its projection, every frame, for nothing.
-	# The zoom is the living player's own: over the menu, the opening scene or
-	# a teammate's shoulder the lens is wide, whatever it was left at.
-	var zoom: float = player.zoom if session.state in [session.State.PLAYING, session.State.PAUSED] and local_alive() else 1.0
-	if is_equal_approx(zoom, lens_zoom) and is_equal_approx(aspect, lens_aspect): return
-	lens_zoom = zoom
-	lens_aspect = aspect
-	var barrel: float = LOOK.barrel_for(zoom)
-	var design: float = LOOK.zoom_fov(zoom)
-	lens_material.set_shader_parameter("barrel", barrel)
-	lens_material.set_shader_parameter("scale", LOOK.corner_scale(aspect, barrel))
-	var fov: float = LOOK.render_fov(aspect, design, barrel)
-	player.camera.fov = fov
-	if is_instance_valid(watch_camera): watch_camera.fov = fov
-
-## This machine drives The Locust: the hunter's seat online, or the local
-## preview. Its screen is the acoustic image, not the lit hotel.
-## This machine is drawing the creature's acoustic reading instead of the lit
-## hotel: the hunter, or the observer while it is looking through its ears.
-func hunter_seat() -> bool:
-	if observer and observer_view != null and observer_view.echoing: return true
-	return is_instance_valid(net) and match_net.local_is_locust()
-
-## Every value that changes with the quality setting (graphics_presets.gd).
-const PRESETS := preload("res://game/presentation/graphics_presets.gd")
-const COMPAT_SHADOW_ATLAS := 4096
-## The torch's source size as built (player.tscn), for presets without penumbra.
-var torch_size := -1.0
-func apply_settings() -> void:
-	if not is_instance_valid(environment): return
-	var preset: Dictionary = PRESETS.of(settings.values.quality, settings.values)
-	# Before any set is built (title, intro, floor): the size of the scans.
-	GEOMETRY.small_maps = preset.small_maps
-	# The acoustic view replaces the lit image entirely, so none of this would
-	# ever be seen; switching it off is what pays for its own screen pass.
-	var hunter := hunter_seat()
-	environment.ssao_enabled = preset.ssao >= 0 and not hunter
-	if preset.ssao >= 0: RenderingServer.environment_set_ssao_quality(preset.ssao, preset.ssao_half, ProjectSettings.get_setting("rendering/environment/ssao/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssao/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_to"))
-	environment.ssil_enabled = preset.ssil >= 0 and not hunter
-	if preset.ssil >= 0: RenderingServer.environment_set_ssil_quality(preset.ssil, preset.ssil_half, ProjectSettings.get_setting("rendering/environment/ssil/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssil/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssil/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssil/fadeout_to"))
-	environment.ssr_enabled = preset.ssr_steps > 0 and not hunter
-	if preset.ssr_steps > 0:
-		environment.ssr_max_steps = preset.ssr_steps
-		RenderingServer.environment_set_ssr_roughness_quality(preset.ssr_roughness)
-	# SDFGI leaks light through the 18 cm hotel walls; bounce light is screen-space only.
-	environment.sdfgi_enabled = false
-	environment.glow_enabled = preset.glow and not hunter
-	RenderingServer.environment_glow_set_use_bicubic_upscale(preset.glow_bicubic)
-	RenderingServer.gi_set_use_half_resolution(preset.bounce_half)
-	# Ambient light reaches every surface whether or not a lamp does, so for the
-	# creature it has to go too: anything still lit leaks the seen hotel into a
-	# reading that is supposed to be made of echoes.
-	environment.ambient_light_energy = 0.0 if hunter else ambient_energy
-	environment.fog_enabled = not hunter
-	environment.volumetric_fog_enabled = preset.fog_size > 0 and not settings.values.reduced and not hunter
-	# Lamps that light the fog (preset lamp_fog) need short cells, or a room's
-	# glow would spread into the next one through the wall (docs/REALISM.md,
-	# trial 7).
-	environment.volumetric_fog_length = LIT_FOG_LENGTH if preset.lamp_fog else authored_tone.fog_length
-	if preset.fog_size > 0:
-		RenderingServer.environment_set_volumetric_fog_volume_size(preset.fog_size, preset.fog_depth)
-		RenderingServer.environment_set_volumetric_fog_filter_active(preset.fog_filter)
-	var viewport := get_viewport()
-	# Every lamp shares one shadow atlas. At 4096 the rooms further off got
-	# cells so coarse that shadows came out as saw-teeth along door frames and
-	# a lamp's shadow bias grew past a 7 cm leaf: light through shut doors.
-	# No preset goes under 4096. And none goes over it on Compatibility: there
-	# an 8192 atlas broke the torch's shadow into wide dark diagonal bands on
-	# every wall ten metres off and more (Alto and Ultra; Bajo and Medio, at
-	# 4096, were clean). Seen with tools/capture/torch_capture.gd, long_* shots.
-	var compatibility: bool = RenderingServer.get_current_rendering_method() == "gl_compatibility"
-	viewport.positional_shadow_atlas_size = mini(preset.shadow_atlas, COMPAT_SHADOW_ATLAS) if compatibility else preset.shadow_atlas
-	# And its depth in 32 bits there. The bands are the torch shadowing the wall
-	# it lights, where 16 bits cannot tell the wall's depth from its own: at 9
-	# and 12 m with the bias low they come back on a 16-bit atlas and not on a
-	# 32-bit one, and 0.3/4.0 only just cleared them here -- on another card
-	# they were seen at those very distances. Some 32 MB more at 4096.
-	viewport.positional_shadow_atlas_16_bits = not compatibility
-	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
-	RenderingServer.positional_soft_shadow_filter_set_quality(preset.shadow_filter)
-	viewport.msaa_3d = preset.msaa
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if preset.get("smaa", false) and not hunter else Viewport.SCREEN_SPACE_AA_FXAA if preset.fxaa and not hunter else Viewport.SCREEN_SPACE_AA_DISABLED
-	# Temporal accumulation has nothing to work with here: the echo field writes
-	# POSITION itself (no motion vectors) and the point cloud is restamped
-	# fifteen times a second, so TAA smears it into paste.
-	viewport.use_taa = preset.taa and not hunter
-	viewport.mesh_lod_threshold = preset.lod_threshold
-	viewport.anisotropic_filtering_level = preset.anisotropy
-	viewport.use_debanding = preset.debanding
-	RenderingServer.screen_space_roughness_limiter_set_active(preset.roughness_limiter, ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/amount"), ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/limit"))
-	# Octaves of every procedural surface (surface.gdshaderinc) and the tape
-	# filter's chroma reads.
-	RenderingServer.global_shader_parameter_set("surface_detail", preset.surface_detail)
-	post_material.set_shader_parameter("chroma_taps", preset.chroma_taps)
-	var reduced: bool = settings.values.reduced
-	# The camcorder's lens and sensor (lens.gdshader) take the grain, the colour
-	# fringes and the vignette; the tape filter keeps the tape. The creature's
-	# acoustic view has no lens: it keeps the tape filter's own versions.
-	for key in ["vhs", "scanlines"]: post_material.set_shader_parameter(key, 0.0 if reduced else settings.values[key])
-	post_material.set_shader_parameter("grain", 0.0 if reduced or not hunter else settings.values.grain)
-	post_material.set_shader_parameter("chromatic", 0.0 if reduced or not hunter else settings.values.chromatic * 0.5)
-	post_material.set_shader_parameter("vignette", 0.0 if reduced or not hunter else 0.45)
-	apply_lens(hunter, reduced)
-	apply_camera(preset, hunter)
-	# The warm tape cast would break the monochrome reading.
-	post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
-	if settings.values.reduced:
-		post_material.set_shader_parameter("enclosure", 0.0)
-		post_material.set_shader_parameter("threat_glitch", 0.0)
-	player.torch.shadow_enabled = settings.values.shadows
-	if torch_size < 0.0: torch_size = player.torch.light_size
-	player.torch.light_size = torch_size * minf(preset.penumbra, 1.0)
-	player.set_character(settings.values.character)
-	# Your own body, walking, re-renders the shadow of every lamp round it.
-	player.avatar.set_body_shadow(preset.body_shadow)
-	player.autofocus = preset.autofocus and not hunter
-	configure_hotel()
-	if is_instance_valid(locust) and locust.driver != null and is_instance_valid(locust.driver.echo): locust.driver.echo.apply_quality()
-
-## The floor's share of the settings: preset, reduced effects, creature's view.
-func configure_hotel() -> void:
-	if not is_instance_valid(hotel): return
-	hotel.reduced = settings.values.reduced
-	hotel.echo_view = hunter_seat()
-	hotel.apply_quality(PRESETS.of(settings.values.quality, settings.values))
-
-## Wardrobe enclosure, strike glitch and lost signal on the analog filter.
-## The first two are off with reduced effects; the picture going is not an
-## effect, it is how a victim is told it died, so it stays (milder).
-var enclosure := 0.0
-var glitch := 0.0
-## Seconds of lost picture left for the local victim, and how far gone it is.
-var lost_signal := 0.0
-var static_level := 0.0
-func update_screen_cues(delta: float) -> void:
-	var wanted_enclosure: float = (1.0 - player.peek * 0.8) if player.hidden and session.state == session.State.PLAYING else 0.0
-	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
-	var striking: bool = winding_up_near()
-	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
-	lost_signal = maxf(0.0, lost_signal - delta)
-	var mine: bool = not execution.is_empty() and int(execution.seat) == player.slot
-	var dying: bool = mine and float(execution.time) >= SIGNAL_TIME
-	var riding_now: float = lifts.ride_static()
-	update_ride_hiss(riding_now)
-	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else riding_now
-	# Straight to static once the arm has landed: the picture does not fade,
-	# it goes. Coming back (a new floor) it clears gently.
-	# Gone at once when the view is already somebody else's camera; otherwise
-	# it comes in hard and clears gently.
-	if wanted_static <= 0.0 and not local_alive() and execution.is_empty(): static_level = 0.0
-	elif riding_now > 0.0 or not lifts.boarding.is_empty(): static_level = wanted_static
-	else: static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
-	post_material.set_shader_parameter("signal_loss", static_level * (0.75 if settings.values.reduced else 1.0))
-	# The arm arriving: black spreading from where its hand is on screen.
-	var arm := 0.0
-	if mine and float(execution.time) >= ARM_TIME and static_level < 0.9:
-		arm = clampf((float(execution.time) - ARM_TIME) / ARM_SWING, 0.0, 1.0)
-		post_material.set_shader_parameter("strike_point", strike_on_screen())
-	post_material.set_shader_parameter("strike_fill", arm)
-	camcorder.signal_lost = static_level > 0.35 or arm > 0.25
-	# The dead channel stops with the snow, not a moment later.
-	if is_instance_valid(static_sound) and static_sound.playing and static_level < 0.05: static_sound.stop()
-	if settings.values.reduced: return
-	post_material.set_shader_parameter("enclosure", enclosure)
-	post_material.set_shader_parameter("threat_glitch", glitch)
-	# The tape frays with the mind: the picture drags and the colours start to
-	# run. With no bar anywhere, this is what says the meter is there at all.
-	if not hunter_seat():
-		# Only over the floor being played: the last floor's mind frayed the
-		# tape of the opening scene of the next.
-		var frayed: float = clampf(1.0 - player.sanity / sanity.SANITY_UNEASY + sanity.glitch, 0.0, 1.0) if session.state in [session.State.PLAYING, session.State.PAUSED, session.State.FAILED] else 0.0
-		post_material.set_shader_parameter("vhs", settings.values.vhs * (1.0 + frayed * 1.6))
-		post_material.set_shader_parameter("chromatic", settings.values.chromatic * frayed * 0.7)
-
-## A lift ride has no sound of its own yet (the recording is still to come):
-## until then its snow is heard softly, following the picture -- full as the
-## doors shut and open, low under the card -- instead of a silence that read
-## as the game hanging.
-const RIDE_HISS_DB := -20.0
-func update_ride_hiss(amount: float) -> void:
-	if not is_instance_valid(ride_hiss): return
-	if amount <= 0.02 or not world_audio.enabled:
-		if ride_hiss.playing: ride_hiss.stop()
-		return
-	ride_hiss.volume_db = RIDE_HISS_DB + linear_to_db(amount)
-	if not ride_hiss.playing: ride_hiss.play()
-
-func build_audio() -> void:
-	# Handling a document: a local sound, not a noise the creature can hear.
-	paper_sound = AudioStreamPlayer.new()
-	paper_sound.name = "Paper"
-	paper_sound.bus = "Effects"
-	paper_sound.volume_db = -8.0
-	paper_sound.stream = load("res://assets/audio/sfx/paper/paper.ogg")
-	add_child(paper_sound)
-	# The scream of being caught: not a sound in the room, a sound in your head.
-	scream_sound = AudioStreamPlayer.new()
-	scream_sound.name = "Scream"
-	scream_sound.bus = "Threat"
-	scream_sound.volume_db = 0.0
-	scream_sound.stream = load(SCREAM)
-	add_child(scream_sound)
-	# The blow and the dead channel that follows it, in the victim's own ears.
-	blow_sound = AudioStreamPlayer.new()
-	blow_sound.name = "Blow"
-	blow_sound.bus = "Threat"
-	blow_sound.volume_db = -1.0
-	blow_sound.stream = load(KILL_BLOW)
-	add_child(blow_sound)
-	static_sound = AudioStreamPlayer.new()
-	static_sound.name = "DeadChannel"
-	static_sound.bus = "Effects"
-	static_sound.volume_db = -2.0
-	static_sound.stream = load(DEAD_CHANNEL)
-	add_child(static_sound)
-	ride_hiss = AudioStreamPlayer.new()
-	ride_hiss.name = "RideHiss"
-	ride_hiss.bus = "Effects"
-	ride_hiss.volume_db = -80.0
-	ride_hiss.stream = preload("res://game/audio/world_audio.gd").loop_stream(load("res://assets/audio/intro/tv_static.wav"))
-	add_child(ride_hiss)
-	ambience = AudioStreamPlayer.new()
-	ambience.name = "AmbientLoop"
-	ambience.process_mode = Node.PROCESS_MODE_PAUSABLE
-	ambience.bus = "Ambience"
-	ambience.volume_db = -17
-	var ambient_stream := load("res://assets/audio/sfx/ambience/dark_hotel.wav").duplicate() as AudioStreamWAV
-	ambient_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	ambient_stream.loop_begin = 0
-	ambient_stream.loop_end = int(ambient_stream.get_length() * ambient_stream.mix_rate)
-	ambience.stream = ambient_stream
-	add_child(ambience)
-	theme = AudioStreamPlayer.new()
-	theme.name = "Music"
-	theme.process_mode = Node.PROCESS_MODE_PAUSABLE
-	theme.bus = "Music"
-	theme.volume_db = -24
-	theme.stream = load("res://assets/audio/the_four_theme.mp3").duplicate()
-	theme.stream.loop = true
-	add_child(theme)
-	ventilation = AudioStreamPlayer3D.new()
-	ventilation.name = "Ventilation"
-	ventilation.process_mode = Node.PROCESS_MODE_PAUSABLE
-	ventilation.bus = "Ambience"
-	ventilation.volume_db = -19
-	ventilation.max_distance = 16
-	ventilation.area_mask = world_audio.ACOUSTIC_MASK
-	ventilation.stream = preload("res://game/audio/world_audio.gd").loop_stream(load("res://assets/audio/hotel/ambience.wav"))
-	add_child(ventilation)
-	menu_music = AudioStreamPlayer.new()
-	menu_music.name = "MenuMusic"
-	menu_music.process_mode = Node.PROCESS_MODE_ALWAYS
-	menu_music.bus = "Music"
-	menu_music.volume_db = -12
-	menu_music.stream = load("res://assets/audio/the_four_theme.mp3").duplicate()
-	menu_music.stream.loop = true
-	add_child(menu_music)
-
-## How much of the music is left with the power (1 on, 0 cut), and how fast it
-## goes and comes back.
-var music_power := 1.0
-const MUSIC_CUT := 0.12
-const MUSIC_RETURN := 2.0
 
 # Quiet music behind the menus (the title room is its own scene).
-func update_menu_scene(_delta: float) -> void:
-	var in_menu: bool = session.state == session.State.MENU
-	var audible: bool = in_menu and world_audio.enabled
-	if audible and not menu_music.playing: menu_music.play()
-	elif not audible and menu_music.playing: menu_music.stop()
+
+# --- Televisions (televisions.gd) ---------------------------------------------
+## Kept here so that what reaches them through the level (the network, the
+## bots, the tests, the other services) keeps working unchanged.
+var televisions:
+	get: return tvs.televisions
+	set(value): tvs.televisions = value
+var tv_sets:
+	get: return tvs.tv_sets
+	set(value): tvs.tv_sets = value
+func place_televisions() -> void: tvs.place_televisions()
+func stage_televisions(stage := -1) -> Array: return tvs.stage_televisions(stage)
+func switch_television(set: Node3D) -> void: tvs.switch_television(set)
+const TV_BURST := TELEVISIONS.TV_BURST
+func apply_television(index: int, value: bool, quiet := false) -> void: tvs.apply_television(index, value, quiet)
+const WARP_REACH := TELEVISIONS.WARP_REACH
+func lit_televisions() -> Array: return tvs.lit_televisions()
+func creature_at_television(reach := WARP_REACH) -> int: return tvs.creature_at_television(reach)
+func television_exit(index: int) -> Vector3: return tvs.television_exit(index)
+func warp_creature(index: int) -> void: tvs.warp_creature(index)
+func televisions_on() -> int: return tvs.televisions_on()
+var hop_rest:
+	get: return tvs.hop_rest
+	set(value): tvs.hop_rest = value
+var hop_wait:
+	get: return tvs.hop_wait
+	set(value): tvs.hop_wait = value
+const HOP_PATIENCE := TELEVISIONS.HOP_PATIENCE
+func creature_channel_hop(delta: float) -> void: tvs.creature_channel_hop(delta)
+
+# --- CodeLock (code_lock.gd) --------------------------------------------------
+## Kept here so that what reaches them through the level (the network, the
+## bots, the tests, the other services) keeps working unchanged.
+var containers:
+	get: return code.containers
+	set(value): code.containers = value
+var found_digits:
+	get: return code.found_digits
+	set(value): code.found_digits = value
+var found_by:
+	get: return code.found_by
+	set(value): code.found_by = value
+var found_where:
+	get: return code.found_where
+	set(value): code.found_where = value
+var code_entered:
+	get: return code.code_entered
+	set(value): code.code_entered = value
+var lock:
+	get: return code.lock
+	set(value): code.lock = value
+var lock_open:
+	get: return code.lock_open
+	set(value): code.lock_open = value
+var typed:
+	get: return code.typed
+	set(value): code.typed = value
+func place_containers() -> void: code.place_containers()
+func search_container(piece: Node3D) -> void: code.search_container(piece)
+func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void: code.apply_search(index, value, quiet, seat)
+func notes_found() -> Array: return code.notes_found()
+func noted_code() -> String: return code.noted_code()
+func code_so_far(own := false) -> String: return code.code_so_far(own)
+var lock_digit:
+	get: return code.lock_digit
+	set(value): code.lock_digit = value
+func type_code(character: String) -> void: code.type_code(character)
+func code_verdict(text: String) -> String: return code.code_verdict(text)
+func open_lock() -> void: code.open_lock()
+func close_lock() -> void: code.close_lock()
+func apply_code() -> void: code.apply_code()
+
+# --- Executions (executions.gd) -----------------------------------------------
+## Kept here so that what reaches them through the level (the network, the
+## bots, the tests, the other services) keeps working unchanged.
+var execution:
+	get: return executions.execution
+	set(value): executions.execution = value
+const SCREAM := EXECUTIONS.SCREAM
+const KILL_BLOW := EXECUTIONS.KILL_BLOW
+const DEAD_CHANNEL := EXECUTIONS.DEAD_CHANNEL
+const ARM_TIME := EXECUTIONS.ARM_TIME
+const KILL_TIME := EXECUTIONS.KILL_TIME
+const SIGNAL_TIME := EXECUTIONS.SIGNAL_TIME
+const DROP_TIME := EXECUTIONS.DROP_TIME
+const ARM_SWING := EXECUTIONS.ARM_SWING
+func capture_survivor(body: Node3D) -> void: executions.capture_survivor(body)
+func apply_execution(seat: int, point: Vector3, yaw: float) -> void: executions.apply_execution(seat, point, yaw)
+func update_execution(delta: float) -> void: executions.update_execution(delta)
+func release_execution() -> void: executions.release_execution()
+var strike_uv:
+	get: return executions.strike_uv
+	set(value): executions.strike_uv = value
+func strike_on_screen() -> Vector2: return executions.strike_on_screen()
+func hold_victim(delta: float) -> void: executions.hold_victim(delta)
+func victim_hold_point() -> Vector3: return executions.victim_hold_point()
+
+# --- Revival (revival.gd) -----------------------------------------------------
+## Kept here so that what reaches them through the level (the network, the
+## bots, the tests, the other services) keeps working unchanged.
+var watch_rig:
+	get: return revival.watch_rig
+	set(value): revival.watch_rig = value
+var watch_camera:
+	get: return revival.watch_camera
+	set(value): revival.watch_camera = value
+func on_revived(restart: bool) -> void: revival.on_revived(restart)
+func return_place(remembered: Vector3) -> Vector3: return revival.return_place(remembered)
+func revival_point() -> Vector3: return revival.revival_point()
+func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF) -> void: revival.apply_revival(places, restart, creature_at)
+func stop_watching() -> void: revival.stop_watching()
+func watch_teammates() -> void: revival.watch_teammates()
+var watched_body:
+	get: return revival.watched_body
+	set(value): revival.watched_body = value
+
+# --- Interaction (interaction.gd) ---------------------------------------------
+## Kept here so that what reaches them through the level (the network, the
+## bots, the tests, the other services) keeps working unchanged.
+var pressed_door:
+	get: return interaction.pressed_door
+	set(value): interaction.pressed_door = value
+var press_time:
+	get: return interaction.press_time
+	set(value): interaction.press_time = value
+var was_held:
+	get: return interaction.was_held
+	set(value): interaction.was_held = value
+var reading_document:
+	get: return interaction.reading_document
+	set(value): interaction.reading_document = value
+func toggle_sheet() -> void: interaction.toggle_sheet()
+func place_documents() -> void: interaction.place_documents()
+func open_document(document: Node3D) -> void: interaction.open_document(document)
+func close_document() -> void: interaction.close_document()
+func focused_area(): return interaction.focused_area()
+func focused_hide(): return interaction.focused_hide()
+func focused_document(): return interaction.focused_document()
+func focused_door(): return interaction.focused_door()
+func door_behind(): return interaction.door_behind()
+func drive_local(delta: float) -> void: interaction.drive_local(delta)
+
+# --- PresentationRig (presentation_rig.gd) ------------------------------------
+## Kept here so that what reaches them through the level (the network, the
+## bots, the tests, the other services) keeps working unchanged.
+var ambient_energy:
+	get: return rig.ambient_energy
+	set(value): rig.ambient_energy = value
+var blur_effect:
+	get: return rig.blur_effect
+	set(value): rig.blur_effect = value
+var lens_material:
+	get: return rig.lens_material
+	set(value): rig.lens_material = value
+var lens_layer:
+	get: return rig.lens_layer
+	set(value): rig.lens_layer = value
+var camera_effect:
+	get: return rig.camera_effect
+	set(value): rig.camera_effect = value
+func build_environment() -> void: rig.build_environment()
+func camera_cut() -> void: rig.camera_cut()
+func update_fields(delta: float) -> void: rig.update_fields(delta)
+func apply_lens(hunter: bool, reduced: bool) -> void: rig.apply_lens(hunter, reduced)
+func update_zoom_lens() -> void: rig.update_zoom_lens()
+func hunter_seat() -> bool: return rig.hunter_seat()
+const PRESETS := PRESENTATION_RIG.PRESETS
+func apply_settings() -> void: rig.apply_settings()
+func configure_hotel() -> void: rig.configure_hotel()
+var enclosure:
+	get: return rig.enclosure
+	set(value): rig.enclosure = value
+var glitch:
+	get: return rig.glitch
+	set(value): rig.glitch = value
+var lost_signal:
+	get: return rig.lost_signal
+	set(value): rig.lost_signal = value
+var static_level:
+	get: return rig.static_level
+	set(value): rig.static_level = value
+func update_screen_cues(delta: float) -> void: rig.update_screen_cues(delta)
+func update_ride_hiss(amount: float) -> void: rig.update_ride_hiss(amount)
+func build_audio() -> void: rig.build_audio()
+var music_power:
+	get: return rig.music_power
+	set(value): rig.music_power = value
+const MUSIC_CUT := PRESENTATION_RIG.MUSIC_CUT
+const MUSIC_RETURN := PRESENTATION_RIG.MUSIC_RETURN
+func update_menu_scene(_delta: float) -> void: rig.update_menu_scene(_delta)

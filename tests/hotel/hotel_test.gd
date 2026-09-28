@@ -175,6 +175,10 @@ func run() -> void:
 	check("Los 21 tipos de celda presentes en el lote", used_types.size() == 21)
 	check("Semilla reproducible", JSON.stringify(generator.generate(81)) == JSON.stringify(generator.generate(81)))
 	check("Semillas distintas cambian el mapa", JSON.stringify(generator.generate(81)) != JSON.stringify(generator.generate(82)))
+	# The floors themselves, pinned: a guest rebuilds the host's from the seed,
+	# and a checkpoint is a seed. A change here is a change to every floor
+	# (and wants FLOOR.VERSION bumped); moving code about must not make one.
+	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 3692823199 and hash(JSON.stringify(generator.generate(777))) == 3876374441)
 	var scene = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame

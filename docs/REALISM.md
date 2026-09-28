@@ -122,7 +122,7 @@ La cámara se rehizo en el orden de una camcorder real. Todo es la cámara, no u
    - una pasada mide el destello medio del cuadro y ambos bajan cuanto más luz fuerte hay: a la mitad en un pasillo lleno de apliques, al 86 % en un dormitorio con un solo plafón;
    - solo las luces grandes dejan reflejos, porque el destello difuminado de una bombilla pequeña queda por debajo de un umbral.
    Cuesta unos 0,07 ms en Medio y en Alto. Se suavizó tras probarlo en partida: con muchas fuentes de luz molestaba.
-7. **Entrelazado** (lente, todos los presets): de las 480 líneas de un fotograma, una de cada dos es el campo grabado 1/60 s antes, desplazado lo que giró la cámara en ese tiempo (`hotel_main.update_fields`).
+7. **Entrelazado** (lente, todos los presets): de las 480 líneas de un fotograma, una de cada dos es el campo grabado 1/60 s antes, desplazado lo que giró la cámara en ese tiempo (`presentation_rig.update_fields`).
    - Solo peina en giros rápidos: nada por debajo de unos 12 píxeles de desplazamiento (a 1 rad/s no aparece), todo a partir de 30 y nunca más de 48.
    - «Efectos reducidos» lo quita.
 8. **Cortes de señal de la cinta** (`analog.gdshader`), rehechos: destellos blancos de una línea de campo, a veces dos, que duran un fotograma, más brillantes al empezar y con la cola deshilachada. En un tercio de los casos el aparato los tapa repitiendo la línea de arriba. Su frecuencia sigue a «Cinta VHS»: unos 4 por segundo con el valor por defecto, ninguno a cero.

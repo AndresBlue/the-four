@@ -141,7 +141,7 @@ No ve luz. Pero una linterna encendida apuntándole mete una interferencia tenue
 
 ## Presentación y rendimiento
 
-Para el asiento del cazador, `hotel_main.apply_settings()` apaga SSAO, SSIL, glow, niebla volumétrica, las sombras y todas las luces de sala (bandera `echo_view` en `hotel_geometry.update_visibility`): nada de eso se ve bajo un `ALPHA = 1.0`, y ahí está el presupuesto del campo de eco. El paso opaco sigue escribiendo la profundidad que necesitamos, pero no paga un solo mapa de sombras. El fotograma del cazador debería salir **más barato** que el de un superviviente.
+Para el asiento del cazador, `presentation_rig.apply_settings()` apaga SSAO, SSIL, glow, niebla volumétrica, las sombras y todas las luces de sala (bandera `echo_view` en `hotel_geometry.update_visibility`): nada de eso se ve bajo un `ALPHA = 1.0`, y ahí está el presupuesto del campo de eco. El paso opaco sigue escribiendo la profundidad que necesitamos, pero no paga un solo mapa de sombras. El fotograma del cazador debería salir **más barato** que el de un superviviente.
 
 **TAA y FXAA se apagan, y eso no es optativo:** un vértice que escribe `POSITION` no produce vectores de movimiento, y una nube que se resiembra quince veces por segundo es el peor caso posible para acumulación temporal. El tinte cálido del filtro VHS se neutraliza y el fleco de color se reduce a la mitad, porque sobre una imagen gris es solo barro. Todo se vuelve a derivar llamando a `apply_settings()`, nunca recordando valores, porque el `Environment` es un recurso compartido.
 
