@@ -10,6 +10,8 @@ Cómo usar este archivo
 - Las líneas que empiezan por "| " son saltos de línea dentro del mismo texto.
 - %s, %d o [TECLA] se sustituyen en el juego por un valor (tecla, número, fecha...).
   Mantenlos donde quieras que aparezca ese valor.
+- Los botones de los menús se escriben en el código en minúsculas y el juego los
+  muestra en MAYÚSCULAS; aquí aparecen como se ven en pantalla.
 - "OBS:" es una observación mía sobre textos que pueden sonar artificiales o
   redundantes. Ignórala si no estás de acuerdo.
 
@@ -17,8 +19,8 @@ Cómo usar este archivo
 1. ARRANQUE (antes del menú, se puede saltar con cualquier tecla)
 -----------------------------------------------------------------
 
-[INTRO.01] Pantalla negra, texto centrado
-ACTUAL: (retirado)
+[INTRO.04] Pantalla negra, bajo el dibujo de unos auriculares (dura unos 2 s)
+ACTUAL: AURICULARES SUGERIDOS
 CORRECCIÓN:
 
 [INTRO.02] Pantalla azul de vídeo, esquina superior izquierda
@@ -27,6 +29,11 @@ CORRECCIÓN:
 
 [INTRO.03] Pantalla azul de vídeo, centro
 ACTUAL: ▶ PLAY
+CORRECCIÓN:
+
+[ESC.01] Escena de entrada (nueva partida), esquina superior derecha, pequeño,
+durante los primeros 6 s (%s = tecla de interactuar, o su botón con mando)
+ACTUAL: %s  para saltar cinemática
 CORRECCIÓN:
 
 
@@ -55,6 +62,10 @@ CORRECCIÓN:
 
 [MENU.06] Opción
 ACTUAL: MULTIJUGADOR
+CORRECCIÓN:
+
+[ARCH.01] Opción (entre Multijugador y Ajustes)
+ACTUAL: ARCHIVO
 CORRECCIÓN:
 
 [MENU.07] Opción
@@ -101,20 +112,23 @@ CORRECCIÓN:
 ACTUAL: MENÚ PRINCIPAL
 CORRECCIÓN:
 
+(Bajo el título de la pausa sale también el objetivo del sector: ver HUD.04b y HUD.08.)
 
-4. PANEL DE CONTROLES (en pausa y en la pantalla de carga)
-----------------------------------------------------------
-Las teclas se muestran según la configuración del jugador.
+
+4. PANEL DE CONTROLES (en pausa, en el menú de la partida en línea y en la pantalla de carga)
+--------------------------------------------------------------------------------------------
+Las teclas se muestran según la configuración del jugador. Con un mando conectado y en
+uso, el panel nombra sus botones (ver CTRL.13 a CTRL.16 y AJ.39e).
 
 [CTRL.01] Título del panel
 ACTUAL: CONTROLES
 CORRECCIÓN:
 
-[CTRL.02] W A S D
+[CTRL.02] W A S D (con mando: STICK IZQ., ver CTRL.13)
 ACTUAL: Moverse
 CORRECCIÓN:
 
-[CTRL.03] RATÓN
+[CTRL.03] RATÓN (con mando: STICK DER.)
 ACTUAL: Mirar
 CORRECCIÓN:
 
@@ -142,12 +156,33 @@ CORRECCIÓN:
 ACTUAL: Linterna
 CORRECCIÓN:
 
-[CTRL.10] ESC
+[CTRL.12] Tecla de la hoja
+ACTUAL: Hoja (dibujar y borrar con el ratón)
+CORRECCIÓN:
+
+[CTRL.10] ESC (con mando: el botón de inicio)
 ACTUAL: Pausa
 CORRECCIÓN:
 
 [CTRL.11] Texto de la tecla en la fila de interactuar mantenido
 ACTUAL: MANTENER
+CORRECCIÓN:
+
+[CTRL.13] Con mando: fila de moverse (tecla | descripción)
+ACTUAL: STICK IZQ.
+| Moverse (cuanto más lo empujas, más deprisa)
+CORRECCIÓN:
+
+[CTRL.14] Con mando: fila de mirar (la descripción es la de CTRL.03)
+ACTUAL: STICK DER.
+CORRECCIÓN:
+
+[CTRL.15] Con mando: añadido al botón de correr o agacharse si está en modo alternar
+ACTUAL: (ALTERNA)
+CORRECCIÓN:
+
+[CTRL.16] Con mando: fila de la hoja (%s = gatillo derecho, %s = gatillo izquierdo)
+ACTUAL: Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)
 CORRECCIÓN:
 
 
@@ -164,6 +199,10 @@ CORRECCIÓN:
 
 [CARGA.03] Bajo el título, con puntos animados
 ACTUAL: EL HOTEL ESTÁ TOMANDO FORMA
+CORRECCIÓN:
+
+[CARGA.04] Segunda línea, mientras se preparan los sombreados (%d = porcentaje)
+ACTUAL: PREPARANDO LA IMAGEN  %d %
 CORRECCIÓN:
 
 [TRANS.01] Esquina superior izquierda al salir del piso
@@ -186,12 +225,47 @@ CORRECCIÓN:
 ACTUAL: SALISTE DEL PISO
 CORRECCIÓN:
 
-[FIN.03] Dato (%s = horas:minutos:segundos en el piso)
+[FIN.03] Dato, cuenta hacia arriba (%s = horas:minutos:segundos en el piso)
 ACTUAL: TIEMPO DE GRABACIÓN  %s
 CORRECCIÓN:
 
-[FIN.04] Párrafo
+[FIN.04] Párrafo (solo si no hay resumen de la partida)
 ACTUAL: El hotel queda atrás. Por ahora.
+CORRECCIÓN:
+
+[FIN.07] Bajo el tiempo (%d = número de la cinta, la semilla del piso)
+ACTUAL: CINTA Nº %d
+CORRECCIÓN:
+
+[FIN.08] Una fila por sector, con su tiempo al lado
+ACTUAL: SECTOR %d
+CORRECCIÓN:
+
+[FIN.09] Una fila por jugador: nombre, si salió y cuántos números del código encontró
+ACTUAL: SALIÓ / SE QUEDÓ
+CORRECCIÓN:
+
+[FIN.10] Columna de números del código de cada jugador ("—" si ninguno)
+ACTUAL: %d número del código / %d números del código
+CORRECCIÓN:
+
+[FIN.14] Nombre del jugador en esa fila: el que puso al unirse; en solitario, el de su
+personaje; si no hay ninguno, "Superviviente" y su número
+ACTUAL: Detective / Detective / Exploradora / Superviviente %d
+CORRECCIÓN:
+OBS: en solitario los dos detectives salen como "Detective", mientras que en Personaje
+se llaman "Detective Masculino" y "Detective Femenino" (PJ.04, PJ.05).
+
+[FIN.11] Sellos que aparecen uno a uno si se consiguen
+ACTUAL: · SIN BAJAS · / · SIN ESCONDERSE · / · EQUIPO ENTERO ·
+CORRECCIÓN:
+
+[FIN.12] Puesto en las tablas (%d = puesto, %s = título de la tabla, ver REC.05 a REC.07)
+ACTUAL: Nº %d EN %s · EN SOLITARIO / Nº %d EN %s · ACOMPAÑADO
+CORRECCIÓN:
+
+[FIN.13] Opción (solo si ya hay tiempos guardados)
+ACTUAL: MEJORES TIEMPOS
 CORRECCIÓN:
 
 [FIN.05] Opción
@@ -231,19 +305,67 @@ CORRECCIÓN:
 ACTUAL: MENÚ PRINCIPAL
 CORRECCIÓN:
 
-[MUERTE.07] Mensaje interno de derrota (hoy no se muestra en individual)
+[MUERTE.07] Mensaje interno de derrota (hoy no llega a mostrarse: se borra al volver al menú)
 ACTUAL: No quedan suficientes supervivientes.
 CORRECCIÓN:
 
 
-8. CRÉDITOS
------------
+8. MEJORES TIEMPOS (desde Archivo o al terminar un piso)
+--------------------------------------------------------
+
+[REC.01] Esquina superior izquierda
+ACTUAL: ▶ PLAY
+CORRECCIÓN:
+
+[REC.02] Título
+ACTUAL: MEJORES TIEMPOS
+CORRECCIÓN:
+
+[REC.03] Bajo el título
+ACTUAL: PISO 1 · EL HOTEL
+CORRECCIÓN:
+
+[REC.04] Encabezados de cada grupo de tablas
+ACTUAL: EN SOLITARIO / ACOMPAÑADO
+CORRECCIÓN:
+
+[REC.05] Tabla: título y nota bajo él
+ACTUAL: MÁS RÁPIDOS
+| El piso entero, de la primera puerta al último ascensor.
+CORRECCIÓN:
+
+[REC.06] Tabla: título y nota bajo él (el título también es un sello, FIN.11)
+ACTUAL: SIN BAJAS
+| Nadie cayó en todo el piso: ni una muerte, ni un reinicio.
+CORRECCIÓN:
+
+[REC.07] Tabla: título y nota bajo él (el título también es un sello, FIN.11)
+ACTUAL: SIN ESCONDERSE
+| Nadie se metió en un armario en todo el piso.
+CORRECCIÓN:
+
+[REC.08] Cada fila: puesto, tiempo, jugadores, cinta y fecha
+ACTUAL: %d superviviente / %d supervivientes · cinta nº %d
+CORRECCIÓN:
+OBS: aquí es "cinta nº" en minúscula y en el resumen del piso "CINTA Nº" (FIN.07).
+
+[REC.09] Si aún no hay ninguna partida en solitario
+ACTUAL: Todavía no hay ninguna cinta que saliera del hotel en solitario.
+CORRECCIÓN:
+
+[REC.10] Opción
+ACTUAL: VOLVER
+CORRECCIÓN:
+
+
+9. CRÉDITOS (el texto se desplaza solo)
+---------------------------------------
 
 [CRED.01] Esquina superior izquierda
 ACTUAL: ▶ PLAY
 CORRECCIÓN:
 
-[CRED.02] Pie de página (%s = versión)
+[CRED.02] Pie de página (%s = versión, hoy v0.5)
 ACTUAL: %s  ·  PROYECTO FAN NO OFICIAL
 CORRECCIÓN:
 
@@ -251,37 +373,111 @@ CORRECCIÓN:
 ACTUAL: CRÉDITOS
 CORRECCIÓN:
 
-[CRED.06] Encabezado
-ACTUAL: THE LOCUST
+[CRED.20] Encabezado
+ACTUAL: THE FOUR
 CORRECCIÓN:
 
-[CRED.07] Texto
-ACTUAL: Modelo de Doumty.
+[CRED.21] Texto
+ACTUAL: Proyecto fan no oficial, sin ánimo de lucro.
+| Arquitectura del hotel, generación del piso, cámara de vídeo doméstica, shaders, iluminación, sonido sintetizado, red y código: creados para este juego.
 CORRECCIÓN:
 
-[CRED.08] Encabezado
-ACTUAL: ARQUITECTURA Y MOBILIARIO
+[CRED.22] Encabezado
+ACTUAL: MOTOR
 CORRECCIÓN:
 
-[CRED.09] Texto
-ACTUAL: Creados para The Four. Provisionales.
+[CRED.23] Texto
+ACTUAL: Godot Engine 4.7 — © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.
+| GodotSteam 4.22.1 — © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores. Licencia MIT.
+| Steamworks SDK — © Valve Corporation. Steam y el logotipo de Steam son marcas de Valve Corporation.
 CORRECCIÓN:
 
-[CRED.10] Encabezado
-ACTUAL: AUDIO
+[CRED.24] Encabezado
+ACTUAL: PERSONAJES
 CORRECCIÓN:
 
-[CRED.11] Texto
-ACTUAL: Aportado por el usuario. Autoría y licencias por verificar.
-CORRECCIÓN:
-OBS: "Aportado por el usuario" es lenguaje de desarrollo; en créditos debería ir el autor real.
-
-[CRED.12] Encabezado
-ACTUAL: DISTRIBUCIÓN
+[CRED.25] Texto
+ACTUAL: The Locust — modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).
+| «detective» — haider706 (Sketchfab, CC BY 4.0).
+| «Debra — Detective Woman (Game Model)» — Zukomazi (Sketchfab, CC BY 4.0).
+| «Realistic Female» — Biviyt (Sketchfab, CC BY-SA 4.0).
 CORRECCIÓN:
 
-[CRED.13] Texto
-ACTUAL: Los permisos de los assets siguen pendientes.
+[CRED.26] Encabezado
+ACTUAL: MOBILIARIO Y OBJETOS
+CORRECCIÓN:
+
+[CRED.27] Texto
+ACTUAL: Poly Haven, CC0: Kirill Sannikov, James Ray Cock, Ulan Cabanilla, Rico Cilliers, Kuutti Siitonen, Fran Calvente, Yann Kervran, Vibrant Nordic, Ulrich Büch, Rob Tuytel, Rahul Chaudhary, ProgrammerOnCoffee, PierreB3D, Maximilian Schuster, Mateusz Sadek, Luca B, Jurita Burger, Jule Bielitz, John Malcolm, Joe Seabuhr, GurJas Studios, Fabi_G, Caspian Fortune y Benny Weimer.
+| «Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).
+| «Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).
+| «Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).
+| «Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.
+| Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el usuario; autoría y licencia pendientes de verificar.
+CORRECCIÓN:
+OBS: "aportados por el usuario" es lenguaje de desarrollo (también en CRED.35); en
+créditos debería ir el autor real.
+
+[CRED.28] Encabezado
+ACTUAL: MATERIALES
+CORRECCIÓN:
+
+[CRED.29] Texto
+ACTUAL: ambientCG — Lennart Demes, CC0: moqueta, papel pintado, azulejo, latón, falso techo y todos los decals.
+| Poly Haven, CC0: Rob Tuytel, Dimitrios Savva, Rico Cilliers, Dario Barresi, Jenelle van Heerden y colormass — madera, yeso, terciopelo, jacquard y cuero.
+CORRECCIÓN:
+
+[CRED.30] Encabezado
+ACTUAL: CUADROS
+CORRECCIÓN:
+
+[CRED.31] Texto
+ACTUAL: Art Institute of Chicago, colección de acceso abierto (dominio público): Salomon van Ruysdael, Meindert Hobbema, Reinier Nooms, Maxime Maufra, Henry Raeburn, John Wollaston, Arthur Devis, Albert Bierstadt, John Henry Twachtman, Jules Dupré, Jean Charles Cazin, Martin Johnson Heade, Jan Both y Jan Brueghel el Viejo.
+CORRECCIÓN:
+
+[CRED.32] Encabezado
+ACTUAL: SONIDO — FREESOUND
+CORRECCIÓN:
+
+[CRED.33] Texto
+ACTUAL: «Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).
+| «men_sneaker_shoes_walking_sound_09262024» — Artninja (CC BY 4.0).
+| «Open letter and reading» — dersuperanton (CC BY 4.0).
+| «horror ambience 161101_1038» — klankbeeld (CC BY 4.0).
+| «Door Opening» — AUDACITIER (CC BY 4.0).
+| «Atmosphere 2» — oldaccount (CC BY 3.0).
+| «DOOR creak — multiple creaks wooden door» — mickfire (CC BY-NC 4.0).
+| «Sub Riser» — deleted_user_3277771 / Josh Mclelland (CC BY-NC 3.0).
+| «Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).
+| «toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).
+| «custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).
+| «Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).
+CORRECCIÓN:
+
+[CRED.34] Encabezado
+ACTUAL: SONIDO — EL RESTO
+CORRECCIÓN:
+
+[CRED.35] Texto
+ACTUAL: Pasos, respiración, latido, presencia de la criatura y los golpes del hotel: síntesis creada para el juego.
+| Música y el resto del paquete de efectos: aportados por el usuario; autoría y licencia pendientes de verificar.
+CORRECCIÓN:
+
+[CRED.36] Encabezado
+ACTUAL: LETRAS
+CORRECCIÓN:
+
+[CRED.37] Texto
+ACTUAL: El cartel de SALIDA y los números de puerta están dibujados para este juego: no se embarca ningún archivo de tipografía.
+CORRECCIÓN:
+
+[CRED.38] Encabezado
+ACTUAL: LICENCIAS PENDIENTES
+CORRECCIÓN:
+
+[CRED.39] Texto
+ACTUAL: Dos de los sonidos y el modelo de The Locust llevan cláusula No Comercial, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.
+| El registro completo, con enlaces y condiciones, está en docs/ASSETS.md.
 CORRECCIÓN:
 
 [CRED.14] Opción
@@ -289,8 +485,10 @@ ACTUAL: VOLVER
 CORRECCIÓN:
 
 
-9. MULTIJUGADOR Y PERSONAJE
----------------------------
+10. MULTIJUGADOR Y PERSONAJE
+----------------------------
+
+-- Pantalla Multijugador --
 
 [MP.01] Esquina superior izquierda
 ACTUAL: MENU ▸ MULTIJUGADOR
@@ -300,59 +498,155 @@ CORRECCIÓN:
 ACTUAL: MULTIJUGADOR
 CORRECCIÓN:
 
-[MP.03] Bajo el título
-ACTUAL: DE 2 A 5 JUGADORES · LAN O IP
+[MP.03] Bajo el título (%d = máximo de jugadores, hoy 5)
+ACTUAL: DE 2 A %d JUGADORES · IP / LAN O STEAM
 CORRECCIÓN:
 
-[MP.04] Campo de texto del nombre (sin etiqueta), texto de ejemplo
+[MP.04] Campo de texto del nombre (sin etiqueta), texto de ejemplo en gris
+ACTUAL: Ingresa tu nombre
+CORRECCIÓN:
+
+[MP.17] Nombre que se usa en la sala si el campo se deja vacío
 ACTUAL: Jugador
 CORRECCIÓN:
 
-[MP.05] Opciones
-ACTUAL: CREAR SALA / UNIRSE A UNA SALA / PERSONAJE / VOLVER
+[MP.05] Opciones (STEAM desactivada si Steam no está disponible)
+ACTUAL: STEAM / IP / LAN / VOLVER
 CORRECCIÓN:
 
-[MP.07] Pantalla Unirse
-ACTUAL: MULTIJUGADOR ▸ UNIRSE · UNIRSE · Dirección del anfitrión · CONECTAR · VOLVER · Conectando con %s…
+[MP.18] Bajo STEAM, cuando no se puede usar (%s = motivo que da Steam, o "sin respuesta")
+ACTUAL: Steam no está disponible en esta versión del juego (falta GodotSteam). /
+| Steam no se usa en pruebas automáticas. /
+| No se pudo conectar con Steam: ¿está abierto y con la sesión iniciada? (%s) /
+| Steam está abierto pero sin conexión.
 CORRECCIÓN:
 
-[MP.08] Sala
-ACTUAL: MULTIJUGADOR ▸ SALA · SALA · JUGADORES  %d / 5 · Tipo de partida · The Locust · Retomar el piso guardado · EMPEZAR · PERSONAJE · CERRAR LA SALA / SALIR DE LA SALA
+-- Steam --
+
+[MP.19] Pantalla Steam: esquina, título, subtítulo y opciones
+ACTUAL: MULTIJUGADOR ▸ STEAM · STEAM · CON TUS AMIGOS DE STEAM · SIN ABRIR PUERTOS · CREAR SALA · UNIRSE A UNA SALA · VOLVER
 CORRECCIÓN:
 
-[MP.09] Tipos de partida
-ACTUAL: Cooperativo contra IA / Versus: un jugador es The Locust / Al azar
+[MP.22] Unirse por Steam: esquina, pie ("STEAM"), título, subtítulo, lista de salas
+(una por amigo, con su nombre), aviso si no hay ninguna, opciones y nota
+ACTUAL: MULTIJUGADOR ▸ UNIRSE · STEAM · UNIRSE · STEAM · SALAS DE TUS AMIGOS ·
+| Ningún amigo tiene una sala abierta ahora. · ACTUALIZAR · VOLVER
+| También puedes aceptar una invitación desde Steam (Mayús+Tab), o entrar desde el perfil de un amigo con «Unirse a la partida».
 CORRECCIÓN:
 
-[MP.10] Sala, avisos
-ACTUAL: Hacen falta al menos 2 jugadores. / Esperando a que el anfitrión empiece… / Para unirse: %s · puerto 38430 / anfitrión, tú, desconectado, The Locust
+[MP.23] Invitar (solo si la ventana de Steam no está disponible): esquina, pie, título,
+subtítulo, lista de amigos, avisos (%s = nombre del amigo) y opciones
+ACTUAL: SALA ▸ INVITAR · STEAM · INVITAR · TUS AMIGOS CONECTADOS A STEAM ·
+| Ninguno de tus amigos está conectado ahora. /
+| Invitación enviada a %s: le llega al chat de Steam. /
+| Steam no dejó enviar la invitación a %s. ·
+| ABRIR LA VENTANA DE STEAM · ACTUALIZAR · VOLVER A LA SALA
 CORRECCIÓN:
 
-[MP.11] Errores de conexión
-ACTUAL: No se pudo conectar con esa dirección. / Se perdió la conexión con el anfitrión. / Versiones distintas del juego: actualizad todos al mismo exe. / La partida ya empezó. Espera a que vuelvan a la sala. / La sala está llena (máximo 5 jugadores). / No se pudo abrir la sala en el puerto %d (¿ya hay otra abierta?).
+[MP.24] Esperando a Steam: esquina, título, estado y opción
+ACTUAL: MULTIJUGADOR ▸ STEAM · STEAM · Conectando… · CANCELAR
 CORRECCIÓN:
 
-[MP.12] Durante la partida
-ACTUAL: Esperando a los demás jugadores… / HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR
-OBS: «ERES THE LOCUST» se retiró; la vista del cazador ya lo dice.
+[MP.28] Errores de Steam (%d = código de error de Steam)
+ACTUAL: Steam no pudo crear la sala (código %d). /
+| No se pudo abrir la sala sobre Steam (error %d). /
+| No se pudo entrar en la sala de Steam (código %d): quizá ya se cerró o está llena. /
+| Esa sala de Steam no es de The Four. /
+| Versiones distintas del juego: actualizad todos al mismo exe. /
+| No se pudo conectar con el anfitrión por Steam (error %d).
+CORRECCIÓN:
+OBS: "Versiones distintas del juego..." está repetido igual en MP.11.
+
+-- IP / LAN --
+
+[MP.20] Pantalla IP / LAN: esquina, título, subtítulo y opciones
+ACTUAL: MULTIJUGADOR ▸ IP / LAN · IP / LAN · EN TU RED LOCAL, O POR INTERNET CON UN PUERTO ABIERTO · CREAR SALA · UNIRSE A UNA SALA · VOLVER
 CORRECCIÓN:
 
-[MP.13] Menú en partida
-ACTUAL: ❚❚ MENÚ · MENÚ · LA PARTIDA NO SE DETIENE · CONTINUAR · AJUSTES · CERRAR LA SALA / SALIR DE LA PARTIDA
+[MP.21] Crear sala por IP: esquina, título, subtítulo, campos, red, opciones y nota
+ACTUAL: MULTIJUGADOR ▸ CREAR SALA · CREAR SALA · IP / LAN · Puerto · Red · Todas las redes de este equipo · ABRIR LA SALA · VOLVER
+| En tu red local basta con esto. Para jugar por Internet, el puerto tiene que estar abierto en tu router hacia este equipo (UDP); si no puedes abrirlo, usa Steam.
 CORRECCIÓN:
 
-[MP.14] Final en línea
-ACTUAL: SALISTE DEL PISO / SEÑAL PERDIDA / SE TE ESCAPARON / CAZA COMPLETA · REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · CERRAR LA SALA · El anfitrión decide cómo seguir… · SALIR DE LA SALA
+[MP.07] Unirse por IP: esquina, título, subtítulo, campos (con 192.168.1.20 de ejemplo),
+opciones y estado (%s = dirección, %d = puerto)
+ACTUAL: MULTIJUGADOR ▸ UNIRSE · UNIRSE · IP / LAN · Dirección del anfitrión · Puerto · CONECTAR · VOLVER ·
+| Conectando con %s, puerto %d…
 CORRECCIÓN:
 
-[MP.15] The Locust jugador
-ACTUAL: LA CAZA EMPIEZA EN %d
-OBS: con la letra de la videocámara, bajo el filtro; la pantalla del cazador no muestra controles ni otras pistas (septiembre de 2026).
+[MP.25] Estados mientras se entra en una sala (%s = "la sala de" + nombre del amigo en Steam)
+ACTUAL: Creando la sala en Steam… / Entrando en la sala de Steam… / Conectando con %s… /
+| Conectado. Entrando en la sala…
 CORRECCIÓN:
 
-[MP.16] Hoja
-ACTUAL: IZQUIERDO DIBUJA · DERECHO BORRA · [TECLA] CIERRA / SOLO PUEDES MIRAR · [TECLA] CIERRA
+[MP.11] Errores de conexión y de la sala (%s = "todas las redes" o la dirección elegida)
+ACTUAL: No se pudo conectar con esa dirección. /
+| Se perdió la conexión con el anfitrión. /
+| Versiones distintas del juego: actualizad todos al mismo exe. /
+| Tu piso no coincide con el del anfitrión: usad todos el mismo exe. /
+| La partida ya empezó. Espera a que vuelvan a la sala. /
+| La sala está llena (máximo 5 jugadores). /
+| No se pudo abrir la sala en %s, puerto %d (¿ya hay otra abierta, o esa dirección no es de este equipo?). /
+| El puerto tiene que estar entre 1024 y 65535. /
+| Puerto no válido. /
+| Dirección no válida. /
+| No se pudo construir el piso de la partida.
 CORRECCIÓN:
+
+-- Sala --
+
+[MP.08] Sala: esquina, pie (solo el anfitrión), título, contador, opciones del anfitrión
+y botones
+ACTUAL: MULTIJUGADOR ▸ SALA · ANFITRIÓN · SALA · JUGADORES  %d / 5 · Tipo de partida · The Locust ·
+| Retomar el piso guardado · EMPEZAR · PERSONAJE · CERRAR LA SALA / SALIR DE LA SALA
+CORRECCIÓN:
+
+[MP.09] Tipos de partida y quién es The Locust (los invitados lo ven escrito:
+"The Locust: al azar" o "The Locust: " + nombre)
+ACTUAL: Cooperativo contra IA / Versus: un jugador es The Locust / Al azar / The Locust: al azar / The Locust: %s
+CORRECCIÓN:
+
+[MP.10] Sala, avisos bajo EMPEZAR o para los invitados
+ACTUAL: Hacen falta al menos 2 jugadores. / Demasiados jugadores. /
+| El jugador elegido como The Locust ya no está. /
+| Esperando a que el anfitrión empiece…
+CORRECCIÓN:
+
+[MP.26] Columna derecha de la sala: cada jugador ("%d · NOMBRE"), su personaje y
+etiquetas
+ACTUAL: %d · %s / anfitrión, tú, desconectado, The Locust
+CORRECCIÓN:
+
+[MP.27] Columna derecha, solo el anfitrión: cómo entrar (%s = direcciones de este equipo,
+o "tu IP"; %d = puerto)
+ACTUAL: Para unirse: %s · puerto %d
+| Por Internet: puerto %d UDP abierto hacia este equipo.
+| (por Steam:) Por Steam: invita a tus amigos.
+| También pueden entrar desde tu perfil: Unirse a la partida.
+| INVITAR AMIGOS
+CORRECCIÓN:
+
+-- Durante la partida en línea --
+
+[MP.12] Pantalla de carga y mensaje del que ha muerto (%s = nombre del compañero;
+con mando, CLIC se cambia por el nombre del botón)
+ACTUAL: Esperando a los demás jugadores… / Volviendo a la partida… /
+| HAS MUERTO / HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR
+CORRECCIÓN:
+
+[MP.13] Menú en partida (no pausa)
+ACTUAL: ❚❚ MENÚ · LA PARTIDA SIGUE · MENÚ · LA PARTIDA NO SE DETIENE · CONTINUAR · AJUSTES · CERRAR LA SALA / SALIR DE LA PARTIDA
+CORRECCIÓN:
+OBS: "LA PARTIDA SIGUE" (pie de la pantalla) y "LA PARTIDA NO SE DETIENE" (bajo el
+título) dicen lo mismo en la misma pantalla.
+
+[MP.14] Final en línea (títulos según el bando; el resto como FIN y MUERTE)
+ACTUAL: SALISTE DEL PISO / SEÑAL PERDIDA / SE TE ESCAPARON / CAZA COMPLETA · MEJORES TIEMPOS ·
+| REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · CERRAR LA SALA ·
+| El anfitrión decide cómo seguir… · SALIR DE LA SALA
+CORRECCIÓN:
+
+-- Personaje --
 
 [PJ.01] Esquina superior izquierda
 ACTUAL: MULTIJUGADOR ▸ PERSONAJE
@@ -383,7 +677,7 @@ ACTUAL: VOLVER
 CORRECCIÓN:
 
 
-10. AJUSTES
+11. AJUSTES
 -----------
 
 [AJ.01] Esquina superior izquierda
@@ -394,18 +688,90 @@ CORRECCIÓN:
 ACTUAL: AJUSTES
 CORRECCIÓN:
 
--- Pestaña GRÁFICOS --
-
-[AJ.10] Nombre de la pestaña
-ACTUAL: GRÁFICOS
+[AJ.04] Bajo el título, solo con mando conectado (%s = botones LB y RB, o L1 y R1...)
+ACTUAL: %s  ·  CAMBIA DE PESTAÑA  ·  %s
 CORRECCIÓN:
 
-[AJ.11] Casilla
-ACTUAL: Pantalla completa
+-- Pestaña IMAGEN (la primera) --
+
+[AJ.20] Nombre de la pestaña
+ACTUAL: IMAGEN
+CORRECCIÓN:
+
+[AJ.60] Desplegable
+ACTUAL: Modo de ventana
+CORRECCIÓN:
+
+[AJ.11] Opciones del modo de ventana
+ACTUAL: Pantalla completa / Ventana sin bordes / Ventana
 CORRECCIÓN:
 
 [AJ.12] Desplegable (desactivado en pantalla completa)
 ACTUAL: Tamaño de ventana
+CORRECCIÓN:
+
+[AJ.62] Desplegable (desactivado con el renderizador Compatibilidad)
+ACTUAL: Escalado
+CORRECCIÓN:
+
+[AJ.63] Opciones del escalado
+ACTUAL: Automático / Bilineal (sin reconstrucción) / FSR 1.0 (espacial) / FSR 2.2 (temporal)
+CORRECCIÓN:
+
+[AJ.64] Desplegable
+ACTUAL: Calidad del escalado
+CORRECCIÓN:
+
+[AJ.65] Opciones de la calidad del escalado (la última solo si la escala no es ninguna
+de las otras; %d = porcentaje)
+ACTUAL: Nativa (sin reescalado) / Ultra calidad (77%) / Calidad (67%) / Equilibrado (59%) /
+| Rendimiento (50%) / Ultra rendimiento (33%) / Personalizada (%d%)
+CORRECCIÓN:
+
+[AJ.15] Deslizador
+ACTUAL: Escala de render
+CORRECCIÓN:
+
+[AJ.67] Deslizador
+ACTUAL: Nitidez del escalado
+CORRECCIÓN:
+
+[AJ.68] Desplegable (desactivado con FSR 2.2)
+ACTUAL: Suavizado de bordes
+CORRECCIÓN:
+
+[AJ.69] Opciones del suavizado
+ACTUAL: Del preset / Sin suavizado / FXAA (rápido) / SMAA (mejor) / TAA (temporal) / MSAA 2× / MSAA 4×
+CORRECCIÓN:
+
+[AJ.70] Nota con el renderizador Compatibilidad
+ACTUAL: Compatibilidad no tiene FSR: la imagen se estira sin reconstruir. Cambia el renderizador en GRÁFICOS para usarlo.
+CORRECCIÓN:
+
+[AJ.71] Nota con FSR 2.2
+ACTUAL: FSR 2.2 reconstruye la imagen con el movimiento de cada píxel y hace de suavizado él mismo, así que el de abajo no se usa.
+CORRECCIÓN:
+
+[AJ.72] Nota con escalado bilineal por debajo de la resolución nativa
+ACTUAL: Por debajo de la resolución nativa, FSR 2.2 se ve bastante más nítido que este estirado.
+CORRECCIÓN:
+
+[AJ.17] Desplegable
+ACTUAL: Límite de FPS
+CORRECCIÓN:
+
+[AJ.18] Opción del límite
+ACTUAL: Sin límite
+CORRECCIÓN:
+
+[AJ.19] Casilla
+ACTUAL: Sincronización vertical
+CORRECCIÓN:
+
+-- Pestaña GRÁFICOS --
+
+[AJ.10] Nombre de la pestaña
+ACTUAL: GRÁFICOS
 CORRECCIÓN:
 
 [AJ.13] Desplegable
@@ -436,30 +802,16 @@ CORRECCIÓN:
 ACTUAL: Gráfica integrada: preset Bajo. Si aun así va lento, prueba Ajustes ▸ Gráficos ▸ Renderizador: Compatibilidad.
 CORRECCIÓN:
 
-[AJ.15] Deslizador
-ACTUAL: Escala de render
-CORRECCIÓN:
-
 [AJ.16] Casilla
 ACTUAL: Sombras
 CORRECCIÓN:
 
-[AJ.17] Desplegable
-ACTUAL: Límite de FPS
+[AJ.73] Desplegables de los efectos pesados
+ACTUAL: Oclusión ambiental (SSAO/SSIL) / Niebla volumétrica / Reflejos en superficies / Desenfoque de movimiento
 CORRECCIÓN:
 
-[AJ.18] Opción del límite
-ACTUAL: Sin límite
-CORRECCIÓN:
-
-[AJ.19] Casilla
-ACTUAL: Sincronización vertical
-CORRECCIÓN:
-
--- Pestaña IMAGEN --
-
-[AJ.20] Nombre de la pestaña
-ACTUAL: IMAGEN
+[AJ.74] Opciones de cada efecto pesado
+ACTUAL: Del preset / Desactivado / Activado
 CORRECCIÓN:
 
 [AJ.21] Deslizador
@@ -504,8 +856,33 @@ CORRECCIÓN:
 ACTUAL: Invertir mirada vertical
 CORRECCIÓN:
 
+[AJ.37] Deslizador (solo con mando conectado)
+ACTUAL: Sensibilidad del mando
+CORRECCIÓN:
+
+[AJ.38] Casilla (solo con mando conectado)
+ACTUAL: Correr con el mando: pulsar para alternar
+CORRECCIÓN:
+
+[AJ.39] Casilla (solo con mando conectado)
+ACTUAL: Agacharse con el mando: pulsar para alternar
+CORRECCIÓN:
+
+[AJ.39b] Casilla (solo con mando conectado)
+ACTUAL: Vibración del mando
+CORRECCIÓN:
+
+[AJ.39c] Nota (solo con mando conectado; %s = tipo de mando, botón de pausa,
+gatillo derecho y gatillo izquierdo)
+ACTUAL: Mando: %s. El stick izquierdo anda —cuanto más lo empujas, más deprisa—, el derecho mira y %s hace de pausa; mover y mirar son los sticks y no se cambian. Con la hoja abierta, el stick izquierdo lleva el lápiz, %s dibuja y %s borra.
+CORRECCIÓN:
+
+[AJ.39d] Tipos de mando (primer %s de AJ.39c)
+ACTUAL: Xbox o compatible / PlayStation / Nintendo
+CORRECCIÓN:
+
 [AJ.33] Acciones reasignables
-ACTUAL: Adelante / Atrás / Izquierda / Derecha / Correr / Saltar / Interactuar / Linterna / Agacharse
+ACTUAL: Adelante / Atrás / Izquierda / Derecha / Correr / Saltar / Interactuar / Linterna / Agacharse / Hoja / The Locust: rastro a la tele
 CORRECCIÓN:
 
 [AJ.34] Botón mientras espera una tecla
@@ -514,6 +891,25 @@ CORRECCIÓN:
 
 [AJ.35] Botón si la tecla no se puede usar
 ACTUAL: TECLA RESERVADA O EN USO
+CORRECCIÓN:
+
+[AJ.35b] Columna del mando: botón mientras espera un botón (%s = botón de cancelar)
+ACTUAL: PULSA UN BOTÓN · %s CANCELA
+CORRECCIÓN:
+
+[AJ.35c] Columna del mando: si el botón no se puede usar
+ACTUAL: BOTÓN RESERVADO · %s CANCELA
+CORRECCIÓN:
+
+[AJ.35d] Columna del mando: filas que no se reasignan (rastro de The Locust / moverse)
+ACTUAL: EL DE LA LINTERNA / STICK IZQ.
+CORRECCIÓN:
+
+[AJ.39e] Nombres de los botones del mando (se usan en todas las pantallas)
+ACTUAL: Xbox: A · B · X · Y · LB · RB · LT · RT · VISTA · MENÚ
+| PlayStation: CRUZ · CÍRCULO · CUADRADO · TRIÁNGULO · L1 · R1 · L2 · R2 · SHARE (CREATE en PS5) · OPTIONS · PANEL TÁCTIL
+| Nintendo: B · A · Y · X · L · R · ZL · ZR · − · +
+| Todos: L3 · R3 · CRUCETA ↑ · CRUCETA ↓ · CRUCETA ← · CRUCETA → · PANEL TÁCTIL · GUÍA · CAPTURA
 CORRECCIÓN:
 
 [AJ.36] Botón
@@ -534,7 +930,7 @@ CORRECCIÓN:
 ACTUAL: Subtítulos de sonidos relevantes
 CORRECCIÓN:
 
--- Confirmación de pantalla (al cambiar resolución o pantalla completa) --
+-- Confirmación de pantalla (al cambiar el modo o el tamaño de ventana) --
 
 [AJ.50] Aviso (%d = segundos restantes)
 ACTUAL: Confirma la pantalla: se revertirá en %d s.
@@ -553,81 +949,117 @@ ACTUAL: VOLVER
 CORRECCIÓN:
 
 
-11. HUD EN PARTIDA
+12. HUD EN PARTIDA
 ------------------
 
-[HUD.01] Mensaje breve arriba a la izquierda al empezar el piso (5 s)
-ACTUAL: (retirado: la recepción se señala con una luz roja)
-CORRECCIÓN:
-
-[HUD.02] Mensaje breve si intentas cerrar una puerta con alguien en el umbral
-ACTUAL: (retirado: las puertas ya cierran con alguien en el marco)
-CORRECCIÓN:
-
-[HUD.03] Indicación dentro del refugio ([%s] = tecla de interactuar)
-ACTUAL: (retirado, igual que los avisos breves «TELEVISORES 2/4» al encender uno,
-| «NÚMERO 3 DEL CÓDIGO: 7» al registrar un mueble, «EL ASCENSOR SE ABRE» al salir
-| del ascensor, «OTRA VEZ» al repetir una etapa y «ETAPA 2 · DE PIE» al volver
-| los caídos. Las cuentas del sector están en la pausa.)
-
-[HUD.04] Tarjeta del sector, a oscuras al empezar el piso y durante el viaje
-| en ascensor
+[HUD.04] Tarjeta del sector, a oscuras al empezar el piso y durante el viaje en
+ascensor: el sector en grande y, bajo una raya, lo que pide
 ACTUAL: SECTOR 1 · ENCUENTRA LA SALIDA / SECTOR 2 · ENCIENDE LOS TELEVISORES /
 | SECTOR 3 · DESCUBRE EL CÓDIGO
 CORRECCIÓN:
 
-[HUD.04b] Objetivo del sector, arriba a la izquierda al volver la imagen (6 s),
-| y en la pausa con el progreso (TELEVISORES n / m, NÚMEROS DEL CÓDIGO n / 4)
+[HUD.04b] Objetivo del sector, arriba a la izquierda al volver la imagen (6 s), y en
+la pausa bajo el título
 ACTUAL: OBJETIVO · SECTOR 1 · Encuentra la salida del sector. /
 | OBJETIVO · SECTOR 2 · Enciende los televisores y busca la salida. /
 | OBJETIVO · SECTOR 3 · Busca las notas con el código, enciende televisores y sal del piso.
 CORRECCIÓN:
 
-[HUD.05] Los números del código que ya se tienen, escritos abajo a la izquierda
-| de la cinta hasta que termina el piso (el guion es un número que falta)
+[HUD.08] Progreso del sector, en la pausa bajo el objetivo (televisores desde el
+sector 2, números desde el 3)
+ACTUAL: TELEVISORES  %d / %d / NÚMEROS DEL CÓDIGO  %d / 4
+CORRECCIÓN:
+
+[HUD.05] Los números del código que ya se tienen, escritos abajo a la izquierda de la
+cinta hasta que termina el piso (el guion es un número que falta)
 ACTUAL: CÓDIGO  4–7––
 CORRECCIÓN:
 
-[HUD.06] Delante del ascensor, cuando el coche está arriba con los que se
-| adelantaron (cuenta atrás de quince segundos)
-ACTUAL: (retirado: el coche que no está lo dice solo)
-CORRECCIÓN:
-
-[CORDURA.01] Aviso al quedarse sin cordura: el cuerpo empieza a soltar motas que
-| la criatura percibe desde cualquier parte del piso
-ACTUAL: (retirado)
-CORRECCIÓN:
-
-[CORDURA.02] Aviso al recuperarse lo suficiente para dejar de soltarlas
-ACTUAL: (retirado)
-CORRECCIÓN:
-
-[REFUGIO.02] Teclado de la última puerta. «FALTAN TELEVISORES» sale cuando el
-| código es el correcto pero quedan teles por encender en esa ala; «ANOTADO» es
-| lo que se lleva apuntado, bajo las cuatro casillas.
+[REFUGIO.02] Teclado de la última puerta. «FALTAN TELEVISORES» sale cuando el código
+es el correcto pero quedan teles por encender; «ANOTADO» es lo que se lleva apuntado,
+bajo las cuatro casillas.
 ACTUAL: TECLEA EL CÓDIGO · [ESC] SALIR / NO ES / ABIERTA / FALTAN TELEVISORES /
 | ANOTADO  4–7––
 CORRECCIÓN:
+
+[REFUGIO.03] Teclado de la última puerta con mando (se elige el número con la cruceta;
+%s = botones de marcar, borrar y salir)
+ACTUAL: CRUCETA: ELIGE · %s: MARCA · %s: BORRA · %s: SALIR
 CORRECCIÓN:
 
-[HUD.04] Palabra bajo los corchetes de enfoque: puerta cerrada
+-- Palabras bajo los corchetes de enfoque (centro de la imagen) --
+
+[HUD.10] Puerta cerrada
 ACTUAL: ABRIR
 CORRECCIÓN:
 
-[HUD.05] Palabra bajo los corchetes de enfoque: puerta abierta
+[HUD.11] Puerta abierta
 ACTUAL: CERRAR
 CORRECCIÓN:
 
-[HUD.06] Palabra bajo los corchetes de enfoque: escondite
+[HUD.06] Escondite
 ACTUAL: ESCONDERSE
 CORRECCIÓN:
 
-[HUD.07] Palabra bajo los corchetes de enfoque: dentro del escondite
+[HUD.07] Dentro del escondite
 ACTUAL: SALIR
 CORRECCIÓN:
 
+[HUD.12] Teclado de la última puerta
+ACTUAL: TECLADO
+CORRECCIÓN:
 
-12. MARCAS DE VIDEOCÁMARA (bajo el filtro VHS)
+[HUD.13] Televisor apagado
+ACTUAL: ENCENDER
+CORRECCIÓN:
+
+[HUD.14] Mueble sin registrar, mientras se mantiene la tecla de interactuar
+ACTUAL: REGISTRAR
+CORRECCIÓN:
+
+[HUD.15] Dentro del ascensor
+ACTUAL: PULSAR
+CORRECCIÓN:
+
+[DOC.07] Documento
+ACTUAL: LEER
+CORRECCIÓN:
+
+[HUD.16] Compañero (en línea): su nombre en mayúsculas
+ACTUAL: %s
+CORRECCIÓN:
+
+
+13. HOJA Y NOTAS DEL CÓDIGO (tecla de la hoja)
+----------------------------------------------
+
+[HOJA.01] Encima de la columna de notas, junto a la hoja
+ACTUAL: TUS NOTAS
+CORRECCIÓN:
+
+[HOJA.02] Columna de notas vacía
+ACTUAL: NADA TODAVÍA
+CORRECCIÓN:
+
+[HOJA.03] Bajo el número de cada nota: dónde se encontró (%d = número de habitación;
+si la sala no tiene número, su nombre en mayúsculas, ver OTRO.02)
+ACTUAL: HABITACIÓN %d
+CORRECCIÓN:
+
+[HOJA.04] Lo mismo, si no se sabe dónde
+ACTUAL: ¿DÓNDE?
+CORRECCIÓN:
+
+[HOJA.05] Esquina del plano de cada planta en la hoja
+ACTUAL: PLANTA %d
+CORRECCIÓN:
+
+[MP.16] Bajo la hoja, solo cuando no se puede escribir en ella (muerto)
+ACTUAL: SOLO PUEDES MIRAR · [TECLA] CIERRA
+CORRECCIÓN:
+
+
+14. MARCAS DE VIDEOCÁMARA (bajo el filtro VHS)
 ----------------------------------------------
 
 [CAM.01] Arriba a la derecha, con punto rojo parpadeante
@@ -646,8 +1078,13 @@ CORRECCIÓN:
 ACTUAL: JAN. FEB. MAR. APR. MAY JUN. JUL. AUG. SEP. OCT. NOV. DEC.
 CORRECCIÓN:
 
+[CAM.04] Barra del zoom, arriba en el centro, mientras se mueve (W = gran angular,
+T = teleobjetivo)
+ACTUAL: W  T
+CORRECCIÓN:
 
-13. SUBTÍTULOS DE SONIDO (si están activados)
+
+15. SUBTÍTULOS DE SONIDO (si están activados)
 ---------------------------------------------
 
 [SUB.01] Entre los 5 y 10 s de partida
@@ -672,8 +1109,9 @@ CORRECCIÓN:
 OBS: "presencia grave" suena algo artificial.
 
 
-14. MENSAJES DE ERROR Y GUARDADO (aparecen en el menú principal)
+16. MENSAJES DE ERROR Y GUARDADO (aparecen en el menú principal)
 ----------------------------------------------------------------
+ERR.04 a ERR.06 salen también en la línea de subtítulos durante el piso.
 
 [ERR.01] Checkpoint dañado
 ACTUAL: El checkpoint no se puede leer. Puedes iniciar una partida nueva.
@@ -699,41 +1137,52 @@ CORRECCIÓN:
 ACTUAL: No se pudo validar la ruta de salida. El nivel no se inició.
 CORRECCIÓN:
 
-
-15. CARTELES DENTRO DEL HOTEL (texto 3D)
-----------------------------------------
-
-[MUNDO.01] Pared de la recepción inicial
-ACTUAL: (retirado: ahora hay una luz roja parpadeante)
+[ERR.07] Juego exportado arrancado con la opción de repasar partidas de bots
+ACTUAL: El repaso de partidas de bots no viene con el juego.
 CORRECCIÓN:
 
-[MUNDO.02] Pared del refugio de salida
-ACTUAL:
-| SALIDA
-| REFUGIO
-CORRECCIÓN:
-
-[MUNDO.03] Pared opuesta del refugio
-ACTUAL: SALIDA / REFUGIO
-CORRECCIÓN:
-
-[MUNDO.04] Números de habitación en las puertas (100 + número de sala)
-ACTUAL: 101, 102, 103...
+[ERR.08] Juego exportado arrancado con la opción de bots de prueba
+ACTUAL: Los bots de prueba no vienen con el juego.
 CORRECCIÓN:
 
 
-16. OTROS
+17. CARTELES DENTRO DEL HOTEL (en el mundo 3D)
+----------------------------------------------
+
+[MUNDO.02] Cartel luminoso de salida sobre el refugio (es una imagen grabada, con
+flecha: assets/props/exit_sign/engraving.png; los carteles de los pasillos son solo
+dibujos, sin texto)
+ACTUAL: SALIDA
+CORRECCIÓN:
+
+[MUNDO.04] Números de habitación en las placas de las puertas (la centena es la planta;
+impares a un lado del pasillo y pares al otro)
+ACTUAL: 101, 102, 103... / 201, 202... / 301...
+CORRECCIÓN:
+
+[MUNDO.05] Pantalla de piso del ascensor
+ACTUAL: 1
+CORRECCIÓN:
+
+[MUNDO.06] Números de puerta de la escena de entrada y del fondo del menú
+ACTUAL: 107, 108, 109, 110, 112 / 214
+CORRECCIÓN:
+
+
+18. OTROS
 ---------
 
 [OTRO.01] Título de la ventana del juego
 ACTUAL: THE FOUR — Hotel
 CORRECCIÓN:
 
-[OTRO.02] Nombres de salas (solo en la galería de módulos del editor)
-ACTUAL: Recepción / Habitación doble / Habitación / Suite / Baños / Salón / Comedor / Lavandería / Almacén / Mantenimiento / Vestíbulo / Pasillo / Galería / Sala de lectura / Sala de televisión / Oficina / Guardarropa / Jardín interior / Salón vacío / Refugio
+[OTRO.02] Nombres de salas (en mayúsculas, bajo el número de una nota del código hallada
+en una sala sin número; también en la galería de módulos del editor)
+ACTUAL: Recepción / Habitación doble / Habitación / Suite / Baños / Salón / Comedor / Lavandería / Almacén / Mantenimiento / Vestíbulo / Pasillo / Galería / Sala de lectura / Sala de televisión / Oficina / Guardarropa / Jardín interior / Salón vacío / Refugio / Vacío
 CORRECCIÓN:
 
-17. DOCUMENTOS DEL HOTEL (se leen con E sobre mesas y escritorios; se guardan en Archivo)
+
+19. DOCUMENTOS DEL HOTEL (se leen con E sobre mesas y escritorios; se guardan en Archivo)
 --------------------------------------------------------------------------------------
 
 [DOC.01] locust_reception — título
@@ -746,7 +1195,7 @@ CORRECCIÓN:
 
 [DOC.01c] locust_reception — texto
 ACTUAL: Tres quejas más de la planta primera. Dicen que la tele se enciende sola pasadas las tres y que en la pantalla sale alguien mirando desde muy cerca. El 107 pidió cambiar de habitación. El 112 no contestó al teléfono.
-| 
+|
 | Ya desenchufé dos aparatos y volvieron a encenderse. No subas solo. Si oyes golpes en una puerta, no abras para ver quién es.
 CORRECCIÓN:
 
@@ -760,7 +1209,7 @@ CORRECCIÓN:
 
 [DOC.02c] locust_maintenance — texto
 ACTUAL: Habitación 107: pantalla del televisor rota. Los cristales están fuera, sobre la moqueta, no dentro del tubo. Lo rompieron desde dentro.
-| 
+|
 | Marcas en el marco de la puerta, a más de dos metros y medio de altura, como de algo que se agacha para pasar. Arañazos en el interior de dos armarios del pasillo. Pido que alguien más venga a verlo antes de cambiar nada.
 CORRECCIÓN:
 
@@ -774,7 +1223,7 @@ CORRECCIÓN:
 
 [DOC.03c] locust_letter — texto
 ACTUAL: Si alguien encuentra esto: me he pasado la noche dentro de un armario. Lo que anda por los pasillos ve muy lejos, mucho más lejos que tú. No le apuntes con la linterna, la luz lo trae.
-| 
+|
 | Cuando se para en seco y chilla, ya sabe dónde estás. Ese segundo es lo único que tienes: sal de su vista. Y no abras las puertas del armario para mirar si lo tienes delante.
 CORRECCIÓN:
 
@@ -792,42 +1241,129 @@ ACTUAL: 02:40 Pasos en la planta de arriba. No son de persona, suenan como punta
 | 03:10 En la sala de la salida no entra. Me quedo aquí hasta que se haga de día.
 CORRECCIÓN:
 
-[DOC.05] Pie de la hoja abierta
+[DOC.05] Pie de la hoja abierta (la tecla es la de interactuar, que cierra el documento)
 ACTUAL: [TECLA] GUARDAR
 CORRECCIÓN:
 
-[DOC.06] Aviso al leer un documento nuevo
-ACTUAL: (retirado: la entrada queda en Archivo del menú)
+[ARCH.06] Pantalla de archivo: esquina superior izquierda y título
+ACTUAL: ▶ PLAY · ARCHIVO
 CORRECCIÓN:
 
-[DOC.07] Corchetes de enfoque sobre un documento
-ACTUAL: LEER
-CORRECCIÓN:
-
-[ARCH.01] Menú principal, botón
-ACTUAL: ARCHIVO
-CORRECCIÓN:
-
-[ARCH.02] Pantalla de archivo, contador
+[ARCH.02] Pantalla de archivo, contador (hoy de 16)
 ACTUAL: DOCUMENTOS  %d / %d
 CORRECCIÓN:
 
 [ARCH.03] Entrada sin descubrir
-ACTUAL: — sin descubrir —
+ACTUAL: — SIN DESCUBRIR —
 CORRECCIÓN:
 
 [ARCH.04] Archivo vacío
 ACTUAL: Los documentos que leas en el hotel se guardan aquí, también entre partidas.
 CORRECCIÓN:
 
-[ESC.01] Escena de entrada, esquina superior derecha, pequeño, durante los primeros 6 s
-ACTUAL: [TECLA]  para saltar cinemática
+[ARCH.05] Opciones
+ACTUAL: MEJORES TIEMPOS / VOLVER
 CORRECCIÓN:
 
-18. VISION ACUSTICA DE THE LOCUST
----------------------------------
 
-[ECO.01] Aviso al abrir la prueba local de la vista acustica (./tools/godot.ps1 locust)
+20. THE LOCUST COMO JUGADOR (versus, o la prueba local)
+-------------------------------------------------------
+
+[MP.15] Centro inferior, con la letra de la videocámara, bajo el filtro; la pantalla del
+cazador no muestra controles ni otras pistas (%d = segundos)
+ACTUAL: LA CAZA EMPIEZA EN %d
+CORRECCIÓN:
+
+[LOC.01] Abajo a la derecha, sobre el aguante, con una barra que se rellena mientras
+se recarga el chillido
+ACTUAL: CHILLIDO
+CORRECCIÓN:
+
+[LOC.02] Igual, mientras se recarga el rastro a la tele
+ACTUAL: RASTRO
+CORRECCIÓN:
+
+[LOC.03] Igual, con un reloj que se vacía, mientras aún no puede subir al ascensor
+(%d = segundos)
+ACTUAL: ASCENSOR %d
+CORRECCIÓN:
+
+[ECO.01] Aviso al abrir la prueba local de la vista acústica (./tools/godot.ps1 locust)
 OBS: solo aparece en la prueba en solitario; en partida normal no hay aviso.
 ACTUAL: VISION ACUSTICA - PRUEBA LOCAL
+CORRECCIÓN:
+
+
+21. HERRAMIENTA DEL OBSERVADOR (solo al arrancar con --observer; no forma parte del juego)
+----------------------------------------------------------------------------------------
+
+[OBSV.01] Pantalla de carga al abrir la herramienta (%s = dirección)
+ACTUAL: Buscando una partida en %s…
+CORRECCIÓN:
+
+[OBSV.02] Panel izquierdo, cabecera
+ACTUAL: OBSERVADOR · libre / siguiendo a %s · mapa · lectura · %d m/s · tiempo ×%s
+| OBSERVADOR · construyendo un piso… / Sin piso todavía.
+CORRECCIÓN:
+
+[OBSV.03] Panel izquierdo, ayuda de teclas
+ACTUAL: TAB seguir · F soltar · M mapa · RePág/AvPág planta · C techos · L luz · H panel
+| R otro piso · Mayús+R vuelve al %d · V lectura · 1-6 capas
+| P [ ] tiempo · F5 volcar · ESC ratón, y otra vez cerrar
+CORRECCIÓN:
+
+[OBSV.04] Panel izquierdo, el piso
+ACTUAL: Piso 1 · semilla %d · piso propio · buscando partida en %s / la partida · versus / cooperativo /
+| piso propio · en la sala, esperando a que empiecen
+| Planta %d de %d · %s · %s · %d habitaciones · %d × %d m
+| Sector %d/%d · %s · %s
+| Meta lista / pendiente %d/%d · apagón · código puesto / no · teles %d
+CORRECCIÓN:
+
+[OBSV.05] Nombres de los planos y las formas de planta
+ACTUAL: espina / doble / anillo / peine / manzanas / brazos / madriguera / podrido ·
+| rectángulo / con muesca / en L / en U / con patio / en H
+CORRECCIÓN:
+
+[OBSV.06] Estados del piso, de cada jugador y de la criatura
+ACTUAL: menú / cargando / jugando / en pausa / cambio de sector / ganado / perdido / escena ·
+| explorando / en refugio / muerto ·
+| patrulla / investiga / persigue / busca / prepara / se repone / alerta / armario / ejecuta
+CORRECCIÓN:
+
+[OBSV.07] Encabezados de los paneles
+ACTUAL: SUPERVIVIENTES · THE LOCUST (%s) · DIRECTOR · ASCENSORES · EJECUCIÓN en curso · MÁQUINA · RED · SONIDO · LO QUE HA PASADO
+CORRECCIÓN:
+
+[OBSV.08] Líneas de supervivientes y de la criatura
+ACTUAL: ala %d · a %d m · escondido · cordura %d · en ascensor /
+| ninguno · piso de prueba, solo la criatura /
+| gracia %s · velocidad %s · detección %s / sin ver %s s /
+| destino a %s m · camino %d puntos · repath %s · %d puertas en la ruta /
+| atascos · paso %d ahora · %s (pasos 1 a 5) /
+| ascensor más cerca: %d a %s m (arriba) / el coche que le toca: ninguno · ya está en el ala en juego /
+| va a por %s / se va: dejó una zona sin encontrar nada / busca · %d sitios por mirar · %s s sin pistas
+CORRECCIÓN:
+
+[OBSV.09] Líneas del director y de los ascensores
+ACTUAL: DIRECTOR · acecho / pico / respiro · amenaza %s · callado /
+| descanso %d s más / próxima pista en %d s · a %d m del equipo / %d muertes recientes: más lejos /
+| %d · arriba %s s / abajo · puerta con llave / abierta · llamado /
+| criatura: no antes de %s s / ya puede · en el vestíbulo %s / %d s / último coche saliendo · %s s /
+| EJECUCIÓN en curso · asiento %d · %s s
+CORRECCIÓN:
+
+[OBSV.10] Panel derecho: máquina, red y sonido
+ACTUAL: %d FPS · proceso %s ms · física %s ms / %d objetos · %d llamadas de dibujo · %d nodos /
+| memoria %d MB · vídeo %d MB / render %d% · %s /
+| observando · ida y vuelta %d ms · %d jugadores / sin conexión · piso local /
+| %d voces · agachado %s dB · música %s
+CORRECCIÓN:
+
+[OBSV.11] Avisos del registro (LO QUE HA PASADO)
+ACTUAL: construyendo el piso %d / piso %d · %s · de respaldo / capa %s sí / no / luz sí / no /
+| techos sí / no / R: solo sin partida / no hay piso anterior / planta %d /
+| ratón libre · ESC otra vez para cerrar / tiempo ×%s / siguiendo a %s /
+| no hay criatura que oír / lectura de la criatura sí / no / nada que volcar todavía /
+| no se pudo guardar el volcado / volcado en %s / sin partida: %s
 CORRECCIÓN:

@@ -1908,11 +1908,6 @@ func decide_dark(data: Dictionary) -> void:
 	for room in data.rooms:
 		if bool(room.get("dark", false)): dark_ids[int(room.id)] = true
 
-func add_nav_quad(vertices: PackedVector3Array, polygons: Array[PackedInt32Array], center: Vector3, low: Vector2, high: Vector2) -> void:
-	var first := vertices.size()
-	vertices.append_array(PackedVector3Array([center + Vector3(low.x, 0.04, low.y), center + Vector3(low.x, 0.04, high.y), center + Vector3(high.x, 0.04, high.y), center + Vector3(high.x, 0.04, low.y)]))
-	polygons.append(PackedInt32Array([first, first + 1, first + 2, first + 3]))
-
 ## reach_over: the observer looking at the whole floor from above asks for
 ## everything to be drawn, whatever the preset would hide (0: the preset's).
 ## show_all: nothing is hidden at all -- every room, every door with its

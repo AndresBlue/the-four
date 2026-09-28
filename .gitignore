@@ -28,9 +28,9 @@ evidence/reference/
 # Bot matches: their summaries, recordings and batches (tools/bots.ps1)
 evidence/bots/
 
-# Trailer renders: frames, voice, audio stems and the encodes (tools/trailer3d);
-# evidence/trailer/ is the earlier trailer, filmed in the engine
-evidence/trailer/
+# Trailer renders: frames, voice, audio stems and the encodes (tools/trailer3d)
 evidence/trailer3d/
 tools/trailer3d/node_modules/
-tools/trailer3d/audio/__pycache__/
+
+# Python caches of the tools
+__pycache__/

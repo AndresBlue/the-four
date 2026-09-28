@@ -16,6 +16,8 @@ const YAW := {}
 const SCALE := {"steel_frame_shelves_01": 0.1}
 ## Downloads that hold several objects side by side: each is baked on its own,
 ## as <id>_<name>.res, from the glTF nodes whose name matches.
+## Downloads the game does not use (tools/props/ingest_models.py SKIP).
+const SKIP := ["Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"]
 const PARTS := {
 	"metal_trash_can": {"clean": "^metal_trash_can(_handle_left|_handle_right|_lid)?$", "rust": "^metal_trash_can_rust"},
 	"vintage_suitcase": {"a": "^vintage_suitcase_01", "b": "^vintage_suitcase_02"},
@@ -32,7 +34,7 @@ func run() -> void:
 		if argument.begins_with("--only="): only = argument.trim_prefix("--only=")
 	var folder := ProjectSettings.globalize_path(SOURCE)
 	for model in DirAccess.get_directories_at(folder):
-		if not only.is_empty() and model != only: continue
+		if (not only.is_empty() and model != only) or model in SKIP: continue
 		if PARTS.has(model):
 			for part in PARTS[model]: bake(model, folder + model, part, PARTS[model][part])
 		else:

@@ -29,6 +29,10 @@ TARGET = os.path.join(ROOT, "assets", "props", "hotel")
 REGISTER = os.path.join(ROOT, "docs", "ASSETS.md")
 
 MAX_SIZE = 1024
+## Downloads the game does not use (they were taken out in the September 2026
+## cleanup): not brought in, not registered. Chandelier_01 is still read from
+## source_assets/ by the trailer (tools/trailer3d).
+SKIP = {"Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"}
 # Big pieces seen close up keep 2048 px.
 KEEP_2K = {"GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01"}
 
@@ -181,7 +185,7 @@ def register(rows):
 def main():
     rows = []
     for model in sorted(os.listdir(SOURCE)):
-        if not os.path.isdir(os.path.join(SOURCE, model)): continue
+        if not os.path.isdir(os.path.join(SOURCE, model)) or model in SKIP: continue
         info, names = ingest(model)
         rows.append((model, info))
         print(model, names)

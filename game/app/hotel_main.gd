@@ -131,8 +131,6 @@ var watch_rig: Node3D
 var watch_arm: SpringArm3D
 var watch_camera: Camera3D
 const SCREAM := "res://assets/audio/events/execution_scream.wav"
-## A set coming on: the clunk of an old switch, reusing a door latch.
-const SWITCH_SOUND := "res://assets/audio/sfx/door/closing/closing1.ogg"
 ## The power going: the same dead channel the execution uses, from above.
 const BLACKOUT_SOUND := "res://assets/audio/events/execution_static.ogg"
 ## Going through a drawer: the slow creak of a door, which is what it is.
@@ -831,13 +829,6 @@ func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> 
 		if kind == NOISE.Kind.WARDROBE: radius = maxf(radius, HUNTER_WARDROBE_RADIUS)
 		var route: Dictionary = locust.hear_route(point, radius)
 		if route.audible: match_net.tell_hunter(point, route, radius, kind)
-
-## The survivor the director measures distances from: this player while alive,
-## otherwise any living survivor.
-func pacing_anchor() -> Vector3:
-	for body in survivors():
-		if survivor_active(body): return body.global_position
-	return player.global_position
 
 func sheet_snapshot() -> Array:
 	return ui.sheet.snapshot()

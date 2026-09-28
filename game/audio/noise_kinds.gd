@@ -35,6 +35,3 @@ const HEARD := {
 
 static func radius(noise: String) -> float:
 	return float(HEARD[noise]) / HEARING_SCALE
-
-static func name_of(kind: int) -> String:
-	return NAMES[kind] if kind >= 0 and kind < NAMES.size() else "Algo"

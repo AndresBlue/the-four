@@ -1,6 +1,6 @@
 """Builds the synthesized sounds of the opening scene in assets/audio/intro/
 (16-bit mono WAV): the television's static and line whine, knocks on the
-screen glass from inside, the screen shattering and the creature battering
+screen glass from inside and the creature battering
 the bedroom door, heard from the corridor.
 
 Deterministic (fixed seeds): re-running reproduces the same files.
@@ -98,7 +98,9 @@ def knock(index):
 
 
 def shatter():
-    """The screen gives: a crack, the implosion thump and falling shards."""
+    """The screen giving way. No longer written (the intro breaks it with
+    glass/glass-break.ogg), but still drawn: the seeded stream it takes its
+    share of is the one the door bangs after it come from."""
     t = seconds(3.2)
     hit = band(rng.standard_normal(len(t)), 400, 18000) * decay(t, 18) * 1.4
     thump = partial(t, 55, 7) * 1.6 + partial(t, 90, 12)
@@ -107,7 +109,7 @@ def shatter():
         freq = rng.uniform(2200, 9000)
         shards += partial(t, freq, rng.uniform(25, 70), start, rng.uniform(0.05, 0.3) * np.exp(-start * 1.2))
     debris = band(rng.standard_normal(len(t)), 2000, 14000) * decay(t, 2.5, 0.05) * 0.25
-    write("glass_shatter.wav", hit + thump + shards + debris)
+    return hit + thump + shards + debris
 
 
 def bang(index):

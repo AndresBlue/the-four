@@ -475,10 +475,6 @@ func hear_contact(point: Vector3, apparent: Vector3, distance: float, strength: 
 		"kind": kind, "distance": distance, "muffle": muffle, "blur": blur,
 	})
 
-## Older two-argument callers (and the tests): treated as a direct footstep.
-func hear_noise(point: Vector3, radius: float) -> void:
-	hear_contact(point, point, creature.global_position.distance_to(point), clampf(radius / 16.0, 0.25, 1.0), 0, 0.0)
-
 func update_hud() -> void:
 	# A clear view: no controls and no tape, only its hunting stamina and the
 	# count to the start of the hunt, both in the camcorder's lettering and

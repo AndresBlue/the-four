@@ -647,10 +647,6 @@ func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once :
 	choose_patrol()
 	return true
 
-func clear_lead() -> void:
-	lead = {}
-	sniff_hide = null
-
 ## On a sniffing lead (a burnt-out mind somewhere about): once in the lead's
 ## rooms, to one of their wardrobes, drawn -- occupied or not, it does not
 ## know -- and open it. True while that is what it is doing.

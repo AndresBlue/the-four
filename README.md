@@ -63,7 +63,7 @@ F9 activa una derrota de prueba en ejecución de desarrollo, fuera del refugio. 
 
 ## Abrir y validar
 
-**Abrir en Godot.cmd** abre el proyecto; F5 ejecuta el hotel. La escena principal contiene componentes editables. El mapa se construye desde el manifiesto; el taller permite inspeccionar sus veinte módulos en el editor. Consulta [la guía de edición](docs/DEVELOPMENT.md).
+**Abrir proyecto.cmd** abre el proyecto; F5 ejecuta el hotel. La escena principal contiene componentes editables. El mapa se construye desde el manifiesto; el taller permite inspeccionar sus veinte módulos en el editor. Consulta [la guía de edición](docs/DEVELOPMENT.md).
 
 Desde PowerShell en la carpeta del proyecto:
 
@@ -100,10 +100,9 @@ Herramientas adicionales: `hotel_audio_test.gd` comprueba la mezcla y el bucle d
 - `docs/GAME_DESIGN.md`: el diseño vigente. `docs/PLAN.md`: estado, orden de trabajo y pendientes, en un solo documento.
 - `docs/VISION_LOCUST.md`, `docs/AUDIO.md`, `docs/PERFORMANCE.md`, `docs/REALISM.md`: la visión de la criatura, el sonido, el rendimiento medido y el plan de imagen.
 - `docs/textos_juego.txt`: todos los textos que aparecen en pantalla, para corregirlos en un solo sitio.
-- `docs/V04_VALIDATION.md` y `docs/SURVIVAL_VALIDATION.md`: informes históricos; registran cuándo se comprobó algo, no el estado de hoy.
 - `docs/PLAYTEST_HOTEL.md`: protocolo pendiente de evaluación humana.
 - `docs/ASSETS.md`, `hotel_audio_inventory.json`: procedencia, créditos y análisis técnico.
-- `docs/history/`: plan v0.3 conservado.
+- `docs/history/`: el plan anterior, como registro.
 - `evidence/`: resultados y capturas regenerables, excluidos de Git.
 
 El proyecto usa los archivos locales compartidos entre Codex y Godot; no incorpora una API de ChatGPT en el juego. Los audios originales y paquetes de personajes aportados se conservan. Antes de distribuir deben resolverse los permisos pendientes de los assets; no se descargó ni acreditó como usado un modelo de Sketchfab que no se haya incorporado.

@@ -124,7 +124,7 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
 1. `./tools/verify.ps1`, sin fallos. Pasó en cada fase.
 2. `./tools/benchmarks/run_bench.ps1 -Label x` y `bench_table.ps1 base,x`. Mirar GPU, hilo de render, p99 y llamadas de sombra caminando.
 3. `compare_captures.gd` sobre las capturas `_raw`: diferencia inferior al 0,5 % de píxeles, salvo los cambios deliberados.
-4. `darkness_capture.gd`, `doors_capture.gd`, `rooms_capture.gd`, `props_capture.gd`, `echo_capture.gd` (con `--automation`) y `tools/avatars/capture.gd`.
+4. `darkness_capture.gd`, `doors_capture.gd`, `rooms_capture.gd`, `props_capture.gd`, `echo_capture.gd` (con `--automation`) y `character_capture.gd`.
 5. `run_bench.ps1 -Compatibility`.
 6. Partida con `./tools/godot.ps1 playtest -Seed 81`:
    - pasillos con apliques, salas oscuras con puertas cerradas, linterna;

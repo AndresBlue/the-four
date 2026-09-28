@@ -16,4 +16,4 @@ Por sistema:
 - [ASSETS.md](ASSETS.md) y [hotel_audio_inventory.json](hotel_audio_inventory.json): procedencia, licencias y permisos pendientes.
 - [textos_juego.txt](textos_juego.txt): todos los textos que aparecen en pantalla.
 
-Antecedentes, que valen como registro de cuándo se comprobó algo y no como estado actual: [PLAYTEST_HOTEL.md](PLAYTEST_HOTEL.md) (protocolo humano todavía sin completar), [SURVIVAL_VALIDATION.md](SURVIVAL_VALIDATION.md), [V04_VALIDATION.md](V04_VALIDATION.md), [H1_VALIDATION.md](H1_VALIDATION.md), [REORGANIZATION_VALIDATION.md](REORGANIZATION_VALIDATION.md), [VALIDATION.md](VALIDATION.md), `validation/` e `history/`.
+Antecedentes: [PLAYTEST_HOTEL.md](PLAYTEST_HOTEL.md) (protocolo humano todavía sin completar) e `history/`. Los informes de validación de las versiones 0.3 y 0.4 se retiraron en la limpieza de septiembre de 2026; siguen en el historial de git.

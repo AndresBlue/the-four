@@ -93,9 +93,6 @@ func can_depart() -> bool:
 		if life == Life.REFUGE: alive += 1
 	return alive >= minimum_survivors()
 
-## The refuge closes a stage only while that is the stage's condition.
-func refuge_stage() -> bool: return true
-
 ## The authority, every frame: whether the stage in hand is met. While it is,
 ## the door on is unlocked; crossing it is what closes the stage (hotel_main).
 ## On the last stage there is no wing beyond yet, so being met for a few

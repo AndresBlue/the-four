@@ -49,8 +49,6 @@ const WAVE_SPEED := 16.0
 ## Useful range. Under world_audio.ROUTE_LIMIT (42) and far under the 66 m at
 ## which update_visibility hides rooms, so no wall it should show is missing.
 const REACH := 40.0
-## Depth contour spacing, about one band per stride of the hotel.
-const BAND_STEP := 1.5
 ## Longest a remembered point lives; the real limit follows the ring buffer.
 const MEMORY := 9.0
 ## Rays per click, points remembered, body points and every other count below

@@ -48,7 +48,6 @@ const SETS := {
 const MODULE_SET := {0: "lounge", 1: "bedroom", 2: "bedroom", 3: "bedroom", 4: "bath", 5: "lounge", 6: "dining", 7: "laundry", 8: "service", 9: "service", 10: "lounge", 11: "corridor", 12: "corridor", 13: "reading", 14: "lounge", 15: "office", 16: "wardrobe", 17: "garden", 18: "empty"}
 ## Small things by what a top or shelf holds.
 const ORNAMENTS := ["ceramic_vase_01", "brass_vase_02", "jug_01", "book_encyclopedia_set_01", "wall_clock_standing"]
-const DESK_THINGS := ["office_notepads_pad", "stationery_supplies", "clipboard", "cigarette_pack", "alarm_clock_01"]
 const STORE_THINGS := ["cardboard_box_01", "plastic_crate_02", "bleach_bottle", "multi_cleaner_bottle", "wicker_basket_02", "cardboard_box_01"]
 const BOTTLES := ["wine_bottles_01_bordeaux", "wine_bottles_01_alsace", "wine_bottles_01_burgundy", "wine_bottles_01_champagne"]
 ## Half a wardrobe's width, and a little (hiding_place.gd).

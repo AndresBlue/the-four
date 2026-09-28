@@ -27,6 +27,13 @@ Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se
 | `detective_woman` | Debra — Detective Woman (Game Model) | Zukomazi | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/debra-detective-woman-game-model-208e5cf748404521894bf30c95f25c12) |
 | `realistic_female` | Realistic Female | Biviyt | **CC Attribution-ShareAlike 4.0** | [Sketchfab](https://sketchfab.com/3d-models/realistic-female-b0cc2a6c26114da184252e433cf75d23) |
 
+Los zips originales de los tres personajes están en `models/`, fuera de git. Sus SHA-256 son:
+- `detective.zip`: `bf72aab06b55c72fea28155555b0ef957aac14341eb598d96fef6f312c9eeb78`
+- `detective-woman.zip`: `48ed7d1ca1febffbf0ad36ad456c1e6b24201e5b93ff3913ae6a71030dfa1cf2`
+- `realistic-female.zip`: `80616970bab72215b7d7e9e592794711f187851e0a2ba4f6968966564bfc4c60`
+
+De los personajes se versionan el modelo y las imágenes que su importación extrae. Las carpetas `textures/` sueltas que traían los zips se retiraron porque nada las cargaba, salvo los mapas normales del detective, que usa el tráiler.
+
 ### Mobiliario (`assets/props/`)
 
 | Carpeta | Modelo | Autoría | Licencia | Ficha |
@@ -42,7 +49,7 @@ El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque 
 - `lift_call.res`: los botones de llamada;
 - `lift_screen.res`: la pantalla de fuera.
 
-El archivo descargado (`assets/Elevator/elevator-with-animation-lowpoly.zip`) queda fuera de git.
+El archivo descargado y lo que traía están en `source_assets/elevator/`, fuera de git.
 
 Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada, el dormitorio de esa misma escena, la puerta de madera y el armario.
 
@@ -117,13 +124,11 @@ Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmen
 |---|---|---|
 | [Arm Chair 01](https://polyhaven.com/a/ArmChair_01) | Kirill Sannikov | CC0 1.0 |
 | [Cash Register 01](https://polyhaven.com/a/CashRegister_01) | Joe Seabuhr | CC0 1.0 |
-| [Chandelier 01](https://polyhaven.com/a/Chandelier_01) | Kirill Sannikov | CC0 1.0 |
 | [Classic Console 01](https://polyhaven.com/a/ClassicConsole_01) | Kirill Sannikov | CC0 1.0 |
 | [Classic Nightstand 01](https://polyhaven.com/a/ClassicNightstand_01) | Kirill Sannikov | CC0 1.0 |
 | [Gothic Bed 01](https://polyhaven.com/a/GothicBed_01) | Kirill Sannikov | CC0 1.0 |
 | [Gothic Commode 01](https://polyhaven.com/a/GothicCommode_01) | Kirill Sannikov | CC0 1.0 |
 | [Green Chair 01](https://polyhaven.com/a/GreenChair_01) | Kirill Sannikov | CC0 1.0 |
-| [Ottoman 01](https://polyhaven.com/a/Ottoman_01) | Caspian Fortune | CC0 1.0 |
 | [Sofa 01](https://polyhaven.com/a/Sofa_01) | Kirill Sannikov | CC0 1.0 |
 | [Wet Floor Sign 01](https://polyhaven.com/a/WetFloorSign_01) | Fran Calvente | CC0 1.0 |
 | [Alarm Clock 01](https://polyhaven.com/a/alarm_clock_01) | Yann Kervran, James Ray Cock | CC0 1.0 |
@@ -137,24 +142,18 @@ Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmen
 | [Dining Chair 02](https://polyhaven.com/a/dining_chair_02) | James Ray Cock | CC0 1.0 |
 | [Drawer Cabinet](https://polyhaven.com/a/drawer_cabinet) | Ulan Cabanilla | CC0 1.0 |
 | [Fancy Picture Frame 01](https://polyhaven.com/a/fancy_picture_frame_01) | Rob Tuytel, Rico Cilliers | CC0 1.0 |
-| [Hanging Picture Frame 02](https://polyhaven.com/a/hanging_picture_frame_02) | James Ray Cock | CC0 1.0 |
 | [Industrial Storage Cart](https://polyhaven.com/a/industrial_storage_cart) | Jule Bielitz | CC0 1.0 |
 | [Jug 01](https://polyhaven.com/a/jug_01) | Kuutti Siitonen | CC0 1.0 |
-| [Metal Office Desk](https://polyhaven.com/a/metal_office_desk) | Ulan Cabanilla | CC0 1.0 |
 | [Metal Trash Can](https://polyhaven.com/a/metal_trash_can) | GurJas Studios | CC0 1.0 |
-| [Modern Arm Chair 01](https://polyhaven.com/a/modern_arm_chair_01) | Vibrant Nordic | CC0 1.0 |
 | [Multi Cleaner Bottle](https://polyhaven.com/a/multi_cleaner_bottle) | James Ray Cock | CC0 1.0 |
 | [Office Notepads](https://polyhaven.com/a/office_notepads) | Ulan Cabanilla | CC0 1.0 |
 | [Ornate Mirror 01](https://polyhaven.com/a/ornate_mirror_01) | James Ray Cock | CC0 1.0 |
 | [Painted Wooden Cabinet](https://polyhaven.com/a/painted_wooden_cabinet) | Kirill Sannikov | CC0 1.0 |
 | [Plastic Crate 02](https://polyhaven.com/a/plastic_crate_02) | Fabi_G | CC0 1.0 |
-| [Round Wooden Table 01](https://polyhaven.com/a/round_wooden_table_01) | Ulan Cabanilla | CC0 1.0 |
 | [Side Table Tall 01](https://polyhaven.com/a/side_table_tall_01) | James Ray Cock | CC0 1.0 |
-| [Small Wooden Table 01](https://polyhaven.com/a/small_wooden_table_01) | Ulan Cabanilla | CC0 1.0 |
 | [Sofa 03](https://polyhaven.com/a/sofa_03) | Fran Calvente | CC0 1.0 |
 | [Stationery Supplies](https://polyhaven.com/a/stationery_supplies) | Mateusz Sadek | CC0 1.0 |
 | [Steel Frame Shelves 01](https://polyhaven.com/a/steel_frame_shelves_01) | James Ray Cock | CC0 1.0 |
-| [Television 02](https://polyhaven.com/a/television_02) | Benny Weimer | CC0 1.0 |
 | [Vintage Suitcase](https://polyhaven.com/a/vintage_suitcase) | Maximilian Schuster | CC0 1.0 |
 | [Wall Clock](https://polyhaven.com/a/wall_clock) | PierreB3D | CC0 1.0 |
 | [Wicker Basket 02](https://polyhaven.com/a/wicker_basket_02) | Kuutti Siitonen | CC0 1.0 |

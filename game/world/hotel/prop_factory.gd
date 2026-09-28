@@ -3,7 +3,6 @@ extends RefCounted
 ## Colliders (material "") keep the validated footprints; the visible detail is
 ## layered separately and never adds collision. Back of each piece is -Z.
 
-const BOOKS := ["leather", "fabric", "green", "linen", "black", "trim"]
 ## Supplied models baked by tools/props/build_model_props.gd (front +Z, floor at 0).
 const SOFA := preload("res://assets/props/sofa/sofa.res")
 const MONSTERA := preload("res://assets/props/monstera/monstera.res")

@@ -26,6 +26,8 @@ func build() -> void:
 	# Modules stand alone here and are seen from outside: whole walls.
 	builder.full_walls = true
 	for type in FLOOR.TYPES.size():
+		# The void (a cell a planta does not use) has nothing to show.
+		if type == FLOOR.VOID: continue
 		var props := []
 		for slot in 4: props.append({"slot": slot, "kind": FLOOR.RECIPES[type][slot], "rotation": 0})
 		var room := {"id": 0, "x": 0, "z": 0, "type": type, "height": 3.2, "span_x": 16.0, "span_z": 16.0, "hall": -1, "variant": type % 2, "layout": type % 4, "open_sides": [], "props": props}
