@@ -7,6 +7,7 @@ extends RefCounted
 ## independent of the map generator's own random sequence, so every machine
 ## picks the same ones without sending a list.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const HOTEL_FLOOR := preload("res://game/floors/hotel_floor.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 ## Two more than the stage asks for, so there is always a choice of which one
 ## to go for and one that nobody has to reach.
@@ -28,13 +29,14 @@ static func needed(survivors: int) -> int: return maxi(LEAST, survivors)
 ## top: a dead set on a floor that asks for sets to be switched on was taken
 ## for a bug ("why does this one not come on?"). Done to the manifest before
 ## the hotel is built, the same on every machine (the seed and the number of
-## survivors). Returns the sets of each stage, {2: [...], 3: [...]}, for
-## hotel_main.place_televisions().
+## survivors). Returns the sets of each stage that asks for them
+## (game/floors/hotel_floor.gd: {2: [...], 3: [...]}), for
+## televisions.place_televisions().
 static func settle(manifest: Dictionary, survivors: int) -> Dictionary:
 	var chosen := {}
 	var kept := {}
 	if not manifest.get("gates", []).is_empty():
-		for stage in [2, 3]:
+		for stage in HOTEL_FLOOR.stages_asking("televisions"):
 			chosen[stage] = choose(manifest, survivors, stage)
 			for spot in chosen[stage]: kept["%d:%d" % [int(spot.room), int(spot.slot)]] = true
 	for room in manifest.rooms:

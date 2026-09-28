@@ -88,6 +88,11 @@ const LIFTS := preload("res://game/app/lifts.gd")
 var lifts
 ## The plan the survivors' eyes draw on the shared sheet (floor_map.gd).
 var floor_map
+## What this floor asks for, stage by stage (game/floors/hotel_floor.gd):
+## the level, the lifts, the sets and the bots ask it rather than the stage's
+## number.
+const HOTEL_FLOOR := preload("res://game/floors/hotel_floor.gd")
+var kind: GDScript = HOTEL_FLOOR
 const TELEVISIONS := preload("res://game/app/televisions.gd")
 var tvs
 const CODE_LOCK := preload("res://game/app/code_lock.gd")
@@ -1304,9 +1309,9 @@ func host_gate(delta: float) -> void:
 		untouchable[seat] = float(untouchable[seat]) - delta
 		if untouchable[seat] <= 0.0: untouchable.erase(seat)
 	creature_channel_hop(delta)
-	# From the second stage on, the wing is played on its own sets: each stage
-	# counts the ones standing in its wing and starts from nothing.
-	var sets: Array = stage_televisions() if session.stage >= 2 else []
+	# A stage that asks for sets is played on its own wing's: each counts the
+	# ones standing in its wing and starts from nothing.
+	var sets: Array = stage_televisions() if kind.asks(session.stage, "televisions") else []
 	var lit_enough := true
 	if not sets.is_empty():
 		var needed: int = TV_PLACEMENT.needed(session.roster_count)
@@ -1320,9 +1325,9 @@ func host_gate(delta: float) -> void:
 		if done >= needed - 1 and not session.goal.get("blackout", false):
 			session.goal["blackout"] = true
 			session.changed.emit()
-	if session.stage == session.STAGES and not containers.is_empty():
-		# The last stage asks for both: the sets of its wing lit, and the four
-		# numbers read into the keypad.
+	if kind.asks(session.stage, "code") and not containers.is_empty():
+		# The code comes on top of the sets (the last stage of the hotel asks
+		# for both): the four numbers read into the keypad.
 		session.goal["kind"] = "code"
 		session.goal["done"] = found_digits.size()
 		session.goal["needed"] = DIGITS.COUNT

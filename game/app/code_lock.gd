@@ -84,7 +84,10 @@ func place_containers() -> void:
 		lock.position = door_point - away * 0.07 + Vector3(away.z, 0, -away.x) * 1.1
 		lock.rotation.y = atan2(-away.x, -away.z)
 		level.hotel.add_child(lock)
-	for hidden in DIGITS.choose(level.manifest, level.hotel.containers):
+	# In the wing of the stage that asks for the code (the last, in the hotel).
+	var asking: Array = level.kind.stages_asking("code")
+	var hiding: Array = DIGITS.choose(level.manifest, level.hotel.containers, int(asking[0])) if not asking.is_empty() else []
+	for hidden in hiding:
 		var index := int(hidden.container)
 		if index < 0 or index >= containers.size(): continue
 		containers[index].digit = int(hidden.digit)

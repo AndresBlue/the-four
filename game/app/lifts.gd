@@ -7,33 +7,27 @@ extends Node
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 
-## What a sector asks for, in the fewest words that fit on the tape's card.
+## What a sector asks for, in the fewest words that fit on the tape's card
+## (written in game/floors/hotel_floor.gd, with the rest of its rules).
 ## The floor explains nothing else, but nobody guesses on their own that the
 ## numbers of the last door are inside the furniture of that wing: a whole
 ## sector spent opening drawers at random is not a mystery, it is a wasted
 ## evening.
-func stage_errand(stage: int) -> String:
-	match stage:
-		2: return "ENCIENDE LOS TELEVISORES"
-		3: return "DESCUBRE EL CÓDIGO"
-	return "ENCUENTRA LA SALIDA"
+func stage_errand(stage: int) -> String: return String(level.kind.stage(stage).errand)
 
 ## And the same thing said whole, which is what the notice on arriving says and
 ## what the pause screen keeps for anybody who wants to check.
-func stage_brief(stage: int) -> String:
-	match stage:
-		2: return "Enciende los televisores y busca la salida."
-		3: return "Busca las notas con el código, enciende televisores y sal del piso."
-	return "Encuentra la salida del sector."
+func stage_brief(stage: int) -> String: return String(level.kind.stage(stage).brief)
 
 ## How the sector is going, in the lines the pause screen shows under it: the
-## sets that are on from the second sector, and the numbers found from the
-## third. Nothing that cannot be counted by looking at the floor.
+## sets that are on and the numbers found, where the sector asks for them
+## (game/floors/hotel_floor.gd). Nothing that cannot be counted by looking at
+## the floor.
 func stage_progress() -> Array:
 	var lines: Array = []
-	if level.session.stage >= 2 and not level.stage_televisions().is_empty():
+	if level.kind.asks(level.session.stage, "televisions") and not level.stage_televisions().is_empty():
 		lines.append(["TELEVISORES", "%d / %d" % [level.televisions_on(), level.TV_PLACEMENT.needed(level.session.roster_count)]])
-	if level.session.stage >= 3:
+	if level.kind.asks(level.session.stage, "code"):
 		lines.append(["NÚMEROS DEL CÓDIGO", "%d / %d" % [level.found_digits.size(), level.DIGITS.COUNT]])
 	return lines
 

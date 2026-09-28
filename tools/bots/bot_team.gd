@@ -99,7 +99,7 @@ func learn_everything() -> void:
 	var wing: int = stage - 1
 	knowledge.refuges[wing] = true
 	for index in level.stage_televisions(): knowledge.tvs[index] = true
-	if stage == level.session.STAGES:
+	if level.kind.asks(stage, "code"):
 		for index in level.containers.size():
 			if int(level.containers[index].digit) >= 0: knowledge.notes[index] = true
 		knowledge.keypad = true
@@ -146,7 +146,7 @@ func plan_objectives(here: Array) -> void:
 ## What is left to do on this stage that the team knows how to do.
 func objectives() -> Array:
 	var errands: Array = []
-	if stage >= 2:
+	if level.kind.asks(stage, "televisions"):
 		var needed: int = TV_PLACEMENT.needed(level.session.roster_count)
 		var lit: int = level.televisions_on()
 		for index in level.stage_televisions():
@@ -155,7 +155,7 @@ func objectives() -> Array:
 			if set.on or not knowledge.tvs.has(index): continue
 			errands.append(tv_task(index))
 			lit += 1
-	if stage == level.session.STAGES:
+	if level.kind.asks(stage, "code"):
 		for index in knowledge.notes:
 			var piece = level.containers[int(index)]
 			if is_instance_valid(piece) and not piece.searched: errands.append(note_task(int(index)))
@@ -164,11 +164,11 @@ func objectives() -> Array:
 	return errands
 
 ## Nothing of its own to do. Knowing the refuge and all this stage needs, it
-## waits there -- safe, and where the way out is; on the first stage that is
-## the errand itself. Otherwise it goes and looks.
+## waits there -- safe, and where the way out is; on a stage that asks for
+## nothing else that is the errand itself. Otherwise it goes and looks.
 func idle_task(brain) -> Dictionary:
 	var wing: int = stage - 1
-	if knowledge.refuges.has(wing) and (stage == 1 or oracle() or knows_enough()): return refuge_task(brain)
+	if knowledge.refuges.has(wing) and (level.kind.stage(stage).objectives.is_empty() or oracle() or knows_enough()): return refuge_task(brain)
 	var room := explore_room(brain)
 	# Still going round the same room: the task as it stands, stops and all.
 	if room >= 0 and String(brain.task.get("key", "")) == "explore:%d" % room: return brain.task
@@ -180,12 +180,12 @@ func idle_task(brain) -> Dictionary:
 
 ## Whether the team knows where everything this stage needs is.
 func knows_enough() -> bool:
-	if stage >= 2:
+	if level.kind.asks(stage, "televisions"):
 		var known_sets := 0
 		for index in level.stage_televisions():
 			if knowledge.tvs.has(index) or level.televisions[index].on: known_sets += 1
 		if known_sets < TV_PLACEMENT.needed(level.session.roster_count): return false
-	if stage == level.session.STAGES:
+	if level.kind.asks(stage, "code"):
 		if not knowledge.keypad and not level.code_entered: return false
 		for target in targets:
 			if target.kind == "note" and not knowledge.notes.has(target.index) and needed(target): return false

@@ -17,7 +17,7 @@ var televisions: Array = []
 ## (TV_PLACEMENT.settle), by stage.
 var tv_sets := {}
 
-## The sets of the second and third stages, each lot in the wing its stage
+## The sets of the stages that ask for them, each lot in the wing its stage
 ## opens. Everyone works out the same list from the seed and the number of
 ## survivors, so nothing has to be sent: only which ones are on travels. They
 ## go into one array, stage by stage, so an index means the same set on every
@@ -25,7 +25,7 @@ var tv_sets := {}
 func place_televisions() -> void:
 	televisions.clear()
 	if level.manifest.get("gates", []).is_empty(): return
-	for stage in [2, 3]:
+	for stage in level.kind.stages_asking("televisions"):
 		for spot in tv_sets.get(stage, []):
 			var set := TELEVISION.new()
 			set.name = "Television_%d" % televisions.size()

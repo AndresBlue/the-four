@@ -52,7 +52,7 @@ static func targets(level, stage: int) -> Array:
 	for index in level.stage_televisions(stage):
 		var set = level.televisions[index]
 		out.append({"key": "tv:%d" % index, "kind": "tv", "index": index, "points": [set.screen_point(), set.to_global(Vector3(0, 1.3, 0))], "planta": wing, "room": int(FLOOR.room_at(level.manifest.rooms, set.global_position).get("id", -1))})
-	if stage == level.session.STAGES:
+	if level.kind.asks(stage, "code"):
 		for index in level.containers.size():
 			var piece = level.containers[index]
 			if int(piece.digit) < 0 or not is_instance_valid(piece.note): continue

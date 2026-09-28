@@ -178,6 +178,9 @@ func run() -> void:
 	# The floors themselves, pinned: a guest rebuilds the host's from the seed,
 	# and a checkpoint is a seed. A change here is a change to every floor
 	# (and wants FLOOR.VERSION bumped); moving code about must not make one.
+	# The floor's rules and its plantas are counted in three places that have to
+	# agree: the rules (hotel_floor.gd), the session and the generator.
+	check("Las reglas del hotel tienen una etapa por planta", preload("res://game/floors/hotel_floor.gd").count() == preload("res://game/services/game_session.gd").STAGES and preload("res://game/services/game_session.gd").STAGES == FLOOR.PLANTAS)
 	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 3692823199 and hash(JSON.stringify(generator.generate(777))) == 3876374441)
 	var scene = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(scene)
