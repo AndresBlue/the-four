@@ -137,6 +137,10 @@ El piso que hay es el hotel, y casi todo lo suyo está separado de lo que no dep
 
 **Cambiar las reglas no cambia el piso generado.** La generación depende de la semilla y del número de supervivientes, y `hotel_test` fija el piso de dos semillas. Si un cambio a propósito lo mueve, se sube `FLOOR.VERSION` y la huella de la prueba.
 
+## Z-fighting
+
+`tools/dev/zfight_scan.gd` construye un piso y busca, entre todas las cajas de la geometría, pares de caras en el mismo plano, mirando al mismo lado, que se solapan y tienen materiales distintos. Descarta las que tienen algo sólido delante, como la base de una pared sobre el suelo. Con `--shots` fotografía el peor sitio de cada par (`evidence/zfight_*.png`). Hay que lanzarlo con ventana, porque sin ella Godot lee las transformaciones de los MultiMesh como la identidad. En septiembre de 2026 no encontraba nada visible en las cajas; los modelos (marcos de puerta, muebles, cuadros) quedan fuera del escáner.
+
 ## Estructura del repositorio
 
 `game/` reúne código, escenas y recursos propios por función; `game/floors/` guarda las reglas de cada tipo de piso («Un piso nuevo», arriba). `assets/` contiene únicamente archivos importados que usa el juego. `tests/hotel/` y `tests/net/` guardan las regresiones. `tools/editor/`, `capture/`, `benchmarks/` y `dev/` reúnen utilidades. El prototipo de fusibles anterior al hotel (`legacy/fuse_prototype/`) y sus cuatro pruebas se borraron: ya no se exportaban con el juego y solo se probaban a sí mismos; siguen en el historial de git.
