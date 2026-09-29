@@ -234,7 +234,7 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			# the lip in front at 0.272), pushed under what stands on it, the
 			# end come down over the edge.
 			var shelf: float = [0.671, 0.961, 1.276][int(v.call(122) * 3.0)]
-			note_fold(builder, "wooden_bookshelf_worn", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.3 * s)), Vector3(v.call(123) * 0.6 - 0.3, shelf + 0.002, 0.274), v.call(124) * 0.3 - 0.15, 0.14, 0.07)
+			note_fold(builder, "wooden_bookshelf_worn", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.3 * s)), Vector3(v.call(123) * 0.6 - 0.3, shelf + 0.002, 0.274), v.call(124) * 0.3 - 0.15, 0.11, 0.1)
 		"cabinet":
 			var s := minf(1.0, width / 1.25)
 			put(builder, holder, "painted_wooden_cabinet" if kept >= 1 else "GothicCommode_01", Vector3(0, 0, 0.32), 0.0, s, true)
@@ -252,7 +252,7 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			# Shut in the third drawer: out of the slit above it (0.928 to
 			# 0.953), hanging down its front (0.244). The drawers are flush,
 			# with no handles.
-			note_fold(builder, "drawer_cabinet", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.26)), Vector3(v.call(120) * 0.5 - 0.25, 0.94, 0.246), v.call(121) * 0.16 - 0.08, 0.12, 0.09, 0.0, 0.05)
+			note_fold(builder, "drawer_cabinet", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.26)), Vector3(v.call(120) * 0.5 - 0.25, 0.94, 0.246), v.call(121) * 0.16 - 0.08, 0.07, 0.14, 0.0, DRAWER_TILT)
 		"steel", "rack":
 			var name := "steel_frame_shelves_01" if pick == "steel" else "worn_metal_rack"
 			put(builder, holder, name, Vector3(0, 0, 0.3), 0.0, 1.0, true)
@@ -365,13 +365,21 @@ static func stack(builder, holder: Node3D, seed_pos: Vector3, count: int) -> voi
 		# ribs out to 0.203), and down the front.
 		note_fold(builder, top.name, top.xform, Vector3(across, 0.224, 0.205), builder.vary(seed_pos, 126) * 0.2 - 0.1, 0.13, 0.08)
 
+## How far the part of a note hanging out of a shut drawer stands off its
+## face at the foot (radians): enough for a gap and a shadow under it.
+const DRAWER_TILT := 0.2
+
 ## A commode's note: shut in its middle drawer, out of the slit under the
 ## moulding above it and down the drawer's front, clear of the knobs (at a
 ## quarter of the width either side). `at` and `s` place the piece.
 static func commode_note(builder, at: Vector3, s: float, seed_pos: Vector3) -> void:
 	# The slit is at 0.781, under the moulding (0.25 out); the drawer's face
 	# is at 0.216, its top edge rounding out to 0.227.
-	note_fold(builder, "GothicCommode_01", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), at), Vector3(builder.vary(seed_pos, 120) * 0.16 - 0.08, 0.781, 0.229), builder.vary(seed_pos, 121) * 0.16 - 0.08, 0.12, 0.09, 0.0, 0.06)
+	# Most of the sheet out (0.14 of 0.21) and standing off the face: 9 cm
+	# pressed flat on the drawer read as a label stuck to it, not a paper
+	# somebody shut in, and was walked past (September 2026). The drawer runs
+	# down to 0.557, the knobs are well clear at a quarter of the width.
+	note_fold(builder, "GothicCommode_01", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), at), Vector3(builder.vary(seed_pos, 120) * 0.16 - 0.08, 0.781, 0.229), builder.vary(seed_pos, 121) * 0.16 - 0.08, 0.07, 0.14, 0.0, DRAWER_TILT)
 
 ## Where a note of the code sits on the piece just placed, for the container
 ## (hotel_container.plant_note()). A slip folded once over an edge that runs

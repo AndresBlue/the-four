@@ -111,7 +111,11 @@ func add_part(part_name: String, turn: Basis, centre: Vector3, size: Vector3, sh
 	part.mesh = paper
 	part.material_override = sheet
 	part.transform = Transform3D(turn, turn * centre)
-	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# The shadow of the part hanging down is half of what says a paper and
+	# not a label stuck on: the torch throws it on the wood under the part
+	# that stands off. The part lying flat casts none (lying across a crate's
+	# open top it went grey in its own shadow).
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if part_name == "Hang" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	note.add_child(part)
 	var length: float = absf(size.dot(away))
 	var line := BoxMesh.new()
