@@ -74,7 +74,9 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 				for y in [0.6, 0.4, 0.2]:
 					builder.box(node, Vector3(width / 2 - 0.36, y, 0.47), Vector3(0.44, 0.17, 0.02), "wood")
 					builder.box(node, Vector3(width / 2 - 0.36, y, 0.49), Vector3(0.12, 0.025, 0.02), "gold")
-				builder.box(node, Vector3(-0.5, 0.84, -0.3), Vector3(0.42, 0.03, 0.3), "linen", false, "box", Vector3(0, 0.3, 0))
+				# The stack of papers, well to one side: a document is left near
+				# the middle (document_placement.gd) and lay half inside it.
+				builder.box(node, Vector3(-0.74, 0.84, -0.3), Vector3(0.42, 0.03, 0.3), "linen", false, "box", Vector3(0, 0.3, 0))
 			# The chair, pulled up to it, and what lies on it (clear of the middle,
 			# where a document may lie).
 			builder.box(node, Vector3(0, 0.45, 0.95), Vector3(0.65, 0.12, 0.65), "", true)
@@ -115,7 +117,8 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 				# The till faces the clerk (-Z); papers and a clipboard beside it.
 				put(builder, node, "CashRegister_01", Vector3(0.6, 1.225, 0.05), PI)
 				builder.box(node, Vector3(-0.5, 1.24, 0.0), Vector3(0.5, 0.02, 0.36), "linen", false, "box", Vector3(0, -0.2, 0))
-				put(builder, node, "clipboard", Vector3(-0.95, 1.225, 0.1), builder.vary(seed_pos, 15) * 0.6 + 2.8)
+				# On the counter's top (1.23), not 5 mm into it.
+				put(builder, node, "clipboard", Vector3(-0.95, 1.23, 0.1), builder.vary(seed_pos, 15) * 0.6 + 2.8)
 				builder.practical(node, Vector3(0, 1.6, 0), Color("ffc27a"), 0.3, 3.0)
 		"lamp":
 			builder.box(node, Vector3(0, 0.05, 0), Vector3(0.5, 0.1, 0.5), "", true)

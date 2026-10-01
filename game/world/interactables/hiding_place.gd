@@ -44,6 +44,9 @@ var leaf_bodies := {}
 var motion: Tween
 var close_timer := 0.0
 
+## How far the model stands off the floor (metres).
+const STAND := 0.004
+
 func _ready() -> void:
 	add_to_group("hotel_hides")
 	collision_layer = 16
@@ -58,6 +61,10 @@ func _ready() -> void:
 	var body := MeshInstance3D.new()
 	body.name = "WardrobeBody"
 	body.mesh = BODY
+	# Off the floor by a hair: the wardrobe is drawn from both sides (so the
+	# inside of its doors shows), and its underside, in the plane of the
+	# carpet, flickered into it wherever one looked in at its floor.
+	body.position.y = STAND
 	add_child(body)
 	# Back, sides and top collide like furniture; the inside stays free.
 	var frame := StaticBody3D.new()
@@ -74,7 +81,7 @@ func _ready() -> void:
 		var mirror := -1.0 if side == "left" else 1.0
 		var pivot := Node3D.new()
 		pivot.name = "Hinge_" + side
-		pivot.position = Vector3(HINGE.x * mirror, 0, HINGE.z)
+		pivot.position = Vector3(HINGE.x * mirror, STAND, HINGE.z)
 		add_child(pivot)
 		var leaf := MeshInstance3D.new()
 		leaf.mesh = LEAVES[side]

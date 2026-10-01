@@ -139,7 +139,19 @@ El piso que hay es el hotel, y casi todo lo suyo está separado de lo que no dep
 
 ## Z-fighting
 
-`tools/dev/zfight_scan.gd` construye un piso y busca, entre todas las cajas de la geometría, pares de caras en el mismo plano, mirando al mismo lado, que se solapan y tienen materiales distintos. Descarta las que tienen algo sólido delante, como la base de una pared sobre el suelo. Con `--shots` fotografía el peor sitio de cada par (`evidence/zfight_*.png`). Hay que lanzarlo con ventana, porque sin ella Godot lee las transformaciones de los MultiMesh como la identidad. En septiembre de 2026 no encontraba nada visible en las cajas; los modelos (marcos de puerta, muebles, cuadros) quedan fuera del escáner.
+Dos superficies en el mismo plano parpadean una dentro de otra. **`tools/dev/zfight_scan.gd`** construye un piso y las busca:
+- entre las cajas de la geometría (paredes, zócalos, molduras, suelos, techos);
+- entre los modelos, tomados como sus parches planos (sus triángulos agrupados por plano);
+- entre unas y otros.
+
+Cuentan las que miran al mismo lado, y también las opuestas si una se dibuja por las dos caras. Casi todos los muebles de Poly Haven se dibujan así, y el armario también. Descarta lo que tiene una caja sólida justo delante, y lista cada par de materiales con cuántos sitios y cuánta área. Opciones: `--walls` (solo lo vertical), `--detail` (las dos caras de cada sitio), `--shots` (foto del peor sitio de cada par, `evidence/zfight_*.png`). Hay que lanzarlo con ventana: sin ella Godot lee las transformaciones de los MultiMesh como la identidad. Lo que queda en la lista son contactos tapados por el propio mueble (la base de unos libros sobre su balda), que el escáner no sabe descartar.
+
+**Reglas que evitan el parpadeo** (octubre de 2026):
+- **Todo modelo colocado se levanta 2 mm** de donde se apoya (`hotel_geometry.MODEL_LIFT`, en `place()`), y lo que va encima de un mueble, 2 mm más (`room_dressing.ON_TOP`). La base de una estantería, una papelera o una caja, dibujada por las dos caras, quedaba en el plano del suelo o de la balda.
+- **El armario se levanta 4 mm** (`hiding_place.STAND`): su base peleaba con la moqueta al mirar dentro.
+- **La pared se queda 1 cm antes del vano de una puerta** (`JAMB_GAP`): acabando justo en él, el yeso y el zócalo asomaban un milímetro por delante de la jamba de madera.
+- **Las esquinas donde un salón o un pasillo dobla** las pone la sala del codo (`corner_posts()`): cada pared acababa en el borde de su celda y la esquina quedaba como una muesca de 9 cm con los zócalos sin rematar.
+- Un objeto nuevo no se apoya nunca a la altura exacta de otra superficie: se deja un par de milímetros y se pasa el escáner.
 
 ## Estructura del repositorio
 

@@ -270,7 +270,7 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			if kept >= 1: litter(builder, holder, seed_pos, kept)
 	# A clock on one wall in some rooms.
 	if pick in ["", "chairs", "armchair", "chair"] and v.call(46) < 0.3:
-		place(builder, holder, "wall_clock", Transform3D(Basis.IDENTITY, Vector3(0.2, 2.05, WALL_FACE + 0.025)))
+		place(builder, holder, "wall_clock", Transform3D(Basis.IDENTITY, Vector3(0.2, 2.05, WALL_FACE + 0.027)))
 
 ## A model on the stretch's floor, turned by yaw and scaled by s; with a box
 ## collider round it when solid (turned only a little, so its box stays).
@@ -296,7 +296,12 @@ static func dress_top(builder, holder: Node3D, base: String, at: Vector3, s: flo
 		var name: String = choices[int(builder.vary(seed_pos, 50 + i) * choices.size())]
 		var yaw: float = builder.vary(seed_pos, 55 + i) * 0.8 - 0.4
 		if name == "wall_clock_standing": name = "alarm_clock_01"
-		place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw), at + Vector3(slot * usable, top, box.get_center().z * s - 0.02)), false)
+		place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw), at + Vector3(slot * usable, top + ON_TOP, box.get_center().z * s - 0.02)), false)
+
+## How far a thing put on a piece stands off its top or its shelf (metres):
+## a crate's or a jug's underside, drawn from both sides, lay in the plane of
+## the board under it and flickered into it.
+const ON_TOP := 0.002
 
 ## Every shelf of a piece, a few things each, some gaps.
 static func fill_shelves(builder, holder: Node3D, base: String, at: Vector3, s: float, choices: Array, seed_pos: Vector3) -> void:
@@ -322,7 +327,7 @@ static func fill_shelves(builder, holder: Node3D, base: String, at: Vector3, s: 
 			elif x + wide > box.size.x * s * 0.42:
 				break
 			else:
-				place(builder, holder, name, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * fit), at + Vector3(x + wide * 0.5, y, box.get_center().z * s)), false)
+				place(builder, holder, name, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * fit), at + Vector3(x + wide * 0.5, y + ON_TOP, box.get_center().z * s)), false)
 				x += wide + 0.04
 			i += 1
 
@@ -347,7 +352,7 @@ static func stack(builder, holder: Node3D, seed_pos: Vector3, count: int) -> voi
 		var rank: float = y + size.y + (10.0 if name == "cardboard_box_01" else 0.0)
 		if top.is_empty() or rank > float(top.rank): top = {"name": name, "xform": xform, "rank": rank}
 		if y == 0.0 and builder.vary(seed_pos, 80 + i) < 0.5:
-			y = size.y
+			y = size.y + ON_TOP
 		else:
 			x += size.x + 0.05
 			y = 0.0

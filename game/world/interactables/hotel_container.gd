@@ -84,7 +84,9 @@ func plant_note() -> void:
 	ink.roughness = 1.0
 	note = Node3D.new()
 	note.name = "Note"
-	note.position = spot.at
+	# With the piece it lies on, which stands a hair off the floor
+	# (hotel_geometry.MODEL_LIFT).
+	note.position = (spot.at as Vector3) + Vector3(0, 0.002, 0)
 	note.rotation.y = float(spot.yaw)
 	add_child(note)
 	var skew := float(spot.get("skew", 0.0))

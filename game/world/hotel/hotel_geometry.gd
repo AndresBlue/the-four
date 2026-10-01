@@ -382,6 +382,13 @@ const SHADOW_MODEL := 0.6
 const SMALL_MODEL := 0.3
 const SMALL_REACH := 16.0
 
+## How far every placed model stands off what it was put on (metres), and how
+## far a wall stops short of a doorway's jamb: surfaces in one plane flicker
+## into each other (tools/dev/zfight_scan.gd looks for them).
+const MODEL_LIFT := 0.002
+## (The door's frame is not quite centred on its opening: its jambs' faces
+## are 1 mm outside it on one side and 4 mm inside on the other.)
+const JAMB_GAP := 0.01
 func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true) -> void:
 	var target := batch_target(parent)
 	var key: int = target[0].get_instance_id()
@@ -389,7 +396,11 @@ func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true) -> voi
 	var meshes: Dictionary = model_batches[key].meshes
 	var slot := "%d:%s" % [mesh.get_instance_id(), casts]
 	if not meshes.has(slot): meshes[slot] = {"mesh": mesh, "casts": casts, "transforms": []}
-	meshes[slot].transforms.append(target[1] * xform)
+	# A hair off whatever it stands on: a model whose underside is drawn from
+	# both sides (a bookcase, a rack, a bin, a crate) lay in the plane of the
+	# floor under it and flickered into it.
+	var stood := Transform3D(xform.basis, xform.origin + Vector3(0, MODEL_LIFT, 0))
+	meshes[slot].transforms.append(target[1] * stood)
 
 ## A decal from assets/decals/ (tools/textures/ingest_dressing.py) under
 ## parent: projected along the transform's -Y over size, as strong as
@@ -829,11 +840,14 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			door_at = FLOOR.door_offset(room, neighbor) * (-1.0 if direction.x != 0 else 1.0)
 			for side in [-1, 1]:
 				# From the jamb on that side to the end of the wall.
-				var run: float = length * 0.5 - side * door_at - FLOOR.PORTAL * 0.5
-				if run > 0.01: wall_run(boundary, door_at + side * (FLOOR.PORTAL * 0.5 + run * 0.5), run, height, inner)
+				# It stops JAMB_GAP short of the opening: ending on it, the
+				# plaster and the dado stood a millimetre proud of the door's
+				# wooden jamb and showed through it.
+				var run: float = length * 0.5 - side * door_at - FLOOR.PORTAL * 0.5 - JAMB_GAP
+				if run > 0.01: wall_run(boundary, door_at + side * (FLOOR.PORTAL * 0.5 + JAMB_GAP + run * 0.5), run, height, inner)
 			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
-			wall_core(boundary, Vector3(door_at, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL, height - 2.65, 0.18), inner)
-			box(boundary, Vector3(door_at, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL, 0.1, 0.06), "trim")
+			wall_core(boundary, Vector3(door_at, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL + JAMB_GAP * 2.0, height - 2.65, 0.18), inner)
+			box(boundary, Vector3(door_at, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL + JAMB_GAP * 2.0, 0.1, 0.06), "trim")
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
 		# The end of a corridor, three or four metres across, has no room for
@@ -880,6 +894,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			# The wardrobe builds its own model, frame colliders and door leaves.
 			node.add_child(hide)
 	# Furniture along the free walls, things, clutter and decals (phase 4).
+	corner_posts(node, room)
 	DRESSING.dress(self, node, room)
 	# Central sightlines remain open; booths sit against the perimeter.
 	var service: bool = room.type in [4, 7, 8, 9]
@@ -991,6 +1006,37 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
 		light.light_color = Color("b8d4b6")
 	build_occluder(node)
+
+## Where a salon or a corridor turns a corner round a cell that is not part of
+## it, each of the two walls of that cell is drawn by the room on its side and
+## stops at the edge of its own cell: at the corner itself nobody drew
+## anything, and it showed as a notch 9 cm deep with the ends of both dados
+## bare and light coming through between them. The room at the elbow puts
+## the corner in: plaster, the dado and its rails, and the cornice.
+func corner_posts(node: Node3D, room: Dictionary) -> void:
+	var span := FLOOR.size_of(room)
+	var height: float = room.height
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			var a: int = FLOOR.beside(room, Vector2i(sx, 0))
+			var b: int = FLOOR.beside(room, Vector2i(0, sz))
+			if a < 0 or b < 0 or not opens_on(int(room.id), a) or not opens_on(int(room.id), b): continue
+			var d: int = FLOOR.beside(manifest.rooms[a], Vector2i(0, sz))
+			# Both walls of the cell in the corner have to be there.
+			if d < 0 or opens_on(a, d) or opens_on(b, d): continue
+			var corner := Vector3(sx * span.x * 0.5, 0, sz * span.y * 0.5)
+			var into := Vector3(-sx, 0, -sz)
+			# Each piece reaches as far into the room as its wall's does.
+			box(node, corner + into * 0.045 + Vector3(0, height * 0.5, 0), Vector3(0.09, height, 0.09), wall_material)
+			box(node, corner + into * 0.0725 + Vector3(0, 0.48, 0), Vector3(0.145, 0.96, 0.145), "panel")
+			box(node, corner + into * 0.08375 + Vector3(0, 0.98, 0), Vector3(0.1675, 0.05, 0.1675), "trim")
+			box(node, corner + into * 0.085 + Vector3(0, 0.07, 0), Vector3(0.17, 0.14, 0.17), "trim")
+			box(node, corner + into * 0.075 + Vector3(0, height - 0.05, 0), Vector3(0.15, 0.1, 0.15), "trim")
+			box(node, corner + into * 0.0575 + Vector3(0, height - 0.13, 0), Vector3(0.115, 0.06, 0.115), "trim")
+
+## Whether two cells side by side run into each other with no wall between.
+func opens_on(a: int, b: int) -> bool:
+	return manifest.adjacency[a].has(b) and open_pairs.has(Vector2i(mini(a, b), maxi(a, b)))
 
 ## Framed hotel art on a room's face of a wall (inner), `at` along it; vary()
 ## picks each canvas, by its position and the floor. It used to hang on local
@@ -1849,12 +1895,14 @@ func hang_painting(boundary: Node3D, pos: Vector3, inner: int, carved: bool) -> 
 		var local := Basis.from_scale(scale)
 		var centre := turn * (local * carved_opening.get_center())
 		var depth := 0.016 + 1.6 * (carved_frame.get_aabb().size.z * 0.5)
-		place(boundary, carved_frame, Transform3D(facing * turn * local, pos + facing * Vector3(-centre.x, -centre.y, depth - 0.016)))
-		place(boundary, pick.mesh, Transform3D(facing, pos + facing * Vector3(0, 0, depth - 0.016 + centre.z + 0.002)))
+		# 2 mm off the plaster: the frame is drawn from both sides and its back
+		# lay in the wall's own plane.
+		place(boundary, carved_frame, Transform3D(facing * turn * local, pos + facing * Vector3(-centre.x, -centre.y, depth - 0.014)))
+		place(boundary, pick.mesh, Transform3D(facing, pos + facing * Vector3(0, 0, depth - 0.014 + centre.z + 0.002)))
 	else:
 		var border := 0.07
 		box(boundary, pos + Vector3(0, 0, inner * 0.02), Vector3(canvas.x + border * 2, canvas.y + border * 2, 0.04), "trim")
-		place(boundary, pick.mesh, Transform3D(facing, pos + Vector3(0, 0, inner * 0.041)))
+		place(boundary, pick.mesh, Transform3D(facing, pos + Vector3(0, 0, inner * 0.043)))
 
 func build_prop(node: Node3D, kind: String) -> void:
 	preload("res://game/world/hotel/prop_factory.gd").build(self, node, kind)
