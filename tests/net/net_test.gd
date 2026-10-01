@@ -359,8 +359,16 @@ func guest(words: String, index: int) -> void:
 	check("The Locust es una réplica en el invitado", level.locust.control == "puppet")
 	check("Ve los cuerpos de los otros dos", match_net.bodies.size() == 2 and match_net.bodies.has(1))
 	check("Ve moverse al anfitrión", await wait_for(func(): return not match_net.bodies[1].states.is_empty(), 15.0))
+	# The other guest is not connected to this one: what it says reaches here
+	# only because the host passes it on (match_net.relay()). Over Steam, with
+	# nothing passing it on, the guests saw each other stand still.
+	check("Y al otro invitado, por el anfitrión", await wait_for(func(): return match_net.bodies.keys().any(func(seat): return int(seat) != 1 and not match_net.bodies[seat].states.is_empty()), 15.0))
+	check("Sin conexión directa con él: solo con el anfitrión", multiplayer_peers() == [1])
 	if words == "Alpha": await alpha_part()
 	else: await bravo_part()
+
+func multiplayer_peers() -> Array:
+	return Array(level.multiplayer.get_peers())
 
 func alpha_part() -> void:
 	var match_net = level.match_net

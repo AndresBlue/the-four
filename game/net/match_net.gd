@@ -264,10 +264,32 @@ func _physics_process(delta: float) -> void:
 	if send_clock > 0.0: return
 	send_clock = 1.0 / SEND_RATE
 	if is_survivor(net.local_seat) and level.session.participants.get(net.local_seat, 2) != level.session.Life.DEAD:
-		player_state.rpc(net.local_seat, pack_local())
+		to_everyone(&"player_state", [net.local_seat, pack_local()])
 	var creature = level.locust
 	if is_instance_valid(creature) and creature.control != "puppet":
-		locust_state.rpc(creature.pack_state())
+		to_everyone(&"locust_state", [creature.pack_state()])
+
+## What this machine says of itself to all the others. The room is a star:
+## every guest is connected to the host and to nobody else. Over IP Godot's
+## server used to pass a guest's broadcast on to the other guests by itself;
+## over Steam nothing does, so there the guests saw the host move and each
+## other stand still, while the host saw everybody (October 2026). Now it is
+## the same on both: the host says it to everyone, a guest says it to the
+## host, and the host passes it on (relay()) once it has judged whose it is.
+func to_everyone(method: StringName, arguments: Array) -> void:
+	if net.is_host: callv("rpc", [method] + arguments)
+	else: callv("rpc_id", [1, method] + arguments)
+
+## The host passing a guest's word on to every other machine, observers too.
+func relay(method: StringName, arguments: Array, from: int) -> void:
+	if not net.is_host: return
+	for peer in multiplayer.get_peers():
+		if peer != from: callv("rpc_id", [peer, method] + arguments)
+
+## Whether what has just arrived may be taken at its word: on the host that is
+## for each message to judge; on a guest, only the host speaks.
+func from_host() -> bool:
+	return net.is_host or multiplayer.get_remote_sender_id() == 1
 
 func pack_local() -> Array:
 	var player = level.player
@@ -285,17 +307,23 @@ func pack_local() -> Array:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func player_state(seat: int, data: Array) -> void:
+	if not from_host(): return
 	if net.is_host and net.players.get(seat, {}).get("peer", -1) != multiplayer.get_remote_sender_id(): return
-	if bodies.has(seat) and data.size() == 8: bodies[seat].push_state(data)
+	if data.size() != 8: return
+	if bodies.has(seat): bodies[seat].push_state(data)
+	relay(&"player_state", [seat, data], multiplayer.get_remote_sender_id())
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func locust_state(data: Array) -> void:
 	var creature = level.locust
 	if not is_instance_valid(creature): return
 	var author := 1 if not versus() else int(net.players.get(locust_seat(), {}).get("peer", -1))
+	if not from_host(): return
 	if multiplayer.get_remote_sender_id() != author and net.is_host: return
 	# The hunter is back and driving: the host's stand-in lets go.
 	if net.is_host and versus() and creature.control == "ai" and not away.has(locust_seat()): creature.set_control("puppet")
+	# The other survivors see the hunter's creature through the host.
+	relay(&"locust_state", [data], multiplayer.get_remote_sender_id())
 	if creature.control != "puppet": return
 	creature.push_state(data)
 
@@ -609,10 +637,14 @@ func play_world_sound(path: String, point: Vector3, gain: float, start: float) -
 
 ## The creature called out (grunt or strike warning) where it is authoritative.
 func creature_call(kind: String, segment: int, pitch: float) -> void:
-	if in_match(): locust_call.rpc(kind, segment, pitch)
+	if in_match(): to_everyone(&"locust_call", [kind, segment, pitch])
 
 @rpc("any_peer", "call_remote", "reliable")
 func locust_call(kind: String, segment: int, pitch: float) -> void:
+	if not from_host(): return
+	# Only whoever drives it calls out: the host itself, or the hunter.
+	if net.is_host and (not versus() or multiplayer.get_remote_sender_id() != locust_peer()): return
+	relay(&"locust_call", [kind, segment, pitch], multiplayer.get_remote_sender_id())
 	var creature = level.locust
 	if is_instance_valid(creature) and creature.control == "puppet": creature.play_call(kind, segment, pitch)
 

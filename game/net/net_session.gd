@@ -33,7 +33,7 @@ const MAX_PLAYERS := 5
 const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-11"
+const PROTOCOL := "the-four-net-12"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 enum Mode { COOP, VERSUS }
 const MODE_NAMES := ["Cooperativo contra IA", "Versus: un jugador es The Locust"]
@@ -111,6 +111,11 @@ func host(player_name: String, character: int, port := PORT, bind := "*") -> Err
 func as_host(opened: MultiplayerPeer, kind: String, player_name: String, character: int) -> void:
 	peer = opened
 	transport = kind
+	# No passing of one guest's messages on to another behind the game's
+	# back: Steam's connection has none, and with it on over IP the two
+	# behaved differently (match_net.to_everyone()). What a guest has to say
+	# to the others, the host hears, judges and passes on.
+	if multiplayer is SceneMultiplayer: (multiplayer as SceneMultiplayer).server_relay = false
 	multiplayer.multiplayer_peer = peer
 	is_host = true
 	local_seat = 1
