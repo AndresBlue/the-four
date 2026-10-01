@@ -114,7 +114,7 @@ func update_execution(delta: float) -> void:
 				level.player.avatar.rotation.x = 0.0
 				level.player.avatar.rotation.z = 0.0
 		if not level.net.is_client():
-			level.run_stats.deaths = int(level.run_stats.deaths) + 1
+			level.ledger.note_death(seat)
 			level.session.capture(seat)
 
 ## An execution cut short: the victim is let go alive, back on its feet with a

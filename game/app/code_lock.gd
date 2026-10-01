@@ -117,11 +117,13 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, piece.global_position)
 		var number := int(room.get("number", 0))
 		found_where[piece.slot] = ("HABITACIÓN %d" % number) if number > 0 else String(FLOOR.NAMES[int(room.get("type", 0))]).to_upper()
+		if not level.net.is_client() and not quiet: level.ledger.note_search(seat, int(piece.slot), String(found_where[piece.slot]))
 		# The paper leaves with whoever took it, and what it said stays written
 		# on the tape until the floor is over.
 		piece.take_note()
 		if not level.match_net.local_is_locust() and seat == level.player.slot:
 			level.camcorder.write_code(noted_code())
+	elif not level.net.is_client() and not quiet: level.ledger.note_search(seat, 0, "")
 
 ## The slips this player took, in the order the code reads: which place, the
 ## number on it, and the room it came out of. Only its own -- what the others

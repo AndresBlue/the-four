@@ -64,7 +64,11 @@ CORRECCIÓN:
 ACTUAL: MULTIJUGADOR
 CORRECCIÓN:
 
-[ARCH.01] Opción (entre Multijugador y Ajustes)
+[MENU.12] Opción (las marcas: sección 8)
+ACTUAL: MARCAS
+CORRECCIÓN:
+
+[ARCH.01] Opción (entre Marcas y Ajustes)
 ACTUAL: ARCHIVO
 CORRECCIÓN:
 
@@ -214,8 +218,8 @@ ACTUAL: FIN DEL PISO
 CORRECCIÓN:
 
 
-6. PISO COMPLETADO
-------------------
+6. PISO COMPLETADO (el parte de la cinta, en pestañas)
+------------------------------------------------------
 
 [FIN.01] Esquina superior izquierda
 ACTUAL: ■ STOP
@@ -225,51 +229,172 @@ CORRECCIÓN:
 ACTUAL: SALISTE DEL PISO
 CORRECCIÓN:
 
-[FIN.03] Dato, cuenta hacia arriba (%s = horas:minutos:segundos en el piso)
+[FIN.07] Bajo el título, en una línea (%d = número de la cinta, la semilla del piso; después
+el piso, con quién se jugó, cuántos eran si eran más de uno y la fecha)
+ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·  fecha
+CORRECCIÓN:
+
+[FIN.15] Pestañas del parte (HITOS solo en el piso que se acaba de jugar)
+ACTUAL: RESUMEN / EQUIPO / SECTORES / CRONOLOGÍA / HITOS
+CORRECCIÓN:
+
+[FIN.16] Esquina inferior izquierda: cómo se cambia de pestaña (con mando, los dos
+botones superiores en vez de Q y E)
+ACTUAL: Q  ·  PESTAÑAS  ·  E
+CORRECCIÓN:
+
+[FIN.04] Solo si el parte del anfitrión aún no ha llegado a un invitado (%s = tiempo en el piso)
 ACTUAL: TIEMPO DE GRABACIÓN  %s
 CORRECCIÓN:
 
-[FIN.04] Párrafo (solo si no hay resumen de la partida)
-ACTUAL: El hotel queda atrás. Por ahora.
+-- Pestaña RESUMEN --
+
+[FIN.03] Rótulos sobre las cifras grandes (el tiempo y el puntaje se cuentan solos hacia arriba)
+ACTUAL: TIEMPO DE GRABACIÓN / PUNTAJE / NOTA
 CORRECCIÓN:
 
-[FIN.07] Bajo el tiempo (%d = número de la cinta, la semilla del piso)
-ACTUAL: CINTA Nº %d
+[FIN.17] La nota, en un sello
+ACTUAL: S / A / B / C / D
 CORRECCIÓN:
 
-[FIN.08] Una fila por sector, con su tiempo al lado
-ACTUAL: SECTOR %d
+[FIN.18] Rótulos de la segunda fila de cifras
+ACTUAL: CAÍDAS / HUIDAS / TELEVISORES / VECES EN ARMARIOS / METROS ANDADOS
 CORRECCIÓN:
 
-[FIN.09] Una fila por jugador: nombre, si salió y cuántos números del código encontró
+[FIN.19] Contra lo que había en el tablón (%s = diferencia; entre paréntesis, la marca anterior)
+ACTUAL: PRIMERA CINTA DE ESTE TABLÓN / MEJORA LA MEJOR MARCA EN %s / A %s DE LA MEJOR MARCA /
+| SUPERA EL MEJOR PUNTAJE EN %s / A %s DEL MEJOR PUNTAJE
+CORRECCIÓN:
+
+[FIN.12] Puesto en las tablas, en una línea (%d = puesto, %s = título de la tabla, ver REC.05)
+ACTUAL: Nº %d EN %s
+CORRECCIÓN:
+
+[FIN.11] Sellos que aparecen uno a uno si se consiguen
+ACTUAL: SIN BAJAS / SIN ESCONDERSE / EQUIPO ENTERO
+CORRECCIÓN:
+
+[FIN.20] Recuadro de la derecha: rótulo (en equipo, quien más puntos hizo; en solitario, su
+papel; "SU PAPEL" al leer una cinta guardada; en un piso perdido, quien más hizo)
+ACTUAL: MÁS VALIOSO / TU PAPEL / SU PAPEL / QUIEN MÁS HIZO
+CORRECCIÓN:
+
+[FIN.21] Recuadro de la derecha: bajo el nombre, el papel y su motivo (FIN.23), sus puntos y
+lo que hizo
+ACTUAL: %s PUNTOS · %d tele / teles · %d número / números · %d huida / huidas · %d caída / caídas
+CORRECCIÓN:
+
+[FIN.23] Los papeles, uno por jugador y ninguno repetido, con su motivo (a solas no salen
+los tres primeros: el papel sale de cómo se jugó, no de los encargos)
+ACTUAL: CERRAJERO — marcó el código de la última puerta
+| ELECTRICISTA — encendió %d televisores
+| SABUESO — encontró %d números del código
+| ESCAPISTA — se le escapó %d veces a la criatura
+| CEBO — %s con la criatura detrás
+| EL DEL ARMARIO — %s dentro de un armario
+| MANOS LARGAS — registró %d muebles
+| EXPLORADOR — pisó %d salas
+| MARATONISTA — anduvo %d metros
+| AL BORDE — se quedó sin cordura / se quedó sin cordura %d veces
+| CARNE DE CAÑÓN — cayó %d veces
+| FANTASMA — la criatura no llegó a perseguirle
+| SUPERVIVIENTE — salió del piso
+| SE QUEDÓ ATRÁS — no salió del piso
+CORRECCIÓN:
+
+-- Pestaña EQUIPO --
+
+[FIN.09] Encabezados de la tabla (una fila por jugador; ★ ante el más valioso)
+ACTUAL: JUGADOR / PAPEL / PUNTOS / TV / Nº / HUIDAS / CAÍDAS / METROS
+CORRECCIÓN:
+
+[FIN.10] Última columna de cada fila
 ACTUAL: SALIÓ / SE QUEDÓ
 CORRECCIÓN:
 
-[FIN.10] Columna de números del código de cada jugador ("—" si ninguno)
-ACTUAL: %d número del código / %d números del código
-CORRECCIÓN:
-
-[FIN.14] Nombre del jugador en esa fila: el que puso al unirse; en solitario, el de su
-personaje; si no hay ninguno, "Superviviente" y su número
+[FIN.14] Nombre del jugador: el que puso al unirse o en MARCAS ▸ FICHA; en solitario sin
+nombre, el de su personaje; si no hay ninguno, "Superviviente" y su número
 ACTUAL: Detective / Detective / Exploradora / Superviviente %d
 CORRECCIÓN:
 OBS: en solitario los dos detectives salen como "Detective", mientras que en Personaje
 se llaman "Detective Masculino" y "Detective Femenino" (PJ.04, PJ.05).
 
-[FIN.11] Sellos que aparecen uno a uno si se consiguen
-ACTUAL: · SIN BAJAS · / · SIN ESCONDERSE · / · EQUIPO ENTERO ·
+[FIN.24] Fila del cazador, en una partida con un jugador como The Locust
+ACTUAL: THE LOCUST · %d captura / capturas
 CORRECCIÓN:
 
-[FIN.12] Puesto en las tablas (%d = puesto, %s = título de la tabla, ver REC.05 a REC.07)
-ACTUAL: Nº %d EN %s · EN SOLITARIO / Nº %d EN %s · ACOMPAÑADO
+[FIN.25] En solitario: de dónde salen los puntos, línea a línea
+ACTUAL: DE DÓNDE SALEN SUS PUNTOS
+| Televisores encendidos / Números del código / Código marcado / Sectores cerrados en pie /
+| Huidas de la criatura / Muebles registrados / Salas pisadas / Salió del piso /
+| Sin caer ni una vez / Caídas
 CORRECCIÓN:
 
-[FIN.13] Opción (solo si ya hay tiempos guardados)
-ACTUAL: MEJORES TIEMPOS
+[FIN.26] Lo que se gana por la cinta entera
+ACTUAL: LO QUE GANÓ EL EQUIPO JUNTO / Y POR LA CINTA ENTERA
+| Tiempo bajo la marca / Sin bajas / Sin esconderse / Equipo entero / Derrumbe
 CORRECCIÓN:
+
+[FIN.27] Lo que no da puntos pero se cuenta (entre paréntesis, de quién, si son varios)
+ACTUAL: DESTACADO
+| %d m andados, %d corriendo · %s en armarios · %s con la criatura detrás ·
+| la criatura a %s m · cordura hasta %d
+CORRECCIÓN:
+
+-- Pestaña SECTORES --
+
+[FIN.08] Una fila por sector: su encargo (ver TRANS), una barra, su tiempo y la diferencia con
+el más rápido del tablón
+ACTUAL: SECTOR %d · NO SE CERRÓ
+CORRECCIÓN:
+
+[FIN.28] Bajo cada sector, lo que pasó en él
+ACTUAL: %d televisor encendido / televisores encendidos · se fue la luz ·
+| %d número encontrado / números encontrados · código marcado · %d huida / huidas ·
+| %d caída / caídas · el sector se derrumbó y volvió a empezar
+CORRECCIÓN:
+
+[FIN.29] Nota al pie de la pestaña
+ACTUAL: A LA DERECHA, CADA SECTOR CONTRA EL MÁS RÁPIDO QUE HA TENIDO ESTE TABLÓN.
+CORRECCIÓN:
+
+-- Pestaña CRONOLOGÍA --
+
+[FIN.30] Los momentos del piso, cada uno con su hora y su sector (%s = nombre del jugador)
+ACTUAL: %s encendió un televisor (%d de %d)
+| Se fue la luz del ala
+| %s encontró un número del código en %s
+| %s marcó el código: la última puerta se abrió
+| %s llamó al ascensor
+| %s se le escapó a la criatura tras %d s de persecución
+| %s se quedó sin cordura
+| The Locust atrapó a %s
+| El sector se derrumbó: todos en pie y a empezarlo otra vez
+| SECTOR %d CERRADO
+| LA CINTA SALIÓ DEL HOTEL
+CORRECCIÓN:
+
+[FIN.31] En una cinta guardada antes de que existiera la cronología
+ACTUAL: Esta cinta se grabó antes de que el hotel anotara sus momentos.
+CORRECCIÓN:
+
+-- Pestaña HITOS --
+
+[FIN.32] Los hitos que esta cinta alcanza por primera vez, en sellos (ver HITO.01), y el resto
+ACTUAL: HITOS NUEVOS / Esta cinta no trae ningún hito nuevo.
+| PISO 1 · EL HOTEL:  %d DE %d HITOS
+| QUEDAN POR HACER
+| TODOS, EN MARCAS ▸ HITOS.
+CORRECCIÓN:
+
+-- Opciones --
 
 [FIN.05] Opción
 ACTUAL: NUEVA PARTIDA
+CORRECCIÓN:
+
+[FIN.13] Opción
+ACTUAL: MARCAS
 CORRECCIÓN:
 
 [FIN.06] Opción
@@ -288,8 +413,13 @@ CORRECCIÓN:
 ACTUAL: SEÑAL PERDIDA
 CORRECCIÓN:
 
-[MUERTE.03] Dato (%s = tiempo en el piso)
-ACTUAL: TIEMPO DE GRABACIÓN  %s
+[MUERTE.03] Debajo va el mismo parte que al salir (sección 6), con el tiempo en rojo, sin nota
+y con el sector al que se llegó en su lugar
+ACTUAL: SECTOR ALCANZADO
+CORRECCIÓN:
+
+[MUERTE.08] Párrafo de la pestaña RESUMEN
+ACTUAL: La cinta se quedó en el hotel. No entra en ningún tablón, pero lo que hizo cada uno queda en su ficha.
 CORRECCIÓN:
 
 [MUERTE.04] Centro de la pantalla, sobre la estática, solo en cooperativo
@@ -301,6 +431,10 @@ CORRECCIÓN:
 ACTUAL: REINTENTAR
 CORRECCIÓN:
 
+[MUERTE.09] Opción
+ACTUAL: MARCAS
+CORRECCIÓN:
+
 [MUERTE.06] Opción
 ACTUAL: MENÚ PRINCIPAL
 CORRECCIÓN:
@@ -310,51 +444,122 @@ ACTUAL: No quedan suficientes supervivientes.
 CORRECCIÓN:
 
 
-8. MEJORES TIEMPOS (desde Archivo o al terminar un piso)
---------------------------------------------------------
+8. MARCAS (desde el menú principal o al terminar un piso)
+---------------------------------------------------------
 
 [REC.01] Esquina superior izquierda
 ACTUAL: ▶ PLAY
 CORRECCIÓN:
 
 [REC.02] Título
-ACTUAL: MEJORES TIEMPOS
+ACTUAL: MARCAS
 CORRECCIÓN:
 
-[REC.03] Bajo el título
-ACTUAL: PISO 1 · EL HOTEL
-CORRECCIÓN:
-
-[REC.04] Encabezados de cada grupo de tablas
-ACTUAL: EN SOLITARIO / ACOMPAÑADO
-CORRECCIÓN:
-
-[REC.05] Tabla: título y nota bajo él
-ACTUAL: MÁS RÁPIDOS
-| El piso entero, de la primera puerta al último ascensor.
-CORRECCIÓN:
-
-[REC.06] Tabla: título y nota bajo él (el título también es un sello, FIN.11)
-ACTUAL: SIN BAJAS
-| Nadie cayó en todo el piso: ni una muerte, ni un reinicio.
-CORRECCIÓN:
-
-[REC.07] Tabla: título y nota bajo él (el título también es un sello, FIN.11)
-ACTUAL: SIN ESCONDERSE
-| Nadie se metió en un armario en todo el piso.
-CORRECCIÓN:
-
-[REC.08] Cada fila: puesto, tiempo, jugadores, cinta y fecha
-ACTUAL: %d superviviente / %d supervivientes · cinta nº %d
-CORRECCIÓN:
-OBS: aquí es "cinta nº" en minúscula y en el resumen del piso "CINTA Nº" (FIN.07).
-
-[REC.09] Si aún no hay ninguna partida en solitario
-ACTUAL: Todavía no hay ninguna cinta que saliera del hotel en solitario.
+[REC.03] Pestañas
+ACTUAL: TABLONES / FICHA / HITOS / COMPARAR
 CORRECCIÓN:
 
 [REC.10] Opción
 ACTUAL: VOLVER
+CORRECCIÓN:
+
+-- Pestaña TABLONES --
+
+[REC.04] Los dos desplegables y sus opciones
+ACTUAL: TABLÓN: EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR
+| TABLA: MÁS RÁPIDOS / MAYOR PUNTAJE / SIN BAJAS / SIN ESCONDERSE
+CORRECCIÓN:
+
+[REC.05] Nota bajo los desplegables, según la tabla
+ACTUAL: El piso entero, de la primera puerta al último ascensor.
+| Lo que hizo cada uno y lo que ganó el equipo junto.
+| Nadie cayó en todo el piso: ni una muerte, ni un reinicio.
+| Nadie se metió en un armario en todo el piso.
+CORRECCIÓN:
+
+[REC.08] Encabezados de las filas (puesto, tiempo, puntos, nota, nombres, cinta y fecha)
+ACTUAL: TIEMPO / PUNTOS / QUIÉN / CINTA Nº / FECHA
+CORRECCIÓN:
+
+[REC.11] En "QUIÉN", si la cinta no guarda nombres
+ACTUAL: %d SUPERVIVIENTE / %d SUPERVIVIENTES
+CORRECCIÓN:
+
+[REC.09] Si el tablón está vacío
+ACTUAL: Todavía no hay ninguna cinta en este tablón.
+CORRECCIÓN:
+
+[REC.12] Al pie de la lista
+ACTUAL: ELIGE UNA CINTA PARA LEER SU PARTE ENTERO.
+CORRECCIÓN:
+
+[REC.13] Una cinta elegida: título y opción (debajo, su parte como en la sección 6)
+ACTUAL: PARTE DE LA CINTA · VOLVER A LAS MARCAS
+CORRECCIÓN:
+
+-- Pestaña FICHA --
+
+[REC.14] Campo del nombre (el mismo que en Multijugador)
+ACTUAL: Tu nombre · Ingresa tu nombre
+CORRECCIÓN:
+
+[REC.15] La carrera, en dos columnas
+ACTUAL: PISOS SUPERADOS / CINTAS PERDIDAS / TIEMPO GRABADO / MEJOR TIEMPO A SOLAS /
+| MEJOR TIEMPO EN EQUIPO / MEJOR PUNTAJE / MEJOR NOTA / VECES MÁS VALIOSO / HITOS
+| TELEVISORES ENCENDIDOS / NÚMEROS ENCONTRADOS / CÓDIGOS MARCADOS / MUEBLES REGISTRADOS /
+| HUIDAS DE LA CRIATURA / CAÍDAS / VECES EN UN ARMARIO / METROS ANDADOS / PAPEL HABITUAL
+CORRECCIÓN:
+
+[REC.16] Solo si se ha jugado de cazador
+ACTUAL: COMO THE LOCUST · %d caza / cazas, %d captura / capturas
+CORRECCIÓN:
+
+-- Pestaña HITOS --
+
+[HITO.01] Los hitos del hotel: título y qué hay que hacer (con su fecha cuando se alcanzan)
+ACTUAL: PRIMERA CINTA — Salir del hotel.
+| A SOLAS — Salir del hotel sin nadie más.
+| SIN BAJAS — Salir en equipo sin que caiga nadie.
+| SIN ESCONDERSE — Salir sin que nadie se meta en un armario.
+| CINTA CORTA — Salir en menos de 30 minutos.
+| CINTA DE VEINTE — Salir en menos de 20 minutos.
+| EQUIPO ENTERO — Salir tres o más, y todos.
+| LOS CUATRO — Salir cuatro o más, y todos.
+| SEGUNDA TOMA — Salir de un piso que se derrumbó una vez.
+| MANITAS — Encender tú cuatro televisores en un piso.
+| LOS CUATRO NÚMEROS — Encontrar tú los cuatro números del código.
+| POR LOS PELOS — Escapar tres veces de la criatura y salir.
+| NI TE VIO — Salir sin que la criatura te persiga ni una vez.
+| MÁS VALIOSO — Ser quien más aportó en un equipo que sale.
+| CINTA DE PRIMERA — Salir con nota A o mejor.
+| CINTA MAESTRA — Salir con nota S.
+| A SALVO DEL CAZADOR — Salir con un jugador haciendo de The Locust.
+| CAZA COMPLETA — Como The Locust, no dejar salir a nadie.
+CORRECCIÓN:
+
+[HITO.02] Encabezado de cada piso y los que aún no existen
+ACTUAL: PISO 1 · EL HOTEL  %d / %d · PISO %d  ·  SIN GRABAR
+CORRECCIÓN:
+
+-- Pestaña COMPARAR --
+
+[REC.17] Sin fichas de nadie todavía
+ACTUAL: Aquí se ponen, al lado de la tuya, las fichas de la gente con la que juegas: cada uno dice la suya al empezar un piso en línea, y se queda guardada para leerla después, con o sin conexión.
+| Todavía no has jugado con nadie desde que existen las fichas.
+CORRECCIÓN:
+
+[REC.18] Bajo tu nombre (bajo el de los demás, su papel habitual)
+ACTUAL: TÚ
+CORRECCIÓN:
+
+[REC.19] Filas de la comparación (en ámbar, quien va por delante)
+ACTUAL: PISOS SUPERADOS / CINTAS PERDIDAS / MEJOR TIEMPO A SOLAS / MEJOR TIEMPO EN EQUIPO /
+| MEJOR PUNTAJE / MEJOR NOTA / VECES MÁS VALIOSO / TELEVISORES / NÚMEROS DEL CÓDIGO /
+| HUIDAS / CAÍDAS / TIEMPO GRABADO / HITOS / PISOS JUNTOS
+CORRECCIÓN:
+
+[REC.20] Con más de tres fichas guardadas
+ACTUAL: ◀ ANTERIORES · SIGUIENTES ▶ · %d DE %d
 CORRECCIÓN:
 
 
@@ -641,9 +846,9 @@ OBS: "LA PARTIDA SIGUE" (pie de la pantalla) y "LA PARTIDA NO SE DETIENE" (bajo 
 título) dicen lo mismo en la misma pantalla.
 
 [MP.14] Final en línea (títulos según el bando; el resto como FIN y MUERTE)
-ACTUAL: SALISTE DEL PISO / SEÑAL PERDIDA / SE TE ESCAPARON / CAZA COMPLETA · MEJORES TIEMPOS ·
-| REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · CERRAR LA SALA ·
-| El anfitrión decide cómo seguir… · SALIR DE LA SALA
+ACTUAL: SALISTE DEL PISO / SEÑAL PERDIDA / SE TE ESCAPARON / CAZA COMPLETA ·
+| REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · MARCAS · CERRAR LA SALA ·
+| El anfitrión decide cómo seguir… · MARCAS · SALIR DE LA SALA
 CORRECCIÓN:
 
 -- Personaje --
@@ -1261,8 +1466,8 @@ CORRECCIÓN:
 ACTUAL: Los documentos que leas en el hotel se guardan aquí, también entre partidas.
 CORRECCIÓN:
 
-[ARCH.05] Opciones
-ACTUAL: MEJORES TIEMPOS / VOLVER
+[ARCH.05] Opción
+ACTUAL: VOLVER
 CORRECCIÓN:
 
 

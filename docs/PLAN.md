@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protocolo de red
-**the-four-net-12**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-13**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -69,6 +69,16 @@ y **tampoco se ha jugado**:
   quedan en la lectura del cazador, las manchas de humedad ya no le tapan la
   pantalla contra una pared, y los pasillos ya no se ven por módulos en Alto
   y Ultra.
+
+El 1 de octubre entró la vuelta entera a las marcas, y **tampoco se ha
+jugado**:
+
+- **El parte de la cinta, en pestañas**, al salir del piso y también al
+  perderlo: resumen con puntaje y nota, equipo con el más valioso y el papel
+  de cada uno, sectores contra la mejor marca, cronología del piso e hitos.
+- **Marcas** en el menú principal: tres tablones por piso (solo, acompañado,
+  contra el cazador) con cuatro tablas, la ficha de carrera, dieciocho hitos
+  del hotel y la comparación con las fichas de la gente con la que se juega.
 
 El 26, con las notas de jugar con mando en la tele, entró esto, y **tampoco
 se ha jugado**:
@@ -308,6 +318,11 @@ herramientas para mirarlo están en la guía de desarrollo.
   propagación del ruido, en partidas humanas; y su ronda nueva y su búsqueda
   (se rinde a los 8–10 s sin pistas y se va a más de 38 m): si se siente
   menos tonta y si esconderse ahora sirve lo que tiene que servir.
+- [ ] **El puntaje y la nota** (`game/services/run_score.gd`,
+  `hotel_floor.PAR`): lo que vale cada cosa, los 40 minutos de referencia y
+  los cortes de S/A/B/C salen de cuentas, no de partidas. Mirar qué notas dan
+  las primeras cintas de verdad, si el más valioso es quien el equipo diría,
+  y si los hitos de 30 y 20 minutos están donde deben.
 - [ ] **El chillido del cazador cada 10 s** (antes 3 s, y se encadenaba): si
   sigue valiendo lo que cuesta o se queda corto para encontrar a nadie.
 - [ ] **Rendimiento en un PC modesto:** medir `tools/benchmarks/run_bench.ps1`
@@ -385,7 +400,7 @@ no rompen nada.
 ## 3 · Acabado de lo que ya existe
 
 Afina algo que funciona: va después de que funcione bien. Del cierre del piso
-de The Locust ya están el mando, el parte al salir y los mejores tiempos, todos
+de The Locust ya están el mando, el parte al salir y las marcas, todos
 descritos en el diseño; queda el sonido del ascensor (apartado 4), que tapa un
 silencio que hoy se oye raro al cerrar cada sector, y probar el mando en
 partida: que la sensibilidad por defecto no se quede corta ni larga, y que se

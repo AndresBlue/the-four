@@ -106,6 +106,11 @@ func run() -> void:
 	var graves: Array = bot_match.incidents.filter(func(entry): return entry.severity == "grave" and entry.kind != "muerte")
 	check("La muerte que la prueba provocó queda anotada", bot_match.incidents.any(func(entry): return entry.kind == "muerte" and entry.seat == 3))
 	check("Sin incidencias graves por el camino", graves.is_empty(), incidents_text())
+	# The floor's ledger watches the bots as it would players: the fall is the
+	# fallen one's, the sector closed is the walker's, and so are its metres.
+	var walker: int = level.session.participants.keys().filter(func(seat): return int(seat) != 3)[0]
+	var moments: Array = level.ledger.events.map(func(event): return String(event.k))
+	check("El libro del piso anota a cada bot lo suyo", int(level.ledger.of(3).deaths) == 1 and int(level.ledger.of(walker).deaths) == 0 and float(level.ledger.of(walker).metres) > 10.0 and int(level.ledger.of(walker).sectors) == 1 and moments.has("death") and moments.has("lift") and moments.has("sector"), "%s · %s" % [level.ledger.of(walker), moments])
 	# What was recorded says what happened: the floor worked out from the
 	# recording at those two moments is the floor as it was then.
 	bot_match.finish()

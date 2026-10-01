@@ -32,6 +32,7 @@ func on_revived(restart: bool) -> void:
 	# stood, it was often a metre from them. A creature somebody drives is
 	# theirs to walk back.
 	var den := Vector3.INF
+	if restart: level.ledger.note_restart()
 	if restart and is_instance_valid(level.locust) and level.locust.control == "ai": den = den_away(point, RESTART_DEN)
 	apply_revival(places, restart, den)
 	if level.match_net.in_match(): level.match_net.revive_everyone(places, restart, den)
@@ -149,6 +150,7 @@ func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF
 		for index in level.stage_televisions():
 			if level.televisions[index].on:
 				level.apply_television(index, false)
+				level.ledger.note_tv_out(index)
 				if not level.net.is_client() and level.match_net.in_match(): level.match_net.television_state.rpc(index, false)
 		# And the power with them: the cut came with the sets, and a stage
 		# given back is given back whole. The authority says so, as always.

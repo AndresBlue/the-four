@@ -105,6 +105,9 @@ const INTERACTION := preload("res://game/app/interaction.gd")
 var interaction
 const PRESENTATION_RIG := preload("res://game/app/presentation_rig.gd")
 var rig
+## What the floor has been, written down as it is played (run_ledger.gd).
+const LEDGER := preload("res://game/app/run_ledger.gd")
+var ledger
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
 ## Online, Esc opens a menu over the running match instead of pausing it.
@@ -184,6 +187,10 @@ func _enter_tree() -> void:
 	rig.name = "PresentationRig"
 	rig.level = self
 	$Services.add_child(rig)
+	ledger = LEDGER.new()
+	ledger.name = "Ledger"
+	ledger.level = self
+	$Services.add_child(ledger)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -552,9 +559,10 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	# Every floor starts with the lens wide, online ones too.
 	player.zoom = 1.0
 	player.zoom_wanted = 1.0
-	run_stats = {"sectors": [], "deaths": 0, "hides": 0}
+	ledger.reset()
 	ui.summary = {}
 	ui.places = {}
+	ui.outcome = {}
 	if is_instance_valid(locust):
 		remove_child(locust)
 		locust.queue_free()
@@ -854,7 +862,7 @@ func on_state() -> void:
 		if playing and session.stage > last_stage:
 			lifts.follow_players(session.stage)
 			# What the sector just closed took, for the line this floor leaves.
-			run_stats.sectors.append(session.elapsed)
+			if not net.is_client(): ledger.note_sector(last_stage)
 	# Only a stage being played counts as reached (a change announced in the
 	# transition used to count it, and the creature never got its road), and
 	# a new floor starts the count again.
@@ -900,71 +908,57 @@ func on_state() -> void:
 			else: ui.menu("transition")
 		session.State.WON:
 			ui.elapsed = session.elapsed
-			# The line the floor leaves: written by whoever ran it, and sent
-			# to the rest so every board has the same run.
-			if not net.is_client() and ui.summary.is_empty():
-				var line := close_run()
-				ui.summary = line
-				# A floor that is nobody's game (the bots, the observer's own)
-				# leaves no line on the board.
-				ui.places = records.record(line) if session.keeps_checkpoint else {}
-				if match_net.in_match(): match_net.tell_summary(line)
+			if not net.is_client() and ui.summary.is_empty(): file_run(true)
 			if match_net.in_match():
 				if net.is_host: match_net.clear_checkpoint()
 				ui.menu("online_won")
 			else: ui.menu("won")
 		session.State.FAILED:
 			ui.elapsed = session.elapsed
+			# A tape that never got out is read too: who did what, and how it went.
+			if not net.is_client() and ui.summary.is_empty(): file_run(false)
 			ui.menu("online_failed" if match_net.in_match() else "failed")
 
-## What this floor has been: how long each sector took, how many fell, how
-## many hid. Counted by whoever runs the floor (the host, or nobody online),
-## and written down when the last lift leaves (close_run).
-var run_stats := {"sectors": [], "deaths": 0, "hides": 0}
+## What this floor has been so far, as the bots' summary reads it: how long
+## each sector took, how many fell, how many hid. The whole of it is the
+## ledger's (run_ledger.gd), kept by whoever runs the floor.
+var run_stats: Dictionary:
+	get: return {"sectors": ledger.sectors, "deaths": ledger.deaths, "hides": ledger.hides}
 
 ## A survivor has climbed into a wardrobe. Only the machine in charge counts.
-func note_hide() -> void:
-	if not net.is_client(): run_stats.hides = int(run_stats.hides) + 1
+func note_hide(seat := -1) -> void:
+	if not net.is_client(): ledger.note_hide(int(player.slot) if seat < 0 else seat)
+
+## The floor is over, won or lost: the line it leaves, written by whoever ran
+## it and sent to the rest, so every machine files the same floor.
+func file_run(won: bool) -> void:
+	var line := close_run(won)
+	take_run(line)
+	if match_net.in_match(): match_net.tell_summary(line)
+
+## The line of the floor, filed on this machine: the board (a tape that got
+## out), the career and the milestones of whoever plays here. A floor that is
+## nobody's game -- the bots', the observer's own -- leaves nothing.
+func take_run(line: Dictionary) -> void:
+	ui.summary = line
+	var mine: bool = session.keeps_checkpoint and not observer
+	if mine:
+		for who in match_net.cards.values(): records.played_with(String(who))
+	ui.outcome = records.file(line, int(net.local_seat) if match_net.in_match() else int(player.slot), mine)
+	ui.places = ui.outcome.places
 
 ## The floor is over and everybody who was going to get out is out. The line
 ## is written on every machine, so a guest's board has the run too, but only
 ## the one in charge decides what it says.
-func close_run() -> Dictionary:
-	var players: Array = session.participants.keys()
-	var escaped := 0
-	for seat in players:
-		if int(session.participants[seat]) != session.Life.DEAD: escaped += 1
-	var sectors: Array = run_stats.sectors.duplicate()
-	sectors.append(session.elapsed)
-	var team: Array = []
-	for seat in players:
-		var digits := 0
-		for slot in found_by:
-			if int(found_by[slot]) == int(seat): digits += 1
-		team.append({
-			"seat": int(seat),
-			"name": seat_name(int(seat)),
-			"escaped": int(session.participants[seat]) != session.Life.DEAD,
-			"digits": digits,
-		})
-	return {
-		"floor": 1,
-		"company": RECORDS.SOLO if players.size() < 2 else RECORDS.COOP,
-		"players": players.size(),
-		"time": session.elapsed,
-		"sectors": sectors,
-		"deaths": int(run_stats.deaths),
-		"hides": int(run_stats.hides),
-		"escaped": escaped,
-		"seed": int(session.run_seed),
-		"team": team,
-	}
+func close_run(won := true) -> Dictionary: return ledger.close(won)
 
 ## What to call a seat on the board: the name it joined under, or the survivor
 ## it is playing, which is all there is on your own.
 func seat_name(seat: int) -> String:
 	var players: Dictionary = match_net.config.get("players", {}) if match_net.in_match() else {}
 	if players.has(seat) and not String(players[seat].get("name", "")).is_empty(): return String(players[seat].name)
+	# The name the player gave itself (the card, or the multiplayer screen).
+	if seat == player.slot and not match_net.in_match() and not bot_match and not String(settings.values.player_name).strip_edges().is_empty(): return NET.clean_name(String(settings.values.player_name))
 	if seat == player.slot: return AVATAR_NAMES[clampi(settings.values.character, 0, AVATAR_NAMES.size() - 1)]
 	var body = match_net.bodies.get(seat)
 	if is_instance_valid(body) and not String(body.player_name).is_empty(): return String(body.player_name)
@@ -1002,6 +996,8 @@ func step_back() -> void:
 	elif net.active() and session.state == session.State.MENU and ui.screen in ["lobby", "join"]: on_action("lobby_leave")
 	elif ui.screen == "join" and session.state == session.State.MENU: on_action("multiplayer")
 	elif ui.screen == "characters" and session.state == session.State.MENU: on_action("lobby" if net.active() else "multiplayer")
+	elif ui.screen == "tape": ui.menu("records")
+	elif ui.screen == "records" and ui.records_back != "main": ui.menu(ui.records_back)
 	elif ui.screen in ["credits", "multiplayer", "records", "archive"] and session.state == session.State.MENU: on_action("main")
 	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
 	elif session.state == session.State.PLAYING: session.pause()
@@ -1269,6 +1265,7 @@ func _physics_process(delta: float) -> void:
 			if bot_match:
 				track_refuges()
 				sanity.tick(delta)
+				ledger.tick(delta)
 			if not net.active(): host_gate(delta)
 		return
 	if is_instance_valid(session) and session.state == session.State.CUTSCENE:
@@ -1296,7 +1293,9 @@ func _physics_process(delta: float) -> void:
 	# its own player happens to be doing. It used to be called from inside the
 	# branches below, and the one for a dead player had no call: with the host
 	# dead, its guests could hold at the refuge for ever and never leave.
-	if not net.is_client(): host_gate(delta)
+	if not net.is_client():
+		host_gate(delta)
+		ledger.tick(delta)
 
 ## Who of the survivors is in the refuge of the stage in hand, for the
 ## session (the machine in charge).
@@ -1324,6 +1323,7 @@ func host_gate(delta: float) -> void:
 		# floor's: the next one is found lit.
 		if done >= needed - 1 and not session.goal.get("blackout", false):
 			session.goal["blackout"] = true
+			ledger.note_dark()
 			session.changed.emit()
 	if kind.asks(session.stage, "code") and not containers.is_empty():
 		# The code comes on top of the sets (the last stage of the hotel asks
@@ -1480,7 +1480,7 @@ var tv_sets:
 	set(value): tvs.tv_sets = value
 func place_televisions() -> void: tvs.place_televisions()
 func stage_televisions(stage := -1) -> Array: return tvs.stage_televisions(stage)
-func switch_television(set: Node3D) -> void: tvs.switch_television(set)
+func switch_television(set: Node3D, seat := -1) -> void: tvs.switch_television(set, seat)
 const TV_BURST := TELEVISIONS.TV_BURST
 func apply_television(index: int, value: bool, quiet := false) -> void: tvs.apply_television(index, value, quiet)
 const WARP_REACH := TELEVISIONS.WARP_REACH

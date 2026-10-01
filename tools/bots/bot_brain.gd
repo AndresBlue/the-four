@@ -394,7 +394,7 @@ func act(delta: float) -> void:
 	match kind:
 		"tv":
 			if timer < 0.5: return
-			level.switch_television(node)
+			level.switch_television(node, seat)
 			owner_match.note("tele", self, {"index": level.televisions.find(node)})
 			owner_match.team.finished(self, task)
 			set_task({})
@@ -415,7 +415,7 @@ func act(delta: float) -> void:
 			if keys < code.length(): return
 			var verdict: String = level.code_verdict(code)
 			owner_match.note("teclado", self, {"verdict": verdict})
-			if verdict == "right": level.match_net.use_code()
+			if verdict == "right": level.match_net.use_code(seat)
 			elif verdict == "wrong": owner_match.report("codigo", "grave", self, "el código que el equipo leyó no es el de la puerta")
 			owner_match.team.finished(self, task)
 			set_task({})

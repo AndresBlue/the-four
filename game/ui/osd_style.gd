@@ -143,6 +143,75 @@ static func headphones(size: float, color := MUTED) -> Control:
 			mark.draw_circle(bottom, stroke * 1.1, color))
 	return mark
 
+## A rubber stamp: words in a box, a little crooked, as a clerk would leave
+## them on a tape's label. `delay` > 0 presses it on after that long.
+static func stamp(words: String, size := 18, color := AMBER, tilt := -0.06, delay := 0.0) -> Control:
+	var face := font()
+	var extent := face.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, size)
+	var box := Vector2(extent.x + size * 1.1, size * 1.7)
+	var mark := Control.new()
+	# Room for the corners of a box that is turned.
+	mark.custom_minimum_size = box + Vector2(absf(sin(tilt)) * box.y, absf(sin(tilt)) * box.x) + Vector2(6, 6)
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.draw.connect(func() -> void:
+		mark.draw_set_transform(mark.size * 0.5, tilt, Vector2.ONE)
+		var rect := Rect2(-box * 0.5, box)
+		mark.draw_rect(rect, Color(color, 0.1), true)
+		mark.draw_rect(rect, color, false, maxf(2.0, size * 0.09))
+		mark.draw_string(face, Vector2(-extent.x * 0.5, (face.get_ascent(size) - face.get_descent(size)) * 0.5), words, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color))
+	if delay > 0.0:
+		mark.modulate.a = 0.0
+		var press := mark.create_tween()
+		press.tween_interval(delay)
+		press.tween_property(mark, "modulate:a", 1.0, 0.12)
+	return mark
+
+## A figure with what it is written small over it: the big numbers of a
+## report. Returns the label of the figure, to count it up or recolour it.
+static func figure(parent: Node, caption: String, words: String, size := 34, color := INK) -> Label:
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", 0)
+	block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(block)
+	block.add_child(text(caption, 14, SOFT))
+	var value := text(words, size, color)
+	block.add_child(value)
+	return value
+
+## A thin level, filled from the left: how much of the longest this one is.
+static func meter(fraction: float, width: float, color := INK, height := 8.0) -> Control:
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(width, height)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.draw.connect(func() -> void:
+		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), Color(1, 1, 1, 0.08), true)
+		bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bar.size.x * clampf(fraction, 0.0, 1.0), bar.size.y)), color, true))
+	return bar
+
+## A number with its thousands apart: 12 480.
+static func grouped(value: int) -> String:
+	var digits := str(absi(value))
+	var out := ""
+	while digits.length() > 3:
+		out = " " + digits.right(3) + out
+		digits = digits.left(digits.length() - 3)
+	return ("-" if value < 0 else "") + digits + out
+
+## One cell of a row laid out in columns: words in a fixed width, cut short
+## with an ellipsis when they do not fit. Cut here and not by the label: one
+## that clips its words clips the accent off every capital with them.
+static func cell(row: Node, words: String, width: float, size := 17, color := INK, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var face := font()
+	if width > 0.0 and face.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
+		while words.length() > 1 and face.get_string_size(words + "…", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width: words = words.left(words.length() - 1)
+		words = words.strip_edges() + "…"
+	var result := text(words, size, color)
+	result.custom_minimum_size.x = width
+	result.horizontal_alignment = align
+	row.add_child(result)
+	return result
+
 static func text(words: String, size := 20, color := INK) -> Label:
 	var result := Label.new()
 	result.text = words

@@ -150,6 +150,62 @@ func run() -> void:
 	check("Una marca nueva sabe en qué puesto entró", int(places.get("time", 0)) == 1 and int(places.get("brave", 0)) == 1)
 	for i in records.KEPT + 4: records.record({"floor": 1, "company": records.SOLO, "players": 1, "time": 1000.0 + i, "deaths": 0, "hides": 0, "escaped": 1})
 	check("El tablón no crece sin fin", records.table_of("time", 1, records.SOLO).size() == records.KEPT)
+	# What a tape is worth: each one's points out of what they did, the team's
+	# out of how the floor went, who was worth most and the part each played.
+	var score := preload("res://game/services/run_score.gd")
+	var floor_index := preload("res://game/floors/floor_index.gd")
+	var duo := {"floor": 1, "company": records.COOP, "mode": "coop", "players": 2, "time": 1500.0, "par": 2400.0, "sectors": [400.0, 900.0, 1500.0], "deaths": 1, "hides": 0, "restarts": 0, "escaped": 2, "seed": 7, "team": [
+		{"seat": 1, "name": "Uno", "escaped": true, "tvs": 3, "digits": 1, "code": 1, "sectors": 3, "deaths": 0, "escapes": 0, "chases": 0},
+		{"seat": 2, "name": "Dos", "escaped": true, "tvs": 1, "digits": 3, "code": 0, "sectors": 3, "deaths": 1, "escapes": 2, "chases": 3},
+	]}
+	score.settle(duo)
+	check("Los puntos de cada uno salen de lo que hizo", int(duo.team[0].score) == 3 * score.TV + score.DIGIT + score.CODE + 3 * score.SECTOR + score.OUT + score.INTACT and int(duo.team[1].score) == score.TV + 3 * score.DIGIT + 3 * score.SECTOR + 2 * score.ESCAPE + score.OUT + score.DEATH)
+	check("Y los de la cinta suman lo que ganó el equipo junto", int(duo.score) == int(duo.team[0].score) + int(duo.team[1].score) + 900 + score.BRAVE + score.WHOLE and String(duo.grade) == "B")
+	check("El más valioso es quien más puntos hizo", int(duo.mvp) == 1)
+	check("Cada uno lleva su papel, y ninguno se repite", String(duo.team[0].title) == "CERRAJERO" and String(duo.team[1].title) == "SABUESO")
+	var reached: Array = score.earned(floor_index.milestones(1), duo, 1)
+	check("Una cinta alcanza los hitos que le tocan y no otros", reached.has("out") and reached.has("brave") and reached.has("half") and reached.has("mvp") and not reached.has("clean") and not reached.has("solo") and not reached.has("quick") and not score.earned(floor_index.milestones(1), duo, 2).has("mvp"))
+	records.career = {}
+	records.milestones = {}
+	var team_before: int = records.table_of("time", 1, records.COOP).size()
+	var filed: Dictionary = records.file(duo, 1)
+	check("Archivarla la pone en el tablón, suma la ficha y anota sus hitos", records.table_of("time", 1, records.COOP).size() == team_before + 1 and int(records.career.get("floors", 0)) == 1 and int(records.career.get("tvs", 0)) == 3 and int(records.career.get("mvps", 0)) == 1 and filed.milestones.has("mvp") and not records.reached(1, "mvp").is_empty())
+	check("Un hito se alcanza una sola vez", records.file(duo, 1).milestones.is_empty() and int(records.career.get("floors", 0)) == 2)
+	var sunk: Dictionary = duo.duplicate(true)
+	sunk["result"] = "lost"
+	var on_board: int = records.table_of("time", 1, records.COOP).size()
+	records.file(score.settle(sunk), 2)
+	check("Una cinta perdida no entra en el tablón, pero cuenta en la ficha", records.table_of("time", 1, records.COOP).size() == on_board and int(records.career.get("lost", 0)) == 1 and String(sunk.grade).is_empty())
+	check("Y de un piso que no es de nadie no queda nada", records.file(duo, 1, false).places.is_empty() and int(records.career.get("floors", 0)) == 2)
+	# The cards: one's own to say, and somebody else's kept as words from a
+	# stranger.
+	records.id = "propia"
+	var own: Dictionary = records.card("  Uno  ")
+	check("La ficha dice la carrera", String(own.id) == "propia" and String(own.name) == "Uno" and int(own.floors) == 2 and int(own.milestones) == records.milestones.size())
+	records.keep_card({"id": "otra", "name": "Otro\nNombre larguísimo de verdad", "floors": "muchos", "best_grade": "SSS", "tvs": 12, "sobra": 5})
+	records.keep_card(own)
+	var theirs: Dictionary = records.rivals.get("otra", {})
+	check("La de otro se guarda limpia, y la propia no es de otro", records.rivals.size() == 1 and String(theirs.get("name", "")).length() <= 18 and not String(theirs.get("name", "")).contains("\n") and int(theirs.get("floors", -1)) == 0 and String(theirs.get("best_grade", "")) == "S" and int(theirs.get("tvs", 0)) == 12 and not theirs.has("sobra"))
+	# The marks, on screen: its tabs, and a tape read whole off the board.
+	scene.ui.records = records
+	scene.ui.records_view = {}
+	scene.ui.menu("records")
+	await process_frame
+	var board_tabs: TabContainer = scene.ui.settings_tabs
+	check("Las marcas se leen en pestañas", is_instance_valid(board_tabs) and board_tabs.get_tab_count() == 4 and scene.ui.settings_rows.size() == 4)
+	check("Y cada línea del tablón es una fila que se puede marcar", scene.ui.settings_rows[0].size() == 1 + records.table_of("time", 1, String(scene.ui.records_view.company)).size())
+	var letter := InputEventKey.new()
+	letter.physical_keycode = KEY_E
+	letter.pressed = true
+	Input.parse_input_event(letter)
+	await process_frame
+	check("E pasa a la pestaña siguiente", board_tabs.current_tab == 1)
+	scene.ui.show_tape(records.table_of("time", 1, records.COOP)[0])
+	await process_frame
+	check("Una cinta del tablón se abre con su parte entero", scene.ui.screen == "tape" and scene.ui.settings_tabs.get_tab_count() == 4 and scene.get_viewport().gui_get_focus_owner() != null)
+	scene.ui.records = scene.records
+	scene.ui.menu("main")
+	await process_frame
 	records.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_records_contract.json"))
 	# The picture settings: what the player asks for over the preset, and how

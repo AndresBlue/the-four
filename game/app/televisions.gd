@@ -49,9 +49,10 @@ func stage_televisions(stage := -1) -> Array:
 	return result
 
 ## Switching one on: the host decides, and the noise is made once, there.
-func switch_television(set: Node3D) -> void:
+## `seat`: whose hand, when it is not this machine's player's (a test bot's).
+func switch_television(set: Node3D, seat := -1) -> void:
 	if not is_instance_valid(set) or set.on: return
-	level.match_net.use_television(set)
+	level.match_net.use_television(set, seat)
 
 ## A set coming to life plays the whole dead channel the blackout plays, from
 ## its screen, and then hisses softly for as long as it stays on

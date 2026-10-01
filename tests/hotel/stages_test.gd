@@ -119,6 +119,8 @@ func run() -> void:
 	# The board is written to disk and outlives a run: this one starts empty,
 	# or what it counts would be whatever the last run left there.
 	level.records.runs.clear()
+	level.records.career = {}
+	level.records.milestones = {}
 	level.records.save()
 	await level.start_floor(81)
 	var session = level.session
@@ -582,8 +584,16 @@ func run() -> void:
 	kept.save_path = level.records.save_path
 	kept.load_records()
 	check("El tablón sobrevive a cerrar el juego", kept.table_of("time", 1, kept.SOLO).size() == 1)
-	level.ui.menu("records")
-	check("Y el menú lo enseña", level.ui.screen == "records" and words_under(level.ui.column).contains("MÁS RÁPIDOS"))
+	# What was done on the floor is in the line, to whoever did it, and the
+	# tape is worth what that comes to.
+	var me: Dictionary = line.team[0]
+	check("Lo que hizo queda a su nombre: las teles, el código, los sectores", int(me.get("tvs", 0)) >= TV.needed(1) and int(me.get("code", 0)) == 1 and int(me.get("sectors", 0)) >= 2 and int(me.get("metres", -1)) >= 0)
+	var kinds: Array = line.get("events", []).map(func(event): return String(event.k))
+	check("Y la cinta lleva su puntaje, su nota y sus momentos", int(line.get("score", 0)) > 0 and int(me.get("score", 0)) > 0 and not String(line.get("grade", "")).is_empty() and kinds.has("sector") and kinds.has("tv") and kinds.has("code") and kinds.has("out"))
+	check("Los hitos del piso se anotan la primera vez, y la ficha suma el piso", level.ui.outcome.milestones.has("out") and level.ui.outcome.milestones.has("solo") and not level.records.reached(1, "out").is_empty() and int(level.records.career.get("floors", 0)) == 1)
+	check("La pantalla de fin es el parte, en pestañas", is_instance_valid(level.ui.settings_tabs) and level.ui.settings_tabs.get_tab_count() == 5 and words_under(level.ui.column).contains("PUNTAJE"))
+	level.on_action("records")
+	check("Y las marcas enseñan la cinta en su tablón", level.ui.screen == "records" and words_under(level.ui.column).contains(level.ui.tape_time(float(line.time))) and level.ui.records_back == "won")
 	# A floor started again begins at the first stage.
 	await level.start_floor(81)
 	check("Un piso nuevo vuelve a la etapa 1", level.session.stage == 1 and level.session.state == level.session.State.PLAYING)

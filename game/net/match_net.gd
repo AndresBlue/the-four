@@ -85,6 +85,7 @@ func end() -> void:
 		if is_instance_valid(body): body.queue_free()
 	bodies.clear()
 	config = {}
+	cards.clear()
 	ready_seats.clear()
 	away.clear()
 	waiting_time = -1.0
@@ -211,6 +212,7 @@ func go() -> void:
 	if floor_live: return
 	level.begin_online_play(config)
 	floor_live = true
+	say_card()
 	if net.is_host:
 		write_checkpoint()
 		for seat in config.survivors:
@@ -398,11 +400,13 @@ func body_of(seat: int) -> Node3D:
 ## Switching a set on. Offline or on the host it happens now; a guest asks,
 ## and the host tells everyone. They only ever go on, so there is nothing to
 ## undo and no order to get wrong.
-func use_television(set: Node3D) -> void:
+func use_television(set: Node3D, seat := -1) -> void:
 	var index: int = level.televisions.find(set)
 	if index < 0: return
 	if not in_match() or net.is_host:
+		var was: bool = set.on
 		level.apply_television(index, true)
+		if not was and set.on: level.ledger.note_tv(int(level.player.slot) if seat < 0 else seat, index)
 		if in_match(): television_state.rpc(index, true)
 		return
 	request_television.rpc_id(1, index)
@@ -413,6 +417,7 @@ func request_television(index: int) -> void:
 	var set = level.televisions[index]
 	if not is_instance_valid(set) or set.on or not near_sender(set.global_position): return
 	level.apply_television(index, true)
+	level.ledger.note_tv(net.seat_of_peer(multiplayer.get_remote_sender_id()), index)
 	television_state.rpc(index, true)
 
 @rpc("authority", "call_remote", "reliable")
@@ -478,8 +483,9 @@ func container_state(index: int, value: bool, seat: int) -> void:
 
 ## The code read into the last door's keypad. A guest asks; the host checks the
 ## numbers itself, so a client cannot open a floor by saying it did.
-func use_code() -> void:
+func use_code(seat := -1) -> void:
 	if not in_match() or net.is_host:
+		level.ledger.note_code(int(level.player.slot) if seat < 0 else seat)
 		level.apply_code()
 		if in_match(): code_state.rpc()
 		return
@@ -490,6 +496,7 @@ func request_code(text: String) -> void:
 	if not net.is_host or level.code_entered: return
 	var right: String = "".join(level.DIGITS.code(level.manifest).map(func(digit): return str(digit)))
 	if text != right: return
+	level.ledger.note_code(net.seat_of_peer(multiplayer.get_remote_sender_id()))
 	level.apply_code()
 	code_state.rpc()
 
@@ -511,6 +518,7 @@ func revived_state(places: Dictionary, restart: bool, creature_at: Vector3) -> v
 ## asks, and the host judges it like a door: only from somebody standing in it.
 func call_lift(index: int) -> void:
 	if not in_match() or net.is_host:
+		level.ledger.note_lift(int(level.player.slot), index)
 		level.lifts.press(index)
 		return
 	request_lift.rpc_id(1, index)
@@ -520,6 +528,7 @@ func request_lift(index: int) -> void:
 	if not net.is_host or index < 0 or index >= level.hotel.lifts.size(): return
 	var body = body_of(net.seat_of_peer(multiplayer.get_remote_sender_id()))
 	if body == null or not level.hotel.in_car(index, body.global_position, level.lifts.RIDE_SLACK): return
+	level.ledger.note_lift(net.seat_of_peer(multiplayer.get_remote_sender_id()), index)
 	level.lifts.press(index)
 
 ## Somebody took a lift: the host says who, and where they come out.
@@ -599,7 +608,7 @@ func hide_state(index: int, seat: int) -> void:
 		remote_leaves(hide, bodies[-seat])
 
 func remote_enters(hide: Node3D, body: Node3D) -> void:
-	level.note_hide()
+	level.note_hide(int(body.slot))
 	hide.enter(body)
 	body.hidden = true
 	body.hiding_place = hide
@@ -855,8 +864,33 @@ func tell_summary(line: Dictionary) -> void:
 @rpc("authority", "call_remote", "reliable")
 func floor_summary(line: Dictionary) -> void:
 	if not level.ui.summary.is_empty(): return
-	level.ui.summary = line
-	level.ui.places = level.records.record(line)
+	level.take_run(line)
+	# The end screen may already be up, with nothing to read on it yet.
+	if level.ui.screen in ["online_won", "online_failed"] and level.ui.overlay.visible: level.ui.menu(level.ui.screen)
+
+# --- The cards ------------------------------------------------------------------------
+
+## Seat -> the id of the card that seat said (records_service.keep_card): who
+## this floor is being played with, for the count of floors together.
+var cards := {}
+
+## This machine's card, said to everybody as the floor starts: what each one
+## keeps to read beside its own, afterwards and with nobody connected.
+func say_card() -> void:
+	if not in_match() or net.local_seat == 0: return
+	to_everyone(&"player_card", [net.local_seat, level.records.card(net.player_name(net.local_seat))])
+
+@rpc("any_peer", "call_remote", "reliable")
+func player_card(seat: int, said: Dictionary) -> void:
+	if not from_host() or not in_match() or said.size() > 32: return
+	if net.is_host and net.players.get(seat, {}).get("peer", -1) != multiplayer.get_remote_sender_id(): return
+	# The name is the one the room knows them by, whatever the card says.
+	said["name"] = net.player_name(seat)
+	relay(&"player_card", [seat, said], multiplayer.get_remote_sender_id())
+	# Somebody only watching keeps nobody's card: it is not playing with them.
+	if level.observer: return
+	level.records.keep_card(said)
+	cards[seat] = String(said.get("id", "")).left(32)
 
 # --- The shared sheet ----------------------------------------------------------------
 

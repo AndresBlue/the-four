@@ -56,6 +56,12 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	await process_frame
+	# Every role here writes the same test file: each is told who it is, and
+	# starts with nothing kept, or they would all say the same card.
+	level.records.id = "test-" + role
+	level.records.career = {}
+	level.records.milestones = {}
+	level.records.rivals = {}
 	level.session.changed.connect(func(): print("STATE [", role, "] ", level.session.State.keys()[level.session.state], " t=", Time.get_ticks_msec()))
 	level.match_net.started.connect(func(): print("GO [", role, "] t=", Time.get_ticks_msec()))
 	match role:
@@ -258,6 +264,9 @@ func host() -> void:
 	check("Cruzarla lleva a la etapa siguiente y no termina el piso", level.session.stage > 1)
 	check("La etapa de los televisores se jugó de verdad", level.televisions.size() >= 4 and level.televisions_on() >= 2)
 	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.STAGES)
+	var tape: Dictionary = level.ui.summary
+	check("El parte lleva a los tres, con su puntaje y quién fue el más valioso", tape.get("team", []).size() == 3 and int(tape.get("score", 0)) > 0 and int(tape.get("mvp", 0)) == 1 and int(tape.team[0].get("tvs", 0)) >= 2 and int(tape.team[1].get("hides", 0)) >= 1, str(tape.get("team", [])))
+	check("Y el anfitrión guarda las fichas de sus dos invitados", level.records.rivals.has("test-alpha") and level.records.rivals.has("test-bravo") and int(level.records.rivals["test-alpha"].get("together", 0)) == 1)
 	# Second floor, after everyone has seen the end: Bravo drops and comes back.
 	await pause_for(5.0)
 	check("Nueva partida desde el final", net.start_match(82))
@@ -406,6 +415,8 @@ func alpha_part() -> void:
 		level.player.global_position = refuge_point(Vector3(-0.8, 0, 0))
 		return level.session.stage > 1, 60.0))
 	check("Ve terminar el piso con la salida", await cross_to_the_end(Vector3(-0.8, 0, 0), 220.0))
+	check("Le llega el parte del anfitrión, y su pantalla de fin lo enseña", await wait_for(func(): return level.ui.summary.get("team", []).size() == 3 and level.ui.screen == "online_won" and is_instance_valid(level.ui.settings_tabs), 15.0) and int(level.records.career.get("floors", 0)) == 1)
+	check("Y guarda las fichas del anfitrión y del otro invitado", level.records.rivals.has("test-host") and level.records.rivals.has("test-bravo"), str(level.records.rivals.keys()))
 	check("Segundo piso", await wait_for(playing, 90.0))
 	check("La hoja empieza vacía en el piso nuevo", level.ui.sheet.log.is_empty())
 	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.3, 0.3), Vector2(0.7, 0.7)]))
@@ -601,3 +612,4 @@ func versus_hunter() -> void:
 	check("El ritual del armario lo deja quieto un momento", creature.mode == creature.Mode.WARDROBE)
 	check("Abrir el armario acaba con quien estaba dentro", await wait_for(func(): return level.session.restarts >= 1 or level.session.state == level.session.State.FAILED, 25.0))
 	check("Y el piso termina cuando ya no hay a quién levantar", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.ui.screen == "online_failed", 40.0))
+	check("La caza queda en la ficha del cazador, con su hito", await wait_for(func(): return String(level.ui.summary.get("result", "")) == "lost", 10.0) and int(level.records.career.get("hunts", 0)) == 1 and int(level.records.career.get("hunts_won", 0)) == 1 and not level.records.reached(1, "hunter").is_empty(), str(level.records.career))

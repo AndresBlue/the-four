@@ -102,9 +102,14 @@ var elapsed := 0.0
 ## took in the boards (table id -> place). Empty until a floor ends.
 var summary := {}
 var places := {}
+## Everything filing it said (records_service.file()): the places, the
+## milestones it reached for the first time and what the board held before.
+var outcome := {}
 var records
-## Where "Volver" goes from the board: whatever screen sent us there.
+## Where "Volver" goes from the marks: whatever screen sent us there.
 var records_back := "main"
+## What was being looked at in the marks: the tab, the board, the table.
+var records_view := {}
 var sounds_enabled := true
 var backdrop: TextureRect
 var noise: ColorRect
@@ -136,8 +141,11 @@ var discoveries
 var net
 const NET := preload("res://game/net/net_session.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
-## The board of tapes that got out (records_service.gd).
+## The board of tapes that got out (records_service.gd), the report of one
+## tape and the marks, each in its tabs.
 const RECORDS := preload("res://game/services/records_service.gd")
+const REPORT := preload("res://game/ui/tape_report.gd")
+const BOARD := preload("res://game/ui/records_board.gd")
 var intro_tween: Tween
 ## Small corner note during the opening scene: which key skips it.
 var skip_label: Label
@@ -324,6 +332,9 @@ func clear() -> void:
 	loading_step = null
 	rebind_action = ""
 	rebind_pad = ""
+	settings_tabs = null
+	chained_back = null
+	pad_scroll = null
 	column.custom_minimum_size.x = 520
 	side.visible = true
 	noise_floor = 0.0
@@ -419,10 +430,11 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			set_osd("▶ PLAY", "", "12:00", "")
 			title(column, "THE FOUR", 104)
 			label(column, "H  O  T  E  L", 24).add_theme_color_override("font_color", STYLE.SOFT)
-			spacer(column, 40)
+			spacer(column, 22)
 			action("Nueva partida", "new")
 			action("Continuar", "continue", not can_continue)
 			action("Multijugador", "multiplayer")
+			action("Marcas", "records")
 			action("Archivo", "archive")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
@@ -440,22 +452,12 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			controls_panel(side)
 		"won":
 			set_osd("■ STOP", "", "", "")
-			title(column, "SALISTE DEL PISO", 58)
-			run_report(column)
-			spacer(column, 16)
-			if records != null and records.any(): action("Mejores tiempos", "records")
-			action("Nueva partida", "new")
-			action("Menú principal", "main")
+			tape_screen("SALISTE DEL PISO", STYLE.INK, summary, outcome, [["Nueva partida", "new"], ["Marcas", "records"], ["Menú principal", "main"]])
 		"failed":
 			set_osd("SEÑAL PERDIDA", "", "", "")
 			osd_left.add_theme_color_override("font_color", STYLE.ALERT)
 			noise_floor = 0.16
-			title(column, "SEÑAL PERDIDA", 70, STYLE.ALERT)
-			spacer(column, 8)
-			label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
-			spacer(column, 28)
-			action("Reintentar", "retry")
-			action("Menú principal", "main")
+			tape_screen("SEÑAL PERDIDA", STYLE.ALERT, summary, outcome, [["Reintentar", "retry"], ["Marcas", "records"], ["Menú principal", "main"]])
 		"loading":
 			set_osd("◀◀ REW", "", "", "")
 			title(column, "CARGANDO CINTA", 58)
@@ -485,28 +487,23 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 					shown = true
 			if not shown: paragraph(side, "Los documentos que leas en el hotel se guardan aquí, también entre partidas.", 18, 560)
 			spacer(column, 20)
-			action("Mejores tiempos", "records")
 			action("Volver", "main")
 		"records":
 			set_osd("▶ PLAY", "", "", "")
-			title(column, "MEJORES TIEMPOS", 58)
-			label(column, "PISO 1 · EL HOTEL", 20).add_theme_color_override("font_color", STYLE.AMBER)
-			spacer(column, 10)
-			# The board is longer than any screen: it scrolls on its own, and
-			# "Volver" stays where the eye looks for it.
-			var scroll := ScrollContainer.new()
-			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-			scroll.custom_minimum_size = Vector2(1000, 380)
-			column.add_child(scroll)
-			# Nothing on it can be marked, so on a pad the right stick rolls it.
-			pad_scroll = scroll
-			var sheet := VBoxContainer.new()
-			sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			scroll.add_child(sheet)
-			board(sheet)
-			spacer(column, 16)
+			side.visible = false
+			column.custom_minimum_size.x = BOARD.SIZE.x
+			title(column, "MARCAS", 44)
+			var tabs := BOARD.build(self, column, records_view)
+			footer.text = tab_hint()
+			spacer(column, 4)
+			# Back where it was opened from; the main menu is asked for, so it
+			# comes up knowing whether there is a floor to go on with.
 			var back_to: String = records_back
-			entry(column, "Volver", func(): menu(back_to), false, 24)
+			var leave := func() -> void:
+				if back_to == "main": action_requested.emit("main")
+				else: menu(back_to)
+			buttons["back"] = entry(column, "Volver", leave, false, 24)
+			chain_settings(tabs, buttons["back"])
 		"multiplayer":
 			set_osd("MENU ▸ MULTIJUGADOR", "", "", "")
 			title(column, "MULTIJUGADOR", 64)
@@ -771,114 +768,63 @@ func online_end(won: bool) -> void:
 	var bad := won == hunter
 	set_osd("■ STOP" if not bad else "SEÑAL PERDIDA", "", "", "")
 	if bad: osd_left.add_theme_color_override("font_color", STYLE.ALERT)
-	title(column, headline, 58, STYLE.ALERT if bad else STYLE.INK)
-	if won and not hunter: run_report(column)
+	var actions: Array = []
+	var note := ""
+	if net.is_host:
+		if not won: actions.append(["Reintentar piso", "online_retry"])
+		actions.append_array([["Nueva partida", "online_new"], ["Volver a la sala", "online_room"], ["Marcas", "records"], ["Cerrar la sala", "online_quit"]])
 	else:
+		note = "El anfitrión decide cómo seguir…"
+		actions.append_array([["Marcas", "records"], ["Salir de la sala", "online_quit"]])
+	tape_screen(headline, STYLE.ALERT if bad else STYLE.INK, summary, outcome, actions, note)
+
+## A floor's end, or a tape taken off the board: its headline, which tape it
+## is, the report in tabs (tape_report.gd) and, in one row under it, what can
+## be done next. `actions`: [words, an action's id or what to call].
+func tape_screen(headline: String, ink: Color, line: Dictionary, result: Dictionary, actions: Array, note := "") -> void:
+	side.visible = false
+	column.custom_minimum_size.x = REPORT.SIZE.x
+	title(column, headline, 44, ink)
+	var tabs: TabContainer
+	if line.is_empty():
+		# A guest the host's line has not reached yet: the screen is drawn
+		# again when it does (match_net.floor_summary).
 		spacer(column, 8)
 		label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
-	spacer(column, 20)
-	if won and not hunter and records != null and records.any(): action("Mejores tiempos", "records")
-	if net.is_host:
-		if not won: action("Reintentar piso", "online_retry")
-		action("Nueva partida", "online_new")
-		action("Volver a la sala", "online_room")
-		action("Cerrar la sala", "online_quit")
+		spacer(column, 20)
 	else:
-		label(column, "El anfitrión decide cómo seguir…", 19).add_theme_color_override("font_color", STYLE.SOFT)
-		action("Salir de la sala", "online_quit")
-	side.visible = false
+		label(column, REPORT.heading(line), 15).add_theme_color_override("font_color", STYLE.SOFT)
+		tabs = REPORT.build(self, column, line, result)
+		footer.text = tab_hint()
+	if not note.is_empty(): label(column, note, 17).add_theme_color_override("font_color", STYLE.SOFT)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 4)
+	column.add_child(row)
+	for item in actions:
+		var what = item[1]
+		var words: String = item[0]
+		buttons[what if what is String else words] = entry(row, words, (func(): action_requested.emit(what)) if what is String else what, false, 21)
+	if tabs != null and not buttons.is_empty(): chain_settings(tabs, buttons.values()[0])
 
-## What the floor just played was: its tape number, what each sector took, who
-## walked out and with how many numbers, and what it earned. The time counts
-## itself up as it is read, the way a counter does when a tape is rewound.
-func run_report(parent: Node) -> void:
-	spacer(parent, 6)
-	var clock := label(parent, "TIEMPO DE GRABACIÓN  0:00:00", 26)
-	clock.add_theme_color_override("font_color", STYLE.AMBER)
-	var counting := clock.create_tween()
-	counting.tween_method(func(value): clock.text = "TIEMPO DE GRABACIÓN  %s" % tape_time(value), 0.0, elapsed, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	if summary.is_empty():
-		spacer(parent, 10)
-		paragraph(parent, "El hotel queda atrás. Por ahora.")
-		return
-	label(parent, "CINTA Nº %d" % int(summary.get("seed", 0)), 17).add_theme_color_override("font_color", STYLE.SOFT)
-	spacer(parent, 12)
-	# Each sector's own time, from the one before it.
-	var sectors: Array = summary.get("sectors", [])
-	var before := 0.0
-	for index in sectors.size():
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
-		parent.add_child(row)
-		label(row, "SECTOR %d" % (index + 1), 18).custom_minimum_size.x = 160
-		label(row, tape_time(float(sectors[index]) - before), 18).add_theme_color_override("font_color", STYLE.SOFT)
-		before = float(sectors[index])
-	spacer(parent, 12)
-	for member in summary.get("team", []):
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
-		parent.add_child(row)
-		var name_label := label(row, String(member.get("name", "")), 18)
-		name_label.custom_minimum_size.x = 260
-		if not bool(member.get("escaped", true)): name_label.add_theme_color_override("font_color", STYLE.ALERT)
-		label(row, "SALIÓ" if bool(member.get("escaped", true)) else "SE QUEDÓ", 18).custom_minimum_size.x = 120
-		var digits := int(member.get("digits", 0))
-		label(row, ("%d número%s del código" % [digits, "" if digits == 1 else "s"]) if digits > 0 else "—", 17).add_theme_color_override("font_color", STYLE.SOFT)
-	# What it earned, stamped on one at a time.
-	var marks: Array = RECORDS.badges(summary)
-	if not marks.is_empty():
-		spacer(parent, 10)
-		var stamps := HBoxContainer.new()
-		stamps.add_theme_constant_override("separation", 10)
-		parent.add_child(stamps)
-		var delay := 0.9
-		for mark in marks:
-			var stamp := label(stamps, "· %s ·" % mark, 19)
-			stamp.add_theme_color_override("font_color", STYLE.AMBER)
-			stamp.modulate.a = 0.0
-			var press := stamp.create_tween()
-			press.tween_interval(delay)
-			press.tween_property(stamp, "modulate:a", 1.0, 0.18)
-			delay += 0.35
-	for table in RECORDS.TABLES:
-		if not places.has(table.id): continue
-		var place := int(places[table.id])
-		if place > RECORDS.KEPT: continue
-		spacer(parent, 6)
-		var line := label(parent, "Nº %d EN %s · %s" % [place, table.title, "EN SOLITARIO" if String(summary.get("company", "")) == RECORDS.SOLO else "ACOMPAÑADO"], 20)
-		line.add_theme_color_override("font_color", STYLE.AMBER if place > 1 else STYLE.INK)
+## A tape taken off the board, read whole.
+func show_tape(line: Dictionary) -> void:
+	settings_open = false
+	clear()
+	screen = "tape"
+	overlay.show()
+	backdrop.modulate.a = 1.0
+	set_osd("▶ PLAY", "", "", "")
+	osd_left.remove_theme_color_override("font_color")
+	tape_screen("PARTE DE LA CINTA", STYLE.INK, line, {}, [["Volver a las marcas", func(): menu("records")]])
+	transition(0.3)
+	focus_first()
 
-## The board: each table of each company, best first, with the run just played
-## picked out of the list.
-func board(parent: Node) -> void:
-	if records == null: return
-	var mine: String = String(summary.get("date", ""))
-	for company in [RECORDS.SOLO, RECORDS.COOP]:
-		var any := false
-		for table in RECORDS.TABLES:
-			var lines: Array = records.table_of(String(table.id), 1, company)
-			if lines.is_empty(): continue
-			if not any:
-				spacer(parent, 10)
-				label(parent, "EN SOLITARIO" if company == RECORDS.SOLO else "ACOMPAÑADO", 24).add_theme_color_override("font_color", STYLE.AMBER)
-				any = true
-			spacer(parent, 6)
-			label(parent, table.title, 20)
-			label(parent, table.note, 15).add_theme_color_override("font_color", STYLE.SOFT)
-			for index in mini(lines.size(), 5):
-				var line: Dictionary = lines[index]
-				var row := HBoxContainer.new()
-				row.add_theme_constant_override("separation", 14)
-				parent.add_child(row)
-				var own: bool = not mine.is_empty() and String(line.get("date", "")) == mine
-				label(row, "%d." % (index + 1), 18).custom_minimum_size.x = 40
-				var time_label := label(row, tape_time(float(line.get("time", 0.0))), 18)
-				time_label.custom_minimum_size.x = 120
-				if own: time_label.add_theme_color_override("font_color", STYLE.AMBER)
-				label(row, "%d superviviente%s" % [int(line.get("players", 1)), "" if int(line.get("players", 1)) == 1 else "s"], 16).custom_minimum_size.x = 180
-				label(row, "cinta nº %d" % int(line.get("seed", 0)), 16).custom_minimum_size.x = 160
-				label(row, String(line.get("date", "")).left(10), 16).add_theme_color_override("font_color", STYLE.SOFT)
-		if not any and company == RECORDS.SOLO: paragraph(parent, "Todavía no hay ninguna cinta que saliera del hotel en solitario.", 18, 700, STYLE.SOFT)
+## How the tabs of a report or of the marks are turned, for the corner of the
+## screen: the keys, or the shoulders of the pad in the hands.
+func tab_hint() -> String:
+	if settings != null and settings.using_pad and settings.pad_present():
+		return "%s  ·  PESTAÑAS  ·  %s" % [settings.button_name(JOY_BUTTON_LEFT_SHOULDER), settings.button_name(JOY_BUTTON_RIGHT_SHOULDER)]
+	return "Q  ·  PESTAÑAS  ·  E"
 
 func show_archive_entry(item: Dictionary) -> void:
 	for child in side.get_children():
@@ -1233,11 +1179,14 @@ func scaling_modes(parent: Node) -> void:
 	)
 	row.add_child(control)
 
-## The settings' tabs, and on each page the rows a pad can stop on.
+## The tabs of the screen that is up -- the settings', a tape's report, the
+## marks -- and on each page the rows a pad can stop on.
 var settings_tabs: TabContainer
 var settings_rows: Array = []
-## A list with nothing to mark on it (the board of times): the right stick
-## rolls it.
+## What is under the tabs, where "down" ends up from the last row of a page.
+var chained_back: Control
+## A page with nothing to mark on it (a tape's report, the credits of a
+## floor): the right stick rolls it.
 var pad_scroll: ScrollContainer
 const FAMILY_NAMES := {"xbox": "Xbox o compatible", "playstation": "PlayStation", "nintendo": "Nintendo"}
 
@@ -1247,16 +1196,15 @@ const FAMILY_NAMES := {"xbox": "Xbox o compatible", "playstation": "PlayStation"
 ## not rolled to yet were not on it: at the last row showing, down went
 ## straight to "Volver" and the rest could not be reached.
 func chain_settings(tabs: TabContainer, back: Control) -> void:
+	settings_tabs = tabs
+	chained_back = back
 	settings_rows.clear()
 	var bar := tabs.get_tab_bar()
 	for index in tabs.get_tab_count():
 		var scroll := tabs.get_tab_control(index) as ScrollContainer
 		scroll.follow_focus = true
 		var rows: Array = []
-		for child in scroll.get_child(0).get_children():
-			var row: Array = []
-			focusable(child, row)
-			if not row.is_empty(): rows.append(row)
+		rows_of(scroll.get_child(0), rows)
 		settings_rows.append(rows)
 		for i in rows.size():
 			for k in rows[i].size():
@@ -1265,13 +1213,37 @@ func chain_settings(tabs: TabContainer, back: Control) -> void:
 				var below: Control = back if i == rows.size() - 1 else rows[i + 1][mini(k, rows[i + 1].size() - 1)]
 				control.focus_neighbor_top = control.get_path_to(above)
 				control.focus_neighbor_bottom = control.get_path_to(below)
-	var aim := func(index: int) -> void:
-		var rows: Array = settings_rows[index] if index < settings_rows.size() else []
-		if rows.is_empty(): return
-		bar.focus_neighbor_bottom = bar.get_path_to(rows[0][0])
-		back.focus_neighbor_top = back.get_path_to(rows[rows.size() - 1][0])
-	aim.call(tabs.current_tab)
-	tabs.tab_changed.connect(aim)
+	aim_tab(tabs.current_tab)
+	if not tabs.tab_changed.is_connected(aim_tab): tabs.tab_changed.connect(aim_tab)
+
+## The rows of a page: each thing in it is one, and a list inside the page (a
+## board's lines) gives one for each of its own.
+func rows_of(holder: Node, rows: Array) -> void:
+	for child in holder.get_children():
+		if child is VBoxContainer:
+			rows_of(child, rows)
+			continue
+		var row: Array = []
+		focusable(child, row)
+		if not row.is_empty(): rows.append(row)
+
+## Between the tab bar and what is under the tabs lie the rows of the page
+## that is showing, or nothing: then the two lead to each other.
+func aim_tab(index: int) -> void:
+	if not is_instance_valid(settings_tabs) or not is_instance_valid(chained_back): return
+	var bar := settings_tabs.get_tab_bar()
+	var rows: Array = settings_rows[index] if index < settings_rows.size() else []
+	pad_scroll = (settings_tabs.get_tab_control(index) as ScrollContainer) if rows.is_empty() else null
+	if rows.is_empty():
+		bar.focus_neighbor_bottom = bar.get_path_to(chained_back)
+		chained_back.focus_neighbor_top = chained_back.get_path_to(bar)
+		return
+	bar.focus_neighbor_bottom = bar.get_path_to(rows[0][0])
+	chained_back.focus_neighbor_top = chained_back.get_path_to(rows[rows.size() - 1][0])
+
+## The rows of a page changed under it (a board showing another table).
+func rechain() -> void:
+	if is_instance_valid(settings_tabs) and is_instance_valid(chained_back) and settings_tabs.is_inside_tree(): chain_settings(settings_tabs, chained_back)
 
 func focusable(node: Node, into: Array) -> void:
 	if node is Control and (node as Control).focus_mode != Control.FOCUS_NONE and (node as Control).visible: into.append(node)
@@ -1285,8 +1257,12 @@ func turn_tab(step: int) -> void:
 	var rows: Array = settings_rows[settings_tabs.current_tab] if settings_tabs.current_tab < settings_rows.size() else []
 	var scroll := settings_tabs.get_current_tab_control() as ScrollContainer
 	if scroll != null: scroll.scroll_vertical = 0
-	if rows.is_empty(): settings_tabs.get_tab_bar().grab_focus()
-	else: (rows[0][0] as Control).grab_focus()
+	if not rows.is_empty(): (rows[0][0] as Control).grab_focus()
+	else:
+		# Nothing to mark on this page: what was marked stays so, unless it
+		# went with the page left behind.
+		var marked := get_viewport().gui_get_focus_owner()
+		if marked == null or not marked.is_visible_in_tree(): settings_tabs.get_tab_bar().grab_focus()
 
 func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
@@ -1626,9 +1602,16 @@ func _input(event: InputEvent) -> void:
 			rebind_pad = ""
 		else: rebind_button.text = "BOTÓN RESERVADO · %s CANCELA" % settings.button_name(JOY_BUTTON_B)
 		return
-	if settings_open and screen == "settings" and event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]:
+	# The tabs of whatever screen has them: the shoulders of a pad, and on the
+	# reports and the marks Q and E as well (the settings take keys to bind).
+	var tabbed: bool = is_instance_valid(settings_tabs) and overlay.visible and settings_tabs.is_visible_in_tree()
+	if tabbed and event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]:
 		get_viewport().set_input_as_handled()
 		turn_tab(1 if event.button_index == JOY_BUTTON_RIGHT_SHOULDER else -1)
+		return
+	if tabbed and screen != "settings" and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode in [KEY_Q, KEY_E] and not (get_viewport().gui_get_focus_owner() is LineEdit):
+		get_viewport().set_input_as_handled()
+		turn_tab(1 if event.physical_keycode == KEY_E else -1)
 		return
 	if rebind_action.is_empty() or not event is InputEventKey or not event.pressed: return
 	get_viewport().set_input_as_handled()
