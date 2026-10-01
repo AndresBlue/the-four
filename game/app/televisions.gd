@@ -189,7 +189,7 @@ const HOP_CLEAR := 12.0
 
 func creature_channel_hop(delta: float) -> void:
 	hop_rest = maxf(0.0, hop_rest - delta)
-	if not is_instance_valid(level.locust) or level.locust.control != "ai": return
+	if not is_instance_valid(level.locust) or level.locust.control != "ai" or level.rule("tv_travel") == 0: return
 	var looking: bool = level.locust.mode in [level.locust.Mode.SEARCH, level.locust.Mode.INVESTIGATE] and not level.locust.lift_bound
 	var here: int = creature_at_television() if looking else -1
 	hop_wait = hop_wait + delta if here >= 0 else 0.0

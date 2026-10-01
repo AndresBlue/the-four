@@ -7,6 +7,11 @@ enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT, WARDROBE
 ## It perceives the player from much farther than the player can sense it:
 ## anything in its wide view with a clear line is noticed, however far.
 const SIGHT_RANGE := 70.0
+## Onslaught (a rule of the room): how much further it sees and hears, and
+## whether it keeps its full pace after losing sight of whoever it hunts.
+const ONSLAUGHT_REACH := 1.25
+var reach_scale := 1.0
+var relentless := false
 const SIGHT_HALF_ANGLE := 60.0
 ## Suspicion gained per second with the player in view, near and far.
 const NOTICE_NEAR := 3.2
@@ -473,7 +478,7 @@ func clear_sight(point: Vector3) -> bool:
 func sees(player: Node3D, ignore_concealment := false) -> bool:
 	if not is_instance_valid(player) or not level.survivor_active(player): return false
 	var offset: Vector3 = player.global_position - global_position
-	if offset.length() > SIGHT_RANGE: return false
+	if offset.length() > SIGHT_RANGE * reach_scale: return false
 	# It knows which wardrobe the player went into, doors shut or not.
 	if player.hidden and not ignore_concealment and observed_hide == player.hiding_place: return true
 	var facing := -global_basis.z
@@ -517,7 +522,7 @@ func target() -> Node3D:
 ## stand out; crouching and distance buy time to break line of sight.
 func notice_rate(player: Node3D) -> float:
 	var distance: float = player.global_position.distance_to(global_position)
-	var rate := lerpf(NOTICE_NEAR, NOTICE_FAR, clampf((distance - 4.0) / (SIGHT_RANGE - 4.0), 0.0, 1.0))
+	var rate := lerpf(NOTICE_NEAR, NOTICE_FAR, clampf((distance - 4.0) / (SIGHT_RANGE * reach_scale - 4.0), 0.0, 1.0))
 	if player.crouched: rate *= 0.55
 	if Vector2(player.velocity.x, player.velocity.z).length() > 4.6: rate *= 1.35
 	if player.torch.visible: rate *= 1.4
@@ -531,7 +536,7 @@ func lit_by_torch() -> Node3D:
 		if not torch.visible or player.hidden: continue
 		var chest := global_position + Vector3(0, 1.6, 0)
 		var offset := chest - torch.global_position
-		if offset.length() > TORCH_NOTICE_RANGE or offset.length() < 5.0: continue
+		if offset.length() > TORCH_NOTICE_RANGE * reach_scale or offset.length() < 5.0: continue
 		if (-torch.global_basis.z).angle_to(offset) > deg_to_rad(TORCH_NOTICE_ANGLE * 0.85): continue
 		var ray := PhysicsRayQueryParameters3D.create(torch.global_position, chest, 1 | 8 | 64)
 		if get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): return player
@@ -554,7 +559,7 @@ func can_hear(point: Vector3, radius: float) -> bool:
 func hear_route(point: Vector3, radius: float) -> Dictionary:
 	var missed := {"audible": false, "apparent": point, "distance": INF, "muffle": 1.0}
 	if level.point_protected(point): return missed
-	var reach := radius * HEARING_SCALE
+	var reach := radius * HEARING_SCALE * reach_scale
 	var straight := global_position.distance_to(point)
 	if straight > reach: return missed
 	if clear_sight(point + Vector3(0, 1, 0)):
@@ -950,7 +955,7 @@ func desired_speed() -> float:
 			# Cautious when close to what it heard; loping to a lift.
 			return lerpf(1.2, LIFT_PACE if lift_bound else 2.9, clampf((position.distance_to(destination) - 1.5) / 5.0, 0.0, 1.0))
 		Mode.CHASE:
-			return CHASE_SPEED if lost_time < 0.4 else TRACK_SPEED
+			return CHASE_SPEED if lost_time < 0.4 or relentless else TRACK_SPEED
 		Mode.SEARCH:
 			return 0.0 if pause_time > 0 else 1.5
 	return 0.0
@@ -964,7 +969,8 @@ func set_control(kind: String) -> void:
 		driver.setup(self)
 	# Only the player who drives it sees through its ears.
 	if driver != null and is_instance_valid(driver.echo):
-		if kind == "player": driver.echo.enable()
+		# Unless the room lets its hunter see like a person.
+		if kind == "player" and level.rule("plain_sight") == 0: driver.echo.enable()
 		else: driver.echo.disable()
 
 ## What the machine in charge sends about fifteen times a second.

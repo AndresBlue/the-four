@@ -158,6 +158,24 @@ Empezar exige al menos dos jugadores conectados. Nombres repetidos se numeran.
 
 **Final.** Solo el anfitrión elige: reintentar (tras perder), nueva partida, volver a la sala o cerrarla. Los invitados esperan o salen.
 
+**Reglas de la sala.** En la sala, **Reglas** abre una pantalla en pestañas donde el anfitrión cambia cómo se juega el piso; los invitados la ven sin poder tocarla, y la sala enseña a todos lo que se cambió, en ámbar. Sin tocar nada, son las del juego. Valen para cada piso que empiece desde esa sala.
+
+| Pestaña | Regla | Valores (el del juego, primero) |
+|---|---|---|
+| El equipo | **Clemencia:** capturas que la criatura perdona a cada superviviente; lo suelta, se va lejos y se queda quieta 12 s | ninguna, una, dos, tres |
+| El equipo | **Derrumbes perdonados:** veces que el piso devuelve un sector perdido | uno; ninguno, dos, tres, sin límite |
+| El equipo | **Cordura** | se gasta; no se gasta (sin alucinaciones ni motas) |
+| El piso | **Código de la última puerta** | se puede adivinar; hacen falta las cuatro notas (el teclado dice «FALTAN NOTAS») |
+| El piso | **Apagón** | al faltar una tele; nunca |
+| La hoja | **Plano en la hoja** | se dibuja solo; sin plano |
+| La hoja | **El plano se borra** | a los 3 minutos; al minuto, a los 5, a los 10, nunca |
+| La hoja | **Lo que se dibuja** | lo ven todos; solo quien lo dibuja |
+| The Locust | **Embestida:** ve y oye un 25 % más lejos (vista, oído, linterna y chillido); la de la máquina no baja el paso al perder de vista, y el cazador corre sin cansarse | no; sí |
+| The Locust | **Viaja por los televisores** | sí; no |
+| The Locust | **Vista del cazador** (solo en versus) | lectura acústica; ve como una persona, sin rutas ni ecos |
+
+**Una cinta jugada con otras reglas lo dice** en su parte, va a un cuarto tablón («con otras reglas») y no alcanza hitos ni cuenta como mejor puntaje de la ficha; lo demás de la ficha sí suma.
+
 **Versus.** El jugador elegido controla a The Locust con cámara sobre el hombro. Anda a 2,8 m/s y **caza** a 6,4 m/s, más que el sprint de un superviviente. La caza dura unos 15 s seguidos y se recupera entera en unos 4,5 s tras medio segundo de descanso: **no se le escapa nadie corriendo en línea recta**; hay que romperle la línea de visión o esconderse bien.
 
 - **Clic izquierdo (gatillo derecho):** estocada, con la misma preparación de 0,3 s y aviso sonoro que la IA. El anfitrión decide si alcanza a alguien (3,2 m, dentro de 70° de su frente, línea de visión; a un escondido solo con las puertas del armario abiertas). Que atrapó a alguien lo dice el propio movimiento de la ejecución, sin texto.
@@ -218,7 +236,7 @@ Catálogo de doce eventos: golpes, objeto caído y pasos para Locust (implementa
 
 **Marcas**, desde el menú principal o desde el parte, en cuatro pestañas:
 
-- **Tablones:** tres por piso —**en solitario**, **acompañado** y **contra el cazador**, que son juegos distintos— y cuatro tablas en cada uno: **más rápidos**, **mayor puntaje**, **sin bajas** y **sin esconderse**. Cada línea lleva su tiempo, sus puntos, su nota, los nombres, el número de cinta y la fecha; la que acabas de hacer va en ámbar, y **cualquier línea se abre para leer su parte entero**.
+- **Tablones:** cuatro por piso —**en solitario**, **acompañado** y **contra el cazador**, que son juegos distintos, y **con otras reglas** para lo jugado con las reglas de la sala cambiadas— y cuatro tablas en cada uno: **más rápidos**, **mayor puntaje**, **sin bajas** y **sin esconderse**. Cada línea lleva su tiempo, sus puntos, su nota, los nombres, el número de cinta y la fecha; la que acabas de hacer va en ámbar, y **cualquier línea se abre para leer su parte entero**.
 - **Ficha:** tu nombre (el mismo de las salas) y tu carrera: pisos superados y cintas perdidas, tiempo grabado, mejores marcas, veces más valioso, televisores, números, códigos, huidas, caídas, metros, tu papel habitual y, si has cazado, tus cazas.
 - **Hitos:** dieciocho en el hotel, cada uno con lo que pide y la fecha en que se alcanzó: salir, salir solo, sin bajas, sin esconderse, en menos de 30 y de 20 minutos, tres y cuatro o más enteros, tras un derrumbe, cuatro televisores tú, los cuatro números tú, tres huidas, sin que te persiga, ser el más valioso, nota A y nota S, salir contra un cazador y, de cazador, no dejar salir a nadie. Los pisos que faltan aparecen como «sin grabar».
 - **Comparar:** tu ficha al lado de las de la gente con la que has jugado, fila a fila y con quien va por delante en ámbar. Cada jugador dice su ficha al empezar un piso en línea y los demás la guardan, así que se lee también sin conexión; es la de la última vez que jugasteis.

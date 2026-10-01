@@ -108,6 +108,29 @@ var rig
 ## What the floor has been, written down as it is played (run_ledger.gd).
 const LEDGER := preload("res://game/app/run_ledger.gd")
 var ledger
+## The rules this floor is played with (game/floors/match_rules.gd): the
+## defaults, with what the room changed over them. Asked for with rule().
+const MATCH_RULES := preload("res://game/floors/match_rules.gd")
+var rules: Dictionary = MATCH_RULES.defaults()
+
+func rule(id: String) -> int:
+	return int(rules.get(id, 0))
+
+## The rules of the floor about to be played: `said` is what the room changed
+## (nothing, alone). Whatever keeps a copy of one is told here.
+func set_rules(said: Variant) -> void:
+	rules = MATCH_RULES.settled(said)
+	session.restarts_allowed = rule("restarts")
+	floor_map.forget = float(rule("plan_fade"))
+	executions.pardoned.clear()
+	arm_creature()
+
+## What the rules ask of the creature, on the one this floor has. Onslaught: it
+## sees and hears further, and does not ease off.
+func arm_creature() -> void:
+	if not is_instance_valid(locust): return
+	locust.reach_scale = locust.ONSLAUGHT_REACH if rule("onslaught") == 1 else 1.0
+	locust.relentless = rule("onslaught") == 1
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
 ## Online, Esc opens a menu over the running match instead of pausing it.
@@ -207,6 +230,9 @@ func _ready() -> void:
 	net.closed.connect(on_net_closed)
 	# A seat means a room; until then, the screen that is waiting for one.
 	net.lobby_changed.connect(func(): if ui.screen in ["lobby", "join", "steam_wait"] and session.state == session.State.MENU: ui.menu("lobby" if net.local_seat != 0 else ("steam_wait" if ui.screen == "steam_wait" else "join")))
+	# The rules being read while the host changes them. The host's own screen
+	# is left alone: it is the one changing them, with a list open.
+	net.lobby_changed.connect(func(): if ui.screen == "rules" and session.state == session.State.MENU and (not net.is_host or ui.rules_stale): ui.menu("rules"))
 	net.joined.connect(func(): if session.state == session.State.MENU: ui.menu("lobby"))
 	# An invitation accepted in Steam (or "Join game" on a friend's profile):
 	# straight into that room, from the menus; mid-floor it waits for later.
@@ -484,6 +510,10 @@ func on_action(action: String) -> void:
 			ui.menu("online_pause")
 		"lobby": ui.menu("lobby")
 		"lobby_character": ui.show_characters("lobby")
+		"lobby_rules": ui.menu("rules")
+		"rules_reset":
+			ui.rules_stale = true
+			net.set_option("rules", {})
 		"online_retry": net.start_match(int(match_net.config.get("seed", -1)))
 		"online_new": net.start_match()
 		"online_room": net.return_to_lobby()
@@ -560,6 +590,8 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	player.zoom = 1.0
 	player.zoom_wanted = 1.0
 	ledger.reset()
+	# The game's own rules until a room says otherwise (begin_online_play).
+	set_rules({})
 	ui.summary = {}
 	ui.places = {}
 	ui.outcome = {}
@@ -733,6 +765,7 @@ func begin_online_play(config: Dictionary) -> void:
 	save_error = ""
 	ui.sheet.clear()
 	ui.sheet.seat = net.local_seat
+	set_rules(config.get("rules", {}))
 	populate_floor(net.is_host and int(config.mode) == NET.Mode.COOP)
 	if int(config.mode) == NET.Mode.VERSUS:
 		locust.set_control("player" if match_net.local_is_locust() else "puppet")
@@ -997,6 +1030,7 @@ func step_back() -> void:
 	elif ui.screen == "join" and session.state == session.State.MENU: on_action("multiplayer")
 	elif ui.screen == "characters" and session.state == session.State.MENU: on_action("lobby" if net.active() else "multiplayer")
 	elif ui.screen == "tape": ui.menu("records")
+	elif ui.screen == "rules" and net.active(): ui.menu("lobby")
 	elif ui.screen == "records" and ui.records_back != "main": ui.menu(ui.records_back)
 	elif ui.screen in ["credits", "multiplayer", "records", "archive"] and session.state == session.State.MENU: on_action("main")
 	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
@@ -1071,7 +1105,7 @@ func update_title_scene() -> void:
 	elif session.state != session.State.CUTSCENE:
 		# Leaving the menu: the hotel's own light back, unless the creature is
 		# being driven from here, in which case it has none and keeps its camera.
-		environment.ambient_light_energy = 0.0 if hunter_seat() else ambient_energy
+		environment.ambient_light_energy = 0.0 if rig.echo_seat() else ambient_energy
 		# Not while it is still being put up: it shows itself when it is done.
 		if is_instance_valid(hotel): hotel.visible = not hotel.building
 		player.visible = not hunter_seat()
@@ -1202,6 +1236,7 @@ func spawn_locust() -> void:
 		chosen = int(dens[draw.randi_range(0, dens.size() - 1)])
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
 	locust.patrol_room = chosen
+	arm_creature()
 	add_child(locust)
 	if not player.noise.is_connected(on_noise): player.noise.connect(on_noise)
 	for door in hotel.doors: door.noise.connect(on_noise)
@@ -1261,7 +1296,7 @@ func _physics_process(delta: float) -> void:
 		lifts.update_cars(delta)
 		if is_instance_valid(session) and session.state == session.State.PLAYING:
 			lifts.count_away(delta)
-			floor_map.tick(delta)
+			if rule("plan") == 1: floor_map.tick(delta)
 			if bot_match:
 				track_refuges()
 				sanity.tick(delta)
@@ -1283,7 +1318,7 @@ func _physics_process(delta: float) -> void:
 	lifts.update_cars(delta)
 	if not is_instance_valid(session) or session.state != session.State.PLAYING: return
 	lifts.count_away(delta)
-	floor_map.tick(delta)
+	if rule("plan") == 1: floor_map.tick(delta)
 	# The notice of the sector waits for the card to be gone and for the lift
 	# to have opened its doors: it is what the picture comes back to.
 	lifts.announce_sector(delta)
@@ -1321,7 +1356,7 @@ func host_gate(delta: float) -> void:
 		# With one set left to light, this wing loses its power and the
 		# creature hunts without tiring. It is the wing's power, not the
 		# floor's: the next one is found lit.
-		if done >= needed - 1 and not session.goal.get("blackout", false):
+		if rule("blackout") == 1 and done >= needed - 1 and not session.goal.get("blackout", false):
 			session.goal["blackout"] = true
 			ledger.note_dark()
 			session.changed.emit()
@@ -1400,7 +1435,7 @@ func _process(delta: float) -> void:
 			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else world_audio.listener_position()
 			# One planta at a time: the watcher's, or the one the eye is on.
 			var shown: int = observer_view.planta if observer and observer_view != null else -1
-			hotel.update_visibility(eye, settings.values.shadows and not hunter_seat() and not observer, 0.0, observer, shown)
+			hotel.update_visibility(eye, settings.values.shadows and not rig.echo_seat() and not observer, 0.0, observer, shown)
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, FLOOR.planta_y(FLOOR.planta_of(player.position.y)) + 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -27,6 +27,8 @@ const REACH_DARK := 2.5
 const SNAP := 0.35
 ## Seconds a piece stays on the plan after it was last seen.
 const FORGET := 180.0
+## What this floor's is (a rule of the room); nought or less, it stays.
+var forget := FORGET
 const GRID := 2.0
 var level
 ## Per piece: its ends, its planta, when it was last seen and when it first
@@ -90,7 +92,8 @@ func cell_of(point: Vector2, planta: int) -> Vector3i:
 ## How faded a piece is: 1 just seen, 0 forgotten (or never seen).
 func freshness(index: int) -> float:
 	if seen[index] < 0.0: return 0.0
-	return clampf(1.0 - (clock - seen[index]) / FORGET, 0.0, 1.0)
+	if forget <= 0.0: return 1.0
+	return clampf(1.0 - (clock - seen[index]) / forget, 0.0, 1.0)
 
 ## Seconds since a piece came back on to the page, INF if it has not.
 func since_bloom(index: int) -> float:

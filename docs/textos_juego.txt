@@ -466,7 +466,7 @@ CORRECCIÓN:
 -- Pestaña TABLONES --
 
 [REC.04] Los dos desplegables y sus opciones
-ACTUAL: TABLÓN: EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR
+ACTUAL: TABLÓN: EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR / CON OTRAS REGLAS
 | TABLA: MÁS RÁPIDOS / MAYOR PUNTAJE / SIN BAJAS / SIN ESCONDERSE
 CORRECCIÓN:
 
@@ -803,7 +803,63 @@ CORRECCIÓN:
 [MP.08] Sala: esquina, pie (solo el anfitrión), título, contador, opciones del anfitrión
 y botones
 ACTUAL: MULTIJUGADOR ▸ SALA · ANFITRIÓN · SALA · JUGADORES  %d / 5 · Tipo de partida · The Locust ·
-| Retomar el piso guardado · EMPEZAR · PERSONAJE · CERRAR LA SALA / SALIR DE LA SALA
+| Retomar el piso guardado · EMPEZAR · PERSONAJE · REGLAS · CERRAR LA SALA / SALIR DE LA SALA
+CORRECCIÓN:
+
+[MP.28] Columna derecha de la sala: las reglas (%d = cuántas se cambiaron; debajo, hasta
+cuatro de ellas, cada una "Nombre: valor")
+ACTUAL: REGLAS: LAS DEL JUEGO / REGLAS CAMBIADAS (%d) · …y %d más
+CORRECCIÓN:
+
+[REGLA.01] Pantalla de reglas: esquina, título, línea bajo el título (anfitrión / invitado)
+y opciones
+ACTUAL: SALA ▸ REGLAS · REGLAS · LAS DE ESTA SALA: VALEN PARA CADA PISO QUE EMPIECE DESDE ELLA /
+| LAS PONE EL ANFITRIÓN · EN ÁMBAR, LO QUE CAMBIÓ · VOLVER A LA SALA · LAS DEL JUEGO
+CORRECCIÓN:
+
+[REGLA.02] Pestañas
+ACTUAL: EL EQUIPO / EL PISO / LA HOJA / THE LOCUST
+CORRECCIÓN:
+
+[REGLA.03] Cada regla: nombre, valores (el primero es el del juego) y nota bajo ella
+ACTUAL: CLEMENCIA: NINGUNA / UNA VEZ / DOS VECES / TRES VECES
+| Capturas que la criatura perdona a cada superviviente: lo suelta y se va lejos.
+| DERRUMBES PERDONADOS: UNO / NINGUNO / DOS / TRES / SIN LÍMITE
+| Veces que el piso devuelve un sector perdido, con todos en pie otra vez.
+| CORDURA: SE GASTA / NO SE GASTA
+| Sin gastarse no hay alucinaciones, ni nadie se queda a la vista de la criatura por perderla.
+| CÓDIGO DE LA ÚLTIMA PUERTA: SE PUEDE ADIVINAR / HACEN FALTA LAS CUATRO NOTAS
+| Si hacen falta las notas, el teclado no abre hasta que el equipo las tiene todas.
+| APAGÓN: AL FALTAR UNA TELE / NUNCA
+| El ala se queda sin luz cuando solo falta un televisor por encender.
+| PLANO EN LA HOJA: SE DIBUJA SOLO / SIN PLANO
+| Lo que los supervivientes van viendo queda dibujado en la hoja.
+| EL PLANO SE BORRA: A LOS 3 MINUTOS / AL MINUTO / A LOS 5 MINUTOS / A LOS 10 MINUTOS / NUNCA
+| Cuánto dura en la hoja lo que se vio por última vez.
+| LO QUE SE DIBUJA: LO VEN TODOS / SOLO QUIEN LO DIBUJA
+| Si lo que cada uno escribe en la hoja aparece en la de los demás.
+| EMBESTIDA: NO / SÍ
+| Ve y oye un 25 % más lejos y no afloja: la de la máquina no baja el paso al perderte de vista, y el cazador corre sin cansarse.
+| VIAJA POR LOS TELEVISORES: SÍ / NO
+| Un televisor encendido es una puerta para ella. Sin esto, solo anda.
+| VISTA DEL CAZADOR: LECTURA ACÚSTICA / VE COMO UNA PERSONA
+| Solo con un jugador de cazador: ve el hotel iluminado en vez de reconstruirlo de oído, sin rutas ni ecos de lo que suena.
+CORRECCIÓN:
+
+[REGLA.04] Centro de la pantalla de quien la criatura suelta, con la regla Clemencia
+ACTUAL: TE HA SOLTADO · QUEDAN %d / TE HA SOLTADO · QUEDA UNA / TE HA SOLTADO · NO HABRÁ OTRA
+CORRECCIÓN:
+
+[REGLA.05] En el teclado del código, con la regla de las cuatro notas y sin tenerlas
+ACTUAL: FALTAN NOTAS
+CORRECCIÓN:
+
+[REGLA.06] En el parte de una cinta jugada con otras reglas (pestañas RESUMEN, CRONOLOGÍA,
+SECTORES e HITOS)
+ACTUAL: CON OTRAS REGLAS · SIN HITOS, Y EN SU PROPIO TABLÓN
+| The Locust tuvo a %s y lo soltó
+| %d captura perdonada / capturas perdonadas
+| Con otras reglas que las del juego no se alcanzan hitos.
 CORRECCIÓN:
 
 [MP.09] Tipos de partida y quién es The Locust (los invitados lo ven escrito:

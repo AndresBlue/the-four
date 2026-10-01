@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protocolo de red
-**the-four-net-13**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-14**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -79,6 +79,13 @@ jugado**:
 - **Marcas** en el menú principal: tres tablones por piso (solo, acompañado,
   contra el cazador) con cuatro tablas, la ficha de carrera, dieciocho hitos
   del hotel y la comparación con las fichas de la gente con la que se juega.
+
+El 1 de octubre entraron también **las reglas de la sala**, y **tampoco se
+han jugado**: once cosas que el anfitrión puede cambiar antes de empezar
+(clemencia, derrumbes perdonados, cordura, el código con o sin notas, el
+apagón, el plano de la hoja y cuánto dura, la hoja compartida o no, la
+embestida, el viaje por las teles y la vista del cazador). Una cinta jugada
+con otras reglas va a su propio tablón y no da hitos.
 
 El 26, con las notas de jugar con mando en la tele, entró esto, y **tampoco
 se ha jugado**:

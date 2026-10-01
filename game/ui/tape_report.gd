@@ -12,6 +12,7 @@ const STYLE := preload("res://game/ui/osd_style.gd")
 const SCORE := preload("res://game/services/run_score.gd")
 const RECORDS := preload("res://game/services/records_service.gd")
 const FLOORS := preload("res://game/floors/floor_index.gd")
+const RULES := preload("res://game/floors/match_rules.gd")
 ## The tabs' box, in the 1280 x 720 the menus are laid out in.
 const SIZE := Vector2(1040, 372)
 
@@ -133,6 +134,10 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 		for mark in marks:
 			stamps.add_child(STYLE.stamp(mark, 16, STYLE.AMBER, -0.03, delay))
 			delay += 0.35
+	var differs: Array = RULES.described(line.get("rules", {}))
+	if not differs.is_empty():
+		ui.label(left, "CON OTRAS REGLAS · SIN HITOS, Y EN SU PROPIO TABLÓN", 14).add_theme_color_override("font_color", STYLE.AMBER)
+		ui.paragraph(left, "  ·  ".join(differs), 15, 600, STYLE.INK)
 	if not won: ui.paragraph(left, "La cinta se quedó en el hotel. No entra en ningún tablón, pero lo que hizo cada uno queda en su ficha.", 16, 600)
 	spotlight(ui, split, line, not outcome.is_empty())
 
@@ -325,6 +330,7 @@ static func sector_facts(line: Dictionary, stage: int) -> String:
 	if counts.has("digit"): parts.append(plural.call(int(counts.digit), "número encontrado", "números encontrados"))
 	if counts.has("code"): parts.append("código marcado")
 	if counts.has("escape"): parts.append(plural.call(int(counts.escape), "huida", "huidas"))
+	if counts.has("mercy"): parts.append(plural.call(int(counts.mercy), "captura perdonada", "capturas perdonadas"))
 	if counts.has("death"): parts.append(plural.call(int(counts.death), "caída", "caídas"))
 	if counts.has("collapse"): parts.append("el sector se derrumbó y volvió a empezar")
 	return "  ·  ".join(parts)
@@ -358,6 +364,7 @@ static func moment(line: Dictionary, event: Dictionary) -> Array:
 		"escape": return ["%s se le escapó a la criatura tras %d s de persecución" % [who, many], STYLE.INK]
 		"burnt": return ["%s se quedó sin cordura" % who, STYLE.SOFT]
 		"death": return ["The Locust atrapó a %s" % who, STYLE.ALERT]
+		"mercy": return ["The Locust tuvo a %s y lo soltó" % who, STYLE.AMBER]
 		"collapse": return ["El sector se derrumbó: todos en pie y a empezarlo otra vez", STYLE.ALERT]
 		"sector": return ["SECTOR %d CERRADO" % many, STYLE.AMBER]
 		"out": return ["LA CINTA SALIÓ DEL HOTEL", STYLE.AMBER]
@@ -370,7 +377,8 @@ static func milestones(ui, page: VBoxContainer, line: Dictionary, outcome: Dicti
 	var floor_number := int(line.get("floor", 1))
 	var fresh: Array = outcome.get("milestones", [])
 	var known: Array = FLOORS.milestones(floor_number)
-	if fresh.is_empty(): ui.paragraph(page, "Esta cinta no trae ningún hito nuevo.", 17, 900)
+	if line.has("rules"): ui.paragraph(page, "Con otras reglas que las del juego no se alcanzan hitos.", 17, 900)
+	elif fresh.is_empty(): ui.paragraph(page, "Esta cinta no trae ningún hito nuevo.", 17, 900)
 	else: ui.label(page, "HITOS NUEVOS", 15).add_theme_color_override("font_color", STYLE.AMBER)
 	var delay := 0.5
 	for milestone in known:

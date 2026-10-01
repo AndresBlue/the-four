@@ -164,10 +164,10 @@ func type_code(character: String) -> void:
 	var verdict := code_verdict(typed)
 	# The right code on a wing whose sets are still dark: the door is not
 	# going to move, and it is better said here than guessed at the door.
-	if verdict == "sets":
+	if verdict in ["sets", "notes"]:
 		typed = ""
 		level.ui.keypad("wrong")
-		level.ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES", noted_code(), lock_digit)
+		level.ui.show_lock("", DIGITS.COUNT, "FALTAN TELEVISORES" if verdict == "sets" else "FALTAN NOTAS", noted_code(), lock_digit)
 		return
 	# Only the keypad is heard: a try is not a door. It used to creak like one
 	# on every wrong code, and latch on the right one, with nothing moving.
@@ -182,11 +182,15 @@ func type_code(character: String) -> void:
 		level.ui.show_lock("", DIGITS.COUNT, "NO ES", noted_code(), lock_digit)
 
 ## What the keypad makes of a code: "right", "sets" (right, but the stage's
-## sets are still dark, so the door would not move) or "wrong". The keypad on
+## sets are still dark, so the door would not move), "notes" (right, but the
+## room asks for the four notes and the team has not found them) or "wrong". The keypad on
 ## screen asks here, and so do the test bots, which have no screen.
 func code_verdict(text: String) -> String:
 	var right: String = "".join(DIGITS.code(level.manifest).map(func(digit): return str(digit)))
 	if text != right: return "wrong"
+	# The room wants the four notes found: a code guessed, or told by somebody
+	# who played this tape before, opens nothing until the team has them.
+	if level.rule("code") == 1 and found_digits.size() < DIGITS.COUNT: return "notes"
 	return "right" if level.sets_lit() else "sets"
 
 func open_lock() -> void:

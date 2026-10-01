@@ -427,6 +427,7 @@ func television_state(index: int, value: bool) -> void:
 ## The creature travels by television: from the lit set it is standing at to
 ## any other lit one. The host judges it, as it judges a strike.
 func locust_warp(index: int) -> void:
+	if level.rule("tv_travel") == 0: return
 	if not in_match() or net.is_host:
 		if level.creature_at_television() >= 0 and not warp_busy():
 			level.warp_creature(index)
@@ -436,7 +437,7 @@ func locust_warp(index: int) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_warp(index: int) -> void:
-	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
+	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer() or level.rule("tv_travel") == 0: return
 	# Its copy here runs behind the hunter's own: a quick E, E on arriving was
 	# refused for being a step short of the set.
 	if level.creature_at_television(level.WARP_REACH + WARP_SLACK) < 0 or not level.lit_televisions().has(index) or warp_busy(): return
@@ -495,7 +496,7 @@ func use_code(seat := -1) -> void:
 func request_code(text: String) -> void:
 	if not net.is_host or level.code_entered: return
 	var right: String = "".join(level.DIGITS.code(level.manifest).map(func(digit): return str(digit)))
-	if text != right: return
+	if text != right or level.code_verdict(text) != "right": return
 	level.ledger.note_code(net.seat_of_peer(multiplayer.get_remote_sender_id()))
 	level.apply_code()
 	code_state.rpc()
@@ -766,7 +767,7 @@ func update_shriek(delta: float) -> void:
 		# fifth of a second to tell anyone apart from the furniture.
 		if before == null: continue
 		if (here - before).length() * SHRIEK_RATE < SHRIEK_STIR: continue
-		if here.distance_to(creature.global_position) > SHRIEK_RANGE: continue
+		if here.distance_to(creature.global_position) > SHRIEK_RANGE * float(creature.reach_scale): continue
 		points.append(here + Vector3(0, 1.2, 0))
 	if locust_seat() == net.local_seat or not net.active():
 		if is_instance_valid(creature.driver): creature.driver.reveal(points)
@@ -840,6 +841,11 @@ func leaf_opened(index: int, side: String) -> void:
 func execute_start(seat: int, point: Vector3, yaw: float) -> void:
 	level.apply_execution(seat, point, yaw)
 
+## The room's mercy, decided by the host: the creature lets this seat go.
+@rpc("authority", "call_remote", "reliable")
+func pardoned(seat: int, left: int, den: Vector3) -> void:
+	level.executions.apply_pardon(seat, left, den)
+
 ## The victim was inside a wardrobe: it is pulled out of it first.
 func free_victim_hide(seat: int) -> void:
 	# The host's own survivor leaves its wardrobe on this machine as the
@@ -901,6 +907,10 @@ var sheet_budget := {}
 ## A chunk of a stroke drawn here: offline it counts at once, online the host
 ## puts it in order for everyone.
 func sheet_local(op_id: String, kind: int, points: PackedVector2Array) -> void:
+	# A room where each one's page is their own: nothing leaves this machine.
+	if in_match() and level.rule("shared_sheet") == 0:
+		level.ui.sheet.apply_confirmed(op_id, kind, points)
+		return
 	if not in_match() or net.is_host:
 		level.ui.sheet.apply_confirmed(op_id, kind, points)
 		if in_match(): sheet_confirmed.rpc(op_id, kind, points)
@@ -909,7 +919,7 @@ func sheet_local(op_id: String, kind: int, points: PackedVector2Array) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sheet_chunk(op_id: String, kind: int, points: PackedVector2Array) -> void:
-	if not net.is_host or not in_match(): return
+	if not net.is_host or not in_match() or level.rule("shared_sheet") == 0: return
 	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
 	# Only living survivors draw, under their own seat, within the traffic limit.
 	if not is_survivor(seat) or level.session.participants.get(seat, 2) == level.session.Life.DEAD: return
@@ -1008,7 +1018,7 @@ func catch_up(seat: int, id: int) -> void:
 		if is_instance_valid(piece) and piece.searched:
 			searched.append([index, int(level.found_by.get(piece.slot, 0)) if piece.digit >= 0 else 0])
 	var progress := {"searched": searched, "code": level.code_entered, "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage}
-	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot(), sets, progress)
+	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot() if level.rule("shared_sheet") == 1 else [], sets, progress)
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 
 @rpc("authority", "call_remote", "reliable")

@@ -103,7 +103,11 @@ func wear(body: Node3D, delta: float) -> void:
 	var paid: float = sight_paid if local else float(mind.get("paid", 0.0))
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)
 	var lit: bool = not level.hotel.dark and not room.is_empty() and not level.hotel.dark_ids.has(int(room.id))
-	if body.hidden or not lit:
+	# The room plays without it: nothing wears a mind down, in the dark or at
+	# the sight of the creature.
+	var spent: bool = level.rule("sanity") == 1
+	if not spent: value = 100.0
+	elif body.hidden or not lit:
 		var rate := SANITY_DARK
 		if not body.hidden and body.torch.visible: rate *= SANITY_TORCH
 		value = maxf(0.0, value - rate * delta)
@@ -111,7 +115,7 @@ func wear(body: Node3D, delta: float) -> void:
 	# A long look at it is one fright, not one a frame; and a glimpse that
 	# turns into its eyes on you is the bigger fright, charged once.
 	rest = maxf(0.0, rest - delta)
-	var sight := sight_of_creature(body, lit)
+	var sight := sight_of_creature(body, lit) if spent else 0
 	if sight > 0:
 		var cost: float = SANITY_STARE if sight == 2 else SANITY_GLIMPSE
 		if rest <= 0.0:

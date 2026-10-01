@@ -306,4 +306,10 @@ func close(won: bool) -> Dictionary:
 		"events": events.duplicate(true),
 	}
 	if versus: line["hunter"] = {"seat": level.match_net.locust_seat(), "name": level.seat_name(level.match_net.locust_seat())}
+	# Played by other rules than the game's own: it says which, and goes on
+	# the board kept for those.
+	var differs: Dictionary = level.MATCH_RULES.changed(level.rules)
+	if not differs.is_empty():
+		line["rules"] = differs
+		line["company"] = RECORDS.CUSTOM
 	return SCORE.settle(line)

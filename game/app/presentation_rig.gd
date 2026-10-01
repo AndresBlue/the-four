@@ -164,6 +164,13 @@ func hunter_seat() -> bool:
 	if level.observer and level.observer_view != null and level.observer_view.echoing: return true
 	return is_instance_valid(level.net) and level.match_net.local_is_locust()
 
+## Whether what this machine draws is that reading. A hunter the room lets see
+## like a person (the rule "plain_sight") sits in the creature's seat and
+## looks at the lit hotel.
+func echo_seat() -> bool:
+	if not hunter_seat(): return false
+	return level.observer or level.rule("plain_sight") == 0
+
 ## Every value that changes with the quality setting (graphics_presets.gd).
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 
@@ -179,7 +186,7 @@ func apply_settings() -> void:
 	level.GEOMETRY.small_maps = preset.small_maps
 	# The acoustic view replaces the lit image entirely, so none of this would
 	# ever be seen; switching it off is what pays for its own screen pass.
-	var hunter := hunter_seat()
+	var hunter := echo_seat()
 	level.environment.ssao_enabled = preset.ssao >= 0 and not hunter
 	if preset.ssao >= 0: RenderingServer.environment_set_ssao_quality(preset.ssao, preset.ssao_half, ProjectSettings.get_setting("rendering/environment/ssao/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssao/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_to"))
 	level.environment.ssil_enabled = preset.ssil >= 0 and not hunter
@@ -267,7 +274,7 @@ func apply_settings() -> void:
 func configure_hotel() -> void:
 	if not is_instance_valid(level.hotel): return
 	level.hotel.reduced = level.settings.values.reduced
-	level.hotel.echo_view = hunter_seat()
+	level.hotel.echo_view = echo_seat()
 	level.hotel.apply_quality(PRESETS.of(level.settings.values.quality, level.settings.values))
 
 ## Wardrobe enclosure, strike glitch and lost signal on the analog filter.

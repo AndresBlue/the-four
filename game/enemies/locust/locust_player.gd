@@ -180,7 +180,7 @@ func drive(delta: float) -> void:
 	frenzy = maxf(0.0, frenzy - delta)
 	# With the floor dark there is no limit to the hunt: it has nothing left to
 	# fear and nothing to spend.
-	var free_hunt: bool = frenzy > 0.0 or level.session.goal.get("blackout", false)
+	var free_hunt: bool = frenzy > 0.0 or level.session.goal.get("blackout", false) or level.rule("onslaught") == 1
 	var hunting := free and axis.length() > 0.1 and pad.wants("sprint", level.settings) and (stamina > 0.0 or free_hunt)
 	pad.settle(axis.length() > 0.1, not free or (stamina <= 0.0 and not free_hunt), delta)
 	if hunting:
@@ -458,7 +458,7 @@ func use() -> void:
 	# used to come first, so beside a lit set E never opened the wardrobe it
 	# was aimed at -- the one somebody had just hidden in after switching the
 	# set on.
-	elif level.creature_at_television() >= 0 and level.lit_televisions().size() > 1:
+	elif level.rule("tv_travel") == 1 and level.creature_at_television() >= 0 and level.lit_televisions().size() > 1:
 		channel_open = true
 		channel_target = -1
 

@@ -10,7 +10,8 @@ extends Node
 ##
 ## Alone and together are different games -- a team lights more sets and has
 ## to get more people out -- and so is a floor with a player as the creature:
-## they are three boards, and each floor keeps its own.
+## they are three boards, and each floor keeps its own. A floor played by
+## other rules goes on a fourth.
 signal changed
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SCORE := preload("res://game/services/run_score.gd")
@@ -24,8 +25,12 @@ const KEPT := 24
 const SOLO := "solo"
 const COOP := "coop"
 const VERSUS := "versus"
-const COMPANIES := [SOLO, COOP, VERSUS]
-const COMPANY_NAMES := {SOLO: "EN SOLITARIO", COOP: "ACOMPAÑADO", VERSUS: "CONTRA EL CAZADOR"}
+## And a fourth board for every floor played by other rules than the game's
+## own (game/floors/match_rules.gd), whoever played it: each line says which.
+const CUSTOM := "custom"
+const COMPANIES := [SOLO, COOP, VERSUS, CUSTOM]
+const COMPANY_NAMES := {SOLO: "EN SOLITARIO", COOP: "ACOMPAÑADO", VERSUS: "CONTRA EL CAZADOR", CUSTOM: "CON OTRAS REGLAS"}
+const RULES := preload("res://game/floors/match_rules.gd")
 var runs: Array = []
 ## What this player has added up over every floor (tally()).
 var career := {}
@@ -156,6 +161,8 @@ static func clean(run: Dictionary) -> Dictionary:
 			if event.has("of"): entry["of"] = int(number(event.of))
 			if event.has("w"): entry["w"] = String(event.w).left(40)
 			line.events.append(entry)
+	var differs := RULES.changed(run.get("rules", {}))
+	if not differs.is_empty(): line["rules"] = differs
 	if run.get("hunter") is Dictionary: line["hunter"] = {"seat": int(number(run.hunter.get("seat", 0))), "name": String(run.hunter.get("name", "")).left(24)}
 	# Settled by whoever ran the floor: kept as it was said.
 	if run.has("score"):
@@ -268,7 +275,7 @@ func tally(line: Dictionary, seat: int) -> void:
 	for key in CAREER_COUNTS: bump(key, int(me.get(key, 0)))
 	if won and bool(me.get("escaped", false)): bump("escaped", 1)
 	if won and int(line.get("mvp", 0)) == seat: bump("mvps", 1)
-	if won:
+	if won and not line.has("rules"):
 		career["best_score"] = maxi(int(career.get("best_score", 0)), int(line.get("score", 0)))
 		var grade := String(line.get("grade", ""))
 		if not grade.is_empty() and (String(career.get("best_grade", "")).is_empty() or SCORE.grade_at_least(grade, String(career.get("best_grade", "")))): career["best_grade"] = grade
@@ -296,6 +303,8 @@ func usual_part() -> String:
 func reach(line: Dictionary, seat: int) -> Array:
 	var floor_number := int(line.get("floor", 1))
 	var fresh: Array = []
+	# A milestone is reached by the game's own rules, or it says nothing.
+	if line.has("rules"): return fresh
 	for milestone in SCORE.earned(FLOORS.milestones(floor_number), line, seat):
 		var key := "%d:%s" % [floor_number, milestone]
 		if milestones.has(key): continue

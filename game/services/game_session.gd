@@ -20,6 +20,9 @@ var stage := 1
 ## nothing to forgive -- a team can lose somebody and go on, one person caught
 ## is the end of that floor.
 const RESTARTS := 1
+## How many this floor forgives (a rule of the room, game/floors/match_rules.gd);
+## negative, as many as it takes.
+var restarts_allowed := RESTARTS
 var restarts := 0
 ## Seconds between the floor collapsing and everybody getting up again: long
 ## enough for the last death to be seen and heard.
@@ -153,7 +156,7 @@ func check_quota() -> bool:
 	var could_rise := 0
 	for id in participants:
 		if not dropped.has(id): could_rise += 1
-	if roster_count > 1 and restarts < RESTARTS and state == State.PLAYING and could_rise >= minimum_survivors():
+	if roster_count > 1 and (restarts < restarts_allowed or restarts_allowed < 0) and state == State.PLAYING and could_rise >= minimum_survivors():
 		# One more go at this stage, with everybody on their feet again -- but
 		# not this instant: the last one down has earned its own death first.
 		restarts += 1

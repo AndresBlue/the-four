@@ -146,6 +146,13 @@ const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const RECORDS := preload("res://game/services/records_service.gd")
 const REPORT := preload("res://game/ui/tape_report.gd")
 const BOARD := preload("res://game/ui/records_board.gd")
+## The rules of a room (game/floors/match_rules.gd) and their screen.
+const MATCH_RULES := preload("res://game/floors/match_rules.gd")
+const RULES_SCREEN := preload("res://game/ui/rules_screen.gd")
+## The tab of the rules being looked at, and whether the screen has to be
+## drawn again on the host's own machine (it put them all back at once).
+var rules_view := {}
+var rules_stale := false
 var intro_tween: Tween
 ## Small corner note during the opening scene: which key skips it.
 var skip_label: Label
@@ -631,6 +638,22 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			side.visible = false
 		"lobby":
 			lobby_screen()
+		"rules":
+			var hosting: bool = net != null and net.is_host
+			set_osd("SALA ▸ REGLAS", "", "", "ANFITRIÓN" if hosting else "")
+			side.visible = false
+			column.custom_minimum_size.x = RULES_SCREEN.SIZE.x
+			title(column, "REGLAS", 44)
+			label(column, "LAS DE ESTA SALA: VALEN PARA CADA PISO QUE EMPIECE DESDE ELLA" if hosting else "LAS PONE EL ANFITRIÓN · EN ÁMBAR, LO QUE CAMBIÓ", 15).add_theme_color_override("font_color", STYLE.SOFT)
+			var tabs := RULES_SCREEN.build(self, column, rules_view)
+			footer.text = tab_hint()
+			rules_stale = false
+			var row := HFlowContainer.new()
+			row.add_theme_constant_override("h_separation", 4)
+			column.add_child(row)
+			buttons["lobby"] = entry(row, "Volver a la sala", func(): action_requested.emit("lobby"), false, 21)
+			if hosting: buttons["rules_reset"] = entry(row, "Las del juego", func(): action_requested.emit("rules_reset"), false, 21)
+			chain_settings(tabs, buttons["lobby"])
 		"online_pause":
 			set_osd("❚❚ MENÚ", "", "", "LA PARTIDA SIGUE")
 			backdrop.modulate.a = 0.75
@@ -725,6 +748,7 @@ func lobby_screen() -> void:
 	else:
 		label(column, "Esperando a que el anfitrión empiece…", 19).add_theme_color_override("font_color", STYLE.SOFT)
 	action("Personaje", "lobby_character")
+	action("Reglas", "lobby_rules")
 	action("Cerrar la sala" if hosting else "Salir de la sala", "lobby_leave")
 	# Seats on the right.
 	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")
@@ -738,6 +762,12 @@ func lobby_screen() -> void:
 		var line := label(side, "%d · %s" % [seat, entry_data.name.to_upper()], 22)
 		if seat == net.local_seat: line.add_theme_color_override("font_color", STYLE.AMBER)
 		paragraph(side, "%s%s" % [visual_script.NAMES[clampi(int(entry_data.character), 0, 2)], ("  ·  " + ", ".join(tags)) if not tags.is_empty() else ""], 16, LOBBY_SIDE)
+	# What the room changed of the rules, for everybody to see before it starts.
+	var differs: Array = MATCH_RULES.described(net.options.get("rules", {}))
+	spacer(side, 10)
+	label(side, "REGLAS: LAS DEL JUEGO" if differs.is_empty() else "REGLAS CAMBIADAS (%d)" % differs.size(), 16).add_theme_color_override("font_color", STYLE.SOFT if differs.is_empty() else STYLE.AMBER)
+	for words in differs.slice(0, 4): paragraph(side, words, 15, LOBBY_SIDE, STYLE.INK)
+	if differs.size() > 4: paragraph(side, "…y %d más" % (differs.size() - 4), 15, LOBBY_SIDE)
 	if hosting:
 		spacer(side, 14)
 		var how: Array = net.where_to_join()
