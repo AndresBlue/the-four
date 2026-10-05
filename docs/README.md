@@ -10,6 +10,7 @@ Empieza por aquí según lo que busques:
 Por sistema:
 
 - [VISION_LOCUST.md](VISION_LOCUST.md): la ecolocalización con la que ve el cazador en versus.
+- [DIFFICULTY.md](DIFFICULTY.md): hoja de ruta de las cuatro dificultades de la IA (todavía sin hacer).
 - [AUDIO.md](AUDIO.md): asignaciones de sonido, buses, mezcla y reservas.
 - [PERFORMANCE.md](PERFORMANCE.md): presets gráficos, medidas por vista y coste de cada efecto.
 - [REALISM.md](REALISM.md): el plan de imagen —el hotel real grabado por una camcorder de 1988—, con sus pruebas.
