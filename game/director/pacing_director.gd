@@ -143,6 +143,19 @@ var death_ease := DEATH_EASE
 var double_back := DOUBLE_BACK
 var distract_rest := DISTRACT_REST
 var burnt_every := BURNT_EVERY
+## Encounters (docs/DIFFICULTY.md): after this long with no sign of the
+## creature for somebody out there (run_ledger.since_sign), it is brought
+## across their view; and how much it likes doing that anyway. Both nought
+## for "desafiante", the director as it was.
+var encounter_every := 0.0
+var cross_weight := 0.0
+var next_cross := 0.0
+## How far (metres of walking) and how far in plain sight a crossing is put,
+## and how long before another is forced.
+const CROSS_NEAR := 15.0
+const CROSS_FAR := 32.0
+const CROSS_SIGHT := 30.0
+const CROSS_REST := 30.0
 
 func setup(owner_level, seed_value: int) -> void:
 	level = owner_level
@@ -165,6 +178,8 @@ func tune(profile: Dictionary) -> void:
 	double_back = float(profile.double_back)
 	distract_rest = float(profile.distract_rest)
 	burnt_every = Vector2(float(profile.burnt_every[0]), float(profile.burnt_every[1]))
+	encounter_every = float(profile.encounter_every)
+	cross_weight = float(profile.cross)
 
 func _physics_process(delta: float) -> void:
 	if level == null or level.session.state != level.session.State.PLAYING: return
@@ -258,6 +273,7 @@ func tick(delta: float) -> void:
 				coming_back = {}
 				# Only if it is still fair now: somebody may be standing there.
 				if validate_lead(back, true): play("vuelve", back, LEAD_RADIUS, true)
+			elif encounter_due(): pass
 			elif force or clock >= next_lead: build()
 
 ## Who is alive, who died since the last look, and whether the team has been
@@ -323,6 +339,59 @@ func pick_target() -> Node3D:
 			best = body
 	return best
 
+## Whoever out there has gone longest without a sign of the creature, if it
+## has been encounter_every: the creature is brought across their view.
+## True when it was.
+func encounter_due() -> bool:
+	if encounter_every <= 0.0 or clock < next_cross: return false
+	var quietest: Node3D = null
+	var longest := 0.0
+	for body in active_survivors():
+		if body.hidden: continue
+		var quiet := float(level.ledger.since_sign.get(int(body.slot), 0.0))
+		if quiet > longest:
+			longest = quiet
+			quietest = body
+	if quietest == null or longest < encounter_every: return false
+	next_cross = clock + CROSS_REST
+	if not cross(quietest): return false
+	last_kind = "cruce"
+	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y)
+	return true
+
+## Across somebody's view: a room CROSS_NEAR to CROSS_FAR metres of walking
+## from them, that they can see from where they stand (nothing solid between
+## their eyes and it), ahead of them if there is one; it walks in there. The
+## usual rules hold (validate_lead): never their room, never close -- but a
+## room it has just searched will do. With nothing in sight (a room with its
+## doors shut), down a corridor near them, or a prowl round them close.
+func cross(target: Node3D) -> bool:
+	if not "camera" in target or not is_instance_valid(target.camera): return pass_by(target)
+	var eye: Vector3 = target.camera.global_position
+	var ahead: Vector3 = -target.camera.global_basis.z
+	ahead.y = 0.0
+	if ahead.length() < 0.1: return pass_by(target)
+	ahead = ahead.normalized()
+	var from := room_id(target.global_position)
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var in_front: Array = []
+	var around: Array = []
+	for room in level.manifest.rooms:
+		if FLOOR.is_void(room): continue
+		var gap := walk(from, int(room.id))
+		if gap == INF or gap < CROSS_NEAR or gap > CROSS_FAR: continue
+		var centre := FLOOR.position_of(room)
+		var look: Vector3 = centre + Vector3(0, 1.4, 0) - eye
+		if look.length() > CROSS_SIGHT or not validate_lead(centre, true): continue
+		var query := PhysicsRayQueryParameters3D.create(eye, eye + look, 1 | 8)
+		query.exclude = [target.get_rid()]
+		if not space.intersect_ray(query).is_empty(): continue
+		if Vector3(look.x, 0.0, look.z).normalized().dot(ahead) > 0.5: in_front.append(centre)
+		else: around.append(centre)
+	var spots: Array = in_front if not in_front.is_empty() else around
+	if spots.is_empty(): return pass_by(target) or prowl_round(target, (CROSS_NEAR + CROSS_FAR) * 0.5, "cruce")
+	return play("cruce", spots[rng.randi_range(0, spots.size() - 1)], 4.0, true, target, 15.0)
+
 ## BUILD: a move, never the one just played.
 func build() -> void:
 	var target := pick_target()
@@ -332,6 +401,8 @@ func build() -> void:
 	var moves: Array = []
 	if stalled(): moves = [["quieto", 3.0]]
 	else: moves = [["merodea", 3.0], ["emboscada", 2.0], ["pasa", 1.5], ["retirada", 1.0], ["golpes", 0.7]]
+	# Where the difficulty likes it brought across somebody's view.
+	if cross_weight > 0.0 and not stalled(): moves.append(["cruce", cross_weight])
 	# Never the one just played -- unless it is the only one there is.
 	var fresh: Array = moves.filter(func(move): return move[0] != last_kind)
 	if not fresh.is_empty(): moves = fresh
@@ -351,6 +422,7 @@ func build() -> void:
 		"pasa": ok = pass_by(target)
 		"retirada": ok = retreat()
 		"golpes": ok = raps(target)
+		"cruce": ok = cross(target)
 		"quieto":
 			ok = prowl_round(target, maxf(prowl, 25.0 + rng.randf_range(0.0, 5.0)), "quieto")
 			raps(target)

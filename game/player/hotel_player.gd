@@ -151,6 +151,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		# The zoom rocker: the wheel forward is T, back is W.
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_to(zoom_wanted * ZOOM_STEP)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_to(zoom_wanted / ZOOM_STEP)
+	# And on a pad, the cross up and down (it is free in play: it only dials
+	# the keypad, which takes the body away from here while it is up).
+	if event is InputEventJoypadButton and event.pressed and not reading:
+		if event.button_index == JOY_BUTTON_DPAD_UP: zoom_to(zoom_wanted * ZOOM_STEP)
+		elif event.button_index == JOY_BUTTON_DPAD_DOWN: zoom_to(zoom_wanted / ZOOM_STEP)
 	if event.is_action_pressed("flashlight"):
 		torch.visible = not torch.visible
 		torch_warmup = 0.0

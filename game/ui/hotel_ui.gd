@@ -163,6 +163,11 @@ var skip_label: Label
 ## The shared sheet (paper_sheet.gd), above the HUD and below the menus.
 var sheet: Control
 const SHEET := preload("res://game/ui/paper_sheet.gd")
+## How long is left to hold a key (hold_ring.gd): round the aiming dot, and
+## beside the words that say how to skip the opening scene.
+const HOLD_RING := preload("res://game/ui/hold_ring.gd")
+var hold_ring: Control
+var skip_ring: Control
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -193,16 +198,36 @@ func _ready() -> void:
 	remove_child(overlay)
 	outside.add_child(overlay)
 	build_frame()
-	skip_label = STYLE.text("", 15)
+	skip_label = STYLE.text("", 17)
 	skip_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	skip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# Starting right after its ring (skip_ring), which fills while it is held.
+	skip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	skip_label.offset_left = -440
 	skip_label.offset_right = -36
-	skip_label.offset_top = 26
-	skip_label.offset_bottom = 50
+	skip_label.offset_top = 24
+	skip_label.offset_bottom = 48
 	skip_label.add_theme_color_override("font_color", STYLE.SOFT)
 	skip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$HUD.add_child(skip_label)
+	hold_ring = HOLD_RING.new()
+	hold_ring.name = "HoldRing"
+	hold_ring.set_anchors_preset(Control.PRESET_CENTER)
+	var half: Vector2 = hold_ring.custom_minimum_size * 0.5
+	hold_ring.offset_left = -half.x
+	hold_ring.offset_right = half.x
+	hold_ring.offset_top = -half.y
+	hold_ring.offset_bottom = half.y
+	$HUD.add_child(hold_ring)
+	skip_ring = HOLD_RING.new()
+	skip_ring.name = "SkipRing"
+	skip_ring.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	var ring_size: Vector2 = skip_ring.custom_minimum_size
+	# Level with the first line of the words, just before they start.
+	skip_ring.offset_right = -444.0
+	skip_ring.offset_left = -444.0 - ring_size.x
+	skip_ring.offset_top = 36.0 - ring_size.y * 0.5
+	skip_ring.offset_bottom = 36.0 + ring_size.y * 0.5
+	$HUD.add_child(skip_ring)
 	sheet = SHEET.new()
 	# Last in this layer: over the HUD, under the menus (which are above the
 	# tape, in their own layer).
@@ -353,10 +378,13 @@ func clear() -> void:
 ## Menu entry: bare text with a play cursor on focus. Returns the Button.
 func entry(parent: Node, words: String, callback: Callable, disabled := false, size := 28) -> Button:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 0)
+	# The cursor against its own word, a little gap between: left in its
+	# cell, it was nearer the entry before it in a row than its own.
+	row.add_theme_constant_override("separation", 7)
 	parent.add_child(row)
 	var cursor := STYLE.text("▶", size - 6)
-	cursor.custom_minimum_size.x = 40
+	cursor.custom_minimum_size.x = 33
+	cursor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	cursor.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cursor.modulate.a = 0.0
 	row.add_child(cursor)
@@ -451,7 +479,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Nueva partida", "new")
 			action("Continuar", "continue", not can_continue)
 			action("Multijugador", "multiplayer")
-			action("Marcas", "records")
+			action("Records", "records")
 			action("Archivo", "archive")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
@@ -469,12 +497,12 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			controls_panel(side)
 		"won":
 			set_osd("■ STOP", "", "", "")
-			tape_screen("SALISTE DEL PISO", STYLE.INK, summary, outcome, [["Nueva partida", "new"], ["Marcas", "records"], ["Menú principal", "main"]])
+			tape_screen("SALISTE DEL PISO", STYLE.INK, summary, outcome, [["Nueva partida", "new"], ["Records", "records"], ["Menú principal", "main"]])
 		"failed":
 			set_osd("SEÑAL PERDIDA", "", "", "")
 			osd_left.add_theme_color_override("font_color", STYLE.ALERT)
 			noise_floor = 0.16
-			tape_screen("SEÑAL PERDIDA", STYLE.ALERT, summary, outcome, [["Reintentar", "retry"], ["Marcas", "records"], ["Menú principal", "main"]])
+			tape_screen("SEÑAL PERDIDA", STYLE.ALERT, summary, outcome, [["Reintentar", "retry"], ["Records", "records"], ["Menú principal", "main"]])
 		"loading":
 			set_osd("◀◀ REW", "", "", "")
 			title(column, "CARGANDO CINTA", 58)
@@ -509,7 +537,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			set_osd("▶ PLAY", "", "", "")
 			side.visible = false
 			column.custom_minimum_size.x = BOARD.SIZE.x
-			title(column, "MARCAS", 44)
+			title(column, "RECORDS", 44)
 			var tabs := BOARD.build(self, column, records_view)
 			footer.text = tab_hint()
 			spacer(column, 4)
@@ -862,10 +890,10 @@ func online_end(won: bool) -> void:
 	var note := ""
 	if net.is_host:
 		if not won: actions.append(["Reintentar piso", "online_retry"])
-		actions.append_array([["Nueva partida", "online_new"], ["Volver a la sala", "online_room"], ["Marcas", "records"], ["Cerrar la sala", "online_quit"]])
+		actions.append_array([["Nueva partida", "online_new"], ["Volver a la sala", "online_room"], ["Records", "records"], ["Cerrar la sala", "online_quit"]])
 	else:
 		note = "El anfitrión decide cómo seguir…"
-		actions.append_array([["Marcas", "records"], ["Salir de la sala", "online_quit"]])
+		actions.append_array([["Records", "records"], ["Salir de la sala", "online_quit"]])
 	tape_screen(headline, STYLE.ALERT if bad else STYLE.INK, summary, outcome, actions, note)
 
 ## A floor's end, or a tape taken off the board: its headline, which tape it
@@ -883,7 +911,7 @@ func tape_screen(headline: String, ink: Color, line: Dictionary, result: Diction
 		label(column, "TIEMPO DE GRABACIÓN  %s" % tape_time(elapsed), 22).add_theme_color_override("font_color", STYLE.SOFT)
 		spacer(column, 20)
 	else:
-		label(column, REPORT.heading(line), 15).add_theme_color_override("font_color", STYLE.SOFT)
+		label(column, REPORT.heading(line, headline == "SEÑAL PERDIDA"), 15).add_theme_color_override("font_color", STYLE.SOFT)
 		tabs = REPORT.build(self, column, line, result)
 		footer.text = tab_hint()
 	if not note.is_empty(): label(column, note, 17).add_theme_color_override("font_color", STYLE.SOFT)
@@ -905,7 +933,7 @@ func show_tape(line: Dictionary) -> void:
 	backdrop.modulate.a = 1.0
 	set_osd("▶ PLAY", "", "", "")
 	osd_left.remove_theme_color_override("font_color")
-	tape_screen("PARTE DE LA CINTA", STYLE.INK, line, {}, [["Volver a las marcas", func(): menu("records")]])
+	tape_screen("PARTE DE LA CINTA", STYLE.INK, line, {}, [["Volver a los records", func(): menu("records")]])
 	transition(0.3)
 	focus_first()
 
@@ -1049,11 +1077,11 @@ func controls_panel(parent: Node) -> void:
 	label(list, "CONTROLES", 20).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(list, 4)
 	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
-	var rows: Array = [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas y escondites"], [settings.key_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.key_name("flashlight"), "Linterna"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["ESC", "Pausa"]]
+	var rows: Array = [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas, escondites, teles y documentos"], [settings.key_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.key_name("flashlight"), "Linterna"], ["RUEDA DEL RATÓN", "Zoom de la cámara"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["CLIC", "Muerto en equipo: cambiar a quién miras"], ["ESC", "Pausa"]]
 	# Played on a pad, the card names its buttons, and says which ones flip.
 	if settings.using_pad and settings.pad_present():
 		var flip := func(action: String) -> String: return settings.pad_name(action) + (" (ALTERNA)" if settings.values.get("pad_%s_toggle" % action, false) else "")
-		rows = [["STICK IZQ.", "Moverse (cuanto más lo empujas, más deprisa)"], ["STICK DER.", "Mirar"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Puertas y escondites"], [settings.pad_name("interact") + " MANTENER", "Abrir despacio · Salir del refugio"], [settings.pad_name("flashlight"), "Linterna"], [settings.pad_name("sheet"), "Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)" % [settings.trigger_name(true), settings.trigger_name(false)]], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
+		rows = [["STICK IZQ.", "Moverse (cuanto más lo empujas, más deprisa)"], ["STICK DER.", "Mirar"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Puertas, escondites, teles y documentos"], [settings.pad_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.pad_name("flashlight"), "Linterna"], ["CRUCETA ↑ ↓", "Zoom de la cámara"], [settings.pad_name("sheet"), "Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)" % [settings.trigger_name(true), settings.trigger_name(false)]], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
 	for row in rows:
 		var line := HBoxContainer.new()
 		list.add_child(line)
@@ -1485,10 +1513,21 @@ func show_characters(back := "multiplayer") -> void:
 	buttons["character_%d" % settings.values.character].grab_focus()
 	quiet_focus = false
 
+## How far along a key held in play is (0 to 1), for the ring round the dot;
+## below nought, nothing is being held. Called every frame it is held.
+func hold(fraction: float) -> void:
+	if is_instance_valid(hold_ring): hold_ring.hold(fraction)
+
+## The same for skipping the opening scene, beside the words that say how.
+func hold_skip(fraction: float) -> void:
+	if is_instance_valid(skip_ring): skip_ring.hold(fraction)
+
 ## Short OSD message in the top-left corner of the recording.
 ## Shows the skip key in the top right corner, fading out after a few seconds.
+## Held, not tapped: people pressed the key once and waited. Said again, in
+## full, every time the key is touched.
 func show_skip(key: String, seconds := 6.0) -> void:
-	skip_label.text = "%s  para saltar cinemática" % key
+	skip_label.text = "Mantén %s para saltar la cinemática" % key
 	skip_label.modulate.a = 1.0
 	var fade := create_tween()
 	fade.tween_interval(seconds)
@@ -1546,6 +1585,8 @@ func show_transit(title: String, errand: String, seconds: float) -> void:
 ## static eats it -- which is why it is drawn into its own little picture first:
 ## the shader works on that picture as a whole, not letter by letter.
 const BRIEF_HOLD := 6.0
+## Seconds the first floor's warning is up on its own before its objective.
+const BRIEF_LEAD := 2.2
 const BRIEF_IN := 0.45
 const BRIEF_OUT := 1.5
 const BRIEF_SIZE := Vector2i(560, 170)
@@ -1556,7 +1597,9 @@ var brief_tween: Tween
 ## is going, set by the level before the screen is built.
 var briefing := {"sector": "", "objective": "", "progress": []}
 
-func show_brief(sector: String, words: String) -> void:
+## `lead`: a line said first, before the objective comes up under it (the
+## very first floor somebody plays); `hold`: how long it all stays.
+func show_brief(sector: String, words: String, lead := "", hold := BRIEF_HOLD) -> void:
 	hide_brief()
 	brief = Control.new()
 	brief.name = "Brief"
@@ -1597,11 +1640,21 @@ func show_brief(sector: String, words: String) -> void:
 	var head := STYLE.text("OBJETIVO · %s" % sector, 18, STYLE.AMBER)
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	column.add_child(head)
+	if not lead.is_empty():
+		var warning := STYLE.text(lead, 26, STYLE.ALERT)
+		warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		column.add_child(warning)
 	var line := STYLE.text(words, 24)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line.custom_minimum_size.x = BRIEF_SIZE.x - 36
 	column.add_child(line)
+	# After the warning has been read, the objective comes up under it.
+	if not lead.is_empty():
+		line.modulate.a = 0.0
+		var after := line.create_tween()
+		after.tween_interval(BRIEF_LEAD)
+		after.tween_property(line, "modulate:a", 1.0, 0.6)
 	var screen := TextureRect.new()
 	screen.texture = picture.get_texture()
 	screen.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -1619,7 +1672,7 @@ func show_brief(sector: String, words: String) -> void:
 	var wash := func(amount: float): look.set_shader_parameter("wash", amount)
 	brief_tween = create_tween()
 	brief_tween.tween_method(wash, 1.0, 0.0, BRIEF_IN).set_ease(Tween.EASE_OUT)
-	brief_tween.tween_interval(BRIEF_HOLD - BRIEF_IN - BRIEF_OUT)
+	brief_tween.tween_interval(hold - BRIEF_IN - BRIEF_OUT)
 	brief_tween.tween_method(wash, 0.0, 1.0, BRIEF_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	brief_tween.tween_callback(hide_brief)
 

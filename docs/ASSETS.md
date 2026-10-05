@@ -51,7 +51,7 @@ El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque 
 
 El archivo descargado y lo que traía están en `source_assets/elevator/`, fuera de git.
 
-Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada, el dormitorio de esa misma escena, la puerta de madera y el armario.
+Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada (que ahora es también el de todas las teles del hotel), el dormitorio de esa misma escena, la puerta de madera y el armario.
 
 ### Sonido (Freesound)
 
@@ -207,7 +207,7 @@ Cuadros: imágenes de dominio público del Art Institute of Chicago (CC0, open a
 
 Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. El sofá, el aplique y la monstera ya tienen ficha y licencia (arriba); el resto sigue por verificar antes de cualquier distribución.
 
-- `tv/sony-trinitron-prl.zip`: televisor CRT de la escena de entrada (carcasa y pantalla separadas).
+- `tv/sony-trinitron-prl.zip`: televisor CRT de la escena de entrada (carcasa y pantalla separadas); desde octubre de 2026 es también el de las teles del hotel, como en el tráiler, sobre la cómoda `GothicCommode_01` de Poly Haven (CC0).
 - `bedroom/bedroom-furniture-set.zip`: cama con escritorio y silla, escena de entrada.
 - `other/sofa-pbr.zip`: sofá; sustituye al sofá provisional en todo el hotel. Ficha y licencia arriba (Meerschaum Digital, CC BY).
 - `other/wall-lamp-2048px2.zip`: aplique de pared con pantalla de tela; dos junto a cada cuadro en recepción, vestíbulos, pasillos y galerías. Ficha y licencia arriba (Mark Peters, CC BY).

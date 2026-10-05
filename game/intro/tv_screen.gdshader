@@ -4,7 +4,8 @@ render_mode unshaded, cull_back;
 // creature's room); on top of it: tuner static, interlaced scanlines, an
 // aperture grille, a rolling hum bar, sync tears, brightness flicker, blow
 // flashes and glass cracks with refraction and glints.
-// Driven by intro_sequence.gd.
+// Driven by intro_sequence.gd; the hotel's sets (hotel_television.gd) show
+// its dead channel, and are switched on with it (`open`).
 
 // Part of the mesh UVs covered by the visible tube face (min, size).
 uniform vec4 screen_rect = vec4(0.0128, 0.1364, 0.9745, 0.7213);
@@ -22,6 +23,12 @@ uniform float unstable : hint_range(0.0, 1.0) = 0.0;
 // Brightness dips of a failing set, set per frame by the script.
 uniform float flicker : hint_range(0.0, 1.0) = 0.0;
 uniform float brightness = 1.0;
+// Switching on, 0..1: a bright line across the middle opens out into the
+// picture (as the trailer draws it, tools/trailer3d/web/engine/screens.js).
+// 1, the opening scene: the set is on from the start.
+uniform float open : hint_range(0.0, 1.0) = 1.0;
+// A cold cast over everything, the dead channel of a hotel set.
+uniform float tint_blue : hint_range(0.0, 1.0) = 0.0;
 
 float hash(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -77,6 +84,13 @@ void fragment() {
 	colour *= 1.0 - smoothstep(0.16, 0.5, dot(centred * vec2(1.0, 1.25), centred * vec2(1.0, 1.25))) * 0.75;
 	colour *= 1.0 - flicker;
 	colour += flash * vec3(0.9, 0.95, 1.0);
+	float opened = smoothstep(0.0, 1.0, open);
+	float band = abs(tube.y - 0.5) * 2.0;
+	// (Fully open, the whole face: the opening scene's picture is untouched.)
+	float shown = open >= 1.0 ? 1.0 : 1.0 - smoothstep(opened - 0.02, opened + 0.02, band);
+	float line_glow = exp(-pow(band / max(0.004, opened * 0.08 + 0.003), 2.0)) * (1.0 - opened) * step(0.001, open) * 3.0;
+	colour = colour * shown + vec3(0.9, 0.95, 1.0) * line_glow;
+	colour = mix(colour, colour * vec3(0.78, 0.86, 1.08), tint_blue);
 	colour *= brightness * power;
 	// Cracks: dark refracting cores with bright glints on their edges, lit by the tube.
 	float glint = clamp(abs(cx) + abs(cy), 0.0, 1.0);

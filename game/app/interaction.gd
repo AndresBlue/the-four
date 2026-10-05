@@ -104,12 +104,16 @@ func focused_teammate() -> String:
 	if hit.is_empty() or not "player_name" in hit.collider: return ""
 	return hit.collider.player_name.to_upper()
 
-## Doors are reached from further away than wardrobes.
-const DOOR_REACH := 3.2
+## Doors are reached from a little further away than wardrobes. It was 3.2 m,
+## and a door was opened or shut from across a room (playtest, October 2026).
+const DOOR_REACH := 2.4
 
 ## An open door this close can be shut without looking at it, so it can be
-## pulled closed behind you while running away.
-const DOOR_BEHIND_REACH := 3.0
+## pulled closed behind you while running away. It was 3 m.
+const DOOR_BEHIND_REACH := 2.0
+
+## Held this long on a door, it is eased open (or shut) slowly.
+const SLOW_HOLD := 1.0
 
 func focused_door():
 	var from: Vector3 = level.player.camera.global_position
@@ -194,6 +198,7 @@ func drive_local(delta: float) -> void:
 	if is_instance_valid(container_target) and not container_target.searched:
 		if Input.is_action_pressed("interact"):
 			search_time += delta
+			level.ui.hold(search_time / CONTAINER.SEARCH_TIME)
 			if search_time >= CONTAINER.SEARCH_TIME:
 				level.search_container(container_target)
 				search_time = 0.0
@@ -247,7 +252,9 @@ func drive_local(delta: float) -> void:
 		slow_used = false
 	if held and is_instance_valid(pressed_door) and target == pressed_door:
 		press_time += delta
-		if press_time >= 1 and not slow_used:
+		# The ring round the dot: how long is left before it goes slowly.
+		level.ui.hold(1.0 if slow_used else press_time / SLOW_HOLD)
+		if press_time >= SLOW_HOLD and not slow_used:
 			level.match_net.use_door(pressed_door, true, false)
 			slow_used = true
 	elif held:

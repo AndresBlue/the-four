@@ -11,6 +11,33 @@ const SOFA_YAW := 0.0
 
 ## Poly Haven furniture (room_dressing.gd, assets/props/hotel).
 const DRESSING := preload("res://game/world/hotel/room_dressing.gd")
+
+## The television, as the trailer has it (tools/trailer3d/web/engine/sets.js,
+## tvSet): the opening scene's CRT (assets/props/tv) on a gothic commode,
+## 0.82 m along its longest side and standing in the middle of the top.
+## hotel_television.gd lights its screen and throws its light from where this
+## puts it.
+const TV_BODY := preload("res://assets/props/tv/tv_body.res")
+const TV_SCREEN := preload("res://assets/props/tv/tv_screen.res")
+const TV_STAND := "GothicCommode_01"
+## The set's model is 0.62 m deep; the commode's top is this high.
+const TV_SCALE := 0.82 / 0.62
+const TV_TOP := 1.212
+
+## Where the set stands in its socket (front +Z, like every piece).
+static func tv_transform() -> Transform3D:
+	return Transform3D(Basis.from_scale(Vector3.ONE * TV_SCALE), Vector3(0, TV_TOP, 0))
+
+## The set's glass, dark and glossy (the hotel's own "screen" finish) on the
+## tube's curved face: what a set shows switched off. Switched on,
+## hotel_television draws the channel just over it. One per builder.
+static func tv_glass(builder: Node3D) -> Mesh:
+	if builder.has_meta("tv_glass"): return builder.get_meta("tv_glass")
+	var glass: ArrayMesh = TV_SCREEN.duplicate()
+	glass.surface_set_material(0, builder.materials.screen)
+	builder.set_meta("tv_glass", glass)
+	return glass
+
 ## Service rooms (laundry, storeroom, maintenance, cloakroom): metal shelving
 ## and carts instead of the guests' wood.
 const SERVICE := [7, 8, 9, 16]
@@ -126,22 +153,18 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			builder.cylinder(node, Vector3(0, 0.86, 0), 0.018, 1.62, "gold")
 			builder.box(node, Vector3(0, 1.72, 0), Vector3(0.6, 0.42, 0.6), "shade_off" if builder.building_dark else "shade", false, "cone")
 			builder.practical(node, Vector3(0, 1.58, 0), Color("ffb36b"), 0.38, 3.6)
-		# The cabinet of a set no stage is played on, without the set: see
-		# tv_placement.settle().
-		"tv_stand":
-			builder.box(node, Vector3(0, 0.5, 0), Vector3(1.7, 1.0, 0.8), "wood", true)
-			for side in [-1, 1]: builder.box(node, Vector3(side * 0.42, 0.5, 0.41), Vector3(0.78, 0.86, 0.02), "panel")
-		"tv":
-			builder.box(node, Vector3(0, 0.5, 0), Vector3(1.7, 1.0, 0.8), "wood", true)
-			for side in [-1, 1]: builder.box(node, Vector3(side * 0.42, 0.5, 0.41), Vector3(0.78, 0.86, 0.02), "panel")
-			builder.box(node, Vector3(0, 1.43, 0), Vector3(1.15, 0.83, 0.63), "", true)
-			builder.box(node, Vector3(0, 1.43, -0.06), Vector3(1.1, 0.8, 0.5), "black")
-			builder.box(node, Vector3(0, 1.4, -0.38), Vector3(0.7, 0.55, 0.3), "black")
-			builder.box(node, Vector3(0, 1.43, 0.2), Vector3(1.15, 0.83, 0.02), "trim")
-			builder.box(node, Vector3(-0.1, 1.44, 0.215), Vector3(0.78, 0.6, 0.02), "screen")
-			for y in [1.62, 1.46]: builder.cylinder(node, Vector3(0.43, y, 0.22), 0.04, 0.03, "metal", Vector3(PI / 2, 0, 0))
-			for side in [-1, 1]: builder.cylinder(node, Vector3(side * 0.18, 2.1, -0.05), 0.008, 0.6, "metal", Vector3(0, 0, side * -0.5))
-			builder.cylinder(node, Vector3(0, 1.86, -0.05), 0.06, 0.04, "black")
+		# The commode, and on it the set (TV_*); the stand of a set no stage
+		# is played on is the commode alone (tv_placement.settle()).
+		"tv_stand", "tv":
+			put(builder, node, TV_STAND, Vector3.ZERO)
+			var stand: AABB = DRESSING.mesh(TV_STAND).get_aabb()
+			builder.box(node, Vector3(0, stand.size.y * 0.5, 0), stand.size, "", true)
+			if kind == "tv":
+				var set := tv_transform()
+				builder.place(node, TV_BODY, set)
+				builder.place(node, tv_glass(builder), set, false)
+				var body: AABB = TV_BODY.get_aabb()
+				builder.box(node, set * body.get_center(), body.size * TV_SCALE, "", true)
 		"luggage":
 			builder.box(node, Vector3(0, 0.38, 0), Vector3(1.0, 0.76, 0.36), "", true)
 			# Two old suitcases, one leaning on the other.

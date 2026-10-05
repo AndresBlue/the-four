@@ -34,6 +34,31 @@ var attack_range := ATTACK_RANGE
 var windup_time := WINDUP_TIME
 var recover_time := RECOVER_TIME
 var wardrobe_scale := 1.0
+## Its mind (docs/DIFFICULTY.md, section 4): all off for "desafiante".
+var doubt_time := 0.0
+var chase_tire := 0.0
+var lost_cry := false
+var guess_hides := true
+
+## The doubt: the first moment it makes somebody out (DOUBT_FROM) it stops,
+## turns its head to them and chitters, and nothing comes of what it sees
+## (DOUBT_CAP) until the doubt is over -- whoever ducks out of sight by then
+## was not seen. DOUBT_REST before it doubts again.
+const DOUBT_FROM := 0.05
+const DOUBT_CAP := 0.95
+const DOUBT_REST := 6.0
+var doubting := 0.0
+var doubt_rest := 0.0
+## Tiring of a chase: how long this one has lasted, and until when it will not
+## take any notice of anybody.
+const TIRED_FOR := 10.0
+var chase_time := 0.0
+var tired_until := -INF
+## It has been after somebody since it last gave up: giving up now is losing
+## them, and it says so (lost_cry).
+var had_quarry := false
+const LOST_PITCH := 0.66
+const CHITTERS := ["res://assets/audio/dread/chitter_0.wav", "res://assets/audio/dread/chitter_1.wav", "res://assets/audio/dread/chitter_2.wav"]
 
 ## A profile of the difficulties (the creature's part of it).
 func tune(profile: Dictionary) -> void:
@@ -54,6 +79,10 @@ func tune(profile: Dictionary) -> void:
 	windup_time = float(profile.windup)
 	recover_time = float(profile.recover)
 	wardrobe_scale = float(profile.wardrobe)
+	doubt_time = float(profile.doubt)
+	chase_tire = float(profile.chase_tire)
+	lost_cry = bool(profile.lost_cry)
+	guess_hides = bool(profile.guess_hides)
 
 ## The beats of searching a wardrobe, at this creature's pace.
 func wardrobe_steps() -> Dictionary:
@@ -748,6 +777,8 @@ func relocate(point: Vector3, rest: float) -> void:
 	set_mode(Mode.PATROL)
 	destination = point
 	grace = maxf(grace, rest)
+	had_quarry = false
+	doubting = 0.0
 
 ## Nothing of the way it was walking survives being put somewhere else (a
 ## stage given back, a set it stepped out of): the route, a doorway it was
@@ -799,6 +830,8 @@ func set_mode(next: Mode) -> void:
 	# Back on its rounds it has forgotten the wardrobe it was looking at: kept,
 	# whoever hid there later was "seen" through the walls from across the floor.
 	if next == Mode.PATROL: observed_hide = null
+	if next in [Mode.ALERT, Mode.CHASE]: had_quarry = true
+	if next == Mode.CHASE and previous not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER]: chase_time = 0.0
 	if next == Mode.CHASE and previous != Mode.CHASE:
 		# It sets off from a stride and builds up to full speed.
 		speed = maxf(speed, chase_start)
@@ -962,6 +995,9 @@ func wardrobe_in(room: Dictionary) -> Node3D:
 ## GIVE_UP). Whatever it thought it had seen is forgotten with it.
 signal area_abandoned(origin: Vector3, next: Vector3)
 func give_up_area() -> void:
+	# It had somebody, and has lost them: a low growl says so.
+	if had_quarry and lost_cry: frustrated()
+	had_quarry = false
 	var origin: Vector3 = search_origin if search_origin != Vector3.INF else global_position
 	var planta := FLOOR.planta_of(origin.y)
 	for room in level.manifest.rooms:
@@ -981,6 +1017,47 @@ func give_up_area() -> void:
 	area_spent = 0.0
 	area_abandoned.emit(origin, destination)
 
+## The first moment it makes somebody out: it stands, looks and chitters.
+func start_doubt() -> void:
+	doubting = doubt_time
+	doubt_rest = clock + DOUBT_REST
+	pause_time = maxf(pause_time, doubt_time)
+	var which := rng.randi_range(0, CHITTERS.size() - 1)
+	var pitch := rng.randf_range(0.9, 1.1)
+	if "match_net" in level and level.match_net != null: level.match_net.creature_call("doubt", which, pitch)
+	play_doubt(which, pitch)
+
+func play_doubt(which: int, pitch: float) -> void:
+	if level == null or not level.world_audio.enabled or which < 0 or which >= CHITTERS.size(): return
+	level.world_audio.play_at(CHITTERS[which], global_position + Vector3.UP * 2.2, -4.0, get_rid())
+
+## Tired of running after somebody it can still see: it lets go, takes no
+## notice of anybody for TIRED_FOR, and goes off somewhere else.
+func tire() -> void:
+	tired_until = clock + TIRED_FOR
+	detection = 0.0
+	focus = null
+	give_up_area()
+
+## The growl of having lost somebody: the shortest of its grunts, low.
+func frustrated() -> void:
+	var shortest := 0
+	for index in GRUNTS.SEGMENTS.size():
+		if float(GRUNTS.SEGMENTS[index][1]) < float(GRUNTS.SEGMENTS[shortest][1]): shortest = index
+	calls_made += 1
+	if "match_net" in level and level.match_net != null: level.match_net.creature_call("lost", shortest, LOST_PITCH)
+	play_lost(shortest, LOST_PITCH)
+
+func play_lost(segment: int, pitch: float) -> void:
+	if level == null or not level.world_audio.enabled or segment < 0 or segment >= GRUNTS.SEGMENTS.size(): return
+	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
+	if not route.audible: return
+	level.world_audio.apply_route(voice, route, shape_voice(false), "Threat", true)
+	voice.pitch_scale = pitch
+	var take: Array = GRUNTS.SEGMENTS[segment]
+	voice.play(float(take[0]))
+	grunt_left = float(take[1]) / pitch
+
 func can_attack(reach := -1.0) -> bool:
 	if reach < 0.0: reach = attack_range
 	var player := target()
@@ -996,6 +1073,7 @@ func suspect_hide(point: Vector3) -> Node3D:
 
 ## Ground speed each behaviour aims for; patrol drifts between slow and brisk.
 func desired_speed() -> float:
+	if doubting > 0.0: return 0.0
 	match mode:
 		Mode.PATROL:
 			if pause_time > 0: return 0.0
@@ -1124,6 +1202,12 @@ func play_call(kind: String, segment: int, pitch: float) -> void:
 	if kind == "cry":
 		play_cry(segment, pitch)
 		return
+	if kind == "doubt":
+		play_doubt(segment, pitch)
+		return
+	if kind == "lost":
+		play_lost(segment, pitch)
+		return
 	if kind != "grunt" or segment < 0 or segment >= GRUNTS.SEGMENTS.size() or not level.world_audio.enabled: return
 	var route: Dictionary = level.world_audio.route_source(global_position + Vector3.UP * 2.2, get_rid())
 	if not route.audible: return
@@ -1166,7 +1250,10 @@ func _physics_process(delta: float) -> void:
 		if going.length() > 0.3: last_heading = going.normalized()
 		clue()
 		focus = seen
+		var before := detection
 		detection = minf(1.5, detection + delta * notice_rate(seen))
+		if doubt_time > 0.0 and before < DOUBT_FROM and detection >= DOUBT_FROM and mode in [Mode.PATROL, Mode.SEARCH, Mode.INVESTIGATE] and clock >= doubt_rest: start_doubt()
+		if doubting > 0.0: detection = minf(detection, DOUBT_CAP)
 		last_known = seen.global_position
 		lost_time = 0
 		# Finding them again after losing them is worth its own call.
@@ -1176,6 +1263,14 @@ func _physics_process(delta: float) -> void:
 		detection = maxf(0.0, detection - delta * NOTICE_DECAY)
 		lost_time += delta
 		sight_gap += delta
+	# Tired of a chase: for a while it takes no notice of anybody.
+	if clock < tired_until: detection = minf(detection, SUSPICION * 0.9)
+	doubting = maxf(0.0, doubting - delta)
+	if mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER]:
+		chase_time += delta
+		if chase_tire > 0.0 and chase_time >= chase_tire and mode == Mode.CHASE:
+			tire()
+			return
 	# Only a player it can currently see starts a chase; memory alone does not.
 	# Busy modes are left out on purpose: holding a victim or pulling a
 	# wardrobe open, it used to re-alert on the very next frame -- it can see
@@ -1214,7 +1309,7 @@ func _physics_process(delta: float) -> void:
 		Mode.INVESTIGATE:
 			if position.distance_to(destination) < 0.7 or state_time > 12:
 				# Someone hiding right where the noise came from is found.
-				var suspect := suspect_hide(destination)
+				var suspect := suspect_hide(destination) if guess_hides else null
 				if suspect != null:
 					observed_hide = suspect
 					last_known = suspect.global_position
@@ -1228,7 +1323,7 @@ func _physics_process(delta: float) -> void:
 			var player := focus
 			# Reaching where it last saw or heard the player, it checks the wardrobes there.
 			if lost_time > 0.5 and observed_hide == null and global_position.distance_to(last_known) < 2.5:
-				observed_hide = suspect_hide(last_known)
+				observed_hide = suspect_hide(last_known) if guess_hides else null
 			if is_instance_valid(player) and player.hidden and observed_hide == player.hiding_place:
 				# Goes to the wardrobe and pulls the doors open.
 				destination = observed_hide.to_global(observed_hide.exit_offset)
@@ -1321,7 +1416,7 @@ func update_visual(delta: float) -> void:
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 	var player := focus
 	# During an execution it stares at the face it is bringing in to its own.
-	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE] or detection > 0.2 or light_exposure > 0.2) and is_instance_valid(player):
+	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE] or detection > 0.2 or light_exposure > 0.2 or doubting > 0.0) and is_instance_valid(player):
 		visual.look_point = player.camera.global_position if lost_time < 0.5 else last_known + Vector3.UP * 1.5
 	elif mode in [Mode.SEARCH, Mode.PATROL] and pause_time > 0:
 		# Scans the room while standing still.

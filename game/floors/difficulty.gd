@@ -36,8 +36,8 @@ const NOTES := {
 ## Only what the numbers below already do: the behaviours of each still to
 ## come (docs/DIFFICULTY.md) are not promised here.
 const TRAITS := {
-	"apacible": ["Tarda en fijarse en ti y en reaccionar.", "Corre menos que tú: correr te salva.", "Te pierde enseguida y se rinde pronto.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
-	"equilibrada": ["Tarda un poco en reaccionar.", "Corre casi como tú: para escapar hay que romperle la vista.", "Si caes, la etapa vuelve a empezar, hasta dos veces."],
+	"apacible": ["Cuando te distingue, se para a mirarte antes de reaccionar.", "Corre menos que tú y se cansa enseguida de perseguir.", "Cuando te pierde, lo dice con un gruñido.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
+	"equilibrada": ["Duda un momento antes de reaccionar.", "Corre casi como tú: para escapar hay que romperle la vista.", "Se cansa de una persecución larga, y gruñe al perderte.", "Si caes, la etapa vuelve a empezar, hasta dos veces."],
 	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida; a solas, ninguna."],
 	"pesadilla": ["Ve y oye más lejos que ninguna.", "Reacciona al instante, insiste y registra más armarios.", "No se perdona ninguna etapa perdida."],
 }
@@ -56,6 +56,14 @@ const TRAITS := {
 ##  director  lead_every ([s, s]), prowl_min (m), peak_max and peak_tense (s),
 ##            rest_chase and rest_death (s), death_ease (m), double_back
 ##            (share), distract_rest (s), burnt_every ([s, s])
+##  behaviour doubt (s it stands and stares the first moment it makes you out;
+##            0: none), chase_tire (s of chasing after which it tires and
+##            lets go even seeing you; 0: never), lost_cry (a low growl when
+##            it gives up on somebody it was after), guess_hides (opens a
+##            wardrobe it did not see anybody get into); and the director's
+##            encounter_every (s without a sign of it after which it brings it
+##            across somebody's view; 0: never) and cross (how much it likes
+##            doing that anyway; 0: not a move it makes)
 ##  mercy     restarts: stages a team's floor gives back (-1: as many as it
 ##            takes; the room's rule "restarts" goes over it); solo_restarts:
 ##            the same, played alone. Desafiante gives none alone, as before.
@@ -69,6 +77,7 @@ const PROFILES := {
 		"lead_every": [20.0, 30.0], "prowl_min": 14.0, "peak_max": 15.0, "peak_tense": 10.0,
 		"rest_chase": 20.0, "rest_death": 40.0, "death_ease": 10.0, "double_back": 0.0,
 		"distract_rest": 30.0, "burnt_every": [60.0, 90.0],
+		"doubt": 1.2, "chase_tire": 12.0, "lost_cry": true, "guess_hides": false, "encounter_every": 90.0, "cross": 4.0,
 		"restarts": -1, "solo_restarts": -1,
 	},
 	"equilibrada": {
@@ -80,6 +89,7 @@ const PROFILES := {
 		"lead_every": [25.0, 35.0], "prowl_min": 16.0, "peak_max": 20.0, "peak_tense": 12.0,
 		"rest_chase": 30.0, "rest_death": 50.0, "death_ease": 9.0, "double_back": 0.2,
 		"distract_rest": 45.0, "burnt_every": [45.0, 60.0],
+		"doubt": 0.6, "chase_tire": 25.0, "lost_cry": true, "guess_hides": true, "encounter_every": 120.0, "cross": 1.5,
 		"restarts": 2, "solo_restarts": 2,
 	},
 	"desafiante": {
@@ -91,6 +101,7 @@ const PROFILES := {
 		"lead_every": [25.0, 40.0], "prowl_min": 18.0, "peak_max": 25.0, "peak_tense": 15.0,
 		"rest_chase": 30.0, "rest_death": 45.0, "death_ease": 8.0, "double_back": 0.4,
 		"distract_rest": 45.0, "burnt_every": [30.0, 45.0],
+		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 0.0, "cross": 0.0,
 		"restarts": 1, "solo_restarts": 0,
 	},
 	"pesadilla": {
@@ -102,6 +113,7 @@ const PROFILES := {
 		"lead_every": [18.0, 30.0], "prowl_min": 14.0, "peak_max": 35.0, "peak_tense": 22.0,
 		"rest_chase": 20.0, "rest_death": 30.0, "death_ease": 4.0, "double_back": 0.7,
 		"distract_rest": 90.0, "burnt_every": [20.0, 30.0],
+		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 90.0, "cross": 0.5,
 		"restarts": 0, "solo_restarts": 0,
 	},
 }

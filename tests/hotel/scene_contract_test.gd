@@ -34,6 +34,14 @@ func run() -> void:
 	check("The tape records the OSD and the interface alike", scene.get_node("Presentation/Camcorder").layer < scene.ui.layer and scene.ui.layer < scene.get_node("Presentation/Analog").layer)
 	# And what is outside the game -- menus, the boot -- is above it, unfilmed.
 	check("Menus sit above the tape, the floor's own screens under it", scene.ui.outside.layer > scene.get_node("Presentation/Analog").layer and scene.ui.overlay.get_parent() == scene.ui.outside and scene.ui.sheet.get_parent() == scene.ui)
+	# The ring of a held key sits round the aiming dot, and the skip one just
+	# before its words: placed before it was in the tree, it once grew off
+	# to one side.
+	var ring: Control = scene.ui.hold_ring
+	var hud: Control = ring.get_parent()
+	check("The held key's ring is centred on the aiming dot", (ring.get_global_rect().get_center() - hud.get_global_rect().get_center()).length() < 1.0 and ring.size.x > 30.0)
+	var skip: Control = scene.ui.skip_ring
+	check("The skip ring sits just before its words, level with them", skip.get_global_rect().end.x <= scene.ui.skip_label.get_global_rect().position.x and absf(skip.get_global_rect().get_center().y - 36.0) < 1.0)
 	# A modifier key's release can be lost by the system; the next event that
 	# says the key is up lets the action go, and one that says it is down
 	# does not.

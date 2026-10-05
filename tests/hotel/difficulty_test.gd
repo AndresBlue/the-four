@@ -12,6 +12,7 @@ const DIRECTOR := preload("res://game/director/pacing_director.gd")
 const LIFTS := preload("res://game/app/lifts.gd")
 const TVS := preload("res://game/app/televisions.gd")
 const SESSION := preload("res://game/services/game_session.gd")
+const FLOOR_DEF := preload("res://game/world/generation/floor_definition.gd")
 var level
 var checks: Array = []
 var failed := 0
@@ -160,6 +161,55 @@ func run() -> void:
 	threat.refresh()
 	check("Y uno experto la sabe siempre", threat.active)
 	it.set_physics_process(false)
+	# Its mind (phase 4): the doubt, tiring of a chase, the growl of losing
+	# somebody, wardrobes, and the encounters the director brings about. All
+	# of it off on Desafiante.
+	var reference: Dictionary = DIFFICULTY.PROFILES.desafiante
+	check("En Desafiante no hay duda, ni cansancio, ni gruñido, ni encuentros forzados", float(reference.doubt) == 0.0 and float(reference.chase_tire) == 0.0 and not bool(reference.lost_cry) and bool(reference.guess_hides) and float(reference.encounter_every) == 0.0 and float(reference.cross) == 0.0)
+	await level.start_floor(81, false, [1], "apacible")
+	var slow = level.locust
+	slow.grace = 0.0
+	var me: Vector3 = level.player.global_position
+	var look: Vector3 = -level.player.camera.global_basis.z
+	look.y = 0.0
+	slow.global_position = me + look.normalized() * 8.0
+	var towards: Vector3 = me - slow.global_position
+	slow.rotation.y = atan2(-towards.x, -towards.z)
+	slow.set_mode(slow.Mode.PATROL)
+	slow.detection = 0.0
+	await frames(8)
+	var doubting: bool = slow.doubting > 0.0 and slow.velocity.length() < 0.3
+	await frames(40)
+	var still_doubting: bool = slow.mode not in [slow.Mode.ALERT, slow.Mode.CHASE]
+	await frames(150)
+	check("En Apacible, al distinguirte se para a mirarte, y no pasa a perseguir hasta acabar de dudar", doubting and still_doubting and slow.mode in [slow.Mode.ALERT, slow.Mode.CHASE, slow.Mode.WINDUP, slow.Mode.RECOVER])
+	slow.set_physics_process(false)
+	slow.global_position = me + look.normalized() * 9.0
+	slow.focus = level.player
+	slow.set_mode(slow.Mode.CHASE)
+	slow.chase_time = slow.chase_tire + 0.5
+	var calls: int = slow.calls_made
+	slow.set_physics_process(true)
+	await frames(3)
+	var tired: bool = slow.mode == slow.Mode.PATROL and slow.leaving and slow.tired_until > slow.clock
+	await frames(30)
+	check("Se cansa de perseguir aunque te vea, gruñe que te perdió y un rato no se fija en nadie", tired and slow.calls_made > calls and slow.detection < slow.SUSPICION)
+	check("Y solo abre el armario en el que te vio entrar", not slow.guess_hides)
+	# A fresh floor: the one above has just had a chase given up next to the
+	# player, and everything round it is marked as searched.
+	await level.start_floor(81, false, [1], "apacible")
+	slow = level.locust
+	slow.set_physics_process(false)
+	slow.grace = 0.0
+	level.ledger.since_sign[1] = 200.0
+	level.director.next_cross = 0.0
+	# Somewhere far off in the wing, where it would be out of everybody's way.
+	slow.global_position = level.revival.den_away(level.player.global_position, 40.0)
+	var due: bool = level.director.encounter_due()
+	check("Si alguien lleva mucho sin verla, el director la trae a su vista", due and String(level.director.current.get("kind", "")) in ["cruce", "pasa"], str(level.director.current))
+	await level.start_floor(81, false, [1], "desafiante")
+	level.ledger.since_sign[1] = 1000.0
+	check("En Desafiante no fuerza encuentros", not level.director.encounter_due())
 	# The room's mercy goes over the difficulty's; left alone, the difficulty's.
 	level.set_rules({"restarts": 3})
 	check("La clemencia de la sala manda sobre la de la dificultad", level.session.restarts_allowed == 3)

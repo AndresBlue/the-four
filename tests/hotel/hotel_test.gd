@@ -290,19 +290,27 @@ func run() -> void:
 	scene.player.position = Vector3(0, 0.04, 0)
 	for frame in 45: await physics_frame
 	check("Puerta cerrada recupera colisión", not door.opened and door.collision_layer == 8)
-	scene.player.position = door.doorway + across * 2.8 + Vector3(0, 0.04, 0)
+	# Doors are reached from 2.4 m (interaction.DOOR_REACH): from across a
+	# room, as at the old 3.2 m, they are not.
+	scene.player.position = door.doorway + across * 2.1 + Vector3(0, 0.04, 0)
 	scene.player.rotation.y = door.closed_rotation
 	scene.player.camera.rotation = Vector3.ZERO
 	await physics_frame
-	check("Interacción enfoca puerta a casi 3 m", scene.focused_door() == door)
+	check("Interacción enfoca puerta a algo más de 2 m", scene.focused_door() == door)
+	scene.player.position = door.doorway + across * 2.9 + Vector3(0, 0.04, 0)
+	await physics_frame
+	check("Interacción ya no alcanza una puerta a casi 3 m", scene.focused_door() != door)
 	scene.player.position = door.doorway + across * 4.2 + Vector3(0, 0.04, 0)
 	await physics_frame
 	check("Interacción no alcanza puerta distante", scene.focused_door() != door)
 	door.open_immediately()
-	scene.player.position = door.doorway + across * 2.0 + Vector3(0, 0.04, 0)
+	scene.player.position = door.doorway + across * 1.6 + Vector3(0, 0.04, 0)
 	scene.player.rotation.y = door.closed_rotation + PI
 	await physics_frame
 	check("Puerta abierta a la espalda se puede cerrar", scene.focused_door() != door and scene.door_behind() == door)
+	scene.player.position = door.doorway + across * 2.6 + Vector3(0, 0.04, 0)
+	await physics_frame
+	check("Pero no desde más lejos que DOOR_BEHIND_REACH", scene.door_behind() != door)
 	door.toggle(false, false)
 	for frame in 45: await physics_frame
 	scene.player.position = Vector3(0, 0.04, 0)

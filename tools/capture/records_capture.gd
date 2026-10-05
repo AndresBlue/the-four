@@ -1,8 +1,9 @@
 extends SceneTree
 ## The screens the marks are read on, photographed with made up lines so the
 ## pictures always show something: the report of a tape that has just got out,
-## tab by tab, the report of one that did not, the main menu, and the marks
-## with their boards, the career, the milestones and the cards side by side.
+## tab by tab, the report of one that did not (and its team), the main menu,
+## and the marks with their boards, the career, the milestones and the cards
+## side by side.
 ##
 ##   godot --path . --script tools/capture/records_capture.gd -- --test-profile
 ## Writes evidence/records_<screen>.png.
@@ -102,7 +103,11 @@ func run() -> void:
 	level.ui.outcome = {"places": {}, "milestones": [], "previous": {}}
 	level.ui.menu("failed")
 	await shot("report_perdida", 150)
-	level.ui.turn_tab(2)
+	# Its team, with the cursor on the second entry of the row: against its
+	# own word, not the one before.
+	level.ui.turn_tab(1)
+	level.ui.buttons["records"].grab_focus()
+	await shot("report_perdida_equipo", 20)
 	level.ui.turn_tab(1)
 	await shot("report_perdida_sectores", 20)
 	# The marks.

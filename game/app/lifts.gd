@@ -38,8 +38,20 @@ var brief_wait := 0.0
 func announce_sector(delta := 0.0) -> void:
 	brief_wait = maxf(0.0, brief_wait - delta)
 	if pending_brief <= 0 or brief_wait > 0.0 or not boarding.is_empty(): return
-	if not level.match_net.local_is_locust(): level.ui.show_brief("SECTOR %d" % pending_brief, stage_brief(pending_brief))
+	if not level.match_net.local_is_locust():
+		# The very first floor played on this machine says what is going on
+		# before what to do: somebody new has no other way of knowing.
+		if pending_brief == 1 and not bool(level.settings.values.get("first_game_done", false)) and not level.observer and not level.bot_match:
+			level.ui.show_brief("SECTOR 1", FIRST_BRIEF, FIRST_LEAD, FIRST_HOLD)
+			level.settings.values.first_game_done = true
+			level.settings.save_settings()
+		else: level.ui.show_brief("SECTOR %d" % pending_brief, stage_brief(pending_brief))
 	pending_brief = 0
+
+## What the first floor anybody plays opens with, and how long it stays.
+const FIRST_LEAD := "The Locust va a por ti…"
+const FIRST_BRIEF := "Busca refugio, escóndete y encuentra la salida."
+const FIRST_HOLD := 11.0
 
 ## A stage has closed: the creature is put on the trail of the lift the
 ## survivors took, instead of hunting a wing nobody will come back to. It is

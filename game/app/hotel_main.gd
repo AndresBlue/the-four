@@ -1342,6 +1342,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if is_instance_valid(session) and session.state == session.State.CUTSCENE:
 		skip_time = skip_time + delta if Input.is_action_pressed("interact") else 0.0
+		# Touched once: the words that say it has to be held, again, and the
+		# ring beside them filling while it is.
+		if Input.is_action_just_pressed("interact"): ui.show_skip(settings.prompt_name("interact"))
+		if skip_time > 0.0: ui.hold_skip(skip_time / SKIP_HOLD)
 		if skip_time >= SKIP_HOLD: finish_intro()
 		return
 	# The ride is counted before the rest: closing a stage puts the session

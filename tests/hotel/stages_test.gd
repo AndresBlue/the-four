@@ -4,6 +4,7 @@ extends SceneTree
 ## the refuge, the way a player does, and checks what the session does with it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const TV := preload("res://game/world/generation/tv_placement.gd")
+const PROPS := preload("res://game/world/hotel/prop_factory.gd")
 const DIG := preload("res://game/world/generation/digit_placement.gd")
 var level
 var checks: Array = []
@@ -306,6 +307,14 @@ func run() -> void:
 	check("Ninguna lámpara del hotel queda encendida", level.hotel.lights.all(func(light): return not light.visible) and level.hotel.practicals.all(func(lamp): return not lamp.visible) and level.hotel.sconce_lights.all(func(lamp): return not lamp.visible))
 	check("Las teles encendidas siguen dando luz", level.televisions[0].lamp.visible)
 	check("Una tele encendida da luz y no se apaga", level.televisions[0].on and level.televisions[0].lamp.visible and not level.televisions[0].set_on(true))
+	# The set is the trailer's CRT on its commode: the channel lies on the
+	# tube's own glass, and the screen the rest of the game reads (its sound,
+	# the hunter's view, the observer) is where that glass is.
+	var set: Node3D = level.televisions[0]
+	var face: AABB = PROPS.tv_transform() * PROPS.TV_SCREEN.get_aabb()
+	var glass := Vector3(face.get_center().x, face.get_center().y, face.end.z)
+	check("La pantalla de la tele está en el cristal del aparato", set.SCREEN.distance_to(glass) < 0.01 and absf(set.SCREEN_SIZE.x - face.size.x) < 0.01 and absf(set.SCREEN_SIZE.y - face.size.y) < 0.01)
+	check("Encendida, la nieve cubre el cristal y la luz sale hacia delante, con sombras", set.screen.visible and set.screen.mesh == PROPS.TV_SCREEN and set.opening >= 1.0 and set.lamp.shadow_enabled and set.fill.visible and set.fill.shadow_enabled and (-set.lamp.global_basis.z).normalized().dot(set.global_basis.z.normalized()) > 0.8)
 	# Travelling by television: a lit set is a way in and a way out.
 	var lit: Array = level.lit_televisions()
 	check("Las teles encendidas son las que aparecen en su mapa", lit.size() == needed)

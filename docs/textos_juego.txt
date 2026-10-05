@@ -31,9 +31,10 @@ CORRECCIÓN:
 ACTUAL: ▶ PLAY
 CORRECCIÓN:
 
-[ESC.01] Escena de entrada (nueva partida), esquina superior derecha, pequeño,
-durante los primeros 6 s (%s = tecla de interactuar, o su botón con mando)
-ACTUAL: %s  para saltar cinemática
+[ESC.01] Escena de entrada (nueva partida), esquina superior derecha, durante los primeros
+6 s y otra vez cada vez que se toca la tecla; a su izquierda, un disco que se llena mientras se
+mantiene (%s = tecla de interactuar, o su botón con mando)
+ACTUAL: Mantén %s para saltar la cinemática
 CORRECCIÓN:
 
 
@@ -65,10 +66,10 @@ ACTUAL: MULTIJUGADOR
 CORRECCIÓN:
 
 [MENU.12] Opción (las marcas: sección 8)
-ACTUAL: MARCAS
+ACTUAL: RECORDS
 CORRECCIÓN:
 
-[ARCH.01] Opción (entre Marcas y Ajustes)
+[ARCH.01] Opción (entre Records y Ajustes)
 ACTUAL: ARCHIVO
 CORRECCIÓN:
 
@@ -106,10 +107,12 @@ ACTUAL: Lenta de mente. La verás a menudo, pero tarda en reaccionar, corre meno
 CORRECCIÓN:
 
 [DIF.04] Recuadro de la derecha: sus rasgos, uno por línea
-ACTUAL: (Apacible) Tarda en fijarse en ti y en reaccionar. · Corre menos que tú: correr te salva. ·
-| Te pierde enseguida y se rinde pronto. · Si caes, la etapa vuelve a empezar, todas las veces que haga falta.
-| (Equilibrada) Tarda un poco en reaccionar. · Corre casi como tú: para escapar hay que romperle la vista. ·
-| Si caes, la etapa vuelve a empezar, hasta dos veces.
+ACTUAL: (Apacible) Cuando te distingue, se para a mirarte antes de reaccionar. · Corre menos que tú y se cansa
+| enseguida de perseguir. · Cuando te pierde, lo dice con un gruñido. · Si caes, la etapa vuelve a empezar,
+| todas las veces que haga falta.
+| (Equilibrada) Duda un momento antes de reaccionar. · Corre casi como tú: para escapar hay que romperle la
+| vista. · Se cansa de una persecución larga, y gruñe al perderte. · Si caes, la etapa vuelve a empezar, hasta
+| dos veces.
 | (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa
 | perdida; a solas, ninguna.
 | (Pesadilla) Ve y oye más lejos que ninguna. · Reacciona al instante, insiste y registra más armarios. ·
@@ -178,11 +181,11 @@ ACTUAL: Saltar
 CORRECCIÓN:
 
 [CTRL.07] Tecla de interactuar
-ACTUAL: Puertas y escondites
+ACTUAL: Puertas, escondites, teles y documentos
 CORRECCIÓN:
 
 [CTRL.08] Tecla de interactuar + " MANTENER"
-ACTUAL: Abrir despacio · Salir del refugio
+ACTUAL: Registrar un mueble · Abrir una puerta despacio
 CORRECCIÓN:
 
 [CTRL.09] Tecla de linterna
@@ -191,6 +194,14 @@ CORRECCIÓN:
 
 [CTRL.12] Tecla de la hoja
 ACTUAL: Hoja (dibujar y borrar con el ratón)
+CORRECCIÓN:
+
+[CTRL.17] Rueda del ratón (con mando: CRUCETA ↑ ↓)
+ACTUAL: RUEDA DEL RATÓN · Zoom de la cámara
+CORRECCIÓN:
+
+[CTRL.18] Clic (solo teclado y ratón)
+ACTUAL: CLIC · Muerto en equipo: cambiar a quién miras
 CORRECCIÓN:
 
 [CTRL.10] ESC (con mando: el botón de inicio)
@@ -262,6 +273,7 @@ CORRECCIÓN:
 el piso, con quién se jugó, cuántos eran si eran más de uno y la fecha)
 ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·
 | APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA (no contra el cazador)  ·  fecha
+| (En la señal perdida, solo: CINTA Nº %d)
 CORRECCIÓN:
 
 [FIN.15] Pestañas del parte (HITOS solo en el piso que se acaba de jugar)
@@ -342,7 +354,7 @@ CORRECCIÓN:
 ACTUAL: SALIÓ / SE QUEDÓ
 CORRECCIÓN:
 
-[FIN.14] Nombre del jugador: el que puso al unirse o en MARCAS ▸ FICHA; en solitario sin
+[FIN.14] Nombre del jugador: el que puso al unirse o en RECORDS ▸ FICHA; en solitario sin
 nombre, el de su personaje; si no hay ninguno, "Superviviente" y su número
 ACTUAL: Detective / Detective / Exploradora / Superviviente %d
 CORRECCIÓN:
@@ -353,22 +365,9 @@ se llaman "Detective Masculino" y "Detective Femenino" (PJ.04, PJ.05).
 ACTUAL: THE LOCUST · %d captura / capturas
 CORRECCIÓN:
 
-[FIN.25] En solitario: de dónde salen los puntos, línea a línea
-ACTUAL: DE DÓNDE SALEN SUS PUNTOS
-| Televisores encendidos / Números del código / Código marcado / Sectores cerrados en pie /
-| Huidas de la criatura / Muebles registrados / Salas pisadas / Salió del piso /
-| Sin caer ni una vez / Caídas
-CORRECCIÓN:
-
 [FIN.26] Lo que se gana por la cinta entera
 ACTUAL: LO QUE GANÓ EL EQUIPO JUNTO / Y POR LA CINTA ENTERA
 | Tiempo bajo la marca / Sin bajas / Sin esconderse / Equipo entero / Derrumbe
-CORRECCIÓN:
-
-[FIN.27] Lo que no da puntos pero se cuenta (entre paréntesis, de quién, si son varios)
-ACTUAL: DESTACADO
-| %d m andados, %d corriendo · %s en armarios · %s con la criatura detrás ·
-| la criatura a %s m · %s sin saber nada de ella · cordura hasta %d
 CORRECCIÓN:
 
 -- Pestaña SECTORES --
@@ -414,7 +413,7 @@ CORRECCIÓN:
 ACTUAL: HITOS NUEVOS / Esta cinta no trae ningún hito nuevo.
 | PISO 1 · EL HOTEL:  %d DE %d HITOS
 | QUEDAN POR HACER
-| TODOS, EN MARCAS ▸ HITOS.
+| TODOS, EN RECORDS ▸ HITOS.
 CORRECCIÓN:
 
 -- Opciones --
@@ -424,7 +423,7 @@ ACTUAL: NUEVA PARTIDA
 CORRECCIÓN:
 
 [FIN.13] Opción
-ACTUAL: MARCAS
+ACTUAL: RECORDS
 CORRECCIÓN:
 
 [FIN.06] Opción
@@ -449,7 +448,7 @@ ACTUAL: SECTOR ALCANZADO
 CORRECCIÓN:
 
 [MUERTE.08] Párrafo de la pestaña RESUMEN
-ACTUAL: La cinta se quedó en el hotel. No entra en ningún tablón, pero lo que hizo cada uno queda en su ficha.
+ACTUAL: Cinta perdida.
 CORRECCIÓN:
 
 [MUERTE.04] Centro de la pantalla, sobre la estática, solo en cooperativo
@@ -462,7 +461,7 @@ ACTUAL: REINTENTAR
 CORRECCIÓN:
 
 [MUERTE.09] Opción
-ACTUAL: MARCAS
+ACTUAL: RECORDS
 CORRECCIÓN:
 
 [MUERTE.06] Opción
@@ -474,7 +473,7 @@ ACTUAL: No quedan suficientes supervivientes.
 CORRECCIÓN:
 
 
-8. MARCAS (desde el menú principal o al terminar un piso)
+8. RECORDS (desde el menú principal o al terminar un piso)
 ---------------------------------------------------------
 
 [REC.01] Esquina superior izquierda
@@ -482,7 +481,7 @@ ACTUAL: ▶ PLAY
 CORRECCIÓN:
 
 [REC.02] Título
-ACTUAL: MARCAS
+ACTUAL: RECORDS
 CORRECCIÓN:
 
 [REC.03] Pestañas
@@ -524,7 +523,7 @@ ACTUAL: ELIGE UNA CINTA PARA LEER SU PARTE ENTERO.
 CORRECCIÓN:
 
 [REC.13] Una cinta elegida: título y opción (debajo, su parte como en la sección 6)
-ACTUAL: PARTE DE LA CINTA · VOLVER A LAS MARCAS
+ACTUAL: PARTE DE LA CINTA · VOLVER A LOS RECORDS
 CORRECCIÓN:
 
 -- Pestaña FICHA --
@@ -931,8 +930,8 @@ título) dicen lo mismo en la misma pantalla.
 
 [MP.14] Final en línea (títulos según el bando; el resto como FIN y MUERTE)
 ACTUAL: SALISTE DEL PISO / SEÑAL PERDIDA / SE TE ESCAPARON / CAZA COMPLETA ·
-| REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · MARCAS · CERRAR LA SALA ·
-| El anfitrión decide cómo seguir… · MARCAS · SALIR DE LA SALA
+| REINTENTAR PISO · NUEVA PARTIDA · VOLVER A LA SALA · RECORDS · CERRAR LA SALA ·
+| El anfitrión decide cómo seguir… · RECORDS · SALIR DE LA SALA
 CORRECCIÓN:
 
 -- Personaje --
@@ -1252,6 +1251,8 @@ la pausa bajo el título
 ACTUAL: OBJETIVO · SECTOR 1 · Encuentra la salida del sector. /
 | OBJETIVO · SECTOR 2 · Enciende los televisores y busca la salida. /
 | OBJETIVO · SECTOR 3 · Busca las notas con el código, enciende televisores y sal del piso.
+| (Solo el primer piso que se juega en el equipo, en lugar del de SECTOR 1:)
+| OBJETIVO · SECTOR 1 · The Locust va a por ti… · Busca refugio, escóndete y encuentra la salida.
 CORRECCIÓN:
 
 [HUD.08] Progreso del sector, en la pausa bajo el objetivo (televisores desde el

@@ -20,13 +20,15 @@ extends RefCounted
 ## Rooms are visited a few per kind (a bedroom is much like the next bedroom,
 ## but a laundry is not), the torch is turned on for the dark ones, and the
 ## creature, if it is already on the floor, is shown its frame too: meeting it
-## is the worst possible moment for a stall.
+## is the worst possible moment for a stall. So is switching a set on: a lit
+## television is shown its two frames as well.
 ##
 ## Cost, measured at Ultra on seed 81 (docs/PERFORMANCE.md, section 9): some
 ## 4 s more of loading, with a cold shader cache or a warm one alike -- most of
 ## it is walking the rooms, not compiling -- and never more than 0.15 s
 ## without a new frame, so the loading screen does not look hung.
 
+const TELEVISION := preload("res://game/world/interactables/hotel_television.gd")
 ## The shape of the real frame, small enough that drawing costs nothing.
 const SIZE := Vector2i(192, 108)
 ## Rooms visited per module type, and the two ways the camera looks.
@@ -95,6 +97,28 @@ static func run(level) -> Dictionary:
 			await tree.process_frame
 			creature_frames += 1
 		level.locust.global_transform = kept
+	# A set switched on, a step ahead and facing the camera: its channel and
+	# the shadows of its two lights are drawn by nothing else until somebody
+	# switches one on, which is no moment for a stall either. The floor's own
+	# sets are placed after this, so it is one of its own, gone at once.
+	var set_frames := 0
+	if not stops.is_empty():
+		var probe: Area3D = TELEVISION.new()
+		level.hotel.add_child(probe)
+		probe.remove_from_group("hotel_televisions")
+		var ahead: Vector3 = -camera.global_basis.z
+		ahead.y = 0.0
+		probe.global_position = Vector3(camera.global_position.x, stops[-1].at.y, camera.global_position.z) + ahead.normalized() * 1.6
+		probe.global_rotation = Vector3(0, camera.global_rotation.y, 0)
+		probe.set_on(true)
+		probe.opening = 1.0
+		probe.glow(1.0)
+		for frame in 2:
+			viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+			await RenderingServer.frame_post_draw
+			await tree.process_frame
+			set_frames += 1
+		probe.queue_free()
 	viewport.queue_free()
 	# The floor is handed back the way it was found: what is drawn round the
 	# player, and an iris that has not been metering a broom cupboard.
@@ -102,8 +126,8 @@ static func run(level) -> Dictionary:
 	if is_instance_valid(level.camera_effect): level.camera_effect.reset = true
 	if is_instance_valid(level.ui): level.ui.loading_note("")
 	var elapsed := Time.get_ticks_msec() - started
-	print_verbose("Shader warmup: %d rooms, %d frames, %d ms, longest frame %d ms" % [stops.size(), drawn + creature_frames, elapsed, longest / 1000])
-	return {"rooms": stops.size(), "frames": drawn + creature_frames, "ms": elapsed, "longest_ms": longest / 1000}
+	print_verbose("Shader warmup: %d rooms, %d frames, %d ms, longest frame %d ms" % [stops.size(), drawn + creature_frames + set_frames, elapsed, longest / 1000])
+	return {"rooms": stops.size(), "frames": drawn + creature_frames + set_frames, "ms": elapsed, "longest_ms": longest / 1000}
 
 ## Where to stand: a few rooms of each kind, dark ones included (they are the
 ## torch's variants), spread through the floor rather than taken in a row.

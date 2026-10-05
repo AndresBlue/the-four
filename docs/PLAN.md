@@ -91,6 +91,17 @@ El 4 de octubre entró esto, y **tampoco se ha jugado**:
   ajustó jugando.
 - **La regla «Clemencia»** es ahora la de las etapas devueltas en equipo (la
   de agarrar y soltar se quitó).
+- **La tele del tráiler** en el hotel: el CRT de la escena de entrada sobre
+  una cómoda gótica, cristal oscuro apagada, la línea que se abre al
+  encenderla y su luz hacia delante con un relleno, las dos con sombra.
+  Falta verla jugando.
+- **La señal perdida dice menos:** solo el número de la cinta y «Cinta
+  perdida.»; la pestaña Equipo sin desglose ni destacado; el cursor ▶ pegado
+  a su palabra.
+- **Lo que se mantiene se ve** (un disco al registrar y al abrir despacio),
+  **puertas a 2,4 m** (estaban a 3,2), el panel de controles con la rueda y
+  el resto, «Mantén E para saltar la cinemática» y el aviso del primer piso
+  («The Locust va a por ti…»), solo la primera vez.
 - **A solas, en Apacible y Equilibrada, caer devuelve la etapa** como en
   equipo, y **Reintentar empieza siempre un piso nuevo** (perder borra el
   punto de control).
@@ -451,12 +462,23 @@ pueda jugar entero sin tocar el teclado.
   objetivos y lo decidido el 4 de octubre— está en
   [DIFFICULTY.md](DIFFICULTY.md). Por fases:
   - [ ] 3 · Apacible y Equilibrada, por números.
-  - [ ] 4 · Las conductas de Apacible: la escena de «me salvé».
+  - [ ] 4 · Las conductas de Apacible: la escena de «me salvé». Están
+    hechas (duda, cansancio, gruñido, armarios, encuentros del director) y
+    medidas (DIFFICULTY.md, segunda medida): más encuentros y huidas en
+    Apacible, pero once caídas por piso, Equilibrada con expertos al 60 %, y
+    ratos largos sin ella tras cada caída. Falta: un cruce al acabar el
+    descanso, salir más de una persecución en Equilibrada y novatos que se
+    escondan.
   - [ ] 5 · Las conductas y los números de Pesadilla.
   - [ ] 6 · Individual frente a equipo: el tamaño del equipo (la etapa
     devuelta a solas ya está).
   - [ ] 7 · La dificultad en las marcas.
   - [ ] 8 · Los números finales, con gente.
+- [ ] **Continuar desde donde se dejó** (5 de octubre): hoy Continuar vuelve
+  a empezar el piso guardado desde el principio, con el mismo mapa; la idea
+  es que lo restaure tal como estaba al salir (sala, sector, lo encendido y lo
+  encontrado, la criatura, la hoja). Mientras no esté, rendirse antes de caer
+  y Continuar permite volver a jugar el mismo piso.
 - [ ] **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del
   25 de septiembre): radios, despertadores y parecidos repartidos por el
   piso, que un superviviente pone en marcha y suenan fuerte y seguido; la

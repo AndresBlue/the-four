@@ -1,6 +1,6 @@
 # Dificultad de la IA — hoja de ruta
 
-**Hechas las fases 1 y 2 (4 de octubre de 2026); el resto, no.** Las cuatro dificultades se pueden elegir y cambian ya los números de la sección 3 (lo hecho está descrito en el [diseño](GAME_DESIGN.md), «Dificultad»); la etapa devuelta a solas también está (5 de octubre); las conductas de la sección 4 y las marcas por dificultad siguen pendientes. Es el plan para tener cuatro dificultades de la criatura que lleva la máquina —**Apacible, Equilibrada, Desafiante y Pesadilla**— en individual y en cooperativo contra la IA. El orden de trabajo vive en [PLAN.md](PLAN.md); cuando una fase se termine, lo que quede hecho pasa al [diseño](GAME_DESIGN.md) y sale de aquí.
+**Hechas las fases 1 y 2 (4 de octubre de 2026); el resto, no.** Las cuatro dificultades se pueden elegir y cambian ya los números de la sección 3 (lo hecho está descrito en el [diseño](GAME_DESIGN.md), «Dificultad»); la etapa devuelta a solas también está (5 de octubre), y las conductas de Apacible de la sección 4 (5 de octubre, fase 4); las de Pesadilla y las marcas por dificultad siguen pendientes. Es el plan para tener cuatro dificultades de la criatura que lleva la máquina —**Apacible, Equilibrada, Desafiante y Pesadilla**— en individual y en cooperativo contra la IA. El orden de trabajo vive en [PLAN.md](PLAN.md); cuando una fase se termine, lo que quede hecho pasa al [diseño](GAME_DESIGN.md) y sale de aquí.
 
 Punto de partida, decidido el 4 de octubre de 2026: **lo que hay hoy se parece a Desafiante.** Así que Desafiante es el juego actual tal cual, sin tocar un número; Equilibrada y Apacible se construyen aflojando desde ahí, y Pesadilla apretando. Lo decidido ese día está entero en la sección 9.
 
@@ -161,6 +161,21 @@ En Apacible, con el perdón sin límite, el piso siempre se acaba ganando: lo qu
 - **Los novatos lo pierden todo fuera de Apacible.** Son bots, no personas —no se esconden bien y vuelven al peligro a los 4 s de perderla—, así que el número absoluto no es el de un jugador; lo que importa es el orden y la distancia entre dificultades.
 - **Pesadilla sale al 5 % con expertos**, por debajo de su objetivo (15–25 %): se mira en la fase 5.
 
+**Segunda medida (5 de octubre de 2026)**, con las conductas de la fase 4 (la duda, el cansancio, el gruñido, los armarios adivinados y los encuentros que cuida el director), las mismas semillas y lotes (`evidence/bots/*fase4*`). Entre paréntesis, la primera medida:
+
+| Lote | Ganados | Sin derrumbes | Caídas por piso | Encuentros por bot | Persecuciones por bot | Huidas de cada 10 | Rato más largo sin ella (mediana) |
+|---|---|---|---|---|---|---|---|
+| Apacible, novatos | 75 % (70 %) | 0 % | 11,2 (11,8) | 8,0 (6,5) | 12,3 (8,1) | 4 (3) | 8:11 (13:53) |
+| Equilibrada, novatos | 0 % (0 %) | 0 % | 6,3 (6,2) | 2,7 (3,1) | 3,1 (2,9) | 2 (2) | 5:32 (7:14) |
+| Equilibrada, expertos | 60 % | 5 % | 4,0 | 2,8 | 2,5 | 2 | 26:58 |
+
+Lo que dice:
+
+- **Apacible va hacia donde tiene que ir, pero no llega.** Hay más encuentros (8 por bot, cerca de los 10) y más huidas (4 de cada 10), y el rato más largo sin ella baja a la mitad; pero los novatos siguen cayendo once veces por piso. El director cruza a la bestia unas 21 veces por piso, así que lo que deja ratos largos no es que no lo intente: según su registro (1708 jugadas «entre bastidores» en 20 pisos), los descansos tras cada caída, cuando la manda lejos, y los cambios de planta. Es lectura de los datos, no comprobada una a una.
+- **Equilibrada no cambia para los novatos**: sus pisos se pierden igual, en las mismas caídas.
+- **Equilibrada con expertos sale al 60 %**, por debajo del 80 % que se busca y del 65 % de Desafiante: con 20 pisos la diferencia con Desafiante cabe en el azar, pero el orden que se busca no está. Y los expertos siguen sin verla en 27 minutos: esquivan su vista, y el cruce del director no llega a quien no la mira.
+- **Lo siguiente:** que el descanso tras una caída también acabe en un cruce cuando toca; que de una persecución en Equilibrada se salga más (sus números de la sección 3); y que los bots novatos se escondan como lo haría una persona, para que su resultado se parezca al de alguien.
+
 
 **Dos clases de bots, porque una sola no sirve.** Los de hoy saben siempre dónde está la criatura y juegan a que no los vea nunca: son **expertos**, y apenas tienen encuentros. Para medir Apacible y Equilibrada hacen falta **bots novatos**: que solo sepan de ella lo que ven y oyen, que anden a la vista, que corran en cuanto la ven y que se escondan tarde. Si un novato sale de Apacible, una persona que no juega mucho también.
 
@@ -186,7 +201,7 @@ Cada fase se cierra con la batería en verde, lo hecho descrito en el diseño y 
 | **1 · Cimientos** (hecha) | El archivo de perfiles; la criatura, el director, las teles y el ascensor leen sus números de él en vez de constantes; la dificultad viaja con la partida, el punto de control y la cinta; la pantalla para elegirla | Con Desafiante, el juego es idéntico al de hoy: mismas pruebas, mismos resultados de los bots en las mismas semillas |
 | **2 · Instrumentos** (hecha) | Los bots novatos; los encuentros en el parte; lotes por dificultad, tamaño de equipo (1 a 5) y clase de bot, con tabla comparativa; las palancas a la vista en el observador | Hay una tabla de Desafiante que sirve de referencia, repetible, con encuentros |
 | **3 · Apacible y Equilibrada, por números** | Los valores de la sección 3, medidos y corregidos | Lo que cuesta salir de un encuentro va en orden de Apacible a Pesadilla (lo que fabrica encuentros, no: es alto en las cuatro), y los números se acercan a la sección 6 |
-| **4 · Conductas de Apacible** | La escena de «me salvé», paso a paso, empezando por el director (encuentros) y la duda visible | Los bots novatos tienen los encuentros y las huidas de la sección 6 |
+| **4 · Conductas de Apacible** (hecha y medida: aún no llega a los objetivos, sección 6) | La escena de «me salvé», paso a paso, empezando por el director (encuentros) y la duda visible | Los bots novatos tienen los encuentros y las huidas de la sección 6 |
 | **5 · Conductas y números de Pesadilla** | Sus seis conductas, una a una, y después sus valores | Entra en sus objetivos sin romper ninguna regla de las que no se rompen |
 | **6 · Individual y equipo** (la etapa devuelta a solas, hecha) | El sector que vuelve a empezar a solas; el perdón por dificultad; si hace falta, el factor por tamaño de equipo | La curva de 1 a 5 jugadores es razonable en las cuatro |
 | **7 · Marcas** | Dificultad en cintas y tablones, filtro, multiplicador e hitos | — |

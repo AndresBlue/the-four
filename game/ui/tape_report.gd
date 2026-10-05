@@ -42,7 +42,9 @@ static func sheet(ui, tabs: TabContainer, title: String) -> VBoxContainer:
 	return page
 
 ## What tape this is, in one line: its number, its floor and who played it.
-static func heading(line: Dictionary) -> String:
+## `lost`: a signal lost, where only the number matters.
+static func heading(line: Dictionary, lost := false) -> String:
+	if lost: return "CINTA Nº %d" % int(line.get("seed", 0))
 	var players := int(line.get("players", 1))
 	var words := "CINTA Nº %d  ·  %s  ·  %s" % [int(line.get("seed", 0)), FLOORS.title(int(line.get("floor", 1))), String(RECORDS.COMPANY_NAMES.get(String(line.get("company", RECORDS.SOLO)), ""))]
 	if players > 1: words += "  ·  %d SUPERVIVIENTES" % players
@@ -140,7 +142,7 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 	if not differs.is_empty():
 		ui.label(left, "CON OTRAS REGLAS · SIN HITOS, Y EN SU PROPIO TABLÓN", 14).add_theme_color_override("font_color", STYLE.AMBER)
 		ui.paragraph(left, "  ·  ".join(differs), 15, 600, STYLE.INK)
-	if not won: ui.paragraph(left, "La cinta se quedó en el hotel. No entra en ningún tablón, pero lo que hizo cada uno queda en su ficha.", 16, 600)
+	if not won: ui.paragraph(left, "Cinta perdida.", 16, 600)
 	spotlight(ui, split, line, not outcome.is_empty())
 
 ## Beside the figures: who was worth most, or the part the only one played
@@ -224,60 +226,14 @@ static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
 		STYLE.cell(row, String(hunter.get("name", "")).to_upper(), 196, 18, STYLE.ALERT)
 		STYLE.cell(row, "THE LOCUST · %d captura%s" % [int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"], 420, 16, STYLE.ALERT)
 		ui.spacer(page, 3)
-	# Alone, where its points came from, line by line.
-	if members.size() == 1 and members[0].has("score"):
-		ui.spacer(page, 4)
-		ui.label(page, "DE DÓNDE SALEN SUS PUNTOS", 14).add_theme_color_override("font_color", STYLE.AMBER)
-		var grid := GridContainer.new()
-		grid.columns = 2
-		grid.add_theme_constant_override("h_separation", 48)
-		grid.add_theme_constant_override("v_separation", 2)
-		page.add_child(grid)
-		for item in SCORE.breakdown(members[0]):
-			var entry := row_in(grid, 8)
-			STYLE.cell(entry, "%s%s" % [item[0], (" × %d" % int(item[1])) if int(item[1]) > 1 else ""], 300, 15, STYLE.SOFT)
-			STYLE.cell(entry, signed(int(item[2])), 70, 15, STYLE.INK if int(item[2]) >= 0 else STYLE.ALERT, HORIZONTAL_ALIGNMENT_RIGHT)
 	var earned: Array = SCORE.bonuses(line)
 	if not earned.is_empty():
 		ui.spacer(page, 4)
 		ui.label(page, "LO QUE GANÓ EL EQUIPO JUNTO" if members.size() > 1 else "Y POR LA CINTA ENTERA", 14).add_theme_color_override("font_color", STYLE.AMBER)
 		ui.paragraph(page, "   ·   ".join(earned.map(func(item): return "%s %s" % [item[0], signed(int(item[1]))])), 15, 960, STYLE.INK)
-	var facts: Array = highlights(line, members)
-	if not facts.is_empty():
-		ui.spacer(page, 4)
-		ui.label(page, "DESTACADO", 14).add_theme_color_override("font_color", STYLE.AMBER)
-		ui.paragraph(page, "   ·   ".join(facts), 15, 960, STYLE.SOFT)
 
 static func signed(value: int) -> String:
 	return ("+" if value >= 0 else "−") + STYLE.grouped(absi(value))
-
-## What stands out among the things that earn nothing: who walked furthest,
-## who spent longest in a wardrobe, who had the creature closest, whose mind
-## went lowest. Alone, the same things said of the only one.
-static func highlights(line: Dictionary, members: Array) -> Array:
-	var facts: Array = []
-	var alone := members.size() == 1
-	var lead := func(key: String, least: float, lowest: bool) -> Dictionary:
-		var found: Dictionary = {}
-		for member in members:
-			if not member.has(key) or float(member[key]) < 0.0: continue
-			if (lowest and float(member[key]) > least) or (not lowest and float(member[key]) < least): continue
-			if found.is_empty() or (float(member[key]) < float(found[key]) if lowest else float(member[key]) > float(found[key])): found = member
-		return found
-	var who := func(member: Dictionary) -> String: return "" if alone else " (%s)" % String(member.get("name", "")).to_upper()
-	var walker: Dictionary = lead.call("metres", 1.0, false)
-	if not walker.is_empty(): facts.append("%d m andados%s%s" % [int(walker.metres), (", %d corriendo" % int(walker.get("run", 0))) if int(walker.get("run", 0)) > 0 else "", who.call(walker)])
-	var hider: Dictionary = lead.call("hidden", 5.0, false)
-	if not hider.is_empty(): facts.append("%s en armarios%s" % [SCORE.clock(int(hider.hidden)), who.call(hider)])
-	var chased: Dictionary = lead.call("chased", 5.0, false)
-	if not chased.is_empty(): facts.append("%s con la criatura detrás%s" % [SCORE.clock(int(chased.chased)), who.call(chased)])
-	var close: Dictionary = lead.call("closest", 6.0, true)
-	if not close.is_empty(): facts.append("la criatura a %s m%s" % [("%.1f" % float(close.closest)).replace(".", ","), who.call(close)])
-	var calm: Dictionary = lead.call("quiet", 60.0, false)
-	if not calm.is_empty(): facts.append("%s sin saber nada de ella%s" % [SCORE.clock(int(calm.quiet)), who.call(calm)])
-	var frayed: Dictionary = lead.call("low", 40.0, true)
-	if not frayed.is_empty(): facts.append("cordura hasta %d%s" % [int(frayed.low), who.call(frayed)])
-	return facts
 
 # --- SECTORES ---------------------------------------------------------------------
 
@@ -406,4 +362,4 @@ static func milestones(ui, page: VBoxContainer, line: Dictionary, outcome: Dicti
 		var row := row_in(page, 16)
 		STYLE.cell(row, String(milestone.title), 300, 16, STYLE.SOFT)
 		STYLE.cell(row, String(milestone.note), 620, 15, STYLE.FAINT)
-	ui.label(page, "TODOS, EN MARCAS ▸ HITOS.", 13).add_theme_color_override("font_color", STYLE.FAINT)
+	ui.label(page, "TODOS, EN RECORDS ▸ HITOS.", 13).add_theme_color_override("font_color", STYLE.FAINT)
