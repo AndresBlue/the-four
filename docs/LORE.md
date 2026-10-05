@@ -26,7 +26,11 @@ El personal de la organización abandonó las instalaciones y desapareció. Desp
 
 ### El ente que nunca se contuvo
 
-Uno de los entes paranormales **nunca llegó a estar contenido**: un ente pensante que vive en las instalaciones. Es **la IA que dirige a The Locust**. De forma juguetona fue maquinándolo todo para la caída de la organización, **desde dentro**.
+Uno de los entes paranormales **nunca llegó a estar contenido**: un ente pensante que vive en las instalaciones. Es **la IA que dirige a The Locust**. De forma juguetona fue maquinándolo todo para la caída de la organización, **desde dentro**. **No tiene cuerpo.**
+
+### El archivero
+
+El archivero **no es el ente**: es otro, y es **humano**. Una suerte de The Architect de Matrix, pero **no lo creó el ente**: es simplemente una persona a la que se le encomendó la tarea de **trabajar en la instalación hasta el fin de los tiempos**. Es **el actor físico del ente**: sus manos, porque el ente no tiene cuerpo.
 
 ## Lo que el juego ya tiene y casa con esto
 
@@ -35,7 +39,7 @@ No son decisiones nuevas: son cosas que ya están hechas y que esta historia exp
 - **El director** (`game/director/pacing_director.gd`) ya es ese ente: lo sabe todo de quien juega, pero a la criatura solo le da zonas, nunca la sala ni un escondite; llama a puertas, deja caer cosas lejos, la retira y la hace volver. «Juguetón, sin abusar» era su encargo desde antes de tener historia.
 - **Se baja.** Un piso son tres plantas que se bajan en ascensor, y nunca se vuelve a subir.
 - **Los papeles del hotel** (el Archivo: la nota del turno de noche, el parte de mantenimiento de la 107, la carta sin enviar, el registro del vigilante) los escribe gente que trabajaba en la fachada y no sabía qué había debajo.
-- **El tráiler** habla desde un archivo que recupera cintas: la 81 es la del piso 1, y de los pisos 2, 3 y 4 «no se ha recuperado nada».
+- **El tráiler** habla desde un archivo que recupera cintas: la 81 es la del piso 1, y de los pisos 2, 3 y 4 «no se ha recuperado nada». Su voz ya se llamaba «el archivero» en [TRAILER.md](TRAILER.md).
 - **Las cuatro criaturas previstas** son The Locust, Sunman, The Boiled One y Guilt; solo The Locust tiene piso.
 
 ## Por decidir
@@ -43,6 +47,7 @@ No son decisiones nuevas: son cosas que ya están hechas y que esta historia exp
 - Qué criatura es la del piso 2, y cuáles las de los pisos 3 y 4.
 - Qué son «los cuatro» del título: los pisos, las bestias contenidas, o las dos cosas.
 - Cómo se llama el ente, si tiene nombre, y cómo se le nota en cada piso.
-- Quién es quien juega y por qué baja; quién recupera las cintas.
+- Del archivero: quién le encomendó la tarea, si sabe para quién trabaja ahora, cómo es que puede trabajar «hasta el fin de los tiempos», qué hace con sus manos en cada piso, y si se le llega a ver.
+- Quién es quien juega y por qué baja.
 - En qué año pasa cada cosa (la cámara fecha en 1990 y el tráiler en 1993).
 - Cómo acaba: qué hay al fondo de The Containment.
