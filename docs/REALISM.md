@@ -365,7 +365,7 @@ Arreglos del camino:
 
 **3. Paredes** (`room_dressing.gd`). Cada pared cerrada tiene dos tramos libres, a los lados de su centro, hasta antes del hueco de la esquina o del tabique de la alcoba; no se usa el que queda a menos de 1,35 m del centro del vano de esa pared, esté donde esté la puerta (la hoja nunca barre más allá de su bisagra), ni donde hay un armario-escondite.
 - Cada tipo de sala tiene su juego de piezas: cómoda con espejo, consola, butaca con velador, sillas, maletas, planta, librería, estanterías, cajas, papeleras, cestos...
-- Encima o dentro van jarrones, relojes, libros, cajas y botes, colocados en las alturas reales de cada modelo: `shelves()` busca sus caras planas hacia arriba.
+- Encima o dentro van jarrones, relojes, libros, cajas y botes, colocados en las alturas reales de cada modelo: `shelves()` busca sus caras planas hacia arriba y da la altura exacta de cada una, y `room_over()` el hueco hasta la tabla de encima. (Hasta octubre de 2026 leía el giro de los triángulos al revés —Godot los dibuja en sentido horario— y tomaba la cara de abajo de cada tabla: todo lo que había encima de un mueble estaba hundido en él de 2 a 6 cm.)
 - Las piezas grandes llevan colisionador de caja; lo de menos de unos 30 cm, no.
 - **Validación física: 0 errores en 8 semillas**, sin caer al piso de reserva.
 

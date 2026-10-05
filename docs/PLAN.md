@@ -91,6 +91,12 @@ El 4 de octubre entró esto, y **tampoco se ha jugado**:
   ajustó jugando.
 - **La regla «Clemencia»** es ahora la de las etapas devueltas en equipo (la
   de agarrar y soltar se quitó).
+- **Continuar devuelve el piso como se dejó** (sitio, sector, puertas,
+  teles, muebles, criatura, hoja, plano y cinta), guardado al pausar, al
+  cerrar y cada 30 s. Falta probarlo jugando: dejar un piso a medias en
+  cada sector y volver.
+- **Los adornos ya no se hunden en los muebles**: `shelves()` leía los
+  triángulos al revés y tomaba la cara de abajo de cada tabla.
 - **La tele del tráiler** en el hotel: el CRT de la escena de entrada sobre
   una cómoda gótica, cristal oscuro apagada, la línea que se abre al
   encenderla y su luz hacia delante con un relleno, las dos con sombra.
@@ -474,11 +480,6 @@ pueda jugar entero sin tocar el teclado.
     devuelta a solas ya está).
   - [ ] 7 · La dificultad en las marcas.
   - [ ] 8 · Los números finales, con gente.
-- [ ] **Continuar desde donde se dejó** (5 de octubre): hoy Continuar vuelve
-  a empezar el piso guardado desde el principio, con el mismo mapa; la idea
-  es que lo restaure tal como estaba al salir (sala, sector, lo encendido y lo
-  encontrado, la criatura, la hoja). Mientras no esté, rendirse antes de caer
-  y Continuar permite volver a jugar el mismo piso.
 - [ ] **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del
   25 de septiembre): radios, despertadores y parecidos repartidos por el
   piso, que un superviviente pone en marcha y suenan fuerte y seguido; la

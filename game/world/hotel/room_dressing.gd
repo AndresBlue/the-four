@@ -55,6 +55,7 @@ const WARDROBE_HALF := 0.75
 
 static var meshes := {}
 static var levels := {}
+static var undersides := {}
 
 static func mesh(name: String) -> Mesh:
 	if not meshes.has(name): meshes[name] = MONSTERA if name == "monstera" else load(HOTEL % name)
@@ -66,9 +67,33 @@ static func state(room: Dictionary) -> int:
 	return int(room.get("kept", 0))
 
 ## The heights a model's things can stand on: its flat tops and shelves, the
-## upward faces over the middle of its footprint, lowest first.
+## upward faces over the middle of its footprint, lowest first, each at the
+## height the face really is (the mean of it, not a step of two centimetres).
 static func shelves(name: String) -> Array:
-	if levels.has(name): return levels[name]
+	if not levels.has(name): levels[name] = flats(name, true)
+	return levels[name]
+
+## The undersides of those boards, the downward faces: what a thing stood on
+## the shelf below has over it.
+static func ceilings(name: String) -> Array:
+	if not undersides.has(name): undersides[name] = flats(name, false)
+	return undersides[name]
+
+## How much room there is over a top of a model at `height`: up to the board
+## over it, or to the top of the piece.
+static func room_over(name: String, height: float) -> float:
+	for under in ceilings(name):
+		if under > height + 0.02: return under - height
+	return maxf(0.0, mesh(name).get_aabb().end.y - height)
+
+## The flat faces of a model over the middle of its footprint that look up
+## (or down), as heights, lowest first; faces closer than 12 cm are one board,
+## and the higher (the lower, looking down) is the one that counts. Godot
+## winds a front face clockwise, so (b - a) x (c - a) points INTO the model:
+## read the other way round, this used to take the underside of every board
+## for its top, and whatever stood on a piece was sunk in it by the board's
+## thickness.
+static func flats(name: String, up: bool) -> Array:
 	var model := mesh(name)
 	var box := model.get_aabb()
 	var bins := {}
@@ -81,22 +106,28 @@ static func shelves(name: String) -> Array:
 			var b := vertices[indices[t + 1]]
 			var c := vertices[indices[t + 2]]
 			var cross := (b - a).cross(c - a)
-			if cross.length() < 1e-9 or cross.normalized().y < 0.97: continue
+			if cross.length() < 1e-9: continue
+			var facing := -cross.normalized().y
+			if (facing if up else -facing) < 0.97: continue
 			var middle := (a + b + c) / 3.0
 			if absf(middle.x - box.get_center().x) > box.size.x * 0.35 or absf(middle.z - box.get_center().z) > box.size.z * 0.35: continue
 			var key := int(round(middle.y / 0.02))
-			bins[key] = bins.get(key, 0.0) + cross.length() * 0.5
+			var area := cross.length() * 0.5
+			var bin: Array = bins.get(key, [0.0, 0.0])
+			bins[key] = [bin[0] + area, bin[1] + area * middle.y]
 	var footprint := box.size.x * box.size.z
 	var result := []
 	var keys := bins.keys()
 	keys.sort()
+	if not up: keys.reverse()
 	for key in keys:
-		if bins[key] < footprint * 0.1 or key * 0.02 < 0.03: continue
-		if not result.is_empty() and key * 0.02 - result[-1] < 0.12:
-			result[-1] = key * 0.02
+		var height: float = bins[key][1] / bins[key][0]
+		if bins[key][0] < footprint * 0.1 or height < 0.03: continue
+		if not result.is_empty() and absf(height - result[-1]) < 0.12:
+			result[-1] = height
 			continue
-		result.append(key * 0.02)
-	levels[name] = result
+		result.append(height)
+	if not up: result.reverse()
 	return result
 
 ## The free stretches of a room's walls: [frame (room space; origin on the
@@ -309,7 +340,7 @@ static func fill_shelves(builder, holder: Node3D, base: String, at: Vector3, s: 
 	var tops := shelves(base)
 	for level in tops.size():
 		var y: float = tops[level] * s
-		var room_above: float = ((tops[level + 1] if level + 1 < tops.size() else box.size.y) - tops[level]) * s
+		var room_above: float = room_over(base, tops[level]) * s
 		var x := -box.size.x * s * 0.42
 		var i := 0
 		while x < box.size.x * s * 0.4 and i < 5:

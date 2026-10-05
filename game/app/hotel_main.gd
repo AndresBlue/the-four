@@ -496,7 +496,7 @@ func on_action(action: String) -> void:
 		"begin": start_intro(randi_range(0, 2147483647))
 		"continue":
 			var data: Dictionary = session.checkpoint()
-			if not data.is_empty(): start_floor(int(data.seed), data.get("fallback", false) == true, [1], String(data.get("difficulty", DIFFICULTY.REFERENCE)))
+			if not data.is_empty(): continue_floor(data)
 			else: ui.menu("main", false, session.message)
 		# Never the same floor again: a floor lost, or given up on, is
 		# followed by another one (on the same difficulty).
@@ -607,6 +607,38 @@ func start_floor(seed_value: int, force_fallback := false, slots: Array = [1], d
 	save_error = session.message
 	ui.sheet.clear()
 	populate_floor(true)
+
+## Continuar: the floor that was left, from where it was left
+## (game/app/floor_save.gd). With nothing kept of it -- a checkpoint from
+## before floors were kept, or one that cannot be read -- from its beginning.
+func continue_floor(data: Dictionary) -> void:
+	var seed_value := int(data.seed)
+	# Read before the floor starts: starting one forgets what was kept.
+	var state: Dictionary = session.read_state(seed_value)
+	await start_floor(seed_value, data.get("fallback", false) == true, [1], String(data.get("difficulty", DIFFICULTY.REFERENCE)))
+	if state.is_empty() or session.state != session.State.PLAYING or session.run_seed != seed_value: return
+	SAVE.give(self, state)
+	keep_floor()
+
+## The floor as it stands, kept for Continuar. Alone only (a room has its own
+## checkpoint, and the observer's and the bots' floors are nobody's to go on
+## with), and only while there is something to go back to: not being
+## executed, not waiting to be stood up again, not dead.
+const SAVE := preload("res://game/app/floor_save.gd")
+## Seconds of play between one keeping and the next: what a crash can cost.
+const KEEP_EVERY := 30.0
+var keep_clock := 0.0
+
+func can_keep() -> bool:
+	if net.active() or session.online or not session.keeps_checkpoint or observer or bot_match or replaying: return false
+	if session.state not in [session.State.PLAYING, session.State.PAUSED]: return false
+	if not is_instance_valid(hotel) or manifest.is_empty() or not is_instance_valid(player): return false
+	if not execution.is_empty() or session.restart_wait > 0.0: return false
+	return session.participants.get(player.slot, session.Life.DEAD) != session.Life.DEAD
+
+func keep_floor() -> bool:
+	keep_clock = 0.0
+	return can_keep() and session.write_state(SAVE.take(self))
 
 ## Generates, builds and validates a floor. False (back in the menu) when it
 ## could not be made playable. `survivors`: how many play it, which decides
@@ -958,6 +990,9 @@ func on_state() -> void:
 				var saved: Dictionary = session.checkpoint()
 				ui.menu("main", not saved.is_empty(), save_error if not save_error.is_empty() else session.message)
 		session.State.PAUSED:
+			# Pausing is where a floor is left from, by the menu or by
+			# closing the game: it is kept as it stands.
+			keep_floor()
 			refresh_briefing()
 			ui.menu("pause")
 		session.State.LOADING: ui.menu("loading")
@@ -1427,7 +1462,10 @@ func winding_up_near() -> bool:
 
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
-	if session.state == session.State.PLAYING: update_execution(delta)
+	if session.state == session.State.PLAYING:
+		update_execution(delta)
+		keep_clock += delta
+		if keep_clock >= KEEP_EVERY: keep_floor()
 	# Paused, it waits where it was. Anything else -- the stage closing under
 	# it, the floor ending -- lets the victim go: wiping it without that left
 	# them held in the air for good, neither dead nor able to move.
@@ -1529,6 +1567,8 @@ func _notification(what: int) -> void:
 	# going to that paused the floor and put the pause menu over it, out of reach
 	# of its keys (it stops time with P).
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(session) and not automation and not observer and not match_net.in_match(): session.pause()
+	# The window shut on a floor being played: kept as it stands.
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_instance_valid(session) and is_instance_valid(net): keep_floor()
 
 func _exit_tree() -> void:
 	get_tree().paused = false

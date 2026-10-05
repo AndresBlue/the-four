@@ -47,6 +47,10 @@ func capture_survivor(body: Node3D) -> void:
 	var yaw: float = level.locust.rotation.y
 	apply_execution(body.slot, point, yaw)
 	if level.match_net.in_match(): level.match_net.execute_start.rpc(body.slot, point, yaw)
+	# Alone, with no stage left to be given back, the floor is lost from this
+	# moment: closing the game before the blow falls leaves nothing to go on
+	# with (a floor that is lost is not played again).
+	elif body == level.player and level.session.last_fall(): level.session.forget_checkpoint()
 
 ## Everyone plays out the execution: the creature holds its victim up and
 ## stabs three times. The victim's own machine takes over its body.

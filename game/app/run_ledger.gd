@@ -85,6 +85,25 @@ func reset() -> void:
 	quiet = {}
 	sign_clock = 0.0
 
+## Everything counted so far, for a floor left half way and gone on with
+## later (game/app/floor_save.gd), and back. A chase in hand is not kept: the
+## creature comes back with nobody in mind, and a chase that leaving cut short
+## is not one that was got out of.
+const KEPT := ["seats", "events", "sectors", "deaths", "hides", "restarts", "lit_by", "typed_by", "trail", "rooms", "gone", "room_clock", "called", "encounters", "since_sign", "quiet", "sign_clock"]
+
+func pack() -> Dictionary:
+	var out := {}
+	for key in KEPT:
+		var value = get(key)
+		out[key] = value.duplicate(true) if value is Dictionary or value is Array else value
+	return out
+
+func unpack(data: Dictionary) -> void:
+	if data.is_empty(): return
+	reset()
+	for key in KEPT:
+		if data.has(key): set(key, data[key])
+
 ## What a seat has done so far.
 func of(seat: int) -> Dictionary:
 	if not seats.has(seat): seats[seat] = {"searched": 0, "escapes": 0, "chases": 0, "chased": 0.0, "sectors": 0, "deaths": 0, "hides": 0, "hidden": 0.0, "metres": 0.0, "run": 0.0, "closest": -1.0, "low": 100.0, "burnt": 0, "lifts": 0}

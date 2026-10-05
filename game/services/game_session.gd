@@ -82,7 +82,11 @@ func start(seed_value: int, used_fallback := false, slots: Array = [1]) -> void:
 	restarts = 0
 	restart_wait = 0.0
 	goal = {"kind": "refuge", "done": 0, "needed": 1, "ready": false}
-	if not online and keeps_checkpoint: write_checkpoint()
+	if not online and keeps_checkpoint:
+		# A floor begun has nothing kept of it yet: what was kept of the one
+		# before is not this one's (hotel_main.continue_floor reads it first).
+		forget_state()
+		write_checkpoint()
 	set_state(State.PLAYING)
 
 func minimum_survivors() -> int: return maxi(1, int(ceil(roster_count / 2.0)))
@@ -185,6 +189,52 @@ func raise_everyone(announce := true) -> void:
 ## The floor's checkpoint gone: it was won, or lost.
 func forget_checkpoint() -> void:
 	if FileAccess.file_exists(checkpoint_path) and not online and keeps_checkpoint: DirAccess.remove_absolute(checkpoint_path)
+	forget_state()
+
+## Alone or not, whether being caught now is the end of the floor: no stage
+## left to be given back.
+func last_fall() -> bool:
+	var allowed: int = restarts_allowed if roster_count > 1 else solo_restarts
+	return allowed >= 0 and restarts >= allowed
+
+# --- The floor as it was left -----------------------------------------------------
+#
+# Beside the checkpoint (which says which floor): what had changed in it when
+# it was last left, taken and given back by game/app/floor_save.gd. Binary,
+# because it holds vectors and tables keyed by seat; read without objects.
+const STATE_FORMAT := 1
+
+func state_path() -> String: return checkpoint_path.get_basename() + ".state"
+
+func write_state(state: Dictionary) -> bool:
+	if online or not keeps_checkpoint: return false
+	# A floor still being played has its checkpoint: a capture that was let
+	# go (the stage closing under it) had taken it away, and the floor went
+	# on with nothing for Continuar to open.
+	if not FileAccess.file_exists(checkpoint_path) and not write_checkpoint(): return false
+	var temp := state_path() + ".tmp"
+	var file := FileAccess.open(temp, FileAccess.WRITE)
+	if not file: return false
+	file.store_var({"format": STATE_FORMAT, "generator": GENERATOR_VERSION, "seed": run_seed, "state": state})
+	file.close()
+	# The one before stays until the whole new one exists.
+	if FileAccess.file_exists(state_path()): DirAccess.remove_absolute(state_path())
+	return DirAccess.rename_absolute(temp, state_path()) == OK
+
+## What was kept of the floor with this seed, or nothing: another floor's, an
+## older version's or a file that cannot be read are all nothing, and the
+## floor is then gone on with from its beginning.
+func read_state(seed_value: int) -> Dictionary:
+	if not FileAccess.file_exists(state_path()): return {}
+	var file := FileAccess.open(state_path(), FileAccess.READ)
+	if not file or file.get_length() < 8: return {}
+	var data = file.get_var()
+	if not data is Dictionary or data.get("format") != STATE_FORMAT or data.get("generator") != GENERATOR_VERSION: return {}
+	if int(data.get("seed", -1)) != seed_value or not data.get("state") is Dictionary: return {}
+	return data.state
+
+func forget_state() -> void:
+	if FileAccess.file_exists(state_path()) and not online and keeps_checkpoint: DirAccess.remove_absolute(state_path())
 
 func pause() -> void:
 	if state == State.PLAYING: set_state(State.PAUSED)

@@ -75,6 +75,23 @@ func reset() -> void:
 		var box: Rect2 = bounds.get(planta, Rect2(a, Vector2.ZERO))
 		bounds[planta] = box.expand(a).expand(b)
 
+## What has been seen so far and when, for a floor left half way
+## (game/app/floor_save.gd), and back on to the same floor built again: the
+## pieces are the hotel's walls, cut the same way every time.
+func pack() -> Dictionary:
+	if not is_same(hotel_seen, level.hotel): reset()
+	return {"seen": seen, "bloomed": bloomed, "clock": clock}
+
+func unpack(data: Dictionary) -> void:
+	reset()
+	var kept = data.get("seen")
+	if not kept is PackedFloat32Array or kept.size() != seen.size(): return
+	seen = kept
+	if data.get("bloomed") is PackedFloat32Array and data.bloomed.size() == seen.size(): bloomed = data.bloomed
+	clock = float(data.get("clock", 0.0))
+	for index in seen.size():
+		if freshness(index) > 0.0: live[index] = true
+
 func add_piece(a: Vector2, b: Vector2, planta: int) -> void:
 	var index := piece_a.size()
 	piece_a.append(a)
