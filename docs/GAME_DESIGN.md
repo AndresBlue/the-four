@@ -13,7 +13,7 @@ La experiencia final será de terror ambiental cooperativo para **2–5 jugadore
 - Encontrar y cruzar la salida sustituye todos los objetivos obligatorios de tres piezas.
 - La salida está disponible desde la generación. No necesita fusibles, relés, transmisores, autenticaciones, llaves, consumibles ni tiempo mínimo de supervivencia.
 - Investigar proporciona información y narrativa opcional. No desbloquea la salida.
-- Cuatro pisos, una criatura principal por piso, sin combate, fabricación, mejoras permanentes o búsqueda sistemática de recursos.
+- Cuatro pisos, una criatura principal por piso, sin combate, fabricación, mejoras permanentes o búsqueda sistemática de recursos. Los cuatro, de arriba abajo: **el hotel** (The Locust), **las oficinas secretas** de La Oficina, **Radiation Lab** y **The Containment**; el hotel era la fachada de lo que hay debajo. La historia está en [LORE.md](LORE.md).
 - Linterna sin batería consumible en esta primera versión.
 - Duración objetivo: **25–40 minutos por piso**, 100–160 minutos por campaña sin reintentos. Es una meta de balance pendiente de partidas humanas. Encontrar antes la salida es válido.
 

@@ -9,6 +9,7 @@ Empieza por aquí según lo que busques:
 
 Por sistema:
 
+- [LORE.md](LORE.md): la historia —La Oficina, los cuatro pisos, la brecha y el ente que dirige a la bestia—, solo lo confirmado por el autor.
 - [VISION_LOCUST.md](VISION_LOCUST.md): la ecolocalización con la que ve el cazador en versus.
 - [DIFFICULTY.md](DIFFICULTY.md): hoja de ruta de las cuatro dificultades de la IA (todavía sin hacer).
 - [AUDIO.md](AUDIO.md): asignaciones de sonido, buses, mezcla y reservas.

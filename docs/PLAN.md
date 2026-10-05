@@ -502,11 +502,31 @@ pueda jugar entero sin tocar el teclado.
 
 ## 5 · Lo nuevo: los otros tres pisos
 
-No empieza hasta que lo de arriba esté cerrado.
+No empieza hasta que lo de arriba esté cerrado. **Qué son los cuatro pisos**
+quedó dicho el 5 de octubre de 2026 (la historia entera, en
+[LORE.md](LORE.md)): se baja de la fachada a lo que escondía.
 
-- [ ] **Sunman** en atrios y galerías: cobertura y barridos anunciados.
-- [ ] **The Boiled One** en habitaciones y salones con pantallas, con su
-  exposición comprobada.
+| Piso | Nombre | Criatura | Estado |
+|---|---|---|---|
+| 1 | El hotel | The Locust | Jugable |
+| 2 | Las oficinas secretas (La Oficina) | Sin definir | Sin empezar |
+| 3 | Radiation Lab | Sin asignar | Sin empezar |
+| 4 | The Containment | Sin asignar | Sin empezar |
+
+- [ ] **Decidir qué criatura lleva cada piso** (la del 2 está sin definir) y
+  lo demás que LORE.md deja abierto: quién juega, cómo se nota el ente que
+  dirige a la bestia, cómo acaba.
+- [ ] **Las oficinas secretas:** su conjunto procedural, su criatura y sus
+  papeles.
+- [ ] **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
+- [ ] **The Containment:** lo mismo; es donde estaban guardadas todas.
+
+Las tres criaturas ya pensadas, todavía sin piso:
+
+- [ ] **Sunman**: cobertura y barridos anunciados (se pensó para atrios y
+  galerías).
+- [ ] **The Boiled One**: pantallas, con su exposición comprobada (se pensó
+  para habitaciones y salones).
 - [ ] **Guilt** con señales contrastables; nunca falsifica la hoja ni la
   interfaz esencial.
 - [ ] **Perfiles sonoros propios** para las tres.
