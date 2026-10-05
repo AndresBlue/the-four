@@ -116,6 +116,14 @@ func update_execution(delta: float) -> void:
 		if not level.net.is_client():
 			level.ledger.note_death(seat)
 			level.session.capture(seat)
+		# Alone, and the floor giving the stage back: there is nobody to watch,
+		# so the picture stays gone and the body still until it is up again at
+		# the stage's door (revival.restore_local_player).
+		if seat == level.player.slot and not level.match_net.in_match() and level.session.restart_wait > 0.0:
+			level.player.held = true
+			level.player.active = false
+			level.lost_signal = level.session.restart_wait + 0.6
+			level.ui.lost_signal(level.session.restart_wait + 0.6)
 
 ## An execution cut short: the victim is let go alive, back on its feet with a
 ## clean picture, and the creature leaves the kill.

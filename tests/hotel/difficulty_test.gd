@@ -176,6 +176,27 @@ func run() -> void:
 	await frames(2)
 	while level.session.state == level.session.State.LOADING: await process_frame
 	check("Y Continuar, la del piso guardado aunque se haya elegido otra", level.difficulty == "pesadilla")
+	# Alone, the easier difficulties give the stage back too; the game as it
+	# was (Desafiante) ends the floor at the first capture, as before.
+	await level.start_floor(81, false, [1], "apacible")
+	var hunter = level.locust
+	hunter.grace = 0.0
+	hunter.set_physics_process(false)
+	hunter.global_position = level.player.global_position + Vector3(1.2, 0, 0)
+	level.capture_survivor(level.player)
+	for i in int((hunter.EXECUTION_TIME + 0.6) * 60.0): await physics_frame
+	var waiting: bool = level.session.state == level.session.State.PLAYING and level.session.restart_wait > 0.0 and level.player.held and level.lost_signal > 0.0
+	for i in int((level.session.RESTART_WAIT + 1.0) * 60.0): await physics_frame
+	check("A solas en Apacible, caer devuelve la etapa: la señal se pierde y se vuelve en su entrada", waiting and level.session.state == level.session.State.PLAYING and level.session.restarts == 1 and int(level.session.participants[1]) == level.session.Life.EXPLORING and not level.player.held)
+	await level.start_floor(81, false, [1], "desafiante")
+	var first_seed: int = level.session.run_seed
+	level.session.capture(1)
+	await frames(2)
+	check("A solas en Desafiante, la primera captura sigue acabando el piso, y su punto de control se va", level.session.state == level.session.State.FAILED and level.session.checkpoint().is_empty())
+	level.on_action("retry")
+	await frames(2)
+	while level.session.state == level.session.State.LOADING: await process_frame
+	check("Reintentar no repite el piso: es otro", level.session.state == level.session.State.PLAYING and level.session.run_seed != first_seed and level.difficulty == "desafiante")
 	# A tape from before there were difficulties.
 	check("Una cinta de antes de las dificultades era Desafiante", String(level.records.clean({"floor": 1, "time": 900.0}).difficulty) == "desafiante")
 	# The screen it is chosen on.

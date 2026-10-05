@@ -91,6 +91,9 @@ El 4 de octubre entró esto, y **tampoco se ha jugado**:
   ajustó jugando.
 - **La regla «Clemencia»** es ahora la de las etapas devueltas en equipo (la
   de agarrar y soltar se quitó).
+- **A solas, en Apacible y Equilibrada, caer devuelve la etapa** como en
+  equipo, y **Reintentar empieza siempre un piso nuevo** (perder borra el
+  punto de control).
 
 El 1 de octubre entraron también **las reglas de la sala**, y **tampoco se
 han jugado**: once cosas que el anfitrión puede cambiar antes de empezar
@@ -450,8 +453,8 @@ pueda jugar entero sin tocar el teclado.
   - [ ] 3 · Apacible y Equilibrada, por números.
   - [ ] 4 · Las conductas de Apacible: la escena de «me salvé».
   - [ ] 5 · Las conductas y los números de Pesadilla.
-  - [ ] 6 · Individual frente a equipo: el sector que vuelve a empezar a
-    solas, el perdón por dificultad y el tamaño del equipo.
+  - [ ] 6 · Individual frente a equipo: el tamaño del equipo (la etapa
+    devuelta a solas ya está).
   - [ ] 7 · La dificultad en las marcas.
   - [ ] 8 · Los números finales, con gente.
 - [ ] **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del

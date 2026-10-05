@@ -36,9 +36,9 @@ const NOTES := {
 ## Only what the numbers below already do: the behaviours of each still to
 ## come (docs/DIFFICULTY.md) are not promised here.
 const TRAITS := {
-	"apacible": ["Tarda en fijarse en ti y en reaccionar.", "Corre menos que tú: correr te salva.", "Te pierde enseguida y se rinde pronto.", "En equipo, el piso perdona todas las etapas perdidas."],
-	"equilibrada": ["Tarda un poco en reaccionar.", "Corre casi como tú: para escapar hay que romperle la vista.", "En equipo, el piso perdona dos etapas perdidas."],
-	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida."],
+	"apacible": ["Tarda en fijarse en ti y en reaccionar.", "Corre menos que tú: correr te salva.", "Te pierde enseguida y se rinde pronto.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
+	"equilibrada": ["Tarda un poco en reaccionar.", "Corre casi como tú: para escapar hay que romperle la vista.", "Si caes, la etapa vuelve a empezar, hasta dos veces."],
+	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida; a solas, ninguna."],
 	"pesadilla": ["Ve y oye más lejos que ninguna.", "Reacciona al instante, insiste y registra más armarios.", "No se perdona ninguna etapa perdida."],
 }
 
@@ -57,7 +57,8 @@ const TRAITS := {
 ##            rest_chase and rest_death (s), death_ease (m), double_back
 ##            (share), distract_rest (s), burnt_every ([s, s])
 ##  mercy     restarts: stages a team's floor gives back (-1: as many as it
-##            takes). The room's rule "restarts" goes over it.
+##            takes; the room's rule "restarts" goes over it); solo_restarts:
+##            the same, played alone. Desafiante gives none alone, as before.
 const PROFILES := {
 	"apacible": {
 		"sight_range": 55.0, "notice": 0.6, "hearing": 0.85, "torch_range": 35.0,
@@ -68,7 +69,7 @@ const PROFILES := {
 		"lead_every": [20.0, 30.0], "prowl_min": 14.0, "peak_max": 15.0, "peak_tense": 10.0,
 		"rest_chase": 20.0, "rest_death": 40.0, "death_ease": 10.0, "double_back": 0.0,
 		"distract_rest": 30.0, "burnt_every": [60.0, 90.0],
-		"restarts": -1,
+		"restarts": -1, "solo_restarts": -1,
 	},
 	"equilibrada": {
 		"sight_range": 60.0, "notice": 0.8, "hearing": 0.9, "torch_range": 40.0,
@@ -79,7 +80,7 @@ const PROFILES := {
 		"lead_every": [25.0, 35.0], "prowl_min": 16.0, "peak_max": 20.0, "peak_tense": 12.0,
 		"rest_chase": 30.0, "rest_death": 50.0, "death_ease": 9.0, "double_back": 0.2,
 		"distract_rest": 45.0, "burnt_every": [45.0, 60.0],
-		"restarts": 2,
+		"restarts": 2, "solo_restarts": 2,
 	},
 	"desafiante": {
 		"sight_range": 70.0, "notice": 1.0, "hearing": 1.0, "torch_range": 45.0,
@@ -90,7 +91,7 @@ const PROFILES := {
 		"lead_every": [25.0, 40.0], "prowl_min": 18.0, "peak_max": 25.0, "peak_tense": 15.0,
 		"rest_chase": 30.0, "rest_death": 45.0, "death_ease": 8.0, "double_back": 0.4,
 		"distract_rest": 45.0, "burnt_every": [30.0, 45.0],
-		"restarts": 1,
+		"restarts": 1, "solo_restarts": 0,
 	},
 	"pesadilla": {
 		"sight_range": 85.0, "notice": 1.3, "hearing": 1.2, "torch_range": 55.0,
@@ -101,7 +102,7 @@ const PROFILES := {
 		"lead_every": [18.0, 30.0], "prowl_min": 14.0, "peak_max": 35.0, "peak_tense": 22.0,
 		"rest_chase": 20.0, "rest_death": 30.0, "death_ease": 4.0, "double_back": 0.7,
 		"distract_rest": 90.0, "burnt_every": [20.0, 30.0],
-		"restarts": 0,
+		"restarts": 0, "solo_restarts": 0,
 	},
 }
 

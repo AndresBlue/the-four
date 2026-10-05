@@ -143,6 +143,7 @@ func apply_tuning() -> void:
 	var profile := tuning()
 	var mercy := rule("restarts")
 	session.restarts_allowed = int(profile.restarts) if mercy == MATCH_RULES.BY_DIFFICULTY else mercy
+	session.solo_restarts = int(profile.solo_restarts)
 	floor_map.forget = float(rule("plan_fade"))
 	lifts.wait_lobby = float(profile.lift_wait)
 	lifts.hold_after = float(profile.lift_hold)
@@ -497,7 +498,9 @@ func on_action(action: String) -> void:
 			var data: Dictionary = session.checkpoint()
 			if not data.is_empty(): start_floor(int(data.seed), data.get("fallback", false) == true, [1], String(data.get("difficulty", DIFFICULTY.REFERENCE)))
 			else: ui.menu("main", false, session.message)
-		"retry": start_floor(session.run_seed, session.map_fallback, [1], difficulty)
+		# Never the same floor again: a floor lost, or given up on, is
+		# followed by another one (on the same difficulty).
+		"retry": start_floor(randi_range(0, 2147483647), false, [1], difficulty)
 		"resume": session.set_state(session.State.PLAYING)
 		"pause": session.set_state(session.State.PAUSED)
 		"main": session.set_state(session.State.MENU)
@@ -540,7 +543,7 @@ func on_action(action: String) -> void:
 		"rules_reset":
 			ui.rules_stale = true
 			net.set_option("rules", {})
-		"online_retry": net.start_match(int(match_net.config.get("seed", -1)))
+		"online_retry": net.start_match()
 		"online_new": net.start_match()
 		"online_room": net.return_to_lobby()
 		"online_quit":
@@ -979,6 +982,8 @@ func on_state() -> void:
 			else: ui.menu("won")
 		session.State.FAILED:
 			ui.elapsed = session.elapsed
+			# Lost online too: the room's saved floor goes with it.
+			if match_net.in_match() and net.is_host: match_net.clear_checkpoint()
 			# A tape that never got out is read too: who did what, and how it went.
 			if not net.is_client() and ui.summary.is_empty(): file_run(false)
 			ui.menu("online_failed" if match_net.in_match() else "failed")

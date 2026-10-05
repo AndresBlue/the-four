@@ -107,10 +107,11 @@ CORRECCIÓN:
 
 [DIF.04] Recuadro de la derecha: sus rasgos, uno por línea
 ACTUAL: (Apacible) Tarda en fijarse en ti y en reaccionar. · Corre menos que tú: correr te salva. ·
-| Te pierde enseguida y se rinde pronto. · En equipo, el piso perdona todas las etapas perdidas.
+| Te pierde enseguida y se rinde pronto. · Si caes, la etapa vuelve a empezar, todas las veces que haga falta.
 | (Equilibrada) Tarda un poco en reaccionar. · Corre casi como tú: para escapar hay que romperle la vista. ·
-| En equipo, el piso perdona dos etapas perdidas.
-| (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa perdida.
+| Si caes, la etapa vuelve a empezar, hasta dos veces.
+| (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa
+| perdida; a solas, ninguna.
 | (Pesadilla) Ve y oye más lejos que ninguna. · Reacciona al instante, insiste y registra más armarios. ·
 | No se perdona ninguna etapa perdida.
 | (solo Desafiante) Es la bestia de siempre: la de antes de que hubiera dificultades.

@@ -16,13 +16,15 @@ var state := State.MENU
 const STAGES := 3
 var stage := 1
 ## A floor forgives one collapse: the stage starts again with everyone alive.
-## The second time there is nobody left to start it again for. Alone there is
-## nothing to forgive -- a team can lose somebody and go on, one person caught
-## is the end of that floor.
+## The second time there is nobody left to start it again for. Alone, the
+## game as it was forgave nothing -- one person caught was the end of that
+## floor -- and the easier difficulties give the stage back alone too
+## (solo_restarts, game/floors/difficulty.gd).
 const RESTARTS := 1
 ## How many this floor forgives (a rule of the room, game/floors/match_rules.gd);
 ## negative, as many as it takes.
 var restarts_allowed := RESTARTS
+var solo_restarts := 0
 ## The difficulty the floor is played on (game/floors/difficulty.gd), kept with
 ## the checkpoint so "Continuar" plays it again.
 var difficulty := "desafiante"
@@ -159,7 +161,8 @@ func check_quota() -> bool:
 	var could_rise := 0
 	for id in participants:
 		if not dropped.has(id): could_rise += 1
-	if roster_count > 1 and (restarts < restarts_allowed or restarts_allowed < 0) and state == State.PLAYING and could_rise >= minimum_survivors():
+	var allowed: int = restarts_allowed if roster_count > 1 else solo_restarts
+	if (restarts < allowed or allowed < 0) and state == State.PLAYING and could_rise >= minimum_survivors():
 		# One more go at this stage, with everybody on their feet again -- but
 		# not this instant: the last one down has earned its own death first.
 		restarts += 1
@@ -167,6 +170,9 @@ func check_quota() -> bool:
 		changed.emit()
 		return true
 	message = "No quedan suficientes supervivientes."
+	# A floor that is lost is not played again: Continuar has nothing left to
+	# go back to, and Reintentar makes another one.
+	forget_checkpoint()
 	set_state(State.FAILED)
 	return true
 
@@ -175,6 +181,10 @@ func raise_everyone(announce := true) -> void:
 	for id in participants:
 		if not dropped.has(id): participants[id] = Life.EXPLORING
 	if announce: changed.emit()
+
+## The floor's checkpoint gone: it was won, or lost.
+func forget_checkpoint() -> void:
+	if FileAccess.file_exists(checkpoint_path) and not online and keeps_checkpoint: DirAccess.remove_absolute(checkpoint_path)
 
 func pause() -> void:
 	if state == State.PLAYING: set_state(State.PAUSED)
@@ -239,5 +249,5 @@ func _process(delta: float) -> void:
 				set_state(State.PLAYING)
 				if dead: revived.emit(false)
 				return
-			if FileAccess.file_exists(checkpoint_path) and not online and keeps_checkpoint: DirAccess.remove_absolute(checkpoint_path)
+			forget_checkpoint()
 			set_state(State.WON)

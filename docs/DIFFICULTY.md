@@ -1,6 +1,6 @@
 # Dificultad de la IA — hoja de ruta
 
-**Hechas las fases 1 y 2 (4 de octubre de 2026); el resto, no.** Las cuatro dificultades se pueden elegir y cambian ya los números de la sección 3 (lo hecho está descrito en el [diseño](GAME_DESIGN.md), «Dificultad»); las conductas de la sección 4, la clemencia a solas y las marcas por dificultad siguen pendientes. Es el plan para tener cuatro dificultades de la criatura que lleva la máquina —**Apacible, Equilibrada, Desafiante y Pesadilla**— en individual y en cooperativo contra la IA. El orden de trabajo vive en [PLAN.md](PLAN.md); cuando una fase se termine, lo que quede hecho pasa al [diseño](GAME_DESIGN.md) y sale de aquí.
+**Hechas las fases 1 y 2 (4 de octubre de 2026); el resto, no.** Las cuatro dificultades se pueden elegir y cambian ya los números de la sección 3 (lo hecho está descrito en el [diseño](GAME_DESIGN.md), «Dificultad»); la etapa devuelta a solas también está (5 de octubre); las conductas de la sección 4 y las marcas por dificultad siguen pendientes. Es el plan para tener cuatro dificultades de la criatura que lleva la máquina —**Apacible, Equilibrada, Desafiante y Pesadilla**— en individual y en cooperativo contra la IA. El orden de trabajo vive en [PLAN.md](PLAN.md); cuando una fase se termine, lo que quede hecho pasa al [diseño](GAME_DESIGN.md) y sale de aquí.
 
 Punto de partida, decidido el 4 de octubre de 2026: **lo que hay hoy se parece a Desafiante.** Así que Desafiante es el juego actual tal cual, sin tocar un número; Equilibrada y Apacible se construyen aflojando desde ahí, y Pesadilla apretando. Lo decidido ese día está entero en la sección 9.
 
@@ -171,7 +171,7 @@ Cada fase se cierra con la batería en verde, lo hecho descrito en el diseño y 
 | **3 · Apacible y Equilibrada, por números** | Los valores de la sección 3, medidos y corregidos | Lo que cuesta salir de un encuentro va en orden de Apacible a Pesadilla (lo que fabrica encuentros, no: es alto en las cuatro), y los números se acercan a la sección 6 |
 | **4 · Conductas de Apacible** | La escena de «me salvé», paso a paso, empezando por el director (encuentros) y la duda visible | Los bots novatos tienen los encuentros y las huidas de la sección 6 |
 | **5 · Conductas y números de Pesadilla** | Sus seis conductas, una a una, y después sus valores | Entra en sus objetivos sin romper ninguna regla de las que no se rompen |
-| **6 · Individual y equipo** | El sector que vuelve a empezar a solas; el perdón por dificultad; si hace falta, el factor por tamaño de equipo | La curva de 1 a 5 jugadores es razonable en las cuatro |
+| **6 · Individual y equipo** (la etapa devuelta a solas, hecha) | El sector que vuelve a empezar a solas; el perdón por dificultad; si hace falta, el factor por tamaño de equipo | La curva de 1 a 5 jugadores es razonable en las cuatro |
 | **7 · Marcas** | Dificultad en cintas y tablones, filtro, multiplicador e hitos | — |
 | **8 · Con gente** | Tres partidas por dificultad, a solas y en equipo, con el parte de cada una | Los números finales salen de esas partidas, no de los bots |
 
@@ -187,5 +187,8 @@ Las fases 1 y 2 no cambian nada que se note jugando: son el andamio. La primera 
 6. **El aura no cambia con la dificultad**: se la oye venir igual en las cuatro.
 7. **No se cambia de dificultad a mitad de un piso.**
 8. **La interacción con la bestia es alta en todas.** Apacible tiene tantos encuentros como las demás o más; lo que tiene es una bestia lenta de mente, de la que casi siempre se sale.
+
+9. **A solas, la etapa vuelve a empezar como en equipo** (5 de octubre), con las veces de la tabla del perdón; Desafiante, ninguna, como siempre.
+10. **Un piso no se repite nunca después de perderlo** (5 de octubre): Reintentar empieza otro, a solas y en red, y perder borra el punto de control.
 
 Los números de las tablas no están decididos: son el punto de partida, y salen de medir.
