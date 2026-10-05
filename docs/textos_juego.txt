@@ -107,12 +107,12 @@ ACTUAL: Lenta de mente. La verás a menudo, pero tarda en reaccionar, corre meno
 CORRECCIÓN:
 
 [DIF.04] Recuadro de la derecha: sus rasgos, uno por línea
-ACTUAL: (Apacible) Cuando te distingue, se para a mirarte antes de reaccionar. · Corre menos que tú y se cansa
-| enseguida de perseguir. · Cuando te pierde, lo dice con un gruñido. · Si caes, la etapa vuelve a empezar,
-| todas las veces que haga falta.
-| (Equilibrada) Duda un momento antes de reaccionar. · Corre casi como tú: para escapar hay que romperle la
-| vista. · Se cansa de una persecución larga, y gruñe al perderte. · Si caes, la etapa vuelve a empezar, hasta
-| dos veces.
+ACTUAL: (Apacible) Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar. ·
+| Corre bastante menos que tú y se cansa enseguida de perseguir. · Después de un susto te deja un buen rato
+| en paz. · Si caes, la etapa vuelve a empezar, todas las veces que haga falta.
+| (Equilibrada) Duda un momento antes de reaccionar, y asomado a medias tarda en verte. · Corre algo menos
+| que tú, y se cansa de una persecución larga. · Después de un encuentro te da un respiro. · Si caes, la etapa
+| vuelve a empezar, hasta dos veces.
 | (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa
 | perdida; a solas, ninguna.
 | (Pesadilla) Ve y oye más lejos que ninguna. · Reacciona al instante, insiste y registra más armarios. ·

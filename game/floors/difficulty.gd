@@ -36,8 +36,8 @@ const NOTES := {
 ## Only what the numbers below already do: the behaviours of each still to
 ## come (docs/DIFFICULTY.md) are not promised here.
 const TRAITS := {
-	"apacible": ["Cuando te distingue, se para a mirarte antes de reaccionar.", "Corre menos que tú y se cansa enseguida de perseguir.", "Cuando te pierde, lo dice con un gruñido.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
-	"equilibrada": ["Duda un momento antes de reaccionar.", "Corre casi como tú: para escapar hay que romperle la vista.", "Se cansa de una persecución larga, y gruñe al perderte.", "Si caes, la etapa vuelve a empezar, hasta dos veces."],
+	"apacible": ["Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar.", "Corre bastante menos que tú y se cansa enseguida de perseguir.", "Después de un susto te deja un buen rato en paz.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
+	"equilibrada": ["Duda un momento antes de reaccionar, y asomado a medias tarda en verte.", "Corre algo menos que tú, y se cansa de una persecución larga.", "Después de un encuentro te da un respiro.", "Si caes, la etapa vuelve a empezar, hasta dos veces."],
 	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida; a solas, ninguna."],
 	"pesadilla": ["Ve y oye más lejos que ninguna.", "Reacciona al instante, insiste y registra más armarios.", "No se perdona ninguna etapa perdida."],
 }
@@ -64,32 +64,47 @@ const TRAITS := {
 ##            encounter_every (s without a sign of it after which it brings it
 ##            across somebody's view; 0: never) and cross (how much it likes
 ##            doing that anyway; 0: not a move it makes)
+##  eyes      sight_angle (degrees it sees to either side of where it
+##            faces), cover (the share of a body that has to show for it to
+##            take it for somebody at once; 0: any part will do) and glimpse
+##            (s a body showing less than that has to stay in view before it
+##            is noticed); tired (s it takes no notice of anybody after it
+##            has tired of a chase)
+##  pacing    calm (s a rest grows by when the team has been through a lot:
+##            a hunt, the creature close, hiding with it outside; 0: rests
+##            are fixed), solo_ease (how much further apart everything is
+##            played for somebody alone; 1: the same as for a team), ambush
+##            (how much it likes waiting at something the team has to do)
 ##  mercy     restarts: stages a team's floor gives back (-1: as many as it
 ##            takes; the room's rule "restarts" goes over it); solo_restarts:
 ##            the same, played alone. Desafiante gives none alone, as before.
 const PROFILES := {
 	"apacible": {
-		"sight_range": 55.0, "notice": 0.6, "hearing": 0.85, "torch_range": 35.0,
-		"alert_time": 2.0, "chase_start": 2.0, "chase_accel": 2.0, "chase_speed": 5.6, "track_speed": 4.6,
+		"sight_range": 55.0, "notice": 0.6, "hearing": 0.7, "torch_range": 35.0,
+		"alert_time": 2.0, "chase_start": 2.0, "chase_accel": 1.8, "chase_speed": 4.6, "track_speed": 4.0,
 		"lose_after": 3.0, "give_up": [4.0, 6.0], "peek_chance": 0.0,
-		"attack_range": 1.8, "windup": 0.5, "recover": 1.0, "wardrobe": 1.28,
+		"attack_range": 1.6, "windup": 0.6, "recover": 1.0, "wardrobe": 1.28,
 		"grace": 25.0, "tv_hop": 0.0, "lift_wait": 25.0, "lift_hold": 30.0,
-		"lead_every": [20.0, 30.0], "prowl_min": 14.0, "peak_max": 15.0, "peak_tense": 10.0,
-		"rest_chase": 20.0, "rest_death": 40.0, "death_ease": 10.0, "double_back": 0.0,
+		"lead_every": [30.0, 45.0], "prowl_min": 20.0, "peak_max": 15.0, "peak_tense": 10.0,
+		"rest_chase": 35.0, "rest_death": 55.0, "death_ease": 10.0, "double_back": 0.0,
 		"distract_rest": 30.0, "burnt_every": [60.0, 90.0],
-		"doubt": 1.2, "chase_tire": 12.0, "lost_cry": true, "guess_hides": false, "encounter_every": 90.0, "cross": 4.0,
+		"doubt": 1.2, "chase_tire": 7.0, "lost_cry": true, "guess_hides": false, "encounter_every": 150.0, "cross": 2.0,
+		"calm": 100.0, "solo_ease": 1.6, "ambush": 0.0,
+		"sight_angle": 45.0, "cover": 0.6, "glimpse": 4.0, "tired": 20.0,
 		"restarts": -1, "solo_restarts": -1,
 	},
 	"equilibrada": {
-		"sight_range": 60.0, "notice": 0.8, "hearing": 0.9, "torch_range": 40.0,
-		"alert_time": 1.5, "chase_start": 2.3, "chase_accel": 2.8, "chase_speed": 6.1, "track_speed": 5.0,
+		"sight_range": 60.0, "notice": 0.8, "hearing": 0.75, "torch_range": 40.0,
+		"alert_time": 1.5, "chase_start": 2.3, "chase_accel": 2.6, "chase_speed": 5.3, "track_speed": 4.6,
 		"lose_after": 5.5, "give_up": [7.0, 9.0], "peek_chance": 0.1,
-		"attack_range": 2.2, "windup": 0.35, "recover": 0.7, "wardrobe": 1.12,
+		"attack_range": 2.0, "windup": 0.4, "recover": 0.7, "wardrobe": 1.12,
 		"grace": 20.0, "tv_hop": 40.0, "lift_wait": 20.0, "lift_hold": 25.0,
-		"lead_every": [25.0, 35.0], "prowl_min": 16.0, "peak_max": 20.0, "peak_tense": 12.0,
-		"rest_chase": 30.0, "rest_death": 50.0, "death_ease": 9.0, "double_back": 0.2,
+		"lead_every": [28.0, 42.0], "prowl_min": 19.0, "peak_max": 20.0, "peak_tense": 12.0,
+		"rest_chase": 35.0, "rest_death": 50.0, "death_ease": 9.0, "double_back": 0.2,
 		"distract_rest": 45.0, "burnt_every": [45.0, 60.0],
-		"doubt": 0.6, "chase_tire": 25.0, "lost_cry": true, "guess_hides": true, "encounter_every": 120.0, "cross": 1.5,
+		"doubt": 0.6, "chase_tire": 12.0, "lost_cry": true, "guess_hides": true, "encounter_every": 150.0, "cross": 1.2,
+		"calm": 80.0, "solo_ease": 1.4, "ambush": 0.7,
+		"sight_angle": 54.0, "cover": 0.45, "glimpse": 2.0, "tired": 14.0,
 		"restarts": 2, "solo_restarts": 2,
 	},
 	"desafiante": {
@@ -102,6 +117,8 @@ const PROFILES := {
 		"rest_chase": 30.0, "rest_death": 45.0, "death_ease": 8.0, "double_back": 0.4,
 		"distract_rest": 45.0, "burnt_every": [30.0, 45.0],
 		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 0.0, "cross": 0.0,
+		"calm": 0.0, "solo_ease": 1.0, "ambush": 2.0,
+		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 10.0,
 		"restarts": 1, "solo_restarts": 0,
 	},
 	"pesadilla": {
@@ -114,6 +131,8 @@ const PROFILES := {
 		"rest_chase": 20.0, "rest_death": 30.0, "death_ease": 4.0, "double_back": 0.7,
 		"distract_rest": 90.0, "burnt_every": [20.0, 30.0],
 		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 90.0, "cross": 0.5,
+		"calm": 0.0, "solo_ease": 1.0, "ambush": 2.0,
+		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 10.0,
 		"restarts": 0, "solo_restarts": 0,
 	},
 }

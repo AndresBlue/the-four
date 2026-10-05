@@ -176,6 +176,22 @@ Lo que dice:
 - **Equilibrada con expertos sale al 60 %**, por debajo del 80 % que se busca y del 65 % de Desafiante: con 20 pisos la diferencia con Desafiante cabe en el azar, pero el orden que se busca no está. Y los expertos siguen sin verla en 27 minutos: esquivan su vista, y el cruce del director no llega a quien no la mira.
 - **Lo siguiente:** que el descanso tras una caída también acabe en un cruce cuando toca; que de una persecución en Equilibrada se salga más (sus números de la sección 3); y que los bots novatos se escondan como lo haría una persona, para que su resultado se parezca al de alguien.
 
+**Tercera medida, a solas (5 de octubre de 2026): con gente, Apacible era un asedio.** Probado con jugadores nuevos y con quien conoce el juego: nadie acabó un piso a solas en Apacible en más de diez intentos, y la sensación era de una bestia acampada que controlaba un acceso. Medido con un solo bot, 12 pisos, semillas 300–311 (`evidence/bots/*solo_*`):
+
+| Apacible a solas, bot novato | Antes | Primer ajuste | Segundo ajuste |
+|---|---|---|---|
+| Pisos ganados (el resto, sin tiempo) | 0 | 1 | 7 |
+| Caídas por piso | 14,5 | 8,6 | 2,3 |
+| Encuentros / persecuciones por piso | 22,7 / 37,8 | 17,0 / 32,8 | 15,5 / 15,9 |
+| Huidas de cada 10 | 4 | 5 | 5 |
+| Rato más largo sin ella (mediana) | 3:12 | 6:34 | 7:01 |
+
+- **Qué pasaba.** El director trataba a un jugador solo como a un equipo: toda su atención sobre una persona. En Apacible la traía tan a menudo y tan cerca como en Pesadilla, descansaba 20 s tras una persecución y nada si te habías librado escondiéndote. Y a quien no llegaba a mirarla le debía «un encuentro» cada 30 s para siempre: en un piso de la medida base (semilla 304) la cruzó 49 veces, la trajo a merodear otras 49 porque el bot no se movía, y golpeó 59 puertas; la bestia pasó tramos de 300 s en una sola sala junto al bot, que se escondió 77 veces y no encontró el refugio en media hora. Ese mismo piso, tras el ajuste: 16 retiradas entre bastidores, 6 pasadas, 4 merodeos, 2 cruces y 2 golpes.
+- **Qué se cambió** (todo en Apacible y Equilibrada; Desafiante y Pesadilla, igual): la carga y el respiro medido por ella, el cruce que cuenta aunque no se la mire, el camino libre durante el respiro, todo más espaciado a solas, nada de emboscadas ni de merodear a quien no se mueve tras un susto (primer ajuste); los ojos —ángulo, cuerpo a medio tapar— y unas piernas más lentas que las de quien corre (primer y segundo ajuste); oído más corto, la mitad durante un respiro, y veinte segundos sin fijarse en nadie tras cansarse (segundo). Las cifras, en el diseño.
+- **El bot experto no sirve para medir a solas.** Sin criatura gana 12 de 12, pero tarda de 37 a 62 minutos de juego por piso (el sector 3, unos 25): **un piso a solas es largo aunque no haya nadie**. Con criatura ya no lo asedian (0,5 caídas, 1,3 persecuciones por piso), pero se esconde por su cuenta decenas de veces y se le acaba el tiempo del lote en el sector 3.
+- **Equilibrada a solas**, tras el segundo ajuste: el novato cae 3,0 veces por piso (antes del ajuste no se midió a solas) y con dos etapas devueltas no gana ninguno; el experto, 0,9 caídas. Recibió después un ajuste más, suave (5,3 m/s, se cansa a los 12 s, medio torso para distinguirte), **sin medir todavía**.
+- **Falta:** medir Equilibrada tras ese último ajuste y los equipos de tres con todo esto (la segunda medida era de antes); decidir si a solas un piso debe pedir menos; y, sobre todo, volver a probarlo con gente.
+
 
 **Dos clases de bots, porque una sola no sirve.** Los de hoy saben siempre dónde está la criatura y juegan a que no los vea nunca: son **expertos**, y apenas tienen encuentros. Para medir Apacible y Equilibrada hacen falta **bots novatos**: que solo sepan de ella lo que ven y oyen, que anden a la vista, que corran en cuanto la ven y que se escondan tarde. Si un novato sale de Apacible, una persona que no juega mucho también.
 
@@ -218,7 +234,7 @@ Las fases 1 y 2 no cambian nada que se note jugando: son el andamio. La primera 
 5. **Marcas:** un tablón con la dificultad a la vista, filtro y multiplicador de puntaje.
 6. **El aura no cambia con la dificultad**: se la oye venir igual en las cuatro.
 7. **No se cambia de dificultad a mitad de un piso.**
-8. **La interacción con la bestia es alta en todas.** Apacible tiene tantos encuentros como las demás o más; lo que tiene es una bestia lenta de mente, de la que casi siempre se sale.
+8. **La interacción con la bestia es alta en todas.** Apacible tiene tantos encuentros como las demás o más; lo que tiene es una bestia lenta de mente, de la que casi siempre se sale. **Matizado el 5 de octubre, tras probarlo con gente:** en Apacible y Equilibrada los encuentros vienen por episodios, con un respiro entre uno y otro que se mide por lo vivido, y a solas más espaciados; el objetivo de Apacible es poder acabar el piso a la primera, con acción pero casi siempre ileso. Desafiante y Pesadilla son para quien tiene experiencia y siguen opresivas.
 
 9. **A solas, la etapa vuelve a empezar como en equipo** (5 de octubre), con las veces de la tabla del perdón; Desafiante, ninguna, como siempre.
 10. **Un piso no se repite nunca después de perderlo** (5 de octubre): Reintentar empieza otro, a solas y en red, y perder borra el punto de control.

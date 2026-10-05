@@ -226,28 +226,33 @@ Persianas, televisores y documentos son herramientas/pistas opcionales, nunca li
 | | Apacible | Equilibrada | Desafiante | Pesadilla |
 |---|---|---|---|---|
 | Vista / lo deprisa que se fija | 55 m / ×0,6 | 60 m / ×0,8 | 70 m / ×1 | 85 m / ×1,3 |
-| Oído / linterna que la atrae | ×0,85 / 35 m | ×0,9 / 40 m | ×1 / 45 m | ×1,2 / 55 m |
+| Ángulo en que ve | 90° | 108° | 120° | 120° |
+| Cuerpo a la vista para distinguirte al instante / si no, tarda | más de la mitad (5 puntos de 7) / 4 s | la cabeza y medio torso (4 de 7) / 2 s | cualquier parte / nada | cualquier parte / nada |
+| Oído / linterna que la atrae | ×0,7 / 35 m | ×0,75 / 40 m | ×1 / 45 m | ×1,2 / 55 m |
 | Aviso antes de perseguir | 2,0 s | 1,5 s | 1,2 s | 0,8 s |
-| Velocidad de caza (sin verte) | 5,6 (4,6) m/s | 6,1 (5,0) | 6,4 (5,2) | 6,7 (5,6) |
+| Velocidad de caza (sin verte); tú corres a 6,0 | 4,6 (4,0) m/s | 5,3 (4,6) | 6,4 (5,2) | 6,7 (5,6) |
 | Sin verte deja la persecución / se rinde buscando | 3 s / 4–6 s | 5,5 s / 7–9 s | 7 s / 8–10 s | 10 s / 12–15 s |
 | Abre un armario «por si acaso» | nunca | 1 de 10 | 1 de 5 | 1 de 2 |
-| Estocada: desde / embestida / rehacerse | 1,8 m / 0,5 / 1,0 s | 2,2 m / 0,35 / 0,7 s | 2,4 m / 0,3 / 0,6 s | 2,6 m / 0,25 / 0,5 s |
+| Estocada: desde / embestida / rehacerse | 1,6 m / 0,6 / 1,0 s | 2,0 m / 0,4 / 0,7 s | 2,4 m / 0,3 / 0,6 s | 2,6 m / 0,25 / 0,5 s |
 | Registrar un armario | 3,2 s | 2,8 s | 2,5 s | 2,0 s |
 | Sale por otra tele | nunca | cada 40 s | cada 25 s | cada 12 s |
 | Protección al empezar / espera ante el ascensor | 25 s / 25 y 30 s | 20 s / 20 y 25 s | 15 s / 15 y 20 s | 10 s / 10 y 12 s |
-| Director: una pista cada / lo más cerca | 20–30 s / 14 m | 25–35 s / 16 m | 25–40 s / 18 m | 18–30 s / 14 m |
+| Director: una pista cada / lo más cerca | 30–45 s / 20 m | 28–42 s / 19 m | 25–40 s / 18 m | 18–30 s / 14 m |
+| Respiro tras un encuentro / tras una caída | 35 s y hasta 100 más según lo vivido / 55 s | 35 s y hasta 80 más / 50 s | 30 s / 45 s | 20 s / 30 s |
+| A solas, todo se espacia | ×1,6 | ×1,4 | igual | igual |
+| Espera junto a algo que os falta por hacer (emboscada) | nunca | poco | sí | sí |
 | Etapas devueltas en equipo / a solas | sin límite / sin límite | dos / dos | una / ninguna | ninguna / ninguna |
 
 | Duda al distinguirte (se para, te mira y chasquea) | 1,2 s | 0,6 s | no | no |
-| Se cansa de perseguir aunque te vea | a los 12 s | a los 25 s | nunca | nunca |
+| Se cansa de perseguir aunque te vea / y no se fija en nadie durante | a los 7 s / 20 s | a los 12 s / 14 s | nunca | nunca |
 | Gruñe al perderte | sí | sí | no | no |
 | Abre armarios en los que no te vio entrar | no | sí | sí | sí |
-| Si alguien lleva este rato sin una señal de ella, el director se la cruza | 90 s | 120 s | no | 90 s |
-| Cruzarse a la vista, como jugada del director | la preferida | a veces | no | poco |
+| Si alguien lleva este rato sin una señal de ella, el director se la cruza | 150 s | 150 s | no | 90 s |
+| Cruzarse a la vista, como jugada del director | a menudo | a veces | no | poco |
 
 **Sus conductas.** Cuando empieza a distinguir a alguien, la bestia de las dificultades bajas **duda**: se para, gira la cabeza hacia esa persona y chasquea, y no pasa a perseguir hasta que acaba la duda; quien se aparta de su vista en ese momento no fue visto. **Se cansa** de una persecución aunque siga viendo a quien persigue: lo deja, se va lejos y durante 10 s no se fija en nadie. Al rendirse después de haber ido a por alguien suelta **un gruñido grave** (hoy el más corto de sus gruñidos, más bajo: falta un sonido propio), para que se sepa que te ha perdido. En Apacible **solo abre el armario en el que te vio entrar**. Y el director, además de no regalarle a nadie, **cuida que haya encuentros**: si alguien que está fuera lleva demasiado sin una señal de ella (verla, que se fije en él o que le persiga), la trae a cruzarse por una sala que esa persona tiene a la vista, a 15–30 m andando; si no hay ninguna a la vista, por un pasillo cercano o rondando cerca. En Desafiante no hay nada de esto: es la criatura de siempre.
 
-**La bestia aparece en todas**: lo que sube es lo difícil que es salir de cada encuentro, no cuántos hay; por eso en Apacible el director la trae tan a menudo y tan cerca como en Pesadilla. La dificultad toca solo a la criatura y a la clemencia: el aura con la que se la oye venir, la cordura, el apagón, las teles y las notas son iguales en las cuatro (se cambian en Reglas). Se elige al empezar el piso y no se cambia a mitad; Continuar y Reintentar conservan la suya, y la cinta la lleva escrita. Un ajuste guardado de antes de que hubiera dificultades sigue en Desafiante; quien abre el juego por primera vez empieza en Equilibrada. Lo que falta —las conductas de Pesadilla, las marcas por dificultad— y cómo se mide está en [DIFFICULTY.md](DIFFICULTY.md).
+**La bestia aparece en todas, pero en las dos fáciles por episodios, con aire entre uno y otro** (octubre de 2026). Probado con gente, Apacible era un asedio: nadie, ni quien conoce el juego, acabó un piso a solas en más de diez intentos, y con bots a solas no se ganó ni uno. El director llevaba a la bestia tan a menudo y tan cerca como en Pesadilla, descansaba 20 s después de una persecución y nada si te habías librado escondiéndote, y a quien no llegaba a mirarla le debía «un encuentro» cada 30 s: en un piso de prueba pasó tramos de cinco minutos en la misma sala, junto al jugador. Ahora **lleva la cuenta de lo que el equipo ha pasado** —una persecución, tenerla cerca, estar en un armario con ella fuera— y **el respiro se mide por eso**: cuanto más, más largo, y basta con haber cargado bastante para ganarlo sin que haya habido persecución. Durante ese respiro la manda lejos **y fuera del camino** hacia el refugio y hacia lo que queda por hacer; al acabar, la presión vuelve despacio; un cruce a la vista cuenta como encuentro aunque no se la mire; a quien se queda quieto después de un susto no le manda nada, ni los golpes; y no espera junto a un objetivo. **A solas todo se espacia más**, porque toda su atención cae sobre una sola persona. **Y ve peor:** en Apacible abarca 90° en vez de 120°, y de un cuerpo a medio tapar —asomado a un marco, detrás de un mueble— no hace caso hasta que lleva cuatro segundos a la vista o se asoma más; a quien ya persigue, medio cuerpo le basta. **De quien corre se escapa corriendo:** persigue a 4,6 m/s (tú corres a 6,0, y agotado andas a 3,8) y se cansa a los siete segundos, tras lo cual no se fija en nadie durante veinte; y mientras dura un respiro ganado oye la mitad de lejos, para que el primer paso no lo deshaga. Equilibrada tiene lo mismo en menor medida, para separarla de las dos de arriba, que son para quien tiene experiencia y no cambian. La dificultad toca solo a la criatura y a la clemencia: el aura con la que se la oye venir, la cordura, el apagón, las teles y las notas son iguales en las cuatro (se cambian en Reglas). Se elige al empezar el piso y no se cambia a mitad; Continuar y Reintentar conservan la suya, y la cinta la lleva escrita. Un ajuste guardado de antes de que hubiera dificultades sigue en Desafiante; quien abre el juego por primera vez empieza en Equilibrada. Lo que falta —las conductas de Pesadilla, las marcas por dificultad— y cómo se mide está en [DIFFICULTY.md](DIFFICULTY.md).
 
 Catálogo de doce eventos: golpes, objeto caído y pasos para Locust (implementados); sombra de aviso, persiana y zumbido para Sunman; pantalla anunciada, interfono e interferencia legible para Boiled One; indicación contrastable, puerta que imita un sonido y silueta sin ataque para Guilt. Cada uno tendrá condiciones, duración, enfriamiento y efecto; cancelar si no hay posición válida. Nunca falsificar controles, guardado, menús, accesibilidad ni hoja.
 

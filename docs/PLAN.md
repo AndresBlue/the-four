@@ -91,6 +91,14 @@ El 4 de octubre entró esto, y **tampoco se ha jugado**:
   ajustó jugando.
 - **La regla «Clemencia»** es ahora la de las etapas devueltas en equipo (la
   de agarrar y soltar se quitó).
+- **Apacible y Equilibrada, por episodios** (5 de octubre, tras probar con
+  gente): respiro medido por lo vivido, a solas todo más espaciado, la
+  bestia ve y oye menos y corre menos que quien huye. A solas con un bot
+  novato, Apacible pasó de 0 a 7 pisos ganados de 12 y de 14,5 a 2,3 caídas.
+  Falta medir Equilibrada tras su último ajuste y los equipos de tres, y
+  probarlo con gente (DIFFICULTY.md, tercera medida).
+- **A una etapa devuelta la criatura vuelve a su punto de aparición** y
+  espera la gracia de la dificultad, también la de un cazador.
 - **Continuar devuelve el piso como se dejó** (sitio, sector, puertas,
   teles, muebles, criatura, hoja, plano y cinta), guardado al pausar, al
   cerrar y cada 30 s. Falta probarlo jugando: dejar un piso a medias en

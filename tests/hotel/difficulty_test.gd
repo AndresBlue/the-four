@@ -27,6 +27,10 @@ const HARDER := {
 	"recover": -1, "wardrobe": -1, "grace": -1, "lift_wait": -1, "lift_hold": -1,
 	"peak_max": 1, "peak_tense": 1, "death_ease": -1, "double_back": 1,
 	"distract_rest": 1, "burnt_every": -1,
+	# How it is spaced out (pressure, not how many encounters there are) and
+	# how sharp its eyes are.
+	"lead_every": -1, "prowl_min": -1, "rest_chase": -1, "rest_death": -1, "calm": -1, "solo_ease": -1, "ambush": 1,
+	"sight_angle": 1, "cover": -1, "glimpse": -1, "tired": -1,
 }
 
 func _initialize() -> void: run.call_deferred()
@@ -55,6 +59,7 @@ func run() -> void:
 		"rest_chase": DIRECTOR.REST_AFTER_CHASE, "rest_death": DIRECTOR.REST_AFTER_DEATH, "death_ease": DIRECTOR.DEATH_EASE,
 		"double_back": DIRECTOR.DOUBLE_BACK, "distract_rest": DIRECTOR.DISTRACT_REST, "restarts": SESSION.RESTARTS,
 		"notice": 1.0, "hearing": 1.0, "wardrobe": 1.0, "grace": 15.0,
+		"sight_angle": LOCUST.SIGHT_HALF_ANGLE, "cover": 0.0, "glimpse": 0.0, "calm": 0.0, "solo_ease": 1.0, "ambush": 2.0, "tired": LOCUST.TIRED_FOR,
 	}
 	var differs: Array = as_was.keys().filter(func(key): return not is_equal_approx(float(desafiante[key]), float(as_was[key])))
 	var pairs_differ: bool = Vector2(desafiante.give_up[0], desafiante.give_up[1]) != Vector2(LOCUST.GIVE_UP, LOCUST.GIVE_UP_HARD) or Vector2(desafiante.lead_every[0], desafiante.lead_every[1]) != DIRECTOR.LEAD_EVERY or Vector2(desafiante.burnt_every[0], desafiante.burnt_every[1]) != DIRECTOR.BURNT_EVERY
@@ -71,7 +76,12 @@ func run() -> void:
 	var mercies: Array = DIFFICULTY.ORDER.map(func(id): return int(DIFFICULTY.PROFILES[id].restarts))
 	check("Lo que cuesta salir de un encuentro va en orden de Apacible a Pesadilla", wrong.is_empty(), ", ".join(wrong))
 	var easiest: Dictionary = DIFFICULTY.PROFILES.apacible
-	check("Y Apacible la trae tan a menudo y tan cerca como Pesadilla", float(easiest.lead_every[1]) <= float(desafiante.lead_every[1]) and float(easiest.prowl_min) <= float(DIFFICULTY.PROFILES.pesadilla.prowl_min))
+	# The easier ones space it out and keep it further off (October 2026: as
+	# often and as near as Pesadilla, it was a siege), and a rest there is
+	# worth what the team went through; the game as it was has none of that.
+	var even: Dictionary = DIFFICULTY.PROFILES.equilibrada
+	check("Apacible la espacia y la aleja más que ninguna, y un respiro vale por lo vivido", float(easiest.lead_every[0]) >= float(even.lead_every[0]) and float(even.lead_every[0]) >= float(desafiante.lead_every[0]) and float(easiest.prowl_min) >= float(desafiante.prowl_min) and float(easiest.calm) > float(even.calm) and float(even.calm) > 0.0 and float(desafiante.calm) == 0.0 and float(easiest.solo_ease) > 1.0 and float(desafiante.solo_ease) == 1.0)
+	check("De quien corre se escapa corriendo en las dos fáciles, y en Apacible con margen", float(easiest.chase_speed) <= 5.0 and float(even.chase_speed) < 6.0 and float(desafiante.chase_speed) > 6.0)
 	check("Las teles: Apacible no viaja, y cuanto más difícil, más a menudo", hops[0] == 0.0 and hops[1] > hops[2] and hops[2] > hops[3])
 	check("La clemencia: sin límite, dos, una, ninguna", mercies == [-1, 2, 1, 0])
 	check("Lo que no se conoce es Desafiante", DIFFICULTY.valid("imposible") == "desafiante" and DIFFICULTY.valid(null) == "desafiante" and DIFFICULTY.valid("apacible") == "apacible" and DIFFICULTY.FIRST == "equilibrada")
@@ -201,12 +211,77 @@ func run() -> void:
 	slow = level.locust
 	slow.set_physics_process(false)
 	slow.grace = 0.0
-	level.ledger.since_sign[1] = 200.0
+	level.ledger.since_sign[1] = 400.0
 	level.director.next_cross = 0.0
 	# Somewhere far off in the wing, where it would be out of everybody's way.
 	slow.global_position = level.revival.den_away(level.player.global_position, 40.0)
 	var due: bool = level.director.encounter_due()
 	check("Si alguien lleva mucho sin verla, el director la trae a su vista", due and String(level.director.current.get("kind", "")) in ["cruce", "pasa"], str(level.director.current))
+	# What the team goes through is counted, and a rest is measured by it:
+	# longer for more, longer still alone, and no forced crossing the moment
+	# it is over. Nothing of that on the game as it was.
+	var director = level.director
+	director.strain = 0.0
+	slow.set_mode(slow.Mode.CHASE)
+	director.update_strain(5.0)
+	var hunted: float = director.strain
+	slow.set_mode(slow.Mode.PATROL)
+	director.strain = 1.0
+	director.rest_until = 0.0
+	director.breathe(director.rest_chase)
+	var long_rest: float = director.rest_until - director.clock
+	var wanted: float = (float(easiest.rest_chase) + float(easiest.calm)) * float(easiest.solo_ease)
+	check("Una persecución carga, y el respiro que sigue vale por la carga, más largo a solas", is_equal_approx(hunted, 5.0 * director.STRAIN_HUNT) and director.phase == director.Phase.RELIEF and absf(long_rest - wanted) < 1.0 and director.strain < 0.3 and director.next_cross > director.rest_until, "%0.1f · %0.1f" % [long_rest, wanted])
+	director.strain = 0.0
+	director.rest_until = 0.0
+	director.breathe(director.rest_chase)
+	check("Sin carga, el respiro es el de siempre", absf(director.rest_until - director.clock - float(easiest.rest_chase) * float(easiest.solo_ease)) < 1.0)
+	level.session.roster_count = 3
+	check("Con tres o más, nada se espacia de más", is_equal_approx(director.spacing(), 1.0))
+	level.session.roster_count = 1
+	check("Durante un respiro ganado, lo que tienen que alcanzar queda fuera de su camino", director.goal_rooms().has(int(level.refuge_room())) and director.in_the_way(int(level.refuge_room()), director.goal_rooms()))
+	# Its eyes. A cover_box chest high between them: head and shoulders show over
+	# it, and that is not enough to be taken for somebody -- until they have
+	# been left in view a while.
+	var watched = level.player
+	var stood_at: Vector3 = watched.global_position
+	var outward: Vector3 = -watched.camera.global_basis.z
+	outward.y = 0.0
+	outward = outward.normalized()
+	slow.global_position = stood_at + outward * 8.0
+	slow.rotation.y = atan2(outward.x, outward.z)
+	slow.set_mode(slow.Mode.PATROL)
+	var all_shown: float = slow.shown(watched)
+	var cover_box := StaticBody3D.new()
+	var box_shape := CollisionShape3D.new()
+	box_shape.shape = BoxShape3D.new()
+	box_shape.shape.size = Vector3(1.8, 1.25, 0.3)
+	cover_box.add_child(box_shape)
+	cover_box.collision_layer = 1
+	level.hotel.add_child(cover_box)
+	cover_box.global_position = stood_at + outward * 0.7 + Vector3(0, 0.625, 0)
+	cover_box.rotation.y = atan2(outward.x, outward.z)
+	await frames(3)
+	var part_shown: float = slow.shown(watched)
+	slow.peeked = {}
+	var unnoticed: bool = slow.sees(watched) and slow.overlooks(watched, 1.0) and slow.noticed_survivor(1.0) == null
+	var then_noticed: bool = not slow.overlooks(watched, float(easiest.glimpse)) and slow.noticed_survivor(0.1) == watched
+	check("En Apacible, un cuerpo a medio tapar no se distingue hasta llevar un rato a la vista", is_equal_approx(all_shown, 1.0) and part_shown < float(easiest.cover) and part_shown > 0.2 and unnoticed and then_noticed, "%0.2f · %0.2f · %s · %s" % [all_shown, part_shown, unnoticed, then_noticed])
+	slow.peeked = {}
+	slow.set_mode(slow.Mode.CHASE)
+	check("Pero a quien ya persigue, medio cuerpo le basta", not slow.overlooks(watched, 0.1))
+	slow.set_mode(slow.Mode.PATROL)
+	slow.cover = 0.0
+	check("Y la criatura de siempre lo distingue al instante", not slow.overlooks(watched, 0.1) and slow.noticed_survivor(0.1) == watched)
+	slow.cover = float(easiest.cover)
+	cover_box.queue_free()
+	# And it sees less to either side: 45 degrees, where the game as it was
+	# sees 60.
+	slow.rotation.y = atan2(outward.x, outward.z) + deg_to_rad(52.0)
+	await frames(2)
+	var beside: bool = not slow.sees(watched)
+	slow.sight_half_angle = LOCUST.SIGHT_HALF_ANGLE
+	check("Y ve menos hacia los lados", beside and slow.sees(watched) and is_equal_approx(float(easiest.sight_angle), 45.0))
 	await level.start_floor(81, false, [1], "desafiante")
 	level.ledger.since_sign[1] = 1000.0
 	check("En Desafiante no fuerza encuentros", not level.director.encounter_due())

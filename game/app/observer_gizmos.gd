@@ -205,7 +205,7 @@ func draw_sight() -> void:
 	# draws it): asked now, the rays would make it up from puppets.
 	if level.replaying: return
 	var eye: Vector3 = creature.global_position + Vector3(0, creature.EYE_HEIGHT, 0)
-	var half := deg_to_rad(creature.SIGHT_HALF_ANGLE)
+	var half := deg_to_rad(creature.sight_half_angle)
 	var reach: float = minf(creature.SIGHT_RANGE, 22.0)
 	for side in [-half, half]:
 		line(eye, eye + (-creature.global_basis.z).rotated(Vector3.UP, side) * reach, Color(COLOURS.sight, 0.5))

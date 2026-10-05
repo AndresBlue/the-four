@@ -24,6 +24,17 @@ extends Node
 ##    is closing on a team that is all hidden without having seen anybody,
 ##    something falls over far away and it goes to look.
 ##
+## And it keeps count of what the team has been through (STRAIN): a hunt, the
+## creature close by, somebody shut in a wardrobe with it outside. On the
+## easier difficulties (`calm`) that is what a rest is measured by -- the
+## more they went through, the longer they are left alone to look round --
+## and enough of it earns one without a hunt ever having happened: it used to
+## rest only after a chase, and whoever lost it by hiding had it back at the
+## door within the minute. While such a rest lasts the creature is kept off
+## the way to what they still have to do, not only far from them. Alone, the
+## whole of its attention falls on one person, so everything is spaced out
+## (`solo_ease`).
+##
 ## The moves of BUILD, never the same one twice running: prowl round a room
 ## at the distance in hand; wait at something the team still has to do (an
 ## ambush, never at somebody's side); pass by down a corridor two rooms off;
@@ -150,6 +161,32 @@ var burnt_every := BURNT_EVERY
 var encounter_every := 0.0
 var cross_weight := 0.0
 var next_cross := 0.0
+## The load on the team, and what it buys (docs/DIFFICULTY.md, section 4):
+## `calm`, the seconds a full load adds to a rest (nought: rests are what they
+## were, "desafiante"); `solo_ease`, how much further apart everything is
+## played for somebody alone; `ambush_weight`, how much it likes waiting at
+## something the team still has to do.
+var calm := 0.0
+var solo_ease := 1.0
+var ambush_weight := 2.0
+## 0 untouched, 1 as much as anybody should take in one go. A whole hunt of
+## 25 s fills it; so does a minute with the creature at their heels, or half
+## a minute shut in a wardrobe with it within HIDE_NEAR metres of walking.
+## It ebbs away in a minute and a half of being left alone.
+var strain := 0.0
+const STRAIN_HUNT := 1.0 / 25.0
+const STRAIN_NEAR := 1.0 / 60.0
+const STRAIN_HIDE := 1.0 / 30.0
+const STRAIN_EBB := 1.0 / 90.0
+## Enough, hunt or no hunt: a rest is owed. And the least load a peak that
+## simply ebbed away has to leave behind for it to count as an encounter.
+const STRAIN_FULL := 0.85
+const STRAIN_SOME := 0.35
+const HIDE_NEAR := 20.0
+## What is left of the load once it has been paid for with a rest.
+const STRAIN_KEPT := 0.25
+## How much of its hearing the creature keeps during a rest that was earned.
+const REST_HEARING := 0.5
 ## How far (metres of walking) and how far in plain sight a crossing is put,
 ## and how long before another is forced.
 const CROSS_NEAR := 15.0
@@ -180,6 +217,9 @@ func tune(profile: Dictionary) -> void:
 	burnt_every = Vector2(float(profile.burnt_every[0]), float(profile.burnt_every[1]))
 	encounter_every = float(profile.encounter_every)
 	cross_weight = float(profile.cross)
+	calm = float(profile.get("calm", 0.0))
+	solo_ease = float(profile.get("solo_ease", 1.0))
+	ambush_weight = float(profile.get("ambush", 2.0))
 
 func _physics_process(delta: float) -> void:
 	if level == null or level.session.state != level.session.State.PLAYING: return
@@ -205,6 +245,64 @@ func rest(seconds: float) -> void:
 	rest_until = maxf(rest_until, clock + seconds)
 	set_phase(Phase.RELIEF)
 	prowl = PROWL_START
+	# Where rests are earned, the encounter it owes them is not owed the
+	# moment the rest is over: having been left alone is the point of it.
+	if calm > 0.0 and encounter_every > 0.0: next_cross = maxf(next_cross, rest_until + encounter_every * spacing() * 0.5)
+
+## A rest for what the team has just been through: `base` seconds and, on the
+## easier difficulties, up to `calm` more by how much that was; longer alone.
+## The load is paid for with it.
+func breathe(base: float) -> void:
+	rest((base + calm * strain) * spacing())
+	strain *= STRAIN_KEPT
+
+## How much further apart everything is played for a small team: `solo_ease`
+## for one, half of that for two, nothing from three up.
+func spacing() -> float:
+	return lerpf(solo_ease, 1.0, clampf((int(level.session.roster_count) - 1) / 2.0, 0.0, 1.0))
+
+## The load: up with the creature near, faster with a hunt or with somebody
+## hidden while it is close; down when they are left alone.
+func update_strain(delta: float) -> void:
+	var rise := 0.0
+	if hostile(): rise = STRAIN_HUNT
+	elif menace > 0.15:
+		rise = menace * STRAIN_NEAR
+		if pressed_in_hiding(): rise += STRAIN_HIDE
+	if rise > 0.0: strain = minf(1.0, strain + rise * delta)
+	else: strain = maxf(0.0, strain - STRAIN_EBB * delta)
+
+## Somebody shut in a wardrobe with the creature within HIDE_NEAR metres of
+## walking of them.
+func pressed_in_hiding() -> bool:
+	var it = creature()
+	if it == null: return false
+	var from := room_id(it.global_position)
+	return active_survivors().any(func(body): return body.hidden and walk(from, room_id(body.global_position)) < HIDE_NEAR)
+
+## The rooms the team is making for: the stage's refuge, its sets still dark
+## and, on the last stage, the furniture with a number in it and the keypad.
+func goal_rooms() -> Array:
+	var rooms: Array = [int(level.refuge_room())]
+	for index in level.stage_televisions():
+		var set = level.televisions[index]
+		if is_instance_valid(set) and not set.on: rooms.append(room_id(set.global_position))
+	if int(level.session.stage) >= 3:
+		for piece in level.containers:
+			if is_instance_valid(piece) and int(piece.digit) >= 0 and not piece.searched: rooms.append(room_id(piece.global_position))
+		if is_instance_valid(level.lock) and not level.code_entered: rooms.append(room_id(level.lock.global_position))
+	return rooms.filter(func(id): return id >= 0)
+
+## Whether a room stands between somebody and something they are making for:
+## on a way there no more than BY_THE_WAY longer than the shortest.
+func in_the_way(room: int, goals: Array) -> bool:
+	for body in active_survivors():
+		var theirs := room_id(body.global_position)
+		for goal in goals:
+			var straight := walk(theirs, int(goal))
+			if straight == INF: continue
+			if walk(theirs, room) + walk(room, int(goal)) < straight + BY_THE_WAY: return true
+	return false
 
 func set_phase(next: Phase) -> void:
 	if next == phase: return
@@ -244,20 +342,31 @@ func tick(delta: float) -> void:
 		set_phase(Phase.PEAK)
 	elif was_hostile:
 		# The hunt is over: a rest before anything else.
-		rest(rest_chase)
+		breathe(rest_chase)
 	was_hostile = now_hostile
 	update_menace(delta)
+	update_strain(delta)
+	# Resting somebody who earned it, it hears half as far: the rest is for
+	# looking round, and looking round is not silent.
+	if it != null and calm > 0.0: it.dull = REST_HEARING if phase == Phase.RELIEF and not now_hostile else 1.0
 	if silent() or now_hostile: return
 	match phase:
 		Phase.PEAK:
-			if clock - phase_since > peak_limit(): rest(rest_chase)
-			elif menace < PEAK_MENACE * 0.6 and nearest_walk() > PEAK_NEAR * 1.5: set_phase(Phase.BUILD)
+			if clock - phase_since > peak_limit(): breathe(rest_chase)
+			elif menace < PEAK_MENACE * 0.6 and nearest_walk() > PEAK_NEAR * 1.5:
+				# It came close and went: where a rest is measured by what
+				# they went through, that was an encounter too.
+				if calm > 0.0 and strain >= STRAIN_SOME: breathe(rest_chase)
+				else: set_phase(Phase.BUILD)
 		Phase.RELIEF:
 			if clock >= rest_until:
 				set_phase(Phase.BUILD)
-				next_lead = clock + rng.randf_range(4.0, 10.0)
+				# After a rest that was earned, the build-up takes its time
+				# to start again.
+				next_lead = clock + (rng.randf_range(4.0, 10.0) if calm <= 0.0 else rng.randf_range(lead_every.x, lead_every.y) * 0.5 * spacing())
 		Phase.BUILD:
-			if menace >= PEAK_MENACE or nearest_walk() < PEAK_NEAR: set_phase(Phase.PEAK)
+			if calm > 0.0 and strain >= STRAIN_FULL: breathe(rest_chase)
+			elif menace >= PEAK_MENACE or nearest_walk() < PEAK_NEAR: set_phase(Phase.PEAK)
 	roll_clock -= delta
 	if roll_clock > 0.0 and not force: return
 	roll_clock = 1.0
@@ -352,11 +461,16 @@ func encounter_due() -> bool:
 		if quiet > longest:
 			longest = quiet
 			quietest = body
-	if quietest == null or longest < encounter_every: return false
-	next_cross = clock + CROSS_REST
+	if quietest == null or longest < encounter_every * spacing(): return false
+	# Brought across their view, that was the encounter, whether they looked
+	# or not: somebody who never looks at it (who hides the moment they hear
+	# it) was owed another every CROSS_REST for ever, and it never left their
+	# side -- the same three rooms for five minutes at a time. Where rests
+	# are earned, the next is a whole interval away.
+	next_cross = clock + (CROSS_REST if calm <= 0.0 else maxf(CROSS_REST, encounter_every * spacing()))
 	if not cross(quietest): return false
 	last_kind = "cruce"
-	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y)
+	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) * spacing()
 	return true
 
 ## Across somebody's view: a room CROSS_NEAR to CROSS_FAR metres of walking
@@ -399,8 +513,17 @@ func build() -> void:
 		next_lead = clock + 5.0
 		return
 	var moves: Array = []
-	if stalled(): moves = [["quieto", 3.0]]
-	else: moves = [["merodea", 3.0], ["emboscada", 2.0], ["pasa", 1.5], ["retirada", 1.0], ["golpes", 0.7]]
+	# A team that stays put brings it prowling -- but where rests are earned,
+	# somebody who has not moved is likelier frightened than idle, and gets
+	# the knuckles on a door and nothing else.
+	if stalled() and calm > 0.0 and strain >= STRAIN_SOME:
+		# Not moving because of what they have just been through: nothing at
+		# all, not even the knuckles, until the load has ebbed.
+		next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) * spacing()
+		return
+	if stalled(): moves = [["quieto", 3.0]] if calm <= 0.0 else [["golpes", 1.0]]
+	else: moves = [["merodea", 3.0], ["emboscada", ambush_weight], ["pasa", 1.5], ["retirada", 1.0], ["golpes", 0.7]]
+	moves = moves.filter(func(move): return float(move[1]) > 0.0)
 	# Where the difficulty likes it brought across somebody's view.
 	if cross_weight > 0.0 and not stalled(): moves.append(["cruce", cross_weight])
 	# Never the one just played -- unless it is the only one there is.
@@ -428,7 +551,7 @@ func build() -> void:
 			raps(target)
 	# Whatever could not be had this time, a plain prowl will do.
 	if not ok and kind != "merodea": ok = prowl_round(target, prowl, "merodea")
-	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) if ok else clock + 3.0
+	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) * spacing() if ok else clock + 3.0
 	if ok:
 		last_kind = kind
 		prowl = maxf(nearest_prowl(), prowl - PROWL_STEP)
@@ -512,6 +635,14 @@ func far_lead(kind: String) -> bool:
 				break
 		if clear and validate_lead(centre): candidates.append(centre)
 	if candidates.is_empty(): return false
+	# A rest that was earned leaves the way clear too: far from everybody is
+	# not enough if it is the corridor to the refuge, or the room of a set
+	# they have yet to light. (When every far room is on some way, far will
+	# have to do.)
+	if calm > 0.0:
+		var goals := goal_rooms()
+		var open: Array = candidates.filter(func(centre): return not in_the_way(room_id(centre), goals))
+		if not open.is_empty(): candidates = open
 	return play(kind, candidates[rng.randi_range(0, candidates.size() - 1)], LEAD_RADIUS, false, null, LEAD_TIME * 1.5)
 
 ## The team is all hidden and the creature, having seen nobody, is walking
@@ -642,6 +773,7 @@ func nearest_to(point: Vector3) -> float:
 ## What the observer's panel shows of it.
 func status_lines() -> Array:
 	var lines: Array = ["DIRECTOR · %s · amenaza %0.2f%s" % [PHASE_NAMES[phase], menace, " · callado" if silent() else ""]]
+	if calm > 0.0: lines.append("  carga %0.2f · un descanso vale hasta %0.0f s más" % [strain, calm * spacing()])
 	if phase == Phase.RELIEF: lines.append("  descanso %0.0f s más" % maxf(0.0, rest_until - clock))
 	elif phase == Phase.BUILD: lines.append("  próxima pista en %0.0f s · a %0.0f m del equipo" % [maxf(0.0, next_lead - clock), prowl])
 	if not current.is_empty() and clock < float(current.until): lines.append("  %s · sala %d%s · %0.0f s" % [current.kind, room_id(current.point), (" · por " + String(current.target)) if not String(current.target).is_empty() else "", float(current.until) - clock])

@@ -52,6 +52,12 @@ var doubt_rest := 0.0
 ## Tiring of a chase: how long this one has lasted, and until when it will not
 ## take any notice of anybody.
 const TIRED_FOR := 10.0
+## This floor's (the difficulty's "tired").
+var tired_for := TIRED_FOR
+## How much of its hearing it has at the moment, 0 to 1: the director dulls
+## it while it is resting somebody who has earned it (pacing_director), so
+## that being left alone is not undone by the first footstep.
+var dull := 1.0
 var chase_time := 0.0
 var tired_until := -INF
 ## It has been after somebody since it last gave up: giving up now is losing
@@ -83,6 +89,75 @@ func tune(profile: Dictionary) -> void:
 	chase_tire = float(profile.chase_tire)
 	lost_cry = bool(profile.lost_cry)
 	guess_hides = bool(profile.guess_hides)
+	tired_for = float(profile.get("tired", TIRED_FOR))
+	sight_half_angle = float(profile.get("sight_angle", SIGHT_HALF_ANGLE))
+	cover = float(profile.get("cover", 0.0))
+	glimpse = float(profile.get("glimpse", 0.0))
+
+## How sharp its eyes are (the difficulty writes them; the game as it was sees
+## in SIGHT_HALF_ANGLE to either side and takes any part of a body in view
+## for somebody at once). `sight_half_angle`: degrees to either side of where
+## it faces. `cover`: the share of a body that has to show for it to take it
+## for somebody straight away; less than that -- a head and a shoulder round
+## a door frame -- and it has to be left in view for `glimpse` seconds before
+## it notices. Only while it is not after anybody: once it hunts, half a body
+## is as good as a whole one.
+var sight_half_angle := SIGHT_HALF_ANGLE
+var cover := 0.0
+var glimpse := 0.0
+## Seat -> seconds that survivor has been in view, partly covered.
+var peeked := {}
+## The points of a body it looks for besides the eyes, as [share of the eyes'
+## height, metres to one side]: both shoulders, both hips, both knees.
+const BODY_POINTS := [[0.86, 0.2], [0.86, -0.2], [0.56, 0.18], [0.56, -0.18], [0.28, 0.16], [0.28, -0.16]]
+
+## How much of a survivor it has in plain sight, 0 to 1: the eyes (which
+## sees() has already found) and BODY_POINTS, each one a ray of its own.
+func shown(player: Node3D) -> float:
+	var eyes: Vector3 = player.camera.global_position
+	var feet: Vector3 = player.global_position
+	var height: float = maxf(0.5, eyes.y - feet.y)
+	var away: Vector3 = eyes - (global_position + Vector3(0, EYE_HEIGHT, 0))
+	var side := Vector3(-away.z, 0.0, away.x)
+	if side.length() < 0.01: side = Vector3.RIGHT
+	side = side.normalized()
+	var count := 1
+	for point in BODY_POINTS:
+		if clear_sight(Vector3(eyes.x, feet.y + height * float(point[0]), eyes.z) + side * float(point[1])): count += 1
+	return float(count) / float(BODY_POINTS.size() + 1)
+
+## Whether somebody it can see goes unnoticed for now: mostly behind
+## something, and not there long enough yet. Counted while it lasts.
+func overlooks(player: Node3D, delta: float) -> bool:
+	if cover <= 0.0 or mode not in [Mode.PATROL, Mode.SEARCH, Mode.INVESTIGATE] or player.hidden: return false
+	var seat := int(player.slot) if "slot" in player else 0
+	if shown(player) >= cover:
+		peeked.erase(seat)
+		return false
+	peeked[seat] = float(peeked.get(seat, 0.0)) + delta
+	return float(peeked[seat]) < glimpse
+
+## The survivor it takes notice of this frame: seen_survivor(), unless they
+## are one it overlooks -- then the nearest it can see and does not.
+func noticed_survivor(delta: float) -> Node3D:
+	var seen := seen_survivor()
+	if seen == null or cover <= 0.0:
+		if seen == null and not peeked.is_empty():
+			# Out of view: what it had half seen fades at the rate it came.
+			for seat in peeked.keys():
+				peeked[seat] = float(peeked[seat]) - delta
+				if peeked[seat] <= 0.0: peeked.erase(seat)
+		return seen
+	if not overlooks(seen, delta): return seen
+	var best: Node3D = null
+	var best_distance := INF
+	for player in level.survivors():
+		if player == seen or not sees(player) or overlooks(player, delta): continue
+		var distance: float = player.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best = player
+			best_distance = distance
+	return best
 
 ## The beats of searching a wardrobe, at this creature's pace.
 func wardrobe_steps() -> Dictionary:
@@ -559,7 +634,7 @@ func sees(player: Node3D, ignore_concealment := false) -> bool:
 	# It knows which wardrobe the player went into, doors shut or not.
 	if player.hidden and not ignore_concealment and observed_hide == player.hiding_place: return true
 	var facing := -global_basis.z
-	if offset.length() > 1.5 and facing.dot(offset.normalized()) < cos(deg_to_rad(SIGHT_HALF_ANGLE)): return false
+	if offset.length() > 1.5 and facing.dot(offset.normalized()) < cos(deg_to_rad(sight_half_angle)): return false
 	if not clear_sight(player.camera.global_position): return false
 	# Shut doors block the line above; peeking through a gap is visible.
 	if player.hidden and not ignore_concealment: return player.hiding_place.ajar()
@@ -636,7 +711,7 @@ func can_hear(point: Vector3, radius: float) -> bool:
 func hear_route(point: Vector3, radius: float) -> Dictionary:
 	var missed := {"audible": false, "apparent": point, "distance": INF, "muffle": 1.0}
 	if level.point_protected(point): return missed
-	var reach := radius * HEARING_SCALE * hearing * reach_scale
+	var reach := radius * HEARING_SCALE * hearing * reach_scale * dull
 	var straight := global_position.distance_to(point)
 	if straight > reach: return missed
 	if clear_sight(point + Vector3(0, 1, 0)):
@@ -1034,7 +1109,7 @@ func play_doubt(which: int, pitch: float) -> void:
 ## Tired of running after somebody it can still see: it lets go, takes no
 ## notice of anybody for TIRED_FOR, and goes off somewhere else.
 func tire() -> void:
-	tired_until = clock + TIRED_FOR
+	tired_until = clock + tired_for
 	detection = 0.0
 	focus = null
 	give_up_area()
@@ -1238,7 +1313,7 @@ func _physics_process(delta: float) -> void:
 		update_visual(delta)
 		return
 	mark_rooms(delta)
-	var seen := seen_survivor()
+	var seen := noticed_survivor(delta)
 	var visible_player := seen != null
 	if visible_player:
 		# Which way they were going, for the search if it loses them.
@@ -1265,6 +1340,10 @@ func _physics_process(delta: float) -> void:
 		sight_gap += delta
 	# Tired of a chase: for a while it takes no notice of anybody.
 	if clock < tired_until: detection = minf(detection, SUSPICION * 0.9)
+	# Standing there making somebody out, it turns to face them: left facing
+	# the way it had been walking, eyes that see less to either side lost
+	# them while it stared.
+	if doubting > 0.0 and visible_player: face_toward(last_known, delta, 5.0)
 	doubting = maxf(0.0, doubting - delta)
 	if mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER]:
 		chase_time += delta
