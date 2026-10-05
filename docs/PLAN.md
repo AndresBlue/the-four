@@ -430,16 +430,19 @@ pueda jugar entero sin tocar el teclado.
 - [ ] **Accesibilidad, mezcla y rendimiento sostenido** en la escena más
   exigente.
 - [ ] **Cuatro dificultades de la IA** (Apacible, Equilibrada, Desafiante y
-  Pesadilla), en individual y en cooperativo. Lo de hoy es Desafiante. La
-  hoja de ruta entera —palancas, conductas, objetivos, fases y lo que hay
-  que decidir antes— está en [DIFFICULTY.md](DIFFICULTY.md). Por fases:
-  - [ ] 0 · Las siete decisiones de su sección 9.
+  Pesadilla), en individual y en cooperativo. Lo de hoy es Desafiante, y en
+  las cuatro la bestia aparece a menudo: lo que sube es lo difícil que es
+  salir de cada encuentro. La hoja de ruta entera —palancas, conductas,
+  objetivos y lo decidido el 4 de octubre— está en
+  [DIFFICULTY.md](DIFFICULTY.md). Por fases:
   - [ ] 1 · Cimientos: perfiles en un archivo, y Desafiante idéntico a hoy.
-  - [ ] 2 · Instrumentos: lotes de bots por dificultad y tabla de referencia.
+  - [ ] 2 · Instrumentos: bots novatos, encuentros en el parte y lotes por
+    dificultad con tabla de referencia.
   - [ ] 3 · Apacible y Equilibrada, por números.
-  - [ ] 4 · Conductas nuevas, una a una.
-  - [ ] 5 · Pesadilla, por números.
-  - [ ] 6 · Individual frente a equipo: el perdón y el tamaño del equipo.
+  - [ ] 4 · Las conductas de Apacible: la escena de «me salvé».
+  - [ ] 5 · Las conductas y los números de Pesadilla.
+  - [ ] 6 · Individual frente a equipo: el sector que vuelve a empezar a
+    solas, el perdón por dificultad y el tamaño del equipo.
   - [ ] 7 · La dificultad en las marcas.
   - [ ] 8 · Los números finales, con gente.
 - [ ] **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del
