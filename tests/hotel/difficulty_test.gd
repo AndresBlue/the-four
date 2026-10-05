@@ -1,0 +1,199 @@
+extends SceneTree
+## The creature's difficulties (game/floors/difficulty.gd): that "desafiante"
+## is the game as it was, number for number; that every lever goes the same
+## way from the easiest to the hardest; that a floor started on one hands its
+## numbers to the creature, the director, the lifts, the sets and the session,
+## keeps it in the checkpoint and the tape; that the room's mercy goes over
+## it; and the screen it is chosen on. That it reaches the guests is
+## tests/net/net_test.gd's.
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
+const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
+const DIRECTOR := preload("res://game/director/pacing_director.gd")
+const LIFTS := preload("res://game/app/lifts.gd")
+const TVS := preload("res://game/app/televisions.gd")
+const SESSION := preload("res://game/services/game_session.gd")
+var level
+var checks: Array = []
+var failed := 0
+
+## Which way each lever of how hard it is to get out of an encounter goes as
+## the difficulty rises: 1 more, -1 less. The ones that make encounters (how
+## often the director leads it, how near, how long it rests) are not here:
+## those stay high in all four (docs/DIFFICULTY.md, decided 4 October 2026).
+const HARDER := {
+	"sight_range": 1, "notice": 1, "hearing": 1, "torch_range": 1, "alert_time": -1, "chase_start": 1, "chase_accel": 1,
+	"chase_speed": 1, "track_speed": 1, "lose_after": 1, "give_up": 1, "peek_chance": 1, "attack_range": 1, "windup": -1,
+	"recover": -1, "wardrobe": -1, "grace": -1, "lift_wait": -1, "lift_hold": -1,
+	"peak_max": 1, "peak_tense": 1, "death_ease": -1, "double_back": 1,
+	"distract_rest": 1, "burnt_every": -1,
+}
+
+func _initialize() -> void: run.call_deferred()
+
+func check(title: String, passed: bool, detail := "") -> void:
+	checks.append({"check": title, "passed": passed})
+	if not passed: failed += 1
+	print("PASS " if passed else "FAIL ", title, ("  · " + detail) if not passed and not detail.is_empty() else "")
+
+func frames(count: int) -> void:
+	for i in count: await physics_frame
+
+static func amount(value: Variant) -> float:
+	return float(value[0]) + float(value[1]) if value is Array else float(value)
+
+func run() -> void:
+	var desafiante: Dictionary = DIFFICULTY.PROFILES.desafiante
+	# The game as it was.
+	var as_was := {
+		"sight_range": LOCUST.SIGHT_RANGE, "torch_range": LOCUST.TORCH_NOTICE_RANGE, "alert_time": LOCUST.ALERT_TIME,
+		"chase_start": LOCUST.CHASE_START_SPEED, "chase_accel": LOCUST.CHASE_ACCELERATION, "chase_speed": LOCUST.CHASE_SPEED,
+		"track_speed": LOCUST.TRACK_SPEED, "lose_after": LOCUST.LOSE_AFTER, "peek_chance": LOCUST.SEARCH_PEEK_CHANCE,
+		"attack_range": LOCUST.ATTACK_RANGE, "windup": LOCUST.WINDUP_TIME, "recover": LOCUST.RECOVER_TIME,
+		"tv_hop": TVS.HOP_REST, "lift_wait": LIFTS.CREATURE_WAIT, "lift_hold": LIFTS.CREATURE_HOLD,
+		"prowl_min": DIRECTOR.PROWL_MIN, "peak_max": DIRECTOR.PEAK_MAX, "peak_tense": DIRECTOR.PEAK_MAX_TENSE,
+		"rest_chase": DIRECTOR.REST_AFTER_CHASE, "rest_death": DIRECTOR.REST_AFTER_DEATH, "death_ease": DIRECTOR.DEATH_EASE,
+		"double_back": DIRECTOR.DOUBLE_BACK, "distract_rest": DIRECTOR.DISTRACT_REST, "restarts": SESSION.RESTARTS,
+		"notice": 1.0, "hearing": 1.0, "wardrobe": 1.0, "grace": 15.0,
+	}
+	var differs: Array = as_was.keys().filter(func(key): return not is_equal_approx(float(desafiante[key]), float(as_was[key])))
+	var pairs_differ: bool = Vector2(desafiante.give_up[0], desafiante.give_up[1]) != Vector2(LOCUST.GIVE_UP, LOCUST.GIVE_UP_HARD) or Vector2(desafiante.lead_every[0], desafiante.lead_every[1]) != DIRECTOR.LEAD_EVERY or Vector2(desafiante.burnt_every[0], desafiante.burnt_every[1]) != DIRECTOR.BURNT_EVERY
+	check("Desafiante es el juego de antes, número por número", differs.is_empty() and not pairs_differ, str(differs))
+	check("Las cuatro tienen las mismas palancas", DIFFICULTY.ORDER.all(func(id): return DIFFICULTY.PROFILES[id].keys().size() == desafiante.keys().size() and desafiante.keys().all(func(key): return DIFFICULTY.PROFILES[id].has(key))))
+	# Every lever, from the easiest to the hardest, the same way.
+	var wrong: Array = []
+	for key in HARDER:
+		for step in range(1, DIFFICULTY.ORDER.size()):
+			var before := amount(DIFFICULTY.PROFILES[DIFFICULTY.ORDER[step - 1]][key])
+			var after := amount(DIFFICULTY.PROFILES[DIFFICULTY.ORDER[step]][key])
+			if (after - before) * float(HARDER[key]) < 0.0: wrong.append("%s %s→%s" % [key, DIFFICULTY.ORDER[step - 1], DIFFICULTY.ORDER[step]])
+	var hops: Array = DIFFICULTY.ORDER.map(func(id): return float(DIFFICULTY.PROFILES[id].tv_hop))
+	var mercies: Array = DIFFICULTY.ORDER.map(func(id): return int(DIFFICULTY.PROFILES[id].restarts))
+	check("Lo que cuesta salir de un encuentro va en orden de Apacible a Pesadilla", wrong.is_empty(), ", ".join(wrong))
+	var easiest: Dictionary = DIFFICULTY.PROFILES.apacible
+	check("Y Apacible la trae tan a menudo y tan cerca como Pesadilla", float(easiest.lead_every[1]) <= float(desafiante.lead_every[1]) and float(easiest.prowl_min) <= float(DIFFICULTY.PROFILES.pesadilla.prowl_min))
+	check("Las teles: Apacible no viaja, y cuanto más difícil, más a menudo", hops[0] == 0.0 and hops[1] > hops[2] and hops[2] > hops[3])
+	check("La clemencia: sin límite, dos, una, ninguna", mercies == [-1, 2, 1, 0])
+	check("Lo que no se conoce es Desafiante", DIFFICULTY.valid("imposible") == "desafiante" and DIFFICULTY.valid(null) == "desafiante" and DIFFICULTY.valid("apacible") == "apacible" and DIFFICULTY.FIRST == "equilibrada")
+	level = load("res://game/app/hotel.tscn").instantiate()
+	root.add_child(level)
+	await process_frame
+	# A settings file from before has no difficulty, and takes the default.
+	check("Quien tenía el juego de antes sigue en Desafiante", String(level.settings.DEFAULTS.difficulty) == "desafiante" and level.settings.sanitize("difficulty", "desafiante") == "desafiante")
+	# A floor on each, and what each piece is given.
+	for id in DIFFICULTY.ORDER:
+		await level.start_floor(81, false, [1], id)
+		var profile: Dictionary = DIFFICULTY.PROFILES[id]
+		var creature = level.locust
+		var director = level.director
+		var given: bool = level.difficulty == id and is_equal_approx(creature.sight_range, float(profile.sight_range)) and is_equal_approx(creature.chase_speed, float(profile.chase_speed)) and is_equal_approx(creature.alert_time, float(profile.alert_time)) and is_equal_approx(creature.give_up_hard, float(profile.give_up[1])) and is_equal_approx(creature.wardrobe_steps().done, 2.5 * float(profile.wardrobe)) and is_equal_approx(creature.grace, float(profile.grace))
+		var told: bool = director != null and director.lead_every == Vector2(profile.lead_every[0], profile.lead_every[1]) and is_equal_approx(director.prowl_min, float(profile.prowl_min)) and is_equal_approx(director.rest_death, float(profile.rest_death))
+		var rest: bool = is_equal_approx(level.lifts.wait_lobby, float(profile.lift_wait)) and is_equal_approx(level.lifts.hold_after, float(profile.lift_hold)) and level.session.restarts_allowed == int(profile.restarts)
+		check("Un piso en %s le da sus números a la criatura, al director, al ascensor y a la clemencia" % DIFFICULTY.title(id), given and told and rest)
+		var saved: Dictionary = level.session.checkpoint()
+		check("Y el punto de control la guarda (%s)" % DIFFICULTY.title(id), String(saved.get("difficulty", "")) == id)
+		check("Y la cinta la lleva (%s)" % DIFFICULTY.title(id), String(level.ledger.close(false).get("difficulty", "")) == id)
+		if id == "apacible":
+			# Its creature does not step through the sets.
+			level.session.stage = 2
+			await frames(3)
+			var sets: Array = level.stage_televisions()
+			for index in sets.slice(0, 3): level.apply_television(int(index), true)
+			var lit: Array = level.lit_televisions()
+			creature.set_physics_process(false)
+			creature.global_position = level.television_exit(int(lit[0])) + Vector3(0, 0.04, 0)
+			creature.mode = creature.Mode.SEARCH
+			var stood: Vector3 = creature.global_position
+			level.player.global_position = Vector3(0, -200, 0)
+			level.tvs.hop_rest = 0.0
+			for i in 8: level.tvs.creature_channel_hop(1.0)
+			check("En Apacible no sale por otra tele", creature.global_position.distance_to(stood) < 0.1)
+	# Encounters: a sign of it starts one, signs close together are the same
+	# one, and the stretch without any is kept (run_ledger.gd).
+	await level.start_floor(81, false, [1], "desafiante")
+	var it = level.locust
+	it.set_physics_process(false)
+	it.grace = 0.0
+	var ledger = level.ledger
+	var eye: Vector3 = level.player.camera.global_position
+	var ahead: Vector3 = -level.player.camera.global_basis.z
+	ahead.y = 0.0
+	var front: Vector3 = level.player.global_position + ahead.normalized() * 3.0
+	var away := Vector3(0, -80, 0)
+	it.global_position = away
+	for i in 30: ledger.tick(1.0 / 60.0)
+	check("Sin señal de ella no hay encuentro", int(ledger.encounters.get(1, 0)) == 0)
+	it.global_position = front
+	it.focus = level.player
+	it.detection = 1.0
+	for i in 30: ledger.tick(1.0 / 60.0)
+	check("Que se fije en ti es un encuentro", int(ledger.encounters.get(1, 0)) == 1)
+	for i in 120: ledger.tick(1.0 / 60.0)
+	check("Y mientras siga, el mismo", int(ledger.encounters.get(1, 0)) == 1)
+	it.global_position = away
+	it.focus = null
+	it.detection = 0.0
+	for i in 60 * 25: ledger.tick(1.0 / 60.0)
+	it.global_position = front
+	it.focus = level.player
+	it.detection = 1.0
+	for i in 30: ledger.tick(1.0 / 60.0)
+	check("Pasado un rato sin ella, otro, y queda cuánto duró el rato", int(ledger.encounters.get(1, 0)) == 2 and float(ledger.quiet.get(1, 0.0)) >= 24.0)
+	var met_line: Dictionary = ledger.close(false)
+	check("Y la cinta los lleva, por jugador", int(met_line.team[0].get("encounters", 0)) == 2 and int(met_line.team[0].get("quiet", 0)) >= 24)
+	# The novice bots: the creature is there for them only once they notice it.
+	var threat = load("res://tools/bots/bot_threat.gd").new(level)
+	threat.novice = true
+	it.focus = null
+	it.detection = 0.0
+	# Moving, as far as the bots are concerned (nothing below waits a frame,
+	# so it does not take a step).
+	it.set_physics_process(true)
+	it.global_position = level.player.global_position + Vector3(200, 0, 200)
+	threat.noticed_at = -INF
+	threat.refresh()
+	var unknown: bool = not threat.active
+	it.global_position = level.player.global_position + Vector3(6.0, 0, 0)
+	threat.refresh()
+	check("Un bot novato no sabe de ella hasta que la ve o la oye cerca", unknown and threat.active)
+	threat.novice = false
+	it.global_position = level.player.global_position + Vector3(200, 0, 200)
+	threat.refresh()
+	check("Y uno experto la sabe siempre", threat.active)
+	it.set_physics_process(false)
+	# The room's mercy goes over the difficulty's; left alone, the difficulty's.
+	level.set_rules({"restarts": 3})
+	check("La clemencia de la sala manda sobre la de la dificultad", level.session.restarts_allowed == 3)
+	level.set_rules({})
+	check("Y sin tocarla, la de la dificultad", level.session.restarts_allowed == 1 and level.difficulty == "desafiante")
+	# Continuar and Reintentar play it again.
+	level.on_action("retry")
+	await frames(2)
+	while level.session.state == level.session.State.LOADING: await process_frame
+	check("Reintentar juega la misma", level.difficulty == "desafiante")
+	await level.start_floor(81, false, [1], "pesadilla")
+	level.settings.values.difficulty = "equilibrada"
+	level.on_action("continue")
+	await frames(2)
+	while level.session.state == level.session.State.LOADING: await process_frame
+	check("Y Continuar, la del piso guardado aunque se haya elegido otra", level.difficulty == "pesadilla")
+	# A tape from before there were difficulties.
+	check("Una cinta de antes de las dificultades era Desafiante", String(level.records.clean({"floor": 1, "time": 900.0}).difficulty) == "desafiante")
+	# The screen it is chosen on.
+	level.settings.values.difficulty = "equilibrada"
+	level.session.set_state(level.session.State.MENU)
+	await frames(2)
+	var asked: Array = []
+	level.ui.action_requested.connect(func(what): asked.append(what), CONNECT_ONE_SHOT)
+	level.ui.menu("difficulty")
+	await process_frame
+	check("Nueva partida pregunta la dificultad, con la última elegida marcada", level.ui.screen == "difficulty" and DIFFICULTY.ORDER.all(func(id): return level.ui.buttons.has(id)) and level.get_viewport().gui_get_focus_owner() == level.ui.buttons["equilibrada"])
+	level.ui.buttons["pesadilla"].pressed.emit()
+	await process_frame
+	check("Elegir una la guarda y empieza la partida", String(level.settings.values.difficulty) == "pesadilla" and asked == ["begin"])
+	var file := FileAccess.open("res://evidence/difficulty_tests.json", FileAccess.WRITE)
+	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
+	file.close()
+	print("DIFFICULTY_RESULT ", checks.size() - failed, "/", checks.size())
+	level.queue_free()
+	await process_frame
+	quit(1 if failed > 0 else 0)

@@ -149,6 +149,10 @@ const BOARD := preload("res://game/ui/records_board.gd")
 ## The rules of a room (game/floors/match_rules.gd) and their screen.
 const MATCH_RULES := preload("res://game/floors/match_rules.gd")
 const RULES_SCREEN := preload("res://game/ui/rules_screen.gd")
+## The creature's difficulties (game/floors/difficulty.gd).
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
+## The button focus_first() marks instead of the first one, when there is one.
+var focus_wanted := ""
 ## The tab of the rules being looked at, and whether the screen has to be
 ## drawn again on the host's own machine (it put them all back at once).
 var rules_view := {}
@@ -396,6 +400,12 @@ func loading_note(words: String) -> void:
 ## and a pad had no way in at all.
 func focus_first() -> void:
 	quiet_focus = true
+	var wanted := focus_wanted
+	focus_wanted = ""
+	if buttons.has(wanted) and not buttons[wanted].disabled:
+		buttons[wanted].grab_focus()
+		quiet_focus = false
+		return
 	for id in buttons:
 		if not buttons[id].disabled:
 			buttons[id].grab_focus()
@@ -638,6 +648,8 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			side.visible = false
 		"lobby":
 			lobby_screen()
+		"difficulty":
+			difficulty_screen()
 		"rules":
 			var hosting: bool = net != null and net.is_host
 			set_osd("SALA ▸ REGLAS", "", "", "ANFITRIÓN" if hosting else "")
@@ -687,6 +699,46 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 	transition(0.35 if kind != "failed" else 0.9)
 	focus_first()
 
+## Which creature a new game is played against: the four, the one chosen last
+## marked, and beside them what the one under the cursor is like. Picking one
+## keeps it and starts the game.
+func difficulty_screen() -> void:
+	set_osd("MENU ▸ NUEVA PARTIDA", "", "", "")
+	title(column, "DIFICULTAD", 64)
+	label(column, "LA BESTIA QUE TE ESPERA EN EL HOTEL", 20).add_theme_color_override("font_color", STYLE.SOFT)
+	spacer(column, 24)
+	var chosen := DIFFICULTY.valid(settings.values.get("difficulty", DIFFICULTY.REFERENCE))
+	for id in DIFFICULTY.ORDER:
+		var which: String = id
+		var button := entry(column, DIFFICULTY.title(which), func():
+			settings.set_value("difficulty", which)
+			action_requested.emit("begin"), false, 30)
+		button.focus_entered.connect(func(): describe_difficulty(which))
+		buttons[which] = button
+	spacer(column, 18)
+	action("Volver", "main")
+	focus_wanted = chosen
+	describe_difficulty(chosen)
+
+func describe_difficulty(id: String) -> void:
+	for child in side.get_children():
+		side.remove_child(child)
+		child.queue_free()
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	panel.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.82), STYLE.FAINT, 1, 22))
+	side.add_child(panel)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 8)
+	panel.add_child(text)
+	label(text, DIFFICULTY.title(id).to_upper(), 30).add_theme_color_override("font_color", STYLE.AMBER)
+	paragraph(text, String(DIFFICULTY.NOTES[id]), 18, 440, STYLE.INK)
+	spacer(text, 4)
+	for line in DIFFICULTY.TRAITS[id]: paragraph(text, "·  " + String(line), 16, 440)
+	if id == DIFFICULTY.REFERENCE:
+		spacer(text, 4)
+		paragraph(text, "Es la bestia de siempre: la de antes de que hubiera dificultades.", 15, 440, STYLE.SOFT)
+
 ## A text field bound to a setting (saved as it is typed).
 func field(parent: Node, title_text: String, key: String, placeholder: String) -> LineEdit:
 	var row := HBoxContainer.new()
@@ -722,6 +774,13 @@ func lobby_screen() -> void:
 	var mode: int = int(net.options.mode)
 	if hosting:
 		choice(column, "Tipo de partida", NET.MODE_NAMES, mode, func(index): net.set_option("mode", index))
+		# Against the machine's creature, which one; the host's choice is kept
+		# for its next room too.
+		if mode == NET.Mode.COOP:
+			var names: Array = DIFFICULTY.ORDER.map(func(id): return DIFFICULTY.title(id))
+			choice(column, "Dificultad", names, DIFFICULTY.rank(net.options.get("difficulty")), func(index):
+				net.set_option("difficulty", DIFFICULTY.ORDER[index])
+				settings.set_value("difficulty", DIFFICULTY.ORDER[index]))
 		if mode == NET.Mode.VERSUS:
 			var names: Array = ["Al azar"]
 			var ids: Array = [NET.RANDOM]
@@ -738,6 +797,7 @@ func lobby_screen() -> void:
 			column.add_child(resume)
 	else:
 		label(column, NET.MODE_NAMES[mode], 20)
+		if mode == NET.Mode.COOP: label(column, "Dificultad: %s" % DIFFICULTY.title(net.options.get("difficulty")), 20)
 		if mode == NET.Mode.VERSUS:
 			label(column, "The Locust: %s" % ("al azar" if int(net.options.locust) == NET.RANDOM else net.player_name(int(net.options.locust))), 20)
 	spacer(column, 18)

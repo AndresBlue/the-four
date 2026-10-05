@@ -24,6 +24,17 @@ const COST_HEARD := 20.0
 var level
 var creature
 var active := false
+## Bots that only know of the creature what they see and hear (the bot_match
+## option skill "novato", docs/DIFFICULTY.md): it is known while one of them
+## sees it as a player would (sanity.sight_of_creature), has it within earshot
+## on its planta, or is being hunted by it, and NOVICE_MEMORY after that; the
+## rest of the time, for them, there is no creature. The others ("experto")
+## know where it is and what it does all the time.
+var novice := false
+const NOVICE_EARSHOT := 12.0
+const NOVICE_HUNTED := 30.0
+const NOVICE_MEMORY := 4.0
+var noticed_at := -INF
 var position := Vector3.ZERO
 var eye := Vector3.ZERO
 var forward := Vector3.FORWARD
@@ -65,6 +76,30 @@ var sight_cache := {}
 func _init(owner_level) -> void:
 	level = owner_level
 
+## The creature's own measures, as the floor's difficulty (and the room's
+## onslaught) set them on it (game/floors/difficulty.gd); its script's
+## constants, the game as it was, when there is none to ask.
+func sight_range() -> float:
+	return float(creature.sight_range) * float(creature.reach_scale) if is_instance_valid(creature) else LOCUST.SIGHT_RANGE
+
+func chase_speed() -> float:
+	return float(creature.chase_speed) if is_instance_valid(creature) else LOCUST.CHASE_SPEED
+
+func track_speed() -> float:
+	return float(creature.track_speed) if is_instance_valid(creature) else LOCUST.TRACK_SPEED
+
+func torch_range() -> float:
+	return float(creature.torch_range) * float(creature.reach_scale) if is_instance_valid(creature) else LOCUST.TORCH_NOTICE_RANGE
+
+func wardrobe_done() -> float:
+	return float(creature.wardrobe_steps().done) if is_instance_valid(creature) else float(LOCUST.WARDROBE_TIME.done)
+
+func hearing_scale() -> float:
+	return NOISE.HEARING_SCALE * (float(creature.hearing) * float(creature.reach_scale) if is_instance_valid(creature) else 1.0)
+
+func lose_after() -> float:
+	return float(creature.lose_after) if is_instance_valid(creature) else LOCUST.LOSE_AFTER
+
 ## Everything, once more. Nothing to fear from a creature that is not moving
 ## (--no-enemy), still in its grace, or on another planta than `wing`.
 func refresh() -> void:
@@ -77,6 +112,9 @@ func refresh() -> void:
 	search_points.clear()
 	sight_cache.clear()
 	landing = Vector3.INF
+	if active and novice:
+		if perceived(): noticed_at = float(level.session.elapsed)
+		if float(level.session.elapsed) - noticed_at > NOVICE_MEMORY: active = false
 	if not active: return
 	var car: int = level.lifts.creature_car(int(level.session.stage))
 	if car >= 0 and car < level.hotel.arrivals.size() and level.hotel.arrivals[car] != Vector3.ZERO: landing = level.hotel.arrivals[car]
@@ -120,6 +158,20 @@ func refresh() -> void:
 		vantages.append(creature.destination + Vector3(0, LOCUST.EYE_HEIGHT, 0))
 	see_ahead()
 
+## Whether any of the team has the creature in sight or earshot now, or is
+## being hunted by it (novice bots: see `novice`).
+func perceived() -> bool:
+	if creature.grace > 0.0: return false
+	var at: Vector3 = creature.global_position
+	for body in level.survivors():
+		if not is_instance_valid(body) or int(level.session.participants.get(int(body.slot), level.session.Life.DEAD)) == level.session.Life.DEAD: continue
+		if absf(body.global_position.y - at.y) >= 3.0: continue
+		var gap: float = body.global_position.distance_to(at)
+		if gap < NOVICE_EARSHOT: return true
+		if creature.focus == body and gap < NOVICE_HUNTED and creature.mode in [LOCUST.Mode.ALERT, LOCUST.Mode.CHASE, LOCUST.Mode.WINDUP, LOCUST.Mode.RECOVER]: return true
+		if level.sanity.sight_of_creature(body, level.sanity.lit_at(body.global_position)) > 0: return true
+	return false
+
 ## Its future (see FUTURE): along its route at the pace it keeps in what it is
 ## doing, then the end of it, then the points its search has still to look at.
 func see_ahead() -> void:
@@ -129,7 +181,7 @@ func see_ahead() -> void:
 	last_known = creature.last_known
 	destination = creature.destination
 	match mode:
-		LOCUST.Mode.CHASE: pace = LOCUST.CHASE_SPEED if lost_time < 0.4 else LOCUST.TRACK_SPEED
+		LOCUST.Mode.CHASE: pace = chase_speed() if lost_time < 0.4 else track_speed()
 		LOCUST.Mode.INVESTIGATE: pace = 2.9
 		LOCUST.Mode.SEARCH: pace = 1.5
 		LOCUST.Mode.PATROL: pace = LOCUST.LEAVE_PACE if bool(creature.leaving) else 2.2
@@ -137,7 +189,7 @@ func see_ahead() -> void:
 	pace = maxf(pace, float(creature.speed))
 	# Standing still for a while yet: what it does then starts later.
 	var wait := 0.0
-	if busy: wait = maxf(0.0, (LOCUST.EXECUTION_TIME + 0.35 if mode == LOCUST.Mode.EXECUTE else float(LOCUST.WARDROBE_TIME.done)) - float(creature.state_time))
+	if busy: wait = maxf(0.0, (LOCUST.EXECUTION_TIME + 0.35 if mode == LOCUST.Mode.EXECUTE else wardrobe_done()) - float(creature.state_time))
 	elif mode in [LOCUST.Mode.PATROL, LOCUST.Mode.SEARCH]: wait = float(creature.pause_time)
 	future.append({"eye": eye, "t": 0.0})
 	var walked := 0.0
@@ -187,7 +239,7 @@ func time_to_sight(point: Vector3, height := 1.64) -> float:
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	var found := INF
 	for vantage in future:
-		if target.distance_to(vantage.eye) > LOCUST.SIGHT_RANGE: continue
+		if target.distance_to(vantage.eye) > sight_range(): continue
 		if space.intersect_ray(PhysicsRayQueryParameters3D.create(vantage.eye, target, SIGHT_MASK)).is_empty():
 			found = float(vantage.t)
 			break
@@ -225,7 +277,7 @@ func exposed(point: Vector3, height := 1.64) -> bool:
 	var target := point + Vector3(0, height, 0)
 	var offset := target - eye
 	var gap := offset.length()
-	if gap > LOCUST.SIGHT_RANGE: return false
+	if gap > sight_range(): return false
 	if gap > 1.5 and forward.angle_to(Vector3(offset.x, 0, offset.z)) > SEEN_ANGLE: return false
 	var query := PhysicsRayQueryParameters3D.create(eye, target, SIGHT_MASK)
 	return level.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
@@ -237,7 +289,7 @@ func exposed(point: Vector3, height := 1.64) -> bool:
 func visible(point: Vector3, height := 1.64) -> bool:
 	if not near_planta(point): return false
 	var target := point + Vector3(0, height, 0)
-	if target.distance_to(eye) > LOCUST.SIGHT_RANGE: return false
+	if target.distance_to(eye) > sight_range(): return false
 	var query := PhysicsRayQueryParameters3D.create(eye, target, SIGHT_MASK)
 	return level.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -248,7 +300,7 @@ func watched(point: Vector3, height := 1.64) -> bool:
 	var target := point + Vector3(0, height, 0)
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	for vantage in vantages:
-		if target.distance_to(vantage) > LOCUST.SIGHT_RANGE: continue
+		if target.distance_to(vantage) > sight_range(): continue
 		if space.intersect_ray(PhysicsRayQueryParameters3D.create(vantage, target, SIGHT_MASK)).is_empty(): return true
 	return false
 
@@ -257,7 +309,7 @@ func watched(point: Vector3, height := 1.64) -> bool:
 func audible(point: Vector3, noise_name: String) -> bool:
 	if not near_planta(point): return false
 	var radius: float = NOISE.radius(noise_name) * EAR_MARGIN
-	if position.distance_to(point) > radius * NOISE.HEARING_SCALE: return false
+	if position.distance_to(point) > radius * hearing_scale(): return false
 	return bool(creature.hear_route(point, radius).audible)
 
 ## Metres of walking from the creature to `point`, or INF.
@@ -273,7 +325,7 @@ func route_to(point: Vector3) -> float:
 func eta(point: Vector3) -> float:
 	var metres := route_to(point)
 	if metres == INF: return INF
-	var pace: float = LOCUST.CHASE_SPEED if mode in [LOCUST.Mode.CHASE, LOCUST.Mode.ALERT] else maxf(2.9, float(creature.speed))
+	var pace: float = chase_speed() if mode in [LOCUST.Mode.CHASE, LOCUST.Mode.ALERT] else maxf(2.9, float(creature.speed))
 	return metres / pace
 
 ## Whether it is after this body: seen and being run down, or making it out
@@ -291,7 +343,7 @@ func torch_catches(body) -> bool:
 	var chest := position + Vector3(0, 1.6, 0)
 	var from: Vector3 = body.camera.global_position
 	var offset := chest - from
-	if offset.length() > LOCUST.TORCH_NOTICE_RANGE + 5.0: return false
+	if offset.length() > torch_range() + 5.0: return false
 	if (-body.camera.global_basis.z).angle_to(offset) > deg_to_rad(40.0): return false
 	var query := PhysicsRayQueryParameters3D.create(from, chest, SIGHT_MASK)
 	return level.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
@@ -303,5 +355,5 @@ func room_cost(room_id: int) -> float:
 	var extra: float = danger.get(room_id, 0.0)
 	if extra == INF: return INF
 	var centre := FLOOR.position_of(level.manifest.rooms[room_id])
-	if centre.distance_to(position) < LOCUST.SIGHT_RANGE and visible(centre): extra += COST_SEEN
+	if centre.distance_to(position) < sight_range() and visible(centre): extra += COST_SEEN
 	return extra

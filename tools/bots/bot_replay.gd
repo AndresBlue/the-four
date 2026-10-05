@@ -115,7 +115,7 @@ func begin(at: float) -> void:
 	level.session.keeps_checkpoint = false
 	level.settings.force_window = true
 	level.settings.apply_display()
-	await level.start_floor(int(header.seed), false, seats)
+	await level.start_floor(int(header.seed), false, seats, String(header.get("difficulty", "desafiante")))
 	if level.session.state != level.session.State.PLAYING:
 		fail("No se pudo levantar el piso de la semilla %d." % int(header.seed))
 		return

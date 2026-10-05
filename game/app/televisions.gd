@@ -189,7 +189,9 @@ const HOP_CLEAR := 12.0
 
 func creature_channel_hop(delta: float) -> void:
 	hop_rest = maxf(0.0, hop_rest - delta)
-	if not is_instance_valid(level.locust) or level.locust.control != "ai" or level.rule("tv_travel") == 0: return
+	# The difficulty says how often (tv_hop; nought: never), the room whether at all.
+	var every: float = float(level.tuning().tv_hop)
+	if not is_instance_valid(level.locust) or level.locust.control != "ai" or level.rule("tv_travel") == 0 or every <= 0.0: return
 	var looking: bool = level.locust.mode in [level.locust.Mode.SEARCH, level.locust.Mode.INVESTIGATE] and not level.locust.lift_bound
 	var here: int = creature_at_television() if looking else -1
 	hop_wait = hop_wait + delta if here >= 0 else 0.0
@@ -200,7 +202,7 @@ func creature_channel_hop(delta: float) -> void:
 	if choices.is_empty(): return
 	var pick: int = choices[level.locust.rng.randi_range(0, choices.size() - 1)]
 	hop_wait = 0.0
-	hop_rest = HOP_REST
+	hop_rest = every
 	warp_creature(pick)
 	if level.match_net.in_match(): level.match_net.warp_state.rpc(pick)
 

@@ -12,6 +12,54 @@ const SIGHT_RANGE := 70.0
 const ONSLAUGHT_REACH := 1.25
 var reach_scale := 1.0
 var relentless := false
+
+## The numbers this creature plays by: the constants of this script are the
+## game as it was (the difficulty "desafiante"), and the floor's difficulty
+## writes these over them as it starts (game/floors/difficulty.gd,
+## hotel_main.arm_creature). Everything that decides what it does reads these.
+var sight_range := SIGHT_RANGE
+var notice := 1.0
+var hearing := 1.0
+var torch_range := TORCH_NOTICE_RANGE
+var alert_time := ALERT_TIME
+var chase_start := CHASE_START_SPEED
+var chase_accel := CHASE_ACCELERATION
+var chase_speed := CHASE_SPEED
+var track_speed := TRACK_SPEED
+var lose_after := LOSE_AFTER
+var give_up := GIVE_UP
+var give_up_hard := GIVE_UP_HARD
+var peek_chance := SEARCH_PEEK_CHANCE
+var attack_range := ATTACK_RANGE
+var windup_time := WINDUP_TIME
+var recover_time := RECOVER_TIME
+var wardrobe_scale := 1.0
+
+## A profile of the difficulties (the creature's part of it).
+func tune(profile: Dictionary) -> void:
+	sight_range = float(profile.sight_range)
+	notice = float(profile.notice)
+	hearing = float(profile.hearing)
+	torch_range = float(profile.torch_range)
+	alert_time = float(profile.alert_time)
+	chase_start = float(profile.chase_start)
+	chase_accel = float(profile.chase_accel)
+	chase_speed = float(profile.chase_speed)
+	track_speed = float(profile.track_speed)
+	lose_after = float(profile.lose_after)
+	give_up = float(profile.give_up[0])
+	give_up_hard = float(profile.give_up[1])
+	peek_chance = float(profile.peek_chance)
+	attack_range = float(profile.attack_range)
+	windup_time = float(profile.windup)
+	recover_time = float(profile.recover)
+	wardrobe_scale = float(profile.wardrobe)
+
+## The beats of searching a wardrobe, at this creature's pace.
+func wardrobe_steps() -> Dictionary:
+	var steps := {}
+	for beat in WARDROBE_TIME: steps[beat] = float(WARDROBE_TIME[beat]) * wardrobe_scale
+	return steps
 const SIGHT_HALF_ANGLE := 60.0
 ## Suspicion gained per second with the player in view, near and far.
 const NOTICE_NEAR := 3.2
@@ -478,7 +526,7 @@ func clear_sight(point: Vector3) -> bool:
 func sees(player: Node3D, ignore_concealment := false) -> bool:
 	if not is_instance_valid(player) or not level.survivor_active(player): return false
 	var offset: Vector3 = player.global_position - global_position
-	if offset.length() > SIGHT_RANGE * reach_scale: return false
+	if offset.length() > sight_range * reach_scale: return false
 	# It knows which wardrobe the player went into, doors shut or not.
 	if player.hidden and not ignore_concealment and observed_hide == player.hiding_place: return true
 	var facing := -global_basis.z
@@ -522,7 +570,7 @@ func target() -> Node3D:
 ## stand out; crouching and distance buy time to break line of sight.
 func notice_rate(player: Node3D) -> float:
 	var distance: float = player.global_position.distance_to(global_position)
-	var rate := lerpf(NOTICE_NEAR, NOTICE_FAR, clampf((distance - 4.0) / (SIGHT_RANGE * reach_scale - 4.0), 0.0, 1.0))
+	var rate := lerpf(NOTICE_NEAR, NOTICE_FAR, clampf((distance - 4.0) / (sight_range * reach_scale - 4.0), 0.0, 1.0)) * notice
 	if player.crouched: rate *= 0.55
 	if Vector2(player.velocity.x, player.velocity.z).length() > 4.6: rate *= 1.35
 	if player.torch.visible: rate *= 1.4
@@ -536,7 +584,7 @@ func lit_by_torch() -> Node3D:
 		if not torch.visible or player.hidden: continue
 		var chest := global_position + Vector3(0, 1.6, 0)
 		var offset := chest - torch.global_position
-		if offset.length() > TORCH_NOTICE_RANGE * reach_scale or offset.length() < 5.0: continue
+		if offset.length() > torch_range * reach_scale or offset.length() < 5.0: continue
 		if (-torch.global_basis.z).angle_to(offset) > deg_to_rad(TORCH_NOTICE_ANGLE * 0.85): continue
 		var ray := PhysicsRayQueryParameters3D.create(torch.global_position, chest, 1 | 8 | 64)
 		if get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): return player
@@ -559,7 +607,7 @@ func can_hear(point: Vector3, radius: float) -> bool:
 func hear_route(point: Vector3, radius: float) -> Dictionary:
 	var missed := {"audible": false, "apparent": point, "distance": INF, "muffle": 1.0}
 	if level.point_protected(point): return missed
-	var reach := radius * HEARING_SCALE * reach_scale
+	var reach := radius * HEARING_SCALE * hearing * reach_scale
 	var straight := global_position.distance_to(point)
 	if straight > reach: return missed
 	if clear_sight(point + Vector3(0, 1, 0)):
@@ -753,7 +801,7 @@ func set_mode(next: Mode) -> void:
 	if next == Mode.PATROL: observed_hide = null
 	if next == Mode.CHASE and previous != Mode.CHASE:
 		# It sets off from a stride and builds up to full speed.
-		speed = maxf(speed, CHASE_START_SPEED)
+		speed = maxf(speed, chase_start)
 		# Coming out of the alert, the next call waits for the first to finish.
 		grunt_clock = grunt_left + rng.randf_range(0.8, 1.8) if previous == Mode.ALERT else 0.0
 	# Lost them, or found nobody: a search of its own, from where it last knew.
@@ -895,7 +943,7 @@ func plan_search(origin: Vector3, heading: Vector3) -> Array:
 	var beyond: Dictionary = level.manifest.rooms[int(ways[0][1])]
 	plan.append({"point": FLOOR.closest(map, ways[0][2])})
 	plan.append({"point": FLOOR.closest(map, FLOOR.position_of(beyond))})
-	if rng.randf() < SEARCH_PEEK_CHANCE:
+	if rng.randf() < peek_chance:
 		var hide := wardrobe_in(beyond)
 		if hide != null: plan.append({"point": hide.to_global(hide.exit_offset), "hide": hide})
 	if ways.size() > 1:
@@ -933,7 +981,8 @@ func give_up_area() -> void:
 	area_spent = 0.0
 	area_abandoned.emit(origin, destination)
 
-func can_attack(reach := ATTACK_RANGE) -> bool:
+func can_attack(reach := -1.0) -> bool:
+	if reach < 0.0: reach = attack_range
 	var player := target()
 	if player == null or global_position.distance_to(player.global_position) >= reach: return false
 	if not clear_sight(player.camera.global_position): return false
@@ -955,7 +1004,7 @@ func desired_speed() -> float:
 			# Cautious when close to what it heard; loping to a lift.
 			return lerpf(1.2, LIFT_PACE if lift_bound else 2.9, clampf((position.distance_to(destination) - 1.5) / 5.0, 0.0, 1.0))
 		Mode.CHASE:
-			return CHASE_SPEED if lost_time < 0.4 or relentless else TRACK_SPEED
+			return chase_speed if lost_time < 0.4 or relentless else track_speed
 		Mode.SEARCH:
 			return 0.0 if pause_time > 0 else 1.5
 	return 0.0
@@ -1034,7 +1083,7 @@ func update_wardrobe(delta: float) -> void:
 	velocity = Vector3(0, -2.0, 0)
 	move_and_slide()
 	if is_instance_valid(wardrobe): face_toward(wardrobe.global_position, delta, 7.0)
-	if state_time >= WARDROBE_TIME.done and control != "puppet":
+	if state_time >= float(WARDROBE_TIME.done) * wardrobe_scale and control != "puppet":
 		wardrobe = null
 		set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
 
@@ -1185,11 +1234,11 @@ func _physics_process(delta: float) -> void:
 				destination = observed_hide.to_global(observed_hide.exit_offset)
 				if global_position.distance_to(destination) < 2.0: begin_wardrobe(observed_hide)
 			chase_voice(delta)
-			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > LOSE_AFTER: set_mode(Mode.SEARCH)
+			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > lose_after: set_mode(Mode.SEARCH)
 			elif can_attack(): set_mode(Mode.WINDUP)
 		Mode.SEARCH:
 			clue_idle += delta
-			if (search_plan.is_empty() and clue_idle >= GIVE_UP) or clue_idle >= GIVE_UP_HARD:
+			if (search_plan.is_empty() and clue_idle >= give_up) or clue_idle >= give_up_hard:
 				give_up_area()
 			elif pause_time <= 0 and position.distance_to(destination) < 0.7:
 				if is_instance_valid(search_hide):
@@ -1201,15 +1250,15 @@ func _physics_process(delta: float) -> void:
 					pause_time = rng.randf_range(0.6, 1.4)
 				else: pause_time = 1.0
 		Mode.WINDUP:
-			if state_time >= WINDUP_TIME:
+			if state_time >= windup_time:
 				# A hit starts an execution (which takes over the body).
 				if can_attack(STRIKE_REACH): level.capture_survivor(target())
 				if mode == Mode.WINDUP: set_mode(Mode.RECOVER)
 		Mode.RECOVER:
-			if state_time >= RECOVER_TIME: set_mode(Mode.CHASE if visible_player else Mode.SEARCH)
+			if state_time >= recover_time: set_mode(Mode.CHASE if visible_player else Mode.SEARCH)
 		Mode.ALERT:
 			# Even if the player ducks out of view it heads for where it saw them.
-			if state_time >= ALERT_TIME: set_mode(Mode.CHASE)
+			if state_time >= alert_time: set_mode(Mode.CHASE)
 	update_voice(delta)
 	if mode == Mode.WARDROBE:
 		update_wardrobe(delta)
@@ -1241,7 +1290,7 @@ func lunge(delta: float) -> void:
 	face_toward(player.global_position, delta, 12.0)
 	if offset.length() < 0.9: velocity = Vector3.ZERO
 	else:
-		var heading := offset.normalized() * CHASE_SPEED * 1.15
+		var heading := offset.normalized() * chase_speed * 1.15
 		velocity = Vector3(heading.x, -2.0, heading.z)
 	move_and_slide()
 
@@ -1255,18 +1304,18 @@ func update_visual(delta: float) -> void:
 	if control == "puppet":
 		visual.move_velocity = velocity
 		visual.execute = clampf(state_time / EXECUTION_TIME, 0.0, 1.0) if mode == Mode.EXECUTE else 0.0
-		visual.searching = clampf(state_time / WARDROBE_TIME.done, 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
+		visual.searching = clampf(state_time / (float(WARDROBE_TIME.done) * wardrobe_scale), 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
 		visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT, Mode.EXECUTE] else 0.0, delta * 2.5)
-		visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
+		visual.attack = clampf(state_time / windup_time, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 		visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 		visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 		visual.look_point = net_look
 		return
 	visual.move_velocity = velocity
 	visual.execute = clampf(state_time / EXECUTION_TIME, 0.0, 1.0) if mode == Mode.EXECUTE else 0.0
-	visual.searching = clampf(state_time / WARDROBE_TIME.done, 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
+	visual.searching = clampf(state_time / (float(WARDROBE_TIME.done) * wardrobe_scale), 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
 	visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT, Mode.EXECUTE] else 0.0, delta * 2.5)
-	visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
+	visual.attack = clampf(state_time / windup_time, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 	# Stoops under door lintels; it is taller than the doorways.
 	visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
@@ -1381,7 +1430,7 @@ func move_on_path(delta: float) -> void:
 	# Sharp turns cost speed: it has to swing its stilt legs around.
 	if direction.length() > 0.1:
 		wanted *= lerpf(0.35, 1.0, clampf((-global_basis.z).dot(direction) * 0.5 + 0.5, 0.0, 1.0))
-	var acceleration := CHASE_ACCELERATION if mode == Mode.CHASE else 3.5
+	var acceleration := chase_accel if mode == Mode.CHASE else 3.5
 	speed = move_toward(speed, wanted, (acceleration if wanted > speed else 9.0) * delta)
 	var heading := direction if direction.length() > 0.1 else -global_basis.z
 	velocity.x = heading.x * speed

@@ -13,16 +13,17 @@ extends RefCounted
 ##
 ## A new rule is a line here and the place in the game that asks for it.
 
+## A rule that leaves it to the floor's difficulty (game/floors/difficulty.gd).
+const BY_DIFFICULTY := -2
+
 ## The tabs of the screen, in order.
 const GROUPS := ["EL EQUIPO", "EL PISO", "LA HOJA", "THE LOCUST"]
 
 ## {id, group (index into GROUPS), title, note, values, labels, default}.
 ## `versus`: only means anything with a player as the creature.
 const RULES := [
-	{"id": "mercy", "group": 0, "title": "Clemencia", "values": [0, 1, 2, 3], "labels": ["Ninguna", "Una vez", "Dos veces", "Tres veces"], "default": 0,
-		"note": "Capturas que la criatura perdona a cada superviviente: lo suelta y se va lejos."},
-	{"id": "restarts", "group": 0, "title": "Derrumbes perdonados", "values": [0, 1, 2, 3, -1], "labels": ["Ninguno", "Uno", "Dos", "Tres", "Sin límite"], "default": 1,
-		"note": "Veces que el piso devuelve un sector perdido, con todos en pie otra vez."},
+	{"id": "restarts", "group": 0, "title": "Clemencia", "values": [BY_DIFFICULTY, 0, 1, 2, 3, -1], "labels": ["Según la dificultad", "Ninguna", "Una vez", "Dos veces", "Tres veces", "Sin límite"], "default": BY_DIFFICULTY,
+		"note": "Veces que el piso devuelve una etapa perdida, con todos en pie otra vez en su entrada. La dificultad trae la suya (Apacible: sin límite; Equilibrada: dos; Desafiante: una; Pesadilla: ninguna)."},
 	{"id": "sanity", "group": 0, "title": "Cordura", "values": [1, 0], "labels": ["Se gasta", "No se gasta"], "default": 1,
 		"note": "Sin gastarse no hay alucinaciones, ni nadie se queda a la vista de la criatura por perderla."},
 	{"id": "code", "group": 1, "title": "Código de la última puerta", "values": [0, 1], "labels": ["Se puede adivinar", "Hacen falta las cuatro notas"], "default": 0,

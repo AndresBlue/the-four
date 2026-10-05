@@ -24,7 +24,7 @@ func run() -> void:
 	await process_frame
 	var ambient: float = level.ambient_energy
 	check("El menú muestra la habitación de portada con su cámara", level.title_scene.visible and level.title_scene.camera.current and level.title_scene.locust != null)
-	level.on_action("new")
+	level.on_action("begin")
 	var intro = level.intro
 	check("Nueva partida abre la escena de entrada", is_instance_valid(intro) and level.session.state == level.session.State.CUTSCENE)
 	# The hotel itself has no ambient light any more (dark rooms are dark), so
@@ -48,7 +48,7 @@ func run() -> void:
 	# the end, and its static played over the whole of the next opening scene.
 	level.lifts.leaving = level.lifts.LEAVE_TIME + 1.0
 	await process_frame
-	level.on_action("new")
+	level.on_action("begin")
 	check("Se puede volver a abrir desde el menú", is_instance_valid(level.intro))
 	await wait_for(func(): return false, 20)
 	check("Sin la estática del último ascensor del piso anterior", level.static_level == 0.0 and float(level.post_material.get_shader_parameter("signal_loss")) == 0.0)

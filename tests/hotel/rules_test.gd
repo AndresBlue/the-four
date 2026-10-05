@@ -1,7 +1,7 @@
 extends SceneTree
 ## The rules a room can change (game/floors/match_rules.gd), each one where
 ## the game asks for it: what may be said of them and what is kept, the
-## collapses a floor forgives, the creature's mercy, a code that wants its
+## stages a floor gives back (mercy), a code that wants its
 ## notes, the plan on the sheet and how long it lasts, a mind that does not
 ## wear, the onslaught, the hunter's sight, the sets as doors and the power
 ## that stays on, the tape a floor played by other rules leaves, and the screen
@@ -44,11 +44,11 @@ func collapses(allowed: int, times: int) -> bool:
 func run() -> void:
 	# What may be said of the rules, and what is kept of it.
 	var defaults: Dictionary = RULES.defaults()
-	check("Sin tocar nada, las reglas son las del juego", RULES.settled({}) == defaults and RULES.changed(defaults).is_empty() and int(defaults.restarts) == 1 and int(defaults.mercy) == 0 and int(defaults.plan_fade) == 180)
+	check("Sin tocar nada, las reglas son las del juego", RULES.settled({}) == defaults and RULES.changed(defaults).is_empty() and int(defaults.restarts) == RULES.BY_DIFFICULTY and int(defaults.plan_fade) == 180 and not defaults.has("mercy"))
 	check("De lo que se diga solo se toma lo que existe y vale", RULES.clean({"mercy": 9, "nada": 1, "restarts": -1, "sanity": "no", "plan_fade": 300.0}) == {"restarts": -1, "plan_fade": 300} and RULES.clean("reglas").is_empty())
-	check("Y solo se guarda lo que cambia, con su nombre", RULES.changed({"mercy": 0, "restarts": 2}) == {"restarts": 2} and RULES.described({"restarts": 2, "code": 1}) == ["Derrumbes perdonados: dos", "Código de la última puerta: hacen falta las cuatro notas"])
+	check("Y solo se guarda lo que cambia, con su nombre", RULES.changed({"mercy": 0, "restarts": 2}) == {"restarts": 2} and RULES.described({"restarts": 2, "code": 1}) == ["Clemencia: dos veces", "Código de la última puerta: hacen falta las cuatro notas"])
 	check("Cada regla tiene un nombre para cada valor, y su valor de siempre es uno de ellos", RULES.RULES.all(func(rule): return rule.values.size() == rule.labels.size() and rule.values.has(rule.default) and int(rule.group) < RULES.GROUPS.size()))
-	# The collapses a floor forgives.
+	# Mercy: the stages a floor gives back once lost.
 	check("Un derrumbe perdonado: el segundo acaba el piso", collapses(1, 1) and not collapses(1, 2))
 	check("Ninguno: el primero lo acaba", not collapses(0, 1))
 	check("Tres, o sin límite", collapses(3, 3) and not collapses(3, 4) and collapses(-1, 6))
@@ -58,20 +58,6 @@ func run() -> void:
 	var creature = level.locust
 	creature.set_physics_process(false)
 	check("Un piso empieza con las reglas del juego", level.rules == defaults and level.session.restarts_allowed == 1 and is_equal_approx(level.floor_map.forget, 180.0) and is_equal_approx(creature.reach_scale, 1.0))
-	# Mercy: it had somebody and lets go, once each; then it does not.
-	level.set_rules({"mercy": 1})
-	creature.grace = 0.0
-	creature.global_position = level.player.global_position + Vector3(1.2, 0, 0)
-	level.capture_survivor(level.player)
-	check("Con clemencia, la primera captura se perdona: nadie cae y la criatura se va lejos", level.execution.is_empty() and int(level.executions.pardoned.get(1, 0)) == 1 and level.untouchable.has(1) and creature.global_position.distance_to(level.player.global_position) > 15.0 and creature.grace >= level.executions.PARDON_REST - 0.5)
-	check("Y queda entre los momentos del piso, sin contar como caída", level.ledger.events.any(func(event): return String(event.k) == "mercy") and level.ledger.deaths == 0)
-	level.untouchable.clear()
-	creature.grace = 0.0
-	creature.global_position = level.player.global_position + Vector3(1.2, 0, 0)
-	level.capture_survivor(level.player)
-	check("La segunda ya no", not level.execution.is_empty() and int(level.execution.seat) == 1)
-	level.release_execution()
-	await frames(4)
 	creature.global_position = Vector3(0, -80, 0)
 	# The code and its notes.
 	var right: String = "".join(DIG.code(level.manifest).map(func(digit): return str(digit)))
@@ -114,10 +100,11 @@ func run() -> void:
 	check("Salvo que la sala le deje ver como una persona", level.rig.hunter_seat() and not level.rig.echo_seat())
 	level.solo_locust = false
 	# The tape of a floor played by other rules.
-	level.set_rules({"mercy": 2, "blackout": 0})
+	level.set_rules({"restarts": 2, "blackout": 0})
+	check("La clemencia de la sala es la del piso", level.session.restarts_allowed == 2)
 	var line: Dictionary = level.ledger.close(true)
-	check("Una cinta jugada con otras reglas dice cuáles y va a su tablón", line.get("rules", {}) == {"mercy": 2, "blackout": 0} and String(line.company) == level.records.CUSTOM)
-	check("Y no alcanza hitos", level.records.reach(level.records.clean(line), 1).is_empty() and level.records.clean(line).get("rules", {}) == {"mercy": 2, "blackout": 0})
+	check("Una cinta jugada con otras reglas dice cuáles y va a su tablón", line.get("rules", {}) == {"restarts": 2, "blackout": 0} and String(line.company) == level.records.CUSTOM)
+	check("Y no alcanza hitos", level.records.reach(level.records.clean(line), 1).is_empty() and level.records.clean(line).get("rules", {}) == {"restarts": 2, "blackout": 0})
 	# The sets: the power that stays on, and no stepping through them.
 	level.session.stage = 2
 	await frames(4)
@@ -154,9 +141,9 @@ func run() -> void:
 	var tabs: TabContainer = level.ui.settings_tabs
 	check("Las reglas de la sala se eligen en pestañas, una fila cada una", level.ui.screen == "rules" and is_instance_valid(tabs) and tabs.get_tab_count() == RULES.GROUPS.size() and level.ui.settings_rows[0].size() == RULES.RULES.filter(func(rule): return int(rule.group) == 0).size())
 	var picker: OptionButton = level.ui.settings_rows[0][0][0]
-	picker.select(2)
-	picker.item_selected.emit(2)
-	check("Elegir un valor lo pone en la sala", level.net.options.rules == {"mercy": 2})
+	picker.select(3)
+	picker.item_selected.emit(3)
+	check("Elegir un valor lo pone en la sala", level.net.options.rules == {"restarts": 2})
 	level.on_action("rules_reset")
 	await process_frame
 	check("Y «las del juego» las devuelve todas", level.net.options.rules.is_empty() and level.ui.screen == "rules")

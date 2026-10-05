@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **0.5**, generador de mapas **v7** (tres plantas enteras), protocolo de red
-**the-four-net-14**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-15**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -79,6 +79,18 @@ jugado**:
 - **Marcas** en el menú principal: tres tablones por piso (solo, acompañado,
   contra el cazador) con cuatro tablas, la ficha de carrera, dieciocho hitos
   del hotel y la comparación con las fichas de la gente con la que se juega.
+
+El 4 de octubre entró esto, y **tampoco se ha jugado**:
+
+- **Las cuatro dificultades, elegibles**: «Nueva partida» pregunta cuál, y en
+  la sala la elige el anfitrión. Por ahora cambian solo números (sentidos,
+  persecución, búsqueda, director, ascensor, teles y clemencia); las
+  conductas propias de cada una vienen después (DIFFICULTY.md).
+- **Encuentros en el parte** y **bots novatos** para medir la dificultad.
+- **Gráficos de fábrica**: Medio con FSR 2.2 en Calidad y la cinta como se
+  ajustó jugando.
+- **La regla «Clemencia»** es ahora la de las etapas devueltas en equipo (la
+  de agarrar y soltar se quitó).
 
 El 1 de octubre entraron también **las reglas de la sala**, y **tampoco se
 han jugado**: once cosas que el anfitrión puede cambiar antes de empezar
@@ -435,9 +447,6 @@ pueda jugar entero sin tocar el teclado.
   salir de cada encuentro. La hoja de ruta entera —palancas, conductas,
   objetivos y lo decidido el 4 de octubre— está en
   [DIFFICULTY.md](DIFFICULTY.md). Por fases:
-  - [ ] 1 · Cimientos: perfiles en un archivo, y Desafiante idéntico a hoy.
-  - [ ] 2 · Instrumentos: bots novatos, encuentros en el parte y lotes por
-    dificultad con tabla de referencia.
   - [ ] 3 · Apacible y Equilibrada, por números.
   - [ ] 4 · Las conductas de Apacible: la escena de «me salvé».
   - [ ] 5 · Las conductas y los números de Pesadilla.

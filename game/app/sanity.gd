@@ -101,8 +101,7 @@ func wear(body: Node3D, delta: float) -> void:
 	var value: float = level.player.sanity if local else float(mind.sanity)
 	var rest: float = sight_rest if local else float(mind.rest)
 	var paid: float = sight_paid if local else float(mind.get("paid", 0.0))
-	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)
-	var lit: bool = not level.hotel.dark and not room.is_empty() and not level.hotel.dark_ids.has(int(room.id))
+	var lit := lit_at(body.global_position)
 	# The room plays without it: nothing wears a mind down, in the dark or at
 	# the sight of the creature.
 	var spent: bool = level.rule("sanity") == 1
@@ -152,6 +151,11 @@ func apply(told: Dictionary) -> void:
 			level.player.set_burnt(bool(row[1]))
 		elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]):
 			level.match_net.bodies[seat].set_burnt(bool(row[1]))
+
+## Whether a place has its lights on: not the blackout, not a dark room.
+func lit_at(point: Vector3) -> bool:
+	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
+	return not level.hotel.dark and not room.is_empty() and not level.hotel.dark_ids.has(int(room.id))
 
 ## The creature in plain view: in the picture, near enough to make out, lit by
 ## something, and nothing in between. In the pitch dark with the torch off

@@ -75,7 +75,7 @@ func begin() -> bool:
 	level.bot_match = true
 	level.session.keeps_checkpoint = false
 	if bool(options.get("mercy", false)): level.spare = spare_survivor
-	await level.start_floor(int(options.get("seed", 81)), false, seats())
+	await level.start_floor(int(options.get("seed", 81)), false, seats(), String(options.get("difficulty", "")))
 	if level.session.state != level.session.State.PLAYING:
 		outcome = "no_arranca"
 		return false
@@ -90,6 +90,7 @@ func begin() -> bool:
 		recorder = RECORDER.new(self, String(options.out))
 		recorder.start()
 	threat = THREAT.new(level)
+	threat.novice = String(options.get("skill", "experto")) == "novato"
 	threat.refresh()
 	note("piso", null, {"seed": int(level.session.run_seed), "fallback": bool(level.manifest.get("fallback", false)), "bots": bodies.size()})
 	return true
@@ -173,6 +174,8 @@ func _physics_process(delta: float) -> void:
 ## `quiet`: asked while keeping out of its way, never bold.
 func pace_for(brain, quiet := false) -> int:
 	if not threat.near_planta(brain.body.global_position): return BODY.Pace.WALK
+	# A novice does not walk carefully: it walks, and runs when it is scared.
+	if threat.novice: return BODY.Pace.WALK
 	if brain.bold() and not quiet: return BODY.Pace.CROUCH if threat.position.distance_to(brain.body.global_position) < 30.0 else BODY.Pace.WALK
 	brain.pace_clock -= 1.0 / 60.0
 	if brain.pace_clock > 0.0: return brain.pace_now
@@ -412,6 +415,8 @@ func snapshot() -> Dictionary:
 # --- The end ------------------------------------------------------------------------
 
 func finish() -> Dictionary:
+	# The line the floor left, or, for one that did not end, the ledger's now.
+	var tape: Dictionary = level.ui.summary if not level.ui.summary.is_empty() else level.ledger.close(outcome == "ganada")
 	var summary := {
 		"result": outcome,
 		"seed": int(options.get("seed", 81)),
@@ -419,6 +424,8 @@ func finish() -> Dictionary:
 		"fallback": bool(level.manifest.get("fallback", false)) if not level.manifest.is_empty() else false,
 		"bots": seats().size(),
 		"knowledge": String(options.get("knowledge", "discover")),
+		"skill": String(options.get("skill", "experto")),
+		"difficulty": String(level.difficulty),
 		"mercy": bool(options.get("mercy", false)),
 		"enemy": not OS.get_cmdline_user_args().has("--no-enemy"),
 		"sim_seconds": snappedf(clock, 0.1),
@@ -430,6 +437,10 @@ func finish() -> Dictionary:
 		"incidents": incidents,
 		"walked": brains.map(func(brain): return snappedf(brain.walked, 0.1)),
 		"states": brains.map(func(brain): return brain.state_seconds.duplicate()),
+		# What each seat lived through with the creature (run_ledger.gd), for
+		# the tables that compare difficulties.
+		"team": tape.get("team", []).map(func(member): return {"seat": int(member.seat), "encounters": int(member.get("encounters", 0)), "quiet": int(member.get("quiet", 0)), "chases": int(member.get("chases", 0)), "escapes": int(member.get("escapes", 0)), "chased": int(member.get("chased", 0)), "deaths": int(member.get("deaths", 0)), "closest": float(member.get("closest", -1.0))}),
+		"restarts": int(level.session.restarts),
 	}
 	summary["realtime_factor"] = snappedf(float(summary.sim_seconds) / maxf(float(summary.wall_seconds), 0.001), 0.01)
 	summary["revealed"] = team.revealed if team != null else []

@@ -10,6 +10,11 @@
 #   ./tools/bots.ps1                        # 10 floors, 3 bots, from seed 81
 #   ./tools/bots.ps1 -Bots 5 -Runs 40 -Parallel 4 -Mercy
 #   ./tools/bots.ps1 -Seeds 81,213,404 -Bots 1 -NoEnemy -Oracle
+#   ./tools/bots.ps1 -Difficulty apacible -Skill novato -Runs 20 -Parallel 10
+#
+# -Difficulty: the creature's (game/floors/difficulty.gd; desafiante is the
+# game as it was). -Skill: experto knows where the creature is all the time;
+# novato only what it sees and hears (docs/DIFFICULTY.md).
 param(
     [ValidateRange(1,5)][int]$Bots = 3,
     [ValidateRange(1,100000)][int]$Runs = 10,
@@ -20,6 +25,8 @@ param(
     # No creature at all, and bots that know everything: routes and doors only.
     [switch]$NoEnemy,
     [switch]$Oracle,
+    [ValidateSet('apacible','equilibrada','desafiante','pesadilla')][string]$Difficulty = 'desafiante',
+    [ValidateSet('experto','novato')][string]$Skill = 'experto',
     [ValidateRange(1,20)][int]$Parallel = 2,
     [ValidateRange(1,600)][int]$MaxMinutes = 45,
     [ValidateRange(20,3600)][int]$StallSeconds = 120,
@@ -53,6 +60,7 @@ function Start-Run($index, $seedValue, $worker) {
     if ($Mercy) { $arguments += '--mercy' }
     if ($NoEnemy) { $arguments += '--no-enemy' }
     if ($Oracle) { $arguments += '--knowledge=oracle' }
+    $arguments += @("--difficulty=$Difficulty", "--skill=$Skill")
     if ($Fault) { $arguments += "--fault=$Fault" }
     $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -WindowStyle Hidden -PassThru
@@ -114,7 +122,7 @@ foreach ($run in ($finished | Sort-Object index)) {
     $summaryPath = Join-Path $run.dir 'summary.json'
     $logText = if (Test-Path -LiteralPath $run.log) { Get-Content -LiteralPath $run.log -Raw -Encoding UTF8 } else { '' }
     $engineErrors = ([regex]::Matches($logText, 'SCRIPT ERROR:|(?m)^ERROR:')).Count
-    $row = [ordered]@{ run = $run.index + 1; name = $run.name; seed = $run.seed; bots = $Bots; result = ''; sim = 0; wall = [math]::Round(((Get-Date) - $run.started).TotalSeconds); sectors = @(); deaths = 0; caught = 0; bot_stuck = 0; bot_grave = 0; creature = 0; not_found = 0; errors = $engineErrors; serious = 0; dir = $run.dir }
+    $row = [ordered]@{ run = $run.index + 1; name = $run.name; seed = $run.seed; bots = $Bots; result = ''; sim = 0; wall = [math]::Round(((Get-Date) - $run.started).TotalSeconds); sectors = @(); deaths = 0; caught = 0; bot_stuck = 0; bot_grave = 0; creature = 0; not_found = 0; errors = $engineErrors; serious = 0; restarts = 0; encounters = 0; chases = 0; escapes = 0; quiet = 0; dir = $run.dir }
     if (-not $run.verdict -and (Test-Path -LiteralPath $summaryPath)) {
         $summary = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8 | ConvertFrom-Json
         $row.result = $summary.result
@@ -122,6 +130,17 @@ foreach ($run in ($finished | Sort-Object index)) {
         $row.wall = [math]::Round([double]$summary.wall_seconds)
         $row.sectors = @($summary.sectors | ForEach-Object { [math]::Round([double]$_) })
         $row.deaths = [int]$summary.deaths
+        # What the bots lived through with the creature (run_ledger.gd): summed
+        # over the team, and the longest stretch any of them had without it.
+        if ($summary.team) {
+            foreach ($member in $summary.team) {
+                $row.encounters += [int]$member.encounters
+                $row.chases += [int]$member.chases
+                $row.escapes += [int]$member.escapes
+                $row.quiet = [math]::Max($row.quiet, [int]$member.quiet)
+            }
+        }
+        if ($summary.restarts) { $row.restarts = [int]$summary.restarts }
         foreach ($entry in $summary.incidents) {
             switch -Wildcard ($entry.kind) {
                 'bot_*' { $row.bot_stuck++; if ($entry.severity -eq 'grave') { $row.bot_grave++ } }
@@ -153,7 +172,7 @@ foreach ($run in ($finished | Sort-Object index)) {
 }
 function Format-Clock($seconds) { '{0:D2}:{1:D2}' -f [int][math]::Floor($seconds / 60), [int]($seconds % 60) }
 $lines = @()
-$lines += ("LOTE {0} · {1} pisos · {2} bots{3}{4}{5}" -f $batchName, $rows.Count, $Bots, $(if ($Mercy) { ' · clemencia' } else { '' }), $(if ($NoEnemy) { ' · sin criatura' } else { '' }), $(if ($Oracle) { ' · sabiéndolo todo' } else { '' }))
+$lines += ("LOTE {0} · {1} pisos · {2} bots {3} · {4}{5}{6}{7}" -f $batchName, $rows.Count, $Bots, $(if ($Skill -eq 'novato') { 'novatos' } else { 'expertos' }), $Difficulty, $(if ($Mercy) { ' · clemencia' } else { '' }), $(if ($NoEnemy) { ' · sin criatura' } else { '' }), $(if ($Oracle) { ' · sabiéndolo todo' } else { '' }))
 $lines += ''
 $lines += ('{0,-14} {1,-20} {2,8} {3,8} {4,-22} {5,7} {6,9} {7,8} {8,9} {9,11} {10,8}' -f 'Partida', 'Resultado', 'Juego', 'Real', 'Sectores', 'Muertes', 'Capturas', 'Atascos', 'Criatura', 'Sin encont.', 'Errores')
 foreach ($row in $rows) {
@@ -163,6 +182,17 @@ foreach ($row in $rows) {
 $won = @($rows | Where-Object { $_.result -eq 'ganada' }).Count
 $lines += ''
 $lines += ('Ganadas {0} de {1} · incidencias graves {2} · errores del motor {3}' -f $won, $rows.Count, ($rows | Measure-Object serious -Sum).Sum, ($rows | Measure-Object errors -Sum).Sum)
+# The numbers docs/DIFFICULTY.md section 6 asks for, over the floors that ran.
+$played = @($rows | Where-Object { $_.sim -gt 0 -and $_.result -notin @('colgado', 'caída', 'tiempo_real_agotado', 'no_arranca') })
+if ($played.Count -gt 0) {
+    $seats = [math]::Max(1, $played.Count * $Bots)
+    $chases = ($played | Measure-Object chases -Sum).Sum
+    $escapes = ($played | Measure-Object escapes -Sum).Sum
+    $quiets = @($played | ForEach-Object { $_.quiet } | Sort-Object)
+    $median = $quiets[[int][math]::Floor(($quiets.Count - 1) / 2)]
+    $clean = @($played | Where-Object { $_.result -eq 'ganada' -and $_.restarts -eq 0 }).Count
+    $lines += ('Dificultad: {0:P0} ganadas ({1:P0} sin derrumbes) · {2:N1} caídas por piso · {3:N1} encuentros y {4:N1} persecuciones por bot y piso · {5} de cada 10 persecuciones acaban en huida · rato más largo sin ella, mediana {6}' -f ($won / $played.Count), ($clean / $played.Count), (($played | Measure-Object deaths -Sum).Sum / $played.Count), (($played | Measure-Object encounters -Sum).Sum / $seats), ($chases / $seats), $(if ($chases -gt 0) { [math]::Round(10.0 * $escapes / $chases) } else { '-' }), (Format-Clock $median))
+}
 $lines += '(Atascos: todos/graves. Criatura: sus pasos 4-5, encerrada, rezagada o sin ruta.)'
 if ($incidents.Count -gt 0) {
     $lines += ''
@@ -173,7 +203,7 @@ if ($incidents.Count -gt 0) {
     }
 }
 $lines | Set-Content -LiteralPath (Join-Path $batch 'resumen.txt') -Encoding UTF8
-[PSCustomObject]@{ batch = $batchName; bots = $Bots; mercy = [bool]$Mercy; no_enemy = [bool]$NoEnemy; oracle = [bool]$Oracle; commit = $commit; runs = $rows; incidents = $incidents } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $batch 'summary.json') -Encoding UTF8
+[PSCustomObject]@{ batch = $batchName; bots = $Bots; difficulty = $Difficulty; skill = $Skill; mercy = [bool]$Mercy; no_enemy = [bool]$NoEnemy; oracle = [bool]$Oracle; commit = $commit; runs = $rows; incidents = $incidents } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $batch 'summary.json') -Encoding UTF8
 $lines | Write-Output
 Write-Output ''
 Write-Output ("Resumen en {0}" -f (Join-Path $batch 'resumen.txt'))

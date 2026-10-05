@@ -72,6 +72,10 @@ var lift_away := {}
 ## there. A straggler's car comes back LIFT_RETURN after the ride.
 const CREATURE_WAIT := 15.0
 const CREATURE_HOLD := 20.0
+## This floor's (its difficulty writes them: hotel_main.apply_tuning); the
+## constants are the game as it was, "desafiante".
+var wait_lobby := CREATURE_WAIT
+var hold_after := CREATURE_HOLD
 ## Lift index -> seconds before the creature may take that car (counted from
 ## the survivors' pressing the button, the ride included), and seconds it has stood in that car's lobby. Counted
 ## on every machine like lift_away: the hunter's reading shows the car as up
@@ -81,15 +85,15 @@ var lobby_time := {}
 
 ## The creature can take that car now.
 func creature_may_ride(index: int) -> bool:
-	return not lift_gone(index) and float(creature_hold.get(index, 0.0)) <= 0.0 and float(lobby_time.get(index, 0.0)) >= CREATURE_WAIT
+	return not lift_gone(index) and float(creature_hold.get(index, 0.0)) <= 0.0 and float(lobby_time.get(index, 0.0)) >= wait_lobby
 
 ## Seconds before the creature may take that car, and the longest that wait
 ## can be: the car away, its hold since the survivors got out, and its own
 ## time at the doors, whichever is last. For the hunter's dial (camcorder_osd).
 func creature_wait(index: int) -> Vector2:
 	var left := maxf(float(lift_away.get(index, 0.0)), float(creature_hold.get(index, 0.0)))
-	left = maxf(left, CREATURE_WAIT - float(lobby_time.get(index, 0.0)))
-	return Vector2(maxf(0.0, left), RIDE_TIME + maxf(CREATURE_HOLD, LIFT_RETURN))
+	left = maxf(left, wait_lobby - float(lobby_time.get(index, 0.0)))
+	return Vector2(maxf(0.0, left), RIDE_TIME + maxf(hold_after, LIFT_RETURN))
 
 ## A point in the lobby of that car: the room behind the refuge's gate, or the
 ## car itself.
@@ -412,7 +416,7 @@ func apply_ride(seat: int, point: Vector3) -> void:
 	var car := car_arriving_at(point)
 	if car >= 0:
 		lift_away[car] = RIDE_TIME + LIFT_RETURN
-		creature_hold[car] = RIDE_TIME + CREATURE_HOLD
+		creature_hold[car] = RIDE_TIME + hold_after
 		# The doors down there open as the ride ends, on every machine.
 		open_arrival(car, RIDE_OPEN)
 	# Its doors shut on them where they are; the bell and the doors opening

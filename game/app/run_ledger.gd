@@ -42,6 +42,17 @@ var trail := {}
 var rooms := {}
 var gone := {}
 var room_clock := 0.0
+## Encounters (docs/DIFFICULTY.md): seat -> how many, the seconds alive since
+## the last sign of the creature, and the longest of those stretches. A sign
+## is seeing it (what frightens a mind: sanity.sight_of_creature), it starting
+## to notice you, or it hunting you; signs closer together than
+## ENCOUNTER_GAP are the same encounter.
+var encounters := {}
+var since_sign := {}
+var quiet := {}
+var sign_clock := 0.0
+const ENCOUNTER_GAP := 20.0
+const SIGN_EVERY := 0.25
 
 ## A chase shorter than this is a glance, and getting out of one is nothing.
 const CHASE_LEAST := 3.0
@@ -69,6 +80,10 @@ func reset() -> void:
 	gone = {}
 	room_clock = 0.0
 	called = {}
+	encounters = {}
+	since_sign = {}
+	quiet = {}
+	sign_clock = 0.0
 
 ## What a seat has done so far.
 func of(seat: int) -> Dictionary:
@@ -164,6 +179,9 @@ func tick(delta: float) -> void:
 	room_clock -= delta
 	var look_rooms := room_clock <= 0.0
 	if look_rooms: room_clock = 0.5
+	sign_clock -= delta
+	var look_signs := sign_clock <= 0.0
+	if look_signs: sign_clock = SIGN_EVERY
 	for body in level.survivors():
 		var seat := int(body.slot)
 		if not alive(seat):
@@ -189,12 +207,32 @@ func tick(delta: float) -> void:
 			stats.burnt += 1
 			mark("burnt", seat)
 		gone[seat] = burnt
+		# Out among the rooms only: waiting in a refuge or riding a car is not
+		# a stretch without the creature, it is a stretch out of its reach.
+		if level.survivor_active(body):
+			since_sign[seat] = float(since_sign.get(seat, 0.0)) + delta
+			if look_signs and sign_of(body, creature): met(seat)
 		if look_rooms:
 			var room: Dictionary = FLOOR.room_at(level.manifest.rooms, here)
 			if not room.is_empty():
 				if not rooms.has(seat): rooms[seat] = {}
 				rooms[seat][int(room.id)] = true
 	follow_hunt(delta, creature)
+
+## A sign of the creature for this survivor, now: it in sight, it noticing
+## them, or it hunting them.
+func sign_of(body: Node3D, creature) -> bool:
+	if not is_instance_valid(creature) or creature.grace > 0.0 or absf(creature.global_position.y - body.global_position.y) >= 3.0: return false
+	if creature.control == "ai" and creature.focus == body and (creature.detection >= creature.SUSPICION or creature.mode in [creature.Mode.ALERT, creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER]): return true
+	return level.sanity.sight_of_creature(body, level.sanity.lit_at(body.global_position)) > 0
+
+## A sign for a seat: a new encounter, if the last one was long enough ago.
+func met(seat: int) -> void:
+	var gap := float(since_sign.get(seat, 0.0))
+	if not encounters.has(seat) or gap >= ENCOUNTER_GAP:
+		encounters[seat] = int(encounters.get(seat, 0)) + 1
+		quiet[seat] = maxf(float(quiet.get(seat, 0.0)), gap)
+	since_sign[seat] = 0.0
 
 ## Who the creature is after, and whether whoever it was after got away. Only
 ## the machine's creature chases: one driven by a player has no such thing, and
@@ -285,6 +323,9 @@ func close(won: bool) -> Dictionary:
 			"low": int(stats.low),
 			"burnt": int(stats.burnt),
 			"lifts": int(stats.lifts),
+			"encounters": int(encounters.get(seat, 0)),
+			# The longest stretch alive with no sign of it, the last one too.
+			"quiet": int(maxf(float(quiet.get(seat, 0.0)), float(since_sign.get(seat, 0.0)))),
 		})
 	var versus: bool = level.match_net.versus()
 	var line := {
@@ -302,6 +343,7 @@ func close(won: bool) -> Dictionary:
 		"restarts": restarts,
 		"escaped": escaped,
 		"seed": int(session.run_seed),
+		"difficulty": String(level.difficulty),
 		"team": team,
 		"events": events.duplicate(true),
 	}

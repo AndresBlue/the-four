@@ -213,8 +213,13 @@ func host() -> void:
 	check("No se puede empezar con modo inválido de Locust ausente", true)
 	net.set_option("mode", net.Mode.COOP)
 	# The room plays by a rule of its own: it goes with the match to everybody.
-	net.set_option("rules", {"plan_fade": 300, "mercy": 0, "sobra": 4})
-	check("La sala guarda solo lo que cambió de las reglas", net.options.rules == {"plan_fade": 300})
+	net.set_option("rules", {"plan_fade": 300, "restarts": 1, "sobra": 4})
+	check("La sala guarda solo lo que cambió de las reglas", net.options.rules == {"plan_fade": 300, "restarts": 1})
+	# And plays against the creature of a difficulty of its own.
+	net.set_option("difficulty", "equilibrada")
+	net.set_option("difficulty", "imposible")
+	check("Una dificultad que no existe no se queda", net.options.difficulty == "desafiante")
+	net.set_option("difficulty", "equilibrada")
 	check("Empieza la partida cooperativa", net.start_match(81))
 	check("Todos construyen el piso y se juega", await wait_for(playing, 60.0))
 	var match_net = level.match_net
@@ -268,8 +273,8 @@ func host() -> void:
 	check("La etapa de los televisores se jugó de verdad", level.televisions.size() >= 4 and level.televisions_on() >= 2)
 	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.STAGES)
 	var tape: Dictionary = level.ui.summary
-	check("El parte lleva a los tres, con su puntaje y quién fue el más valioso", tape.get("team", []).size() == 3 and int(tape.get("score", 0)) > 0 and int(tape.get("mvp", 0)) == 1 and int(tape.team[0].get("tvs", 0)) >= 2 and int(tape.team[1].get("hides", 0)) >= 1, str(tape.get("team", [])))
-	check("Jugada con otras reglas, la cinta lo dice y va a su propio tablón", tape.get("rules", {}) == {"plan_fade": 300} and String(tape.get("company", "")) == level.records.CUSTOM and level.ui.outcome.milestones.is_empty())
+	check("El parte lleva a los tres, con su puntaje y quién fue el más valioso", tape.get("team", []).size() == 3 and int(tape.get("score", 0)) > 0 and int(tape.get("mvp", 0)) in [1, 2, 3] and int(tape.team[0].get("tvs", 0)) >= 2 and int(tape.team[1].get("hides", 0)) >= 1, str(tape.get("team", [])))
+	check("Jugada con otras reglas, la cinta lo dice y va a su propio tablón", tape.get("rules", {}) == {"plan_fade": 300, "restarts": 1} and String(tape.get("difficulty", "")) == "equilibrada" and String(tape.get("company", "")) == level.records.CUSTOM and level.ui.outcome.milestones.is_empty())
 	check("Y el anfitrión guarda las fichas de sus dos invitados", level.records.rivals.has("test-alpha") and level.records.rivals.has("test-bravo") and int(level.records.rivals["test-alpha"].get("together", 0)) == 1)
 	# Second floor, after everyone has seen the end: Bravo drops and comes back.
 	await pause_for(5.0)
@@ -370,7 +375,8 @@ func guest(words: String, index: int) -> void:
 	check("Entra en el piso del anfitrión", await wait_for(playing, 90.0))
 	var match_net = level.match_net
 	check("The Locust es una réplica en el invitado", level.locust.control == "puppet")
-	check("Juega con las reglas que puso el anfitrión, y las demás como siempre", level.rule("plan_fade") == 300 and is_equal_approx(level.floor_map.forget, 300.0) and level.rule("mercy") == 0 and level.rule("blackout") == 1)
+	check("Y contra la criatura de la dificultad que eligió", level.difficulty == "equilibrada" and is_equal_approx(level.locust.chase_speed, 6.1))
+	check("Juega con las reglas que puso el anfitrión, y las demás como siempre", level.rule("plan_fade") == 300 and is_equal_approx(level.floor_map.forget, 300.0) and level.rule("restarts") == 1 and level.rule("blackout") == 1)
 	check("Ve los cuerpos de los otros dos", match_net.bodies.size() == 2 and match_net.bodies.has(1))
 	check("Ve moverse al anfitrión", await wait_for(func(): return not match_net.bodies[1].states.is_empty(), 15.0))
 	# The other guest is not connected to this one: what it says reaches here

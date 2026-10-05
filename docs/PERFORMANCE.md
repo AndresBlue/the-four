@@ -246,7 +246,7 @@ Detalle en [VISION_LOCUST.md](VISION_LOCUST.md). Capturas: `echo_capture.gd` (`p
 ### Renderizador y gráficas integradas
 
 - **Opción en Ajustes ▸ Gráficos ▸ Renderizador:** Forward+ o Compatibilidad (OpenGL). Se guarda en `user://renderer.cfg`, que `project.godot` usa como override, y se aplica al reiniciar; desde el menú principal hay un botón para reiniciar.
-- **Primer arranque con gráfica integrada** (`RenderingServer.get_video_adapter_type()`): el juego empieza en Bajo y el menú sugiere Compatibilidad.
+- **Primer arranque** (`settings_service.first_run`): Medio al 67 % con FSR 2.2 («Calidad»). Con gráfica integrada (`RenderingServer.get_video_adapter_type()`), Bajo con su escala, y el menú sugiere Compatibilidad.
 - **Compatibility probado con los cuatro presets** en este PC, sin errores. En una gráfica dedicada no es más rápido: Bajo 1,47 ms de GPU frente a 0,74 en Forward+. Su ventaja esperada está en integradas, **sin medir: este PC no tiene gráfica integrada** (el 5900X no trae GPU).
 - **Fugas de luz** con la sala oscura y la puerta cerrada: brillo medio inferior a 1/255 en los cuatro presets, también con la penumbra de Ultra.
 - **El atlas de sombras guarda la profundidad en 32 bits en Compatibilidad** (unos 32 MB más de memoria de vídeo con el atlas de 4096): con 16 bits la linterna se rayaba a sí misma en bandas diagonales en las paredes que alumbra de frente, a partir de un módulo de distancia (en la guía de desarrollo).

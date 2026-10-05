@@ -25,7 +25,7 @@ func run() -> void:
 		return
 	level.net.players[2] = {"name": "Camila", "character": 2, "peer": 0, "connected": true}
 	level.net.players[3] = {"name": "Rodrigo", "character": 1, "peer": 0, "connected": true}
-	level.net.set_option("rules", {"mercy": 1, "restarts": 2, "code": 1, "plan_fade": 300, "onslaught": 1})
+	level.net.set_option("rules", {"restarts": 2, "code": 1, "plan_fade": 300, "onslaught": 1})
 	level.ui.menu("lobby")
 	await shot("sala")
 	level.ui.rules_view = {}

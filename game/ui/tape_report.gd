@@ -13,6 +13,7 @@ const SCORE := preload("res://game/services/run_score.gd")
 const RECORDS := preload("res://game/services/records_service.gd")
 const FLOORS := preload("res://game/floors/floor_index.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 ## The tabs' box, in the 1280 x 720 the menus are laid out in.
 const SIZE := Vector2(1040, 372)
 
@@ -45,6 +46,7 @@ static func heading(line: Dictionary) -> String:
 	var players := int(line.get("players", 1))
 	var words := "CINTA Nº %d  ·  %s  ·  %s" % [int(line.get("seed", 0)), FLOORS.title(int(line.get("floor", 1))), String(RECORDS.COMPANY_NAMES.get(String(line.get("company", RECORDS.SOLO)), ""))]
 	if players > 1: words += "  ·  %d SUPERVIVIENTES" % players
+	if String(line.get("company", "")) != RECORDS.VERSUS: words += "  ·  " + DIFFICULTY.title(line.get("difficulty")).to_upper()
 	var date := String(line.get("date", "")).left(10)
 	return words + ("  ·  " + date if not date.is_empty() else "")
 
@@ -179,7 +181,7 @@ static func spotlight(ui, parent: Node, line: Dictionary, fresh: bool) -> void:
 # --- EQUIPO -----------------------------------------------------------------------
 
 ## The columns of the team's table: [heading, width, the member's key].
-const COLUMNS := [["JUGADOR", 196, "name"], ["PAPEL", 176, "title"], ["PUNTOS", 86, "score"], ["TV", 40, "tvs"], ["Nº", 40, "digits"], ["HUIDAS", 72, "escapes"], ["CAÍDAS", 72, "deaths"], ["METROS", 76, "metres"], ["", 96, "escaped"]]
+const COLUMNS := [["JUGADOR", 180, "name"], ["PAPEL", 152, "title"], ["PUNTOS", 82, "score"], ["ENCUENTROS", 104, "encounters"], ["TV", 36, "tvs"], ["Nº", 36, "digits"], ["HUIDAS", 70, "escapes"], ["CAÍDAS", 70, "deaths"], ["METROS", 72, "metres"], ["", 80, "escaped"]]
 const MARK := 22
 
 static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
@@ -271,6 +273,8 @@ static func highlights(line: Dictionary, members: Array) -> Array:
 	if not chased.is_empty(): facts.append("%s con la criatura detrás%s" % [SCORE.clock(int(chased.chased)), who.call(chased)])
 	var close: Dictionary = lead.call("closest", 6.0, true)
 	if not close.is_empty(): facts.append("la criatura a %s m%s" % [("%.1f" % float(close.closest)).replace(".", ","), who.call(close)])
+	var calm: Dictionary = lead.call("quiet", 60.0, false)
+	if not calm.is_empty(): facts.append("%s sin saber nada de ella%s" % [SCORE.clock(int(calm.quiet)), who.call(calm)])
 	var frayed: Dictionary = lead.call("low", 40.0, true)
 	if not frayed.is_empty(): facts.append("cordura hasta %d%s" % [int(frayed.low), who.call(frayed)])
 	return facts
@@ -330,7 +334,6 @@ static func sector_facts(line: Dictionary, stage: int) -> String:
 	if counts.has("digit"): parts.append(plural.call(int(counts.digit), "número encontrado", "números encontrados"))
 	if counts.has("code"): parts.append("código marcado")
 	if counts.has("escape"): parts.append(plural.call(int(counts.escape), "huida", "huidas"))
-	if counts.has("mercy"): parts.append(plural.call(int(counts.mercy), "captura perdonada", "capturas perdonadas"))
 	if counts.has("death"): parts.append(plural.call(int(counts.death), "caída", "caídas"))
 	if counts.has("collapse"): parts.append("el sector se derrumbó y volvió a empezar")
 	return "  ·  ".join(parts)
@@ -364,7 +367,6 @@ static func moment(line: Dictionary, event: Dictionary) -> Array:
 		"escape": return ["%s se le escapó a la criatura tras %d s de persecución" % [who, many], STYLE.INK]
 		"burnt": return ["%s se quedó sin cordura" % who, STYLE.SOFT]
 		"death": return ["The Locust atrapó a %s" % who, STYLE.ALERT]
-		"mercy": return ["The Locust tuvo a %s y lo soltó" % who, STYLE.AMBER]
 		"collapse": return ["El sector se derrumbó: todos en pie y a empezarlo otra vez", STYLE.ALERT]
 		"sector": return ["SECTOR %d CERRADO" % many, STYLE.AMBER]
 		"out": return ["LA CINTA SALIÓ DEL HOTEL", STYLE.AMBER]

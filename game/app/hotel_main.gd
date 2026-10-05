@@ -116,19 +116,43 @@ var rules: Dictionary = MATCH_RULES.defaults()
 func rule(id: String) -> int:
 	return int(rules.get(id, 0))
 
+## The difficulty of the floor (game/floors/difficulty.gd): set as it starts,
+## from the player's choice, the checkpoint or the room. Asked for with
+## tuning(), the whole profile.
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
+var difficulty := DIFFICULTY.REFERENCE
+
+func tuning() -> Dictionary:
+	return DIFFICULTY.profile(difficulty)
+
+func set_difficulty(id: Variant) -> void:
+	difficulty = DIFFICULTY.valid(id)
+	session.difficulty = difficulty
+	apply_tuning()
+
 ## The rules of the floor about to be played: `said` is what the room changed
-## (nothing, alone). Whatever keeps a copy of one is told here.
+## (nothing, alone).
 func set_rules(said: Variant) -> void:
 	rules = MATCH_RULES.settled(said)
-	session.restarts_allowed = rule("restarts")
+	apply_tuning()
+
+## What the difficulty and the rules ask of everything that keeps a copy of
+## its numbers: the session, the plan, the lifts and the creature (the
+## director is given its part as it is made, in populate_floor).
+func apply_tuning() -> void:
+	var profile := tuning()
+	var mercy := rule("restarts")
+	session.restarts_allowed = int(profile.restarts) if mercy == MATCH_RULES.BY_DIFFICULTY else mercy
 	floor_map.forget = float(rule("plan_fade"))
-	executions.pardoned.clear()
+	lifts.wait_lobby = float(profile.lift_wait)
+	lifts.hold_after = float(profile.lift_hold)
 	arm_creature()
 
-## What the rules ask of the creature, on the one this floor has. Onslaught: it
-## sees and hears further, and does not ease off.
+## What the difficulty and the rules ask of the creature, on the one this
+## floor has. Onslaught: it sees and hears further, and does not ease off.
 func arm_creature() -> void:
 	if not is_instance_valid(locust): return
+	locust.tune(tuning())
 	locust.reach_scale = locust.ONSLAUGHT_REACH if rule("onslaught") == 1 else 1.0
 	locust.relentless = rule("onslaught") == 1
 ## The local player is holding interact inside the refuge (online, the host
@@ -466,12 +490,14 @@ func port_setting(key: String) -> int:
 
 func on_action(action: String) -> void:
 	match action:
-		"new": start_intro(randi_range(0, 2147483647))
+		# A new game asks first which creature it is played against.
+		"new": ui.menu("difficulty")
+		"begin": start_intro(randi_range(0, 2147483647))
 		"continue":
 			var data: Dictionary = session.checkpoint()
-			if not data.is_empty(): start_floor(int(data.seed), data.get("fallback", false) == true)
+			if not data.is_empty(): start_floor(int(data.seed), data.get("fallback", false) == true, [1], String(data.get("difficulty", DIFFICULTY.REFERENCE)))
 			else: ui.menu("main", false, session.message)
-		"retry": start_floor(session.run_seed, session.map_fallback)
+		"retry": start_floor(session.run_seed, session.map_fallback, [1], difficulty)
 		"resume": session.set_state(session.State.PLAYING)
 		"pause": session.set_state(session.State.PAUSED)
 		"main": session.set_state(session.State.MENU)
@@ -563,8 +589,11 @@ func finish_intro() -> void:
 	start_floor(intro_seed)
 
 ## slots: the seats playing it (session.start); the bots bring their own.
-func start_floor(seed_value: int, force_fallback := false, slots: Array = [1]) -> void:
+## `difficulty_id`: the creature's (game/floors/difficulty.gd); empty, the one
+## the player last chose.
+func start_floor(seed_value: int, force_fallback := false, slots: Array = [1], difficulty_id := "") -> void:
 	if not await build_floor(seed_value, force_fallback, slots.size()): return
+	set_difficulty(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
 	camcorder.start_tape(seed_value)
 	# A new tape starts with the lens wide.
 	player.zoom = 1.0
@@ -703,6 +732,7 @@ func populate_floor(with_director: bool) -> void:
 	if with_director:
 		director = DIRECTOR.new()
 		director.name = "Director"
+		director.tune(tuning())
 		director.setup(self, int(manifest.seed))
 		hotel.add_child(director)
 	# Watching, its presence is nobody's: a floor built again (the host started
@@ -765,6 +795,7 @@ func begin_online_play(config: Dictionary) -> void:
 	save_error = ""
 	ui.sheet.clear()
 	ui.sheet.seat = net.local_seat
+	set_difficulty(config.get("difficulty", DIFFICULTY.REFERENCE))
 	set_rules(config.get("rules", {}))
 	populate_floor(net.is_host and int(config.mode) == NET.Mode.COOP)
 	if int(config.mode) == NET.Mode.VERSUS:
@@ -1032,7 +1063,7 @@ func step_back() -> void:
 	elif ui.screen == "tape": ui.menu("records")
 	elif ui.screen == "rules" and net.active(): ui.menu("lobby")
 	elif ui.screen == "records" and ui.records_back != "main": ui.menu(ui.records_back)
-	elif ui.screen in ["credits", "multiplayer", "records", "archive"] and session.state == session.State.MENU: on_action("main")
+	elif ui.screen in ["credits", "multiplayer", "records", "archive", "difficulty"] and session.state == session.State.MENU: on_action("main")
 	elif session.state == session.State.PAUSED: session.set_state(session.State.PLAYING)
 	elif session.state == session.State.PLAYING: session.pause()
 
@@ -1237,6 +1268,7 @@ func spawn_locust() -> void:
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
 	locust.patrol_room = chosen
 	arm_creature()
+	locust.grace = float(tuning().grace)
 	add_child(locust)
 	if not player.noise.is_connected(on_noise): player.noise.connect(on_noise)
 	for door in hotel.doors: door.noise.connect(on_noise)

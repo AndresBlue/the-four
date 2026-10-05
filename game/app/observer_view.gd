@@ -558,6 +558,8 @@ func report() -> String:
 	var creature = live_locust()
 	if creature != null:
 		lines.append("THE LOCUST (%s)" % creature.control)
+		# Its difficulty and the numbers it plays by (game/floors/difficulty.gd).
+		lines.append("  %s · vista %0.0f m · oído ×%0.2f · aviso %0.1f s · caza %0.1f m/s · sin ver %0.1f s · se rinde %0.0f–%0.0f s" % [level.DIFFICULTY.title(level.difficulty).to_upper(), creature.sight_range * creature.reach_scale, creature.hearing * creature.reach_scale, creature.alert_time, creature.chase_speed, creature.lose_after, creature.give_up, creature.give_up_hard])
 		lines.append("  %s · gracia %0.1f · velocidad %0.1f · detección %0.2f" % [modo(creature.mode), creature.grace, creature.speed, creature.detection])
 		lines.append("  ala %d · %0.0f, %0.0f · sin ver %0.1f s" % [wing_of(creature.global_position), creature.global_position.x, creature.global_position.z, creature.lost_time])
 		lines.append("  destino a %0.1f m · camino %d puntos · repath %0.2f · %d puertas en la ruta" % [creature.global_position.distance_to(creature.destination), creature.path.size(), creature.repath, creature.crossings.size()])
@@ -589,7 +591,7 @@ func report() -> String:
 		# The creature's own wait for it: after the survivors, and at its doors.
 		var hold: float = float(level.lifts.creature_hold.get(index, 0.0))
 		var waited: float = float(level.lifts.lobby_time.get(index, 0.0))
-		if hold > 0.0 or waited > 0.0: lines.append("    criatura: %s · en el vestíbulo %0.1f / %0.0f s" % [("no antes de %0.1f s" % hold) if hold > 0.0 else "ya puede", waited, level.lifts.CREATURE_WAIT])
+		if hold > 0.0 or waited > 0.0: lines.append("    criatura: %s · en el vestíbulo %0.1f / %0.0f s" % [("no antes de %0.1f s" % hold) if hold > 0.0 else "ya puede", waited, level.lifts.wait_lobby])
 	if level.lifts.leaving >= 0.0: lines.append("  último coche saliendo · %0.1f s" % level.lifts.leaving)
 	if not level.execution.is_empty(): lines.append("\nEJECUCIÓN en curso · asiento %d · %0.1f s" % [int(level.execution.seat), float(level.execution.time)])
 	return "\n".join(lines)

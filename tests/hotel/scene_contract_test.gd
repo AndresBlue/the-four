@@ -225,7 +225,7 @@ func run() -> void:
 	check("Left alone, a preset is its own", presets.of(presets.HIGH).ssao == presets.PRESETS[presets.HIGH].ssao)
 	# The window is the picture's, and the three modes are the three ways of
 	# showing it; a value from a broken file falls back to the default.
-	check("The window has its three modes and they survive a bad file", scene.settings.WINDOW_MODES.size() == 3 and scene.settings.sanitize("window_mode", 9) == 2 and scene.settings.sanitize("upscaler", "dlss") == "auto" and scene.settings.sanitize("aa", "nope") == "preset")
+	check("The window has its three modes and they survive a bad file", scene.settings.WINDOW_MODES.size() == 3 and scene.settings.sanitize("window_mode", 9) == 2 and scene.settings.sanitize("upscaler", "dlss") == scene.settings.DEFAULTS.upscaler and scene.settings.sanitize("aa", "nope") == "preset")
 	scene.settings.values.scale = 0.7
 	scene.settings.values.upscaler = "fsr2"
 	scene.settings.apply()

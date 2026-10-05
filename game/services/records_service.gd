@@ -31,6 +31,7 @@ const CUSTOM := "custom"
 const COMPANIES := [SOLO, COOP, VERSUS, CUSTOM]
 const COMPANY_NAMES := {SOLO: "EN SOLITARIO", COOP: "ACOMPAÑADO", VERSUS: "CONTRA EL CAZADOR", CUSTOM: "CON OTRAS REGLAS"}
 const RULES := preload("res://game/floors/match_rules.gd")
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 var runs: Array = []
 ## What this player has added up over every floor (tally()).
 var career := {}
@@ -145,6 +146,8 @@ static func clean(run: Dictionary) -> Dictionary:
 		"restarts": maxi(int(number(run.get("restarts", 0))), 0),
 		"escaped": maxi(int(number(run.get("escaped", 1))), 0),
 		"seed": int(number(run.get("seed", 0))),
+		# A tape from before there were difficulties was played on this one.
+		"difficulty": DIFFICULTY.valid(run.get("difficulty")),
 		"team": [],
 		"events": [],
 	}
@@ -174,7 +177,7 @@ static func clean(run: Dictionary) -> Dictionary:
 	return line
 const EVENTS_KEPT := 120
 ## What a survivor's line may carry that is a count.
-const MEMBER_COUNTS := ["digits", "tvs", "code", "searched", "rooms", "escapes", "chases", "chased", "sectors", "deaths", "hides", "hidden", "metres", "run", "low", "burnt", "lifts", "score"]
+const MEMBER_COUNTS := ["digits", "tvs", "code", "searched", "rooms", "escapes", "chases", "chased", "sectors", "deaths", "hides", "hidden", "metres", "run", "low", "burnt", "lifts", "encounters", "quiet", "score"]
 
 static func clean_member(member: Dictionary) -> Dictionary:
 	var out := {"seat": int(number(member.get("seat", 0))), "name": String(member.get("name", "")).left(24), "escaped": bool(member.get("escaped", true))}

@@ -127,11 +127,44 @@ var history: Array = []
 var force := false
 var roll_clock := 0.0
 
+## The numbers it plays by: the constants above are the game as it was (the
+## difficulty "desafiante"), and the floor's difficulty writes these over
+## them (game/floors/difficulty.gd, through tune()). The hard limits -- never
+## anybody's room, never nearer than CLEAR_STRAIGHT and CLEAR_WALK -- are not
+## among them: no difficulty moves those.
+var lead_every := LEAD_EVERY
+var prowl_min := PROWL_MIN
+var prowl_min_dark := PROWL_MIN_DARK
+var peak_max := PEAK_MAX
+var peak_tense := PEAK_MAX_TENSE
+var rest_chase := REST_AFTER_CHASE
+var rest_death := REST_AFTER_DEATH
+var death_ease := DEATH_EASE
+var double_back := DOUBLE_BACK
+var distract_rest := DISTRACT_REST
+var burnt_every := BURNT_EVERY
+
 func setup(owner_level, seed_value: int) -> void:
 	level = owner_level
 	rng.seed = hash([seed_value, "director"])
-	next_lead = rng.randf_range(LEAD_EVERY.x, LEAD_EVERY.y)
-	burnt_next = rng.randf_range(BURNT_EVERY.x, BURNT_EVERY.y)
+	next_lead = rng.randf_range(lead_every.x, lead_every.y)
+	burnt_next = rng.randf_range(burnt_every.x, burnt_every.y)
+
+## A profile of the difficulties (the director's part of it), given before
+## setup() draws its first lead. The darkness keeps it as much further off as
+## it always did.
+func tune(profile: Dictionary) -> void:
+	lead_every = Vector2(float(profile.lead_every[0]), float(profile.lead_every[1]))
+	prowl_min = float(profile.prowl_min)
+	prowl_min_dark = prowl_min + (PROWL_MIN_DARK - PROWL_MIN)
+	peak_max = float(profile.peak_max)
+	peak_tense = float(profile.peak_tense)
+	rest_chase = float(profile.rest_chase)
+	rest_death = float(profile.rest_death)
+	death_ease = float(profile.death_ease)
+	double_back = float(profile.double_back)
+	distract_rest = float(profile.distract_rest)
+	burnt_every = Vector2(float(profile.burnt_every[0]), float(profile.burnt_every[1]))
 
 func _physics_process(delta: float) -> void:
 	if level == null or level.session.state != level.session.State.PLAYING: return
@@ -196,13 +229,13 @@ func tick(delta: float) -> void:
 		set_phase(Phase.PEAK)
 	elif was_hostile:
 		# The hunt is over: a rest before anything else.
-		rest(REST_AFTER_CHASE)
+		rest(rest_chase)
 	was_hostile = now_hostile
 	update_menace(delta)
 	if silent() or now_hostile: return
 	match phase:
 		Phase.PEAK:
-			if clock - phase_since > peak_limit(): rest(REST_AFTER_CHASE)
+			if clock - phase_since > peak_limit(): rest(rest_chase)
 			elif menace < PEAK_MENACE * 0.6 and nearest_walk() > PEAK_NEAR * 1.5: set_phase(Phase.BUILD)
 		Phase.RELIEF:
 			if clock >= rest_until:
@@ -234,7 +267,7 @@ func watch_team() -> void:
 		var alive: bool = int(level.session.participants[seat]) != int(level.session.Life.DEAD)
 		if alive_before.get(seat, true) and not alive:
 			deaths.append(clock)
-			rest(REST_AFTER_DEATH)
+			rest(rest_death)
 		alive_before[seat] = alive
 	while not deaths.is_empty() and clock - float(deaths[0]) > DEATH_MEMORY: deaths.pop_front()
 	for body in active_survivors():
@@ -247,11 +280,11 @@ func stalled() -> bool:
 	return clock - maxf(last_new_room, last_hostile) >= STALL
 
 func peak_limit() -> float:
-	return PEAK_MAX_TENSE if level.hotel.dark or not deaths.is_empty() else PEAK_MAX
+	return peak_tense if level.hotel.dark or not deaths.is_empty() else peak_max
 
 ## The nearest it lets a lead come to the team.
 func nearest_prowl() -> float:
-	return (PROWL_MIN_DARK if level.hotel.dark else PROWL_MIN) + DEATH_EASE * deaths.size()
+	return (prowl_min_dark if level.hotel.dark else prowl_min) + death_ease * deaths.size()
 
 ## Metres of walking from the creature to the nearest survivor out there.
 func nearest_walk() -> float:
@@ -323,7 +356,7 @@ func build() -> void:
 			raps(target)
 	# Whatever could not be had this time, a plain prowl will do.
 	if not ok and kind != "merodea": ok = prowl_round(target, prowl, "merodea")
-	next_lead = clock + rng.randf_range(LEAD_EVERY.x, LEAD_EVERY.y) if ok else clock + 3.0
+	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) if ok else clock + 3.0
 	if ok:
 		last_kind = kind
 		prowl = maxf(nearest_prowl(), prowl - PROWL_STEP)
@@ -377,7 +410,7 @@ func retreat() -> bool:
 	var it = creature()
 	var left_from: Vector3 = it.global_position
 	if not far_lead("retirada"): return false
-	if rng.randf() < DOUBLE_BACK and validate_lead(left_from, true): coming_back = {"point": left_from, "at": clock + rng.randf_range(DOUBLE_BACK_AFTER.x, DOUBLE_BACK_AFTER.y)}
+	if rng.randf() < double_back and validate_lead(left_from, true): coming_back = {"point": left_from, "at": clock + rng.randf_range(DOUBLE_BACK_AFTER.x, DOUBLE_BACK_AFTER.y)}
 	return true
 
 ## RELIEF: the creature to stale rooms far from everybody, once per rest.
@@ -414,7 +447,7 @@ func far_lead(kind: String) -> bool:
 ## The director plays with them; it does not hand them over.
 func distraction() -> void:
 	var it = creature()
-	if clock - last_distraction < DISTRACT_REST or it.detection >= it.SUSPICION: return
+	if clock - last_distraction < distract_rest or it.detection >= it.SUSPICION: return
 	var bodies := active_survivors()
 	if bodies.is_empty() or not bodies.all(func(body): return body.hidden): return
 	var from := room_id(it.global_position)
@@ -459,7 +492,7 @@ func burnt_lead() -> bool:
 	if marked.is_empty(): return false
 	var it = creature()
 	if it.mode != it.Mode.PATROL: return false
-	burnt_next = clock + rng.randf_range(BURNT_EVERY.x, BURNT_EVERY.y)
+	burnt_next = clock + rng.randf_range(burnt_every.x, burnt_every.y)
 	var body: Node3D = marked[rng.randi_range(0, marked.size() - 1)]
 	var theirs := room_id(body.global_position)
 	if theirs < 0 or wing_of(body.global_position) != wing_of(it.global_position): return false

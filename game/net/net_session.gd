@@ -33,9 +33,10 @@ const MAX_PLAYERS := 5
 const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-14"
+const PROTOCOL := "the-four-net-15"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 enum Mode { COOP, VERSUS }
 const MODE_NAMES := ["Cooperativo contra IA", "Versus: un jugador es The Locust"]
 ## Who plays The Locust in versus: RANDOM, or a seat number.
@@ -56,7 +57,8 @@ var players := {}
 ## Host options, mirrored to everyone.
 ## `rules`: what the room changed of the game's rules, and only that
 ## (game/floors/match_rules.gd).
-var options := {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}}
+## `difficulty`: the creature's, in a match against it (game/floors/difficulty.gd).
+var options := {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}, "difficulty": DIFFICULTY.REFERENCE}
 ## True from the host's start until everyone is back in the room.
 var in_match := false
 var local_seat := 0
@@ -124,7 +126,9 @@ func as_host(opened: MultiplayerPeer, kind: String, player_name: String, charact
 	local_seat = 1
 	players = {1: {"name": clean_name(player_name), "character": character, "peer": 1, "connected": true}}
 	observers.clear()
-	options = {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}}
+	# The host's last choice of difficulty, which is the one its room offers.
+	var chosen: String = DIFFICULTY.valid(level.settings.values.get("difficulty", DIFFICULTY.REFERENCE)) if level != null else DIFFICULTY.REFERENCE
+	options = {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}, "difficulty": chosen}
 	status = ""
 	lobby_changed.emit()
 
@@ -357,7 +361,9 @@ func lobby_state(seats: Dictionary, host_options: Dictionary, playing: bool) -> 
 ## The host changes a match option.
 func set_option(key: String, value: Variant) -> void:
 	if not is_host or in_match: return
-	options[key] = RULES.changed(value) if key == "rules" else value
+	if key == "rules": value = RULES.changed(value)
+	elif key == "difficulty": value = DIFFICULTY.valid(value)
+	options[key] = value
 	if key == "mode" and value == Mode.COOP: options.locust = RANDOM
 	broadcast_lobby()
 
@@ -402,6 +408,8 @@ func start_match(seed_value := -1) -> bool:
 		"survivors": seats.filter(func(seat): return seat != locust_seat),
 		"players": players.duplicate(true),
 		"rules": RULES.changed(options.get("rules", {})),
+		# Against a player there is no difficulty: the creature is a person.
+		"difficulty": DIFFICULTY.valid(options.get("difficulty")) if int(options.mode) == Mode.COOP else DIFFICULTY.REFERENCE,
 	}
 	in_match = true
 	broadcast_lobby()

@@ -2,7 +2,7 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 1.0, "upscaler": "auto", "sharpness": 0.9, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.45, "grain": 0.35, "chromatic": 0.3, "scanlines": 0.35, "osd": true, "bob": 0.1, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "fsr2", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. Named by where the button is
@@ -147,13 +147,22 @@ func write_renderer() -> void:
 func renderer_pending() -> bool:
 	return values.renderer != RenderingServer.get_current_rendering_method()
 
-## No settings saved yet: a preset for this machine, with its render scale.
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
+
+## No settings saved yet. The defaults are what the game is meant to look
+## like on a first start: Medio, drawn at 67 % and brought up by FSR 2.2
+## ("Calidad"), with the tape's look as it was tuned by playing (October
+## 2026). An integrated GPU starts on Bajo, with that preset's own scale.
 ## Tests and capture tools keep the plain defaults.
 func first_run() -> void:
 	if not manages_window(): return
+	# Somebody new starts on Equilibrada; a file saved before there were
+	# difficulties keeps "desafiante", which is what it was playing.
+	values.difficulty = DIFFICULTY.FIRST
 	var adapter := RenderingServer.get_video_adapter_type()
 	integrated_gpu = adapter in [RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU, RenderingDevice.DEVICE_TYPE_CPU]
-	if integrated_gpu: values.quality = PRESETS.LOW
+	if not integrated_gpu: return
+	values.quality = PRESETS.LOW
 	values.scale = PRESETS.PRESETS[values.quality].scale
 
 func sanitize(key: String, value: Variant) -> Variant:

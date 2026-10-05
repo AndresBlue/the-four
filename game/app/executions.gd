@@ -42,45 +42,11 @@ func capture_survivor(body: Node3D) -> void:
 	if level.session.participants.get(body.slot, level.session.Life.DEAD) != level.session.Life.EXPLORING: return
 	if level.lifts.riding.has(int(body.slot)) or level.point_protected(body.global_position): return
 	if level.spare.is_valid() and bool(level.spare.call(body)): return
-	if pardon(body): return
 	if level.match_net.in_match(): level.match_net.free_victim_hide(body.slot)
 	var point: Vector3 = level.locust.global_position
 	var yaw: float = level.locust.rotation.y
 	apply_execution(body.slot, point, yaw)
 	if level.match_net.in_match(): level.match_net.execute_start.rpc(body.slot, point, yaw)
-
-## Seat -> captures already forgiven on this floor (the rule "mercy").
-var pardoned := {}
-
-## How long somebody let go cannot be taken again, and how far the creature is
-## sent (metres of walking), where it then stands that long.
-const PARDON_REST := 12.0
-
-const PARDON_AWAY := 45.0
-
-## The room's mercy: the creature had this survivor and lets go, as many times
-## each as the rule says. It is taken to a den far from there, so being let go
-## is not being caught again six seconds later. True when it was forgiven.
-func pardon(body: Node3D) -> bool:
-	var seat := int(body.slot)
-	var left: int = level.rule("mercy") - int(pardoned.get(seat, 0))
-	if left <= 0: return false
-	var den: Vector3 = level.revival.den_away(body.global_position, PARDON_AWAY)
-	apply_pardon(seat, left - 1, den)
-	if level.match_net.in_match(): level.match_net.pardoned.rpc(seat, left - 1, den)
-	return true
-
-## Applied on every machine: the count, the creature gone, and for whoever it
-## had, a jolt of the tape and how many of these are left.
-func apply_pardon(seat: int, left: int, den: Vector3) -> void:
-	pardoned[seat] = level.rule("mercy") - left
-	level.untouchable[seat] = PARDON_REST
-	level.revival.relocate_creature(den, PARDON_REST)
-	if not level.net.is_client(): level.ledger.mark("mercy", seat, {"n": left})
-	if seat != level.player.slot or level.match_net.local_is_locust(): return
-	level.glitch = 1.0
-	level.rumble(0.4, 0.8, 0.4)
-	level.ui.flash("TE HA SOLTADO · %s" % ("NO HABRÁ OTRA" if left <= 0 else ("QUEDA UNA" if left == 1 else "QUEDAN %d" % left)), 3.0)
 
 ## Everyone plays out the execution: the creature holds its victim up and
 ## stabs three times. The victim's own machine takes over its body.

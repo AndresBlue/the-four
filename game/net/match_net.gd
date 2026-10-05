@@ -811,7 +811,7 @@ func update_wardrobe_jobs(delta: float) -> void:
 			wardrobe_jobs.erase(job)
 			continue
 		job.time += delta
-		var steps: Dictionary = level.locust.WARDROBE_TIME if is_instance_valid(level.locust) else {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
+		var steps: Dictionary = level.locust.wardrobe_steps() if is_instance_valid(level.locust) else {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
 		if job.step == 0 and job.time >= steps.right:
 			job.step = 1
 			pull_leaf(job, "right")
@@ -840,11 +840,6 @@ func leaf_opened(index: int, side: String) -> void:
 @rpc("authority", "call_remote", "reliable")
 func execute_start(seat: int, point: Vector3, yaw: float) -> void:
 	level.apply_execution(seat, point, yaw)
-
-## The room's mercy, decided by the host: the creature lets this seat go.
-@rpc("authority", "call_remote", "reliable")
-func pardoned(seat: int, left: int, den: Vector3) -> void:
-	level.executions.apply_pardon(seat, left, den)
 
 ## The victim was inside a wardrobe: it is pulled out of it first.
 func free_victim_hide(seat: int) -> void:

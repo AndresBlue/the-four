@@ -748,6 +748,11 @@ func mind_creature(delta: float) -> bool:
 	if threat.busy and (threat.visible(me) or threat.route_to(me) < 30.0):
 		scatter(delta)
 		return true
+	# A novice sees it coming no further than it sees it: no ducking out of
+	# its way ahead of time. It runs when it is hunted, and that is all.
+	if threat.novice:
+		escape = Vector3.INF
+		return false
 	danger_clock -= delta
 	if danger_clock <= 0.0:
 		danger_clock = 0.25
@@ -852,14 +857,15 @@ func run_away(delta: float) -> void:
 	# Out of its line: a wardrobe it will not hear being got into and will not
 	# open (past its earshot in a chase, or out of hearing otherwise).
 	if not seen:
-		if hide_target == null or not is_instance_valid(hide_target): hide_target = near_hide(10.0, threat.mode == LOCUST.Mode.CHASE)
+		# A novice thinks of a wardrobe late: only one right beside it.
+		if hide_target == null or not is_instance_valid(hide_target): hide_target = near_hide(5.0 if threat.novice else 10.0, threat.mode == LOCUST.Mode.CHASE)
 		if hide_target != null and try_hide(): return
 	# Running is heard, and in a chase every step near where it last knew
 	# them is where it goes next: a trail it follows to the end. Running only
 	# while seen, while it is right behind, or while its ears are shut here;
 	# otherwise the quietest pace it does not hear.
 	var pace := BODY.Pace.RUN
-	if not seen and threat.route_to(me) > 6.0 and not (threat.deaf_to(me) and threat.lost_time < LOCUST.LOSE_AFTER - 1.5):
+	if not seen and not threat.novice and threat.route_to(me) > 6.0 and not (threat.deaf_to(me) and threat.lost_time < threat.lose_after() - 1.5):
 		pace = quiet_pace()
 		if pace == BODY.Pace.STILL: pace = BODY.Pace.CROUCH
 	if escape == Vector3.INF:

@@ -23,6 +23,9 @@ const RESTARTS := 1
 ## How many this floor forgives (a rule of the room, game/floors/match_rules.gd);
 ## negative, as many as it takes.
 var restarts_allowed := RESTARTS
+## The difficulty the floor is played on (game/floors/difficulty.gd), kept with
+## the checkpoint so "Continuar" plays it again.
+var difficulty := "desafiante"
 var restarts := 0
 ## Seconds between the floor collapsing and everybody getting up again: long
 ## enough for the last death to be seen and heard.
@@ -197,7 +200,7 @@ func write_checkpoint() -> bool:
 	if not file:
 		message = "No se pudo guardar el inicio del piso."
 		return false
-	file.store_string(JSON.stringify({"format": 1, "generator": GENERATOR_VERSION, "seed": run_seed, "floor": 1, "fallback": map_fallback}))
+	file.store_string(JSON.stringify({"format": 1, "generator": GENERATOR_VERSION, "seed": run_seed, "floor": 1, "fallback": map_fallback, "difficulty": difficulty}))
 	file.close()
 	# Preserve the previous valid checkpoint until the complete replacement exists.
 	var backup := checkpoint_path + ".bak"

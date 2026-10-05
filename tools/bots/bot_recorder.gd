@@ -70,6 +70,8 @@ func start() -> void:
 		"names": owner_match.bodies.map(func(body): return body.player_name),
 		"characters": owner_match.bodies.map(func(body): return int(body.avatar.character) if body.avatar != null else 0),
 		"knowledge": String(owner_match.options.get("knowledge", "discover")),
+		"skill": String(owner_match.options.get("skill", "experto")),
+		"difficulty": String(owner_match.level.difficulty),
 		"mercy": bool(owner_match.options.get("mercy", false)),
 		"enemy": not OS.get_cmdline_user_args().has("--no-enemy"),
 		"rate": RATE,

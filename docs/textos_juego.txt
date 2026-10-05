@@ -88,6 +88,34 @@ CORRECCIÓN:
 ACTUAL: 12:00
 CORRECCIÓN:
 
+-- Dificultad (al pulsar NUEVA PARTIDA) --
+
+[DIF.01] Esquina superior izquierda, título y subtítulo
+ACTUAL: MENU ▸ NUEVA PARTIDA · DIFICULTAD · LA BESTIA QUE TE ESPERA EN EL HOTEL
+CORRECCIÓN:
+
+[DIF.02] Opciones (la última elegida, marcada) y VOLVER
+ACTUAL: APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA · VOLVER
+CORRECCIÓN:
+
+[DIF.03] Recuadro de la derecha: lo que es cada una
+ACTUAL: Lenta de mente. La verás a menudo, pero tarda en reaccionar, corre menos que tú y se olvida pronto. Para quien no juega mucho.
+| Los mismos encuentros, pero salir de ellos pide romperle la vista, no solo correr. La de casi todo el mundo.
+| Verte es casi cazarte: hay que jugar a no ser visto. Para quien ya conoce el piso.
+| Ve más, oye más, insiste más y no perdona. Para equipos que ya salen en Desafiante.
+CORRECCIÓN:
+
+[DIF.04] Recuadro de la derecha: sus rasgos, uno por línea
+ACTUAL: (Apacible) Tarda en fijarse en ti y en reaccionar. · Corre menos que tú: correr te salva. ·
+| Te pierde enseguida y se rinde pronto. · En equipo, el piso perdona todas las etapas perdidas.
+| (Equilibrada) Tarda un poco en reaccionar. · Corre casi como tú: para escapar hay que romperle la vista. ·
+| En equipo, el piso perdona dos etapas perdidas.
+| (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa perdida.
+| (Pesadilla) Ve y oye más lejos que ninguna. · Reacciona al instante, insiste y registra más armarios. ·
+| No se perdona ninguna etapa perdida.
+| (solo Desafiante) Es la bestia de siempre: la de antes de que hubiera dificultades.
+CORRECCIÓN:
+
 
 3. PAUSA
 --------
@@ -231,7 +259,8 @@ CORRECCIÓN:
 
 [FIN.07] Bajo el título, en una línea (%d = número de la cinta, la semilla del piso; después
 el piso, con quién se jugó, cuántos eran si eran más de uno y la fecha)
-ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·  fecha
+ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·
+| APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA (no contra el cazador)  ·  fecha
 CORRECCIÓN:
 
 [FIN.15] Pestañas del parte (HITOS solo en el piso que se acaba de jugar)
@@ -305,7 +334,7 @@ CORRECCIÓN:
 -- Pestaña EQUIPO --
 
 [FIN.09] Encabezados de la tabla (una fila por jugador; ★ ante el más valioso)
-ACTUAL: JUGADOR / PAPEL / PUNTOS / TV / Nº / HUIDAS / CAÍDAS / METROS
+ACTUAL: JUGADOR / PAPEL / PUNTOS / ENCUENTROS / TV / Nº / HUIDAS / CAÍDAS / METROS
 CORRECCIÓN:
 
 [FIN.10] Última columna de cada fila
@@ -338,7 +367,7 @@ CORRECCIÓN:
 [FIN.27] Lo que no da puntos pero se cuenta (entre paréntesis, de quién, si son varios)
 ACTUAL: DESTACADO
 | %d m andados, %d corriendo · %s en armarios · %s con la criatura detrás ·
-| la criatura a %s m · cordura hasta %d
+| la criatura a %s m · %s sin saber nada de ella · cordura hasta %d
 CORRECCIÓN:
 
 -- Pestaña SECTORES --
@@ -806,6 +835,11 @@ ACTUAL: MULTIJUGADOR ▸ SALA · ANFITRIÓN · SALA · JUGADORES  %d / 5 · Tipo
 | Retomar el piso guardado · EMPEZAR · PERSONAJE · REGLAS · CERRAR LA SALA / SALIR DE LA SALA
 CORRECCIÓN:
 
+[MP.29] Sala, en cooperativo: la dificultad (el anfitrión la elige en un desplegable; los
+invitados la ven escrita)
+ACTUAL: Dificultad · Apacible / Equilibrada / Desafiante / Pesadilla · Dificultad: %s
+CORRECCIÓN:
+
 [MP.28] Columna derecha de la sala: las reglas (%d = cuántas se cambiaron; debajo, hasta
 cuatro de ellas, cada una "Nombre: valor")
 ACTUAL: REGLAS: LAS DEL JUEGO / REGLAS CAMBIADAS (%d) · …y %d más
@@ -822,10 +856,9 @@ ACTUAL: EL EQUIPO / EL PISO / LA HOJA / THE LOCUST
 CORRECCIÓN:
 
 [REGLA.03] Cada regla: nombre, valores (el primero es el del juego) y nota bajo ella
-ACTUAL: CLEMENCIA: NINGUNA / UNA VEZ / DOS VECES / TRES VECES
-| Capturas que la criatura perdona a cada superviviente: lo suelta y se va lejos.
-| DERRUMBES PERDONADOS: UNO / NINGUNO / DOS / TRES / SIN LÍMITE
-| Veces que el piso devuelve un sector perdido, con todos en pie otra vez.
+ACTUAL: CLEMENCIA: SEGÚN LA DIFICULTAD / NINGUNA / UNA VEZ / DOS VECES / TRES VECES / SIN LÍMITE
+| Veces que el piso devuelve una etapa perdida, con todos en pie otra vez en su entrada. La dificultad trae
+| la suya (Apacible: sin límite; Equilibrada: dos; Desafiante: una; Pesadilla: ninguna).
 | CORDURA: SE GASTA / NO SE GASTA
 | Sin gastarse no hay alucinaciones, ni nadie se queda a la vista de la criatura por perderla.
 | CÓDIGO DE LA ÚLTIMA PUERTA: SE PUEDE ADIVINAR / HACEN FALTA LAS CUATRO NOTAS
@@ -846,10 +879,6 @@ ACTUAL: CLEMENCIA: NINGUNA / UNA VEZ / DOS VECES / TRES VECES
 | Solo con un jugador de cazador: ve el hotel iluminado en vez de reconstruirlo de oído, sin rutas ni ecos de lo que suena.
 CORRECCIÓN:
 
-[REGLA.04] Centro de la pantalla de quien la criatura suelta, con la regla Clemencia
-ACTUAL: TE HA SOLTADO · QUEDAN %d / TE HA SOLTADO · QUEDA UNA / TE HA SOLTADO · NO HABRÁ OTRA
-CORRECCIÓN:
-
 [REGLA.05] En el teclado del código, con la regla de las cuatro notas y sin tenerlas
 ACTUAL: FALTAN NOTAS
 CORRECCIÓN:
@@ -857,8 +886,6 @@ CORRECCIÓN:
 [REGLA.06] En el parte de una cinta jugada con otras reglas (pestañas RESUMEN, CRONOLOGÍA,
 SECTORES e HITOS)
 ACTUAL: CON OTRAS REGLAS · SIN HITOS, Y EN SU PROPIO TABLÓN
-| The Locust tuvo a %s y lo soltó
-| %d captura perdonada / capturas perdonadas
 | Con otras reglas que las del juego no se alcanzan hitos.
 CORRECCIÓN:
 

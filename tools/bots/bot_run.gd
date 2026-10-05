@@ -28,6 +28,8 @@ func run() -> void:
 		"bots": clampi(int(arg("bots", "3")), 1, 5),
 		"seed": int(arg("seed", "81")),
 		"knowledge": arg("knowledge", "discover"),
+		"skill": arg("skill", "experto"),
+		"difficulty": arg("difficulty", ""),
 		"mercy": args.has("--mercy"),
 		"stage_cap": float(arg("stage-cap", "1800")),
 		"run_cap": float(arg("run-cap", "5400")),
