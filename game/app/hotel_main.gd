@@ -1281,30 +1281,11 @@ func spawn_locust() -> void:
 	locust = LOCUST.instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
-	# Well into the first planta, between half and four fifths of the way to
-	# its farthest room, so the stage starts away from the door everyone comes
-	# in by; which room of those is drawn from the floor's seed, not the first
-	# one in the list (that put it in the same corner every time). Not in a
-	# refuge nor next to one, and not in the lift lobby behind one: that lobby's
-	# only way out is the refuge the creature will not cross -- it spent the
-	# stage shut in there, waiting right where everybody had to go.
-	var start := int(manifest.get("start", 0))
-	var distances := GENERATOR.distance_map(manifest.adjacency, start)
-	var near_refuge := GENERATOR.distance_map(manifest.adjacency, int(manifest.exit))
-	var shut_out := off_limits_rooms()
-	var reach := 0
-	for room in manifest.rooms:
-		if int(room.get("wing", 0)) == 0 and not shut_out.has(int(room.id)): reach = maxi(reach, int(distances[room.id]))
-	var dens: Array = []
-	for room in manifest.rooms:
-		var hops: int = distances[room.id]
-		if int(room.get("wing", 0)) != 0 or shut_out.has(int(room.id)) or FLOOR.is_void(room) or hops <= 3: continue
-		if hops >= int(reach * 0.5) and hops <= int(ceil(reach * 0.8)) and near_refuge[room.id] > 2: dens.append(int(room.id))
-	var chosen := start
-	if not dens.is_empty():
-		var draw := RandomNumberGenerator.new()
-		draw.seed = hash([int(manifest.seed), "den"])
-		chosen = int(dens[draw.randi_range(0, dens.size() - 1)])
+	# Where it starts the first stage (revival.stage_den): well into the
+	# first planta, away from the door everyone comes in by and from the
+	# refuge. It goes back there if that stage is given back.
+	var chosen: int = revival.stage_den(1)
+	if chosen < 0: chosen = int(manifest.get("start", 0))
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
 	locust.patrol_room = chosen
 	arm_creature()

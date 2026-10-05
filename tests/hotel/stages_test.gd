@@ -488,6 +488,27 @@ func run() -> void:
 	var den_room: Dictionary = FLOOR.room_at(level.manifest.rooms, level.locust.global_position)
 	var walk: float = float(FLOOR.route_metres(level.manifest, int(door_room.id)).get(den_room.get("id", -1), 0.0)) if not den_room.is_empty() else 0.0
 	check("Y la criatura, lejos de la puerta y quieta un momento", walk >= 40.0 and int(den_room.get("wing", -1)) == session.stage - 1 and level.locust.grace > 0.0 and level.locust.mode == level.locust.Mode.PATROL)
+	# Not anywhere far: where it starts this stage, which is neither the door
+	# they come in by nor the one they have to reach, and for as long as it
+	# waited when the floor began.
+	var den_id: int = level.revival.stage_den(session.stage)
+	var refuges: Array = level.manifest.get("refuges", [])
+	var way_out: int = int(refuges[session.stage - 1]) if session.stage - 1 < refuges.size() else int(level.manifest.exit)
+	var from_exit: int = level.GENERATOR.distance_map(level.manifest.adjacency, way_out)[den_id] if den_id >= 0 else -1
+	check("Vuelve a su punto de aparición de la etapa, lejos también de la salida", den_id >= 0 and int(den_room.get("id", -1)) == den_id and from_exit > 2)
+	check("Y espera lo que esperó al empezar el piso", level.locust.grace >= float(level.tuning().grace) - 1.0 and level.locust.grace >= level.revival.RESTART_GRACE - 1.0)
+	check("El primer sector empieza en ese mismo sitio", level.revival.stage_den(1) >= 0 and int(level.manifest.rooms[level.revival.stage_den(1)].get("wing", -1)) == 0)
+	# A creature somebody drives goes back too, and waits too: it used to be
+	# left where it stood, at the door, free to strike.
+	var kept_control: String = level.locust.control
+	var kept_grace: float = level.locust.grace
+	level.locust.control = "puppet"
+	level.locust.grace = 0.0
+	level.locust.global_position = level.revival_point() + Vector3(1.5, 0.04, 0)
+	level.revival.relocate_creature(level.revival.den_point(den_id), level.revival.restart_grace())
+	check("La bestia que lleva un jugador también vuelve y espera", level.locust.global_position.distance_to(level.revival.den_point(den_id)) < 0.5 and level.locust.grace >= level.revival.RESTART_GRACE)
+	level.locust.control = kept_control
+	level.locust.grace = kept_grace
 	# What a guest goes through, played out on one machine: the word that it
 	# is on its feet arrives before the session that says so, which is pushed
 	# twice a second. In between, the loop puts the body away every frame --
