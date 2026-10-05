@@ -143,7 +143,24 @@ Objetivos de partida, por piso entero:
 
 En Apacible, con el perdón sin límite, el piso siempre se acaba ganando: lo que se mira es cuántas veces se sale de una persecución y cuántas veces se cae.
 
-**No hay guardada ninguna medida del juego de hoy** (los lotes de bots anteriores se borraron en la limpieza de septiembre). La columna de Desafiante es lo que se esperaba al ajustar los bots; lo primero de la fase 2 es medirla. Si sale lejos de ahí, Desafiante se queda como está —es la referencia— y lo que se mueve son los objetivos de las otras tres.
+**Primera medida (5 de octubre de 2026)**, con los números de la sección 3 y sin ninguna conducta de la sección 4: 3 bots, 20 pisos por lote, semillas 200–219 (`./tools/bots.ps1 -Bots 3 -Runs 20 -Seed 200 -Difficulty … -Skill …`; los resúmenes en `evidence/bots/*medida*`).
+
+| Lote | Ganados | Sin derrumbes | Caídas por piso | Encuentros por bot | Persecuciones por bot | Huidas de cada 10 | Rato más largo sin ella (mediana) |
+|---|---|---|---|---|---|---|---|
+| Desafiante, expertos | 65 % | 30 % | 3,3 | 2,1 | 1,8 | 1 | 26:52 |
+| Desafiante, novatos | 0 % | 0 % | 4,3 | 1,8 | 1,8 | 1 | 4:28 |
+| Equilibrada, novatos | 0 % (3 sin tiempo) | 0 % | 6,2 | 3,1 | 2,9 | 2 | 7:14 |
+| Apacible, novatos | 70 % (6 sin tiempo) | 0 % | 11,8 | 6,5 | 8,1 | 3 | 13:53 |
+| Pesadilla, expertos | 5 % | 5 % | 2,4 | 1,2 | 1,3 | 1 | 12:41 |
+
+«Sin tiempo» son pisos que pasaron el tope de juego del lote rehaciendo etapas: en Apacible nadie pierde el piso, pero puede no terminarlo. Lo que dice:
+
+- **Desafiante, la referencia, sale al 65 % con expertos**, por encima de lo que se esperaba (45–55 %). Se queda como está; los objetivos de las demás se leen contra ese 65 %.
+- **Hay muy pocos encuentros**: unos 2 por bot y piso en Desafiante, lejos de los 8 o más del objetivo, y los expertos pasan una mediana de 27 minutos sin una señal de ella. Hace falta el encuentro garantizado del director (sección 4).
+- **Ser perseguido es casi morir en todas**: 1 de cada 10 persecuciones acaba en huida en Desafiante y en Pesadilla, y solo 3 de cada 10 en Apacible. **Los números solos no hacen el «me salvé»**: Apacible tiene muchos encuentros (6,5) y muchas persecuciones (8,1), pero 11,8 caídas por piso. Hacen falta sus conductas: la duda visible, el cansancio, la estocada lenta, el gruñido de «te perdí».
+- **Los novatos lo pierden todo fuera de Apacible.** Son bots, no personas —no se esconden bien y vuelven al peligro a los 4 s de perderla—, así que el número absoluto no es el de un jugador; lo que importa es el orden y la distancia entre dificultades.
+- **Pesadilla sale al 5 % con expertos**, por debajo de su objetivo (15–25 %): se mira en la fase 5.
+
 
 **Dos clases de bots, porque una sola no sirve.** Los de hoy saben siempre dónde está la criatura y juegan a que no los vea nunca: son **expertos**, y apenas tienen encuentros. Para medir Apacible y Equilibrada hacen falta **bots novatos**: que solo sepan de ella lo que ven y oyen, que anden a la vista, que corran en cuanto la ven y que se escondan tarde. Si un novato sale de Apacible, una persona que no juega mucho también.
 
