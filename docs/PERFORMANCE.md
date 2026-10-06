@@ -24,7 +24,11 @@ Herramientas relacionadas:
 - `./tools/benchmarks/bench_table.ps1 base,final` pone dos informes en tabla.
 - `tools/benchmarks/compare_captures.gd` compara dos juegos de capturas: da la diferencia media y máxima y el porcentaje de píxeles que cambian, y escribe una imagen de diferencias.
 - `-Compatibility` mide con el otro renderizador; `-Extra '--shadow-filter=N'` o `'--atlas-quads=a,b,c,d'` sirven para pruebas A/B.
-- `-Extra '--qualities=0,3'` mide solo esos presets y `'--set=clave:valor,...'` fuerza valores de `graphics_presets.gd` sobre todos, para medir un efecto solo (sección 6).
+- `-Extra '--qualities=0,3'` mide solo esos presets y `'--set=clave:valor,...'` fuerza valores de `graphics_presets.gd` sobre todos, para medir un efecto solo (sección 6). Los presets se numeran como se guardan: 0 Bajo, 1 Medio, 2 Alto, 3 Ultra y 4 Muy bajo.
+- `'--setting=clave:valor,...'` pone ajustes del jugador (`settings_service.gd`) después de cada preset, por ejemplo `--setting=upscaler:fsr2`, y `'--hide=Analog,Lens'` deja sin dibujar esas capas de la presentación (el filtro de cinta, la lente, `Camcorder` para el OSD). **Cada pasada parte de los ajustes de fábrica:** los de la anterior quedan guardados y se medirían otra vez.
+- `'--passes'` reparte el tiempo de GPU de cada vista por **etapas del render 3D** (solo Forward+): `viewport` (culling, mapas de sombra, prepasada de profundidad, clústeres de luces), `opaque` (todas las superficies sombreadas e iluminadas), `sky`, `transparent`, `camera` (los efectos propios: desenfoque de movimiento y videocámara) y `post` (glow, escalado, tonemap, FXAA y el lienzo: lente, filtro de cinta y OSD). El perfil de fotograma de Godot no se puede leer desde un script; un efecto de compositor sí deja una marca de tiempo en cada etapa.
+- Cada vista trae además **dónde se va el hilo principal** (`cpu`): un tick de física (los `_physics_process`, la física y la navegación), el `_process` de un fotograma y dibujarlo. Sin límite de FPS un fotograma solo lleva un tick de vez en cuando y su media los esconde; a 60 FPS cada fotograma lleva uno, así que lo que cuesta ahí es `at_60`: uno de cada.
+- **Equipo modesto simulado** (sección 10): `-Modest` deja al juego cuatro núcleos a un hilo cada uno, con el otro hilo de cada núcleo ocupado, y `-Extra '--pixels=9'` lo dibuja todo con nueve veces los píxeles de la ventana.
 - `tools/benchmarks/preset_sheet.gd` pone los cuatro presets de una vista en una hoja (`--view=room36`, `--crop=x,y,w,h`).
 
 ## Antes y después
@@ -135,14 +139,16 @@ Estas cifras son de una GPU rápida. Una gráfica modesta gana más con la reduc
 
 ## 6. Presets gráficos: Bajo, Medio, Alto y Ultra
 
+*Desde octubre de 2026 hay un quinto preset por debajo de Bajo, **Muy bajo**, para gráficas integradas: está en la sección 10, con lo que tiene de distinto.*
+
 Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada estaba pensado para gráficas integradas. Ahora hay cuatro presets con diferencias claras y acumulativas. Todo lo que cambia con la calidad está en una tabla, `game/presentation/graphics_presets.gd`, y ningún otro archivo guarda valores por calidad. La calidad guardada 0–2 conserva su significado (Bajo, Medio, Alto) y 3 es Ultra. Elegir un preset fija también su escala de render; el deslizador sigue libre.
 
 ### Qué cambia
 
 | Parámetro | Bajo | Medio | Alto | Ultra |
 |---|---|---|---|---|
-| Escala de render | 0,67 + FSR 1 | 0,85 + FSR 1 | 1,0 | 1,0 |
-| Antialiasing | FXAA | TAA | TAA + MSAA 2× | TAA + MSAA 4× |
+| Escala de render y escalado (con el escalado en «Automático», que es donde lo deja elegir un preset) | 0,67 + FSR 1 | 0,85 + FSR 2.2 | 1,0 | 1,0 |
+| Antialiasing | FXAA | El de FSR 2.2 (TAA si se elige otro escalado) | TAA + MSAA 2× | TAA + MSAA 4× |
 | AA especular (limitador de rugosidad) | no | sí | sí | sí |
 | Atlas de sombras | 4096 | 4096 | 8192 | 8192 |
 | Filtro de sombras | Soft Very Low | Soft Low | Soft Medium | Soft High |
@@ -176,7 +182,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Visión de eco (criatura) | ½ de granos, ×2 de tamaño | base | más densa | algo más fina + halo de fósforo |
 
 **Lo que no cambia, a propósito:**
-- **Sombras de las lámparas.** Toda lámpara visible conserva su sombra en todos los presets. Una lámpara sin sombra atraviesa paredes y puertas cerradas, así que la sombra se abarata (filtro, penumbra, cuerpo propio), nunca se quita. Por la misma razón el atlas no baja de 4096: con celdas más bastas, el sesgo crece más que el grosor de una hoja de puerta.
+- **Sombras de las lámparas.** Toda lámpara visible conserva su sombra en estos cuatro presets (Muy bajo no tiene sombras de lámpara y las confina de otra manera: sección 10). Una lámpara sin sombra atraviesa paredes y puertas cerradas, así que la sombra se abarata (filtro, penumbra, cuerpo propio), nunca se quita. Por la misma razón el atlas no baja de 4096: con celdas más bastas, el sesgo crece más que el grosor de una hoja de puerta.
 - **Luz ambiente cero y niebla casi negra.** Las salas oscuras son negras en todos los presets.
 - **Números de puerta y rótulos (20 m), faro rojo, sellos de puerta y salas oscuras.** Son gameplay y orientación.
 - **Filtro VHS.** Sus deslizadores y «Efectos reducidos» son ajustes del jugador.
@@ -246,7 +252,7 @@ Detalle en [VISION_LOCUST.md](VISION_LOCUST.md). Capturas: `echo_capture.gd` (`p
 ### Renderizador y gráficas integradas
 
 - **Opción en Ajustes ▸ Gráficos ▸ Renderizador:** Forward+ o Compatibilidad (OpenGL). Se guarda en `user://renderer.cfg`, que `project.godot` usa como override, y se aplica al reiniciar; desde el menú principal hay un botón para reiniciar.
-- **Primer arranque** (`settings_service.first_run`): Medio al 67 % con FSR 2.2 («Calidad»). Con gráfica integrada (`RenderingServer.get_video_adapter_type()`), Bajo con su escala, y el menú sugiere Compatibilidad.
+- **Primer arranque** (`settings_service.first_run`): Medio al 67 % con FSR 2.2 («Calidad»). Con gráfica integrada (`RenderingServer.get_video_adapter_type()`), Muy bajo con su escala (era Bajo hasta la sección 10), y el menú sugiere subir de preset si va sobrado y Compatibilidad si no.
 - **Compatibility probado con los cuatro presets** en este PC, sin errores. En una gráfica dedicada no es más rápido: Bajo 1,47 ms de GPU frente a 0,74 en Forward+. Su ventaja esperada está en integradas, **sin medir: este PC no tiene gráfica integrada** (el 5900X no trae GPU).
 - **Fugas de luz** con la sala oscura y la puerta cerrada: brillo medio inferior a 1/255 en los cuatro presets, también con la penumbra de Ultra.
 - **El atlas de sombras guarda la profundidad en 32 bits en Compatibilidad** (unos 32 MB más de memoria de vídeo con el atlas de 4096): con 16 bits la linterna se rayaba a sí misma en bandas diagonales en las paredes que alumbra de frente, a partir de un módulo de distancia (en la guía de desarrollo).
@@ -341,3 +347,145 @@ Medido el 25 de septiembre de 2026 en este PC, con el juego cerrado: Ultra, semi
 - Como no aporta a la vista, se retiró para no sumar complejidad. Capturas lado a lado en `evidence/abc_capturas.png`.
 
 **Pendiente de revisar, de antes de estos cambios:** la peor fuga del piso actual (tres plantas, 571 salas) es 0,0359 en B, y cuando se fijó el límite de doce apliques era 0,00013 (comentario de `SCONCES_LIT` en `hotel_geometry.gd`, con el piso de entonces). No la causó nada de esto (es igual con y sin relleno), pero conviene buscar qué sala es.
+
+## 10. Equipos modestos: auditoría y preset «Muy bajo»
+
+Octubre de 2026. La pregunta era qué se lleva el fotograma en una gráfica integrada con un procesador de cuatro núcleos, y qué hay que quitar —aunque se note— para sostener 60 FPS ahí. Salen de ella un quinto preset, **Muy bajo**, que cambia el aspecto a propósito, y varios arreglos de procesador que valen para todos los presets.
+
+### El equipo modesto, simulado
+
+Este PC no tiene gráfica integrada (RTX 4060 Ti, Ryzen 9 5900X), así que se le hace parecer uno peor por los dos lados: `run_bench.ps1 -Modest -Extra '--pixels=9'`.
+
+- **Procesador (`-Modest`).** El juego se queda con cuatro núcleos y un solo hilo en cada uno, y el otro hilo de esos cuatro núcleos se mantiene ocupado. Los dos hilos de un núcleo se lo reparten, así que el juego corre todo el tiempo a más o menos el 60 % de lo que este procesador rinde por hilo, de forma pareja y sin los tirones que daría quitarle tiempo de CPU a ratos: un cuatro núcleos de portátil de hace unos años.
+- **Gráfica (`--pixels=N`).** Todo se dibuja con N veces los píxeles de la ventana (la ventana raíz se renderiza a √N veces su lado y se estira de vuelta). Lo que le falta a una integrada es sobre todo relleno de píxeles, y esta tarjeta con nueve veces los píxeles hace de una nueve veces más lenta con los de siempre. Como referencia de cuánto más lenta, la puntuación gráfica de 3DMark Time Spy: unos 13.500 puntos una RTX 4060 Ti, entre 1.250 y 1.800 una Iris Xe de 96 EU según el portátil, unos 390 una UHD 620. Así que **×9 es una Iris Xe corriente, ×16 una floja** (o con la memoria en un solo canal) **y ×36 una UHD 620**.
+- **Memoria.** La de vídeo de esta tarjeta no se puede recortar: se mide lo que el juego ocupa, que en una integrada sale de la memoria del sistema.
+
+**Lo que esto no es.** Es un modelo, no una medida. No escala lo que no depende de los píxeles (vértices, mapas de sombra, el trabajo del driver por llamada de dibujo), da por hecho que lo demás escala en proporción, y una integrada comparte con el procesador un ancho de banda de memoria que aquí sobra. Sirve para ordenar los costes y para saber si se está cerca o lejos de los 60 FPS; el número de verdad sigue pendiente de un portátil real (abajo, «Pendiente»).
+
+### Dónde se iba el fotograma
+
+Bajo como se entregaba, caminando, en el equipo modesto simulado con ×9 (`--passes`; GPU en ms):
+
+| Etapa | GPU |
+|---|---|
+| `post`: glow, escalado, tonemap, FXAA y el lienzo (lente, filtro de cinta, OSD) | 12,7 |
+| `opaque`: todas las superficies, sombreadas e iluminadas | 4,6 |
+| `camera`: la etapa de la videocámara (iris, rodilla de vídeo) | 0,3 |
+| `viewport`: culling, mapas de sombra, prepasada, clústeres de luces | 0,1 |
+| **Total** | **17,9** (fotograma de 19,0 ms: 53 FPS) |
+
+Y quitando una cosa cada vez, sobre Bajo con estirado bilineal (9,0 ms; dos pasadas iguales dieron 9,0 y 9,1; aquí sin frenar el procesador, que a la GPU le da igual):
+
+| Qué | Coste en GPU |
+|---|---|
+| FSR 2.2 frente a estirar sin reconstruir | 8,5 |
+| Sombrear las superficies (lo que queda de `opaque` sin sombras, a escala 0,67) | 3,7 |
+| Escala 0,67 frente a 0,5 | 2,6 |
+| FSR 1 frente a estirar sin reconstruir | 1,8 |
+| Filtro de cinta | 1,45 |
+| Lente (barril, franjas, entrelazado, ruido del sensor) | 1,2 |
+| Sombras de las lámparas, con la escena quieta | 0,8 |
+| Glow | 0,6 |
+| FXAA | 0,6 |
+| OSD | ~0 |
+
+**Lo que se encontró, por lo que pesa:**
+
+1. **Bajo se entregaba con FSR 2.2.** El ajuste de fábrica del escalado es FSR 2.2, y elegir el preset Bajo —o estrenar el juego en una integrada, que empezaba ahí— no lo tocaba: la mitad del fotograma de Bajo era reconstruir la imagen. La tabla de la sección 6 dice «0,67 + FSR 1», y eso solo era verdad con el escalado en «Automático».
+2. **El posprocesado pesaba más que la escena.** Sin contar FSR, la cinta y la lente son dos pasadas a pantalla completa y a resolución nativa, con nueve o más lecturas de la imagen por píxel la primera y cinco la segunda, y cada una con su copia del fotograma: 2,6 ms entre las dos, más 1,2 de glow y FXAA.
+3. **Las superficies.** Cada material procedural calcula ruido de varias octavas, lee tres mapas escaneados y saca su relieve por derivadas: 3,7 ms de los 4,5 de `opaque`.
+4. **Las sombras cuestan poco quietas.** Leerlas son 0,8 ms; dibujarlas, casi nada mientras nada se mueve (sección 1). Lo que cuestan es al moverse —cada lámpara que aparece dibuja sus seis mapas: más de 4.000 llamadas de sombra en un solo fotograma, caminando en Bajo— y, en Compatibilidad, que cada lámpara con sombra es una pasada más sobre todo lo que alumbra: 1.580 llamadas de dibujo por fotograma caminando en Bajo, y 7,8 ms de procesador para enviarlas en el simulado.
+5. **`update_visibility()` eran 3 ms cuatro veces por segundo**, en todos los presets (4,6 en Ultra): recorría las 571 salas, 369 puertas y 624 apliques de las tres plantas preguntando a cada nodo dónde estaba, y ordenaba todos los apliques aunque el preset no encendiera ninguno. En el procesador simulado, entre 6 y 9 ms: un fotograma de cada quince con medio presupuesto de 60 FPS gastado.
+6. **Un tick de física eran 1,2 ms**, de los que 0,5 eran no hacer nada: el `_physics_process` de 369 puertas y 309 armarios en reposo (0,24 ms), buscar una puerta abierta a la espalda entre las 369 del piso (0,2 ms) y lanzar cinco veces el mismo rayo para saber qué hay bajo la mano.
+7. **Memoria de vídeo**, en una partida arrancada en cada preset, a 1080p: Bajo 494 MB, Medio 1.251 MB, Alto 1.982 MB y Ultra 2.182 MB (en Compatibilidad, Bajo 262 MB). De Bajo a Medio saltan FSR 2.2 y los mapas escaneados a 2048; lo que ocupan los modelos (puertas, armarios, muebles, personajes, decals, carteles) son unos 175 MB en todos. La memoria del proceso llega a unos 715 MB en Forward+ y 355 MB en Compatibilidad. Nada de esto aprieta a un portátil de 8 GB en los presets bajos.
+
+### Arreglos para todos los presets
+
+| Cambio | Efecto medido |
+|---|---|
+| **El escalado es del preset.** Elegir un preset devuelve el escalado a «Automático», que es el suyo (clave `upscaler`): bilineal en Muy bajo, FSR 1 en Bajo, FSR 2.2 de Medio en adelante. La lista de Ajustes sigue ahí para cambiarlo después | Bajo en el equipo simulado (×9), caminando: GPU 17,9 → 10,9 ms; fotograma 19,0 → 12,0 ms (53 → 83 FPS) |
+| **`update_visibility()` por planta.** Solo se dibuja la planta desde la que se mira: lo de las otras se guarda una vez al cambiar de planta (`put_away()`). Las posiciones se guardan (nada de eso se mueve), y los apliques, las sondas y el rebote no se recorren si el preset no los usa y no queda ninguno encendido | Por llamada: Bajo 3,13 → 0,19 ms; Medio 3,05 → 0,27; Alto 3,36 → 0,49; Ultra 4,61 → 0,79 |
+| **Puertas y armarios dormidos.** Una puerta sin nada que esperar apaga su `_physics_process`, y `moving` la despierta; un armario, igual con su temporizador | Tick: −0,24 ms |
+| **La puerta a la espalda** se busca entre las de alrededor (`doors_near()`), y lo que hay bajo la mano, con un solo rayo | `drive_local()`: 0,27 → 0,06 ms |
+| En total, tick de física (este PC a su velocidad) | 1,19 → 0,70 ms |
+| En total, procesador simulado, Bajo o Muy bajo a 1080p: tick · peor `_process` · p99 del fotograma | 1,5 → 0,8 ms · 9,1 → 1,5 ms · 9,8 → 4,5 ms |
+| **Las teles no piden sombras de doble paraboloide en Compatibilidad**, que no las tiene y lo decía en el registro por cada tele | Sin errores en el registro |
+
+De lo que tarda un fotograma en este PC, unos 2,3 ms son presentar la imagen y no cambian ni con el preset ni con el procesador simulado: por eso Bajo y Muy bajo marcan casi lo mismo aquí sin límite de FPS (unos 340), y por eso la comparación entre ellos hay que leerla en la GPU.
+
+### Muy bajo
+
+El quinto preset (índice 4 en `graphics_presets.gd`, el primero de la lista en Ajustes). El juego es el mismo; la imagen es, a la vista, otra más barata. Frente a Bajo:
+
+| | Bajo | Muy bajo |
+|---|---|---|
+| Luz de las lámparas | Con sombra: cada lámpara dibuja sus seis mapas y se leen en cada píxel | **Sin sombra, confinada por sala** (`static_light`): cada lámpara alumbra solo lo que pertenece a su sala. Nada vuelve a dibujarse nunca por una lámpara |
+| Linterna | Sombra suave (Soft Very Low), en un atlas de 4096 compartido con las lámparas | Sombra dura, una lectura por píxel, con el primer cuarto de un atlas de 2048 para ella sola: el mismo mapa de 1024 que le tocaba en Bajo |
+| Superficies | 2 octavas de ruido, mapas escaneados a 1024 | **«Plastilina»** (`surface_detail` 0): un color liso por material, algo más oscuro hacia las esquinas de la sala; sin mapas (ni se cargan), sin ruido, sin relieve |
+| Texturas de los modelos | Como son | Dos mipmaps más abajo (`mip_bias`): un borrón, y un dieciseisavo de los téxeles. Solo en Forward+: Compatibilidad no tiene ese sesgo |
+| Escala de render | 0,67 + FSR 1 | 0,5, estirada sin reconstruir |
+| Suavizado de bordes | FXAA | Ninguno: lo hace el filtro de cinta |
+| Glow | Sí | No |
+| Lente | Sí | No (`lens`): la imagen se dibuja recta, y el grano y la viñeta los pone la cinta |
+| Filtro de cinta | 9 lecturas por píxel o más | 3 (`tape_lite`): sin suavizado ni realce de luma |
+| Umbral de LOD · anisotropía | 4 px · 2× | 8 px · ninguna |
+| Lo demás (salas a 56 m, lámparas a 42 m, sin lámparas de muebles, SSAO, niebla, sondas, decals ni polvo; visión de eco) | — | Igual que Bajo |
+
+**Cómo se queda cada lámpara en su sala sin sombra** está en la guía de desarrollo («Luz sin sombras»): dieciséis capas de render repartidas como un mapa coloreado (`room_layers.gd`), las puertas dibujadas en dos mitades y los cuerpos cambiando de capa al cambiar de sala. En 200 semillas ninguna lámpara alcanza otra sala de su misma capa, y nunca hacen falta más de doce. Lo de «iluminación prerenderizada» no puede ser un lightmap: Godot solo los hornea en el editor y un piso se genera al cargarlo. Esto es lo equivalente en coste —una luz que nunca redibuja nada y no lee ninguna sombra— sin hornear nada.
+
+**Lo que cambia a la vista, a sabiendas:**
+- Paredes, moqueta y techos son de un color: no hay dibujo en el papel ni en la alfombra, ni manchas, ni vetas. Puertas, muebles y personas conservan su textura, emborronada.
+- En una sala iluminada nada le hace sombra a nada: el suelo bajo una mesa está tan iluminado como la mesa, y el interior de un armario abierto, como la sala.
+- **Por una puerta abierta no entra luz.** Una sala a oscuras es negra del todo aunque la de al lado esté encendida y la puerta abierta; la sala encendida se ve por el hueco, pero no alumbra el suelo de este lado. La hoja abierta sí recibe la luz de las dos.
+- La imagen es más blanda y con bordes de sierra (media resolución, sin suavizado), y no tiene la curvatura de la lente.
+
+**Lo que no cambia** (y se comprobó):
+- **Las salas a oscuras son negras** y ninguna lámpara alumbra la sala de al lado: `light_leak.gd --quality=4`, en las 40 primeras salas a oscuras de la semilla 81, no encuentra nada en ninguna habitación cerrada, ni en Forward+ ni en Compatibilidad. (Las dos que marca, la 57 y la 101, son tramos de pasillo apagados y abiertos a uno encendido: las marca igual en Bajo, y es la luz haciendo su trabajo.)
+- La linterna proyecta sombra y no atraviesa puertas ni paredes.
+- Números de puerta, rótulos de salida, el faro rojo, las teles, el apagón y el parpadeo de los fluorescentes.
+- La criatura en una sala a oscuras no se ve desde la de al lado: los cuerpos solo reciben la luz de la sala en la que están (`preset_tour.gd`, tomas `criatura_*`).
+- La visión de eco de The Locust es la de Bajo.
+
+### Medidas
+
+Cada preset en su propia pasada (una partida arrancada en él), semilla 81. Tiempos en ms.
+
+**Este PC** (RTX 4060 Ti, Ryzen 9 5900X), 1080p, Forward+, sin límite de FPS:
+
+| Preset | GPU caminando | Fotograma caminando (media · p99) | GPU quieto (sala intermedia) | Llamadas de dibujo · de sombra, caminando | Memoria de vídeo | Carga del piso |
+|---|---|---|---|---|---|---|
+| **Muy bajo** | 0,51 | 2,83 · 3,95 | 0,47 | 156 · 0 | 376 MB | 10,3 s |
+| Bajo | 1,36 | 2,90 · 4,80 | 1,28 | 154 · 65 | 494 MB | 10,4 s |
+| Medio | 4,68 | 5,77 · 7,44 | 3,81 | 177 · 1.066 | 1.251 MB | 13,0 s |
+| Alto | 9,87 | 11,10 · 14,37 | 7,82 | 178 · 1.898 | 1.982 MB | 13,9 s |
+| Ultra | 14,58 | 15,83 · 20,23 | 12,31 | 200 · 1.944 | 2.182 MB | 14,0 s |
+
+En Compatibilidad, aquí mismo: Bajo 3,01 ms de GPU, 5,53 de fotograma y 1.169 llamadas de dibujo, con 262 MB de vídeo; Muy bajo 1,11 ms, 3,12 y 178, con 228 MB. De Bajo a Muy bajo la GPU baja a algo más de un tercio en los dos renderizadores; el fotograma apenas se mueve en este PC porque lo fija presentar la imagen.
+
+**Equipo modesto simulado** (`-Modest`, cuatro núcleos al 60 %, y la gráfica en ×N), caminando:
+
+| Preset y renderizador | Gráfica | GPU | Fotograma: media · p99 · máximo | FPS (media) |
+|---|---|---|---|---|
+| Medio, Forward+ | ×9 (Iris Xe) | 36,9 | 38,1 · 43,2 · 44,0 | 26 |
+| Bajo como se entregaba (FSR 2.2), Forward+ | ×9 | 17,9 | 19,0 · 23,0 · 23,8 | 53 |
+| Bajo (FSR 1), Forward+ | ×9 | 10,9 | 12,0 · 13,6 · 13,7 | 83 |
+| **Muy bajo, Forward+** | ×9 | **2,96** | **4,05 · 5,8 · 6,2** | **247** |
+| Bajo, Compatibilidad | ×9 | 16,1 | 16,7 · 20,6 · 21,8 | 60 |
+| **Muy bajo, Compatibilidad** | ×9 | **4,02** | **4,95 · 7,2 · 7,8** | **202** |
+| Bajo, Forward+ | ×16 (Iris Xe floja) | 19,5 | 20,8 · 23,6 · 23,8 | 48 |
+| **Muy bajo, Forward+** | ×16 | **5,02** | **6,29 · 8,1 · 8,4** | **159** |
+| **Muy bajo, Forward+** | ×36 (UHD 620) | **11,2** | **12,7 · 14,5 · 15,5** | **79** |
+
+- **Muy bajo cuesta una cuarta parte de lo que Bajo en la GPU** (y una sexta de Bajo como se entregaba), en los dos renderizadores. En el modelo sostiene 60 FPS con margen hasta en ×36; aunque una integrada de verdad rinda la mitad de lo que el modelo dice, en ×9 y ×16 sigue por encima (y en ×9, aunque rinda la tercera parte).
+- **Por etapas**, Muy bajo en ×9: `post` 1,63 ms (estirar, tonemap y el filtro de cinta ligero), `opaque` 1,04, `camera` 0,16, `viewport` 0,08. En ×36: 5,8, 4,7, 0,5 y 0,25.
+- **En Compatibilidad** quitar las sombras quita también las pasadas: las llamadas de dibujo caminando bajan de 1.582 a 195 y el procesador para enviarlas, de 7,8 a 3,3 ms. Forward+ sale más rápido que Compatibilidad en el modelo también en Muy bajo (2,96 frente a 4,02 ms), pero eso es esta tarjeta y su driver: qué renderizador conviene en una integrada sigue sin medir.
+- **El procesador ya no es el límite.** En el simulado, a 1080p, un fotograma de Muy bajo a 60 FPS son 0,8 ms de tick, 0,4 de `_process` y alrededor de 1 de preparar el render: unos 2,3 ms de 16,7, sin criatura ni sonido (el benchmark corre con `--no-enemy --silent`). El peor fotograma al llegar a salas nunca vistas son unos 23 ms, igual en Bajo que en Muy bajo.
+- **Fugas de luz en Muy bajo:** ninguna en habitaciones cerradas (arriba, «Lo que no cambia»). **Capas:** `light_layers_scan.gd` sobre 200 semillas, 0 lámparas que alcancen otra sala de su capa, 0 vecinos abiertos sin alumbrar, 12 capas como mucho y 56 ms el reparto más lento.
+- **Capturas:** `evidence/tour_q4_*.png` (`preset_tour.gd`) y `evidence/bench/f_n_q4_forward_plus/`.
+
+### Pendiente
+
+- **Medirlo en una integrada de verdad.** Todo lo de arriba sale de un modelo; lo que diga un portátil con una Iris Xe o una Vega manda sobre él, y dirá también qué renderizador conviene ahí. El primer arranque en una gráfica integrada ya elige Muy bajo; si sobra, lo siguiente es Bajo, que ahora usa FSR 1.
+- **La sonda de atascos de la criatura** (`verify.ps1`) no termina en sus cinco minutos (tarda unos nueve) y deja 4 de 12 trayectos sin acabar. Pasa igual sin ninguno de estos cambios (medido en el commit anterior), así que viene de antes y no se ha tocado; mientras siga así, `verify.ps1` se para ahí y no llega a los bots, los shaders ni la red, que se pasaron aparte.
+- **El interruptor «Sombras»** de los otros presets sigue dejando a las lámparas atravesar paredes cuando se apaga. Las capas de Muy bajo servirían también ahí; no se ha hecho.
+- Si en una integrada real pesara el número de llamadas de dibujo, lo siguiente a mirar es `room_reach` (56 m en los dos presets bajos): en este PC, bajarlo a 40 m o quitar la oclusión no movió nada.

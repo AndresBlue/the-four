@@ -49,7 +49,7 @@ Alcanzar a alguien no lo mata al instante: la criatura lo levanta en el aire y l
 - Cooperativo y versus por IP o LAN de 2 a 5 jugadores, con hoja compartida, reconexión y observación tras morir.
 - Visión de ecolocalización para quien lleva a The Locust en versus: no ve el hotel, lo reconstruye a pulsos.
 - Habitaciones a oscuras de verdad, sin luz ambiente ni fugas por las puertas, y puerta de madera antigua con su marco.
-- Cuatro presets gráficos desde una sola tabla, medidos a 1080p, y elección de renderizador.
+- Cinco presets gráficos desde una sola tabla, medidos a 1080p, y elección de renderizador. El más bajo, **Muy bajo**, es para gráficas integradas: luz sin sombras confinada a cada sala, materiales lisos y media resolución, con el juego y sus reglas intactos.
 
 **Solo hay un piso de los cuatro.** Sunman, The Boiled One y Guilt todavía no existen. La red ya se ha jugado con gente real, en LAN y por Internet, y de ahí salió el problema principal de ahora: **las partidas se acaban demasiado pronto** —desde minuto y medio, una media de 5 a 8 minutos frente a la meta de 25–40— porque el piso se resuelve siguiendo la numeración de las puertas, a menudo sin cruzarse con la criatura. La estructura que debe arreglarlo —tres etapas, televisores, cerradura de código y apagón— ya está puesta, y la planta se rehizo para que ni la numeración ni ir pegado a una pared resuelvan el piso; **lo que falta es volver a jugarlo con gente y medir si ahora dura lo que debe**. El mobiliario y los materiales siguen siendo provisionales y no se presenta como una entrega fotorrealista. Lo que falta, en orden, en [docs/PLAN.md](docs/PLAN.md).
 
