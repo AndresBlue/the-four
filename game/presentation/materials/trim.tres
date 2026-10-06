@@ -4,6 +4,7 @@
 
 [resource]
 shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.216, 0.119, 0.067, 1)
 shader_parameter/light_color = Color(0.25, 0.14, 0.08, 1)
 shader_parameter/dark_color = Color(0.11, 0.06, 0.035, 1)
 shader_parameter/ring_density = 40.0

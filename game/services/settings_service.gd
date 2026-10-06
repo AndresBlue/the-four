@@ -152,7 +152,9 @@ const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 ## No settings saved yet. The defaults are what the game is meant to look
 ## like on a first start: Medio, drawn at 67 % and brought up by FSR 2.2
 ## ("Calidad"), with the tape's look as it was tuned by playing (October
-## 2026). An integrated GPU starts on Bajo, with that preset's own scale.
+## 2026). An integrated GPU starts on Muy bajo, with that preset's own scale
+## and stretch: it is the one measured to hold 60 FPS there with room to
+## spare (docs/PERFORMANCE.md, section 10), and going up from it is a click.
 ## Tests and capture tools keep the plain defaults.
 func first_run() -> void:
 	if not manages_window(): return
@@ -162,8 +164,9 @@ func first_run() -> void:
 	var adapter := RenderingServer.get_video_adapter_type()
 	integrated_gpu = adapter in [RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU, RenderingDevice.DEVICE_TYPE_CPU]
 	if not integrated_gpu: return
-	values.quality = PRESETS.LOW
+	values.quality = PRESETS.VERY_LOW
 	values.scale = PRESETS.PRESETS[values.quality].scale
+	values.upscaler = "auto"
 
 func sanitize(key: String, value: Variant) -> Variant:
 	if key == "renderer": return value if value in ["forward_plus", "gl_compatibility"] else DEFAULTS[key]
@@ -189,8 +192,13 @@ func set_value(key: String, value: Variant) -> void:
 	if key in DISPLAY_KEYS and previous_display.is_empty():
 		previous_display = {"resolution": values.resolution, "window_mode": values.window_mode}
 	values[key] = sanitize(key, value)
-	# A preset brings its own render scale; the slider can move it afterwards.
-	if key == "quality": values.scale = PRESETS.PRESETS[values.quality].scale
+	# A preset brings its own render scale, and the upscaler goes back to
+	# "auto", which is the preset's own (graphics_presets.scaling_mode): left
+	# on FSR 2.2 by hand, the lowest presets would still be paying for it. The
+	# slider and the list can move both afterwards.
+	if key == "quality":
+		values.scale = PRESETS.PRESETS[values.quality].scale
+		values.upscaler = "auto"
 	if key == "renderer": write_renderer()
 	if key in DISPLAY_KEYS:
 		countdown = 12.0

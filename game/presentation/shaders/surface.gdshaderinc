@@ -147,6 +147,21 @@ vec3 room_grime(vec3 color, vec3 world, vec3 origin, inout float ao) {
 	return color;
 }
 
+// "Plasticine", the lowest graphics preset (surface_detail 0): a surface is
+// one colour, its material's mean (flat_color, written in each material from
+// world/hotel/material_albedo.gd), a little darker into its room's corners so
+// a wall still reads as meeting a floor. No scanned map, no noise, no relief:
+// a fragment's whole cost is its light. Every fragment() starts by asking.
+uniform vec4 flat_color : source_color = vec4(0.5, 0.5, 0.5, 1.0);
+
+bool plasticine() { return surface_detail < 0.5; }
+
+vec3 plasticine_albedo(vec3 origin) {
+	float by_floor;
+	float by_ceiling;
+	return flat_color.rgb * (1.0 - room_edge(wp, origin, by_floor, by_ceiling) * 0.3);
+}
+
 // Perturbs a world normal from screen derivatives of a height field
 // (surface gradient). Derivatives are taken by the caller in fragment().
 vec3 bump_world(vec3 base, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy, float strength) {

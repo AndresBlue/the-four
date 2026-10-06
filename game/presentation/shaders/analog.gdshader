@@ -24,6 +24,10 @@ uniform vec2 strike_point = vec2(0.5, 0.5);
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
+// The lowest preset (tape_lite): three reads of the picture a pixel and no
+// more -- the luma as it comes, the chroma from either side of it. A full
+// screen of reads is what an integrated GPU has least of.
+uniform bool lite = false;
 
 float hash(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -71,24 +75,31 @@ void fragment() {
 	// resolution and a small delay, like composite video on tape.
 	float soft = 1.0 + vhs * 2.5;
 	vec3 center = tap(uv);
-	vec3 blur_l = tap(uv - vec2(px.x * soft, 0.0));
-	vec3 blur_r = tap(uv + vec2(px.x * soft, 0.0));
-	float luma = rgb_to_yiq(center * 0.5 + (blur_l + blur_r) * 0.25).x;
-	// Terms whose slider is at 0 read nothing (the result would be the same).
-	if (vhs > 0.0) {
-		float far_luma = rgb_to_yiq(tap(uv - vec2(px.x * soft * 3.0, 0.0)) * 0.5 + tap(uv + vec2(px.x * soft * 3.0, 0.0)) * 0.5).x;
-		luma += (luma - far_luma) * 0.35 * vhs;
-	}
+	float luma;
 	vec2 chroma = vec2(0.0);
 	float chroma_width = px.x * (1.5 + vhs * 9.0);
 	float chroma_delay = px.x * vhs * 3.0;
-	// Taps spread evenly from -3 to +3 chroma widths, however many there are.
-	float spacing = 6.0 / float(max(chroma_taps - 1, 1));
-	for (int i = 0; i < chroma_taps; i++) {
-		vec3 sample_yiq = rgb_to_yiq(tap(uv + vec2((-3.0 + float(i) * spacing) * chroma_width + chroma_delay, 0.0)));
-		chroma += sample_yiq.yz;
+	if (lite) {
+		vec3 here = rgb_to_yiq(center);
+		luma = here.x;
+		chroma = here.yz * 0.5 + (rgb_to_yiq(tap(uv + vec2(chroma_delay - chroma_width * 2.0, 0.0))).yz + rgb_to_yiq(tap(uv + vec2(chroma_delay + chroma_width * 2.0, 0.0))).yz) * 0.25;
+	} else {
+		vec3 blur_l = tap(uv - vec2(px.x * soft, 0.0));
+		vec3 blur_r = tap(uv + vec2(px.x * soft, 0.0));
+		luma = rgb_to_yiq(center * 0.5 + (blur_l + blur_r) * 0.25).x;
+		// Terms whose slider is at 0 read nothing (the result would be the same).
+		if (vhs > 0.0) {
+			float far_luma = rgb_to_yiq(tap(uv - vec2(px.x * soft * 3.0, 0.0)) * 0.5 + tap(uv + vec2(px.x * soft * 3.0, 0.0)) * 0.5).x;
+			luma += (luma - far_luma) * 0.35 * vhs;
+		}
+		// Taps spread evenly from -3 to +3 chroma widths, however many there are.
+		float spacing = 6.0 / float(max(chroma_taps - 1, 1));
+		for (int i = 0; i < chroma_taps; i++) {
+			vec3 sample_yiq = rgb_to_yiq(tap(uv + vec2((-3.0 + float(i) * spacing) * chroma_width + chroma_delay, 0.0)));
+			chroma += sample_yiq.yz;
+		}
+		chroma /= float(chroma_taps);
 	}
-	chroma /= float(chroma_taps);
 	chroma *= 1.0 - vhs * 0.25;
 	vec3 color = yiq_to_rgb(vec3(luma, chroma));
 	// Lens colour fringing, stronger towards the corners.

@@ -1,6 +1,7 @@
 extends RefCounted
 ## The camcorder's fixed character: its lens. Not a quality setting, the same
-## camera on every preset (the hunter's acoustic view has none).
+## camera on every preset (the hunter's acoustic view has none) -- but for
+## Muy bajo, which leaves the whole lens pass out (`lens`).
 ##
 ## A real wide-angle camcorder lens is not rectilinear: straight lines bow
 ## outward towards the edges and the corners are squeezed in, where a
@@ -11,6 +12,11 @@ extends RefCounted
 ## Barrel distortion: source radius = r * scale * (1 + BARREL * r^2), with r
 ## in half-heights.
 const BARREL := 0.05
+## Whether the lens pass is drawn at all (graphics preset "lens", set by
+## presentation_rig.apply_settings()). Without it nothing is remapped, so
+## nothing is rendered wider either: every camera gets the field of view it
+## was designed with.
+static var lens := true
 ## Vertical field of view at the centre of the picture, as before the lens,
 ## with the zoom fully wide.
 const VIEW_FOV := 78.0
@@ -37,6 +43,7 @@ static func corner_scale(aspect: float, barrel := BARREL) -> float:
 ## through asks for its field of view here: the player's, the watch camera,
 ## the opening scene and the title set.
 static func render_fov(aspect: float, design := VIEW_FOV, barrel := BARREL) -> float:
+	if not lens: return design
 	return rad_to_deg(2.0 * atan(tan(deg_to_rad(design) * 0.5) / corner_scale(aspect, barrel)))
 
 ## The same for whatever viewport a camera renders into.

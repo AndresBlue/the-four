@@ -1454,7 +1454,7 @@ func _process(delta: float) -> void:
 	# A victim held up can be carried across a wall plane, and the walls are
 	# occluders: no occlusion culling while an execution lasts.
 	# Watching, walls must not hide what is behind them either.
-	var cull: bool = not observer and execution.is_empty() and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
+	var cull: bool = not observer and execution.is_empty() and rig.occlusion and ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false)
 	if get_viewport().use_occlusion_culling != cull: get_viewport().use_occlusion_culling = cull
 	# The camera stage runs on the game's clock (what Movie Maker records).
 	if is_instance_valid(camera_effect):

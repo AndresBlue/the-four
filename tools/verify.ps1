@@ -57,6 +57,18 @@ $botsPassed = $botsFinished -and $botsProcess.ExitCode -eq 0 -and $botsText -not
 $results += [PSCustomObject]@{ test='hotel/bots_test'; passed=$botsPassed; exit_code=$(if ($botsFinished) { $botsProcess.ExitCode } else { -1 }) }
 Write-Output "bots_test : $botsPassed"
 if (-not $botsPassed) { if (-not $botsFinished) { Write-Output "Tiempo agotado en bots_test. Consulta $botsLog" }; Write-Output $botsText }
+# The lowest preset keeps every lamp in its own room with sixteen render
+# layers (game/world/hotel/room_layers.gd): over these seeds none may be left
+# sharing a layer with a room one of its lamps reaches.
+$layersLog = Join-Path $projectPath 'evidence/verify_light_layers.log'
+$layersArguments = (@('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$layersLog,'--','40') | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$layersProcess = Start-Process -FilePath $GodotPath -ArgumentList $layersArguments -WindowStyle Hidden -PassThru
+if (-not $layersProcess.WaitForExit(180000)) { $layersProcess.Kill(); throw "Tiempo agotado en las capas de luz. Consulta $layersLog" }
+$layersText = Get-Content -LiteralPath $layersLog -Raw
+$layersPassed = $layersProcess.ExitCode -eq 0 -and $layersText -match 'LIGHT_LAYERS' -and $layersText -notmatch 'SCRIPT ERROR:'
+$results += [PSCustomObject]@{ test='dev/light_layers_scan'; passed=$layersPassed; exit_code=$layersProcess.ExitCode }
+Write-Output "light_layers : $layersPassed"
+if (-not $layersPassed) { Write-Output $layersText }
 # Shaders: only a real device compiles them, so this one runs with a window and
 # is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
 # and counts as passed, because a skipped check is not a failed one.

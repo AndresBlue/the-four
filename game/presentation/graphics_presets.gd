@@ -4,30 +4,51 @@ extends RefCounted
 ## the screen effects, hotel_geometry.apply_quality() the lamps, rooms and
 ## props, echo_view.apply_quality() the creature's reading. The saved setting
 ## is an index into PRESETS; files saved with three qualities keep their
-## meaning (0 Bajo, 1 Medio, 2 Alto) and 3 is Ultra.
+## meaning (0 Bajo, 1 Medio, 2 Alto), 3 is Ultra and 4 is Muy bajo, which was
+## added last and is listed first (ORDER).
 ##
 ## The same in every preset, on purpose (docs/PERFORMANCE.md, "Presets"):
-## - every lamp in view keeps its shadow: a lamp without one shines through
-##   walls and shut doors, so shadows are cheapened, never dropped;
+## - no lamp ever lights a room that is not its own. From Bajo up every lamp
+##   in view keeps its shadow -- one without shines through walls and shut
+##   doors, so shadows are cheapened, never dropped. Muy bajo has no lamp
+##   shadows at all: there each lamp only lights what belongs to its room
+##   (static_light), and the torch is the one light that casts;
 ## - no ambient light and near-black depth fog: dark rooms are black;
 ## - door numbers and signs, the red beacon, door seals and dark rooms;
 ## - the tape filter sliders, reduced effects and the Sombras switch, which
 ##   are the player's own settings.
-const NAMES := ["Bajo", "Medio", "Alto", "Ultra"]
+const NAMES := ["Bajo", "Medio", "Alto", "Ultra", "Muy bajo"]
 const LOW := 0
 const MEDIUM := 1
 const HIGH := 2
 const ULTRA := 3
+const VERY_LOW := 4
+## The presets from the cheapest to the dearest, as the menu lists them.
+const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 
 ## Keys:
 ## scale                 3D render scale the preset sets when chosen (the
-##                       slider stays free afterwards); below 1 it is
-##                       upscaled with FSR 1 (bilinear in Compatibility).
+##                       slider stays free afterwards).
+## upscaler              how that picture is brought up to the window while
+##                       the player's own choice is "auto", which choosing a
+##                       preset puts it back to (UPSCALERS; always bilinear in
+##                       Compatibility, and at native scale). FSR 2.2 is the
+##                       dearest thing a modest GPU can be asked for: it and
+##                       its history were half of Bajo's whole frame on the
+##                       stand-in for an integrated one (PERFORMANCE.md, 10).
 ## msaa, fxaa, taa       anti-aliasing (TAA never for the creature's view).
 ## roughness_limiter     specular anti-aliasing on shiny surfaces.
-## shadow_atlas          positional shadow atlas size. Never under 4096: a
-##                       coarser cell grows the bias past a 7 cm door leaf.
-## shadow_filter         soft shadow filter (RenderingServer.ShadowQuality).
+## shadow_atlas          positional shadow atlas size. Never under 4096 while
+##                       the lamps cast: a coarser cell grows the bias past a
+##                       7 cm door leaf. With static_light only torches are in
+##                       it, each with a big cell of its own.
+## shadow_filter         soft shadow filter (RenderingServer.ShadowQuality);
+##                       hard on Muy bajo: one read a pixel.
+## static_light          the hotel's lamps cast no shadow and each lights only
+##                       what belongs to its own room, by render layers
+##                       (hotel_geometry.gd, "Light that stays in its room"):
+##                       nothing of theirs is ever drawn again, and no light
+##                       comes through a doorway either. The torch still casts.
 ## penumbra              lamp source size, times the size built (PCSS: a
 ##                       penumbra that widens away from the caster). 0: plain
 ##                       PCF, the cheapest. Ultra's 2.5 is about the size of a
@@ -75,7 +96,23 @@ const ULTRA := 3
 ## surface_detail        octaves of the procedural surface noise (the
 ##                       surface_detail shader global); under 2.5 the finest
 ##                       terms (carpet pile, paper fibre, wood pores) go too.
+##                       0 is "plasticine": every surface one flat colour of
+##                       its material's, with no scanned map, noise or relief
+##                       (surface.gdshaderinc), and the scans are not loaded.
+## mip_bias              how many mipmaps down the textures of the models are
+##                       read (doors, wardrobes, people): each one is a
+##                       quarter of the texels to fetch, and a smear.
+## occlusion             occlusion culling: what is behind walls is not sent to
+##                       the GPU, at the price of a small picture of the walls
+##                       drawn on the processor every frame.
 ## chroma_taps           taps of the tape filter's chroma smear (same width).
+## tape_lite             the tape filter reads the picture three times a
+##                       pixel instead of nine or more (analog.gdshader): no
+##                       luma softening or ringing, the rest as ever.
+## lens                  the camcorder's lens and sensor pass (lens.gdshader):
+##                       barrel, fringes, interlacing, sensor noise. Without
+##                       it the picture is rendered straight, and the tape
+##                       filter gives the grain and the vignette.
 ## lod_threshold         pixels of error allowed before a mesh LOD switches.
 ## anisotropy            anisotropic filtering of textured props.
 ## ccd_smear             strength of the CCD's vertical streak through saturated
@@ -104,7 +141,7 @@ const ULTRA := 3
 ##                       on downscaled images, where 2 px grains all but vanish).
 const PRESETS := [
 	{
-		"scale": 0.67, "msaa": Viewport.MSAA_DISABLED, "fxaa": true, "taa": false, "roughness_limiter": false,
+		"scale": 0.67, "upscaler": "fsr1", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": true, "taa": false, "roughness_limiter": false,
 		"shadow_atlas": 4096, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, "penumbra": 0.0,
 		"lamp_fade": [30.0, 12.0], "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
 		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
@@ -114,7 +151,7 @@ const PRESETS := [
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 	{
-		"scale": 0.85, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": true, "roughness_limiter": true,
+		"scale": 0.85, "upscaler": "fsr2", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 4096, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_LOW, "penumbra": 1.0,
 		"lamp_fade": [30.0, 12.0], "room_reach": 66.0, "furniture_lamps": 28.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
@@ -124,7 +161,7 @@ const PRESETS := [
 		"echo": {"rays": 1900, "aimed": 600, "points": 24000, "bodies": 700, "puff_points": 26, "puffs": 4800, "find_points": 40, "finds": 600, "frames": 7000, "grain": 1.0, "halo": 0.0},
 	},
 	{
-		"scale": 1.0, "msaa": Viewport.MSAA_2X, "fxaa": false, "taa": true, "roughness_limiter": true,
+		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_2X, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, "penumbra": 1.0,
 		"lamp_fade": [36.0, 12.0], "room_reach": 66.0, "furniture_lamps": 32.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
@@ -134,7 +171,7 @@ const PRESETS := [
 		"echo": {"rays": 3600, "aimed": 1200, "points": 46000, "bodies": 1400, "puff_points": 44, "puffs": 9600, "find_points": 70, "finds": 1200, "frames": 14000, "grain": 1.0, "halo": 0.0},
 	},
 	{
-		"scale": 1.0, "msaa": Viewport.MSAA_4X, "fxaa": false, "taa": true, "roughness_limiter": true,
+		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_4X, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_HIGH, "penumbra": 2.5,
 		"lamp_fade": [50.0, 14.0], "room_reach": 82.0, "furniture_lamps": 40.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
@@ -142,6 +179,19 @@ const PRESETS := [
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 140,
 		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 12, "autofocus": true, "sconce_lights": true, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": false,
 		"echo": {"rays": 4800, "aimed": 1400, "points": 64000, "bodies": 1800, "puff_points": 56, "puffs": 12000, "find_points": 90, "finds": 1600, "frames": 18000, "grain": 0.8, "halo": 1.0},
+	},
+	# Muy bajo: for integrated graphics. The game is all there; the picture is
+	# plainly a cheaper one (docs/PERFORMANCE.md, section 10).
+	{
+		"scale": 0.5, "upscaler": "bilinear", "static_light": true, "mip_bias": 2.0, "tape_lite": true, "lens": false, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": false, "roughness_limiter": false,
+		"shadow_atlas": 2048, "shadow_filter": RenderingServer.SHADOW_QUALITY_HARD, "penumbra": 0.0,
+		"lamp_fade": [30.0, 12.0], "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
+		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
+		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
+		"glow": false, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
+		"surface_detail": 0.0, "chroma_taps": 2, "lod_threshold": 8.0, "anisotropy": Viewport.ANISOTROPY_DISABLED, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
+		# The creature's reading is Bajo's: it is what it plays by.
+		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 ]
 
@@ -153,9 +203,11 @@ const PRESETS := [
 
 ## How the 3D picture is scaled up to the window (settings "upscaler").
 ## - auto: native resolution is drawn straight (bilinear, nothing to rebuild);
-##   under it, FSR 2.2, which is the best the engine has -- except on Bajo,
-##   which is the preset for machines with no room to spare, where the
-##   rebuilding's own millisecond is better spent on the frame: there, FSR 1.
+##   under it, what the preset in force chooses (its "upscaler"): FSR 2.2,
+##   the best the engine has, from Medio up; FSR 1 on Bajo, the preset for
+##   machines with little room to spare; and on Muy bajo, for those with
+##   none, the plain stretch -- the tape filter blurs the picture more than
+##   any of them sharpens it.
 ## - fsr2: FidelityFX Super Resolution 2.2, temporal. It rebuilds the picture
 ##   from the frames before it with the motion of every pixel, so at 60% it
 ##   still reads sharper than a native 85% blown up. It does its own edge
@@ -176,7 +228,7 @@ static func scaling_mode(values: Dictionary) -> int:
 	var choice := String(values.get("upscaler", "auto"))
 	if choice == "auto":
 		if float(values.get("scale", 1.0)) >= 0.999: choice = "bilinear"
-		else: choice = "fsr1" if int(values.get("quality", MEDIUM)) == LOW else "fsr2"
+		else: choice = PRESETS[clampi(int(values.get("quality", MEDIUM)), 0, PRESETS.size() - 1)].upscaler
 	match choice:
 		"fsr1": return Viewport.SCALING_3D_MODE_FSR
 		"fsr2": return Viewport.SCALING_3D_MODE_FSR2
@@ -223,6 +275,8 @@ static func of(quality: int, values := {}) -> Dictionary:
 		preset.lamp_fog = false
 		preset.sconce_lights = false
 		preset.bounce = false
+		# Nor a texture LOD bias: the models keep their textures as they are.
+		preset.mip_bias = 0.0
 		# Without TAA, the plain edge smoothing.
 		if preset.msaa == Viewport.MSAA_DISABLED and not preset.smaa: preset.fxaa = true
 	# FSR 2.2 rebuilds the picture from its own history: it is the smoothing,

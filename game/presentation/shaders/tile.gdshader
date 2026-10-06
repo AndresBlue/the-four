@@ -16,34 +16,40 @@ uniform float tile_count = 8.0;
 void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
-	vec2 uv = face_uv();
-	// A scanned set brings its own tiles and grout: the procedural ones step
-	// aside, and the cells (colour variation, cracks) follow the scan's.
-	MapLookup l = map_lookup(map_uv());
-	float size = use_maps ? map_metres / tile_count : tile_size;
-	vec2 cell = uv / size;
-	vec2 id = floor(cell);
-	vec2 f = fract(cell);
-	vec2 edge = min(f, 1.0 - f) * size;
-	float grout = use_maps ? 0.0 : smoothstep(grout_width, grout_width * 0.4, min(edge.x, edge.y));
-	float bevel = use_maps ? 0.0 : smoothstep(grout_width * 3.0, grout_width, min(edge.x, edge.y));
-	float check = mod(id.x + id.y, 2.0);
-	vec3 color = mix(tile_color.rgb, alternate_color.rgb, check * checker);
-	color *= 0.94 + hash12(id) * 0.08 + (vnoise(uv * 12.0) - 0.5) * 0.05;
-	color = scan_albedo(l, vec3(1.0)) * (use_maps ? color / tile_color.rgb : color);
-	// The scan's grout is its darkest, roughest part.
-	float scan_grout = use_maps ? smoothstep(0.55, 0.85, map_sample(orm_map, l).g) : 0.0;
-	float dirt = smoothstep(0.3, 0.8, fbm(uv * 1.5)) * grime + (grout + scan_grout) * grime * 0.5;
-	float crack = smoothstep(0.012, 0.0, abs(fbm(uv * 6.0 + id) - 0.5)) * step(0.86, hash12(id + 7.0));
-	color = mix(color, grout_color.rgb, grout);
-	color = mix(color, color * grout_color.rgb * 2.0, scan_grout * grime);
-	color *= 1.0 - dirt * 0.3 - crack * 0.4;
-	float ao = scan_occlusion(l);
-	ALBEDO = room_grime(color, wp, NODE_POSITION_WORLD, ao);
-	AO = ao;
-	// Worn glaze: satin rather than mirror, so lamps do not paint hard glints.
-	ROUGHNESS = use_maps ? scan_roughness(l, 0.0) + dirt * 0.25 : mix(0.34 + dirt * 0.3, 0.92, grout);
-	SPECULAR = 0.42;
-	float height = -grout * 0.003 - bevel * 0.0015 - crack * 0.0005;
-	NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), height, 1.0);
+	if (plasticine()) {
+		ALBEDO = plasticine_albedo(NODE_POSITION_WORLD);
+		ROUGHNESS = 0.6;
+		SPECULAR = 0.42;
+	} else {
+		vec2 uv = face_uv();
+		// A scanned set brings its own tiles and grout: the procedural ones step
+		// aside, and the cells (colour variation, cracks) follow the scan's.
+		MapLookup l = map_lookup(map_uv());
+		float size = use_maps ? map_metres / tile_count : tile_size;
+		vec2 cell = uv / size;
+		vec2 id = floor(cell);
+		vec2 f = fract(cell);
+		vec2 edge = min(f, 1.0 - f) * size;
+		float grout = use_maps ? 0.0 : smoothstep(grout_width, grout_width * 0.4, min(edge.x, edge.y));
+		float bevel = use_maps ? 0.0 : smoothstep(grout_width * 3.0, grout_width, min(edge.x, edge.y));
+		float check = mod(id.x + id.y, 2.0);
+		vec3 color = mix(tile_color.rgb, alternate_color.rgb, check * checker);
+		color *= 0.94 + hash12(id) * 0.08 + (vnoise(uv * 12.0) - 0.5) * 0.05;
+		color = scan_albedo(l, vec3(1.0)) * (use_maps ? color / tile_color.rgb : color);
+		// The scan's grout is its darkest, roughest part.
+		float scan_grout = use_maps ? smoothstep(0.55, 0.85, map_sample(orm_map, l).g) : 0.0;
+		float dirt = smoothstep(0.3, 0.8, fbm(uv * 1.5)) * grime + (grout + scan_grout) * grime * 0.5;
+		float crack = smoothstep(0.012, 0.0, abs(fbm(uv * 6.0 + id) - 0.5)) * step(0.86, hash12(id + 7.0));
+		color = mix(color, grout_color.rgb, grout);
+		color = mix(color, color * grout_color.rgb * 2.0, scan_grout * grime);
+		color *= 1.0 - dirt * 0.3 - crack * 0.4;
+		float ao = scan_occlusion(l);
+		ALBEDO = room_grime(color, wp, NODE_POSITION_WORLD, ao);
+		AO = ao;
+		// Worn glaze: satin rather than mirror, so lamps do not paint hard glints.
+		ROUGHNESS = use_maps ? scan_roughness(l, 0.0) + dirt * 0.25 : mix(0.34 + dirt * 0.3, 0.92, grout);
+		SPECULAR = 0.42;
+		float height = -grout * 0.003 - bevel * 0.0015 - crack * 0.0005;
+		NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), height, 1.0);
+	}
 }

@@ -4,3 +4,4 @@
 
 [resource]
 shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.292, 0.261, 0.129, 1)

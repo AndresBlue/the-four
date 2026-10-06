@@ -7,6 +7,7 @@ const ROUTE_SIGNS := preload("res://game/world/generation/exit_route_signs.gd")
 var checks: Array = []
 var failed := 0
 
+const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 func _initialize() -> void: run.call_deferred()
 func check(title: String, passed: bool) -> void:
 	checks.append({"check": title, "passed": passed})
@@ -389,11 +390,12 @@ func run() -> void:
 	settings.set_value("reduced", true)
 	check("Efectos reducidos eliminan VHS", scene.post_material.get_shader_parameter("vhs") == 0.0)
 	settings.set_value("reduced", false)
-	# Graphics presets (graphics_presets.gd): four, each applied whole, the
-	# render scale with it.
+	# Graphics presets (graphics_presets.gd): five, each applied whole, the
+	# render scale with it. Muy bajo is the last index and the first listed.
 	settings.set_value("quality", 3)
 	settings.load_settings()
-	check("El preset Ultra se guarda y un valor fuera de rango se corrige", settings.values.quality == 3 and settings.sanitize("quality", 9) == 3 and settings.sanitize("quality", -2) == 0)
+	check("El preset Ultra se guarda y un valor fuera de rango se corrige", settings.values.quality == 3 and settings.sanitize("quality", 9) == PRESETS.VERY_LOW and settings.sanitize("quality", -2) == 0)
+	check("Los presets se listan del más barato al más caro, y elegir uno deja el escalado en el suyo", PRESETS.ORDER == [PRESETS.VERY_LOW, PRESETS.LOW, PRESETS.MEDIUM, PRESETS.HIGH, PRESETS.ULTRA] and settings.values.upscaler == "auto")
 	var viewport: Viewport = scene.get_viewport()
 	settings.set_value("quality", 0)
 	check("Bajo: escala 0,67 con FSR, FXAA, sin SSAO ni volumétrica y sin sombra propia", is_equal_approx(viewport.scaling_3d_scale, 0.67) and viewport.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR and viewport.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA and not scene.environment.ssao_enabled and not scene.environment.volumetric_fog_enabled and scene.player.avatar.meshes.all(func(mesh): return mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF))
@@ -403,6 +405,31 @@ func run() -> void:
 	check("Medio: FSR 2.2 en lugar de TAA, SSAO sin SSIL y lámparas hasta 42 m", viewport.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR2 and not viewport.use_taa and scene.environment.ssao_enabled and not scene.environment.ssil_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 42.0) and scene.player.avatar.meshes.all(func(mesh): return mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON))
 	settings.set_value("quality", 3)
 	check("Ultra: MSAA 4×, SSR, lámparas hasta 64 m y salas hasta 82 m", viewport.msaa_3d == Viewport.MSAA_4X and scene.environment.ssr_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 64.0) and scene.hotel.preset.room_reach == 82.0)
+	# Muy bajo (PERFORMANCE.md, section 10): no lamp of the hotel casts a
+	# shadow, and each lights only the layers of its own room; the torch
+	# still casts. Back on another preset the lamps light everything again.
+	settings.set_value("quality", PRESETS.VERY_LOW)
+	scene.hotel.update_visibility(scene.player.position, true)
+	var here_rooms: PackedInt32Array = scene.hotel.things_on(preload("res://game/world/generation/floor_definition.gd").planta_of(scene.player.position.y)).rooms
+	check("Muy bajo: media resolución sin reconstruir, sin suavizado ni glow, superficies lisas y sin lente", is_equal_approx(viewport.scaling_3d_scale, 0.5) and viewport.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR and viewport.screen_space_aa == Viewport.SCREEN_SPACE_AA_DISABLED and not viewport.use_taa and not scene.environment.glow_enabled and scene.hotel.preset.surface_detail == 0.0 and not preload("res://game/presentation/camcorder_look.gd").lens)
+	var kept := true
+	for i in here_rooms:
+		var lamp: OmniLight3D = scene.hotel.lights[i]
+		if lamp.has_meta("void"): continue
+		if lamp.shadow_enabled or lamp.light_cull_mask != scene.hotel.room_layers.mask[i] or (lamp.light_cull_mask & scene.hotel.room_layers.layer[i]) == 0: kept = false
+	check("Muy bajo: ninguna lámpara de sala proyecta sombra y cada una alumbra solo las capas de la suya", kept and not here_rooms.is_empty())
+	check("Las dieciséis capas alcanzan: ninguna sala comparte capa con una lámpara que la alcance", int(scene.hotel.room_layers.clashes) == 0)
+	check("Muy bajo: la linterna sigue proyectando sombra", scene.player.torch.shadow_enabled)
+	check("Muy bajo: cada puerta se dibuja en dos mitades, una por sala", scene.hotel.door_halves.size() == scene.hotel.doors.size() and not scene.hotel.doors.is_empty())
+	settings.set_value("quality", 1)
+	scene.hotel.update_visibility(scene.player.position, true)
+	var restored := true
+	for i in here_rooms:
+		var lamp: OmniLight3D = scene.hotel.lights[i]
+		if lamp.has_meta("void"): continue
+		if not lamp.shadow_enabled or lamp.light_cull_mask != 0xFFFFFFFF: restored = false
+	check("Al volver a Medio las lámparas recuperan su sombra y alumbran todas las capas", restored and preload("res://game/presentation/camcorder_look.gd").lens)
+	settings.set_value("quality", 3)
 	# Wall lamps are the many -- eight or sixteen to a public room -- and what
 	# does not fit in the shadow atlas Godot draws without a shadow, which goes
 	# straight through the wall into the dark room on the other side. Only the

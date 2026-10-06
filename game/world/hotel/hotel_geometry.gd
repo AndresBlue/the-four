@@ -145,6 +145,44 @@ const SCONCE_REACH := 24.0
 ## 0.00013; with sixteen it was back to 0.029. The nearest few are all
 ## anybody sees, and they are the ones lit.
 const SCONCES_LIT := 12
+## --- Light that stays in its room (preset static_light) ---------------------
+##
+## From Bajo up a lamp is kept in its room by its shadow. On Muy bajo no lamp
+## casts one: drawing every lamp's six shadow maps, again whenever something
+## near it moves, and reading them at every pixel is what an integrated GPU
+## cannot pay for. Each lamp is told what it may light instead: every room is
+## on one of sixteen render layers (room_layers.gd works out which), whatever
+## is built in a room is on its room's layer, and a lamp's cull mask is that
+## layer -- and those of the cells its room is open to, a corridor or a salon
+## going on. So a dark room next to a lit one is as black as behind a shadow,
+## and blacker: no light comes through an open doorway either. What walks from
+## room to room (people, the creature) is moved from layer to layer as it goes. Nothing in a room shades anything else: the
+## floor under a table is as lit as the table.
+## On every other preset the lamps light all the layers, which then mean
+## nothing.
+const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
+var static_light := false
+## room_layers.assign() of this floor, {} for a staged set.
+var room_layers := {}
+## Every lamp of the floor, by instance id: the light, the layers it lights
+## on static_light, the cull mask and whether it cast a shadow as built, and
+## whether update_visibility() looks after its shadow.
+var kept_lamps := {}
+var body_clock := 0
+## A door stands in two rooms. Whole, it would be on both rooms' layers, and
+## the lamp of the room in front lit what of it shows behind, through the
+## wall: the jambs, the mouldings of the leaf's panels, the edge of a brass
+## plaque -- thin bright lines round a shut door in a room that is supposed to
+## be black (tools/dev/light_leak.gd). So while static_light is on, a door's
+## casing and its leaf are each drawn as two halves (mesh_halves.gd), made the
+## first time it is: {bits: the layer of the room in front (+z of the shut
+## leaf) and of the one behind, casing: its two halves, sided: [mesh, side] of
+## what turns with the leaf (its halves, its plaques), open}. A casing's half
+## is always on its own room's layer. What turns with the leaf is on its own
+## side's while the door is shut, and on both while it is open or swinging:
+## then it stands in a room with both its faces, and the doorway is open.
+const HALVES := preload("res://game/world/hotel/mesh_halves.gd")
+var door_halves: Array = []
 ## Bounce light round each lit room (preset bounce): bounce_light.gd.
 const BOUNCE := preload("res://game/world/hotel/bounce_light.gd")
 var bounce := BOUNCE.new()
@@ -167,6 +205,7 @@ func _init() -> void:
 		materials[key] = load("res://game/presentation/materials/%s.tres" % key).duplicate()
 		apply_scan(materials[key], small_maps)
 	maps_small = small_maps
+	maps_none = no_maps
 	curtain_material = materials.curtain
 	# A dead ceiling dome: same glass, no glow.
 	materials["light_off"] = materials.light.duplicate()
@@ -182,12 +221,21 @@ func _init() -> void:
 ## chooses the 2048 px ones or the 1024 px ones (small_maps, set by
 ## hotel_main before a floor is built and by apply_quality()).
 static var small_maps := false
+## No scans at all: the preset's surfaces are plasticine (surface_detail 0),
+## which reads none of them, so they are not loaded either.
+static var no_maps := false
 static var scans := {}
-## The size this builder's materials have.
+## The size this builder's materials have, and whether they have any.
 var maps_small := false
+var maps_none := false
 
 static func apply_scan(material: Material, small: bool) -> void:
 	if not material is ShaderMaterial or not material.has_meta("scan"): return
+	if no_maps:
+		scans.clear()
+		for map in ["albedo_map", "normal_map", "orm_map"]: material.set_shader_parameter(map, null)
+		material.set_shader_parameter("use_maps", false)
+		return
 	var maps := scan_maps(material.get_meta("scan"), small)
 	if maps.is_empty(): return
 	material.set_shader_parameter("albedo_map", maps.albedo)
@@ -324,6 +372,8 @@ func flush() -> void:
 			# Outside a room (door plaques, staged sets): no bounce light,
 			# like the doors themselves.
 			if room == null: instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+			# A plaque 4 mm proud of its leaf has no shadow to speak of.
+			if batch.parent.has_meta("side"): instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			batch.parent.add_child(instance)
 			if room != null: bounce.add(batch.parent.get_instance_id(), group, transforms)
 			if material_of(group) in SWAYING:
@@ -771,7 +821,14 @@ func build(data: Dictionary) -> void:
 			var number := int(behind.get("number", 0))
 			if number <= 0: continue
 			var side := b_side if which == 0 else -b_side
-			box(door, Vector3(half, 1.94, side * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
+			# On a holder of its own, which says which face it is on: 0 the one
+			# that looks the way the shut leaf's +z does, 1 the other
+			# (door_halves).
+			var plaque := Node3D.new()
+			plaque.name = "Plaque_%d" % which
+			plaque.set_meta("side", 0 if side > 0.0 else 1)
+			door.add_child(plaque)
+			box(plaque, Vector3(half, 1.94, side * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
 			text(door, str(number), Vector3(half, 1.94, side * (LEAF_FACE + 0.005)), 0.0 if side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
 		# The door on to the next wing is the gate of its stage: shut, locked,
 		# and never open at the start.
@@ -788,6 +845,7 @@ func build(data: Dictionary) -> void:
 	for door in doors: door_planta.append(FLOOR.planta_of(door.doorway.y))
 	build_lifts(data)
 	flush()
+	assign_layers()
 	await get_tree().process_frame
 	build_navigation()
 	build_dust()
@@ -921,7 +979,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
 		light.set_meta("profile", LIGHTING.profile("dome"))
 		light.position = Vector3(0, height - 0.45, 0)
-	light.omni_range = maxf(10.0, maxf(span.x, span.y) * 0.85)
+	light.omni_range = ROOM_LAYERS.lamp_range(span)
 	light.omni_attenuation = 1.25
 	light.light_size = LAMP_SIZE * preset.penumbra
 	light.light_specular = 0.45 if service else 0.6
@@ -1000,7 +1058,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		beacon.shadow_enabled = true
 		beacon.light_volumetric_fog_energy = 0.0
 		node.add_child(beacon)
-		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy})
+		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy, "room": int(room.id)})
 	if room.type == 19:
 		exit_sign(node, Vector3(0, 2.25, -2.5), 0.0, height)
 		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
@@ -1226,6 +1284,8 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	var across: float = (span.x if absf(back.z) > 0.5 else span.y) * 0.5
 	var car := Node3D.new()
 	car.name = "Lift"
+	# A room of its own for the light (assign_layers()).
+	car.set_meta("car", true)
 	# Its front just behind the lift wall's face, its floor a few millimetres
 	# over the lobby's (the two were one plane, and fought).
 	car.position = back * (depth * 0.5 - FLOOR.LIFT_DEPTH + LIFT_PROUD) + Vector3(0, 0.006, 0)
@@ -1241,17 +1301,21 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 		var leaf := MeshInstance3D.new()
 		leaf.name = "Leaf"
 		leaf.mesh = LIFT_LEAVES[k]
+		# Seen from the lobby and from inside: lit by both.
+		leaf.set_meta("lobby_side", true)
 		car.add_child(leaf)
 		car_leaves.append({"node": leaf, "shut": 0.0, "open": LEAF_TRAVEL[k]})
 	var call := MeshInstance3D.new()
 	call.name = "CallButtons"
 	call.mesh = LIFT_CALL
 	call.position = Vector3(CALL_AT.x, CALL_AT.y, LIFT_PROUD - 0.001)
+	call.set_meta("lobby_side", true)
 	car.add_child(call)
 	var screen := MeshInstance3D.new()
 	screen.name = "Display"
 	screen.mesh = LIFT_SCREEN
 	screen.position = Vector3(0, SCREEN_AT, LIFT_PROUD - 0.001)
+	screen.set_meta("lobby_side", true)
 	car.add_child(screen)
 	car_digits(screen, Vector3(0, 0, 0.027), 0.0)
 	car_digits(car, PANEL_SCREEN - Vector3(0, 0, 0.003), PI)
@@ -1593,6 +1657,168 @@ func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
 	boundary.add_child(lamp)
 	sconce_lights.append(lamp)
 
+## The layer of the room (or the lift's car) a point is in; 0 outside them all.
+func layer_at(point: Vector3) -> int:
+	if room_layers.is_empty(): return 0
+	var room := FLOOR.room_at(manifest.rooms, point)
+	if room.is_empty(): return 0
+	var id := int(room.id)
+	if room_layers.cars.has(id) and ROOM_LAYERS.car_rect(room).has_point(Vector2(point.x, point.z)): return room_layers.cars[id]
+	return room_layers.layer[id]
+
+## Every room's layer, everything built so far put on its room's, and every
+## lamp filed with what it may light (the head of this section). Once a floor,
+## whatever the preset: the layers cost nothing while the lamps light them all.
+func assign_layers() -> void:
+	room_layers = ROOM_LAYERS.assign(manifest)
+	if int(room_layers.clashes) > 0: push_warning("Light layers: %d rooms share a layer with a lamp in reach (Muy bajo would leak there)." % int(room_layers.clashes))
+	kept_lamps.clear()
+	var placed := {}
+	for i in room_nodes.size():
+		placed[room_nodes[i]] = true
+		var bit: int = room_layers.layer[i]
+		if bit != 0: lay(room_nodes[i], bit, int(room_layers.cars.get(i, bit)))
+	# A door, its casing and its stop stand in two rooms: lit by both.
+	for i in doors.size():
+		var out: Vector3 = Basis(Vector3.UP, doors[i].closed_rotation).z * 0.7 + Vector3(0, 1.0, 0)
+		var both: int = layer_at(doors[i].doorway + out) | layer_at(doors[i].doorway - Vector3(out.x, -out.y, out.z))
+		for piece in [doors[i]] + door_fixtures[i]:
+			placed[piece] = true
+			if piece is GeometryInstance3D: ROOM_LAYERS.put_on(piece, both)
+			lay(piece, both, both)
+	# Whatever else stands on the floor itself: where it is.
+	for child in get_children():
+		if not placed.has(child) and child is Node3D: adopt(child)
+	# A ceiling lamp also lights the cells its own is open to, and the red
+	# lamp of the reception whatever its ceiling lamp does.
+	for i in lights.size():
+		if kept_lamps.has(lights[i].get_instance_id()): kept_lamps[lights[i].get_instance_id()].mask = room_layers.mask[i]
+	for entry in beacons:
+		if kept_lamps.has(entry.light.get_instance_id()): kept_lamps[entry.light.get_instance_id()].mask = room_layers.mask[int(entry.room)]
+	for lamp in lights + practicals + sconce_lights + exit_lamps + car_lamps:
+		if kept_lamps.has(lamp.get_instance_id()): kept_lamps[lamp.get_instance_id()].looked_after = true
+	apply_static_light()
+
+## Everything under `node` on a room's layer, its lamps filed. A lift's car
+## under it is on `car`, and what of the car shows in the lobby on both.
+func lay(node: Node, bit: int, car: int) -> void:
+	for child in node.get_children():
+		var here := car if child.has_meta("car") else bit
+		if child is GeometryInstance3D: ROOM_LAYERS.put_on(child, here | (car if child.has_meta("lobby_side") else 0))
+		elif child is Light3D: keep_lamp(child, here)
+		# Under a car, `bit` is the car's and `car` the lobby's.
+		if child.has_meta("car"): lay(child, here, bit)
+		else: lay(child, here, car)
+
+## Something on the floor itself, or put there after it was built (a
+## television, a document, a lock): on the layer of the room it stands in.
+func adopt(node: Node3D) -> void:
+	if not is_instance_valid(node) or not node.is_inside_tree(): return
+	var bit := layer_at(node.global_position + Vector3(0, 0.2, 0))
+	if bit == 0: return
+	if node is GeometryInstance3D: ROOM_LAYERS.put_on(node, bit)
+	elif node is Light3D:
+		keep_lamp(node, bit)
+		light_lamp(kept_lamps[node.get_instance_id()])
+	lay(node, bit, bit)
+
+func keep_lamp(light: Light3D, mask: int) -> void:
+	if kept_lamps.has(light.get_instance_id()): return
+	kept_lamps[light.get_instance_id()] = {"light": light, "mask": mask, "every": light.light_cull_mask, "casts": light.shadow_enabled, "looked_after": false}
+
+## A lamp as static_light has it, or as it was built.
+func light_lamp(entry: Dictionary) -> void:
+	var light: Light3D = entry.light
+	ROOM_LAYERS.light_only(light, entry.mask if static_light else entry.every)
+	if entry.looked_after: return
+	var casting: bool = entry.casts and not static_light
+	if light.shadow_enabled != casting: light.shadow_enabled = casting
+
+func apply_static_light() -> void:
+	for id in kept_lamps.keys():
+		if is_instance_valid(kept_lamps[id].light): light_lamp(kept_lamps[id])
+		else: kept_lamps.erase(id)
+	if static_light: make_halves()
+	for i in door_halves.size():
+		var entry: Dictionary = door_halves[i]
+		var whole := doors[i].get_node_or_null("Leaf") as Node3D
+		if whole != null: whole.visible = not static_light
+		for item in entry.sided:
+			if item[0].has_meta("half"): item[0].visible = static_light
+		if static_light: continue
+		# The whole casings come back with the next update_visibility().
+		for half in entry.casing: half.visible = false
+		for item in entry.sided: ROOM_LAYERS.put_on(item[0], entry.bits[0] | entry.bits[1])
+		entry.open = true
+	if is_inside_tree():
+		for body in bodies(): body.remove_meta("room_layer")
+
+## Every door's halves (door_halves).
+func make_halves() -> void:
+	if not door_halves.is_empty() or room_layers.is_empty(): return
+	var casings := HALVES.of(DOOR_FRAME)
+	var leaves := HALVES.of(DOOR_LEAF)
+	for i in doors.size():
+		var door: Node3D = doors[i]
+		var casing: MeshInstance3D = door_fixtures[i][0]
+		var across: Vector3 = Basis(Vector3.UP, door.closed_rotation).z * 0.7
+		var bits := [layer_at(door.doorway + across + Vector3.UP), layer_at(door.doorway - across + Vector3.UP)]
+		var entry := {"bits": bits, "casing": [], "sided": [], "open": true}
+		for side in 2:
+			var half := half_mesh(casings[side], "%s_%d" % [casing.name, side], 1 | bits[side])
+			half.transform = casing.transform
+			half.visible = false
+			add_child(half)
+			entry.casing.append(half)
+			var leaf := half_mesh(leaves[side], "Leaf_%d" % side, 1 | bits[0] | bits[1])
+			door.add_child(leaf)
+			entry.sided.append([leaf, side])
+		for plaque in door.get_children():
+			if not plaque.has_meta("side"): continue
+			for mesh in plaque.find_children("*", "GeometryInstance3D", true, false): entry.sided.append([mesh, int(plaque.get_meta("side"))])
+		door_halves.append(entry)
+
+func half_mesh(mesh: Mesh, title: String, layers: int) -> MeshInstance3D:
+	var half := MeshInstance3D.new()
+	half.name = title
+	half.mesh = mesh
+	half.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	half.layers = layers
+	half.set_meta("half", true)
+	# Where it is says nothing about which room it belongs to (late_arrival()).
+	half.set_meta("laid", true)
+	return half
+
+## What is added to a floor already built is put on its room's layer too.
+func _enter_tree() -> void:
+	if not get_tree().node_added.is_connected(late_arrival): get_tree().node_added.connect(late_arrival)
+
+func late_arrival(node: Node) -> void:
+	if building or room_layers.is_empty() or not (node is GeometryInstance3D or node is Light3D) or node.has_meta("laid") or not is_ancestor_of(node): return
+	adopt.call_deferred(node)
+
+## People and the creature go from layer to layer with the room they are in;
+## a body rebuilt meanwhile (another character) is caught up with a few times
+## a second.
+func bodies() -> Array:
+	return get_tree().get_nodes_in_group(&"hotel_players") + get_tree().get_nodes_in_group(&"hotel_actors")
+
+func follow_bodies() -> void:
+	body_clock += 1
+	for body in bodies():
+		if not body is Node3D: continue
+		var bit := layer_at((body as Node3D).global_position + Vector3(0, 0.9, 0))
+		if bit == 0 or (int(body.get_meta("room_layer", 0)) == bit and body_clock % 20 != 0): continue
+		body.set_meta("room_layer", bit)
+		for mesh in body.find_children("*", "GeometryInstance3D", true, false): ROOM_LAYERS.put_on(mesh, bit)
+
+## Something put down in a room that is nobody's body and in no group (the
+## figure a frayed mind sees): on the layer of the room it stands in, once.
+func light_body(body: Node3D) -> void:
+	var bit := layer_at(body.global_position + Vector3(0, 0.9, 0))
+	if bit == 0: return
+	for mesh in body.find_children("*", "GeometryInstance3D", true, false): ROOM_LAYERS.put_on(mesh, bit)
+
 # A lamp that really lights its surroundings (no shadows, culled by distance).
 func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach: float) -> void:
 	# In a dark room the table and floor lamps are out too: it is dark.
@@ -1770,9 +1996,14 @@ func apply_quality(new_preset: Dictionary) -> void:
 		var shown: bool = decal_shown(projector)
 		if projector.visible != shown: projector.visible = shown
 	small_maps = preset.small_maps
-	if maps_small != small_maps:
+	no_maps = preset.surface_detail < 0.5
+	if maps_small != small_maps or maps_none != no_maps:
 		maps_small = small_maps
+		maps_none = no_maps
 		for key in materials: apply_scan(materials[key], small_maps)
+	if static_light != preset.static_light:
+		static_light = preset.static_light
+		apply_static_light()
 	for light in lights:
 		set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
 		var size: float = LAMP_SIZE * preset.penumbra
@@ -1802,6 +2033,7 @@ func apply_quality(new_preset: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	bounce.poll()
+	if static_light and not room_layers.is_empty(): follow_bodies()
 	# With the power gone nothing blinks and nothing hums: the lamps are not
 	# failing, they are dead.
 	if dark: return
@@ -1984,6 +2216,8 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
 	var reach: float = maxf(preset.room_reach, reach_over)
 	if show_all: reach = 100000.0
+	# On static_light nothing of the hotel's casts, whatever the switch says.
+	shadows = shadows and not static_light
 	if things_counted != [room_nodes.size(), doors.size(), sconce_lights.size(), practicals.size(), exit_lamps.size()]: index_things()
 	if here != shown_planta: put_away(here)
 	var things: Dictionary = things_on(here)
@@ -2068,7 +2302,7 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# The cars' lamps keep theirs looking at the whole floor as well: there are
 	# a handful, and they fit in the atlas where a hundred room lamps do not.
-	var cars_cast: bool = shadows or show_all
+	var cars_cast: bool = (shadows or show_all) and not static_light
 	for lamp in car_lamps:
 		if lamp.shadow_enabled != cars_cast: lamp.shadow_enabled = cars_cast
 	# Doors carry their light seals, casings and stops: shown as far as the
@@ -2077,6 +2311,14 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		var shown: bool = show_all or door_spots[i].distance_to(player_position) < reach
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
+		if static_light and i < door_halves.size():
+			var entry: Dictionary = door_halves[i]
+			door_fixtures[i][0].visible = false
+			for half in entry.casing: half.visible = shown
+			var open: bool = doors[i].opened or doors[i].moving
+			if open != entry.open:
+				entry.open = open
+				for item in entry.sided: ROOM_LAYERS.put_on(item[0], entry.bits[0] | entry.bits[1] if open else entry.bits[item[1]])
 
 ## What update_visibility() goes through, planta by planta. Only the planta
 ## looked from is ever drawn, so the others' rooms, doors and wall lamps are
@@ -2150,6 +2392,8 @@ func put_away(here: int) -> void:
 		if i >= door_planta.size() or door_planta[i] == here: continue
 		doors[i].visible = false
 		for fixture in door_fixtures[i]: fixture.visible = false
+		if i < door_halves.size():
+			for half in door_halves[i].casing: half.visible = false
 	for k in sconce_lights.size():
 		if FLOOR.planta_of(sconce_spots[k].y) != here: sconce_lights[k].visible = false
 

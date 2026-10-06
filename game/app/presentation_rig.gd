@@ -116,7 +116,8 @@ func apply_lens(hunter: bool, reduced: bool) -> void:
 	var size := get_viewport().get_visible_rect().size
 	var aspect := size.x / maxf(size.y, 1.0)
 	# The observer looks through no lens either: the barrel bent the plan.
-	lens_layer.visible = not hunter and not level.observer
+	# Nor does the lowest preset (graphics_presets.gd "lens").
+	lens_layer.visible = LOOK.lens and not hunter and not level.observer
 	update_zoom_lens()
 	lens_material.set_shader_parameter("noise", 0.0 if reduced else level.settings.values.grain)
 	lens_material.set_shader_parameter("chromatic", 0.0 if reduced else level.settings.values.chromatic)
@@ -148,7 +149,7 @@ func update_zoom_lens() -> void:
 	if is_equal_approx(zoom, lens_zoom) and is_equal_approx(aspect, lens_aspect): return
 	lens_zoom = zoom
 	lens_aspect = aspect
-	var barrel: float = LOOK.barrel_for(zoom)
+	var barrel: float = LOOK.barrel_for(zoom) if LOOK.lens else 0.0
 	var design: float = LOOK.zoom_fov(zoom)
 	lens_material.set_shader_parameter("barrel", barrel)
 	lens_material.set_shader_parameter("scale", LOOK.corner_scale(aspect, barrel))
@@ -179,11 +180,20 @@ const COMPAT_SHADOW_ATLAS := 4096
 ## The torch's source size as built (player.tscn), for presets without penumbra.
 var torch_size := -1.0
 
+## Whether the preset in force culls by occlusion (graphics_presets.gd).
+var occlusion := true
+
+## How many shadows the atlas's first quarter is cut into, as the project has
+## it. With static_light the torch is the only light that casts, and it gets
+## that quarter to itself.
+var atlas_first := -1
+
 func apply_settings() -> void:
 	if not is_instance_valid(level.environment): return
 	var preset: Dictionary = PRESETS.of(level.settings.values.quality, level.settings.values)
 	# Before any set is built (title, intro, floor): the size of the scans.
 	level.GEOMETRY.small_maps = preset.small_maps
+	level.GEOMETRY.no_maps = preset.surface_detail < 0.5
 	# The acoustic view replaces the lit image entirely, so none of this would
 	# ever be seen; switching it off is what pays for its own screen pass.
 	var hunter := echo_seat()
@@ -229,6 +239,8 @@ func apply_settings() -> void:
 	# 32-bit one, and 0.3/4.0 only just cleared them here -- on another card
 	# they were seen at those very distances. Some 32 MB more at 4096.
 	viewport.positional_shadow_atlas_16_bits = not compatibility
+	if atlas_first < 0: atlas_first = viewport.get_positional_shadow_atlas_quadrant_subdiv(0)
+	viewport.set_positional_shadow_atlas_quadrant_subdiv(0, Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_1 if preset.static_light else atlas_first)
 	# Soft shadow filtering is paid per pixel for every shadowed lamp on it.
 	RenderingServer.positional_soft_shadow_filter_set_quality(preset.shadow_filter)
 	viewport.msaa_3d = preset.msaa
@@ -238,21 +250,29 @@ func apply_settings() -> void:
 	# fifteen times a second, so TAA smears it into paste.
 	viewport.use_taa = preset.taa and not hunter
 	viewport.mesh_lod_threshold = preset.lod_threshold
+	occlusion = preset.occlusion
 	viewport.anisotropic_filtering_level = preset.anisotropy
+	# Textured models read from smaller mipmaps (preset mip_bias). Under FSR 2.2
+	# Godot adds its own, sharper, on top.
+	viewport.texture_mipmap_bias = preset.mip_bias
 	viewport.use_debanding = preset.debanding
 	RenderingServer.screen_space_roughness_limiter_set_active(preset.roughness_limiter, ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/amount"), ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/limit"))
 	# Octaves of every procedural surface (surface.gdshaderinc) and the tape
 	# filter's chroma reads.
 	RenderingServer.global_shader_parameter_set("surface_detail", preset.surface_detail)
 	level.post_material.set_shader_parameter("chroma_taps", preset.chroma_taps)
+	level.post_material.set_shader_parameter("lite", preset.tape_lite)
+	LOOK.lens = preset.lens
 	var reduced: bool = level.settings.values.reduced
 	# The camcorder's lens and sensor (lens.gdshader) take the grain, the colour
 	# fringes and the vignette; the tape filter keeps the tape. The creature's
-	# acoustic view has no lens: it keeps the tape filter's own versions.
+	# acoustic view has no lens, and neither has a preset without the lens
+	# pass: there the tape filter's own versions are used.
+	var lensless: bool = hunter or not preset.lens
 	for key in ["vhs", "scanlines"]: level.post_material.set_shader_parameter(key, 0.0 if reduced else level.settings.values[key])
-	level.post_material.set_shader_parameter("grain", 0.0 if reduced or not hunter else level.settings.values.grain)
+	level.post_material.set_shader_parameter("grain", 0.0 if reduced or not lensless else level.settings.values.grain)
 	level.post_material.set_shader_parameter("chromatic", 0.0 if reduced or not hunter else level.settings.values.chromatic * 0.5)
-	level.post_material.set_shader_parameter("vignette", 0.0 if reduced or not hunter else 0.45)
+	level.post_material.set_shader_parameter("vignette", 0.0 if reduced or not lensless else 0.45)
 	apply_lens(hunter, reduced)
 	apply_camera(preset, hunter)
 	# The warm tape cast would break the monochrome reading.

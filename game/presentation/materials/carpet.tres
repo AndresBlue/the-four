@@ -4,6 +4,7 @@
 
 [resource]
 shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.243, 0.203, 0.147, 1)
 shader_parameter/base_color = Color(0.32, 0.27, 0.2, 1)
 shader_parameter/map_metres = 0.9
 shader_parameter/map_mode = 2

@@ -120,6 +120,9 @@ func begin() -> void:
 	out_for = 0.0
 	seen_for = -1.0
 	show_for = rng.randf_range(SHOWN.x, SHOWN.y)
+	# Lit by the lamp of the room it stands in, like the creature it passes
+	# for: it is in no group, so nobody does that for it (hotel_geometry).
+	if is_instance_valid(level) and is_instance_valid(level.hotel): level.hotel.light_body(model)
 	model.visible = true
 	pose(0.0)
 

@@ -717,10 +717,10 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "main")
 			side.visible = false
 	if osd_left.text != "SEÑAL PERDIDA": osd_left.remove_theme_color_override("font_color")
-	# First start on an integrated GPU: it starts on Bajo; the lighter renderer
-	# is the player's call (it restarts the game).
+	# First start on an integrated GPU: it starts on Muy bajo; the lighter
+	# renderer is the player's call (it restarts the game).
 	if kind == "main" and message.is_empty() and settings.integrated_gpu and settings.values.renderer == "forward_plus":
-		message = "Gráfica integrada: preset Bajo. Si aun así va lento, prueba Ajustes ▸ Gráficos ▸ Renderizador: Compatibilidad."
+		message = "Gráfica integrada: preset Muy bajo. Si va sobrado, sube el preset en Ajustes ▸ Gráficos; si aun así va lento, prueba ahí el renderizador Compatibilidad."
 	if not message.is_empty():
 		spacer(column, 14)
 		paragraph(column, message, 16, 560, STYLE.AMBER)
@@ -1132,7 +1132,9 @@ func show_settings(back: String) -> void:
 	options(picture, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
 	check(picture, "Sincronización vertical", "vsync")
 	var graphics := page(tabs, "GRÁFICOS")
-	options(graphics, "Preset gráfico", "quality", PRESETS.NAMES, range(PRESETS.count()))
+	options(graphics, "Preset gráfico", "quality", PRESETS.ORDER.map(func(index: int) -> String: return PRESETS.NAMES[index]), PRESETS.ORDER)
+	if int(settings.values.quality) == PRESETS.VERY_LOW:
+		paragraph(graphics, "Muy bajo es para gráficas integradas: las lámparas alumbran sin proyectar sombra (solo la linterna la proyecta), los materiales son de un color liso, y la imagen se dibuja a media resolución y sin lente. El juego y sus reglas son los mismos.", 16, 900, STYLE.SOFT)
 	options(graphics, "Renderizador", "renderer", ["Forward+ (completo)", "Compatibilidad (gráfica integrada)"], ["forward_plus", "gl_compatibility"])
 	if settings.renderer_pending():
 		paragraph(graphics, "El renderizador cambia al reiniciar el juego.", 16, 900, STYLE.AMBER)
