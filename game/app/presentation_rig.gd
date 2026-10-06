@@ -252,9 +252,6 @@ func apply_settings() -> void:
 	viewport.mesh_lod_threshold = preset.lod_threshold
 	occlusion = preset.occlusion
 	viewport.anisotropic_filtering_level = preset.anisotropy
-	# Textured models read from smaller mipmaps (preset mip_bias). Under FSR 2.2
-	# Godot adds its own, sharper, on top.
-	viewport.texture_mipmap_bias = preset.mip_bias
 	viewport.use_debanding = preset.debanding
 	RenderingServer.screen_space_roughness_limiter_set_active(preset.roughness_limiter, ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/amount"), ProjectSettings.get_setting("rendering/anti_aliasing/screen_space_roughness_limiter/limit"))
 	# Octaves of every procedural surface (surface.gdshaderinc) and the tape

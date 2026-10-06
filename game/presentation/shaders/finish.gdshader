@@ -19,8 +19,8 @@ uniform float backlight : hint_range(0.0, 1.0) = 0.0;
 void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
-	if (plasticine()) {
-		ALBEDO = plasticine_albedo(NODE_POSITION_WORLD);
+	if (baked_surface()) {
+		ALBEDO = baked_albedo(face_uv(), NODE_POSITION_WORLD, true);
 		ROUGHNESS = max(roughness, 0.5);
 		SPECULAR = specular;
 	} else {

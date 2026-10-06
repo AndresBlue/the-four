@@ -203,6 +203,7 @@ var stop_mesh: ArrayMesh
 func _init() -> void:
 	for key in MATERIALS:
 		materials[key] = load("res://game/presentation/materials/%s.tres" % key).duplicate()
+		materials[key].set_meta("lite", key)
 		apply_scan(materials[key], small_maps)
 	maps_small = small_maps
 	maps_none = no_maps
@@ -221,16 +222,24 @@ func _init() -> void:
 ## chooses the 2048 px ones or the 1024 px ones (small_maps, set by
 ## hotel_main before a floor is built and by apply_quality()).
 static var small_maps := false
-## No scans at all: the preset's surfaces are plasticine (surface_detail 0),
-## which reads none of them, so they are not loaded either.
+## No scans at all: the preset draws every surface from one small picture of
+## itself (surface_detail 0; surface.gdshaderinc, baked_surface()), which reads
+## none of them, so they are not loaded either. The pictures are, instead:
+## tools/textures/bake_lite_maps.gd makes one for each material, and lite.json
+## says how many metres each covers.
 static var no_maps := false
 static var scans := {}
+const LITE := "res://assets/textures/lite/"
+static var lite := {}
+static var lite_sizes := {}
 ## The size this builder's materials have, and whether they have any.
 var maps_small := false
 var maps_none := false
 
 static func apply_scan(material: Material, small: bool) -> void:
-	if not material is ShaderMaterial or not material.has_meta("scan"): return
+	if not material is ShaderMaterial: return
+	apply_lite(material)
+	if not material.has_meta("scan"): return
 	if no_maps:
 		scans.clear()
 		for map in ["albedo_map", "normal_map", "orm_map"]: material.set_shader_parameter(map, null)
@@ -242,6 +251,25 @@ static func apply_scan(material: Material, small: bool) -> void:
 	material.set_shader_parameter("normal_map", maps.normal)
 	material.set_shader_parameter("orm_map", maps.orm)
 	material.set_shader_parameter("use_maps", true)
+
+## A material's own small picture while there are no scans (its "lite"
+## metadata is its name, given in _init()), and none otherwise.
+static func apply_lite(material: ShaderMaterial) -> void:
+	if not no_maps: lite.clear()
+	var key := String(material.get_meta("lite", ""))
+	var picture: Texture2D = lite_map(key) if no_maps else null
+	material.set_shader_parameter("use_lite", picture != null)
+	material.set_shader_parameter("lite_map", picture)
+	if picture != null: material.set_shader_parameter("lite_metres", lite_sizes[key])
+
+static func lite_map(key: String) -> Texture2D:
+	if lite_sizes.is_empty() and FileAccess.file_exists(LITE + "lite.json"):
+		var listed = JSON.parse_string(FileAccess.get_file_as_string(LITE + "lite.json"))
+		if listed is Dictionary:
+			for title in listed: lite_sizes[title] = Vector2(float(listed[title][0]), float(listed[title][1]))
+	if not lite_sizes.has(key): return null
+	if not lite.has(key): lite[key] = load(LITE + key + ".png")
+	return lite[key]
 
 static func scan_maps(set_name: String, small: bool) -> Dictionary:
 	var key := set_name + ("_1k" if small else "")

@@ -9,6 +9,8 @@ assets/textures/<set>/orm.jpg       oclusión, rugosidad y metal en R, G y B
 assets/textures/<set>/*_1k.jpg      lo mismo a 1024 px, para el preset Bajo (small_maps)
 ```
 
+`assets/textures/lite/` no es un set escaneado: son las texturas pequeñas con las que el preset Muy bajo dibuja cada material (una por material de `hotel_geometry.MATERIALS`, más `lite.json` con los metros que cubre cada una). Las genera `tools/textures/bake_lite_maps.gd` a partir de estos mismos sets y de los shaders, así que no se editan a mano: se vuelven a hornear.
+
 Un material usa un set con el metadato `scan` de su `.tres` en `game/presentation/materials/` (Inspector → Metadata). `hotel_geometry.apply_scan()` le asigna los mapas al construir. Los parámetros del grupo `image_maps` deciden cómo se combina con el shader:
 
 - **`map_mode`:**

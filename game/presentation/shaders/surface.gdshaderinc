@@ -147,19 +147,29 @@ vec3 room_grime(vec3 color, vec3 world, vec3 origin, inout float ao) {
 	return color;
 }
 
-// "Plasticine", the lowest graphics preset (surface_detail 0): a surface is
-// one colour, its material's mean (flat_color, written in each material from
-// world/hotel/material_albedo.gd), a little darker into its room's corners so
-// a wall still reads as meeting a floor. No scanned map, no noise, no relief:
-// a fragment's whole cost is its light. Every fragment() starts by asking.
+// The lowest graphics preset (surface_detail 0) draws a surface from one small
+// picture of itself, lite_map: what this very shader draws at full detail --
+// the scan, the print, the stains -- photographed flat once by
+// tools/textures/bake_lite_maps.gd and made to repeat every lite_metres. One
+// read of a small texture stands for the three scanned maps, the noise and the
+// relief: the wall looks like the wall, at a fraction of the cost, and flat to
+// the light. A little darker into its room's corners, so it still reads as
+// meeting the floor. Where a material has no picture (or a face is not the
+// one photographed) it is its mean colour, flat_color. Every fragment()
+// starts by asking baked_surface().
 uniform vec4 flat_color : source_color = vec4(0.5, 0.5, 0.5, 1.0);
+uniform bool use_lite = false;
+uniform sampler2D lite_map : source_color, filter_linear_mipmap, repeat_enable;
+uniform vec2 lite_metres = vec2(1.0);
 
-bool plasticine() { return surface_detail < 0.5; }
+bool baked_surface() { return surface_detail < 0.5; }
 
-vec3 plasticine_albedo(vec3 origin) {
+// uv in metres, the way the picture was taken (face_uv() for most).
+vec3 baked_albedo(vec2 uv, vec3 origin, bool pictured) {
+	vec3 color = use_lite && pictured ? texture(lite_map, uv / lite_metres).rgb : flat_color.rgb;
 	float by_floor;
 	float by_ceiling;
-	return flat_color.rgb * (1.0 - room_edge(wp, origin, by_floor, by_ceiling) * 0.3);
+	return color * (1.0 - room_edge(wp, origin, by_floor, by_ceiling) * 0.3);
 }
 
 // Perturbs a world normal from screen derivatives of a height field

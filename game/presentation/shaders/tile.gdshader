@@ -16,8 +16,8 @@ uniform float tile_count = 8.0;
 void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
-	if (plasticine()) {
-		ALBEDO = plasticine_albedo(NODE_POSITION_WORLD);
+	if (baked_surface()) {
+		ALBEDO = baked_albedo(face_uv(), NODE_POSITION_WORLD, true);
 		ROUGHNESS = 0.6;
 		SPECULAR = 0.42;
 	} else {

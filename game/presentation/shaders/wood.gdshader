@@ -47,8 +47,19 @@ void vertex() {
 }
 
 void fragment() {
-	if (plasticine()) {
-		ALBEDO = plasticine_albedo(NODE_POSITION_WORLD);
+	if (baked_surface()) {
+		vec3 baked = baked_albedo(grain, NODE_POSITION_WORLD, true);
+		vec2 across = face_uv();
+		float cut = 0.0;
+		if (panel_spacing > 0.0 && abs(wn.y) < 0.5) {
+			float p = fract(across.x / panel_spacing);
+			cut = smoothstep(0.012, 0.0, min(p, 1.0 - p) * panel_spacing);
+		}
+		if (door_panels && abs(wn.z) > 0.5) {
+			vec2 cell = vec2(abs(wp.x) - 0.5, abs(wp.y) - 0.62);
+			cut = max(cut, smoothstep(0.025, 0.0, abs(max(abs(cell.x) - 0.36, abs(cell.y) - 0.5))));
+		}
+		ALBEDO = baked * (1.0 - cut * 0.5);
 		ROUGHNESS = 0.6;
 	} else {
 		vec2 uv = face_uv();

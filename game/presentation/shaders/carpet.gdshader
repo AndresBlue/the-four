@@ -16,8 +16,8 @@ uniform float fibre_bleed = 0.035;
 void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
-	if (plasticine()) {
-		ALBEDO = plasticine_albedo(NODE_POSITION_WORLD);
+	if (baked_surface()) {
+		ALBEDO = baked_albedo(wp.xz, NODE_POSITION_WORLD, is_floor_face());
 		ROUGHNESS = 0.97;
 	} else {
 		vec2 uv = wp.xz;

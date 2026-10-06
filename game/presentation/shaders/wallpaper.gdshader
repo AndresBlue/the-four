@@ -18,8 +18,10 @@ uniform float ink_bleed = 0.03;
 void vertex() { SURFACE_VERTEX; }
 
 void fragment() {
-	if (plasticine()) {
-		ALBEDO = plasticine_albedo(NODE_POSITION_WORLD);
+	if (baked_surface()) {
+		// A strip the height of the tallest room, from the floor up: the stains
+		// under the ceiling and the grime over the skirting are in it.
+		ALBEDO = baked_albedo(vec2(face_uv().x, lite_metres.y - (wp.y - NODE_POSITION_WORLD.y)), NODE_POSITION_WORLD, abs(wn.y) < 0.5);
 		ROUGHNESS = 0.9;
 	} else {
 		vec2 uv = face_uv();

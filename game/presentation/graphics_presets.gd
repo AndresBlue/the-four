@@ -27,15 +27,20 @@ const VERY_LOW := 4
 const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 
 ## Keys:
-## scale                 3D render scale the preset sets when chosen (the
-##                       slider stays free afterwards).
+## scale                 the 3D render scale the preset was designed and
+##                       measured at. Choosing a preset does not set it: the
+##                       scale is the player's own setting. A first start on
+##                       an integrated GPU begins with it, and the benchmark
+##                       and the capture tools use it
+##                       (settings_service.set_designed()).
 ## upscaler              how that picture is brought up to the window while
-##                       the player's own choice is "auto", which choosing a
-##                       preset puts it back to (UPSCALERS; always bilinear in
-##                       Compatibility, and at native scale). FSR 2.2 is the
-##                       dearest thing a modest GPU can be asked for: it and
-##                       its history were half of Bajo's whole frame on the
-##                       stand-in for an integrated one (PERFORMANCE.md, 10).
+##                       the player's own choice is "auto", which is the
+##                       default (UPSCALERS; always bilinear in Compatibility,
+##                       and at native scale). A choice made by hand stays
+##                       whatever the preset. FSR 2.2 is the dearest thing a
+##                       modest GPU can be asked for: it and its history were
+##                       half of Bajo's whole frame on the stand-in for an
+##                       integrated one (PERFORMANCE.md, 10).
 ## msaa, fxaa, taa       anti-aliasing (TAA never for the creature's view).
 ## roughness_limiter     specular anti-aliasing on shiny surfaces.
 ## shadow_atlas          positional shadow atlas size. Never under 4096 while
@@ -96,12 +101,11 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ## surface_detail        octaves of the procedural surface noise (the
 ##                       surface_detail shader global); under 2.5 the finest
 ##                       terms (carpet pile, paper fibre, wood pores) go too.
-##                       0 is "plasticine": every surface one flat colour of
-##                       its material's, with no scanned map, noise or relief
-##                       (surface.gdshaderinc), and the scans are not loaded.
-## mip_bias              how many mipmaps down the textures of the models are
-##                       read (doors, wardrobes, people): each one is a
-##                       quarter of the texels to fetch, and a smear.
+##                       At 0 every surface is drawn from one small picture
+##                       of itself, baked from this same shader at full
+##                       detail (surface.gdshaderinc, baked_surface();
+##                       tools/textures/bake_lite_maps.gd): no scanned map --
+##                       they are not loaded -- no noise, no relief.
 ## occlusion             occlusion culling: what is behind walls is not sent to
 ##                       the GPU, at the price of a small picture of the walls
 ##                       drawn on the processor every frame.
@@ -141,7 +145,7 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ##                       on downscaled images, where 2 px grains all but vanish).
 const PRESETS := [
 	{
-		"scale": 0.67, "upscaler": "fsr1", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": true, "taa": false, "roughness_limiter": false,
+		"scale": 0.67, "upscaler": "fsr1", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": true, "taa": false, "roughness_limiter": false,
 		"shadow_atlas": 4096, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, "penumbra": 0.0,
 		"lamp_fade": [30.0, 12.0], "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
 		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
@@ -151,7 +155,7 @@ const PRESETS := [
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 	{
-		"scale": 0.85, "upscaler": "fsr2", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": true, "roughness_limiter": true,
+		"scale": 0.85, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 4096, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_LOW, "penumbra": 1.0,
 		"lamp_fade": [30.0, 12.0], "room_reach": 66.0, "furniture_lamps": 28.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
@@ -161,7 +165,7 @@ const PRESETS := [
 		"echo": {"rays": 1900, "aimed": 600, "points": 24000, "bodies": 700, "puff_points": 26, "puffs": 4800, "find_points": 40, "finds": 600, "frames": 7000, "grain": 1.0, "halo": 0.0},
 	},
 	{
-		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_2X, "fxaa": false, "taa": true, "roughness_limiter": true,
+		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_2X, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, "penumbra": 1.0,
 		"lamp_fade": [36.0, 12.0], "room_reach": 66.0, "furniture_lamps": 32.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
@@ -171,7 +175,7 @@ const PRESETS := [
 		"echo": {"rays": 3600, "aimed": 1200, "points": 46000, "bodies": 1400, "puff_points": 44, "puffs": 9600, "find_points": 70, "finds": 1200, "frames": 14000, "grain": 1.0, "halo": 0.0},
 	},
 	{
-		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "mip_bias": 0.0, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_4X, "fxaa": false, "taa": true, "roughness_limiter": true,
+		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_4X, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_HIGH, "penumbra": 2.5,
 		"lamp_fade": [50.0, 14.0], "room_reach": 82.0, "furniture_lamps": 40.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
@@ -183,7 +187,7 @@ const PRESETS := [
 	# Muy bajo: for integrated graphics. The game is all there; the picture is
 	# plainly a cheaper one (docs/PERFORMANCE.md, section 10).
 	{
-		"scale": 0.5, "upscaler": "bilinear", "static_light": true, "mip_bias": 2.0, "tape_lite": true, "lens": false, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": false, "roughness_limiter": false,
+		"scale": 0.5, "upscaler": "bilinear", "static_light": true, "tape_lite": true, "lens": false, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": false, "roughness_limiter": false,
 		"shadow_atlas": 2048, "shadow_filter": RenderingServer.SHADOW_QUALITY_HARD, "penumbra": 0.0,
 		"lamp_fade": [30.0, 12.0], "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
 		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
@@ -275,8 +279,6 @@ static func of(quality: int, values := {}) -> Dictionary:
 		preset.lamp_fog = false
 		preset.sconce_lights = false
 		preset.bounce = false
-		# Nor a texture LOD bias: the models keep their textures as they are.
-		preset.mip_bias = 0.0
 		# Without TAA, the plain edge smoothing.
 		if preset.msaa == Viewport.MSAA_DISABLED and not preset.smaa: preset.fxaa = true
 	# FSR 2.2 rebuilds the picture from its own history: it is the smoothing,
