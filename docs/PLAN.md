@@ -98,7 +98,9 @@ El 4 de octubre entró esto, y **tampoco se ha jugado**:
   en equipo de tres, del 75 al 95 % (Equilibrada, del 0 al 60 %). Falta
   decidir Equilibrada a solas (un bot novato no la gana), si un piso a
   solas debe pedir menos, y probarlo con gente (DIFFICULTY.md, tercera
-  medida).
+  medida). **Medidas las cuatro con 50 pisos por celda** (cuarta medida):
+  en equipo, novatos 100/68/0/0 % y expertos 98/98/46/0 %; a solas con
+  novato, 68/4/0/0 %. Pesadilla no la gana nadie (se buscaba 15–25 %).
 - **A una etapa devuelta la criatura vuelve a su punto de aparición** y
   espera la gracia de la dificultad, también la de un cazador.
 - **Continuar devuelve el piso como se dejó** (sitio, sector, puertas,

@@ -203,6 +203,36 @@ Lo que dice:
 - **Los encuentros bajan en Apacible** (5,0 por bot, la mitad del objetivo de 10 de la tabla de arriba): es el precio de dejar aire. Ese objetivo se escribió cuando se quería la misma frecuencia que en Pesadilla, y con gente resultó un asedio; queda por decidir, jugando, si 5 es poco.
 - **Falta:** decidir qué hacer con Equilibrada a solas (más etapas devueltas a solas, o más margen todavía); decidir si a solas un piso debe pedir menos; y, sobre todo, volver a probarlo con gente.
 
+**Cuarta medida (5 y 6 de octubre de 2026): las cuatro, con 50 pisos por celda.** Semillas nuevas, 400–449, que no se usaron para ajustar nada; `./tools/bots.ps1 -Runs 50 -Seed 400 -Parallel 20` (`evidence/bots/*est50_*`). Con 50 pisos, un porcentaje tiene un margen de unos ±13 puntos en el centro (68 % es entre 54 y 79) y de unos 7 en los extremos (0 de 50 es «menos del 7 %»). El bot experto a solas se dejó fuera: no mide (tercera medida).
+
+| Lote | Ganados | Sin derrumbes | Perdidos / sin tiempo | Caídas por piso | Encuentros por bot | Persecuciones por bot | Huidas de cada 10 | Rato más largo sin ella (mediana) | Piso ganado, minutos de juego (mediana) |
+|---|---|---|---|---|---|---|---|---|---|
+| **A solas, novato** · Apacible | 68 % | 4 % | 0 / 16 | 3,3 | 16,6 | 18,4 | 6 | 7:26 | 59 |
+| A solas, novato · Equilibrada | 4 % | 2 % | 48 / 0 | 2,9 | 6,7 | 6,8 | 6 | 4:38 | 48 |
+| A solas, novato · Desafiante | 0 % | 0 % | 50 / 0 | 1,0 | 1,1 | 1,2 | 1 | 1:41 | — |
+| A solas, novato · Pesadilla | 0 % | 0 % | 50 / 0 | 1,0 | 1,1 | 1,1 | 1 | 1:29 | — |
+| **Tres novatos** · Apacible | 100 % | 70 % | 0 / 0 | 1,6 | 4,3 | 4,1 | 6 | 12:18 | 26 |
+| Tres novatos · Equilibrada | 68 % | 28 % | 15 / 1 | 4,6 | 5,0 | 4,8 | 6 | 10:54 | 27 |
+| Tres novatos · Desafiante | 0 % | 0 % | 49 / 1 | 4,3 | 2,0 | 2,0 | 2 | 5:28 | — |
+| Tres novatos · Pesadilla | 0 % | 0 % | 50 / 0 | 2,1 | 0,8 | 0,9 | 1 | 2:31 | — |
+| **Tres expertos** · Apacible | 98 % | 92 % | 0 / 1 | 0,4 | 1,1 | 0,9 | 3 | 29:06 | 35 |
+| Tres expertos · Equilibrada | 98 % | 82 % | 0 / 1 | 1,1 | 1,3 | 1,0 | 4 | 28:16 | 35 |
+| Tres expertos · Desafiante | 46 % | 28 % | 23 / 4 | 3,4 | 2,1 | 1,6 | 1 | 27:13 | 37 |
+| Tres expertos · Pesadilla | 0 % | 0 % | 45 / 5 | 2,2 | 1,0 | 0,9 | 1 | 13:18 | — |
+
+Lo que dice, contra los objetivos del principio de esta sección:
+
+- **La escalera está, y bien separada.** Con novatos en equipo: 100 → 68 → 0 → 0. Con expertos: 98 → 98 → 46 → 0. Las dos fáciles son para cualquiera y las dos altas, para quien sabe: un equipo novato no gana ni un piso de 100 en Desafiante o Pesadilla.
+- **Entran en su objetivo:** Desafiante con expertos, 46 % (se buscaba 45–55); Equilibrada con expertos, 98 % (80 o más); Equilibrada con novatos, 68 % (50–60: algo por encima); Apacible con novatos, 100 % ganados y 70 % sin perder una etapa (se buscaba el 80 % sin derrumbes: cerca).
+- **Pesadilla no la gana nadie:** 0 de 50 con tres expertos (menos del 7 %), cuando se buscaba un 15–25 %. Los expertos caen en cuanto se la encuentran (1 huida de cada 10). Jugando se siente bien opresiva, pero hoy es imposible para estos bots: es de la fase 5.
+- **Entre Apacible y Equilibrada, para quien sabe, casi no hay diferencia** (98 y 98 %): se distinguen en las caídas (0,4 y 1,1 por piso) y en los pisos limpios (92 y 82 %). Para quien no sabe sí la hay: 100 contra 68 %.
+- **Una persecución se salva 6 veces de cada 10 en las dos fáciles** con novatos (eran 4 y 2), y 1–2 de cada 10 en las dos altas. El objetivo era 9 y 7: los novatos siguen sin esconderse como una persona.
+- **A solas, Apacible sale: 68 %**, y lo que no se gana es tiempo del lote agotado en el tercer sector, no un piso perdido. Pero cuesta 3,3 caídas y 18 persecuciones por piso: no es «a la primera y sin un rasguño» para un bot novato.
+- **A solas, Equilibrada no sale: 4 %.** Se escapa igual de bien que en Apacible (6 de cada 10) y se cae 2,9 veces por piso; con dos etapas devueltas, la tercera caída acaba el piso. **Lo que la separa de Apacible a solas es la clemencia, no la bestia.**
+- **A solas, Desafiante y Pesadilla acaban en el primer encuentro** para un novato: una caída, un minuto y medio. Es lo que dicen que son (a solas no perdonan ninguna).
+- **Un piso ganado dura lo que se buscaba en equipo** (26 a 37 minutos de juego; el objetivo, 25–40) **y el doble a solas** (59): un piso a solas es largo.
+- **Los encuentros siguen por debajo de los 8–10 por jugador** de la tabla de objetivos en todas las celdas de equipo (4–5 con novatos, 1–2 con expertos, que la esquivan). Con gente, más que eso resultó un asedio: el objetivo de la tabla es el que hay que revisar, jugando.
+
 
 **Dos clases de bots, porque una sola no sirve.** Los de hoy saben siempre dónde está la criatura y juegan a que no los vea nunca: son **expertos**, y apenas tienen encuentros. Para medir Apacible y Equilibrada hacen falta **bots novatos**: que solo sepan de ella lo que ven y oyen, que anden a la vista, que corran en cuanto la ven y que se escondan tarde. Si un novato sale de Apacible, una persona que no juega mucho también.
 
