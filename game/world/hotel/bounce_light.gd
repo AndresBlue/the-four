@@ -150,6 +150,7 @@ func release(planta: int) -> void:
 			volumes.erase(volume)
 			continue
 		if FLOOR.planta_of(volume.global_position.y) == planta: continue
+		if volume.visible: lit -= 1
 		volumes.erase(volume)
 		volume.queue_free()
 
@@ -157,20 +158,28 @@ func release(planta: int) -> void:
 ## volume has its data: a volume with data keeps its textures in video
 ## memory, shown or not, some 56 MB each (the 51 of a floor took 2.9 GB).
 func show_near(position: Vector3, on: bool, planta := -1) -> void:
-	if volumes.is_empty(): return
+	# Asked four times a second: with none shown and none wanted (a preset
+	# without bounce after one with it, the power cut) there is nothing to do.
+	if volumes.is_empty() or (not on and lit == 0): return
 	# Only the planta being looked from: one under the slab is never seen, and
 	# its volumes would take the places (and the video memory) of this one's.
-	var nearest := volumes.filter(func(volume: VoxelGI) -> bool: return planta < 0 or FLOOR.planta_of(volume.global_position.y) == planta)
+	# Each volume's distance is worked out once, not at every comparison.
+	var nearest: Array = []
 	for volume in volumes:
-		if nearest.has(volume) or not volume.visible: continue
-		volume.data = null
-		volume.visible = false
-	nearest.sort_custom(func(a: VoxelGI, b: VoxelGI) -> bool: return reach(a, position) < reach(b, position))
+		if planta < 0 or FLOOR.planta_of(volume.global_position.y) == planta: nearest.append([reach(volume, position), volume])
+		elif volume.visible: show(volume, false)
+	nearest.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	for k in nearest.size():
 		var shown: bool = on and k < SHOWN
-		if nearest[k].visible == shown: continue
-		nearest[k].data = nearest[k].get_meta("baked") if shown else null
-		nearest[k].visible = shown
+		if nearest[k][1].visible != shown: show(nearest[k][1], shown)
+
+## How many volumes are shown.
+var lit := 0
+
+func show(volume: VoxelGI, shown: bool) -> void:
+	volume.data = volume.get_meta("baked") if shown else null
+	volume.visible = shown
+	lit += 1 if shown else -1
 
 ## How far a point is from a volume's box, 0 inside it (the centre breaks
 ## ties). By the centre alone, a corridor volume 40 m long that the eye stood

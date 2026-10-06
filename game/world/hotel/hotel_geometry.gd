@@ -1739,11 +1739,13 @@ func make_probe(slot: Dictionary) -> void:
 	probe_settings(probe)
 	slot.parent.add_child(probe)
 	slot.probe = probe
+	probes_made += 1
 
 ## Freeing it is what gives its place in the atlas back.
 func drop_probe(slot: Dictionary) -> void:
 	slot.probe.queue_free()
 	slot.probe = null
+	probes_made -= 1
 
 ## Rendered with shadows at probes 2, and there, without bounce light, its
 ## capture is also its room's ambient light (the bounce volumes would be
@@ -1970,7 +1972,10 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	eye_planta = here
 	# The eye has gone down a planta (or the observer to another): its bounce.
 	if preset.bounce and here != bounce_planta and RenderingServer.get_rendering_device() != null: start_bounce(here)
-	curtain_material.set_shader_parameter("motion", 0.0 if reduced else 1.0)
+	var motion := 0.0 if reduced else 1.0
+	if motion != curtain_motion:
+		curtain_motion = motion
+		curtain_material.set_shader_parameter("motion", motion)
 	if is_instance_valid(dust):
 		dust.position = player_position + Vector3(0, 1.2, 0)
 		dust.emitting = preset.dust > 0 and not reduced and not echo_view
@@ -1979,33 +1984,33 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
 	var reach: float = maxf(preset.room_reach, reach_over)
 	if show_all: reach = 100000.0
+	if things_counted != [room_nodes.size(), doors.size(), sconce_lights.size(), practicals.size(), exit_lamps.size()]: index_things()
+	if here != shown_planta: put_away(here)
+	var things: Dictionary = things_on(here)
 	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
-	for i in room_nodes.size():
-		var distance := room_nodes[i].position.distance_to(player_position)
-		var on_planta: bool = i >= room_planta.size() or room_planta[i] == here
-		room_nodes[i].visible = on_planta and distance < reach
-		if lights[i].has_meta("void"): continue
-		if not on_planta:
-			lights[i].visible = false
-			continue
+	for i in things.rooms:
+		var distance := room_spots[i].distance_to(player_position)
+		room_nodes[i].visible = distance < reach
+		var light := lights[i]
+		if light.has_meta("void"): continue
 		if show_all:
 			# Every lamp of the floor at once, and none of them with a shadow:
 			# a hundred shadowed lamps do not fit in the atlas, and what falls
 			# out of it shines through the walls.
-			lights[i].visible = not lights[i].has_meta("off") and not echo_view
-			if lights[i].shadow_enabled: lights[i].shadow_enabled = false
+			light.visible = not light.has_meta("off") and not echo_view
+			if light.shadow_enabled: light.shadow_enabled = false
 			continue
 		# A lamp only shines while every wall round it is still drawn: a hidden
 		# room casts no shadow, and a lamp left on among hidden walls poured its
 		# light into the dark rooms beside it (far walls of a shut dark room lit).
-		var light_reach := minf(fade_end + 2.0, reach - lights[i].omni_range - 2.0)
-		lights[i].visible = distance < light_reach and not lights[i].has_meta("off") and not echo_view
+		var light_reach := minf(fade_end + 2.0, reach - light.omni_range - 2.0)
+		light.visible = distance < light_reach and not light.has_meta("off") and not echo_view
 		# Only when it changes: every write makes Godot redraw that shadow. A
 		# profile only works on a shadowed light: without shadows it goes, or
 		# the lamp would give no light at all.
-		if lights[i].shadow_enabled != shadows:
-			lights[i].shadow_enabled = shadows
-			lights[i].light_projector = lights[i].get_meta("profile") if shadows else null
+		if light.shadow_enabled != shadows:
+			light.shadow_enabled = shadows
+			light.light_projector = light.get_meta("profile") if shadows else null
 	# A probe captures its room once, when it is made: only while the room's
 	# lamp is on, or it would keep a dark capture. Only the nearest exist.
 	# Godot's reflection atlas has 64 places and a probe keeps its place until
@@ -2014,53 +2019,139 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	# square on a ceiling, warm light in a tiled bathroom) and the game
 	# crashed. So the nearest PROBES_SHOWN are made, one already made is kept
 	# while among the nearest PROBES_KEPT (no remaking at the edge), and the
-	# rest are freed.
-	var wanted: Array[Dictionary] = []
-	for slot in probe_slots:
-		var used: bool = preset.probes >= 2 or (preset.probes == 1 and slot.every_third)
-		if used and not echo_view and lights[slot.room].visible: wanted.append(slot)
-		elif slot.probe != null: drop_probe(slot)
-	wanted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.parent.global_position.distance_squared_to(player_position) < b.parent.global_position.distance_squared_to(player_position))
-	for k in wanted.size():
-		if wanted[k].probe == null and k < PROBES_SHOWN: make_probe(wanted[k])
-		elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
+	# rest are freed. Nothing to look at on a preset without probes, once the
+	# last one is gone.
+	if preset.probes > 0 or probes_made > 0:
+		var wanted: Array[Dictionary] = []
+		for slot in probe_slots:
+			var used: bool = preset.probes >= 2 or (preset.probes == 1 and slot.every_third)
+			if used and not echo_view and lights[slot.room].visible:
+				slot.near = (slot.spot as Vector3).distance_squared_to(player_position)
+				wanted.append(slot)
+			elif slot.probe != null: drop_probe(slot)
+		wanted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.near < b.near)
+		for k in wanted.size():
+			if wanted[k].probe == null and k < PROBES_SHOWN: make_probe(wanted[k])
+			elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
 	# The nearest SCONCES_LIT wall lamps and no more: over the atlas they lose
-	# their shadows and light the room on the other side of the wall.
-	var near_sconces := sconce_lights.filter(func(lamp: OmniLight3D) -> bool: return FLOOR.planta_of(lamp.global_position.y) == here)
-	for lamp in sconce_lights:
-		if FLOOR.planta_of(lamp.global_position.y) != here: lamp.visible = false
-	near_sconces.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool: return sconce_order(a, player_position) < sconce_order(b, player_position))
-	for k in near_sconces.size():
-		near_sconces[k].visible = not dark and preset.sconce_lights and shadows and not echo_view and k < SCONCES_LIT and near_sconces[k].global_position.distance_to(player_position) < SCONCE_REACH
-	# Not with the power cut (blackout() hides them; this used to bring them
-	# back a quarter of a second later, lit by nothing but the torch).
+	# their shadows and light the room on the other side of the wall. Not with
+	# the power cut (blackout() hides them; this used to bring them back a
+	# quarter of a second later, lit by nothing but the torch). One already
+	# lit counts as a metre and a half nearer, so the ones round a room do not
+	# swap places every time the player takes a step: a lamp going on and off
+	# as you shift your weight would be worse than one lamp fewer.
+	var sconces_wanted: bool = not dark and preset.sconce_lights and shadows and not echo_view
+	if sconces_wanted or sconces_lit:
+		var nearest: Array = []
+		for k in things.sconces:
+			var lamp := sconce_lights[k]
+			var distance := sconce_spots[k].distance_to(player_position)
+			if sconces_wanted and distance < SCONCE_REACH: nearest.append([distance - (1.5 if lamp.visible else 0.0), lamp])
+			elif lamp.visible: lamp.visible = false
+		nearest.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		for k in nearest.size():
+			var lit: bool = k < SCONCES_LIT
+			if nearest[k][1].visible != lit: nearest[k][1].visible = lit
+		sconces_lit = not nearest.is_empty()
 	bounce.show_near(player_position, preset.bounce and not echo_view and not dark, here)
-	for lamp in practicals:
-		lamp.visible = not dark and not echo_view and (show_all or lamp.global_position.distance_to(player_position) < preset.furniture_lamps)
+	for k in practicals.size():
+		var lamp := practicals[k]
+		var lit: bool = not dark and not echo_view and (show_all or practical_spots[k].distance_to(player_position) < preset.furniture_lamps)
+		if lamp.visible != lit: lamp.visible = lit
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# The exit signs keep theirs through a power cut: they are the one thing
 	# here that would have a battery, and the refuge stays findable.
-	for lamp in exit_lamps:
-		lamp.visible = not echo_view and (show_all or lamp.global_position.distance_to(player_position) < EXIT_REACH)
+	for k in exit_lamps.size():
+		var lamp := exit_lamps[k]
+		var lit: bool = not echo_view and (show_all or exit_spots[k].distance_to(player_position) < EXIT_REACH)
+		if lamp.visible != lit: lamp.visible = lit
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# The cars' lamps keep theirs looking at the whole floor as well: there are
 	# a handful, and they fit in the atlas where a hundred room lamps do not.
+	var cars_cast: bool = shadows or show_all
 	for lamp in car_lamps:
-		if lamp.shadow_enabled != (shadows or show_all): lamp.shadow_enabled = shadows or show_all
+		if lamp.shadow_enabled != cars_cast: lamp.shadow_enabled = cars_cast
 	# Doors carry their light seals, casings and stops: shown as far as the
 	# rooms are. No lit lamp reaches past that (its range ends inside it).
-	for i in doors.size():
-		var on_planta: bool = i >= door_planta.size() or door_planta[i] == here
-		var shown: bool = on_planta and (show_all or doors[i].doorway.distance_to(player_position) < reach)
+	for i in things.doors:
+		var shown: bool = show_all or door_spots[i].distance_to(player_position) < reach
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
 
-## Where a wall lamp stands in the queue for the twelve. One already lit counts
-## as a metre and a half nearer, so the ones round a room do not swap places
-## every time the player takes a step: a lamp going on and off as you shift
-## your weight would be worse than one lamp fewer.
-func sconce_order(lamp: OmniLight3D, from: Vector3) -> float:
-	return lamp.global_position.distance_to(from) - (1.5 if lamp.visible else 0.0)
+## What update_visibility() goes through, planta by planta. Only the planta
+## looked from is ever drawn, so the others' rooms, doors and wall lamps are
+## put away once, when the eye changes planta (put_away()), and not looked at
+## again: a floor is three plantas, and going through all of it -- 571 rooms,
+## 369 doors and 624 wall lamps on seed 81, asking each node where it is --
+## was 3 ms four times a second on the development PC, and more than twice
+## that on a modest processor (PERFORMANCE.md, section 10). Where things are
+## is kept here as well; none of them ever moves. A room or a door with no
+## planta of its own (a staged set) counts as on every one.
+var planta_things := {}
+var things_counted: Array = []
+var shown_planta := -1
+var room_spots := PackedVector3Array()
+var door_spots := PackedVector3Array()
+var sconce_spots := PackedVector3Array()
+var practical_spots := PackedVector3Array()
+var exit_spots := PackedVector3Array()
+## Whether any wall lamp is lit, any probe made: with none, and none wanted,
+## there is nothing to go through.
+var sconces_lit := false
+var probes_made := 0
+var curtain_motion := -1.0
+
+func things_on(planta: int) -> Dictionary:
+	if not planta_things.has(planta): planta_things[planta] = {"rooms": PackedInt32Array(), "doors": PackedInt32Array(), "sconces": PackedInt32Array()}
+	return planta_things[planta]
+
+func index_things() -> void:
+	planta_things.clear()
+	shown_planta = -1
+	sconces_lit = true
+	things_counted = [room_nodes.size(), doors.size(), sconce_lights.size(), practicals.size(), exit_lamps.size()]
+	var everywhere := range(FLOOR.PLANTAS)
+	room_spots.resize(room_nodes.size())
+	for i in room_nodes.size():
+		room_spots[i] = room_nodes[i].position
+		for planta in ([room_planta[i]] if i < room_planta.size() else everywhere): things_on(planta).rooms.append(i)
+	door_spots.resize(doors.size())
+	for i in doors.size():
+		door_spots[i] = doors[i].doorway
+		for planta in ([door_planta[i]] if i < door_planta.size() else everywhere): things_on(planta).doors.append(i)
+	sconce_spots.resize(sconce_lights.size())
+	for k in sconce_lights.size():
+		sconce_spots[k] = sconce_lights[k].global_position
+		things_on(FLOOR.planta_of(sconce_spots[k].y)).sconces.append(k)
+	practical_spots.resize(practicals.size())
+	for k in practicals.size(): practical_spots[k] = practicals[k].global_position
+	exit_spots.resize(exit_lamps.size())
+	for k in exit_lamps.size(): exit_spots[k] = exit_lamps[k].global_position
+	for slot in probe_slots: slot.spot = (slot.parent as Node3D).global_position
+
+## The doors of the planta a point is on that are within `reach` of it across
+## the floor.
+func doors_near(point: Vector3, reach: float) -> Array:
+	if things_counted != [room_nodes.size(), doors.size(), sconce_lights.size(), practicals.size(), exit_lamps.size()]: index_things()
+	var out: Array = []
+	for i in things_on(FLOOR.planta_of(point.y)).doors:
+		var spot := door_spots[i]
+		if (spot.x - point.x) * (spot.x - point.x) + (spot.z - point.z) * (spot.z - point.z) < reach * reach: out.append(doors[i])
+	return out
+
+## Everything that is not on the planta looked from, out of sight.
+func put_away(here: int) -> void:
+	shown_planta = here
+	for i in room_nodes.size():
+		if i >= room_planta.size() or room_planta[i] == here: continue
+		room_nodes[i].visible = false
+		if not lights[i].has_meta("void"): lights[i].visible = false
+	for i in doors.size():
+		if i >= door_planta.size() or door_planta[i] == here: continue
+		doors[i].visible = false
+		for fixture in door_fixtures[i]: fixture.visible = false
+	for k in sconce_lights.size():
+		if FLOOR.planta_of(sconce_spots[k].y) != here: sconce_lights[k].visible = false
 
 func build_dust() -> void:
 	dust = CPUParticles3D.new()

@@ -11,7 +11,12 @@ signal sound_requested(opening: bool, slow: bool, point: Vector3, emitter: RID, 
 signal swung(target: bool, slow: bool, forceful: bool)
 signal settled(opened: bool)
 var opened := false
-var moving := false
+## Whether the leaf is swinging. Setting it, either way, wakes the door up
+## (_physics_process).
+var moving := false:
+	set(value):
+		moving = value
+		set_physics_process(true)
 ## The door that leads on to the next wing stays shut until its stage is
 ## closed. Nothing opens it in the meantime: not the players, not the creature,
 ## not a slam.
@@ -96,8 +101,15 @@ func holds_somebody() -> bool:
 	query.collision_mask = 4 if opened else TRAPPED
 	return not get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
 
+## Only while there is something to wait for. A floor has several hundred
+## doors, and every one of them asking this sixty times a second, at rest,
+## was a tenth of a physics tick (docs/PERFORMANCE.md, section 10): a door
+## with nothing to wait for goes to sleep, and `moving` being set wakes it.
 func _physics_process(_delta: float) -> void:
-	if moving or collision_layer != GHOST: return
+	if moving: return
+	if collision_layer != GHOST:
+		set_physics_process(false)
+		return
 	if not holds_somebody(): collision_layer = OPEN_SOLID if opened else SOLID
 
 ## The wall this door is in: `across` points through the doorway (the way

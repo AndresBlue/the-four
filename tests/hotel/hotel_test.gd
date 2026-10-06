@@ -290,6 +290,10 @@ func run() -> void:
 	scene.player.position = Vector3(0, 0.04, 0)
 	for frame in 45: await physics_frame
 	check("Puerta cerrada recupera colisión", not door.opened and door.collision_layer == 8)
+	# A floor has several hundred doors: one with nothing to wait for is not
+	# asked anything sixty times a second (hotel_door._physics_process).
+	await physics_frame
+	check("Una puerta en reposo duerme", not door.is_physics_processing())
 	# Doors are reached from 2.4 m (interaction.DOOR_REACH): from across a
 	# room, as at the old 3.2 m, they are not.
 	scene.player.position = door.doorway + across * 2.1 + Vector3(0, 0.04, 0)
@@ -316,7 +320,7 @@ func run() -> void:
 	scene.player.position = Vector3(0, 0.04, 0)
 	door.toggle(true)
 	for frame in 20: await physics_frame
-	check("Apertura lenta respeta su duración", door.moving)
+	check("Apertura lenta respeta su duración, y la puerta está despierta mientras gira", door.moving and door.is_physics_processing())
 	for frame in 90: await physics_frame
 	check("Puerta abierta recupera colisión sin empujar", door.opened and not door.moving and door.collision_layer == door.OPEN_SOLID)
 	scene.player.rotation.y = float(scene.manifest.start_facing)

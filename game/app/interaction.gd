@@ -130,14 +130,18 @@ func focused_door():
 	return hit.collider if not hit.is_empty() and hit.collider is DOOR and hit.position.distance_to(from) < 0.01 else null
 
 ## Nearest open door within reach, for closing it without looking at it.
+## Asked every tick somebody walks looking at nothing: only the doors round
+## the player are gone through (hotel_geometry.doors_near()), not the floor's
+## several hundred.
 func door_behind():
 	var best = null
 	var best_distance := DOOR_BEHIND_REACH
-	for door in level.hotel.doors:
+	var here: Vector3 = level.player.global_position
+	for door in level.hotel.doors_near(here, DOOR_BEHIND_REACH):
 		if not door.opened or door.moving: continue
-		var distance := Vector2(door.doorway.x - level.player.global_position.x, door.doorway.z - level.player.global_position.z).length()
+		var distance := Vector2(door.doorway.x - here.x, door.doorway.z - here.z).length()
 		# Not the one on the planta above or below, straight overhead.
-		if absf(door.doorway.y - level.player.global_position.y) > 2.0: continue
+		if absf(door.doorway.y - here.y) > 2.0: continue
 		if distance < best_distance:
 			best = door
 			best_distance = distance
@@ -189,12 +193,15 @@ func drive_local(delta: float) -> void:
 		level.camcorder.focus("")
 		level.ui.hint.text = ""
 		return
-	var lock_target = focused_lock()
+	# What the hand is on, looked for once: a lock, a drawer, a set, a paper
+	# and a wardrobe are all found by the same ray.
+	var aimed = focused_area()
+	var lock_target = aimed if aimed is LOCK else null
 	if Input.is_action_just_pressed("interact") and is_instance_valid(lock_target) and not level.code_entered:
 		level.open_lock()
 		was_held = true
 		return
-	var container_target = focused_container()
+	var container_target = aimed if aimed is CONTAINER else null
 	if is_instance_valid(container_target) and not container_target.searched:
 		if Input.is_action_pressed("interact"):
 			search_time += delta
@@ -216,17 +223,17 @@ func drive_local(delta: float) -> void:
 		if Input.is_action_just_pressed("interact"): level.match_net.call_lift(car)
 		was_held = Input.is_action_pressed("interact")
 		return
-	var television_target = focused_television()
+	var television_target = aimed if aimed is TELEVISION else null
 	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(television_target) and not television_target.on:
 		level.switch_television(television_target)
 		was_held = true
 		return
-	var document_target = focused_document()
+	var document_target = aimed if aimed is DOCUMENT else null
 	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(document_target):
 		open_document(document_target)
 		was_held = true
 		return
-	var hiding_target = focused_hide()
+	var hiding_target = aimed if aimed is HIDE else null
 	if Input.is_action_just_pressed("interact") and (level.player.hidden or is_instance_valid(hiding_target)):
 		if level.player.hidden: level.match_net.use_hide(level.player.hiding_place, false)
 		else:

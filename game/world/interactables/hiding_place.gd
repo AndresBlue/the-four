@@ -42,7 +42,12 @@ var peeked := false
 var pivots := {}
 var leaf_bodies := {}
 var motion: Tween
-var close_timer := 0.0
+## Seconds until the doors swing shut by themselves. Setting it wakes the
+## wardrobe up to count them (_physics_process).
+var close_timer := 0.0:
+	set(value):
+		close_timer = value
+		if value > 0.0: set_physics_process(true)
 
 ## How far the model stands off the floor (metres).
 const STAND := 0.004
@@ -165,8 +170,12 @@ func set_peek(left: float, right: float) -> void:
 func ajar() -> bool:
 	return maxf(leaf_angle("left"), leaf_angle("right")) >= COLLISION_LIMIT
 
+## Asleep with nothing to count down, like the doors (hotel_door.gd): there
+## are three hundred wardrobes on a floor.
 func _physics_process(delta: float) -> void:
-	if close_timer <= 0.0: return
+	if close_timer <= 0.0:
+		set_physics_process(false)
+		return
 	close_timer -= delta
 	if close_timer <= 0.0 and not is_instance_valid(occupant):
 		swing(0.0, 0.8)
