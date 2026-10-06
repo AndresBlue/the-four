@@ -153,25 +153,27 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Antialiasing | FXAA | El de FSR 2.2 (TAA si se elige otro escalado) | TAA + MSAA 2× | TAA + MSAA 4× |
 | AA especular (limitador de rugosidad) | no | sí | sí | sí |
 | Atlas de sombras | 4096 | 4096 | 8192 | 8192 |
-| Filtro de sombras | Soft Very Low | Soft Low | Soft Medium | Soft High |
+| Filtro de sombras | Soft Very Low | Soft Low | Soft Medium | Soft Medium (era Soft High: sección 11) |
 | Penumbra (tamaño de la fuente, PCSS) | ninguna (PCF simple) | la de siempre | la de siempre | ×2,5, como la cúpula esmerilada |
 | Alcance de las lámparas (luz y sombra) | 42 m | 42 m | 48 m | 64 m |
 | Salas dibujadas | 56 m | 66 m | 66 m | 82 m |
 | Lámparas de muebles | apagadas | hasta 28 m | hasta 32 m | hasta 40 m |
+| Lámparas de techo con sombra a la vez | todas las encendidas | todas | todas | las 20 más cercanas; las demás alumbran solo su sala, sin sombra (sección 11) |
 | Sombra del cuerpo propio | no | sí | sí | sí |
-| SSAO | no | Low, media resolución | Medium, media resolución | High, resolución completa |
+| SSAO | no | Low, media resolución | Medium, media resolución | High, resolución completa, y oscurece también la luz de las lámparas (0,6 frente a 0,15) |
 | SSIL | no | no | Medium, media resolución | High, media resolución |
 | Reflejos SSR | no | no | 32 pasos, rugosidad Low | 64 pasos, rugosidad High |
 | Sondas de reflexión | no | 1 de cada 3 vestíbulos | todas las salas iluminadas, con sombras | igual que Alto |
 | Rebote de luz (un VoxelGI por sala iluminada) | no | no | sí, media resolución | sí, resolución completa |
-| Apliques que iluminan (con sombra) | no | no | sí, hasta 24 m | igual que Alto |
+| Apliques que iluminan (con sombra) | no | no | sí, hasta 24 m | igual que Alto, y los que no caben entre los doce alumbran sin sombra hasta 40 m, cada uno solo su sala |
 | Lámparas en la niebla volumétrica (niebla de 14 m) | no | sí | sí | sí |
 | Niebla volumétrica | no | 48³ | 64³ | 96³ |
 | Neblina de suelo en vestíbulos | no | no | sí | sí |
 | Glow | sí | sí | sí, subida bicúbica | igual que Alto |
 | Debanding | no | no | sí | sí |
 | Polvo (partículas) | no | 60 | 90 | 140 |
-| Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas |
+| Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas, y lo que distingue una superficie de un plano dibujado: barniz en capa propia, paredes y techos que no son planos, baldosas cada una con su inclinación, pelo de moqueta (sección 11) |
+| Cuadros | lienzo | lienzo | lienzo | tras un cristal |
 | Materiales escaneados | 1024 px, sin antirrepetición | 2048 px | 2048 px | 2048 px |
 | Decals (humedad, manchas, huellas) | no | la mitad | todos | todos |
 | Filtro VHS | 4 lecturas de croma | 7 | 7 | 7 |
@@ -238,7 +240,7 @@ Medido forzando un valor sobre el preset (`-Extra '--qualities=N --set=clave:val
 
 **Lo que más cambia los FPS:**
 1. **Escala de render.** El coste de casi todo es por píxel: 0,85 quita un 27 % de la GPU en Medio. En gráficas modestas, que se quedan cortas por píxeles, pesa aún más.
-2. **Filtrado de sombras.** Soft High es lo más caro de Ultra (un 18 % de su GPU), y solo compensa porque su penumbra es ancha.
+2. **Filtrado de sombras.** Soft High era lo más caro de Ultra (un 18 % de su GPU) y se puso por su penumbra ancha; medido después, Soft Medium dibuja la misma penumbra bajo TAA y Ultra ya no lo usa (sección 11).
 3. **Efectos de pantalla:** SSIL, SSAO, SSR y MSAA, entre 0,2 y 0,5 ms cada uno.
 4. **Sombra del propio cuerpo al caminar.** En Bajo quitarla deja las llamadas de sombra en 26 (frente a unas 450), porque ya nada obliga a redibujar las lámparas de alrededor en cada paso.
 5. **El detalle de shaders y el filtro VHS reducido casi no se notan en esta GPU** (0,04 ms). Ahorran cálculo, que pesa más en una integrada; en Bajo, además, quitan el grano de aliasing del techo.
@@ -492,5 +494,72 @@ En Compatibilidad, aquí mismo: Bajo 3,01 ms de GPU, 5,53 de fotograma y 1.169 l
 - **Medirlo en una integrada de verdad.** Todo lo de arriba sale de un modelo; lo que diga un portátil con una Iris Xe o una Vega manda sobre él, y dirá también qué renderizador conviene ahí. El primer arranque en una gráfica integrada ya elige Muy bajo; si sobra, lo siguiente es Bajo, que ahora usa FSR 1.
 - **La sonda de atascos de la criatura** (`verify.ps1`) no termina en sus cinco minutos (tarda unos nueve) y deja 4 de 12 trayectos sin acabar. Pasa igual sin ninguno de estos cambios (medido en el commit anterior), así que viene de antes y no se ha tocado; mientras siga así, `verify.ps1` se para ahí y no llega a los bots, los shaders ni la red, que se pasaron aparte.
 - **El papel pintado de las plantas de abajo.** El shader completo calcula la mugre del zócalo y las manchas de humedad con la altura en el mundo, no sobre el suelo de la sala, así que en la segunda y la tercera planta (a −6 y −12 m) todo el paño tiene que salir con la mugre del zócalo y sin manchas arriba (leído en `wallpaper.gdshader`; no se comparó en capturas). La textura de Muy bajo se mide desde el suelo de cada sala y sale como en la primera planta en las tres. No se ha tocado el shader completo: puede que ese deterioro de abajo guste como está.
-- **El interruptor «Sombras»** de los otros presets sigue dejando a las lámparas atravesar paredes cuando se apaga. Las capas de Muy bajo servirían también ahí; no se ha hecho.
+- **El interruptor «Sombras»** de los otros presets sigue dejando a las lámparas atravesar paredes cuando se apaga. Las capas de Muy bajo servirían también ahí; no se ha hecho. (En Ultra, que desde la sección 11 usa las capas, las lámparas de techo sí quedan confinadas a su sala al apagarlo; los apliques se apagan, como siempre.)
 - Si en una integrada real pesara el número de llamadas de dibujo, lo siguiente a mirar es `room_reach` (56 m en los dos presets bajos): en este PC, bajarlo a 40 m o quitar la oclusión no movió nada.
+
+## 11. Ultra: que se distinga de Alto
+
+*Octubre de 2026. La queja: Ultra costaba un tercio más que Alto (de ~80 a ~55 FPS en el equipo del autor) y no se veía la diferencia.*
+
+### Qué pagaba Ultra y qué se veía
+
+Medido a 1080p en el paseo del benchmark, efecto a efecto (`--set`), y comparando la misma vista píxel a píxel con y sin cada uno:
+
+| Lo que Ultra tenía sobre Alto | ms de GPU | Píxeles que cambian en una captura |
+|---|---|---|
+| Soft High y penumbra ×2,5 | 3,44 | 0,7–3 % (la penumbra; el filtro en sí, nada) |
+| Rebote a resolución completa | ~0,5 | no se aprecia |
+| Niebla 96³ | 0,52 | 0,00–0,04 % |
+| Motion blur 12, polvo 140, anisotropía 16× | 0,46 | 0,00–0,04 % |
+| MSAA 4× | 0,42 | 0,00–0,04 % |
+| SSAO High a resolución completa | 0,34 | 0,00–0,04 % |
+| SSIL High | 0,21 | 0,00–0,04 % |
+| SSR 64 pasos | 0,05 | 0,00–0,04 % |
+| Lámparas y salas más lejos | ~0 | — |
+
+De los 5,3 ms que Ultra costaba de más, lo único que cambiaba la imagen era la penumbra ancha de las sombras. El resto eran los mismos efectos de Alto con más muestras, y además **el filtro de cinta se come el detalle fino**: lo que sobrevive a la cinta son cosas grandes —qué lámparas alumbran, dónde hay un brillo, qué está en sombra—, no la nitidez de una textura. Los materiales ya son escaneos de 2048 px por un par de metros de pared: más resolución de textura no se vería.
+
+### Lo que Ultra tiene ahora y los demás no
+
+Todo detrás de claves que solo Ultra enciende (`graphics_presets.gd`); ningún otro preset cambia de imagen ni de coste.
+
+- **Los apliques lejanos alumbran** (`sconce_fill`). Solo los doce apliques más cercanos pueden tener sombra (más no caben en el atlas), y uno sin sombra atravesaba la pared, así que los demás estaban apagados: un vestíbulo grande tenía dieciséis apliques y doce encendidos. Ahora los que quedan fuera, hasta 40 m, alumbran su pared sin sombra y confinados a su sala por las capas de render que Muy bajo ya usaba (sección 10). Es lo que más se nota: una recepción o un salón con todas sus luces de pared.
+- **Lámparas de techo con sombra, contadas** (`lamps_cast`: 20). Ver abajo, «El atlas desbordado»: arregla una fuga y abarata.
+- **Cuadros tras un cristal** (`glazed_art`): una capa transparente sobre el lienzo en la que se ve el aplique de al lado y la linterna, y que a ras refleja la sala en vez de dejar ver el cuadro.
+- **Barniz en capa propia** sobre la madera (`surface_detail` 5): un segundo brillo, más fino, encima del de la veta, que desaparece donde el barniz está gastado o rayado. En un shader aparte (`wood_lacquer.gdshader`, mismo cuerpo que `wood.gdshader`): un shader que escribe `CLEARCOAT` paga ese segundo brillo por cada lámpara y cada píxel aunque escriba cero, y así los demás presets no lo pagan.
+- **Superficies que no son planos dibujados** (`surface_detail` 5, `finest_surface()`): paredes y techos con la panza de unos milímetros que tiene cualquier pared empapelada o techo de yeso, que solo se ve donde una lámpara los roza (`plane_swell()`); cada baldosa asentada con su propia inclinación, de modo que el reflejo del fluorescente en un suelo de baño se rompe pieza a pieza; y el pelo de la moqueta tumbado hacia un lado u otro, más oscuro mirado a contrapelo, con manchas que se mueven al caminar.
+- **Oclusión que oscurece también la luz de las lámparas** (`ssao_shape`): casi toda la luz de una sala es de sus lámparas, y con la oclusión actuando solo sobre la luz ambiente los encuentros —pared y techo, zócalo, las patas de una silla— quedaban tan claros como el paño abierto. Radio más corto (0,7 m) para que oscurezca rincones y no pasillos enteros.
+- **Filtro de sombras Soft Medium** en vez de Soft High, con la misma penumbra ×2,5. En capturas quietas las dos son iguales (0,0–1 % de píxeles, y ese 1 % era otra cosa); en un paneo, con poco historial de TAA, tampoco se distinguen, y el ruido entre fotogramas es menor con Medium (`evidence/lookdev/grain_*`). Son 2,3 ms que pagan todo lo anterior.
+
+### El atlas desbordado (venía de antes)
+
+`light_leak.gd --quality=3` daba luz en una sala a oscuras con las puertas cerradas (la 70 de la semilla 81: 0,012 de media) en unas pasadas sí y en otras no, y solo en Ultra. Cada lámpara con sombra a la vista pide sitio en el atlas de sombras, que tiene 88 huecos y da dos a cada lámpara redonda; con el alcance de Ultra (64 m) había en ese piso hasta 63 lámparas de techo encendidas a la vez, más los doce apliques y las de mueble, y **a la que no le toca hueco Godot la dibuja sin sombra, a través de las paredes**. En una sala quieta, donde nada se mueve y ninguna sombra tendría que redibujarse, Ultra hacía ~1100 llamadas de sombra por fotograma: lo que encaja con lámparas quitándose el hueco unas a otras.
+
+Ahora en Ultra solo proyectan sombra las 20 lámparas de techo más cercanas; las demás, que están a decenas de metros, alumbran sin sombra y solo las capas de su sala (`cast_or_fill()`). La sala 70 mide 0,00000 en todas las pasadas, las llamadas de sombra en la sala quieta son 0, y las salas que siguen saliendo en la lista (22, 23, 15, 16, 57, 62) son las mismas y con los mismos valores que en Alto: celdas de pasillo a oscuras abiertas a otras iluminadas, que es luz que entra por donde debe. **Alto y Medio no se han tocado.** Alto llega a ~43 lámparas de techo encendidas en ese piso y en la misma prueba no dio fuga, pero también redibuja sombras sin parar en la sala quieta (360–850 llamadas por fotograma). Probado sin dejarlo puesto (`--set=lamps_cast:20` sobre Alto): 0 llamadas, el trabajo de render en CPU baja de 1,66 a 0,96 ms y el fotograma de 9,31 a 8,84 ms en esa sala; caminando no cambia. No se ha aplicado porque cambia cómo se dibuja Alto (puertas en mitades, lámparas lejanas sin sombra) y nadie lo había pedido; es una clave en la tabla.
+
+### Medidas
+
+1080p, Forward+, RTX 4060 Ti, el mismo benchmark de las secciones anteriores (semilla 81). El ruido entre pasadas es de ±0,2 ms.
+
+| | Alto | Ultra antes | Ultra ahora |
+|---|---|---|---|
+| GPU caminando | 9,6–10,0 ms | 14,5 ms | 12,3–12,5 ms |
+| Fotograma caminando | 10,9–11,4 ms | 15,8 ms | 13,7–14,2 ms |
+| GPU en la sala quieta | 7,8–8,2 ms | 12,8 ms | 10,2–10,7 ms |
+| Llamadas de sombra en la sala quieta | ~360–850 | ~1090 | 0 |
+| Memoria de vídeo | 1982 MB | 2182 MB | 2131 MB |
+
+Ultra cuesta ahora un 14 % menos de GPU que antes con todo lo nuevo dentro. **Quedan sin gastar unos 2 ms para igualar al Ultra anterior y unos 4 para el 15 % de más que se había dado de margen**: no se han gastado porque lo que queda por hacer no es de este tipo (abajo). Medio (4,68 ms) y Alto miden lo mismo que antes del cambio.
+
+Capturas: `evidence/lookdev/ultra_antes_despues_vhs.png` (como se juega) y `_raw.png` (sin cámara), Alto / Ultra antes / Ultra ahora en cinco vistas; `tools/capture/lookdev_capture.gd` acepta ahora `--set=clave:valor` y `--only=vista,...`.
+
+### Lo que se probó y se descartó
+
+- **Estampado satinado en el papel pintado** (bajar la rugosidad del motivo): por debajo de ~0,6 de rugosidad el SSR toma la pared por un espejo y la llena de un moteado en bloques. Fuera.
+- **Capa transparente afilada.** La de Godot es un espejo en 0 y sigue siendo un pulido en 1, y dibuja el disco entero de la lámpara al máximo del lóbulo: con 0,06 el aplique salía en el cristal a muchas veces su brillo, el iris automático de la cámara se cerraba y todo el pasillo perdía un 19 % de luz. Cristal y barniz van en 1 y 0,6–1.
+- **Oclusión de radio largo** (1,7 m): oscurecía pasillos enteros, no rincones.
+- **Más resolución de textura, MSAA, SSR, SSIL o niebla más finos:** es lo que Ultra ya tenía y no se veía.
+
+### Pendiente: de dónde saldría el salto grande
+
+Con la misma geometría, las mismas lámparas y la cinta encima, lo de arriba es más o menos lo que hay que rascar en luz y materiales. Lo que separa estas salas de una foto es **geometría de detalle**: las paredes se encuentran con el techo y el suelo en una arista recta, sin cornisa ni rodapié con perfil; no hay interruptores, enchufes, rejillas, rociadores ni rosetones de techo; los paneles del friso son un dibujo sobre una tabla lisa. Es la fase 6 de [REALISM.md](REALISM.md) (kit de molduras y detalles), que no está aprobada ni empezada, y es donde irían los ~4 ms que sobran. Parte se puede generar (perfiles extruidos a lo largo de cada pared) y parte son modelos CC0.
