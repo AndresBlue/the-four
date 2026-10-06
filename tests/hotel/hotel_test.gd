@@ -430,8 +430,12 @@ func run() -> void:
 	check("Las dieciséis capas alcanzan: ninguna sala comparte capa con una lámpara que la alcance", int(scene.hotel.room_layers.clashes) == 0)
 	check("Muy bajo: la linterna sigue proyectando sombra", scene.player.torch.shadow_enabled)
 	check("Muy bajo: cada puerta se dibuja en dos mitades, una por sala", scene.hotel.door_halves.size() == scene.hotel.doors.size() and not scene.hotel.doors.is_empty())
+	var plain_view: float = scene.player.camera.fov
 	settings.set_designed(1)
 	scene.hotel.update_visibility(scene.player.position, true)
+	# The lens renders wider than it shows (camcorder_look.gd): without it the
+	# camera has the designed field of view, and with it back, the wider one.
+	check("Sin lente la cámara dibuja su campo de visión de diseño, y con ella de vuelta, el ancho", is_equal_approx(plain_view, preload("res://game/presentation/camcorder_look.gd").VIEW_FOV) and scene.player.camera.fov > plain_view + 5.0)
 	var restored := true
 	for i in here_rooms:
 		var lamp: OmniLight3D = scene.hotel.lights[i]

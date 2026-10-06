@@ -259,7 +259,13 @@ func apply_settings() -> void:
 	RenderingServer.global_shader_parameter_set("surface_detail", preset.surface_detail)
 	level.post_material.set_shader_parameter("chroma_taps", preset.chroma_taps)
 	level.post_material.set_shader_parameter("lite", preset.tape_lite)
-	LOOK.lens = preset.lens
+	if LOOK.lens != preset.lens:
+		LOOK.lens = preset.lens
+		# The field of view every camera renders with depends on it, and
+		# update_zoom_lens() only works it out again when the zoom moves:
+		# going to or from the preset without a lens left the picture drawn
+		# at the other's field of view.
+		lens_zoom = -1.0
 	var reduced: bool = level.settings.values.reduced
 	# The camcorder's lens and sensor (lens.gdshader) take the grain, the colour
 	# fringes and the vignette; the tape filter keeps the tape. The creature's
