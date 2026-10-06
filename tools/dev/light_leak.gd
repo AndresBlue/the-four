@@ -119,7 +119,7 @@ func run() -> void:
 	root.add_child(level)
 	level.ui.finish_intro()
 	await level.start_floor(run_seed)
-	if quality >= 0: level.settings.set_value("quality", quality)
+	if quality >= 0: level.settings.set_designed(quality)
 	level.locust.set_physics_process(false)
 	level.locust.position = Vector3(0, -80, 0)
 	level.player.set_physics_process(false)

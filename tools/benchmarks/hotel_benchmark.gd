@@ -83,7 +83,7 @@ func run() -> void:
 	# says what a game started on it loads and keeps in memory (one that goes
 	# through several keeps some of what the ones before it loaded).
 	level.settings.values = level.settings.DEFAULTS.duplicate()
-	level.settings.set_value("quality", int(qualities[0]))
+	level.settings.set_designed(int(qualities[0]))
 	var load_start := Time.get_ticks_msec()
 	await level.start_floor(81)
 	var load_ms := Time.get_ticks_msec() - load_start
@@ -123,7 +123,7 @@ func run() -> void:
 	var peak_memory := 0.0
 	for quality in qualities:
 		# Through the settings, as the menu does: the preset's render scale too.
-		level.settings.set_value("quality", quality)
+		level.settings.set_designed(quality)
 		# Presets with bounce light bake it now, on worker threads.
 		await level.bounce_ready()
 		# A forced scale wins over the preset's (--set=scale:0.5).

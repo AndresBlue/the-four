@@ -52,7 +52,7 @@ func run() -> void:
 	for i in 30: await process_frame
 	level.ui.finish_intro()
 	level.settings.values.first_game_done = true
-	level.settings.set_value("quality", quality)
+	level.settings.set_designed(quality)
 	await level.start_floor(81, false, [1], "equilibrada")
 	level.locust.set_physics_process(false)
 	level.locust.global_position = Vector3(0, -80, 0)

@@ -2,7 +2,7 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "fsr2", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. Named by where the button is
@@ -152,9 +152,10 @@ const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 ## No settings saved yet. The defaults are what the game is meant to look
 ## like on a first start: Medio, drawn at 67 % and brought up by FSR 2.2
 ## ("Calidad"), with the tape's look as it was tuned by playing (October
-## 2026). An integrated GPU starts on Muy bajo, with that preset's own scale
-## and stretch: it is the one measured to hold 60 FPS there with room to
-## spare (docs/PERFORMANCE.md, section 10), and going up from it is a click.
+## 2026): the upscaler is on "auto", which at that scale and on that preset
+## is FSR 2.2. An integrated GPU starts on Muy bajo, drawn at that preset's
+## own scale: it is the one measured to hold 60 FPS there with room to spare
+## (docs/PERFORMANCE.md, section 10), and going up from it is a click.
 ## Tests and capture tools keep the plain defaults.
 func first_run() -> void:
 	if not manages_window(): return
@@ -166,7 +167,6 @@ func first_run() -> void:
 	if not integrated_gpu: return
 	values.quality = PRESETS.VERY_LOW
 	values.scale = PRESETS.PRESETS[values.quality].scale
-	values.upscaler = "auto"
 
 func sanitize(key: String, value: Variant) -> Variant:
 	if key == "renderer": return value if value in ["forward_plus", "gl_compatibility"] else DEFAULTS[key]
@@ -187,18 +187,22 @@ func sanitize(key: String, value: Variant) -> Variant:
 		"scale": return clampf(value, PRESETS.SCALING_MODES[PRESETS.SCALING_MODES.size() - 1], 1.0)
 	return clampf(value, 0, 1)
 
+## A preset as it was designed and measured: at its own render scale and
+## with its own upscaler. For the benchmark and the capture tools; the menu
+## never asks for this (set_value()).
+func set_designed(quality: int) -> void:
+	values.scale = PRESETS.PRESETS[clampi(quality, 0, PRESETS.count() - 1)].scale
+	values.upscaler = "auto"
+	set_value("quality", quality)
+
 func set_value(key: String, value: Variant) -> void:
 	if not DEFAULTS.has(key): return
 	if key in DISPLAY_KEYS and previous_display.is_empty():
 		previous_display = {"resolution": values.resolution, "window_mode": values.window_mode}
 	values[key] = sanitize(key, value)
-	# A preset brings its own render scale, and the upscaler goes back to
-	# "auto", which is the preset's own (graphics_presets.scaling_mode): left
-	# on FSR 2.2 by hand, the lowest presets would still be paying for it. The
-	# slider and the list can move both afterwards.
-	if key == "quality":
-		values.scale = PRESETS.PRESETS[values.quality].scale
-		values.upscaler = "auto"
+	# Choosing a preset touches nothing else: the render scale, the upscaler,
+	# its sharpness and the edge smoothing are the player's own, and stay as
+	# they were left -- Ultra over FSR 2.2 at 67 % is asked for once.
 	if key == "renderer": write_renderer()
 	if key in DISPLAY_KEYS:
 		countdown = 12.0

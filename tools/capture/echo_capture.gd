@@ -183,7 +183,7 @@ func run() -> void:
 	await shot("reduced")
 	level.settings.values.reduced = false
 	for quality in PRESETS.count():
-		level.settings.set_value("quality", quality)
+		level.settings.set_designed(quality)
 		await listen(2.5)
 		await shot("preset_%d" % quality)
 

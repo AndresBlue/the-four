@@ -1134,7 +1134,11 @@ func show_settings(back: String) -> void:
 	var graphics := page(tabs, "GRÁFICOS")
 	options(graphics, "Preset gráfico", "quality", PRESETS.ORDER.map(func(index: int) -> String: return PRESETS.NAMES[index]), PRESETS.ORDER)
 	if int(settings.values.quality) == PRESETS.VERY_LOW:
-		paragraph(graphics, "Muy bajo es para gráficas integradas: las lámparas alumbran sin proyectar sombra (solo la linterna la proyecta), los materiales son de un color liso, y la imagen se dibuja a media resolución y sin lente. El juego y sus reglas son los mismos.", 16, 900, STYLE.SOFT)
+		paragraph(graphics, "Muy bajo es para gráficas integradas: las lámparas alumbran sin proyectar sombra (solo la linterna la proyecta), los materiales llevan texturas pequeñas y sin relieve, y la imagen no pasa por la lente. El juego y sus reglas son los mismos. Rinde como se pensó con la escala en Rendimiento (50 %).", 16, 900, STYLE.SOFT)
+	# The scale and the upscaler are the player's own and no preset touches
+	# them: on the two presets for modest machines, what FSR 2.2 costs is said.
+	if int(settings.values.quality) in [PRESETS.VERY_LOW, PRESETS.LOW] and PRESETS.scaling_mode(settings.values) == Viewport.SCALING_3D_MODE_FSR2:
+		paragraph(graphics, "El escalado está en FSR 2.2, que en una gráfica modesta cuesta más que todo lo demás de este preset junto. En IMAGEN ▸ Escalado, «Automático» usa el del preset.", 16, 900, STYLE.AMBER)
 	options(graphics, "Renderizador", "renderer", ["Forward+ (completo)", "Compatibilidad (gráfica integrada)"], ["forward_plus", "gl_compatibility"])
 	if settings.renderer_pending():
 		paragraph(graphics, "El renderizador cambia al reiniciar el juego.", 16, 900, STYLE.AMBER)
@@ -1421,8 +1425,8 @@ func options(parent: Node, title_text: String, key: String, labels: Array, value
 	control.item_selected.connect(func(index):
 		tick()
 		settings.set_value(key, values[index])
-		# A preset also moves the render scale slider: show it where it went. A
-		# renderer, upscaler or window change redraws what depends on it.
+		# A preset, renderer, upscaler or window change redraws what depends
+		# on it (the notes under the preset, what the upscaler leaves usable).
 		if key in ["quality", "renderer", "upscaler", "window_mode"]: show_settings.call_deferred(return_action)
 	)
 	row.add_child(control)

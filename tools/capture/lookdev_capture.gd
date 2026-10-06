@@ -48,7 +48,7 @@ func run() -> void:
 	# shots are about what is behind it.
 	level.ui.finish_intro()
 	await level.start_floor(81)
-	level.settings.set_value("quality", quality)
+	level.settings.set_designed(quality)
 	# Presets with bounce light bake it now, on worker threads.
 	await level.bounce_ready()
 	# After the floor and the settings, which place the window themselves.
