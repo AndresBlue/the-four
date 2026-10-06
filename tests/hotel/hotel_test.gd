@@ -414,6 +414,15 @@ func run() -> void:
 	check("Medio: FSR 2.2 en lugar de TAA, SSAO sin SSIL y lámparas hasta 42 m", viewport.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR2 and not viewport.use_taa and scene.environment.ssao_enabled and not scene.environment.ssil_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 42.0) and scene.player.avatar.meshes.all(func(mesh): return mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON))
 	settings.set_designed(3)
 	check("Ultra: MSAA 4×, SSR, lámparas hasta 64 m y salas hasta 82 m", viewport.msaa_3d == Viewport.MSAA_4X and scene.environment.ssr_enabled and is_equal_approx(scene.hotel.lights[0].distance_fade_shadow, 64.0) and scene.hotel.preset.room_reach == 82.0)
+	# What Ultra alone works out (PERFORMANCE.md, section 11): the lacquer as a
+	# coat of its own -- in a shader of its own, so no other preset pays for
+	# it --, the paintings behind glass, and an occlusion that darkens what
+	# the lamps light. Back on Alto all of it is as it was.
+	var wood_shaders := func() -> Array: return ["wood", "panel", "trim", "door"].map(func(key: String) -> Shader: return scene.hotel.materials[key].shader)
+	var canvas: StandardMaterial3D = scene.hotel.paintings()[0].mesh.material
+	check("Ultra: barniz en capa propia, cuadros acristalados y oclusión sobre la luz de las lámparas", wood_shaders.call().all(func(shader: Shader) -> bool: return shader == scene.hotel.WOOD_LACQUER) and canvas.clearcoat_enabled and scene.environment.ssao_light_affect > 0.5 and scene.hotel.preset.surface_detail == 5.0)
+	settings.set_designed(2)
+	check("Alto: la madera con su shader de siempre, cuadros sin cristal y la oclusión de antes", wood_shaders.call().all(func(shader: Shader) -> bool: return shader == scene.hotel.WOOD) and not canvas.clearcoat_enabled and is_equal_approx(scene.environment.ssao_light_affect, 0.15) and is_equal_approx(scene.environment.ssao_radius, 1.2))
 	# Muy bajo (PERFORMANCE.md, section 10): no lamp of the hotel casts a
 	# shadow, and each lights only the layers of its own room; the torch
 	# still casts. Back on another preset the lamps light everything again.
@@ -446,16 +455,52 @@ func run() -> void:
 	# Wall lamps are the many -- eight or sixteen to a public room -- and what
 	# does not fit in the shadow atlas Godot draws without a shadow, which goes
 	# straight through the wall into the dark room on the other side. Only the
-	# nearest twelve are lit, wherever the player stands.
-	var most_sconces := 0
+	# nearest twelve cast, wherever the player stands. On Ultra the ones past
+	# them are lit too (sconce_fill): with no shadow, and so each with nothing
+	# to light but the layers of its own room.
 	var floor_plan := preload("res://game/world/generation/floor_definition.gd")
-	for room in scene.manifest.rooms:
-		scene.hotel.update_visibility(floor_plan.position_of(room) + Vector3(0, 1.6, 0), true)
-		var alight := 0
-		for lamp in scene.hotel.sconce_lights:
-			if lamp.visible: alight += 1
-		most_sconces = maxi(most_sconces, alight)
-	check("Nunca más de doce apliques encendidos a la vez", most_sconces > 0 and most_sconces <= scene.hotel.SCONCES_LIT)
+	var every_room: int = scene.hotel.ROOM_LAYERS.ROOMS
+	for quality in [3, 2]:
+		settings.set_value("quality", quality)
+		var most_casting := 0
+		var most_filling := 0
+		var in_place := true
+		# The ceiling lamps too, on Ultra: twenty cast, the lit ones past them
+		# light their own rooms' layers and no more (lamps_cast).
+		var most_lamps := 0
+		var lamps_filling := 0
+		var lamps_in_place := true
+		for room in scene.manifest.rooms:
+			scene.hotel.update_visibility(floor_plan.position_of(room) + Vector3(0, 1.6, 0), true)
+			var casting := 0
+			var filling := 0
+			for lamp in scene.hotel.sconce_lights:
+				if not lamp.visible: continue
+				if lamp.shadow_enabled:
+					casting += 1
+					if (lamp.light_cull_mask & every_room) != every_room or lamp.light_projector == null: in_place = false
+				else:
+					filling += 1
+					if (lamp.light_cull_mask & every_room) == every_room or lamp.light_projector != null: in_place = false
+			most_casting = maxi(most_casting, casting)
+			most_filling = maxi(most_filling, filling)
+			var lamps_casting := 0
+			for lamp in scene.hotel.lights:
+				if not lamp.visible: continue
+				if lamp.shadow_enabled:
+					lamps_casting += 1
+					if (lamp.light_cull_mask & every_room) != every_room: lamps_in_place = false
+				else:
+					lamps_filling += 1
+					if (lamp.light_cull_mask & every_room) == every_room or lamp.light_projector != null: lamps_in_place = false
+			most_lamps = maxi(most_lamps, lamps_casting)
+		if quality == 3:
+			check("Nunca más de doce apliques proyectando sombra a la vez", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT)
+			check("Ultra: los apliques de más allá alumbran sin sombra y solo las capas de su sala", most_filling > 0 and in_place and scene.hotel.layered and not scene.hotel.static_light)
+			check("Ultra: nunca más de veinte lámparas de techo con sombra, y las demás solo alumbran su sala", most_lamps > 0 and most_lamps <= 20 and lamps_filling > 0 and lamps_in_place)
+		else:
+			check("Alto: doce apliques con su sombra y ninguno más encendido, y todas las lámparas de techo con la suya", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT and most_filling == 0 and in_place and not scene.hotel.layered and most_lamps > 0 and lamps_filling == 0 and lamps_in_place)
+	settings.set_value("quality", 3)
 	# The torch on the renderer of the modest machines: Compatibility draws no
 	# light projectors at all, so there the beam is the cone itself, narrower
 	# and with its own falloff, and its shadow needs a bias for the depth it

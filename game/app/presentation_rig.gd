@@ -199,6 +199,9 @@ func apply_settings() -> void:
 	var hunter := echo_seat()
 	level.environment.ssao_enabled = preset.ssao >= 0 and not hunter
 	if preset.ssao >= 0: RenderingServer.environment_set_ssao_quality(preset.ssao, preset.ssao_half, ProjectSettings.get_setting("rendering/environment/ssao/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssao/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssao/fadeout_to"))
+	level.environment.ssao_radius = preset.ssao_shape[0]
+	level.environment.ssao_intensity = preset.ssao_shape[1]
+	level.environment.ssao_light_affect = preset.ssao_shape[2]
 	level.environment.ssil_enabled = preset.ssil >= 0 and not hunter
 	if preset.ssil >= 0: RenderingServer.environment_set_ssil_quality(preset.ssil, preset.ssil_half, ProjectSettings.get_setting("rendering/environment/ssil/adaptive_target"), ProjectSettings.get_setting("rendering/environment/ssil/blur_passes"), ProjectSettings.get_setting("rendering/environment/ssil/fadeout_from"), ProjectSettings.get_setting("rendering/environment/ssil/fadeout_to"))
 	level.environment.ssr_enabled = preset.ssr_steps > 0 and not hunter

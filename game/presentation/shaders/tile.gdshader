@@ -50,6 +50,13 @@ void fragment() {
 		ROUGHNESS = use_maps ? scan_roughness(l, 0.0) + dirt * 0.25 : mix(0.34 + dirt * 0.3, 0.92, grout);
 		SPECULAR = 0.42;
 		float height = -grout * 0.003 - bevel * 0.0015 - crack * 0.0005;
-		NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), height, 1.0);
+		vec3 n = scan_normal(l, wn);
+		if (finest_surface()) {
+			// No tile is bedded quite level: each throws the lamp back a little
+			// its own way, and the glare on a tiled floor breaks up tile by tile.
+			vec2 tilt = (vec2(hash12(id + 3.0), hash12(id + 11.0)) - 0.5) * 0.045;
+			n = normalize(n + face_tangent() * tilt.x + face_bitangent() * tilt.y);
+		}
+		NORMAL = BUMPED_VIEW_NORMAL(n, height, 1.0);
 	}
 }

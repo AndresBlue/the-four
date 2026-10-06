@@ -147,6 +147,23 @@ vec3 room_grime(vec3 color, vec3 world, vec3 origin, inout float ao) {
 	return color;
 }
 
+// The highest preset (surface_detail 5) works out what tells a real surface
+// from a drawn plane: the lacquer over the wood as a layer of its own
+// (wood_lacquer.gdshader), a wall that is not flat (plane_swell()), tiles bedded each
+// at its own tilt (tile.gdshader), a pile that lies one way or another
+// (carpet.gdshader). Never by making a matt surface glossier: under about 0.6
+// of roughness the screen-space reflections take a wall for a mirror, and
+// their noise comes with it.
+bool finest_surface() { return surface_detail > 4.5; }
+
+// A papered or plastered plane is never flat: it bellies a few millimetres
+// over half a metre, and a lamp that grazes it -- a wall lamp its wall, the
+// ceiling lamp its ceiling -- shows where. Height in metres, for the bump.
+float plane_swell(vec2 uv) {
+	if (!finest_surface()) return 0.0;
+	return (vnoise(uv * 1.9 + plane_offset() * 31.0) - 0.5) * 0.012 + (vnoise(uv * 0.7 + 5.0) - 0.5) * 0.02;
+}
+
 // The lowest graphics preset (surface_detail 0) draws a surface from one small
 // picture of itself, lite_map: what this very shader draws at full detail --
 // the scan, the print, the stains -- photographed flat once by

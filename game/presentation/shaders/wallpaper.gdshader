@@ -77,7 +77,7 @@ void fragment() {
 			ALBEDO = room_grime(base, wp, NODE_POSITION_WORLD, ao);
 			AO = ao;
 			ROUGHNESS = scan_roughness(l, 0.82 + fibre * 0.1) - print_mask * 0.12 + mask * 0.05;
-			float height = fibre * 0.0015 + print_mask * 0.0008 - seam * 0.002 + (use_maps ? 0.0 : mottling * 0.002);
+			float height = fibre * 0.0015 + print_mask * 0.0008 - seam * 0.002 + (use_maps ? 0.0 : mottling * 0.002) + plane_swell(uv);
 			NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), height, 1.0);
 		}
 	}

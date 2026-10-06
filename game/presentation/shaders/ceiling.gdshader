@@ -29,6 +29,6 @@ void fragment() {
 		ALBEDO = room_grime(color, wp, NODE_POSITION_WORLD, ao);
 		AO = ao;
 		ROUGHNESS = scan_roughness(l, 0.95);
-		NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), stipple * 0.004, 1.0);
+		NORMAL = BUMPED_VIEW_NORMAL(scan_normal(l, wn), stipple * 0.004 + plane_swell(uv), 1.0);
 	}
 }

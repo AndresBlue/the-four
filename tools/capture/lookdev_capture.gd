@@ -8,7 +8,10 @@ extends SceneTree
 ## stays comparable pixel by pixel) and <shot>_vhs.png (as played).
 ## --setup=path.gd runs that script's run(level) on the built floor before the
 ## shots: how a trial (a light recipe, probes, a material) is compared with
-## the last milestone without touching the game.
+## the last milestone without touching the game. --set=key:value,... forces
+## preset values over the preset (graphics_presets.gd keys), as the
+## benchmark's does. --only=salon,pasillo takes just those shots (and their
+## close-ups).
 ##   recepcion   the reception, its red beacon and counter
 ##   dormitorio  a lit bedroom
 ##   salon       a lit lounge
@@ -36,10 +39,17 @@ func run() -> void:
 	var label := "current"
 	var quality := PRESETS.HIGH
 	var setup := ""
+	var only := PackedStringArray()
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--label="): label = argument.trim_prefix("--label=")
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
 		if argument.begins_with("--setup="): setup = argument.trim_prefix("--setup=")
+		if argument.begins_with("--only="): only = argument.trim_prefix("--only=").split(",")
+		if argument.begins_with("--set="):
+			for pair in argument.trim_prefix("--set=").split(","):
+				var key := pair.get_slice(":", 0)
+				var text := pair.get_slice(":", 1)
+				PRESETS.overrides[key] = (text == "true") if text in ["true", "false"] else (float(text) if "." in text else int(text))
 	out_dir = "res://evidence/lookdev/%s_q%d" % [label, quality]
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	level = load("res://game/app/hotel.tscn").instantiate()
@@ -59,6 +69,7 @@ func run() -> void:
 		level.locust.position = Vector3(0, -80, 0)
 	if not setup.is_empty(): await load(setup).new().run(level)
 	for shot in SHOTS:
+		if not only.is_empty() and not shot in only: continue
 		var room := pick(shot)
 		if room.is_empty():
 			print("LOOKDEV no room for ", shot)

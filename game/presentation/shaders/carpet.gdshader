@@ -60,6 +60,14 @@ void fragment() {
 		color *= 0.84 + pile * 0.22 + (brush - 0.5) * 0.14;
 		// Wear: lighter, flattened paths and scattered dark stains.
 		float traffic = smoothstep(0.45, 0.8, fbm(uv * 0.22)) * wear;
+		if (finest_surface() && is_floor_face()) {
+			// The pile lies one way here and another there, as feet and the
+			// vacuum left it: looked at against the nap it is darker, along it
+			// lighter, and the patches move as one walks. Trodden flat, less.
+			float lie = fbm(uv * 0.55 + 9.0) * 12.566;
+			vec2 toward = normalize(CAMERA_POSITION_WORLD.xz - wp.xz + vec2(1e-4));
+			color *= 1.0 + dot(vec2(cos(lie), sin(lie)), toward) * 0.1 * (1.0 - traffic * 0.6);
+		}
 		color = mix(color, vec3(dot(color, vec3(0.33))) * 1.15, traffic * 0.35);
 		float stain = smoothstep(0.7, 0.76, fbm(uv * 0.8 + 11.0)) * wear;
 		color *= 1.0 - stain * 0.35;

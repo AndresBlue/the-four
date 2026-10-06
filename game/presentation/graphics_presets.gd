@@ -57,8 +57,9 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ## penumbra              lamp source size, times the size built (PCSS: a
 ##                       penumbra that widens away from the caster). 0: plain
 ##                       PCF, the cheapest. Ultra's 2.5 is about the size of a
-##                       frosted dome and needs Soft High, or its wide
-##                       penumbrae come out grainy. The torch never grows past
+##                       frosted dome. It was on Soft High for it; under TAA
+##                       Soft Medium draws the same penumbrae, still or
+##                       panning, for 2.3 ms less at 1080p (PERFORMANCE.md). The torch never grows past
 ##                       its own.
 ## lamp_fade             [begin, length] of the ceiling lamps' distance fade.
 ##                       Their shadow lasts exactly as long as their light.
@@ -91,6 +92,25 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ##                       quarter of their video memory.
 ## sconce_lights         wall lamps light their wall (lighting.gd profile,
 ##                       shadowed); otherwise only their shades glow.
+## lamps_cast            how many ceiling lamps cast a shadow at once, the
+##                       nearest; the lit ones past them light without one,
+##                       each kept in its room by layers as sconce_fill's are
+##                       (hotel_geometry.gd, cast_or_fill()). 0: every lamp in
+##                       reach casts. Ultra's reach lit more shadowed lamps
+##                       than the shadow atlas has places for.
+## ssao_shape            the occlusion's radius in metres, its intensity, and
+##                       how much of it darkens what the lamps light and not
+##                       only the ambient light (0 to 1). Nearly all the light
+##                       of a room is its lamps', so with little of the last
+##                       the creases of a room -- wall and ceiling, skirting,
+##                       a chair's feet -- stay as bright as the open wall.
+## glazed_art            the paintings are behind glass: a clear coat over the
+##                       canvas, where the lamps and the torch are seen
+##                       (hotel_geometry.gd, glaze()).
+## sconce_fill           the wall lamps past the nearest twelve light their
+##                       walls too, without a shadow, each kept in its room by
+##                       the room's render layer (hotel_geometry.gd,
+##                       SCONCES_LIT): a long corridor is lit to its end.
 ## lamp_fog              ceiling lamps light the volumetric fog, which is
 ##                       then 14 m long: short cells do not straddle walls.
 ## bounce                light bounced round each lit room (a VoxelGI per room,
@@ -105,7 +125,12 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ##                       of itself, baked from this same shader at full
 ##                       detail (surface.gdshaderinc, baked_surface();
 ##                       tools/textures/bake_lite_maps.gd): no scanned map --
-##                       they are not loaded -- no noise, no relief.
+##                       they are not loaded -- no noise, no relief. At 5
+##                       what tells a real surface from a drawn plane
+##                       (finest_surface()): the lacquer a clear coat over the
+##                       wood, walls and ceilings that are not flat under a
+##                       grazing lamp, tiles each at its own tilt, a carpet's
+##                       pile lying one way or another.
 ## occlusion             occlusion culling: what is behind walls is not sent to
 ##                       the GPU, at the price of a small picture of the walls
 ##                       drawn on the processor every frame.
@@ -147,41 +172,41 @@ const PRESETS := [
 	{
 		"scale": 0.67, "upscaler": "fsr1", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": true, "taa": false, "roughness_limiter": false,
 		"shadow_atlas": 4096, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, "penumbra": 0.0,
-		"lamp_fade": [30.0, 12.0], "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
-		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
+		"lamp_fade": [30.0, 12.0], "lamps_cast": 0, "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
+		"ssao": -1, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
-		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
+		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 	{
 		"scale": 0.85, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 4096, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_LOW, "penumbra": 1.0,
-		"lamp_fade": [30.0, 12.0], "room_reach": 66.0, "furniture_lamps": 28.0, "body_shadow": true,
-		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
+		"lamp_fade": [30.0, 12.0], "lamps_cast": 0, "room_reach": 66.0, "furniture_lamps": 28.0, "body_shadow": true,
+		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 48, "fog_depth": 48, "fog_filter": true, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 1, "dust": 60,
-		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 6, "autofocus": false, "sconce_lights": false, "lamp_fog": true, "bounce": false, "decals": 0.5, "small_maps": false, "bounce_half": true,
+		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 6, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "lamp_fog": true, "bounce": false, "decals": 0.5, "small_maps": false, "bounce_half": true,
 		"echo": {"rays": 1900, "aimed": 600, "points": 24000, "bodies": 700, "puff_points": 26, "puffs": 4800, "find_points": 40, "finds": 600, "frames": 7000, "grain": 1.0, "halo": 0.0},
 	},
 	{
 		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_2X, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, "penumbra": 1.0,
-		"lamp_fade": [36.0, 12.0], "room_reach": 66.0, "furniture_lamps": 32.0, "body_shadow": true,
-		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
+		"lamp_fade": [36.0, 12.0], "lamps_cast": 0, "room_reach": 66.0, "furniture_lamps": 32.0, "body_shadow": true,
+		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
 		"fog_size": 64, "fog_depth": 64, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 90,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 8, "autofocus": true, "sconce_lights": true, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": true,
+		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 8, "autofocus": true, "sconce_lights": true, "sconce_fill": false, "glazed_art": false, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": true,
 		"echo": {"rays": 3600, "aimed": 1200, "points": 46000, "bodies": 1400, "puff_points": 44, "puffs": 9600, "find_points": 70, "finds": 1200, "frames": 14000, "grain": 1.0, "halo": 0.0},
 	},
 	{
 		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_4X, "fxaa": false, "taa": true, "roughness_limiter": true,
-		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_HIGH, "penumbra": 2.5,
-		"lamp_fade": [50.0, 14.0], "room_reach": 82.0, "furniture_lamps": 40.0, "body_shadow": true,
-		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
+		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, "penumbra": 2.5,
+		"lamp_fade": [50.0, 14.0], "lamps_cast": 20, "room_reach": 82.0, "furniture_lamps": 40.0, "body_shadow": true,
+		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssao_shape": [0.7, 4.0, 0.6], "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
 		"fog_size": 96, "fog_depth": 96, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 140,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 12, "autofocus": true, "sconce_lights": true, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": false,
+		"surface_detail": 5.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 12, "autofocus": true, "sconce_lights": true, "sconce_fill": true, "glazed_art": true, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": false,
 		"echo": {"rays": 4800, "aimed": 1400, "points": 64000, "bodies": 1800, "puff_points": 56, "puffs": 12000, "find_points": 90, "finds": 1600, "frames": 18000, "grain": 0.8, "halo": 1.0},
 	},
 	# Muy bajo: for integrated graphics. The game is all there; the picture is
@@ -189,11 +214,11 @@ const PRESETS := [
 	{
 		"scale": 0.5, "upscaler": "bilinear", "static_light": true, "tape_lite": true, "lens": false, "occlusion": true, "msaa": Viewport.MSAA_DISABLED, "fxaa": false, "taa": false, "roughness_limiter": false,
 		"shadow_atlas": 2048, "shadow_filter": RenderingServer.SHADOW_QUALITY_HARD, "penumbra": 0.0,
-		"lamp_fade": [30.0, 12.0], "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
-		"ssao": -1, "ssao_half": true, "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
+		"lamp_fade": [30.0, 12.0], "lamps_cast": 0, "room_reach": 56.0, "furniture_lamps": 0.0, "body_shadow": false,
+		"ssao": -1, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
 		"glow": false, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
-		"surface_detail": 0.0, "chroma_taps": 2, "lod_threshold": 8.0, "anisotropy": Viewport.ANISOTROPY_DISABLED, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
+		"surface_detail": 0.0, "chroma_taps": 2, "lod_threshold": 8.0, "anisotropy": Viewport.ANISOTROPY_DISABLED, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
 		# The creature's reading is Bajo's: it is what it plays by.
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},

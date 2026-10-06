@@ -145,6 +145,20 @@ const SCONCE_REACH := 24.0
 ## 0.00013; with sixteen it was back to 0.029. The nearest few are all
 ## anybody sees, and they are the ones lit.
 const SCONCES_LIT := 12
+## The wall lamps past those twelve (preset sconce_fill): lit all the same,
+## without a shadow, each kept in its room by the room's render layer instead
+## ("Light that stays in its room", below) -- which is what could not be done
+## when the twelve were counted: a lamp with no shadow went through the wall.
+## Nearer than SCONCE_REACH and among the twelve, a wall lamp casts and has its
+## profile (a cone up, a cone down, nothing behind); further, or past the
+## twelve, it is a plain glow on its wall, a little weaker, out to
+## SCONCE_FILL_REACH. From that far the difference is the wall being lit or not.
+const SCONCE_FILL_REACH := 40.0
+const SCONCE_ENERGY := 1.6
+const SCONCE_FILL_ENERGY := 0.7
+## What each wall lamp is doing (sconce_lights' order).
+enum {SCONCE_OUT, SCONCE_CAST, SCONCE_FILL}
+var sconce_state := PackedByteArray()
 ## --- Light that stays in its room (preset static_light) ---------------------
 ##
 ## From Bajo up a lamp is kept in its room by its shadow. On Muy bajo no lamp
@@ -162,6 +176,11 @@ const SCONCES_LIT := 12
 ## nothing.
 const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
 var static_light := false
+## Whether anything in force is kept in its room by the layers: static_light,
+## the wall lamps past the twelve (sconce_fill) or the ceiling lamps past a
+## count (lamps_cast). Then the doors are drawn in their halves and the bodies
+## follow their rooms' layers.
+var layered := false
 ## room_layers.assign() of this floor, {} for a staged set.
 var room_layers := {}
 ## Every lamp of the floor, by instance id: the light, the layers it lights
@@ -1661,7 +1680,7 @@ func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
 	var facing := Basis(Vector3.UP, sconce.rotation.y)
 	lamp.transform = Transform3D(facing, sconce.position + facing.z * 0.16 + Vector3(0, 0.22, 0))
 	lamp.light_color = LIGHTING.light_color(2600.0)
-	lamp.light_energy = 1.6
+	lamp.light_energy = SCONCE_ENERGY
 	lamp.omni_range = 3.4
 	lamp.omni_attenuation = 1.6
 	lamp.light_size = SCONCE_SIZE * preset.penumbra
@@ -1694,6 +1713,16 @@ func layer_at(point: Vector3) -> int:
 	if room_layers.cars.has(id) and ROOM_LAYERS.car_rect(room).has_point(Vector2(point.x, point.z)): return room_layers.cars[id]
 	return room_layers.layer[id]
 
+## What a lamp standing at a point may light: its room's layer and those of
+## the cells the room is open to (a car's lamp, the car alone).
+func glow_at(point: Vector3) -> int:
+	if room_layers.is_empty(): return 0
+	var room := FLOOR.room_at(manifest.rooms, point)
+	if room.is_empty(): return 0
+	var id := int(room.id)
+	if room_layers.cars.has(id) and ROOM_LAYERS.car_rect(room).has_point(Vector2(point.x, point.z)): return room_layers.cars[id]
+	return room_layers.mask[id]
+
 ## Every room's layer, everything built so far put on its room's, and every
 ## lamp filed with what it may light (the head of this section). Once a floor,
 ## whatever the preset: the layers cost nothing while the lamps light them all.
@@ -1705,7 +1734,7 @@ func assign_layers() -> void:
 	for i in room_nodes.size():
 		placed[room_nodes[i]] = true
 		var bit: int = room_layers.layer[i]
-		if bit != 0: lay(room_nodes[i], bit, int(room_layers.cars.get(i, bit)))
+		if bit != 0: lay(room_nodes[i], bit, int(room_layers.cars.get(i, bit)), room_layers.mask[i])
 	# A door, its casing and its stop stand in two rooms: lit by both.
 	for i in doors.size():
 		var out: Vector3 = Basis(Vector3.UP, doors[i].closed_rotation).z * 0.7 + Vector3(0, 1.0, 0)
@@ -1713,30 +1742,27 @@ func assign_layers() -> void:
 		for piece in [doors[i]] + door_fixtures[i]:
 			placed[piece] = true
 			if piece is GeometryInstance3D: ROOM_LAYERS.put_on(piece, both)
-			lay(piece, both, both)
+			lay(piece, both, both, both)
 	# Whatever else stands on the floor itself: where it is.
 	for child in get_children():
 		if not placed.has(child) and child is Node3D: adopt(child)
-	# A ceiling lamp also lights the cells its own is open to, and the red
-	# lamp of the reception whatever its ceiling lamp does.
-	for i in lights.size():
-		if kept_lamps.has(lights[i].get_instance_id()): kept_lamps[lights[i].get_instance_id()].mask = room_layers.mask[i]
-	for entry in beacons:
-		if kept_lamps.has(entry.light.get_instance_id()): kept_lamps[entry.light.get_instance_id()].mask = room_layers.mask[int(entry.room)]
 	for lamp in lights + practicals + sconce_lights + exit_lamps + car_lamps:
 		if kept_lamps.has(lamp.get_instance_id()): kept_lamps[lamp.get_instance_id()].looked_after = true
 	apply_static_light()
 
-## Everything under `node` on a room's layer, its lamps filed. A lift's car
-## under it is on `car`, and what of the car shows in the lobby on both.
-func lay(node: Node, bit: int, car: int) -> void:
+## Everything under `node` on a room's layer, its lamps filed with `glow`:
+## what a lamp of this room may light, its own layer and those of the cells it
+## is open to. A lift's car under it is on `car`, and what of the car shows in
+## the lobby on both.
+func lay(node: Node, bit: int, car: int, glow: int) -> void:
 	for child in node.get_children():
 		var here := car if child.has_meta("car") else bit
 		if child is GeometryInstance3D: ROOM_LAYERS.put_on(child, here | (car if child.has_meta("lobby_side") else 0))
-		elif child is Light3D: keep_lamp(child, here)
-		# Under a car, `bit` is the car's and `car` the lobby's.
-		if child.has_meta("car"): lay(child, here, bit)
-		else: lay(child, here, car)
+		elif child is Light3D: keep_lamp(child, glow)
+		# Under a car, `bit` is the car's and `car` the lobby's, and its lamp
+		# lights the car alone.
+		if child.has_meta("car"): lay(child, here, bit, here)
+		else: lay(child, here, car, glow)
 
 ## Something on the floor itself, or put there after it was built (a
 ## television, a document, a lock): on the layer of the room it stands in.
@@ -1744,11 +1770,12 @@ func adopt(node: Node3D) -> void:
 	if not is_instance_valid(node) or not node.is_inside_tree(): return
 	var bit := layer_at(node.global_position + Vector3(0, 0.2, 0))
 	if bit == 0: return
+	var glow := glow_at(node.global_position + Vector3(0, 0.2, 0))
 	if node is GeometryInstance3D: ROOM_LAYERS.put_on(node, bit)
 	elif node is Light3D:
-		keep_lamp(node, bit)
+		keep_lamp(node, glow)
 		light_lamp(kept_lamps[node.get_instance_id()])
-	lay(node, bit, bit)
+	lay(node, bit, bit, glow)
 
 func keep_lamp(light: Light3D, mask: int) -> void:
 	if kept_lamps.has(light.get_instance_id()): return
@@ -1766,14 +1793,14 @@ func apply_static_light() -> void:
 	for id in kept_lamps.keys():
 		if is_instance_valid(kept_lamps[id].light): light_lamp(kept_lamps[id])
 		else: kept_lamps.erase(id)
-	if static_light: make_halves()
+	if layered: make_halves()
 	for i in door_halves.size():
 		var entry: Dictionary = door_halves[i]
 		var whole := doors[i].get_node_or_null("Leaf") as Node3D
-		if whole != null: whole.visible = not static_light
+		if whole != null: whole.visible = not layered
 		for item in entry.sided:
-			if item[0].has_meta("half"): item[0].visible = static_light
-		if static_light: continue
+			if item[0].has_meta("half"): item[0].visible = layered
+		if layered: continue
 		# The whole casings come back with the next update_visibility().
 		for half in entry.casing: half.visible = false
 		for item in entry.sided: ROOM_LAYERS.put_on(item[0], entry.bits[0] | entry.bits[1])
@@ -2029,9 +2056,15 @@ func apply_quality(new_preset: Dictionary) -> void:
 		maps_small = small_maps
 		maps_none = no_maps
 		for key in materials: apply_scan(materials[key], small_maps)
-	if static_light != preset.static_light:
+	var layers_wanted: bool = preset.static_light or (preset.sconce_fill and preset.sconce_lights) or preset.lamps_cast > 0
+	if static_light != preset.static_light or layered != layers_wanted:
 		static_light = preset.static_light
+		layered = layers_wanted
 		apply_static_light()
+	# Every wall lamp is told again what it is doing (update_visibility()).
+	sconce_state.fill(SCONCE_OUT)
+	glaze(preset.glazed_art)
+	lacquer(preset.surface_detail > 4.5)
 	for light in lights:
 		set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])
 		var size: float = LAMP_SIZE * preset.penumbra
@@ -2061,7 +2094,7 @@ func apply_quality(new_preset: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	bounce.poll()
-	if static_light and not room_layers.is_empty(): follow_bodies()
+	if layered and not room_layers.is_empty(): follow_bodies()
 	# With the power gone nothing blinks and nothing hums: the lamps are not
 	# failing, they are dead.
 	if dark: return
@@ -2138,6 +2171,32 @@ static func paintings() -> Array:
 		carved_frame.surface_set_material(carved_frame.get_surface_count() - 1, source.surface_get_material(surface))
 	carved_frame.resource_name = "carved_frame"
 	return art
+
+## The wood's lacquer as a coat of its own, or not (preset surface_detail 5):
+## the wood materials change shader for it, since the coat is paid for by
+## whatever shader can write one (wood.gdshaderinc).
+const WOOD := preload("res://game/presentation/shaders/wood.gdshader")
+const WOOD_LACQUER := preload("res://game/presentation/shaders/wood_lacquer.gdshader")
+func lacquer(coated: bool) -> void:
+	var wanted: Shader = WOOD_LACQUER if coated else WOOD
+	for key in materials:
+		var material := materials[key] as ShaderMaterial
+		if material != null and material.shader != wanted and material.shader in [WOOD, WOOD_LACQUER]: material.shader = wanted
+
+## The paintings behind glass, or not (preset glazed_art): a clear coat over
+## the canvas, so a lamp or the torch is seen in it as in a pane. The canvas
+## under it stays as matt as it was.
+static func glaze(glazed: bool) -> void:
+	for entry in paintings():
+		var material: StandardMaterial3D = entry.mesh.material
+		if material.clearcoat_enabled == glazed: continue
+		material.clearcoat_enabled = glazed
+		material.clearcoat = 1.0
+		# The engine's coat is a mirror at 0 and still a polished one at 1, and
+		# it draws a lamp's whole disc at the lobe's peak: any sharper and a
+		# wall lamp is in the glass at many times its own brightness, which
+		# shuts the camera's iris on the whole corridor.
+		material.clearcoat_roughness = 1.0
 
 ## A painting on a wall's inner face (inner: which side of the boundary),
 ## centred at pos; carved gold frame or a wooden one.
@@ -2250,6 +2309,10 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	if here != shown_planta: put_away(here)
 	var things: Dictionary = things_on(here)
 	var fade_end: float = preset.lamp_fade[0] + preset.lamp_fade[1]
+	# Where the lamps past a count are kept in their rooms by layers (preset
+	# lamps_cast), the lit ones are counted from the nearest: [distance, room].
+	var counted: bool = layered and not static_light and preset.lamps_cast > 0 and not show_all
+	var nearest_lamps: Array = []
 	for i in things.rooms:
 		var distance := room_spots[i].distance_to(player_position)
 		room_nodes[i].visible = distance < reach
@@ -2270,9 +2333,14 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		# Only when it changes: every write makes Godot redraw that shadow. A
 		# profile only works on a shadowed light: without shadows it goes, or
 		# the lamp would give no light at all.
-		if light.shadow_enabled != shadows:
+		if counted:
+			if light.visible: nearest_lamps.append([distance - (2.0 if light.shadow_enabled else 0.0), i])
+		elif light.shadow_enabled != shadows:
 			light.shadow_enabled = shadows
 			light.light_projector = light.get_meta("profile") if shadows else null
+	if counted:
+		nearest_lamps.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		for place in nearest_lamps.size(): cast_or_fill(lights[nearest_lamps[place][1]], shadows and place < int(preset.lamps_cast))
 	# A probe captures its room once, when it is made: only while the room's
 	# lamp is on, or it would keep a dark capture. Only the nearest exist.
 	# Godot's reflection atlas has 64 places and a probe keeps its place until
@@ -2302,18 +2370,21 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	# lit counts as a metre and a half nearer, so the ones round a room do not
 	# swap places every time the player takes a step: a lamp going on and off
 	# as you shift your weight would be worse than one lamp fewer.
+	# Past the twelve, and out to SCONCE_FILL_REACH, a wall lamp still lights
+	# its wall where the preset keeps it in its room by layers (sconce_fill).
 	var sconces_wanted: bool = not dark and preset.sconce_lights and shadows and not echo_view
 	if sconces_wanted or sconces_lit:
+		var fill: bool = sconces_wanted and layered and preset.sconce_fill
 		var nearest: Array = []
 		for k in things.sconces:
-			var lamp := sconce_lights[k]
 			var distance := sconce_spots[k].distance_to(player_position)
-			if sconces_wanted and distance < SCONCE_REACH: nearest.append([distance - (1.5 if lamp.visible else 0.0), lamp])
-			elif lamp.visible: lamp.visible = false
+			if sconces_wanted and distance < (SCONCE_FILL_REACH if fill else SCONCE_REACH): nearest.append([distance - (1.5 if sconce_state[k] == SCONCE_CAST else 0.0), k, distance])
+			elif sconce_state[k] != SCONCE_OUT or sconce_lights[k].visible: set_sconce(k, SCONCE_OUT)
 		nearest.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-		for k in nearest.size():
-			var lit: bool = k < SCONCES_LIT
-			if nearest[k][1].visible != lit: nearest[k][1].visible = lit
+		for place in nearest.size():
+			var k: int = nearest[place][1]
+			var state := SCONCE_CAST if place < SCONCES_LIT and nearest[place][2] < SCONCE_REACH else (SCONCE_FILL if fill else SCONCE_OUT)
+			if sconce_state[k] != state or sconce_lights[k].visible != (state != SCONCE_OUT): set_sconce(k, state)
 		sconces_lit = not nearest.is_empty()
 	bounce.show_near(player_position, preset.bounce and not echo_view and not dark, here)
 	for k in practicals.size():
@@ -2339,7 +2410,7 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		var shown: bool = show_all or door_spots[i].distance_to(player_position) < reach
 		doors[i].visible = shown
 		for fixture in door_fixtures[i]: fixture.visible = shown
-		if static_light and i < door_halves.size():
+		if layered and i < door_halves.size():
 			var entry: Dictionary = door_halves[i]
 			door_fixtures[i][0].visible = false
 			for half in entry.casing: half.visible = shown
@@ -2347,6 +2418,39 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 			if open != entry.open:
 				entry.open = open
 				for item in entry.sided: ROOM_LAYERS.put_on(item[0], entry.bits[0] | entry.bits[1] if open else entry.bits[item[1]])
+
+## A ceiling lamp casting, with its profile and the whole hotel to light, or
+## -- past the preset's lamps_cast -- filling: no shadow, and nothing to light
+## but the layers of its own room. Every shadowed lamp in view asks for a
+## place in the shadow atlas, which has 88 and gives a round lamp two: on the
+## highest preset, whose lamps reach furthest, there were sixty and more of
+## them alight at once on a big floor, and the ones the atlas had no place
+## for were drawn without their shadow, through the walls, into rooms that
+## are dark (tools/dev/light_leak.gd: a dark room lit one run in two).
+func cast_or_fill(light: Light3D, casts: bool) -> void:
+	var entry = kept_lamps.get(light.get_instance_id())
+	if entry != null: ROOM_LAYERS.light_only(light, entry.every if casts else entry.mask)
+	if light.shadow_enabled == casts: return
+	light.shadow_enabled = casts
+	light.light_projector = light.get_meta("profile") if casts else null
+
+## A wall lamp out, casting with its profile, or filling its wall with no
+## shadow and only its own room's layers to light.
+func set_sconce(k: int, state: int) -> void:
+	var lamp := sconce_lights[k]
+	sconce_state[k] = state
+	if state == SCONCE_OUT:
+		lamp.visible = false
+		return
+	var casts := state == SCONCE_CAST
+	var entry = kept_lamps.get(lamp.get_instance_id())
+	if entry != null: ROOM_LAYERS.light_only(lamp, entry.every if casts else entry.mask)
+	if lamp.shadow_enabled != casts: lamp.shadow_enabled = casts
+	var profile: Texture2D = LIGHTING.profile("sconce") if casts else null
+	if lamp.light_projector != profile: lamp.light_projector = profile
+	lamp.light_energy = SCONCE_ENERGY if casts else SCONCE_ENERGY * SCONCE_FILL_ENERGY
+	set_fade(lamp, (SCONCE_REACH if casts else SCONCE_FILL_REACH) - 8.0, 6.0)
+	lamp.visible = true
 
 ## What update_visibility() goes through, planta by planta. Only the planta
 ## looked from is ever drawn, so the others' rooms, doors and wall lamps are
@@ -2390,6 +2494,8 @@ func index_things() -> void:
 		door_spots[i] = doors[i].doorway
 		for planta in ([door_planta[i]] if i < door_planta.size() else everywhere): things_on(planta).doors.append(i)
 	sconce_spots.resize(sconce_lights.size())
+	sconce_state.resize(sconce_lights.size())
+	sconce_state.fill(SCONCE_OUT)
 	for k in sconce_lights.size():
 		sconce_spots[k] = sconce_lights[k].global_position
 		things_on(FLOOR.planta_of(sconce_spots[k].y)).sconces.append(k)
