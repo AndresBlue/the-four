@@ -482,7 +482,23 @@ Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la d
 
 **Coste** (1080p, paseo del benchmark, Ultra con y sin el kit en la misma tanda): 0,4 ms de GPU caminando y 0,85 en el salón grande, donde todo está cerca; sin la distancia de detalle eran 1,9. La carga del piso sube de ~14,2 a ~15,9 s en el benchmark (unos 3 900 nodos más, de 38 800: los lotes del kit se construyen en todos los presets).
 
-**Falta de esta fase:** enchufes, rociadores y detectores; manillas y bisagras propias; zócalos y cornisas en los tabiques de las alcobas (hoy yeso liso); variedad de perfiles por tipo de sala; y los modelos CC0 de detalle (lámpara de araña, extintor, alarma, reloj de pie…), aprobados el 6 de octubre y pendientes de colocar.
+**Modelos de detalle** (Poly Haven, CC0; aprobados el 6 de octubre; en todos los presets, como el resto del mobiliario). Se bajan con `tools/props/fetch_models.py` a `source_assets/props/` y siguen el circuito de la fase 4 (`ingest_models.py`, `build_catalogue.gd`). Colocados por `room_dressing.gd`, con `vary()` como todo lo demás y **sin tocar qué pieza lleva cada tramo** (los conjuntos de `SETS` son los mismos, así que los muebles de un piso no cambian de sitio):
+
+| Modelo | Dónde |
+|---|---|
+| Alarma de incendios (`fire_alarm`) | en el primer tramo de pasillos, vestíbulos y recepción, a 1,22 m, del lado del centro de la pared |
+| Cuadro eléctrico (`power_box_01`) | en la pared de lavandería, almacén, mantenimiento y oficina, sobre un tramo sin mueble alto; es sólido |
+| Reloj de pie (`vintage_grandfather_clock_01`) | en un tramo vacío de habitaciones, salones, comedor y sala de lectura cuidados; sólido |
+| Ventilador de techo (`ceiling_fan`) | dos, quietos, en comedor, sala de lectura y oficina |
+| Bolsa de basura (`trashbag`) | junto al basurero donde ya no se recoge; sólida |
+| Planta en maceta (`potted_plant_02`) | tres de cada diez plantas de suelo (el resto sigue siendo la monstera) |
+| Reloj de sobremesa, jarrón de porcelana, suculenta (`mantel_clock_01`, `antique_ceramic_vase_01`, `potted_plant_04`) | entre los adornos de cómodas, consolas y mesitas |
+
+En la semilla 81: 60 alarmas, 30 cuadros, 25 relojes de pie, 74 ventiladores, 43 bolsas y 43 plantas. Lo que es sólido entra en la navegación como cualquier mueble.
+
+**Bajados y sin colocar** (en `source_assets/`, fuera de git y fuera del juego; `SKIP` en las dos herramientas): la lámpara de araña (`Chandelier_02`: pide ser una lámpara de verdad, con su luz y su versión apagada), el marco colgante (`hanging_picture_frame_01`), la vitrina (`vintage_cabinet_01`: es un mueble donde habría que decidir dónde va la nota del código) y los conductos (`modular_airduct_rectangular_01`). **Descartados:** el extintor y el teléfono público «korean» llevan los rótulos en coreano y una ficha de revisión fechada en 2019. La alarma, en cambio, está rotulada en inglés (FIRE ALARM, PULL DOWN) en un hotel con los carteles en español: se lee solo de cerca; queda a criterio del autor.
+
+**Falta de esta fase:** enchufes, rociadores y detectores; manillas y bisagras propias; zócalos y cornisas en los tabiques de las alcobas (hoy yeso liso); variedad de perfiles por tipo de sala; un extintor y un teléfono sin rótulos en coreano; y colocar lo bajado.
 
 ### Pruebas que se hacen al empezar su fase
 

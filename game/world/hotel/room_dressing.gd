@@ -47,7 +47,16 @@ const SETS := {
 }
 const MODULE_SET := {0: "lounge", 1: "bedroom", 2: "bedroom", 3: "bedroom", 4: "bath", 5: "lounge", 6: "dining", 7: "laundry", 8: "service", 9: "service", 10: "lounge", 11: "corridor", 12: "corridor", 13: "reading", 14: "lounge", 15: "office", 16: "wardrobe", 17: "garden", 18: "empty"}
 ## Small things by what a top or shelf holds.
-const ORNAMENTS := ["ceramic_vase_01", "brass_vase_02", "jug_01", "book_encyclopedia_set_01", "wall_clock_standing"]
+const ORNAMENTS := ["ceramic_vase_01", "brass_vase_02", "jug_01", "book_encyclopedia_set_01", "wall_clock_standing", "mantel_clock_01", "antique_ceramic_vase_01", "potted_plant_04"]
+## What hangs on walls and from ceilings besides (October 2026): where a
+## fire alarm's pull station is put, which rooms have a fuse box and which a
+## ceiling fan, by module.
+const ALARM_ROOMS := [0, 10, 11, 12]
+const FUSE_ROOMS := [7, 8, 9, 15]
+const FAN_ROOMS := [6, 13, 15]
+## A long-case clock stands on a bare stretch of these, where no wall lamp
+## hangs over it.
+const CLOCK_ROOMS := [1, 2, 3, 5, 6, 13, 14]
 const STORE_THINGS := ["cardboard_box_01", "plastic_crate_02", "bleach_bottle", "multi_cleaner_bottle", "wicker_basket_02", "cardboard_box_01"]
 const BOTTLES := ["wine_bottles_01_bordeaux", "wine_bottles_01_alsace", "wine_bottles_01_burgundy", "wine_bottles_01_champagne"]
 ## Half a wardrobe's width, and a little (hiding_place.gd).
@@ -217,7 +226,21 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		# hand finds it there, whatever the piece's depth.
 		# And where a note of the code would be left in it (note_fold()).
 		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick, "front": builder.piece_front, "note": builder.note_spot})
+		# A fire alarm's pull station on the first stretch of a corridor, a
+		# lobby or the reception, at the end of it nearer the middle of the
+		# wall: a painting and its lamps hang past the other end.
+		if k == 0 and int(room.type) in ALARM_ROOMS and builder.vary(seed_pos, 130) < 0.6:
+			var end: float = -0.72 * signf(frame.basis.x.dot(frame.origin))
+			place(builder, holder, "fire_alarm", Transform3D(Basis.IDENTITY, Vector3(end, 1.22, WALL_FACE + 0.018)), false)
 		k += 1
+	# Ceiling fans, still: one either side of the lamp along the room.
+	if int(room.type) in FAN_ROOMS:
+		var span := FLOOR.size_of(room)
+		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
+		var drop: float = mesh("ceiling_fan").get_aabb().size.y
+		for side in [-1, 1]:
+			var at: Vector3 = along * side * maxf(span.x, span.y) * 0.25
+			place(builder, node, "ceiling_fan", Transform3D(Basis(Vector3.UP, builder.vary(node.position + at, 132) * TAU), at + Vector3(0, float(room.height) - drop - 0.004, 0)), false)
 	decals(builder, node, room, kept)
 
 ## One stretch: a piece (or a group) of the set, its things, and on a bare
@@ -244,7 +267,7 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			var chair: String = "ArmChair_01" if v.call(32) < 0.5 else "GreenChair_01"
 			put(builder, holder, chair, Vector3(-0.22, 0, 0.45), v.call(33) * 0.4 - 0.2, 1.0, true)
 			put(builder, holder, "side_table_tall_01", Vector3(0.45, 0, 0.25), 0.0, 1.0, true)
-			dress_top(builder, holder, "side_table_tall_01", Vector3(0.45, 0, 0.25), 1.0, ["ceramic_vase_01", "brass_vase_02", "cigarette_pack", "alarm_clock_01"], seed_pos, 1)
+			dress_top(builder, holder, "side_table_tall_01", Vector3(0.45, 0, 0.25), 1.0, ["ceramic_vase_01", "brass_vase_02", "cigarette_pack", "alarm_clock_01", "potted_plant_04"], seed_pos, 1)
 		"chair":
 			put(builder, holder, "dining_chair_02", Vector3(-0.2, 0, 0.35), v.call(34) * 0.5 - 0.25, 1.0, true)
 			if v.call(35) < 0.5: put(builder, holder, "side_table_tall_01", Vector3(0.35, 0, 0.22), 0.0, 1.0, true)
@@ -255,7 +278,7 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			# The other lies flat beside it (on its back: it reaches into the room).
 			place(builder, holder, "vintage_suitcase_b", Transform3D(Basis(Vector3.UP, v.call(37) * 0.6 - 0.3) * Basis(Vector3.RIGHT, PI / 2), Vector3(0.4, 0.12, 0.1)))
 		"plant":
-			put(builder, holder, "monstera", Vector3(0, 0, 0.35), v.call(38) * TAU, 1.0, false)
+			put(builder, holder, "potted_plant_02" if v.call(39) < 0.3 else "monstera", Vector3(0, 0, 0.35), v.call(38) * TAU, 1.0, false)
 			builder.box(holder, Vector3(0, 0.27, 0.35), Vector3(0.5, 0.54, 0.5), "", true)
 		"bookcase":
 			var s := minf(0.9, width / 1.4)
@@ -296,12 +319,24 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 		"bins":
 			put(builder, holder, "metal_trash_can_rust" if kept >= 1 else "metal_trash_can_clean", Vector3(-0.2, 0, 0.3), v.call(43) * TAU, 0.6, true)
 			if v.call(44) < 0.5: put(builder, holder, "WetFloorSign_01", Vector3(0.4, 0, 0.35), v.call(45) * 0.8 - 0.4, 1.0, false)
+			# Where nobody empties them any more, a full bag left beside it.
+			elif kept >= 1: put(builder, holder, "trashbag", Vector3(0.42, 0, 0.3), v.call(45) * TAU, 1.0, true)
 		_:
+			# A long-case clock on a bare stretch of a room, a lounge or a
+			# dining room that is still kept (and has no wall clock here).
+			if kept == 0 and int(room.type) in CLOCK_ROOMS and v.call(46) >= 0.3 and v.call(133) < 0.45: put(builder, holder, "vintage_grandfather_clock_01", Vector3(0, 0, 0.25), 0.0, 1.0, true)
 			# A bare stretch: what a neglected room leaves lying about.
 			if kept >= 1: litter(builder, holder, seed_pos, kept)
 	# A clock on one wall in some rooms.
 	if pick in ["", "chairs", "armchair", "chair"] and v.call(46) < 0.3:
 		place(builder, holder, "wall_clock", Transform3D(Basis.IDENTITY, Vector3(0.2, 2.05, WALL_FACE + 0.027)))
+	# A fuse box on the wall of some service rooms, its door left open, over
+	# nothing taller than a stack of boxes: solid, at the height of a head.
+	if pick in ["", "boxes", "bins", "baskets"] and int(room.type) in FUSE_ROOMS and v.call(134) < 0.4:
+		var size := mesh("power_box_01").get_aabb().size
+		var at := Vector3(-0.45, 1.25, WALL_FACE + size.z * 0.5 + 0.004)
+		place(builder, holder, "power_box_01", Transform3D(Basis.IDENTITY, at), false)
+		builder.box(holder, at + Vector3(0, size.y * 0.5, 0), size, "", true)
 
 ## A model on the stretch's floor, turned by yaw and scaled by s; with a box
 ## collider round it when solid (turned only a little, so its box stays).

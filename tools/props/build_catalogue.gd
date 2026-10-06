@@ -17,7 +17,8 @@ const SCALE := {"steel_frame_shelves_01": 0.1}
 ## Downloads that hold several objects side by side: each is baked on its own,
 ## as <id>_<name>.res, from the glTF nodes whose name matches.
 ## Downloads the game does not use (tools/props/ingest_models.py SKIP).
-const SKIP := ["Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"]
+const SKIP := ["Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02",
+	"Chandelier_02", "hanging_picture_frame_01", "vintage_cabinet_01", "modular_airduct_rectangular_01", "korean_fire_extinguisher_01", "korean_public_payphone_01"]
 const PARTS := {
 	"metal_trash_can": {"clean": "^metal_trash_can(_handle_left|_handle_right|_lid)?$", "rust": "^metal_trash_can_rust"},
 	"vintage_suitcase": {"a": "^vintage_suitcase_01", "b": "^vintage_suitcase_02"},

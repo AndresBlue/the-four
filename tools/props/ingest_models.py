@@ -33,8 +33,18 @@ MAX_SIZE = 1024
 ## cleanup): not brought in, not registered. Chandelier_01 is still read from
 ## source_assets/ by the trailer (tools/trailer3d).
 SKIP = {"Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"}
+## Downloaded in October 2026 (tools/props/fetch_models.py) and not placed
+## yet: a chandelier wants a lamp of its own, the frame its own way of being
+## hung, the cabinet a place for the code's notes, the ducts a run along a
+## ceiling.
+SKIP |= {"Chandelier_02", "hanging_picture_frame_01", "vintage_cabinet_01", "modular_airduct_rectangular_01"}
+## And two that will not be: their labels are in Korean, and the
+## extinguisher's inspection card is dated 2019.
+SKIP |= {"korean_fire_extinguisher_01", "korean_public_payphone_01"}
+## Models whose glass has to be made clear here (material_tres()).
+CLEAR_GLASS = {"vintage_grandfather_clock_01"}
 # Big pieces seen close up keep 2048 px.
-KEEP_2K = {"GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01"}
+KEEP_2K = {"GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01", "vintage_grandfather_clock_01"}
 
 IMPORT = """[remap]
 
@@ -105,9 +115,15 @@ def material_tres(model, gltf, material, textures):
         resources.append(file)
         lines.append(f'{key} = ExtResource("{len(resources)}")')
 
-    colour = pbr.get("baseColorFactor", [1, 1, 1, 1])
-    lines.append("albedo_color = Color(%g, %g, %g, %g)" % tuple(colour))
+    colour = list(pbr.get("baseColorFactor", [1, 1, 1, 1]))
+    glass = material.get("alphaMode") == "BLEND" and "glass" in material["name"].lower()
     if albedo: texture(albedo, "albedo_texture")
+    # A pane whose glTF kept neither an alpha in its colour nor one in its
+    # image (the transmission it had in Blender is not exported) comes out as
+    # a black board over whatever is behind it: a clock's dial. A third, for
+    # the models listed (the ones brought in before are left as they look).
+    if glass and model in CLEAR_GLASS and colour[3] > 0.99: colour[3] = 0.3
+    lines.insert(0, "albedo_color = Color(%g, %g, %g, %g)" % tuple(colour))
     if orm:
         texture(mr, "orm_texture")
     else:

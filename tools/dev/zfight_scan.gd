@@ -15,7 +15,8 @@ extends SceneTree
 ## Run with a window: headless, Godot reads every MultiMesh transform back as
 ## the identity.
 ##   godot --path . --script tools/dev/zfight_scan.gd -- [--seed=81] [--planta=0] [--walls] [--shots] [--detail] [--per=3] [--quality=3]
-## --quality puts a graphics preset first: Ultra has pieces the others do not.
+## --quality puts a graphics preset (Medio if not given): Ultra has pieces the
+## others do not, and draws rooms further off.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## Planes this close count as one (metres): the depth buffer cannot separate
 ## them at any distance worth looking from.
@@ -35,7 +36,7 @@ func run() -> void:
 	var seed_value := 81
 	var planta := -1
 	var per := 3
-	var quality := -1
+	var quality := 1
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--planta="): planta = int(argument.trim_prefix("--planta="))
@@ -46,14 +47,17 @@ func run() -> void:
 	level.ui.finish_intro()
 	await level.start_floor(seed_value)
 	# What is hidden is not looked at, and a preset hides or shows pieces (the
-	# moulded kit, graphics_presets.gd detail_kit).
-	if quality >= 0:
-		level.settings.set_designed(quality)
-		await process_frame
+	# moulded kit, graphics_presets.gd detail_kit): always a preset of this
+	# run's own, Medio unless told, and not whatever the last run left saved.
+	level.settings.set_designed(quality)
+	await process_frame
 	var faces: Array = []
 	for node in level.hotel.find_children("*", "", true, false):
 		if node is MultiMeshInstance3D and String(node.name).ends_with("_Shadow"): continue
 		if node is GeometryInstance3D and (not node.is_visible_in_tree() or node.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY): continue
+		# What only stands in from far (the kit's plain pieces while the kit is
+		# on) is not drawn with what it stands in for, but for a metre.
+		if node is GeometryInstance3D and node.visibility_range_begin > 0.0: continue
 		# Whose it is: the room it is drawn with (a room shades its own boxes).
 		var owner_id: int = node.get_parent().get_instance_id()
 		if node is MultiMeshInstance3D and String(node.name).begins_with("Mesh_"):
