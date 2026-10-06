@@ -109,7 +109,9 @@ func _ready() -> void:
 	fill.light_color = GLOW
 	fill.light_energy = FILL
 	fill.omni_range = FILL_RANGE
-	fill.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
+	# Compatibility only draws cube shadows, and says so in the log every time
+	# it is asked for the other kind.
+	if RenderingServer.get_current_rendering_method() != "gl_compatibility": fill.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 	fill.shadow_enabled = true
 	fill.shadow_bias = 0.04
 	fill.light_volumetric_fog_energy = 0.0
