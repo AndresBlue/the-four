@@ -97,7 +97,9 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ##                       each kept in its room by layers as sconce_fill's are
 ##                       (hotel_geometry.gd, cast_or_fill()). 0: every lamp in
 ##                       reach casts. Ultra's reach lit more shadowed lamps
-##                       than the shadow atlas has places for.
+##                       than the shadow atlas has places for, and Alto's
+##                       enough of them to redraw shadows in a room where
+##                       nothing moved.
 ## ssao_shape            the occlusion's radius in metres, its intensity, and
 ##                       how much of it darkens what the lamps light and not
 ##                       only the ambient light (0 to 1). Nearly all the light
@@ -198,7 +200,7 @@ const PRESETS := [
 	{
 		"scale": 1.0, "upscaler": "fsr2", "static_light": false, "tape_lite": false, "lens": true, "occlusion": true, "msaa": Viewport.MSAA_2X, "fxaa": false, "taa": true, "roughness_limiter": true,
 		"shadow_atlas": 8192, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, "penumbra": 1.0,
-		"lamp_fade": [36.0, 12.0], "lamps_cast": 0, "room_reach": 66.0, "furniture_lamps": 32.0, "body_shadow": true,
+		"lamp_fade": [36.0, 12.0], "lamps_cast": 20, "room_reach": 66.0, "furniture_lamps": 32.0, "body_shadow": true,
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
 		"fog_size": 64, "fog_depth": 64, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 90,

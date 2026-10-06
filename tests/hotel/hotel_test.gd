@@ -521,7 +521,15 @@ func run() -> void:
 			check("Ultra: los apliques de más allá alumbran sin sombra y solo las capas de su sala", most_filling > 0 and in_place and scene.hotel.layered and not scene.hotel.static_light)
 			check("Ultra: nunca más de veinte lámparas de techo con sombra, y las demás solo alumbran su sala", most_lamps > 0 and most_lamps <= 20 and lamps_filling > 0 and lamps_in_place)
 		else:
-			check("Alto: doce apliques con su sombra y ninguno más encendido, y todas las lámparas de techo con la suya", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT and most_filling == 0 and in_place and not scene.hotel.layered and most_lamps > 0 and lamps_filling == 0 and lamps_in_place)
+			check("Alto: doce apliques con su sombra y ninguno más encendido, y veinte lámparas de techo con la suya como en Ultra", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT and most_filling == 0 and in_place and scene.hotel.layered and most_lamps > 0 and most_lamps <= 20 and lamps_filling > 0 and lamps_in_place)
+	# Medio keeps every lamp's shadow, and nothing is kept in its room by layers.
+	settings.set_value("quality", 1)
+	var medio_whole := true
+	for room in scene.manifest.rooms:
+		scene.hotel.update_visibility(floor_plan.position_of(room) + Vector3(0, 1.6, 0), true)
+		for lamp in scene.hotel.lights:
+			if lamp.visible and (not lamp.shadow_enabled or (lamp.light_cull_mask & every_room) != every_room): medio_whole = false
+	check("Medio: todas las lámparas de techo encendidas con su sombra y alumbrando todas las capas", medio_whole and not scene.hotel.layered)
 	settings.set_value("quality", 3)
 	# The torch on the renderer of the modest machines: Compatibility draws no
 	# light projectors at all, so there the beam is the cone itself, narrower
