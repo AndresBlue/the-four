@@ -106,7 +106,114 @@ const DECREPIT_WALLS := [8, 18]
 ## The walls' material of the room being built (build_room()).
 var wall_material := "plaster"
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
-const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone"}
+## "plain" and "detail" are boxes like any other, batched apart: the plain
+## rails and cornices the moulded kit takes the place of, and the boxes only
+## the kit has (below, "The moulded kit").
+const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone", "plain": "@plain", "detail": "@detail"}
+
+## --- The moulded kit (preset detail_kit; docs/REALISM.md, phase 6) ---------
+## Where a wall meets the floor, the dado and the ceiling there are plain
+## boxes: a board for a skirting, a batten for a rail, two steps for a
+## cornice, and a flat plank with lines drawn on it for the dado's panels.
+## With the kit they are mouldings run to a section (mouldings.gd), panels
+## raised out of their frames, a plaster rose round each ceiling lamp, a
+## switch by each door and a grille high on a wall. Both are built, and the
+## preset shows one or the other (set_kit()): a preset is changed in the
+## middle of a floor. Nothing of the kit is solid.
+const MOULDINGS := preload("res://game/world/hotel/mouldings.gd")
+var kit := false
+## What only the kit shows, and what it takes the place of.
+var kit_shown: Array[GeometryInstance3D] = []
+var kit_replaced: Array[GeometryInstance3D] = []
+## The kit is drawn round the camera and no further: past KIT_FAR from the
+## nearest of a room (KIT_NEAR for the panels, the switches and the grilles)
+## the plain pieces stand in again, which from there are the same picture --
+## a 2 cm bevel is under a pixel -- for a third of the triangles and none of
+## the edges MSAA shades four times over. Per room: a batch is one instance,
+## and Godot measures to its middle, so half the room's diagonal is added.
+const KIT_NEAR := 16.0
+const KIT_FAR := 26.0
+## The two hand over across a metre either way in which both are drawn (the
+## plain pieces are inside the moulded ones, all but a sliver), so that there
+## is never a distance, nor a first frame, at which a wall has neither.
+const KIT_OVERLAP := 1.0
+const KIT_MARGIN := 0.5
+
+## How far from a room's middle its kit is drawn: `reach` from its nearest.
+func kit_reach(parent: Node, reach: float) -> float:
+	var room: Variant = batch_roots.get(parent.get_instance_id())
+	return reach + (Vector2(room.r, room.g).length() if room != null else 0.0)
+
+## One of the kit's own batches: shown with the kit, and only from near.
+func kit_piece(instance: GeometryInstance3D, parent: Node, reach: float) -> void:
+	instance.visible = kit
+	instance.set_meta("kit_off", not kit)
+	instance.visibility_range_end = kit_reach(parent, reach) + KIT_OVERLAP
+	instance.visibility_range_end_margin = KIT_MARGIN
+	kit_shown.append(instance)
+
+## A batch of the plain pieces the kit takes the place of: with the kit, it
+## is what is seen from far.
+func kit_plain(instance: GeometryInstance3D, parent: Node) -> void:
+	instance.set_meta("kit_far", kit_reach(parent, KIT_FAR) - KIT_OVERLAP)
+	instance.visibility_range_begin_margin = KIT_MARGIN
+	instance.visibility_range_begin = instance.get_meta("kit_far") if kit else 0.0
+	kit_replaced.append(instance)
+
+func set_kit(on: bool) -> void:
+	kit = on
+	for piece in kit_shown:
+		if not is_instance_valid(piece): continue
+		piece.visible = on
+		piece.set_meta("kit_off", not on)
+	for piece in kit_replaced:
+		if is_instance_valid(piece): piece.visibility_range_begin = piece.get_meta("kit_far") if on else 0.0
+
+## A length of moulding along a wall: `kind` of mouldings.gd, centred at x,
+## hung from y, on the face of the wall that looks towards face * z.
+func moulding(boundary: Node3D, kind: String, x: float, length: float, y: float, face: int) -> void:
+	var turned := Basis(Vector3.UP, 0.0 if face > 0 else PI) * Basis.from_scale(Vector3(length / MOULDINGS.UNIT, 1, 1))
+	place(boundary, MOULDINGS.run(kind), Transform3D(turned, Vector3(x, y, 0)), true, "trim", true)
+
+## The same moulding round a corner that sticks out into the room towards
+## (-sx, -sz) (corner_posts()).
+func moulding_corner(node: Node3D, kind: String, corner: Vector3, y: float, sx: int, sz: int) -> void:
+	var turn: float = {Vector2i(1, 1): 0.0, Vector2i(1, -1): PI * 0.5, Vector2i(-1, -1): PI, Vector2i(-1, 1): PI * 1.5}[Vector2i(sx, sz)]
+	place(node, MOULDINGS.corner(kind), Transform3D(Basis(Vector3.UP, turn), corner + Vector3(0, y, 0)), true, "trim", true)
+
+## The dado of a stretch of wall in raised panels: as many whole ones as fit,
+## in the middle, and what is left over at each end as a plain stile.
+func dado_panels(boundary: Node3D, x: float, length: float, face: int) -> void:
+	var width: float = MOULDINGS.PANEL_WIDTH
+	var count := int(floor((length - 0.04) / width))
+	var edge := (length - count * width) * 0.5
+	var turned := Basis(Vector3.UP, 0.0 if face > 0 else PI)
+	for k in count: place(boundary, MOULDINGS.panel(), Transform3D(turned, Vector3(x - length * 0.5 + edge + (k + 0.5) * width, 0, 0)), false, "panel_field", true)
+	var tall: float = MOULDINGS.PANEL_HEAD - MOULDINGS.PANEL_FOOT
+	var middle: float = (MOULDINGS.PANEL_HEAD + MOULDINGS.PANEL_FOOT) * 0.5
+	# From inside the old plank (0.145 out) to the frames' face.
+	var thick: float = MOULDINGS.PANEL_FRAME - 0.14
+	var out: float = face * (0.14 + thick * 0.5)
+	if count == 0: box(boundary, Vector3(x, middle, out), Vector3(length, tall, thick), "panel_field", false, "detail")
+	elif edge > 0.001:
+		for side in [-1, 1]: box(boundary, Vector3(x + side * (length - edge) * 0.5, middle, out), Vector3(edge, tall, thick), "panel_field", false, "detail")
+
+## A brass switch plate with its toggle, on the plaster at x.
+func switch_plate(boundary: Node3D, x: float, inner: int) -> void:
+	box(boundary, Vector3(x, 1.26, inner * 0.094), Vector3(0.076, 0.116, 0.008), "gold", false, "detail")
+	box(boundary, Vector3(x, 1.268, inner * 0.103), Vector3(0.012, 0.03, 0.012), "black", false, "detail", Vector3(inner * -0.45, 0, 0))
+
+## A ventilation grille high on the plaster at x: a steel frame, slats
+## turned down, and the dark of the duct behind them.
+const GRILLE := Vector2(0.42, 0.22)
+func grille(boundary: Node3D, x: float, inner: int) -> void:
+	var y := 2.46
+	box(boundary, Vector3(x, y, inner * 0.092), Vector3(GRILLE.x - 0.05, GRILLE.y - 0.05, 0.004), "black", false, "detail")
+	for side in [-1, 1]:
+		box(boundary, Vector3(x + side * (GRILLE.x - 0.03) * 0.5, y, inner * 0.098), Vector3(0.03, GRILLE.y, 0.016), "metal", false, "detail")
+		box(boundary, Vector3(x, y + side * (GRILLE.y - 0.03) * 0.5, inner * 0.098), Vector3(GRILLE.x - 0.06, 0.03, 0.016), "metal", false, "detail")
+	for slat in 6:
+		box(boundary, Vector3(x, y - 0.065 + slat * 0.026, inner * 0.099), Vector3(GRILLE.x - 0.06, 0.004, 0.022), "metal", false, "detail", Vector3(inner * 0.6, 0, 0))
 ## Modules with wall lamps: reception, lobby, corridor, gallery.
 const SCONCE_ROOMS := [0, 10, 11, 12]
 const WALL_LAMP := preload("res://assets/props/wall_lamp/wall_lamp.res")
@@ -231,6 +338,10 @@ func _init() -> void:
 	materials["light_off"] = materials.light.duplicate()
 	materials.light_off.emission_enabled = false
 	materials.light_off.albedo_color = materials.light.albedo_color.darkened(0.55)
+	# The dado's wood without its panels drawn on it: the kit's panels are
+	# raised for real (mouldings.gd).
+	materials["panel_field"] = materials.panel.duplicate()
+	materials.panel_field.set_shader_parameter("panel_spacing", 0.0)
 	# A lampshade whose bulb is out does not glow either.
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
@@ -421,8 +532,15 @@ func flush() -> void:
 			if room == null: instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 			# A plaque 4 mm proud of its leaf has no shadow to speak of.
 			if batch.parent.has_meta("side"): instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var only_kit: bool = group.ends_with("@detail")
+			if only_kit:
+				# A switch plate or a grille's slats have no shadow to speak of.
+				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				kit_piece(instance, batch.parent, KIT_NEAR)
+			elif group.ends_with("@plain"): kit_plain(instance, batch.parent)
 			batch.parent.add_child(instance)
-			if room != null: bounce.add(batch.parent.get_instance_id(), group, transforms)
+			# The bounce light is baked from the plain pieces on every preset.
+			if room != null and not only_kit: bounce.add(batch.parent.get_instance_id(), group, transforms)
 			if material_of(group) in SWAYING:
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				var still := MultiMeshInstance3D.new()
@@ -445,11 +563,14 @@ func flush() -> void:
 			instance.name = "Model_" + mesh.resource_name
 			instance.multimesh = multi
 			var size := mesh.get_aabb().size
+			# The kit's pieces wear one of the hotel's own materials.
+			if entry.material != "": instance.material_override = materials[entry.material]
+			if entry.kit: kit_piece(instance, batch.parent, KIT_NEAR if mesh == MOULDINGS.panel() else KIT_FAR)
 			# Lamps redraw their shadows whenever anything moves near them:
 			# only pieces of furniture cast, never what stands on them.
-			if not entry.casts or size.y < SHADOW_MODEL:
+			if not entry.casts or (size.y < SHADOW_MODEL and not mesh.has_meta("casts")):
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			if size.y < SMALL_MODEL and maxf(size.x, size.z) < 0.8:
+			if size.y < SMALL_MODEL and maxf(size.x, size.z) < 0.8 and not entry.kit:
 				# Small things are not drawn from afar.
 				instance.visibility_range_end = SMALL_REACH
 				instance.visibility_range_end_margin = 2.0
@@ -486,13 +607,15 @@ const MODEL_LIFT := 0.002
 ## (The door's frame is not quite centred on its opening: its jambs' faces
 ## are 1 mm outside it on one side and 4 mm inside on the other.)
 const JAMB_GAP := 0.01
-func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true) -> void:
+## `material` dresses the mesh in one of the hotel's own (the moulded kit's
+## pieces, which have none), and `only_kit` shows it only with the kit.
+func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true, material := "", only_kit := false) -> void:
 	var target := batch_target(parent)
 	var key: int = target[0].get_instance_id()
 	if not model_batches.has(key): model_batches[key] = {"parent": target[0], "meshes": {}}
 	var meshes: Dictionary = model_batches[key].meshes
-	var slot := "%d:%s" % [mesh.get_instance_id(), casts]
-	if not meshes.has(slot): meshes[slot] = {"mesh": mesh, "casts": casts, "transforms": []}
+	var slot := "%d:%s:%s:%s" % [mesh.get_instance_id(), casts, material, only_kit]
+	if not meshes.has(slot): meshes[slot] = {"mesh": mesh, "casts": casts, "material": material, "kit": only_kit, "transforms": []}
 	# A hair off whatever it stands on: a model whose underside is drawn from
 	# both sides (a bookcase, a rack, a bin, a crate) lay in the plane of the
 	# floor under it and flickered into it.
@@ -914,6 +1037,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in SERVICE_CEILINGS else "ceiling", true)
 	# The wall a lift's car is behind, in the lobbies that have one.
 	var lift_back := FLOOR.lift_wall(room)
+	var grilled := false
 	for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		# The cell beside it on its planta's grid (none past the edge).
 		var neighbor: int = FLOOR.beside(room, direction)
@@ -952,9 +1076,23 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				if run > 0.01: wall_run(boundary, door_at + side * (FLOOR.PORTAL * 0.5 + JAMB_GAP + run * 0.5), run, height, inner)
 			# Jambs, head and casing come with the door (DOOR_FRAME, in build()).
 			wall_core(boundary, Vector3(door_at, (height + 2.65) / 2, 0), Vector3(FLOOR.PORTAL + JAMB_GAP * 2.0, height - 2.65, 0.18), inner)
-			box(boundary, Vector3(door_at, height - 0.05, inner * 0.12), Vector3(FLOOR.PORTAL + JAMB_GAP * 2.0, 0.1, 0.06), "trim")
+			cornice(boundary, door_at, FLOOR.PORTAL + JAMB_GAP * 2.0, height, inner, false)
+			# The switch, a hand past the casing on the side with more wall,
+			# and clear of a painting's lamps.
+			var beside: float = FLOOR.PORTAL * 0.5 + 0.34
+			var side_of: float = -1.0 if door_at > 0.0 else 1.0
+			for way: float in [side_of, -side_of]:
+				var at: float = door_at + way * beside
+				if absf(at) > length * 0.5 - 0.3 or (length >= 9.0 and absf(absf(at) - 3.5) < 1.3): continue
+				switch_plate(boundary, at, inner)
+				break
 		else:
 			wall_run(boundary, 0.0, length, height, inner)
+			# One grille to a room, in the middle of its first wall without a
+			# door: between the two paintings where there are any.
+			if not grilled and length >= 3.0:
+				grilled = true
+				grille(boundary, 0.0, inner)
 		# The end of a corridor, three or four metres across, has no room for
 		# a painting either side of its middle, nor for the lamps beside one.
 		if length < 9.0: continue
@@ -1021,6 +1159,8 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	else:
 		# Frosted dome in a brass ring: warm pool with darker corners.
 		cylinder(node, Vector3(0, height - 0.03, 0), 0.26, 0.06, "gold")
+		# A plaster rose round it (the kit's), where the ceiling is plaster.
+		if not (room.type in SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
 		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light_off" if dark_room(room) else "light", false, "cone", Vector3(PI, 0, 0))
 		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
 		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
@@ -1134,10 +1274,17 @@ func corner_posts(node: Node3D, room: Dictionary) -> void:
 			# Each piece reaches as far into the room as its wall's does.
 			box(node, corner + into * 0.045 + Vector3(0, height * 0.5, 0), Vector3(0.09, height, 0.09), wall_material)
 			box(node, corner + into * 0.0725 + Vector3(0, 0.48, 0), Vector3(0.145, 0.96, 0.145), "panel")
-			box(node, corner + into * 0.08375 + Vector3(0, 0.98, 0), Vector3(0.1675, 0.05, 0.1675), "trim")
-			box(node, corner + into * 0.085 + Vector3(0, 0.07, 0), Vector3(0.17, 0.14, 0.17), "trim")
-			box(node, corner + into * 0.075 + Vector3(0, height - 0.05, 0), Vector3(0.15, 0.1, 0.15), "trim")
-			box(node, corner + into * 0.0575 + Vector3(0, height - 0.13, 0), Vector3(0.115, 0.06, 0.115), "trim")
+			box(node, corner + into * 0.08375 + Vector3(0, 0.98, 0), Vector3(0.1675, 0.05, 0.1675), "trim", false, "plain")
+			box(node, corner + into * 0.085 + Vector3(0, 0.07, 0), Vector3(0.17, 0.14, 0.17), "trim", false, "plain")
+			box(node, corner + into * 0.075 + Vector3(0, height - 0.05, 0), Vector3(0.15, 0.1, 0.15), "trim", false, "plain")
+			box(node, corner + into * 0.0575 + Vector3(0, height - 0.13, 0), Vector3(0.115, 0.06, 0.115), "trim", false, "plain")
+			# The kit's: each moulding carried round the corner, and the dado
+			# out to its frames' face.
+			moulding_corner(node, "rail", corner, 0.96, sx, sz)
+			moulding_corner(node, "skirting", corner, 0.0, sx, sz)
+			moulding_corner(node, "cornice", corner, height, sx, sz)
+			var frame: float = MOULDINGS.PANEL_FRAME
+			box(node, corner + into * frame * 0.5 + Vector3(0, (MOULDINGS.PANEL_HEAD + MOULDINGS.PANEL_FOOT) * 0.5, 0), Vector3(frame, MOULDINGS.PANEL_HEAD - MOULDINGS.PANEL_FOOT, frame), "panel_field", false, "detail")
 
 ## Whether two cells side by side run into each other with no wall between.
 func opens_on(a: int, b: int) -> bool:
@@ -1407,8 +1554,7 @@ func lift_wall(node: Node3D, room: Dictionary, direction: Vector2i, length: floa
 	var run: float = length * 0.5 - gap
 	for side in [-1, 1]: wall_run(boundary, side * (gap + run * 0.5), run, height, inner)
 	wall_core(boundary, Vector3(0, (height + top) * 0.5, 0), Vector3(gap * 2.0, height - top, 0.18), inner)
-	box(boundary, Vector3(0, height - 0.05, inner * 0.12), Vector3(gap * 2.0, 0.1, 0.06), "trim")
-	box(boundary, Vector3(0, height - 0.13, inner * 0.1), Vector3(gap * 2.0, 0.06, 0.03), "trim")
+	cornice(boundary, 0.0, gap * 2.0, height, inner)
 	# The casing stands out past the dado and its rails, which stop against it.
 	var out: float = inner * (0.09 + LIFT_CASING.y * 0.5)
 	for side in [-1, 1]:
@@ -1572,10 +1718,19 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
 	for face in ([-1, 1] if full_walls else [inner]):
 		box(boundary, Vector3(x, 0.48, face * 0.11), Vector3(length, 0.96, 0.07), "panel")
-		box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(length, 0.05, 0.035), "trim")
-		box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(length, 0.14, 0.03), "trim")
-	box(boundary, Vector3(x, height - 0.05, inner * 0.12), Vector3(length, 0.1, 0.06), "trim")
-	box(boundary, Vector3(x, height - 0.13, inner * 0.1), Vector3(length, 0.06, 0.03), "trim")
+		box(boundary, Vector3(x, 0.98, face * 0.15), Vector3(length, 0.05, 0.035), "trim", false, "plain")
+		box(boundary, Vector3(x, 0.07, face * 0.155), Vector3(length, 0.14, 0.03), "trim", false, "plain")
+		moulding(boundary, "rail", x, length, 0.96, face)
+		moulding(boundary, "skirting", x, length, 0.0, face)
+		dado_panels(boundary, x, length, face)
+	cornice(boundary, x, length, height, inner)
+
+## A wall's cornice over a stretch of it: the two plain steps, and the kit's.
+## (Over a doorway only the upper step: the casing reaches up to the lower.)
+func cornice(boundary: Node3D, x: float, length: float, height: float, inner: int, both := true) -> void:
+	box(boundary, Vector3(x, height - 0.05, inner * 0.12), Vector3(length, 0.1, 0.06), "trim", false, "plain")
+	if both: box(boundary, Vector3(x, height - 0.13, inner * 0.1), Vector3(length, 0.06, 0.03), "trim", false, "plain")
+	moulding(boundary, "cornice", x, length, height, inner)
 
 ## The floor as a plan (floor_map.gd): every stretch of wall that stands on
 ## the floor -- the walls between cells, with their doorways left out, and the
@@ -2064,6 +2219,7 @@ func apply_quality(new_preset: Dictionary) -> void:
 	# Every wall lamp is told again what it is doing (update_visibility()).
 	sconce_state.fill(SCONCE_OUT)
 	glaze(preset.glazed_art)
+	if kit != bool(preset.detail_kit): set_kit(preset.detail_kit)
 	lacquer(preset.surface_detail > 4.5)
 	for light in lights:
 		set_fade(light, preset.lamp_fade[0], preset.lamp_fade[1])

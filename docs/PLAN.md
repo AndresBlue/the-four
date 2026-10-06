@@ -498,6 +498,14 @@ pueda jugar entero sin tocar el teclado.
   criatura va a por ellos y tiene que romperlos para que callen. Por decidir:
   cuántos por planta, si se gastan, cuánto la retienen y cómo lo usa el
   director (que hoy tira sus propias distracciones).
+- [ ] **Cajas y basureros que se empujan y delatan** (idea del 6 de octubre
+  de 2026): al pasar junto a una caja se la empuja suavemente y cae con
+  buenas físicas y algo de ruido; un basurero, si se pasa por encima, se
+  vuelca y suena a metal, más o menos fuerte según dónde caiga y con qué
+  fuerza. Da calidad de vida y realismo, y el ruido tiene que delatar a quien
+  lo hace ante la bestia. Los sonidos de cajas y basureros los trae el autor
+  (apartado 4). Por decidir al hacerlo: qué objetos de los que ya hay pasan a
+  ser físicos, cómo se sincronizan en red y cuánto oye la criatura.
 
 ## 4 · Assets que faltan (tuyos)
 
@@ -508,6 +516,8 @@ pueda jugar entero sin tocar el teclado.
   (`assets/audio/events/lift_ding.ogg`): el hueco está hecho
   (`lifts.LIFT_DING`, en todo el piso donde sale) y suena en cuanto el
   archivo exista; hasta entonces, silencio.
+- [ ] **Sonidos de cajas y basureros** (cartón que cae, metal que se vuelca
+  y rueda, a varias fuerzas), para los objetos que se empujan del apartado 3.
 - [ ] **Un detective masculino con esqueleto.** El de ahora es un OBJ sin
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.

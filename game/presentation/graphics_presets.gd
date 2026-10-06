@@ -107,6 +107,12 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ## glazed_art            the paintings are behind glass: a clear coat over the
 ##                       canvas, where the lamps and the torch are seen
 ##                       (hotel_geometry.gd, glaze()).
+## detail_kit            the moulded kit (hotel_geometry.gd, "The moulded
+##                       kit"): skirting, dado rail and cornice run to a
+##                       section instead of plain boxes, the dado's panels
+##                       raised, a plaster rose round each ceiling lamp, a
+##                       switch by each door and a grille on a wall. Both are
+##                       built with the floor; the preset shows one.
 ## sconce_fill           the wall lamps past the nearest twelve light their
 ##                       walls too, without a shadow, each kept in its room by
 ##                       the room's render layer (hotel_geometry.gd,
@@ -176,7 +182,7 @@ const PRESETS := [
 		"ssao": -1, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
-		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
+		"surface_detail": 2.0, "chroma_taps": 4, "lod_threshold": 4.0, "anisotropy": Viewport.ANISOTROPY_2X, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "detail_kit": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},
 	{
@@ -186,7 +192,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_LOW, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 48, "fog_depth": 48, "fog_filter": true, "floor_haze": false,
 		"glow": true, "glow_bicubic": false, "debanding": false, "probes": 1, "dust": 60,
-		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 6, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "lamp_fog": true, "bounce": false, "decals": 0.5, "small_maps": false, "bounce_half": true,
+		"surface_detail": 3.0, "chroma_taps": 7, "lod_threshold": 2.0, "anisotropy": Viewport.ANISOTROPY_4X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 6, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "detail_kit": false, "lamp_fog": true, "bounce": false, "decals": 0.5, "small_maps": false, "bounce_half": true,
 		"echo": {"rays": 1900, "aimed": 600, "points": 24000, "bodies": 700, "puff_points": 26, "puffs": 4800, "find_points": 40, "finds": 600, "frames": 7000, "grain": 1.0, "halo": 0.0},
 	},
 	{
@@ -196,7 +202,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_MEDIUM, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": RenderingServer.ENV_SSIL_QUALITY_MEDIUM, "ssil_half": true, "ssr_steps": 32, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_LOW,
 		"fog_size": 64, "fog_depth": 64, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 90,
-		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 8, "autofocus": true, "sconce_lights": true, "sconce_fill": false, "glazed_art": false, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": true,
+		"surface_detail": 4.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_8X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 8, "autofocus": true, "sconce_lights": true, "sconce_fill": false, "glazed_art": false, "detail_kit": false, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": true,
 		"echo": {"rays": 3600, "aimed": 1200, "points": 46000, "bodies": 1400, "puff_points": 44, "puffs": 9600, "find_points": 70, "finds": 1200, "frames": 14000, "grain": 1.0, "halo": 0.0},
 	},
 	{
@@ -206,7 +212,7 @@ const PRESETS := [
 		"ssao": RenderingServer.ENV_SSAO_QUALITY_HIGH, "ssao_half": false, "ssao_shape": [0.7, 4.0, 0.6], "ssil": RenderingServer.ENV_SSIL_QUALITY_HIGH, "ssil_half": true, "ssr_steps": 64, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_HIGH,
 		"fog_size": 96, "fog_depth": 96, "fog_filter": true, "floor_haze": true,
 		"glow": true, "glow_bicubic": true, "debanding": true, "probes": 2, "dust": 140,
-		"surface_detail": 5.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 12, "autofocus": true, "sconce_lights": true, "sconce_fill": true, "glazed_art": true, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": false,
+		"surface_detail": 5.0, "chroma_taps": 7, "lod_threshold": 1.0, "anisotropy": Viewport.ANISOTROPY_16X, "ccd_smear": 0.28, "glare": 1.0, "motion_blur": 12, "autofocus": true, "sconce_lights": true, "sconce_fill": true, "glazed_art": true, "detail_kit": true, "lamp_fog": true, "bounce": true, "decals": 1.0, "small_maps": false, "bounce_half": false,
 		"echo": {"rays": 4800, "aimed": 1400, "points": 64000, "bodies": 1800, "puff_points": 56, "puffs": 12000, "find_points": 90, "finds": 1600, "frames": 18000, "grain": 0.8, "halo": 1.0},
 	},
 	# Muy bajo: for integrated graphics. The game is all there; the picture is
@@ -218,7 +224,7 @@ const PRESETS := [
 		"ssao": -1, "ssao_half": true, "ssao_shape": [1.2, 2.6, 0.15], "ssil": -1, "ssil_half": true, "ssr_steps": 0, "ssr_roughness": RenderingServer.ENV_SSR_ROUGHNESS_QUALITY_DISABLED,
 		"fog_size": 0, "fog_depth": 0, "fog_filter": false, "floor_haze": false,
 		"glow": false, "glow_bicubic": false, "debanding": false, "probes": 0, "dust": 0,
-		"surface_detail": 0.0, "chroma_taps": 2, "lod_threshold": 8.0, "anisotropy": Viewport.ANISOTROPY_DISABLED, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
+		"surface_detail": 0.0, "chroma_taps": 2, "lod_threshold": 8.0, "anisotropy": Viewport.ANISOTROPY_DISABLED, "ccd_smear": 0.0, "glare": 0.0, "motion_blur": 0, "autofocus": false, "sconce_lights": false, "sconce_fill": false, "glazed_art": false, "detail_kit": false, "lamp_fog": false, "bounce": false, "decals": 0.0, "small_maps": true, "bounce_half": true,
 		# The creature's reading is Bajo's: it is what it plays by.
 		"echo": {"rays": 950, "aimed": 600, "points": 12000, "bodies": 400, "puff_points": 13, "puffs": 2400, "find_points": 20, "finds": 300, "frames": 7000, "grain": 2.0, "halo": 0.0},
 	},

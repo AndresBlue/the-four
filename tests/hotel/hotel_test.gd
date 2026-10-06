@@ -421,7 +421,29 @@ func run() -> void:
 	var wood_shaders := func() -> Array: return ["wood", "panel", "trim", "door"].map(func(key: String) -> Shader: return scene.hotel.materials[key].shader)
 	var canvas: StandardMaterial3D = scene.hotel.paintings()[0].mesh.material
 	check("Ultra: barniz en capa propia, cuadros acristalados y oclusión sobre la luz de las lámparas", wood_shaders.call().all(func(shader: Shader) -> bool: return shader == scene.hotel.WOOD_LACQUER) and canvas.clearcoat_enabled and scene.environment.ssao_light_affect > 0.5 and scene.hotel.preset.surface_detail == 5.0)
+	# The moulded kit (hotel_geometry.gd, "The moulded kit"): built with every
+	# floor, shown by the preset. On Ultra its pieces are drawn and the plain
+	# ones only stand in from far; anywhere else the plain ones are all there is.
+	var kit_pieces := func() -> Array: return scene.hotel.kit_shown.filter(func(piece) -> bool: return is_instance_valid(piece))
+	var plain_pieces := func() -> Array: return scene.hotel.kit_replaced.filter(func(piece) -> bool: return is_instance_valid(piece))
+	var kinds := {}
+	for piece in kit_pieces.call(): kinds[String(piece.name).rstrip("0123456789@")] = true
+	check("El piso lleva el kit de molduras: rodapié, moldura, cornisa, paneles, rosetón, interruptores y rejilla", ["Model_moulding_skirting", "Model_moulding_rail", "Model_moulding_cornice", "Model_moulding_panel", "Model_moulding_rose", "Mesh_gold-detail", "Mesh_metal-detail"].all(func(kind: String) -> bool: return kinds.has(kind)) and not plain_pieces.call().is_empty())
+	check("Ultra: el kit a la vista, de cerca, y las piezas lisas solo de lejos", scene.hotel.kit and kit_pieces.call().all(func(piece) -> bool: return piece.visible and piece.visibility_range_end > 15.0) and plain_pieces.call().all(func(piece) -> bool: return piece.visible and piece.visibility_range_begin > 20.0))
+	var moulded: Script = scene.hotel.MOULDINGS
+	var sound := true
+	for mesh: ArrayMesh in [moulded.run("skirting"), moulded.run("rail"), moulded.run("cornice"), moulded.corner("skirting"), moulded.corner("rail"), moulded.corner("cornice"), moulded.panel(), moulded.rose()]:
+		var arrays := mesh.surface_get_arrays(0)
+		var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		if points.is_empty() or points.size() % 3 != 0 or points.size() != normals.size(): sound = false
+		for corner in range(0, points.size(), 3):
+			# Every face looks the way its normals say (clockwise is the front).
+			var facing := (points[corner + 1] - points[corner]).cross(points[corner + 2] - points[corner])
+			if facing.length() < 0.0000001 or facing.dot(normals[corner] + normals[corner + 1] + normals[corner + 2]) > 0.0 or absf(normals[corner].length() - 1.0) > 0.001: sound = false
+	check("Las piezas del kit son mallas cerradas en su cara vista: normales de longitud uno y caras hacia donde dicen", sound and is_equal_approx(moulded.run("cornice").get_aabb().size.x, moulded.UNIT) and moulded.run("cornice").get_aabb().size.y < 0.17 and absf(moulded.panel().get_aabb().size.x - moulded.PANEL_WIDTH) < 0.001)
 	settings.set_designed(2)
+	check("Alto: sin kit, las piezas lisas a cualquier distancia", not scene.hotel.kit and kit_pieces.call().all(func(piece) -> bool: return not piece.visible) and plain_pieces.call().all(func(piece) -> bool: return piece.visible and piece.visibility_range_begin == 0.0))
 	check("Alto: la madera con su shader de siempre, cuadros sin cristal y la oclusión de antes", wood_shaders.call().all(func(shader: Shader) -> bool: return shader == scene.hotel.WOOD) and not canvas.clearcoat_enabled and is_equal_approx(scene.environment.ssao_light_affect, 0.15) and is_equal_approx(scene.environment.ssao_radius, 1.2))
 	# Muy bajo (PERFORMANCE.md, section 10): no lamp of the hotel casts a
 	# shadow, and each lights only the layers of its own room; the torch

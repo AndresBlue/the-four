@@ -309,7 +309,8 @@ func toggle_echo() -> void:
 ## Ceilings on or off, over the whole hotel as it stands now.
 func apply_roof() -> void:
 	if not is_instance_valid(level.hotel): return
-	for node in level.hotel.find_children("*ceiling*", "MultiMeshInstance3D", true, false): node.visible = not roofless
+	# (A ceiling rose of the moulded kit comes back only if the kit is on.)
+	for node in level.hotel.find_children("*ceiling*", "MultiMeshInstance3D", true, false): node.visible = not roofless and not node.get_meta("kit_off", false)
 	for node in level.hotel.find_children("*Ceiling*", "MeshInstance3D", true, false): node.visible = not roofless
 
 ## The floor as a plan: straight down, without perspective, with the ceilings

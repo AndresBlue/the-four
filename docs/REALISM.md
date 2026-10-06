@@ -458,6 +458,32 @@ Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la d
 - **Su luz** es una lámpara más: verde, corta (2,8 m), con sombra, sin rebote y con el mismo desvanecido que las lámparas de mueble, así que no se cuela en la sala de al lado.
 - Comprobado también en Compatibility.
 
+## Fase 6 — Kit de geometría (empezada: molduras y detalles generados)
+
+*Octubre de 2026. Lo que separaba estas salas de una foto ya no era luz ni materiales ([PERFORMANCE.md](PERFORMANCE.md), sección 11): las paredes se encontraban con el suelo, el friso y el techo en cajas lisas —una tabla por rodapié, un listón por moldura, dos escalones por cornisa— y los paneles del friso eran rayas dibujadas sobre un tablón.*
+
+**Qué hay** (`game/world/hotel/mouldings.gd`, `hotel_geometry.gd` «The moulded kit»). Todo generado en código a partir de una sección; nada descargado ni guardado:
+
+- **Rodapié, moldura del friso y cornisa con perfil.** Cada uno es una sección —una línea en el corte de la pared, en metros desde el eje del muro y desde donde cuelga la pieza— extruida a lo largo de la pared, con sus caras curvas alisadas y sus cantos vivos. El rodapié es una tabla con un junquillo y una media caña; la moldura tapa el encuentro del friso con el yeso con un labio, una nariz redonda y una caída; la cornisa es una banda lisa que no sobresale más que el marco de una puerta (que llega hasta ella: 2,80 m de una pared de 2,90) y encima una media caña y un cuarto bocel hasta el techo.
+- **Esquinas salientes a inglete:** donde dos pasillos abiertos doblan (`corner_posts()`), cada moldura da la vuelta a la esquina con su perfil.
+- **Paneles del friso en relieve:** marco, bisel hacia una ranura y el plafón levantado otra vez en medio, uno cada 60 cm, los que quepan enteros en cada paño, centrados, y lo que sobre a cada lado como un montante liso. El tablón de siempre sigue detrás.
+- **Un rosetón de yeso** alrededor de cada plafón de techo (donde el techo es de yeso), torneado a partir de su sección.
+- **Un interruptor de latón** junto a cada puerta y **una rejilla de ventilación** en lo alto de una pared de cada sala.
+
+**Cómo convive con lo liso.** Se construyen las dos cosas con el piso y el preset enseña una u otra (`detail_kit`, hoy solo Ultra; `set_kit()`): un preset se cambia en mitad de una partida. Las cajas lisas que el kit sustituye van en un lote aparte (`SHAPES` «plain») y lo que solo tiene el kit en otro («detail», o un modelo colocado con `place(..., only_kit)`). Nada del kit es sólido ni entra en la navegación.
+
+**De lejos vuelve lo liso.** A más de 26 m de lo más cercano de una sala (16 m para paneles, interruptores y rejillas) se dibujan otra vez las cajas lisas, que desde ahí son la misma imagen —un bisel de 2 cm queda por debajo del píxel— con un tercio de los triángulos y sin los cantos que el MSAA sombrea cuatro veces. Es por sala (un lote es una instancia y Godot mide a su centro, así que se suma media diagonal de la sala), y los dos juegos se solapan un metro para que no haya distancia a la que una pared se quede sin ninguno.
+
+**Dos cosas que salieron al hacerlo:**
+- **La veta saltaba en las caras inclinadas.** El shader de la madera calculaba la bitangente como el producto de la normal por la dirección de la veta sin normalizarla; en una caja son perpendiculares y da uno, pero en un bisel no, y los anillos de la madera corrían a otro paso que en las caras planas de al lado: una cremallera en cada bisel lateral. Normalizada (`wood.gdshaderinc`).
+- **La veta va a lo largo de la pieza** porque el shader la pone a lo largo del lado que la escala hace más largo: por eso la malla de una moldura mide 10 cm y se estira, y no un metro.
+
+**Comprobado:** `tools/dev/zfight_scan.gd --quality=3` (la herramienta ve ahora los lotes del kit y acepta `--quality`): los pares nuevos son todos testas contra testas dentro de un muro o de un marco, como los que ya había; sin el kit el escaneo da exactamente lo de antes (14 pares, 1151 sitios). `tests/hotel/hotel_test.gd` comprueba que las mallas tienen las caras hacia donde dicen sus normales y qué enseña cada preset.
+
+**Coste** (1080p, paseo del benchmark, Ultra con y sin el kit en la misma tanda): 0,4 ms de GPU caminando y 0,85 en el salón grande, donde todo está cerca; sin la distancia de detalle eran 1,9. La carga del piso sube de ~14,2 a ~15,9 s en el benchmark (unos 3 900 nodos más, de 38 800: los lotes del kit se construyen en todos los presets).
+
+**Falta de esta fase:** enchufes, rociadores y detectores; manillas y bisagras propias; zócalos y cornisas en los tabiques de las alcobas (hoy yeso liso); variedad de perfiles por tipo de sala; y los modelos CC0 de detalle (lámpara de araña, extintor, alarma, reloj de pie…), aprobados el 6 de octubre y pendientes de colocar.
+
 ### Pruebas que se hacen al empezar su fase
 
 - **6. Bisel en shader:** fase 5.

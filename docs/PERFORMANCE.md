@@ -174,6 +174,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Polvo (partículas) | no | 60 | 90 | 140 |
 | Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas, y lo que distingue una superficie de un plano dibujado: barniz en capa propia, paredes y techos que no son planos, baldosas cada una con su inclinación, pelo de moqueta (sección 11) |
 | Cuadros | lienzo | lienzo | lienzo | tras un cristal |
+| Rodapié, moldura, cornisa y paneles del friso | cajas lisas | cajas lisas | cajas lisas | con perfil y en relieve, más rosetones, interruptores y rejillas, hasta 16–26 m (REALISM.md, fase 6) |
 | Materiales escaneados | 1024 px, sin antirrepetición | 2048 px | 2048 px | 2048 px |
 | Decals (humedad, manchas, huellas) | no | la mitad | todos | todos |
 | Filtro VHS | 4 lecturas de croma | 7 | 7 | 7 |
@@ -562,4 +563,4 @@ Capturas: `evidence/lookdev/ultra_antes_despues_vhs.png` (como se juega) y `_raw
 
 ### Pendiente: de dónde saldría el salto grande
 
-Con la misma geometría, las mismas lámparas y la cinta encima, lo de arriba es más o menos lo que hay que rascar en luz y materiales. Lo que separa estas salas de una foto es **geometría de detalle**: las paredes se encuentran con el techo y el suelo en una arista recta, sin cornisa ni rodapié con perfil; no hay interruptores, enchufes, rejillas, rociadores ni rosetones de techo; los paneles del friso son un dibujo sobre una tabla lisa. Es la fase 6 de [REALISM.md](REALISM.md) (kit de molduras y detalles), que no está aprobada ni empezada, y es donde irían los ~4 ms que sobran. Parte se puede generar (perfiles extruidos a lo largo de cada pared) y parte son modelos CC0.
+Con la misma geometría, las mismas lámparas y la cinta encima, lo de arriba es más o menos lo que hay que rascar en luz y materiales. Lo que separa estas salas de una foto es **geometría de detalle**: las paredes se encontraban con el techo y el suelo en una arista recta, sin cornisa ni rodapié con perfil; no había interruptores, rejillas ni rosetones de techo; los paneles del friso eran un dibujo sobre una tabla lisa. Es la fase 6 de [REALISM.md](REALISM.md), **aprobada y empezada el 6 de octubre**: el kit de molduras generado en código está hecho y solo en Ultra (0,4–0,85 ms de GPU con su distancia de detalle; Ultra con él, 13,2 ms caminando frente a los 14,5 de antes de esta sección). Quedan los modelos CC0 de detalle y lo que REALISM.md lista como pendiente.

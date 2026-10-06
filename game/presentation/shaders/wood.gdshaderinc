@@ -41,7 +41,10 @@ void vertex() {
 			v = w;
 		}
 		grain_t = normalize((MODEL_MATRIX * vec4(u, 0.0)).xyz);
-		vec3 bitangent = cross(wn, grain_t);
+		// Its own length: on a face that leans (a bevel, a moulding's curve)
+		// the normal is not square to the grain, and a shorter bitangent ran
+		// the rings out of step with the flat faces either side of it.
+		vec3 bitangent = normalize(cross(wn, grain_t));
 		vec3 origin = MODEL_MATRIX[3].xyz;
 		// Each piece is cut from its own place in the board.
 		vec2 cut = vec2(hash13(floor(origin * 7.1)), hash13(floor(origin * 5.3) + 2.0)) * vec2(5.0, 3.0);
