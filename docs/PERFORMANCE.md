@@ -542,17 +542,18 @@ Ahora en Ultra solo proyectan sombra las 20 lámparas de techo más cercanas; la
 
 1080p, Forward+, RTX 4060 Ti, el mismo benchmark de las secciones anteriores (semilla 81). El ruido entre pasadas es de ±0,2 ms.
 
-| | Alto | Ultra antes | Ultra ahora |
-|---|---|---|---|
-| GPU caminando | 9,6–10,0 ms | 14,5 ms | 12,3–12,5 ms |
-| Fotograma caminando | 10,9–11,4 ms | 15,8 ms | 13,7–14,2 ms |
-| GPU en la sala quieta | 7,8–8,2 ms | 12,8 ms | 10,2–10,7 ms |
-| Llamadas de sombra en la sala quieta | ~360–850 | ~1090 | 0 |
-| Memoria de vídeo | 1982 MB | 2182 MB | 2131 MB |
+| | Alto antes | Alto ahora | Ultra antes | Ultra sin el kit | Ultra ahora |
+|---|---|---|---|---|---|
+| GPU caminando | 9,6–10,0 ms | 9,9–10,1 ms | 14,5 ms | 12,3–12,8 ms | 13,0–13,2 ms |
+| Fotograma caminando | 10,9–11,4 ms | 11,2–11,7 ms | 15,8 ms | 13,6–14,2 ms | 14,3–14,4 ms |
+| GPU en la sala quieta | 7,8–8,2 ms | 7,75 ms | 12,8 ms | 10,2–10,7 ms | 11,0–11,1 ms |
+| Fotograma en la sala quieta | 9,0–9,7 ms | 8,8 ms | 14,0 ms | 11,1–11,7 ms | 12,0–12,1 ms |
+| Llamadas de sombra en la sala quieta | ~360–850 | 0 | ~1090 | 0 | 0 |
+| Memoria de vídeo | 1982 MB | 2012 MB | 2182 MB | 2131 MB | 2168 MB |
 
-Ultra cuesta ahora un 14 % menos de GPU que antes con todo lo nuevo dentro. **Quedan sin gastar unos 2 ms para igualar al Ultra anterior y unos 4 para el 15 % de más que se había dado de margen**: no se han gastado porque lo que queda por hacer no es de este tipo (abajo). Medio (4,68 ms) y Alto miden lo mismo que antes del cambio.
+«Ahora» es con todo lo del 6 de octubre: el recuento de lámparas también en Alto, el kit de molduras en Ultra ([REALISM.md](REALISM.md), fase 6) y los nueve modelos nuevos en todos los presets (que no se notan en la medida: Muy bajo sigue en 0,51 ms de GPU). Ultra cuesta un 10 % menos de GPU que antes de esta sección con todo dentro; **quedan unos 1,4 ms para igualar al Ultra anterior y unos 3,5 para el 15 % de más que se había dado de margen**. Medio (4,68 ms) mide lo mismo que antes.
 
-Capturas: `evidence/lookdev/ultra_antes_despues_vhs.png` (como se juega) y `_raw.png` (sin cámara), Alto / Ultra antes / Ultra ahora en cinco vistas; `tools/capture/lookdev_capture.gd` acepta ahora `--set=clave:valor` y `--only=vista,...`.
+Capturas: `evidence/lookdev/ultra_molduras_vhs.png` (como se juega) y `_raw.png` (sin cámara), Alto / Ultra antes / Ultra ahora en cinco vistas, y `alto_vs_ultra_vhs.png`; las de antes del kit, `ultra_antes_despues_*.png`; `tools/capture/lookdev_capture.gd` acepta ahora `--set=clave:valor` y `--only=vista,...`.
 
 ### Lo que se probó y se descartó
 
