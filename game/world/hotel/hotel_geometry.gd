@@ -254,6 +254,15 @@ func grille(boundary: Node3D, x: float, inner: int) -> void:
 		box(boundary, Vector3(x, y + side * (GRILLE.y - 0.03) * 0.5, inner * 0.098), Vector3(GRILLE.x - 0.06, 0.03, 0.016), "metal", false, "detail")
 	for slat in 6:
 		box(boundary, Vector3(x, y - 0.065 + slat * 0.026, inner * 0.099), Vector3(GRILLE.x - 0.06, 0.004, 0.022), "metal", false, "detail", Vector3(inner * 0.6, 0, 0))
+## The chandelier that hangs in the rooms with high ceilings (the lounges, the
+## dining room, the indoor garden: 4.2 m and over) where the rest have a
+## dome: a lamp like any other -- the room's own, with its shadow and its
+## range -- from a brass chandelier of five shades, half as big again as the
+## model, out in a dark room and with the power. Not in the reception, whose
+## ceiling has the red lamp the way back is found by.
+const CHANDELIER := preload("res://assets/props/hotel/Chandelier_02.res")
+const CHANDELIER_SCALE := 1.5
+const CHANDELIER_HEIGHT := 4.0
 ## Modules with wall lamps: reception, lobby, corridor, gallery.
 const SCONCE_ROOMS := [0, 10, 11, 12]
 const WALL_LAMP := preload("res://assets/props/wall_lamp/wall_lamp.res")
@@ -1209,6 +1218,25 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.light_energy = 3.4 * LIGHTING.PROFILE_GAIN
 		light.set_meta("profile", LIGHTING.profile("tube"))
 		light.position = Vector3(0, height - 0.35, 0)
+	elif height > CHANDELIER_HEIGHT and room.type != 0:
+		# A chandelier, its light among its shades.
+		var drop: float = CHANDELIER.get_aabb().size.y * CHANDELIER_SCALE
+		var chandelier := MeshInstance3D.new()
+		chandelier.name = "Chandelier"
+		chandelier.mesh = CHANDELIER
+		chandelier.transform = Transform3D(Basis(Vector3.UP, vary(node.position, 150) * TAU).scaled(Vector3.ONE * CHANDELIER_SCALE), Vector3(0, height - drop, 0))
+		# It hangs round its own light: its shadow would be arms across every
+		# wall, and the room's whole shadow redrawn for nothing.
+		chandelier.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		chandelier.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+		if dark_room(room): switch_off(chandelier)
+		else: lit_sconces.append(chandelier)
+		node.add_child(chandelier)
+		if not (room.type in SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
+		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
+		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
+		light.set_meta("profile", LIGHTING.profile("chandelier"))
+		light.position = Vector3(0, height - drop + 0.26 * CHANDELIER_SCALE, 0)
 	else:
 		# Frosted dome in a brass ring: warm pool with darker corners.
 		cylinder(node, Vector3(0, height - 0.03, 0), 0.26, 0.06, "gold")

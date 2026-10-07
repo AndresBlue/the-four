@@ -58,7 +58,7 @@ static func light_color(k: float, tint := Color.WHITE) -> Color:
 
 static var profiles := {}
 
-## A profile by name ("dome", "tube", "sconce"), built once.
+## A profile by name ("dome", "tube", "sconce", "chandelier"), built once.
 static func profile(name: String) -> ImageTexture:
 	if not profiles.has(name): profiles[name] = build_profile(name)
 	return profiles[name]
@@ -94,6 +94,11 @@ static func intensity(name: String, dir: Vector3) -> float:
 			var across := absf(dir.x)
 			var batwing := smoothstep(-0.2, 0.5, down) * (0.65 + 0.35 * smoothstep(0.2, 0.65, across))
 			return clampf(0.3 + 0.7 * batwing - 0.2 * smoothstep(0.6, 1.0, -down), 0.0, 1.0)
+		"chandelier":
+			# Bulbs in open shades on arms: as much up as sideways, so the
+			# ceiling over it is lit and the walls evenly; a touch less
+			# straight down, where its own body hangs.
+			return clampf(0.88 + 0.12 * smoothstep(-0.9, 0.2, -down), 0.0, 1.0)
 		"sconce":
 			# Nothing behind (the wall); a cone up and a cone down out of the
 			# open ends of the shade, a dim glow through the cloth.

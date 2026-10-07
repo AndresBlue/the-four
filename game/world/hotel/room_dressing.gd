@@ -291,6 +291,16 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			note_fold(builder, "wooden_bookshelf_worn", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(0, 0, 0.3 * s)), Vector3(v.call(123) * 0.6 - 0.3, shelf + 0.002, 0.274), v.call(124) * 0.3 - 0.15, 0.11, 0.1)
 		"cabinet":
 			var s := minf(1.0, width / 1.25)
+			if kept == 0:
+				# A glazed cabinet where the room is kept: a cupboard below, a
+				# counter, and a dresser of three glass doors set back on it.
+				# A note of the code is left on the counter (0.912, its edge at
+				# 0.291), the end come down over the lip in front of it.
+				var c := minf(0.82, width / 2.1)
+				var stood := Vector3(0, 0, 0.335 * c + 0.02)
+				put(builder, holder, "vintage_cabinet_01", stood, 0.0, c, true)
+				note_fold(builder, "vintage_cabinet_01", Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * c), stood), Vector3(v.call(120) * 0.8 - 0.4, 0.914, 0.289), v.call(121) * 0.3 - 0.15, 0.12, 0.07, 0.0, 0.5)
+				return
 			put(builder, holder, "painted_wooden_cabinet" if kept >= 1 else "GothicCommode_01", Vector3(0, 0, 0.32), 0.0, s, true)
 			if kept >= 1:
 				# Left on its top, which is dark wood (1.182, the edge at 0.237),

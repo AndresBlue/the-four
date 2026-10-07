@@ -531,6 +531,24 @@ func run() -> void:
 			if lamp.visible and (not lamp.shadow_enabled or (lamp.light_cull_mask & every_room) != every_room): medio_whole = false
 	check("Medio: todas las lámparas de techo encendidas con su sombra y alumbrando todas las capas", medio_whole and not scene.hotel.layered)
 	settings.set_value("quality", 3)
+	# The rooms with high ceilings hang a chandelier where the rest have a
+	# dome: the room's own lamp, lit or out with it. Not the reception, which
+	# keeps its red lamp.
+	var hung := 0
+	var hung_right := true
+	for room in scene.manifest.rooms:
+		if floor_plan.is_void(room): continue
+		var fitting := scene.hotel.room_nodes[int(room.id)].get_node_or_null("Chandelier") as MeshInstance3D
+		var wanted: bool = float(room.height) > scene.hotel.CHANDELIER_HEIGHT and int(room.type) != 0 and not (int(room.type) in [4, 7, 8, 9])
+		if (fitting != null) != wanted: hung_right = false
+		if fitting == null: continue
+		hung += 1
+		var lit_bulb: bool = fitting.get_surface_override_material(1) == null and (fitting.mesh.surface_get_material(1) as BaseMaterial3D).emission_enabled
+		var out_bulb: bool = fitting.get_surface_override_material(1) != null and not (fitting.get_surface_override_material(1) as BaseMaterial3D).emission_enabled
+		if (out_bulb if scene.hotel.dark_room(room) else lit_bulb) == false: hung_right = false
+		var lamp: OmniLight3D = scene.hotel.lights[int(room.id)]
+		if lamp.get_meta("profile") != scene.hotel.LIGHTING.profile("chandelier") or lamp.position.y > float(room.height) - 0.5: hung_right = false
+	check("Las salas de techo alto cuelgan una lámpara de araña, encendida o apagada con su sala, y la recepción conserva la suya", hung > 0 and hung_right)
 	# Bounce light (hotel_geometry.bounce_groups()): a volume is at full
 	# strength up to its edge, so a lit stretch of corridor's is carried on
 	# over the dark cell it runs on into -- or the light stopped in a straight

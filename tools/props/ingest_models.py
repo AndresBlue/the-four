@@ -21,7 +21,7 @@ import json
 import os
 import re
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageFilter
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SOURCE = os.path.join(ROOT, "source_assets", "props")
@@ -34,13 +34,20 @@ MAX_SIZE = 1024
 ## source_assets/ by the trailer (tools/trailer3d).
 SKIP = {"Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"}
 ## Downloaded in October 2026 (tools/props/fetch_models.py) and not placed
-## yet: a chandelier wants a lamp of its own, the frame its own way of being
-## hung, the cabinet a place for the code's notes, the ducts a run along a
+## yet: the frame wants its own way of being hung, the ducts a run along a
 ## ceiling.
-SKIP |= {"Chandelier_02", "hanging_picture_frame_01", "vintage_cabinet_01", "modular_airduct_rectangular_01"}
+SKIP |= {"hanging_picture_frame_01", "modular_airduct_rectangular_01"}
 ## And two that will not be: their labels are in Korean, and the
 ## extinguisher's inspection card is dated 2019.
 SKIP |= {"korean_fire_extinguisher_01", "korean_public_payphone_01"}
+## Materials that glow, which their glTF does not say: colour and strength.
+## A chandelier's bulbs are lit lamps (hotel_geometry.gd puts them out in a
+## dark room and with the power).
+EMISSION = {"Chandelier_02_bulb": ((1.0, 0.8, 0.52), 9.0)}
+## Cloth shades painted on the same image as the brass they hang from: what
+## is white on that image glows (a mask made here, <image>_glow.jpg), in this
+## colour and at this strength.
+GLOW_WHITE = {"Chandelier_02": ((1.0, 0.76, 0.46), 2.6)}
 ## Models whose glass has to be made clear here (material_tres()).
 CLEAR_GLASS = {"vintage_grandfather_clock_01"}
 # Big pieces seen close up keep 2048 px.
@@ -93,6 +100,27 @@ def copy_image(model, source_folder, uri, normal, size):
     if not os.path.exists(path + ".import"):
         with open(path + ".import", "w", newline="\n") as f:
             f.write(IMPORT.format(model=model, file=file, normal=1 if normal else 2))
+    return file
+
+
+def glow_mask(model, source_folder, uri, size):
+    """What is white (pale and without colour) on an image, as a mask."""
+    r, g, b = Image.open(os.path.join(source_folder, uri)).convert("RGB").split()
+    lowest = ImageChops.darker(ImageChops.darker(r, g), b)
+    highest = ImageChops.lighter(ImageChops.lighter(r, g), b)
+    # Pale: every channel over 140. Without colour: the channels within 45.
+    pale = lowest.point(lambda v: 255 if v > 140 else 0)
+    grey = ImageChops.subtract(highest, lowest).point(lambda v: 255 if v < 45 else 0)
+    mask = ImageChops.multiply(pale, grey)
+    mask = mask.filter(ImageFilter.GaussianBlur(1.5))
+    if mask.width > size:
+        mask = mask.resize((size, round(mask.height * size / mask.width)), Image.LANCZOS)
+    file = safe(os.path.splitext(os.path.basename(uri))[0]) + "_glow.jpg"
+    path = os.path.join(TARGET, model, file)
+    mask.convert("RGB").save(path, quality=90)
+    if not os.path.exists(path + ".import"):
+        with open(path + ".import", "w", newline="\n") as f:
+            f.write(IMPORT.format(model=model, file=file, normal=2))
     return file
 
 
@@ -153,6 +181,20 @@ def material_tres(model, gltf, material, textures):
         lines.append("alpha_scissor_threshold = 0.5")
     if material.get("doubleSided"):
         lines.append("cull_mode = 2")
+    if material["name"] in EMISSION:
+        glow, strength = EMISSION[material["name"]]
+        lines.append("emission_enabled = true")
+        lines.append("emission = Color(%g, %g, %g, 1)" % glow)
+        lines.append("emission_energy_multiplier = %g" % strength)
+    if material["name"] in GLOW_WHITE and albedo:
+        glow, strength = GLOW_WHITE[material["name"]]
+        resources.append(glow_mask(model, os.path.join(SOURCE, model), albedo, textures["__size"]))
+        lines.append("emission_enabled = true")
+        lines.append("emission = Color(%g, %g, %g, 1)" % glow)
+        lines.append("emission_energy_multiplier = %g" % strength)
+        # Times the mask, not added to it.
+        lines.append("emission_operator = 1")
+        lines.append(f'emission_texture = ExtResource("{len(resources)}")')
     kind = "ORMMaterial3D" if orm else "StandardMaterial3D"
     head = [f'[gd_resource type="{kind}" load_steps={len(resources) + 1} format=3]', ""]
     for k, file in enumerate(resources):

@@ -124,6 +124,7 @@ Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmen
 |---|---|---|
 | [Arm Chair 01](https://polyhaven.com/a/ArmChair_01) | Kirill Sannikov | CC0 1.0 |
 | [Cash Register 01](https://polyhaven.com/a/CashRegister_01) | Joe Seabuhr | CC0 1.0 |
+| [Chandelier 02](https://polyhaven.com/a/Chandelier_02) | Kirill Sannikov | CC0 1.0 |
 | [Classic Console 01](https://polyhaven.com/a/ClassicConsole_01) | Kirill Sannikov | CC0 1.0 |
 | [Classic Nightstand 01](https://polyhaven.com/a/ClassicNightstand_01) | Kirill Sannikov | CC0 1.0 |
 | [Gothic Bed 01](https://polyhaven.com/a/GothicBed_01) | Kirill Sannikov | CC0 1.0 |
@@ -162,6 +163,7 @@ Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmen
 | [Stationery Supplies](https://polyhaven.com/a/stationery_supplies) | Mateusz Sadek | CC0 1.0 |
 | [Steel Frame Shelves 01](https://polyhaven.com/a/steel_frame_shelves_01) | James Ray Cock | CC0 1.0 |
 | [Trashbag](https://polyhaven.com/a/trashbag) | Benny Weimer | CC0 1.0 |
+| [Vintage Cabinet 01](https://polyhaven.com/a/vintage_cabinet_01) | Rico Cilliers | CC0 1.0 |
 | [Vintage Grandfather Clock 01](https://polyhaven.com/a/vintage_grandfather_clock_01) | Yann Kervran, James Ray Cock | CC0 1.0 |
 | [Vintage Suitcase](https://polyhaven.com/a/vintage_suitcase) | Maximilian Schuster | CC0 1.0 |
 | [Wall Clock](https://polyhaven.com/a/wall_clock) | PierreB3D | CC0 1.0 |
