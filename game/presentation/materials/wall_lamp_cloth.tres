@@ -8,13 +8,18 @@
 resource_name = "WallLampCloth"
 ; Anisotropic: the graphics preset sets its level (Viewport.anisotropic_filtering_level).
 texture_filter = 5
-; Warm glow through the shade, as if the bulb behind it were lit.
+; The shade of a lit lamp glows of itself, whatever lights it: the lamp's own
+; light is a cone up and a cone down (lighting.gd "sconce") and never falls
+; on its shade, so at 0.35 a lamp that lit its whole wall hung there with a
+; dull shade, while one too far to cast -- a plain glow with no cone -- lit
+; its own from inside and was the only kind that looked on. The glow through
+; the cloth is kept low for the same reason: it is that second kind's alone.
 albedo_texture = ExtResource("1")
 roughness_texture = ExtResource("3")
 normal_enabled = true
 normal_texture = ExtResource("2")
 emission_enabled = true
 emission = Color(1, 0.72, 0.42, 1)
-emission_energy_multiplier = 0.35
+emission_energy_multiplier = 1.6
 backlight_enabled = true
-backlight = Color(0.9, 0.6, 0.35, 1)
+backlight = Color(0.2, 0.13, 0.08, 1)
