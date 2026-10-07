@@ -531,6 +531,36 @@ func run() -> void:
 			if lamp.visible and (not lamp.shadow_enabled or (lamp.light_cull_mask & every_room) != every_room): medio_whole = false
 	check("Medio: todas las lámparas de techo encendidas con su sombra y alumbrando todas las capas", medio_whole and not scene.hotel.layered)
 	settings.set_value("quality", 3)
+	# Bounce light (hotel_geometry.bounce_groups()): a volume is at full
+	# strength up to its edge, so a lit stretch of corridor's is carried on
+	# over the dark cell it runs on into -- or the light stopped in a straight
+	# line across an open corridor. Never three volumes over a cell, and
+	# every group still a rectangle of its own cells.
+	var groups: Dictionary = scene.hotel.bounce_groups(0)
+	var covered := {}
+	var boxes_sound := true
+	for hall in groups.halls:
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		var area := 0.0
+		for i: int in groups.halls[hall]:
+			covered[i] = int(covered.get(i, 0)) + 1
+			var span: Vector2 = floor_plan.size_of(scene.manifest.rooms[i])
+			var at: Vector3 = scene.hotel.room_nodes[i].position
+			low = Vector2(minf(low.x, at.x - span.x * 0.5), minf(low.y, at.z - span.y * 0.5))
+			high = Vector2(maxf(high.x, at.x + span.x * 0.5), maxf(high.y, at.z + span.y * 0.5))
+			area += span.x * span.y
+		# (A hall that is not a rectangle has no volume: only stretches count.)
+		if bool(scene.manifest.rooms[groups.halls[hall][0]].get("corridor", false)) and absf((high.x - low.x) * (high.y - low.y) - area) > 0.5: boxes_sound = false
+	var seams_left := 0
+	var seams := 0
+	for pair in scene.manifest.get("merged", []):
+		var a: Dictionary = scene.manifest.rooms[int(pair[0])]
+		var b: Dictionary = scene.manifest.rooms[int(pair[1])]
+		if floor_plan.planta_of(floor_plan.position_of(a).y) != 0 or scene.hotel.dark_room(a) == scene.hotel.dark_room(b): continue
+		seams += 1
+		if not covered.has(int(a.id if scene.hotel.dark_room(a) else b.id)): seams_left += 1
+	check("El rebote de un pasillo iluminado sigue sobre la celda a oscuras en la que continúa, sin tres volúmenes sobre ninguna", seams > 0 and seams_left == 0 and boxes_sound and covered.values().all(func(count: int) -> bool: return count <= 2))
 	# The torch on the renderer of the modest machines: Compatibility draws no
 	# light projectors at all, so there the beam is the cone itself, narrower
 	# and with its own falloff, and its shadow needs a bias for the depth it

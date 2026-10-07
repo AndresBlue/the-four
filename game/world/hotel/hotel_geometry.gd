@@ -2073,27 +2073,18 @@ var eye_planta := 0
 ## (bounce_light.gd), letting the other plantas' volumes go. A room alone, or
 ## a hall's cells together (one volume over the hall, if it is a rectangle; an
 ## L-shaped hall has none: see bounce_light.gd), or a straight stretch of
-## corridor (corridor_runs()). update_visibility() asks for the planta the eye
-## goes to.
+## corridor (corridor_runs()) with the cells it runs on into (run_on()).
+## update_visibility() asks for the planta the eye goes to.
 func start_bounce(planta: int) -> void:
 	if planta == bounce_planta or bounce.baking(): return
 	bounce_planta = planta
 	bounce.release(planta)
-	var halls := {}
 	var wanted := []
-	var runs := corridor_runs(planta)
-	for i in room_nodes.size():
+	var groups := bounce_groups(planta)
+	for i: int in groups.alone:
 		var room: Dictionary = manifest.rooms[i]
-		if dark_room(room) or FLOOR.is_void(room) or room_planta[i] != planta: continue
-		var hall := int(room.get("hall", -1))
-		# Keyed by its first cell's index, which no hall uses (a hall is
-		# keyed by one of its own cells, and a corridor is never in one).
-		if hall < 0: hall = int(runs.get(i, -1))
-		if hall >= 0:
-			if not halls.has(hall): halls[hall] = []
-			halls[hall].append(i)
-		else:
-			wanted.append({"room": i, "node": room_nodes[i], "centre": Vector3.ZERO, "size": FLOOR.size_of(room), "height": float(room.height), "parts": [[room_nodes[i], Vector3.ZERO]]})
+		wanted.append({"room": i, "node": room_nodes[i], "centre": Vector3.ZERO, "size": FLOOR.size_of(room), "height": float(room.height), "parts": [[room_nodes[i], Vector3.ZERO]]})
+	var halls: Dictionary = groups.halls
 	for hall in halls:
 		var cells: Array = halls[hall]
 		var low := Vector2(INF, INF)
@@ -2113,6 +2104,31 @@ func start_bounce(planta: int) -> void:
 		var root: Node3D = room_nodes[cells[0]]
 		wanted.append({"room": cells[0], "node": root, "centre": middle - root.position, "size": size, "height": height, "parts": cells.map(func(i): return [room_nodes[i], room_nodes[i].position - middle])})
 	bounce.start(wanted, unit_mesh)
+
+## Which cells of a planta share a volume: {"halls": first cell -> its cells
+## (a hall's, or a stretch of corridor's with the cells it runs on into, even
+## a cell alone), "alone": the lit rooms with a volume to themselves}.
+func bounce_groups(planta: int) -> Dictionary:
+	var halls := {}
+	var alone: Array = []
+	var runs := corridor_runs(planta)
+	# The stretches of corridor, a cell alone among them: by first cell.
+	var stretches := {}
+	for i in room_nodes.size():
+		var room: Dictionary = manifest.rooms[i]
+		if dark_room(room) or FLOOR.is_void(room) or room_planta[i] != planta: continue
+		var hall := int(room.get("hall", -1))
+		# Keyed by its first cell's index, which no hall uses (a hall is
+		# keyed by one of its own cells, and a corridor is never in one).
+		if hall < 0 and bool(room.get("corridor", false)):
+			hall = int(runs.get(i, i))
+			stretches[hall] = true
+		if hall >= 0:
+			if not halls.has(hall): halls[hall] = []
+			halls[hall].append(i)
+		else: alone.append(i)
+	run_on(halls, stretches, planta)
+	return {"halls": halls, "alone": alone}
 
 ## The planta's straight stretches of lit corridor, each baked as one volume
 ## like a hall: room index -> the index of its stretch's first cell. With a
@@ -2146,6 +2162,64 @@ func corridor_runs(planta: int) -> Dictionary:
 				for cell in piece: first[cell] = piece[0]
 			piece = []
 	return first
+
+## Carries each stretch of corridor's volume on over the cell past either
+## end of it, where the corridor goes on with no wall: a cell whose lamp is
+## out, or the first of another stretch (a turn, a crossing).
+##
+## Godot does not fade a volume out at its edge: a surface takes the volumes
+## it lies in, each weighed by how far inside it the point is, and divides by
+## the sum -- so one volume alone is at full strength up to its last voxel
+## and gone past it. Where a lit cell ran on into a dark one, the bounce of
+## its lamps stopped dead at the line between them, down the walls and
+## across the floor and ceiling, over an open corridor (October 2026: "the
+## lights are cut"). Carried a whole cell further, the volume ends where its
+## light has died away of itself; and where two volumes share a cell, each
+## weighs nothing at its own edge, so one gives way to the other across the
+## cell and neither ends in a line.
+##
+## Only along the stretch (the box stays a rectangle; a cell of another width
+## or out of line is left), a single cell along the way it has more of, and
+## never a third volume over one cell: Godot gives a surface two.
+func run_on(halls: Dictionary, stretches: Dictionary, planta: int) -> void:
+	var over := {}
+	for hall in halls:
+		for i in halls[hall]: over[i] = 1
+	# The longest first: where there is only room for one more, it is theirs.
+	var order: Array = stretches.keys()
+	order.sort_custom(func(a: int, b: int) -> bool: return run_length(halls[a]) > run_length(halls[b]) or (run_length(halls[a]) == run_length(halls[b]) and a < b))
+	for hall in order:
+		var cells: Array = halls[hall]
+		var best: Array = []
+		for way in [Vector2i(1, 0), Vector2i(0, 1)]:
+			# The cells at either end of it along this way; a stretch of
+			# several goes on only the way it runs.
+			var first: int = cells[0]
+			var last: int = cells[0]
+			var runs_this_way := true
+			for i in cells:
+				var from_first: Vector3 = room_nodes[i].position - room_nodes[cells[0]].position
+				if absf(from_first.z if way.x != 0 else from_first.x) > 0.01: runs_this_way = false
+				var along: float = room_nodes[i].position.x if way.x != 0 else room_nodes[i].position.z
+				if along < (room_nodes[first].position.x if way.x != 0 else room_nodes[first].position.z): first = i
+				if along > (room_nodes[last].position.x if way.x != 0 else room_nodes[last].position.z): last = i
+			if not runs_this_way: continue
+			var found: Array = []
+			for end in [[first, -way], [last, way]]:
+				var from: int = end[0]
+				var next: int = FLOOR.beside(manifest.rooms[from], end[1])
+				if next < 0 or next in cells or room_planta[next] != planta or FLOOR.is_void(manifest.rooms[next]): continue
+				if not open_pairs.has(Vector2i(mini(from, next), maxi(from, next))) or int(over.get(next, 0)) >= 2: continue
+				# In line and as wide: the box over both is still theirs alone.
+				var here := FLOOR.size_of(manifest.rooms[from])
+				var there := FLOOR.size_of(manifest.rooms[next])
+				var apart: Vector3 = room_nodes[next].position - room_nodes[from].position
+				var square: bool = (is_equal_approx(here.y, there.y) and absf(apart.z) < 0.01) if way.x != 0 else (is_equal_approx(here.x, there.x) and absf(apart.x) < 0.01)
+				if square: found.append(next)
+			if found.size() > best.size(): best = found
+		for next in best:
+			cells.append(next)
+			over[next] = int(over.get(next, 0)) + 1
 
 ## Two cells of corridor open on to each other, both lit.
 func open_between(a: int, b: int, lit: Dictionary) -> bool:

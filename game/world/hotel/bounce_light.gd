@@ -4,7 +4,11 @@ extends RefCounted
 ## of the room with their colour; the lamps are injected live, so a failing
 ## tube or a lamp going out takes its bounce with it. A volume ends at its
 ## room's walls, so the bounce never reaches the next room, and a dark room has
-## none.
+## none -- but for a dark cell of corridor that a lit one runs on into with no
+## wall between, which the lit stretch's volume covers too: a volume is at
+## full strength up to its edge, and ending at the line between the two it
+## cut the light off straight across an open corridor
+## (hotel_geometry.run_on()).
 ##
 ## The baker is fed a stand-in: the room's own batched boxes, one surface per
 ## material in its mean colour (material_albedo.gd). VoxelGI reads colour only
