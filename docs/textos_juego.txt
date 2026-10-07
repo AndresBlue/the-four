@@ -1291,6 +1291,10 @@ CORRECCIÓN:
 ACTUAL: ESCONDERSE
 CORRECCIÓN:
 
+[HUD.06b] Escondite sin sitio (uno en el armario pequeño, dos en el grande)
+ACTUAL: OCUPADO
+CORRECCIÓN:
+
 [HUD.07] Dentro del escondite
 ACTUAL: SALIR
 CORRECCIÓN:

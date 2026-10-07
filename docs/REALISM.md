@@ -469,6 +469,8 @@ Con eso, en el pasillo de seis apliques casi no hay raya, y la que queda es la d
 - **Paneles del friso en relieve:** marco, bisel hacia una ranura y el plafón levantado otra vez en medio, uno cada 60 cm, los que quepan enteros en cada paño, centrados, y lo que sobre a cada lado como un montante liso. El tablón de siempre sigue detrás.
 - **Un rosetón de yeso** alrededor de cada plafón de techo (donde el techo es de yeso), torneado a partir de su sección.
 - **Un interruptor de latón** junto a cada puerta y **una rejilla de ventilación** en lo alto de una pared de cada sala.
+- **Zócalo y cornisa en los tabiques de las alcobas**, por sus dos caras (eran yeso liso del suelo al techo), y la cornisa sobre el dintel de la alcoba.
+- **Enchufes** en el rodapié de los paños largos, **un detector de humo** en el techo de cada sala y **un rociador** en las salas públicas.
 
 **Cómo convive con lo liso.** Se construyen las dos cosas con el piso y el preset enseña una u otra (`detail_kit`, hoy solo Ultra; `set_kit()`): un preset se cambia en mitad de una partida. Las cajas lisas que el kit sustituye van en un lote aparte (`SHAPES` «plain») y lo que solo tiene el kit en otro («detail», o un modelo colocado con `place(..., only_kit)`). Nada del kit es sólido ni entra en la navegación.
 
@@ -498,7 +500,13 @@ En la semilla 81: 60 alarmas, 30 cuadros, 25 relojes de pie, 74 ventiladores, 43
 
 **Bajados y sin colocar** (en `source_assets/`, fuera de git y fuera del juego; `SKIP` en las dos herramientas): la lámpara de araña (`Chandelier_02`: pide ser una lámpara de verdad, con su luz y su versión apagada), el marco colgante (`hanging_picture_frame_01`), la vitrina (`vintage_cabinet_01`: es un mueble donde habría que decidir dónde va la nota del código) y los conductos (`modular_airduct_rectangular_01`). **Descartados:** el extintor y el teléfono público «korean» llevan los rótulos en coreano y una ficha de revisión fechada en 2019. La alarma, en cambio, está rotulada en inglés (FIRE ALARM, PULL DOWN) en un hotel con los carteles en español: se lee solo de cerca; queda a criterio del autor.
 
-**Falta de esta fase:** enchufes, rociadores y detectores; manillas y bisagras propias; zócalos y cornisas en los tabiques de las alcobas (hoy yeso liso); variedad de perfiles por tipo de sala; un extintor y un teléfono sin rótulos en coreano; y colocar lo bajado.
+**Falta de esta fase:** manillas y bisagras propias; variedad de perfiles por tipo de sala; un extintor y un teléfono sin rótulos en coreano; y colocar lo bajado (la lámpara de araña y la vitrina piden cada una una decisión de juego).
+
+## Dos fallos de luz vistos jugando (octubre de 2026)
+
+**1. La luz cortada en los pasillos.** Donde una celda de pasillo iluminada continuaba en otra con la lámpara apagada, la luz terminaba en una línea recta: una raya vertical en la pared, otra en el techo, otra en el suelo, en mitad de un pasillo abierto. No era la luz directa (que cae sola con la distancia) sino el **rebote**: Godot no desvanece un VoxelGI en su borde —una superficie toma los volúmenes en los que está, cada uno pesado por lo dentro de él que queda el punto, y divide por la suma—, así que un volumen solo vale entero hasta su último vóxel y nada después. El volumen de cada tramo iluminado se prolonga ahora una celda más allá de cada extremo por donde el pasillo sigue sin pared (`hotel_geometry.run_on()`): sobre una celda a oscuras, donde su luz ya se ha apagado sola cuando el volumen termina; o sobre la primera celda de otro tramo, en un giro o un cruce, donde los dos volúmenes comparten celda y cada uno pesa cero en su propio borde, así que uno cede al otro sin raya. Solo a lo largo del tramo (la caja sigue siendo un rectángulo de sus propias celdas) y nunca un tercer volumen sobre una celda. En 60 semillas, los 397 encuentros de una celda iluminada con otra a oscuras son pasillo con pasillo, del mismo ancho y en línea: todos quedan cubiertos. Las salas cerradas a oscuras miden lo mismo que antes.
+
+**2. Los apliques no parecían encendidos de cerca.** La luz de un aplique es un cono hacia arriba y otro hacia abajo y nunca cae sobre su propia pantalla, y la pantalla brillaba por sí misma un tercio de lo que se ve: un aplique que iluminaba toda su pared colgaba ahí con la pantalla apagada. Los lejanos —los que en Ultra alumbran sin sombra y sin cono— sí iluminaban la suya desde dentro, a través de la tela, y eran los únicos que parecían encendidos. La pantalla brilla ahora por sí misma (`wall_lamp_cloth.tres`, emisión 1,6) y lo que pasa a través de la tela es poco, así que cerca y lejos se ven igual; en una sala a oscuras o sin corriente sigue apagada.
 
 ### Pruebas que se hacen al empezar su fase
 
