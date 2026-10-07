@@ -20,6 +20,6 @@ normal_enabled = true
 normal_texture = ExtResource("2")
 emission_enabled = true
 emission = Color(1, 0.72, 0.42, 1)
-emission_energy_multiplier = 1.6
+emission_energy_multiplier = 2.6
 backlight_enabled = true
 backlight = Color(0.2, 0.13, 0.08, 1)

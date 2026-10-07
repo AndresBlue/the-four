@@ -2,7 +2,9 @@
 
 [resource]
 resource_name = "WallLampBulb"
+; A bare filament seen under its shade: far brighter than anything it lights,
+; bright enough for the camera's glow and halo to gather round it.
 albedo_color = Color(1, 0.86, 0.62, 1)
 emission_enabled = true
-emission = Color(1, 0.78, 0.5, 1)
-emission_energy_multiplier = 2.0
+emission = Color(1, 0.8, 0.52, 1)
+emission_energy_multiplier = 14.0
