@@ -120,14 +120,14 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			var carcass := "" if kind == "shelf" else "wood"
 			builder.box(node, Vector3(0, height / 2, -0.38), Vector3(2.2, height, 0.16), carcass, true)
 			for side in [-1, 1]: builder.box(node, Vector3(side * 1.05, height / 2, 0), Vector3(0.12, height, 0.9), carcass, true)
-			for y in [0.1, height * 0.5, height]: builder.box(node, Vector3(0, y, 0), Vector3(2.2, 0.1, 0.9), carcass, true)
+			# A wardrobe has no shelf across its middle: two people stand in it.
+			for y in ([0.1, height] if kind == "wardrobe" else [0.1, height * 0.5, height]): builder.box(node, Vector3(0, y, 0), Vector3(2.2, 0.1, 0.9), carcass, true)
 			if kind != "shelf": builder.box(node, Vector3(0, height + 0.08, 0.02), Vector3(2.3, 0.06, 0.96), "trim")
 			if kind == "wardrobe":
-				builder.box(node, Vector3(0, height / 2, 0.46), Vector3(2.0, height - 0.1, 0.09), "", true)
-				for side in [-1, 1]:
-					builder.box(node, Vector3(side * 0.505, height / 2, 0.46), Vector3(0.99, height - 0.12, 0.09), "wood")
-					for y in [0.65, 1.75]: builder.box(node, Vector3(side * 0.505, y, 0.51), Vector3(0.7, 0.8 if y > 1 else 0.9, 0.015), "panel")
-					builder.cylinder(node, Vector3(side * 0.08, 1.2, 0.53), 0.018, 0.22, "gold")
+				# Its doors open: they and the hiding place behind them are the
+				# builder's (hotel_geometry.big_hide(), hiding_place.gd), where
+				# there used to be a slab and two boards that looked like doors.
+				builder.big_hide(node)
 			elif kind == "shelf":
 				# Two units side by side, filled: metal shelving and stores in
 				# service rooms, worn bookcases and books elsewhere.

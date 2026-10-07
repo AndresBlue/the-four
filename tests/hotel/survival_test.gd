@@ -481,6 +481,63 @@ func cut_short_checks() -> void:
 	check("Y no estorba al moverse", wardrobe.leaf_bodies.left.collision_layer & 4 == 0 and wardrobe.leaf_bodies.left.collision_layer & 8 == 0)
 	wardrobe.peek = {"left": 0.0, "right": 0.0}
 	wardrobe.apply_angles()
+	# Two kinds of wardrobe (hiding_place.gd): the small one takes one, the big
+	# one two, side by side, each asking of the doors on their own; and nobody
+	# walks into either -- with a leaf ajar it stops being solid, and whoever
+	# stood outside used to step in beside the one peeking.
+	var beast = level.locust
+	var beast_awake: bool = is_instance_valid(beast) and beast.is_physics_processing()
+	if is_instance_valid(beast): beast.set_physics_process(false)
+	var small = get_nodes_in_group("hotel_hides").filter(func(place) -> bool: return not place.big)[0]
+	var large = get_nodes_in_group("hotel_hides").filter(func(place) -> bool: return place.big)[0]
+	# Somebody else's body, as this machine has it: moved from elsewhere.
+	var mate := CharacterBody3D.new()
+	mate.collision_layer = 4
+	mate.collision_mask = 0
+	root.add_child(mate)
+	var third := CharacterBody3D.new()
+	third.collision_layer = 4
+	third.collision_mask = 0
+	root.add_child(third)
+	small.enter(mate)
+	check("En el armario pequeño cabe uno: con alguien dentro no entra nadie más", small.capacity == 1 and not small.has_room() and not player.enter_hide(small) and not player.hidden)
+	await frames(50)
+	small.set_peek(1.0, 1.0, mate)
+	await frames(3)
+	var walk_at := func(place, plugged: bool) -> float:
+		place.plug.disabled = not plugged
+		player.position = place.to_global(place.exit_offset)
+		player.rotation.y = place.global_rotation.y
+		player.velocity = Vector3.ZERO
+		player.active = true
+		await frames(3)
+		Input.action_press("forward")
+		await frames(100)
+		Input.action_release("forward")
+		await frames(3)
+		return place.to_local(player.global_position).z
+	var unplugged: float = await walk_at.call(small, false)
+	var plugged: float = await walk_at.call(small, true)
+	check("Con una hoja entreabierta se entraba andando al armario de otro (el fallo de asomarse); ahora el armario no deja pasar", small.ajar() and unplugged < small.hinge.z - 0.2 and plugged > small.hinge.z - 0.12)
+	small.leave(mate)
+	player.position = large.to_global(large.exit_offset)
+	player.rotation.y = large.global_rotation.y
+	await frames(3)
+	check("En el armario grande caben dos", large.capacity == 2 and player.enter_hide(large) and large.has_room())
+	large.enter(mate)
+	var apart: float = (large.inside_of(player) - large.inside_of(mate)).length()
+	check("Uno al lado del otro, y un tercero se queda fuera", not large.has_room() and large.holds(player) and large.holds(mate) and not large.holds(third) and apart > 0.6 and player.global_position.distance_to(large.to_global(large.inside_of(player))) < 0.1)
+	await frames(50)
+	large.set_peek(1.0, 0.0, mate)
+	await frames(3)
+	check("Cada uno pide lo suyo a las puertas: se abren lo que pide el que más", large.peek.left > 0.9 and large.peek_of(player) == [0.0, 0.0] and large.ajar())
+	large.leave(mate)
+	await frames(170)
+	check("Sale uno y las puertas vuelven a cerrarse sobre el que queda", player.hidden and large.holds(player) and not large.ajar() and large.has_room())
+	check("Y el que queda sale por su lado", player.leave_hide() and not player.hidden and large.occupant == null)
+	mate.queue_free()
+	third.queue_free()
+	if is_instance_valid(beast): beast.set_physics_process(beast_awake)
 	# Whatever a model brings to look with stays out of the body.
 	var explorer = preload("res://game/player/avatars/avatar_visual.tscn").instantiate()
 	explorer.character = 2

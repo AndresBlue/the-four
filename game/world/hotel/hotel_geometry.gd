@@ -109,7 +109,7 @@ var wall_material := "plaster"
 ## "plain" and "detail" are boxes like any other, batched apart: the plain
 ## rails and cornices the moulded kit takes the place of, and the boxes only
 ## the kit has (below, "The moulded kit").
-const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone", "plain": "@plain", "detail": "@detail"}
+const SHAPES := {"box": "", "cylinder": "@cyl", "cone": "@cone", "plain": "@plain", "detail": "@detail", "detail_cylinder": "@detail@cyl"}
 
 ## --- The moulded kit (preset detail_kit; docs/REALISM.md, phase 6) ---------
 ## Where a wall meets the floor, the dado and the ceiling there are plain
@@ -170,10 +170,50 @@ func set_kit(on: bool) -> void:
 		if is_instance_valid(piece): piece.visibility_range_begin = piece.get_meta("kit_far") if on else 0.0
 
 ## A length of moulding along a wall: `kind` of mouldings.gd, centred at x,
-## hung from y, on the face of the wall that looks towards face * z.
-func moulding(boundary: Node3D, kind: String, x: float, length: float, y: float, face: int) -> void:
+## hung from y, on the face of the wall that looks towards face * z. The
+## sections are drawn for a wall with a dado (mouldings.gd); `back` moves one
+## in towards a thinner wall's own face.
+func moulding(boundary: Node3D, kind: String, x: float, length: float, y: float, face: int, back := 0.0) -> void:
 	var turned := Basis(Vector3.UP, 0.0 if face > 0 else PI) * Basis.from_scale(Vector3(length / MOULDINGS.UNIT, 1, 1))
-	place(boundary, MOULDINGS.run(kind), Transform3D(turned, Vector3(x, y, 0)), true, "trim", true)
+	place(boundary, MOULDINGS.run(kind), Transform3D(turned, Vector3(x, y, -face * back)), true, "trim", true)
+
+## A plaster partition of an alcove, 12 cm thick and with no dado: a skirting
+## and a cornice down both its faces (the kit's alone: bare, it met the floor
+## and the ceiling in a line). `frame` is the partition's own, its length
+## along x.
+const PARTITION_FACE := 0.06
+func partition_mouldings(room_node: Node3D, frame: Transform3D, length: float, height: float, skirted := true) -> void:
+	var holder := Node3D.new()
+	holder.name = "Partition"
+	holder.transform = frame
+	room_node.add_child(holder)
+	for face in [-1, 1]:
+		# Each section's back just inside the plaster. (Over a doorway, the
+		# cornice alone.)
+		if skirted: moulding(holder, "skirting", 0.0, length, 0.0, face, 0.14 - PARTITION_FACE + 0.005)
+		moulding(holder, "cornice", 0.0, length, height, face, 0.085 - PARTITION_FACE + 0.005)
+
+## A socket in the skirting: a brass plate and its two slots.
+func socket(boundary: Node3D, x: float, face: int) -> void:
+	box(boundary, Vector3(x, 0.056, face * 0.175), Vector3(0.07, 0.07, 0.008), "gold", false, "detail")
+	for slot in [-1, 1]: box(boundary, Vector3(x + slot * 0.012, 0.058, face * 0.1795), Vector3(0.005, 0.02, 0.002), "black", false, "detail")
+
+## On the ceiling beside the lamp: a smoke detector, and a sprinkler's head
+## where the room is a public one.
+const SPRINKLER_ROOMS := [0, 5, 6, 10, 11, 12, 13, 14]
+func ceiling_fittings(node: Node3D, room: Dictionary) -> void:
+	var height: float = room.height
+	var span := FLOOR.size_of(room)
+	# A third of the way to the corner the room's position picks.
+	var corner := Vector3(1.0 if vary(node.position, 141) < 0.5 else -1.0, 0, 1.0 if vary(node.position, 142) < 0.5 else -1.0)
+	var at := Vector3(corner.x * minf(span.x * 0.17, 2.2), 0, corner.z * minf(span.y * 0.17, 2.2))
+	box(node, at + Vector3(0, height - 0.006, 0), Vector3(0.14, 0.012, 0.14), "ceramic", false, "detail_cylinder")
+	box(node, at + Vector3(0, height - 0.026, 0), Vector3(0.11, 0.03, 0.11), "ceramic", false, "detail_cylinder")
+	if not (int(room.type) in SPRINKLER_ROOMS): return
+	var other := Vector3(-at.x, 0, -at.z)
+	box(node, other + Vector3(0, height - 0.004, 0), Vector3(0.07, 0.008, 0.07), "metal", false, "detail_cylinder")
+	box(node, other + Vector3(0, height - 0.03, 0), Vector3(0.022, 0.05, 0.022), "gold", false, "detail_cylinder")
+	box(node, other + Vector3(0, height - 0.058, 0), Vector3(0.05, 0.004, 0.05), "gold", false, "detail_cylinder")
 
 ## The same moulding round a corner that sticks out into the room towards
 ## (-sx, -sz) (corner_posts()).
@@ -342,6 +382,13 @@ func _init() -> void:
 	# raised for real (mouldings.gd).
 	materials["panel_field"] = materials.panel.duplicate()
 	materials.panel_field.set_shader_parameter("panel_spacing", 0.0)
+	# The big wardrobes' doors swing: their wood is drawn in the leaf's own
+	# space, as a door's is, or the grain would stay where it was while the
+	# leaf turned through it (hiding_place.gd).
+	for pair in [["wood_leaf", "wood"], ["panel_leaf", "panel"]]:
+		materials[pair[0]] = materials[pair[1]].duplicate()
+		materials[pair[0]].set_shader_parameter("object_space", true)
+		materials[pair[0]].set_shader_parameter("panel_spacing", 0.0)
 	# A lampshade whose bulb is out does not glow either.
 	materials["shade_off"] = materials.shade.duplicate()
 	materials.shade_off.emission_enabled = false
@@ -532,7 +579,7 @@ func flush() -> void:
 			if room == null: instance.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 			# A plaque 4 mm proud of its leaf has no shadow to speak of.
 			if batch.parent.has_meta("side"): instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			var only_kit: bool = group.ends_with("@detail")
+			var only_kit: bool = "@detail" in group
 			if only_kit:
 				# A switch plate or a grille's slats have no shadow to speak of.
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -922,6 +969,8 @@ func build(data: Dictionary) -> void:
 			lights.append(lamp)
 			continue
 		build_room(node, room)
+	hides.append_array(big_hides)
+	big_hides.clear()
 	route_signs.clear()
 	for sign in ROUTE_SIGN.place(data): route_sign(sign)
 	for edge in data.edges:
@@ -1122,10 +1171,13 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				box(node, Vector3(side * 4.4, height / 2, end * 2.8), Vector3(3.2, height, 0.12), wall_material, true)
 				blocker(Transform3D.IDENTITY, Vector3(side * 4.4, height / 2, end * 2.8), Vector2(3.2, height))
 				plan_wall(node, Vector3(side * 2.8, 0, end * 2.8), Vector3(side * 6.0, 0, end * 2.8))
+				partition_mouldings(node, Transform3D(Basis.IDENTITY, Vector3(side * 4.4, 0, end * 2.8)), 3.2, height)
 				for z in [3.2, 5.6]:
 					box(node, Vector3(side * 2.8, height / 2, end * z), Vector3(0.12, height, 0.8), wall_material, true)
 					plan_wall(node, Vector3(side * 2.8, 0, end * z - 0.4), Vector3(side * 2.8, 0, end * z + 0.4))
+					partition_mouldings(node, Transform3D(Basis(Vector3.UP, PI / 2), Vector3(side * 2.8, 0, end * z)), 0.8, height)
 				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), wall_material, true)
+				partition_mouldings(node, Transform3D(Basis(Vector3.UP, PI / 2), Vector3(side * 2.8, 0, end * 4.4)), 1.6, height, false)
 	# Wardrobes only in room-like modules (see FLOOR.WARDROBES), against the walls.
 	if room.type != 19:
 		for corner in FLOOR.hiding_positions(room):
@@ -1138,6 +1190,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			node.add_child(hide)
 	# Furniture along the free walls, things, clutter and decals (phase 4).
 	corner_posts(node, room)
+	ceiling_fittings(node, room)
 	DRESSING.dress(self, node, room)
 	# Central sightlines remain open; booths sit against the perimeter.
 	var service: bool = room.type in [4, 7, 8, 9]
@@ -1723,6 +1776,8 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 		moulding(boundary, "rail", x, length, 0.96, face)
 		moulding(boundary, "skirting", x, length, 0.0, face)
 		dado_panels(boundary, x, length, face)
+		# A socket in the skirting of the longer stretches, a third along.
+		if length >= 4.0 and vary(boundary.position + Vector3(x, 0, 0), 143) < 0.55: socket(boundary, x + length * (0.17 if vary(boundary.position + Vector3(x, 0, 0), 144) < 0.5 else -0.17), face)
 	cornice(boundary, x, length, height, inner)
 
 ## A wall's cornice over a stretch of it: the two plain steps, and the kit's.
@@ -2454,6 +2509,25 @@ func hang_painting(boundary: Node3D, pos: Vector3, inner: int, carved: bool) -> 
 		var border := 0.07
 		box(boundary, pos + Vector3(0, 0, inner * 0.02), Vector3(canvas.x + border * 2, canvas.y + border * 2, 0.04), "trim")
 		place(boundary, pick.mesh, Transform3D(facing, pos + Vector3(0, 0, inner * 0.043)))
+
+## The big wardrobes that are hiding places too (prop_factory.gd builds their
+## carcass and asks for this): after every small one in `hides`, which a
+## saved floor and the net name by their place in it.
+var big_hides: Array = []
+
+## A big wardrobe's doors and its hiding place, where prop_factory has just
+## stood its carcass (`furniture`: the prop's own frame, scaled in the rooms
+## with alcoves; the hiding place takes that size and is not scaled itself,
+## which a physics body must not be).
+func big_hide(furniture: Node3D) -> void:
+	var hide := preload("res://game/world/interactables/hiding_place.gd").new()
+	hide.big = true
+	hide.scale_by = furniture.transform.basis.get_scale().x
+	hide.materials = materials
+	hide.name = "Wardrobe_big_%d" % big_hides.size()
+	hide.transform = Transform3D(furniture.transform.basis.orthonormalized(), furniture.transform.origin)
+	furniture.get_parent().add_child(hide)
+	big_hides.append(hide)
 
 func build_prop(node: Node3D, kind: String) -> void:
 	preload("res://game/world/hotel/prop_factory.gd").build(self, node, kind)

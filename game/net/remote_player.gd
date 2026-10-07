@@ -105,7 +105,7 @@ func set_dead(value: bool) -> void:
 	if value:
 		# A wardrobe it died in (dropped out while hiding) is empty again: kept
 		# taken, nobody could get in and the creature kept searching it.
-		if is_instance_valid(hiding_place) and hiding_place.occupant == self: hiding_place.leave()
+		if is_instance_valid(hiding_place) and hiding_place.holds(self): hiding_place.leave(self)
 		hidden = false
 		hiding_place = null
 		torch.visible = false
@@ -125,7 +125,7 @@ func push_state(data: Array) -> void:
 	reading = flags & 8 != 0
 	peek_left = data[6]
 	peek_right = data[7]
-	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right)
+	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right, self)
 	away = false
 
 ## Its mind has gone, or come back. Nothing shows on the body: only the

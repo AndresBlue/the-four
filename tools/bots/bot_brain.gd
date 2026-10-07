@@ -1058,7 +1058,7 @@ func near_hide(reach: float, chase := false):
 	var best = null
 	var best_metres := INF
 	for hide in level.hotel.hides:
-		if not is_instance_valid(hide) or is_instance_valid(hide.occupant): continue
+		if not is_instance_valid(hide) or not hide.has_room(): continue
 		var front: Vector3 = hide.to_global(hide.exit_offset)
 		if FLOOR.planta_of(front.y) != planta() or flat_gap(front, me) > reach: continue
 		if threat.searched_near(front, HIDE_CLEAR) or front.distance_to(threat.destination) < HIDE_CLEAR: continue
@@ -1076,7 +1076,7 @@ func near_hide(reach: float, chase := false):
 ## Into the wardrobe it is going to, when it gets there unseen and unheard.
 func try_hide() -> bool:
 	var threat = owner_match.threat
-	if hide_target == null or not is_instance_valid(hide_target) or is_instance_valid(hide_target.occupant):
+	if hide_target == null or not is_instance_valid(hide_target) or not hide_target.has_room():
 		hide_target = null
 		return false
 	var front: Vector3 = hide_target.to_global(hide_target.exit_offset)

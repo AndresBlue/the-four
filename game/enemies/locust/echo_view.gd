@@ -499,14 +499,14 @@ func build_landmarks() -> void:
 		# On the front of the wardrobe (hiding_place.gd: HINGE.z, WIDTH, HEIGHT),
 		# not inside it.
 		var frame: Basis = hide.global_basis
-		var front: float = HIDE.HINGE.z + 0.02
-		var half: float = HIDE.WIDTH * 0.5
+		var front: float = hide.hinge.z + 0.02
+		var half: float = hide.width * 0.5
 		for side in [-1.0, 1.0]:
 			for i in JAMB_GRAINS:
-				places.append(hide.global_position + frame * Vector3(side * half, lerpf(0.08, HIDE.HEIGHT - 0.04, rng.randf()), front))
+				places.append(hide.global_position + frame * Vector3(side * half, lerpf(0.08, hide.height - 0.04, rng.randf()), front))
 		for i in LINTEL_GRAINS:
 			var over := lerpf(-half, half, rng.randf())
-			for high in [0.08, HIDE.HEIGHT - 0.04]:
+			for high in [0.08, hide.height - 0.04]:
 				places.append(hide.global_position + frame * Vector3(over, high, front))
 	var multi: MultiMesh = marks.multimesh
 	multi.instance_count = places.size()
@@ -549,9 +549,9 @@ func build_reflectors() -> void:
 		reflectors.append({"node": door, "centre": base + Vector3(0, 1.3, 0), "frame": frame, "panel": panel})
 	for hide in level.hotel.hides:
 		var turn: Basis = hide.global_basis
-		var front: float = HIDE.HINGE.z + 0.03
-		var half: float = HIDE.WIDTH * 0.5 - 0.04
-		var frame: Array = [[hide.global_position + turn * Vector3(-half, 0.1, front), turn * Vector3(2.0 * half, 0, 0), turn * Vector3(0, HIDE.HEIGHT - 0.18, 0), WARDROBE_SPOTS]]
+		var front: float = hide.hinge.z + 0.03
+		var half: float = hide.width * 0.5 - 0.04
+		var frame: Array = [[hide.global_position + turn * Vector3(-half, 0.1, front), turn * Vector3(2.0 * half, 0, 0), turn * Vector3(0, hide.height - 0.18, 0), WARDROBE_SPOTS]]
 		reflectors.append({"node": hide, "centre": hide.global_position + turn * Vector3(0, 1.1, front), "frame": frame, "panel": []})
 	reflector_hits.resize(reflectors.size())
 	reflector_hits.fill(0)
@@ -948,7 +948,7 @@ func write_life(seconds: float) -> float:
 func before_wardrobe(point: Vector3) -> Vector3:
 	for hide in level.hotel.hides:
 		if hide.global_position.distance_to(point) > 1.2: continue
-		return hide.global_position + hide.global_basis * Vector3(0, WARDROBE_PUFF_UP, HIDE.HINGE.z + WARDROBE_PUFF_OUT)
+		return hide.global_position + hide.global_basis * Vector3(0, WARDROBE_PUFF_UP, hide.hinge.z + WARDROBE_PUFF_OUT)
 	return point
 
 ## A noise made close by does not just say "over there": it comes off a body,

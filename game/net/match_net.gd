@@ -302,8 +302,10 @@ func pack_local() -> Array:
 	var right := 0.0
 	var hide_index := -1
 	if player.hidden and is_instance_valid(player.hiding_place):
-		left = player.hiding_place.peek.left
-		right = player.hiding_place.peek.right
+		# Its own asking of the leaves, not how they stand: in a wardrobe of
+		# two the other's would come back as this one's and never let go.
+		left = player.hiding_place.peek_of(player)[0]
+		right = player.hiding_place.peek_of(player)[1]
 		hide_index = level.hotel.hides.find(player.hiding_place)
 	return [player.global_position, player.rotation.y, player.look_pitch(), player.velocity, flags, hide_index, left, right]
 
@@ -587,13 +589,13 @@ func request_hide(index: int, entering: bool) -> void:
 	var hide = level.hotel.hides[index]
 	if body == null: return
 	if entering:
-		if is_instance_valid(hide.occupant) or not near_sender(hide.global_position): return
+		if not hide.has_room() or not near_sender(hide.global_position): return
 		# Seen climbing in, the creature knows where they are.
 		var creature = level.locust
 		if is_instance_valid(creature) and creature.control == "ai" and creature.sees(body, true): creature.observed_hide = hide
 		remote_enters(hide, body)
 		hide_state.rpc(index, seat)
-	elif hide.occupant == body:
+	elif hide.holds(body):
 		remote_leaves(hide, body)
 		hide_state.rpc(index, -seat)
 
@@ -605,7 +607,7 @@ func hide_state(index: int, seat: int) -> void:
 		level.player.enter_hide(hide)
 	elif seat > 0 and bodies.has(seat):
 		remote_enters(hide, bodies[seat])
-	elif seat < 0 and -seat != net.local_seat and bodies.has(-seat) and hide.occupant == bodies[-seat]:
+	elif seat < 0 and -seat != net.local_seat and bodies.has(-seat) and hide.holds(bodies[-seat]):
 		remote_leaves(hide, bodies[-seat])
 
 func remote_enters(hide: Node3D, body: Node3D) -> void:
@@ -617,7 +619,7 @@ func remote_enters(hide: Node3D, body: Node3D) -> void:
 	level.world_audio.hide_cue(true, hide.global_position)
 
 func remote_leaves(hide: Node3D, body: Node3D) -> void:
-	hide.leave()
+	hide.leave(body)
 	body.hidden = false
 	body.hiding_place = null
 	level.world_audio.hide_cue(false, hide.global_position)
@@ -820,9 +822,15 @@ func update_wardrobe_jobs(delta: float) -> void:
 			pull_leaf(job, "left")
 		elif job.step == 2 and job.time >= steps.reach:
 			job.step = 3
-			var occupant = job.hide.occupant
+			# Whoever is in there; of two, the one who got in first. The other
+			# is left standing in a wardrobe with its doors pulled open.
+			var occupant: Node = null
+			for inside in job.hide.occupants:
+				if is_instance_valid(inside) and level.survivor_active(inside):
+					occupant = inside
+					break
 			var creature = level.locust
-			if is_instance_valid(occupant) and level.survivor_active(occupant) and is_instance_valid(creature) and creature.global_position.distance_to(job.hide.global_position) < 3.4:
+			if occupant != null and is_instance_valid(creature) and creature.global_position.distance_to(job.hide.global_position) < 3.4:
 				level.capture_survivor(occupant)
 		elif job.step == 3 and job.time >= steps.done + 0.4:
 			job.hide.close_timer = 2.0
@@ -990,10 +998,13 @@ func seat_returned(seat: int, _peer_id: int) -> void:
 ## Everything a returning player needs after rebuilding the floor.
 func catch_up(seat: int, id: int) -> void:
 	var doors: Array = level.hotel.doors.map(func(door): return door.opened)
+	# Who is in each wardrobe, by seat: a big one takes two.
 	var hides: Array = level.hotel.hides.map(func(hide):
+		var inside: Array = []
 		for other in bodies:
-			if hide.occupant == bodies[other]: return other
-		return net.local_seat if hide.occupant == level.player else 0)
+			if hide.holds(bodies[other]): inside.append(other)
+		if hide.holds(level.player): inside.append(net.local_seat)
+		return inside)
 	var places := {}
 	for other in config.survivors:
 		var body := body_of(other)
@@ -1037,7 +1048,7 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 	# wardrobe and every lit set used to sound at once the moment it arrived.
 	level.world_audio.hush = true
 	for index in mini(hides.size(), level.hotel.hides.size()):
-		if int(hides[index]) != 0: hide_state(index, int(hides[index]))
+		for inside in hides[index]: hide_state(index, int(inside))
 	if not creature.is_empty() and is_instance_valid(level.locust):
 		if local_is_locust():
 			# Back in control where the creature was left standing, and with

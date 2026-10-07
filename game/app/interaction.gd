@@ -252,7 +252,7 @@ func drive_local(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else "ESCONDERSE" if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0

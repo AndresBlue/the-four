@@ -501,7 +501,7 @@ func update_peek(delta: float) -> void:
 	var toward_right := maxf(-peek_side, 0.0)
 	var right_hand := lerpf(0.55, 1.0, toward_left) * lerpf(1.0, 0.0, toward_right)
 	var left_hand := lerpf(0.55, 1.0, toward_right) * lerpf(1.0, 0.0, toward_left)
-	if is_instance_valid(hiding_place): hiding_place.set_peek(peek * right_hand, peek * left_hand)
+	if is_instance_valid(hiding_place): hiding_place.set_peek(peek * right_hand, peek * left_hand, self)
 	# Narrow the view back inside as the doors close.
 	var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
 	rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
@@ -516,12 +516,12 @@ func peek_lean() -> Vector3:
 	return Basis(Vector3.UP, hide_yaw - rotation.y) * outward
 
 func enter_hide(place: Node3D) -> bool:
-	if hidden or is_instance_valid(place.occupant): return false
+	if hidden or not place.has_room(): return false
 	hiding_place = place
 	hidden = true
 	peek = 0.0
 	place.enter(self)
-	global_position = place.to_global(place.inside_offset)
+	global_position = place.to_global(place.inside_of(self))
 	velocity = Vector3.ZERO
 	rotation.y = place.global_rotation.y + PI
 	hide_yaw = rotation.y
@@ -537,7 +537,7 @@ func leave_hide() -> bool:
 	if point == Vector3.INF: return false
 	global_position = point
 	snap_torch()
-	hiding_place.leave()
+	hiding_place.leave(self)
 	hiding_place = null
 	peek = 0.0
 	hidden = false
@@ -547,7 +547,7 @@ func leave_hide() -> bool:
 ## Dragged out of a wardrobe (an execution): no room needed outside.
 func force_leave_hide() -> void:
 	if not hidden: return
-	if is_instance_valid(hiding_place): hiding_place.leave()
+	if is_instance_valid(hiding_place): hiding_place.leave(self)
 	hiding_place = null
 	hidden = false
 	peek = 0.0
@@ -555,7 +555,7 @@ func force_leave_hide() -> void:
 
 func reset_survival() -> void:
 	held = false
-	if is_instance_valid(hiding_place): hiding_place.leave()
+	if is_instance_valid(hiding_place): hiding_place.leave(self)
 	hidden = false
 	hiding_place = null
 	peek = 0.0
