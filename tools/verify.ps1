@@ -35,7 +35,7 @@ foreach ($test in $tests) {
 # Any stop over two seconds, any hop of its last-resort protocol and any
 # journey not finished is a failure (tools/dev/creature_stuck_probe.gd).
 $probeLog = Join-Path $projectPath 'evidence/verify_stuck_probe.log'
-$probeArguments = (@('--headless','--path',$projectPath,'--rendering-method','forward_plus','--fixed-fps','60','--script','res://tools/dev/creature_stuck_probe.gd','--log-file',$probeLog,'--','--seeds=81,213','--trips=6','--strict','--automation','--silent') | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$probeArguments = (@('--headless','--path',$projectPath,'--rendering-method','forward_plus','--fixed-fps','60','--script','res://tools/dev/creature_stuck_probe.gd','--log-file',$probeLog,'--','--test-profile','--seeds=81,213','--trips=6','--strict','--automation','--silent') | ForEach-Object { '"' + $_ + '"' }) -join ' '
 $probeProcess = Start-Process -FilePath $GodotPath -ArgumentList $probeArguments -WindowStyle Hidden -PassThru
 if (-not $probeProcess.WaitForExit(300000)) { $probeProcess.Kill(); throw "Tiempo agotado en la sonda de atascos. Consulta $probeLog" }
 $probeText = Get-Content -LiteralPath $probeLog -Raw

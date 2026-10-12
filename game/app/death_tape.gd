@@ -53,6 +53,14 @@ const AGC_FLOOR := -14.0
 const AGC_BLOW := -9.0
 const AGC_RISE := 7.0
 const AGC_OVER := 6.0
+## From the body's fall the tape does not run true again, and its sound goes
+## with its picture: pieces of it missing, more of them as it frays. How many
+## pieces a second, how long each is gone, how many go at the end and how far
+## down one is.
+const DROPOUT_RATE := 14.0
+const DROPOUT_SHARE := 0.6
+const DROPOUT_MOST := 0.55
+const DROPOUT_DB := -22.0
 ## The camcorder's own lamp through a capture: strength, reach (metres) and
 ## how fast it falls off with distance (hotel_player.pilot_as). On a face a
 ## hand from the lens it falls off fast, which is what gives the mask its
@@ -390,7 +398,7 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 			play_case()
 		if once("blow", time, SCORE.KILL_TIME): gain = minf(gain, AGC_BLOW)
 		if once("body", time, body_at()): gain = minf(gain, AGC_FLOOR + 2.0)
-		(mic[2] as AudioEffectAmplify).volume_db = gain
+		(mic[2] as AudioEffectAmplify).volume_db = gain + dropout(time)
 	if once("rustle", time, SCORE.LIFT_FROM + 0.2): rustle(execution, 0)
 	if once("rustle_again", time, SCORE.LIFT_FROM + 0.8): rustle(execution, 1)
 	# The picture going is the channel dying: the same instant, not a beat
@@ -404,6 +412,17 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 		mic_off()
 		hiss.stop()
 		if is_instance_valid(level.static_sound): level.static_sound.volume_db = -2.0
+
+## What the sound loses at this second of a tape that is giving out: nothing,
+## or a piece of it. Which pieces go is the capture's own draw, so a second
+## of it is the same however often it is asked.
+func dropout(time: float) -> float:
+	if plain or gone: return 0.0
+	var fray := pow(SCORE.ramp(time, body_at(), SCORE.CUT_TIME), 2.2)
+	if fray <= 0.02: return 0.0
+	var piece := floorf(time * DROPOUT_RATE)
+	var draw := fposmod(sin(piece * 12.9898 + float(id) * 78.233) * 43758.5453, 1.0)
+	return DROPOUT_DB if draw < fray * DROPOUT_MOST and fposmod(time * DROPOUT_RATE, 1.0) < DROPOUT_SHARE else 0.0
 
 func play_case() -> void:
 	var player := AudioStreamPlayer.new()

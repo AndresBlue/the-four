@@ -361,8 +361,14 @@ func release_execution() -> void:
 			torch.node.queue_free()
 		if body != null and is_instance_valid(body.torch): body.torch.visible = true
 	leave_scene(true)
+	# Whoever it was being taken out of a wardrobe is not left in its mouth:
+	# that wardrobe shuts again (any other, with a body still in it, stays).
+	var taken_from := int(execution.get("hide", -1))
+	if taken_from >= 0 and is_instance_valid(level.hotel) and taken_from < level.hotel.hides.size():
+		var wardrobe: Node3D = level.hotel.hides[taken_from]
+		wardrobe.release_open()
+		held_open.erase(wardrobe)
 	execution = {}
-	release_wardrobes()
 	if mine:
 		level.tape.stop(true)
 		level.player.held = not level.lifts.boarding.is_empty() or level.lifts.leaving >= 0.0

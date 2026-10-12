@@ -59,6 +59,8 @@ Los valores de **Desafiante son los de hoy** (comprobados en el código). Los de
 | Abre un armario «por si acaso» al buscar | nunca | 1 de cada 10 | 1 de cada 5 | 1 de cada 2 |
 | Estocada: desde dónde / lo que tarda / lo que tarda en rehacerse | 1,8 m / 0,5 s / 1,0 s | 2,2 m / 0,35 s / 0,7 s | 2,4 m / 0,3 s / 0,6 s | 2,6 m / 0,25 s / 0,5 s |
 | Registrar un armario (inmóvil) | 3,2 s | 2,8 s | 2,5 s | 2,0 s |
+| Segura de quién hay dentro (le vio entrar), espera en vez de abrirlo: la finta (`feint`) | nunca | 1 de cada 4 | 2 de cada 5 | 3 de cada 5 |
+| Cuánto espera antes de cansarse e irse (`feint_wait`) | — | 8–11 s | 9–13 s | 11–15 s |
 | Sale por otra tele encendida | no | cada 40 s como mucho | cada 25 s | cada 12 s |
 | Protección al empezar el piso | 25 s | 20 s | 15 s | 10 s |
 

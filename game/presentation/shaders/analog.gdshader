@@ -219,7 +219,11 @@ void fragment() {
 		dead *= 0.62 + 0.38 * lines;
 		if (rewinding > 0.0) {
 			// Dark between the bars, and the bars are the noise itself, torn.
-			float bars = smoothstep(0.62, 0.7, fract(SCREEN_UV.y * 3.0 + t * 5.5 + (hash(vec2(row, field)) - 0.5) * 0.03));
+			// Two of them up the picture, each point of it lit twice a
+			// second: at 5.5, which is nearer what a deck does, the whole
+			// picture flashed over three times a second (tools/capture/
+			// film_check.py), which nothing in the game is to do.
+			float bars = smoothstep(0.62, 0.7, fract(SCREEN_UV.y * 2.0 + t * 1.9 + (hash(vec2(row, field)) - 0.5) * 0.03));
 			dead = mix(dead, dead * (0.16 + 0.95 * bars), rewinding);
 		}
 		color = mix(color, dead, smoothstep(0.1, 0.85, loss));

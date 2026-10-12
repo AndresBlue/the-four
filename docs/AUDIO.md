@@ -139,17 +139,27 @@ Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes
 
 ## Ejecución
 
-Tres grabaciones aportadas, preparadas por `tools/audio/prepare_execution_sfx.py` desde `sfx/` (los originales no se tocan): `execution_scream.wav` (el grito del agarre), `execution_hit.wav` (el golpe) y `execution_static.ogg` (el canal muerto). Procedencia y licencias en [ASSETS.md](ASSETS.md).
+La escena, su diseño y sus porqués están en [EXECUTION.md](EXECUTION.md) (sección 11); aquí, lo que suena y de dónde sale. Tres grabaciones aportadas, preparadas por `tools/audio/prepare_execution_sfx.py` desde `sfx/` (los originales no se tocan): `execution_scream.wav` (el grito del agarre), `execution_hit.wav` (el golpe) y `execution_static.ogg` (el canal muerto). Procedencia y licencias en [ASSETS.md](ASSETS.md). **No hay voz humana de la víctima ni se sintetiza ninguna:** todo lo demás son sonidos que el juego ya tenía.
 
-Los tiempos, contados desde el agarre:
+Los tiempos, contados desde el agarre (`game/app/capture_score.gd`). Lo que oye la víctima lo lleva su cinta (`game/app/death_tape.gd`); lo que suena en la sala, `executions.gd`.
 
-- **0,0 s — el grito.** En la máquina de la víctima suena plano, a 0 dB, sin posición: no está en la sala, está en su cabeza. En las demás sale de la criatura por la propagación normal.
-- **2,58 s — el brazo sale.** Empieza el silbido del golpe, cortado para que su impacto caiga 0,22 s después, que es justo lo que tarda el brazo en pasar de un punto a tapar la lente. El negro crece desde donde está su mano derecha en la pantalla, que desde los ojos de la víctima queda a la izquierda.
-- **2,8 s — el impacto**, con la pantalla ya negra.
-- **2,92 s — la estática.** El canal muerto arranca **en el mismo instante** en que la imagen se va (bus Effects, −2 dB): sonido e imagen son el mismo suceso.
-- **3,1 s** cae el cuerpo, **en silencio**: un golpe tres décimas después del otro se oía como una segunda estocada.
+- **0,0 s — el grito.** En la máquina de la víctima suena plano, a 0 dB, sin posición: no está en la sala, está en su cabeza. En las demás sale de la criatura y se oye en todo el piso (`play_everywhere`). Con «Sobresaltos suaves» entra con 30 ms de rampa y 8 dB menos.
+- **0,55–1,1 s — el grito se queda atrás.** Cuando la cámara sale de las manos deja de ser una capa: baja de tono (hasta 0,9), se hunde 42 dB y se corta antes de 1,1 s.
+- **Desde que la cámara vuela, se oye por su micrófono.** Tres efectos puestos sobre el bus Master mientras dura: paso alto a 120 Hz, paso bajo a 6,5 kHz y una ganancia que hace de control automático. Con ellos entra el siseo de la cinta (`intro/tv_static.wav` en bucle, −33 dB).
+- **Al tocar el suelo (0,94–1,02 s de frente) — la carcasa:** `events/object_fall_1/2.wav` a 0,72 de tono. El micrófono se cierra de golpe (−14 dB) y vuelve a abrirse a 7 dB/s hasta 6 dB por encima: en ese hueco el siseo y la sala vuelven hinchándose, y los sonidos pequeños llegan enormes.
+- **1,3 y 1,9 s — roces**, mientras la levanta: `intro/bed_shift.wav` y `bed_stir.wav`.
+- **2,58 s — el brazo sale.** El silbido del golpe (`execution_hit.wav`), cortado para que su impacto caiga a los **2,8 s**. Suena desde donde está la criatura, también para su víctima, y el micrófono vuelve a cerrarse (−9 dB).
+- **~3,46 s — el cuerpo en el suelo:** `intro/stomp_1..3.wav` a 0,74 de tono y −7 dB, desde donde cae. Antes caía en silencio, porque con la pantalla ya en negro sonaba a segunda estocada; viéndolo caer, hace falta. El micrófono se cierra por tercera vez.
+- **3,46–4,2 s — la cinta se deshace**, desde que el cuerpo toca el suelo, y el sonido con ella: le faltan trozos de cuatro centésimas, cada vez más seguidos (`death_tape.dropout`: catorce trozos por segundo, hasta algo más de la mitad ausentes al final, 22 dB abajo), a la vez que la imagen se rompe. Con «Efectos reducidos», no.
+- **4,2 s — el corte.** El canal muerto arranca en el mismo instante en que la imagen se va (bus Effects, −2 dB), y el micrófono y el siseo se quitan. En la versión breve la imagen se va antes —al asentarse la cámara— y la nieve suena baja (−15 dB) por debajo de lo que el micrófono sigue recogiendo, hasta el corte de verdad.
 
-En la ejecución no queda nada sintetizado: los golpes y el cuerpo generados de la versión anterior (`execution_stab_1..3.wav`, `execution_drop.wav`) se han borrado, y `generate_event_sfx.py` ya no los produce.
+**La embestida no baja nada.** La presencia, el ambiente y la música ya no se apartan mientras prepara la estocada (la presencia bajaba 16 dB): era una señal nueva en el medio segundo anterior al golpe, justo donde menos conviene (EXECUTION.md, 5.3). Sigue detrás del mismo interruptor que el desgarro de la imagen (`hotel_main.windup_tear`, `-- --windup-tear`), a la espera de lo que decida el autor.
+
+**La finta calla lo que la delata.** Esperando junto a un armario (`hotel_locust.hushed()`), su presencia grabada se apaga del todo en menos de dos segundos y el aura baja al 15 % en unos cinco (`dread_aura.HUSHED`); vuelven cuando salta o se va. Sus pasos no se tocan: los que da para apartarse y los que da para irse se oyen como siempre.
+
+**Salir de un armario en silencio** (la tecla mantenida tres segundos) se oye a tres cuartos de la distancia de salir de golpe: `noise_kinds.HEARD.wardrobe_slow = 12 m × QUIET (0,75)`, para la IA y para el cazador, y el golpe de las puertas suena más bajo.
+
+En la ejecución no queda nada sintetizado: los golpes y el cuerpo generados de la versión anterior (`execution_stab_1..3.wav`, `execution_drop.wav`) se borraron, y `generate_event_sfx.py` ya no los produce. **Medido** (`python tools/capture/film_check.py evidence/captura_frente_A_sin_desgarro.avi --caught=5.95`, sobre las películas de `./tools/godot.ps1 bench-films`, con los volúmenes por defecto): la caza previa, −14 LUFS; la captura entera, de −7,7 a −9,2; el medio segundo del grito, de −1,9 a −2,8 con el pico en −0,5 dBFS; con la cámara en el suelo, de −18 a −23. **Pendiente:** escucharla con auriculares y decidir si el grito se baja; grabaciones propias para la carcasa, los roces y el cuerpo (hoy son sonidos prestados de otras escenas, bajados de tono).
 
 ## Pasos de los compañeros
 

@@ -172,8 +172,11 @@ func _enter_tree() -> void:
 	player = $Player
 	ui = $Interface
 	var test_name := "default"
+	var scripted := false
 	for argument in OS.get_cmdline_args():
-		if argument.ends_with(".gd"): test_name = argument.get_file().get_basename()
+		if argument.ends_with(".gd"):
+			test_name = argument.get_file().get_basename()
+			scripted = true
 	# Several runs of one script at once (tools/bots.ps1 -Parallel) each keep
 	# their own files: sharing them, each overwrote the others' settings.
 	for argument in OS.get_cmdline_user_args():
@@ -181,6 +184,13 @@ func _enter_tree() -> void:
 	if OS.get_cmdline_user_args().has("--test-profile"):
 		settings.save_path = "user://test_hotel_%s_settings.json" % test_name
 		session.checkpoint_path = "user://test_hotel_%s_checkpoint.json" % test_name
+	# A floor a script runs -- a test, a probe, a capture, a bench -- is
+	# nobody's game. With --test-profile it has files of its own; without it
+	# it reads the player's settings, and it used to write over the player's
+	# Continuar as well. The stuck probe of tools/verify.ps1 did, every time
+	# it ran, and what it left to go on with was its own floor, with the
+	# survivor where the probe keeps them: two hundred metres under the hotel.
+	elif scripted: session.keeps_checkpoint = false
 	discoveries = DISCOVERIES.new()
 	discoveries.name = "Discoveries"
 	if OS.get_cmdline_user_args().has("--test-profile"): discoveries.save_path = "user://test_hotel_%s_discoveries.json" % test_name
@@ -656,7 +666,9 @@ func update_rewind(delta: float) -> void:
 	# Fast at first and settling on the second it stops at, as a counter does.
 	var shown := lerpf(float(rewind.from), float(rewind.to), 1.0 - pow(1.0 - share, 2.4))
 	ui.show_rewind(camcorder.clock_text(shown))
-	if post_material != null: post_material.set_shader_parameter("rewinding", 1.0)
+	# With reduced effects the snow stays as it is: the mark and the clock
+	# running back say it.
+	if post_material != null: post_material.set_shader_parameter("rewinding", 0.0 if settings.values.reduced else 1.0)
 	if share < 1.0 and session.state == session.State.PLAYING: return
 	# Recorded over from there: the clock goes on from where the stage began.
 	tape_rewound = session.elapsed - float(rewind.to)

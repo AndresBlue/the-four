@@ -7,7 +7,7 @@ extends SceneTree
 ## Waiting for a door it is opening is not a stop.
 ##
 ##   godot --headless --path . --rendering-method forward_plus --fixed-fps 60 \
-##       --script tools/dev/creature_stuck_probe.gd -- --seeds=81,213,404 --trips=20
+##       --script tools/dev/creature_stuck_probe.gd -- --test-profile --seeds=81,213,404 --trips=20
 ##
 ## One line per floor and a total. --trace adds a line per stop and per trip.
 ## --strict fails (exit code 1) on any stop, any hop and any journey it never
@@ -32,7 +32,10 @@ func run() -> void:
 	root.add_child(level)
 	var total := {"trips": 0, "arrived": 0, "stops": 0, "hops": 0, "steps": [0, 0, 0, 0, 0, 0]}
 	for run_seed in seeds:
-		await level.start_floor(int(run_seed))
+		# In Desafiante, whatever the settings say: what a journey is given to
+		# be done in is measured against how fast it hunts there, and in the
+		# two easy ones it is slower and tires of a chase.
+		await level.start_floor(int(run_seed), false, [1], "desafiante")
 		var creature = level.locust
 		# Out of the way: nothing it does distracts the creature, and it is
 		# what a chase is aimed at, so the chase has somebody to be after.

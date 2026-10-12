@@ -80,6 +80,15 @@ jugado**:
   contra el cazador) con cuatro tablas, la ficha de carrera, dieciocho hitos
   del hotel y la comparación con las fichas de la gente con la que se juega.
 
+El 12 de octubre entró **la captura rehecha**, y **tampoco se ha jugado**:
+lo que ve quien muere es lo que grabó su videocámara —la máscara a un palmo,
+la cámara arrancada de las manos, la muerte desde el suelo, la cinta que se
+corta—, distinto según cómo te coge, dónde cae la cámara y qué luz hay; la
+finta del armario, de la que se escapa esperando; salir de un armario sin
+ruido; la segunda muerte más corta, la cinta que se rebobina y «Sobresaltos
+suaves». Tiene su banco (`Banco de capturas.cmd`) y una decisión tuya
+pendiente: si la embestida rasga la imagen o no (apartado 1).
+
 El 4 de octubre entró esto, y **tampoco se ha jugado**:
 
 - **Las cuatro dificultades, elegibles**: «Nueva partida» pregunta cuál, y en
@@ -249,11 +258,33 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **Las distancias con auriculares:** si 10, 20 y 40 m se distinguen de
   verdad, si las puertas lejanas se siguen leyendo con la absorción nueva, y si
   la dirección de la criatura se acierta en esquinas y con dos puertas.
-- [ ] **La ejecución:** el grito (¿asusta o solo molesta?), los 4,2 s, y si la
-  estática se entiende como «te mataron» sin leer nada. Y la de otro, que
-  ahora se oye desde cualquier punto del piso: si a lo lejos (−24 dB como
-  mucho por debajo, con eco) se entiende como «han pillado a alguien» y hacia
-  dónde.
+- [ ] **El desgarro de la embestida: A o B (decisión tuya, pendiente).** El
+  juego va hoy en A: la imagen no se rasga ni baja el ambiente en el medio
+  segundo antes de que te coja. B es como era: se rasga. Se compara de dos
+  maneras. Jugando: `Banco de capturas.cmd`, la tecla T alterna A y B y G
+  hace venir a la bestia. Mirando: las cuatro películas de
+  `evidence/captura_*.avi` (de frente y por la espalda, A y B, con sonido).
+  Para una partida entera en B: `./tools/godot.ps1 play -Extra '--windup-tear'`.
+- [ ] **La captura rehecha (12 de octubre), con gente** (EXECUTION.md, 18.2):
+  quien no la ha visto, ¿salta, y dice que vio una cara?; ¿sabe qué le mató y
+  dónde quedó la cámara?; a la tercera y a la quinta muerte, ¿molesta, o nota
+  que no es igual?; a oscuras, ¿se entiende con solo el piloto rojo?; con
+  auriculares, ¿el grito hace quitárselos? —medido, su medio segundo está a
+  −2 LUFS, unos 11 LU por encima de la caza que lo precede: es el nivel que ya
+  tenía, y si molesta se baja aquí—; y de testigo, en cooperativo, si ver caer
+  a otro da miedo o da información. Y la de otro a lo lejos, que se
+  oye desde cualquier punto del piso: si se entiende como «han pillado a
+  alguien» y hacia dónde.
+- [ ] **La finta del armario:** si se entiende que de ella se escapa
+  esperando y que sus pasos no mienten, cuántas muertes cuesta aprenderlo, y
+  si las veces que finge (una de cada cuatro en Equilibrada, dos de cada
+  cinco en Desafiante, tres de cada cinco en Pesadilla) y lo que espera (de 8
+  a 15 s) son los números buenos: están puestos a ojo, sin medir con bots ni
+  con gente. En el banco, la tecla 4 la fuerza y N te pone ante un armario.
+- [ ] **Salir del armario sin ruido** (mantener E tres segundos, un 25 % menos
+  de distancia de escucha): si tres segundos son muchos o pocos y si se usa.
+- [ ] **El piloto rojo:** si jugando se nota lo justo (dentro de un armario
+  tiñe las puertas; en una sala a oscuras no se ve nada de él).
 - [ ] **Los pasos grabados y el zumbido de fondo**, en partida y no en una
   prueba.
 - [ ] **Escucha crítica del reparto de buses y del aura**, con los eventos
@@ -457,28 +488,22 @@ silencio que hoy se oye raro al cerrar cada sector, y probar el mando en
 partida: que la sensibilidad por defecto no se quede corta ni larga, y que se
 pueda jugar entero sin tocar el teclado.
 
-- [ ] **Rehacer la captura: sobresalto, cámara caída y cinta** (diseño
-  cerrado el 12 de octubre, [EXECUTION.md](EXECUTION.md)). La ejecución de hoy
-  funciona y no asusta: en el instante del grito la bestia es un borrón de
-  un 7 % del cuadro y la máscara nunca pasa del 16 %. La propuesta: la cara
-  a un palmo en el primer fotograma, la cámara arrancada de las manos, la
-  muerte grabada desde el suelo y la cinta que se rompe cuando cae el
-  cuerpo; siete entradas según cómo te coge, la linterna que rueda, el
-  piloto rojo a oscuras, la finta de armario con escapatoria y una versión
-  breve para las muertes repetidas. El autor decidió las once cosas de su sección 19 el 12 de octubre, y
-  una sigue abierta: el desgarro de la embestida, que tiene que mirar en el
-  banco. Por fases:
-  - [ ] 0 · Banco: disparar cualquier muerte en cualquier sala y sacar su
-    hoja de fotogramas.
-  - [ ] 1 · El golpe y el rostro, de frente y con luz; la prueba A/B del
-    desgarro de la embestida.
-  - [ ] 2 · La cámara cae: dónde, cómo, qué graba; los fallos de cinta y el
-    micrófono.
-  - [ ] 3 · La luz: linterna caída, teatro de sombras, piloto.
-  - [ ] 4 · Las otras entradas y «mira la lente».
-  - [ ] 5 · Armarios: el registro desde dentro, certeza y finta.
-  - [ ] 6 · Red y versus.
-  - [ ] 7 · Repetición, opciones, mezcla y pruebas con gente.
+- [ ] **La captura, lo que queda de código** (rehecha el 12 de octubre:
+  sobresalto, cámara caída, cinta, finta de armario y repetición; qué se hizo,
+  con qué se comprobó y qué falta, en [EXECUTION.md](EXECUTION.md), sección
+  18). Lo que hay que juzgar jugando está en el apartado 1.
+  - [ ] Según lo que decida el autor sobre el desgarro de la embestida
+    (apartado 1), quitar el interruptor (`hotel_main.windup_tear`) y lo que
+    quede sin usar de la opción descartada.
+  - [ ] Las poses del cuerpo en la captura (colgando, tendido, sentado) están
+    hechas mirando a la Exploradora: ajustarlas al Detective Femenino, que
+    las hereda por los huesos comunes. El Detective Masculino no tiene
+    esqueleto y solo se inclina (apartado 4).
+  - [ ] Una prueba de red que mire la escena desde la máquina de un testigo
+    (hoy los cuatro escenarios pasan, y uno ejecuta a alguien sacándolo de un
+    armario, pero ninguno compara lo que ve cada máquina).
+  - [ ] Los 4,2 s de la bestia quieta, que el autor quiere revisar después.
+  - [ ] Idea aparcada: el final «se lo lleva» (EXECUTION.md, 7.4).
 - [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
   siempre refugio, televisores y código, y en ese orden: la planta cambia y la
   partida no. Basta una condición alternativa que pueda salir en el sector 2 o
@@ -543,6 +568,15 @@ pueda jugar entero sin tocar el teclado.
 - [ ] **Un detective masculino con esqueleto.** El de ahora es un OBJ sin
   huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
   que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.
+  En la captura es el único cuerpo que no cuelga, ni cae tendido, ni queda
+  sentado: solo se inclina.
+- [ ] **Sonidos propios para la captura.** Lo que hoy suena al caer la
+  videocámara, al rozar la ropa mientras la bestia levanta el cuerpo y al
+  caer el cuerpo son grabaciones prestadas de otras escenas, bajadas de tono
+  (`object_fall_*`, `bed_shift`/`bed_stir`, `stomp_*`). Hacen falta: una
+  carcasa de plástico contra moqueta y contra baldosa, roces de ropa, un
+  cuerpo que cae sobre moqueta, y si se quiere, respiración o voz de la
+  víctima —grabadas, no sintetizadas—.
 
 ## 5 · Lo nuevo: los otros tres pisos
 
