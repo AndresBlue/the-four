@@ -112,7 +112,7 @@ ACTUAL: (Apacible) Ve poco: medio escondido, tarda en distinguirte, y se para a 
 | en paz. · Si caes, la etapa vuelve a empezar, todas las veces que haga falta.
 | (Equilibrada) Duda un momento antes de reaccionar, y asomado a medias tarda en verte. · Corre algo menos
 | que tú, y se cansa de una persecución larga. · Después de un encuentro te da un respiro. · Si caes, la etapa
-| vuelve a empezar, hasta dos veces.
+| vuelve a empezar: una vez a solas, dos en equipo.
 | (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa
 | perdida; a solas, ninguna.
 | (Pesadilla) Ve y oye más lejos que ninguna. · Reacciona al instante, insiste y registra más armarios. ·

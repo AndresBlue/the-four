@@ -241,7 +241,7 @@ Persianas, televisores y documentos son herramientas/pistas opcionales, nunca li
 | Respiro tras un encuentro / tras una caída | 35 s y hasta 100 más según lo vivido / 55 s | 35 s y hasta 80 más / 50 s | 30 s / 45 s | 20 s / 30 s |
 | A solas, todo se espacia | ×1,6 | ×1,4 | igual | igual |
 | Espera junto a algo que os falta por hacer (emboscada) | nunca | poco | sí | sí |
-| Etapas devueltas en equipo / a solas | sin límite / sin límite | dos / dos | una / ninguna | ninguna / ninguna |
+| Etapas devueltas en equipo / a solas | sin límite / sin límite | dos / una | una / ninguna | ninguna / ninguna |
 
 | Duda al distinguirte (se para, te mira y chasquea) | 1,2 s | 0,6 s | no | no |
 | Se cansa de perseguir aunque te vea / y no se fija en nadie durante | a los 7 s / 20 s | a los 12 s / 14 s | nunca | nunca |

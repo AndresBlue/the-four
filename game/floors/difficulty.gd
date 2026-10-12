@@ -37,7 +37,7 @@ const NOTES := {
 ## come (docs/DIFFICULTY.md) are not promised here.
 const TRAITS := {
 	"apacible": ["Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar.", "Corre bastante menos que tú y se cansa enseguida de perseguir.", "Después de un susto te deja un buen rato en paz.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
-	"equilibrada": ["Duda un momento antes de reaccionar, y asomado a medias tarda en verte.", "Corre algo menos que tú, y se cansa de una persecución larga.", "Después de un encuentro te da un respiro.", "Si caes, la etapa vuelve a empezar, hasta dos veces."],
+	"equilibrada": ["Duda un momento antes de reaccionar, y asomado a medias tarda en verte.", "Corre algo menos que tú, y se cansa de una persecución larga.", "Después de un encuentro te da un respiro.", "Si caes, la etapa vuelve a empezar: una vez a solas, dos en equipo."],
 	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida; a solas, ninguna."],
 	"pesadilla": ["Ve y oye más lejos que ninguna.", "Reacciona al instante, insiste y registra más armarios.", "No se perdona ninguna etapa perdida."],
 }
@@ -105,7 +105,7 @@ const PROFILES := {
 		"doubt": 0.6, "chase_tire": 12.0, "lost_cry": true, "guess_hides": true, "encounter_every": 150.0, "cross": 1.2,
 		"calm": 80.0, "solo_ease": 1.4, "ambush": 0.7,
 		"sight_angle": 54.0, "cover": 0.45, "glimpse": 2.0, "tired": 14.0,
-		"restarts": 2, "solo_restarts": 2,
+		"restarts": 2, "solo_restarts": 1,
 	},
 	"desafiante": {
 		"sight_range": 70.0, "notice": 1.0, "hearing": 1.0, "torch_range": 45.0,

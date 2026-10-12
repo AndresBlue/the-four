@@ -90,7 +90,7 @@ Hoy, a solas no se perdona nada y en equipo se perdona un derrumbe: la misma cri
 
 | | Apacible | Equilibrada | Desafiante (hoy) | Pesadilla |
 |---|---|---|---|---|
-| **Individual:** veces que el sector vuelve a empezar al caer | sin límite | 2 | ninguna | ninguna |
+| **Individual:** veces que el sector vuelve a empezar al caer | sin límite | 1 (eran 2 hasta el 12 de octubre de 2026; lo decidió el autor) | ninguna | ninguna |
 | **Cooperativo:** derrumbes perdonados | sin límite | 2 | 1 | ninguno |
 | La criatura espera ante el ascensor (vestíbulo / desde que bajasteis) | 25 s / 30 s | 20 s / 25 s | 15 s / 20 s | 10 s / 12 s |
 
@@ -201,7 +201,7 @@ Lo que dice:
 - **Apacible en equipo ya es lo que se buscaba, o casi:** 95 % de pisos ganados, dos tercios sin perder ni una etapa (el objetivo era el 80 %), menos de dos caídas por piso y seis huidas de cada diez persecuciones.
 - **Equilibrada en equipo entra en su objetivo** (50–60 % con novatos): 60 %.
 - **Los encuentros bajan en Apacible** (5,0 por bot, la mitad del objetivo de 10 de la tabla de arriba): es el precio de dejar aire. Ese objetivo se escribió cuando se quería la misma frecuencia que en Pesadilla, y con gente resultó un asedio; queda por decidir, jugando, si 5 es poco.
-- **Falta:** decidir qué hacer con Equilibrada a solas (más etapas devueltas a solas, o más margen todavía); decidir si a solas un piso debe pedir menos; y, sobre todo, volver a probarlo con gente.
+- **Falta:** decidir si a solas un piso debe pedir menos; y, sobre todo, volver a probarlo con gente. **Equilibrada a solas quedó decidida el 12 de octubre: una sola etapa devuelta** (eran dos). Las medidas de arriba son con dos: con una, el bot novato, que ya solo ganaba 4 de 100, ganará menos; es una decisión de diseño, no de los números.
 
 **Cuarta medida (5 y 6 de octubre de 2026): las cuatro, con 50 pisos por celda.** Semillas nuevas, 400–449, que no se usaron para ajustar nada; `./tools/bots.ps1 -Runs 50 -Seed 400 -Parallel 20` (`evidence/bots/*est50_*`). Con 50 pisos, un porcentaje tiene un margen de unos ±13 puntos en el centro (68 % es entre 54 y 79) y de unos 7 en los extremos (0 de 50 es «menos del 7 %»). El bot experto a solas se dejó fuera: no mide (tercera medida).
 

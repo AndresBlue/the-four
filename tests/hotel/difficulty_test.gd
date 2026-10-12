@@ -84,6 +84,8 @@ func run() -> void:
 	check("De quien corre se escapa corriendo en las dos fáciles, y en Apacible con margen", float(easiest.chase_speed) <= 5.0 and float(even.chase_speed) < 6.0 and float(desafiante.chase_speed) > 6.0)
 	check("Las teles: Apacible no viaja, y cuanto más difícil, más a menudo", hops[0] == 0.0 and hops[1] > hops[2] and hops[2] > hops[3])
 	check("La clemencia: sin límite, dos, una, ninguna", mercies == [-1, 2, 1, 0])
+	var alone: Array = DIFFICULTY.ORDER.map(func(id): return int(DIFFICULTY.PROFILES[id].solo_restarts))
+	check("Y a solas: sin límite, una, ninguna, ninguna", alone == [-1, 1, 0, 0])
 	check("Lo que no se conoce es Desafiante", DIFFICULTY.valid("imposible") == "desafiante" and DIFFICULTY.valid(null) == "desafiante" and DIFFICULTY.valid("apacible") == "apacible" and DIFFICULTY.FIRST == "equilibrada")
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
