@@ -202,7 +202,7 @@ func creature_crossing(delta: float) -> void:
 	# Never in the middle of something: a kill by the car used to go up with
 	# it, the victim dragged through the walls after it. The machine hunts
 	# first and rides after; a player hunting rides when it is free to.
-	var busy: Array = [level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.WINDUP, level.locust.Mode.RECOVER]
+	var busy: Array = [level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.WINDUP, level.locust.Mode.RECOVER, level.locust.Mode.LURK]
 	if level.locust.control == "ai": busy += [level.locust.Mode.CHASE, level.locust.Mode.ALERT]
 	if level.locust.mode in busy: return
 	# At its doorway will do: the creature is taller than the doors.

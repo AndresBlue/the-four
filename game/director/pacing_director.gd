@@ -230,7 +230,7 @@ func creature():
 
 func hostile() -> bool:
 	var it = creature()
-	return it != null and it.mode in [it.Mode.ALERT, it.Mode.CHASE, it.Mode.WINDUP, it.Mode.RECOVER, it.Mode.EXECUTE]
+	return it != null and it.mode in [it.Mode.ALERT, it.Mode.CHASE, it.Mode.WINDUP, it.Mode.RECOVER, it.Mode.EXECUTE, it.Mode.LURK]
 
 ## Everybody out there it plays for: alive, outside the refuge, not in a car.
 func active_survivors() -> Array:

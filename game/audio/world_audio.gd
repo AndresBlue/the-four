@@ -218,7 +218,11 @@ func door_cue(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful 
 		var words := "[Un portazo]" if forceful else "[Una puerta cruje]" if opening else "[Una puerta se cierra]"
 		show_caption(words, false)
 
-func hide_cue(entering: bool, point: Vector3) -> void:
+func hide_cue(entering: bool, point: Vector3, quiet := false) -> void:
+	# Out the quiet way: the doors eased, not thrown.
+	if quiet and not entering:
+		play_at(choose("open_slow"), point + Vector3.UP, GAIN.open_slow - 8.0, RID(), 0.4)
+		return
 	var path := choose("hide_enter" if entering else "hide_leave")
 	var start := maxf(TIMING.onset(path), TIMING.hit(path) - HIDE_PREROLL) if entering else TIMING.onset(path)
 	play_at(path, point + Vector3.UP, GAIN.hide, RID(), start)
@@ -548,6 +552,8 @@ func _physics_process(delta: float) -> void:
 	if profile == null: return
 	var distance: float = presence_route.get("distance", INF)
 	var audible: bool = level.session.state == level.session.State.PLAYING and (creature.grace <= 0 or presence_phantom) and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
+	# Holding still beside a wardrobe it makes no sound of its own (the feint).
+	if not presence_phantom and creature.hushed(): audible = false
 	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
 	presence.bus = CREATURE_BUS[presence_route.get("echo", false)]
 	if audible and not presence.playing: presence.play()
@@ -557,7 +563,7 @@ func _physics_process(delta: float) -> void:
 	if clock < 0.1: return
 	clock = 0
 	var rear := behind(presence.global_position)
-	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if creature.mode == creature.Mode.WINDUP and not presence_phantom else 0.0)
+	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if level.windup_tear and creature.mode == creature.Mode.WINDUP and not presence_phantom else 0.0)
 	presence.attenuation_filter_cutoff_hz = minf(presence_route.get("cutoff", 20000.0), lerpf(20000.0, REAR_CUTOFF, rear))
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
 

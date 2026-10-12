@@ -137,7 +137,7 @@ func begin(execution: Dictionary, covered := false) -> void:
 	id = int(execution.get("id", -1))
 	entry = String(execution.get("entry", "front"))
 	busy = covered
-	soft = not bool(level.settings.values.get("startle", true))
+	soft = bool(level.settings.values.get("startle_soft", false))
 	plain = bool(level.settings.values.reduced)
 	brief = seen.has(entry)
 	seen[entry] = true
@@ -155,8 +155,9 @@ func begin(execution: Dictionary, covered := false) -> void:
 	level.camcorder.blink = 0.0
 	dark = is_dark(execution)
 	# In a lit room it stays what it is carried as: a red cast on a mask the
-	# room already lights would be a light from nowhere.
-	if dark: player.pilot_as = LAMP_FACE
+	# room already lights would be a light from nowhere. In a wardrobe the mask
+	# that comes in has the room behind it: the lamp is all that shows its face.
+	if dark or entry in ["wardrobe", "ambush"]: player.pilot_as = LAMP_FACE
 	elif bool(execution.get("torch", false)): player.pilot_as = LAMP_FACE_LIT
 	# The face is there on the next frame: a jump, not a move to smear.
 	if SCORE.face_start(entry) <= 0.0 or busy: level.rig.motion_cut()
@@ -330,8 +331,11 @@ func bump(time: float, at: float, shape: Vector2) -> float:
 
 func frame_picture(time: float) -> void:
 	if level.post_material == null: return
-	# The short version: once the camera is still, the picture goes.
-	if brief and landed_at >= 0.0 and time >= landed_at + 0.15: gone = true
+	# The short version: once the camera is still, the picture goes, and the
+	# words that say so with it; the rest is heard.
+	if brief and not gone and landed_at >= 0.0 and time >= landed_at + 0.15:
+		gone = true
+		level.ui.lost_signal(SCORE.END_TIME - time + level.executions.LOST_HOLD)
 	var hit := 0.0
 	var band := -1.0
 	var fray := 0.0

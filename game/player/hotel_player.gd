@@ -17,7 +17,8 @@ var torch: SpotLight3D
 ## A noise the creature may hear: where, how far it carries, and what made
 ## it (NOISE.Kind, which only the hunter's acoustic image reads).
 signal noise(point: Vector3, radius: float, kind: int)
-signal hiding_changed(entering: bool, point: Vector3)
+## `quiet`: it left the slow way (hiding_place.QUIET_EXIT).
+signal hiding_changed(entering: bool, point: Vector3, quiet: bool)
 var active := false
 var stamina := 100.0
 ## How much of a mind is left, 100 down to 0. It falls in the dark and comes
@@ -40,6 +41,14 @@ var step_phase := 0.0
 var bob_weight := 0.0
 var eye_height := 1.64
 var hide_yaw := 0.0
+## Stepping into a wardrobe or out of it: the body carried from where it was
+## to where it is going, turning as it goes, instead of being put there
+## between two frames. {from, to, yaw_from, yaw_to, time, length}. Nothing
+## else moves it meanwhile, and anything that takes the body away (a capture,
+## a floor rebuilt) ends it where it is.
+var transit := {}
+## How far the doors are eased open by the key being held to leave quietly.
+var easing := 0.0
 ## 0..1: how far the wardrobe doors are eased open while hiding.
 var peek := 0.0
 ## -1..1: which side the occupant looks to while peeking (+ is left), smoothed.
@@ -216,6 +225,10 @@ func pad_look(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if held:
 		velocity = Vector3.ZERO
+		transit = {}
+		return
+	if not transit.is_empty():
+		step_transit(delta)
 		return
 	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden and not reading else Vector2.ZERO
 	# How far the stick is pushed is how fast: a keyboard is always all the way.
@@ -555,46 +568,81 @@ func peek_lean() -> Vector3:
 	var outward := Vector3(peek_side * PEEK_SIDE_LEAN, 0.0, -PEEK_LEAN - absf(peek_side) * 0.12) * peek
 	return Basis(Vector3.UP, hide_yaw - rotation.y) * outward
 
+## The body on its way into a wardrobe or out of it (transit).
+func step_transit(delta: float) -> void:
+	transit.time = float(transit.time) + delta
+	var t := clampf(float(transit.time) / maxf(float(transit.length), 0.01), 0.0, 1.0)
+	var eased := t * t * (3.0 - 2.0 * t)
+	var before := global_position
+	global_position = (transit.from as Vector3).lerp(transit.to, eased)
+	rotation.y = lerp_angle(float(transit.yaw_from), float(transit.yaw_to), eased)
+	velocity = Vector3.ZERO
+	# The look levels out as it steps in, and the feet walk it.
+	if hidden: camera.rotation.x = lerpf(camera.rotation.x, 0.0, minf(1.0, delta * 8.0))
+	avatar.update_pose((global_position - before) / maxf(delta, 0.001), crouched, delta, true)
+	eye_height = move_toward(eye_height, 0.9 if crouched else 1.64, delta * 5.0)
+	update_peek(delta)
+	camera.position = Vector3(0.0, eye_height, 0.0) + peek_lean()
+	if t >= 1.0:
+		transit = {}
+		snap_torch()
+
 func enter_hide(place: Node3D) -> bool:
 	if hidden or not place.has_room(): return false
 	hiding_place = place
 	hidden = true
 	peek = 0.0
+	easing = 0.0
 	place.enter(self)
-	global_position = place.to_global(place.inside_of(self))
+	hide_yaw = place.global_rotation.y + PI
+	# Stepped into, turning round to face the doors.
+	transit = {"from": global_position, "to": place.to_global(place.inside_of(self)), "yaw_from": rotation.y, "yaw_to": hide_yaw, "time": 0.0, "length": place.ENTER_TIME}
 	velocity = Vector3.ZERO
-	rotation.y = place.global_rotation.y + PI
-	hide_yaw = rotation.y
-	camera.rotation = Vector3.ZERO
 	reset_handheld()
 	torch.visible = false
-	hiding_changed.emit(true, global_position)
+	hiding_changed.emit(true, global_position, false)
 	return true
 
-func leave_hide() -> bool:
+## `quiet`: the doors were eased open first (hiding_place.QUIET_EXIT), and
+## what is heard of it carries less far.
+func leave_hide(quiet := false) -> bool:
 	if not hidden or not is_instance_valid(hiding_place): return false
 	var point: Vector3 = hiding_place.available_exit(self)
 	if point == Vector3.INF: return false
-	global_position = point
-	snap_torch()
+	# Stepped out of, from wherever inside the body is.
+	transit = {"from": global_position, "to": point, "yaw_from": rotation.y, "yaw_to": rotation.y, "time": 0.0, "length": hiding_place.QUIET_LEAVE_TIME if quiet else hiding_place.LEAVE_TIME}
+	hiding_place.set_ease(0.0, self)
 	hiding_place.leave(self)
 	hiding_place = null
 	peek = 0.0
+	easing = 0.0
 	hidden = false
-	hiding_changed.emit(false, global_position)
+	hiding_changed.emit(false, point, quiet)
 	return true
+
+## The key held to leave quietly: how far the doors are eased open by it (0
+## to 1), and let fall shut again when it is let go.
+func ease_out(amount: float) -> void:
+	easing = clampf(amount, 0.0, 1.0)
+	if hidden and is_instance_valid(hiding_place): hiding_place.set_ease(easing, self)
 
 ## Dragged out of a wardrobe (an execution): no room needed outside.
 func force_leave_hide() -> void:
 	if not hidden: return
-	if is_instance_valid(hiding_place): hiding_place.leave(self)
+	transit = {}
+	if is_instance_valid(hiding_place):
+		hiding_place.set_ease(0.0, self)
+		hiding_place.leave(self)
 	hiding_place = null
 	hidden = false
 	peek = 0.0
-	hiding_changed.emit(false, global_position)
+	easing = 0.0
+	hiding_changed.emit(false, global_position, false)
 
 func reset_survival() -> void:
 	held = false
+	transit = {}
+	easing = 0.0
 	if is_instance_valid(hiding_place): hiding_place.leave(self)
 	hidden = false
 	hiding_place = null

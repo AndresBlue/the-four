@@ -62,6 +62,7 @@ static func take(level) -> Dictionary:
 		"sheet": level.sheet_snapshot(),
 		"plan": level.floor_map.pack(),
 		"ledger": level.ledger.pack(),
+		"tape": [level.tape_rewound, level.stage_tape],
 	}
 
 ## Into the floor just built from the same seed (hotel_main.continue_floor()).
@@ -120,6 +121,11 @@ static func give(level, state: Dictionary) -> void:
 	level.restore_sheet(state.get("sheet", []))
 	level.floor_map.unpack(state.get("plan", {}))
 	level.ledger.unpack(state.get("ledger", {}))
+	# How far the tape's clock is behind the floor's (stages given back).
+	var kept_tape = state.get("tape", [])
+	if kept_tape is Array and kept_tape.size() == 2:
+		level.tape_rewound = clampf(float(kept_tape[0]), 0.0, session.elapsed)
+		level.stage_tape = clampf(float(kept_tape[1]), 0.0, session.elapsed)
 	level.world_audio.hush = false
 	# The doors of the sector, and whoever listens to the session.
 	session.changed.emit()

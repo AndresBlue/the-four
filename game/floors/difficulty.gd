@@ -63,7 +63,10 @@ const TRAITS := {
 ##            wardrobe it did not see anybody get into); and the director's
 ##            encounter_every (s without a sign of it after which it brings it
 ##            across somebody's view; 0: never) and cross (how much it likes
-##            doing that anyway; 0: not a move it makes)
+##            doing that anyway; 0: not a move it makes); feint (how often,
+##            sure of who is in a wardrobe, it waits for them to come out
+##            instead of opening it; 0: never) and feint_wait (how long it
+##            will wait, s, between two)
 ##  eyes      sight_angle (degrees it sees to either side of where it
 ##            faces), cover (the share of a body that has to show for it to
 ##            take it for somebody at once; 0: any part will do) and glimpse
@@ -89,6 +92,7 @@ const PROFILES := {
 		"rest_chase": 35.0, "rest_death": 55.0, "death_ease": 10.0, "double_back": 0.0,
 		"distract_rest": 30.0, "burnt_every": [60.0, 90.0],
 		"doubt": 1.2, "chase_tire": 7.0, "lost_cry": true, "guess_hides": false, "encounter_every": 150.0, "cross": 2.0,
+		"feint": 0.0, "feint_wait": [8.0, 10.0],
 		"calm": 100.0, "solo_ease": 1.6, "ambush": 0.0,
 		"sight_angle": 45.0, "cover": 0.6, "glimpse": 4.0, "tired": 20.0,
 		"restarts": -1, "solo_restarts": -1,
@@ -103,6 +107,7 @@ const PROFILES := {
 		"rest_chase": 35.0, "rest_death": 50.0, "death_ease": 9.0, "double_back": 0.2,
 		"distract_rest": 45.0, "burnt_every": [45.0, 60.0],
 		"doubt": 0.6, "chase_tire": 12.0, "lost_cry": true, "guess_hides": true, "encounter_every": 150.0, "cross": 1.2,
+		"feint": 0.25, "feint_wait": [8.0, 11.0],
 		"calm": 80.0, "solo_ease": 1.4, "ambush": 0.7,
 		"sight_angle": 54.0, "cover": 0.45, "glimpse": 2.0, "tired": 14.0,
 		"restarts": 2, "solo_restarts": 1,
@@ -117,6 +122,7 @@ const PROFILES := {
 		"rest_chase": 30.0, "rest_death": 45.0, "death_ease": 8.0, "double_back": 0.4,
 		"distract_rest": 45.0, "burnt_every": [30.0, 45.0],
 		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 0.0, "cross": 0.0,
+		"feint": 0.4, "feint_wait": [9.0, 13.0],
 		"calm": 0.0, "solo_ease": 1.0, "ambush": 2.0,
 		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 10.0,
 		"restarts": 1, "solo_restarts": 0,
@@ -131,6 +137,7 @@ const PROFILES := {
 		"rest_chase": 20.0, "rest_death": 30.0, "death_ease": 4.0, "double_back": 0.7,
 		"distract_rest": 90.0, "burnt_every": [20.0, 30.0],
 		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 90.0, "cross": 0.5,
+		"feint": 0.6, "feint_wait": [11.0, 15.0],
 		"calm": 0.0, "solo_ease": 1.0, "ambush": 2.0,
 		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 10.0,
 		"restarts": 0, "solo_restarts": 0,

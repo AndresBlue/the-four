@@ -31,6 +31,15 @@ var reading_document: Node3D
 ## Seconds spent going through the piece of furniture in front.
 var search_time := 0.0
 
+## In a wardrobe: how long the key has been held, and whether it has been let
+## go since getting in (the press that gets somebody in does not start to
+## take them out). A touch leaves as always; held for HIDE.QUIET_EXIT seconds
+## the doors are eased open and what is heard of it carries less far.
+var hide_hold := 0.0
+var hide_armed := false
+## Held longer than this, it is not a touch.
+const HIDE_TAP := 0.28
+
 ## Tab opens and closes the sheet. Dead players may look but not draw; The
 ## Locust never sees it.
 func toggle_sheet() -> void:
@@ -234,15 +243,16 @@ func drive_local(delta: float) -> void:
 		was_held = true
 		return
 	var hiding_target = aimed if aimed is HIDE else null
-	if Input.is_action_just_pressed("interact") and (level.player.hidden or is_instance_valid(hiding_target)):
-		if level.player.hidden: level.match_net.use_hide(level.player.hiding_place, false)
-		else:
-			if is_instance_valid(level.locust) and level.locust.control == "ai" and level.locust.sees(level.player, true): level.locust.observed_hide = hiding_target
-			level.match_net.use_hide(hiding_target, true)
+	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(hiding_target):
+		if is_instance_valid(level.locust) and level.locust.control == "ai" and level.locust.sees(level.player, true): level.locust.saw_enter(hiding_target)
+		level.match_net.use_hide(hiding_target, true)
+		hide_hold = 0.0
+		hide_armed = false
 		pressed_door = null
 		was_held = true
 	var key: String = level.settings.prompt_name("interact")
 	if level.player.hidden:
+		leave_wardrobe(delta)
 		level.camcorder.focus("SALIR")
 		level.ui.hint.text = ""
 		level.ui.subtitle.text = ""
@@ -282,3 +292,30 @@ func drive_local(delta: float) -> void:
 	if level.settings.values.subtitles and level.session.elapsed > 5 and level.session.elapsed < 10:
 		level.ui.subtitle.text = "[Ventilación constante]"
 	if not level.save_error.is_empty(): level.ui.subtitle.text = level.save_error
+
+## The key in a wardrobe: touched, out as always; held, the doors are eased
+## open for as long as it is and at the end of HIDE.QUIET_EXIT seconds the
+## survivor steps out with far less to be heard (NOISE.QUIET of the way); let
+## go before that, they fall shut and nothing has happened.
+func leave_wardrobe(delta: float) -> void:
+	var held := Input.is_action_pressed("interact")
+	if not hide_armed:
+		# Still the press that got them in.
+		if not held: hide_armed = true
+		was_held = held
+		return
+	if held:
+		hide_hold += delta
+		if hide_hold > HIDE_TAP:
+			var share := clampf((hide_hold - HIDE_TAP) / (HIDE.QUIET_EXIT - HIDE_TAP), 0.0, 1.0)
+			level.player.ease_out(share)
+			level.ui.hold(share)
+		if hide_hold >= HIDE.QUIET_EXIT:
+			hide_hold = 0.0
+			hide_armed = false
+			level.match_net.use_hide(level.player.hiding_place, false, true)
+	else:
+		if hide_hold > 0.0 and hide_hold <= HIDE_TAP: level.match_net.use_hide(level.player.hiding_place, false)
+		elif hide_hold > HIDE_TAP: level.player.ease_out(0.0)
+		hide_hold = 0.0
+	was_held = held

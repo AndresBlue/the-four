@@ -1130,6 +1130,14 @@ CORRECCIÓN:
 ACTUAL: Efectos reducidos
 CORRECCIÓN:
 
+[OSD.REW] Marca de la cinta mientras se rebobina, al devolverse una etapa (arriba a la derecha, donde va REC)
+ACTUAL: << REW
+CORRECCIÓN:
+
+[AJ.28] Casilla (la captura sin el rostro de la criatura en la lente: corta a la cámara ya en el suelo, y el grito entra más bajo)
+ACTUAL: Sobresaltos suaves
+CORRECCIÓN:
+
 -- Pestaña CONTROLES --
 
 [AJ.30] Nombre de la pestaña

@@ -28,6 +28,9 @@ uniform float tape_band = -1.0;
 // The mechanism that no longer settles: bands climbing more and more often,
 // the hold slipping, the colour coming and going. 1 is the last field.
 uniform float tape_fray : hint_range(0.0, 1.0) = 0.0;
+// The tape running back (a stage given back): over the snow, the bars of a
+// search in reverse race up the picture.
+uniform float rewinding : hint_range(0.0, 1.0) = 0.0;
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -214,6 +217,11 @@ void fragment() {
 		dead *= 0.82 + 0.18 * bar;
 		float lines = 0.5 + 0.5 * sin((SCREEN_UV.y * 480.0 + mod(field, 2.0)) * 3.14159);
 		dead *= 0.62 + 0.38 * lines;
+		if (rewinding > 0.0) {
+			// Dark between the bars, and the bars are the noise itself, torn.
+			float bars = smoothstep(0.62, 0.7, fract(SCREEN_UV.y * 3.0 + t * 5.5 + (hash(vec2(row, field)) - 0.5) * 0.03));
+			dead = mix(dead, dead * (0.16 + 0.95 * bars), rewinding);
+		}
 		color = mix(color, dead, smoothstep(0.1, 0.85, loss));
 		color *= 1.0 - (noise1(t * 21.0) - 0.5) * 0.22 * loss;
 	}

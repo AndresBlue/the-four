@@ -306,6 +306,11 @@ func pack_local() -> Array:
 		# two the other's would come back as this one's and never let go.
 		left = player.hiding_place.peek_of(player)[0]
 		right = player.hiding_place.peek_of(player)[1]
+		# Easing both doors open to leave quietly is said over the same two
+		# numbers, past 1: a peek is never more than that.
+		if player.easing > 0.0:
+			left = 1.0 + player.easing
+			right = 1.0 + player.easing
 		hide_index = level.hotel.hides.find(player.hiding_place)
 	return [player.global_position, player.rotation.y, player.look_pitch(), player.velocity, flags, hide_index, left, right]
 
@@ -449,7 +454,7 @@ func request_warp(index: int) -> void:
 const WARP_SLACK := 1.5
 ## Mid-strike, holding somebody or opening a wardrobe: no stepping through a set.
 func warp_busy() -> bool:
-	return level.locust.mode in [level.locust.Mode.WINDUP, level.locust.Mode.RECOVER, level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE]
+	return level.locust.mode in [level.locust.Mode.WINDUP, level.locust.Mode.RECOVER, level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.LURK]
 
 @rpc("authority", "call_remote", "reliable")
 func warp_state(index: int) -> void:
@@ -564,25 +569,26 @@ func locust_rode(point: Vector3) -> void:
 
 # --- Wardrobes -------------------------------------------------------------------
 
-## Enter or leave a wardrobe; online, the host decides who gets in.
-func use_hide(hide: Node3D, entering: bool) -> bool:
+## Enter or leave a wardrobe; online, the host decides who gets in. `quiet`:
+## leaving the slow way (hiding_place.QUIET_EXIT).
+func use_hide(hide: Node3D, entering: bool, quiet := false) -> bool:
 	var index: int = level.hotel.hides.find(hide)
 	if not in_match():
-		return level.player.enter_hide(hide) if entering else level.player.leave_hide()
+		return level.player.enter_hide(hide) if entering else level.player.leave_hide(quiet)
 	if net.is_host:
-		var done: bool = level.player.enter_hide(hide) if entering else level.player.leave_hide()
-		if done: hide_state.rpc(index, net.local_seat if entering else -net.local_seat)
+		var done: bool = level.player.enter_hide(hide) if entering else level.player.leave_hide(quiet)
+		if done: hide_state.rpc(index, net.local_seat if entering else -net.local_seat, quiet)
 		return done
 	if entering:
-		request_hide.rpc_id(1, index, true)
+		request_hide.rpc_id(1, index, true, false)
 		return true
-	if level.player.leave_hide():
-		request_hide.rpc_id(1, index, false)
+	if level.player.leave_hide(quiet):
+		request_hide.rpc_id(1, index, false, quiet)
 		return true
 	return false
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_hide(index: int, entering: bool) -> void:
+func request_hide(index: int, entering: bool, quiet: bool) -> void:
 	if not net.is_host or index < 0 or index >= level.hotel.hides.size(): return
 	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
 	var body: Node3D = bodies.get(seat)
@@ -592,15 +598,15 @@ func request_hide(index: int, entering: bool) -> void:
 		if not hide.has_room() or not near_sender(hide.global_position): return
 		# Seen climbing in, the creature knows where they are.
 		var creature = level.locust
-		if is_instance_valid(creature) and creature.control == "ai" and creature.sees(body, true): creature.observed_hide = hide
+		if is_instance_valid(creature) and creature.control == "ai" and creature.sees(body, true): creature.saw_enter(hide)
 		remote_enters(hide, body)
-		hide_state.rpc(index, seat)
+		hide_state.rpc(index, seat, false)
 	elif hide.holds(body):
-		remote_leaves(hide, body)
-		hide_state.rpc(index, -seat)
+		remote_leaves(hide, body, quiet)
+		hide_state.rpc(index, -seat, quiet)
 
 @rpc("authority", "call_remote", "reliable")
-func hide_state(index: int, seat: int) -> void:
+func hide_state(index: int, seat: int, quiet: bool) -> void:
 	if not is_instance_valid(level.hotel) or index < 0 or index >= level.hotel.hides.size(): return
 	var hide = level.hotel.hides[index]
 	if seat == net.local_seat:
@@ -608,7 +614,7 @@ func hide_state(index: int, seat: int) -> void:
 	elif seat > 0 and bodies.has(seat):
 		remote_enters(hide, bodies[seat])
 	elif seat < 0 and -seat != net.local_seat and bodies.has(-seat) and hide.holds(bodies[-seat]):
-		remote_leaves(hide, bodies[-seat])
+		remote_leaves(hide, bodies[-seat], quiet)
 
 func remote_enters(hide: Node3D, body: Node3D) -> void:
 	level.note_hide(int(body.slot))
@@ -618,11 +624,12 @@ func remote_enters(hide: Node3D, body: Node3D) -> void:
 	body.torch.visible = false
 	level.world_audio.hide_cue(true, hide.global_position)
 
-func remote_leaves(hide: Node3D, body: Node3D) -> void:
+func remote_leaves(hide: Node3D, body: Node3D, quiet := false) -> void:
+	hide.set_ease(0.0, body)
 	hide.leave(body)
 	body.hidden = false
 	body.hiding_place = null
-	level.world_audio.hide_cue(false, hide.global_position)
+	level.world_audio.hide_cue(false, hide.global_position, quiet)
 
 @rpc("authority", "call_remote", "reliable")
 func hide_forced(index: int) -> void:
@@ -876,13 +883,13 @@ func free_victim_hide(seat: int) -> void:
 		var own = level.player.hiding_place
 		if not level.player.hidden or not is_instance_valid(own): return
 		var own_index: int = level.hotel.hides.find(own)
-		if in_match() and own_index >= 0: hide_state.rpc(own_index, -seat)
+		if in_match() and own_index >= 0: hide_state.rpc(own_index, -seat, false)
 		return
 	var body = bodies.get(seat)
 	if body == null or not body.hidden or not is_instance_valid(body.hiding_place): return
 	var index: int = level.hotel.hides.find(body.hiding_place)
 	remote_leaves(body.hiding_place, body)
-	if in_match() and index >= 0: hide_state.rpc(index, -seat)
+	if in_match() and index >= 0: hide_state.rpc(index, -seat, false)
 
 ## The floor is over: what it was, for everybody's board.
 func tell_summary(line: Dictionary) -> void:
@@ -1066,7 +1073,7 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 	# wardrobe and every lit set used to sound at once the moment it arrived.
 	level.world_audio.hush = true
 	for index in mini(hides.size(), level.hotel.hides.size()):
-		for inside in hides[index]: hide_state(index, int(inside))
+		for inside in hides[index]: hide_state(index, int(inside), false)
 	if not creature.is_empty() and is_instance_valid(level.locust):
 		if local_is_locust():
 			# Back in control where the creature was left standing, and with

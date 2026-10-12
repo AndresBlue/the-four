@@ -31,7 +31,12 @@ var difficulty := "desafiante"
 var restarts := 0
 ## Seconds between the floor collapsing and everybody getting up again: long
 ## enough for the last death to be seen and heard.
-const RESTART_WAIT := 4.0
+## Then the tape is seen to rewind to where the stage began
+## (hotel_main.REWIND_TIME, 1.4 s more): four seconds in all, as it was.
+const RESTART_WAIT := 2.6
+## And from the second time on the same floor, two in all: by then it has
+## been seen.
+const RESTART_WAIT_AGAIN := 0.6
 var restart_wait := 0.0
 ## What the stage in hand needs, how far along it is and whether it is already
 ## met, for the interface and for the other machines. `ready` is what unlocks
@@ -170,7 +175,7 @@ func check_quota() -> bool:
 		# One more go at this stage, with everybody on their feet again -- but
 		# not this instant: the last one down has earned its own death first.
 		restarts += 1
-		restart_wait = RESTART_WAIT
+		restart_wait = RESTART_WAIT if restarts <= 1 else RESTART_WAIT_AGAIN
 		changed.emit()
 		return true
 	message = "No quedan suficientes supervivientes."

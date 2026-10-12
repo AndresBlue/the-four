@@ -119,6 +119,11 @@ var noise_amount := 0.0
 var noise_floor := 0.0
 var osd_left: Label
 var osd_right: Label
+var rewind_mark: Label
+var rewind_clock: Label
+## "SEÑAL PERDIDA" again, over the snow that covers the one under the filter.
+var signal_label: Label
+const SIGNAL_LOST := "SEÑAL PERDIDA"
 var footer: Label
 var menu_clock: Label
 var body: HBoxContainer
@@ -184,6 +189,40 @@ func _ready() -> void:
 	hint = $HUD/InteractionHint
 	subtitle = $HUD/Subtitle
 	flash_label = $HUD/Flash
+	# What is written over the snow. This interface is drawn under the tape's
+	# filter (it is part of the recording), and a picture that is all snow
+	# covers it: the words that say the signal is lost, and the marks of a
+	# tape rewinding, go on a layer of their own above it.
+	var above := CanvasLayer.new()
+	above.name = "OverSnow"
+	above.layer = 6
+	add_child(above)
+	signal_label = STYLE.text("", 30, STYLE.ALERT)
+	signal_label.offset_left = 48
+	signal_label.offset_top = 34
+	signal_label.offset_right = 900
+	signal_label.offset_bottom = 74
+	above.add_child(signal_label)
+	# The tape rewinding (a stage given back): the camcorder's own marks are
+	# under the snow, so these stand in for them, in the same places and the
+	# same lettering (camcorder_osd.gd).
+	rewind_mark = STYLE.text("<< REW
+SP", 30)
+	rewind_mark.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	rewind_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rewind_mark.offset_left = -300
+	rewind_mark.offset_top = 32
+	rewind_mark.offset_right = -44
+	rewind_mark.visible = false
+	above.add_child(rewind_mark)
+	rewind_clock = STYLE.text("", 30)
+	rewind_clock.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	rewind_clock.offset_left = 48
+	rewind_clock.offset_top = -118
+	rewind_clock.offset_right = 520
+	rewind_clock.offset_bottom = -52
+	rewind_clock.visible = false
+	above.add_child(rewind_clock)
 	progress = $HUD/ExitProgress
 	overlay = $MenuOverlay
 	overlay.theme = style
@@ -1165,6 +1204,9 @@ func show_settings(back: String) -> void:
 	for item in [["Cinta VHS", "vhs"], ["Grano", "grain"], ["Aberración cromática", "chromatic"], ["Líneas de barrido", "scanlines"], ["Movimiento de cámara", "bob"]]: slider(graphics, item[0], item[1], 0, 1, 0.05)
 	check(graphics, "Marcas de videocámara (REC, fecha y hora)", "osd")
 	check(graphics, "Efectos reducidos", "reduced")
+	# Being caught without the face in the lens (death_tape.gd): the picture
+	# goes straight to the camera on the floor, and the scream comes in softer.
+	check(graphics, "Sobresaltos suaves", "startle_soft")
 	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")
@@ -1703,6 +1745,22 @@ func flash(words: String, seconds := 2.5) -> void:
 	flash_label.text = words
 	flash_time = seconds
 
+## The tape running back to where the stage began: its mark and its clock,
+## counting down, over the snow.
+func show_rewind(clock_words: String) -> void:
+	if not is_instance_valid(rewind_mark): return
+	rewind_mark.visible = true
+	rewind_clock.visible = true
+	rewind_clock.text = clock_words
+	# The words that said the signal was lost give way to it.
+	flash_label.text = ""
+	flash_time = 0.0
+
+func hide_rewind() -> void:
+	if not is_instance_valid(rewind_mark): return
+	rewind_mark.visible = false
+	rewind_clock.visible = false
+
 ## A victim in a match that goes on without it: the same words as the failure
 ## screen, over the static, without stopping anybody else's game.
 func lost_signal(seconds := 2.6) -> void:
@@ -1729,6 +1787,9 @@ func _process(delta: float) -> void:
 		if flash_time <= 0:
 			flash_label.text = ""
 			flash_label.remove_theme_color_override("font_color")
+	if is_instance_valid(signal_label):
+		signal_label.text = SIGNAL_LOST if flash_label.text == SIGNAL_LOST and flash_time > 0.0 else ""
+		signal_label.modulate.a = flash_label.modulate.a
 
 func _display_changed(seconds: int) -> void:
 	if is_instance_valid(display_label):

@@ -128,7 +128,15 @@ func push_state(data: Array) -> void:
 	reading = flags & 8 != 0
 	peek_left = data[6]
 	peek_right = data[7]
-	if hidden and is_instance_valid(hiding_place): hiding_place.set_peek(peek_left, peek_right, self)
+	if hidden and is_instance_valid(hiding_place):
+		# Past 1 it is not a peek: both doors eased open to leave quietly
+		# (match_net.pack_local).
+		if peek_left > 1.0:
+			hiding_place.set_peek(0.0, 0.0, self)
+			hiding_place.set_ease(peek_left - 1.0, self)
+		else:
+			hiding_place.set_ease(0.0, self)
+			hiding_place.set_peek(peek_left, peek_right, self)
 	away = false
 
 ## Its mind has gone, or come back. Nothing shows on the body: only the

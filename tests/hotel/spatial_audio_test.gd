@@ -158,9 +158,16 @@ func run() -> void:
 	check("A chase grunt carries further than a cry, and quieter", reading.call(10.0, false).reach > distant.reach and reading.call(10.0, false).db < near.db)
 	level.locust.voice.stop()
 	level.locust.position = Vector3(500, 0, 0)
+	# The lunge is not announced by a hush any more: the half second before a
+	# capture carries no new sign of it (docs/EXECUTION.md, 5.3). The hush is
+	# kept behind the same switch as the tear of the picture, to be compared.
 	level.locust.set_mode(level.locust.Mode.WINDUP)
 	await wait(0.2)
-	check("Presence ducks under attack warning", audio.presence.volume_db < gain - 10)
+	check("The presence does not duck under the lunge", audio.presence.volume_db > gain - 4)
+	level.windup_tear = true
+	await wait(0.2)
+	check("With the old warning on, it ducks under it", audio.presence.volume_db < gain - 10)
+	level.windup_tear = false
 	var wall := StaticBody3D.new()
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()

@@ -20,6 +20,9 @@ const ACOUSTIC_MASK := 512
 ## Intensity from which the heartbeat starts, and its tempo range (BPM).
 @export var heartbeat_from := 0.5
 @export var heartbeat_bpm := Vector2(64, 128)
+## How much of the aura is left of a creature holding still to be taken for
+## gone.
+const HUSHED := 0.15
 var world_audio
 var intensity := 0.0
 var target := 0.0
@@ -145,6 +148,11 @@ func _physics_process(delta: float) -> void:
 			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.ALERT: target = maxf(target + 0.25 * near, 0.7 * near)
 			creature.Mode.INVESTIGATE, creature.Mode.SEARCH: target += 0.08 * near
 		target = clampf(target, 0.0, 1.0)
+		# Waiting beside a wardrobe for whoever is in it (hotel_locust, the
+		# feint): it holds itself so still that what gives it away dies down,
+		# as it would if it had gone. Its feet are not part of this: it has
+		# not walked off, and nothing here says it has.
+		if not from_phantom and creature.hushed(): target *= HUSHED
 	var previous := intensity
 	intensity = move_toward(intensity, target, delta * (0.6 if target > intensity else 0.18))
 	var shaped := pow(intensity, 1.4)

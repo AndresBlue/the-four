@@ -13,12 +13,16 @@ extends SceneTree
 ## With "-- --sheet=<name>" nobody plays: one capture is staged and its frames
 ## at fixed seconds are laid out on one picture, evidence/capture_<name>.png
 ## (the whole death in an image), and it quits. For a sheet:
-##   --entry=front|back|side|above|busy|wardrobe   how (front)
+##   --entry=front|back|side|above|busy|wardrobe|ambush   how (front); in a
+##                                                 wardrobe, times under 0 are
+##                                                 of what leads to it
 ##   --light=room|lamp|torch|dark                  what lights it (room)
 ##   --ending=leave|glance                         how it ends (leave)
 ##   --outside                                     seen by somebody standing by
 ##   --tear                                        the lunge tears the picture
 ##   --soft, --reduced                             soft startle, reduced effects
+##   --brief                                       the short version (seen before)
+##   --difficulty=apacible                         the floor's (the settings')
 ##   --character=0|1|2                             whose body (2, the Exploradora)
 ##   --seed=N, --times=a,b,c                       the floor, and other seconds
 ##   --full                                        every frame whole as well
@@ -116,9 +120,9 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.ui.finish_intro()
-	await level.start_floor(int(options.seed))
+	await level.start_floor(int(options.seed), false, [1], String(options.get("difficulty", "")))
 	if options.has("reduced"): level.settings.values.reduced = true
-	if options.has("soft"): level.settings.values["startle"] = false
+	if options.has("soft"): level.settings.values["startle_soft"] = true
 	# A sheet is of the body the scene is built on, whoever played last.
 	if not sheet.is_empty() or options.has("character"): level.settings.values.character = int(options.get("character", 2))
 	level.apply_settings()
@@ -136,6 +140,9 @@ func take_sheet() -> void:
 	level.locust.set_physics_process(false)
 	stage("back" if entry == "back" else "side" if entry == "side" else "front", 1.5)
 	set_light(String(options.light))
+	if entry in ["wardrobe", "ambush"]:
+		await take_wardrobe_sheet(entry)
+		return
 	if String(options.light) == "lamp":
 		var lamp := OmniLight3D.new()
 		lamp.light_energy = 2.5
@@ -162,6 +169,8 @@ func take_sheet() -> void:
 		view.global_position = middle + across * 3.6 + Vector3.UP * 1.7
 		view.look_at(middle + Vector3.UP * 1.3)
 	level.executions.forced = {"glance": String(options.ending) == "glance"}
+	# "--brief": as if this way in had been seen on this floor already.
+	if options.has("brief"): level.tape.seen[entry if entry != "busy" else "front"] = true
 	if entry in ["front", "back", "side", "above"]: level.executions.forced["entry"] = entry
 	level.capture_survivor(player)
 	player.set_physics_process(true)
@@ -173,12 +182,17 @@ func take_sheet() -> void:
 	var page := Image.create(THUMB.x * columns, THUMB.y * rows, false, Image.FORMAT_RGB8)
 	var next := 0
 	var taken: Array = []
+	var after := 0.0
 	while next < times.size():
 		await process_frame
-		if level.execution.is_empty() and level.lost_signal <= 0.0: break
-		var now: float = float(level.execution.time) if not level.execution.is_empty() else SCORE.END_TIME + 0.1
+		# Past the end of the scene the seconds go on counting (what follows
+		# it: the lost signal, the stage given back, the tape rewinding).
+		if level.execution.is_empty(): after += 1.0 / 60.0
+		if after > 12.0: break
+		var now: float = float(level.execution.time) if not level.execution.is_empty() else SCORE.END_TIME + after
 		if now < float(times[next]): continue
 		await RenderingServer.frame_post_draw
+		if options.has("ui"): print("UI_AT ", snappedf(now, 0.01), " flash='", level.ui.flash_label.text, "' shown=", level.ui.flash_label.is_visible_in_tree(), " alpha=", level.ui.flash_label.modulate.a, " time=", level.ui.flash_time, " hud=", level.ui.get_node("HUD").visible, " layer=", level.ui.layer, " rewind=", level.ui.rewind_mark.is_visible_in_tree(), " analog=", level.get_node("Presentation/Analog").layer, " lost=", level.lost_signal)
 		var frame := root.get_texture().get_image()
 		# "--full": each frame kept whole as well, beside the sheet.
 		if options.has("full"): frame.save_png("res://evidence/capture_%s_%03d.png" % [sheet, int(round(float(times[next]) * 100.0))])
@@ -190,6 +204,75 @@ func take_sheet() -> void:
 	page.save_png("res://evidence/capture_%s.png" % sheet)
 	var tape = level.tape
 	print("CAPTURE_SHEET ", sheet, " entry=", entry, " light=", options.light, " frames=", taken, " take=", tape.take.get("kind", -1), " tried=", tape.take.get("tried", 0), " valid=", tape.take.get("valid", 0), " covered=", tape.take.get("covered", 0.0), " rest=", (tape.take.get("rest", Transform3D.IDENTITY) as Transform3D).origin)
+
+## Caught in a wardrobe: the nearest one to the staging room, its occupant
+## already inside, the creature in front of it. "wardrobe" is the search, leaf
+## by leaf, with the frames counted from the first leaf; "ambush" the doors
+## thrown open at the end of a feint, counted from the burst.
+func take_wardrobe_sheet(entry: String) -> void:
+	var player = level.player
+	var hide: Node3D = null
+	for other in level.hotel.hides:
+		if level.point_protected(other.global_position): continue
+		if hide == null or other.global_position.distance_to(player.global_position) < hide.global_position.distance_to(player.global_position): hide = other
+	player.global_position = hide.to_global(hide.exit_offset)
+	player.rotation.y = hide.global_rotation.y
+	await physics_frame
+	player.enter_hide(hide)
+	for i in 80: await process_frame
+	var creature = level.locust
+	creature.global_position = hide.to_global(hide.exit_offset)
+	creature.rotation.y = hide.global_rotation.y
+	creature.set_physics_process(true)
+	creature.saw_enter(hide)
+	creature.focus = player
+	var view: Camera3D = null
+	if options.has("outside"):
+		view = Camera3D.new()
+		view.fov = 58.0
+		level.add_child(view)
+		view.global_position = hide.to_global(Vector3(3.2, 1.7, 3.4))
+		view.look_at(hide.to_global(Vector3(0, 1.3, 0.8)))
+		view.current = true
+	var started := 0.0
+	if entry == "ambush":
+		creature.set_mode(creature.Mode.LURK)
+		creature.lurk = {"hide": hide, "who": player, "phase": "pounce", "until": -1.0, "spot": creature.global_position, "ajar": 1.0}
+		creature.pouncing = true
+	else:
+		creature.begin_wardrobe(hide)
+	var columns := COLUMNS
+	var rows := int(ceil(float(times.size()) / float(columns)))
+	var page := Image.create(THUMB.x * columns, THUMB.y * rows, false, Image.FORMAT_RGB8)
+	var next := 0
+	var taken: Array = []
+	var clock := 0.0
+	var caught := -1.0
+	while next < times.size() and clock < 14.0:
+		await process_frame
+		clock += 1.0 / 60.0
+		if caught < 0.0 and not level.execution.is_empty():
+			caught = clock
+			print("CAPTURE_AS ", level.execution.get("entry", "?"), " after=", snappedf(clock, 0.01), " busy=", level.tape.busy, " dark=", level.tape.dark)
+		if caught >= 0.0 and level.execution.is_empty() and level.lost_signal <= 0.0: break
+		# Counted from the capture, with what led to it before (negative).
+		var now: float = (float(level.execution.time) if not level.execution.is_empty() else clock - caught) if caught >= 0.0 else clock - 99.0
+		if caught < 0.0:
+			# Before the capture: the times under zero are seconds from the start.
+			if float(times[next]) >= 0.0: continue
+			now = clock + float(times[0]) - 0.0001
+			if clock < float(taken.size()) * 0.0 + (float(times[next]) - float(times[0])): continue
+		elif now < float(times[next]): continue
+		await RenderingServer.frame_post_draw
+		var frame := root.get_texture().get_image()
+		if options.has("full"): frame.save_png("res://evidence/capture_%s_%02d.png" % [sheet, next])
+		frame.convert(Image.FORMAT_RGB8)
+		frame.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
+		page.blit_rect(frame, Rect2i(Vector2i.ZERO, THUMB), Vector2i((next % columns) * THUMB.x, (next / columns) * THUMB.y))
+		taken.append(snappedf(clock if caught < 0.0 else now, 0.01))
+		next += 1
+	page.save_png("res://evidence/capture_%s.png" % sheet)
+	print("CAPTURE_SHEET ", sheet, " entry=", entry, " frames=", taken, " take=", level.tape.take.get("kind", -1), " valid=", level.tape.take.get("valid", 0))
 
 # --- Played -------------------------------------------------------------------------
 

@@ -199,9 +199,7 @@ func show_tape(elapsed: float, delta: float) -> void:
 	code_note.visible = tape and not code_note.text.is_empty()
 	notice.visible = not notice.text.is_empty()
 	if hunter or signal_lost: focus_word = ""
-	var total := start_seconds + int(elapsed)
-	var hours := total / 3600
-	clock.text = "AM %d:%02d:%02d\n%s" % [hours % 12 if hours % 12 != 0 else 12, (total / 60) % 60, total % 60, date_text]
+	clock.text = clock_text(elapsed)
 	# The meter appears while stamina is spent and fades out once full.
 	full_time = full_time + delta if stamina >= 0.999 else 0.0
 	stamina_alpha = move_toward(stamina_alpha, 0.0 if full_time > 1.5 else 1.0, delta * 2.5)
@@ -209,6 +207,12 @@ func show_tape(elapsed: float, delta: float) -> void:
 	if not focus_word.is_empty(): focus_label.text = focus_word
 	focus_label.modulate.a = focus_amount
 	canvas.queue_redraw()
+
+## What the camcorder's clock reads `elapsed` seconds into its tape.
+func clock_text(elapsed: float) -> String:
+	var total := start_seconds + int(elapsed)
+	var hours := total / 3600
+	return "AM %d:%02d:%02d\n%s" % [hours % 12 if hours % 12 != 0 else 12, (total / 60) % 60, total % 60, date_text]
 
 func draw_overlay() -> void:
 	var size := canvas.size

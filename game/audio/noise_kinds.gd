@@ -19,12 +19,18 @@ const SPREAD := [0.8, 1.0, 1.0, 1.15, 1.6, 0.9, 0.6, 0.5]
 ## "_hard" is the same noise on tile (bathrooms, laundry, maintenance).
 ## "wardrobe_hunter" is getting in or out of a wardrobe as a human Locust
 ## hears it: from the next rooms, where the AI only hears it close.
+## "wardrobe_slow" is getting out of one the quiet way -- the key held for
+## hiding_place.QUIET_EXIT seconds while the doors are eased open -- which
+## carries QUIET of the way, to the AI and to a hunter alike.
 const HEARING_SCALE := 2.6
+## How far a quiet way out of a wardrobe is heard, of how far the plain one is.
+const QUIET := 0.75
 const HEARD := {
 	"peek": 10.5,
 	"crouch": 8.0, "crouch_hard": 12.0,
 	"door_slow": 9.0,
 	"wardrobe": 12.0,
+	"wardrobe_slow": 12.0 * QUIET,
 	"walk": 20.0, "walk_hard": 25.0,
 	"jump": 32.0,
 	"door": 45.0,

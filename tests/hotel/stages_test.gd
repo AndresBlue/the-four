@@ -532,6 +532,8 @@ func run() -> void:
 	check("Quien vuelve de una caída vuelve donde estaba", level.return_place(in_play).distance_to(in_play) < 0.2)
 	var brought: Vector3 = level.return_place(left_behind)
 	check("Y si el piso cambió de ala sin él, al ala que se juega", brought.distance_to(left_behind) > 10.0 and int(FLOOR.room_at(level.manifest.rooms, brought).get("wing", -1)) == session.stage - 1)
+	# (Any stage given back above has finished rewinding its tape by now.)
+	await frames(int(level.REWIND_TIME * 60.0) + 10)
 	session.participants[1] = session.Life.DEAD
 	level.drive_local(1.0 / 60.0)
 	check("Muerto en un invitado, el cuerpo y su luz se guardan", not level.player.visible and not level.player.torch.is_visible_in_tree())

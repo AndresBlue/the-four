@@ -26,9 +26,18 @@ const BIG_LEAF_THICK := 0.09
 const BIG_FLOOR := 0.15
 ## How far either side of the middle its two places are.
 const BIG_PLACE := 0.45
-## Door angles (radians): fully open, and a leaf ajar at maximum peek.
+## Door angles (radians): fully open, a leaf ajar at maximum peek, and both
+## leaves as far as they are eased open by somebody leaving quietly.
 const OPEN_ANGLE := 1.75
 const PEEK_ANGLE := 1.05
+const EASE_ANGLE := 1.3
+## Getting in and out is a movement (hotel_player.transit): how long the body
+## takes to step in and to step out, and how long the key is held to leave
+## without the bang of the doors (heard NOISE.QUIET of the way).
+const ENTER_TIME := 0.5
+const LEAVE_TIME := 0.34
+const QUIET_EXIT := 3.0
+const QUIET_LEAVE_TIME := 0.6
 ## Doors wider than this stop blocking movement so they never shove anyone.
 ## They go on hiding what is behind them, like a door mid-swing: layer 64,
 ## which sight looks for and bodies do not. Turned off altogether, the wood
@@ -75,6 +84,10 @@ var opening := 0.0
 ## of each (`peeks`: by occupant).
 var peek := {"left": 0.0, "right": 0.0}
 var peeks := {}
+## How far somebody inside has eased both leaves open on their way out, 0 to
+## 1: by occupant, and the most of them.
+var eases := {}
+var ease := 0.0
 ## Leaves pulled wide open one by one (the creature searching it).
 var wide := {"left": 0.0, "right": 0.0}
 var leaf_motion := {}
@@ -236,6 +249,8 @@ func forget(body: Variant) -> void:
 	occupants.erase(body)
 	places.erase(body)
 	peeks.erase(body)
+	eases.erase(body)
+	sum_eases()
 
 ## Which place somebody has, or would be given: the first one free.
 func place_of(body: Node) -> int:
@@ -263,7 +278,7 @@ func set_plug() -> void:
 	if moved_here: plug.disabled = true
 
 func leaf_angle(side: String) -> float:
-	return maxf(maxf(opening, wide[side]) * OPEN_ANGLE, peek[side] * PEEK_ANGLE)
+	return maxf(maxf(maxf(opening, wide[side]) * OPEN_ANGLE, peek[side] * PEEK_ANGLE), ease * EASE_ANGLE)
 
 ## The creature pulls one leaf open; the other stays as it is.
 func open_leaf(side: String, seconds := 0.35) -> void:
@@ -303,10 +318,14 @@ func enter(player: CharacterBody3D) -> void:
 	wide = {"left": 0.0, "right": 0.0}
 	peeked = false
 	pulled = false
-	opening = 0.85
 	set_plug()
-	apply_angles()
-	swing(0.0, 0.55)
+	# The doors are pulled open, stay open while the body steps in, and shut
+	# behind it.
+	if is_instance_valid(motion): motion.kill()
+	motion = create_tween()
+	motion.tween_method(func(value): opening = value; apply_angles(), opening, 1.0, 0.14).set_trans(Tween.TRANS_SINE)
+	motion.tween_interval(maxf(0.0, ENTER_TIME - 0.2))
+	motion.tween_method(func(value): opening = value; apply_angles(), 1.0, 0.0, 0.45).set_trans(Tween.TRANS_SINE)
 
 ## One of them leaves (nobody named: everybody, as when a floor is reset).
 func leave(player: Node = null) -> void:
@@ -318,13 +337,14 @@ func leave(player: Node = null) -> void:
 	# Pulled open on two, and one dragged out: they stay open on the other.
 	pulled = pulled and not occupants.is_empty()
 	set_plug()
-	swing(1.0, 0.3)
+	swing(1.0, 0.16)
 	close_timer = 1.1
 
-## A creature that knows someone is inside pulls the doors open.
-func force_open() -> void:
+## A creature that knows someone is inside pulls the doors open (or, done
+## waiting for them, throws them open: `seconds`).
+func force_open(seconds := 0.25) -> void:
 	if opening < 0.9:
-		swing(1.0, 0.25)
+		swing(1.0, seconds)
 		forced.emit()
 	pulled = true
 	close_timer = 2.5
@@ -344,6 +364,19 @@ func sum_peeks() -> void:
 	for who in peeks:
 		peek.left = maxf(peek.left, peeks[who][0])
 		peek.right = maxf(peek.right, peeks[who][1])
+
+## Somebody inside easing both doors open to leave without a sound, this far
+## (0 lets them fall shut again). No creak is counted for it, as there is for
+## a peek: what it costs is heard once, when they are out.
+func set_ease(amount: float, who: Node = null) -> void:
+	if amount <= 0.0: eases.erase(who)
+	else: eases[who] = clampf(amount, 0.0, 1.0)
+	sum_eases()
+	apply_angles()
+
+func sum_eases() -> void:
+	ease = 0.0
+	for who in eases: ease = maxf(ease, float(eases[who]))
 
 ## What one of those inside asks of the leaves, itself: [left, right].
 func peek_of(who: Node) -> Array:

@@ -220,6 +220,8 @@ func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF
 		if level.director != null and level.director.has_method("on_restart"): level.director.on_restart()
 		# And nothing lying where somebody was caught: it has not happened.
 		level.executions.clear_leavings()
+		# The tape goes back to where the stage began, for whoever films it.
+		level.begin_rewind()
 
 ## The inverse of watching a teammate: its own body, its own camera.
 func restore_local_player(point: Vector3) -> void:

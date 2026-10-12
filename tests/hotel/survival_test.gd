@@ -254,8 +254,10 @@ func run() -> void:
 	enemy.position = hide.to_global(Vector3(0, 0.04, 3.5))
 	face(enemy, player.position)
 	check("Entrada al escondite físicamente disponible", player.enter_hide(hide))
-	# The doors take about half a second to swing shut behind the player.
-	await frames(45)
+	check("Entrar es un movimiento: el cuerpo no aparece dentro de golpe", not player.transit.is_empty() and player.global_position.distance_to(hide.to_global(hide.inside_of(player))) > 0.5)
+	# The body steps in and the doors shut behind it: about a second.
+	await frames(70)
+	check("Y acaba dentro, mirando hacia las puertas", player.transit.is_empty() and player.global_position.distance_to(hide.to_global(hide.inside_of(player))) < 0.05 and absf(wrapf(player.rotation.y - player.hide_yaw, -PI, PI)) < 0.05)
 	enemy.observed_hide = null
 	check("Oculto no revela posición a distancia", not enemy.sees_player())
 	enemy.observed_hide = hide
@@ -285,7 +287,9 @@ func run() -> void:
 	await frames(60)
 	check("Solo la primera apertura de las puertas hace ruido", creaks[0] == 0)
 	enemy.observed_hide = hide
-	check("Salida de escondite libre sin teletransporte a otra sala", player.leave_hide() and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
+	var out: bool = player.leave_hide()
+	await frames(30)
+	check("Salida de escondite libre sin teletransporte a otra sala", out and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
 	# The refuge of the stage in hand: walking the floor during this test can
 	# have carried it on to the next wing already.
 	var exit_room: Dictionary = level.manifest.rooms[level.refuge_room()]
@@ -530,6 +534,7 @@ func cut_short_checks() -> void:
 	player.rotation.y = large.global_rotation.y
 	await frames(3)
 	check("En el armario grande caben dos", large.capacity == 2 and player.enter_hide(large) and large.has_room())
+	await frames(40)
 	large.enter(mate)
 	var apart: float = (large.inside_of(player) - large.inside_of(mate)).length()
 	check("Uno al lado del otro, y un tercero se queda fuera", not large.has_room() and large.holds(player) and large.holds(mate) and not large.holds(third) and apart > 0.6 and player.global_position.distance_to(large.to_global(large.inside_of(player))) < 0.1)

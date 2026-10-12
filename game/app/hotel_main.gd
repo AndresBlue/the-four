@@ -625,6 +625,51 @@ func continue_floor(data: Dictionary) -> void:
 	SAVE.give(self, state)
 	keep_floor()
 
+## The tape's own clock (the one on the picture), which is not the floor's: a
+## stage given back is the tape rewound to where that stage began and recorded
+## over (docs/EXECUTION.md, 14.4), so its clock goes back there while the
+## floor's time -- the one a record is made of -- goes on. `tape_rewound` is
+## how far behind it is, `stage_tape` what it read when the stage in hand
+## began, and `rewind` the rewinding itself while it is shown: {from, to,
+## time}, seconds of that clock.
+const REWIND_TIME := 1.4
+var tape_rewound := 0.0
+var stage_tape := 0.0
+var rewind := {}
+
+func tape_seconds() -> float:
+	return maxf(0.0, session.elapsed - tape_rewound)
+
+## A stage is given back (revival.apply_revival, on every machine): the
+## picture is the tape running back, and whoever films it waits for it.
+func begin_rewind() -> void:
+	if observer or bot_match or match_net.local_is_locust(): return
+	rewind = {"from": tape_seconds(), "to": minf(stage_tape, tape_seconds()), "time": 0.0}
+	lost_signal = REWIND_TIME + 0.1
+	player.held = true
+	player.active = false
+
+func update_rewind(delta: float) -> void:
+	if rewind.is_empty(): return
+	rewind.time = float(rewind.time) + delta
+	var share := clampf(float(rewind.time) / REWIND_TIME, 0.0, 1.0)
+	# Fast at first and settling on the second it stops at, as a counter does.
+	var shown := lerpf(float(rewind.from), float(rewind.to), 1.0 - pow(1.0 - share, 2.4))
+	ui.show_rewind(camcorder.clock_text(shown))
+	if post_material != null: post_material.set_shader_parameter("rewinding", 1.0)
+	if share < 1.0 and session.state == session.State.PLAYING: return
+	# Recorded over from there: the clock goes on from where the stage began.
+	tape_rewound = session.elapsed - float(rewind.to)
+	rewind = {}
+	ui.hide_rewind()
+	if post_material != null: post_material.set_shader_parameter("rewinding", 0.0)
+	lost_signal = 0.0
+	static_level = 0.0
+	if execution.is_empty() and local_alive():
+		player.held = not lifts.boarding.is_empty() or lifts.leaving >= 0.0
+		player.active = session.state == session.State.PLAYING and not online_menu
+	camera_cut()
+
 ## The floor as it stands, kept for Continuar. Alone only (a room has its own
 ## checkpoint, and the observer's and the bots' floors are nobody's to go on
 ## with), and only while there is something to go back to: not being
@@ -662,6 +707,10 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	# Nothing left lying by the last floor's captures, nor seen of them.
 	executions.reset()
 	tape.reset()
+	tape_rewound = 0.0
+	stage_tape = 0.0
+	rewind = {}
+	ui.hide_rewind()
 	# The game's own rules until a room says otherwise (begin_online_play).
 	set_rules({})
 	ui.summary = {}
@@ -926,7 +975,8 @@ func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> 
 		# host is a survivor and its copy of the creature is only a puppet.
 		# The machine in charge measures how the noise reaches the creature and
 		# sends that, not the bare position: the hunter is told what it hears.
-		if kind == NOISE.Kind.WARDROBE: radius = maxf(radius, HUNTER_WARDROBE_RADIUS)
+		# (The quiet way out reaches it as much less far as it does the AI.)
+		if kind == NOISE.Kind.WARDROBE: radius = maxf(radius, HUNTER_WARDROBE_RADIUS * (NOISE.QUIET if radius < NOISE.radius("wardrobe") - 0.01 else 1.0))
 		var route: Dictionary = locust.hear_route(point, radius)
 		if route.audible: match_net.tell_hunter(point, route, radius, kind)
 
@@ -969,6 +1019,9 @@ func on_state() -> void:
 			lifts.follow_players(session.stage)
 			# What the captures of the sector behind left on its floor goes with it.
 			executions.clear_leavings()
+			# Where the tape was when this sector began: what it is rewound to
+			# if the sector is given back.
+			stage_tape = tape_seconds()
 			# What the sector just closed took, for the line this floor leaves.
 			if not net.is_client(): ledger.note_sector(last_stage)
 	# Only a stage being played counts as reached (a change announced in the
@@ -1231,6 +1284,7 @@ func clear_screen_cues() -> void:
 		post_material.set_shader_parameter("tape_hit", 0.0)
 		post_material.set_shader_parameter("tape_band", -1.0)
 		post_material.set_shader_parameter("tape_fray", 0.0)
+		post_material.set_shader_parameter("rewinding", 0.0)
 		post_material.set_shader_parameter("enclosure", 0.0)
 		post_material.set_shader_parameter("threat_glitch", 0.0)
 
@@ -1239,6 +1293,13 @@ func clear_screen_cues() -> void:
 func open_wardrobe(hide: Node3D) -> void:
 	if net.is_client(): return
 	match_net.begin_wardrobe_job(hide)
+
+## The creature, done waiting beside a wardrobe, throws both its doors open
+## at once (hotel_locust.pounce): on the host, and everybody sees it.
+func burst_wardrobe(hide: Node3D) -> void:
+	if net.is_client() or not is_instance_valid(hide): return
+	hide.force_open(0.1)
+	if match_net.in_match(): match_net.hide_forced.rpc(hotel.hides.find(hide))
 
 ## Rooms the creature is never sent to: every refuge, and the lift lobby each
 ## one leads to.
@@ -1314,9 +1375,9 @@ func on_peek(point: Vector3) -> void:
 	# Online the host hears every wardrobe itself (it mirrors everyone's peeking).
 	if not net.is_client(): locust_hear(point, NOISE.radius("peek"), NOISE.Kind.PEEK)
 
-func on_hide_changed(entering: bool, point: Vector3) -> void:
-	# Climbing in or out of a wardrobe is not silent.
-	on_noise(point, NOISE.radius("wardrobe"), NOISE.Kind.WARDROBE)
+func on_hide_changed(entering: bool, point: Vector3, quiet := false) -> void:
+	# Climbing in or out of a wardrobe is not silent; out the slow way, less.
+	on_noise(point, NOISE.radius("wardrobe_slow" if quiet and not entering else "wardrobe"), NOISE.Kind.WARDROBE)
 	if entering: note_hide()
 
 ## Kind defaults to a footstep so older callers (and the tests) still work.
@@ -1486,7 +1547,8 @@ func _process(delta: float) -> void:
 	update_zoom_lens()
 	camcorder.set_zoom(player.zoom_fraction(), delta)
 	camcorder.covered = ui.sheet.visible
-	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
+	if camcorder.visible: camcorder.show_tape(tape_seconds(), delta)
+	update_rewind(delta)
 	# The lamp on the camcorder's front is the dot beside REC: on while the
 	# tape of this machine's own survivor runs, steady with reduced effects.
 	player.set_pilot(camcorder.lamp_lit() or settings.values.reduced, camcorder.visible and not camcorder.hunter and not camcorder.signal_lost and local_alive() and player.camera.current)

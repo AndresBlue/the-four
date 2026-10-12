@@ -666,4 +666,4 @@ func estado(state: int) -> String:
 ## In the order of hotel_locust.Mode. It was once in another, and the panel
 ## said "busca" of a creature running somebody down.
 func modo(mode: int) -> String:
-	return ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta"][clampi(mode, 0, 8)]
+	return ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta", "acecha"][clampi(mode, 0, 9)]

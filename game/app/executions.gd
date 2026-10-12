@@ -223,7 +223,10 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		if is_instance_valid(level.reading_document): level.close_document()
 		level.ui.hint.text = ""
 		level.ui.progress.visible = false
+		# The brackets round whatever it was about to use are gone at once: they
+		# are not left fading over the face.
 		level.camcorder.focus("")
+		level.camcorder.focus_amount = 0.0
 		level.tape.begin(execution, covered)
 	# The scream is the moment it has you: flat and loud in the victim's own
 	# ears, and out in the room for everybody else.

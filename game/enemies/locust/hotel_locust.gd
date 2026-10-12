@@ -2,7 +2,7 @@ extends CharacterBody3D
 @export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const THREAD := preload("res://game/enemies/locust/door_threading.gd")
-enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT, WARDROBE, EXECUTE }
+enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT, WARDROBE, EXECUTE, LURK }
 ## Perception and pacing. Distances in metres, speeds in m/s.
 ## It perceives the player from much farther than the player can sense it:
 ## anything in its wide view with a clear line is noticed, however far.
@@ -39,6 +39,12 @@ var doubt_time := 0.0
 var chase_tire := 0.0
 var lost_cry := false
 var guess_hides := true
+## The feint (docs/EXECUTION.md, 13.3): with somebody it SAW get into a
+## wardrobe, how often it waits for them to come out instead of opening it
+## (0: never, as the game was), and for how long it will (seconds, drawn
+## between the two).
+var feint := 0.0
+var feint_wait := Vector2(9.0, 13.0)
 
 ## The doubt: the first moment it makes somebody out (DOUBT_FROM) it stops,
 ## turns its head to them and chitters, and nothing comes of what it sees
@@ -89,6 +95,9 @@ func tune(profile: Dictionary) -> void:
 	chase_tire = float(profile.chase_tire)
 	lost_cry = bool(profile.lost_cry)
 	guess_hides = bool(profile.guess_hides)
+	feint = float(profile.get("feint", 0.0))
+	var waits: Array = profile.get("feint_wait", [9.0, 13.0])
+	feint_wait = Vector2(float(waits[0]), float(waits[1]))
 	tired_for = float(profile.get("tired", TIRED_FOR))
 	sight_half_angle = float(profile.get("sight_angle", SIGHT_HALF_ANGLE))
 	cover = float(profile.get("cover", 0.0))
@@ -260,7 +269,15 @@ var level
 var mode := Mode.PATROL
 var destination := Vector3.ZERO
 var last_known := Vector3.ZERO
-var observed_hide: Node3D
+## The wardrobe it means to open: one it has reason to search (it lost
+## somebody beside it, or heard them there) or one it knows somebody is in.
+## `certain` is the second: it saw them get in, or saw them through a leaf
+## left ajar. Only that is worth a feint; both are forgotten together.
+var observed_hide: Node3D:
+	set(value):
+		observed_hide = value
+		if value == null: certain = false
+var certain := false
 ## 0..1+ suspicion; 1 starts a chase.
 var detection := 0.0
 var lost_time := 0.0
@@ -753,7 +770,7 @@ func hear(point: Vector3, radius: float) -> void:
 	if control != "ai": return
 	# Holding a victim or pulling a wardrobe open, it finishes what it is doing:
 	# a noise used to send it off mid-kill with the victim dragged behind it.
-	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
+	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE, Mode.LURK]: return
 	if not can_hear(point, radius): return
 	# A place it has given long enough: only something loud keeps it there.
 	if area_spent > AREA_CAP and search_origin != Vector3.INF and point.distance_to(search_origin) < AREA_SAME and radius * HEARING_SCALE < LOUD: return
@@ -887,7 +904,7 @@ func standing_point(point: Vector3) -> Vector3:
 ## to look. Ignored while it is already hunting.
 func investigate(point: Vector3) -> void:
 	if control != "ai": return
-	if mode in [Mode.CHASE, Mode.ALERT, Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE]: return
+	if mode in [Mode.CHASE, Mode.ALERT, Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE, Mode.LURK]: return
 	last_known = point
 	set_mode(Mode.INVESTIGATE)
 	destination = point
@@ -905,6 +922,10 @@ func set_mode(next: Mode) -> void:
 	# Back on its rounds it has forgotten the wardrobe it was looking at: kept,
 	# whoever hid there later was "seen" through the walls from across the floor.
 	if next == Mode.PATROL: observed_hide = null
+	# Whatever it was waiting by a wardrobe for is over with the waiting.
+	if next != Mode.LURK:
+		lurk = {}
+		if next not in [Mode.EXECUTE, Mode.WINDUP]: pouncing = false
 	if next in [Mode.ALERT, Mode.CHASE]: had_quarry = true
 	if next == Mode.CHASE and previous not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER]: chase_time = 0.0
 	if next == Mode.CHASE and previous != Mode.CHASE:
@@ -1160,6 +1181,12 @@ func desired_speed() -> float:
 			return chase_speed if lost_time < 0.4 or relentless else track_speed
 		Mode.SEARCH:
 			return 0.0 if pause_time > 0 else 1.5
+		Mode.LURK:
+			# A step or two aside at a walk; back for whoever shows, at a run.
+			match String(lurk.get("phase", "")):
+				"aside": return 1.9
+				"pounce": return chase_speed
+			return 0.0
 	return 0.0
 
 func set_control(kind: String) -> void:
@@ -1227,6 +1254,158 @@ func follow_state(delta: float) -> void:
 		velocity = Vector3.ZERO
 	update_voice(delta)
 	update_visual(delta)
+
+## It saw somebody get into this wardrobe (or sees them in it): it knows.
+func saw_enter(hide: Node3D) -> void:
+	observed_hide = hide
+	certain = true
+
+# --- The feint (docs/EXECUTION.md, 13.3) -------------------------------------------
+#
+# Sure of who is in a wardrobe, it does not always open it. Sometimes it
+# looks, steps aside and waits: still, facing the doors, without a sound,
+# while what tells a survivor it is near (dread_aura, the presence) dies away
+# as if it had gone. Whoever trusts that and comes out, comes out in front of
+# it; so does whoever opens a leaf far enough to be seen. What it never does
+# is fake its feet: it did not walk away, and nobody heard it walk away. The
+# way out is to wait: after `feint_wait` it tires and goes, on foot, heard.
+
+## How near the spot in front of a wardrobe it gets before it deals with it.
+const WARDROBE_STAND := 0.9
+## How long it stands looking at the doors before it steps aside, how long it
+## may take over the step, and how long after starting all this what gives it
+## away has died down (hushed, the same on every machine).
+const LURK_LOOK := Vector2(1.0, 1.4)
+const LURK_STEP := 2.5
+const LURK_HUSH := 2.4
+## A leaf has to stand open this long for it to take it for somebody showing.
+const LURK_AJAR := 0.3
+## The doors go, and then it has them: the time between.
+const POUNCE_BURST := 0.15
+## What it is doing by a wardrobe: {hide, who, phase, until, spot, ajar}.
+var lurk := {}
+## It is going for somebody it waited for (executions.choose_entry).
+var pouncing := false
+var stood := 0.0
+
+## Whether this is one of the times it waits. Never with somebody else to go
+## after in plain view: a feint is for one.
+func feints(player: Node3D) -> bool:
+	if control != "ai" or feint <= 0.0 or rng.randf() >= feint: return false
+	for other in level.survivors():
+		if other != player and sees(other): return false
+	return true
+
+## A place to wait beside a wardrobe: against the wall it stands on, to one
+## side of the doors, where a leaf barely ajar shows nothing of it. In front
+## of them, a step back, when neither side has room.
+func lurk_spot(hide: Node3D) -> Vector3:
+	var map: RID = get_world_3d().navigation_map
+	var first := 1.0 if rng.randf() < 0.5 else -1.0
+	for side in [first, -first]:
+		var wanted: Vector3 = hide.to_global(Vector3(float(side) * (float(hide.width) * 0.5 + 1.5), 0.04, 0.75))
+		var floor_there := FLOOR.closest(map, wanted)
+		if Vector2(floor_there.x - wanted.x, floor_there.z - wanted.z).length() > 0.5 or absf(floor_there.y - wanted.y) > 0.5: continue
+		if not body_fits(floor_there): continue
+		return floor_there
+	return FLOOR.closest(map, hide.to_global(Vector3(0, 0.04, 2.9)))
+
+func begin_lurk(hide: Node3D, who: Node3D) -> void:
+	if not is_instance_valid(hide) or mode in [Mode.WARDROBE, Mode.EXECUTE]: return
+	set_mode(Mode.LURK)
+	lurk = {"hide": hide, "who": who, "phase": "look", "until": clock + rng.randf_range(LURK_LOOK.x, LURK_LOOK.y), "spot": lurk_spot(hide), "ajar": 0.0}
+	speed = 0.0
+	velocity = Vector3.ZERO
+	# It lets them know it is there, once: a click of the tongue at the doors.
+	var which := rng.randi_range(0, CHITTERS.size() - 1)
+	var pitch := rng.randf_range(0.9, 1.05)
+	if "match_net" in level and level.match_net != null: level.match_net.creature_call("doubt", which, pitch)
+	play_doubt(which, pitch)
+
+## Whether what tells of it is dying away: the same on every machine, from
+## how long it has been at it.
+func hushed() -> bool:
+	return mode == Mode.LURK and state_time >= LURK_HUSH and String(lurk.get("phase", "wait")) != "pounce"
+
+func update_lurk(delta: float) -> void:
+	var hide: Node3D = lurk.get("hide")
+	var who: Node3D = lurk.get("who")
+	if not is_instance_valid(hide) or not is_instance_valid(who) or not level.survivor_active(who):
+		set_mode(Mode.SEARCH)
+		return
+	var phase := String(lurk.phase)
+	if phase == "pounce":
+		pounce(delta, hide, who)
+		return
+	# Somebody else walks into view: the one in the wardrobe can wait.
+	for other in level.survivors():
+		if other == who or not sees(other): continue
+		focus = other
+		last_known = other.global_position
+		detection = 1.0
+		set_mode(Mode.ALERT)
+		return
+	# Out of the wardrobe: that is what it was waiting for, and they are a
+	# step away.
+	if not who.hidden or who.hiding_place != hide:
+		focus = who
+		last_known = who.global_position
+		detection = 1.5
+		lost_time = 0.0
+		set_mode(Mode.CHASE)
+		return
+	# A leaf standing open is somebody showing themselves: it goes in for them.
+	var front: Vector3 = hide.to_global(Vector3(0, 1.3, float(hide.hinge.z) + 0.1))
+	lurk.ajar = float(lurk.ajar) + delta if hide.ajar() and clear_sight(front) else 0.0
+	if float(lurk.ajar) >= LURK_AJAR:
+		lurk.phase = "pounce"
+		lurk.until = -1.0
+		pouncing = true
+		destination = hide.to_global(hide.exit_offset)
+		repath = 0.0
+		return
+	match phase:
+		"look":
+			face_toward(hide.global_position, delta, 6.0)
+			if clock >= float(lurk.until):
+				lurk.phase = "aside"
+				lurk.until = clock + LURK_STEP
+				destination = lurk.spot
+				repath = 0.0
+		"aside":
+			if global_position.distance_to(lurk.spot) < 0.5 or clock >= float(lurk.until):
+				lurk.phase = "wait"
+				lurk.until = clock + rng.randf_range(feint_wait.x, feint_wait.y)
+				destination = global_position
+		"wait":
+			face_toward(hide.global_position, delta, 3.0)
+			# Nobody came out. It is not sure any more, and it goes -- on its
+			# feet, heard, a long way (give_up_area).
+			if clock >= float(lurk.until):
+				observed_hide = null
+				focus = null
+				detection = 0.0
+				search_origin = hide.global_position
+				give_up_area()
+
+## Back to the doors at a run; they burst open, and a moment later it has
+## whoever is behind them -- or is after them, if they got out in time.
+func pounce(_delta: float, hide: Node3D, who: Node3D) -> void:
+	destination = hide.to_global(hide.exit_offset)
+	if float(lurk.until) < 0.0:
+		if global_position.distance_to(destination) > 1.3 and state_time < 30.0: return
+		level.burst_wardrobe(hide)
+		lurk.until = clock + POUNCE_BURST
+		return
+	if clock < float(lurk.until): return
+	if who.hidden and who.hiding_place == hide and global_position.distance_to(hide.global_position) < 3.4:
+		level.capture_survivor(who)
+		if mode == Mode.EXECUTE: return
+	focus = who
+	last_known = who.global_position
+	detection = 1.5
+	lost_time = 0.0
+	set_mode(Mode.CHASE)
 
 ## Plants itself in front of a wardrobe and searches it, which takes a while.
 func begin_wardrobe(hide: Node3D) -> void:
@@ -1361,7 +1540,7 @@ func _physics_process(delta: float) -> void:
 	# Busy modes are left out on purpose: holding a victim or pulling a
 	# wardrobe open, it used to re-alert on the very next frame -- it can see
 	# the person it is already killing -- and walk out of its own execution.
-	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE, Mode.WARDROBE]:
+	if visible_player and detection >= 1.0 and mode not in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE, Mode.WARDROBE, Mode.LURK]:
 		set_mode(Mode.ALERT)
 	elif visible_player and detection >= SUSPICION and mode in [Mode.PATROL, Mode.SEARCH]:
 		# Something moved: stop wandering and go look, before committing.
@@ -1411,9 +1590,17 @@ func _physics_process(delta: float) -> void:
 			if lost_time > 0.5 and observed_hide == null and global_position.distance_to(last_known) < 2.5:
 				observed_hide = suspect_hide(last_known) if guess_hides else null
 			if is_instance_valid(player) and player.hidden and observed_hide == player.hiding_place:
-				# Goes to the wardrobe and pulls the doors open.
+				# Goes to the wardrobe and pulls the doors open -- or, sure of
+				# who is in it, now and then waits for them to come out.
 				destination = observed_hide.to_global(observed_hide.exit_offset)
-				if global_position.distance_to(destination) < 2.0: begin_wardrobe(observed_hide)
+				var short := global_position.distance_to(destination)
+				stood = stood + delta if short < 2.0 and speed < 0.4 else 0.0
+				# Right in front of it; from further off only if it cannot get nearer.
+				if short < WARDROBE_STAND or stood > 0.7:
+					stood = 0.0
+					if certain and feints(player): begin_lurk(observed_hide, player)
+					else: begin_wardrobe(observed_hide)
+			else: stood = 0.0
 			chase_voice(delta)
 			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > lose_after: set_mode(Mode.SEARCH)
 			elif can_attack(): set_mode(Mode.WINDUP)
@@ -1440,6 +1627,11 @@ func _physics_process(delta: float) -> void:
 		Mode.ALERT:
 			# Even if the player ducks out of view it heads for where it saw them.
 			if state_time >= alert_time: set_mode(Mode.CHASE)
+		Mode.LURK:
+			update_lurk(delta)
+	# Whoever it makes out inside a wardrobe -- through a leaf left ajar -- it
+	# is as sure of as of somebody it saw get in.
+	if visible_player and detection >= 1.0 and bool(seen.hidden) and is_instance_valid(seen.hiding_place) and seen.hiding_place.ajar() and clear_sight(seen.camera.global_position): saw_enter(seen.hiding_place)
 	update_voice(delta)
 	if mode == Mode.WARDROBE:
 		update_wardrobe(delta)
@@ -1456,6 +1648,12 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		speed = 0.0
 		if is_instance_valid(focus): face_toward(focus.global_position, delta, 6.0)
+	elif mode == Mode.LURK and String(lurk.get("phase", "")) in ["look", "wait"]:
+		# Still: a step now would be heard, and that is the one thing it
+		# does not fake.
+		speed = 0.0
+		velocity = Vector3(0, -2.0, 0)
+		move_and_slide()
 	else:
 		move_on_path(delta)
 	update_visual(delta)
@@ -1502,7 +1700,12 @@ func update_visual(delta: float) -> void:
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 	var player := focus
 	# During an execution it stares at the face it is bringing in to its own.
-	if (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE] or detection > 0.2 or light_exposure > 0.2 or doubting > 0.0) and is_instance_valid(player):
+	if mode == Mode.WARDROBE and is_instance_valid(wardrobe):
+		# Its face goes to the gap between the leaves before its arms do.
+		visual.look_point = wardrobe.to_global(Vector3(0, 1.45, float(wardrobe.hinge.z) - 0.25))
+	elif mode == Mode.LURK and lurk.has("hide") and is_instance_valid(lurk.hide):
+		visual.look_point = (lurk.hide as Node3D).to_global(Vector3(0, 1.45, float(lurk.hide.hinge.z)))
+	elif (mode in [Mode.CHASE, Mode.WINDUP, Mode.RECOVER, Mode.ALERT, Mode.EXECUTE] or detection > 0.2 or light_exposure > 0.2 or doubting > 0.0) and is_instance_valid(player):
 		visual.look_point = player.camera.global_position if lost_time < 0.5 else last_known + Vector3.UP * 1.5
 	elif mode in [Mode.SEARCH, Mode.PATROL] and pause_time > 0:
 		# Scans the room while standing still.
