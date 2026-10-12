@@ -98,6 +98,9 @@ var leaf_bodies := {}
 var motion: Tween
 ## The doors were pulled open on somebody: they stay open while they are in.
 var pulled := false
+## Somebody was taken out of it and let fall in its mouth (executions.gd):
+## the doors stay open on the body, and nobody gets in over it.
+var held_open := false
 ## Fills the inside for anybody on foot. Nobody walks into a wardrobe: one
 ## gets in by asking, and is put inside. Without it, a leaf ajar -- which
 ## stops being solid so as not to shove anyone -- left the way in open, and
@@ -235,7 +238,7 @@ static func big_leaf(side: String, s: float) -> ArrayMesh:
 
 func has_room() -> bool:
 	tidy()
-	return occupants.size() < capacity
+	return occupants.size() < capacity and not held_open
 
 func holds(body: Node) -> bool:
 	return body != null and occupants.has(body)
@@ -349,6 +352,17 @@ func force_open(seconds := 0.25) -> void:
 	pulled = true
 	close_timer = 2.5
 
+## Wide open and left so, until release_open().
+func hold_open() -> void:
+	held_open = true
+	if opening < 0.99: swing(1.0, 0.2)
+
+func release_open() -> void:
+	if not held_open: return
+	held_open = false
+	pulled = pulled and is_instance_valid(occupant)
+	close_timer = 0.6
+
 ## What one of those inside asks of each leaf; a leaf opens as far as whoever
 ## asks most of it.
 func set_peek(left: float, right: float, who: Node = null) -> void:
@@ -396,7 +410,7 @@ func _physics_process(delta: float) -> void:
 	# Shut again once the time is up, unless they were pulled open on
 	# somebody who is still in there: one of two leaving shuts them on the
 	# other.
-	if close_timer <= 0.0 and not (pulled and is_instance_valid(occupant)):
+	if close_timer <= 0.0 and not held_open and not (pulled and is_instance_valid(occupant)):
 		swing(0.0, 0.8)
 		close_leaves(0.8)
 

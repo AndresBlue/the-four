@@ -25,12 +25,17 @@ extends SceneTree
 ##   --difficulty=apacible                         the floor's (the settings')
 ##   --character=0|1|2                             whose body (2, the Exploradora)
 ##   --seed=N, --times=a,b,c                       the floor, and other seconds
+##   --wall=0.4 [--corner]                         their back to a wall, that far
 ##   --full                                        every frame whole as well
+##   --large                                       big frames, two to a row
+##   --act=peek|leave|quiet|wait, --ideal, --big   in a wardrobe (see below)
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SCORE := preload("res://game/app/capture_score.gd")
 const TIMES := [0.02, 0.05, 0.1, 0.3, 0.5, 0.62, 0.75, 0.9, 1.05, 1.5, 2.0, 2.5, 2.8, 3.1, 3.5, 4.1]
-const THUMB := Vector2i(640, 360)
-const COLUMNS := 4
+## Each frame's size on the sheet and how many go in a row ("--large": twice
+## the size, two to a row, for looking closely at a few).
+var THUMB := Vector2i(640, 360)
+var COLUMNS := 4
 var level
 var options := {"entry": "front", "light": "room", "ending": "leave", "seed": 81}
 var sheet := ""
@@ -56,6 +61,9 @@ func read_options() -> void:
 			var pair := argument.trim_prefix("--").split("=")
 			options[pair[0]] = pair[1]
 		elif argument.begins_with("--"): options[argument.trim_prefix("--")] = true
+	if options.has("large"):
+		THUMB = Vector2i(1280, 720)
+		COLUMNS = 2
 
 ## The biggest room that is not the refuge: space enough to be caught in.
 func staging_room() -> Dictionary:
@@ -86,6 +94,11 @@ func stage(where: String, apart: float) -> void:
 	var player = level.player
 	if not level.execution.is_empty(): level.release_execution()
 	player.reset_survival()
+	# "--wall=0.4": their back that far from the wall of the room behind them
+	# (and "--corner": in the corner of it), where a body has no room to lie.
+	if options.has("wall"):
+		centre -= along * (maxf(span.x, span.y) * 0.5 - float(options.wall) - 0.3)
+		if options.has("corner"): centre += along.cross(Vector3.UP) * (minf(span.x, span.y) * 0.5 - float(options.wall) - 0.3)
 	player.global_position = centre
 	player.velocity = Vector3.ZERO
 	player.rotation.y = atan2(-along.x, -along.z)
@@ -120,7 +133,9 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.ui.finish_intro()
-	await level.start_floor(int(options.seed), false, [1], String(options.get("difficulty", "")))
+	# A sheet is of one difficulty whatever the last one left in its profile
+	# (in Desafiante the first capture is the end of the floor).
+	await level.start_floor(int(options.seed), false, [1], String(options.get("difficulty", "equilibrada" if not sheet.is_empty() else "")))
 	if options.has("reduced"): level.settings.values.reduced = true
 	if options.has("soft"): level.settings.values["startle_soft"] = true
 	# A sheet is of the body the scene is built on, whoever played last.
@@ -164,10 +179,10 @@ func take_sheet() -> void:
 		view = Camera3D.new()
 		view.fov = 58.0
 		level.add_child(view)
-		var middle: Vector3 = (player.global_position + level.locust.global_position) * 0.5
-		var across: Vector3 = (level.locust.global_position - player.global_position).cross(Vector3.UP).normalized()
-		view.global_position = middle + across * 3.6 + Vector3.UP * 1.7
-		view.look_at(middle + Vector3.UP * 1.3)
+		var middle: Vector3 = (player.global_position + level.locust.global_position) * 0.5 + Vector3.UP * 1.3
+		var along: Vector3 = (level.locust.global_position - player.global_position).normalized()
+		view.global_position = stand_beside(middle, along, [player.get_rid(), level.locust.get_rid()])
+		view.look_at(middle)
 	level.executions.forced = {"glance": String(options.ending) == "glance"}
 	# "--brief": as if this way in had been seen on this floor already.
 	if options.has("brief"): level.tape.seen[entry if entry != "busy" else "front"] = true
@@ -206,14 +221,21 @@ func take_sheet() -> void:
 	print("CAPTURE_SHEET ", sheet, " entry=", entry, " light=", options.light, " frames=", taken, " take=", tape.take.get("kind", -1), " tried=", tape.take.get("tried", 0), " valid=", tape.take.get("valid", 0), " covered=", tape.take.get("covered", 0.0), " rest=", (tape.take.get("rest", Transform3D.IDENTITY) as Transform3D).origin)
 
 ## Caught in a wardrobe: the nearest one to the staging room, its occupant
-## already inside, the creature in front of it. "wardrobe" is the search, leaf
-## by leaf, with the frames counted from the first leaf; "ambush" the doors
-## thrown open at the end of a feint, counted from the burst.
+## already inside, the creature in front of it and sure of who is in there.
+## "wardrobe" is the search, leaf by leaf. "ambush" is the feint as it is
+## played: it looks, steps aside and waits, and then whoever is inside does
+## what "--act=" says -- peek (a leaf held ajar, the default), leave, quiet
+## (the key held, to leave quietly) or wait (nothing: it tires and goes);
+## with "--ideal" it is at the doors already, about to throw them open. The
+## times are counted from the capture, and those under zero are of what led
+## to it (two and a half seconds of it are kept).
+const REEL := 150
 func take_wardrobe_sheet(entry: String) -> void:
 	var player = level.player
 	var hide: Node3D = null
 	for other in level.hotel.hides:
 		if level.point_protected(other.global_position): continue
+		if options.has("big") != bool(other.big): continue
 		if hide == null or other.global_position.distance_to(player.global_position) < hide.global_position.distance_to(player.global_position): hide = other
 	player.global_position = hide.to_global(hide.exit_offset)
 	player.rotation.y = hide.global_rotation.y
@@ -221,58 +243,139 @@ func take_wardrobe_sheet(entry: String) -> void:
 	player.enter_hide(hide)
 	for i in 80: await process_frame
 	var creature = level.locust
-	creature.global_position = hide.to_global(hide.exit_offset)
+	# "--aside=0.8": that far to one side of the spot in front of the doors,
+	# as it is when it reaches a wardrobe along the wall.
+	creature.global_position = hide.to_global(hide.exit_offset + Vector3(float(options.get("aside", 0.0)), 0, 0))
 	creature.rotation.y = hide.global_rotation.y
 	creature.set_physics_process(true)
 	creature.saw_enter(hide)
 	creature.focus = player
-	var view: Camera3D = null
+	if String(options.light) == "lamp":
+		var lamp := OmniLight3D.new()
+		lamp.light_energy = 2.5
+		lamp.omni_range = 10.0
+		level.add_child(lamp)
+		lamp.global_position = hide.to_global(Vector3(1.2, 2.5, 2.2))
 	if options.has("outside"):
-		view = Camera3D.new()
+		var view := Camera3D.new()
 		view.fov = 58.0
 		level.add_child(view)
-		view.global_position = hide.to_global(Vector3(3.2, 1.7, 3.4))
-		view.look_at(hide.to_global(Vector3(0, 1.3, 0.8)))
+		var aim: Vector3 = hide.to_global(Vector3(0, 1.3, 0.9))
+		view.global_position = stand_to_watch(aim, hide, [player.get_rid(), creature.get_rid()])
+		view.look_at(aim)
 		view.current = true
-	var started := 0.0
-	if entry == "ambush":
+	var played: bool = entry == "ambush" and not options.has("ideal")
+	var act := String(options.get("act", "peek"))
+	if played: creature.begin_lurk(hide, player)
+	elif entry == "ambush":
 		creature.set_mode(creature.Mode.LURK)
-		creature.lurk = {"hide": hide, "who": player, "phase": "pounce", "until": -1.0, "spot": creature.global_position, "ajar": 1.0}
+		creature.lurk = {"hide": hide, "who": player, "phase": "pounce", "until": -1.0, "spot": creature.global_position, "ajar": 1.0, "since": creature.clock}
 		creature.pouncing = true
-	else:
-		creature.begin_wardrobe(hide)
+	else: creature.begin_wardrobe(hide)
 	var columns := COLUMNS
 	var rows := int(ceil(float(times.size()) / float(columns)))
 	var page := Image.create(THUMB.x * columns, THUMB.y * rows, false, Image.FORMAT_RGB8)
 	var next := 0
 	var taken: Array = []
+	var reel: Array = []
 	var clock := 0.0
 	var caught := -1.0
-	while next < times.size() and clock < 14.0:
+	var acting := -1.0
+	var gone := -1.0
+	var said := ""
+	while next < times.size() and clock < 45.0:
 		await process_frame
 		clock += 1.0 / 60.0
+		# What it is at, said once each.
+		var state := "%s/%s" % [creature.Mode.keys()[creature.mode], String(creature.lurk.get("phase", "-"))]
+		if state != said:
+			said = state
+			print("WARDROBE_STATE ", snappedf(clock, 0.01), " ", state, " hushed=", creature.hushed(), " at=", (hide.to_local(creature.global_position) as Vector3).snapped(Vector3.ONE * 0.01))
+		# Once it is waiting and nothing tells of it, whoever is inside does
+		# their part.
+		if played and acting < 0.0 and creature.hushed() and String(creature.lurk.get("phase", "")) == "wait":
+			acting = clock
+			print("WARDROBE_ACT ", act, " at=", snappedf(clock, 0.01))
+			match act:
+				"peek": Input.action_press("forward")
+				"leave": level.match_net.use_hide(hide, false)
+				"quiet": Input.action_press("interact")
+		if acting >= 0.0 and caught < 0.0 and int(round((clock - acting) * 60.0)) % 15 == 0 and clock - acting < 3.0:
+			print("WARDROBE_LEAF ", snappedf(clock - acting, 0.01), " left=", snappedf(hide.leaf_angle("left"), 0.01), " right=", snappedf(hide.leaf_angle("right"), 0.01), " ajar=", hide.ajar(), " seen=", creature.doors_seen_from(hide, creature.global_position), " held=", snappedf(float(creature.lurk.get("ajar", -1.0)), 0.01))
+		# It tired of waiting and went: that is all there is to see of it.
+		if played and act == "wait" and acting >= 0.0 and caught < 0.0 and creature.mode != creature.Mode.LURK:
+			if gone < 0.0:
+				gone = clock
+				print("WARDROBE_LEFT after=", snappedf(clock - acting, 0.01), " mode=", creature.Mode.keys()[creature.mode])
+			if clock - gone > 1.0: break
 		if caught < 0.0 and not level.execution.is_empty():
 			caught = clock
-			print("CAPTURE_AS ", level.execution.get("entry", "?"), " after=", snappedf(clock, 0.01), " busy=", level.tape.busy, " dark=", level.tape.dark)
+			Input.action_release("forward")
+			Input.action_release("interact")
+			print("CAPTURE_AS ", level.execution.get("entry", "?"), " after=", snappedf(clock, 0.01), " since_act=", snappedf(clock - acting, 0.01) if acting >= 0.0 else -1.0, " busy=", level.tape.busy, " dark=", level.tape.dark, " creature=", (hide.to_local(creature.global_position) as Vector3).snapped(Vector3.ONE * 0.01), " victim=", (hide.to_local(player.global_position) as Vector3).snapped(Vector3.ONE * 0.01))
 		if caught >= 0.0 and level.execution.is_empty() and level.lost_signal <= 0.0: break
-		# Counted from the capture, with what led to it before (negative).
-		var now: float = (float(level.execution.time) if not level.execution.is_empty() else clock - caught) if caught >= 0.0 else clock - 99.0
 		if caught < 0.0:
-			# Before the capture: the times under zero are seconds from the start.
-			if float(times[next]) >= 0.0: continue
-			now = clock + float(times[0]) - 0.0001
-			if clock < float(taken.size()) * 0.0 + (float(times[next]) - float(times[0])): continue
-		elif now < float(times[next]): continue
+			# Kept in case it is asked for: what led to the capture.
+			if float(times[0]) < 0.0:
+				await RenderingServer.frame_post_draw
+				reel.append([clock, thumb()])
+				if reel.size() > REEL: reel.pop_front()
+			continue
+		# The frames from before the capture, out of what was kept.
+		while next < times.size() and float(times[next]) < 0.0:
+			var chosen = null
+			for kept in reel:
+				if float(kept[0]) >= caught + float(times[next]) - 0.0001:
+					chosen = kept
+					break
+			if chosen != null:
+				page.blit_rect(chosen[1], Rect2i(Vector2i.ZERO, THUMB), Vector2i((next % columns) * THUMB.x, (next / columns) * THUMB.y))
+				taken.append(snappedf(float(chosen[0]) - caught, 0.01))
+			next += 1
+		reel.clear()
+		var now: float = float(level.execution.time) if not level.execution.is_empty() else clock - caught
+		if next >= times.size() or now < float(times[next]): continue
 		await RenderingServer.frame_post_draw
-		var frame := root.get_texture().get_image()
-		if options.has("full"): frame.save_png("res://evidence/capture_%s_%02d.png" % [sheet, next])
-		frame.convert(Image.FORMAT_RGB8)
-		frame.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
-		page.blit_rect(frame, Rect2i(Vector2i.ZERO, THUMB), Vector2i((next % columns) * THUMB.x, (next / columns) * THUMB.y))
-		taken.append(snappedf(clock if caught < 0.0 else now, 0.01))
+		if options.has("full"): root.get_texture().get_image().save_png("res://evidence/capture_%s_%02d.png" % [sheet, next])
+		page.blit_rect(thumb(), Rect2i(Vector2i.ZERO, THUMB), Vector2i((next % columns) * THUMB.x, (next / columns) * THUMB.y))
+		taken.append(snappedf(now, 0.01))
 		next += 1
+	Input.action_release("forward")
+	Input.action_release("interact")
 	page.save_png("res://evidence/capture_%s.png" % sheet)
 	print("CAPTURE_SHEET ", sheet, " entry=", entry, " frames=", taken, " take=", level.tape.take.get("kind", -1), " valid=", level.tape.take.get("valid", 0))
+
+## The picture of this frame, at the size it has on a sheet.
+func thumb() -> Image:
+	var frame := root.get_texture().get_image()
+	frame.convert(Image.FORMAT_RGB8)
+	frame.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
+	return frame
+
+## Somewhere to watch two that face each other along `along` from: to one
+## side of them, a few metres off, with nothing in between.
+func stand_beside(aim: Vector3, along: Vector3, exclude: Array) -> Vector3:
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	for far in [3.6, 3.0, 2.4, 1.9, 1.5]:
+		for angle in [90.0, -90.0, 65.0, -65.0, 115.0, -115.0, 40.0, -40.0, 140.0, -140.0]:
+			var point: Vector3 = aim + Basis(Vector3.UP, deg_to_rad(float(angle))) * along * float(far) + Vector3.UP * 0.4
+			var query := PhysicsRayQueryParameters3D.create(aim, point)
+			query.exclude = exclude
+			if space.intersect_ray(query).is_empty(): return point
+	return aim + along.cross(Vector3.UP) * 1.5 + Vector3.UP * 0.4
+
+## Somewhere to watch the front of a wardrobe from: to one side of it, a few
+## metres off, with nothing between it and what is looked at.
+func stand_to_watch(aim: Vector3, hide: Node3D, exclude: Array) -> Vector3:
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	for far in [4.2, 3.4, 2.7, 2.1]:
+		for angle in [38.0, -38.0, 58.0, -58.0, 20.0, -20.0, 0.0]:
+			var turned := Basis(Vector3.UP, deg_to_rad(float(angle))) * Vector3(0, 0, float(far))
+			var point: Vector3 = hide.to_global(Vector3(turned.x, 1.65, turned.z + 0.9))
+			var query := PhysicsRayQueryParameters3D.create(aim, point)
+			query.exclude = exclude
+			if space.intersect_ray(query).is_empty(): return point
+	return hide.to_global(Vector3(1.6, 1.65, 2.6))
 
 # --- Played -------------------------------------------------------------------------
 

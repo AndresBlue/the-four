@@ -2,6 +2,8 @@ extends Node3D
 ## Presentation only. Never changes capsule, speed, or saved floor state.
 const IDS := ["detective", "detective_woman", "realistic_female"]
 const NAMES := ["Detective Masculino", "Detective Femenino", "Exploradora"]
+## The capture's own measures (how a body folds up with no room to lie).
+const SCORE := preload("res://game/app/capture_score.gd")
 @export_enum("Detective Masculino", "Detective Femenino", "Exploradora") var character := 0
 @export var first_person := false
 ## The two skeletons the survivors come with. Keys: hip, spine, chest, head,
@@ -67,6 +69,7 @@ func configure(index: int, local_view: bool) -> void:
 	character = clampi(index, 0, IDS.size() - 1)
 	first_person = local_view
 	if model != null:
+		drop_materials()
 		remove_child(model)
 		model.queue_free()
 	rig = null
@@ -89,6 +92,7 @@ func configure(index: int, local_view: bool) -> void:
 	# Imported demonstration clips are preserved but never drive game root motion.
 	for animation in model.find_children("*", "AnimationPlayer", true, false):
 		if character == 2:
+			forget_strays(animation)
 			animation.play(animation.get_animation_list()[0])
 			animation.advance(0.0)
 			animation.pause()
@@ -124,6 +128,30 @@ func configure(index: int, local_view: bool) -> void:
 			lengths[side + "arm"] = Vector2(bone_gap(side + "a", side + "e"), bone_gap(side + "e", side + "h"))
 	initialized = true
 	update_pose(Vector3.ZERO, false, 0)
+
+## The clips of a model still move what was taken out of it (its camera):
+## those tracks go too, or every body made of it warns that it cannot find
+## them. On the clip as it is in memory, which every body shares.
+func forget_strays(player: AnimationPlayer) -> void:
+	var from := player.get_node_or_null(player.root_node)
+	if from == null: return
+	for clip_name in player.get_animation_list():
+		var clip := player.get_animation(clip_name)
+		for track in range(clip.get_track_count() - 1, -1, -1):
+			if from.get_node_or_null(NodePath(clip.track_get_path(track).get_concatenated_names())) == null: clip.remove_track(track)
+
+## The copies refine_materials() hung on the meshes are taken off before the
+## body goes. Left on, they died with their mesh a moment before the mesh was
+## told, and with two bodies of one model about, the renderer went looking
+## for a material that was no longer there ("Parameter material is null").
+func drop_materials() -> void:
+	for mesh in meshes:
+		if not is_instance_valid(mesh) or mesh.mesh == null: continue
+		for surface in mesh.mesh.get_surface_count():
+			if mesh.get_surface_override_material(surface) != null: mesh.set_surface_override_material(surface, null)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE: drop_materials()
 
 ## The bought models come out of the importer a little wrong, and these are
 ## the fixes, made on a copy of each material as the body is put together.
@@ -481,12 +509,43 @@ func end_capture() -> void:
 	show_to_owner(false)
 	feet.clear()
 
+## Where the hips are in the body's own space, standing.
+func hip_rest() -> Vector3:
+	var id: int = bones.get("hip", -1)
+	if rig == null or id < 0: return Vector3(0.0, 0.95, 0.0)
+	return (global_transform.affine_inverse() * rig.global_transform) * rig.get_bone_global_rest(id).origin
+
+## A leg of somebody sitting on the floor: the foot brought to where it is
+## put (`weight` of the way there from where it hangs) and the knee up.
+func seat_leg(side: String, spot: Vector3, weight: float) -> void:
+	var thigh: int = bones.get(side + "t", -1)
+	var calf: int = bones.get(side + "k", -1)
+	var ankle: int = bones.get(side + "f", -1)
+	if thigh < 0 or calf < 0 or ankle < 0: return
+	var hip := rig.get_bone_global_pose(thigh).origin
+	var target := rig.get_bone_global_pose(ankle).origin.lerp(to_skeleton(spot), weight)
+	var span: Vector2 = lengths[side + "leg"]
+	var reach := target - hip
+	var distance := clampf(reach.length(), 0.05, span.x + span.y - 0.004)
+	var along := reach.normalized()
+	# Up, whichever way the trunk leans; forwards while the leg still hangs.
+	var pole := (rig.global_basis.inverse() * Vector3.UP).normalized() + skeleton_axis(Vector3.FORWARD) * 0.8 + skeleton_axis(Vector3.RIGHT) * (0.12 if side == "r" else -0.12)
+	var bend := (pole - along * pole.dot(along)).normalized()
+	var cos_hip := clampf((span.x * span.x + distance * distance - span.y * span.y) / (2.0 * span.x * distance), -1.0, 1.0)
+	var knee := hip + along * span.x * cos_hip + bend * span.x * sqrt(maxf(0.0, 1.0 - cos_hip * cos_hip))
+	aim_bone(thigh, calf, knee - hip)
+	aim_bone(calf, ankle, hip + along * distance - rig.get_bone_global_pose(calf).origin)
+
 ## Somebody the creature has: run through on its arm, held up, hanging from
-## it once the blow has landed, and laid out on the floor when it lets go. The
-## scene writes this every frame instead of update_pose (executions.gd), the
-## same on every machine. state: lift, limp and fall (0 to 1, capture_score),
-## time (the scene's clock), side (-1 or 1, which way it falls) and slump
-## (no room to lie in: it folds up where it drops).
+## it once the blow has landed, and on the floor when it lets go -- laid out
+## along the way it falls, or, with no room to lie, folded up where it drops:
+## sitting, its back against whatever is behind it. The scene writes this
+## every frame instead of update_pose (executions.gd), the same on every
+## machine. state: lift, limp and fall (0 to 1, capture_score), time (the
+## scene's clock), side (-1 or 1, which way it falls), straight (straight
+## back, to no side), slump (folded up) with room (metres clear behind it)
+## and sill (how far above the floor it comes to sit: a wardrobe's bottom
+## board), and height (how far above the floor the body is held).
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
 	var lift := float(state.get("lift", 0.0))
@@ -495,13 +554,25 @@ func pose_capture(state: Dictionary) -> void:
 	var time := float(state.get("time", 0.0))
 	var side := float(state.get("side", 1.0))
 	var slump := bool(state.get("slump", false))
+	var room := float(state.get("room", SCORE.LIE_ROOM))
 	# The whole body: bent over the arm through its chest, and once let go laid
-	# down along the way it falls (its feet stay where they landed).
+	# down along the way it falls (its feet stay where they landed), or sat
+	# down a little behind them.
 	var down := fall * fall * (3.0 - 2.0 * fall)
-	var way := Vector3(side * 0.62, 0.0, 0.78).normalized()
-	var laid := Basis(Vector3.UP.cross(way).normalized(), down * deg_to_rad(52.0 if slump else 87.0))
 	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - down))
-	transform = Transform3D(laid * over, Vector3(0.0, 0.11 * down, 0.0))
+	var seat := SCORE.seat_back(room)
+	var recline := SCORE.seat_lean(room)
+	if not slump:
+		var way := Vector3(0.0 if bool(state.get("straight", false)) else side * 0.62, 0.0, 0.78).normalized()
+		var laid := Basis(Vector3.UP.cross(way).normalized(), down * deg_to_rad(87.0))
+		transform = Transform3D(laid * over, Vector3(0.0, 0.11 * down, 0.0))
+	elif rig == null:
+		# A body that cannot bend: leant back as far as there is room for.
+		transform = Transform3D(Basis(Vector3.RIGHT, minf(recline, asin(clampf((room - 0.1) / 1.7, 0.0, 1.0))) * down) * over, Vector3.ZERO)
+	else:
+		var turned := Basis(Vector3.RIGHT, recline * down) * over
+		var hips := hip_rest()
+		transform = Transform3D(turned, (Vector3(hips.x, SCORE.SEAT_HEIGHT + float(state.get("sill", 0.0)), hips.z + seat) - turned * hips) * down)
 	if rig == null:
 		model.position.y = base_height
 		model.scale.y = base_scale.y
@@ -511,11 +582,15 @@ func pose_capture(state: Dictionary) -> void:
 	var forward := skeleton_axis(Vector3.FORWARD)
 	var below := skeleton_axis(Vector3.DOWN)
 	var alive := 1.0 - limp
+	# Sitting: how much of the way down it is, and how near upright it ends
+	# (flat on its back, nothing of what follows hangs forward).
+	var sat := down if slump else 0.0
+	var upright := 1.0 - clampf(recline / 1.45, 0.0, 1.0)
 	# The back: arched off the blade while there is life in it, folded once
 	# there is not; the head thrown back to the mask, then let hang.
-	turn_bone("spine", right, -0.16 * alive + 0.3 * limp)
-	turn_bone("chest", right, -0.2 * alive + 0.22 * limp)
-	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * limp)
+	turn_bone("spine", right, -0.16 * alive + 0.3 * limp + 0.22 * sat * upright)
+	turn_bone("chest", right, -0.2 * alive + 0.22 * limp + 0.18 * sat * upright)
+	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * limp - 0.45 * sat * (1.0 - upright))
 	turn_bone("head", forward, side * 0.3 * limp)
 	# The arms: flung out at the grab, up to the arm that holds as the feet
 	# leave the floor, and down for good after the blow.
@@ -535,9 +610,15 @@ func pose_capture(state: Dictionary) -> void:
 		var dead_fore := (right * hand_side * 0.05 + below + forward * 0.12).normalized()
 		# Laid out: one arm thrown over the head, the other out to the side.
 		var thrown := ((-below * 0.9 + right * hand_side * 0.4) if hand_side * side > 0.0 else (right * hand_side * 0.95 + below * 0.25)).normalized()
+		var thrown_fore := thrown.lerp(forward, 0.25)
+		if slump:
+			# Folded up: they hang to the floor beside it, the hands in its lap.
+			var sag := (rig.global_basis.inverse() * Vector3.DOWN).normalized()
+			thrown = (below * 0.75 + sag * 0.35 * (0.25 + 0.75 * upright) + right * hand_side * 0.32).normalized()
+			thrown_fore = (below * 0.45 + (forward * 0.7 + sag * 0.2) * upright + right * hand_side * 0.12).normalized()
 		var struggle := clampf(lift * 1.6, 0.0, 1.0)
 		var upper := flung.lerp(clutch, struggle).lerp(dead, limp).lerp(thrown, down).normalized()
-		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown.lerp(forward, 0.25), down).normalized()
+		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown_fore, down).normalized()
 		aim_bone(arm, elbow, upper)
 		aim_bone(elbow, hand, fore)
 	# The legs: standing while it still has the floor, kicking once it has not,
@@ -554,10 +635,17 @@ func pose_capture(state: Dictionary) -> void:
 		var knee := 0.12 + 0.5 * lift * alive * (0.5 + 0.5 * sin(time * 11.0 * leg_side + 1.3)) + 0.18 * limp
 		var hip := 0.08 * lift + swing + 0.1 * limp
 		# On the floor one knee stays up and the other leg lies out.
-		hip = lerpf(hip, 0.75 if leg_side * side > 0.0 else 0.12, down)
-		knee = lerpf(knee, 1.25 if leg_side * side > 0.0 else 0.25, down)
+		if not slump:
+			hip = lerpf(hip, 0.75 if leg_side * side > 0.0 else 0.12, down)
+			knee = lerpf(knee, 1.25 if leg_side * side > 0.0 else 0.25, down)
 		turn_bone(key + "t", right, -hip)
 		turn_bone(key + "t", forward, leg_side * (0.05 + 0.12 * down))
 		turn_bone(key + "k", right, knee)
-		# Feet that carry nothing point down.
-		if toe >= 0 and (lift > 0.05 or down > 0.0): aim_bone(ankle, toe, (below * (0.75 + 0.25 * limp) + forward * 0.5).normalized())
+		# Folded up, the feet come down on the floor in front of it and stay
+		# there, one knee up and the other leg out, as the hips go down.
+		if slump and down > 0.0 and get_parent_node_3d() != null:
+			var ahead := 0.5 if leg_side * side > 0.0 else 0.64
+			var spot := get_parent_node_3d().global_transform * Vector3(leg_side * 0.15, ANKLE_HEIGHT - float(state.get("height", 0.0)), seat - ahead)
+			seat_leg(key, spot, clampf(down * 2.5, 0.0, 1.0))
+		# Feet that carry nothing point down; those of somebody sitting, ahead.
+		if toe >= 0 and (lift > 0.05 or down > 0.0): aim_bone(ankle, toe, (below * (0.75 + 0.25 * limp) * (1.0 - sat) + forward * (0.5 + sat)).normalized())

@@ -497,7 +497,12 @@ func cut_short_checks() -> void:
 	# stood outside used to step in beside the one peeking.
 	var beast = level.locust
 	var beast_awake: bool = is_instance_valid(beast) and beast.is_physics_processing()
-	if is_instance_valid(beast): beast.set_physics_process(false)
+	# And out of the way: it plants itself square in front of a wardrobe it
+	# opens (hotel_locust.settle_before), which is where these walk from.
+	var beast_was: Vector3 = beast.global_position if is_instance_valid(beast) else Vector3.ZERO
+	if is_instance_valid(beast):
+		beast.set_physics_process(false)
+		beast.global_position += Vector3(0, 40, 0)
 	var small = get_nodes_in_group("hotel_hides").filter(func(place) -> bool: return not place.big)[0]
 	var large = get_nodes_in_group("hotel_hides").filter(func(place) -> bool: return place.big)[0]
 	# Somebody else's body, as this machine has it: moved from elsewhere.
@@ -548,7 +553,9 @@ func cut_short_checks() -> void:
 	check("Y el que queda sale por su lado", player.leave_hide() and not player.hidden and large.occupant == null)
 	mate.queue_free()
 	third.queue_free()
-	if is_instance_valid(beast): beast.set_physics_process(beast_awake)
+	if is_instance_valid(beast):
+		beast.global_position = beast_was
+		beast.set_physics_process(beast_awake)
 	# Whatever a model brings to look with stays out of the body.
 	var explorer = preload("res://game/player/avatars/avatar_visual.tscn").instantiate()
 	explorer.character = 2

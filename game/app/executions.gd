@@ -23,7 +23,10 @@ var level
 ##   far                      how far from it they are held while the face lasts
 ##   from, facing, crouched   where the victim was, where it looked and how
 ##   torch                    its torch was on
-##   slump                    no room to fall flat where it is let go
+##   straight, slump, room    the fall where there is no room for it back
+##                            and to a side: laid straight back, or folded up
+##                            (slump) with `room` metres behind (fall_room)
+##   hide                     the wardrobe it was taken from (its index), -1
 ##   glance                   the host would have it look at the lens
 ##   seed, id                 what is drawn from chance, and which capture
 ##   ending, lens             "leave" or "glance", and where the camera lies
@@ -77,6 +80,8 @@ var rng := RandomNumberGenerator.new()
 ## What captures have left lying on the floor (camcorders, torches still
 ## lit), until the stage is over.
 var leavings: Array = []
+## And the wardrobes they left open, a body in their mouth.
+var held_open: Array = []
 ## The torch of whoever is being executed, out of their hand: {node, lamp,
 ## hand, rest, turn}. It is knocked aside at the grab, falls with the swipe,
 ## rolls and comes to rest alight, on every machine the same.
@@ -110,6 +115,14 @@ func clear_leavings() -> void:
 	for left in leavings:
 		if is_instance_valid(left): left.queue_free()
 	leavings.clear()
+	release_wardrobes()
+
+## The wardrobes somebody was taken out of shut again: the body is gone from
+## their mouth, or was let go alive.
+func release_wardrobes() -> void:
+	for wardrobe in held_open:
+		if is_instance_valid(wardrobe): wardrobe.release_open()
+	held_open.clear()
 
 ## The creature reached this survivor: the execution starts and the death is
 ## registered when it ends (host, or offline).
@@ -149,8 +162,9 @@ func stage_capture(body: Node3D) -> Dictionary:
 	var side: float = float(forced.get("side", chosen[1]))
 	var feet: Vector3 = creature.global_position - Basis(Vector3.UP, yaw).z * SCORE.HOLD_NEAR
 	var room := fall_room(feet, yaw, side, [body.get_rid(), creature.get_rid()])
+	var hide: int = level.hotel.hides.find(body.hiding_place) if bool(body.hidden) and is_instance_valid(body.hiding_place) else -1
 	return {
-		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "slump": bool(room[1]), "yaw": yaw,
+		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "straight": bool(room[1]), "slump": bool(room[2]), "room": float(room[3]), "yaw": yaw, "hide": hide,
 		"far": clampf(distance, SCORE.HOLD_FAR.x, SCORE.HOLD_FAR.y), "from": body.global_position, "facing": body.rotation.y,
 		"crouched": bool(body.crouched), "torch": is_instance_valid(body.torch) and body.torch.visible,
 		"glance": look, "seed": rng.randi() & 0x7fffffff, "id": captures,
@@ -174,20 +188,35 @@ func choose_entry(body: Node3D, away: Vector3) -> Array:
 	if angle >= 130.0: return ["back", chance]
 	return ["side", 1.0 if towards.dot(Basis(Vector3.UP, body.rotation.y).x) > 0.0 else -1.0]
 
-## Which way the body falls when it is let go, and whether it has room to lie:
-## back and to one side of where it hangs, the other side if that one is
-## taken, and folded up where it drops if neither is free. [side, slump].
+## How the body goes down when it is let go, from the room there is where it
+## hangs: laid out back and to one side, to the other side if that one is
+## taken, straight back if neither is free, and with no room to lie at all,
+## folded up against whatever is behind it. [side, straight, slump, room]:
+## the last is how far back it is clear, in metres. (Folded up it used to
+## lean back a fixed half of the way down whatever was there: through the
+## side of a wardrobe, or a wall.)
 func fall_room(feet: Vector3, yaw: float, side: float, exclude: Array) -> Array:
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	for way in [side, -side]:
-		var along := fall_way(yaw, float(way))
-		var query := PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 0.35, feet + Vector3.UP * 0.35 + along * 1.9, 1 | 8)
+		if clear_along(space, feet, fall_way(yaw, float(way)), [0.35], exclude) >= SCORE.LIE_ROOM: return [float(way), false, false, SCORE.LIE_ROOM]
+	var behind := clear_along(space, feet, fall_way(yaw, 0.0), [0.2, 0.6], exclude)
+	if behind >= SCORE.LIE_ROOM: return [side, true, false, behind]
+	return [side, false, true, behind]
+
+## How far it is clear from a spot on the floor in a direction, at the
+## nearest of some heights, up to the length of a body.
+func clear_along(space: PhysicsDirectSpaceState3D, feet: Vector3, along: Vector3, heights: Array, exclude: Array) -> float:
+	var least: float = SCORE.LIE_ROOM
+	for height in heights:
+		var from: Vector3 = feet + Vector3.UP * float(height)
+		var query := PhysicsRayQueryParameters3D.create(from, from + along * SCORE.LIE_ROOM, 1 | 8)
 		query.exclude = exclude
-		if space.intersect_ray(query).is_empty(): return [float(way), false]
-	return [side, true]
+		var hit := space.intersect_ray(query)
+		if not hit.is_empty(): least = minf(least, from.distance_to(hit.position))
+	return least
 
 ## The way a body falls, in the world: back from the creature and to a side
-## (the avatar's own, avatar_visual.pose_capture).
+## (the avatar's own, avatar_visual.pose_capture); straight back with no side.
 static func fall_way(yaw: float, side: float) -> Vector3:
 	return (Basis(Vector3.UP, yaw + PI) * Vector3(side * 0.62, 0.0, 0.78)).normalized()
 
@@ -199,6 +228,7 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 	execution = {
 		"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false,
 		"entry": String(data.get("entry", "front")), "side": float(data.get("side", 1.0)), "slump": bool(data.get("slump", false)),
+		"straight": bool(data.get("straight", false)), "room": float(data.get("room", SCORE.LIE_ROOM)), "hide": int(data.get("hide", -1)),
 		"far": far, "from": data.get("from", point + forward * far), "facing": float(data.get("facing", yaw + PI)),
 		"crouched": bool(data.get("crouched", false)), "torch": bool(data.get("torch", false)),
 		"glance": bool(data.get("glance", false)), "seed": int(data.get("seed", 0)), "id": int(data.get("id", 0)),
@@ -209,6 +239,13 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		# Turned to its victim on every machine: the scene is laid out along it.
 		level.locust.rotation.y = yaw
 	if bool(execution.torch): drop_torch()
+	# Taken out of a wardrobe, its doors stay as they are thrown: the body is
+	# let fall in its mouth, and they shut through it.
+	var taken_from := int(execution.hide)
+	if taken_from >= 0 and is_instance_valid(level.hotel) and taken_from < level.hotel.hides.size():
+		var wardrobe: Node3D = level.hotel.hides[taken_from]
+		wardrobe.hold_open()
+		if not held_open.has(wardrobe): held_open.append(wardrobe)
 	if seat == level.player.slot and not level.bot_match:
 		# The grip: a long, deep shake, and each beat lands on top of it.
 		level.rumble(0.5, 0.9, 0.7)
@@ -321,6 +358,7 @@ func release_execution() -> void:
 		if body != null and is_instance_valid(body.torch): body.torch.visible = true
 	leave_scene(true)
 	execution = {}
+	release_wardrobes()
 	if mine:
 		level.tape.stop(true)
 		level.player.held = not level.lifts.boarding.is_empty() or level.lifts.leaving >= 0.0
@@ -392,16 +430,28 @@ func mask_from() -> Vector3:
 func drop_point() -> Vector3:
 	return creature_point() + creature_forward() * SCORE.HOLD_NEAR
 
+## The way the body goes down: back and to its side, or straight back when
+## that is all the room there is (laid out so, or folded up).
+func fall_dir() -> Vector3:
+	var straight: bool = bool(execution.get("straight", false)) or bool(execution.get("slump", false))
+	return fall_way(float(execution.yaw), 0.0 if straight else float(execution.get("side", 1.0)))
+
 func body_rest() -> Vector3:
-	return drop_point() + fall_way(float(execution.yaw), float(execution.get("side", 1.0))) * (0.3 if bool(execution.get("slump", false)) else 0.85)
+	if bool(execution.get("slump", false)): return drop_point() + fall_dir() * SCORE.seat_back(float(execution.get("room", 0.0)))
+	return drop_point() + fall_dir() * 0.85
+
+## Where its head comes to lie (or to hang, sitting).
+func head_rest() -> Vector3:
+	if not bool(execution.get("slump", false)): return drop_point() + fall_dir() * 1.7
+	var room := float(execution.get("room", 0.0))
+	return drop_point() + fall_dir() * (SCORE.seat_back(room) + 0.1 + 0.45 * sin(SCORE.seat_lean(room)))
 
 ## What the tape of whoever dies needs to know of the place (death_tape.plan).
 func staging() -> Dictionary:
 	var far := float(execution.get("far", SCORE.HOLD_FAR.y))
-	var way := fall_way(float(execution.yaw), float(execution.get("side", 1.0)))
 	return {
 		"lens": lens_point(), "middle": creature_point() + creature_forward() * far * 0.5, "hold": drop_point(), "body": body_rest(),
-		"head": drop_point() + way * (0.6 if bool(execution.get("slump", false)) else 1.7), "creature": creature_point(),
+		"head": head_rest(), "creature": creature_point(),
 	}
 
 ## What the creature needs to pose itself (locust_visual.pose_capture):
@@ -435,7 +485,18 @@ func place_victim(delta: float) -> void:
 	if entry == "back": body.rotation.y = lerp_angle(float(execution.get("facing", towards)), towards, SCORE.turned(entry, time))
 	else: body.rotation.y = lerp_angle(body.rotation.y, towards, minf(1.0, delta * 16.0))
 	if "avatar" in body and body.avatar != null:
-		body.avatar.pose_capture({"lift": SCORE.lift(time), "limp": SCORE.limp(time), "fall": SCORE.fall(time), "time": time, "side": float(execution.get("side", 1.0)), "slump": bool(execution.get("slump", false))})
+		body.avatar.pose_capture({
+			"lift": SCORE.lift(time), "limp": SCORE.limp(time), "fall": SCORE.fall(time), "time": time, "side": float(execution.get("side", 1.0)),
+			"slump": bool(execution.get("slump", false)), "straight": bool(execution.get("straight", false)), "room": float(execution.get("room", SCORE.LIE_ROOM)),
+			"height": body.global_position.y - creature_point().y, "sill": seat_floor(),
+		})
+
+## How far above the room's floor whoever folds up comes to sit: on the
+## bottom board of the wardrobe they were taken from, if it has one.
+func seat_floor() -> float:
+	var index := int(execution.get("hide", -1))
+	if index < 0 or not is_instance_valid(level.hotel) or index >= level.hotel.hides.size(): return 0.0
+	return maxf(0.0, float(level.hotel.hides[index].inside_offset.y) - 0.04)
 
 ## The victim, on its own machine: nothing of the body is its own to move
 ## while it lasts (place_victim puts it, death_tape films it).

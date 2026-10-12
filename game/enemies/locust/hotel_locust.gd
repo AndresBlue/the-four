@@ -1282,6 +1282,16 @@ const LURK_HUSH := 2.4
 const LURK_AJAR := 0.3
 ## The doors go, and then it has them: the time between.
 const POUNCE_BURST := 0.15
+## How near the spot in front of the doors it throws them open from, and how
+## long it tries to get there before it does it from wherever it is.
+const POUNCE_REACH := 0.5
+const POUNCE_PATIENCE := 1.5
+## How fast it squares itself up in front of a wardrobe it is about to open.
+const WARDROBE_SETTLE := 1.6
+## The run back to the doors is a burst from standing, whatever a chase of
+## the floor's difficulty takes to get going, and it turns on the spot.
+const POUNCE_ACCELERATION := 10.0
+const POUNCE_TURN := 12.0
 ## What it is doing by a wardrobe: {hide, who, phase, until, spot, ajar}.
 var lurk := {}
 ## It is going for somebody it waited for (executions.choose_entry).
@@ -1296,19 +1306,26 @@ func feints(player: Node3D) -> bool:
 		if other != player and sees(other): return false
 	return true
 
-## A place to wait beside a wardrobe: against the wall it stands on, to one
-## side of the doors, where a leaf barely ajar shows nothing of it. In front
-## of them, a step back, when neither side has room.
+## A place to wait by a wardrobe, its doors in view: against the wall it
+## stands on, to one side of them, where a leaf barely ajar shows nothing of
+## it. With no room there (an alcove, a corner, a bed against it): to one
+## side in front of them, then straight in front; and with nowhere to step
+## to at all, where it is -- before the doors, for whoever opens one to see.
 func lurk_spot(hide: Node3D) -> Vector3:
 	var map: RID = get_world_3d().navigation_map
 	var first := 1.0 if rng.randf() < 0.5 else -1.0
-	for side in [first, -first]:
-		var wanted: Vector3 = hide.to_global(Vector3(float(side) * (float(hide.width) * 0.5 + 1.5), 0.04, 0.75))
+	var front := float(hide.hinge.z)
+	var places: Array = []
+	for side in [first, -first]: places.append(Vector3(float(side) * (float(hide.width) * 0.5 + 1.5), 0.04, 0.75))
+	for side in [first, -first]: places.append(Vector3(float(side) * 1.9, 0.04, front + 2.0))
+	places.append(Vector3(0, 0.04, front + 2.5))
+	for place in places:
+		var wanted: Vector3 = hide.to_global(place)
 		var floor_there := FLOOR.closest(map, wanted)
 		if Vector2(floor_there.x - wanted.x, floor_there.z - wanted.z).length() > 0.5 or absf(floor_there.y - wanted.y) > 0.5: continue
-		if not body_fits(floor_there): continue
+		if not body_fits(floor_there) or not doors_seen_from(hide, floor_there): continue
 		return floor_there
-	return FLOOR.closest(map, hide.to_global(Vector3(0, 0.04, 2.9)))
+	return global_position
 
 func begin_lurk(hide: Node3D, who: Node3D) -> void:
 	if not is_instance_valid(hide) or mode in [Mode.WARDROBE, Mode.EXECUTE]: return
@@ -1349,17 +1366,19 @@ func update_lurk(delta: float) -> void:
 	# step away.
 	if not who.hidden or who.hiding_place != hide:
 		focus = who
-		last_known = who.global_position
+		# Where they step out to: still inside the wardrobe for a moment,
+		# the nearest floor to them could be the room behind its wall.
+		last_known = hide.to_global(hide.exit_of(who))
 		detection = 1.5
 		lost_time = 0.0
 		set_mode(Mode.CHASE)
 		return
 	# A leaf standing open is somebody showing themselves: it goes in for them.
-	var front: Vector3 = hide.to_global(Vector3(0, 1.3, float(hide.hinge.z) + 0.1))
-	lurk.ajar = float(lurk.ajar) + delta if hide.ajar() and clear_sight(front) else 0.0
+	lurk.ajar = float(lurk.ajar) + delta if hide.ajar() and doors_seen_from(hide, global_position) else 0.0
 	if float(lurk.ajar) >= LURK_AJAR:
 		lurk.phase = "pounce"
 		lurk.until = -1.0
+		lurk.since = clock
 		pouncing = true
 		destination = hide.to_global(hide.exit_offset)
 		repath = 0.0
@@ -1373,7 +1392,7 @@ func update_lurk(delta: float) -> void:
 				destination = lurk.spot
 				repath = 0.0
 		"aside":
-			if global_position.distance_to(lurk.spot) < 0.5 or clock >= float(lurk.until):
+			if global_position.distance_to(lurk.spot) < 0.25 or clock >= float(lurk.until):
 				lurk.phase = "wait"
 				lurk.until = clock + rng.randf_range(feint_wait.x, feint_wait.y)
 				destination = global_position
@@ -1388,12 +1407,38 @@ func update_lurk(delta: float) -> void:
 				search_origin = hide.global_position
 				give_up_area()
 
+## Whether the doors of a wardrobe are in view from a spot on the floor. An
+## open leaf does not count against it (the leaf is what it sees): from
+## beside the wardrobe, the one on its side stood between it and any point
+## behind the doors, and a leaf opened in its face told it nothing.
+func doors_seen_from(hide: Node3D, from: Vector3) -> bool:
+	var front: Vector3 = hide.to_global(Vector3(0, 1.3, float(hide.hinge.z) + 0.1))
+	var ray := PhysicsRayQueryParameters3D.create(from + Vector3(0, EYE_HEIGHT, 0), front, 1 | 8)
+	ray.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+
+## Squarely in front of a wardrobe's doors, a step back from where its leaves
+## swing: where it opens one from and takes whoever is in it. It reaches a
+## wardrobe from wherever the room lets it, and what it stopped at was any
+## spot within a pace of this one: beside the doors, a leaf opened through it
+## and it took its victim through that leaf.
+func settle_before(hide: Node3D, delta: float, pace := WARDROBE_SETTLE) -> void:
+	var spot: Vector3 = hide.to_global(hide.exit_offset)
+	var off := Vector3(spot.x - global_position.x, 0.0, spot.z - global_position.z)
+	var most := pace * delta
+	var step := off if off.length() <= most else off.normalized() * most
+	speed = 0.0
+	velocity = Vector3(step.x / maxf(delta, 0.001), -2.0, step.z / maxf(delta, 0.001))
+	move_and_slide()
+
 ## Back to the doors at a run; they burst open, and a moment later it has
 ## whoever is behind them -- or is after them, if they got out in time.
 func pounce(_delta: float, hide: Node3D, who: Node3D) -> void:
 	destination = hide.to_global(hide.exit_offset)
 	if float(lurk.until) < 0.0:
-		if global_position.distance_to(destination) > 1.3 and state_time < 30.0: return
+		# In front of them first: thrown open from one side, the leaf on that
+		# side swung into it.
+		if global_position.distance_to(destination) > POUNCE_REACH and clock - float(lurk.get("since", clock)) < POUNCE_PATIENCE: return
 		level.burst_wardrobe(hide)
 		lurk.until = clock + POUNCE_BURST
 		return
@@ -1419,8 +1464,12 @@ func begin_wardrobe(hide: Node3D) -> void:
 ## are handled by the host (level.open_wardrobe).
 func update_wardrobe(delta: float) -> void:
 	speed = 0.0
-	velocity = Vector3(0, -2.0, 0)
-	move_and_slide()
+	# It plants itself in front of the doors (settle_before) while it looks
+	# at them; elsewhere it is put where whoever moves it says.
+	if is_instance_valid(wardrobe) and control != "puppet": settle_before(wardrobe, delta)
+	else:
+		velocity = Vector3(0, -2.0, 0)
+		move_and_slide()
 	if is_instance_valid(wardrobe): face_toward(wardrobe.global_position, delta, 7.0)
 	if state_time >= float(WARDROBE_TIME.done) * wardrobe_scale and control != "puppet":
 		wardrobe = null
@@ -1654,6 +1703,10 @@ func _physics_process(delta: float) -> void:
 		speed = 0.0
 		velocity = Vector3(0, -2.0, 0)
 		move_and_slide()
+	elif mode == Mode.LURK and String(lurk.get("phase", "")) == "pounce" and float(lurk.get("until", -1.0)) >= 0.0 and is_instance_valid(lurk.get("hide")):
+		# The doors are going: the last of the way, and round to face them.
+		settle_before(lurk.hide, delta, chase_speed)
+		face_toward((lurk.hide as Node3D).global_position, delta, 14.0)
 	else:
 		move_on_path(delta)
 	update_visual(delta)
@@ -1814,13 +1867,14 @@ func move_on_path(delta: float) -> void:
 	# Sharp turns cost speed: it has to swing its stilt legs around.
 	if direction.length() > 0.1:
 		wanted *= lerpf(0.35, 1.0, clampf((-global_basis.z).dot(direction) * 0.5 + 0.5, 0.0, 1.0))
-	var acceleration := chase_accel if mode == Mode.CHASE else 3.5
+	var bursting := mode == Mode.LURK and pouncing
+	var acceleration := POUNCE_ACCELERATION if bursting else chase_accel if mode == Mode.CHASE else 3.5
 	speed = move_toward(speed, wanted, (acceleration if wanted > speed else 9.0) * delta)
 	var heading := direction if direction.length() > 0.1 else -global_basis.z
 	velocity.x = heading.x * speed
 	velocity.z = heading.z * speed
 	velocity.y = -2 if is_on_floor() else velocity.y - 20 * delta
-	if direction.length() > 0.1: rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1, delta * (8.0 if mode == Mode.CHASE else 4.5)))
+	if direction.length() > 0.1: rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(1, delta * (POUNCE_TURN if bursting else 8.0 if mode == Mode.CHASE else 4.5)))
 	move_and_slide()
 	watch_progress(delta, direction, 0.0 if at_door else wanted)
 

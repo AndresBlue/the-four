@@ -57,6 +57,26 @@ const HOLD_NEAR := 0.6
 const LIFT_HEIGHT := 1.0
 const HOLD_STAND := 0.1
 
+## The floor a body needs behind it to be laid out (metres from where it is
+## let go). With less than that it folds up where it drops: sitting, its hips
+## a little back from there and its back against whatever stopped it.
+const LIE_ROOM := 1.9
+## How high the hips of somebody sitting on the floor are.
+const SEAT_HEIGHT := 0.13
+
+## Folded up with `room` metres behind it: how far back the hips come down.
+static func seat_back(room: float) -> float:
+	return clampf(room - 0.5, 0.08, 0.35)
+
+## And how far back the trunk leans (radians from upright): until the
+## shoulders, or the head, meet what is behind; flat on its back, knees up,
+## where the nearest thing behind is further than it reaches.
+static func seat_lean(room: float) -> float:
+	var back := seat_back(room)
+	var shoulders := asin(clampf((room - back - 0.14) / 0.55, 0.0, 1.0))
+	var head := asin(clampf((room - back - 0.02) / 0.9, 0.0, 1.0))
+	return clampf(minf(shoulders, head), 0.08, 1.45)
+
 static func smooth(value: float) -> float:
 	var t := clampf(value, 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
