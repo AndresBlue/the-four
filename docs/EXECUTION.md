@@ -35,7 +35,7 @@ Lo que no cambia nunca: la captura es definitiva, la decide el anfitrión, mata 
 | El rostro ocupa el 70–90 % de la altura | **Se matiza.** La parte pálida de la máscara mide unos 20 cm: para llenar el 70 % hay que ponerla a 17 cm de la lente. Objetivo: 55–75 % a 17–22 cm, a comprobar con el modelo; la cabeza entera llena el cuadro |
 | Captura frontal como ejecución principal | **Se amplía.** La mayoría de las capturas de una caza son por la espalda, con la cámara mirando hacia otro lado. Hay siete entradas según cómo te coge (sección 7) |
 | Pérdida del control con trayectoria prediseñada | **Se conserva**, con causa: el brazo que no sujeta aparta la cámara de un manotazo |
-| Cámara caída que registra a medias, 30–60 % tapado | **Se conserva** (25–55 %), y lo que registra es **la ejecución de hoy** —levantar, sostener, estocada, soltar—, que no se tira: se ve desde el suelo. Así los tiempos para los demás no cambian |
+| Cámara caída que registra a medias, 30–60 % tapado | **Se conserva** (25–55 %), y lo que registra es **la ejecución de hoy** —levantar, sostener, estocada, soltar—, que no se tira: se ve desde el suelo. La estocada, la caída y el final siguen a su hora para todos; solo el levantamiento se retrasa y se alarga, para que la cámara ya esté en el suelo cuando los pies lo dejan |
 | Degradación de la grabación y estática | **Se conserva, con causa y con final seco.** La cinta se rompe porque el cuerpo cae junto a la cámara; no se funde: se corta, como se corta una grabación |
 | Unos 4,2 s en total; sin mecánica de escape | **Se conserva** |
 | Armarios: ritual intacto, emboscada solo con conocimiento confirmado, falsa retirada física | **Se conserva**, atado a lo que la criatura ya sabe en el código, con una ventana real para escapar y una condición nueva: solo finge si la sala tiene otra salida |
@@ -117,21 +117,22 @@ Resumen de la investigación (fuentes al final; lo que es estimación se dice).
 | Tiempo | La víctima ve | La víctima oye | En el mundo |
 |---|---|---|---|
 | **El hueco** (−2,0 a 0) | Lo que estuviera viendo. Sin desgarro | La caza, sin cambios | La bestia persigue y embiste |
-| **El golpe** (0,00) | Corte de un fotograma a la composición del rostro | El grito, de golpe, plano, en la cabeza. Vibración del mando | La cabeza de la bestia cae sobre la víctima; el brazo izquierdo la ensarta |
-| **El rostro** (0,00–0,55) | La máscara a 17–22 cm, 55–75 % de la altura, mirando a la lente. Temblor de 12–14 Hz; a 0,22 s, un ladeo seco de la cabeza y un palmo más cerca. Con linterna: el haz cruza la máscara uno o dos fotogramas y se va al suelo | El grito entero | La sujeta; la víctima queda a 0,6 m |
-| **El arrebato** (0,55–0,90) | El brazo derecho cruza el cuadro. La cámara sale despedida: 180° o más de giro, estela y peine | El grito se va con la cámara: cae de tono, pierde agudos, pasa a estar *en la sala*. Viento en el micrófono | El manotazo. Empieza a levantarla (de 0,45 a 0,95 s). La linterna, si la hay, vuela y rueda |
+| **El golpe** (0,00) | Corte de un fotograma a la composición del rostro: la máscara ya está en cuadro —un tercio de la altura o más— y acaba de llegar en 3 a 5 fotogramas. Por dónde entra depende de la entrada (7.2) | El grito, de golpe, plano, en la cabeza. Vibración del mando | La cabeza de la bestia cae sobre la víctima; el brazo izquierdo la ensarta |
+| **El rostro** (0,00–0,55) | La máscara a 17–22 cm, 55–75 % de la altura, mirando a la lente. Temblor de 12–14 Hz; a 0,22 s, un ladeo seco de la cabeza y el último tirón, de 22 a 17 cm. Con linterna: el haz cruza la máscara uno o dos fotogramas y se va al suelo | El grito entero | La sujeta; la víctima queda a 0,6 m |
+| **El arrebato** (0,55–0,90) | El brazo derecho cruza el cuadro. La cámara sale despedida: 180° o más de giro, estela y peine | El grito se va con la cámara: cae de tono, pierde agudos, pasa a estar *en la sala*. Viento en el micrófono | El manotazo. La víctima sigue ensartada y con los pies en el suelo. La linterna, si la hay, vuela y rueda |
 | **El suelo** (0,90–1,05) | Parada en seco, dos rebotes, se asienta de lado. Una banda de ruido sube una vez, se dobla arriba, pierde el color cuatro fotogramas | El golpe de la carcasa, sordo y fuerte. El micrófono se cierra: todo baja de golpe | — |
-| **Lo que la cinta ve** (1,05–2,58) | Plano fijo: moqueta desenfocada en el tercio de abajo, algo que tapa un lado, las patas de la bestia, y los pies de tu cuerpo dejando el suelo y saliendo por arriba. El reloj de la cámara sigue corriendo | El micrófono se va abriendo: el siseo de la cinta y el rumor de la sala vuelven hinchándose. Chasquidos de la bestia, roces, sus garras en el suelo —cada una hace temblar la imagen— | La sostiene en alto y se la acerca a la cara, mirándola (lo de hoy) |
+| **Lo que la cinta ve** (1,05–2,58) | Plano fijo: moqueta desenfocada en el tercio de abajo, algo que tapa un lado, las patas de la bestia, y los pies de tu cuerpo, que dejan el suelo y suben. El reloj de la cámara sigue corriendo | El micrófono se va abriendo: el siseo de la cinta y el rumor de la sala vuelven hinchándose. Chasquidos de la bestia, roces, sus garras en el suelo —cada una hace temblar la imagen— | Se endereza y la levanta con ella, despacio: un metro, de 1,1 a 2,2 s (hoy la levanta en el primer medio segundo, cuando nadie mira desde fuera). La sostiene ante la cara, mirándola |
 | **El remate** (2,58–3,10) | El brazo que se echa atrás, si entra en cuadro. El golpe, no. A 3,10 el cuerpo cae en cuadro: lo último que entra es una mano, cerca de la lente | El silbido y el golpe, ahora desde donde está la bestia. El cuerpo contra el suelo, pegado al micrófono, que vuelve a cerrarse | Estocada a 2,80. Suelta el cuerpo a 3,10 |
 | **El después** (3,10–4,20) | El golpe del cuerpo ha tocado el mecanismo: bandas de ruido que suben, la parte de arriba que se dobla, el color que va y viene. Detrás, el final que toque (7.4) | Lloro en el tono (la cinta ya no corre pareja), cortes. Lo que haga la bestia | La bestia, de pie sobre el cuerpo; después, el final |
 | **El corte** (4,20) | Último campo roto, y nieve. SEÑAL PERDIDA | El canal muerto, en el mismo instante | La bestia vuelve a moverse (4,2 + 0,35). La baja se registra a 4,5 |
 
-Cuatro notas:
+Cinco notas:
 
 - **El grito se acorta.** Entero durante el rostro (0,55 s); después ya no es una capa: es un sonido que se aleja con la cámara y se apaga antes de 1,1 s.
 - **La cinta muere cuando cae el cuerpo.** Es la única causa nueva que hace falta, y coloca la rotura donde el plan de partida quería la degradación.
 - **De 4,20 a 4,50 no hay nada que ver** más que nieve: es el colchón que absorbe el retraso de la red, para que el estado que manda el anfitrión nunca corte una imagen.
 - **Por la espalda, el rostro llega tres décimas más tarde** (7.2): el golpe es otra cosa.
+- **El primer segundo de la tabla es el de la entrada de frente.** Cada entrada tiene el suyo (7.2), y todas dejan la cámara asentada antes de 1,2 s; de ahí en adelante manda el reloj del mundo, igual para todas.
 
 ## 7 · El contexto: cuatro recetas, siete entradas, dos finales
 
@@ -142,7 +143,7 @@ No se asusta igual a quien lleva diez segundos corriendo que a quien estaba leye
 | Receta | Cuándo | Qué sabe la víctima | Qué se le da |
 |---|---|---|---|
 | **Caza** | La persecución acaba | Que viene; no cuándo ni cómo de cerca | **Interrupción**: la carrera cortada a media zancada y la cara donde no estaba |
-| **Sorpresa** | Te coge ocupado, o nada más notarte | Nada | **FNAF puro**: la cara, entera, en un fotograma. El rostro más largo de todos (0,7 s): hay que dar tiempo a entender |
+| **Sorpresa** | Te coge ocupado, o nada más notarte | Nada | **FNAF puro**: la cara, entera, en un fotograma. El mismo medio segundo de rostro que las demás —el manotazo lo ven todos, así que dura igual para todos—: lo que cambia es que antes no había nada |
 | **Emboscada** | Sale a por ti cuando creías que se había ido (armario, 13) | Que se arriesgaba | **La puerta que revienta** |
 | **Encierro** | El registro del armario; un rincón sin salida | Todo, desde hace segundos | **Pavor, no susto.** El ritual lento que ya existe; al final, lo rápido |
 
@@ -160,7 +161,7 @@ Cambian el primer segundo; del suelo en adelante, todas siguen la tabla de la se
 | **Armario, registro** | La encuentra al final del ritual | Las hojas ya están abiertas y la tiene a 80 cm: la máscara **entra** al armario. Rostro a oscuras (9.3). El arrebato la saca: la cámara cae fuera y mira hacia el armario abierto —y hacia quien siga dentro, si eran dos— |
 | **Armario, emboscada** | Vuelve de una finta (13) | Las dos hojas revientan a la vez 0,15 s antes de `T0`: ese es el único aviso, y la máscara ya está en el hueco |
 
-Quién elige: **el anfitrión**, con lo que ya conoce de cada jugador —posición, hacia dónde mira, si está agachado o escondido, dónde está la bestia—. Lo que solo sabe la máquina de la víctima (qué tenía abierto en pantalla, qué luz hay, dónde cae su cámara) lo decide ella y no cambia nada para los demás.
+Quién elige: **el anfitrión**, con lo que ya conoce de cada jugador —posición, hacia dónde mira, si está agachado o escondido, dónde está la bestia—. Lo que solo sabe la máquina de la víctima (qué tenía abierto en pantalla, qué luz hay, dónde cae su cámara) lo decide ella y no cambia nada para los demás. Si valen varias, por este orden: armario, desde arriba, y después el ángulo. «Con las manos ocupadas» no la elige el anfitrión: la pone la máquina de la víctima sobre la entrada que él eligió, solo en su cinta y sin cambiar los tiempos.
 
 ### 7.3 Lo que es igual para todos y lo que es solo de la cinta
 
@@ -200,7 +201,7 @@ Durante el rostro no hay control. El temblor es de la cámara (0,4°, 12–14 Hz
 Se resuelve en el fotograma de `T0`, en la máquina de la víctima, con unos cientos de rayos (una vez, no cada fotograma).
 
 - **Candidatos:** 16 direcciones a 0,9, 1,5 y 2,2 m del punto medio entre víctima y bestia, a ras de suelo.
-- **Se descartan** los que quedan a menos de 12 cm de cualquier cosa sólida, los que caen en otra planta, en el barrido de una puerta que se está moviendo o en una sala donde no se puede capturar, y los que no tienen camino libre desde la mano (si el camino choca, vale el punto del choque: la cámara queda **apoyada** contra lo que la paró).
+- **Se descartan** los que quedan a menos de 12 cm de una pared o de un mueble (el suelo no cuenta: es donde descansa), los que caen en otra planta, en el barrido de una puerta que se está moviendo o en una sala donde no se puede capturar. Si el camino desde la mano choca con algo, el candidato pasa a ser el punto del choque retirado esos 12 cm —la cámara queda **al pie** de lo que la paró— y se valida como cualquier otro.
 - **Se puntúa:** que desde ahí se vea el punto donde la bestia sostiene el cuerpo y el suelo donde va a caer; que algo cercano —la pata de un mueble, el canto de una puerta, la moqueta— tape entre el 25 y el 55 % del cuadro; que haya una luz en cuadro o que lo que se mira esté iluminado; que el sujeto no quede centrado.
 - **La pose:** a 4–12 cm del suelo, mirando 8–22° hacia arriba y **tumbada entre 35° y 100°**. Nunca nivelada: un horizonte recto se lee como una cámara de cinemática.
 - **La ruta:** un arco con 20–50 cm de subida y media vuelta o más sobre un eje inclinado, en 0,32–0,40 s; dos rebotes (6 y 2 cm).
@@ -211,7 +212,7 @@ Se resuelve en el fotograma de `T0`, en la máquina de la víctima, con unos cie
 |---|---|---|
 | **Ve** | El cuerpo sostenido y su caída | Hay un candidato con vista |
 | **Ve a medias** | Solo patas, una pared, una sombra | Solo hay candidatos sin vista al cuerpo |
-| **Boca abajo** | Negro con una rendija de moqueta. **Todo se oye** | No hay candidato válido, o el camino es imposible |
+| **Boca abajo** | Negro con una rendija de moqueta. **Todo se oye** | No hay candidato válido: cae a plomo, a los pies de la víctima, que siempre es suelo |
 
 «Boca abajo» no es un fallo: es *Blair Witch*. Es también la red de seguridad: **no existe un sitio del hotel donde la escena no pueda resolverse**, porque la peor salida es una toma válida. Y es la base de la versión breve (14).
 
@@ -237,7 +238,7 @@ La luz que hay. La máscara llenando el cuadro le sube la exposición a la cáma
 ### 9.2 A oscuras con la linterna encendida
 
 - **Durante el rostro, la linterna no apunta a la máscara.** Una máscara blanca a 20 cm bajo el haz recibe unas doscientas veces más luz que una pared a 3 m, y el iris de la cámara solo puede cerrar paso y medio: un blanco sin rasgos, que es lo que el plan de partida prohíbe con razón. El agarre aparta la mano de la linterna: el haz cruza la máscara uno o dos fotogramas —el único fogonazo— y se queda en el suelo o en la pared de al lado. La máscara se lee con esa luz rebotada, de lado y dura.
-- **La linterna cae y rueda**, por su cuenta, y se para iluminando a ras de suelo. Su sitio se resuelve con el de la cámara y con una regla: que su haz alcance a la bestia o la pared que la cámara tiene detrás de ella.
+- **La linterna cae y rueda**, por su cuenta, y se para iluminando a ras de suelo. Su sitio lo saca cada máquina de la semilla de la captura, igual en todas (16.3), con una regla: que su haz alcance a la bestia y a una pared detrás de ella. La cámara se resuelve después, y sabe dónde quedó la linterna.
 - **El teatro de sombras.** Con la linterna en el suelo, la bestia levantando el cuerpo es una sombra enorme en la pared. Es la imagen más fuerte que este sistema puede dar y no pide ni una pose más: si la cámara puede caer mirando a esa pared, se prefiere a mirar a la bestia.
 - Los demás ven esa linterna caer y girar desde donde estén, incluso por una puerta: es la señal de que han cogido a alguien.
 
@@ -249,21 +250,21 @@ Una cámara no graba sin luz, y aquí no hay ninguna. El plan de partida pide un
 - **Cómo es.** Rojo, sin sombras, con alcance de 1,1 m. A 20 cm de una máscara blanca da una cara roja reconocible; a un metro, casi nada; a dos, nada. No ilumina una sala.
 - **Por qué no alumbra normalmente.** Sí alumbra: lo que está al alcance del brazo, en negro total. Con cualquier otra luz no se nota.
 - **No cambia ninguna regla.** Solo existe en la máquina de quien graba: ni la bestia ni los compañeros ni un cazador lo ven.
-- **Parpadea a 1 Hz, y el parpadeo cuenta la muerte.** Enganchado a `T0`, medio segundo encendido y medio apagado, cae así sobre los tiempos que ya existen:
+- **Parpadea a 1 Hz, y el parpadeo cuenta la muerte.** Enganchado a `T0`, siete décimas encendido y tres apagado, cae así sobre los tiempos que ya existen:
 
 | Segundos | Piloto | Qué coincide |
 |---|---|---|
-| 0,0–0,5 | Encendido | El rostro, en rojo |
-| 0,5–1,0 | Apagado | El arrebato y la caída, a ciegas |
-| 1,0–1,5 | Encendido | La primera imagen desde el suelo |
-| 1,5–2,0 | Apagado | — |
-| 2,0–2,5 | Encendido | El cuerpo, arriba |
-| 2,5–3,0 | **Apagado** | **La estocada (2,8): se oye, no se ve** |
-| 3,0–3,5 | Encendido | El cuerpo, que cae dentro de la luz (3,1) |
-| 3,5–4,0 | Apagado | — |
+| 0,0–0,7 | Encendido | El rostro, en rojo, entero en todas las entradas; el manotazo |
+| 0,7–1,0 | Apagado | El vuelo y el golpe contra el suelo, a ciegas |
+| 1,0–1,7 | Encendido | La primera imagen desde el suelo: los pies, que suben |
+| 1,7–2,0 | Apagado | — |
+| 2,0–2,7 | Encendido | Lo que cuelga, en el borde de la luz |
+| 2,7–3,0 | **Apagado** | **La estocada (2,8): se oye, no se ve** |
+| 3,0–3,7 | Encendido | El cuerpo, que cae dentro de la luz (3,1) |
+| 3,7–4,0 | Apagado | — |
 | 4,0–4,5 | Encendido | El final |
 
-  El golpe queda entre dos parpadeos sin haberlo forzado. Y con «mira la lente»: en un parpadeo, la cabeza vuelta; en el siguiente, la máscara llenando el cuadro. Lo que pasa entre uno y otro no se ve, así que no hay que animarlo.
+  El golpe queda entre dos parpadeos. Y con «mira la lente»: en un parpadeo, el cuerpo en el suelo; en el siguiente, la máscara llenando el cuadro. Lo que pasa entre uno y otro no se ve —la cabeza de la bestia, de pie, queda fuera del alcance del piloto—, así que no hay que animarlo.
 - **Para que el cuerpo caiga en la luz**, a oscuras el sitio de la cámara se busca a menos de un metro de donde va a caer.
 - **Dentro de un armario siempre hace falta**: la linterna se apaga al entrar y la máscara que se mete queda a contraluz de la sala.
 
@@ -322,7 +323,7 @@ Un estruendo lo satura un instante y el nivel se hunde de golpe unos 14 dB; desp
 
 ## 12 · Lo que ven los demás
 
-- **Los testigos** ven la escena en tercera persona, sin que nadie les mueva la cámara: la cabeza de la bestia que cae sobre su compañero, el brazo que lo ensarta, el manotazo, el cuerpo que sube, la estocada, la caída. Es lo de hoy con un principio violento.
+- **Los testigos** ven la escena en tercera persona, sin que nadie les mueva la cámara: la cabeza de la bestia que cae sobre su compañero, el brazo que lo ensarta, el manotazo, el cuerpo que sube, la estocada, la caída. Es lo de hoy con un principio violento y el levantamiento más lento.
 - **El grito se oye en todo el piso**, como hoy: nadie debe perderse que han cogido a alguien.
 - **La linterna de la víctima cae y rueda** para todos: una luz que se va al suelo y gira dice dónde ha sido.
 - **La cámara se queda** (más adelante, 19.5): una videocámara en el suelo donde cayó, con su piloto, hasta que cambie la etapa. Quien pasa por ahí sabe qué pasó.
@@ -334,7 +335,7 @@ Un estruendo lo satura un instante y el nivel se hunde de golpe unos 14 dB; desp
 
 ### 13.1 El ritual se queda
 
-Una hoja, la otra, el brazo dentro: 2,5 s en Desafiante (3,2 en Apacible, 2,0 en Pesadilla). Es la receta de encierro y funciona porque es lento. Lo único nuevo es cómo acaba (entrada «armario, registro») y que desde dentro, a oscuras, cada hoja que se abre deja entrar luz y la máscara se asoma al hueco antes de entrar.
+Una hoja, la otra, el brazo dentro: 2,5 s en Desafiante (3,2 en Apacible, 2,8 en Equilibrada, 2,0 en Pesadilla). Es la receta de encierro y funciona porque es lento. Lo único nuevo es cómo acaba (entrada «armario, registro») y que desde dentro, a oscuras, cada hoja que se abre deja entrar luz y la máscara se asoma al hueco antes de entrar.
 
 ### 13.2 Qué sabe la bestia
 
@@ -355,13 +356,13 @@ Solo la IA, solo con certeza, solo si no hay nadie más a la vista, **y solo si 
 | Fase | Qué hace | Qué puedes hacer |
 |---|---|---|
 | **Llega y mira** (1–1,4 s) | Se planta a 2,5–3 m, ladea la cabeza, chasquea | Nada: salir ahora es salir delante de ella |
-| **Se retira** (2–3 s) | Se da la vuelta y camina de verdad hasta una jamba a 5–9 m. Sus pasos se alejan porque se aleja | **La ventana.** Te da la espalda: si abres despacio y sales en silencio por la otra salida, has escapado. Si haces ruido, se vuelve y es una persecución con cinco metros de ventaja |
-| **Acecha** (5–9 s) | Asomada a la jamba, con la pose de la portada, mirando el armario | Salir ahora es que te vea. Quedarte es esperar |
-| **Vuelve** | Si vio moverse una hoja: corre, revienta las dos hojas a la vez, captura («armario, emboscada») | — |
+| **Se retira** (3–4 s) | Se da la vuelta y camina de verdad hasta una jamba a 8–10 m. Sus pasos se alejan porque se aleja | **La ventana.** Te da la espalda y no te ve; lo que cuenta es lo que oye. Salir de un armario no es silencioso: lo oye a 12 m por su oído (9 m en Equilibrada, 12 en Desafiante, 14 en Pesadilla). En Equilibrada, si sales cuando ya está lejos y todavía camina, y te vas agachado por la otra salida, no se entera. En Desafiante y Pesadilla te oye y se vuelve: es una persecución que empiezas con su espalda y esos metros de ventaja |
+| **Acecha** (5–9 s) | Asomada a la jamba, con la pose de la portada, mirando el armario | Salir ahora es que te vea, y abrir una rendija para mirar, también. Quedarte es esperar |
+| **Vuelve** | Si vio moverse una hoja, o si se le acaba la espera donde no se aburre: corre. Si sigues dentro cuando llega, revienta las dos hojas a la vez y captura («armario, emboscada»); si ya has salido, es una persecución | — |
 
 Si aguantas quieto toda la espera, depende de la dificultad (19.4): la propuesta es que en Equilibrada se aburra de verdad —pierde la certeza y vuelven las reglas normales— y que en Desafiante y Pesadilla vuelva a por ti. En Apacible no finge nunca.
 
-La regla que se puede aprender es una sola: **si te vio entrar, no te va a dejar en paz; sal cuando te dé la espalda**. Si no te vio, quedarte quieto sigue siendo lo correcto, como siempre.
+La regla que se puede aprender es una sola: **si te vio entrar, no te va a dejar en paz; sal mientras la oigas alejarse**. Cuando sus pasos paran, ya está mirando. Hoy, con esa certeza, va derecha al ritual: la finta cambia eso por una apuesta, así que es más clemente que lo que hay, no menos. Si no te vio, quedarte quieto sigue siendo lo correcto, como siempre.
 
 Nada se falsea: no se teletransporta, sus pasos suenan donde está, y si la oyes lejos es que está lejos.
 
@@ -382,7 +383,7 @@ Como hoy: se lleva a quien entró primero. El otro se queda en un armario abiert
 
 ### 14.2 La versión breve
 
-La primera muerte de cada jugador en un piso se ve entera. **De la segunda en adelante, si esa entrada ya la vio, la imagen se va al caer la cámara** (a 1,05 s): nieve, y el resto se oye a través de ella. Es la toma «boca abajo» elegida a propósito. La bestia tarda lo mismo, los demás ven lo mismo, y quien muere por cuarta vez no vuelve a mirar cuatro segundos que ya conoce.
+La primera muerte de cada jugador en un piso se ve entera. **De la segunda en adelante, si esa entrada ya la vio, la imagen se va cuando la cámara se asienta** (hacia 1,05 s): nieve, y el resto se oye a través de ella. Es la toma «boca abajo» elegida a propósito. La bestia tarda lo mismo, los demás ven lo mismo, y quien muere por cuarta vez no vuelve a mirar cuatro segundos que ya conoce.
 
 Una entrada que no había visto se ve siempre entera.
 
@@ -435,11 +436,11 @@ Con la semilla, cada máquina saca lo mismo: lado del manotazo, sitio de la lint
 
 | Estado | Entra | Sale |
 |---|---|---|
-| `CONFIRMADA` | El anfitrión captura | Mismo fotograma: elige entrada y final, resuelve la caída |
+| `CONFIRMADA` | El anfitrión captura | Mismo fotograma: el anfitrión elige entrada y final. La máquina de la víctima, al recibirlo, resuelve la caída |
 | `ROSTRO` | 0,00 | 0,55 (0,62 por la espalda) |
 | `ARREBATO` | Manotazo | La cámara toca el suelo |
-| `SUELO` | Impacto | 1,05 |
-| `TESTIGO` | 1,05 | 2,58 |
+| `SUELO` | Impacto (0,90 de frente; antes desde arriba; hasta 1,02 por la espalda) | 0,15 s después |
+| `TESTIGO` | La cámara asentada (1,05 de frente; nunca después de 1,20) | 2,58 |
 | `REMATE` | 2,58 | 3,10 |
 | `DESPUES` | 3,10 | 4,20 |
 | `CORTE` | 4,20 | La baja (4,50) o la versión breve |
@@ -513,7 +514,7 @@ Cada fase se cierra con la batería en verde, lo hecho descrito en el diseño y 
 - **La caída:** 300 capturas por semilla en 10 semillas, en todos los tipos de sala, pasillos de 3 m, puertas, esquinas y junto a armarios: el sitio elegido está dentro de la sala, con su holgura, sin pared entre la mano y él. Objetivo: «ve» en siete de cada diez o más; «boca abajo» en una de cada diez o menos.
 - **La elección:** de frente, por la espalda y de lado salen de la geometría que les toca; la misma semilla da lo mismo en todas las máquinas.
 - **Red:** los cuatro datos nuevos llegan iguales; un aviso repetido no mata dos veces.
-- **Armarios:** sin certeza no hay finta; sin otra salida no hay finta; perdida la pista, no vuelve; salir en silencio durante la retirada no dispara nada.
+- **Armarios:** sin certeza no hay finta; sin otra salida no hay finta; perdida la pista, no vuelve; salir fuera del alcance de su oído durante la retirada no dispara nada, y salir a su alcance le hace volverse, no capturar.
 
 ### 18.2 Pruebas con gente
 
@@ -531,7 +532,7 @@ No se da por acabado porque los estados funcionen: se da por acabado cuando algu
 1. **El piloto rojo de grabación** (9.3): ¿existe? ¿Siempre encendido, o solo se nota en la captura? Si no, queda la luz local sin cuerpo.
 2. **El desgarro de la imagen durante la embestida:** ¿se le quita a la víctima y se le da al golpe, o se decide con la prueba A/B? Hoy es la única señal en pantalla de que viene la estocada.
 3. **«Mira la lente»:** ¿entra? ¿Una de cada cinco está bien?
-4. **La finta:** si aguantas toda la espera, ¿se aburre (Equilibrada) y vuelve (Desafiante, Pesadilla)? ¿Y solo si hay otra salida?
+4. **La finta:** si aguantas toda la espera, ¿se aburre (Equilibrada) y vuelve (Desafiante, Pesadilla)? ¿Y solo si hay otra salida? Con el oído de hoy, de una finta se sale limpio solo en Equilibrada; en las dos de arriba se sale con ventaja y corriendo. ¿Vale así, o hace falta una manera callada de salir de un armario?
 5. **La cámara que se queda en el suelo** para los demás: hace falta un modelo de videocámara (tuyo, o uno sencillo hecho con cajas).
 6. **Versión breve** en muertes repetidas, y espera de 4 a 2 s al devolver la etapa.
 7. **La cinta que se rebobina** al devolver la etapa.
