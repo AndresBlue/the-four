@@ -282,6 +282,7 @@ Una cámara no graba sin luz, y aquí no hay ninguna. El plan de partida pide un
   El golpe queda entre dos parpadeos. La cabeza de la bestia, de pie, queda fuera del alcance del piloto: a oscuras y sin linterna no se elige «mira la lente», porque no se vería.
 - **Para que el cuerpo caiga en la luz**, a oscuras el sitio de la cámara se busca a menos de un metro de donde va a caer.
 - **Dentro de un armario siempre hace falta**: la linterna se apaga al entrar y la máscara que se mete queda a contraluz de la sala.
+- **Qué cuenta como «a oscuras».** Lo decide la sala donde te coge —el apagón, o la lista de salas apagadas del piso—, no una medida de la luz que llega (`death_tape.is_dark`). En un salón hecho de varias salas, la parte cuya sala está apagada cuenta como oscura aunque la de al lado la alumbre: ahí la máscara sale roja contra un fondo con luz (es lo que se ve en las películas del banco, que cogen al superviviente en ese lado del salón), la cámara cae cerca del cuerpo y no hay «mira la lente». Se deja así a propósito: el error contrario —dar por iluminada una cara que queda a contraluz— deja la escena sin rostro.
 
 ### 9.4 Jerarquía y lo que no se hace
 

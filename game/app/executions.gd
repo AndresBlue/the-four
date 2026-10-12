@@ -264,6 +264,9 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		if sheet_up: level.ui.tear_sheet()
 		level.ui.hint.text = ""
 		level.ui.progress.visible = false
+		# Nor is what the sector asks for left written over it, caught in the
+		# first seconds of one: the pause screen keeps it.
+		level.ui.hide_brief()
 		# The brackets round whatever it was about to use are gone at once: they
 		# are not left fading over the face.
 		level.camcorder.focus("")

@@ -633,9 +633,11 @@ func play() -> void:
 			var down := Input.is_physical_key_pressed(key)
 			pressed[key] = down and not bool(was.get(key, false))
 			was[key] = down
-		# Played from a list, a frame is a sixtieth whatever the clock says.
+		# Played from a list, a frame is a sixtieth whatever the clock says,
+		# and nobody is at the mouse for the game to take.
 		if scripted:
 			delta = 1.0 / 60.0
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			if not feed_keys(pressed, delta): break
 			say_state()
 		if pressed[KEY_T]: tear = not tear
