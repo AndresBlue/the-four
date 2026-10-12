@@ -11,6 +11,7 @@ Por sistema:
 
 - [LORE.md](LORE.md): la historia —La Oficina, los cuatro pisos, la brecha y el ente que dirige a la bestia—, solo lo confirmado por el autor.
 - [VISION_LOCUST.md](VISION_LOCUST.md): la ecolocalización con la que ve el cazador en versus.
+- [EXECUTION.md](EXECUTION.md): propuesta para rehacer la captura —el sobresalto, la ejecución vista desde la cámara caída y la cinta que se rompe—, con su investigación y sus fases (sin hacer).
 - [DIFFICULTY.md](DIFFICULTY.md): hoja de ruta de las cuatro dificultades de la IA (todavía sin hacer).
 - [AUDIO.md](AUDIO.md): asignaciones de sonido, buses, mezcla y reservas.
 - [PERFORMANCE.md](PERFORMANCE.md): presets gráficos, medidas por vista y coste de cada efecto.

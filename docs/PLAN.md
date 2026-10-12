@@ -457,6 +457,27 @@ silencio que hoy se oye raro al cerrar cada sector, y probar el mando en
 partida: que la sensibilidad por defecto no se quede corta ni larga, y que se
 pueda jugar entero sin tocar el teclado.
 
+- [ ] **Rehacer la captura: sobresalto, cámara caída y cinta** (propuesta
+  del 12 de octubre, [EXECUTION.md](EXECUTION.md)). La ejecución de hoy
+  funciona y no asusta: en el instante del grito la bestia es un borrón de
+  un 7 % del cuadro y la máscara nunca pasa del 16 %. La propuesta: la cara
+  a un palmo en el primer fotograma, la cámara arrancada de las manos, la
+  muerte grabada desde el suelo y la cinta que se rompe cuando cae el
+  cuerpo; siete entradas según cómo te coge, la linterna que rueda, el
+  piloto rojo a oscuras, la finta de armario con escapatoria y una versión
+  breve para las muertes repetidas. **Antes de empezar, el autor decide las
+  once cosas de su sección 19.** Después, por fases:
+  - [ ] 0 · Banco: disparar cualquier muerte en cualquier sala y sacar su
+    hoja de fotogramas.
+  - [ ] 1 · El golpe y el rostro, de frente y con luz; la prueba A/B del
+    desgarro de la embestida.
+  - [ ] 2 · La cámara cae: dónde, cómo, qué graba; los fallos de cinta y el
+    micrófono.
+  - [ ] 3 · La luz: linterna caída, teatro de sombras, piloto.
+  - [ ] 4 · Las otras entradas y «mira la lente».
+  - [ ] 5 · Armarios: el registro desde dentro, certeza y finta.
+  - [ ] 6 · Red y versus.
+  - [ ] 7 · Repetición, opciones, mezcla y pruebas con gente.
 - [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
   siempre refugio, televisores y código, y en ese orden: la planta cambia y la
   partida no. Basta una condición alternativa que pueda salir en el sector 2 o
