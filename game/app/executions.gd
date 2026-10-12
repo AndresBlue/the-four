@@ -253,11 +253,15 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		level.player.held = true
 		level.player.velocity = Vector3.ZERO
 		if level.player.hidden: level.player.force_leave_hide()
-		# Whatever was up over the picture goes, and the tape is told it was.
-		var covered: bool = level.ui.sheet.visible or level.lock_open or is_instance_valid(level.reading_document)
-		if level.ui.sheet.visible: level.toggle_sheet()
+		# Whatever was up over the picture goes -- torn out of it, not put
+		# away (hotel_ui.tear_away) -- and the tape is told it was.
+		var sheet_up: bool = level.ui.sheet.visible
+		var covered: bool = sheet_up or level.lock_open or is_instance_valid(level.reading_document)
+		level.ui.tear_away()
+		if sheet_up: level.toggle_sheet()
 		if level.lock_open: level.close_lock()
 		if is_instance_valid(level.reading_document): level.close_document()
+		if sheet_up: level.ui.tear_sheet()
 		level.ui.hint.text = ""
 		level.ui.progress.visible = false
 		# The brackets round whatever it was about to use are gone at once: they
@@ -604,6 +608,16 @@ func drop_torch() -> void:
 	var carried: SpotLight3D = body.torch
 	var hand := carried.global_transform
 	carried.visible = false
+	var made := torch_prop(carried)
+	var node: Node3D = made.node
+	level.hotel.add_child(node)
+	node.global_transform = hand
+	leavings.append(node)
+	torch = {"node": node, "lamp": made.lamp, "hand": hand, "rest": torch_rest(), "turn": float(execution.get("side", 1.0)) * TORCH_TURN}
+
+## A torch out of somebody's hand: the thing itself and the light it had
+## there. {node, lamp}.
+func torch_prop(carried: SpotLight3D) -> Dictionary:
 	var node := Node3D.new()
 	node.name = "FallenTorch"
 	var lamp := SpotLight3D.new()
@@ -672,10 +686,19 @@ func drop_torch() -> void:
 	glass.position = Vector3(0, 0, -0.087)
 	glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.add_child(glass)
-	level.hotel.add_child(node)
-	node.global_transform = hand
-	leavings.append(node)
-	torch = {"node": node, "lamp": lamp, "hand": hand, "rest": torch_rest(), "turn": float(execution.get("side", 1.0)) * TORCH_TURN}
+	return {"node": node, "lamp": lamp}
+
+## What a capture puts in the picture that nothing has drawn before it: the
+## camcorder and the torch, as they lie on a floor. For the loading screen
+## to draw once (presentation/shader_warmup.gd), which is where the first of
+## each is paid for instead of in the middle of the scene.
+func warmup_props() -> Array:
+	var props: Array = []
+	var prop := MeshInstance3D.new()
+	prop.mesh = CAMCORDER
+	props.append(prop)
+	if is_instance_valid(level.player) and is_instance_valid(level.player.torch): props.append(torch_prop(level.player.torch).node)
+	return props
 
 ## The torch through the scene: in a hand that has been knocked aside while
 ## the face lasts -- its beam crosses the mask for a frame or two and stays

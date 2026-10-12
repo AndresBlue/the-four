@@ -29,6 +29,9 @@ extends RefCounted
 ## without a new frame, so the loading screen does not look hung.
 
 const TELEVISION := preload("res://game/world/interactables/hotel_television.gd")
+## The creature's figure, as a floor that has none yet can still draw it.
+const CREATURE_MODEL := preload("res://assets/enemies/locust.glb")
+const CREATURE_LOOK := preload("res://game/enemies/locust/locust_look.gd")
 ## The shape of the real frame, small enough that drawing costs nothing.
 const SIZE := Vector2i(192, 108)
 ## Rooms visited per module type, and the two ways the camera looks.
@@ -97,6 +100,49 @@ static func run(level) -> Dictionary:
 			await tree.process_frame
 			creature_frames += 1
 		level.locust.global_transform = kept
+	elif not stops.is_empty():
+		# A floor is drawn before its creature is put on it (hotel_main:
+		# build_floor, then populate_floor), so there never was one to show:
+		# a figure of it stands in, the same mesh in the same material (what
+		# a hallucination of it is made of, phantom_sight.gd). The first time
+		# it is seen can be with its face in the lens.
+		var figure: Node3D = CREATURE_MODEL.instantiate()
+		figure.scale = Vector3.ONE * 1.95
+		level.hotel.add_child(figure)
+		CREATURE_LOOK.apply(figure)
+		figure.global_position = camera.global_position + camera.global_basis.z * -4.0 + Vector3(0, -level.player.eye_height, 0)
+		for frame in 2:
+			viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+			await RenderingServer.frame_post_draw
+			await tree.process_frame
+			creature_frames += 1
+		figure.queue_free()
+	# A capture (game/app/executions.gd, death_tape.gd): once the camera is
+	# out of its owner's hands it sees what it never has -- its owner's own
+	# body, from outside, which is drawn for nobody while it is carried -- and
+	# the camcorder and the torch lying on the floor. A second after being
+	# caught is no moment to build what draws them. A step ahead, lit by the
+	# room and then by the torch, and back as they were. (This camera draws
+	# every layer, the one the carried body is kept on as well.)
+	var capture_frames := 0
+	if not stops.is_empty() and is_instance_valid(level.player) and is_instance_valid(level.player.avatar) and level.get("executions") != null:
+		var ahead: Vector3 = -camera.global_basis.z
+		ahead.y = 0.0
+		var floor_ahead: Vector3 = Vector3(camera.global_position.x, stops[-1].at.y, camera.global_position.z) + ahead.normalized() * 2.2
+		var kept: Transform3D = level.player.global_transform
+		level.player.global_position = floor_ahead
+		var props: Array = level.executions.warmup_props()
+		for index in props.size():
+			level.hotel.add_child(props[index])
+			props[index].global_position = floor_ahead + camera.global_basis.x * (0.5 + 0.3 * index) + Vector3(0, 0.1, 0)
+		for lit in [false, true]:
+			torch.visible = lit
+			viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+			await RenderingServer.frame_post_draw
+			await tree.process_frame
+			capture_frames += 1
+		for prop in props: prop.queue_free()
+		level.player.global_transform = kept
 	# A set switched on, a step ahead and facing the camera: its channel and
 	# the shadows of its two lights are drawn by nothing else until somebody
 	# switches one on, which is no moment for a stall either. The floor's own
@@ -126,8 +172,8 @@ static func run(level) -> Dictionary:
 	if is_instance_valid(level.camera_effect): level.camera_effect.reset = true
 	if is_instance_valid(level.ui): level.ui.loading_note("")
 	var elapsed := Time.get_ticks_msec() - started
-	print_verbose("Shader warmup: %d rooms, %d frames, %d ms, longest frame %d ms" % [stops.size(), drawn + creature_frames + set_frames, elapsed, longest / 1000])
-	return {"rooms": stops.size(), "frames": drawn + creature_frames + set_frames, "ms": elapsed, "longest_ms": longest / 1000}
+	print_verbose("Shader warmup: %d rooms, %d frames, %d ms, longest frame %d ms" % [stops.size(), drawn + creature_frames + capture_frames + set_frames, elapsed, longest / 1000])
+	return {"rooms": stops.size(), "frames": drawn + creature_frames + capture_frames + set_frames, "ms": elapsed, "longest_ms": longest / 1000, "capture": capture_frames}
 
 ## Where to stand: a few rooms of each kind, dark ones included (they are the
 ## torch's variants), spread through the floor rather than taken in a row.

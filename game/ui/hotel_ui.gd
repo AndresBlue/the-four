@@ -1076,6 +1076,61 @@ func hide_lock() -> void:
 	if is_instance_valid(lock_panel): lock_panel.queue_free()
 	lock_panel = null
 
+# --- Caught with something up over the picture (docs/EXECUTION.md, 7) ---------------
+#
+# The document being read, the keypad or the sheet is not put away: it is
+# torn out of the picture, up and to one side, in two frames, and the face
+# is behind it. What was open is closed for everything else at once (who was
+# reading is not reading any more); only its picture lasts those two frames.
+
+## How long a thing takes to be out of the picture, and where to (in
+## screens) and how far round it goes.
+const SNATCH_TIME := 0.045
+const SNATCH_TO := Vector2(0.34, -1.3)
+const SNATCH_TURN := 0.4
+## What is being torn away: {thing, time, from, turn, after}.
+var snatches: Array = []
+
+func snatch(thing: Control, after: Callable) -> void:
+	if not is_instance_valid(thing) or not thing.is_visible_in_tree():
+		after.call()
+		return
+	snatches.append({"thing": thing, "time": 0.0, "from": thing.position, "turn": thing.rotation, "after": after})
+
+## The document and the keypad, taken out of the interface's hands before
+## they are closed, so that closing them does not make them vanish.
+func tear_away() -> void:
+	if is_instance_valid(reading):
+		var paper := reading
+		reading = null
+		snatch(paper, paper.queue_free)
+	if is_instance_valid(lock_panel):
+		var pad := lock_panel
+		lock_panel = null
+		snatch(pad, pad.queue_free)
+
+## The sheet, which has just been shut: its page is shown again for as long
+## as it takes to go.
+func tear_sheet() -> void:
+	sheet.visible = true
+	snatch(sheet.page, func() -> void: sheet.visible = false)
+
+func update_snatches(delta: float) -> void:
+	for held in snatches.duplicate():
+		var thing: Control = held.thing if is_instance_valid(held.thing) else null
+		held.time = float(held.time) + delta
+		var gone := float(held.time) / SNATCH_TIME
+		if thing == null or gone >= 1.0:
+			snatches.erase(held)
+			if thing != null:
+				thing.position = held.from
+				thing.rotation = float(held.turn)
+			(held.after as Callable).call()
+			continue
+		thing.pivot_offset = thing.size * 0.5
+		thing.position = (held.from as Vector2) + SNATCH_TO * get_viewport().get_visible_rect().size * gone
+		thing.rotation = float(held.turn) + SNATCH_TURN * gone
+
 func hide_document() -> void:
 	if is_instance_valid(reading): reading.queue_free()
 	reading = null
@@ -1769,6 +1824,7 @@ func lost_signal(seconds := 2.6) -> void:
 
 func _process(delta: float) -> void:
 	clock += delta
+	update_snatches(delta)
 	if is_instance_valid(pad_scroll) and pad_scroll.is_visible_in_tree():
 		var roll := Input.get_axis("look_up", "look_down")
 		if absf(roll) > 0.0: pad_scroll.scroll_vertical += int(roll * 900.0 * delta)
