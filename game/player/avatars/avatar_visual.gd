@@ -454,3 +454,110 @@ func turn_bone(key: String, axis: Vector3, angle: float) -> void:
 	var pose := rig.get_bone_global_pose(id)
 	pose.basis = Basis(axis.normalized(), angle) * pose.basis
 	rig.set_bone_global_pose(id, pose)
+
+# --- A capture (docs/EXECUTION.md) ------------------------------------------------
+
+## Whether the body is drawn for its owner's own camera. It never is while
+## the camera is in its hands (layer 2, which that camera does not draw); once
+## the camera has been knocked out of them, the tape sees its owner from
+## outside like anybody else.
+func show_to_owner(shown: bool) -> void:
+	for mesh in meshes: put_on_layers(mesh, 1 if shown or not first_person else 2)
+
+## A mesh's render layers changed without leaving it paired to a lamp by the
+## old ones: hidden, changed, shown (the engine's quirk, room_layers.put_on).
+static func put_on_layers(mesh: GeometryInstance3D, layers: int) -> void:
+	if mesh.layers == layers: return
+	if not mesh.is_inside_tree():
+		mesh.layers = layers
+		return
+	RenderingServer.instance_set_visible(mesh.get_instance(), false)
+	mesh.layers = layers
+	RenderingServer.instance_set_visible(mesh.get_instance(), mesh.is_visible_in_tree())
+
+## Back as it stands, after a capture that ended or was let go.
+func end_capture() -> void:
+	transform = Transform3D.IDENTITY
+	show_to_owner(false)
+	feet.clear()
+
+## Somebody the creature has: run through on its arm, held up, hanging from
+## it once the blow has landed, and laid out on the floor when it lets go. The
+## scene writes this every frame instead of update_pose (executions.gd), the
+## same on every machine. state: lift, limp and fall (0 to 1, capture_score),
+## time (the scene's clock), side (-1 or 1, which way it falls) and slump
+## (no room to lie in: it folds up where it drops).
+func pose_capture(state: Dictionary) -> void:
+	if not initialized: return
+	var lift := float(state.get("lift", 0.0))
+	var limp := float(state.get("limp", 0.0))
+	var fall := float(state.get("fall", 0.0))
+	var time := float(state.get("time", 0.0))
+	var side := float(state.get("side", 1.0))
+	var slump := bool(state.get("slump", false))
+	# The whole body: bent over the arm through its chest, and once let go laid
+	# down along the way it falls (its feet stay where they landed).
+	var down := fall * fall * (3.0 - 2.0 * fall)
+	var way := Vector3(side * 0.62, 0.0, 0.78).normalized()
+	var laid := Basis(Vector3.UP.cross(way).normalized(), down * deg_to_rad(52.0 if slump else 87.0))
+	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - down))
+	transform = Transform3D(laid * over, Vector3(0.0, 0.11 * down, 0.0))
+	if rig == null:
+		model.position.y = base_height
+		model.scale.y = base_scale.y
+		return
+	rig.reset_bone_poses()
+	var right := skeleton_axis(Vector3.RIGHT)
+	var forward := skeleton_axis(Vector3.FORWARD)
+	var below := skeleton_axis(Vector3.DOWN)
+	var alive := 1.0 - limp
+	# The back: arched off the blade while there is life in it, folded once
+	# there is not; the head thrown back to the mask, then let hang.
+	turn_bone("spine", right, -0.16 * alive + 0.3 * limp)
+	turn_bone("chest", right, -0.2 * alive + 0.22 * limp)
+	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * limp)
+	turn_bone("head", forward, side * 0.3 * limp)
+	# The arms: flung out at the grab, up to the arm that holds as the feet
+	# leave the floor, and down for good after the blow.
+	var kick := sin(time * 11.0) * alive * lift
+	for pair in [["l", -1.0], ["r", 1.0]]:
+		var key: String = pair[0]
+		var hand_side: float = pair[1]
+		var arm: int = bones.get(key + "a", -1)
+		var elbow: int = bones.get(key + "e", -1)
+		var hand: int = bones.get(key + "h", -1)
+		if arm < 0 or elbow < 0 or hand < 0: continue
+		var flung := (right * hand_side * 0.85 + below * 0.45 - forward * 0.25).normalized()
+		var flung_fore := (right * hand_side * 0.5 + below * 0.7 + forward * 0.5).normalized()
+		var clutch := (right * hand_side * 0.35 + below * 0.2 + forward * 0.9).normalized()
+		var clutch_fore := (-right * hand_side * 0.75 - below * 0.35 + forward * 0.55).normalized()
+		var dead := (right * hand_side * 0.14 + below - forward * 0.08).normalized()
+		var dead_fore := (right * hand_side * 0.05 + below + forward * 0.12).normalized()
+		# Laid out: one arm thrown over the head, the other out to the side.
+		var thrown := ((-below * 0.9 + right * hand_side * 0.4) if hand_side * side > 0.0 else (right * hand_side * 0.95 + below * 0.25)).normalized()
+		var struggle := clampf(lift * 1.6, 0.0, 1.0)
+		var upper := flung.lerp(clutch, struggle).lerp(dead, limp).lerp(thrown, down).normalized()
+		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown.lerp(forward, 0.25), down).normalized()
+		aim_bone(arm, elbow, upper)
+		aim_bone(elbow, hand, fore)
+	# The legs: standing while it still has the floor, kicking once it has not,
+	# hanging after the blow, and bent anyhow on the floor.
+	for pair in [["l", -1.0], ["r", 1.0]]:
+		var key: String = pair[0]
+		var leg_side: float = pair[1]
+		var thigh: int = bones.get(key + "t", -1)
+		var calf: int = bones.get(key + "k", -1)
+		var ankle: int = bones.get(key + "f", -1)
+		var toe: int = bones.get(key + "o", -1)
+		if thigh < 0 or calf < 0 or ankle < 0: continue
+		var swing := kick * leg_side * 0.42
+		var knee := 0.12 + 0.5 * lift * alive * (0.5 + 0.5 * sin(time * 11.0 * leg_side + 1.3)) + 0.18 * limp
+		var hip := 0.08 * lift + swing + 0.1 * limp
+		# On the floor one knee stays up and the other leg lies out.
+		hip = lerpf(hip, 0.75 if leg_side * side > 0.0 else 0.12, down)
+		knee = lerpf(knee, 1.25 if leg_side * side > 0.0 else 0.25, down)
+		turn_bone(key + "t", right, -hip)
+		turn_bone(key + "t", forward, leg_side * (0.05 + 0.12 * down))
+		turn_bone(key + "k", right, knee)
+		# Feet that carry nothing point down.
+		if toe >= 0 and (lift > 0.05 or down > 0.0): aim_bone(ankle, toe, (below * (0.75 + 0.25 * limp) + forward * 0.5).normalized())

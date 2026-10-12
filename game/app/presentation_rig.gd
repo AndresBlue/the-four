@@ -72,6 +72,13 @@ func apply_camera(preset: Dictionary, hunter: bool) -> void:
 
 func camera_cut() -> void:
 	if is_instance_valid(camera_effect): camera_effect.reset = true
+	motion_cut()
+
+## The camera was put somewhere else between two frames, and it is the same
+## camera in the same light: no smear or combing across the jump, but the
+## iris goes on from where it was (the mask of a capture arriving in the lens
+## is the iris closing on it, not a new exposure).
+func motion_cut() -> void:
 	if is_instance_valid(blur_effect): blur_effect.has_previous = false
 	field_camera = null
 
@@ -318,29 +325,27 @@ var static_level := 0.0
 func update_screen_cues(delta: float) -> void:
 	var wanted_enclosure: float = (1.0 - level.player.peek * 0.8) if level.player.hidden and level.session.state == level.session.State.PLAYING else 0.0
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
-	var striking: bool = level.winding_up_near()
-	glitch = 1.0 if striking else move_toward(glitch, 0.0, delta * 4.0)
+	# The tear of the lunge (level.windup_tear): on or off, it is gone the
+	# instant the creature has somebody -- nothing of it is left over the face.
+	var striking: bool = level.windup_tear and level.winding_up_near()
+	glitch = 1.0 if striking else (0.0 if not level.execution.is_empty() else move_toward(glitch, 0.0, delta * 4.0))
 	lost_signal = maxf(0.0, lost_signal - delta)
-	var mine: bool = not level.execution.is_empty() and int(level.execution.seat) == level.player.slot
-	var dying: bool = mine and float(level.execution.time) >= level.SIGNAL_TIME
+	var mine: bool = not level.execution.is_empty() and int(level.execution.seat) == level.player.slot and not level.bot_match
+	# The victim's own picture goes when its tape does (death_tape.gd).
+	var dying: bool = mine and level.tape.lost(float(level.execution.time))
 	var riding_now: float = level.lifts.ride_static()
 	update_ride_hiss(riding_now)
 	var wanted_static: float = 1.0 if dying or lost_signal > 0.0 else riding_now
-	# Straight to static once the arm has landed: the picture does not fade,
-	# it goes. Coming back (a new floor) it clears gently.
-	# Gone at once when the view is already somebody else's camera; otherwise
-	# it comes in hard and clears gently.
-	if wanted_static <= 0.0 and not level.local_alive() and level.execution.is_empty(): static_level = 0.0
+	# A recording that is interrupted does not fade: it is cut. The tape of
+	# whoever dies goes to snow in one frame; anything else comes in hard and
+	# clears gently (a new floor), and is gone at once when the view is already
+	# somebody else's camera.
+	if dying: static_level = 1.0
+	elif wanted_static <= 0.0 and not level.local_alive() and level.execution.is_empty(): static_level = 0.0
 	elif riding_now > 0.0 or not level.lifts.boarding.is_empty(): static_level = wanted_static
 	else: static_level = move_toward(static_level, wanted_static, delta * (14.0 if wanted_static > static_level else 1.6))
 	level.post_material.set_shader_parameter("signal_loss", static_level * (0.75 if level.settings.values.reduced else 1.0))
-	# The arm arriving: black spreading from where its hand is on screen.
-	var arm := 0.0
-	if mine and float(level.execution.time) >= level.ARM_TIME and static_level < 0.9:
-		arm = clampf((float(level.execution.time) - level.ARM_TIME) / level.ARM_SWING, 0.0, 1.0)
-		level.post_material.set_shader_parameter("strike_point", level.strike_on_screen())
-	level.post_material.set_shader_parameter("strike_fill", arm)
-	level.camcorder.signal_lost = static_level > 0.35 or arm > 0.25
+	level.camcorder.signal_lost = static_level > 0.35
 	# The dead channel stops with the snow, not a moment later.
 	if is_instance_valid(level.static_sound) and level.static_sound.playing and static_level < 0.05: level.static_sound.stop()
 	if level.settings.values.reduced: return
@@ -384,13 +389,8 @@ func build_audio() -> void:
 	level.scream_sound.volume_db = 0.0
 	level.scream_sound.stream = load(level.SCREAM)
 	level.add_child(level.scream_sound)
-	# The blow and the dead channel that follows it, in the victim's own ears.
-	level.blow_sound = AudioStreamPlayer.new()
-	level.blow_sound.name = "Blow"
-	level.blow_sound.bus = "Threat"
-	level.blow_sound.volume_db = -1.0
-	level.blow_sound.stream = load(level.KILL_BLOW)
-	level.add_child(level.blow_sound)
+	# The dead channel, when the tape ends. (The blow is heard from where the
+	# creature is, by everybody: executions.update_execution.)
 	level.static_sound = AudioStreamPlayer.new()
 	level.static_sound.name = "DeadChannel"
 	level.static_sound.bus = "Effects"

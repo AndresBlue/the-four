@@ -17,10 +17,17 @@ uniform float threat_glitch : hint_range(0.0, 1.0) = 0.0;
 // The victim's own camera giving out: the picture tears, rolls and is eaten
 // by the snow of a dead channel. 1 is no picture left at all.
 uniform float signal_loss : hint_range(0.0, 1.0) = 0.0;
-// The arm coming for the lens: black spreading from strike_point (screen UV)
-// until it covers everything. 0 is nothing, 1 is no light at all.
-uniform float strike_fill : hint_range(0.0, 1.0) = 0.0;
-uniform vec2 strike_point = vec2(0.5, 0.5);
+// A blow to the camcorder itself (death_tape.gd): while it lasts the top of
+// the picture flags sideways, the band at the bottom where the heads switch
+// jumps, the colour drops out and dots streak across it. tape_band is where
+// a band of noise stands as it climbs the picture once (1 the bottom, 0 the
+// top, under 0 none). Everything a tape does wrong it does along its lines
+// and field by field: never in blocks, never one colour apart from another.
+uniform float tape_hit : hint_range(0.0, 1.0) = 0.0;
+uniform float tape_band = -1.0;
+// The mechanism that no longer settles: bands climbing more and more often,
+// the hold slipping, the colour coming and going. 1 is the last field.
+uniform float tape_fray : hint_range(0.0, 1.0) = 0.0;
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -71,6 +78,25 @@ void fragment() {
 	uv.x += (wobble + jitter) * vhs + tear * vhs;
 	float glitch_row = step(0.6, hash(vec2(floor(uv.y * 38.0), floor(t * 20.0))));
 	uv.x += (hash(vec2(floor(uv.y * 90.0), floor(t * 30.0))) - 0.5) * 0.05 * threat_glitch * glitch_row;
+	// The camcorder struck, or coming apart.
+	float damage = max(tape_hit, tape_fray);
+	float struck_band = 0.0;
+	if (damage > 0.0) {
+		float field = floor(t * 60.0);
+		// Flagging: the top lines pulled sideways, the more the higher up.
+		float flag = smoothstep(0.2, 0.0, uv.y);
+		uv.x += flag * flag * (0.07 * tape_hit * (0.6 + 0.4 * sin(t * 41.0)) + 0.05 * tape_fray * step(0.45, hash(vec2(field, 2.0))));
+		// The band of noise: once up the picture for a blow, and for a tape that
+		// is going, again and again and faster.
+		if (tape_band >= 0.0) struck_band = smoothstep(0.075, 0.0, abs(uv.y - tape_band)) * clamp(tape_hit * 2.0, 0.0, 1.0);
+		float going = fract(1.0 - t * (0.5 + tape_fray * 3.2));
+		struck_band = max(struck_band, smoothstep(0.04 + 0.1 * tape_fray, 0.0, abs(uv.y - going)) * tape_fray);
+		uv.x += (hash(vec2(line, field)) - 0.5) * 0.14 * struck_band;
+		// Where the heads switch, at the bottom, the tear jumps.
+		uv.x += smoothstep(0.1, 0.0, 1.0 - uv.y) * (hash(vec2(line, field + 3.0)) - 0.5) * 0.09 * damage;
+		// The hold slipping: the whole picture hops a few lines, now and then.
+		uv.y = fract(uv.y + tape_fray * tape_fray * 0.07 * step(0.72, hash(vec2(floor(t * 14.0), 9.0))));
+	}
 	// Luma: slightly soft with edge ringing; chroma: much lower horizontal
 	// resolution and a small delay, like composite video on tape.
 	float soft = 1.0 + vhs * 2.5;
@@ -124,7 +150,7 @@ void fragment() {
 	// hides by repeating the line above instead.
 	float field_row = floor(SCREEN_UV.y * 240.0);
 	float dropout_frame = floor(t * 30.0);
-	float chance = vhs * 0.0012;
+	float chance = vhs * 0.0012 + tape_hit * 0.03 + tape_fray * 0.02;
 	float hit = step(1.0 - chance, hash(vec2(dropout_frame, field_row)));
 	// The line below a dropout often goes too.
 	hit = max(hit, step(1.0 - chance, hash(vec2(dropout_frame, field_row - 1.0))) * step(0.6, hash(vec2(field_row, dropout_frame + 5.0))));
@@ -143,6 +169,14 @@ void fragment() {
 		}
 	}
 	color = mix(color, vec3(snow * 0.8), head * vhs * 0.55);
+	if (damage > 0.0) {
+		// The band is noise, not picture; and the colour, the first thing a
+		// tape loses, goes with a blow and comes and goes with a failing one.
+		color = mix(color, vec3(snow * 0.9), struck_band * 0.8);
+		float grey = dot(color, vec3(0.299, 0.587, 0.114));
+		float drained = max(clamp(tape_hit * 1.6, 0.0, 1.0), tape_fray * step(0.4, hash(vec2(floor(t * 9.0), 4.0))));
+		color = mix(color, vec3(grey), drained);
+	}
 	// Grain: stronger in the shadows, as with auto-gain in the dark.
 	float g = hash(uv * vec2(1731.0, 977.0) + fract(t * 23.0)) - 0.5;
 	float dark = 1.0 - clamp(dot(color, vec3(0.333)) * 1.6, 0.0, 1.0);
@@ -157,20 +191,6 @@ void fragment() {
 	color *= 1.0 - (noise1(t * 11.0) - 0.5) * 0.03 * vhs;
 	float closed_in = smoothstep(0.05, 0.42, edge);
 	color *= 1.0 - closed_in * enclosure * 0.85;
-	// The arm: it comes in as a point and takes the whole lens in a moment.
-	// Slightly oval and with a ragged edge, so it reads as something arriving
-	// rather than as an iris closing.
-	if (strike_fill > 0.0) {
-		vec2 away = (SCREEN_UV - strike_point) * vec2(1.0, 0.78);
-		// A few big lobes rather than even teeth: a limb, not a cog.
-		float angle = atan(away.y, away.x);
-		float ragged = 1.0 + (hash(vec2(floor(angle * 2.5), floor(t * 18.0))) - 0.5) * 0.3 + (hash(vec2(floor(angle * 6.0), 3.0)) - 0.5) * 0.12;
-		// Most of the swing it is a speck, and then it is everything.
-		float radius = pow(strike_fill, 2.2) * 2.0 * ragged;
-		// A hard edge: a limb blocking the lens, not a shadow falling on it.
-		float covered = 1.0 - smoothstep(radius * 0.9, radius, length(away));
-		color *= 1.0 - covered;
-	}
 	// The signal going, as a dead channel on a big set: the picture loses its
 	// hold and rolls, sync tears drag lines sideways, and fat interlaced snow
 	// with a rolling hum bar takes it over.

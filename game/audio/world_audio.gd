@@ -356,7 +356,7 @@ func update_long(delta: float) -> void:
 			fade = linear_to_db(clampf(left / LONG_FADE, 0.001, 1.0))
 		voice.volume_db = float(cue.base_db) + fade
 
-func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0) -> void:
+func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start := -1.0, pitch := 0.0) -> void:
 	if start < 0.0: start = TIMING.onset(path)
 	last_event = {"path": path, "position": point}
 	if not enabled or hush or listener_position().distance_to(point) > ROUTE_LIMIT: return
@@ -375,7 +375,8 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 	voice.max_distance = 40.0
 	voice.max_db = 6.0
 	voice.area_mask = ACOUSTIC_MASK
-	voice.pitch_scale = rng.randf_range(0.98, 1.02)
+	# As recorded, give or take a hair; or lower or higher when asked.
+	voice.pitch_scale = rng.randf_range(0.98, 1.02) * (pitch if pitch > 0.0 else 1.0)
 	voice.set_meta("base_gain", gain)
 	voice.set_meta("emitter", emitter)
 	voice.set_meta("start", start)

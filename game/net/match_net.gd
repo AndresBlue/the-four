@@ -844,10 +844,28 @@ func pull_leaf(job: Dictionary, side: String) -> void:
 func leaf_opened(index: int, side: String) -> void:
 	if is_instance_valid(level.hotel) and index >= 0 and index < level.hotel.hides.size(): level.hotel.hides[index].open_leaf(side)
 
-## An execution decided by the host: everyone plays it out (hotel_main).
+## An execution decided by the host: everyone plays it out (hotel_main), from
+## the same word on how it was caught (executions.stage_capture).
 @rpc("authority", "call_remote", "reliable")
-func execute_start(seat: int, point: Vector3, yaw: float) -> void:
-	level.apply_execution(seat, point, yaw)
+func execute_start(seat: int, point: Vector3, yaw: float, data: Dictionary) -> void:
+	level.apply_execution(seat, point, yaw, data)
+
+## The victim's machine telling the host where its camera came to lie, and
+## whether what happens over it can be seen from there (executions.report_lens).
+@rpc("any_peer", "call_remote", "reliable")
+func tell_lens(id: int, rest: Transform3D, seen: bool) -> void:
+	if not net.is_host or level.execution.is_empty(): return
+	# Only the one being executed says where its own camera is, and near where
+	# it was caught: a camcorder is not left across the floor.
+	if net.seat_of_peer(multiplayer.get_remote_sender_id()) != int(level.execution.seat): return
+	if not rest.origin.is_finite() or rest.origin.distance_to(level.execution.point) > 6.0: return
+	level.executions.settle_lens(id, rest.orthonormalized(), seen)
+
+## The host's word on it, for everybody: the camcorder is on the floor there,
+## and the creature looks at it before it goes, or does not.
+@rpc("authority", "call_remote", "reliable")
+func lens_settled(id: int, rest: Transform3D, look: bool) -> void:
+	level.executions.note_lens(id, rest, look)
 
 ## The victim was inside a wardrobe: it is pulled out of it first.
 func free_victim_hide(seat: int) -> void:

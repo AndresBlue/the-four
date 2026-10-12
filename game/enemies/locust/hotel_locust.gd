@@ -1218,6 +1218,13 @@ func follow_state(delta: float) -> void:
 	global_position = before.position.lerp(after.position, t)
 	rotation.y = lerp_angle(before.yaw, after.yaw, t)
 	velocity = before.velocity.lerp(after.velocity, t)
+	# Holding somebody it is a piece of that scene, on every machine: where the
+	# host said it caught them and turned to them, whatever states are still on
+	# their way from before.
+	if level != null and not level.execution.is_empty():
+		global_position = level.execution.point
+		rotation.y = float(level.execution.yaw)
+		velocity = Vector3.ZERO
 	update_voice(delta)
 	update_visual(delta)
 

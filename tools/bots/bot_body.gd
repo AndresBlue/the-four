@@ -69,8 +69,8 @@ func _physics_process(delta: float) -> void:
 	# On the blade: out of any wardrobe and held up in front of it.
 	if not level.execution.is_empty() and int(level.execution.seat) == slot:
 		if hidden and is_instance_valid(hiding_place): level.match_net.remote_leaves(hiding_place, self)
+		# Where it is held is the scene's to say (executions.place_victim).
 		velocity = Vector3.ZERO
-		global_position = global_position.lerp(level.victim_hold_point(), minf(1.0, delta * 10.0))
 		return
 	turn(delta)
 	camera.position.y = 0.9 if crouched else 1.64

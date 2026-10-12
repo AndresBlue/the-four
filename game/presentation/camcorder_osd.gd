@@ -42,6 +42,11 @@ func show_channels(points: Array, tilt: float, target: int) -> void:
 var code_note: Label
 var start_seconds := 0
 var date_text := ""
+## The recording lamp's blink, a second long: lit for LAMP_LIT of it. The dot
+## beside REC and the red light on the camcorder's front (hotel_player.pilot)
+## are the same lamp and read the same clock; a capture sets it to 0 as it
+## starts (death_tape.gd), so the blow at 2.8 s falls between two blinks.
+const LAMP_LIT := 0.7
 var blink := 0.0
 var stamina := 1.0
 var exhausted := false
@@ -181,11 +186,15 @@ func focus(word: String) -> void:
 func write_code(text: String) -> void:
 	code_note.text = "" if text.is_empty() else "CÓDIGO  " + text
 
+## Whether the recording lamp is lit at this moment of its blink.
+func lamp_lit() -> bool:
+	return blink < LAMP_LIT
+
 func show_tape(elapsed: float, delta: float) -> void:
 	blink = fposmod(blink + delta, 1.0)
 	var tape := marks and not hunter and not signal_lost and not covered
 	rec.visible = tape
-	dot.visible = tape and blink < 0.6
+	dot.visible = tape and lamp_lit()
 	clock.visible = tape
 	code_note.visible = tape and not code_note.text.is_empty()
 	notice.visible = not notice.text.is_empty()

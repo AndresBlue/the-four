@@ -218,6 +218,8 @@ func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF
 			level.session.changed.emit()
 		relocate_creature(creature_at, restart_grace())
 		if level.director != null and level.director.has_method("on_restart"): level.director.on_restart()
+		# And nothing lying where somebody was caught: it has not happened.
+		level.executions.clear_leavings()
 
 ## The inverse of watching a teammate: its own body, its own camera.
 func restore_local_player(point: Vector3) -> void:
@@ -234,6 +236,8 @@ func restore_local_player(point: Vector3) -> void:
 	# picture until the doors open.
 	level.player.held = not level.lifts.boarding.is_empty() or level.lifts.leaving >= 0.0
 	if level.player.hidden: level.player.force_leave_hide()
+	# On its feet, however an execution left it lying.
+	level.player.avatar.end_capture()
 	stop_watching()
 	level.clear_screen_cues()
 	# Put somewhere else: a cut, with the rooms there shown at once.

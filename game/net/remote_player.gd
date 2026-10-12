@@ -102,6 +102,8 @@ func set_dead(value: bool) -> void:
 	dead = value
 	visible = not value
 	collision_layer = 0 if value else 4
+	# Up again: however an execution left the body lying, it stands.
+	if not value and avatar != null: avatar.end_capture()
 	if value:
 		# A wardrobe it died in (dropped out while hiding) is empty again: kept
 		# taken, nobody could get in and the creature kept searching it.
@@ -121,7 +123,8 @@ func push_state(data: Array) -> void:
 	while states.size() > 12: states.pop_front()
 	var flags: int = data[4]
 	crouched = flags & 1 != 0
-	torch.visible = flags & 2 != 0 and not hidden
+	# In the creature's hands its torch is on the floor (executions.drop_torch).
+	torch.visible = flags & 2 != 0 and not hidden and not (level != null and not level.execution.is_empty() and int(level.execution.seat) == slot)
 	reading = flags & 8 != 0
 	peek_left = data[6]
 	peek_right = data[7]
@@ -156,6 +159,13 @@ func ride_to(point: Vector3) -> void:
 func _physics_process(delta: float) -> void:
 	clock += delta
 	ride_hold = maxf(0.0, ride_hold - delta)
+	# In the creature's hands the body is the scene's to put and to pose
+	# (executions.place_victim): the states its owner goes on sending are of a
+	# body that is not its own to move.
+	if level != null and not level.execution.is_empty() and int(level.execution.seat) == slot and not dead:
+		velocity = Vector3.ZERO
+		states.clear()
+		return
 	if dead or states.is_empty():
 		velocity = Vector3.ZERO
 		avatar.update_pose(Vector3.ZERO, crouched, delta)

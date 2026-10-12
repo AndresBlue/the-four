@@ -111,6 +111,22 @@ var focus := 6.0
 var focus_target := 6.0
 var hunt := 0.0
 var focus_attributes: CameraAttributesPractical
+## The camcorder's recording lamp: the red light on its front that blinks
+## while the tape runs -- the dot beside REC on its screen is the same lamp
+## (camcorder_osd.lamp_lit). Carried, it barely shows: it tints what is at
+## arm's length, in the dark, and nothing else. When the creature has its
+## owner it is all the light there is in a dark place, and the tape of the
+## capture brings it up (`pilot_as`, death_tape.gd): a face a hand away from
+## the lens is red in it, a body a metre off just is. It is on this machine
+## only -- nobody else sees it and the creature takes no notice of it -- so
+## it changes nothing that anybody can do.
+const PILOT_COLOR := Color(1.0, 0.06, 0.03)
+## Its strength, its reach (metres) and how fast it falls off with distance,
+## as it is carried.
+const PILOT_CARRIED := Vector3(0.035, 0.7, 1.4)
+var pilot: OmniLight3D
+## The same three as a capture wants them, or nothing (x under 0).
+var pilot_as := Vector3(-1.0, 0.0, 0.0)
 
 func _ready() -> void:
 	avatar = $Avatar
@@ -125,6 +141,20 @@ func _ready() -> void:
 	if plain_beam(): shape_plain_beam(torch)
 	elif torch.light_projector == null: torch.light_projector = beam_pattern()
 	torch_energy = torch.light_energy
+	pilot = OmniLight3D.new()
+	pilot.name = "RecordingLamp"
+	pilot.light_color = PILOT_COLOR
+	pilot.light_energy = 0.0
+	pilot.omni_range = PILOT_CARRIED.y
+	pilot.omni_attenuation = 1.4
+	pilot.shadow_enabled = false
+	pilot.light_specular = 0.3
+	pilot.light_volumetric_fog_energy = 0.0
+	pilot.light_bake_mode = Light3D.BAKE_DISABLED
+	# Beside the lens, a little ahead of it.
+	pilot.position = Vector3(0.035, -0.02, -0.05)
+	pilot.visible = false
+	camera.add_child(pilot)
 	# The torch is carried, not bolted to the view: it trails the camera.
 	torch.top_level = true
 	snap_torch()
@@ -475,6 +505,16 @@ func _process(delta: float) -> void:
 	var warm := torch_warmup * torch_warmup
 	if torch_warmup < 0.6 and not reduced: warm *= 0.7 + 0.3 * absf(sin(torch_clock * 90.0))
 	torch.light_energy = torch_energy * warm * (1.0 - 0.06 * moving * absf(sin(step)) * sway)
+
+## The recording lamp, as the level has it this frame: lit or between two
+## blinks, and whether there is a tape being recorded here at all.
+func set_pilot(lit: bool, recording: bool) -> void:
+	if not is_instance_valid(pilot): return
+	pilot.visible = recording and lit
+	var wanted := pilot_as if pilot_as.x >= 0.0 else PILOT_CARRIED
+	pilot.light_energy = wanted.x
+	pilot.omni_range = wanted.y
+	pilot.omni_attenuation = wanted.z
 
 ## Burnt out, or back from it. The motes are the only thing that says so to
 ## anybody else.

@@ -71,7 +71,6 @@ var discoveries
 var records
 var paper_sound: AudioStreamPlayer
 var scream_sound: AudioStreamPlayer
-var blow_sound: AudioStreamPlayer
 var static_sound: AudioStreamPlayer
 ## The snow of a lift ride, heard as well as seen (update_ride_hiss).
 var ride_hiss: AudioStreamPlayer
@@ -99,6 +98,8 @@ const CODE_LOCK := preload("res://game/app/code_lock.gd")
 var code
 const EXECUTIONS := preload("res://game/app/executions.gd")
 var executions
+const DEATH_TAPE := preload("res://game/app/death_tape.gd")
+var tape
 const REVIVAL := preload("res://game/app/revival.gd")
 var revival
 const INTERACTION := preload("res://game/app/interaction.gd")
@@ -223,6 +224,10 @@ func _enter_tree() -> void:
 	executions.name = "Executions"
 	executions.level = self
 	$Services.add_child(executions)
+	tape = DEATH_TAPE.new()
+	tape.name = "DeathTape"
+	tape.level = self
+	$Services.add_child(tape)
 	revival = REVIVAL.new()
 	revival.name = "Revival"
 	revival.level = self
@@ -654,6 +659,9 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	player.zoom = 1.0
 	player.zoom_wanted = 1.0
 	ledger.reset()
+	# Nothing left lying by the last floor's captures, nor seen of them.
+	executions.reset()
+	tape.reset()
 	# The game's own rules until a room says otherwise (begin_online_play).
 	set_rules({})
 	ui.summary = {}
@@ -941,8 +949,7 @@ func on_state() -> void:
 	if not playing: online_menu = false
 	if session.state in [session.State.MENU, session.State.FAILED, session.State.WON]:
 		world_audio.reset()
-		for cue in [scream_sound, blow_sound]:
-			if is_instance_valid(cue): cue.stop()
+		if is_instance_valid(scream_sound): scream_sound.stop()
 	player.active = playing and not online_menu and local_alive() and not match_net.local_is_locust() and not bot_match
 	if not playing: player.velocity = Vector3.ZERO
 	if not playing and ui.sheet.visible:
@@ -960,6 +967,8 @@ func on_state() -> void:
 		elif not session.goal.get("blackout", false) and hotel.dark: restore_power()
 		if playing and session.stage > last_stage:
 			lifts.follow_players(session.stage)
+			# What the captures of the sector behind left on its floor goes with it.
+			executions.clear_leavings()
 			# What the sector just closed took, for the line this floor leaves.
 			if not net.is_client(): ledger.note_sector(last_stage)
 	# Only a stage being played counts as reached (a change announced in the
@@ -1213,14 +1222,15 @@ func survivor_active(body: Node3D) -> bool:
 func clear_screen_cues() -> void:
 	lost_signal = 0.0
 	static_level = 0.0
-	strike_uv = Vector2(0.35, 0.55)
 	enclosure = 0.0
 	glitch = 0.0
 	if is_instance_valid(static_sound) and static_sound.playing: static_sound.stop()
 	if is_instance_valid(camcorder): camcorder.signal_lost = false
 	if post_material != null:
 		post_material.set_shader_parameter("signal_loss", 0.0)
-		post_material.set_shader_parameter("strike_fill", 0.0)
+		post_material.set_shader_parameter("tape_hit", 0.0)
+		post_material.set_shader_parameter("tape_band", -1.0)
+		post_material.set_shader_parameter("tape_fray", 0.0)
 		post_material.set_shader_parameter("enclosure", 0.0)
 		post_material.set_shader_parameter("threat_glitch", 0.0)
 
@@ -1436,6 +1446,13 @@ func host_gate(delta: float) -> void:
 ## business: the tape tears and the house holds its breath. Everywhere at once,
 ## a lunge on the far side of the floor tore every screen, the hunter's too.
 const WINDUP_NEAR := 10.0
+## Whether the lunge tears the picture and hushes the house at all. Off: the
+## half second before a capture carries no new sign of it, which is what a
+## startle wants (docs/EXECUTION.md, 5.3) -- its own bark still says it is
+## coming. Which of the two stays is the author's to judge, looking at both
+## in the bench (tools/dev/capture_bench.gd, or "-- --windup-tear" to play
+## with it on).
+var windup_tear := OS.get_cmdline_user_args().has("--windup-tear")
 func winding_up_near() -> bool:
 	if not is_instance_valid(locust) or locust.mode != locust.Mode.WINDUP or match_net.local_is_locust(): return false
 	var eye: Vector3 = world_audio.listener_position()
@@ -1470,9 +1487,12 @@ func _process(delta: float) -> void:
 	camcorder.set_zoom(player.zoom_fraction(), delta)
 	camcorder.covered = ui.sheet.visible
 	if camcorder.visible: camcorder.show_tape(session.elapsed, delta)
+	# The lamp on the camcorder's front is the dot beside REC: on while the
+	# tape of this machine's own survivor runs, steady with reduced effects.
+	player.set_pilot(camcorder.lamp_lit() or settings.values.reduced, camcorder.visible and not camcorder.hunter and not camcorder.signal_lost and local_alive() and player.camera.current)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	update_screen_cues(delta)
-	var warning_active: bool = winding_up_near()
+	var warning_active: bool = windup_tear and winding_up_near()
 	# The bed and music recede as the dread aura rises, leaving room for it.
 	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
 	ambience.volume_db = (-25.0 if warning_active else -17.0) - dread * 9.0 + world_audio.duck_db()
@@ -1652,13 +1672,9 @@ const SIGNAL_TIME := EXECUTIONS.SIGNAL_TIME
 const DROP_TIME := EXECUTIONS.DROP_TIME
 const ARM_SWING := EXECUTIONS.ARM_SWING
 func capture_survivor(body: Node3D) -> void: executions.capture_survivor(body)
-func apply_execution(seat: int, point: Vector3, yaw: float) -> void: executions.apply_execution(seat, point, yaw)
+func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void: executions.apply_execution(seat, point, yaw, data)
 func update_execution(delta: float) -> void: executions.update_execution(delta)
 func release_execution() -> void: executions.release_execution()
-var strike_uv:
-	get: return executions.strike_uv
-	set(value): executions.strike_uv = value
-func strike_on_screen() -> Vector2: return executions.strike_on_screen()
 func hold_victim(delta: float) -> void: executions.hold_victim(delta)
 func victim_hold_point() -> Vector3: return executions.victim_hold_point()
 

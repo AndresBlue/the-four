@@ -317,9 +317,15 @@ func run() -> void:
 	enemy.hear(player.position + Vector3(2, 0, 0), 20)
 	check("Un ruido no la saca de su ejecución", enemy.mode == enemy.Mode.EXECUTE)
 	await frames(30)
-	check("Durante la ejecución la víctima queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
+	# The face first: held on the arm in front of it, feet still on the floor.
+	# It is lifted once its own camera is on the floor to see it.
+	check("Durante el rostro la víctima queda sujeta delante de la bestia, en el suelo", player.global_position.y < 0.3 and player.global_position.distance_to(enemy.global_position) < 1.3 and player.held)
+	check("Su cámara ya no está en sus manos: la lleva la cinta", level.tape.recording() and player.camera.top_level)
+	await frames(100)
+	check("Después la levanta: queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
+	check("Y la cámara está en el suelo, grabando", player.camera.global_position.y < 0.4 and not level.tape.take.is_empty())
 	# The execution is longer now: the scream, the mask coming in, the blow.
-	await frames(300)
+	await frames(200)
 	# Alone there is nobody to be forgiven with: the death lands and the floor
 	# is over.
 	check("La ejecución acaba con el superviviente", level.session.participants[1] == level.session.Life.DEAD and level.session.state == level.session.State.FAILED and level.session.restarts == 0)
@@ -329,7 +335,7 @@ func run() -> void:
 	await frames(300)
 	check("La estática se va sola cuando la partida ya ha terminado", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) < 0.05)
 	await level.start_floor(81)
-	check("Un piso nuevo empieza con la imagen limpia", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) == 0.0 and float(level.post_material.get_shader_parameter("strike_fill")) == 0.0)
+	check("Un piso nuevo empieza con la imagen limpia", level.post_material != null and float(level.post_material.get_shader_parameter("signal_loss")) == 0.0 and float(level.post_material.get_shader_parameter("tape_hit")) == 0.0 and float(level.post_material.get_shader_parameter("tape_fray")) == 0.0)
 	check("Reintento reinicia amenaza, resistencia y escondite", level.locust.grace == 15 and not player.hidden and player.stamina == 100 and level.session.state == level.session.State.PLAYING)
 	enemy = level.locust
 	hide = get_nodes_in_group("hotel_hides")[0]

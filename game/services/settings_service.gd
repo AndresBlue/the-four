@@ -2,7 +2,7 @@ extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 0, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 2, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. Named by where the button is
@@ -63,6 +63,11 @@ const BORDERLESS := 1
 const WINDOWED := 2
 ## Saved-settings revision of the subtitle default (now off); reset once.
 const SUBTITLE_REVISION := 1
+## Saved-settings revision of the survivor one plays by default: the
+## Exploradora since October 2026, the body the capture is built on
+## (docs/EXECUTION.md). A file from before has its choice put back to her
+## once; it is then the player's to change again.
+const CHARACTER_REVISION := 1
 const DISPLAY_KEYS := ["window_mode", "resolution"]
 ## Room left around a window for the title bar and taskbar.
 const WINDOW_MARGIN := Vector2i(48, 96)
@@ -101,11 +106,13 @@ func load_settings() -> void:
 	var current_curve: bool = data.get("audio_curve", 0) == AUDIO_CURVE
 	var current_display: bool = data.get("display_rev", 0) == DISPLAY_REVISION
 	var current_subtitles: bool = data.get("subtitle_rev", 0) == SUBTITLE_REVISION
+	var current_character: bool = data.get("character_rev", 0) == CHARACTER_REVISION
 	if stored is Dictionary:
 		for key in DEFAULTS:
 			if key in AUDIO_KEYS and not current_curve: continue
 			if key in DISPLAY_KEYS and not current_display: continue
 			if key == "subtitles" and not current_subtitles: continue
+			if key == "character" and not current_character: continue
 			if stored.has(key): values[key] = sanitize(key, stored[key])
 	var pads = data.get("pad_bindings", {})
 	if pads is Dictionary and int(data.get("pad_rev", 0)) == PAD_REVISION:
@@ -484,7 +491,7 @@ static func slider_db(volume: float) -> float:
 
 func save_settings() -> void:
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "pad_rev": PAD_REVISION, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION}))
+	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "pad_rev": PAD_REVISION, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION, "character_rev": CHARACTER_REVISION}))
 
 func _process(delta: float) -> void:
 	if countdown > 0:
