@@ -32,6 +32,8 @@ const CREDITS := [
 		"«Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).",
 		"«Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).",
 		"«Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.",
+		"«Panasonic VHS-C MOVIE CAMERA NV-A3» — Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.",
+		"«VHS» — Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el usuario; autoría y licencia pendientes de verificar.",
 	]],
 	["MATERIALES", [

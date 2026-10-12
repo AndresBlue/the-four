@@ -42,6 +42,8 @@ De los personajes se versionan el modelo y las imágenes que su importación ext
 | `monstera` | Monstera Deliciosa Potted Mid-Century plant | Giora (ChubbyPanda) | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/monstera-deliciosa-potted-mid-century-plant-1ab9bf841df04c07b1819be596327629) |
 | `wall_lamp` | Wall Lamp — 2048px² | Mark Peters | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/wall-lamp-2048px2-487c69d1748c46d2b3cc433fe6885a5e) |
 | `elevator` | Elevator with Animation LOWPOLY | EFX | CC Attribution | Sketchfab |
+| `camcorder` | Panasonic VHS-C MOVIE CAMERA NV-A3 | Arthur Vanneste | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/panasonic-vhs-c-movie-camera-nv-a3-64bc8b9060f24d72848307ef9be1b9bd) |
+| `vhs_tape` | VHS | Terizmeh | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/vhs-c11a8596c3314677a8b9321e141de275) |
 
 El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque el coche va detrás de una pared del propio hotel. Su FBX está en `assets/props/elevator/elevator.fbx` y sus texturas en la misma carpeta (madera, suelo, metal, botonera con sus mapas de emisión y de metal, y botones de llamada), con los materiales `lift_*.tres`. `tools/props/build_elevator.gd` lo hornea a 0,8 de su tamaño en cinco piezas, todas en el espacio del coche:
 - `lift_car.res`: el coche con la botonera interior completa;
@@ -50,6 +52,12 @@ El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque 
 - `lift_screen.res`: la pantalla de fuera.
 
 El archivo descargado y lo que traía están en `source_assets/elevator/`, fuera de git.
+
+**La videocámara y la cinta** (descargadas por el usuario el 12/10/2026; fichas abiertas ese día: las dos descargables y con licencia CC Attribution 4.0, uso comercial permitido, hay que citar al autor). La videocámara es la que queda en el suelo donde la criatura coge a alguien ([EXECUTION.md](EXECUTION.md)); la cinta está guardada para más adelante y todavía no se coloca en ningún sitio.
+- Los zips están en `models/`, fuera de git: `panasonic-vhs-c-movie-camera-nv-a3.zip` (22.952.391 bytes, SHA-256 `eae64a0b1700b3968c9db9de6331348d9081d7336b5f28f9d1350d1f1ddb37e5`) y `vhs.zip` (4.296.221 bytes, SHA-256 `eea4af04b6037b8f2f361eac10085f6d8c720c9944a367e93867ea99b58c5aa5`). `tools/props/ingest_camcorder.py` los desempaqueta en `source_assets/camcorder/` y `source_assets/vhs_tape/` y deja en `assets/props/` lo que se versiona: el modelo y sus mapas a 1024 px.
+- **Modificaciones** (la licencia las permite y pide decirlas): el OBJ de la videocámara se parte en dos por sus grupos —nombra un solo material para todo, y los tres cristales del objetivo son otro—; los mapas se reducen de 2048 y 4096 px a 1024; y en el color y la rugosidad de la cámara **se tapan la marca del fabricante (cuatro sitios), la insignia y el logotipo del formato de cinta, la placa de características y las iniciales a rotulador de su dueño**, que el autor del modelo cuenta que son las de su abuelo. Lo que queda es una videocámara, no esa. El cristal del objetivo se dibuja opaco: el modelo no tiene nada detrás.
+- `tools/props/build_camcorder.gd` los hornea: `camcorder.res` en el espacio de la lente (el cristal delantero en el origen, mirando a −Z como una cámara de Godot, 27 cm de largo: la transformación de una cámara es la del objeto) y `vhs_tape.res` tumbada, con la etiqueta arriba (187 mm, el tamaño de una cinta VHS). Cómo quedan: `tools/capture/camcorder_capture.gd`.
+- No se trajo el segundo modelo de videocámara que se miró («VHS-C Camcorder», creativecipher): su ficha no permite descargarlo ni publica licencia.
 
 Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena de entrada (que ahora es también el de todas las teles del hotel), el dormitorio de esa misma escena, la puerta de madera y el armario.
 

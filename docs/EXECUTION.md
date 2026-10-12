@@ -32,7 +32,7 @@ Lo que no cambia nunca: la captura es definitiva, la decide el anfitrión, mata 
 |---|---|
 | Tres momentos: sobresalto, ejecución, pérdida de señal | **Se conserva**, con uno antes (el hueco: lo que *no* se hace en los dos segundos previos) y uno después (el silencio con la cámara en el suelo) |
 | Irrupción en 0,00–0,25 s | **Cambia: 3 a 5 fotogramas** (0,05–0,08 s). El reflejo de sobresalto se dispara en unos 35 ms y pide un arranque abrupto; en los sustos de FNAF la cara ya llena la pantalla en el primer fotograma. Un cuarto de segundo de aproximación es tiempo de sobra para verla venir |
-| El rostro ocupa el 70–90 % de la altura | **Se matiza.** La parte pálida de la máscara mide unos 20 cm: para llenar el 70 % hay que ponerla a 17 cm de la lente. Objetivo: 55–75 % a 17–22 cm, a comprobar con el modelo; la cabeza entera llena el cuadro |
+| El rostro ocupa el 70–90 % de la altura | **Se matiza.** Medida sobre el modelo (`tools/dev/mask_probe.gd`), la parte pálida de la máscara son 12 cm de ancho por 14 de alto: para llenar el 55 % de la altura hay que ponerla a 15 cm de la lente, y a esa distancia aguanta (`tools/capture/mask_capture.gd`). Objetivo: 50–65 % a 13–17 cm; la cabeza entera llena el cuadro |
 | Captura frontal como ejecución principal | **Se amplía.** La mayoría de las capturas de una caza son por la espalda, con la cámara mirando hacia otro lado. Hay siete entradas según cómo te coge (sección 7) |
 | Pérdida del control con trayectoria prediseñada | **Se conserva**, con causa: el brazo que no sujeta aparta la cámara de un manotazo |
 | Cámara caída que registra a medias, 30–60 % tapado | **Se conserva** (25–55 %), y lo que registra es **la ejecución de hoy** —levantar, sostener, estocada, soltar—, que no se tira: se ve desde el suelo. La estocada, la caída y el final siguen a su hora para todos; solo el levantamiento se retrasa y se alarga, para que la cámara ya esté en el suelo cuando los pies lo dejan |
@@ -118,7 +118,7 @@ Resumen de la investigación (fuentes al final; lo que es estimación se dice).
 |---|---|---|---|
 | **El hueco** (−2,0 a 0) | Lo que estuviera viendo. Sin desgarro | La caza, sin cambios | La bestia persigue y embiste |
 | **El golpe** (0,00) | Corte de un fotograma a la composición del rostro: la máscara ya está en cuadro —un tercio de la altura o más— y acaba de llegar en 3 a 5 fotogramas. Por dónde entra depende de la entrada (7.2) | El grito, de golpe, plano, en la cabeza. Vibración del mando | La cabeza de la bestia cae sobre la víctima; el brazo izquierdo la ensarta |
-| **El rostro** (0,00–0,55) | La máscara a 17–22 cm, 55–75 % de la altura, mirando a la lente. Temblor de 12–14 Hz; a 0,22 s, un ladeo seco de la cabeza y el último tirón, de 22 a 17 cm. Con linterna: el haz cruza la máscara uno o dos fotogramas y se va al suelo | El grito entero | La sujeta; la víctima queda a 0,6 m |
+| **El rostro** (0,00–0,55) | La máscara a 13–17 cm, 50–65 % de la altura, mirando a la lente. Temblor de 12–14 Hz; a 0,22 s, un ladeo seco de la cabeza y el último tirón, de 17 a 13 cm. Con linterna: el haz cruza la máscara uno o dos fotogramas y se va al suelo | El grito entero | La sujeta; la víctima queda a 0,6 m |
 | **El arrebato** (0,55–0,90) | El brazo derecho cruza el cuadro. La cámara sale despedida: 180° o más de giro, estela y peine | El grito se va con la cámara: cae de tono, pierde agudos, pasa a estar *en la sala*. Viento en el micrófono | El manotazo. La víctima sigue ensartada y con los pies en el suelo. La linterna, si la hay, vuela y rueda |
 | **El suelo** (0,90–1,05) | Parada en seco, dos rebotes, se asienta de lado. Una banda de ruido sube una vez, se dobla arriba, pierde el color cuatro fotogramas | El golpe de la carcasa, sordo y fuerte. El micrófono se cierra: todo baja de golpe | — |
 | **Lo que la cinta ve** (1,05–2,58) | Plano fijo: moqueta desenfocada en el tercio de abajo, algo que tapa un lado, las patas de la bestia, y los pies de tu cuerpo, que dejan el suelo y suben. El reloj de la cámara sigue corriendo | El micrófono se va abriendo: el siseo de la cinta y el rumor de la sala vuelven hinchándose. Chasquidos de la bestia, roces, sus garras en el suelo —cada una hace temblar la imagen— | Se endereza y la levanta con ella, despacio: un metro, de 1,1 a 2,2 s (hoy la levanta en el primer medio segundo, cuando nadie mira desde fuera). La sostiene ante la cara, mirándola |
@@ -191,7 +191,7 @@ Cada jugador lleva la cuenta de lo que ya vio en este piso. No se repite la mism
 **No se cambia de cámara.** El iris, el enfoque y el desenfoque de movimiento guardan estado, y un cambio de cámara los reinicia (para eso existe `camera_cut()`). La cámara del jugador se suelta del cuerpo y sigue una ruta:
 
 1. **En mano** (hasta `T0`): la de siempre.
-2. **Arrancada** (rostro y arrebato): colocada respecto a la cabeza de la bestia. Sin el muelle de la mano. Invariantes, comprobados cada fotograma: la lente a no menos de 14 cm de la máscara; la máscara dentro de ±25° de mirar a la lente (nunca se le ve la nuca); si el objetivo estaba en teleobjetivo, vuelve a angular en 80 ms, dentro del sacudón.
+2. **Arrancada** (rostro y arrebato): colocada respecto a la cabeza de la bestia. Sin el muelle de la mano. Invariantes, comprobados cada fotograma: la lente a no menos de 11 cm del centro de la máscara (la nariz sobresale tres); la máscara dentro de ±25° de mirar a la lente (nunca se le ve la nuca); si el objetivo estaba en teleobjetivo, vuelve a angular en 80 ms, dentro del sacudón.
 3. **Caída** (de 0,90 en adelante): un punto de reposo en el suelo, elegido al capturar.
 
 Durante el rostro no hay control. El temblor es de la cámara (0,4°, 12–14 Hz, se apaga en 0,3 s), no del mundo.
@@ -324,7 +324,7 @@ Un estruendo lo satura un instante y el nivel se hunde de golpe unos 14 dB; desp
 - **Los testigos** ven la escena en tercera persona, sin que nadie les mueva la cámara: la cabeza de la bestia que cae sobre su compañero, el brazo que lo ensarta, el manotazo, el cuerpo que sube, la estocada, la caída. Es lo de hoy con un principio violento y el levantamiento más lento.
 - **El grito se oye en todo el piso**, como hoy: nadie debe perderse que han cogido a alguien.
 - **La linterna de la víctima cae y rueda** para todos: una luz que se va al suelo y gira dice dónde ha sido.
-- **La cámara se queda** (19.5): una videocámara en el suelo donde cayó, con su piloto, hasta que cambie la etapa. Quien pasa por ahí sabe qué pasó. El modelo es provisional (hecho con cajas) hasta que entre el elegido por el autor.
+- **La cámara se queda** (19.5): una videocámara en el suelo donde cayó, con su piloto, hasta que cambie la etapa. Quien pasa por ahí sabe qué pasó. El modelo es el que eligió el autor ([ASSETS.md](ASSETS.md)), horneado en el espacio de la lente: se coloca con la misma transformación con la que la cámara quedó grabando.
 - **Quien muere** pasa, como hoy, a mirar por encima del hombro de un compañero tras 2,6 s de señal perdida.
 - **El cazador de versus** no recibe nada de esto: sigue en su lectura acústica y queda parado los mismos 4,2 s. Para él hay ritual de armario, no finta.
 - **El observador y los bots** ven la tercera persona; las pruebas automáticas saltan el trabajo de cámara.
@@ -497,7 +497,7 @@ El primer fotograma de la escena es el peor momento posible para compilar nada. 
 
 | Riesgo | Cómo se cubre |
 |---|---|
-| La máscara no aguanta a 20 cm (textura, polígonos) | Se prueba lo primero (fase 1). Si no aguanta: 25 cm y medio cuadro, con el temblor, el grano y el desenfoque trabajando a favor |
+| La máscara no aguanta de cerca (textura, polígonos) | Probado antes de empezar: a 15 cm, con la imagen entera de la cámara encima, se lee como una cara y no como un modelo (`evidence/mask_015.png`). A 12 cm empieza a verse la malla |
 | La cámara cae dentro de una pared o de un mueble | Los candidatos se validan; lo que no vale, no se usa; la última salida es «boca abajo» |
 | El cuerpo sin esqueleto se ve rígido | La escena se hace con la Exploradora (19.9). Para el Detective Masculino: encuadre que lo corta, silueta, sombra |
 | El susto se gasta | Raro por diseño (se muere poco y con minutos de por medio), entradas por contexto, versión breve, y «mira la lente» en reserva |
@@ -550,7 +550,7 @@ El 12 de octubre de 2026, sobre las once preguntas con las que se cerró la prop
 2. **El desgarro de la imagen durante la embestida:** hay que probarlo. El banco de capturas enseña la escena de las dos maneras, a petición, para que el autor juzgue cuál queda mejor (18, fase 0). **Sigue abierto.** Mientras tanto el juego va sin desgarro ni bajada del ambiente en la embestida —el medio segundo limpio de 5.3—; con desgarro, la imagen se limpia igualmente en `T0`.
 3. **«Mira la lente»:** que mire sutilmente y se vaya de igual manera; puede funcionar mejor a solas que en equipo (7.4).
 4. **La finta:** que se quede esperando un tiempo y que lo que finja sea su presencia, bajando ese sonido para que el jugador se confíe; que la manera real de escapar sea esperar un tiempo prudente; y que no sea obvio: solo algunas veces (13.3). **Salir del armario sin ruido:** manteniendo la tecla varios segundos, un 25 % menos de distancia de escucha (13.5). **Entrar y salir animados**, y que enlacen con la ejecución (13.6).
-5. **La cámara que se queda en el suelo:** de los dos modelos que propuso el autor vale la Panasonic NV-A3 de Arthur Vanneste (CC-BY 4.0, descargable); la otra no se puede descargar ni tiene licencia. También la cinta VHS de Terizmeh (CC-BY 4.0), para más adelante. Entran cuando el autor los descargue; hasta entonces, un modelo provisional ([ASSETS.md](ASSETS.md)).
+5. **La cámara que se queda en el suelo:** de los dos modelos que propuso el autor vale la Panasonic NV-A3 de Arthur Vanneste (CC-BY 4.0, descargable); la otra no se puede descargar ni tiene licencia. También la cinta VHS de Terizmeh (CC-BY 4.0), para más adelante. El autor los descargó ese mismo día y **están ya en el proyecto**, con las marcas de la cámara tapadas ([ASSETS.md](ASSETS.md)).
 6. **Versión breve** en muertes repetidas y espera de 4 a 2 s: sí (14).
 7. **La cinta que se rebobina:** le parece bien (14.4).
 8. **Sonidos nuevos:** queda pendiente. Se trabaja con los sonidos que ya hay, y **no se generan sintéticamente gritos ni sonidos humanos** (11).
