@@ -1324,6 +1324,14 @@ func lurk_spot(hide: Node3D) -> Vector3:
 		var floor_there := FLOOR.closest(map, wanted)
 		if Vector2(floor_there.x - wanted.x, floor_there.z - wanted.z).length() > 0.5 or absf(floor_there.y - wanted.y) > 0.5: continue
 		if not body_fits(floor_there) or not doors_seen_from(hide, floor_there): continue
+		# A step or two away, on foot: with something in between (a chair, a
+		# bed's corner) the way round was longer than the time it gives the
+		# step, and it was left standing in the middle of the room.
+		var way := FLOOR.navigation_path(map, global_position, floor_there)
+		var walked := 0.0
+		for index in range(1, way.size()): walked += way[index - 1].distance_to(way[index])
+		var straight := Vector2(floor_there.x - global_position.x, floor_there.z - global_position.z).length()
+		if way.is_empty() or walked > straight * 1.4 + 0.5 or walked > LURK_STEP * 1.9 * 0.8: continue
 		return floor_there
 	return global_position
 
@@ -1392,7 +1400,9 @@ func update_lurk(delta: float) -> void:
 				destination = lurk.spot
 				repath = 0.0
 		"aside":
-			if global_position.distance_to(lurk.spot) < 0.25 or clock >= float(lurk.until):
+			# On the floor: the spot is a point of the mesh, which lies over it.
+			var short := Vector2(lurk.spot.x - global_position.x, lurk.spot.z - global_position.z).length()
+			if short < 0.35 or clock >= float(lurk.until):
 				lurk.phase = "wait"
 				lurk.until = clock + rng.randf_range(feint_wait.x, feint_wait.y)
 				destination = global_position

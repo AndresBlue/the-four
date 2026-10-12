@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','execution','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','bench','bench-films','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -26,7 +26,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','execution','editor','gallery','compatibility','observer','bots','hunt','bots-replay','export')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','bench','editor','gallery','compatibility','observer','bots','hunt','bots-replay','export')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -39,7 +39,11 @@ switch ($Mode) {
     # builds a floor of its own to walk (game/app/observer_view.gd).
     'observer' { $arguments += @('--', '--observer', ('--playtest-seed=' + $Seed)) }
     'rehearsal' { $arguments += @('--script','res://tools/dev/echo_rehearsal.gd','--',('--rehearsal-seed=' + $Seed)) }
-    'execution' { $arguments += @('--script','res://tools/dev/execution_rehearsal.gd','--',('--rehearsal-seed=' + $Seed)) }
+    # The bench of the capture, played (tools/dev/capture_bench.gd): the
+    # creature catches you whenever you ask, in the light, by the way in and
+    # with the ending you choose; the keys are on the screen. With your own
+    # settings, and nothing of it is kept.
+    'bench' { $arguments += @('--script','res://tools/dev/capture_bench.gd','--',('--seed=' + $Seed)) }
     'survival-test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/survival_test.gd','--','--test-profile','--automation') }
     'editor' { $arguments += '--editor' }
     'test' { $arguments += @('--headless','--fixed-fps','60','--script','res://tests/hotel/hotel_test.gd','--','--test-profile','--automation','--no-enemy') }
@@ -89,7 +93,34 @@ if ($Extra -and $Mode -ne 'export') {
     if ($arguments -notcontains '--') { $arguments += '--' }
     $arguments += ($Extra -split ' ' | Where-Object { $_ })
 }
-if ($Mode -eq 'export') {
+if ($Mode -eq 'bench-films') {
+    # The capture filmed with its sound, nobody at the keys (the engine's movie
+    # writer, one run of the bench each): caught from the front and from
+    # behind, without the tear of the lunge (A) and with it (B), for whoever
+    # has to judge between the two. Written to evidence/, each run with its
+    # window hidden; -Extra '--light=torch' films them in another light.
+    $films = @(
+        @{ name = 'captura_frente_A_sin_desgarro'; entry = 'front'; tear = $false },
+        @{ name = 'captura_frente_B_con_desgarro'; entry = 'front'; tear = $true },
+        @{ name = 'captura_espalda_A_sin_desgarro'; entry = 'back'; tear = $false },
+        @{ name = 'captura_espalda_B_con_desgarro'; entry = 'back'; tear = $true }
+    )
+    New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
+    foreach ($film in $films) {
+        $file = Join-Path $projectPath ('evidence/' + $film.name + '.avi')
+        $log = Join-Path $projectPath ('evidence/' + $film.name + '.log')
+        if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }
+        $filmArguments = @('--path', $projectPath, '--rendering-method', 'forward_plus', '--resolution', '1280x720', '--write-movie', $file, '--fixed-fps', '60', '--script', 'res://tools/dev/capture_bench.gd', '--log-file', $log, '--', '--test-profile', '--no-warmup', ('--film=' + $film.name), ('--entry=' + $film.entry), ('--seed=' + $Seed))
+        if ($film.tear) { $filmArguments += '--tear' }
+        if ($Extra) { $filmArguments += ($Extra -split ' ' | Where-Object { $_ }) }
+        $quoted = ($filmArguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
+        $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -PassThru -WindowStyle Hidden
+        if (-not $process.WaitForExit(600000)) { $process.Kill(); throw "La grabación de $($film.name) no terminó. Consulta $log" }
+        $said = if (Test-Path -LiteralPath $log) { (Get-Content -LiteralPath $log | Where-Object { $_ -match 'CAPTURE_FILM' }) -join ' | ' } else { '' }
+        if (-not (Test-Path -LiteralPath $file) -or $said -match 'FAILED' -or $said -notmatch 'done') { throw "La grabación de $($film.name) falló: $said. Consulta $log" }
+        Get-Item -LiteralPath $file | Select-Object Name, @{ n = 'MB'; e = { [Math]::Round($_.Length / 1MB, 1) } } | Format-Table -AutoSize -HideTableHeaders | Out-String | ForEach-Object { $_.Trim() } | Write-Output
+    }
+} elseif ($Mode -eq 'export') {
     # The editor binary is a GUI program: wait so the command ends with the export.
     $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -Wait -PassThru -WindowStyle Hidden

@@ -4,6 +4,8 @@
 .DS_Store
 evidence/*.png
 evidence/*.json
+# The capture filmed (tools/godot.ps1 bench-films): a hundred megabytes each.
+evidence/*.avi
 evidence/*.import
 local.settings.json
 source_assets/

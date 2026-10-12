@@ -272,9 +272,12 @@ func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
 	if entry == "side": aim += mask.basis.x * side * ARRIVE_SIDE * (1.0 - arrived)
 	var ahead := aim - eye
 	var up := Vector3.UP
-	# Looking nearly straight up at it (caught crouching): its body is above
-	# the picture and the mask hangs in it the wrong way up.
-	if absf(ahead.normalized().y) > 0.85: up = Basis(Vector3.UP, float(execution.yaw)).z
+	# Looking nearly straight up at it. Caught crouching, that is the picture:
+	# its body is above it and the mask hangs in it the wrong way up. Any
+	# other way it is the first frame or two of a lunge that ended with its
+	# head over its victim, before it has bent down to the lens: the mask's
+	# own top is the picture's, or it was upside down for a frame.
+	if absf(ahead.normalized().y) > 0.85: up = Basis(Vector3.UP, float(execution.yaw)).z if entry == "above" else mask.basis.y
 	var basis := Basis.looking_at(ahead, up)
 	if not plain:
 		var fade := exp(-since / SHAKE_FADE) + 0.25

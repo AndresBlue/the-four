@@ -3,32 +3,47 @@ extends SceneTree
 ## caught, in any light, as many times as it takes to look at it.
 ##
 ## Played (./tools/godot.ps1 bench, or "Banco de capturas.cmd"): you are the
-## survivor in the biggest room of the floor and the creature is brought to
-## you whenever you ask. How it catches you is up to you, as in the game:
-## look at it, turn your back, crouch, have the sheet open. The keys are on
-## the screen: the lunge that tears the picture or not (the comparison the
-## author has to judge), the light, how it ends, and a way in forced whatever
-## you do. A floor lost to it starts again by itself.
+## survivor in the biggest room of the floor, or in front of the nearest
+## wardrobe, and the creature is brought to you whenever you ask. How it
+## catches you is up to you, as in the game: look at it, turn your back,
+## crouch, have the sheet open, get into the wardrobe. The keys are on the
+## screen: the lunge that tears the picture or not (the comparison the author
+## has to judge), the light, how it ends, a way in forced whatever you do, the
+## short version, and whether it feints at a wardrobe. The panel goes while a
+## capture lasts and says afterwards what it was. With your own settings and
+## keys, and nothing of it is kept: no Continuar, no records.
 ##
-## With "-- --sheet=<name>" nobody plays: one capture is staged and its frames
-## at fixed seconds are laid out on one picture, evidence/capture_<name>.png
-## (the whole death in an image), and it quits. For a sheet:
-##   --entry=front|back|side|above|busy|wardrobe|ambush   how (front); in a
-##                                                 wardrobe, times under 0 are
-##                                                 of what leads to it
+## Filmed (./tools/godot.ps1 bench-films): nobody plays. The creature comes
+## from nine metres, catches whoever stands there, and the whole of it --
+## the approach, the capture, the lost signal and the tape rewound -- is
+## written with its sound to a film in evidence/, once without the tear of
+## the lunge and once with it, caught from the front and from behind. For
+## one film: the engine's "--write-movie <file>.avi" and "-- --film=<name>"
+## with --entry=front|back, --light and --tear.
+##
+## With "-- --sheet=<name>" one capture is staged and its frames at fixed
+## seconds are laid out on one picture, evidence/capture_<name>.png (the
+## whole death in an image), and it quits. For a sheet:
+##   --entry=front|back|side|above|busy|wardrobe|ambush   how (front)
 ##   --light=room|lamp|torch|dark                  what lights it (room)
 ##   --ending=leave|glance                         how it ends (leave)
 ##   --outside                                     seen by somebody standing by
 ##   --tear                                        the lunge tears the picture
 ##   --soft, --reduced                             soft startle, reduced effects
 ##   --brief                                       the short version (seen before)
-##   --difficulty=apacible                         the floor's (the settings')
+##   --difficulty=apacible                         the floor's (equilibrada)
 ##   --character=0|1|2                             whose body (2, the Exploradora)
 ##   --seed=N, --times=a,b,c                       the floor, and other seconds
 ##   --wall=0.4 [--corner]                         their back to a wall, that far
 ##   --full                                        every frame whole as well
 ##   --large                                       big frames, two to a row
 ##   --act=peek|leave|quiet|wait, --ideal, --big   in a wardrobe (see below)
+##   --aside=0.8                                   it starts beside the doors
+##
+## "-- --keys=1s,G,14s,N,E,4,G,quit" plays the bench from a list instead of
+## a hand -- a key of the panel, E (the key that uses things, touched), or
+## the seconds to wait before the next ("14s") -- and says what each did:
+## how the keys are checked without anybody at them.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SCORE := preload("res://game/app/capture_score.gd")
 const TIMES := [0.02, 0.05, 0.1, 0.3, 0.5, 0.62, 0.75, 0.9, 1.05, 1.5, 2.0, 2.5, 2.8, 3.1, 3.5, 4.1]
@@ -40,20 +55,48 @@ var level
 var options := {"entry": "front", "light": "room", "ending": "leave", "seed": 81}
 var sheet := ""
 var times: Array = TIMES
+var film := ""
+## The floor's difficulty, when it was said ("": the settings').
+var difficulty := ""
 var board: Label
 var tear := false
 var light := 0
 var forced_entry := 0
 var forced_ending := 0
+## Which version of the scene: the whole of it every time (what there is to
+## judge), the short one every time, or the game's rule (whole the first time
+## a way in is seen on a floor, short after that).
+var version := 0
+## Whether it waits beside a wardrobe it is sure of instead of opening it:
+## the floor's odds, always, never.
+var feint := 0
+var floor_feint := 0.0
+## Staged in the room or in front of a wardrobe, the panel shown or not, a
+## capture being watched, and what the last one was.
+var by_wardrobe := false
+## The keys of a bench played from a list ("--keys="), and what is left to
+## wait before the next of them.
+var keys: Array = []
+var keys_wait := 0.0
+var keys_hold := 0.0
+var said_mode := ""
+var panel := true
+var watching := false
+var settled := 0.0
+var last := ""
 const LIGHTS := ["room", "torch", "dark"]
 const ENTRIES := ["", "front", "back", "side", "above"]
 const ENDINGS := ["", "leave", "glance"]
+const VERSIONS := ["entera siempre", "corta siempre", "la del juego (entera la primera vez)"]
+const FEINTS := ["la del piso", "siempre", "nunca"]
 
 func _initialize() -> void: run.call_deferred()
 
 func read_options() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--sheet="): sheet = argument.trim_prefix("--sheet=")
+		elif argument.begins_with("--film="): film = argument.trim_prefix("--film=")
+		elif argument.begins_with("--keys="): keys = Array(argument.trim_prefix("--keys=").split(","))
 		elif argument.begins_with("--times="):
 			times = []
 			for piece in argument.trim_prefix("--times=").split(","): times.append(float(piece))
@@ -94,6 +137,11 @@ func stage(where: String, apart: float) -> void:
 	var player = level.player
 	if not level.execution.is_empty(): level.release_execution()
 	player.reset_survival()
+	# Far apart, they stand towards either end of the room instead of one of
+	# them in the middle of it, and no further apart than the room is long.
+	if where != "side" and apart > 3.0:
+		apart = minf(apart, maxf(span.x, span.y) - 4.4)
+		centre -= (along if where == "front" else -along) * apart * 0.5
 	# "--wall=0.4": their back that far from the wall of the room behind them
 	# (and "--corner": in the corner of it), where a body has no room to lie.
 	if options.has("wall"):
@@ -129,23 +177,37 @@ func stage(where: String, apart: float) -> void:
 
 func run() -> void:
 	read_options()
-	DisplayServer.window_set_size(Vector2i(1280, 720))
+	var tool: bool = not sheet.is_empty() or not film.is_empty()
+	if tool: DisplayServer.window_set_size(Vector2i(1280, 720))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# Nobody is at the mouse of a sheet or a film: the game is not to take it.
+	if tool: process_frame.connect(func() -> void: Input.mouse_mode = Input.MOUSE_MODE_VISIBLE)
+	# Nothing of the bench is anybody's game: its floors are not kept for
+	# Continuar and leave no line on the board.
+	level.session.keeps_checkpoint = false
 	level.ui.finish_intro()
-	# A sheet is of one difficulty whatever the last one left in its profile
-	# (in Desafiante the first capture is the end of the floor).
-	await level.start_floor(int(options.seed), false, [1], String(options.get("difficulty", "equilibrada" if not sheet.is_empty() else "")))
+	# A sheet or a film is of one difficulty whatever the last one left in its
+	# profile (in Desafiante the first capture is the end of the floor).
+	difficulty = String(options.get("difficulty", "equilibrada" if tool else ""))
+	await level.start_floor(int(options.seed), false, [1], difficulty)
+	skip_card()
 	if options.has("reduced"): level.settings.values.reduced = true
 	if options.has("soft"): level.settings.values["startle_soft"] = true
-	# A sheet is of the body the scene is built on, whoever played last.
-	if not sheet.is_empty() or options.has("character"): level.settings.values.character = int(options.get("character", 2))
+	# And of the body the scene is built on, whoever played last.
+	if tool or options.has("character"): level.settings.values.character = int(options.get("character", 2))
 	level.apply_settings()
-	if sheet.is_empty(): await play()
+	if not film.is_empty(): await take_film()
+	elif sheet.is_empty(): await play()
 	else: await take_sheet()
 	level.queue_free()
 	await process_frame
 	quit()
+
+## The card a floor opens on is not what is looked at here.
+func skip_card() -> void:
+	level.ui.hide_transit()
+	level.lifts.brief_wait = 0.0
 
 # --- A sheet ------------------------------------------------------------------------
 
@@ -393,18 +455,24 @@ func build_board() -> void:
 	layer.add_child(board)
 
 func write_board() -> void:
+	# Out of the picture while there is one to look at.
+	board.visible = panel and not watching
+	if not board.visible: return
 	var lines := [
 		"BANCO DE CAPTURAS",
-		"G    que venga a por ti (desde 9 m)        H    captura inmediata",
-		"T    desgarro de la embestida: %s" % ("SÍ (como era)" if tear else "NO (medio segundo limpio)"),
+		"G    que venga a por ti (en el armario: te vio entrar)     H    captura inmediata",
+		"T    desgarro de la embestida: %s" % ("B · SÍ (como era)" if tear else "A · NO (medio segundo limpio)"),
 		"L    luz: %s" % {"room": "la sala", "torch": "a oscuras, con linterna", "dark": "a oscuras, sin nada"}[LIGHTS[light]],
 		"1    entrada: %s" % ("la que toque" if forced_entry == 0 else {"front": "de frente", "back": "por la espalda", "side": "de lado", "above": "desde arriba"}[ENTRIES[forced_entry]]),
 		"2    final: %s" % ("el que toque" if forced_ending == 0 else {"leave": "se va", "glance": "mira la lente"}[ENDINGS[forced_ending]]),
-		"R    volver a empezar",
+		"3    versión: %s" % VERSIONS[version],
+		"4    finta ante el armario: %s" % FEINTS[feint],
+		"N    %s" % ("volver a la sala" if by_wardrobe else "ponerme ante un armario (entra con E; mantén E para salir en silencio)"),
+		"R    volver a empezar          P    ocultar este panel",
 		"",
-		"Cómo te coge depende de ti: mírala, dale la espalda, agáchate, abre la hoja.",
+		"Cómo te coge depende de ti: mírala, dale la espalda, agáchate, abre la hoja, escóndete.",
 	]
-	if not level.execution.is_empty(): lines.append("\n%.2f s · %s · cámara: %s" % [float(level.execution.time), String(level.execution.entry), ["ve", "ve a medias", "boca abajo"][int(level.tape.take.get("kind", 0))] if not level.tape.take.is_empty() else "—"])
+	if not last.is_empty(): lines.append("\nÚltima: " + last)
 	board.text = "\n".join(lines)
 
 func apply_forced() -> void:
@@ -413,6 +481,12 @@ func apply_forced() -> void:
 	if forced_ending > 0: forced["glance"] = ENDINGS[forced_ending] == "glance"
 	level.executions.forced = forced
 	level.windup_tear = tear
+	if is_instance_valid(level.locust): level.locust.feint = [floor_feint, 1.0, 0.0][feint]
+	# What the tape has seen on this floor decides which version it gives.
+	if level.execution.is_empty():
+		if version == 0: level.tape.seen.clear()
+		elif version == 1:
+			for entry in SCORE.ENTRIES: level.tape.seen[entry] = true
 
 ## The creature put beside the survivor where the way in asked for needs it:
 ## ahead of where they look, behind them or at their side.
@@ -428,53 +502,215 @@ func bring_close() -> void:
 	creature.rotation.y = atan2(way.x, way.z)
 	creature.velocity = Vector3.ZERO
 
-func restage() -> void:
-	if level.session.state != level.session.State.PLAYING: await level.start_floor(level.session.run_seed)
+## It has seen you: it shrieks, runs and lunges, as in a floor. In a
+## wardrobe, it saw you get in and comes for it.
+func come() -> void:
+	var player = level.player
+	var creature = level.locust
+	creature.set_physics_process(true)
+	creature.focus = player
+	creature.last_known = player.global_position
+	creature.detection = 1.2
+	creature.lost_time = 0.0
+	if bool(player.hidden) and is_instance_valid(player.hiding_place): creature.saw_enter(player.hiding_place)
+	creature.set_mode(creature.Mode.ALERT)
+	if not keys.is_empty(): print("BENCH_COME hidden=", player.hidden, " apart=", snappedf(creature.global_position.distance_to(player.global_position), 0.1), " certain=", creature.certain)
+
+## The next of a list of keys, when it is due: false once the list says quit.
+func feed_keys(pressed: Dictionary, delta: float) -> bool:
+	if keys_hold > 0.0:
+		keys_hold -= delta
+		if keys_hold <= 0.0: Input.action_release("interact")
+	keys_wait -= delta
+	if keys_wait > 0.0: return true
+	if keys.is_empty(): return false
+	var token := String(keys.pop_front())
+	if token.ends_with("s") and token.trim_suffix("s").is_valid_float(): keys_wait = float(token.trim_suffix("s"))
+	elif token == "quit": return false
+	elif token == "E":
+		Input.action_press("interact")
+		keys_hold = 0.12
+		print("BENCH_KEY E")
+	else:
+		pressed[OS.find_keycode_from_string(token)] = true
+		print("BENCH_KEY ", token)
+	return true
+
+## What it and its victim are at, said when it changes (a list of keys only).
+func say_state() -> void:
+	var creature = level.locust
+	var player = level.player
+	var mode := "%s/%s%s%s" % [creature.Mode.keys()[creature.mode], String(creature.lurk.get("phase", "-")), " hidden" if player.hidden else "", " CAPTURE:" + String(level.execution.entry) + (" brief" if level.tape.brief else "") if not level.execution.is_empty() else ""]
+	if not level.rewind.is_empty(): mode += " rewinding"
+	if level.session.state != level.session.State.PLAYING: mode += " state=%d" % level.session.state
+	if mode == said_mode: return
+	said_mode = mode
+	var beside := ""
+	if creature.lurk.has("hide") and is_instance_valid(creature.lurk.hide): beside = " by its wardrobe at=%s spot=%s" % [((creature.lurk.hide as Node3D).to_local(creature.global_position) as Vector3).snapped(Vector3.ONE * 0.01), ((creature.lurk.hide as Node3D).to_local(creature.lurk.spot) as Vector3).snapped(Vector3.ONE * 0.01)]
+	print("BENCH_STATE ", mode, " apart=", snappedf(creature.global_position.distance_to(player.global_position), 0.1), " hushed=", creature.hushed(), " tear=", level.windup_tear, " feint=", creature.feint, beside)
+
+## The nearest wardrobe to the staging room that the creature may go to.
+func staging_wardrobe() -> Node3D:
+	var centre: Vector3 = FLOOR.position_of(staging_room())
+	var best: Node3D = null
+	for hide in level.hotel.hides:
+		if level.point_protected(hide.global_position) or hide.big: continue
+		if best == null or hide.global_position.distance_to(centre) < best.global_position.distance_to(centre): best = hide
+	return best
+
+## In front of a wardrobe, looking at it, and the creature as far off as the
+## room lets it be with the wardrobe in view.
+func stage_wardrobe() -> void:
+	var hide := staging_wardrobe()
+	if hide == null:
+		stage("front", 9.0)
+		return
 	stage("front", 9.0)
+	var player = level.player
+	player.global_position = hide.to_global(hide.exit_offset + Vector3(0, 0, 0.5))
+	player.rotation.y = hide.global_rotation.y
+	player.camera.rotation = Vector3.ZERO
+	player.snap_torch()
+	var creature = level.locust
+	var map: RID = level.get_world_3d().navigation_map
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var eye: Vector3 = player.global_position + Vector3.UP * 1.5
+	for far in [9.0, 7.5, 6.0, 4.5, 3.5]:
+		var placed := false
+		for angle in [0.0, 25.0, -25.0, 50.0, -50.0, 75.0, -75.0]:
+			var wanted: Vector3 = hide.to_global(hide.exit_offset + Basis(Vector3.UP, deg_to_rad(float(angle))) * Vector3(0, 0, float(far)))
+			var there: Vector3 = FLOOR.closest(map, wanted)
+			if Vector2(there.x - wanted.x, there.z - wanted.z).length() > 0.6: continue
+			var query := PhysicsRayQueryParameters3D.create(there + Vector3.UP * 1.8, eye, 1 | 8)
+			if not space.intersect_ray(query).is_empty(): continue
+			creature.global_position = there
+			creature.rotation.y = atan2(there.x - player.global_position.x, there.z - player.global_position.z)
+			placed = true
+			break
+		if placed: break
+	level.camera_cut()
+
+func restage() -> void:
+	if level.session.state != level.session.State.PLAYING:
+		await level.start_floor(level.session.run_seed, false, [1], difficulty)
+		skip_card()
+		floor_feint = float(level.locust.feint)
+	if by_wardrobe: stage_wardrobe()
+	else: stage("front", 9.0)
 	set_light(LIGHTS[light])
 	level.locust.set_physics_process(false)
+	watching = false
+	settled = 0.0
+	if not keys.is_empty(): print("BENCH_STAGED ", "wardrobe" if by_wardrobe else "room", " apart=", snappedf(level.locust.global_position.distance_to(level.player.global_position), 0.1), " last='", last, "'")
+
+## What the capture in hand is, for the panel once it is over.
+func note_capture() -> void:
+	if level.execution.is_empty(): return
+	var names := {"front": "de frente", "back": "por la espalda", "side": "de lado", "above": "desde arriba", "wardrobe": "en el armario", "ambush": "en el armario, tras la finta"}
+	var view := "—"
+	if not level.tape.take.is_empty(): view = ["ve la escena", "la ve a medias", "boca abajo"][int(level.tape.take.get("kind", 0))]
+	last = "%s · %s · cámara: %s · desgarro: %s%s" % [
+		names.get(String(level.execution.entry), String(level.execution.entry)), "versión corta" if level.tape.brief else "versión entera", view,
+		"B (sí)" if tear else "A (no)", " · mira la lente" if String(level.execution.get("ending", "")) == "glance" else "",
+	]
 
 func play() -> void:
 	build_board()
+	floor_feint = float(level.locust.feint)
+	var scripted := not keys.is_empty()
 	await restage()
 	var was := {}
-	var over := 0.0
-	var last := Time.get_ticks_msec()
+	var lost := 0.0
+	var tick := Time.get_ticks_msec()
 	while true:
 		await process_frame
 		if not is_instance_valid(level) or level.session.state == level.session.State.MENU: break
 		var now := Time.get_ticks_msec()
-		var delta := float(now - last) / 1000.0
-		last = now
+		var delta := float(now - tick) / 1000.0
+		tick = now
 		var pressed := {}
-		for key in [KEY_G, KEY_H, KEY_T, KEY_L, KEY_1, KEY_2, KEY_R]:
+		for key in [KEY_G, KEY_H, KEY_T, KEY_L, KEY_1, KEY_2, KEY_3, KEY_4, KEY_N, KEY_R, KEY_P]:
 			var down := Input.is_physical_key_pressed(key)
 			pressed[key] = down and not bool(was.get(key, false))
 			was[key] = down
+		# Played from a list, a frame is a sixtieth whatever the clock says.
+		if scripted:
+			delta = 1.0 / 60.0
+			if not feed_keys(pressed, delta): break
+			say_state()
 		if pressed[KEY_T]: tear = not tear
 		if pressed[KEY_L]:
 			light = (light + 1) % LIGHTS.size()
 			set_light(LIGHTS[light])
 		if pressed[KEY_1]: forced_entry = (forced_entry + 1) % ENTRIES.size()
 		if pressed[KEY_2]: forced_ending = (forced_ending + 1) % ENDINGS.size()
-		apply_forced()
-		# A floor that ended with that death: its end is left on screen a
-		# moment, and then it is staged again.
-		over = over + delta if level.session.state != level.session.State.PLAYING else 0.0
-		if pressed[KEY_R] or over > 4.0:
-			over = 0.0
+		if pressed[KEY_3]: version = (version + 1) % VERSIONS.size()
+		if pressed[KEY_4]: feint = (feint + 1) % FEINTS.size()
+		if pressed[KEY_P]: panel = not panel
+		# A floor lost to it: its end is left on screen a moment, and then it
+		# is staged again. (Paused is not lost.)
+		lost = lost + delta if level.session.state == level.session.State.FAILED else 0.0
+		if lost > 4.0 or (pressed[KEY_R] and level.session.state in [level.session.State.PLAYING, level.session.State.FAILED]):
+			lost = 0.0
 			await restage()
-		if level.session.state != level.session.State.PLAYING: continue
-		if pressed[KEY_G] and level.execution.is_empty():
-			# It has seen you: it shrieks, runs and lunges, as in a floor.
-			var creature = level.locust
-			creature.set_physics_process(true)
-			creature.focus = level.player
-			creature.last_known = level.player.global_position
-			creature.detection = 1.2
-			creature.set_mode(creature.Mode.ALERT)
-		if pressed[KEY_H] and level.execution.is_empty():
-			bring_close()
-			level.locust.set_physics_process(true)
-			level.capture_survivor(level.player)
+			continue
+		if level.session.state != level.session.State.PLAYING:
+			write_board()
+			continue
+		apply_forced()
+		# A capture is watched to the end of it -- the scene, the signal lost,
+		# the stage given back and the tape rewound -- and a moment after it
+		# everything is where it started from.
+		var busy: bool = not level.execution.is_empty() or not level.rewind.is_empty() or level.lost_signal > 0.0
+		if busy:
+			watching = true
+			settled = 0.0
+			note_capture()
+		elif watching:
+			settled += delta
+			if settled > 1.2: await restage()
+		if not busy and not watching:
+			if pressed[KEY_N]:
+				by_wardrobe = not by_wardrobe
+				await restage()
+			elif pressed[KEY_G]: come()
+			elif pressed[KEY_H]:
+				bring_close()
+				level.locust.set_physics_process(true)
+				level.capture_survivor(level.player)
 		write_board()
+
+# --- Filmed -------------------------------------------------------------------------
+
+func wait(seconds: float) -> void:
+	for i in maxi(1, int(round(seconds * 60.0))): await process_frame
+
+## One capture from the creature noticing to the tape rewound, nobody at the
+## keys: for the engine's movie writer ("--write-movie"), which records every
+## frame of it with its sound.
+func take_film() -> void:
+	# The floor is up and sounding; from here nothing is to stop for a window
+	# that is not looked at.
+	level.automation = true
+	level.windup_tear = options.has("tear")
+	var entry := String(options.entry)
+	stage("back" if entry == "back" else "front", 9.0)
+	set_light(String(options.light))
+	level.locust.set_physics_process(false)
+	level.executions.forced = {"glance": String(options.ending) == "glance"}
+	await wait(1.2)
+	come()
+	var clock := 0.0
+	while level.execution.is_empty() and clock < 25.0:
+		await wait(1.0 / 60.0)
+		clock += 1.0 / 60.0
+	if level.execution.is_empty():
+		print("CAPTURE_FILM ", film, " FAILED: it never caught them")
+		return
+	print("CAPTURE_FILM ", film, " entry=", level.execution.entry, " tear=", level.windup_tear, " caught after=", snappedf(clock, 0.01))
+	clock = 0.0
+	while clock < 16.0 and (not level.execution.is_empty() or not level.rewind.is_empty() or level.lost_signal > 0.0):
+		await wait(1.0 / 60.0)
+		clock += 1.0 / 60.0
+	await wait(1.4)
+	print("CAPTURE_FILM ", film, " done, scene and after=", snappedf(clock, 0.01))
