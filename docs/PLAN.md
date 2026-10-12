@@ -457,16 +457,17 @@ silencio que hoy se oye raro al cerrar cada sector, y probar el mando en
 partida: que la sensibilidad por defecto no se quede corta ni larga, y que se
 pueda jugar entero sin tocar el teclado.
 
-- [ ] **Rehacer la captura: sobresalto, cámara caída y cinta** (propuesta
-  del 12 de octubre, [EXECUTION.md](EXECUTION.md)). La ejecución de hoy
+- [ ] **Rehacer la captura: sobresalto, cámara caída y cinta** (diseño
+  cerrado el 12 de octubre, [EXECUTION.md](EXECUTION.md)). La ejecución de hoy
   funciona y no asusta: en el instante del grito la bestia es un borrón de
   un 7 % del cuadro y la máscara nunca pasa del 16 %. La propuesta: la cara
   a un palmo en el primer fotograma, la cámara arrancada de las manos, la
   muerte grabada desde el suelo y la cinta que se rompe cuando cae el
   cuerpo; siete entradas según cómo te coge, la linterna que rueda, el
   piloto rojo a oscuras, la finta de armario con escapatoria y una versión
-  breve para las muertes repetidas. **Antes de empezar, el autor decide las
-  once cosas de su sección 19.** Después, por fases:
+  breve para las muertes repetidas. El autor decidió las once cosas de su sección 19 el 12 de octubre, y
+  una sigue abierta: el desgarro de la embestida, que tiene que mirar en el
+  banco. Por fases:
   - [ ] 0 · Banco: disparar cualquier muerte en cualquier sala y sacar su
     hoja de fotogramas.
   - [ ] 1 · El golpe y el rostro, de frente y con luz; la prueba A/B del
