@@ -30,6 +30,7 @@ extends SceneTree
 ##   --outside                                     seen by somebody standing by
 ##   --soft, --reduced                             soft startle, reduced effects
 ##   --no-blood                                    «Sangre» off
+##   --clean                                       no tape noise, smear or marks
 ##   --brief                                       the short version (seen before)
 ##   --difficulty=apacible                         the floor's (equilibrada)
 ##   --character=0|1|2                             whose body (2, the Exploradora)
@@ -194,6 +195,11 @@ func run() -> void:
 	if options.has("reduced"): level.settings.values.reduced = true
 	if options.has("soft"): level.settings.values["startle_soft"] = true
 	if options.has("no-blood"): level.settings.values["gore"] = false
+	# "--clean": the picture without what the tape puts over it -- no noise,
+	# no smear, no scan lines, no marks --, to look at what is in it.
+	if options.has("clean"):
+		for key in ["vhs", "grain", "chromatic", "scanlines"]: level.settings.values[key] = 0.0
+		level.settings.values["osd"] = false
 	# And of the body the scene is built on, whoever played last.
 	if tool or options.has("character"): level.settings.values.character = int(options.get("character", 2))
 	level.apply_settings()

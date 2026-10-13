@@ -7,5 +7,5 @@ uniform vec3 ground = vec3(0.92, 0.92, 0.9);
 uniform float wide = 1.7778;
 
 void fragment() {
-	COLOR = vec4(through_lens_blood(ground, UV, wide), 1.0);
+	COLOR = vec4(through_lens_blood(ground, blood_on_lens(UV * vec2(wide, 1.0), wide), ground), 1.0);
 }

@@ -131,7 +131,13 @@ void fragment() {
 	}
 	chroma *= 1.0 - vhs * 0.25;
 	vec3 color = yiq_to_rgb(vec3(luma, chroma));
-	color = through_lens_blood(color, SCREEN_UV, SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x);
+	if (lens_blood > 0.0) {
+		float lens_wide = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
+		float lens_film = blood_on_lens(SCREEN_UV * vec2(lens_wide, 1.0), lens_wide);
+		// How bright it is round about, which is what lights the blood: four
+		// reads of the picture a good way off, only where there is blood.
+		if (lens_film > 0.0) color = through_lens_blood(color, lens_film, (tap(SCREEN_UV + vec2(0.12, 0.09)) + tap(SCREEN_UV + vec2(-0.12, 0.09)) + tap(SCREEN_UV + vec2(0.12, -0.09)) + tap(SCREEN_UV + vec2(-0.12, -0.09))) * 0.25);
+	}
 	// Lens colour fringing, stronger towards the corners.
 	vec2 from_center = SCREEN_UV - 0.5;
 	vec2 fringe = from_center * dot(from_center, from_center) * chromatic * 0.045 + vec2(chromatic * px.x * 2.0, 0.0);

@@ -4,10 +4,10 @@ extends SceneTree
 ## at a row of seconds after the first of them lands -- on a light ground
 ## and on a dark one, with the camcorder upright and lying on its side.
 ##
-##   godot --script res://tools/dev/lens_blood_look.gd -- [--seed=1.37] [--times=0.05,0.3,0.6,0.9,1.3]
+##   godot --script res://tools/dev/lens_blood_look.gd -- [--seed=1.37] [--times=0.02,0.3,0.6,0.9,1.3]
 ##
 ## Writes evidence/lens_blood.png. Nothing of the game is loaded.
-var times: Array = [0.05, 0.3, 0.6, 0.9, 1.3]
+var times: Array = [0.02, 0.3, 0.6, 0.9, 1.3]
 var seed_value := 1.37
 
 func _initialize() -> void: run.call_deferred()
@@ -18,7 +18,7 @@ func run() -> void:
 			times = []
 			for piece in argument.trim_prefix("--times=").split(","): times.append(float(piece))
 		elif argument.begins_with("--seed="): seed_value = float(argument.trim_prefix("--seed="))
-	var size := Vector2i(640, 360)
+	var size := Vector2i(960, 540)
 	DisplayServer.window_set_size(size)
 	var material := ShaderMaterial.new()
 	material.shader = load("res://tools/dev/lens_blood_look.gdshader")
