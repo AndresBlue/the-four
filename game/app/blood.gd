@@ -37,9 +37,9 @@ const GUSHES := ["res://assets/audio/sfx/blood/blood-gush-1.ogg", "res://assets/
 const SPRAY := "res://assets/audio/sfx/blood/hemorrhage.ogg"
 ## How loud: the grab's under the scream that is on top of it, the blow's as
 ## loud as the blow, and each welling quieter than the last (dB).
-const GRAB_DB := -9.0
-const SPRAY_DB := -2.0
-const WELL_DB := -6.0
+const GRAB_DB := -12.5
+const SPRAY_DB := -6.0
+const WELL_DB := -10.0
 const WELL_FADE := 3.5
 var level
 

@@ -402,6 +402,9 @@ func frame_picture(time: float) -> void:
 	if not plain and not gone and rested_at >= 0.0 and rested_at <= SCORE.KILL_TIME and level.executions.blood.on_lens(id, (take.rest as Transform3D).origin): spattered = maxf(0.0, time - SCORE.KILL_TIME - 0.1)
 	level.post_material.set_shader_parameter("lens_blood", spattered)
 	level.post_material.set_shader_parameter("lens_seed", float(id % 89) + 0.37)
+	# And which way it runs on the glass: down, as the camera lies.
+	var lens: Basis = level.player.camera.global_basis
+	level.post_material.set_shader_parameter("lens_down", Vector2(-lens.x.y, lens.y.y))
 
 # --- The sound --------------------------------------------------------------------
 

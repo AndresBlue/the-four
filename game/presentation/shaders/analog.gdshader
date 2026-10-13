@@ -31,9 +31,8 @@ uniform float tape_fray : hint_range(0.0, 1.0) = 0.0;
 // search in reverse race up the picture.
 uniform float rewinding : hint_range(0.0, 1.0) = 0.0;
 // Blood on the glass of a camcorder lying where its owner is being killed
-// (death_tape.gd): seconds since it landed there (0: none), and which drops.
-uniform float lens_blood = 0.0;
-uniform float lens_seed = 0.0;
+// (death_tape.gd): lens_blood, lens_seed and lens_down, and what they draw.
+#include "res://game/presentation/shaders/lens_blood.gdshaderinc"
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -132,41 +131,7 @@ void fragment() {
 	}
 	chroma *= 1.0 - vhs * 0.25;
 	vec3 color = yiq_to_rgb(vec3(luma, chroma));
-	if (lens_blood > 0.0) {
-		// On the lens, and so out of focus and in front of everything. The
-		// glass of a camcorder is an inch across: one drop on it is a good
-		// part of the picture, and it is not a tint -- it is blood, thick,
-		// and what is behind the middle of it is not seen at all. Five of
-		// them, each with a ragged edge, running down the glass under their
-		// own weight and leaving a smear where they have been.
-		float stained = 0.0;
-		float wide = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
-		for (int index = 0; index < 5; index++) {
-			float which = float(index);
-			vec2 at = vec2(0.1 + 0.8 * hash(vec2(lens_seed, which * 7.3 + 1.0)), 0.02 + 0.5 * hash(vec2(which * 3.1 + 2.0, lens_seed)));
-			float size = 0.075 + 0.1 * hash(vec2(lens_seed + which, 9.0));
-			// Slow to start, and then it goes: the heavier the drop, the sooner.
-			float held = 0.15 + 0.5 * hash(vec2(which + 5.0, lens_seed));
-			float run = max(0.0, lens_blood - held) * (0.08 + 0.13 * size / 0.175) * (1.0 + 0.8 * max(0.0, lens_blood - held));
-			vec2 off = (SCREEN_UV - at) * vec2(wide, 1.0);
-			float around = atan(off.y - run, off.x);
-			float ragged = 1.0 + 0.07 * sin(around * 2.0 + which * 2.1) + 0.035 * sin(around * 5.0 + lens_seed + which);
-			// The drop itself, hanging a little long below its middle.
-			vec2 from = off - vec2(0.0, run);
-			from.y *= from.y > 0.0 ? 0.8 : 1.0;
-			float drop = smoothstep(size * ragged, size * ragged * 0.45, length(from));
-			// And what it leaves above it as it goes: narrower, thinner.
-			float above = step(0.0, off.y) * step(off.y, run);
-			float smear = smoothstep(size * 0.62, size * 0.2, abs(off.x + size * 0.1 * sin(off.y * 40.0 + which))) * above * (0.55 + 0.35 * clamp(off.y / max(run, 0.0001), 0.0, 1.0));
-			stained = max(stained, max(drop, smear));
-		}
-		stained *= smoothstep(0.0, 0.06, lens_blood);
-		// Thin at its edge, where light still comes through it red; black in
-		// its body.
-		vec3 through = color * vec3(0.5, 0.03, 0.025) + vec3(0.05, 0.0, 0.0);
-		vec3 body = color * vec3(0.1, 0.004, 0.004) + vec3(0.03, 0.002, 0.002);
-		color = mix(color, mix(through, body, smoothstep(0.25, 0.8, stained)), smoothstep(0.0, 0.3, stained) * 0.97);
-	}
+	color = through_lens_blood(color, SCREEN_UV, SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x);
 	// Lens colour fringing, stronger towards the corners.
 	vec2 from_center = SCREEN_UV - 0.5;
 	vec2 fringe = from_center * dot(from_center, from_center) * chromatic * 0.045 + vec2(chromatic * px.x * 2.0, 0.0);
