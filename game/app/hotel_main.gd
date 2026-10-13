@@ -1517,6 +1517,8 @@ func host_gate(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
+	# The hotel's clocks keep the camcorder's time, and go back with its tape.
+	if is_instance_valid(hotel) and is_instance_valid(camcorder): hotel.tell_time(int(camcorder.start_seconds) + int(tape_seconds()))
 	if session.state == session.State.PLAYING:
 		update_execution(delta)
 		keep_clock += delta

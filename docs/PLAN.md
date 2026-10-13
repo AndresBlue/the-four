@@ -434,6 +434,10 @@ herramientas para mirarlo están en la guía de desarrollo.
   a nadie durante 20 y 14 s, y el autor lo tomó por un fallo). Mirar jugando
   si esos segundos bastan para que se aleje, y si quien sigue corriendo a su
   lado no acaba en un perseguir, soltar y volver a perseguir sin fin.
+- [ ] **Los relojes con la hora de la cámara (13 de octubre):** mirar en
+  partida que se lean (a través de la cinta, el segundero del de pared es
+  un hilo que apenas se ve a más de un metro) y que la escena de entrada y
+  la sala del título, que marcan siempre las 2:50, no desentonen.
 - [ ] **El barniz de la madera en Ultra (13 de octubre):** acotado de canto
   (`lacquer_edge` 0,06) tras verlo el autor demasiado brillante; mirar en
   partida si el satinado que queda es el que quiere. Sin comprobar: por qué

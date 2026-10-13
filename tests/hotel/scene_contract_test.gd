@@ -107,6 +107,23 @@ func run() -> void:
 	await process_frame
 	if scene.get_viewport().gui_get_focus_owner() == null: unfocused.append("characters")
 	check("Y toda pantalla abre con algo marcado", unfocused.is_empty())
+	# The hotel's clocks: each body knows its hands, and each hand is baked
+	# pointing at twelve about its own origin, to be turned to the hour.
+	var clocks_right := true
+	for clock in ["wall_clock", "alarm_clock_01", "mantel_clock_01", "vintage_grandfather_clock_01"]:
+		var body: Mesh = load("res://assets/props/hotel/%s.res" % clock)
+		if not body.has_meta("hands") or (body.get_meta("hands") as PackedStringArray).size() < 2:
+			clocks_right = false
+			continue
+		for hand in body.get_meta("hands"):
+			var piece: Mesh = load("res://assets/props/hotel/%s_%s.res" % [clock, hand])
+			var tip := Vector3.ZERO
+			for point in piece.get_faces():
+				if Vector2(point.x, point.y).length() > Vector2(tip.x, tip.y).length(): tip = point
+			if not piece.has_meta("pivot") or tip.y < 0.03 or absf(tip.x) > tip.y * 0.12: clocks_right = false
+	var geometry := load("res://game/world/hotel/hotel_geometry.gd")
+	check("Cada reloj trae sus manecillas aparte, de pie y sobre su eje", clocks_right)
+	check("Y marcan la hora que se les dice: a las 3:00:00 la corta a un cuarto de vuelta y las otras arriba", is_equal_approx(geometry.hand_turn("hour", 3 * 3600), 0.25) and geometry.hand_turn("minute", 3 * 3600) == 0.0 and geometry.hand_turn("second", 3 * 3600) == 0.0 and is_equal_approx(geometry.hand_turn("minute", 2 * 3600 + 51 * 60 + 26), (51.0 * 60.0 + 26.0) / 3600.0) and is_equal_approx(geometry.hand_turn("second", 2 * 3600 + 51 * 60 + 26), 26.0 / 60.0))
 	# The board and the archive are not offered while there is nothing in
 	# them: a new player is not shown two titles that open on nothing.
 	var board = scene.ui.records

@@ -619,6 +619,10 @@ func flush() -> void:
 			instance.name = "Model_" + mesh.resource_name
 			instance.multimesh = multi
 			var size := mesh.get_aabb().size
+			if entry.has("hand"):
+				# Drawn as far as the clock it belongs to, and kept to be turned.
+				size = (entry.body as Mesh).get_aabb().size
+				clock_hands.append({"multi": multi, "hand": entry.hand, "stands": transforms})
 			# The kit's pieces wear one of the hotel's own materials.
 			if entry.material != "": instance.material_override = materials[entry.material]
 			if entry.kit: kit_piece(instance, batch.parent, KIT_NEAR if mesh == MOULDINGS.panel() else KIT_FAR)
@@ -632,6 +636,7 @@ func flush() -> void:
 				instance.visibility_range_end_margin = 2.0
 			batch.parent.add_child(instance)
 	model_batches.clear()
+	turn_hands(clock_time if clock_time >= 0 else UNTOLD)
 	solids.clear()
 	# What held walls, stretches and pieces of furniture only for their
 	# transform while a room was built, and has nothing of its own left.
@@ -646,6 +651,38 @@ func drop_empty(node: Node) -> void:
 		if child.get_child_count() == 0 and child.get_class() == "Node3D" and child.get_script() == null:
 			node.remove_child(child)
 			child.free()
+
+## The clocks keep the camcorder's time (the author's word, 13 October 2026:
+## all of them, with their second hands, and back with the tape when it is
+## rewound). Every hand of every clock here is an instance of its own mesh
+## -- baked pointing at twelve, turning about +Z at its origin (tools/props/
+## build_catalogue.gd, CLOCKS) -- and these are their batches, with where
+## each hand stands at twelve. The level says the second (tell_time); a set
+## nobody tells (the opening scene, the title room) shows UNTOLD.
+var clock_hands: Array = []
+var clock_time := -1
+const UNTOLD := 2 * 3600 + 50 * 60
+
+## How far round its dial a hand is at a second of the day, 0 to 1. The
+## second hand steps; the others creep.
+static func hand_turn(hand: String, seconds: int) -> float:
+	match hand:
+		"second": return float(posmod(seconds, 60)) / 60.0
+		"minute": return float(posmod(seconds, 3600)) / 3600.0
+	return float(posmod(seconds, 43200)) / 43200.0
+
+func tell_time(seconds: int) -> void:
+	if seconds == clock_time: return
+	clock_time = seconds
+	turn_hands(seconds)
+
+func turn_hands(seconds: int) -> void:
+	for entry in clock_hands:
+		# Clockwise, seen from in front of it.
+		var turned := Transform3D(Basis(Vector3.BACK, -TAU * hand_turn(String(entry.hand), seconds)), Vector3.ZERO)
+		var multi: MultiMesh = entry.multi
+		var stands: Array = entry.stands
+		for i in stands.size(): multi.set_instance_transform(i, stands[i] * turned)
 
 ## Baked models (assets/props/hotel, room_dressing.gd), batched per room and
 ## per mesh like the boxes: one MultiMesh each. Nothing under SHADOW_MODEL
@@ -677,6 +714,14 @@ func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true, materi
 	# floor under it and flickered into it.
 	var stood := Transform3D(xform.basis, xform.origin + Vector3(0, MODEL_LIFT, 0))
 	meshes[slot].transforms.append(target[1] * stood)
+	# A clock's hands, each an instance of its own mesh where the body's
+	# says its axis is (tell_time turns them).
+	if mesh.has_meta("hands"):
+		for hand in mesh.get_meta("hands"):
+			var hand_mesh: Mesh = load("%s_%s.res" % [mesh.resource_path.get_basename(), hand])
+			var hand_slot := "%d:hand" % hand_mesh.get_instance_id()
+			if not meshes.has(hand_slot): meshes[hand_slot] = {"mesh": hand_mesh, "casts": false, "material": "", "kit": false, "transforms": [], "hand": String(hand), "body": mesh}
+			meshes[hand_slot].transforms.append(target[1] * stood * Transform3D(Basis.IDENTITY, hand_mesh.get_meta("pivot")))
 
 ## A decal from assets/decals/ (tools/textures/ingest_dressing.py) under
 ## parent: projected along the transform's -Y over size, as strong as

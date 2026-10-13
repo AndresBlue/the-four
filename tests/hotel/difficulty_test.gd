@@ -336,6 +336,9 @@ func run() -> void:
 	level.capture_survivor(level.player)
 	for i in int((hunter.EXECUTION_TIME + 0.6) * 60.0): await physics_frame
 	var waiting: bool = level.session.state == level.session.State.PLAYING and level.session.restart_wait > 0.0 and level.player.held and level.lost_signal > 0.0
+	# The hotel's clocks keep the camcorder's time (and go back with it, below).
+	var clocks_told: int = level.hotel.clock_time
+	var clocks_kept: bool = level.hotel.clock_hands.size() > 0 and absi(clocks_told - int(level.camcorder.start_seconds) - int(level.tape_seconds())) <= 1
 	# The wait, and then the tape rewinding to where the stage began.
 	for i in int((level.session.RESTART_WAIT + 0.5) * 60.0): await physics_frame
 	var rewinding: bool = not level.rewind.is_empty() and level.player.held and level.ui.rewind_mark.visible
@@ -346,6 +349,7 @@ func run() -> void:
 	check("A solas en Apacible, caer devuelve la etapa: la señal se pierde y se vuelve en su entrada", waiting and level.session.state == level.session.State.PLAYING and level.session.restarts == 1 and int(level.session.participants[1]) == level.session.Life.EXPLORING and not level.player.held)
 	check("Y antes de volver se ve rebobinar la cinta, y su reloj vuelve a donde empezó la etapa", rewinding and level.rewind.is_empty() and not level.ui.rewind_mark.visible and level.tape_rewound > 5.0 and level.tape_seconds() < 2.5)
 	check("Lo que se escribe sobre la nieve lo graba la cinta: el filtro lo tiene mientras rebobina, y después no", written and not bool(level.post_material.get_shader_parameter("marked")))
+	check("Los relojes del hotel llevan la hora de la cámara, y retroceden con la cinta", clocks_kept and level.hotel.clock_time < clocks_told and absi(level.hotel.clock_time - int(level.camcorder.start_seconds) - int(level.tape_seconds())) <= 1, "told=%s now=%s hands=%s" % [clocks_told, level.hotel.clock_time, level.hotel.clock_hands.size()])
 	check("La segunda vez en el mismo piso se espera la mitad", level.session.RESTART_WAIT + level.REWIND_TIME <= 4.01 and level.session.RESTART_WAIT_AGAIN + level.REWIND_TIME <= 2.01)
 	await level.start_floor(81, false, [1], "desafiante")
 	var first_seed: int = level.session.run_seed
