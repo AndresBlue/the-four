@@ -175,11 +175,23 @@ const HAIRLIKE := ["hair", "brow", "lash", "scalp", "tearline"]
 ## By the name of the material, first match wins: skin before body, so the
 ## Exploradora's "Skin_Body" is skin and not clothes.
 const ROUGHNESS := {
-	"skin": 0.52, "eye": 0.12, "cornea": 0.05, "teeth": 0.35, "tongue": 0.4, "nails": 0.4,
-	"hair": 0.62, "brow": 0.7, "lash": 0.7, "scalp": 0.7,
-	"body": 0.74, "glove": 0.5, "shoe": 0.42, "heel": 0.3, "hat": 0.85, "eyewear": 0.15,
-	"top": 0.82, "shirt": 0.85, "bottom": 0.8, "denim": 0.88, "underwear": 0.8,
+	"skin": 0.66, "eye": 0.12, "cornea": 0.05, "teeth": 0.35, "tongue": 0.4, "nails": 0.5,
+	"hair": 0.74, "brow": 0.75, "lash": 0.75, "scalp": 0.75,
+	"body": 0.8, "glove": 0.7, "shoe": 0.68, "heel": 0.62, "hat": 0.88, "eyewear": 0.15,
+	"top": 0.92, "shirt": 0.92, "bottom": 0.9, "denim": 0.94, "underwear": 0.9,
 }
+## A survivor is somebody who has been walking this hotel, on this tape: as
+## the models come -- skin with the sheen of a shop dummy, a shirt whiter
+## than any lamp in the building, patent shoes -- they were a clean render
+## pasted over it. So nothing of them shines (SPECULAR, for whatever is not
+## an eye), everything they wear is a shade down and a little towards the
+## carpet (WORN; skin less, LIVED), and light goes a little way into skin
+## instead of stopping at it (SKIN_DEPTH).
+const SPECULAR := 0.22
+const WORN := Color(0.74, 0.7, 0.64)
+const LIVED := Color(0.9, 0.84, 0.8)
+const SKIN_DEPTH := 0.22
+const WET := ["eye", "cornea", "teeth", "tongue", "eyewear"]
 const AVATAR_LOD_BIAS := 6.0
 
 func refine_materials() -> void:
@@ -204,9 +216,16 @@ func refine_materials() -> void:
 				if name.contains(key):
 					material.roughness = ROUGHNESS[key]
 					break
-			# Skin is not a mirror: the default specular turned the detective's
-			# face to bronze once its relief was drawn.
-			if name.contains("skin") or name.contains("body"): material.metallic_specular = 0.3
+			var skin := name.contains("skin")
+			if not WET.any(func(word): return name.contains(word)):
+				material.metallic_specular = minf(material.metallic_specular, SPECULAR)
+				material.albedo_color = material.albedo_color * (LIVED if skin else WORN)
+				material.clearcoat_enabled = false
+				material.rim_enabled = false
+			if skin:
+				material.subsurf_scatter_enabled = true
+				material.subsurf_scatter_strength = SKIN_DEPTH
+				material.subsurf_scatter_skin_mode = true
 			if HAIRLIKE.any(func(word): return name.contains(word)) and original.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
 				material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 				material.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
@@ -635,22 +654,27 @@ func under_floor(floor_y: float) -> float:
 	return deepest
 
 ## Somebody the creature has: run through on its arm, held up, hanging from
-## it once the blow has landed, and on the floor when it lets go -- laid out
-## along the way it falls, or, with no room to lie, folded up where it drops:
-## sitting, its back against whatever is behind it. The scene writes this
-## every frame instead of update_pose (executions.gd), the same on every
-## machine. state: lift, limp and fall (0 to 1, capture_score), time (the
-## scene's clock), side (-1 or 1, which way it falls), straight (straight
-## back, to no side), slump (folded up) with room (metres clear behind it)
-## and sill (how far above the floor it comes to sit: a wardrobe's bottom
-## board), and height (how far above the floor the body is held). And, for
-## none of it to end up in a wall or under the floor, `clear`: the bodies the
-## scene's own rays go through (kept_out).
+## it once the blow has landed, and let go. What is let go is a body with
+## nobody in it, and it goes down as one does (capture_score: dropped, sunk,
+## toppled, jolt): it falls the metre it was held up, its legs give under it
+## at the speed it arrives with and it comes down on its seat, folded
+## forward; from there the trunk goes over backwards, faster and faster, the
+## head and the arms a moment behind it; it meets the floor, gives once, and
+## the arms and a leg slide out. How far back it goes is the room there is
+## behind it: flat on its back with a knee up where there is the length of
+## a body, propped against whatever is there where there is not. (It used to
+## be turned to the floor all of a piece, about its feet, and set down
+## gently: a shop dummy tipped over.) The scene writes this every frame
+## instead of update_pose (executions.gd), the same on every machine. state:
+## lift, limp and fall (0 to 1, capture_score), time (the scene's clock),
+## side (-1 or 1, which way it goes over), straight (straight back, to no
+## side), slump (no room to lie: straight back too) with room (metres clear
+## behind it) and sill (how far above the floor it comes to sit: a
+## wardrobe's bottom board), and height (how far above the floor the body is
+## held). And, for none of it to end up in a wall or under the floor,
+## `clear`: the bodies the scene's own rays go through (kept_out).
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
-	var clear := {}
-	if rig != null and state.has("clear") and is_inside_tree() and get_parent_node_3d() != null:
-		clear = {"space": get_world_3d().direct_space_state, "exclude": state.clear, "floor": get_parent_node_3d().global_position.y - float(state.get("height", 0.0)) + float(state.get("sill", 0.0)) * (float(state.get("fall", 0.0)) if bool(state.get("slump", false)) else 0.0)}
 	var lift := float(state.get("lift", 0.0))
 	var limp := float(state.get("limp", 0.0))
 	var fall := float(state.get("fall", 0.0))
@@ -658,58 +682,64 @@ func pose_capture(state: Dictionary) -> void:
 	var side := float(state.get("side", 1.0))
 	var slump := bool(state.get("slump", false))
 	var room := float(state.get("room", SCORE.LIE_ROOM))
-	# The whole body: bent over the arm through its chest, and once let go laid
-	# down along the way it falls (its feet stay where they landed), or sat
-	# down a little behind them.
-	var down := fall * fall * (3.0 - 2.0 * fall)
-	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - down))
+	var sat := SCORE.sunk(fall)
+	var gone := SCORE.toppled(fall)
+	var jolt := SCORE.jolt(fall)
+	# Half way over is where what trails it trails most.
+	var trail := sin(PI * sqrt(gone)) * (1.0 - jolt)
+	var clear := {}
+	if rig != null and state.has("clear") and is_inside_tree() and get_parent_node_3d() != null:
+		clear = {"space": get_world_3d().direct_space_state, "exclude": state.clear, "floor": get_parent_node_3d().global_position.y - float(state.get("height", 0.0)) + float(state.get("sill", 0.0)) * sat}
 	var seat := SCORE.seat_back(room)
 	var recline := SCORE.seat_lean(room)
-	if not slump:
-		var way := Vector3(0.0 if bool(state.get("straight", false)) else side * 0.62, 0.0, 0.78).normalized()
-		# Down along the way it falls, and turned as it goes so that it is its
-		# back that meets the floor: tipped over to a side without that, it
-		# ended half on that side, a shoulder, an elbow and a heel under the
-		# carpet.
-		var laid := Basis(Vector3.UP.cross(way).normalized(), down * deg_to_rad(87.0)) * Basis(Vector3.UP, atan2(way.x, way.z) * down)
-		transform = Transform3D(laid * over, Vector3(0.0, 0.11 * down, 0.0))
-	elif rig == null:
-		# A body that cannot bend: leant back as far as there is room for.
-		transform = Transform3D(Basis(Vector3.RIGHT, minf(recline, asin(clampf((room - 0.1) / 1.7, 0.0, 1.0))) * down) * over, Vector3.ZERO)
-	else:
-		var turned := Basis(Vector3.RIGHT, recline * down) * over
-		var hips := hip_rest()
-		transform = Transform3D(turned, (Vector3(hips.x, SCORE.SEAT_HEIGHT + float(state.get("sill", 0.0)), hips.z + seat) - turned * hips) * down)
+	# Which way it goes over: back, and to a side where there is one to go to.
+	var way := Vector3(0.0 if slump or bool(state.get("straight", false)) else side * 0.62, 0.0, 0.78).normalized()
+	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - sat))
+	var leant := recline * (gone - 0.07 * jolt)
+	var turned := Basis(Vector3.UP, atan2(way.x, way.z) * gone) * Basis(Vector3.RIGHT, leant) * over
 	if rig == null:
+		# A body that cannot bend: leant back as far as there is room for.
+		transform = Transform3D(Basis(Vector3.RIGHT, minf(recline, asin(clampf((room - 0.1) / 1.7, 0.0, 1.0))) * (gone - 0.07 * jolt)) * over, Vector3.ZERO)
 		model.position.y = base_height
 		model.scale.y = base_scale.y
 		return
+	# Its hips come down where its legs give, a little behind its feet.
+	var hips := hip_rest()
+	var sitting := Vector3(hips.x + way.x * seat * sat, lerpf(hips.y, SCORE.SEAT_HEIGHT + float(state.get("sill", 0.0)), sat), hips.z + way.z * seat * sat)
+	# Held, it is bent about its feet, as it always was; down, about its hips.
+	transform = Transform3D(turned, (sitting - turned * hips) * minf(1.0, sat * 4.0))
 	rig.reset_bone_poses()
 	var right := skeleton_axis(Vector3.RIGHT)
 	var forward := skeleton_axis(Vector3.FORWARD)
 	var below := skeleton_axis(Vector3.DOWN)
 	var alive := 1.0 - limp
-	# Sitting: how much of the way down it is, and how near upright it ends
-	# (flat on its back, nothing of what follows hangs forward).
-	var sat := down if slump else 0.0
+	# How near upright it ends (flat on its back, nothing of what follows
+	# hangs forward).
 	var upright := 1.0 - clampf(recline / 1.45, 0.0, 1.0)
-	# The back: arched off the blade while there is life in it, folded once
-	# there is not; the head thrown back to the mask, then let hang.
-	# Laid out, the floor has its back: what folded it over the arm is gone
-	# (kept, it lay arched off the carpet from its shoulders to its heels).
-	var hung := limp * (1.0 - (0.0 if slump else down))
-	turn_bone("spine", right, -0.16 * alive + 0.3 * hung + 0.22 * sat * upright)
-	turn_bone("chest", right, -0.2 * alive + 0.22 * hung + 0.18 * sat * upright)
-	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * hung + 0.12 * (limp - hung) - 0.45 * sat * (1.0 - upright))
-	turn_bone("head", forward, side * 0.3 * limp)
+	# The back (turned about its right, a bone goes back with a positive
+	# angle and forward with a negative one): hunched on the blade while
+	# there is life in it and arched over it once there is not; folded
+	# forward over its knees as it comes down on its seat; and from there
+	# straight, or rounded against what props it.
+	var hung := limp * (1.0 - sat)
+	var folded := sat * (1.0 - gone)
+	turn_bone("spine", right, -0.16 * alive + 0.3 * hung - 0.45 * folded + 0.2 * sat * gone * upright)
+	turn_bone("chest", right, -0.2 * alive + 0.22 * hung - 0.35 * folded + 0.16 * sat * gone * upright)
+	# The head: thrown back while it hangs; on its chest as the legs give and
+	# as the trunk goes over, behind it; back with a jolt when the floor stops
+	# the shoulders; and where it comes to rest -- on its chest still, sat up,
+	# and rolled to a side, lying.
+	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * hung - 0.55 * folded - 0.5 * trail + 0.35 * jolt - 0.5 * gone * upright + 0.06 * gone * (1.0 - upright))
+	turn_bone("head", forward, side * (0.3 * limp + 0.25 * gone * (1.0 - upright)))
 	if not clear.is_empty():
 		# Down on the floor, the whole of it comes up until its back is on the
 		# carpet and not under it; and its head is kept out of what is behind it.
-		if down > 0.0: position.y += under_floor(float(clear.floor))
+		if sat > 0.0: position.y += under_floor(float(clear.floor))
 		clear_head(clear)
 	# The arms: flung out at the grab, up to the arm that holds as the feet
 	# leave the floor, and down for good after the blow.
 	var kick := sin(time * 11.0) * alive * lift
+	var sag := (rig.global_basis.inverse() * Vector3.DOWN).normalized()
 	for pair in [["l", -1.0], ["r", 1.0]]:
 		var key: String = pair[0]
 		var hand_side: float = pair[1]
@@ -723,23 +753,29 @@ func pose_capture(state: Dictionary) -> void:
 		var clutch_fore := (-right * hand_side * 0.75 - below * 0.35 + forward * 0.55).normalized()
 		var dead := (right * hand_side * 0.14 + below - forward * 0.08).normalized()
 		var dead_fore := (right * hand_side * 0.05 + below + forward * 0.12).normalized()
-		# Laid out: one arm thrown over the head, the other out to the side.
-		var thrown := ((-below * 0.9 + right * hand_side * 0.4) if hand_side * side > 0.0 else (right * hand_side * 0.95 + below * 0.25)).normalized()
-		var thrown_fore := thrown.lerp(forward, 0.25)
-		if slump:
-			# Folded up: they hang to the floor beside it, the hands in its lap.
-			var sag := (rig.global_basis.inverse() * Vector3.DOWN).normalized()
-			thrown = (below * 0.75 + sag * 0.35 * (0.25 + 0.75 * upright) + right * hand_side * 0.32).normalized()
-			thrown_fore = (below * 0.45 + (forward * 0.7 + sag * 0.2) * upright + right * hand_side * 0.12).normalized()
+		# Down: they hang to the floor beside it, the hands in its lap, sat up;
+		# and lying, they lie where they dropped -- the one on the side it went
+		# over to further out than the other, its hand turned up.
+		var outer := hand_side * side > 0.0
+		var spread := lerpf(0.32, 0.85 if outer else 0.5, 1.0 - upright)
+		var thrown := (below * 0.75 + sag * 0.35 * (0.25 + 0.75 * upright) + right * hand_side * spread).normalized()
+		var thrown_fore := (below * 0.45 + (forward * 0.7 + sag * 0.2) * upright + right * hand_side * (0.12 if upright > 0.5 or not outer else 0.5) - below * (0.0 if upright > 0.5 or not outer else 0.6)).normalized()
+		# On the way down they are the last of it to go: left in the air in
+		# front of it while the trunk goes over, and down a moment after it.
+		var left_behind := (forward * 0.85 + below * 0.35 + right * hand_side * 0.3).normalized()
+		var late := clampf(gone * 1.0 - 0.25 * trail, 0.0, 1.0)
 		var struggle := clampf(lift * 1.6, 0.0, 1.0)
-		var upper := flung.lerp(clutch, struggle).lerp(dead, limp).lerp(thrown, down).normalized()
-		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown_fore, down).normalized()
+		var upper := flung.lerp(clutch, struggle).lerp(dead, limp).lerp(thrown, sat * late).lerp(left_behind, 0.55 * trail).normalized()
+		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown_fore, sat * late).lerp(left_behind, 0.75 * trail).normalized()
+		# And they give once more when it lands.
+		upper = (upper - sag * 0.25 * jolt).normalized()
+		fore = (fore - sag * 0.45 * jolt).normalized()
 		aim_bone(arm, elbow, upper)
 		clear_bone(arm, elbow, LIMB.e, clear)
 		aim_bone(elbow, hand, fore)
 		clear_bone(elbow, hand, LIMB.h, clear)
 	# The legs: standing while it still has the floor, kicking once it has not,
-	# hanging after the blow, and bent anyhow on the floor.
+	# hanging after the blow, and under it when it comes down.
 	for pair in [["l", -1.0], ["r", 1.0]]:
 		var key: String = pair[0]
 		var leg_side: float = pair[1]
@@ -751,24 +787,19 @@ func pose_capture(state: Dictionary) -> void:
 		var swing := kick * leg_side * 0.42
 		var knee := 0.12 + 0.5 * lift * alive * (0.5 + 0.5 * sin(time * 11.0 * leg_side + 1.3)) + 0.18 * limp
 		var hip := 0.08 * lift + swing + 0.1 * limp
-		# On the floor one knee stays up and the other leg lies out: the thigh
-		# forwards, which lying on its back is up, and the shin back down to
-		# the carpet. (Turned the way the legs hang, the raised knee was a
-		# thigh under the floor and a shin through it.)
-		if not slump:
-			hip = lerpf(hip, -0.8 if leg_side * side > 0.0 else -0.1, down)
-			knee = lerpf(knee, -1.35 if leg_side * side > 0.0 else -0.2, down)
 		turn_bone(key + "t", right, -hip)
-		turn_bone(key + "t", forward, leg_side * (0.05 + 0.12 * down))
+		turn_bone(key + "t", forward, leg_side * (0.05 + 0.2 * sat))
 		turn_bone(key + "k", right, knee)
-		# Folded up, the feet come down on the floor in front of it and stay
-		# there, one knee up and the other leg out, as the hips go down.
-		if slump and down > 0.0 and get_parent_node_3d() != null:
-			var ahead := 0.5 if leg_side * side > 0.0 else 0.64
-			var spot := get_parent_node_3d().global_transform * Vector3(leg_side * 0.15, ANKLE_HEIGHT - float(state.get("height", 0.0)), seat - ahead)
-			seat_leg(key, spot, clampf(down * 2.5, 0.0, 1.0))
+		# Its feet meet the floor and stay where they met it while the hips come
+		# down behind them: the knees go up. Lying, the leg on the side it went
+		# over to slides out until it is all but straight; the other knee stays.
+		if sat > 0.0 and get_parent_node_3d() != null:
+			var outer := leg_side * side > 0.0
+			var ahead := (0.64 + 0.3 * gone * (1.0 - upright)) if outer else 0.5
+			var spot := get_parent_node_3d().global_transform * Vector3(leg_side * (0.15 + (0.1 * gone * (1.0 - upright) if outer else 0.0)) - way.x * (ahead - seat), ANKLE_HEIGHT - float(state.get("height", 0.0)), way.z * (seat - ahead))
+			seat_leg(key, spot, clampf(sat * 2.5, 0.0, 1.0))
 		# Feet that carry nothing point down; those of somebody sitting, ahead.
-		if toe >= 0 and (lift > 0.05 or down > 0.0): aim_bone(ankle, toe, (below * (0.75 + 0.25 * limp) * (1.0 - sat) + forward * (0.5 + sat)).normalized())
+		if toe >= 0 and (lift > 0.05 or sat > 0.0): aim_bone(ankle, toe, (below * (0.75 + 0.25 * limp) * (1.0 - sat) + forward * (0.5 + sat)).normalized())
 		clear_bone(thigh, calf, LIMB.k, clear)
 		clear_bone(calf, ankle, LIMB.f, clear)
 		if toe >= 0: clear_bone(ankle, toe, LIMB.o, clear)

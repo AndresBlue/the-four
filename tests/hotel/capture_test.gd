@@ -312,7 +312,7 @@ func scene_checks() -> void:
 		check("Captura %s: empieza en el acto, con el control quitado y la cinta rodando" % entry, began)
 		check("Captura %s: una sola, aunque la toquen dos veces" % entry, once)
 		check("Captura %s: la cámara no sale nunca de lo que puede ser" % entry, bool(seen.finite) and int(seen.frames) > 200, "frames=%d" % int(seen.frames))
-		check("Captura %s: la máscara, del derecho en la lente y a un palmo" % entry, bool(seen.upright) and float(seen.near) > 0.09 and float(seen.near) < 0.3, "up=%.2f near=%.3f" % [float(seen.worst_up), float(seen.near)])
+		check("Captura %s: la máscara, del derecho en la lente y a un palmo" % entry, bool(seen.upright) and float(seen.near) > 0.07 and float(seen.near) < 0.12, "up=%.2f near=%.3f" % [float(seen.worst_up), float(seen.near)])
 		check("Captura %s: la cámara ya está en el suelo cuando levantan el cuerpo" % entry, float(seen.landed) > 0.0 and float(seen.lifted_at) > float(seen.landed), "landed=%.2f lifted=%.2f" % [float(seen.landed), float(seen.lifted_at)])
 		check("Captura %s: el golpe y la caída llegan a su segundo, y nunca se le devuelve el control" % entry, bool(seen.kill) and bool(seen.drop) and bool(seen.held))
 		# The end of it: the death is counted, and alone the stage is given back.

@@ -28,6 +28,15 @@ const MASK_FAR := 0.26
 const MASK_HELD := 0.165
 const MASK_CLOSE := 0.135
 const MASK_NEAR := 0.11
+## And at the last it comes at the lens: in the LUNGE seconds before the
+## swipe, from where it was held to MASK_LUNGE, faster the nearer it gets --
+## the pale of it taller than the picture -- and it is there still when the
+## arm takes the camera. Without it the face was a picture laid over the
+## picture; with it, it is something coming. The lens sees that near
+## (LENS_NEAR, metres) while a capture lasts.
+const MASK_LUNGE := 0.082
+const LUNGE := 0.07
+const LENS_NEAR := 0.02
 ## It comes down into the picture: how far under the mask the lens is aimed on
 ## the first frame, and how far to one side when it comes in from the side.
 const ARRIVE_DROP := 0.05
@@ -162,7 +171,8 @@ func begin(execution: Dictionary, covered := false) -> void:
 	landed_at = -1.0
 	rested_at = -1.0
 	gain = 0.0
-	saved = {"handheld": player.handheld_enabled, "zoom": player.zoom_wanted, "torch": player.torch.visible}
+	saved = {"handheld": player.handheld_enabled, "zoom": player.zoom_wanted, "torch": player.torch.visible, "near": camera.near}
+	camera.near = LENS_NEAR
 	player.handheld_enabled = false
 	player.reset_handheld()
 	camera.top_level = true
@@ -287,6 +297,9 @@ func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
 	var arrived := 1.0 if busy else SCORE.smooth(since / SCORE.ARRIVE)
 	var jerk := SCORE.smooth(SCORE.ramp(since, SCORE.JERK_TIME, SCORE.JERK_TIME + SCORE.JERK_LENGTH))
 	var distance := maxf(MASK_NEAR, lerpf(MASK_FAR, MASK_HELD, arrived) - (MASK_HELD - MASK_CLOSE) * jerk)
+	var coming := 0.0 if soft else SCORE.ramp(time, SCORE.face_end(entry) - LUNGE, SCORE.face_end(entry))
+	coming *= coming
+	distance = lerpf(distance, MASK_LUNGE, coming)
 	var eye := mask.origin + mask.basis.z * distance
 	# Where the lens points: under the mask at first, so it comes down into
 	# the picture; from the side, off to that side.
@@ -302,7 +315,7 @@ func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
 	if absf(ahead.normalized().y) > 0.85: up = Basis(Vector3.UP, float(execution.yaw)).z if entry == "above" else mask.basis.y
 	var basis := Basis.looking_at(ahead, up)
 	if not plain:
-		var fade := exp(-since / SHAKE_FADE) + 0.25
+		var fade := exp(-since / SHAKE_FADE) + 0.25 + 2.0 * coming
 		var tremble := deg_to_rad(SHAKE) * fade
 		basis = basis * Basis.from_euler(Vector3(sin(time * TAU * SHAKE_RATE) * tremble, sin(time * TAU * SHAKE_RATE * 0.83 + 1.1) * tremble, sin(time * TAU * SHAKE_RATE * 1.21 + 2.3) * tremble * 0.7))
 	return Transform3D(basis, eye)
@@ -499,6 +512,7 @@ func stop(alive: bool) -> void:
 		level.post_material.set_shader_parameter("tape_band", -1.0)
 		level.post_material.set_shader_parameter("tape_fray", 0.0)
 	camera.top_level = false
+	camera.near = float(saved.get("near", camera.near))
 	camera.position = Vector3(0.0, player.eye_height, 0.0)
 	camera.rotation = Vector3.ZERO
 	player.handheld_enabled = bool(saved.get("handheld", true))

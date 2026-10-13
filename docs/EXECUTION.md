@@ -20,8 +20,8 @@ Morir ante The Locust son nueve tiempos en cinco segundos. La bestia queda quiet
 | **El arrebato** | 0,62–1,3 | Un manotazo: la cámara sale de las manos y cae lo que tarda en caer una cosa, girando. Barrido, peine del entrelazado, nada legible |
 | **El suelo** | 1,3–2,1 | Golpe, un rebote y dos o tres vuelcos de canto en canto, cada uno más lento, hasta quedar tumbada. La cinta se resiente a cada golpe y el micrófono se cierra |
 | **Lo que la cinta ve** | 1,6–3,08 | Desde el suelo, torcida y medio tapada: las patas de la bestia y tu propio cuerpo, que sube |
-| **El remate** | 3,08–3,60 | El golpe —se oye; se ve a medias o no se ve— y el cuerpo, que cae junto a la cámara |
-| **El después** | 3,60–4,70 | La cinta, tocada por la caída del cuerpo, se va rompiendo mientras la bestia se va o se vuelve hacia la lente |
+| **El remate** | 3,08–3,50 | El golpe —se oye; se ve a medias o no se ve— y el cuerpo, que cae junto a la cámara |
+| **El después** | 3,50–4,70 | El cuerpo se desploma (0,9 s) y la cinta, tocada por su caída, se va rompiendo mientras la bestia se va o se vuelve hacia la lente |
 | **El corte** | 4,70 | La grabación se acaba: nieve y SEÑAL PERDIDA |
 
 Lo que lo hace distinto cada vez: **por dónde te coge** (de frente, por la espalda, de lado, desde arriba, con las manos ocupadas, en un armario), **dónde cae la cámara** (lo calcula el sitio: ve, ve a medias o queda boca abajo y solo se oye), **qué luz hay** (la sala, la linterna rodando por el suelo, o solo el piloto rojo de grabación) y **cómo acaba**.
@@ -120,12 +120,12 @@ Resumen de la investigación (fuentes al final; lo que es estimación se dice).
 |---|---|---|---|
 | **El hueco** (−2,0 a 0) | Lo que estuviera viendo. Sin desgarro | La caza, sin cambios | La bestia persigue; al alcance, te tiene en el acto |
 | **El golpe** (0,00) | Corte de un fotograma a la composición del rostro: la máscara ya está en cuadro —un tercio de la altura o más— y acaba de llegar en 3 a 5 fotogramas. Por dónde entra depende de la entrada (7.2) | El grito, de golpe, plano, en la cabeza, 0,05 s después de que la máscara esté en la lente. Vibración del mando | La cabeza de la bestia cae sobre la víctima; el brazo izquierdo la ensarta |
-| **El rostro** (0,00–0,55) | La máscara a 13–17 cm, 50–65 % de la altura, mirando a la lente. Temblor de 12–14 Hz; a 0,22 s, un ladeo seco de la cabeza y el último tirón, de 17 a 13 cm. Con linterna: el haz cruza la máscara uno o dos fotogramas y se va al suelo | El grito entero | La sujeta; la víctima queda a 0,6 m |
+| **El rostro** (0,00–0,55) | La máscara a 13–17 cm, 50–65 % de la altura, mirando a la lente. Temblor de 12–14 Hz; a 0,22 s, un ladeo seco de la cabeza y un tirón, de 17 a 13 cm. **Y al final se te viene encima** (pedido por el autor: «ahora parece una superposición más que algo que se te viene encima»): en los 0,07 s anteriores al manotazo la máscara pasa de 13 a 8 cm de la lente, cada vez más deprisa —ya no cabe en el cuadro: son las cuencas y poco más—, con el temblor triplicado, y sigue ahí los cuatro fotogramas que tarda el brazo en llevarse la cámara (`death_tape.MASK_LUNGE`, `LUNGE`; la lente enfoca desde 2 cm mientras dura la captura para que no la recorte). Con «Sobresaltos suaves» no hay rostro, así que tampoco esto. Con linterna: el haz cruza la máscara uno o dos fotogramas y se va al suelo | El grito entero | La sujeta; la víctima queda a 0,6 m |
 | **El arrebato** (0,62–1,3) | El brazo derecho cruza el cuadro. La cámara sale despedida: 180° o más de giro, estela y peine | El grito se va con la cámara: cae de tono, pierde agudos, pasa a estar *en la sala*. Viento en el micrófono | El manotazo. La víctima sigue ensartada y con los pies en el suelo. La linterna, si la hay, vuela y rueda |
 | **El suelo** (1,3–2,1) | El golpe, un rebote y dos o tres vuelcos de canto en canto: la imagen gira sobre sí misma un cuarto de vuelta cada vez. A cada golpe sube una banda de ruido, más floja que la anterior | El golpe de la carcasa, sordo y fuerte, y otro más flojo y más agudo por cada vez que vuelve a dar en el suelo. El micrófono se cierra: todo baja de golpe | — |
 | **Lo que la cinta ve** (1,6–3,08) | Plano fijo: moqueta desenfocada en el tercio de abajo, algo que tapa un lado, las patas de la bestia, y los pies de tu cuerpo, que dejan el suelo y suben. El reloj de la cámara sigue corriendo | El micrófono se va abriendo: el siseo de la cinta y el rumor de la sala vuelven hinchándose. Chasquidos de la bestia, roces, sus garras en el suelo —cada una hace temblar la imagen— | Se endereza y la levanta con ella, despacio: un metro, de 1,1 a 2,2 s (hoy la levanta en el primer medio segundo, cuando nadie mira desde fuera). La sostiene ante la cara, mirándola |
-| **El remate** (3,08–3,60) | El brazo que se echa atrás, si entra en cuadro. El golpe, no. A 3,60 el cuerpo cae en cuadro: lo último que entra es una mano, cerca de la lente | El silbido y el golpe, ahora desde donde está la bestia. El cuerpo contra el suelo, pegado al micrófono, que vuelve a cerrarse | Estocada a 2,80. Suelta el cuerpo a 3,10 |
-| **El después** (3,60–4,70) | El golpe del cuerpo ha tocado el mecanismo: bandas de ruido que suben, la parte de arriba que se dobla, el color que va y viene. Detrás, el final que toque (7.4) | Lloro en el tono (la cinta ya no corre pareja), cortes. Lo que haga la bestia | La bestia, de pie sobre el cuerpo; después, el final |
+| **El remate** (3,08–3,50) | El brazo que se echa atrás, si entra en cuadro. El golpe, no. A 3,50 lo suelta y el cuerpo cae en cuadro: lo último que entra es una mano, cerca de la lente | El silbido y el golpe, ahora desde donde está la bestia. El cuerpo contra el suelo, pegado al micrófono, que vuelve a cerrarse | Estocada a 2,80. Suelta el cuerpo a 3,10 |
+| **El después** (3,50–4,70) | El golpe del cuerpo ha tocado el mecanismo: bandas de ruido que suben, la parte de arriba que se dobla, el color que va y viene. Detrás, el final que toque (7.4) | Lloro en el tono (la cinta ya no corre pareja), cortes. Lo que haga la bestia | La bestia, de pie sobre el cuerpo; después, el final |
 | **El corte** (4,70) | Último campo roto, y nieve. SEÑAL PERDIDA | El canal muerto, en el mismo instante | La bestia vuelve a moverse (4,7 + 0,35). La baja se registra a 5,0 |
 
 Cinco notas:
@@ -173,7 +173,7 @@ Quién elige: **el anfitrión**, con lo que ya conoce de cada jugador —posici�
 
 ### 7.4 Los finales
 
-| Final | Qué pasa de 3,60 a 4,70 | Cuándo |
+| Final | Qué pasa de 3,50 a 4,70 | Cuándo |
 |---|---|---|
 | **Se va** | De pie sobre el cuerpo; se gira; los primeros pasos. La cinta se rompe sola | El de siempre |
 | **Mira la lente, y se va** | Antes de girarse vuelve la cabeza hacia la cámara caída y la ladea, sin acercarse: medio segundo quieta. Después se va igual | A solas, una de cada tres; en equipo, una de cada seis. Nunca dos veces seguidas a la misma persona, nunca en la versión breve (14), y solo si la cámara lo puede grabar: toma «ve» y con luz |
@@ -237,7 +237,7 @@ Lo decide el anfitrión con el sitio que hay donde lo suelta (`executions.fall_r
 
 | Hay sitio | Cómo queda |
 |---|---|
-| 1,9 m libres hacia atrás y a un lado | Tendido hacia ese lado, como se propuso |
+| 1,4 m libres hacia atrás y a un lado (eran 1,9: tendido ya no ocupa el largo de un cuerpo rígido, sino el de uno con las rodillas dobladas) | Tendido hacia ese lado, como se propuso |
 | Solo hacia el otro lado | Tendido hacia el otro |
 | Solo recto hacia atrás (un pasillo) | Tendido recto |
 | Ninguno | **Sentado**: la cadera baja un poco por detrás de donde colgaba, la espalda contra lo que lo ha parado —o tumbado de espaldas con las rodillas arriba, si lo de detrás queda a más de lo que alcanza—, los pies en el suelo por delante |
@@ -245,6 +245,10 @@ Lo decide el anfitrión con el sitio que hay donde lo suelta (`executions.fall_r
 Sin sitio, lo construido al principio inclinaba el cuerpo 52° hacia atrás fuese lo que fuese lo que había: a través del costado de un armario, o de una pared. Ahora cuánto baja la cadera y cuánto se recuesta salen de los metros libres que hay detrás (`capture_score.seat_back`, `seat_lean`).
 
 **Nada del cuerpo atraviesa nada** (pedido por el autor al ver las películas: brazos y cabeza se metían en las paredes). Un cuerpo que la escena lleva de un sitio a otro no lo mueve la física que mantiene fuera de las cosas a uno que anda, así que lo que la escena posa se corrige contra el sitio en cada fotograma (`avatar_visual.kept_out`, `clear_bone`, `clear_head`, `under_floor`): cada brazo y cada pierna, articulación por articulación, se gira sobre la suya hasta quedar a su propio grosor de la pared, el mueble, la hoja o el suelo que tenía dentro; la cabeza, igual, desde el pecho; y tendido, el cuerpo entero sube lo que haga falta para que la espalda esté sobre la moqueta y no debajo. De paso salieron tres defectos de la pose tendida que la moqueta tapaba: caía ladeado sobre un costado (medio cuerpo bajo el suelo), con la espalda arqueada como colgaba del brazo, y con la rodilla «levantada» doblada hacia abajo, a través del suelo. Ahora gira mientras cae hasta quedar de espaldas, recto, con una rodilla arriba de verdad. **Medido** con `tools/dev/body_clip_probe.gd` (56 escenas: en medio de la sala, de espaldas a una pared, con la bestia contra la pared, a lo largo de una pared, en una esquina —a 0,4, 0,7 y 1,2 m—, en tres vanos y en los dos armarios; de frente, por la espalda y de lado; quince articulaciones y la coronilla en cada fotograma): antes, las 56 con algo atravesado, hasta 48 cm; ahora ninguna pasa de 3 cm, con la Exploradora y con el Detective Femenino, en dos pisos. El Detective Masculino no tiene esqueleto: se inclina entero y no se puede medir ni corregir así. Lo que **no** se ha tocado: los brazos de la propia bestia, que son más largos que algunos pasillos, y los cuerpos de quien anda (su cápsula ya los separa de las paredes).
+
+**Cae como cae alguien, no como un maniquí** (tercera vuelta, 12 de octubre: el autor vio la segunda y dijo que caía «como una muñeca grande firme», y lo era: el cuerpo entero giraba de una pieza sobre los pies y se posaba suave). Ahora la caída dura 0,9 s y tiene cuatro tiempos (`capture_score.FALL_AIR`, `sunk`, `toppled`, `jolt`; `avatar_visual.pose_capture`): **cae** el metro que estaba levantado, lo que tarda un metro (0,45 s, acelerando); **le ceden las piernas** a la velocidad con que llega y queda sentado sobre los talones, doblado hacia delante, la cabeza en el pecho; **el tronco se va hacia atrás**, cada vez más deprisa, con la cabeza y los brazos un momento por detrás de él —los brazos se quedan en el aire y bajan después—; y **da contra el suelo**, cede una vez, la cabeza se va atrás con el golpe y rueda a un lado, y un brazo y una pierna resbalan hacia fuera mientras la otra rodilla se queda arriba. Hasta dónde se recuesta lo dice el sitio: con largo para un cuerpo, de espaldas; sin él, apoyado en lo que tenga detrás (es el mismo movimiento: «tendido» y «sentado» ya no son dos poses distintas). No es una simulación física de articulaciones: son curvas, las mismas en todas las máquinas, y por eso se ve igual para quien muere y para quien mira. **Sin juzgar por el autor.**
+
+**Y que no parezca de plástico** (la misma vuelta: «los materiales del cuerpo no terminan de pegar con la estética»). Los modelos venían como un render limpio: piel con brillo de escaparate, una camisa más blanca que cualquier lámpara del hotel, zapatos de charol. En `avatar_visual.refine_materials()`: nada de ellos brilla salvo los ojos (especular 0,22, sin barniz ni borde), todo es más mate (piel 0,66; ropa 0,9 o más; pelo 0,74; zapatos 0,65), la ropa baja un tono y se va hacia el color de la moqueta (×0,74 / 0,70 / 0,64), la piel algo menos (×0,90 / 0,84 / 0,80) y la luz entra un poco en ella en vez de quedarse en la superficie (dispersión bajo la piel, 0,22). Vale para los tres supervivientes y en todo el juego, no solo en la captura. **Es lo que se puede hacer sin tocar los modelos**; si sigue sin pegar, lo siguiente es de arte: texturas con suciedad y desgaste, o modelos de otro estilo (PLAN.md, apartado 4).
 
 **Y la bestia llega hasta ti, no al revés.** Al cogerte desde su alcance (hasta 2,6 m en Pesadilla) da ella el último paso, hasta donde le deje el sitio, y te sujeta a entre 0,75 y 1,05 m; si estabas más cerca que eso, es ella la que retrocede. Antes se movía la víctima: pegado a una pared, te metía en ella.
 
@@ -283,8 +287,8 @@ Una cámara no graba sin luz, y aquí no hay ninguna. El plan de partida pide un
 | 2,2–2,5 | Apagado | — |
 | 2,5–3,2 | Encendido | Lo que cuelga, en el borde de la luz |
 | 3,2–3,5 | **Apagado** | **La estocada (3,3): se oye, no se ve** |
-| 3,5–4,2 | Encendido | El cuerpo, que cae dentro de la luz (3,6) |
-| 4,2–4,5 | Apagado | — |
+| 3,5–4,2 | Encendido | El cuerpo, que cae dentro de la luz (lo suelta a 3,5; se desploma hasta 4,27) |
+| 4,2–4,5 | Apagado | El último tramo del tronco contra el suelo (4,27): se oye |
 | 4,5–4,7 | Encendido | El final |
 
   El golpe queda entre dos parpadeos. La cabeza de la bestia, de pie, queda fuera del alcance del piloto: a oscuras y sin linterna no se elige «mira la lente», porque no se vería.
@@ -333,8 +337,8 @@ Un estruendo lo satura un instante y el nivel se hunde de golpe unos 14 dB; desp
 | ~1,3, y cada golpe después | La carcasa contra el suelo; y otra vez, más floja y más aguda, al acabar el rebote y en cada canto sobre el que vuelca | De los que ya hay: el objeto que cae (`object_fall_*`), más grave y más seco |
 | 1,6–3,08 | Chasquidos de la bestia, sus garras, roces de ropa | Los chasquidos y las garras existen; los roces, de los de la cama de la escena de entrada (`bed_*`) |
 | 3,08–3,30 | Silbido y golpe, desde la bestia | `execution_hit.wav` |
-| 3,96 | El cuerpo contra el suelo (lo sueltan a 3,60), pegado al micrófono | De los que ya hay: un golpe sordo de la escena de entrada (`stomp_*`), bajado de tono. Hoy cae en silencio porque con la pantalla en negro sonaba a segunda estocada; viéndolo caer, hace falta |
-| 3,96–4,70 | Cortes: al sonido le faltan trozos, de cuatro centésimas, cada vez más seguidos hasta el final, a la vez que la imagen se deshace | Tratamiento sobre el micrófono (`death_tape.dropout`). El lloro en el tono que se propuso no se hizo: pediría un cambio de tono sobre toda la mezcla |
+| 4,27 | El cuerpo contra el suelo (lo sueltan a 3,50), pegado al micrófono | De los que ya hay: un golpe sordo de la escena de entrada (`stomp_*`), bajado de tono. Hoy cae en silencio porque con la pantalla en negro sonaba a segunda estocada; viéndolo caer, hace falta |
+| 4,27–4,70 | Cortes: al sonido le faltan trozos, de cuatro centésimas, cada vez más seguidos hasta el final, a la vez que la imagen se deshace | Tratamiento sobre el micrófono (`death_tape.dropout`). El lloro en el tono que se propuso no se hizo: pediría un cambio de tono sobre toda la mezcla |
 | 4,70 | El canal muerto, con la nieve | `execution_static.ogg`, como hoy |
 
 ### 11.4 Volumen
@@ -482,8 +486,8 @@ Con la semilla, cada máquina saca lo mismo: el sitio de la linterna y cómo rue
 | `ARREBATO` | Manotazo | La cámara toca el suelo |
 | `SUELO` | Impacto (0,94–1,02 de frente; hasta 1,15 por la espalda) | 0,15 s después |
 | `TESTIGO` | La cámara asentada (antes de 1,6, que es cuando empieza a subir el cuerpo; por la espalda, un instante después) | 3,08 |
-| `REMATE` | 3,08 | 3,60 |
-| `DESPUES` | 3,60 | 4,70 |
+| `REMATE` | 3,08 | 3,50 |
+| `DESPUES` | 3,50 | 4,70 |
 | `CORTE` | 4,70 | La baja (5,00) o la versión breve |
 
 Cada cosa que puede interrumpirla, y qué pasa:

@@ -42,9 +42,15 @@ const LIFT_TO := 2.7
 ## The blow: the arm starts, lands, and the body is let fall.
 const ARM_TIME := 3.08
 const KILL_TIME := 3.3
-const DROP_TIME := 3.6
-## How long the body takes to be on the floor once it is let go.
-const FALL_LENGTH := 0.42
+const DROP_TIME := 3.5
+## How long the body takes to be down once it is let go, and what it does
+## with that (0 to 1 of it): it falls the metre it was held up, which takes
+## what a metre takes; its legs give under it and it comes down on its seat;
+## its trunk goes over backwards; and it meets the floor and gives once.
+const FALL_LENGTH := 0.9
+const FALL_AIR := 0.5
+const FALL_SINK := Vector2(0.5, 0.66)
+const FALL_BACK := Vector2(0.62, 0.88)
 ## The look at the lens, when there is one: the head turns, cocks, and stays.
 const GLANCE_FROM := 4.0
 const GLANCE_COCK := 4.28
@@ -66,7 +72,7 @@ const HOLD_STAND := 0.1
 ## The floor a body needs behind it to be laid out (metres from where it is
 ## let go). With less than that it folds up where it drops: sitting, its hips
 ## a little back from there and its back against whatever stopped it.
-const LIE_ROOM := 1.9
+const LIE_ROOM := 1.4
 ## How high the hips of somebody sitting on the floor are.
 const SEAT_HEIGHT := 0.13
 
@@ -114,7 +120,8 @@ static func stoop(time: float) -> float:
 
 ## 0 on its feet, 1 held up, and back to 0 as it is let fall.
 static func lift(time: float) -> float:
-	return smooth(ramp(time, LIFT_FROM, LIFT_TO)) * (1.0 - ramp(time, DROP_TIME, DROP_TIME + FALL_LENGTH * 0.45))
+	var dropped := ramp(time, DROP_TIME, DROP_TIME + FALL_LENGTH * FALL_AIR)
+	return smooth(ramp(time, LIFT_FROM, LIFT_TO)) * (1.0 - dropped * dropped)
 
 ## 0 at arm's length, 1 drawn in to the creature's face.
 static func closing(time: float) -> float:
@@ -127,6 +134,21 @@ static func limp(time: float) -> float:
 ## 0 held, 1 lying on the floor.
 static func fall(time: float) -> float:
 	return ramp(time, DROP_TIME, DROP_TIME + FALL_LENGTH)
+
+## Of a fall (0 to 1): how far its hips have come down on to its seat -- at
+## the speed it arrived with, and stopped short --,
+static func sunk(falling: float) -> float:
+	return 1.0 - pow(1.0 - ramp(falling, FALL_SINK.x, FALL_SINK.y), 1.6)
+
+## how far over backwards its trunk has gone, faster the further it goes,
+static func toppled(falling: float) -> float:
+	var t := ramp(falling, FALL_BACK.x, FALL_BACK.y)
+	return t * t
+
+## and the give of it against the floor: nothing, a jolt, nothing.
+static func jolt(falling: float) -> float:
+	var t := ramp(falling, FALL_BACK.y, 1.0)
+	return sin(PI * t) * (1.0 - t)
 
 ## The swipe that takes the camera, 0 before it and 1 once the arm is past.
 static func swipe(entry: String, time: float) -> float:

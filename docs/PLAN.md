@@ -275,6 +275,17 @@ herramientas para mirarlo están en la guía de desarrollo.
   escenas), y tendido queda de espaldas: mira si alguna postura quedó rara
   contra una pared. Películas nuevas: `evidence/captura_frente.avi`,
   `captura_espalda.avi` y `captura_armario.avi`.
+- [ ] **La tercera vuelta (12 de octubre), por ver.** (a) **El desplome del
+  cuerpo:** ya no gira de una pieza; cae, le ceden las piernas, queda sentado
+  y doblado un instante y se va de espaldas, con la cabeza y los brazos por
+  detrás. Son curvas, no física de articulaciones: ¿se lee como alguien que
+  cae, o hace falta un ragdoll de verdad (más trabajo, y no saldría igual en
+  todas las máquinas)? (b) **Los materiales del cuerpo:** más mates, sin
+  brillo, la ropa un tono más abajo. Es el techo de lo que se arregla sin
+  tocar los modelos: si sigue pareciendo de plástico, es cosa de texturas o
+  de modelos (apartado 4). (c) **La máscara que se te viene encima** justo
+  antes del manotazo (de 13 a 8 cm en 0,07 s): ¿asusta más, es demasiado, o
+  la quieres aún más cerca?
 - [ ] **La captura rehecha (12 de octubre), con gente** (EXECUTION.md, 18.2):
   quien no la ha visto, ¿salta, y dice que vio una cara?; ¿sabe qué le mató y
   dónde quedó la cámara?; a la tercera y a la quinta muerte, ¿molesta, o nota

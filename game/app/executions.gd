@@ -469,14 +469,13 @@ func fall_dir() -> Vector3:
 	return fall_way(float(execution.yaw), 0.0 if straight else float(execution.get("side", 1.0)))
 
 func body_rest() -> Vector3:
-	if bool(execution.get("slump", false)): return drop_point() + fall_dir() * SCORE.seat_back(float(execution.get("room", 0.0)))
-	return drop_point() + fall_dir() * 0.85
+	var room := float(execution.get("room", 0.0))
+	return drop_point() + fall_dir() * (SCORE.seat_back(room) + 0.3 * sin(SCORE.seat_lean(room)))
 
 ## Where its head comes to lie (or to hang, sitting).
 func head_rest() -> Vector3:
-	if not bool(execution.get("slump", false)): return drop_point() + fall_dir() * 1.7
 	var room := float(execution.get("room", 0.0))
-	return drop_point() + fall_dir() * (SCORE.seat_back(room) + 0.1 + 0.45 * sin(SCORE.seat_lean(room)))
+	return drop_point() + fall_dir() * (SCORE.seat_back(room) + 0.1 + 0.7 * sin(SCORE.seat_lean(room)))
 
 ## What the tape of whoever dies needs to know of the place (death_tape.plan).
 func staging() -> Dictionary:
