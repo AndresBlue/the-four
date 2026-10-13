@@ -285,4 +285,6 @@ Los cinco audios nuevos ahora están en `source_assets/audio/`; Sunman y The Boy
 
 ## Paquete sfx
 
+**La sangre** (`sfx/blood/` → `assets/audio/sfx/blood/`, copiados tal cual): cinco archivos que el autor descargó y cortó el 13 de octubre de 2026 de dos grabaciones de Freesound, las dos **Creative Commons 0** (comprobado en su página): «Blood Gush», de FlaxGod (https://freesound.org/people/FlaxGod/sounds/654101/: un trapo mojado escurrido, Zoom H1) → `blood-gush-1..4.ogg`; y «Blood Gush / Spray», de clif_creates (https://freesound.org/people/clif_creates/sounds/345985/: un pomelo exprimido, grabado de cerca) → `hemorrhage.ogg`. No piden atribución; se anota de dónde salen. `assets/decals/blood_atlas.png` no viene de ningún sitio: lo dibuja `tools/textures/bake_blood.py`.
+
 33 sonidos aportados en `sfx/`, conservados sin modificación. Ocho de ellos ya tienen ficha y licencia (Freesound, arriba); falta anotar qué archivo es cada uno. Las copias activas y preparadas están en `assets/audio/sfx/`; [AUDIO.md](AUDIO.md) distingue 23 asignaciones actuales y diez reservas. Inventario con SHA-256 en `docs/assets/sfx_inventory.json`. Origen/autoría y permisos de distribución pendientes; no se atribuye licencia libre por el nombre del archivo.

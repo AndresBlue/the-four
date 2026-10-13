@@ -28,6 +28,19 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const STAIN := preload("res://game/presentation/shaders/blood.gdshader")
 const POOL := preload("res://game/presentation/shaders/blood_pool.gdshader")
 const ATLAS := preload("res://assets/decals/blood_atlas.png")
+## What it sounds like (docs/AUDIO.md): a wet rag wrung out, four takes of it
+## -- what leaves the back at the grab, and each welling of the chest --, and
+## an artery let go, a spray that ends in spurts, for the blow. Both recorded
+## for this and given to the public domain (freesound.org: "Blood Gush",
+## FlaxGod; "Blood Gush / Spray", clif_creates), cut by the author.
+const GUSHES := ["res://assets/audio/sfx/blood/blood-gush-1.ogg", "res://assets/audio/sfx/blood/blood-gush-2.ogg", "res://assets/audio/sfx/blood/blood-gush-3.ogg", "res://assets/audio/sfx/blood/blood-gush-4.ogg"]
+const SPRAY := "res://assets/audio/sfx/blood/hemorrhage.ogg"
+## How loud: the grab's under the scream that is on top of it, the blow's as
+## loud as the blow, and each welling quieter than the last (dB).
+const GRAB_DB := -9.0
+const SPRAY_DB := -2.0
+const WELL_DB := -6.0
+const WELL_FADE := 3.5
 var level
 
 ## What stops a drop: walls, floors, ceilings and furniture. Not doors or the
@@ -87,11 +100,33 @@ func begin(execution: Dictionary) -> void:
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	var stains: Array = []
 	for drop in drops: land(space, scene, rng, drop, stains)
-	var record := {"id": int(execution.get("id", -1)), "clock": 0.0, "nodes": [], "materials": [], "pool": null, "air": null, "flying": [], "still": false, "scene": scene, "stains": stains}
+	var record := {"id": int(execution.get("id", -1)), "clock": 0.0, "nodes": [], "materials": [], "pool": null, "air": null, "flying": [], "still": false, "scene": scene, "stains": stains, "sounds": sounds(scene, rng, sparing)}
 	lay(record, stains)
 	pool(record, space, scene, rng)
 	if not sparing: fly(record, drops)
 	records.append(record)
+
+## What is heard of it, and when: [{time, path, at, db}], played as the
+## clock gets to each (heard), from where the wound is by then.
+func sounds(scene: Dictionary, rng: RandomNumberGenerator, sparing: bool) -> Array:
+	var said: Array = [
+		{"time": 0.04, "path": GUSHES[rng.randi_range(0, GUSHES.size() - 1)], "at": chest_at(scene, 0.04), "db": GRAB_DB},
+		{"time": SCORE.KILL_TIME + 0.02, "path": SPRAY, "at": face_at(scene, SCORE.KILL_TIME), "db": SPRAY_DB},
+	]
+	if sparing: return said
+	var first := rng.randi_range(0, GUSHES.size() - 1)
+	for pulse in 4:
+		var at: float = SCORE.DROP_TIME + 0.04 + 0.21 * float(pulse)
+		said.append({"time": at, "path": GUSHES[(first + pulse) % GUSHES.size()], "at": chest_at(scene, at), "db": WELL_DB - WELL_FADE * float(pulse)})
+	return said
+
+func heard(record: Dictionary, clock: float) -> void:
+	var left: Array = record.sounds
+	while not left.is_empty() and clock >= float(left[0].time):
+		var cue: Dictionary = left.pop_front()
+		# Late by more than a moment (a capture taken up half way), it is not
+		# played at all: a spray that started a second ago is not starting now.
+		if clock - float(cue.time) < 0.25 and level.world_audio.enabled: level.world_audio.play_at(String(cue.path), cue.at, float(cue.db), RID(), 0.0)
 
 ## What of the scene the blood needs, kept: the scene itself will be gone.
 func snapshot(execution: Dictionary) -> Dictionary:
@@ -390,6 +425,7 @@ func _process(delta: float) -> void:
 		for material in record.materials: (material as ShaderMaterial).set_shader_parameter("clock", clock)
 		if record.pool != null: (record.pool as ShaderMaterial).set_shader_parameter("age", clock - float(record.pool_from))
 		if is_instance_valid(record.air): streak(record, clock, eye)
+		heard(record, clock)
 		if clock > SETTLED: record.still = true
 
 ## The drops in the air at a second of the clock, put where they are.

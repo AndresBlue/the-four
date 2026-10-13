@@ -298,8 +298,10 @@ herramientas para mirarlo están en la guía de desarrollo.
   Mírala en el banco (tecla B la quita y la pone) y dime: (a) si **sobre
   moqueta** se ve lo bastante —es oscura sobre oscuro y se lee por el brillo;
   en baldosa se ve mucho más—; (b) si la **cantidad** es la que querías o
-  quieres más; (c) si las **gotas en la lente** suman o distraen; (d) si la
-  mancha de la ropa se nota.
+  quieres más; (c) si las **gotas en la lente**, ya gruesas y resbalando,
+  son lo que pedías; (d) si la mancha de la ropa se nota; (e) **el sonido**:
+  si el chorro del golpe (5,6 s, sigue después del corte) es largo, y si los
+  niveles van bien contra el grito.
 - [ ] **Un cuelgue en el banco (13 de octubre, 00:25), sin reproducir.** No
   fue del juego: Windows registró a esa hora un reinicio del controlador
   gráfico (`nvlddmkm`, suceso 153, el único en dos semanas) y Godot cayó
@@ -603,14 +605,9 @@ pueda jugar entero sin tocar el teclado.
 
 ## 4 · Assets que faltan (tuyos)
 
-- [ ] **Sonido de la sangre** (no hay ninguna grabación de líquido en el
-  proyecto, y no se sintetizan): una salpicadura contra pared o suelo, un
-  goteo sobre moqueta y sobre baldosa, y un chorro o borboteo corto. Con
-  licencia libre (CC0) se pueden bajar, con tu permiso para cada archivo.
-- [ ] **Salpicaduras fotografiadas** (opcional): el atlas de formas está
-  dibujado por `tools/textures/bake_blood.py`; con fotos de sangre real o
-  simulada, CC0, las manchas ganarían irregularidad. El shader ya lee un
-  atlas: sería cambiar la imagen.
+- [ ] **El goteo de la sangre** no suena: falta una gota espesa sobre
+  moqueta y otra sobre baldosa (el chorro y el borboteo ya están, traídos
+  por ti el 13 de octubre: `assets/audio/sfx/blood/`).
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía, y es el silencio más audible del piso: cada cierre de
