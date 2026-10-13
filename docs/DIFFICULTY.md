@@ -33,7 +33,7 @@ Punto de partida, decidido el 4 de octubre de 2026: **lo que hay hoy se parece a
 
 | | Para quién | Cómo se siente | Qué castiga |
 |---|---|---|---|
-| **Apacible** | Quien no juega mucho, o tiene poca mano | **Lenta de mente.** Aparece a menudo, se le nota cuando empieza a fijarse en ti, tarda en reaccionar, corre menos que tú, se cansa y se olvida. Correr te salva casi siempre | Quedarse quieto delante de ella, o meterse en un callejón |
+| **Apacible** | Quien no juega mucho, o tiene poca mano | **Lenta de mente.** Aparece a menudo, se le nota cuando empieza a fijarse en ti, tarda en reaccionar y en arrancar, corre lo que tú y no más, se cansa y se olvida. Correr la mantiene a raya mientras te dure el aliento | Quedarse quieto delante de ella, o meterse en un callejón |
 | **Equilibrada** (la de fábrica) | La mayoría | Los mismos encuentros; salir de ellos pide romperle la vista, no solo correr. Un error se paga con una persecución; dos seguidos, con una muerte | No romperle la vista, hacer ruido cerca |
 | **Desafiante** (la de hoy) | Quien ya conoce el piso | Verte es casi cazarte: hay que jugar a no ser visto | Dejarse ver, esconderse tarde |
 | **Pesadilla** | Equipos que ya salen en Desafiante | Parece que ha aprendido de vosotros: corta el paso, vuelve, mira donde os escondéis siempre | La rutina: repetir escondite, ruta o costumbre |
@@ -51,9 +51,9 @@ Los valores de **Desafiante son los de hoy** (comprobados en el código). Los de
 | Oído (sobre la tabla de ruidos) | ×0,85 | ×0,9 | ×1 | ×1,2 |
 | Linterna que la atrae, hasta | 35 m | 40 m | 45 m | 55 m |
 | Aviso antes de perseguir (se para, se gira y chilla) | 2,0 s | 1,5 s | 1,2 s | 0,8 s |
-| Arranque de la persecución (velocidad inicial / aceleración) | 2,0 m/s / 2,0 m/s² | 2,3 / 2,8 | 2,5 / 3,2 | 3,0 / 4,0 |
-| Velocidad de caza (tu carrera: 6,0 m/s) | 5,6 | 6,1 | 6,4 | 6,7 |
-| Se cansa de perseguir aunque te vea | a los 12 s | a los 25 s | nunca | nunca |
+| Arranque de la persecución (velocidad inicial / aceleración) | 2,0 m/s / 1,8 m/s² | 2,3 / 2,6 | 2,5 / 3,2 | 3,0 / 4,0 |
+| Velocidad de caza (tu carrera: 6,0 m/s) | 6,0 | 6,0 | 6,4 | 6,7 |
+| Se cansa de perseguir aunque te vea | a los 7 s | a los 12 s | nunca | nunca |
 | Sin verte, deja la persecución a los | 3 s | 5,5 s | 7 s | 10 s |
 | Se rinde en una búsqueda sin pistas | 4–6 s | 7–9 s | 8–10 s | 12–15 s |
 | Abre un armario «por si acaso» al buscar | nunca | 1 de cada 10 | 1 de cada 5 | 1 de cada 2 |
@@ -64,7 +64,7 @@ Los valores de **Desafiante son los de hoy** (comprobados en el código). Los de
 | Sale por otra tele encendida | no | cada 40 s como mucho | cada 25 s | cada 12 s |
 | Protección al empezar el piso | 25 s | 20 s | 15 s | 10 s |
 
-En Apacible corre menos que tú, y si te sigue viendo, a los 12 s se cansa: correr en cualquier dirección te salva casi siempre. **Lo que ya no hay en ninguna es estocada que esquivar** (12 de octubre de 2026, decisión del autor): a su alcance —más corto cuanto más fácil— te tiene en el acto; la tabla decía 1,8 y 2,2 m para las dos fáciles, y el código, 1,6 y 2,0, que es lo que vale. Desde Equilibrada correr ya no basta: hay que romperle la vista.
+**Desde el 13 de octubre de 2026 las dos fáciles corren a 6,0 m/s, lo mismo que tú** (decisión del autor tras verla en el banco: a 4,6 y 5,3 la sentía demasiado lenta; esta tabla decía además 5,6 y 6,1, que no era lo que había en el código, y otros dos números de sus filas vecinas tampoco lo eran: van corregidos). Lo que las hace fáciles ya no es que corran menos, sino que tardan más en arrancar (chillan 2,0 y 1,5 s y aceleran más despacio), se cansan aunque te vean (a los 7 y a los 12 s) y te pierden antes. En Apacible, correr la mantiene a raya pero no la deja atrás: te salva mientras te dure el aliento o hasta que se canse. **Sin volver a medir con bots**: las cuentas del apartado 6 son de cuando corría menos. **Lo que ya no hay en ninguna es estocada que esquivar** (12 de octubre de 2026, decisión del autor): a su alcance —más corto cuanto más fácil— te tiene en el acto; la tabla decía 1,8 y 2,2 m para las dos fáciles, y el código, 1,6 y 2,0, que es lo que vale. Desde Equilibrada correr ya no basta: hay que romperle la vista.
 
 ### El director: cuántos encuentros hay
 
@@ -107,8 +107,8 @@ Una por cada paso de la escena:
 1. **«La vi»: se cruza a la vista.** La jugada preferida del director: la hace pasar por donde vas a mirar —un pasillo que cruza el tuyo, el fondo de un salón—, a 15–25 m y antes de que ella te vea a ti. La mayoría de los encuentros empiezan porque la ves tú primero.
 2. **«¿Me habrá visto?»: se le nota la duda.** Cuando empieza a fijarse en ti se para, gira la cabeza hacia ti y chasquea; si no pasa de ahí, sacude la cabeza y sigue su camino. Hoy esa sospecha es invisible.
 3. **«Creo que sí»: aviso largo.** El chillido antes de perseguir dura 2 s y el arranque es lento: da tiempo a decidir aunque no sepas qué hacer.
-4. **«Voy a correr»: corre menos que tú y se cansa.** Ver la tabla: 5,6 m/s y 12 s de persecución como mucho.
-5. **«Espero que no me alcance»: alcance corto.** ~~Estocada lenta y con aviso~~: el autor la quitó el 12 de octubre de 2026 —el golpe es instantáneo en las cuatro—. Lo que queda de este paso es que en Apacible tiene que llegar a 1,6 m, y corre menos que tú. **Sin medir** con bots lo que esto cambia en las cuentas del apartado 6.
+4. **«Voy a correr»: corre lo que tú y se cansa.** Ver la tabla: 6,0 m/s —desde el 13 de octubre de 2026; antes menos que tú— y 7 s de persecución como mucho.
+5. **«Espero que no me alcance»: alcance corto.** ~~Estocada lenta y con aviso~~: el autor la quitó el 12 de octubre de 2026 —el golpe es instantáneo en las cuatro—. Lo que queda de este paso es que en Apacible tiene que llegar a 1,6 m, y no corre más que tú. **Sin medir** con bots lo que esto cambia en las cuentas del apartado 6.
 6. **«Me salvé»: te pierde enseguida, y lo dice.** Un gruñido de frustración al rendirse, que se oye: sabes que has escapado. (También en Equilibrada. En Pesadilla, a veces lo finge y vuelve.)
 7. **Y otra vez.** Tras un respiro corto, el director prepara el siguiente encuentro (la fila «si pasa este rato sin ningún encuentro»).
 8. **Solo abre el armario en el que te vio entrar.** Ni «por si acaso», ni por un ruido al lado: esconderse es siempre una salida.

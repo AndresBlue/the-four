@@ -375,7 +375,7 @@ func guest(words: String, index: int) -> void:
 	check("Entra en el piso del anfitrión", await wait_for(playing, 90.0))
 	var match_net = level.match_net
 	check("The Locust es una réplica en el invitado", level.locust.control == "puppet")
-	check("Y contra la criatura de la dificultad que eligió", level.difficulty == "equilibrada" and is_equal_approx(level.locust.chase_speed, float(preload("res://game/floors/difficulty.gd").PROFILES.equilibrada.chase_speed)) and level.locust.chase_speed < 6.0)
+	check("Y contra la criatura de la dificultad que eligió", level.difficulty == "equilibrada" and is_equal_approx(level.locust.chase_speed, float(preload("res://game/floors/difficulty.gd").PROFILES.equilibrada.chase_speed)) and level.locust.chase_speed < float(preload("res://game/floors/difficulty.gd").PROFILES.desafiante.chase_speed))
 	check("Juega con las reglas que puso el anfitrión, y las demás como siempre", level.rule("plan_fade") == 300 and is_equal_approx(level.floor_map.forget, 300.0) and level.rule("restarts") == 1 and level.rule("blackout") == 1)
 	check("Ve los cuerpos de los otros dos", match_net.bodies.size() == 2 and match_net.bodies.has(1))
 	check("Ve moverse al anfitrión", await wait_for(func(): return not match_net.bodies[1].states.is_empty(), 15.0))

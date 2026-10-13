@@ -238,7 +238,7 @@ Persianas, televisores y documentos son herramientas/pistas opcionales, nunca li
 | Cuerpo a la vista para distinguirte al instante / si no, tarda | más de la mitad (5 puntos de 7) / 4 s | la cabeza y medio torso (4 de 7) / 2 s | cualquier parte / nada | cualquier parte / nada |
 | Oído / linterna que la atrae | ×0,7 / 35 m | ×0,75 / 40 m | ×1 / 45 m | ×1,2 / 55 m |
 | Aviso antes de perseguir | 2,0 s | 1,5 s | 1,2 s | 0,8 s |
-| Velocidad de caza (sin verte); tú corres a 6,0 | 4,6 (4,0) m/s | 5,3 (4,6) | 6,4 (5,2) | 6,7 (5,6) |
+| Velocidad de caza (sin verte); tú corres a 6,0 | 6,0 (4,0) m/s | 6,0 (4,6) | 6,4 (5,2) | 6,7 (5,6) |
 | Sin verte deja la persecución / se rinde buscando | 3 s / 4–6 s | 5,5 s / 7–9 s | 7 s / 8–10 s | 10 s / 12–15 s |
 | Abre un armario «por si acaso» | nunca | 1 de 10 | 1 de 5 | 1 de 2 |
 | Te coge, en el acto, desde / si no puede, se rehace en | 1,6 m / 1,0 s | 2,0 m / 0,7 s | 2,4 m / 0,6 s | 2,6 m / 0,5 s |

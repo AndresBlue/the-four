@@ -81,7 +81,11 @@ func run() -> void:
 	# worth what the team went through; the game as it was has none of that.
 	var even: Dictionary = DIFFICULTY.PROFILES.equilibrada
 	check("Apacible la espacia y la aleja más que ninguna, y un respiro vale por lo vivido", float(easiest.lead_every[0]) >= float(even.lead_every[0]) and float(even.lead_every[0]) >= float(desafiante.lead_every[0]) and float(easiest.prowl_min) >= float(desafiante.prowl_min) and float(easiest.calm) > float(even.calm) and float(even.calm) > 0.0 and float(desafiante.calm) == 0.0 and float(easiest.solo_ease) > 1.0 and float(desafiante.solo_ease) == 1.0)
-	check("De quien corre se escapa corriendo en las dos fáciles, y en Apacible con margen", float(easiest.chase_speed) <= 5.0 and float(even.chase_speed) < 6.0 and float(desafiante.chase_speed) > 6.0)
+	# The two easier ones run as fast as a survivor does and no faster (6 m/s,
+	# the author's word on 13 October 2026: at 4.6 and 5.3 it read as slow):
+	# running keeps it off, it does not leave it behind; from Desafiante up it
+	# catches whoever only runs.
+	check("En las dos fáciles corre lo que tú, ni más ni menos; desde Desafiante, más", is_equal_approx(float(easiest.chase_speed), 6.0) and is_equal_approx(float(even.chase_speed), 6.0) and float(desafiante.chase_speed) > 6.0)
 	check("Las teles: Apacible no viaja, y cuanto más difícil, más a menudo", hops[0] == 0.0 and hops[1] > hops[2] and hops[2] > hops[3])
 	check("La clemencia: sin límite, dos, una, ninguna", mercies == [-1, 2, 1, 0])
 	var alone: Array = DIFFICULTY.ORDER.map(func(id): return int(DIFFICULTY.PROFILES[id].solo_restarts))

@@ -536,8 +536,9 @@ pueda jugar entero sin tocar el teclado.
   sobresalto, cámara caída, cinta, finta de armario y repetición; qué se hizo,
   con qué se comprobó y qué falta, en [EXECUTION.md](EXECUTION.md), sección
   18). Lo que hay que juzgar jugando está en el apartado 1.
-  - [ ] Sin la embestida, lo que DIFFICULTY.md mide de cada dificultad
-    (cuántas persecuciones acaban en huida) está sin volver a medir con bots.
+  - [ ] Sin la embestida, y con Apacible y Equilibrada corriendo a 6,0 m/s
+    (13 de octubre), lo que DIFFICULTY.md mide de cada dificultad (cuántas
+    persecuciones acaban en huida) está sin volver a medir con bots.
   - [ ] Los brazos de la propia bestia atraviesan paredes en sitios
     estrechos (no se ha tocado: solo el cuerpo de la víctima), y el
     Detective Masculino, sin esqueleto, no se puede corregir hueso a hueso.

@@ -26,7 +26,7 @@ const FIRST := "equilibrada"
 const NAMES := {"apacible": "Apacible", "equilibrada": "Equilibrada", "desafiante": "Desafiante", "pesadilla": "Pesadilla"}
 ## What each one is like, said to whoever is choosing.
 const NOTES := {
-	"apacible": "Lenta de mente. La verás a menudo, pero tarda en reaccionar, corre menos que tú y se olvida pronto. Para quien no juega mucho.",
+	"apacible": "Lenta de mente. La verás a menudo, pero tarda en reaccionar y en arrancar, corre lo que tú y no más, y se olvida pronto. Para quien no juega mucho.",
 	"equilibrada": "Los mismos encuentros, pero salir de ellos pide romperle la vista, no solo correr. La de casi todo el mundo.",
 	"desafiante": "Verte es casi cazarte: hay que jugar a no ser visto. Para quien ya conoce el piso.",
 	"pesadilla": "Ve más, oye más, insiste más y no perdona. Para equipos que ya salen en Desafiante.",
@@ -36,8 +36,8 @@ const NOTES := {
 ## Only what the numbers below already do: the behaviours of each still to
 ## come (docs/DIFFICULTY.md) are not promised here.
 const TRAITS := {
-	"apacible": ["Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar.", "Corre bastante menos que tú y se cansa enseguida de perseguir.", "Después de un susto te deja un buen rato en paz.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
-	"equilibrada": ["Duda un momento antes de reaccionar, y asomado a medias tarda en verte.", "Corre algo menos que tú, y se cansa de una persecución larga.", "Después de un encuentro te da un respiro.", "Si caes, la etapa vuelve a empezar: una vez a solas, dos en equipo."],
+	"apacible": ["Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar.", "Corre lo mismo que tú, pero le cuesta arrancar y se cansa enseguida de perseguir.", "Después de un susto te deja un buen rato en paz.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
+	"equilibrada": ["Duda un momento antes de reaccionar, y asomado a medias tarda en verte.", "Corre lo mismo que tú, y se cansa de una persecución larga.", "Después de un encuentro te da un respiro.", "Si caes, la etapa vuelve a empezar: una vez a solas, dos en equipo."],
 	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida; a solas, ninguna."],
 	"pesadilla": ["Ve y oye más lejos que ninguna.", "Reacciona al instante, insiste y registra más armarios.", "No se perdona ninguna etapa perdida."],
 }
@@ -84,7 +84,7 @@ const TRAITS := {
 const PROFILES := {
 	"apacible": {
 		"sight_range": 55.0, "notice": 0.6, "hearing": 0.7, "torch_range": 35.0,
-		"alert_time": 2.0, "chase_start": 2.0, "chase_accel": 1.8, "chase_speed": 4.6, "track_speed": 4.0,
+		"alert_time": 2.0, "chase_start": 2.0, "chase_accel": 1.8, "chase_speed": 6.0, "track_speed": 4.0,
 		"lose_after": 3.0, "give_up": [4.0, 6.0], "peek_chance": 0.0,
 		"attack_range": 1.6, "recover": 1.0, "wardrobe": 1.28,
 		"grace": 25.0, "tv_hop": 0.0, "lift_wait": 25.0, "lift_hold": 30.0,
@@ -99,7 +99,7 @@ const PROFILES := {
 	},
 	"equilibrada": {
 		"sight_range": 60.0, "notice": 0.8, "hearing": 0.75, "torch_range": 40.0,
-		"alert_time": 1.5, "chase_start": 2.3, "chase_accel": 2.6, "chase_speed": 5.3, "track_speed": 4.6,
+		"alert_time": 1.5, "chase_start": 2.3, "chase_accel": 2.6, "chase_speed": 6.0, "track_speed": 4.6,
 		"lose_after": 5.5, "give_up": [7.0, 9.0], "peek_chance": 0.1,
 		"attack_range": 2.0, "recover": 0.7, "wardrobe": 1.12,
 		"grace": 20.0, "tv_hop": 40.0, "lift_wait": 20.0, "lift_hold": 25.0,
