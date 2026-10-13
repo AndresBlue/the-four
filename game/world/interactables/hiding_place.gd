@@ -88,9 +88,6 @@ var peeks := {}
 ## 1: by occupant, and the most of them.
 var eases := {}
 var ease := 0.0
-## Leaves pulled wide open one by one (the creature searching it).
-var wide := {"left": 0.0, "right": 0.0}
-var leaf_motion := {}
 ## Only the first time the doors part during a stay makes a sound.
 var peeked := false
 var pivots := {}
@@ -281,24 +278,7 @@ func set_plug() -> void:
 	if moved_here: plug.disabled = true
 
 func leaf_angle(side: String) -> float:
-	return maxf(maxf(maxf(opening, wide[side]) * OPEN_ANGLE, peek[side] * PEEK_ANGLE), ease * EASE_ANGLE)
-
-## The creature pulls one leaf open; the other stays as it is.
-func open_leaf(side: String, seconds := 0.35) -> void:
-	if leaf_motion.has(side) and is_instance_valid(leaf_motion[side]): leaf_motion[side].kill()
-	var tween := create_tween()
-	tween.tween_method(func(value): wide[side] = value; apply_angles(), wide[side], 1.0, seconds).set_trans(Tween.TRANS_SINE)
-	leaf_motion[side] = tween
-	pulled = true
-	close_timer = 6.0
-
-func close_leaves(seconds := 0.7) -> void:
-	for side in wide:
-		if leaf_motion.has(side) and is_instance_valid(leaf_motion[side]): leaf_motion[side].kill()
-		var tween := create_tween()
-		var which: String = side
-		tween.tween_method(func(value): wide[which] = value; apply_angles(), wide[which], 0.0, seconds).set_trans(Tween.TRANS_SINE)
-		leaf_motion[which] = tween
+	return maxf(maxf(opening * OPEN_ANGLE, peek[side] * PEEK_ANGLE), ease * EASE_ANGLE)
 
 func apply_angles() -> void:
 	# Left leaf swings out with a negative turn, the right one with a positive turn.
@@ -318,7 +298,6 @@ func enter(player: CharacterBody3D) -> void:
 		occupants.append(player)
 	peeks.erase(player)
 	sum_peeks()
-	wide = {"left": 0.0, "right": 0.0}
 	peeked = false
 	pulled = false
 	set_plug()
@@ -412,7 +391,6 @@ func _physics_process(delta: float) -> void:
 	# other.
 	if close_timer <= 0.0 and not held_open and not (pulled and is_instance_valid(occupant)):
 		swing(0.0, 0.8)
-		close_leaves(0.8)
 
 func available_exit(player: CharacterBody3D) -> Vector3:
 	var capsule := CapsuleShape3D.new()

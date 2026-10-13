@@ -23,7 +23,7 @@ var failed := 0
 ## those stay high in all four (docs/DIFFICULTY.md, decided 4 October 2026).
 const HARDER := {
 	"sight_range": 1, "notice": 1, "hearing": 1, "torch_range": 1, "alert_time": -1, "chase_start": 1, "chase_accel": 1,
-	"chase_speed": 1, "track_speed": 1, "lose_after": 1, "give_up": 1, "peek_chance": 1, "attack_range": 1, "windup": -1,
+	"chase_speed": 1, "track_speed": 1, "lose_after": 1, "give_up": 1, "peek_chance": 1, "attack_range": 1,
 	"recover": -1, "wardrobe": -1, "grace": -1, "lift_wait": -1, "lift_hold": -1,
 	"peak_max": 1, "peak_tense": 1, "death_ease": -1, "double_back": 1,
 	"distract_rest": 1, "burnt_every": -1,
@@ -53,7 +53,7 @@ func run() -> void:
 		"sight_range": LOCUST.SIGHT_RANGE, "torch_range": LOCUST.TORCH_NOTICE_RANGE, "alert_time": LOCUST.ALERT_TIME,
 		"chase_start": LOCUST.CHASE_START_SPEED, "chase_accel": LOCUST.CHASE_ACCELERATION, "chase_speed": LOCUST.CHASE_SPEED,
 		"track_speed": LOCUST.TRACK_SPEED, "lose_after": LOCUST.LOSE_AFTER, "peek_chance": LOCUST.SEARCH_PEEK_CHANCE,
-		"attack_range": LOCUST.ATTACK_RANGE, "windup": LOCUST.WINDUP_TIME, "recover": LOCUST.RECOVER_TIME,
+		"attack_range": LOCUST.ATTACK_RANGE, "recover": LOCUST.RECOVER_TIME,
 		"tv_hop": TVS.HOP_REST, "lift_wait": LIFTS.CREATURE_WAIT, "lift_hold": LIFTS.CREATURE_HOLD,
 		"prowl_min": DIRECTOR.PROWL_MIN, "peak_max": DIRECTOR.PEAK_MAX, "peak_tense": DIRECTOR.PEAK_MAX_TENSE,
 		"rest_chase": DIRECTOR.REST_AFTER_CHASE, "rest_death": DIRECTOR.REST_AFTER_DEATH, "death_ease": DIRECTOR.DEATH_EASE,
@@ -98,7 +98,7 @@ func run() -> void:
 		var profile: Dictionary = DIFFICULTY.PROFILES[id]
 		var creature = level.locust
 		var director = level.director
-		var given: bool = level.difficulty == id and is_equal_approx(creature.sight_range, float(profile.sight_range)) and is_equal_approx(creature.chase_speed, float(profile.chase_speed)) and is_equal_approx(creature.alert_time, float(profile.alert_time)) and is_equal_approx(creature.give_up_hard, float(profile.give_up[1])) and is_equal_approx(creature.wardrobe_steps().done, 2.5 * float(profile.wardrobe)) and is_equal_approx(creature.grace, float(profile.grace))
+		var given: bool = level.difficulty == id and is_equal_approx(creature.sight_range, float(profile.sight_range)) and is_equal_approx(creature.chase_speed, float(profile.chase_speed)) and is_equal_approx(creature.alert_time, float(profile.alert_time)) and is_equal_approx(creature.give_up_hard, float(profile.give_up[1])) and is_equal_approx(creature.wardrobe_steps().done, float(LOCUST.WARDROBE_TIME.done) * float(profile.wardrobe)) and is_equal_approx(creature.grace, float(profile.grace))
 		var told: bool = director != null and director.lead_every == Vector2(profile.lead_every[0], profile.lead_every[1]) and is_equal_approx(director.prowl_min, float(profile.prowl_min)) and is_equal_approx(director.rest_death, float(profile.rest_death))
 		var rest: bool = is_equal_approx(level.lifts.wait_lobby, float(profile.lift_wait)) and is_equal_approx(level.lifts.hold_after, float(profile.lift_hold)) and level.session.restarts_allowed == int(profile.restarts)
 		check("Un piso en %s le da sus números a la criatura, al director, al ascensor y a la clemencia" % DIFFICULTY.title(id), given and told and rest)

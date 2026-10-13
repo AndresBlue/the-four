@@ -538,7 +538,7 @@ func versus_host() -> void:
 	level.player.global_position = hide.to_global(hide.exit_offset) + Vector3(0, 0.1, 0)
 	await pause_for(0.5)
 	check("El superviviente se esconde", level.match_net.use_hide(hide, true) and level.player.hidden)
-	check("Abre el armario puerta a puerta", await wait_for(func(): return hide.wide.right > 0.5, 30.0) and await wait_for(func(): return hide.wide.left > 0.5, 5.0))
+	check("Abre el armario de golpe, las dos hojas", await wait_for(func(): return hide.pulled and hide.opening > 0.5, 30.0))
 	check("Lo saca del armario y lo ejecuta en el aire", await wait_for(func(): return not level.execution.is_empty() and not level.player.hidden, 10.0) and await wait_for(func(): return level.player.global_position.y > 0.8, 3.0))
 	check("La ejecución no es instantánea", level.session.state == level.session.State.PLAYING)
 	# One against one there is no team to forgive: the execution ends the floor.
@@ -619,7 +619,7 @@ func versus_hunter() -> void:
 	await pause_for(0.6)
 	creature.begin_wardrobe(hide)
 	level.match_net.locust_open_hide(hide)
-	check("El armario se abre puerta a puerta también aquí", await wait_for(func(): return hide.wide.right > 0.5 and hide.wide.left > 0.5, 15.0))
+	check("El armario se abre de golpe también aquí", await wait_for(func(): return hide.pulled and hide.opening > 0.5, 15.0))
 	check("El ritual del armario lo deja quieto un momento", creature.mode == creature.Mode.WARDROBE)
 	check("Abrir el armario acaba con quien estaba dentro", await wait_for(func(): return level.session.restarts >= 1 or level.session.state == level.session.State.FAILED, 25.0))
 	check("Y el piso termina cuando ya no hay a quién levantar", await wait_for(func(): return level.session.state == level.session.State.FAILED and level.ui.screen == "online_failed", 40.0))

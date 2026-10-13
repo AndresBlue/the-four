@@ -48,7 +48,7 @@ const TRAITS := {
 ##            chase), chase_start (m/s) and chase_accel (m/s2), chase_speed
 ##            and track_speed (m/s), lose_after (s without seeing you),
 ##            give_up ([s, s] without a clue), peek_chance (a wardrobe opened
-##            on a guess), attack_range (m), windup and recover (s),
+##            on a guess), attack_range (m: within it, it has you at once), recover (s),
 ##            wardrobe (x the time a wardrobe takes), grace (s at the start),
 ##            tv_hop (s between steps through a set; 0: never)
 ##  lifts     lift_wait (s in the lobby) and lift_hold (s since the doors
@@ -86,7 +86,7 @@ const PROFILES := {
 		"sight_range": 55.0, "notice": 0.6, "hearing": 0.7, "torch_range": 35.0,
 		"alert_time": 2.0, "chase_start": 2.0, "chase_accel": 1.8, "chase_speed": 4.6, "track_speed": 4.0,
 		"lose_after": 3.0, "give_up": [4.0, 6.0], "peek_chance": 0.0,
-		"attack_range": 1.6, "windup": 0.6, "recover": 1.0, "wardrobe": 1.28,
+		"attack_range": 1.6, "recover": 1.0, "wardrobe": 1.28,
 		"grace": 25.0, "tv_hop": 0.0, "lift_wait": 25.0, "lift_hold": 30.0,
 		"lead_every": [30.0, 45.0], "prowl_min": 20.0, "peak_max": 15.0, "peak_tense": 10.0,
 		"rest_chase": 35.0, "rest_death": 55.0, "death_ease": 10.0, "double_back": 0.0,
@@ -101,7 +101,7 @@ const PROFILES := {
 		"sight_range": 60.0, "notice": 0.8, "hearing": 0.75, "torch_range": 40.0,
 		"alert_time": 1.5, "chase_start": 2.3, "chase_accel": 2.6, "chase_speed": 5.3, "track_speed": 4.6,
 		"lose_after": 5.5, "give_up": [7.0, 9.0], "peek_chance": 0.1,
-		"attack_range": 2.0, "windup": 0.4, "recover": 0.7, "wardrobe": 1.12,
+		"attack_range": 2.0, "recover": 0.7, "wardrobe": 1.12,
 		"grace": 20.0, "tv_hop": 40.0, "lift_wait": 20.0, "lift_hold": 25.0,
 		"lead_every": [28.0, 42.0], "prowl_min": 19.0, "peak_max": 20.0, "peak_tense": 12.0,
 		"rest_chase": 35.0, "rest_death": 50.0, "death_ease": 9.0, "double_back": 0.2,
@@ -116,7 +116,7 @@ const PROFILES := {
 		"sight_range": 70.0, "notice": 1.0, "hearing": 1.0, "torch_range": 45.0,
 		"alert_time": 1.2, "chase_start": 2.5, "chase_accel": 3.2, "chase_speed": 6.4, "track_speed": 5.2,
 		"lose_after": 7.0, "give_up": [8.0, 10.0], "peek_chance": 0.2,
-		"attack_range": 2.4, "windup": 0.3, "recover": 0.6, "wardrobe": 1.0,
+		"attack_range": 2.4, "recover": 0.6, "wardrobe": 1.0,
 		"grace": 15.0, "tv_hop": 25.0, "lift_wait": 15.0, "lift_hold": 20.0,
 		"lead_every": [25.0, 40.0], "prowl_min": 18.0, "peak_max": 25.0, "peak_tense": 15.0,
 		"rest_chase": 30.0, "rest_death": 45.0, "death_ease": 8.0, "double_back": 0.4,
@@ -131,7 +131,7 @@ const PROFILES := {
 		"sight_range": 85.0, "notice": 1.3, "hearing": 1.2, "torch_range": 55.0,
 		"alert_time": 0.8, "chase_start": 3.0, "chase_accel": 4.0, "chase_speed": 6.7, "track_speed": 5.6,
 		"lose_after": 10.0, "give_up": [12.0, 15.0], "peek_chance": 0.5,
-		"attack_range": 2.6, "windup": 0.25, "recover": 0.5, "wardrobe": 0.8,
+		"attack_range": 2.6, "recover": 0.5, "wardrobe": 0.8,
 		"grace": 10.0, "tv_hop": 12.0, "lift_wait": 10.0, "lift_hold": 12.0,
 		"lead_every": [18.0, 30.0], "prowl_min": 14.0, "peak_max": 35.0, "peak_tense": 22.0,
 		"rest_chase": 20.0, "rest_death": 30.0, "death_ease": 4.0, "double_back": 0.7,

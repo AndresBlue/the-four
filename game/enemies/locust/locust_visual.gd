@@ -214,8 +214,9 @@ func pose_arms(delta: float, ratio: float) -> void:
 		upper = upper.lerp(Vector3(s * 0.2, -0.35, 0.95), recovering)
 		fore = fore.lerp(Vector3(s * -0.1, -0.8, 0.6), recovering)
 		if searching > 0.0:
-			# Reaching into a wardrobe: both arms forward, low and open.
-			var reach := clampf((searching - 0.5) / 0.35, 0.0, 1.0)
+			# At a wardrobe: both arms forward, low and open, and in as its
+			# doors go (a third of the way through, hotel_locust.WARDROBE_TIME).
+			var reach := clampf((searching - 0.3) / 0.1, 0.0, 1.0)
 			upper = upper.lerp(Vector3(s * 0.5, -0.25, 0.9), 0.7)
 			fore = fore.lerp(Vector3(s * 0.3, -0.15 + reach * 0.2, 1.0), 0.8)
 		if execute > 0.0:

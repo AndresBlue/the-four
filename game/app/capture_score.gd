@@ -19,6 +19,10 @@ const FACE_TIME := 0.55
 const BACK_TURN_FROM := 0.12
 const BACK_TURN_TO := 0.34
 const BACK_FACE_TIME := 0.68
+## The scream comes this long after the mask is first in front of the lens,
+## never before it: caught from behind, it used to start a third of a second
+## ahead of anything to scream at.
+const SCREAM_AFTER := 0.05
 ## The head arrives: how long the creature takes to be bent over its victim,
 ## which on the tape is the mask reaching its place (three to five frames).
 const ARRIVE := 0.07
@@ -29,25 +33,27 @@ const JERK_LENGTH := 0.04
 ## SWIPE_REACH and through it by SWIPE_LENGTH.
 const SWIPE_REACH := 0.07
 const SWIPE_LENGTH := 0.24
-## The body is lifted only once the camera is on the floor to see it: the
-## creature straightens up and brings it up with it, slowly.
-const LIFT_FROM := 1.1
-const LIFT_TO := 2.2
+## The body is lifted only once the camera is on the floor to see it -- and
+## a camcorder takes what a thing takes to fall from a hand, hop and roll
+## over to where it stays (camera_fall.route): the creature straightens up
+## and brings the body up with it, slowly.
+const LIFT_FROM := 1.6
+const LIFT_TO := 2.7
 ## The blow: the arm starts, lands, and the body is let fall.
-const ARM_TIME := 2.58
-const KILL_TIME := 2.8
-const DROP_TIME := 3.1
+const ARM_TIME := 3.08
+const KILL_TIME := 3.3
+const DROP_TIME := 3.6
 ## How long the body takes to be on the floor once it is let go.
 const FALL_LENGTH := 0.42
 ## The look at the lens, when there is one: the head turns, cocks, and stays.
-const GLANCE_FROM := 3.5
-const GLANCE_COCK := 3.78
+const GLANCE_FROM := 4.0
+const GLANCE_COCK := 4.28
 ## The tape ends: the picture and the creature's hold are the same second
 ## (hotel_locust.EXECUTION_TIME).
-const CUT_TIME := 4.2
+const CUT_TIME := 4.7
 ## And the death is the level's to register, a moment after (the snow covers
 ## whatever the network is late with).
-const END_TIME := 4.5
+const END_TIME := 5.0
 
 ## How far the victim is held from the creature (metres along its facing):
 ## during the face no nearer and no further than this, and drawn in to
@@ -74,7 +80,7 @@ static func seat_back(room: float) -> float:
 static func seat_lean(room: float) -> float:
 	var back := seat_back(room)
 	var shoulders := asin(clampf((room - back - 0.14) / 0.55, 0.0, 1.0))
-	var head := asin(clampf((room - back - 0.02) / 0.9, 0.0, 1.0))
+	var head := asin(clampf((room - back - 0.16) / 0.9, 0.0, 1.0))
 	return clampf(minf(shoulders, head), 0.08, 1.45)
 
 static func smooth(value: float) -> float:
@@ -91,6 +97,11 @@ static func face_end(entry: String) -> float:
 ## When the mask is first in front of the lens.
 static func face_start(entry: String) -> float:
 	return BACK_TURN_TO if entry == "back" else 0.0
+
+## When the scream starts: `covered`, something was up over the victim's
+## picture and the face is there from the first frame, however it was caught.
+static func scream_time(entry: String, covered := false) -> float:
+	return (0.0 if covered else face_start(entry)) + SCREAM_AFTER
 
 ## 0 upright, 1 bent over its victim with the mask at the lens. It is there
 ## at once and stays until it straightens to lift; over the body, afterwards,

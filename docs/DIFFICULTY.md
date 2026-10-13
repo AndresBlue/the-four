@@ -57,14 +57,14 @@ Los valores de **Desafiante son los de hoy** (comprobados en el código). Los de
 | Sin verte, deja la persecución a los | 3 s | 5,5 s | 7 s | 10 s |
 | Se rinde en una búsqueda sin pistas | 4–6 s | 7–9 s | 8–10 s | 12–15 s |
 | Abre un armario «por si acaso» al buscar | nunca | 1 de cada 10 | 1 de cada 5 | 1 de cada 2 |
-| Estocada: desde dónde / lo que tarda / lo que tarda en rehacerse | 1,8 m / 0,5 s / 1,0 s | 2,2 m / 0,35 s / 0,7 s | 2,4 m / 0,3 s / 0,6 s | 2,6 m / 0,25 s / 0,5 s |
-| Registrar un armario (inmóvil) | 3,2 s | 2,8 s | 2,5 s | 2,0 s |
+| Te coge, sin preparar nada, desde / si no puede, se rehace en | 1,6 m / 1,0 s | 2,0 m / 0,7 s | 2,4 m / 0,6 s | 2,6 m / 0,5 s |
+| Armario: plantada antes de reventar las dos hojas / inmóvil en total | 0,7 / 2,2 s | 0,6 / 1,9 s | 0,55 / 1,7 s | 0,45 / 1,4 s |
 | Segura de quién hay dentro (le vio entrar), espera en vez de abrirlo: la finta (`feint`) | nunca | 1 de cada 4 | 2 de cada 5 | 3 de cada 5 |
 | Cuánto espera antes de cansarse e irse (`feint_wait`) | — | 8–11 s | 9–13 s | 11–15 s |
 | Sale por otra tele encendida | no | cada 40 s como mucho | cada 25 s | cada 12 s |
 | Protección al empezar el piso | 25 s | 20 s | 15 s | 10 s |
 
-En Apacible corre menos que tú, y si te sigue viendo, a los 12 s se cansa: correr en cualquier dirección te salva casi siempre, y su estocada es tan lenta que oírla venir y echar a correr basta. Desde Equilibrada correr ya no basta: hay que romperle la vista.
+En Apacible corre menos que tú, y si te sigue viendo, a los 12 s se cansa: correr en cualquier dirección te salva casi siempre. **Lo que ya no hay en ninguna es estocada que esquivar** (12 de octubre de 2026, decisión del autor): a su alcance —más corto cuanto más fácil— te tiene en el acto; la tabla decía 1,8 y 2,2 m para las dos fáciles, y el código, 1,6 y 2,0, que es lo que vale. Desde Equilibrada correr ya no basta: hay que romperle la vista.
 
 ### El director: cuántos encuentros hay
 
@@ -108,7 +108,7 @@ Una por cada paso de la escena:
 2. **«¿Me habrá visto?»: se le nota la duda.** Cuando empieza a fijarse en ti se para, gira la cabeza hacia ti y chasquea; si no pasa de ahí, sacude la cabeza y sigue su camino. Hoy esa sospecha es invisible.
 3. **«Creo que sí»: aviso largo.** El chillido antes de perseguir dura 2 s y el arranque es lento: da tiempo a decidir aunque no sepas qué hacer.
 4. **«Voy a correr»: corre menos que tú y se cansa.** Ver la tabla: 5,6 m/s y 12 s de persecución como mucho.
-5. **«Espero que no me alcance»: estocada lenta y con aviso.** Si la oyes armar el golpe y corres, la esquivas por poco. Los «casi» son parte de la escena.
+5. **«Espero que no me alcance»: alcance corto.** ~~Estocada lenta y con aviso~~: el autor la quitó el 12 de octubre de 2026 —el golpe es instantáneo en las cuatro—. Lo que queda de este paso es que en Apacible tiene que llegar a 1,6 m, y corre menos que tú. **Sin medir** con bots lo que esto cambia en las cuentas del apartado 6.
 6. **«Me salvé»: te pierde enseguida, y lo dice.** Un gruñido de frustración al rendirse, que se oye: sabes que has escapado. (También en Equilibrada. En Pesadilla, a veces lo finge y vuelve.)
 7. **Y otra vez.** Tras un respiro corto, el director prepara el siguiente encuentro (la fila «si pasa este rato sin ningún encuentro»).
 8. **Solo abre el armario en el que te vio entrar.** Ni «por si acaso», ni por un ruido al lado: esconderse es siempre una salida.

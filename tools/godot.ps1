@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','bench','bench-films','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','build-gallery','playtest','locust','rehearsal','bench','bench-films','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export','export-mac')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -26,7 +26,7 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','bench','editor','gallery','compatibility','observer','bots','hunt','bots-replay','export')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','bench','editor','gallery','compatibility','observer','bots','hunt','bots-replay','export','export-mac')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
@@ -87,23 +87,30 @@ switch ($Mode) {
         # under --headless. The window stays hidden (Start-Process below).
         $arguments += @('--export-release','Windows Desktop',(Join-Path $projectPath 'exports/windows/TheFour.exe'))
     }
+    # The Mac's build (preset "macOS": Intel and Apple chips in one app, signed
+    # ad hoc, not notarized), a zip with the .app inside. The shader baker does
+    # not bake for Metal from Windows: a Mac compiles its shaders as it loads.
+    'export-mac' {
+        New-Item -ItemType Directory -Force (Join-Path $projectPath 'exports/macos') | Out-Null
+        $cache = Join-Path $projectPath '.godot/exported'
+        if (Test-Path -LiteralPath $cache) { Remove-Item -LiteralPath $cache -Recurse -Force }
+        $arguments += @('--export-release','macOS',(Join-Path $projectPath 'exports/macos/TheFour.zip'))
+    }
 }
 # Flags for the script behind the mode, after everything it already passes.
-if ($Extra -and $Mode -ne 'export') {
+if ($Extra -and $Mode -notin @('export','export-mac')) {
     if ($arguments -notcontains '--') { $arguments += '--' }
     $arguments += ($Extra -split ' ' | Where-Object { $_ })
 }
 if ($Mode -eq 'bench-films') {
     # The capture filmed with its sound, nobody at the keys (the engine's movie
-    # writer, one run of the bench each): caught from the front and from
-    # behind, without the tear of the lunge (A) and with it (B), for whoever
-    # has to judge between the two. Written to evidence/, each run with its
-    # window hidden; -Extra '--light=torch' films them in another light.
+    # writer, one run of the bench each): caught from the front, from behind
+    # and in a wardrobe. Written to evidence/, each run with its window
+    # hidden; -Extra '--light=torch' films them in another light.
     $films = @(
-        @{ name = 'captura_frente_A_sin_desgarro'; entry = 'front'; tear = $false },
-        @{ name = 'captura_frente_B_con_desgarro'; entry = 'front'; tear = $true },
-        @{ name = 'captura_espalda_A_sin_desgarro'; entry = 'back'; tear = $false },
-        @{ name = 'captura_espalda_B_con_desgarro'; entry = 'back'; tear = $true }
+        @{ name = 'captura_frente'; entry = 'front' },
+        @{ name = 'captura_espalda'; entry = 'back' },
+        @{ name = 'captura_armario'; entry = 'wardrobe' }
     )
     New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Null
     foreach ($film in $films) {
@@ -111,7 +118,6 @@ if ($Mode -eq 'bench-films') {
         $log = Join-Path $projectPath ('evidence/' + $film.name + '.log')
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }
         $filmArguments = @('--path', $projectPath, '--rendering-method', 'forward_plus', '--resolution', '1280x720', '--write-movie', $file, '--fixed-fps', '60', '--script', 'res://tools/dev/capture_bench.gd', '--log-file', $log, '--', '--test-profile', '--no-warmup', ('--film=' + $film.name), ('--entry=' + $film.entry), ('--seed=' + $Seed))
-        if ($film.tear) { $filmArguments += '--tear' }
         if ($Extra) { $filmArguments += ($Extra -split ' ' | Where-Object { $_ }) }
         $quoted = ($filmArguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
         $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -PassThru -WindowStyle Hidden
@@ -145,6 +151,11 @@ if ($Mode -eq 'bench-films') {
         } finally { $zip.Dispose() }
         Get-Item $zipPath | Select-Object FullName, Length | Format-List | Out-String | Write-Output
     }
+} elseif ($Mode -eq 'export-mac') {
+    $quoted = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    $process = Start-Process -FilePath $GodotPath -ArgumentList $quoted -Wait -PassThru -WindowStyle Hidden
+    if ($process.ExitCode -ne 0) { throw "La exportación para macOS falló (código $($process.ExitCode))." }
+    Get-Item (Join-Path $projectPath 'exports/macos/TheFour.zip') | Select-Object FullName, LastWriteTime, Length | Format-List | Out-String | Write-Output
 } else {
     & $GodotPath @arguments
 }

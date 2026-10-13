@@ -44,6 +44,10 @@ const BACK_DIP := 0.3
 ## the camera hits the floor and as the body does beside it.
 const HIT_GRAB := Vector2(0.4, 0.05)
 const HIT_FLOOR := Vector2(1.0, 0.27)
+## Each time it comes down again after that -- the hop, and every edge it
+## goes over -- is that blow again, as much weaker as it was (camera_fall.blows)
+## and this much shorter.
+const HIT_AGAIN := 0.5
 const HIT_BODY := Vector2(0.9, 0.32)
 ## The camcorder's microphone: what it passes, how far its automatic gain
 ## falls at a bang, how fast it comes back and how far over.
@@ -72,13 +76,15 @@ const LAMP_FACE := Vector3(0.5, 1.15, 1.4)
 const LAMP_FACE_LIT := Vector3(0.22, 1.15, 1.4)
 const LAMP_FLOOR_DARK := Vector3(1.3, 1.15, 0.5)
 const LAMP_FLOOR_LIT := Vector3(0.2, 0.9, 1.2)
+## How long before the blow the lamp's blink starts over: eight tenths, of
+## which it is lit seven (camcorder_osd.LAMP_LIT).
+const LAMP_BEFORE := 1.8
 const HISS := "res://assets/audio/intro/tv_static.wav"
 const HISS_DB := -33.0
 const CASE_FALL := ["res://assets/audio/events/object_fall_1.wav", "res://assets/audio/events/object_fall_2.wav"]
 const RUSTLES := ["res://assets/audio/intro/bed_shift.wav", "res://assets/audio/intro/bed_stir.wav"]
-## The scream, soft: this much quieter and brought in over this long.
+## The scream, soft: this much quieter (executions.scream).
 const SOFT_DB := -8.0
-const SOFT_RISE := 0.03
 
 var running := false
 ## The capture being recorded (executions' id), how it began and how it is
@@ -91,13 +97,14 @@ var brief := false
 var soft := false
 var plain := false
 ## Where the camera falls (camera_fall.solve) and how it is doing: the camera
-## in the hand at the grab, as the swipe took it, when that was and when it
-## touched the floor.
+## in the hand at the grab, as the swipe took it, when that was, when it
+## first touched the floor and when it lay still.
 var take := {}
 var hand := Transform3D.IDENTITY
 var thrown := Transform3D.IDENTITY
 var thrown_at := -1.0
 var landed_at := -1.0
+var rested_at := -1.0
 ## The picture is gone: snow, whatever the scene's clock says.
 var gone := false
 ## Nothing lights the place but the camcorder's own lamp.
@@ -153,6 +160,7 @@ func begin(execution: Dictionary, covered := false) -> void:
 	thrown = hand
 	thrown_at = -1.0
 	landed_at = -1.0
+	rested_at = -1.0
 	gain = 0.0
 	saved = {"handheld": player.handheld_enabled, "zoom": player.zoom_wanted, "torch": player.torch.visible}
 	player.handheld_enabled = false
@@ -175,6 +183,7 @@ func begin(execution: Dictionary, covered := false) -> void:
 		# No face: the picture is the camera already on the floor.
 		thrown_at = 0.0
 		landed_at = 0.0
+		rested_at = 0.0
 		level.camera_cut()
 	update(execution)
 
@@ -237,16 +246,21 @@ func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 		player.zoom = pow(2.0, move_toward(log(player.zoom) / log(2.0), 0.0, delta * 2.6 / 0.08))
 	var face_from := 0.0 if busy else SCORE.face_start(entry)
 	var wanted := camera.global_transform
+	# The lamp's blink is set again from the floor, so that the blow falls in
+	# the three tenths it is dark and the body comes down in its light
+	# (docs/EXECUTION.md, 10).
+	if once("lamp", time, SCORE.KILL_TIME - LAMP_BEFORE): level.camcorder.blink = 0.0
 	if thrown_at < 0.0 and time >= fly_at():
 		thrown_at = fly_at()
-		landed_at = thrown_at + (0.0 if plain else float(take.duration))
+		landed_at = thrown_at + (0.0 if plain else float(take.landed))
+		rested_at = thrown_at + (0.0 if plain else float(take.duration))
 		if plain: level.camera_cut()
 		# From here the tape sees its owner from outside.
 		player.avatar.show_to_owner(true)
 	if thrown_at >= 0.0:
-		if time < landed_at: wanted = FALL.flight(take, thrown, time - thrown_at)
-		else:
-			wanted = (take.rest as Transform3D) * (Transform3D.IDENTITY if plain else FALL.settle_offset(time - landed_at))
+		if plain or soft or rested_at <= thrown_at: wanted = take.rest
+		else: wanted = FALL.pose(take, thrown, time - thrown_at)
+		if time >= rested_at:
 			# The body coming down beside it rocks it once more.
 			var thud := time - body_at()
 			if thud >= 0.0 and thud < 0.2 and not plain: wanted = wanted * Transform3D(Basis(Vector3.BACK, sin(thud * 60.0) * 0.012 * exp(-thud * 20.0)), Vector3.UP * 0.006 * sin(PI * thud / 0.2))
@@ -344,7 +358,7 @@ func frame_picture(time: float) -> void:
 	if level.post_material == null: return
 	# The short version: once the camera is still, the picture goes, and the
 	# words that say so with it; the rest is heard.
-	if brief and not gone and landed_at >= 0.0 and time >= landed_at + 0.15:
+	if brief and not gone and rested_at >= 0.0 and time >= rested_at + 0.15:
 		gone = true
 		level.ui.lost_signal(SCORE.END_TIME - time + level.executions.LOST_HOLD)
 	var hit := 0.0
@@ -353,8 +367,13 @@ func frame_picture(time: float) -> void:
 	if not plain and not gone:
 		# The grab bends the top of the picture and no more: the mask is under it.
 		if not soft and not busy: hit = maxf(hit, bump(time, 0.0, HIT_GRAB))
-		# The floor, and the body beside it, send a band of noise up it as well.
-		for blow in [[landed_at, HIT_FLOOR], [body_at(), HIT_BODY]]:
+		# The floor, each time it meets it, and the body beside it, send a band
+		# of noise up it as well.
+		var struck: Array = [[body_at(), HIT_BODY]]
+		if landed_at >= 0.0 and rested_at > landed_at:
+			for blow in FALL.blows(take): struck.append([thrown_at + float(blow[0]), Vector2(HIT_FLOOR.x * float(blow[1]), HIT_FLOOR.y * (1.0 if float(blow[1]) >= 1.0 else HIT_AGAIN))])
+		else: struck.append([landed_at, HIT_FLOOR])
+		for blow in struck:
 			var strength := bump(time, float(blow[0]), blow[1])
 			if strength <= 0.0: continue
 			hit = maxf(hit, strength)
@@ -376,8 +395,6 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 	if not level.world_audio.enabled: return
 	var scream: AudioStreamPlayer = level.scream_sound
 	if is_instance_valid(scream):
-		if soft:
-			scream.volume_db = lerpf(-40.0, SOFT_DB, SCORE.ramp(time, 0.0, SOFT_RISE))
 		# It does not last the scene: once the camera is out of the hands it is
 		# a sound left behind in the room, and it is over before the floor.
 		var leaving := SCORE.ramp(time, SCORE.face_end(entry), 1.1)
@@ -395,7 +412,14 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 		gain = minf(AGC_OVER, gain + AGC_RISE * delta)
 		if once("floor", time, landed_at):
 			gain = AGC_FLOOR
-			play_case()
+			play_case(-3.0, 0.72)
+		# And each time it comes down again: the same case, lighter and higher.
+		if rested_at > landed_at:
+			var again: Array = FALL.blows(take)
+			for index in range(1, again.size()):
+				if once("knock%d" % index, time, thrown_at + float(again[index][0])):
+					gain = minf(gain, AGC_FLOOR * float(again[index][1]))
+					play_case(-3.0 + linear_to_db(float(again[index][1])) - 3.0, 0.82 + 0.06 * float(index), index)
 		if once("blow", time, SCORE.KILL_TIME): gain = minf(gain, AGC_BLOW)
 		if once("body", time, body_at()): gain = minf(gain, AGC_FLOOR + 2.0)
 		(mic[2] as AudioEffectAmplify).volume_db = gain + dropout(time)
@@ -424,12 +448,12 @@ func dropout(time: float) -> float:
 	var draw := fposmod(sin(piece * 12.9898 + float(id) * 78.233) * 43758.5453, 1.0)
 	return DROPOUT_DB if draw < fray * DROPOUT_MOST and fposmod(time * DROPOUT_RATE, 1.0) < DROPOUT_SHARE else 0.0
 
-func play_case() -> void:
+func play_case(db: float, pitch: float, which := 0) -> void:
 	var player := AudioStreamPlayer.new()
 	player.bus = "Effects"
-	player.stream = load(CASE_FALL[int(take.get("side", 1.0) > 0.0)])
-	player.pitch_scale = 0.72
-	player.volume_db = -3.0
+	player.stream = load(CASE_FALL[(int(take.get("side", 1.0) > 0.0) + which) % CASE_FALL.size()])
+	player.pitch_scale = pitch
+	player.volume_db = db
 	player.finished.connect(player.queue_free)
 	add_child(player)
 	player.play()

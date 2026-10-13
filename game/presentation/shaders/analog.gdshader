@@ -13,7 +13,6 @@ uniform float vignette : hint_range(0.0, 1.0) = 0.45;
 // Inside a wardrobe: dark closing edges and a slight fish-eye bulge.
 uniform float enclosure : hint_range(0.0, 1.0) = 0.0;
 // The creature's strike wind-up: a brief tape tear across the image.
-uniform float threat_glitch : hint_range(0.0, 1.0) = 0.0;
 // The victim's own camera giving out: the picture tears, rolls and is eaten
 // by the snow of a dead channel. 1 is no picture left at all.
 uniform float signal_loss : hint_range(0.0, 1.0) = 0.0;
@@ -79,8 +78,6 @@ void fragment() {
 	float head = smoothstep(0.035, 0.0, 1.0 - uv.y);
 	float tear = head * (0.012 + (hash(vec2(floor(t * 24.0), line)) - 0.5) * 0.01);
 	uv.x += (wobble + jitter) * vhs + tear * vhs;
-	float glitch_row = step(0.6, hash(vec2(floor(uv.y * 38.0), floor(t * 20.0))));
-	uv.x += (hash(vec2(floor(uv.y * 90.0), floor(t * 30.0))) - 0.5) * 0.05 * threat_glitch * glitch_row;
 	// The camcorder struck, or coming apart.
 	float damage = max(tape_hit, tape_fray);
 	float struck_band = 0.0;

@@ -563,7 +563,7 @@ func _physics_process(delta: float) -> void:
 	if clock < 0.1: return
 	clock = 0
 	var rear := behind(presence.global_position)
-	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001)) - (16.0 if level.windup_tear and creature.mode == creature.Mode.WINDUP and not presence_phantom else 0.0)
+	presence.volume_db = profile.volume_db + presence_route.get("gain", 0.0) + REAR_GAIN * rear + linear_to_db(maxf(presence_gain, 0.0001))
 	presence.attenuation_filter_cutoff_hz = minf(presence_route.get("cutoff", 20000.0), lerpf(20000.0, REAR_CUTOFF, rear))
 	if audible and presence_gain > 0.5 and distance < 12: show_caption(profile.caption, true)
 

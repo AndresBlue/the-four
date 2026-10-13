@@ -127,14 +127,16 @@ func run() -> void:
 	enemy.position = Vector3(0, 0.04, 1)
 	face(enemy, player.position)
 	enemy.set_mode(enemy.Mode.CHASE)
-	enemy._physics_process(0.01)
-	check("Ataque anuncia preparación", enemy.mode == enemy.Mode.WINDUP and enemy.signal_player.playing)
-	enemy._physics_process(enemy.WINDUP_TIME * 0.5)
-	check("La estocada no es instantánea", level.session.state == level.session.State.PLAYING)
-	# Only a player already beyond its lunge survives the strike.
+	# Out of its reach nothing happens; within it, it has them that instant.
 	player.position = Vector3(0, 0.04, -7)
-	enemy._physics_process(enemy.WINDUP_TIME)
-	check("Fuera del alcance de la estocada no hay captura", level.session.state == level.session.State.PLAYING and enemy.mode == enemy.Mode.RECOVER)
+	enemy._physics_process(0.01)
+	check("Fuera de su alcance no hay captura", level.execution.is_empty() and enemy.mode == enemy.Mode.CHASE)
+	player.position = Vector3(0, 0.04, 0)
+	enemy._physics_process(0.01)
+	check("A su alcance te tiene en el acto, sin preparar nada", enemy.mode == enemy.Mode.EXECUTE and not level.execution.is_empty() and level.session.state == level.session.State.PLAYING)
+	level.release_execution()
+	enemy.set_mode(enemy.Mode.CHASE)
+	enemy.set_physics_process(false)
 	player.position = Vector3(0, 0.04, 0)
 	player.position = Vector3(0, 0.04, 0)
 	enemy.position = Vector3(0, 0.04, 0.9)
@@ -315,8 +317,9 @@ func run() -> void:
 	level.session.set_refuge(1, false)
 	enemy.position = Vector3(0, 0.04, 0.9)
 	face(enemy, player.position)
-	enemy.set_mode(enemy.Mode.WINDUP)
-	enemy._physics_process(enemy.WINDUP_TIME + 0.01)
+	enemy.set_mode(enemy.Mode.CHASE)
+	enemy.focus = player
+	enemy._physics_process(0.01)
 	check("El golpe encadena una ejecución en vez de matar al instante", enemy.mode == enemy.Mode.EXECUTE and not level.execution.is_empty() and level.session.state == level.session.State.PLAYING)
 	enemy.hear(player.position + Vector3(2, 0, 0), 20)
 	check("Un ruido no la saca de su ejecución", enemy.mode == enemy.Mode.EXECUTE)
@@ -325,7 +328,7 @@ func run() -> void:
 	# It is lifted once its own camera is on the floor to see it.
 	check("Durante el rostro la víctima queda sujeta delante de la bestia, en el suelo", player.global_position.y < 0.3 and player.global_position.distance_to(enemy.global_position) < 1.3 and player.held)
 	check("Su cámara ya no está en sus manos: la lleva la cinta", level.tape.recording() and player.camera.top_level)
-	await frames(100)
+	await frames(135)
 	check("Después la levanta: queda en el aire delante de la bestia", player.global_position.y > 0.8 and player.global_position.distance_to(enemy.global_position) < 2.2)
 	check("Y la cámara está en el suelo, grabando", player.camera.global_position.y < 0.4 and not level.tape.take.is_empty())
 	# The execution is longer now: the scream, the mask coming in, the blow.
@@ -344,6 +347,8 @@ func run() -> void:
 	enemy = level.locust
 	hide = get_nodes_in_group("hotel_hides")[0]
 	player.enter_hide(hide)
+	# In, and its doors shut behind it, before anything comes for it.
+	await frames(70)
 	enemy.position = hide.to_global(Vector3(0, 0.04, 3.5))
 	enemy.grace = 0
 	enemy.observed_hide = hide
@@ -351,18 +356,18 @@ func run() -> void:
 	face(enemy, player.position)
 	enemy.set_mode(enemy.Mode.CHASE)
 	enemy.set_physics_process(true)
-	var ritual := {"started": -1.0, "right": -1.0, "left": -1.0, "kill": -1.0}
+	var ritual := {"started": -1.0, "burst": -1.0, "wide": -1.0, "kill": -1.0}
 	var clock := 0.0
 	for i in 900:
 		await physics_frame
 		clock += 1.0 / 60.0
 		if ritual.started < 0.0 and enemy.mode == enemy.Mode.WARDROBE: ritual.started = clock
-		if ritual.right < 0.0 and hide.wide.right > 0.5: ritual.right = clock
-		if ritual.left < 0.0 and hide.wide.left > 0.5: ritual.left = clock
+		if ritual.started >= 0.0 and ritual.burst < 0.0 and minf(hide.leaf_angle("left"), hide.leaf_angle("right")) > 0.05: ritual.burst = clock
+		if ritual.burst >= 0.0 and ritual.wide < 0.0 and minf(hide.leaf_angle("left"), hide.leaf_angle("right")) > hide.OPEN_ANGLE * 0.95: ritual.wide = clock
 		if ritual.kill < 0.0 and not level.execution.is_empty(): ritual.kill = clock
 		if level.session.state == level.session.State.FAILED or level.session.restarts >= 1: break
-	check("Se planta ante el armario y lo abre puerta a puerta", ritual.started >= 0.0 and ritual.right > ritual.started and ritual.left > ritual.right)
-	check("Abrir el armario le cuesta tiempo antes de alcanzar a nadie", ritual.kill > ritual.started + 1.4)
+	check("Se planta ante el armario y abre las dos hojas de golpe", ritual.started >= 0.0 and ritual.burst > ritual.started + 0.3 and ritual.wide > 0.0 and ritual.wide - ritual.burst < 0.15)
+	check("Y lo tiene en cuanto las puertas se abren", ritual.kill >= ritual.burst and ritual.kill - ritual.burst < 0.25)
 	check("Entrada observada permite inspeccionar y capturar dentro", ritual.kill >= 0.0 and (level.session.state == level.session.State.FAILED or level.session.restarts >= 1))
 	if level.session.state != level.session.State.FAILED: print("HIDE_DEBUG enemy=",enemy.position," player=",player.position," mode=",enemy.mode," cansee=",enemy.sees_player()," path=",enemy.path," target=",enemy.destination)
 	level.settings.set_value("reduced", true)

@@ -199,7 +199,15 @@ func score_checks() -> void:
 	# The body is down before the picture goes, and the turn of whoever is
 	# caught from behind ends before its face does.
 	check("Los golpes de la escena van en su orden", ordered and SCORE.DROP_TIME + SCORE.FALL_LENGTH < SCORE.CUT_TIME and SCORE.BACK_TURN_FROM < SCORE.BACK_TURN_TO and SCORE.BACK_TURN_TO < SCORE.BACK_FACE_TIME)
-	check("El cuerpo se levanta cuando la cámara ya está en el suelo para verlo", SCORE.LIFT_FROM >= SCORE.face_end("back") + SCORE.SWIPE_REACH + FALL.FLIGHT.y - 0.06 and SCORE.LIFT_FROM >= SCORE.face_end("front") + SCORE.SWIPE_REACH + FALL.FLIGHT.y)
+	# The longest a camcorder takes from a standing hand to the floor, and from
+	# there to lying still.
+	var down: float = (FALL.TOSS.y + sqrt(FALL.TOSS.y * FALL.TOSS.y + 2.0 * FALL.GRAVITY * 1.75)) / FALL.GRAVITY
+	var still: float = down + 2.0 * sqrt(2.0 * FALL.HOP.y / FALL.GRAVITY) + FALL.ROCK
+	for length in FALL.KNOCK_TIME: still += float(length)
+	var swiped: float = SCORE.face_end("back") + SCORE.SWIPE_REACH
+	check("El cuerpo se levanta cuando la cámara ya ha tocado el suelo, y el golpe llega con ella quieta", SCORE.LIFT_FROM >= swiped + down and SCORE.ARM_TIME >= swiped + still, "down=%.2f still=%.2f" % [down, still])
+	check("La cámara cae lo que tarda en caer una cosa: más de medio segundo desde la mano", down > 0.55 and (FALL.TOSS.x + sqrt(FALL.TOSS.x * FALL.TOSS.x + 2.0 * FALL.GRAVITY * 1.6)) / FALL.GRAVITY > 0.55)
+	check("El grito llega con la máscara en la lente, nunca antes", SCORE.scream_time("front") == SCORE.SCREAM_AFTER and is_equal_approx(SCORE.scream_time("back"), SCORE.BACK_TURN_TO + SCORE.SCREAM_AFTER) and SCORE.scream_time("back", true) == SCORE.SCREAM_AFTER)
 	var monotone := true
 	var bounded := true
 	var before := {"closing": 0.0, "limp": 0.0, "fall": 0.0, "thrust": 0.0, "glance": 0.0, "swipe": 0.0, "turned": 0.0}
@@ -366,6 +374,12 @@ func landing_checks() -> void:
 	var creature = level.locust
 	var tally := [0, 0, 0]
 	var sound := true
+	# The fall itself: never under the floor, never a jump, and it ends lying
+	# where it was said it would.
+	var fell := true
+	var worst_step := 0.0
+	var lowest := INF
+	var rolls := 0
 	var trials := 0
 	var rooms := 0
 	for room in level.manifest.rooms:
@@ -395,10 +409,24 @@ func landing_checks() -> void:
 			tally[int(take.kind)] += 1
 			var rest: Transform3D = take.rest
 			if not rest.origin.is_finite() or not rest.basis.x.is_finite() or float(take.duration) <= 0.0: sound = false
+			var hand := Transform3D(Basis(Vector3.UP, yaw), scene.from)
+			var before := hand
+			var length := float(take.duration) + FALL.ROCK
+			if float(take.landed) < 0.4 or float(take.duration) < float(take.hopped) or (take.times as Array).size() != (take.knocks as Array).size(): fell = false
+			rolls += (take.times as Array).size()
+			for step in int(length * 120.0) + 2:
+				var at: Transform3D = FALL.pose(take, hand, float(step) / 120.0)
+				if not at.origin.is_finite() or not at.basis.x.is_finite() or absf(at.basis.determinant() - 1.0) > 0.01: fell = false
+				worst_step = maxf(worst_step, at.origin.distance_to(before.origin))
+				lowest = minf(lowest, at.origin.y - rest.origin.y)
+				before = at
+			if not before.is_equal_approx(rest): fell = false
 			# On the floor of that place, a step or two from where it was taken.
 			if absf(rest.origin.y - centre.y) > 0.45 or flat(rest.origin, scene.middle) > 3.2: sound = false
 	print("CAPTURE_LANDING ve=", tally[0], " a medias=", tally[1], " boca abajo=", tally[2], " de ", trials, " en ", mini(rooms, 45), " salas")
 	check("La cámara cae siempre en algún sitio, en el suelo y cerca", sound and trials >= 60, "trials=%d" % trials)
+	check("Cae sin saltos ni atravesar el suelo, y acaba donde se dijo", fell and worst_step < 0.08 and lowest > -0.02, "step=%.3f lowest=%.3f" % [worst_step, lowest])
+	check("Y casi siempre rueda sobre sus cantos antes de quedarse quieta", float(rolls) >= 1.5 * float(trials), "vuelcos=%d de %d caídas" % [rolls, trials])
 	check("En siete de cada diez sitios ve la escena", float(tally[FALL.VIEW]) >= 0.7 * float(trials), "ve=%d a medias=%d boca abajo=%d de %d" % [tally[0], tally[1], tally[2], trials])
 	check("Y boca abajo, una de cada diez como mucho", float(tally[FALL.DOWN]) <= 0.1 * float(trials), "boca abajo=%d de %d" % [tally[2], trials])
 
@@ -623,7 +651,7 @@ func again_checks() -> void:
 	level.executions.forced = {"entry": "front", "glance": false}
 	level.capture_survivor(player)
 	var short: bool = level.tape.brief
-	await watch(SCORE.LIFT_FROM + 0.4)
+	await watch(SCORE.ARM_TIME)
 	var gone: bool = level.tape.gone and level.tape.lost(float(level.execution.time))
 	level.release_execution()
 	await frames(2)

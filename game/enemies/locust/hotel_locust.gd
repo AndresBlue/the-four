@@ -31,7 +31,6 @@ var give_up := GIVE_UP
 var give_up_hard := GIVE_UP_HARD
 var peek_chance := SEARCH_PEEK_CHANCE
 var attack_range := ATTACK_RANGE
-var windup_time := WINDUP_TIME
 var recover_time := RECOVER_TIME
 var wardrobe_scale := 1.0
 ## Its mind (docs/DIFFICULTY.md, section 4): all off for "desafiante".
@@ -88,7 +87,6 @@ func tune(profile: Dictionary) -> void:
 	give_up_hard = float(profile.give_up[1])
 	peek_chance = float(profile.peek_chance)
 	attack_range = float(profile.attack_range)
-	windup_time = float(profile.windup)
 	recover_time = float(profile.recover)
 	wardrobe_scale = float(profile.wardrobe)
 	doubt_time = float(profile.doubt)
@@ -170,9 +168,8 @@ func noticed_survivor(delta: float) -> Node3D:
 
 ## The beats of searching a wardrobe, at this creature's pace.
 func wardrobe_steps() -> Dictionary:
-	var steps := {}
-	for beat in WARDROBE_TIME: steps[beat] = float(WARDROBE_TIME[beat]) * wardrobe_scale
-	return steps
+	var burst := float(WARDROBE_TIME.burst) * wardrobe_scale
+	return {"burst": burst, "reach": burst + float(WARDROBE_TIME.reach), "done": float(WARDROBE_TIME.done) * wardrobe_scale}
 const SIGHT_HALF_ANGLE := 60.0
 ## Suspicion gained per second with the player in view, near and far.
 const NOTICE_NEAR := 3.2
@@ -244,7 +241,10 @@ const TORCH_NOTICE_RANGE := 45.0
 ## beam is narrower on Compatibility (hotel_player.PLAIN_BEAM), and reading it
 ## made a torch harder to be seen by on some machines than on others.
 const TORCH_NOTICE_ANGLE := 32.0
-## Strike: starts within ATTACK_RANGE, lunges for WINDUP_TIME, kills within STRIKE_REACH.
+## Within ATTACK_RANGE of somebody it can see, it has them: that instant, with
+## nothing drawn back first (seize). It used to lunge for a third of a second
+## and take whoever was still within STRIKE_REACH at the end of it, which is
+## what a player who drives it still does (locust_player.strike, WINDUP_TIME).
 const ATTACK_RANGE := 2.4
 const STRIKE_REACH := 3.2
 const WINDUP_TIME := 0.3
@@ -256,15 +256,19 @@ const CRY_SOUND := "res://assets/audio/sfx/chase/grunts.ogg"
 ## Grunts at least this long are the full, aggressive ones; shorter pieces of
 ## the recording are breaths and clicks, not used as calls.
 const AGGRESSIVE_GRUNT := 1.4
-## Searching a wardrobe is a ritual, not a swipe in passing: it plants itself
-## in front, pulls one leaf open, then the other, reaches in and only then
-## moves on. Seconds from the start (see level.open_wardrobe for the leaves).
-const WARDROBE_TIME := {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
+## Searching a wardrobe: it plants itself in front, throws both leaves open
+## at once -- as fast as it does after waiting beside one (POUNCE_BURST) --
+## and has whoever is in it as they hit their stops; with nobody there it
+## looks in a moment and moves on. Seconds from the start (`burst` and `done`
+## at the difficulty's pace; `reach` is that long after the doors go, at
+## any). It used to pull one leaf open and then the other, and a second and a
+## half of doors opening is a second and a half to get ready for the scream.
+const WARDROBE_TIME := {"burst": 0.55, "reach": 0.15, "done": 1.7}
 ## An execution: it grabs you, holds you up while it brings its mask slowly to
 ## your face, and then buries its arm in it. Seconds from the grab, and when
 ## the killing blow lands (see hotel_main.apply_execution).
-const EXECUTION_TIME := 4.2
-const EXECUTION_KILL := 2.8
+const EXECUTION_TIME := 4.7
+const EXECUTION_KILL := 3.3
 var level
 var mode := Mode.PATROL
 var destination := Vector3.ZERO
@@ -1161,6 +1165,13 @@ func can_attack(reach := -1.0) -> bool:
 	if not clear_sight(player.camera.global_position): return false
 	return not player.hidden or observed_hide == player.hiding_place or sees(player)
 
+## In reach of somebody: the capture starts now (the level stages it and
+## takes over both bodies). Refused -- somebody the floor protects, or on
+## their way into a lift -- it is left standing a moment before it goes on.
+func seize() -> void:
+	level.capture_survivor(target())
+	if mode != Mode.EXECUTE: set_mode(Mode.RECOVER)
+
 ## A wardrobe it has reason to search: occupied and near where the noise was.
 func suspect_hide(point: Vector3) -> Node3D:
 	for hide in get_tree().get_nodes_in_group("hotel_hides"):
@@ -1287,7 +1298,7 @@ const POUNCE_BURST := 0.15
 const POUNCE_REACH := 0.5
 const POUNCE_PATIENCE := 1.5
 ## How fast it squares itself up in front of a wardrobe it is about to open.
-const WARDROBE_SETTLE := 1.6
+const WARDROBE_SETTLE := 2.4
 ## The run back to the doors is a burst from standing, whatever a chase of
 ## the floor's difficulty takes to get going, and it turns on the spot.
 const POUNCE_ACCELERATION := 10.0
@@ -1662,7 +1673,7 @@ func _physics_process(delta: float) -> void:
 			else: stood = 0.0
 			chase_voice(delta)
 			if not is_instance_valid(player) or not level.survivor_active(player) or lost_time > lose_after: set_mode(Mode.SEARCH)
-			elif can_attack(): set_mode(Mode.WINDUP)
+			elif can_attack(): seize()
 		Mode.SEARCH:
 			clue_idle += delta
 			if (search_plan.is_empty() and clue_idle >= give_up) or clue_idle >= give_up_hard:
@@ -1677,10 +1688,9 @@ func _physics_process(delta: float) -> void:
 					pause_time = rng.randf_range(0.6, 1.4)
 				else: pause_time = 1.0
 		Mode.WINDUP:
-			if state_time >= windup_time:
-				# A hit starts an execution (which takes over the body).
-				if can_attack(STRIKE_REACH): level.capture_survivor(target())
-				if mode == Mode.WINDUP: set_mode(Mode.RECOVER)
+			# The lunge is a player's (locust_player.gd): left in the middle of
+			# one, it goes on with the hunt.
+			set_mode(Mode.CHASE)
 		Mode.RECOVER:
 			if state_time >= recover_time: set_mode(Mode.CHASE if visible_player else Mode.SEARCH)
 		Mode.ALERT:
@@ -1696,8 +1706,6 @@ func _physics_process(delta: float) -> void:
 		update_wardrobe(delta)
 	elif mode == Mode.EXECUTE:
 		update_execution(delta)
-	elif mode == Mode.WINDUP:
-		lunge(delta)
 	elif mode == Mode.ALERT:
 		speed = move_toward(speed, 0.0, 12.0 * delta)
 		velocity = Vector3(-global_basis.z.x * speed, -2.0, -global_basis.z.z * speed)
@@ -1721,21 +1729,6 @@ func _physics_process(delta: float) -> void:
 		move_on_path(delta)
 	update_visual(delta)
 
-## During the wind-up it keeps closing in on the player, blades raised.
-func lunge(delta: float) -> void:
-	var player := target()
-	if player == null:
-		velocity = Vector3.ZERO
-		return
-	var offset: Vector3 = player.global_position - global_position
-	offset.y = 0.0
-	face_toward(player.global_position, delta, 12.0)
-	if offset.length() < 0.9: velocity = Vector3.ZERO
-	else:
-		var heading := offset.normalized() * chase_speed * 1.15
-		velocity = Vector3(heading.x, -2.0, heading.z)
-	move_and_slide()
-
 func face_toward(point: Vector3, delta: float, rate: float) -> void:
 	var offset := point - global_position
 	if Vector2(offset.x, offset.z).length() < 0.05: return
@@ -1748,7 +1741,7 @@ func update_visual(delta: float) -> void:
 		visual.execute = clampf(state_time / EXECUTION_TIME, 0.0, 1.0) if mode == Mode.EXECUTE else 0.0
 		visual.searching = clampf(state_time / (float(WARDROBE_TIME.done) * wardrobe_scale), 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
 		visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT, Mode.EXECUTE] else 0.0, delta * 2.5)
-		visual.attack = clampf(state_time / windup_time, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
+		visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 		visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)
 		visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 		visual.look_point = net_look
@@ -1757,7 +1750,7 @@ func update_visual(delta: float) -> void:
 	visual.execute = clampf(state_time / EXECUTION_TIME, 0.0, 1.0) if mode == Mode.EXECUTE else 0.0
 	visual.searching = clampf(state_time / (float(WARDROBE_TIME.done) * wardrobe_scale), 0.0, 1.0) if mode == Mode.WARDROBE else 0.0
 	visual.aggression = move_toward(visual.aggression, 1.0 if mode in [Mode.CHASE, Mode.ALERT, Mode.EXECUTE] else 0.0, delta * 2.5)
-	visual.attack = clampf(state_time / windup_time, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
+	visual.attack = clampf(state_time / WINDUP_TIME, 0.0, 1.0) if mode == Mode.WINDUP else move_toward(visual.attack, 0.0, delta * 8.0)
 	# Stoops under door lintels; it is taller than the doorways.
 	visual.duck = move_toward(visual.duck, 1.0 if near_doorway() else 0.0, delta * 3.0)
 	visual.recovering = 1.0 if mode == Mode.RECOVER and state_time < 0.5 else move_toward(visual.recovering, 0.0, delta * 2.0)

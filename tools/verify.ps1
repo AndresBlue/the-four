@@ -43,6 +43,19 @@ $probePassed = $probeProcess.ExitCode -eq 0 -and $probeText -notmatch 'SCRIPT ER
 $results += [PSCustomObject]@{ test='dev/creature_stuck_probe'; passed=$probePassed; exit_code=$probeProcess.ExitCode }
 Write-Output "stuck_probe : $probePassed"
 if (-not $probePassed) { Write-Output $probeText }
+# The body of whoever is caught, kept out of the walls: fifty-six captures
+# staged against walls, in corners, in doorways and in wardrobes, and no joint
+# of it more than four centimetres into anything at any frame
+# (tools/dev/body_clip_probe.gd).
+$clipLog = Join-Path $projectPath 'evidence/verify_body_clip_probe.log'
+$clipArguments = (@('--headless','--path',$projectPath,'--rendering-method','forward_plus','--fixed-fps','60','--script','res://tools/dev/body_clip_probe.gd','--log-file',$clipLog,'--','--test-profile','--strict','--automation','--silent') | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$clipProcess = Start-Process -FilePath $GodotPath -ArgumentList $clipArguments -WindowStyle Hidden -PassThru
+if (-not $clipProcess.WaitForExit(300000)) { $clipProcess.Kill(); throw "Tiempo agotado en la sonda del cuerpo. Consulta $clipLog" }
+$clipText = Get-Content -LiteralPath $clipLog -Raw
+$clipPassed = $clipProcess.ExitCode -eq 0 -and $clipText -notmatch 'SCRIPT ERROR:|ERROR:'
+$results += [PSCustomObject]@{ test='dev/body_clip_probe'; passed=$clipPassed; exit_code=$clipProcess.ExitCode }
+Write-Output "body_clip_probe : $clipPassed"
+if (-not $clipPassed) { Write-Output $clipText }
 # The test bots (tools/bots): a floor built for their seats, the game's own
 # rules on their bodies, and a bot that closes a stage on its own feet
 # (tests/hotel/bots_test.gd). Its own timeout, and one that runs out is a

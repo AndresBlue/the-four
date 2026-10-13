@@ -50,9 +50,31 @@ const PITCH := Vector2(8.0, 20.0)
 ## and the lens barrel stand out of the other -- so it is rolled short of a
 ## quarter turn one way and a little past it the other (degrees).
 const ROLL := {-1.0: Vector2(80.0, 102.0), 1.0: Vector2(56.0, 78.0)}
-## The fall: how long it takes, how high it goes on its way.
-const FLIGHT := Vector2(0.32, 0.4)
-const ARC := Vector2(0.2, 0.5)
+## The fall (route). What pulls it down; how fast up the swipe sends it off
+## the hand (m/s); how high it hops off the floor and the share of its speed
+## over the ground it keeps through that; and how far it turns over in the
+## air: at least this much on its way down (radians) and between these on
+## the hop (degrees).
+const GRAVITY := 9.8
+const TOSS := Vector2(0.2, 0.9)
+const HOP := Vector2(0.05, 0.09)
+const HOP_KEEP := 0.5
+const AIR_LEAST := 2.0
+const HOP_TURN := Vector2(100.0, 190.0)
+## Going over on its edges: half its body across and half up (metres: what
+## it is, tools/props/build_camcorder.gd), so each quarter turn takes it
+## STEP further; how long each of the last ones takes, the slowest last; and
+## how nearly it stops on top of an edge, from the first of those to the last.
+const SECTION := Vector2(0.055, 0.06)
+const STEP := 0.115
+const KNOCK_TIME := [0.15, 0.2, 0.3]
+const KNOCK_SLOW := Vector2(0.3, 0.86)
+## And once it lies: how long it rocks, how far (degrees), how fast and how
+## soon that dies.
+const ROCK := 0.36
+const ROCK_ANGLE := 5.0
+const ROCK_RATE := 6.5
+const ROCK_FADE := 0.1
 ## Its field of view as it lies (the lens wide, camcorder_look.VIEW_FOV), to
 ## judge what falls in the picture.
 const VIEW_HALF := deg_to_rad(39.0)
@@ -72,7 +94,7 @@ const AIM_SPREAD := deg_to_rad(26.0)
 ##   exclude   bodies the rays go through (the victim's, the creature's)
 ##   allowed   Callable(point) -> bool: false for a place it must not land
 ##             (a refuge, the sweep of a door on the move)
-## Returns {rest: Transform3D, kind, leaned, apex, turns, axis, duration, score, tried, valid}.
+## Returns {rest: Transform3D, kind, leaned, score, tried, valid} and its fall (route).
 static func solve(space: PhysicsDirectSpaceState3D, scene: Dictionary, seed_value: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
@@ -97,7 +119,7 @@ static func solve(space: PhysicsDirectSpaceState3D, scene: Dictionary, seed_valu
 	if best.is_empty() or int(best.kind) == DOWN: best = face_down(space, scene, rng, exclude)
 	best["tried"] = tried
 	best["valid"] = valid
-	route(best, from, rng)
+	route(space, best, from, seed_value, exclude)
 	return best
 
 ## The floor at a point, or INF when there is none within reach of it.
@@ -267,35 +289,153 @@ static func face_down(space: PhysicsDirectSpaceState3D, scene: Dictionary, rng: 
 	var rest := Transform3D(Basis.from_euler(Vector3(deg_to_rad(rng.randf_range(-82.0, -70.0)), rng.randf() * TAU, 0.0)) * Basis(Vector3.BACK, rng.randf_range(-0.5, 0.5)), ground + Vector3.UP * 0.06)
 	return {"rest": rest, "kind": DOWN, "leaned": false, "score": 0.0, "covered": 1.0, "side": 1.0}
 
-## How it gets there: an arc and a tumble, the same every time for the same
-## seed. `apex` is how high over the straight line its path goes, `axis` and
-## `turns` the tumble (whole turns, so it ends exactly as it lies).
-static func route(take: Dictionary, from: Vector3, rng: RandomNumberGenerator) -> void:
+## How it gets there (docs/EXECUTION.md, 8.2): as a thing that weighs what a
+## camcorder weighs. Knocked out of the hand it falls as anything falls -- the
+## time that takes is the height's, not the scene's --, turning over at the
+## rate the blow gave it; it hits the floor, hops once, shorter and slower,
+## and what is left of its way it goes over on its edges, a quarter turn at a
+## time, each slower than the one before and the last barely making it over,
+## until it rocks on the side it stays on. All of it a function of the time
+## since the swipe, drawn from the capture's seed and tried against the same
+## walls on every machine: the same fall at any frame rate, for its owner
+## (death_tape.gd) and for whoever watches it go (executions.move_camcorder).
+##
+## Added to `take`: `landed` and `hopped` (seconds from the swipe to the floor
+## and to the end of the hop), `duration` (to lying still), `knocks` (when
+## each quarter turn comes down), and what pose() needs.
+static func route(space: PhysicsDirectSpaceState3D, take: Dictionary, from: Vector3, seed_value: int, exclude: Array) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value ^ 0x2545f491
 	var rest: Transform3D = take.rest
-	var span := from.distance_to(rest.origin)
-	take["duration"] = lerpf(FLIGHT.x, FLIGHT.y, clampf((span - 1.0) / 2.0, 0.0, 1.0))
-	take["apex"] = lerpf(ARC.x, ARC.y, rng.randf()) * (0.5 if int(take.kind) == DOWN else 1.0)
-	take["turns"] = 1
+	var toss := rng.randf_range(TOSS.x, TOSS.y)
+	var drop := maxf(from.y - rest.origin.y, 0.05)
+	var flight := (toss + sqrt(toss * toss + 2.0 * GRAVITY * drop)) / GRAVITY
+	var hop_height := rng.randf_range(HOP.x, HOP.y)
+	var hop := 2.0 * sqrt(2.0 * hop_height / GRAVITY)
+	# Over on its edges, about the way its lens points and so across it: the
+	# picture turns on itself a quarter at a time. As many times as the place
+	# has room for, to the side it was already going if it can.
+	var lens := Vector3(-rest.basis.z.x, 0.0, -rest.basis.z.z)
+	var way := Vector3.ZERO
+	var count := 0
+	if lens.length() > 0.5:
+		var side := lens.normalized().cross(Vector3.UP)
+		var going := Vector3(rest.origin.x - from.x, 0.0, rest.origin.z - from.z)
+		if side.dot(going) < 0.0: side = -side
+		var wanted := rng.randi_range(2, KNOCK_TIME.size())
+		for tried in range(wanted, 0, -1):
+			for towards in [side, -side]:
+				var start: Vector3 = rest.origin - (towards as Vector3) * STEP * float(tried)
+				if not sees(space, rest.origin + Vector3.UP * 0.04, start + Vector3.UP * 0.04, exclude) or not sees(space, from, start + Vector3.UP * 0.1, exclude): continue
+				if floor_under(space, start, exclude) == Vector3.INF: continue
+				way = towards
+				count = tried
+				break
+			if count > 0: break
+	var times: Array = KNOCK_TIME.slice(KNOCK_TIME.size() - count)
+	var start_at: Vector3 = rest.origin - way * STEP * float(count)
+	# Where it first hits the floor: it keeps HOP_KEEP of its speed over the
+	# ground through the hop, and the two together get it to where it rolls from.
+	var across := Vector3(start_at.x - from.x, 0.0, start_at.z - from.z)
+	var strike := Vector3(from.x, start_at.y, from.z) + across * (flight / (flight + HOP_KEEP * hop))
+	take["toss"] = toss
+	take["landed"] = flight
+	take["hop"] = hop
+	take["hop_height"] = hop_height
+	take["hopped"] = flight + hop
+	take["strike"] = strike
+	take["start"] = start_at
+	take["way"] = way
+	take["times"] = times
+	var knocks: Array = []
+	var clock := flight + hop
+	for length in times:
+		clock += float(length)
+		knocks.append(clock)
+	take["knocks"] = knocks
+	take["duration"] = clock
+	# How it turns in the air between the floor and the floor.
+	take["hop_axis"] = Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.3, 0.3), rng.randf_range(-1.0, 1.0)).normalized()
+	take["hop_turn"] = deg_to_rad(rng.randf_range(HOP_TURN.x, HOP_TURN.y))
 	take["axis"] = Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.35, 0.35), rng.randf_range(-1.0, 1.0)).normalized()
 
-## Where it is and how it is turned `time` seconds into its fall (0 as the
-## swipe takes it, `duration` as it touches the floor), from where it was.
-static func flight(take: Dictionary, from: Transform3D, time: float) -> Transform3D:
-	var rest: Transform3D = take.rest
-	var s := clampf(time / maxf(float(take.duration), 0.01), 0.0, 1.0)
-	# Thrown, not carried: quick off the hand, falling into the floor.
-	var along := 1.0 - pow(1.0 - s, 1.6)
-	var point := from.origin.lerp(rest.origin, along)
-	point.y = lerpf(from.origin.y, rest.origin.y, s * s) + float(take.apex) * sin(PI * s) * (1.0 - s * 0.35)
-	var spin := Basis(take.axis as Vector3, TAU * float(take.turns) * along)
-	var turned := Basis(from.basis.get_rotation_quaternion().slerp(rest.basis.get_rotation_quaternion(), along))
-	return Transform3D(spin * turned, point)
+## The fall of a camcorder that comes to lie at `rest`, for a machine that
+## was only told where (executions.note_lens): the same one its owner's makes.
+static func fall_to(space: PhysicsDirectSpaceState3D, rest: Transform3D, from: Vector3, seed_value: int, exclude: Array) -> Dictionary:
+	var take := {"rest": rest}
+	route(space, take, from, seed_value, exclude)
+	return take
 
-## Settling after it lands: two bounces and a rock, gone in a fifth of a
-## second. `since` is seconds since it touched the floor.
-static func settle_offset(since: float) -> Transform3D:
-	if since < 0.0 or since > 0.24: return Transform3D.IDENTITY
-	var first := maxf(0.0, sin(PI * clampf(since / 0.1, 0.0, 1.0))) * 0.06
-	var second := maxf(0.0, sin(PI * clampf((since - 0.1) / 0.08, 0.0, 1.0))) * 0.02
-	var rock := sin(since * 70.0) * 0.05 * exp(-since * 22.0)
-	return Transform3D(Basis(Vector3.BACK, rock) * Basis(Vector3.RIGHT, rock * 0.6), Vector3.UP * (first + second))
+## How it is turned as it starts to go over on its edges.
+static func rolled(take: Dictionary, quarters: float) -> Basis:
+	var way: Vector3 = take.way
+	if way == Vector3.ZERO: return (take.rest as Transform3D).basis
+	return Basis(Vector3.UP.cross(way).normalized(), -quarters * PI * 0.5) * (take.rest as Transform3D).basis
+
+## Where it is and how it is turned `time` seconds after the swipe took it
+## from `from`.
+static func pose(take: Dictionary, from: Transform3D, time: float) -> Transform3D:
+	var rest: Transform3D = take.rest
+	var landed := float(take.landed)
+	var hopped := float(take.hopped)
+	var times: Array = take.times
+	var count := times.size()
+	var start: Vector3 = take.start
+	var strike: Vector3 = take.strike
+	var rolling := rolled(take, float(count))
+	var struck := Basis(take.hop_axis as Vector3, -float(take.hop_turn)) * rolling
+	if time < landed:
+		# In the air: nothing pushes it but its weight, and it turns at one rate
+		# about one axis, the nearest way round that is most of a turn.
+		var t := maxf(time, 0.0)
+		var point := from.origin.lerp(Vector3(strike.x, from.origin.y, strike.z), t / landed)
+		point.y = from.origin.y + float(take.toss) * t - 0.5 * GRAVITY * t * t
+		point.y = maxf(point.y, strike.y)
+		var between := (struck * from.basis.orthonormalized().inverse()).get_rotation_quaternion()
+		var angle := between.get_angle()
+		var axis: Vector3 = between.get_axis() if angle > 0.02 and between.get_axis().is_finite() else (take.axis as Vector3)
+		if angle <= 0.02: angle = 0.0
+		if angle > PI:
+			angle = TAU - angle
+			axis = -axis
+		# The short way if that is turn enough to be a fall; the long way round
+		# if it would have come down all but as it left the hand.
+		var turn := angle if angle >= AIR_LEAST else angle - TAU
+		return Transform3D(Basis(axis.normalized(), turn * t / landed) * from.basis.orthonormalized(), point)
+	if time < hopped:
+		var u := (time - landed) / maxf(float(take.hop), 0.001)
+		var point := strike.lerp(start, u)
+		point.y += 4.0 * float(take.hop_height) * u * (1.0 - u)
+		return Transform3D(Basis(take.hop_axis as Vector3, -float(take.hop_turn) * (1.0 - u)) * rolling, point)
+	var way: Vector3 = take.way
+	var since := time - hopped
+	for index in count:
+		var length := float(times[index])
+		if since < length:
+			# Over one edge: quick off the floor, slow at the top of it -- the
+			# last ones all but stop there -- and down on the next side. Its
+			# middle goes up over the edge and comes down further on.
+			var u := since / length
+			var slow := lerpf(KNOCK_SLOW.x, KNOCK_SLOW.y, float(index + KNOCK_TIME.size() - count) / maxf(float(KNOCK_TIME.size() - 1), 1.0))
+			var turned := u + slow * sin(TAU * u) / TAU
+			var angle := turned * PI * 0.5
+			var low := SECTION.x if index % 2 == 0 else SECTION.y
+			var wide := SECTION.y if index % 2 == 0 else SECTION.x
+			var along := (-wide * cos(angle) + low * sin(angle) + wide) / (low + wide)
+			var over := wide * sin(angle) + low * cos(angle) - lerpf(low, wide, turned)
+			return Transform3D(rolled(take, float(count - index) - turned), start + way * STEP * (float(index) + along) + Vector3.UP * over)
+		since -= length
+	# On the side it stays on: it rocks there, less each time.
+	if since < ROCK and not is_zero_approx(float(take.duration)):
+		var axis := Vector3.UP.cross(way).normalized() if way != Vector3.ZERO else rest.basis.z.normalized()
+		var rock := deg_to_rad(ROCK_ANGLE) * sin(TAU * ROCK_RATE * since) * exp(-since / ROCK_FADE) * (1.0 - since / ROCK)
+		return Transform3D(Basis(axis, rock) * rest.basis, rest.origin + Vector3.UP * absf(rock) * 0.03)
+	return rest
+
+## When it hits something, seconds from the swipe, and how hard (1 the floor
+## the first time): the floor, the floor again, and each edge it comes down on.
+static func blows(take: Dictionary) -> Array:
+	var said: Array = [[float(take.landed), 1.0], [float(take.hopped), 0.5]]
+	var knocks: Array = take.knocks
+	for index in knocks.size(): said.append([float(knocks[index]), 0.34 - 0.06 * float(index)])
+	return said

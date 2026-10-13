@@ -1288,7 +1288,6 @@ func clear_screen_cues() -> void:
 	lost_signal = 0.0
 	static_level = 0.0
 	enclosure = 0.0
-	glitch = 0.0
 	if is_instance_valid(static_sound) and static_sound.playing: static_sound.stop()
 	if is_instance_valid(camcorder): camcorder.signal_lost = false
 	if post_material != null:
@@ -1298,16 +1297,16 @@ func clear_screen_cues() -> void:
 		post_material.set_shader_parameter("tape_fray", 0.0)
 		post_material.set_shader_parameter("rewinding", 0.0)
 		post_material.set_shader_parameter("enclosure", 0.0)
-		post_material.set_shader_parameter("threat_glitch", 0.0)
 
-## The creature searches a wardrobe: the host opens it leaf by leaf and, if
+## The creature searches a wardrobe: the host throws it open and, if
 ## somebody is inside, that is where the execution starts.
 func open_wardrobe(hide: Node3D) -> void:
 	if net.is_client(): return
 	match_net.begin_wardrobe_job(hide)
 
-## The creature, done waiting beside a wardrobe, throws both its doors open
-## at once (hotel_locust.pounce): on the host, and everybody sees it.
+## The creature throws both doors of a wardrobe open at once, searching it
+## or done waiting beside it (hotel_locust.pounce): on the host, and
+## everybody sees it.
 func burst_wardrobe(hide: Node3D) -> void:
 	if net.is_client() or not is_instance_valid(hide): return
 	hide.force_open(0.1)
@@ -1515,22 +1514,6 @@ func host_gate(delta: float) -> void:
 	else: session.update_goal(delta, session.can_depart())
 	lifts.ride_lifts()
 
-## The creature winding up a strike close enough to be this machine's
-## business: the tape tears and the house holds its breath. Everywhere at once,
-## a lunge on the far side of the floor tore every screen, the hunter's too.
-const WINDUP_NEAR := 10.0
-## Whether the lunge tears the picture and hushes the house at all. Off: the
-## half second before a capture carries no new sign of it, which is what a
-## startle wants (docs/EXECUTION.md, 5.3) -- its own bark still says it is
-## coming. Which of the two stays is the author's to judge, looking at both
-## in the bench (tools/dev/capture_bench.gd, or "-- --windup-tear" to play
-## with it on).
-var windup_tear := OS.get_cmdline_user_args().has("--windup-tear")
-func winding_up_near() -> bool:
-	if not is_instance_valid(locust) or locust.mode != locust.Mode.WINDUP or match_net.local_is_locust(): return false
-	var eye: Vector3 = world_audio.listener_position()
-	return eye.distance_to(locust.global_position) < WINDUP_NEAR
-
 func _process(delta: float) -> void:
 	update_menu_scene(delta)
 	if session.state == session.State.PLAYING:
@@ -1566,16 +1549,15 @@ func _process(delta: float) -> void:
 	player.set_pilot(camcorder.lamp_lit() or settings.values.reduced, camcorder.visible and not camcorder.hunter and not camcorder.signal_lost and local_alive() and player.camera.current)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	update_screen_cues(delta)
-	var warning_active: bool = windup_tear and winding_up_near()
 	# The bed and music recede as the dread aura rises, leaving room for it.
 	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
-	ambience.volume_db = (-25.0 if warning_active else -17.0) - dread * 9.0 + world_audio.duck_db()
+	ambience.volume_db = -17.0 - dread * 9.0 + world_audio.duck_db()
 	# The music is on the hotel's power: it goes with the lights, at once, and
 	# comes back with them in the next wing, more gently.
 	var powered: bool = not (is_instance_valid(hotel) and hotel.dark)
 	music_power = move_toward(music_power, 1.0 if powered else 0.0, delta / (MUSIC_RETURN if powered else MUSIC_CUT))
-	theme.volume_db = (-30.0 if warning_active else -24.0) - dread * 22.0 + world_audio.duck_db() + linear_to_db(maxf(music_power, 0.0001))
-	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty() and not warning_active:
+	theme.volume_db = -24.0 - dread * 22.0 + world_audio.duck_db() + linear_to_db(maxf(music_power, 0.0001))
+	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty():
 		ui.subtitle.text = world_audio.caption_text
 	visibility_clock += delta
 	if visibility_clock > 0.25:
@@ -1827,9 +1809,6 @@ func configure_hotel() -> void: rig.configure_hotel()
 var enclosure:
 	get: return rig.enclosure
 	set(value): rig.enclosure = value
-var glitch:
-	get: return rig.glitch
-	set(value): rig.glitch = value
 var lost_signal:
 	get: return rig.lost_signal
 	set(value): rig.lost_signal = value

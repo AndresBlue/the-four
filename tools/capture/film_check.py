@@ -1,14 +1,17 @@
 """What a film of the capture bench measures of itself: how loud, and how it flashes.
 
-    python tools/capture/film_check.py <film.avi> [--caught=5.95] [--sheet=out.png --times=a,b,c]
+    python tools/capture/film_check.py <film.avi> [--caught=5.54 [--scream=0.39]] [--sheet=out.png --times=a,b,c]
 
 The films are the ones ./tools/godot.ps1 bench-films writes into evidence/
 (AVI: one JPEG a frame and the sound as it was mixed). Needs Pillow, numpy and
 scipy.
 
 Loudness is the programme loudness of ITU-R BS.1770 (K-weighted, gated), of
-the whole film and, given the second the capture starts at, of what comes
-before it and of the capture.
+the whole film and, given the second of the film the capture starts at (what
+its .log says after "caught after=", plus the 1.27 s the bench waits before
+it sets the creature off: 2.67 s in the wardrobe's), of what comes before
+it, of the capture, of the half second of the scream (0.05 s into it; caught
+from behind, --scream=0.39) and of the camera lying still.
 
 Flashes are counted after WCAG 2.3.1 ("three flashes or below threshold"): a
 flash is a pair of opposing changes of a tenth or more in relative luminance,
@@ -71,7 +74,7 @@ def programme(signal, hz):
     return float(-0.691 + 10.0 * np.log10(np.mean(kept))), float(np.max(loud))
 
 
-def loudness(raw, rate, caught):
+def loudness(raw, rate, caught, scream=0.05):
     hz, channels, bits = rate
     if not raw or not hz: return
     signal = (np.frombuffer(raw, dtype={16: '<i2', 32: '<i4'}[bits]).astype(np.float64) / float(2 ** (bits - 1))).reshape(-1, channels)
@@ -79,9 +82,9 @@ def loudness(raw, rate, caught):
     if caught >= 0.0:
         parts += [
             ('before the capture', signal[int(0.6 * hz):int(caught * hz)]),
-            ('the capture, 4.2 s', signal[int(caught * hz):int((caught + 4.2) * hz)]),
-            ('its first half second', signal[int(caught * hz):int((caught + 0.55) * hz)]),
-            ('on the floor, to the blow', signal[int((caught + 1.05) * hz):int((caught + 2.58) * hz)]),
+            ('the capture, 4.7 s', signal[int(caught * hz):int((caught + 4.7) * hz)]),
+            ('the scream, half a second', signal[int((caught + scream) * hz):int((caught + scream + 0.55) * hz)]),
+            ('lying still, to the blow', signal[int((caught + 2.2) * hz):int((caught + 3.08) * hz)]),
         ]
     for name, piece in parts:
         level, most = programme(piece, hz)
@@ -198,7 +201,7 @@ def main():
     options = dict(piece[2:].split('=', 1) for piece in sys.argv[2:] if piece.startswith('--') and '=' in piece)
     data, frames, raw, rate = read(sys.argv[1])
     print('FILM  %s: %d frames, sound %d Hz x %d' % (sys.argv[1], len(frames), rate[0], rate[1]))
-    loudness(raw, rate, float(options.get('caught', -1.0)))
+    loudness(raw, rate, float(options.get('caught', -1.0)), float(options.get('scream', 0.05)))
     flashes(data, frames)
     if 'sheet' in options: sheet(data, frames, [float(piece) for piece in options.get('times', '0,1,2,3').split(',')], options['sheet'])
 

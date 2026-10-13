@@ -86,8 +86,11 @@ la cámara arrancada de las manos, la muerte desde el suelo, la cinta que se
 corta—, distinto según cómo te coge, dónde cae la cámara y qué luz hay; la
 finta del armario, de la que se escapa esperando; salir de un armario sin
 ruido; la segunda muerte más corta, la cinta que se rebobina y «Sobresaltos
-suaves». Tiene su banco (`Banco de capturas.cmd`) y una decisión tuya
-pendiente: si la embestida rasga la imagen o no (apartado 1).
+suaves». Tiene su banco (`Banco de capturas.cmd`). Con las películas vistas
+(12 de octubre) el autor decidió: sin desgarro, sin embestida (te coge en el
+acto en las cuatro dificultades), el armario de golpe, la cámara cayendo
+como cae una cosa, el grito 0,05 s después de la máscara y el cuerpo sin
+atravesar paredes. Hecho todo; falta que lo vea (apartado 1).
 
 El 4 de octubre entró esto, y **tampoco se ha jugado**:
 
@@ -258,13 +261,20 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **Las distancias con auriculares:** si 10, 20 y 40 m se distinguen de
   verdad, si las puertas lejanas se siguen leyendo con la absorción nueva, y si
   la dirección de la criatura se acierta en esquinas y con dos puertas.
-- [ ] **El desgarro de la embestida: A o B (decisión tuya, pendiente).** El
-  juego va hoy en A: la imagen no se rasga ni baja el ambiente en el medio
-  segundo antes de que te coja. B es como era: se rasga. Se compara de dos
-  maneras. Jugando: `Banco de capturas.cmd`, la tecla T alterna A y B y G
-  hace venir a la bestia. Mirando: las cuatro películas de
-  `evidence/captura_*.avi` (de frente y por la espalda, A y B, con sonido).
-  Para una partida entera en B: `./tools/godot.ps1 play -Extra '--windup-tear'`.
+- [ ] **La segunda vuelta de la captura (12 de octubre), por ver.** Lo que
+  pediste con las películas delante está hecho y medido, pero no lo has
+  visto: (a) **te coge en el acto**, sin preparación, en las cuatro
+  dificultades —¿se siente justo en Apacible, que antes daba 0,6 s para
+  esquivar?—; (b) **el armario revienta** las dos hojas y te tiene 0,15 s
+  después —la bestia se planta delante medio segundo antes: ¿ese medio
+  segundo avisa demasiado, o demasiado poco?—; (c) **la cámara cae** con su
+  peso (0,6–0,7 s), rebota y vuelca dos o tres veces de canto en canto, y la
+  escena dura por eso 4,7 s en vez de 4,2: ¿la caída se lee como una caída, y
+  el medio segundo de más pesa?; (d) **el grito** llega 0,05 s después de la
+  máscara; (e) **el cuerpo** ya no atraviesa paredes ni suelo (medido en 56
+  escenas), y tendido queda de espaldas: mira si alguna postura quedó rara
+  contra una pared. Películas nuevas: `evidence/captura_frente.avi`,
+  `captura_espalda.avi` y `captura_armario.avi`.
 - [ ] **La captura rehecha (12 de octubre), con gente** (EXECUTION.md, 18.2):
   quien no la ha visto, ¿salta, y dice que vio una cara?; ¿sabe qué le mató y
   dónde quedó la cámara?; a la tercera y a la quinta muerte, ¿molesta, o nota
@@ -369,8 +379,6 @@ herramientas para mirarlo están en la guía de desarrollo.
     que hay que decírselos?
   - Una puerta cerrada ahora amortigua el sonido de verdad (8 dB y sin
     agudos): ¿se sigue oyendo lo bastante a la criatura?
-  - El desgarro de la cinta y el silencio antes de un golpe solo salen si la
-    criatura está a menos de 10 m.
   - La cordura sube también dentro del refugio.
 - [ ] **El escalado nuevo**, en una máquina de verdad. Medido: a 0,6 da un
   74 % más de fotogramas que la resolución nativa, y con la criatura cruzando
@@ -492,9 +500,13 @@ pueda jugar entero sin tocar el teclado.
   sobresalto, cámara caída, cinta, finta de armario y repetición; qué se hizo,
   con qué se comprobó y qué falta, en [EXECUTION.md](EXECUTION.md), sección
   18). Lo que hay que juzgar jugando está en el apartado 1.
-  - [ ] Según lo que decida el autor sobre el desgarro de la embestida
-    (apartado 1), quitar el interruptor (`hotel_main.windup_tear`) y lo que
-    quede sin usar de la opción descartada.
+  - [ ] Sin la embestida, lo que DIFFICULTY.md mide de cada dificultad
+    (cuántas persecuciones acaban en huida) está sin volver a medir con bots.
+  - [ ] Los brazos de la propia bestia atraviesan paredes en sitios
+    estrechos (no se ha tocado: solo el cuerpo de la víctima), y el
+    Detective Masculino, sin esqueleto, no se puede corregir hueso a hueso.
+  - [ ] La estocada del jugador que lleva a la bestia (versus) conserva sus
+    0,3 s de preparación y su ladrido: decidir si también va a 0.
   - [ ] Las poses del cuerpo en la captura (colgando, tendido, sentado) están
     hechas mirando a la Exploradora: ajustarlas al Detective Femenino, que
     las hereda por los huesos comunes. El Detective Masculino no tiene
@@ -502,7 +514,8 @@ pueda jugar entero sin tocar el teclado.
   - [ ] Una prueba de red que mire la escena desde la máquina de un testigo
     (hoy los cuatro escenarios pasan, y uno ejecuta a alguien sacándolo de un
     armario, pero ninguno compara lo que ve cada máquina).
-  - [ ] Los 4,2 s de la bestia quieta, que el autor quiere revisar después.
+  - [ ] Los 4,7 s de la bestia quieta (eran 4,2; el medio segundo es la caída
+    de la cámara), que el autor quiere revisar después.
   - [ ] Idea aparcada: el final «se lo lleva» (EXECUTION.md, 7.4).
 - [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
   siempre refugio, televisores y código, y en ese orden: la planta cambia y la

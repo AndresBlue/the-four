@@ -292,7 +292,6 @@ func apply_settings() -> void:
 	level.post_material.set_shader_parameter("tint", Vector3.ONE if hunter else Vector3(1.02, 1.0, 0.9))
 	if level.settings.values.reduced:
 		level.post_material.set_shader_parameter("enclosure", 0.0)
-		level.post_material.set_shader_parameter("threat_glitch", 0.0)
 	level.player.torch.shadow_enabled = level.settings.values.shadows
 	if torch_size < 0.0: torch_size = level.player.torch.light_size
 	level.player.torch.light_size = torch_size * minf(preset.penumbra, 1.0)
@@ -310,12 +309,10 @@ func configure_hotel() -> void:
 	level.hotel.echo_view = echo_seat()
 	level.hotel.apply_quality(PRESETS.of(level.settings.values.quality, level.settings.values))
 
-## Wardrobe enclosure, strike glitch and lost signal on the analog filter.
-## The first two are off with reduced effects; the picture going is not an
+## Wardrobe enclosure and lost signal on the analog filter. The first is
+## off with reduced effects; the picture going is not an
 ## effect, it is how a victim is told it died, so it stays (milder).
 var enclosure := 0.0
-
-var glitch := 0.0
 
 ## Seconds of lost picture left for the local victim, and how far gone it is.
 var lost_signal := 0.0
@@ -325,10 +322,6 @@ var static_level := 0.0
 func update_screen_cues(delta: float) -> void:
 	var wanted_enclosure: float = (1.0 - level.player.peek * 0.8) if level.player.hidden and level.session.state == level.session.State.PLAYING else 0.0
 	enclosure = move_toward(enclosure, wanted_enclosure, delta * 2.0)
-	# The tear of the lunge (level.windup_tear): on or off, it is gone the
-	# instant the creature has somebody -- nothing of it is left over the face.
-	var striking: bool = level.windup_tear and level.winding_up_near()
-	glitch = 1.0 if striking else (0.0 if not level.execution.is_empty() else move_toward(glitch, 0.0, delta * 4.0))
 	lost_signal = maxf(0.0, lost_signal - delta)
 	var mine: bool = not level.execution.is_empty() and int(level.execution.seat) == level.player.slot and not level.bot_match
 	# The victim's own picture goes when its tape does (death_tape.gd).
@@ -350,7 +343,6 @@ func update_screen_cues(delta: float) -> void:
 	if is_instance_valid(level.static_sound) and level.static_sound.playing and static_level < 0.05: level.static_sound.stop()
 	if level.settings.values.reduced: return
 	level.post_material.set_shader_parameter("enclosure", enclosure)
-	level.post_material.set_shader_parameter("threat_glitch", glitch)
 	# The tape frays with the mind: the picture drags and the colours start to
 	# run. With no bar anywhere, this is what says the meter is there at all.
 	if not hunter_seat():

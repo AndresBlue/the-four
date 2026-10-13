@@ -32,7 +32,7 @@ En versus, The Locust se controla con cámara sobre el hombro: Shift caza a toda
 
 No ve el hotel: lo reconstruye. Chasquea dos veces por segundo y la imagen se arma de esos pulsos, en grises: el frente de onda cruza la sala despacio, deja los puntos que devuelve la geometría y se apaga hasta el siguiente. A eso se suman los ruidos que hacen los supervivientes, cada uno con su nube; al chillar, todo se vuelve rojo. La oscuridad no le afecta: hay que romperle la visión o esconderse bien. Los detalles están en [docs/VISION_LOCUST.md](docs/VISION_LOCUST.md), y se puede mirar en solitario con `./tools/godot.ps1 locust`.
 
-Alcanzar a alguien no lo mata al instante: la criatura lo levanta en el aire y lo clava tres veces, y la baja cuenta al terminar. Registrar un armario también le cuesta: se planta delante y lo abre hoja a hoja, inmóvil unos segundos. Al morir observas a un compañero desde detrás de su hombro.
+Alcanzar a alguien no lo mata al instante: empieza una escena de 4,7 s —la máscara en la lente, el manotazo que tira la cámara, el cuerpo levantado y el golpe— y la baja cuenta al terminar. Registrar un armario también le cuesta, pero no avisa: se planta delante y revienta las dos hojas de golpe. Al morir observas a un compañero desde detrás de su hombro.
 
 ## Qué contiene esta entrega
 
@@ -42,7 +42,7 @@ Alcanzar a alguien no lo mata al instante: la criatura lo levanta en el aire y l
 - Menú principal, ajustes persistentes de gráficos/imagen/controles/audio, créditos y pausa real.
 - Refugio reversible, salida libre, checkpoint individual y reintento.
 - Forward+, perfil Compatibility, iluminación cálida/fría, moqueta y papel mural procedurales, niebla y filtro analógico regulable.
-- The Locust patrulla, escucha por rutas caminables, investiga, persigue, registra armarios y ejecuta; su estocada se anuncia 0,3 s antes y alcanza 3,2 m con línea de visión.
+- The Locust patrulla, escucha por rutas caminables, investiga, persigue, registra armarios y ejecuta; a su alcance (de 1,6 a 2,6 m según la dificultad) y a la vista, te coge en el acto, sin preparación.
 - Resistencia, agacharse y armarios para esconderse en las habitaciones (no en pasillos); refugio seguro.
 - Polvo, cortinas con movimiento reducido opcional, niebla localizada y reflejos en espacios comunes.
 - Ambiente aportado por el usuario en bucle y música en buses separados.
@@ -86,7 +86,7 @@ Desde PowerShell en la carpeta del proyecto:
 ./tools/benchmarks/run_bench.ps1 -Label prueba
 ```
 
-`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, la captura, intro, visión de eco, bucle de partida, audio, audio espacial, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro; `bench` (o `Banco de capturas.cmd`) es el banco de la captura: la criatura te coge cuando se lo pides —en la sala o ante un armario—, con la luz, la entrada, el final y la versión que elijas con las teclas que salen en pantalla, y vuelve a montarse sola después de cada muerte; no guarda nada (ni Continuar ni récords). `bench-films` graba la captura entera con su sonido, sin nadie a los mandos, en `evidence/captura_*.avi`: de frente y por la espalda, sin el desgarro de la embestida (A) y con él (B).
+`verify.ps1` es la comprobación completa: contratos de escenas, hotel, supervivencia, la captura (y una sonda que mide que el cuerpo de quien cae no atraviesa paredes ni suelo), intro, visión de eco, bucle de partida, audio, audio espacial, compilación de shaders con ventana y, al final, dos partidas en red con procesos reales (cooperativo de tres y versus de dos) por 127.0.0.1. Deja `evidence/verification.json` y un registro por prueba. `locust` abre el piso con la vista de ecolocalización; `rehearsal` añade supervivientes autónomos para juzgarla con algo pasando dentro; `bench` (o `Banco de capturas.cmd`) es el banco de la captura: la criatura te coge cuando se lo pides —en la sala o ante un armario—, con la luz, la entrada, el final y la versión que elijas con las teclas que salen en pantalla, y vuelve a montarse sola después de cada muerte; no guarda nada (ni Continuar ni récords). `bench-films` graba la captura entera con su sonido, sin nadie a los mandos, en `evidence/captura_*.avi`: de frente y por la espalda, sin el desgarro de la embestida (A) y con él (B).
 
 Las pruebas nuevas usan archivos `test_hotel_*` separados de las preferencias/checkpoints normales. Las regresiones de arquitectura usan `--no-enemy`; `survival-test` mantiene la IA real. `hotel-batch` construye mil mapas y recorre veinte con movimiento real automatizado; puede tardar varios minutos. `hotel-walkthrough` abre una ventana, recorre un piso y guarda capturas.
 

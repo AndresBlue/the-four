@@ -633,7 +633,7 @@ func remote_leaves(hide: Node3D, body: Node3D, quiet := false) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func hide_forced(index: int) -> void:
-	if is_instance_valid(level.hotel) and index >= 0 and index < level.hotel.hides.size(): level.hotel.hides[index].force_open()
+	if is_instance_valid(level.hotel) and index >= 0 and index < level.hotel.hides.size(): level.hotel.hides[index].force_open(0.1)
 
 # --- Noise, sounds and the creature's calls ----------------------------------------
 
@@ -718,8 +718,8 @@ func resolve_strike(origin: Vector3, facing: Vector3) -> void:
 		best_distance = distance
 	level.capture_survivor(best)
 
-## The Locust player searches a wardrobe: the host runs the ritual (leaf by
-## leaf, then a look inside).
+## The Locust player searches a wardrobe: the host runs it (the doors thrown
+## open, then a look inside).
 func locust_open_hide(hide: Node3D) -> void:
 	var index: int = level.hotel.hides.find(hide)
 	if in_charge(): level.open_wardrobe(hide)
@@ -813,20 +813,17 @@ func begin_wardrobe_job(hide: Node3D) -> void:
 		if job.hide == hide: return
 	wardrobe_jobs.append({"hide": hide, "index": level.hotel.hides.find(hide), "time": 0.0, "step": 0})
 
-## One leaf at a time, then a look inside: whoever is in there is pulled out.
+## Both leaves thrown open at once, and whoever is in there is pulled out.
 func update_wardrobe_jobs(delta: float) -> void:
 	for job in wardrobe_jobs.duplicate():
 		if not is_instance_valid(job.hide):
 			wardrobe_jobs.erase(job)
 			continue
 		job.time += delta
-		var steps: Dictionary = level.locust.wardrobe_steps() if is_instance_valid(level.locust) else {"right": 0.85, "left": 1.3, "reach": 1.7, "done": 2.5}
-		if job.step == 0 and job.time >= steps.right:
-			job.step = 1
-			pull_leaf(job, "right")
-		elif job.step == 1 and job.time >= steps.left:
+		var steps: Dictionary = level.locust.wardrobe_steps() if is_instance_valid(level.locust) else {"burst": 0.55, "reach": 0.7, "done": 1.7}
+		if job.step < 2 and job.time >= steps.burst:
 			job.step = 2
-			pull_leaf(job, "left")
+			level.burst_wardrobe(job.hide)
 		elif job.step == 2 and job.time >= steps.reach:
 			job.step = 3
 			# Whoever is in there; of two, the one who got in first. The other
@@ -842,14 +839,6 @@ func update_wardrobe_jobs(delta: float) -> void:
 		elif job.step == 3 and job.time >= steps.done + 0.4:
 			job.hide.close_timer = 2.0
 			wardrobe_jobs.erase(job)
-
-func pull_leaf(job: Dictionary, side: String) -> void:
-	job.hide.open_leaf(side)
-	if in_match(): leaf_opened.rpc(job.index, side)
-
-@rpc("authority", "call_remote", "reliable")
-func leaf_opened(index: int, side: String) -> void:
-	if is_instance_valid(level.hotel) and index >= 0 and index < level.hotel.hides.size(): level.hotel.hides[index].open_leaf(side)
 
 ## An execution decided by the host: everyone plays it out (hotel_main), from
 ## the same word on how it was caught (executions.stage_capture).

@@ -536,6 +536,104 @@ func seat_leg(side: String, spot: Vector3, weight: float) -> void:
 	aim_bone(thigh, calf, knee - hip)
 	aim_bone(calf, ankle, hip + along * distance - rig.get_bone_global_pose(calf).origin)
 
+# --- Kept out of the walls ----------------------------------------------------------
+#
+# A body the scene carries about is not moved by the physics that keeps a
+# walking one out of things: held against a wall its arms were flung through
+# it, laid on the floor its elbows and heels lay under the carpet, and sat
+# against a wall its head was in it. So what the scene poses is put right
+# against the place itself, joint by joint, every frame it is posed.
+
+## What no part of a body may be in: walls, floors and furniture (1), doors
+## and wardrobe leaves shut (8) or standing open (64).
+const SOLID := 1 | 8 | 64
+## Half the thickness of what hangs from each joint (metres): the limbs, by
+## the joint they end at, and the trunk, which the floor has to be under.
+const LIMB := {"e": 0.055, "h": 0.07, "k": 0.075, "f": 0.065, "o": 0.045}
+const TRUNK := {"hip": 0.1, "chest": 0.11, "head": 0.1, "la": 0.06, "ra": 0.06, "lt": 0.085, "rt": 0.085}
+## From the base of the skull to past its top, along the neck.
+const SKULL := 0.22
+
+## Where a bone is, in the world.
+func bone_point(bone: int) -> Vector3:
+	return rig.global_transform * rig.get_bone_global_pose(bone).origin
+
+## Where the end of a limb can be: where it was put, or as near that as the
+## place lets something `thick` be, the same length from its joint. `clear`:
+## {space, exclude, floor} (clearance).
+func kept_out(from: Vector3, tip: Vector3, thick: float, clear: Dictionary) -> Vector3:
+	var space: PhysicsDirectSpaceState3D = clear.space
+	var length := from.distance_to(tip)
+	if length < 0.01: return tip
+	var wanted := tip
+	for attempt in 4:
+		var moved := false
+		var along := (wanted - from).normalized()
+		var query := PhysicsRayQueryParameters3D.create(from, from + along * (length + thick), SOLID)
+		query.exclude = clear.exclude
+		var hit := space.intersect_ray(query)
+		if not hit.is_empty():
+			# Through something, or nearer it than it is thick: round, out of it.
+			wanted = swung(from, wanted, length, hit.normal, hit.position, thick)
+			moved = true
+		else:
+			# Alongside something: off it.
+			for turn in 6:
+				var aside := Vector3(cos(TAU * float(turn) / 6.0), 0.0, sin(TAU * float(turn) / 6.0))
+				var graze := PhysicsRayQueryParameters3D.create(wanted, wanted + aside * thick, SOLID)
+				graze.exclude = clear.exclude
+				var near := space.intersect_ray(graze)
+				if near.is_empty(): continue
+				wanted = swung(from, wanted, length, near.normal, near.position, thick)
+				moved = true
+		# And never under the floor.
+		if wanted.y < float(clear.floor) + thick - 0.002:
+			wanted = swung(from, wanted, length, Vector3.UP, Vector3(wanted.x, float(clear.floor), wanted.z), thick)
+			moved = true
+		if not moved: break
+	return wanted
+
+## The end of a limb swung about its joint until it is `thick` off a face of
+## something (a point of it and the way it faces): as far towards it as that
+## leaves, and the rest of its length along it, the way it was already going.
+func swung(from: Vector3, tip: Vector3, length: float, normal: Vector3, on: Vector3, thick: float) -> Vector3:
+	var reach := tip - from
+	# How far off the face its end has to be, as seen from the joint.
+	var least := clampf(thick + 0.005 - (from - on).dot(normal), -length, length * 0.98)
+	if reach.dot(normal) >= least: return tip
+	var beside := reach - normal * reach.dot(normal)
+	if beside.length() < 0.001: beside = Vector3.DOWN - normal * Vector3.DOWN.dot(normal)
+	if beside.length() < 0.001: beside = Vector3.FORWARD
+	return from + normal * least + beside.normalized() * sqrt(maxf(0.0, length * length - least * least))
+
+## A bone turned so that the one hanging from it is clear of the place.
+func clear_bone(bone: int, child: int, thick: float, clear: Dictionary) -> void:
+	if bone < 0 or child < 0 or clear.is_empty(): return
+	var from := bone_point(bone)
+	var tip := bone_point(child)
+	var wanted := kept_out(from, tip, thick, clear)
+	if wanted.distance_to(tip) > 0.002: aim_bone(bone, child, rig.global_basis.inverse() * (wanted - from))
+
+## The head, which has no bone beyond it: its top is along the neck.
+func clear_head(clear: Dictionary) -> void:
+	var chest: int = bones.get("chest", -1)
+	var head: int = bones.get("head", -1)
+	if chest < 0 or head < 0 or clear.is_empty(): return
+	var from := bone_point(chest)
+	var neck := bone_point(head) - from
+	if neck.length() < 0.01: return
+	var top := from + neck.normalized() * (neck.length() + SKULL)
+	var wanted := kept_out(from, top, 0.1, clear)
+	if wanted.distance_to(top) > 0.002: aim_bone(chest, head, rig.global_basis.inverse() * (wanted - from))
+
+## How far the trunk has to come up for none of it to be under the floor.
+func under_floor(floor_y: float) -> float:
+	var deepest := 0.0
+	for key in TRUNK:
+		var bone: int = bones.get(key, -1)
+		if bone >= 0: deepest = maxf(deepest, floor_y + float(TRUNK[key]) - bone_point(bone).y)
+	return deepest
+
 ## Somebody the creature has: run through on its arm, held up, hanging from
 ## it once the blow has landed, and on the floor when it lets go -- laid out
 ## along the way it falls, or, with no room to lie, folded up where it drops:
@@ -545,9 +643,14 @@ func seat_leg(side: String, spot: Vector3, weight: float) -> void:
 ## scene's clock), side (-1 or 1, which way it falls), straight (straight
 ## back, to no side), slump (folded up) with room (metres clear behind it)
 ## and sill (how far above the floor it comes to sit: a wardrobe's bottom
-## board), and height (how far above the floor the body is held).
+## board), and height (how far above the floor the body is held). And, for
+## none of it to end up in a wall or under the floor, `clear`: the bodies the
+## scene's own rays go through (kept_out).
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
+	var clear := {}
+	if rig != null and state.has("clear") and is_inside_tree() and get_parent_node_3d() != null:
+		clear = {"space": get_world_3d().direct_space_state, "exclude": state.clear, "floor": get_parent_node_3d().global_position.y - float(state.get("height", 0.0)) + float(state.get("sill", 0.0)) * (float(state.get("fall", 0.0)) if bool(state.get("slump", false)) else 0.0)}
 	var lift := float(state.get("lift", 0.0))
 	var limp := float(state.get("limp", 0.0))
 	var fall := float(state.get("fall", 0.0))
@@ -564,7 +667,11 @@ func pose_capture(state: Dictionary) -> void:
 	var recline := SCORE.seat_lean(room)
 	if not slump:
 		var way := Vector3(0.0 if bool(state.get("straight", false)) else side * 0.62, 0.0, 0.78).normalized()
-		var laid := Basis(Vector3.UP.cross(way).normalized(), down * deg_to_rad(87.0))
+		# Down along the way it falls, and turned as it goes so that it is its
+		# back that meets the floor: tipped over to a side without that, it
+		# ended half on that side, a shoulder, an elbow and a heel under the
+		# carpet.
+		var laid := Basis(Vector3.UP.cross(way).normalized(), down * deg_to_rad(87.0)) * Basis(Vector3.UP, atan2(way.x, way.z) * down)
 		transform = Transform3D(laid * over, Vector3(0.0, 0.11 * down, 0.0))
 	elif rig == null:
 		# A body that cannot bend: leant back as far as there is room for.
@@ -588,10 +695,18 @@ func pose_capture(state: Dictionary) -> void:
 	var upright := 1.0 - clampf(recline / 1.45, 0.0, 1.0)
 	# The back: arched off the blade while there is life in it, folded once
 	# there is not; the head thrown back to the mask, then let hang.
-	turn_bone("spine", right, -0.16 * alive + 0.3 * limp + 0.22 * sat * upright)
-	turn_bone("chest", right, -0.2 * alive + 0.22 * limp + 0.18 * sat * upright)
-	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * limp - 0.45 * sat * (1.0 - upright))
+	# Laid out, the floor has its back: what folded it over the arm is gone
+	# (kept, it lay arched off the carpet from its shoulders to its heels).
+	var hung := limp * (1.0 - (0.0 if slump else down))
+	turn_bone("spine", right, -0.16 * alive + 0.3 * hung + 0.22 * sat * upright)
+	turn_bone("chest", right, -0.2 * alive + 0.22 * hung + 0.18 * sat * upright)
+	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * hung + 0.12 * (limp - hung) - 0.45 * sat * (1.0 - upright))
 	turn_bone("head", forward, side * 0.3 * limp)
+	if not clear.is_empty():
+		# Down on the floor, the whole of it comes up until its back is on the
+		# carpet and not under it; and its head is kept out of what is behind it.
+		if down > 0.0: position.y += under_floor(float(clear.floor))
+		clear_head(clear)
 	# The arms: flung out at the grab, up to the arm that holds as the feet
 	# leave the floor, and down for good after the blow.
 	var kick := sin(time * 11.0) * alive * lift
@@ -620,7 +735,9 @@ func pose_capture(state: Dictionary) -> void:
 		var upper := flung.lerp(clutch, struggle).lerp(dead, limp).lerp(thrown, down).normalized()
 		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown_fore, down).normalized()
 		aim_bone(arm, elbow, upper)
+		clear_bone(arm, elbow, LIMB.e, clear)
 		aim_bone(elbow, hand, fore)
+		clear_bone(elbow, hand, LIMB.h, clear)
 	# The legs: standing while it still has the floor, kicking once it has not,
 	# hanging after the blow, and bent anyhow on the floor.
 	for pair in [["l", -1.0], ["r", 1.0]]:
@@ -634,10 +751,13 @@ func pose_capture(state: Dictionary) -> void:
 		var swing := kick * leg_side * 0.42
 		var knee := 0.12 + 0.5 * lift * alive * (0.5 + 0.5 * sin(time * 11.0 * leg_side + 1.3)) + 0.18 * limp
 		var hip := 0.08 * lift + swing + 0.1 * limp
-		# On the floor one knee stays up and the other leg lies out.
+		# On the floor one knee stays up and the other leg lies out: the thigh
+		# forwards, which lying on its back is up, and the shin back down to
+		# the carpet. (Turned the way the legs hang, the raised knee was a
+		# thigh under the floor and a shin through it.)
 		if not slump:
-			hip = lerpf(hip, 0.75 if leg_side * side > 0.0 else 0.12, down)
-			knee = lerpf(knee, 1.25 if leg_side * side > 0.0 else 0.25, down)
+			hip = lerpf(hip, -0.8 if leg_side * side > 0.0 else -0.1, down)
+			knee = lerpf(knee, -1.35 if leg_side * side > 0.0 else -0.2, down)
 		turn_bone(key + "t", right, -hip)
 		turn_bone(key + "t", forward, leg_side * (0.05 + 0.12 * down))
 		turn_bone(key + "k", right, knee)
@@ -649,3 +769,6 @@ func pose_capture(state: Dictionary) -> void:
 			seat_leg(key, spot, clampf(down * 2.5, 0.0, 1.0))
 		# Feet that carry nothing point down; those of somebody sitting, ahead.
 		if toe >= 0 and (lift > 0.05 or down > 0.0): aim_bone(ankle, toe, (below * (0.75 + 0.25 * limp) * (1.0 - sat) + forward * (0.5 + sat)).normalized())
+		clear_bone(thigh, calf, LIMB.k, clear)
+		clear_bone(calf, ankle, LIMB.f, clear)
+		if toe >= 0: clear_bone(ankle, toe, LIMB.o, clear)
