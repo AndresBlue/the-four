@@ -512,6 +512,26 @@ En la semilla 81: 60 alarmas, 30 cuadros, 25 relojes de pie, 74 ventiladores, 43
 
 **2. Los apliques no parecían encendidos de cerca.** La luz de un aplique es un cono hacia arriba y otro hacia abajo y nunca cae sobre su propia pantalla, y la pantalla brillaba por sí misma un tercio de lo que se ve: un aplique que iluminaba toda su pared colgaba ahí con la pantalla apagada. Los lejanos —los que en Ultra alumbran sin sombra y sin cono— sí iluminaban la suya desde dentro, a través de la tela, y eran los únicos que parecían encendidos. La pantalla brilla ahora por sí misma y lo que pasa a través de la tela es poco, así que cerca y lejos se ven igual; en una sala a oscuras o sin corriente sigue apagada. El 7 de octubre, a petición del autor, **más**: la pantalla a 2,6 (`wall_lamp_cloth.tres`) y la bombilla, que se ve bajo ella, a 14 (`wall_lamp_bulb.tres`, era 2), para que el resplandor y el halo de la cámara se junten a su alrededor. Tiene un coste que es el de una cámara de verdad: con más brillo en el cuadro el iris se cierra un poco, y un pasillo con apliques a la vista queda un 7 % más oscuro en lo demás (medido en la toma del pasillo).
 
+## Cuatro fallos de imagen vistos jugando (13 de octubre de 2026)
+
+**1. Luz que pasaba de un pasillo a los cuartos de servicio.** Una franja clara en el suelo, a lo largo del tabique, en la sala de detrás de un aplique encendido. No era el atlas de sombras (el aplique tenía la suya) sino la sombra misma: suave, con una penumbra que se calcula según lo cerca que queda de la lámpara lo que la tapa, y el aplique cuelga a 16 cm de su pared. `tools/dev/leak_who.gd --behind` mira ese suelo con cada lámpara encendida y apagada, y a las dos primeras que fugan les cambia una cosa cada vez:
+
+| El aplique | El suelo de detrás |
+|---|---|
+| Como estaba | 0,64 |
+| Apagado | 0,26 |
+| Puntual (`light_size` 0) | 0,26 |
+| Sombra sin difuminar | 0,26 |
+| Sin sesgo · con mucho · sin perfil · girado 45° | 0,64 · 0,88 · 0,64 · 0,64 |
+
+Una sombra dura no fuga y la suave sí, así que el aplique alumbra solo las capas de su sala también cuando proyecta sombra, como ya hacía sin ella. Después, 229 lámparas (apliques, de mueble y carteles) miradas desde detrás en todos los tipos de sala de la semilla 81: con ninguna gana el suelo más de 0,02. A cambio, por una puerta abierta ya no entra la luz de un aplique, solo la de las demás lámparas.
+
+**2. Una banda oscura por el centro de los pasillos, vista de lejos.** Una línea oscura de un par de píxeles en el suelo, desde debajo de cada lámpara de techo: a lo largo de un pasillo, una franja por su centro que de cerca o con zoom adelgaza hasta no verse. Se descartó midiendo que fuera el tamaño de las celdas del atlas de sombras (igual con todas a 16) o el rebote (sus volúmenes estaban a la vista); sin el perfil de la lámpara desaparece. Lo que queda es la costura del panorama del perfil, donde el renderizador leería su copia más pequeña: no se miró dentro del motor, pero leyéndolos sin copias reducidas la línea se va. Los perfiles se leen ya sin copias reducidas (`tools/dev/corridor_look.gd`, semilla 7: la línea no está).
+
+**3. Un espejo en blanco.** En una sala con araña, el espejo de la pared era una lámina blanca, con raya de CCD. La primera sospecha —la sonda de reflexión, que se hace justo debajo de la araña— no era. `tools/dev/mirror_look.gd` lo reprodujo en dos salas de cuatro, en cada una desde un solo punto de vista de una docena, y quitó una cosa cada vez: el cristal daba 0,45 tal cual, 0,21 sin el brillo directo de las lámparas (0,19 quitando solo el de la del techo) y lo mismo que tal cual sin sondas o sin reflejos en pantalla. Es el brillo que el motor pinta de la lámpara, una mancha del ancho que le da el tamaño de la fuente, sobre un material que es todo reflejo. Los dos materiales de espejo ya no reciben ese brillo; la lámpara se sigue viendo en ellos, como imagen, por la sonda. En las dos vistas del fogonazo el cristal pasa de 0,44 a 0,25 y 0,27, y en ninguna de las demás cambia.
+
+**4. Los lápices flotaban.** El modelo de los útiles de escritorio viene como un expositor: el vaso de pie y, a su lado, lápices y bolígrafos uno encima de otro, con la goma sobre el vaso. Se hornea ahora con el expositor tumbado: cada pieza sobre la mesa, de lado, un poco torcida (`build_catalogue.gd`, `LAID`).
+
 ### Pruebas que se hacen al empezar su fase
 
 - **6. Bisel en shader:** fase 5.

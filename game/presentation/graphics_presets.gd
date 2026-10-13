@@ -91,7 +91,9 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ##                       (assets/textures, hotel_geometry.apply_scan()): a
 ##                       quarter of their video memory.
 ## sconce_lights         wall lamps light their wall (lighting.gd profile,
-##                       shadowed); otherwise only their shades glow.
+##                       shadowed, and each kept in its room by the room's
+##                       render layer all the same: hotel_geometry.gd,
+##                       kept_in()); otherwise only their shades glow.
 ## lamps_cast            how many ceiling lamps cast a shadow at once, the
 ##                       nearest; the lit ones past them light without one,
 ##                       each kept in its room by layers as sconce_fill's are

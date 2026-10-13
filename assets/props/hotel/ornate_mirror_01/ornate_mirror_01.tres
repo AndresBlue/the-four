@@ -12,3 +12,4 @@ orm_texture = ExtResource("2")
 normal_enabled = true
 normal_texture = ExtResource("3")
 cull_mode = 2
+specular_mode = 2

@@ -1983,6 +1983,17 @@ func sconce_light(boundary: Node3D, sconce: MeshInstance3D) -> void:
 	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.distance_fade_enabled = true
 	set_fade(lamp, SCONCE_REACH - 8.0, 6.0)
+	# Its own room's and no other's, casting or not (kept_in()). It hangs
+	# 16 cm off its wall and its shadow is a soft one, whose penumbra is
+	# worked out from how near the lamp whatever blocks it is: with the wall
+	# that near, its light came out on the floor of the room behind -- a
+	# streak along the wall, plain on the tiles of a bathroom or a service
+	# room. Measured (tools/dev/leak_who.gd --behind, seed 81): that floor
+	# read 0.64 with the lamp lit and 0.26 with it out; 0.26 as well with the
+	# lamp a point or its shadow not blurred, and neither bias, turn nor
+	# profile changed it. So the layers keep it in, as they keep a lamp with
+	# no shadow at all.
+	lamp.set_meta("own_room", true)
 	lamp.visible = false
 	boundary.add_child(lamp)
 	sconce_lights.append(lamp)
@@ -2064,10 +2075,15 @@ func keep_lamp(light: Light3D, mask: int) -> void:
 	if kept_lamps.has(light.get_instance_id()): return
 	kept_lamps[light.get_instance_id()] = {"light": light, "mask": mask, "every": light.light_cull_mask, "casts": light.shadow_enabled, "looked_after": false}
 
+## Whether a lamp is kept to its own room's layers: every lamp on
+## static_light, and a wall lamp wherever the rooms have layers at all.
+func kept_in(entry: Dictionary) -> bool:
+	return static_light or (layered and int(entry.mask) != 0 and (entry.light as Light3D).has_meta("own_room"))
+
 ## A lamp as static_light has it, or as it was built.
 func light_lamp(entry: Dictionary) -> void:
 	var light: Light3D = entry.light
-	ROOM_LAYERS.light_only(light, entry.mask if static_light else entry.every)
+	ROOM_LAYERS.light_only(light, entry.mask if kept_in(entry) else entry.every)
 	if entry.looked_after: return
 	var casting: bool = entry.casts and not static_light
 	if light.shadow_enabled != casting: light.shadow_enabled = casting
@@ -2812,7 +2828,7 @@ func cast_or_fill(light: Light3D, casts: bool) -> void:
 	light.light_projector = light.get_meta("profile") if casts else null
 
 ## A wall lamp out, casting with its profile, or filling its wall with no
-## shadow and only its own room's layers to light.
+## shadow; either way with only its own room's layers to light (kept_in()).
 func set_sconce(k: int, state: int) -> void:
 	var lamp := sconce_lights[k]
 	sconce_state[k] = state
@@ -2821,7 +2837,7 @@ func set_sconce(k: int, state: int) -> void:
 		return
 	var casts := state == SCONCE_CAST
 	var entry = kept_lamps.get(lamp.get_instance_id())
-	if entry != null: ROOM_LAYERS.light_only(lamp, entry.every if casts else entry.mask)
+	if entry != null: ROOM_LAYERS.light_only(lamp, entry.mask if (not casts or kept_in(entry)) else entry.every)
 	if lamp.shadow_enabled != casts: lamp.shadow_enabled = casts
 	var profile: Texture2D = LIGHTING.profile("sconce") if casts else null
 	if lamp.light_projector != profile: lamp.light_projector = profile

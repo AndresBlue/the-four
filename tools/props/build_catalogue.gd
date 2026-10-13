@@ -39,6 +39,16 @@ const CLOCKS := {
 	"vintage_grandfather_clock_01": {"hour": "houd_hand$", "minute": "minute_hand$"},
 	"mantel_clock_01": {"centre": Vector3(0, 0.0915, 0.048), "hour": AABB(Vector3(-0.004, 0.087, 0.047), Vector3(0.039, 0.009, 0.001)), "minute": AABB(Vector3(-0.004, 0.087, 0.048), Vector3(0.008, 0.051, 0.0005))},
 }
+## Downloads that come as a rack: things hung one above another, to be seen
+## from the front. The nodes whose name matches are put where they would be
+## with the rack laid flat on its back (what was up is towards the front),
+## each on whichever of its sides is the lower and a little askew, and every
+## node is set down on the floor by itself. The stationery is a cup with its
+## pencils and pens in a column beside it and its eraser over it: on a desk
+## they floated there.
+const LAID := {"stationery_supplies": "_(pen|pencil)_|_eraser$"}
+## How far askew, at most (radians either way).
+const ASKEW := 0.06
 var failed := false
 
 func _initialize() -> void: run.call_deferred()
@@ -65,6 +75,15 @@ func collect_named(node: Node, xform: Transform3D, out: Array) -> void:
 	if node is Node3D: here = xform * (node as Node3D).transform
 	if node is MeshInstance3D and (node as MeshInstance3D).mesh != null: out.append([node.mesh, here, String(node.name)])
 	for child in node.get_children(): collect_named(child, here, out)
+
+## The lowest and the highest a mesh reaches, stood as `xform` has it.
+func heights(mesh: Mesh, xform: Transform3D) -> Vector2:
+	var reach := Vector2(INF, -INF)
+	for surface in mesh.get_surface_count():
+		for vertex in mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]:
+			var y: float = (xform * vertex).y
+			reach = Vector2(minf(reach.x, y), maxf(reach.y, y))
+	return reach
 
 ## Which loose piece of a surface each of its vertices is in: vertices at
 ## the same place are one, and so is whatever a triangle joins.
@@ -260,6 +279,20 @@ func bake(model: String, folder: String, part := "", pattern := "") -> void:
 	var scene := document.generate_scene(state)
 	var parts := []
 	collect(scene, Transform3D.IDENTITY, parts, RegEx.create_from_string(pattern) if not pattern.is_empty() else null)
+	if LAID.has(model):
+		var named := []
+		collect_named(scene, Transform3D.IDENTITY, named)
+		var flat := RegEx.create_from_string(LAID[model])
+		var over := Basis(Vector3.RIGHT, PI / 2.0)
+		parts = []
+		for piece in named:
+			var stood: Transform3D = piece[1]
+			if flat.search(String(piece[2])) != null:
+				var turned := Transform3D(over * stood.basis, over * stood.origin)
+				var moved := Transform3D(stood.basis, over * stood.origin)
+				stood = turned if heights(piece[0], turned).y - heights(piece[0], turned).x < heights(piece[0], moved).y - heights(piece[0], moved).x else moved
+				stood.basis = Basis(Vector3.UP, (float(String(piece[2]).hash() % 1000) / 500.0 - 1.0) * ASKEW) * stood.basis
+			parts.append([piece[0], Transform3D(Basis.IDENTITY, Vector3(0, -heights(piece[0], stood).x, 0)) * stood])
 	var name := model + ("_" + part if not part.is_empty() else "")
 	if parts.is_empty():
 		print("CATALOGUE_FAILED ", name, " (no mesh)")

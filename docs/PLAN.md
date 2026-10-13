@@ -438,6 +438,13 @@ herramientas para mirarlo están en la guía de desarrollo.
   partida que se lean (a través de la cinta, el segundero del de pared es
   un hilo que apenas se ve a más de un metro) y que la escena de entrada y
   la sala del título, que marcan siempre las 2:50, no desentonen.
+- [ ] **Los cuatro fallos de imagen del 13 de octubre**, en partida: que no
+  quede luz en el suelo de baños y cuartos de servicio junto al pasillo; que
+  la banda oscura del centro de los pasillos no se vea desde su otro extremo;
+  que los espejos reflejen la sala y no se quemen desde ningún sitio (y que
+  el marco dorado, que comparte material con el cristal, no haya quedado
+  apagado); y los lápices, sobre el escritorio. Los apliques ya no alumbran
+  a través de una puerta abierta: mirar si se echa de menos.
 - [ ] **El barniz de la madera en Ultra (13 de octubre):** acotado de canto
   (`lacquer_edge` 0,06) tras verlo el autor demasiado brillante; mirar en
   partida si el satinado que queda es el que quiere. Sin comprobar: por qué

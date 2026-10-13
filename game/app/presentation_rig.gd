@@ -36,6 +36,16 @@ func build_environment() -> void:
 	level.environment = level.get_node("Presentation/WorldEnvironment").environment
 	ambient_energy = level.environment.ambient_light_energy
 	level.post_material = level.get_node("Presentation/Analog/Screen").material
+	# A lamp's profile is read as it is, with no smaller copies of it. A round
+	# lamp's profile is a panorama, and where its two ends meet the picture's
+	# coordinates jump from one side to the other, which is what a renderer
+	# takes for a picture seen from very far: there it read the smallest copy,
+	# the whole profile in one grey. A dark line some two pixels wide ran along
+	# the floor from under every ceiling lamp -- down the middle of a corridor,
+	# a dark band from its far end, nothing from close or zoomed in. It went
+	# with the profile taken off and with this (tools/dev/corridor_look.gd).
+	# The profiles are smooth: there is nothing in them to shimmer.
+	RenderingServer.light_projectors_set_filter(RenderingServer.LIGHT_PROJECTOR_FILTER_LINEAR)
 	# What the interface writes over the snow is shown by the filter itself.
 	level.ui.film_marks(level.post_material)
 	lens_material = level.get_node("Presentation/Lens/Screen").material

@@ -478,8 +478,10 @@ func run() -> void:
 	# does not fit in the shadow atlas Godot draws without a shadow, which goes
 	# straight through the wall into the dark room on the other side. Only the
 	# nearest twelve cast, wherever the player stands. On Ultra the ones past
-	# them are lit too (sconce_fill): with no shadow, and so each with nothing
-	# to light but the layers of its own room.
+	# them are lit too (sconce_fill), with no shadow. And every one of them,
+	# with a shadow or without, has nothing to light but the layers of its own
+	# room: 16 cm off its wall, a wall lamp's soft shadow let its light out on
+	# the floor of the room behind (tools/dev/leak_who.gd --behind).
 	var floor_plan := preload("res://game/world/generation/floor_definition.gd")
 	var every_room: int = scene.hotel.ROOM_LAYERS.ROOMS
 	for quality in [3, 2]:
@@ -498,12 +500,14 @@ func run() -> void:
 			var filling := 0
 			for lamp in scene.hotel.sconce_lights:
 				if not lamp.visible: continue
+				var own: int = scene.hotel.kept_lamps[lamp.get_instance_id()].mask
+				if lamp.light_cull_mask != own or (own & every_room) == 0 or (own & every_room) == every_room: in_place = false
 				if lamp.shadow_enabled:
 					casting += 1
-					if (lamp.light_cull_mask & every_room) != every_room or lamp.light_projector == null: in_place = false
+					if lamp.light_projector == null: in_place = false
 				else:
 					filling += 1
-					if (lamp.light_cull_mask & every_room) == every_room or lamp.light_projector != null: in_place = false
+					if lamp.light_projector != null: in_place = false
 			most_casting = maxi(most_casting, casting)
 			most_filling = maxi(most_filling, filling)
 			var lamps_casting := 0
@@ -518,10 +522,10 @@ func run() -> void:
 			most_lamps = maxi(most_lamps, lamps_casting)
 		if quality == 3:
 			check("Nunca más de doce apliques proyectando sombra a la vez", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT)
-			check("Ultra: los apliques de más allá alumbran sin sombra y solo las capas de su sala", most_filling > 0 and in_place and scene.hotel.layered and not scene.hotel.static_light)
+			check("Ultra: los apliques de más allá alumbran sin sombra, y todos, con ella o sin ella, solo las capas de su sala", most_filling > 0 and in_place and scene.hotel.layered and not scene.hotel.static_light)
 			check("Ultra: nunca más de veinte lámparas de techo con sombra, y las demás solo alumbran su sala", most_lamps > 0 and most_lamps <= 20 and lamps_filling > 0 and lamps_in_place)
 		else:
-			check("Alto: doce apliques con su sombra y ninguno más encendido, y veinte lámparas de techo con la suya como en Ultra", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT and most_filling == 0 and in_place and scene.hotel.layered and most_lamps > 0 and most_lamps <= 20 and lamps_filling > 0 and lamps_in_place)
+			check("Alto: doce apliques con su sombra, cada uno en su sala, y ninguno más encendido; y veinte lámparas de techo con la suya como en Ultra", most_casting > 0 and most_casting <= scene.hotel.SCONCES_LIT and most_filling == 0 and in_place and scene.hotel.layered and most_lamps > 0 and most_lamps <= 20 and lamps_filling > 0 and lamps_in_place)
 	# Medio keeps every lamp's shadow, and nothing is kept in its room by layers.
 	settings.set_value("quality", 1)
 	var medio_whole := true

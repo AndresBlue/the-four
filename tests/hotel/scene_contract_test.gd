@@ -124,6 +124,14 @@ func run() -> void:
 	var geometry := load("res://game/world/hotel/hotel_geometry.gd")
 	check("Cada reloj trae sus manecillas aparte, de pie y sobre su eje", clocks_right)
 	check("Y marcan la hora que se les dice: a las 3:00:00 la corta a un cuarto de vuelta y las otras arriba", is_equal_approx(geometry.hand_turn("hour", 3 * 3600), 0.25) and geometry.hand_turn("minute", 3 * 3600) == 0.0 and geometry.hand_turn("second", 3 * 3600) == 0.0 and is_equal_approx(geometry.hand_turn("minute", 2 * 3600 + 51 * 60 + 26), (51.0 * 60.0 + 26.0) / 3600.0) and is_equal_approx(geometry.hand_turn("second", 2 * 3600 + 51 * 60 + 26), 26.0 / 60.0))
+	# A mirror's glass takes no highlight of the lamps: the engine's blot of a
+	# chandelier was a sheet of white over the whole mirror, where the lamp's
+	# own image belongs (tools/dev/mirror_look.gd). And the stationery lies on
+	# its desk: its pencils came hung in a column beside their cup, twice as
+	# high as it stands.
+	var glasses := [load("res://game/presentation/materials/mirror.tres"), (load("res://assets/props/hotel/ornate_mirror_01.res") as Mesh).surface_get_material(0)]
+	check("Los espejos no toman el brillo directo de las lámparas", glasses.all(func(glass): return glass is BaseMaterial3D and glass.specular_mode == BaseMaterial3D.SPECULAR_DISABLED))
+	check("Los lápices descansan en el escritorio, junto a su vaso", (load("res://assets/props/hotel/stationery_supplies.res") as Mesh).get_aabb().size.y < 0.09)
 	# The board and the archive are not offered while there is nothing in
 	# them: a new player is not shown two titles that open on nothing.
 	var board = scene.ui.records

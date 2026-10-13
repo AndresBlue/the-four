@@ -48,6 +48,14 @@ EMISSION = {"Chandelier_02_bulb": ((1.0, 0.8, 0.52), 9.0)}
 ## is white on that image glows (a mask made here, <image>_glow.jpg), in this
 ## colour and at this strength.
 GLOW_WHITE = {"Chandelier_02": ((1.0, 0.76, 0.46), 2.6)}
+## Materials that take no highlight of the lamps (specular_mode disabled): a
+## mirror's. The engine draws a lamp's highlight as a blot, wider the bigger
+## and the nearer the lamp, and on a glass that is all reflection the blot of
+## a chandelier is a sheet of white over the whole mirror, with the
+## camcorder's smear above and below it. What a mirror shows of a lamp is the
+## lamp, and that it has already: from its room's reflection probe and from
+## what is on the screen (tools/dev/mirror_look.gd).
+NO_HIGHLIGHT = {"ornate_mirror_01"}
 ## Models whose glass has to be made clear here (material_tres()).
 CLEAR_GLASS = {"vintage_grandfather_clock_01"}
 # Big pieces seen close up keep 2048 px.
@@ -181,6 +189,8 @@ def material_tres(model, gltf, material, textures):
         lines.append("alpha_scissor_threshold = 0.5")
     if material.get("doubleSided"):
         lines.append("cull_mode = 2")
+    if material["name"] in NO_HIGHLIGHT:
+        lines.append("specular_mode = 2")
     if material["name"] in EMISSION:
         glow, strength = EMISSION[material["name"]]
         lines.append("emission_enabled = true")
