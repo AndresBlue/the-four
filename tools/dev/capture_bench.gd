@@ -8,7 +8,8 @@ extends SceneTree
 ## catches you is up to you, as in the game: look at it, turn your back,
 ## crouch, have the sheet open, get into the wardrobe. The keys are on the
 ## screen: the light, how it ends, a way in forced whatever you do, the
-## short version, whether it feints at a wardrobe, and whose body it is
+## short version, whether it feints at a wardrobe, the floor's difficulty
+## (5: the settings' to begin with, then each of the four), and whose body it is
 ## played on (M: the Exploradora, the woman detective or the man). The panel goes while a
 ## capture lasts and says afterwards what it was. With your own settings and
 ## keys, and nothing of it is kept: no Continuar, no records.
@@ -47,6 +48,7 @@ extends SceneTree
 ## how the keys are checked without anybody at them.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SCORE := preload("res://game/app/capture_score.gd")
+const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 const TIMES := [0.02, 0.05, 0.1, 0.3, 0.5, 0.62, 0.75, 0.9, 1.05, 1.5, 2.0, 2.5, 2.8, 3.1, 3.5, 4.1]
 ## Each frame's size on the sheet and how many go in a row ("--large": twice
 ## the size, two to a row, for looking closely at a few).
@@ -471,6 +473,7 @@ func write_board() -> void:
 		"2    final: %s" % ("el que toque" if forced_ending == 0 else {"leave": "se va", "glance": "mira la lente"}[ENDINGS[forced_ending]]),
 		"3    versión: %s" % VERSIONS[version],
 		"4    finta ante el armario: %s" % FEINTS[feint],
+		"5    dificultad: %s  (chilla %.1f s y corre a %.1f m/s; tú corres a 6,0)" % [DIFFICULTY.NAMES.get(String(level.difficulty), String(level.difficulty)), float(level.locust.alert_time) if is_instance_valid(level.locust) else 0.0, float(level.locust.chase_speed) if is_instance_valid(level.locust) else 0.0],
 		"N    %s" % ("volver a la sala" if by_wardrobe else "ponerme ante un armario (entra con E; mantén E para salir en silencio)"),
 		"B    sangre: %s" % ("sí" if bool(level.settings.values.get("gore", true)) else "no"),
 		"M    cuerpo: %s" % ["Detective Masculino (sin esqueleto: solo se inclina)", "Detective Femenino", "Exploradora"][clampi(int(level.settings.values.character), 0, 2)],
@@ -639,7 +642,7 @@ func play() -> void:
 		var delta := float(now - tick) / 1000.0
 		tick = now
 		var pressed := {}
-		for key in [KEY_G, KEY_H, KEY_L, KEY_M, KEY_B, KEY_1, KEY_2, KEY_3, KEY_4, KEY_N, KEY_R, KEY_P]:
+		for key in [KEY_G, KEY_H, KEY_L, KEY_M, KEY_B, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_N, KEY_R, KEY_P]:
 			var down := Input.is_physical_key_pressed(key)
 			pressed[key] = down and not bool(was.get(key, false))
 			was[key] = down
@@ -690,6 +693,17 @@ func play() -> void:
 			if pressed[KEY_N]:
 				by_wardrobe = not by_wardrobe
 				await restage()
+			elif pressed[KEY_5]:
+				# The floor again, at the next difficulty: its creature, its
+				# mercy, its odds -- everything a floor of it has. Of the bench
+				# only: nobody's settings hear of it.
+				var order: Array = DIFFICULTY.PROFILES.keys()
+				difficulty = String(order[(order.find(String(level.difficulty)) + 1) % order.size()])
+				await level.start_floor(level.session.run_seed, false, [1], difficulty)
+				skip_card()
+				floor_feint = float(level.locust.feint)
+				await restage()
+				if not keys.is_empty(): print("BENCH_DIFFICULTY ", level.difficulty, " alert=", level.locust.alert_time, " chase=", level.locust.chase_speed)
 			elif pressed[KEY_G]: come()
 			elif pressed[KEY_H]:
 				bring_close()
