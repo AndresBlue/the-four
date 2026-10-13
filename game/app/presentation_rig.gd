@@ -36,6 +36,8 @@ func build_environment() -> void:
 	level.environment = level.get_node("Presentation/WorldEnvironment").environment
 	ambient_energy = level.environment.ambient_light_energy
 	level.post_material = level.get_node("Presentation/Analog/Screen").material
+	# What the interface writes over the snow is shown by the filter itself.
+	level.ui.film_marks(level.post_material)
 	lens_material = level.get_node("Presentation/Lens/Screen").material
 	lens_layer = level.get_node("Presentation/Lens")
 	level.camcorder = level.get_node("Presentation/Camcorder")

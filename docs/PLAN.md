@@ -428,6 +428,14 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel
   superior, rendija de 1,2 cm, y las del dormitorio y la portada, que usan la
   misma hoja.
+- [ ] **El halo de las luces y las letras sobre la nieve (13 de octubre):**
+  el halo, ya redondo, visto en partida (se comprobó en `glare_look` y en
+  capturas fijas de tres salas); y «SEÑAL PERDIDA» y las marcas de la cinta
+  rebobinándose, ya pasadas por la cinta: a 1080 líneas se leen bien, pero en
+  una ventana de 720 el rojo se corre casi tanto como ancha es la letra y
+  «SEÑAL PERDIDA» se lee peor (es el fallo de «Fallos menores»: la cinta se
+  mide en píxeles de pantalla). Sin mirar en Muy bajo (`tape_lite`) ni en
+  Compatibilidad, donde solo se comprobó que el shader compila.
 - [ ] **Los presets en partida**, que las capturas fijas no enseñan: TAA de
   Medio en movimiento, penumbras de Ultra, eco de Bajo, halo de Ultra, sombras
   con el filtro más barato en Baja y Media andando, y salas que aparezcan tarde

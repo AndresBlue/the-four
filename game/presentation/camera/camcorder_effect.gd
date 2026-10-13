@@ -21,7 +21,9 @@ extends CompositorEffect
 ##            ghosts mirrored through the centre (reflections between the
 ##            lens elements, the camcorder's cheap coatings). Both fade the
 ##            more light there is in frame (a corridor of wall lamps is not a
-##            firework), and only the bigger lights leave ghosts
+##            firework), and only the bigger lights leave ghosts. The halo
+##            is round and fades away to nothing, whatever the light's size:
+##            tools/dev/glare_look.gd draws it by itself
 ##   grade    exposure, smear, glare, white balance and the video knee that
 ##            replaces the tonemapper (the environment is set to linear while
 ##            it runs)
@@ -185,7 +187,9 @@ void main() {
 ## The column of charge, smudged sideways: a wide Gaussian, so the streak is a
 ## soft band. It also puts a narrow light in its place, since a glint one
 ## pixel wide comes out of a sigma-wide blur some thirty times fainter, while
-## a lamp's own width survives it.
+## a lamp's own width survives it. Every column is read, out to three sigmas:
+## read one in three, a narrow light's streak was a comb of lines, and cut at
+## two and a half the band had an edge.
 const SPREAD := """
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0, std430) restrict readonly buffer Columns { float data[]; } columns;
@@ -195,11 +199,10 @@ void main() {
 	int x = int(gl_GlobalInvocationID.x);
 	int n = int(p.count);
 	if (x >= n) return;
-	int reach = int(p.sigma * 2.5);
-	int stride = max(reach / 12, 1);
+	int reach = int(p.sigma * 3.0);
 	float s = 0.0;
 	float total = 0.0;
-	for (int i = -reach; i <= reach; i += stride) {
+	for (int i = -reach; i <= reach; i++) {
 		float w = exp(-float(i * i) / (2.0 * p.sigma * p.sigma));
 		s += columns.data[clamp(x + i, 0, n - 1)] * w;
 		total += w;
@@ -261,17 +264,28 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform sampler2D source_image;
 layout(rgba16f, set = 0, binding = 1) uniform restrict writeonly image2D target_image;
 layout(push_constant, std430) uniform Params { vec2 size; vec2 step; } p;
+// Twice the square of the sigma, in texels.
+const float SPREAD = 56.0;
 void main() {
 	ivec2 cell = ivec2(gl_GlobalInvocationID.xy);
 	if (cell.x >= int(p.size.x) || cell.y >= int(p.size.y)) return;
 	vec2 uv = (vec2(cell) + 0.5) / p.size;
-	// A wide Gaussian (sigma 5 texels, 20 pixels at full size) in 15 taps.
-	vec3 sum = vec3(0.0);
-	float total = 0.0;
-	for (int i = -7; i <= 7; i++) {
-		float w = exp(-float(i * i) / 50.0);
-		sum += texture(source_image, uv + p.step * float(i) * 1.5).rgb * w;
-		total += w;
+	// A Gaussian of sigma 5.3 texels (21 pixels at full size) out to three
+	// sigmas, over every texel: two to a read, at the point between them
+	// where the sampler weighs them as the curve does. (It was fifteen reads
+	// a texel and a half apart, of a curve cut at over a third of its
+	// height: a small bright light had a square for a halo, with an edge,
+	// and bars across it where the reads fell between texels.)
+	vec3 sum = texture(source_image, uv).rgb;
+	float total = 1.0;
+	for (int i = 1; i <= 8; i++) {
+		float first = float(i * 2 - 1);
+		float w_first = exp(-first * first / SPREAD);
+		float w_second = exp(-(first + 1.0) * (first + 1.0) / SPREAD);
+		float w = w_first + w_second;
+		vec2 at = p.step * (first + w_second / w);
+		sum += (texture(source_image, uv + at).rgb + texture(source_image, uv - at).rgb) * w;
+		total += w * 2.0;
 	}
 	imageStore(target_image, cell, vec4(sum / total, 1.0));
 }

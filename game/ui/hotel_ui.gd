@@ -123,6 +123,10 @@ var rewind_mark: Label
 var rewind_clock: Label
 ## "SEÑAL PERDIDA" again, over the snow that covers the one under the filter.
 var signal_label: Label
+## What is written over the snow has a picture of its own, the size of the
+## screen, which the tape's filter (`tape`, the level's) lays over its snow.
+var marks_view: SubViewport
+var tape: ShaderMaterial
 const SIGNAL_LOST := "SEÑAL PERDIDA"
 var footer: Label
 var menu_clock: Label
@@ -192,11 +196,22 @@ func _ready() -> void:
 	# What is written over the snow. This interface is drawn under the tape's
 	# filter (it is part of the recording), and a picture that is all snow
 	# covers it: the words that say the signal is lost, and the marks of a
-	# tape rewinding, go on a layer of their own above it.
-	var above := CanvasLayer.new()
-	above.name = "OverSnow"
-	above.layer = 6
-	add_child(above)
+	# tape rewinding, are drawn apart, on a picture of their own that the
+	# filter lays over its snow and then treats as it does the rest -- soft,
+	# their colour run sideways, scanned and grained (analog.gdshader,
+	# `marks`). On a layer above the filter, where they were, they were the
+	# only clean lettering on the screen: stuck on the glass, not on the tape.
+	marks_view = SubViewport.new()
+	marks_view.name = "OverSnow"
+	marks_view.transparent_bg = true
+	marks_view.disable_3d = true
+	marks_view.gui_disable_input = true
+	# Once, empty: what the filter reads before anything is written is nothing.
+	marks_view.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(marks_view)
+	var above := marks_view
+	fit_marks()
+	get_tree().root.size_changed.connect(fit_marks)
 	signal_label = STYLE.text("", 30, STYLE.ALERT)
 	signal_label.offset_left = 48
 	signal_label.offset_top = 34
@@ -1802,6 +1817,23 @@ func flash(words: String, seconds := 2.5) -> void:
 	flash_label.text = words
 	flash_time = seconds
 
+## The picture of what is written over the snow, as big as the screen and
+## laid out as the screen is: the same lettering in the same places.
+func fit_marks() -> void:
+	if not is_instance_valid(marks_view): return
+	var window := get_tree().root
+	marks_view.size = window.size.max(Vector2i(2, 2))
+	marks_view.size_2d_override = Vector2i(window.get_visible_rect().size).max(Vector2i(2, 2))
+	marks_view.size_2d_override_stretch = true
+
+## The level's tape filter, which is what shows them (presentation_rig.gd).
+func film_marks(material: ShaderMaterial) -> void:
+	tape = material
+	if tape != null: tape.set_shader_parameter("marks", marks_view.get_texture())
+
+func marks_shown() -> bool:
+	return is_instance_valid(marks_view) and (signal_label.text != "" or rewind_mark.visible)
+
 ## The tape running back to where the stage began: its mark and its clock,
 ## counting down, over the snow.
 func show_rewind(clock_words: String) -> void:
@@ -1848,6 +1880,13 @@ func _process(delta: float) -> void:
 	if is_instance_valid(signal_label):
 		signal_label.text = SIGNAL_LOST if flash_label.text == SIGNAL_LOST and flash_time > 0.0 else ""
 		signal_label.modulate.a = flash_label.modulate.a
+	if is_instance_valid(marks_view):
+		# Drawn while something is written, and once more when nothing is, so
+		# that the next thing written does not begin as the last.
+		var written := marks_shown()
+		if written: marks_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		elif marks_view.render_target_update_mode == SubViewport.UPDATE_ALWAYS: marks_view.render_target_update_mode = SubViewport.UPDATE_ONCE
+		if tape != null: tape.set_shader_parameter("marked", written)
 
 func _display_changed(seconds: int) -> void:
 	if is_instance_valid(display_label):

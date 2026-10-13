@@ -350,7 +350,7 @@ Cada fallo de imagen tiene una causa, dura lo que dura esa causa, y es **horizon
 | El corte | El último campo, roto; nieve | Instantáneo |
 
 - **No se funde a estática: se corta.** Una grabación que se interrumpe no se desvanece. La nieve es cinta sin grabar.
-- SEÑAL PERDIDA sigue donde está, sobre la nieve.
+- SEÑAL PERDIDA sigue donde está, sobre la nieve, y desde el 13 de octubre de 2026 grabada como lo demás: blanda, con el rojo corrido y con las líneas y el grano de la cinta. Lo mismo la marca y el reloj de la cinta rebobinándose. (Iban en una capa por encima del filtro y eran la única letra limpia de la pantalla; cómo se hace, en [REALISM.md](REALISM.md), «El orden de las capas».)
 - Con «Efectos reducidos» no hay bandas ni peine: el arrebato es un corte seco del rostro a la cámara ya en el suelo, y la nieve es fija y de poco contraste.
 
 ## 11 · El sonido

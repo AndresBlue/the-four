@@ -33,6 +33,16 @@ uniform float rewinding : hint_range(0.0, 1.0) = 0.0;
 // Blood on the glass of a camcorder lying where its owner is being killed
 // (death_tape.gd): lens_blood, lens_seed and lens_down, and what they draw.
 #include "res://game/presentation/shaders/lens_blood.gdshaderinc"
+// What the camcorder writes over a picture that is all snow: that the signal
+// is lost, that the tape is running back (hotel_ui.gd, marks_view). In the
+// picture the snow would cover them, so they come apart from it, as a
+// picture of their own with its cover (colour times cover, as a viewport
+// keeps it), are laid over the snow, and the tape has them as it has the
+// rest: soft, their colour run sideways, scanned, grained, dark at the
+// corners. What it does not do to them is what it does to a signal that is
+// going, or to a tape that is struck.
+uniform bool marked = false;
+uniform sampler2D marks : filter_linear, repeat_disable;
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -63,6 +73,18 @@ vec3 yiq_to_rgb(vec3 c) {
 
 vec3 tap(vec2 uv) {
 	return texture(screen_texture, clamp(uv, vec2(0.0005), vec2(0.9995))).rgb;
+}
+
+vec4 mark_tap(vec2 uv) {
+	return texture(marks, clamp(uv, vec2(0.0005), vec2(0.9995)));
+}
+
+// Tape grade: lifted blacks, compressed highlights, slight warm/green cast.
+vec3 graded(vec3 color) {
+	float grade = clamp(vhs * 2.2, 0.0, 1.0);
+	color = mix(color, color * tint, grade);
+	color = mix(color, vec3(0.035, 0.035, 0.03) + color * 0.93, grade);
+	return mix(color, 1.0 - exp(-color * 1.25), grade * 0.6);
 }
 
 void fragment() {
@@ -145,11 +167,7 @@ void fragment() {
 		color.r = mix(color.r, tap(uv + fringe).r, clamp(chromatic * 3.0, 0.0, 1.0));
 		color.b = mix(color.b, tap(uv - fringe).b, clamp(chromatic * 3.0, 0.0, 1.0));
 	}
-	// Tape grade: lifted blacks, compressed highlights, slight warm/green cast.
-	float grade = clamp(vhs * 2.2, 0.0, 1.0);
-	color = mix(color, color * tint, grade);
-	color = mix(color, vec3(0.035, 0.035, 0.03) + color * 0.93, grade);
-	color = mix(color, 1.0 - exp(-color * 1.25), grade * 0.6);
+	color = graded(color);
 	// Tracking band noise, dropouts and interference.
 	float snow = hash(vec2(uv.x * 900.0 + t * 60.0, line));
 	color += (snow - 0.5) * band * 0.25 * vhs;
@@ -193,14 +211,15 @@ void fragment() {
 	color += g * grain * (0.08 + dark * 0.14);
 	// Static 240-line field structure (no temporal alternation, to avoid flicker).
 	float scan = 0.5 + 0.5 * cos(SCREEN_UV.y * 240.0 * 6.28318);
-	color *= 1.0 - scanlines * 0.28 * scan;
-	color *= 1.0 + scanlines * 0.06;
+	// (As one figure, `lit`: what is written over the snow is lit by it too.)
+	float lit = (1.0 - scanlines * 0.28 * scan) * (1.0 + scanlines * 0.06);
 	// Vignette and slight flicker of the whole frame.
 	float edge = dot(from_center * vec2(1.1, 1.0), from_center * vec2(1.1, 1.0));
-	color *= 1.0 - smoothstep(0.12, 0.6, edge) * vignette * clamp(vhs * 3.0, 0.3, 1.0);
-	color *= 1.0 - (noise1(t * 11.0) - 0.5) * 0.03 * vhs;
+	lit *= 1.0 - smoothstep(0.12, 0.6, edge) * vignette * clamp(vhs * 3.0, 0.3, 1.0);
+	lit *= 1.0 - (noise1(t * 11.0) - 0.5) * 0.03 * vhs;
 	float closed_in = smoothstep(0.05, 0.42, edge);
-	color *= 1.0 - closed_in * enclosure * 0.85;
+	lit *= 1.0 - closed_in * enclosure * 0.85;
+	color *= lit;
 	// The signal going, as a dead channel on a big set: the picture loses its
 	// hold and rolls, sync tears drag lines sideways, and fat interlaced snow
 	// with a rolling hum bar takes it over.
@@ -234,7 +253,34 @@ void fragment() {
 			dead = mix(dead, dead * (0.16 + 0.95 * bars), rewinding);
 		}
 		color = mix(color, dead, smoothstep(0.1, 0.85, loss));
-		color *= 1.0 - (noise1(t * 21.0) - 0.5) * 0.22 * loss;
+		float unsteady = 1.0 - (noise1(t * 21.0) - 0.5) * 0.22 * loss;
+		color *= unsteady;
+		lit *= unsteady;
+	}
+	if (marked) {
+		// Read where the picture was read, so they wander with its lines:
+		// their luma a little soft and ringing at its edges, their colour
+		// over a wider stretch and a little late.
+		vec4 here = mark_tap(uv);
+		vec4 body = here;
+		vec2 run;
+		if (lite) {
+			run = rgb_to_yiq(here.rgb).yz * 0.5 + (rgb_to_yiq(mark_tap(uv + vec2(chroma_delay - chroma_width * 2.0, 0.0)).rgb).yz + rgb_to_yiq(mark_tap(uv + vec2(chroma_delay + chroma_width * 2.0, 0.0)).rgb).yz) * 0.25;
+		} else {
+			body = here * 0.5 + (mark_tap(uv - vec2(px.x * soft, 0.0)) + mark_tap(uv + vec2(px.x * soft, 0.0))) * 0.25;
+			run = vec2(0.0);
+			float apart = 6.0 / float(max(chroma_taps - 1, 1));
+			for (int i = 0; i < chroma_taps; i++) run += rgb_to_yiq(mark_tap(uv + vec2((-3.0 + float(i) * apart) * chroma_width + chroma_delay, 0.0)).rgb).yz;
+			run /= float(chroma_taps);
+		}
+		float written_luma = rgb_to_yiq(body.rgb).x;
+		if (vhs > 0.0 && !lite) written_luma += (written_luma - rgb_to_yiq((mark_tap(uv - vec2(px.x * soft * 3.0, 0.0)).rgb + mark_tap(uv + vec2(px.x * soft * 3.0, 0.0)).rgb) * 0.5).x) * 0.35 * vhs;
+		vec3 written = yiq_to_rgb(vec3(written_luma, run * (1.0 - vhs * 0.25)));
+		// Graded as if on black, less what the grade makes of black itself
+		// where nothing is written: the snow beside a word keeps its own.
+		written = graded(written) - graded(vec3(0.0)) * (1.0 - body.a);
+		written += g * grain * (0.08 + (1.0 - clamp(dot(written, vec3(0.333)) * 1.6, 0.0, 1.0)) * 0.14) * body.a;
+		color = color * (1.0 - body.a) + written * lit;
 	}
 	COLOR = vec4(max(color, vec3(0.0)), 1.0);
 }
