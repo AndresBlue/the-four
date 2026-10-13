@@ -47,14 +47,26 @@ float lens_join(float one, float other, float soft) {
 }
 
 // One of the drops on the glass: where its middle is (in a picture one
-// high and `wide` across), and how big it is. Each of the five has a fifth
-// of the picture's width to itself -- which fifth is the capture's draw --
-// so that no two land on top of each other.
+// high and `wide` across), and how big it is. They are not of a size: two
+// are big, two middling and three small, and what each does afterwards is a
+// matter of that (blood_on_lens). Each has a seventh of the picture's width
+// to itself -- which seventh is the capture's draw, with the big ones kept
+// apart and a small one always between -- so that no two land on top of
+// each other.
 vec3 lens_drop(float which, float wide) {
-	float slot = mod(which * 2.0 + floor(lens_seed), 5.0);
-	float across = (slot + 0.2 + 0.6 * lens_hash(vec2(which * 12.9898 + lens_seed * 3.7, 4.1))) / 5.0;
-	float up = 0.15 + 0.5 * lens_hash(vec2(lens_seed * 9.1 + which * 78.233, 17.3));
-	return vec3(across * wide, up, 0.06 + 0.065 * lens_hash(vec2(lens_seed + which * 5.3, 9.0)));
+	float place = which < 2.0 ? 1.0 + 4.0 * which : (which < 4.0 ? (which < 2.5 ? 3.0 : 0.0) : 2.0 * (which - 3.0));
+	float slot = mod(place + floor(lens_seed), 7.0);
+	float across = (slot + 0.15 + 0.7 * lens_hash(vec2(which * 12.9898 + lens_seed * 3.7, 4.1))) / 7.0;
+	float up = 0.13 + 0.52 * lens_hash(vec2(lens_seed * 9.1 + which * 78.233, 17.3));
+	float draw = lens_hash(vec2(lens_seed + which * 5.3, 9.0));
+	float size = which < 2.0 ? mix(0.098, 0.13, draw) : (which < 4.0 ? mix(0.06, 0.082, draw) : mix(0.03, 0.05, draw));
+	return vec3(across * wide, up, size);
+}
+
+// When each lands, seconds after the first: every other one with the blow,
+// one after another, and the rest as the chest wells.
+float lens_lands(float which) {
+	return mod(which, 2.0) < 0.5 ? 0.035 * which : 0.3 + 0.045 * which;
 }
 
 // How deep the blood lies on the glass at a point of that picture (0: none;
@@ -67,39 +79,56 @@ float blood_on_lens(vec2 p, float wide) {
 	// How wide the edge of anything on the lens is in the picture: it is
 	// nearer than the lens can focus.
 	float blur = 0.007;
-	for (int index = 0; index < 5; index++) {
+	for (int index = 0; index < 7; index++) {
 		float which = float(index);
-		// Three with the blow, one after another; two as the chest wells.
-		float since = lens_blood - (index < 3 ? 0.07 * which : 0.32 + 0.23 * (which - 3.0));
+		float since = lens_blood - lens_lands(which);
 		if (since <= 0.0) continue;
 		vec3 drop = lens_drop(which, wide);
 		float size = drop.z;
-		float weight = (size - 0.06) / 0.065;
+		// How heavy it is, from the smallest there is to the biggest.
+		float weight = clamp((size - 0.03) / 0.1, 0.0, 1.0);
 		vec2 off = p - drop.xy;
 		// Nothing of it is further off than this.
 		if (length(off) > size * 6.0) continue;
 		// The stain: where it hit, and it does not move -- its edge holds to
-		// the glass. A disc whose edge wanders a little, with a soft bulge or
-		// two where it went a little further as it flattened.
+		// the glass. No two alike and none of them round: each is squashed a
+		// little one way, and its edge goes in and out as the glass and the
+		// way it came let it -- by a sixth of its radius here and there, and
+		// by less in between.
+		// (Its edge is a sum of waves round it, each with the size and the
+		// start the drop drew: a noise read round a circle left the edge cut
+		// where it crossed from one cell of the noise to the next.)
 		float around = atan(off.y, off.x);
-		float wander = 0.05 * sin(around * 2.0 + which * 2.1 + lens_seed) + 0.035 * sin(around * 3.0 + which * 4.7) + 0.02 * sin(around * 5.0 + lens_seed * 3.0) + 0.05 * pow(max(0.0, sin(around * 3.0 + lens_seed * 2.0 + which * 1.9)), 3.0);
-		float in_stain = length(off) - size * (1.0 + wander);
-		// How it runs: held a moment, then the head sets off -- slowly, and
-		// faster, to the pace a head that size keeps; and no further than
-		// what the stain has to give will take it.
-		float runs = step(0.3, pull) * step(0.2, weight + lens_hash(vec2(which * 1.7, lens_seed + 2.0)) * 0.7);
+		float towards = cos(around - (which * 2.4 + lens_seed));
+		float squash = 1.0 + 0.15 * (2.0 * towards * towards - 1.0);
+		float lumpy = 0.0;
+		for (int wave = 2; wave < 8; wave++) {
+			float turns = float(wave);
+			float draw_wave = lens_hash(vec2(which * 3.1 + turns, lens_seed * 2.7));
+			lumpy += (0.26 / turns) * (0.35 + 0.65 * draw_wave) * sin(around * turns + TAU * lens_hash(vec2(turns * 5.3 + which, lens_seed)));
+		}
+		float in_stain = length(off) - size * squash * (1.0 + lumpy);
+		// What it does then is its weight's to say. A small one stays as it
+		// landed: the glass holds it. A middling one sags -- its low side
+		// swells into a belly, and that is all. A big one gives: the head
+		// sets off down the glass, slowly and then faster, to the pace a head
+		// that size keeps, and as far as what the stain has to give takes it.
+		float sags = smoothstep(0.24, 0.34, weight);
+		float gives = smoothstep(0.56, 0.66, weight);
+		float runs = step(0.3, pull) * sags;
 		float held = 0.06 + 0.2 * lens_hash(vec2(which + 5.0, lens_seed));
 		float running = max(0.0, since - held);
+		float draw = lens_hash(vec2(which * 2.9, lens_seed + 8.0));
 		float pace = size * (2.6 + 1.8 * lens_hash(vec2(lens_seed * 1.3, which + 11.0))) * pull;
-		float most = size * (1.7 + 1.7 * weight + 0.9 * lens_hash(vec2(which * 2.9, lens_seed + 8.0)));
-		float gone = runs * most * (1.0 - exp(-pace * (running - (1.0 - exp(-running * 3.2)) / 3.2) / most));
+		float most = size * mix(0.22 + 0.3 * draw, 1.6 + 2.0 * clamp((weight - 0.6) / 0.4, 0.0, 1.0) + 0.9 * draw, gives);
+		float gone = runs * most * (1.0 - exp(-pace * (running - (1.0 - exp(-running * 3.2)) / 3.2) / max(most, 0.0001)));
 		// How much of the stain has left with it: none, to all it will give.
 		float spent = clamp(gone / (size * 2.2), 0.0, 1.0);
 		float along = dot(off, down);
 		float aside = dot(off, across);
 		float shape = in_stain;
 		float in_head = 1.0;
-		float head = size * (0.3 + 0.05 * weight - 0.05 * spent);
+		float head = size * (mix(0.4, 0.3, gives) + 0.05 * weight - 0.05 * spent);
 		if (runs > 0.0) {
 			// The head starts inside the low half of the stain -- where it
 			// swells before it gives -- and goes straight down; the thread is
@@ -126,19 +155,19 @@ float blood_on_lens(vec2 p, float wide) {
 		fill *= mix(1.0, 0.82 + 0.36 * lens_grain(vec2(aside * 46.0 + which * 17.0, along * 6.0 + lens_seed)), upper);
 		fill *= 0.94 + 0.12 * lens_grain(p * 34.0 + lens_seed + which * 13.0);
 		// A film only at its very edge, and a little deeper towards its middle.
-		float deep = fill * smoothstep(0.0, size * 0.05, -shape) * (0.86 + 0.14 * smoothstep(0.0, size * 0.6, -shape));
+		float deep = fill * (0.86 + 0.14 * smoothstep(0.0, size * 0.6, -shape));
 		// And the head, once it is out, is the deepest of it: deepest in its
 		// middle, and no line round it -- it is the same blood.
 		deep += (0.25 + 0.3 * spent) * smoothstep(-head * 0.2, head * 0.9, -in_head) * smoothstep(0.0, 0.5, gone / size);
-		film = max(film, cover * max(deep, 0.45));
+		film = max(film, cover * max(deep, 0.75));
 	}
-	// The specks it threw: each beside one of the first three, there when it
+	// The specks it threw: each beside one of the four biggest, there when it
 	// is, and too light to run. Most are dots; one in three is drawn out a
 	// little, away from the drop it left.
-	for (int index = 0; index < 14; index++) {
+	for (int index = 0; index < 16; index++) {
 		float which = float(index) + 20.0;
-		float parent = float(index % 3);
-		if (lens_blood - 0.07 * parent <= 0.0) continue;
+		float parent = float(index % 4);
+		if (lens_blood - lens_lands(parent) <= 0.0) continue;
 		vec3 drop = lens_drop(parent, wide);
 		float turn = TAU * lens_hash(vec2(which, lens_seed));
 		float far = drop.z * (1.25 + 1.6 * lens_hash(vec2(lens_seed, which * 1.9)));
@@ -161,7 +190,7 @@ float blood_on_lens(vec2 p, float wide) {
 vec3 through_lens_blood(vec3 color, float film, vec3 around) {
 	if (film <= 0.0) return color;
 	float lit = dot(around, vec3(0.299, 0.587, 0.114));
-	vec3 passed = color * exp(-film * vec3(2.0, 8.0, 9.0));
-	vec3 own = vec3(0.66, 0.034, 0.024) * exp(-film * vec3(0.4, 1.6, 1.6)) * (1.0 - exp(-film * 3.0)) * (0.16 + 0.95 * lit);
+	vec3 passed = color * exp(-film * vec3(3.2, 9.5, 10.5));
+	vec3 own = vec3(0.54, 0.02, 0.014) * exp(-film * vec3(0.72, 1.9, 1.9)) * (1.0 - exp(-film * 3.5)) * (0.13 + 0.95 * lit);
 	return passed + own;
 }
