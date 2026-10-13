@@ -292,6 +292,15 @@ herramientas para mirarlo están en la guía de desarrollo.
   Detective. **Ojo: el modelo del Detective Femenino, tal como viene, va
   casi sin ropa** (se ve igual con el código de antes de estos cambios): si
   no es lo que querías, hay que revisar ese modelo (apartado 4).
+- [ ] **Un cuelgue en el banco (13 de octubre, 00:25), sin reproducir.** No
+  fue del juego: Windows registró a esa hora un reinicio del controlador
+  gráfico (`nvlddmkm`, suceso 153, el único en dos semanas) y Godot cayó
+  dentro de la biblioteca de NVIDIA al perder la tarjeta («Couldn't wait for
+  Vulkan fence», dispositivo perdido). Cuatro capturas seguidas con seis
+  cambios de cuerpo no lo repiten. Si vuelve a pasar, apuntar qué se estaba
+  haciendo (¿acababa de cambiar de cuerpo con M?, ¿había otro Godot abierto?)
+  y mirar `godot.log` en la carpeta de datos del juego (`THE FOUR — Hotel/logs/`, dentro
+  de la de Godot en `%APPDATA%`).
 - [ ] **La captura rehecha (12 de octubre), con gente** (EXECUTION.md, 18.2):
   quien no la ha visto, ¿salta, y dice que vio una cara?; ¿sabe qué le mató y
   dónde quedó la cámara?; a la tercera y a la quinta muerte, ¿molesta, o nota

@@ -536,6 +536,9 @@ func feed_keys(pressed: Dictionary, delta: float) -> bool:
 func say_state() -> void:
 	var creature = level.locust
 	var player = level.player
+	# Between two floors (the last one was lost and the next is being built)
+	# there is no creature to say anything of.
+	if not is_instance_valid(creature): return
 	var mode := "%s/%s%s%s" % [creature.Mode.keys()[creature.mode], String(creature.lurk.get("phase", "-")), " hidden" if player.hidden else "", " CAPTURE:" + String(level.execution.entry) + (" brief" if level.tape.brief else "") if not level.execution.is_empty() else ""]
 	if not level.rewind.is_empty(): mode += " rewinding"
 	if level.session.state != level.session.State.PLAYING: mode += " state=%d" % level.session.state

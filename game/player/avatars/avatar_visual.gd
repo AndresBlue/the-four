@@ -787,8 +787,9 @@ func pose_capture(state: Dictionary) -> void:
 		var ankle: int = bones.get(key + "f", -1)
 		var toe: int = bones.get(key + "o", -1)
 		if thigh < 0 or calf < 0 or ankle < 0: continue
-		# As its feet leave the floor it fights what has it -- a few hard,
-		# uneven kicks, each leg in its own time -- and that is soon spent: what
+		# As its feet leave the floor it fights what has it -- a few uneven
+		# kicks, no more than a body held by the chest can give -- and that is
+		# soon spent: what
 		# is left is a slow treading of the air, less and less, until the blow;
 		# after it they only swing. The knees are never straight and never go
 		# back: the thighs hang a little forward of the hips and the shins a
@@ -797,12 +798,17 @@ func pose_capture(state: Dictionary) -> void:
 		var since := time - SCORE.LIFT_FROM
 		var fight := alive * SCORE.smooth(since / 0.2) * (1.0 - SCORE.smooth((since - 0.45) / 0.55))
 		var tread := alive * SCORE.smooth((since - 0.55) / 0.6) * (1.0 - 0.6 * SCORE.ramp(time, SCORE.LIFT_TO, SCORE.KILL_TIME))
-		var own := 1.9 if leg_side > 0.0 else 0.0
-		var kicking := 0.6 * sin(time * 17.0 + own) + 0.4 * sin(time * 26.0 + own * 1.7)
-		var treading := sin(time * 4.4 + own)
-		var swinging := limp * sin((time - SCORE.KILL_TIME) * 5.5 + own * 0.5) * exp(-maxf(0.0, time - SCORE.KILL_TIME) * 2.2)
-		var hip := 0.06 + 0.12 * lift + 0.4 * fight * kicking + 0.13 * tread * treading + 0.07 * swinging
-		var knee := 0.14 + 0.14 * lift + 0.55 * fight * (0.5 - 0.5 * kicking) + 0.2 * tread * (0.5 + 0.5 * sin(time * 4.4 + own + 1.2)) + 0.12 * limp + 0.05 * swinging
+		# No two legs alike: one leads, harder and quicker; the other follows
+		# late, less, at a pace of its own, and hangs a little further forward.
+		var lead := leg_side * side > 0.0
+		var own := 0.0 if lead else 2.3
+		var pace := 1.0 if lead else 0.78
+		var reach := 1.0 if lead else 0.6
+		var kicking := 0.65 * sin(time * 11.5 * pace + own) + 0.35 * sin(time * 18.0 * pace + own * 1.7)
+		var treading := sin(time * 4.2 * pace + own)
+		var swinging := limp * sin((time - SCORE.KILL_TIME) * 5.5 * pace + own * 0.5) * exp(-maxf(0.0, time - SCORE.KILL_TIME) * 2.2)
+		var hip := (0.04 if lead else 0.1) + 0.12 * lift + 0.22 * reach * fight * kicking + 0.12 * reach * tread * treading + 0.07 * swinging
+		var knee := (0.12 if lead else 0.2) + 0.14 * lift + 0.3 * reach * fight * (0.5 - 0.5 * kicking) + 0.2 * reach * tread * (0.5 + 0.5 * sin(time * 4.2 * pace + own + 1.2)) + 0.12 * limp + 0.05 * swinging
 		turn_bone(key + "t", right, hip)
 		turn_bone(key + "t", forward, leg_side * (0.05 + 0.2 * sat))
 		turn_bone(key + "k", right, -knee)
