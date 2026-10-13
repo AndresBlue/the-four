@@ -210,6 +210,25 @@ func run() -> void:
 	var tired: bool = slow.mode == slow.Mode.PATROL and slow.leaving and slow.tired_until > slow.clock
 	await frames(30)
 	check("Se cansa de perseguir aunque te vea, gruñe que te perdió y un rato no se fija en nadie", tired and slow.calls_made > calls and slow.detection < slow.SUSPICION)
+	# The time to turn its back and be off, and no more: seen again after
+	# it, whoever it is is chased again.
+	await frames(int((slow.tired_for + 0.3) * 60.0))
+	var gone_off: Vector3 = slow.global_position - (me + look.normalized() * 9.0)
+	slow.set_physics_process(false)
+	slow.global_position = me + look.normalized() * 9.0
+	slow.rotation.y = atan2(look.x, look.z)
+	slow.velocity = Vector3.ZERO
+	slow.set_mode(slow.Mode.PATROL)
+	slow.destination = slow.global_position
+	slow.set_physics_process(true)
+	var again := false
+	for i in 480:
+		await physics_frame
+		if slow.mode in [slow.Mode.ALERT, slow.Mode.CHASE]:
+			again = true
+			break
+	check("Cansada se va a otro sitio, pero si vuelve a ver a alguien sale otra vez tras él", slow.tired_for <= 5.0 and gone_off.length() > 1.5 and again, "tired_for=%s away=%s mode=%s detection=%s" % [slow.tired_for, snappedf(gone_off.length(), 0.1), slow.mode, snappedf(slow.detection, 0.01)])
+	slow.set_physics_process(false)
 	check("Y solo abre el armario en el que te vio entrar", not slow.guess_hides)
 	# A fresh floor: the one above has just had a chase given up next to the
 	# player, and everything round it is marked as searched.

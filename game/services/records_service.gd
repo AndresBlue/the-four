@@ -236,6 +236,12 @@ static func badges(line: Dictionary) -> Array:
 	if int(line.get("players", 1)) > 1 and int(line.get("escaped", 0)) >= int(line.get("players", 1)): marks.append("EQUIPO ENTERO")
 	return marks
 
+## Whether there is anything to show at all: a tape that got out, a floor
+## played and counted, a mark reached, somebody played with. Until there is,
+## the menus do not offer the board (hotel_ui.gd).
+func anything() -> bool:
+	return not runs.is_empty() or not career.is_empty() or not milestones.is_empty() or not rivals.is_empty()
+
 ## Whether anything has been written down for a floor at all.
 func any(floor_number := 1) -> bool:
 	return runs.any(func(line): return current(line) and int(line.get("floor", 1)) == floor_number)

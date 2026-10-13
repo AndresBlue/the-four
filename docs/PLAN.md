@@ -428,6 +428,17 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **Las puertas nuevas** a mano: escala del modelo, número en el panel
   superior, rendija de 1,2 cm, y las del dormitorio y la portada, que usan la
   misma hoja.
+- [ ] **Cansarse de perseguir, ahora que corre lo que tú (13 de octubre):**
+  en Apacible y Equilibrada, cansada (a los 7 y 12 s) se da la vuelta y se
+  va, y pasados 4 y 3 s vuelve a perseguir a quien vea (antes no hacía caso
+  a nadie durante 20 y 14 s, y el autor lo tomó por un fallo). Mirar jugando
+  si esos segundos bastan para que se aleje, y si quien sigue corriendo a su
+  lado no acaba en un perseguir, soltar y volver a perseguir sin fin.
+- [ ] **El barniz de la madera en Ultra (13 de octubre):** acotado de canto
+  (`lacquer_edge` 0,06) tras verlo el autor demasiado brillante; mirar en
+  partida si el satinado que queda es el que quiere. Sin comprobar: por qué
+  en una sala a oscuras el tablero seguía claro (puede que la sonda de
+  reflexión guarde la sala encendida); acotado, se nota mucho menos.
 - [ ] **El halo de las luces y las letras sobre la nieve (13 de octubre):**
   el halo, ya redondo, visto en partida (se comprobó en `glare_look` y en
   capturas fijas de tres salas); y «SEÑAL PERDIDA» y las marcas de la cinta

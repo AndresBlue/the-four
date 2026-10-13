@@ -54,6 +54,7 @@ Los valores de **Desafiante son los de hoy** (comprobados en el código). Los de
 | Arranque de la persecución (velocidad inicial / aceleración) | 2,0 m/s / 1,8 m/s² | 2,3 / 2,6 | 2,5 / 3,2 | 3,0 / 4,0 |
 | Velocidad de caza (tu carrera: 6,0 m/s) | 6,0 | 6,0 | 6,4 | 6,7 |
 | Se cansa de perseguir aunque te vea | a los 7 s | a los 12 s | nunca | nunca |
+| Cansada, se da la vuelta y se va sin fijarse en nadie durante (`tired`) | 4 s | 3 s | — | — |
 | Sin verte, deja la persecución a los | 3 s | 5,5 s | 7 s | 10 s |
 | Se rinde en una búsqueda sin pistas | 4–6 s | 7–9 s | 8–10 s | 12–15 s |
 | Abre un armario «por si acaso» al buscar | nunca | 1 de cada 10 | 1 de cada 5 | 1 de cada 2 |
@@ -107,6 +108,8 @@ Una por cada paso de la escena:
 1. **«La vi»: se cruza a la vista.** La jugada preferida del director: la hace pasar por donde vas a mirar —un pasillo que cruza el tuyo, el fondo de un salón—, a 15–25 m y antes de que ella te vea a ti. La mayoría de los encuentros empiezan porque la ves tú primero.
 2. **«¿Me habrá visto?»: se le nota la duda.** Cuando empieza a fijarse en ti se para, gira la cabeza hacia ti y chasquea; si no pasa de ahí, sacude la cabeza y sigue su camino. Hoy esa sospecha es invisible.
 3. **«Creo que sí»: aviso largo.** El chillido antes de perseguir dura 2 s y el arranque es lento: da tiempo a decidir aunque no sepas qué hacer.
+   **Lo que el jugador lee al elegir** son cuatro líneas cortas por dificultad (`DIFFICULTY.TRAITS`, 13 de octubre de 2026; antes un párrafo y una lista de frases): cómo se fija en ti, cómo corre, cuánto te deja en paz y cuántas etapas perdidas devuelve.
+   **Cansada se va, y si vuelve a ver a alguien sale tras él** (13 de octubre de 2026, decisión del autor). Hasta entonces, al cansarse no veía ni oía a nadie durante 20 s en Apacible y 14 s en Equilibrada; desde que corre lo que tú, toda huida a la carrera acababa así, con la bestia al lado de quien la había dejado atrás sin hacerle caso, y el autor lo tomó por un fallo. Ahora ese rato es lo que tarda en darte la espalda y echar a andar (4 y 3 s, en los que tampoco la llaman los pasos de quien acaba de soltar); pasado, es la de siempre: a quien vea, lo persigue otra vez, con su chillido y sus otros 7 o 12 s. **Sin medir con bots.**
 4. **«Voy a correr»: corre lo que tú y se cansa.** Ver la tabla: 6,0 m/s —desde el 13 de octubre de 2026; antes menos que tú— y 7 s de persecución como mucho.
 5. **«Espero que no me alcance»: alcance corto.** ~~Estocada lenta y con aviso~~: el autor la quitó el 12 de octubre de 2026 —el golpe es instantáneo en las cuatro—. Lo que queda de este paso es que en Apacible tiene que llegar a 1,6 m, y no corre más que tú. **Sin medir** con bots lo que esto cambia en las cuentas del apartado 6.
 6. **«Me salvé»: te pierde enseguida, y lo dice.** Un gruñido de frustración al rendirse, que se oye: sabes que has escapado. (También en Equilibrada. En Pesadilla, a veces lo finge y vuelve.)

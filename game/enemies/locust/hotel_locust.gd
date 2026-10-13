@@ -55,8 +55,12 @@ const DOUBT_REST := 6.0
 var doubting := 0.0
 var doubt_rest := 0.0
 ## Tiring of a chase: how long this one has lasted, and until when it will not
-## take any notice of anybody.
-const TIRED_FOR := 10.0
+## take any notice of anybody -- the few seconds it takes to turn its back
+## and be off. After them it is as it ever is: whoever it sees, it is after
+## again (the author's word, 13 October 2026; it used to be blind and deaf
+## for ten to twenty seconds, standing by whoever had outrun it, and that
+## read as the creature broken).
+const TIRED_FOR := 3.0
 ## This floor's (the difficulty's "tired").
 var tired_for := TIRED_FOR
 ## How much of its hearing it has at the moment, 0 to 1: the director dulls
@@ -775,6 +779,9 @@ func hear(point: Vector3, radius: float) -> void:
 	# Holding a victim or pulling a wardrobe open, it finishes what it is doing:
 	# a noise used to send it off mid-kill with the victim dragged behind it.
 	if grace > 0 or mode in [Mode.WINDUP, Mode.RECOVER, Mode.EXECUTE, Mode.WARDROBE, Mode.LURK]: return
+	# Turning its back on a chase it has tired of, it is not called back by
+	# the feet it has just given up on.
+	if clock < tired_until: return
 	if not can_hear(point, radius): return
 	# A place it has given long enough: only something loud keeps it there.
 	if area_spent > AREA_CAP and search_origin != Vector3.INF and point.distance_to(search_origin) < AREA_SAME and radius * HEARING_SCALE < LOUD: return
@@ -1131,8 +1138,9 @@ func play_doubt(which: int, pitch: float) -> void:
 	if level == null or not level.world_audio.enabled or which < 0 or which >= CHITTERS.size(): return
 	level.world_audio.play_at(CHITTERS[which], global_position + Vector3.UP * 2.2, -4.0, get_rid())
 
-## Tired of running after somebody it can still see: it lets go, takes no
-## notice of anybody for TIRED_FOR, and goes off somewhere else.
+## Tired of running after somebody it can still see: it lets go and goes off
+## somewhere else, taking no notice of anybody for the tired_for it takes to
+## turn away. Whoever it sees after that, it chases again.
 func tire() -> void:
 	tired_until = clock + tired_for
 	detection = 0.0

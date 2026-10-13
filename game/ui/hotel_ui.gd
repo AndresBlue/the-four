@@ -12,8 +12,8 @@ const VERSION := "v0.5"
 ## the conditions of each one, is docs/ASSETS.md.
 const CREDITS := [
 	["THE FOUR", [
+		"Autor: Felipe Poblete.",
 		"Proyecto fan no oficial, sin ánimo de lucro.",
-		"Arquitectura del hotel, generación del piso, cámara de vídeo doméstica, shaders, iluminación, sonido sintetizado, red y código: creados para este juego.",
 	]],
 	["MOTOR", [
 		"Godot Engine 4.7 — © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.",
@@ -34,7 +34,7 @@ const CREDITS := [
 		"«Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.",
 		"«Panasonic VHS-C MOVIE CAMERA NV-A3» — Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.",
 		"«VHS» — Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
-		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el usuario; autoría y licencia pendientes de verificar.",
+		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["MATERIALES", [
 		"ambientCG — Lennart Demes, CC0: moqueta, papel pintado, azulejo, latón, falso techo y todos los decals.",
@@ -56,13 +56,11 @@ const CREDITS := [
 		"«toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).",
 		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).",
 		"«Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).",
+		"«Blood Gush» — FlaxGod (CC0).",
+		"«Blood Gush / Spray» — clif_creates (CC0).",
 	]],
 	["SONIDO — EL RESTO", [
-		"Pasos, respiración, latido, presencia de la criatura y los golpes del hotel: síntesis creada para el juego.",
-		"Música y el resto del paquete de efectos: aportados por el usuario; autoría y licencia pendientes de verificar.",
-	]],
-	["LETRAS", [
-		"El cartel de SALIDA y los números de puerta están dibujados para este juego: no se embarca ningún archivo de tipografía.",
+		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["LICENCIAS PENDIENTES", [
 		"Dos de los sonidos y el modelo de The Locust llevan cláusula No Comercial, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.",
@@ -528,15 +526,17 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 	backdrop.modulate.a = 1.0
 	match kind:
 		"main":
-			set_osd("▶ PLAY", "", "12:00", "")
+			set_osd("▶ PLAY", "", "", "")
 			title(column, "THE FOUR", 104)
 			label(column, "H  O  T  E  L", 24).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 22)
 			action("Nueva partida", "new")
 			action("Continuar", "continue", not can_continue)
 			action("Multijugador", "multiplayer")
-			action("Records", "records")
-			action("Archivo", "archive")
+			# Neither until there is something in it: a new player was shown
+			# two titles that opened on nothing.
+			if has_records(): action("Records", "records")
+			if discoveries != null and not discoveries.found.is_empty(): action("Archivo", "archive")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
 			action("Salir", "quit")
@@ -784,8 +784,9 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 	focus_first()
 
 ## Which creature a new game is played against: the four, the one chosen last
-## marked, and beside them what the one under the cursor is like. Picking one
-## keeps it and starts the game.
+## marked, and beside them what the one under the cursor is like -- its name
+## and four short lines (DIFFICULTY.TRAITS). Picking one keeps it and starts
+## the game.
 func difficulty_screen() -> void:
 	set_osd("MENU ▸ NUEVA PARTIDA", "", "", "")
 	title(column, "DIFICULTAD", 64)
@@ -816,12 +817,8 @@ func describe_difficulty(id: String) -> void:
 	text.add_theme_constant_override("separation", 8)
 	panel.add_child(text)
 	label(text, DIFFICULTY.title(id).to_upper(), 30).add_theme_color_override("font_color", STYLE.AMBER)
-	paragraph(text, String(DIFFICULTY.NOTES[id]), 18, 440, STYLE.INK)
-	spacer(text, 4)
-	for line in DIFFICULTY.TRAITS[id]: paragraph(text, "·  " + String(line), 16, 440)
-	if id == DIFFICULTY.REFERENCE:
-		spacer(text, 4)
-		paragraph(text, "Es la bestia de siempre: la de antes de que hubiera dificultades.", 15, 440, STYLE.SOFT)
+	spacer(text, 2)
+	for line in DIFFICULTY.TRAITS[id]: paragraph(text, "·  " + String(line), 18, 470, STYLE.INK)
 
 ## A text field bound to a setting (saved as it is typed).
 func field(parent: Node, title_text: String, key: String, placeholder: String) -> LineEdit:
@@ -977,8 +974,13 @@ func tape_screen(headline: String, ink: Color, line: Dictionary, result: Diction
 	for item in actions:
 		var what = item[1]
 		var words: String = item[0]
+		# The board is not offered while there is nothing on it.
+		if what is String and what == "records" and not has_records(): continue
 		buttons[what if what is String else words] = entry(row, words, (func(): action_requested.emit(what)) if what is String else what, false, 21)
 	if tabs != null and not buttons.is_empty(): chain_settings(tabs, buttons.values()[0])
+
+func has_records() -> bool:
+	return records != null and records.anything()
 
 ## A tape taken off the board, read whole.
 func show_tape(line: Dictionary) -> void:
@@ -1226,26 +1228,36 @@ func show_settings(back: String) -> void:
 	# are brought up to it. GRÁFICOS is what the picture looks like.
 	var picture := page(tabs, "IMAGEN")
 	options(picture, "Modo de ventana", "window_mode", settings.WINDOW_MODES, range(settings.WINDOW_MODES.size()))
-	options(picture, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3], settings.fullscreen)
+	if settings.fullscreen:
+		# Covering the screen, the window is the screen's size and that is
+		# what is said, greyed: it read "1280 × 720", the size kept for the
+		# day it is a window again.
+		var screen_size := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+		var row := HBoxContainer.new()
+		picture.add_child(row)
+		label(row, "Tamaño de ventana", 19).custom_minimum_size.x = 340
+		var fixed := OptionButton.new()
+		fixed.custom_minimum_size.x = 300
+		fixed.add_theme_font_size_override("font_size", 19)
+		fixed.add_item("%d × %d" % [screen_size.x, screen_size.y])
+		fixed.disabled = true
+		row.add_child(fixed)
+	else:
+		options(picture, "Tamaño de ventana", "resolution", ["1280 × 720", "1600 × 900", "1920 × 1080", "2560 × 1440"], [0, 1, 2, 3])
 	var forward: bool = RenderingServer.get_current_rendering_method() == "forward_plus"
 	options(picture, "Escalado", "upscaler", PRESETS.UPSCALER_NAMES, PRESETS.UPSCALERS, not forward)
 	scaling_modes(picture)
 	slider(picture, "Escala de render", "scale", PRESETS.SCALING_MODES[PRESETS.SCALING_MODES.size() - 1], 1.0, 0.01, false, true)
 	var mode: int = PRESETS.scaling_mode(settings.values)
 	slider(picture, "Nitidez del escalado", "sharpness", 0.0, 1.0, 0.05, mode == Viewport.SCALING_3D_MODE_BILINEAR)
+	# (No notes in grey under the rows, here or on the other pages: the author
+	# had them taken out on 13 October 2026. What a row cannot do, it is
+	# greyed; the two warnings in amber stay.)
 	options(picture, "Suavizado de bordes", "aa", PRESETS.ANTIALIASING_NAMES, PRESETS.ANTIALIASING, mode == Viewport.SCALING_3D_MODE_FSR2)
-	if not forward:
-		paragraph(picture, "Compatibilidad no tiene FSR: la imagen se estira sin reconstruir. Cambia el renderizador en GRÁFICOS para usarlo.", 16, 900, STYLE.SOFT)
-	elif mode == Viewport.SCALING_3D_MODE_FSR2:
-		paragraph(picture, "FSR 2.2 reconstruye la imagen con el movimiento de cada píxel y hace de suavizado él mismo, así que el de abajo no se usa.", 16, 900, STYLE.SOFT)
-	elif settings.values.scale < 1.0 and mode == Viewport.SCALING_3D_MODE_BILINEAR:
-		paragraph(picture, "Por debajo de la resolución nativa, FSR 2.2 se ve bastante más nítido que este estirado.", 16, 900, STYLE.SOFT)
 	options(picture, "Límite de FPS", "fps", ["Sin límite", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
 	check(picture, "Sincronización vertical", "vsync")
 	var graphics := page(tabs, "GRÁFICOS")
 	options(graphics, "Preset gráfico", "quality", PRESETS.ORDER.map(func(index: int) -> String: return PRESETS.NAMES[index]), PRESETS.ORDER)
-	if int(settings.values.quality) == PRESETS.VERY_LOW:
-		paragraph(graphics, "Muy bajo es para gráficas integradas: las lámparas alumbran sin proyectar sombra (solo la linterna la proyecta), los materiales llevan texturas pequeñas y sin relieve, y la imagen no pasa por la lente. El juego y sus reglas son los mismos. Rinde como se pensó con la escala en Rendimiento (50 %).", 16, 900, STYLE.SOFT)
 	# The scale and the upscaler are the player's own and no preset touches
 	# them: on the two presets for modest machines, what FSR 2.2 costs is said.
 	if int(settings.values.quality) in [PRESETS.VERY_LOW, PRESETS.LOW] and PRESETS.scaling_mode(settings.values) == Viewport.SCALING_3D_MODE_FSR2:
@@ -1272,7 +1284,7 @@ func show_settings(back: String) -> void:
 	for key in PRESETS.SWITCHES: options(graphics, PRESETS.SWITCHES[key], key, ["Del preset", "Desactivado", "Activado"], [-1, 0, 1])
 	spacer(graphics, 6)
 	for item in [["Cinta VHS", "vhs"], ["Grano", "grain"], ["Aberración cromática", "chromatic"], ["Líneas de barrido", "scanlines"], ["Movimiento de cámara", "bob"]]: slider(graphics, item[0], item[1], 0, 1, 0.05)
-	check(graphics, "Marcas de videocámara (REC, fecha y hora)", "osd")
+	check(graphics, "Marcas de videocámara", "osd")
 	check(graphics, "Efectos reducidos", "reduced")
 	# Being caught without the face in the lens (death_tape.gd): the picture
 	# goes straight to the camera on the floor, and the scream comes in softer.
@@ -1284,10 +1296,9 @@ func show_settings(back: String) -> void:
 	check(controls, "Invertir mirada vertical", "invert")
 	if settings.pad_present():
 		slider(controls, "Sensibilidad del mando", "pad_look", 0.6, 6.0, 0.2)
-		check(controls, "Correr con el mando: pulsar para alternar", "pad_sprint_toggle")
-		check(controls, "Agacharse con el mando: pulsar para alternar", "pad_crouch_toggle")
+		check(controls, "Alternar correr (mando)", "pad_sprint_toggle")
+		check(controls, "Alternar agacharse (mando)", "pad_crouch_toggle")
 		check(controls, "Vibración del mando", "rumble")
-		paragraph(controls, "Mando: %s. El stick izquierdo anda —cuanto más lo empujas, más deprisa—, el derecho mira y %s hace de pausa; mover y mirar son los sticks y no se cambian. Con la hoja abierta, el stick izquierdo lleva el lápiz, %s dibuja y %s borra." % [FAMILY_NAMES[settings.pad_family()], settings.button_name(JOY_BUTTON_START), settings.trigger_name(true), settings.trigger_name(false)], 16, 900, STYLE.SOFT)
 	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "locust_trace": "The Locust: rastro a la tele"}
 	for id in titles:
 		var row := HBoxContainer.new()
@@ -1332,7 +1343,7 @@ func show_settings(back: String) -> void:
 	controls.add_child(reset)
 	var audio_page := page(tabs, "AUDIO")
 	for item in [["General", "master"], ["Ambiente", "ambience"], ["Música", "music"], ["Efectos", "effects"], ["Señales de peligro", "threat"]]: slider(audio_page, item[0], item[1], 0, 1, 0.05)
-	check(audio_page, "Subtítulos de sonidos relevantes", "subtitles")
+	check(audio_page, "Subtítulos de sonidos", "subtitles")
 	display_label = paragraph(column, "", 16, 900, STYLE.AMBER)
 	var confirm_row := HBoxContainer.new()
 	confirm_row.add_theme_constant_override("separation", 12)
@@ -1515,10 +1526,20 @@ func page(tabs: TabContainer, title_text: String) -> VBoxContainer:
 	scroll.add_child(content)
 	return content
 
+## A row like the others: what it is on the left, and its box where every
+## other row has its control -- not at the far end of the page, a screen's
+## width from the words it belongs to, with the whole row a button that a
+## stray click switched.
 func check(parent: Node, title_text: String, key: String) -> void:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	label(row, title_text, 19).custom_minimum_size.x = 340
 	var control := CheckButton.new()
-	control.text = title_text
-	control.add_theme_font_size_override("font_size", 19)
+	control.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	# The box alone has nothing that lights up when a pad or the keys are on
+	# it: a frame round it does.
+	for state in ["focus", "hover", "hover_pressed"]: control.add_theme_stylebox_override(state, STYLE.flat(Color(1, 1, 1, 0.06), STYLE.INK, 1, 4))
+	for state in ["normal", "pressed", "disabled"]: control.add_theme_stylebox_override(state, STYLE.flat(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 1, 4))
 	control.button_pressed = settings.values[key]
 	control.toggled.connect(func(value):
 		tick()
@@ -1526,7 +1547,7 @@ func check(parent: Node, title_text: String, key: String) -> void:
 		# The window size only applies outside fullscreen; refresh its state.
 		if key == "fullscreen": show_settings.call_deferred(return_action)
 	)
-	parent.add_child(control)
+	row.add_child(control)
 
 func options(parent: Node, title_text: String, key: String, labels: Array, values: Array, disabled := false) -> void:
 	var row := HBoxContainer.new()
@@ -1864,10 +1885,6 @@ func _process(delta: float) -> void:
 		if absf(roll) > 0.0: pad_scroll.scroll_vertical += int(roll * 900.0 * delta)
 	noise_amount = move_toward(noise_amount, noise_floor, delta * 2.2)
 	(noise.material as ShaderMaterial).set_shader_parameter("amount", noise_amount if overlay.visible else 0.0)
-	if screen == "main" and overlay.visible:
-		menu_clock.modulate.a = 1.0 if fposmod(clock, 1.0) < 0.55 else 0.0
-	else:
-		menu_clock.modulate.a = 1.0
 	osd_left.modulate.a = 1.0 if screen != "failed" or fposmod(clock, 1.0) < 0.6 else 0.25
 	if is_instance_valid(loading_label):
 		loading_label.text = "EL HOTEL ESTÁ TOMANDO FORMA" + ".".repeat(int(clock * 3.0) % 4)

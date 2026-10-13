@@ -11,6 +11,10 @@ uniform vec4 light_color : source_color = vec4(0.36, 0.21, 0.11, 1.0);
 uniform vec4 dark_color : source_color = vec4(0.17, 0.09, 0.05, 1.0);
 uniform float ring_density = 22.0;
 uniform float varnish : hint_range(0.0, 1.0) = 0.65;
+// The most a varnished board gives back of the room, seen along it (the
+// lacquer's coat, wood_lacquer.gdshader): tools/dev/wood_look.gd shows it,
+// and what it was without (1: the engine's own).
+uniform float lacquer_edge : hint_range(0.04, 1.0) = 0.06;
 uniform float scuffs : hint_range(0.0, 1.0) = 0.5;
 uniform float panel_spacing = 0.0;
 uniform bool door_panels = false;
@@ -109,6 +113,13 @@ void fragment() {
 		// sharper highlight on top of the grain's own, gone where the varnish
 		// has worn dull or been scratched through, and out of the grooves.
 		CLEARCOAT = varnish * (1.0 - dull * 0.7) * (1.0 - scratch * 0.8) * (1.0 - groove);
+		// Seen nearly edge on, the engine gives the coat a polished surface's
+		// Fresnel whatever its roughness, and all of it goes to what the room's
+		// reflection probe holds: a desk top by a lit wall was the wall's
+		// colour with no wood left in it. A satin varnish gives back
+		// lacquer_edge of what is in front of it at most, and it is kept to that.
+		float edge_on = 0.04 + 0.96 * pow(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), 5.0);
+		CLEARCOAT *= min(1.0, lacquer_edge / edge_on);
 		// (The engine's coat is polished even at 1: no sharper than this, or a
 		// lamp is in the lacquer at many times its own brightness.)
 		CLEARCOAT_ROUGHNESS = 0.6 + dull * 0.4;

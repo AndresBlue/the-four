@@ -107,6 +107,26 @@ func run() -> void:
 	await process_frame
 	if scene.get_viewport().gui_get_focus_owner() == null: unfocused.append("characters")
 	check("Y toda pantalla abre con algo marcado", unfocused.is_empty())
+	# The board and the archive are not offered while there is nothing in
+	# them: a new player is not shown two titles that open on nothing.
+	var board = scene.ui.records
+	var shelved := {"runs": board.runs, "career": board.career, "milestones": board.milestones, "rivals": board.rivals, "found": scene.ui.discoveries.found.duplicate()}
+	board.runs = []
+	board.career = {}
+	board.milestones = {}
+	board.rivals = {}
+	scene.ui.discoveries.found.clear()
+	scene.ui.menu("main")
+	var bare: bool = not scene.ui.buttons.has("records") and not scene.ui.buttons.has("archive") and scene.ui.buttons.has("settings")
+	board.career = {"deaths": 1}
+	scene.ui.discoveries.found.append("x")
+	scene.ui.menu("main")
+	check("Records y Archivo no salen en el menú hasta que hay algo en ellos", bare and scene.ui.buttons.has("records") and scene.ui.buttons.has("archive"))
+	board.runs = shelved.runs
+	board.career = shelved.career
+	board.milestones = shelved.milestones
+	board.rivals = shelved.rivals
+	scene.ui.discoveries.found.assign(shelved.found)
 	# Settings: down walks every row of a page before "Volver" (Godot's own
 	# search went to "Volver" from the last row the page showed), and the
 	# shoulders change tab.

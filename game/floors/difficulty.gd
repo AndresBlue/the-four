@@ -24,22 +24,17 @@ const REFERENCE := "desafiante"
 const FIRST := "equilibrada"
 
 const NAMES := {"apacible": "Apacible", "equilibrada": "Equilibrada", "desafiante": "Desafiante", "pesadilla": "Pesadilla"}
-## What each one is like, said to whoever is choosing.
-const NOTES := {
-	"apacible": "Lenta de mente. La verás a menudo, pero tarda en reaccionar y en arrancar, corre lo que tú y no más, y se olvida pronto. Para quien no juega mucho.",
-	"equilibrada": "Los mismos encuentros, pero salir de ellos pide romperle la vista, no solo correr. La de casi todo el mundo.",
-	"desafiante": "Verte es casi cazarte: hay que jugar a no ser visto. Para quien ya conoce el piso.",
-	"pesadilla": "Ve más, oye más, insiste más y no perdona. Para equipos que ya salen en Desafiante.",
-}
-
-## What each one is like, line by line, beside the list it is chosen from.
-## Only what the numbers below already do: the behaviours of each still to
-## come (docs/DIFFICULTY.md) are not promised here.
+## What each one is like, beside the list it is chosen from: four short
+## lines under its name and no more (the author's word, 13 October 2026: a
+## paragraph and a list of sentences were more than anybody reads while
+## choosing) -- how it notices, how it runs, how much it lets you be, and
+## what a lost stage costs. Only what the numbers below already do: the
+## behaviours of each still to come (docs/DIFFICULTY.md) are not promised.
 const TRAITS := {
-	"apacible": ["Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar.", "Corre lo mismo que tú, pero le cuesta arrancar y se cansa enseguida de perseguir.", "Después de un susto te deja un buen rato en paz.", "Si caes, la etapa vuelve a empezar, todas las veces que haga falta."],
-	"equilibrada": ["Duda un momento antes de reaccionar, y asomado a medias tarda en verte.", "Corre lo mismo que tú, y se cansa de una persecución larga.", "Después de un encuentro te da un respiro.", "Si caes, la etapa vuelve a empezar: una vez a solas, dos en equipo."],
-	"desafiante": ["Verte es casi cazarte.", "Corre más que tú y no afloja.", "En equipo, el piso perdona una etapa perdida; a solas, ninguna."],
-	"pesadilla": ["Ve y oye más lejos que ninguna.", "Reacciona al instante, insiste y registra más armarios.", "No se perdona ninguna etapa perdida."],
+	"apacible": ["Tarda en verte y en reaccionar", "Corre lo que tú y se cansa pronto", "Largos respiros entre encuentros", "Reintentos de etapa sin límite"],
+	"equilibrada": ["Duda un instante antes de reaccionar", "Corre lo que tú: hay que perderla de vista", "Un respiro tras cada encuentro", "Reintentos de etapa: 1 a solas, 2 en equipo"],
+	"desafiante": ["Verte es casi cazarte", "Corre más que tú y no se cansa", "Registra armarios y tiende emboscadas", "Reintentos de etapa: 0 a solas, 1 en equipo"],
+	"pesadilla": ["Ve y oye más lejos, reacciona al instante", "Más rápida que tú, implacable", "Registra más armarios y te espera fuera", "Sin reintentos de etapa"],
 }
 
 ## The levers, by difficulty. Each key is said where it is used:
@@ -72,7 +67,8 @@ const TRAITS := {
 ##            take it for somebody at once; 0: any part will do) and glimpse
 ##            (s a body showing less than that has to stay in view before it
 ##            is noticed); tired (s it takes no notice of anybody after it
-##            has tired of a chase)
+##            has tired of a chase: the time to turn its back and be off --
+##            after it, whoever it sees it chases again)
 ##  pacing    calm (s a rest grows by when the team has been through a lot:
 ##            a hunt, the creature close, hiding with it outside; 0: rests
 ##            are fixed), solo_ease (how much further apart everything is
@@ -94,7 +90,7 @@ const PROFILES := {
 		"doubt": 1.2, "chase_tire": 7.0, "lost_cry": true, "guess_hides": false, "encounter_every": 150.0, "cross": 2.0,
 		"feint": 0.0, "feint_wait": [8.0, 10.0],
 		"calm": 100.0, "solo_ease": 1.6, "ambush": 0.0,
-		"sight_angle": 45.0, "cover": 0.6, "glimpse": 4.0, "tired": 20.0,
+		"sight_angle": 45.0, "cover": 0.6, "glimpse": 4.0, "tired": 4.0,
 		"restarts": -1, "solo_restarts": -1,
 	},
 	"equilibrada": {
@@ -109,7 +105,7 @@ const PROFILES := {
 		"doubt": 0.6, "chase_tire": 12.0, "lost_cry": true, "guess_hides": true, "encounter_every": 150.0, "cross": 1.2,
 		"feint": 0.25, "feint_wait": [8.0, 11.0],
 		"calm": 80.0, "solo_ease": 1.4, "ambush": 0.7,
-		"sight_angle": 54.0, "cover": 0.45, "glimpse": 2.0, "tired": 14.0,
+		"sight_angle": 54.0, "cover": 0.45, "glimpse": 2.0, "tired": 3.0,
 		"restarts": 2, "solo_restarts": 1,
 	},
 	"desafiante": {
@@ -124,7 +120,7 @@ const PROFILES := {
 		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 0.0, "cross": 0.0,
 		"feint": 0.4, "feint_wait": [9.0, 13.0],
 		"calm": 0.0, "solo_ease": 1.0, "ambush": 2.0,
-		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 10.0,
+		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 3.0,
 		"restarts": 1, "solo_restarts": 0,
 	},
 	"pesadilla": {
@@ -139,7 +135,7 @@ const PROFILES := {
 		"doubt": 0.0, "chase_tire": 0.0, "lost_cry": false, "guess_hides": true, "encounter_every": 90.0, "cross": 0.5,
 		"feint": 0.6, "feint_wait": [11.0, 15.0],
 		"calm": 0.0, "solo_ease": 1.0, "ambush": 2.0,
-		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 10.0,
+		"sight_angle": 60.0, "cover": 0.0, "glimpse": 0.0, "tired": 3.0,
 		"restarts": 0, "solo_restarts": 0,
 	},
 }
