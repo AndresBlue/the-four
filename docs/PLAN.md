@@ -285,7 +285,13 @@ herramientas para mirarlo están en la guía de desarrollo.
   tocar los modelos: si sigue pareciendo de plástico, es cosa de texturas o
   de modelos (apartado 4). (c) **La máscara que se te viene encima** justo
   antes del manotazo (de 13 a 8 cm en 0,07 s): ¿asusta más, es demasiado, o
-  la quieres aún más cerca?
+  la quieres aún más cerca? (d) **Las piernas** (rodillas hacia delante,
+  forcejeo corto y luego pedaleo lento), **la piel** (ya sin el efecto que la
+  hacía de cera) y **la cabeza** que se vuelve al lado contrario a la cámara
+  al morir. En el banco, la tecla M cambia de cuerpo para verlo con la
+  Detective. **Ojo: el modelo del Detective Femenino, tal como viene, va
+  casi sin ropa** (se ve igual con el código de antes de estos cambios): si
+  no es lo que querías, hay que revisar ese modelo (apartado 4).
 - [ ] **La captura rehecha (12 de octubre), con gente** (EXECUTION.md, 18.2):
   quien no la ha visto, ¿salta, y dice que vio una cara?; ¿sabe qué le mató y
   dónde quedó la cámara?; a la tercera y a la quinta muerte, ¿molesta, o nota

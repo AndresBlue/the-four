@@ -175,7 +175,7 @@ const HAIRLIKE := ["hair", "brow", "lash", "scalp", "tearline"]
 ## By the name of the material, first match wins: skin before body, so the
 ## Exploradora's "Skin_Body" is skin and not clothes.
 const ROUGHNESS := {
-	"skin": 0.66, "eye": 0.12, "cornea": 0.05, "teeth": 0.35, "tongue": 0.4, "nails": 0.5,
+	"skin": 0.55, "eye": 0.12, "cornea": 0.05, "teeth": 0.35, "tongue": 0.4, "nails": 0.5,
 	"hair": 0.74, "brow": 0.75, "lash": 0.75, "scalp": 0.75,
 	"body": 0.8, "glove": 0.7, "shoe": 0.68, "heel": 0.62, "hat": 0.88, "eyewear": 0.15,
 	"top": 0.92, "shirt": 0.92, "bottom": 0.9, "denim": 0.94, "underwear": 0.9,
@@ -183,14 +183,14 @@ const ROUGHNESS := {
 ## A survivor is somebody who has been walking this hotel, on this tape: as
 ## the models come -- skin with the sheen of a shop dummy, a shirt whiter
 ## than any lamp in the building, patent shoes -- they were a clean render
-## pasted over it. So nothing of them shines (SPECULAR, for whatever is not
-## an eye), everything they wear is a shade down and a little towards the
-## carpet (WORN; skin less, LIVED), and light goes a little way into skin
-## instead of stopping at it (SKIN_DEPTH).
+## pasted over it. So nothing they wear shines (SPECULAR, for whatever is
+## not an eye or skin) and all of it is a shade down and a little towards
+## the carpet (WORN). Skin is left nearly as it comes (LIVED, SKIN_SPECULAR):
+## matt, a shade down and with light let into it, it was a wax figure's.
 const SPECULAR := 0.22
+const SKIN_SPECULAR := 0.36
 const WORN := Color(0.74, 0.7, 0.64)
-const LIVED := Color(0.9, 0.84, 0.8)
-const SKIN_DEPTH := 0.22
+const LIVED := Color(0.96, 0.93, 0.9)
 const WET := ["eye", "cornea", "teeth", "tongue", "eyewear"]
 const AVATAR_LOD_BIAS := 6.0
 
@@ -218,14 +218,10 @@ func refine_materials() -> void:
 					break
 			var skin := name.contains("skin")
 			if not WET.any(func(word): return name.contains(word)):
-				material.metallic_specular = minf(material.metallic_specular, SPECULAR)
+				material.metallic_specular = minf(material.metallic_specular, SKIN_SPECULAR if skin else SPECULAR)
 				material.albedo_color = material.albedo_color * (LIVED if skin else WORN)
 				material.clearcoat_enabled = false
 				material.rim_enabled = false
-			if skin:
-				material.subsurf_scatter_enabled = true
-				material.subsurf_scatter_strength = SKIN_DEPTH
-				material.subsurf_scatter_skin_mode = true
 			if HAIRLIKE.any(func(word): return name.contains(word)) and original.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
 				material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 				material.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
@@ -671,7 +667,8 @@ func under_floor(floor_y: float) -> float:
 ## side), slump (no room to lie: straight back too) with room (metres clear
 ## behind it) and sill (how far above the floor it comes to sit: a
 ## wardrobe's bottom board), and height (how far above the floor the body is
-## held). And, for none of it to end up in a wall or under the floor,
+## held), and away (to which side its head turns once it is dead: 1 its
+## left). And, for none of it to end up in a wall or under the floor,
 ## `clear`: the bodies the scene's own rays go through (kept_out).
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
@@ -730,7 +727,14 @@ func pose_capture(state: Dictionary) -> void:
 	# the shoulders; and where it comes to rest -- on its chest still, sat up,
 	# and rolled to a side, lying.
 	turn_bone("head", right, -0.42 * alive * (0.4 + 0.6 * lift) + 0.55 * hung - 0.55 * folded - 0.5 * trail + 0.35 * jolt - 0.5 * gone * upright + 0.06 * gone * (1.0 - upright))
-	turn_bone("head", forward, side * (0.3 * limp + 0.25 * gone * (1.0 - upright)))
+	# And once there is nobody in it, it turns away: to the side the camera on
+	# the floor is not on (`away`, which the scene says: 1 its left), slowly,
+	# as somebody's does who has gone, and it stays turned -- nobody's face
+	# is left looking into the lens.
+	var away := float(state.get("away", side))
+	var faded := SCORE.smooth(SCORE.ramp(time, SCORE.KILL_TIME + 0.05, SCORE.KILL_TIME + 0.75))
+	turn_bone("head", -below, away * 0.95 * faded)
+	turn_bone("head", forward, -away * (0.12 * limp + 0.1 * faded))
 	if not clear.is_empty():
 		# Down on the floor, the whole of it comes up until its back is on the
 		# carpet and not under it; and its head is kept out of what is behind it.
@@ -738,7 +742,6 @@ func pose_capture(state: Dictionary) -> void:
 		clear_head(clear)
 	# The arms: flung out at the grab, up to the arm that holds as the feet
 	# leave the floor, and down for good after the blow.
-	var kick := sin(time * 11.0) * alive * lift
 	var sag := (rig.global_basis.inverse() * Vector3.DOWN).normalized()
 	for pair in [["l", -1.0], ["r", 1.0]]:
 		var key: String = pair[0]
@@ -784,12 +787,25 @@ func pose_capture(state: Dictionary) -> void:
 		var ankle: int = bones.get(key + "f", -1)
 		var toe: int = bones.get(key + "o", -1)
 		if thigh < 0 or calf < 0 or ankle < 0: continue
-		var swing := kick * leg_side * 0.42
-		var knee := 0.12 + 0.5 * lift * alive * (0.5 + 0.5 * sin(time * 11.0 * leg_side + 1.3)) + 0.18 * limp
-		var hip := 0.08 * lift + swing + 0.1 * limp
-		turn_bone(key + "t", right, -hip)
+		# As its feet leave the floor it fights what has it -- a few hard,
+		# uneven kicks, each leg in its own time -- and that is soon spent: what
+		# is left is a slow treading of the air, less and less, until the blow;
+		# after it they only swing. The knees are never straight and never go
+		# back: the thighs hang a little forward of the hips and the shins a
+		# little behind the knees, as legs with nothing under them do. (Turned
+		# the other way, as they were, the knees were pushed in backwards.)
+		var since := time - SCORE.LIFT_FROM
+		var fight := alive * SCORE.smooth(since / 0.2) * (1.0 - SCORE.smooth((since - 0.45) / 0.55))
+		var tread := alive * SCORE.smooth((since - 0.55) / 0.6) * (1.0 - 0.6 * SCORE.ramp(time, SCORE.LIFT_TO, SCORE.KILL_TIME))
+		var own := 1.9 if leg_side > 0.0 else 0.0
+		var kicking := 0.6 * sin(time * 17.0 + own) + 0.4 * sin(time * 26.0 + own * 1.7)
+		var treading := sin(time * 4.4 + own)
+		var swinging := limp * sin((time - SCORE.KILL_TIME) * 5.5 + own * 0.5) * exp(-maxf(0.0, time - SCORE.KILL_TIME) * 2.2)
+		var hip := 0.06 + 0.12 * lift + 0.4 * fight * kicking + 0.13 * tread * treading + 0.07 * swinging
+		var knee := 0.14 + 0.14 * lift + 0.55 * fight * (0.5 - 0.5 * kicking) + 0.2 * tread * (0.5 + 0.5 * sin(time * 4.4 + own + 1.2)) + 0.12 * limp + 0.05 * swinging
+		turn_bone(key + "t", right, hip)
 		turn_bone(key + "t", forward, leg_side * (0.05 + 0.2 * sat))
-		turn_bone(key + "k", right, knee)
+		turn_bone(key + "k", right, -knee)
 		# Its feet meet the floor and stay where they met it while the hips come
 		# down behind them: the knees go up. Lying, the leg on the side it went
 		# over to slides out until it is all but straight; the other knee stays.

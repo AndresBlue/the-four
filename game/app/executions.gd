@@ -519,8 +519,23 @@ func place_victim(delta: float) -> void:
 		body.avatar.pose_capture({
 			"lift": SCORE.lift(time), "limp": SCORE.limp(time), "fall": SCORE.fall(time), "time": time, "side": float(execution.get("side", 1.0)),
 			"slump": bool(execution.get("slump", false)), "straight": bool(execution.get("straight", false)), "room": float(execution.get("room", SCORE.LIE_ROOM)),
-			"height": body.global_position.y - creature_point().y, "sill": seat_floor(), "clear": scene_bodies(),
+			"height": body.global_position.y - creature_point().y, "sill": seat_floor(), "clear": scene_bodies(), "away": head_away(),
 		})
+
+## To which side the head of whoever dies turns once it is dead (1 its left,
+## -1 its right): away from where its camcorder lies, as it will be lying
+## when it has fallen -- on its back, its head along the way it went over --,
+## so that the last of the tape is not its face looking into the lens. With
+## no word yet of where the camera is, the side it falls to.
+func head_away() -> float:
+	var lens = execution.get("lens")
+	var side := float(execution.get("side", 1.0))
+	if not (lens is Transform3D): return side
+	var level_way := Vector3(0.0 if bool(execution.get("straight", false)) or bool(execution.get("slump", false)) else side * 0.62, 0.0, 0.78).normalized()
+	var its_right := Basis(Vector3.UP, float(execution.yaw) + PI + atan2(level_way.x, level_way.z)) * Vector3.RIGHT
+	var beside := ((lens as Transform3D).origin - head_rest()).dot(its_right)
+	if absf(beside) < 0.05: return side
+	return 1.0 if beside > 0.0 else -1.0
 
 ## The bodies of the scene, which what looks for walls looks through.
 func scene_bodies() -> Array:

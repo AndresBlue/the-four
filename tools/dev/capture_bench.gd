@@ -8,7 +8,8 @@ extends SceneTree
 ## catches you is up to you, as in the game: look at it, turn your back,
 ## crouch, have the sheet open, get into the wardrobe. The keys are on the
 ## screen: the light, how it ends, a way in forced whatever you do, the
-## short version, and whether it feints at a wardrobe. The panel goes while a
+## short version, whether it feints at a wardrobe, and whose body it is
+## played on (M: the Exploradora, the woman detective or the man). The panel goes while a
 ## capture lasts and says afterwards what it was. With your own settings and
 ## keys, and nothing of it is kept: no Continuar, no records.
 ##
@@ -463,6 +464,7 @@ func write_board() -> void:
 		"3    versión: %s" % VERSIONS[version],
 		"4    finta ante el armario: %s" % FEINTS[feint],
 		"N    %s" % ("volver a la sala" if by_wardrobe else "ponerme ante un armario (entra con E; mantén E para salir en silencio)"),
+		"M    cuerpo: %s" % ["Detective Masculino (sin esqueleto: solo se inclina)", "Detective Femenino", "Exploradora"][clampi(int(level.settings.values.character), 0, 2)],
 		"R    volver a empezar          P    ocultar este panel",
 		"",
 		"Cómo te coge depende de ti: mírala, dale la espalda, agáchate, abre la hoja, escóndete.",
@@ -610,6 +612,7 @@ func note_capture() -> void:
 
 func play() -> void:
 	build_board()
+	var own_body := int(level.settings.values.character)
 	floor_feint = float(level.locust.feint)
 	var scripted := not keys.is_empty()
 	await restage()
@@ -623,7 +626,7 @@ func play() -> void:
 		var delta := float(now - tick) / 1000.0
 		tick = now
 		var pressed := {}
-		for key in [KEY_G, KEY_H, KEY_L, KEY_1, KEY_2, KEY_3, KEY_4, KEY_N, KEY_R, KEY_P]:
+		for key in [KEY_G, KEY_H, KEY_L, KEY_M, KEY_1, KEY_2, KEY_3, KEY_4, KEY_N, KEY_R, KEY_P]:
 			var down := Input.is_physical_key_pressed(key)
 			pressed[key] = down and not bool(was.get(key, false))
 			was[key] = down
@@ -642,6 +645,11 @@ func play() -> void:
 		if pressed[KEY_3]: version = (version + 1) % VERSIONS.size()
 		if pressed[KEY_4]: feint = (feint + 1) % FEINTS.size()
 		if pressed[KEY_P]: panel = not panel
+		# Whose body the scene is played on: for the bench only, nothing of it
+		# is written to anybody's settings.
+		if pressed[KEY_M] and level.execution.is_empty():
+			level.settings.values.character = (int(level.settings.values.character) + 1) % 3
+			level.apply_settings()
 		# A floor lost to it: its end is left on screen a moment, and then it
 		# is staged again. (Paused is not lost.)
 		lost = lost + delta if level.session.state == level.session.State.FAILED else 0.0
@@ -674,6 +682,8 @@ func play() -> void:
 				level.locust.set_physics_process(true)
 				level.capture_survivor(level.player)
 		write_board()
+	# Whoever it was played on, the settings are left with their own.
+	if is_instance_valid(level): level.settings.values.character = own_body
 
 # --- Filmed -------------------------------------------------------------------------
 
