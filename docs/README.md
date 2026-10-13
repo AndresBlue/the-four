@@ -19,4 +19,4 @@ Por sistema:
 - [ASSETS.md](ASSETS.md) y [hotel_audio_inventory.json](hotel_audio_inventory.json): procedencia, licencias y permisos pendientes.
 - [textos_juego.txt](textos_juego.txt): todos los textos que aparecen en pantalla.
 
-Antecedentes: [PLAYTEST_HOTEL.md](PLAYTEST_HOTEL.md) (protocolo humano todavía sin completar) e `history/`. Los informes de validación de las versiones 0.3 y 0.4 se retiraron en la limpieza de septiembre de 2026; siguen en el historial de git.
+Antecedentes: [PLAYTEST_HOTEL.md](PLAYTEST_HOTEL.md) (protocolo humano todavía sin completar) e `history/`. Los informes de validación de las versiones 0.3 y 0.4 se retiraron en la limpieza de septiembre de 2026; siguen en el historial de git. En la del 13 de octubre de 2026 salieron cuatro herramientas de captura que otras ya cubrían (`gallery_capture`, `start_capture`, `wardrobe_capture` y `menu_capture`) y el código que nada llamaba; las muestras sueltas de `evidence/` (capturas, películas y registros de pruebas ya cerradas, que no están en git) fueron a la papelera, y quedaron las carpetas que los documentos citan (`bench/`, `bots/`, `lookdev/`, `trailer3d/`).

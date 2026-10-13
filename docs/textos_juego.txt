@@ -65,11 +65,11 @@ CORRECCIÓN:
 ACTUAL: MULTIJUGADOR
 CORRECCIÓN:
 
-[MENU.12] Opción (las marcas: sección 8)
+[MENU.12] Opción (las marcas: sección 8; solo aparece cuando el tablón tiene algo)
 ACTUAL: RECORDS
 CORRECCIÓN:
 
-[ARCH.01] Opción (entre Records y Ajustes)
+[ARCH.01] Opción (entre Records y Ajustes; solo aparece cuando hay algún documento leído)
 ACTUAL: ARCHIVO
 CORRECCIÓN:
 
@@ -85,10 +85,6 @@ CORRECCIÓN:
 ACTUAL: SALIR
 CORRECCIÓN:
 
-[MENU.11] Abajo a la derecha, parpadea como un vídeo sin programar
-ACTUAL: 12:00
-CORRECCIÓN:
-
 -- Dificultad (al pulsar NUEVA PARTIDA) --
 
 [DIF.01] Esquina superior izquierda, título y subtítulo
@@ -99,25 +95,15 @@ CORRECCIÓN:
 ACTUAL: APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA · VOLVER
 CORRECCIÓN:
 
-[DIF.03] Recuadro de la derecha: lo que es cada una
-ACTUAL: Lenta de mente. La verás a menudo, pero tarda en reaccionar, corre menos que tú y se olvida pronto. Para quien no juega mucho.
-| Los mismos encuentros, pero salir de ellos pide romperle la vista, no solo correr. La de casi todo el mundo.
-| Verte es casi cazarte: hay que jugar a no ser visto. Para quien ya conoce el piso.
-| Ve más, oye más, insiste más y no perdona. Para equipos que ya salen en Desafiante.
-CORRECCIÓN:
-
-[DIF.04] Recuadro de la derecha: sus rasgos, uno por línea
-ACTUAL: (Apacible) Ve poco: medio escondido, tarda en distinguirte, y se para a mirarte antes de reaccionar. ·
-| Corre bastante menos que tú y se cansa enseguida de perseguir. · Después de un susto te deja un buen rato
-| en paz. · Si caes, la etapa vuelve a empezar, todas las veces que haga falta.
-| (Equilibrada) Duda un momento antes de reaccionar, y asomado a medias tarda en verte. · Corre algo menos
-| que tú, y se cansa de una persecución larga. · Después de un encuentro te da un respiro. · Si caes, la etapa
-| vuelve a empezar: una vez a solas, dos en equipo.
-| (Desafiante) Verte es casi cazarte. · Corre más que tú y no afloja. · En equipo, el piso perdona una etapa
-| perdida; a solas, ninguna.
-| (Pesadilla) Ve y oye más lejos que ninguna. · Reacciona al instante, insiste y registra más armarios. ·
-| No se perdona ninguna etapa perdida.
-| (solo Desafiante) Es la bestia de siempre: la de antes de que hubiera dificultades.
+[DIF.04] Recuadro de la derecha: el nombre de la dificultad en ámbar y cuatro líneas cortas
+ACTUAL: (Apacible) Tarda en verte y en reaccionar · Corre lo que tú y se cansa pronto · Largos respiros entre
+| encuentros · Reintentos de etapa sin límite
+| (Equilibrada) Duda un instante antes de reaccionar · Corre lo que tú: hay que perderla de vista · Un respiro
+| tras cada encuentro · Reintentos de etapa: 1 a solas, 2 en equipo
+| (Desafiante) Verte es casi cazarte · Corre más que tú y no se cansa · Registra armarios y tiende emboscadas ·
+| Reintentos de etapa: 0 a solas, 1 en equipo
+| (Pesadilla) Ve y oye más lejos, reacciona al instante · Más rápida que tú, implacable · Registra más armarios
+| y te espera fuera · Sin reintentos de etapa
 CORRECCIÓN:
 
 
@@ -612,8 +598,8 @@ ACTUAL: THE FOUR
 CORRECCIÓN:
 
 [CRED.21] Texto
-ACTUAL: Proyecto fan no oficial, sin ánimo de lucro.
-| Arquitectura del hotel, generación del piso, cámara de vídeo doméstica, shaders, iluminación, sonido sintetizado, red y código: creados para este juego.
+ACTUAL: Autor: Felipe Poblete.
+| Proyecto fan no oficial, sin ánimo de lucro.
 CORRECCIÓN:
 
 [CRED.22] Encabezado
@@ -647,10 +633,8 @@ ACTUAL: Poly Haven, CC0: Kirill Sannikov, James Ray Cock, Ulan Cabanilla, Rico C
 | «Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).
 | «Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).
 | «Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.
-| Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el usuario; autoría y licencia pendientes de verificar.
+| Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.
 CORRECCIÓN:
-OBS: "aportados por el usuario" es lenguaje de desarrollo (también en CRED.35); en
-créditos debería ir el autor real.
 
 [CRED.28] Encabezado
 ACTUAL: MATERIALES
@@ -686,6 +670,8 @@ ACTUAL: «Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).
 | «toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).
 | «custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).
 | «Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).
+| «Blood Gush» — FlaxGod (CC0).
+| «Blood Gush / Spray» — clif_creates (CC0).
 CORRECCIÓN:
 
 [CRED.34] Encabezado
@@ -693,16 +679,7 @@ ACTUAL: SONIDO — EL RESTO
 CORRECCIÓN:
 
 [CRED.35] Texto
-ACTUAL: Pasos, respiración, latido, presencia de la criatura y los golpes del hotel: síntesis creada para el juego.
-| Música y el resto del paquete de efectos: aportados por el usuario; autoría y licencia pendientes de verificar.
-CORRECCIÓN:
-
-[CRED.36] Encabezado
-ACTUAL: LETRAS
-CORRECCIÓN:
-
-[CRED.37] Texto
-ACTUAL: El cartel de SALIDA y los números de puerta están dibujados para este juego: no se embarca ningún archivo de tipografía.
+ACTUAL: Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.
 CORRECCIÓN:
 
 [CRED.38] Encabezado
@@ -994,7 +971,7 @@ CORRECCIÓN:
 ACTUAL: Pantalla completa / Ventana sin bordes / Ventana
 CORRECCIÓN:
 
-[AJ.12] Desplegable (desactivado en pantalla completa)
+[AJ.12] Desplegable (en pantalla completa, desactivado y con el tamaño de la pantalla: «2560 × 1440»)
 ACTUAL: Tamaño de ventana
 CORRECCIÓN:
 
@@ -1030,18 +1007,6 @@ CORRECCIÓN:
 
 [AJ.69] Opciones del suavizado
 ACTUAL: Del preset / Sin suavizado / FXAA (rápido) / SMAA (mejor) / TAA (temporal) / MSAA 2× / MSAA 4×
-CORRECCIÓN:
-
-[AJ.70] Nota con el renderizador Compatibilidad
-ACTUAL: Compatibilidad no tiene FSR: la imagen se estira sin reconstruir. Cambia el renderizador en GRÁFICOS para usarlo.
-CORRECCIÓN:
-
-[AJ.71] Nota con FSR 2.2
-ACTUAL: FSR 2.2 reconstruye la imagen con el movimiento de cada píxel y hace de suavizado él mismo, así que el de abajo no se usa.
-CORRECCIÓN:
-
-[AJ.72] Nota con escalado bilineal por debajo de la resolución nativa
-ACTUAL: Por debajo de la resolución nativa, FSR 2.2 se ve bastante más nítido que este estirado.
 CORRECCIÓN:
 
 [AJ.17] Desplegable
@@ -1123,7 +1088,7 @@ ACTUAL: Movimiento de cámara
 CORRECCIÓN:
 
 [AJ.26] Casilla
-ACTUAL: Marcas de videocámara (REC, fecha y hora)
+ACTUAL: Marcas de videocámara
 CORRECCIÓN:
 
 [AJ.27] Casilla
@@ -1157,24 +1122,15 @@ ACTUAL: Sensibilidad del mando
 CORRECCIÓN:
 
 [AJ.38] Casilla (solo con mando conectado)
-ACTUAL: Correr con el mando: pulsar para alternar
+ACTUAL: Alternar correr (mando)
 CORRECCIÓN:
 
 [AJ.39] Casilla (solo con mando conectado)
-ACTUAL: Agacharse con el mando: pulsar para alternar
+ACTUAL: Alternar agacharse (mando)
 CORRECCIÓN:
 
 [AJ.39b] Casilla (solo con mando conectado)
 ACTUAL: Vibración del mando
-CORRECCIÓN:
-
-[AJ.39c] Nota (solo con mando conectado; %s = tipo de mando, botón de pausa,
-gatillo derecho y gatillo izquierdo)
-ACTUAL: Mando: %s. El stick izquierdo anda —cuanto más lo empujas, más deprisa—, el derecho mira y %s hace de pausa; mover y mirar son los sticks y no se cambian. Con la hoja abierta, el stick izquierdo lleva el lápiz, %s dibuja y %s borra.
-CORRECCIÓN:
-
-[AJ.39d] Tipos de mando (primer %s de AJ.39c)
-ACTUAL: Xbox o compatible / PlayStation / Nintendo
 CORRECCIÓN:
 
 [AJ.33] Acciones reasignables
@@ -1223,7 +1179,7 @@ ACTUAL: General / Ambiente / Música / Efectos / Señales de peligro
 CORRECCIÓN:
 
 [AJ.42] Casilla
-ACTUAL: Subtítulos de sonidos relevantes
+ACTUAL: Subtítulos de sonidos
 CORRECCIÓN:
 
 -- Confirmación de pantalla (al cambiar el modo o el tamaño de ventana) --

@@ -91,18 +91,6 @@ func focused_document():
 	var area = focused_area()
 	return area if area is DOCUMENT else null
 
-func focused_television():
-	var area = focused_area()
-	return area if area is TELEVISION else null
-
-func focused_container():
-	var area = focused_area()
-	return area if area is CONTAINER else null
-
-func focused_lock():
-	var area = focused_area()
-	return area if area is LOCK else null
-
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
 	if level.match_net.bodies.is_empty(): return ""

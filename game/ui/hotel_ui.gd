@@ -127,7 +127,6 @@ var marks_view: SubViewport
 var tape: ShaderMaterial
 const SIGNAL_LOST := "SEÑAL PERDIDA"
 var footer: Label
-var menu_clock: Label
 var body: HBoxContainer
 var clock := 0.0
 var flash_time := 0.0
@@ -352,7 +351,6 @@ func build_frame() -> void:
 	body.add_child(side)
 	osd_left = corner_label(Control.PRESET_TOP_LEFT, HORIZONTAL_ALIGNMENT_LEFT, Vector2(48, 34))
 	osd_right = corner_label(Control.PRESET_TOP_RIGHT, HORIZONTAL_ALIGNMENT_RIGHT, Vector2(-48, 34))
-	menu_clock = corner_label(Control.PRESET_BOTTOM_RIGHT, HORIZONTAL_ALIGNMENT_RIGHT, Vector2(-48, -70))
 	footer = corner_label(Control.PRESET_BOTTOM_LEFT, HORIZONTAL_ALIGNMENT_LEFT, Vector2(48, -58))
 	footer.add_theme_font_size_override("font_size", 15)
 	footer.add_theme_color_override("font_color", STYLE.SOFT)
@@ -467,10 +465,9 @@ func button(parent: Node, words: String, callback: Callable) -> Button:
 func action(words: String, id: String, disabled := false) -> void:
 	buttons[id] = entry(column, words, func(): action_requested.emit(id), disabled)
 
-func set_osd(left: String, right := "", clock_text := "", footer_text := "") -> void:
+func set_osd(left: String, right := "", footer_text := "") -> void:
 	osd_left.text = left
 	osd_right.text = right
-	menu_clock.text = clock_text
 	footer.text = footer_text
 
 ## What the loading screen is waiting on; empty leaves the line blank.
@@ -526,7 +523,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 	backdrop.modulate.a = 1.0
 	match kind:
 		"main":
-			set_osd("▶ PLAY", "", "", "")
+			set_osd("▶ PLAY", "", "")
 			title(column, "THE FOUR", 104)
 			label(column, "H  O  T  E  L", 24).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 22)
@@ -541,7 +538,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Créditos", "credits")
 			action("Salir", "quit")
 		"pause":
-			set_osd("❚❚ PAUSA", "", "", "")
+			set_osd("❚❚ PAUSA", "", "")
 			backdrop.modulate.a = 0.9
 			title(column, "PAUSA", 72)
 			briefing_panel(column)
@@ -552,15 +549,15 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Menú principal", "main")
 			controls_panel(side)
 		"won":
-			set_osd("■ STOP", "", "", "")
+			set_osd("■ STOP", "", "")
 			tape_screen("SALISTE DEL PISO", STYLE.INK, summary, outcome, [["Nueva partida", "new"], ["Records", "records"], ["Menú principal", "main"]])
 		"failed":
-			set_osd("SEÑAL PERDIDA", "", "", "")
+			set_osd("SEÑAL PERDIDA", "", "")
 			osd_left.add_theme_color_override("font_color", STYLE.ALERT)
 			noise_floor = 0.16
 			tape_screen("SEÑAL PERDIDA", STYLE.ALERT, summary, outcome, [["Reintentar", "retry"], ["Records", "records"], ["Menú principal", "main"]])
 		"loading":
-			set_osd("◀◀ REW", "", "", "")
+			set_osd("◀◀ REW", "", "")
 			title(column, "CARGANDO CINTA", 58)
 			spacer(column, 6)
 			loading_label = label(column, "EL HOTEL ESTÁ TOMANDO FORMA", 22)
@@ -569,11 +566,11 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			loading_step.add_theme_color_override("font_color", STYLE.AMBER)
 			controls_panel(side)
 		"transition":
-			set_osd("■ STOP", "", "", "")
+			set_osd("■ STOP", "", "")
 			title(column, "FIN DEL PISO", 64)
 			side.visible = false
 		"archive":
-			set_osd("▶ PLAY", "", "", "")
+			set_osd("▶ PLAY", "", "")
 			title(column, "ARCHIVO", 64)
 			var count: int = discoveries.found.size() if discoveries != null else 0
 			label(column, "DOCUMENTOS  %d / %d" % [count, CATALOG.TOTAL], 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -590,7 +587,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 20)
 			action("Volver", "main")
 		"records":
-			set_osd("▶ PLAY", "", "", "")
+			set_osd("▶ PLAY", "", "")
 			side.visible = false
 			column.custom_minimum_size.x = BOARD.SIZE.x
 			title(column, "RECORDS", 44)
@@ -606,7 +603,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			buttons["back"] = entry(column, "Volver", leave, false, 24)
 			chain_settings(tabs, buttons["back"])
 		"multiplayer":
-			set_osd("MENU ▸ MULTIJUGADOR", "", "", "")
+			set_osd("MENU ▸ MULTIJUGADOR", "", "")
 			title(column, "MULTIJUGADOR", 64)
 			label(column, "DE 2 A %d JUGADORES · IP / LAN O STEAM" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -623,7 +620,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			spacer(column, 12)
 			action("Volver", "main")
 		"mp_steam":
-			set_osd("MULTIJUGADOR ▸ STEAM", "", "", "")
+			set_osd("MULTIJUGADOR ▸ STEAM", "", "")
 			title(column, "STEAM", 64)
 			label(column, "CON TUS AMIGOS DE STEAM · SIN ABRIR PUERTOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -633,7 +630,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "multiplayer")
 			side.visible = false
 		"mp_ip":
-			set_osd("MULTIJUGADOR ▸ IP / LAN", "", "", "")
+			set_osd("MULTIJUGADOR ▸ IP / LAN", "", "")
 			title(column, "IP / LAN", 64)
 			label(column, "EN TU RED LOCAL, O POR INTERNET CON UN PUERTO ABIERTO", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -643,7 +640,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "multiplayer")
 			side.visible = false
 		"host_ip":
-			set_osd("MULTIJUGADOR ▸ CREAR SALA", "", "", "")
+			set_osd("MULTIJUGADOR ▸ CREAR SALA", "", "")
 			title(column, "CREAR SALA", 64)
 			label(column, "IP / LAN", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -662,7 +659,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "mp_ip")
 			side.visible = false
 		"join_steam":
-			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "STEAM")
+			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "STEAM")
 			title(column, "UNIRSE", 64)
 			label(column, "STEAM · SALAS DE TUS AMIGOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
@@ -678,7 +675,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver", "mp_steam")
 			side.visible = false
 		"steam_invite":
-			set_osd("SALA ▸ INVITAR", "", "", "STEAM")
+			set_osd("SALA ▸ INVITAR", "", "STEAM")
 			title(column, "INVITAR", 64)
 			label(column, "TUS AMIGOS CONECTADOS A STEAM", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 14)
@@ -708,7 +705,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Volver a la sala", "lobby_back")
 			side.visible = false
 		"steam_wait":
-			set_osd("MULTIJUGADOR ▸ STEAM", "", "", "")
+			set_osd("MULTIJUGADOR ▸ STEAM", "", "")
 			title(column, "STEAM", 64)
 			spacer(column, 18)
 			label(column, net.status if net != null and not net.status.is_empty() else "Conectando…", 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -716,7 +713,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			action("Cancelar", "lobby_leave")
 			side.visible = false
 		"join":
-			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "", "")
+			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "")
 			title(column, "UNIRSE", 64)
 			spacer(column, 18)
 			label(column, "IP / LAN", 20).add_theme_color_override("font_color", STYLE.SOFT)
@@ -736,7 +733,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			difficulty_screen()
 		"rules":
 			var hosting: bool = net != null and net.is_host
-			set_osd("SALA ▸ REGLAS", "", "", "ANFITRIÓN" if hosting else "")
+			set_osd("SALA ▸ REGLAS", "", "ANFITRIÓN" if hosting else "")
 			side.visible = false
 			column.custom_minimum_size.x = RULES_SCREEN.SIZE.x
 			title(column, "REGLAS", 44)
@@ -751,7 +748,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			if hosting: buttons["rules_reset"] = entry(row, "Las del juego", func(): action_requested.emit("rules_reset"), false, 21)
 			chain_settings(tabs, buttons["lobby"])
 		"online_pause":
-			set_osd("❚❚ MENÚ", "", "", "LA PARTIDA SIGUE")
+			set_osd("❚❚ MENÚ", "", "LA PARTIDA SIGUE")
 			backdrop.modulate.a = 0.75
 			title(column, "MENÚ", 72)
 			label(column, "LA PARTIDA NO SE DETIENE", 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -764,7 +761,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"online_won", "online_failed":
 			online_end(kind == "online_won")
 		"credits":
-			set_osd("▶ PLAY", "", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
+			set_osd("▶ PLAY", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
 			title(column, "CRÉDITOS", 64)
 			spacer(column, 14)
 			column.custom_minimum_size.x = 720
@@ -788,7 +785,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 ## and four short lines (DIFFICULTY.TRAITS). Picking one keeps it and starts
 ## the game.
 func difficulty_screen() -> void:
-	set_osd("MENU ▸ NUEVA PARTIDA", "", "", "")
+	set_osd("MENU ▸ NUEVA PARTIDA", "", "")
 	title(column, "DIFICULTAD", 64)
 	label(column, "LA BESTIA QUE TE ESPERA EN EL HOTEL", 20).add_theme_color_override("font_color", STYLE.SOFT)
 	spacer(column, 24)
@@ -845,7 +842,7 @@ const LOBBY_SIDE := 340
 ## The room: who is in, the host's options and the way into the match.
 func lobby_screen() -> void:
 	var hosting: bool = net.is_host
-	set_osd("MULTIJUGADOR ▸ SALA", "", "", "ANFITRIÓN" if hosting else "")
+	set_osd("MULTIJUGADOR ▸ SALA", "", "ANFITRIÓN" if hosting else "")
 	title(column, "SALA", 64)
 	var seats: Array = net.players.keys()
 	seats.sort()
@@ -937,7 +934,7 @@ func online_end(won: bool) -> void:
 	var hunter: bool = net.match_net.local_is_locust()
 	var headline := ("SE TE ESCAPARON" if hunter else "SALISTE DEL PISO") if won else ("CAZA COMPLETA" if hunter else "SEÑAL PERDIDA")
 	var bad := won == hunter
-	set_osd("■ STOP" if not bad else "SEÑAL PERDIDA", "", "", "")
+	set_osd("■ STOP" if not bad else "SEÑAL PERDIDA", "", "")
 	if bad: osd_left.add_theme_color_override("font_color", STYLE.ALERT)
 	var actions: Array = []
 	var note := ""
@@ -989,7 +986,7 @@ func show_tape(line: Dictionary) -> void:
 	screen = "tape"
 	overlay.show()
 	backdrop.modulate.a = 1.0
-	set_osd("▶ PLAY", "", "", "")
+	set_osd("▶ PLAY", "", "")
 	osd_left.remove_theme_color_override("font_color")
 	tape_screen("PARTE DE LA CINTA", STYLE.INK, line, {}, [["Volver a los records", func(): menu("records")]])
 	transition(0.3)
@@ -1210,7 +1207,7 @@ func show_settings(back: String) -> void:
 	return_action = back
 	overlay.show()
 	backdrop.modulate.a = 1.0
-	set_osd("MENU ▸ AJUSTES", "", "", "")
+	set_osd("MENU ▸ AJUSTES", "", "")
 	side.visible = false
 	column.custom_minimum_size.x = 1000
 	title(column, "AJUSTES", 58)
@@ -1439,7 +1436,6 @@ var chained_back: Control
 ## A page with nothing to mark on it (a tape's report, the credits of a
 ## floor): the right stick rolls it.
 var pad_scroll: ScrollContainer
-const FAMILY_NAMES := {"xbox": "Xbox o compatible", "playstation": "PlayStation", "nintendo": "Nintendo"}
 
 ## Down and up on a pad walk every row of a page, in order, and only then
 ## reach "Volver"; the page rolls to follow what is marked. Left to Godot, the
@@ -1595,7 +1591,7 @@ func show_characters(back := "multiplayer") -> void:
 	clear()
 	screen = "characters"
 	overlay.show()
-	set_osd("MULTIJUGADOR ▸ PERSONAJE", "", "", "")
+	set_osd("MULTIJUGADOR ▸ PERSONAJE", "", "")
 	title(column, "PERSONAJE", 64)
 	spacer(column, 24)
 	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")

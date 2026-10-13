@@ -451,10 +451,6 @@ func victim_hold_point() -> Vector3:
 	var reach := lerpf(far, SCORE.HOLD_NEAR, SCORE.closing(time))
 	return creature_point() + creature_forward() * reach + Vector3(0, SCORE.HOLD_STAND * (1.0 - SCORE.fall(time)) + SCORE.lift(time) * SCORE.LIFT_HEIGHT, 0)
 
-## How high the victim is held at a second of it.
-func victim_lift(time: float) -> float:
-	return SCORE.lift(time)
-
 ## Where the victim's camera is while the face lasts: at its own eyes, where
 ## it was pulled to.
 func lens_point() -> Vector3:
