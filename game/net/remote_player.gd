@@ -100,7 +100,12 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 func set_dead(value: bool) -> void:
 	if dead == value: return
 	dead = value
-	visible = not value
+	# Its body is left where it fell, as it fell (the avatar lies until it is
+	# stood up again, avatar_visual.fallen), and is in nobody's way: nothing
+	# collides with it, the creature least of all. Somebody counted dead who
+	# never fell -- gone from the match on their feet -- leaves no body: it
+	# would be one standing there.
+	visible = not value or (avatar != null and avatar.fallen)
 	collision_layer = 0 if value else 4
 	# Up again: however an execution left the body lying, it stands.
 	if not value and avatar != null: avatar.end_capture()
@@ -176,6 +181,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if dead or states.is_empty():
 		velocity = Vector3.ZERO
+		if dead:
+			visible = avatar.fallen
+			avatar.visible = true
 		avatar.update_pose(Vector3.ZERO, crouched, delta)
 		return
 	# Interpolate between the two states around (now - DELAY).

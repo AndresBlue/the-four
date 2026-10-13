@@ -273,7 +273,11 @@ func stop_watching() -> void:
 ## Dead online: the view follows a living teammate; a click switches to the next.
 func watch_teammates() -> void:
 	level.player.active = false
-	level.player.visible = false
+	# Its own body stays where it fell, for whoever it watches through to
+	# come upon -- and for itself, now that it sees with another's camera,
+	# which draws what its own did not (avatar_visual.show_to_owner).
+	level.player.visible = level.player.avatar != null and level.player.avatar.fallen
+	if level.player.visible: level.player.avatar.show_to_owner(true)
 	level.player.collision_layer = 0
 	var body: Node3D = level.match_net.watched_body()
 	level.camcorder.focus("")

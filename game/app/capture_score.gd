@@ -73,6 +73,10 @@ const HOLD_STAND := 0.1
 ## let go). With less than that it folds up where it drops: sitting, its hips
 ## a little back from there and its back against whatever stopped it.
 const LIE_ROOM := 1.4
+## Flat on its back (radians from upright): all the way down, so that its
+## shoulders and the back of its head are on the floor with its hips. (It
+## stopped seven degrees short, and the head hung a hand above the carpet.)
+const FLAT := 1.57
 ## How high the hips of somebody sitting on the floor are.
 const SEAT_HEIGHT := 0.13
 
@@ -87,7 +91,7 @@ static func seat_lean(room: float) -> float:
 	var back := seat_back(room)
 	var shoulders := asin(clampf((room - back - 0.14) / 0.55, 0.0, 1.0))
 	var head := asin(clampf((room - back - 0.16) / 0.9, 0.0, 1.0))
-	return clampf(minf(shoulders, head), 0.08, 1.45)
+	return clampf(minf(shoulders, head), 0.08, FLAT)
 
 static func smooth(value: float) -> float:
 	var t := clampf(value, 0.0, 1.0)

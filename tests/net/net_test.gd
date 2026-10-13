@@ -246,7 +246,7 @@ func host() -> void:
 	check("Una muerte no termina el piso de tres", level.session.capture(bravo) and playing())
 	await pause_for(3.0)
 	check("Un muerto no puede dibujar en la hoja", not level.ui.sheet.log_index.has("%d:1" % bravo))
-	check("El cuerpo del muerto desaparece y no estorba", await wait_for(func(): return match_net.bodies[bravo].dead and match_net.bodies[bravo].collision_layer == 0 and not match_net.bodies[bravo].visible, 10.0))
+	check("Quien se cuenta muerto sin haber caído no deja un cuerpo de pie, ni estorba", await wait_for(func(): return match_net.bodies[bravo].dead and match_net.bodies[bravo].collision_layer == 0 and not match_net.bodies[bravo].visible, 10.0))
 	check("El armario queda libre al salir el invitado", await wait_for(func(): return not is_instance_valid(hide.occupant), 30.0))
 	# The host goes down as well: one of three is under the quota, so the floor
 	# gives the stage back instead of ending and everybody gets up. What is

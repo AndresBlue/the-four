@@ -249,7 +249,7 @@ func set_body_shadow(on: bool) -> void:
 ## Presentation only: it never moves the body, and it is the same code for
 ## your own body and for a teammate's.
 func update_pose(velocity: Vector3, crouching: bool, delta: float, grounded := true) -> void:
-	if not initialized: return
+	if not initialized or fallen: return
 	var planar := Vector3(velocity.x, 0, velocity.z)
 	var speed := planar.length()
 	phase += delta * speed * 2.5
@@ -568,8 +568,13 @@ func staunch() -> void:
 			if worn != null and worn.next_pass == stain: worn.next_pass = null
 	stain = null
 
+## A body the creature let fall lies as it fell: nothing stands it up, walks
+## it or breathes for it until it is given back to somebody (end_capture).
+var fallen := false
+
 ## Back as it stands, after a capture that ended or was let go.
 func end_capture() -> void:
+	fallen = false
 	staunch()
 	transform = Transform3D.IDENTITY
 	show_to_owner(false)
@@ -692,6 +697,29 @@ func clear_head(clear: Dictionary) -> void:
 	var wanted := kept_out(from, top, 0.1, clear)
 	if wanted.distance_to(top) > 0.002: aim_bone(chest, head, rig.global_basis.inverse() * (wanted - from))
 
+## The head of somebody lying, laid on the floor: the skull is HEAD_REST
+## thick behind the bone that carries it.
+const HEAD_REST := 0.095
+## A body's own origin is this far over the floor it stands on (so is the
+## creature's, from which the scene measures): the floor is that much lower
+## than either, and a body laid on "the floor" without it lay a finger over it.
+const STANDS_OVER := 0.035
+## How high the hips of somebody lying flat are, over that origin.
+const LAID_HIPS := 0.075
+func rest_head(floor_y: float, weight: float) -> void:
+	var chest: int = bones.get("chest", -1)
+	var head: int = bones.get("head", -1)
+	if chest < 0 or head < 0 or weight <= 0.0: return
+	var from := bone_point(chest)
+	var neck := bone_point(head) - from
+	var length := neck.length()
+	var over := (from.y + neck.y) - (floor_y + HEAD_REST)
+	if length < 0.01 or over <= 0.002: return
+	var down := clampf(neck.y - over * clampf(weight, 0.0, 1.0), -length, length)
+	var flat := Vector3(neck.x, 0.0, neck.z)
+	if flat.length() < 0.001: return
+	aim_bone(chest, head, rig.global_basis.inverse() * (flat.normalized() * sqrt(maxf(0.0, length * length - down * down)) + Vector3.UP * down))
+
 ## How far the trunk has to come up for none of it to be under the floor.
 func under_floor(floor_y: float) -> float:
 	var deepest := 0.0
@@ -730,6 +758,7 @@ func pose_capture(state: Dictionary) -> void:
 	var side := float(state.get("side", 1.0))
 	var slump := bool(state.get("slump", false))
 	var room := float(state.get("room", SCORE.LIE_ROOM))
+	fallen = fall > 0.0
 	if bool(state.get("bleed", false)): bleed(time)
 	elif stain != null: staunch()
 	var sat := SCORE.sunk(fall)
@@ -739,7 +768,7 @@ func pose_capture(state: Dictionary) -> void:
 	var trail := sin(PI * sqrt(gone)) * (1.0 - jolt)
 	var clear := {}
 	if rig != null and state.has("clear") and is_inside_tree() and get_parent_node_3d() != null:
-		clear = {"space": get_world_3d().direct_space_state, "exclude": state.clear, "floor": get_parent_node_3d().global_position.y - float(state.get("height", 0.0)) + float(state.get("sill", 0.0)) * sat}
+		clear = {"space": get_world_3d().direct_space_state, "exclude": state.clear, "floor": get_parent_node_3d().global_position.y - float(state.get("height", 0.0)) - STANDS_OVER + float(state.get("sill", 0.0)) * sat}
 	var seat := SCORE.seat_back(room)
 	var recline := SCORE.seat_lean(room)
 	# Which way it goes over: back, and to a side where there is one to go to.
@@ -755,7 +784,8 @@ func pose_capture(state: Dictionary) -> void:
 		return
 	# Its hips come down where its legs give, a little behind its feet.
 	var hips := hip_rest()
-	var sitting := Vector3(hips.x + way.x * seat * sat, lerpf(hips.y, SCORE.SEAT_HEIGHT + float(state.get("sill", 0.0)), sat), hips.z + way.z * seat * sat)
+	var low := lerpf(SCORE.SEAT_HEIGHT, LAID_HIPS, gone * clampf(recline / 1.45, 0.0, 1.0))
+	var sitting := Vector3(hips.x + way.x * seat * sat, lerpf(hips.y, low + float(state.get("sill", 0.0)), sat), hips.z + way.z * seat * sat)
 	# Held, it is bent about its feet, as it always was; down, about its hips.
 	transform = Transform3D(turned, (sitting - turned * hips) * minf(1.0, sat * 4.0))
 	rig.reset_bone_poses()
@@ -793,6 +823,9 @@ func pose_capture(state: Dictionary) -> void:
 		# carpet and not under it; and its head is kept out of what is behind it.
 		if sat > 0.0: position.y += under_floor(float(clear.floor))
 		clear_head(clear)
+		# And lying, the back of its head is on the floor: let down to it from
+		# wherever the neck was holding it.
+		if gone > 0.0 and upright < 0.2: rest_head(float(clear.floor), gone * (1.0 - upright * 5.0))
 	# The arms: flung out at the grab, up to the arm that holds as the feet
 	# leave the floor, and down for good after the blow.
 	var sag := (rig.global_basis.inverse() * Vector3.DOWN).normalized()

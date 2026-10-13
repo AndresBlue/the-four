@@ -90,7 +90,7 @@ func run() -> void:
 	check("Un bot atrapado queda sostenido delante de la criatura", held_near, str(victim.global_position))
 	await wait_for(func(): return level.session.participants.get(3) == level.session.Life.DEAD, 400)
 	await frames(2)
-	check("Y muere, fuera de la vista y sin cuerpo que estorbe", level.session.participants.get(3) == level.session.Life.DEAD and victim.dead and victim.collision_layer == 0 and not victim.visible)
+	check("Y muere: su cuerpo se queda donde cayó, tendido, y no estorba a nadie", level.session.participants.get(3) == level.session.Life.DEAD and victim.dead and victim.collision_layer == 0 and victim.visible and victim.avatar.fallen)
 	# The other one closes the stage on its own feet. Half way, and once it is
 	# through, the floor as it stands, to hold the recording to.
 	var pictures: Array = []
