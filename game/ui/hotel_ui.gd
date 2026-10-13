@@ -1262,6 +1262,8 @@ func show_settings(back: String) -> void:
 	# Being caught without the face in the lens (death_tape.gd): the picture
 	# goes straight to the camera on the floor, and the scream comes in softer.
 	check(graphics, "Sobresaltos suaves", "startle_soft")
+	# What a capture spills (blood.gd): each machine's own, nobody else's.
+	check(graphics, "Sangre", "gore")
 	var controls := page(tabs, "CONTROLES")
 	slider(controls, "Sensibilidad", "sensitivity", 0.0005, 0.008, 0.0001)
 	check(controls, "Invertir mirada vertical", "invert")

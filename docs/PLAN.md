@@ -292,6 +292,14 @@ herramientas para mirarlo están en la guía de desarrollo.
   Detective. **Ojo: el modelo del Detective Femenino, tal como viene, va
   casi sin ropa** (se ve igual con el código de antes de estos cambios): si
   no es lo que querías, hay que revisar ese modelo (apartado 4).
+- [ ] **La sangre (13 de octubre), por ver** (EXECUTION.md, 8.7). Está entera
+  —chorro, goteo, borboteo, poza, mancha en la ropa, chorreo en paredes y
+  gotas en la lente— y medida en lo que se puede medir, pero no la has visto.
+  Mírala en el banco (tecla B la quita y la pone) y dime: (a) si **sobre
+  moqueta** se ve lo bastante —es oscura sobre oscuro y se lee por el brillo;
+  en baldosa se ve mucho más—; (b) si la **cantidad** es la que querías o
+  quieres más; (c) si las **gotas en la lente** suman o distraen; (d) si la
+  mancha de la ropa se nota.
 - [ ] **Un cuelgue en el banco (13 de octubre, 00:25), sin reproducir.** No
   fue del juego: Windows registró a esa hora un reinicio del controlador
   gráfico (`nvlddmkm`, suceso 153, el único en dos semanas) y Godot cayó
@@ -594,6 +602,15 @@ pueda jugar entero sin tocar el teclado.
   ser físicos, cómo se sincronizan en red y cuánto oye la criatura.
 
 ## 4 · Assets que faltan (tuyos)
+
+- [ ] **Sonido de la sangre** (no hay ninguna grabación de líquido en el
+  proyecto, y no se sintetizan): una salpicadura contra pared o suelo, un
+  goteo sobre moqueta y sobre baldosa, y un chorro o borboteo corto. Con
+  licencia libre (CC0) se pueden bajar, con tu permiso para cada archivo.
+- [ ] **Salpicaduras fotografiadas** (opcional): el atlas de formas está
+  dibujado por `tools/textures/bake_blood.py`; con fotos de sangre real o
+  simulada, CC0, las manchas ganarían irregularidad. El shader ya lee un
+  atlas: sería cambiar la imagen.
 
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía, y es el silencio más audible del piso: cada cierre de

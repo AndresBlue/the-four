@@ -30,6 +30,10 @@ uniform float tape_fray : hint_range(0.0, 1.0) = 0.0;
 // The tape running back (a stage given back): over the snow, the bars of a
 // search in reverse race up the picture.
 uniform float rewinding : hint_range(0.0, 1.0) = 0.0;
+// Blood on the glass of a camcorder lying where its owner is being killed
+// (death_tape.gd): seconds since it landed there (0: none), and which drops.
+uniform float lens_blood = 0.0;
+uniform float lens_seed = 0.0;
 // Screen reads for the chroma smear, over the same width (graphics preset
 // chroma_taps): 7, or 4 on the lowest preset.
 uniform int chroma_taps : hint_range(2, 7) = 7;
@@ -128,6 +132,28 @@ void fragment() {
 	}
 	chroma *= 1.0 - vhs * 0.25;
 	vec3 color = yiq_to_rgb(vec3(luma, chroma));
+	if (lens_blood > 0.0) {
+		// On the lens, and so out of focus and in front of everything: three
+		// drops, each a dark red stain with no edge to speak of, running down
+		// the glass as slowly as a drop does.
+		float stained = 0.0;
+		float wide = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
+		for (int index = 0; index < 3; index++) {
+			float which = float(index);
+			vec2 at = vec2(0.14 + 0.72 * hash(vec2(lens_seed, which * 7.3 + 1.0)), 0.1 + 0.5 * hash(vec2(which * 3.1 + 2.0, lens_seed)));
+			float size = 0.045 + 0.06 * hash(vec2(lens_seed + which, 9.0));
+			float run = lens_blood * (0.012 + 0.012 * hash(vec2(which, lens_seed + 4.0)));
+			vec2 off = (SCREEN_UV - at) * vec2(wide, 1.0);
+			// What it leaves behind it as it runs: the drop, and a thinner
+			// trail above where it is now.
+			float trail = clamp(off.y / max(run, 0.0001), 0.0, 1.0);
+			float drop = smoothstep(size, size * 0.3, length(off - vec2(0.0, run)));
+			float left = smoothstep(size * 0.45, size * 0.1, abs(off.x)) * step(0.0, off.y) * step(off.y, run) * (0.35 + 0.3 * trail);
+			stained = max(stained, max(drop, left));
+		}
+		stained *= smoothstep(0.0, 0.07, lens_blood);
+		color = mix(color, color * vec3(0.42, 0.035, 0.03) + vec3(0.035, 0.0, 0.0), stained * 0.9);
+	}
 	// Lens colour fringing, stronger towards the corners.
 	vec2 from_center = SCREEN_UV - 0.5;
 	vec2 fringe = from_center * dot(from_center, from_center) * chromatic * 0.045 + vec2(chromatic * px.x * 2.0, 0.0);

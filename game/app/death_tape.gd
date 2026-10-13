@@ -396,6 +396,12 @@ func frame_picture(time: float) -> void:
 	level.post_material.set_shader_parameter("tape_hit", hit)
 	level.post_material.set_shader_parameter("tape_band", band)
 	level.post_material.set_shader_parameter("tape_fray", fray)
+	# Lying within reach of what the blow throws, the lens has some of it on
+	# its glass from a tenth of a second after (blood.gd): to the end.
+	var spattered := 0.0
+	if not plain and not gone and rested_at >= 0.0 and rested_at <= SCORE.KILL_TIME and level.executions.blood.on_lens(id, (take.rest as Transform3D).origin): spattered = maxf(0.0, time - SCORE.KILL_TIME - 0.1)
+	level.post_material.set_shader_parameter("lens_blood", spattered)
+	level.post_material.set_shader_parameter("lens_seed", float(id % 89) + 0.37)
 
 # --- The sound --------------------------------------------------------------------
 
@@ -511,6 +517,7 @@ func stop(alive: bool) -> void:
 		level.post_material.set_shader_parameter("tape_hit", 0.0)
 		level.post_material.set_shader_parameter("tape_band", -1.0)
 		level.post_material.set_shader_parameter("tape_fray", 0.0)
+		level.post_material.set_shader_parameter("lens_blood", 0.0)
 	camera.top_level = false
 	camera.near = float(saved.get("near", camera.near))
 	camera.position = Vector3(0.0, player.eye_height, 0.0)

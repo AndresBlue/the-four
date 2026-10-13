@@ -14,6 +14,7 @@ const SCORE := preload("res://game/app/capture_score.gd")
 const CAMCORDER := preload("res://assets/props/camcorder/camcorder.res")
 const AVATAR := preload("res://game/player/avatars/avatar_visual.gd")
 const FALL := preload("res://game/app/camera_fall.gd")
+const BLOOD := preload("res://game/app/blood.gd")
 var level
 
 ## A kill in progress. The floor only registers the death when it ends.
@@ -75,7 +76,7 @@ var captures := 0
 ## Seat -> its last capture ended with the look: never twice running.
 var glanced := {}
 ## What the next capture is made to be, whatever the place says: for the
-## bench and the tests. {entry, side, glance}.
+## bench and the tests. {entry, side, glance, seed}.
 var forced := {}
 var rng := RandomNumberGenerator.new()
 ## What captures have left lying on the floor (camcorders, torches still
@@ -102,8 +103,15 @@ const TORCH_SPILL := Vector2(0.3, 1.2)
 const TORCH_ROLL := 1.15
 const TORCH_TURN := 1.5
 
+## What is spilt in a capture, and what of it stays (blood.gd).
+var blood: Node
+
 func _ready() -> void:
 	rng.randomize()
+	blood = BLOOD.new()
+	blood.name = "Blood"
+	blood.level = level
+	add_child(blood)
 
 ## A new floor, or a stage given back: nothing of the captures before is left.
 func reset() -> void:
@@ -116,6 +124,7 @@ func clear_leavings() -> void:
 		if is_instance_valid(left): left.queue_free()
 	leavings.clear()
 	release_wardrobes()
+	if blood != null: blood.clear()
 
 ## The wardrobes somebody was taken out of shut again: the body is gone from
 ## their mouth, or was let go alive.
@@ -177,7 +186,7 @@ func stage_capture(body: Node3D) -> Dictionary:
 		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "straight": bool(room[1]), "slump": bool(room[2]), "room": float(room[3]), "yaw": yaw, "hide": hide,
 		"far": clampf(distance, SCORE.HOLD_FAR.x, SCORE.HOLD_FAR.y), "from": body.global_position, "facing": body.rotation.y,
 		"crouched": bool(body.crouched), "torch": is_instance_valid(body.torch) and body.torch.visible,
-		"glance": look, "seed": rng.randi() & 0x7fffffff, "id": captures,
+		"glance": look, "seed": int(forced.get("seed", rng.randi() & 0x7fffffff)), "id": captures,
 	}
 
 ## How somebody is caught, from where they and the creature are: [entry, side].
@@ -249,6 +258,7 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		# Turned to its victim on every machine: the scene is laid out along it.
 		level.locust.rotation.y = yaw
 	if bool(execution.torch): drop_torch()
+	blood.begin(execution)
 	# Taken out of a wardrobe, its doors stay as they are thrown: the body is
 	# let fall in its mouth, and they shut through it.
 	var taken_from := int(execution.hide)
@@ -383,6 +393,7 @@ func release_execution() -> void:
 			torch.node.queue_free()
 		if body != null and is_instance_valid(body.torch): body.torch.visible = true
 	leave_scene(true)
+	blood.release(int(execution.get("id", -1)))
 	# Whoever it was being taken out of a wardrobe is not left in its mouth:
 	# that wardrobe shuts again (any other, with a body still in it, stays).
 	var taken_from := int(execution.get("hide", -1))
@@ -519,7 +530,7 @@ func place_victim(delta: float) -> void:
 		body.avatar.pose_capture({
 			"lift": SCORE.lift(time), "limp": SCORE.limp(time), "fall": SCORE.fall(time), "time": time, "side": float(execution.get("side", 1.0)),
 			"slump": bool(execution.get("slump", false)), "straight": bool(execution.get("straight", false)), "room": float(execution.get("room", SCORE.LIE_ROOM)),
-			"height": body.global_position.y - creature_point().y, "sill": seat_floor(), "clear": scene_bodies(), "away": head_away(),
+			"height": body.global_position.y - creature_point().y, "sill": seat_floor(), "clear": scene_bodies(), "away": head_away(), "bleed": blood.wanted(),
 		})
 
 ## To which side the head of whoever dies turns once it is dead (1 its left,
@@ -753,6 +764,7 @@ func warmup_props() -> Array:
 	prop.mesh = CAMCORDER
 	props.append(prop)
 	if is_instance_valid(level.player) and is_instance_valid(level.player.torch): props.append(torch_prop(level.player.torch).node)
+	if blood != null and blood.wanted(): props.append_array(blood.warmup_props())
 	return props
 
 ## The torch through the scene: in a hand that has been knocked aside while

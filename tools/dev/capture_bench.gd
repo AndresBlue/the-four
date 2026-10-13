@@ -29,6 +29,7 @@ extends SceneTree
 ##   --ending=leave|glance                         how it ends (leave)
 ##   --outside                                     seen by somebody standing by
 ##   --soft, --reduced                             soft startle, reduced effects
+##   --no-blood                                    «Sangre» off
 ##   --brief                                       the short version (seen before)
 ##   --difficulty=apacible                         the floor's (equilibrada)
 ##   --character=0|1|2                             whose body (2, the Exploradora)
@@ -192,6 +193,7 @@ func run() -> void:
 	skip_card()
 	if options.has("reduced"): level.settings.values.reduced = true
 	if options.has("soft"): level.settings.values["startle_soft"] = true
+	if options.has("no-blood"): level.settings.values["gore"] = false
 	# And of the body the scene is built on, whoever played last.
 	if tool or options.has("character"): level.settings.values.character = int(options.get("character", 2))
 	level.apply_settings()
@@ -464,6 +466,7 @@ func write_board() -> void:
 		"3    versión: %s" % VERSIONS[version],
 		"4    finta ante el armario: %s" % FEINTS[feint],
 		"N    %s" % ("volver a la sala" if by_wardrobe else "ponerme ante un armario (entra con E; mantén E para salir en silencio)"),
+		"B    sangre: %s" % ("sí" if bool(level.settings.values.get("gore", true)) else "no"),
 		"M    cuerpo: %s" % ["Detective Masculino (sin esqueleto: solo se inclina)", "Detective Femenino", "Exploradora"][clampi(int(level.settings.values.character), 0, 2)],
 		"R    volver a empezar          P    ocultar este panel",
 		"",
@@ -616,6 +619,7 @@ func note_capture() -> void:
 func play() -> void:
 	build_board()
 	var own_body := int(level.settings.values.character)
+	var own_gore := bool(level.settings.values.get("gore", true))
 	floor_feint = float(level.locust.feint)
 	var scripted := not keys.is_empty()
 	await restage()
@@ -629,7 +633,7 @@ func play() -> void:
 		var delta := float(now - tick) / 1000.0
 		tick = now
 		var pressed := {}
-		for key in [KEY_G, KEY_H, KEY_L, KEY_M, KEY_1, KEY_2, KEY_3, KEY_4, KEY_N, KEY_R, KEY_P]:
+		for key in [KEY_G, KEY_H, KEY_L, KEY_M, KEY_B, KEY_1, KEY_2, KEY_3, KEY_4, KEY_N, KEY_R, KEY_P]:
 			var down := Input.is_physical_key_pressed(key)
 			pressed[key] = down and not bool(was.get(key, false))
 			was[key] = down
@@ -650,6 +654,7 @@ func play() -> void:
 		if pressed[KEY_P]: panel = not panel
 		# Whose body the scene is played on: for the bench only, nothing of it
 		# is written to anybody's settings.
+		if pressed[KEY_B]: level.settings.values["gore"] = not bool(level.settings.values.get("gore", true))
 		if pressed[KEY_M] and level.execution.is_empty():
 			level.settings.values.character = (int(level.settings.values.character) + 1) % 3
 			level.apply_settings()
@@ -686,7 +691,9 @@ func play() -> void:
 				level.capture_survivor(level.player)
 		write_board()
 	# Whoever it was played on, the settings are left with their own.
-	if is_instance_valid(level): level.settings.values.character = own_body
+	if is_instance_valid(level):
+		level.settings.values.character = own_body
+		level.settings.values["gore"] = own_gore
 
 # --- Filmed -------------------------------------------------------------------------
 

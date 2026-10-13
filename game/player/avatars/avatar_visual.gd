@@ -145,6 +145,7 @@ func forget_strays(player: AnimationPlayer) -> void:
 ## told, and with two bodies of one model about, the renderer went looking
 ## for a material that was no longer there ("Parameter material is null").
 func drop_materials() -> void:
+	staunch()
 	for mesh in meshes:
 		if not is_instance_valid(mesh) or mesh.mesh == null: continue
 		for surface in mesh.mesh.get_surface_count():
@@ -518,8 +519,58 @@ static func put_on_layers(mesh: GeometryInstance3D, layers: int) -> void:
 	mesh.layers = layers
 	RenderingServer.instance_set_visible(mesh.get_instance(), mesh.is_visible_in_tree())
 
+# --- What soaks out of it (docs/EXECUTION.md, 8.7) ------------------------------------
+
+const WORN_BLOOD := preload("res://game/presentation/shaders/blood_worn.gdshader")
+## The stain on a body the creature has run through: one material, drawn as
+## a second pass over everything of it that is not hair or an eye.
+var stain: ShaderMaterial
+
+## The wounds as they are this frame: the blade that holds it, through the
+## chest from the grab; and the blow, through the face at KILL_TIME. `since`
+## is the scene's clock.
+func bleed(since: float) -> void:
+	if stain == null:
+		stain = ShaderMaterial.new()
+		stain.shader = WORN_BLOOD
+		stain.render_priority = 3
+		for mesh in meshes:
+			if not is_instance_valid(mesh) or mesh.mesh == null: continue
+			for surface in mesh.mesh.get_surface_count():
+				var worn := mesh.get_surface_override_material(surface) as StandardMaterial3D
+				if worn == null or worn.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED: continue
+				var name := worn.resource_name.to_lower()
+				if WET.any(func(word): return name.contains(word)) or HAIRLIKE.any(func(word): return name.contains(word)): continue
+				worn.next_pass = stain
+	var places: Array = []
+	var frames: Array = []
+	for pair in [["chest", Vector3(0.0, 1.28, 0.0)], ["head", Vector3(0.0, 1.62, 0.0)]]:
+		var bone: int = bones.get(pair[0], -1) if rig != null else -1
+		if bone >= 0:
+			var pose: Transform3D = rig.global_transform * rig.get_bone_global_pose(bone)
+			# A hand above the bone: the middle of the chest, the middle of the face.
+			places.append(pose.origin + pose.basis.y.normalized() * 0.07)
+			frames.append(pose.basis.orthonormalized().inverse())
+		else:
+			places.append(global_transform * (pair[1] as Vector3))
+			frames.append(global_basis.orthonormalized().inverse())
+	stain.set_shader_parameter("wound_at", PackedVector3Array(places))
+	stain.set_shader_parameter("wound_frame", frames)
+	stain.set_shader_parameter("wound_age", PackedFloat32Array([since - 0.03, since - SCORE.KILL_TIME]))
+
+## Nobody is bleeding: the stain is off whatever wore it.
+func staunch() -> void:
+	if stain == null: return
+	for mesh in meshes:
+		if not is_instance_valid(mesh) or mesh.mesh == null: continue
+		for surface in mesh.mesh.get_surface_count():
+			var worn := mesh.get_surface_override_material(surface) as StandardMaterial3D
+			if worn != null and worn.next_pass == stain: worn.next_pass = null
+	stain = null
+
 ## Back as it stands, after a capture that ended or was let go.
 func end_capture() -> void:
+	staunch()
 	transform = Transform3D.IDENTITY
 	show_to_owner(false)
 	feet.clear()
@@ -667,8 +718,8 @@ func under_floor(floor_y: float) -> float:
 ## side), slump (no room to lie: straight back too) with room (metres clear
 ## behind it) and sill (how far above the floor it comes to sit: a
 ## wardrobe's bottom board), and height (how far above the floor the body is
-## held), and away (to which side its head turns once it is dead: 1 its
-## left). And, for none of it to end up in a wall or under the floor,
+## held), away (to which side its head turns once it is dead: 1 its
+## left) and bleed (whether this machine shows what soaks out of it). And, for none of it to end up in a wall or under the floor,
 ## `clear`: the bodies the scene's own rays go through (kept_out).
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
@@ -679,6 +730,8 @@ func pose_capture(state: Dictionary) -> void:
 	var side := float(state.get("side", 1.0))
 	var slump := bool(state.get("slump", false))
 	var room := float(state.get("room", SCORE.LIE_ROOM))
+	if bool(state.get("bleed", false)): bleed(time)
+	elif stain != null: staunch()
 	var sat := SCORE.sunk(fall)
 	var gone := SCORE.toppled(fall)
 	var jolt := SCORE.jolt(fall)

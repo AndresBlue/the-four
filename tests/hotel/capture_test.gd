@@ -178,6 +178,7 @@ func run() -> void:
 	await wardrobe_checks()
 	await quiet_checks()
 	await again_checks()
+	await blood_checks()
 	var file := FileAccess.open("res://evidence/capture_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	file.close()
@@ -188,6 +189,98 @@ func run() -> void:
 	level.queue_free()
 	await process_frame
 	quit(0 if failed == 0 else 1)
+
+# --- Blood (game/app/blood.gd) --------------------------------------------------------
+
+## Where every stain of the capture in hand is and when it lands, as text.
+func blood_print() -> String:
+	var blood = level.executions.blood
+	if blood.records.is_empty(): return ""
+	var said: Array = []
+	for entry in blood.records[-1].stains:
+		var at: Vector3 = (entry.transform as Transform3D).origin
+		said.append("%.3f,%.3f,%.3f@%.3f" % [at.x, at.y, at.z, float(entry.born)])
+	said.sort()
+	return ",".join(said)
+
+func blood_checks() -> void:
+	var player = level.player
+	var blood = level.executions.blood
+	await fresh_floor()
+	level.settings.values["gore"] = true
+	face_to_face()
+	level.executions.forced = {"entry": "front", "glance": false, "seed": 4242, "side": 1.0}
+	level.capture_survivor(player)
+	var record: Dictionary = blood.records[-1] if not blood.records.is_empty() else {}
+	var stains := 0
+	var sound := true
+	var early := INF
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var carried := 0
+	for node in record.get("nodes", []):
+		if node is MultiMeshInstance3D and node != record.get("air"): carried += (node as MultiMeshInstance3D).multimesh.instance_count
+	for entry in record.get("stains", []):
+		stains += 1
+		var placed: Transform3D = entry.transform
+		early = minf(early, float(entry.born))
+		# On something, and in the room it says it is in.
+		var normal := placed.basis.y.normalized()
+		var query := PhysicsRayQueryParameters3D.create(placed.origin + normal * 0.04, placed.origin - normal * 0.04, 1)
+		query.exclude = [player.get_rid(), level.locust.get_rid()]
+		if space.intersect_ray(query).is_empty(): sound = false
+		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, placed.origin)
+		if room.is_empty() or int(room.id) != int(entry.room): sound = false
+	if carried != stains: sound = false
+	check("Una captura deja su sangre calculada desde el primer instante: manchas y una poza", stains > 40 and record.get("pool") != null, "stains=%d" % stains)
+	check("Nada cae antes de la primera herida, y cada mancha está sobre algo y en su sala", sound and early >= 0.03, "first=%.3f" % early)
+	# The pool: no further any way than the room it is in.
+	var held := true
+	if record.get("pool") != null:
+		var reach: PackedFloat32Array = (record.pool as ShaderMaterial).get_shader_parameter("reach")
+		var middle: Vector3 = record.pool_at
+		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, middle)
+		var rect := Rect2(FLOOR.position_of(room).x - FLOOR.size_of(room).x * 0.5, FLOOR.position_of(room).z - FLOOR.size_of(room).y * 0.5, FLOOR.size_of(room).x, FLOOR.size_of(room).y)
+		for index in reach.size():
+			var angle := TAU * float(index) / 16.0
+			if not rect.has_point(Vector2(middle.x, middle.z) + Vector2(cos(angle), sin(angle)) * reach[index] * 0.98): held = false
+		if reach.size() != 16: held = false
+	check("La poza no pasa de la sala en ninguna dirección", held)
+	var first := blood_print()
+	await seconds(0.3)
+	check("El reloj de la sangre es el de la escena mientras dura", absf(float(record.clock) - float(level.execution.time)) < 0.05, "blood=%.2f scene=%.2f" % [float(record.get("clock", -1.0)), float(level.execution.time)])
+	check("Y el cuerpo lleva su mancha", player.avatar.stain != null or player.avatar.rig == null)
+	level.release_execution()
+	await frames(3)
+	var left := 0
+	for node in level.hotel.find_children("Blood*", "", true, false): left += 1
+	check("Soltada viva, no queda nada: ni en el suelo ni en la ropa", blood.records.is_empty() and left == 0 and player.avatar.stain == null, "left=%d" % left)
+	# The same capture again is the same blood.
+	face_to_face()
+	level.executions.forced = {"entry": "front", "glance": false, "seed": 4242, "side": 1.0}
+	level.capture_survivor(player)
+	check("La misma captura deja la misma sangre, mancha por mancha", not first.is_empty() and blood_print() == first)
+	level.release_execution()
+	await frames(3)
+	face_to_face()
+	level.executions.forced = {"entry": "front", "glance": false, "seed": 4243, "side": 1.0}
+	level.capture_survivor(player)
+	check("Y otra, otra", not blood_print().is_empty() and blood_print() != first)
+	await watch()
+	check("Acabada la escena, la sangre se queda en el piso", not blood.records.is_empty() and not (blood.records[-1].nodes as Array).is_empty())
+	level.executions.clear_leavings()
+	await frames(3)
+	check("Y se va con la etapa", blood.records.is_empty() and level.hotel.find_children("Blood*", "", true, false).is_empty())
+	# Switched off, there is none of it.
+	await fresh_floor()
+	level.settings.values["gore"] = false
+	face_to_face()
+	level.executions.forced = {"entry": "front", "glance": false}
+	level.capture_survivor(player)
+	await seconds(0.3)
+	check("Con «Sangre» apagada no hay nada", blood.records.is_empty() and player.avatar.stain == null and level.hotel.find_children("Blood*", "", true, false).is_empty())
+	level.release_execution()
+	level.settings.values["gore"] = true
+	await frames(2)
 
 # --- The score ----------------------------------------------------------------------
 

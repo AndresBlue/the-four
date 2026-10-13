@@ -1295,6 +1295,7 @@ func clear_screen_cues() -> void:
 		post_material.set_shader_parameter("tape_hit", 0.0)
 		post_material.set_shader_parameter("tape_band", -1.0)
 		post_material.set_shader_parameter("tape_fray", 0.0)
+		post_material.set_shader_parameter("lens_blood", 0.0)
 		post_material.set_shader_parameter("rewinding", 0.0)
 		post_material.set_shader_parameter("enclosure", 0.0)
 
