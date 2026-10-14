@@ -260,6 +260,13 @@ func run() -> void:
 	# The body steps in and the doors shut behind it: about a second.
 	await frames(70)
 	check("Y acaba dentro, mirando hacia las puertas", player.transit.is_empty() and player.global_position.distance_to(hide.to_global(hide.inside_of(player))) < 0.05 and absf(wrapf(player.rotation.y - player.hide_yaw, -PI, PI)) < 0.05)
+	# Shut in, an eye goes to the crack the two leaves leave between them
+	# (cut into the model: tools/props/build_wardrobe.gd), a hand's breadth
+	# behind it; the crack is in what is drawn and not in what blocks.
+	await frames(40)
+	var eye: Vector3 = hide.to_local(player.camera.global_position)
+	var crack: Vector3 = hide.LEAVES.left.get_meta("slit", Vector3.ZERO)
+	check("Las hojas del armario dejan una rendija entre ellas, y encerrado el ojo queda detrás", crack.y > 0.008 and crack.y < 0.03 and absf(eye.x - hide.slit.x) < 0.01 and absf(eye.z - (hide.slit.z - player.CRACK_BACK)) < 0.02 and not hide.ajar())
 	enemy.observed_hide = null
 	check("Oculto no revela posición a distancia", not enemy.sees_player())
 	enemy.observed_hide = hide
@@ -268,18 +275,23 @@ func run() -> void:
 	player.active = true
 	Input.action_press("forward")
 	await frames(120)
-	check("Asomarse por la puerta entreabierta lo delata", hide.ajar() and enemy.sees_player() and player.camera.position.z < -0.3)
+	check("Asomarse por la puerta entreabierta lo delata", hide.ajar() and enemy.sees_player() and player.camera.position.z < -0.2)
+	# The head comes up to the gap and stays behind the doors: leaning out
+	# past them, what was seen from a wardrobe was the whole room.
+	var looking: Vector3 = hide.to_local(player.camera.global_position)
+	check("Y se asoma sin sacar la cabeza del armario, con las dos hojas entornadas y no abiertas", looking.z < hide.hinge.z - 0.1 and absf(looking.x) < 0.02 and hide.leaf_angle("left") < 0.65 and hide.leaf_angle("right") < 0.65)
 	var creaks := [0]
 	hide.peek_started.connect(func(_point): creaks[0] += 1)
 	# Looking left opens the leaf on the right hand (wardrobe -X) and leans out there.
 	player.rotation.y = player.hide_yaw + 1.2
 	await frames(60)
 	var lean: Vector3 = Basis(Vector3.UP, player.rotation.y - player.hide_yaw) * player.camera.position
-	check("Mirar a un lado abre la puerta contraria y se asoma por ese hueco", hide.peek.left > 0.9 and hide.peek.right < 0.1 and lean.x > 0.2)
+	check("Mirar a un lado abre la puerta contraria y se asoma por ese hueco", hide.peek.left > 0.9 and hide.peek.right < 0.1 and lean.x > 0.12)
+	check("Sin volver la vista más de cuarenta grados ni abrir la hoja más de cuarenta y tantos", absf(wrapf(player.rotation.y - player.hide_yaw, -PI, PI)) < 0.71 and hide.leaf_angle("left") < 0.76 and hide.to_local(player.camera.global_position).z < hide.hinge.z - 0.1)
 	player.rotation.y = player.hide_yaw - 1.2
 	await frames(60)
 	lean = Basis(Vector3.UP, player.rotation.y - player.hide_yaw) * player.camera.position
-	check("Mirar al otro lado cambia de puerta", hide.peek.right > 0.9 and hide.peek.left < 0.1 and lean.x < -0.2)
+	check("Mirar al otro lado cambia de puerta", hide.peek.right > 0.9 and hide.peek.left < 0.1 and lean.x < -0.12)
 	Input.action_release("forward")
 	await frames(120)
 	check("Con las puertas cerradas vuelve a ocultarlo", not hide.ajar() and not enemy.sees_player())

@@ -365,7 +365,15 @@ herramientas para mirarlo están en la guía de desarrollo.
   `ambient_light_energy` (aclara también las salas apagadas): mejor dar relleno
   propio a las salas iluminadas.
 - [ ] **El armario:** comodidad del efecto de asomarse en partidas humanas y a
-  distintas resoluciones.
+  distintas resoluciones. Desde el 13 de octubre se mira por una rendija de
+  centímetro y medio con las puertas cerradas y, al asomarse, las hojas solo
+  se entornan y la cabeza no sale: mirar jugando si por la rendija se llega a
+  ver pasar a la bestia (la sala se ve quemada y desenfocada: el iris está
+  abierto a oscuras y el foco en la puerta), si la franja al asomarse —un
+  tercio de la pantalla a los lados, un octavo al frente— da miedo o solo
+  estorba, y si ahora la bestia tarda más en verte asomado (te ve por el
+  mismo hueco por el que tú la ves, y antes sacabas la cabeza). En el armario
+  doble los dos miran por el mismo sitio, el centro.
 - [ ] **Los controles del mando, en revisión** (26 de septiembre): la
   distribución por defecto del superviviente y la de The Locust (hoy R2
   estoca, L2 chilla, triángulo rastro, cuadrado puertas y teles, L3 caza),

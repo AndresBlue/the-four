@@ -54,11 +54,27 @@ var peek := 0.0
 ## -1..1: which side the occupant looks to while peeking (+ is left), smoothed.
 var peek_side := 0.0
 ## Looking range inside the wardrobe (radians either side), shut and fully ajar.
-const HIDE_LOOK := Vector2(0.35, 1.45)
-## How far the head leans out through the gap at full peek (metres), forward
-## and sideways into the opened half.
-const PEEK_LEAN := 0.5
-const PEEK_SIDE_LEAN := 0.28
+## (Ajar it was 1.45, with the head out past the doors: see PEEK_BACK.)
+const HIDE_LOOK := Vector2(0.35, 0.7)
+## How far the look has to turn for a leaf to be asked all it opens.
+const PEEK_TURN := 0.45
+## The head in a wardrobe, which never leaves it. Shut in, an eye rests
+## CRACK_BACK behind the crack between the doors (hiding_place.slit), where
+## a strip of the room is seen through it. Holding forward, it comes up to
+## PEEK_BACK short of the doors' plane, on the wardrobe's middle line, and
+## looking aside moves it PEEK_SIDE_LEAN over to the other side, to look out
+## between the leaf that opens and the one that shuts. It used to lean half
+## a metre out through the doors, and what was seen from there was the room,
+## not a gap.
+const CRACK_BACK := 0.14
+const PEEK_BACK := 0.16
+const PEEK_SIDE_LEAN := 0.16
+## How far the head has settled at the crack (0 to 1), and where that and the
+## place it peeks from are from where the body stands, in the body's own axes
+## as it faces the doors (x to the right hand, -z towards them).
+var nook := 0.0
+var crack_at := Vector3.ZERO
+var gap_at := Vector3.ZERO
 var footstep: AudioStreamPlayer3D
 ## Two voices so a step's tail is not cut by the next one.
 var step_voices: Array[AudioStreamPlayer3D] = []
@@ -544,29 +560,40 @@ func can_stand() -> bool: return MOVEMENT.can_stand(self)
 func update_peek(delta: float) -> void:
 	var wanted := 1.0 if hidden and active and Input.is_action_pressed("forward") else 0.0
 	peek = move_toward(peek, wanted, delta * (0.5 if wanted > peek else 0.9))
+	# The eye goes to the crack once the body is in, and comes away as it leaves.
+	nook = move_toward(nook, 1.0 if hidden and transit.is_empty() else 0.0, delta * 3.0)
 	if not hidden:
 		peek_side = 0.0
 		return
-	var look := clampf(wrapf(rotation.y - hide_yaw, -PI, PI) / 0.9, -1.0, 1.0)
+	# Where the crack and the gap are from where this body stands (which is
+	# where the wardrobe's back and sides let it, not always where it was
+	# put): the wardrobe's x and z are the body's turned half round.
+	if is_instance_valid(hiding_place) and transit.is_empty():
+		var stands: Vector3 = hiding_place.to_local(global_position)
+		crack_at = Vector3(stands.x - hiding_place.slit.x, 0.0, stands.z - (hiding_place.slit.z - CRACK_BACK))
+		gap_at = Vector3(stands.x, 0.0, stands.z - (hiding_place.hinge.z - PEEK_BACK))
+	var look := clampf(wrapf(rotation.y - hide_yaw, -PI, PI) / PEEK_TURN, -1.0, 1.0)
 	peek_side = move_toward(peek_side, look, delta * 2.5)
 	# The occupant's right hand is the wardrobe's -X ("left") leaf.
 	var toward_left := maxf(peek_side, 0.0)
 	var toward_right := maxf(-peek_side, 0.0)
-	var right_hand := lerpf(0.55, 1.0, toward_left) * lerpf(1.0, 0.0, toward_right)
-	var left_hand := lerpf(0.55, 1.0, toward_right) * lerpf(1.0, 0.0, toward_left)
+	var ahead: float = hiding_place.PEEK_AHEAD if is_instance_valid(hiding_place) else 0.8
+	var right_hand := lerpf(ahead, 1.0, toward_left) * lerpf(1.0, 0.0, toward_right)
+	var left_hand := lerpf(ahead, 1.0, toward_right) * lerpf(1.0, 0.0, toward_left)
 	if is_instance_valid(hiding_place): hiding_place.set_peek(peek * right_hand, peek * left_hand, self)
 	# Narrow the view back inside as the doors close.
 	var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
 	rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
 
-## Head offset in body space: forward through the doors and sideways into the
-## half that is open, fixed to the wardrobe rather than to where the view turns.
+## Head offset in body space: at the crack with the doors shut, up behind the
+## gap as they open and over to the side away from where it looks, fixed to
+## the wardrobe rather than to where the view turns.
 func peek_lean() -> Vector3:
-	if not hidden or peek <= 0.0: return Vector3.ZERO
+	if nook <= 0.0 and peek <= 0.0: return Vector3.ZERO
 	# Wardrobe-aligned axes seen from inside: forward is -Z, the right hand +X.
-	# Looking left leans out through the right-hand half, and the other way round.
-	var outward := Vector3(peek_side * PEEK_SIDE_LEAN, 0.0, -PEEK_LEAN - absf(peek_side) * 0.12) * peek
-	return Basis(Vector3.UP, hide_yaw - rotation.y) * outward
+	# Looking left moves over to the right-hand half, and the other way round.
+	var out := gap_at + Vector3(peek_side * PEEK_SIDE_LEAN, 0.0, 0.0)
+	return Basis(Vector3.UP, hide_yaw - rotation.y) * (crack_at * nook).lerp(out, peek)
 
 ## The body on its way into a wardrobe or out of it (transit).
 func step_transit(delta: float) -> void:
@@ -595,6 +622,7 @@ func enter_hide(place: Node3D) -> bool:
 	easing = 0.0
 	place.enter(self)
 	hide_yaw = place.global_rotation.y + PI
+	nook = 0.0
 	# Stepped into, turning round to face the doors.
 	transit = {"from": global_position, "to": place.to_global(place.inside_of(self)), "yaw_from": rotation.y, "yaw_to": hide_yaw, "time": 0.0, "length": place.ENTER_TIME}
 	velocity = Vector3.ZERO
@@ -637,6 +665,9 @@ func force_leave_hide() -> void:
 	hidden = false
 	peek = 0.0
 	easing = 0.0
+	# Taken out, not stepping out: the head is nowhere but on its shoulders.
+	nook = 0.0
+	camera.position = Vector3(0.0, eye_height, 0.0)
 	hiding_changed.emit(false, global_position, false)
 
 func reset_survival() -> void:

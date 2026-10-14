@@ -1,9 +1,12 @@
 extends Area3D
-## Wardrobe hiding place. Whoever is inside stands behind both doors shut;
-## holding forward eases the doors ajar. Each leaf opens on its own: looking to
-## one side opens the opposite leaf, which then shields the head leaning out.
-## Closed doors block sight like a wall; a door left ajar lets a creature see
-## who is inside. The Area3D itself is only the interaction target.
+## Wardrobe hiding place. Whoever is inside stands behind both doors shut,
+## an eye to the crack between them (`slit`); holding forward eases the doors
+## ajar. Each leaf opens on its own: looking to one side opens the opposite
+## leaf and shuts the near one, and the head, which stays inside, moves over
+## to look out between them. Closed doors block sight like a wall (the crack
+## is in what is drawn, not in what blocks: nothing sees in through it); a
+## door left ajar lets a creature see who is inside. The Area3D itself is
+## only the interaction target.
 ##
 ## There are two. The small one (a model: wardrobe_body and its leaves) takes
 ## one person. The big one (`big`: the double wardrobe prop_factory builds out
@@ -28,9 +31,17 @@ const BIG_FLOOR := 0.15
 const BIG_PLACE := 0.45
 ## Door angles (radians): fully open, a leaf ajar at maximum peek, and both
 ## leaves as far as they are eased open by somebody leaving quietly.
+## PEEK_ANGLE was 1.05, sixty degrees, and the head leant out past the doors:
+## looking aside from a wardrobe showed the whole room, as from a doorway.
+## Now it is a gap to look through, with wood on both sides of it.
 const OPEN_ANGLE := 1.75
-const PEEK_ANGLE := 1.05
+const PEEK_ANGLE := 0.75
 const EASE_ANGLE := 1.3
+## How far each leaf opens of that, looking straight ahead.
+const PEEK_AHEAD := 0.8
+## The crack between the big wardrobe's two boards (the small one's is cut
+## into its model: tools/props/build_wardrobe.gd, SLIT).
+const BIG_SLIT := 0.015
 ## Getting in and out is a movement (hotel_player.transit): how long the body
 ## takes to step in and to step out, and how long the key is held to leave
 ## without the bang of the doors (heard NOISE.QUIET of the way).
@@ -42,8 +53,10 @@ const QUIET_LEAVE_TIME := 0.6
 ## They go on hiding what is behind them, like a door mid-swing: layer 64,
 ## which sight looks for and bodies do not. Turned off altogether, the wood
 ## still in front of somebody peeking stopped hiding them, and a creature saw
-## straight through a leaf open 24 degrees.
-const COLLISION_LIMIT := 0.3
+## straight through a leaf open 24 degrees. (0.3 while a leaf opened to
+## 1.05: brought down with PEEK_ANGLE, so that the doors give somebody away
+## from about as far through the peek as they did -- ajar().)
+const COLLISION_LIMIT := 0.25
 const SOLID := 8
 const SIGHT_ONLY := 64
 ## What keeps anybody from walking in (`plug`): solid for survivors only, like
@@ -64,6 +77,10 @@ var height := HEIGHT
 var depth := DEPTH
 var hinge := HINGE
 var capacity := 1
+## The crack between the shut leaves, in wardrobe space: where its middle is
+## across (x) and how far out its inner mouth (z). Whoever is inside rests an
+## eye behind it (hotel_player.gd, CRACK_BACK).
+var slit := Vector3.ZERO
 ## Who is inside, in the order they got in, and which place each has.
 var occupants: Array = []
 var places := {}
@@ -130,6 +147,10 @@ func _ready() -> void:
 		capacity = 2
 		inside_offset = Vector3(-BIG_PLACE * scale_by, BIG_FLOOR * scale_by + 0.04, -0.02)
 		exit_offset = Vector3(-BIG_PLACE * scale_by, 0.04, hinge.z + 0.78)
+		slit = Vector3(0.0, 0.0, hinge.z - BIG_LEAF_THICK * scale_by * 0.5)
+	else:
+		var cut: Vector3 = LEAVES.left.get_meta("slit", Vector3(0.0, 0.0, hinge.z - 0.04))
+		slit = Vector3(cut.x, 0.0, cut.z)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	# Reaches just past the doors so the interaction ray meets it first.
@@ -207,11 +228,13 @@ static func big_leaf(side: String, s: float) -> ArrayMesh:
 	var mirror := -1.0 if side == "left" else 1.0
 	var tall: float = BIG_SIZE.y * s
 	var mesh := ArrayMesh.new()
+	# Short of the middle by half the crack (BIG_SLIT).
+	var wide: float = BIG_HINGE.x * s - BIG_SLIT * 0.5
 	var board := BoxMesh.new()
-	board.size = Vector3(BIG_HINGE.x, BIG_SIZE.y - 0.12, BIG_LEAF_THICK) * s
+	board.size = Vector3(wide, (BIG_SIZE.y - 0.12) * s, BIG_LEAF_THICK * s)
 	var wood := SurfaceTool.new()
 	wood.begin(Mesh.PRIMITIVE_TRIANGLES)
-	wood.append_from(board, 0, Transform3D(Basis.IDENTITY, Vector3(-mirror * BIG_HINGE.x * 0.5 * s, tall * 0.5, 0)))
+	wood.append_from(board, 0, Transform3D(Basis.IDENTITY, Vector3(-mirror * wide * 0.5, tall * 0.5, 0)))
 	wood.commit(mesh)
 	var panels := SurfaceTool.new()
 	panels.begin(Mesh.PRIMITIVE_TRIANGLES)
