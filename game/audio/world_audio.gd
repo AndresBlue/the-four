@@ -411,13 +411,10 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	# the search below could only end in "too far", after crossing the floor.
 	var straight := listener.distance_to(point)
 	if straight > ROUTE_LIMIT + ROUTE_SLACK: return {"audible": false, "distance": straight}
-	var map: RID = level.get_world_3d().navigation_map
 	# Each end on its own planta: a sound from the floor above or below has no
 	# way here but the slab, and the slab lets nothing through.
 	if FLOOR.planta_of(listener.y) != FLOOR.planta_of(point.y): return {"audible": false, "distance": INF}
-	var from := FLOOR.closest(map, listener_position())
-	var to := FLOOR.closest(map, point)
-	var path := FLOOR.navigation_path(map, from, to)
+	var path := walked_route(listener, point)
 	if path.size() < 2: return {"audible": false, "distance": INF}
 	var length := 0.0
 	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])
@@ -443,6 +440,29 @@ func route_source(point: Vector3, emitter := RID()) -> Dictionary:
 	var cutoff := lerpf(5200.0, 900.0, clampf(detour / 25.0, 0.0, 1.0))
 	if not shut.is_empty(): cutoff = minf(cutoff, SHUT_DOOR_CUTOFF)
 	return {"audible": true, "position": opening, "gain": gain, "cutoff": cutoff, "echo": true, "distance": length}
+
+## The walked route between two places, as the navigation has it -- asked for
+## by the creature's voice here and by the aura (dread_aura.route_to), four
+## times a second each, for the same two ends: the listener and the creature.
+## Each asking cost the frame one and a half milliseconds (the map is searched
+## end to end for the walkable point nearest each end), and this route used to
+## snap both ends once more before asking, two more: some 5 ms a quarter of a
+## second, the stutter of a walk with the creature about (tools/dev/
+## hitch_probe.gd). The last route is kept for ROUTE_MEMO seconds and given to
+## whoever asks for one between nearly the same ends.
+const ROUTE_MEMO := 0.3
+## (Nearly: each end within this of where it was, in metres. A creature
+## running moves a metre and a half in a quarter of a second.)
+const ROUTE_NEAR := 1.6
+var route_memo := {}
+func walked_route(from: Vector3, to: Vector3) -> PackedVector3Array:
+	var a := FLOOR.floor_point(from)
+	var b := FLOOR.floor_point(to)
+	var now := Time.get_ticks_msec() / 1000.0
+	if not route_memo.is_empty() and now - float(route_memo.at) < ROUTE_MEMO and a.distance_to(route_memo.from) < ROUTE_NEAR and b.distance_to(route_memo.to) < ROUTE_NEAR: return route_memo.path
+	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, to)
+	route_memo = {"at": now, "from": a, "to": b, "path": path}
+	return path
 
 ## Places a 3D player where the route says, on the echo bus when it travelled,
 ## duller and a little quieter when it comes from behind.

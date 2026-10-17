@@ -342,6 +342,11 @@ herramientas para mirarlo están en la guía de desarrollo.
   pantalla.
 - [ ] **El viaje en ascensor**, que suena a la nieve que se ve mientras llega
   su sonido propio: si se entiende como el viaje o molesta.
+- [ ] **La criatura oída desde encima de un mueble (17 de octubre):** subido a
+  una cama, un escritorio o un armario se la oía a cero metros, fuerte,
+  estuviera donde estuviera; la navegación ya no tiene islas en lo alto de los
+  muebles. Si desde arriba se oye a la distancia a la que está, igual que desde
+  el suelo de al lado.
 
 ### Lo que hay que mirar
 
@@ -482,6 +487,13 @@ herramientas para mirarlo están en la guía de desarrollo.
   Medio en movimiento, penumbras de Ultra, eco de Bajo, halo de Ultra, sombras
   con el filtro más barato en Baja y Media andando, y salas que aparezcan tarde
   al girar en un vano.
+- [ ] **Los tirones al caminar en Ultra (17 de octubre):** la cámara se mueve
+  en cada fotograma y no a saltos de los ticks de física, y la ronda del piso
+  se reparte en tres fotogramas. Si el tirón constante se ha ido en la 4060 Ti,
+  y si se nota que la cámara va hasta 17 ms por detrás del cuerpo al parar en
+  seco o al chocar. Quedan, sin tocar, los fotogramas con tick de física
+  (alrededor de uno de cada nueve) y los picos de la primera vez que se ve una
+  sala ([PERFORMANCE.md](PERFORMANCE.md), sección 12).
 
 ### Números que salen del diseño y no de jugar
 

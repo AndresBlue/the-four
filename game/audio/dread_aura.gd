@@ -99,10 +99,11 @@ static func along(path: PackedVector3Array, distance: float) -> Vector3:
 func route_to(listener: Vector3, source: Vector3) -> Array:
 	var straight := listener.distance_to(source)
 	if straight > start_distance * 1.3: return [straight * 1.3, listener + (source - listener).normalized() * cue_distance_far]
-	var level = world_audio.level
 	# On another planta it is not coming: nothing but the lift joins them.
 	if FLOOR.planta_of(listener.y) != FLOOR.planta_of(source.y): return [INF, source]
-	var path := FLOOR.navigation_path(level.get_world_3d().navigation_map, listener, source)
+	# The same route the creature's voice is given (world_audio.walked_route):
+	# asked for once between the two of them.
+	var path: PackedVector3Array = world_audio.walked_route(listener, source)
 	if path.size() < 2: return [straight * 1.3, source]
 	var length := 0.0
 	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])

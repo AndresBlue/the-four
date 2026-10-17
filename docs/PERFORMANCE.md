@@ -493,7 +493,6 @@ En Compatibilidad, aquí mismo: Bajo 3,01 ms de GPU, 5,53 de fotograma y 1.169 l
 ### Pendiente
 
 - **Medirlo en una integrada de verdad.** Todo lo de arriba sale de un modelo; lo que diga un portátil con una Iris Xe o una Vega manda sobre él, y dirá también qué renderizador conviene ahí. El primer arranque en una gráfica integrada ya elige Muy bajo; si sobra, lo siguiente es Bajo, que ahora usa FSR 1.
-- **La sonda de atascos de la criatura** (`verify.ps1`) no termina en sus cinco minutos (tarda unos nueve) y deja 4 de 12 trayectos sin acabar. Pasa igual sin ninguno de estos cambios (medido en el commit anterior), así que viene de antes y no se ha tocado; mientras siga así, `verify.ps1` se para ahí y no llega a los bots, los shaders ni la red, que se pasaron aparte.
 - **El papel pintado de las plantas de abajo.** El shader completo calcula la mugre del zócalo y las manchas de humedad con la altura en el mundo, no sobre el suelo de la sala, así que en la segunda y la tercera planta (a −6 y −12 m) todo el paño tiene que salir con la mugre del zócalo y sin manchas arriba (leído en `wallpaper.gdshader`; no se comparó en capturas). La textura de Muy bajo se mide desde el suelo de cada sala y sale como en la primera planta en las tres. No se ha tocado el shader completo: puede que ese deterioro de abajo guste como está.
 - **El interruptor «Sombras»** de los otros presets sigue dejando a las lámparas atravesar paredes cuando se apaga. Las capas de Muy bajo servirían también ahí; no se ha hecho. (En Ultra, que desde la sección 11 usa las capas, las lámparas de techo sí quedan confinadas a su sala al apagarlo; los apliques se apagan, como siempre.)
 - Si en una integrada real pesara el número de llamadas de dibujo, lo siguiente a mirar es `room_reach` (56 m en los dos presets bajos): en este PC, bajarlo a 40 m o quitar la oclusión no movió nada.
@@ -565,3 +564,34 @@ Capturas: `evidence/lookdev/ultra_molduras_vhs.png` (como se juega) y `_raw.png`
 ### Pendiente: de dónde saldría el salto grande
 
 Con la misma geometría, las mismas lámparas y la cinta encima, lo de arriba es más o menos lo que hay que rascar en luz y materiales. Lo que separa estas salas de una foto es **geometría de detalle**: las paredes se encontraban con el techo y el suelo en una arista recta, sin cornisa ni rodapié con perfil; no había interruptores, rejillas ni rosetones de techo; los paneles del friso eran un dibujo sobre una tabla lisa. Es la fase 6 de [REALISM.md](REALISM.md), **aprobada y empezada el 6 de octubre**: el kit de molduras generado en código está hecho y solo en Ultra (0,4–0,85 ms de GPU con su distancia de detalle; Ultra con él, 13,2 ms caminando frente a los 14,5 de antes de esta sección). Quedan los modelos CC0 de detalle y lo que REALISM.md lista como pendiente.
+
+## 12. Tirones al caminar en Ultra
+
+*17 de octubre de 2026. La queja: en Ultra, en el equipo del autor (RTX 4060 Ti, unos 89 FPS), un tirón pequeño y constante al girar la cámara y al caminar; la gráfica de tiempos de fotograma, con dientes.*
+
+### Cómo se midió
+
+`tools/dev/hitch_probe.gd` recorre de ida y vuelta el pasillo encendido más largo de la semilla 81 con el jugador de verdad (la tecla de avanzar pulsada), en Ultra, sin vsync ni límite de FPS y **con el sonido del mundo en marcha** y el bus maestro en silencio: con `--automation` el sonido del mundo no corre, y lo que cuestan sus rutas no salía en ninguna medida. Anota cada fotograma, en cuáles cae una ronda del piso y qué cambia en ella, los percentiles 95 y 99 por vuelta, los «dientes» (fotogramas más de 1,5 ms por encima de la mediana) y cuán pareja avanza la cámara de un fotograma al siguiente, leída justo antes de dibujar. `--near` deja la criatura a unos 13,5 m, `--still` mueve solo la cámara, `--creature` mide sus pasos y `--steps` quita el suavizado de abajo.
+
+### Lo que había
+
+1. **La cámara avanzaba a saltos.** El cuerpo se mueve en los ticks de física, a 60 Hz, y la cámara iba pegada a él: a 89 FPS unos fotogramas la movían y otros no. La velocidad de la cámara entre fotogramas variaba un 102 %. Es un tirón aunque cada fotograma tarde lo mismo, y es el que más se ve al caminar.
+2. **La ronda del piso** (`update_visibility()`, cuatro veces por segundo): unos 2 ms en un solo fotograma, un diente cada cuarto de segundo.
+3. **Las rutas del sonido de la criatura.** Con ella cerca, `world_audio.route_source()` costaba unos 3,4 ms: dos ajustes al suelo de la navegación (`map_get_closest_point` recorre los ~30.000 polígonos del piso, cerca de 1 ms cada uno) y la ruta. El aura (`dread_aura.route_to()`) pedía después la misma ruta otra vez: 1,3 ms más.
+4. **Lo que aparece por primera vez:** sondas de reflexión y pipelines la primera vez que algo se ve. En la primera vuelta al pasillo, 5 picos; en la segunda, 1; en la tercera, ninguno.
+
+### Arreglos
+
+| Cambio | Efecto medido |
+|---|---|
+| **La cámara, entre ticks** (`hotel_player.smooth_camera()`): en cada fotograma se pone donde estaría el cuerpo en ese instante entre los dos últimos ticks (`Engine.get_physics_interpolation_fraction()`). Va hasta un tick por detrás (16,7 ms), solo en la posición: el giro del ratón no espera. Un salto de más de medio metro (ascensor, reaparición) no se interpola | Variación de la velocidad de la cámara: 102 → 20 % |
+| **La ronda en tres partes**, en tres fotogramas seguidos (`hotel_geometry.update_part()`, `ROUND_PARTS`; `hotel_main` lleva la cuenta en `round_part`): las salas con sus lámparas de techo y sus puertas, que van juntas porque una lámpara encendida entre paredes o vanos aún sin dibujar los atraviesa; las sondas de reflexión, como mucho una nueva por ronda (`probes_at_once`); y los apliques, el rebote y las demás lámparas. Las tres trabajan desde donde estaba el ojo en la primera (`round_at`). `update_visibility()` sigue haciendo las tres de una vez, para quien la llama al montar un piso. Y el marco de una puerta dibujada en dos mitades ya no se enseña y se vuelve a esconder en cada ronda | Fotograma con ronda: +2,37 → +1,13 ms sobre la mediana |
+| **Una sola ruta para el sonido y el aura** (`world_audio.walked_route()`), que se reutiliza durante 0,3 s mientras ni el oído ni el origen se hayan movido 1,6 m, y sin los ajustes al suelo repetidos | Sonido: 3,4 → 1,4 ms; aura: 1,3 → ~0 |
+
+En total, con la criatura cerca y el sonido en marcha: percentil 95 de 11,69 a 10,40 ms, y 99 de 14,59 a 12,71 ms.
+
+### Lo que queda
+
+- Alrededor de un fotograma de cada nueve sigue siendo un diente: los que llevan un tick de física (cuerpos, puertas, la criatura y su navegación). No se ha tocado.
+- Los picos de la primera vez que se ve una sala.
+- Juzgarlo jugando: [PLAN.md](PLAN.md), «Lo que hay que mirar».

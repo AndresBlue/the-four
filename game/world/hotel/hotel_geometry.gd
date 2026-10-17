@@ -2654,10 +2654,73 @@ func build_navigation() -> void:
 		var mesh: NavigationMesh = nav.duplicate()
 		mesh.filter_baking_aabb = AABB(Vector3(low.x - 2.0, FLOOR.planta_y(planta) - 0.5, low.y - 2.0), Vector3(high.x - low.x + 4.0, 3, high.y - low.y + 4.0))
 		NavigationServer3D.bake_from_source_geometry_data(mesh, source)
+		keep_floor(mesh, FLOOR.planta_y(planta))
 		var region := NavigationRegion3D.new()
 		region.name = "Navigation_%d" % planta
 		region.navigation_mesh = mesh
 		add_child(region)
+
+## How far over its floor a piece of the navigation may start and still be
+## the floor's (metres). The floor's own mesh lies 0.2 over it (the bake's
+## cells); the lowest furniture top, a bed's, comes out at 0.5, desks and
+## dressers at 0.8 to 1.3 and wardrobes' tops at 2.7 (seed 81).
+const FLOOR_ISLAND := 0.35
+## And how big a piece of floor has to be, against the planta's biggest, to
+## be kept.
+const FLOOR_PIECE := 0.1
+
+## Only what is walked on from the floor. Baked from the colliders, the tops of
+## beds, sofas and desks came out as islands of their own, joined to nothing.
+## A point is put on the walkable nearest to it (FLOOR.closest), and somebody
+## standing on a bed was put on its island: a route from there to the creature
+## went no further than the island's edge, a metre off, and whatever measured
+## it heard the creature in the bed with them -- the aura at its fullest, its
+## voice at the ear -- from across the floor (world_audio.route_source,
+## dread_aura.route_to; tools/dev/hearing_probe.gd). Every piece of the mesh
+## that never comes down to the floor is let go: the creature could never have
+## walked up there either.
+static func keep_floor(mesh: NavigationMesh, floor_y: float) -> void:
+	var vertices := mesh.get_vertices()
+	var count := mesh.get_polygon_count()
+	# Pieces: polygons that share a corner are one.
+	var piece := PackedInt32Array()
+	piece.resize(count)
+	for i in count: piece[i] = i
+	var owner := {}
+	var find := func(i: int) -> int:
+		while piece[i] != i:
+			piece[i] = piece[piece[i]]
+			i = piece[i]
+		return i
+	for i in count:
+		for corner in mesh.get_polygon(i):
+			if not owner.has(corner):
+				owner[corner] = i
+				continue
+			var a: int = find.call(i)
+			var b: int = find.call(int(owner[corner]))
+			if a != b: piece[a] = b
+	var lowest := {}
+	for i in count:
+		var root: int = find.call(i)
+		for corner in mesh.get_polygon(i): lowest[root] = minf(float(lowest.get(root, INF)), vertices[corner].y)
+	# And of what is on the floor, only the floor: the pockets left between
+	# furniture and a wall, too narrow for the creature to walk into, are
+	# islands as well (a listener standing in one was put on it, and heard the
+	# creature at its edge). The floor of a planta is one piece, thousands of
+	# polygons; its pockets are a dozen at most.
+	var sizes := {}
+	for i in count: sizes[find.call(i)] = int(sizes.get(find.call(i), 0)) + 1
+	var largest := 0
+	for root in sizes:
+		if float(lowest[root]) <= floor_y + FLOOR_ISLAND: largest = maxi(largest, int(sizes[root]))
+	var kept: Array = []
+	for i in count:
+		var root: int = find.call(i)
+		if float(lowest[root]) <= floor_y + FLOOR_ISLAND and int(sizes[root]) >= largest * FLOOR_PIECE: kept.append(mesh.get_polygon(i))
+	if kept.size() == count: return
+	mesh.clear_polygons()
+	for polygon in kept: mesh.add_polygon(polygon)
 
 ## Whether this room's ceiling lamp is out (deterministic per position).
 func dark_room(room: Dictionary) -> bool:
@@ -2679,8 +2742,38 @@ func decide_dark(data: Dictionary) -> void:
 ## planta: the one drawn; by default the one the eye is on. Only one ever is:
 ## the others are under a slab, and their lamps would light through it.
 func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false, planta := -1) -> void:
+	for part in ROUND_PARTS: update_part(part, player_position, shadows, reach_over, show_all, planta)
+
+## The round in three parts, which the level runs on three frames one after
+## the other (hotel_main, visibility_clock): the rooms with their ceiling lamps
+## and their doors, which go together -- a lamp lit among walls or doorways not
+## yet drawn shines through them --; the reflection probes, which follow the
+## lamps; and the rest of the lamps and the bounce. The whole of it took some
+## 2 ms of one frame four times a second, a tooth in every quarter second of a
+## walk (tools/dev/hitch_probe.gd); each part is about a third of that. Every
+## part works from where the eye was for the first: `round_at`.
+const ROUND_PARTS := 3
+var round_at := {}
+## How many reflection probes a part may make, when the level spreads the
+## round (0: as many as are missing, for a floor just put up). Each one is the
+## room drawn six times over in that frame.
+var probes_at_once := 0
+
+func update_part(part: int, player_position: Vector3, shadows: bool, reach_over := 0.0, show_all := false, planta := -1) -> void:
 	if building: return
-	var here: int = planta if planta >= 0 else FLOOR.planta_of(player_position.y)
+	if part == 0:
+		round_at = {"position": player_position, "shadows": shadows and not static_light, "show_all": show_all, "reach": 100000.0 if show_all else maxf(preset.room_reach, reach_over), "here": planta if planta >= 0 else FLOOR.planta_of(player_position.y)}
+		round_rooms()
+	elif round_at.is_empty(): return
+	elif part == 1: round_probes()
+	else: round_lamps()
+
+## The rooms, their ceiling lamps and their doors.
+func round_rooms() -> void:
+	var player_position: Vector3 = round_at.position
+	var shadows: bool = round_at.shadows
+	var show_all: bool = round_at.show_all
+	var here: int = round_at.here
 	eye_planta = here
 	# The eye has gone down a planta (or the observer to another): its bounce.
 	if preset.bounce and here != bounce_planta and RenderingServer.get_rendering_device() != null: start_bounce(here)
@@ -2694,10 +2787,9 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 		dust.visible = dust.emitting
 	# Hall haze only exists in Forward+ (the preset has it off elsewhere).
 	for fog in fog_volumes: fog.visible = preset.floor_haze and not reduced and not echo_view
-	var reach: float = maxf(preset.room_reach, reach_over)
-	if show_all: reach = 100000.0
-	# On static_light nothing of the hotel's casts, whatever the switch says.
-	shadows = shadows and not static_light
+	var reach: float = round_at.reach
+	# (On static_light nothing of the hotel's casts, whatever the switch says:
+	# round_at.shadows.)
 	if things_counted != [room_nodes.size(), doors.size(), sconce_lights.size(), practicals.size(), exit_lamps.size()]: index_things()
 	if here != shown_planta: put_away(here)
 	var things: Dictionary = things_on(here)
@@ -2734,6 +2826,28 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	if counted:
 		nearest_lamps.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		for place in nearest_lamps.size(): cast_or_fill(lights[nearest_lamps[place][1]], shadows and place < int(preset.lamps_cast))
+	# Doors carry their light seals, casings and stops: shown as far as the
+	# rooms are. No lit lamp reaches past that (its range ends inside it).
+	# Where they are drawn in halves (layered), the whole casing stays hidden:
+	# it used to be shown with the rest and hidden again at once, every door in
+	# reach, four times a second.
+	var halved: bool = layered
+	for i in things.doors:
+		var shown: bool = show_all or door_spots[i].distance_to(player_position) < reach
+		doors[i].visible = shown
+		var split: bool = halved and i < door_halves.size()
+		for f in door_fixtures[i].size(): door_fixtures[i][f].visible = shown and not (split and f == 0)
+		if split:
+			var entry: Dictionary = door_halves[i]
+			for half in entry.casing: half.visible = shown
+			var open: bool = doors[i].opened or doors[i].moving
+			if open != entry.open:
+				entry.open = open
+				for item in entry.sided: ROOM_LAYERS.put_on(item[0], entry.bits[0] | entry.bits[1] if open else entry.bits[item[1]])
+
+## The reflection probes of the rooms whose lamps are lit.
+func round_probes() -> void:
+	var player_position: Vector3 = round_at.position
 	# A probe captures its room once, when it is made: only while the room's
 	# lamp is on, or it would keep a dark capture. Only the nearest exist.
 	# Godot's reflection atlas has 64 places and a probe keeps its place until
@@ -2753,9 +2867,21 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 				wanted.append(slot)
 			elif slot.probe != null: drop_probe(slot)
 		wanted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.near < b.near)
+		var made := 0
 		for k in wanted.size():
-			if wanted[k].probe == null and k < PROBES_SHOWN: make_probe(wanted[k])
+			if wanted[k].probe == null and k < PROBES_SHOWN:
+				if probes_at_once > 0 and made >= probes_at_once: continue
+				make_probe(wanted[k])
+				made += 1
 			elif wanted[k].probe != null and k >= PROBES_KEPT: drop_probe(wanted[k])
+
+## The wall lamps, the bounce, the furniture lamps, the exit signs and the cars.
+func round_lamps() -> void:
+	var player_position: Vector3 = round_at.position
+	var shadows: bool = round_at.shadows
+	var show_all: bool = round_at.show_all
+	var here: int = round_at.here
+	var things: Dictionary = things_on(here)
 	# The nearest SCONCES_LIT wall lamps and no more: over the atlas they lose
 	# their shadows and light the room on the other side of the wall. Not with
 	# the power cut (blackout() hides them; this used to bring them back a
@@ -2797,20 +2923,6 @@ func update_visibility(player_position: Vector3, shadows: bool, reach_over := 0.
 	var cars_cast: bool = (shadows or show_all) and not static_light
 	for lamp in car_lamps:
 		if lamp.shadow_enabled != cars_cast: lamp.shadow_enabled = cars_cast
-	# Doors carry their light seals, casings and stops: shown as far as the
-	# rooms are. No lit lamp reaches past that (its range ends inside it).
-	for i in things.doors:
-		var shown: bool = show_all or door_spots[i].distance_to(player_position) < reach
-		doors[i].visible = shown
-		for fixture in door_fixtures[i]: fixture.visible = shown
-		if layered and i < door_halves.size():
-			var entry: Dictionary = door_halves[i]
-			door_fixtures[i][0].visible = false
-			for half in entry.casing: half.visible = shown
-			var open: bool = doors[i].opened or doors[i].moving
-			if open != entry.open:
-				entry.open = open
-				for item in entry.sided: ROOM_LAYERS.put_on(item[0], entry.bits[0] | entry.bits[1] if open else entry.bits[item[1]])
 
 ## A ceiling lamp casting, with its profile and the whole hotel to light, or
 ## -- past the preset's lamps_cast -- filling: no shadow, and nothing to light

@@ -93,6 +93,8 @@ Pendiente: escucha crítica con auriculares, balance del aura en partidas humana
 
 **La distancia también se oye como distancia**, no solo como volumen: sobre la atenuación normal, cada sonido pierde hasta 6 dB y sus agudos con los metros de ruta (`AIR_REACH` 45 m, `AIR_GAIN`, `AIR_CUTOFF` 2 kHz en `world_audio.gd`, aplicados en `apply_route()`). La curva es una raíz, así que los primeros metros ya apagan algo: es lo que diferencia «en esta sala» de «al otro lado del piso». Antes, con línea libre, el filtro se quedaba en 20 kHz a cualquier distancia y un grito a cuarenta metros sonaba como uno a diez, solo más bajo.
 
+El sonido de la criatura y el aura piden **la misma ruta** (`world_audio.walked_route()`), que se reutiliza durante 0,3 s mientras ni el oído ni el origen se hayan movido 1,6 m: pedirla dos veces costaba casi 5 ms de un fotograma ([PERFORMANCE.md](PERFORMANCE.md), sección 12). **Desde encima de un mueble** (una cama, un escritorio, un armario) la criatura se oía a cero metros, estuviera donde estuviera: la navegación tenía islas en lo alto de los muebles y la ruta acababa en su borde. Ya no las tiene (`hotel_geometry.keep_floor()`; lo comprueba `tools/dev/hearing_probe.gd`).
+
 Lo usan los golpes de puerta, los pasos, la presencia y los gruñidos de The Locust. La criatura oye al jugador por la misma lógica de rutas pero hasta la distancia de cada ruido en la tabla `HEARD` de `noise_kinds.gd` (de 8 m agachado a 64 m corriendo sobre baldosa), y el aura empieza a 24 m de ruta: la criatura siempre detecta antes de lo que el jugador puede oírla.
 
 ## Gruñidos de persecución

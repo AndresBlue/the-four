@@ -257,12 +257,18 @@ func pad_look(delta: float) -> void:
 	if turn != Vector2.ZERO: look_by(turn)
 
 func _physics_process(delta: float) -> void:
+	# Where the body was before this tick (smooth_camera).
+	tick_before = tick_after
 	if held:
 		velocity = Vector3.ZERO
 		transit = {}
+		tick_after = global_position
+		tick_before = tick_after
 		return
 	if not transit.is_empty():
 		step_transit(delta)
+		tick_after = global_position
+		tick_before = tick_after
 		return
 	var axis := Input.get_vector("left", "right", "forward", "backward") if active and not hidden and not reading else Vector2.ZERO
 	# How far the stick is pushed is how fast: a keyboard is always all the way.
@@ -323,6 +329,8 @@ func _physics_process(delta: float) -> void:
 	update_peek(delta)
 	update_lean(delta, running)
 	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, 0.0) + peek_lean() + lean_offset()
+	camera_rest = camera.position
+	tick_after = global_position
 	# Landing: the arms absorb it, the camera dips and swings back.
 	var grounded := is_on_floor()
 	if grounded and not was_on_floor: sway_velocity.x -= 0.35
@@ -544,8 +552,30 @@ func zoom_fraction() -> float:
 func look_pitch() -> float:
 	return camera.rotation.x - handheld.x
 
+## The body moves on the physics ticks, sixty a second, and stays put between
+## them; drawn at more frames a second than that, the picture moved in steps
+## -- a frame still, a frame moved, never the same twice running: a judder in
+## every walk and every strafe (tools/dev/hitch_probe.gd, "steps"). The camera
+## is drawn where the body is between its last two ticks, by how far into the
+## next one the frame is (Engine.get_physics_interpolation_fraction): a
+## sixtieth of a second behind, and even. Turning the head is not delayed: the
+## look turns the body on every input.
+var tick_before := Vector3.ZERO
+var tick_after := Vector3.ZERO
+## Where the last tick put the camera on the body.
+var camera_rest := Vector3.ZERO
+## Off, the camera goes in the ticks' steps again (to measure the difference).
+var smooth_steps := true
+func smooth_camera() -> void:
+	if not smooth_steps or camera.top_level or held or not transit.is_empty(): return
+	var lag := tick_before.lerp(tick_after, Engine.get_physics_interpolation_fraction()) - global_position
+	# Put somewhere new (a lift, a revival, a floor): not slid across.
+	if lag.length() > 0.5: lag = Vector3.ZERO
+	camera.position = camera_rest + global_basis.inverse() * lag
+
 func _process(delta: float) -> void:
 	if is_instance_valid(camera) and settings != null:
+		smooth_camera()
 		pad_look(delta)
 		update_zoom(delta)
 		update_handheld(delta)

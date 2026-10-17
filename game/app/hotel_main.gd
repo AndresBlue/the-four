@@ -62,6 +62,8 @@ var observer_view
 ## and tuned without gathering five players.
 var solo_locust := false
 var visibility_clock := 0.0
+## Which part of the floor's round comes next (0: none until the clock says).
+var round_part := 0
 var save_error := ""
 var physical_errors: Array[String] = []
 var intro: Node3D
@@ -1563,8 +1565,14 @@ func _process(delta: float) -> void:
 	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty():
 		ui.subtitle.text = world_audio.caption_text
 	visibility_clock += delta
-	if visibility_clock > 0.25:
-		visibility_clock = 0
+	# The floor's round, four times a second, in its parts on the frames one
+	# after the other (hotel_geometry.update_part): the first starts it, the
+	# rest follow while round_part says what is left.
+	var due := visibility_clock > 0.25
+	if due or round_part > 0:
+		if due:
+			visibility_clock = 0
+			round_part = 0
 		# Rooms are drawn round whoever is looking, and watching, that is the
 		# observer's camera and not the body it does not have; from above it
 		# asks for the whole floor at once.
@@ -1574,7 +1582,13 @@ func _process(delta: float) -> void:
 			var eye: Vector3 = observer_view.global_position if observer and observer_view != null else world_audio.listener_position()
 			# One planta at a time: the watcher's, or the one the eye is on.
 			var shown: int = observer_view.planta if observer and observer_view != null else -1
-			hotel.update_visibility(eye, settings.values.shadows and not rig.echo_seat() and not observer, 0.0, observer, shown)
+			# Walking about, one reflection probe a round at most: each is its
+			# room drawn six times over.
+			hotel.probes_at_once = 1
+			hotel.update_part(round_part, eye, settings.values.shadows and not rig.echo_seat() and not observer, 0.0, observer, shown)
+			hotel.probes_at_once = 0
+		round_part = (round_part + 1) % hotel.ROUND_PARTS if is_instance_valid(hotel) else 0
+	if due:
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, FLOOR.planta_y(FLOOR.planta_of(player.position.y)) + 2.8, round(player.position.z / 12) * 12)
 
 func _unhandled_input(event: InputEvent) -> void:
