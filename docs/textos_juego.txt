@@ -178,6 +178,10 @@ CORRECCIÓN:
 ACTUAL: Linterna
 CORRECCIÓN:
 
+[CTRL.19] Teclas de asomarse, «1 3» (con mando: CRUCETA ← →)
+ACTUAL: Asomarse a un lado
+CORRECCIÓN:
+
 [CTRL.12] Tecla de la hoja
 ACTUAL: Hoja (dibujar y borrar con el ratón)
 CORRECCIÓN:
@@ -1134,7 +1138,7 @@ ACTUAL: Vibración del mando
 CORRECCIÓN:
 
 [AJ.33] Acciones reasignables
-ACTUAL: Adelante / Atrás / Izquierda / Derecha / Correr / Saltar / Interactuar / Linterna / Agacharse / Hoja / The Locust: rastro a la tele
+ACTUAL: Adelante / Atrás / Izquierda / Derecha / Correr / Saltar / Interactuar / Linterna / Agacharse / Hoja / Asomarse a la izquierda / Asomarse a la derecha / The Locust: rastro a la tele
 CORRECCIÓN:
 
 [AJ.34] Botón mientras espera una tecla

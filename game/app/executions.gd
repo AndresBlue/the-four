@@ -29,6 +29,11 @@ var level
 ##                            and to a side: laid straight back, or folded up
 ##                            (slump) with `room` metres behind (fall_room)
 ##   hide                     the wardrobe it was taken from (its index), -1
+##   partner                  whoever else was in that wardrobe (the big one
+##                            takes two), dying with it: -1 if nobody. On that
+##                            one's own machine the two are swapped, so the
+##                            scene and its tape are its own; everybody else
+##                            sees the one, and the other gone (remote_player)
 ##   glance                   the host would have it look at the lens
 ##   seed, id                 what is drawn from chance, and which capture
 ##   ending, lens             "leave" or "glance", and where the camera lies
@@ -183,11 +188,21 @@ func stage_capture(body: Node3D) -> Dictionary:
 	var room := fall_room(feet, yaw, side, [body.get_rid(), creature.get_rid()])
 	var hide: int = level.hotel.hides.find(body.hiding_place) if bool(body.hidden) and is_instance_valid(body.hiding_place) else -1
 	return {
-		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "straight": bool(room[1]), "slump": bool(room[2]), "room": float(room[3]), "yaw": yaw, "hide": hide,
+		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "straight": bool(room[1]), "slump": bool(room[2]), "room": float(room[3]), "yaw": yaw, "hide": hide, "partner": partner_of(body),
 		"far": clampf(distance, SCORE.HOLD_FAR.x, SCORE.HOLD_FAR.y), "from": body.global_position, "facing": body.rotation.y,
 		"crouched": bool(body.crouched), "torch": is_instance_valid(body.torch) and body.torch.visible,
 		"glance": look, "seed": int(forced.get("seed", rng.randi() & 0x7fffffff)), "id": captures,
 	}
+
+## Whoever shares a wardrobe with somebody caught in it, still on their feet:
+## both die. The creature does not take one out of a wardrobe and leave the
+## other standing beside the body. (Its seat, or -1.)
+func partner_of(body: Node3D) -> int:
+	if not bool(body.hidden) or not is_instance_valid(body.hiding_place): return -1
+	for other in body.hiding_place.occupants:
+		if other == body or not is_instance_valid(other) or not "slot" in other: continue
+		if level.session.participants.get(int(other.slot), level.session.Life.DEAD) == level.session.Life.EXPLORING: return int(other.slot)
+	return -1
 
 ## How somebody is caught, from where they and the creature are: [entry, side].
 ## In a wardrobe it is the wardrobe's; crouching, it comes from above; and on
@@ -244,8 +259,16 @@ static func fall_way(yaw: float, side: float) -> Vector3:
 func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 	var forward := -Basis(Vector3.UP, yaw).z
 	var far := float(data.get("far", SCORE.HOLD_FAR.y))
+	# Caught with somebody else in the same wardrobe: on that other one's
+	# machine the scene is theirs -- their own face at the lens, their own body
+	# lifted, their own tape -- and the one the host chose is the partner,
+	# hidden while it lasts. Both are counted dead at the end either way.
+	var partner := int(data.get("partner", -1))
+	if partner >= 0 and partner == level.player.slot and not level.bot_match:
+		partner = seat
+		seat = level.player.slot
 	execution = {
-		"seat": seat, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false, "screamed": false,
+		"seat": seat, "partner": partner, "time": 0.0, "point": point, "yaw": yaw, "stabs": 0, "dropped": false, "screamed": false,
 		"entry": String(data.get("entry", "front")), "side": float(data.get("side", 1.0)), "slump": bool(data.get("slump", false)),
 		"straight": bool(data.get("straight", false)), "room": float(data.get("room", SCORE.LIE_ROOM)), "hide": int(data.get("hide", -1)),
 		"far": far, "from": data.get("from", point + forward * far), "facing": float(data.get("facing", yaw + PI)),
@@ -346,6 +369,7 @@ func update_execution(delta: float) -> void:
 ## host's to count.
 func finish_execution() -> void:
 	var seat := int(execution.seat)
+	var partner := int(execution.get("partner", -1))
 	var mine: bool = seat == level.player.slot and not level.bot_match
 	leave_scene()
 	# Its own picture is gone: it keeps the lost signal a moment before it
@@ -366,6 +390,10 @@ func finish_execution() -> void:
 	if not level.net.is_client():
 		level.ledger.note_death(seat)
 		level.session.capture(seat)
+		# And whoever was in the wardrobe with it.
+		if partner >= 0:
+			level.ledger.note_death(partner)
+			level.session.capture(partner)
 	# Alone, and the floor giving the stage back: there is nobody to watch,
 	# so the picture stays gone and the body still until it is up again at
 	# the stage's door (revival.restore_local_player).

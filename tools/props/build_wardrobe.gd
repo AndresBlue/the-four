@@ -10,15 +10,37 @@ const OUTPUT := "res://assets/props/wardrobe/"
 const DOOR_PARTS := ["7_low", "17_low", "18_low", "6_low", "1_low", "20_low"]
 ## Target outer size (width, height, depth) in metres: a person fits inside.
 const SIZE := Vector3(1.25, 2.3, 0.78)
-## The crack left between the two leaves (metres), for whoever is inside to
-## look out through with the doors shut. The model's doors close on each
+## The crack left between the two leaves (metres): a thin line of the room
+## for whoever is inside, with the doors shut. The model's doors close on each
 ## other: the right one carries a strip that lies behind the left one's edge,
 ## and where the two met only a hairline of the lit room came through, burnt
 ## white by a lens wide open in the dark. The left leaf is cut back this far
 ## from where it ended and the right one's strip is taken off, each with its
 ## new edge closed. Every wardrobe has it, with somebody inside or with
-## nobody: it says nothing about who is in which.
-const SLIT := 0.015
+## nobody: it says nothing about who is in which. (It was 1.5 cm for a few
+## days: through that the room was a strip, not a line.)
+const SLIT := 0.005
+## How far behind the doors' front something of theirs has to be to be one
+## of the hinges' leaves fixed to the carcass (metres): those stay with the
+## body. Swinging with the doors from an axis in front of them, they came away
+## from the side boards with the leaf.
+const HARDWARE_BEHIND := 0.07
+## Where on the colour map the inside of each leaf is taken from: a plain
+## board of the carcass's. The model has no inside to its doors -- what was
+## seen from in there, and on a door left open, was the back of their fronts,
+## with the worn frames and scratches of the front texture, pale and
+## glittering in a torch.
+const BOARD_UV := Rect2(0.012, 0.512, 0.28, 0.47)
+## How far behind the doors' back the board is (metres): in the same plane as
+## the backs of their stiles, the two flickered into each other. It is a mesh
+## of its own, wardrobe_leaf_<side>_inside.res, which hiding_place.gd hangs on
+## the leaf with no shadow: casting one a few millimetres behind the door that
+## casts it as well, it shadowed itself in slanting stripes wherever a lamp's
+## light came in through the gap. Its material has no normal map
+## (materials/wardrobe_inside.tres): where it takes its wood the model's map
+## leans well to one side, and the board took the room's light from the gap
+## as if it faced it.
+const BOARD_BEHIND := 0.003
 
 func _initialize() -> void: run.call_deferred()
 
@@ -48,6 +70,7 @@ func run() -> void:
 	var body := SurfaceTool.new()
 	body.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var leaves := {"left": [], "right": []}
+	var boards := {"left": [], "right": []}
 	var door_front := -INF
 	var door_half := 0.0
 	for mesh in scene.find_children("*", "MeshInstance3D", true, false):
@@ -75,6 +98,23 @@ func run() -> void:
 				door_front = maxf(door_front, p.z)
 				door_half = maxf(door_half, absf(p.x))
 			leaves["left" if centre.x < 0.0 else "right"].append(tri)
+	# The hinges' fixed leaves, well behind the doors: on the body.
+	var fixed := []
+	for side in leaves:
+		var kept := []
+		for tri in leaves[side]:
+			var centre: Vector3 = (tri[0][0] + tri[1][0] + tri[2][0]) / 3.0
+			if centre.z < door_front - HARDWARE_BEHIND: fixed.append(tri)
+			else: kept.append(tri)
+		leaves[side] = kept
+	# The doors' back, from what is left of them: where they turn.
+	var back := INF
+	door_half = 0.0
+	for side in leaves:
+		for tri in leaves[side]:
+			for v in tri:
+				back = minf(back, v[0].z)
+				door_half = maxf(door_half, absf(v[0].x))
 	# The crack: from where the left leaf ended, SLIT back into it.
 	var seam := -INF
 	for tri in leaves.left:
@@ -94,16 +134,46 @@ func run() -> void:
 		var facing := Vector3(-cuts[side][1], 0, 0)
 		var corners := [Vector3(cuts[side][0], low.x, low.y), Vector3(cuts[side][0], high.x, low.y), Vector3(cuts[side][0], high.x, high.y), Vector3(cuts[side][0], low.x, high.y)]
 		for pair in [[0, 1, 2], [0, 2, 3]]: kept.append(pair.map(func(k): return [corners[k], facing, rim[0][2]]))
+		# Its inside: a plain board across its back, from hinge to crack.
+		var across := Vector2(INF, -INF)
+		var up := Vector2(INF, -INF)
+		for tri in kept:
+			for v in tri:
+				across = Vector2(minf(across.x, v[0].x), maxf(across.y, v[0].x))
+				up = Vector2(minf(up.x, v[0].y), maxf(up.y, v[0].y))
+		var board := []
+		for corner in [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]:
+			var at := Vector3(lerpf(across.x, across.y, corner.x), lerpf(up.x, up.y, corner.y), back - BOARD_BEHIND)
+			var uv := BOARD_UV.position + BOARD_UV.size * Vector2(corner.x, 1.0 - corner.y)
+			board.append([at, Vector3.BACK * -1.0, uv])
+		# Wound to face in: the material draws both sides, and a face seen from
+		# its back is lit as if it faced the other way -- from the room, through
+		# the door in front of it, whose shadow fell on it in stripes.
+		for pair in [[0, 1, 2], [0, 2, 3]]: boards[side].append(pair.map(func(k): return board[k]))
 		leaves[side] = kept
-		if side == "left": inner = low.y
+		if side == "left": inner = back
 		print("CRACK ", side, " cut at x=", snappedf(cuts[side][0], 0.0001), ", its edge from y=", snappedf(low.x, 0.001), " to ", snappedf(high.x, 0.001), " and z=", snappedf(low.y, 0.001), " to ", snappedf(high.y, 0.001))
 	var material := load("res://game/presentation/materials/wardrobe.tres")
 	var body_mesh := body.commit()
 	body_mesh.surface_set_material(0, material)
+	var hardware := SurfaceTool.new()
+	hardware.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for tri in fixed:
+		for v in tri:
+			hardware.set_normal(v[1])
+			hardware.set_uv(v[2])
+			hardware.add_vertex(v[0])
+	hardware.generate_tangents()
+	hardware.commit(body_mesh)
+	body_mesh.surface_set_material(1, material)
 	ResourceSaver.save(body_mesh, OUTPUT + "wardrobe_body.res")
-	# Hinges sit on the outer edges of the door leaves, at the door face.
+	print("HINGES ", fixed.size(), " triangles kept on the body")
+	# Each leaf turns about its outer edge at its back, where it meets the
+	# side board: turning about its front (the knobs' front, 2.4 cm out), its
+	# back came away from the side by a few centimetres, and the room showed
+	# through where the hinges should have been.
 	for side in ["left", "right"]:
-		var hinge := Vector3(-door_half if side == "left" else door_half, 0.0, door_front)
+		var hinge := Vector3(-door_half if side == "left" else door_half, 0.0, back)
 		var leaf := SurfaceTool.new()
 		leaf.begin(Mesh.PRIMITIVE_TRIANGLES)
 		for tri in leaves[side]:
@@ -117,7 +187,21 @@ func run() -> void:
 		# Where the crack is, for whoever puts an eye to it (hiding_place.gd):
 		# its middle across, how wide it is, and how far out its inner mouth.
 		leaf_mesh.set_meta("slit", Vector3(seam - SLIT * 0.5, SLIT, inner))
+		# And where it turns, in the wardrobe's space (hiding_place.gd puts
+		# its hinge there).
+		leaf_mesh.set_meta("hinge", hinge)
 		ResourceSaver.save(leaf_mesh, OUTPUT + "wardrobe_leaf_%s.res" % side)
+		var inside := SurfaceTool.new()
+		inside.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for tri in boards[side]:
+			for v in tri:
+				inside.set_normal(v[1])
+				inside.set_uv(v[2])
+				inside.add_vertex(v[0] - hinge)
+		inside.generate_tangents()
+		var inside_mesh := inside.commit()
+		inside_mesh.surface_set_material(0, load("res://game/presentation/materials/wardrobe_inside.tres"))
+		ResourceSaver.save(inside_mesh, OUTPUT + "wardrobe_leaf_%s_inside.res" % side)
 		print("LEAF ", side, " triangles=", leaves[side].size(), " hinge=", hinge)
 	print("DOOR front=", door_front, " half_width=", door_half, " body_aabb=", body_mesh.get_aabb())
 	quit()

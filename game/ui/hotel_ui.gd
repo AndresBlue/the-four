@@ -1187,11 +1187,11 @@ func controls_panel(parent: Node) -> void:
 	label(list, "CONTROLES", 20).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(list, 4)
 	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
-	var rows: Array = [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas, escondites, teles y documentos"], [settings.key_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.key_name("flashlight"), "Linterna"], ["RUEDA DEL RATÓN", "Zoom de la cámara"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["CLIC", "Muerto en equipo: cambiar a quién miras"], ["ESC", "Pausa"]]
+	var rows: Array = [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas, escondites, teles y documentos"], [settings.key_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.key_name("flashlight"), "Linterna"], ["%s %s" % [settings.key_name("lean_left"), settings.key_name("lean_right")], "Asomarse a un lado"], ["RUEDA DEL RATÓN", "Zoom de la cámara"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["CLIC", "Muerto en equipo: cambiar a quién miras"], ["ESC", "Pausa"]]
 	# Played on a pad, the card names its buttons, and says which ones flip.
 	if settings.using_pad and settings.pad_present():
 		var flip := func(action: String) -> String: return settings.pad_name(action) + (" (ALTERNA)" if settings.values.get("pad_%s_toggle" % action, false) else "")
-		rows = [["STICK IZQ.", "Moverse (cuanto más lo empujas, más deprisa)"], ["STICK DER.", "Mirar"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Puertas, escondites, teles y documentos"], [settings.pad_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.pad_name("flashlight"), "Linterna"], ["CRUCETA ↑ ↓", "Zoom de la cámara"], [settings.pad_name("sheet"), "Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)" % [settings.trigger_name(true), settings.trigger_name(false)]], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
+		rows = [["STICK IZQ.", "Moverse (cuanto más lo empujas, más deprisa)"], ["STICK DER.", "Mirar"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Puertas, escondites, teles y documentos"], [settings.pad_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.pad_name("flashlight"), "Linterna"], [settings.pad_name("lean_left") + " " + settings.pad_name("lean_right").replace("CRUCETA ", ""), "Asomarse a un lado"], ["CRUCETA ↑ ↓", "Zoom de la cámara"], [settings.pad_name("sheet"), "Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)" % [settings.trigger_name(true), settings.trigger_name(false)]], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
 	for row in rows:
 		var line := HBoxContainer.new()
 		list.add_child(line)
@@ -1296,7 +1296,7 @@ func show_settings(back: String) -> void:
 		check(controls, "Alternar correr (mando)", "pad_sprint_toggle")
 		check(controls, "Alternar agacharse (mando)", "pad_crouch_toggle")
 		check(controls, "Vibración del mando", "rumble")
-	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "locust_trace": "The Locust: rastro a la tele"}
+	var titles := {"forward": "Adelante", "backward": "Atrás", "left": "Izquierda", "right": "Derecha", "sprint": "Correr", "jump": "Saltar", "interact": "Interactuar", "flashlight": "Linterna", "crouch": "Agacharse", "sheet": "Hoja", "lean_left": "Asomarse a la izquierda", "lean_right": "Asomarse a la derecha", "locust_trace": "The Locust: rastro a la tele"}
 	for id in titles:
 		var row := HBoxContainer.new()
 		controls.add_child(row)

@@ -110,7 +110,8 @@ func run() -> void:
 			await physics_frame
 		var seen := await picture(40)
 		var head: Vector3 = hide.to_local(player.camera.global_position)
-		var gap: float = (hide.pivots.right.position + hide.pivots.right.basis * Vector3(-hide.hinge.x, 0, 0)).distance_to(hide.pivots.left.position + hide.pivots.left.basis * Vector3(hide.hinge.x, 0, 0))
+		# Each leaf reaches from its hinge to the middle.
+		var gap: float = (hide.pivots.right.position + hide.pivots.right.basis * Vector3(-absf(hide.pivots.right.position.x), 0, 0)).distance_to(hide.pivots.left.position + hide.pivots.left.basis * Vector3(absf(hide.pivots.left.position.x), 0, 0))
 		print("  ", shots[index][0], ": turned ", snappedf(rad_to_deg(wrapf(player.rotation.y - player.hide_yaw, -PI, PI)), 0.1), " deg, head at ", head.snapped(Vector3.ONE * 0.01), " (the doors' plane is z=", snappedf(hide.hinge.z, 0.01), "), leaves open ", snappedf(rad_to_deg(hide.leaf_angle("left")), 0.1), " and ", snappedf(rad_to_deg(hide.leaf_angle("right")), 0.1), " deg, their free edges ", snappedf(gap, 0.001), " m apart")
 		if index == 0: page = Image.create(seen.get_width() * shots.size(), seen.get_height(), false, Image.FORMAT_RGB8)
 		page.blit_rect(seen, Rect2i(Vector2i.ZERO, seen.get_size()), Vector2i(seen.get_width() * index, 0))

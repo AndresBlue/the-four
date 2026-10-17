@@ -365,15 +365,25 @@ herramientas para mirarlo están en la guía de desarrollo.
   `ambient_light_energy` (aclara también las salas apagadas): mejor dar relleno
   propio a las salas iluminadas.
 - [ ] **El armario:** comodidad del efecto de asomarse en partidas humanas y a
-  distintas resoluciones. Desde el 13 de octubre se mira por una rendija de
-  centímetro y medio con las puertas cerradas y, al asomarse, las hojas solo
-  se entornan y la cabeza no sale: mirar jugando si por la rendija se llega a
-  ver pasar a la bestia (la sala se ve quemada y desenfocada: el iris está
-  abierto a oscuras y el foco en la puerta), si la franja al asomarse —un
-  tercio de la pantalla a los lados, un octavo al frente— da miedo o solo
-  estorba, y si ahora la bestia tarda más en verte asomado (te ve por el
-  mismo hueco por el que tú la ves, y antes sacabas la cabeza). En el armario
-  doble los dos miran por el mismo sitio, el centro.
+  distintas resoluciones. Desde el 17 de octubre, con las puertas cerradas
+  se ve la sala por una línea de medio centímetro desde el medio del armario
+  y, al asomarse, las hojas solo se entornan y la cabeza no sale: mirar
+  jugando si por la línea se llega a notar que pasa la bestia, si la franja
+  al asomarse —un tercio de la pantalla a los lados, un octavo al frente— da
+  miedo o solo estorba, y si ahora la bestia tarda más en verte asomado (te
+  ve por el mismo hueco por el que tú la ves, y antes sacabas la cabeza). En
+  el armario doble, al asomarse, los dos miran por el mismo sitio, el centro.
+  Y las hojas abiertas, pegadas al mueble por su canto.
+- [ ] **Asomarse a un lado (1 y 3, 17 de octubre):** si un tercio de metro
+  basta para mirar por una esquina, si la inclinación marea, y si se echa de
+  menos verlo en el cuerpo: los demás ven al que se asoma de pie y derecho.
+- [ ] **Dos en el mismo armario (17 de octubre):** mueren los dos y a cada
+  uno le pasa su escena. Comprobado en una sola máquina, no en una partida en
+  red: mirar con dos personas que el que no fue elegido vea la suya entera,
+  que los demás vean una sola ejecución y nadie de pie en el armario abierto,
+  y que el piso cuente las dos muertes.
+- [ ] **El desenfoque por distancia, más fuerte (17 de octubre):** mirar si
+  el fondo blando ayuda o cansa, en Alto y Ultra (en los demás no hay).
 - [ ] **Los controles del mando, en revisión** (26 de septiembre): la
   distribución por defecto del superviviente y la de The Locust (hoy R2
   estoca, L2 chilla, triángulo rastro, cuadrado puertas y teles, L3 caza),

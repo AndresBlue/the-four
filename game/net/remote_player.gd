@@ -179,6 +179,15 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		states.clear()
 		return
+	# Caught in the same wardrobe as the one in the creature's hands, it dies
+	# with them, and while the scene lasts it is not seen at all: its own
+	# machine plays the scene with it as the victim and goes on sending where
+	# that puts it -- the same place as the one everybody else sees taken.
+	if level != null and not level.execution.is_empty() and int(level.execution.get("partner", -1)) == slot and not dead:
+		velocity = Vector3.ZERO
+		states.clear()
+		avatar.visible = false
+		return
 	if dead or states.is_empty():
 		velocity = Vector3.ZERO
 		if dead:

@@ -260,13 +260,18 @@ func run() -> void:
 	# The body steps in and the doors shut behind it: about a second.
 	await frames(70)
 	check("Y acaba dentro, mirando hacia las puertas", player.transit.is_empty() and player.global_position.distance_to(hide.to_global(hide.inside_of(player))) < 0.05 and absf(wrapf(player.rotation.y - player.hide_yaw, -PI, PI)) < 0.05)
-	# Shut in, an eye goes to the crack the two leaves leave between them
-	# (cut into the model: tools/props/build_wardrobe.gd), a hand's breadth
-	# behind it; the crack is in what is drawn and not in what blocks.
+	# Shut in, the head stays in the middle and a thin line of the room shows
+	# through the crack the two leaves leave between them (cut into the model:
+	# tools/props/build_wardrobe.gd); the crack is in what is drawn and not in
+	# what blocks.
 	await frames(40)
 	var eye: Vector3 = hide.to_local(player.camera.global_position)
 	var crack: Vector3 = hide.LEAVES.left.get_meta("slit", Vector3.ZERO)
-	check("Las hojas del armario dejan una rendija entre ellas, y encerrado el ojo queda detrás", crack.y > 0.008 and crack.y < 0.03 and absf(eye.x - hide.slit.x) < 0.01 and absf(eye.z - (hide.slit.z - player.CRACK_BACK)) < 0.02 and not hide.ajar())
+	check("Las hojas del armario dejan una línea fina entre ellas, y encerrado la cabeza queda en medio", crack.y > 0.002 and crack.y < 0.008 and absf(eye.x) < 0.02 and eye.z < 0.0 and eye.z > -0.15 and not hide.ajar())
+	# And they turn where they meet the carcass, at their back: turning about
+	# a point in front of them and out past their edge, they came away from it.
+	var axis: Vector3 = hide.pivots.left.position
+	check("Las hojas giran desde su canto, contra el costado, y las bisagras se quedan en el mueble", absf(absf(axis.x) - 0.544) < 0.01 and axis.z < hide.hinge.z - 0.04 and hide.BODY.get_surface_count() == 2)
 	enemy.observed_hide = null
 	check("Oculto no revela posición a distancia", not enemy.sees_player())
 	enemy.observed_hide = hide
@@ -304,6 +309,36 @@ func run() -> void:
 	var out: bool = player.leave_hide()
 	await frames(30)
 	check("Salida de escondite libre sin teletransporte a otra sala", out and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
+	# Leaning round a corner (1 and 3): the head goes to one side, the picture
+	# tips with it, and both come back when the key is let go.
+	player.active = true
+	Input.action_press("lean_right")
+	await frames(60)
+	var leant: Vector3 = player.camera.position
+	var tipped: float = player.camera.rotation.z
+	Input.action_release("lean_right")
+	Input.action_press("lean_left")
+	await frames(90)
+	var other_way: Vector3 = player.camera.position
+	Input.action_release("lean_left")
+	await frames(90)
+	check("Con 1 y 3 se asoma a un lado, inclinando la imagen, y vuelve", leant.x > 0.15 and tipped < -0.03 and other_way.x < -0.15 and absf(player.camera.position.x) < 0.02)
+	if leant.x <= 0.15 or other_way.x >= -0.15: print("  lean right=%.2f tip=%.3f left=%.2f back=%.2f" % [leant.x, tipped, other_way.x, player.camera.position.x])
+	# Beside the wardrobe, with its side a hand and a half to the left: the
+	# head stops at it and does not go through.
+	player.position = hide.to_global(Vector3(-(hide.width * 0.5 + 0.3), 0.04, 0.0))
+	player.rotation.y = hide.global_rotation.y + PI
+	await frames(3)
+	Input.action_press("lean_left")
+	await frames(90)
+	var eyes: Vector3 = player.to_global(Vector3(0.0, player.eye_height, 0.0))
+	var through := PhysicsRayQueryParameters3D.create(eyes, player.camera.global_position, 1 | 8)
+	through.exclude = [player.get_rid()]
+	var blocked: bool = not level.get_world_3d().direct_space_state.intersect_ray(through).is_empty()
+	check("Contra un mueble o una pared, la cabeza se queda en él y no lo atraviesa", player.lean_out > -0.19 and player.lean_out < -0.02 and not blocked)
+	print("  lean against the wardrobe: %.2f m, through it: %s" % [player.lean_out, blocked])
+	Input.action_release("lean_left")
+	await frames(90)
 	# The refuge of the stage in hand: walking the floor during this test can
 	# have carried it on to the next wing already.
 	var exit_room: Dictionary = level.manifest.rooms[level.refuge_room()]

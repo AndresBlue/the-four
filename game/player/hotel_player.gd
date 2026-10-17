@@ -58,23 +58,41 @@ var peek_side := 0.0
 const HIDE_LOOK := Vector2(0.35, 0.7)
 ## How far the look has to turn for a leaf to be asked all it opens.
 const PEEK_TURN := 0.45
-## The head in a wardrobe, which never leaves it. Shut in, an eye rests
-## CRACK_BACK behind the crack between the doors (hiding_place.slit), where
-## a strip of the room is seen through it. Holding forward, it comes up to
-## PEEK_BACK short of the doors' plane, on the wardrobe's middle line, and
-## looking aside moves it PEEK_SIDE_LEAN over to the other side, to look out
-## between the leaf that opens and the one that shuts. It used to lean half
-## a metre out through the doors, and what was seen from there was the room,
-## not a gap.
-const CRACK_BACK := 0.14
+## The head in a wardrobe, which never leaves it. Shut in, it is in the
+## middle, REST_BACK behind where the body stands: the crack between the
+## doors (hiding_place.slit) is a thin line of the room ahead and no more.
+## Holding forward, it comes up to PEEK_BACK short of the doors' plane, on
+## the wardrobe's middle line, and looking aside moves it PEEK_SIDE_LEAN over
+## to the other side, to look out between the leaf that opens and the one
+## that shuts. It used to lean half a metre out through the doors, and what
+## was seen from there was the room, not a gap; and for a few days it rested
+## a hand's breadth behind the crack, with the doors in one's face.
+const REST_BACK := 0.03
 const PEEK_BACK := 0.16
 const PEEK_SIDE_LEAN := 0.16
-## How far the head has settled at the crack (0 to 1), and where that and the
-## place it peeks from are from where the body stands, in the body's own axes
-## as it faces the doors (x to the right hand, -z towards them).
+## How far the head has settled back (0 to 1), and where it peeks from, from
+## where the body stands, in the body's own axes as it faces the doors (x to
+## the right hand, -z towards them).
 var nook := 0.0
-var crack_at := Vector3.ZERO
 var gap_at := Vector3.ZERO
+## Leaning round a corner (lean_left and lean_right: 1 and 3, the pad's cross
+## left and right): the head goes LEAN_REACH to that side and LEAN_DROP down
+## and the picture tips LEAN_ROLL, as somebody looks round the edge of a
+## doorway without stepping out of it. Never into a wall: a ball the size of
+## a head (LEAN_HEAD) is pushed from the eyes to where they would go and stops
+## at whatever it meets. Not running, hidden, reading or held. Only the
+## camera moves -- and the creature looks for the camera: lean out and it
+## can see you (hotel_locust.clear_sight).
+const LEAN_REACH := 0.32
+const LEAN_DROP := 0.05
+const LEAN_ROLL := 0.11
+const LEAN_SPEED := 3.5
+const LEAN_HEAD := 0.13
+## -1 (left) to 1 (right), eased; and how far the head went (metres, signed:
+## less than asked where a wall is).
+var lean := 0.0
+var lean_out := 0.0
+var lean_ball: SphereShape3D
 var footstep: AudioStreamPlayer3D
 ## Two voices so a step's tail is not cut by the next one.
 var step_voices: Array[AudioStreamPlayer3D] = []
@@ -303,7 +321,8 @@ func _physics_process(delta: float) -> void:
 	var amplitude: float = 0.0 if settings.values.reduced else settings.values.bob * (0.1 if crouched else 0.25 if running else 0.15)
 	var lift := (absf(sin(step_phase)) - 0.6) * amplitude * bob_weight
 	update_peek(delta)
-	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, 0.0) + peek_lean()
+	update_lean(delta, running)
+	camera.position = Vector3(sin(step_phase) * amplitude * 0.2 * bob_weight, eye_height + lift, 0.0) + peek_lean() + lean_offset()
 	# Landing: the arms absorb it, the camera dips and swings back.
 	var grounded := is_on_floor()
 	if grounded and not was_on_floor: sway_velocity.x -= 0.35
@@ -421,6 +440,8 @@ func update_handheld(delta: float) -> void:
 	var strike := pow(1.0 - absf(sin(step_phase)), 5.0)
 	var gait := Vector3(strike, sin(step_phase), sin(step_phase)) * GAIT * bob_weight * (1.7 if velocity.length() > 4.5 else 0.6 if crouched else 1.0)
 	var offset := (sway + tremor + breath + gait) * strength
+	# The lean tips the picture towards the side the head went (lean_out).
+	offset.z -= lean_out / LEAN_REACH * LEAN_ROLL
 	# Nothing that is not a number leaves here. It should not be reachable any
 	# more, but what it costs to be wrong is a black screen that outlives the
 	# match: back to the menu, into a new floor, and still black.
@@ -442,13 +463,25 @@ func reset_handheld() -> void:
 	handheld = Vector3.ZERO
 	if is_instance_valid(camera) and not camera.rotation.is_finite(): camera.rotation = Vector3.ZERO
 
+## How out of focus the lens lets things get (Godot's dof_blur_amount), and
+## where the far blur starts and how long it takes to be all of that, from
+## what the lens is focused on: [times its distance, plus metres]. A camcorder
+## at night has its iris wide open and little depth of field: whatever is well
+## beyond what it is focused on goes soft, the further the softer. (Until 17
+## October 2026 only something within 1.6 m blurred what was behind it, at
+## 0.06: from a corridor, its far end was as sharp as one's hand.) Raising
+## the amount costs: Godot's blur samples more the more it is asked for.
+const FOCUS_BLUR := 0.15
+const FOCUS_FAR := Vector2(1.3, 0.3)
+const FOCUS_FADE := Vector2(1.3, 1.2)
+
 func update_focus(delta: float) -> void:
 	if not autofocus:
 		if camera.attributes == focus_attributes and focus_attributes != null: camera.attributes = null
 		return
 	if focus_attributes == null:
 		focus_attributes = CameraAttributesPractical.new()
-		focus_attributes.dof_blur_amount = 0.06
+		focus_attributes.dof_blur_amount = FOCUS_BLUR
 	if camera.attributes != focus_attributes: camera.attributes = focus_attributes
 	var from := camera.global_position
 	var query := PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * 12.0, 1 | 8 | 16)
@@ -462,10 +495,9 @@ func update_focus(delta: float) -> void:
 	hunt = maxf(0.0, hunt - delta * 2.5)
 	var swing := sin(hand_clock * 17.0) * hunt * 0.35 * focus_target
 	focus = lerpf(focus, focus_target + swing, 1.0 - exp(-delta * 6.0))
-	var close := focus < 1.6
-	focus_attributes.dof_blur_far_enabled = close
-	focus_attributes.dof_blur_far_distance = focus * 1.8
-	focus_attributes.dof_blur_far_transition = focus * 2.0
+	focus_attributes.dof_blur_far_enabled = true
+	focus_attributes.dof_blur_far_distance = focus * FOCUS_FAR.x + FOCUS_FAR.y
+	focus_attributes.dof_blur_far_transition = focus * FOCUS_FADE.x + FOCUS_FADE.y
 	focus_attributes.dof_blur_near_enabled = true
 	focus_attributes.dof_blur_near_distance = minf(0.35, focus * 0.5)
 	focus_attributes.dof_blur_near_transition = 0.2
@@ -560,17 +592,16 @@ func can_stand() -> bool: return MOVEMENT.can_stand(self)
 func update_peek(delta: float) -> void:
 	var wanted := 1.0 if hidden and active and Input.is_action_pressed("forward") else 0.0
 	peek = move_toward(peek, wanted, delta * (0.5 if wanted > peek else 0.9))
-	# The eye goes to the crack once the body is in, and comes away as it leaves.
+	# The head settles once the body is in, and comes away as it leaves.
 	nook = move_toward(nook, 1.0 if hidden and transit.is_empty() else 0.0, delta * 3.0)
 	if not hidden:
 		peek_side = 0.0
 		return
-	# Where the crack and the gap are from where this body stands (which is
-	# where the wardrobe's back and sides let it, not always where it was
-	# put): the wardrobe's x and z are the body's turned half round.
+	# Where the gap is from where this body stands (which is where the
+	# wardrobe's back and sides let it, not always where it was put): the
+	# wardrobe's x and z are the body's turned half round.
 	if is_instance_valid(hiding_place) and transit.is_empty():
 		var stands: Vector3 = hiding_place.to_local(global_position)
-		crack_at = Vector3(stands.x - hiding_place.slit.x, 0.0, stands.z - (hiding_place.slit.z - CRACK_BACK))
 		gap_at = Vector3(stands.x, 0.0, stands.z - (hiding_place.hinge.z - PEEK_BACK))
 	var look := clampf(wrapf(rotation.y - hide_yaw, -PI, PI) / PEEK_TURN, -1.0, 1.0)
 	peek_side = move_toward(peek_side, look, delta * 2.5)
@@ -585,15 +616,42 @@ func update_peek(delta: float) -> void:
 	var limit := lerpf(HIDE_LOOK.x, HIDE_LOOK.y, peek)
 	rotation.y = hide_yaw + clampf(wrapf(rotation.y - hide_yaw, -PI, PI), -limit, limit)
 
-## Head offset in body space: at the crack with the doors shut, up behind the
-## gap as they open and over to the side away from where it looks, fixed to
-## the wardrobe rather than to where the view turns.
+## The lean asked for, eased, and how far of it the walls allow.
+func update_lean(delta: float, running: bool) -> void:
+	var wanted := 0.0
+	if active and not hidden and not reading and not held and transit.is_empty() and not running and InputMap.has_action("lean_left") and InputMap.has_action("lean_right"):
+		wanted = Input.get_action_strength("lean_right") - Input.get_action_strength("lean_left")
+	lean = move_toward(lean, wanted, delta * LEAN_SPEED)
+	var reach := smoothstep(0.0, 1.0, absf(lean)) * LEAN_REACH * signf(lean)
+	if absf(reach) > 0.001 and is_inside_tree():
+		if lean_ball == null:
+			lean_ball = SphereShape3D.new()
+			lean_ball.radius = LEAN_HEAD
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = lean_ball
+		query.transform = Transform3D(Basis.IDENTITY, to_global(Vector3(0.0, eye_height, 0.0)))
+		query.motion = global_basis.x * reach
+		query.collision_mask = 1 | 8
+		query.exclude = [get_rid()]
+		var free: PackedFloat32Array = get_world_3d().direct_space_state.cast_motion(query)
+		if free.size() > 0: reach *= free[0]
+	# Eased again, so that a wall met half way does not jerk the head back.
+	lean_out = move_toward(lean_out, reach, delta * LEAN_REACH * 6.0)
+
+## Where the lean puts the head, in the body's space.
+func lean_offset() -> Vector3:
+	if absf(lean_out) < 0.0001: return Vector3.ZERO
+	return Vector3(lean_out, -absf(lean_out) / LEAN_REACH * LEAN_DROP, 0.0)
+
+## Head offset in body space: a little back with the doors shut, up behind
+## the gap as they open and over to the side away from where it looks, fixed
+## to the wardrobe rather than to where the view turns.
 func peek_lean() -> Vector3:
 	if nook <= 0.0 and peek <= 0.0: return Vector3.ZERO
 	# Wardrobe-aligned axes seen from inside: forward is -Z, the right hand +X.
 	# Looking left moves over to the right-hand half, and the other way round.
 	var out := gap_at + Vector3(peek_side * PEEK_SIDE_LEAN, 0.0, 0.0)
-	return Basis(Vector3.UP, hide_yaw - rotation.y) * (crack_at * nook).lerp(out, peek)
+	return Basis(Vector3.UP, hide_yaw - rotation.y) * (Vector3(0.0, 0.0, REST_BACK) * nook).lerp(out, peek)
 
 ## The body on its way into a wardrobe or out of it (transit).
 func step_transit(delta: float) -> void:
@@ -623,6 +681,9 @@ func enter_hide(place: Node3D) -> bool:
 	place.enter(self)
 	hide_yaw = place.global_rotation.y + PI
 	nook = 0.0
+	# Whatever lean it came in with is not carried into the dark.
+	lean = 0.0
+	lean_out = 0.0
 	# Stepped into, turning round to face the doors.
 	transit = {"from": global_position, "to": place.to_global(place.inside_of(self)), "yaw_from": rotation.y, "yaw_to": hide_yaw, "time": 0.0, "length": place.ENTER_TIME}
 	velocity = Vector3.ZERO

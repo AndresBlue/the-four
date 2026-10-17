@@ -165,8 +165,9 @@ const ORDER := [VERY_LOW, LOW, MEDIUM, HIGH, ULTRA]
 ##                       camcorder's 1/60 s shutter (camera/motion_blur_effect.gd;
 ##                       0 off).
 ## autofocus             the lens focuses on what is in the centre, late, and
-##                       hunts; only something close blurs the background
-##                       (hotel_player.update_focus, Godot's depth of field).
+##                       hunts, and what is well beyond it goes soft, the
+##                       further the softer (hotel_player.update_focus,
+##                       FOCUS_FAR; Godot's depth of field).
 ## echo                  the creature's acoustic reading (echo_view.gd): rays
 ##                       per click, rays aimed at doors and wardrobes, grains
 ##                       remembered, grain size. Low keeps half the grains of

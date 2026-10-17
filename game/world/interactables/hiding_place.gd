@@ -1,9 +1,9 @@
 extends Area3D
 ## Wardrobe hiding place. Whoever is inside stands behind both doors shut,
-## an eye to the crack between them (`slit`); holding forward eases the doors
-## ajar. Each leaf opens on its own: looking to one side opens the opposite
-## leaf and shuts the near one, and the head, which stays inside, moves over
-## to look out between them. Closed doors block sight like a wall (the crack
+## with a thin line of the room through the crack between them (`slit`);
+## holding forward eases the doors ajar. Each leaf opens on its own: looking
+## to one side opens the opposite leaf and shuts the near one, and the head,
+## which stays inside, moves over to look out between them. Closed doors block sight like a wall (the crack
 ## is in what is drawn, not in what blocks: nothing sees in through it); a
 ## door left ajar lets a creature see who is inside. The Area3D itself is
 ## only the interaction target.
@@ -14,6 +14,9 @@ extends Area3D
 ## each behind a leaf. Everything below is the same for both, by `capacity`.
 const BODY := preload("res://assets/props/wardrobe/wardrobe_body.res")
 const LEAVES := {"left": preload("res://assets/props/wardrobe/wardrobe_leaf_left.res"), "right": preload("res://assets/props/wardrobe/wardrobe_leaf_right.res")}
+## And the plain board across the back of each, which casts no shadow
+## (tools/props/build_wardrobe.gd, BOARD_BEHIND).
+const INSIDES := {"left": preload("res://assets/props/wardrobe/wardrobe_leaf_left_inside.res"), "right": preload("res://assets/props/wardrobe/wardrobe_leaf_right_inside.res")}
 ## The small wardrobe: hinge of the right leaf in wardrobe space (the left one
 ## mirrors X), and its size.
 const HINGE := Vector3(0.615, 0.0, 0.38)
@@ -41,7 +44,7 @@ const EASE_ANGLE := 1.3
 const PEEK_AHEAD := 0.8
 ## The crack between the big wardrobe's two boards (the small one's is cut
 ## into its model: tools/props/build_wardrobe.gd, SLIT).
-const BIG_SLIT := 0.015
+const BIG_SLIT := 0.005
 ## Getting in and out is a movement (hotel_player.transit): how long the body
 ## takes to step in and to step out, and how long the key is held to leave
 ## without the bang of the doors (heard NOISE.QUIET of the way).
@@ -78,8 +81,8 @@ var depth := DEPTH
 var hinge := HINGE
 var capacity := 1
 ## The crack between the shut leaves, in wardrobe space: where its middle is
-## across (x) and how far out its inner mouth (z). Whoever is inside rests an
-## eye behind it (hotel_player.gd, CRACK_BACK).
+## across (x) and how far out its inner mouth (z): a thin line of the room
+## for whoever is inside.
 var slit := Vector3.ZERO
 ## Who is inside, in the order they got in, and which place each has.
 var occupants: Array = []
@@ -195,7 +198,11 @@ func _ready() -> void:
 		var mirror := -1.0 if side == "left" else 1.0
 		var pivot := Node3D.new()
 		pivot.name = "Hinge_" + side
-		pivot.position = Vector3(hinge.x * mirror, STAND, hinge.z)
+		# The small one's leaves turn where the model's do: at their back,
+		# against the side board (tools/props/build_wardrobe.gd); `hinge`
+		# stays the doors' front, which is what the rest goes by.
+		var axis: Vector3 = Vector3(hinge.x * mirror, 0.0, hinge.z) if big else LEAVES[side].get_meta("hinge", Vector3(hinge.x * mirror, 0.0, hinge.z))
+		pivot.position = Vector3(axis.x, STAND, axis.z)
 		add_child(pivot)
 		var leaf := MeshInstance3D.new()
 		leaf.mesh = big_leaf(side, scale_by) if big else LEAVES[side]
@@ -203,6 +210,12 @@ func _ready() -> void:
 			for surface in BIG_LEAF_MATERIALS.size():
 				if materials.has(BIG_LEAF_MATERIALS[surface]): leaf.set_surface_override_material(surface, materials[BIG_LEAF_MATERIALS[surface]])
 		pivot.add_child(leaf)
+		if not big:
+			var inside := MeshInstance3D.new()
+			inside.name = "Inside"
+			inside.mesh = INSIDES[side]
+			inside.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			pivot.add_child(inside)
 		# Leaves use the door layer: they block creature sight and movement.
 		var door := StaticBody3D.new()
 		door.collision_layer = 8
@@ -211,7 +224,9 @@ func _ready() -> void:
 		var cube := BoxShape3D.new()
 		cube.size = Vector3(hinge.x, height - 0.35, 0.04)
 		collider.shape = cube
-		collider.position = Vector3(-mirror * hinge.x * 0.5, 0.25 + (height - 0.35) * 0.5, -0.02)
+		# Where it always was across the front, shut: from the middle to the
+		# side, whatever the leaf turns about.
+		collider.position = Vector3(mirror * hinge.x * 0.5 - axis.x, 0.25 + (height - 0.35) * 0.5, hinge.z - 0.02 - axis.z)
 		door.add_child(collider)
 		pivot.add_child(door)
 		pivots[side] = pivot

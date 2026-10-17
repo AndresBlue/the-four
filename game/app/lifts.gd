@@ -334,7 +334,8 @@ func inside(index: int) -> Array:
 		var seat := int(body.slot)
 		if riding.has(seat) or int(level.session.participants.get(seat, level.session.Life.DEAD)) == level.session.Life.DEAD: continue
 		# Held on the blade is not in the car: the victim died in the next wing.
-		if not level.execution.is_empty() and int(level.execution.seat) == seat: continue
+		# Nor whoever dies with it (executions.partner_of).
+		if not level.execution.is_empty() and (int(level.execution.seat) == seat or int(level.execution.get("partner", -1)) == seat): continue
 		if level.hotel.in_car(index, body.global_position, 0.0 if body == level.player else RIDE_SLACK): bodies.append(body)
 	return bodies
 

@@ -382,6 +382,19 @@ func entry_checks() -> void:
 	await frames(2)
 	check("Con menos datos de los que hay, la escena se juega igual", bare)
 	clean("Y al soltarla no queda nada")
+	# Two in the big wardrobe, and the other one taken: this machine's player
+	# dies with them, and on this machine the scene is its own -- its face at
+	# the lens, its body lifted, its tape -- with the one taken as the partner.
+	var someone_else: int = player.slot + 7
+	level.apply_execution(someone_else, creature.global_position, float(data.yaw), {"entry": "wardrobe", "partner": player.slot})
+	await frames(4)
+	var shared: bool = not level.execution.is_empty() and int(level.execution.seat) == player.slot and int(level.execution.partner) == someone_else and level.tape.recording() and player.held
+	level.release_execution()
+	await frames(2)
+	check("Con dos en el armario grande, a cada uno le toca la suya: el otro ve su propia ejecución", shared)
+	clean("Y al soltarla tampoco queda nada")
+	var alone_data: Dictionary = level.executions.stage_capture(player)
+	check("Solo, no muere nadie más con él", int(alone_data.get("partner", -2)) == -1)
 
 # --- A capture, its whole length ----------------------------------------------------
 
