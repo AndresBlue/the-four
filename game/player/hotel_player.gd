@@ -456,6 +456,11 @@ func update_handheld(delta: float) -> void:
 ## is the same node from one match to the next, and anything it was doing
 ## would otherwise be carried across.
 func reset_handheld() -> void:
+	# What the hand had put on the camera comes off with it. Forgotten and
+	# left there, the bank of a quick turn stayed in the picture for good:
+	# turn fast into a wardrobe and come out tilted, until a turn the other
+	# way into another one straightened it.
+	if is_instance_valid(camera) and camera.rotation.is_finite() and handheld.is_finite(): camera.rotation -= handheld
 	sway = Vector3.ZERO
 	sway_velocity = Vector3.ZERO
 	turn_delta = Vector2.ZERO
@@ -464,16 +469,21 @@ func reset_handheld() -> void:
 	if is_instance_valid(camera) and not camera.rotation.is_finite(): camera.rotation = Vector3.ZERO
 
 ## How out of focus the lens lets things get (Godot's dof_blur_amount), and
-## where the far blur starts and how long it takes to be all of that, from
-## what the lens is focused on: [times its distance, plus metres]. A camcorder
-## at night has its iris wide open and little depth of field: whatever is well
-## beyond what it is focused on goes soft, the further the softer. (Until 17
-## October 2026 only something within 1.6 m blurred what was behind it, at
-## 0.06: from a corridor, its far end was as sharp as one's hand.) Raising
-## the amount costs: Godot's blur samples more the more it is asked for.
+## how far out of focus something has to be for the far blur to start and to
+## be all of it, in dioptres: one over the distance focused on, less one over
+## the distance of the thing. That is how a lens goes: focused on a hand, the
+## room behind it is gone; on a wall across the room, what is beyond is all
+## but sharp; and focused past 1 / FOCUS_SPREAD.x -- four metres -- nothing
+## behind blurs at all. (For a day, 17 October 2026, it went by the distance
+## focused on, times so much: a wall two metres off blurred a clock at seven.
+## Before that only something within 1.6 m blurred what was behind it, at
+## 0.06.) Raising the amount costs: Godot's blur samples more the more it is
+## asked for.
 const FOCUS_BLUR := 0.15
-const FOCUS_FAR := Vector2(1.3, 0.3)
-const FOCUS_FADE := Vector2(1.3, 1.2)
+const FOCUS_SPREAD := Vector2(0.25, 0.75)
+## Where the far blur would end, when it never gets all the way: this many
+## metres past where it starts.
+const FOCUS_FADE_MOST := 20.0
 
 func update_focus(delta: float) -> void:
 	if not autofocus:
@@ -495,9 +505,14 @@ func update_focus(delta: float) -> void:
 	hunt = maxf(0.0, hunt - delta * 2.5)
 	var swing := sin(hand_clock * 17.0) * hunt * 0.35 * focus_target
 	focus = lerpf(focus, focus_target + swing, 1.0 - exp(-delta * 6.0))
-	focus_attributes.dof_blur_far_enabled = true
-	focus_attributes.dof_blur_far_distance = focus * FOCUS_FAR.x + FOCUS_FAR.y
-	focus_attributes.dof_blur_far_transition = focus * FOCUS_FADE.x + FOCUS_FADE.y
+	var near := 1.0 / maxf(focus, 0.05)
+	focus_attributes.dof_blur_far_enabled = near > FOCUS_SPREAD.x
+	if near > FOCUS_SPREAD.x:
+		var starts := 1.0 / (near - FOCUS_SPREAD.x)
+		var whole := starts + FOCUS_FADE_MOST
+		if near > FOCUS_SPREAD.y: whole = minf(whole, 1.0 / (near - FOCUS_SPREAD.y))
+		focus_attributes.dof_blur_far_distance = starts
+		focus_attributes.dof_blur_far_transition = maxf(0.05, whole - starts)
 	focus_attributes.dof_blur_near_enabled = true
 	focus_attributes.dof_blur_near_distance = minf(0.35, focus * 0.5)
 	focus_attributes.dof_blur_near_transition = 0.2

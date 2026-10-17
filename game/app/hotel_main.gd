@@ -757,8 +757,8 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	sanity.minds.clear()
 	sanity.sight_rest = 0.0
 	sanity.sight_paid = 0.0
-	player.camera.rotation = Vector3.ZERO
 	player.reset_handheld()
+	player.camera.rotation = Vector3.ZERO
 	player.torch.visible = false
 	# Looking at the reception's door, whichever way the floor put it.
 	player.rotation.y = float(manifest.get("start_facing", PI))

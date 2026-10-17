@@ -524,9 +524,9 @@ func stop(alive: bool) -> void:
 	camera.top_level = false
 	camera.near = float(saved.get("near", camera.near))
 	camera.position = Vector3(0.0, player.eye_height, 0.0)
+	player.reset_handheld()
 	camera.rotation = Vector3.ZERO
 	player.handheld_enabled = bool(saved.get("handheld", true))
-	player.reset_handheld()
 	player.pilot_as = Vector3(-1.0, 0.0, 0.0)
 	player.avatar.show_to_owner(false)
 	var scream: AudioStreamPlayer = level.scream_sound

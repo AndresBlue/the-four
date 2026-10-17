@@ -382,8 +382,10 @@ herramientas para mirarlo están en la guía de desarrollo.
   red: mirar con dos personas que el que no fue elegido vea la suya entera,
   que los demás vean una sola ejecución y nadie de pie en el armario abierto,
   y que el piso cuente las dos muertes.
-- [ ] **El desenfoque por distancia, más fuerte (17 de octubre):** mirar si
-  el fondo blando ayuda o cansa, en Alto y Ultra (en los demás no hay).
+- [ ] **El desenfoque por distancia (17 de octubre):** ahora como un objetivo
+  de verdad, fuerte con algo cerca enfocado y casi nada a media distancia:
+  mirar si el fondo blando ayuda o cansa, en Alto y Ultra (en los demás no
+  hay).
 - [ ] **Los controles del mando, en revisión** (26 de septiembre): la
   distribución por defecto del superviviente y la de The Locust (hoy R2
   estoca, L2 chilla, triángulo rastro, cuadrado puertas y teles, L3 caza),

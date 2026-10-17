@@ -255,6 +255,17 @@ func run() -> void:
 	check("Escondite interactuable desde fuera", level.focused_hide() == hide)
 	enemy.position = hide.to_global(Vector3(0, 0.04, 3.5))
 	face(enemy, player.position)
+	# A quick turn banks the picture (the hand-held motion); going into the
+	# wardrobe in the middle of one left that bank on the camera for good.
+	# (The test profile has the hand still: it is given its default here.)
+	var hand_was := [player.settings.values.bob, player.settings.values.reduced, player.handheld_enabled]
+	player.settings.values.bob = 0.4
+	player.settings.values.reduced = false
+	player.handheld_enabled = true
+	for i in 8:
+		player.look_by(Vector2(0.15, 0.0))
+		await process_frame
+	var banked: float = absf(player.handheld.z)
 	check("Entrada al escondite físicamente disponible", player.enter_hide(hide))
 	check("Entrar es un movimiento: el cuerpo no aparece dentro de golpe", not player.transit.is_empty() and player.global_position.distance_to(hide.to_global(hide.inside_of(player))) > 0.5)
 	# The body steps in and the doors shut behind it: about a second.
@@ -309,6 +320,11 @@ func run() -> void:
 	var out: bool = player.leave_hide()
 	await frames(30)
 	check("Salida de escondite libre sin teletransporte a otra sala", out and player.position.distance_to(hide.to_global(hide.exit_offset)) < 0.1)
+	check("Y sin la inclinación del giro rápido con que entró: la imagen sale derecha", banked > 0.003 and absf(player.camera.rotation.z - player.handheld.z) < 0.001)
+	if banked <= 0.003 or absf(player.camera.rotation.z - player.handheld.z) >= 0.001: print("  roll %.4f, of which the hand %.4f (banked %.4f going in, hand strength %.2f)" % [player.camera.rotation.z, player.handheld.z, banked, player.handheld_strength()])
+	player.settings.values.bob = hand_was[0]
+	player.settings.values.reduced = hand_was[1]
+	player.handheld_enabled = hand_was[2]
 	# Leaning round a corner (1 and 3): the head goes to one side, the picture
 	# tips with it, and both come back when the key is let go.
 	player.active = true
