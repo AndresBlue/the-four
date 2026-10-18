@@ -358,7 +358,10 @@ herramientas para mirarlo están en la guía de desarrollo.
   juego. De lado, a esa velocidad, se usan los pasos laterales de caminar a
   más del doble de ritmo (no hay clips de carrera de lado): si se ven
   frenéticos, hacen falta esos dos clips. Girar sin moverse no tiene clip: los
-  pies giran con el cuerpo.
+  pies giran con el cuerpo. **Del 18 por la tarde, a mirar también:** el
+  fundido al cambiar de dirección (0,12 s andando, 0,22 corriendo: si queda
+  blando o todavía brusco) y el salto nuevo, corto y con los dos pies, con
+  las rodillas que amortiguan al caer.
 - [ ] **Las guías del cazador (23 de septiembre):** si la ruta azul al
   ascensor se lee como un camino que seguir, si las teles amarillas desde todo
   el piso le dan demasiado (hoy sabe siempre dónde se han encendido), y si la Q

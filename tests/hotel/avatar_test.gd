@@ -101,9 +101,20 @@ func run() -> void:
 		# floor and not one caught mid-step.
 		var settled: Array = await walk(0.0, 0.6, false, true, ["lf"])
 		var standing_foot: float = settled[settled.size() - 1].lf.y - body.global_position.y
-		var airborne: Array = await walk(2.0, 1.0, false, false, ["lf", "rf"])
-		var tucked: float = airborne[airborne.size() - 1].lf.y - body.global_position.y
-		check("%s: en el aire las piernas se recogen" % name, tucked > standing_foot + 0.08)
+		# Off the floor it jumps instead of walking on: once the jump has come
+		# in, the feet stop taking steps under the body.
+		var airborne: Array = await walk(2.0, 0.8, false, false, ["lf", "hip"])
+		var stepping := 0.0
+		for row in airborne.slice(airborne.size() / 2):
+			stepping = maxf(stepping, absf(((row.lf as Vector3) - (row.hip as Vector3)).x - ((airborne[airborne.size() / 2].lf as Vector3) - (airborne[airborne.size() / 2].hip as Vector3)).x))
+		check("%s: en el aire salta en vez de seguir andando" % name, stepping < 0.08)
+		# And back on the floor after it the knees take the landing: the hips go
+		# down, and come back up.
+		var landing: Array = await walk(0.0, 1.0, false, true, ["hip"])
+		var lowest := INF
+		for row in landing: lowest = minf(lowest, (row.hip as Vector3).y - body.global_position.y)
+		var stood: float = (landing[landing.size() - 1].hip as Vector3).y - body.global_position.y
+		check("%s: al caer, las rodillas amortiguan" % name, lowest < standing_hip - body.global_position.y - 0.06 and stood > lowest + 0.05)
 		avatar.queue_free()
 		await process_frame
 	# The detective's skin came from Mixamo without materials: each part wears

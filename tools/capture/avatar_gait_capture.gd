@@ -1,6 +1,7 @@
 extends SceneTree
-## Side-view contact sheet of a survivor's procedural gait: standing, walking,
-## running, crouched still (one hand down), crouched moving and in the air.
+## Side-view contact sheet of a survivor's movement (its clips,
+## survivor_clips.gd): standing, walking, running, crouched still (one hand
+## down), crouched moving, and a jump.
 ## The body is moved by script, on a floor with a tick every metre, so a foot
 ## that slides shows up at once.
 ##
@@ -114,18 +115,32 @@ func run() -> void:
 		camera.look_at(body.global_position + Vector3(0, 0.6, 0))
 		await process_frame
 		if i in [100, 120]: await grab()
-	# In the air: the legs let go of the ground and fold under the body.
-	for i in 60:
+	# A jump as the game makes one (survivor_gait: off the floor at 5.4 m/s,
+	# 20 m/s² down), walking: just off the floor, at the top, coming down, and
+	# the knees taking the landing.
+	for i in 40:
 		var delta := 1.0 / 60.0
 		at += 3.0 * delta
-		body.position = Vector3(at, 0.9, 0)
-		avatar.update_pose(Vector3(3.0, 4.0, 0), false, delta, false)
-		camera.position = body.global_position + aside * 3.6 + Vector3(0, 0.7, 0)
-		camera.look_at(body.global_position + Vector3(0, 0.5, 0))
+		body.position = Vector3(at, 0, 0)
+		avatar.update_pose(Vector3(3.0, 0, 0), false, delta, true)
 		await process_frame
-		if i in [30, 50]: await grab()
-	var sheet := Image.create(480 * 4, 320 * 4, false, Image.FORMAT_RGBA8)
-	for i in mini(frames.size(), 16):
+	var height := 0.0
+	var rising := 5.4
+	for i in 90:
+		var delta := 1.0 / 60.0
+		at += 3.0 * delta
+		var flying := i < 33
+		if flying:
+			height += rising * delta
+			rising -= 20.0 * delta
+		body.position = Vector3(at, maxf(height, 0.0), 0)
+		avatar.update_pose(Vector3(3.0, rising if flying else 0.0, 0), false, delta, not flying)
+		camera.position = Vector3(at, 0, 0) + aside * 3.6 + Vector3(0, 1.0, 0)
+		camera.look_at(Vector3(at, 0.9, 0))
+		await process_frame
+		if i in [4, 16, 28, 42]: await grab()
+	var sheet := Image.create(480 * 4, 320 * 5, false, Image.FORMAT_RGBA8)
+	for i in mini(frames.size(), 20):
 		sheet.blit_rect(frames[i], Rect2i(0, 0, 480, 320), Vector2i((i % 4) * 480, (i / 4) * 320))
 	sheet.save_png("res://evidence/avatar_gait_%d.png" % character)
 	print("AVATAR_GAIT ", frames.size(), " cuadros")

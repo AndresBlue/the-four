@@ -8,8 +8,18 @@ extends RefCounted
 ## from where it faces: ahead, back, to its left or to its right, and in
 ## between two of those, both of them; at a speed between two clips of a way,
 ## both of those (a walk, a hurried walk and a run ahead). Crouched, the
-## crouched ones; in the air, a fall; and nearly still, standing breathing or
-## crouched with a hand on the floor.
+## crouched ones; nearly still, standing breathing or crouched with a hand on
+## the floor. Nothing changes from one clip to another at once: what plays
+## moves towards what should over a moment (BLEND, longer the faster the body
+## goes), so turning round from a run ahead to a run back goes through the
+## steps in between instead of cutting from one to the other.
+##
+## Off the floor it is a jump, a short one with both feet: where it is in the
+## jump is where the body is in its own -- going up at JUMP_SPEED, the feet
+## just left the floor; at the top, the middle; coming down as fast, about to
+## land -- and once it is down again after a real jump (longer than
+## LANDS_AFTER off the floor), the knees take the landing as the clip's do,
+## less the faster the body is already going on.
 ##
 ## Every clip of a gait starts its cycle at the same moment of the step (the
 ## left foot furthest out, `phase0`) and they all play at one shared phase,
@@ -34,6 +44,13 @@ const HEADINGS := {"forward": 0.0, "right": PI / 2.0, "back": PI, "left": -PI / 
 ## Slower than this (metres a second) the body is standing; the gait comes
 ## in fully by four fifths of its slowest clip's speed.
 const STILL := 0.15
+## How long a change of clips takes to come in, about (seconds): walking, and
+## running at 6 m/s.
+const BLEND := 0.12
+const BLEND_RUNNING := 0.22
+## How fast the game's jump leaves the floor (survivor_gait / hotel_player).
+const JUMP_SPEED := 5.4
+const LANDS_AFTER := 0.25
 
 var rig: Skeleton3D
 ## name -> {animation, tracks [[bone, track, position?]], speed and stride
@@ -41,8 +58,15 @@ var rig: Skeleton3D
 var clips := {}
 ## Where the gait is in its cycle, 0 to 1.
 var phase := 0.0
-## For what has no cycle of steps: breathing, crouching, falling.
+## For what has no cycle of steps: breathing, crouching.
 var clock := 0.0
+## The clips playing now and how much, which move towards what is wanted.
+var mixed := {}
+## How fast the body is going up (metres a second), how long it has been off
+## the floor, and how long since it came down after a jump (-1: not landing).
+var rising := 0.0
+var flight := 0.0
+var landed := -1.0
 
 ## `scale`: how much the model was scaled to its height (its clips are
 ## measured in the model's own units).
@@ -59,12 +83,31 @@ func setup(library: AnimationLibrary, skeleton: Skeleton3D, scale: float) -> voi
 		clips[name] = {"animation": animation, "tracks": tracks, "speed": speed, "stride": speed * animation.length, "phase0": float(animation.get_meta("phase0", 0.0))}
 
 ## Poses the skeleton for a body going `local` (metres a second: x to its
-## right, y ahead of it), crouched `crouch` and off the floor `air` (0 to 1).
-func pose(local: Vector2, crouch: float, air: float, delta: float) -> void:
+## right, y ahead of it) and `up`, crouched `crouch` and off the floor `air`
+## (0 to 1), on the floor or not.
+func pose(local: Vector2, up: float, crouch: float, air: float, grounded: bool, delta: float) -> void:
 	if rig == null or clips.is_empty(): return
-	var weights := weigh(local, crouch, air)
-	advance(weights, local.length(), delta)
-	apply(weights)
+	rising = up
+	if not grounded:
+		flight += delta
+		landed = -1.0
+	else:
+		if flight > LANDS_AFTER and clips.has("jump"): landed = 0.0
+		elif landed >= 0.0: landed += delta
+		flight = 0.0
+	var speed := local.length()
+	blend(weigh(local, crouch, air), speed, delta)
+	advance(mixed, speed, delta)
+	apply(mixed)
+
+## What plays moves towards what is wanted.
+func blend(wanted: Dictionary, speed: float, delta: float) -> void:
+	var toward := 1.0 - exp(-delta / lerpf(BLEND, BLEND_RUNNING, clampf(speed / 6.0, 0.0, 1.0)))
+	for name in wanted:
+		if not mixed.has(name): mixed[name] = 0.0
+	for name in mixed.keys():
+		mixed[name] = lerpf(float(mixed[name]), float(wanted.get(name, 0.0)), toward)
+		if float(mixed[name]) < 0.002 and not wanted.has(name): mixed.erase(name)
 
 func weigh(local: Vector2, crouch: float, air: float) -> Dictionary:
 	var weights := {}
@@ -85,8 +128,32 @@ func weigh(local: Vector2, crouch: float, air: float) -> Dictionary:
 			if toward <= 0.0: continue
 			var paced := by_speed(gaits[way], speed)
 			for name in paced: add(weights, name, amount * moving * toward * float(paced[name]))
-	if air > 0.0: add(weights, "fall", air)
+	if air > 0.0: add(weights, "jump", air)
+	# Down after a jump: the knees take it, as the clip's do.
+	if landed >= 0.0 and clips.has("jump"):
+		var animation: Animation = clips.jump.animation
+		var lasts := float(animation.get_meta("settled")) - float(animation.get_meta("landing"))
+		if landed >= lasts: landed = -1.0
+		else:
+			var land := (1.0 - smoothstep(0.0, lasts, landed)) * (1.0 - 0.6 * smoothstep(STILL, 2.0, speed))
+			for name in weights: weights[name] = float(weights[name]) * (1.0 - land)
+			add(weights, "land", land)
 	return weights
+
+## The clip a name plays: the landing is the end of the jump.
+func clip_of(name: String) -> Dictionary:
+	return clips.jump if name == "land" else clips[name]
+
+## Where in its clip a name is now.
+func time_of(name: String, clip: Dictionary) -> float:
+	var animation: Animation = clip.animation
+	if name == "jump":
+		var off := float(animation.get_meta("takeoff"))
+		var down := float(animation.get_meta("landing"))
+		return lerpf(off, down, clampf(0.5 - rising / (2.0 * JUMP_SPEED), 0.0, 1.0))
+	if name == "land": return minf(float(animation.get_meta("landing")) + landed, animation.length)
+	if float(clip.speed) > 0.0: return fposmod(float(clip.phase0) + phase * animation.length, animation.length)
+	return fposmod(clock, animation.length)
 
 static func add(weights: Dictionary, name: String, weight: float) -> void:
 	if weight > 0.0: weights[name] = float(weights.get(name, 0.0)) + weight
@@ -110,8 +177,9 @@ func advance(weights: Dictionary, speed: float, delta: float) -> void:
 	var stride := 0.0
 	var total := 0.0
 	for name in weights:
-		if float(clips[name].speed) <= 0.0: continue
-		stride += float(weights[name]) * float(clips[name].stride)
+		var clip := clip_of(name)
+		if float(clip.speed) <= 0.0: continue
+		stride += float(weights[name]) * float(clip.stride)
 		total += float(weights[name])
 	if total > 0.001 and stride > 0.001: phase = fposmod(phase + delta * speed * total / stride, 1.0)
 
@@ -123,9 +191,9 @@ func apply(weights: Dictionary) -> void:
 	for name in weights:
 		var weight: float = weights[name]
 		if weight < 0.001: continue
-		var clip: Dictionary = clips[name]
+		var clip := clip_of(name)
 		var animation: Animation = clip.animation
-		var time := fposmod(float(clip.phase0) + phase * animation.length, animation.length) if float(clip.speed) > 0.0 else fposmod(clock, animation.length)
+		var time := time_of(name, clip)
 		for entry in clip.tracks:
 			var bone: int = entry[0]
 			if entry[2]:

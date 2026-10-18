@@ -21,9 +21,18 @@ extends SceneTree
 ## speed (survivor_clips.gd): `speed`, how fast the body goes in it (metres a
 ## second, in the model's units), read from the foot on the floor sliding
 ## back under the hips; `travel`, which way (model space, the body facing +Z);
-## and `phase0`, the moment the left foot is furthest out in that direction,
-## where every clip of a gait starts its cycle so that two of them can be
-## mixed without the feet coming apart.
+## and `phase0`, the moment the left foot is furthest ahead (for a clip that
+## goes ahead or back) or furthest to the body's left (one that goes to a
+## side), where every clip of a gait starts its cycle so that two of them can
+## be mixed without the feet coming apart -- and so that two that go opposite
+## ways have the same leg ahead at the same moment, and turning round from one
+## to the other crosses no legs.
+##
+## The jump is not a loop: it is played as the body goes up and comes down
+## (survivor_clips.gd), and carries `takeoff`, `landing` and `settled`, the
+## moments its feet leave the floor, meet it again and the knees have taken
+## the landing. Its hips go no higher than the feet under them let them: the
+## body is lifted by the game, not by the clip.
 const SOURCE := "models/mixamo/"
 ## Name in the game: file in models/mixamo/, or [file, mirrored]. Mixamo's
 ## "Crouched Cover Sneaking Left" goes along with its back to the cover, the
@@ -42,8 +51,10 @@ const CLIPS := {
 	"crouch_back": "crouch_walk_back",
 	"crouch_left": ["crouched_sneaking_right", true],
 	"crouch_right": "crouched_sneaking_right",
-	"fall": "falling_idle",
+	"jump": "jumping_forward",
 }
+## The clips that leave the floor (above).
+const LEAPS := ["jump"]
 const TARGETS := ["detective", "detective_woman", "realistic_female"]
 ## The clips' bones by their Mixamo name (without "mixamorig_") and, on the
 ## Exploradora, the Character Creator bone that does the same work. Her twist,
@@ -80,6 +91,7 @@ func run() -> void:
 			failed = true
 			continue
 		source.mirrored = CLIPS[name] is Array and bool(CLIPS[name][1])
+		source.leap = name in LEAPS
 		sources[name] = source
 	for id in TARGETS:
 		var scene: Node3D = load("res://assets/players/%s/model.fbx" % id).instantiate()
@@ -90,7 +102,7 @@ func run() -> void:
 		for name in sources:
 			var animation := retarget(sources[name], scene, skeleton, mapping)
 			library.add_animation(name, animation)
-			print("BAKE %-17s %-12s %5.2f s, %4.2f m/s towards %s, left foot out at %.2f s" % [id, name, animation.length, float(animation.get_meta("speed")), (animation.get_meta("travel") as Vector3).snapped(Vector3.ONE * 0.01), float(animation.get_meta("phase0"))])
+			print("BAKE %-17s %-12s %5.2f s, %4.2f m/s towards %s, left foot out at %.2f s%s" % [id, name, animation.length, float(animation.get_meta("speed")), (animation.get_meta("travel") as Vector3).snapped(Vector3.ONE * 0.01), float(animation.get_meta("phase0")), ", off the floor %.2f to %.2f s, settled at %.2f s" % [float(animation.get_meta("takeoff")), float(animation.get_meta("landing")), float(animation.get_meta("settled"))] if animation.has_meta("takeoff") else ""])
 		var error := ResourceSaver.save(library, "res://assets/players/%s/clips.res" % id)
 		if error != OK: failed = true
 		scene.queue_free()
@@ -261,10 +273,12 @@ func retarget(source: Dictionary, scene: Node3D, skeleton: Skeleton3D, wanted: D
 	for name in ["mixamorig_LeftToeBase", "mixamorig_RightToeBase", "mixamorig_LeftHand", "mixamorig_Head"]:
 		var id := clip_skeleton.find_bone(name)
 		if (first[id] as Transform3D).origin.distance_to((last[id] as Transform3D).origin) > 0.02: repeats = false
-	var played := frames - 1 if repeats and frames > 2 else frames
+	var played := frames - 1 if repeats and frames > 2 and not source.leap else frames
 	var animation := Animation.new()
 	animation.length = float(played) / FPS
-	animation.loop_mode = Animation.LOOP_LINEAR
+	animation.loop_mode = Animation.LOOP_NONE if source.leap else Animation.LOOP_LINEAR
+	var clip_toes := [clip_skeleton.find_bone("mixamorig_LeftToeBase"), clip_skeleton.find_bone("mixamorig_RightToeBase")]
+	var rest_feet := minf((clip_rest[clip_toes[0]] as Transform3D).origin.y, (clip_rest[clip_toes[1]] as Transform3D).origin.y)
 	var prefix := String(scene.get_path_to(skeleton))
 	var rotation_track := {}
 	for bone in order:
@@ -278,9 +292,13 @@ func retarget(source: Dictionary, scene: Node3D, skeleton: Skeleton3D, wanted: D
 	var toes := [int(target_of.get("LeftToeBase", -1)), int(target_of.get("RightToeBase", -1))]
 	var toe_track := [PackedVector3Array(), PackedVector3Array()]
 	var hip_track_points := PackedVector3Array()
+	# How high the clip's own feet are (a jump leaves the floor in the clip; on
+	# the target it is the game that lifts the body).
+	var clip_feet := PackedFloat32Array()
 	for frame in played:
 		var time := float(frame) / FPS
 		var clip := clip_pose(source, time)
+		clip_feet.append(minf((clip[clip_toes[0]] as Transform3D).origin.y, (clip[clip_toes[1]] as Transform3D).origin.y))
 		var posed := []
 		posed.resize(skeleton.get_bone_count())
 		for bone in order:
@@ -297,6 +315,11 @@ func retarget(source: Dictionary, scene: Node3D, skeleton: Skeleton3D, wanted: D
 				if bone == hips:
 					var sway: Vector3 = ((clip[clip_hips] as Transform3D).origin - (clip_rest[clip_hips] as Transform3D).origin) * hip_ratio
 					if source.mirrored: sway.x = -sway.x
+					# Off the floor, only as low as the knees take them over the feet.
+					if source.leap:
+						var feet := minf((clip[clip_toes[0]] as Transform3D).origin.y, (clip[clip_toes[1]] as Transform3D).origin.y)
+						var over: float = (clip[clip_hips] as Transform3D).origin.y - feet
+						sway = Vector3(0.0, (over - ((clip_rest[clip_hips] as Transform3D).origin.y - rest_feet)) * hip_ratio, 0.0)
 					origin = (rest[bone] as Transform3D).origin + sway
 				placed = Transform3D(Basis(turned) * Basis.from_scale((rest[bone] as Transform3D).basis.get_scale()), origin)
 			posed[bone] = placed
@@ -307,8 +330,36 @@ func retarget(source: Dictionary, scene: Node3D, skeleton: Skeleton3D, wanted: D
 		for side in 2:
 			if toes[side] >= 0: toe_track[side].append((posed[toes[side]] as Transform3D).origin)
 		hip_track_points.append((posed[hips] as Transform3D).origin)
-	measure(animation, toe_track, hip_track_points, played)
+	if source.leap: measure_leap(animation, clip_feet, hip_track_points, played)
+	else: measure(animation, toe_track, hip_track_points, played)
 	return animation
+
+## When a jump's feet leave the floor and meet it again, and when the knees
+## have taken the landing (the hips back up to where they end).
+func measure_leap(animation: Animation, feet: PackedFloat32Array, hips: PackedVector3Array, frames: int) -> void:
+	var lowest := INF
+	for height in feet: lowest = minf(lowest, height)
+	var takeoff := -1
+	var landing := -1
+	for frame in frames:
+		var off: bool = feet[frame] > lowest + 0.04
+		if off and takeoff < 0: takeoff = frame
+		elif not off and takeoff >= 0 and landing < 0: landing = frame
+	var settled := frames - 1
+	if landing >= 0:
+		var deepest := landing
+		for frame in range(landing, frames):
+			if hips[frame].y < hips[deepest].y: deepest = frame
+		for frame in range(deepest, frames):
+			if hips[frame].y >= hips[frames - 1].y - 0.01:
+				settled = frame
+				break
+	animation.set_meta("speed", 0.0)
+	animation.set_meta("travel", Vector3.ZERO)
+	animation.set_meta("phase0", 0.0)
+	animation.set_meta("takeoff", float(maxi(takeoff, 0)) / FPS)
+	animation.set_meta("landing", float(maxi(landing, takeoff + 1)) / FPS)
+	animation.set_meta("settled", float(settled) / FPS)
 
 ## The clip's speed and direction, from the foot on the floor sliding back
 ## under the hips, and the moment its left foot is furthest out that way.
@@ -341,9 +392,12 @@ func measure(animation: Animation, toes: Array, hips: PackedVector3Array, frames
 		travel = Vector3.ZERO
 	var phase0 := 0.0
 	if speed > 0.0:
+		# Ahead, for one that goes ahead or back; to the body's left, for one
+		# that goes to a side: the same for two clips going opposite ways.
+		var axis := Vector3.BACK if absf(travel.z) >= absf(travel.x) else Vector3.RIGHT
 		var furthest := -INF
 		for frame in frames:
-			var out: float = ((toes[0][frame] as Vector3) - hips[frame]).dot(travel)
+			var out: float = ((toes[0][frame] as Vector3) - hips[frame]).dot(axis)
 			if out > furthest:
 				furthest = out
 				phase0 = float(frame) / FPS

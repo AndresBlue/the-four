@@ -245,7 +245,7 @@ func update_pose(velocity: Vector3, crouching: bool, delta: float, grounded := t
 	# Seen from the body: to its right, and ahead (it faces -Z).
 	var basis := global_basis.orthonormalized()
 	var local := Vector2(velocity.dot(basis.x), velocity.dot(-basis.z))
-	gait.pose(local, crouch_blend, air_blend, delta)
+	gait.pose(local, velocity.y, crouch_blend, air_blend, grounded, delta)
 	lock_feet(delta, local.length() > LOCK_SPEED and air_blend < 0.3)
 
 ## A foot on the floor stays where it was put. A clip's foot slides a little
@@ -256,12 +256,19 @@ func update_pose(velocity: Vector3, crouching: bool, delta: float, grounded := t
 ## and the knee bends to keep it there, and as it leaves the floor it is let
 ## go over a moment. Only across the floor: up and down, and how the foot
 ## rolls over onto its toes, are the clip's -- which is why it is the ball of
-## the foot that stays and not the ankle, which goes forward over it. One that
-## would have to stretch further than LOCK_REACH to stay is let go at once (a
-## turn, a step off something).
+## the foot that stays and not the ankle, which goes forward over it. It is
+## let go only once it is well up (LIFTED over PLANTED: a running foot brushes
+## the line more than once on its way down), and held again from where it is
+## seen, which may still be on its way out of the last hold: from where the
+## clip has it, it jumped. One the clip takes further than LOCK_REACH from
+## where it is held is dragged after it rather than let go with a snap; one
+## that would have to cross more than LOCK_GONE (put somewhere else) is let
+## go at once.
 const PLANTED := 0.05
+const LIFTED := 0.03
 const LOCK_SPEED := 0.3
 const LOCK_REACH := 0.3
+const LOCK_GONE := 1.0
 const LOCK_RELEASE := 0.08
 var locks := {}
 
@@ -276,12 +283,20 @@ func lock_feet(delta: float, moving: bool) -> void:
 		var foot := bone_point(ankle)
 		var ball := bone_point(toe)
 		if not lock.has("rest"): lock.rest = (global_transform.affine_inverse() * rig.global_transform * rig.get_bone_global_rest(toe).origin).y
-		var down: bool = moving and ball.y - floor_y < float(lock.rest) + PLANTED
-		if down and not lock.on:
+		var height: float = ball.y - floor_y - float(lock.rest)
+		if not moving or height > PLANTED + LIFTED: lock.on = false
+		elif height < PLANTED and not lock.on:
 			lock.on = true
-			lock.at = ball
-		elif not down: lock.on = false
-		if lock.on and Vector2(ball.x - lock.at.x, ball.z - lock.at.z).length() > LOCK_REACH: lock.on = false
+			var weight := float(lock.weight)
+			lock.at = Vector3(lerpf(ball.x, lock.at.x, weight), ball.y, lerpf(ball.z, lock.at.z, weight))
+		if lock.on:
+			var off := Vector2(lock.at.x - ball.x, lock.at.z - ball.z)
+			if off.length() > LOCK_GONE:
+				lock.on = false
+				lock.weight = 0.0
+			elif off.length() > LOCK_REACH:
+				off = off.normalized() * LOCK_REACH
+				lock.at = Vector3(ball.x + off.x, lock.at.y, ball.z + off.y)
 		lock.weight = 1.0 if lock.on else move_toward(float(lock.weight), 0.0, delta / LOCK_RELEASE)
 		# The ankle where it has to be for the ball of the foot, turned as the
 		# clip turns it, to be where it came down.
