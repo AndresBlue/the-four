@@ -10,7 +10,6 @@ const MESHES := [
 	"res://assets/props/wall_lamp/wall_lamp.res",
 	"res://assets/props/monstera/monstera.res",
 	"res://assets/props/sofa/sofa.res",
-	"res://game/player/avatars/detective_relaxed.res",
 ]
 
 func _initialize() -> void:

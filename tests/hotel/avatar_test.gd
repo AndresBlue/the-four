@@ -45,7 +45,7 @@ func run() -> void:
 	world.add_child(body)
 	# The rig walks along +X, so the body faces that way: forward is -Z.
 	body.rotation.y = -PI / 2
-	for character in [1, 2]:
+	for character in [0, 1, 2]:
 		avatar = AVATAR.new()
 		avatar.character = character
 		avatar.first_person = false
@@ -55,18 +55,20 @@ func run() -> void:
 		check("%s: el esqueleto y sus huesos están" % name, avatar.rig != null and avatar.bones.get("hip", -1) >= 0 and avatar.bones.get("lf", -1) >= 0 and avatar.bones.get("rh", -1) >= 0)
 		# --- Walking ---------------------------------------------------------------
 		var standing_hip := bone_at("hip").y
-		var samples: Array = await walk(3.4, 2.0, false, true, ["lf", "rf", "lk", "lt", "rh", "hip"])
-		# A planted foot does not slide: between one step and the next its world
-		# position holds still while the body moves on.
+		var samples: Array = await walk(3.4, 2.0, false, true, ["lf", "rf", "lk", "lt", "rh", "hip", "lo"])
+		# A planted foot does not slide: while the ball of it is on the floor it
+		# holds still across it while the body moves on, and it is on the floor
+		# a good part of every step.
+		var low := INF
+		for row in samples.slice(20): low = minf(low, (row.lo as Vector3).y)
 		var still := 0
 		var slid := 0.0
-		for i in range(20, samples.size()):
-			var moved: float = samples[i].lf.distance_to(samples[i - 1].lf)
-			var body_moved: float = samples[i].at - samples[i - 1].at
-			if moved < body_moved * 0.25:
-				still += 1
-				slid = maxf(slid, moved)
-		check("%s: el pie plantado no patina" % name, still > samples.size() / 4 and slid < 0.02)
+		for i in range(21, samples.size()):
+			if (samples[i].lo as Vector3).y > low + 0.03 or (samples[i - 1].lo as Vector3).y > low + 0.03: continue
+			still += 1
+			var across: Vector3 = samples[i].lo - samples[i - 1].lo
+			slid = maxf(slid, Vector2(across.x, across.z).length())
+		check("%s: el pie plantado no patina" % name, still > samples.size() / 6 and slid < 0.01)
 		# The knee bends over a stride instead of the leg being a stilt.
 		var bend_min := PI
 		var bend_max := 0.0
@@ -104,14 +106,14 @@ func run() -> void:
 		check("%s: en el aire las piernas se recogen" % name, tucked > standing_foot + 0.08)
 		avatar.queue_free()
 		await process_frame
-	# The model with no bones at all still poses without complaining.
+	# The detective's skin came from Mixamo without materials: each part wears
+	# the OBJ's, relief and all.
 	avatar = AVATAR.new()
 	avatar.character = 0
 	body.add_child(avatar)
 	await process_frame
-	avatar.update_pose(Vector3(3.0, 0, 0), false, 1.0 / 60.0, true)
-	avatar.update_pose(Vector3.ZERO, true, 1.0 / 60.0, true)
-	check("El modelo sin esqueleto no se rompe", avatar.model != null and avatar.rig == null)
+	var dressed: Array = avatar.meshes.filter(func(mesh): return mesh.get_surface_override_material(0) != null and mesh.get_surface_override_material(0).albedo_texture != null)
+	check("El detective lleva su ropa y su piel", dressed.size() == avatar.meshes.size())
 	check("El detective lleva el relieve que trae su modelo", avatar.meshes[0].get_surface_override_material(0).normal_texture != null)
 	avatar.queue_free()
 	await process_frame

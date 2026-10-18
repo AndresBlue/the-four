@@ -350,8 +350,15 @@ herramientas para mirarlo están en la guía de desarrollo.
 
 ### Lo que hay que mirar
 
-- [ ] **Cómo se ven las animaciones de los supervivientes** ahora que van por
-  pies plantados e IK.
+- [ ] **Cómo se mueven los supervivientes, con clips de Mixamo (18 de
+  octubre):** si se ven naturales en partida, en primera persona (la sombra)
+  y vistos desde fuera. **A la velocidad de caminar del juego (3,8 m/s) el
+  cuerpo trota**: una persona camina a 1,4 m/s, y con un clip de verdad se
+  nota. Decidir si caminar se queda así o se baja la velocidad, que cambia el
+  juego. De lado, a esa velocidad, se usan los pasos laterales de caminar a
+  más del doble de ritmo (no hay clips de carrera de lado): si se ven
+  frenéticos, hacen falta esos dos clips. Girar sin moverse no tiene clip: los
+  pies giran con el cuerpo.
 - [ ] **Las guías del cazador (23 de septiembre):** si la ruta azul al
   ascensor se lee como un camino que seguir, si las teles amarillas desde todo
   el piso le dan demasiado (hoy sabe siempre dónde se han encendido), y si la Q
@@ -602,14 +609,14 @@ pueda jugar entero sin tocar el teclado.
     (13 de octubre), lo que DIFFICULTY.md mide de cada dificultad (cuántas
     persecuciones acaban en huida) está sin volver a medir con bots.
   - [ ] Los brazos de la propia bestia atraviesan paredes en sitios
-    estrechos (no se ha tocado: solo el cuerpo de la víctima), y el
-    Detective Masculino, sin esqueleto, no se puede corregir hueso a hueso.
+    estrechos (no se ha tocado: solo el cuerpo de la víctima).
   - [ ] La estocada del jugador que lleva a la bestia (versus) conserva sus
     0,3 s de preparación y su ladrido: decidir si también va a 0.
   - [ ] Las poses del cuerpo en la captura (colgando, tendido, sentado) están
-    hechas mirando a la Exploradora: ajustarlas al Detective Femenino, que
-    las hereda por los huesos comunes. El Detective Masculino no tiene
-    esqueleto y solo se inclina (apartado 4).
+    hechas mirando a la Exploradora: ajustarlas a los dos detectives, que las
+    heredan por los huesos comunes. El Detective Masculino tiene esqueleto
+    desde el 18 de octubre y ya cuelga, cae y queda sentado como los demás,
+    pero nadie lo ha mirado en la captura.
   - [ ] Una prueba de red que mire la escena desde la máquina de un testigo
     (hoy los cuatro escenarios pasan, y uno ejecuta a alguien sacándolo de un
     armario, pero ninguno compara lo que ve cada máquina).
@@ -681,11 +688,6 @@ pueda jugar entero sin tocar el teclado.
   archivo exista; hasta entonces, silencio.
 - [ ] **Sonidos de cajas y basureros** (cartón que cae, metal que se vuelca
   y rueda, a varias fuerzas), para los objetos que se empujan del apartado 3.
-- [ ] **Un detective masculino con esqueleto.** El de ahora es un OBJ sin
-  huesos: se queda con su movimiento viejo hasta que se reemplace, y la mano
-  que se apoya en el suelo al agacharse llega al suelo pero no reparte el peso.
-  En la captura es el único cuerpo que no cuelga, ni cae tendido, ni queda
-  sentado: solo se inclina.
 - [ ] **Sonidos propios para la captura.** Lo que hoy suena al caer la
   videocámara, al rozar la ropa mientras la bestia levanta el cuerpo y al
   caer el cuerpo son grabaciones prestadas de otras escenas, bajadas de tono

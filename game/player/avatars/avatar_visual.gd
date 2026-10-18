@@ -23,41 +23,21 @@ const CHARACTER_CREATOR := {
 	"lt": "CC_Base_L_Thigh", "lk": "CC_Base_L_Calf", "lf": "CC_Base_L_Foot", "lo": "CC_Base_L_ToeBase",
 	"rt": "CC_Base_R_Thigh", "rk": "CC_Base_R_Calf", "rf": "CC_Base_R_Foot", "ro": "CC_Base_R_ToeBase",
 }
-## How far apart the feet stand. A stride grows with speed, the way a person's
-## does -- about 0.75 m standing still and a third of a metre more for every
-## metre per second -- and a step is in the air for a third of it, so a foot is
-## planted the other two thirds. That ratio is what keeps somebody walking
-## instead of gliding: too short a stride and both feet swing at once.
-const STANCE := 0.11
-const STRIDE_BASE := 0.75
-const STRIDE_PER_SPEED := 0.34
-const STRIDE_RANGE := Vector2(0.9, 2.7)
-const STRIDE_CROUCH := 0.66
-const SWING_SHARE := 0.5
-const RUN_SPEED := 6.0
 ## How high the ankle sits above the sole, so a planted foot rests on the
 ## floor instead of sinking into it.
 const ANKLE_HEIGHT := 0.09
-## How high the propped hand rests: on the ground in front, near the knee.
-const HAND_REST := 0.2
+const SURVIVOR_CLIPS := preload("res://game/player/avatars/survivor_clips.gd")
 var model: Node3D
 var rig: Skeleton3D
 var bones := {}
 var lengths := {}
-## Each foot: where it is planted in the world, and the step it is taking.
-var feet := {}
+## How the body moves: its clips (survivor_clips.gd, assets/players/<id>/clips.res).
+var gait
 ## Smoothed 0..1 readings of what the body is doing, so nothing snaps.
 var crouch_blend := 0.0
 var air_blend := 0.0
-var lean := 0.0
-var bob := 0.0
-var hand_down := 0.0
 var meshes: Array[MeshInstance3D] = []
-var phase := 0.0
 var initialized := false
-# Fitted transform of the unrigged model, reused by its crouch/walk motion.
-var base_scale := Vector3.ONE
-var base_height := 0.0
 ## Whether the body casts shadows. Only the local first-person body turns it
 ## off (graphics preset body_shadow): nobody sees it but its own shadow, and
 ## walking it re-renders every lamp shadow round the player.
@@ -74,11 +54,10 @@ func configure(index: int, local_view: bool) -> void:
 		model.queue_free()
 	rig = null
 	bones.clear()
+	locks.clear()
 	meshes.clear()
-	if character == 0:
-		model = MeshInstance3D.new()
-		model.mesh = load("res://game/player/avatars/detective_relaxed.res")
-	else: model = load("res://assets/players/%s/model.fbx" % IDS[character]).instantiate()
+	model = load("res://assets/players/%s/model.fbx" % IDS[character]).instantiate()
+	if character == 0: dress_detective()
 	model.name = "Model"
 	# The Exploradora's FBX brings the camera it was shown with ("Preview_Camera").
 	# First into a viewport, it became that viewport's camera: the character
@@ -112,22 +91,38 @@ func configure(index: int, local_view: bool) -> void:
 	model.scale *= size_factor
 	model.position.y -= bounds.position.y * size_factor
 	model.rotation.y += PI
-	base_scale = model.scale
-	base_height = model.position.y
 	var rigs := model.find_children("*", "Skeleton3D", true, false)
 	if not rigs.is_empty():
 		# Some models carry a small accessory skeleton too; animate the body one.
 		rigs.sort_custom(func(a, b): return a.get_bone_count() > b.get_bone_count())
 		rig = rigs[0]
-		var names := MIXAMO if character == 1 else CHARACTER_CREATOR
+		var names := CHARACTER_CREATOR if character == 2 else MIXAMO
 		for key in names: bones[key] = rig.find_bone(names[key])
 		# The lengths of the limbs in the rest pose, which is what the IK
 		# solves against.
 		for side in ["l", "r"]:
 			lengths[side + "leg"] = Vector2(bone_gap(side + "t", side + "k"), bone_gap(side + "k", side + "f"))
 			lengths[side + "arm"] = Vector2(bone_gap(side + "a", side + "e"), bone_gap(side + "e", side + "h"))
+		gait = SURVIVOR_CLIPS.new()
+		gait.setup(load("res://assets/players/%s/clips.res" % IDS[character]), rig, absf(model.scale.x))
 	initialized = true
 	update_pose(Vector3.ZERO, false, 0)
+
+## The detective's skeleton and skin are Mixamo's auto-rigger's, made from
+## the OBJ it came as (assets/players/detective/model.obj): it kept the meshes
+## and their UVs but not the materials, so each part wears its own from the OBJ.
+const DETECTIVE_PARTS := {"Body": "Body", "Eyes": "Body", "Eyelashes": "Body", "Gloves": "Glove", "Tops": "Top", "Bottoms": "Bottom", "Shoes": "Shoes", "Hats": "Hat", "Eyewear": "Eyewear"}
+
+func dress_detective() -> void:
+	var source: Mesh = load("res://assets/players/detective/model.obj")
+	var materials := {}
+	for surface in source.get_surface_count():
+		var material := source.surface_get_material(surface)
+		if material != null: materials[material.resource_name] = material
+	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+		var wanted: String = DETECTIVE_PARTS.get(String(mesh.name), "")
+		if mesh.mesh == null or not materials.has(wanted): continue
+		for surface in mesh.mesh.get_surface_count(): mesh.set_surface_override_material(surface, materials[wanted])
 
 ## The clips of a model still move what was taken out of it (its camera):
 ## those tracks go too, or every body made of it warns that it cannot find
@@ -235,238 +230,90 @@ func set_body_shadow(on: bool) -> void:
 	for mesh in meshes:
 		if mesh.cast_shadow != setting: mesh.cast_shadow = setting
 
-## Procedural animation, the same idea as the creature's (locust_visual.gd):
-## the feet are planted in the world and only move while they are taking a
-## step, so nobody slides, and two-bone IK bends the knees to reach them.
-## Everything else hangs off that -- the body rises and falls with the step,
-## the chest leans into the speed, the arms swing against the legs and the
-## head stays level.
-##
-## Crouching is its own pose: hips down, back rounded, knees deep, and while
-## they are still, one hand down on the floor, which comes up as soon as they
-## move. In the air the legs tuck and the feet let go of the ground.
+## How the body moves while somebody is in it: the clips, mixed by where it
+## is going and how fast, crouched or not, on the floor or off it
+## (survivor_clips.gd). Crouching and leaving the floor come in over a
+## fraction of a second, so nothing snaps.
 ##
 ## Presentation only: it never moves the body, and it is the same code for
 ## your own body and for a teammate's.
 func update_pose(velocity: Vector3, crouching: bool, delta: float, grounded := true) -> void:
-	if not initialized or fallen: return
-	var planar := Vector3(velocity.x, 0, velocity.z)
-	var speed := planar.length()
-	phase += delta * speed * 2.5
-	if rig == null:
-		# The OBJ has no bones: only a restrained whole-body walking motion.
-		model.position.y = base_height + (absf(sin(phase)) * 0.015 if speed > 0.1 else 0.0)
-		model.scale.y = base_scale.y * (0.59 if crouching else 1.0)
-		return
+	if not initialized or fallen or rig == null or gait == null: return
 	delta = clampf(delta, 0.0, 0.1)
 	crouch_blend = move_toward(crouch_blend, 1.0 if crouching else 0.0, delta * 6.0)
 	air_blend = move_toward(air_blend, 0.0 if grounded else 1.0, delta * (9.0 if grounded else 5.0))
-	var ratio := clampf(speed / RUN_SPEED, 0.0, 1.0)
-	var moving := clampf(speed / 0.6, 0.0, 1.0)
-	hand_down = move_toward(hand_down, crouch_blend * (1.0 - moving), delta * 4.0)
-	if feet.is_empty(): plant_feet()
-	if grounded: step_feet(delta, planar, speed, ratio)
-	rig.reset_bone_poses()
-	pose_body(delta, ratio)
-	for side in ["l", "r"]:
-		if air_blend > 0.85: tuck_leg(side)
-		else: solve_leg(side, feet[side])
-	pose_arms(ratio)
-	pose_head()
-
-## Both feet under the hips, where they stand at rest.
-func plant_feet() -> void:
-	for pair in [["l", -1.0], ["r", 1.0]]:
-		feet[pair[0]] = {"planted": rest_foot(pair[1]), "from": Vector3.ZERO, "to": Vector3.ZERO, "t": 1.0, "swing": false, "duration": 0.3, "side": pair[1]}
-
-## Where a foot belongs when nothing is happening: under its own hip, on the
-## floor the body is standing on.
-func rest_foot(side: float) -> Vector3:
+	# Seen from the body: to its right, and ahead (it faces -Z).
 	var basis := global_basis.orthonormalized()
-	var point: Vector3 = global_position + basis.x * side * STANCE
-	point.y = global_position.y
-	return point
+	var local := Vector2(velocity.dot(basis.x), velocity.dot(-basis.z))
+	gait.pose(local, crouch_blend, air_blend, delta)
+	lock_feet(delta, local.length() > LOCK_SPEED and air_blend < 0.3)
 
-## Which foot is where. A planted foot stays put until it has fallen far
-## enough behind the hips, and then swings to where the body is going to be:
-## that is what a walk cycle on a timer can never do, and why nobody slides.
-func step_feet(delta: float, planar: Vector3, speed: float, ratio: float) -> void:
-	var stride := clampf(STRIDE_BASE + STRIDE_PER_SPEED * speed, STRIDE_RANGE.x, STRIDE_RANGE.y)
-	if crouch_blend > 0.5: stride *= STRIDE_CROUCH
-	var direction := planar.normalized() if speed > 0.05 else Vector3.ZERO
-	var duration := 0.3
-	var lift: float = (0.07 + ratio * 0.11) * (1.0 - crouch_blend * 0.45)
-	# A foot never lands where the leg cannot follow it: with the hips at
-	# nine tenths of a metre a leg only reaches a third of a metre ahead
-	# before it has to straighten into a stilt, and that is what drags a
-	# planted foot along the floor.
-	var span: Vector2 = lengths.get("lleg", Vector2(0.42, 0.42))
-	var reach: float = minf(stride * 0.45, (span.x + span.y) * 0.5) * minf(1.0, speed / 0.7)
-	# The step itself is twice that reach, and a foot spends about a third of
-	# it in the air: any longer and both feet are off the floor at once, which
-	# is a run however slowly the body is going.
-	duration = clampf(2.0 * reach / maxf(speed, 0.1) * SWING_SHARE, 0.1, 0.4)
+## A foot on the floor stays where it was put. A clip's foot slides a little
+## whenever the body goes at a speed the clip was not made for (a walk of the
+## game is quicker than anybody's), so while a foot is down -- the ball of it
+## within PLANTED of where it is standing still (in heels, as the Exploradora
+## is, that is a hand off the floor) -- it is held where it came down
+## and the knee bends to keep it there, and as it leaves the floor it is let
+## go over a moment. Only across the floor: up and down, and how the foot
+## rolls over onto its toes, are the clip's -- which is why it is the ball of
+## the foot that stays and not the ankle, which goes forward over it. One that
+## would have to stretch further than LOCK_REACH to stay is let go at once (a
+## turn, a step off something).
+const PLANTED := 0.05
+const LOCK_SPEED := 0.3
+const LOCK_REACH := 0.3
+const LOCK_RELEASE := 0.08
+var locks := {}
+
+func lock_feet(delta: float, moving: bool) -> void:
+	var floor_y := global_position.y
 	for side in ["l", "r"]:
-		var foot: Dictionary = feet[side]
-		var other: Dictionary = feet["r" if side == "l" else "l"]
-		var rest := rest_foot(foot.side)
-		# Teleported, fell, or came out of a wardrobe: start from under the hips.
-		if foot.planted.distance_to(rest) > 2.2:
-			plant_feet()
-			return
-		if foot.swing:
-			foot.t = minf(1.0, foot.t + delta / foot.duration)
-			var eased: float = foot.t * foot.t * (3.0 - 2.0 * foot.t)
-			foot.planted = foot.from.lerp(foot.to, eased) + Vector3.UP * sin(PI * foot.t) * lift
-			if foot.t >= 1.0:
-				foot.swing = false
-				foot.planted = foot.to
-			continue
-		var offset: Vector3 = foot.planted - rest
-		var behind: float = -offset.dot(direction) if speed > 0.05 else 0.0
-		var sideways: float = (offset - direction * offset.dot(direction)).length() if speed > 0.05 else offset.length()
-		var due: bool = behind > reach or sideways > 0.24 or (speed <= 0.2 and offset.length() > 0.12)
-		# One foot at a time, except at a run, where the next one starts as
-		# the other lands.
-		var other_ready: bool = not other.swing or (ratio > 0.55 and other.t > 0.8)
-		if due and other_ready:
-			foot.swing = true
-			foot.t = 0.0
-			foot.from = foot.planted
-			foot.to = rest + direction * (speed * duration + reach)
-			foot.duration = duration
-	var lifting: float = maxf(sin(PI * feet.l.t) if feet.l.swing else 0.0, sin(PI * feet.r.t) if feet.r.swing else 0.0)
-	bob = lerpf(bob, lifting, minf(1.0, delta * 14.0))
+		var ankle: int = bones.get(side + "f", -1)
+		var toe: int = bones.get(side + "o", -1)
+		if ankle < 0 or toe < 0: continue
+		var lock: Dictionary = locks.get(side, {"at": Vector3.ZERO, "weight": 0.0, "on": false})
+		locks[side] = lock
+		var foot := bone_point(ankle)
+		var ball := bone_point(toe)
+		if not lock.has("rest"): lock.rest = (global_transform.affine_inverse() * rig.global_transform * rig.get_bone_global_rest(toe).origin).y
+		var down: bool = moving and ball.y - floor_y < float(lock.rest) + PLANTED
+		if down and not lock.on:
+			lock.on = true
+			lock.at = ball
+		elif not down: lock.on = false
+		if lock.on and Vector2(ball.x - lock.at.x, ball.z - lock.at.z).length() > LOCK_REACH: lock.on = false
+		lock.weight = 1.0 if lock.on else move_toward(float(lock.weight), 0.0, delta / LOCK_RELEASE)
+		# The ankle where it has to be for the ball of the foot, turned as the
+		# clip turns it, to be where it came down.
+		if lock.weight > 0.001: reach_foot(side, foot + Vector3(lock.at.x - ball.x, 0.0, lock.at.z - ball.z), float(lock.weight))
 
-## The hips, the back and the chest: how low the body is, how far it leans
-## into where it is going, and the roll that comes with each step.
-func pose_body(delta: float, ratio: float) -> void:
-	var right := skeleton_axis(Vector3.RIGHT)
-	var forward := skeleton_axis(Vector3.FORWARD)
-	# Hips low enough that the knees keep slack to reach with: a leg that has
-	# to stretch straight to touch the floor reads as stilts.
-	# Crouched and still it goes down further and folds over: that is what
-	# brings the shoulder near enough for a hand to reach the floor at all.
-	var drop: float = crouch_blend * 0.36 + hand_down * 0.16 + 0.04 + ratio * 0.13 - bob * 0.035 + air_blend * 0.06
-	var hip := rig.get_bone_global_pose(bones.hip)
-	hip.origin += skeleton_axis(Vector3.DOWN) * drop
-	rig.set_bone_global_pose(bones.hip, hip)
-	lean = lerpf(lean, ratio * 0.34 + crouch_blend * 0.5 + hand_down * 0.28, minf(1.0, delta * 6.0))
-	turn_bone("spine", right, lean * 0.55)
-	turn_bone("chest", right, lean * 0.45)
-	# A step rolls the shoulders a little the other way, which is most of what
-	# reads as walking when it is seen from behind.
-	var sway := 0.0
-	if feet.l.swing: sway -= sin(PI * float(feet.l.t))
-	if feet.r.swing: sway += sin(PI * float(feet.r.t))
-	turn_bone("spine", forward, sway * 0.045 * (0.5 + ratio))
-	turn_bone("chest", forward, sway * 0.03)
-
-## Knee bent to reach the foot where it is planted, and the foot laid flat on
-## the floor instead of hanging off the shin.
-func solve_leg(side: String, foot: Dictionary) -> void:
+## The leg bent so that the ankle is `weight` of the way to `point` (in the
+## world), the knee bending the way the clip already bends it and the foot
+## kept turned as the clip has it.
+func reach_foot(side: String, point: Vector3, weight: float) -> void:
 	var thigh: int = bones.get(side + "t", -1)
 	var calf: int = bones.get(side + "k", -1)
 	var ankle: int = bones.get(side + "f", -1)
 	if thigh < 0 or calf < 0 or ankle < 0: return
 	var hip := rig.get_bone_global_pose(thigh).origin
-	var target := to_skeleton(foot.planted) + skeleton_axis(Vector3.UP) * ANKLE_HEIGHT
+	var knee_now := rig.get_bone_global_pose(calf).origin
+	var foot_pose := rig.get_bone_global_pose(ankle)
+	var target := foot_pose.origin.lerp(to_skeleton(point), weight)
 	var span: Vector2 = lengths[side + "leg"]
 	var reach := target - hip
-	# Mid-swing the foot is drawn in under the hip, which is what folds the
-	# knee: reaching for the ground the whole way keeps the leg straight and
-	# the walk looks like a pair of compasses.
-	var fold: float = (sin(PI * foot.t) if foot.swing else 0.0) * 0.16
-	var distance := clampf(reach.length() - fold, 0.05, span.x + span.y - 0.004)
+	var distance := clampf(reach.length(), 0.05, span.x + span.y - 0.004)
 	var along := reach.normalized()
-	# Knees forward and a touch outward, never sideways and never backwards.
-	var pole := skeleton_axis(Vector3.FORWARD) + skeleton_axis(Vector3.RIGHT) * (0.18 if side == "r" else -0.18)
-	var bend := (pole - along * pole.dot(along)).normalized()
+	var pole := knee_now - hip
+	var bend := pole - along * pole.dot(along)
+	if bend.length() < 0.001: bend = skeleton_axis(Vector3.FORWARD) - along * skeleton_axis(Vector3.FORWARD).dot(along)
+	bend = bend.normalized()
 	var cos_hip := clampf((span.x * span.x + distance * distance - span.y * span.y) / (2.0 * span.x * distance), -1.0, 1.0)
 	var knee := hip + along * span.x * cos_hip + bend * span.x * sqrt(maxf(0.0, 1.0 - cos_hip * cos_hip))
 	aim_bone(thigh, calf, knee - hip)
 	aim_bone(calf, ankle, hip + along * distance - rig.get_bone_global_pose(calf).origin)
-	var toe: int = bones.get(side + "o", -1)
-	if toe < 0: return
-	# Flat while it carries the weight, pointed as it leaves the ground.
-	var roll: float = sin(PI * foot.t) if foot.swing else 0.0
-	aim_bone(ankle, toe, skeleton_axis(Vector3.FORWARD) - skeleton_axis(Vector3.UP) * (0.12 - roll * 0.5))
-
-## In the air there is nothing to reach for: the leg folds under the body.
-func tuck_leg(side: String) -> void:
-	var right := skeleton_axis(Vector3.RIGHT)
-	turn_bone(side + "t", right, 0.9)
-	turn_bone(side + "k", right, -1.5)
-
-## Arms swing against the legs, with the elbow carried higher the faster it
-## goes. Crouched they come in close, and crouched and still one hand goes
-## down to the floor for balance and the other rests on the knee.
-func pose_arms(ratio: float) -> void:
-	# Which leg is ahead, as a number that runs smoothly from -1 to 1 across
-	# the whole stride: taken only from the swinging foot the arms would hang
-	# still for the two thirds of the time both feet are on the floor.
-	var swing := 0.0
-	var across: Vector3 = feet.r.planted - feet.l.planted
-	var forward_world: Vector3 = -global_basis.z
-	swing = clampf(across.dot(forward_world) / maxf(STRIDE_BASE, 0.1), -1.0, 1.0)
-	var down := skeleton_axis(Vector3.DOWN)
-	var forward := skeleton_axis(Vector3.FORWARD)
-	var right := skeleton_axis(Vector3.RIGHT)
-	for pair in [["l", -1.0], ["r", 1.0]]:
-		var side: String = pair[0]
-		var hand_side: float = pair[1]
-		var arm: int = bones.get(side + "a", -1)
-		var elbow: int = bones.get(side + "e", -1)
-		var hand: int = bones.get(side + "h", -1)
-		if arm < 0 or elbow < 0 or hand < 0: continue
-		var reach: float = swing * hand_side * (0.75 + ratio * 0.85)
-		var upper := (down + right * hand_side * (0.16 + crouch_blend * 0.12) + forward * reach).normalized()
-		var fore := (down * (1.0 - 0.45 * ratio - crouch_blend * 0.35) + forward * (0.4 + ratio * 0.6 + crouch_blend * 0.5) - forward * reach * 0.35 + right * hand_side * 0.05).normalized()
-		upper = upper.lerp((down + forward * 0.55 + right * hand_side * 0.25).normalized(), air_blend * 0.7)
-		aim_bone(arm, elbow, upper)
-		aim_bone(elbow, hand, fore)
-	# Crouched and still, the right hand goes down to the floor in front and
-	# takes some of the weight. It is solved to a point on the ground, like a
-	# foot, so it lands on the floor instead of hanging over it.
-	if hand_down > 0.01:
-		# Low and in front, within what an arm can actually reach from a
-		# crouch: any lower and the arm only points at the floor instead of
-		# resting on it.
-		var ahead: Vector3 = global_position + global_basis.z * -0.32 + global_basis.x * 0.22
-		ahead.y = global_position.y + HAND_REST
-		reach_hand("r", ahead, hand_down)
-
-## The same two-bone solve as a leg, for an arm that has to touch something:
-## the hand on the floor while crouched still.
-func reach_hand(side: String, point: Vector3, weight: float) -> void:
-	var arm: int = bones.get(side + "a", -1)
-	var elbow: int = bones.get(side + "e", -1)
-	var hand: int = bones.get(side + "h", -1)
-	if arm < 0 or elbow < 0 or hand < 0: return
-	var shoulder := rig.get_bone_global_pose(arm).origin
-	var target: Vector3 = to_skeleton(point)
-	var span: Vector2 = lengths[side + "arm"]
-	var reach := target - shoulder
-	var distance := clampf(reach.length(), 0.05, span.x + span.y - 0.004)
-	var along := reach.normalized()
-	# The elbow bends backwards and a little out, the way an arm does when
-	# somebody props themselves up.
-	var pole := -skeleton_axis(Vector3.FORWARD) + skeleton_axis(Vector3.RIGHT) * (0.3 if side == "r" else -0.3)
-	var bend := (pole - along * pole.dot(along)).normalized()
-	var cos_shoulder := clampf((span.x * span.x + distance * distance - span.y * span.y) / (2.0 * span.x * distance), -1.0, 1.0)
-	var joint := shoulder + along * span.x * cos_shoulder + bend * span.x * sqrt(maxf(0.0, 1.0 - cos_shoulder * cos_shoulder))
-	var wanted_upper: Vector3 = (joint - shoulder).normalized()
-	var wanted_fore: Vector3 = (shoulder + along * distance - joint).normalized()
-	var current_upper: Vector3 = (rig.get_bone_global_pose(elbow).origin - shoulder).normalized()
-	aim_bone(arm, elbow, current_upper.lerp(wanted_upper, weight).normalized())
-	var forearm_from := rig.get_bone_global_pose(elbow).origin
-	var current_fore: Vector3 = (rig.get_bone_global_pose(hand).origin - forearm_from).normalized()
-	aim_bone(elbow, hand, current_fore.lerp(wanted_fore, weight).normalized())
-
-## The head stays level with the world instead of riding the lean, which is
-## most of what makes a walk read as a person and not as a puppet.
-func pose_head() -> void:
-	turn_bone("head", skeleton_axis(Vector3.RIGHT), -lean * 0.75)
+	var placed := rig.get_bone_global_pose(ankle)
+	placed.basis = foot_pose.basis
+	rig.set_bone_global_pose(ankle, placed)
 
 ## A direction of the body, in the skeleton's own space.
 func skeleton_axis(direction: Vector3) -> Vector3:
@@ -578,7 +425,6 @@ func end_capture() -> void:
 	staunch()
 	transform = Transform3D.IDENTITY
 	show_to_owner(false)
-	feet.clear()
 
 ## Where the hips are in the body's own space, standing.
 func hip_rest() -> Vector3:
@@ -776,12 +622,7 @@ func pose_capture(state: Dictionary) -> void:
 	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - sat))
 	var leant := recline * (gone - 0.07 * jolt)
 	var turned := Basis(Vector3.UP, atan2(way.x, way.z) * gone) * Basis(Vector3.RIGHT, leant) * over
-	if rig == null:
-		# A body that cannot bend: leant back as far as there is room for.
-		transform = Transform3D(Basis(Vector3.RIGHT, minf(recline, asin(clampf((room - 0.1) / 1.7, 0.0, 1.0))) * (gone - 0.07 * jolt)) * over, Vector3.ZERO)
-		model.position.y = base_height
-		model.scale.y = base_scale.y
-		return
+	if rig == null: return
 	# Its hips come down where its legs give, a little behind its feet.
 	var hips := hip_rest()
 	var low := lerpf(SCORE.SEAT_HEIGHT, LAID_HIPS, gone * clampf(recline / 1.45, 0.0, 1.0))

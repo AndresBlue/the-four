@@ -568,7 +568,7 @@ El primer fotograma de la escena es el peor momento posible para compilar nada. 
 |---|---|
 | La máscara no aguanta de cerca (textura, polígonos) | Probado antes de empezar: a 15 cm, con la imagen entera de la cámara encima, se lee como una cara y no como un modelo (`evidence/mask_015.png`). A 12 cm empieza a verse la malla |
 | La cámara cae dentro de una pared o de un mueble | Los candidatos se validan; lo que no vale, no se usa; la última salida es «boca abajo» |
-| El cuerpo sin esqueleto se ve rígido | La escena se hace con la Exploradora (19.9). Para el Detective Masculino: encuadre que lo corta, silueta, sombra |
+| El cuerpo sin esqueleto se ve rígido | La escena se hace con la Exploradora (19.9). Ya no queda ninguno: el Detective Masculino tiene esqueleto desde el 18 de octubre de 2026 (el autorrigger de Mixamo) y la escena lo posa como a los demás; sin mirar todavía (PLAN.md) |
 | El susto se gasta | Raro por diseño (se muere poco y con minutos de por medio), entradas por contexto, versión breve, y «mira la lente» en reserva |
 | Molesta en vez de asustar a la quinta muerte | Versión breve y espera más corta |
 | El piloto se lee como truco | Está en pantalla desde el primer minuto (el punto de REC) y tiñe siempre, apenas, lo que tienes a un palmo |
