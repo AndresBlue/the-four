@@ -30,6 +30,59 @@ func obstacle(at: Vector3) -> StaticBody3D:
 	wall.add_child(shape)
 	level.add_child(wall)
 	return wall
+## The kit, heard (kit_sounds.gd): the torch's switch, its own recording on
+## and off and never the same one twice running; and the zoom motor, for as
+## long as the lens travels -- the whole range or a notch -- and the other
+## recording the other way.
+func kit_checks(player) -> void:
+	player.active = true
+	var said: Array = []
+	for i in 6:
+		var press := InputEventAction.new()
+		press.action = "flashlight"
+		press.pressed = true
+		player._unhandled_input(press)
+		said.append([player.torch.visible, String(player.kit.switch.stream.resource_path) if player.kit.switch.stream != null else "", player.kit.switch.playing])
+		await frames(2)
+	var matched := said.all(func(row): return bool(row[2]) and String(row[1]).get_file().begins_with("on_" if bool(row[0]) else "off_"))
+	var varied := true
+	for i in range(2, said.size()):
+		if said[i][1] == said[i - 2][1]: varied = false
+	check("La linterna suena al encenderla y al apagarla, cada vez con su grabación", matched)
+	check("Y nunca la misma dos veces seguidas", varied)
+	var motor: AudioStreamPlayer = player.kit.motor
+	player.zoom = 1.0
+	player.zoom_wanted = 1.0
+	await frames(20)
+	# The whole range in, about a second of motor.
+	player.zoom_to(player.LOOK.ZOOM_MAX)
+	var running := 0
+	var stream := ""
+	var reached := -1
+	var quiet := -1
+	for frame in 150:
+		await process_frame
+		if motor.playing and player.kit.running != 0:
+			running += 1
+			stream = String(motor.stream.resource_path).get_file()
+		if reached < 0 and is_equal_approx(player.zoom, player.LOOK.ZOOM_MAX): reached = frame
+		if reached >= 0 and quiet < 0 and not motor.playing: quiet = frame
+	check("El motor del zoom suena mientras el lente acerca todo su recorrido, y para al llegar", stream == "zoom_in.wav" and running > 50 and running < 80 and reached > 0 and quiet - reached >= 0 and quiet - reached < 15)
+	print("  motor: running %d frames, reached %d, quiet %d" % [running, reached, quiet])
+	# One notch back: the other recording, for a fifth of a second.
+	player.zoom_to(player.zoom_wanted / player.ZOOM_STEP)
+	running = 0
+	for frame in 60:
+		await process_frame
+		if motor.playing and player.kit.running != 0:
+			running += 1
+			stream = String(motor.stream.resource_path).get_file()
+	check("Un paso de la rueda hacia atrás: el otro sonido, lo que dura el paso", stream == "zoom_out.wav" and running > 8 and running < 22 and not motor.playing)
+	print("  motor: one notch, running %d frames" % running)
+	player.zoom = 1.0
+	player.zoom_wanted = 1.0
+	player.active = false
+
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -53,6 +106,7 @@ func run() -> void:
 	Input.action_release("crouch")
 	await frames(5)
 	check("Puede volver a ponerse de pie", not player.crouched)
+	await kit_checks(player)
 	player.stamina = 4
 	player.active = true
 	Input.action_press("forward")

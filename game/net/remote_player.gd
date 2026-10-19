@@ -10,12 +10,17 @@ const AVATAR := preload("res://game/player/avatars/avatar_visual.tscn")
 const STEPS := preload("res://game/audio/footstep_segments.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PLAYER := preload("res://game/player/hotel_player.gd")
+const KIT := preload("res://game/player/kit_sounds.gd")
 ## Seconds behind the newest state: smooths the gaps between packets.
 const DELAY := 0.1
 var slot := 0
 var player_name := ""
 var camera: Camera3D
 var torch: SpotLight3D
+## Its torch's switch, heard when its owner turns it on or off (kit_sounds.gd);
+## what the owner last said of it (-1: nothing yet).
+var switch: AudioStreamPlayer3D
+var torch_said := -1
 var avatar: Node3D
 var hidden := false
 var hiding_place: Node3D
@@ -98,6 +103,8 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	if PLAYER.plain_beam(): PLAYER.shape_plain_beam(torch)
 	torch.position = Vector3(0.24, -0.3, -0.25)
 	camera.add_child(torch)
+	switch = KIT.switch_voice(camera)
+	switch.position = torch.position
 	step_voice = AudioStreamPlayer3D.new()
 	step_voice.bus = "Effects"
 	step_voice.max_distance = 26.0
@@ -149,6 +156,13 @@ func push_state(data: Array) -> void:
 	while states.size() > 12: states.pop_front()
 	# In the creature's hands its torch is on the floor (executions.drop_torch).
 	torch.visible = flags & 2 != 0 and not hidden and not (level != null and not level.execution.is_empty() and int(level.execution.seat) == slot)
+	# Its owner turned it on or off: the switch is heard. (The first word of it
+	# is how it already was; and a torch the creature knocks out of its hand
+	# is not switched off.)
+	var said := 1 if flags & 2 != 0 else 0
+	var taken: bool = level != null and not level.execution.is_empty() and int(level.execution.seat) == slot
+	if torch_said >= 0 and said != torch_said and not dead and not taken: KIT.click(switch, said == 1)
+	torch_said = said
 	reading = flags & 8 != 0
 	peek_left = data[6]
 	peek_right = data[7]

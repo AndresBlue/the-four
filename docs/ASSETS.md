@@ -83,6 +83,10 @@ El usuario aportó estos once. De los ocho primeros, el reparto archivo por arch
 | toaster oven or lift/elevator bell | azumarill | CC BY 3.0 | Freesound |
 | custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025 | Artninja | CC BY 4.0 | [829590](https://freesound.org/people/Artninja/sounds/829590/) |
 | Radio Music — A MakeNoise Morphagene Reel | nlux | CC0 | [624412](https://freesound.org/people/nlux/sounds/624412/) |
+| Flashlight Clicking On and Off | deleted_user_7146007 | CC0 | [383659](https://freesound.org/people/deleted_user_7146007/sounds/383659/) |
+| camera lens zooming | CorneRoose | CC0 | [654182](https://freesound.org/people/CorneRoose/sounds/654182/) |
+
+Los dos últimos, aportados el 18 de octubre de 2026 (en `sfx/flashlight/on-off-x3.ogg` y `sfx/cam/zoom-in-and-out.mp3`, recortes del autor de las grabaciones de Freesound), son el interruptor de la linterna y el motor del zoom: `tools/audio/prepare_camera_sfx.py` los corta en `assets/audio/sfx/flashlight/` y `assets/audio/sfx/camera/` (AUDIO.md).
 
 Los tres de la ejecución: el grito del agarre (`execution_scream.wav`), el golpe del brazo (`execution_hit.wav`) y la estática del canal muerto (`execution_static.ogg`). El cuerpo al caer no suena. Los originales están en `sfx/screamer/`, `sfx/hit/` y `sfx/static/` (esa carpeta no se versiona: son los másteres del usuario); las copias que usa el juego las prepara `tools/audio/prepare_execution_sfx.py` (mono a 44,1 kHz; del archivo de impactos, que trae tres tomas, solo se usa la primera, cortada para que el impacto caiga a 0,22 s).
 

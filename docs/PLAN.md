@@ -342,6 +342,9 @@ herramientas para mirarlo están en la guía de desarrollo.
   pantalla.
 - [ ] **El viaje en ascensor**, que suena a la nieve que se ve mientras llega
   su sonido propio: si se entiende como el viaje o molesta.
+- [ ] **El clic de la linterna y el motor del zoom (18 de octubre):** el
+  volumen de cada uno (−17 y −15 dB, puestos a ojo), y si a los compañeros se
+  les oye la linterna a la distancia justa.
 - [ ] **La criatura oída desde encima de un mueble (17 de octubre):** subido a
   una cama, un escritorio o un armario se la oía a cero metros, fuerte,
   estuviera donde estuviera; la navegación ya no tiene islas en lo alto de los

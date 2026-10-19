@@ -2,6 +2,7 @@ extends CharacterBody3D
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 ## How the body moves, shared with the test bots (tools/bots).
 const MOVEMENT := preload("res://game/player/survivor_gait.gd")
+const KIT := preload("res://game/player/kit_sounds.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PAD_FEEL := preload("res://game/player/pad_feel.gd")
 ## The pad's look and its running and crouching that flip (pad_feel.gd).
@@ -14,6 +15,8 @@ var avatar
 var slot := 1
 var camera: Camera3D
 var torch: SpotLight3D
+## The torch's switch and the zoom motor, heard (kit_sounds.gd).
+var kit
 ## A noise the creature may hear: where, how far it carries, and what made
 ## it (NOISE.Kind, which only the hunter's acoustic image reads).
 signal noise(point: Vector3, radius: float, kind: int)
@@ -201,6 +204,11 @@ func _ready() -> void:
 	# The torch is carried, not bolted to the view: it trails the camera.
 	torch.top_level = true
 	snap_torch()
+	# Its switch and the camcorder's zoom motor (kit_sounds.gd).
+	kit = KIT.new()
+	kit.name = "Kit"
+	add_child(kit)
+	kit.setup(torch)
 	footstep = $Footsteps
 	for set_name in STEPS.SETS:
 		step_clips[set_name] = STEPS.SETS[set_name].map(func(entry): return {"stream": load(entry[0]), "impact": entry[1]})
@@ -232,6 +240,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("flashlight"):
 		torch.visible = not torch.visible
 		torch_warmup = 0.0
+		kit.torch_switched(torch.visible)
 
 ## Turning the head, however it was asked for: the mouse in pixels moved, the
 ## pad in how far the stick is pushed. Positive x turns left, positive y looks
@@ -550,6 +559,10 @@ func update_zoom(delta: float) -> void:
 	var here := log(zoom) / log(2.0)
 	var there := log(zoom_wanted) / log(2.0)
 	zoom = pow(2.0, move_toward(here, there, delta * ZOOM_SPEED))
+	# The motor runs while the lens travels, and only when it is the hand on
+	# the rocker that moves it: not the lens being put back wide (a capture,
+	# a revival).
+	if kit != null: kit.lens(int(signf(there - here)) if absf(there - here) > 0.0001 and active and not held else 0, delta)
 
 ## Where the rocker stands, 0 wide to 1 telephoto (the zoom bar in the OSD).
 func zoom_fraction() -> float:

@@ -87,6 +87,12 @@ Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/drea
 
 Pendiente: escucha crítica con auriculares, balance del aura en partidas humanas y perfiles de las otras criaturas.
 
+## La linterna y el zoom
+
+**El interruptor de la linterna** (`game/player/kit_sounds.gd`). Seis clics cortados de una grabación del autor (`sfx/flashlight/on-off-x3.ogg`: encender y apagar, tres veces) por `tools/audio/prepare_camera_sfx.py`: `on_1..3.wav` y `off_1..3.wav` en `assets/audio/sfx/flashlight/`, cada uno el botón al bajar y al subir, una décima de segundo entre los dos, con las pequeñas diferencias de volumen con que se grabaron. Al encender suena uno de los tres de encender, nunca el mismo dos veces seguidas, con el tono un pelo arriba o abajo; al apagar, igual. Suena en la linterna (bus Effects, `CLICK_DB` −17 dB), y lo oye también quien esté cerca: en las otras máquinas, `remote_player` lo toca cuando su dueño la enciende o la apaga, no cuando la bestia se la tira de la mano. No es un ruido para la criatura.
+
+**El motor del zoom**. Dos tramos de otra grabación del autor (`sfx/cam/zoom-in-and-out.mp3`): `zoom_in.wav` y `zoom_out.wav` en `assets/audio/sfx/camera/`, 2,3 s cada uno, desde que el motor arranca hasta que para. **Suena mientras el lente se mueve y nada más**: empieza con el arranque del motor cuando el lente echa a andar, sigue lo que dure el recorrido —un paso de la rueda, una quinta parte de segundo; todo el recorrido, poco más de un segundo— y se apaga en `MOTOR_STOP` (0,06 s) en cuanto llega a donde se le pidió; hacia el otro lado es la otra grabación, desde su propio arranque. Solo lo oye quien lleva la cámara (bus Effects, `MOTOR_DB` −15 dB), y no cuando el lente vuelve solo a gran angular (una captura, una reanimación). Lo comprueba `survival_test`.
+
 ## Propagación entre salas
 
 `world_audio.route_source()` decide por dónde llega un sonido. Con línea libre llega directo desde su origen. Si hay muros de por medio sigue la ruta caminable y se oye desde la última abertura visible (una puerta o una esquina): más bajo según el rodeo, más apagado y por los buses `EffectsEcho` o `ThreatEcho` (retardos de 170/340 ms y reverberación amplia), que envían a Effects o Threat. Nada atraviesa muros. Más allá de 42 m de ruta no se oye.

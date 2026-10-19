@@ -61,6 +61,8 @@ const CREDITS := [
 		"«Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).",
 		"«Blood Gush» — FlaxGod (CC0).",
 		"«Blood Gush / Spray» — clif_creates (CC0).",
+		"«Flashlight Clicking On and Off» — deleted_user_7146007 (CC0).",
+		"«camera lens zooming» — CorneRoose (CC0).",
 	]],
 	["SONIDO — EL RESTO", [
 		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
