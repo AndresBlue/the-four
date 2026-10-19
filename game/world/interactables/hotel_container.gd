@@ -7,6 +7,7 @@ extends Area3D
 ## rooms next door. That is the price of looking.
 signal searched_changed
 const NOISE := preload("res://game/audio/noise_kinds.gd")
+const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
 ## Seconds of holding the interaction before it gives up what it has.
 const SEARCH_TIME := 1.0
 ## The number it hides, or -1, and which place of the code it is (1..4).
@@ -69,6 +70,178 @@ const SEARCH_CREAK_DB := -10.0
 ## The recordings it may sound with.
 func search_sounds() -> Array:
 	return SEARCH_SOUNDS.get(String(note_spot.get("model", "")), [SEARCH_SOUND])
+
+## A piece gone through is left open, for anybody to see who comes by --
+## the creature too, in its clicks (the author's word, 19 October 2026). One
+## that opens (its drawers and doors baked apart: tools/props/
+## build_catalogue.gd, MOVING) is taken out of its room's batch and drawn in
+## parts, with one of them out: a drawer, or else a wooden door, or else a
+## glass one; the note's own drawer if it held one, another the same on every
+## machine if not. It comes out with the sound, reaching the end of its travel
+## on the recording's last knock. What has no drawer or door of its own has
+## one of the things on it or in it moved instead, enough to be read from the
+## doorway: on a console an ornament knocked over on its side; off a
+## bookcase's shelf one thing taken down and left on the floor in front of
+## it; the top box of a stack set down on the floor beside it (one with
+## nothing on top is shoved out instead). Moved a hair less (an ornament put
+## back askew, a book pulled out a little) none of it was seen in a lit room
+## from two metres. What is opened or moved has a box of its own on the layer the
+## creature's clicks come back from and that stops nobody walking (64,
+## echo_view.RAY_MASK; it hides from sight and hearing like a moving door).
+## Searching only ever goes one way, so nothing here is shut again.
+const DRAWER_OUT := 0.5
+const DOOR_OPEN := 1.1
+const DOOR_SWING := 1.2
+## How far in front of the piece a thing taken down is left (metres, past
+## where it stood), how far a box with nothing on top is shoved, how much
+## either is turned (radians), and how long an ornament takes to fall over.
+const SET_DOWN := 0.4
+const SHOVE := 0.2
+const SET_TURN := 0.5
+const TOPPLE := 0.3
+const ECHO := 64
+## Where it is drawn (hotel_geometry.place): the piece itself, when it opens,
+## and the things put on it or in it.
+var main := {}
+var things: Array = []
+## What it is drawn with once gone through, and the boxes the clicks find.
+var shown: Array = []
+## What was done to it: {part, node, closed, open} for a part that came out,
+## {thing, from, to} for a thing moved (the batch keeps no transforms that
+## can be read back without a renderer).
+var left := {}
+
+## Gone through: shown so, the opening taking `seconds` (none: at once, as
+## when somebody comes back into a floor already gone through).
+func show_searched(seconds: float) -> void:
+	if not shown.is_empty(): return
+	if not main.is_empty() and main.entry.get("multi") != null: open_part(seconds)
+	elif not things.is_empty(): shift_thing(seconds > 0.0)
+
+## The same on every machine: from where it stands.
+func pick() -> int:
+	return absi(hash(Vector3i((global_position * 100.0).round())))
+
+func open_part(seconds: float) -> void:
+	var entry: Dictionary = main.entry
+	var base := String((entry.mesh as Mesh).resource_path).get_basename()
+	var body: Mesh = load(base + "_body.res")
+	var stood: Transform3D = entry.transforms[int(main.index)]
+	var source: GeometryInstance3D = entry.instance
+	var room: Node3D = main.parent
+	# Out of the batch: nothing of the whole piece is drawn there any more.
+	(entry.multi as MultiMesh).set_instance_transform(int(main.index), Transform3D(Basis.from_scale(Vector3.ZERO), stood.origin))
+	drawn(room, source, body, stood)
+	var names: PackedStringArray = body.get_meta("parts")
+	var chosen := choose_part(names, base)
+	for part_name in names:
+		var part: Mesh = load("%s_%s.res" % [base, part_name])
+		var at := stood * Transform3D(Basis.IDENTITY, part.get_meta("pivot"))
+		var node := drawn(room, source, part, at)
+		if part_name != chosen: continue
+		var open := at * motion(part_name, part)
+		left = {"part": part_name, "node": node, "closed": at, "open": open}
+		var box: AABB = part.get_meta("box")
+		echo_box(room, open * Transform3D(Basis.IDENTITY, box.get_center() - (part.get_meta("pivot") as Vector3)), box.size)
+		if seconds <= 0.0:
+			node.transform = open
+			continue
+		var tween := create_tween()
+		tween.tween_property(node, "transform", open, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT if part_name.begins_with("drawer") else Tween.EASE_OUT)
+
+## Which part comes out (see show_searched).
+func choose_part(names: PackedStringArray, base: String) -> String:
+	for kind_of_part in ["drawer", "door", "glass"]:
+		var of_kind: Array = Array(names).filter(func(part_name): return part_name.begins_with(kind_of_part + "_"))
+		if of_kind.is_empty(): continue
+		# The drawer the note was shut in: the one whose front its slip hung
+		# out over.
+		if digit >= 0 and kind_of_part == "drawer" and note_spot.has("piece"):
+			var at: Vector3 = (note_spot.piece as Transform3D).affine_inverse() * (note_spot.at as Vector3)
+			for part_name in of_kind:
+				var box: AABB = (load("%s_%s.res" % [base, part_name]) as Mesh).get_meta("box")
+				if at.y >= box.position.y and at.y <= box.end.y + 0.03 and at.x >= box.position.x and at.x <= box.end.x: return part_name
+		return of_kind[pick() % of_kind.size()]
+	return names[0]
+
+## A drawer slides out by DRAWER_OUT of its depth; a door turns about its
+## hinge by DOOR_OPEN, its free edge out into the room.
+static func motion(part_name: String, part: Mesh) -> Transform3D:
+	var box: AABB = part.get_meta("box")
+	if part_name.begins_with("drawer"): return Transform3D(Basis.IDENTITY, Vector3(0, 0, box.size.z * DRAWER_OUT))
+	var hinge: Vector3 = part.get_meta("pivot")
+	return Transform3D(Basis(Vector3.UP, -DOOR_OPEN if box.get_center().x > hinge.x else DOOR_OPEN), Vector3.ZERO)
+
+## A mesh drawn on its own where the batch drew it, lit as the batch is.
+func drawn(room: Node3D, source: GeometryInstance3D, mesh: Mesh, at: Transform3D) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.name = "Searched_" + mesh.resource_name
+	node.mesh = mesh
+	node.cast_shadow = source.cast_shadow
+	node.gi_mode = source.gi_mode
+	node.visibility_range_end = source.visibility_range_end
+	node.visibility_range_end_margin = source.visibility_range_end_margin
+	room.add_child(node)
+	node.transform = at
+	ROOM_LAYERS.put_on(node, source.layers & ROOM_LAYERS.ROOMS)
+	shown.append(node)
+	return node
+
+## One of its things moved (see show_searched): a stack's top box, or one of
+## the others. `animated`: an ornament is seen to fall; what is taken down is
+## simply there when the search is over.
+func shift_thing(animated: bool) -> void:
+	var handle: Dictionary = things[pick() % things.size()]
+	var floor_y := INF
+	for other in things:
+		var stands: Transform3D = other.entry.transforms[int(other.index)]
+		floor_y = minf(floor_y, stands.origin.y)
+		if kind == "boxes" and stands.origin.y > (handle.entry.transforms[int(handle.index)] as Transform3D).origin.y: handle = other
+	var entry: Dictionary = handle.entry
+	var multi: MultiMesh = entry.get("multi")
+	if multi == null: return
+	var index := int(handle.index)
+	var from: Transform3D = entry.transforms[index]
+	var aabb := (entry.mesh as Mesh).get_aabb()
+	var grown := from.basis.get_scale().x
+	# Out of the piece, towards whoever went through it; the floor it stands
+	# on is its own (the piece stands there too).
+	var forward := (transform.basis * Vector3.BACK).normalized()
+	var way := 1.0 if pick() % 2 == 0 else -1.0
+	var ground := transform.origin.y + 0.002
+	var to: Transform3D
+	if kind == "console":
+		# Over on its side where it stood: lying, its middle as high off the
+		# top as it is wide.
+		to = Transform3D(Basis(forward, way * PI / 2.0) * from.basis, from.origin + Vector3.UP * minf(aabb.size.x, aabb.size.z) * grown * 0.5)
+	elif kind == "boxes" and from.origin.y < floor_y + 0.05:
+		to = Transform3D(Basis(Vector3.UP, way * SET_TURN) * from.basis, from.origin + forward * SHOVE)
+	else:
+		var out := forward * (SET_DOWN + aabb.size.z * grown * 0.5)
+		to = Transform3D(Basis(Vector3.UP, way * SET_TURN) * from.basis, Vector3(from.origin.x, ground, from.origin.z) + out)
+	left = {"thing": handle, "from": from, "to": to}
+	echo_box(handle.parent, to * Transform3D(Basis.IDENTITY, aabb.get_center()), aabb.size)
+	if not animated or kind != "console":
+		multi.set_instance_transform(index, to)
+		return
+	var tween := create_tween()
+	tween.tween_method(func(t: float): multi.set_instance_transform(index, from.interpolate_with(to, t)), 0.0, 1.0, TOPPLE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+## What the creature's clicks come back from: a box `size` big (as the piece
+## is scaled, `at` carrying the scale) at `at`, in the room.
+func echo_box(room: Node3D, at: Transform3D, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.name = "SearchedEcho"
+	body.collision_layer = ECHO
+	body.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var cube := BoxShape3D.new()
+	cube.size = size * at.basis.get_scale()
+	shape.shape = cube
+	body.add_child(shape)
+	room.add_child(body)
+	body.transform = Transform3D(at.basis.orthonormalized(), at.origin)
+	shown.append(body)
 
 ## The slip of paper one of the four hides, left showing, pale enough to catch
 ## a torch from across the room. Four numbers among two hundred pieces of

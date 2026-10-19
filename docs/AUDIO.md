@@ -152,7 +152,7 @@ Cada mueble registrable suena como lo que es (`hotel_container.SEARCH_SOUNDS`, p
 | Cajas (`boxes`) | `box.wav`: «open-cardboard-box-compartment.wav» (newagesoup, CC0), las solapas de una caja de cartón |
 | Vitrina (`cabinet` en salas cuidadas), consola, librería, y una pila solo de cajas de plástico | todavía la puerta abierta despacio (`slow-opening.wav`, −10 dB): les falta grabación ([PLAN.md](PLAN.md), apartado 4) |
 
-Los cortes de la apertura están en `OPENING` (segundos de cada grabación, leídos en su envolvente: el tirón, el deslizamiento y el golpe del cajón al llegar al tope); las cinco tomas de `soft-drawer.wav` se separan por los silencios digitales que dejó su autor. El ruido que oye la criatura no cambia: es el de una puerta abierta despacio (`hotel_container.noise_radius()`). Lo comprueba `stages_test`.
+Los cortes de la apertura están en `OPENING` (segundos de cada grabación, leídos en su envolvente: el tirón, el deslizamiento y el golpe del cajón al llegar al tope); las cinco tomas de `soft-drawer.wav` se separan por los silencios digitales que dejó su autor. **El cajón sale con su sonido:** la herramienta escribe también `game/audio/search_timing.gd`, cuándo da cada grabación su último golpe (el cajón contra el tope: 0,69 s el grande, 1,02 el de madera, de 0,84 a 1,38 las tomas de la cajonera), y el cajón tarda eso en salir; las puertas de la vitrina, con el crujido, 1,2 s. El ruido que oye la criatura no cambia: es el de una puerta abierta despacio (`hotel_container.noise_radius()`). Lo comprueba `stages_test`.
 
 ## Puerta lenta
 

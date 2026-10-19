@@ -9,6 +9,7 @@ const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
 const LOCK := preload("res://game/world/interactables/hotel_lock.gd")
 const DIGITS := preload("res://game/world/generation/digit_placement.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
+const SEARCH_TIMING := preload("res://game/audio/search_timing.gd")
 var level
 
 ## Everything with drawers or shelves, in build order, and the numbers found
@@ -58,6 +59,8 @@ func place_containers() -> void:
 		piece.kind = str(spot.kind)
 		piece.front = float(spot.get("front", 0.5))
 		piece.note_spot = spot.get("note", {})
+		piece.main = spot.get("main", {})
+		piece.things = spot.get("things", []) if spot.get("things") != null else []
 		piece.position = spot.position
 		piece.rotation.y = spot.yaw
 		# Parented to its room, so it is culled with it, but placed by the
@@ -92,6 +95,20 @@ func place_containers() -> void:
 		# The four that hold something say so: a slip of paper left showing.
 		containers[index].plant_note()
 	level.camcorder.write_code("")
+	# The parts of the pieces that open, loaded now and kept while the floor
+	# lasts: not read off the disk on the first search.
+	opening_meshes.clear()
+	for piece in containers:
+		if piece.main.is_empty(): continue
+		var base := String((piece.main.entry.mesh as Mesh).resource_path).get_basename()
+		if opening_meshes.has(base): continue
+		var body: Mesh = load(base + "_body.res")
+		var parts := [body]
+		for part_name in body.get_meta("parts"): parts.append(load("%s_%s.res" % [base, part_name]))
+		opening_meshes[base] = parts
+
+## The pieces that open on this floor: model -> its body and parts.
+var opening_meshes := {}
 
 ## Going through one: the host decides, as with everything else.
 func search_container(piece: Node3D) -> void:
@@ -106,10 +123,12 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 	var piece = containers[index]
 	if not is_instance_valid(piece) or not piece.set_searched(value): return
 	if not value: return
+	# Its own drawer, box or door (hotel_container.search_sounds()), and the
+	# piece left open with it, the drawer reaching its stop on the knock.
+	var sounds: Array = piece.search_sounds()
+	var path: String = sounds[randi() % sounds.size()]
+	piece.show_searched(0.0 if quiet else SEARCH_TIMING.stop(path, piece.DOOR_SWING))
 	if level.world_audio.enabled and not quiet:
-		# Its own drawer, box or door (hotel_container.search_sounds()).
-		var sounds: Array = piece.search_sounds()
-		var path: String = sounds[randi() % sounds.size()]
 		level.world_audio.play_at(path, piece.global_position + Vector3(0, 0.8, 0), piece.SEARCH_CREAK_DB if path == piece.SEARCH_SOUND else piece.SEARCH_DB)
 	if not level.net.is_client() and not quiet: level.on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	if piece.digit >= 0:

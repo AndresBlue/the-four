@@ -28,9 +28,17 @@ var arrive_leaves: Array = []
 var arrival_cars: Array = []
 var arrival_facing: Array = []
 ## Every piece of furniture with drawers or shelves, as it is dressed:
-## {room, position, yaw, kind, front, note}. Four of them hide the numbers of
-## the code.
+## {room, position, yaw, kind, front, note, main, things}. Four of them hide
+## the numbers of the code.
 var containers: Array = []
+## The piece being furnished, where it is drawn (a handle from place(), for a
+## piece with drawers or doors of its own: room_dressing.put), and what was
+## put on it or in it (handles too: what stands on its top, its shelves' books,
+## a stack's boxes). A piece gone through shows it with them
+## (hotel_container.show_searched). Null while no container is being
+## furnished: a store's shelves are dressed outside the stretches.
+var piece_main := {}
+var piece_things = null
 ## How far the solid piece being furnished reaches into the room, in its
 ## stretch's space (room_dressing.put): where a container's front is.
 var piece_front := 0.0
@@ -618,6 +626,9 @@ func flush() -> void:
 			var instance := MultiMeshInstance3D.new()
 			instance.name = "Model_" + mesh.resource_name
 			instance.multimesh = multi
+			# For the handles place() gave out: where each placement ended up.
+			entry["multi"] = multi
+			entry["instance"] = instance
 			var size := mesh.get_aabb().size
 			if entry.has("hand"):
 				# Drawn as far as the clock it belongs to, and kept to be turned.
@@ -702,7 +713,10 @@ const MODEL_LIFT := 0.002
 const JAMB_GAP := 0.01
 ## `material` dresses the mesh in one of the hotel's own (the moulded kit's
 ## pieces, which have none), and `only_kit` shows it only with the kit.
-func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true, material := "", only_kit := false) -> void:
+## Returns where it is drawn: {entry, index, parent}, the batch, its place in
+## it (its MultiMesh is entry.multi once flushed) and the room node the batch
+## hangs from.
+func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true, material := "", only_kit := false) -> Dictionary:
 	var target := batch_target(parent)
 	var key: int = target[0].get_instance_id()
 	if not model_batches.has(key): model_batches[key] = {"parent": target[0], "meshes": {}}
@@ -714,6 +728,7 @@ func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true, materi
 	# floor under it and flickered into it.
 	var stood := Transform3D(xform.basis, xform.origin + Vector3(0, MODEL_LIFT, 0))
 	meshes[slot].transforms.append(target[1] * stood)
+	var handle := {"entry": meshes[slot], "index": meshes[slot].transforms.size() - 1, "parent": target[0]}
 	# A clock's hands, each an instance of its own mesh where the body's
 	# says its axis is (tell_time turns them).
 	if mesh.has_meta("hands"):
@@ -722,6 +737,7 @@ func place(parent: Node3D, mesh: Mesh, xform: Transform3D, casts := true, materi
 			var hand_slot := "%d:hand" % hand_mesh.get_instance_id()
 			if not meshes.has(hand_slot): meshes[hand_slot] = {"mesh": hand_mesh, "casts": false, "material": "", "kit": false, "transforms": [], "hand": String(hand), "body": mesh}
 			meshes[hand_slot].transforms.append(target[1] * stood * Transform3D(Basis.IDENTITY, hand_mesh.get_meta("pivot")))
+	return handle
 
 ## A decal from assets/decals/ (tools/textures/ingest_dressing.py) under
 ## parent: projected along the transform's -Y over size, as strong as

@@ -52,6 +52,25 @@ func notes_resting() -> Array:
 	for pair in bodies: pair[0].queue_free()
 	return [placed, resting]
 
+## Whether a searched piece shows it (hotel_container.show_searched): its
+## part out where it opens to, or one of its things moved.
+func moved_out(piece) -> bool:
+	var left: Dictionary = piece.left
+	if left.has("node"): return (left.node as Node3D).transform.is_equal_approx(left.open) and not (left.open as Transform3D).is_equal_approx(left.closed)
+	if left.has("thing"): return not (left.to as Transform3D).is_equal_approx(left.from) and piece.things.has(left.thing)
+	return false
+
+## Whether a click of the creature's (echo_view.RAY_MASK), sent at what a
+## searched piece left open from a little in front of it, comes back from it.
+func echo_found(piece) -> bool:
+	var echoes: Array = piece.shown.filter(func(node): return node is StaticBody3D)
+	if echoes.is_empty(): return false
+	var echo: Node3D = echoes[0]
+	var front: Vector3 = piece.global_transform.basis.z.normalized()
+	var query := PhysicsRayQueryParameters3D.create(echo.global_position + front * 1.2, echo.global_position, preload("res://game/enemies/locust/echo_view.gd").RAY_MASK)
+	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(query)
+	return not hit.is_empty() and hit.collider == echo
+
 func frames(count: int) -> void:
 	for i in count: await physics_frame
 
@@ -428,6 +447,29 @@ func run() -> void:
 	check("Quien registra se lleva la nota", hidden.all(func(piece): return not is_instance_valid(piece.note)))
 	check("Y los números quedan escritos en la cinta", level.camcorder.code_note.text.contains(level.code_so_far()))
 	check("Un mueble registrado no se vuelve a registrar", hidden[0].searched and not hidden[0].set_searched(true))
+	# Gone through, each is left open for anybody to see, the creature's clicks
+	# too: a drawer or a door out of the piece, drawn in its parts, or one of its
+	# things moved; and a box on the layer the clicks come back from.
+	await frames(120)
+	var opened: bool = hidden.all(func(piece): return moved_out(piece) and piece.shown.any(func(node): return node is StaticBody3D and node.collision_layer == piece.ECHO and node.collision_mask == 0) and echo_found(piece))
+	# Drawn in its parts: a body and every part, the whole piece out of its batch.
+	var swapped: bool = hidden.filter(func(piece): return not piece.main.is_empty()).all(func(piece): return piece.shown.filter(func(node): return node is MeshInstance3D).size() == 1 + (piece.shown[0].mesh.get_meta("parts") as PackedStringArray).size())
+	# A stack shoves its top box, of its own stack.
+	var stacks: Array = level.containers.filter(func(piece): return piece.kind == "boxes")
+	var stacked: bool = stacks.all(func(piece): return piece.things.size() >= 1 and piece.things.size() <= 6)
+	check("Lo registrado queda abierto, y la criatura lo encuentra con sus chasquidos", opened and swapped and stacked and level.containers.filter(func(piece): return not piece.searched).all(func(piece): return piece.shown.is_empty()))
+	# Somebody coming back into a floor already gone through finds it so at
+	# once (a quiet search, match_net.catch_up), one that opens and one that
+	# does not.
+	var quiet_ones: Array = []
+	for opens in [true, false]:
+		var found: Array = level.containers.filter(func(piece): return not piece.searched and piece.main.is_empty() != opens)
+		if not found.is_empty(): quiet_ones.append(found[0])
+	for piece in quiet_ones: level.apply_search(level.containers.find(piece), true, true)
+	check("Quien vuelve a un piso ya registrado lo encuentra abierto, sin esperar", quiet_ones.size() == 2 and quiet_ones.all(func(piece): return moved_out(piece)))
+	var pieces_by_kind := {}
+	for piece in level.containers: pieces_by_kind[String(piece.kind) + ("·abre" if not piece.main.is_empty() else "")] = true
+	print("  muebles registrables: ", pieces_by_kind.keys())
 	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
 	# And they can be read back: the slips hang beside the shared sheet, with
 	# the number and the room it came out of. Nobody has to remember a thing.

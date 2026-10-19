@@ -7,7 +7,8 @@ extends SceneTree
 ## in the shadows too).
 ##   python tools/props/ingest_models.py
 ##   godot --headless --path . --import
-##   godot --headless --path . --script res://tools/props/build_catalogue.gd [-- --only=<id>]
+##   godot --headless --path . --script res://tools/props/build_catalogue.gd [-- --only=<id>] [--moving]
+## (--moving bakes only the parts of MOVING, leaving every <id>.res as it is.)
 const SOURCE := "res://source_assets/props/"
 const TARGET := "res://assets/props/hotel/"
 ## Turns that bring a model's front to +Z, where the download faces elsewhere.
@@ -39,6 +40,22 @@ const CLOCKS := {
 	"vintage_grandfather_clock_01": {"hour": "houd_hand$", "minute": "minute_hand$"},
 	"mantel_clock_01": {"centre": Vector3(0, 0.0915, 0.048), "hour": AABB(Vector3(-0.004, 0.087, 0.047), Vector3(0.039, 0.009, 0.001)), "minute": AABB(Vector3(-0.004, 0.087, 0.048), Vector3(0.008, 0.051, 0.0005))},
 }
+## Furniture that is gone through (hotel_container.gd), whose drawers and
+## doors come as nodes of their own: baked apart as well, for the piece that
+## has been searched, which is drawn in parts with one of them left open (the
+## merged <id>.res is baked as ever, for every other). <id>_body.res is the
+## piece without them; each part is <id>_<kind>_<n>.res, n the number its
+## node ends in (the capture), about its node's origin -- the hinge, for a
+## door -- with where that is in the body's mesh kept in its "pivot" and its
+## extent there in its "box". The body lists them in its "parts". The commode
+## calls its three drawers doors; the glazed cabinet's three upper doors are
+## glass, its four lower ones wood.
+const MOVING := {
+	"GothicCommode_01": {"drawer": "_door0(\\d)$"},
+	"painted_wooden_cabinet": {"drawer": "_drawer_0(\\d)$", "door": "_door_0(\\d)$"},
+	"drawer_cabinet": {"drawer": "_drawer_0(\\d)$"},
+	"vintage_cabinet_01": {"door": "_door_0([2567])$", "glass": "_door_0([134])$"},
+}
 ## Downloads that come as a rack: things hung one above another, to be seen
 ## from the front. The nodes whose name matches are put where they would be
 ## with the rack laid flat on its back (what was up is towards the front),
@@ -57,9 +74,12 @@ func run() -> void:
 	var only := ""
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--only="): only = argument.trim_prefix("--only=")
+	var moving_only := OS.get_cmdline_user_args().has("--moving")
 	var folder := ProjectSettings.globalize_path(SOURCE)
 	for model in DirAccess.get_directories_at(folder):
 		if (not only.is_empty() and model != only) or model in SKIP: continue
+		if MOVING.has(model): bake_moving(model, folder + model)
+		if moving_only: continue
 		if CLOCKS.has(model):
 			bake_clock(model, folder + model)
 		elif PARTS.has(model):
@@ -248,6 +268,101 @@ func bake_clock(model: String, folder: String) -> void:
 		ResourceSaver.save(result, TARGET + name + ".res")
 		var size := result.get_aabb().size
 		print("CATALOGUE %s size=(%.3f, %.3f, %.3f) triangles=%d surfaces=%d%s" % [name, size.x, size.y, size.z, triangles, result.get_surface_count(), "" if where == "" else " pivot=%s" % pivots[where]])
+	scene.free()
+
+## A piece that is gone through, in parts (MOVING).
+func bake_moving(model: String, folder: String) -> void:
+	var file := ""
+	for entry in DirAccess.get_files_at(folder):
+		if entry.ends_with(".gltf") or entry.ends_with(".glb"): file = entry
+	var document := GLTFDocument.new()
+	var state := GLTFState.new()
+	if document.append_from_file(folder + "/" + file, state) != OK:
+		print("CATALOGUE_FAILED ", model, " (glTF)")
+		failed = true
+		return
+	var scene := document.generate_scene(state)
+	var pieces := []
+	collect_named(scene, Transform3D.IDENTITY, pieces)
+	var turn := Transform3D(Basis(Vector3.UP, YAW.get(model, 0.0)).scaled(Vector3.ONE * SCALE.get(model, 1.0)), Vector3.ZERO)
+	# The same fit as the merged piece's, from the whole of it: the body and
+	# its parts stay where they are in it.
+	var bounds := AABB()
+	var first := true
+	for piece in pieces:
+		var mesh: Mesh = piece[0]
+		for surface in mesh.get_surface_count():
+			for vertex in mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]:
+				var p: Vector3 = turn * (piece[1] * vertex)
+				bounds = AABB(p, Vector3.ZERO) if first else bounds.expand(p)
+				first = false
+	var fit := Transform3D(Basis.IDENTITY, -Vector3(bounds.get_center().x, bounds.position.y, bounds.get_center().z)) * turn
+	var spec: Dictionary = MOVING[model]
+	# What goes where: "" is the body. Each: material -> a SurfaceTool.
+	var tools := {"": {}}
+	var pivots := {}
+	var boxes := {}
+	for piece in pieces:
+		var mesh: Mesh = piece[0]
+		var whole: Transform3D = fit * piece[1]
+		var where := ""
+		for kind in spec:
+			var found := RegEx.create_from_string(spec[kind]).search(String(piece[2]))
+			if found != null: where = "%s_%s" % [kind, found.get_string(1)]
+		var shift := Transform3D.IDENTITY
+		if where != "":
+			if pivots.has(where):
+				print("CATALOGUE_FAILED ", model, " (two nodes for ", where, ")")
+				failed = true
+			pivots[where] = whole.origin
+			shift = Transform3D(Basis.IDENTITY, -whole.origin)
+			tools[where] = {}
+		for surface in mesh.get_surface_count():
+			var material := mesh.surface_get_material(surface)
+			var key := safe(material.resource_name) if material != null else "material"
+			if not tools[where].has(key):
+				tools[where][key] = SurfaceTool.new()
+				tools[where][key].begin(Mesh.PRIMITIVE_TRIANGLES)
+			tools[where][key].append_from(mesh, surface, shift * whole)
+			if where != "":
+				for vertex in mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]:
+					var p: Vector3 = whole * vertex
+					boxes[where] = AABB(p, Vector3.ZERO) if not boxes.has(where) else (boxes[where] as AABB).expand(p)
+	var names := tools.keys().filter(func(where): return where != "")
+	names.sort()
+	if names.is_empty() or tools[""].is_empty():
+		print("CATALOGUE_FAILED ", model, " (no parts)")
+		failed = true
+		scene.free()
+		return
+	for where in tools:
+		var importer := ImporterMesh.new()
+		var triangles := 0
+		for key in tools[where]:
+			var tool: SurfaceTool = tools[where][key]
+			tool.index()
+			var arrays := tool.commit_to_arrays()
+			if arrays[Mesh.ARRAY_TANGENT] == null and arrays[Mesh.ARRAY_TEX_UV] != null:
+				tool = SurfaceTool.new()
+				tool.create_from_arrays(arrays)
+				tool.generate_tangents()
+				arrays = tool.commit_to_arrays()
+			triangles += arrays[Mesh.ARRAY_INDEX].size() / 3
+			var path: String = TARGET + model + "/" + key + ".tres"
+			var material: Material = load(path) if ResourceLoader.exists(path) else null
+			if material == null: print("CATALOGUE_WARNING ", model, " has no ", path)
+			importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, material, key)
+		importer.generate_lods(60.0, 25.0, [])
+		var result := importer.get_mesh()
+		var name: String = model + "_" + (String(where) if where != "" else "body")
+		result.resource_name = name
+		if where == "": result.set_meta("parts", PackedStringArray(names))
+		else:
+			result.set_meta("pivot", pivots[where])
+			result.set_meta("box", boxes[where])
+		ResourceSaver.save(result, TARGET + name + ".res")
+		var size := result.get_aabb().size
+		print("CATALOGUE %s size=(%.3f, %.3f, %.3f) triangles=%d surfaces=%d%s" % [name, size.x, size.y, size.z, triangles, result.get_surface_count(), "" if where == "" else " pivot=%s box=%s" % [pivots[where], boxes[where]]])
 	scene.free()
 
 static func safe(name: String) -> String:

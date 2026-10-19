@@ -219,13 +219,16 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		var pick: String = sets[int(builder.vary(seed_pos, 31) * sets.size())] if not sets.is_empty() else ""
 		builder.piece_front = 0.0
 		builder.note_spot = {}
+		builder.piece_main = {}
+		builder.piece_things = []
 		furnish(builder, holder, pick, stretch[1], seed_pos, kept, room)
 		# Anything with drawers or shelves is somewhere a number could be
 		# hidden: the builder keeps the list so a floor can put four in them.
 		# With how far its front reaches: the note shows out of it and the
 		# hand finds it there, whatever the piece's depth.
 		# And where a note of the code would be left in it (note_fold()).
-		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick, "front": builder.piece_front, "note": builder.note_spot})
+		if pick in CONTAINERS: builder.containers.append({"room": int(room.id), "position": node.position + frame.origin, "yaw": frame.basis.get_euler().y, "kind": pick, "front": builder.piece_front, "note": builder.note_spot, "main": builder.piece_main, "things": builder.piece_things})
+		builder.piece_things = null
 		# A fire alarm's pull station on the first stretch of a corridor, a
 		# lobby or the reception, at the end of it nearer the middle of the
 		# wall: a painting and its lamps hang past the other end.
@@ -350,15 +353,29 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 
 ## A model on the stretch's floor, turned by yaw and scaled by s; with a box
 ## collider round it when solid (turned only a little, so its box stays).
+## A piece that opens (its drawers and doors baked apart as well: tools/props/
+## build_catalogue.gd, MOVING) is kept as the piece being furnished.
 static func put(builder, holder: Node3D, name: String, pos: Vector3, yaw: float, s: float, solid: bool) -> void:
-	place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * s), pos))
+	var handle := place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * s), pos))
+	if opens(name): builder.piece_main = handle
 	if solid:
 		var size := mesh(name).get_aabb().size * s
 		builder.box(holder, pos + Vector3(0, size.y * 0.5, 0), size, "", true)
 		builder.piece_front = maxf(builder.piece_front, pos.z + size.z * 0.5)
 
-static func place(builder, holder: Node3D, name: String, xform: Transform3D, casts := true) -> void:
-	builder.place(holder, mesh(name), xform, casts)
+## A thing put on or in the piece being furnished, kept with it (when it is
+## one: hotel_geometry.piece_things).
+static func keep(builder, handle: Dictionary) -> void:
+	if builder.piece_things != null: builder.piece_things.append(handle)
+
+## Whether a model has its drawers and doors baked apart, asked once each.
+static var opening := {}
+static func opens(name: String) -> bool:
+	if not opening.has(name): opening[name] = ResourceLoader.exists(HOTEL % (name + "_body"))
+	return opening[name]
+
+static func place(builder, holder: Node3D, name: String, xform: Transform3D, casts := true) -> Dictionary:
+	return builder.place(holder, mesh(name), xform, casts)
 
 ## Things on a piece's top: count of them, from choices, spaced along it.
 static func dress_top(builder, holder: Node3D, base: String, at: Vector3, s: float, choices: Array, seed_pos: Vector3, count: int) -> void:
@@ -372,7 +389,7 @@ static func dress_top(builder, holder: Node3D, base: String, at: Vector3, s: flo
 		var name: String = choices[int(builder.vary(seed_pos, 50 + i) * choices.size())]
 		var yaw: float = builder.vary(seed_pos, 55 + i) * 0.8 - 0.4
 		if name == "wall_clock_standing": name = "alarm_clock_01"
-		place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw), at + Vector3(slot * usable, top + ON_TOP, box.get_center().z * s - 0.02)), false)
+		keep(builder, place(builder, holder, name, Transform3D(Basis(Vector3.UP, yaw), at + Vector3(slot * usable, top + ON_TOP, box.get_center().z * s - 0.02)), false))
 
 ## How far a thing put on a piece stands off its top or its shelf (metres):
 ## a crate's or a jug's underside, drawn from both sides, lay in the plane of
@@ -403,7 +420,7 @@ static func fill_shelves(builder, holder: Node3D, base: String, at: Vector3, s: 
 			elif x + wide > box.size.x * s * 0.42:
 				break
 			else:
-				place(builder, holder, name, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * fit), at + Vector3(x + wide * 0.5, y + ON_TOP, box.get_center().z * s)), false)
+				keep(builder, place(builder, holder, name, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * fit), at + Vector3(x + wide * 0.5, y + ON_TOP, box.get_center().z * s)), false))
 				x += wide + 0.04
 			i += 1
 
@@ -424,7 +441,7 @@ static func stack(builder, holder: Node3D, seed_pos: Vector3, count: int) -> voi
 		var size := mesh(name).get_aabb().size
 		var yaw: float = builder.vary(seed_pos, 75 + i) * 0.5 - 0.25
 		var xform := Transform3D(Basis(Vector3.UP, yaw), Vector3(x + size.x * 0.5, y, size.z * 0.5 + 0.02))
-		place(builder, holder, name, xform)
+		keep(builder, place(builder, holder, name, xform))
 		var rank: float = y + size.y + (10.0 if name == "cardboard_box_01" else 0.0)
 		if top.is_empty() or rank > float(top.rank): top = {"name": name, "xform": xform, "rank": rank}
 		if y == 0.0 and builder.vary(seed_pos, 80 + i) < 0.5:
