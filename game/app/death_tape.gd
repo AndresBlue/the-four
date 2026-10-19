@@ -114,6 +114,14 @@ var thrown := Transform3D.IDENTITY
 var thrown_at := -1.0
 var landed_at := -1.0
 var rested_at := -1.0
+## Whether its owner's body is drawn for the camera yet (show_to_owner): only
+## once the camera, out of its hands, is CLEAR_OF_HEAD from its head, or
+## SHOWN_AFTER at the latest. Shown the moment it left the hands, the lens was
+## still at the head, and the Detective Femenino's hair filled the picture
+## over the mask for the frames the camera took to fly off.
+var shown := false
+const CLEAR_OF_HEAD := 0.5
+const SHOWN_AFTER := 0.5
 ## The picture is gone: snow, whatever the scene's clock says.
 var gone := false
 ## Nothing lights the place but the camcorder's own lamp.
@@ -170,6 +178,7 @@ func begin(execution: Dictionary, covered := false) -> void:
 	thrown_at = -1.0
 	landed_at = -1.0
 	rested_at = -1.0
+	shown = false
 	gain = 0.0
 	saved = {"handheld": player.handheld_enabled, "zoom": player.zoom_wanted, "torch": player.torch.visible, "near": camera.near}
 	camera.near = LENS_NEAR
@@ -265,8 +274,6 @@ func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 		landed_at = thrown_at + (0.0 if plain else float(take.landed))
 		rested_at = thrown_at + (0.0 if plain else float(take.duration))
 		if plain: level.camera_cut()
-		# From here the tape sees its owner from outside.
-		player.avatar.show_to_owner(true)
 	if thrown_at >= 0.0:
 		if plain or soft or rested_at <= thrown_at: wanted = take.rest
 		else: wanted = FALL.pose(take, thrown, time - thrown_at)
@@ -282,6 +289,10 @@ func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 		thrown = wanted
 	if not wanted.origin.is_finite() or not wanted.basis.x.is_finite() or not wanted.basis.y.is_finite() or not wanted.basis.z.is_finite(): wanted = take.rest
 	camera.global_transform = wanted.orthonormalized()
+	# From here the tape sees its owner from outside: once it is out of the way.
+	if thrown_at >= 0.0 and not shown and (time >= thrown_at + SHOWN_AFTER or clear_of_head(camera.global_position)):
+		shown = true
+		player.avatar.show_to_owner(true)
 	# On the floor the lamp is a hand from the carpet: all there is to see by
 	# in the dark, and with any other light only a red stain under the lens.
 	if landed_at >= 0.0 and time >= landed_at and player.pilot_as.x >= 0.0: player.pilot_as = LAMP_FLOOR_DARK if dark else LAMP_FLOOR_LIT
@@ -339,6 +350,12 @@ func turning(execution: Dictionary, time: float) -> Transform3D:
 	var roll := side * 0.5 * sin(PI * turned)
 	var held: Vector3 = hand.origin.lerp(level.executions.lens_point(), pulled)
 	return Transform3D(Basis.from_euler(Vector3(pitch, yaw, roll)), held.lerp(face.origin, turned))
+
+## Whether a point is clear of its owner's head, hair and hat and all.
+func clear_of_head(point: Vector3) -> bool:
+	var avatar = level.player.avatar
+	if avatar == null or avatar.rig == null or int(avatar.bones.get("head", -1)) < 0: return true
+	return avatar.bone_point(int(avatar.bones.head)).distance_to(point) > CLEAR_OF_HEAD
 
 ## When the body is on the floor beside the camera.
 func body_at() -> float:

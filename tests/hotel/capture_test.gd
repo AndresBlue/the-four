@@ -113,7 +113,7 @@ func face_to_face(apart := 1.5) -> void:
 ## low, death}.
 func watch(until := -1.0) -> Dictionary:
 	var player = level.player
-	var seen := {"frames": 0, "finite": true, "upright": true, "worst_up": 1.0, "first_up": 1.0, "landed": -1.0, "lifted_at": -1.0, "kill": false, "drop": false, "held": true, "near": INF}
+	var seen := {"frames": 0, "finite": true, "upright": true, "worst_up": 1.0, "first_up": 1.0, "landed": -1.0, "lifted_at": -1.0, "kill": false, "drop": false, "held": true, "near": INF, "head": INF}
 	var entry := String(level.execution.get("entry", "front"))
 	var guard := 0
 	while not level.execution.is_empty() and guard < 600:
@@ -137,6 +137,10 @@ func watch(until := -1.0) -> Dictionary:
 		if time <= SCORE.face_start(entry) + SCORE.ARRIVE and time >= SCORE.face_start(entry) and entry != "above":
 			seen.first_up = minf(float(seen.first_up), pose.basis.y.dot((level.locust.visual.mask_transform() as Transform3D).basis.y.normalized()))
 		if level.tape.landed_at >= 0.0 and float(seen.landed) < 0.0: seen.landed = float(level.tape.landed_at)
+		# Its own body drawn for its camera while the camera flies off its head.
+		var avatar = player.avatar
+		if level.tape.thrown_at >= 0.0 and time < level.tape.thrown_at + 0.3 and avatar.rig != null and (avatar.meshes[0].layers & 1) != 0:
+			seen.head = minf(float(seen.head), pose.origin.distance_to(avatar.bone_point(int(avatar.bones.head))))
 		if SCORE.lift(time) > 0.02 and float(seen.lifted_at) < 0.0: seen.lifted_at = time
 		if time >= SCORE.KILL_TIME + 0.02 and int(level.execution.stabs) >= 2: seen.kill = true
 		if time >= SCORE.DROP_TIME + 0.02 and bool(level.execution.dropped): seen.drop = true
@@ -420,6 +424,7 @@ func scene_checks() -> void:
 		check("Captura %s: la cámara no sale nunca de lo que puede ser" % entry, bool(seen.finite) and int(seen.frames) > 200, "frames=%d" % int(seen.frames))
 		check("Captura %s: la máscara, del derecho en la lente y a un palmo" % entry, bool(seen.upright) and float(seen.near) > 0.07 and float(seen.near) < 0.12, "up=%.2f near=%.3f" % [float(seen.worst_up), float(seen.near)])
 		check("Captura %s: la cámara ya está en el suelo cuando levantan el cuerpo" % entry, float(seen.landed) > 0.0 and float(seen.lifted_at) > float(seen.landed), "landed=%.2f lifted=%.2f" % [float(seen.landed), float(seen.lifted_at)])
+		check("Captura %s: su cuerpo no se ve desde la cámara mientras ésta sale de junto a su cabeza (el pelo tapaba la máscara)" % entry, float(seen.head) > level.tape.CLEAR_OF_HEAD - 0.05, "closest=%.2f" % float(seen.head))
 		check("Captura %s: el golpe y la caída llegan a su segundo, y nunca se le devuelve el control" % entry, bool(seen.kill) and bool(seen.drop) and bool(seen.held))
 		# The end of it: the death is counted, and alone the stage is given back.
 		var dead: bool = level.session.participants.get(player.slot) == level.session.Life.DEAD or level.session.restart_wait > 0.0
