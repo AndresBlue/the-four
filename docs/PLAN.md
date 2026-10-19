@@ -345,6 +345,10 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **El clic de la linterna y el motor del zoom (18 de octubre):** el
   volumen de cada uno (−17 y −15 dB, puestos a ojo), y si a los compañeros se
   les oye la linterna a la distancia justa.
+- [ ] **Los sonidos de registrar muebles (19 de octubre):** su volumen
+  (−20 dB, puesto para que suenen como el crujido de antes), si los cortes
+  acaban donde acaba la apertura, y si las cinco tomas de `soft-drawer.wav`
+  son todas aperturas (se usan así).
 - [ ] **La puerta lenta nueva (19 de octubre):** el volumen de abrir y cerrar
   despacio (los dos al nivel del crujido anterior, −12 dB), si el pestillo cae
   con la hoja, y si el corte del cierre se nota.
@@ -694,6 +698,14 @@ pueda jugar entero sin tocar el teclado.
   moqueta y otra sobre baldosa (el chorro y el borboteo ya están, traídos
   por ti el 13 de octubre: `assets/audio/sfx/blood/`).
 
+- [ ] **Lo que falta para registrar todos los muebles** (hoy suenan a puerta
+  abierta despacio, AUDIO.md, «Registrar muebles»): la **vitrina** (puertas
+  de madera con cristal: abrir una puerta de aparador y su cristal que
+  tiembla), la **librería** (libros que se apartan y se deslizan en un
+  estante), la **consola**, que no tiene cajón (cosas que se mueven sobre un
+  tablero, o nada), y una **caja de plástico** (rebuscar en un cajón de
+  plástico). Si las puertas del armario pintado y de la vitrina llegan a
+  abrirse de verdad, también una **puerta de aparador** pequeña de madera.
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía, y es el silencio más audible del piso: cada cierre de
   sector pasa por él.

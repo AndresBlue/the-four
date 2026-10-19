@@ -39,9 +39,6 @@ var lock_open := false
 
 var typed := ""
 
-## Going through a drawer: the slow creak of a door, which is what it is.
-const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/slow-opening.wav"
-
 ## The drawers, shelves and cupboards of the floor, and the four numbers hidden
 ## in four of them, in the wing of the last stage. Everyone works out the same
 ## hiding places from the seed; only what has been gone through travels.
@@ -109,7 +106,11 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 	var piece = containers[index]
 	if not is_instance_valid(piece) or not piece.set_searched(value): return
 	if not value: return
-	if level.world_audio.enabled and not quiet: level.world_audio.play_at(SEARCH_SOUND, piece.global_position + Vector3(0, 0.8, 0), -10.0)
+	if level.world_audio.enabled and not quiet:
+		# Its own drawer, box or door (hotel_container.search_sounds()).
+		var sounds: Array = piece.search_sounds()
+		var path: String = sounds[randi() % sounds.size()]
+		level.world_audio.play_at(path, piece.global_position + Vector3(0, 0.8, 0), piece.SEARCH_CREAK_DB if path == piece.SEARCH_SOUND else piece.SEARCH_DB)
 	if not level.net.is_client() and not quiet: level.on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit

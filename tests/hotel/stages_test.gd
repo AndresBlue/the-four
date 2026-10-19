@@ -414,6 +414,13 @@ func run() -> void:
 	check("Y ningún otro mueble la lleva", level.containers.filter(func(piece): return is_instance_valid(piece.note)).size() == DIG.COUNT)
 	var muebles: int = level.containers.size()
 	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
+	# Each sounds like what it is when gone through (hotel_container.SEARCH_SOUNDS):
+	# it knows which piece it is, and those with a recording of their own use it.
+	var models := {}
+	for piece in level.containers: models[String(piece.note_spot.get("model", ""))] = true
+	var CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
+	var recorded: bool = CONTAINER.SEARCH_SOUNDS.values().all(func(paths): return paths.all(func(path): return load(path) is AudioStream and (load(path) as AudioStream).get_length() > 0.5))
+	check("Cada mueble suena como lo que es al registrarlo", recorded and not models.has("") and models.has("GothicCommode_01") and models.has("drawer_cabinet") and models.has("cardboard_box_01") and level.containers.all(func(piece): return piece.search_sounds() == CONTAINER.SEARCH_SOUNDS.get(String(piece.note_spot.model), [CONTAINER.SEARCH_SOUND])))
 	for piece in hidden:
 		level.search_container(piece)
 		await frames(2)

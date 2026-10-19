@@ -47,6 +47,29 @@ func set_searched(value: bool) -> bool:
 ## Heard like a door opened slowly: enough to say somebody is in this room.
 func noise_radius() -> float: return NOISE.radius("door_slow")
 
+## What going through it sounds like, by the piece it is (the model its note
+## is worked out on, room_dressing.note_fold()): the drawers of the gothic
+## commode are big, those of the painted cabinet small and old, the office's
+## drawer cabinet is a modern one, and a stack opens a cardboard box
+## (tools/audio/prepare_search_sfx.py). What has no recording of its own yet
+## -- the glazed cabinet's doors, the console, the bookcase, a stack of only
+## crates -- still sounds like a door opened slowly, as everything did before
+## 19 October 2026 (docs/PLAN.md).
+const SEARCH_SOUNDS := {
+	"GothicCommode_01": ["res://assets/audio/sfx/search/big_drawer.wav"],
+	"painted_wooden_cabinet": ["res://assets/audio/sfx/search/wooden_drawer.wav"],
+	"drawer_cabinet": ["res://assets/audio/sfx/search/soft_drawer_1.wav", "res://assets/audio/sfx/search/soft_drawer_2.wav", "res://assets/audio/sfx/search/soft_drawer_3.wav", "res://assets/audio/sfx/search/soft_drawer_4.wav", "res://assets/audio/sfx/search/soft_drawer_5.wav"],
+	"cardboard_box_01": ["res://assets/audio/sfx/search/box.wav"],
+}
+const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/slow-opening.wav"
+## Its level: the drawer close by, about as loud as the slow creak was.
+const SEARCH_DB := -20.0
+const SEARCH_CREAK_DB := -10.0
+
+## The recordings it may sound with.
+func search_sounds() -> Array:
+	return SEARCH_SOUNDS.get(String(note_spot.get("model", "")), [SEARCH_SOUND])
+
 ## The slip of paper one of the four hides, left showing, pale enough to catch
 ## a torch from across the room. Four numbers among two hundred pieces of
 ## furniture are not found by opening all of them, and this is what says which

@@ -140,9 +140,23 @@ Son **locales de cada máquina**: no pasan por `match_net.noise()`, así que la 
 
 Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura oye hasta 12 m (45 m si la lleva un jugador). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (se oye hasta 10,5 m); cambiar de lado o volver a abrir no suena.
 
+## Registrar muebles
+
+Cada mueble registrable suena como lo que es (`hotel_container.SEARCH_SOUNDS`, por el modelo del mueble, el mismo en todas las máquinas porque sale de la semilla). Solo se oye la apertura: el mueble queda como se encontró. Las prepara `tools/audio/prepare_search_sfx.py` desde `sfx/drawer/` (filtro de graves, fundidos, cada juego a −6 dBFS de pico) en `assets/audio/sfx/search/`, y suenan a −20 dB, más o menos como el crujido lento de antes:
+
+| Mueble (tipo) | Sonido |
+|---|---|
+| Cómoda gótica (`commode`) | `big_drawer.wav`: la apertura de «Drawer Opening & Closing» (quantumriver, CC0), cajones grandes |
+| Armario pintado (`cabinet` en salas descuidadas) | `wooden_drawer.wav`: la apertura de «Teak Nightstand Open and Close» (Filmscore, CC0), cajón pequeño de madera antigua |
+| Cajonera de oficina (`drawers`) | `soft_drawer_1..5.wav`: las cinco tomas de «cajon.wav» (ANFEGORES108, CC0), un cajón moderno; una al azar |
+| Cajas (`boxes`) | `box.wav`: «open-cardboard-box-compartment.wav» (newagesoup, CC0), las solapas de una caja de cartón |
+| Vitrina (`cabinet` en salas cuidadas), consola, librería, y una pila solo de cajas de plástico | todavía la puerta abierta despacio (`slow-opening.wav`, −10 dB): les falta grabación ([PLAN.md](PLAN.md), apartado 4) |
+
+Los cortes de la apertura están en `OPENING` (segundos de cada grabación, leídos en su envolvente: el tirón, el deslizamiento y el golpe del cajón al llegar al tope); las cinco tomas de `soft-drawer.wav` se separan por los silencios digitales que dejó su autor. El ruido que oye la criatura no cambia: es el de una puerta abierta despacio (`hotel_container.noise_radius()`). Lo comprueba `stages_test`.
+
 ## Puerta lenta
 
-**Abierta despacio**, una puerta suena con `door/opening/slow-opening.wav` («creaky door», CaptainYulef, CC0); asomarse desde un armario y registrar un cajón usan la misma grabación. **Cerrada despacio**, con `door/closing/slow-closing.wav` («Creaky bedroom door close; long .WAV», thomasanthony321, CC0): el crujido empieza con el giro y el pestillo cae cuando la hoja llega al marco, 1,5 s después (`hotel_door.SLOW_SWING`); de lejos solo se oye el pestillo, al caer. Hasta el 19 de octubre de 2026 la puerta lenta era «DOOR creak» (CC BY-NC) y cerrar despacio sonaba igual que cerrar.
+**Abierta despacio**, una puerta suena con `door/opening/slow-opening.wav` («creaky door», CaptainYulef, CC0); asomarse desde un armario usa la misma grabación, y registrar los muebles que todavía no tienen sonido propio («Registrar muebles»). **Cerrada despacio**, con `door/closing/slow-closing.wav` («Creaky bedroom door close; long .WAV», thomasanthony321, CC0): el crujido empieza con el giro y el pestillo cae cuando la hoja llega al marco, 1,5 s después (`hotel_door.SLOW_SWING`); de lejos solo se oye el pestillo, al caer. Hasta el 19 de octubre de 2026 la puerta lenta era «DOOR creak» (CC BY-NC) y cerrar despacio sonaba igual que cerrar.
 
 Las dos las prepara `tools/audio/clean_recordings.py` desde `sfx/door-new/`: filtro de graves bajo 70 Hz, fundidos cortos y, mientras suenan, el mismo nivel que el crujido al que sustituyen (−41 dBFS). En la grabación del cierre el pestillo cae 2,9 s después de empezar el crujido; se le quitan la cola larga del crujido y casi todo el silencio de antes del pestillo (`CLOSING_CUT`), y el pestillo queda a 1,5 s. En la mezcla, −12 dB las dos, frente a +1 de una apertura normal; asomarse, −25.
 
