@@ -1,6 +1,6 @@
 # Guía de edición de The Four
 
-Proyecto: `E:\Projects\The Four`, con copia en GitHub (repositorio privado `AndresBlue/the-four`). Godot 4.7.2 Steam, juego 1.0.0, generador de mapas v7. Esta guía dice dónde está cada cosa y cómo comprobarla; el juego se describe en [GAME_DESIGN.md](GAME_DESIGN.md) y lo que falta, en [PLAN.md](PLAN.md).
+Proyecto: `E:\Projects\The Four`, con copia en GitHub (repositorio privado `AndresBlue/the-four`). Godot 4.7.2 Steam, juego 1.1.0, generador de mapas v7. Esta guía dice dónde está cada cosa y cómo comprobarla; el juego se describe en [GAME_DESIGN.md](GAME_DESIGN.md) y lo que falta, en [PLAN.md](PLAN.md).
 
 ## Empezar en Godot
 
@@ -251,8 +251,8 @@ Para otro equipo, configura la variable `GODOT_PATH` o pasa `-GodotPath` a los l
 
 - **Qué número sube.** PARCHE (1.0.1): arreglos que no cambian cómo se juega. MENOR (1.1.0): lo nuevo que se juega —una criatura, un piso, una opción— o un cambio de cómo se juega. MAYOR (2.0.0): lo que rompe con lo anterior a propósito, como los otros tres pisos del juego entero si cambian lo que es una partida.
 - **Cada versión publicada es una etiqueta de git** (`v1.0.0`) sobre el commit con el que se exportó, en GitHub con el resto. Una versión se cierra subiendo el número en `project.godot`, pasando `verify.ps1`, haciendo el commit y la etiqueta, y exportando desde ahí.
-- **Tres números que no son la versión del juego** y cambian por su cuenta, cada uno cuando cambia lo que protege: el protocolo de red (`net_session.PROTOCOL`, ahora `the-four-net-19`: dos ejecutables con distinto no juegan juntos, y la sala lo dice), la versión del generador de mapas (`FLOOR.VERSION`, v7: los pisos guardados con otro se rechazan) y la del archivo de récords (`records_service.VERSION`, que se migra al leerlo). Una versión del juego puede no tocar ninguno; un cambio de cualquiera de los tres, en cambio, merece al menos un PARCHE, para que se sepa qué ejecutable juega con cuál.
-- **Antes de la 1.0:** 0.1 el 16 de septiembre de 2026 (el primer commit: cuatro salas fijas), y hasta la 0.5 por hitos, contados en `docs/history/PLAN_2026-09-21.md` y en el historial de git. La **1.0.0** se cerró el 18 de octubre de 2026, con 341 commits.
+- **Tres números que no son la versión del juego** y cambian por su cuenta, cada uno cuando cambia lo que protege: el protocolo de red (`net_session.PROTOCOL`, ahora `the-four-net-20`: dos ejecutables con distinto no juegan juntos, y la sala lo dice), la versión del generador de mapas (`FLOOR.VERSION`, v7: los pisos guardados con otro se rechazan) y la del archivo de récords (`records_service.VERSION`, que se migra al leerlo). Una versión del juego puede no tocar ninguno; un cambio de cualquiera de los tres, en cambio, merece al menos un PARCHE, para que se sepa qué ejecutable juega con cuál.
+- **Antes de la 1.0:** 0.1 el 16 de septiembre de 2026 (el primer commit: cuatro salas fijas), y hasta la 0.5 por hitos, contados en `docs/history/PLAN_2026-09-21.md` y en el historial de git. La **1.0.0** se cerró el 18 de octubre de 2026, con 341 commits; la **1.1.0**, el 19 de octubre, con 349: hasta cinco supervivientes (y The Locust en versus, seis), los muebles que quedan abiertos al registrarlos, la música que se va con la tensión, los logros y los menús nuevos.
 
 ## Convenciones para continuar
 
