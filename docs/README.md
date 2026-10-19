@@ -5,14 +5,15 @@ Empieza por aquí según lo que busques:
 - **Qué es el juego y por qué reglas se rige:** [GAME_DESIGN.md](GAME_DESIGN.md).
 - **Qué falta y en qué orden:** [PLAN.md](PLAN.md). Solo lo pendiente, de lo más urgente a lo más lejano; lo terminado sale de ahí y se describe en el diseño. El registro de lo que se fue comprobando, con sus fechas y medidas, queda en [history/](history/).
 - **Dónde tocar cada sistema y cómo comprobarlo:** [DEVELOPMENT.md](DEVELOPMENT.md).
+- **Qué trajo cada versión:** [CHANGELOG.md](CHANGELOG.md), de la 0.1.0 a la última.
 - **Cómo se juega y cómo se lanza:** [README.md](../README.md), en la raíz del proyecto.
 
 Por sistema:
 
 - [LORE.md](LORE.md): la historia —La Oficina, los cuatro pisos, la brecha y el ente que dirige a la bestia—, solo lo confirmado por el autor.
 - [VISION_LOCUST.md](VISION_LOCUST.md): la ecolocalización con la que ve el cazador en versus.
-- [EXECUTION.md](EXECUTION.md): propuesta para rehacer la captura —el sobresalto, la ejecución vista desde la cámara caída y la cinta que se rompe—, con su investigación y sus fases (sin hacer).
-- [DIFFICULTY.md](DIFFICULTY.md): hoja de ruta de las cuatro dificultades de la IA (todavía sin hacer).
+- [EXECUTION.md](EXECUTION.md): la captura —el sobresalto, la ejecución vista desde la cámara caída y la cinta que se rompe—, con su porqué, su detalle y lo que queda por juzgar.
+- [DIFFICULTY.md](DIFFICULTY.md): hoja de ruta de las cuatro dificultades de la IA (hechas las fases 1 y 2; el resto, no).
 - [AUDIO.md](AUDIO.md): asignaciones de sonido, buses, mezcla y reservas.
 - [PERFORMANCE.md](PERFORMANCE.md): presets gráficos, medidas por vista y coste de cada efecto.
 - [REALISM.md](REALISM.md): el plan de imagen —el hotel real grabado por una camcorder de 1988—, con sus pruebas.
