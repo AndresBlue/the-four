@@ -2,18 +2,16 @@ extends Node
 ## Coming back: everyone raised at the start of a stage that was lost (or
 ## when a dead player is brought back), the creature sent off to a den far
 ## from them, somebody back after dropping out, and -- while dead -- watching
-## a teammate over their shoulder. Split out of hotel_main.gd, which owns it
+## through a teammate's camera. Split out of hotel_main.gd, which owns it
 ## (`level.revival`); the level keeps delegates of what the network, the bots
 ## and the tests reach through it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const LOOK := preload("res://game/presentation/camcorder_look.gd")
+const AVATAR := preload("res://game/player/avatars/avatar_visual.gd")
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 var level
 
-## The view of a dead player, over the shoulder of the teammate watched.
+## The view of a dead player, through the camera of the teammate watched.
 var watch_rig: Node3D
-
-var watch_arm: SpringArm3D
 
 var watch_camera: Camera3D
 
@@ -266,8 +264,10 @@ func stop_watching() -> void:
 		watch_rig.queue_free()
 		watch_rig = null
 		watch_camera = null
-		watch_arm = null
 	level.match_net.watching = 0
+	# The body it watched through is drawn again for everybody's camera.
+	if is_instance_valid(watched_body): own_sight(watched_body, true)
+	watched_body = null
 	level.player.snap_torch()
 
 ## Dead online: the view follows a living teammate; a click switches to the next.
@@ -287,37 +287,62 @@ func watch_teammates() -> void:
 	watch_over(body)
 	level.ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · %s PARA CAMBIAR" % [body.player_name.to_upper(), (level.settings.button_name(JOY_BUTTON_A) if level.settings.using_pad and level.settings.pad_present() else "CLIC")]
 
-## Third person behind the teammate being watched: the arm keeps the camera
-## out of walls and wardrobes, so nothing is seen through them.
+## Through the teammate's own camera: what it sees, as it sees it. Where its
+## camera is and which way it looks comes from its owner (match_net.pack_local)
+## with every sway, lean, peek and step in it; the lens is zoomed as theirs is
+## and bent as much (presentation_rig.update_zoom_lens), and focused where
+## theirs is. Its own body is not in the picture while the camera is at its
+## head, as it is not in its own; its shadow is. (Until 18 October 2026 this
+## was a camera on an arm behind the teammate's shoulder.)
 func watch_over(body: Node3D) -> void:
 	if not is_instance_valid(watch_rig):
 		watch_rig = Node3D.new()
 		watch_rig.name = "WatchRig"
 		level.add_child(watch_rig)
-		watch_arm = SpringArm3D.new()
-		watch_arm.spring_length = 2.6
-		watch_arm.collision_mask = 1 | 8 | 128
-		watch_arm.margin = 0.25
-		var ball := SphereShape3D.new()
-		ball.radius = 0.25
-		watch_arm.shape = ball
-		watch_rig.add_child(watch_arm)
 		watch_camera = Camera3D.new()
 		watch_camera.name = "WatchCamera"
-		watch_camera.fov = LOOK.fov_for(get_viewport(), 76.0)
-		watch_camera.far = 95.0
-		watch_camera.cull_mask = 1048573
-		watch_arm.add_child(watch_camera)
+		var own: Camera3D = level.player.camera
+		watch_camera.fov = own.fov
+		watch_camera.near = own.near
+		watch_camera.far = own.far
+		watch_camera.cull_mask = own.cull_mask
+		watch_rig.add_child(watch_camera)
 	# Somebody else to watch is a cut: the rooms round them are shown at once,
 	# and no blur or combing is smeared across from the last view.
 	if watched_body != body:
+		if is_instance_valid(watched_body): own_sight(watched_body, true)
 		watched_body = body
 		level.visibility_clock = 1.0
 		level.camera_cut()
-	watch_rig.global_position = body.global_position + Vector3(0, 1.5, 0)
-	watch_rig.rotation.y = body.rotation.y
-	watch_arm.rotation.x = clampf(body.pitch, -0.6, 0.5)
+	var view: Transform3D = body.smooth_view() if body.has_method("smooth_view") else body.camera.global_transform
+	watch_camera.global_transform = view
+	own_sight(body, not near_head(body, view.origin))
+	# Its focus, on this machine's lens settings (the depth of field is a
+	# graphics preset's).
+	if level.player.autofocus and "focus" in body:
+		if not watch_camera.attributes is CameraAttributesPractical:
+			var lens := CameraAttributesPractical.new()
+			lens.dof_blur_amount = level.player.FOCUS_BLUR
+			watch_camera.attributes = lens
+		level.player.lens_focus(watch_camera.attributes, float(body.focus))
+	elif watch_camera.attributes != null: watch_camera.attributes = null
 	if not watch_camera.current: watch_camera.current = true
+
+## Whether a body is drawn for the camera watching through it: not while that
+## camera is at its head (hair, hat and the inside of its face), and again once
+## it is away from it, thrown from its hands in the creature's.
+func own_sight(body: Node3D, shown: bool) -> void:
+	if not "avatar" in body or body.avatar == null: return
+	for mesh in body.avatar.meshes:
+		if not is_instance_valid(mesh): continue
+		if shown and (mesh.layers & 1) == 0: AVATAR.put_on_layers(mesh, 1)
+		elif not shown and mesh.layers != 2: AVATAR.put_on_layers(mesh, 2)
+
+const AT_HEAD := 0.5
+func near_head(body: Node3D, point: Vector3) -> bool:
+	var avatar = body.avatar if "avatar" in body else null
+	if avatar == null or avatar.rig == null or int(avatar.bones.get("head", -1)) < 0: return point.distance_to(body.global_position + Vector3(0, 1.5, 0)) < AT_HEAD
+	return avatar.bone_point(int(avatar.bones.head)).distance_to(point) < AT_HEAD
 
 ## A cut (a new floor, the opening scene): the iris jumps to the new light
 ## instead of adjusting across it.

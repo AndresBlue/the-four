@@ -312,13 +312,19 @@ func pack_local() -> Array:
 			left = 1.0 + player.easing
 			right = 1.0 + player.easing
 		hide_index = level.hotel.hides.find(player.hiding_place)
-	return [player.global_position, player.rotation.y, player.look_pitch(), player.velocity, flags, hide_index, left, right]
+	# What its camera sees, for a teammate who is dead and watching through it
+	# (revival.watch_over): where the camera is on the body and which way it
+	# looks -- every sway, lean, peek and step of it, and in the creature's
+	# hands where it has been thrown --, how far it is zoomed and where it is
+	# focused.
+	var view: Transform3D = player.global_transform.affine_inverse() * player.camera.global_transform
+	return [player.global_position, player.rotation.y, player.look_pitch(), player.velocity, flags, hide_index, left, right, view.origin, view.basis.orthonormalized().get_rotation_quaternion(), player.zoom, player.focus]
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func player_state(seat: int, data: Array) -> void:
 	if not from_host(): return
 	if net.is_host and net.players.get(seat, {}).get("peer", -1) != multiplayer.get_remote_sender_id(): return
-	if data.size() != 8: return
+	if data.size() != 12: return
 	if bodies.has(seat): bodies[seat].push_state(data)
 	relay(&"player_state", [seat, data], multiplayer.get_remote_sender_id())
 

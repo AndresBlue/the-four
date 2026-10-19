@@ -513,17 +513,23 @@ func update_focus(delta: float) -> void:
 	hunt = maxf(0.0, hunt - delta * 2.5)
 	var swing := sin(hand_clock * 17.0) * hunt * 0.35 * focus_target
 	focus = lerpf(focus, focus_target + swing, 1.0 - exp(-delta * 6.0))
+	lens_focus(focus_attributes, focus)
+
+## A lens focused `focus` metres off: what blurs behind it and in front of it.
+## Also a teammate watching through this camera (revival.watch_over), with the
+## distance it is sent.
+static func lens_focus(attributes: CameraAttributesPractical, focus: float) -> void:
 	var near := 1.0 / maxf(focus, 0.05)
-	focus_attributes.dof_blur_far_enabled = near > FOCUS_SPREAD.x
+	attributes.dof_blur_far_enabled = near > FOCUS_SPREAD.x
 	if near > FOCUS_SPREAD.x:
 		var starts := 1.0 / (near - FOCUS_SPREAD.x)
 		var whole := starts + FOCUS_FADE_MOST
 		if near > FOCUS_SPREAD.y: whole = minf(whole, 1.0 / (near - FOCUS_SPREAD.y))
-		focus_attributes.dof_blur_far_distance = starts
-		focus_attributes.dof_blur_far_transition = maxf(0.05, whole - starts)
-	focus_attributes.dof_blur_near_enabled = true
-	focus_attributes.dof_blur_near_distance = minf(0.35, focus * 0.5)
-	focus_attributes.dof_blur_near_transition = 0.2
+		attributes.dof_blur_far_distance = starts
+		attributes.dof_blur_far_transition = maxf(0.05, whole - starts)
+	attributes.dof_blur_near_enabled = true
+	attributes.dof_blur_near_distance = minf(0.35, focus * 0.5)
+	attributes.dof_blur_near_transition = 0.2
 
 ## Where the camera looks without the hand-held motion (what the network
 ## sends as the look, for instance).

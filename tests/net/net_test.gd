@@ -441,8 +441,14 @@ func alpha_part() -> void:
 
 func bravo_part() -> void:
 	var match_net = level.match_net
-	check("Muere y observa a un compañero vivo desde detrás", await wait_for(func(): return not level.local_alive() and not level.player.active and match_net.watched_body() != null and is_instance_valid(level.watch_camera) and level.watch_camera.current, 60.0))
-	check("La cámara de observación no atraviesa paredes", level.watch_camera.global_position.distance_to(match_net.watched_body().global_position) < 3.2)
+	check("Muere y mira por la cámara de un compañero vivo", await wait_for(func(): return not level.local_alive() and not level.player.active and match_net.watched_body() != null and is_instance_valid(level.watch_camera) and level.watch_camera.current, 60.0))
+	# What it sees is that teammate's own picture: from its camera, as its
+	# owner sends it, with its own body out of the frame and its shadow in it.
+	await pause_for(0.5)
+	var watched = match_net.watched_body()
+	var through: bool = level.watch_camera.global_position.distance_to(watched.camera.global_position) < 0.15 and level.watch_camera.global_position.distance_to(watched.global_position + Vector3(0, 1.4, 0)) < 0.6
+	var unseen: bool = watched.avatar.meshes.all(func(mesh): return (mesh.layers & 1) == 0)
+	check("Ve lo que ve su compañero, desde su cámara y sin su propio cuerpo delante", through and unseen, "camera %.2f m from the teammate's" % level.watch_camera.global_position.distance_to(watched.camera.global_position))
 	# The stage is given back and this body has to come back whole. Its own
 	# camera, its own body, and the torch in the hand: the torch trails the
 	# camera instead of hanging from it, and it is hidden along with the body,
@@ -452,6 +458,7 @@ func bravo_part() -> void:
 	level.player.torch.visible = true
 	var raised: bool = await wait_for(func(): return level.local_alive() and level.player.visible and level.player.camera.current and not is_instance_valid(level.watch_rig), 30.0)
 	check("Al devolver la etapa recupera su cuerpo y su cámara", raised)
+	check("Y el compañero por el que miraba vuelve a verse entero", watched.avatar.meshes.all(func(mesh): return (mesh.layers & 1) != 0))
 	check("Y su linterna vuelve con él en vez de quedarse donde murió", level.player.torch.is_visible_in_tree() and level.player.torch.global_position.distance_to(level.player.camera.global_position) < 1.5)
 	match_net.sheet_local("%d:1" % level.net.local_seat, 0, PackedVector2Array([Vector2(0.5, 0.5), Vector2(0.9, 0.9)]))
 	check("Ve terminar el piso aunque haya muerto", await wait_for(func(): return level.session.state == level.session.State.WON, 120.0))

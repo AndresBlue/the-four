@@ -26,6 +26,16 @@ var reading := false
 var peek_left := 0.0
 var peek_right := 0.0
 var pitch := 0.0
+## Its owner's camera (match_net.pack_local): how far it is zoomed and where it
+## is focused, for whoever watches through it; and the newest pose of it on
+## the body, which still comes while the scene moves the body.
+var zoom := 1.0
+var focus := 6.0
+var view := Transform3D(Basis.IDENTITY, Vector3(0.0, 1.64, 0.0))
+## Where its camera was at the last two physics ticks, to be drawn in between
+## (smooth_view).
+var view_before := Transform3D.IDENTITY
+var view_after := Transform3D.IDENTITY
 var level
 ## Received states: {time, position, yaw, pitch, velocity}.
 var states: Array = []
@@ -124,10 +134,19 @@ func push_state(data: Array) -> void:
 			away = false
 			return
 		ride_hold = 0.0
-	states.append({"time": clock, "position": data[0], "yaw": data[1], "pitch": data[2], "velocity": data[3]})
-	while states.size() > 12: states.pop_front()
 	var flags: int = data[4]
 	crouched = flags & 1 != 0
+	# Its camera as its owner has it; a state made here without it (a stand-in
+	# in a tool or a test), at its eyes, looking where it looks.
+	var zoomed := 1.0
+	var focused := 6.0
+	if data.size() >= 12:
+		view = Transform3D(Basis(data[9] as Quaternion), data[8] as Vector3)
+		zoomed = data[10]
+		focused = data[11]
+	else: view = Transform3D(Basis(Vector3.RIGHT, float(data[2])), Vector3(0.0, 0.9 if crouched else 1.64, 0.0))
+	states.append({"time": clock, "position": data[0], "yaw": data[1], "pitch": data[2], "velocity": data[3], "view": view, "zoom": zoomed, "focus": focused})
+	while states.size() > 12: states.pop_front()
 	# In the creature's hands its torch is on the floor (executions.drop_torch).
 	torch.visible = flags & 2 != 0 and not hidden and not (level != null and not level.execution.is_empty() and int(level.execution.seat) == slot)
 	reading = flags & 8 != 0
@@ -172,12 +191,16 @@ func ride_to(point: Vector3) -> void:
 func _physics_process(delta: float) -> void:
 	clock += delta
 	ride_hold = maxf(0.0, ride_hold - delta)
+	view_before = view_after
 	# In the creature's hands the body is the scene's to put and to pose
 	# (executions.place_victim): the states its owner goes on sending are of a
-	# body that is not its own to move.
+	# body that is not its own to move. Its camera is still where its owner's
+	# went: thrown from the hands and on the floor.
 	if level != null and not level.execution.is_empty() and int(level.execution.seat) == slot and not dead:
 		velocity = Vector3.ZERO
 		states.clear()
+		camera.transform = view
+		view_after = camera.global_transform
 		return
 	# Caught in the same wardrobe as the one in the creature's hands, it dies
 	# with them, and while the scene lasts it is not seen at all: its own
@@ -212,14 +235,23 @@ func _physics_process(delta: float) -> void:
 	global_position = target if target.distance_to(previous) > 3.0 else target
 	rotation.y = lerp_angle(before.yaw, after.yaw, t)
 	pitch = lerpf(before.pitch, after.pitch, t)
-	camera.position.y = 0.9 if crouched else 1.64
-	camera.rotation.x = pitch
+	camera.transform = (before.view as Transform3D).interpolate_with(after.view, t)
+	zoom = lerpf(before.zoom, after.zoom, t)
+	focus = lerpf(before.focus, after.focus, t)
+	view_after = camera.global_transform
 	velocity = before.velocity.lerp(after.velocity, t)
 	avatar.visible = not hidden
 	# A puppet has no floor under it: it is on the ground unless it is clearly
 	# going up or coming down.
 	avatar.update_pose(velocity if not hidden else Vector3.ZERO, crouched, delta, absf(velocity.y) < 1.2)
 	update_steps(previous, delta)
+
+## Where its camera is this frame: between the last two physics ticks, as far
+## as the frame is between them, so that a teammate watching through it does
+## not see it go in steps of sixty a second (hotel_player.smooth_camera).
+func smooth_view() -> Transform3D:
+	if view_before == Transform3D.IDENTITY or view_before.origin.distance_to(view_after.origin) > 1.0: return camera.global_transform
+	return view_before.interpolate_with(view_after, Engine.get_physics_interpolation_fraction())
 
 ## Footsteps from the distance walked, quieter crouched, louder running.
 func update_steps(previous: Vector3, _delta: float) -> void:

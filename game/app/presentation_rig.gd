@@ -165,6 +165,8 @@ func update_zoom_lens() -> void:
 	# The zoom is the living player's own: over the menu, the opening scene or
 	# a teammate's shoulder the lens is wide, whatever it was left at.
 	var zoom: float = level.player.zoom if level.session.state in [level.session.State.PLAYING, level.session.State.PAUSED] and level.local_alive() else 1.0
+	# Watching through a teammate's camera, it is theirs.
+	if not level.local_alive() and is_instance_valid(level.watch_camera) and level.watch_camera.current and is_instance_valid(level.watched_body) and "zoom" in level.watched_body: zoom = float(level.watched_body.zoom)
 	if is_equal_approx(zoom, lens_zoom) and is_equal_approx(aspect, lens_aspect): return
 	lens_zoom = zoom
 	lens_aspect = aspect

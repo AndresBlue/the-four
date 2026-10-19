@@ -151,7 +151,7 @@ Empezar exige al menos dos jugadores conectados. Nombres repetidos se numeran.
 
 **Cooperativo.** The Locust vigila y persigue a un superviviente cada vez (el que ve, o el más cercano). Mínimo para salir: `ceil(N / 2)` supervivientes (1/2, 2/3, 2/4, 3/5), todos los vivos dentro del refugio y cualquiera manteniendo la interacción tres segundos. Mirar a un compañero cercano muestra su nombre en los corchetes de enfoque.
 
-**Muertes.** Quien muere observa a un compañero vivo **desde detrás del hombro**, con un brazo de cámara que choca con las paredes y los armarios: nunca se ve a través de ellos ni por dentro del modelo del compañero. Clic cambia de compañero. Sin cámara libre ni edición de la hoja. Esc abre un menú local sin detener la partida.
+**Muertes.** Quien muere mira **por la cámara de un compañero vivo**: ve exactamente lo que él ve, con su zoom (y la lente igual de curvada), su enfoque, su linterna, el pulso de su mano, cuando se asoma o se agacha, y desde dentro del armario si se esconde. Su cuerpo no sale en el cuadro, como no sale en el suyo; su sombra sí. (Hasta el 18 de octubre de 2026 era una cámara detrás de su hombro.) Clic cambia de compañero. Sin cámara libre ni edición de la hoja. Esc abre un menú local sin detener la partida.
 
 **Cuerpos.** Los jugadores nunca frenan a la criatura: su cuerpo no la bloquea. Al morir, el cuerpo desaparece de las pantallas de los demás y deja de estorbar en puertas y pasillos; un cuerpo desconectado o muerto tampoco impide cerrar una puerta.
 
