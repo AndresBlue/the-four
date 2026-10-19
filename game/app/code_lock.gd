@@ -40,7 +40,7 @@ var lock_open := false
 var typed := ""
 
 ## Going through a drawer: the slow creak of a door, which is what it is.
-const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
+const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/slow-opening.wav"
 
 ## The drawers, shelves and cupboards of the floor, and the four numbers hidden
 ## in four of them, in the wing of the last stage. Everyone works out the same

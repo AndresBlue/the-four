@@ -1,8 +1,10 @@
-"""Builds the synthesized dread layers and mono working copies used by the
-spatial audio system. Output goes to assets/audio/dread/ (16-bit WAV).
+"""Builds the synthesized dread layers used by the spatial audio system.
+Output goes to assets/audio/dread/ (16-bit WAV).
 
 Everything is deterministic (fixed seeds), so re-running reproduces the same
-files. Originals in sfx/ are only read, never modified.
+files. Until 19 October 2026 it also made presence_riser.wav, a copy of
+sfx/ambience/presence/sub-riser-presence.wav ("Sub Riser", CC BY-NC 3.0),
+which is gone.
 
     python tools/audio/generate_dread_layers.py
 """
@@ -125,31 +127,3 @@ t = np.arange(int(seconds * RATE)) / RATE
 hum = sum(np.sin(2 * np.pi * 100 * h * t) / h for h in range(1, 7))
 hum = np.clip(hum * 1.8, -1, 1) + 0.04 * np.sin(2 * np.pi * periodic(2130, seconds) * t)
 write("fluorescent_hum.wav", hum)
-
-
-def mono_copy(source, name, rate_out):
-    """24-bit stereo master -> mono 16-bit working copy at a lower rate."""
-    with wave.open(str(ROOT / source), "rb") as w:
-        rate, channels, width, frames = w.getframerate(), w.getnchannels(), w.getsampwidth(), w.getnframes()
-        raw = w.readframes(frames)
-    if width == 3:
-        b = np.frombuffer(raw, np.uint8).reshape(-1, 3).astype(np.int32)
-        ints = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
-        data = ((ints ^ 0x800000) - 0x800000).astype(np.float64) / 2 ** 23
-    else:
-        data = np.frombuffer(raw, "<i2").astype(np.float64) / 32768
-    mono = data.reshape(-1, channels).mean(axis=1)
-    # Windowed-sinc low-pass before resampling to avoid aliasing.
-    ratio = rate_out / rate
-    taps = np.arange(-63, 64)
-    kernel = np.sinc(taps * ratio * 0.9) * np.hamming(len(taps))
-    kernel /= kernel.sum()
-    filtered = np.convolve(mono, kernel, mode="same")
-    positions = np.arange(0, len(filtered) - 1, 1 / ratio)
-    resampled = np.interp(positions, np.arange(len(filtered)), filtered)
-    return resampled
-
-
-riser = mono_copy("sfx/ambience/presence/sub-riser-presence.wav", "riser", RATE)
-write("presence_riser.wav", riser)
-

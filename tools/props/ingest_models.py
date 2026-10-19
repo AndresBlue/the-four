@@ -233,7 +233,7 @@ def register(rows):
         "<!-- MODELS: generado por tools/props/ingest_models.py, no editar a mano -->",
         "## Mobiliario y objetos (fase 4 de REALISM.md)",
         "",
-        "Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmente. Descargas originales en `source_assets/props/` (fuera de git); en `assets/props/hotel/<id>/` quedan las texturas (1024 px, 2048 en los muebles grandes) y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/hotel/<id>.res`.",
+        "Poly Haven, CC0 (dominio público): no exigen atribución: constan aquí y no en los créditos del juego. Descargas originales en `source_assets/props/` (fuera de git); en `assets/props/hotel/<id>/` quedan las texturas (1024 px, 2048 en los muebles grandes) y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/hotel/<id>.res`.",
         "",
         "| Modelo | Autoría | Licencia |",
         "|---|---|---|",

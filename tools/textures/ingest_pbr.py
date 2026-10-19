@@ -155,7 +155,7 @@ def register(rows):
         "<!-- SCANS: generado por tools/textures/ingest_pbr.py, no editar a mano -->",
         "## Materiales escaneados (fase 3 de REALISM.md)",
         "",
-        "Todos CC0 (dominio público): no exigen atribución, se acreditan igualmente. Descargas originales en `source_assets/textures/` (fuera de git); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px y a 1024 px (`_1k`, preset Bajo).",
+        "Todos CC0 (dominio público): no exigen atribución: constan aquí y no en los créditos del juego. Descargas originales en `source_assets/textures/` (fuera de git); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px y a 1024 px (`_1k`, preset Bajo).",
         "",
         "| Set | Asset | Autoría | Fuente | Licencia | Uso |",
         "|---|---|---|---|---|---|",

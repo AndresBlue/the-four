@@ -4,7 +4,7 @@
 
 Se catalogaron 33 archivos aportados en `sfx/`. Se asignaron **30** a funciones actuales; los otros tres permanecen reservados. Los originales no se editaron ni movieron. `sfx/` queda fuera de la importación de Godot y de Git; respáldala junto con `source_assets/`. Las copias que puede usar el proyecto están en `assets/audio/sfx/`.
 
-- **Puertas cercanas:** cuatro aperturas y cuatro cierres, con elección aleatoria local que evita repetir inmediatamente la misma grabación. Apertura lenta: crujido prolongado. Pequeña variación de tono entre 0,98 y 1,02.
+- **Puertas cercanas:** cuatro aperturas y cuatro cierres, con elección aleatoria local que evita repetir inmediatamente la misma grabación. Abrir y cerrar despacio: un crujido largo cada uno («Puerta lenta»). Pequeña variación de tono entre 0,98 y 1,02.
 - **Puertas lejanas:** dos aperturas y dos cierres con distancia/eco ya presentes en la grabación. Se elige ese grupo a partir de 12 m al comenzar el sonido, sin cambiar de grabación a mitad del efecto. Ambos grupos se atenúan espacialmente; alcance máximo 32 m.
 - **Cierre coherente:** el golpe de cierre espera a que termine el movimiento y la grabación arranca justo antes de su impacto, para que el pestillo coincida con la hoja. Una puerta ya no se niega a cerrar ni rebota abierta con alguien en el marco, así que el pestillo suena siempre al terminar el cierre, una sola vez. Abrir puertas durante la construcción del mapa no produce sonidos.
 - **Escondites:** cuatro entradas y cuatro salidas de armario, ligadas a las acciones que realmente se completan. Los armarios son ya los de doble puerta: solo la primera apertura de cada estancia cruje, y asomarse abriendo las hojas tiene su propio sonido.
@@ -20,7 +20,7 @@ La atenuación direccional usa AudioStreamPlayer3D; la oclusión por pared es un
 - `paper/paper.ogg`: suena al leer un documento (sonido local, no es un ruido para la IA). También está previsto para abrir la futura hoja de dibujo.
 - `heartbeat/1.ogg` y `2.ogg`: son los latidos del aura (`dread_aura.gd`, ver «Aura de The Locust»).
 - Cuatro grabaciones `hard-*`: se usan como portazo cuando el jugador abre o cierra una puerta mientras corre. Ese giro es más rápido y su ruido jugable llega a 18 m (normal: 12 m; lento: 3 m).
-- `sub-riser-presence.wav`: reservado para una transición de presencia anunciada; no se suma al aviso corto de ataque para no ocultarlo.
+- `sub-riser-presence.wav` y `creaky-wooden-door-slow-opening.mp3`: fuera del juego desde el 19 de octubre de 2026, por su licencia no comercial ([ASSETS.md](ASSETS.md)); los originales siguen en `sfx/`.
 - `big-hall-far-prop-glass-noise.wav`: reservado para un evento ambiental con origen válido en un salón existente.
 - `metalic-sliding-long-door.wav`: sin uso (el ascensor tiene sus propias grabaciones, «El ascensor»).
 
@@ -78,7 +78,7 @@ Medido con `tools/audio/measure_spatial.gd` (pisadas de la criatura a 3,5 m de u
 
 Capas generadas por `tools/audio/generate_dread_layers.py` en `assets/audio/dread/` (WAV mono 16 bits, reproducibles): dron, respiración, cuatro chasquidos y zumbido de fluorescente. Se pueden sustituir por grabaciones propias con el mismo nombre.
 
-**La crecida se retiró** (septiembre de 2026): `presence_riser.wav` era un barrido ascendente sintetizado —de 93 Hz a 4,7 kHz en cinco segundos— que se disparaba al cruzar intensidad 0,55, es decir justo cuando la criatura se te echaba encima, y sonaba a efecto de tráiler y no a bicho. El archivo se conserva porque la escena de entrada lo usa como golpe de la tele. Sin ella el aura sigue apuntando igual (medido en el bus `Aura`: entre 8 y 13 veces más energía en el oído del lado de la criatura), pero la prueba de sonido espacial necesita una ventana más larga, porque ya no hay un golpe garantizado dentro de ella.
+**La crecida se retiró** (septiembre de 2026): `presence_riser.wav` era un barrido ascendente sintetizado —de 93 Hz a 4,7 kHz en cinco segundos— que se disparaba al cruzar intensidad 0,55, es decir justo cuando la criatura se te echaba encima, y sonaba a efecto de tráiler y no a bicho. El archivo siguió un tiempo como golpe de la tele en la escena de entrada, y el 19 de octubre de 2026 salió del proyecto: su grabación, «Sub Riser», es no comercial. La embestida de la tele se queda con su destello y su sacudida. Sin ella el aura sigue apuntando igual (medido en el bus `Aura`: entre 8 y 13 veces más energía en el oído del lado de la criatura), pero la prueba de sonido espacial necesita una ventana más larga, porque ya no hay un golpe garantizado dentro de ella.
 
 ## Atmósfera local
 
@@ -129,9 +129,11 @@ Son **locales de cada máquina**: no pasan por `match_net.noise()`, así que la 
 
 Entrar y salir suenan con las grabaciones de armario y hacen un ruido que la criatura oye hasta 12 m (45 m si la lleva un jugador). La primera vez que se entreabren las puertas en cada estancia cruje en voz baja (se oye hasta 10,5 m); cambiar de lado o volver a abrir no suena.
 
-## Apertura lenta
+## Puerta lenta
 
-La puerta abierta despacio y el asomarse del armario usan `door/opening/slow-opening-clean.wav`, sacado de `creaky-wooden-door-slow-opening.mp3` por `tools/audio/clean_recordings.py`: filtro de graves bajo 120 Hz y puerta espectral contra el ruido de micrófono, y un descenso de 10 dB a lo largo del sonido con un desvanecimiento final, para que no termine fuerte. Suena 5 dB por debajo que antes (−12 dB, frente a +1 de una apertura normal; asomarse, −25).
+**Abierta despacio**, una puerta suena con `door/opening/slow-opening.wav` («creaky door», CaptainYulef, CC0); asomarse desde un armario y registrar un cajón usan la misma grabación. **Cerrada despacio**, con `door/closing/slow-closing.wav` («Creaky bedroom door close; long .WAV», thomasanthony321, CC0): el crujido empieza con el giro y el pestillo cae cuando la hoja llega al marco, 1,5 s después (`hotel_door.SLOW_SWING`); de lejos solo se oye el pestillo, al caer. Hasta el 19 de octubre de 2026 la puerta lenta era «DOOR creak» (CC BY-NC) y cerrar despacio sonaba igual que cerrar.
+
+Las dos las prepara `tools/audio/clean_recordings.py` desde `sfx/door-new/`: filtro de graves bajo 70 Hz, fundidos cortos y, mientras suenan, el mismo nivel que el crujido al que sustituyen (−41 dBFS). En la grabación del cierre el pestillo cae 2,9 s después de empezar el crujido; se le quitan la cola larga del crujido y casi todo el silencio de antes del pestillo (`CLOSING_CUT`), y el pestillo queda a 1,5 s. En la mezcla, −12 dB las dos, frente a +1 de una apertura normal; asomarse, −25.
 
 ## Pasos del jugador
 
@@ -143,7 +145,7 @@ Los pasos propios van por el bus `Steps` (sigue el deslizador de efectos), con u
 
 ## Escena de entrada
 
-Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes al cristal (con un golpe grave sintetizado debajo, bajo) y `glass-break` para la pantalla que estalla, oída amortiguada a través de la puerta. Sintetizados por `tools/audio/generate_intro_sfx.py` en `assets/audio/intro/`: estática de canal muerto más intensa (siseo de banda ancha con subidas, chasquidos y zumbido de campo a 59,94 Hz), zumbido del tubo, pisadas fuertes para ir hacia la puerta y golpes contra la puerta. La cama es la grabación aportada `assets/audio/bed-sound.m4a` (alguien moviéndose en una cama, 34 s): `tools/audio/clean_recordings.py` la decodifica con `tools/audio/decode_media.ps1` (Media Foundation de Windows, sin instalar nada), le quita ruido y la corta en seis movimientos (`bed_stir`, `bed_sit`, `bed_lean`, `bed_shift`, `bed_press`, `bed_rise`) con los golpes de las manos contra el colchón suavizados. Se reutilizan respiración, dron, crecida de presencia, latidos, portazos, un gruñido y los pasos grabados. `tools/audio/analyze_cue_timing.gd` incluye ahora `assets/audio/glass` para arrancar las grabaciones en su ataque. Niveles al 50 % con `tools/audio/measure_intro.gd`: estática mirando la tele unos −22 dBFS RMS; golpes al cristal pico −2; portazo y rotura pico −1. Incorporarse y apoyarse en la cama: pico −4 y RMS −23 dBFS con la estática debajo.
+Grabaciones aportadas en `assets/audio/glass/`: `glass-hit-1..3` para los golpes al cristal (con un golpe grave sintetizado debajo, bajo) y `glass-break` para la pantalla que estalla, oída amortiguada a través de la puerta. Sintetizados por `tools/audio/generate_intro_sfx.py` en `assets/audio/intro/`: estática de canal muerto más intensa (siseo de banda ancha con subidas, chasquidos y zumbido de campo a 59,94 Hz), zumbido del tubo, pisadas fuertes para ir hacia la puerta y golpes contra la puerta. La cama es la grabación aportada `assets/audio/bed-sound.m4a` (alguien moviéndose en una cama, 34 s): `tools/audio/clean_recordings.py` la decodifica con `tools/audio/decode_media.ps1` (Media Foundation de Windows, sin instalar nada), le quita ruido y la corta en seis movimientos (`bed_stir`, `bed_sit`, `bed_lean`, `bed_shift`, `bed_press`, `bed_rise`) con los golpes de las manos contra el colchón suavizados. Se reutilizan respiración, dron, latidos, portazos, un gruñido y los pasos grabados. `tools/audio/analyze_cue_timing.gd` incluye ahora `assets/audio/glass` para arrancar las grabaciones en su ataque. Niveles al 50 % con `tools/audio/measure_intro.gd`: estática mirando la tele unos −22 dBFS RMS; golpes al cristal pico −2; portazo y rotura pico −1. Incorporarse y apoyarse en la cama: pico −4 y RMS −23 dBFS con la estática debajo.
 
 ## Ejecución
 

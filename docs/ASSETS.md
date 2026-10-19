@@ -17,7 +17,7 @@ Procedencia, licencias y permisos pendientes de todo lo que entra en el juego. M
 
 ## Aportado por el usuario, con su ficha (revisado el 19/09/2026)
 
-Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se anotó tal cual la publica su autor. **Todos se acreditan en la pantalla de créditos del juego** (`game/ui/hotel_ui.gd`, `CREDITS`).
+Assets que el usuario descargó e incorporó al juego. Cada ficha se abrió y se anotó tal cual la publica su autor. **Los que piden atribución, y los que tienen la licencia por resolver, se acreditan en la pantalla de créditos del juego** (`game/ui/hotel_ui.gd`, `CREDITS`); lo que es CC0 o de dominio público consta solo en este registro (desde el 19/10/2026).
 
 ### Personajes jugables (`assets/players/`)
 
@@ -67,7 +67,7 @@ Siguen sin ficha, y por tanto sin licencia comprobada: el televisor de la escena
 
 ### Sonido (Freesound)
 
-El usuario aportó estos once. De los ocho primeros, el reparto archivo por archivo dentro de `assets/audio/` todavía no está anotado (pendiente de que el usuario diga cuál es cuál); los tres últimos, en cambio, se saben exactamente: son los de la ejecución.
+El usuario aportó estos. De los seis primeros, el reparto archivo por archivo dentro de `assets/audio/` todavía no está anotado (pendiente de que el usuario diga cuál es cuál); los demás se saben exactamente.
 
 | Sonido | Autoría | Licencia | Ficha |
 |---|---|---|---|
@@ -77,30 +77,34 @@ El usuario aportó estos once. De los ocho primeros, el reparto archivo por arch
 | horror ambience 161101_1038 | klankbeeld | CC BY 4.0 | [535780](https://freesound.org/people/klankbeeld/sounds/535780/) |
 | Door Opening | AUDACITIER | CC BY 4.0 | [632128](https://freesound.org/people/AUDACITIER/sounds/632128/) |
 | Atmosphere 2 | oldaccount | CC BY 3.0 | [316800](https://freesound.org/people/oldaccount/sounds/316800/) |
-| DOOR creak — multiple creaks wooden door | mickfire | **CC BY-NC 4.0** | [326416](https://freesound.org/people/mickfire/sounds/326416/) |
-| Sub Riser | deleted_user_3277771 (Josh Mclelland) | **CC BY-NC 3.0** | [185372](https://freesound.org/people/deleted_user_3277771/sounds/185372/) |
 | Jumpscare sound | EnclosureX_Studios | CC BY 4.0 | [865842](https://freesound.org/people/EnclosureX_Studios/sounds/865842/) |
 | toaster oven or lift/elevator bell | azumarill | CC BY 3.0 | Freesound |
 | custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025 | Artninja | CC BY 4.0 | [829590](https://freesound.org/people/Artninja/sounds/829590/) |
 | Radio Music — A MakeNoise Morphagene Reel | nlux | CC0 | [624412](https://freesound.org/people/nlux/sounds/624412/) |
 | Flashlight Clicking On and Off | deleted_user_7146007 | CC0 | [383659](https://freesound.org/people/deleted_user_7146007/sounds/383659/) |
 | camera lens zooming | CorneRoose | CC0 | [654182](https://freesound.org/people/CorneRoose/sounds/654182/) |
+| creaky door | CaptainYulef | CC0 | [638608](https://freesound.org/people/CaptainYulef/sounds/638608/) |
+| Creaky bedroom door close; long .WAV | thomasanthony321 | CC0 | [682754](https://freesound.org/people/thomasanthony321/sounds/682754/) |
 
 Los dos últimos, aportados el 18 de octubre de 2026 (en `sfx/flashlight/on-off-x3.ogg` y `sfx/cam/zoom-in-and-out.mp3`, recortes del autor de las grabaciones de Freesound), son el interruptor de la linterna y el motor del zoom: `tools/audio/prepare_camera_sfx.py` los corta en `assets/audio/sfx/flashlight/` y `assets/audio/sfx/camera/` (AUDIO.md).
+
+Los dos de la puerta lenta, aportados el 19 de octubre de 2026 en `sfx/door-new/` (`door-slow-opening.ogg` y `door-slow-closing.ogg`, fichas abiertas ese día), son abrir y cerrar despacio: `tools/audio/clean_recordings.py` los prepara en `assets/audio/sfx/door/` (AUDIO.md, «Puerta lenta»).
+
+**Salieron del juego el 19 de octubre de 2026**, por no comerciales, «DOOR creak — multiple creaks wooden door» (mickfire, CC BY-NC 4.0, [326416](https://freesound.org/people/mickfire/sounds/326416/)), que era `sfx/door/opening/creaky-wooden-door-slow-opening.mp3`, y «Sub Riser» (deleted_user_3277771 / Josh Mclelland, CC BY-NC 3.0, [185372](https://freesound.org/people/deleted_user_3277771/sounds/185372/)), que era `sfx/ambience/presence/sub-riser-presence.wav`. Los originales siguen en `sfx/`; en el proyecto no queda copia ni nada que los use.
 
 Los tres de la ejecución: el grito del agarre (`execution_scream.wav`), el golpe del brazo (`execution_hit.wav`) y la estática del canal muerto (`execution_static.ogg`). El cuerpo al caer no suena. Los originales están en `sfx/screamer/`, `sfx/hit/` y `sfx/static/` (esa carpeta no se versiona: son los másteres del usuario); las copias que usa el juego las prepara `tools/audio/prepare_execution_sfx.py` (mono a 44,1 kHz; del archivo de impactos, que trae tres tomas, solo se usa la primera, cortada para que el impacto caiga a 0,22 s).
 
 ### Lo que esto impide
 
-- **No comercial:** los dos sonidos marcados arriba y el modelo de The Locust (CC BY-NC-ND) prohíben el uso comercial. Mientras sigan en el juego, no se puede vender ni monetizar.
+- **No comercial:** el modelo de The Locust (CC BY-NC-ND) prohíbe el uso comercial. Mientras siga en el juego, no se puede vender ni monetizar. Desde el 19/10/2026 es lo único no comercial: los dos sonidos que también lo eran salieron.
 - **Sin obra derivada:** la licencia de The Locust es además NoDerivs, y el hotel lo escala y le mueve los huesos. Hay que resolverlo con el autor o sustituirlo antes de publicar.
 - **CompartirIgual:** «Realistic Female» obliga a distribuir bajo la misma licencia cualquier obra derivada del modelo.
-- **Atribución:** todos los CC BY exigen crédito, y ya lo tienen en la pantalla de créditos. Los CC0 (ambientCG, Poly Haven) y el dominio público (Art Institute of Chicago) no lo exigen; se acreditan igualmente.
+- **Atribución:** todos los CC BY exigen crédito, y ya lo tienen en la pantalla de créditos. Los CC0 (ambientCG, Poly Haven, los sonidos CC0 de Freesound) y el dominio público (Art Institute of Chicago) no lo exigen: desde el 19/10/2026 no salen en los créditos, solo en este registro.
 
 <!-- SCANS: generado por tools/textures/ingest_pbr.py, no editar a mano -->
 ## Materiales escaneados (fase 3 de REALISM.md)
 
-Todos CC0 (dominio público): no exigen atribución, se acreditan igualmente. Descargas originales en `source_assets/textures/` (fuera de git); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px y a 1024 px (`_1k`, preset Bajo).
+Todos CC0 (dominio público): no exigen atribución: constan aquí y no en los créditos del juego. Descargas originales en `source_assets/textures/` (fuera de git); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px y a 1024 px (`_1k`, preset Bajo).
 
 | Set | Asset | Autoría | Fuente | Licencia | Uso |
 |---|---|---|---|---|---|
@@ -134,7 +138,7 @@ Requieren cuenta; los descarga el usuario en `source_assets/props/`. Si entran, 
 <!-- MODELS: generado por tools/props/ingest_models.py, no editar a mano -->
 ## Mobiliario y objetos (fase 4 de REALISM.md)
 
-Poly Haven, CC0 (dominio público): no exigen atribución, se acreditan igualmente. Descargas originales en `source_assets/props/` (fuera de git); en `assets/props/hotel/<id>/` quedan las texturas (1024 px, 2048 en los muebles grandes) y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/hotel/<id>.res`.
+Poly Haven, CC0 (dominio público): no exigen atribución: constan aquí y no en los créditos del juego. Descargas originales en `source_assets/props/` (fuera de git); en `assets/props/hotel/<id>/` quedan las texturas (1024 px, 2048 en los muebles grandes) y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/hotel/<id>.res`.
 
 | Modelo | Autoría | Licencia |
 |---|---|---|
@@ -262,6 +266,7 @@ Las secciones siguientes conservan la procedencia del H1 anterior. El mismo GLB 
 - Personaje original: Doctor Nowhere.
 - Ficha: https://sketchfab.com/3d-models/toe-locust-by-doumty-cd344df3cdc04fb5b8d1ca73a8a26c37
 - Ficha original de Workshop enlazada por el autor: https://steamcommunity.com/sharedfiles/filedetails/?id=3544392594
+- Licencia comprobada de nuevo el 19/10/2026 en la API pública de Sketchfab (ficha «T.O.E Locust - By Doumty», publicada el 18/10/2025): sigue siendo **CC BY-NC-ND 4.0**.
 - Licencia anunciada en la ficha consultada el 16/09/2026: **CC Attribution-NonCommercial-NoDerivs**. El archivo suministrado no incluye un documento de licencia. La apertura directa de la ficha devolvió 403, pero el índice consultado muestra explícitamente esta licencia; comprobar la versión y sus condiciones con el autor antes de distribuir.
 - Adaptación local: H1 conserva escala 1,9× y pose estática. El hotel usa 1,65× (altura medida 2,46 m), oscilación procedural de huesos y preparación visual de ataque. Es animación provisional, no un paquete final de animaciones. El GLB y sus texturas originales se mantienen sin modificar; los permisos pendientes de distribución no cambian.
 
@@ -295,4 +300,4 @@ Los cinco audios nuevos ahora están en `source_assets/audio/`; Sunman y The Boy
 
 **La sangre** (`sfx/blood/` → `assets/audio/sfx/blood/`, copiados tal cual): cinco archivos que el autor descargó y cortó el 13 de octubre de 2026 de dos grabaciones de Freesound, las dos **Creative Commons 0** (comprobado en su página): «Blood Gush», de FlaxGod (https://freesound.org/people/FlaxGod/sounds/654101/: un trapo mojado escurrido, Zoom H1) → `blood-gush-1..4.ogg`; y «Blood Gush / Spray», de clif_creates (https://freesound.org/people/clif_creates/sounds/345985/: un pomelo exprimido, grabado de cerca) → `hemorrhage.ogg`. No piden atribución; se anota de dónde salen. `assets/decals/blood_atlas.png` no viene de ningún sitio: lo dibuja `tools/textures/bake_blood.py`.
 
-33 sonidos aportados en `sfx/`, conservados sin modificación. Ocho de ellos ya tienen ficha y licencia (Freesound, arriba); falta anotar qué archivo es cada uno. Las copias activas y preparadas están en `assets/audio/sfx/`; [AUDIO.md](AUDIO.md) distingue 23 asignaciones actuales y diez reservas. Inventario con SHA-256 en `docs/assets/sfx_inventory.json`. Origen/autoría y permisos de distribución pendientes; no se atribuye licencia libre por el nombre del archivo.
+33 sonidos aportados en `sfx/`, conservados sin modificación. Seis de ellos tienen ficha y licencia (Freesound, arriba) sin que se sepa todavía qué archivo es cada uno; otros dos, `creaky-wooden-door-slow-opening.mp3` y `sub-riser-presence.wav`, eran «DOOR creak» y «Sub Riser», y salieron del juego el 19/10/2026. Las copias activas y preparadas están en `assets/audio/sfx/`; [AUDIO.md](AUDIO.md) distingue 23 asignaciones actuales y diez reservas. Inventario con SHA-256 en `docs/assets/sfx_inventory.json`. Origen/autoría y permisos de distribución pendientes; no se atribuye licencia libre por el nombre del archivo.

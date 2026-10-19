@@ -9,9 +9,11 @@ const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 ## version), which the exported Windows and Mac builds carry too.
 static func version() -> String:
 	return "v" + str(ProjectSettings.get_setting("application/config/version", "?"))
-## The credits, as they roll: a heading and its lines. Everything the game
-## ships that somebody else made is named here, with its licence, and what is
-## still unresolved is said out loud. The register of them all, with links and
+## The credits, as they roll: a heading and its lines. What the game ships
+## that somebody else made and whose licence asks to be named is named here,
+## with that licence, and what is still unresolved is said out loud. What
+## asks for nothing (CC0, the public domain) is not: since 19 October 2026 it
+## is only in the register. The register of them all, with links and
 ## the conditions of each one, is docs/ASSETS.md.
 const CREDITS := [
 	["THE FOUR", [
@@ -30,7 +32,6 @@ const CREDITS := [
 		"«Realistic Female» — Biviyt (Sketchfab, CC BY-SA 4.0).",
 	]],
 	["MOBILIARIO Y OBJETOS", [
-		"Poly Haven, CC0: Kirill Sannikov, James Ray Cock, Ulan Cabanilla, Rico Cilliers, Kuutti Siitonen, Fran Calvente, Yann Kervran, Vibrant Nordic, Ulrich Büch, Rob Tuytel, Rahul Chaudhary, ProgrammerOnCoffee, PierreB3D, Maximilian Schuster, Mateusz Sadek, Luca B, Jurita Burger, Jule Bielitz, John Malcolm, Joe Seabuhr, GurJas Studios, Fabi_G, Caspian Fortune, Benny Weimer y Slinc.",
 		"«Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
 		"«Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).",
 		"«Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).",
@@ -39,13 +40,6 @@ const CREDITS := [
 		"«VHS» — Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
-	["MATERIALES", [
-		"ambientCG — Lennart Demes, CC0: moqueta, papel pintado, azulejo, latón, falso techo y todos los decals.",
-		"Poly Haven, CC0: Rob Tuytel, Dimitrios Savva, Rico Cilliers, Dario Barresi, Jenelle van Heerden y colormass — madera, yeso, terciopelo, jacquard y cuero.",
-	]],
-	["CUADROS", [
-		"Art Institute of Chicago, colección de acceso abierto (dominio público): Salomon van Ruysdael, Meindert Hobbema, Reinier Nooms, Maxime Maufra, Henry Raeburn, John Wollaston, Arthur Devis, Albert Bierstadt, John Henry Twachtman, Jules Dupré, Jean Charles Cazin, Martin Johnson Heade, Jan Both y Jan Brueghel el Viejo.",
-	]],
 	["SONIDO — FREESOUND", [
 		"«Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).",
 		"«men_sneaker_shoes_walking_sound_09262024» — Artninja (CC BY 4.0).",
@@ -53,22 +47,15 @@ const CREDITS := [
 		"«horror ambience 161101_1038» — klankbeeld (CC BY 4.0).",
 		"«Door Opening» — AUDACITIER (CC BY 4.0).",
 		"«Atmosphere 2» — oldaccount (CC BY 3.0).",
-		"«DOOR creak — multiple creaks wooden door» — mickfire (CC BY-NC 4.0).",
-		"«Sub Riser» — deleted_user_3277771 / Josh Mclelland (CC BY-NC 3.0).",
 		"«Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).",
 		"«toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).",
 		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).",
-		"«Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).",
-		"«Blood Gush» — FlaxGod (CC0).",
-		"«Blood Gush / Spray» — clif_creates (CC0).",
-		"«Flashlight Clicking On and Off» — deleted_user_7146007 (CC0).",
-		"«camera lens zooming» — CorneRoose (CC0).",
 	]],
 	["SONIDO — EL RESTO", [
 		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["LICENCIAS PENDIENTES", [
-		"Dos de los sonidos y el modelo de The Locust llevan cláusula No Comercial, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.",
+		"El modelo de The Locust lleva cláusulas No Comercial y Sin Obras Derivadas, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.",
 		"El registro completo, con enlaces y condiciones, está en docs/ASSETS.md.",
 	]],
 ]

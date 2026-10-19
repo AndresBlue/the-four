@@ -44,11 +44,13 @@ const REAR_GAIN := -4.0
 const AIR_REACH := 45.0
 const AIR_GAIN := -6.0
 const AIR_CUTOFF := 2000.0
-const GAIN := {"open": 1.0, "open_slow": -12.0, "slam": 0.0, "close": -11.0, "hide": -8.0}
+const GAIN := {"open": 1.0, "open_slow": -12.0, "slam": 0.0, "close": -11.0, "close_slow": -12.0, "hide": -8.0}
+const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 const POOLS := {
 	"open_near": ["door/opening/opening1.ogg", "door/opening/opening2.ogg", "door/opening/opening3.ogg", "door/opening/wooden-opening.ogg"],
 	"open_far": ["door/opening/far-opening.ogg", "door/opening/far-soft-opening.ogg"],
-	"open_slow": ["door/opening/slow-opening-clean.wav"],
+	"open_slow": ["door/opening/slow-opening.wav"],
+	"close_slow": ["door/closing/slow-closing.wav"],
 	"close_near": ["door/closing/closing1.ogg", "door/closing/closing2.ogg", "door/closing/closing3.ogg", "door/closing/wooden-closing.ogg"],
 	"close_far": ["door/closing/far-closing.ogg", "door/closing/far-soft-closing.ogg"],
 	"open_slam_near": ["door/opening/close-hard-opening.ogg"],
@@ -207,6 +209,17 @@ func listener_position() -> Vector3:
 
 func door_cue(opening: bool, slow: bool, point: Vector3, emitter: RID, forceful := false) -> void:
 	var distance := listener_position().distance_to(point)
+	# Shut slowly, a door asks as its swing starts (hotel_door.swing_to): near,
+	# the long creak runs with the swing and its latch falls as it ends; far,
+	# only the latch is heard, when it falls.
+	if not opening and slow:
+		if distance < far_threshold:
+			var creak := choose("close_slow")
+			play_at(creak, point, GAIN.close_slow, emitter, maxf(TIMING.onset(creak), TIMING.hit(creak) - DOOR.SLOW_SWING))
+			last_event["pool"] = "close_slow"
+			if enabled and distance < 16.0: show_caption("[Una puerta se cierra despacio]", false)
+		else: get_tree().create_timer(DOOR.SLOW_SWING).timeout.connect(func(): door_cue(false, false, point, emitter))
+		return
 	var pool := ("open" if opening else "close") + ("_slam" if forceful else "") + ("_far" if distance >= far_threshold else "_near")
 	if opening and slow and distance < far_threshold: pool = "open_slow"
 	var path := choose(pool)

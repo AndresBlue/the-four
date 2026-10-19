@@ -345,6 +345,9 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **El clic de la linterna y el motor del zoom (18 de octubre):** el
   volumen de cada uno (−17 y −15 dB, puestos a ojo), y si a los compañeros se
   les oye la linterna a la distancia justa.
+- [ ] **La puerta lenta nueva (19 de octubre):** el volumen de abrir y cerrar
+  despacio (los dos al nivel del crujido anterior, −12 dB), si el pestillo cae
+  con la hoja, y si el corte del cierre se nota.
 - [ ] **La criatura oída desde encima de un mueble (17 de octubre):** subido a
   una cama, un escritorio o un armario se la oía a cero metros, fuerte,
   estuviera donde estuviera; la navegación ya no tiene islas en lo alto de los

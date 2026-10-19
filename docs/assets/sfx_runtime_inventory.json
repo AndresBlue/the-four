@@ -66,12 +66,6 @@
 		"working_copy": "assets/audio/sfx/door/opening/close-hard-opening.ogg"
 	},
 	{
-		"seconds": 5.01533317565918,
-		"source": "sfx/door/opening/creaky-wooden-door-slow-opening.mp3",
-		"status": "integrated",
-		"working_copy": "assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
-	},
-	{
 		"seconds": 0.779138326644897,
 		"source": "sfx/door/opening/far-hard-opening.ogg",
 		"status": "reserved",

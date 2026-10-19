@@ -200,7 +200,6 @@ func start_heartbeat() -> void:
 func lunge() -> void:
 	flash = 0.5
 	shake = 0.3
-	play("sting", -10.0)
 
 func wind_up(index: int) -> void:
 	broadcast.blow = {"start": BLOWS[index][0] - 0.5, "hit": BLOWS[index][0], "uv": BLOWS[index][1]}
@@ -443,7 +442,6 @@ func build_audio() -> void:
 	voice3d("door_far", "res://assets/audio/sfx/door/opening/wooden-opening.ogg", FAR_DOOR + Vector3(0, 1.4, 0), "Effects", 0.0, false, 4.0)
 	voice2d("breath", "res://assets/audio/dread/dread_breath.wav", "Effects")
 	voice2d("drone", "res://assets/audio/dread/dread_drone.wav", "Threat", true)
-	voice2d("sting", "res://assets/audio/dread/presence_riser.wav", "Threat")
 	voice2d("heart_0", "res://assets/audio/sfx/heartbeat/1.ogg", "Effects")
 	voice2d("heart_1", "res://assets/audio/sfx/heartbeat/2.ogg", "Effects")
 	voice2d("step", "", "Steps")

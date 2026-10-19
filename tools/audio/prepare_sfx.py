@@ -7,9 +7,12 @@ write('sfx/.gdignore','')
 ignore=(root/'.gitignore').read_text()
 if '\n/sfx/\n' not in ignore:write('.gitignore',ignore+'\n# User supplied audio masters; working copies live under assets/audio/sfx.\n/sfx/\n')
 catalog=[]
+# Out of the game since 19/10/2026 (CC BY-NC): catalogued, never copied back in.
+RETIRED=('door/opening/creaky-wooden-door-slow-opening.mp3','ambience/presence/sub-riser-presence.wav')
 for p in sorted(source.rglob('*')):
     if p.suffix not in ['.wav','.ogg','.mp3']:continue
     rel=p.relative_to(source).as_posix(); item={'source':'sfx/'+rel,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'license':'Aportado por el usuario; autor y permiso de distribución pendientes','status':'reserved','working_copy':None}
+    if rel in RETIRED:item['status']='retired';catalog.append(item);continue
     if p.suffix in ['.ogg','.mp3']:
         dest=target/p.relative_to(source);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,dest)
         item['working_copy']=dest.relative_to(root).as_posix()

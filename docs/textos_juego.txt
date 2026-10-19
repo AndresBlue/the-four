@@ -632,29 +632,13 @@ ACTUAL: MOBILIARIO Y OBJETOS
 CORRECCIÓN:
 
 [CRED.27] Texto
-ACTUAL: Poly Haven, CC0: Kirill Sannikov, James Ray Cock, Ulan Cabanilla, Rico Cilliers, Kuutti Siitonen, Fran Calvente, Yann Kervran, Vibrant Nordic, Ulrich Büch, Rob Tuytel, Rahul Chaudhary, ProgrammerOnCoffee, PierreB3D, Maximilian Schuster, Mateusz Sadek, Luca B, Jurita Burger, Jule Bielitz, John Malcolm, Joe Seabuhr, GurJas Studios, Fabi_G, Caspian Fortune, Benny Weimer y Slinc.
-| «Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).
+ACTUAL: «Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).
 | «Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).
 | «Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).
 | «Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.
+| «Panasonic VHS-C MOVIE CAMERA NV-A3» — Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.
+| «VHS» — Terizmeh (Sketchfab, CC BY 4.0): la cinta.
 | Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.
-CORRECCIÓN:
-
-[CRED.28] Encabezado
-ACTUAL: MATERIALES
-CORRECCIÓN:
-
-[CRED.29] Texto
-ACTUAL: ambientCG — Lennart Demes, CC0: moqueta, papel pintado, azulejo, latón, falso techo y todos los decals.
-| Poly Haven, CC0: Rob Tuytel, Dimitrios Savva, Rico Cilliers, Dario Barresi, Jenelle van Heerden y colormass — madera, yeso, terciopelo, jacquard y cuero.
-CORRECCIÓN:
-
-[CRED.30] Encabezado
-ACTUAL: CUADROS
-CORRECCIÓN:
-
-[CRED.31] Texto
-ACTUAL: Art Institute of Chicago, colección de acceso abierto (dominio público): Salomon van Ruysdael, Meindert Hobbema, Reinier Nooms, Maxime Maufra, Henry Raeburn, John Wollaston, Arthur Devis, Albert Bierstadt, John Henry Twachtman, Jules Dupré, Jean Charles Cazin, Martin Johnson Heade, Jan Both y Jan Brueghel el Viejo.
 CORRECCIÓN:
 
 [CRED.32] Encabezado
@@ -668,14 +652,9 @@ ACTUAL: «Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).
 | «horror ambience 161101_1038» — klankbeeld (CC BY 4.0).
 | «Door Opening» — AUDACITIER (CC BY 4.0).
 | «Atmosphere 2» — oldaccount (CC BY 3.0).
-| «DOOR creak — multiple creaks wooden door» — mickfire (CC BY-NC 4.0).
-| «Sub Riser» — deleted_user_3277771 / Josh Mclelland (CC BY-NC 3.0).
 | «Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).
 | «toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).
 | «custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).
-| «Radio Music — A MakeNoise Morphagene Reel» — nlux (CC0).
-| «Blood Gush» — FlaxGod (CC0).
-| «Blood Gush / Spray» — clif_creates (CC0).
 CORRECCIÓN:
 
 [CRED.34] Encabezado
@@ -691,7 +670,7 @@ ACTUAL: LICENCIAS PENDIENTES
 CORRECCIÓN:
 
 [CRED.39] Texto
-ACTUAL: Dos de los sonidos y el modelo de The Locust llevan cláusula No Comercial, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.
+ACTUAL: El modelo de The Locust lleva cláusulas No Comercial y Sin Obras Derivadas, y «Realistic Female» es CompartirIgual: mientras sigan aquí, esto no se puede vender.
 | El registro completo, con enlaces y condiciones, está en docs/ASSETS.md.
 CORRECCIÓN:
 

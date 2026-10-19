@@ -52,6 +52,11 @@ const OPEN_SOLID := 64 | 128
 ## through them, locked gates included) and so must never be shut inside one.
 const TRAPPED := 4 | 32
 
+## How long a door takes to swing slowly, quickly and pushed running (seconds).
+const SLOW_SWING := 1.5
+const SWING := 0.55
+const FORCEFUL_SWING := 0.32
+
 ## forceful: pushed while running; faster swing, a slam and a louder noise.
 func toggle(slow := false, emit_noise := true, forceful := false) -> bool:
 	if locked or moving: return false
@@ -66,16 +71,19 @@ func swing_to(target: bool, slow: bool, forceful: bool) -> void:
 	moving = true
 	collision_layer = GHOST
 	swung.emit(target, slow, forceful)
-	if target: sound_requested.emit(true, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
+	# Opening, it is heard as it starts; shutting slowly too: the creak runs
+	# with the swing and the latch falls as it ends (world_audio.door_cue).
+	if target or slow: sound_requested.emit(target, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
 	motion = create_tween()
-	motion.tween_property(self, "rotation:y", closed_rotation + (open_turn if target else 0.0), 1.5 if slow else 0.32 if forceful else 0.55).set_trans(Tween.TRANS_QUAD if forceful else Tween.TRANS_SINE)
+	motion.tween_property(self, "rotation:y", closed_rotation + (open_turn if target else 0.0), SLOW_SWING if slow else FORCEFUL_SWING if forceful else SWING).set_trans(Tween.TRANS_QUAD if forceful else Tween.TRANS_SINE)
 	# It always ends where it was sent: whoever stands in it is let out by
 	# _physics_process, never by sending the door back. (A door that bounced
 	# open again also bounced differently on each machine, since each one
 	# judged who was in the frame by its own copy of the bodies.)
 	motion.finished.connect(func():
 		opened = target
-		if not target: sound_requested.emit(false, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
+		# Shut at a normal pace, it is heard as it meets the frame.
+		if not target and not slow: sound_requested.emit(false, slow, doorway + Vector3.UP * 1.2, get_rid(), forceful)
 		moving = false
 		settled.emit(opened)
 	)

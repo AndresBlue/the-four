@@ -40,8 +40,8 @@
     "bytes": 1443580,
     "sha256": "729803e32c3a1de64ee36360eb3527aa9181277ec75f7f635525744819faf74c",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "integrated",
-    "working_copy": "assets/audio/dread/presence_riser.wav",
+    "status": "retired",
+    "working_copy": null,
     "seconds": 5.008416666666666,
     "channels": 2,
     "sample_rate": 48000,
@@ -154,8 +154,8 @@
     "bytes": 78994,
     "sha256": "bded1169b684ab95f1ea7c31665863609b8207bc8f736d853b6cb226d85ab8ef",
     "license": "Aportado por el usuario; autor y permiso de distribución pendientes",
-    "status": "integrated",
-    "working_copy": "assets/audio/sfx/door/opening/creaky-wooden-door-slow-opening.mp3"
+    "status": "retired",
+    "working_copy": null
   },
   {
     "source": "sfx/door/opening/far-hard-opening.ogg",

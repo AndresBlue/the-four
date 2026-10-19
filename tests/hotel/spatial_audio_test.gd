@@ -73,6 +73,12 @@ func run() -> void:
 	check("Playback skips the recording's leading silence", is_equal_approx(audio.voices[-1].get_meta("start"), preload("res://game/audio/cue_timing.gd").onset(audio.last_event.path)))
 	audio.door_cue(false, false, listener + Vector3(0, 0, -3), RID())
 	check("Closing cue starts near its impact", audio.voices[-1].get_meta("start") >= preload("res://game/audio/cue_timing.gd").hit(audio.last_event.path) - audio.CLOSE_PREROLL - 0.001)
+	# Shut slowly, the creak is asked for as the swing starts and starts where
+	# its latch falls as the swing ends.
+	var timing := preload("res://game/audio/cue_timing.gd")
+	var swing: float = preload("res://game/world/interactables/hotel_door.gd").SLOW_SWING
+	audio.door_cue(false, true, listener + Vector3(0, 0, -3), RID())
+	check("A slow shut creaks with its swing and latches as it ends", audio.last_event.pool == "close_slow" and is_equal_approx(audio.voices[-1].get_meta("start"), maxf(timing.onset(audio.last_event.path), timing.hit(audio.last_event.path) - swing)) and absf(timing.hit(audio.last_event.path) - audio.voices[-1].get_meta("start") - swing) < 0.05)
 	for i in 20: audio.play_at(audio.choose("close_near"), listener, -16)
 	check("Effects have bounded simultaneous voices", audio.voices.size() == audio.maximum_voices)
 	# A long sound (a set's static, the power going) has a player of its own:
@@ -101,6 +107,14 @@ func run() -> void:
 	door.toggle()
 	await wait(0.8)
 	check("Closing on somebody in the frame still latches, once", not door.opened and events.size() == 1 and not events[0].opening)
+	level.player.position = Vector3(500, 0, 4)
+	door.toggle()
+	await wait(0.8)
+	events.clear()
+	door.toggle(true)
+	var asked_at_once: bool = events.size() == 1 and not events[0].opening and events[0].slow
+	await wait(door.SLOW_SWING + 0.3)
+	check("A slow shut is heard as it starts, and only then", asked_at_once and events.size() == 1 and not door.opened)
 	level.player.position = Vector3(500, 0, 4)
 	var hide = get_nodes_in_group("hotel_hides")[0]
 	var entered: bool = level.player.enter_hide(hide)
