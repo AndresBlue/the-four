@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhe42alfdq20o"
 path.s3tc="res://.godot/imported/wine_bottles_01_label_ftero_vinea_02_diff_1k.jpg-68c7100ee53cb8224feb15fb93c1bb2a.s3tc.ctex"
+path.etc2="res://.godot/imported/wine_bottles_01_label_ftero_vinea_02_diff_1k.jpg-68c7100ee53cb8224feb15fb93c1bb2a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/wine_bottles_01/wine_bottles_01_label_ftero_vinea_02_diff_1k.jpg"
-dest_files=["res://.godot/imported/wine_bottles_01_label_ftero_vinea_02_diff_1k.jpg-68c7100ee53cb8224feb15fb93c1bb2a.s3tc.ctex"]
+dest_files=["res://.godot/imported/wine_bottles_01_label_ftero_vinea_02_diff_1k.jpg-68c7100ee53cb8224feb15fb93c1bb2a.s3tc.ctex", "res://.godot/imported/wine_bottles_01_label_ftero_vinea_02_diff_1k.jpg-68c7100ee53cb8224feb15fb93c1bb2a.etc2.ctex"]
 
 [params]
 

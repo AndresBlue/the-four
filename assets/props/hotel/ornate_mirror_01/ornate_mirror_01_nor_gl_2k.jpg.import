@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c0g1t5ydp8tof"
 path.s3tc="res://.godot/imported/ornate_mirror_01_nor_gl_2k.jpg-2cbc91755fabf2c8808ac1905ee94b7e.s3tc.ctex"
+path.etc2="res://.godot/imported/ornate_mirror_01_nor_gl_2k.jpg-2cbc91755fabf2c8808ac1905ee94b7e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/ornate_mirror_01/ornate_mirror_01_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/ornate_mirror_01_nor_gl_2k.jpg-2cbc91755fabf2c8808ac1905ee94b7e.s3tc.ctex"]
+dest_files=["res://.godot/imported/ornate_mirror_01_nor_gl_2k.jpg-2cbc91755fabf2c8808ac1905ee94b7e.s3tc.ctex", "res://.godot/imported/ornate_mirror_01_nor_gl_2k.jpg-2cbc91755fabf2c8808ac1905ee94b7e.etc2.ctex"]
 
 [params]
 

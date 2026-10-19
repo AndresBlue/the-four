@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://db8npiwyrmoay"
 path.s3tc="res://.godot/imported/frame_metallic.png-999385e77930a51d8311e4a0965658bf.s3tc.ctex"
+path.etc2="res://.godot/imported/frame_metallic.png-999385e77930a51d8311e4a0965658bf.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/door/frame_metallic.png"
-dest_files=["res://.godot/imported/frame_metallic.png-999385e77930a51d8311e4a0965658bf.s3tc.ctex"]
+dest_files=["res://.godot/imported/frame_metallic.png-999385e77930a51d8311e4a0965658bf.s3tc.ctex", "res://.godot/imported/frame_metallic.png-999385e77930a51d8311e4a0965658bf.etc2.ctex"]
 
 [params]
 

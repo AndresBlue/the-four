@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cun6kuf3ukf3u"
 path.s3tc="res://.godot/imported/WetFloorSign_01_diff_1k.jpg-14babf0f3571c3e3118a0763b050f25a.s3tc.ctex"
+path.etc2="res://.godot/imported/WetFloorSign_01_diff_1k.jpg-14babf0f3571c3e3118a0763b050f25a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/WetFloorSign_01/WetFloorSign_01_diff_1k.jpg"
-dest_files=["res://.godot/imported/WetFloorSign_01_diff_1k.jpg-14babf0f3571c3e3118a0763b050f25a.s3tc.ctex"]
+dest_files=["res://.godot/imported/WetFloorSign_01_diff_1k.jpg-14babf0f3571c3e3118a0763b050f25a.s3tc.ctex", "res://.godot/imported/WetFloorSign_01_diff_1k.jpg-14babf0f3571c3e3118a0763b050f25a.etc2.ctex"]
 
 [params]
 

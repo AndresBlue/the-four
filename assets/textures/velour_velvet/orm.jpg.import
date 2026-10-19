@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bhe3ogdwrnw1"
 path.s3tc="res://.godot/imported/orm.jpg-6a5f51b5ba46221e5da7e7b343279bb9.s3tc.ctex"
+path.etc2="res://.godot/imported/orm.jpg-6a5f51b5ba46221e5da7e7b343279bb9.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/velour_velvet/orm.jpg"
-dest_files=["res://.godot/imported/orm.jpg-6a5f51b5ba46221e5da7e7b343279bb9.s3tc.ctex"]
+dest_files=["res://.godot/imported/orm.jpg-6a5f51b5ba46221e5da7e7b343279bb9.s3tc.ctex", "res://.godot/imported/orm.jpg-6a5f51b5ba46221e5da7e7b343279bb9.etc2.ctex"]
 
 [params]
 

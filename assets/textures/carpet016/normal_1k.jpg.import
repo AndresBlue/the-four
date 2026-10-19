@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bpge18ktis6g1"
 path.s3tc="res://.godot/imported/normal_1k.jpg-6940ab34ebf1748fc7eb4814fe994518.s3tc.ctex"
+path.etc2="res://.godot/imported/normal_1k.jpg-6940ab34ebf1748fc7eb4814fe994518.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/carpet016/normal_1k.jpg"
-dest_files=["res://.godot/imported/normal_1k.jpg-6940ab34ebf1748fc7eb4814fe994518.s3tc.ctex"]
+dest_files=["res://.godot/imported/normal_1k.jpg-6940ab34ebf1748fc7eb4814fe994518.s3tc.ctex", "res://.godot/imported/normal_1k.jpg-6940ab34ebf1748fc7eb4814fe994518.etc2.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2x8kmla3v0vi"
 path.s3tc="res://.godot/imported/power_box_01_diff_1k.jpg-420418ebc10111b99a53f405c6d73db5.s3tc.ctex"
+path.etc2="res://.godot/imported/power_box_01_diff_1k.jpg-420418ebc10111b99a53f405c6d73db5.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/power_box_01/power_box_01_diff_1k.jpg"
-dest_files=["res://.godot/imported/power_box_01_diff_1k.jpg-420418ebc10111b99a53f405c6d73db5.s3tc.ctex"]
+dest_files=["res://.godot/imported/power_box_01_diff_1k.jpg-420418ebc10111b99a53f405c6d73db5.s3tc.ctex", "res://.godot/imported/power_box_01_diff_1k.jpg-420418ebc10111b99a53f405c6d73db5.etc2.ctex"]
 
 [params]
 

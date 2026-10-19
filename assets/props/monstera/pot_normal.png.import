@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://du7r61i6swqo1"
 path.s3tc="res://.godot/imported/pot_normal.png-71ab61a0d95cf01284138a5fbd71cbff.s3tc.ctex"
+path.etc2="res://.godot/imported/pot_normal.png-71ab61a0d95cf01284138a5fbd71cbff.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/monstera/pot_normal.png"
-dest_files=["res://.godot/imported/pot_normal.png-71ab61a0d95cf01284138a5fbd71cbff.s3tc.ctex"]
+dest_files=["res://.godot/imported/pot_normal.png-71ab61a0d95cf01284138a5fbd71cbff.s3tc.ctex", "res://.godot/imported/pot_normal.png-71ab61a0d95cf01284138a5fbd71cbff.etc2.ctex"]
 
 [params]
 

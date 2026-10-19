@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ostugd6qfe1i"
 path.s3tc="res://.godot/imported/vintage_suitcase_01_nor_gl_1k.jpg-6d5251878c9a77b591dc2967a6d1793e.s3tc.ctex"
+path.etc2="res://.godot/imported/vintage_suitcase_01_nor_gl_1k.jpg-6d5251878c9a77b591dc2967a6d1793e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/vintage_suitcase/vintage_suitcase_01_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/vintage_suitcase_01_nor_gl_1k.jpg-6d5251878c9a77b591dc2967a6d1793e.s3tc.ctex"]
+dest_files=["res://.godot/imported/vintage_suitcase_01_nor_gl_1k.jpg-6d5251878c9a77b591dc2967a6d1793e.s3tc.ctex", "res://.godot/imported/vintage_suitcase_01_nor_gl_1k.jpg-6d5251878c9a77b591dc2967a6d1793e.etc2.ctex"]
 
 [params]
 

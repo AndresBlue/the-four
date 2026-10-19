@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbuslo5bl3w2l"
 path.s3tc="res://.godot/imported/dining_chair_02_nor_gl_2k.jpg-189d831bcaf9796436f3da05048e3f0b.s3tc.ctex"
+path.etc2="res://.godot/imported/dining_chair_02_nor_gl_2k.jpg-189d831bcaf9796436f3da05048e3f0b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/dining_chair_02/dining_chair_02_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/dining_chair_02_nor_gl_2k.jpg-189d831bcaf9796436f3da05048e3f0b.s3tc.ctex"]
+dest_files=["res://.godot/imported/dining_chair_02_nor_gl_2k.jpg-189d831bcaf9796436f3da05048e3f0b.s3tc.ctex", "res://.godot/imported/dining_chair_02_nor_gl_2k.jpg-189d831bcaf9796436f3da05048e3f0b.etc2.ctex"]
 
 [params]
 

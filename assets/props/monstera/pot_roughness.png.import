@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://7vgq4c1a8jqb"
 path.s3tc="res://.godot/imported/pot_roughness.png-8948e9a191b5d2411e505f2f2b139fbb.s3tc.ctex"
+path.etc2="res://.godot/imported/pot_roughness.png-8948e9a191b5d2411e505f2f2b139fbb.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/monstera/pot_roughness.png"
-dest_files=["res://.godot/imported/pot_roughness.png-8948e9a191b5d2411e505f2f2b139fbb.s3tc.ctex"]
+dest_files=["res://.godot/imported/pot_roughness.png-8948e9a191b5d2411e505f2f2b139fbb.s3tc.ctex", "res://.godot/imported/pot_roughness.png-8948e9a191b5d2411e505f2f2b139fbb.etc2.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d26nw8ohd60gq"
 path.s3tc="res://.godot/imported/steel_frame_shelves_01_diff_2k.jpg-9a111e3abb838578ca02f725059c7f87.s3tc.ctex"
+path.etc2="res://.godot/imported/steel_frame_shelves_01_diff_2k.jpg-9a111e3abb838578ca02f725059c7f87.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/steel_frame_shelves_01/steel_frame_shelves_01_diff_2k.jpg"
-dest_files=["res://.godot/imported/steel_frame_shelves_01_diff_2k.jpg-9a111e3abb838578ca02f725059c7f87.s3tc.ctex"]
+dest_files=["res://.godot/imported/steel_frame_shelves_01_diff_2k.jpg-9a111e3abb838578ca02f725059c7f87.s3tc.ctex", "res://.godot/imported/steel_frame_shelves_01_diff_2k.jpg-9a111e3abb838578ca02f725059c7f87.etc2.ctex"]
 
 [params]
 

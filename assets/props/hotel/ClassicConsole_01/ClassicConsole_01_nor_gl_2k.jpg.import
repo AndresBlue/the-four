@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dtmtllds1m4jb"
 path.s3tc="res://.godot/imported/ClassicConsole_01_nor_gl_2k.jpg-cdc7e07ad648fd8e16da409b9fa65567.s3tc.ctex"
+path.etc2="res://.godot/imported/ClassicConsole_01_nor_gl_2k.jpg-cdc7e07ad648fd8e16da409b9fa65567.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/ClassicConsole_01/ClassicConsole_01_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/ClassicConsole_01_nor_gl_2k.jpg-cdc7e07ad648fd8e16da409b9fa65567.s3tc.ctex"]
+dest_files=["res://.godot/imported/ClassicConsole_01_nor_gl_2k.jpg-cdc7e07ad648fd8e16da409b9fa65567.s3tc.ctex", "res://.godot/imported/ClassicConsole_01_nor_gl_2k.jpg-cdc7e07ad648fd8e16da409b9fa65567.etc2.ctex"]
 
 [params]
 

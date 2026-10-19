@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhyly5sgs4he8"
 path.s3tc="res://.godot/imported/ceramic_vase_01_nor_gl_1k.jpg-da102d0c8ec3284c8528a12d9316635f.s3tc.ctex"
+path.etc2="res://.godot/imported/ceramic_vase_01_nor_gl_1k.jpg-da102d0c8ec3284c8528a12d9316635f.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/ceramic_vase_01/ceramic_vase_01_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/ceramic_vase_01_nor_gl_1k.jpg-da102d0c8ec3284c8528a12d9316635f.s3tc.ctex"]
+dest_files=["res://.godot/imported/ceramic_vase_01_nor_gl_1k.jpg-da102d0c8ec3284c8528a12d9316635f.s3tc.ctex", "res://.godot/imported/ceramic_vase_01_nor_gl_1k.jpg-da102d0c8ec3284c8528a12d9316635f.etc2.ctex"]
 
 [params]
 

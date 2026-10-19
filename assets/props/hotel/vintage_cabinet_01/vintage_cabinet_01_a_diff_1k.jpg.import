@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b4p8xc6x2jn0p"
 path.s3tc="res://.godot/imported/vintage_cabinet_01_a_diff_1k.jpg-dc35b39f1ab521fd269954ef915ce9d4.s3tc.ctex"
+path.etc2="res://.godot/imported/vintage_cabinet_01_a_diff_1k.jpg-dc35b39f1ab521fd269954ef915ce9d4.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/vintage_cabinet_01/vintage_cabinet_01_a_diff_1k.jpg"
-dest_files=["res://.godot/imported/vintage_cabinet_01_a_diff_1k.jpg-dc35b39f1ab521fd269954ef915ce9d4.s3tc.ctex"]
+dest_files=["res://.godot/imported/vintage_cabinet_01_a_diff_1k.jpg-dc35b39f1ab521fd269954ef915ce9d4.s3tc.ctex", "res://.godot/imported/vintage_cabinet_01_a_diff_1k.jpg-dc35b39f1ab521fd269954ef915ce9d4.etc2.ctex"]
 
 [params]
 

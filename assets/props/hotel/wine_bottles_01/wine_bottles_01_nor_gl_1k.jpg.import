@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b53gm2jchb8tf"
 path.s3tc="res://.godot/imported/wine_bottles_01_nor_gl_1k.jpg-04d1bec07dd80f54957bb65fd390877d.s3tc.ctex"
+path.etc2="res://.godot/imported/wine_bottles_01_nor_gl_1k.jpg-04d1bec07dd80f54957bb65fd390877d.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/wine_bottles_01/wine_bottles_01_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/wine_bottles_01_nor_gl_1k.jpg-04d1bec07dd80f54957bb65fd390877d.s3tc.ctex"]
+dest_files=["res://.godot/imported/wine_bottles_01_nor_gl_1k.jpg-04d1bec07dd80f54957bb65fd390877d.s3tc.ctex", "res://.godot/imported/wine_bottles_01_nor_gl_1k.jpg-04d1bec07dd80f54957bb65fd390877d.etc2.ctex"]
 
 [params]
 

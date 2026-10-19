@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ri00n6bopplp"
 path.s3tc="res://.godot/imported/metal.jpg-8e7d96e0f1e76caa22eba50a73b7d991.s3tc.ctex"
+path.etc2="res://.godot/imported/metal.jpg-8e7d96e0f1e76caa22eba50a73b7d991.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/elevator/metal.jpg"
-dest_files=["res://.godot/imported/metal.jpg-8e7d96e0f1e76caa22eba50a73b7d991.s3tc.ctex"]
+dest_files=["res://.godot/imported/metal.jpg-8e7d96e0f1e76caa22eba50a73b7d991.s3tc.ctex", "res://.godot/imported/metal.jpg-8e7d96e0f1e76caa22eba50a73b7d991.etc2.ctex"]
 
 [params]
 

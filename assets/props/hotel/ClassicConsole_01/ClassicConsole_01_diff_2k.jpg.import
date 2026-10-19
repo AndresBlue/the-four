@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c48trnkdd7nlu"
 path.s3tc="res://.godot/imported/ClassicConsole_01_diff_2k.jpg-d8167e9402b186ad615f6e2f541c232a.s3tc.ctex"
+path.etc2="res://.godot/imported/ClassicConsole_01_diff_2k.jpg-d8167e9402b186ad615f6e2f541c232a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/ClassicConsole_01/ClassicConsole_01_diff_2k.jpg"
-dest_files=["res://.godot/imported/ClassicConsole_01_diff_2k.jpg-d8167e9402b186ad615f6e2f541c232a.s3tc.ctex"]
+dest_files=["res://.godot/imported/ClassicConsole_01_diff_2k.jpg-d8167e9402b186ad615f6e2f541c232a.s3tc.ctex", "res://.godot/imported/ClassicConsole_01_diff_2k.jpg-d8167e9402b186ad615f6e2f541c232a.etc2.ctex"]
 
 [params]
 

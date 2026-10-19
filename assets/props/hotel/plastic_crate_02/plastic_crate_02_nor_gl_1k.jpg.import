@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cpxfji0h7nut5"
 path.s3tc="res://.godot/imported/plastic_crate_02_nor_gl_1k.jpg-6ddb2f1c42ad490c03bb539e8e69712a.s3tc.ctex"
+path.etc2="res://.godot/imported/plastic_crate_02_nor_gl_1k.jpg-6ddb2f1c42ad490c03bb539e8e69712a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/plastic_crate_02/plastic_crate_02_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/plastic_crate_02_nor_gl_1k.jpg-6ddb2f1c42ad490c03bb539e8e69712a.s3tc.ctex"]
+dest_files=["res://.godot/imported/plastic_crate_02_nor_gl_1k.jpg-6ddb2f1c42ad490c03bb539e8e69712a.s3tc.ctex", "res://.godot/imported/plastic_crate_02_nor_gl_1k.jpg-6ddb2f1c42ad490c03bb539e8e69712a.etc2.ctex"]
 
 [params]
 

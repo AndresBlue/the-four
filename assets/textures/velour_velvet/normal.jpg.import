@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://hqwb801scn35"
 path.s3tc="res://.godot/imported/normal.jpg-af0a1cfdb1ba9b842c8ad91d23b067dc.s3tc.ctex"
+path.etc2="res://.godot/imported/normal.jpg-af0a1cfdb1ba9b842c8ad91d23b067dc.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/velour_velvet/normal.jpg"
-dest_files=["res://.godot/imported/normal.jpg-af0a1cfdb1ba9b842c8ad91d23b067dc.s3tc.ctex"]
+dest_files=["res://.godot/imported/normal.jpg-af0a1cfdb1ba9b842c8ad91d23b067dc.s3tc.ctex", "res://.godot/imported/normal.jpg-af0a1cfdb1ba9b842c8ad91d23b067dc.etc2.ctex"]
 
 [params]
 

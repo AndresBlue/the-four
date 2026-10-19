@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cjg6thlmpjmqw"
 path.s3tc="res://.godot/imported/wall_clock_diff_1k.jpg-627fcf8a75522583b5526f5523c9258f.s3tc.ctex"
+path.etc2="res://.godot/imported/wall_clock_diff_1k.jpg-627fcf8a75522583b5526f5523c9258f.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/wall_clock/wall_clock_diff_1k.jpg"
-dest_files=["res://.godot/imported/wall_clock_diff_1k.jpg-627fcf8a75522583b5526f5523c9258f.s3tc.ctex"]
+dest_files=["res://.godot/imported/wall_clock_diff_1k.jpg-627fcf8a75522583b5526f5523c9258f.s3tc.ctex", "res://.godot/imported/wall_clock_diff_1k.jpg-627fcf8a75522583b5526f5523c9258f.etc2.ctex"]
 
 [params]
 

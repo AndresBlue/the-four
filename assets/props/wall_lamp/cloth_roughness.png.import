@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://3r0o1rv2ms3x"
 path.s3tc="res://.godot/imported/cloth_roughness.png-c7bf95012987331a08878690ab7a38db.s3tc.ctex"
+path.etc2="res://.godot/imported/cloth_roughness.png-c7bf95012987331a08878690ab7a38db.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/wall_lamp/cloth_roughness.png"
-dest_files=["res://.godot/imported/cloth_roughness.png-c7bf95012987331a08878690ab7a38db.s3tc.ctex"]
+dest_files=["res://.godot/imported/cloth_roughness.png-c7bf95012987331a08878690ab7a38db.s3tc.ctex", "res://.godot/imported/cloth_roughness.png-c7bf95012987331a08878690ab7a38db.etc2.ctex"]
 
 [params]
 

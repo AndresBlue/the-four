@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://0nlwawrmqfk3"
 path.s3tc="res://.godot/imported/body_ao.jpg-365ef46b9b6baf35050485aa26a6c4ce.s3tc.ctex"
+path.etc2="res://.godot/imported/body_ao.jpg-365ef46b9b6baf35050485aa26a6c4ce.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/camcorder/body_ao.jpg"
-dest_files=["res://.godot/imported/body_ao.jpg-365ef46b9b6baf35050485aa26a6c4ce.s3tc.ctex"]
+dest_files=["res://.godot/imported/body_ao.jpg-365ef46b9b6baf35050485aa26a6c4ce.s3tc.ctex", "res://.godot/imported/body_ao.jpg-365ef46b9b6baf35050485aa26a6c4ce.etc2.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3phkg227n388"
 path.s3tc="res://.godot/imported/multi_cleaner_bottle_diff_1k.jpg-f446a7151fac4c9426c987f517159ed7.s3tc.ctex"
+path.etc2="res://.godot/imported/multi_cleaner_bottle_diff_1k.jpg-f446a7151fac4c9426c987f517159ed7.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/multi_cleaner_bottle/multi_cleaner_bottle_diff_1k.jpg"
-dest_files=["res://.godot/imported/multi_cleaner_bottle_diff_1k.jpg-f446a7151fac4c9426c987f517159ed7.s3tc.ctex"]
+dest_files=["res://.godot/imported/multi_cleaner_bottle_diff_1k.jpg-f446a7151fac4c9426c987f517159ed7.s3tc.ctex", "res://.godot/imported/multi_cleaner_bottle_diff_1k.jpg-f446a7151fac4c9426c987f517159ed7.etc2.ctex"]
 
 [params]
 

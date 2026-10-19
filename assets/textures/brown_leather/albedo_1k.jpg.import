@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://yx5o1m85joxr"
 path.s3tc="res://.godot/imported/albedo_1k.jpg-2d0ead8ea4312358cb153e8ab7957ca0.s3tc.ctex"
+path.etc2="res://.godot/imported/albedo_1k.jpg-2d0ead8ea4312358cb153e8ab7957ca0.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/brown_leather/albedo_1k.jpg"
-dest_files=["res://.godot/imported/albedo_1k.jpg-2d0ead8ea4312358cb153e8ab7957ca0.s3tc.ctex"]
+dest_files=["res://.godot/imported/albedo_1k.jpg-2d0ead8ea4312358cb153e8ab7957ca0.s3tc.ctex", "res://.godot/imported/albedo_1k.jpg-2d0ead8ea4312358cb153e8ab7957ca0.etc2.ctex"]
 
 [params]
 

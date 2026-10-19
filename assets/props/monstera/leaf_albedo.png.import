@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://xayu1oe5to8g"
 path.s3tc="res://.godot/imported/leaf_albedo.png-488c6f7b2287cb006042e04bb68af012.s3tc.ctex"
+path.etc2="res://.godot/imported/leaf_albedo.png-488c6f7b2287cb006042e04bb68af012.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/monstera/leaf_albedo.png"
-dest_files=["res://.godot/imported/leaf_albedo.png-488c6f7b2287cb006042e04bb68af012.s3tc.ctex"]
+dest_files=["res://.godot/imported/leaf_albedo.png-488c6f7b2287cb006042e04bb68af012.s3tc.ctex", "res://.godot/imported/leaf_albedo.png-488c6f7b2287cb006042e04bb68af012.etc2.ctex"]
 
 [params]
 

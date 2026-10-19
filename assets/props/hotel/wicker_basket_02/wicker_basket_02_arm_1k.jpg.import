@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dseuotfnqs406"
 path.s3tc="res://.godot/imported/wicker_basket_02_arm_1k.jpg-a94b5e01f2d6e1c0e51f805660a1498f.s3tc.ctex"
+path.etc2="res://.godot/imported/wicker_basket_02_arm_1k.jpg-a94b5e01f2d6e1c0e51f805660a1498f.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/wicker_basket_02/wicker_basket_02_arm_1k.jpg"
-dest_files=["res://.godot/imported/wicker_basket_02_arm_1k.jpg-a94b5e01f2d6e1c0e51f805660a1498f.s3tc.ctex"]
+dest_files=["res://.godot/imported/wicker_basket_02_arm_1k.jpg-a94b5e01f2d6e1c0e51f805660a1498f.s3tc.ctex", "res://.godot/imported/wicker_basket_02_arm_1k.jpg-a94b5e01f2d6e1c0e51f805660a1498f.etc2.ctex"]
 
 [params]
 

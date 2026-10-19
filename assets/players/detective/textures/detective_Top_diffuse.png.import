@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://by3lesfg0bh2t"
 path.s3tc="res://.godot/imported/detective_Top_diffuse.png-092f7642bfc5aaeca031b981d292943b.s3tc.ctex"
+path.etc2="res://.godot/imported/detective_Top_diffuse.png-092f7642bfc5aaeca031b981d292943b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/players/detective/textures/detective_Top_diffuse.png"
-dest_files=["res://.godot/imported/detective_Top_diffuse.png-092f7642bfc5aaeca031b981d292943b.s3tc.ctex"]
+dest_files=["res://.godot/imported/detective_Top_diffuse.png-092f7642bfc5aaeca031b981d292943b.s3tc.ctex", "res://.godot/imported/detective_Top_diffuse.png-092f7642bfc5aaeca031b981d292943b.etc2.ctex"]
 
 [params]
 

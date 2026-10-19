@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cna3y2y6emi30"
 path.s3tc="res://.godot/imported/mantel_clock_01_diff_1k.jpg-d74143e8d5b5856c51e69cd1722e995c.s3tc.ctex"
+path.etc2="res://.godot/imported/mantel_clock_01_diff_1k.jpg-d74143e8d5b5856c51e69cd1722e995c.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/mantel_clock_01/mantel_clock_01_diff_1k.jpg"
-dest_files=["res://.godot/imported/mantel_clock_01_diff_1k.jpg-d74143e8d5b5856c51e69cd1722e995c.s3tc.ctex"]
+dest_files=["res://.godot/imported/mantel_clock_01_diff_1k.jpg-d74143e8d5b5856c51e69cd1722e995c.s3tc.ctex", "res://.godot/imported/mantel_clock_01_diff_1k.jpg-d74143e8d5b5856c51e69cd1722e995c.etc2.ctex"]
 
 [params]
 

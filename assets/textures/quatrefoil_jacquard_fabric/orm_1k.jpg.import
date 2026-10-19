@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dukn74t6ss6ot"
 path.s3tc="res://.godot/imported/orm_1k.jpg-5ff8d88753bf678a8e118e7bc3e6f05c.s3tc.ctex"
+path.etc2="res://.godot/imported/orm_1k.jpg-5ff8d88753bf678a8e118e7bc3e6f05c.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/quatrefoil_jacquard_fabric/orm_1k.jpg"
-dest_files=["res://.godot/imported/orm_1k.jpg-5ff8d88753bf678a8e118e7bc3e6f05c.s3tc.ctex"]
+dest_files=["res://.godot/imported/orm_1k.jpg-5ff8d88753bf678a8e118e7bc3e6f05c.s3tc.ctex", "res://.godot/imported/orm_1k.jpg-5ff8d88753bf678a8e118e7bc3e6f05c.etc2.ctex"]
 
 [params]
 

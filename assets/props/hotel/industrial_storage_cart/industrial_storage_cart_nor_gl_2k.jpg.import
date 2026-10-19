@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b6761hgoi7s3s"
 path.s3tc="res://.godot/imported/industrial_storage_cart_nor_gl_2k.jpg-240b486207df0f5abc24670addd71daf.s3tc.ctex"
+path.etc2="res://.godot/imported/industrial_storage_cart_nor_gl_2k.jpg-240b486207df0f5abc24670addd71daf.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/industrial_storage_cart/industrial_storage_cart_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/industrial_storage_cart_nor_gl_2k.jpg-240b486207df0f5abc24670addd71daf.s3tc.ctex"]
+dest_files=["res://.godot/imported/industrial_storage_cart_nor_gl_2k.jpg-240b486207df0f5abc24670addd71daf.s3tc.ctex", "res://.godot/imported/industrial_storage_cart_nor_gl_2k.jpg-240b486207df0f5abc24670addd71daf.etc2.ctex"]
 
 [params]
 

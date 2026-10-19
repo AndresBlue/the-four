@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://n56cavu6tl1q"
 path.s3tc="res://.godot/imported/albedo.jpg-15c40b2586e7729ff0d24a9eba19e6ea.s3tc.ctex"
+path.etc2="res://.godot/imported/albedo.jpg-15c40b2586e7729ff0d24a9eba19e6ea.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/sofa/albedo.jpg"
-dest_files=["res://.godot/imported/albedo.jpg-15c40b2586e7729ff0d24a9eba19e6ea.s3tc.ctex"]
+dest_files=["res://.godot/imported/albedo.jpg-15c40b2586e7729ff0d24a9eba19e6ea.s3tc.ctex", "res://.godot/imported/albedo.jpg-15c40b2586e7729ff0d24a9eba19e6ea.etc2.ctex"]
 
 [params]
 

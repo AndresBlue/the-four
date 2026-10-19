@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d21u33fnwxd11"
 path.s3tc="res://.godot/imported/side_table_tall_01_nor_gl_2k.jpg-84ee936bb1f7ba599dedb1342363ec15.s3tc.ctex"
+path.etc2="res://.godot/imported/side_table_tall_01_nor_gl_2k.jpg-84ee936bb1f7ba599dedb1342363ec15.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/side_table_tall_01/side_table_tall_01_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/side_table_tall_01_nor_gl_2k.jpg-84ee936bb1f7ba599dedb1342363ec15.s3tc.ctex"]
+dest_files=["res://.godot/imported/side_table_tall_01_nor_gl_2k.jpg-84ee936bb1f7ba599dedb1342363ec15.s3tc.ctex", "res://.godot/imported/side_table_tall_01_nor_gl_2k.jpg-84ee936bb1f7ba599dedb1342363ec15.etc2.ctex"]
 
 [params]
 

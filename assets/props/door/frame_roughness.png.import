@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d1xkr2ffgcn46"
 path.s3tc="res://.godot/imported/frame_roughness.png-a633d6f419f1d66f7028e6dbe2551b8e.s3tc.ctex"
+path.etc2="res://.godot/imported/frame_roughness.png-a633d6f419f1d66f7028e6dbe2551b8e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/door/frame_roughness.png"
-dest_files=["res://.godot/imported/frame_roughness.png-a633d6f419f1d66f7028e6dbe2551b8e.s3tc.ctex"]
+dest_files=["res://.godot/imported/frame_roughness.png-a633d6f419f1d66f7028e6dbe2551b8e.s3tc.ctex", "res://.godot/imported/frame_roughness.png-a633d6f419f1d66f7028e6dbe2551b8e.etc2.ctex"]
 
 [params]
 

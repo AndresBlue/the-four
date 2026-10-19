@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c53m0hrh08dko"
 path.s3tc="res://.godot/imported/normal.png-30efb6bb1119c982e447444f9b469e21.s3tc.ctex"
+path.etc2="res://.godot/imported/normal.png-30efb6bb1119c982e447444f9b469e21.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/vhs_tape/normal.png"
-dest_files=["res://.godot/imported/normal.png-30efb6bb1119c982e447444f9b469e21.s3tc.ctex"]
+dest_files=["res://.godot/imported/normal.png-30efb6bb1119c982e447444f9b469e21.s3tc.ctex", "res://.godot/imported/normal.png-30efb6bb1119c982e447444f9b469e21.etc2.ctex"]
 
 [params]
 

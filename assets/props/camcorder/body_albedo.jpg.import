@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bsae6ffpaimhv"
 path.s3tc="res://.godot/imported/body_albedo.jpg-65fbd1b7485fe2709ec938b2ab64923b.s3tc.ctex"
+path.etc2="res://.godot/imported/body_albedo.jpg-65fbd1b7485fe2709ec938b2ab64923b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/camcorder/body_albedo.jpg"
-dest_files=["res://.godot/imported/body_albedo.jpg-65fbd1b7485fe2709ec938b2ab64923b.s3tc.ctex"]
+dest_files=["res://.godot/imported/body_albedo.jpg-65fbd1b7485fe2709ec938b2ab64923b.s3tc.ctex", "res://.godot/imported/body_albedo.jpg-65fbd1b7485fe2709ec938b2ab64923b.etc2.ctex"]
 
 [params]
 

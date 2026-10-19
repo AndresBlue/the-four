@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dgrhg2pg0i186"
 path.s3tc="res://.godot/imported/orm.jpg-90726640b4029c910bd6583b7442cb84.s3tc.ctex"
+path.etc2="res://.godot/imported/orm.jpg-90726640b4029c910bd6583b7442cb84.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/lacquered_cherry_wood/orm.jpg"
-dest_files=["res://.godot/imported/orm.jpg-90726640b4029c910bd6583b7442cb84.s3tc.ctex"]
+dest_files=["res://.godot/imported/orm.jpg-90726640b4029c910bd6583b7442cb84.s3tc.ctex", "res://.godot/imported/orm.jpg-90726640b4029c910bd6583b7442cb84.etc2.ctex"]
 
 [params]
 

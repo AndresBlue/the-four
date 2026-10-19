@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bnxaxkgrqqglu"
 path.s3tc="res://.godot/imported/normal_1k.jpg-330d85e63b904c4f41f949ec67a3c51a.s3tc.ctex"
+path.etc2="res://.godot/imported/normal_1k.jpg-330d85e63b904c4f41f949ec67a3c51a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/lacquered_cherry_wood/normal_1k.jpg"
-dest_files=["res://.godot/imported/normal_1k.jpg-330d85e63b904c4f41f949ec67a3c51a.s3tc.ctex"]
+dest_files=["res://.godot/imported/normal_1k.jpg-330d85e63b904c4f41f949ec67a3c51a.s3tc.ctex", "res://.godot/imported/normal_1k.jpg-330d85e63b904c4f41f949ec67a3c51a.etc2.ctex"]
 
 [params]
 

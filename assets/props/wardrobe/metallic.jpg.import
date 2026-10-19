@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cs46uv6vosiy4"
 path.s3tc="res://.godot/imported/metallic.jpg-fbdf4402d4ccc18ed08412bbb8d94e95.s3tc.ctex"
+path.etc2="res://.godot/imported/metallic.jpg-fbdf4402d4ccc18ed08412bbb8d94e95.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/wardrobe/metallic.jpg"
-dest_files=["res://.godot/imported/metallic.jpg-fbdf4402d4ccc18ed08412bbb8d94e95.s3tc.ctex"]
+dest_files=["res://.godot/imported/metallic.jpg-fbdf4402d4ccc18ed08412bbb8d94e95.s3tc.ctex", "res://.godot/imported/metallic.jpg-fbdf4402d4ccc18ed08412bbb8d94e95.etc2.ctex"]
 
 [params]
 

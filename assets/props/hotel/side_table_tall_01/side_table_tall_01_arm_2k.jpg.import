@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cx3enbg642gal"
 path.s3tc="res://.godot/imported/side_table_tall_01_arm_2k.jpg-7798483e64dd61edd65566c5e21e9fe5.s3tc.ctex"
+path.etc2="res://.godot/imported/side_table_tall_01_arm_2k.jpg-7798483e64dd61edd65566c5e21e9fe5.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/side_table_tall_01/side_table_tall_01_arm_2k.jpg"
-dest_files=["res://.godot/imported/side_table_tall_01_arm_2k.jpg-7798483e64dd61edd65566c5e21e9fe5.s3tc.ctex"]
+dest_files=["res://.godot/imported/side_table_tall_01_arm_2k.jpg-7798483e64dd61edd65566c5e21e9fe5.s3tc.ctex", "res://.godot/imported/side_table_tall_01_arm_2k.jpg-7798483e64dd61edd65566c5e21e9fe5.etc2.ctex"]
 
 [params]
 

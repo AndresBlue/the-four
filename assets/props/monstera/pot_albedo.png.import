@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bpamkix7rx6q0"
 path.s3tc="res://.godot/imported/pot_albedo.png-069a907970688f17c5777a9bf2c36b5c.s3tc.ctex"
+path.etc2="res://.godot/imported/pot_albedo.png-069a907970688f17c5777a9bf2c36b5c.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/monstera/pot_albedo.png"
-dest_files=["res://.godot/imported/pot_albedo.png-069a907970688f17c5777a9bf2c36b5c.s3tc.ctex"]
+dest_files=["res://.godot/imported/pot_albedo.png-069a907970688f17c5777a9bf2c36b5c.s3tc.ctex", "res://.godot/imported/pot_albedo.png-069a907970688f17c5777a9bf2c36b5c.etc2.ctex"]
 
 [params]
 

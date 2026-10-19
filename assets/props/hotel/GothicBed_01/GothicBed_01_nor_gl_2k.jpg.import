@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cmm5wjqd1n0to"
 path.s3tc="res://.godot/imported/GothicBed_01_nor_gl_2k.jpg-0df608c38be6bf620c4c3d2bf3504d53.s3tc.ctex"
+path.etc2="res://.godot/imported/GothicBed_01_nor_gl_2k.jpg-0df608c38be6bf620c4c3d2bf3504d53.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/GothicBed_01/GothicBed_01_nor_gl_2k.jpg"
-dest_files=["res://.godot/imported/GothicBed_01_nor_gl_2k.jpg-0df608c38be6bf620c4c3d2bf3504d53.s3tc.ctex"]
+dest_files=["res://.godot/imported/GothicBed_01_nor_gl_2k.jpg-0df608c38be6bf620c4c3d2bf3504d53.s3tc.ctex", "res://.godot/imported/GothicBed_01_nor_gl_2k.jpg-0df608c38be6bf620c4c3d2bf3504d53.etc2.ctex"]
 
 [params]
 

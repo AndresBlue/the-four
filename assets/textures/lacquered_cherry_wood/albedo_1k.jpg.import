@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c2cgxmmvfkmhv"
 path.s3tc="res://.godot/imported/albedo_1k.jpg-f6014ecba4cc9a7b49a319ce44973386.s3tc.ctex"
+path.etc2="res://.godot/imported/albedo_1k.jpg-f6014ecba4cc9a7b49a319ce44973386.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/lacquered_cherry_wood/albedo_1k.jpg"
-dest_files=["res://.godot/imported/albedo_1k.jpg-f6014ecba4cc9a7b49a319ce44973386.s3tc.ctex"]
+dest_files=["res://.godot/imported/albedo_1k.jpg-f6014ecba4cc9a7b49a319ce44973386.s3tc.ctex", "res://.godot/imported/albedo_1k.jpg-f6014ecba4cc9a7b49a319ce44973386.etc2.ctex"]
 
 [params]
 

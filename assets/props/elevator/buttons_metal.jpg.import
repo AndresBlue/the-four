@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://xkcomybb6uy5"
 path.s3tc="res://.godot/imported/buttons_metal.jpg-75316040e1e0af8d3aafcc429a110a2a.s3tc.ctex"
+path.etc2="res://.godot/imported/buttons_metal.jpg-75316040e1e0af8d3aafcc429a110a2a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/elevator/buttons_metal.jpg"
-dest_files=["res://.godot/imported/buttons_metal.jpg-75316040e1e0af8d3aafcc429a110a2a.s3tc.ctex"]
+dest_files=["res://.godot/imported/buttons_metal.jpg-75316040e1e0af8d3aafcc429a110a2a.s3tc.ctex", "res://.godot/imported/buttons_metal.jpg-75316040e1e0af8d3aafcc429a110a2a.etc2.ctex"]
 
 [params]
 

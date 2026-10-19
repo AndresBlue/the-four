@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://besogw51uweqq"
 path.s3tc="res://.godot/imported/body_metallic.png-3484a32683f5b1c3e59750fd7c848f63.s3tc.ctex"
+path.etc2="res://.godot/imported/body_metallic.png-3484a32683f5b1c3e59750fd7c848f63.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/tv/body_metallic.png"
-dest_files=["res://.godot/imported/body_metallic.png-3484a32683f5b1c3e59750fd7c848f63.s3tc.ctex"]
+dest_files=["res://.godot/imported/body_metallic.png-3484a32683f5b1c3e59750fd7c848f63.s3tc.ctex", "res://.godot/imported/body_metallic.png-3484a32683f5b1c3e59750fd7c848f63.etc2.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bsqibq6d130ma"
 path.s3tc="res://.godot/imported/Chandelier_02_arm_1k.jpg-858326ad4ef4022af11f1adc8c35e691.s3tc.ctex"
+path.etc2="res://.godot/imported/Chandelier_02_arm_1k.jpg-858326ad4ef4022af11f1adc8c35e691.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/Chandelier_02/Chandelier_02_arm_1k.jpg"
-dest_files=["res://.godot/imported/Chandelier_02_arm_1k.jpg-858326ad4ef4022af11f1adc8c35e691.s3tc.ctex"]
+dest_files=["res://.godot/imported/Chandelier_02_arm_1k.jpg-858326ad4ef4022af11f1adc8c35e691.s3tc.ctex", "res://.godot/imported/Chandelier_02_arm_1k.jpg-858326ad4ef4022af11f1adc8c35e691.etc2.ctex"]
 
 [params]
 

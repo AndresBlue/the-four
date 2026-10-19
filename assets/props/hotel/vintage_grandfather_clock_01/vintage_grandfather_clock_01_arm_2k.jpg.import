@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cgd2k3jhs0joj"
 path.s3tc="res://.godot/imported/vintage_grandfather_clock_01_arm_2k.jpg-e2a007a9b4c203520eaaa740408a773a.s3tc.ctex"
+path.etc2="res://.godot/imported/vintage_grandfather_clock_01_arm_2k.jpg-e2a007a9b4c203520eaaa740408a773a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/vintage_grandfather_clock_01/vintage_grandfather_clock_01_arm_2k.jpg"
-dest_files=["res://.godot/imported/vintage_grandfather_clock_01_arm_2k.jpg-e2a007a9b4c203520eaaa740408a773a.s3tc.ctex"]
+dest_files=["res://.godot/imported/vintage_grandfather_clock_01_arm_2k.jpg-e2a007a9b4c203520eaaa740408a773a.s3tc.ctex", "res://.godot/imported/vintage_grandfather_clock_01_arm_2k.jpg-e2a007a9b4c203520eaaa740408a773a.etc2.ctex"]
 
 [params]
 

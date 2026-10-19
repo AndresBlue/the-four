@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c28nn414exm6x"
 path.s3tc="res://.godot/imported/lens_normal.png-26291034e72385698efee92ca35ed2f2.s3tc.ctex"
+path.etc2="res://.godot/imported/lens_normal.png-26291034e72385698efee92ca35ed2f2.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/camcorder/lens_normal.png"
-dest_files=["res://.godot/imported/lens_normal.png-26291034e72385698efee92ca35ed2f2.s3tc.ctex"]
+dest_files=["res://.godot/imported/lens_normal.png-26291034e72385698efee92ca35ed2f2.s3tc.ctex", "res://.godot/imported/lens_normal.png-26291034e72385698efee92ca35ed2f2.etc2.ctex"]
 
 [params]
 

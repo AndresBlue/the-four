@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfjeyiwa1lg0b"
 path.s3tc="res://.godot/imported/orm_1k.jpg-5f0417da2dd04fa7764cc9e29a7dd31e.s3tc.ctex"
+path.etc2="res://.godot/imported/orm_1k.jpg-5f0417da2dd04fa7764cc9e29a7dd31e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/tiles036/orm_1k.jpg"
-dest_files=["res://.godot/imported/orm_1k.jpg-5f0417da2dd04fa7764cc9e29a7dd31e.s3tc.ctex"]
+dest_files=["res://.godot/imported/orm_1k.jpg-5f0417da2dd04fa7764cc9e29a7dd31e.s3tc.ctex", "res://.godot/imported/orm_1k.jpg-5f0417da2dd04fa7764cc9e29a7dd31e.etc2.ctex"]
 
 [params]
 

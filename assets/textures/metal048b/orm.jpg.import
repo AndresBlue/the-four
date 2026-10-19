@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bg1m27i80fefi"
 path.s3tc="res://.godot/imported/orm.jpg-42857e88db2f92488fa7bcafdbd8387e.s3tc.ctex"
+path.etc2="res://.godot/imported/orm.jpg-42857e88db2f92488fa7bcafdbd8387e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/metal048b/orm.jpg"
-dest_files=["res://.godot/imported/orm.jpg-42857e88db2f92488fa7bcafdbd8387e.s3tc.ctex"]
+dest_files=["res://.godot/imported/orm.jpg-42857e88db2f92488fa7bcafdbd8387e.s3tc.ctex", "res://.godot/imported/orm.jpg-42857e88db2f92488fa7bcafdbd8387e.etc2.ctex"]
 
 [params]
 

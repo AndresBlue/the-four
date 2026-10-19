@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://mfxpuna302p"
 path.s3tc="res://.godot/imported/normal.jpg-6ebe94fd50f255090375de19e6fe2e62.s3tc.ctex"
+path.etc2="res://.godot/imported/normal.jpg-6ebe94fd50f255090375de19e6fe2e62.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/sofa/normal.jpg"
-dest_files=["res://.godot/imported/normal.jpg-6ebe94fd50f255090375de19e6fe2e62.s3tc.ctex"]
+dest_files=["res://.godot/imported/normal.jpg-6ebe94fd50f255090375de19e6fe2e62.s3tc.ctex", "res://.godot/imported/normal.jpg-6ebe94fd50f255090375de19e6fe2e62.etc2.ctex"]
 
 [params]
 

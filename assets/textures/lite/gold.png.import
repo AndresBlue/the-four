@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhamt4k24rv8a"
 path.s3tc="res://.godot/imported/gold.png-51b761b8f84c7f07418966d0f44e9b4e.s3tc.ctex"
+path.etc2="res://.godot/imported/gold.png-51b761b8f84c7f07418966d0f44e9b4e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/lite/gold.png"
-dest_files=["res://.godot/imported/gold.png-51b761b8f84c7f07418966d0f44e9b4e.s3tc.ctex"]
+dest_files=["res://.godot/imported/gold.png-51b761b8f84c7f07418966d0f44e9b4e.s3tc.ctex", "res://.godot/imported/gold.png-51b761b8f84c7f07418966d0f44e9b4e.etc2.ctex"]
 
 [params]
 

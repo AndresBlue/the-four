@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://8l4rfob6llod"
 path.s3tc="res://.godot/imported/model_24.png-c86b3ac4e3a6794eea044fe4ad139ead.s3tc.ctex"
+path.etc2="res://.godot/imported/model_24.png-c86b3ac4e3a6794eea044fe4ad139ead.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/players/realistic_female/model_24.png"
-dest_files=["res://.godot/imported/model_24.png-c86b3ac4e3a6794eea044fe4ad139ead.s3tc.ctex"]
+dest_files=["res://.godot/imported/model_24.png-c86b3ac4e3a6794eea044fe4ad139ead.s3tc.ctex", "res://.godot/imported/model_24.png-c86b3ac4e3a6794eea044fe4ad139ead.etc2.ctex"]
 
 [params]
 

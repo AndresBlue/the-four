@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c045cj04p12uf"
 path.s3tc="res://.godot/imported/frame_normal.png-ad857c1ce2e2d9541a8f726b3996dede.s3tc.ctex"
+path.etc2="res://.godot/imported/frame_normal.png-ad857c1ce2e2d9541a8f726b3996dede.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/door/frame_normal.png"
-dest_files=["res://.godot/imported/frame_normal.png-ad857c1ce2e2d9541a8f726b3996dede.s3tc.ctex"]
+dest_files=["res://.godot/imported/frame_normal.png-ad857c1ce2e2d9541a8f726b3996dede.s3tc.ctex", "res://.godot/imported/frame_normal.png-ad857c1ce2e2d9541a8f726b3996dede.etc2.ctex"]
 
 [params]
 

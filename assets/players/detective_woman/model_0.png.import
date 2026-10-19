@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://lok7rpam0wj0"
 path.s3tc="res://.godot/imported/model_0.png-6ad0ede15182a3a5d91b7b03d94ff4cb.s3tc.ctex"
+path.etc2="res://.godot/imported/model_0.png-6ad0ede15182a3a5d91b7b03d94ff4cb.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/players/detective_woman/model_0.png"
-dest_files=["res://.godot/imported/model_0.png-6ad0ede15182a3a5d91b7b03d94ff4cb.s3tc.ctex"]
+dest_files=["res://.godot/imported/model_0.png-6ad0ede15182a3a5d91b7b03d94ff4cb.s3tc.ctex", "res://.godot/imported/model_0.png-6ad0ede15182a3a5d91b7b03d94ff4cb.etc2.ctex"]
 
 [params]
 

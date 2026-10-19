@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cqjgcrxmarlbj"
 path.s3tc="res://.godot/imported/CashRegister_01_glass_nor_gl_1k.jpg-ec9165bb95ccb6d9ffd986dc2ccc0085.s3tc.ctex"
+path.etc2="res://.godot/imported/CashRegister_01_glass_nor_gl_1k.jpg-ec9165bb95ccb6d9ffd986dc2ccc0085.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/CashRegister_01/CashRegister_01_glass_nor_gl_1k.jpg"
-dest_files=["res://.godot/imported/CashRegister_01_glass_nor_gl_1k.jpg-ec9165bb95ccb6d9ffd986dc2ccc0085.s3tc.ctex"]
+dest_files=["res://.godot/imported/CashRegister_01_glass_nor_gl_1k.jpg-ec9165bb95ccb6d9ffd986dc2ccc0085.s3tc.ctex", "res://.godot/imported/CashRegister_01_glass_nor_gl_1k.jpg-ec9165bb95ccb6d9ffd986dc2ccc0085.etc2.ctex"]
 
 [params]
 

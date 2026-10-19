@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d18v8ylyx784s"
 path.s3tc="res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.s3tc.ctex"
+path.etc2="res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/enemies/locust_locust_by-doumty_basecolor_tex.png"
-dest_files=["res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.s3tc.ctex"]
+dest_files=["res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.s3tc.ctex", "res://.godot/imported/locust_locust_by-doumty_basecolor_tex.png-5ae10bf2a1139d8f9cb5b3762316d9df.etc2.ctex"]
 
 [params]
 

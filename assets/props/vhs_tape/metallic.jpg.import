@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dapgqdxm4omm4"
 path.s3tc="res://.godot/imported/metallic.jpg-c0cdcecc27537a9bb194e5a28a484efb.s3tc.ctex"
+path.etc2="res://.godot/imported/metallic.jpg-c0cdcecc27537a9bb194e5a28a484efb.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/vhs_tape/metallic.jpg"
-dest_files=["res://.godot/imported/metallic.jpg-c0cdcecc27537a9bb194e5a28a484efb.s3tc.ctex"]
+dest_files=["res://.godot/imported/metallic.jpg-c0cdcecc27537a9bb194e5a28a484efb.s3tc.ctex", "res://.godot/imported/metallic.jpg-c0cdcecc27537a9bb194e5a28a484efb.etc2.ctex"]
 
 [params]
 

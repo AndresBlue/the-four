@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cibyu8i8suog6"
 path.s3tc="res://.godot/imported/detective_Bottom_normal.png-37d626bf695fda2974193387311af822.s3tc.ctex"
+path.etc2="res://.godot/imported/detective_Bottom_normal.png-37d626bf695fda2974193387311af822.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/players/detective/textures/detective_Bottom_normal.png"
-dest_files=["res://.godot/imported/detective_Bottom_normal.png-37d626bf695fda2974193387311af822.s3tc.ctex"]
+dest_files=["res://.godot/imported/detective_Bottom_normal.png-37d626bf695fda2974193387311af822.s3tc.ctex", "res://.godot/imported/detective_Bottom_normal.png-37d626bf695fda2974193387311af822.etc2.ctex"]
 
 [params]
 

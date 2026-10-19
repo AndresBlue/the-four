@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dp6cj7lkytojs"
 path.s3tc="res://.godot/imported/drawer_cabinet_arm_2k.jpg-8c1ac92dfc888382c908bcba9755c1b1.s3tc.ctex"
+path.etc2="res://.godot/imported/drawer_cabinet_arm_2k.jpg-8c1ac92dfc888382c908bcba9755c1b1.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/drawer_cabinet/drawer_cabinet_arm_2k.jpg"
-dest_files=["res://.godot/imported/drawer_cabinet_arm_2k.jpg-8c1ac92dfc888382c908bcba9755c1b1.s3tc.ctex"]
+dest_files=["res://.godot/imported/drawer_cabinet_arm_2k.jpg-8c1ac92dfc888382c908bcba9755c1b1.s3tc.ctex", "res://.godot/imported/drawer_cabinet_arm_2k.jpg-8c1ac92dfc888382c908bcba9755c1b1.etc2.ctex"]
 
 [params]
 

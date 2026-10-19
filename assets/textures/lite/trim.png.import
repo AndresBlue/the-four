@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cw7bepa6lu46b"
 path.s3tc="res://.godot/imported/trim.png-657587701cabf7bc3a16213ec0356a51.s3tc.ctex"
+path.etc2="res://.godot/imported/trim.png-657587701cabf7bc3a16213ec0356a51.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/lite/trim.png"
-dest_files=["res://.godot/imported/trim.png-657587701cabf7bc3a16213ec0356a51.s3tc.ctex"]
+dest_files=["res://.godot/imported/trim.png-657587701cabf7bc3a16213ec0356a51.s3tc.ctex", "res://.godot/imported/trim.png-657587701cabf7bc3a16213ec0356a51.etc2.ctex"]
 
 [params]
 

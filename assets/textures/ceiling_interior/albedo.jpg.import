@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dudbk57yjld3n"
 path.s3tc="res://.godot/imported/albedo.jpg-c1ac650c139f1a7705d8207dcdf62502.s3tc.ctex"
+path.etc2="res://.godot/imported/albedo.jpg-c1ac650c139f1a7705d8207dcdf62502.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/ceiling_interior/albedo.jpg"
-dest_files=["res://.godot/imported/albedo.jpg-c1ac650c139f1a7705d8207dcdf62502.s3tc.ctex"]
+dest_files=["res://.godot/imported/albedo.jpg-c1ac650c139f1a7705d8207dcdf62502.s3tc.ctex", "res://.godot/imported/albedo.jpg-c1ac650c139f1a7705d8207dcdf62502.etc2.ctex"]
 
 [params]
 

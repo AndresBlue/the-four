@@ -21,7 +21,9 @@ static func font() -> Font:
 		cached_font = load(FONT_PATH)
 	else:
 		var system := SystemFont.new()
-		system.font_names = PackedStringArray(["VCR OSD Mono", "Consolas", "Lucida Console", "Courier New", "monospace"])
+		# Menlo is the Mac's own, and the nearest it has to Consolas: without it
+		# a Mac, which has neither Consolas nor Lucida Console, lands on Courier New.
+		system.font_names = PackedStringArray(["VCR OSD Mono", "Consolas", "Menlo", "Lucida Console", "Courier New", "monospace"])
 		system.font_weight = 600
 		system.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
 		cached_font = system

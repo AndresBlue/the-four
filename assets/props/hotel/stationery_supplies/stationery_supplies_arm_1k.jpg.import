@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dn1rlr1qidlsf"
 path.s3tc="res://.godot/imported/stationery_supplies_arm_1k.jpg-d8d1a55e592509c84353be9f13558ed8.s3tc.ctex"
+path.etc2="res://.godot/imported/stationery_supplies_arm_1k.jpg-d8d1a55e592509c84353be9f13558ed8.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/stationery_supplies/stationery_supplies_arm_1k.jpg"
-dest_files=["res://.godot/imported/stationery_supplies_arm_1k.jpg-d8d1a55e592509c84353be9f13558ed8.s3tc.ctex"]
+dest_files=["res://.godot/imported/stationery_supplies_arm_1k.jpg-d8d1a55e592509c84353be9f13558ed8.s3tc.ctex", "res://.godot/imported/stationery_supplies_arm_1k.jpg-d8d1a55e592509c84353be9f13558ed8.etc2.ctex"]
 
 [params]
 

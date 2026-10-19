@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c012h3wkh5uuy"
 path.s3tc="res://.godot/imported/metal_trash_can_rust_arm_1k.jpg-1287f06601a2725f6f48ed3f3dac268b.s3tc.ctex"
+path.etc2="res://.godot/imported/metal_trash_can_rust_arm_1k.jpg-1287f06601a2725f6f48ed3f3dac268b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/hotel/metal_trash_can/metal_trash_can_rust_arm_1k.jpg"
-dest_files=["res://.godot/imported/metal_trash_can_rust_arm_1k.jpg-1287f06601a2725f6f48ed3f3dac268b.s3tc.ctex"]
+dest_files=["res://.godot/imported/metal_trash_can_rust_arm_1k.jpg-1287f06601a2725f6f48ed3f3dac268b.s3tc.ctex", "res://.godot/imported/metal_trash_can_rust_arm_1k.jpg-1287f06601a2725f6f48ed3f3dac268b.etc2.ctex"]
 
 [params]
 

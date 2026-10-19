@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b7tvdyfy4emha"
 path.s3tc="res://.godot/imported/detective_Hat_diffuse.png-46229f10b101b72bca85f6cbe6bc6633.s3tc.ctex"
+path.etc2="res://.godot/imported/detective_Hat_diffuse.png-46229f10b101b72bca85f6cbe6bc6633.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/players/detective/textures/detective_Hat_diffuse.png"
-dest_files=["res://.godot/imported/detective_Hat_diffuse.png-46229f10b101b72bca85f6cbe6bc6633.s3tc.ctex"]
+dest_files=["res://.godot/imported/detective_Hat_diffuse.png-46229f10b101b72bca85f6cbe6bc6633.s3tc.ctex", "res://.godot/imported/detective_Hat_diffuse.png-46229f10b101b72bca85f6cbe6bc6633.etc2.ctex"]
 
 [params]
 

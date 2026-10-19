@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://yhku6npyq6cq"
 path.s3tc="res://.godot/imported/normal.jpg-2424b69b96c7403494b27a57e1d7e486.s3tc.ctex"
+path.etc2="res://.godot/imported/normal.jpg-2424b69b96c7403494b27a57e1d7e486.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/quatrefoil_jacquard_fabric/normal.jpg"
-dest_files=["res://.godot/imported/normal.jpg-2424b69b96c7403494b27a57e1d7e486.s3tc.ctex"]
+dest_files=["res://.godot/imported/normal.jpg-2424b69b96c7403494b27a57e1d7e486.s3tc.ctex", "res://.godot/imported/normal.jpg-2424b69b96c7403494b27a57e1d7e486.etc2.ctex"]
 
 [params]
 
