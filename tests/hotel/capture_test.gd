@@ -471,6 +471,14 @@ func cut_checks() -> void:
 	await fresh_floor()
 	clean("Un piso que se reconstruye en plena captura no deja nada")
 	check("Y en el piso nuevo no se ha visto todavía ninguna entrada", level.tape.seen.is_empty() and level.executions.captures == 0)
+	# Alive again by some way other than the revival, with its body still
+	# lying as it fell and drawn for its own camera: it stands, and is out of
+	# its own sight, instead of lying under the camera for the rest of the game.
+	player.avatar.pose_capture({"fall": 1.0, "time": SCORE.KILL_TIME + 1.0})
+	player.avatar.show_to_owner(true)
+	await frames(3)
+	var out_of_sight: bool = player.avatar.meshes.all(func(mesh): return (mesh.layers & 1) == 0)
+	check("Vivo otra vez por donde sea, el cuerpo se levanta y deja de verse desde su propia cámara", not player.avatar.fallen and out_of_sight)
 
 # --- Where the camera comes to lie --------------------------------------------------
 

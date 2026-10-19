@@ -178,6 +178,13 @@ func drive_local(delta: float) -> void:
 	# that says so do not always arrive in that order, and a body left hidden
 	# is a body whose own torch only the others can see.
 	if is_instance_valid(level.watch_rig) or not level.player.visible: level.stop_watching()
+	# And on its feet. Only the revival stood it up (restore_local_player):
+	# back among the living any other way -- a floor started anew after it
+	# died, the session saying so before the revival did -- it was left lying
+	# as the creature dropped it, under its own camera and drawn for it, and
+	# nothing moves a body that has fallen: it stayed there for the rest of
+	# the game. Its own capture never gets this far (hold_victim, above).
+	if level.player.avatar != null and level.player.avatar.fallen: level.player.avatar.end_capture()
 	level.camcorder.set_stamina(level.player.stamina / 100.0, level.player.exhausted)
 	var floor_room := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
 	level.player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
