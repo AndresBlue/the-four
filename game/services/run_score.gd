@@ -76,13 +76,13 @@ static func breakdown(member: Dictionary) -> Array:
 	add(rows, "Números del código", count(member, "digits"), DIGIT)
 	add(rows, "Código marcado", count(member, "code"), CODE)
 	add(rows, "Sectores cerrados en pie", count(member, "sectors"), SECTOR)
-	add(rows, "Huidas de la criatura", count(member, "escapes"), ESCAPE, ESCAPE_CAP)
+	add(rows, "Salidas", count(member, "escapes"), ESCAPE, ESCAPE_CAP)
 	add(rows, "Muebles registrados", count(member, "searched"), SEARCH, SEARCH_CAP)
 	add(rows, "Salas pisadas", count(member, "rooms"), ROOM, ROOM_CAP)
 	if bool(member.get("escaped", false)):
 		rows.append(["Salió del piso", 1, OUT])
-		if count(member, "deaths") == 0: rows.append(["Sin caer ni una vez", 1, INTACT])
-	add(rows, "Caídas", count(member, "deaths"), DEATH)
+		if count(member, "deaths") == 0: rows.append(["Sin morir ni una vez", 1, INTACT])
+	add(rows, "Muertes", count(member, "deaths"), DEATH)
 	return rows
 
 static func add(rows: Array, what: String, many: int, each: int, cap := 0) -> void:

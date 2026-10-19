@@ -102,6 +102,10 @@ var records
 var records_back := "main"
 ## What was being looked at in the marks: the tab, the board, the table.
 var records_view := {}
+## The achievements: whose are being compared, and what came back of theirs
+## (achievements_board.gd).
+var achievements_view := {}
+const ACHIEVEMENTS := preload("res://game/ui/achievements_board.gd")
 var sounds_enabled := true
 var backdrop: TextureRect
 var noise: ColorRect
@@ -156,6 +160,11 @@ var focus_wanted := ""
 ## The tab of the rules being looked at, and whether the screen has to be
 ## drawn again on the host's own machine (it put them all back at once).
 var rules_view := {}
+## The rules screen as built (rules_screen.gd): each rule's list (for the
+## host) and line, by id, and where what one does is shown.
+var rule_pickers := {}
+var rule_rows := {}
+var rule_detail := {}
 var rules_stale := false
 var intro_tween: Tween
 ## Small corner note during the opening scene: which key skips it.
@@ -406,6 +415,8 @@ func clear() -> void:
 			child.queue_free()
 	buttons.clear()
 	fields.clear()
+	if is_instance_valid(dossier): dossier.queue_free()
+	dossier = null
 	display_label = null
 	display_row = null
 	loading_label = null
@@ -525,6 +536,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			# Neither until there is something in it: a new player was shown
 			# two titles that opened on nothing.
 			if has_records(): action("Records", "records")
+			action("Logros", "achievements")
 			if discoveries != null and not discoveries.found.is_empty(): action("Archivo", "archive")
 			action("Ajustes", "settings")
 			action("Créditos", "credits")
@@ -566,17 +578,27 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			title(column, "ARCHIVO", 64)
 			var count: int = discoveries.found.size() if discoveries != null else 0
 			label(column, "DOCUMENTOS  %d / %d" % [count, CATALOG.TOTAL], 20).add_theme_color_override("font_color", STYLE.AMBER)
+			spacer(column, 10)
+			# All sixteen, numbered, down one strip: what has been read opens
+			# as its file (show_dossier), the rest stays dark.
+			side.visible = false
+			column.custom_minimum_size.x = 760
+			var scroll := ScrollContainer.new()
+			scroll.custom_minimum_size = Vector2(760, 440)
+			scroll.follow_focus = true
+			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			column.add_child(scroll)
+			var strip := VBoxContainer.new()
+			strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			strip.add_theme_constant_override("separation", 0)
+			scroll.add_child(strip)
+			for number in range(1, CATALOG.TOTAL + 1):
+				var item: Dictionary = CATALOG.ENTRIES[number - 1] if number <= CATALOG.ENTRIES.size() else {}
+				var known: bool = not item.is_empty() and discoveries != null and discoveries.has(item.id)
+				var at := number
+				var line := entry(strip, "%02d   %s" % [number, item.title if known else "— sin descubrir —"], func(): show_dossier(at, item), not known, 21)
+				if known: buttons[item.id] = line
 			spacer(column, 14)
-			var shown := false
-			for item in CATALOG.ENTRIES:
-				var known: bool = discoveries != null and discoveries.has(item.id)
-				var entry_data: Dictionary = item
-				buttons[item.id] = entry(column, item.title if known else "— sin descubrir —", func(): show_archive_entry(entry_data), not known, 22)
-				if known and not shown:
-					show_archive_entry(item)
-					shown = true
-			if not shown: paragraph(side, "Los documentos que leas en el hotel se guardan aquí, también entre partidas.", 18, 560)
-			spacer(column, 20)
 			action("Volver", "main")
 		"records":
 			set_osd("▶ PLAY", "", "")
@@ -584,7 +606,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			column.custom_minimum_size.x = BOARD.SIZE.x
 			title(column, "RECORDS", 44)
 			var tabs := BOARD.build(self, column, records_view)
-			footer.text = tab_hint()
+			keycap_tabs(tabs)
 			spacer(column, 4)
 			# Back where it was opened from; the main menu is asked for, so it
 			# comes up knowing whether there is a floor to go on with.
@@ -594,10 +616,18 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 				else: menu(back_to)
 			buttons["back"] = entry(column, "Volver", leave, false, 24)
 			chain_settings(tabs, buttons["back"])
+		"achievements":
+			set_osd("▶ PLAY", "", "")
+			side.visible = false
+			column.custom_minimum_size.x = ACHIEVEMENTS.SIZE.x
+			title(column, "LOGROS", 44)
+			ACHIEVEMENTS.build(self, column, achievements_view)
+			spacer(column, 4)
+			action("Volver", "main")
 		"multiplayer":
 			set_osd("MENU ▸ MULTIJUGADOR", "", "")
 			title(column, "MULTIJUGADOR", 64)
-			label(column, "DE 2 A %d JUGADORES · IP / LAN O STEAM" % NET.MAX_PLAYERS, 20).add_theme_color_override("font_color", STYLE.SOFT)
+			label(column, "%d A %d JUGADORES" % [NET.MIN_PLAYERS, NET.MAX_SURVIVORS], 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
 			# Left empty, the room calls this player "Jugador" (clean_name).
 			field(column, "", "player_name", "Ingresa tu nombre")
@@ -653,19 +683,33 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"join_steam":
 			set_osd("MULTIJUGADOR ▸ UNIRSE", "", "STEAM")
 			title(column, "UNIRSE", 64)
-			label(column, "STEAM · SALAS DE TUS AMIGOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			label(column, "STEAM", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
 			var rooms: Array = net.steam.friend_rooms() if net != null else []
-			for room in rooms:
-				var lobby_id: int = room.lobby
-				entry(column, room.name, func(): if net.join_steam(lobby_id, settings.values.player_name, settings.values.character): menu("steam_wait"), false, 24)
-			if rooms.is_empty(): label(column, "Ningún amigo tiene una sala abierta ahora.", 19).add_theme_color_override("font_color", STYLE.SOFT)
-			spacer(column, 10)
-			action("Actualizar", "join_steam")
-			paragraph(column, "También puedes aceptar una invitación desde Steam (Mayús+Tab), o entrar desde el perfil de un amigo con «Unirse a la partida».", 16, 560)
+			if rooms.is_empty(): label(column, "No se encuentran salas", 19).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 12)
 			action("Volver", "mp_steam")
-			side.visible = false
+			# The rooms found, in a box on the right, and under it the way to
+			# look again.
+			var found_column := VBoxContainer.new()
+			found_column.size_flags_horizontal = Control.SIZE_SHRINK_END
+			found_column.add_theme_constant_override("separation", 10)
+			side.add_child(found_column)
+			var box := PanelContainer.new()
+			box.custom_minimum_size = Vector2(440, 300)
+			box.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.82), STYLE.FAINT, 1, 16))
+			found_column.add_child(box)
+			var scroll := ScrollContainer.new()
+			scroll.follow_focus = true
+			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			box.add_child(scroll)
+			var found := VBoxContainer.new()
+			found.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll.add_child(found)
+			for room in rooms:
+				var lobby_id: int = room.lobby
+				entry(found, room.name, func(): if net.join_steam(lobby_id, settings.values.player_name, settings.values.character): menu("steam_wait"), false, 22)
+			buttons["join_steam"] = entry(found_column, "Actualizar", func(): action_requested.emit("join_steam"), false, 24)
 		"steam_invite":
 			set_osd("SALA ▸ INVITAR", "", "STEAM")
 			title(column, "INVITAR", 64)
@@ -729,16 +773,16 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			side.visible = false
 			column.custom_minimum_size.x = RULES_SCREEN.SIZE.x
 			title(column, "REGLAS", 44)
-			label(column, "LAS DE ESTA SALA: VALEN PARA CADA PISO QUE EMPIECE DESDE ELLA" if hosting else "LAS PONE EL ANFITRIÓN · EN ÁMBAR, LO QUE CAMBIÓ", 15).add_theme_color_override("font_color", STYLE.SOFT)
-			var tabs := RULES_SCREEN.build(self, column, rules_view)
-			footer.text = tab_hint()
+			spacer(column, 6)
+			RULES_SCREEN.build(self, column)
 			rules_stale = false
 			var row := HFlowContainer.new()
 			row.add_theme_constant_override("h_separation", 4)
 			column.add_child(row)
 			buttons["lobby"] = entry(row, "Volver a la sala", func(): action_requested.emit("lobby"), false, 21)
-			if hosting: buttons["rules_reset"] = entry(row, "Las del juego", func(): action_requested.emit("rules_reset"), false, 21)
-			chain_settings(tabs, buttons["lobby"])
+			if hosting: buttons["rules_reset"] = entry(row, "Default", func(): action_requested.emit("rules_reset"), false, 21)
+			if hosting and not rule_pickers.is_empty(): focus_wanted = "rule_first"
+			if hosting and not rule_pickers.is_empty(): buttons["rule_first"] = rule_pickers.values()[0]
 		"online_pause":
 			set_osd("❚❚ MENÚ", "", "LA PARTIDA SIGUE")
 			backdrop.modulate.a = 0.75
@@ -830,6 +874,8 @@ func field(parent: Node, title_text: String, key: String, placeholder: String) -
 ## the 1280 px the menus are laid out in. Wider, it ran off the screen, and
 ## every line in it wrapped at the wider width.
 const LOBBY_SIDE := 340
+## How wide the room's lists of options are: the modes' short names fit.
+const LOBBY_CHOICE := 260
 
 ## The room: who is in, the host's options and the way into the match.
 func lobby_screen() -> void:
@@ -838,26 +884,25 @@ func lobby_screen() -> void:
 	title(column, "SALA", 64)
 	var seats: Array = net.players.keys()
 	seats.sort()
-	label(column, "JUGADORES  %d / %d" % [net.connected_seats().size(), NET.MAX_PLAYERS], 20).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(column, 12)
 	# Options: editable by the host, shown as text to the others.
 	var mode: int = int(net.options.mode)
 	if hosting:
-		choice(column, "Tipo de partida", NET.MODE_NAMES, mode, func(index): net.set_option("mode", index))
+		choice(column, "Tipo de partida", NET.MODE_NAMES, mode, func(index): net.set_option("mode", index), LOBBY_CHOICE)
 		# Against the machine's creature, which one; the host's choice is kept
 		# for its next room too.
 		if mode == NET.Mode.COOP:
 			var names: Array = DIFFICULTY.ORDER.map(func(id): return DIFFICULTY.title(id))
 			choice(column, "Dificultad", names, DIFFICULTY.rank(net.options.get("difficulty")), func(index):
 				net.set_option("difficulty", DIFFICULTY.ORDER[index])
-				settings.set_value("difficulty", DIFFICULTY.ORDER[index]))
+				settings.set_value("difficulty", DIFFICULTY.ORDER[index]), LOBBY_CHOICE)
 		if mode == NET.Mode.VERSUS:
 			var names: Array = ["Al azar"]
 			var ids: Array = [NET.RANDOM]
 			for seat in net.connected_seats():
 				names.append(net.player_name(seat))
 				ids.append(seat)
-			choice(column, "The Locust", names, maxi(0, ids.find(int(net.options.locust))), func(index): net.set_option("locust", ids[index]))
+			choice(column, "The Locust", names, maxi(0, ids.find(int(net.options.locust))), func(index): net.set_option("locust", ids[index]), LOBBY_CHOICE)
 		if not net.match_net.saved_checkpoint().is_empty():
 			var resume := CheckButton.new()
 			resume.text = "Retomar el piso guardado"
@@ -880,41 +925,35 @@ func lobby_screen() -> void:
 	action("Personaje", "lobby_character")
 	action("Reglas", "lobby_rules")
 	action("Cerrar la sala" if hosting else "Salir de la sala", "lobby_leave")
-	# Seats on the right.
-	var visual_script := preload("res://game/player/avatars/avatar_visual.gd")
+	# On the right, who is in and nothing else: their names down a list, this
+	# player's in amber, the host's with "anfitrión" under it, and somebody who
+	# dropped out greyed. (The author's word, 19 October 2026: characters, the
+	# rules changed and how to join were too much to read there.)
+	label(side, "JUGADORES  %d / %d" % [net.connected_seats().size(), NET.seats_for(mode)], 20).add_theme_color_override("font_color", STYLE.AMBER)
+	spacer(side, 8)
 	for seat in seats:
 		var entry_data: Dictionary = net.players[seat]
-		var tags: Array = []
-		if seat == 1: tags.append("anfitrión")
-		if seat == net.local_seat: tags.append("tú")
-		if not entry_data.connected: tags.append("desconectado")
-		if mode == NET.Mode.VERSUS and int(net.options.locust) == seat: tags.append("The Locust")
-		var line := label(side, "%d · %s" % [seat, entry_data.name.to_upper()], 22)
+		var line := label(side, String(entry_data.name).to_upper(), 22)
 		if seat == net.local_seat: line.add_theme_color_override("font_color", STYLE.AMBER)
-		paragraph(side, "%s%s" % [visual_script.NAMES[clampi(int(entry_data.character), 0, 2)], ("  ·  " + ", ".join(tags)) if not tags.is_empty() else ""], 16, LOBBY_SIDE)
-	# What the room changed of the rules, for everybody to see before it starts.
-	var differs: Array = MATCH_RULES.described(net.options.get("rules", {}))
-	spacer(side, 10)
-	label(side, "REGLAS: LAS DEL JUEGO" if differs.is_empty() else "REGLAS CAMBIADAS (%d)" % differs.size(), 16).add_theme_color_override("font_color", STYLE.SOFT if differs.is_empty() else STYLE.AMBER)
-	for words in differs.slice(0, 4): paragraph(side, words, 15, LOBBY_SIDE, STYLE.INK)
-	if differs.size() > 4: paragraph(side, "…y %d más" % (differs.size() - 4), 15, LOBBY_SIDE)
+		elif not entry_data.connected: line.add_theme_color_override("font_color", STYLE.FAINT)
+		if seat == 1: label(side, "anfitrión", 15).add_theme_color_override("font_color", STYLE.SOFT)
+		spacer(side, 4)
 	if hosting:
 		spacer(side, 14)
-		var how: Array = net.where_to_join()
-		paragraph(side, how[0], 17, LOBBY_SIDE, STYLE.AMBER)
-		paragraph(side, how[1], 15, LOBBY_SIDE)
 		# Steam's own invitation window, as in any Steam game; the game's
 		# list only where the overlay is off (turned off in the player's Steam).
+		# Over IP, where the others have to type it: the address.
 		if net.transport == "steam": button(side, "Invitar amigos", func():
 			if net.steam.overlay_ready(): action_requested.emit("steam_overlay_invite")
 			else: menu("steam_invite"))
+		else: paragraph(side, net.where_to_join()[0], 16, LOBBY_SIDE, STYLE.SOFT)
 
-func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable) -> void:
+func choice(parent: Node, title_text: String, labels: Array, selected: int, on_pick: Callable, wide := 420) -> void:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
 	label(row, title_text, 19).custom_minimum_size.x = 240
 	var control := OptionButton.new()
-	control.custom_minimum_size.x = 420
+	control.custom_minimum_size.x = wide
 	control.add_theme_font_size_override("font_size", 19)
 	for words in labels: control.add_item(words)
 	control.select(selected)
@@ -955,7 +994,7 @@ func tape_screen(headline: String, ink: Color, line: Dictionary, result: Diction
 	else:
 		label(column, REPORT.heading(line, headline == "SEÑAL PERDIDA"), 15).add_theme_color_override("font_color", STYLE.SOFT)
 		tabs = REPORT.build(self, column, line, result)
-		footer.text = tab_hint()
+		keycap_tabs(tabs)
 	if not note.is_empty(): label(column, note, 17).add_theme_color_override("font_color", STYLE.SOFT)
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 4)
@@ -987,18 +1026,154 @@ func show_tape(line: Dictionary) -> void:
 ## How the tabs of a report or of the marks are turned, for the corner of the
 ## screen: the keys, or the shoulders of the pad in the hands.
 func tab_hint() -> String:
-	if settings != null and settings.using_pad and settings.pad_present():
-		return "%s  ·  PESTAÑAS  ·  %s" % [settings.button_name(JOY_BUTTON_LEFT_SHOULDER), settings.button_name(JOY_BUTTON_RIGHT_SHOULDER)]
-	return "Q  ·  PESTAÑAS  ·  E"
+	var keys := tab_keys()
+	return "%s  ·  PESTAÑAS  ·  %s" % keys
 
-func show_archive_entry(item: Dictionary) -> void:
-	for child in side.get_children():
-		side.remove_child(child)
-		child.queue_free()
-	label(side, item.title.to_upper(), 26)
-	label(side, item.header, 16).add_theme_color_override("font_color", STYLE.SOFT)
-	spacer(side, 8)
-	paragraph(side, item.body, 19, 620, STYLE.INK)
+func tab_keys() -> Array:
+	if settings != null and settings.using_pad and settings.pad_present():
+		return [settings.button_name(JOY_BUTTON_LEFT_SHOULDER), settings.button_name(JOY_BUTTON_RIGHT_SHOULDER)]
+	return ["Q", "E"]
+
+## The same, said on the tabs themselves (the author's word, 19 October 2026:
+## the marks' footer was a line too many): the key that turns back as a small
+## keycap before the first tab, the one that turns on after the last.
+const KEYCAP_ROOM := 40
+func keycap_tabs(tabs: TabContainer) -> void:
+	var keys := tab_keys()
+	tabs.add_theme_constant_override("side_margin", KEYCAP_ROOM)
+	var bar := tabs.get_tab_bar()
+	var before := keycap(String(keys[0]))
+	var after := keycap(String(keys[1]))
+	bar.add_child(before, false, Node.INTERNAL_MODE_BACK)
+	bar.add_child(after, false, Node.INTERNAL_MODE_BACK)
+	# Placed whenever the bar is drawn, when its tabs have their widths (laid
+	# out, the first time, they had not yet; and a call put off to the next
+	# frame found the screen built again, its nodes gone, when a test went
+	# through the menus quickly).
+	var put := func() -> void:
+		if bar.tab_count == 0: return
+		var last := bar.get_tab_rect(bar.tab_count - 1)
+		before.reset_size()
+		after.reset_size()
+		before.position = Vector2(-before.size.x - 8.0, (last.size.y - before.size.y) * 0.5)
+		after.position = Vector2(last.end.x + 8.0, (last.size.y - after.size.y) * 0.5)
+	bar.draw.connect(put)
+
+## A key's name in a small box with the edge of a keycap.
+func keycap(words: String) -> PanelContainer:
+	var cap := PanelContainer.new()
+	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := STYLE.flat(Color(1, 1, 1, 0.04), STYLE.SOFT, 1, 0.0)
+	box.set_corner_radius_all(3)
+	box.content_margin_left = 6
+	box.content_margin_right = 6
+	box.content_margin_top = 1
+	box.content_margin_bottom = 2
+	box.border_width_bottom = 2
+	cap.add_theme_stylebox_override("panel", box)
+	var name := label(cap, words, 13)
+	name.add_theme_color_override("font_color", STYLE.INK)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return cap
+
+## A Steam friend picked to compare achievements with (0: nobody): their
+## column fills in when Steam answers (on_friend_achievements).
+func compare_achievements(friend: int, friend_name: String) -> void:
+	achievements_view.clear()
+	if friend != 0 and net != null:
+		achievements_view = {"friend": friend, "name": friend_name, "unlocked": {}, "known": true}
+		if not net.steam.friend_achievements.is_connected(on_friend_achievements): net.steam.friend_achievements.connect(on_friend_achievements)
+		net.steam.ask_achievements(friend, ACHIEVEMENTS.keys())
+	menu("achievements")
+
+func on_friend_achievements(friend: int, unlocked: Dictionary, known: bool) -> void:
+	if int(achievements_view.get("friend", 0)) != friend: return
+	achievements_view["unlocked"] = unlocked
+	achievements_view["known"] = known
+	if screen == "achievements" and overlay.visible: menu("achievements")
+
+## A document of the archive opened as a file, the way a foundation would keep
+## it (the author's word, 19 October 2026: like an SCP report): on paper, its
+## number in the archive, what it is and where it came from, the transcription,
+## and a stamp. Closed with "Cerrar", a click outside it, or Esc.
+var dossier: Control
+const PAPER := Color(0.86, 0.84, 0.77)
+const PAPER_INK := Color(0.12, 0.11, 0.1)
+const CREATURES := {"locust": "THE LOCUST", "sunman": "SUNMAN", "boiled": "THE BOILED ONE", "guilt": "GUILT"}
+
+func show_dossier(number: int, item: Dictionary) -> void:
+	close_dossier()
+	confirm()
+	dossier = Control.new()
+	dossier.name = "Dossier"
+	dossier.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Over the menu it is opened from, not under it.
+	overlay.add_child(dossier)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.78)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.gui_input.connect(func(event: InputEvent): if event is InputEventMouseButton and event.pressed: close_dossier())
+	dossier.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dossier.add_child(center)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 12)
+	center.add_child(stack)
+	var sheet := PanelContainer.new()
+	sheet.custom_minimum_size = Vector2(780, 0)
+	sheet.add_theme_stylebox_override("panel", STYLE.flat(PAPER, Color(0.3, 0.28, 0.24), 1, 30.0))
+	stack.add_child(sheet)
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 6)
+	sheet.add_child(page)
+	var head := HBoxContainer.new()
+	page.add_child(head)
+	var office := VBoxContainer.new()
+	office.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	office.add_theme_constant_override("separation", 0)
+	head.add_child(office)
+	ink(label(office, "ARCHIVO DEL HOTEL", 15))
+	ink(label(office, "DOCUMENTO N.º %02d / %d" % [number, CATALOG.TOTAL], 22))
+	head.add_child(STYLE.stamp("RESERVADO", 20, Color(0.62, 0.1, 0.08), -0.12))
+	rule(page, 3)
+	for field in [["DOCUMENTO", String(item.title).to_upper()], ["PROCEDENCIA", String(item.header)], ["RELACIONADO CON", String(CREATURES.get(String(item.get("creature", "")), String(item.get("creature", "")).to_upper()))]]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		page.add_child(row)
+		var key := ink(label(row, field[0] + ":", 15))
+		key.custom_minimum_size.x = 190
+		ink(paragraph(row, field[1], 16, 520, PAPER_INK))
+	rule(page, 1)
+	ink(label(page, "TRANSCRIPCIÓN:", 15))
+	spacer(page, 2)
+	ink(paragraph(page, String(item.body), 18, 720, PAPER_INK))
+	spacer(page, 4)
+	rule(page, 1)
+	var end := ink(label(page, "— FIN DEL DOCUMENTO —", 14))
+	end.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var close := entry(stack, "Cerrar", close_dossier, false, 22)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close.grab_focus.call_deferred()
+
+## Words on the paper: in its ink, with no shadow.
+func ink(words: Label) -> Label:
+	words.add_theme_color_override("font_color", PAPER_INK)
+	words.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
+	return words
+
+func rule(parent: Node, thick: int) -> void:
+	var line := ColorRect.new()
+	line.color = Color(PAPER_INK, 0.75)
+	line.custom_minimum_size = Vector2(0, thick)
+	parent.add_child(line)
+
+func close_dossier() -> void:
+	if not is_instance_valid(dossier): return
+	dossier.queue_free()
+	dossier = null
+	if screen == "archive": focus_first()
 
 ## A document held up to the camera while play goes on behind it.
 func show_document(item: Dictionary) -> void:
@@ -1166,7 +1341,10 @@ func briefing_panel(parent: Node) -> void:
 ## The keys, beside the pause menu. It sits over the right of the screen,
 ## where the menu's shade has thinned to almost nothing, so its own backing is
 ## nearly opaque, and every column has a fixed width with the words wrapping
-## inside it: nothing here may run off the edge of the screen.
+## inside it: nothing here may run off the edge of the screen. Only what the
+## player uses while playing, in a word or two, small and well spaced (the
+## author's word, 19 October 2026): not what holding a key does, not the
+## mouse, not what to do once dead.
 func controls_panel(parent: Node) -> void:
 	if settings == null: return
 	var panel := PanelContainer.new()
@@ -1174,23 +1352,27 @@ func controls_panel(parent: Node) -> void:
 	panel.add_theme_stylebox_override("panel", STYLE.flat(Color(0.02, 0.02, 0.02, 0.86), STYLE.FAINT, 1, 20))
 	parent.add_child(panel)
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 6)
+	list.add_theme_constant_override("separation", CONTROLS_SPACING)
 	panel.add_child(list)
-	label(list, "CONTROLES", 20).add_theme_color_override("font_color", STYLE.AMBER)
-	spacer(list, 4)
+	label(list, "CONTROLES", 18).add_theme_color_override("font_color", STYLE.AMBER)
+	spacer(list, 2)
 	var moves := "%s %s %s %s" % [settings.key_name("forward"), settings.key_name("left"), settings.key_name("backward"), settings.key_name("right")]
-	var rows: Array = [[moves, "Moverse"], ["RATÓN", "Mirar"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Puertas, escondites, teles y documentos"], [settings.key_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.key_name("flashlight"), "Linterna"], ["%s %s" % [settings.key_name("lean_left"), settings.key_name("lean_right")], "Asomarse a un lado"], ["RUEDA DEL RATÓN", "Zoom de la cámara"], [settings.key_name("sheet"), "Hoja (dibujar y borrar con el ratón)"], ["CLIC", "Muerto en equipo: cambiar a quién miras"], ["ESC", "Pausa"]]
+	var rows: Array = [[moves, "Moverse"], [settings.key_name("sprint"), "Correr"], [settings.key_name("crouch"), "Agacharse"], [settings.key_name("jump"), "Saltar"], [settings.key_name("interact"), "Interactuar"], [settings.key_name("flashlight"), "Linterna"], ["%s %s" % [settings.key_name("lean_left"), settings.key_name("lean_right")], "Asomarse"], ["RUEDA DEL RATÓN", "Zoom de la cámara"], [settings.key_name("sheet"), "Hoja"], ["ESC", "Pausa"]]
 	# Played on a pad, the card names its buttons, and says which ones flip.
 	if settings.using_pad and settings.pad_present():
 		var flip := func(action: String) -> String: return settings.pad_name(action) + (" (ALTERNA)" if settings.values.get("pad_%s_toggle" % action, false) else "")
-		rows = [["STICK IZQ.", "Moverse (cuanto más lo empujas, más deprisa)"], ["STICK DER.", "Mirar"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Puertas, escondites, teles y documentos"], [settings.pad_name("interact") + " MANTENER", "Registrar un mueble · Abrir una puerta despacio"], [settings.pad_name("flashlight"), "Linterna"], [settings.pad_name("lean_left") + " " + settings.pad_name("lean_right").replace("CRUCETA ", ""), "Asomarse a un lado"], ["CRUCETA ↑ ↓", "Zoom de la cámara"], [settings.pad_name("sheet"), "Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)" % [settings.trigger_name(true), settings.trigger_name(false)]], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
+		rows = [["STICK IZQ.", "Moverse"], [flip.call("sprint"), "Correr"], [flip.call("crouch"), "Agacharse"], [settings.pad_name("jump"), "Saltar"], [settings.pad_name("interact"), "Interactuar"], [settings.pad_name("flashlight"), "Linterna"], [settings.pad_name("lean_left") + " " + settings.pad_name("lean_right").replace("CRUCETA ", ""), "Asomarse"], ["CRUCETA ↑ ↓", "Zoom de la cámara"], [settings.pad_name("sheet"), "Hoja"], [settings.button_name(JOY_BUTTON_START), "Pausa"]]
 	for row in rows:
 		var line := HBoxContainer.new()
 		list.add_child(line)
 		line.add_theme_constant_override("separation", 12)
-		var key := label(line, row[0].to_upper(), 17)
+		var key := label(line, row[0].to_upper(), CONTROLS_SIZE)
 		key.custom_minimum_size.x = 150
-		paragraph(line, row[1], 17, 250, Color(STYLE.INK, 0.78))
+		paragraph(line, row[1], CONTROLS_SIZE, 200, Color(STYLE.INK, 0.78))
+
+## The controls card's letters and the room between its lines.
+const CONTROLS_SIZE := 15
+const CONTROLS_SPACING := 12
 
 func show_settings(back: String) -> void:
 	clear()
@@ -1907,6 +2089,10 @@ func _input(event: InputEvent) -> void:
 	if is_instance_valid(intro) and event is InputEventKey and event.pressed:
 		get_viewport().set_input_as_handled()
 		finish_intro()
+		return
+	if is_instance_valid(dossier) and (event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE)):
+		get_viewport().set_input_as_handled()
+		close_dossier()
 		return
 	if not rebind_pad.is_empty() and event is InputEventJoypadButton and event.pressed:
 		get_viewport().set_input_as_handled()

@@ -345,6 +345,14 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **El clic de la linterna y el motor del zoom (18 de octubre):** el
   volumen de cada uno (−17 y −15 dB, puestos a ojo), y si a los compañeros se
   les oye la linterna a la distancia justa.
+- [ ] **Los menús nuevos (19 de octubre):** si el detalle de las reglas, que
+  entra desde la estática, se lee a tiempo y no cansa; si las teclas Q y E
+  junto a las pestañas se entienden; si la ficha del Archivo se lee bien; y
+  los íconos de los logros (dibujados para el juego, a juzgar).
+- [ ] **Cinco supervivientes (19 de octubre):** una partida de cinco, y una
+  de versus de seis: si el piso, los televisores (uno más por cabeza) y el
+  ascensor dan para tantos, y si el lápiz del quinto y del sexto se distingue
+  en la hoja.
 - [ ] **Los muebles que quedan abiertos (19 de octubre):** si el cajón sale
   lo justo (la mitad de su fondo) y las puertas de la vitrina se abren lo
   justo (63°), si se lee desde la puerta lo revuelto de la consola, la
@@ -712,6 +720,11 @@ pueda jugar entero sin tocar el teclado.
   vuelca un adorno (**una maceta o un jarrón de cerámica que cae de lado
   sobre madera**); y una pila **solo de cajas de plástico** baja la de arriba
   al suelo (**una caja de plástico dejada en el suelo**).
+- [ ] **Los logros en Steamworks** (19 de octubre): cuando el juego tenga su
+  AppID, crear los dieciocho logros con sus nombres de API (`F1_OUT`…) y los
+  íconos de `make_achievement_icons.py --steam`, publicarlos y cambiar el
+  AppID (DEVELOPMENT.md, Steam). Hasta entonces Steam no los guarda y
+  «Comparar con» no trae nada.
 - [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía, y es el silencio más audible del piso: cada cierre de
   sector pasa por él.

@@ -1,6 +1,7 @@
 extends SceneTree
-## The rules of a room, photographed: the room with a few of them changed, and
-## the screen the host picks them on, tab by tab.
+## The rules of a room, photographed: the room with a few of them changed, the
+## screen the host picks them on, and what one of them does coming up when the
+## pointer rests on it.
 ##
 ##   godot --path . --script tools/capture/rules_capture.gd -- --test-profile
 ## Writes evidence/rules_<screen>.png.
@@ -28,12 +29,12 @@ func run() -> void:
 	level.net.set_option("rules", {"restarts": 2, "code": 1, "plan_fade": 300, "onslaught": 1})
 	level.ui.menu("lobby")
 	await shot("sala")
-	level.ui.rules_view = {}
 	level.ui.menu("rules")
-	await shot("equipo")
-	for page in ["piso", "hoja", "locust"]:
-		level.ui.turn_tab(1)
-		await shot(page, 15)
+	await shot("reglas")
+	# Resting on one: what it does comes up out of the static, and once it has.
+	level.ui.rule_rows["plan_fade"].mouse_entered.emit()
+	await shot("detalle_entrando", 12)
+	await shot("detalle", 50)
 	level.net.shutdown("")
 	print("RULES listo")
 	level.queue_free()

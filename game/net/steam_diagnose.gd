@@ -4,8 +4,8 @@ extends RefCounted
 ## with their arguments, and what Steam answers here. For support ("why does
 ## Steam not work for me?") and to check the transport against the plug-in
 ## actually shipped, never against a version remembered from somewhere else.
-const METHODS := ["steamInitEx", "run_callbacks", "isSteamRunning", "loggedOn", "getAppID", "getSteamID", "getPersonaName", "getFriendPersonaName", "createLobby", "joinLobby", "leaveLobby", "setLobbyData", "getLobbyData", "getLobbyOwner", "getNumLobbyMembers", "getLobbyMemberByIndex", "setLobbyJoinable", "activateGameOverlayInviteDialog", "setRichPresence", "clearRichPresence", "getFriendCount", "getFriendByIndex", "getFriendGamePlayed", "getLaunchCommandLine", "initRelayNetworkAccess", "isOverlayEnabled", "inviteUserToLobby", "getFriendPersonaState", "activateGameOverlay"]
-const SIGNALS := ["lobby_created", "lobby_joined", "lobby_chat_update", "join_requested", "persona_state_change", "steamworks_error"]
+const METHODS := ["steamInitEx", "run_callbacks", "isSteamRunning", "loggedOn", "getAppID", "getSteamID", "getPersonaName", "getFriendPersonaName", "createLobby", "joinLobby", "leaveLobby", "setLobbyData", "getLobbyData", "getLobbyOwner", "getNumLobbyMembers", "getLobbyMemberByIndex", "setLobbyJoinable", "activateGameOverlayInviteDialog", "setRichPresence", "clearRichPresence", "getFriendCount", "getFriendByIndex", "getFriendGamePlayed", "getLaunchCommandLine", "initRelayNetworkAccess", "isOverlayEnabled", "inviteUserToLobby", "getFriendPersonaState", "activateGameOverlay", "getAchievement", "setAchievement", "storeStats", "requestUserStats", "getUserAchievementAndUnlockTime"]
+const SIGNALS := ["lobby_created", "lobby_joined", "lobby_chat_update", "join_requested", "persona_state_change", "steamworks_error", "user_stats_received"]
 
 static func args_of(entry: Dictionary) -> String:
 	var parts := []

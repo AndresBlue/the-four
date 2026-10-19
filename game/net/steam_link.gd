@@ -22,6 +22,10 @@ extends Node
 ## Valve's Spacewar, while developing; the game's own when it has one, and
 ## nothing else changes with it.
 signal join_asked(lobby_id: int)
+## A friend's achievements came back (ask_achievements): key "floor:id" ->
+## the unix time it was unlocked; `known` false when Steam had nothing of
+## theirs for this game.
+signal friend_achievements(friend: int, unlocked: Dictionary, known: bool)
 const APP_ID_SETTING := "steam/initialization/app_data/app_id"
 const DEV_APP_ID := 480
 ## Lobby data: which game and which build a lobby belongs to (with AppID 480
@@ -94,6 +98,7 @@ func start() -> void:
 	api.lobby_joined.connect(_lobby_joined)
 	api.lobby_chat_update.connect(_lobby_chat_update)
 	api.join_requested.connect(_join_requested)
+	if api.has_signal("user_stats_received"): api.user_stats_received.connect(_user_stats_received)
 	multiplayer.peer_connected.connect(_peer_connected)
 	multiplayer.peer_disconnected.connect(_peer_disconnected)
 	# Launched by Steam from an invitation: "+connect_lobby <id>" (only with
@@ -248,6 +253,62 @@ func friend_rooms() -> Array:
 		rooms.append({"name": api.getFriendPersonaName(friend), "lobby": room})
 	print("Steam: %d friend room(s) open" % rooms.size())
 	return rooms
+
+# --- Achievements -------------------------------------------------------------
+
+## The milestones (records_service, "floor:id") are this app's achievements on
+## Steam too, so friends can compare them there and in the game (LOGROS,
+## achievements_board.gd). Their API names are F<floor>_<ID>. They exist only
+## in the game's own app on Steamworks, made there with these names and the
+## icons of tools/art/make_achievement_icons.py --steam: with AppID 480 Steam
+## refuses every one of them, and nothing else happens.
+static func api_name(key: String) -> String:
+	return "F%s_%s" % [key.get_slice(":", 0), key.get_slice(":", 1).to_upper()]
+
+## Unlocks on Steam whatever of these it does not have yet, and stores them.
+func unlock(keys: Array) -> void:
+	if not started or not api.has_method("setAchievement"): return
+	var told := 0
+	for key in keys:
+		var name := api_name(String(key))
+		var now: Dictionary = api.getAchievement(name)
+		if bool(now.get("achieved", false)): continue
+		if api.setAchievement(name): told += 1
+	if told > 0:
+		api.storeStats()
+		print("Steam: %d achievement(s) unlocked" % told)
+
+## This player's friends, online or not, by name: [{name, id}].
+func friends() -> Array:
+	var all: Array = []
+	if not started: return all
+	var flags := constant("FRIEND_FLAG_IMMEDIATE", 4)
+	for i in api.getFriendCount(flags):
+		var friend: int = api.getFriendByIndex(i, flags)
+		all.append({"name": api.getFriendPersonaName(friend), "id": friend})
+	all.sort_custom(func(a, b): return String(a.name).nocasecmp_to(b.name) < 0)
+	return all
+
+## Asks Steam for a friend's achievements (these keys): friend_achievements
+## says what came back.
+var asked := {}
+func ask_achievements(friend: int, keys: Array) -> void:
+	if not started or not api.has_method("requestUserStats"): return
+	asked[friend] = keys
+	api.requestUserStats(friend)
+
+func _user_stats_received(_game: int, result: int, user: int) -> void:
+	if not asked.has(user): return
+	var keys: Array = asked[user]
+	asked.erase(user)
+	var known := result == constant("RESULT_OK", 1)
+	var unlocked := {}
+	if known:
+		for key in keys:
+			var said: Dictionary = api.getUserAchievementAndUnlockTime(user, api_name(String(key)))
+			if bool(said.get("achieved", false)): unlocked[key] = int(said.get("unlocked", 0))
+	print("Steam: achievements of %s -> %s, %d unlocked" % [api.getFriendPersonaName(user), "result %d" % result, unlocked.size()])
+	friend_achievements.emit(user, unlocked, known)
 
 # --- Both -------------------------------------------------------------------
 

@@ -1,7 +1,8 @@
 extends RefCounted
 ## The marks a player keeps, in tabs: the boards of each floor (TABLONES), the
-## player's own career (FICHA), the milestones of every floor (HITOS) and the
-## cards of the people played with, side by side with one's own (COMPARAR).
+## player's own career (FICHA) and the cards of the people played with, side
+## by side with one's own (COMPARAR). The milestones have a screen of their
+## own (achievements_board.gd, LOGROS).
 ## Everything is read out of records_service.gd; a line picked on a board
 ## opens its whole report (tape_report.gd, through hotel_ui.show_tape).
 ##
@@ -23,7 +24,6 @@ static func build(ui, parent: Node, view: Dictionary) -> TabContainer:
 	parent.add_child(tabs)
 	boards(ui, REPORT.sheet(ui, tabs, "TABLONES"), view)
 	profile(ui, REPORT.sheet(ui, tabs, "FICHA"))
-	milestones(ui, REPORT.sheet(ui, tabs, "HITOS"))
 	compare(ui, REPORT.sheet(ui, tabs, "COMPARAR"), view)
 	tabs.current_tab = clampi(int(view.get("tab", 0)), 0, tabs.get_tab_count() - 1)
 	tabs.tab_changed.connect(func(index: int): view["tab"] = index)
@@ -81,7 +81,6 @@ static func fill(ui, list: VBoxContainer, view: Dictionary) -> void:
 	var table: Dictionary = RECORDS.TABLES[0]
 	for candidate in RECORDS.TABLES:
 		if String(candidate.id) == String(view.table): table = candidate
-	ui.label(list, String(table.note), 14).add_theme_color_override("font_color", STYLE.SOFT)
 	ui.spacer(list, 4)
 	var lines: Array = records.table_of(String(table.id), 1, String(view.company))
 	if lines.is_empty():
@@ -109,8 +108,6 @@ static func fill(ui, list: VBoxContainer, view: Dictionary) -> void:
 			[String(line.get("date", "")).left(10), STYLE.SOFT],
 		]
 		line_button(ui, list, cells, func(): ui.show_tape(line))
-	ui.spacer(list, 6)
-	ui.label(list, "ELIGE UNA CINTA PARA LEER SU PARTE ENTERO.", 13).add_theme_color_override("font_color", STYLE.FAINT)
 	ui.rechain()
 
 ## One line of a board: a row that can be marked and picked.
@@ -143,12 +140,11 @@ static func profile(ui, page: VBoxContainer) -> void:
 	# The name the boards and the rooms know this player by.
 	ui.field(page, "Tu nombre", "player_name", "Ingresa tu nombre")
 	ui.spacer(page, 4)
-	var split := REPORT.row_in(page, 40)
+	# All of it down one strip (the author's word, 19 October 2026).
 	var left := VBoxContainer.new()
-	var right := VBoxContainer.new()
-	for side in [left, right]:
-		side.add_theme_constant_override("separation", 3)
-		split.add_child(side)
+	left.add_theme_constant_override("separation", 3)
+	page.add_child(left)
+	var right := left
 	var clock := func(seconds: float) -> String: return ui.tape_time(seconds) if seconds >= 0.0 else "—"
 	var known := 0
 	for floor_number in range(1, FLOORS.COUNT + 1): known += FLOORS.milestones(floor_number).size()
@@ -161,13 +157,13 @@ static func profile(ui, page: VBoxContainer) -> void:
 	stat(left, "MEJOR PUNTAJE", STYLE.grouped(int(career.get("best_score", 0))) if int(career.get("best_score", 0)) > 0 else "—")
 	stat(left, "MEJOR NOTA", grade if not grade.is_empty() else "—", STYLE.AMBER)
 	stat(left, "VECES MÁS VALIOSO", str(int(career.get("mvps", 0))))
-	stat(left, "HITOS", "%d / %d" % [records.reached_count(), known])
+	stat(left, "LOGROS", "%d / %d" % [records.reached_count(), known])
 	stat(right, "TELEVISORES ENCENDIDOS", str(int(career.get("tvs", 0))))
 	stat(right, "NÚMEROS ENCONTRADOS", str(int(career.get("digits", 0))))
 	stat(right, "CÓDIGOS MARCADOS", str(int(career.get("code", 0))))
 	stat(right, "MUEBLES REGISTRADOS", str(int(career.get("searched", 0))))
-	stat(right, "HUIDAS DE LA CRIATURA", str(int(career.get("escapes", 0))))
-	stat(right, "CAÍDAS", str(int(career.get("deaths", 0))))
+	stat(right, "SALIDAS", str(int(career.get("escapes", 0))))
+	stat(right, "MUERTES", str(int(career.get("deaths", 0))))
 	stat(right, "VECES EN UN ARMARIO", str(int(career.get("hides", 0))))
 	stat(right, "METROS ANDADOS", STYLE.grouped(int(career.get("metres", 0))))
 	var usual: String = records.usual_part()

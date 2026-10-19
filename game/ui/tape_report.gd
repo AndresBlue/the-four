@@ -2,7 +2,7 @@ extends RefCounted
 ## The report of one tape, in tabs: what it came to (RESUMEN), who did what
 ## (EQUIPO), how each sector went (SECTORES), the moments of the floor in
 ## order (CRONOLOGÍA) and, on the floor just played, the milestones it reached
-## for the first time (HITOS). Read out of the line the floor left
+## for the first time (LOGROS). Read out of the line the floor left
 ## (game/app/run_ledger.gd, game/services/run_score.gd), so the same screen
 ## shows the floor that has just ended and any tape kept on the boards.
 ##
@@ -30,7 +30,7 @@ static func build(ui, parent: Node, line: Dictionary, outcome := {}) -> TabConta
 	timeline(ui, sheet(ui, tabs, "CRONOLOGÍA"), line)
 	# On the floor just played: what it reached. A tape that never got out
 	# reaches nothing, unless it was the hunter's.
-	if outcome.has("milestones") and (SCORE.won(line) or not outcome.milestones.is_empty()): milestones(ui, sheet(ui, tabs, "HITOS"), line, outcome)
+	if outcome.has("milestones") and (SCORE.won(line) or not outcome.milestones.is_empty()): milestones(ui, sheet(ui, tabs, "LOGROS"), line, outcome)
 	return tabs
 
 ## A page of the tabs, with a little air over its first line: the page rolls,
@@ -103,8 +103,8 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 		for member in members:
 			for key in sums: sums[key] = int(sums[key]) + int(member.get(key, 0))
 		var counts := row_in(left, 34)
-		STYLE.figure(counts, "CAÍDAS", str(int(line.get("deaths", 0))), 22, STYLE.ALERT if int(line.get("deaths", 0)) > 0 else STYLE.INK)
-		STYLE.figure(counts, "HUIDAS", str(int(sums.escapes)), 22)
+		STYLE.figure(counts, "MUERTES", str(int(line.get("deaths", 0))), 22, STYLE.ALERT if int(line.get("deaths", 0)) > 0 else STYLE.INK)
+		STYLE.figure(counts, "SALIDAS", str(int(sums.escapes)), 22)
 		STYLE.figure(counts, "TELEVISORES", str(int(sums.tvs)), 22)
 		STYLE.figure(counts, "VECES EN ARMARIOS", str(int(line.get("hides", 0))), 22)
 		STYLE.figure(counts, "METROS ANDADOS", STYLE.grouped(int(sums.metres)), 22)
@@ -140,7 +140,7 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 			delay += 0.35
 	var differs: Array = RULES.described(line.get("rules", {}))
 	if not differs.is_empty():
-		ui.label(left, "CON OTRAS REGLAS · SIN HITOS, Y EN SU PROPIO TABLÓN", 14).add_theme_color_override("font_color", STYLE.AMBER)
+		ui.label(left, "CON OTRAS REGLAS · SIN LOGROS, Y EN SU PROPIO TABLÓN", 14).add_theme_color_override("font_color", STYLE.AMBER)
 		ui.paragraph(left, "  ·  ".join(differs), 15, 600, STYLE.INK)
 	if not won: ui.paragraph(left, "Cinta perdida.", 16, 600)
 	spotlight(ui, split, line, not outcome.is_empty())
@@ -183,7 +183,7 @@ static func spotlight(ui, parent: Node, line: Dictionary, fresh: bool) -> void:
 # --- EQUIPO -----------------------------------------------------------------------
 
 ## The columns of the team's table: [heading, width, the member's key].
-const COLUMNS := [["JUGADOR", 180, "name"], ["PAPEL", 152, "title"], ["PUNTOS", 82, "score"], ["ENCUENTROS", 104, "encounters"], ["TV", 36, "tvs"], ["Nº", 36, "digits"], ["HUIDAS", 70, "escapes"], ["CAÍDAS", 70, "deaths"], ["METROS", 72, "metres"], ["", 80, "escaped"]]
+const COLUMNS := [["JUGADOR", 180, "name"], ["PAPEL", 152, "title"], ["PUNTOS", 82, "score"], ["ENCUENTROS", 104, "encounters"], ["TV", 36, "tvs"], ["CÓDIGOS", 76, "digits"], ["SALIDAS", 70, "escapes"], ["MUERTES", 70, "deaths"], ["METROS", 72, "metres"], ["", 80, "escaped"]]
 const MARK := 22
 
 static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
@@ -335,9 +335,9 @@ static func milestones(ui, page: VBoxContainer, line: Dictionary, outcome: Dicti
 	var floor_number := int(line.get("floor", 1))
 	var fresh: Array = outcome.get("milestones", [])
 	var known: Array = FLOORS.milestones(floor_number)
-	if line.has("rules"): ui.paragraph(page, "Con otras reglas que las del juego no se alcanzan hitos.", 17, 900)
-	elif fresh.is_empty(): ui.paragraph(page, "Esta cinta no trae ningún hito nuevo.", 17, 900)
-	else: ui.label(page, "HITOS NUEVOS", 15).add_theme_color_override("font_color", STYLE.AMBER)
+	if line.has("rules"): ui.paragraph(page, "Con otras reglas que las del juego no se alcanzan logros.", 17, 900)
+	elif fresh.is_empty(): ui.paragraph(page, "Esta cinta no trae ningún logro nuevo.", 17, 900)
+	else: ui.label(page, "LOGROS NUEVOS", 15).add_theme_color_override("font_color", STYLE.AMBER)
 	var delay := 0.5
 	for milestone in known:
 		if not fresh.has(String(milestone.id)): continue
@@ -352,7 +352,7 @@ static func milestones(ui, page: VBoxContainer, line: Dictionary, outcome: Dicti
 		note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if ui.records == null or known.is_empty(): return
 	ui.spacer(page, 6)
-	ui.label(page, "%s:  %d DE %d HITOS" % [FLOORS.title(floor_number), ui.records.reached_count(floor_number), known.size()], 17)
+	ui.label(page, "%s:  %d DE %d LOGROS" % [FLOORS.title(floor_number), ui.records.reached_count(floor_number), known.size()], 17)
 	# And a few of the ones still to do, to have something to go back for.
 	var pending: Array = known.filter(func(milestone): return String(ui.records.reached(floor_number, String(milestone.id))).is_empty())
 	if pending.is_empty(): return
@@ -362,4 +362,4 @@ static func milestones(ui, page: VBoxContainer, line: Dictionary, outcome: Dicti
 		var row := row_in(page, 16)
 		STYLE.cell(row, String(milestone.title), 300, 16, STYLE.SOFT)
 		STYLE.cell(row, String(milestone.note), 620, 15, STYLE.FAINT)
-	ui.label(page, "TODOS, EN RECORDS ▸ HITOS.", 13).add_theme_color_override("font_color", STYLE.FAINT)
+	ui.label(page, "TODOS, EN LOGROS.", 13).add_theme_color_override("font_color", STYLE.FAINT)

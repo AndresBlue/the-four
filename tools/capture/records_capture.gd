@@ -2,8 +2,9 @@ extends SceneTree
 ## The screens the marks are read on, photographed with made up lines so the
 ## pictures always show something: the report of a tape that has just got out,
 ## tab by tab, the report of one that did not (and its team), the main menu,
-## and the marks with their boards, the career, the milestones and the cards
-## side by side.
+## the marks with their boards, the career and the cards side by side, the
+## achievements, the archive with a file open, and the loading screen's
+## controls.
 ##
 ##   godot --path . --script tools/capture/records_capture.gd -- --test-profile
 ## Writes evidence/records_<screen>.png.
@@ -116,7 +117,7 @@ func run() -> void:
 	level.ui.records_view = {}
 	level.ui.menu("records")
 	await shot("tablones")
-	for page in ["ficha", "hitos", "comparar"]:
+	for page in ["ficha", "comparar"]:
 		level.ui.turn_tab(1)
 		await shot(page, 20)
 	level.ui.show_tape(records.table_of("time", 1, records.SOLO)[0])
@@ -125,6 +126,18 @@ func run() -> void:
 	await shot("cinta_guardada_equipo", 20)
 	level.ui.menu("main", true)
 	await shot("menu_principal")
+	level.ui.menu("achievements")
+	await shot("logros")
+	# The archive, all sixteen, and one of them open as its file.
+	if not level.discoveries.has("locust_reception"): level.discoveries.record("locust_reception")
+	level.ui.menu("archive")
+	await shot("archivo")
+	level.ui.show_dossier(1, load("res://game/discovery/discovery_catalog.gd").entry("locust_reception"))
+	await shot("archivo_ficha")
+	level.ui.close_dossier()
+	# The controls beside the loading screen.
+	level.ui.menu("loading")
+	await shot("carga")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://capture_records.json"))
 	print("RECORDS listo")
 	level.queue_free()

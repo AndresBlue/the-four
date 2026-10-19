@@ -37,7 +37,7 @@ const MAP := preload("res://game/ui/sheet_map.gd")
 ## The page itself, and the four pencils that can write on it, in seat order:
 ## black for the host, then navy, dark red and dark green.
 const PAPER := Color(0.86, 0.82, 0.71)
-const INKS := [Color(0.1, 0.1, 0.11), Color(0.11, 0.16, 0.38), Color(0.44, 0.09, 0.09), Color(0.09, 0.29, 0.13)]
+const INKS := [Color(0.1, 0.1, 0.11), Color(0.11, 0.16, 0.38), Color(0.44, 0.09, 0.09), Color(0.09, 0.29, 0.13), Color(0.36, 0.2, 0.06), Color(0.29, 0.1, 0.33)]
 ## Graphite, for the pages the numbers of the code are written on.
 const GRAPHITE := Color(0.13, 0.12, 0.12)
 const PEN := 3.0

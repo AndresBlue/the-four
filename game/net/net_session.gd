@@ -1,5 +1,5 @@
 extends Node
-## Online play: one host and up to four guests. This node owns the connection
+## Online play: one host and up to five guests. This node owns the connection
 ## and the room (lobby): who is in which seat, their names and characters, and
 ## the host's match options. The in-match replication lives in the child node
 ## "Match" (match_net.gd).
@@ -15,7 +15,7 @@ extends Node
 ##          host_steam() / join_steam().
 ##
 ## Seats are stable for the whole session: the host is seat 1, guests take
-## 2..5. A guest who drops during a match keeps their seat and can come back
+## 2..6. A guest who drops during a match keeps their seat and can come back
 ## with the same name (see match_net.gd for the 60 s grace).
 signal lobby_changed
 ## The connection ended or was refused; `reason` is shown to the player.
@@ -25,7 +25,10 @@ const MATCH := preload("res://game/net/match_net.gd")
 const STEAM_LINK := preload("res://game/net/steam_link.gd")
 ## The port a room opens on unless the host picks another.
 const PORT := 38430
-const MAX_PLAYERS := 5
+## Up to five survivors, and in versus one more who plays The Locust (the
+## author's word, 19 October 2026).
+const MAX_PLAYERS := 6
+const MAX_SURVIVORS := 5
 ## A room keeps one slot over its seats for somebody who only watches: the
 ## observer (tools, --observer) connects like anybody else, takes no seat,
 ## has no body and is nobody's business in the match -- it is sent everything
@@ -33,12 +36,12 @@ const MAX_PLAYERS := 5
 const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-19"
+const PROTOCOL := "the-four-net-20"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 enum Mode { COOP, VERSUS }
-const MODE_NAMES := ["Cooperativo contra IA", "Versus: un jugador es The Locust"]
+const MODE_NAMES := ["Coop. vs IA", "Versus"]
 ## Who plays The Locust in versus: RANDOM, or a seat number.
 const RANDOM := 0
 var level
@@ -387,9 +390,14 @@ func start_problem() -> String:
 	var count := connected_seats().size()
 	if count < MIN_PLAYERS: return "Hacen falta al menos %d jugadores." % MIN_PLAYERS
 	if count > MAX_PLAYERS: return "Demasiados jugadores."
+	if count > seats_for(int(options.mode)): return "%s es de %d a %d jugadores." % [MODE_NAMES[int(options.mode)], MIN_PLAYERS, seats_for(int(options.mode))]
 	if options.mode == Mode.VERSUS and options.locust != RANDOM and not connected_seats().has(int(options.locust)):
 		return "El jugador elegido como The Locust ya no está."
 	return ""
+
+## How many can play a mode: five survivors, and The Locust in versus.
+static func seats_for(mode: int) -> int:
+	return MAX_SURVIVORS + (1 if mode == Mode.VERSUS else 0)
 
 ## Host: everyone into a floor. `seed_value` negative picks a new one.
 func start_match(seed_value := -1) -> bool:

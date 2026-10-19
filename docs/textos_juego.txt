@@ -151,7 +151,7 @@ ACTUAL: Moverse
 CORRECCIÓN:
 
 [CTRL.03] RATÓN (con mando: STICK DER.)
-ACTUAL: Mirar
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
 [CTRL.04] Tecla de correr
@@ -167,11 +167,11 @@ ACTUAL: Saltar
 CORRECCIÓN:
 
 [CTRL.07] Tecla de interactuar
-ACTUAL: Puertas, escondites, teles y documentos
+ACTUAL: Interactuar
 CORRECCIÓN:
 
 [CTRL.08] Tecla de interactuar + " MANTENER"
-ACTUAL: Registrar un mueble · Abrir una puerta despacio
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
 [CTRL.09] Tecla de linterna
@@ -179,11 +179,11 @@ ACTUAL: Linterna
 CORRECCIÓN:
 
 [CTRL.19] Teclas de asomarse, «1 3» (con mando: CRUCETA ← →)
-ACTUAL: Asomarse a un lado
+ACTUAL: Asomarse
 CORRECCIÓN:
 
 [CTRL.12] Tecla de la hoja
-ACTUAL: Hoja (dibujar y borrar con el ratón)
+ACTUAL: Hoja
 CORRECCIÓN:
 
 [CTRL.17] Rueda del ratón (con mando: CRUCETA ↑ ↓)
@@ -191,7 +191,7 @@ ACTUAL: RUEDA DEL RATÓN · Zoom de la cámara
 CORRECCIÓN:
 
 [CTRL.18] Clic (solo teclado y ratón)
-ACTUAL: CLIC · Muerto en equipo: cambiar a quién miras
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
 [CTRL.10] ESC (con mando: el botón de inicio)
@@ -199,16 +199,16 @@ ACTUAL: Pausa
 CORRECCIÓN:
 
 [CTRL.11] Texto de la tecla en la fila de interactuar mantenido
-ACTUAL: MANTENER
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
 [CTRL.13] Con mando: fila de moverse (tecla | descripción)
 ACTUAL: STICK IZQ.
-| Moverse (cuanto más lo empujas, más deprisa)
+| Moverse
 CORRECCIÓN:
 
 [CTRL.14] Con mando: fila de mirar (la descripción es la de CTRL.03)
-ACTUAL: STICK DER.
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
 [CTRL.15] Con mando: añadido al botón de correr o agacharse si está en modo alternar
@@ -216,7 +216,7 @@ ACTUAL: (ALTERNA)
 CORRECCIÓN:
 
 [CTRL.16] Con mando: fila de la hoja (%s = gatillo derecho, %s = gatillo izquierdo)
-ACTUAL: Hoja (stick izq. lleva el lápiz, %s dibuja, %s borra)
+ACTUAL: Hoja
 CORRECCIÓN:
 
 
@@ -261,18 +261,18 @@ CORRECCIÓN:
 
 [FIN.07] Bajo el título, en una línea (%d = número de la cinta, la semilla del piso; después
 el piso, con quién se jugó, cuántos eran si eran más de uno y la fecha)
-ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·
+ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / EN EQUIPO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·
 | APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA (no contra el cazador)  ·  fecha
 | (En la señal perdida, solo: CINTA Nº %d)
 CORRECCIÓN:
 
-[FIN.15] Pestañas del parte (HITOS solo en el piso que se acaba de jugar)
-ACTUAL: RESUMEN / EQUIPO / SECTORES / CRONOLOGÍA / HITOS
+[FIN.15] Pestañas del parte (LOGROS solo en el piso que se acaba de jugar)
+ACTUAL: RESUMEN / EQUIPO / SECTORES / CRONOLOGÍA / LOGROS
 CORRECCIÓN:
 
-[FIN.16] Esquina inferior izquierda: cómo se cambia de pestaña (con mando, los dos
-botones superiores en vez de Q y E)
-ACTUAL: Q  ·  PESTAÑAS  ·  E
+[FIN.16] Cómo se cambia de pestaña: una tecla pequeña a cada lado de las pestañas (con
+mando, los dos botones superiores en vez de Q y E)
+ACTUAL: Q · E
 CORRECCIÓN:
 
 [FIN.04] Solo si el parte del anfitrión aún no ha llegado a un invitado (%s = tiempo en el piso)
@@ -290,7 +290,7 @@ ACTUAL: S / A / B / C / D
 CORRECCIÓN:
 
 [FIN.18] Rótulos de la segunda fila de cifras
-ACTUAL: CAÍDAS / HUIDAS / TELEVISORES / VECES EN ARMARIOS / METROS ANDADOS
+ACTUAL: MUERTES / SALIDAS / TELEVISORES / VECES EN ARMARIOS / METROS ANDADOS
 CORRECCIÓN:
 
 [FIN.19] Contra lo que había en el tablón (%s = diferencia; entre paréntesis, la marca anterior)
@@ -337,7 +337,7 @@ CORRECCIÓN:
 -- Pestaña EQUIPO --
 
 [FIN.09] Encabezados de la tabla (una fila por jugador; ★ ante el más valioso)
-ACTUAL: JUGADOR / PAPEL / PUNTOS / ENCUENTROS / TV / Nº / HUIDAS / CAÍDAS / METROS
+ACTUAL: JUGADOR / PAPEL / PUNTOS / ENCUENTROS / TV / CÓDIGOS / SALIDAS / MUERTES / METROS
 CORRECCIÓN:
 
 [FIN.10] Última columna de cada fila
@@ -397,13 +397,13 @@ CORRECCIÓN:
 ACTUAL: Esta cinta se grabó antes de que el hotel anotara sus momentos.
 CORRECCIÓN:
 
--- Pestaña HITOS --
+-- Pestaña LOGROS --
 
-[FIN.32] Los hitos que esta cinta alcanza por primera vez, en sellos (ver HITO.01), y el resto
-ACTUAL: HITOS NUEVOS / Esta cinta no trae ningún hito nuevo.
-| PISO 1 · EL HOTEL:  %d DE %d HITOS
+[FIN.32] Los logros que esta cinta alcanza por primera vez, en sellos (ver HITO.01), y el resto
+ACTUAL: LOGROS NUEVOS / Esta cinta no trae ningún logro nuevo.
+| PISO 1 · EL HOTEL:  %d DE %d LOGROS
 | QUEDAN POR HACER
-| TODOS, EN RECORDS ▸ HITOS.
+| TODOS, EN LOGROS.
 CORRECCIÓN:
 
 -- Opciones --
@@ -475,7 +475,7 @@ ACTUAL: RECORDS
 CORRECCIÓN:
 
 [REC.03] Pestañas
-ACTUAL: TABLONES / FICHA / HITOS / COMPARAR
+ACTUAL: TABLONES / FICHA / COMPARAR
 CORRECCIÓN:
 
 [REC.10] Opción
@@ -485,12 +485,13 @@ CORRECCIÓN:
 -- Pestaña TABLONES --
 
 [REC.04] Los dos desplegables y sus opciones
-ACTUAL: TABLÓN: EN SOLITARIO / ACOMPAÑADO / CONTRA EL CAZADOR / CON OTRAS REGLAS
+ACTUAL: TABLÓN: EN SOLITARIO / EN EQUIPO / CONTRA EL CAZADOR / CON OTRAS REGLAS
 | TABLA: MÁS RÁPIDOS / MAYOR PUNTAJE / SIN BAJAS / SIN ESCONDERSE
 CORRECCIÓN:
 
 [REC.05] Nota bajo los desplegables, según la tabla
-ACTUAL: El piso entero, de la primera puerta al último ascensor.
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
+| (antes:) El piso entero, de la primera puerta al último ascensor.
 | Lo que hizo cada uno y lo que ganó el equipo junto.
 | Nadie cayó en todo el piso: ni una muerte, ni un reinicio.
 | Nadie se metió en un armario en todo el piso.
@@ -509,7 +510,7 @@ ACTUAL: Todavía no hay ninguna cinta en este tablón.
 CORRECCIÓN:
 
 [REC.12] Al pie de la lista
-ACTUAL: ELIGE UNA CINTA PARA LEER SU PARTE ENTERO.
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
 [REC.13] Una cinta elegida: título y opción (debajo, su parte como en la sección 6)
@@ -522,20 +523,25 @@ CORRECCIÓN:
 ACTUAL: Tu nombre · Ingresa tu nombre
 CORRECCIÓN:
 
-[REC.15] La carrera, en dos columnas
+[REC.15] La carrera, en una sola columna
 ACTUAL: PISOS SUPERADOS / CINTAS PERDIDAS / TIEMPO GRABADO / MEJOR TIEMPO A SOLAS /
-| MEJOR TIEMPO EN EQUIPO / MEJOR PUNTAJE / MEJOR NOTA / VECES MÁS VALIOSO / HITOS
+| MEJOR TIEMPO EN EQUIPO / MEJOR PUNTAJE / MEJOR NOTA / VECES MÁS VALIOSO / LOGROS
 | TELEVISORES ENCENDIDOS / NÚMEROS ENCONTRADOS / CÓDIGOS MARCADOS / MUEBLES REGISTRADOS /
-| HUIDAS DE LA CRIATURA / CAÍDAS / VECES EN UN ARMARIO / METROS ANDADOS / PAPEL HABITUAL
+| SALIDAS / MUERTES / VECES EN UN ARMARIO / METROS ANDADOS / PAPEL HABITUAL
 CORRECCIÓN:
 
 [REC.16] Solo si se ha jugado de cazador
 ACTUAL: COMO THE LOCUST · %d caza / cazas, %d captura / capturas
 CORRECCIÓN:
 
--- Pestaña HITOS --
+-- LOGROS (menú principal; antes la pestaña HITOS de Records) --
 
-[HITO.01] Los hitos del hotel: título y qué hay que hacer (con su fecha cuando se alcanzan)
+[HITO.00] Pantalla de logros: título, cuántos van, la comparación con Steam y su aviso
+ACTUAL: LOGROS · %d / %d · %d %% · COMPARAR CON · TÚ · VOLVER
+| STEAM NO TIENE LOGROS DE %s EN ESTE JUEGO
+CORRECCIÓN:
+
+[HITO.01] Los logros del hotel: título y qué hay que hacer (con su ícono, y su fecha cuando se alcanzan)
 ACTUAL: PRIMERA CINTA — Salir del hotel.
 | A SOLAS — Salir del hotel sin nadie más.
 | SIN BAJAS — Salir en equipo sin que caiga nadie.
@@ -574,7 +580,7 @@ CORRECCIÓN:
 [REC.19] Filas de la comparación (en ámbar, quien va por delante)
 ACTUAL: PISOS SUPERADOS / CINTAS PERDIDAS / MEJOR TIEMPO A SOLAS / MEJOR TIEMPO EN EQUIPO /
 | MEJOR PUNTAJE / MEJOR NOTA / VECES MÁS VALIOSO / TELEVISORES / NÚMEROS DEL CÓDIGO /
-| HUIDAS / CAÍDAS / TIEMPO GRABADO / HITOS / PISOS JUNTOS
+| SALIDAS / MUERTES / TIEMPO GRABADO / LOGROS / PISOS JUNTOS
 CORRECCIÓN:
 
 [REC.20] Con más de tres fichas guardadas
@@ -692,8 +698,8 @@ CORRECCIÓN:
 ACTUAL: MULTIJUGADOR
 CORRECCIÓN:
 
-[MP.03] Bajo el título (%d = máximo de jugadores, hoy 5)
-ACTUAL: DE 2 A %d JUGADORES · IP / LAN O STEAM
+[MP.03] Bajo el título (%d = mínimo y máximo de supervivientes, hoy 2 y 5)
+ACTUAL: %d A %d JUGADORES
 CORRECCIÓN:
 
 [MP.04] Campo de texto del nombre (sin etiqueta), texto de ejemplo en gris
@@ -723,9 +729,8 @@ CORRECCIÓN:
 
 [MP.22] Unirse por Steam: esquina, pie ("STEAM"), título, subtítulo, lista de salas
 (una por amigo, con su nombre), aviso si no hay ninguna, opciones y nota
-ACTUAL: MULTIJUGADOR ▸ UNIRSE · STEAM · UNIRSE · STEAM · SALAS DE TUS AMIGOS ·
-| Ningún amigo tiene una sala abierta ahora. · ACTUALIZAR · VOLVER
-| También puedes aceptar una invitación desde Steam (Mayús+Tab), o entrar desde el perfil de un amigo con «Unirse a la partida».
+ACTUAL: MULTIJUGADOR ▸ UNIRSE · STEAM · UNIRSE · STEAM ·
+| No se encuentran salas · VOLVER · (a la derecha, el recuadro de salas y) ACTUALIZAR
 CORRECCIÓN:
 
 [MP.23] Invitar (solo si la ventana de Steam no está disponible): esquina, pie, título,
@@ -791,7 +796,7 @@ CORRECCIÓN:
 
 [MP.08] Sala: esquina, pie (solo el anfitrión), título, contador, opciones del anfitrión
 y botones
-ACTUAL: MULTIJUGADOR ▸ SALA · ANFITRIÓN · SALA · JUGADORES  %d / 5 · Tipo de partida · The Locust ·
+ACTUAL: MULTIJUGADOR ▸ SALA · ANFITRIÓN · SALA · Tipo de partida · The Locust ·
 | Retomar el piso guardado · EMPEZAR · PERSONAJE · REGLAS · CERRAR LA SALA / SALIR DE LA SALA
 CORRECCIÓN:
 
@@ -802,17 +807,16 @@ CORRECCIÓN:
 
 [MP.28] Columna derecha de la sala: las reglas (%d = cuántas se cambiaron; debajo, hasta
 cuatro de ellas, cada una "Nombre: valor")
-ACTUAL: REGLAS: LAS DEL JUEGO / REGLAS CAMBIADAS (%d) · …y %d más
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 CORRECCIÓN:
 
-[REGLA.01] Pantalla de reglas: esquina, título, línea bajo el título (anfitrión / invitado)
-y opciones
-ACTUAL: SALA ▸ REGLAS · REGLAS · LAS DE ESTA SALA: VALEN PARA CADA PISO QUE EMPIECE DESDE ELLA /
-| LAS PONE EL ANFITRIÓN · EN ÁMBAR, LO QUE CAMBIÓ · VOLVER A LA SALA · LAS DEL JUEGO
+[REGLA.01] Pantalla de reglas: esquina, título y opciones (sin línea bajo el título; lo
+que hace cada regla sale debajo de la lista al posarse en ella: son sus "note")
+ACTUAL: SALA ▸ REGLAS · REGLAS · VOLVER A LA SALA · DEFAULT
 CORRECCIÓN:
 
 [REGLA.02] Pestañas
-ACTUAL: EL EQUIPO / EL PISO / LA HOJA / THE LOCUST
+ACTUAL: (ya no sale desde el 19 de octubre de 2026) (una sola lista)
 CORRECCIÓN:
 
 [REGLA.03] Cada regla: nombre, valores (el primero es el del juego) y nota bajo ella
@@ -844,34 +848,31 @@ ACTUAL: FALTAN NOTAS
 CORRECCIÓN:
 
 [REGLA.06] En el parte de una cinta jugada con otras reglas (pestañas RESUMEN, CRONOLOGÍA,
-SECTORES e HITOS)
-ACTUAL: CON OTRAS REGLAS · SIN HITOS, Y EN SU PROPIO TABLÓN
-| Con otras reglas que las del juego no se alcanzan hitos.
+SECTORES y LOGROS)
+ACTUAL: CON OTRAS REGLAS · SIN LOGROS, Y EN SU PROPIO TABLÓN
+| Con otras reglas que las del juego no se alcanzan logros.
 CORRECCIÓN:
 
 [MP.09] Tipos de partida y quién es The Locust (los invitados lo ven escrito:
 "The Locust: al azar" o "The Locust: " + nombre)
-ACTUAL: Cooperativo contra IA / Versus: un jugador es The Locust / Al azar / The Locust: al azar / The Locust: %s
+ACTUAL: Coop. vs IA / Versus / Al azar / The Locust: al azar / The Locust: %s
 CORRECCIÓN:
 
 [MP.10] Sala, avisos bajo EMPEZAR o para los invitados
-ACTUAL: Hacen falta al menos 2 jugadores. / Demasiados jugadores. /
+ACTUAL: Hacen falta al menos 2 jugadores. / Demasiados jugadores. / Coop. vs IA es de 2 a 5 jugadores. /
 | El jugador elegido como The Locust ya no está. /
 | Esperando a que el anfitrión empiece…
 CORRECCIÓN:
 
-[MP.26] Columna derecha de la sala: cada jugador ("%d · NOMBRE"), su personaje y
-etiquetas
-ACTUAL: %d · %s / anfitrión, tú, desconectado, The Locust
+[MP.26] Columna derecha de la sala: cuántos son, cada jugador (su nombre) y, bajo el del
+anfitrión, "anfitrión"
+ACTUAL: JUGADORES  %d / %d · %s · anfitrión
 CORRECCIÓN:
 
 [MP.27] Columna derecha, solo el anfitrión: cómo entrar (%s = direcciones de este equipo,
 o "tu IP"; %d = puerto)
-ACTUAL: Para unirse: %s · puerto %d
-| Por Internet: puerto %d UDP abierto hacia este equipo.
-| (por Steam:) Por Steam: invita a tus amigos.
-| También pueden entrar desde tu perfil: Unirse a la partida.
-| INVITAR AMIGOS
+ACTUAL: (por IP:) Para unirse: %s · puerto %d
+| (por Steam:) INVITAR AMIGOS
 CORRECCIÓN:
 
 -- Durante la partida en línea --
@@ -1494,12 +1495,18 @@ CORRECCIÓN:
 ACTUAL: DOCUMENTOS  %d / %d
 CORRECCIÓN:
 
-[ARCH.03] Entrada sin descubrir
+[ARCH.03] Las dieciséis, numeradas ("%02d   " delante), y la que falta
 ACTUAL: — SIN DESCUBRIR —
 CORRECCIÓN:
 
 [ARCH.04] Archivo vacío
-ACTUAL: Los documentos que leas en el hotel se guardan aquí, también entre partidas.
+ACTUAL: (ya no sale desde el 19 de octubre de 2026)
+
+[ARCH.06] La ficha de un documento (al pulsarlo): cabecera, sello, campos, transcripción,
+pie y botón
+ACTUAL: ARCHIVO DEL HOTEL · DOCUMENTO N.º %02d / %d · RESERVADO ·
+| DOCUMENTO: · PROCEDENCIA: · RELACIONADO CON: · TRANSCRIPCIÓN: ·
+| — FIN DEL DOCUMENTO — · CERRAR
 CORRECCIÓN:
 
 [ARCH.05] Opción

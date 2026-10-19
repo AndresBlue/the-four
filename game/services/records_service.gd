@@ -29,7 +29,7 @@ const VERSUS := "versus"
 ## own (game/floors/match_rules.gd), whoever played it: each line says which.
 const CUSTOM := "custom"
 const COMPANIES := [SOLO, COOP, VERSUS, CUSTOM]
-const COMPANY_NAMES := {SOLO: "EN SOLITARIO", COOP: "ACOMPAÑADO", VERSUS: "CONTRA EL CAZADOR", CUSTOM: "CON OTRAS REGLAS"}
+const COMPANY_NAMES := {SOLO: "EN SOLITARIO", COOP: "EN EQUIPO", VERSUS: "CONTRA EL CAZADOR", CUSTOM: "CON OTRAS REGLAS"}
 const RULES := preload("res://game/floors/match_rules.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 var runs: Array = []
@@ -344,10 +344,10 @@ const CARD_ROWS := [
 	["mvps", "VECES MÁS VALIOSO", "count", true],
 	["tvs", "TELEVISORES", "count", true],
 	["digits", "NÚMEROS DEL CÓDIGO", "count", true],
-	["escapes", "HUIDAS", "count", true],
-	["deaths", "CAÍDAS", "count", false],
+	["escapes", "SALIDAS", "count", true],
+	["deaths", "MUERTES", "count", false],
 	["time", "TIEMPO GRABADO", "time", true],
-	["milestones", "HITOS", "count", true],
+	["milestones", "LOGROS", "count", true],
 ]
 
 ## This player's card: who it is and what its career comes to, to be read

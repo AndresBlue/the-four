@@ -22,6 +22,8 @@ func run() -> void:
 	await shot("multiplayer")
 	level.on_action("join")
 	await shot("join")
+	level.ui.menu("join_steam")
+	await shot("join_steam")
 	level.net.host("Andrés", 0, 24650)
 	# Pretend guests, only for the picture.
 	level.net.players[2] = {"name": "Camila", "character": 1, "peer": 0, "connected": true}
@@ -31,6 +33,11 @@ func run() -> void:
 	level.net.options.locust = 3
 	level.ui.menu("lobby")
 	await shot("lobby")
+	# A sixth seat: versus takes five survivors and the creature.
+	level.net.players[5] = {"name": "Nico", "character": 0, "peer": 0, "connected": true}
+	level.net.players[6] = {"name": "Josefa", "character": 2, "peer": 0, "connected": false}
+	level.ui.menu("lobby")
+	await shot("lobby_seis")
 	level.net.shutdown("")
 	await level.start_floor(81)
 	level.locust.set_physics_process(false)

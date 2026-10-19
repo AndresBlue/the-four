@@ -138,15 +138,17 @@ func run() -> void:
 	level.ui.menu("lobby")
 	level.on_action("lobby_rules")
 	await process_frame
-	var tabs: TabContainer = level.ui.settings_tabs
-	check("Las reglas de la sala se eligen en pestañas, una fila cada una", level.ui.screen == "rules" and is_instance_valid(tabs) and tabs.get_tab_count() == RULES.GROUPS.size() and level.ui.settings_rows[0].size() == RULES.RULES.filter(func(rule): return int(rule.group) == 0).size())
-	var picker: OptionButton = level.ui.settings_rows[0][0][0]
+	check("Las reglas de la sala, en una sola lista: una fila cada una, con su lista", level.ui.screen == "rules" and level.ui.rule_rows.size() == RULES.RULES.size() and level.ui.rule_pickers.size() == RULES.RULES.size())
+	# Resting on a rule brings up what it does, under the list.
+	level.ui.rule_rows["sanity"].mouse_entered.emit()
+	check("Posarse en una regla trae lo que hace", String(level.ui.rule_detail.words.text) == String(RULES.RULES.filter(func(rule): return rule.id == "sanity")[0].note))
+	var picker: OptionButton = level.ui.rule_pickers["restarts"]
 	picker.select(3)
 	picker.item_selected.emit(3)
 	check("Elegir un valor lo pone en la sala", level.net.options.rules == {"restarts": 2})
 	level.on_action("rules_reset")
 	await process_frame
-	check("Y «las del juego» las devuelve todas", level.net.options.rules.is_empty() and level.ui.screen == "rules")
+	check("Y «Default» las devuelve todas", level.net.options.rules.is_empty() and level.ui.screen == "rules")
 	level.net.shutdown("")
 	var file := FileAccess.open("res://evidence/rules_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))

@@ -236,6 +236,13 @@ func run() -> void:
 	fresh.free()
 	level.ui.menu("archive")
 	check("El archivo del menú lista la entrada leída", level.ui.buttons.has(document.entry_id) and not level.ui.buttons[document.entry_id].disabled)
+	# All sixteen are there, and the one read opens as its file.
+	var slots: int = level.ui.column.find_children("*", "Button", true, false).filter(func(button): return String(button.text).contains("SIN DESCUBRIR") or level.ui.buttons.values().has(button)).size()
+	level.ui.buttons[document.entry_id].pressed.emit()
+	var body: String = String(load("res://game/discovery/discovery_catalog.gd").entry(document.entry_id).body)
+	var shown: bool = is_instance_valid(level.ui.dossier) and level.ui.dossier.find_children("*", "Label", true, false).any(func(words): return String(words.text) == body)
+	level.ui.close_dossier()
+	check("El archivo enseña los dieciséis, y el leído se abre como su ficha", slots >= 16 and shown and not is_instance_valid(level.ui.dossier))
 	level.ui.overlay.hide()
 	# --- Director ---
 	await director_rules(player, creature, director)

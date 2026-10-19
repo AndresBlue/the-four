@@ -278,6 +278,11 @@ func _ready() -> void:
 	net.joined.connect(func(): if session.state == session.State.MENU: ui.menu("lobby"))
 	# An invitation accepted in Steam (or "Join game" on a friend's profile):
 	# straight into that room, from the menus; mid-floor it waits for later.
+	# The milestones reached are Steam achievements as well: whatever Steam
+	# does not have yet, now and each time the marks change.
+	var tell_steam := func() -> void: net.steam.unlock(records.milestones.keys())
+	records.changed.connect(tell_steam)
+	tell_steam.call_deferred()
 	net.steam.join_asked.connect(func(lobby_id: int):
 		if session.state != session.State.MENU or net.active(): return
 		if net.join_steam(lobby_id, settings.values.player_name, settings.values.character): ui.menu("steam_wait")
@@ -570,6 +575,7 @@ func on_action(action: String) -> void:
 		"records":
 			ui.records_back = ui.screen
 			ui.menu("records")
+		"achievements": ui.menu("achievements")
 		"quit": get_tree().quit()
 
 ## A new game opens with the bedroom scene; its floor is built when it ends.

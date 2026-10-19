@@ -195,7 +195,7 @@ func run() -> void:
 	for line in [slow, quick, hidden_run, lost]: records.record(line)
 	var fastest: Array = records.table_of("time", 1, records.SOLO)
 	check("La tabla de tiempos va del más rápido al más lento", fastest.size() == 3 and is_equal_approx(float(fastest[0].time), 200.0) and is_equal_approx(float(fastest[2].time), 900.0))
-	check("Acompañado es otro tablón", records.table_of("time", 1, records.COOP).size() == 1)
+	check("En equipo es otro tablón", records.table_of("time", 1, records.COOP).size() == 1)
 	check("Quien se escondió no sale en «sin esconderse»", records.table_of("brave", 1, records.SOLO).size() == 2)
 	check("Ni quien perdió a alguien en «sin bajas»", records.table_of("clean", 1, records.COOP).is_empty() and records.table_of("clean", 1, records.SOLO).size() == 3)
 	check("Y una cinta lleva sus distintivos", records.badges(quick).has("SIN BAJAS") and not records.badges(hidden_run).has("SIN ESCONDERSE"))
@@ -245,7 +245,7 @@ func run() -> void:
 	scene.ui.menu("records")
 	await process_frame
 	var board_tabs: TabContainer = scene.ui.settings_tabs
-	check("Las marcas se leen en pestañas", is_instance_valid(board_tabs) and board_tabs.get_tab_count() == 4 and scene.ui.settings_rows.size() == 4)
+	check("Las marcas se leen en pestañas", is_instance_valid(board_tabs) and board_tabs.get_tab_count() == 3 and scene.ui.settings_rows.size() == 3)
 	check("Y cada línea del tablón es una fila que se puede marcar", scene.ui.settings_rows[0].size() == 1 + records.table_of("time", 1, String(scene.ui.records_view.company)).size())
 	var letter := InputEventKey.new()
 	letter.physical_keycode = KEY_E
