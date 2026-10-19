@@ -355,10 +355,9 @@ herramientas para mirarlo están en la guía de desarrollo.
   y vistos desde fuera. **A la velocidad de caminar del juego (3,8 m/s) el
   cuerpo trota**: una persona camina a 1,4 m/s, y con un clip de verdad se
   nota. Decidir si caminar se queda así o se baja la velocidad, que cambia el
-  juego. De lado, a esa velocidad, se usan los pasos laterales de caminar a
-  más del doble de ritmo (no hay clips de carrera de lado): si se ven
-  frenéticos, hacen falta esos dos clips. Girar sin moverse no tiene clip: los
-  pies giran con el cuerpo. **Del 18 por la tarde, a mirar también:** el
+  juego. De lado hay caminar y correr («Running Strafe», con el torso algo
+  girado hacia donde va): si a 3,8 m/s se lee bien. Girar sin moverse no
+  tiene clip: los pies giran con el cuerpo. **Del 18 por la tarde, a mirar también:** el
   fundido al cambiar de dirección (0,12 s andando, 0,22 corriendo: si queda
   blando o todavía brusco) y el salto nuevo, corto y con los dos pies, con
   las rodillas que amortiguan al caer.

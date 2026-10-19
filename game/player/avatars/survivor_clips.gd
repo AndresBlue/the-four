@@ -30,8 +30,8 @@ extends RefCounted
 const STANDING := {
 	"forward": ["walk", "hurry", "run"],
 	"back": ["walk_back", "run_back"],
-	"left": ["walk_left"],
-	"right": ["walk_right"],
+	"left": ["walk_left", "run_left"],
+	"right": ["walk_right", "run_right"],
 }
 const CROUCHED := {
 	"forward": ["crouch_walk"],

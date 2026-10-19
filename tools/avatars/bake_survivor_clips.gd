@@ -46,6 +46,8 @@ const CLIPS := {
 	"run_back": "backwards_running",
 	"walk_left": "strafe_walking_left",
 	"walk_right": "strafe_walking_right",
+	"run_left": "running_strafe_left",
+	"run_right": "running_strafe_right",
 	"crouch_idle": "low_crouching_idle",
 	"crouch_walk": "crouched_walk",
 	"crouch_back": "crouch_walk_back",
