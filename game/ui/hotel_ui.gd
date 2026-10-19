@@ -5,7 +5,10 @@ signal action_requested(action: String)
 const STYLE := preload("res://game/ui/osd_style.gd")
 const NOISE := preload("res://game/ui/shaders/tape_noise.gdshader")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
-const VERSION := "v0.5"
+## The game's version, from one place: the project's (application/config/
+## version), which the exported Windows and Mac builds carry too.
+static func version() -> String:
+	return "v" + str(ProjectSettings.get_setting("application/config/version", "?"))
 ## The credits, as they roll: a heading and its lines. Everything the game
 ## ships that somebody else made is named here, with its licence, and what is
 ## still unresolved is said out loud. The register of them all, with links and
@@ -761,7 +764,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"online_won", "online_failed":
 			online_end(kind == "online_won")
 		"credits":
-			set_osd("▶ PLAY", "", "%s  ·  PROYECTO FAN NO OFICIAL" % VERSION)
+			set_osd("▶ PLAY", "", "%s  ·  PROYECTO FAN NO OFICIAL" % version())
 			title(column, "CRÉDITOS", 64)
 			spacer(column, 14)
 			column.custom_minimum_size.x = 720

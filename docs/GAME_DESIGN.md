@@ -4,7 +4,7 @@ Qué es el juego y por qué reglas se rige. El estado, el orden de trabajo y lo 
 
 ## Estado real y cambio de dirección
 
-La versión **0.5** tiene un piso jugable solo, en cooperativo de 2 a 5 o en versus con un jugador llevando a The Locust. Están el hotel procedural con salida y refugio, la red por IP o LAN, la hoja compartida, los armarios, la ejecución, la visión de ecolocalización del cazador y la oscuridad real de las salas apagadas. Siguen sin existir los otros tres pisos y sus criaturas, y las animaciones definitivas de los supervivientes. Las pruebas con amigos de septiembre de 2026 dejaron claro que el piso se resuelve demasiado rápido: eso es lo que se está corrigiendo. No se presenta como completo.
+La versión **1.0** (18 de octubre de 2026) tiene un piso jugable solo, en cooperativo de 2 a 5 o en versus con un jugador llevando a The Locust. Están el hotel procedural con salida y refugio, la red por IP o LAN, la hoja compartida, los armarios, la ejecución, la visión de ecolocalización del cazador y la oscuridad real de las salas apagadas. Siguen sin existir los otros tres pisos y sus criaturas, y las animaciones definitivas de los supervivientes. Las pruebas con amigos de septiembre de 2026 dejaron claro que el piso se resuelve demasiado rápido: eso es lo que se está corrigiendo. No se presenta como completo.
 
 El antiguo H1 de fusibles se borró del proyecto; queda en el historial de git. Los planes anteriores están archivados en `history/`.
 
