@@ -588,6 +588,7 @@ func start_intro(seed_value: int) -> void:
 	# the pause for this scene would let its music and air run on over it.
 	for loop in [ambience, theme, ventilation]: loop.stop()
 	world_audio.reset()
+	world_audio.mood.reset()
 	# The last floor's final ride still gave its static, and the scene played
 	# under it until the floor was built.
 	lifts.reset()
@@ -713,6 +714,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	await get_tree().process_frame
 	await get_tree().process_frame
 	world_audio.reset()
+	world_audio.mood.reset()
 	player.reset_survival()
 	# Every floor starts with the lens wide, online ones too.
 	player.zoom = 1.0
@@ -1554,14 +1556,16 @@ func _process(delta: float) -> void:
 	player.set_pilot(camcorder.lamp_lit() or settings.values.reduced, camcorder.visible and not camcorder.hunter and not camcorder.signal_lost and local_alive() and player.camera.current)
 	if not is_instance_valid(hotel) or manifest.is_empty(): return
 	update_screen_cues(delta)
-	# The bed and music recede as the dread aura rises, leaving room for it.
+	# The bed recedes as the dread aura rises, leaving room for it; the theme
+	# goes with what frightens (theme_mood), and comes back only once it has
+	# been quiet for a while.
 	var dread: float = world_audio.aura.intensity if world_audio.aura != null else 0.0
 	ambience.volume_db = -17.0 - dread * 9.0 + world_audio.duck_db()
 	# The music is on the hotel's power: it goes with the lights, at once, and
 	# comes back with them in the next wing, more gently.
 	var powered: bool = not (is_instance_valid(hotel) and hotel.dark)
 	music_power = move_toward(music_power, 1.0 if powered else 0.0, delta / (MUSIC_RETURN if powered else MUSIC_CUT))
-	theme.volume_db = -24.0 - dread * 22.0 + world_audio.duck_db() + linear_to_db(maxf(music_power, 0.0001))
+	theme.volume_db = -24.0 + linear_to_db(maxf(world_audio.mood.gain() * music_power, 0.0001)) + world_audio.duck_db()
 	if settings.values.subtitles and session.state == session.State.PLAYING and not world_audio.caption_text.is_empty():
 		ui.subtitle.text = world_audio.caption_text
 	visibility_clock += delta

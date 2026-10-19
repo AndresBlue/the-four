@@ -77,6 +77,9 @@ var caption_cooldown := 0.0
 var presence_gain := 0.0
 var clock := 0.0
 var aura
+## How much of the theme fear lets through (theme_mood.gd).
+const THEME_MOOD := preload("res://game/audio/theme_mood.gd")
+var mood := THEME_MOOD.new()
 ## Where a creature that is not there is walking (sanity's phantom_passage):
 ## the presence and the aura take it whenever it is nearer than the real one.
 ## INF when nobody is imagining one. This machine's only.
@@ -131,6 +134,7 @@ func _ready() -> void:
 	presence.panning_strength = 0.0
 	add_child(presence)
 	aura = get_node_or_null("DreadAura")
+	mood.setup()
 	for i in 2:
 		var hum := make_source("FluorescentHum", "Ambience", loop_stream(load("res://assets/audio/dread/fluorescent_hum.wav")), HUM_UNIT, HUM_REACH)
 		# Capped so standing right under a tube is never harsh.
@@ -559,6 +563,8 @@ func _physics_process(delta: float) -> void:
 	caption_cooldown = maxf(0, caption_cooldown - delta)
 	if caption_time <= 0: caption_text = ""
 	if not enabled: return
+	# Out of play (the end of a floor, its menus) nothing frightens any more.
+	mood.step(mood.felt(level, self) if level.session.state == level.session.State.PLAYING else 0.0, delta)
 	update_long(delta)
 	ambient_clock -= delta
 	if ambient_clock <= 0.0:

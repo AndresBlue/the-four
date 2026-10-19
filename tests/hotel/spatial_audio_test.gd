@@ -36,6 +36,33 @@ func room_door(level) -> Node:
 		if not one.is_empty() and not two.is_empty() and one.kind == "module" and two.kind == "module" and int(one.wing) == 0: return door
 	return level.hotel.doors[0]
 
+## The theme's mood on its own (theme_mood.gd), fed what is felt: it goes with
+## a fright at once, holds off while things stay quiet, and comes back slowly;
+## a small fright is over sooner than the worst; calm, the bus is untouched.
+func theme_checks(live) -> void:
+	var MOOD := preload("res://game/audio/theme_mood.gd")
+	var mood = MOOD.new()
+	var feel := func(now: float, seconds: float) -> void:
+		for i in int(seconds * 60.0): mood.step(now, 1.0 / 60.0)
+	feel.call(1.0, 2.0)
+	var gone: bool = mood.gain() < 0.01
+	feel.call(0.0, MOOD.CALM_HOLD.y - 0.5)
+	var held: bool = mood.gain() < 0.01
+	feel.call(0.0, 4.0)
+	var coming: bool = mood.gain() > 0.02 and mood.gain() < 0.9
+	feel.call(0.0, 20.0)
+	check("The theme goes with a fright and holds off while it is quiet", gone and held)
+	check("And comes back slowly, all of it", coming and mood.gain() == 1.0 and mood.tension == 0.0)
+	feel.call(0.3, 1.0)
+	var dimmed: bool = mood.gain() > 0.2 and mood.gain() < 0.8
+	feel.call(0.0, MOOD.CALM_HOLD.x + 0.5 + MOOD.CALM_HOLD.y * 0.3)
+	check("A small fright only dims it, and is over sooner", dimmed and mood.tension < 0.3 * 0.99)
+	feel.call(0.6, 3.0)
+	feel.call(0.4, 30.0)
+	check("It falls no lower than what is still felt", is_equal_approx(mood.tension, 0.4))
+	live.reset()
+	check("Calm, the music bus is as it was", not AudioServer.is_bus_effect_enabled(live.bus, live.muffle_index) and not AudioServer.is_bus_effect_enabled(live.bus, live.width_index) and live.gain() == 1.0)
+
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -223,6 +250,8 @@ func run() -> void:
 	level.locust.position = Vector3(3.5, 0.04, 0)
 	await wait(2.5)
 	check("Dread aura rises as the creature closes in by route", aura.intensity > far_intensity + 0.5 and aura.route_distance < 10.0)
+	var mood = level.world_audio.mood
+	check("The theme goes as it closes in: drawn in, muffled, faded", mood.tension > 0.5 and mood.gain() < 0.05 and mood.width.pan_pullout < 0.1 and mood.muffle.cutoff_hz < 1000.0 and AudioServer.is_bus_effect_enabled(mood.bus, mood.muffle_index))
 	var local: Vector3 = level.player.camera.global_transform.affine_inverse() * aura.cue_point
 	check("Directional dread cues sit on the creature's side", local.x > 1.0)
 	# Isolate the directional layers from the centred pressure drone.
@@ -242,6 +271,8 @@ func run() -> void:
 	level.player.position = FLOOR.position_of(level.manifest.rooms[level.manifest.exit]) + Vector3(0, 0.04, 0)
 	await wait(0.4)
 	check("Refuge releases the aura", aura.target == 0.0)
+	check("But not the theme, not yet", mood.gain() < 0.05)
+	theme_checks(mood)
 	# A set coming on sounds like a television: the dead channel from its
 	# screen, then a soft hiss. It used to be a door's latch.
 	var map: RID = level.get_world_3d().navigation_map

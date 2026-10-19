@@ -350,8 +350,11 @@ herramientas para mirarlo están en la guía de desarrollo.
   con la hoja, y si el corte del cierre se nota.
 - [ ] **Los golpes a la tele de la escena de entrada (19 de octubre):** si el
   primero, unos 3 dB más bajo que antes, se oye bien sobre la estática;
-  si la pantalla rota, a la espalda, se reconoce como la tele; y si
-  `glass-break.ogg`, que ya no suena, se borra del proyecto.
+  y si la pantalla rota, a la espalda, se reconoce como la tele.
+- [ ] **La música que se va con la tensión (19 de octubre):** si desaparece a
+  la distancia justa (por ruta, unos 15 m), si la espera antes de volver
+  (de 5 a 15 s) y la vuelta (10 s) se sienten bien, si la cordura baja la
+  apaga demasiado, y si el paneo hacia el centro se nota o hace falta otro.
 - [ ] **La criatura oída desde encima de un mueble (17 de octubre):** subido a
   una cama, un escritorio o un armario se la oía a cero metros, fuerte,
   estuviera donde estuviera; la navegación ya no tiene islas en lo alto de los

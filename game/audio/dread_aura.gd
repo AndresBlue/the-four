@@ -26,6 +26,10 @@ const HUSHED := 0.15
 var world_audio
 var intensity := 0.0
 var target := 0.0
+## What the target is before HUSHED: how near it is and how it hunts, with no
+## allowance for a creature holding still. The theme goes by this
+## (theme_mood): whoever waits in a wardrobe knows it is outside.
+var menace := 0.0
 var route_distance := INF
 var cue_point := Vector3.INF
 var drone: AudioStreamPlayer
@@ -80,6 +84,7 @@ func spatial(title: String, stream: AudioStream, unit: float, reach: float) -> A
 func reset() -> void:
 	intensity = 0.0
 	target = 0.0
+	menace = 0.0
 	route_distance = INF
 	cue_point = Vector3.INF
 	for player in [drone, breath, chitter, heart]: player.stop()
@@ -133,6 +138,7 @@ func _physics_process(delta: float) -> void:
 	var active: bool = real or (playing and world_audio.phantom_point != Vector3.INF)
 	var listener: Vector3 = world_audio.listener_position()
 	target = 0.0
+	menace = 0.0
 	if active:
 		route_clock -= delta
 		if route_clock <= 0.0:
@@ -149,6 +155,7 @@ func _physics_process(delta: float) -> void:
 			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.ALERT: target = maxf(target + 0.25 * near, 0.7 * near)
 			creature.Mode.INVESTIGATE, creature.Mode.SEARCH: target += 0.08 * near
 		target = clampf(target, 0.0, 1.0)
+		menace = target
 		# Waiting beside a wardrobe for whoever is in it (hotel_locust, the
 		# feint): it holds itself so still that what gives it away dies down,
 		# as it would if it had gone. Its feet are not part of this: it has

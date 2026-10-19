@@ -617,7 +617,7 @@ func readings() -> String:
 	lines.append("")
 	if is_instance_valid(level.world_audio):
 		lines.append("SONIDO")
-		lines.append("  %d voces · agachado %0.1f dB · música %0.2f" % [level.world_audio.voices.size(), level.world_audio.duck_db(), level.music_power])
+		lines.append("  %d voces · agachado %0.1f dB · música %0.2f · tensión %0.2f" % [level.world_audio.voices.size(), level.world_audio.duck_db(), level.music_power, level.world_audio.mood.tension])
 		lines.append("")
 	lines.append("LO QUE HA PASADO")
 	for index in range(maxi(0, events.size() - LOG_KEPT), events.size()): lines.append("  " + events[index])

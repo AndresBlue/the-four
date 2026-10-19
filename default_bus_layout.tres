@@ -10,6 +10,14 @@ resource_name = "DreadMuffle"
 cutoff_hz = 20000.0
 resonance = 0.4
 
+[sub_resource type="AudioEffectLowPassFilter" id="ThemeMuffle"]
+resource_name = "ThemeMuffle"
+cutoff_hz = 20000.0
+resonance = 0.4
+
+[sub_resource type="AudioEffectStereoEnhance" id="ThemeWidth"]
+resource_name = "ThemeWidth"
+
 [sub_resource type="AudioEffectReverb" id="EffectsSpace"]
 resource_name = "Space"
 predelay_msec = 24.0
@@ -117,6 +125,10 @@ bus/2/mute = false
 bus/2/bypass_fx = false
 bus/2/volume_db = 0.0
 bus/2/send = &"Master"
+bus/2/effect/0/effect = SubResource("ThemeWidth")
+bus/2/effect/0/enabled = false
+bus/2/effect/1/effect = SubResource("ThemeMuffle")
+bus/2/effect/1/enabled = false
 bus/3/name = &"Effects"
 bus/3/solo = false
 bus/3/mute = false
