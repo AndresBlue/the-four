@@ -85,10 +85,11 @@ El usuario aportó estos. De los seis primeros, el reparto archivo por archivo d
 | camera lens zooming | CorneRoose | CC0 | [654182](https://freesound.org/people/CorneRoose/sounds/654182/) |
 | creaky door | CaptainYulef | CC0 | [638608](https://freesound.org/people/CaptainYulef/sounds/638608/) |
 | Creaky bedroom door close; long .WAV | thomasanthony321 | CC0 | [682754](https://freesound.org/people/thomasanthony321/sounds/682754/) |
+| glass - baby food jar - smashed on concrete.wav | Anthousai | CC0 | [447699](https://freesound.org/people/Anthousai/sounds/447699/) |
 
 Los dos últimos, aportados el 18 de octubre de 2026 (en `sfx/flashlight/on-off-x3.ogg` y `sfx/cam/zoom-in-and-out.mp3`, recortes del autor de las grabaciones de Freesound), son el interruptor de la linterna y el motor del zoom: `tools/audio/prepare_camera_sfx.py` los corta en `assets/audio/sfx/flashlight/` y `assets/audio/sfx/camera/` (AUDIO.md).
 
-Los dos de la puerta lenta, aportados el 19 de octubre de 2026 en `sfx/door-new/` (`door-slow-opening.ogg` y `door-slow-closing.ogg`, fichas abiertas ese día), son abrir y cerrar despacio: `tools/audio/clean_recordings.py` los prepara en `assets/audio/sfx/door/` (AUDIO.md, «Puerta lenta»).
+Los dos de la puerta lenta, aportados el 19 de octubre de 2026 en `sfx/door-new/` (`door-slow-opening.ogg` y `door-slow-closing.ogg`, fichas abiertas ese día), son abrir y cerrar despacio: `tools/audio/clean_recordings.py` los prepara en `assets/audio/sfx/door/` (AUDIO.md, «Puerta lenta»). El último, aportado el mismo día en `sfx/glass/glass-break.wav` (ficha abierta ese día), es la pantalla de la tele rompiéndose en la escena de entrada: la misma herramienta lo prepara en `assets/audio/glass/shatter.wav` (AUDIO.md, «Escena de entrada»).
 
 **Salieron del juego el 19 de octubre de 2026**, por no comerciales, «DOOR creak — multiple creaks wooden door» (mickfire, CC BY-NC 4.0, [326416](https://freesound.org/people/mickfire/sounds/326416/)), que era `sfx/door/opening/creaky-wooden-door-slow-opening.mp3`, y «Sub Riser» (deleted_user_3277771 / Josh Mclelland, CC BY-NC 3.0, [185372](https://freesound.org/people/deleted_user_3277771/sounds/185372/)), que era `sfx/ambience/presence/sub-riser-presence.wav`. Los originales siguen en `sfx/`; en el proyecto no queda copia ni nada que los use.
 

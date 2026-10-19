@@ -6,6 +6,7 @@ const TIMING := {
 	"res://assets/audio/glass/glass-hit-1.ogg": {"onset": 0.049, "hit": 0.059},
 	"res://assets/audio/glass/glass-hit-2.ogg": {"onset": 0.049, "hit": 0.059},
 	"res://assets/audio/glass/glass-hit-3.ogg": {"onset": 0.049, "hit": 0.059},
+	"res://assets/audio/glass/shatter.wav": {"onset": 0.000, "hit": 0.000},
 	"res://assets/audio/sfx/door/closing/close-hard-closing.ogg": {"onset": 0.039, "hit": 0.749},
 	"res://assets/audio/sfx/door/closing/closing1.ogg": {"onset": 0.219, "hit": 0.429},
 	"res://assets/audio/sfx/door/closing/closing2.ogg": {"onset": 0.219, "hit": 0.359},

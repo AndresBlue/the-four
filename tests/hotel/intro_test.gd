@@ -35,7 +35,9 @@ func run() -> void:
 	var outcome := {"fired": false}
 	intro.finished.connect(func(): outcome.fired = intro.fired.all(func(f): return f))
 	var screen: ShaderMaterial = intro.screen
-	check("La tele se agrieta con los golpes", await wait_for(func(): return intro.time > 30.2, 600) and float(screen.get_shader_parameter("crack_level")) > 0.9)
+	check("Los dos primeros golpes no agrietan la tele", await wait_for(func(): return intro.time > 28.6, 600) and intro.time < 29.4 and float(screen.get_shader_parameter("crack_level")) == 0.0)
+	check("El tercero sí", await wait_for(func(): return intro.time > 30.2, 600) and float(screen.get_shader_parameter("crack_level")) == 1.0)
+	check("Y el cuarto la rompe mientras sale corriendo, antes del portazo", await wait_for(func(): return intro.time > 33.1, 600) and intro.time < 33.6 and intro.cracked == 2 and absf(intro.bedroom_leaf.rotation.y) > 0.5)
 	check("La puerta del dormitorio se cierra de golpe al salir", await wait_for(func(): return intro.time > 35.0, 600) and absf(intro.bedroom_leaf.rotation.y) < 0.05)
 	check("Todos los eventos se disparan", await wait_for(func(): return outcome.fired, 600))
 	check("Al terminar empieza la partida", await wait_for(func(): return level.session.state == level.session.State.PLAYING, 900))

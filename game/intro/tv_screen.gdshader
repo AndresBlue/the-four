@@ -13,7 +13,8 @@ uniform float power : hint_range(0.0, 1.0) = 1.0;
 uniform float static_amount : hint_range(0.0, 1.0) = 1.0;
 uniform sampler2D image : source_color, filter_linear;
 uniform float image_amount : hint_range(0.0, 1.0) = 0.0;
-// Cracks per blow in R, G, B, A; crack_level counts the blows so far (0..4).
+// Cracks per blow that cracked it in R, G, B, A; crack_level counts those
+// blows so far (0..4).
 uniform sampler2D cracks : filter_linear;
 uniform float crack_level = 0.0;
 uniform float flash : hint_range(0.0, 1.0) = 0.0;

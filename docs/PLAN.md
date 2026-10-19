@@ -348,6 +348,10 @@ herramientas para mirarlo están en la guía de desarrollo.
 - [ ] **La puerta lenta nueva (19 de octubre):** el volumen de abrir y cerrar
   despacio (los dos al nivel del crujido anterior, −12 dB), si el pestillo cae
   con la hoja, y si el corte del cierre se nota.
+- [ ] **Los golpes a la tele de la escena de entrada (19 de octubre):** si el
+  primero, unos 3 dB más bajo que antes, se oye bien sobre la estática;
+  si la pantalla rota, a la espalda, se reconoce como la tele; y si
+  `glass-break.ogg`, que ya no suena, se borra del proyecto.
 - [ ] **La criatura oída desde encima de un mueble (17 de octubre):** subido a
   una cama, un escritorio o un armario se la oía a cero metros, fuerte,
   estuviera donde estuviera; la navegación ya no tiene islas en lo alto de los

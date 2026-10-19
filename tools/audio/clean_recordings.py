@@ -15,6 +15,12 @@
   DOOR_LEVEL_DB. Until 19 October 2026 the slow door was mickfire's "DOOR
   creak" (CC BY-NC 4.0), which is gone, and a slow shut sounded like any
   other.
+* The television's glass giving way in the opening scene: "glass - baby food
+  jar - smashed on concrete.wav", Anthousai, Freesound 447699, CC0, in
+  sfx/glass/glass-break.wav (24-bit stereo, 96 kHz) -> glass/shatter.wav:
+  mono at 48 kHz, rumble filtered, its first crack (clipped in the
+  recording) softened, and the recorder's hiss after the last shard (from
+  SHATTER_LENGTH on) faded out.
 * The bed recording (`assets/audio/bed-sound.m4a`, someone moving on a bed):
   denoised and cut into the movements of the opening scene. The sharp knocks
   of hands pressing on the mattress are kept but softened.
@@ -46,6 +52,9 @@ DOOR_LEVEL_DB = -41.0
 ## long the creak takes to fade into what follows.
 CLOSING_CUT = (1.46, 2.70)
 CLOSING_CROSS = 0.12
+## How much of the shattering is kept (seconds): the last shard lands by 0.5 s,
+## and the rest is the recorder's hiss.
+SHATTER_LENGTH = 0.62
 
 ## Bed clips: name -> (start, end) seconds in the recording.
 BED_CLIPS = {
@@ -154,6 +163,9 @@ def main() -> None:
             if gap: door = cut(rate, door, gap[0], gap[1], CLOSING_CROSS)
             door = fade(rate, door, 0.005, 0.15)
             write(DOORS / target, rate, door * 10 ** ((DOOR_LEVEL_DB - sounding(rate, door)) / 20))
+        # The television's glass.
+        glass = signal.sosfiltfilt(rumble, decode_any(ROOT / "sfx/glass/glass-break.wav", rate))[: int(SHATTER_LENGTH * rate)]
+        write(ROOT / "assets/audio/glass/shatter.wav", rate, normalise(fade(rate, soften_knocks(rate, glass, 20.0), 0.0, 0.15), -1.0))
         # Bed: one denoise over the whole take, then the movements.
         rate, bed = decode(ROOT / "assets/audio/bed-sound.m4a", temp)
         bed = denoise(rate, bed)

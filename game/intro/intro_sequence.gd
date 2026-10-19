@@ -2,11 +2,12 @@ extends Node3D
 ## Opening scene of a new game. The player wakes in a dark hotel bedroom where
 ## only a big old television is on. Leaning closer on the creaking bed, they see
 ## The Locust lean into the picture, lunge at the lens and beat the glass with
-## its bladed arm, cracking it from inside. Before it gives, the player gets up,
-## stamps to the door, slams it with a desperate turn (the screen shatters
-## behind), runs down the dark corridor while the door is battered, crosses the
-## lit room at the end and opens its far door onto the reception, under the red
-## lamp that marks where the floor begins.
+## its bladed arm: twice, and the third blow cracks it from inside. The player
+## gets up and stamps to the door; as they run out the fourth blow breaks the
+## glass behind them, and they slam the door with a desperate turn, run down
+## the dark corridor while the door is battered, cross the lit room at the end
+## and open its far door onto the reception, under the red lamp that marks
+## where the floor begins.
 ## The camera follows timeline keys through springs with head bob, sway and
 ## handheld tremor; events are listed with their times. Skippable (hotel_main).
 signal finished
@@ -36,8 +37,21 @@ const BEDROOM_DOOR := Vector3(2.6, 0.0, 2.0)
 const NEXT_DOOR := Vector3(5.0, 0.0, -11.0)
 const FAR_DOOR := Vector3(9.0, 0.0, -11.0)
 const LENGTH := 39.6
-## The four blows on the glass: time of impact, point on the tube, severity.
-const BLOWS := [[26.4, Vector2(0.46, 0.44), 0.4], [27.9, Vector2(0.47, 0.45), 0.7], [29.1, Vector2(0.64, 0.34), 0.55], [30.0, Vector2(0.34, 0.6), 0.9]]
+## The four blows on the glass: time of impact, point on the tube, and how
+## badly it cracks there (0: it holds). The first two only shake the set, the
+## third cracks it, and the fourth, while the player runs out, breaks it.
+const BLOWS := [[26.4, Vector2(0.46, 0.44), 0.0], [28.0, Vector2(0.47, 0.45), 0.0], [29.5, Vector2(0.6, 0.38), 0.9], [32.95, Vector2(0.4, 0.55), 1.0]]
+## Each blow louder than the last, about 3 dB a time: the three hits with the
+## low knock under them, then the glass giving way (the loudest tenth of a
+## second of each, alone, through the mixer: tools/audio/measure_blows.gd).
+## These are the players' volumes: the set, two metres off, adds about 6 dB to
+## the hits, and the glass, behind the player at the door, about 2.
+## BLOW_MAX_DB lets them through: under the usual cap of 0 dB the four came
+## out equally loud.
+const HIT_DB := [-8.2, -5.0, -5.5]
+const KNOCK_DB := [-19.2, -16.3, -11.5]
+const SHATTER_DB := 10.0
+const BLOW_MAX_DB := 12.0
 ## Seconds per unit of timeline; tests run it faster.
 var speed := 1.0
 var time := 0.0
@@ -64,7 +78,8 @@ var shake := 0.0
 var jolt := 0.0
 var flash := 0.0
 var flicker := 0.0
-var blows_landed := 0
+## How many blows have cracked the glass (the screen's crack_level).
+var cracked := 0
 var rng := RandomNumberGenerator.new()
 var voices := {}
 var heartbeat_clock := -1.0
@@ -173,7 +188,6 @@ func build_events() -> void:
 		[29.9, "play", ["bed_rise", -3.0]],
 		[32.5, "swing", ["bedroom", -1.45, 0.22, "open"]],
 		[33.62, "swing", ["bedroom", 0.0, 0.14, "slam"]],
-		[33.85, "play", ["glass_break", -6.0]],
 		[34.2, "grunt", []],
 		[34.8, "bang", [0]],
 		[35.5, "bang", [1]],
@@ -204,17 +218,24 @@ func lunge() -> void:
 func wind_up(index: int) -> void:
 	broadcast.blow = {"start": BLOWS[index][0] - 0.5, "hit": BLOWS[index][0], "uv": BLOWS[index][1]}
 
-## A blow lands: the glass cracks where the blade struck, the tube flashes.
+## A blow lands: the tube flashes and, if the blow is hard enough, the glass
+## cracks where the blade struck. The last one, behind the player's back,
+## breaks it.
 func blow(index: int) -> void:
-	cracks.add_impact(BLOWS[index][1], index, BLOWS[index][2])
-	blows_landed = index + 1
-	screen.set_shader_parameter("crack_level", float(blows_landed))
+	if BLOWS[index][2] > 0.0:
+		cracks.add_impact(BLOWS[index][1], cracked, BLOWS[index][2])
+		cracked += 1
+		screen.set_shader_parameter("crack_level", float(cracked))
 	flash = 0.45
-	jolt = 1.0
-	shake = maxf(shake, 0.4)
 	flicker = 0.35
-	play("glass_hit_%d" % (index % 3), -2.0 + index)
-	play("knock_%d" % (index % 3), -16.0)
+	if index < HIT_DB.size():
+		jolt = 1.0
+		shake = maxf(shake, 0.4)
+		play("glass_hit_%d" % index, HIT_DB[index])
+		play("knock_%d" % index, KNOCK_DB[index])
+	else:
+		shake = maxf(shake, 0.25)
+		play("glass_break", SHATTER_DB)
 
 func cut() -> void:
 	create_tween().tween_method(func(v): static_veil.set_shader_parameter("amount", v), 0.0, 1.0, 0.5 / speed)
@@ -425,12 +446,14 @@ func build_audio() -> void:
 	for i in 3:
 		voice3d("glass_hit_%d" % i, "res://assets/audio/glass/glass-hit-%d.ogg" % (i + 1), SCREEN, "Threat", 0.0, false, 4.0)
 		voice3d("knock_%d" % i, "res://assets/audio/intro/glass_knock_%d.wav" % (i + 1), SCREEN, "Threat", 0.0, false, 4.0)
+		voices["glass_hit_%d" % i].max_db = BLOW_MAX_DB
+		voices["knock_%d" % i].max_db = BLOW_MAX_DB
 		voice2d("stomp_%d" % i, "res://assets/audio/intro/stomp_%d.wav" % (i + 1), "Steps")
 		voice3d("bang_%d" % i, "res://assets/audio/intro/door_bang_%d.wav" % (i + 1), door_point, "Threat", 0.0, false, 6.0)
 		voices["bang_%d" % i].attenuation_filter_cutoff_hz = 3000.0
-	# Heard through the shut door: dull.
-	voice3d("glass_break", "res://assets/audio/glass/glass-break.ogg", SCREEN, "Threat", 0.0, false, 6.0)
-	voices.glass_break.attenuation_filter_cutoff_hz = 1500.0
+	# Heard over the shoulder, through the open door, as the player runs out.
+	voice3d("glass_break", "res://assets/audio/glass/shatter.wav", SCREEN, "Threat", 0.0, false, 6.0)
+	voices.glass_break.max_db = BLOW_MAX_DB
 	voice3d("grunt", "res://assets/audio/sfx/chase/grunts.ogg", door_point, "Threat", -2.0, false, 6.0)
 	voices.grunt.attenuation_filter_cutoff_hz = 1800.0
 	# Recorded movements on the bed, right under the listener.

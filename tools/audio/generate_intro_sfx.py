@@ -98,8 +98,8 @@ def knock(index):
 
 
 def shatter():
-    """The screen giving way. No longer written (the intro breaks it with
-    glass/glass-break.ogg), but still drawn: the seeded stream it takes its
+    """The screen giving way. No longer written (the intro breaks it with a
+    recording, glass/shatter.wav), but still drawn: the seeded stream it takes its
     share of is the one the door bangs after it come from."""
     t = seconds(3.2)
     hit = band(rng.standard_normal(len(t)), 400, 18000) * decay(t, 18) * 1.4
