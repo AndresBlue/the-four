@@ -285,14 +285,14 @@ func button_name(button: int) -> String:
 		var device: int = last_pad if last_pad in Input.get_connected_joypads() else (Input.get_connected_joypads()[0] if pad_present() else -1)
 		var name := Input.get_joy_name(device).to_lower() if device >= 0 else ""
 		if "ps5" in name or "dualsense" in name: return "CREATE"
-	return String(names.get(button, PAD_COMMON.get(button, "—")))
+	return String(names.get(button, PAD_COMMON.get(button, "?")))
 
 ## The triggers, 0 left and 1 right.
 func trigger_name(right: bool) -> String:
 	return String(TRIGGER_NAMES[pad_family()][1 if right else 0])
 
 func pad_name(action: String) -> String:
-	if not pad_bindings.has(action): return "—"
+	if not pad_bindings.has(action): return "-"
 	return button_name(int(pad_bindings[action]))
 
 ## What to call an action on screen: its button if the hands are on a pad,
@@ -326,7 +326,7 @@ func reset_controls() -> void:
 	save_settings()
 
 func key_name(action: String) -> String:
-	if int(bindings.get(action, 0)) <= 0: return "—"
+	if int(bindings.get(action, 0)) <= 0: return "-"
 	return OS.get_keycode_string(bindings[action])
 
 func apply_bindings() -> void:

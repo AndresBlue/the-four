@@ -68,7 +68,7 @@ func run() -> void:
 	press(KEY_PAGEDOWN)
 	check("M y AvPág: el plano de la planta 2", framed(1))
 	var plans: Array = level.manifest.plans
-	check("El panel dice qué es esa planta", view.report().contains("Planta 2 de 3 · %s · %s · %d habitaciones" % [VIEW.PLAN_NAMES[plans[1].plan], VIEW.SHAPE_NAMES[plans[1].shape], int(plans[1].rooms)]))
+	check("El panel dice qué es esa planta", view.report().contains("Planta 2 de 3, %s, %s, %d habitaciones" % [VIEW.PLAN_NAMES[plans[1].plan], VIEW.SHAPE_NAMES[plans[1].shape], int(plans[1].rooms)]))
 	press(KEY_R)
 	var building: bool = level.session.state == level.session.State.LOADING
 	press(KEY_R)

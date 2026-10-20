@@ -13,7 +13,7 @@ static func args_of(entry: Dictionary) -> String:
 	return ", ".join(parts)
 
 static func run() -> void:
-	print("STEAM DIAGNOSE · singleton Steam: %s · SteamMultiplayerPeer: %s" % [Engine.has_singleton("Steam"), ClassDB.class_exists("SteamMultiplayerPeer")])
+	print("STEAM DIAGNOSE, singleton Steam: %s, SteamMultiplayerPeer: %s" % [Engine.has_singleton("Steam"), ClassDB.class_exists("SteamMultiplayerPeer")])
 	if not Engine.has_singleton("Steam"): return
 	var api := Engine.get_singleton("Steam")
 	var methods := {}

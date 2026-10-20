@@ -227,7 +227,7 @@ func where_to_join() -> Array:
 	if transport == "steam": return ["Por Steam: invita a tus amigos.", "También pueden entrar desde tu perfil: Unirse a la partida."]
 	var addresses: Array = [host_bind] if host_bind != "*" else local_addresses()
 	var shown := " / ".join(addresses) if not addresses.is_empty() else "tu IP"
-	return ["Para unirse: %s · puerto %d" % [shown, host_port], "Por Internet: puerto %d UDP abierto hacia este equipo." % host_port]
+	return ["Para unirse: %s, puerto %d" % [shown, host_port], "Por Internet: puerto %d UDP abierto hacia este equipo." % host_port]
 
 ## Private LAN addresses of this machine, to tell friends where to connect.
 static func local_addresses() -> Array:

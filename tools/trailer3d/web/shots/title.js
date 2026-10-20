@@ -65,7 +65,7 @@ export function create(ctx) {
 			if (t >= FLOOR) text(g, "FLOOR ONE: THE LOCUST", w / 2, h * 0.66, { size: 28, align: "center", color: AMBER, u, alpha: smoothstep(FLOOR, FLOOR + 0.35, t), spacing: 4 });
 			if (t >= MODES) {
 				const m = smoothstep(MODES, MODES + 0.35, t);
-				text(g, "SOLO · ONLINE CO-OP · VERSUS", w / 2, h * 0.75, { size: 18, align: "center", color: SOFT, u, alpha: m, spacing: 2 });
+				text(g, "SOLO   ONLINE CO-OP   VERSUS", w / 2, h * 0.75, { size: 18, align: "center", color: SOFT, u, alpha: m, spacing: 2 });
 				text(g, "IN DEVELOPMENT", w / 2, h * 0.8, { size: 14, align: "center", color: [0.94, 0.94, 0.9, 0.42], u, alpha: m, spacing: 3 });
 			}
 		},

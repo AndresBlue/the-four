@@ -309,7 +309,7 @@ export function create(ctx) {
 			g.fillRect(0, 0, 640, 480);
 			osdLine(g, "VIDEO 1", 36, 50, 26);
 			osdLine(g, "▶ PLAY", 320, 150, 40, INK, 1, "center");
-			const lines = ["RECOVERED TAPE 81", "THE HOTEL — FLOOR 1", "GUESTS: 4", "OCCUPANT: THE LOCUST"];
+			const lines = ["RECOVERED TAPE 81", "THE HOTEL, FLOOR 1", "GUESTS: 4", "OCCUPANT: THE LOCUST"];
 			const shown = Math.max(0, Math.floor((t - CRT.TEXT) * 72));
 			let left = shown;
 			lines.forEach((l, i) => {
@@ -342,8 +342,8 @@ export function create(ctx) {
 		const g = screen.g;
 		g.fillStyle = "#050807";
 		g.fillRect(0, 0, 640, 480);
-		osdLine(g, "ARCHIVE — THE HOTEL", 40, 50, 22, [0.62, 0.66, 0.6]);
-		const rows = [["FLOOR 1", "TAPE 81 — RECOVERED", INK], ["FLOOR 2", "NOT RECOVERED", ALERT], ["FLOOR 3", "NOT RECOVERED", ALERT], ["FLOOR 4", "NOT RECOVERED", ALERT]];
+		osdLine(g, "ARCHIVE: THE HOTEL", 40, 50, 22, [0.62, 0.66, 0.6]);
+		const rows = [["FLOOR 1", "TAPE 81, RECOVERED", INK], ["FLOOR 2", "NOT RECOVERED", ALERT], ["FLOOR 3", "NOT RECOVERED", ALERT], ["FLOOR 4", "NOT RECOVERED", ALERT]];
 		rows.forEach(([a, b, color], i) => {
 			if (t < DB.ROWS[i]) return;
 			const n = Math.floor((t - DB.ROWS[i]) * 26);

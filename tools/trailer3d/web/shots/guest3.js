@@ -115,7 +115,7 @@ export function create(ctx) {
 		},
 		overlay(g, t, size) {
 			if (t < CATCH) camcorder(g, t, size, { clock: 2 * 3600 + 47 * 60 + 52, date: "OCT. 27 1993" });
-			if (t < 1.4) burnIn(g, [typed("TAPE 81 · GUEST 03", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.1, 1.4, t) });
+			if (t < 1.4) burnIn(g, [typed("TAPE 81   GUEST 03", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.1, 1.4, t) });
 		},
 	};
 	return shot;

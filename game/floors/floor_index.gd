@@ -16,9 +16,9 @@ static func kind(number: int) -> GDScript:
 static func built(number: int) -> bool:
 	return KINDS.has(number)
 
-## "PISO 1 · EL HOTEL", or "PISO 3" for one nobody has filmed.
+## "PISO 1: EL HOTEL", or "PISO 3" for one nobody has filmed.
 static func title(number: int) -> String:
-	return ("PISO %d · %s" % [number, String(KINDS[number].NAME)]) if KINDS.has(number) else "PISO %d" % number
+	return ("PISO %d: %s" % [number, String(KINDS[number].NAME)]) if KINDS.has(number) else "PISO %d" % number
 
 ## The milestones of a floor, or none.
 static func milestones(number: int) -> Array:

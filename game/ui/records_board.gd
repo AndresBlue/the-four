@@ -97,11 +97,11 @@ static func fill(ui, list: VBoxContainer, view: Dictionary) -> void:
 		var own: bool = not mine.is_empty() and String(line.get("date", "")) == String(mine.date) and int(line.get("seed", 0)) == int(mine.get("seed", 0)) and is_equal_approx(float(line.get("time", 0.0)), float(mine.get("time", 0.0)))
 		var ink := STYLE.AMBER if own else STYLE.INK
 		var names: Array = line.get("team", []).map(func(member): return String(member.get("name", "")))
-		var who := " · ".join(names) if not names.is_empty() else "%d superviviente%s" % [int(line.get("players", 1)), "" if int(line.get("players", 1)) == 1 else "s"]
+		var who := ", ".join(names) if not names.is_empty() else "%d superviviente%s" % [int(line.get("players", 1)), "" if int(line.get("players", 1)) == 1 else "s"]
 		var cells := [
 			["%d." % (index + 1), STYLE.SOFT if index > 0 else STYLE.AMBER],
 			[ui.tape_time(float(line.get("time", 0.0))), ink],
-			[STYLE.grouped(int(line.score)) if line.has("score") else "—", ink],
+			[STYLE.grouped(int(line.score)) if line.has("score") else "-", ink],
 			[String(line.get("grade", "")), STYLE.AMBER],
 			[who.to_upper(), ink],
 			[str(int(line.get("seed", 0))), STYLE.SOFT],
@@ -145,7 +145,7 @@ static func profile(ui, page: VBoxContainer) -> void:
 	left.add_theme_constant_override("separation", 3)
 	page.add_child(left)
 	var right := left
-	var clock := func(seconds: float) -> String: return ui.tape_time(seconds) if seconds >= 0.0 else "—"
+	var clock := func(seconds: float) -> String: return ui.tape_time(seconds) if seconds >= 0.0 else "-"
 	var known := 0
 	for floor_number in range(1, FLOORS.COUNT + 1): known += FLOORS.milestones(floor_number).size()
 	var grade := String(career.get("best_grade", ""))
@@ -154,8 +154,8 @@ static func profile(ui, page: VBoxContainer) -> void:
 	stat(left, "TIEMPO GRABADO", ui.tape_time(float(career.get("time", 0))))
 	stat(left, "MEJOR TIEMPO A SOLAS", clock.call(records.best(1, RECORDS.SOLO, "time")))
 	stat(left, "MEJOR TIEMPO EN EQUIPO", clock.call(records.best(1, RECORDS.COOP, "time")))
-	stat(left, "MEJOR PUNTAJE", STYLE.grouped(int(career.get("best_score", 0))) if int(career.get("best_score", 0)) > 0 else "—")
-	stat(left, "MEJOR NOTA", grade if not grade.is_empty() else "—", STYLE.AMBER)
+	stat(left, "MEJOR PUNTAJE", STYLE.grouped(int(career.get("best_score", 0))) if int(career.get("best_score", 0)) > 0 else "-")
+	stat(left, "MEJOR NOTA", grade if not grade.is_empty() else "-", STYLE.AMBER)
 	stat(left, "VECES MÁS VALIOSO", str(int(career.get("mvps", 0))))
 	stat(left, "LOGROS", "%d / %d" % [records.reached_count(), known])
 	stat(right, "TELEVISORES ENCENDIDOS", str(int(career.get("tvs", 0))))
@@ -167,7 +167,7 @@ static func profile(ui, page: VBoxContainer) -> void:
 	stat(right, "VECES EN UN ARMARIO", str(int(career.get("hides", 0))))
 	stat(right, "METROS ANDADOS", STYLE.grouped(int(career.get("metres", 0))))
 	var usual: String = records.usual_part()
-	stat(right, "PAPEL HABITUAL", usual if not usual.is_empty() else "—", STYLE.AMBER)
+	stat(right, "PAPEL HABITUAL", usual if not usual.is_empty() else "-", STYLE.AMBER)
 	if int(career.get("hunts", 0)) > 0:
 		stat(right, "COMO THE LOCUST", "%d caza%s, %d captura%s" % [int(career.hunts), "" if int(career.hunts) == 1 else "s", int(career.get("catches", 0)), "" if int(career.get("catches", 0)) == 1 else "s"], STYLE.ALERT)
 
@@ -184,7 +184,7 @@ static func milestones(ui, page: VBoxContainer) -> void:
 	for floor_number in range(1, FLOORS.COUNT + 1):
 		var known: Array = FLOORS.milestones(floor_number)
 		if known.is_empty():
-			ui.label(page, "%s  ·  SIN GRABAR" % FLOORS.title(floor_number), 18).add_theme_color_override("font_color", STYLE.FAINT)
+			ui.label(page, "%s   SIN GRABAR" % FLOORS.title(floor_number), 18).add_theme_color_override("font_color", STYLE.FAINT)
 			continue
 		var head := REPORT.row_in(page, 16)
 		ui.label(head, FLOORS.title(floor_number), 20).add_theme_color_override("font_color", STYLE.AMBER)
@@ -284,7 +284,7 @@ static func rank(value: Variant, kind: String, more: bool) -> float:
 
 static func written(ui, value: Variant, kind: String) -> String:
 	match kind:
-		"grade": return String(value) if not String(value).is_empty() else "—"
-		"clock": return ui.tape_time(float(value)) if float(value) >= 0.0 else "—"
+		"grade": return String(value) if not String(value).is_empty() else "-"
+		"clock": return ui.tape_time(float(value)) if float(value) >= 0.0 else "-"
 		"time": return ui.tape_time(float(value))
 	return STYLE.grouped(int(value))

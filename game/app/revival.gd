@@ -285,7 +285,7 @@ func watch_teammates() -> void:
 		level.ui.hint.text = "HAS MUERTO"
 		return
 	watch_over(body)
-	level.ui.hint.text = "HAS MUERTO · OBSERVANDO A %s · %s PARA CAMBIAR" % [body.player_name.to_upper(), (level.settings.button_name(JOY_BUTTON_A) if level.settings.using_pad and level.settings.pad_present() else "CLIC")]
+	level.ui.hint.text = "HAS MUERTO, OBSERVANDO A %s, %s PARA CAMBIAR" % [body.player_name.to_upper(), (level.settings.button_name(JOY_BUTTON_A) if level.settings.using_pad and level.settings.pad_present() else "CLIC")]
 
 ## Through the teammate's own camera: what it sees, as it sees it. Where its
 ## camera is and which way it looks comes from its owner (match_net.pack_local)

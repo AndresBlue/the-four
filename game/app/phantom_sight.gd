@@ -161,7 +161,7 @@ func vanish(why: String) -> void:
 	if is_instance_valid(model): model.visible = false
 	rest = rng.randf_range(REST.x, REST.y)
 	var view = level.get("observer_view")
-	if view != null and is_instance_valid(view): view.note("alucinación · %s" % why)
+	if view != null and is_instance_valid(view): view.note("alucinación, %s" % why)
 
 func clear(from: Vector3, to: Vector3) -> bool:
 	var query := PhysicsRayQueryParameters3D.create(from, to, SIGHT_MASK)

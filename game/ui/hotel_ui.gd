@@ -21,37 +21,37 @@ const CREDITS := [
 		"Proyecto fan no oficial, sin ánimo de lucro.",
 	]],
 	["MOTOR", [
-		"Godot Engine 4.7 — © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.",
-		"GodotSteam 4.22.1 — © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores. Licencia MIT.",
-		"Steamworks SDK — © Valve Corporation. Steam y el logotipo de Steam son marcas de Valve Corporation.",
+		"Godot Engine 4.7. © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.",
+		"GodotSteam 4.22.1. © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores. Licencia MIT.",
+		"Steamworks SDK. © Valve Corporation. Steam y el logotipo de Steam son marcas de Valve Corporation.",
 	]],
 	["PERSONAJES", [
-		"The Locust — modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).",
-		"«detective» — haider706 (Sketchfab, CC BY 4.0).",
-		"«Debra — Detective Woman (Game Model)» — Zukomazi (Sketchfab, CC BY 4.0).",
-		"«Realistic Female» — Biviyt (Sketchfab, CC BY-SA 4.0).",
+		"The Locust: modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).",
+		"«detective», de haider706 (Sketchfab, CC BY 4.0).",
+		"«Debra - Detective Woman (Game Model)», de Zukomazi (Sketchfab, CC BY 4.0).",
+		"«Realistic Female», de Biviyt (Sketchfab, CC BY-SA 4.0).",
 	]],
 	["MOBILIARIO Y OBJETOS", [
-		"«Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
-		"«Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).",
-		"«Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).",
-		"«Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.",
-		"«Panasonic VHS-C MOVIE CAMERA NV-A3» — Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.",
-		"«VHS» — Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
+		"«Sofa (Game Ready / 2K PBR)», de Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
+		"«Monstera Deliciosa Potted Mid-Century plant», de Giora / ChubbyPanda (Sketchfab, CC BY).",
+		"«Wall Lamp - 2048px²», de Mark Peters (Sketchfab, CC BY).",
+		"«Elevator with Animation LOWPOLY», de EFX (Sketchfab, CC BY): el ascensor.",
+		"«Panasonic VHS-C MOVIE CAMERA NV-A3», de Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.",
+		"«VHS», de Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
-	["SONIDO — FREESOUND", [
-		"«Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).",
-		"«men_sneaker_shoes_walking_sound_09262024» — Artninja (CC BY 4.0).",
-		"«Open letter and reading» — dersuperanton (CC BY 4.0).",
-		"«horror ambience 161101_1038» — klankbeeld (CC BY 4.0).",
-		"«Door Opening» — AUDACITIER (CC BY 4.0).",
-		"«Atmosphere 2» — oldaccount (CC BY 3.0).",
-		"«Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).",
-		"«toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).",
-		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).",
+	["SONIDO DE FREESOUND", [
+		"«Bed sheets (SoundAction 104)», de alexarje (CC BY 4.0).",
+		"«men_sneaker_shoes_walking_sound_09262024», de Artninja (CC BY 4.0).",
+		"«Open letter and reading», de dersuperanton (CC BY 4.0).",
+		"«horror ambience 161101_1038», de klankbeeld (CC BY 4.0).",
+		"«Door Opening», de AUDACITIER (CC BY 4.0).",
+		"«Atmosphere 2», de oldaccount (CC BY 3.0).",
+		"«Jumpscare sound», de EnclosureX_Studios (CC BY 4.0).",
+		"«toaster oven or lift/elevator bell», de azumarill (CC BY 3.0).",
+		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025», de Artninja (CC BY 4.0).",
 	]],
-	["SONIDO — EL RESTO", [
+	["EL RESTO DEL SONIDO", [
 		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["LICENCIAS PENDIENTES", [
@@ -596,7 +596,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 				var item: Dictionary = CATALOG.ENTRIES[number - 1] if number <= CATALOG.ENTRIES.size() else {}
 				var known: bool = not item.is_empty() and discoveries != null and discoveries.has(item.id)
 				var at := number
-				var line := entry(strip, "%02d   %s" % [number, item.title if known else "— sin descubrir —"], func(): show_dossier(at, item), not known, 21)
+				var line := entry(strip, "%02d   %s" % [number, item.title if known else "sin descubrir"], func(): show_dossier(at, item), not known, 21)
 				if known: buttons[item.id] = line
 			spacer(column, 14)
 			action("Volver", "main")
@@ -644,7 +644,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"mp_steam":
 			set_osd("MULTIJUGADOR ▸ STEAM", "", "")
 			title(column, "STEAM", 64)
-			label(column, "CON TUS AMIGOS DE STEAM · SIN ABRIR PUERTOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
+			label(column, "CON TUS AMIGOS DE STEAM, SIN ABRIR PUERTOS", 20).add_theme_color_override("font_color", STYLE.SOFT)
 			spacer(column, 18)
 			action("Crear sala", "host_steam")
 			action("Unirse a una sala", "join_steam")
@@ -797,7 +797,7 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 		"online_won", "online_failed":
 			online_end(kind == "online_won")
 		"credits":
-			set_osd("▶ PLAY", "", "%s  ·  PROYECTO FAN NO OFICIAL" % version())
+			set_osd("▶ PLAY", "", "%s   PROYECTO FAN NO OFICIAL" % version())
 			title(column, "CRÉDITOS", 64)
 			spacer(column, 14)
 			column.custom_minimum_size.x = 720
@@ -851,7 +851,7 @@ func describe_difficulty(id: String) -> void:
 	panel.add_child(text)
 	label(text, DIFFICULTY.title(id).to_upper(), 30).add_theme_color_override("font_color", STYLE.AMBER)
 	spacer(text, 2)
-	for line in DIFFICULTY.TRAITS[id]: paragraph(text, "·  " + String(line), 18, 470, STYLE.INK)
+	for line in DIFFICULTY.TRAITS[id]: paragraph(text, String(line), 18, 470, STYLE.INK)
 
 ## A text field bound to a setting (saved as it is typed).
 func field(parent: Node, title_text: String, key: String, placeholder: String) -> LineEdit:
@@ -1027,7 +1027,7 @@ func show_tape(line: Dictionary) -> void:
 ## screen: the keys, or the shoulders of the pad in the hands.
 func tab_hint() -> String:
 	var keys := tab_keys()
-	return "%s  ·  PESTAÑAS  ·  %s" % keys
+	return "%s   PESTAÑAS   %s" % keys
 
 func tab_keys() -> Array:
 	if settings != null and settings.using_pad and settings.pad_present():
@@ -1151,7 +1151,7 @@ func show_dossier(number: int, item: Dictionary) -> void:
 	ink(paragraph(page, String(item.body), 18, 720, PAPER_INK))
 	spacer(page, 4)
 	rule(page, 1)
-	var end := ink(label(page, "— FIN DEL DOCUMENTO —", 14))
+	var end := ink(label(page, "FIN DEL DOCUMENTO", 14))
 	end.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var close := entry(stack, "Cerrar", close_dossier, false, 22)
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -1248,7 +1248,7 @@ func show_lock(entered: String, places: int, word: String, known := "", dial := 
 			var one := label(strip, str(digit), 30)
 			one.add_theme_color_override("font_color", STYLE.AMBER if digit == dial else STYLE.SOFT)
 	var foot_words := word
-	if foot_words.is_empty(): foot_words = "CRUCETA: ELIGE · %s: MARCA · %s: BORRA · %s: SALIR" % [settings.button_name(JOY_BUTTON_A), settings.button_name(JOY_BUTTON_X), settings.button_name(JOY_BUTTON_B)] if padded else "TECLEA EL CÓDIGO · [ESC] SALIR"
+	if foot_words.is_empty(): foot_words = "CRUCETA: ELIGE   %s: MARCA   %s: BORRA   %s: SALIR" % [settings.button_name(JOY_BUTTON_A), settings.button_name(JOY_BUTTON_X), settings.button_name(JOY_BUTTON_B)] if padded else "TECLEA EL CÓDIGO   [ESC] SALIR"
 	var foot := label(column, foot_words, 18)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	foot.add_theme_color_override("font_color", STYLE.ALERT if word == "NO ES" else STYLE.SOFT)
@@ -1387,7 +1387,7 @@ func show_settings(back: String) -> void:
 	title(column, "AJUSTES", 58)
 	# On a pad the shoulders change tab (_input), from anywhere on the screen.
 	if settings.pad_present():
-		var hint := label(column, "%s  ·  CAMBIA DE PESTAÑA  ·  %s" % [settings.button_name(JOY_BUTTON_LEFT_SHOULDER), settings.button_name(JOY_BUTTON_RIGHT_SHOULDER)], 16)
+		var hint := label(column, "%s   CAMBIA DE PESTAÑA   %s" % [settings.button_name(JOY_BUTTON_LEFT_SHOULDER), settings.button_name(JOY_BUTTON_RIGHT_SHOULDER)], 16)
 		hint.add_theme_color_override("font_color", STYLE.SOFT)
 	spacer(column, 10)
 	var tabs := TabContainer.new()
@@ -1484,7 +1484,7 @@ func show_settings(back: String) -> void:
 			confirm()
 			rebind_action = id
 			rebind_button = key_button
-			key_button.text = "PULSA UNA TECLA · ESC CANCELA"
+			key_button.text = "PULSA UNA TECLA, ESC CANCELA"
 		)
 		# And what the same thing is on a pad, where it is a button at all.
 		if not settings.pad_present(): continue
@@ -1500,7 +1500,7 @@ func show_settings(back: String) -> void:
 			confirm()
 			rebind_pad = id
 			rebind_button = pad_button
-			pad_button.text = "PULSA UN BOTÓN · %s CANCELA" % settings.button_name(JOY_BUTTON_B)
+			pad_button.text = "PULSA UN BOTÓN, %s CANCELA" % settings.button_name(JOY_BUTTON_B)
 		)
 	var reset := Button.new()
 	reset.theme_type_variation = "BoxButton"
@@ -1776,7 +1776,7 @@ func show_characters(back := "multiplayer") -> void:
 			settings.set_value("character", index)
 			if net != null and net.active(): net.set_character(index)
 			visual.configure(index, false)
-			chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[index].to_upper()
+			chosen.text = "SELECCIONADO: %s" % visual_script.NAMES[index].to_upper()
 		)
 	spacer(column, 18)
 	action("Volver", back)
@@ -1817,7 +1817,7 @@ func show_characters(back := "multiplayer") -> void:
 	camera.look_at(Vector3(0, 0.92, 0))
 	camera.fov = 38
 	camera.current = true
-	chosen.text = "SELECCIONADO · %s" % visual_script.NAMES[settings.values.character].to_upper()
+	chosen.text = "SELECCIONADO: %s" % visual_script.NAMES[settings.values.character].to_upper()
 	chosen.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	chosen.size_flags_horizontal = Control.SIZE_SHRINK_END
 	side.add_child(chosen)
@@ -1950,7 +1950,7 @@ func show_brief(sector: String, words: String, lead := "", hold := BRIEF_HOLD) -
 	column.size = Vector2(BRIEF_SIZE.x - 36, BRIEF_SIZE.y - 32)
 	column.add_theme_constant_override("separation", 4)
 	picture.add_child(column)
-	var head := STYLE.text("OBJETIVO · %s" % sector, 18, STYLE.AMBER)
+	var head := STYLE.text("OBJETIVO, %s" % sector, 18, STYLE.AMBER)
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	column.add_child(head)
 	if not lead.is_empty():
@@ -2100,7 +2100,7 @@ func _input(event: InputEvent) -> void:
 		if button == JOY_BUTTON_B or settings.bind_pad(rebind_pad, button):
 			rebind_button.text = settings.pad_name(rebind_pad)
 			rebind_pad = ""
-		else: rebind_button.text = "BOTÓN RESERVADO · %s CANCELA" % settings.button_name(JOY_BUTTON_B)
+		else: rebind_button.text = "BOTÓN RESERVADO, %s CANCELA" % settings.button_name(JOY_BUTTON_B)
 		return
 	# The tabs of whatever screen has them: the shoulders of a pad, and on the
 	# reports and the marks Q and E as well (the settings take keys to bind).

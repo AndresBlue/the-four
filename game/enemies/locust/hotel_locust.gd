@@ -2036,7 +2036,7 @@ func escalate(direction: Vector3) -> void:
 	stuck_anchor = position
 	stuck_escalated.emit(stuck_level, global_position)
 	var view = level.get("observer_view") if level != null else null
-	if view != null and is_instance_valid(view): view.note("atasco · paso %d · %0.0f, %0.0f · %s" % [stuck_level, position.x, position.z, Mode.keys()[mode]])
+	if view != null and is_instance_valid(view): view.note("atasco, paso %d, %0.0f, %0.0f, %s" % [stuck_level, position.x, position.z, Mode.keys()[mode]])
 	match stuck_level:
 		1:
 			dodge = (free_side(direction) + direction * 0.45).normalized()

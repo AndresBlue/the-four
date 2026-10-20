@@ -760,8 +760,8 @@ func say(kind: String, data := {}) -> void:
 	history.append(entry)
 	decided.emit(entry)
 	var view = level.get("observer_view")
-	if view != null and is_instance_valid(view) and kind != "fase": view.note("director · %s%s" % [kind, (" → sala %d" % int(entry.get("room", -1))) if entry.has("room") else ""])
-	elif view != null and is_instance_valid(view): view.note("director · %s" % String(data.get("phase", "")))
+	if view != null and is_instance_valid(view) and kind != "fase": view.note("director: %s%s" % [kind, (" → sala %d" % int(entry.get("room", -1))) if entry.has("room") else ""])
+	elif view != null and is_instance_valid(view): view.note("director: %s" % String(data.get("phase", "")))
 
 ## Metres in a straight line from a point to the nearest survivor alive.
 func nearest_to(point: Vector3) -> float:
@@ -772,11 +772,11 @@ func nearest_to(point: Vector3) -> float:
 
 ## What the observer's panel shows of it.
 func status_lines() -> Array:
-	var lines: Array = ["DIRECTOR · %s · amenaza %0.2f%s" % [PHASE_NAMES[phase], menace, " · callado" if silent() else ""]]
-	if calm > 0.0: lines.append("  carga %0.2f · un descanso vale hasta %0.0f s más" % [strain, calm * spacing()])
+	var lines: Array = ["DIRECTOR %s, amenaza %0.2f%s" % [PHASE_NAMES[phase], menace, ", callado" if silent() else ""]]
+	if calm > 0.0: lines.append("  carga %0.2f, un descanso vale hasta %0.0f s más" % [strain, calm * spacing()])
 	if phase == Phase.RELIEF: lines.append("  descanso %0.0f s más" % maxf(0.0, rest_until - clock))
-	elif phase == Phase.BUILD: lines.append("  próxima pista en %0.0f s · a %0.0f m del equipo" % [maxf(0.0, next_lead - clock), prowl])
-	if not current.is_empty() and clock < float(current.until): lines.append("  %s · sala %d%s · %0.0f s" % [current.kind, room_id(current.point), (" · por " + String(current.target)) if not String(current.target).is_empty() else "", float(current.until) - clock])
+	elif phase == Phase.BUILD: lines.append("  próxima pista en %0.0f s, a %0.0f m del equipo" % [maxf(0.0, next_lead - clock), prowl])
+	if not current.is_empty() and clock < float(current.until): lines.append("  %s, sala %d%s, %0.0f s" % [current.kind, room_id(current.point), (", por " + String(current.target)) if not String(current.target).is_empty() else "", float(current.until) - clock])
 	if not deaths.is_empty(): lines.append("  %d muertes recientes: más lejos" % deaths.size())
 	return lines
 

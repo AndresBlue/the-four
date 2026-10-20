@@ -155,7 +155,7 @@ export function create(ctx) {
 			// The rocker shows while the zoom moves and 1.6 s after (ZOOM_HOLD).
 			const moving = (t > ZOOM_IN[0] - 0.1 && t < ZOOM_IN[1] + 1.0) || (t > ZOOM_OUT[0] - 0.1 && t < ZOOM_OUT[1] + 0.8);
 			zoomBar(g, size, zoomAt(t), moving ? 1 : 0);
-			if (t < 1.3) burnIn(g, [typed("TAPE 81 · GUEST 04", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.0, 1.3, t) });
+			if (t < 1.3) burnIn(g, [typed("TAPE 81   GUEST 04", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.0, 1.3, t) });
 		},
 	};
 	return shot;

@@ -203,7 +203,7 @@ func open(can_edit: bool, key_name: String, notes := []) -> void:
 	var shown := clampf(fit, 0.3, 1.6)
 	page.scale = Vector2.ONE * shown
 	# Nothing said while it can be written on; only that it cannot.
-	caption.text = "" if editable else ("SOLO PUEDES MIRAR · %s CIERRA" % key_name)
+	caption.text = "" if editable else ("SOLO PUEDES MIRAR, %s CIERRA" % key_name)
 	fill_slips(notes)
 	# It comes up the way the tape cuts to anything: quick, and from nothing.
 	if is_instance_valid(opening): opening.kill()

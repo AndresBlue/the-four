@@ -92,10 +92,10 @@ export function create(ctx) {
 		},
 		overlay(g, t, size) {
 			if (t < CATCH) camcorder(g, t, size, { clock: 2 * 3600 + 14 * 60 + 37, date: "OCT. 27 1993", stamina: clamp(0.93 - t * 0.12) });
-			if (t < 1.7) burnIn(g, [typed("TAPE 81 · GUEST 01", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.4, 1.7, t) });
+			if (t < 1.7) burnIn(g, [typed("TAPE 81   GUEST 01", t, 0.05, 40)], size, { alpha: 1 - smoothstep(1.4, 1.7, t) });
 			if (t >= SNOW + 0.15) {
 				const u = size.h / 720;
-				burnIn(g, [typed("GUEST 01 — LOST", t, SNOW + 0.15, 30)], size, { x: size.w / 2 - 150 * u, y: size.h / 2 - 22 * u, size: 24 });
+				burnIn(g, [typed("GUEST 01: LOST", t, SNOW + 0.15, 30)], size, { x: size.w / 2 - 150 * u, y: size.h / 2 - 22 * u, size: 24 });
 			}
 		},
 	};

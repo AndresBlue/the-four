@@ -252,7 +252,7 @@ func change_planta(step: int) -> void:
 func step_out() -> void:
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		note("ratón libre · ESC otra vez para cerrar")
+		note("ratón libre, ESC otra vez para cerrar")
 		return
 	get_tree().quit()
 
@@ -396,12 +396,12 @@ func arrived() -> void:
 			var at := Vector2(FLOOR.position_of(room).x, FLOOR.position_of(room).z)
 			low = low.min(at - FLOOR.size_of(room) * 0.5)
 			high = high.max(at + FLOOR.size_of(room) * 0.5)
-		planta_notes.append("%s · %s · %d habitaciones · %0.0f × %0.0f m" % [PLAN_NAMES.get(plan.plan, plan.plan), SHAPE_NAMES.get(plan.shape, plan.shape), int(plan.rooms), high.x - low.x, high.y - low.y])
+		planta_notes.append("%s, %s, %d habitaciones, %0.0f × %0.0f m" % [PLAN_NAMES.get(plan.plan, plan.plan), SHAPE_NAMES.get(plan.shape, plan.shape), int(plan.rooms), high.x - low.x, high.y - low.y])
 	if map_view: frame_map()
 	else: global_position = FLOOR.position_of(level.manifest.rooms[int(level.manifest.entries[planta])]) + Vector3(0, 1.7, 0)
 	var names: PackedStringArray = []
 	for plan in plans: names.append(PLAN_NAMES.get(plan.plan, plan.plan))
-	note("piso %d · %s%s" % [seed_now, ", ".join(names), " · de respaldo" if level.manifest.get("fallback", false) else ""])
+	note("piso %d, %s%s" % [seed_now, ", ".join(names), ", de respaldo" if level.manifest.get("fallback", false) else ""])
 
 func note(words: String) -> void:
 	# The same thing twice running is said once: a knock nobody answers comes
@@ -513,26 +513,26 @@ func watch_changes() -> void:
 func report() -> String:
 	if level == null or level.manifest.is_empty() or not is_instance_valid(level.hotel): return "Sin piso todavía."
 	# While a floor is being put up there is nothing on it to read yet.
-	if level.session.state == level.session.State.LOADING: return "OBSERVADOR · construyendo un piso…"
+	if level.session.state == level.session.State.LOADING: return "OBSERVADOR: construyendo un piso…"
 	var session = level.session
 	var lines: PackedStringArray = []
 	var where: String = "libre" if not is_instance_valid(following) else "siguiendo a %s" % following.name
-	lines.append("OBSERVADOR · %s%s%s · %0.0f m/s%s" % [where, " · mapa" if map_view else "", " · lectura" if echoing else "", speed, "" if is_equal_approx(Engine.time_scale, 1.0) else " · tiempo ×%0.2f" % Engine.time_scale])
-	lines.append("TAB seguir · F soltar · M mapa · RePág/AvPág planta · C techos · L luz · H panel")
-	lines.append("R otro piso%s · V lectura · 1-6 capas" % ((" · Mayús+R vuelve al %d" % seed_before) if seed_before >= 0 else ""))
-	lines.append("P [ ] tiempo · F5 volcar · ESC ratón, y otra vez cerrar")
+	lines.append("OBSERVADOR: %s%s%s, %0.0f m/s%s" % [where, ", mapa" if map_view else "", ", lectura" if echoing else "", speed, "" if is_equal_approx(Engine.time_scale, 1.0) else ", tiempo ×%0.2f" % Engine.time_scale])
+	lines.append("TAB seguir, F soltar, M mapa, RePág/AvPág planta, C techos, L luz, H panel")
+	lines.append("R otro piso%s, V lectura, 1-6 capas" % ((", Mayús+R vuelve al %d" % seed_before) if seed_before >= 0 else ""))
+	lines.append("P [ ] tiempo, F5 volcar, ESC ratón, y otra vez cerrar")
 	lines.append("")
 	# Which floor this is and where it came from, which is the first thing to
 	# know when a tool shows you a hotel.
-	var source := "piso propio · buscando partida en %s" % level.observer_address
-	if level.net.observing and level.match_net.in_match(): source = "la partida · %s" % ("versus" if level.match_net.versus() else "cooperativo")
-	elif level.net.observing: source = "piso propio · en la sala, esperando a que empiecen"
-	lines.append("Piso 1 · semilla %d · %s" % [int(session.run_seed), source])
+	var source := "piso propio, buscando partida en %s" % level.observer_address
+	if level.net.observing and level.match_net.in_match(): source = "la partida, %s" % ("versus" if level.match_net.versus() else "cooperativo")
+	elif level.net.observing: source = "piso propio, en la sala, esperando a que empiecen"
+	lines.append("Piso 1, semilla %d, %s" % [int(session.run_seed), source])
 	# What the generator made of the planta on screen, to put a name to what
 	# the plan shows when floors are compared.
-	lines.append("Planta %d de %d%s" % [planta + 1, FLOOR.PLANTAS, (" · " + planta_notes[planta]) if planta < planta_notes.size() else ""])
-	lines.append("Sector %d/%d · %s · %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
-	lines.append("Meta %s %d/%d%s · código %s · teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), " · apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
+	lines.append("Planta %d de %d%s" % [planta + 1, FLOOR.PLANTAS, (", " + planta_notes[planta]) if planta < planta_notes.size() else ""])
+	lines.append("Sector %d/%d, %s, %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
+	lines.append("Meta %s %d/%d%s, código %s, teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), ", apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
 	lines.append("")
 	lines.append("SUPERVIVIENTES")
 	# Offline the bodies are the level's: this machine's player on a floor it
@@ -546,28 +546,28 @@ func report() -> String:
 		var spot := "?"
 		var mind := ""
 		if is_instance_valid(body):
-			spot = "ala %d · %0.0f, %0.0f" % [wing_of(body.global_position), body.global_position.x, body.global_position.z]
-			if live_locust() != null: spot += " · a %0.0f m" % body.global_position.distance_to(live_locust().global_position)
-			if body.get("hidden"): spot += " · escondido"
+			spot = "ala %d, %0.0f, %0.0f" % [wing_of(body.global_position), body.global_position.x, body.global_position.z]
+			if live_locust() != null: spot += ", a %0.0f m" % body.global_position.distance_to(live_locust().global_position)
+			if body.get("hidden"): spot += ", escondido"
 		var minds: Dictionary = level.sanity.minds if level.sanity != null else {}
-		if minds.has(int(seat)): mind = " · cordura %0.0f" % float(minds[int(seat)].get("sanity", 100.0))
-		elif int(seat) == level.player.slot: mind = " · cordura %0.0f" % level.player.sanity
-		var riding: String = " · en ascensor" if level.lifts.riding.has(int(seat)) else ""
-		lines.append("  %d %s · %s · %s%s%s" % [int(seat), level.seat_name(int(seat)), life, spot, mind, riding])
-	if not anybody: lines.append("  ninguno · piso de prueba, solo la criatura")
+		if minds.has(int(seat)): mind = ", cordura %0.0f" % float(minds[int(seat)].get("sanity", 100.0))
+		elif int(seat) == level.player.slot: mind = ", cordura %0.0f" % level.player.sanity
+		var riding: String = ", en ascensor" if level.lifts.riding.has(int(seat)) else ""
+		lines.append("  %d %s, %s, %s%s%s" % [int(seat), level.seat_name(int(seat)), life, spot, mind, riding])
+	if not anybody: lines.append("  ninguno, piso de prueba, solo la criatura")
 	lines.append("")
 	var creature = live_locust()
 	if creature != null:
 		lines.append("THE LOCUST (%s)" % creature.control)
 		# Its difficulty and the numbers it plays by (game/floors/difficulty.gd).
-		lines.append("  %s · vista %0.0f m · oído ×%0.2f · aviso %0.1f s · caza %0.1f m/s · sin ver %0.1f s · se rinde %0.0f–%0.0f s" % [level.DIFFICULTY.title(level.difficulty).to_upper(), creature.sight_range * creature.reach_scale, creature.hearing * creature.reach_scale, creature.alert_time, creature.chase_speed, creature.lose_after, creature.give_up, creature.give_up_hard])
-		lines.append("  %s · gracia %0.1f · velocidad %0.1f · detección %0.2f" % [modo(creature.mode), creature.grace, creature.speed, creature.detection])
-		lines.append("  ala %d · %0.0f, %0.0f · sin ver %0.1f s" % [wing_of(creature.global_position), creature.global_position.x, creature.global_position.z, creature.lost_time])
-		lines.append("  destino a %0.1f m · camino %d puntos · repath %0.2f · %d puertas en la ruta" % [creature.global_position.distance_to(creature.destination), creature.path.size(), creature.repath, creature.crossings.size()])
+		lines.append("  %s, vista %0.0f m, oído ×%0.2f, aviso %0.1f s, caza %0.1f m/s, sin ver %0.1f s, se rinde %0.0f–%0.0f s" % [level.DIFFICULTY.title(level.difficulty).to_upper(), creature.sight_range * creature.reach_scale, creature.hearing * creature.reach_scale, creature.alert_time, creature.chase_speed, creature.lose_after, creature.give_up, creature.give_up_hard])
+		lines.append("  %s, gracia %0.1f, velocidad %0.1f, detección %0.2f" % [modo(creature.mode), creature.grace, creature.speed, creature.detection])
+		lines.append("  ala %d, %0.0f, %0.0f, sin ver %0.1f s" % [wing_of(creature.global_position), creature.global_position.x, creature.global_position.z, creature.lost_time])
+		lines.append("  destino a %0.1f m, camino %d puntos, repath %0.2f, %d puertas en la ruta" % [creature.global_position.distance_to(creature.destination), creature.path.size(), creature.repath, creature.crossings.size()])
 		# Its protocol for getting unstuck (hotel_locust.escalate): the step it
 		# is on and how many times each has been reached this floor.
 		var counts: Array = creature.stuck_counts
-		lines.append("  atascos · paso %d ahora · %d/%d/%d/%d/%d (pasos 1 a 5)" % [creature.stuck_level, counts[1], counts[2], counts[3], counts[4], counts[5]])
+		lines.append("  atascos, paso %d ahora, %d/%d/%d/%d/%d (pasos 1 a 5)" % [creature.stuck_level, counts[1], counts[2], counts[3], counts[4], counts[5]])
 		var nearest := -1
 		var gap := INF
 		for index in level.hotel.lifts.size():
@@ -576,10 +576,10 @@ func report() -> String:
 				gap = to_car
 				nearest = index
 		if nearest >= 0: lines.append("  ascensor más cerca: %d a %0.1f m%s" % [nearest, gap, " (arriba)" if level.lifts.lift_gone(nearest) else ""])
-		lines.append("  el coche que le toca: %s" % ("ninguno · ya está en el ala en juego" if level.lifts.creature_car(session.stage) < 0 else str(level.lifts.creature_car(session.stage))))
+		lines.append("  el coche que le toca: %s" % ("ninguno, ya está en el ala en juego" if level.lifts.creature_car(session.stage) < 0 else str(level.lifts.creature_car(session.stage))))
 		if is_instance_valid(creature.focus): lines.append("  va a por %s" % creature.focus.name)
 		if creature.leaving: lines.append("  se va: dejó una zona sin encontrar nada")
-		if creature.mode == creature.Mode.SEARCH: lines.append("  busca · %d sitios por mirar · %0.1f s sin pistas" % [creature.search_plan.size(), creature.clue_idle])
+		if creature.mode == creature.Mode.SEARCH: lines.append("  busca, %d sitios por mirar, %0.1f s sin pistas" % [creature.search_plan.size(), creature.clue_idle])
 	lines.append("")
 	if is_instance_valid(level.director) and level.director.has_method("status_lines"):
 		lines.append_array(level.director.status_lines())
@@ -588,36 +588,36 @@ func report() -> String:
 	for index in level.hotel.lifts.size():
 		var away: float = float(level.lifts.lift_away.get(index, 0.0))
 		var gate = level.hotel.gates[index] if level.hotel.gates.size() > index else null
-		lines.append("  %d · %s · puerta %s%s" % [index, ("arriba %0.1f s" % away) if away > 0.0 else "abajo", "con llave" if is_instance_valid(gate) and gate.locked else "abierta", " · llamado" if level.lifts.called.has(index) else ""])
+		lines.append("  %d, %s, puerta %s%s" % [index, ("arriba %0.1f s" % away) if away > 0.0 else "abajo", "con llave" if is_instance_valid(gate) and gate.locked else "abierta", ", llamado" if level.lifts.called.has(index) else ""])
 		# The creature's own wait for it: after the survivors, and at its doors.
 		var hold: float = float(level.lifts.creature_hold.get(index, 0.0))
 		var waited: float = float(level.lifts.lobby_time.get(index, 0.0))
-		if hold > 0.0 or waited > 0.0: lines.append("    criatura: %s · en el vestíbulo %0.1f / %0.0f s" % [("no antes de %0.1f s" % hold) if hold > 0.0 else "ya puede", waited, level.lifts.wait_lobby])
-	if level.lifts.leaving >= 0.0: lines.append("  último coche saliendo · %0.1f s" % level.lifts.leaving)
-	if not level.execution.is_empty(): lines.append("\nEJECUCIÓN en curso · asiento %d · %0.1f s" % [int(level.execution.seat), float(level.execution.time)])
+		if hold > 0.0 or waited > 0.0: lines.append("    criatura: %s, en el vestíbulo %0.1f / %0.0f s" % [("no antes de %0.1f s" % hold) if hold > 0.0 else "ya puede", waited, level.lifts.wait_lobby])
+	if level.lifts.leaving >= 0.0: lines.append("  último coche saliendo, %0.1f s" % level.lifts.leaving)
+	if not level.execution.is_empty(): lines.append("\nEJECUCIÓN en curso, asiento %d, %0.1f s" % [int(level.execution.seat), float(level.execution.time)])
 	return "\n".join(lines)
 
 ## The other side: what the machine is doing, and what just happened.
 func readings() -> String:
 	var lines: PackedStringArray = []
 	lines.append("MÁQUINA")
-	lines.append("  %d FPS · proceso %0.1f ms · física %0.1f ms" % [Performance.get_monitor(Performance.TIME_FPS), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
-	lines.append("  %d objetos · %d llamadas de dibujo · %d nodos" % [Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
-	lines.append("  memoria %0.0f MB · vídeo %0.0f MB" % [Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
+	lines.append("  %d FPS, proceso %0.1f ms, física %0.1f ms" % [Performance.get_monitor(Performance.TIME_FPS), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
+	lines.append("  %d objetos, %d llamadas de dibujo, %d nodos" % [Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
+	lines.append("  memoria %0.0f MB, vídeo %0.0f MB" % [Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
 	var viewport := get_viewport()
-	lines.append("  render %0.0f%% · %s" % [viewport.scaling_3d_scale * 100.0, RenderingServer.get_current_rendering_method()])
+	lines.append("  render %0.0f%%, %s" % [viewport.scaling_3d_scale * 100.0, RenderingServer.get_current_rendering_method()])
 	lines.append("")
 	lines.append("RED")
 	if level.net.active():
 		var peer = level.net.peer
 		var round_trip := 0.0
 		if peer is ENetMultiplayerPeer and peer.get_peer(1) != null: round_trip = float(peer.get_peer(1).get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))
-		lines.append("  observando · ida y vuelta %0.0f ms · %d jugadores" % [round_trip, level.net.players.size()])
-	else: lines.append("  sin conexión · piso local")
+		lines.append("  observando, ida y vuelta %0.0f ms, %d jugadores" % [round_trip, level.net.players.size()])
+	else: lines.append("  sin conexión, piso local")
 	lines.append("")
 	if is_instance_valid(level.world_audio):
 		lines.append("SONIDO")
-		lines.append("  %d voces · agachado %0.1f dB · música %0.2f · tensión %0.2f" % [level.world_audio.voices.size(), level.world_audio.duck_db(), level.music_power, level.world_audio.mood.tension])
+		lines.append("  %d voces, agachado %0.1f dB, música %0.2f, tensión %0.2f" % [level.world_audio.voices.size(), level.world_audio.duck_db(), level.music_power, level.world_audio.mood.tension])
 		lines.append("")
 	lines.append("LO QUE HA PASADO")
 	for index in range(maxi(0, events.size() - LOG_KEPT), events.size()): lines.append("  " + events[index])

@@ -1,5 +1,5 @@
-THE FOUR — TEXTOS VISIBLES DEL JUEGO
-=====================================
+THE FOUR: TEXTOS VISIBLES DEL JUEGO
+===================================
 
 Cómo usar este archivo
 ----------------------
@@ -12,6 +12,9 @@ Cómo usar este archivo
   Mantenlos donde quieras que aparezca ese valor.
 - Los botones de los menús se escriben en el código en minúsculas y el juego los
   muestra en MAYÚSCULAS; aquí aparecen como se ven en pantalla.
+- Aquí « · » separa textos distintos de una misma pantalla y « / », variantes de un
+  mismo texto. El juego no usa nunca punto medio ni guion largo (decisión del autor,
+  20 de octubre de 2026).
 - "OBS:" es una observación mía sobre textos que pueden sonar artificiales o
   redundantes. Ignórala si no estás de acuerdo.
 
@@ -261,8 +264,8 @@ CORRECCIÓN:
 
 [FIN.07] Bajo el título, en una línea (%d = número de la cinta, la semilla del piso; después
 el piso, con quién se jugó, cuántos eran si eran más de uno y la fecha)
-ACTUAL: CINTA Nº %d  ·  PISO 1 · EL HOTEL  ·  EN SOLITARIO / EN EQUIPO / CONTRA EL CAZADOR  ·  %d SUPERVIVIENTES  ·
-| APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA (no contra el cazador)  ·  fecha
+ACTUAL: CINTA Nº %d   PISO 1: EL HOTEL   EN SOLITARIO / EN EQUIPO / CONTRA EL CAZADOR   %d SUPERVIVIENTES
+|    APACIBLE / EQUILIBRADA / DESAFIANTE / PESADILLA (no contra el cazador)   fecha
 | (En la señal perdida, solo: CINTA Nº %d)
 CORRECCIÓN:
 
@@ -318,20 +321,20 @@ CORRECCIÓN:
 
 [FIN.23] Los papeles, uno por jugador y ninguno repetido, con su motivo (a solas no salen
 los tres primeros: el papel sale de cómo se jugó, no de los encargos)
-ACTUAL: CERRAJERO — marcó el código de la última puerta
-| ELECTRICISTA — encendió %d televisores
-| SABUESO — encontró %d números del código
-| ESCAPISTA — se le escapó %d veces a la criatura
-| CEBO — %s con la criatura detrás
-| EL DEL ARMARIO — %s dentro de un armario
-| MANOS LARGAS — registró %d muebles
-| EXPLORADOR — pisó %d salas
-| MARATONISTA — anduvo %d metros
-| AL BORDE — se quedó sin cordura / se quedó sin cordura %d veces
-| CARNE DE CAÑÓN — cayó %d veces
-| FANTASMA — la criatura no llegó a perseguirle
-| SUPERVIVIENTE — salió del piso
-| SE QUEDÓ ATRÁS — no salió del piso
+ACTUAL: CERRAJERO: marcó el código de la última puerta
+| ELECTRICISTA: encendió %d televisores
+| SABUESO: encontró %d números del código
+| ESCAPISTA: se le escapó %d veces a la criatura
+| CEBO: %s con la criatura detrás
+| EL DEL ARMARIO: %s dentro de un armario
+| MANOS LARGAS: registró %d muebles
+| EXPLORADOR: pisó %d salas
+| MARATONISTA: anduvo %d metros
+| AL BORDE: se quedó sin cordura / se quedó sin cordura %d veces
+| CARNE DE CAÑÓN: cayó %d veces
+| FANTASMA: la criatura no llegó a perseguirle
+| SUPERVIVIENTE: salió del piso
+| SE QUEDÓ ATRÁS: no salió del piso
 CORRECCIÓN:
 
 -- Pestaña EQUIPO --
@@ -352,7 +355,7 @@ OBS: en solitario los dos detectives salen como "Detective", mientras que en Per
 se llaman "Detective Masculino" y "Detective Femenino" (PJ.04, PJ.05).
 
 [FIN.24] Fila del cazador, en una partida con un jugador como The Locust
-ACTUAL: THE LOCUST · %d captura / capturas
+ACTUAL: THE LOCUST, %d captura / capturas
 CORRECCIÓN:
 
 [FIN.26] Lo que se gana por la cinta entera
@@ -401,7 +404,7 @@ CORRECCIÓN:
 
 [FIN.32] Los logros que esta cinta alcanza por primera vez, en sellos (ver HITO.01), y el resto
 ACTUAL: LOGROS NUEVOS / Esta cinta no trae ningún logro nuevo.
-| PISO 1 · EL HOTEL:  %d DE %d LOGROS
+| PISO 1: EL HOTEL:  %d DE %d LOGROS
 | QUEDAN POR HACER
 | TODOS, EN LOGROS.
 CORRECCIÓN:
@@ -542,28 +545,28 @@ ACTUAL: LOGROS · %d / %d · %d %% · COMPARAR CON · TÚ · VOLVER
 CORRECCIÓN:
 
 [HITO.01] Los logros del hotel: título y qué hay que hacer (con su ícono, y su fecha cuando se alcanzan)
-ACTUAL: PRIMERA CINTA — Salir del hotel.
-| A SOLAS — Salir del hotel sin nadie más.
-| SIN BAJAS — Salir en equipo sin que caiga nadie.
-| SIN ESCONDERSE — Salir sin que nadie se meta en un armario.
-| CINTA CORTA — Salir en menos de 30 minutos.
-| CINTA DE VEINTE — Salir en menos de 20 minutos.
-| EQUIPO ENTERO — Salir tres o más, y todos.
-| LOS CUATRO — Salir cuatro o más, y todos.
-| SEGUNDA TOMA — Salir de un piso que se derrumbó una vez.
-| MANITAS — Encender tú cuatro televisores en un piso.
-| LOS CUATRO NÚMEROS — Encontrar tú los cuatro números del código.
-| POR LOS PELOS — Escapar tres veces de la criatura y salir.
-| NI TE VIO — Salir sin que la criatura te persiga ni una vez.
-| MÁS VALIOSO — Ser quien más aportó en un equipo que sale.
-| CINTA DE PRIMERA — Salir con nota A o mejor.
-| CINTA MAESTRA — Salir con nota S.
-| A SALVO DEL CAZADOR — Salir con un jugador haciendo de The Locust.
-| CAZA COMPLETA — Como The Locust, no dejar salir a nadie.
+ACTUAL: PRIMERA CINTA: Salir del hotel.
+| A SOLAS: Salir del hotel sin nadie más.
+| SIN BAJAS: Salir en equipo sin que caiga nadie.
+| SIN ESCONDERSE: Salir sin que nadie se meta en un armario.
+| CINTA CORTA: Salir en menos de 30 minutos.
+| CINTA DE VEINTE: Salir en menos de 20 minutos.
+| EQUIPO ENTERO: Salir tres o más, y todos.
+| LOS CUATRO: Salir cuatro o más, y todos.
+| SEGUNDA TOMA: Salir de un piso que se derrumbó una vez.
+| MANITAS: Encender tú cuatro televisores en un piso.
+| LOS CUATRO NÚMEROS: Encontrar tú los cuatro números del código.
+| POR LOS PELOS: Escapar tres veces de la criatura y salir.
+| NI TE VIO: Salir sin que la criatura te persiga ni una vez.
+| MÁS VALIOSO: Ser quien más aportó en un equipo que sale.
+| CINTA DE PRIMERA: Salir con nota A o mejor.
+| CINTA MAESTRA: Salir con nota S.
+| A SALVO DEL CAZADOR: Salir con un jugador haciendo de The Locust.
+| CAZA COMPLETA: Como The Locust, no dejar salir a nadie.
 CORRECCIÓN:
 
 [HITO.02] Encabezado de cada piso y los que aún no existen
-ACTUAL: PISO 1 · EL HOTEL  %d / %d · PISO %d  ·  SIN GRABAR
+ACTUAL: PISO 1: EL HOTEL  %d / %d · PISO %d   SIN GRABAR
 CORRECCIÓN:
 
 -- Pestaña COMPARAR --
@@ -596,7 +599,7 @@ ACTUAL: ▶ PLAY
 CORRECCIÓN:
 
 [CRED.02] Pie de página (%s = versión, hoy v0.5)
-ACTUAL: %s  ·  PROYECTO FAN NO OFICIAL
+ACTUAL: %s   PROYECTO FAN NO OFICIAL
 CORRECCIÓN:
 
 [CRED.03] Título
@@ -617,9 +620,9 @@ ACTUAL: MOTOR
 CORRECCIÓN:
 
 [CRED.23] Texto
-ACTUAL: Godot Engine 4.7 — © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.
-| GodotSteam 4.22.1 — © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores. Licencia MIT.
-| Steamworks SDK — © Valve Corporation. Steam y el logotipo de Steam son marcas de Valve Corporation.
+ACTUAL: Godot Engine 4.7. © 2014-2026 Juan Linietsky, Ariel Manzur y colaboradores. Licencia MIT.
+| GodotSteam 4.22.1. © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores. Licencia MIT.
+| Steamworks SDK. © Valve Corporation. Steam y el logotipo de Steam son marcas de Valve Corporation.
 CORRECCIÓN:
 
 [CRED.24] Encabezado
@@ -627,10 +630,10 @@ ACTUAL: PERSONAJES
 CORRECCIÓN:
 
 [CRED.25] Texto
-ACTUAL: The Locust — modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).
-| «detective» — haider706 (Sketchfab, CC BY 4.0).
-| «Debra — Detective Woman (Game Model)» — Zukomazi (Sketchfab, CC BY 4.0).
-| «Realistic Female» — Biviyt (Sketchfab, CC BY-SA 4.0).
+ACTUAL: The Locust: modelo de Doumty, personaje de Doctor Nowhere (Sketchfab, CC BY-NC-ND).
+| «detective», de haider706 (Sketchfab, CC BY 4.0).
+| «Debra - Detective Woman (Game Model)», de Zukomazi (Sketchfab, CC BY 4.0).
+| «Realistic Female», de Biviyt (Sketchfab, CC BY-SA 4.0).
 CORRECCIÓN:
 
 [CRED.26] Encabezado
@@ -638,33 +641,33 @@ ACTUAL: MOBILIARIO Y OBJETOS
 CORRECCIÓN:
 
 [CRED.27] Texto
-ACTUAL: «Sofa (Game Ready / 2K PBR)» — Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).
-| «Monstera Deliciosa Potted Mid-Century plant» — Giora / ChubbyPanda (Sketchfab, CC BY).
-| «Wall Lamp — 2048px²» — Mark Peters (Sketchfab, CC BY).
-| «Elevator with Animation LOWPOLY» — EFX (Sketchfab, CC BY): el ascensor.
-| «Panasonic VHS-C MOVIE CAMERA NV-A3» — Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.
-| «VHS» — Terizmeh (Sketchfab, CC BY 4.0): la cinta.
+ACTUAL: «Sofa (Game Ready / 2K PBR)», de Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).
+| «Monstera Deliciosa Potted Mid-Century plant», de Giora / ChubbyPanda (Sketchfab, CC BY).
+| «Wall Lamp - 2048px²», de Mark Peters (Sketchfab, CC BY).
+| «Elevator with Animation LOWPOLY», de EFX (Sketchfab, CC BY): el ascensor.
+| «Panasonic VHS-C MOVIE CAMERA NV-A3», de Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.
+| «VHS», de Terizmeh (Sketchfab, CC BY 4.0): la cinta.
 | Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.
 CORRECCIÓN:
 
 [CRED.32] Encabezado
-ACTUAL: SONIDO — FREESOUND
+ACTUAL: SONIDO DE FREESOUND
 CORRECCIÓN:
 
 [CRED.33] Texto
-ACTUAL: «Bed sheets (SoundAction 104)» — alexarje (CC BY 4.0).
-| «men_sneaker_shoes_walking_sound_09262024» — Artninja (CC BY 4.0).
-| «Open letter and reading» — dersuperanton (CC BY 4.0).
-| «horror ambience 161101_1038» — klankbeeld (CC BY 4.0).
-| «Door Opening» — AUDACITIER (CC BY 4.0).
-| «Atmosphere 2» — oldaccount (CC BY 3.0).
-| «Jumpscare sound» — EnclosureX_Studios (CC BY 4.0).
-| «toaster oven or lift/elevator bell» — azumarill (CC BY 3.0).
-| «custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025» — Artninja (CC BY 4.0).
+ACTUAL: «Bed sheets (SoundAction 104)», de alexarje (CC BY 4.0).
+| «men_sneaker_shoes_walking_sound_09262024», de Artninja (CC BY 4.0).
+| «Open letter and reading», de dersuperanton (CC BY 4.0).
+| «horror ambience 161101_1038», de klankbeeld (CC BY 4.0).
+| «Door Opening», de AUDACITIER (CC BY 4.0).
+| «Atmosphere 2», de oldaccount (CC BY 3.0).
+| «Jumpscare sound», de EnclosureX_Studios (CC BY 4.0).
+| «toaster oven or lift/elevator bell», de azumarill (CC BY 3.0).
+| «custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025», de Artninja (CC BY 4.0).
 CORRECCIÓN:
 
 [CRED.34] Encabezado
-ACTUAL: SONIDO — EL RESTO
+ACTUAL: EL RESTO DEL SONIDO
 CORRECCIÓN:
 
 [CRED.35] Texto
@@ -724,7 +727,7 @@ CORRECCIÓN:
 -- Steam --
 
 [MP.19] Pantalla Steam: esquina, título, subtítulo y opciones
-ACTUAL: MULTIJUGADOR ▸ STEAM · STEAM · CON TUS AMIGOS DE STEAM · SIN ABRIR PUERTOS · CREAR SALA · UNIRSE A UNA SALA · VOLVER
+ACTUAL: MULTIJUGADOR ▸ STEAM · STEAM · CON TUS AMIGOS DE STEAM, SIN ABRIR PUERTOS · CREAR SALA · UNIRSE A UNA SALA · VOLVER
 CORRECCIÓN:
 
 [MP.22] Unirse por Steam: esquina, pie ("STEAM"), título, subtítulo, lista de salas
@@ -849,7 +852,7 @@ CORRECCIÓN:
 
 [REGLA.06] En el parte de una cinta jugada con otras reglas (pestañas RESUMEN, CRONOLOGÍA,
 SECTORES y LOGROS)
-ACTUAL: CON OTRAS REGLAS · SIN LOGROS, Y EN SU PROPIO TABLÓN
+ACTUAL: CON OTRAS REGLAS: SIN LOGROS, Y EN SU PROPIO TABLÓN
 | Con otras reglas que las del juego no se alcanzan logros.
 CORRECCIÓN:
 
@@ -880,7 +883,7 @@ CORRECCIÓN:
 [MP.12] Pantalla de carga y mensaje del que ha muerto (%s = nombre del compañero;
 con mando, CLIC se cambia por el nombre del botón)
 ACTUAL: Esperando a los demás jugadores… / Volviendo a la partida… /
-| HAS MUERTO / HAS MUERTO · OBSERVANDO A %s · CLIC PARA CAMBIAR
+| HAS MUERTO / HAS MUERTO, OBSERVANDO A %s, CLIC PARA CAMBIAR
 CORRECCIÓN:
 
 [MP.13] Menú en partida (no pausa)
@@ -918,7 +921,7 @@ ACTUAL: Exploradora
 CORRECCIÓN:
 
 [PJ.07] Bajo la vista previa (%s = nombre en mayúsculas)
-ACTUAL: SELECCIONADO · %s
+ACTUAL: SELECCIONADO: %s
 CORRECCIÓN:
 
 [PJ.08] Opción
@@ -1122,7 +1125,7 @@ ACTUAL: Adelante / Atrás / Izquierda / Derecha / Correr / Saltar / Interactuar 
 CORRECCIÓN:
 
 [AJ.34] Botón mientras espera una tecla
-ACTUAL: PULSA UNA TECLA · ESC CANCELA
+ACTUAL: PULSA UNA TECLA, ESC CANCELA
 CORRECCIÓN:
 
 [AJ.35] Botón si la tecla no se puede usar
@@ -1196,11 +1199,11 @@ CORRECCIÓN:
 
 [HUD.04b] Objetivo del sector, arriba a la izquierda al volver la imagen (6 s), y en
 la pausa bajo el título
-ACTUAL: OBJETIVO · SECTOR 1 · Encuentra la salida del sector. /
-| OBJETIVO · SECTOR 2 · Enciende los televisores y busca la salida. /
-| OBJETIVO · SECTOR 3 · Busca las notas con el código, enciende televisores y sal del piso.
+ACTUAL: OBJETIVO, SECTOR 1 · Encuentra la salida del sector. /
+| OBJETIVO, SECTOR 2 · Enciende los televisores y busca la salida. /
+| OBJETIVO, SECTOR 3 · Busca las notas con el código, enciende televisores y sal del piso.
 | (Solo el primer piso que se juega en el equipo, en lugar del de SECTOR 1:)
-| OBJETIVO · SECTOR 1 · The Locust va a por ti… · Busca refugio, escóndete y encuentra la salida.
+| OBJETIVO, SECTOR 1 · The Locust va a por ti… · Busca refugio, escóndete y encuentra la salida.
 CORRECCIÓN:
 
 [HUD.08] Progreso del sector, en la pausa bajo el objetivo (televisores desde el
@@ -1216,7 +1219,7 @@ CORRECCIÓN:
 [REFUGIO.02] Teclado de la última puerta. «FALTAN TELEVISORES» sale cuando el código
 es el correcto pero quedan teles por encender; «ANOTADO» es lo que se lleva apuntado,
 bajo las cuatro casillas.
-ACTUAL: TECLEA EL CÓDIGO · [ESC] SALIR / NO ES / ABIERTA / FALTAN TELEVISORES /
+ACTUAL: TECLEA EL CÓDIGO   [ESC] SALIR / NO ES / ABIERTA / FALTAN TELEVISORES /
 | ANOTADO  4–7––
 CORRECCIÓN:
 
@@ -1297,7 +1300,7 @@ ACTUAL: PLANTA %d
 CORRECCIÓN:
 
 [MP.16] Bajo la hoja, solo cuando no se puede escribir en ella (muerto)
-ACTUAL: SOLO PUEDES MIRAR · [TECLA] CIERRA
+ACTUAL: SOLO PUEDES MIRAR, [TECLA] CIERRA
 CORRECCIÓN:
 
 
@@ -1415,7 +1418,7 @@ CORRECCIÓN:
 ---------
 
 [OTRO.01] Título de la ventana del juego
-ACTUAL: THE FOUR — Hotel
+ACTUAL: THE FOUR: Hotel
 CORRECCIÓN:
 
 [OTRO.02] Nombres de salas (en mayúsculas, bajo el número de una nota del código hallada
@@ -1427,57 +1430,57 @@ CORRECCIÓN:
 19. DOCUMENTOS DEL HOTEL (se leen con E sobre mesas y escritorios; se guardan en Archivo)
 --------------------------------------------------------------------------------------
 
-[DOC.01] locust_reception — título
+[DOC.01] locust_reception: título
 ACTUAL: Nota para el turno de noche
 CORRECCIÓN:
 
-[DOC.01b] locust_reception — encabezado bajo el título
+[DOC.01b] locust_reception: encabezado bajo el título
 ACTUAL: Recepción · papel con membrete del hotel
 CORRECCIÓN:
 
-[DOC.01c] locust_reception — texto
+[DOC.01c] locust_reception: texto
 ACTUAL: Tres quejas más de la planta primera. Dicen que la tele se enciende sola pasadas las tres y que en la pantalla sale alguien mirando desde muy cerca. El 107 pidió cambiar de habitación. El 112 no contestó al teléfono.
 |
 | Ya desenchufé dos aparatos y volvieron a encenderse. No subas solo. Si oyes golpes en una puerta, no abras para ver quién es.
 CORRECCIÓN:
 
-[DOC.02] locust_maintenance — título
+[DOC.02] locust_maintenance: título
 ACTUAL: Parte de mantenimiento
 CORRECCIÓN:
 
-[DOC.02b] locust_maintenance — encabezado bajo el título
+[DOC.02b] locust_maintenance: encabezado bajo el título
 ACTUAL: Hoja de avería · sin firmar
 CORRECCIÓN:
 
-[DOC.02c] locust_maintenance — texto
+[DOC.02c] locust_maintenance: texto
 ACTUAL: Habitación 107: pantalla del televisor rota. Los cristales están fuera, sobre la moqueta, no dentro del tubo. Lo rompieron desde dentro.
 |
 | Marcas en el marco de la puerta, a más de dos metros y medio de altura, como de algo que se agacha para pasar. Arañazos en el interior de dos armarios del pasillo. Pido que alguien más venga a verlo antes de cambiar nada.
 CORRECCIÓN:
 
-[DOC.03] locust_letter — título
+[DOC.03] locust_letter: título
 ACTUAL: Carta sin enviar
 CORRECCIÓN:
 
-[DOC.03b] locust_letter — encabezado bajo el título
+[DOC.03b] locust_letter: encabezado bajo el título
 ACTUAL: Papel doblado en cuatro
 CORRECCIÓN:
 
-[DOC.03c] locust_letter — texto
+[DOC.03c] locust_letter: texto
 ACTUAL: Si alguien encuentra esto: me he pasado la noche dentro de un armario. Lo que anda por los pasillos ve muy lejos, mucho más lejos que tú. No le apuntes con la linterna, la luz lo trae.
 |
 | Cuando se para en seco y chilla, ya sabe dónde estás. Ese segundo es lo único que tienes: sal de su vista. Y no abras las puertas del armario para mirar si lo tienes delante.
 CORRECCIÓN:
 
-[DOC.04] locust_guard — título
+[DOC.04] locust_guard: título
 ACTUAL: Registro del vigilante
 CORRECCIÓN:
 
-[DOC.04b] locust_guard — encabezado bajo el título
+[DOC.04b] locust_guard: encabezado bajo el título
 ACTUAL: Libreta de rondas · última página
 CORRECCIÓN:
 
-[DOC.04c] locust_guard — texto
+[DOC.04c] locust_guard: texto
 ACTUAL: 02:40 Pasos en la planta de arriba. No son de persona, suenan como puntas contra el suelo.
 | 02:55 Se oye por las puertas abiertas y por los pasillos. A través de las paredes, nada. Cierro detrás de mí.
 | 03:10 En la sala de la salida no entra. Me quedo aquí hasta que se haga de día.
@@ -1496,7 +1499,7 @@ ACTUAL: DOCUMENTOS  %d / %d
 CORRECCIÓN:
 
 [ARCH.03] Las dieciséis, numeradas ("%02d   " delante), y la que falta
-ACTUAL: — SIN DESCUBRIR —
+ACTUAL: SIN DESCUBRIR
 CORRECCIÓN:
 
 [ARCH.04] Archivo vacío
@@ -1506,7 +1509,7 @@ ACTUAL: (ya no sale desde el 19 de octubre de 2026)
 pie y botón
 ACTUAL: ARCHIVO DEL HOTEL · DOCUMENTO N.º %02d / %d · RESERVADO ·
 | DOCUMENTO: · PROCEDENCIA: · RELACIONADO CON: · TRANSCRIPCIÓN: ·
-| — FIN DEL DOCUMENTO — · CERRAR
+| FIN DEL DOCUMENTO · CERRAR
 CORRECCIÓN:
 
 [ARCH.05] Opción

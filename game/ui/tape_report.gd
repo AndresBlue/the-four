@@ -46,11 +46,11 @@ static func sheet(ui, tabs: TabContainer, title: String) -> VBoxContainer:
 static func heading(line: Dictionary, lost := false) -> String:
 	if lost: return "CINTA Nº %d" % int(line.get("seed", 0))
 	var players := int(line.get("players", 1))
-	var words := "CINTA Nº %d  ·  %s  ·  %s" % [int(line.get("seed", 0)), FLOORS.title(int(line.get("floor", 1))), String(RECORDS.COMPANY_NAMES.get(String(line.get("company", RECORDS.SOLO)), ""))]
-	if players > 1: words += "  ·  %d SUPERVIVIENTES" % players
-	if String(line.get("company", "")) != RECORDS.VERSUS: words += "  ·  " + DIFFICULTY.title(line.get("difficulty")).to_upper()
+	var words := "CINTA Nº %d   %s   %s" % [int(line.get("seed", 0)), FLOORS.title(int(line.get("floor", 1))), String(RECORDS.COMPANY_NAMES.get(String(line.get("company", RECORDS.SOLO)), ""))]
+	if players > 1: words += "   %d SUPERVIVIENTES" % players
+	if String(line.get("company", "")) != RECORDS.VERSUS: words += "   " + DIFFICULTY.title(line.get("difficulty")).to_upper()
 	var date := String(line.get("date", "")).left(10)
-	return words + ("  ·  " + date if not date.is_empty() else "")
+	return words + ("   " + date if not date.is_empty() else "")
 
 static func name_of(line: Dictionary, seat: int) -> String:
 	var member := SCORE.member_of(line, seat)
@@ -129,7 +129,7 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 	var taken: Array = []
 	for table in RECORDS.TABLES:
 		if places.has(table.id) and int(places[table.id]) <= RECORDS.KEPT: taken.append("Nº %d EN %s" % [int(places[table.id]), table.title])
-	if not taken.is_empty(): ui.paragraph(left, "  ·  ".join(taken), 17, 600, STYLE.INK)
+	if not taken.is_empty(): ui.paragraph(left, ", ".join(taken), 17, 600, STYLE.INK)
 	# What it earned, stamped on one at a time.
 	var marks: Array = RECORDS.badges(line)
 	if not marks.is_empty():
@@ -140,8 +140,8 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 			delay += 0.35
 	var differs: Array = RULES.described(line.get("rules", {}))
 	if not differs.is_empty():
-		ui.label(left, "CON OTRAS REGLAS · SIN LOGROS, Y EN SU PROPIO TABLÓN", 14).add_theme_color_override("font_color", STYLE.AMBER)
-		ui.paragraph(left, "  ·  ".join(differs), 15, 600, STYLE.INK)
+		ui.label(left, "CON OTRAS REGLAS: SIN LOGROS, Y EN SU PROPIO TABLÓN", 14).add_theme_color_override("font_color", STYLE.AMBER)
+		ui.paragraph(left, ", ".join(differs), 15, 600, STYLE.INK)
 	if not won: ui.paragraph(left, "Cinta perdida.", 16, 600)
 	spotlight(ui, split, line, not outcome.is_empty())
 
@@ -178,7 +178,7 @@ static func spotlight(ui, parent: Node, line: Dictionary, fresh: bool) -> void:
 	for pair in [["tvs", "tele", "teles"], ["digits", "número", "números"], ["escapes", "huida", "huidas"], ["deaths", "caída", "caídas"]]:
 		var many := int(star.get(pair[0], 0))
 		if many > 0: deeds.append("%d %s" % [many, pair[1] if many == 1 else pair[2]])
-	if not deeds.is_empty(): ui.paragraph(card, " · ".join(deeds), 15, 300)
+	if not deeds.is_empty(): ui.paragraph(card, ", ".join(deeds), 15, 300)
 
 # --- EQUIPO -----------------------------------------------------------------------
 
@@ -208,10 +208,10 @@ static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
 			var key := String(column[2])
 			match key:
 				"name": STYLE.cell(row, String(member.get("name", "")).to_upper(), column[1], 18, ink)
-				"title": STYLE.cell(row, String(member.get("title", "—")), column[1], 16, STYLE.AMBER if best else STYLE.SOFT)
+				"title": STYLE.cell(row, String(member.get("title", "-")), column[1], 16, STYLE.AMBER if best else STYLE.SOFT)
 				"escaped": STYLE.cell(row, ("SALIÓ" if out else "SE QUEDÓ") if won else "", column[1], 16, STYLE.SOFT if out else STYLE.ALERT)
-				"score": STYLE.cell(row, STYLE.grouped(int(member.score)) if member.has("score") else "—", column[1], 18, ink, HORIZONTAL_ALIGNMENT_RIGHT)
-				_: STYLE.cell(row, str(int(member[key])) if member.has(key) else "—", column[1], 17, STYLE.ALERT if key == "deaths" and int(member.get(key, 0)) > 0 else STYLE.INK, HORIZONTAL_ALIGNMENT_RIGHT)
+				"score": STYLE.cell(row, STYLE.grouped(int(member.score)) if member.has("score") else "-", column[1], 18, ink, HORIZONTAL_ALIGNMENT_RIGHT)
+				_: STYLE.cell(row, str(int(member[key])) if member.has(key) else "-", column[1], 17, STYLE.ALERT if key == "deaths" and int(member.get(key, 0)) > 0 else STYLE.INK, HORIZONTAL_ALIGNMENT_RIGHT)
 		# Under the name: how much of the best one's points this one made, and why
 		# the part is theirs.
 		var under := row_in(page)
@@ -224,13 +224,13 @@ static func team(ui, page: VBoxContainer, line: Dictionary) -> void:
 		var row := row_in(page)
 		STYLE.cell(row, "", MARK, 17)
 		STYLE.cell(row, String(hunter.get("name", "")).to_upper(), 196, 18, STYLE.ALERT)
-		STYLE.cell(row, "THE LOCUST · %d captura%s" % [int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"], 420, 16, STYLE.ALERT)
+		STYLE.cell(row, "THE LOCUST, %d captura%s" % [int(line.get("deaths", 0)), "" if int(line.get("deaths", 0)) == 1 else "s"], 420, 16, STYLE.ALERT)
 		ui.spacer(page, 3)
 	var earned: Array = SCORE.bonuses(line)
 	if not earned.is_empty():
 		ui.spacer(page, 4)
 		ui.label(page, "LO QUE GANÓ EL EQUIPO JUNTO" if members.size() > 1 else "Y POR LA CINTA ENTERA", 14).add_theme_color_override("font_color", STYLE.AMBER)
-		ui.paragraph(page, "   ·   ".join(earned.map(func(item): return "%s %s" % [item[0], signed(int(item[1]))])), 15, 960, STYLE.INK)
+		ui.paragraph(page, ", ".join(earned.map(func(item): return "%s %s" % [item[0], signed(int(item[1]))])), 15, 960, STYLE.INK)
 
 static func signed(value: int) -> String:
 	return ("+" if value >= 0 else "−") + STYLE.grouped(absi(value))
@@ -292,7 +292,7 @@ static func sector_facts(line: Dictionary, stage: int) -> String:
 	if counts.has("escape"): parts.append(plural.call(int(counts.escape), "huida", "huidas"))
 	if counts.has("death"): parts.append(plural.call(int(counts.death), "caída", "caídas"))
 	if counts.has("collapse"): parts.append("el sector se derrumbó y volvió a empezar")
-	return "  ·  ".join(parts)
+	return ", ".join(parts)
 
 # --- CRONOLOGÍA -------------------------------------------------------------------
 

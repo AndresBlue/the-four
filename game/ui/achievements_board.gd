@@ -46,7 +46,7 @@ static func build(ui, parent: Node, view: Dictionary) -> void:
 			var spacer := Control.new()
 			spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			head.add_child(spacer)
-			var names: Array = ["—"] + friends.map(func(friend): return String(friend.name))
+			var names: Array = ["Nadie"] + friends.map(func(friend): return String(friend.name))
 			var ids: Array = [0] + friends.map(func(friend): return int(friend.id))
 			ui.label(head, "COMPARAR CON", 16).add_theme_color_override("font_color", STYLE.SOFT)
 			var control := OptionButton.new()

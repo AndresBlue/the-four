@@ -89,7 +89,7 @@ func start() -> void:
 		return
 	started = true
 	start_problem = ""
-	print("Steam: ready · AppID %d · SteamID %d · %s · overlay %s" % [api.getAppID(), api.getSteamID(), api.getPersonaName(), "on" if api.isOverlayEnabled() else "off"])
+	print("Steam: ready, AppID %d, SteamID %d, %s, overlay %s" % [api.getAppID(), api.getSteamID(), api.getPersonaName(), "on" if api.isOverlayEnabled() else "off"])
 	if OS.get_cmdline_user_args().has("--steam-diagnose"): print("Steam: %d friend(s) online to invite" % online_friends().size())
 	# The relay network takes a few seconds to come up: start now, not when
 	# someone is waiting to get into a room.
@@ -159,7 +159,7 @@ func _lobby_created(connect: int, lobby_id: int) -> void:
 		print("Steam: create_host failed, error %d" % error)
 		net.steam_failed("No se pudo abrir la sala sobre Steam (error %d)." % error)
 		return
-	print("Steam: lobby %d created · host SteamID %d" % [lobby, api.getSteamID()])
+	print("Steam: lobby %d created, host SteamID %d" % [lobby, api.getSteamID()])
 	net.as_host(peer, "steam", pending.name, pending.character)
 	pending = {}
 
@@ -229,7 +229,7 @@ func _lobby_joined(lobby_id: int, _permissions: int, _locked: bool, response: in
 		print("Steam: create_client to %d failed, error %d" % [owner, error])
 		net.steam_failed("No se pudo conectar con el anfitrión por Steam (error %d)." % error)
 		return
-	print("Steam: in lobby %d · dialling host SteamID %d (%s)" % [lobby, owner, api.getFriendPersonaName(owner)])
+	print("Steam: in lobby %d, dialling host SteamID %d (%s)" % [lobby, owner, api.getFriendPersonaName(owner)])
 	net.as_guest(peer, "steam", pending.name, pending.character, "la sala de %s" % api.getFriendPersonaName(owner))
 	pending = {}
 
@@ -329,7 +329,7 @@ func _lobby_chat_update(lobby_id: int, changed_id: int, _making_change_id: int, 
 func _peer_connected(id: int) -> void:
 	if net.transport != "steam" or net.peer == null: return
 	var steam_id: int = net.peer.get_steam_id_for_peer_id(id)
-	print("Steam: peer %d connected · SteamID %d (%s)" % [id, steam_id, api.getFriendPersonaName(steam_id)])
+	print("Steam: peer %d connected, SteamID %d (%s)" % [id, steam_id, api.getFriendPersonaName(steam_id)])
 
 func _peer_disconnected(id: int) -> void:
 	if net.transport != "steam": return
