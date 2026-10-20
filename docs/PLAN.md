@@ -6,7 +6,7 @@ montado en [la guía de desarrollo](DEVELOPMENT.md), y el registro de cómo se
 llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
-Estado: juego **1.0.0** (18 de octubre de 2026), generador de mapas **v7** (tres plantas enteras), protocolo de red
+Estado: juego **1.0.0** (18 de octubre de 2026), generador de mapas **v8** (tres plantas enteras, del tamaño de los supervivientes), protocolo de red
 **the-four-net-19**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.

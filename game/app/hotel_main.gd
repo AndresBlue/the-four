@@ -713,7 +713,13 @@ func keep_floor() -> bool:
 
 ## Generates, builds and validates a floor. False (back in the menu) when it
 ## could not be made playable. `survivors`: how many play it, which decides
-## how many sets each stage has (the rest of the hotel's are only cabinets).
+## how big the floor is (FLOOR.AREA) and how many sets each stage has (the
+## rest of the hotel's are only cabinets).
+## The survivors a floor is drawn for when it is not the ones playing it: the
+## tests that walk known places of a floor as it is for two or three set it.
+## 0, as in the game, is the ones who play it.
+var drawn_for := 0
+
 func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bool:
 	if session.state == session.State.LOADING: return false
 	session.set_state(session.State.LOADING)
@@ -745,7 +751,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 		remove_child(hotel)
 		hotel.queue_free()
 	if match_net != null: match_net.floor_building()
-	manifest = GENERATOR.new().generate(seed_value)
+	manifest = GENERATOR.new().generate(seed_value, drawn_for if drawn_for > 0 else survivors)
 	if force_fallback:
 		manifest = GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true

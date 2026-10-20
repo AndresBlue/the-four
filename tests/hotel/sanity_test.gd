@@ -40,6 +40,9 @@ func stand(room: Dictionary, seconds: float, torch := false, hidden := false) ->
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The floor as two or three play it (hotel_main.drawn_for): what follows
+	# walks known places of it.
+	level.drawn_for = 2
 	await level.start_floor(81)
 	var player = level.player
 	# The creature would come looking and move the player about.
@@ -162,6 +165,7 @@ func run() -> void:
 	await phantom_sight_checks()
 
 	# --- A new floor ---------------------------------------------------------------
+	level.drawn_for = 2
 	await level.start_floor(81)
 	check("Un piso nuevo empieza con la cabeza entera otra vez", is_equal_approx(level.player.sanity, 100.0) and not level.player.burnt)
 	var file := FileAccess.open("res://evidence/sanity_tests.json", FileAccess.WRITE)

@@ -62,6 +62,9 @@ func along_of(room: Dictionary) -> Vector3:
 func fresh_floor() -> void:
 	Input.action_release("forward")
 	Input.action_release("interact")
+	# The floor as two or three play it (hotel_main.drawn_for): what follows
+	# walks known places of it.
+	level.drawn_for = 2
 	await level.start_floor(SEED, false, [1], "apacible")
 	level.ui.hide_transit()
 	level.lifts.brief_wait = 0.0

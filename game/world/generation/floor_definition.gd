@@ -3,9 +3,39 @@ extends RefCounted
 ## 5 stacked the three wings of before as plantas; 6 makes each planta a
 ## hotel of its own (map_generator.gd); 7 draws what is in it by seed: where
 ## each door stands in its wall and which way it swings, the wardrobes, the
-## dark rooms and how kept each one is. A checkpoint or a record of another
-## version is refused rather than rebuilt as a different floor.
-const VERSION := 7
+## dark rooms and how kept each one is; 8 draws a floor the size of the
+## survivors who play it (AREA). A checkpoint or a record of another version
+## is refused rather than rebuilt as a different floor.
+const VERSION := 8
+## How much hotel each planta is, by the survivors who play the floor (the
+## author, 20 October 2026): alone, half of what two or three walk; four, a
+## fifth more; five, a third more. Counted when the floor starts: nobody joins
+## once it has begun, and whoever drops does not shrink it. In versus the
+## hunter is not counted. What four and five have over the rest is corridor,
+## service and salons more than rooms let to somebody: a planta's numbers are
+## its hundred, and a hundred has room for 99 (NUMBERED_MOST).
+const AREA := {1: 0.5, 4: 1.2, 5: 1.35}
+## Rooms on a planta of the hotel of two or three, as the generator counts
+## them (every room, salon, service room and refuge; a salon once), scaled
+## with the area for the others; and the rooms with a number on the door, at
+## the most, whatever the size.
+const ROOMS := Vector2i(81, 99)
+const NUMBERED_MOST := 96
+
+static func area_for(survivors: int) -> float:
+	return float(AREA.get(clampi(survivors, 1, 5), 1.0))
+
+static func rooms_window(area: float) -> Vector2i:
+	return Vector2i(roundi(float(ROOMS.x) * area), roundi(float(ROOMS.y) * area))
+
+## Rooms with a television on the plantas of the second and third stages
+## (their condition asks for as many sets as there are survivors, plus two),
+## and the rings a planta keeps to walk round: fewer on a planta half the size.
+static func tv_rooms(area: float) -> int:
+	return 6 if area < 1.0 else 8
+
+static func rings(area: float) -> int:
+	return 4 if area < 1.0 else 6
 ## A floor is three plantas, one per stage, stacked and going down: the first
 ## at 0 and each next one PITCH below the one before. Enough for the tallest
 ## ceiling (the 4.8 m halls) and both slabs. What joins them is the lift, and

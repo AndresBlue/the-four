@@ -24,9 +24,6 @@ const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
 ## Plantas, one per stage (the name the rest of the game has always used).
 const WINGS := FLOOR.PLANTAS
-## Rooms with a television on the plantas of the second and third stages:
-## their condition asks for as many sets as there are survivors, plus two.
-const TV_ROOMS := 8
 ## Doors that carry no guest number: reception, circulation, service, the
 ## refuge and whatever is not there. In a hotel only the rooms let to
 ## somebody have a plaque.
@@ -46,12 +43,11 @@ const TV_ROOM := 14
 const REFUGE := 19
 const VOID := FLOOR.VOID
 ## Rooms the three stages have to walk through at the very least: a floor that
-## can be finished in fewer is drawn again.
+## can be finished in fewer is drawn again (half as many on a floor for one).
 const MIN_WALK := 30
-## Rooms on a planta: more than 80 and fewer than 100. Each planta draws its
-## own number in TARGET and is brought to it.
-const ROOMS_LEAST := 81
-const ROOMS_MOST := 99
+## Rooms on a planta of the hotel of two or three: more than 80 and fewer than
+## 100 (FLOOR.ROOMS). Each planta draws its own number in TARGET, scaled with
+## the size of the floor, and is brought to it.
 const TARGET := Vector2i(84, 96)
 ## Module sizes (a room's side) and the width of a corridor lane, in metres.
 const MODULE_SIZES := [12.0, 12.0, 13.0, 13.0, 14.0, 15.0, 16.0]
@@ -92,13 +88,13 @@ const DEPTH := Vector2(0.55, 0.9)
 ## the walk to it should be.
 const FAR_SIDE := 0.3
 const WINDING := 1.5
-## Salons on a planta: two or three rooms thrown into one.
+## Salons on a planta: two or three rooms thrown into one (scaled with the
+## size of the floor).
 const HALLS := Vector2i(2, 6)
-## Rings to walk round on a planta, at the least: a plan that is a tree has
-## one way to everywhere, and the creature on it. It is asked for with room to
-## spare before the refuge is placed, which takes a few away.
-const CYCLES := 6
-const LOOPS := CYCLES + 4
+## Rings to walk round on a planta, at the least (FLOOR.rings()): a plan that
+## is a tree has one way to everywhere, and the creature on it. It is asked
+## for with LOOPS to spare before the refuge is placed, which takes a few away.
+const LOOPS := 4
 ## How much more often rooms open on to each other, by plan: a warren is
 ## rooms giving on to rooms.
 const ROOM_DOORS := {"warren": 1.8, "rot": 1.25}
@@ -146,12 +142,19 @@ const EMPTY_SALON := 18
 ## Why tries came out empty, by reason, for the tools that measure the
 ## generator (tools/dev/map_metrics.gd).
 var stats := {}
+## The size of the floor asked for (FLOOR.area_for()), and of the one being
+## drawn: the standby floor is always the hotel of two or three.
+var area := 1.0
+var drawing := 1.0
 
-func generate(run_seed: int) -> Dictionary:
+## A floor for `survivors` (FLOOR.AREA: one, half the hotel; four and five,
+## more). Two is the hotel as it always was, for the tools that only want one.
+func generate(run_seed: int, survivors := 2) -> Dictionary:
+	area = FLOOR.area_for(survivors)
 	for attempt in ATTEMPTS:
 		var result := candidate(run_seed, attempt)
 		if result.is_empty(): continue
-		if int(result.walk) < MIN_WALK:
+		if int(result.walk) < min_walk():
 			fail("walk")
 			continue
 		var errors := VALIDATOR.new().validate(result)
@@ -171,6 +174,7 @@ func fail(reason: String) -> Dictionary:
 ## One try at a floor, or {} when it did not come out. `standby`: the floor of
 ## last resort, every wall that can be a doorway is one.
 func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
+	drawing = 1.0 if standby else area
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([run_seed, "floor", attempt])
 	var f := {"rooms": [], "adjacency": [], "edges": [], "merged": {}, "plantas": [], "base": 0, "width": 0, "height": 0, "grid": {}, "lines": [], "edge_base": 0}
@@ -240,21 +244,28 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	var merged: Array = f.merged.values()
 	merged.sort_custom(func(a, b): return int(a[0]) < int(b[0]) or (int(a[0]) == int(b[0]) and int(a[1]) < int(b[1])))
 	var grids: Array = f.plantas.map(func(dims): return {"base": dims.base, "width": dims.width, "height": dims.height})
-	return {"version": FLOOR.VERSION, "seed": run_seed, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
+	return {"version": FLOOR.VERSION, "seed": run_seed, "area": drawing, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
 
 # --- The grid --------------------------------------------------------------------------
 
 ## A planta's grid: room modules in columns and rows, and corridor lanes in
 ## some of the gaps between them, in proportions of its own, from eight by
-## thirteen to thirteen by eight. Under a lift (`anchor`: the lobby's span
-## across and down) one column and one row are made that lobby's size and laid
-## under it, and `anchor` in the grid is that cell.
+## thirteen to thirteen by eight for the hotel of two or three; the sides go
+## with the square root of the size of the floor, and the modules with it (a
+## floor for one, six to nine a side; for five, nine to fifteen, with a lane
+## more where it fits). Under a lift (`anchor`: the lobby's span across and
+## down) one column and one row are made that lobby's size and laid under it,
+## and `anchor` in the grid is that cell.
 func lay_grid(rng: RandomNumberGenerator, standby: bool, anchor: Dictionary) -> Dictionary:
-	var columns := 10 if standby else rng.randi_range(8, 13)
-	var rows := 10 if standby else clampi(ceili(rng.randf_range(100.0, 118.0) / float(columns)), 8, 13)
-	while columns * rows < 100: rows += 1
-	var lanes_across := 3 if standby else rng.randi_range(2, mini(4, columns / 3 + 1))
-	var lanes_down := 3 if standby else rng.randi_range(2, mini(4, rows / 3 + 1))
+	var side := sqrt(drawing)
+	var fewest := maxi(5, roundi(8.0 * side))
+	var most := roundi(13.0 * side)
+	var columns := 10 if standby else rng.randi_range(fewest, most)
+	var rows := 10 if standby else clampi(ceili(rng.randf_range(100.0, 118.0) * drawing / float(columns)), fewest, most)
+	while columns * rows < ceili(100.0 * drawing): rows += 1
+	var widest := 4 if drawing <= 1.0 else 5
+	var lanes_across := 3 if standby else rng.randi_range(2, mini(widest, columns / 3 + 1))
+	var lanes_down := 3 if standby else rng.randi_range(2, mini(widest, rows / 3 + 1))
 	var across := axis(rng, columns, gaps(rng, columns, lanes_across, standby))
 	var down := axis(rng, rows, gaps(rng, rows, lanes_down, standby))
 	var grid := {"columns": across, "rows": down, "anchor": -1}
@@ -375,7 +386,7 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	var base: int = f.base
 	var rooms: Array = f.rooms
 	order_field(f, planta, rng)
-	var target: int = TARGET.y if standby else rng.randi_range(TARGET.x, TARGET.y)
+	var target: int = TARGET.y if standby else rng.randi_range(scaled(TARGET.x), scaled(TARGET.y))
 	var alive := {}
 	for local in per:
 		if at(f, local).kind == "module": alive[local] = true
@@ -403,9 +414,10 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	tidy(f, alive)
 	var landing: int = refuge.landing
 	var count := count_rooms(f, planta, alive, arrival, landing)
-	if count < ROOMS_LEAST: return fail("few_%s" % plan)
-	if count > ROOMS_MOST: return fail("many_%s" % plan)
-	if cycles(f, alive) < CYCLES: return fail("cycles_%s" % plan)
+	var window := FLOOR.rooms_window(drawing)
+	if count < window.x: return fail("few_%s" % plan)
+	if count > window.y: return fail("many_%s" % plan)
+	if cycles(f, alive) < FLOOR.rings(drawing): return fail("cycles_%s" % plan)
 	if not standby and alike(f, planta, alive) > ALIKE: return fail("alike_%s" % plan)
 	var rooms_only := alive.duplicate()
 	rooms_only.erase(landing)
@@ -461,19 +473,20 @@ static func patch(x: int, z: int, run_seed: int) -> float:
 ## A shape for the planta that leaves it about the rooms it wants. `spare` is
 ## how many rooms the whole rectangle has over its number: each shape is drawn
 ## a few times, in an order of its own, and the first cut that leaves between
-## 2 and 16 to spare is taken (the salons and the trimming take the rest), or
-## the nearest miss.
+## 2 and 16 to spare (scaled with the floor) is taken (the salons and the
+## trimming take the rest), or the nearest miss.
 func pick_shape(f: Dictionary, rng: RandomNumberGenerator, keep: int, spare: int) -> Dictionary:
 	var order := SHAPES.duplicate()
 	shuffle(order, rng)
 	var best := {"shape": "rect", "cells": []}
 	var best_miss := INF
+	var most := maxi(6, scaled(16))
 	for shape in order:
 		for draw in (1 if shape == "rect" else 3):
 			var cells := cut_shape(f, shape, rng, keep)
 			var left: int = spare - cells.size()
-			if left >= 2 and left <= 16: return {"shape": shape, "cells": cells}
-			var miss := float(2 - left) * 3.0 if left < 2 else float(left - 16)
+			if left >= 2 and left <= most: return {"shape": shape, "cells": cells}
+			var miss := float(2 - left) * 3.0 if left < 2 else float(left - most)
 			if miss < best_miss:
 				best_miss = miss
 				best = {"shape": shape, "cells": cells}
@@ -973,7 +986,8 @@ func reach(f: Dictionary, from: int, alive: Dictionary, without := -1) -> Dictio
 func loops(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i, rng: RandomNumberGenerator) -> void:
 	var base: int = f.base
 	var have := cycles(f, alive)
-	if have >= LOOPS: return
+	var wanted := FLOOR.rings(drawing) + LOOPS
+	if have >= wanted: return
 	var depth := distances(f.adjacency, base + arrival)
 	var pairs: Array = []
 	var cells: Array = alive.keys()
@@ -988,7 +1002,7 @@ func loops(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i, rng: 
 			pairs.append({"a": local, "b": next, "rank": float(apart) + rng.randf() * 3.0})
 	pairs.sort_custom(func(one, two): return float(one.rank) > float(two.rank))
 	for pair in pairs:
-		if have >= LOOPS: return
+		if have >= wanted: return
 		link(f, base + int(pair.a), base + int(pair.b))
 		have += 1
 
@@ -1072,7 +1086,7 @@ func cycles(f: Dictionary, alive: Dictionary) -> int:
 ## the planta has to spare (`budget`: a salon of three is two rooms fewer).
 func make_halls(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomNumberGenerator, budget: int) -> void:
 	var base: int = f.base
-	var wanted := rng.randi_range(HALLS.x, HALLS.y)
+	var wanted := rng.randi_range(maxi(1, scaled(HALLS.x)), maxi(1, scaled(HALLS.y)))
 	var cells: Array = alive.keys()
 	cells.sort()
 	shuffle(cells, rng)
@@ -1492,6 +1506,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		f.rooms[int(id)].type = REFUGE
 		f.rooms[int(id)].hall = -1
 		f.rooms[int(id)].service = false
+	keep_to_hundred(f, decoration)
 	# The second and third stages are played on the sets of their own planta:
 	# each has to hold enough of them, whatever the types rolled.
 	for planta in [1, 2]:
@@ -1503,7 +1518,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 			if int(room.type) in [VOID, RECEPTION, LOBBY, REFUGE, LANDING] or room.corridor or room.service or room.hall >= 0: continue
 			if FLOOR.RECIPES[int(room.type)].has("tv"): with_tv.append(int(room.id))
 			else: plain.append(int(room.id))
-		while with_tv.size() < TV_ROOMS and not plain.is_empty():
+		while with_tv.size() < FLOOR.tv_rooms(drawing) and not plain.is_empty():
 			var pick: int = plain[decoration.randi_range(0, plain.size() - 1)]
 			plain.erase(pick)
 			f.rooms[pick].type = TV_ROOM
@@ -1540,6 +1555,35 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		a.open_sides.append(direction)
 		b.open_sides.append("west" if direction == "east" else "north")
 	zones(f, entries)
+
+## The rooms let to somebody on each planta, NUMBERED_MOST at the most: its
+## hundred has room for 99. Whatever a bigger floor (four or five survivors)
+## has over that becomes service -- stores, maintenance, laundries and
+## offices -- where the plan has come apart the most and beside the service
+## already there, so it comes in departments rather than dotted about. A
+## floor with no more than that draws nothing here.
+func keep_to_hundred(f: Dictionary, decoration: RandomNumberGenerator) -> void:
+	var was := {"base": f.base, "width": f.width, "height": f.height, "grid": f.grid, "lines": f.lines, "edge_base": f.edge_base}
+	for planta in WINGS:
+		var dims: Dictionary = f.plantas[planta]
+		var let: Array = []
+		for local in int(dims.width) * int(dims.height):
+			var room: Dictionary = f.rooms[int(dims.base) + local]
+			if int(room.type) != VOID and int(room.type) != LANDING and numbered(room): let.append(room)
+		var over := let.size() - FLOOR.NUMBERED_MOST
+		if over <= 0: continue
+		use(f, planta)
+		var rank := func(room: Dictionary) -> float:
+			var near_service := false
+			for way in WAYS:
+				var next := step(f, int(room.id) - int(dims.base), way)
+				if next >= 0 and bool(at(f, next).service): near_service = true
+			return float(room.order) - (0.3 if near_service else 0.0)
+		let.sort_custom(func(a, b): return rank.call(a) < rank.call(b) or (is_equal_approx(rank.call(a), rank.call(b)) and int(a.id) < int(b.id)))
+		for room in let.slice(0, over):
+			room.service = true
+			room.type = SERVICE_ROOMS[decoration.randi_range(0, SERVICE_ROOMS.size() - 1)]
+	f.merge(was, true)
 
 ## Zones: five to seven parts of each planta, the room farthest from the others
 ## seeding each, so what a stage asks for is spread over it instead of piled in
@@ -1742,6 +1786,14 @@ static func take_number(next: Array, side: int) -> int:
 	var number: int = next[side]
 	next[side] = number + 2
 	return number
+
+## A count scaled with the size of the floor being drawn.
+func scaled(value: float) -> int:
+	return roundi(value * drawing)
+
+## Rooms the three stages walk through at the least, for the size drawn.
+func min_walk() -> int:
+	return mini(MIN_WALK, scaled(MIN_WALK))
 
 ## Whether this room is let to somebody, and so has a number on its door.
 static func numbered(room: Dictionary) -> bool:

@@ -1,14 +1,11 @@
 extends RefCounted
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## What the generator promises of a planta (map_generator.gd): its rooms,
-## counted as the game counts them, how far anything runs straight and open,
-## how many rings there are to walk round, and the sets of the stages played
-## on televisions.
-const ROOMS_LEAST := 81
-const ROOMS_MOST := 99
+## counted as the game counts them, for the size of the floor (FLOOR.AREA),
+## and its numbered ones within its hundred; how far anything runs straight
+## and open, how many rings there are to walk round, and the sets of the
+## stages played on televisions.
 const OPEN_RUN := 45.0
-const CYCLES := 6
-const TV_ROOMS := 8
 ## A doorway keeps this much wall between it and the end of its wall.
 const JAMB := 0.15
 ## A fire door's hinge jamb is at most this far from the side wall.
@@ -111,6 +108,8 @@ func fittings(data: Dictionary) -> Array[String]:
 ## lobby by none but the refuge's locked one, and on the plantas of the second
 ## and third stages the sets those stages are played on.
 func plantas(data: Dictionary) -> Array[String]:
+	var area := float(data.get("area", 1.0))
+	var window := FLOOR.rooms_window(area)
 	var errors: Array[String] = []
 	var rooms: Array = data.rooms
 	var gates: Array = data.get("gates", [])
@@ -145,10 +144,15 @@ func plantas(data: Dictionary) -> Array[String]:
 		var halls := {}
 		var sets := 0
 		var split := false
+		var numbers := {}
 		for local in per:
 			var room: Dictionary = rooms[base + local]
 			if FLOOR.is_void(room): continue
 			members += 1
+			var number := int(room.get("number", 0))
+			if number > 0:
+				if numbers.has(number) or number <= (planta + 1) * 100 or number >= (planta + 2) * 100: errors.append("number_%d_%d" % [planta, number])
+				numbers[number] = true
 			doors += data.adjacency[base + local].size()
 			if not seen.has(base + local): split = true
 			if room.get("kind", "module") != "module" or bool(room.get("landing", false)) or (planta > 0 and base + local == entry): continue
@@ -158,15 +162,16 @@ func plantas(data: Dictionary) -> Array[String]:
 			counted += 1
 			if base + local != refuge and room.props.any(func(prop): return prop.kind == "tv"): sets += 1
 		if split: errors.append("planta_split_%d" % planta)
-		if counted < ROOMS_LEAST or counted > ROOMS_MOST: errors.append("rooms_%d_%d" % [planta, counted])
-		if doors / 2 - members + 1 < CYCLES: errors.append("cycles_%d" % planta)
+		if counted < window.x or counted > window.y: errors.append("rooms_%d_%d" % [planta, counted])
+		if numbers.size() > FLOOR.NUMBERED_MOST: errors.append("numbered_%d_%d" % [planta, numbers.size()])
+		if doors / 2 - members + 1 < FLOOR.rings(area): errors.append("cycles_%d" % planta)
 		if refuge < base or refuge >= base + per: errors.append("refuge_wing_%d" % planta)
 		elif not seen.has(refuge): errors.append("refuge_unreachable_%d" % planta)
 		else:
 			var ways: Array = data.adjacency[refuge].filter(func(id): return int(id) != lobby)
 			if ways.size() != 1: errors.append("refuge_doors_%d" % planta)
 		if lobby < 0 or data.adjacency[lobby].size() != 1 or int(data.adjacency[lobby][0]) != refuge or not bool(rooms[lobby].get("landing", false)): errors.append("lobby_%d" % planta)
-		if planta > 0 and sets < TV_ROOMS: errors.append("few_televisions_%d_%d" % [planta, sets])
+		if planta > 0 and sets < FLOOR.tv_rooms(area): errors.append("few_televisions_%d_%d" % [planta, sets])
 	return errors
 
 ## Nothing runs straight and open for longer than OPEN_RUN, corridor or salon:

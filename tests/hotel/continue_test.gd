@@ -32,6 +32,9 @@ func run() -> void:
 	root.add_child(level)
 	await process_frame
 	var session = level.session
+	# The floor as two or three play it (hotel_main.drawn_for): what follows
+	# walks known places of it.
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "equilibrada")
 	check("Un piso recién empezado no tiene nada guardado de otro", session.read_state(81).is_empty())
 	level.locust.set_physics_process(false)
@@ -105,6 +108,7 @@ func run() -> void:
 	level.locust.global_position = player.global_position + Vector3(1.2, 0, 0)
 	level.capture_survivor(player)
 	check("Mientras la criatura lo tiene, no se guarda", not level.execution.is_empty() and not level.can_keep())
+	level.drawn_for = 2
 	await level.start_floor(4242, false, [1], "equilibrada")
 	check("Un piso nuevo no hereda lo guardado del anterior", session.read_state(4242).is_empty() and session.read_state(81).is_empty() and session.stage == 1)
 	# A checkpoint with nothing beside it (one from before floors were kept).
@@ -130,6 +134,7 @@ func run() -> void:
 	await loaded()
 	check("Dejado dentro de un armario, se vuelve dentro de él, sin contarlo dos veces", level.player.hidden and level.player.hiding_place == level.hotel.hides[0] and level.hotel.hides[0].occupant == level.player and level.ledger.hides == hides_before, "%s · %d · %d" % [level.player.hidden, level.ledger.hides, hides_before])
 	# No stage left to be given back: caught, the floor is lost there and then.
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "desafiante")
 	level.keep_floor()
 	level.locust.set_physics_process(false)

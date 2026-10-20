@@ -8,9 +8,12 @@ extends SceneTree
 ## rooms, how kept they are, and what vary() dresses them with) has anything
 ## to do with where the room is. Only the manifests: nothing is built.
 ##
-##   godot --headless --script tools/dev/map_metrics.gd -- 1000
+##   godot --headless --script tools/dev/map_metrics.gd -- 1000 [--survivors=N]
 ## Prints each measure with its threshold and PASS or FAIL, and writes
-## evidence/map_metrics.json; exits with 1 if anything fails.
+## evidence/map_metrics.json (map_metrics_N.json for another size); exits with
+## 1 if anything fails. `--survivors` draws the floors of that many survivors
+## (FLOOR.AREA: 1 half the hotel, 4 and 5 more; 2 by default); the measures in
+## metres go with the square root of the size, the counts with the size.
 const GEN := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
@@ -49,14 +52,21 @@ static func share_of(count: int, total: int) -> float:
 
 func _initialize() -> void:
 	var floors := 200
+	var survivors := 2
 	for argument in OS.get_cmdline_user_args():
 		if argument.is_valid_int(): floors = argument.to_int()
+		elif argument.begins_with("--survivors="): survivors = argument.get_slice("=", 1).to_int()
+	var area := FLOOR.area_for(survivors)
+	var reach := sqrt(area)
+	var window := FLOOR.rooms_window(area)
 	var generator := GEN.new()
 	var times: Array = []
 	var fallbacks := 0
 	var invalid := 0
 	var worst_lift := 0.0
 	var rooms_all: Array = []
+	var numbered_all: Array = []
+	var areas: Array = []
 	var runs: Array = []
 	var rings: Array = []
 	var dead: Array = []
@@ -78,7 +88,7 @@ func _initialize() -> void:
 	var sampled: Array = []
 	for seed_value in floors:
 		var began := Time.get_ticks_usec()
-		var data := generator.generate(seed_value)
+		var data := generator.generate(seed_value, survivors)
 		times.append((Time.get_ticks_usec() - began) / 1000.0)
 		if data.fallback: fallbacks += 1
 		if not VALIDATOR.new().validate(data).is_empty(): invalid += 1
@@ -106,11 +116,15 @@ func _initialize() -> void:
 			var cells := 0
 			var doors := 0
 			var single := 0
+			var numbered := 0
+			var square := 0.0
 			for local in per:
 				var room: Dictionary = data.rooms[base + local]
 				if FLOOR.is_void(room): continue
 				cells += 1
 				doors += data.adjacency[base + local].size()
+				square += float(room.span_x) * float(room.span_z)
+				if int(room.get("number", 0)) > 0: numbered += 1
 				if room.kind != "module" or bool(room.get("landing", false)) or (planta > 0 and base + local == entry): continue
 				if int(room.hall) >= 0:
 					if halls.has(int(room.hall)): continue
@@ -118,6 +132,8 @@ func _initialize() -> void:
 				counted += 1
 				if data.adjacency[base + local].size() == 1 and base + local != refuge: single += 1
 			rooms_all.append(counted)
+			numbered_all.append(numbered)
+			areas.append(square)
 			rings.append(doors / 2 - cells + 1)
 			dead.append(float(single) / maxf(1.0, float(counted)))
 			runs.append(longest_run(data, open, planta))
@@ -203,8 +219,11 @@ func _initialize() -> void:
 	one.free()
 	two.free()
 	print("pisos ", floors, " · plantas ", plantas, " · por qué se volvió a dibujar algo: ", generator.stats)
-	judge("habitaciones por planta, mínimo", rooms_all.min(), rooms_all.min() >= 81, ">= 81")
-	judge("habitaciones por planta, máximo", rooms_all.max(), rooms_all.max() <= 99, "<= 99")
+	print("supervivientes ", survivors, ", área ×", area)
+	judge("habitaciones por planta, mínimo", rooms_all.min(), rooms_all.min() >= window.x, ">= %d" % window.x)
+	judge("habitaciones por planta, máximo", rooms_all.max(), rooms_all.max() <= window.y, "<= %d" % window.y)
+	judge("habitaciones con número por planta, máximo", numbered_all.max(), numbered_all.max() <= FLOOR.NUMBERED_MOST, "<= %d" % FLOOR.NUMBERED_MOST)
+	judge("área por planta, mediana (m²)", snappedf(quantile(areas, 0.5), 1.0), true, "informativo")
 	judge("pisos de respaldo", share_of(fallbacks, floors), float(fallbacks) / floors < 0.005, "< 0,5 %")
 	var redrawn := 0
 	for reason in generator.stats: if not String(reason).begins_with("island"): redrawn += int(generator.stats[reason])
@@ -212,7 +231,7 @@ func _initialize() -> void:
 	judge("pisos que no valida el validador", invalid, invalid == 0, "0")
 	judge("desvío entre coche y vestíbulo de llegada (m)", snappedf(worst_lift, 0.0001), worst_lift < 0.001, "< 1 mm")
 	judge("recta abierta más larga (m)", snappedf(runs.max(), 0.1), runs.max() <= 45.01, "<= 45 m")
-	judge("anillos por planta, mínimo", rings.min(), rings.min() >= 6, ">= 6")
+	judge("anillos por planta, mínimo", rings.min(), rings.min() >= FLOOR.rings(area), ">= %d" % FLOOR.rings(area))
 	judge("habitaciones sin salida, mediana", snappedf(quantile(dead, 0.5), 0.01), quantile(dead, 0.5) >= 0.2 and quantile(dead, 0.5) <= 0.45, "20–45 %")
 	var worst_bearing := 0
 	for bin in bearings: worst_bearing = maxi(worst_bearing, int(bearings[bin]))
@@ -221,8 +240,8 @@ func _initialize() -> void:
 	judge("refugio en la sala más honda", share_of(deepest, plantas), deepest == 0, "0 %")
 	judge("hondura del refugio (fracción del recorrido más largo), mínimo", snappedf(depth_shares.min(), 0.01), depth_shares.min() >= 0.55 - 0.001, ">= 0,55")
 	judge("hondura del refugio, máximo", snappedf(depth_shares.max(), 0.01), depth_shares.max() <= 0.9 + 0.001, "<= 0,90")
-	judge("recorrido llegada → refugio, p5 (m)", snappedf(quantile(routes, 0.05), 1.0), quantile(routes, 0.05) >= 90.0, ">= 90 m")
-	judge("recorrido llegada → refugio, mediana (m)", snappedf(quantile(routes, 0.5), 1.0), quantile(routes, 0.5) >= 140.0 and quantile(routes, 0.5) <= 260.0, "140–260 m")
+	judge("recorrido llegada → refugio, p5 (m)", snappedf(quantile(routes, 0.05), 1.0), quantile(routes, 0.05) >= 90.0 * reach, ">= %d m" % roundi(90.0 * reach))
+	judge("recorrido llegada → refugio, mediana (m)", snappedf(quantile(routes, 0.5), 1.0), quantile(routes, 0.5) >= 140.0 * reach and quantile(routes, 0.5) <= 260.0 * reach, "%d–%d m" % [roundi(140.0 * reach), roundi(260.0 * reach)])
 	judge("recorrido / línea recta, p5", snappedf(quantile(ratios, 0.05), 0.01), quantile(ratios, 0.05) >= 1.5, ">= 1,5")
 	var worst_start := 0
 	for bin in starts: worst_start = maxi(worst_start, int(starts[bin]))
@@ -231,8 +250,12 @@ func _initialize() -> void:
 	for bin in start_doors: worst_door = maxi(worst_door, int(start_doors[bin]))
 	judge("puerta de la recepción, dirección más repetida", share_of(worst_door, floors), float(worst_door) / floors <= 0.35, "<= 35 %")
 	for way in solved: judge("plantas que resuelve «%s» con menos del 30 %%" % way, share_of(int(solved[way]), plantas), float(solved[way]) / plantas <= 0.2, "<= 20 %")
-	judge("parecido de planos al azar (IoU), media", snappedf(quantile(apart, 0.5) if apart.is_empty() else apart.reduce(func(a, b): return a + b, 0.0) / apart.size(), 0.001), apart.reduce(func(a, b): return a + b, 0.0) / maxf(1.0, apart.size()) <= 0.12, "<= 0,12")
-	judge("parecido de planos al azar (IoU), p95", snappedf(quantile(apart, 0.95), 0.001), quantile(apart, 0.95) <= 0.25, "<= 0,25")
+	# A planta half the size has fewer lanes to differ in: two of them at random
+	# share a little more of their corridor floor.
+	var alike_mean := 0.12 if area >= 1.0 else 0.14
+	var alike_p95 := 0.25 if area >= 1.0 else 0.27
+	judge("parecido de planos al azar (IoU), media", snappedf(quantile(apart, 0.5) if apart.is_empty() else apart.reduce(func(a, b): return a + b, 0.0) / apart.size(), 0.001), apart.reduce(func(a, b): return a + b, 0.0) / maxf(1.0, apart.size()) <= alike_mean, "<= %s" % str(alike_mean).replace(".", ","))
+	judge("parecido de planos al azar (IoU), p95", snappedf(quantile(apart, 0.95), 0.001), quantile(apart, 0.95) <= alike_p95, "<= %s" % str(alike_p95).replace(".", ","))
 	judge("parecido de las plantas de un piso (IoU), máximo", snappedf(together.max() if not together.is_empty() else 0.0, 0.001), together.is_empty() or together.max() <= 0.35, "<= 0,35")
 	for plan in ["spine", "twin", "ring", "comb", "blocks", "arms", "warren", "rot"]:
 		var used: float = float(plans.get(plan, 0)) / plantas
@@ -242,10 +265,11 @@ func _initialize() -> void:
 	judge("estado de las salas en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(kept_alike), 0.001), absf(mean.call(kept_alike)) <= 0.05, "<= 0,05")
 	judge("vary() en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(looks_alike), 0.001), absf(mean.call(looks_alike)) <= 0.05, "<= 0,05")
 	judge("generación, mediana (ms)", snappedf(quantile(times, 0.5), 0.1), true, "informativo")
-	judge("generación, p99 (ms)", snappedf(quantile(times, 0.99), 0.1), quantile(times, 0.99) <= 250.0, "<= 250 ms")
-	var file := FileAccess.open("res://evidence/map_metrics.json", FileAccess.WRITE)
+	var slowest := 250.0 * maxf(1.0, area * area)
+	judge("generación, p99 (ms)", snappedf(quantile(times, 0.99), 0.1), quantile(times, 0.99) <= slowest, "<= %d ms" % roundi(slowest))
+	var file := FileAccess.open("res://evidence/map_metrics%s.json" % ("" if survivors == 2 else "_%d" % survivors), FileAccess.WRITE)
 	if file != null:
-		file.store_string(JSON.stringify({"floors": floors, "passed": failed == 0, "stats": generator.stats, "measures": results}, "\t"))
+		file.store_string(JSON.stringify({"floors": floors, "survivors": survivors, "passed": failed == 0, "stats": generator.stats, "measures": results}, "\t"))
 		file.close()
 	print("MAP_METRICS ", "PASS" if failed == 0 else "FAIL", " · ", results.size() - failed, "/", results.size())
 	quit(0 if failed == 0 else 1)

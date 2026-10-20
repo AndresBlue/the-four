@@ -98,6 +98,9 @@ func run() -> void:
 	check("Quien tenía el juego de antes sigue en Desafiante", String(level.settings.DEFAULTS.difficulty) == "desafiante" and level.settings.sanitize("difficulty", "desafiante") == "desafiante")
 	# A floor on each, and what each piece is given.
 	for id in DIFFICULTY.ORDER:
+		# The floor as two or three play it (hotel_main.drawn_for): what follows
+		# walks known places of it.
+		level.drawn_for = 2
 		await level.start_floor(81, false, [1], id)
 		var profile: Dictionary = DIFFICULTY.PROFILES[id]
 		var creature = level.locust
@@ -126,6 +129,7 @@ func run() -> void:
 			check("En Apacible no sale por otra tele", creature.global_position.distance_to(stood) < 0.1)
 	# Encounters: a sign of it starts one, signs close together are the same
 	# one, and the stretch without any is kept (run_ledger.gd).
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "desafiante")
 	var it = level.locust
 	it.set_physics_process(false)
@@ -182,6 +186,7 @@ func run() -> void:
 	# of it off on Desafiante.
 	var reference: Dictionary = DIFFICULTY.PROFILES.desafiante
 	check("En Desafiante no hay duda, ni cansancio, ni gruñido, ni encuentros forzados", float(reference.doubt) == 0.0 and float(reference.chase_tire) == 0.0 and not bool(reference.lost_cry) and bool(reference.guess_hides) and float(reference.encounter_every) == 0.0 and float(reference.cross) == 0.0)
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "apacible")
 	var slow = level.locust
 	slow.grace = 0.0
@@ -232,6 +237,7 @@ func run() -> void:
 	check("Y solo abre el armario en el que te vio entrar", not slow.guess_hides)
 	# A fresh floor: the one above has just had a chase given up next to the
 	# player, and everything round it is marked as searched.
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "apacible")
 	slow = level.locust
 	slow.set_physics_process(false)
@@ -307,6 +313,7 @@ func run() -> void:
 	var beside: bool = not slow.sees(watched)
 	slow.sight_half_angle = LOCUST.SIGHT_HALF_ANGLE
 	check("Y ve menos hacia los lados", beside and slow.sees(watched) and is_equal_approx(float(easiest.sight_angle), 45.0))
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "desafiante")
 	level.ledger.since_sign[1] = 1000.0
 	check("En Desafiante no fuerza encuentros", not level.director.encounter_due())
@@ -320,6 +327,7 @@ func run() -> void:
 	await frames(2)
 	while level.session.state == level.session.State.LOADING: await process_frame
 	check("Reintentar juega la misma", level.difficulty == "desafiante")
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "pesadilla")
 	level.settings.values.difficulty = "equilibrada"
 	level.on_action("continue")
@@ -328,6 +336,7 @@ func run() -> void:
 	check("Y Continuar, la del piso guardado aunque se haya elegido otra", level.difficulty == "pesadilla")
 	# Alone, the easier difficulties give the stage back too; the game as it
 	# was (Desafiante) ends the floor at the first capture, as before.
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "apacible")
 	var hunter = level.locust
 	hunter.grace = 0.0
@@ -351,6 +360,7 @@ func run() -> void:
 	check("Lo que se escribe sobre la nieve lo graba la cinta: el filtro lo tiene mientras rebobina, y después no", written and not bool(level.post_material.get_shader_parameter("marked")))
 	check("Los relojes del hotel llevan la hora de la cámara, y retroceden con la cinta", clocks_kept and level.hotel.clock_time < clocks_told and absi(level.hotel.clock_time - int(level.camcorder.start_seconds) - int(level.tape_seconds())) <= 1, "told=%s now=%s hands=%s" % [clocks_told, level.hotel.clock_time, level.hotel.clock_hands.size()])
 	check("La segunda vez en el mismo piso se espera la mitad", level.session.RESTART_WAIT + level.REWIND_TIME <= 4.01 and level.session.RESTART_WAIT_AGAIN + level.REWIND_TIME <= 2.01)
+	level.drawn_for = 2
 	await level.start_floor(81, false, [1], "desafiante")
 	var first_seed: int = level.session.run_seed
 	level.session.capture(1)

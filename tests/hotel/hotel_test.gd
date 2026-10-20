@@ -170,6 +170,30 @@ func run() -> void:
 	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)
 	check("Las plantas solo se comunican por su ascensor", wing_leaks.is_empty())
 	check("Cada planta tiene más de 80 habitaciones y menos de 100", counts.min() > 80 and counts.max() < 100)
+	# The floor of the survivors who play it (FLOOR.AREA): alone, half the area
+	# of the hotel of two or three; four, a fifth more; five, a third more. And
+	# never more numbers on a planta than its hundred holds, however big.
+	var squares := {}
+	var most_numbered := 0
+	var size_faults: Array = []
+	for survivors in [1, 2, 4, 5]:
+		var square := 0.0
+		for seed_value in range(1, 31):
+			var data: Dictionary = generator.generate(seed_value, survivors)
+			var errors := VALIDATOR.new().validate(data)
+			if not errors.is_empty() or bool(data.fallback): size_faults.append("%d/%d: %s" % [survivors, seed_value, errors])
+			var numbered_by := {}
+			for room in data.rooms:
+				if FLOOR.is_void(room): continue
+				square += float(room.span_x) * float(room.span_z)
+				if int(room.get("number", 0)) > 0: numbered_by[int(room.wing)] = int(numbered_by.get(int(room.wing), 0)) + 1
+			for wing in numbered_by: most_numbered = maxi(most_numbered, int(numbered_by[wing]))
+		squares[survivors] = square
+	var ratio := func(survivors: int) -> float: return float(squares[survivors]) / float(squares[2])
+	if not size_faults.is_empty(): print("  ", size_faults.slice(0, 3))
+	check("Los pisos de 1, 4 y 5 supervivientes son válidos", size_faults.is_empty())
+	check("El piso va con los supervivientes: a solas la mitad, con cuatro un 20 %% más y con cinco un 35 %% (%0.2f, %0.2f, %0.2f)" % [ratio.call(1), ratio.call(4), ratio.call(5)], absf(ratio.call(1) - 0.5) < 0.07 and absf(ratio.call(4) - 1.2) < 0.08 and absf(ratio.call(5) - 1.35) < 0.08)
+	check("Ninguna planta pasa de su centena: %d habitaciones con número como mucho" % FLOOR.NUMBERED_MOST, most_numbered <= FLOOR.NUMBERED_MOST)
 	var shortest: int = walked.min()
 	check("Las tres etapas obligan a recorrer el piso", shortest >= GEN.MIN_WALK and float(walked.reduce(func(a, b): return a + b, 0)) / walked.size() >= 40.0)
 	check("Tasa de respaldo inferior al 1%", fallback_count < SEEDS / 100)
@@ -182,7 +206,7 @@ func run() -> void:
 	# The floor's rules and its plantas are counted in three places that have to
 	# agree: the rules (hotel_floor.gd), the session and the generator.
 	check("Las reglas del hotel tienen una etapa por planta", preload("res://game/floors/hotel_floor.gd").count() == preload("res://game/services/game_session.gd").STAGES and preload("res://game/services/game_session.gd").STAGES == FLOOR.PLANTAS)
-	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 3692823199 and hash(JSON.stringify(generator.generate(777))) == 3876374441)
+	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 2506132082 and hash(JSON.stringify(generator.generate(777))) == 1088711804)
 	var scene = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame
@@ -192,6 +216,9 @@ func run() -> void:
 	# The connection first (Steam or IP / LAN); the character is chosen in the room.
 	check("Multijugador pide primero la conexión", scene.ui.screen == "multiplayer" and scene.ui.buttons.has("mp_steam") and scene.ui.buttons.has("mp_ip") and not scene.ui.buttons.has("characters"))
 	scene.on_action("main")
+	# The floor as two or three play it (hotel_main.drawn_for): what follows
+	# walks known places of it.
+	scene.drawn_for = 2
 	await scene.start_floor(81)
 	await physics_frame
 	check("Se inicia un hotel grande y libre de objetivos", scene.manifest.rooms.size() >= 100 and scene.session.state == scene.session.State.PLAYING)
@@ -633,21 +660,25 @@ func run() -> void:
 	session.finish_stage()
 	session._process(1.3)
 	check("Victoria y eliminación de checkpoint completado", session.state == session.State.WON and session.checkpoint().is_empty())
+	scene.drawn_for = 2
 	await scene.start_floor(81)
 	# Alone there is nobody to be forgiven with: the floor ends at the first
 	# collapse (a team gets one over, which stages_test drives).
 	session.capture(1)
 	check("Muerte de prueba permite reintento", session.state == session.State.FAILED and session.restarts == 0)
+	scene.drawn_for = 2
 	await scene.start_floor(81)
 	check("Reintento reproduce piso y limpia estado", session.state == session.State.PLAYING and scene.manifest.seed == 81 and session.stage == 1 and not session.goal.ready)
 	var file := FileAccess.open(session.checkpoint_path, FileAccess.WRITE)
 	file.store_string('{"format":1,"generator":999,"seed":81,"floor":1}')
 	file.close()
 	check("Checkpoint incompatible no se sustituye", session.checkpoint().is_empty() and session.message.contains("incompatible") and FileAccess.get_file_as_string(session.checkpoint_path).contains("999"))
+	scene.drawn_for = 2
 	await scene.start_floor(123, true)
 	var fallback_snapshot := JSON.stringify(scene.manifest)
 	var fallback_checkpoint: Dictionary = session.checkpoint()
 	check("Uso de respaldo registrado en checkpoint", fallback_checkpoint.get("fallback", false) and fallback_checkpoint.seed == 123)
+	scene.drawn_for = 2
 	await scene.start_floor(int(fallback_checkpoint.seed), fallback_checkpoint.fallback)
 	check("Continuar reproduce también el mapa de respaldo", JSON.stringify(scene.manifest) == fallback_snapshot)
 	session.write_checkpoint()

@@ -174,6 +174,9 @@ func run() -> void:
 	await process_frame
 	level.discoveries.found.clear()
 	if FileAccess.file_exists(level.discoveries.save_path): DirAccess.remove_absolute(level.discoveries.save_path)
+	# The floor as two or three play it (hotel_main.drawn_for): what follows
+	# walks known places of it.
+	level.drawn_for = 2
 	await level.start_floor(81)
 	var player = level.player
 	var creature = level.locust
