@@ -187,16 +187,22 @@ func seeing() -> void:
 	for look in 3: team.look(brain)
 	check("Un bot en el vano del refugio lo ve", team.knowledge.refuges.has(0), str(body.global_position))
 	# A note in a room gone dark: not from three metres without light, yes with the torch.
+	# A page whose three metres in front are still its own room: in a small
+	# room they can be through a wall.
 	var piece = null
+	var stand := Vector3.ZERO
 	for candidate in level.containers:
-		if int(candidate.digit) >= 0 and is_instance_valid(candidate.note):
-			piece = candidate
-			break
+		if int(candidate.digit) < 0 or not is_instance_valid(candidate.note): continue
+		var ahead: Vector3 = candidate.global_basis.z
+		var spot := FLOOR.closest(map, candidate.note.global_position + Vector3(ahead.x, 0, ahead.z).normalized() * 3.0)
+		if int(FLOOR.room_at(level.manifest.rooms, spot).get("id", -2)) != int(FLOOR.room_at(level.manifest.rooms, candidate.global_position).get("id", -1)): continue
+		piece = candidate
+		stand = spot
+		break
 	var room := int(FLOOR.room_at(level.manifest.rooms, piece.global_position).get("id", -1))
 	var was_dark: bool = level.hotel.dark_ids.has(room)
 	level.hotel.dark_ids[room] = true
-	var front: Vector3 = piece.global_basis.z
-	await stand_looking(body, FLOOR.closest(map, piece.note.global_position + Vector3(front.x, 0, front.z).normalized() * 3.0), piece.note.global_position)
+	await stand_looking(body, stand, piece.note.global_position)
 	body.torch.visible = false
 	var dark: Dictionary = SENSES.look(level, body, "note", piece.note.global_position)
 	body.torch.visible = true

@@ -230,6 +230,33 @@ static func entry_of(manifest: Dictionary, planta: int) -> int:
 	var entries: Array = manifest.get("entries", [])
 	return int(entries[planta]) if planta < entries.size() else int(manifest.get("start", 0))
 
+## The longest stretch of a planta's corridor with no door on to any room, in
+## metres (map_generator.expose()): its corridor cells that open only on to
+## corridor, a piece of them joined together at a time.
+static func longest_exposed(manifest: Dictionary, planta: int) -> float:
+	var rooms: Array = manifest.rooms
+	var blind := {}
+	for room in rooms:
+		if int(room.get("wing", -1)) != planta or is_void(room) or not bool(room.get("corridor", false)): continue
+		if manifest.adjacency[int(room.id)].all(func(other): return bool(rooms[int(other)].get("corridor", false))): blind[int(room.id)] = true
+	var best := 0.0
+	var seen := {}
+	for id in blind:
+		if seen.has(id): continue
+		var length := 0.0
+		var queue: Array = [id]
+		seen[id] = true
+		while not queue.is_empty():
+			var here: int = queue.pop_back()
+			var span := size_of(rooms[here])
+			length += maxf(span.x, span.y) if String(rooms[here].get("kind", "lane")) == "lane" else minf(span.x, span.y)
+			for other in manifest.adjacency[here]:
+				if blind.has(int(other)) and not seen.has(int(other)):
+					seen[int(other)] = true
+					queue.append(int(other))
+		best = maxf(best, length)
+	return best
+
 static func hiding_count(room: Dictionary) -> int:
 	if room.has("hides"): return room.hides.size()
 	if int(room.get("hall", -1)) >= 0: return 0

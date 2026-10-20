@@ -64,6 +64,7 @@ func run() -> void:
 	var used_types := {}
 	var wing_leaks: Array = []
 	var counts: Array = []
+	var exposed: Array = []
 	var walked: Array = []
 	var number_faults: Array = []
 	var climbing := 0
@@ -87,6 +88,8 @@ func run() -> void:
 		for room in data.rooms: used_types[room.type] = true
 		# Each planta a hotel of its own: between 81 and 99 rooms.
 		for planta in 3: counts.append(rooms_on(data, planta))
+		# Not the warren: hardly any corridor there to leave without doors.
+		if String(data.plans[2].plan) != "warren": exposed.append(FLOOR.longest_exposed(data, 2))
 		# Nothing joins one planta to another: the lift is the only way down.
 		for edge in data.edges:
 			if int(data.rooms[int(edge[0])].wing) != int(data.rooms[int(edge[1])].wing): wing_leaks.append(seed_value)
@@ -170,6 +173,12 @@ func run() -> void:
 	check("Subir de número no lleva a ninguna parte", drawn > 0.35 and drawn < 0.65)
 	check("Las plantas solo se comunican por su ascensor", wing_leaks.is_empty())
 	check("Cada planta tiene más de 80 habitaciones y menos de 100", counts.min() > 80 and counts.max() < 100)
+	# The last planta has its exposed corridors (map_generator.expose()): a
+	# stretch with no door on to any room, of 30 m always, of 50 nearly always
+	# (measured on 300 floors: 100 and 94 %, from 62 and 30 % before).
+	var thirty: float = float(exposed.filter(func(metres): return float(metres) >= 30.0).size()) / exposed.size()
+	var fifty: float = float(exposed.filter(func(metres): return float(metres) >= 50.0).size()) / exposed.size()
+	check("La tercera planta tiene un pasillo sin puertas de 30 m en casi todos los pisos y de 50 en la mayoría (%d %%, %d %%)" % [roundi(thirty * 100.0), roundi(fifty * 100.0)], thirty >= 0.98 and fifty >= 0.88)
 	# The floor of the survivors who play it (FLOOR.AREA): alone, half the area
 	# of the hotel of two or three; four, a fifth more; five, a third more. And
 	# never more numbers on a planta than its hundred holds, however big.
@@ -206,7 +215,7 @@ func run() -> void:
 	# The floor's rules and its plantas are counted in three places that have to
 	# agree: the rules (hotel_floor.gd), the session and the generator.
 	check("Las reglas del hotel tienen una etapa por planta", preload("res://game/floors/hotel_floor.gd").count() == preload("res://game/services/game_session.gd").STAGES and preload("res://game/services/game_session.gd").STAGES == FLOOR.PLANTAS)
-	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 2506132082 and hash(JSON.stringify(generator.generate(777))) == 1088711804)
+	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 2234534359 and hash(JSON.stringify(generator.generate(777))) == 3643453501)
 	var scene = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame

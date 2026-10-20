@@ -98,6 +98,23 @@ const LOOPS := 4
 ## How much more often rooms open on to each other, by plan: a warren is
 ## rooms giving on to rooms.
 const ROOM_DOORS := {"warren": 1.8, "rot": 1.25}
+## Exposed corridors (the author, 20 October 2026: an L of tens of metres with
+## no door, the creature met in it, and getting away was hard): a stretch with
+## no door on to any room, so with no wardrobe within reach, only the fire
+## doors and the corridors that branch off it. The first planta is a hotel and
+## has none laid; the second, one of 30 m in half its floors; the last, one of
+## 50 m and, where there is a second, another of 35 (metres scaled with the
+## square root of the size of the floor), never longer than EXPOSED_LONGEST;
+## where the first will not go at its length, a fifth or two fifths shorter.
+const EXPOSED := [0.0, 30.0, 50.0]
+const EXPOSED_CHANCE := [0.0, 0.5, 1.0]
+const SECOND_EXPOSED := 35.0
+const EXPOSED_LONGEST := 90.0
+## An exposed stretch is a way through, and the short one: going round it is
+## half as long again at the least, or there is no going round. The best few
+## of the stretches that could be it are tried in full (EXPOSED_TRIES).
+const DETOUR := 1.5
+const EXPOSED_TRIES := 14
 const WAYS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 ## Where a door can stand in the wall of a room, in metres from the middle of
 ## the wall, either way. A door off the middle leaves that wall its furniture
@@ -412,6 +429,7 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	if refuge.is_empty(): return fail("refuge_%s" % plan)
 	trim(f, planta, alive, arrival, refuge, target, rng)
 	tidy(f, alive)
+	if not standby: expose(f, planta, alive, arrival, refuge, rng)
 	var landing: int = refuge.landing
 	var count := count_rooms(f, planta, alive, arrival, landing)
 	var window := FLOOR.rooms_window(drawing)
@@ -1118,6 +1136,198 @@ func free_for_hall(f: Dictionary, alive: Dictionary, local: int, arrival: int) -
 	if local < 0 or local == arrival or not alive.has(local): return false
 	var room: Dictionary = at(f, local)
 	return room.kind == "module" and room.hall < 0 and not room.service
+
+# --- Exposed corridors ------------------------------------------------------------------
+
+## The exposed stretches of the planta (EXPOSED), once its refuge is placed and
+## its rooms trimmed: the doors of the rooms along a stretch of corridor are
+## walled up, and a room left with no other way out is given a door into the
+## room beside it, as rooms that have come apart give on to each other.
+## Nothing is laid where it would leave a room cut off, take the refuge's own
+## door or the way in, cost the planta a ring it needs, move its refuge out of
+## depth or let a hand on the wall find it.
+func expose(f: Dictionary, planta: int, alive: Dictionary, arrival: int, refuge: Dictionary, rng: RandomNumberGenerator) -> void:
+	if EXPOSED[planta] <= 0.0 or rng.randf() >= EXPOSED_CHANCE[planta]: return
+	var reach_scale := sqrt(drawing)
+	var wanted: Array = [EXPOSED[planta] * reach_scale]
+	if planta == WINGS - 1: wanted.append(SECOND_EXPOSED * reach_scale)
+	var taken := {}
+	for index in wanted.size():
+		# The first is always laid if the planta has room for one at all: a
+		# shorter one where the long one will not go.
+		var run: Array = []
+		for share in ([1.0, 0.8, 0.6] if index == 0 else [1.0]):
+			run = blind_run(f, alive, arrival, refuge, rng, float(wanted[index]) * share, EXPOSED_LONGEST * reach_scale, taken)
+			if not run.is_empty(): break
+		for local in run: taken[local] = true
+
+## One exposed stretch of `least` to `most` metres, laid; returns its cells, or
+## [] when none could be. Straight stretches of a corridor and Ls round one of
+## its crossings, nearest the middle of the lengths first (give or take a
+## draw), and the first that keeps the planta what it promises is taken.
+func blind_run(f: Dictionary, alive: Dictionary, arrival: int, refuge: Dictionary, rng: RandomNumberGenerator, least: float, most: float, taken: Dictionary) -> Array:
+	var base: int = f.base
+	var keep := {arrival: true, int(refuge.room): true, int(refuge.landing): true}
+	var ideal := least * 1.25
+	var candidates: Array = []
+	for entry in corridor_runs(f, alive, least, most):
+		var run: Array = entry.run
+		if run.any(func(local): return taken.has(local)): continue
+		var inside := {}
+		for local in run: inside[local] = true
+		var ends: Array = [way_out(f, alive, inside, run[0]), way_out(f, alive, inside, run[run.size() - 1])]
+		if int(ends[0]) < 0 or int(ends[1]) < 0: continue
+		var shut: Array = []
+		var rooms := {}
+		for local in run:
+			for other in f.adjacency[base + local]:
+				var next: int = int(other) - base
+				if at(f, next).kind != "module": continue
+				shut.append([local, next])
+				rooms[next] = true
+		var fits := true
+		var opened: Array = []
+		for room in rooms:
+			if keep.has(room):
+				fits = false
+				break
+			if not f.adjacency[base + int(room)].all(func(other): return inside.has(int(other) - base)): continue
+			# Its only door was on to the stretch: one into a room beside it.
+			var beside := -1
+			for way in WAYS:
+				var next := step(f, int(room), way)
+				if next < 0 or not alive.has(next) or inside.has(next) or keep.has(next) or rooms.has(next) or at(f, next).kind != "module": continue
+				beside = next
+				break
+			if beside < 0:
+				fits = false
+				break
+			opened.append([int(room), beside])
+		if not fits: continue
+		candidates.append({"run": run, "length": float(entry.length), "shut": shut, "opened": opened, "ends": ends, "inside": inside, "rank": -absf(float(entry.length) - ideal) - 2.0 * opened.size() + rng.randf() * 6.0})
+	candidates.sort_custom(func(a, b): return float(a.rank) > float(b.rank))
+	var population := 0
+	for local in alive:
+		if at(f, local).kind == "module": population += 1
+	var rooms_only := alive.duplicate()
+	rooms_only.erase(int(refuge.landing))
+	if candidates.is_empty(): fail("exposed_none")
+	for entry in candidates.slice(0, EXPOSED_TRIES):
+		var saved := save(f)
+		for pair in entry.shut: unlink(f, base + int(pair[0]), base + int(pair[1]))
+		for pair in entry.opened: link(f, base + int(pair[0]), base + int(pair[1]))
+		rejoin(f, alive, arrival, entry.inside, keep)
+		var why := keeps_promises(f, alive, rooms_only, arrival, refuge, entry, population)
+		if why.is_empty(): return entry.run
+		fail("exposed_" + why)
+		restore(f, saved)
+	return []
+
+## What walling up a stretch cut off -- a room behind the one that gave on to
+## it, a pocket of them -- given a door on to what is still reached, never on
+## to the stretch, the refuge, its lobby or the way in.
+func rejoin(f: Dictionary, alive: Dictionary, arrival: int, inside: Dictionary, keep: Dictionary) -> void:
+	var base: int = f.base
+	for guard in 24:
+		var seen := reach(f, arrival, alive)
+		if seen.size() == alive.size(): return
+		var missing: Array = alive.keys().filter(func(local): return not seen.has(local) and not keep.has(local))
+		missing.sort()
+		var joined := false
+		for local in missing:
+			for way in WAYS:
+				var next := step(f, int(local), way)
+				if next < 0 or not seen.has(next) or inside.has(next) or keep.has(next): continue
+				if at(f, int(local)).kind != "module" and at(f, next).kind != "module": continue
+				link(f, base + int(local), base + next)
+				joined = true
+				break
+			if joined: break
+		if not joined: return
+
+## What the planta, with a stretch made exposed, would no longer be of what it
+## was laid to be ("" when nothing): every room reached, its rings, its refuge
+## as deep and out of reach of a hand on the wall, and the stretch a short
+## way through.
+func keeps_promises(f: Dictionary, alive: Dictionary, rooms_only: Dictionary, arrival: int, refuge: Dictionary, entry: Dictionary, population: int) -> String:
+	var base: int = f.base
+	if reach(f, arrival, alive).size() != alive.size(): return "reach"
+	if cycles(f, alive) < FLOOR.rings(drawing): return "rings"
+	var around := alive.duplicate()
+	for local in entry.inside: around.erase(local)
+	var metres := route_metres(f, around, int(entry.ends[0]))
+	if metres.has(int(entry.ends[1])) and float(metres[int(entry.ends[1])]) < DETOUR * float(entry.length): return "detour"
+	if not in_depth(f, rooms_only, arrival, int(refuge.room)): return "depth"
+	if int(WALKER.score(f.rooms, f.adjacency, base + arrival, base + int(refuge.room), population).hits) > 0: return "walker"
+	return ""
+
+## The stretches of corridor that could be exposed, `least` to `most` metres:
+## straight along a lane, and Ls of two straight legs meeting at a crossing.
+## [{run: [cells in walking order], length}].
+func corridor_runs(f: Dictionary, alive: Dictionary, least: float, most: float) -> Array:
+	var base: int = f.base
+	var out: Array = []
+	var walkable := func(local: int) -> bool: return local >= 0 and alive.has(local) and at(f, local).kind != "module"
+	var joined := func(a: int, b: int) -> bool: return f.adjacency[base + a].has(base + b)
+	for line in f.lines:
+		var cells: Array = line.cells
+		for first in cells.size():
+			if not walkable.call(cells[first]): continue
+			var run: Array = [cells[first]]
+			var length := along(f, int(cells[first]), line.axis == "h")
+			for next in range(first + 1, cells.size()):
+				if not walkable.call(cells[next]) or not joined.call(cells[next - 1], cells[next]): break
+				run.append(cells[next])
+				length += along(f, int(cells[next]), line.axis == "h")
+				if length > most: break
+				if length >= least: out.append({"run": run.duplicate(), "length": length})
+	for corner in alive:
+		if at(f, corner).kind != "cross" or not walkable.call(corner): continue
+		for across: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0)]:
+			for down: Vector2i in [Vector2i(0, 1), Vector2i(0, -1)]:
+				var one := leg(f, corner, across, most, walkable, joined)
+				var two := leg(f, corner, down, most, walkable, joined)
+				var middle := along(f, corner, true)
+				for i in range(1, one.cells.size() + 1):
+					for j in range(1, two.cells.size() + 1):
+						var length: float = float(one.lengths[i - 1]) + middle + float(two.lengths[j - 1])
+						if length < least or length > most: continue
+						var run: Array = one.cells.slice(0, i)
+						run.reverse()
+						run.append(corner)
+						run.append_array(two.cells.slice(0, j))
+						out.append({"run": run, "length": length})
+	return out
+
+## One leg of an L out of a crossing: the corridor cells straight on from it,
+## joined one to the next, and the length walked to the end of each.
+func leg(f: Dictionary, from: int, way: Vector2i, most: float, walkable: Callable, joined: Callable) -> Dictionary:
+	var cells: Array = []
+	var lengths: Array = []
+	var length := 0.0
+	var here := from
+	while true:
+		var next := step(f, here, way)
+		if not walkable.call(next) or not joined.call(here, next): break
+		length += along(f, next, way.x != 0)
+		if length > most: break
+		cells.append(next)
+		lengths.append(length)
+		here = next
+	return {"cells": cells, "lengths": lengths}
+
+## How long a cell is walked through, across (along x) or down (along z).
+func along(f: Dictionary, local: int, across: bool) -> float:
+	return float(at(f, local).span_x) if across else float(at(f, local).span_z)
+
+## A corridor cell outside a stretch that its end opens on to, or -1: an
+## exposed stretch leads somewhere at both ends.
+func way_out(f: Dictionary, alive: Dictionary, inside: Dictionary, end: int) -> int:
+	var base: int = f.base
+	for other in f.adjacency[base + end]:
+		var next: int = int(other) - base
+		if not inside.has(next) and alive.has(next) and at(f, next).kind != "module": return next
+	return -1
 
 # --- Trimming --------------------------------------------------------------------------
 

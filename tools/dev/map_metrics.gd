@@ -67,6 +67,7 @@ func _initialize() -> void:
 	var rooms_all: Array = []
 	var numbered_all: Array = []
 	var areas: Array = []
+	var exposed: Array = [[], [], []]
 	var runs: Array = []
 	var rings: Array = []
 	var dead: Array = []
@@ -132,6 +133,7 @@ func _initialize() -> void:
 				counted += 1
 				if data.adjacency[base + local].size() == 1 and base + local != refuge: single += 1
 			rooms_all.append(counted)
+			if String(data.plans[planta].plan) != "warren": exposed[planta].append(FLOOR.longest_exposed(data, planta))
 			numbered_all.append(numbered)
 			areas.append(square)
 			rings.append(doors / 2 - cells + 1)
@@ -231,6 +233,14 @@ func _initialize() -> void:
 	judge("pisos que no valida el validador", invalid, invalid == 0, "0")
 	judge("desvío entre coche y vestíbulo de llegada (m)", snappedf(worst_lift, 0.0001), worst_lift < 0.001, "< 1 mm")
 	judge("recta abierta más larga (m)", snappedf(runs.max(), 0.1), runs.max() <= 45.01, "<= 45 m")
+	for planta in 3:
+		judge("tramo expuesto más largo, planta %d, p10 / mediana (m)" % (planta + 1), "%d / %d" % [roundi(quantile(exposed[planta], 0.1)), roundi(quantile(exposed[planta], 0.5))], true, "informativo")
+	# The warren is left out: rooms giving on to rooms, hardly any corridor.
+	var long_enough: int = exposed[2].filter(func(metres): return float(metres) >= 50.0 * reach - 0.01).size()
+	var some: int = exposed[2].filter(func(metres): return float(metres) >= 30.0 * reach - 0.01).size()
+	var counted: int = maxi(1, exposed[2].size())
+	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(50.0 * reach), share_of(long_enough, counted), float(long_enough) / counted >= 0.85, ">= 85 %")
+	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(30.0 * reach), share_of(some, counted), float(some) / counted >= 0.97, ">= 97 %")
 	judge("anillos por planta, mínimo", rings.min(), rings.min() >= FLOOR.rings(area), ">= %d" % FLOOR.rings(area))
 	judge("habitaciones sin salida, mediana", snappedf(quantile(dead, 0.5), 0.01), quantile(dead, 0.5) >= 0.2 and quantile(dead, 0.5) <= 0.45, "20–45 %")
 	var worst_bearing := 0
@@ -265,7 +275,9 @@ func _initialize() -> void:
 	judge("estado de las salas en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(kept_alike), 0.001), absf(mean.call(kept_alike)) <= 0.05, "<= 0,05")
 	judge("vary() en el mismo sitio de dos pisos (correlación)", snappedf(mean.call(looks_alike), 0.001), absf(mean.call(looks_alike)) <= 0.05, "<= 0,05")
 	judge("generación, mediana (ms)", snappedf(quantile(times, 0.5), 0.1), true, "informativo")
-	var slowest := 250.0 * maxf(1.0, area * area)
+	# The exposed stretches (map_generator.expose()) cost some 10 ms in the
+	# middle and 75 at the slowest of a hundred floors.
+	var slowest := 320.0 * maxf(1.0, area * area)
 	judge("generación, p99 (ms)", snappedf(quantile(times, 0.99), 0.1), quantile(times, 0.99) <= slowest, "<= %d ms" % roundi(slowest))
 	var file := FileAccess.open("res://evidence/map_metrics%s.json" % ("" if survivors == 2 else "_%d" % survivors), FileAccess.WRITE)
 	if file != null:
