@@ -430,7 +430,10 @@ func run() -> void:
 	# Four pieces among more than two hundred: what says which four is a slip
 	# of paper left showing on them.
 	check("Los cuatro lo enseñan con una nota", hidden.all(func(piece): return is_instance_valid(piece.note)))
-	check("Y ningún otro mueble la lleva", level.containers.filter(func(piece): return is_instance_valid(piece.note)).size() == DIG.COUNT)
+	# And the hints in drawers show one too (hint_placement.gd): from outside,
+	# nobody can tell a page from a hint.
+	var in_drawers: int = level.code.hints.filter(func(hint): return String(hint.place) == "container").size()
+	check("Y solo la llevan los otros muebles con una pista", level.containers.filter(func(piece): return is_instance_valid(piece.note)).size() == DIG.COUNT + in_drawers and level.containers.filter(func(piece): return is_instance_valid(piece.note)).all(func(piece): return piece.digit >= 0 or piece.hint >= 0))
 	var muebles: int = level.containers.size()
 	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
 	# Each sounds like what it is when gone through (hotel_container.SEARCH_SOUNDS):
@@ -498,6 +501,54 @@ func run() -> void:
 	sheet.map.lay_pencil(1)
 	check("Y en otra planta no se ve", not pencil.visible)
 	level.ui.sheet.close()
+	# The hints of the third stage (hint_placement.gd): eight papers about
+	# where the pages are, four in sight (one for each page), three in drawers
+	# for three pages, and the other sheet; none in its own page's zone.
+	var hints: Array = level.code.hints
+	var page_room := {}
+	for piece in hidden: page_room[int(piece.slot)] = FLOOR.room_at(level.manifest.rooms, piece.global_position)
+	var in_sight: Array = hints.filter(func(hint): return String(hint.place) == "surface")
+	check("La tercera etapa tiene ocho pistas: cuatro a la vista, una por página, y cuatro en muebles", hints.size() == 8 and in_sight.size() == 4 and [1, 2, 3, 4].all(func(slot): return in_sight.any(func(hint): return int(hint.slot) == slot)) and hints.filter(func(hint): return String(hint.place) == "container").size() == 4)
+	check("Ninguna en la zona de su página ni en una sala con página", hints.all(func(hint): return (int(hint.slot) == 0 or int(level.manifest.rooms[int(hint.room)].sector) != int(page_room[int(hint.slot)].sector)) and not page_room.values().any(func(room): return int(room.id) == int(hint.room))))
+	var walked := FLOOR.route_metres(level.manifest, FLOOR.entry_of(level.manifest, 2))
+	var other: Array = hints.filter(func(hint): return String(hint.kind) == "hoja")
+	check("La que las marca todas está en un mueble, más a trasmano que las otras siete", other.size() == 1 and String(other[0].place) == "container" and hints.all(func(hint): return float(walked.get(int(hint.room), 0.0)) <= float(walked.get(int(other[0].room), 0.0)) + 0.01))
+	var said := JSON.stringify(hints)
+	check("Ninguna dice nada con punto medio ni guion largo", not said.contains("·") and not said.contains("—"))
+	# What they put on the plan is true: the circle holds its page, the corner
+	# of the plan has it under its cross, the other sheet's four are the four.
+	var truthful := true
+	for hint in hints:
+		if int(hint.slot) == 0: continue
+		var page := Vector2(hidden.filter(func(piece): return piece.slot == int(hint.slot))[0].global_position.x, hidden.filter(func(piece): return piece.slot == int(hint.slot))[0].global_position.z)
+		if String(hint.kind) == "calco" and (hint.centre as Vector2).distance_to(page) > float(hint.radius): truthful = false
+		if String(hint.kind) == "plano" and (not (hint.window as Rect2).has_point(page) or (hint.cross as Vector2).distance_to(page) > 0.5): truthful = false
+	check("Lo que marcan en el plano es verdad", truthful and (other[0].points as Array).size() == DIG.COUNT)
+	var chalked: Array = hints.filter(func(hint): return String(hint.kind) == "tiza")
+	check("La tiza está en las paredes cuando una pista habla de ella", chalked.all(func(hint): return level.hotel.find_children("*Chalk*", "MeshInstance3D", true, false).size() >= (hint.marks as Array).size()))
+	# A hint in a drawer goes to whoever finds it, held up at once.
+	var drawer: Dictionary = hints.filter(func(hint): return String(hint.place) == "container" and String(hint.kind) != "hoja")[0]
+	level.search_container(level.containers[int(drawer.container)])
+	await frames(2)
+	check("Una pista en un mueble se la lleva quien registra, y se lee al momento", int(level.code.hints_taken.get(int(drawer.id), -1)) == level.player.slot and level.interaction.reading_hint == int(drawer.id) and is_instance_valid(level.ui.reading))
+	level.close_document()
+	# One in sight is read where it lies and stays there.
+	var paper = level.hotel.find_children("Hint_*", "Area3D", true, false)[0]
+	level.interaction.read_hint(paper.hint_id)
+	level.close_document()
+	check("Una a la vista se lee donde está, y se queda allí", is_instance_valid(paper) and level.code.hints_read.has(paper.hint_id) and not level.interaction.reading())
+	# Both hang on the sheet, under the pages, and are held up from there.
+	level.interaction.toggle_sheet()
+	check("Las pistas leídas cuelgan en la hoja, bajo las páginas", level.ui.sheet.thumbs.size() == 2)
+	level.ui.sheet.hold_up(level.ui.sheet.thumbs[0].hint)
+	check("Y se levantan para leerlas otra vez", is_instance_valid(level.ui.sheet.held))
+	level.interaction.toggle_sheet()
+	check("Cerrar la hoja las baja", not is_instance_valid(level.ui.sheet.held))
+	# The other sheet puts the four on the plan.
+	level.search_container(level.containers[int(other[0].container)])
+	await frames(2)
+	level.close_document()
+	check("La hoja de otro pone las cuatro páginas en el plano", level.code.hint_marks().filter(func(mark): return mark.ink == level.code.OTHER_MARK).size() == DIG.COUNT)
 	# Alone there is nothing to forgive: caught is the end of that floor.
 	var before_stage: int = session.stage
 	check("En solitario, que te cojan termina el piso", session.capture(1) and session.state == session.State.FAILED and session.restarts == 0)

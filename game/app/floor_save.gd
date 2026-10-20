@@ -55,6 +55,9 @@ static func take(level) -> Dictionary:
 		"doors": level.hotel.doors.map(func(door): return door.opened),
 		"sets": level.televisions.map(func(set): return is_instance_valid(set) and set.on),
 		"searched": searched,
+		# The hints read where they lie; the ones taken from drawers come back
+		# with the furniture gone through.
+		"hints": level.code.hints_read.keys(),
 		"code": level.code_entered,
 		"lifts": {"away": level.lifts.lift_away.duplicate(), "hold": level.lifts.creature_hold.duplicate(), "lobby": level.lifts.lobby_time.duplicate(), "arrived": arrived},
 		"creature": creature,
@@ -85,6 +88,7 @@ static func give(level, state: Dictionary) -> void:
 	# (catch_up_progress); reached, not just arrived at: the creature is not
 	# sent after a lift nobody has just taken.
 	level.catch_up_progress({"searched": state.get("searched", []), "code": state.get("code", false), "lift_away": state.get("lifts", {}).get("away", {}), "stage": stage})
+	for id in state.get("hints", []): level.code.note_read(int(id))
 	level.last_stage = session.stage
 	var lifts: Dictionary = state.get("lifts", {})
 	level.lifts.creature_hold = lifts.get("hold", {}).duplicate()

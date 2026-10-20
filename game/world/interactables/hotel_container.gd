@@ -13,6 +13,8 @@ const SEARCH_TIME := 1.0
 ## The number it hides, or -1, and which place of the code it is (1..4).
 var digit := -1
 var slot := 0
+## The hint in it, if any (hint_placement.gd): its id among the floor's.
+var hint := -1
 var searched := false
 var kind := ""
 ## How far the piece's front stands from its stretch's wall (room_dressing).

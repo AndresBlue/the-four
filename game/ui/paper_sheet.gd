@@ -34,6 +34,7 @@ const PAGE := Vector2(1600, 1000)
 ## fifths, below the top quarter; the rest is for the players' own hands.
 const MAP_AREA := Rect2(0.335, 0.22, 0.59, 0.735)
 const MAP := preload("res://game/ui/sheet_map.gd")
+const HINT_VIEW := preload("res://game/ui/hint_view.gd")
 ## The page itself, and the four pencils that can write on it, in seat order:
 ## black for the host, then navy, dark red and dark green.
 const PAPER := Color(0.86, 0.82, 0.71)
@@ -194,7 +195,18 @@ func _ready() -> void:
 		tip.draw_circle(Vector2.ZERO, 1.8, ink_colour, true, -1.0, true))
 	page.add_child(tip)
 
-func open(can_edit: bool, key_name: String, notes := []) -> void:
+## The hints this player took or read (hint_placement.gd), hanging under the
+## pages in miniature, each the paper it is; a click (or the pad's pencil and
+## its trigger) holds one up over the sheet, and another puts it down. The
+## walls of their planta are what their plans are drawn from.
+const THUMB := 112.0
+var hint_walls: Array = []
+var held: Control
+var thumbs: Array = []
+var trigger_was := false
+
+func open(can_edit: bool, key_name: String, notes := [], hints := [], walls := []) -> void:
+	hint_walls = walls
 	editable = can_edit
 	visible = true
 	# Smaller windows get a smaller page (pointer positions stay in page space).
@@ -204,7 +216,7 @@ func open(can_edit: bool, key_name: String, notes := []) -> void:
 	page.scale = Vector2.ONE * shown
 	# Nothing said while it can be written on; only that it cannot.
 	caption.text = "" if editable else ("SOLO PUEDES MIRAR, %s CIERRA" % key_name)
-	fill_slips(notes)
+	fill_slips(notes, hints)
 	# It comes up the way the tape cuts to anything: quick, and from nothing.
 	if is_instance_valid(opening): opening.kill()
 	page.modulate.a = 0.0
@@ -233,14 +245,15 @@ func ink_of(who: int) -> Color:
 const LEAF := Vector2(118, 150)
 ## How far down each leaf hangs from the one before, as a share of its height.
 const CHAIN := 0.72
-func fill_slips(notes: Array) -> void:
+func fill_slips(notes: Array, hints := []) -> void:
 	for old in slips.get_children():
 		if old == pages: slips.remove_child(pages)
 		else: old.queue_free()
 	for old in pages.get_children(): old.queue_free()
+	thumbs.clear()
 	var title := STYLE.text("TUS NOTAS", 18, STYLE.SOFT)
 	slips.add_child(title)
-	if notes.is_empty():
+	if notes.is_empty() and hints.is_empty():
 		var empty := STYLE.text("NADA TODAVÍA", 16, STYLE.FAINT)
 		empty.position = Vector2(0, 28)
 		slips.add_child(empty)
@@ -268,6 +281,65 @@ func fill_slips(notes: Array) -> void:
 		label.size = Vector2(LEAF.x - 16, LEAF.y * 0.12)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cell.add_child(label)
+	# The hints under the pages, smaller, in a chain of their own.
+	var y := 0.0 if notes.is_empty() else LEAF.y * CHAIN * float(notes.size() - 1) + LEAF.y + 16.0
+	var room_left := slips.size.y - 40.0 - y
+	var step := minf(84.0, room_left / maxf(1.0, float(hints.size()) + 0.6))
+	for i in hints.size():
+		var hint: Dictionary = hints[i]
+		var view := HINT_VIEW.new()
+		view.setup(hint, hint_walls)
+		var shrink := THUMB / view.card.x
+		var cell := Control.new()
+		cell.name = "Hint_%d" % int(hint.id)
+		cell.size = view.card * shrink
+		cell.position = Vector2((slips.size.x - THUMB) * float(i % 2), y)
+		cell.mouse_filter = Control.MOUSE_FILTER_STOP
+		cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		cell.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT: hold_up(hint))
+		view.scale = Vector2.ONE * shrink
+		view.rotation = HAND.jitter(float(i), 9.0) * 0.06
+		cell.add_child(view)
+		pages.add_child(cell)
+		thumbs.append({"cell": cell, "hint": hint})
+		y += step
+
+## A hint held up over the sheet, as large as the page allows; a click
+## anywhere, or the pad's trigger again, puts it down.
+func hold_up(hint: Dictionary) -> void:
+	put_down()
+	held = Control.new()
+	held.name = "HeldHint"
+	held.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	held.mouse_filter = Control.MOUSE_FILTER_STOP
+	held.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed: put_down())
+	add_child(held)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.5)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	held.add_child(shade)
+	var view := HINT_VIEW.new()
+	view.setup(hint, hint_walls)
+	var fit := minf(minf(size.x * 0.62 / view.card.x, size.y * 0.78 / view.card.y), 1.5)
+	view.scale = Vector2.ONE * fit
+	view.position = (size - view.card * fit) * 0.5
+	held.add_child(view)
+
+func put_down() -> void:
+	if is_instance_valid(held): held.queue_free()
+	held = null
+
+## The hint under a point of the page (the pad's pencil), or {}.
+func thumb_at(point: Vector2) -> Dictionary:
+	for entry in thumbs:
+		var cell: Control = entry.cell
+		if not is_instance_valid(cell): continue
+		var origin: Vector2 = slips.position + pages.position + cell.position
+		if Rect2(origin, cell.size).has_point(point): return entry.hint
+	return {}
 
 ## One of the pages: a scrap of the same worn paper, not quite square to the
 ## others, with its number and its page number in pencil.
@@ -294,6 +366,7 @@ func leaf(digit: int, place: int) -> Control:
 	return scrap
 
 func close() -> void:
+	put_down()
 	finish_stroke()
 	pad_stroke = false
 	tip_shown = false
@@ -370,8 +443,26 @@ func steer_pencil(delta: float) -> void:
 	var push := minf(stick.length(), 1.0)
 	if push > 0.0:
 		var speed := TIP_SPEED * (TIP_DRAWING if pad_stroke else 1.0) * push * (0.25 + 0.75 * push)
-		tip_at = (tip_at + stick.normalized() * speed * delta).clamp(Vector2.ZERO, PAGE)
+		# Out over the column of slips too, to pick up a hint.
+		tip_at = (tip_at + stick.normalized() * speed * delta).clamp(Vector2.ZERO, Vector2(PAGE.x + STRIP, PAGE.y))
 	tip.position = tip_at
+	# The trigger on a hint holds it up, and again puts it down.
+	var pulled := drawing and not trigger_was
+	trigger_was = drawing
+	if is_instance_valid(held):
+		if pulled: put_down()
+		return
+	if pulled and not pad_stroke and drawing_op.is_empty():
+		var hint := thumb_at(tip_at)
+		if not hint.is_empty():
+			hold_up(hint)
+			return
+	if tip_at.x > PAGE.x:
+		if pad_stroke:
+			finish_stroke()
+			pad_stroke = false
+		tip.queue_redraw()
+		return
 	if pad_stroke:
 		add_point(tip_at)
 		if not (drawing or rubbing) or drawing_op.is_empty():

@@ -299,11 +299,11 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		# Whatever was up over the picture goes -- torn out of it, not put
 		# away (hotel_ui.tear_away) -- and the tape is told it was.
 		var sheet_up: bool = level.ui.sheet.visible
-		var covered: bool = sheet_up or level.lock_open or is_instance_valid(level.reading_document)
+		var covered: bool = sheet_up or level.lock_open or level.reading_paper()
 		level.ui.tear_away()
 		if sheet_up: level.toggle_sheet()
 		if level.lock_open: level.close_lock()
-		if is_instance_valid(level.reading_document): level.close_document()
+		if level.reading_paper(): level.close_document()
 		if sheet_up: level.ui.tear_sheet()
 		level.ui.hint.text = ""
 		level.ui.progress.visible = false

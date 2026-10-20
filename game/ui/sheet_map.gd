@@ -43,6 +43,11 @@ var fit := 1.0
 ## plan they are drawn in, and op_id -> {line, planta, points (plan)}.
 var pencil: Control
 var pencil_lines := {}
+## Circles the hints this player has read put on the plan (code_lock.hint_marks:
+## the carbon copy's, the other sheet's four), [{planta, centre (plan), radius,
+## ink}]: somebody else's pencil, framed with what has been seen, so a circle
+## where nobody has been yet still shows where it is from here.
+var marks: Array = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -93,6 +98,12 @@ func frame(planta: int, shown: PackedInt32Array) -> Rect2:
 		if not any: seen = Rect2(source.piece_a[index], Vector2.ZERO)
 		any = true
 		seen = seen.expand(source.piece_a[index]).expand(source.piece_b[index])
+	for mark in marks:
+		if int(mark.planta) != planta: continue
+		var reach := Vector2.ONE * float(mark.radius)
+		if not any: seen = Rect2(mark.centre - reach, reach * 2.0)
+		any = true
+		seen = seen.expand(mark.centre - reach).expand(mark.centre + reach)
 	var whole: Rect2 = source.bounds.get(planta, Rect2())
 	if not any: seen = Rect2(whole.get_center(), Vector2.ZERO)
 	var centre := seen.get_center()
@@ -134,6 +145,16 @@ func fading(index: int, fresh: float) -> float:
 	var pale := smoothstep(0.0, 1.0, fresh)
 	var own := chance(index, 0) * FRAYING
 	return pale * smoothstep(own - FRAY_SOFT, own + FRAY_SOFT, fresh)
+
+## A circle in pencil, a little out of round and past where it began.
+func ring(centre: Vector2, radius: float, ink: Color, seed_value: int) -> void:
+	var points := PackedVector2Array()
+	var start := chance(seed_value, 1) * TAU
+	for step in 41:
+		var angle := start + float(step) / 36.0 * TAU
+		var wobble := 1.0 + 0.05 * sin(angle * 3.0 + float(seed_value)) + (chance(seed_value, step) - 0.5) * 0.05
+		points.append(centre + Vector2(cos(angle), sin(angle)) * radius * wobble)
+	draw_polyline(points, Color(ink, 0.8), 2.2, true)
 
 ## A stable number in [0, 1) for a piece and a part of it.
 static func chance(index: int, part: int) -> float:
@@ -178,6 +199,10 @@ func _draw() -> void:
 		var blooming := clampf(1.0 - float(source.since_bloom(index)) / BLOOM, 0.0, 1.0)
 		if blooming > 0.0: draw_line(a, b, Color(INK, 0.2 * blooming), WIDTH * (2.5 + BLOOM_WIDTH * blooming), true)
 	stroke(points, inks)
+	for index in marks.size():
+		var mark: Dictionary = marks[index]
+		if int(mark.planta) != planta: continue
+		ring(origin + (mark.centre as Vector2) * fit, maxf(6.0, float(mark.radius) * fit), mark.ink, 31 + index * 17)
 	# Where this machine's eyes are, faintly, as if the page knew.
 	var camera: Camera3D = get_viewport().get_camera_3d()
 	if camera != null and source.level != null:

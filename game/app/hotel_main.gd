@@ -881,7 +881,7 @@ func start_online_floor(config: Dictionary) -> void:
 		intro.queue_free()
 		intro = null
 	close_online_menu()
-	if is_instance_valid(reading_document): close_document()
+	if reading_paper(): close_document()
 	if session.state == session.State.LOADING:
 		await session.changed
 	if not await build_floor(int(config.seed), false, config.survivors.size()):
@@ -1059,7 +1059,7 @@ func on_state() -> void:
 	press_time = 0
 	pressed_door = null
 	was_held = Input.is_action_pressed("interact")
-	if not playing and is_instance_valid(reading_document): close_document()
+	if not playing and reading_paper(): close_document()
 	# The aiming dot only while playing: not over the title room or the opening scene.
 	ui.get_node("HUD/Crosshair").visible = playing
 	update_title_scene()
@@ -1178,7 +1178,7 @@ func rumble(weak: float, strong: float, seconds: float) -> void:
 ## the pad's own way back are the same thing and go through here.
 func step_back() -> void:
 	if session.state == session.State.CUTSCENE: finish_intro()
-	elif is_instance_valid(reading_document): close_document()
+	elif reading_paper(): close_document()
 	elif ui.settings_open:
 		# Closed first: the revert would otherwise reopen these settings.
 		ui.settings_open = false
@@ -1224,7 +1224,7 @@ func pad_pressed(button: int) -> void:
 		return
 	# B goes back, the menu button pauses; in play they meet at the same place.
 	if button not in [JOY_BUTTON_B, JOY_BUTTON_START]: return
-	if button == JOY_BUTTON_B and session.state == session.State.PLAYING and not ui.settings_open and not online_menu and not is_instance_valid(reading_document): return
+	if button == JOY_BUTTON_B and session.state == session.State.PLAYING and not ui.settings_open and not online_menu and not reading_paper(): return
 	step_back()
 
 ## The stage the floor was on when it was last looked at, to tell a change.
@@ -1801,6 +1801,8 @@ var was_held:
 var reading_document:
 	get: return interaction.reading_document
 	set(value): interaction.reading_document = value
+## A document or a hint up in front of the camera.
+func reading_paper() -> bool: return interaction.reading()
 func toggle_sheet() -> void: interaction.toggle_sheet()
 func place_documents() -> void: interaction.place_documents()
 func open_document(document: Node3D) -> void: interaction.open_document(document)

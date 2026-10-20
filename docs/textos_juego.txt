@@ -1618,3 +1618,47 @@ ACTUAL: construyendo el piso %d / piso %d · %s · de respaldo / capa %s sí / n
 | no hay criatura que oír / lectura de la criatura sí / no / nada que volcar todavía /
 | no se pudo guardar el volcado / volcado en %s / sin partida: %s
 CORRECCIÓN:
+
+22. PISTAS DE LA TERCERA ETAPA (los papeles de la última planta: los de la vista se leen con E; los de los muebles, al registrarlos; cuelgan en TUS NOTAS)
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+[PIST.01] Parte de limpieza (impreso, con su lista de habitaciones; lo último, a lápiz)
+ACTUAL: PARTE DE LIMPIEZA · PLANTA %d, TURNO DE NOCHE · HAB. · ESTADO ·
+| HECHA / NO MOLESTAR / SIN TOALLAS / CAMA SIN HACER / NO ABRE ·
+| En una de estas, un papel con un número %s. No lo toqué.
+|    (%s: en un cajón / en una estantería / en un mueble / en unas cajas)
+CORRECCIÓN:
+
+[PIST.02] Orden de trabajo (impresa, con su sello; lo último, a lápiz)
+ACTUAL: ORDEN DE TRABAJO N.º %04d · PLANTA %d · PENDIENTE ·
+| Sin luz en %s. Revisar el diferencial. · Dentro hay papeles con números. No es cosa mía. /
+| Fuga de agua en el pasillo, frente a la %d. Puesto el cartel de suelo mojado. · Por ahí cerca había un papel con un número.
+|    (%s: la 344, la 346 y la 348; o el almacén, los baños...)
+CORRECCIÓN:
+
+[PIST.03] Indicaciones (a lápiz en una hoja de libreta, rotas a media frase)
+ACTUAL: Al salir del ascensor, a la derecha / a la izquierda / recto. ·
+| En el %s cruce, a la derecha / a la izquierda. · Donde el pasillo dobla, a la derecha / a la izquierda. ·
+| Cruza %s y sal de frente / a la derecha / a la izquierda. · Pasa la puerta de incendios y, ...
+|    (%s del cruce: primer, segundo, tercer, cuarto, quinto, sexto, séptimo, octavo)
+CORRECCIÓN:
+
+[PIST.04] El cartel de una puerta (impreso; lo último, a lápiz)
+ACTUAL: LAVANDERÍA, SOLO PERSONAL / COMEDOR, CERRADO / SALÓN, SE RUEGA SILENCIO / JARDÍN INTERIOR, NO PISAR LAS PLANTAS /
+| SALÓN VACÍO, EN OBRAS / SALA DE LECTURA, SILENCIO / SALA DE TELEVISIÓN, APAGUE AL SALIR / BAÑOS, FUERA DE SERVICIO /
+| GUARDARROPA, SOLO PERSONAL / ALMACÉN, PRIVADO / MANTENIMIENTO, PELIGRO / OFICINA, PRIVADO ·
+| La del número, aquí dentro. / La del número, en el cuarto de al lado.
+CORRECCIÓN:
+
+[PIST.05] Papel carbón (sin texto: el círculo se calca en el plano de la hoja)
+
+[PIST.06] La esquina de un plano de evacuación (impreso, roto)
+ACTUAL: PLANO DE EVACUACIÓN · USTED ESTÁ AQ
+CORRECCIÓN:
+
+[PIST.07] La nota de la tiza (a lápiz)
+ACTUAL: Marqué el camino con tiza desde la puerta de incendios. / desde el ascensor. / desde %s.
+|    (%s: el comedor, el salón, la lavandería...)
+CORRECCIÓN:
+
+[PIST.08] La hoja de otro (sin texto: cuatro círculos de su lápiz, que se calcan en el plano)

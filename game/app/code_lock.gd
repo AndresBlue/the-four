@@ -8,6 +8,14 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
 const LOCK := preload("res://game/world/interactables/hotel_lock.gd")
 const DIGITS := preload("res://game/world/generation/digit_placement.gd")
+const HINTS := preload("res://game/world/generation/hint_placement.gd")
+const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
+const DRESSING := preload("res://game/world/hotel/room_dressing.gd")
+const CHALK := preload("res://game/presentation/shaders/chalk.gdshader")
+## The marks the hints put on the plan: the carbon copy's circle, and the
+## other sheet's four in its own pencil (the sixth of the sheet's inks).
+const CARBON_MARK := Color(0.2, 0.22, 0.42)
+const OTHER_MARK := Color(0.29, 0.1, 0.33)
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const SEARCH_TIMING := preload("res://game/audio/search_timing.gd")
 var level
@@ -33,6 +41,15 @@ var found_where := {}
 ## opens and the floor is left by stepping through it.
 var code_entered := false
 
+## The hints of the stage (hint_placement.gd), by id; who took each one that
+## was in a drawer (the seat, as the pages: it leaves with them); the ones
+## lying in sight this player has read; and this player's, in the order they
+## came to it, which is how they hang on the sheet.
+var hints: Array = []
+var hints_taken := {}
+var hints_read := {}
+var hints_mine: Array = []
+
 ## The keypad of the last door, and what is being typed into it.
 var lock: Node3D
 
@@ -48,6 +65,10 @@ func place_containers() -> void:
 	found_digits.clear()
 	found_by.clear()
 	found_where.clear()
+	hints.clear()
+	hints_taken.clear()
+	hints_read.clear()
+	hints_mine.clear()
 	code_entered = false
 	typed = ""
 	lock = null
@@ -94,6 +115,7 @@ func place_containers() -> void:
 		containers[index].slot = int(hidden.slot)
 		# The four that hold something say so: a slip of paper left showing.
 		containers[index].plant_note()
+	place_hints(hiding, int(asking[0]) if not asking.is_empty() else 0)
 	level.camcorder.write_code("")
 	# The parts of the pieces that open, loaded now and kept while the floor
 	# lasts: not read off the disk on the first search.
@@ -109,6 +131,96 @@ func place_containers() -> void:
 
 ## The pieces that open on this floor: model -> its body and parts.
 var opening_meshes := {}
+
+## The hints of the stage that asks for the code: those in drawers show a slip
+## as the pages do (nobody can tell which is which before looking); those in
+## sight lie on their table; and what two of them speak of is put in the
+## world -- the work order's wet floor sign, the chalk on the walls.
+func place_hints(hiding: Array, stage: int) -> void:
+	hints = HINTS.choose(level.manifest, level.hotel.containers, hiding, stage) if stage > 0 else []
+	for hint in hints:
+		if String(hint.place) == "container":
+			var index := int(hint.container)
+			if index < 0 or index >= containers.size(): continue
+			containers[index].hint = int(hint.id)
+			containers[index].plant_note()
+		else:
+			var paper := HINT_PAPER.new()
+			paper.name = "Hint_%d" % int(hint.id)
+			paper.hint_id = int(hint.id)
+			paper.kind = String(hint.kind)
+			put_in_room(paper, int(hint.room), Transform3D(Basis(Vector3.UP, float(hint.yaw)), hint.position))
+		if hint.has("sign"):
+			var sign := MeshInstance3D.new()
+			sign.name = "WetFloorSign"
+			sign.mesh = DRESSING.mesh("WetFloorSign_01")
+			put_in_room(sign, int(hint.sign.room), Transform3D(Basis(Vector3.UP, float(hint.sign.yaw)), hint.sign.position))
+		for mark in hint.get("marks", []):
+			var chalk := chalk_mark(mark)
+			put_in_room(chalk, int(mark.room), chalk.get_meta("where"))
+
+## Under its room's node, so its lamps light it and it goes with the room;
+## where the hint said, in the world.
+func put_in_room(node: Node3D, room: int, where: Transform3D) -> void:
+	var parent: Node3D = level.hotel.room_nodes[room] if room >= 0 and room < level.hotel.room_nodes.size() and is_instance_valid(level.hotel.room_nodes[room]) else level.hotel
+	parent.add_child(node)
+	node.global_transform = where
+
+## A mark of the chalk on a wall: an arrow along the trail, or the cross by
+## the door, a hair off the plaster.
+func chalk_mark(mark: Dictionary) -> MeshInstance3D:
+	var cross := String(mark.mark) == "cross"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.34, 0.34) if cross else Vector2(0.56, 0.24)
+	var material := ShaderMaterial.new()
+	material.shader = CHALK
+	var normal: Vector3 = (mark.normal as Vector3).normalized()
+	var across := Vector3.UP.cross(normal).normalized()
+	material.set_shader_parameter("cross_mark", cross)
+	material.set_shader_parameter("flip", across.dot(mark.along) < 0.0)
+	material.set_shader_parameter("seed", float(int(mark.room) % 97))
+	var node := MeshInstance3D.new()
+	node.name = "Chalk"
+	node.mesh = quad
+	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.set_meta("where", Transform3D(Basis(across, Vector3.UP, normal), (mark.position as Vector3) + normal * 0.012))
+	return node
+
+func hint_of(id: int) -> Dictionary:
+	return hints[id] if id >= 0 and id < hints.size() else {}
+
+## A hint comes to this player: taken from a drawer, or read where it lies.
+func own_hint(id: int) -> void:
+	if not hints_mine.has(id): hints_mine.append(id)
+
+func note_read(id: int) -> void:
+	if String(hint_of(id).get("place", "")) == "surface": hints_read[id] = true
+	own_hint(id)
+
+## This player's hints, as they hang on the sheet.
+func own_hints() -> Array:
+	return hints_mine.map(func(id): return hint_of(int(id))).filter(func(hint): return not hint.is_empty())
+
+## The planta the hints are about, and its walls as the plans draw them.
+func hint_walls() -> Array:
+	if hints.is_empty(): return []
+	var planta := int(level.manifest.rooms[int(hints[0].room)].wing)
+	var out: Array = []
+	for wall in level.hotel.plan_walls:
+		if int(wall[2]) == planta: out.append([wall[0], wall[1]])
+	return out
+
+## What this player's hints have put on the plan.
+func hint_marks() -> Array:
+	var marks: Array = []
+	for hint in own_hints():
+		var planta := int(level.manifest.rooms[int(hint.room)].wing)
+		match String(hint.kind):
+			"calco": marks.append({"planta": planta, "centre": hint.centre, "radius": float(hint.radius), "ink": CARBON_MARK})
+			"hoja":
+				for point in hint.points: marks.append({"planta": planta, "centre": point, "radius": float(hint.radius), "ink": OTHER_MARK})
+	return marks
 
 ## Going through one: the host decides, as with everything else.
 func search_container(piece: Node3D) -> void:
@@ -131,6 +243,14 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 	if level.world_audio.enabled and not quiet:
 		level.world_audio.play_at(path, piece.global_position + Vector3(0, 0.8, 0), piece.SEARCH_CREAK_DB if path == piece.SEARCH_SOUND else piece.SEARCH_DB)
 	if not level.net.is_client() and not quiet: level.on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
+	# A hint leaves with whoever took it, as a page does; for this player, it
+	# is held up to the camera the moment it is found.
+	if piece.hint >= 0:
+		hints_taken[piece.hint] = seat
+		piece.take_note()
+		if seat == level.player.slot and not level.match_net.local_is_locust():
+			own_hint(piece.hint)
+			if not quiet and not level.bot_match: level.interaction.read_hint(piece.hint)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
 		found_by[piece.slot] = seat

@@ -705,6 +705,8 @@ pueda jugar entero sin tocar el teclado.
   (apartado 4). Por decidir al hacerlo: qué objetos de los que ya hay pasan a
   ser físicos, cómo se sincronizan en red y cuánto oye la criatura.
 
+- [ ] **Volver a generar el tráiler** (`docs/TRAILER.md`): sus títulos quemados aún llevan punto medio y guion largo; el código ya no (20 de octubre de 2026).
+
 ## 4 · Assets que faltan (tuyos)
 
 - [ ] **El goteo de la sangre** no suena: falta una gota espesa sobre

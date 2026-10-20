@@ -1099,6 +1099,7 @@ func on_friend_achievements(friend: int, unlocked: Dictionary, known: bool) -> v
 var dossier: Control
 const PAPER := Color(0.86, 0.84, 0.77)
 const PAPER_INK := Color(0.12, 0.11, 0.1)
+const HINT_VIEW := preload("res://game/ui/hint_view.gd")
 const CREATURES := {"locust": "THE LOCUST", "sunman": "SUNMAN", "boiled": "THE BOILED ONE", "guilt": "GUILT"}
 
 func show_dossier(number: int, item: Dictionary) -> void:
@@ -1174,6 +1175,32 @@ func close_dossier() -> void:
 	dossier.queue_free()
 	dossier = null
 	if screen == "archive": focus_first()
+
+## A hint of the last planta held up to the camera as a document is
+## (hint_view.gd): the paper as it is, and the key that keeps it.
+func show_hint(item: Dictionary, walls: Array) -> void:
+	hide_document()
+	reading = Control.new()
+	reading.name = "Hint"
+	reading.set_anchors_preset(Control.PRESET_FULL_RECT)
+	reading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(reading)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.55)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reading.add_child(shade)
+	var screen_size := get_viewport().get_visible_rect().size
+	var view := HINT_VIEW.new()
+	view.setup(item, walls)
+	var fit := minf(minf(screen_size.x * 0.62 / view.card.x, screen_size.y * 0.7 / view.card.y), 1.4)
+	view.scale = Vector2.ONE * fit
+	view.position = (screen_size - view.card * fit) * 0.5 - Vector2(0, 22)
+	reading.add_child(view)
+	var key: String = settings.prompt_name("interact") if settings != null else "E"
+	var keep := label(reading, "[%s] GUARDAR" % key, 16)
+	keep.add_theme_color_override("font_color", STYLE.FAINT)
+	keep.position = Vector2(view.position.x, view.position.y + view.card.y * fit + 18)
 
 ## A document held up to the camera while play goes on behind it.
 func show_document(item: Dictionary) -> void:

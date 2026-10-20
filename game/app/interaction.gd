@@ -15,6 +15,7 @@ const LOCK := preload("res://game/world/interactables/hotel_lock.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
+const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
 var level
 
 var pressed_door
@@ -25,8 +26,13 @@ var was_held := false
 
 var slow_used := false
 
-## The document being read, if any.
+## The document being read, if any; or the hint (its id), the way a document
+## is: held up to the camera while the floor goes on.
 var reading_document: Node3D
+var reading_hint := -1
+
+func reading() -> bool:
+	return is_instance_valid(reading_document) or reading_hint >= 0
 
 ## Seconds spent going through the piece of furniture in front.
 var search_time := 0.0
@@ -48,9 +54,10 @@ func toggle_sheet() -> void:
 		level.player.reading = false
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		return
-	if level.match_net.local_is_locust() or is_instance_valid(reading_document): return
+	if level.match_net.local_is_locust() or reading(): return
 	level.ui.sheet.seat = level.player.slot
-	level.ui.sheet.open(level.local_alive(), level.settings.prompt_name("sheet"), level.notes_found())
+	level.ui.sheet.map.marks = level.code.hint_marks()
+	level.ui.sheet.open(level.local_alive(), level.settings.prompt_name("sheet"), level.notes_found(), level.code.own_hints(), level.code.hint_walls())
 	level.player.reading = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if level.world_audio.enabled: level.paper_sound.play()
@@ -73,8 +80,21 @@ func open_document(document: Node3D) -> void:
 
 func close_document() -> void:
 	reading_document = null
+	reading_hint = -1
 	level.player.reading = false
 	level.ui.hide_document()
+
+## A hint of the last planta held up (hint_view.gd), and kept: from now on it
+## hangs on this player's sheet, and what it marks is on their plan.
+func read_hint(id: int) -> void:
+	var hint: Dictionary = level.code.hint_of(id)
+	if hint.is_empty(): return
+	if is_instance_valid(reading_document): close_document()
+	reading_hint = id
+	level.player.reading = true
+	level.code.note_read(id)
+	level.ui.show_hint(hint, level.code.hint_walls())
+	if level.world_audio.enabled: level.paper_sound.play()
 
 func focused_area():
 	var from: Vector3 = level.player.camera.global_position
@@ -90,6 +110,10 @@ func focused_hide():
 func focused_document():
 	var area = focused_area()
 	return area if area is DOCUMENT else null
+
+func focused_hint():
+	var area = focused_area()
+	return area if area is HINT_PAPER else null
 
 ## Online: the name of the teammate straight ahead, within a few metres.
 func focused_teammate() -> String:
@@ -188,7 +212,7 @@ func drive_local(delta: float) -> void:
 	level.camcorder.set_stamina(level.player.stamina / 100.0, level.player.exhausted)
 	var floor_room := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
 	level.player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
-	if is_instance_valid(reading_document):
+	if reading():
 		level.camcorder.focus("")
 		if Input.is_action_just_pressed("interact"): close_document()
 		was_held = true
@@ -237,6 +261,11 @@ func drive_local(delta: float) -> void:
 		open_document(document_target)
 		was_held = true
 		return
+	var hint_target = aimed if aimed is HINT_PAPER else null
+	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(hint_target):
+		read_hint(hint_target.hint_id)
+		was_held = true
+		return
 	var hiding_target = aimed if aimed is HIDE else null
 	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(hiding_target):
 		if is_instance_valid(level.locust) and level.locust.control == "ai" and level.locust.sees(level.player, true): level.locust.saw_enter(hiding_target)
@@ -257,7 +286,7 @@ func drive_local(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0

@@ -32,6 +32,12 @@ Uno de los entes paranormales **nunca llegó a estar contenido**: un ente pensan
 
 El archivero **no es el ente**: es otro, y es **humano**. Una suerte de The Architect de Matrix, pero **no lo creó el ente**: es simplemente una persona a la que se le encomendó la tarea de **trabajar en la instalación hasta el fin de los tiempos**. Es **el actor físico del ente**: sus manos, porque el ente no tiene cuerpo.
 
+## Confirmado el 20 de octubre de 2026
+
+### Alguien estuvo antes
+
+Antes que los supervivientes, **alguien más estuvo en el hotel**. En la tercera planta queda su hoja, como la de ellos, con las cuatro páginas del código marcadas con su lápiz (la pista más rara de esa etapa, `GAME_DESIGN.md`). Quién era, y qué le pasó, no está decidido.
+
 ## Lo que el juego ya tiene y casa con esto
 
 No son decisiones nuevas: son cosas que ya están hechas y que esta historia explica.
