@@ -420,6 +420,10 @@ def jaw_zone(p):
     return np.maximum(z - cut, y - 0.016)
 
 
+# How far the hand-drawn wobble of the skull shifts it (and its holes).
+WOBBLE = 0.0035
+
+
 def crack_lines(node):
     """Segments (a, b, ra, rb) of the cracks, in head-local coordinates: random
     walks over the skull's surface, some of them forking, snapped onto it."""
@@ -513,7 +517,7 @@ def head_local_node():
     for c, k in cuts:
         node = Subtract(node, c, k)
     # drawn by hand: nothing about it is quite round or quite symmetric
-    node = Warp(node, 0.0035, 22.0, 9)
+    node = Warp(node, WOBBLE, 22.0, 9)
     # cracked: thin grooves wandering over the skull and the jaw
     cracks = crack_lines(node)
     node = Subtract(node, Union([RoundCone(a, b, ra, rb) for a, b, ra, rb in cracks], k=0.0), 0.0006)
@@ -536,7 +540,8 @@ def head_local_node():
         jaw=Region(whole, lambda p: np.maximum(jaw_zone(p) + g, (TIP_Z + g) - p[:, 2]), hi=(0.08, 0.03, -0.02)),
         tip=Region(whole, lambda p: np.maximum(jaw_zone(p) + g, p[:, 2] - (TIP_Z - g)), hi=(0.03, 0.0, TIP_Z + 0.004)),
     )
-    return whole, dict(sockets=sockets, mouth=mouth, nasal=nasal, bone=node, pieces=pieces, cracks=cracks)
+    holes = {k: Warp(c, WOBBLE, 22.0, 9) for k, c in (("sockets", sockets), ("mouth", mouth), ("nasal", nasal))}
+    return whole, dict(holes, bone=node, pieces=pieces, cracks=cracks)
 
 
 def head_node():

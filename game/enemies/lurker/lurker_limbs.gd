@@ -36,6 +36,8 @@ const CLAW_SPREAD := 0.3
 const FLYING := Vector3(0.7, 1.0, 0.9)
 ## How far the neck juts out towards what it looks at: the head leads.
 const LEAD := 0.09
+## How far the head twists to keep the face upright when the body is not.
+const UPRIGHT := 1.92
 ## Physics layers a hand can hold on to: walls, floors and furniture.
 @export_flags_3d_physics var world_mask := 1
 ## The body's velocity in the world, written every frame by whoever moves it.
@@ -264,6 +266,17 @@ func _look(skeleton: Skeleton3D, xf: Transform3D) -> void:
 		var pose := skeleton.get_bone_global_pose(bone)
 		pose.basis = Basis(axis.normalized(), angle) * pose.basis
 		skeleton.set_bone_global_pose(bone, pose)
+	# and the face upright, however the body hangs (on a wall, on the ceiling):
+	# the head turns on the neck rather than lie on its side
+	var upright := skeleton.get_bone_global_pose(head)
+	var face_axis: Vector3 = upright.basis.z.normalized()
+	var sky: Vector3 = xf.basis.orthonormalized().inverse() * Vector3.UP
+	var want: Vector3 = sky - face_axis * sky.dot(face_axis)
+	var have: Vector3 = upright.basis.y - face_axis * upright.basis.y.dot(face_axis)
+	if want.length_squared() > 1e-6 and have.length_squared() > 1e-6:
+		var roll := clampf(have.signed_angle_to(want, face_axis), -UPRIGHT, UPRIGHT)
+		upright.basis = Basis(face_axis, roll) * upright.basis
+		skeleton.set_bone_global_pose(head, upright)
 	for eye in eyes:
 		if eye < 0: continue
 		var pose := skeleton.get_bone_global_pose(eye)

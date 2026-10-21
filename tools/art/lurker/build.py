@@ -280,11 +280,14 @@ def head_colors(node, feats, p, n):
         near = np.minimum(near, np.linalg.norm(q - (a_ + t[:, None] * ab), axis=1))
     col *= (1.0 - 0.95 * smoothstep(0.0028, 0.0008, near))[:, None]
     col *= (1.0 - 0.5 * smoothstep(0.009, 0.002, near))[:, None]
-    # the holes are black
+    # everything inside the skull is black: the holes, the faces where its
+    # pieces were cut apart, and the deepest hollows
+    col *= smoothstep(-0.0014, -0.0006, local.full(q))[:, None]
+    col *= smoothstep(0.22, 0.42, ao)[:, None]
     for key, inner, rim in (("sockets", 0.0065, 0.0095), ("mouth", 0.006, 0.009), ("nasal", 0.004, 0.0045)):
         d = feats[key].full(q)
-        hole = smoothstep(inner, 0.0, d)
-        col *= (1.0 - 0.985 * hole)[:, None]
+        hole = smoothstep(inner * 0.7, 0.0008, d)
+        col *= (1.0 - hole)[:, None]
         if rim > 0:
             ring = np.exp(-((d - rim) / 0.0022) ** 2) * (1.0 - hole)
             col *= (1.0 + 2.2 * ring)[:, None]

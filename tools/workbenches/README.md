@@ -4,4 +4,6 @@ Abre `module_gallery.tscn` en Godot para ver los 20 tipos de espacio con sus mue
 
 **Es una referencia generada, no la fuente de los niveles.** Cambia `game/world/generation/floor_definition.gd`, `game/world/hotel/prop_factory.gd`, `hotel_geometry.gd` o los recursos de `game/presentation/materials/`, y reconstruye con `./tools/godot.ps1 build-gallery`. Esto reemplaza únicamente `module_gallery.tscn`. No guardes aquí cambios que quieras aplicar a la campaña.
 
+`lurker_test.tscn` es otra cosa: un pasillo corto para ver jugando cómo se acerca The Lurker y cómo se mezcla con la oscuridad (F6, o `./tools/godot.ps1 lurker`; cómo se comporta, en `docs/LURKER.md`).
+
 La galería muestra habitaciones aisladas de 16 × 16 m. La variación, conexiones y salones combinados se comprueban en una partida con semilla fija: `./tools/godot.ps1 playtest -Seed 81`.
