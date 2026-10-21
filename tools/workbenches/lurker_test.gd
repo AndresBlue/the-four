@@ -43,6 +43,9 @@ const SUSPEND := 0.5
 ## tools/art/lurker/animate.py SPEEDS) and how fast it moves round the corridor.
 const CRAWL := 1.0
 const SCURRY := 2.6
+## How quickly it gets up to speed or stops (m/s²): its hands could not keep
+## up with a body that went from still to scurrying in a frame.
+const ACCEL := 5.0
 const ROUND := 0.7
 ## Where it stops to stare, and how near you can come before it goes.
 const STARE_AT := 3.0
@@ -77,6 +80,8 @@ var u_goal := 0.0
 var mood := Mood.WAITING
 var mood_clock := 1.5
 var lit_clock := 0.0
+## How fast it is going down the corridor now (towards -Z is negative).
+var pace := 0.0
 var flee_to := 0.0
 var closing := false
 var rng := RandomNumberGenerator.new()
@@ -309,6 +314,7 @@ func behave(delta: float) -> void:
 	var away := -signf(you - z) if you != z else -1.0
 	lit_clock = lit_clock + delta if in_torch() else 0.0
 	mood_clock -= delta
+	var want := 0.0
 	match mood:
 		Mood.WAITING:
 			if mood_clock <= 0.0:
@@ -322,9 +328,9 @@ func behave(delta: float) -> void:
 				if not closing:
 					closing = true
 					u_goal = on_wall(-1.0 if rng.randf() < 0.5 else 1.0, FACE_HEIGHT)
-				z += -away * CRAWL * 0.55 * delta
+				want = -away * CRAWL * 0.55
 			else:
-				z += -away * CRAWL * delta
+				want = -away * CRAWL
 				if mood_clock <= 0.0:
 					u_goal = pick_spot()
 					mood_clock = rng.randf_range(2.5, 5.0)
@@ -332,11 +338,14 @@ func behave(delta: float) -> void:
 			if lit_clock > CAUGHT * 3.0 or gap < TOO_NEAR or mood_clock <= 0.0:
 				flee(away)
 		Mood.FLEEING:
-			z += away * SCURRY * delta
+			want = away * SCURRY
 			if (z - flee_to) * away >= 0.0 or absf(z) < 0.5 or absf(z + LENGTH) < 0.6:
-				z = clampf(z, -LENGTH + 0.6, -0.5)
 				go(Mood.WAITING)
-	z = clampf(z, -LENGTH + 0.6, -0.5)
+	pace = move_toward(pace, want, ACCEL * delta)
+	z += pace * delta
+	if z < -LENGTH + 0.6 or z > -0.5:
+		z = clampf(z, -LENGTH + 0.6, -0.5)
+		pace = 0.0
 	# round the corridor to where it wants to be, the short way
 	var p := perimeter()
 	var turn := wrapf(u_goal - u, -p * 0.5, p * 0.5)

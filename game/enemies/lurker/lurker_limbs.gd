@@ -32,9 +32,12 @@ const GROUP := {"a.L": 0, "c.R": 0, "d.L": 0, "a.R": 1, "b.L": 1, "e.R": 1, "f.L
 const HABIT := {"a.L": Vector2(0.6, 1.0), "a.R": Vector2(0.25, 1.12), "b.L": Vector2(0.9, 0.86),
 	"c.R": Vector2(-0.4, 0.95), "d.L": Vector2(0.1, 1.08), "e.R": Vector2(-0.7, 1.2), "f.L": Vector2(0.45, 0.9)}
 const REACH_UP := 0.12
-## How much further than straight out the front arms look ahead for a hold and
-## the back ones behind.
+## How far ahead, the way it is going, every arm looks for its next hold, so
+## each hand lands far ahead and is let go of far behind.
 const SWEEP := 0.9
+## How long a hand stays on its hold before a better one may take it: without
+## it a hand would land and at once be off again to a hold just found.
+const DWELL := 0.6
 ## Where each probe looks, in degrees below the plane of the body (negative is
 ## above it): straight down to straight up, so a wall or a ceiling within
 ## reach is found as surely as the floor. Thick near the plane: the holds that
@@ -52,7 +55,7 @@ const ARM_SPAN := 0.88
 ## while the hand travels.
 const CLAW := Vector3(0.45, 0.6, 0.85)
 const CLAW_SPREAD := 0.3
-const WRIST := 0.5
+const WRIST := 0.38
 const DIP := 38.0
 const DIG := 0.004
 const FLYING := Vector3(0.7, 1.0, 0.9)
@@ -61,7 +64,14 @@ const FLYING := Vector3(0.7, 1.0, 0.9)
 ## looks for its next hold; and how hard the elbows are pushed up.
 const STEP := Vector2(0.85, 0.45)
 const LIFT := 0.22
-const AHEAD := 0.9
+## The furthest a hold may be when it is chosen (its wrist, against the arm's
+## reach, from where the shoulder will be when the hand lands), how far the arm
+## may be drawn out before the hand wants to step, and before it steps whatever
+## the other hands are doing: a hold the arm cannot get to leaves the hand
+## hanging in the air short of it, its claws dragging.
+const REACHABLE := 0.8
+const DUE := 0.85
+const MUST := 0.97
 const KNEES := 1.6
 ## How far the neck juts out towards what it looks at: the head leads.
 const LEAD := 0.09
@@ -117,11 +127,18 @@ func _setup(skeleton: Skeleton3D) -> void:
 			"hold": Vector3.ZERO, "normal": Vector3.UP,
 			"from": Vector3.ZERO, "to": Vector3.ZERO, "from_n": Vector3.UP, "to_n": Vector3.UP,
 			"best": Vector3.ZERO, "best_n": Vector3.UP, "has_best": false,
-			"tuck": Vector3.DOWN, "tuck_n": Vector3.UP,
-			# how far above the hold each claw's point ended (skeleton units)
-			"touch": [0.0, 0.0, 0.0, 0.0, 0.0],
-			# how far each finger curls on a hold (a share of CLAW): the hand always
-			# sits on its hold the same way, so it is worked out once
+			"tuck": Vector3.DOWN,
+			# holding nothing (folded in by the body), now and once the step lands
+			"free": false, "to_free": false,
+			# the way the fingers point while the hand holds on (world; zero
+			# until it lands), and how long it has held on
+			"away": Vector3.ZERO, "dwell": 0.0,
+			# how far above the hold each claw's point is (skeleton units), and how
+			# far the wrist is from where it should be (world metres)
+			"touch": [0.0, 0.0, 0.0, 0.0, 0.0], "miss": 0.0,
+			# where the point of the middle claw is (world), for looking at it
+			"claw_at": Vector3.ZERO,
+			# how far each finger curls on a hold (a share of CLAW)
 			"hooked": [],
 		}
 		for finger in FINGERS:
@@ -155,10 +172,27 @@ func _setup(skeleton: Skeleton3D) -> void:
 		var out := wrist - shoulder
 		out.y = 0.0
 		entry.out = out.normalized()
-		# where it looks for its holds: the front arms further ahead, the back
-		# ones further behind
-		entry.probe_out = Vector3(entry.out.x, 0.0, entry.out.z * (1.0 + SWEEP)).normalized()
+		_hook(entry)
 		limbs.append(entry)
+
+
+## How far each finger curls on a hold. The hand sits on every hold the same
+## way (its wrist WRIST of its length off it, tipped DIP towards it), so this
+## is worked out once, on a hold of its own: the floor under a wrist held at
+## that height.
+func _hook(limb: Dictionary) -> void:
+	var n := Vector3.UP
+	var dip := deg_to_rad(DIP)
+	var fingers := (Vector3.BACK * cos(dip) - n * sin(dip)).normalized()
+	var palm := (-n - fingers * (-n).dot(fingers)).normalized()
+	var hand := Transform3D(Basis(fingers.cross(palm).normalized(), fingers, palm), n * WRIST * float(limb.hand_reach))
+	var fan := [-0.6, 1.0, 0.35, -0.35, -1.0]
+	limb.hooked = []
+	for f in FINGERS.size():
+		var on_hold := Quaternion(Vector3.BACK, CLAW_SPREAD * float(limb.mirror) * fan[f])
+		var k := _touch(hand, limb.origins[f], limb.rests[f], on_hold, limb.claws[f], Vector3.ZERO, n)
+		limb.hooked.append(k)
+		limb.touch[f] = _claw_height(hand, limb.origins[f], limb.rests[f], on_hold, limb.claws[f], k, Vector3.ZERO, n)
 
 
 func _process_modification_with_delta(delta: float) -> void:
@@ -183,11 +217,11 @@ func _process_modification_with_delta(delta: float) -> void:
 	var speed := velocity.length()
 	for limb in limbs:
 		var socket: Vector3 = xf * skeleton.get_bone_global_pose(limb.upper).origin
-		limb.tuck = (basis * limb.out) * 0.3 - up * 0.6
-		limb.tuck_n = up
+		limb.tuck = socket + ((basis * limb.out) * 0.35 + up * 0.12) * limb.reach * size
 		if not limb.planted or limb.hold.distance_to(socket) > limb.reach * size * 2.5:
 			_probe(limb, skeleton, xf, basis, up, space)
-			limb.hold = limb.best if limb.has_best else socket + (limb.tuck as Vector3) * limb.reach * size
+			limb.free = not limb.has_best
+			limb.hold = limb.best if limb.has_best else limb.tuck
 			limb.normal = limb.best_n if limb.has_best else up
 			limb.planted = true
 		_step(limb, socket, delta, speed)
@@ -195,11 +229,17 @@ func _process_modification_with_delta(delta: float) -> void:
 	_look(skeleton, xf, delta)
 
 
-## Looks for the best hold round one hand, from a little ahead of its shoulder.
+## Looks for the best hold round one hand, from a little ahead of its shoulder:
+## only where its wrist can really get to.
 func _probe(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basis, up: Vector3, space: PhysicsDirectSpaceState3D) -> void:
 	var socket: Vector3 = xf * skeleton.get_bone_global_pose(limb.upper).origin
-	var from: Vector3 = socket + velocity * AHEAD
-	var out: Vector3 = basis * limb.probe_out
+	# from where the shoulder will be when a step started now lands
+	var from: Vector3 = socket + velocity * _step_time(limb) * 0.9
+	var out: Vector3 = basis * limb.out
+	if velocity.length() > 0.05:
+		var heading := velocity.normalized()
+		out += (heading - up * heading.dot(up)) * SWEEP
+		out = (out - up * out.dot(up)).normalized()
 	var best_score := INF
 	limb.has_best = false
 	for angle in PROBES:
@@ -208,11 +248,13 @@ func _probe(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 		var query := PhysicsRayQueryParameters3D.create(from, from + direction * float(limb.reach) * size, world_mask)
 		var hit := space.intersect_ray(query)
 		if hit.is_empty(): continue
-		var share: float = from.distance_to(hit.position) / (limb.reach * size)
+		var wrist_at: Vector3 = hit.position + (hit.normal as Vector3) * WRIST * float(limb.hand_reach) * size
+		var share: float = from.distance_to(wrist_at) / (limb.reach * size)
+		if share > REACHABLE: continue
 		# a hold nearer the ideal reach wins; one ahead a little more; a wall or
 		# the ceiling more again while it clings
 		var score: float = absf(share - IDEAL)
-		score -= 0.05 * clampf(velocity.normalized().dot(direction), 0.0, 1.0)
+		score -= 0.12 * clampf(velocity.normalized().dot(direction), 0.0, 1.0)
 		score -= cling * 0.22 * (1.0 - absf((hit.normal as Vector3).dot(up)))
 		# and each arm its habit: up for the ceiling, down for the floor
 		score -= REACH_UP * float(limb.habit) * direction.dot(Vector3.UP)
@@ -235,26 +277,43 @@ func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> voi
 			limb.swing = false
 			limb.hold = limb.to
 			limb.normal = limb.to_n
-			footfall.emit(limb.to, clampf(speed / 2.5, 0.2, 1.0) * limb.scale)
+			limb.free = limb.to_free
+			limb.dwell = 0.0
+			if not limb.free: footfall.emit(limb.to, clampf(speed / 2.5, 0.2, 1.0) * limb.scale)
 		return
-	var stretch: float = limb.hold.distance_to(socket) / (limb.reach * size)
+	limb.dwell += delta
+	# how far the arm is drawn out: to where its wrist is, off the hold
+	var wrist_at: Vector3 = limb.hold if limb.free else limb.hold + (limb.normal as Vector3) * WRIST * float(limb.hand_reach) * size
+	var stretch: float = wrist_at.distance_to(socket) / (limb.reach * size)
 	var drift: float = limb.hold.distance_to(limb.best) / (limb.reach * size) if limb.has_best else 0.0
-	var due: bool = stretch > 0.95 or drift > (0.42 if speed > 0.05 else 0.2)
+	# out of reach, it must step; for a better hold, only once it has held on a
+	# while, and only for one that is much better
+	var due: bool = stretch > DUE or (limb.dwell > DWELL and drift > (0.45 if speed > 0.05 else 0.3))
 	var other: int = 1 - limb.group
 	var free: bool = swinging[other] == 0 and swinging[limb.group] < 4
-	if stretch > 1.1 and not limb.has_best:
-		# nothing within reach: it draws the hand in under the body to wait
-		limb.best = socket + (limb.tuck as Vector3) * limb.reach * size
-		limb.best_n = limb.tuck_n
-		limb.has_best = true
-	if due and limb.has_best and (free or stretch > 1.05):
+	if stretch > MUST and not limb.has_best and not limb.free:
+		# nothing within reach: it folds the hand in by the body to wait
+		limb.swing = true
+		limb.t = 0.0
+		limb.from = limb.hold
+		limb.from_n = limb.normal
+		limb.to = limb.tuck
+		limb.to_n = limb.normal
+		limb.to_free = true
+		limb.duration = STEP.x * float(limb.pace)
+		swinging[limb.group] += 1
+		return
+	# a folded hand takes the first hold it finds
+	if limb.free and limb.has_best: due = true
+	if due and limb.has_best and (free or stretch > MUST or limb.free):
 		limb.swing = true
 		limb.t = 0.0
 		limb.from = limb.hold
 		limb.from_n = limb.normal
 		limb.to = limb.best
 		limb.to_n = limb.best_n
-		limb.duration = lerpf(STEP.x, STEP.y, clampf(speed / 2.6, 0.0, 1.0)) * float(limb.pace)
+		limb.to_free = false
+		limb.duration = _step_time(limb)
 		swinging[limb.group] += 1
 
 
@@ -263,7 +322,8 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	var normal_world: Vector3 = limb.normal
 	var out_world: Vector3 = basis * limb.out
 	# the wrist held up off the hold: the claws are what touch it
-	var target_world: Vector3 = limb.hold + normal_world * WRIST * float(limb.hand_reach) * size
+	var held: bool = not limb.free and not (limb.swing and limb.to_free)
+	var target_world: Vector3 = limb.hold + normal_world * WRIST * float(limb.hand_reach) * size if held else limb.hold
 	var s: Vector3 = skeleton.get_bone_global_pose(limb.upper).origin
 	var t: Vector3 = inv * target_world
 	var pole: Vector3 = inv.basis * (up * KNEES + out_world * 0.5)
@@ -279,6 +339,7 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	var h: float = sqrt(maxf(a * a - x * x, 0.0))
 	var elbow: Vector3 = s + along * x + side * h
 	var tip: Vector3 = s + along * d
+	limb.miss = tip.distance_to(t) * size if held and not limb.swing else 0.0
 	var y1: Vector3 = (elbow - s).normalized()
 	var y2: Vector3 = (tip - elbow).normalized()
 	var bend: Vector3 = y1.cross(y2)
@@ -292,6 +353,15 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	away = away - n * away.dot(n)
 	if away.length_squared() < 1e-8: away = inv.basis * out_world
 	away = away.normalized()
+	# held on, the hand stays as it landed, its claws where they went in; it
+	# only turns with the arm while it travels
+	if held and not limb.swing:
+		if limb.away == Vector3.ZERO: limb.away = xf.basis.orthonormalized() * away
+		else:
+			away = inv.basis * (limb.away as Vector3)
+			away = (away - n * away.dot(n)).normalized()
+	else:
+		limb.away = Vector3.ZERO
 	var lift: float = sin(PI * limb.t) if limb.swing else 0.0
 	var dip := deg_to_rad(lerpf(DIP, 5.0, lift))
 	var fingers: Vector3 = (away * cos(dip) - n * sin(dip)).normalized()
@@ -301,25 +371,25 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	skeleton.set_bone_global_pose(limb.hand, hand)
 	# fingers: spread, and each curled until its claw's point is on the hold (a
 	# hair into it, never through); curled up while the hand travels
-	var plane_point: Vector3 = inv * limb.hold
+	# a hand holding nothing hangs loosely curled
+	if not held: lift = maxf(lift, 0.6)
 	var spread: float = CLAW_SPREAD * (1.0 - lift) * float(limb.mirror)
 	var fan := [-0.6, 1.0, 0.35, -0.35, -1.0]
-	if limb.hooked.is_empty() and lift == 0.0:
-		for f in FINGERS.size():
-			var on_hold := Quaternion(Vector3.BACK, CLAW_SPREAD * float(limb.mirror) * fan[f])
-			var k := _touch(hand, limb.origins[f], limb.rests[f], on_hold, limb.claws[f], plane_point, n)
-			limb.hooked.append(k)
-			limb.touch[f] = _claw_height(hand, limb.origins[f], limb.rests[f], on_hold, limb.claws[f], k, plane_point, n)
 	for f in FINGERS.size():
 		var chain: Array = limb.fingers[f]
 		var rests: Array = limb.rests[f]
 		var spread_turn := Quaternion(Vector3.BACK, spread * fan[f])
-		var hooked: float = limb.hooked[f] if not limb.hooked.is_empty() else 0.5
-		var curl: Vector3 = (CLAW * hooked * grip).lerp(FLYING, lift)
+		var curl: Vector3 = (CLAW * float(limb.hooked[f]) * grip).lerp(FLYING, lift)
+		if f == 2: limb.claw_at = xf * _claw_point(hand, limb.origins[f], rests, spread_turn, limb.claws[f], curl)
 		for j in 3:
 			var turn := Quaternion(Vector3.RIGHT, curl[j])
 			if j == 0: turn = spread_turn * turn
 			skeleton.set_bone_pose_rotation(chain[j], rests[j] * turn)
+
+
+## How long a step of this hand takes at the speed it is going.
+func _step_time(limb: Dictionary) -> float:
+	return lerpf(STEP.x, STEP.y, clampf(velocity.length() / 2.6, 0.0, 1.0)) * float(limb.pace)
 
 
 ## How far a finger must curl (a share of CLAW) for its claw's point to rest
@@ -346,6 +416,16 @@ func _touch(hand: Transform3D, origins: Array, rests: Array, spread_turn: Quater
 		if _claw_height(hand, origins, rests, spread_turn, claw, mid, point, normal) > -DIG: low = mid
 		else: high = mid
 	return (low + high) * 0.5
+
+
+## Where a claw's point is with each joint of its finger curled as given.
+func _claw_point(hand: Transform3D, origins: Array, rests: Array, spread_turn: Quaternion, claw: Vector3, curl: Vector3) -> Vector3:
+	var at := hand
+	for j in 3:
+		var turn := Quaternion(Vector3.RIGHT, curl[j])
+		if j == 0: turn = spread_turn * turn
+		at = at * Transform3D(Basis(rests[j] * turn), origins[j])
+	return at * claw
 
 
 ## How far above the hold a claw's point is with the finger curled by k.

@@ -4,8 +4,13 @@ extends SceneTree
 ## the torch comes on at --torch-at seconds, and every change of what it does is
 ## printed, with a frame saved to evidence/lurker/<label>_<seconds>_<mood>.jpg.
 ## --every=3 also saves every third frame, for watching it move
-## (evidence/lurker/<label>_f<frame>.jpg).
-##   godot --path . --fixed-fps 30 --script res://tools/capture/lurker_test_check.gd -- [--label=t1] [--torch-at=26] [--for=40] [--every=3]
+## (evidence/lurker/<label>_f<frame>.jpg). Every two seconds it says how the
+## hands did: how many steps, how many of them came straight after landing,
+## how far the worst held hand was short of its hold, and how far the worst
+## held claw slid.
+## --stand=-4.5 puts the camera further down the corridor (z), so that it stops
+## to stare under a lamp.
+##   godot --path . --fixed-fps 30 --script res://tools/capture/lurker_test_check.gd -- [--label=t1] [--torch-at=26] [--for=40] [--every=3] [--stand=-4.5]
 const SCENE := preload("res://tools/workbenches/lurker_test.tscn")
 const MOODS := ["coming", "staring", "fleeing", "waiting"]
 var out_dir := "res://evidence/lurker"
@@ -17,25 +22,52 @@ func run() -> void:
 	var torch_at := 26.0
 	var length := 40.0
 	var every := 0
+	var stand := INF
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--label="): label = argument.trim_prefix("--label=")
 		if argument.begins_with("--torch-at="): torch_at = float(argument.trim_prefix("--torch-at="))
 		if argument.begins_with("--for="): length = float(argument.trim_prefix("--for="))
 		if argument.begins_with("--every="): every = int(argument.trim_prefix("--every="))
+		if argument.begins_with("--stand="): stand = float(argument.trim_prefix("--stand="))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	var scene: Node3D = SCENE.instantiate()
 	root.add_child(scene)
 	await process_frame
 	scene.player.active = false
+	if stand != INF: scene.player.position.z = stand
 	var player = scene.player
 	var seconds := 0.0
 	var mood := -1
 	var shot_at := -1.0
 	var frame := 0
+	var swinging := {}
+	var claws_were := {}
+	var steps := 0
+	var quick := 0
+	var worst_miss := 0.0
+	var worst_slide := 0.0
 	while seconds < length:
 		await process_frame
 		seconds += 1.0 / 30.0
 		frame += 1
+		for limb in scene.lurker.limbs.limbs:
+			var name: String = limb.name
+			if limb.swing and not swinging.get(name, false):
+				steps += 1
+				if float(limb.dwell) < 0.4: quick += 1
+			swinging[name] = limb.swing
+			var holding: bool = not limb.swing and not limb.free
+			worst_miss = maxf(worst_miss, float(limb.miss))
+			if holding and claws_were.has(name):
+				worst_slide = maxf(worst_slide, (limb.claw_at as Vector3).distance_to(claws_were[name]))
+			if holding: claws_were[name] = limb.claw_at
+			else: claws_were.erase(name)
+		if frame % 60 == 0:
+			print("HANDS %.0fs: %d steps, %d straight after landing; worst wrist short by %.1f cm; worst claw slid %.1f cm" % [seconds, steps, quick, worst_miss * 100.0, worst_slide * 100.0])
+			steps = 0
+			quick = 0
+			worst_miss = 0.0
+			worst_slide = 0.0
 		if every > 0 and frame % every == 0:
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_jpg(out_dir + "/%s_f%04d.jpg" % [label, frame], 0.8)
