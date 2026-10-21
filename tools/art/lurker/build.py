@@ -1,5 +1,5 @@
 """Builds the creature in Blender: meshes from the distance fields, the
-skeleton, weights, vertex colours, eyes, teeth, claws and hair.
+skeleton, weights, vertex colours, eyes, teeth, claws and spikes.
 
     blender -b --factory-startup -P tools/art/lurker/build.py -- --out art/lurker/lurker.blend
 
@@ -181,17 +181,17 @@ def bone_weights(p, bones, names, power=8.0, keep=4):
     return W
 
 
-def head_weights(p):
+def head_weights(p, feats):
+    """Each piece rigid on its bone: the skull on the head (and the neck at
+    the back), the jaw on the jaw, the tip on its own."""
     q = p - HEAD_CENTER
-    x, y, z = q[:, 0], q[:, 1], q[:, 2]
-    t = np.clip((y + 0.1) / 0.104, 0.0, 1.0)
-    z_split = -0.054 + 0.012 * t
-    band = 0.007 + 0.016 * np.clip(np.abs(x) / 0.05, 0.0, 1.0)
-    jaw = smoothstep(z_split + band, z_split - band, z)
-    neck = smoothstep(0.03, 0.09, y) * smoothstep(0.0, -0.05, z)
-    jaw *= 1.0 - neck
-    head = np.clip(1.0 - jaw - neck, 0.0, 1.0)
-    return np.stack([neck, head, jaw], axis=1)
+    y, z = q[:, 1], q[:, 2]
+    pieces = feats["pieces"]
+    d = np.stack([np.abs(pieces[k].full(q)) for k in ("skull", "jaw", "tip")], axis=1)
+    which = np.argmin(d, axis=1)
+    neck = smoothstep(0.03, 0.09, y) * smoothstep(0.0, -0.05, z) * (which == 0)
+    head = (which == 0) * (1.0 - neck)
+    return np.stack([neck, head, (which == 1).astype(float), (which == 2).astype(float)], axis=1)
 
 
 def assign_groups(ob, names, W, threshold=0.002):
@@ -238,12 +238,26 @@ def head_colors(node, feats, p, n):
     lap /= e * e
     ridge = np.clip((lap - 40.0) / 160.0, -1.0, 1.0)
 
-    pale = np.array([0.215, 0.138, 0.118])
-    tone = 1.0 + 0.22 * sdf.fbm(q, 55.0, 3, 77)
+    pale = np.array([0.5, 0.36, 0.29])
+    tone = 1.0 + 0.3 * sdf.fbm(q, 40.0, 3, 77)
     col = pale[None, :] * tone[:, None]
+    # rubbed with charcoal: blotches, strokes that go every which way, and grain
+    blotch = smoothstep(0.15, 0.55, sdf.fbm(q, 1.0, 4, 91, scale=(55.0, 48.0, 40.0)))
+    col *= (1.0 - 0.8 * blotch)[:, None]
+    for i, sc in enumerate(((300.0, 30.0, 60.0), (40.0, 280.0, 70.0), (90.0, 90.0, 26.0))):
+        stroke = sdf.fbm(q, 1.0, 2, 120 + i, scale=sc)
+        col *= (1.0 - 0.45 * smoothstep(0.32, 0.55, stroke))[:, None]
+    grain = sdf.fbm(q, 900.0, 2, 133)
+    col *= (0.8 + 0.4 * (grain * 0.5 + 0.5))[:, None]
+    # porous: small dark pits all over the bone
+    pores = sdf.fbm(q, 650.0, 2, 141)
+    col *= (1.0 - 0.6 * smoothstep(0.42, 0.62, pores))[:, None]
+    # the brow between the eyes is dull, not bright
+    brow = np.exp(-((x / 0.02) ** 2 + ((y + 0.088) / 0.03) ** 2 + ((z - 0.034) / 0.02) ** 2))
+    col *= (1.0 - 0.55 * brow)[:, None]
     # grime: the pale is only on the bone; the hollows between are dirty
     grime = smoothstep(-0.1, 0.5, sdf.fbm(q, 1.0, 3, 13, scale=(90.0, 90.0, 12.0)))
-    col *= (1.0 - 0.3 * grime)[:, None]
+    col *= (1.0 - 0.2 * grime)[:, None]
     # streaks: dark drips under the eyes and down the cheeks
     streak = sdf.fbm(q, 1.0, 3, 41, scale=(190.0, 120.0, 11.0))
     drip_zone = smoothstep(0.02, -0.02, z) * smoothstep(-0.03, -0.06, y)
@@ -256,16 +270,24 @@ def head_colors(node, feats, p, n):
     cheek = smoothstep(0.0, -0.035, z) * smoothstep(-0.035, -0.07, y) * smoothstep(0.012, 0.03, np.abs(x))
     col *= (1.0 + 1.5 * cheek * smoothstep(0.12, 0.38, cords))[:, None]
     col *= (1.0 - 0.75 * cheek * smoothstep(-0.1, -0.32, cords))[:, None]
-    col *= (0.55 + 3.6 * np.clip(ridge, 0.0, 1.0) ** 0.75)[:, None]
-    col *= (ao ** 2.0)[:, None]
+    col *= (0.9 + 1.0 * np.clip(ridge, 0.0, 1.0) ** 0.75 * (1.0 - 0.7 * brow))[:, None]
+    col *= (ao ** 1.3)[:, None]
+    # the cracks, black, with the stain soaking out round them
+    near = np.full(len(q), 1.0)
+    for a_, b_, ra, rb in feats["cracks"]:
+        ab = b_ - a_
+        t = np.clip(((q - a_) @ ab) / max(float(ab @ ab), 1e-12), 0.0, 1.0)
+        near = np.minimum(near, np.linalg.norm(q - (a_ + t[:, None] * ab), axis=1))
+    col *= (1.0 - 0.95 * smoothstep(0.0028, 0.0008, near))[:, None]
+    col *= (1.0 - 0.5 * smoothstep(0.009, 0.002, near))[:, None]
     # the holes are black
-    for key, inner, rim in (("sockets", 0.0065, 0.0095), ("mouth", 0.006, 0.009), ("nasal", 0.004, 0.0)):
+    for key, inner, rim in (("sockets", 0.0065, 0.0095), ("mouth", 0.006, 0.009), ("nasal", 0.004, 0.0045)):
         d = feats[key].full(q)
         hole = smoothstep(inner, 0.0, d)
         col *= (1.0 - 0.985 * hole)[:, None]
         if rim > 0:
-            ring = np.exp(-((d - rim) / 0.0028) ** 2) * (1.0 - hole)
-            col *= (1.0 + 3.6 * ring)[:, None]
+            ring = np.exp(-((d - rim) / 0.0022) ** 2) * (1.0 - hole)
+            col *= (1.0 + 2.2 * ring)[:, None]
     m = face_mask(q)
     out = col * m[:, None] + body_colors(local, q, n, seed=9) * (1.0 - m)[:, None]
     return out
@@ -275,7 +297,7 @@ def head_colors(node, feats, p, n):
 
 def part_list(fast):
     k = 1.6 if fast else 1.0
-    parts = [("head", lambda: anatomy.head_node(), 0.00115 * k, 17000, ["neck", "head", "jaw"])]
+    parts = [("head", lambda: anatomy.head_node(), 0.00115 * k, 19000, ["neck", "head", "jaw", "jaw_tip"])]
     body_bones = ["body", "abdomen", "neck"]
     for s in "LR":
         body_bones += ["clavicle_%s.%s" % (a, s) for a in ARMS] + ["upperarm_%s.%s" % (a, s) for a in ARMS]
@@ -300,7 +322,17 @@ def build_parts(opts, bones, coll):
         t0 = time.time()
         made = make()
         node, feats = made if isinstance(made, tuple) else (made, None)
-        v, q = sdf.mesh_node(node, h)
+        if name == "head":
+            # three loose pieces: the skull, the jaw and its tip move apart
+            vs, qs, off = [], [], 0
+            for piece in ("skull", "jaw", "tip"):
+                pv, pq = sdf.mesh_node(feats["world_pieces"][piece], h)
+                vs.append(pv)
+                qs.append(pq + off)
+                off += len(pv)
+            v, q = np.concatenate(vs), np.concatenate(qs)
+        else:
+            v, q = sdf.mesh_node(node, h)
         ob = mesh_object("lurker_" + name, v, q, coll)
         decimate(ob, tris)
         me = ob.data
@@ -308,7 +340,7 @@ def build_parts(opts, bones, coll):
         p = verts_np(me)
         n = normals_np(me)
         if name == "head":
-            W = head_weights(p)
+            W = head_weights(p, feats)
             col = head_colors(node, feats, p, n)
         else:
             W = bone_weights(p, bones, names)
@@ -510,7 +542,7 @@ def eye_meshes(bones, coll):
         white = np.array([0.46, 0.43, 0.37])
         col = np.tile(white, (len(p), 1))
         col *= (0.55 + 0.45 * smoothstep(1.9, 0.8, ang))[:, None]
-        pupil = smoothstep(0.66, 0.6, ang)
+        pupil = smoothstep(0.86, 0.8, ang)
         col = col * (1 - pupil)[:, None] + np.array([0.004, 0.004, 0.004]) * pupil[:, None]
         set_colors(me, col)
         ob.vertex_groups.new(name="eye." + side).add(list(range(len(me.vertices))), 1.0, "REPLACE")
@@ -549,7 +581,7 @@ def tube(centers, radii, sides=6, flatten=1.0, up=None):
 def teeth_mesh(coll):
     allv, allf, colors, jaw = [], [], [], []
     off = 0
-    for root, d, length, r0, upper in anatomy.teeth_layout():
+    for root, d, length, r0, bone in anatomy.teeth_layout():
         curve = np.array([0, 1.0, 0]) * length * 0.18
         ts = np.linspace(0, 1, 7)
         start = root - d * 0.005
@@ -560,9 +592,9 @@ def teeth_mesh(coll):
         allv.append(v)
         allf += [tuple(i + off for i in face) for face in f]
         along = np.clip(np.linalg.norm(v - (root + HEAD_CENTER), axis=1) / length, 0, 1)
-        c = np.array([0.05, 0.035, 0.025])[None, :] * (1 - along[:, None]) + np.array([0.4, 0.34, 0.25])[None, :] * along[:, None]
+        c = np.array([0.03, 0.022, 0.016])[None, :] * (1 - along[:, None]) + np.array([0.3, 0.25, 0.18])[None, :] * along[:, None]
         colors.append(c)
-        jaw += [0.0 if upper else 1.0] * len(v)
+        jaw += [0.0 if bone == "head" else 1.0] * len(v)
         off += len(v)
     v = np.concatenate(allv)
     ob = mesh_object("lurker_teeth", v, allf, coll)
@@ -608,15 +640,23 @@ def claw_meshes(bones, coll):
 def spike_meshes(bones, coll):
     allv, allf, groups = [], [], []
     off = 0
-    rng = np.random.default_rng(7)
-    for root, d, length, r, bone in anatomy.spikes():
-        side = sdf.normalize(np.cross(d, np.array([0, 0, 1.0]) if abs(d[2]) < 0.9 else np.array([1.0, 0, 0])))
-        bend = sdf.normalize(np.cross(side, d)) * (0.18 + 0.1 * rng.random())
-        ts = np.linspace(0, 1, 10)
-        start = root - d * r * 1.5
-        cs = [start + d * length * t + bend * length * t * t for t in ts]
-        rs = [r * (1.75 - 0.75 * min(t / 0.1, 1.0)) * (1.0 - t) ** 0.75 + 0.0002 for t in ts]
-        v, fcs = tube(cs, rs, sides=8)
+    for pts, r, bone in anatomy.spikes():
+        pts = [np.asarray(x) for x in pts]
+        lengths = [np.linalg.norm(pts[i + 1] - pts[i]) for i in range(len(pts) - 1)]
+        total = sum(lengths)
+        cs, rs = [], []
+        walked = 0.0
+        for i, ln in enumerate(lengths):
+            n = max(3, int(round(10 * ln / total)))
+            for k in range(n):
+                t = k / n
+                cs.append(pts[i] + (pts[i + 1] - pts[i]) * t)
+                rs.append(r * (1.0 - (walked + ln * t) / total) ** 0.7 + 0.0004)
+            walked += ln
+        start = pts[0] - (pts[1] - pts[0]) / lengths[0] * r * 2.0
+        cs = [start] + cs + [pts[-1]]
+        rs = [r * 1.1] + rs + [0.0003]
+        v, fcs = tube(cs, rs, sides=6)
         allv.append(v)
         allf += [tuple(i + off for i in face) for face in fcs]
         groups.append((bone, off, len(v)))
@@ -627,7 +667,7 @@ def spike_meshes(bones, coll):
         vg = ob.vertex_groups.get(bone) or ob.vertex_groups.new(name=bone)
         vg.add(list(range(start, start + count)), 1.0, "REPLACE")
     v = verts_np(ob.data)
-    set_colors(ob.data, np.tile(np.array([0.016, 0.014, 0.013]), (len(v), 1)))
+    set_colors(ob.data, np.zeros((len(v), 3)))
     return ob
 
 
@@ -664,9 +704,8 @@ def materials():
     body.diffuse_color = (0.0, 0.0, 0.0, 1.0)
     return dict(
         body=body,
-        eyes=material("lurker_eyes", 0.18, 0.5),
-        teeth=material("lurker_teeth", 0.55, 0.35),
-        claws=material("lurker_claws", 0.6, 0.2),
+        eyes=material("lurker_eyes", 1.0, 0.0),
+        teeth=material("lurker_teeth", 0.8, 0.1),
     )
 
 
@@ -693,9 +732,12 @@ def build(opts):
         ob.data.materials.append(mats["teeth"])
         body.append(ob)
     if not opts["only"]:
-        for ob in (claw_meshes(bones, coll), spike_meshes(bones, coll)):
-            ob.data.materials.append(mats["claws"])
-            body.append(ob)
+        ob = claw_meshes(bones, coll)
+        ob.data.materials.append(mats["body"])
+        body.append(ob)
+        ob = spike_meshes(bones, coll)
+        ob.data.materials.append(mats["body"])
+        body.append(ob)
     if body:
         bind(join(body, "lurker_body"), rig)
     total = 0

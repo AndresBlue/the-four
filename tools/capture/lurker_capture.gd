@@ -11,6 +11,10 @@ extends SceneTree
 ## holds while it crosses the corridor's floor, climbs the side wall and goes
 ## along the ceiling, filmed from the far end with the torch on. Writes
 ## evidence/lurker/<label>_walk_<frame>.jpg, every other frame.
+##
+## With --passage (and --fixed-fps 30): down a passage a metre wide towards a
+## low camera, held up on the walls, like the staircase of the picture. Writes
+## evidence/lurker/<label>_passage_<frame>.jpg; --raw without the camcorder.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const LURKER := preload("res://game/enemies/lurker/lurker.tscn")
@@ -22,6 +26,10 @@ var out_dir := "res://evidence/lurker"
 var label := "current"
 ## --no-dark: without its fog, to see what the arms are doing.
 var bare := false
+## --passage: a passage a metre wide, like the staircase of the picture.
+var passage := false
+## --raw: the passage's frames without the camcorder over them.
+var raw := false
 
 func _initialize() -> void: run.call_deferred()
 
@@ -39,6 +47,8 @@ func run() -> void:
 		if argument.begins_with("--eye="): eye = float(argument.trim_prefix("--eye="))
 		if argument == "--walk": walking = true
 		if argument == "--no-dark": bare = true
+		if argument == "--passage": passage = true
+		if argument == "--raw": raw = true
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -46,7 +56,7 @@ func run() -> void:
 	await level.start_floor(81)
 	level.settings.set_designed(PRESETS.HIGH)
 	await level.bounce_ready()
-	DisplayServer.window_set_size(WALK_SIZE if walking else SIZE)
+	DisplayServer.window_set_size(WALK_SIZE if walking or passage else SIZE)
 	level.player.set_physics_process(false)
 	# The player would put its eye back at standing height every frame, and a
 	# mouse moved over the window would turn it.
@@ -64,10 +74,12 @@ func run() -> void:
 	var beast: Node3D = LURKER.instantiate()
 	level.add_child(beast)
 	if bare:
-		beast.darkness.visible = false
-		beast.shroud.visible = false
+		beast.ink.visible = false
+		beast.vapour.visible = false
 	report(beast)
-	if walking:
+	if passage:
+		await narrow(room, beast)
+	elif walking:
 		await walk(room, beast)
 	else:
 		await pose(room, beast, clip, at, distance, eye)
@@ -174,6 +186,75 @@ func walk(room: Dictionary, beast: Node3D) -> void:
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_jpg(out_dir + "/%s_walk_%03d.jpg" % [label, frame], 0.86)
 	print("LURKER walk ", frames, " frames")
+
+## A passage a metre wide built inside the corridor, plain plaster like the
+## staircase of the picture: the creature comes down it towards the camera
+## held up off the floor by its hands on the walls, its face on the lens.
+func narrow(room: Dictionary, beast: Node3D) -> void:
+	var centre := FLOOR.position_of(room)
+	var span: Vector2 = FLOOR.size_of(room)
+	var along_x := span.x >= span.y
+	var along := Vector3(1, 0, 0) if along_x else Vector3(0, 0, 1)
+	var side := Vector3(0, 0, 1) if along_x else Vector3(1, 0, 0)
+	var base := Vector3(centre.x, 0.0, centre.z)
+	var plaster := StandardMaterial3D.new()
+	plaster.albedo_color = Color(0.62, 0.55, 0.45)
+	plaster.roughness = 0.95
+	for k in [-1.0, 1.0]:
+		var wall := StaticBody3D.new()
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		var size := Vector3(7.0, 2.7, 0.12) if along_x else Vector3(0.12, 2.7, 7.0)
+		box.size = size
+		shape.shape = box
+		wall.add_child(shape)
+		var mesh := MeshInstance3D.new()
+		var cube := BoxMesh.new()
+		cube.size = size
+		mesh.mesh = cube
+		mesh.material_override = plaster
+		wall.add_child(mesh)
+		level.add_child(wall)
+		wall.global_position = base + side * k * (0.55 + 0.06) + Vector3.UP * 1.35
+	for i in 4: await physics_frame
+	beast.cling = 1.0
+	beast.play("crawl", 0.0)
+	var start := base + along * 2.6 + Vector3.UP * 0.95
+	var finish := base + along * 0.2 + Vector3.UP * 0.95
+	# the camera at the bottom of it, low, looking up the passage, the torch on
+	# it the way the picture's flash is
+	var eye := base - along * 1.3 + Vector3.UP * 0.7
+	aim_eye(eye, base + along * 1.0 + Vector3.UP * 1.05)
+	level.player.torch.visible = true
+	level.player.snap_torch()
+	level.hotel.update_visibility(level.player.global_position, true)
+	level.ui.visible = false
+	if raw:
+		level.set_process(false)
+		for layer in ["Presentation/Analog/Screen", "Presentation/Lens", "Presentation/Camcorder"]:
+			level.get_node(layer).visible = false
+	var frames := int(7.0 * 30.0)
+	var look := base + along * 1.0 + Vector3.UP * 1.05
+	var skeleton: Skeleton3D = beast.skeleton
+	var head := skeleton.find_bone("head")
+	for frame in frames:
+		var u := clampf(frame / 30.0 / 6.0, 0.0, 1.0)
+		var at := start.lerp(finish, u * u * (3.0 - 2.0 * u))
+		# head first, as it comes down the stairs of the picture
+		var pitched := frame_basis(Vector3.UP, -along).rotated(along.cross(Vector3.UP).normalized(), deg_to_rad(18.0))
+		beast.global_transform = Transform3D(pitched, at)
+		# the lens and the torch on the face
+		var face: Vector3 = skeleton.global_transform * (skeleton.get_bone_global_pose(head) * Vector3(0.0, 0.05, 0.0))
+		look = look.lerp(face, 0.12 if frame > 0 else 0.0)
+		aim_eye(eye, look)
+		await process_frame
+		if frame % 2 == 0 and frame > 6:
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_jpg(out_dir + "/%s_passage_%03d.jpg" % [label, frame], 0.86)
+	print("LURKER passage ", frames, " frames")
+
+func frame_basis(up: Vector3, forward: Vector3) -> Basis:
+	return frame(up, forward)
 
 func sample(keys: Array, t: float) -> Transform3D:
 	var i := 0

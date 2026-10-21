@@ -20,7 +20,7 @@ import zlib
 import numpy as np
 
 import sdf
-from sdf import Ellipsoid, RoundCone, Sphere, Subtract, TriPrism, Union, Displace, normalize, v3
+from sdf import Ellipsoid, RoundCone, Sphere, Subtract, Torus, TriPrism, Union, Displace, Warp, normalize, v3
 
 # ---------------------------------------------------------------- landmarks
 
@@ -31,7 +31,13 @@ HEAD_CENTER = v3(0.0, -0.265, BODY_Z + 0.14)
 EYE_LOCAL = v3(0.03, -0.056, 0.011)
 EYE_RADIUS = 0.0095
 JAW_HINGE_LOCAL = v3(0.0, 0.004, -0.04)
-CHIN_LOCAL = v3(0.0, -0.072, -0.186)
+# the jaw ends where its tip begins: the tip is a part of its own
+TIP_LOCAL = v3(0.0, -0.07, -0.157)
+CHIN_LOCAL = v3(0.0, -0.075, -0.2)
+# where the skull ends and the jaw begins (head-local): the cut runs under the
+# top edge of the mouth and back to the hinge; the tip is cut off below TIP_Z
+TIP_Z = -0.158
+PIECE_GAP = 0.0016
 
 # Four pairs of arms, front to back, all of one shape: the angle round the body
 # from straight ahead (degrees) and the size. The front pair is the one with
@@ -68,17 +74,9 @@ THUMB = (0.046, 0.043, 0.037)
 FINGER_RADII = (0.0104, 0.009, 0.0071, 0.0024)
 REST_CURL = (0.18, 0.26, 0.22)
 
-# Spikes grafted into the back: (root, direction, length, radius, bone). Left
-# side only for the paired ones; mirrored in spikes().
-SPIKES = [
-    (v3(0.0, -0.03, BODY_Z + 0.085), v3(0.0, 0.35, 1.0), 0.26, 0.019, "body"),
-    (v3(0.065, 0.04, BODY_Z + 0.075), v3(0.55, 0.45, 1.0), 0.2, 0.015, "body"),
-    (v3(0.0, 0.17, BODY_Z + 0.12), v3(0.0, 0.75, 0.8), 0.3, 0.02, "abdomen"),
-    (v3(0.06, 0.27, BODY_Z + 0.1), v3(0.6, 0.8, 0.55), 0.19, 0.014, "abdomen"),
-    (v3(0.035, 0.33, BODY_Z + 0.06), v3(0.3, 1.0, 0.1), 0.15, 0.012, "abdomen"),
-]
-# and one on the elbow of each big arm, pointing back
-ELBOW_SPIKE = (0.17, 0.011)
+# Spikes: thin black rods out of the body in every direction, as the author
+# drew them over the picture, some of them bent once like a broken stalk.
+SPIKE_COUNT = 17
 
 
 def mirror(p, side):
@@ -190,8 +188,10 @@ def skeleton():
     add("head", neck_top, neck_top + v3(0, 0, 0.17), "neck", z_from_x((0, 0, 1), X), 0.07,
         segs=[(hc + v3(0, 0.02, 0.03), hc + v3(0, -0.04, -0.02))])
     hinge = hc + JAW_HINGE_LOCAL
+    tip = hc + TIP_LOCAL
     chin = hc + CHIN_LOCAL
-    add("jaw", hinge, chin, "head", z_from_x(chin - hinge, X), 0.04)
+    add("jaw", hinge, tip, "head", z_from_x(tip - hinge, X), 0.04)
+    add("jaw_tip", tip, chin, "jaw", z_from_x(chin - tip, X), 0.012)
     for side in "LR":
         e = hc + mirror(EYE_LOCAL, side)
         add("eye." + side, e, e + v3(0, -0.025, 0), "head", z_from_x((0, -1, 0), X), 0.012)
@@ -333,7 +333,8 @@ def limb_node(points, radii, side, seed, knob_dir=None, sinews=True):
         RoundCone(m(mid_f), m(wr), rf, rw),
     ]
     if knob_dir is not None:
-        parts.append(Sphere(m(el + knob_dir * re * 0.35), re * 0.95))
+        parts.append(Sphere(m(el + knob_dir * re * 0.5), re * 1.1))
+        parts.append(RoundCone(m(el + knob_dir * re * 0.9), m(el + knob_dir * (re * 0.9 + 0.022 * (re / 0.025))), re * 0.55, 0.0025))
     if sinews:
         d = normalize(wr - el)
         side_a = normalize(np.cross(d, v3(0, 0, 1)) if abs(d[2]) < 0.9 else np.cross(d, v3(1, 0, 0)))
@@ -395,44 +396,127 @@ class HeadLocal(sdf.Node):
         return self.node.eval(p - self.center, lo, hi)
 
 
+class Region(sdf.Node):
+    """A node cut down to where fn(p) <= 0, its cut edge rounded over k."""
+
+    def __init__(self, child, fn, k=0.002, lo=None, hi=None):
+        self.child = child
+        self.fn = fn
+        self.k = float(k)
+        self.lo = child.lo if lo is None else np.maximum(child.lo, v3(lo))
+        self.hi = child.hi if hi is None else np.minimum(child.hi, v3(hi))
+
+    def _eval(self, p, lo, hi):
+        d = self.child.eval(p, lo, hi)
+        if d is None:
+            return None
+        return sdf.smax(d, self.fn(p), self.k)
+
+
+def jaw_zone(p):
+    """Negative inside the jaw's share of the head (head-local)."""
+    y, z = p[:, 1], p[:, 2]
+    cut = -0.051 + 0.013 * np.clip((y + 0.1) / 0.1, 0.0, 1.0)
+    return np.maximum(z - cut, y - 0.016)
+
+
+def crack_lines(node):
+    """Segments (a, b, ra, rb) of the cracks, in head-local coordinates: random
+    walks over the skull's surface, some of them forking, snapped onto it."""
+    rng = np.random.default_rng(4401)
+    starts = [(0.02, 0.0, 0.1), (-0.035, 0.04, 0.09), (0.05, 0.03, 0.05), (-0.055, -0.02, 0.04),
+              (0.0, -0.075, 0.05), (0.04, -0.05, 0.065), (-0.03, 0.08, 0.06), (0.05, -0.06, -0.09),
+              (-0.04, -0.06, -0.11)]
+    paths = []
+    for start in starts:
+        point = v3(start)
+        heading = normalize(v3(rng.normal(), rng.normal(), -0.6))
+        path = [point]
+        for step in range(int(rng.integers(6, 13))):
+            heading = normalize(heading + v3(*rng.normal(size=3)) * 0.55)
+            point = point + heading * rng.uniform(0.006, 0.01)
+            path.append(point)
+            if rng.random() < 0.18 and len(paths) < 30:
+                fork = [point]
+                fh = normalize(heading + v3(*rng.normal(size=3)) * 1.2)
+                fp = point
+                for _ in range(int(rng.integers(2, 5))):
+                    fh = normalize(fh + v3(*rng.normal(size=3)) * 0.5)
+                    fp = fp + fh * rng.uniform(0.005, 0.008)
+                    fork.append(fp)
+                paths.append(fork)
+        paths.append(path)
+    out = []
+    for path in paths:
+        pts = np.array(path)
+        # onto the surface, then a hair inside it
+        for _ in range(4):
+            d = node.full(pts)
+            g = sdf.gradient(node, pts, 3e-4)
+            gl = np.maximum(np.linalg.norm(g, axis=1, keepdims=True), 1e-9)
+            pts = pts - (d[:, None] * g / gl / gl)
+        g = sdf.gradient(node, pts, 3e-4)
+        pts = pts - g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), 1e-9) * 0.0003
+        n = len(pts)
+        for i in range(n - 1):
+            ra = 0.0015 * (1.0 - 0.6 * i / n)
+            rb = 0.0015 * (1.0 - 0.6 * (i + 1) / n)
+            out.append((pts[i], pts[i + 1], ra, rb))
+    return out
+
+
 def head_local_node():
     def both(make):
         return [make("L"), make("R")]
 
-    cranium = Ellipsoid((0, 0.02, 0.024), (0.064, 0.088, 0.08))
-    face = Ellipsoid((0, -0.026, -0.006), (0.061, 0.068, 0.09))
-    cheeks = both(lambda s: Ellipsoid(mirror((0.048, -0.058, -0.02), s), (0.012, 0.022, 0.011)))
-    maxilla = Ellipsoid((0, -0.067, -0.05), (0.035, 0.034, 0.022))
+    cranium = Ellipsoid((0, 0.02, 0.024), (0.063, 0.088, 0.079))
+    face = Ellipsoid((0, -0.026, -0.006), (0.059, 0.067, 0.09))
+    cheeks = both(lambda s: Ellipsoid(mirror((0.048, -0.058, -0.02), s), (0.011, 0.021, 0.01)))
+    maxilla = Ellipsoid((0, -0.067, -0.05), (0.034, 0.033, 0.021))
     # the jaw is a triangle: two straight bones meeting in a pointed chin
-    wedge = TriPrism((-0.05, -0.04), (0.05, -0.04), (0.0, -0.19), -0.09, 0.01, 0.02)
-    jaw = both(lambda s: RoundCone(mirror((0.052, 0.0, -0.04), s), (0.0, -0.074, -0.19), 0.013, 0.008))
-    bridge = RoundCone((0, -0.093, 0.014), (0, -0.098, -0.03), 0.0042, 0.0038)
+    wedge = TriPrism((-0.043, -0.04), (0.043, -0.04), (0.0, -0.19), -0.088, 0.01, 0.017)
+    jaw = both(lambda s: RoundCone(mirror((0.047, 0.0, -0.04), s), (0.0, -0.074, -0.19), 0.011, 0.007))
+    point = RoundCone((0, -0.071, -0.168), (0, -0.076, -0.202), 0.0085, 0.0025)
     neck = RoundCone((0, 0.03, -0.04), (0, 0.13, -0.09), 0.036, 0.042)
+    # the edges the author marked: a rim round each socket, the cheekbone ridge,
+    # a knot of bone at each corner of the mouth
+    ridges = both(lambda s: RoundCone(mirror((0.05, -0.068, -0.013), s), mirror((0.064, -0.012, -0.017), s), 0.0055, 0.004))
+    corners = both(lambda s: Sphere(mirror((0.043, -0.079, -0.048), s), 0.0072))
+    # the cheeks swell out where the jaw meets the skull, one more than the other
+    swells = [Ellipsoid((0.049, -0.06, -0.042), (0.012, 0.017, 0.014)),
+              Ellipsoid((-0.047, -0.06, -0.044), (0.0095, 0.015, 0.012))]
 
-    skull = Union([cranium, face, maxilla], k=0.022)
-    bones_ = Union([skull] + cheeks, k=0.02)
-    bones_ = Union([bones_, wedge] + jaw, k=0.026)
+    skull = Union([cranium, face, maxilla], k=0.016)
+    bones_ = Union([skull] + cheeks, k=0.016)
+    bones_ = Union([bones_, wedge] + jaw, k=0.022)
     bones_ = Union([bones_, neck], k=0.025)
+    bones_ = Union([bones_] + ridges + corners + [point], k=0.005)
+    bones_ = Union([bones_] + swells, k=0.012)
 
     cuts = []
     sockets = Union(both(lambda s: Ellipsoid(mirror((0.03, -0.08, 0.012), s), (0.0245, 0.032, 0.0255))))
-    cuts.append((sockets, 0.006))
-    temples = Union(both(lambda s: Sphere(mirror((0.066, -0.03, 0.018), s), 0.018)))
-    cuts.append((temples, 0.025))
-    hollows = Union(both(lambda s: Ellipsoid(mirror((0.052, -0.06, -0.058), s), (0.011, 0.02, 0.026))))
-    cuts.append((hollows, 0.014))
+    cuts.append((sockets, 0.0028))
+    temples = Union(both(lambda s: Sphere(mirror((0.068, -0.03, 0.018), s), 0.023)))
+    cuts.append((temples, 0.02))
+    hollows = Union(both(lambda s: Ellipsoid(mirror((0.053, -0.056, -0.062), s), (0.014, 0.025, 0.03))))
+    cuts.append((hollows, 0.012))
     # the mouth: a V, wide under the nose and narrowing down to the chin
     mouth = Union([TriPrism((-0.031, -0.045), (0.031, -0.045), (0.0, -0.145), -0.16, -0.036, 0.008),
                    RoundCone((0, -0.06, -0.08), (0, 0.012, -0.1), 0.024, 0.016)], k=0.012)
-    cuts.append((mouth, 0.006))
-    # the nose is a skull's: a tall dark hole either side of a thin bridge
-    nasal = Union(both(lambda s: RoundCone(mirror((0.0072, -0.098, 0.006), s), mirror((0.0105, -0.106, -0.034), s), 0.0036, 0.0066))
-                  + [Ellipsoid((0, -0.104, -0.036), (0.013, 0.012, 0.007))], k=0.004)
-    cuts.append((nasal, 0.003))
+    cuts.append((mouth, 0.005))
+    # the nose: no bridge, one black slit in the skull from between the eyes
+    # down to just over the mouth
+    nasal = Union([Ellipsoid((0.0, -0.098, -0.012), (0.0058, 0.02, 0.031)),
+                   Ellipsoid((0.0, -0.1, -0.036), (0.0085, 0.016, 0.008))], k=0.004)
+    cuts.append((nasal, 0.002))
     node = bones_
     for c, k in cuts:
         node = Subtract(node, c, k)
-    node = Union([node, bridge], k=0.003)
+    # drawn by hand: nothing about it is quite round or quite symmetric
+    node = Warp(node, 0.0035, 22.0, 9)
+    # cracked: thin grooves wandering over the skull and the jaw
+    cracks = crack_lines(node)
+    node = Subtract(node, Union([RoundCone(a, b, ra, rb) for a, b, ra, rb in cracks], k=0.0), 0.0006)
 
     def grooves(p):
         # the skin of the cheeks dragged into cords down to the chin
@@ -442,58 +526,82 @@ def head_local_node():
         streak = sdf.fbm(p, 1.0, 3, 41, scale=(190.0, 120.0, 11.0))
         return 0.0017 * mask * np.abs(streak) - 0.0005 * mask
 
-    skin = skin_noise(0.0003, 300.0, 5, 3)
-    return Displace(node, lambda p: grooves(p) + skin(p), 0.0022), dict(
-        sockets=sockets, mouth=mouth, nasal=nasal, bone=node)
+    # bone that is pitted and uneven, not smooth
+    pits = skin_noise(0.0007, 140.0, 6, 3)
+    skin = skin_noise(0.00035, 320.0, 5, 3)
+    whole = Displace(node, lambda p: grooves(p) + pits(p) + skin(p), 0.0028)
+    g = PIECE_GAP
+    pieces = dict(
+        skull=Region(whole, lambda p: g - jaw_zone(p)),
+        jaw=Region(whole, lambda p: np.maximum(jaw_zone(p) + g, (TIP_Z + g) - p[:, 2]), hi=(0.08, 0.03, -0.02)),
+        tip=Region(whole, lambda p: np.maximum(jaw_zone(p) + g, p[:, 2] - (TIP_Z - g)), hi=(0.03, 0.0, TIP_Z + 0.004)),
+    )
+    return whole, dict(sockets=sockets, mouth=mouth, nasal=nasal, bone=node, pieces=pieces, cracks=cracks)
 
 
 def head_node():
     local, feats = head_local_node()
+    feats["world_pieces"] = {k: HeadLocal(v, HEAD_CENTER) for k, v in feats["pieces"].items()}
     return HeadLocal(local, HEAD_CENTER), feats
 
 
 # ---------------------------------------------------------------- teeth
 
 def teeth_layout():
-    """Needles round the V of the mouth, in head-local coordinates: (root,
-    direction, length, radius, upper?). Long ones hang from the top edge; the
-    lower ones grow inwards from the two sides of the V."""
+    """Needles deep in the V of the mouth, in head-local coordinates: (root,
+    direction, length, radius, which bone). They grow from well inside, so
+    the top of the mouth stays black and they show from its middle down, as
+    in the picture."""
     rng = np.random.default_rng(81)
     out = []
-    for t in np.linspace(-0.86, 0.86, 7):
-        x = 0.029 * t + rng.normal() * 0.001
-        root = v3(x, -0.1 + 0.02 * t * t, -0.047 - 0.004 * t * t)
-        length = (0.058 - 0.03 * t * t) * (0.85 + 0.3 * rng.random())
-        d = normalize(v3(-0.12 * t + rng.normal() * 0.03, 0.1 + rng.normal() * 0.04, -1.0))
-        out.append((root, d, length, 0.0022 - 0.0004 * t * t, True))
+    for t in np.linspace(-0.85, 0.85, 7):
+        x = 0.026 * t + rng.normal() * 0.001
+        root = v3(x, -0.08 + 0.016 * t * t, -0.062 - 0.004 * t * t)
+        length = (0.046 - 0.02 * t * t) * (0.85 + 0.3 * rng.random())
+        d = normalize(v3(-0.1 * t + rng.normal() * 0.03, -0.12 + rng.normal() * 0.04, -1.0))
+        out.append((root, d, length, 0.0021 - 0.0004 * t * t, "head"))
     corner = np.array([0.031, -0.045])
     tip = np.array([0.0, -0.145])
     for side in (1.0, -1.0):
-        for u in (0.3, 0.52, 0.74):
+        for u in (0.35, 0.56, 0.76):
             q = corner * np.array([side, 1.0]) + u * (tip - corner * np.array([side, 1.0]))
-            inward = normalize(v3(-side * 0.22, 0.0, 1.0))
-            root = v3(q[0] + side * 0.003, -0.098 + 0.012 * (1 - u), q[1] - 0.003)
-            length = (0.04 - 0.018 * u) * (0.85 + 0.3 * rng.random())
-            d = normalize(inward + v3(rng.normal() * 0.05, 0.12, 0.0))
-            out.append((root, d, length, 0.0019, False))
-    out.append((v3(0.0, -0.094, -0.15), normalize(v3(0.0, 0.12, 1.0)), 0.03, 0.0019, False))
+            inward = normalize(v3(-side * 0.22, -0.1, 1.0))
+            root = v3(q[0] + side * 0.002, -0.084 + 0.01 * (1 - u), q[1] - 0.004)
+            length = (0.034 - 0.014 * u) * (0.85 + 0.3 * rng.random())
+            d = normalize(inward + v3(rng.normal() * 0.05, 0.0, 0.0))
+            out.append((root, d, length, 0.0018, "jaw"))
+    out.append((v3(0.0, -0.086, -0.15), normalize(v3(0.0, -0.08, 1.0)), 0.026, 0.0018, "jaw"))
     return out
 
 
 # ---------------------------------------------------------------- spikes
 
 def spikes():
-    """(root, direction, length, radius, bone) for every spike, both sides."""
+    """Polylines for the spikes: (points, base radius, bone). Each grows out of
+    the body's surface in its own direction, but never at the face."""
+    rng = np.random.default_rng(1977)
     out = []
-    for root, d, length, r, bone in SPIKES:
-        if abs(root[0]) < 1e-6:
-            out.append((root, normalize(d), length, r, bone))
+    tries = 0
+    while len(out) < SPIKE_COUNT and tries < 400:
+        tries += 1
+        d = normalize(rng.normal(size=3))
+        if d[1] < -0.45 or d[2] < -0.75:
+            continue  # not through the face, not down into the floor
+        behind = rng.random() < 0.45
+        centre = ABDOMEN_CENTER if behind else BODY_CENTER + v3(0, -0.02, 0)
+        radii = v3(0.1, 0.14, 0.095) if behind else v3(0.12, 0.145, 0.09)
+        root = centre + d * (1.0 / np.linalg.norm(d / radii)) * 0.85
+        length = rng.uniform(0.16, 0.42)
+        r = rng.uniform(0.007, 0.011)
+        pts = [root]
+        if rng.random() < 0.45:
+            # bent once, a little past halfway
+            k = rng.uniform(0.5, 0.65)
+            knee = root + d * length * k
+            axis = normalize(np.cross(d, rng.normal(size=3)))
+            d2 = rotate(d, axis, math.radians(rng.uniform(35.0, 70.0)))
+            pts += [knee, knee + d2 * length * (1.0 - k)]
         else:
-            for side in "LR":
-                out.append((mirror(root, side), normalize(mirror(d, side)), length, r, bone))
-    for side in "LR":
-        fr = hand_frame("a", "L")
-        base = fr["elbow"] + (fr["shoulder"] - fr["elbow"]) * 0.12 + v3(0, 0, ARMS["a"]["radii"][2] * 0.6)
-        d = normalize(v3(0.0, 0.5, 1.0) - normalize(fr["elbow"] - fr["shoulder"]) * 0.4)
-        out.append((mirror(base, side), normalize(mirror(d, side)), ELBOW_SPIKE[0], ELBOW_SPIKE[1], "upperarm_a." + side))
+            pts.append(root + d * length)
+        out.append((pts, r, "abdomen" if behind else "body"))
     return out

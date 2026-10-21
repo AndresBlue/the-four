@@ -103,10 +103,16 @@ def build_stairs(coll):
     obj("ceiling", bm, ceiling, coll)
 
 
+CAMERA = Vector((0.03, -1.42, 1.36))
+
+
 def stair_pose(rig):
-    """The picture's pose on these stairs: the steps ahead of it are lower."""
+    """The picture's pose on these stairs: the steps ahead of it are lower,
+    and the face and the eyes are on the camera."""
     zc = step_z(CREATURE_Y)
-    return animate.loom_pose(rig, ground=lambda y: step_z(CREATURE_Y + y) - zc)
+    spec = animate.loom_pose(rig, ground=lambda y: step_z(CREATURE_Y + y) - zc)
+    spec["look"] = CAMERA - Vector((0.0, CREATURE_Y, zc))
+    return spec
 
 
 def apply_pose(rig_ob, spec):
@@ -121,22 +127,29 @@ def apply_pose(rig_ob, spec):
     bpy.context.scene.frame_set(1)
 
 
+# How far the ink reaches round the line of the body (lurker_visual.gd).
+INK = 0.24
+
+
 def darkness(coll, rig):
-    """The black fog the game puts round its body (lurker_darkness.gdshader),
-    as a volume that only absorbs: lumpy, with no edge."""
-    pb = rig.pose.bones["body"]
-    centre = rig.matrix_world @ pb.matrix @ Vector((0.0, 0.14, 0.0))
-    face = rig.matrix_world @ rig.pose.bones["head"].matrix @ Vector((0.0, 0.07, 0.1))
-    # behind the face rather than round it, so the face floats in front of it
-    centre = centre + (centre - face).normalized() * 0.16
+    """The darkness the game wraps round its body (lurker_darkness.gdshader),
+    as a volume that only absorbs: ink along the body, from its chest to the
+    end of its abdomen, with a torn edge and wisps coming off it, and a thin
+    vapour in rags further out. The face, and the way from it to the camera,
+    are left clear."""
+    m_ = rig.matrix_world
+    a = m_ @ rig.pose.bones["body"].matrix @ Vector((0.0, 0.2, 0.0))
+    b = m_ @ rig.pose.bones["abdomen"].matrix @ Vector((0.0, 0.14, 0.0))
+    face = m_ @ rig.pose.bones["head"].matrix @ Vector((0.0, 0.06, 0.1))
+    middle = (a + b) * 0.5
     bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=3, radius=0.52)
+    bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.05)
+    bmesh.ops.translate(bm, verts=bm.verts, vec=middle)
     me = bpy.data.meshes.new("darkness")
     bm.to_mesh(me)
     bm.free()
     ob = bpy.data.objects.new("darkness", me)
     coll.objects.link(ob)
-    ob.location = centre
     m = bpy.data.materials.new("darkness")
     m.use_nodes = True
     nt = m.node_tree
@@ -144,42 +157,72 @@ def darkness(coll, rig):
     out = nt.nodes.get("Material Output")
     vol = nt.nodes.new("ShaderNodeVolumeAbsorption")
     vol.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
-    coord = nt.nodes.new("ShaderNodeTexCoord")
-    noise = nt.nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value = 5.0
-    noise.inputs["Detail"].default_value = 4.0
-    grad = nt.nodes.new("ShaderNodeTexGradient")
-    grad.gradient_type = "SPHERICAL"
-    mix = nt.nodes.new("ShaderNodeMath")
-    mix.operation = "MULTIPLY"
-    shape = nt.nodes.new("ShaderNodeMapRange")
-    shape.inputs["From Min"].default_value = 0.0
-    shape.inputs["From Max"].default_value = 0.6
-    shape.inputs["To Min"].default_value = 0.0
-    shape.inputs["To Max"].default_value = 30.0
-    nt.links.new(coord.outputs["Object"], noise.inputs["Vector"])
-    scale = nt.nodes.new("ShaderNodeVectorMath")
-    scale.operation = "SCALE"
-    scale.inputs["Scale"].default_value = 1.0 / 0.52
-    nt.links.new(coord.outputs["Object"], scale.inputs[0])
-    nt.links.new(scale.outputs["Vector"], grad.inputs["Vector"])
-    nt.links.new(grad.outputs["Fac"], mix.inputs[0])
-    nt.links.new(noise.outputs["Fac"], mix.inputs[1])
-    nt.links.new(mix.outputs["Value"], shape.inputs["Value"])
-    # the face is left clear, as in the game
-    away = nt.nodes.new("ShaderNodeVectorMath")
-    away.operation = "DISTANCE"
-    away.inputs[1].default_value = tuple(face - centre)
-    nt.links.new(coord.outputs["Object"], away.inputs[0])
-    clear = nt.nodes.new("ShaderNodeMapRange")
-    clear.inputs["From Min"].default_value = 0.1
-    clear.inputs["From Max"].default_value = 0.2
-    nt.links.new(away.outputs["Value"], clear.inputs["Value"])
-    keep = nt.nodes.new("ShaderNodeMath")
-    keep.operation = "MULTIPLY"
-    nt.links.new(shape.outputs["Result"], keep.inputs[0])
-    nt.links.new(clear.outputs["Result"], keep.inputs[1])
-    nt.links.new(keep.outputs["Value"], vol.inputs["Density"])
+    pos = nt.nodes.new("ShaderNodeNewGeometry").outputs["Position"]
+
+    def math(op, x, y=None, z=None, clamp=False):
+        n = nt.nodes.new("ShaderNodeMath")
+        n.operation = op
+        n.use_clamp = clamp
+        for i, v in enumerate((x, y, z)):
+            if v is None:
+                continue
+            if isinstance(v, (int, float)):
+                n.inputs[i].default_value = v
+            else:
+                nt.links.new(v, n.inputs[i])
+        return n.outputs[0]
+
+    def vmath(op, x, y=None, scale=None):
+        n = nt.nodes.new("ShaderNodeVectorMath")
+        n.operation = op
+        for i, v in enumerate((x, y)):
+            if v is None:
+                continue
+            if isinstance(v, Vector):
+                n.inputs[i].default_value = tuple(v)
+            else:
+                nt.links.new(v, n.inputs[i])
+        if scale is not None:
+            nt.links.new(scale, n.inputs["Scale"])
+        return n.outputs["Value"] if op in ("LENGTH", "DOT_PRODUCT", "DISTANCE") else n.outputs["Vector"]
+
+    def segment(p0, p1):
+        ab = p1 - p0
+        pa = vmath("SUBTRACT", pos, p0)
+        t = math("MULTIPLY", vmath("DOT_PRODUCT", pa, ab), 1.0 / max(ab.length_squared, 1e-9), clamp=True)
+        n = nt.nodes.new("ShaderNodeVectorMath")
+        n.operation = "SCALE"
+        n.inputs[0].default_value = tuple(ab)
+        nt.links.new(t, n.inputs["Scale"])
+        return vmath("LENGTH", vmath("SUBTRACT", pa, n.outputs["Vector"]))
+
+    def ramp(x, lo, hi):
+        n = nt.nodes.new("ShaderNodeMapRange")
+        n.interpolation_type = "SMOOTHSTEP"
+        n.inputs["From Min"].default_value = lo
+        n.inputs["From Max"].default_value = hi
+        nt.links.new(x, n.inputs["Value"])
+        return n.outputs["Result"]
+
+    tex = nt.nodes.new("ShaderNodeTexNoise")
+    tex.inputs["Scale"].default_value = 6.0
+    tex.inputs["Detail"].default_value = 4.0
+    tex.inputs["Roughness"].default_value = 0.55
+    tex.inputs["Distortion"].default_value = 1.4
+    nt.links.new(pos, tex.inputs["Vector"])
+    n = tex.outputs["Fac"]
+    along = segment(a, b)
+    # the ink: dense, its edge torn by the noise; wisps where the noise is high
+    r = math("ADD", math("MULTIPLY", along, 1.0 / INK), math("MULTIPLY_ADD", n, 1.15, -0.575))
+    ink = ramp(r, 1.0, 0.84)
+    r2 = math("ADD", math("MULTIPLY", along, 1.0 / INK), math("MULTIPLY_ADD", n, 1.8, -0.9))
+    wisps = math("MULTIPLY", math("MULTIPLY", ramp(r2, 1.7, 1.15), ramp(n, 0.52, 0.72)), 0.45)
+    dense = math("MULTIPLY", math("MAXIMUM", ink, wisps), 40.0)
+    # the vapour: rags and holes a little further out
+    rags = math("MULTIPLY", math("MULTIPLY", ramp(math("MULTIPLY", along, 1.0 / 0.46), 2.6, 1.0), ramp(n, 0.5, 0.8)), 2.2)
+    clear = ramp(segment(face, bpy.context.scene.camera.matrix_world.translation.copy()), 0.094, 0.17)
+    density = math("MULTIPLY", math("ADD", dense, rags), clear)
+    nt.links.new(density, vol.inputs["Density"])
     nt.links.new(vol.outputs["Volume"], out.inputs["Volume"])
     me.materials.append(m)
     return ob
@@ -208,7 +251,7 @@ def camera(coll):
     cd.sensor_height = 24.0
     ob = bpy.data.objects.new("stair_cam", cd)
     coll.objects.link(ob)
-    ob.location = Vector((0.03, -1.42, 1.36))
+    ob.location = CAMERA
     ob.rotation_euler = Euler((math.radians(98.0), 0.0, 0.0))
     bpy.context.scene.camera = ob
     return ob

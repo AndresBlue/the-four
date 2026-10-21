@@ -12384,10 +12384,20 @@ _subresources={
 "use_external/fallback_path": "res://assets/enemies/lurker/lurker_body.tres",
 "use_external/path": "res://assets/enemies/lurker/lurker_body.tres"
 },
+"lurker_eyes": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://assets/enemies/lurker/lurker_matte.tres",
+"use_external/path": "res://assets/enemies/lurker/lurker_matte.tres"
+},
 "lurker_face": {
 "use_external/enabled": true,
 "use_external/fallback_path": "res://assets/enemies/lurker/lurker_face.tres",
 "use_external/path": "res://assets/enemies/lurker/lurker_face.tres"
+},
+"lurker_teeth": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://assets/enemies/lurker/lurker_matte.tres",
+"use_external/path": "res://assets/enemies/lurker/lurker_matte.tres"
 }
 }
 }

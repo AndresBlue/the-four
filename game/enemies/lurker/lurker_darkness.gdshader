@@ -1,20 +1,28 @@
-// The darkness The Lurker carries: a churning black fog round its body, so the
-// body has no edge and runs into the dark behind it. Drawn on the back faces
-// of a sphere and integrated along each view ray through it (cut short by
-// whatever the ray meets first), so it is the same from inside as from
-// outside. The face is kept clear of it: it is what floats in the dark.
+// The darkness The Lurker carries: not a soft ball but ink in water, or a
+// thick black vapour, wrapped round its body and always moving. Its edge is
+// torn and sharp where it is dense, and thin wisps curl off it. Drawn on the
+// back faces of a sphere and integrated along each view ray through it (cut
+// short by whatever the ray meets first), so it is the same from inside as
+// from outside. The face is kept clear of it, and so is the way from the face
+// to the eye that looks at it: the face is what floats in front of the dark.
+//
+// Two of these go round it (lurker_visual.gd): the ink on the body, dense
+// enough to be black, and the vapour, a wider and thinner one in rags.
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_front, shadows_disabled;
 
-uniform float radius = 0.62;
-// How thick the fog is at the centre.
-uniform float density = 7.0;
-// The face, in the world, and how wide a hole the fog leaves round it.
+// The mass lies along the body, from its front to the end of its abdomen.
+uniform vec3 axis_a = vec3(0.0, -100.0, 0.0);
+uniform vec3 axis_b = vec3(0.0, -100.0, 0.0);
+// How far the mass reaches round that line, and the sphere it is drawn in.
+uniform float thickness = 0.34;
+uniform float radius = 0.8;
+uniform float density = 40.0;
+// 0: ink, dense with a torn edge. 1: vapour, all rags and holes.
+uniform float vapour = 0.0;
+// The face, in the world, and how wide a hole the dark leaves round it.
 uniform vec3 face = vec3(0.0, -100.0, 0.0);
 uniform float face_clear = 0.17;
-// How lumpy and restless it is: 1 for the fog round the body, 0 for the wide
-// gloom, which only fades out smoothly.
-uniform float churn = 1.0;
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 
 varying vec3 world_vertex;
@@ -35,13 +43,29 @@ float noise(vec3 x) {
 	               mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
-float fog(vec3 p, vec3 centre, float t) {
-	float r = length(p - centre) / radius;
-	// lumps that come and go, so the outline never settles
-	float n = noise(p * 4.5 + vec3(0.0, t * 0.35, t * 0.2)) * 0.65 + noise(p * 11.0 - vec3(t * 0.5)) * 0.35;
-	float body = smoothstep(1.0, 0.15 * churn, r + (n - 0.5) * 0.55 * churn);
-	float clear = face_clear > 0.0 ? smoothstep(face_clear * 0.55, face_clear, length(p - face)) : 1.0;
-	return body * clear;
+float segment(vec3 p, vec3 a, vec3 b) {
+	vec3 ab = b - a;
+	float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+	return length(p - (a + ab * t));
+}
+
+float dark(vec3 p, float t, vec3 eye, vec3 centre) {
+	// the space itself is stirred, so the lumps curl instead of sliding
+	vec3 q = p * 3.0;
+	vec3 stir = vec3(noise(q + vec3(0.0, t * 0.3, 0.0)),
+	                 noise(q + vec3(5.2, -t * 0.25, 1.3)),
+	                 noise(q + vec3(2.1, 3.3, t * 0.35))) - 0.5;
+	float n = noise(p * 6.0 + stir * 2.4 + vec3(0.0, -t * 0.45, 0.0)) * 0.6
+	        + noise(p * 14.0 + stir * 3.2 - vec3(t * 0.3)) * 0.4;
+	float r = segment(p, axis_a, axis_b) / thickness;
+	float ink = smoothstep(1.0, 0.84, r + (n - 0.5) * 1.15);
+	float wisps = smoothstep(1.7, 1.15, r + (n - 0.5) * 1.8) * smoothstep(0.52, 0.72, n);
+	float rags = smoothstep(2.6, 1.0, r) * smoothstep(0.5, 0.8, n);
+	float d = mix(max(ink, wisps * 0.45), rags, vapour);
+	float clear = face_clear > 0.0 ? smoothstep(face_clear * 0.55, face_clear, segment(p, face, eye)) : 1.0;
+	// thinning out before the sphere it is drawn in, so its edge never shows
+	float inside = smoothstep(radius, radius * 0.8, length(p - centre));
+	return d * clear * inside;
 }
 
 void vertex() {
@@ -72,12 +96,12 @@ void fragment() {
 	t1 = min(t1, length(view.xyz));
 	if (t1 <= t0) discard;
 	float sum = 0.0;
-	const int STEPS = 7;
+	const int STEPS = 10;
 	float dt = (t1 - t0) / float(STEPS);
 	for (int i = 0; i < STEPS; i++) {
 		vec3 p = eye + ray * (t0 + (float(i) + 0.5) * dt);
-		sum += fog(p, centre, TIME) * dt;
+		sum += dark(p, TIME, eye, centre) * dt;
 	}
 	ALBEDO = vec3(0.0);
-	ALPHA = clamp(1.0 - exp(-sum * density), 0.0, 0.985);
+	ALPHA = clamp(1.0 - exp(-sum * density), 0.0, 1.0);
 }

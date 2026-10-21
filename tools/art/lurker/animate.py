@@ -142,6 +142,24 @@ class Rig:
             if name in upper_of:
                 limb, k = upper_of[name]
                 self._ik(limb, k, parent_pose, over)
+            look = spec.get("look")
+            if look is not None and (name == "head" or name.startswith("eye.")) and name not in over:
+                # the face and the eyes turned on a point: the head part of
+                # the way (its +Z is the face), the eyes all of it (their +Y)
+                e = local.get(name)
+                b0 = Matrix.Identity(4) if e is None else (e if isinstance(e, Matrix) else Euler(e, "XYZ").to_matrix().to_4x4())
+                m0 = parent_pose @ self.rel[name] @ b0
+                axis_col = 2 if name == "head" else 1
+                ahead = m0.col[axis_col].to_3d().normalized()
+                origin = m0.translation + (m0.col[1].to_3d() * 0.07 if name == "head" else Vector((0, 0, 0)))
+                wanted = (V(look) - origin).normalized()
+                angle = min(ahead.angle(wanted), math.radians(60.0 if name == "head" else 40.0))
+                axis = ahead.cross(wanted)
+                if axis.length > 1e-6:
+                    r = Matrix.Rotation(angle, 4, axis.normalized())
+                    m1 = r @ m0
+                    m1.translation = m0.translation
+                    over[name] = m1
             if name in over:
                 m = over[name]
                 b = self.rel[name].inverted() @ (parent_pose.inverted() @ m)
@@ -167,7 +185,7 @@ class Rig:
         pole = V(k["pole"]).normalized()
         d = t - s
         dist = d.length
-        dist = min(max(dist, abs(l1 - l2) + 1e-3), l1 + l2 - 1e-4)
+        dist = min(max(dist, abs(l1 - l2) + 1e-3), (l1 + l2) * ARM_SPAN)
         axis = d.normalized()
         a = (l1 * l1 - l2 * l2 + dist * dist) / (2 * dist)
         hgt = math.sqrt(max(l1 * l1 - a * a, 0.0))
@@ -408,6 +426,11 @@ def add_local(spec, bone, e):
 
 # ---------------------------------------------------------------- the picture
 
+# The most of its length an arm ever reaches: never straight, the elbow always
+# shows (the same in the game, lurker_limbs.gd).
+ARM_SPAN = 0.86
+
+
 def loom_pose(rig, ground=None):
     """The reference picture: reared up in a corridor a metre wide, the big
     hands high on both walls in a V, the small pair up by the head, the third
@@ -423,19 +446,21 @@ def loom_pose(rig, ground=None):
         "abdomen": deg(68), "neck": deg(30, 0, 2), "head": deg(30, 3, 5), "jaw": deg(26),
         "eye.L": deg(-10), "eye.R": deg(-10),
     })
-    # the big hands: backs to the camera, fingers spread and hooked
-    spec["ik"]["a.R"] = dict(target=(-0.36, 0.04, 1.42 + up), pole=(-1.0, 0.4, -0.2), f=(-0.35, 0.0, 1.0), n=(-0.35, 1.0, 0.0))
-    spec["ik"]["a.L"] = dict(target=(0.36, 0.0, 1.46 + up), pole=(1.0, 0.4, -0.2), f=(0.35, 0.0, 1.0), n=(0.35, 1.0, 0.0))
+    # the big hands high on the walls of a passage a metre wide, the elbows
+    # riding up between: palms on the wall, fingers spread and hooked into it
+    spec["ik"]["a.R"] = dict(target=(-0.34, -0.08, 1.22 + up), pole=(-0.35, 0.3, 1.0), f=(-0.15, -0.25, 1.0), n=(-1.0, 0.15, 0.0))
+    spec["ik"]["a.L"] = dict(target=(0.34, -0.12, 1.26 + up), pole=(0.35, 0.3, 1.0), f=(0.15, -0.25, 1.0), n=(1.0, 0.15, 0.0))
     spec["curl"]["a.R"] = curl_all("a.R", -0.05, 0.3, 0.55, 0.7, thumb=(-0.2, 0.2, 0.45, 0.0))
     spec["curl"]["a.L"] = curl_all("a.L", -0.05, 0.3, 0.55, 0.7, thumb=(-0.2, 0.2, 0.45, 0.0))
     # the small pair, up by the head
-    spec["ik"]["b.L"] = dict(target=(0.2, -0.12, 1.2 + up), pole=(1.0, 0.5, -0.3), f=(0.2, -0.3, 1.0), n=(0.0, -1.0, 0.0))
-    spec["ik"]["b.R"] = dict(target=(-0.22, -0.06, 1.16 + up), pole=(-1.0, 0.5, -0.3), f=(-0.2, -0.1, 1.0), n=(0.0, -1.0, 0.0))
+    spec["ik"]["b.L"] = dict(target=(0.24, -0.14, 1.1 + up), pole=(1.0, 0.3, -0.6), f=(0.3, -0.3, 1.0), n=(0.0, -1.0, 0.0))
+    spec["ik"]["b.R"] = dict(target=(-0.26, -0.1, 1.06 + up), pole=(-1.0, 0.3, -0.6), f=(-0.3, -0.1, 1.0), n=(0.0, -1.0, 0.0))
     spec["curl"]["b.L"] = curl_all("b.L", 0.15, 0.35, 0.45, 0.35)
     spec["curl"]["b.R"] = curl_all("b.R", 0.3, 0.5, 0.5, 0.2)
-    # the third pair: clawing the walls lower down
-    spec["ik"]["c.R"] = dict(target=(-0.45, -0.18, 0.72 + up), pole=(-0.7, 0.6, -0.3), f=(-0.1, -0.5, 0.8), n=(-1.0, 0.0, 0.0))
-    spec["ik"]["c.L"] = dict(target=(0.45, -0.12, 0.66 + up), pole=(0.7, 0.6, -0.3), f=(0.1, -0.5, 0.8), n=(1.0, 0.0, 0.0))
+    # the third pair: like a spider's legs, the elbows high and the hands low
+    # on the walls, the claws hooked down into them
+    spec["ik"]["c.R"] = dict(target=(-0.35, -0.16, 0.6 + up), pole=(-0.4, 0.2, 1.0), f=(-0.1, -0.45, -0.9), n=(-1.0, 0.0, 0.0))
+    spec["ik"]["c.L"] = dict(target=(0.35, -0.1, 0.54 + up), pole=(0.4, 0.2, 1.0), f=(0.1, -0.45, -0.9), n=(1.0, 0.0, 0.0))
     spec["curl"]["c.R"] = curl_all("c.R", 0.25, 0.75, 0.9, 0.3, thumb=(0.1, 0.4, 0.6, 0.0))
     spec["curl"]["c.L"] = curl_all("c.L", 0.3, 0.8, 0.85, 0.25, thumb=(0.1, 0.4, 0.6, 0.0))
     # the back pair: down the steps towards the camera

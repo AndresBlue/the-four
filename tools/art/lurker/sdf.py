@@ -185,6 +185,25 @@ class RoundCone(Node):
         return out
 
 
+class Torus(Node):
+    """A ring of radius `major` and thickness `minor` round `axis` at c."""
+
+    def __init__(self, c, axis, major, minor):
+        self.c = v3(c)
+        self.axis = normalize(axis)
+        self.major = float(major)
+        self.minor = float(minor)
+        m = self.major + self.minor
+        self.lo = self.c - m
+        self.hi = self.c + m
+
+    def _eval(self, p, lo, hi):
+        q = p - self.c
+        h = q @ self.axis
+        r = np.linalg.norm(q - np.outer(h, self.axis), axis=1)
+        return np.sqrt((r - self.major) ** 2 + h * h) - self.minor
+
+
 def sd_triangle2(p, a, b, c):
     """Exact distance to a 2-D triangle (after iq), points p (N, 2)."""
     a, b, c = (np.asarray(v, dtype=np.float64) for v in (a, b, c))
@@ -300,6 +319,26 @@ class Displace(Node):
             d = d.copy()
             d[near] += self.fn(p[near])
         return d
+
+
+class Warp(Node):
+    """The child seen through a slow, small distortion of space: an outline
+    that wobbles the way a hand-drawn one does. amp bounds the shift."""
+
+    def __init__(self, child, amp, freq, seed=0):
+        self.child = child
+        self.amp = float(amp)
+        self.freq = float(freq)
+        self.seed = seed
+        self.lo = child.lo - self.amp
+        self.hi = child.hi + self.amp
+
+    def _eval(self, p, lo, hi):
+        if lo is not None:
+            lo = lo - self.amp
+            hi = hi + self.amp
+        shift = np.stack([fbm(p, self.freq, 2, self.seed + k * 31) for k in range(3)], axis=1) * self.amp
+        return self.child.eval(p + shift, lo, hi)
 
 
 class Shell(Node):
