@@ -42,7 +42,7 @@ const SUSPEND := 0.5
 ## How fast it comes, how fast it gets away (the clips' own speeds,
 ## tools/art/lurker/animate.py SPEEDS) and how fast it moves round the corridor.
 const CRAWL := 1.0
-const SCURRY := 2.6
+const SCURRY := 1.8
 ## How quickly it gets up to speed or stops (m/s²): its hands could not keep
 ## up with a body that went from still to scurrying in a frame.
 const ACCEL := 5.0

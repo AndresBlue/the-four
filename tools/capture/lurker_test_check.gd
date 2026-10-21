@@ -46,6 +46,7 @@ func run() -> void:
 	var quick := 0
 	var worst_miss := 0.0
 	var worst_slide := 0.0
+	var stuck := 0
 	while seconds < length:
 		await process_frame
 		seconds += 1.0 / 30.0
@@ -62,8 +63,16 @@ func run() -> void:
 				worst_slide = maxf(worst_slide, (limb.claw_at as Vector3).distance_to(claws_were[name]))
 			if holding: claws_were[name] = limb.claw_at
 			else: claws_were.erase(name)
+			if limb.elbow_stuck:
+				stuck += 1
+				if OS.get_cmdline_user_args().has("--why"):
+					var skeleton: Skeleton3D = scene.lurker.skeleton
+					var socket: Vector3 = skeleton.global_transform * skeleton.get_bone_global_pose(limb.upper).origin
+					print("STUCK %.1fs %s swing=%s free=%s on %s, hold %.0f%% of its reach, socket %s" % [seconds, name, limb.swing, limb.free, (limb.normal as Vector3).snapped(Vector3.ONE * 0.1),
+						(limb.hold as Vector3).distance_to(socket) / (float(limb.reach) * scene.lurker.limbs.size) * 100.0, socket.snapped(Vector3.ONE * 0.01)])
 		if frame % 60 == 0:
-			print("HANDS %.0fs: %d steps, %d straight after landing; worst wrist short by %.1f cm; worst claw slid %.1f cm" % [seconds, steps, quick, worst_miss * 100.0, worst_slide * 100.0])
+			print("HANDS %.0fs: %d steps, %d straight after landing; worst wrist short by %.1f cm; worst claw slid %.1f cm; an elbow with no way clear %d times" % [seconds, steps, quick, worst_miss * 100.0, worst_slide * 100.0, stuck])
+			stuck = 0
 			steps = 0
 			quick = 0
 			worst_miss = 0.0
