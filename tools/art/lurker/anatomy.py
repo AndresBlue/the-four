@@ -45,6 +45,11 @@ PIECE_GAP = 0.0016
 PAIRS = {"a": (32.0, 1.0), "b": (64.0, 0.62), "c": (98.0, 0.82), "d": (136.0, 0.74)}
 
 
+# Each of the two long bones of an arm, for the biggest pair: long and thin,
+# like the legs of a black widow or a tiger spider.
+LIMB = 0.65
+
+
 def arm_config(angle, s):
     a = math.radians(angle)
     out = v3(math.sin(a), -math.cos(a), 0.0)
@@ -52,8 +57,8 @@ def arm_config(angle, s):
     inner = BODY_CENTER + v3(0.035 * out[0], 0.04 * out[1] - 0.02, 0.03)
     return dict(
         clavicle=inner, shoulder=socket,
-        upper_dir=out + v3(0, 0, 0.36), upper_len=0.42 * s,
-        fore_dir=out + v3(0, 0, -0.62), fore_len=0.42 * s,
+        upper_dir=out + v3(0, 0, 0.36), upper_len=LIMB * s,
+        fore_dir=out + v3(0, 0, -0.62), fore_len=LIMB * s,
         radii=tuple(r * s ** 0.7 for r in (0.036, 0.022, 0.025, 0.018, 0.015)),
         scale=1.3 * s, thick=1.02 * s ** 0.85,
         palm=0.118 * s, palm_width=0.068 * s, palm_thick=0.027 * s ** 0.85,

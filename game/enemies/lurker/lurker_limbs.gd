@@ -4,7 +4,9 @@ extends SkeletonModifier3D
 ## where it is in the world and only moves in a step; but it looks for its hold
 ## in every direction round its shoulder, from under the body to over it, so in
 ## a corridor the hands take the walls and the ceiling as readily as the floor.
-## The eight step in two sets of four that take turns, as a spider walks.
+## The eight step in two sets of four that take turns, as a spider walks, and
+## at a slow pace, like a black widow's: long arms, long strides, each hand
+## lifted high and set down well ahead, the knees (its elbows) riding high.
 ##
 ## As in the picture: the arms are never straight (they reach no further than
 ## ARM_SPAN of their length, so the elbow always shows), the hands land with
@@ -34,6 +36,13 @@ const ARM_SPAN := 0.88
 const CLAW := Vector3(0.0, 0.55, 0.85)
 const CLAW_SPREAD := 0.3
 const FLYING := Vector3(0.7, 1.0, 0.9)
+## How long a step takes, walking and at its fastest; how high the hand lifts
+## (a share of the arm's length); how many seconds of travel ahead of the shoulder it
+## looks for its next hold; and how hard the elbows are pushed up.
+const STEP := Vector2(0.85, 0.45)
+const LIFT := 0.22
+const AHEAD := 0.6
+const KNEES := 1.6
 ## How far the neck juts out towards what it looks at: the head leads.
 const LEAD := 0.09
 ## How far the head twists to keep the face upright when the body is not.
@@ -51,6 +60,9 @@ var cling := 0.0
 var look_point := Vector3.INF
 ## Off, the clip moves the arms and only the head and the eyes are turned here.
 var hands := true
+## World metres to one of the skeleton's: the creature is shown bigger than it
+## was built (lurker_visual.gd, size).
+var size := 1.0
 var limbs: Array[Dictionary] = []
 var cursor := 0
 var swinging := [0, 0]
@@ -96,7 +108,8 @@ func _setup(skeleton: Skeleton3D) -> void:
 		entry.l1 = shoulder.distance_to(elbow)
 		entry.l2 = elbow.distance_to(wrist)
 		entry.reach = (entry.l1 + entry.l2) * ARM_SPAN
-		entry.scale = (entry.l1 + entry.l2) / 0.84
+		# 1 for the biggest pair, whose arm is 1.3 long (anatomy.py, LIMB)
+		entry.scale = (entry.l1 + entry.l2) / 1.3
 		var out := wrist - shoulder
 		out.y = 0.0
 		entry.out = out.normalized()
@@ -109,6 +122,7 @@ func _process_modification_with_delta(delta: float) -> void:
 	if limbs.is_empty(): _setup(skeleton)
 	var xf := skeleton.global_transform
 	var basis := xf.basis.orthonormalized()
+	size = xf.basis.get_scale().x
 	var up := basis.y
 	var space := skeleton.get_world_3d().direct_space_state
 	if not hands:
@@ -124,10 +138,10 @@ func _process_modification_with_delta(delta: float) -> void:
 	var speed := velocity.length()
 	for limb in limbs:
 		var socket: Vector3 = xf * skeleton.get_bone_global_pose(limb.upper).origin
-		if not limb.planted or limb.hold.distance_to(socket) > limb.reach * 2.5:
+		if not limb.planted or limb.hold.distance_to(socket) > limb.reach * size * 2.5:
 			_probe(limb, skeleton, xf, basis, up, space)
 			var out_world: Vector3 = basis * limb.out
-			limb.hold = limb.best if limb.has_best else socket - up * limb.reach * 0.6 + out_world * limb.reach * 0.3
+			limb.hold = limb.best if limb.has_best else socket + (out_world * 0.3 - up * 0.6) * limb.reach * size
 			limb.normal = limb.best_n if limb.has_best else up
 			limb.planted = true
 		_step(limb, socket, delta, speed)
@@ -138,17 +152,17 @@ func _process_modification_with_delta(delta: float) -> void:
 ## Looks for the best hold round one hand, from a little ahead of its shoulder.
 func _probe(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basis, up: Vector3, space: PhysicsDirectSpaceState3D) -> void:
 	var socket: Vector3 = xf * skeleton.get_bone_global_pose(limb.upper).origin
-	var from: Vector3 = socket + velocity * 0.22
+	var from: Vector3 = socket + velocity * AHEAD
 	var out: Vector3 = basis * limb.out
 	var best_score := INF
 	limb.has_best = false
 	for angle in PROBES:
 		var a := deg_to_rad(angle)
 		var direction: Vector3 = (out * cos(a) - up * sin(a)).normalized()
-		var query := PhysicsRayQueryParameters3D.create(from, from + direction * float(limb.reach), world_mask)
+		var query := PhysicsRayQueryParameters3D.create(from, from + direction * float(limb.reach) * size, world_mask)
 		var hit := space.intersect_ray(query)
 		if hit.is_empty(): continue
-		var share: float = from.distance_to(hit.position) / limb.reach
+		var share: float = from.distance_to(hit.position) / (limb.reach * size)
 		# a hold nearer the ideal reach wins; one ahead a little more; a wall or
 		# the ceiling more again while it clings
 		var score: float = absf(share - IDEAL)
@@ -165,7 +179,7 @@ func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> voi
 	if limb.swing:
 		limb.t = minf(1.0, limb.t + delta / limb.duration)
 		var eased: float = limb.t * limb.t * (3.0 - 2.0 * limb.t)
-		var lift: float = sin(PI * limb.t) * 0.13 * limb.scale
+		var lift: float = sin(PI * limb.t) * LIFT * (limb.l1 + limb.l2) * size
 		var normal: Vector3 = limb.from_n.slerp(limb.to_n, eased) if limb.from_n.dot(limb.to_n) > -0.99 else limb.to_n
 		limb.hold = limb.from.lerp(limb.to, eased) + normal * lift
 		limb.normal = normal
@@ -175,8 +189,8 @@ func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> voi
 			limb.normal = limb.to_n
 			footfall.emit(limb.to, clampf(speed / 2.5, 0.2, 1.0) * limb.scale)
 		return
-	var stretch: float = limb.hold.distance_to(socket) / limb.reach
-	var drift: float = limb.hold.distance_to(limb.best) / limb.reach if limb.has_best else 0.0
+	var stretch: float = limb.hold.distance_to(socket) / (limb.reach * size)
+	var drift: float = limb.hold.distance_to(limb.best) / (limb.reach * size) if limb.has_best else 0.0
 	var due: bool = stretch > 0.95 or drift > (0.34 if speed > 0.05 else 0.2)
 	var other: int = 1 - limb.group
 	var free: bool = swinging[other] == 0 and swinging[limb.group] < 3
@@ -187,7 +201,7 @@ func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> voi
 		limb.from_n = limb.normal
 		limb.to = limb.best
 		limb.to_n = limb.best_n
-		limb.duration = clampf(0.3 - speed * 0.05, 0.13, 0.3)
+		limb.duration = lerpf(STEP.x, STEP.y, clampf(speed / 2.6, 0.0, 1.0))
 		swinging[limb.group] += 1
 
 
@@ -196,10 +210,10 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	var normal_world: Vector3 = limb.normal
 	var out_world: Vector3 = basis * limb.out
 	# the wrist held up off the hold: the claws are what touch it
-	var target_world: Vector3 = limb.hold + normal_world * 0.075 * limb.scale
+	var target_world: Vector3 = limb.hold + normal_world * 0.075 * limb.scale * size
 	var s: Vector3 = skeleton.get_bone_global_pose(limb.upper).origin
 	var t: Vector3 = inv * target_world
-	var pole: Vector3 = inv.basis * (up * 0.9 + out_world * 0.5)
+	var pole: Vector3 = inv.basis * (up * KNEES + out_world * 0.5)
 	var a: float = limb.l1
 	var b: float = limb.l2
 	var span: Vector3 = t - s

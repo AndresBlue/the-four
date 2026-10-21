@@ -21,6 +21,8 @@ signal footfall(point: Vector3, strength: float)
 @export var cling := 0.0
 ## The rags of vapour round the ink: how thick.
 @export var gloom := 2.2
+## How much bigger than it was built it is shown.
+@export var size := 1.35
 var velocity := Vector3.ZERO
 ## Where the head and the eyes turn; INF follows the camera that is drawing.
 var look_point := Vector3.INF
@@ -36,7 +38,8 @@ var last_position := Vector3.INF
 
 
 func _ready() -> void:
-	var model := get_node("Model")
+	var model: Node3D = get_node("Model")
+	model.scale = Vector3.ONE * size
 	skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
 	animator = model.find_children("*", "AnimationPlayer", true, false)[0]
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
@@ -49,8 +52,8 @@ func _ready() -> void:
 	limbs.footfall.connect(func(point, strength): footfall.emit(point, strength))
 	skeleton.add_child(limbs)
 	limbs.hands = crawling
-	ink = fog("Ink", 0.95, 0.24, 40.0, 0.0, 0.17)
-	vapour = fog("Vapour", 1.0, 0.46, gloom, 1.0, 0.17)
+	ink = fog("Ink", 0.95 * size, 0.24 * size, 40.0, 0.0, 0.17 * size)
+	vapour = fog("Vapour", 1.0 * size, 0.46 * size, gloom, 1.0, 0.17 * size)
 	animator.play("idle")
 
 

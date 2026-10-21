@@ -345,8 +345,8 @@ class Stance:
         return outward(limb) * 0.6 + Vector((0, 0, self.pole_up))
 
 
-CRAWL = Stance(height=0.3, pitch=4.0, spread=0.62, pole_up=1.0, head={"neck": deg(-6), "head": deg(-4)})
-LURK = Stance(height=0.22, pitch=6.0, spread=0.58, pole_up=1.2, head={"neck": deg(-12), "head": deg(-8)})
+CRAWL = Stance(height=0.34, pitch=4.0, spread=0.62, pole_up=1.8, head={"neck": deg(-6), "head": deg(-4)}, lift=0.22)
+LURK = Stance(height=0.24, pitch=6.0, spread=0.58, pole_up=1.9, head={"neck": deg(-12), "head": deg(-8)}, lift=0.18)
 VENT = Stance(height=0.15, pitch=0.0, spread=0.42, pole_up=0.15, head={"neck": deg(4), "head": deg(-6)}, lift=0.05, wrist=0.035)
 
 # alternating tetrapods, with a little wave from front to back
@@ -541,7 +541,7 @@ def clip_idle(rig):
 
 
 def clip_crawl(rig):
-    T = 1.0
+    T = 2.2
 
     def f(t):
         spec = gait(rig, CRAWL, t, T, 0.62, SPEEDS["crawl"])
@@ -552,8 +552,8 @@ def clip_crawl(rig):
 
 
 def clip_crawl_fast(rig):
-    T = 0.5
-    st = Stance(height=0.26, pitch=8.0, spread=0.66, pole_up=1.0, head={"neck": deg(-8), "head": deg(-6)}, lift=0.15)
+    T = 1.0
+    st = Stance(height=0.3, pitch=8.0, spread=0.66, pole_up=1.6, head={"neck": deg(-8), "head": deg(-6)}, lift=0.24)
 
     def f(t):
         spec = gait(rig, st, t, T, 0.5, SPEEDS["crawl_fast"], sway=1.6, bob=0.025)
@@ -566,7 +566,7 @@ def clip_crawl_fast(rig):
 def clip_vent(rig):
     """Flat in a duct half a metre high: elbows out to the sides, never up;
     the small pair pressed flat against the duct's roof."""
-    T = 1.4
+    T = 2.4
 
     def f(t):
         spec = gait(rig, VENT, t, T, 0.72, SPEEDS["vent_crawl"], sway=0.6, bob=0.006)
@@ -585,8 +585,8 @@ def clip_vent(rig):
 
 
 def clip_retreat(rig):
-    T = 0.6
-    st = Stance(height=0.22, pitch=-4.0, spread=0.6, pole_up=1.1, head={"neck": deg(-10), "head": deg(-8)}, lift=0.13)
+    T = 1.2
+    st = Stance(height=0.26, pitch=-4.0, spread=0.6, pole_up=1.7, head={"neck": deg(-10), "head": deg(-8)}, lift=0.22)
 
     def f(t):
         spec = gait(rig, st, t, T, 0.55, SPEEDS["retreat"], sway=1.2, bob=0.02)

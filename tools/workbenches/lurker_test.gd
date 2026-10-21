@@ -25,24 +25,24 @@ const CARPET := preload("res://game/presentation/materials/carpet.tres")
 const CEILING := preload("res://game/presentation/materials/ceiling.tres")
 const BULB := preload("res://game/presentation/materials/light.tres")
 
-## The corridor, along -Z from where you stand: narrow, so it can hold on to
-## both walls at once.
-const WIDTH := 1.5
+## The corridor, along -Z from where you stand: a hotel's, narrow enough for
+## its long arms to hold on to both walls at once.
+const WIDTH := 1.9
 const HEIGHT := 2.5
 const LENGTH := 22.0
 ## Ceiling lamps, with dark stretches between; the second one fails now and then.
 const LAMPS := [-1.5, -8.0, -15.5]
 const FLICKERING := 1
 ## The round of its corners as it goes from the floor to a wall or the ceiling.
-const BEND := 0.35
+const BEND := 0.45
 ## How fast it comes, how fast it gets away (the clips' own speeds,
 ## tools/art/lurker/animate.py SPEEDS) and how fast it moves round the corridor.
 const CRAWL := 1.0
 const SCURRY := 2.6
 const ROUND := 0.7
 ## Where it stops to stare, and how near you can come before it goes.
-const STARE_AT := 2.2
-const TOO_NEAR := 1.4
+const STARE_AT := 3.0
+const TOO_NEAR := 2.0
 ## How long the torch must hold it before it runs.
 const CAUGHT := 0.35
 ## The last metres it comes slower, down a wall to the height of your face.
