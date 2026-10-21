@@ -59,13 +59,13 @@ const ARM_SPAN := 0.88
 ## hand travels.
 const CLAW := Vector3(0.25, 0.55, 1.0)
 const CLAW_SPREAD := 0.3
-const WRIST := 0.2
-const DIP := 8.0
+const WRIST := 0.06
+const DIP := 0.0
 ## The bend each finger was built with (anatomy.py, REST_CURL; the thumb's in
 ## hand_points), taken off so a finger can lie straight: thumb first.
 const BUILT_CURL := [Vector3(0.05, 0.16, 0.14), Vector3(0.18, 0.26, 0.22), Vector3(0.18, 0.26, 0.22),
 	Vector3(0.18, 0.26, 0.22), Vector3(0.18, 0.26, 0.22)]
-const DIG := 0.004
+const DIG := 0.012
 const FLYING := Vector3(0.7, 1.0, 0.9)
 ## How long a step takes, walking and at its fastest; how high the hand lifts
 ## (a share of the arm's length); how many seconds of travel ahead of the shoulder it

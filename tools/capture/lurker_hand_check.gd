@@ -3,7 +3,9 @@ extends SceneTree
 ## claws are really on the surface (lurker_limbs.gd). A floor and a wall, a
 ## lamp, the creature held up beside the wall without its darkness; for every
 ## hand on the wall, a frame looking along the wall at it, and how far each
-## finger curls. Writes evidence/lurker/hands_<arm>.png.
+## finger curls. Writes evidence/lurker/hands_<arm>.png; with --lamp, lit by a
+## ceiling lamp as the hotel's are (its shadow bias too) and seen slantwise,
+## the way someone walking past would, as hands_lamp_<arm>.png.
 ##   godot --path . --script res://tools/capture/lurker_hand_check.gd
 const LURKER := preload("res://game/enemies/lurker/lurker.tscn")
 var out_dir := "res://evidence/lurker"
@@ -32,10 +34,22 @@ func run() -> void:
 		body.add_child(mesh)
 		body.position = slab[1]
 		world.add_child(body)
+	var lamp_lit := OS.get_cmdline_user_args().has("--lamp")
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, 30, 0)
-	sun.shadow_enabled = true
+	sun.shadow_enabled = not lamp_lit
+	sun.light_energy = 0.15 if lamp_lit else 1.0
 	world.add_child(sun)
+	if lamp_lit:
+		var lamp := OmniLight3D.new()
+		lamp.position = Vector3(0.2, 2.3, 0.6)
+		lamp.omni_range = 6.0
+		lamp.light_energy = 3.0
+		lamp.shadow_enabled = true
+		lamp.shadow_bias = 0.03
+		lamp.shadow_normal_bias = 0.6
+		lamp.light_size = 0.06
+		world.add_child(lamp)
 	var environment := WorldEnvironment.new()
 	environment.environment = Environment.new()
 	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -67,9 +81,9 @@ func run() -> void:
 		var normal: Vector3 = limb.normal
 		# looking along the surface at the hand, from a metre off to its side
 		var along := normal.cross(Vector3.FORWARD if absf(normal.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
-		camera.global_position = hold + along * 1.1 + normal * 0.12
-		camera.look_at(hold + normal * 0.12, normal if absf(normal.dot(along)) < 0.9 else Vector3.UP)
+		camera.global_position = hold + along * 1.1 + normal * (0.8 if lamp_lit else 0.12)
+		camera.look_at(hold + normal * (0.0 if lamp_lit else 0.12), Vector3.UP if lamp_lit and absf(normal.y) < 0.9 else (normal if absf(normal.dot(along)) < 0.9 else Vector3.UP))
 		for i in 3: await process_frame
 		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png(out_dir + "/hands_%s.png" % String(limb.name).replace(".", ""))
+		root.get_texture().get_image().save_png(out_dir + "/hands_%s%s.png" % ["lamp_" if lamp_lit else "", String(limb.name).replace(".", "")])
 	quit()

@@ -164,6 +164,11 @@ func build_corridor() -> void:
 		lamp.omni_range = 5.0
 		lamp.omni_attenuation = 1.6
 		lamp.shadow_enabled = true
+		# the hotel's own (hotel_geometry.gd): a bigger bias lifts every shadow
+		# off what casts it, and a hand on a wall would seem to float
+		lamp.shadow_bias = 0.03
+		lamp.shadow_normal_bias = 0.6
+		lamp.light_size = 0.06
 		lamp.position = at + Vector3(0, -0.12, 0)
 		add_child(lamp)
 		if i == FLICKERING: flicker = lamp
