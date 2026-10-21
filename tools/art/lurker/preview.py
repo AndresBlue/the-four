@@ -122,16 +122,19 @@ def floor():
 
 hc = anatomy.HEAD_CENTER
 VIEWS = {
-    "face": dict(cam=(0.0, -0.55, hc[2] + 0.0), target=(0, hc[1], hc[2] - 0.03), lens=85),
-    "face34": dict(cam=(0.32, -0.45, hc[2] + 0.06), target=(0, hc[1], hc[2] - 0.03), lens=85),
-    "faceside": dict(cam=(0.55, hc[1], hc[2]), target=(0, hc[1], hc[2] - 0.03), lens=85),
+    "face": dict(cam=tuple(hc + (0.0, -0.55, 0.0)), target=tuple(hc + (0, 0, -0.05)), lens=85),
+    "face34": dict(cam=tuple(hc + (0.22, -0.48, 0.1)), target=tuple(hc + (0, 0, -0.05)), lens=85),
+    "faceside": dict(cam=tuple(hc + (0.42, -0.25, 0.12)), target=tuple(hc + (0, 0, -0.05)), lens=85),
     "body": dict(cam=(0.0, -4.2, 1.2), target=(0, 0, 1.05), lens=50),
     "body34": dict(cam=(2.6, -3.2, 1.6), target=(0, 0, 1.05), lens=50),
     "bodyside": dict(cam=(4.2, 0.0, 1.2), target=(0, 0, 1.05), lens=50),
     "handa": dict(cam=None, target=None, lens=60, hand="a"),
     "handb": dict(cam=None, target=None, lens=60, hand="b"),
     "handc": dict(cam=None, target=None, lens=60, hand="c"),
-    "foot": dict(cam=(0.5, -0.6, 0.35), target=(0.2, -0.05, 0.05), lens=60),
+    "spider34": dict(cam=(2.0, -2.3, 1.5), target=(0, 0.0, 0.35), lens=45),
+    "spidertop": dict(cam=(0.01, -0.2, 3.6), target=(0, 0.0, 0.3), lens=40),
+    "spiderfront": dict(cam=(0.0, -2.6, 0.75), target=(0, -0.2, 0.45), lens=45),
+    "spiderside": dict(cam=(2.8, 0.0, 0.7), target=(0, 0.0, 0.4), lens=45),
 }
 
 
@@ -144,8 +147,10 @@ def main():
     world()
     if o["clay"]:
         clay()
+    rig = bpy.data.objects.get("lurker_rig")
+    if rig and not o["pose"]:
+        rig.data.pose_position = "REST"
     if o["pose"]:
-        rig = bpy.data.objects.get("lurker_rig")
         act = bpy.data.actions.get(o["pose"])
         if rig and act:
             rig.animation_data_create()

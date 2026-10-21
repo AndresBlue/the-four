@@ -48,7 +48,9 @@ El piso de **las oficinas secretas** tiene su criatura, una nueva que ocupa el s
 - **Asusta por la espalda.**
 - **Se mueve por los ductos de ventilación** de las oficinas.
 - **Hace ver y oír cosas:** mucha alucinación visual y auditiva para quien juega.
-- **Su aspecto** es el de la imagen de terror analógico que trajo el autor: una cara de calavera pálida con la boca desencajada, hundida en pelo negro, un cuerpo de sombra y muchas extremidades con manos enormes de dedos en gancho. Su materia es **muy opaca**, para confundirse con las sombras. El modelo y sus animaciones están en [LURKER.md](LURKER.md).
+- **Su aspecto** es el de la imagen de terror analógico que trajo el autor, y el autor lo precisó ese mismo día: **no es humanoide ni tiene piernas**; es un cuerpo de araña, sin tronco, con **muchos brazos iguales de forma y no de tamaño**, garras grandes y **púas grandes como injertos**. Es liso, sin pelo, y **negro de verdad, sin luz ninguna**: el cuerpo es una zona sin forma que se mezcla con la oscuridad del fondo, como si la criatura misma hiciera sombra. Lo único que se ve es la cara: una calavera pálida con la **mandíbula en triángulo y el mentón en punta**, y ojos de pupila grande, sin iris.
+- **Se mueve como una araña** por suelos, paredes y techos, en cualquier ángulo, agarrándose a lo que tenga cerca.
+- El modelo, sus animaciones, la oscuridad y cómo trepa están en [LURKER.md](LURKER.md).
 
 ## Lo que el juego ya tiene y casa con esto
 

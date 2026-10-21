@@ -1,8 +1,8 @@
 """The creature's animations, written as poses solved frame by frame.
 
-Each clip is a function of time that says where the body is, how the spine
-and head bend, where every hand and foot goes, and how the fingers curl. A
-two-bone solver places elbows and knees, everything is turned into each bone's
+Each clip is a function of time that says where the body is, how the neck
+and head bend, where every hand goes, and how the fingers curl. A two-bone
+solver places the elbows, everything is turned into each bone's
 local rotation, and the keys are written straight onto the rig's actions (one
 key per frame, linear), so the exported clips are plain bone rotations that
 need no constraint at the other end.
@@ -11,6 +11,8 @@ The clips play in place: the game moves the body. Their speeds are in SPEEDS.
 """
 
 import math
+import os
+import sys
 import zlib
 
 import bpy
@@ -18,10 +20,15 @@ import numpy as np
 from bpy_extras import anim_utils
 from mathutils import Euler, Matrix, Quaternion, Vector
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
+import anatomy  # noqa: E402
+
 FPS = 30
-LIMBS = ["a.L", "a.R", "b.L", "b.R", "c.L", "c.R", "leg.L", "leg.R"]
+LIMBS = [p + "." + s for p in "abcd" for s in "LR"]
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
-TOES = ("toe1", "toe2", "toe3", "toe4")
 
 # metres per second the body travels while a locomotion clip plays (towards -Y,
 # the way it faces; retreat goes the other way)
@@ -29,18 +36,12 @@ SPEEDS = {"crawl": 1.0, "crawl_fast": 2.6, "vent_crawl": 0.55, "retreat": -1.5}
 
 
 def chain(limb):
-    if limb.startswith("leg"):
-        s = limb[-1]
-        return None, "thigh." + s, "shin." + s, "foot." + s
     arm, s = limb.split(".")
     sfx = "_%s.%s" % (arm, s)
     return "clavicle" + sfx, "upperarm" + sfx, "forearm" + sfx, "hand" + sfx
 
 
 def digit_bones(limb):
-    if limb.startswith("leg"):
-        s = limb[-1]
-        return {t: ["%s_%02d.%s" % (t, j, s) for j in (1, 2)] for t in TOES}
     arm, s = limb.split(".")
     return {f: ["%s_%02d_%s.%s" % (f, j, arm, s) for j in (1, 2, 3)] for f in FINGERS}
 
@@ -106,14 +107,16 @@ class Rig:
         local = spec.get("local", {})
         ik = spec.get("ik", {})
         curls = spec.get("curl", {})
-        hips = spec.get("hips")
+        body = spec.get("body")
         over = {}
-        if hips is not None:
-            pos, rot = hips
-            r = self.rest["hips"].to_3x3()
+        if body is not None:
+            # the spec says where the body's centre goes; the bone's head is
+            # behind it, and turns with it
+            pos, rot = body
+            r = self.rest["body"].to_3x3()
             m = (rot @ r).to_4x4()
-            m.translation = V(pos)
-            over["hips"] = m
+            m.translation = V(pos) + rot @ (self.rest["body"].translation - V(anatomy.BODY_CENTER))
+            over["body"] = m
         upper_of = {}
         for limb, k in ik.items():
             c, u, f, h = chain(limb)
@@ -265,8 +268,8 @@ def bake(rig, name, clip, length, loop=True):
 # ---------------------------------------------------------------- poses
 
 def rot(pitch=0.0, roll=0.0, yaw=0.0):
-    """Body orientation in armature space, degrees: pitch tips it forward
-    (towards -Y), roll leans it to its left (+X), yaw turns it to its left."""
+    """Body orientation in armature space, degrees: pitch tips its front down
+    (negative rears it up), roll leans it to its left (+X), yaw turns it left."""
     return (Matrix.Rotation(math.radians(yaw), 3, "Z") @ Matrix.Rotation(math.radians(-roll), 3, "Y")
             @ Matrix.Rotation(math.radians(pitch), 3, "X"))
 
@@ -285,60 +288,52 @@ def curl_all(limb, c1, c2, c3, spread=0.0, thumb=None):
     return out
 
 
-def toes_curl(c1, c2, spread=0.0):
-    return {t: (c1, c2, s * spread) for t, s in zip(TOES, (1.0, 0.35, -0.35, -1.0))}
+def socket(limb):
+    a = anatomy.ARMS[limb[0]]
+    return mirror(a["shoulder"], limb)
+
+
+def reach(limb):
+    a = anatomy.ARMS[limb[0]]
+    return a["upper_len"] + a["fore_len"]
+
+
+def outward(limb):
+    angle = math.radians(anatomy.PAIRS[limb[0]][0])
+    return mirror((math.sin(angle), -math.cos(angle), 0.0), limb)
 
 
 class Stance:
-    """A spider stance: the body low and tipped forward, every hand and foot
-    on the ground round it."""
+    """A spider stance: the body low and level, every hand on the ground round
+    it at a share of that arm's reach, the elbows lifted by `pole_up`."""
 
-    def __init__(self, hip_h, pitch, homes, poles, spine, wrist_h=None, lift=0.12):
-        self.hip_h = hip_h
+    def __init__(self, height, pitch, spread, pole_up, head, lift=0.12, wrist=0.05):
+        self.height = height
         self.pitch = pitch
-        self.homes = homes
-        self.poles = poles
-        self.spine = spine
-        self.wrist_h = wrist_h or {"a": 0.055, "b": 0.04, "c": 0.05, "leg": 0.06}
+        self.spread = spread
+        self.pole_up = pole_up
+        self.head = head
         self.lift = lift
+        self.wrist = wrist
 
     def home(self, limb):
-        key = "leg" if limb.startswith("leg") else limb[0]
-        p = mirror(self.homes[key], limb)
-        p.z = self.wrist_h[key]
+        s = socket(limb)
+        o = outward(limb)
+        p = Vector((s.x, s.y, 0.0)) + o * reach(limb) * self.spread
+        p.z = self.wrist * anatomy.PAIRS[limb[0]][1]
         return p
 
     def pole(self, limb):
-        key = "leg" if limb.startswith("leg") else limb[0]
-        return mirror(self.poles[key], limb)
+        return outward(limb) * 0.6 + Vector((0, 0, self.pole_up))
 
 
-CRAWL = Stance(
-    hip_h=0.36, pitch=66.0,
-    homes={"a": (0.48, -0.66, 0), "b": (0.66, -0.22, 0), "c": (0.56, 0.18, 0), "leg": (0.4, 0.62, 0)},
-    poles={"a": (0.55, -0.1, 1.0), "b": (0.8, 0.1, 1.0), "c": (0.6, 0.3, 1.0), "leg": (0.5, 0.2, 1.0)},
-    spine={"spine_01": deg(8), "spine_02": deg(6), "chest": deg(4), "neck": deg(-42), "head": deg(-34)},
-)
-
-LURK = Stance(
-    hip_h=0.3, pitch=62.0,
-    homes={"a": (0.44, -0.6, 0), "b": (0.6, -0.26, 0), "c": (0.5, 0.12, 0), "leg": (0.36, 0.5, 0)},
-    poles={"a": (0.5, -0.2, 1.0), "b": (0.8, 0.0, 1.0), "c": (0.6, 0.3, 1.0), "leg": (0.5, 0.25, 1.0)},
-    spine={"spine_01": deg(10), "spine_02": deg(8), "chest": deg(6), "neck": deg(-40), "head": deg(-38)},
-)
-
-VENT = Stance(
-    hip_h=0.17, pitch=84.0,
-    homes={"a": (0.24, -0.62, 0), "b": (0.22, -0.3, 0), "c": (0.26, 0.0, 0), "leg": (0.18, 0.62, 0)},
-    poles={"a": (1.0, 0.0, 0.25), "b": (1.0, 0.0, 0.15), "c": (1.0, 0.2, 0.2), "leg": (1.0, 0.1, 0.25)},
-    spine={"spine_01": deg(2), "spine_02": deg(2), "chest": deg(1), "neck": deg(-34), "head": deg(-50)},
-    wrist_h={"a": 0.035, "b": 0.03, "c": 0.035, "leg": 0.04},
-    lift=0.05,
-)
+CRAWL = Stance(height=0.3, pitch=4.0, spread=0.62, pole_up=1.0, head={"neck": deg(-6), "head": deg(-4)})
+LURK = Stance(height=0.22, pitch=6.0, spread=0.58, pole_up=1.2, head={"neck": deg(-12), "head": deg(-8)})
+VENT = Stance(height=0.15, pitch=0.0, spread=0.42, pole_up=0.15, head={"neck": deg(4), "head": deg(-6)}, lift=0.05, wrist=0.035)
 
 # alternating tetrapods, with a little wave from front to back
-PHASE = {"a.L": 0.0, "b.R": 0.06, "c.L": 0.12, "leg.R": 0.18,
-         "a.R": 0.5, "b.L": 0.56, "c.R": 0.62, "leg.L": 0.68}
+PHASE = {"a.L": 0.0, "b.R": 0.06, "c.L": 0.12, "d.R": 0.18,
+         "a.R": 0.5, "b.L": 0.56, "c.R": 0.62, "d.L": 0.68}
 
 
 def flat_dir(frm, to):
@@ -347,16 +342,26 @@ def flat_dir(frm, to):
     return d.normalized() if d.length > 1e-6 else Vector((0, -1, 0))
 
 
-def ground_hand(rig, limb, pos, grip=1.0, lift=0.0):
-    """IK entry for a hand or foot resting on the floor at pos."""
+def ground_hand(rig, limb, pos, lift=0.0):
+    """IK entry for a hand resting on the floor at pos, palm down."""
     s = rig.shoulder(limb)
     f = flat_dir(s, pos)
     f = (f + Vector((0, 0, -0.25 - 0.4 * lift))).normalized()
     return dict(target=pos, f=f, n=Vector((0, 0, -1)))
 
 
-def gait(rig, stance, t, period, duty, speed, spine_extra=None, sway=1.0, bob=0.015):
-    spec = {"local": dict(stance.spine), "ik": {}, "curl": {}}
+def grip(lift=0.0):
+    return dict(c=(0.32 + 0.45 * lift, 0.45 + 0.5 * lift, 0.35 + 0.4 * lift), spread=0.12 - 0.1 * lift,
+                thumb=(0.1 + 0.3 * lift, 0.2 + 0.3 * lift, 0.2, 0.0))
+
+
+def put_grip(spec, limb, lift=0.0):
+    g = grip(lift)
+    spec["curl"][limb] = curl_all(limb, *g["c"], g["spread"], thumb=g["thumb"])
+
+
+def gait(rig, stance, t, period, duty, speed, sway=1.0, bob=0.015):
+    spec = {"local": dict(stance.head), "ik": {}, "curl": {}}
     stride = speed * duty * period
     fwd = Vector((0, -1, 0))
     for limb in LIMBS:
@@ -370,38 +375,29 @@ def gait(rig, stance, t, period, duty, speed, spine_extra=None, sway=1.0, bob=0.
             s = (u - duty) / (1.0 - duty)
             p = home + fwd * stride * (-0.5 + smoother(s))
             lift = math.sin(math.pi * s)
-            p.z += stance.lift * lift * (0.8 if limb.startswith("leg") else 1.0)
+            p.z += stance.lift * lift * anatomy.PAIRS[limb[0]][1]
         entry = ground_hand(rig, limb, p, lift=lift)
         entry["pole"] = stance.pole(limb)
         spec["ik"][limb] = entry
-        if limb.startswith("leg"):
-            spec["curl"][limb] = toes_curl(0.25 + 0.4 * lift, 0.3 + 0.5 * lift, 0.1)
-        else:
-            spec["curl"][limb] = curl_all(limb, 0.32 + 0.45 * lift, 0.45 + 0.5 * lift, 0.35 + 0.4 * lift, 0.12 - 0.1 * lift,
-                                          thumb=(0.1 + 0.3 * lift, 0.2 + 0.3 * lift, 0.2, 0.0))
+        put_grip(spec, limb, lift)
     w = 2 * math.pi * t / period
     roll = 3.0 * math.sin(w) * sway
     yaw = 2.5 * math.sin(w + 0.6) * sway
-    spec["hips"] = (Vector((0.0, 0.0, stance.hip_h + bob * math.cos(2 * w))), rot(stance.pitch, roll, yaw))
+    spec["body"] = (Vector((0.0, 0.0, stance.height + bob * math.cos(2 * w))), rot(stance.pitch, roll, yaw))
     # the head stays on whatever it is looking at
-    spec["local"]["neck"] = tuple(a + b for a, b in zip(spec["local"]["neck"], deg(0, -yaw * 0.6, 0)))
-    if spine_extra:
-        for k, v in spine_extra.items():
-            spec["local"][k] = tuple(a + b for a, b in zip(spec["local"].get(k, (0, 0, 0)), v))
+    add_local(spec, "neck", deg(0, -yaw * 0.6, 0))
+    add_local(spec, "abdomen", deg(2 * math.sin(2 * w), 0, 4 * math.sin(w + 1.0) * sway))
     return spec
 
 
-def static_stance(rig, stance, overrides=None):
-    spec = {"local": dict(stance.spine), "ik": {}, "curl": {}}
+def static_stance(rig, stance):
+    spec = {"local": dict(stance.head), "ik": {}, "curl": {}}
     for limb in LIMBS:
         entry = ground_hand(rig, limb, stance.home(limb))
         entry["pole"] = stance.pole(limb)
         spec["ik"][limb] = entry
-        if limb.startswith("leg"):
-            spec["curl"][limb] = toes_curl(0.25, 0.3, 0.1)
-        else:
-            spec["curl"][limb] = curl_all(limb, 0.32, 0.45, 0.35, 0.12, thumb=(0.1, 0.2, 0.2, 0.0))
-    spec["hips"] = (Vector((0.0, 0.0, stance.hip_h)), rot(stance.pitch))
+        put_grip(spec, limb)
+    spec["body"] = (Vector((0.0, 0.0, stance.height)), rot(stance.pitch))
     return spec
 
 
@@ -413,44 +409,40 @@ def add_local(spec, bone, e):
 # ---------------------------------------------------------------- the picture
 
 def loom_pose(rig, ground=None):
-    """The reference picture: the big hands high on the walls of a corridor a
-    metre wide, the thin pair up by the head, one lower hand clawing the wall
-    and one on the step, the legs folded under it with the knees out. ground(y)
-    is the height of the floor at y (rig space); flat when not given."""
+    """The reference picture: reared up in a corridor a metre wide, the big
+    hands high on both walls in a V, the small pair up by the head, the third
+    pair clawing the walls lower down and the back pair reaching down the steps
+    towards whoever looks. ground(y) is the height of the floor at y (rig
+    space); flat when not given."""
     s = ground or (lambda y: 0.0)
-    # on flat ground it stands taller and spreads wider, so the head sits
-    # where it does in the picture, among the arms
-    up = 0.0 if ground else 0.2
-    wide = 0.0 if ground else 0.1
-
+    up = 0.0 if ground else 0.12
     spec = {"local": {}, "ik": {}, "curl": {}}
-    spec["hips"] = (Vector((0.0, 0.05, 0.52 + up)), rot(34.0, 3.0, -4.0))
+    spec["body"] = (Vector((0.0, 0.06, 0.5 + up)), rot(-58.0, 3.0, -4.0))
     spec["local"].update({
-        "spine_01": deg(5), "spine_02": deg(4, 0, -2), "chest": deg(3, 0, -2),
-        "neck": deg(-6, 0, 2), "head": deg(-12, 3, 5), "jaw": deg(28),
-        "eye.L": deg(-12), "eye.R": deg(-12),
+        # the abdomen folds back behind it instead of hanging like a trunk
+        "abdomen": deg(68), "neck": deg(30, 0, 2), "head": deg(30, 3, 5), "jaw": deg(26),
+        "eye.L": deg(-10), "eye.R": deg(-10),
     })
-    # its right big hand: image left, high on the left wall
-    spec["ik"]["a.R"] = dict(target=(-0.33 - wide * 1.7, 0.06, 1.5 + up * 1.5), pole=(-1.0, 0.4, -0.2), f=(-0.35, 0.0, 1.0), n=(-0.35, 1.0, 0.0))
+    # the big hands: backs to the camera, fingers spread and hooked
+    spec["ik"]["a.R"] = dict(target=(-0.36, 0.04, 1.42 + up), pole=(-1.0, 0.4, -0.2), f=(-0.35, 0.0, 1.0), n=(-0.35, 1.0, 0.0))
+    spec["ik"]["a.L"] = dict(target=(0.36, 0.0, 1.46 + up), pole=(1.0, 0.4, -0.2), f=(0.35, 0.0, 1.0), n=(0.35, 1.0, 0.0))
     spec["curl"]["a.R"] = curl_all("a.R", -0.05, 0.3, 0.55, 0.7, thumb=(-0.2, 0.2, 0.45, 0.0))
-    # its left big hand: image right, on the right wall
-    spec["ik"]["a.L"] = dict(target=(0.33 + wide * 1.7, 0.02, 1.55 + up * 1.5), pole=(1.0, 0.4, -0.2), f=(0.35, 0.0, 1.0), n=(0.35, 1.0, 0.0))
     spec["curl"]["a.L"] = curl_all("a.L", -0.05, 0.3, 0.55, 0.7, thumb=(-0.2, 0.2, 0.45, 0.0))
-    # the thin pair: its left one's small hand up by the ceiling, its right one reaching up out of sight
-    spec["ik"]["b.L"] = dict(target=(0.15 + wide * 0.5, -0.08, 1.48 + up), pole=(1.0, 0.6, -0.4), f=(0.1, -0.3, 1.0), n=(0.0, -1.0, 0.0))
+    # the small pair, up by the head
+    spec["ik"]["b.L"] = dict(target=(0.2, -0.12, 1.2 + up), pole=(1.0, 0.5, -0.3), f=(0.2, -0.3, 1.0), n=(0.0, -1.0, 0.0))
+    spec["ik"]["b.R"] = dict(target=(-0.22, -0.06, 1.16 + up), pole=(-1.0, 0.5, -0.3), f=(-0.2, -0.1, 1.0), n=(0.0, -1.0, 0.0))
     spec["curl"]["b.L"] = curl_all("b.L", 0.15, 0.35, 0.45, 0.35)
-    spec["ik"]["b.R"] = dict(target=(-0.2 - wide * 0.5, 0.0, 1.42 + up), pole=(-1.0, 0.4, -0.3), f=(-0.1, 0.3, 1.0), n=(0.0, -1.0, 0.0))
     spec["curl"]["b.R"] = curl_all("b.R", 0.3, 0.5, 0.5, 0.2)
-    # the lower pair: its right hand clawing the left wall, its left hand on a step
-    spec["ik"]["c.R"] = dict(target=(-0.45, -0.3, 0.62) if ground else (-0.38, -0.44, 0.52), pole=(-0.6, 0.6, -0.6), f=(-0.1, -0.5, 0.8), n=(-1.0, 0.0, 0.0))
+    # the third pair: clawing the walls lower down
+    spec["ik"]["c.R"] = dict(target=(-0.45, -0.18, 0.72 + up), pole=(-0.7, 0.6, -0.3), f=(-0.1, -0.5, 0.8), n=(-1.0, 0.0, 0.0))
+    spec["ik"]["c.L"] = dict(target=(0.45, -0.12, 0.66 + up), pole=(0.7, 0.6, -0.3), f=(0.1, -0.5, 0.8), n=(1.0, 0.0, 0.0))
     spec["curl"]["c.R"] = curl_all("c.R", 0.25, 0.75, 0.9, 0.3, thumb=(0.1, 0.4, 0.6, 0.0))
-    spec["ik"]["c.L"] = dict(target=(0.27, -0.2, 0.1) if ground else (0.3, -0.36, 0.44), pole=(1.0, 0.2, 0.7), f=(0.2, -0.9, -0.5), n=(0.0, 0.0, -1.0))
-    spec["curl"]["c.L"] = curl_all("c.L", 0.35, 0.8, 0.85, 0.25, thumb=(0.2, 0.5, 0.6, 0.0))
-    # the legs: down the steps towards the camera
-    spec["ik"]["leg.R"] = dict(target=(-0.3, -0.02, s(-0.02) + 0.07), pole=(-1.0, 0.3, 1.2), f=(-0.3, -1.0, -0.5), n=(0, 0, -1))
-    spec["ik"]["leg.L"] = dict(target=(0.3, -0.1, s(-0.1) + 0.07), pole=(1.0, 0.3, 1.2), f=(0.3, -1.0, -0.5), n=(0, 0, -1))
-    spec["curl"]["leg.R"] = toes_curl(0.5, 0.7, 0.3)
-    spec["curl"]["leg.L"] = toes_curl(0.45, 0.6, 0.3)
+    spec["curl"]["c.L"] = curl_all("c.L", 0.3, 0.8, 0.85, 0.25, thumb=(0.1, 0.4, 0.6, 0.0))
+    # the back pair: down the steps towards the camera
+    for limb, x, y in (("d.L", 0.28, -0.42), ("d.R", -0.3, -0.3)):
+        spec["ik"][limb] = dict(target=(x, y, s(y) + 0.04), pole=mirror((1.0, 0.2, 0.8), limb),
+                                f=mirror((0.3, -0.9, -0.5), limb), n=(0.0, 0.0, -1.0))
+        spec["curl"][limb] = curl_all(limb, 0.4, 0.85, 0.85, 0.2, thumb=(0.3, 0.5, 0.6, 0.0))
     return spec
 
 
@@ -477,14 +469,14 @@ def lerp_spec(a, b, w):
         out["ik"][limb] = e
         ca, cbb = a["curl"][limb], b["curl"][limb]
         out["curl"][limb] = {f: tuple(x + (y - x) * w for x, y in zip(ca[f], cbb[f])) for f in ca}
-    pa, ra = a["hips"]
-    pb, rb = b["hips"]
+    pa, ra = a["body"]
+    pb, rb = b["body"]
     qa, qb = ra.to_quaternion(), rb.to_quaternion()
     d = qa.inverted() @ qb
     if d.w < 0:
         d.negate()
     q = qa @ Quaternion(d.axis, d.angle * w) if d.angle > 1e-6 else qa
-    out["hips"] = (V(pa) + (V(pb) - V(pa)) * w, q.to_matrix())
+    out["body"] = (V(pa) + (V(pb) - V(pa)) * w, q.to_matrix())
     return out
 
 
@@ -492,23 +484,22 @@ def lerp_spec(a, b, w):
 
 def clip_idle(rig):
     """Lurking low: breathing, the head turning slowly and tilting too far,
-    one thin arm raised and its fingers working, the other hands drumming."""
+    one small arm raised and its fingers working, a big hand drumming."""
     L = 4.0
 
     def f(t):
         spec = static_stance(rig, LURK)
         w = 2 * math.pi * t / L
         breath = math.sin(w * 2)
-        add_local(spec, "spine_02", deg(1.5 * breath))
-        add_local(spec, "chest", deg(2.0 * breath))
+        add_local(spec, "abdomen", deg(3 * breath))
         twitch = math.exp(-((t - 1.7) / 0.06) ** 2) * 18 + math.exp(-((t - 3.1) / 0.05) ** 2) * -10
         add_local(spec, "head", deg(4 * math.sin(w), 22 * math.sin(w + 0.4), 14 * math.sin(w) + twitch))
         add_local(spec, "neck", deg(0, 8 * math.sin(w + 0.2), 0))
         spec["local"]["jaw"] = deg(9 + 3 * math.sin(w * 2 + 1.0))
         spec["local"]["eye.L"] = spec["local"]["eye.R"] = deg(4 * math.sin(w * 3), 0, 10 * math.sin(w * 2 + 0.5))
-        # its left thin arm lifted off the floor, the fingers flexing
+        # its left small arm lifted off the floor, the fingers flexing
         lift = 0.5 + 0.5 * math.sin(w)
-        spec["ik"]["b.L"] = dict(target=Vector((0.46, -0.42, 0.38 + 0.06 * lift)), pole=Vector((0.8, 0.2, 1.0)),
+        spec["ik"]["b.L"] = dict(target=Vector((0.3, -0.42, 0.34 + 0.06 * lift)), pole=Vector((0.8, 0.2, 1.0)),
                                  f=Vector((0.2, -1.0, 0.3)), n=Vector((0, 0, -1)))
         spec["curl"]["b.L"] = {fn: (0.2 + 0.5 * (0.5 + 0.5 * math.sin(w * 2 + i * 0.7)), 0.3 + 0.6 * (0.5 + 0.5 * math.sin(w * 2 + i * 0.7 + 0.4)),
                                     0.3 + 0.5 * (0.5 + 0.5 * math.sin(w * 2 + i * 0.7 + 0.8)), 0.2) for i, fn in enumerate(FINGERS)}
@@ -537,8 +528,7 @@ def clip_crawl(rig):
 
 def clip_crawl_fast(rig):
     T = 0.5
-    st = Stance(hip_h=0.3, pitch=74.0, homes=CRAWL.homes, poles=CRAWL.poles,
-                spine={"spine_01": deg(6), "spine_02": deg(5), "chest": deg(3), "neck": deg(-46), "head": deg(-38)}, lift=0.15)
+    st = Stance(height=0.26, pitch=8.0, spread=0.66, pole_up=1.0, head={"neck": deg(-8), "head": deg(-6)}, lift=0.15)
 
     def f(t):
         spec = gait(rig, st, t, T, 0.5, SPEEDS["crawl_fast"], sway=1.6, bob=0.025)
@@ -550,7 +540,7 @@ def clip_crawl_fast(rig):
 
 def clip_vent(rig):
     """Flat in a duct half a metre high: elbows out to the sides, never up;
-    the thin pair pressed flat against the duct's roof."""
+    the small pair pressed flat against the duct's roof."""
     T = 1.4
 
     def f(t):
@@ -558,8 +548,8 @@ def clip_vent(rig):
         w = 2 * math.pi * t / T
         for limb in ("b.L", "b.R"):
             u = (t / T + PHASE[limb]) % 1.0
-            reach = math.sin(2 * math.pi * u)
-            spec["ik"][limb] = dict(target=mirror((0.2, -0.32 + 0.12 * reach, 0.44), limb), pole=mirror((1.0, 0.2, -0.2), limb),
+            reach_ = math.sin(2 * math.pi * u)
+            spec["ik"][limb] = dict(target=mirror((0.2, -0.32 + 0.1 * reach_, 0.44), limb), pole=mirror((1.0, 0.2, -0.2), limb),
                                     f=mirror((0.3, -1.0, 0.0), limb), n=Vector((0, 0, 1)))
             spec["curl"][limb] = curl_all(limb, 0.1, 0.2, 0.3, 0.25)
         add_local(spec, "head", deg(0, 6 * math.sin(w), 4 * math.sin(w + 1)))
@@ -571,8 +561,7 @@ def clip_vent(rig):
 
 def clip_retreat(rig):
     T = 0.6
-    st = Stance(hip_h=0.28, pitch=60.0, homes=CRAWL.homes, poles=CRAWL.poles,
-                spine={"spine_01": deg(6), "spine_02": deg(4), "chest": deg(2), "neck": deg(-36), "head": deg(-34)}, lift=0.13)
+    st = Stance(height=0.22, pitch=-4.0, spread=0.6, pole_up=1.1, head={"neck": deg(-10), "head": deg(-8)}, lift=0.13)
 
     def f(t):
         spec = gait(rig, st, t, T, 0.55, SPEEDS["retreat"], sway=1.2, bob=0.02)
@@ -590,12 +579,11 @@ def clip_loom(rig):
     def f(t):
         spec = loom_pose(rig)
         w = 2 * math.pi * t / L
-        add_local(spec, "chest", deg(2.5 * math.sin(w * 2)))
-        add_local(spec, "spine_02", deg(1.2 * math.sin(w * 2)))
+        add_local(spec, "abdomen", deg(3 * math.sin(w * 2)))
         add_local(spec, "head", deg(2 * math.sin(w), 5 * math.sin(w + 0.5), 7 * math.sin(w)))
-        spec["local"]["jaw"] = deg(28 + 4 * math.sin(w * 2 + 0.6))
-        spec["local"]["eye.L"] = spec["local"]["eye.R"] = deg(-12, 0, 3 * math.sin(w * 3))
-        for limb, amp in (("a.L", 0.04), ("a.R", 0.04), ("c.R", 0.03)):
+        spec["local"]["jaw"] = deg(26 + 4 * math.sin(w * 2 + 0.6))
+        spec["local"]["eye.L"] = spec["local"]["eye.R"] = deg(-10, 0, 3 * math.sin(w * 3))
+        for limb, amp in (("a.L", 0.04), ("a.R", 0.04), ("c.R", 0.03), ("c.L", 0.03)):
             fing = spec["curl"][limb]
             for i, fn in enumerate(FINGERS):
                 tr = amp * math.sin(w * 9 + i * 1.3)
@@ -625,10 +613,10 @@ def clip_scare(rig):
         # on whoever is in front of it
         add_local(spec, "neck", deg(24 * peak))
         add_local(spec, "head", deg(-34 * peak - 10 * hold))
-        spec["local"]["jaw"] = deg(9 + 32 * smooth((t - 0.3) / 0.2) - 13 * smooth((t - 1.4) / 0.5))
+        spec["local"]["jaw"] = deg(9 + 34 * smooth((t - 0.3) / 0.2) - 13 * smooth((t - 1.4) / 0.5))
         shake = hold * 1.0
         add_local(spec, "head", deg(5 * shake * noise1(t, 3, 22), 6 * shake * noise1(t, 5, 19), 7 * shake * noise1(t, 7, 25)))
-        add_local(spec, "chest", deg(2 * shake * noise1(t, 9, 17), 0, 2 * shake * noise1(t, 11, 15)))
+        add_local(spec, "abdomen", deg(3 * shake * noise1(t, 9, 17), 0, 3 * shake * noise1(t, 11, 15)))
         jitter_curls(spec, t, 0.18 * hold, 18, 13)
         spec["local"]["eye.L"] = spec["local"]["eye.R"] = deg(-8 * hold, 0, 0)
         return spec
@@ -645,19 +633,17 @@ def clip_peek(rig):
     def f(t):
         out = smoother((t - 0.8) / 1.2) * (1.0 - smoother((t - 3.2) / 0.22))
         spec = lerp_spec(base, base, 0.0)
-        spec["hips"] = (V(base["hips"][0]) + Vector((0.12 * out, -0.04 * out, 0.06 * out)), rot(LURK.pitch - 8 * out, 10 * out, 6 * out))
-        add_local(spec, "spine_02", deg(0, 4 * out, 8 * out))
-        add_local(spec, "chest", deg(0, 4 * out, 10 * out))
-        add_local(spec, "neck", deg(-6 * out, 10 * out, 18 * out))
+        spec["body"] = (V(base["body"][0]) + Vector((0.14 * out, -0.06 * out, 0.08 * out)), rot(LURK.pitch - 6 * out, 14 * out, 10 * out))
+        add_local(spec, "neck", deg(-6 * out, 14 * out, 20 * out))
         twitch = math.exp(-((t - 2.45) / 0.05) ** 2) * 12
         add_local(spec, "head", deg(4 * out, 12 * out, 42 * out + twitch))
         spec["local"]["jaw"] = deg(9 + 6 * out)
         dart = 0.0 if t < 2.0 else 14 * math.sin(6 * t)
         spec["local"]["eye.L"] = spec["local"]["eye.R"] = deg(-4 * out, 0, -dart * out)
-        grip = smooth((t - 0.5) / 0.6) * (1.0 - smooth((t - 3.25) / 0.25))
-        edge = dict(target=Vector((0.36, -0.42, 0.72)), pole=Vector((0.4, 0.6, -0.6)), f=Vector((-0.2, -1.0, 0.4)), n=Vector((1.0, 0.0, 0.0)))
-        spec["ik"]["a.L"] = {k: V(spec["ik"]["a.L"][k]) + (V(edge[k]) - V(spec["ik"]["a.L"][k])) * grip for k in edge}
-        spec["curl"]["a.L"] = curl_all("a.L", 0.32 + 0.4 * grip, 0.45 + 0.6 * grip, 0.35 + 0.5 * grip, 0.12)
+        g = smooth((t - 0.5) / 0.6) * (1.0 - smooth((t - 3.25) / 0.25))
+        edge = dict(target=Vector((0.4, -0.5, 0.62)), pole=Vector((0.4, 0.6, -0.6)), f=Vector((-0.2, -1.0, 0.4)), n=Vector((1.0, 0.0, 0.0)))
+        spec["ik"]["a.L"] = {k: V(spec["ik"]["a.L"][k]) + (V(edge[k]) - V(spec["ik"]["a.L"][k])) * g for k in edge}
+        spec["curl"]["a.L"] = curl_all("a.L", 0.32 + 0.4 * g, 0.45 + 0.6 * g, 0.35 + 0.5 * g, 0.12)
         return spec
 
     return f, L, False

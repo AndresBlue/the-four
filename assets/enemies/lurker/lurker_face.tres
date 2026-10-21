@@ -5,5 +5,5 @@
 [resource]
 resource_name = "lurker_face"
 albedo_texture = ExtResource("1")
-metallic_specular = 0.08
-roughness = 0.95
+metallic_specular = 0.0
+roughness = 1.0

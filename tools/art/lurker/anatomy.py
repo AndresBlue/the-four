@@ -1,16 +1,17 @@
-"""The creature of the second floor, measured: skeleton, and the distance fields
-that are sculpted around it.
+"""The Lurker, the creature of the second floor, measured: skeleton, and the
+distance fields that are sculpted around it.
 
 Blender axes: Z up, the creature faces -Y, its left side is +X. Everything is
-written for the left side and mirrored. The rest pose stands it upright with the
-six arms fanned out and apart, so no limb melts into another when the fields are
-joined; the animations crouch it, lay it flat and put it on the walls.
+written for the left side and mirrored. The rest pose is a spider's: the body
+level and low, the eight arms radiating from it with the elbows up, apart, so
+no limb melts into another when the fields are joined.
 
-From the reference picture the author brought (21 Oct 2026): a pale, skull-like
-face with huge black sockets, small white eyes and a mouth unhinged into a long
-oval of needle teeth, sunk into a mane of black hair; a small shaggy body; six
-spindly arms, the upper pair with enormous hooked hands; two long legs whose
-feet are hands too.
+From the reference picture the author brought, and what the author said of the
+first model (21 Oct 2026): a pale skull of a face, huge black sockets with a
+white eye and a large pupil, the jaw a triangle ending in a pointed chin and
+the mouth a long V of needle teeth; no legs and no trunk, a spider's body that
+is a dark, smooth, shapeless centre; eight arms all of one shape and of four
+sizes, with hooked claws; and big spikes grafted into the back.
 """
 
 import math
@@ -19,47 +20,41 @@ import zlib
 import numpy as np
 
 import sdf
-from sdf import Ellipsoid, RoundCone, Sphere, Subtract, Union, Displace, normalize, v3
+from sdf import Ellipsoid, RoundCone, Sphere, Subtract, TriPrism, Union, Displace, normalize, v3
 
 # ---------------------------------------------------------------- landmarks
 
-HEAD_CENTER = v3(0.0, -0.07, 1.61)
-EYE_LOCAL = v3(0.03, -0.055, 0.011)
-EYE_RADIUS = 0.0086
-JAW_HINGE_LOCAL = v3(0.0, 0.004, -0.036)
-CHIN_LOCAL = v3(0.0, -0.083, -0.158)
+BODY_Z = 0.42
+BODY_CENTER = v3(0.0, 0.0, BODY_Z)
+ABDOMEN_CENTER = v3(0.0, 0.22, BODY_Z + 0.03)
+HEAD_CENTER = v3(0.0, -0.265, BODY_Z + 0.14)
+EYE_LOCAL = v3(0.03, -0.056, 0.011)
+EYE_RADIUS = 0.0095
+JAW_HINGE_LOCAL = v3(0.0, 0.004, -0.04)
+CHIN_LOCAL = v3(0.0, -0.072, -0.186)
 
-# The three pairs of arms. Points are the left side's rest pose.
-ARMS = {
-    "a": dict(  # the upper pair: the enormous hands on the walls
-        clavicle=v3(0.025, 0.0, 1.385), shoulder=v3(0.135, 0.022, 1.405),
-        upper_dir=v3(1.0, 0.12, 0.42), upper_len=0.43,
-        fore_dir=v3(1.0, -0.06, 0.82), fore_len=0.42,
-        radii=(0.04, 0.026, 0.027, 0.019, 0.0162),
-        scale=1.3, thick=1.02, palm=0.118, palm_width=0.068, palm_thick=0.027,
-    ),
-    "b": dict(  # the thin pair from the shoulder blades, reaching up
-        clavicle=v3(0.02, 0.05, 1.33), shoulder=v3(0.11, 0.078, 1.36),
-        upper_dir=v3(0.55, 0.25, 1.0), upper_len=0.31,
-        fore_dir=v3(0.18, 0.06, 1.0), fore_len=0.30,
-        radii=(0.029, 0.019, 0.019, 0.014, 0.0105),
-        scale=0.64, palm=0.07, palm_width=0.048, palm_thick=0.018,
-    ),
-    "c": dict(  # the lower pair, under the ribs
-        clavicle=v3(0.02, 0.012, 1.215), shoulder=v3(0.115, 0.025, 1.215),
-        upper_dir=v3(1.0, -0.15, -0.3), upper_len=0.36,
-        fore_dir=v3(0.8, -0.22, -0.75), fore_len=0.35,
-        radii=(0.03, 0.019, 0.022, 0.016, 0.0125),
-        scale=0.82, palm=0.088, palm_width=0.058, palm_thick=0.022,
-    ),
-}
+# Four pairs of arms, front to back, all of one shape: the angle round the body
+# from straight ahead (degrees) and the size. The front pair is the one with
+# the enormous hands of the picture.
+PAIRS = {"a": (32.0, 1.0), "b": (64.0, 0.62), "c": (98.0, 0.82), "d": (136.0, 0.74)}
 
-LEG = dict(
-    hip=v3(0.085, 0.025, 0.91),
-    thigh_dir=v3(0.22, -0.18, -1.0), thigh_len=0.46,
-    shin_dir=v3(0.06, 0.2, -1.0), shin_len=0.42,
-    radii=(0.04, 0.021, 0.024, 0.016, 0.0135),
-)
+
+def arm_config(angle, s):
+    a = math.radians(angle)
+    out = v3(math.sin(a), -math.cos(a), 0.0)
+    socket = BODY_CENTER + v3(0.0, -0.02, 0.0) + v3(0.112 * out[0], 0.135 * out[1], 0.035)
+    inner = BODY_CENTER + v3(0.035 * out[0], 0.04 * out[1] - 0.02, 0.03)
+    return dict(
+        clavicle=inner, shoulder=socket,
+        upper_dir=out + v3(0, 0, 0.36), upper_len=0.42 * s,
+        fore_dir=out + v3(0, 0, -0.62), fore_len=0.42 * s,
+        radii=tuple(r * s ** 0.7 for r in (0.036, 0.022, 0.025, 0.018, 0.015)),
+        scale=1.3 * s, thick=1.02 * s ** 0.85,
+        palm=0.118 * s, palm_width=0.068 * s, palm_thick=0.027 * s ** 0.85,
+    )
+
+
+ARMS = {k: arm_config(*v) for k, v in PAIRS.items()}
 
 # Index, middle, ring, little: phalanx lengths of the big hand, how far round the
 # palm's edge the knuckle sits (+ towards the thumb), and the fan angle.
@@ -73,12 +68,17 @@ THUMB = (0.046, 0.043, 0.037)
 FINGER_RADII = (0.0104, 0.009, 0.0071, 0.0024)
 REST_CURL = (0.18, 0.26, 0.22)
 
-TOES = [
-    ("toe1", (0.06, 0.05), 0.75, -0.0, 0.32),
-    ("toe2", (0.068, 0.056), 0.25, 0.0, 0.1),
-    ("toe3", (0.066, 0.054), -0.25, 0.0, -0.1),
-    ("toe4", (0.058, 0.048), -0.75, 0.0, -0.3),
+# Spikes grafted into the back: (root, direction, length, radius, bone). Left
+# side only for the paired ones; mirrored in spikes().
+SPIKES = [
+    (v3(0.0, -0.03, BODY_Z + 0.085), v3(0.0, 0.35, 1.0), 0.26, 0.019, "body"),
+    (v3(0.065, 0.04, BODY_Z + 0.075), v3(0.55, 0.45, 1.0), 0.2, 0.015, "body"),
+    (v3(0.0, 0.17, BODY_Z + 0.12), v3(0.0, 0.75, 0.8), 0.3, 0.02, "abdomen"),
+    (v3(0.06, 0.27, BODY_Z + 0.1), v3(0.6, 0.8, 0.55), 0.19, 0.014, "abdomen"),
+    (v3(0.035, 0.33, BODY_Z + 0.06), v3(0.3, 1.0, 0.1), 0.15, 0.012, "abdomen"),
 ]
+# and one on the elbow of each big arm, pointing back
+ELBOW_SPIKE = (0.17, 0.011)
 
 
 def mirror(p, side):
@@ -118,14 +118,14 @@ class Bone:
 # ---------------------------------------------------------------- skeleton
 
 def hand_frame(arm, side):
-    """Wrist, finger direction f, palm normal n and thumb side t (left side
-    built, then mirrored, so t points the right way on both)."""
+    """Wrist, finger direction f, palm normal n (down, towards the ground the
+    hand stands on) and thumb side t, built for the left side."""
     a = ARMS[arm]
     shoulder = a["shoulder"]
     elbow = shoulder + a["upper_len"] * normalize(a["upper_dir"])
     wrist = elbow + a["fore_len"] * normalize(a["fore_dir"])
     f = normalize(wrist - elbow)
-    n = v3(0.0, -1.0, 0.0)
+    n = v3(0.0, 0.0, -1.0)
     n = normalize(n - f * (n @ f))
     t = np.cross(n, f)
     return dict(shoulder=shoulder, elbow=elbow, wrist=wrist, f=f, n=n, t=t)
@@ -166,35 +166,9 @@ def hand_points(arm):
     return fr, fingers
 
 
-def leg_points():
-    g = LEG
-    hip = g["hip"]
-    knee = hip + g["thigh_len"] * normalize(g["thigh_dir"])
-    ankle = knee + g["shin_len"] * normalize(g["shin_dir"])
-    f = normalize(v3(0.12, -1.0, -0.16))
-    n = v3(0.0, 0.0, -1.0)
-    n = normalize(n - f * (n @ f))
-    t = np.cross(n, f)
-    ball = ankle + f * 0.105
-    toes = {}
-    for name, lens, side_off, _, fan in TOES:
-        k = ball + t * 0.03 * side_off
-        d = normalize(math.cos(fan) * f + math.sin(fan) * t)
-        axis = normalize(np.cross(d, n))
-        pts = [k]
-        dirs = []
-        cur = d
-        for j, ln in enumerate(lens):
-            cur = rotate(cur, axis, (0.12, 0.28)[j])
-            dirs.append(cur)
-            pts.append(pts[-1] + cur * ln)
-        toes[name] = dict(points=pts, dirs=dirs, axis=axis)
-    return dict(hip=hip, knee=knee, ankle=ankle, ball=ball, f=f, n=n, t=t, toes=toes)
-
-
 def skeleton():
     """Bones in parent-first order. Bone X axes are the bending axes: pitch for
-    the spine and head, curl for the fingers, the hinge for the jaw."""
+    the head, curl for the fingers, the hinge for the jaw."""
     X = v3(1, 0, 0)
     bones = []
 
@@ -204,13 +178,15 @@ def skeleton():
         return b
 
     hc = HEAD_CENTER
+    bc = BODY_CENTER
     add("root", (0, 0, 0), (0, -0.3, 0), None, (0, 0, 1), 0.1, segs=[], deform=False)
-    add("hips", (0, 0.025, 0.9), (0, 0.03, 1.0), "root", z_from_x((0, 0.05, 1), X), 0.08)
-    add("spine_01", (0, 0.03, 1.0), (0, 0.035, 1.12), "hips", z_from_x((0, 0.05, 1), X), 0.065)
-    add("spine_02", (0, 0.035, 1.12), (0, 0.035, 1.25), "spine_01", z_from_x((0, 0, 1), X), 0.08)
-    add("chest", (0, 0.035, 1.25), (0, 0.02, 1.4), "spine_02", z_from_x((0, -0.1, 1), X), 0.1)
-    neck_top = hc + v3(0.0, 0.03, -0.072)
-    add("neck", (0, 0.02, 1.4), neck_top, "chest", z_from_x(neck_top - v3(0, 0.02, 1.4), X), 0.035)
+    add("body", bc + v3(0, 0.12, 0), bc + v3(0, -0.14, 0), "root", (0, 0, 1), 0.13,
+        segs=[(bc + v3(0, 0.1, 0), bc + v3(0, -0.12, 0.02))])
+    add("abdomen", bc + v3(0, 0.12, 0.02), ABDOMEN_CENTER + v3(0, 0.14, 0.01), "body", (0, 0, 1), 0.11,
+        segs=[(ABDOMEN_CENTER - v3(0, 0.08, 0), ABDOMEN_CENTER + v3(0, 0.1, 0))])
+    neck_root = bc + v3(0, -0.11, 0.05)
+    neck_top = hc + v3(0.0, 0.05, -0.05)
+    add("neck", neck_root, neck_top, "body", z_from_x(neck_top - neck_root, X), 0.045)
     add("head", neck_top, neck_top + v3(0, 0, 0.17), "neck", z_from_x((0, 0, 1), X), 0.07,
         segs=[(hc + v3(0, 0.02, 0.03), hc + v3(0, -0.04, -0.02))])
     hinge = hc + JAW_HINGE_LOCAL
@@ -222,16 +198,13 @@ def skeleton():
 
     for side in "LR":
         m = lambda p: mirror(p, side)
-        sx = 1.0 if side == "L" else -1.0
         for arm, a in ARMS.items():
             fr, fingers = hand_points(arm)
             sh, el, wr = fr["shoulder"], fr["elbow"], fr["wrist"]
             n = fr["n"]
             bend = normalize(np.cross(normalize(el - sh), normalize(wr - el)))
-            if np.linalg.norm(np.cross(normalize(el - sh), normalize(wr - el))) < 1e-4:
-                bend = v3(0, 1, 0)
             sfx = "_%s.%s" % (arm, side)
-            add("clavicle" + sfx, m(a["clavicle"]), m(sh), "chest", m(z_from_x(sh - a["clavicle"], v3(0, 1, 0))), a["radii"][0])
+            add("clavicle" + sfx, m(a["clavicle"]), m(sh), "body", m(z_from_x(sh - a["clavicle"], v3(0, 0, 1))), a["radii"][0])
             add("upperarm" + sfx, m(sh), m(el), "clavicle" + sfx, m(z_from_x(el - sh, bend)), a["radii"][1])
             add("forearm" + sfx, m(el), m(wr), "upperarm" + sfx, m(z_from_x(wr - el, bend)), a["radii"][3])
             knuckles = [fingers[k]["points"][0] for k in ("index", "middle", "ring", "pinky")]
@@ -248,21 +221,6 @@ def skeleton():
                     add(name, m(pts[j]), m(pts[j + 1]), parent, mirror(z, side),
                         FINGER_RADII[j] * a.get("thick", a["scale"]) * 1.4)
                     parent = name
-        lg = leg_points()
-        sfx = "." + side
-        knee_bend = normalize(np.cross(normalize(lg["knee"] - lg["hip"]), normalize(lg["ankle"] - lg["knee"])))
-        add("thigh" + sfx, m(lg["hip"]), m(lg["knee"]), "hips", m(z_from_x(lg["knee"] - lg["hip"], knee_bend)), LEG["radii"][1])
-        add("shin" + sfx, m(lg["knee"]), m(lg["ankle"]), "thigh" + sfx, m(z_from_x(lg["ankle"] - lg["knee"], knee_bend)), LEG["radii"][3])
-        fsegs = [(m(lg["ankle"]), m(td["points"][0])) for td in lg["toes"].values()]
-        add("foot" + sfx, m(lg["ankle"]), m(lg["ball"]), "shin" + sfx, m(lg["n"]), 0.02, segs=fsegs)
-        for tname, td in lg["toes"].items():
-            pts = td["points"]
-            parent = "foot" + sfx
-            for j in range(2):
-                name = "%s_%02d%s" % (tname, j + 1, sfx)
-                z = np.cross(td["axis"], normalize(pts[j + 1] - pts[j]))
-                add(name, m(pts[j]), m(pts[j + 1]), parent, mirror(z, side), 0.011)
-                parent = name
     return bones
 
 
@@ -293,7 +251,7 @@ def hand_node(arm, side, with_wrist=True):
     parts.append(Ellipsoid(m(w + f * palm * 0.5 - t * half * 0.62 + n * thick * 0.1), (half * 0.3, thick * 0.34, palm * 0.36), rot))
     parts.append(RoundCone(m(w + f * palm * 0.1), m(th), rw * 0.62, FINGER_RADII[0] * tk * 1.25))
     if with_wrist:
-        parts.append(RoundCone(m(w - f * 0.06), m(w + f * 0.012), rw * 1.05, rw * 0.88))
+        parts.append(RoundCone(m(w - f * 0.06 * s), m(w + f * 0.012), rw * 1.05, rw * 0.88))
         parts.append(Sphere(m(w - t * rw * 0.55 - n * rw * 0.2), rw * 0.42))  # the knob of the wrist
     palm_node = Union(parts, k=0.011 * s + 0.002)
     # the back of the hand: one cord per finger, wrist to knuckle
@@ -313,7 +271,7 @@ def hand_node(arm, side, with_wrist=True):
         segs = []
         for j in range(3):
             segs.append(RoundCone(m(pts[j]), m(pts[j + 1]), r[j], r[j + 1]))
-        # knuckles: bony knots on the back of the first two joints, a pad under the tip
+        # knuckles: bony knots on the back of the first two joints
         for j, (grow, back) in enumerate(((1.12, 0.38), (1.05, 0.36))):
             d = fingers[k]["dirs"][j]
             segs.append(Ellipsoid(m(pts[j] - n * r[j] * back), (r[j] * grow, r[j] * grow * 0.85, r[j] * grow * 0.9),
@@ -328,11 +286,11 @@ def hand_node(arm, side, with_wrist=True):
         dirs = fingers[k]["dirs"]
         for j in range(3):
             d = dirs[j] if j == 0 else normalize(dirs[j - 1] + dirs[j])
-            joints.append((m(pts[j]), m(d), FINGER_RADII[j] * a.get("thick", s)))
+            joints.append((m(pts[j]), m(d), FINGER_RADII[j] * tk))
     jp = np.array([q[0] for q in joints])
     jd = np.array([q[1] for q in joints])
     jr = np.array([q[2] for q in joints])
-    back = m(-n) if side == "L" else mirror(-n, side)
+    back = mirror(-n, side)
 
     def creases(p):
         out = np.zeros(len(p))
@@ -361,7 +319,7 @@ def _mirror_rot(rot, side):
 
 
 def limb_node(points, radii, side, seed, knob_dir=None, sinews=True):
-    """Shoulder to wrist (or hip to ankle): bony, thin, knotted at the joint."""
+    """Shoulder to wrist: bony, thin, knotted at the elbow."""
     m = lambda p: mirror(p, side)
     sh, el, wr = points
     rs, ru, re, rf, rw = radii
@@ -390,67 +348,33 @@ def limb_node(points, radii, side, seed, knob_dir=None, sinews=True):
 def arm_node(arm, side):
     fr = hand_frame(arm, "L")
     a = ARMS[arm]
-    bend_out = normalize(np.cross(np.cross(normalize(fr["elbow"] - fr["shoulder"]), normalize(fr["wrist"] - fr["elbow"])), normalize(fr["wrist"] - fr["shoulder"])))
     knob = -normalize((fr["wrist"] + fr["shoulder"]) * 0.5 - fr["elbow"])
     return limb_node((fr["shoulder"], fr["elbow"], fr["wrist"]), a["radii"], side, seed=zlib.crc32((arm + side).encode()) % 97, knob_dir=knob)
 
 
-def leg_node(side):
-    lg = leg_points()
-    knob = -normalize((lg["ankle"] + lg["hip"]) * 0.5 - lg["knee"])
-    return limb_node((lg["hip"], lg["knee"], lg["ankle"]), LEG["radii"], side, seed=7 if side == "L" else 8, knob_dir=knob)
-
-
-def foot_node(side):
-    lg = leg_points()
-    m = lambda p: mirror(p, side)
-    a, b, f, n, t = lg["ankle"], lg["ball"], lg["f"], lg["n"], lg["t"]
-    parts = [RoundCone(m(a - normalize(a - lg["knee"]) * 0.05), m(a), 0.018, 0.017),
-             Sphere(m(a + v3(0, 0.012, 0.0)), 0.02)]
-    for td in lg["toes"].values():
-        k = td["points"][0]
-        parts.append(RoundCone(m(a), m(k - n * 0.003), 0.012, 0.0095))
-    sole = Union(parts, k=0.012)
-    digits = []
-    for td in lg["toes"].values():
-        pts = td["points"]
-        r = (0.0095, 0.0078, 0.0036)
-        segs = [RoundCone(m(pts[j]), m(pts[j + 1]), r[j], r[j + 1]) for j in range(2)]
-        segs += [Sphere(m(pts[j] - n * r[j] * 0.2), r[j] * 1.25) for j in range(2)]
-        digits.append(Union(segs, k=0.004))
-    foot = Union([sole] + digits, k=0.007)
-    return Displace(foot, skin_noise(0.0005, 220.0, 31, 3), 0.001)
-
-
-def torso_node():
+def body_node():
+    """A spider's body, not a trunk: the front mass the arms grow from, a waist
+    and the bulb behind, all smooth and lumpy, with no clear outline."""
+    bc = BODY_CENTER
     parts = [
-        Ellipsoid((0, 0.03, 0.935), (0.095, 0.065, 0.065)),
-        RoundCone((0, 0.04, 0.97), (0, 0.04, 1.17), 0.058, 0.07),
-        Ellipsoid((0, 0.038, 1.29), (0.108, 0.082, 0.14)),
-        RoundCone((0, 0.025, 1.36), (0, 0.0, 1.47), 0.05, 0.034),
+        Ellipsoid(bc + v3(0, -0.02, 0), (0.125, 0.15, 0.095)),
+        RoundCone(bc + v3(0, 0.06, 0.0), bc + v3(0, 0.14, 0.02), 0.07, 0.075),
+        Ellipsoid(ABDOMEN_CENTER, (0.105, 0.145, 0.1)),
+        RoundCone(bc + v3(0, -0.1, 0.04), HEAD_CENTER + v3(0, 0.07, -0.06), 0.06, 0.042),
     ]
+    rng = np.random.default_rng(42)
+    for i in range(14):
+        # lumps under the skin, so the mass has no clean shape
+        c = (bc if i < 8 else ABDOMEN_CENTER) + v3(rng.uniform(-0.09, 0.09), rng.uniform(-0.11, 0.11), rng.uniform(-0.03, 0.08))
+        parts.append(Sphere(c, rng.uniform(0.035, 0.06)))
     for side in "LR":
         m = lambda p: mirror(p, side)
-        parts.append(Ellipsoid(m((0.058, 0.098, 1.33)), (0.045, 0.016, 0.055)))  # shoulder blades
-        parts.append(RoundCone(m((0.0, -0.02, 1.385)), m(ARMS["a"]["shoulder"]), 0.016, 0.022))  # collarbone
         for arm in ARMS:
-            parts.append(Sphere(m(ARMS[arm]["shoulder"]), ARMS[arm]["radii"][0] * 1.08))
-        parts.append(Sphere(m(LEG["hip"]), 0.045))
-    for i in range(17):
-        z = 0.95 + i * 0.03
-        y = 0.095 + 0.012 * math.sin((z - 0.95) / 0.5 * math.pi)
-        parts.append(Sphere((0, y, z), 0.011))  # the spine, knot by knot
-    body = Union(parts, k=0.03)
-
-    def ribs(p):
-        # ribs show through on the flanks of the chest
-        q = p - v3(0, 0.038, 1.29)
-        band = np.clip(1.0 - (q[:, 2] / 0.13) ** 2, 0.0, 1.0) * np.clip(np.abs(q[:, 0]) / 0.06, 0.0, 1.0)
-        wave = np.sin((q[:, 2] - 0.18 * q[:, 0] ** 2 / 0.01) * (2 * math.pi / 0.026))
-        return -0.0022 * band * np.maximum(wave, 0.0) ** 2
-
-    knot = skin_noise(0.0016, 40.0, 3, 3)
-    return Displace(body, lambda p: ribs(p) + knot(p), 0.004)
+            parts.append(Sphere(m(ARMS[arm]["shoulder"]), ARMS[arm]["radii"][0] * 1.12))
+    body = Union(parts, k=0.045)
+    knot = skin_noise(0.004, 14.0, 3, 3)
+    fine = skin_noise(0.0007, 80.0, 4, 2)
+    return Displace(body, lambda p: knot(p) + fine(p), 0.006)
 
 
 # ---------------------------------------------------------------- the head
@@ -477,25 +401,17 @@ def head_local_node():
 
     cranium = Ellipsoid((0, 0.02, 0.024), (0.064, 0.088, 0.08))
     face = Ellipsoid((0, -0.026, -0.006), (0.061, 0.068, 0.09))
-    brows = []
     cheeks = both(lambda s: Ellipsoid(mirror((0.048, -0.058, -0.02), s), (0.012, 0.022, 0.011)))
-    arches = []
     maxilla = Ellipsoid((0, -0.067, -0.05), (0.035, 0.034, 0.022))
-    lower = Union([Ellipsoid((0, -0.038, -0.088), (0.046, 0.058, 0.058)),
-                   RoundCone((0, -0.04, -0.09), (0, -0.06, -0.14), 0.044, 0.026)], k=0.02)
-    jaw = []
-    for s in "LR":
-        h = mirror((0.048, 0.0, -0.04), s)
-        a = mirror((0.041, -0.034, -0.108), s)
-        c = mirror((0.02, -0.076, -0.15), s)
-        jaw += [RoundCone(h, a, 0.0105, 0.011), RoundCone(a, c, 0.011, 0.0105), RoundCone(c, (0, -0.082, -0.157), 0.0105, 0.011)]
-    chin = Ellipsoid((0, -0.079, -0.152), (0.018, 0.016, 0.014))
+    # the jaw is a triangle: two straight bones meeting in a pointed chin
+    wedge = TriPrism((-0.05, -0.04), (0.05, -0.04), (0.0, -0.19), -0.09, 0.01, 0.02)
+    jaw = both(lambda s: RoundCone(mirror((0.052, 0.0, -0.04), s), (0.0, -0.074, -0.19), 0.013, 0.008))
     bridge = RoundCone((0, -0.093, 0.014), (0, -0.098, -0.03), 0.0042, 0.0038)
-    neck = RoundCone((0, 0.03, -0.05), (0, 0.065, -0.15), 0.034, 0.033)
+    neck = RoundCone((0, 0.03, -0.04), (0, 0.13, -0.09), 0.036, 0.042)
 
-    skull = Union([cranium, face, maxilla, lower], k=0.022)
+    skull = Union([cranium, face, maxilla], k=0.022)
     bones_ = Union([skull] + cheeks, k=0.02)
-    bones_ = Union([bones_] + jaw + [chin], k=0.014)
+    bones_ = Union([bones_, wedge] + jaw, k=0.026)
     bones_ = Union([bones_, neck], k=0.025)
 
     cuts = []
@@ -503,12 +419,12 @@ def head_local_node():
     cuts.append((sockets, 0.006))
     temples = Union(both(lambda s: Sphere(mirror((0.066, -0.03, 0.018), s), 0.018)))
     cuts.append((temples, 0.025))
-    hollows = Union(both(lambda s: Ellipsoid(mirror((0.046, -0.074, -0.068), s), (0.014, 0.022, 0.036))))
-    cuts.append((hollows, 0.015))
-    mouth = Union([Ellipsoid((0, -0.097, -0.076), (0.038, 0.055, 0.04)),
-                   Ellipsoid((0, -0.097, -0.106), (0.029, 0.053, 0.04)),
-                   RoundCone((0, -0.06, -0.09), (0, 0.012, -0.104), 0.026, 0.017)], k=0.012)
-    cuts.append((mouth, 0.007))
+    hollows = Union(both(lambda s: Ellipsoid(mirror((0.052, -0.06, -0.058), s), (0.011, 0.02, 0.026))))
+    cuts.append((hollows, 0.014))
+    # the mouth: a V, wide under the nose and narrowing down to the chin
+    mouth = Union([TriPrism((-0.031, -0.045), (0.031, -0.045), (0.0, -0.145), -0.16, -0.036, 0.008),
+                   RoundCone((0, -0.06, -0.08), (0, 0.012, -0.1), 0.024, 0.016)], k=0.012)
+    cuts.append((mouth, 0.006))
     # the nose is a skull's: a tall dark hole either side of a thin bridge
     nasal = Union(both(lambda s: RoundCone(mirror((0.0072, -0.098, 0.006), s), mirror((0.0105, -0.106, -0.034), s), 0.0036, 0.0066))
                   + [Ellipsoid((0, -0.104, -0.036), (0.013, 0.012, 0.007))], k=0.004)
@@ -519,10 +435,10 @@ def head_local_node():
     node = Union([node, bridge], k=0.003)
 
     def grooves(p):
-        # the skin of the cheeks dragged into vertical cords by the open jaw
+        # the skin of the cheeks dragged into cords down to the chin
         x, y, z = p[:, 0], p[:, 1], p[:, 2]
         mask = np.clip((-y - 0.025) / 0.03, 0.0, 1.0) * np.clip((-0.005 - z) / 0.025, 0.0, 1.0)
-        mask *= np.clip(1.0 - np.abs(z + 0.09) / 0.085, 0.0, 1.0)
+        mask *= np.clip(1.0 - np.abs(z + 0.1) / 0.095, 0.0, 1.0)
         streak = sdf.fbm(p, 1.0, 3, 41, scale=(190.0, 120.0, 11.0))
         return 0.0017 * mask * np.abs(streak) - 0.0005 * mask
 
@@ -539,21 +455,45 @@ def head_node():
 # ---------------------------------------------------------------- teeth
 
 def teeth_layout():
-    """Needles along the upper and lower gums, in head-local coordinates:
-    (root, direction, length, radius, upper?). Few, long and uneven: in the
-    picture they read as lines drawn from lip to lip."""
+    """Needles round the V of the mouth, in head-local coordinates: (root,
+    direction, length, radius, upper?). Long ones hang from the top edge; the
+    lower ones grow inwards from the two sides of the V."""
     rng = np.random.default_rng(81)
     out = []
-    for t in np.linspace(-0.9, 0.9, 7):
-        x = 0.03 * t + rng.normal() * 0.0012
-        root = v3(x, -0.099 + 0.026 * t * t, -0.044 - 0.014 * t * t)
-        length = (0.05 - 0.02 * t * t) * (0.85 + 0.3 * rng.random())
-        d = normalize(v3(-0.1 * t + rng.normal() * 0.05, 0.1 + rng.normal() * 0.04, -1.0))
+    for t in np.linspace(-0.86, 0.86, 7):
+        x = 0.029 * t + rng.normal() * 0.001
+        root = v3(x, -0.1 + 0.02 * t * t, -0.047 - 0.004 * t * t)
+        length = (0.058 - 0.03 * t * t) * (0.85 + 0.3 * rng.random())
+        d = normalize(v3(-0.12 * t + rng.normal() * 0.03, 0.1 + rng.normal() * 0.04, -1.0))
         out.append((root, d, length, 0.0022 - 0.0004 * t * t, True))
-    for t in np.linspace(-0.78, 0.78, 6):
-        x = 0.029 * t + rng.normal() * 0.0012
-        root = v3(x, -0.099 + 0.026 * t * t, -0.137 + 0.016 * t * t)
-        length = (0.052 - 0.018 * t * t) * (0.85 + 0.3 * rng.random())
-        d = normalize(v3(-0.08 * t + rng.normal() * 0.05, 0.12 + rng.normal() * 0.04, 1.0))
-        out.append((root, d, length, 0.002 - 0.0003 * t * t, False))
+    corner = np.array([0.031, -0.045])
+    tip = np.array([0.0, -0.145])
+    for side in (1.0, -1.0):
+        for u in (0.3, 0.52, 0.74):
+            q = corner * np.array([side, 1.0]) + u * (tip - corner * np.array([side, 1.0]))
+            inward = normalize(v3(-side * 0.22, 0.0, 1.0))
+            root = v3(q[0] + side * 0.003, -0.098 + 0.012 * (1 - u), q[1] - 0.003)
+            length = (0.04 - 0.018 * u) * (0.85 + 0.3 * rng.random())
+            d = normalize(inward + v3(rng.normal() * 0.05, 0.12, 0.0))
+            out.append((root, d, length, 0.0019, False))
+    out.append((v3(0.0, -0.094, -0.15), normalize(v3(0.0, 0.12, 1.0)), 0.03, 0.0019, False))
+    return out
+
+
+# ---------------------------------------------------------------- spikes
+
+def spikes():
+    """(root, direction, length, radius, bone) for every spike, both sides."""
+    out = []
+    for root, d, length, r, bone in SPIKES:
+        if abs(root[0]) < 1e-6:
+            out.append((root, normalize(d), length, r, bone))
+        else:
+            for side in "LR":
+                out.append((mirror(root, side), normalize(mirror(d, side)), length, r, bone))
+    for side in "LR":
+        fr = hand_frame("a", "L")
+        base = fr["elbow"] + (fr["shoulder"] - fr["elbow"]) * 0.12 + v3(0, 0, ARMS["a"]["radii"][2] * 0.6)
+        d = normalize(v3(0.0, 0.5, 1.0) - normalize(fr["elbow"] - fr["shoulder"]) * 0.4)
+        out.append((mirror(base, side), normalize(mirror(d, side)), ELBOW_SPIKE[0], ELBOW_SPIKE[1], "upperarm_a." + side))
     return out

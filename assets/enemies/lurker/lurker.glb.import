@@ -12379,20 +12379,15 @@ _subresources={
 }
 },
 "materials": {
+"lurker_body": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://assets/enemies/lurker/lurker_body.tres",
+"use_external/path": "res://assets/enemies/lurker/lurker_body.tres"
+},
 "lurker_face": {
 "use_external/enabled": true,
 "use_external/fallback_path": "res://assets/enemies/lurker/lurker_face.tres",
 "use_external/path": "res://assets/enemies/lurker/lurker_face.tres"
-},
-"lurker_fur": {
-"use_external/enabled": true,
-"use_external/fallback_path": "res://assets/enemies/lurker/lurker_fur.tres",
-"use_external/path": "res://assets/enemies/lurker/lurker_fur.tres"
-},
-"lurker_skin": {
-"use_external/enabled": true,
-"use_external/fallback_path": "res://assets/enemies/lurker/lurker_skin.tres",
-"use_external/path": "res://assets/enemies/lurker/lurker_skin.tres"
 }
 }
 }

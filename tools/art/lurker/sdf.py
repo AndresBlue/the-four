@@ -185,6 +185,48 @@ class RoundCone(Node):
         return out
 
 
+def sd_triangle2(p, a, b, c):
+    """Exact distance to a 2-D triangle (after iq), points p (N, 2)."""
+    a, b, c = (np.asarray(v, dtype=np.float64) for v in (a, b, c))
+    e0, e1, e2 = b - a, c - b, a - c
+    v0, v1, v2 = p - a, p - b, p - c
+
+    def seg(v, e):
+        t = np.clip((v @ e) / (e @ e), 0.0, 1.0)
+        q = v - np.outer(t, e)
+        return np.einsum("ij,ij->i", q, q)
+
+    s = math.copysign(1.0, e0[0] * e2[1] - e0[1] * e2[0])
+    dx = np.minimum(np.minimum(seg(v0, e0), seg(v1, e1)), seg(v2, e2))
+    dy = np.minimum(np.minimum(s * (v0[:, 0] * e0[1] - v0[:, 1] * e0[0]),
+                               s * (v1[:, 0] * e1[1] - v1[:, 1] * e1[0])),
+                    s * (v2[:, 0] * e2[1] - v2[:, 1] * e2[0]))
+    return -np.sqrt(dx) * np.sign(dy)
+
+
+class TriPrism(Node):
+    """A triangle drawn in the x-z plane (front view), rounded by `round` and
+    pushed through y from y0 to y1."""
+
+    def __init__(self, a, b, c, y0, y1, round=0.0):
+        self.tri = [np.asarray(v, dtype=np.float64) for v in (a, b, c)]
+        self.yc = 0.5 * (y0 + y1)
+        self.h = 0.5 * abs(y1 - y0)
+        self.round = float(round)
+        xs = [v[0] for v in self.tri]
+        zs = [v[1] for v in self.tri]
+        self.lo = v3(min(xs) - self.round, min(y0, y1) - self.round, min(zs) - self.round)
+        self.hi = v3(max(xs) + self.round, max(y0, y1) + self.round, max(zs) + self.round)
+
+    def _eval(self, p, lo, hi):
+        d2 = sd_triangle2(p[:, [0, 2]], *self.tri)
+        wy = np.abs(p[:, 1] - self.yc) - self.h
+        wx = d2
+        inside = np.minimum(np.maximum(wx, wy), 0.0)
+        outside = np.sqrt(np.maximum(wx, 0.0) ** 2 + np.maximum(wy, 0.0) ** 2)
+        return inside + outside - self.round
+
+
 class Union(Node):
     def __init__(self, children, k=0.0):
         self.children = [c for c in children if c is not None]

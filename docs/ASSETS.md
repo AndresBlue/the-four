@@ -281,7 +281,7 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 
 - **Modelo, esqueleto, animaciones y textura de la cara: hechos para este proyecto** el 21/10/2026, generados por los scripts de `tools/art/lurker/` (Blender 5.2). No contienen nada descargado.
 - **Se modeló a partir de una imagen** que aportó el autor ese día (`art/lurker/referencia.webp`, una pintura de terror analógico de una bestia en una escalera): el autor la da por de libre uso, sin licencia ni condiciones. No se sabe quién la pintó ni se ha comprobado de dónde sale; el modelo no incluye la imagen, pero su diseño es el de esa criatura. Conviene confirmar su origen antes de una entrega pública.
-- Archivos: `art/lurker/lurker.blend` (fuente, con la escena de comparación), `assets/enemies/lurker/lurker.glb` (lo que importa Godot), los tres materiales `.tres` de esa carpeta y la textura que Godot extrae del GLB. Cómo se hace, en [LURKER.md](LURKER.md).
+- Archivos: `art/lurker/lurker.blend` (fuente, con la escena de comparación), `assets/enemies/lurker/lurker.glb` (lo que importa Godot), sus dos materiales `.tres` y la textura que Godot extrae del GLB, y en `game/enemies/lurker/` la escena que la planta en paredes y techos y la niebla que la envuelve (hechas para el proyecto). Cómo se hace, en [LURKER.md](LURKER.md).
 
 ## Música
 

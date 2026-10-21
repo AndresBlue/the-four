@@ -19,7 +19,7 @@ if HERE not in sys.path:
 
 import animate  # noqa: E402
 import preview  # noqa: E402
-from animate import V, deg, rot, curl_all, toes_curl  # noqa: E402
+from animate import V, deg, rot, curl_all  # noqa: E402
 
 TREAD = 0.26
 RISE = 0.18
@@ -121,6 +121,70 @@ def apply_pose(rig_ob, spec):
     bpy.context.scene.frame_set(1)
 
 
+def darkness(coll, rig):
+    """The black fog the game puts round its body (lurker_darkness.gdshader),
+    as a volume that only absorbs: lumpy, with no edge."""
+    pb = rig.pose.bones["body"]
+    centre = rig.matrix_world @ pb.matrix @ Vector((0.0, 0.14, 0.0))
+    face = rig.matrix_world @ rig.pose.bones["head"].matrix @ Vector((0.0, 0.07, 0.1))
+    # behind the face rather than round it, so the face floats in front of it
+    centre = centre + (centre - face).normalized() * 0.16
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=3, radius=0.52)
+    me = bpy.data.meshes.new("darkness")
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new("darkness", me)
+    coll.objects.link(ob)
+    ob.location = centre
+    m = bpy.data.materials.new("darkness")
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.remove(nt.nodes.get("Principled BSDF"))
+    out = nt.nodes.get("Material Output")
+    vol = nt.nodes.new("ShaderNodeVolumeAbsorption")
+    vol.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 5.0
+    noise.inputs["Detail"].default_value = 4.0
+    grad = nt.nodes.new("ShaderNodeTexGradient")
+    grad.gradient_type = "SPHERICAL"
+    mix = nt.nodes.new("ShaderNodeMath")
+    mix.operation = "MULTIPLY"
+    shape = nt.nodes.new("ShaderNodeMapRange")
+    shape.inputs["From Min"].default_value = 0.0
+    shape.inputs["From Max"].default_value = 0.6
+    shape.inputs["To Min"].default_value = 0.0
+    shape.inputs["To Max"].default_value = 30.0
+    nt.links.new(coord.outputs["Object"], noise.inputs["Vector"])
+    scale = nt.nodes.new("ShaderNodeVectorMath")
+    scale.operation = "SCALE"
+    scale.inputs["Scale"].default_value = 1.0 / 0.52
+    nt.links.new(coord.outputs["Object"], scale.inputs[0])
+    nt.links.new(scale.outputs["Vector"], grad.inputs["Vector"])
+    nt.links.new(grad.outputs["Fac"], mix.inputs[0])
+    nt.links.new(noise.outputs["Fac"], mix.inputs[1])
+    nt.links.new(mix.outputs["Value"], shape.inputs["Value"])
+    # the face is left clear, as in the game
+    away = nt.nodes.new("ShaderNodeVectorMath")
+    away.operation = "DISTANCE"
+    away.inputs[1].default_value = tuple(face - centre)
+    nt.links.new(coord.outputs["Object"], away.inputs[0])
+    clear = nt.nodes.new("ShaderNodeMapRange")
+    clear.inputs["From Min"].default_value = 0.1
+    clear.inputs["From Max"].default_value = 0.2
+    nt.links.new(away.outputs["Value"], clear.inputs["Value"])
+    keep = nt.nodes.new("ShaderNodeMath")
+    keep.operation = "MULTIPLY"
+    nt.links.new(shape.outputs["Result"], keep.inputs[0])
+    nt.links.new(clear.outputs["Result"], keep.inputs[1])
+    nt.links.new(keep.outputs["Value"], vol.inputs["Density"])
+    nt.links.new(vol.outputs["Volume"], out.inputs["Volume"])
+    me.materials.append(m)
+    return ob
+
+
 def lights(coll):
     def area(name, loc, target, power, size, color):
         ld = bpy.data.lights.new(name, "AREA")
@@ -171,6 +235,8 @@ def main():
         ob.location += offset
     rig = bpy.data.objects["lurker_rig"]
     apply_pose(rig, stair_pose(rig))
+    bpy.context.view_layer.update()
+    darkness(coll, rig)
     preview.setup_cycles(samples)
     scene.view_settings.view_transform = "Standard"
     scene.view_settings.look = "None"

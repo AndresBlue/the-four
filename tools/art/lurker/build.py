@@ -33,7 +33,7 @@ BLACK = np.array([0.0062, 0.006, 0.006])
 
 def args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    out = {"out": None, "only": None, "fast": False, "fur": 1.0}
+    out = {"out": None, "only": None, "fast": False}
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -45,9 +45,6 @@ def args():
             i += 1
         elif a == "--fast":
             out["fast"] = True
-        elif a == "--fur":
-            out["fur"] = float(argv[i + 1])
-            i += 1
         i += 1
     return out
 
@@ -188,10 +185,10 @@ def head_weights(p):
     q = p - HEAD_CENTER
     x, y, z = q[:, 0], q[:, 1], q[:, 2]
     t = np.clip((y + 0.1) / 0.104, 0.0, 1.0)
-    z_split = -0.089 + (0.053) * t
+    z_split = -0.054 + 0.012 * t
     band = 0.007 + 0.016 * np.clip(np.abs(x) / 0.05, 0.0, 1.0)
     jaw = smoothstep(z_split + band, z_split - band, z)
-    neck = smoothstep(-0.06, -0.13, z) * smoothstep(-0.005, 0.04, y)
+    neck = smoothstep(0.03, 0.09, y) * smoothstep(0.0, -0.05, z)
     jaw *= 1.0 - neck
     head = np.clip(1.0 - jaw - neck, 0.0, 1.0)
     return np.stack([neck, head, jaw], axis=1)
@@ -218,7 +215,7 @@ def body_colors(node, p, n, seed=0):
 def face_mask(q):
     x, y, z = q[:, 0], q[:, 1], q[:, 2]
     front = smoothstep(-0.02, -0.055, y)
-    e = (x / 0.06) ** 2 + ((z + 0.05) / 0.125) ** 2
+    e = (x / 0.06) ** 2 + ((z + 0.062) / 0.138) ** 2
     oval = smoothstep(1.06, 0.82, e)
     return front * oval
 
@@ -279,23 +276,19 @@ def head_colors(node, feats, p, n):
 def part_list(fast):
     k = 1.6 if fast else 1.0
     parts = [("head", lambda: anatomy.head_node(), 0.00115 * k, 17000, ["neck", "head", "jaw"])]
-    torso_bones = ["hips", "spine_01", "spine_02", "chest", "neck"]
+    body_bones = ["body", "abdomen", "neck"]
     for s in "LR":
-        torso_bones += ["clavicle_%s.%s" % (a, s) for a in ARMS] + ["upperarm_%s.%s" % (a, s) for a in ARMS] + ["thigh." + s]
-    parts.append(("torso", lambda: anatomy.torso_node(), 0.004 * k, 7000, torso_bones))
+        body_bones += ["clavicle_%s.%s" % (a, s) for a in ARMS] + ["upperarm_%s.%s" % (a, s) for a in ARMS]
+    parts.append(("body", lambda: anatomy.body_node(), 0.004 * k, 7000, body_bones))
     for s in "LR":
         for a in ARMS:
             sfx = "_%s.%s" % (a, s)
-            parts.append(("arm" + sfx, (lambda a=a, s=s: anatomy.arm_node(a, s)), 0.0028 * k, 2600,
-                          ["chest", "clavicle" + sfx, "upperarm" + sfx, "forearm" + sfx, "hand" + sfx]))
+            parts.append(("arm" + sfx, (lambda a=a, s=s: anatomy.arm_node(a, s)), 0.0028 * k, 2400,
+                          ["body", "clavicle" + sfx, "upperarm" + sfx, "forearm" + sfx, "hand" + sfx]))
             fingers = ["%s_%02d%s" % (f, j, sfx) for f in ("thumb", "index", "middle", "ring", "pinky") for j in (1, 2, 3)]
-            hh = {"a": 0.0013, "b": 0.0010, "c": 0.0012}[a] * k
-            tris = {"a": 6500, "b": 4200, "c": 5200}[a]
-            parts.append(("hand" + sfx, (lambda a=a, s=s: anatomy.hand_node(a, s)), hh, tris,
-                          ["forearm" + sfx, "hand" + sfx] + fingers))
-        parts.append(("leg." + s, (lambda s=s: anatomy.leg_node(s)), 0.003 * k, 3000, ["hips", "thigh." + s, "shin." + s, "foot." + s]))
-        toes = ["toe%d_%02d.%s" % (t, j, s) for t in (1, 2, 3, 4) for j in (1, 2)]
-        parts.append(("foot." + s, (lambda s=s: anatomy.foot_node(s)), 0.0014 * k, 3600, ["shin." + s, "foot." + s] + toes))
+            sc = anatomy.PAIRS[a][1]
+            parts.append(("hand" + sfx, (lambda a=a, s=s: anatomy.hand_node(a, s)), 0.0013 * max(sc, 0.75) * k,
+                          int(6000 * max(sc, 0.65)), ["forearm" + sfx, "hand" + sfx] + fingers))
     return parts
 
 
@@ -432,8 +425,8 @@ def face_material(image):
     tex.image = image
     tex.location = (-400, 200)
     nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
-    bsdf.inputs["Roughness"].default_value = 0.95
-    bsdf.inputs["Specular IOR Level"].default_value = 0.08
+    bsdf.inputs["Roughness"].default_value = 1.0
+    bsdf.inputs["Specular IOR Level"].default_value = 0.0
     m.diffuse_color = (0.2, 0.15, 0.13, 1.0)
     m.use_backface_culling = True
     return m
@@ -517,9 +510,7 @@ def eye_meshes(bones, coll):
         white = np.array([0.46, 0.43, 0.37])
         col = np.tile(white, (len(p), 1))
         col *= (0.55 + 0.45 * smoothstep(1.9, 0.8, ang))[:, None]
-        iris = smoothstep(0.68, 0.6, ang)
-        col = col * (1 - iris)[:, None] + np.array([0.09, 0.08, 0.07]) * iris[:, None]
-        pupil = smoothstep(0.46, 0.4, ang)
+        pupil = smoothstep(0.66, 0.6, ang)
         col = col * (1 - pupil)[:, None] + np.array([0.004, 0.004, 0.004]) * pupil[:, None]
         set_colors(me, col)
         ob.vertex_groups.new(name="eye." + side).add(list(range(len(me.vertices))), 1.0, "REPLACE")
@@ -590,17 +581,15 @@ def claw_meshes(bones, coll):
         for arm, a in ARMS.items():
             s = a["scale"]
             for f in ("thumb", "index", "middle", "ring", "pinky"):
-                names.append(("%s_03_%s.%s" % (f, arm, side), 0.026 * s, anatomy.FINGER_RADII[3] * a.get("thick", s) * 1.3))
-        for t in (1, 2, 3, 4):
-            names.append(("toe%d_02.%s" % (t, side), 0.018, 0.0042))
+                names.append(("%s_03_%s.%s" % (f, arm, side), 0.05 * s, anatomy.FINGER_RADII[3] * a.get("thick", s) * 2.1))
     for bname, length, r in names:
         b = bones[bname]
         d = sdf.normalize(b.tail - b.head)
         palm = b.z_hint
         ts = np.linspace(0, 1, 7)
         start = b.tail - d * 0.006
-        cs = [start + d * length * t + palm * length * 0.45 * t * t for t in ts]
-        rs = [r * (1.0 - t) ** 0.9 + 0.00008 for t in ts]
+        cs = [start + d * length * t + palm * length * 0.62 * t * t for t in ts]
+        rs = [r * (1.0 - t) ** 0.8 + 0.00008 for t in ts]
         v, fcs = tube(cs, rs, sides=6, flatten=0.62, up=palm)
         allv.append(v)
         allf += [tuple(i + off for i in face) for face in fcs]
@@ -616,160 +605,29 @@ def claw_meshes(bones, coll):
     return ob
 
 
-# ---------------------------------------------------------------- hair
-
-def fur_spec(name):
-    """count, length range, width range, how much it follows the normal, comb."""
-    down = np.array([0, 0, -1.0])
-    if name == "torso":
-        return 4200, (0.035, 0.12), (0.003, 0.008), 0.42, lambda p, n: down + np.array([0, 0.15, 0])
-    if name == "head":
-        def comb(p, n):
-            q = p - HEAD_CENTER
-            back = np.stack([np.sign(q[:, 0]) * 0.4, np.full(len(q), 0.7), np.full(len(q), -0.6)], axis=1)
-            return back
-        return 2700, (0.045, 0.13), (0.002, 0.0045), 0.22, comb
-    if name.startswith("arm"):
-        a = name[4]
-        fr = anatomy.hand_frame(a, "L")
-        axis = sdf.normalize(fr["wrist"] - fr["shoulder"])
-        if name.endswith(".R"):
-            axis = anatomy.mirror(axis, "R")
-        cnt = {"a": 1100, "b": 600, "c": 800}[a]
-        return cnt, (0.008, 0.028), (0.0012, 0.003), 0.35, lambda p, n, axis=axis: axis * 0.8 + down * 0.5
-    if name.startswith("leg"):
-        return 700, (0.008, 0.03), (0.0012, 0.003), 0.4, lambda p, n: down
-    if name.startswith("hand"):
-        a = name[5]
-        fr = anatomy.hand_frame(a, "L")
-        f = fr["f"] if name.endswith(".L") else anatomy.mirror(fr["f"], "R")
-        cnt = {"a": 240, "b": 140, "c": 180}[a]
-        return cnt, (0.004, 0.013), (0.001, 0.002), 0.5, lambda p, n, f=f: np.tile(f, (len(p), 1))
-    if name.startswith("foot"):
-        return 90, (0.004, 0.012), (0.001, 0.002), 0.5, lambda p, n: np.tile(np.array([0, -1.0, 0]), (len(p), 1))
-    return 0, None, None, None, None
-
-
-def shoulder_of(name):
-    a = name[4]
-    sh = ARMS[a]["shoulder"]
-    return anatomy.mirror(sh, "R") if name.endswith(".R") else sh
-
-
-def fur_length(name):
-    """Hair is longest where a limb leaves the body."""
-    if name.startswith("arm"):
-        sh = shoulder_of(name)
-        return lambda p: 0.7 + 2.4 * smoothstep(0.3, 0.0, np.linalg.norm(p - sh, axis=1))
-    if name.startswith("leg"):
-        hip = anatomy.mirror(anatomy.LEG["hip"], "R") if name.endswith(".R") else anatomy.LEG["hip"]
-        return lambda p: 0.6 + 1.4 * smoothstep(0.35, 0.0, np.linalg.norm(p - hip, axis=1))
-    if name == "head":
-        # a hood, not a dome: short on the crown, long down the sides and back
-        return lambda p: 0.62 + 0.6 * smoothstep(0.06, -0.04, (p - HEAD_CENTER)[:, 2])
-    return lambda p: np.ones(len(p))
-
-
-def fur_mask(name, part, p, n):
-    if name.startswith("arm"):
-        sh = shoulder_of(name)
-        return 0.3 + 0.7 * smoothstep(0.4, 0.0, np.linalg.norm(p - sh, axis=1))
-    if name == "head":
-        q = p - HEAD_CENTER
-        m = 1.0 - smoothstep(0.05, 0.3, face_mask(q * np.array([0.93, 1.0, 0.95])))
-        return m * smoothstep(-0.2, -0.12, q[:, 2])
-    if name.startswith("hand"):
-        a = name[5]
-        fr = anatomy.hand_frame(a, "L")
-        nn = fr["n"] if name.endswith(".L") else anatomy.mirror(fr["n"], "R")
-        back = smoothstep(0.1, -0.5, n @ nn)
-        w = fr["wrist"] if name.endswith(".L") else anatomy.mirror(fr["wrist"], "R")
-        near = smoothstep(0.2, 0.06, np.linalg.norm(p - w, axis=1))
-        return back * (0.25 + 0.75 * near)
-    if name.startswith("foot"):
-        return smoothstep(0.0, 0.5, n[:, 2])
-    return np.ones(len(p))
-
-
-def build_fur(built, coll, density=1.0):
-    allv, allf, wsum = [], [], []
-    groups = {}
+def spike_meshes(bones, coll):
+    allv, allf, groups = [], [], []
     off = 0
-    for name, part in built.items():
-        count, lens, widths, normal_follow, comb = fur_spec(name)
-        grow = fur_length(name)
-        count = int(count * density)
-        if count <= 0:
-            continue
-        p, n, tris = part["p"], part["n"], part["tris"]
-        a, b, c = p[tris[:, 0]], p[tris[:, 1]], p[tris[:, 2]]
-        area = 0.5 * np.linalg.norm(np.cross(b - a, c - a), axis=1)
-        cen = (a + b + c) / 3.0
-        cn = n[tris].mean(axis=1)
-        cn /= np.linalg.norm(cn, axis=1, keepdims=True)
-        prob = area * np.clip(fur_mask(name, part, cen, cn), 0, 1)
-        if prob.sum() <= 0:
-            continue
-        pick = RNG.choice(len(tris), size=count, p=prob / prob.sum())
-        r1 = np.sqrt(RNG.random(count))
-        r2 = RNG.random(count)
-        bary = np.stack([1 - r1, r1 * (1 - r2), r1 * r2], axis=1)
-        tri = tris[pick]
-        roots = (p[tri] * bary[:, :, None]).sum(axis=1)
-        rn = (n[tri] * bary[:, :, None]).sum(axis=1)
-        rn /= np.linalg.norm(rn, axis=1, keepdims=True)
-        cdir = np.broadcast_to(comb(roots, rn), roots.shape).astype(np.float64)
-        cdir = cdir /np.maximum(np.linalg.norm(cdir, axis=1, keepdims=True), 1e-9)
-        # weights: the root's
-        vw = part["W"][tri[:, 0]] * bary[:, :1] + part["W"][tri[:, 1]] * bary[:, 1:2] + part["W"][tri[:, 2]] * bary[:, 2:3]
-        if vw.shape[1] > 4:
-            cut = np.sort(vw, axis=1)[:, -4][:, None]
-            vw = np.where(vw >= cut, vw, 0.0)
-        vw /= vw.sum(axis=1, keepdims=True)
-        L = (lens[0] + (lens[1] - lens[0]) * RNG.random(count) ** 1.6) * grow(roots)
-        Wd = widths[0] + (widths[1] - widths[0]) * RNG.random(count)
-        segs = 3
-        for i in range(count):
-            jitter = RNG.normal(size=3) * 0.35
-            d = sdf.normalize(rn[i] * normal_follow + cdir[i] * (1.0 - normal_follow) + jitter)
-            side = sdf.normalize(np.cross(d, sdf.normalize(RNG.normal(size=3))))
-            up = np.cross(side, d)
-            c0 = roots[i] - rn[i] * 0.0015
-            centers = [c0]
-            cur = d
-            for k in range(segs):
-                cur = sdf.normalize(cur + cdir[i] * 0.7 + np.array([0, 0, -0.45]))
-                centers.append(centers[-1] + cur * L[i] / segs)
-            rows = []
-            for k in range(segs):
-                w = Wd[i] * 0.5 * (1.0 - k / segs) ** 0.8
-                cc = centers[k]
-                rows.append([cc - side * w, cc + side * w])
-            vlist = [v for row in rows for v in row] + [centers[-1]]
-            tip = len(vlist) - 1
-            fl = []
-            for k in range(segs - 1):
-                r0, r1_ = k * 2, (k + 1) * 2
-                fl.append((r0, r0 + 1, r1_ + 1, r1_))
-            r0 = (segs - 1) * 2
-            fl.append((r0, r0 + 1, tip))
-            allv.append(np.array(vlist))
-            allf += [tuple(j + off for j in face) for face in fl]
-            for j, bn in enumerate(part["names"]):
-                if vw[i, j] > 0.002:
-                    groups.setdefault(bn, []).append((off, len(vlist), float(vw[i, j])))
-            off += len(vlist)
-    if not allv:
-        return None
-    ob = mesh_object("lurker_fur", np.concatenate(allv), allf, coll)
+    rng = np.random.default_rng(7)
+    for root, d, length, r, bone in anatomy.spikes():
+        side = sdf.normalize(np.cross(d, np.array([0, 0, 1.0]) if abs(d[2]) < 0.9 else np.array([1.0, 0, 0])))
+        bend = sdf.normalize(np.cross(side, d)) * (0.18 + 0.1 * rng.random())
+        ts = np.linspace(0, 1, 10)
+        start = root - d * r * 1.5
+        cs = [start + d * length * t + bend * length * t * t for t in ts]
+        rs = [r * (1.75 - 0.75 * min(t / 0.1, 1.0)) * (1.0 - t) ** 0.75 + 0.0002 for t in ts]
+        v, fcs = tube(cs, rs, sides=8)
+        allv.append(v)
+        allf += [tuple(i + off for i in face) for face in fcs]
+        groups.append((bone, off, len(v)))
+        off += len(v)
+    ob = mesh_object("lurker_spikes", np.concatenate(allv), allf, coll)
     shade_smooth(ob.data)
-    for bn, items in groups.items():
-        vg = ob.vertex_groups.get(bn) or ob.vertex_groups.new(name=bn)
-        for start, cnt, w in items:
-            vg.add(list(range(start, start + cnt)), w, "REPLACE")
+    for bone, start, count in groups:
+        vg = ob.vertex_groups.get(bone) or ob.vertex_groups.new(name=bone)
+        vg.add(list(range(start, start + count)), 1.0, "REPLACE")
     v = verts_np(ob.data)
-    tone = 1.0 + 0.5 * sdf.fbm(v, 40.0, 2, 3)
-    set_colors(ob.data, BLACK[None, :] * 0.7 * tone[:, None])
+    set_colors(ob.data, np.tile(np.array([0.016, 0.014, 0.013]), (len(v), 1)))
     return ob
 
 
@@ -797,12 +655,18 @@ def material(name, rough, spec, double_sided=False, sheen=0.0):
 
 
 def materials():
+    body = material("lurker_body", 1.0, 0.0)
+    nt = body.node_tree
+    for link in list(nt.links):
+        if link.to_node.type == "BSDF_PRINCIPLED" and link.to_socket.name == "Base Color":
+            nt.links.remove(link)
+    nt.nodes.get("Principled BSDF").inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    body.diffuse_color = (0.0, 0.0, 0.0, 1.0)
     return dict(
-        skin=material("lurker_skin", 1.0, 0.03),
-        fur=material("lurker_fur", 1.0, 0.0, double_sided=True),
+        body=body,
         eyes=material("lurker_eyes", 0.18, 0.5),
         teeth=material("lurker_teeth", 0.55, 0.35),
-        claws=material("lurker_claws", 0.7, 0.15),
+        claws=material("lurker_claws", 0.6, 0.2),
     )
 
 
@@ -819,7 +683,7 @@ def build(opts):
         if name == "head":
             part["ob"].data.materials.append(face_material(bake_face(part["ob"], part["node"], part["feats"])))
         else:
-            part["ob"].data.materials.append(mats["skin"])
+            part["ob"].data.materials.append(mats["body"])
         body.append(part["ob"])
     if not opts["only"] or "head" in opts["only"]:
         for ob in eye_meshes(bones, coll):
@@ -829,15 +693,9 @@ def build(opts):
         ob.data.materials.append(mats["teeth"])
         body.append(ob)
     if not opts["only"]:
-        ob = claw_meshes(bones, coll)
-        ob.data.materials.append(mats["claws"])
-        body.append(ob)
-    if opts["fur"] > 0:
-        fur = build_fur(built, coll, opts["fur"])
-        if fur:
-            fur.data.materials.append(mats["fur"])
-            bind(fur, rig)
-            log("fur %d tris" % sum(len(pl.vertices) - 2 for pl in fur.data.polygons))
+        for ob in (claw_meshes(bones, coll), spike_meshes(bones, coll)):
+            ob.data.materials.append(mats["claws"])
+            body.append(ob)
     if body:
         bind(join(body, "lurker_body"), rig)
     total = 0

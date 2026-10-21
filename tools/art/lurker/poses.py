@@ -30,6 +30,10 @@ def main():
     scene = bpy.context.scene
     scene.render.resolution_x = res
     scene.render.resolution_y = res
+    # the reference staircase (scene.py) would stand round the studio
+    stairs = bpy.data.collections.get("Reference staircase")
+    if stairs:
+        stairs.hide_render = True
     preview.world((0.2, 0.2, 0.21), 1.0)
     preview.floor()
     if clay:
