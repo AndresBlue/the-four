@@ -16,13 +16,16 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## Longest piece of wall remembered on its own, in metres.
 const PIECE := 0.7
 ## How often the eyes are read, and how wide and far they reach: lit, with a
-## torch in the dark, and in the dark without one.
+## torch in the dark, and in the dark without one (the author, 20 October
+## 2026; it was 9, 7 and 2.5). Rays enough to leave no more than half a metre
+## between two at the far end, under a piece of wall: fewer, and a wall seen
+## from across a lit hall came out dotted.
 const LOOK_EVERY := 0.15
 const ARC := 90.0
-const RAYS := 33
-const REACH_LIT := 9.0
-const REACH_TORCH := 7.0
-const REACH_DARK := 2.5
+const RAYS := 55
+const REACH_LIT := 15.0
+const REACH_TORCH := 12.0
+const REACH_DARK := 3.0
 ## A ray's hit counts for the piece of wall within this of it.
 const SNAP := 0.35
 ## Seconds a piece stays on the plan after it was last seen.
