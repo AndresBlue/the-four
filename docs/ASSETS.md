@@ -277,6 +277,12 @@ Las secciones siguientes conservan la procedencia del H1 anterior. El mismo GLB 
 
 No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato anterior: se trata de un modelo distinto. No presentar el asset como oficial de Doctor Nowhere ni suponer autorización comercial. Resolver el permiso de distribución de esta integración y sus adaptaciones, o sustituirla, antes de una entrega pública.
 
+## La criatura del piso 2
+
+- **Modelo, esqueleto, animaciones y textura de la cara: hechos para este proyecto** el 21/10/2026, generados por los scripts de `tools/art/stalker/` (Blender 5.2). No contienen nada descargado.
+- **Se modeló a partir de una imagen** que aportó el autor ese día (`art/stalker/referencia.webp`, una pintura de terror analógico de una bestia en una escalera): el autor la da por de libre uso, sin licencia ni condiciones. No se sabe quién la pintó ni se ha comprobado de dónde sale; el modelo no incluye la imagen, pero su diseño es el de esa criatura. Conviene confirmar su origen antes de una entrega pública.
+- Archivos: `art/stalker/stalker.blend` (fuente, con la escena de comparación), `assets/enemies/stalker/stalker.glb` (lo que importa Godot), los tres materiales `.tres` de esa carpeta y la textura que Godot extrae del GLB. Cómo se hace, en [STALKER.md](STALKER.md).
+
 ## Música
 
 - Archivo recibido: `source_assets/song.mp3`.
