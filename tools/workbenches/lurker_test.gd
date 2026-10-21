@@ -8,8 +8,8 @@ extends Node3D
 ## WASD and the mouse, F the torch, the wheel the zoom, Esc to leave.
 ##
 ## Only for looking at it (nothing of the game drives it yet, docs/LURKER.md):
-## it comes along the floor, the walls and the ceiling towards you, keeping to
-## the dark; caught in the torch it scurries back into the dark; once it is
+## it comes along the floor, the walls and the ceiling towards you, held up
+## between them by its seven hands, keeping to the dark; caught in the torch it scurries back into the dark; once it is
 ## close it stares, and backs away fast when you come at it, and comes again.
 const SETTINGS := preload("res://game/services/settings_service.gd")
 const LOOK := preload("res://game/presentation/camcorder_look.gd")
@@ -35,6 +35,10 @@ const LAMPS := [-1.5, -8.0, -15.5]
 const FLICKERING := 1
 ## The round of its corners as it goes from the floor to a wall or the ceiling.
 const BEND := 0.45
+## How far from the surface it faces towards the middle of the corridor it
+## holds its body: held up between them, its hands take the walls, the ceiling
+## and the floor all at once.
+const SUSPEND := 0.5
 ## How fast it comes, how fast it gets away (the clips' own speeds,
 ## tools/art/lurker/animate.py SPEEDS) and how fast it moves round the corridor.
 const CRAWL := 1.0
@@ -278,9 +282,10 @@ func place() -> void:
 	var toward := Vector3(0, 0, signf(player.global_position.z - z) if player.global_position.z != z else 1.0)
 	var y := up
 	var forward := (toward - y * toward.dot(y)).normalized()
-	lurker.global_transform = Transform3D(Basis(y.cross(forward), y, forward), Vector3(point.x, point.y, z))
-	# on a wall or the ceiling it would rather hold walls and ceiling
-	lurker.cling = clampf(1.0 - normal.y, 0.25, 1.0)
+	var held := point.lerp(Vector2(0.0, HEIGHT * 0.5), SUSPEND)
+	lurker.global_transform = Transform3D(Basis(y.cross(forward), y, forward), Vector3(held.x, held.y, z))
+	# held up in the middle, it would rather hold walls and ceiling than the floor
+	lurker.cling = 0.6
 
 
 # ---------------------------------------------------------------- what it does

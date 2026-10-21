@@ -39,33 +39,48 @@ CHIN_LOCAL = v3(0.0, -0.075, -0.2)
 TIP_Z = -0.158
 PIECE_GAP = 0.0016
 
-# Four pairs of arms, front to back, all of one shape: the angle round the body
-# from straight ahead (degrees) and the size. The front pair is the one with
-# the enormous hands of the picture.
-PAIRS = {"a": (32.0, 1.0), "b": (64.0, 0.62), "c": (98.0, 0.82), "d": (136.0, 0.74)}
+# Seven arms, no two alike (the author, 21 Oct 2026), so neither its shape nor
+# its walk is ever symmetric: four on its left and three on its right, named
+# by their place from front to back and their side. Each has its angle round
+# the body from straight ahead (degrees, on its own side), its size, and how
+# long its upper arm and its forearm are against the others'. The two at the
+# front are the ones with the enormous hands of the picture.
+LIMB_SPECS = {
+    "a.L": (30.0, 1.0, 1.0, 1.08),
+    "a.R": (38.0, 0.9, 1.12, 0.94),
+    "b.L": (60.0, 0.58, 0.9, 1.18),
+    "c.R": (80.0, 0.8, 1.06, 1.0),
+    "d.L": (102.0, 0.86, 0.98, 1.14),
+    "e.R": (124.0, 0.7, 1.16, 0.9),
+    "f.L": (146.0, 0.66, 0.94, 1.12),
+}
 
 
-# Each of the two long bones of an arm, for the biggest pair: long and thin,
-# like the legs of a black widow or a tiger spider.
-LIMB = 0.65
+# Each of the two long bones of an arm, for the biggest: long and thin, like
+# the legs of a black widow or a tiger spider.
+LIMB = 0.72
 
 
-def arm_config(angle, s):
+def arm_config(limb, angle, s, upper, fore):
     a = math.radians(angle)
     out = v3(math.sin(a), -math.cos(a), 0.0)
     socket = BODY_CENTER + v3(0.0, -0.02, 0.0) + v3(0.112 * out[0], 0.135 * out[1], 0.035)
     inner = BODY_CENTER + v3(0.035 * out[0], 0.04 * out[1] - 0.02, 0.03)
+    # and its fingers, none quite the length of another arm's
+    rng = np.random.default_rng(zlib.crc32(limb.encode()))
+    fingers = {name: rng.uniform(0.88, 1.14) for name in ("thumb", "index", "middle", "ring", "pinky")}
     return dict(
         clavicle=inner, shoulder=socket,
-        upper_dir=out + v3(0, 0, 0.36), upper_len=LIMB * s,
-        fore_dir=out + v3(0, 0, -0.62), fore_len=LIMB * s,
+        upper_dir=out + v3(0, 0, 0.36), upper_len=LIMB * s * upper,
+        fore_dir=out + v3(0, 0, -0.62), fore_len=LIMB * s * fore,
         radii=tuple(r * s ** 0.7 for r in (0.036, 0.022, 0.025, 0.018, 0.015)),
         scale=1.3 * s, thick=1.02 * s ** 0.85,
         palm=0.118 * s, palm_width=0.068 * s, palm_thick=0.027 * s ** 0.85,
+        fingers=fingers,
     )
 
 
-ARMS = {k: arm_config(*v) for k, v in PAIRS.items()}
+ARMS = {k: arm_config(k, *v) for k, v in LIMB_SPECS.items()}
 
 # Index, middle, ring, little: phalanx lengths of the big hand, how far round the
 # palm's edge the knuckle sits (+ towards the thumb), and the fan angle.
@@ -153,7 +168,7 @@ def hand_points(arm):
         for j, ln in enumerate(lens):
             cur = rotate(cur, axis, REST_CURL[j])
             dirs.append(cur)
-            pts.append(pts[-1] + cur * ln * s)
+            pts.append(pts[-1] + cur * ln * s * a["fingers"][name])
         fingers[name] = dict(points=pts, dirs=dirs, axis=axis)
     base = w + f * palm * 0.2 + t * half * 0.95 - n * a["palm_thick"] * 0.2
     d = normalize(f * 0.6 + t * 0.72 + n * 0.32)
@@ -164,7 +179,7 @@ def hand_points(arm):
     for j, ln in enumerate(THUMB):
         cur = rotate(cur, axis, (0.05, 0.16, 0.14)[j])
         dirs.append(cur)
-        pts.append(pts[-1] + cur * ln * s)
+        pts.append(pts[-1] + cur * ln * s * a["fingers"]["thumb"])
     fingers["thumb"] = dict(points=pts, dirs=dirs, axis=axis)
     return fr, fingers
 
@@ -204,11 +219,13 @@ def skeleton():
     for side in "LR":
         m = lambda p: mirror(p, side)
         for arm, a in ARMS.items():
+            if arm[-1] != side:
+                continue
             fr, fingers = hand_points(arm)
             sh, el, wr = fr["shoulder"], fr["elbow"], fr["wrist"]
             n = fr["n"]
             bend = normalize(np.cross(normalize(el - sh), normalize(wr - el)))
-            sfx = "_%s.%s" % (arm, side)
+            sfx = "_" + arm
             add("clavicle" + sfx, m(a["clavicle"]), m(sh), "body", m(z_from_x(sh - a["clavicle"], v3(0, 0, 1))), a["radii"][0])
             add("upperarm" + sfx, m(sh), m(el), "clavicle" + sfx, m(z_from_x(el - sh, bend)), a["radii"][1])
             add("forearm" + sfx, m(el), m(wr), "upperarm" + sfx, m(z_from_x(wr - el, bend)), a["radii"][3])
@@ -355,7 +372,7 @@ def arm_node(arm, side):
     fr = hand_frame(arm, "L")
     a = ARMS[arm]
     knob = -normalize((fr["wrist"] + fr["shoulder"]) * 0.5 - fr["elbow"])
-    return limb_node((fr["shoulder"], fr["elbow"], fr["wrist"]), a["radii"], side, seed=zlib.crc32((arm + side).encode()) % 97, knob_dir=knob)
+    return limb_node((fr["shoulder"], fr["elbow"], fr["wrist"]), a["radii"], side, seed=zlib.crc32(arm.encode()) % 97, knob_dir=knob)
 
 
 def body_node():
@@ -373,10 +390,8 @@ def body_node():
         # lumps under the skin, so the mass has no clean shape
         c = (bc if i < 8 else ABDOMEN_CENTER) + v3(rng.uniform(-0.09, 0.09), rng.uniform(-0.11, 0.11), rng.uniform(-0.03, 0.08))
         parts.append(Sphere(c, rng.uniform(0.035, 0.06)))
-    for side in "LR":
-        m = lambda p: mirror(p, side)
-        for arm in ARMS:
-            parts.append(Sphere(m(ARMS[arm]["shoulder"]), ARMS[arm]["radii"][0] * 1.12))
+    for arm in ARMS:
+        parts.append(Sphere(mirror(ARMS[arm]["shoulder"], arm[-1]), ARMS[arm]["radii"][0] * 1.12))
     body = Union(parts, k=0.045)
     knot = skin_noise(0.004, 14.0, 3, 3)
     fine = skin_noise(0.0007, 80.0, 4, 2)

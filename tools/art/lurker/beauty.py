@@ -67,7 +67,7 @@ def main():
           light=(head + Vector((0.25, -0.7, -0.3)), 6.0))
     shoot(scene, "face_low", head + Vector((-0.18, -0.5, -0.32)), head, 60, out,
           light=(head + Vector((-0.2, -0.45, -0.5)), 4.0))
-    for arm, dist, lens in (("a.L", 0.62, 55), ("a.R", 0.62, 55), ("b.L", 0.42, 55), ("c.R", 0.5, 55)):
+    for arm, dist, lens in (("a.L", 0.62, 55), ("a.R", 0.6, 55), ("b.L", 0.42, 55), ("c.R", 0.5, 55)):
         a, s = arm.split(".")
         hand = bone_point(rig, "middle_02_%s.%s" % (a, s), 0.0)
         cam = hand + Vector((0.28 if s == "R" and a == "c" else 0.0, -dist, 0.12 if a == "c" else -0.08))

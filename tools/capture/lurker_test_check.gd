@@ -55,6 +55,22 @@ func run() -> void:
 			shot_at = seconds + 0.6
 		if shot_at > 0.0 and seconds >= shot_at:
 			shot_at = -1.0
+			claws(scene)
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_jpg(out_dir + "/%s_%04.1f_%s.jpg" % [label, seconds, MOODS[mood]], 0.86)
 	quit()
+
+
+## How far above what it holds each claw's point is, for every planted hand
+## (centimetres; below 0 is into it).
+func claws(scene: Node3D) -> void:
+	var limbs = scene.lurker.limbs
+	var skeleton: Skeleton3D = scene.lurker.skeleton
+	var xf := skeleton.global_transform
+	for limb in limbs.limbs:
+		if limb.swing: continue
+		var heights := []
+		for height in limb.touch: heights.append("%.1f" % (float(height) * limbs.size * 100.0))
+		var socket: Vector3 = xf * skeleton.get_bone_global_pose(limb.upper).origin
+		print("CLAWS %s on %s, %.0f%% of its reach: %s" % [limb.name, limb.normal.snapped(Vector3.ONE * 0.1),
+			limb.hold.distance_to(socket) / (limb.reach * limbs.size) * 100.0, ", ".join(heights)])

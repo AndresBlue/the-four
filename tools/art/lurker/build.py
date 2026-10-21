@@ -302,18 +302,17 @@ def part_list(fast):
     k = 1.6 if fast else 1.0
     parts = [("head", lambda: anatomy.head_node(), 0.00115 * k, 19000, ["neck", "head", "jaw", "jaw_tip"])]
     body_bones = ["body", "abdomen", "neck"]
-    for s in "LR":
-        body_bones += ["clavicle_%s.%s" % (a, s) for a in ARMS] + ["upperarm_%s.%s" % (a, s) for a in ARMS]
+    body_bones += ["clavicle_" + a for a in ARMS] + ["upperarm_" + a for a in ARMS]
     parts.append(("body", lambda: anatomy.body_node(), 0.004 * k, 7000, body_bones))
-    for s in "LR":
-        for a in ARMS:
-            sfx = "_%s.%s" % (a, s)
-            parts.append(("arm" + sfx, (lambda a=a, s=s: anatomy.arm_node(a, s)), 0.0028 * k, 2400,
-                          ["body", "clavicle" + sfx, "upperarm" + sfx, "forearm" + sfx, "hand" + sfx]))
-            fingers = ["%s_%02d%s" % (f, j, sfx) for f in ("thumb", "index", "middle", "ring", "pinky") for j in (1, 2, 3)]
-            sc = anatomy.PAIRS[a][1]
-            parts.append(("hand" + sfx, (lambda a=a, s=s: anatomy.hand_node(a, s)), 0.0013 * max(sc, 0.75) * k,
-                          int(6000 * max(sc, 0.65)), ["forearm" + sfx, "hand" + sfx] + fingers))
+    for a in ARMS:
+        s = a[-1]
+        sfx = "_" + a
+        parts.append(("arm" + sfx, (lambda a=a, s=s: anatomy.arm_node(a, s)), 0.0028 * k, 2400,
+                      ["body", "clavicle" + sfx, "upperarm" + sfx, "forearm" + sfx, "hand" + sfx]))
+        fingers = ["%s_%02d%s" % (f, j, sfx) for f in ("thumb", "index", "middle", "ring", "pinky") for j in (1, 2, 3)]
+        sc = anatomy.LIMB_SPECS[a][1]
+        parts.append(("hand" + sfx, (lambda a=a, s=s: anatomy.hand_node(a, s)), 0.0013 * max(sc, 0.75) * k,
+                      int(6000 * max(sc, 0.65)), ["forearm" + sfx, "hand" + sfx] + fingers))
     return parts
 
 
@@ -612,11 +611,10 @@ def claw_meshes(bones, coll):
     allv, allf, groups = [], [], []
     off = 0
     names = []
-    for side in "LR":
-        for arm, a in ARMS.items():
-            s = a["scale"]
-            for f in ("thumb", "index", "middle", "ring", "pinky"):
-                names.append(("%s_03_%s.%s" % (f, arm, side), 0.05 * s, anatomy.FINGER_RADII[3] * a.get("thick", s) * 2.1))
+    for arm, a in ARMS.items():
+        s = a["scale"]
+        for f in ("thumb", "index", "middle", "ring", "pinky"):
+            names.append(("%s_03_%s" % (f, arm), 0.05 * s, anatomy.FINGER_RADII[3] * a.get("thick", s) * 2.1))
     for bname, length, r in names:
         b = bones[bname]
         d = sdf.normalize(b.tail - b.head)
