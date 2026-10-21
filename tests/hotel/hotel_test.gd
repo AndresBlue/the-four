@@ -183,10 +183,12 @@ func run() -> void:
 	# of the hotel of two or three; four, a fifth more; five, a third more. And
 	# never more numbers on a planta than its hundred holds, however big.
 	var squares := {}
+	var firsts := {}
 	var most_numbered := 0
 	var size_faults: Array = []
 	for survivors in [1, 2, 4, 5]:
 		var square := 0.0
+		var first := 0.0
 		for seed_value in range(1, 31):
 			var data: Dictionary = generator.generate(seed_value, survivors)
 			var errors := VALIDATOR.new().validate(data)
@@ -195,13 +197,17 @@ func run() -> void:
 			for room in data.rooms:
 				if FLOOR.is_void(room): continue
 				square += float(room.span_x) * float(room.span_z)
+				if int(room.wing) == 0: first += float(room.span_x) * float(room.span_z)
 				if int(room.get("number", 0)) > 0: numbered_by[int(room.wing)] = int(numbered_by.get(int(room.wing), 0)) + 1
 			for wing in numbered_by: most_numbered = maxi(most_numbered, int(numbered_by[wing]))
 		squares[survivors] = square
+		firsts[survivors] = first
 	var ratio := func(survivors: int) -> float: return float(squares[survivors]) / float(squares[2])
+	var below := func(survivors: int) -> float: return (float(squares[survivors]) - float(firsts[survivors])) / (float(squares[2]) - float(firsts[2]))
 	if not size_faults.is_empty(): print("  ", size_faults.slice(0, 3))
 	check("Los pisos de 1, 4 y 5 supervivientes son válidos", size_faults.is_empty())
-	check("El piso va con los supervivientes: a solas la mitad, con cuatro un 20 %% más y con cinco un 35 %% (%0.2f, %0.2f, %0.2f)" % [ratio.call(1), ratio.call(4), ratio.call(5)], absf(ratio.call(1) - 0.5) < 0.07 and absf(ratio.call(4) - 1.2) < 0.08 and absf(ratio.call(5) - 1.35) < 0.08)
+	var first_alone: float = float(firsts[1]) / float(firsts[2])
+	check("El piso va con los supervivientes: a solas la primera planta entera y las otras dos a la mitad, con cuatro un 20 %% más y con cinco un 35 %% (%0.2f y %0.2f, %0.2f, %0.2f)" % [first_alone, below.call(1), ratio.call(4), ratio.call(5)], absf(first_alone - 1.0) < 0.08 and absf(below.call(1) - 0.5) < 0.07 and absf(ratio.call(4) - 1.2) < 0.08 and absf(ratio.call(5) - 1.35) < 0.08)
 	check("Ninguna planta pasa de su centena: %d habitaciones con número como mucho" % FLOOR.NUMBERED_MOST, most_numbered <= FLOOR.NUMBERED_MOST)
 	var shortest: int = walked.min()
 	check("Las tres etapas obligan a recorrer el piso", shortest >= GEN.MIN_WALK and float(walked.reduce(func(a, b): return a + b, 0)) / walked.size() >= 40.0)
@@ -215,7 +221,7 @@ func run() -> void:
 	# The floor's rules and its plantas are counted in three places that have to
 	# agree: the rules (hotel_floor.gd), the session and the generator.
 	check("Las reglas del hotel tienen una etapa por planta", preload("res://game/floors/hotel_floor.gd").count() == preload("res://game/services/game_session.gd").STAGES and preload("res://game/services/game_session.gd").STAGES == FLOOR.PLANTAS)
-	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 2234534359 and hash(JSON.stringify(generator.generate(777))) == 3643453501)
+	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 388120810 and hash(JSON.stringify(generator.generate(777))) == 4201817092)
 	var scene = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame
@@ -246,7 +252,17 @@ func run() -> void:
 		if not bool(room.get("corridor", false)) or on < 0 or not scene.manifest.adjacency[int(sign.room)].has(on) or not ROUTE_SIGNS.circulation(scene.manifest.rooms[on]): signs_ok = false
 		if int(sign.front) != ROUTE_SIGNS.way_for(-sign.normal, sign.way) or int(sign.back) != ROUTE_SIGNS.way_for(sign.normal, sign.way): signs_ok = false
 	# Three, four or five by how much corridor the planta has.
-	check("Cada planta tiene de 3 a 5 carteles de salida en sus pasillos (%s)" % str(per_planta), per_planta.all(func(n): return n >= 3 and n <= 5))
+	check("La primera planta tiene de 2 a 4 carteles de salida y las otras de 3 a 6 (%s)" % str(per_planta), per_planta.size() == 3 and per_planta[0] >= 2 and per_planta[0] <= 4 and per_planta[1] >= 3 and per_planta[1] <= 6 and per_planta[2] >= 3 and per_planta[2] <= 6)
+	# And none on the first stretch of the way out: that is found by looking.
+	# Only a planta with too little corridor past it (a warren) is let have
+	# some there, as many as it is short of its fewest.
+	var bare := true
+	for sign in scene.hotel.route_signs:
+		var planta := int(sign.planta)
+		if per_planta[planta] == ROUTE_SIGNS.COUNTS[planta].x: continue
+		var from_entry := FLOOR.route_metres(scene.manifest, FLOOR.entry_of(scene.manifest, planta))
+		if float(from_entry.get(int(sign.room), 0.0)) < ROUTE_SIGNS.QUIET * float(from_entry.get(int(scene.manifest.refuges[planta]), 0.0)): bare = false
+	check("Ningún cartel en el primer tramo del camino a la salida", bare)
 	check("Cada cartel cuelga en un pasillo y señala a lo largo de los pasillos, nunca a una habitación", signs_ok)
 	check("Una flecha hacia la derecha se lee a la izquierda desde el otro lado", ROUTE_SIGNS.way_for(Vector2i(0, -1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.RIGHT and ROUTE_SIGNS.way_for(Vector2i(0, 1), Vector2i(1, 0)) == ROUTE_SIGNS.Way.LEFT and ROUTE_SIGNS.way_for(Vector2i(1, 0), Vector2i(1, 0)) == ROUTE_SIGNS.Way.AHEAD)
 	# The plan on the shared sheet: the walls of every planta, the plaster

@@ -25,6 +25,13 @@ const NUMBERED_MOST := 96
 static func area_for(survivors: int) -> float:
 	return float(AREA.get(clampi(survivors, 1, 5), 1.0))
 
+## Each planta's, first to last. Alone, the first planta is still the hotel
+## of two or three (the author, 20 October 2026): only the two below it are
+## half of it.
+static func areas_for(survivors: int) -> Array:
+	var area := area_for(survivors)
+	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
+
 static func rooms_window(area: float) -> Vector2i:
 	return Vector2i(roundi(float(ROOMS.x) * area), roundi(float(ROOMS.y) * area))
 

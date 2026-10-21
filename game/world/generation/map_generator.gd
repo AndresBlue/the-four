@@ -83,6 +83,12 @@ const ORDER_BASE := [0.8, 0.6, 0.42]
 ## How far in the refuge is, as a share of the way to the farthest room of
 ## its planta, walking: never the deepest room, never near the door.
 const DEPTH := Vector2(0.55, 0.9)
+## On the first planta further in, and never nearer than FIRST_WALK metres
+## walked (scaled with the square root of the planta's size): the stage that
+## is only finding the way out was being left in under a minute (the author,
+## 20 October 2026).
+const FIRST_DEPTH := Vector2(0.65, 0.9)
+const FIRST_WALK := 150.0
 ## The share of rooms farthest from the way in, in a straight line, that a
 ## refuge keeps out of where it can; and how much longer than a straight line
 ## the walk to it should be.
@@ -159,15 +165,17 @@ const EMPTY_SALON := 18
 ## Why tries came out empty, by reason, for the tools that measure the
 ## generator (tools/dev/map_metrics.gd).
 var stats := {}
-## The size of the floor asked for (FLOOR.area_for()), and of the one being
-## drawn: the standby floor is always the hotel of two or three.
-var area := 1.0
+## The size of each planta of the floor asked for (FLOOR.areas_for()), and of
+## the planta being drawn (the standby floor is always the hotel of two or
+## three); and which planta that is.
+var areas: Array = [1.0, 1.0, 1.0]
 var drawing := 1.0
+var laying := 0
 
 ## A floor for `survivors` (FLOOR.AREA: one, half the hotel; four and five,
 ## more). Two is the hotel as it always was, for the tools that only want one.
 func generate(run_seed: int, survivors := 2) -> Dictionary:
-	area = FLOOR.area_for(survivors)
+	areas = FLOOR.areas_for(survivors)
 	for attempt in ATTEMPTS:
 		var result := candidate(run_seed, attempt)
 		if result.is_empty(): continue
@@ -191,7 +199,7 @@ func fail(reason: String) -> Dictionary:
 ## One try at a floor, or {} when it did not come out. `standby`: the floor of
 ## last resort, every wall that can be a doorway is one.
 func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
-	drawing = 1.0 if standby else area
+	var drawn: Array = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([run_seed, "floor", attempt])
 	var f := {"rooms": [], "adjacency": [], "edges": [], "merged": {}, "plantas": [], "base": 0, "width": 0, "height": 0, "grid": {}, "lines": [], "edge_base": 0}
@@ -207,6 +215,9 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	var walk := 0
 	for planta in WINGS:
 		var made := {}
+		drawing = 1.0 if standby else float(areas[planta])
+		laying = planta
+		drawn.append(drawing)
 		# A planta that does not come out is drawn again on its own, its grid
 		# too: the ones above it stay as they are.
 		for tried in TRIES:
@@ -243,6 +254,7 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	for room in f.rooms:
 		room.px = float(room.px) - origin.x
 		room.pz = float(room.pz) - origin.y
+	f["areas"] = drawn
 	var decoration := RandomNumberGenerator.new()
 	decoration.seed = hash([run_seed, "rooms", attempt])
 	finish(f, start, refuges, entries, decoration)
@@ -261,7 +273,7 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	var merged: Array = f.merged.values()
 	merged.sort_custom(func(a, b): return int(a[0]) < int(b[0]) or (int(a[0]) == int(b[0]) and int(a[1]) < int(b[1])))
 	var grids: Array = f.plantas.map(func(dims): return {"base": dims.base, "width": dims.width, "height": dims.height})
-	return {"version": FLOOR.VERSION, "seed": run_seed, "area": drawing, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
+	return {"version": FLOOR.VERSION, "seed": run_seed, "area": drawn.reduce(func(a, b): return a + b, 0.0) / float(drawn.size()), "areas": drawn, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
 
 # --- The grid --------------------------------------------------------------------------
 
@@ -399,6 +411,7 @@ func deal(rng: RandomNumberGenerator, standby: bool) -> Array:
 ## indices (row * columns + column); returns {arrival, refuge, landing, out,
 ## hits, walk, shape, count, bearing}, or {} when this try could not make one.
 func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: String, rng: RandomNumberGenerator, standby: bool, bearings: Array) -> Dictionary:
+	laying = planta
 	var per: int = f.width * f.height
 	var base: int = f.base
 	var rooms: Array = f.rooms
@@ -1466,7 +1479,9 @@ func place_refuge(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i
 		var room: Dictionary = at(f, local)
 		if room.kind != "module" or local == arrival or room.hall >= 0 or room.service or not metres.has(local): continue
 		var share: float = float(metres[local]) / deepest
-		if share < DEPTH.x or share > DEPTH.y: continue
+		var depth := depth_wanted()
+		if share < depth.x or share > depth.y: continue
+		if not standby and float(metres[local]) < least_walk(): continue
 		var spot := Vector2(float(room.px), float(room.pz))
 		var bearing := int(floor(fposmod((spot - from).angle() + PI / 8.0, TAU) / (PI / 4.0))) % 8
 		for way in WAYS:
@@ -1637,7 +1652,16 @@ func in_depth(f: Dictionary, alive: Dictionary, arrival: int, room: int) -> bool
 	for local in metres: deepest = maxf(deepest, float(metres[local]))
 	if not metres.has(room) or deepest <= 0.0: return false
 	var share: float = float(metres[room]) / deepest
-	return share >= DEPTH.x and share <= DEPTH.y
+	var depth := depth_wanted()
+	return share >= depth.x and share <= depth.y and float(metres[room]) >= least_walk()
+
+## How far in the refuge of the planta being laid goes (DEPTH, FIRST_DEPTH),
+## and the least walk to it (none below the first).
+func depth_wanted() -> Vector2:
+	return FIRST_DEPTH if laying == 0 else DEPTH
+
+func least_walk() -> float:
+	return FIRST_WALK * sqrt(drawing) if laying == 0 else 0.0
 
 ## Metres from where the planta is walked into to every cell, along its doors.
 func route_metres(f: Dictionary, alive: Dictionary, from: int) -> Dictionary:
@@ -1728,7 +1752,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 			if int(room.type) in [VOID, RECEPTION, LOBBY, REFUGE, LANDING] or room.corridor or room.service or room.hall >= 0: continue
 			if FLOOR.RECIPES[int(room.type)].has("tv"): with_tv.append(int(room.id))
 			else: plain.append(int(room.id))
-		while with_tv.size() < FLOOR.tv_rooms(drawing) and not plain.is_empty():
+		while with_tv.size() < FLOOR.tv_rooms(float(f.areas[planta])) and not plain.is_empty():
 			var pick: int = plain[decoration.randi_range(0, plain.size() - 1)]
 			plain.erase(pick)
 			f.rooms[pick].type = TV_ROOM
@@ -2001,9 +2025,11 @@ static func take_number(next: Array, side: int) -> int:
 func scaled(value: float) -> int:
 	return roundi(value * drawing)
 
-## Rooms the three stages walk through at the least, for the size drawn.
+## Rooms the three stages walk through at the least, for the size asked for
+## (the mean of its plantas').
 func min_walk() -> int:
-	return mini(MIN_WALK, scaled(MIN_WALK))
+	var mean: float = areas.reduce(func(a, b): return a + b, 0.0) / float(areas.size())
+	return mini(MIN_WALK, roundi(MIN_WALK * mean))
 
 ## Whether this room is let to somebody, and so has a number on its door.
 static func numbered(room: Dictionary) -> bool:

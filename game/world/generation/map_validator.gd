@@ -108,8 +108,7 @@ func fittings(data: Dictionary) -> Array[String]:
 ## lobby by none but the refuge's locked one, and on the plantas of the second
 ## and third stages the sets those stages are played on.
 func plantas(data: Dictionary) -> Array[String]:
-	var area := float(data.get("area", 1.0))
-	var window := FLOOR.rooms_window(area)
+	var sizes: Array = data.get("areas", [])
 	var errors: Array[String] = []
 	var rooms: Array = data.rooms
 	var gates: Array = data.get("gates", [])
@@ -120,6 +119,8 @@ func plantas(data: Dictionary) -> Array[String]:
 		errors.append("gate_count")
 		return errors
 	for planta in count:
+		var area := float(sizes[planta]) if planta < sizes.size() else float(data.get("area", 1.0))
+		var window := FLOOR.rooms_window(area)
 		var base := int(data.plantas[planta].base)
 		var per := int(data.plantas[planta].width) * int(data.plantas[planta].height)
 		var entry := int(entries[planta])

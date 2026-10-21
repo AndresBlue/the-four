@@ -57,8 +57,10 @@ func _initialize() -> void:
 		if argument.is_valid_int(): floors = argument.to_int()
 		elif argument.begins_with("--survivors="): survivors = argument.get_slice("=", 1).to_int()
 	var area := FLOOR.area_for(survivors)
-	var reach := sqrt(area)
-	var window := FLOOR.rooms_window(area)
+	# Each planta's own size (alone, the first is the hotel of two or three).
+	var sizes: Array = FLOOR.areas_for(survivors)
+	var outside := 0
+	var first_walks: Array = []
 	var generator := GEN.new()
 	var times: Array = []
 	var fallbacks := 0
@@ -133,6 +135,8 @@ func _initialize() -> void:
 				counted += 1
 				if data.adjacency[base + local].size() == 1 and base + local != refuge: single += 1
 			rooms_all.append(counted)
+			var window := FLOOR.rooms_window(float(sizes[planta]))
+			if counted < window.x or counted > window.y: outside += 1
 			if String(data.plans[planta].plan) != "warren": exposed[planta].append(FLOOR.longest_exposed(data, planta))
 			numbered_all.append(numbered)
 			areas.append(square)
@@ -150,7 +154,9 @@ func _initialize() -> void:
 			var at: float = float(metres.get(refuge, 0.0))
 			depth_shares.append(at / maxf(1.0, far))
 			if farthest == refuge: deepest += 1
-			routes.append(at)
+			# In metres of the hotel of two or three, whatever this planta's size.
+			routes.append(at / sqrt(float(sizes[planta])))
+			if planta == 0: first_walks.append(at)
 			var from := FLOOR.position_of(data.rooms[entry])
 			var to := FLOOR.position_of(data.rooms[refuge])
 			var straight := Vector2(to.x - from.x, to.z - from.z)
@@ -222,8 +228,9 @@ func _initialize() -> void:
 	two.free()
 	print("pisos ", floors, " · plantas ", plantas, " · por qué se volvió a dibujar algo: ", generator.stats)
 	print("supervivientes ", survivors, ", área ×", area)
-	judge("habitaciones por planta, mínimo", rooms_all.min(), rooms_all.min() >= window.x, ">= %d" % window.x)
-	judge("habitaciones por planta, máximo", rooms_all.max(), rooms_all.max() <= window.y, "<= %d" % window.y)
+	judge("habitaciones por planta, mínimo / máximo", "%d / %d" % [rooms_all.min(), rooms_all.max()], true, "informativo")
+	judge("plantas con más o menos habitaciones de las de su tamaño", outside, outside == 0, "0")
+	judge("recorrido al refugio de la primera planta, mínimo (m)", snappedf(first_walks.min(), 1.0), first_walks.min() >= 150.0 * sqrt(float(sizes[0])) - 0.5, ">= %d m" % roundi(150.0 * sqrt(float(sizes[0]))))
 	judge("habitaciones con número por planta, máximo", numbered_all.max(), numbered_all.max() <= FLOOR.NUMBERED_MOST, "<= %d" % FLOOR.NUMBERED_MOST)
 	judge("área por planta, mediana (m²)", snappedf(quantile(areas, 0.5), 1.0), true, "informativo")
 	judge("pisos de respaldo", share_of(fallbacks, floors), float(fallbacks) / floors < 0.005, "< 0,5 %")
@@ -236,11 +243,12 @@ func _initialize() -> void:
 	for planta in 3:
 		judge("tramo expuesto más largo, planta %d, p10 / mediana (m)" % (planta + 1), "%d / %d" % [roundi(quantile(exposed[planta], 0.1)), roundi(quantile(exposed[planta], 0.5))], true, "informativo")
 	# The warren is left out: rooms giving on to rooms, hardly any corridor.
-	var long_enough: int = exposed[2].filter(func(metres): return float(metres) >= 50.0 * reach - 0.01).size()
-	var some: int = exposed[2].filter(func(metres): return float(metres) >= 30.0 * reach - 0.01).size()
+	var low := sqrt(float(sizes[2]))
+	var long_enough: int = exposed[2].filter(func(metres): return float(metres) >= 50.0 * low - 0.01).size()
+	var some: int = exposed[2].filter(func(metres): return float(metres) >= 30.0 * low - 0.01).size()
 	var counted: int = maxi(1, exposed[2].size())
-	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(50.0 * reach), share_of(long_enough, counted), float(long_enough) / counted >= 0.85, ">= 85 %")
-	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(30.0 * reach), share_of(some, counted), float(some) / counted >= 0.97, ">= 97 %")
+	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(50.0 * low), share_of(long_enough, counted), float(long_enough) / counted >= 0.85, ">= 85 %")
+	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(30.0 * low), share_of(some, counted), float(some) / counted >= 0.97, ">= 97 %")
 	judge("anillos por planta, mínimo", rings.min(), rings.min() >= FLOOR.rings(area), ">= %d" % FLOOR.rings(area))
 	judge("habitaciones sin salida, mediana", snappedf(quantile(dead, 0.5), 0.01), quantile(dead, 0.5) >= 0.2 and quantile(dead, 0.5) <= 0.45, "20–45 %")
 	var worst_bearing := 0
@@ -250,8 +258,8 @@ func _initialize() -> void:
 	judge("refugio en la sala más honda", share_of(deepest, plantas), deepest == 0, "0 %")
 	judge("hondura del refugio (fracción del recorrido más largo), mínimo", snappedf(depth_shares.min(), 0.01), depth_shares.min() >= 0.55 - 0.001, ">= 0,55")
 	judge("hondura del refugio, máximo", snappedf(depth_shares.max(), 0.01), depth_shares.max() <= 0.9 + 0.001, "<= 0,90")
-	judge("recorrido llegada → refugio, p5 (m)", snappedf(quantile(routes, 0.05), 1.0), quantile(routes, 0.05) >= 90.0 * reach, ">= %d m" % roundi(90.0 * reach))
-	judge("recorrido llegada → refugio, mediana (m)", snappedf(quantile(routes, 0.5), 1.0), quantile(routes, 0.5) >= 140.0 * reach and quantile(routes, 0.5) <= 260.0 * reach, "%d–%d m" % [roundi(140.0 * reach), roundi(260.0 * reach)])
+	judge("recorrido llegada → refugio a la escala de dos o tres, p5 (m)", snappedf(quantile(routes, 0.05), 1.0), quantile(routes, 0.05) >= 90.0, ">= 90 m")
+	judge("recorrido llegada → refugio a la escala de dos o tres, mediana (m)", snappedf(quantile(routes, 0.5), 1.0), quantile(routes, 0.5) >= 140.0 and quantile(routes, 0.5) <= 260.0, "140–260 m")
 	judge("recorrido / línea recta, p5", snappedf(quantile(ratios, 0.05), 0.01), quantile(ratios, 0.05) >= 1.5, ">= 1,5")
 	var worst_start := 0
 	for bin in starts: worst_start = maxi(worst_start, int(starts[bin]))

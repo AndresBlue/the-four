@@ -1,7 +1,9 @@
 extends RefCounted
-## The emergency-exit signs of the corridors: three to five per planta, spread
-## over it, hung across the corridor so whoever walks along it reads them face
-## on, each face saying which way along the corridors the way out is: ahead,
+## The emergency-exit signs of the corridors: two to four on the first planta
+## and three to six on the others (COUNTS), spread over it, none on the first
+## stretch of the way from where the planta is walked into (QUIET), hung across
+## the corridor so whoever walks along it reads them face on, each face saying
+## which way along the corridors the way out is: ahead,
 ## to the left, to the right, or back the way you came. Only in corridors (not
 ## halls, lobbies or rooms), and never pointing into a room: where the way out
 ## leaves the corridors, the refuge's own sign takes over.
@@ -18,17 +20,21 @@ extends RefCounted
 ## one is the best of the rest weighed by how far it is from the ones already
 ## hung (SPREAD), never nearer than APART (less only where the planta's
 ## corridors give no room), and not where the refuge is already in sight. A
-## planta with more corridor gets more (MORE_FROM, MOST_FROM).
+## planta with more corridor gets more (STEPS).
 ##
 ## Deterministic from the manifest alone: every machine hangs the same signs.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const FEWEST := 3
-const MOST := 5
-## A planta with more corridor gets more: FEWEST under MORE_FROM corridor
-## cells, one more up to MOST_FROM, MOST from there (a quarter of plantas have
-## under 33, half under 42, three quarters under 50).
-const MORE_FROM := 36
-const MOST_FROM := 48
+## How many, first planta and the others (the author, 20 October 2026): the
+## fewest, and one more for every step of corridor cells it reaches, up to the
+## most (a quarter of the hotel's plantas have under 33, half under 42, three
+## quarters under 50).
+const COUNTS := [Vector2i(2, 4), Vector2i(3, 6), Vector2i(3, 6)]
+const STEPS := [33, 42, 50]
+## None this share of the way out from where the planta is walked into, in
+## metres walked: the first of it is found by looking, not by the arrows. The
+## first sign used to wait in sight of the door, on the very way out, and the
+## first stage was a walk along the arrows.
+const QUIET := 0.35
 const ROOM_COST := 12.0
 const ENTRY_WEIGHT := 20.0
 ## Straight metres between two signs, the distance past which a candidate is
@@ -121,7 +127,8 @@ static func planta_signs(manifest: Dictionary, planta: int) -> Array:
 	# A planta mostly of rooms opening on to rooms has few of those: there, a
 	# corridor whose way out goes on into a lobby, a gallery or a hall (open
 	# ground, never a room) will do as well, for less.
-	if shape.size() < FEWEST * 3:
+	var counts: Vector2i = COUNTS[mini(planta, COUNTS.size() - 1)]
+	if shape.size() < counts.x * 3:
 		for id in cost:
 			if id == refuge or shape.has(id) or not corridor.call(id): continue
 			var on: int = int(next[id])
@@ -147,16 +154,35 @@ static func planta_signs(manifest: Dictionary, planta: int) -> Array:
 					arriving[at][axis] = float(arriving[at][axis]) + amount
 			came = at
 			at = int(next[at])
-	var chosen_count := MOST if corridors >= MOST_FROM else FEWEST + 1 if corridors >= MORE_FROM else FEWEST
+	var chosen_count := counts.x
+	for step in STEPS:
+		if corridors >= int(step): chosen_count += 1
+	chosen_count = mini(chosen_count, counts.y)
+	# The first stretch of the way out, walked from the way in, stays bare.
+	var walked := FLOOR.route_metres(manifest, entry)
+	var bare := QUIET * float(walked.get(refuge, 0.0))
+	var signs: Array = []
+	# A planta with little corridor may have too few places past the bare
+	# stretch: then it is shortened, by half and then altogether, for the
+	# signs it is short of its fewest and no more.
+	for quiet in [bare, bare * 0.5, 0.0]:
+		if signs.size() >= counts.x: break
+		pick_signs(manifest, signs, chosen_count if quiet == bare else counts.x, flow, cost, walked, quiet, next, arriving, planta)
+	return signs
+
+## Signs added to `signs`, up to `wanted`: the best of the rest by how much of
+## the way out passes there and how far from the ones already hung; none
+## within NEAR_REFUGE of the refuge or nearer the way in than `quiet` metres.
+static func pick_signs(manifest: Dictionary, signs: Array, wanted: int, flow: Dictionary, cost: Dictionary, walked: Dictionary, quiet: float, next: Dictionary, arriving: Dictionary, planta: int) -> void:
+	var rooms: Array = manifest.rooms
 	var most := 0.0
 	for id in flow: most = maxf(most, float(flow[id]))
-	var signs: Array = []
 	for apart in [APART, APART * 0.7, APART * 0.45]:
-		while signs.size() < chosen_count:
+		while signs.size() < wanted:
 			var pick := -1
 			var pick_score := -1.0
 			for id in flow:
-				if float(cost[id]) < NEAR_REFUGE or signs.any(func(sign): return int(sign.room) == id): continue
+				if float(cost[id]) < NEAR_REFUGE or float(walked.get(id, INF)) < quiet or signs.any(func(sign): return int(sign.room) == id): continue
 				var here := FLOOR.position_of(rooms[id])
 				var nearest := INF
 				for sign in signs: nearest = minf(nearest, FLOOR.position_of(rooms[int(sign.room)]).distance_to(here))
@@ -167,7 +193,6 @@ static func planta_signs(manifest: Dictionary, planta: int) -> Array:
 					pick_score = score
 			if pick < 0: break
 			signs.append(sign_at(manifest, pick, next, arriving, planta))
-	return signs
 
 ## The sign of one cell: which way out along the corridor, and which way it
 ## hangs -- across the corridor people come along to it: the one most of its
