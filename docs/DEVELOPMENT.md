@@ -13,7 +13,8 @@ Proyecto: `E:\Projects\The Four`, con copia en GitHub (repositorio privado `Andr
    - **Cazar a los bots** (eres The Locust, `hunt`, 5 bots) y **Vista del cazador** (`locust`);
    - **Ver bots** (los bots en el observador, `bots`; pregunta si con clemencia) y **Bots en lote** (`bots.ps1`, 10 pisos a la vez);
    - **Ver repeticion** (`bots-replay`) y **Observador**;
-   - **Taller de habitaciones** (`gallery`), **Exportar**, **Exportar para Mac** (`export-mac`) y **Verificar**.
+   - **Taller de habitaciones** (`gallery`), **Exportar**, **Exportar para Mac** (`export-mac`) y **Verificar**;
+   - **Pasillo del Lurker** (`lurker`): The Lurker viniendo hacia ti por un pasillo corto, jugado (`docs/LURKER.md`).
 
 La galería es una referencia generada: muestra módulos aislados, techos ocultos y luz de inspección. No es el mapa de la partida. Sus cambios manuales no se incorporan al generador. Después de editar recetas o geometría, ejecuta `./tools/godot.ps1 build-gallery` para reconstruirla. Este comando reemplaza exclusivamente esa galería.
 
