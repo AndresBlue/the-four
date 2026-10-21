@@ -765,19 +765,19 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
 | Piso | Nombre | Criatura | Estado |
 |---|---|---|---|
 | 1 | El hotel | The Locust | Jugable |
-| 2 | Las oficinas secretas (La Oficina) | La de las sombras, sin nombre ([STALKER.md](STALKER.md)) | Modelo y animaciones; nada jugable |
+| 2 | Las oficinas secretas (La Oficina) | The Lurker ([LURKER.md](LURKER.md)) | Modelo y animaciones; nada jugable |
 | 3 | Radiation Lab | Sin asignar | Sin empezar |
 | 4 | The Containment | Sin asignar | Sin empezar |
 
-- `four-7ly.1` **Decidir qué criatura lleva cada piso** (la del 2 se decidió el 21 de
-  octubre de 2026; faltan su nombre y las de los pisos 3 y 4) y lo demás que
+- `four-7ly.1` **Decidir qué criatura lleva cada piso** (la del 2, The Lurker, se
+  decidió el 21 de octubre de 2026; faltan las de los pisos 3 y 4) y lo demás que
   LORE.md deja abierto: quién juega, cómo se nota el ente que dirige a la
   bestia, cómo acaba.
 - `four-7ly.2` **Las oficinas secretas:** su conjunto procedural, su criatura y sus
   papeles. De la criatura ya están el modelo, el esqueleto y ocho animaciones
   (acecho, reptar, escabullirse, ducto, huir, la pose de la imagen, el susto y
   asomarse), mirados dentro del hotel; faltan su escena, su IA de acecho por
-  las sombras y los ductos, las alucinaciones y sus sonidos (STALKER.md).
+  las sombras y los ductos, las alucinaciones y sus sonidos (LURKER.md).
 - `four-7ly.3` **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
 - `four-7ly.4` **The Containment:** lo mismo; es donde estaban guardadas todas.
 

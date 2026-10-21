@@ -2,7 +2,7 @@
 plaster walls, the creature coming down it, a camera at the foot of the stairs.
 Renders the comparison still (and puts the scene in the .blend when asked).
 
-    blender -b art/stalker/stalker.blend -P tools/art/stalker/scene.py -- --out DIR [--samples 128] [--save]
+    blender -b art/lurker/lurker.blend -P tools/art/lurker/scene.py -- --out DIR [--samples 128] [--save]
 """
 
 import math
@@ -169,7 +169,7 @@ def main():
     offset = Vector((0.0, -CREATURE_Y, -step_z(CREATURE_Y)))
     for ob in coll.objects:
         ob.location += offset
-    rig = bpy.data.objects["stalker_rig"]
+    rig = bpy.data.objects["lurker_rig"]
     apply_pose(rig, stair_pose(rig))
     preview.setup_cycles(samples)
     scene.view_settings.view_transform = "Standard"

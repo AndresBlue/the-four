@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://v35yocq82cdr"
-path="res://.godot/imported/stalker_stalker_face.png-38769f292afd83ce46ab30d764371ba4.ctex"
+uid="uid://c2xcmkaqbgw44"
+path="res://.godot/imported/lurker_lurker_face.png-279c6eadbdd9adedc0061e37d0bfeb76.ctex"
 metadata={
 "vram_texture": false
 }
@@ -13,8 +13,8 @@ generator_parameters={
 
 [deps]
 
-source_file="res://assets/enemies/stalker/stalker_stalker_face.png"
-dest_files=["res://.godot/imported/stalker_stalker_face.png-38769f292afd83ce46ab30d764371ba4.ctex"]
+source_file="res://assets/enemies/lurker/lurker_lurker_face.png"
+dest_files=["res://.godot/imported/lurker_lurker_face.png-279c6eadbdd9adedc0061e37d0bfeb76.ctex"]
 
 [params]
 

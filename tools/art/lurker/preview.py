@@ -1,6 +1,6 @@
 """Studio renders of the built creature, for looking at it.
 
-    blender -b <file.blend> -P tools/art/stalker/preview.py -- --outdir DIR [--views face,body] [--clay] [--samples 64]
+    blender -b <file.blend> -P tools/art/lurker/preview.py -- --outdir DIR [--views face,body] [--clay] [--samples 64]
 """
 
 import math
@@ -145,7 +145,7 @@ def main():
     if o["clay"]:
         clay()
     if o["pose"]:
-        rig = bpy.data.objects.get("stalker_rig")
+        rig = bpy.data.objects.get("lurker_rig")
         act = bpy.data.actions.get(o["pose"])
         if rig and act:
             rig.animation_data_create()

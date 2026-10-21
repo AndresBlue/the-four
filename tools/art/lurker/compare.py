@@ -1,7 +1,7 @@
 """Puts a game capture next to the reference picture: the middle of the 16:9
 frame cut to the picture's portrait shape.
 
-    python tools/art/stalker/compare.py capture.png reference.png out.png [--zoom 1.0] [--dy 0.0]
+    python tools/art/lurker/compare.py capture.png reference.png out.png [--zoom 1.0] [--dy 0.0]
 """
 
 import sys

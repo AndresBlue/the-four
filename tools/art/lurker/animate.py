@@ -691,7 +691,7 @@ def build_all(rig_ob):
         st.action_slot = slot
         tr.mute = True
         made.append((act, slot))
-        print("[stalker] clip %-11s %4d frames%s" % (name, int(act.frame_range[1]), " loop" if loop else ""), flush=True)
+        print("[lurker] clip %-11s %4d frames%s" % (name, int(act.frame_range[1]), " loop" if loop else ""), flush=True)
     act, slot = made[0]
     ad.action = act
     ad.action_slot = slot

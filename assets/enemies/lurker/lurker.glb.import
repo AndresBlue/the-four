@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cpfd53bhan1io"
-path="res://.godot/imported/stalker.glb-0a4fcd45aa9e6e1f02cd44e1d3e238e4.scn"
+uid="uid://cbi0mh1vdoyn8"
+path="res://.godot/imported/lurker.glb-ccb7eb708d8478eb927551f58c7010b0.scn"
 
 [deps]
 
-source_file="res://assets/enemies/stalker/stalker.glb"
-dest_files=["res://.godot/imported/stalker.glb-0a4fcd45aa9e6e1f02cd44e1d3e238e4.scn"]
+source_file="res://assets/enemies/lurker/lurker.glb"
+dest_files=["res://.godot/imported/lurker.glb-ccb7eb708d8478eb927551f58c7010b0.scn"]
 
 [params]
 
@@ -12379,20 +12379,20 @@ _subresources={
 }
 },
 "materials": {
-"stalker_face": {
+"lurker_face": {
 "use_external/enabled": true,
-"use_external/fallback_path": "res://assets/enemies/stalker/stalker_face.tres",
-"use_external/path": "res://assets/enemies/stalker/stalker_face.tres"
+"use_external/fallback_path": "res://assets/enemies/lurker/lurker_face.tres",
+"use_external/path": "res://assets/enemies/lurker/lurker_face.tres"
 },
-"stalker_fur": {
+"lurker_fur": {
 "use_external/enabled": true,
-"use_external/fallback_path": "res://assets/enemies/stalker/stalker_fur.tres",
-"use_external/path": "res://assets/enemies/stalker/stalker_fur.tres"
+"use_external/fallback_path": "res://assets/enemies/lurker/lurker_fur.tres",
+"use_external/path": "res://assets/enemies/lurker/lurker_fur.tres"
 },
-"stalker_skin": {
+"lurker_skin": {
 "use_external/enabled": true,
-"use_external/fallback_path": "res://assets/enemies/stalker/stalker_skin.tres",
-"use_external/path": "res://assets/enemies/stalker/stalker_skin.tres"
+"use_external/fallback_path": "res://assets/enemies/lurker/lurker_skin.tres",
+"use_external/path": "res://assets/enemies/lurker/lurker_skin.tres"
 }
 }
 }

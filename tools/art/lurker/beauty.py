@@ -1,7 +1,7 @@
 """Close-ups of the face and the hands, in the reference staircase with its
 light, after scene.py has put the creature there.
 
-    blender -b art/stalker/stalker.blend -P tools/art/stalker/beauty.py -- --out DIR [--samples 128]
+    blender -b art/lurker/lurker.blend -P tools/art/lurker/beauty.py -- --out DIR [--samples 128]
 """
 
 import os
@@ -60,7 +60,7 @@ def main():
     scene.view_settings.look = "None"
     scene.render.resolution_x = 1000
     scene.render.resolution_y = 1000
-    rig = bpy.data.objects["stalker_rig"]
+    rig = bpy.data.objects["lurker_rig"]
     scene.frame_set(1)
     head = bone_point(rig, "head", 0.0, (0, -0.07, 0.07))
     shoot(scene, "face", head + Vector((0.02, -0.62, -0.05)), head, 70, out,

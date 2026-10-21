@@ -1,7 +1,7 @@
 """Builds the creature in Blender: meshes from the distance fields, the
 skeleton, weights, vertex colours, eyes, teeth, claws and hair.
 
-    blender -b --factory-startup -P tools/art/stalker/build.py -- --out art/stalker/stalker.blend
+    blender -b --factory-startup -P tools/art/lurker/build.py -- --out art/lurker/lurker.blend
 
 --only head,hand_a.L limits it to some parts (for looking at one piece);
 --fast meshes everything coarser.
@@ -53,7 +53,7 @@ def args():
 
 
 def log(*a):
-    print("[stalker]", *a, flush=True)
+    print("[lurker]", *a, flush=True)
 
 
 def smoothstep(e0, e1, x):
@@ -308,7 +308,7 @@ def build_parts(opts, bones, coll):
         made = make()
         node, feats = made if isinstance(made, tuple) else (made, None)
         v, q = sdf.mesh_node(node, h)
-        ob = mesh_object("stalker_" + name, v, q, coll)
+        ob = mesh_object("lurker_" + name, v, q, coll)
         decimate(ob, tris)
         me = ob.data
         shade_smooth(me)
@@ -412,7 +412,7 @@ def bake_face(ob, node, feats, size=1024):
         img[grow] = acc[grow] / cnt[grow][:, None]
         filled = filled | grow
     rgba = np.concatenate([linear_to_srgb(img), np.ones((size, size, 1))], axis=2)
-    image = bpy.data.images.new("stalker_face", size, size, alpha=False)
+    image = bpy.data.images.new("lurker_face", size, size, alpha=False)
     image.pixels.foreach_set(rgba.astype(np.float32).ravel())
     image.pack()
     set_colors(me, np.ones((len(me.vertices), 3)))
@@ -421,7 +421,7 @@ def bake_face(ob, node, feats, size=1024):
 
 
 def face_material(image):
-    m = bpy.data.materials.new("stalker_face")
+    m = bpy.data.materials.new("lurker_face")
     try:
         m.use_nodes = True
     except Exception:
@@ -442,8 +442,8 @@ def face_material(image):
 # ---------------------------------------------------------------- armature
 
 def build_armature(bones, coll):
-    arm = bpy.data.armatures.new("stalker_rig")
-    ob = bpy.data.objects.new("stalker_rig", arm)
+    arm = bpy.data.armatures.new("lurker_rig")
+    ob = bpy.data.objects.new("lurker_rig", arm)
     coll.objects.link(ob)
     arm.display_type = "OCTAHEDRAL"
     ob.show_in_front = True
@@ -505,10 +505,10 @@ def eye_meshes(bones, coll):
         bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(90), 3, "X"))
         c = Vector(bones["eye." + side].head)
         bmesh.ops.translate(bm, verts=bm.verts, vec=c)
-        me = bpy.data.meshes.new("stalker_eye." + side)
+        me = bpy.data.meshes.new("lurker_eye." + side)
         bm.to_mesh(me)
         bm.free()
-        ob = bpy.data.objects.new("stalker_eye." + side, me)
+        ob = bpy.data.objects.new("lurker_eye." + side, me)
         coll.objects.link(ob)
         shade_smooth(me)
         p = verts_np(me) - np.array(c)
@@ -574,7 +574,7 @@ def teeth_mesh(coll):
         jaw += [0.0 if upper else 1.0] * len(v)
         off += len(v)
     v = np.concatenate(allv)
-    ob = mesh_object("stalker_teeth", v, allf, coll)
+    ob = mesh_object("lurker_teeth", v, allf, coll)
     shade_smooth(ob.data)
     set_colors(ob.data, np.concatenate(colors))
     jaw = np.array(jaw)
@@ -606,7 +606,7 @@ def claw_meshes(bones, coll):
         allf += [tuple(i + off for i in face) for face in fcs]
         groups.append((bname, off, len(v)))
         off += len(v)
-    ob = mesh_object("stalker_claws", np.concatenate(allv), allf, coll)
+    ob = mesh_object("lurker_claws", np.concatenate(allv), allf, coll)
     shade_smooth(ob.data)
     for bname, start, count in groups:
         vg = ob.vertex_groups.get(bname) or ob.vertex_groups.new(name=bname)
@@ -761,7 +761,7 @@ def build_fur(built, coll, density=1.0):
             off += len(vlist)
     if not allv:
         return None
-    ob = mesh_object("stalker_fur", np.concatenate(allv), allf, coll)
+    ob = mesh_object("lurker_fur", np.concatenate(allv), allf, coll)
     shade_smooth(ob.data)
     for bn, items in groups.items():
         vg = ob.vertex_groups.get(bn) or ob.vertex_groups.new(name=bn)
@@ -798,11 +798,11 @@ def material(name, rough, spec, double_sided=False, sheen=0.0):
 
 def materials():
     return dict(
-        skin=material("stalker_skin", 1.0, 0.03),
-        fur=material("stalker_fur", 1.0, 0.0, double_sided=True),
-        eyes=material("stalker_eyes", 0.18, 0.5),
-        teeth=material("stalker_teeth", 0.55, 0.35),
-        claws=material("stalker_claws", 0.7, 0.15),
+        skin=material("lurker_skin", 1.0, 0.03),
+        fur=material("lurker_fur", 1.0, 0.0, double_sided=True),
+        eyes=material("lurker_eyes", 0.18, 0.5),
+        teeth=material("lurker_teeth", 0.55, 0.35),
+        claws=material("lurker_claws", 0.7, 0.15),
     )
 
 
@@ -810,7 +810,7 @@ def build(opts):
     t0 = time.time()
     clear_scene()
     bones = {b.name: b for b in anatomy.skeleton()}
-    coll = collection("Stalker")
+    coll = collection("Lurker")
     rig = build_armature(bones, coll)
     mats = materials()
     built = build_parts(opts, bones, coll)
@@ -839,7 +839,7 @@ def build(opts):
             bind(fur, rig)
             log("fur %d tris" % sum(len(pl.vertices) - 2 for pl in fur.data.polygons))
     if body:
-        bind(join(body, "stalker_body"), rig)
+        bind(join(body, "lurker_body"), rig)
     total = 0
     for ob in coll.objects:
         if ob.type == "MESH":

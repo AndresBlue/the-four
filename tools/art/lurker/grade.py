@@ -1,7 +1,7 @@
 """The analogue look of the reference photo, on a render: warm sepia, soft
 focus, grain and a vignette. Outside Blender:
 
-    python tools/art/stalker/grade.py in.png out.png [reference.png]
+    python tools/art/lurker/grade.py in.png out.png [reference.png]
 
 With a reference it also writes out_vs.png, the two side by side.
 """

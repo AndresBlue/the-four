@@ -1,7 +1,7 @@
 """The whole creature, start to finish: model, rig, animations, the .blend and
 the GLB the game imports.
 
-    blender -b --factory-startup -P tools/art/stalker/make.py -- --blend art/stalker/stalker.blend --glb assets/enemies/stalker/stalker.glb
+    blender -b --factory-startup -P tools/art/lurker/make.py -- --blend art/lurker/lurker.blend --glb assets/enemies/lurker/lurker.glb
 """
 
 import os
@@ -19,7 +19,7 @@ import build  # noqa: E402
 
 def export_glb(path):
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    rig = bpy.data.objects["stalker_rig"]
+    rig = bpy.data.objects["lurker_rig"]
     ad = rig.animation_data
     keep = (ad.action, ad.action_slot)
     bpy.ops.export_scene.gltf(

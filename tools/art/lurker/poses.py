@@ -1,7 +1,7 @@
 """Renders every clip at a few moments, from a fixed camera, for checking the
 animations by eye.
 
-    blender -b art/stalker/stalker.blend -P tools/art/stalker/poses.py -- --outdir DIR [--clips crawl,loom] [--frames 4]
+    blender -b art/lurker/lurker.blend -P tools/art/lurker/poses.py -- --outdir DIR [--clips crawl,loom] [--frames 4]
 """
 
 import math
@@ -49,7 +49,7 @@ def main():
     preview.area_light("key", cl + right * dist * 0.6 + Vector((0, 0, dist * 0.6)), t, 70 * dist * dist, dist * 0.6)
     preview.area_light("fill", cl - right * dist * 0.8, t, 20 * dist * dist, dist)
     preview.area_light("rim", t + (t - cl).normalized() * dist + Vector((0, 0, dist * 0.7)), t, 160 * dist * dist, dist * 0.5)
-    rig = bpy.data.objects["stalker_rig"]
+    rig = bpy.data.objects["lurker_rig"]
     ad = rig.animation_data
     os.makedirs(outdir, exist_ok=True)
     for act in bpy.data.actions:

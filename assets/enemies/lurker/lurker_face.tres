@@ -1,9 +1,9 @@
 [gd_resource type="StandardMaterial3D" load_steps=2 format=3]
 
-[ext_resource type="Texture2D" path="res://assets/enemies/stalker/stalker_stalker_face.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/lurker/lurker_lurker_face.png" id="1"]
 
 [resource]
-resource_name = "stalker_face"
+resource_name = "lurker_face"
 albedo_texture = ExtResource("1")
 metallic_specular = 0.08
 roughness = 0.95

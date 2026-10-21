@@ -1,18 +1,18 @@
 extends SceneTree
-## The creature of the second floor (assets/enemies/stalker/stalker.glb) set
+## The creature of the second floor (assets/enemies/lurker/lurker.glb) set
 ## inside the hotel only to be looked at: in a lit corridor, its back to a
 ## wall, holding the pose of the author's reference picture (the loom clip),
 ## filmed from low down the way that picture was. Nothing of the game drives
-## it; it is there to compare with the picture (docs/STALKER.md).
-##   godot --path . --rendering-method forward_plus --script res://tools/capture/stalker_capture.gd -- --automation --test-profile --no-enemy --silent [--label=name] [--clip=loom] [--at=0.0]
-## Writes evidence/stalker/<label>_<shot>_raw.png and _vhs.png: one with the
+## it; it is there to compare with the picture (docs/LURKER.md).
+##   godot --path . --rendering-method forward_plus --script res://tools/capture/lurker_capture.gd -- --automation --test-profile --no-enemy --silent [--label=name] [--clip=loom] [--at=0.0]
+## Writes evidence/lurker/<label>_<shot>_raw.png and _vhs.png: one with the
 ## corridor's own light, one with the torch on.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const SIZE := Vector2i(1920, 1080)
 const CORRIDOR := 11
 var level
-var out_dir := "res://evidence/stalker"
+var out_dir := "res://evidence/lurker"
 var label := "current"
 
 func _initialize() -> void: run.call_deferred()
@@ -44,7 +44,7 @@ func run() -> void:
 		level.locust.position = Vector3(0, -80, 0)
 	var room := pick()
 	if room.is_empty():
-		print("STALKER no lit corridor")
+		print("LURKER no lit corridor")
 		quit(1)
 		return
 	var centre := FLOOR.position_of(room)
@@ -55,13 +55,13 @@ func run() -> void:
 	var half := (span.y if along_x else span.x) * 0.5
 	var spot := centre + back * (half - 0.62)
 	spot.y = 0.0
-	var beast: Node3D = load("res://assets/enemies/stalker/stalker.glb").instantiate()
+	var beast: Node3D = load("res://assets/enemies/lurker/lurker.glb").instantiate()
 	level.add_child(beast)
 	beast.global_position = spot
 	beast.rotation.y = 0.0 if along_x else PI * 0.5
 	report(beast)
 	var player: AnimationPlayer = beast.find_child("AnimationPlayer", true, false)
-	print("STALKER clips ", player.get_animation_list())
+	print("LURKER clips ", player.get_animation_list())
 	player.play(clip)
 	player.seek(at, true)
 	player.speed_scale = 0.0
@@ -97,7 +97,7 @@ func report(beast: Node3D) -> void:
 		for surface in mesh.get_surface_count():
 			var material = mesh.surface_get_material(surface)
 			if material is StandardMaterial3D:
-				print("STALKER %s/%d %s vertex_color=%s specular=%.2f rough=%.2f cull=%d" % [mesh_instance.name, surface, material.resource_name,
+				print("LURKER %s/%d %s vertex_color=%s specular=%.2f rough=%.2f cull=%d" % [mesh_instance.name, surface, material.resource_name,
 					material.vertex_color_use_as_albedo, material.metallic_specular, material.roughness, material.cull_mode])
 
 func capture(shot: String) -> void:
@@ -127,4 +127,4 @@ func capture(shot: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/%s_%s_vhs.png" % [label, shot])
 	level.hotel.set_process(true)
-	print("STALKER ", shot)
+	print("LURKER ", shot)
