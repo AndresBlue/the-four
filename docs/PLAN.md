@@ -11,6 +11,12 @@ Estado: juego **1.2.0** (20 de octubre de 2026), generador de mapas **v8** (tres
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
+**Desde el apartado 2, el estado se lleva en Beads** (`bd`): cada punto lleva
+su ID en lugar de la casilla, `bd show <id>` da el detalle y `bd ready` dice
+lo que se puede hacer ya, con las dependencias del orden de abajo. Al cerrarlo
+en Beads se quita de aquí, como todo lo hecho. El apartado 1, lo que solo se
+decide jugando, sigue con sus casillas.
+
 ## Dónde estamos (25 de septiembre de 2026)
 
 Hay un piso jugable de principio a fin, solo o acompañado: hotel procedural de
@@ -566,7 +572,7 @@ hecho y descrito en la guía de desarrollo. Lo que aparezca va aquí.
 Juegan el piso entero solos, lo recorren mirando, se graban y se repasan en el
 observador (todo descrito en la guía de desarrollo). Falta:
 
-- [ ] **Mirar con la repetición lo que ya encontraron** (lote
+- `four-e3n.1` **Mirar con la repetición lo que ya encontraron** (lote
   `20260923-165656-f4_clemencia_v2` y siguientes): bots que se atascan contra
   una puerta abierta con el siguiente punto de su ruta a medio metro
   (habitación 121 de la planta 1 en la semilla 86, habitación 218 de la
@@ -574,52 +580,58 @@ observador (todo descrito en la guía de desarrollo). Falta:
   esa misma sala y el vigilante la da por encerrada—, y la criatura
   encerrada o atascada en otras semillas (83, 90). Decidir cuáles son del
   juego y cuáles del bot.
-- [ ] **La tabla de lo que se ve** (`tools/bots/bot_senses.gd`): contrastarla
+- `four-e3n.2` **La tabla de lo que se ve** (`tools/bots/bot_senses.gd`): contrastarla
   con una partida de verdad, sobre todo las notas (9 m con luz, 12 con
   linterna, 1,5 a oscuras) y las teles en el nicho de las suites.
+
+### El ejecutable
+
+- `four-e3n.3` **El ejecutable pesa unos 970 MB**, demasiado: el paquete lleva a la vez
+  los archivos de origen y su copia ya importada, y las texturas de los
+  personajes son de 4K (README, «Ejecutable para Windows»).
 
 ### Fallos menores conocidos
 
 Salieron en la revisión del 22 de septiembre y se dejaron para más adelante:
 no rompen nada.
 
-- [ ] Los subtítulos no se borran al morir ni en las pantallas de pausa y fin
+- `four-e3n.4` Los subtítulos no se borran al morir ni en las pantallas de pausa y fin
   (`ui.subtitle` solo se limpia desde `drive_local` con el jugador vivo).
-- [ ] Al apagarse la luz, el volumen de luz rebotada se oculta y
+- `four-e3n.5` Al apagarse la luz, el volumen de luz rebotada se oculta y
   `hotel.update_visibility` lo vuelve a mostrar a los 0,25 s: no mira `dark`.
-- [ ] El apagón también apaga el panel del coche del ascensor: comparte el
+- `four-e3n.6` El apagón también apaga el panel del coche del ascensor: comparte el
   material `"light"` que `held_glows` pone a cero.
-- [ ] Los nombres de las teclas salen con la distribución de EE. UU. (en un
+- `four-e3n.7` Los nombres de las teclas salen con la distribución de EE. UU. (en un
   teclado español la Ñ se ve como «;»): `settings_service.key_name`.
-- [ ] Mover un deslizador de ajustes guarda en disco y reaplica la calidad de
+- `four-e3n.8` Mover un deslizador de ajustes guarda en disco y reaplica la calidad de
   todo el piso en cada paso.
-- [ ] Órdenes de red que se aceptan de cualquier peer y solo importan con un
+- `four-e3n.9` Órdenes de red que se aceptan de cualquier peer y solo importan con un
   cliente modificado: `locust_call` sin comprobar el remitente, y
   `request_lift`, `request_container` y `request_television` aceptadas del
   cazador.
-- [ ] «Reintentar» online falla sin avisar si el asiento del cazador se ha
+- `four-e3n.10` «Reintentar» online falla sin avisar si el asiento del cazador se ha
   ido (`start_match` devuelve un error que nadie mira).
-- [ ] Los efectos de la cinta y la lente se miden en píxeles de pantalla
+- `four-e3n.11` Los efectos de la cinta y la lente se miden en píxeles de pantalla
   (`analog.gdshader`, `lens.gdshader`, el halo de `camcorder_effect.gd`): a
   4K el borrón de color y el halo son unas tres veces más finos que a 720p.
-- [ ] El negro del golpe empieza unos centímetros al lado de la mano: se
+- `four-e3n.12` El negro del golpe empieza unos centímetros al lado de la mano: se
   proyecta antes de la curvatura de la lente (`strike_on_screen`).
-- [ ] El cazador oye como contactos las puertas que abre él mismo y el ruido
+- `four-e3n.13` El cazador oye como contactos las puertas que abre él mismo y el ruido
   de su propia salida por una tele.
-- [ ] Cuando el anfitrión no oye un gruñido de la IA, lo reintenta a los 1,6 s
+- `four-e3n.14` Cuando el anfitrión no oye un gruñido de la IA, lo reintenta a los 1,6 s
   aunque ya se haya mandado a todos: los invitados la oyen gruñir más a menudo.
-- [ ] El bucle de presencia de la criatura sigue a su último nivel durante
+- `four-e3n.15` El bucle de presencia de la criatura sigue a su último nivel durante
   los 1,2 s del cambio de etapa.
-- [ ] La lectura acústica dentro del observador (`V`) sale mucho más pobre que
+- `four-e3n.16` La lectura acústica dentro del observador (`V`) sale mucho más pobre que
   la del cazador: los granos se escriben (8000 cerca de la cámara, medidos)
   pero apenas se dibujan. Mientras, la vista de verdad es
   `./tools/godot.ps1 locust`.
-- [ ] En Compatibilidad en Ultra, en una de dos capturas iguales la linterna
+- `four-e3n.17` En Compatibilidad en Ultra, en una de dos capturas iguales la linterna
   no alumbró nada en dos tomas de cuatro (sala oscura, 65 luces con sombra a
   la vista); en la otra, sí. No es el límite de luces por objeto (se probó con
   32). Puede ser la compilación de una variante de shader: mirar si se ve
   jugando.
-- [ ] Cuando se cierra la sala de una partida que el observador miraba, se
+- `four-e3n.18` Cuando se cierra la sala de una partida que el observador miraba, se
   queda en ese piso, parado y sin criatura, y el panel sigue diciendo «en la
   sala» (`net.observing` no se apaga al salir). Debería volver a un piso suyo;
   mientras, R.
@@ -633,70 +645,70 @@ silencio que hoy se oye raro al cerrar cada sector, y probar el mando en
 partida: que la sensibilidad por defecto no se quede corta ni larga, y que se
 pueda jugar entero sin tocar el teclado.
 
-- [ ] **La captura, lo que queda de código** (rehecha el 12 de octubre:
+- `four-vlz.1` **La captura, lo que queda de código** (rehecha el 12 de octubre:
   sobresalto, cámara caída, cinta, finta de armario y repetición; qué se hizo,
   con qué se comprobó y qué falta, en [EXECUTION.md](EXECUTION.md), sección
   18). Lo que hay que juzgar jugando está en el apartado 1.
-  - [ ] Sin la embestida, y con Apacible y Equilibrada corriendo a 6,0 m/s
+  - `four-vlz.1.1` Sin la embestida, y con Apacible y Equilibrada corriendo a 6,0 m/s
     (13 de octubre), lo que DIFFICULTY.md mide de cada dificultad (cuántas
     persecuciones acaban en huida) está sin volver a medir con bots.
-  - [ ] Los brazos de la propia bestia atraviesan paredes en sitios
+  - `four-vlz.1.2` Los brazos de la propia bestia atraviesan paredes en sitios
     estrechos (no se ha tocado: solo el cuerpo de la víctima).
-  - [ ] La estocada del jugador que lleva a la bestia (versus) conserva sus
+  - `four-vlz.1.3` La estocada del jugador que lleva a la bestia (versus) conserva sus
     0,3 s de preparación y su ladrido: decidir si también va a 0.
-  - [ ] Las poses del cuerpo en la captura (colgando, tendido, sentado) están
+  - `four-vlz.1.4` Las poses del cuerpo en la captura (colgando, tendido, sentado) están
     hechas mirando a la Exploradora: ajustarlas a los dos detectives, que las
     heredan por los huesos comunes. El Detective Masculino tiene esqueleto
     desde el 18 de octubre y ya cuelga, cae y queda sentado como los demás,
     pero nadie lo ha mirado en la captura.
-  - [ ] Una prueba de red que mire la escena desde la máquina de un testigo
+  - `four-vlz.1.5` Una prueba de red que mire la escena desde la máquina de un testigo
     (hoy los cuatro escenarios pasan, y uno ejecuta a alguien sacándolo de un
     armario, pero ninguno compara lo que ve cada máquina).
-  - [ ] Los 4,7 s de la bestia quieta (eran 4,2; el medio segundo es la caída
+  - `four-vlz.1.6` Los 4,7 s de la bestia quieta (eran 4,2; el medio segundo es la caída
     de la cámara), que el autor quiere revisar después.
-  - [ ] Idea aparcada: el final «se lo lleva» (EXECUTION.md, 7.4).
-- [ ] **Que dos partidas no se recuerden iguales.** Los tres sectores son
+  - `four-vlz.1.7` Idea aparcada: el final «se lo lleva» (EXECUTION.md, 7.4).
+- `four-vlz.2` **Que dos partidas no se recuerden iguales.** Los tres sectores son
   siempre refugio, televisores y código, y en ese orden: la planta cambia y la
   partida no. Basta una condición alternativa que pueda salir en el sector 2 o
   en el 3. Es la única de esta lista que es decisión de diseño, no de código.
-- [ ] **Sonido del hotel:** fuentes espaciales fijas, acústica por recinto,
+- `four-vlz.3` **Sonido del hotel:** fuentes espaciales fijas, acústica por recinto,
   pasos, conductos, tuberías y silencio contextual.
-- [ ] **Los cinco audios aportados:** escucha y selección definitiva, edición de
+- `four-vlz.4` **Los cinco audios aportados:** escucha y selección definitiva, edición de
   las copias y procedencia documentada.
-- [ ] **Materiales PBR terminados**, reflejos y composición de las escenas de
+- `four-vlz.5` **Materiales PBR terminados**, reflejos y composición de las escenas de
   referencia; efectos de conductos y variedad artística.
-- [ ] **Texturas fotográficas CC0** seleccionadas e importadas con su licencia
+- `four-vlz.6` **Texturas fotográficas CC0** seleccionadas e importadas con su licencia
   registrada, y revisión visual de la legibilidad en las zonas oscuras.
-- [ ] **Sustituir el mobiliario provisional** por assets adecuados y
+- `four-vlz.7` **Sustituir el mobiliario provisional** por assets adecuados y
   acreditados, poco a poco.
-- [ ] **Accesibilidad, mezcla y rendimiento sostenido** en la escena más
+- `four-vlz.8` **Accesibilidad, mezcla y rendimiento sostenido** en la escena más
   exigente.
-- [ ] **Cuatro dificultades de la IA** (Apacible, Equilibrada, Desafiante y
+- `four-vlz.9` **Cuatro dificultades de la IA** (Apacible, Equilibrada, Desafiante y
   Pesadilla), en individual y en cooperativo. Lo de hoy es Desafiante, y en
   las cuatro la bestia aparece a menudo: lo que sube es lo difícil que es
   salir de cada encuentro. La hoja de ruta entera —palancas, conductas,
   objetivos y lo decidido el 4 de octubre— está en
   [DIFFICULTY.md](DIFFICULTY.md). Por fases:
-  - [ ] 3 · Apacible y Equilibrada, por números.
-  - [ ] 4 · Las conductas de Apacible: la escena de «me salvé». Están
+  - `four-vlz.9.1` 3 · Apacible y Equilibrada, por números.
+  - `four-vlz.9.2` 4 · Las conductas de Apacible: la escena de «me salvé». Están
     hechas (duda, cansancio, gruñido, armarios, encuentros del director) y
     medidas (DIFFICULTY.md, segunda medida): más encuentros y huidas en
     Apacible, pero once caídas por piso, Equilibrada con expertos al 60 %, y
     ratos largos sin ella tras cada caída. Falta: un cruce al acabar el
     descanso, salir más de una persecución en Equilibrada y novatos que se
     escondan.
-  - [ ] 5 · Las conductas y los números de Pesadilla.
-  - [ ] 6 · Individual frente a equipo: el tamaño del equipo (la etapa
+  - `four-vlz.9.3` 5 · Las conductas y los números de Pesadilla.
+  - `four-vlz.9.4` 6 · Individual frente a equipo: el tamaño del equipo (la etapa
     devuelta a solas ya está).
-  - [ ] 7 · La dificultad en las marcas.
-  - [ ] 8 · Los números finales, con gente.
-- [ ] **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del
+  - `four-vlz.9.5` 7 · La dificultad en las marcas.
+  - `four-vlz.9.6` 8 · Los números finales, con gente.
+- `four-vlz.10` **Cosas que hacen mucho ruido, para distraer a la bestia** (idea del
   25 de septiembre): radios, despertadores y parecidos repartidos por el
   piso, que un superviviente pone en marcha y suenan fuerte y seguido; la
   criatura va a por ellos y tiene que romperlos para que callen. Por decidir:
   cuántos por planta, si se gastan, cuánto la retienen y cómo lo usa el
   director (que hoy tira sus propias distracciones).
-- [ ] **Cajas y basureros que se empujan y delatan** (idea del 6 de octubre
+- `four-vlz.11` **Cajas y basureros que se empujan y delatan** (idea del 6 de octubre
   de 2026): al pasar junto a una caja se la empuja suavemente y cae con
   buenas físicas y algo de ruido; un basurero, si se pasa por encima, se
   vuelca y suena a metal, más o menos fuerte según dónde caiga y con qué
@@ -705,15 +717,15 @@ pueda jugar entero sin tocar el teclado.
   (apartado 4). Por decidir al hacerlo: qué objetos de los que ya hay pasan a
   ser físicos, cómo se sincronizan en red y cuánto oye la criatura.
 
-- [ ] **Volver a generar el tráiler** (`docs/TRAILER.md`): sus títulos quemados aún llevan punto medio y guion largo; el código ya no (20 de octubre de 2026).
+- `four-vlz.12` **Volver a generar el tráiler** (`docs/TRAILER.md`): sus títulos quemados aún llevan punto medio y guion largo; el código ya no (20 de octubre de 2026).
 
 ## 4 · Assets que faltan (tuyos)
 
-- [ ] **El goteo de la sangre** no suena: falta una gota espesa sobre
+- `four-7xp.1` **El goteo de la sangre** no suena: falta una gota espesa sobre
   moqueta y otra sobre baldosa (el chorro y el borboteo ya están, traídos
   por ti el 13 de octubre: `assets/audio/sfx/blood/`).
 
-- [ ] **Lo que falta para registrar todos los muebles** (hoy suenan a puerta
+- `four-7xp.2` **Lo que falta para registrar todos los muebles** (hoy suenan a puerta
   abierta despacio, AUDIO.md, «Registrar muebles»), ahora que cada uno
   queda como se registró: la **vitrina** abre una de sus puertas bajas de
   madera (una **puerta de aparador** pequeña que se abre; sus puertas de
@@ -722,21 +734,21 @@ pueda jugar entero sin tocar el teclado.
   vuelca un adorno (**una maceta o un jarrón de cerámica que cae de lado
   sobre madera**); y una pila **solo de cajas de plástico** baja la de arriba
   al suelo (**una caja de plástico dejada en el suelo**).
-- [ ] **Los logros en Steamworks** (19 de octubre): cuando el juego tenga su
+- `four-7xp.3` **Los logros en Steamworks** (19 de octubre): cuando el juego tenga su
   AppID, crear los dieciocho logros con sus nombres de API (`F1_OUT`…) y los
   íconos de `make_achievement_icons.py --steam`, publicarlos y cambiar el
   AppID (DEVELOPMENT.md, Steam). Hasta entonces Steam no los guarda y
   «Comparar con» no trae nada.
-- [ ] **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
+- `four-7xp.4` **El sonido propio del ascensor**: motor y hojas. Hoy solo se oye la
   puerta que ya existía, y es el silencio más audible del piso: cada cierre de
   sector pasa por él.
-- [ ] **La campanilla del ascensor que trae a la criatura**
+- `four-7xp.5` **La campanilla del ascensor que trae a la criatura**
   (`assets/audio/events/lift_ding.ogg`): el hueco está hecho
   (`lifts.LIFT_DING`, en todo el piso donde sale) y suena en cuanto el
   archivo exista; hasta entonces, silencio.
-- [ ] **Sonidos de cajas y basureros** (cartón que cae, metal que se vuelca
+- `four-7xp.6` **Sonidos de cajas y basureros** (cartón que cae, metal que se vuelca
   y rueda, a varias fuerzas), para los objetos que se empujan del apartado 3.
-- [ ] **Sonidos propios para la captura.** Lo que hoy suena al caer la
+- `four-7xp.7` **Sonidos propios para la captura.** Lo que hoy suena al caer la
   videocámara, al rozar la ropa mientras la bestia levanta el cuerpo y al
   caer el cuerpo son grabaciones prestadas de otras escenas, bajadas de tono
   (`object_fall_*`, `bed_shift`/`bed_stir`, `stomp_*`). Hacen falta: una
@@ -757,39 +769,39 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
 | 3 | Radiation Lab | Sin asignar | Sin empezar |
 | 4 | The Containment | Sin asignar | Sin empezar |
 
-- [ ] **Decidir qué criatura lleva cada piso** (la del 2 está sin definir) y
+- `four-7ly.1` **Decidir qué criatura lleva cada piso** (la del 2 está sin definir) y
   lo demás que LORE.md deja abierto: quién juega, cómo se nota el ente que
   dirige a la bestia, cómo acaba.
-- [ ] **Las oficinas secretas:** su conjunto procedural, su criatura y sus
+- `four-7ly.2` **Las oficinas secretas:** su conjunto procedural, su criatura y sus
   papeles.
-- [ ] **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
-- [ ] **The Containment:** lo mismo; es donde estaban guardadas todas.
+- `four-7ly.3` **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
+- `four-7ly.4` **The Containment:** lo mismo; es donde estaban guardadas todas.
 
 Las tres criaturas ya pensadas, todavía sin piso:
 
-- [ ] **Sunman**: cobertura y barridos anunciados (se pensó para atrios y
+- `four-7ly.5` **Sunman**: cobertura y barridos anunciados (se pensó para atrios y
   galerías).
-- [ ] **The Boiled One**: pantallas, con su exposición comprobada (se pensó
+- `four-7ly.6` **The Boiled One**: pantallas, con su exposición comprobada (se pensó
   para habitaciones y salones).
-- [ ] **Guilt** con señales contrastables; nunca falsifica la hoja ni la
+- `four-7ly.7` **Guilt** con señales contrastables; nunca falsifica la hoja ni la
   interfaz esencial.
-- [ ] **Perfiles sonoros propios** para las tres.
-- [ ] **Tres conjuntos procedurales más**, con mil semillas validadas cada uno.
-- [ ] **La campaña de cuatro pisos:** checkpoints entre ellos, reaparición de
+- `four-7ly.8` **Perfiles sonoros propios** para las tres.
+- `four-7ly.9` **Tres conjuntos procedurales más**, con mil semillas validadas cada uno.
+- `four-7ly.10` **La campaña de cuatro pisos:** checkpoints entre ellos, reaparición de
   los caídos y victoria final.
-- [ ] **Campañas completas de dos y cuatro jugadores sin bloqueos.**
+- `four-7ly.11` **Campañas completas de dos y cuatro jugadores sin bloqueos.**
 
 ## 6 · Consolidación y cierre
 
-- [ ] **Los nueve eventos** de las otras criaturas.
-- [ ] **Los doce descubrimientos restantes**, registro de partidas y códigos
+- `four-z71.1` **Los nueve eventos** de las otras criaturas.
+- `four-z71.2` **Los doce descubrimientos restantes**, registro de partidas y códigos
   compatibles, sin progresión de poder.
-- [ ] **Balance del director**, jugado por personas: si las pistas acercan
+- `four-z71.3` **Balance del director**, jugado por personas: si las pistas acercan
   demasiado o demasiado poco, si el pico dura lo que tiene que durar y si el
   respiro se nota (constantes al principio de `pacing_director.gd`); y
   revisión de los textos de los documentos.
-- [ ] **Desafíos opcionales** sin condiciones ocultas de derrota.
-- [ ] **Balance con datos locales:** objetivo 60 FPS a 1080p y perfiles
+- `four-z71.4` **Desafíos opcionales** sin condiciones ocultas de derrota.
+- `four-z71.5` **Balance con datos locales:** objetivo 60 FPS a 1080p y perfiles
   reducidos que se sostengan.
-- [ ] **Permisos** de criaturas, modelos y canción, créditos, y exportaciones
+- `four-z71.6` **Permisos** de criaturas, modelos y canción, créditos, y exportaciones
   sin editor.
