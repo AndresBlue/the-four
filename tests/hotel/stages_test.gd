@@ -510,13 +510,14 @@ func run() -> void:
 	for piece in level.containers: pieces_by_kind[String(piece.kind) + ("·abre" if not piece.main.is_empty() else "")] = true
 	print("  muebles registrables: ", pieces_by_kind.keys())
 	check("El código es el mismo que el del piso", level.code_so_far() == "".join(DIG.code(level.manifest).map(func(d): return str(d))))
-	# And they can be read back: the slips hang beside the shared sheet, with
-	# the number and the room it came out of. Nobody has to remember a thing.
+	# And they can be read back: the pieces of the torn letter hang beside the
+	# shared sheet, put back together, each with its number and the room it
+	# came out of. Nobody has to remember a thing.
 	level.ui.sheet.seat = 1
 	level.ui.sheet.open(true, "TAB", level.notes_found())
-	var slip_text := words_under(level.ui.sheet.slips)
-	check("Las notas se pueden releer en la hoja, con su habitación", slip_text.contains("TUS NOTAS") and not String(level.found_where.get(4, "")).is_empty() and slip_text.contains(String(level.found_where[4])))
-	check("Y son cuatro páginas, una por número del código", level.ui.sheet.pages.get_child_count() == DIG.COUNT)
+	var letter: Node = level.ui.sheet.pages.get_node_or_null("Letter")
+	check("Las notas se pueden releer en la hoja, con su habitación", words_under(level.ui.sheet.slips).contains("TUS NOTAS") and is_instance_valid(letter) and level.notes_found().all(func(note): return not String(note.get("where", "")).is_empty()))
+	check("Y son los cuatro trozos de una carta, uno por número del código", level.notes_found().map(func(note): return int(note.slot)) == [1, 2, 3, 4])
 	# The third sector counts both: the sets, and the numbers found.
 	level.refresh_briefing()
 	check("En el sector 3 la pausa cuenta televisores y números", level.ui.briefing.progress.size() == 2 and String(level.ui.briefing.progress[1][1]) == "%d / %d" % [DIG.COUNT, DIG.COUNT])
@@ -538,14 +539,23 @@ func run() -> void:
 	check("Y en otra planta no se ve", not pencil.visible)
 	level.ui.sheet.close()
 	# The hints of the third stage (hint_placement.gd): eight papers about
-	# where the pages are, four in sight (one for each page), three in drawers
-	# for three pages, and the other sheet; none in its own page's zone.
+	# where the pages are, four in sight (one for each page), three more for
+	# three pages (two in drawers, and the card on its door, or three in
+	# drawers when the page's room has no door to hang one on), and the other
+	# sheet; none in its own page's zone, but the card, on its page's door.
 	var hints: Array = level.code.hints
 	var page_room := {}
 	for piece in hidden: page_room[int(piece.slot)] = FLOOR.room_at(level.manifest.rooms, piece.global_position)
 	var in_sight: Array = hints.filter(func(hint): return String(hint.place) == "surface")
-	check("La tercera etapa tiene ocho pistas: cuatro a la vista, una por página, y cuatro en muebles", hints.size() == 8 and in_sight.size() == 4 and [1, 2, 3, 4].all(func(slot): return in_sight.any(func(hint): return int(hint.slot) == slot)) and hints.filter(func(hint): return String(hint.place) == "container").size() == 4)
-	check("Ninguna en la zona de su página ni en una sala con página", hints.all(func(hint): return (int(hint.slot) == 0 or int(level.manifest.rooms[int(hint.room)].sector) != int(page_room[int(hint.slot)].sector)) and not page_room.values().any(func(room): return int(room.id) == int(hint.room))))
+	var on_doors: Array = hints.filter(func(hint): return String(hint.place) == "door")
+	check("La tercera etapa tiene ocho pistas: cuatro a la vista, una por página, tres en muebles o puertas y la hoja de otro", hints.size() == 8 and in_sight.size() == 4 and [1, 2, 3, 4].all(func(slot): return in_sight.any(func(hint): return int(hint.slot) == slot)) and hints.filter(func(hint): return String(hint.place) == "container").size() + on_doors.size() == 4 and on_doors.size() <= 1)
+	check("Ninguna en la zona de su página ni en una sala con página", hints.all(func(hint): return String(hint.place) == "door" or ((int(hint.slot) == 0 or int(level.manifest.rooms[int(hint.room)].sector) != int(page_room[int(hint.slot)].sector)) and not page_room.values().any(func(room): return int(room.id) == int(hint.room)))))
+	# The card hangs on the door of its page's room, with a few blank ones on
+	# other doors; and the Polaroid is of the piece the page is in.
+	var hung: Array = level.hotel.find_children("Card_*", "Area3D", true, false)
+	check("La tarjeta de no molestar cuelga en la puerta de la sala de su página, entre otras en blanco", on_doors.all(func(hint): return String(hint.kind) == "nomolestar" and int(hint.door[0]) == int(page_room[int(hint.slot)].id) and hung.filter(func(card): return not card.blank and String(card.name) == "Card_%d_%d" % [int(hint.door[0]), int(hint.door[1])]).size() == 1 and not (hint.blank as Array).is_empty() and hung.filter(func(card): return card.blank).size() == (hint.blank as Array).size()))
+	var shots: Array = hints.filter(func(hint): return String(hint.kind) == "polaroid")
+	check("La Polaroid es del mueble de su página", shots.all(func(hint): return level.containers[int(hint.shot)].slot == int(hint.slot)))
 	var walked := FLOOR.route_metres(level.manifest, FLOOR.entry_of(level.manifest, 2))
 	var other: Array = hints.filter(func(hint): return String(hint.kind) == "hoja")
 	check("La que las marca todas está en un mueble, más a trasmano que las otras siete", other.size() == 1 and String(other[0].place) == "container" and hints.all(func(hint): return float(walked.get(int(hint.room), 0.0)) <= float(walked.get(int(other[0].room), 0.0)) + 0.01))
@@ -581,10 +591,14 @@ func run() -> void:
 		if int(hint.slot) == 0: continue
 		var page := Vector2(hidden.filter(func(piece): return piece.slot == int(hint.slot))[0].global_position.x, hidden.filter(func(piece): return piece.slot == int(hint.slot))[0].global_position.z)
 		if String(hint.kind) == "calco" and (hint.centre as Vector2).distance_to(page) > float(hint.radius): truthful = false
-		if String(hint.kind) == "plano" and (not (hint.window as Rect2).has_point(page) or (hint.cross as Vector2).distance_to(page) > 0.5): truthful = false
+		if String(hint.kind) == "plano" and (not (hint.window as Rect2).has_point(page) or (hint.cross as Vector2).distance_to(page) > 0.5 or (hint.centre as Vector2).distance_to(page) > float(hint.radius) or (hint.labels as Array).is_empty()): truthful = false
 	check("Lo que marcan en el plano es verdad", truthful and (other[0].points as Array).size() == DIG.COUNT)
-	var chalked: Array = hints.filter(func(hint): return String(hint.kind) == "tiza")
-	check("La tiza está en las paredes cuando una pista habla de ella", chalked.all(func(hint): return level.hotel.find_children("*Chalk*", "MeshInstance3D", true, false).size() >= (hint.marks as Array).size()))
+	# A blank card is held up the same, with nothing on its back, and is not
+	# kept.
+	if not on_doors.is_empty():
+		level.interaction.read_hint(int(on_doors[0].id), true)
+		check("Una tarjeta en blanco se lee, y no se guarda", level.interaction.reading() and not level.code.hints_mine.has(int(on_doors[0].id)))
+		level.close_document()
 	# A hint in a drawer goes to whoever finds it, held up at once.
 	var drawer: Dictionary = hints.filter(func(hint): return String(hint.place) == "container" and String(hint.kind) != "hoja")[0]
 	level.search_container(level.containers[int(drawer.container)])
@@ -608,6 +622,10 @@ func run() -> void:
 	await frames(2)
 	level.close_document()
 	check("La hoja de otro pone las cuatro páginas en el plano", level.code.hint_marks().filter(func(mark): return mark.ink == level.code.OTHER_MARK).size() == DIG.COUNT)
+	# And the corner of the evacuation plan its circle, as the carbon copy.
+	var plans: Array = hints.filter(func(hint): return String(hint.kind) == "plano")
+	for plan in plans: level.code.own_hint(int(plan.id))
+	check("El plano de evacuación marca su zona en el plano", level.code.hint_marks().filter(func(mark): return mark.ink == level.code.PLAN_MARK).size() == plans.size())
 	# Alone there is nothing to forgive: caught is the end of that floor.
 	var before_stage: int = session.stage
 	check("En solitario, que te cojan termina el piso", session.capture(1) and session.state == session.State.FAILED and session.restarts == 0)

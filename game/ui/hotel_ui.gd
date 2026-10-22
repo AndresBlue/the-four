@@ -1198,7 +1198,7 @@ func show_hint(item: Dictionary, walls: Array) -> void:
 	hold_paper(view, view.card, HINT_CAPTIONS.get(String(item.get("kind", "")), []))
 
 ## What a hint that marks the plan says beside it, above the paper.
-const HINT_CAPTIONS := {"calco": ["", "ZONA MARCADA EN EL MAPA"], "hoja": ["", "ZONAS MARCADAS EN EL MAPA"]}
+const HINT_CAPTIONS := {"calco": ["", "ZONA MARCADA EN EL MAPA"], "plano": ["", "ZONA MARCADA EN EL MAPA"], "hoja": ["", "ZONAS MARCADAS EN EL MAPA"]}
 
 ## A paper held up to the camera, as large as it reads, and the key that
 ## keeps it under it; a whole sheet (the hotel's form, a letter, a page of a

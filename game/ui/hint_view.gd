@@ -2,11 +2,13 @@ extends Control
 ## One of the hints of the last planta (hint_placement.gd) as the paper it
 ## is: a maid's sheet with its block of rooms and a work order, both typed on
 ## the hotel's own form (hotel_form.gd), a few lines in pencil on a page of a
-## notebook torn off before the end (ruled_paper.gd), a sign off a door, a
-## carbon copy with the circle pressed into it, which lets the light through,
-## a torn corner of an evacuation plan, the note about the chalk, or somebody
-## else's sheet, folded in four, with the plan and four circles on it (the
-## author's pictures, 22 October 2026). Drawn, not laid out, at its own size
+## notebook torn off before the end (ruled_paper.gd), a Polaroid of where a
+## page is (its picture taken on the floor itself: code_lock.develop_photos()),
+## a carbon copy with the circle pressed into it, which lets the light through,
+## a torn corner of an evacuation plan with the rooms' numbers on it, the "do
+## not disturb" card off a door, front and back, or somebody else's sheet,
+## folded in four, with the plan and four circles on it (the author's
+## pictures and word, 22 October 2026). Drawn, not laid out, at its own size
 ## (`card`); whoever shows it scales it.
 const STYLE := preload("res://game/ui/osd_style.gd")
 const HAND := preload("res://game/ui/handwork.gd")
@@ -28,7 +30,13 @@ const CARBON := Color(0.11, 0.11, 0.19, 0.62)
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"cartel": Vector2(540, 300), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "tiza": Vector2(460, 240), "hoja": Vector2(1491, 1055)}
+const SIZES := {"polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
+## The card's printed front and its back (tools/textures/bake_do_not_disturb.py),
+## and the Polaroid's picture square in its frame.
+const CARD_FACE := preload("res://assets/textures/no-molestar.png")
+const CARD_BACK := preload("res://assets/textures/no-molestar-reverso.png")
+const PHOTO := Rect2(24, 24, 392, 392)
+static var vignette: GradientTexture2D
 const LINE := 36.0
 var hint: Dictionary
 ## The walls of the hint's planta, [[a, b]] in plan (x, z), for the plans.
@@ -61,28 +69,22 @@ func setup(data: Dictionary, plan_walls: Array) -> void:
 	size = card
 	queue_redraw()
 
+## The Polaroid's picture comes a moment after it is first held up
+## (code_lock.develop_photo()): drawn again when it does.
+func _process(_delta: float) -> void:
+	if String(hint.get("kind", "")) == "polaroid" and not hint.has("photo"): return
+	queue_redraw()
+	set_process(false)
+
 func _draw() -> void:
 	match String(hint.get("kind", "")):
-		"cartel": door_sign()
+		"polaroid": polaroid()
 		"calco": carbon()
 		"plano": evacuation()
-		"tiza": chalk_note()
+		"nomolestar": do_not_disturb()
 		"hoja": other_sheet()
 
 # --- The papers ---------------------------------------------------------------------------
-
-func door_sign() -> void:
-	var plate := Rect2(Vector2(10, 10), card - Vector2(20, 20))
-	draw_rect(Rect2(plate.position + Vector2(4, 5), plate.size), Color(0, 0, 0, 0.4))
-	draw_rect(plate, Color(0.9, 0.89, 0.85))
-	draw_rect(plate.grow(-10), Color(0.2, 0.19, 0.18), false, 2.0)
-	for corner in [Vector2(28, 28), Vector2(card.x - 28, 28), Vector2(28, card.y - 28), Vector2(card.x - 28, card.y - 28)]:
-		draw_circle(corner, 5.0, Color(0.55, 0.5, 0.42))
-		draw_circle(corner, 2.0, Color(0.25, 0.23, 0.2))
-	var printed: Array = hint.get("printed", [])
-	centred(Vector2(card.x * 0.5, 104), String(printed[0]) if printed.size() > 0 else "", 40, PRINT)
-	centred(Vector2(card.x * 0.5, 150), String(printed[1]) if printed.size() > 1 else "", 20, Color(PRINT, 0.8))
-	pencil(Vector2(64, 214), hint.get("hand", []), card.x - 120.0)
 
 func carbon() -> void:
 	var sheet := Rect2(Vector2.ZERO, card)
@@ -114,14 +116,46 @@ func evacuation() -> void:
 		for wall in walls:
 			for piece in Geometry2D.intersect_polyline_with_polygon(PackedVector2Array([wall[0], wall[1]]), clip):
 				if piece.size() >= 2: draw_line(to_card.call(piece[0]), to_card.call(piece[piece.size() - 1]), Color(0.18, 0.18, 0.2), 2.2, true)
+		# The numbers of the rooms and the names of the rest, as printed.
+		for label in hint.get("labels", []):
+			centred(to_card.call(label[0]) + Vector2(0, 5), String(label[1]), 13, Color(PRINT, 0.85))
 		var cross: Vector2 = to_card.call(hint.get("cross", window.get_center()))
 		draw_line(cross + Vector2(-11, -11), cross + Vector2(11, 11), RED, 4.0, true)
 		draw_line(cross + Vector2(-11, 11), cross + Vector2(11, -11), RED, 4.0, true)
 	words(Vector2(36, card.y - 22), String(printed[1]) if printed.size() > 1 else "", 16, PRINT)
 
-func chalk_note() -> void:
-	paper(Rect2(Vector2.ZERO, card), Color(0.9, 0.86, 0.68), 211)
-	pencil(Vector2(40, 84), hint.get("hand", []), card.x - 70.0)
+## A Polaroid: the picture in its white frame, wider at the foot, a little
+## warm and darker at its corners, as they come out. With no picture (a run
+## with nothing drawn on a screen) the square is left dark.
+func polaroid() -> void:
+	var frame := Rect2(Vector2.ZERO, card)
+	draw_rect(Rect2(frame.position + Vector2(5, 7), frame.size), Color(0, 0, 0, 0.4))
+	draw_rect(frame, Color(0.93, 0.92, 0.88))
+	draw_rect(PHOTO, Color(0.1, 0.09, 0.08))
+	var picture = hint.get("photo")
+	if picture is Texture2D: draw_texture_rect(picture, PHOTO, false, Color(1.0, 0.95, 0.86))
+	if vignette == null:
+		vignette = GradientTexture2D.new()
+		vignette.fill = GradientTexture2D.FILL_RADIAL
+		vignette.fill_from = Vector2(0.5, 0.5)
+		vignette.fill_to = Vector2(1.05, 1.05)
+		var shade := Gradient.new()
+		shade.set_color(0, Color(0, 0, 0, 0.0))
+		shade.set_color(1, Color(0.05, 0.03, 0.02, 0.55))
+		vignette.gradient = shade
+	draw_texture_rect(vignette, PHOTO, false)
+	draw_texture_rect(HAND.wear(Vector2i(44, 54), 4411, false), frame, false, Color(1, 1, 1, 0.5))
+
+## The card off a door, held up: its printed front, and its back, where on
+## the one that matters somebody wrote in pencil.
+func do_not_disturb() -> void:
+	var face := Vector2(220, 550)
+	var front := Rect2(Vector2(20, 20), face)
+	var back := Rect2(Vector2(card.x - 20 - face.x, 20), face)
+	for side in [[front, CARD_FACE], [back, CARD_BACK]]:
+		draw_texture_rect(side[1], Rect2((side[0] as Rect2).position + Vector2(4, 6), face), false, Color(0, 0, 0, 0.4))
+		draw_texture_rect(side[1], side[0], false)
+	pencil(back.position + Vector2(22, 210), hint.get("hand", []), face.x - 40.0)
 
 func other_sheet() -> void:
 	draw_texture_rect(MAP_PAPER, Rect2(Vector2(6, 8), card), false, Color(0, 0, 0, 0.4))

@@ -39,8 +39,6 @@ const HINT_VIEW := preload("res://game/ui/hint_view.gd")
 ## black for the host, then navy, dark red and dark green.
 const PAPER := Color(0.86, 0.82, 0.71)
 const INKS := [Color(0.1, 0.1, 0.11), Color(0.11, 0.16, 0.38), Color(0.44, 0.09, 0.09), Color(0.09, 0.29, 0.13), Color(0.36, 0.2, 0.06), Color(0.29, 0.1, 0.33)]
-## Graphite, for the pages the numbers of the code are written on.
-const GRAPHITE := Color(0.13, 0.12, 0.12)
 const PEN := 3.0
 const ERASER := 30.0
 ## The column of slips beside the page's right edge.
@@ -235,16 +233,14 @@ func open(can_edit: bool, key_name: String, notes := [], hints := [], walls := [
 func ink_of(who: int) -> Color:
 	return INKS[maxi(0, who - 1) % INKS.size()]
 
-## The pages this player took, beside the sheet as they are, in the order
-## they were found: each hangs a little below the one before and to the other
-## side, overlapping it, a zigzag chain down the column. On each, the number
-## written large in pencil, the page number small in its corner -- which place
-## of the code it is, so the four can be put in order -- and, in pencil under
-## the number, the room it came out of. Nobody else's pages: telling them is
-## the other half of the game.
-const LEAF := Vector2(118, 150)
-## How far down each leaf hangs from the one before, as a share of its height.
-const CHAIN := 0.72
+## The pages this player took, beside the sheet: the pieces of the torn
+## letter (torn_letter.gd), each put back where it was torn from, so the
+## letter comes together as they are found and where each one sits says which
+## place of the code its number is. On each, the number written large in
+## pencil and, under it, the room it came out of. Where a piece is still
+## missing, only the faint shape of the hole. Nobody else's pages: telling
+## them is the other half of the game.
+const LETTER := preload("res://game/ui/torn_letter.gd")
 func fill_slips(notes: Array, hints := []) -> void:
 	for old in slips.get_children():
 		if old == pages: slips.remove_child(pages)
@@ -260,29 +256,30 @@ func fill_slips(notes: Array, hints := []) -> void:
 		return
 	slips.add_child(pages)
 	pages.position = Vector2(0, 40)
-	var across := slips.size.x - LEAF.x
-	for i in notes.size():
-		var note: Dictionary = notes[i]
-		var cell := Control.new()
-		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.size = LEAF
-		cell.position = Vector2(across * (i % 2), LEAF.y * CHAIN * i)
-		pages.add_child(cell)
-		cell.add_child(leaf(int(note.digit), int(note.slot)))
-		var where := String(note.get("where", ""))
-		var label := Label.new()
-		label.text = where if not where.is_empty() else "¿DÓNDE?"
-		label.add_theme_font_override("font", STYLE.font())
-		label.add_theme_font_size_override("font_size", 11)
-		label.add_theme_color_override("font_color", Color(GRAPHITE, 0.8))
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.position = Vector2(8, LEAF.y * 0.6)
-		label.size = Vector2(LEAF.x - 16, LEAF.y * 0.12)
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.add_child(label)
-	# The hints under the pages, smaller, in a chain of their own.
-	var y := 0.0 if notes.is_empty() else LEAF.y * CHAIN * float(notes.size() - 1) + LEAF.y + 16.0
+	var letter_size := Vector2(slips.size.x - 6.0, (slips.size.x - 6.0) * 1.5)
+	if not notes.is_empty():
+		var letter := Control.new()
+		letter.name = "Letter"
+		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		letter.size = letter_size
+		pages.add_child(letter)
+		var found := {}
+		for note in notes: found[int(note.slot)] = note
+		letter.draw.connect(func() -> void:
+			var full := LETTER.CARTA.get_size()
+			var scale := letter_size / full
+			for place in range(1, 5):
+				var box: Rect2 = LETTER.quarter(place)
+				var rect := Rect2(box.position * scale, box.size * scale)
+				if not found.has(place):
+					letter.draw_rect(rect.grow(-3.0), Color(PAPER, 0.08), false, 1.0)
+					continue
+				# Put back nearly where it was torn from: a hair apart, a hair
+				# askew.
+				var nudge := Vector2(HAND.jitter(float(place), 2.0), HAND.jitter(float(place), 4.0)) * 4.0
+				LETTER.draw_piece(letter, place, Rect2(rect.position + nudge, rect.size), int(found[place].digit), String(found[place].get("where", "")), HAND.jitter(float(place), 6.0) * 0.05))
+	# The hints under the letter, smaller, in a chain of their own.
+	var y := 0.0 if notes.is_empty() else letter_size.y + 16.0
 	var room_left := slips.size.y - 40.0 - y
 	var step := minf(84.0, room_left / maxf(1.0, float(hints.size()) + 0.6))
 	for i in hints.size():
@@ -343,30 +340,6 @@ func thumb_at(point: Vector2) -> Dictionary:
 		var origin: Vector2 = slips.position + pages.position + cell.position
 		if Rect2(origin, cell.size).has_point(point): return entry.hint
 	return {}
-
-## One of the pages: a scrap of the same worn paper, not quite square to the
-## others, with its number and its page number in pencil.
-func leaf(digit: int, place: int) -> Control:
-	var scrap := Control.new()
-	scrap.custom_minimum_size = LEAF
-	scrap.size = LEAF
-	scrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var worn := HAND.wear(Vector2i(48, 61), 311 + place * 97)
-	var tilt := HAND.jitter(float(place), 4.2) * 0.09
-	scrap.draw.connect(func() -> void:
-		var middle := LEAF * 0.5
-		scrap.draw_set_transform(middle, tilt, Vector2.ONE)
-		var corner := -middle
-		scrap.draw_rect(Rect2(corner + Vector2(3, 4), LEAF), Color(0, 0, 0, 0.35))
-		scrap.draw_rect(Rect2(corner, LEAF), PAPER)
-		scrap.draw_texture_rect(worn, Rect2(corner, LEAF), false)
-		# The number in the upper part: the next leaf of the chain covers the
-		# bottom of this one.
-		var figure := Rect2(corner + Vector2(LEAF.x * 0.24, LEAF.y * 0.1), Vector2(LEAF.x * 0.52, LEAF.y * 0.46))
-		HAND.write_digit(scrap, digit, figure, GRAPHITE, LEAF.x * 0.07, place * 13 + digit)
-		HAND.write_page(scrap, place, corner + Vector2(LEAF.x * 0.84, LEAF.y * 0.09), 9.0, GRAPHITE, place * 7)
-		scrap.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE))
-	return scrap
 
 func close() -> void:
 	put_down()

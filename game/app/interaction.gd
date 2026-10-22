@@ -105,14 +105,17 @@ func close_document() -> void:
 	level.ui.hide_document()
 
 ## A hint of the last planta held up (hint_view.gd), and kept: from now on it
-## hangs on this player's sheet, and what it marks is on their plan.
-func read_hint(id: int) -> void:
+## hangs on this player's sheet, and what it marks is on their plan. A blank
+## "do not disturb" card (one on another door) is held up the same, with
+## nothing on its back, and not kept.
+func read_hint(id: int, blank := false) -> void:
 	var hint: Dictionary = level.code.hint_of(id)
 	if hint.is_empty(): return
 	if is_instance_valid(reading_document) or not reading_entry.is_empty(): close_document()
 	reading_hint = id
 	level.player.reading = true
-	level.code.note_read(id)
+	if blank: hint = hint.merged({"hand": []}, true)
+	else: level.code.note_read(id)
 	level.ui.show_hint(hint, level.code.hint_walls())
 	if level.world_audio.enabled: level.paper_sound.play()
 
@@ -290,7 +293,7 @@ func drive_local(delta: float) -> void:
 		return
 	var hint_target = aimed if aimed is HINT_PAPER else null
 	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(hint_target):
-		read_hint(hint_target.hint_id)
+		read_hint(hint_target.hint_id, hint_target.blank)
 		was_held = true
 		return
 	# An electrical panel: only whoever has the key opens it, and from it gives

@@ -1,16 +1,17 @@
 extends RefCounted
 ## The hints of the stage that asks for the code (the last, in the hotel):
 ## eight papers on its planta that say, each its own way, where the pages of
-## the code are (the author, 20 October 2026). Four lie in sight on tables and
-## desks, well short of the far end, one for each page, and say where to look
-## without saying where it is: the block of rooms on a maid's sheet, a work
-## order of the maintenance, directions written down from the lift and torn
-## before the end, a sign taken off the door of a room the page is in or
-## beside. Three are in drawers further in and put a page on the plan: a
-## carbon copy that leaves a circle on the sheet, a corner of an evacuation
-## plan with a cross on it, and a trail of chalk on the walls. And one, in the
-## most out-of-the-way room of the planta, is the sheet of somebody who was
-## here before, with the four marked.
+## the code are (the author, 20 October 2026, reworked on the 22nd after
+## playing it). Four lie in sight on tables and desks, well short of the far
+## end, one for each page: a maid's sheet and a work order that name the
+## page's room, directions written down from the lift and torn before the
+## end, and a Polaroid of the piece of furniture the page is in, taken in its
+## room. Three more are for three of the pages: a carbon copy and a corner of
+## an evacuation plan, in drawers further in, which put the page on the plan,
+## and a "do not disturb" card hung on the door of the page's room, among a
+## few others left blank on other doors. And one, in the most out-of-the-way
+## room of the planta, is the sheet of somebody who was here before, with
+## the four marked.
 ##
 ## None lies in the zone of its own page, nor in a room with a page. Worked
 ## out from the seed, the planta and the furniture, the same on every machine:
@@ -18,8 +19,8 @@ extends RefCounted
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const DOCUMENTS := preload("res://game/world/generation/document_placement.gd")
-const ZONE_KINDS := ["limpieza", "orden", "indicaciones", "cartel"]
-const POINT_KINDS := ["calco", "plano", "tiza"]
+const ZONE_KINDS := ["limpieza", "orden", "indicaciones", "polaroid"]
+const POINT_KINDS := ["calco", "plano", "nomolestar"]
 const POINTS := 3
 ## Where the papers in sight lie, as shares of the walk to the farthest room
 ## from the lobby (and never nearer than ZONE_LEAST metres); and the drawers
@@ -35,21 +36,19 @@ const SURFACES := DOCUMENTS.SURFACES
 const CIRCLE := 10.0
 const CORNER := Vector2(44.0, 32.0)
 const MARKED := 4.0
-## The chalk: from where to where it may run, in metres walked, and one arrow
-## every this many on a straight.
-const CHALK := Vector2(12.0, 70.0)
-const CHALK_EVERY := 9.0
+## The "do not disturb" cards left blank on other doors of the planta, so
+## that a card on a door is not by itself the answer.
+const BLANK_CARDS := 3
 ## How a maid ticks a room off.
 const STATES := ["HECHA", "HECHA", "HECHA", "HECHA", "NO MOLESTAR", "SIN TOALLAS", "CAMA SIN HACER", "NO ABRE"]
-## The rooms whose door a sign can come off, and what it said.
-const SIGNS := {7: "SOLO PERSONAL", 6: "CERRADO", 5: "SE RUEGA SILENCIO", 17: "NO PISAR LAS PLANTAS", 18: "EN OBRAS", 13: "SILENCIO", 14: "APAGUE AL SALIR", 4: "FUERA DE SERVICIO", 16: "SOLO PERSONAL", 8: "PRIVADO", 9: "PELIGRO", 15: "PRIVADO"}
 ## Where in a piece of furniture a paper is, said as a maid would say it.
 const IN_PIECE := {"commode": "en un cajón", "console": "en una consola", "drawers": "en un cajón", "bookcase": "en una estantería", "cabinet": "en un mueble", "boxes": "en unas cajas", "luggage": "en una maleta"}
 const ORDINALS := ["primer", "segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo"]
 
 ## Returns [{id, kind, slot (the page it is about, 0 for all four), place
-## ("surface" or "container"), container (or -1), room, position, yaw, and
-## what it shows: printed (lines), hand (lines), rows, and plan data}].
+## ("surface", "container", or "door" for the card), container (or -1),
+## room, position, yaw, and what it shows: printed (lines), hand (lines),
+## rows, and plan data}].
 ## `containers` are the hotel's furniture spots (hotel_geometry.containers),
 ## `hiding` what digit_placement.choose() put in them.
 static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage := 3) -> Array:
@@ -82,6 +81,7 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 	var kinds := ZONE_KINDS.duplicate()
 	shuffle(kinds, rng)
 	var surfaces := surface_spots(manifest, wing, metres, deepest, refuge, blocked, rng)
+	var wider: Array = []
 	for page in pages:
 		var made := {}
 		for attempt in kinds.size():
@@ -90,6 +90,11 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 			if not made.is_empty(): break
 		if made.is_empty(): made = zone_hint(manifest, "limpieza", page, entry, rng)
 		var spot := pick_spot(surfaces, page, hints, rooms, rng)
+		# Too few tables between the near and the far end: anywhere on the
+		# planta a table is, but its zone.
+		if spot.is_empty():
+			if wider.is_empty(): wider = surface_spots(manifest, wing, metres, deepest, refuge, blocked, rng, Vector2(0.0, 1.01))
+			spot = pick_spot(wider, page, hints, rooms, rng)
 		if spot.is_empty(): continue
 		blocked[int(spot.room)] = true
 		made.merge({"id": hints.size(), "slot": int(page.slot), "place": "surface", "container": -1, "room": int(spot.room), "position": spot.position, "yaw": float(spot.yaw)}, true)
@@ -99,6 +104,15 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 	shuffle(marked, rng)
 	var ways := POINT_KINDS.duplicate()
 	shuffle(ways, rng)
+	# The card goes to a page whose room has a door to hang it on, if any has.
+	var card_at := ways.find("nomolestar")
+	if card_at < marked.size() and card(manifest, marked[card_at]).is_empty():
+		for other in marked.size():
+			if other == card_at or card(manifest, marked[other]).is_empty(): continue
+			var swap: Dictionary = marked[other]
+			marked[other] = marked[card_at]
+			marked[card_at] = swap
+			break
 	# Of the papers that help (the hints and the documents), one at most is
 	# shut in a suitcase on a floor: the rest are seen at a glance (the
 	# author's word, 21 October 2026).
@@ -111,12 +125,18 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 	for index in mini(POINTS, marked.size()):
 		var page: Dictionary = marked[index]
 		var made := point_hint(manifest, String(ways[index]), page, rng)
-		# No chalk to be had (no corridor to the door): the plan's corner, or
-		# the carbon copy, whichever is not there yet.
+		# No door of its own to hang a card on: the plan's corner, or the
+		# carbon copy, whichever is not there yet.
 		if made.is_empty():
 			var spare: Array = ["plano", "calco"].filter(func(kind): return not used.has(kind) and not ways.slice(index + 1, POINTS).has(kind))
 			made = point_hint(manifest, String(spare[0]) if not spare.is_empty() else "calco", page, rng)
 		used[String(made.kind)] = true
+		# The card hangs on the page's own door, outside: not in a drawer.
+		if String(made.kind) == "nomolestar":
+			made.merge({"id": hints.size(), "slot": int(page.slot), "place": "door", "container": -1, "room": int(made.door[1]), "position": FLOOR.portal_between(rooms[int(made.door[0])], rooms[int(made.door[1])]), "yaw": 0.0}, true)
+			made["blank"] = blank_cards(manifest, page_rooms, int(made.door[0]), wing, rng)
+			hints.append(made)
+			continue
 		var spot := pick_spot(drawers, page, hints, rooms, rng)
 		if spot.is_empty(): continue
 		blocked[int(spot.room)] = true
@@ -143,7 +163,7 @@ static func zone_hint(manifest: Dictionary, kind: String, page: Dictionary, entr
 		"limpieza": return cleaning(manifest, page, rng)
 		"orden": return work_order(manifest, page, rng)
 		"indicaciones": return directions(manifest, page, entry, rng)
-		"cartel": return door_sign(manifest, page)
+		"polaroid": return {"kind": "polaroid", "printed": [], "rows": [], "hand": [], "shot": int(page.container)}
 	return {}
 
 ## The maid's sheet: the block of rooms she had, the page's among them, each
@@ -256,19 +276,6 @@ static func directions(manifest: Dictionary, page: Dictionary, entry: int, rng: 
 	hand.append(torn.substr(0, cut).strip_edges())
 	return {"kind": "indicaciones", "printed": [], "rows": [], "hand": hand}
 
-## A sign off a door: the room the page is in, if it is one a sign hangs on,
-## or the one beside it through a door.
-static func door_sign(manifest: Dictionary, page: Dictionary) -> Dictionary:
-	var rooms: Array = manifest.rooms
-	var target: Dictionary = rooms[int(page.room)]
-	if SIGNS.has(int(target.type)):
-		return {"kind": "cartel", "printed": [String(FLOOR.NAMES[int(target.type)]).to_upper(), String(SIGNS[int(target.type)])], "rows": [], "hand": ["La del número, aquí dentro."]}
-	for other in manifest.adjacency[int(page.room)]:
-		var next: Dictionary = rooms[int(other)]
-		if bool(next.get("corridor", false)) or not SIGNS.has(int(next.type)): continue
-		return {"kind": "cartel", "printed": [String(FLOOR.NAMES[int(next.type)]).to_upper(), String(SIGNS[int(next.type)])], "rows": [], "hand": ["La del número, en el cuarto", "de al lado."]}
-	return {}
-
 # --- In drawers: on the plan ---------------------------------------------------------
 
 static func point_hint(manifest: Dictionary, kind: String, page: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
@@ -280,115 +287,69 @@ static func point_hint(manifest: Dictionary, kind: String, page: Dictionary, rng
 			return {"kind": "calco", "printed": [], "rows": [], "hand": [], "centre": at + off, "radius": CIRCLE}
 		"plano":
 			var shift := Vector2(rng.randf_range(-0.3, 0.3) * CORNER.x, rng.randf_range(-0.3, 0.3) * CORNER.y)
-			return {"kind": "plano", "printed": ["PLANO DE EVACUACIÓN", "USTED ESTÁ AQ"], "rows": [], "hand": [], "window": Rect2(at - CORNER * 0.5 + shift, CORNER), "cross": at}
-		"tiza": return chalk(manifest, page, rng)
+			var window := Rect2(at - CORNER * 0.5 + shift, CORNER)
+			# As a plan on a wall has them: the numbers of the rooms and the
+			# names of the rest (the author's word, 22 October 2026), so the
+			# corner is found by the plaques on the doors; and reading it puts
+			# a circle round the page on the plan, as the carbon copy does.
+			var labels: Array = []
+			for room in manifest.rooms:
+				if int(room.get("wing", -1)) != int(manifest.rooms[int(page.room)].wing) or bool(room.get("corridor", false)) or FLOOR.is_void(room): continue
+				var middle := FLOOR.position_of(room)
+				if not window.has_point(Vector2(middle.x, middle.z)): continue
+				labels.append([Vector2(middle.x, middle.z), str(int(room.number)) if int(room.get("number", 0)) > 0 else String(FLOOR.NAMES[int(room.type)]).to_upper()])
+			var angle := rng.randf() * TAU
+			var off := Vector2(cos(angle), sin(angle)) * CIRCLE * rng.randf_range(0.25, 0.55)
+			return {"kind": "plano", "printed": ["PLANO DE EVACUACIÓN", "USTED ESTÁ AQ"], "rows": [], "hand": [], "window": window, "cross": at, "labels": labels, "centre": at + off, "radius": CIRCLE}
+		"nomolestar": return card(manifest, page)
 	return {}
 
-## The chalk: from a fire door (or, with none near, a salon's door, or the
-## lift) along the corridors to the page's door, an arrow on a wall at every
-## turn and every CHALK_EVERY metres, and a cross beside the door.
-static func chalk(manifest: Dictionary, page: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
-	var rooms: Array = manifest.rooms
-	var target := int(page.room)
-	var wing := int(rooms[target].wing)
-	var merged := {}
-	for pair in manifest.get("merged", []): merged["%d:%d" % [int(pair[0]), int(pair[1])]] = true
-	# Corridor cells at the page's door.
-	var doors: Array = []
-	for other in manifest.adjacency[target]:
-		if bool(rooms[int(other)].get("corridor", false)): doors.append(int(other))
-	if doors.is_empty(): return {}
-	# Walking the corridors only, back from the door.
-	var back := corridor_walk(manifest, doors)
-	var starts: Array = []
-	for room in rooms:
-		if int(room.wing) != wing or not bool(room.get("corridor", false)) or not back.metres.has(int(room.id)): continue
-		for other in manifest.adjacency[int(room.id)]:
-			var next := int(other)
-			if not bool(rooms[next].get("corridor", false)) or next < int(room.id): continue
-			if merged.has("%d:%d" % [int(room.id), next]): continue
-			var walked := float(back.metres[int(room.id)])
-			if walked >= CHALK.x and walked <= CHALK.y: starts.append({"cell": int(room.id), "metres": walked, "from": "desde la puerta de incendios"})
-	if starts.is_empty():
-		for room in rooms:
-			if int(room.wing) != wing or not bool(room.get("corridor", false)) or not back.metres.has(int(room.id)): continue
-			var walked := float(back.metres[int(room.id)])
-			if walked < CHALK.x or walked > CHALK.y: continue
-			for other in manifest.adjacency[int(room.id)]:
-				var next: Dictionary = rooms[int(other)]
-				if int(next.type) == 10: starts.append({"cell": int(room.id), "metres": walked, "from": "desde el ascensor"})
-				elif int(next.hall) >= 0 and SIGNS.has(int(next.type)): starts.append({"cell": int(room.id), "metres": walked, "from": "desde %s" % room_said(next).to_lower()})
-	if starts.is_empty(): return {}
-	starts.sort_custom(func(a, b): return absf(float(a.metres) - 35.0) < absf(float(b.metres) - 35.0) or (is_equal_approx(absf(float(a.metres) - 35.0), absf(float(b.metres) - 35.0)) and int(a.cell) < int(b.cell)))
-	var start: Dictionary = starts[0]
-	var cells: Array = [int(start.cell)]
-	while back.parent.has(cells[cells.size() - 1]): cells.append(int(back.parent[cells[cells.size() - 1]]))
-	cells.append(target)
-	# An arrow on the right-hand wall of a stretch, near where it is walked
-	# into, at the first stretch after every turn and every CHALK_EVERY metres
-	# on a straight; a crossing has no walls to write on.
-	var marks: Array = []
-	var since := CHALK_EVERY
-	var last := Vector2i.ZERO
-	for index in range(0, cells.size() - 1):
-		var here: Dictionary = rooms[int(cells[index])]
-		var next: Dictionary = rooms[int(cells[index + 1])]
-		var heading := heading_of(here, next)
-		var way := Vector3(heading.x, 0, heading.y)
-		var right := Vector3(-way.z, 0, way.x)
-		var span := FLOOR.size_of(here)
-		var length: float = span.x if heading.x != 0 else span.y
-		var side: float = span.y * 0.5 if heading.x != 0 else span.x * 0.5
-		if int(cells[index + 1]) == target:
-			# Beside the page's door, on the corridor's side of its wall.
-			var door := FLOOR.portal_between(next, here)
-			marks.append({"room": int(here.id), "position": door - way * 0.08 + right * 0.95 + Vector3.UP * 1.45, "normal": -way, "along": right, "mark": "cross"})
-			break
-		var turned := heading != last
-		last = heading
-		if String(here.get("kind", "lane")) == "lane" and (turned or since >= CHALK_EVERY):
-			marks.append({"room": int(here.id), "position": FLOOR.position_of(here) + right * (side - 0.03) - way * (length * 0.5 - 1.6) + Vector3.UP * 1.35, "normal": -right, "along": way, "mark": "arrow"})
-			since = 0.0
-		since += length
-	if marks.size() < 2: return {}
-	return {"kind": "tiza", "printed": [], "rows": [], "hand": ["Marqué el camino con tiza", "%s." % String(start.from)], "marks": marks}
+## The card on the page's own door: the door to a corridor (or, with none,
+## any of its doors), hung outside on the knob; "no molestar" printed on it,
+## and on its back, in pencil, that it is in there.
+static func card(manifest: Dictionary, page: Dictionary) -> Dictionary:
+	var room := int(page.room)
+	var outside := -1
+	for other in manifest.adjacency[room]:
+		if bool(manifest.rooms[int(other)].get("corridor", false)) and has_leaf(manifest, room, int(other)) and (outside < 0 or int(other) < outside): outside = int(other)
+	if outside < 0:
+		for other in manifest.adjacency[room]:
+			if has_leaf(manifest, room, int(other)) and (outside < 0 or int(other) < outside): outside = int(other)
+	if outside < 0: return {}
+	return {"kind": "nomolestar", "printed": ["NO MOLESTAR"], "rows": [], "hand": ["Está aquí dentro, %s." % String(IN_PIECE.get(String(page.kind), "en un mueble"))], "door": [room, outside]}
 
-## Metres walked along the corridors to the nearest of `doors`, and the next
-## cell on the way there from each.
-static func corridor_walk(manifest: Dictionary, doors: Array) -> Dictionary:
-	var rooms: Array = manifest.rooms
-	var metres := {}
-	var parent := {}
-	var open: Array = []
-	for door in doors:
-		metres[int(door)] = 0.0
-		open.append(int(door))
-	while not open.is_empty():
-		var best := 0
-		for index in open.size():
-			if float(metres[open[index]]) < float(metres[open[best]]): best = index
-		var at: int = open[best]
-		open.remove_at(best)
-		var here := FLOOR.position_of(rooms[at])
-		for other in manifest.adjacency[at]:
-			var next := int(other)
-			if not bool(rooms[next].get("corridor", false)): continue
-			var length: float = float(metres[at]) + here.distance_to(FLOOR.position_of(rooms[next]))
-			if not metres.has(next) or length < float(metres[next]) - 0.001:
-				if not metres.has(next): open.append(next)
-				metres[next] = length
-				parent[next] = at
-	return {"metres": metres, "parent": parent}
+## The blank ones: on the corridor doors of other numbered rooms of the
+## planta, none with a page, as guests leave them: [[room, corridor], ...].
+static func blank_cards(manifest: Dictionary, page_rooms: Dictionary, own: int, wing: int, rng: RandomNumberGenerator) -> Array:
+	var doors: Array = []
+	for room in manifest.rooms:
+		if int(room.get("wing", -1)) != wing or int(room.get("number", 0)) <= 0 or page_rooms.has(int(room.id)) or int(room.id) == own: continue
+		for other in manifest.adjacency[int(room.id)]:
+			if bool(manifest.rooms[int(other)].get("corridor", false)) and has_leaf(manifest, int(room.id), int(other)):
+				doors.append([int(room.id), int(other)])
+				break
+	shuffle(doors, rng)
+	return doors.slice(0, BLANK_CARDS)
+
+## Whether a door with a leaf (hotel_geometry, Door_a_b) hangs between two
+## rooms: not where two rooms were made one, nor a door of a stage.
+static func has_leaf(manifest: Dictionary, a: int, b: int) -> bool:
+	for pair in manifest.get("merged", []):
+		if (int(pair[0]) == a and int(pair[1]) == b) or (int(pair[0]) == b and int(pair[1]) == a): return false
+	for gate in manifest.get("gates", []):
+		var beyond := int(gate.get("beyond", -1))
+		if (int(gate.room) == a and beyond == b) or (int(gate.room) == b and beyond == a): return false
+	return true
 
 # --- Where they lie -------------------------------------------------------------------
 
 ## The tops of the planta a paper can lie on, within ZONE_SPAN of the way.
-static func surface_spots(manifest: Dictionary, wing: int, metres: Dictionary, deepest: float, refuge: int, blocked: Dictionary, rng: RandomNumberGenerator) -> Array:
+static func surface_spots(manifest: Dictionary, wing: int, metres: Dictionary, deepest: float, refuge: int, blocked: Dictionary, rng: RandomNumberGenerator, span := ZONE_SPAN) -> Array:
 	var spots: Array = []
 	for room in manifest.rooms:
 		if int(room.get("wing", -1)) != wing or int(room.id) == refuge or bool(room.get("landing", false)) or blocked.has(int(room.id)): continue
 		var walked := float(metres.get(int(room.id), -1.0))
-		if walked < maxf(ZONE_LEAST, deepest * ZONE_SPAN.x) or walked > deepest * ZONE_SPAN.y: continue
+		if walked < maxf(ZONE_LEAST, deepest * span.x) or walked > deepest * span.y: continue
 		for prop in room.props:
 			if not SURFACES.has(prop.kind): continue
 			var socket := GEOMETRY.prop_transform(room, prop)

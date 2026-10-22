@@ -719,8 +719,6 @@ pueda jugar entero sin tocar el teclado.
 
 - **Veinticuatro documentos de lore** (el autor, 22 de octubre de 2026): hasta tener 24 en el hotel, con **cuatro por piso, siempre** (hoy son cuatro en todo el piso 1 y salen dos por piso). Lo dejó para después. Anotar en Beads cuando `bd` vuelva a funcionar.
 
-- **Rediseñar cuatro papeles** (el autor, 22 de octubre de 2026, tras jugar con amigos): el **cartel de una puerta** como pista no sirve; **la esquina del plano de evacuación** no se entiende (con el plano de la hoja desvaneciéndose no se reconoce el trozo); **la tiza**, tras unas partidas, se busca sola sin leer la nota; y **las páginas del código**, cómo se reparten y cómo se ven en el mueble (la hoja blanca con rayas no se ve real). Propuestas en la conversación; decidir y hacer.
-
 - `four-vlz.12` **Volver a generar el tráiler** (`docs/TRAILER.md`): sus títulos quemados aún llevan punto medio y guion largo; el código ya no (20 de octubre de 2026).
 
 ## 4 · Assets que faltan (tuyos)

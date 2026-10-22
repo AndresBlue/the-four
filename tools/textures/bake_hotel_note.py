@@ -123,6 +123,7 @@ def main():
     print('wrote', os.path.normpath(OUT))
     for paper in RULED:
         bake_ruled(paper)
+    bake_piece()
 
 
 # The ruled papers (game/ui/ruled_paper.gd): the letter folded in four and the
@@ -159,6 +160,37 @@ def bake_ruled(paper):
             type_at(draw, font, (spec['from'], spec['lines'][index] - 7), text)
     out = os.path.join(ROOT, 'assets', 'textures', paper + '-lejos.png')
     Image.alpha_composite(sheet, ink).resize(SIZE, Image.LANCZOS).save(out)
+    print('wrote', os.path.normpath(out))
+
+
+# The pages of the code are the letter torn along its folds into four
+# (game/ui/torn_letter.gd): what shows of one shut in a piece of furniture is
+# the outside of a quarter, ruled and blank, torn along its two inner edges.
+FOLD = (515, 767)
+PIECE = (256, 384)
+
+
+def torn_mask(size, cut_x, cut_y, seed):
+    """Alpha of the top-left quarter: straight where the letter's own edges
+    are, ragged along the folds it was torn on (right and bottom)."""
+    rng = np.random.default_rng(seed)
+    w, h = size
+    mask = Image.new('L', size, 0)
+    draw = ImageDraw.Draw(mask)
+    right = [(cut_x + rng.uniform(-7, 7), y) for y in np.linspace(0, cut_y, 26)]
+    bottom = [(x, cut_y + rng.uniform(-7, 7)) for x in np.linspace(cut_x, 0, 20)]
+    draw.polygon([(0, 0), (cut_x, 0)] + right + bottom + [(0, cut_y)], fill=255)
+    return mask
+
+
+def bake_piece():
+    sheet = Image.open(os.path.join(ROOT, 'assets', 'carta.png')).convert('RGBA')
+    quarter = sheet.crop((0, 0, FOLD[0] + 10, FOLD[1] + 10))
+    cut = torn_mask(quarter.size, FOLD[0] - 4, FOLD[1] - 4, 7)
+    alpha = Image.fromarray(np.minimum(np.asarray(quarter.split()[3]), np.asarray(cut)))
+    quarter.putalpha(alpha)
+    out = os.path.join(ROOT, 'assets', 'textures', 'carta-trozo.png')
+    quarter.resize(PIECE, Image.LANCZOS).save(out)
     print('wrote', os.path.normpath(out))
 
 

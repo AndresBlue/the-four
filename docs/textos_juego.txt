@@ -1661,24 +1661,23 @@ ACTUAL: Al salir del ascensor, a la derecha / a la izquierda / recto. ·
 |    (%s del cruce: primer, segundo, tercer, cuarto, quinto, sexto, séptimo, octavo)
 CORRECCIÓN:
 
-[PIST.04] El cartel de una puerta (impreso; lo último, a lápiz)
-ACTUAL: LAVANDERÍA, SOLO PERSONAL / COMEDOR, CERRADO / SALÓN, SE RUEGA SILENCIO / JARDÍN INTERIOR, NO PISAR LAS PLANTAS /
-| SALÓN VACÍO, EN OBRAS / SALA DE LECTURA, SILENCIO / SALA DE TELEVISIÓN, APAGUE AL SALIR / BAÑOS, FUERA DE SERVICIO /
-| GUARDARROPA, SOLO PERSONAL / ALMACÉN, PRIVADO / MANTENIMIENTO, PELIGRO / OFICINA, PRIVADO ·
-| La del número, aquí dentro. / La del número, en el cuarto de al lado.
+[PIST.04] Polaroid (la foto del mueble de la página, sacada en el piso; sin texto)
+ACTUAL: (sin texto)
 CORRECCIÓN:
 
 [PIST.05] Papel carbón (medio transparente; el círculo se calca en el plano de la hoja; encima, fuera del papel)
 ACTUAL: ZONA MARCADA EN EL MAPA
 CORRECCIÓN:
 
-[PIST.06] La esquina de un plano de evacuación (impreso, roto)
-ACTUAL: PLANO DE EVACUACIÓN · USTED ESTÁ AQ
+[PIST.06] La esquina de un plano de evacuación (impreso, roto; con el número de cada habitación y el nombre de las demás salas; su círculo se calca en el plano de la hoja; encima, fuera del papel)
+ACTUAL: PLANO DE EVACUACIÓN · USTED ESTÁ AQ · ZONA MARCADA EN EL MAPA
+|    (y en el plano: 303, 305... / OFICINA, MANTENIMIENTO, REFUGIO...)
 CORRECCIÓN:
 
-[PIST.07] La nota de la tiza (a lápiz)
-ACTUAL: Marqué el camino con tiza desde la puerta de incendios. / desde el ascensor. / desde %s.
-|    (%s: el comedor, el salón, la lavandería...)
+[PIST.07] La tarjeta de «No molestar» (impresa por delante; por detrás, a lápiz, solo la de la puerta de la página: las demás, en blanco)
+ACTUAL: HOTEL THE FOUR · NO MOLESTAR · POR FAVOR ·
+| Está aquí dentro, %s.
+|    (%s: en un cajón / en una consola / en una estantería / en un mueble / en unas cajas)
 CORRECCIÓN:
 
 [PIST.08] La hoja de otro (la hoja doblada en cuatro con el plano y cuatro círculos de su lápiz, que se calcan en el plano; encima, fuera del papel)

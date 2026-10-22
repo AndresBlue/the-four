@@ -307,25 +307,29 @@ func echo_box(room: Node3D, at: Transform3D, size: Vector3) -> void:
 ## Taking it is going through the piece as usual; the paper leaves with it,
 ## which is the other half of the answer -- you can see, from the doorway,
 ## which rooms you have already been through.
+##
+## It is a piece of the torn letter (torn_letter.gd, the author's word, 22
+## October 2026), folded with its number inside: what shows is the outside of
+## a quarter of the letter, ruled and blank, torn along two edges
+## (assets/textures/carta-trozo.png). A white sheet with lines drawn on it did
+## not look like anything real. The pieces with a hint or a document in them
+## show the same, so nobody can tell which is which from outside.
 const SHEET := Vector2(0.16, 0.21)
 const THICK := 0.003
-## A few lines of handwriting across it, every LINE_EVERY metres: they are what
-## says a note rather than a scrap, close up.
-const INK := Color(0.16, 0.15, 0.18)
-const LINE_EVERY := 0.024
+const PIECE := preload("res://assets/textures/carta-trozo.png")
+static var piece_paper: StandardMaterial3D
 var note: Node3D
 func plant_note() -> void:
 	if is_instance_valid(note): return
 	var spot := note_spot
 	if spot.is_empty(): spot = {"at": Vector3(0.02, 0.56, maxf(front, 0.3) + 0.01), "yaw": 0.0, "skew": 0.0, "lie": 0.0, "hang": SHEET.y, "lie_tilt": 0.0, "hang_tilt": 0.3}
-	var sheet := StandardMaterial3D.new()
-	# The palest thing in the room, and no light of its own: the torch is what
-	# picks it out. Lit of itself it hung in a pitch-dark room like a lamp.
-	sheet.albedo_color = Color(0.96, 0.94, 0.87)
-	sheet.roughness = 0.95
-	var ink := StandardMaterial3D.new()
-	ink.albedo_color = INK
-	ink.roughness = 1.0
+	if piece_paper == null:
+		# The paper's edge and back: as pale as its face, and no light of its
+		# own -- the torch is what picks it out. Lit of itself it hung in a
+		# pitch-dark room like a lamp.
+		piece_paper = StandardMaterial3D.new()
+		piece_paper.albedo_color = Color(0.86, 0.8, 0.68)
+		piece_paper.roughness = 0.95
 	note = Node3D.new()
 	note.name = "Note"
 	# With the piece it lies on, which stands a hair off the floor
@@ -334,28 +338,32 @@ func plant_note() -> void:
 	note.rotation.y = float(spot.yaw)
 	add_child(note)
 	var skew := float(spot.get("skew", 0.0))
-	# Back from the fold, down by lie_tilt, askew on the surface it lies on.
 	var lie := float(spot.lie)
+	var hang := float(spot.hang)
+	# The quarter runs from the end lying back, over the fold, to the foot of
+	# the part hanging down.
+	var folded := lie / maxf(lie + hang, 0.001)
+	# Back from the fold, down by lie_tilt, askew on the surface it lies on.
 	if lie > 0.001:
 		var tilt := Basis(Vector3.UP, skew) * Basis(Vector3.RIGHT, -float(spot.lie_tilt))
-		add_part("Lie", tilt, Vector3(0, THICK * 0.5, -lie * 0.5), Vector3(SHEET.x, THICK, lie), sheet, ink, Vector3(0, 0, -1), Vector3(0, 1, 0))
+		add_part("Lie", tilt, Vector3(0, THICK * 0.5, -lie * 0.5), Vector3(SHEET.x, THICK, lie), Basis(Vector3.RIGHT, -PI * 0.5), Vector3(0, THICK * 0.5 + 0.0006, 0), 0.0, folded)
 	# Down from the fold, its foot out by hang_tilt, askew on the face it hangs
 	# against: the same turn, seen from the front.
-	var hang := float(spot.hang)
 	if hang > 0.001:
 		var tilt := Basis(Vector3.RIGHT, -float(spot.hang_tilt)) * Basis(Vector3.BACK, skew)
-		add_part("Hang", tilt, Vector3(0, -hang * 0.5, THICK * 0.5), Vector3(SHEET.x, hang, THICK), sheet, ink, Vector3(0, -1, 0), Vector3(0, 0, 1))
+		add_part("Hang", tilt, Vector3(0, -hang * 0.5, THICK * 0.5), Vector3(SHEET.x, hang, THICK), Basis.IDENTITY, Vector3(0, 0, THICK * 0.5 + 0.0006), folded, 1.0)
 
 ## One part of the folded sheet: `turn` sets it on its face, `centre` is its
-## middle before the turn, measured from the fold. Its lines of writing run
-## across it, away from the fold (`away`), on the face that shows (`face`).
-func add_part(part_name: String, turn: Basis, centre: Vector3, size: Vector3, sheet: Material, ink: Material, away: Vector3, face: Vector3) -> void:
+## middle before the turn, measured from the fold. The quarter's picture
+## covers the face that shows (`facing` turns a quad onto it, `face` puts it
+## a hair off it), from `from` to `to` of the way down the quarter.
+func add_part(part_name: String, turn: Basis, centre: Vector3, size: Vector3, facing: Basis, face: Vector3, from: float, to: float) -> void:
 	var paper := BoxMesh.new()
 	paper.size = size
 	var part := MeshInstance3D.new()
 	part.name = part_name
 	part.mesh = paper
-	part.material_override = sheet
+	part.material_override = piece_paper
 	part.transform = Transform3D(turn, turn * centre)
 	# The shadow of the part hanging down is half of what says a paper and
 	# not a label stuck on: the torch throws it on the wood under the part
@@ -363,23 +371,23 @@ func add_part(part_name: String, turn: Basis, centre: Vector3, size: Vector3, sh
 	# open top it went grey in its own shadow).
 	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if part_name == "Hang" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	note.add_child(part)
-	var length: float = absf(size.dot(away))
-	var line := BoxMesh.new()
-	line.size = Vector3(SHEET.x * 0.7, 0.003, 0.003)
-	line.material = ink
-	var written := 0
-	var along := 0.018
-	while along < length - 0.012:
-		var stroke := MeshInstance3D.new()
-		stroke.mesh = line
-		# Every third line ends a sentence short; all start at one margin.
-		var short: float = 0.03 if written % 3 == 2 else 0.0
-		stroke.scale = Vector3(1.0 - short / (SHEET.x * 0.7), 1.0, 1.0)
-		stroke.position = away * (along - length * 0.5) + face * (THICK * 0.5 + 0.0012) + Vector3(-short * 0.5, 0, 0)
-		stroke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		part.add_child(stroke)
-		written += 1
-		along += LINE_EVERY
+	var quad := QuadMesh.new()
+	quad.size = Vector2(size.x, maxf(size.y, size.z) if part_name == "Hang" else size.z)
+	var look := StandardMaterial3D.new()
+	look.albedo_texture = PIECE
+	look.roughness = 0.95
+	look.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	look.alpha_scissor_threshold = 0.5
+	look.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	look.uv1_scale = Vector3(1.0, to - from, 1.0)
+	look.uv1_offset = Vector3(0.0, from, 0.0)
+	var shown := MeshInstance3D.new()
+	shown.name = "Face"
+	shown.mesh = quad
+	shown.material_override = look
+	shown.transform = Transform3D(facing, face)
+	shown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	part.add_child(shown)
 
 ## The key shut in its drawer: out of the slit where a note would be, its
 ## ring caught in it and the key hanging down the drawer's front, a little off

@@ -12,10 +12,11 @@ const HINTS := preload("res://game/world/generation/hint_placement.gd")
 const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
 const PANEL := preload("res://game/world/interactables/hotel_panel.gd")
 const DRESSING := preload("res://game/world/hotel/room_dressing.gd")
-const CHALK := preload("res://game/presentation/shaders/chalk.gdshader")
-## The marks the hints put on the plan: the carbon copy's circle, and the
-## other sheet's four in its own pencil (the sixth of the sheet's inks).
+## The marks the hints put on the plan: the carbon copy's circle, the
+## evacuation plan's in its red, and the other sheet's four in its own pencil
+## (the sixth of the sheet's inks).
 const CARBON_MARK := Color(0.2, 0.22, 0.42)
+const PLAN_MARK := Color(0.55, 0.12, 0.09)
 const OTHER_MARK := Color(0.29, 0.1, 0.33)
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const SEARCH_TIMING := preload("res://game/audio/search_timing.gd")
@@ -149,8 +150,8 @@ var opening_meshes := {}
 
 ## The hints of the stage that asks for the code: those in drawers show a slip
 ## as the pages do (nobody can tell which is which before looking); those in
-## sight lie on their table; and what two of them speak of is put in the
-## world -- the work order's wet floor sign, the chalk on the walls.
+## sight lie on their table; the card hangs on its door, among blank ones on
+## other doors; and the work order's wet floor sign is put out where it says.
 ## The floor's electrical panels, where the dressing hung them.
 func place_panels() -> void:
 	panels.clear()
@@ -236,6 +237,9 @@ func place_hints(hiding: Array, stage: int) -> void:
 			if index < 0 or index >= containers.size(): continue
 			containers[index].hint = int(hint.id)
 			containers[index].plant_note()
+		elif String(hint.place) == "door":
+			hang_card(hint.door, int(hint.id), false)
+			for blank in hint.get("blank", []): hang_card(blank, int(hint.id), true)
 		else:
 			var paper := HINT_PAPER.new()
 			paper.name = "Hint_%d" % int(hint.id)
@@ -247,9 +251,29 @@ func place_hints(hiding: Array, stage: int) -> void:
 			sign.name = "WetFloorSign"
 			sign.mesh = DRESSING.mesh("WetFloorSign_01")
 			put_in_room(sign, int(hint.sign.room), Transform3D(Basis(Vector3.UP, float(hint.sign.yaw)), hint.sign.position))
-		for mark in hint.get("marks", []):
-			var chalk := chalk_mark(mark)
-			put_in_room(chalk, int(mark.room), chalk.get_meta("where"))
+
+## A "do not disturb" card on the door between `pair` [room, outside], hung
+## on the knob on the outside's face (hotel_door.gd's leaf runs along +X from
+## its hinge; the knob is at KNOB), and swinging with the leaf. `blank`: one of
+## those on other doors, with nothing on its back.
+const KNOB := Vector3(1.16, 1.25, 0.078)
+func hang_card(pair: Array, id: int, blank: bool) -> void:
+	var room: Dictionary = level.manifest.rooms[int(pair[0])]
+	var outside: Dictionary = level.manifest.rooms[int(pair[1])]
+	var door: Node3D = null
+	for candidate in level.hotel.doors:
+		if String(candidate.name) in ["Door_%d_%d" % [int(pair[0]), int(pair[1])], "Door_%d_%d" % [int(pair[1]), int(pair[0])]]: door = candidate
+	if door == null: return
+	var side := signf((FLOOR.position_of(outside) - (door.doorway as Vector3)).dot(Basis(Vector3.UP, door.closed_rotation).z))
+	var hanger := HINT_PAPER.new()
+	hanger.name = "Card_%d_%d" % [int(room.id), int(outside.id)]
+	hanger.hint_id = id
+	hanger.kind = "nomolestar"
+	hanger.blank = blank
+	door.add_child(hanger)
+	# Its hole round the knob's neck (2.3 cm under the card's top), flat on
+	# the leaf below it.
+	hanger.transform = Transform3D(Basis(Vector3.UP, 0.0 if side >= 0.0 else PI), Vector3(KNOB.x, KNOB.y - 0.09, side * KNOB.z))
 
 ## Under its room's node, so its lamps light it and it goes with the room;
 ## where the hint said, in the world.
@@ -258,36 +282,70 @@ func put_in_room(node: Node3D, room: int, where: Transform3D) -> void:
 	parent.add_child(node)
 	node.global_transform = where
 
-## A mark of the chalk on a wall: an arrow along the trail, or the cross by
-## the door, a hair off the plaster.
-func chalk_mark(mark: Dictionary) -> MeshInstance3D:
-	var cross := String(mark.mark) == "cross"
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.34, 0.34) if cross else Vector2(0.56, 0.24)
-	var material := ShaderMaterial.new()
-	material.shader = CHALK
-	var normal: Vector3 = (mark.normal as Vector3).normalized()
-	var across := Vector3.UP.cross(normal).normalized()
-	material.set_shader_parameter("cross_mark", cross)
-	material.set_shader_parameter("flip", across.dot(mark.along) < 0.0)
-	material.set_shader_parameter("seed", float(int(mark.room) % 97))
-	var node := MeshInstance3D.new()
-	node.name = "Chalk"
-	node.mesh = quad
-	node.material_override = material
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.set_meta("where", Transform3D(Basis(across, Vector3.UP, normal), (mark.position as Vector3) + normal * 0.012))
-	return node
-
 func hint_of(id: int) -> Dictionary:
 	return hints[id] if id >= 0 and id < hints.size() else {}
 
 ## A hint comes to this player: taken from a drawer, or read where it lies.
 func own_hint(id: int) -> void:
 	if not hints_mine.has(id): hints_mine.append(id)
+	if String(hint_of(id).get("kind", "")) == "polaroid": develop_photo(hint_of(id))
+
+## The Polaroid's picture (hint_view.gd): the piece of furniture its page is
+## in, from a step or two back in its room, with the flash, as whoever was
+## here before took it. Taken on this machine the first time the hint is had
+## (read, or given back with a kept floor): a camera of its own on the same
+## world, with the room shown for the frames it takes, whatever the round of
+## the rooms says (hotel_geometry.update_visibility(), which puts it back on
+## its next round). Without a screen nothing is drawn, and it has none.
+const PHOTO_SIZE := 512
+const PHOTO_BACK := 2.2
+const PHOTO_EYE := 1.45
+func develop_photo(hint: Dictionary) -> void:
+	if hint.has("photo") or hint.has("developing") or DisplayServer.get_name() == "headless": return
+	var index := int(hint.get("shot", -1))
+	if index < 0 or index >= containers.size() or not is_instance_valid(containers[index]): return
+	hint["developing"] = true
+	var piece: Node3D = containers[index]
+	var out := Vector3(piece.global_basis.z.x, 0.0, piece.global_basis.z.z).normalized()
+	var target := piece.global_position + out * float(piece.front) + Vector3.UP * 0.55
+	var wanted := target + out * PHOTO_BACK + out.cross(Vector3.UP) * 0.3 + Vector3.UP * (PHOTO_EYE - 0.55)
+	# Not through a wall or a wardrobe: as far back as the room lets it.
+	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(target, wanted, 1 | 8))
+	var eye := wanted if hit.is_empty() else (hit.position as Vector3) - (wanted - target).normalized() * 0.2
+	var view := SubViewport.new()
+	view.name = "Polaroid"
+	view.size = Vector2i(PHOTO_SIZE, PHOTO_SIZE)
+	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var camera := Camera3D.new()
+	camera.fov = 58.0
+	camera.current = true
+	view.add_child(camera)
+	var flash := OmniLight3D.new()
+	flash.omni_range = 7.0
+	flash.light_energy = 2.4
+	flash.light_color = Color(1.0, 0.97, 0.92)
+	flash.shadow_enabled = true
+	view.add_child(flash)
+	level.add_child(view)
+	camera.look_at_from_position(eye, target, Vector3.UP)
+	flash.global_position = eye + Vector3.UP * 0.06
+	var room_node: Node3D = piece.get_parent() as Node3D
+	# Two frames drawn, the room shown just before each: what the round
+	# hides in between is shown again for the draw.
+	for frame in 2:
+		await RenderingServer.frame_pre_draw
+		if not is_instance_valid(view): return
+		if is_instance_valid(room_node): room_node.visible = true
+		view.render_target_update_mode = SubViewport.UPDATE_ONCE
+		await RenderingServer.frame_post_draw
+		if not is_instance_valid(view): return
+	hint["photo"] = ImageTexture.create_from_image(view.get_texture().get_image())
+	hint.erase("developing")
+	view.queue_free()
+	for lying in level.hotel.find_children("Hint_%d" % int(hint.id), "Area3D", true, false): lying.show_photo(hint.photo)
 
 func note_read(id: int) -> void:
-	if String(hint_of(id).get("place", "")) == "surface": hints_read[id] = true
+	if String(hint_of(id).get("place", "")) in ["surface", "door"]: hints_read[id] = true
 	own_hint(id)
 
 ## This player's hints, as they hang on the sheet.
@@ -310,6 +368,7 @@ func hint_marks() -> Array:
 		var planta := int(level.manifest.rooms[int(hint.room)].wing)
 		match String(hint.kind):
 			"calco": marks.append({"planta": planta, "centre": hint.centre, "radius": float(hint.radius), "ink": CARBON_MARK})
+			"plano": marks.append({"planta": planta, "centre": hint.centre, "radius": float(hint.radius), "ink": PLAN_MARK})
 			"hoja":
 				for point in hint.points: marks.append({"planta": planta, "centre": point, "radius": float(hint.radius), "ink": OTHER_MARK})
 	return marks
