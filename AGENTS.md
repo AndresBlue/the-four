@@ -1,5 +1,7 @@
 # Agent Instructions
 
+How work is split between the main session and its agents, and the rules every agent follows here (Godot with `--test-profile`, no commits by agents, no «·» or «—» in game text...), are in `CLAUDE.md`, section «Cómo se trabaja: tres niveles». The state of the work in progress is in `.claude/relevo.md`.
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 > **Architecture in one line:** Issues live in a local Dolt database
