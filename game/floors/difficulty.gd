@@ -30,6 +30,9 @@ const NAMES := {"apacible": "Apacible", "equilibrada": "Equilibrada", "desafiant
 ## choosing) -- how it notices, how it runs, how much it lets you be, and
 ## what a lost stage costs. Only what the numbers below already do: the
 ## behaviours of each still to come (docs/DIFFICULTY.md) are not promised.
+## They are The Locust's (the hotel's creature), shown on every floor for
+## now: another creature's lines are the author's to write, and The
+## Lurker's are not written yet (docs/OFICINAS.md has none).
 const TRAITS := {
 	"apacible": ["Tarda en verte y en reaccionar", "Corre lo que tú y se cansa pronto", "Largos respiros entre encuentros", "Reintentos de etapa sin límite"],
 	"equilibrada": ["Duda un instante antes de reaccionar", "Corre lo que tú: hay que perderla de vista", "Un respiro tras cada encuentro", "Reintentos de etapa: 1 a solas, 2 en equipo"],
@@ -140,13 +143,42 @@ const PROFILES := {
 	},
 }
 
+## Each creature's own levers, by difficulty, laid over PROFILES (which are
+## The Locust's, and what every creature shares: the director, the lifts,
+## the mercy) by profile(id, creature). The Locust has none: PROFILES are
+## already its own. The Lurker's are docs/OFICINAS.md section 4's table,
+## number for number; nothing reads them until her code arrives (phase 2):
+##  back_window (s from her warning at your back to the take), lit_takes
+##  (she takes from behind in a lit room too), duct_speed (m/s in the
+##  ducts), stalk_distance (m she keeps while stalking), freeze_time (s
+##  still in the light before she backs away), scare_calm (s of calm after
+##  a fright), creep_scale (x her speed closing in), drain_reach (m from a
+##  lamp at which she drinks it).
+const CREATURE_PROFILES := {
+	&"lurker": {
+		"apacible": {"back_window": 2.2, "lit_takes": false, "duct_speed": 1.2, "stalk_distance": 12.0, "freeze_time": 2.0, "scare_calm": 60.0, "creep_scale": 0.8, "drain_reach": 3.0},
+		"equilibrada": {"back_window": 1.8, "lit_takes": true, "duct_speed": 1.6, "stalk_distance": 10.0, "freeze_time": 3.0, "scare_calm": 45.0, "creep_scale": 0.9, "drain_reach": 3.0},
+		"desafiante": {"back_window": 1.5, "lit_takes": true, "duct_speed": 2.0, "stalk_distance": 8.0, "freeze_time": 4.0, "scare_calm": 35.0, "creep_scale": 1.0, "drain_reach": 3.5},
+		"pesadilla": {"back_window": 1.2, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 6.0, "freeze_time": 6.0, "scare_calm": 25.0, "creep_scale": 1.15, "drain_reach": 4.0},
+	},
+}
+
 ## A difficulty there is, or the reference for anything else (a tape or a
 ## checkpoint from before there were difficulties says nothing: it was this).
 static func valid(id: Variant) -> String:
 	return String(id) if id is String and PROFILES.has(String(id)) else REFERENCE
 
-static func profile(id: Variant) -> Dictionary:
-	return PROFILES[valid(id)]
+## A difficulty's levers for a creature: the shared ones (PROFILES) with
+## the creature's own over them. No creature, or one with none of its own
+## (The Locust), gets PROFILES as they are: the hotel plays as it did.
+static func profile(id: Variant, creature_key: StringName = &"") -> Dictionary:
+	var shared: Dictionary = PROFILES[valid(id)]
+	var mine: Dictionary = CREATURE_PROFILES.get(creature_key, {})
+	var own: Dictionary = mine.get(valid(id), {})
+	if own.is_empty(): return shared
+	var merged := shared.duplicate(true)
+	merged.merge(own, true)
+	return merged
 
 static func value(id: Variant, key: String) -> Variant:
 	return profile(id).get(key, PROFILES[REFERENCE][key])

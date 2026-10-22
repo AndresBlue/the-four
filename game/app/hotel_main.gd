@@ -134,12 +134,13 @@ func rule(id: String) -> int:
 
 ## The difficulty of the floor (game/floors/difficulty.gd): set as it starts,
 ## from the player's choice, the checkpoint or the room. Asked for with
-## tuning(), the whole profile.
+## tuning(), the whole profile, with the floor's creature's own levers over
+## it (kind.CREATURE_KEY; on the hotel, PROFILES as they are).
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 var difficulty := DIFFICULTY.REFERENCE
 
 func tuning() -> Dictionary:
-	return DIFFICULTY.profile(difficulty)
+	return DIFFICULTY.profile(difficulty, kind.CREATURE_KEY)
 
 func set_difficulty(id: Variant) -> void:
 	difficulty = DIFFICULTY.valid(id)
@@ -147,9 +148,10 @@ func set_difficulty(id: Variant) -> void:
 	apply_tuning()
 
 ## The rules of the floor about to be played: `said` is what the room changed
-## (nothing, alone).
+## (nothing, alone). One of another creature or another floor stays at its
+## default (MATCH_RULES.applies), so the tape does not count it as changed.
 func set_rules(said: Variant) -> void:
-	rules = MATCH_RULES.settled(said)
+	rules = MATCH_RULES.settled(said, kind.CREATURE_KEY, int(kind.NUMBER))
 	apply_tuning()
 
 ## What the difficulty and the rules ask of everything that keeps a copy of

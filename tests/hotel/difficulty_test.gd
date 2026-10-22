@@ -91,6 +91,30 @@ func run() -> void:
 	var alone: Array = DIFFICULTY.ORDER.map(func(id): return int(DIFFICULTY.PROFILES[id].solo_restarts))
 	check("Y a solas: sin límite, una, ninguna, ninguna", alone == [-1, 1, 0, 0])
 	check("Lo que no se conoce es Desafiante", DIFFICULTY.valid("imposible") == "desafiante" and DIFFICULTY.valid(null) == "desafiante" and DIFFICULTY.valid("apacible") == "apacible" and DIFFICULTY.FIRST == "equilibrada")
+	# Each creature's levers (docs/OFICINAS.md 11.2): The Locust's are PROFILES
+	# as they are, and The Lurker's own go over the shared ones.
+	var as_before: bool = DIFFICULTY.ORDER.all(func(id): return DIFFICULTY.profile(id) == DIFFICULTY.PROFILES[id] and DIFFICULTY.profile(id, &"locust") == DIFFICULTY.PROFILES[id] and DIFFICULTY.profile(id).keys() == DIFFICULTY.PROFILES[id].keys() and DIFFICULTY.profile(id, &"locust").keys() == DIFFICULTY.PROFILES[id].keys())
+	check("The Locust juega con los perfiles de siempre, clave por clave y en su orden", as_before and not DIFFICULTY.CREATURE_PROFILES.has(&"locust") and DIFFICULTY.profile("imposible", &"locust") == DIFFICULTY.PROFILES.desafiante)
+	var hers := {
+		"back_window": [2.2, 1.8, 1.5, 1.2], "lit_takes": [false, true, true, true], "duct_speed": [1.2, 1.6, 2.0, 2.4],
+		"stalk_distance": [12.0, 10.0, 8.0, 6.0], "freeze_time": [2.0, 3.0, 4.0, 6.0], "scare_calm": [60.0, 45.0, 35.0, 25.0],
+		"creep_scale": [0.8, 0.9, 1.0, 1.15], "drain_reach": [3.0, 3.0, 3.5, 4.0],
+	}
+	var lurker_wrong: Array = []
+	for step in DIFFICULTY.ORDER.size():
+		var id: String = DIFFICULTY.ORDER[step]
+		var shared: Dictionary = DIFFICULTY.PROFILES[id]
+		var lurker: Dictionary = DIFFICULTY.profile(id, &"lurker")
+		if lurker.size() != shared.size() + hers.size() or lurker.keys().slice(0, shared.size()) != shared.keys(): lurker_wrong.append(id + " forma")
+		for key in shared:
+			if lurker.get(key) != shared[key]: lurker_wrong.append("%s %s" % [id, key])
+		for key in hers:
+			if shared.has(key) or not lurker.has(key) or typeof(lurker[key]) != typeof(hers[key][step]) or lurker[key] != hers[key][step]: lurker_wrong.append("%s %s" % [id, key])
+	check("The Lurker: sus palancas son la tabla de OFICINAS, sobre las compartidas", lurker_wrong.is_empty(), ", ".join(lurker_wrong))
+	# A floor kind of hers, to see tuning() ask the floor's creature.
+	var lurker_kind := GDScript.new()
+	lurker_kind.source_code = "extends RefCounted\nconst NUMBER := 2\nconst CREATURE_KEY := &\"lurker\"\n"
+	lurker_kind.reload()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	await process_frame
@@ -112,6 +136,12 @@ func run() -> void:
 		var saved: Dictionary = level.session.checkpoint()
 		check("Y el punto de control la guarda (%s)" % DIFFICULTY.title(id), String(saved.get("difficulty", "")) == id)
 		check("Y la cinta la lleva (%s)" % DIFFICULTY.title(id), String(level.ledger.close(false).get("difficulty", "")) == id)
+		check("Y en el hotel, la de The Locust tal cual (%s)" % DIFFICULTY.title(id), level.tuning() == DIFFICULTY.PROFILES[id] and level.tuning().keys() == DIFFICULTY.PROFILES[id].keys())
+		var kind_before: GDScript = level.kind
+		level.kind = lurker_kind
+		var on_hers: Dictionary = level.tuning()
+		level.kind = kind_before
+		check("Y en un piso suyo, con las de The Lurker encima (%s)" % DIFFICULTY.title(id), on_hers == DIFFICULTY.profile(id, &"lurker") and on_hers.has("back_window"))
 		if id == "apacible":
 			# Its creature does not step through the sets.
 			level.session.stage = 2

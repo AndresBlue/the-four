@@ -48,6 +48,19 @@ func run() -> void:
 	check("De lo que se diga solo se toma lo que existe y vale", RULES.clean({"mercy": 9, "nada": 1, "restarts": -1, "sanity": "no", "plan_fade": 300.0}) == {"restarts": -1, "plan_fade": 300} and RULES.clean("reglas").is_empty())
 	check("Y solo se guarda lo que cambia, con su nombre", RULES.changed({"mercy": 0, "restarts": 2}) == {"restarts": 2} and RULES.described({"restarts": 2, "code": 1}) == ["Clemencia: dos veces", "Código de la última puerta: hacen falta las cuatro notas"])
 	check("Cada regla tiene un nombre para cada valor, y su valor de siempre es uno de ellos", RULES.RULES.all(func(rule): return rule.values.size() == rule.labels.size() and rule.values.has(rule.default) and int(rule.group) < RULES.GROUPS.size()))
+	# Rules of one creature or one kind of floor (docs/OFICINAS.md 11.2): on the
+	# hotel, every one as before; on another floor, the others are not shown,
+	# stay at their default and are not counted as changed.
+	var ids: Array = RULES.RULES.map(func(rule): return String(rule.id))
+	var hotel_ids: Array = RULES.shown(&"locust", 1).map(func(rule): return String(rule.id))
+	check("En el hotel valen todas, en el orden de siempre", ids == ["restarts", "sanity", "code", "blackout", "plan", "plan_fade", "shared_sheet", "onslaught", "tv_travel", "plain_sight"] and hotel_ids == ids and RULES.shown() == RULES.RULES)
+	check("Las de The Locust son suyas, y el apagón y el código son del hotel", RULES.shown(&"lurker", 2).map(func(rule): return String(rule.id)) == ["restarts", "sanity", "plan", "plan_fade", "shared_sheet"] and RULES.applies(RULES.entry("code"), &"locust", 1) and not RULES.applies(RULES.entry("code"), &"lurker", 2))
+	var foreign := {"id": "prueba", "creature": &"lurker"}
+	check("Una regla de otra criatura no sale en el hotel", not RULES.applies(foreign, &"locust", 1) and RULES.applies(foreign, &"lurker", 2) and RULES.applies(foreign) and not RULES.applies({"id": "prueba", "kind": 2}, &"locust", 1) and RULES.applies({"id": "prueba"}, &"lurker", 2))
+	var said := {"onslaught": 1, "tv_travel": 0, "plain_sight": 1, "blackout": 0, "sanity": 0, "code": 1}
+	var elsewhere := defaults.duplicate()
+	elsewhere.sanity = 0
+	check("En otro piso, las que no valen se quedan en su valor y no cuentan como cambiadas", RULES.settled(said, &"lurker", 2) == elsewhere and RULES.changed(RULES.settled(said, &"lurker", 2)) == {"sanity": 0} and RULES.changed(said, &"lurker", 2) == {"sanity": 0} and RULES.settled(said, &"locust", 1) == RULES.settled(said) and RULES.changed(said, &"locust", 1) == RULES.changed(said))
 	# Mercy: the stages a floor gives back once lost.
 	check("Un derrumbe perdonado: el segundo acaba el piso", collapses(1, 1) and not collapses(1, 2))
 	check("Ninguno: el primero lo acaba", not collapses(0, 1))
@@ -58,6 +71,18 @@ func run() -> void:
 	var creature = level.locust
 	creature.set_physics_process(false)
 	check("Un piso empieza con las reglas del juego", level.rules == defaults and level.session.restarts_allowed == 1 and is_equal_approx(level.floor_map.forget, 180.0) and is_equal_approx(creature.reach_scale, 1.0))
+	# The floor's own (hotel_main.set_rules): on a kind of another creature and
+	# number, the hotel's stay at their default.
+	var lurker_kind := GDScript.new()
+	lurker_kind.source_code = "extends RefCounted\nconst NUMBER := 2\nconst CREATURE_KEY := &\"lurker\"\n"
+	lurker_kind.reload()
+	var kind_before: GDScript = level.kind
+	level.kind = lurker_kind
+	level.set_rules({"onslaught": 1, "blackout": 0, "sanity": 0, "code": 1})
+	var on_hers: Dictionary = level.rules.duplicate()
+	level.kind = kind_before
+	level.set_rules({})
+	check("En un piso de otra criatura, las del hotel se quedan en su valor", int(on_hers.onslaught) == 0 and int(on_hers.blackout) == 1 and int(on_hers.sanity) == 0 and int(on_hers.code) == 0 and level.rules == defaults)
 	creature.global_position = Vector3(0, -80, 0)
 	# The code and its notes.
 	var right: String = "".join(DIG.code(level.manifest).map(func(digit): return str(digit)))
@@ -139,6 +164,7 @@ func run() -> void:
 	level.on_action("lobby_rules")
 	await process_frame
 	check("Las reglas de la sala, en una sola lista: una fila cada una, con su lista", level.ui.screen == "rules" and level.ui.rule_rows.size() == RULES.RULES.size() and level.ui.rule_pickers.size() == RULES.RULES.size())
+	check("En el hotel, la pantalla trae las de siempre en su orden", level.ui.rule_rows.keys() == ids and level.ui.rule_pickers.keys() == ids)
 	# Resting on a rule brings up what it does, under the list.
 	level.ui.rule_rows["sanity"].mouse_entered.emit()
 	check("Posarse en una regla trae lo que hace", String(level.ui.rule_detail.words.text) == String(RULES.RULES.filter(func(rule): return rule.id == "sanity")[0].note))
