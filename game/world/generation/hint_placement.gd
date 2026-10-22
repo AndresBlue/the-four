@@ -44,7 +44,7 @@ const STATES := ["HECHA", "HECHA", "HECHA", "HECHA", "NO MOLESTAR", "SIN TOALLAS
 ## The rooms whose door a sign can come off, and what it said.
 const SIGNS := {7: "SOLO PERSONAL", 6: "CERRADO", 5: "SE RUEGA SILENCIO", 17: "NO PISAR LAS PLANTAS", 18: "EN OBRAS", 13: "SILENCIO", 14: "APAGUE AL SALIR", 4: "FUERA DE SERVICIO", 16: "SOLO PERSONAL", 8: "PRIVADO", 9: "PELIGRO", 15: "PRIVADO"}
 ## Where in a piece of furniture a paper is, said as a maid would say it.
-const IN_PIECE := {"commode": "en un cajón", "console": "en un cajón", "drawers": "en un cajón", "bookcase": "en una estantería", "cabinet": "en un mueble", "boxes": "en unas cajas", "luggage": "en una maleta"}
+const IN_PIECE := {"commode": "en un cajón", "console": "en una consola", "drawers": "en un cajón", "bookcase": "en una estantería", "cabinet": "en un mueble", "boxes": "en unas cajas", "luggage": "en una maleta"}
 const ORDINALS := ["primer", "segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo"]
 
 ## Returns [{id, kind, slot (the page it is about, 0 for all four), place
@@ -147,9 +147,10 @@ static func zone_hint(manifest: Dictionary, kind: String, page: Dictionary, entr
 	return {}
 
 ## The maid's sheet: the block of rooms she had, the page's among them, each
-## with how she left it, and under them in pencil that a paper turned up in one.
-## Typed on the hotel's form (hotel_form.gd), like the work order: its number
-## from the floor's seed, never from where the page is.
+## with how she left it, and under them, typed like the rest (the author's
+## word, 22 October 2026), the room a paper with a number turned up in, and
+## where in it. On the hotel's form (hotel_form.gd), like the work order: its
+## number from the floor's seed, never from where the page is.
 static func cleaning(manifest: Dictionary, page: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var rooms: Array = manifest.rooms
 	var target: Dictionary = rooms[int(page.room)]
@@ -168,42 +169,34 @@ static func cleaning(manifest: Dictionary, page: Dictionary, rng: RandomNumberGe
 	if int(target.get("number", 0)) <= 0: rows.append([String(FLOOR.NAMES[int(target.type)]).to_upper(), String(STATES[rng.randi_range(0, 3)])])
 	var number := 1000 + absi(hash([manifest.seed, "limpieza"])) % 9000
 	var form := {"number": "%04d" % number, "post": "LIMPIEZA, TURNO DE NOCHE", "place": "PLANTA %d" % (int(target.wing) + 1), "subject": "PARTE DE LIMPIEZA", "type": "tarea", "rows": rows, "state": "en_curso", "signed": true, "seed": number}
-	return {"kind": "limpieza", "form": form, "printed": [], "rows": [], "hand": ["En una de estas, un papel con", "un número %s. No lo toqué." % String(IN_PIECE.get(String(page.kind), "en un mueble"))]}
+	form["lines"] = ["", "En %s encontré un papel con un número %s. No lo toqué." % [place_said(manifest, page), String(IN_PIECE.get(String(page.kind), "en un mueble"))]]
+	return {"kind": "limpieza", "form": form, "printed": [], "rows": [], "hand": []}
 
-## A work order: the dark stretch the page's room is in, by its numbers, or,
-## when it is lit, a leak in the corridor near it with the wet floor sign put
-## out there (`sign`, built with the hints).
+## A work order about the page's own room, by its number (the author's word,
+## 22 October 2026: the room it names is the one with the number): no light
+## in it, or, when it is lit, a leak in the corridor in front of it with the
+## wet floor sign put out there (`sign`, built with the hints); and, typed
+## under it, that a paper with a number is in there.
 static func work_order(manifest: Dictionary, page: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var rooms: Array = manifest.rooms
 	var target: Dictionary = rooms[int(page.room)]
 	var number := rng.randi_range(210, 980)
 	var form := {"number": "%04d" % number, "post": "MANTENIMIENTO", "place": "PLANTA %d" % (int(target.wing) + 1), "subject": "ORDEN DE TRABAJO", "type": "tarea", "priority": "media", "state": "pendiente", "seed": number}
+	var said := place_said(manifest, page)
+	var inside := "En %s hay un papel con un número %s. No es cosa mía." % [said, String(IN_PIECE.get(String(page.kind), "en un mueble"))]
 	if bool(target.get("dark", false)):
-		var stretch: Array = [int(page.room)]
-		var queue: Array = [int(page.room)]
-		while not queue.is_empty() and stretch.size() < 6:
-			var here: int = queue.pop_front()
-			for other in manifest.adjacency[here]:
-				var next: Dictionary = rooms[int(other)]
-				if stretch.has(int(other)) or not bool(next.get("dark", false)) or bool(next.get("corridor", false)): continue
-				stretch.append(int(other))
-				queue.append(int(other))
-		var named: Array = []
-		for id in stretch: named.append(room_said(rooms[id]))
-		if named.size() >= 2:
-			named.sort()
-			form["lines"] = ["Sin luz en %s." % listed(named), "Revisar el diferencial."]
-			return {"kind": "orden", "form": form, "printed": [], "rows": [], "hand": ["Dentro hay papeles con números.", "No es cosa mía."]}
-	# Lit: a leak a door or two along the corridor, said by a room that is not
-	# the page's.
+		form["lines"] = ["Sin luz en %s." % said, "Revisar el diferencial.", "", inside]
+		return {"kind": "orden", "form": form, "printed": [], "rows": [], "hand": []}
+	# Lit: a leak in the corridor in front of it.
 	var sign := leak_spot(manifest, page)
 	if sign.is_empty(): return {}
-	form["lines"] = ["Fuga de agua en el pasillo, frente a %s." % String(sign.said), "Puesto el cartel de suelo mojado."]
+	var leak := "Fuga de agua en %s." % said if bool(target.get("corridor", false)) else "Fuga de agua en el pasillo, frente %s." % to_said(said)
+	form["lines"] = [leak, "Puesto el cartel de suelo mojado.", "", inside]
 	form["priority"] = "alta"
-	return {"kind": "orden", "form": form, "printed": [], "rows": [], "hand": ["Por ahí cerca había un papel", "con un número."], "sign": sign}
+	return {"kind": "orden", "form": form, "printed": [], "rows": [], "hand": [], "sign": sign}
 
-## Where the leak is: a corridor cell beside the page's room or one along from
-## it, and the room it is said to be in front of (never the page's own).
+## Where the leak is: the corridor cell nearest the page's room, which is the
+## room the order says it is in front of.
 static func leak_spot(manifest: Dictionary, page: Dictionary) -> Dictionary:
 	var rooms: Array = manifest.rooms
 	var from := int(page.room)
@@ -214,17 +207,8 @@ static func leak_spot(manifest: Dictionary, page: Dictionary) -> Dictionary:
 		if int(room.wing) != int(rooms[from].wing) or not bool(room.get("corridor", false)): continue
 		if best < 0 or float(near[id]) < float(near[best]): best = int(id)
 	if best < 0: return {}
-	var front := -1
-	var front_metres := INF
 	var at := FLOOR.position_of(rooms[best])
-	for room in rooms:
-		if int(room.id) == from or int(room.wing) != int(rooms[from].wing) or int(room.get("number", 0)) <= 0: continue
-		var gap := FLOOR.position_of(room).distance_to(at)
-		if gap < front_metres:
-			front = int(room.id)
-			front_metres = gap
-	if front < 0: return {}
-	return {"room": best, "position": at + Vector3(0.6, 0.0, 0.4), "yaw": 0.4, "said": "la %d" % int(rooms[front].number)}
+	return {"room": best, "position": at + Vector3(0.6, 0.0, 0.4), "yaw": 0.4, "said": room_said(rooms[from])}
 
 ## Written down by somebody from the lift, turn by turn, and torn off before
 ## the end: it leaves you in the stretch the page is in, not at its door.
@@ -516,15 +500,30 @@ static func junction(manifest: Dictionary, id: int) -> bool:
 
 ## A room as it would be named on a paper: «la 344», or «el almacén».
 const THE := ["la", "la", "la", "la", "los", "el", "el", "la", "el", "el", "el", "el", "la", "la", "la", "la", "el", "el", "el", "el", "el"]
+## Where a page is, as a paper would say it: its room's number; a corridor by
+## the numbered door nearest the page («el pasillo frente a la 312»); or what
+## the room is («el almacén»).
+static func place_said(manifest: Dictionary, page: Dictionary) -> String:
+	var room: Dictionary = manifest.rooms[int(page.room)]
+	if int(room.get("number", 0)) > 0 or not bool(room.get("corridor", false)): return room_said(room)
+	var nearest := {}
+	var gap := INF
+	for other in manifest.rooms:
+		if int(other.get("number", 0)) <= 0 or int(other.wing) != int(room.wing): continue
+		var away := FLOOR.position_of(other).distance_to(page.position)
+		if away < gap:
+			gap = away
+			nearest = other
+	return "el pasillo" if nearest.is_empty() else "el pasillo frente a la %d" % int(nearest.number)
+
+## «a» before what a place is called: «a la 308», «al almacén».
+static func to_said(said: String) -> String:
+	return "al " + said.trim_prefix("el ") if said.begins_with("el ") else "a " + said
+
 static func room_said(room: Dictionary) -> String:
 	if int(room.get("number", 0)) > 0: return "la %d" % int(room.number)
 	var type := int(room.type)
 	return "%s %s" % [THE[type], String(FLOOR.NAMES[type]).to_lower()]
-
-## «la 344, la 346 y la 348».
-static func listed(names: Array) -> String:
-	if names.size() == 1: return String(names[0])
-	return ", ".join(names.slice(0, names.size() - 1)) + " y " + String(names[names.size() - 1])
 
 static func shuffle(list: Array, rng: RandomNumberGenerator) -> void:
 	for i in range(list.size() - 1, 0, -1):

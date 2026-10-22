@@ -1470,7 +1470,7 @@ CORRECCIÓN:
 ACTUAL: Carta sin enviar
 CORRECCIÓN:
 
-[DOC.03b] locust_letter: encabezado bajo el título
+[DOC.03b] locust_letter: procedencia (encima de la carta, fuera del papel, bajo el título; el texto va a máquina en la carta)
 ACTUAL: Papel doblado en cuatro
 CORRECCIÓN:
 
@@ -1484,8 +1484,8 @@ CORRECCIÓN:
 ACTUAL: Registro del vigilante
 CORRECCIÓN:
 
-[DOC.04b] locust_guard: encabezado bajo el título
-ACTUAL: Libreta de rondas · última página
+[DOC.04b] locust_guard: procedencia (encima de la libreta, fuera del papel, bajo el título; el texto va a máquina en la libreta)
+ACTUAL: Libreta de rondas, última página
 CORRECCIÓN:
 
 [DOC.04c] locust_guard: texto
@@ -1630,21 +1630,22 @@ CORRECCIÓN:
 22. PISTAS DE LA TERCERA ETAPA (los papeles de la última planta: los de la vista se leen con E; los de los muebles, al registrarlos; cuelgan en TUS NOTAS)
 --------------------------------------------------------------------------------------------------------------------------------------------------
 
-[PIST.01] Parte de limpieza (a máquina en el impreso del hotel: N.º, cargo, ubicación, asunto y su lista de habitaciones; marcadas Tarea y En curso; lo último, a lápiz)
+[PIST.01] Parte de limpieza (todo a máquina en el impreso del hotel: N.º, cargo, ubicación, asunto, su lista de habitaciones y, debajo, la sala de la página; marcadas Tarea y En curso)
 ACTUAL: %04d · LIMPIEZA, TURNO DE NOCHE · PLANTA %d · PARTE DE LIMPIEZA · HAB.        ESTADO ·
 | HECHA / NO MOLESTAR / SIN TOALLAS / CAMA SIN HACER / NO ABRE ·
-| En una de estas, un papel con un número %s. No lo toqué.
-|    (%s: en un cajón / en una estantería / en un mueble / en unas cajas)
+| En %s encontré un papel con un número %s. No lo toqué.
+|    (el primer %s: la 323, el almacén...; el segundo: en un cajón / en una consola / en una estantería / en un mueble / en unas cajas)
 CORRECCIÓN:
 
-[PIST.02] Orden de trabajo (a máquina en el impreso del hotel: N.º, cargo, ubicación y asunto; marcadas Tarea, Media o Alta y Pendiente; lo último, a lápiz)
+[PIST.02] Orden de trabajo (todo a máquina en el impreso del hotel: N.º, cargo, ubicación y asunto, sobre la sala de la página; marcadas Tarea, Media o Alta y Pendiente)
 ACTUAL: %04d · MANTENIMIENTO · PLANTA %d · ORDEN DE TRABAJO ·
-| Sin luz en %s. Revisar el diferencial. · Dentro hay papeles con números. No es cosa mía. /
-| Fuga de agua en el pasillo, frente a la %d. Puesto el cartel de suelo mojado. · Por ahí cerca había un papel con un número.
-|    (%s: la 344, la 346 y la 348; o el almacén, los baños...)
+| Sin luz en %s. Revisar el diferencial. /
+| Fuga de agua en el pasillo, frente a %s. Puesto el cartel de suelo mojado. ·
+| En %s hay un papel con un número %s. No es cosa mía.
+|    (%s: la 344, o el almacén, los baños...; y en un cajón / en una consola / en una estantería...)
 CORRECCIÓN:
 
-[PIST.03] Indicaciones (a lápiz en una hoja de libreta, rotas a media frase)
+[PIST.03] Indicaciones (a lápiz en una página de libreta rota, a media frase)
 ACTUAL: Al salir del ascensor, a la derecha / a la izquierda / recto. ·
 | En el %s cruce, a la derecha / a la izquierda. · Donde el pasillo dobla, a la derecha / a la izquierda. ·
 | Cruza %s y sal de frente / a la derecha / a la izquierda. · Pasa la puerta de incendios y, ...
@@ -1658,7 +1659,9 @@ ACTUAL: LAVANDERÍA, SOLO PERSONAL / COMEDOR, CERRADO / SALÓN, SE RUEGA SILENCI
 | La del número, aquí dentro. / La del número, en el cuarto de al lado.
 CORRECCIÓN:
 
-[PIST.05] Papel carbón (sin texto: el círculo se calca en el plano de la hoja)
+[PIST.05] Papel carbón (medio transparente; el círculo se calca en el plano de la hoja; encima, fuera del papel)
+ACTUAL: ZONA MARCADA EN EL MAPA
+CORRECCIÓN:
 
 [PIST.06] La esquina de un plano de evacuación (impreso, roto)
 ACTUAL: PLANO DE EVACUACIÓN · USTED ESTÁ AQ
@@ -1669,4 +1672,6 @@ ACTUAL: Marqué el camino con tiza desde la puerta de incendios. / desde el asce
 |    (%s: el comedor, el salón, la lavandería...)
 CORRECCIÓN:
 
-[PIST.08] La hoja de otro (sin texto: cuatro círculos de su lápiz, que se calcan en el plano)
+[PIST.08] La hoja de otro (la hoja doblada en cuatro con el plano y cuatro círculos de su lápiz, que se calcan en el plano; encima, fuera del papel)
+ACTUAL: ZONAS MARCADAS EN EL MAPA
+CORRECCIÓN:

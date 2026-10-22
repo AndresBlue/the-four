@@ -1101,6 +1101,7 @@ const PAPER := Color(0.86, 0.84, 0.77)
 const PAPER_INK := Color(0.12, 0.11, 0.1)
 const HINT_VIEW := preload("res://game/ui/hint_view.gd")
 const FORM := preload("res://game/ui/hotel_form.gd")
+const RULED := preload("res://game/ui/ruled_paper.gd")
 const CREATURES := {"locust": "THE LOCUST", "sunman": "SUNMAN", "boiled": "THE BOILED ONE", "guilt": "GUILT"}
 
 func show_dossier(number: int, item: Dictionary) -> void:
@@ -1193,25 +1194,42 @@ func show_hint(item: Dictionary, walls: Array) -> void:
 	reading.add_child(shade)
 	var view := HINT_VIEW.new()
 	view.setup(item, walls)
-	hold_paper(view, view.card)
+	hold_paper(view, view.card, HINT_CAPTIONS.get(String(item.get("kind", "")), []))
+
+## What a hint that marks the plan says beside it, above the paper.
+const HINT_CAPTIONS := {"calco": ["", "ZONA MARCADA EN EL MAPA"], "hoja": ["", "ZONAS MARCADAS EN EL MAPA"]}
 
 ## A paper held up to the camera, as large as it reads, and the key that
-## keeps it under it; a whole sheet of the hotel's form (hotel_form.gd) is
-## held up to nearly the height of the screen, the key beside its foot.
-func hold_paper(view: Control, card: Vector2) -> void:
+## keeps it under it; a whole sheet (the hotel's form, a letter, a page of a
+## notebook, the folded map) is held up to nearly the height of the screen,
+## or nearly its width, the key beside its foot. `caption`, [title, below
+## it], is said above the paper, out of it: what the paper is and where it
+## came from.
+func hold_paper(view: Control, card: Vector2, caption: Array = []) -> void:
 	var screen_size := get_viewport().get_visible_rect().size
-	var sheet := card.y >= FORM.CARD.y
-	var fit := minf(minf(screen_size.x * 0.62 / card.x, screen_size.y * (0.93 if sheet else 0.7) / card.y), 1.4)
+	var sheet := card.y >= 1000.0 or card.x >= 1000.0
+	var said := caption.filter(func(line): return not String(line).is_empty())
+	var above: float = 0.0 if said.is_empty() else 22.0 + 26.0 * said.size()
+	var fit := minf(minf(screen_size.x * (0.8 if sheet else 0.62) / card.x, (screen_size.y * (0.93 if sheet else 0.7) - above) / card.y), 1.4)
 	view.scale = Vector2.ONE * fit
-	view.position = (screen_size - card * fit) * 0.5 - Vector2(0, 0 if sheet else 22)
+	view.position = Vector2((screen_size.x - card.x * fit) * 0.5, above + (screen_size.y - above - card.y * fit) * 0.5 - (0.0 if sheet else 22.0))
 	reading.add_child(view)
+	var y := view.position.y - above + 6.0
+	for index in caption.size():
+		if String(caption[index]).is_empty(): continue
+		var line := label(reading, String(caption[index]), 22 if index == 0 else 16)
+		line.add_theme_color_override("font_color", STYLE.INK if index == 0 else STYLE.SOFT)
+		line.position = Vector2(view.position.x, y)
+		y += 30.0 if index == 0 else 24.0
 	var key: String = settings.prompt_name("interact") if settings != null else "E"
 	var keep := label(reading, "[%s] GUARDAR" % key, 16)
 	keep.add_theme_color_override("font_color", STYLE.FAINT)
 	keep.position = Vector2(view.position.x + card.x * fit + 18, view.position.y + card.y * fit - 30) if sheet else Vector2(view.position.x, view.position.y + card.y * fit + 18)
 
 ## A document held up to the camera while play goes on behind it: the
-## hotel's own paperwork on its form, typed, the rest as words on the dark.
+## hotel's own paperwork on its form, a letter or a notebook on their paper
+## (ruled_paper.gd), all typed, with what it is and where it came from said
+## above it; one with no paper of its own, as words on the dark.
 func show_document(item: Dictionary) -> void:
 	hide_document()
 	reading = Control.new()
@@ -1229,7 +1247,13 @@ func show_document(item: Dictionary) -> void:
 		form["lines"] = Array(String(item.body).split("\n"))
 		var paper := FORM.new()
 		paper.setup(form)
-		hold_paper(paper, FORM.CARD)
+		hold_paper(paper, FORM.CARD, [String(item.title).to_upper(), String(item.header)])
+		return
+	if item.has("paper"):
+		var ruled := RULED.new()
+		ruled.setup(String(item.paper), Array(String(item.body).split("
+")), false, false, String(item.id).hash() % 1000)
+		hold_paper(ruled, ruled.card, [String(item.title).to_upper(), String(item.header)])
 		return
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)

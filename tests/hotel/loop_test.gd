@@ -239,9 +239,10 @@ func run() -> void:
 	player.active = true
 	level.open_document(document)
 	check("Leer muestra la hoja y detiene al jugador", player.reading and is_instance_valid(level.ui.reading))
-	var official: bool = load("res://game/discovery/discovery_catalog.gd").entry(document.entry_id).has("form")
-	var form_script: Script = load("res://game/ui/hotel_form.gd")
-	check("Un papel del hotel se lee en su impreso, a máquina, y los demás como texto", level.ui.reading.get_children().any(func(node): return node.get_script() == form_script) == official)
+	var item: Dictionary = load("res://game/discovery/discovery_catalog.gd").entry(document.entry_id)
+	var paper_script: Script = load("res://game/ui/hotel_form.gd") if item.has("form") else load("res://game/ui/ruled_paper.gd")
+	check("Un documento se lee a máquina en su papel: el del hotel en su impreso, la carta y la libreta en el suyo", (item.has("form") or item.has("paper")) and level.ui.reading.get_children().any(func(node): return node.get_script() == paper_script))
+	check("Y lo que es y de dónde salió se dicen fuera del papel", level.ui.reading.get_children().any(func(node): return node is Label and node.text == String(item.title).to_upper()))
 	var before: Vector3 = player.position
 	Input.action_press("forward")
 	await frames(20)

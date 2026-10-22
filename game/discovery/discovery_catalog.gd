@@ -4,7 +4,9 @@ extends RefCounted
 ## Only The Locust's floor exists so far; the other twelve slots stay locked.
 ## Those that are the hotel's own paperwork carry `form`: what is typed in the
 ## fields of its form around the body (game/ui/hotel_form.gd), which is how
-## they are read and how they look lying on a table.
+## they are read and how they look lying on a table. The rest carry `paper`,
+## the ruled paper they are typed on (game/ui/ruled_paper.gd): a letter
+## folded in four, a page of a notebook.
 const TOTAL := 16
 const ENTRIES := [
 	{
@@ -28,6 +30,7 @@ const ENTRIES := [
 		"creature": "locust",
 		"title": "Carta sin enviar",
 		"header": "Papel doblado en cuatro",
+		"paper": "carta",
 		"body": "Si alguien encuentra esto: me he pasado la noche dentro de un armario. Lo que anda por los pasillos ve muy lejos, mucho más lejos que tú. No le apuntes con la linterna, la luz lo trae.\n\nCuando se para en seco y chilla, ya sabe dónde estás. Ese segundo es lo único que tienes: sal de su vista. Y no abras las puertas del armario para mirar si lo tienes delante.",
 	},
 	{
@@ -35,6 +38,7 @@ const ENTRIES := [
 		"creature": "locust",
 		"title": "Registro del vigilante",
 		"header": "Libreta de rondas, última página",
+		"paper": "libreta",
 		"body": "02:40 Pasos en la planta de arriba. No son de persona, suenan como puntas contra el suelo.\n02:55 Se oye por las puertas abiertas y por los pasillos. A través de las paredes, nada. Cierro detrás de mí.\n03:10 En la sala de la salida no entra. Me quedo aquí hasta que se haga de día.",
 	},
 ]

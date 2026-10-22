@@ -537,6 +537,19 @@ func run() -> void:
 		if String(hint.get("form", {}).get("subject", "")).is_empty() or view.get_child_count() != 1 or view.card != load("res://game/ui/hotel_form.gd").CARD: typed = false
 		view.free()
 	check("El parte de limpieza y la orden de trabajo van a máquina en el impreso del hotel", typed)
+	# And they name the page's own room, typed (the author's word, 22 October
+	# 2026): the room they speak of is the one with the number.
+	var placement := preload("res://game/world/generation/hint_placement.gd")
+	check("Y nombran la sala de su página", paperwork.all(func(hint): return JSON.stringify(hint.form.get("lines", [])).contains(placement.room_said(page_room[int(hint.slot)])) and (hint.hand as Array).is_empty()))
+	# The directions are pencilled on a page of a notebook, torn off.
+	var notebooks: Array = hints.filter(func(hint): return String(hint.kind) == "indicaciones")
+	var on_page := true
+	for hint in notebooks:
+		var view: Control = load("res://game/ui/hint_view.gd").new()
+		view.setup(hint, [])
+		if view.get_child_count() != 1 or view.get_child(0).get_script() != load("res://game/ui/ruled_paper.gd") or view.card.y >= 1536.0: on_page = false
+		view.free()
+	check("Las indicaciones van a lápiz en una hoja de libreta, rota", on_page)
 	# What they put on the plan is true: the circle holds its page, the corner
 	# of the plan has it under its cross, the other sheet's four are the four.
 	var truthful := true

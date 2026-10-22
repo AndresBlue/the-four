@@ -2,7 +2,7 @@ extends Area3D
 ## One of the hints of the last planta left lying on a table or a desk
 ## (hint_placement.gd): a single paper, or a card for a sign off a door, read
 ## where it lies; the maid's sheet and the work order are the hotel's form
-## (as its documents are, hotel_document.gd). Like a document, the Area3D is
+## (as its documents are, hotel_document.gd), the directions a notebook's page. Like a document, the Area3D is
 ## only what the focus ray finds (layer 16); reading it leaves it there for
 ## whoever comes next.
 const DOCUMENT := preload("res://game/world/interactables/hotel_document.gd")
@@ -27,7 +27,9 @@ func _ready() -> void:
 	var ink := StandardMaterial3D.new()
 	ink.albedo_color = Color(0.2, 0.19, 0.18)
 	ink.roughness = 1.0
-	var form := VIEW.FORMS.has(kind)
+	# The hotel's paperwork on its form, the directions on a notebook's page.
+	var on_paper := "form" if VIEW.FORMS.has(kind) else "libreta" if kind == "indicaciones" else ""
+	var form := not on_paper.is_empty()
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.26, 0.004, 0.14) if card else Vector3(DOCUMENT.FORM_SHEET.x, 0.002, DOCUMENT.FORM_SHEET.y) if form else Vector3(0.16, 0.002, 0.22)
 	mesh.material = paper
@@ -36,7 +38,7 @@ func _ready() -> void:
 	sheet.position = Vector3(0, 0.003, 0)
 	add_child(sheet)
 	if form:
-		var face := DOCUMENT.form_sheet()
+		var face := DOCUMENT.sheet_of(on_paper)
 		face.position = Vector3(0, 0.0042, 0)
 		add_child(face)
 		return

@@ -1,27 +1,34 @@
 extends Control
 ## One of the hints of the last planta (hint_placement.gd) as the paper it
 ## is: a maid's sheet with its block of rooms and a work order, both typed on
-## the hotel's own form (hotel_form.gd), a few lines in pencil torn off a
-## notebook, a sign off a door, a carbon copy with the
-## circle pressed into it, a torn corner of an evacuation plan, the note about
-## the chalk, or somebody else's sheet with four circles on it. Drawn, not
-## laid out, at its own size (`card`); whoever shows it scales it.
+## the hotel's own form (hotel_form.gd), a few lines in pencil on a page of a
+## notebook torn off before the end (ruled_paper.gd), a sign off a door, a
+## carbon copy with the circle pressed into it, which lets the light through,
+## a torn corner of an evacuation plan, the note about the chalk, or somebody
+## else's sheet, folded in four, with the plan and four circles on it (the
+## author's pictures, 22 October 2026). Drawn, not laid out, at its own size
+## (`card`); whoever shows it scales it.
 const STYLE := preload("res://game/ui/osd_style.gd")
 const HAND := preload("res://game/ui/handwork.gd")
 const FORM := preload("res://game/ui/hotel_form.gd")
+const RULED_PAPER := preload("res://game/ui/ruled_paper.gd")
+## The other sheet's paper: a sheet folded in four, opened out.
+const MAP_PAPER := preload("res://assets/papel-mapa.png")
+## Where on it the plan is drawn, clear of its worn edges.
+const MAP_FRAME := Rect2(120, 110, 1250, 830)
 ## The hints that are the hotel's own paperwork, on its form.
 const FORMS := ["limpieza", "orden"]
 const PAPER := Color(0.86, 0.82, 0.71)
 const PRINT := Color(0.13, 0.12, 0.11)
 const GRAPHITE := Color(0.16, 0.15, 0.15, 0.92)
-const RULED := Color(0.32, 0.42, 0.66, 0.28)
 const RED := Color(0.62, 0.1, 0.08)
-const CARBON := Color(0.11, 0.11, 0.19)
+## Carbon paper, thin enough to see the room through.
+const CARBON := Color(0.11, 0.11, 0.19, 0.62)
 ## The pencil of the other sheet: the sixth of the sheet's inks.
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"indicaciones": Vector2(580, 0), "cartel": Vector2(540, 300), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "tiza": Vector2(460, 240), "hoja": Vector2(700, 460)}
+const SIZES := {"cartel": Vector2(540, 300), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "tiza": Vector2(460, 240), "hoja": Vector2(1491, 1055)}
 const LINE := 36.0
 var hint: Dictionary
 ## The walls of the hint's planta, [[a, b]] in plan (x, z), for the plans.
@@ -35,23 +42,27 @@ func setup(data: Dictionary, plan_walls: Array) -> void:
 	for old in get_children(): old.queue_free()
 	if FORMS.has(String(hint.get("kind", ""))):
 		var sheet := FORM.new()
-		sheet.setup(hint.get("form", {}), hint.get("hand", []))
+		sheet.setup(hint.get("form", {}))
 		add_child(sheet)
 		card = FORM.CARD
 		custom_minimum_size = card
 		size = card
 		return
+	if String(hint.get("kind", "")) == "indicaciones":
+		var page := RULED_PAPER.new()
+		page.setup("libreta", hint.get("hand", []), true, true, int(hint.get("room", 0)))
+		add_child(page)
+		card = page.card
+		custom_minimum_size = card
+		size = card
+		return
 	card = SIZES.get(String(hint.get("kind", "")), Vector2(500, 400))
-	var hand: Array = hint.get("hand", [])
-	match String(hint.get("kind", "")):
-		"indicaciones": card.y = 90.0 + float(wrapped(hand, 24, card.x - 90.0, true).size()) * 44.0 + 40.0
 	custom_minimum_size = card
 	size = card
 	queue_redraw()
 
 func _draw() -> void:
 	match String(hint.get("kind", "")):
-		"indicaciones": notebook()
 		"cartel": door_sign()
 		"calco": carbon()
 		"plano": evacuation()
@@ -59,18 +70,6 @@ func _draw() -> void:
 		"hoja": other_sheet()
 
 # --- The papers ---------------------------------------------------------------------------
-
-func notebook() -> void:
-	var torn := torn_bottom(Rect2(Vector2.ZERO, card), 77)
-	draw_colored_polygon(shifted(torn, Vector2(4, 5)), Color(0, 0, 0, 0.35))
-	draw_colored_polygon(torn, Color(0.9, 0.88, 0.8))
-	draw_texture_rect(HAND.wear(Vector2i(50, int(card.y / 10.0)), 77), Rect2(Vector2.ZERO, card), false)
-	for y in range(70, int(card.y) - 30, 44): draw_line(Vector2(16, y + 8), Vector2(card.x - 16, y + 8), RULED, 1.0)
-	draw_line(Vector2(54, 10), Vector2(54, card.y - 30), Color(0.66, 0.18, 0.14, 0.32), 1.0)
-	var y := 70.0
-	for line in wrapped(hint.get("hand", []), 24, card.x - 90.0, true):
-		handwriting(Vector2(66, y), line, 24, int(y))
-		y += 44.0
 
 func door_sign() -> void:
 	var plate := Rect2(Vector2(10, 10), card - Vector2(20, 20))
@@ -87,7 +86,7 @@ func door_sign() -> void:
 
 func carbon() -> void:
 	var sheet := Rect2(Vector2.ZERO, card)
-	draw_rect(Rect2(sheet.position + Vector2(4, 5), sheet.size), Color(0, 0, 0, 0.4))
+	draw_rect(Rect2(sheet.position + Vector2(4, 5), sheet.size), Color(0, 0, 0, 0.18))
 	draw_rect(sheet, CARBON)
 	# What was written through it before, faintly, and the sheen of it.
 	var rng := RandomNumberGenerator.new()
@@ -125,18 +124,18 @@ func chalk_note() -> void:
 	pencil(Vector2(40, 84), hint.get("hand", []), card.x - 70.0)
 
 func other_sheet() -> void:
-	paper(Rect2(Vector2.ZERO, card), PAPER.darkened(0.06), 1187)
-	draw_texture_rect(HAND.wear(Vector2i(70, 46), 523), Rect2(Vector2.ZERO, card), false)
+	draw_texture_rect(MAP_PAPER, Rect2(Vector2(6, 8), card), false, Color(0, 0, 0, 0.4))
+	draw_texture_rect(MAP_PAPER, Rect2(Vector2.ZERO, card), false)
 	if walls.is_empty(): return
 	var bounds := Rect2(walls[0][0], Vector2.ZERO)
 	for wall in walls: bounds = bounds.expand(wall[0]).expand(wall[1])
-	var frame := Rect2(40, 40, card.x - 80, card.y - 80)
+	var frame := MAP_FRAME
 	var scale := minf(frame.size.x / maxf(bounds.size.x, 1.0), frame.size.y / maxf(bounds.size.y, 1.0))
 	var to_card := func(point: Vector2) -> Vector2: return frame.get_center() + (point - bounds.get_center()) * scale
-	for wall in walls: draw_line(to_card.call(wall[0]), to_card.call(wall[1]), Color(PLAN_INK, 0.32), 1.6, true)
+	for wall in walls: draw_line(to_card.call(wall[0]), to_card.call(wall[1]), Color(PLAN_INK, 0.6), 2.4, true)
 	var points: Array = hint.get("points", [])
 	for index in points.size():
-		circle(to_card.call(points[index]), maxf(9.0, float(hint.get("radius", 2.6)) * scale * 1.6), OTHER, 2.6, 400 + index)
+		circle(to_card.call(points[index]), maxf(16.0, float(hint.get("radius", 2.6)) * scale * 1.6), OTHER, 4.2, 400 + index)
 
 # --- How things are put on paper ---------------------------------------------------------
 
@@ -190,14 +189,6 @@ func wrapped(lines: Array, font_size: int, width: float, by_hand := false) -> Ar
 			else: current = trial
 		out.append(current)
 	return out
-
-func torn_bottom(rect: Rect2, seed_value: int) -> PackedVector2Array:
-	var points := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y)])
-	var steps := 18
-	for step in range(steps, -1, -1):
-		var x := rect.position.x + rect.size.x * float(step) / steps
-		points.append(Vector2(x, rect.end.y - 14.0 + HAND.jitter(float(seed_value), float(step)) * 22.0))
-	return points
 
 func torn_edges(rect: Rect2, seed_value: int) -> PackedVector2Array:
 	var points := PackedVector2Array()

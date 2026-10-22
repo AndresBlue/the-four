@@ -28,28 +28,41 @@ const STROKES := {
 static func jitter(a: float, b: float) -> float:
 	return fposmod(sin(a * 12.9898 + b * 78.233) * 43758.5453, 1.0) - 0.5
 
-## Writes `value` into `box` on `on`: the strokes cut into short pieces, each
-## piece nudged a little, and the whole thing gone over a second time a hair
-## off the first, which is what makes a pencil line look like one.
+## Writes `value` into `box` on `on`: each stroke a curve through its turns,
+## each turn put down a little off where it should be, and the whole thing
+## gone over a second time a hair off the first, which is what makes a pencil
+## line look like one. The curve runs through the turns (Catmull-Rom), with
+## round ends: drawn straight from turn to turn, with a tremor on every piece,
+## the figures came out cut into corners (the author's word, 22 October 2026).
 static func write_digit(on: CanvasItem, value: int, box: Rect2, ink: Color, weight: float, seed_value := 0) -> void:
 	for stroke in STROKES.get(clampi(value, 0, 9), []):
 		for pass_index in 2:
-			# Each turn of the stroke is put down a little off where it should
-			# be, and the line runs smoothly between them: a hand wanders, it
-			# does not tremble at every millimetre. Only the grain of the
-			# pencil is added along the way.
 			var turns: Array = []
 			for k in stroke.size():
-				var wander := Vector2(jitter(float(k), seed_value + pass_index * 3.1), jitter(float(k) + 7.7, seed_value - pass_index * 1.9)) * 0.07
+				var wander := Vector2(jitter(float(k), seed_value + pass_index * 3.1), jitter(float(k) + 7.7, seed_value - pass_index * 1.9)) * (0.045 if pass_index == 0 else 0.03)
 				turns.append(Vector2(stroke[k][0], stroke[k][1]) + wander)
 			var points := PackedVector2Array()
 			for k in turns.size() - 1:
-				for step in 4:
-					var t := float(step) / 4.0
-					var grain := Vector2(jitter(float(k * 4 + step), seed_value + 11.0), jitter(float(k * 4 + step) + 3.3, seed_value + 5.0)) * 0.012
-					points.append(box.position + (turns[k].lerp(turns[k + 1], t) + grain) * box.size)
+				var before: Vector2 = turns[maxi(k - 1, 0)]
+				var after: Vector2 = turns[mini(k + 2, turns.size() - 1)]
+				for step in CURVE_STEPS:
+					points.append(box.position + catmull(before, turns[k], turns[k + 1], after, float(step) / CURVE_STEPS) * box.size)
 			points.append(box.position + turns[turns.size() - 1] * box.size)
-			on.draw_polyline(points, Color(ink, ink.a * (1.0 if pass_index == 0 else 0.55)), weight * (1.0 if pass_index == 0 else 0.7), true)
+			var shade := Color(ink, ink.a * (1.0 if pass_index == 0 else 0.5))
+			var width := weight * (1.0 if pass_index == 0 else 0.65)
+			on.draw_polyline(points, shade, width, true)
+			if points.size() > 1:
+				on.draw_circle(points[0], width * 0.5, shade)
+				on.draw_circle(points[points.size() - 1], width * 0.5, shade)
+
+## Points along a stroke between two of its turns.
+const CURVE_STEPS := 10
+
+## The curve through b and c that p and q lean it towards (Catmull-Rom).
+static func catmull(p: Vector2, b: Vector2, c: Vector2, q: Vector2, t: float) -> Vector2:
+	var t2 := t * t
+	var t3 := t2 * t
+	return 0.5 * ((2.0 * b) + (-p + c) * t + (2.0 * p - 5.0 * b + 4.0 * c - q) * t2 + (-p + 3.0 * b - 3.0 * c + q) * t3)
 
 ## A line of words written by hand: the fallback typeface (there is no
 ## handwritten one), leaning a little and a little off true by the seed, and

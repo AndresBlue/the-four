@@ -3,28 +3,27 @@ extends Control
 ## October 2026): what the hotel wrote down about itself is on this paper,
 ## filled in on a typewriter. A report from reception, a maintenance sheet, a
 ## maid's list, a work order: the same printed form, its fields typed in a
-## cloth ribbon's ink, a box crossed with an X, and now and then something
-## added in pencil, or a signature in pen. Drawn at the picture's own size
+## cloth ribbon's ink, a box crossed with an X, and now and then a
+## signature in pen. Drawn at the picture's own size
 ## (CARD), its fields measured on it; whoever shows it scales it.
 ##
 ## `form` says what goes where, all of it optional:
 ##   number, date [d, m, y], time [h, m], name, post, place, subject;
 ##   type: observacion, solicitud, tarea, incidente or otro;
 ##   lines: typed on the ruled lines, broken to fit (an empty one is skipped);
-##   rows: [[a, b]] typed in two columns under a heading, ticked in pencil
-##     where b is HECHA;
+##   rows: [[a, b]] typed in two columns under a heading;
 ##   action: {sin, terreno, seguimiento: true; derivar, informar, otro: words};
 ##   priority: baja, media, alta or urgente; state: pendiente, en_curso,
 ##   resuelto or cerrado; signed: a signature on FIRMA; notes: up to two lines
 ##   of OBSERVACIONES ADICIONALES; seed: how this one's keys came down.
-## And `hand`, lines in pencil written on the ruled lines under what was typed.
+## Everything on it is typed (the author's word, 22 October 2026); only the
+## signature is in pen.
 const HAND := preload("res://game/ui/handwork.gd")
 const INK_SHADER := preload("res://game/presentation/shaders/typewriter_ink.gdshader")
 const PAPER := preload("res://assets/nota-hotel.png")
 const CARD := Vector2(1024, 1536)
-## A cloth ribbon's black, a pencil, and a pen's blue-black.
+## A cloth ribbon's black, and a pen's blue-black.
 const RIBBON := Color(0.08, 0.075, 0.09)
-const GRAPHITE := Color(0.16, 0.15, 0.15, 0.92)
 const PEN := Color(0.1, 0.12, 0.28, 0.9)
 ## How big the keys strike, in the form's pixels: bigger than a real machine's
 ## pica would be on a sheet this size, for the sake of reading it held up.
@@ -32,7 +31,6 @@ const TYPE := 26
 const FIELD := 24
 const FIELD_TOP := 21
 const BOXED := 24
-const HANDWRITTEN := 30
 ## The detail's ruled lines: the first one's height, from one to the next, how
 ## many, and where typing starts along them and ends.
 const RULED_FIRST := 461.0
@@ -68,7 +66,6 @@ const NOTES := [[Vector2(700, 1449), 278.0], [Vector2(492, 1475), 486.0]]
 const EDGE := 3.0
 const CORNER := 16.0
 var form: Dictionary
-var hand: Array = []
 var card := CARD
 static var typeface: Font
 static var ink_material: ShaderMaterial
@@ -86,9 +83,8 @@ static func typewriter() -> Font:
 		typeface = heavier
 	return typeface
 
-func setup(data: Dictionary, pencil: Array = []) -> void:
+func setup(data: Dictionary) -> void:
 	form = data
-	hand = pencil
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = CARD
 	size = CARD
@@ -99,8 +95,8 @@ func setup(data: Dictionary, pencil: Array = []) -> void:
 	if ink_material == null:
 		ink_material = ShaderMaterial.new()
 		ink_material.shader = INK_SHADER
-	# What was typed, under the ribbon's grain; what was written by hand, over
-	# it, as it was done after.
+	# What was typed, under the ribbon's grain; the signature, over it, as it
+	# was done after.
 	var typed := Control.new()
 	typed.name = "Typed"
 	typed.size = CARD
@@ -240,38 +236,7 @@ static func cross(on: CanvasItem, boxes: Dictionary, which: String, seed_value: 
 # --- Written -------------------------------------------------------------------------------
 
 func draw_written(on: Control) -> void:
-	var seed_value := int(form.get("seed", 0))
-	# The maid's ticks beside what she did.
-	var rows: Array = form.get("rows", [])
-	for index in rows.size():
-		if String(rows[index][1]) != "HECHA" or index + 1 >= RULED: continue
-		var at := Vector2(RULED_TO - 60.0, RULED_FIRST + RULED_STEP * (index + 1) - 14.0)
-		var lean := HAND.jitter(float(index + seed_value), 3.0) * 5.0
-		on.draw_polyline(PackedVector2Array([at + Vector2(-11, -2 + lean), at + Vector2(-2, 9), at + Vector2(15, -15 + lean)]), GRAPHITE, 2.8, true)
-	# The pencil under what was typed, a line left between.
-	var line := 0
-	if not rows.is_empty(): line = rows.size() + 1
-	line += typed_lines().size()
-	if line > 0: line += 1
-	for text in wrapped_hand():
-		if line >= RULED: break
-		HAND.write_line(on, Vector2(RULED_FROM + 6.0, RULED_FIRST + RULED_STEP * line - 7.0), text, HANDWRITTEN, GRAPHITE, int(line * 13 + seed_value))
-		line += 1
-	if bool(form.get("signed", false)): signature(on, SIGNATURE, seed_value)
-
-func wrapped_hand() -> Array:
-	var font := ThemeDB.fallback_font
-	var out: Array = []
-	for text in hand:
-		var current := ""
-		for word in String(text).split(" "):
-			var trial := word if current.is_empty() else current + " " + word
-			if not current.is_empty() and font.get_string_size(trial, HORIZONTAL_ALIGNMENT_LEFT, -1, HANDWRITTEN).x > RULED_TO - RULED_FROM - 20.0:
-				out.append(current)
-				current = word
-			else: current = trial
-		out.append(current)
-	return out
+	if bool(form.get("signed", false)): signature(on, SIGNATURE, int(form.get("seed", 0)))
 
 ## A signature nobody could read, in pen: a tall first letter, the rest a run
 ## of loops of any height and width, leaning on and climbing a little, and a

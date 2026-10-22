@@ -1,4 +1,7 @@
-"""The hotel's form as it is seen lying on a table, from across the room.
+"""The hotel's papers as they are seen lying on a table, from across the room:
+its form, and the letter and the notebook's page (assets/carta.png,
+assets/libreta.png, 22 October 2026), each typed over and brought down to
+assets/textures/<paper>-lejos.png the same way.
 
     python tools/textures/bake_hotel_note.py
 
@@ -118,6 +121,45 @@ def main():
     filled = Image.alpha_composite(form, ink)
     filled.resize(SIZE, Image.LANCZOS).save(OUT)
     print('wrote', os.path.normpath(OUT))
+    for paper in RULED:
+        bake_ruled(paper)
+
+
+# The ruled papers (game/ui/ruled_paper.gd): the letter folded in four and the
+# page of a notebook, typed over with what is read on them.
+RULED = {
+    'carta': {'lines': [158, 199, 238, 275, 315, 354, 393, 432, 470, 510, 549, 587, 626, 665, 706, 746, 790], 'from': 66, 'to': 966, 'type': 26,
+              'text': ['Si alguien encuentra esto: me he pasado la noche dentro de un armario. Lo que anda por los pasillos ve muy lejos, mucho más lejos que tú. No le apuntes con la linterna, la luz lo trae.', '', 'Cuando se para en seco y chilla, ya sabe dónde estás. Ese segundo es lo único que tienes: sal de su vista.']},
+    'libreta': {'lines': [182, 239, 295, 350, 406, 462, 518, 574, 631, 686, 742], 'from': 100, 'to': 948, 'type': 28,
+                'text': ['02:40 Pasos en la planta de arriba. No son de persona, suenan como puntas contra el suelo.', '02:55 Se oye por las puertas abiertas y por los pasillos. A través de las paredes, nada. Cierro detrás de mí.', '03:10 En la sala de la salida no entra. Me quedo aquí hasta que se haga de día.']},
+}
+
+
+def bake_ruled(paper):
+    spec = RULED[paper]
+    source = Image.open(os.path.join(ROOT, 'assets', paper + '.png'))
+    sheet = source.convert('RGBA') if source.mode == 'RGBA' else cut_out(source)
+    ink = Image.new('RGBA', sheet.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(ink)
+    font = ImageFont.truetype(next(path for path in COURIER if os.path.exists(path)), spec['type']) if any(os.path.exists(path) for path in COURIER) else None
+    per_line = int((spec['to'] - spec['from']) / (spec['type'] * 0.6))
+    lines = []
+    for paragraph in spec['text']:
+        current = ''
+        for word in paragraph.split(' '):
+            trial = word if not current else current + ' ' + word
+            if current and len(trial) > per_line:
+                lines.append(current)
+                current = word
+            else:
+                current = trial
+        lines.append(current)
+    for index, text in enumerate(lines[:len(spec['lines'])]):
+        if text:
+            type_at(draw, font, (spec['from'], spec['lines'][index] - 7), text)
+    out = os.path.join(ROOT, 'assets', 'textures', paper + '-lejos.png')
+    Image.alpha_composite(sheet, ink).resize(SIZE, Image.LANCZOS).save(out)
+    print('wrote', os.path.normpath(out))
 
 
 if __name__ == '__main__':

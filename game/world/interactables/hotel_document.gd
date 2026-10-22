@@ -2,13 +2,19 @@ extends Area3D
 ## A loose sheet of paper that can be read. The Area3D is only the interaction
 ## target (hiding layer, found by the same focus ray as wardrobes).
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
-## The hotel's form as it is seen lying there (tools/textures/
-## bake_hotel_note.py): for its own paperwork, here and among the hints
-## (hotel_hint.gd), read held up on the whole form (game/ui/hotel_form.gd).
-const FORM_FAR := preload("res://assets/textures/nota-hotel-lejos.png")
-## A sheet of it, in metres: the picture's proportions, near enough an A4.
+## The papers as they are seen lying there (tools/textures/
+## bake_hotel_note.py): the hotel's form for its own paperwork, the letter
+## folded in four and the notebook's page, here and among the hints
+## (hotel_hint.gd); read held up whole (hotel_form.gd, ruled_paper.gd).
+const FAR := {
+	"form": preload("res://assets/textures/nota-hotel-lejos.png"),
+	"carta": preload("res://assets/textures/carta-lejos.png"),
+	"libreta": preload("res://assets/textures/libreta-lejos.png"),
+}
+## A sheet of any of them, in metres: the pictures' proportions, near enough
+## an A4.
 const FORM_SHEET := Vector2(0.2, 0.3)
-static var form_material: StandardMaterial3D
+static var materials := {}
 var entry_id := ""
 
 func _ready() -> void:
@@ -21,7 +27,9 @@ func _ready() -> void:
 	shape.shape = box
 	shape.position = Vector3(0, 0.08, 0)
 	add_child(shape)
-	var official: bool = CATALOG.entry(entry_id).has("form")
+	var item: Dictionary = CATALOG.entry(entry_id)
+	var on_paper := "form" if item.has("form") else String(item.get("paper", ""))
+	var official := not on_paper.is_empty()
 	var paper := StandardMaterial3D.new()
 	paper.albedo_color = Color(0.86, 0.83, 0.74)
 	paper.roughness = 0.95
@@ -40,7 +48,7 @@ func _ready() -> void:
 		instance.rotation.y = sheet * 0.18
 		add_child(instance)
 	if official:
-		var form := form_sheet()
+		var form := sheet_of(on_paper)
 		form.position = Vector3(0, 0.0052, 0)
 		form.rotation.y = 0.18
 		add_child(form)
@@ -55,21 +63,22 @@ func _ready() -> void:
 		instance.rotation.y = 0.18
 		add_child(instance)
 
-## The form, face up, its header away from whoever put it down: a plane with
-## the picture, cut out along the paper's worn corners.
-static func form_sheet() -> MeshInstance3D:
-	if form_material == null:
-		form_material = StandardMaterial3D.new()
-		form_material.albedo_texture = FORM_FAR
-		form_material.roughness = 0.95
-		form_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		form_material.alpha_scissor_threshold = 0.5
-		form_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+## A paper face up, its top away from whoever put it down: a plane with its
+## picture, cut out along the paper's worn edges.
+static func sheet_of(paper: String) -> MeshInstance3D:
+	if not materials.has(paper):
+		var material := StandardMaterial3D.new()
+		material.albedo_texture = FAR.get(paper, FAR.form)
+		material.roughness = 0.95
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		material.alpha_scissor_threshold = 0.5
+		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		materials[paper] = material
 	var plane := PlaneMesh.new()
 	plane.size = FORM_SHEET
-	plane.material = form_material
+	plane.material = materials[paper]
 	var instance := MeshInstance3D.new()
-	instance.name = "Form"
+	instance.name = "Paper"
 	instance.mesh = plane
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance
