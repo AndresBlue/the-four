@@ -207,7 +207,10 @@ func last_fall() -> bool:
 # Beside the checkpoint (which says which floor): what had changed in it when
 # it was last left, taken and given back by game/app/floor_save.gd. Binary,
 # because it holds vectors and tables keyed by seat; read without objects.
-const STATE_FORMAT := 1
+# 2 since the suitcases are furniture that is gone through (21 October 2026):
+# the pieces gone through are kept by their place in the floor's list, and a
+# suitcase in it moves every piece after it.
+const STATE_FORMAT := 2
 
 func state_path() -> String: return checkpoint_path.get_basename() + ".state"
 

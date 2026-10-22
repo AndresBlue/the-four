@@ -22,6 +22,9 @@ static func code(manifest: Dictionary) -> Array:
 	for slot in COUNT: digits.append(rng.randi_range(0, 9))
 	return digits
 
+## The pieces of furniture that never hold a page of the code.
+const NO_PAGES := ["luggage"]
+
 ## Returns [{container (index into the floor's containers), slot, digit}].
 static func choose(manifest: Dictionary, containers: Array, stage := 3) -> Array:
 	var rng := RandomNumberGenerator.new()
@@ -37,6 +40,9 @@ static func choose(manifest: Dictionary, containers: Array, stage := 3) -> Array
 		var spot: Dictionary = containers[index]
 		var room: Dictionary = manifest.rooms[int(spot.room)]
 		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id) or bool(room.get("landing", false)): continue
+		# A suitcase holds only what is not needed (the author's word, 21
+		# October 2026): never a number.
+		if NO_PAGES.has(String(spot.get("kind", ""))): continue
 		spots.append({"index": index, "sector": int(room.sector), "room": int(room.id), "metres": float(metres.get(int(room.id), 0.0))})
 	for i in range(spots.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)

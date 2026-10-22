@@ -44,7 +44,7 @@ const STATES := ["HECHA", "HECHA", "HECHA", "HECHA", "NO MOLESTAR", "SIN TOALLAS
 ## The rooms whose door a sign can come off, and what it said.
 const SIGNS := {7: "SOLO PERSONAL", 6: "CERRADO", 5: "SE RUEGA SILENCIO", 17: "NO PISAR LAS PLANTAS", 18: "EN OBRAS", 13: "SILENCIO", 14: "APAGUE AL SALIR", 4: "FUERA DE SERVICIO", 16: "SOLO PERSONAL", 8: "PRIVADO", 9: "PELIGRO", 15: "PRIVADO"}
 ## Where in a piece of furniture a paper is, said as a maid would say it.
-const IN_PIECE := {"commode": "en un cajón", "console": "en un cajón", "drawers": "en un cajón", "bookcase": "en una estantería", "cabinet": "en un mueble", "boxes": "en unas cajas"}
+const IN_PIECE := {"commode": "en un cajón", "console": "en un cajón", "drawers": "en un cajón", "bookcase": "en una estantería", "cabinet": "en un mueble", "boxes": "en unas cajas", "luggage": "en una maleta"}
 const ORDINALS := ["primer", "segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo"]
 
 ## Returns [{id, kind, slot (the page it is about, 0 for all four), place
@@ -72,7 +72,11 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 		page_rooms[int(spot.room)] = true
 	pages.sort_custom(func(a, b): return int(a.slot) < int(b.slot))
 	var blocked := page_rooms.duplicate()
-	for document in DOCUMENTS.choose(manifest, "locust"): blocked[int(document.room)] = true
+	# Nor where a document is, nor in the suitcase one is shut in.
+	var held := {}
+	for document in DOCUMENTS.choose(manifest, "locust", containers):
+		blocked[int(document.room)] = true
+		held[int(document.container)] = true
 	var hints: Array = []
 	# One paper in sight for each page.
 	var kinds := ZONE_KINDS.duplicate()
@@ -95,7 +99,7 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 	shuffle(marked, rng)
 	var ways := POINT_KINDS.duplicate()
 	shuffle(ways, rng)
-	var drawers := drawer_spots(manifest, containers, hiding, wing, metres, deepest, refuge, POINT_SPAN)
+	var drawers := drawer_spots(manifest, containers, hiding, wing, metres, deepest, refuge, POINT_SPAN).filter(func(spot): return not held.has(int(spot.container)))
 	var used := {}
 	for index in mini(POINTS, marked.size()):
 		var page: Dictionary = marked[index]

@@ -195,8 +195,9 @@ static func walls(span: Vector2) -> Array:
 	return [["west", Vector3(1, 0, 0), span.x, span.y], ["east", Vector3(-1, 0, 0), span.x, span.y], ["north", Vector3(0, 0, 1), span.y, span.x], ["south", Vector3(0, 0, -1), span.y, span.x]]
 
 ## Dresses a room (called by hotel_geometry.build_room(), after its sockets).
-## The pieces you can go through: drawers, shelves and cupboards.
-const CONTAINERS := ["commode", "console", "drawers", "bookcase", "cabinet", "boxes"]
+## The pieces you can go through: drawers, shelves and cupboards, and a
+## suitcase lying on the floor (which never holds a page: digit_placement).
+const CONTAINERS := ["commode", "console", "drawers", "bookcase", "cabinet", "boxes", "luggage"]
 
 static func dress(builder, node: Node3D, room: Dictionary) -> void:
 	# Neither the refuge nor the lift lobby is furnished: one is bare by
@@ -278,8 +279,21 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			for x in [-0.28, 0.28]: put(builder, holder, "dining_chair_02", Vector3(x, 0, 0.32), v.call(36 + int(x * 10)) * 0.2 - 0.1, 1.0, true)
 		"luggage":
 			put(builder, holder, "vintage_suitcase_a", Vector3(-0.15, 0, 0.14), 0.05, 1.0, true)
-			# The other lies flat beside it (on its back: it reaches into the room).
-			place(builder, holder, "vintage_suitcase_b", Transform3D(Basis(Vector3.UP, v.call(37) * 0.6 - 0.3) * Basis(Vector3.RIGHT, PI / 2), Vector3(0.4, 0.12, 0.1)))
+			# The other lies flat beside it, on its back, its lid up and its
+			# handle towards the room: the one that is gone through (the
+			# author's word, 21 October 2026), its lid lifting on the hinge
+			# along the edge by the wall.
+			var turn: float = v.call(37) * 0.6 - 0.3
+			var lying := Transform3D(Basis(Vector3.UP, turn) * Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, -PI / 2), Vector3(0.4, 0.12, 0.1))
+			builder.piece_main = place(builder, holder, "vintage_suitcase_b", lying)
+			builder.piece_front = maxf(builder.piece_front, 0.1 + mesh("vintage_suitcase_b").get_aabb().size.y)
+			# What is shut in it shows between the two halves, at the seam of
+			# the edge with the handle (0.545 up the case, the seam at 0.0145),
+			# clear of the handle and the latches: back inside, and down the
+			# front of the lower half.
+			var side: float = 1.0 if v.call(127) < 0.5 else -1.0
+			var fold := Vector3(side * (0.26 + v.call(128) * 0.04), 0.545, 0.0145)
+			builder.note_spot = {"at": lying * fold, "yaw": turn, "skew": v.call(129) * 0.2 - 0.1, "lie": 0.1, "hang": 0.09, "lie_tilt": 0.0, "hang_tilt": 0.12, "model": "vintage_suitcase_b", "piece": lying}
 		"plant":
 			put(builder, holder, "potted_plant_02" if v.call(39) < 0.3 else "monstera", Vector3(0, 0, 0.35), v.call(38) * TAU, 1.0, false)
 			builder.box(holder, Vector3(0, 0.27, 0.35), Vector3(0.5, 0.54, 0.5), "", true)

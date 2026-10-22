@@ -845,9 +845,10 @@ func bounce_ready() -> void:
 func populate_floor(with_director: bool) -> void:
 	camera_cut()
 	spawn_locust()
-	place_documents()
 	place_televisions()
 	place_containers()
+	# After the furniture: a document may be shut in a suitcase.
+	place_documents()
 	director = null
 	if with_director:
 		director = DIRECTOR.new()

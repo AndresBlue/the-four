@@ -433,7 +433,12 @@ func run() -> void:
 	# And the hints in drawers show one too (hint_placement.gd): from outside,
 	# nobody can tell a page from a hint.
 	var in_drawers: int = level.code.hints.filter(func(hint): return String(hint.place) == "container").size()
-	check("Y solo la llevan los otros muebles con una pista", level.containers.filter(func(piece): return is_instance_valid(piece.note)).size() == DIG.COUNT + in_drawers and level.containers.filter(func(piece): return is_instance_valid(piece.note)).all(func(piece): return piece.digit >= 0 or piece.hint >= 0))
+	var shut_in: int = level.containers.filter(func(piece): return not piece.document.is_empty()).size()
+	check("Y solo la llevan los otros muebles con una pista o un documento", level.containers.filter(func(piece): return is_instance_valid(piece.note)).size() == DIG.COUNT + in_drawers + shut_in and level.containers.filter(func(piece): return is_instance_valid(piece.note)).all(func(piece): return piece.digit >= 0 or piece.hint >= 0 or not piece.document.is_empty()))
+	# A suitcase lying on the floor is gone through too, and holds only what
+	# is not needed: never a number of the code (digit_placement.NO_PAGES).
+	var suitcases: Array = level.containers.filter(func(piece): return piece.kind == "luggage")
+	check("Las maletas tumbadas se registran, y nunca guardan un número", suitcases.size() > 10 and suitcases.all(func(piece): return piece.digit < 0 and not piece.main.is_empty() and String(piece.note_spot.get("model", "")) == "vintage_suitcase_b"))
 	var muebles: int = level.containers.size()
 	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
 	# Each sounds like what it is when gone through (hotel_container.SEARCH_SOUNDS):
@@ -443,6 +448,11 @@ func run() -> void:
 	var CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
 	var recorded: bool = CONTAINER.SEARCH_SOUNDS.values().all(func(paths): return paths.all(func(path): return load(path) is AudioStream and (load(path) as AudioStream).get_length() > 0.5))
 	check("Cada mueble suena como lo que es al registrarlo", recorded and not models.has("") and models.has("GothicCommode_01") and models.has("drawer_cabinet") and models.has("cardboard_box_01") and level.containers.all(func(piece): return piece.search_sounds() == CONTAINER.SEARCH_SOUNDS.get(String(piece.note_spot.model), [CONTAINER.SEARCH_SOUND])))
+	# The author's word, 21 October 2026: the console and the bookcase make no
+	# sound and nothing of them is moved; the glazed cabinet sounds like the
+	# commode's big drawer; crates alone and suitcases make no sound.
+	var by_model := func(model: String) -> Array: return level.containers.filter(func(piece): return String(piece.note_spot.get("model", "")) == model)
+	check("Consola y estantería sin sonido y sin mover nada; el aparador, cajón grande; cajas de plástico y maletas, sin sonido", by_model.call("ClassicConsole_01").all(func(piece): return piece.silent() and piece.still()) and by_model.call("wooden_bookshelf_worn").all(func(piece): return piece.silent() and piece.still()) and by_model.call("vintage_cabinet_01").all(func(piece): return piece.search_sounds() == CONTAINER.SEARCH_SOUNDS.GothicCommode_01 and not piece.still()) and by_model.call("plastic_crate_02").all(func(piece): return piece.silent() and not piece.still()) and suitcases.all(func(piece): return piece.silent() and not piece.still()) and not by_model.call("ClassicConsole_01").is_empty())
 	for piece in hidden:
 		level.search_container(piece)
 		await frames(2)
@@ -454,19 +464,19 @@ func run() -> void:
 	# too: a drawer or a door out of the piece, drawn in its parts, or one of its
 	# things moved; and a box on the layer the clicks come back from.
 	await frames(120)
-	var opened: bool = hidden.all(func(piece): return moved_out(piece) and piece.shown.any(func(node): return node is StaticBody3D and node.collision_layer == piece.ECHO and node.collision_mask == 0) and echo_found(piece))
+	var opened: bool = hidden.all(func(piece): return piece.still() or (moved_out(piece) and piece.shown.any(func(node): return node is StaticBody3D and node.collision_layer == piece.ECHO and node.collision_mask == 0) and echo_found(piece)))
 	# Drawn in its parts: a body and every part, the whole piece out of its batch.
 	var swapped: bool = hidden.filter(func(piece): return not piece.main.is_empty()).all(func(piece): return piece.shown.filter(func(node): return node is MeshInstance3D).size() == 1 + (piece.shown[0].mesh.get_meta("parts") as PackedStringArray).size())
 	# A stack shoves its top box, of its own stack.
 	var stacks: Array = level.containers.filter(func(piece): return piece.kind == "boxes")
 	var stacked: bool = stacks.all(func(piece): return piece.things.size() >= 1 and piece.things.size() <= 6)
-	check("Lo registrado queda abierto, y la criatura lo encuentra con sus chasquidos", opened and swapped and stacked and level.containers.filter(func(piece): return not piece.searched).all(func(piece): return piece.shown.is_empty()))
+	check("Lo registrado queda abierto, y la criatura lo encuentra con sus chasquidos", opened and swapped and stacked and level.containers.filter(func(piece): return not piece.searched or piece.still()).all(func(piece): return piece.shown.is_empty()))
 	# Somebody coming back into a floor already gone through finds it so at
 	# once (a quiet search, match_net.catch_up), one that opens and one that
 	# does not.
 	var quiet_ones: Array = []
 	for opens in [true, false]:
-		var found: Array = level.containers.filter(func(piece): return not piece.searched and piece.main.is_empty() != opens)
+		var found: Array = level.containers.filter(func(piece): return not piece.searched and not piece.still() and piece.main.is_empty() != opens)
 		if not found.is_empty(): quiet_ones.append(found[0])
 	for piece in quiet_ones: level.apply_search(level.containers.find(piece), true, true)
 	check("Quien vuelve a un piso ya registrado lo encuentra abierto, sin esperar", quiet_ones.size() == 2 and quiet_ones.all(func(piece): return moved_out(piece)))

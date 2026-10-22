@@ -15,9 +15,9 @@ const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
 const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 ## What a paper can lie on (document_placement.SURFACES), and which paper is
 ## put on each for its photograph.
-const SURFACES := {"table": ["document", "locust_reception"], "desk": ["hint", "orden"], "nightstand": ["document", "locust_letter"], "phone": ["hint", "cartel"]}
+const SURFACES := {"table": ["document", "locust_reception"], "desk": ["hint", "orden"], "nightstand": ["document", "locust_letter"]}
 ## Pieces that hold papers, by the model the paper sits on (hotel_container).
-const HOLDERS := ["GothicCommode_01", "ClassicConsole_01", "drawer_cabinet", "wooden_bookshelf_worn", "painted_wooden_cabinet", "vintage_cabinet_01", "cardboard_box_01", "plastic_crate_02"]
+const HOLDERS := ["GothicCommode_01", "ClassicConsole_01", "drawer_cabinet", "wooden_bookshelf_worn", "painted_wooden_cabinet", "vintage_cabinet_01", "cardboard_box_01", "plastic_crate_02", "vintage_suitcase_b"]
 ## Corner pieces built out of boxes rather than a model, by their kind.
 ## (The corner wardrobe is the big hiding place, taken with the hiding places.)
 const BUILT := ["table", "desk", "nightstand", "phone", "reception", "lamp", "curtain", "washer", "basin", "tv", "tv_stand", "bed", "shelf", "cart", "bin", "sofa", "plant", "luggage"]
@@ -203,6 +203,12 @@ func holders() -> void:
 		await shot("mueble_" + model, what, "mueble")
 		look(Vector3(at.x, floor_y + 1.64, at.z) + out * 0.9 + side * 0.3, at)
 		await shot("mueble_%s_cerca" % model, what + ", de cerca", "mueble")
+		# A piece that opens, gone through: how it is left.
+		if not piece.main.is_empty() and piece.digit < 0 and piece.hint < 0 and piece.document.is_empty():
+			level.apply_search(level.containers.find(piece), true, false, level.player.slot)
+			look(Vector3(at.x, floor_y + 1.5, at.z) + out * 2.0 + side * 0.5, middle)
+			await shot("mueble_%s_abierto" % model, what + ", registrado", "mueble", 80)
+			continue
 		piece.take_note()
 		if piece.digit >= 0 or piece.hint >= 0: piece.plant_note()
 

@@ -26,13 +26,15 @@ var was_held := false
 
 var slow_used := false
 
-## The document being read, if any; or the hint (its id), the way a document
-## is: held up to the camera while the floor goes on.
+## The document being read, if any (or its entry, for one found in a
+## suitcase, which has no paper left lying about); or the hint (its id), the
+## way a document is: held up to the camera while the floor goes on.
 var reading_document: Node3D
+var reading_entry := ""
 var reading_hint := -1
 
 func reading() -> bool:
-	return is_instance_valid(reading_document) or reading_hint >= 0
+	return is_instance_valid(reading_document) or not reading_entry.is_empty() or reading_hint >= 0
 
 ## Seconds spent going through the piece of furniture in front.
 var search_time := 0.0
@@ -62,8 +64,17 @@ func toggle_sheet() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if level.world_audio.enabled: level.paper_sound.play()
 
+## The floor's documents: on their table, or shut in a suitcase
+## (document_placement.gd), which shows its slip as a piece with a hint does.
+## After the pieces of furniture (code_lock.place_containers()).
 func place_documents() -> void:
-	for spot in PLACEMENT.choose(level.manifest, "locust"):
+	var pieces: Array = level.hotel.containers if level.containers.size() == level.hotel.containers.size() else []
+	for spot in PLACEMENT.choose(level.manifest, "locust", pieces):
+		if int(spot.get("container", -1)) >= 0:
+			var piece = level.containers[int(spot.container)]
+			piece.document = String(spot.entry)
+			piece.plant_note()
+			continue
 		var document := DOCUMENT.new()
 		document.name = "Document_" + spot.entry
 		document.entry_id = spot.entry
@@ -72,14 +83,22 @@ func place_documents() -> void:
 		level.hotel.add_child(document)
 
 func open_document(document: Node3D) -> void:
+	read_document(document.entry_id)
 	reading_document = document
+
+## A document held up, heard, and kept in the archive: one lying about, or
+## one just found in a suitcase.
+func read_document(entry_id: String) -> void:
+	if reading(): close_document()
+	reading_entry = entry_id
 	level.player.reading = true
-	level.ui.show_document(CATALOG.entry(document.entry_id))
+	level.ui.show_document(CATALOG.entry(entry_id))
 	if level.world_audio.enabled: level.paper_sound.play()
-	level.discoveries.record(document.entry_id)
+	level.discoveries.record(entry_id)
 
 func close_document() -> void:
 	reading_document = null
+	reading_entry = ""
 	reading_hint = -1
 	level.player.reading = false
 	level.ui.hide_document()
@@ -89,7 +108,7 @@ func close_document() -> void:
 func read_hint(id: int) -> void:
 	var hint: Dictionary = level.code.hint_of(id)
 	if hint.is_empty(): return
-	if is_instance_valid(reading_document): close_document()
+	if is_instance_valid(reading_document) or not reading_entry.is_empty(): close_document()
 	reading_hint = id
 	level.player.reading = true
 	level.code.note_read(id)

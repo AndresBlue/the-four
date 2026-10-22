@@ -3,6 +3,7 @@ extends SceneTree
 ## documents placed on furniture, read and kept in the archive.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
+const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 var level
 var checks: Array = []
@@ -53,10 +54,24 @@ func lead_fair(entry: Dictionary, player_at: Vector3, hidden: bool) -> bool:
 
 ## Each document well in from where its planta is walked into (walking), no
 ## two on one planta, and none in a refuge.
+## The piece of furniture a document lies on: the corner prop of its room
+## nearest to it.
+func prop_under(spot: Dictionary) -> String:
+	var room: Dictionary = level.manifest.rooms[int(spot.room)]
+	var best := ""
+	var nearest := INF
+	for prop in room.props:
+		var at: Vector3 = FLOOR.position_of(room) + GEOMETRY.prop_transform(room, prop).origin
+		var away := Vector2(at.x - spot.position.x, at.z - spot.position.z).length()
+		if away < nearest:
+			nearest = away
+			best = String(prop.kind)
+	return best
+
 func documents_placed(documents: Array) -> bool:
 	var plantas := {}
 	for document in documents:
-		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, document.position)
+		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, document.global_position)
 		if room.is_empty() or level.manifest.refuges.has(int(room.id)) or plantas.has(int(room.wing)): return false
 		plantas[int(room.wing)] = true
 		var metres := FLOOR.route_metres(level.manifest, FLOOR.entry_of(level.manifest, int(room.wing)))
@@ -185,14 +200,18 @@ func run() -> void:
 	director.set_physics_process(false)
 	director.force = true
 	# --- Documents ---
+	# On a top, or shut in a suitcase (document_placement.HOLDERS).
 	var documents := get_nodes_in_group("hotel_documents")
-	check("Dos documentos por piso", documents.size() == PLACEMENT.PER_FLOOR)
-	var again := PLACEMENT.choose(level.manifest, "locust")
-	check("Colocación reproducible por semilla", again.size() == documents.size() and again.all(func(spot): return documents.any(func(d): return d.entry_id == spot.entry and d.position.is_equal_approx(spot.position))))
-	check("Documentos bien dentro de su planta, uno por planta y en ningún refugio", documents_placed(documents))
+	var shut: Array = level.containers.filter(func(piece): return not piece.document.is_empty())
+	check("Dos documentos por piso", documents.size() + shut.size() == PLACEMENT.PER_FLOOR)
+	var again := PLACEMENT.choose(level.manifest, "locust", level.hotel.containers)
+	check("Colocación reproducible por semilla", again.size() == PLACEMENT.PER_FLOOR and again.all(func(spot): return (int(spot.container) >= 0 and level.containers[int(spot.container)].document == spot.entry) or documents.any(func(d): return d.entry_id == spot.entry and d.position.is_equal_approx(spot.position))))
+	check("Documentos bien dentro de su planta, uno por planta y en ningún refugio", documents_placed(documents + shut))
 	# Measured from the floor of their own planta: the plantas are stacked.
 	check("Documentos sobre muebles, no en el suelo", documents.all(func(d): return d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) > 0.6 and d.position.y - FLOOR.planta_y(FLOOR.planta_of(d.position.y)) < 0.9))
-	check("Documentos distintos entre sí", documents[0].entry_id != documents[1].entry_id)
+	check("Ni en la mesilla del teléfono, y si no, en una maleta y con su papel a la vista", again.all(func(spot): return int(spot.container) >= 0 or prop_under(spot) != "phone") and shut.all(func(piece): return piece.kind == "luggage" and is_instance_valid(piece.note) and piece.digit < 0))
+	var entries: Array = documents.map(func(d): return d.entry_id) + shut.map(func(piece): return piece.document)
+	check("Documentos distintos entre sí", entries.size() == 2 and entries[0] != entries[1])
 	var document = documents[0]
 	# Walked up to from the middle of the room and looked at, the way it is
 	# read in a game. A document lies on a piece of furniture and furniture
@@ -240,6 +259,17 @@ func run() -> void:
 	fresh.load_record()
 	check("Una sesión nueva carga lo descubierto", fresh.has(document.entry_id))
 	fresh.free()
+	# A document shut in a suitcase (document_placement.HOLDERS) is read the
+	# moment the suitcase is gone through, by whoever does, and its paper
+	# leaves with them; the suitcase opens its lid and makes no sound.
+	var suitcase = level.containers.filter(func(piece): return piece.kind == "luggage" and not piece.searched and piece.digit < 0 and piece.hint < 0 and piece.document.is_empty())[0]
+	suitcase.document = document.entry_id
+	suitcase.plant_note()
+	level.apply_search(level.containers.find(suitcase), true, false, player.slot)
+	await frames(60)
+	check("Un documento en una maleta se lee al abrirla, y su papel se va con quien la abre", level.interaction.reading_entry == document.entry_id and is_instance_valid(level.ui.reading) and not is_instance_valid(suitcase.note) and suitcase.silent() and String(suitcase.left.get("part", "")).begins_with("lid"))
+	level.close_document()
+	await process_frame
 	level.ui.menu("archive")
 	check("El archivo del menú lista la entrada leída", level.ui.buttons.has(document.entry_id) and not level.ui.buttons[document.entry_id].disabled)
 	# All sixteen are there, and the one read opens as its file.

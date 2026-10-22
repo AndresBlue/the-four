@@ -725,7 +725,7 @@ pueda jugar entero sin tocar el teclado.
   moqueta y otra sobre baldosa (el chorro y el borboteo ya están, traídos
   por ti el 13 de octubre: `assets/audio/sfx/blood/`).
 
-- `four-7xp.2` **Lo que falta para registrar todos los muebles** (hoy suenan a puerta
+- `four-7xp.2` (resuelto el 21 de octubre de 2026 sin grabaciones nuevas: la vitrina suena a cajón grande y la consola, la estantería y las cajas de plástico no suenan; cerrar en Beads) **Lo que falta para registrar todos los muebles** (hoy suenan a puerta
   abierta despacio, AUDIO.md, «Registrar muebles»), ahora que cada uno
   queda como se registró: la **vitrina** abre una de sus puertas bajas de
   madera (una **puerta de aparador** pequeña que se abre; sus puertas de

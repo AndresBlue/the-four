@@ -49,12 +49,16 @@ const CLOCKS := {
 ## door -- with where that is in the body's mesh kept in its "pivot" and its
 ## extent there in its "box". The body lists them in its "parts". The commode
 ## calls its three drawers doors; the glazed cabinet's three upper doors are
-## glass, its four lower ones wood.
+## glass, its four lower ones wood. A pattern with no number in it is part 0.
+## A download of several (PARTS) is baked so each of its own: the suitcases
+## each with their lid, whose node's origin is the hinge, along the bottom edge
+## at the seam (the author's word, 21 October 2026: a suitcase opens).
 const MOVING := {
 	"GothicCommode_01": {"drawer": "_door0(\\d)$"},
 	"painted_wooden_cabinet": {"drawer": "_drawer_0(\\d)$", "door": "_door_0(\\d)$"},
 	"drawer_cabinet": {"drawer": "_drawer_0(\\d)$"},
 	"vintage_cabinet_01": {"door": "_door_0([2567])$", "glass": "_door_0([134])$"},
+	"vintage_suitcase": {"lid": "_top$"},
 }
 ## Downloads that come as a rack: things hung one above another, to be seen
 ## from the front. The nodes whose name matches are put where they would be
@@ -78,7 +82,10 @@ func run() -> void:
 	var folder := ProjectSettings.globalize_path(SOURCE)
 	for model in DirAccess.get_directories_at(folder):
 		if (not only.is_empty() and model != only) or model in SKIP: continue
-		if MOVING.has(model): bake_moving(model, folder + model)
+		if MOVING.has(model):
+			if PARTS.has(model):
+				for part in PARTS[model]: bake_moving(model, folder + model, part, PARTS[model][part])
+			else: bake_moving(model, folder + model)
 		if moving_only: continue
 		if CLOCKS.has(model):
 			bake_clock(model, folder + model)
@@ -270,8 +277,9 @@ func bake_clock(model: String, folder: String) -> void:
 		print("CATALOGUE %s size=(%.3f, %.3f, %.3f) triangles=%d surfaces=%d%s" % [name, size.x, size.y, size.z, triangles, result.get_surface_count(), "" if where == "" else " pivot=%s" % pivots[where]])
 	scene.free()
 
-## A piece that is gone through, in parts (MOVING).
-func bake_moving(model: String, folder: String) -> void:
+## A piece that is gone through, in parts (MOVING); one of several in its
+## download (PARTS), from the nodes whose name matches `pattern`.
+func bake_moving(model: String, folder: String, part := "", pattern := "") -> void:
 	var file := ""
 	for entry in DirAccess.get_files_at(folder):
 		if entry.ends_with(".gltf") or entry.ends_with(".glb"): file = entry
@@ -284,6 +292,10 @@ func bake_moving(model: String, folder: String) -> void:
 	var scene := document.generate_scene(state)
 	var pieces := []
 	collect_named(scene, Transform3D.IDENTITY, pieces)
+	if not pattern.is_empty():
+		var own := RegEx.create_from_string(pattern)
+		pieces = pieces.filter(func(piece): return own.search(String(piece[2])) != null)
+	var baked := model + ("_" + part if not part.is_empty() else "")
 	var turn := Transform3D(Basis(Vector3.UP, YAW.get(model, 0.0)).scaled(Vector3.ONE * SCALE.get(model, 1.0)), Vector3.ZERO)
 	# The same fit as the merged piece's, from the whole of it: the body and
 	# its parts stay where they are in it.
@@ -308,7 +320,7 @@ func bake_moving(model: String, folder: String) -> void:
 		var where := ""
 		for kind in spec:
 			var found := RegEx.create_from_string(spec[kind]).search(String(piece[2]))
-			if found != null: where = "%s_%s" % [kind, found.get_string(1)]
+			if found != null: where = "%s_%s" % [kind, found.get_string(1) if found.get_group_count() >= 1 else "0"]
 		var shift := Transform3D.IDENTITY
 		if where != "":
 			if pivots.has(where):
@@ -354,7 +366,7 @@ func bake_moving(model: String, folder: String) -> void:
 			importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, material, key)
 		importer.generate_lods(60.0, 25.0, [])
 		var result := importer.get_mesh()
-		var name: String = model + "_" + (String(where) if where != "" else "body")
+		var name: String = baked + "_" + (String(where) if where != "" else "body")
 		result.resource_name = name
 		if where == "": result.set_meta("parts", PackedStringArray(names))
 		else:

@@ -1,10 +1,13 @@
 extends Area3D
 ## A piece with drawers or shelves, gone through by hand. Most hold nothing;
 ## four of them, in the wing of the last stage, hold a number of the code.
+## A suitcase lying on the floor opens too, and never holds a number: only
+## what is not needed, a hint or a document of the archive.
 ##
-## Going through one is not quiet and it is not instant: it takes a second of
-## standing there with your back to the room, and it can be heard from the
-## rooms next door. That is the price of looking.
+## Going through one is not instant: it takes a second of standing there with
+## your back to the room, and most of them can be heard from the rooms next
+## door. That is the price of looking. What makes no sound (SEARCH_SOUNDS) is
+## not heard by anybody, the creature either.
 signal searched_changed
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
@@ -15,6 +18,9 @@ var digit := -1
 var slot := 0
 ## The hint in it, if any (hint_placement.gd): its id among the floor's.
 var hint := -1
+## The document of the archive in it, if any (document_placement.gd): its
+## entry, read by whoever finds it the moment they do.
+var document := ""
 var searched := false
 var kind := ""
 ## How far the piece's front stands from its stretch's wall (room_dressing).
@@ -52,14 +58,19 @@ func noise_radius() -> float: return NOISE.radius("door_slow")
 
 ## What going through it sounds like, by the piece it is (the model its note
 ## is worked out on, room_dressing.note_fold()): the drawers of the gothic
-## commode are big, those of the painted cabinet small and old, the office's
-## drawer cabinet is a modern one, and a stack opens a cardboard box
-## (tools/audio/prepare_search_sfx.py). What has no recording of its own yet
-## -- the glazed cabinet's doors, the console, the bookcase, a stack of only
-## crates -- still sounds like a door opened slowly, as everything did before
-## 19 October 2026 (docs/PLAN.md).
+## commode are big, and so is the glazed cabinet's lower door; those of the
+## painted cabinet small and old, the office's drawer cabinet is a modern one,
+## and a stack opens a cardboard box (tools/audio/prepare_search_sfx.py). The
+## console, the bookcase, a stack of only crates and a suitcase make none (the
+## author's word, 21 October 2026). Anything else would sound like a door
+## opened slowly, as everything did before 19 October 2026.
 const SEARCH_SOUNDS := {
 	"GothicCommode_01": ["res://assets/audio/sfx/search/big_drawer.wav"],
+	"vintage_cabinet_01": ["res://assets/audio/sfx/search/big_drawer.wav"],
+	"ClassicConsole_01": [],
+	"wooden_bookshelf_worn": [],
+	"plastic_crate_02": [],
+	"vintage_suitcase_b": [],
 	"painted_wooden_cabinet": ["res://assets/audio/sfx/search/wooden_drawer.wav"],
 	"drawer_cabinet": ["res://assets/audio/sfx/search/soft_drawer_1.wav", "res://assets/audio/sfx/search/soft_drawer_2.wav", "res://assets/audio/sfx/search/soft_drawer_3.wav", "res://assets/audio/sfx/search/soft_drawer_4.wav", "res://assets/audio/sfx/search/soft_drawer_5.wav"],
 	"cardboard_box_01": ["res://assets/audio/sfx/search/box.wav"],
@@ -72,6 +83,16 @@ const SEARCH_CREAK_DB := -10.0
 ## The recordings it may sound with.
 func search_sounds() -> Array:
 	return SEARCH_SOUNDS.get(String(note_spot.get("model", "")), [SEARCH_SOUND])
+
+## Gone through without a sound: nobody hears it, the creature either.
+func silent() -> bool:
+	return search_sounds().is_empty()
+
+## Gone through and left as it was: nothing of it opens or is moved (the
+## author's word, 21 October 2026).
+const STILL := ["console", "bookcase"]
+func still() -> bool:
+	return kind in STILL
 
 ## A piece gone through is left open, for anybody to see who comes by --
 ## the creature too, in its clicks (the author's word, 19 October 2026). One
@@ -87,13 +108,19 @@ func search_sounds() -> Array:
 ## it; the top box of a stack set down on the floor beside it (one with
 ## nothing on top is shoved out instead). Moved a hair less (an ornament put
 ## back askew, a book pulled out a little) none of it was seen in a lit room
-## from two metres. What is opened or moved has a box of its own on the layer the
-## creature's clicks come back from and that stops nobody walking (64,
-## echo_view.RAY_MASK; it hides from sight and hearing like a moving door).
-## Searching only ever goes one way, so nothing here is shut again.
+## from two metres. Since 21 October 2026 (the author's word) the console and
+## the bookcase are left as they were (STILL): only the paper is gone. A
+## suitcase's lid is lifted on its hinge until it stands, leaning a little
+## back over the case. What is opened or moved has a box of its own on the
+## layer the creature's clicks come back from and that stops nobody walking
+## (64, echo_view.RAY_MASK; it hides from sight and hearing like a moving
+## door). Searching only ever goes one way, so nothing here is shut again.
 const DRAWER_OUT := 0.5
 const DOOR_OPEN := 1.1
 const DOOR_SWING := 1.2
+const LID_OPEN := 1.45
+## How long what opens takes when there is no recording to keep time with.
+const SILENT_OPEN := 0.8
 ## How far in front of the piece a thing taken down is left (metres, past
 ## where it stood), how far a box with nothing on top is shoved, how much
 ## either is turned (radians), and how long an ornament takes to fall over.
@@ -116,7 +143,7 @@ var left := {}
 ## Gone through: shown so, the opening taking `seconds` (none: at once, as
 ## when somebody comes back into a floor already gone through).
 func show_searched(seconds: float) -> void:
-	if not shown.is_empty(): return
+	if not shown.is_empty() or still(): return
 	if not main.is_empty() and main.entry.get("multi") != null: open_part(seconds)
 	elif not things.is_empty(): shift_thing(seconds > 0.0)
 
@@ -153,12 +180,12 @@ func open_part(seconds: float) -> void:
 
 ## Which part comes out (see show_searched).
 func choose_part(names: PackedStringArray, base: String) -> String:
-	for kind_of_part in ["drawer", "door", "glass"]:
+	for kind_of_part in ["drawer", "door", "glass", "lid"]:
 		var of_kind: Array = Array(names).filter(func(part_name): return part_name.begins_with(kind_of_part + "_"))
 		if of_kind.is_empty(): continue
 		# The drawer the note was shut in: the one whose front its slip hung
-		# out over.
-		if digit >= 0 and kind_of_part == "drawer" and note_spot.has("piece"):
+		# out over, a page's or a hint's.
+		if (digit >= 0 or hint >= 0 or not document.is_empty()) and kind_of_part == "drawer" and note_spot.has("piece"):
 			var at: Vector3 = (note_spot.piece as Transform3D).affine_inverse() * (note_spot.at as Vector3)
 			for part_name in of_kind:
 				var box: AABB = (load("%s_%s.res" % [base, part_name]) as Mesh).get_meta("box")
@@ -167,10 +194,12 @@ func choose_part(names: PackedStringArray, base: String) -> String:
 	return names[0]
 
 ## A drawer slides out by DRAWER_OUT of its depth; a door turns about its
-## hinge by DOOR_OPEN, its free edge out into the room.
+## hinge by DOOR_OPEN, its free edge out into the room; a lid turns up about
+## the hinge along its edge by LID_OPEN.
 static func motion(part_name: String, part: Mesh) -> Transform3D:
 	var box: AABB = part.get_meta("box")
 	if part_name.begins_with("drawer"): return Transform3D(Basis.IDENTITY, Vector3(0, 0, box.size.z * DRAWER_OUT))
+	if part_name.begins_with("lid"): return Transform3D(Basis(Vector3.RIGHT, LID_OPEN), Vector3.ZERO)
 	var hinge: Vector3 = part.get_meta("pivot")
 	return Transform3D(Basis(Vector3.UP, -DOOR_OPEN if box.get_center().x > hinge.x else DOOR_OPEN), Vector3.ZERO)
 
