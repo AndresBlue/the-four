@@ -847,8 +847,10 @@ func populate_floor(with_director: bool) -> void:
 	spawn_locust()
 	place_televisions()
 	place_containers()
-	# After the furniture: a document may be shut in a suitcase.
+	# After the furniture: a document may be shut in a suitcase, and the key
+	# goes in a drawer with nothing else in it.
 	place_documents()
+	code.place_key()
 	director = null
 	if with_director:
 		director = DIRECTOR.new()
@@ -1426,6 +1428,7 @@ func catch_up_progress(progress: Dictionary) -> void:
 	if bool(progress.get("code", false)) and not code_entered:
 		code_entered = true
 		if is_instance_valid(lock): lock.set_open(true)
+	for index in progress.get("panels", []): code.apply_panel(int(index), "open", true)
 	var away: Dictionary = progress.get("lift_away", {})
 	for index in away: lifts.lift_away[int(index)] = float(away[index])
 	var stage := int(progress.get("stage", session.stage))
@@ -1513,7 +1516,8 @@ func host_gate(delta: float) -> void:
 		# With one set left to light, this wing loses its power and the
 		# creature hunts without tiring. It is the wing's power, not the
 		# floor's: the next one is found lit.
-		if rule("blackout") == 1 and done >= needed - 1 and not session.goal.get("blackout", false):
+		# Not again once the floor's key has given it its lights back.
+		if rule("blackout") == 1 and done >= needed - 1 and not session.goal.get("blackout", false) and not session.goal.get("restored", false):
 			session.goal["blackout"] = true
 			ledger.note_dark()
 			session.changed.emit()

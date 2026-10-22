@@ -366,6 +366,30 @@ func run() -> void:
 	check("Buscando a nadie junto a una tele, sale por otra al rato", level.creature_at_television() == lit[1] and level.hop_rest > 0.0)
 	level.locust.set_physics_process(true)
 	level.player.global_position = parked
+	# The floor's key (code_lock.place_key(), the author's word, 22 October
+	# 2026): in a drawer of the first two plantas, its ring out of it; only
+	# whoever takes it opens an electrical panel, and from an open one the wing
+	# in the blackout has its lights back, for good.
+	var key_piece = level.containers[level.code.key_in] if level.code.key_in >= 0 else null
+	check("La llave del cuadro está en un cajón de las dos primeras plantas, y asoma", key_piece != null and level.code.KEY_IN.has(String(key_piece.note_spot.model)) and int(FLOOR.room_at(level.manifest.rooms, key_piece.global_position).wing) <= 1 and is_instance_valid(key_piece.key_shown) and key_piece.digit < 0 and key_piece.hint < 0)
+	var panel_wing := func(panel) -> int: return int(FLOOR.room_at(level.manifest.rooms, panel.global_position).get("wing", -1))
+	check("Cada planta tiene su cuadro eléctrico", [0, 1, 2].all(func(wing): return level.code.panels.any(func(panel): return panel_wing.call(panel) == wing)))
+	var board = level.code.panels.filter(func(panel): return panel_wing.call(panel) == 1)[0]
+	var board_index: int = level.code.panels.find(board)
+	level.match_net.use_panel(board_index, "open")
+	await frames(2)
+	check("Sin la llave el cuadro no se abre", not board.opened and not level.code.has_key())
+	level.apply_search(level.code.key_in, true, false, level.player.slot)
+	await frames(2)
+	check("Quien registra ese mueble se lleva la llave", level.code.has_key() and not is_instance_valid(key_piece.key_shown) and key_piece.searched)
+	level.match_net.use_panel(board_index, "open")
+	await frames(60)
+	check("Con la llave el cuadro se abre, su puerta fuera", board.opened and board.shown.size() == 2 and not (board.shown[1].transform as Transform3D).is_equal_approx(board.shown[0].transform * Transform3D(Basis.IDENTITY, (board.shown[1].mesh as Mesh).get_meta("pivot"))))
+	level.match_net.use_panel(board_index, "power")
+	await frames(8)
+	check("Y desde el cuadro vuelve la luz del ala, y no se va otra vez", not level.hotel.dark and not session.goal.get("blackout", false) and session.goal.get("restored", false))
+	await frames(30)
+	check("Sigue encendida aunque falte una tele", not level.hotel.dark and not session.goal.get("blackout", false))
 	check("Sin pantalla de fin de piso por el medio", level.ui.screen != "transition" and level.ui.screen != "won")
 	check("Cerrar la etapa 2 lleva a la 3", await cross_to_stage(3))
 	await frames(5)
@@ -441,7 +465,7 @@ func run() -> void:
 	check("Como mucho un papel de ayuda por piso queda en una maleta: los demás, a la vista", suitcases.filter(func(piece): return piece.hint >= 0 or not piece.document.is_empty()).size() <= 1)
 	check("Las maletas tumbadas se registran, y nunca guardan un número", suitcases.size() > 10 and suitcases.all(func(piece): return piece.digit < 0 and not piece.main.is_empty() and String(piece.note_spot.get("model", "")) == "vintage_suitcase_b"))
 	var muebles: int = level.containers.size()
-	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
+	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched or level.containers.find(piece) == level.code.key_in))
 	# Each sounds like what it is when gone through (hotel_container.SEARCH_SOUNDS):
 	# it knows which piece it is, and those with a recording of their own use it.
 	var models := {}

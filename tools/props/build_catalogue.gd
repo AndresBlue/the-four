@@ -59,7 +59,14 @@ const MOVING := {
 	"drawer_cabinet": {"drawer": "_drawer_0(\\d)$"},
 	"vintage_cabinet_01": {"door": "_door_0([2567])$", "glass": "_door_0([134])$"},
 	"vintage_suitcase": {"lid": "_top$"},
+	"power_box_01": {"door": "_door$"},
 }
+## Downloads that come with something open which the game shows shut: the
+## nodes whose name matches are baked with their own turn taken out, as they
+## were modelled, in the merged piece and in its parts. The fuse box came with
+## its door swung wide; shut, it is the electrical panel that only the key
+## opens (game/world/interactables/hotel_panel.gd).
+const SHUT := {"power_box_01": "_door$"}
 ## Downloads that come as a rack: things hung one above another, to be seen
 ## from the front. The nodes whose name matches are put where they would be
 ## with the rack laid flat on its back (what was up is towards the front),
@@ -290,6 +297,7 @@ func bake_moving(model: String, folder: String, part := "", pattern := "") -> vo
 		failed = true
 		return
 	var scene := document.generate_scene(state)
+	shut(scene, model)
 	var pieces := []
 	collect_named(scene, Transform3D.IDENTITY, pieces)
 	if not pattern.is_empty():
@@ -377,6 +385,13 @@ func bake_moving(model: String, folder: String, part := "", pattern := "") -> vo
 		print("CATALOGUE %s size=(%.3f, %.3f, %.3f) triangles=%d surfaces=%d%s" % [name, size.x, size.y, size.z, triangles, result.get_surface_count(), "" if where == "" else " pivot=%s box=%s" % [pivots[where], boxes[where]]])
 	scene.free()
 
+## What SHUT says to show shut: those nodes with their turn taken out.
+func shut(node: Node, model: String) -> void:
+	if not SHUT.has(model): return
+	var pattern := RegEx.create_from_string(SHUT[model])
+	for child in node.find_children("*", "Node3D", true, false):
+		if pattern.search(String(child.name)) != null: (child as Node3D).basis = Basis.from_scale((child as Node3D).basis.get_scale())
+
 static func safe(name: String) -> String:
 	var regex := RegEx.create_from_string("[^A-Za-z0-9_]+")
 	var result := regex.sub(name, "_", true).strip_edges()
@@ -404,6 +419,7 @@ func bake(model: String, folder: String, part := "", pattern := "") -> void:
 		failed = true
 		return
 	var scene := document.generate_scene(state)
+	shut(scene, model)
 	var parts := []
 	collect(scene, Transform3D.IDENTITY, parts, RegEx.create_from_string(pattern) if not pattern.is_empty() else null)
 	if LAID.has(model):

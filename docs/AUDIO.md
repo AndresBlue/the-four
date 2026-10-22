@@ -155,6 +155,10 @@ Cada mueble registrable suena como lo que es (`hotel_container.SEARCH_SOUNDS`, p
 
 Los cortes de la apertura están en `OPENING` (segundos de cada grabación, leídos en su envolvente: el tirón, el deslizamiento y el golpe del cajón al llegar al tope); las cinco tomas de `soft-drawer.wav` se separan por los silencios digitales que dejó su autor. **El cajón sale con su sonido:** la herramienta escribe también `game/audio/search_timing.gd`, cuándo da cada grabación su último golpe (el cajón contra el tope: 0,69 s el grande, 1,02 el de madera, de 0,84 a 1,38 las tomas de la cajonera), y el cajón tarda eso en salir; la puerta de la vitrina, con el cajón grande; lo que se abre con el papel, que no tiene golpe (la tapa de la maleta), tarda `UNTIMED_OPEN`, 0,8 s. El ruido que oye la criatura es el de una puerta abierta despacio (`hotel_container.noise_radius()`), y no lo hay cuando del mueble solo se oye el papel (`hushed()`). Lo comprueba `stages_test`.
 
+## Cuadro eléctrico
+
+La puerta del cuadro, al abrirlo con la llave, suena con la apertura de un armario (`wardrobe/opening1.ogg`, a −10 dB): no hay grabación de una puertecita de metal. Al dar la luz suena el cuadro devuelto a su sitio, la misma estática corta con la que vuelve la corriente al cambiar de ala (`BLACKOUT_SOUND`, `POWER_BACK`), desde el cuadro. Coger la llave no suena más que el cajón. Lo que falta está en [PLAN.md](PLAN.md), apartado 4.
+
 ## Puerta lenta
 
 **Abierta despacio**, una puerta suena con `door/opening/slow-opening.wav` («creaky door», CaptainYulef, CC0); asomarse desde un armario usa la misma grabación. **Cerrada despacio**, con `door/closing/slow-closing.wav` («Creaky bedroom door close; long .WAV», thomasanthony321, CC0): el crujido empieza con el giro y el pestillo cae cuando la hoja llega al marco, 1,5 s después (`hotel_door.SLOW_SWING`); de lejos solo se oye el pestillo, al caer. Hasta el 19 de octubre de 2026 la puerta lenta era «DOOR creak» (CC BY-NC) y cerrar despacio sonaba igual que cerrar.

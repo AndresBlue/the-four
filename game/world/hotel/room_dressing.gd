@@ -357,13 +357,37 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 	# A clock on one wall in some rooms.
 	if pick in ["", "chairs", "armchair", "chair"] and v.call(46) < 0.3:
 		place(builder, holder, "wall_clock", Transform3D(Basis.IDENTITY, Vector3(0.2, 2.05, WALL_FACE + 0.027)))
-	# A fuse box on the wall of some service rooms, its door left open, over
-	# nothing taller than a stack of boxes: solid, at the height of a head.
-	if pick in ["", "boxes", "bins", "baskets"] and int(room.type) in FUSE_ROOMS and v.call(134) < 0.4:
-		var size := mesh("power_box_01").get_aabb().size
-		var at := Vector3(-0.45, 1.25, WALL_FACE + size.z * 0.5 + 0.004)
-		place(builder, holder, "power_box_01", Transform3D(Basis.IDENTITY, at), false)
-		builder.box(holder, at + Vector3(0, size.y * 0.5, 0), size, "", true)
+	# A fuse box on the wall of some service rooms, over nothing taller than a
+	# stack of boxes. Every planta has one at least (fuse_boxes_left()): the
+	# stretches it could hang on are kept for that.
+	if pick in ["", "boxes", "bins", "baskets"]:
+		if int(room.type) in FUSE_ROOMS and v.call(134) < 0.4: fuse_box(builder, holder, room)
+		elif int(room.type) != 19 and not bool(room.get("landing", false)): builder.panel_spares.append({"wing": int(room.get("wing", 0)), "holder": holder, "room": room})
+
+## A fuse box on a stretch's wall: solid, at the height of a head, shut and
+## locked. It is an electrical panel, which the floor's key opens
+## (hotel_panel.gd), and the builder keeps where it is and where it is drawn.
+static func fuse_box(builder, holder: Node3D, room: Dictionary) -> void:
+	var size := mesh("power_box_01").get_aabb().size
+	var at := Vector3(-0.45, 1.25, WALL_FACE + size.z * 0.5 + 0.004)
+	var handle := place(builder, holder, "power_box_01", Transform3D(Basis.IDENTITY, at), false)
+	builder.box(holder, at + Vector3(0, size.y * 0.5, 0), size, "", true)
+	builder.panels.append({"room": int(room.id), "wing": int(room.get("wing", 0)), "position": holder.get_parent().position + holder.transform * (at + Vector3(0, size.y * 0.5, size.z * 0.5)), "yaw": holder.transform.basis.get_euler().y, "main": handle})
+
+## Once every room is dressed: a planta left with no panel (a half-sized one
+## was found with none, and its blackout with nowhere to be undone from) has
+## one on the first stretch it could hang on, a service room's before any
+## other's.
+static func fuse_boxes_left(builder) -> void:
+	var wings := {}
+	for spare in builder.panel_spares: wings[int(spare.wing)] = true
+	for wing in wings:
+		if builder.panels.any(func(panel): return int(panel.wing) == wing): continue
+		var spares: Array = builder.panel_spares.filter(func(spare): return int(spare.wing) == wing)
+		var served: Array = spares.filter(func(spare): return int(spare.room.type) in FUSE_ROOMS)
+		var spare: Dictionary = served[0] if not served.is_empty() else spares[0]
+		fuse_box(builder, spare.holder, spare.room)
+	builder.panel_spares.clear()
 
 ## A model on the stretch's floor, turned by yaw and scaled by s; with a box
 ## collider round it when solid (turned only a little, so its box stays).

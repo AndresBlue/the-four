@@ -16,6 +16,7 @@ const DOOR := preload("res://game/world/interactables/hotel_door.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
+const PANEL := preload("res://game/world/interactables/hotel_panel.gd")
 var level
 
 var pressed_door
@@ -114,6 +115,13 @@ func read_hint(id: int) -> void:
 	level.code.note_read(id)
 	level.ui.show_hint(hint, level.code.hint_walls())
 	if level.world_audio.enabled: level.paper_sound.play()
+
+## What an electrical panel offers: locked to whoever has no key; to whoever
+## has it, opening it, and once open, the lights, while the blackout lasts.
+func panel_word(panel) -> String:
+	if not level.code.has_key(): return "CERRADO"
+	if not panel.opened: return "ABRIR"
+	return "DAR LA LUZ" if level.code.can_power() else ""
 
 func focused_area():
 	var from: Vector3 = level.player.camera.global_position
@@ -285,6 +293,15 @@ func drive_local(delta: float) -> void:
 		read_hint(hint_target.hint_id)
 		was_held = true
 		return
+	# An electrical panel: only whoever has the key opens it, and from it gives
+	# a wing in the blackout its lights back.
+	var panel_target = aimed if aimed is PANEL else null
+	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(panel_target) and level.code.has_key():
+		var index: int = level.code.panels.find(panel_target)
+		if not panel_target.opened: level.match_net.use_panel(index, "open")
+		elif level.code.can_power(): level.match_net.use_panel(index, "power")
+		was_held = true
+		return
 	var hiding_target = aimed if aimed is HIDE else null
 	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(hiding_target):
 		if is_instance_valid(level.locust) and level.locust.control == "ai" and level.locust.sees(level.player, true): level.locust.saw_enter(hiding_target)
@@ -305,7 +322,7 @@ func drive_local(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else panel_word(panel_target) if is_instance_valid(panel_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0

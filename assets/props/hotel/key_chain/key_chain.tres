@@ -1,0 +1,11 @@
+[gd_resource type="ORMMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/hotel/key_chain/key_chain_albedo.jpg" id="1_ogfax"]
+[ext_resource type="Texture2D" path="res://assets/props/hotel/key_chain/key_chain_normal.png" id="2_6k3dp"]
+[ext_resource type="Texture2D" path="res://assets/props/hotel/key_chain/key_chain_orm.jpg" id="3_8j5hw"]
+
+[resource]
+albedo_texture = ExtResource("1_ogfax")
+orm_texture = ExtResource("3_8j5hw")
+normal_enabled = true
+normal_texture = ExtResource("2_6k3dp")

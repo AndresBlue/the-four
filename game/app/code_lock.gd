@@ -10,6 +10,7 @@ const LOCK := preload("res://game/world/interactables/hotel_lock.gd")
 const DIGITS := preload("res://game/world/generation/digit_placement.gd")
 const HINTS := preload("res://game/world/generation/hint_placement.gd")
 const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
+const PANEL := preload("res://game/world/interactables/hotel_panel.gd")
 const DRESSING := preload("res://game/world/hotel/room_dressing.gd")
 const CHALK := preload("res://game/presentation/shaders/chalk.gdshader")
 ## The marks the hints put on the plan: the carbon copy's circle, and the
@@ -50,6 +51,16 @@ var hints_taken := {}
 var hints_read := {}
 var hints_mine: Array = []
 
+## The electrical panels of the floor (hotel_panel.gd), in build order, and
+## the one key that opens them (the author's word, 22 October 2026): the piece
+## of furniture it is shut in (an index into `containers`, -1 when there is
+## none) and the seat that took it (-1 while nobody has). Only whoever has it
+## opens a panel, and from an open panel gives a wing in the blackout its
+## lights back (the stage's goal, `restored`). Nothing of this is needed.
+var panels: Array = []
+var key_in := -1
+var key_holder := -1
+
 ## The keypad of the last door, and what is being typed into it.
 var lock: Node3D
 
@@ -72,6 +83,9 @@ func place_containers() -> void:
 	code_entered = false
 	typed = ""
 	lock = null
+	panels.clear()
+	key_in = -1
+	key_holder = -1
 	close_lock()
 	if level.manifest.get("gates", []).is_empty(): return
 	for spot in level.hotel.containers:
@@ -116,6 +130,7 @@ func place_containers() -> void:
 		# The four that hold something say so: a slip of paper left showing.
 		containers[index].plant_note()
 	place_hints(hiding, int(asking[0]) if not asking.is_empty() else 0)
+	place_panels()
 	level.camcorder.write_code("")
 	# The parts of the pieces that open, loaded now and kept while the floor
 	# lasts: not read off the disk on the first search.
@@ -136,6 +151,83 @@ var opening_meshes := {}
 ## as the pages do (nobody can tell which is which before looking); those in
 ## sight lie on their table; and what two of them speak of is put in the
 ## world -- the work order's wet floor sign, the chalk on the walls.
+## The floor's electrical panels, where the dressing hung them.
+func place_panels() -> void:
+	panels.clear()
+	for spot in level.hotel.panels:
+		var panel := PANEL.new()
+		panel.name = "Panel_%d" % panels.size()
+		panel.main = spot.get("main", {})
+		var room_node = level.hotel.room_nodes[int(spot.room)] if int(spot.room) < level.hotel.room_nodes.size() else level.hotel
+		panel.position = (spot.position as Vector3) - room_node.position
+		panel.rotation.y = float(spot.yaw)
+		room_node.add_child(panel)
+		panels.append(panel)
+
+## The key: in a drawer of a piece of the first two plantas (a commode, the
+## office's drawers or the painted cabinet; never one with a page, a hint or a
+## document in it, nor in a refuge or a lift lobby), the same one on every
+## machine. Its ring hangs out of the drawer it is shut in, as a note would.
+const KEY_IN := ["GothicCommode_01", "drawer_cabinet", "painted_wooden_cabinet"]
+func place_key() -> void:
+	key_in = -1
+	key_holder = -1
+	if containers.is_empty(): return
+	var refuges: Array = level.manifest.get("refuges", [])
+	var spots: Array = []
+	for index in containers.size():
+		var piece = containers[index]
+		if not KEY_IN.has(String(piece.note_spot.get("model", ""))) or piece.digit >= 0 or piece.hint >= 0 or not piece.document.is_empty(): continue
+		var room: Dictionary = level.manifest.rooms[int(level.hotel.containers[index].room)]
+		if int(room.get("wing", 0)) > 1 or refuges.has(int(room.id)) or bool(room.get("landing", false)): continue
+		spots.append(index)
+	if spots.is_empty(): return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([int(level.manifest.seed), "key"])
+	key_in = int(spots[rng.randi_range(0, spots.size() - 1)])
+	containers[key_in].key = true
+	containers[key_in].plant_key()
+
+## Whether this machine's player has the key.
+func has_key() -> bool:
+	return key_holder >= 0 and key_holder == level.player.slot
+
+## A panel opened, or its switches thrown: the host decides, as with
+## everything else (match_net.use_panel), and here it is done on every
+## machine. Quiet: caught up on coming back, not happening now.
+func apply_panel(index: int, action: String, quiet := false) -> void:
+	if index < 0 or index >= panels.size() or not is_instance_valid(panels[index]): return
+	var panel = panels[index]
+	match action:
+		"open":
+			if panel.opened: return
+			panel.open(0.0 if quiet else panel.SWING)
+			if level.world_audio.enabled and not quiet: level.world_audio.play_at(PANEL_SOUND, panel.global_position, PANEL_DB)
+		"power":
+			if not panel.opened: panel.open(0.0)
+			if not level.net.is_client() and bool(level.session.goal.get("blackout", false)):
+				level.session.goal["blackout"] = false
+				level.session.goal["restored"] = true
+				level.session.changed.emit()
+			if level.world_audio.enabled and not quiet: level.world_audio.play_long(level.BLACKOUT_SOUND, panel.global_position, -6.0, RID(), false, level.POWER_BACK)
+
+## The panel's door: a wardrobe's latch and hinge, the nearest recording
+## there is of a small metal door (docs/PLAN.md, apartado 4).
+const PANEL_SOUND := "res://assets/audio/sfx/wardrobe/opening1.ogg"
+const PANEL_DB := -10.0
+
+## Whether a panel can give the lights back now: in a blackout of this wing
+## (one given back does not come again: the goal's `restored`).
+func can_power() -> bool:
+	return bool(level.session.goal.get("blackout", false))
+
+## The panels standing open, by their place in the floor's list.
+func opened_panels() -> Array:
+	var out: Array = []
+	for index in panels.size():
+		if is_instance_valid(panels[index]) and panels[index].opened: out.append(index)
+	return out
+
 func place_hints(hiding: Array, stage: int) -> void:
 	hints = HINTS.choose(level.manifest, level.hotel.containers, hiding, stage) if stage > 0 else []
 	for hint in hints:
@@ -258,6 +350,11 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 		if seat == level.player.slot and not level.match_net.local_is_locust():
 			own_hint(piece.hint)
 			if not quiet and not level.bot_match: level.interaction.read_hint(piece.hint)
+	# The key goes to whoever finds it, and it is theirs alone.
+	if piece.key:
+		key_holder = seat
+		piece.take_key()
+		if seat == level.player.slot and not quiet and not level.bot_match: level.ui.flash("LLAVE DEL CUADRO ELÉCTRICO", 3.0)
 	if piece.digit >= 0:
 		found_digits[piece.slot] = piece.digit
 		found_by[piece.slot] = seat

@@ -45,6 +45,13 @@ var piece_front := 0.0
 ## Where a note would sit on the piece being furnished, in its stretch's space
 ## (room_dressing.note_fold()): empty if it takes none.
 var note_spot := {}
+## The electrical panels (the fuse boxes, room_dressing), as they are dressed:
+## {room, position (the middle of its front), yaw, main}. The floor's key
+## opens any of them (hotel_panel.gd).
+var panels: Array = []
+## Where a fuse box could still hang, while the floor is dressed
+## (room_dressing.fuse_boxes_left()).
+var panel_spares: Array = []
 ## Wardrobes in build order: the same index names the same wardrobe on every
 ## machine in an online match (doors likewise).
 var hides: Array = []
@@ -1039,6 +1046,7 @@ func build(data: Dictionary) -> void:
 			lights.append(lamp)
 			continue
 		build_room(node, room)
+	DRESSING.fuse_boxes_left(self)
 	hides.append_array(big_hides)
 	big_hides.clear()
 	route_signs.clear()

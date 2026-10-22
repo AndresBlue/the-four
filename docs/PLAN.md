@@ -725,6 +725,8 @@ pueda jugar entero sin tocar el teclado.
 
 ## 4 · Assets que faltan (tuyos)
 
+- **La llave y el cuadro eléctrico** (22 de octubre de 2026): el tintineo de una llave al cogerla, la puertecita de metal del cuadro al abrirse (hoy la de un armario) y el golpe de un interruptor al dar la luz (hoy la estática del cambio de ala).
+
 - `four-7xp.1` **El goteo de la sangre** no suena: falta una gota espesa sobre
   moqueta y otra sobre baldosa (el chorro y el borboteo ya están, traídos
   por ti el 13 de octubre: `assets/audio/sfx/blood/`).

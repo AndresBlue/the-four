@@ -495,6 +495,32 @@ func request_container(index: int) -> void:
 func container_state(index: int, value: bool, seat: int) -> void:
 	level.apply_search(index, value, false, seat)
 
+## An electrical panel opened, or its switches thrown, by whoever has the
+## floor's key (code_lock.apply_panel()). A guest asks; the host checks that
+## it is the key's holder and standing at it, and tells everybody.
+func use_panel(index: int, action: String, seat := -1) -> void:
+	if index < 0: return
+	if seat < 0: seat = level.player.slot
+	if not in_match() or net.is_host:
+		if seat != level.code.key_holder: return
+		level.code.apply_panel(index, action)
+		if in_match(): panel_state.rpc(index, action)
+		return
+	request_panel.rpc_id(1, index, action)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_panel(index: int, action: String) -> void:
+	if not net.is_host or index < 0 or index >= level.code.panels.size() or not action in ["open", "power"]: return
+	var panel = level.code.panels[index]
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	if not is_instance_valid(panel) or seat != level.code.key_holder or not near_sender(panel.global_position): return
+	level.code.apply_panel(index, action)
+	panel_state.rpc(index, action)
+
+@rpc("authority", "call_remote", "reliable")
+func panel_state(index: int, action: String) -> void:
+	level.code.apply_panel(index, action)
+
 ## The code read into the last door's keypad. A guest asks; the host checks the
 ## numbers itself, so a client cannot open a floor by saying it did.
 func use_code(seat := -1) -> void:
@@ -1036,14 +1062,16 @@ func catch_up(seat: int, id: int) -> void:
 	var sets: Array = []
 	for set in level.televisions: sets.append(is_instance_valid(set) and set.on)
 	# And what the floor has been through that a rebuilt floor does not know:
-	# drawers searched (and so digits found), the code entered, cars away,
-	# and the sector it is on.
+	# drawers searched (and so digits found, hints and the key taken, each by
+	# whoever took it), the code entered, the panels opened, cars away, and
+	# the sector it is on.
 	var searched: Array = []
 	for index in level.containers.size():
 		var piece = level.containers[index]
 		if is_instance_valid(piece) and piece.searched:
-			searched.append([index, int(level.found_by.get(piece.slot, 0)) if piece.digit >= 0 else 0])
-	var progress := {"searched": searched, "code": level.code_entered, "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage}
+			var by: int = int(level.found_by.get(piece.slot, 0)) if piece.digit >= 0 else int(level.code.hints_taken.get(piece.hint, 0)) if piece.hint >= 0 else level.code.key_holder if index == level.code.key_in else 0
+			searched.append([index, by])
+	var progress := {"searched": searched, "code": level.code_entered, "panels": level.code.opened_panels(), "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage}
 	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot() if level.rule("shared_sheet") == 1 else [], sets, progress)
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 

@@ -50,6 +50,7 @@ De los personajes se versionan el modelo y las imágenes que su importación ext
 | `elevator` | Elevator with Animation LOWPOLY | EFX | CC Attribution | Sketchfab |
 | `camcorder` | Panasonic VHS-C MOVIE CAMERA NV-A3 | Arthur Vanneste | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/panasonic-vhs-c-movie-camera-nv-a3-64bc8b9060f24d72848307ef9be1b9bd) |
 | `vhs_tape` | VHS | Terizmeh | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/vhs-c11a8596c3314677a8b9321e141de275) |
+| `key` | Key Chain | Inside Out Art (@ranajitdas) | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/key-chain-e258f14fb7874f299ebef320f7aee4ee) |
 
 El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque el coche va detrás de una pared del propio hotel. Su FBX está en `assets/props/elevator/elevator.fbx` y sus texturas en la misma carpeta (madera, suelo, metal, botonera con sus mapas de emisión y de metal, y botones de llamada), con los materiales `lift_*.tres`. `tools/props/build_elevator.gd` lo hornea a 0,8 de su tamaño en cinco piezas, todas en el espacio del coche:
 - `lift_car.res`: el coche con la botonera interior completa;

@@ -21,6 +21,11 @@ var hint := -1
 ## The document of the archive in it, if any (document_placement.gd): its
 ## entry, read by whoever finds it the moment they do.
 var document := ""
+## Whether the floor's key is shut in it (code_lock.place_key()): its ring
+## hangs out of the drawer, and whoever goes through it takes it.
+var key := false
+const KEY_MESH := preload("res://assets/props/hotel/key_chain.res")
+var key_shown: Node3D
 var searched := false
 var kind := ""
 ## How far the piece's front stands from its stretch's wall (room_dressing).
@@ -197,7 +202,7 @@ func choose_part(names: PackedStringArray, base: String) -> String:
 		if of_kind.is_empty(): continue
 		# The drawer the note was shut in: the one whose front its slip hung
 		# out over, a page's or a hint's.
-		if (digit >= 0 or hint >= 0 or not document.is_empty()) and kind_of_part == "drawer" and note_spot.has("piece"):
+		if (digit >= 0 or hint >= 0 or not document.is_empty() or key) and kind_of_part == "drawer" and note_spot.has("piece"):
 			var at: Vector3 = (note_spot.piece as Transform3D).affine_inverse() * (note_spot.at as Vector3)
 			for part_name in of_kind:
 				var box: AABB = (load("%s_%s.res" % [base, part_name]) as Mesh).get_meta("box")
@@ -375,6 +380,26 @@ func add_part(part_name: String, turn: Basis, centre: Vector3, size: Vector3, sh
 		part.add_child(stroke)
 		written += 1
 		along += LINE_EVERY
+
+## The key shut in its drawer: out of the slit where a note would be, its
+## ring caught in it and the key hanging down the drawer's front, a little off
+## the face, turned on its ring. Metal: it catches a torch.
+func plant_key() -> void:
+	if is_instance_valid(key_shown) or note_spot.is_empty(): return
+	key_shown = MeshInstance3D.new()
+	key_shown.name = "Key"
+	(key_shown as MeshInstance3D).mesh = KEY_MESH
+	(key_shown as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# The baked key lies flat with its blade along +Z from its ring: stood on
+	# end, the blade hangs down, its face to the room, swinging a little.
+	var hang := Basis(Vector3.UP, float(note_spot.yaw)) * Basis(Vector3.BACK, (float(note_spot.get("skew", 0.0)) * 1.5)) * Basis(Vector3.RIGHT, PI * 0.5 - 0.12)
+	key_shown.transform = Transform3D(hang, (note_spot.at as Vector3) + Basis(Vector3.UP, float(note_spot.yaw)) * Vector3(0, -0.004, 0.012))
+	add_child(key_shown)
+
+func take_key() -> void:
+	if is_instance_valid(key_shown): key_shown.queue_free()
+	key_shown = null
+	key = false
 
 ## Gone through: whoever did it took the paper with them.
 func take_note() -> void:
