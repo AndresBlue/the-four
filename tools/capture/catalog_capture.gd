@@ -21,7 +21,6 @@ const HOLDERS := ["GothicCommode_01", "ClassicConsole_01", "drawer_cabinet", "wo
 ## Corner pieces built out of boxes rather than a model, by their kind.
 ## (The corner wardrobe is the big hiding place, taken with the hiding places.)
 const BUILT := ["table", "desk", "nightstand", "phone", "reception", "lamp", "curtain", "washer", "basin", "tv", "tv_stand", "bed", "shelf", "cart", "bin", "sofa", "plant", "luggage"]
-const DOMESTIC := [1, 2, 3, 4, 7, 15, 16]
 var level
 var index: Array = []
 var seen := {}
@@ -54,7 +53,7 @@ func look(eye: Vector3, at: Vector3) -> void:
 func frame(centre: Vector3, room: Dictionary, distance: float, above := 0.35, clear := 0.3) -> void:
 	# In the rooms with alcoves (hotel_geometry.build_room()) a corner is
 	# behind a partition: it is seen from inside its alcove.
-	if DOMESTIC.has(int(room.get("type", -1))): distance = minf(distance, 1.5)
+	if FLOOR.palette(level.manifest).domestic(room): distance = minf(distance, 1.5)
 	await physics_frame
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	var middle := FLOOR.position_of(room)
@@ -81,12 +80,12 @@ func lit(room: Dictionary) -> bool:
 	return not room.is_empty() and not bool(room.get("dark", false)) and not bool(room.get("landing", false)) and not level.manifest.get("refuges", [level.manifest.exit]).has(int(room.id))
 
 func room_name(room: Dictionary) -> String:
-	return String(FLOOR.NAMES[int(room.type)]) if not room.is_empty() else ""
+	return FLOOR.palette(level.manifest).label(room) if not room.is_empty() else ""
 
 func socket_of(kind: String, types := []) -> Array:
 	for room in level.manifest.rooms:
 		if not lit(room) or int(room.get("hall", -1)) >= 0: continue
-		if not types.is_empty() and not types.has(int(room.type)): continue
+		if not types.is_empty() and not types.has(FLOOR.palette(level.manifest).TYPES[int(room.type)]): continue
 		for prop in room.props:
 			if prop.kind == kind: return [room, GEOMETRY.prop_transform(room, prop)]
 	return []
@@ -226,8 +225,8 @@ func skipped(name: String) -> bool:
 func others() -> void:
 	for kind in BUILT:
 		if kind in SURFACES: continue
-		var types: Array = [7, 8, 9] if kind == "shelf" else []
-		for variant in ([["", types], ["_madera", [4, 6, 13, 15]]] if kind == "shelf" else [["", types]]):
+		var types: Array = ["lavanderia", "almacen", "mantenimiento"] if kind == "shelf" else []
+		for variant in ([["", types], ["_madera", ["bano", "comedor", "sala_lectura", "oficina"]]] if kind == "shelf" else [["", types]]):
 			var key: String = "corner_" + kind + String(variant[0])
 			if seen.has(key): continue
 			var found := socket_of(kind, variant[1])

@@ -46,7 +46,7 @@ static func choose(manifest: Dictionary, creature: String, containers: Array = [
 		if float(reach[planta].get(int(room.id), 0.0)) < float(least[planta]): continue
 		for prop in room.props:
 			if not SURFACES.has(prop.kind): continue
-			var socket := GEOMETRY.prop_transform(room, prop)
+			var socket := GEOMETRY.prop_transform(room, prop, FLOOR.palette(manifest))
 			# Slightly off-centre on the top, turned a little, as if put down.
 			var local := Vector3(rng.randf_range(-0.2, 0.2), SURFACES[prop.kind], rng.randf_range(-0.2, 0.1))
 			var point: Vector3 = FLOOR.position_of(room) + socket * local

@@ -35,7 +35,7 @@ func run() -> void:
 	# long enough to stand four metres apart in.
 	var corridor: Dictionary = level.manifest.rooms[int(level.manifest.start)]
 	for room in level.manifest.rooms:
-		if int(room.type) in [11, 12] and int(room.get("hall", -1)) == -1 and int(room.wing) == 0 and float(room.span_z) >= 10.0:
+		if int(room.type) in [FLOOR.palette(level.manifest).CORRIDOR, FLOOR.palette(level.manifest).GALLERY] and int(room.get("hall", -1)) == -1 and int(room.wing) == 0 and float(room.span_z) >= 10.0:
 			corridor = room
 			break
 	var centre: Vector3 = FLOOR.position_of(corridor)

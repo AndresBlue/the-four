@@ -88,7 +88,7 @@ func run() -> void:
 	# The survivor stands still and out of the way unless a shot needs it.
 	level.player.global_position = Vector3(0, 0.06, 40.0)
 
-	var corridor := first_room(func(r): return int(r.type) in [11, 12] and int(r.get("hall", -1)) == -1)
+	var corridor: Dictionary = first_room(func(r): return int(r.type) in [FLOOR.palette(level.manifest).CORRIDOR, FLOOR.palette(level.manifest).GALLERY] and int(r.get("hall", -1)) == -1)
 	var centre: Vector3 = FLOOR.position_of(corridor)
 	look(centre + Vector3(0, 0, 3.0), centre + Vector3(0, 0, -6.0))
 	await listen(3.0)

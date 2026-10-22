@@ -215,7 +215,7 @@ func walk(walker: Dictionary, delta: float) -> void:
 	if walker.distance >= gait.stride:
 		walker.distance = 0.0
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)
-		var hard: bool = not room.is_empty() and int(room.type) in FLOOR.HARD_FLOORS
+		var hard: bool = not room.is_empty() and FLOOR.palette(level.manifest).hard_floor(room)
 		level.on_noise(body.global_position, NOISE.radius(gait.noise + ("_hard" if hard else "")), gait.kind)
 		# Now and then somebody vaults something.
 		if rng.randf() < 0.02: level.on_noise(body.global_position, NOISE.radius("jump"), NOISE.Kind.JUMP)

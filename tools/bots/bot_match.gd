@@ -279,7 +279,7 @@ func room_name(room: Dictionary) -> String:
 	var number := int(room.get("number", 0))
 	var planta := int(room.get("wing", 0)) + 1
 	if number > 0: return "Habitación %d (planta %d)" % [number, planta]
-	return "%s (planta %d)" % [String(FLOOR.NAMES[int(room.get("type", 0))]), planta]
+	return "%s (planta %d)" % [FLOOR.palette(level.manifest).label(room), planta]
 
 static func clock_text(seconds: float) -> String:
 	return "%02d:%02d" % [int(seconds) / 60, int(seconds) % 60]

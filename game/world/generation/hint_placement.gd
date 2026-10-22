@@ -186,7 +186,7 @@ static func cleaning(manifest: Dictionary, page: Dictionary, rng: RandomNumberGe
 	block.sort_custom(func(a, b): return int(rooms[a].number) < int(rooms[b].number))
 	var rows: Array = []
 	for id in block: rows.append([str(int(rooms[id].number)), String(STATES[rng.randi_range(0, STATES.size() - 1)])])
-	if int(target.get("number", 0)) <= 0: rows.append([String(FLOOR.NAMES[int(target.type)]).to_upper(), String(STATES[rng.randi_range(0, 3)])])
+	if int(target.get("number", 0)) <= 0: rows.append([FLOOR.palette(manifest).label(target).to_upper(), String(STATES[rng.randi_range(0, 3)])])
 	var number := 1000 + absi(hash([manifest.seed, "limpieza"])) % 9000
 	var form := {"number": "%04d" % number, "post": "LIMPIEZA, TURNO DE NOCHE", "place": "PLANTA %d" % (int(target.wing) + 1), "subject": "PARTE DE LIMPIEZA", "type": "tarea", "rows": rows, "state": "en_curso", "signed": true, "seed": number}
 	form["lines"] = ["", "En %s encontré un papel con un número %s. No lo toqué." % [place_said(manifest, page), String(IN_PIECE.get(String(page.kind), "en un mueble"))]]
@@ -228,7 +228,7 @@ static func leak_spot(manifest: Dictionary, page: Dictionary) -> Dictionary:
 		if best < 0 or float(near[id]) < float(near[best]): best = int(id)
 	if best < 0: return {}
 	var at := FLOOR.position_of(rooms[best])
-	return {"room": best, "position": at + Vector3(0.6, 0.0, 0.4), "yaw": 0.4, "said": room_said(rooms[from])}
+	return {"room": best, "position": at + Vector3(0.6, 0.0, 0.4), "yaw": 0.4, "said": room_said(rooms[from], FLOOR.palette(manifest))}
 
 ## Written down by somebody from the lift, turn by turn, and torn off before
 ## the end: it leaves you in the stretch the page is in, not at its door.
@@ -263,7 +263,7 @@ static func directions(manifest: Dictionary, page: Dictionary, entry: int, rng: 
 		var turn := turn_said(leg.heading, legs[k + 1].heading)
 		var line := "%s, %s." % [("en el %s cruce" % ORDINALS[mini(crossings, ORDINALS.size() - 1)]) if junction(manifest, corner) else "donde el pasillo dobla", turn]
 		# Through a room on the way: in by one door and out by another.
-		if not bool(rooms[corner].get("corridor", false)): line = "cruza %s y sal %s." % [room_said(rooms[corner]), "de frente" if turn == "recto" else turn]
+		if not bool(rooms[corner].get("corridor", false)): line = "cruza %s y sal %s." % [room_said(rooms[corner], FLOOR.palette(manifest)), "de frente" if turn == "recto" else turn]
 		if fire: line = "pasa la puerta de incendios y, %s" % line
 		lines.append(line.substr(0, 1).to_upper() + line.substr(1))
 	# Three turns at the least: fewer, torn, say nothing.
@@ -297,7 +297,7 @@ static func point_hint(manifest: Dictionary, kind: String, page: Dictionary, rng
 				if int(room.get("wing", -1)) != int(manifest.rooms[int(page.room)].wing) or bool(room.get("corridor", false)) or FLOOR.is_void(room): continue
 				var middle := FLOOR.position_of(room)
 				if not window.has_point(Vector2(middle.x, middle.z)): continue
-				labels.append([Vector2(middle.x, middle.z), str(int(room.number)) if int(room.get("number", 0)) > 0 else String(FLOOR.NAMES[int(room.type)]).to_upper()])
+				labels.append([Vector2(middle.x, middle.z), str(int(room.number)) if int(room.get("number", 0)) > 0 else FLOOR.palette(manifest).label(room).to_upper()])
 			var angle := rng.randf() * TAU
 			var off := Vector2(cos(angle), sin(angle)) * CIRCLE * rng.randf_range(0.25, 0.55)
 			return {"kind": "plano", "printed": ["PLANO DE EVACUACIÓN", "USTED ESTÁ AQ"], "rows": [], "hand": [], "window": window, "cross": at, "labels": labels, "centre": at + off, "radius": CIRCLE}
@@ -352,7 +352,7 @@ static func surface_spots(manifest: Dictionary, wing: int, metres: Dictionary, d
 		if walked < maxf(ZONE_LEAST, deepest * span.x) or walked > deepest * span.y: continue
 		for prop in room.props:
 			if not SURFACES.has(prop.kind): continue
-			var socket := GEOMETRY.prop_transform(room, prop)
+			var socket := GEOMETRY.prop_transform(room, prop, FLOOR.palette(manifest))
 			var local := Vector3(rng.randf_range(-0.18, 0.18), SURFACES[prop.kind] + 0.004, rng.randf_range(-0.15, 0.1))
 			spots.append({"room": int(room.id), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket * local, "yaw": socket.basis.get_euler().y + rng.randf_range(-0.6, 0.6)})
 	return spots
@@ -459,14 +459,12 @@ static func junction(manifest: Dictionary, id: int) -> bool:
 		if bool(rooms[int(other)].get("corridor", false)): ways += 1
 	return ways >= 3
 
-## A room as it would be named on a paper: «la 344», or «el almacén».
-const THE := ["la", "la", "la", "la", "los", "el", "el", "la", "el", "el", "el", "el", "la", "la", "la", "la", "el", "el", "el", "el", "el"]
 ## Where a page is, as a paper would say it: its room's number; a corridor by
 ## the numbered door nearest the page («el pasillo frente a la 312»); or what
 ## the room is («el almacén»).
 static func place_said(manifest: Dictionary, page: Dictionary) -> String:
 	var room: Dictionary = manifest.rooms[int(page.room)]
-	if int(room.get("number", 0)) > 0 or not bool(room.get("corridor", false)): return room_said(room)
+	if int(room.get("number", 0)) > 0 or not bool(room.get("corridor", false)): return room_said(room, FLOOR.palette(manifest))
 	var nearest := {}
 	var gap := INF
 	for other in manifest.rooms:
@@ -481,10 +479,10 @@ static func place_said(manifest: Dictionary, page: Dictionary) -> String:
 static func to_said(said: String) -> String:
 	return "al " + said.trim_prefix("el ") if said.begins_with("el ") else "a " + said
 
-static func room_said(room: Dictionary) -> String:
+## A room as it would be named on a paper: «la 344», or «el almacén».
+static func room_said(room: Dictionary, palette: GDScript) -> String:
 	if int(room.get("number", 0)) > 0: return "la %d" % int(room.number)
-	var type := int(room.type)
-	return "%s %s" % [THE[type], String(FLOOR.NAMES[type]).to_lower()]
+	return "%s %s" % [palette.article(room), palette.label(room).to_lower()]
 
 static func shuffle(list: Array, rng: RandomNumberGenerator) -> void:
 	for i in range(list.size() - 1, 0, -1):

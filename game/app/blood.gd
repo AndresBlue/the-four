@@ -275,7 +275,7 @@ func stain(space: PhysicsDirectSpaceState3D, scene: Dictionary, rng: RandomNumbe
 	if room.is_empty(): return
 	# Carpet drinks it; everything else it lies on.
 	var floor_y: float = FLOOR.position_of(room).y
-	var soaked := 1.0 if normal.y > 0.7 and absf(point.y - floor_y) < 0.08 and not (int(room.type) in FLOOR.HARD_FLOORS) else 0.0
+	var soaked := 1.0 if normal.y > 0.7 and absf(point.y - floor_y) < 0.08 and not FLOOR.palette(level.manifest).hard_floor(room) else 0.0
 	var lands := float(drop.lands)
 	stains.append({"room": int(room.id), "transform": Transform3D(Basis(across * wide, normal * 0.01, along * long), middle + normal * 0.002), "cell": float(cells[rng.randi_range(0, cells.size() - 1)]), "born": lands, "run": 0.0, "soak": soaked})
 	# On a wall, what landed thick does not stay: it runs.
@@ -370,7 +370,7 @@ func pool(record: Dictionary, space: PhysicsDirectSpaceState3D, scene: Dictionar
 	material.set_shader_parameter("radius", radius)
 	material.set_shader_parameter("spread_time", POOL_TIME)
 	material.set_shader_parameter("reach", reach)
-	material.set_shader_parameter("soak", 0.0 if int(room.type) in FLOOR.HARD_FLOORS or float(scene.sill) > 0.0 else 1.0)
+	material.set_shader_parameter("soak", 0.0 if FLOOR.palette(level.manifest).hard_floor(room) or float(scene.sill) > 0.0 else 1.0)
 	material.set_shader_parameter("seed", float(int(scene.seed) % 997))
 	var mesh := PlaneMesh.new()
 	mesh.size = Vector2(POOL_SPAN, POOL_SPAN)

@@ -156,7 +156,7 @@ func run() -> void:
 		if int(shown.get(place.pair, 0)) >= per: continue
 		shown[place.pair] = int(shown.get(place.pair, 0)) + 1
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, place.at)
-		print("  AT %s room %d (%s) normal %s  %s  %.3f m2" % [place.at, int(room.get("id", -1)), FLOOR.TYPES[int(room.get("type", 20))] if not room.is_empty() else "-", place.normal.snappedf(0.01), place.pair, place.area])
+		print("  AT %s room %d (%s) normal %s  %s  %.3f m2" % [place.at, int(room.get("id", -1)), FLOOR.palette(level.manifest).TYPES[int(room.get("type", FLOOR.VOID))] if not room.is_empty() else "-", place.normal.snappedf(0.01), place.pair, place.area])
 		if int(shown[place.pair]) == 1: worst.append(place)
 	# --shots: the worst place of each pair, photographed from in front of it
 	# (evidence/zfight_<n>.png), with the tape's filters off.

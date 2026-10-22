@@ -84,7 +84,7 @@ func _physics_process(delta: float) -> void:
 	if floor_clock <= 0.0:
 		floor_clock = 0.25
 		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, global_position)
-		hard_floor = not room.is_empty() and int(room.type) in FLOOR.HARD_FLOORS
+		hard_floor = not room.is_empty() and FLOOR.palette(level.manifest).hard_floor(room)
 	var flat := Vector3(wish.x, 0, wish.z)
 	if flat.length() > 1.0: flat = flat.normalized()
 	if pace == Pace.STILL: flat = Vector3.ZERO

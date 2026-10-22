@@ -36,8 +36,8 @@ func run() -> void:
 	for room in level.hotel.manifest.rooms:
 		var n := FLOOR.hiding_count(room)
 		counts[n] = int(counts.get(n, 0)) + 1
-		if corridor.is_empty() and int(room.type) == 11 and int(room.get("hall", -1)) < 0: corridor = room
-		if bedroom.is_empty() and n == 2 and int(room.type) in [1, 2]: bedroom = room
+		if corridor.is_empty() and int(room.type) == FLOOR.palette(level.manifest).CORRIDOR and int(room.get("hall", -1)) < 0: corridor = room
+		if bedroom.is_empty() and n == 2 and FLOOR.palette(level.manifest).TYPES[int(room.type)] in ["habitacion_doble", "habitacion_simple"]: bedroom = room
 	print("ROOMS wardrobes per module: ", counts, " total hides: ", get_nodes_in_group("hotel_hides").size())
 	if not corridor.is_empty():
 		var c := FLOOR.position_of(corridor)

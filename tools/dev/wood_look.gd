@@ -95,7 +95,7 @@ func run() -> void:
 	# top gives back of a bright wall is what there is to look at.
 	var room := {}
 	for candidate in level.manifest.rooms:
-		if int(candidate.get("wing", 0)) != 0 or FLOOR.is_void(candidate) or not lit(candidate) or int(candidate.type) not in [0, 1, 2, 3, 5, 10]: continue
+		if int(candidate.get("wing", 0)) != 0 or FLOOR.is_void(candidate) or not lit(candidate) or FLOOR.palette(level.manifest).TYPES[int(candidate.type)] not in ["recepcion", "habitacion_doble", "habitacion_simple", "suite", "salon", "vestibulo"]: continue
 		if room.is_empty() or FLOOR.size_of(candidate).x * FLOOR.size_of(candidate).y > FLOOR.size_of(room).x * FLOOR.size_of(room).y: room = candidate
 	var centre: Vector3 = FLOOR.position_of(room)
 	var span: Vector2 = FLOOR.size_of(room)

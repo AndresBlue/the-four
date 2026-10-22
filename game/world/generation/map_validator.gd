@@ -1,7 +1,7 @@
 extends RefCounted
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## What the generator promises of a planta (map_generator.gd): its rooms,
-## counted as the game counts them, for the size of the floor (FLOOR.AREA),
+## counted as the game counts them, for the size of the floor (the palette's AREA),
 ## and its numbered ones within its hundred; how far anything runs straight
 ## and open, how many rings there are to walk round, and the sets of the
 ## stages played on televisions.
@@ -13,7 +13,14 @@ const FIRE_JAMB := 0.3
 ## A wardrobe keeps this far from the middle of a doorway in its wall.
 const HIDE_CLEAR := 1.75
 
+## The palette of the floor being checked (FLOOR.palette()): what its room
+## types are. validate() and validate_physics() set it from the manifest; read
+## through here, a validator of another kind needs no constants of its own (a
+## subclass cannot redeclare them).
+var palette: GDScript = FLOOR.palette({})
+
 func validate(data: Dictionary) -> Array[String]:
+	palette = FLOOR.palette(data)
 	var errors: Array[String] = []
 	var rooms: Array = data.rooms
 	var count := int(data.get("wings", FLOOR.PLANTAS))
@@ -91,8 +98,8 @@ func fittings(data: Dictionary) -> Array[String]:
 	for room in rooms:
 		if FLOOR.is_void(room): continue
 		if int(room.get("kept", -1)) < 0 or int(room.get("kept", -1)) > 2: errors.append("kept_%d" % int(room.id))
-		if bool(room.get("dark", false)) and not FLOOR.may_be_dark(room): errors.append("dark_%d" % int(room.id))
-		var wanted: int = 0 if int(room.hall) >= 0 or int(room.type) == 19 else FLOOR.WARDROBES.get(int(room.type), 0)
+		if bool(room.get("dark", false)) and not palette.may_be_dark(room): errors.append("dark_%d" % int(room.id))
+		var wanted: int = 0 if int(room.hall) >= 0 or int(room.type) == palette.REFUGE else palette.WARDROBES.get(int(room.type), 0)
 		if room.get("hides", []).size() > wanted: errors.append("hides_%d" % int(room.id))
 		var ways := FLOOR.doorways(room)
 		for spot in room.get("hides", []):
@@ -120,7 +127,7 @@ func plantas(data: Dictionary) -> Array[String]:
 		return errors
 	for planta in count:
 		var area := float(sizes[planta]) if planta < sizes.size() else float(data.get("area", 1.0))
-		var window := FLOOR.rooms_window(area)
+		var window: Vector2i = palette.rooms_window(area)
 		var base := int(data.plantas[planta].base)
 		var per := int(data.plantas[planta].width) * int(data.plantas[planta].height)
 		var entry := int(entries[planta])
@@ -164,15 +171,15 @@ func plantas(data: Dictionary) -> Array[String]:
 			if base + local != refuge and room.props.any(func(prop): return prop.kind == "tv"): sets += 1
 		if split: errors.append("planta_split_%d" % planta)
 		if counted < window.x or counted > window.y: errors.append("rooms_%d_%d" % [planta, counted])
-		if numbers.size() > FLOOR.NUMBERED_MOST: errors.append("numbered_%d_%d" % [planta, numbers.size()])
-		if doors / 2 - members + 1 < FLOOR.rings(area): errors.append("cycles_%d" % planta)
+		if numbers.size() > palette.NUMBERED_MOST: errors.append("numbered_%d_%d" % [planta, numbers.size()])
+		if doors / 2 - members + 1 < palette.rings(area): errors.append("cycles_%d" % planta)
 		if refuge < base or refuge >= base + per: errors.append("refuge_wing_%d" % planta)
 		elif not seen.has(refuge): errors.append("refuge_unreachable_%d" % planta)
 		else:
 			var ways: Array = data.adjacency[refuge].filter(func(id): return int(id) != lobby)
 			if ways.size() != 1: errors.append("refuge_doors_%d" % planta)
 		if lobby < 0 or data.adjacency[lobby].size() != 1 or int(data.adjacency[lobby][0]) != refuge or not bool(rooms[lobby].get("landing", false)): errors.append("lobby_%d" % planta)
-		if planta > 0 and sets < FLOOR.tv_rooms(area): errors.append("few_televisions_%d_%d" % [planta, sets])
+		if planta > 0 and sets < palette.tv_rooms(area): errors.append("few_televisions_%d_%d" % [planta, sets])
 	return errors
 
 ## Nothing runs straight and open for longer than OPEN_RUN, corridor or salon:
@@ -222,6 +229,7 @@ func lifts(data: Dictionary) -> Array[String]:
 # Run after physics synchronization, in addition to graph validation. Capsule
 # sweeps cover every connector and, in rooms, four furnished-room escape lanes.
 func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
+	palette = FLOOR.palette(data)
 	var errors: Array[String] = []
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.32
@@ -241,13 +249,13 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 			query.motion = corner
 			var result := world.direct_space_state.cast_motion(query)
 			if result[0] < 0.99: errors.append("cover_access_%d" % room.id)
-		if room.type in [1, 2, 3, 4, 7, 15, 16]:
+		if palette.domestic(room):
 			for side in [-1, 1]:
 				for end in [-1, 1]:
 					query.transform = Transform3D(Basis.IDENTITY, center + Vector3(0, 0, end * 4.4))
 					query.motion = Vector3(side * 3.0, 0, 0)
 					if world.direct_space_state.cast_motion(query)[0] < 0.99: errors.append("alcove_entrance_%d" % room.id)
-		if room.type != 19:
+		if room.type != palette.REFUGE:
 			for spot in FLOOR.hiding_positions(room):
 				var approach := FLOOR.hiding_approach(spot)
 				query.transform = Transform3D(Basis.IDENTITY, center)

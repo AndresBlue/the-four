@@ -44,7 +44,7 @@ func run() -> void:
 	for i in level.hotel.lights.size():
 		if not level.hotel.lights[i].has_meta("off"): continue
 		var centre := FLOOR.position_of(level.manifest.rooms[i])
-		print("DARK room ", int(level.manifest.rooms[i].get("number", 0)), " type ", FLOOR.NAMES[level.manifest.rooms[i].type])
+		print("DARK room ", int(level.manifest.rooms[i].get("number", 0)), " type ", FLOOR.palette(level.manifest).label(level.manifest.rooms[i]))
 		look(centre + Vector3(0, 1.6, 4.5), centre + Vector3(0, 1.2, -3))
 		await shot("dark_room")
 		break

@@ -750,7 +750,7 @@ func keep_floor() -> bool:
 
 ## Generates, builds and validates a floor. False (back in the menu) when it
 ## could not be made playable. `survivors`: how many play it, which decides
-## how big the floor is (FLOOR.AREA) and how many sets each stage has (the
+## how big the floor is (the palette's AREA) and how many sets each stage has (the
 ## rest of the hotel's are only cabinets).
 ## The survivors a floor is drawn for when it is not the ones playing it: the
 ## tests that walk known places of a floor as it is for two or three set it.
@@ -1375,11 +1375,9 @@ func burst_wardrobe(hide: Node3D) -> void:
 
 ## Rooms the creature is never sent to: every refuge, and the lift lobby each
 ## one leads to.
+## The list is the palette's (off_limits_rooms()), in the order it was.
 func off_limits_rooms() -> Array:
-	var rooms: Array = [int(manifest.exit)]
-	for refuge in manifest.get("refuges", []): rooms.append(int(refuge))
-	for gate in manifest.get("gates", []): rooms.append(int(gate.get("beyond", -1)))
-	return rooms
+	return FLOOR.palette(manifest).off_limits_rooms(manifest)
 
 ## Where nobody can be touched, for the whole floor: those same rooms -- every
 ## refuge, the exit and the lobby of every lift -- wall to wall. Nothing in

@@ -27,9 +27,9 @@ extends SceneTree
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const SIZE := Vector2i(1920, 1080)
-## Which module types each shot takes the first lit room of (the dark shot
+## Which module types (their TYPES keys) each shot takes the first lit room of (the dark shot
 ## takes the first dark one).
-const SHOTS := {"recepcion": [0], "dormitorio": [1, 2, 3], "salon": [5], "pasillo": [11], "bano": [4], "servicio": [7, 8, 9], "oscura": []}
+const SHOTS := {"recepcion": ["recepcion"], "dormitorio": ["habitacion_doble", "habitacion_simple", "suite"], "salon": ["salon"], "pasillo": ["pasillo"], "bano": ["bano"], "servicio": ["lavanderia", "almacen", "mantenimiento"], "oscura": []}
 var level
 var out_dir := ""
 
@@ -94,7 +94,7 @@ func pick(shot: String) -> Dictionary:
 		if int(room.get("hall", -1)) >= 0 and int(room.hall) != int(room.id): continue
 		if shot == "oscura":
 			if not lit(room): return room
-		elif int(room.type) in SHOTS[shot] and lit(room): return room
+		elif FLOOR.palette(level.manifest).TYPES[int(room.type)] in SHOTS[shot] and lit(room): return room
 	return {}
 
 ## From a little inside the middle of one wall (the corners hold furniture and

@@ -99,7 +99,7 @@ func run() -> void:
 	for room in level.manifest.rooms:
 		# A lit room, looking up at its dome from across it: the ceiling lamp,
 		# and the wall lamps of a public room if it has any, all in frame.
-		if dark(room) or int(room.type) in [4, 7, 8, 9] or FLOOR.size_of(room).x < 9.0: continue
+		if dark(room) or FLOOR.palette(level.manifest).lamp_of(room) == "batten" or FLOOR.size_of(room).x < 9.0: continue
 		var centre := FLOOR.position_of(room)
 		level.player.torch.visible = false
 		look(centre + Vector3(3.4, 1.6, 0), centre + Vector3(0, 2.8, 0))

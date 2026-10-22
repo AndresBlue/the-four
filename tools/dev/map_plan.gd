@@ -7,6 +7,7 @@ extends SceneTree
 ## planta does not use. A dash or a pipe between two cells is a door, an
 ## equals sign no wall at all (a corridor running on, a salon), a gap a wall.
 const GEN := preload("res://game/world/generation/map_generator.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
 
 func _initialize() -> void:
@@ -42,7 +43,7 @@ func _initialize() -> void:
 
 static func mark(data: Dictionary, id: int) -> String:
 	var room: Dictionary = data.rooms[id]
-	if int(room.type) == 20: return " "
+	if FLOOR.is_void(room): return " "
 	if data.refuges.has(id): return "R"
 	if bool(room.get("landing", false)): return "L"
 	if id == int(data.start): return "@"

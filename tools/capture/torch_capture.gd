@@ -75,7 +75,7 @@ func run() -> void:
 	var corridor: Dictionary = {}
 	var hall: Dictionary = {}
 	for room in level.manifest.rooms:
-		if corridor.is_empty() and int(room.type) in [11, 12]: corridor = room
+		if corridor.is_empty() and int(room.type) in [FLOOR.palette(level.manifest).CORRIDOR, FLOOR.palette(level.manifest).GALLERY]: corridor = room
 		if hall.is_empty() and int(room.hall) == int(room.id) and int(room.hall) >= 0: hall = room
 	var along := FLOOR.position_of(corridor)
 	# Down the length of a corridor: the beam at its longest.
@@ -102,7 +102,7 @@ func run() -> void:
 	# far room, ten to twenty metres off, are where the bands were seen.
 	var shots := 0
 	for room in level.manifest.rooms:
-		if shots >= 3 or not int(room.type) in [11, 12]: continue
+		if shots >= 3 or not int(room.type) in [FLOOR.palette(level.manifest).CORRIDOR, FLOOR.palette(level.manifest).GALLERY]: continue
 		for other in level.manifest.adjacency[int(room.id)]:
 			var here := FLOOR.position_of(room)
 			var there := FLOOR.position_of(level.manifest.rooms[int(other)])

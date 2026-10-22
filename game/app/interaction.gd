@@ -241,7 +241,7 @@ func drive_local(delta: float) -> void:
 	if level.player.avatar != null and level.player.avatar.fallen: level.player.avatar.end_capture()
 	level.camcorder.set_stamina(level.player.stamina / 100.0, level.player.exhausted)
 	var floor_room := FLOOR.room_at(level.manifest.rooms, level.player.global_position)
-	level.player.hard_floor = not floor_room.is_empty() and int(floor_room.type) in FLOOR.HARD_FLOORS
+	level.player.hard_floor = not floor_room.is_empty() and FLOOR.palette(level.manifest).hard_floor(floor_room)
 	if reading():
 		level.camcorder.focus("")
 		if Input.is_action_just_pressed("interact"): close_document()

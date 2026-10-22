@@ -49,9 +49,6 @@ const CORNER := 0.8
 const STRAIGHT := 0.5
 ## What a face shows, in the looker's own terms.
 enum Way {AHEAD, LEFT, RIGHT, BACK}
-## Types that are circulation, besides corridors and halls: the reception,
-## the lift's landing, the lobbies and galleries (map_generator's numbers).
-const CIRCULATION := [0, 9, 10, 12]
 
 ## [{room, planta, way (Vector2i, the grid way out of that cell), normal
 ##  (Vector2i: the sign faces along it), front (Way, seen from the normal's
@@ -62,8 +59,11 @@ static func place(manifest: Dictionary) -> Array:
 	for planta in refuges.size(): signs.append_array(planta_signs(manifest, planta))
 	return signs
 
+## Circulation, besides corridors and halls: the palette's CIRCULATION (the
+## reception, the lift's landing, the lobbies and galleries). They are roles,
+## the same numbers in every palette, so the hotel's names them for any floor.
 static func circulation(room: Dictionary) -> bool:
-	return bool(room.get("corridor", false)) or int(room.get("hall", -1)) >= 0 or int(room.get("type", -1)) in CIRCULATION
+	return bool(room.get("corridor", false)) or int(room.get("hall", -1)) >= 0 or int(room.get("type", -1)) in FLOOR.palette({}).CIRCULATION
 
 ## The grid way from one cell to the next, (±1, 0) or (0, ±1), from where
 ## they stand.

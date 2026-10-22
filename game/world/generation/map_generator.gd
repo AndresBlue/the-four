@@ -20,38 +20,22 @@ extends RefCounted
 ## does not use are in the list too, as voids (FLOOR.VOID), so that a room's id
 ## is still its index.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+## What a planta of this kind is made of and what its rooms are (room types,
+## module and lane sizes, plans, depths, the dark): read through `palette`,
+## so a generator of another kind sets its own (a subclass cannot redeclare
+## a constant).
+const HOTEL_PALETTE := preload("res://game/floors/palettes/hotel_palette.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const WALKER := preload("res://game/world/generation/wall_walker.gd")
 ## Plantas, one per stage (the name the rest of the game has always used).
 const WINGS := FLOOR.PLANTAS
-## Doors that carry no guest number: reception, circulation, service, the
-## refuge and whatever is not there. In a hotel only the rooms let to
-## somebody have a plaque.
-const NO_NUMBER := [0, 7, 8, 9, 10, 11, 12, 15, 19, 20]
-## What a room can be. Where the plan still reads like a hotel it is a guest
-## room; where it has come apart it is whatever the place turned into.
-const TIDY_ROOMS := [1, 1, 2, 2, 2, 3, 4, 16]
-const UNRULY_ROOMS := [2, 3, 4, 5, 6, 13, 14, 16, 17, 18]
-const SERVICE_ROOMS := [7, 8, 9, 15]
-const HALL_ROOMS := [5, 6, 17, 18]
-const RECEPTION := 0
-const LANDING := 9
-const LOBBY := 10
-const CORRIDOR := 11
-const GALLERY := 12
-const TV_ROOM := 14
-const REFUGE := 19
-const VOID := FLOOR.VOID
 ## Rooms the three stages have to walk through at the very least: a floor that
 ## can be finished in fewer is drawn again (half as many on a floor for one).
 const MIN_WALK := 30
 ## Rooms on a planta of the hotel of two or three: more than 80 and fewer than
-## 100 (FLOOR.ROOMS). Each planta draws its own number in TARGET, scaled with
+## 100 (the palette's ROOMS). Each planta draws its own number in TARGET, scaled with
 ## the size of the floor, and is brought to it.
 const TARGET := Vector2i(84, 96)
-## Module sizes (a room's side) and the width of a corridor lane, in metres.
-const MODULE_SIZES := [12.0, 12.0, 13.0, 13.0, 14.0, 15.0, 16.0]
-const LANE_WIDTHS := [3.0, 3.5, 3.5, 4.0]
 ## Longest a corridor or a salon runs straight and open. The creature sees
 ## seventy metres and runs faster than anybody: a long straight hall is a
 ## chase nobody wins. Longer, a fire door is put across it.
@@ -60,15 +44,6 @@ const OPEN_RUN := 45.0
 ## which only promises it can be walked.
 const ATTEMPTS := 8
 const TRIES := 6
-## Plans for a planta's corridors. Each floor deals one per planta, never the
-## same twice; the first planta from the tidier plans, the last from the ones
-## that have come apart.
-const DECKS := [["spine", "twin", "ring", "comb", "arms"], ["spine", "twin", "blocks", "arms", "rot", "warren"], ["blocks", "warren", "rot", "comb", "ring"]]
-## Share of a planta's rooms its corridors grow to serve, by plan: a warren is
-## rooms giving on to rooms, blocks are a hotel with a corridor at most doors.
-const SERVED := {"spine": 0.4, "twin": 0.45, "ring": 0.45, "comb": 0.55, "blocks": 0.6, "arms": 0.4, "warren": 0.0, "rot": 0.35}
-## Plans too alike to share a floor: both are most of the lanes.
-const APART := {"blocks": "rot", "rot": "blocks"}
 ## The most a planta's corridors may be like those of a planta above it (the
 ## share of corridor floor both have, as tools/dev/map_metrics.gd measures
 ## it); more, and it is drawn again. And the size of the square of cells that
@@ -77,58 +52,21 @@ const ALIKE := 0.3
 const LIKENESS_CELLS := 48
 ## Shapes cut out of the grid, so a planta is not always a rectangle.
 const SHAPES := ["rect", "notch", "ell", "you", "court", "aitch"]
-## How much of a hotel each planta still is, before its own drift: it comes
-## apart as one goes down, but never in the same direction twice.
-const ORDER_BASE := [0.8, 0.6, 0.42]
-## How far in the refuge is, as a share of the way to the farthest room of
-## its planta, walking: never the deepest room, never near the door.
-const DEPTH := Vector2(0.55, 0.9)
-## On the first planta further in, and never nearer than FIRST_WALK metres
-## walked (scaled with the square root of the planta's size): the stage that
-## is only finding the way out was being left in under a minute (the author,
-## 20 October 2026).
-const FIRST_DEPTH := Vector2(0.65, 0.9)
-const FIRST_WALK := 150.0
 ## The share of rooms farthest from the way in, in a straight line, that a
 ## refuge keeps out of where it can; and how much longer than a straight line
 ## the walk to it should be.
 const FAR_SIDE := 0.3
 const WINDING := 1.5
-## Salons on a planta: two or three rooms thrown into one (scaled with the
-## size of the floor).
-const HALLS := Vector2i(2, 6)
-## Rings to walk round on a planta, at the least (FLOOR.rings()): a plan that
+## Rings to walk round on a planta, at the least (palette.rings()): a plan that
 ## is a tree has one way to everywhere, and the creature on it. It is asked
 ## for with LOOPS to spare before the refuge is placed, which takes a few away.
 const LOOPS := 4
-## How much more often rooms open on to each other, by plan: a warren is
-## rooms giving on to rooms.
-const ROOM_DOORS := {"warren": 1.8, "rot": 1.25}
-## Exposed corridors (the author, 20 October 2026: an L of tens of metres with
-## no door, the creature met in it, and getting away was hard): a stretch with
-## no door on to any room, so with no wardrobe within reach, only the fire
-## doors and the corridors that branch off it. The first planta is a hotel and
-## has none laid; the second, one of 30 m in half its floors; the last, one of
-## 50 m and, where there is a second, another of 35 (metres scaled with the
-## square root of the size of the floor), never longer than EXPOSED_LONGEST;
-## where the first will not go at its length, a fifth or two fifths shorter.
-const EXPOSED := [0.0, 30.0, 50.0]
-const EXPOSED_CHANCE := [0.0, 0.5, 1.0]
-const SECOND_EXPOSED := 35.0
-const EXPOSED_LONGEST := 90.0
 ## An exposed stretch is a way through, and the short one: going round it is
 ## half as long again at the least, or there is no going round. The best few
 ## of the stretches that could be it are tried in full (EXPOSED_TRIES).
 const DETOUR := 1.5
 const EXPOSED_TRIES := 14
 const WAYS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
-## Where a door can stand in the wall of a room, in metres from the middle of
-## the wall, either way. A door off the middle leaves that wall its furniture
-## on the far side only. Rooms with the domestic alcoves (2.8 m out from the
-## middle: hotel_geometry.build_room()) keep it nearer, beside them.
-const DOOR_PLACES := [0.0, 0.0, 1.5, -1.5, 2.0, -2.0]
-const DOOR_PLACES_DOMESTIC := [0.0, 1.5, -1.5]
-const DOMESTIC := [1, 2, 3, 4, 7, 15, 16]
 ## A fire door across a corridor hangs from the jamb next to one of its side
 ## walls, this far from it, so that open it lies flat against that wall: in
 ## the middle, its leaf stood across half the corridor with a pocket behind it.
@@ -148,41 +86,31 @@ const HIDE_CLEAR := 1.75
 ## Two wardrobes on the same wall stand this far apart at the least, so both
 ## pairs of doors can open.
 const HIDE_APART := 3.0
-## The dark rooms. Each room that can be dark (FLOOR.may_be_dark()) is on its
-## own with DARK_OWN, more the lower the planta; each one that is puts out the
-## rooms it opens on to with DARK_SPREAD, so they come in stretches. A
-## corridor is the last thing a hotel stops lighting and what makes a planta
-## legible, so one goes dark rarely: on its own or beside a dark room.
-const DARK_OWN := [0.23, 0.29, 0.36]
-const DARK_SPREAD := 0.45
-const DARK_CORRIDOR := Vector2(0.03, 0.05)
-## How kept a room is (0 kept, 1 neglected, 2 abandoned) goes with its order,
-## give or take WEAR: kept over the second number, abandoned under the first.
-const WEAR := 0.25
-const KEPT := Vector2(0.25, 0.55)
-const EMPTY_SALON := 18
 
 ## Why tries came out empty, by reason, for the tools that measure the
 ## generator (tools/dev/map_metrics.gd).
 var stats := {}
-## The size of each planta of the floor asked for (FLOOR.areas_for()), and of
+## The size of each planta of the floor asked for (palette.areas_for()), and of
 ## the planta being drawn (the standby floor is always the hotel of two or
 ## three); and which planta that is.
 var areas: Array = [1.0, 1.0, 1.0]
 var drawing := 1.0
 var laying := 0
+## The palette this generator draws with (HOTEL_PALETTE); a generator of
+## another kind sets its own in _init().
+var palette: GDScript = HOTEL_PALETTE
 
-## A floor for `survivors` (FLOOR.AREA: one, half the hotel; four and five,
+## A floor for `survivors` (the palette's AREA: one, half the hotel; four and five,
 ## more). Two is the hotel as it always was, for the tools that only want one.
 func generate(run_seed: int, survivors := 2) -> Dictionary:
-	areas = FLOOR.areas_for(survivors)
+	areas = palette.areas_for(survivors)
 	for attempt in ATTEMPTS:
 		var result := candidate(run_seed, attempt)
 		if result.is_empty(): continue
 		if int(result.walk) < min_walk():
 			fail("walk")
 			continue
-		var errors := VALIDATOR.new().validate(result)
+		var errors: Array[String] = validator().validate(result)
 		if errors.is_empty():
 			result["fallback"] = false
 			return result
@@ -191,6 +119,11 @@ func generate(run_seed: int, survivors := 2) -> Dictionary:
 	fallback["requested_seed"] = run_seed
 	fallback["fallback"] = true
 	return fallback
+
+## The validator of what this generator draws: a generator of another kind
+## returns its own.
+func validator() -> RefCounted:
+	return VALIDATOR.new()
 
 func fail(reason: String) -> Dictionary:
 	stats[reason] = int(stats.get(reason, 0)) + 1
@@ -340,8 +273,8 @@ func gaps(rng: RandomNumberGenerator, modules: int, count: int, standby: bool) -
 func axis(rng: RandomNumberGenerator, modules: int, lanes: Array) -> Array:
 	var out: Array = []
 	for index in modules + 1:
-		if lanes.has(index): out.append({"lane": true, "size": LANE_WIDTHS[rng.randi_range(0, LANE_WIDTHS.size() - 1)]})
-		if index < modules: out.append({"lane": false, "size": MODULE_SIZES[rng.randi_range(0, MODULE_SIZES.size() - 1)]})
+		if lanes.has(index): out.append({"lane": true, "size": palette.LANE_WIDTHS[rng.randi_range(0, palette.LANE_WIDTHS.size() - 1)]})
+		if index < modules: out.append({"lane": false, "size": palette.MODULE_SIZES[rng.randi_range(0, palette.MODULE_SIZES.size() - 1)]})
 	var along := 0.0
 	for entry in out:
 		entry["centre"] = along + float(entry.size) * 0.5
@@ -354,7 +287,7 @@ func cell(grid: Dictionary, planta: int, base: int, local: int) -> Dictionary:
 	var column: Dictionary = grid.columns[local % width]
 	var row: Dictionary = grid.rows[local / width]
 	var kind := "cross" if column.lane and row.lane else "lane" if column.lane or row.lane else "module"
-	return {"id": base + local, "x": local % width, "z": local / width, "cols": width, "rows": grid.rows.size(), "wing": planta, "kind": kind, "type": VOID, "sector": 0, "props": [], "px": column.centre, "py": FLOOR.planta_y(planta), "pz": row.centre, "span_x": column.size, "span_z": row.size, "hall": -1, "corridor": false, "service": false, "order": 0.5}
+	return {"id": base + local, "x": local % width, "z": local / width, "cols": width, "rows": grid.rows.size(), "wing": planta, "kind": kind, "type": palette.VOID, "sector": 0, "props": [], "px": column.centre, "py": FLOOR.planta_y(planta), "pz": row.centre, "span_x": column.size, "span_z": row.size, "hall": -1, "corridor": false, "service": false, "order": 0.5}
 
 ## A planta's cells, on its own grid, after the plantas above it; it is the
 ## planta laid from here on (use()).
@@ -399,7 +332,7 @@ func deal(rng: RandomNumberGenerator, standby: bool) -> Array:
 	if standby: return ["blocks", "blocks", "blocks"]
 	var dealt: Array = []
 	for planta in WINGS:
-		var deck: Array = DECKS[planta].filter(func(plan): return not dealt.has(plan) and not dealt.has(APART.get(plan, "")))
+		var deck: Array = palette.DECKS[planta].filter(func(plan): return not dealt.has(plan) and not dealt.has(palette.APART.get(plan, "")))
 		dealt.append(deck[rng.randi_range(0, deck.size() - 1)])
 	return dealt
 
@@ -433,7 +366,7 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	if arrival < 0: arrival = pick_start(f, alive, corridor, rng)
 	if arrival < 0 or not alive.has(arrival): return fail("start")
 	plant_service(f, planta, alive, arrival, rng, standby)
-	open_doors(f, alive, corridor, arrival, back, rng, standby, ROOM_DOORS.get(plan, 1.0))
+	open_doors(f, alive, corridor, arrival, back, rng, standby, palette.ROOM_DOORS.get(plan, 1.0))
 	join(f, alive, arrival, back, rng)
 	if not standby: make_halls(f, alive, arrival, rng, count_rooms(f, planta, alive, arrival, -1) - 1 - target)
 	trim(f, planta, alive, arrival, {}, target + 1, rng)
@@ -445,10 +378,10 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	if not standby: expose(f, planta, alive, arrival, refuge, rng)
 	var landing: int = refuge.landing
 	var count := count_rooms(f, planta, alive, arrival, landing)
-	var window := FLOOR.rooms_window(drawing)
+	var window: Vector2i = palette.rooms_window(drawing)
 	if count < window.x: return fail("few_%s" % plan)
 	if count > window.y: return fail("many_%s" % plan)
-	if cycles(f, alive) < FLOOR.rings(drawing): return fail("cycles_%s" % plan)
+	if cycles(f, alive) < palette.rings(drawing): return fail("cycles_%s" % plan)
 	if not standby and alike(f, planta, alive) > ALIKE: return fail("alike_%s" % plan)
 	var rooms_only := alive.duplicate()
 	rooms_only.erase(landing)
@@ -459,7 +392,7 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 			room.type = -1
 			room.corridor = room.kind != "module"
 			continue
-		room.type = VOID
+		room.type = palette.VOID
 		room.corridor = false
 		room.service = false
 		room.hall = -1
@@ -481,7 +414,7 @@ func order_field(f: Dictionary, planta: int, rng: RandomNumberGenerator) -> void
 	for local in per:
 		var room: Dictionary = at(f, local)
 		var across := Vector2(float(room.x) / maxf(1.0, float(f.width - 1)), float(room.z) / maxf(1.0, float(f.height - 1))) - Vector2(0.5, 0.5)
-		room.order = clampf(ORDER_BASE[planta] - slope * across.dot(way) + 0.3 * drift(float(room.x) / 4.0, float(room.z) / 4.0, salt), 0.0, 1.0)
+		room.order = clampf(palette.ORDER_BASE[planta] - slope * across.dot(way) + 0.3 * drift(float(room.x) / 4.0, float(room.z) / 4.0, salt), 0.0, 1.0)
 
 ## Value noise over a coarse grid: patches that drift the same way, with soft
 ## edges between them. Hand-rolled from `hash` on purpose -- every machine has
@@ -727,7 +660,7 @@ func corridors(f: Dictionary, plan: String, rng: RandomNumberGenerator, alive: D
 				var from := Vector2(float(at(f, arrival).px), float(at(f, arrival).pz))
 				stretches.sort_custom(func(a, b): return middle_of(f, a).distance_to(from) < middle_of(f, b).distance_to(from))
 			for stretch in stretches.slice(0, rng.randi_range(1, 2)): take(on, stretch)
-	if not standby: grow(f, on, alive, SERVED.get(plan, 0.5), rng, blocked)
+	if not standby: grow(f, on, alive, palette.SERVED.get(plan, 0.5), rng, blocked)
 	prune(f, on, alive)
 	return on
 
@@ -1017,7 +950,7 @@ func reach(f: Dictionary, from: int, alive: Dictionary, without := -1) -> Dictio
 func loops(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i, rng: RandomNumberGenerator) -> void:
 	var base: int = f.base
 	var have := cycles(f, alive)
-	var wanted := FLOOR.rings(drawing) + LOOPS
+	var wanted: int = palette.rings(drawing) + LOOPS
 	if have >= wanted: return
 	var depth := distances(f.adjacency, base + arrival)
 	var pairs: Array = []
@@ -1117,7 +1050,7 @@ func cycles(f: Dictionary, alive: Dictionary) -> int:
 ## the planta has to spare (`budget`: a salon of three is two rooms fewer).
 func make_halls(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomNumberGenerator, budget: int) -> void:
 	var base: int = f.base
-	var wanted := rng.randi_range(maxi(1, scaled(HALLS.x)), maxi(1, scaled(HALLS.y)))
+	var wanted := rng.randi_range(maxi(1, scaled(palette.HALLS.x)), maxi(1, scaled(palette.HALLS.y)))
 	var cells: Array = alive.keys()
 	cells.sort()
 	shuffle(cells, rng)
@@ -1152,7 +1085,7 @@ func free_for_hall(f: Dictionary, alive: Dictionary, local: int, arrival: int) -
 
 # --- Exposed corridors ------------------------------------------------------------------
 
-## The exposed stretches of the planta (EXPOSED), once its refuge is placed and
+## The exposed stretches of the planta (the palette's EXPOSED), once its refuge is placed and
 ## its rooms trimmed: the doors of the rooms along a stretch of corridor are
 ## walled up, and a room left with no other way out is given a door into the
 ## room beside it, as rooms that have come apart give on to each other.
@@ -1160,17 +1093,17 @@ func free_for_hall(f: Dictionary, alive: Dictionary, local: int, arrival: int) -
 ## door or the way in, cost the planta a ring it needs, move its refuge out of
 ## depth or let a hand on the wall find it.
 func expose(f: Dictionary, planta: int, alive: Dictionary, arrival: int, refuge: Dictionary, rng: RandomNumberGenerator) -> void:
-	if EXPOSED[planta] <= 0.0 or rng.randf() >= EXPOSED_CHANCE[planta]: return
+	if palette.EXPOSED[planta] <= 0.0 or rng.randf() >= palette.EXPOSED_CHANCE[planta]: return
 	var reach_scale := sqrt(drawing)
-	var wanted: Array = [EXPOSED[planta] * reach_scale]
-	if planta == WINGS - 1: wanted.append(SECOND_EXPOSED * reach_scale)
+	var wanted: Array = [palette.EXPOSED[planta] * reach_scale]
+	if planta == WINGS - 1: wanted.append(palette.SECOND_EXPOSED * reach_scale)
 	var taken := {}
 	for index in wanted.size():
 		# The first is always laid if the planta has room for one at all: a
 		# shorter one where the long one will not go.
 		var run: Array = []
 		for share in ([1.0, 0.8, 0.6] if index == 0 else [1.0]):
-			run = blind_run(f, alive, arrival, refuge, rng, float(wanted[index]) * share, EXPOSED_LONGEST * reach_scale, taken)
+			run = blind_run(f, alive, arrival, refuge, rng, float(wanted[index]) * share, palette.EXPOSED_LONGEST * reach_scale, taken)
 			if not run.is_empty(): break
 		for local in run: taken[local] = true
 
@@ -1265,7 +1198,7 @@ func rejoin(f: Dictionary, alive: Dictionary, arrival: int, inside: Dictionary, 
 func keeps_promises(f: Dictionary, alive: Dictionary, rooms_only: Dictionary, arrival: int, refuge: Dictionary, entry: Dictionary, population: int) -> String:
 	var base: int = f.base
 	if reach(f, arrival, alive).size() != alive.size(): return "reach"
-	if cycles(f, alive) < FLOOR.rings(drawing): return "rings"
+	if cycles(f, alive) < palette.rings(drawing): return "rings"
 	var around := alive.duplicate()
 	for local in entry.inside: around.erase(local)
 	var metres := route_metres(f, around, int(entry.ends[0]))
@@ -1644,7 +1577,7 @@ func ring_round(f: Dictionary, one: int, two: int) -> Array:
 	return ring
 
 ## Whether the refuge is as far in as it has to be, as the planta now stands:
-## between DEPTH of the way to its farthest room, measured walking. (Sealing
+## between the palette's DEPTH of the way to its farthest room, measured walking. (Sealing
 ## its lobby and leaving it one door changes the routes it was chosen by.)
 func in_depth(f: Dictionary, alive: Dictionary, arrival: int, room: int) -> bool:
 	var metres := route_metres(f, alive, arrival)
@@ -1655,13 +1588,13 @@ func in_depth(f: Dictionary, alive: Dictionary, arrival: int, room: int) -> bool
 	var depth := depth_wanted()
 	return share >= depth.x and share <= depth.y and float(metres[room]) >= least_walk()
 
-## How far in the refuge of the planta being laid goes (DEPTH, FIRST_DEPTH),
+## How far in the refuge of the planta being laid goes (the palette's DEPTH, FIRST_DEPTH),
 ## and the least walk to it (none below the first).
 func depth_wanted() -> Vector2:
-	return FIRST_DEPTH if laying == 0 else DEPTH
+	return palette.FIRST_DEPTH if laying == 0 else palette.DEPTH
 
 func least_walk() -> float:
-	return FIRST_WALK * sqrt(drawing) if laying == 0 else 0.0
+	return palette.FIRST_WALK * sqrt(drawing) if laying == 0 else 0.0
 
 ## Metres from where the planta is walked into to every cell, along its doors.
 func route_metres(f: Dictionary, alive: Dictionary, from: int) -> Dictionary:
@@ -1721,23 +1654,23 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		for line in f.plantas[planta].lines:
 			if decoration.randf() < 0.22: galleries["%d%s%d" % [planta, line.axis, line.index]] = true
 	for room in f.rooms:
-		if int(room.type) == VOID: continue
+		if int(room.type) == palette.VOID: continue
 		if room.corridor:
 			var gallery: bool = galleries.has("%dv%d" % [int(room.wing), int(room.x)]) or galleries.has("%dh%d" % [int(room.wing), int(room.z)])
-			room.type = GALLERY if gallery else CORRIDOR
-		elif room.service: room.type = SERVICE_ROOMS[decoration.randi_range(0, SERVICE_ROOMS.size() - 1)]
-		elif decoration.randf() < float(room.order): room.type = TIDY_ROOMS[decoration.randi_range(0, TIDY_ROOMS.size() - 1)]
-		else: room.type = UNRULY_ROOMS[decoration.randi_range(0, UNRULY_ROOMS.size() - 1)]
-		if room.hall >= 0: room.type = HALL_ROOMS[int(room.hall) % HALL_ROOMS.size()]
+			room.type = palette.GALLERY if gallery else palette.CORRIDOR
+		elif room.service: room.type = palette.SERVICE_ROOMS[decoration.randi_range(0, palette.SERVICE_ROOMS.size() - 1)]
+		elif decoration.randf() < float(room.order): room.type = palette.TIDY_ROOMS[decoration.randi_range(0, palette.TIDY_ROOMS.size() - 1)]
+		else: room.type = palette.UNRULY_ROOMS[decoration.randi_range(0, palette.UNRULY_ROOMS.size() - 1)]
+		if room.hall >= 0: room.type = palette.HALL_ROOMS[int(room.hall) % palette.HALL_ROOMS.size()]
 		# Behind the door of a refuge: the lift lobby. Tiled, lit, and nothing
 		# in it but the car.
-		if bool(room.get("landing", false)): room.type = LANDING
-	f.rooms[start].type = RECEPTION
+		if bool(room.get("landing", false)): room.type = palette.LANDING
+	f.rooms[start].type = palette.RECEPTION
 	# One comes out of the lift into the planta's own lobby: a landmark to
 	# come back to, and the only one there is.
-	for planta in range(1, WINGS): f.rooms[int(entries[planta])].type = LOBBY
+	for planta in range(1, WINGS): f.rooms[int(entries[planta])].type = palette.LOBBY
 	for id in refuges:
-		f.rooms[int(id)].type = REFUGE
+		f.rooms[int(id)].type = palette.REFUGE
 		f.rooms[int(id)].hall = -1
 		f.rooms[int(id)].service = false
 	keep_to_hundred(f, decoration)
@@ -1749,13 +1682,13 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		var plain: Array = []
 		for local in int(dims.width) * int(dims.height):
 			var room: Dictionary = f.rooms[int(dims.base) + local]
-			if int(room.type) in [VOID, RECEPTION, LOBBY, REFUGE, LANDING] or room.corridor or room.service or room.hall >= 0: continue
-			if FLOOR.RECIPES[int(room.type)].has("tv"): with_tv.append(int(room.id))
+			if int(room.type) in [palette.VOID, palette.RECEPTION, palette.LOBBY, palette.REFUGE, palette.LANDING] or room.corridor or room.service or room.hall >= 0: continue
+			if palette.RECIPES[int(room.type)].has("tv"): with_tv.append(int(room.id))
 			else: plain.append(int(room.id))
-		while with_tv.size() < FLOOR.tv_rooms(float(f.areas[planta])) and not plain.is_empty():
+		while with_tv.size() < palette.tv_rooms(float(f.areas[planta])) and not plain.is_empty():
 			var pick: int = plain[decoration.randi_range(0, plain.size() - 1)]
 			plain.erase(pick)
-			f.rooms[pick].type = TV_ROOM
+			f.rooms[pick].type = palette.TV_ROOM
 			with_tv.append(pick)
 	for room in f.rooms:
 		room.props = []
@@ -1763,21 +1696,21 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		room.variant = 0
 		room.layout = 0
 		room.height = 3.15
-		if int(room.type) == VOID: continue
+		if int(room.type) == palette.VOID: continue
 		room.variant = decoration.randi_range(0, 3)
 		room.layout = decoration.randi_range(0, 3)
-		room.height = 4.8 if room.hall >= 0 else 4.2 if int(room.type) in [0, 5, 6, 17, 18] else 3.15
+		room.height = palette.height_of(room)
 		# A corridor is a lane of three or four metres: nothing in its corners.
 		if room.corridor: continue
 		room.cover_slots = 4
 		# The recipe's four pieces go to the four corners in an order of the
 		# room's own: the bed is not always in the same corner of a bedroom.
-		var kinds: Array = FLOOR.RECIPES[int(room.type)].duplicate()
+		var kinds: Array = palette.RECIPES[int(room.type)].duplicate()
 		shuffle(kinds, decoration)
 		for slot in 4:
 			var kind: String = kinds[slot]
 			var rotation := decoration.randi_range(0, 3)
-			if kind in ["bed", "sofa", "desk", "tv", "reception", "washer", "basin", "shelf"]: rotation = 0 if slot < 2 else 2
+			if kind in palette.WALL_KINDS: rotation = 0 if slot < 2 else 2
 			if kind in ["wardrobe", "curtain"]: rotation = 1 if slot % 2 == 0 else 3
 			room.props.append({"kind": kind, "slot": slot, "rotation": rotation})
 	# Open sides: where a salon or a corridor carries on with no wall.
@@ -1790,7 +1723,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		b.open_sides.append("west" if direction == "east" else "north")
 	zones(f, entries)
 
-## The rooms let to somebody on each planta, NUMBERED_MOST at the most: its
+## The rooms let to somebody on each planta, the palette's NUMBERED_MOST at the most: its
 ## hundred has room for 99. Whatever a bigger floor (four or five survivors)
 ## has over that becomes service -- stores, maintenance, laundries and
 ## offices -- where the plan has come apart the most and beside the service
@@ -1803,8 +1736,8 @@ func keep_to_hundred(f: Dictionary, decoration: RandomNumberGenerator) -> void:
 		var let: Array = []
 		for local in int(dims.width) * int(dims.height):
 			var room: Dictionary = f.rooms[int(dims.base) + local]
-			if int(room.type) != VOID and int(room.type) != LANDING and numbered(room): let.append(room)
-		var over := let.size() - FLOOR.NUMBERED_MOST
+			if int(room.type) != palette.VOID and int(room.type) != palette.LANDING and numbers(room): let.append(room)
+		var over: int = let.size() - palette.NUMBERED_MOST
 		if over <= 0: continue
 		use(f, planta)
 		var rank := func(room: Dictionary) -> float:
@@ -1816,7 +1749,7 @@ func keep_to_hundred(f: Dictionary, decoration: RandomNumberGenerator) -> void:
 		let.sort_custom(func(a, b): return rank.call(a) < rank.call(b) or (is_equal_approx(rank.call(a), rank.call(b)) and int(a.id) < int(b.id)))
 		for room in let.slice(0, over):
 			room.service = true
-			room.type = SERVICE_ROOMS[decoration.randi_range(0, SERVICE_ROOMS.size() - 1)]
+			room.type = palette.SERVICE_ROOMS[decoration.randi_range(0, palette.SERVICE_ROOMS.size() - 1)]
 	f.merge(was, true)
 
 ## Zones: five to seven parts of each planta, the room farthest from the others
@@ -1827,7 +1760,7 @@ func zones(f: Dictionary, entries: Array) -> void:
 		var dims: Dictionary = f.plantas[planta]
 		var members: Array = []
 		for local in int(dims.width) * int(dims.height):
-			if int(f.rooms[int(dims.base) + local].type) != VOID: members.append(int(dims.base) + local)
+			if int(f.rooms[int(dims.base) + local].type) != palette.VOID: members.append(int(dims.base) + local)
 		var count := clampi(int(round(float(members.size()) / 20.0)), 5, 7)
 		var seeds: Array = [int(entries[planta])]
 		var nearest: Array[int] = distances(f.adjacency, int(entries[planta]))
@@ -1906,7 +1839,7 @@ func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dict
 			elif b.kind == "cross": spec.swing = -1
 			spec.open = rng.randf() < FIRE_OPEN
 		else:
-			var places: Array = DOOR_PLACES_DOMESTIC if int(a.type) in DOMESTIC or int(b.type) in DOMESTIC else DOOR_PLACES
+			var places: Array = palette.DOOR_PLACES_DOMESTIC if palette.domestic(a) or palette.domestic(b) else palette.DOOR_PLACES
 			spec.offset = clampf(float(places[rng.randi_range(0, places.size() - 1)]), -room_most, room_most)
 			if bool(a.corridor) != bool(b.corridor): spec.swing = -1 if bool(b.corridor) else 1
 			else: spec.swing = 1 if rng.randf() < 0.5 else -1
@@ -1917,15 +1850,15 @@ func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dict
 	return doors
 
 ## Where each room's wardrobes stand (`hides`, room space), as many as its
-## type has (FLOOR.WARDROBES): on closed walls, at the middle or 1.8 m either
+## type has (palette.WARDROBES): on closed walls, at the middle or 1.8 m either
 ## side of it, clear of that wall's doorway and of what its leaf sweeps; with
 ## two, on opposite walls where there can be, or else well apart.
 func place_hides(f: Dictionary, rng: RandomNumberGenerator) -> void:
 	var opposite := {"west": "east", "east": "west", "north": "south", "south": "north"}
 	for room in f.rooms:
 		room["hides"] = []
-		if int(room.type) in [VOID, REFUGE] or int(room.hall) >= 0: continue
-		var wanted: int = FLOOR.WARDROBES.get(int(room.type), 0)
+		if int(room.type) in [palette.VOID, palette.REFUGE] or int(room.hall) >= 0: continue
+		var wanted: int = palette.WARDROBES.get(int(room.type), 0)
 		if wanted == 0: continue
 		var ways := FLOOR.doorways(room)
 		var free := {}
@@ -1954,25 +1887,25 @@ func place_hides(f: Dictionary, rng: RandomNumberGenerator) -> void:
 
 ## Which rooms have their lamps out (`dark`) and how kept each one is
 ## (`kept`), by seed: the same corner of two floors has nothing to do with
-## each other. See DARK_OWN and WEAR.
+## each other. See the palette's DARK_OWN and WEAR.
 func light_rooms(f: Dictionary, rng: RandomNumberGenerator) -> void:
 	var seeds: Array = []
 	for room in f.rooms:
 		room["dark"] = false
 		room["kept"] = 0
-		if int(room.type) == VOID: continue
-		var kept := float(room.order) + rng.randf_range(-WEAR, WEAR)
-		room.kept = 0 if kept > KEPT.y else 1 if kept > KEPT.x else 2
-		if int(room.type) == EMPTY_SALON: room.kept = maxi(int(room.kept), 1)
-		if not FLOOR.may_be_dark(room): continue
-		if rng.randf() < (DARK_CORRIDOR.x if bool(room.corridor) else float(DARK_OWN[int(room.wing)])):
+		if int(room.type) == palette.VOID: continue
+		var kept := float(room.order) + rng.randf_range(-palette.WEAR, palette.WEAR)
+		room.kept = 0 if kept > palette.KEPT.y else 1 if kept > palette.KEPT.x else 2
+		if int(room.type) == palette.EMPTY_SALON: room.kept = maxi(int(room.kept), 1)
+		if not palette.may_be_dark(room): continue
+		if rng.randf() < (palette.DARK_CORRIDOR.x if bool(room.corridor) else float(palette.DARK_OWN[int(room.wing)])):
 			room.dark = true
 			seeds.append(int(room.id))
 	for id in seeds:
 		for other in f.adjacency[id]:
 			var next: Dictionary = f.rooms[int(other)]
-			if bool(next.dark) or not FLOOR.may_be_dark(next): continue
-			if rng.randf() < (DARK_CORRIDOR.y if bool(next.corridor) else DARK_SPREAD): next.dark = true
+			if bool(next.dark) or not palette.may_be_dark(next): continue
+			if rng.randf() < (palette.DARK_CORRIDOR.y if bool(next.corridor) else palette.DARK_SPREAD): next.dark = true
 
 ## The numbers on the doors. Each planta has its own hundred and the numbers
 ## run across it in rows, odd on one side of a corridor and even on the other,
@@ -1989,7 +1922,7 @@ func number_rooms(f: Dictionary, rng: RandomNumberGenerator) -> void:
 		var odd_first := rng.randf() < 0.5
 		var let: Array = []
 		for local in int(dims.width) * int(dims.height):
-			if numbered(f.rooms[int(dims.base) + local]): let.append(int(dims.base) + local)
+			if numbers(f.rooms[int(dims.base) + local]): let.append(int(dims.base) + local)
 		var sweep := func(one: int, two: int) -> bool:
 			var first := Vector2i(int(f.rooms[one].x), int(f.rooms[one].z))
 			var second := Vector2i(int(f.rooms[two].x), int(f.rooms[two].z))
@@ -2032,8 +1965,16 @@ func min_walk() -> int:
 	return mini(MIN_WALK, roundi(MIN_WALK * mean))
 
 ## Whether this room is let to somebody, and so has a number on its door.
+## The hotel's rule, for who asks without a generator (tests/hotel/hotel_test.gd);
+## the generator itself asks numbers().
 static func numbered(room: Dictionary) -> bool:
-	return int(room.hall) < 0 and not bool(room.get("corridor", false)) and not bool(room.get("service", false)) and not int(room.type) in NO_NUMBER
+	return HOTEL_PALETTE.numbered(room)
+
+## Whether a room carries a number on its door, by this generator's palette:
+## number_rooms() and keep_to_hundred() ask here, since a static is not
+## overridden.
+func numbers(room: Dictionary) -> bool:
+	return palette.numbered(room)
 
 # --- Grid and graph helpers ------------------------------------------------------------
 

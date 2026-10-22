@@ -28,8 +28,9 @@ const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
 ## The version of what GENERATOR draws: a checkpoint or a match of another
 ## version is refused rather than rebuilt as a different floor.
 const GENERATOR_VERSION := preload("res://game/world/generation/floor_definition.gd").VERSION
-## Its colours and materials: step 0d fills it in (docs/OFICINAS.md 15).
-const PALETTE = null
+## Its rooms: what each type is and how it is built, lit and dressed
+## (game/floors/palettes/). FLOOR.palette() gives the same from a manifest.
+const PALETTE := preload("res://game/floors/palettes/hotel_palette.gd")
 ## Its creature as a path, not a preload: loaded when the floor puts it down
 ## (hotel_main.spawn_creature()), so what only reads the rules does not load it.
 const CREATURE := "res://game/enemies/locust/locust.tscn"

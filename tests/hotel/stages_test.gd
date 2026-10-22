@@ -574,7 +574,7 @@ func run() -> void:
 	# And they name the page's own room, typed (the author's word, 22 October
 	# 2026): the room they speak of is the one with the number.
 	var placement := preload("res://game/world/generation/hint_placement.gd")
-	check("Y nombran la sala de su página", paperwork.all(func(hint): return JSON.stringify(hint.form.get("lines", [])).contains(placement.room_said(page_room[int(hint.slot)])) and (hint.hand as Array).is_empty()))
+	check("Y nombran la sala de su página", paperwork.all(func(hint): return JSON.stringify(hint.form.get("lines", [])).contains(placement.room_said(page_room[int(hint.slot)], FLOOR.palette({}))) and (hint.hand as Array).is_empty()))
 	# The directions are pencilled on a page of a notebook, torn off.
 	var notebooks: Array = hints.filter(func(hint): return String(hint.kind) == "indicaciones")
 	var on_page := true

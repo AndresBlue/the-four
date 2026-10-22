@@ -4,45 +4,20 @@ extends RefCounted
 ## hotel of its own (map_generator.gd); 7 draws what is in it by seed: where
 ## each door stands in its wall and which way it swings, the wardrobes, the
 ## dark rooms and how kept each one is; 8 draws a floor the size of the
-## survivors who play it (AREA). A checkpoint or a record of another version
+## survivors who play it (the palette's AREA). A checkpoint or a record of another version
 ## is refused rather than rebuilt as a different floor.
 const VERSION := 8
-## How much hotel each planta is, by the survivors who play the floor (the
-## author, 20 October 2026): alone, half of what two or three walk; four, a
-## fifth more; five, a third more. Counted when the floor starts: nobody joins
-## once it has begun, and whoever drops does not shrink it. In versus the
-## hunter is not counted. What four and five have over the rest is corridor,
-## service and salons more than rooms let to somebody: a planta's numbers are
-## its hundred, and a hundred has room for 99 (NUMBERED_MOST).
-const AREA := {1: 0.5, 4: 1.2, 5: 1.35}
-## Rooms on a planta of the hotel of two or three, as the generator counts
-## them (every room, salon, service room and refuge; a salon once), scaled
-## with the area for the others; and the rooms with a number on the door, at
-## the most, whatever the size.
-const ROOMS := Vector2i(81, 99)
-const NUMBERED_MOST := 96
 
-static func area_for(survivors: int) -> float:
-	return float(AREA.get(clampi(survivors, 1, 5), 1.0))
+## Each floor's palette, by its number (docs/OFICINAS.md 11.2): what its room
+## types are. Here and not in game/floors/floor_index.gd, which preloads the
+## floors' scripts and, through them, the generator that preloads this one.
+const PALETTES := {1: preload("res://game/floors/palettes/hotel_palette.gd")}
 
-## Each planta's, first to last. Alone, the first planta is still the hotel
-## of two or three (the author, 20 October 2026): only the two below it are
-## half of it.
-static func areas_for(survivors: int) -> Array:
-	var area := area_for(survivors)
-	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
+## The palette of the floor a manifest is of: the hotel's for a manifest that
+## does not say (the hotel's never do) or names a floor without one.
+static func palette(manifest: Dictionary) -> GDScript:
+	return PALETTES.get(int(manifest.get("floor", 1)), PALETTES[1])
 
-static func rooms_window(area: float) -> Vector2i:
-	return Vector2i(roundi(float(ROOMS.x) * area), roundi(float(ROOMS.y) * area))
-
-## Rooms with a television on the plantas of the second and third stages
-## (their condition asks for as many sets as there are survivors, plus two),
-## and the rings a planta keeps to walk round: fewer on a planta half the size.
-static func tv_rooms(area: float) -> int:
-	return 6 if area < 1.0 else 8
-
-static func rings(area: float) -> int:
-	return 4 if area < 1.0 else 6
 ## A floor is three plantas, one per stage, stacked and going down: the first
 ## at 0 and each next one PITCH below the one before. Enough for the tallest
 ## ceiling (the 4.8 m halls) and both slabs. What joins them is the lift, and
@@ -54,40 +29,9 @@ const CELL := 12.0
 const PORTAL := 1.3
 ## Door leaf width, a little narrower than the opening.
 const LEAF_WIDTH := 1.2
-## Wardrobes per module type: bedrooms and the cloakroom get two, a few
-## private rooms get one, corridors, halls and public spaces none.
-const WARDROBES := {1: 2, 2: 2, 3: 2, 16: 2, 13: 1, 14: 1, 15: 1, 8: 1}
-## Tiled floors (baths, laundry, maintenance); every other module is carpeted.
-const HARD_FLOORS := [4, 7, 9]
-const TYPES := ["recepcion", "habitacion_doble", "habitacion_simple", "suite", "bano", "salon", "comedor", "lavanderia", "almacen", "mantenimiento", "vestibulo", "pasillo", "galeria", "sala_lectura", "sala_tv", "oficina", "guardarropa", "sala_plantas", "salon_vacio", "refugio", "vacio"]
-const NAMES := ["Recepción", "Habitación doble", "Habitación", "Suite", "Baños", "Salón", "Comedor", "Lavandería", "Almacén", "Mantenimiento", "Vestíbulo", "Pasillo", "Galería", "Sala de lectura", "Sala de televisión", "Oficina", "Guardarropa", "Jardín interior", "Salón vacío", "Refugio", "Vacío"]
 ## A cell of the grid a planta does not use: nothing is built there, nobody
 ## walks there. It stays in the list so a room's id is still its index.
 const VOID := 20
-# Each corner is a reserved furnishing socket; the central cross remains clear.
-const RECIPES := [
-	["reception", "sofa", "plant", "luggage"],
-	["bed", "bed", "wardrobe", "desk"],
-	["bed", "nightstand", "desk", "curtain"],
-	["bed", "sofa", "tv", "phone"],
-	["basin", "basin", "shelf", "bin"],
-	["sofa", "sofa", "lamp", "plant"],
-	["table", "table", "table", "shelf"],
-	["washer", "washer", "cart", "shelf"],
-	["shelf", "luggage", "shelf", "cart"],
-	["shelf", "cart", "desk", "bin"],
-	["sofa", "lamp", "plant", "luggage"],
-	["plant", "bin", "lamp", "luggage"],
-	["sofa", "lamp", "plant", "curtain"],
-	["shelf", "desk", "sofa", "lamp"],
-	["tv", "sofa", "sofa", "phone"],
-	["desk", "phone", "shelf", "bin"],
-	["wardrobe", "wardrobe", "luggage", "sofa"],
-	["plant", "plant", "sofa", "lamp"],
-	["curtain", "lamp", "bin", "sofa"],
-	["sofa", "lamp", "phone", "plant"],
-	[]
-]
 
 static func is_void(room: Dictionary) -> bool:
 	return int(room.get("type", 0)) == VOID
@@ -264,10 +208,13 @@ static func longest_exposed(manifest: Dictionary, planta: int) -> float:
 		best = maxf(best, length)
 	return best
 
+## A room that does not say where its wardrobes are (the gallery's modules:
+## the generators write `hides` in every room) is counted by the hotel's
+## table.
 static func hiding_count(room: Dictionary) -> int:
 	if room.has("hides"): return room.hides.size()
 	if int(room.get("hall", -1)) >= 0: return 0
-	return WARDROBES.get(int(room.type), 0)
+	return palette({}).WARDROBES.get(int(room.type), 0)
 
 ## Wardrobe spots against the walls; with two, they go on opposite walls. A
 ## floor that says where its wardrobes are (each room's `hides`, drawn clear
@@ -356,12 +303,6 @@ static func leaf_yaw(a: Dictionary, b: Dictionary, spec: Dictionary) -> float:
 static func leaf_turn(a: Dictionary, b: Dictionary, spec: Dictionary, centre: Vector3, yaw: float) -> float:
 	var into: Dictionary = b if int(spec.get("swing", 1)) > 0 else a
 	return -signf((position_of(into) - centre).dot(Basis(Vector3.UP, yaw).z))
-
-## Whether a room can have its lamps out: never the reception, the baths,
-## laundry and service rooms, the lift lobbies, a salon of several modules or
-## the refuge.
-static func may_be_dark(room: Dictionary) -> bool:
-	return not (int(room.type) in [0, 4, 7, 8, 9, 10, 19, VOID] or int(room.get("hall", -1)) >= 0)
 
 ## A walkable route, or nothing between two plantas: they are joined only by
 ## the lift, and a route that stopped at the nearest point under the target

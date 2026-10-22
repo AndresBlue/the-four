@@ -12,7 +12,7 @@ extends SceneTree
 ## Prints each measure with its threshold and PASS or FAIL, and writes
 ## evidence/map_metrics.json (map_metrics_N.json for another size); exits with
 ## 1 if anything fails. `--survivors` draws the floors of that many survivors
-## (FLOOR.AREA: 1 half the hotel, 4 and 5 more; 2 by default); the measures in
+## (the palette's AREA: 1 half the hotel, 4 and 5 more; 2 by default); the measures in
 ## metres go with the square root of the size, the counts with the size.
 const GEN := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
@@ -56,9 +56,9 @@ func _initialize() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.is_valid_int(): floors = argument.to_int()
 		elif argument.begins_with("--survivors="): survivors = argument.get_slice("=", 1).to_int()
-	var area := FLOOR.area_for(survivors)
+	var area: float = FLOOR.palette({}).area_for(survivors)
 	# Each planta's own size (alone, the first is the hotel of two or three).
-	var sizes: Array = FLOOR.areas_for(survivors)
+	var sizes: Array = FLOOR.palette({}).areas_for(survivors)
 	var outside := 0
 	var first_walks: Array = []
 	var generator := GEN.new()
@@ -135,7 +135,7 @@ func _initialize() -> void:
 				counted += 1
 				if data.adjacency[base + local].size() == 1 and base + local != refuge: single += 1
 			rooms_all.append(counted)
-			var window := FLOOR.rooms_window(float(sizes[planta]))
+			var window: Vector2i = FLOOR.palette({}).rooms_window(float(sizes[planta]))
 			if counted < window.x or counted > window.y: outside += 1
 			if String(data.plans[planta].plan) != "warren": exposed[planta].append(FLOOR.longest_exposed(data, planta))
 			numbered_all.append(numbered)
@@ -231,7 +231,7 @@ func _initialize() -> void:
 	judge("habitaciones por planta, mínimo / máximo", "%d / %d" % [rooms_all.min(), rooms_all.max()], true, "informativo")
 	judge("plantas con más o menos habitaciones de las de su tamaño", outside, outside == 0, "0")
 	judge("recorrido al refugio de la primera planta, mínimo (m)", snappedf(first_walks.min(), 1.0), first_walks.min() >= 150.0 * sqrt(float(sizes[0])) - 0.5, ">= %d m" % roundi(150.0 * sqrt(float(sizes[0]))))
-	judge("habitaciones con número por planta, máximo", numbered_all.max(), numbered_all.max() <= FLOOR.NUMBERED_MOST, "<= %d" % FLOOR.NUMBERED_MOST)
+	judge("habitaciones con número por planta, máximo", numbered_all.max(), numbered_all.max() <= FLOOR.palette({}).NUMBERED_MOST, "<= %d" % FLOOR.palette({}).NUMBERED_MOST)
 	judge("área por planta, mediana (m²)", snappedf(quantile(areas, 0.5), 1.0), true, "informativo")
 	judge("pisos de respaldo", share_of(fallbacks, floors), float(fallbacks) / floors < 0.005, "< 0,5 %")
 	var redrawn := 0
@@ -249,7 +249,7 @@ func _initialize() -> void:
 	var counted: int = maxi(1, exposed[2].size())
 	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(50.0 * low), share_of(long_enough, counted), float(long_enough) / counted >= 0.85, ">= 85 %")
 	judge("tercera planta (sin madriguera) con un tramo expuesto de %d m o más" % roundi(30.0 * low), share_of(some, counted), float(some) / counted >= 0.97, ">= 97 %")
-	judge("anillos por planta, mínimo", rings.min(), rings.min() >= FLOOR.rings(area), ">= %d" % FLOOR.rings(area))
+	judge("anillos por planta, mínimo", rings.min(), rings.min() >= FLOOR.palette({}).rings(area), ">= %d" % FLOOR.palette({}).rings(area))
 	judge("habitaciones sin salida, mediana", snappedf(quantile(dead, 0.5), 0.01), quantile(dead, 0.5) >= 0.2 and quantile(dead, 0.5) <= 0.45, "20–45 %")
 	var worst_bearing := 0
 	for bin in bearings: worst_bearing = maxi(worst_bearing, int(bearings[bin]))

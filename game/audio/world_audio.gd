@@ -168,7 +168,7 @@ func update_space(delta: float) -> void:
 		var room := FLOOR.room_at(level.manifest.rooms, listener_position())
 		if not room.is_empty():
 			if room.hall >= 0: wanted = {"room_size": 0.86, "wet": 0.24, "damping": 0.42}
-			elif room.type in FLOOR.HARD_FLOORS: wanted = {"room_size": 0.42, "wet": 0.2, "damping": 0.25}
+			elif FLOOR.palette(level.manifest).hard_floor(room): wanted = {"room_size": 0.42, "wet": 0.2, "damping": 0.25}
 	for bus_name in ["Effects", "Threat", "Steps"]:
 		var bus := AudioServer.get_bus_index(bus_name)
 		if bus < 0: continue

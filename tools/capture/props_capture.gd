@@ -46,7 +46,7 @@ func run() -> void:
 		look(centre + front * 2.6 + found[1].basis.x.normalized() * 0.8, centre + Vector3(0, 0.5, 0))
 		await shot(kind)
 	for room in level.manifest.rooms:
-		if int(room.type) == 11 and int(room.hall) < 0:
+		if int(room.type) == FLOOR.palette(level.manifest).CORRIDOR and int(room.hall) < 0:
 			var centre := FLOOR.position_of(room)
 			var span := FLOOR.size_of(room)
 			var along := Vector3(span.x * 0.35, 0, 0) if span.x >= span.y else Vector3(0, 0, span.y * 0.35)

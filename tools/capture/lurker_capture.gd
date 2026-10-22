@@ -20,7 +20,6 @@ const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const LURKER := preload("res://game/enemies/lurker/lurker.tscn")
 const SIZE := Vector2i(1920, 1080)
 const WALK_SIZE := Vector2i(960, 540)
-const CORRIDOR := 11
 var level
 var out_dir := "res://evidence/lurker"
 var label := "current"
@@ -294,7 +293,7 @@ func lit(room: Dictionary) -> bool:
 func pick() -> Dictionary:
 	for room in level.manifest.rooms:
 		if int(room.get("hall", -1)) >= 0 and int(room.hall) != int(room.id): continue
-		if int(room.type) == CORRIDOR and lit(room): return room
+		if int(room.type) == FLOOR.palette(level.manifest).CORRIDOR and lit(room): return room
 	return {}
 
 func report(beast: Node3D) -> void:

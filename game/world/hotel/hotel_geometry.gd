@@ -57,6 +57,9 @@ var panel_spares: Array = []
 var hides: Array = []
 var lights: Array[OmniLight3D] = []
 var manifest: Dictionary
+## The palette of the floor built (FLOOR.palette()): what each room type is
+## built with. room_dressing.gd and prop_factory.gd read it from the builder.
+var palette: GDScript = FLOOR.palette({})
 var reduced := false
 ## The Locust's player is looking: it does not see light, so every lamp, the
 ## dust, the fog and the probes are hidden. The opaque pass still writes the
@@ -113,11 +116,6 @@ const EXIT_REACH := 14.0
 ## of that wall: a pool on a dark room's ceiling, from nowhere.
 var car_lamps: Array[OmniLight3D] = []
 const MATERIALS := ["plaster", "plaster_decrepit", "wood", "panel", "door", "trim", "linen", "fabric", "bedspread", "leather", "metal", "black", "green", "screen", "leaf", "ceramic", "tile", "gold", "carpet", "ceiling", "ceiling_service", "light", "shade", "mirror", "painting", "curtain"]
-## Service rooms (laundry, storeroom, maintenance, office) have a suspended
-## ceiling of acoustic tiles; the empty lounge and the storeroom decrepit
-## paper on the walls.
-const SERVICE_CEILINGS := [7, 8, 9, 15]
-const DECREPIT_WALLS := [8, 18]
 ## The walls' material of the room being built (build_room()).
 var wall_material := "plaster"
 # Batched primitive meshes. Unit size; transforms carry the dimensions.
@@ -215,7 +213,6 @@ func socket(boundary: Node3D, x: float, face: int) -> void:
 
 ## On the ceiling beside the lamp: a smoke detector, and a sprinkler's head
 ## where the room is a public one.
-const SPRINKLER_ROOMS := [0, 5, 6, 10, 11, 12, 13, 14]
 func ceiling_fittings(node: Node3D, room: Dictionary) -> void:
 	var height: float = room.height
 	var span := FLOOR.size_of(room)
@@ -224,7 +221,7 @@ func ceiling_fittings(node: Node3D, room: Dictionary) -> void:
 	var at := Vector3(corner.x * minf(span.x * 0.17, 2.2), 0, corner.z * minf(span.y * 0.17, 2.2))
 	box(node, at + Vector3(0, height - 0.006, 0), Vector3(0.14, 0.012, 0.14), "ceramic", false, "detail_cylinder")
 	box(node, at + Vector3(0, height - 0.026, 0), Vector3(0.11, 0.03, 0.11), "ceramic", false, "detail_cylinder")
-	if not (int(room.type) in SPRINKLER_ROOMS): return
+	if not (int(room.type) in palette.SPRINKLER_ROOMS): return
 	var other := Vector3(-at.x, 0, -at.z)
 	box(node, other + Vector3(0, height - 0.004, 0), Vector3(0.07, 0.008, 0.07), "metal", false, "detail_cylinder")
 	box(node, other + Vector3(0, height - 0.03, 0), Vector3(0.022, 0.05, 0.022), "gold", false, "detail_cylinder")
@@ -277,9 +274,6 @@ func grille(boundary: Node3D, x: float, inner: int) -> void:
 ## ceiling has the red lamp the way back is found by.
 const CHANDELIER := preload("res://assets/props/hotel/Chandelier_02.res")
 const CHANDELIER_SCALE := 1.5
-const CHANDELIER_HEIGHT := 4.0
-## Modules with wall lamps: reception, lobby, corridor, gallery.
-const SCONCE_ROOMS := [0, 10, 11, 12]
 const WALL_LAMP := preload("res://assets/props/wall_lamp/wall_lamp.res")
 ## The supplied old wooden door, baked by tools/props/build_door.gd: the leaf
 ## (hinge at the origin, along +X) and the casing (centred on the doorway).
@@ -1017,6 +1011,7 @@ func build(data: Dictionary) -> void:
 	building = true
 	visible = false
 	manifest = data
+	palette = FLOOR.palette(data)
 	looks = looks_of(int(data.get("seed", 0)))
 	open_pairs.clear()
 	for pair in data.get("merged", []): open_pairs[Vector2i(int(pair[0]), int(pair[1]))] = true
@@ -1028,7 +1023,7 @@ func build(data: Dictionary) -> void:
 			planta = int(room.get("wing", 0))
 			await get_tree().process_frame
 		var node := Node3D.new()
-		node.name = "Room_%d_%s" % [room.id, FLOOR.TYPES[room.type]]
+		node.name = "Room_%d_%s" % [room.id, palette.TYPES[room.type]]
 		node.position = FLOOR.position_of(room)
 		add_child(node)
 		room_nodes.append(node)
@@ -1159,9 +1154,9 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	# Half the floor round the room's origin, the height, and the open sides
 	# of a hall (no wall, the next cell goes on): no grime gathers there.
 	batch_roots[node.get_instance_id()] = Color(span.x * 0.5, span.y * 0.5, height, 0.0)
-	wall_material = "plaster_decrepit" if room.type in DECREPIT_WALLS else "plaster"
-	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), "tile" if room.type in FLOOR.HARD_FLOORS else "carpet", true)
-	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in SERVICE_CEILINGS else "ceiling", true)
+	wall_material = palette.wall_material(room)
+	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), palette.floor_finish(room), true)
+	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in palette.SERVICE_CEILINGS else "ceiling", true)
 	# The wall a lift's car is behind, in the lobbies that have one.
 	var lift_back := FLOOR.lift_wall(room)
 	var grilled := false
@@ -1232,14 +1227,14 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	for prop in room.props:
 		var furniture := Node3D.new()
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
-		furniture.transform = prop_transform(room, prop)
+		furniture.transform = prop_transform(room, prop, palette)
 		node.add_child(furniture)
 		building_dark = dark_room(room)
 		building_type = int(room.type)
 		build_prop(furniture, prop.kind)
 		building_dark = false
 		building_type = -1
-	if room.type in [1, 2, 3, 4, 7, 15, 16]:
+	if palette.domestic(room):
 		# Domestic alcoves interrupt the square footprint while preserving portals.
 		for side in [-1, 1]:
 			for end in [-1, 1]:
@@ -1256,8 +1251,8 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 					partition_mouldings(node, Transform3D(Basis(Vector3.UP, PI / 2), Vector3(side * 2.8, 0, end * z)), 0.8, height)
 				box(node, Vector3(side * 2.8, (height + 2.55) / 2, end * 4.4), Vector3(0.12, height - 2.55, 1.6), wall_material, true)
 				partition_mouldings(node, Transform3D(Basis(Vector3.UP, PI / 2), Vector3(side * 2.8, 0, end * 4.4)), 1.6, height, false)
-	# Wardrobes only in room-like modules (see FLOOR.WARDROBES), against the walls.
-	if room.type != 19:
+	# Wardrobes only in room-like modules (see the palette's WARDROBES), against the walls.
+	if room.type != palette.REFUGE:
 		for corner in FLOOR.hiding_positions(room):
 			var hide := preload("res://game/world/interactables/hiding_place.gd").new()
 			hide.name = "Wardrobe_%d" % node.get_child_count()
@@ -1271,7 +1266,8 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	ceiling_fittings(node, room)
 	DRESSING.dress(self, node, room)
 	# Central sightlines remain open; booths sit against the perimeter.
-	var service: bool = room.type in [4, 7, 8, 9]
+	var lamp: String = palette.lamp_of(room)
+	var service: bool = lamp == "batten"
 	var light := OmniLight3D.new()
 	var failing := service and vary(node.position, 3) < 0.35
 	if service:
@@ -1287,7 +1283,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		light.light_energy = 3.4 * LIGHTING.PROFILE_GAIN
 		light.set_meta("profile", LIGHTING.profile("tube"))
 		light.position = Vector3(0, height - 0.35, 0)
-	elif height > CHANDELIER_HEIGHT and room.type != 0:
+	elif lamp == "chandelier":
 		# A chandelier, its light among its shades.
 		var drop: float = CHANDELIER.get_aabb().size.y * CHANDELIER_SCALE
 		var chandelier := MeshInstance3D.new()
@@ -1301,7 +1297,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		if dark_room(room): switch_off(chandelier)
 		else: lit_sconces.append(chandelier)
 		node.add_child(chandelier)
-		if not (room.type in SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
+		if not (room.type in palette.SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
 		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
 		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
 		light.set_meta("profile", LIGHTING.profile("chandelier"))
@@ -1310,7 +1306,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		# Frosted dome in a brass ring: warm pool with darker corners.
 		cylinder(node, Vector3(0, height - 0.03, 0), 0.26, 0.06, "gold")
 		# A plaster rose round it (the kit's), where the ceiling is plaster.
-		if not (room.type in SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
+		if not (room.type in palette.SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
 		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light_off" if dark_room(room) else "light", false, "cone", Vector3(PI, 0, 0))
 		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
 		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
@@ -1367,7 +1363,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	# none and stays black.
 	if not dark_room(room):
 		probe_slots.append({"room": int(room.id), "parent": node, "height": height, "size": Vector3(span.x - 0.2, height - 0.05, span.y - 0.2), "every_third": room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0, "probe": null})
-	if room.type == 0:
+	if room.type == palette.RECEPTION:
 		# Where the night started: a red emergency lamp blinking over the
 		# reception, the one landmark to find the way back by.
 		box(node, Vector3(0, height - 0.12, 0), Vector3(0.36, 0.12, 0.2), "metal")
@@ -1396,7 +1392,7 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		beacon.light_volumetric_fog_energy = 0.0
 		node.add_child(beacon)
 		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy, "room": int(room.id)})
-	if room.type == 19:
+	if room.type == palette.REFUGE:
 		exit_sign(node, Vector3(0, 2.25, -2.5), 0.0, height)
 		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
 		light.light_color = Color("b8d4b6")
@@ -1447,7 +1443,7 @@ func opens_on(a: int, b: int) -> bool:
 ## spaces have a pair of cloth-shaded wall lamps beside each print.
 func wall_art(boundary: Node3D, room: Dictionary, at: float, inner: int) -> void:
 	hang_painting(boundary, Vector3(at, 2.02, 0), inner, int(room.variant) % 2 == 0)
-	if not (room.type in SCONCE_ROOMS): return
+	if not (room.type in palette.SCONCE_ROOMS): return
 	for flank in [-1, 1]:
 		var sconce := MeshInstance3D.new()
 		sconce.mesh = WALL_LAMP
@@ -1847,8 +1843,10 @@ func route_sign(sign: Dictionary) -> void:
 # panelled wainscot, chair rail and skirting on both faces; cornice inside only.
 ## Furniture socket in room space: corners, set further in and smaller in
 ## domestic rooms, turned by the recipe.
-static func prop_transform(room: Dictionary, prop: Dictionary) -> Transform3D:
-	var domestic: bool = room.type in [1, 2, 3, 4, 7, 15, 16]
+## A static: who calls it without a palette gets the hotel's.
+static func prop_transform(room: Dictionary, prop: Dictionary, room_palette: GDScript = null) -> Transform3D:
+	var rules: GDScript = room_palette if room_palette != null else FLOOR.palette({})
+	var domestic: bool = rules.domestic(room)
 	var corner := 4.35 if domestic else 3.95
 	var basis := Basis(Vector3.UP, prop.rotation * PI / 2).scaled(Vector3.ONE * (0.85 if domestic else 1.0))
 	var at := Vector3(-corner if prop.slot % 2 == 0 else corner, 0, -corner if prop.slot < 2 else corner)

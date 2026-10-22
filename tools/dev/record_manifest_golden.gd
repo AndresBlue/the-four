@@ -3,7 +3,7 @@ extends SceneTree
 ## nothing that is not meant to change them does (docs/OFICINAS.md, 15, Fase
 ## 0): tests/hotel/manifest_golden_test.gd draws them again and compares. Each
 ## case is a seed and the survivors it is drawn for, one to five: three plays
-## the floor of two (FLOOR.AREA) but not its sets, as TV_PLACEMENT seeds its
+## the floor of two (the palette's AREA) but not its sets, as TV_PLACEMENT seeds its
 ## choice with the survivors and asks for one more. Plus, for each number, the
 ## standby floor forced as hotel_main.build_floor() forces it. Each is drawn as
 ## build_floor() comes by it before building anything: the manifest, and the

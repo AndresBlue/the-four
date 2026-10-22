@@ -60,7 +60,7 @@ static func choose(manifest: Dictionary, survivors: int, stage := 2) -> Array:
 		if int(room.get("wing", 0)) != wing or int(manifest.refuges[wing]) == int(room.id) or bool(room.get("landing", false)): continue
 		for prop in room.props:
 			if prop.kind != "tv": continue
-			var socket := GEOMETRY.prop_transform(room, prop)
+			var socket := GEOMETRY.prop_transform(room, prop, FLOOR.palette(manifest))
 			var spot := {"room": int(room.id), "slot": int(prop.slot), "sector": int(room.sector), "position": FLOOR.position_of(room) + socket.origin, "yaw": socket.basis.get_euler().y, "scale": socket.basis.get_scale().x, "metres": float(metres.get(int(room.id), 0.0))}
 			if float(spot.metres) >= least: spots.append(spot)
 			else: near.append(spot)

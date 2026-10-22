@@ -20,7 +20,7 @@ func run() -> void:
 	# A bedroom-sized room with nothing in the middle.
 	var FLOOR := preload("res://game/world/generation/floor_definition.gd")
 	for room in level.manifest.rooms:
-		if int(room.type) == 18 or int(room.type) == 5:
+		if FLOOR.palette(level.manifest).TYPES[int(room.type)] in ["salon_vacio", "salon"]:
 			level.player.global_position = FLOOR.position_of(room)
 			break
 	level.player.rotation.y = 0.0

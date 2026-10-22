@@ -38,10 +38,6 @@ static func tv_glass(builder: Node3D) -> Mesh:
 	builder.set_meta("tv_glass", glass)
 	return glass
 
-## Service rooms (laundry, storeroom, maintenance, cloakroom): metal shelving
-## and carts instead of the guests' wood.
-const SERVICE := [7, 8, 9, 16]
-
 ## A catalogue model in a socket, batched with the room (hotel_geometry.place()).
 static func put(builder: Node3D, node: Node3D, name: String, pos: Vector3, yaw := 0.0, scale := Vector3.ONE) -> void:
 	builder.place(node, DRESSING.mesh(name), Transform3D(Basis(Vector3.UP, yaw).scaled(scale), pos))
@@ -131,7 +127,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 			elif kind == "shelf":
 				# Two units side by side, filled: metal shelving and stores in
 				# service rooms, worn bookcases and books elsewhere.
-				var service: bool = builder.building_type in SERVICE
+				var service: bool = builder.building_type in builder.palette.SERVICE
 				for side in [-1, 1]:
 					var unit: String = ("steel_frame_shelves_01" if side < 0 else "worn_metal_rack") if service else "wooden_bookshelf_worn"
 					var s := 1.0 if service else 0.8
@@ -173,7 +169,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> void:
 		"cart":
 			for y in [0.2, 0.9]: builder.box(node, Vector3(0, y, 0), Vector3(1.35, 0.12, 0.75), "", true)
 			for x in [-0.6, 0.6]: builder.box(node, Vector3(x, 0.66, 0), Vector3(0.08, 1.2, 0.75), "", true)
-			if builder.building_type in SERVICE:
+			if builder.building_type in builder.palette.SERVICE:
 				# A metal storage cart where staff work, a bottle and a box on it.
 				put(builder, node, "industrial_storage_cart", Vector3.ZERO, 0.0, Vector3.ONE * 0.84)
 				put(builder, node, "bleach_bottle", Vector3(0.4, 1.16, 0.05), builder.vary(seed_pos, 18) * TAU)

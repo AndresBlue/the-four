@@ -15,8 +15,6 @@ extends RefCounted
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const HOTEL := "res://assets/props/hotel/%s.res"
 const MONSTERA := preload("res://assets/props/monstera/monstera.res")
-## Modules with the domestic alcoves (hotel_geometry.build_room()).
-const DOMESTIC := [1, 2, 3, 4, 7, 15, 16]
 ## From the wall's centre line to the back of a piece (half core, panels and
 ## rails).
 const INSET := 0.2
@@ -45,18 +43,8 @@ const SETS := {
 	"empty": ["boxes", "chairs", "cabinet", "", ""],
 	"wardrobe": ["luggage", "rack", "luggage", ""],
 }
-const MODULE_SET := {0: "lounge", 1: "bedroom", 2: "bedroom", 3: "bedroom", 4: "bath", 5: "lounge", 6: "dining", 7: "laundry", 8: "service", 9: "service", 10: "lounge", 11: "corridor", 12: "corridor", 13: "reading", 14: "lounge", 15: "office", 16: "wardrobe", 17: "garden", 18: "empty"}
 ## Small things by what a top or shelf holds.
 const ORNAMENTS := ["ceramic_vase_01", "brass_vase_02", "jug_01", "book_encyclopedia_set_01", "wall_clock_standing", "mantel_clock_01", "antique_ceramic_vase_01", "potted_plant_04"]
-## What hangs on walls and from ceilings besides (October 2026): where a
-## fire alarm's pull station is put, which rooms have a fuse box and which a
-## ceiling fan, by module.
-const ALARM_ROOMS := [0, 10, 11, 12]
-const FUSE_ROOMS := [7, 8, 9, 15]
-const FAN_ROOMS := [6, 13, 15]
-## A long-case clock stands on a bare stretch of these, where no wall lamp
-## hangs over it.
-const CLOCK_ROOMS := [1, 2, 3, 5, 6, 13, 14]
 const STORE_THINGS := ["cardboard_box_01", "plastic_crate_02", "bleach_bottle", "multi_cleaner_bottle", "wicker_basket_02", "cardboard_box_01"]
 const BOTTLES := ["wine_bottles_01_bordeaux", "wine_bottles_01_alsace", "wine_bottles_01_burgundy", "wine_bottles_01_champagne"]
 ## Half a wardrobe's width, and a little (hiding_place.gd).
@@ -144,11 +132,12 @@ static func flats(name: String, up: bool) -> Array:
 ## is [side, inward, how far it is across the room, how long it is]; a wall
 ## too short for a stretch either side of its doorway -- the end of a
 ## corridor -- has none.
-static func stretches(room: Dictionary) -> Array:
+## The palette is the builder's (hotel_geometry.palette).
+static func stretches(room: Dictionary, palette: GDScript) -> Array:
 	var span := FLOOR.size_of(room)
-	var far := FAR_DOMESTIC if int(room.type) in DOMESTIC else FAR
+	var far := FAR_DOMESTIC if palette.domestic(room) else FAR
 	var open: Array = room.get("open_sides", [])
-	var hides: Array = [] if int(room.type) == 19 else FLOOR.hiding_positions(room)
+	var hides: Array = [] if int(room.type) == palette.REFUGE else FLOOR.hiding_positions(room)
 	var ways := FLOOR.doorways(room)
 	var half := (far - NEAR) * 0.5
 	var result := []
@@ -202,15 +191,15 @@ const CONTAINERS := ["commode", "console", "drawers", "bookcase", "cabinet", "bo
 static func dress(builder, node: Node3D, room: Dictionary) -> void:
 	# Neither the refuge nor the lift lobby is furnished: one is bare by
 	# design and the other has nothing in it but the car.
-	if int(room.type) == 19 or bool(room.get("landing", false)): return
+	if int(room.type) == builder.palette.REFUGE or bool(room.get("landing", false)): return
 	var kept := state(room)
-	var set_name: String = MODULE_SET.get(int(room.type), "")
+	var set_name: String = builder.palette.MODULE_SET.get(int(room.type), "")
 	# A corridor of three or four metres keeps to what stands flat against a
 	# wall: an armchair and its table would half close it.
 	if set_name == "corridor" and minf(FLOOR.size_of(room).x, FLOOR.size_of(room).y) < 5.0: set_name = "passage"
 	var sets: Array = SETS.get(set_name, [])
 	var k := 0
-	for stretch in stretches(room):
+	for stretch in stretches(room, builder.palette):
 		var frame: Transform3D = stretch[0]
 		var holder := Node3D.new()
 		holder.name = "Stretch_%d" % k
@@ -233,12 +222,12 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 		# A fire alarm's pull station on the first stretch of a corridor, a
 		# lobby or the reception, at the end of it nearer the middle of the
 		# wall: a painting and its lamps hang past the other end.
-		if k == 0 and int(room.type) in ALARM_ROOMS and builder.vary(seed_pos, 130) < 0.6:
+		if k == 0 and int(room.type) in builder.palette.ALARM_ROOMS and builder.vary(seed_pos, 130) < 0.6:
 			var end: float = -0.72 * signf(frame.basis.x.dot(frame.origin))
 			place(builder, holder, "fire_alarm", Transform3D(Basis.IDENTITY, Vector3(end, 1.22, WALL_FACE + 0.018)), false)
 		k += 1
 	# Ceiling fans, still: one either side of the lamp along the room.
-	if int(room.type) in FAN_ROOMS:
+	if int(room.type) in builder.palette.FAN_ROOMS:
 		var span := FLOOR.size_of(room)
 		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
 		var drop: float = mesh("ceiling_fan").get_aabb().size.y
@@ -351,7 +340,7 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 		_:
 			# A long-case clock on a bare stretch of a room, a lounge or a
 			# dining room that is still kept (and has no wall clock here).
-			if kept == 0 and int(room.type) in CLOCK_ROOMS and v.call(46) >= 0.3 and v.call(133) < 0.45: put(builder, holder, "vintage_grandfather_clock_01", Vector3(0, 0, 0.25), 0.0, 1.0, true)
+			if kept == 0 and int(room.type) in builder.palette.CLOCK_ROOMS and v.call(46) >= 0.3 and v.call(133) < 0.45: put(builder, holder, "vintage_grandfather_clock_01", Vector3(0, 0, 0.25), 0.0, 1.0, true)
 			# A bare stretch: what a neglected room leaves lying about.
 			if kept >= 1: litter(builder, holder, seed_pos, kept)
 	# A clock on one wall in some rooms.
@@ -361,8 +350,8 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 	# stack of boxes. Every planta has one at least (fuse_boxes_left()): the
 	# stretches it could hang on are kept for that.
 	if pick in ["", "boxes", "bins", "baskets"]:
-		if int(room.type) in FUSE_ROOMS and v.call(134) < 0.4: fuse_box(builder, holder, room)
-		elif int(room.type) != 19 and not bool(room.get("landing", false)): builder.panel_spares.append({"wing": int(room.get("wing", 0)), "holder": holder, "room": room})
+		if int(room.type) in builder.palette.FUSE_ROOMS and v.call(134) < 0.4: fuse_box(builder, holder, room)
+		elif int(room.type) != builder.palette.REFUGE and not bool(room.get("landing", false)): builder.panel_spares.append({"wing": int(room.get("wing", 0)), "holder": holder, "room": room})
 
 ## A fuse box on a stretch's wall: solid, at the height of a head, shut and
 ## locked. It is an electrical panel, which the floor's key opens
@@ -384,7 +373,8 @@ static func fuse_boxes_left(builder) -> void:
 	for wing in wings:
 		if builder.panels.any(func(panel): return int(panel.wing) == wing): continue
 		var spares: Array = builder.panel_spares.filter(func(spare): return int(spare.wing) == wing)
-		var served: Array = spares.filter(func(spare): return int(spare.room.type) in FUSE_ROOMS)
+		var fuse_rooms: Array = builder.palette.FUSE_ROOMS
+		var served: Array = spares.filter(func(spare): return int(spare.room.type) in fuse_rooms)
 		var spare: Dictionary = served[0] if not served.is_empty() else spares[0]
 		fuse_box(builder, spare.holder, spare.room)
 	builder.panel_spares.clear()
@@ -464,7 +454,7 @@ static func fill_shelves(builder, holder: Node3D, base: String, at: Vector3, s: 
 
 ## A mirror above a piece, where no wall lamp hangs.
 static func hang_mirror(builder, holder: Node3D, room: Dictionary, bottom: float, seed_pos: Vector3) -> void:
-	if int(room.type) in [0, 10, 11, 12] or builder.vary(seed_pos, 47) < 0.4: return
+	if int(room.type) in builder.palette.PUBLIC_ROOMS or builder.vary(seed_pos, 47) < 0.4: return
 	place(builder, holder, "ornate_mirror_01", Transform3D(Basis.IDENTITY, Vector3(0, bottom, WALL_FACE + 0.015)))
 
 ## Boxes and crates stacked against the wall.
@@ -576,7 +566,7 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 			# On the floor: stains, gum in public rooms, footprints where it is abandoned.
 			var pick: String = ["SurfaceImperfections001", "SurfaceImperfections013", "SurfaceImperfections017"][int(builder.vary(base, 240 + i) * 3)]
 			if kept == 2 and builder.vary(base, 245 + i) < 0.4: pick = "Footsteps003"
-			elif int(room.type) in [0, 10, 11, 12] and builder.vary(base, 246 + i) < 0.3: pick = "ChewingGum001"
+			elif int(room.type) in builder.palette.PUBLIC_ROOMS and builder.vary(base, 246 + i) < 0.3: pick = "ChewingGum001"
 			var at: Vector3 = Vector3((builder.vary(base, 250 + i) - 0.5) * span.x * 0.8, 0.0, (builder.vary(base, 255 + i) - 0.5) * span.y * 0.8)
 			var size: float = 1.6 if pick == "Footsteps003" else 1.2 + builder.vary(base, 260 + i) * 1.4
 			builder.decal(node, pick, Transform3D(Basis(Vector3.UP, builder.vary(base, 265 + i) * TAU), at), Vector3(size, 0.3, size), 0.55 + kept * 0.15, float(i) / count)
@@ -618,7 +608,7 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 			builder.decal(node, pick, Transform3D(facing, surface + along_axis * (door_at + side * 1.0) + Vector3(0, 1.15, 0)), Vector3(0.5, 0.4, 0.5), 0.5 + kept * 0.15, float(i) / count)
 		else:
 			# Smears where there is tile or metal to smear.
-			var stains := ["SurfaceImperfections001", "SurfaceImperfections013", "Smear003"] if int(room.type) in [4, 7, 8, 9] else ["SurfaceImperfections001", "SurfaceImperfections013"]
+			var stains := ["SurfaceImperfections001", "SurfaceImperfections013", "Smear003"] if int(room.type) in builder.palette.SMEAR_ROOMS else ["SurfaceImperfections001", "SurfaceImperfections013"]
 			var pick: String = stains[int(builder.vary(base, 300 + i) * stains.size())]
 			if not off_doorways(ways, wall[0], spread * sense, 0.5): continue
 			builder.decal(node, pick, Transform3D(facing, surface + along_axis * spread + Vector3(0, 0.6 + builder.vary(base, 305 + i) * 1.4, 0)), Vector3(1.0, 0.4, 1.0), 0.3 + kept * 0.15, float(i) / count)

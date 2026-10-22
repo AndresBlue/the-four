@@ -354,7 +354,7 @@ func close(won: bool) -> Dictionary:
 		"company": RECORDS.VERSUS if versus else (RECORDS.SOLO if players.size() < 2 else RECORDS.COOP),
 		"players": players.size(),
 		"time": session.elapsed,
-		# The mark to beat goes with the size of the floor (FLOOR.AREA).
+		# The mark to beat goes with the size of the floor (the palette's AREA).
 		"par": float(level.kind.PAR) * float(level.manifest.get("area", 1.0)),
 		"stage": int(session.stage),
 		"sectors": times,

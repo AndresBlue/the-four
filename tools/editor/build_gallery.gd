@@ -25,18 +25,19 @@ func build() -> void:
 	builder.manifest = {"width": 1, "adjacency": [[]], "merged": []}
 	# Modules stand alone here and are seen from outside: whole walls.
 	builder.full_walls = true
-	for type in FLOOR.TYPES.size():
+	var hotel: GDScript = FLOOR.palette({})
+	for type in hotel.TYPES.size():
 		# The void (a cell a planta does not use) has nothing to show.
 		if type == FLOOR.VOID: continue
 		var props := []
-		for slot in 4: props.append({"slot": slot, "kind": FLOOR.RECIPES[type][slot], "rotation": 0})
+		for slot in 4: props.append({"slot": slot, "kind": hotel.RECIPES[type][slot], "rotation": 0})
 		var room := {"id": 0, "x": 0, "z": 0, "type": type, "height": 3.2, "span_x": 16.0, "span_z": 16.0, "hall": -1, "variant": type % 2, "layout": type % 4, "open_sides": [], "props": props}
 		var module := Node3D.new()
-		module.name = "%02d_%s" % [type, FLOOR.TYPES[type]]
+		module.name = "%02d_%s" % [type, hotel.TYPES[type]]
 		module.position = Vector3((type % 5) * 21, 0, int(type / 5) * 21)
 		builder.add_child(module)
 		builder.build_room(module, room)
-		builder.text(module, FLOOR.NAMES[type], Vector3(0, 4.3, 0), 0, 64)
+		builder.text(module, hotel.NAMES[type], Vector3(0, 4.3, 0), 0, 64)
 	# The editor reference uses ordinary editable meshes. Runtime MultiMesh buffers
 	# cannot be read back from the dummy renderer used by a headless builder.
 	for batch in builder.batches.values():
@@ -80,7 +81,7 @@ func build() -> void:
 	var packed := PackedScene.new()
 	var error := packed.pack(scene)
 	if error == OK: error = ResourceSaver.save(packed, OUTPUT)
-	print("GALLERY_RESULT ", error, " modules=", FLOOR.TYPES.size())
+	print("GALLERY_RESULT ", error, " modules=", FLOOR.palette({}).TYPES.size())
 	scene.queue_free()
 	await process_frame
 	quit(error)

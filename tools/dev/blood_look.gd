@@ -27,7 +27,7 @@ func staging_room(hard: bool) -> Dictionary:
 	var best_area := 0.0
 	for room in level.manifest.rooms:
 		if FLOOR.is_void(room) or level.point_protected(FLOOR.position_of(room)): continue
-		if hard != (int(room.type) in FLOOR.HARD_FLOORS): continue
+		if hard != FLOOR.palette(level.manifest).hard_floor(room): continue
 		if not hard and int(room.get("wing", 0)) != 0: continue
 		var span: Vector2 = FLOOR.size_of(room)
 		if span.x * span.y > best_area:
@@ -104,7 +104,7 @@ func run() -> void:
 		if node is MultiMeshInstance3D and node.name.begins_with("Blood") and node != record.get("air"):
 			stains += (node as MultiMeshInstance3D).multimesh.instance_count
 			where.append("%s:%d" % [node.get_parent().name, (node as MultiMeshInstance3D).multimesh.instance_count])
-	print("BLOOD_LOOK room=", FLOOR.TYPES[int(room.type)], " stains=", stains, " in ", where, " flying=", (record.get("flying", []) as Array).size(), " pool at=", record.get("pool_at", "none"))
+	print("BLOOD_LOOK room=", FLOOR.palette(level.manifest).TYPES[int(room.type)], " stains=", stains, " in ", where, " flying=", (record.get("flying", []) as Array).size(), " pool at=", record.get("pool_at", "none"))
 	for node in record.get("nodes", []):
 		if node is MultiMeshInstance3D and node != record.get("air"):
 			var multi: MultiMesh = (node as MultiMeshInstance3D).multimesh

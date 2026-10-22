@@ -48,7 +48,7 @@ func run() -> void:
 	var spots := {}
 	for room in level.manifest.rooms:
 		if not spots.has("hall") and int(room.hall) >= 0: spots["hall"] = FLOOR.position_of(room)
-		if not spots.has("room") and int(room.hall) < 0 and int(room.type) == 2: spots["room"] = FLOOR.position_of(room)
+		if not spots.has("room") and int(room.hall) < 0 and FLOOR.palette(level.manifest).TYPES[int(room.type)] == "habitacion_simple": spots["room"] = FLOOR.position_of(room)
 	for key in ["room", "hall"]:
 		level.player.global_position = spots[key] + Vector3(0.5, 0.04, 0.5)
 		level.player.hard_floor = false

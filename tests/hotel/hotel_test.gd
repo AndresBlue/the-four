@@ -113,7 +113,7 @@ func run() -> void:
 			if bool(room.get("corridor", false)):
 				corridors += 1
 				if bool(room.dark): dark_corridors += 1
-			elif FLOOR.may_be_dark(room):
+			elif FLOOR.palette({}).may_be_dark(room):
 				can_be_dark[int(room.wing)] += 1
 				if bool(room.dark): dark_by_planta[int(room.wing)] += 1
 		# Every refuge is entered by one door and no other, with the locked
@@ -179,7 +179,7 @@ func run() -> void:
 	var thirty: float = float(exposed.filter(func(metres): return float(metres) >= 30.0).size()) / exposed.size()
 	var fifty: float = float(exposed.filter(func(metres): return float(metres) >= 50.0).size()) / exposed.size()
 	check("La tercera planta tiene un pasillo sin puertas de 30 m en casi todos los pisos y de 50 en la mayoría (%d %%, %d %%)" % [roundi(thirty * 100.0), roundi(fifty * 100.0)], thirty >= 0.98 and fifty >= 0.88)
-	# The floor of the survivors who play it (FLOOR.AREA): alone, half the area
+	# The floor of the survivors who play it (the palette's AREA): alone, half the area
 	# of the hotel of two or three; four, a fifth more; five, a third more. And
 	# never more numbers on a planta than its hundred holds, however big.
 	var squares := {}
@@ -208,7 +208,7 @@ func run() -> void:
 	check("Los pisos de 1, 4 y 5 supervivientes son válidos", size_faults.is_empty())
 	var first_alone: float = float(firsts[1]) / float(firsts[2])
 	check("El piso va con los supervivientes: a solas la primera planta entera y las otras dos a la mitad, con cuatro un 20 %% más y con cinco un 35 %% (%0.2f y %0.2f, %0.2f, %0.2f)" % [first_alone, below.call(1), ratio.call(4), ratio.call(5)], absf(first_alone - 1.0) < 0.08 and absf(below.call(1) - 0.5) < 0.07 and absf(ratio.call(4) - 1.2) < 0.08 and absf(ratio.call(5) - 1.35) < 0.08)
-	check("Ninguna planta pasa de su centena: %d habitaciones con número como mucho" % FLOOR.NUMBERED_MOST, most_numbered <= FLOOR.NUMBERED_MOST)
+	check("Ninguna planta pasa de su centena: %d habitaciones con número como mucho" % FLOOR.palette({}).NUMBERED_MOST, most_numbered <= FLOOR.palette({}).NUMBERED_MOST)
 	var shortest: int = walked.min()
 	check("Las tres etapas obligan a recorrer el piso", shortest >= GEN.MIN_WALK and float(walked.reduce(func(a, b): return a + b, 0)) / walked.size() >= 40.0)
 	check("Tasa de respaldo inferior al 1%", fallback_count < SEEDS / 100)
@@ -379,7 +379,7 @@ func run() -> void:
 	for frame in 90: await physics_frame
 	check("Puerta abierta recupera colisión sin empujar", door.opened and not door.moving and door.collision_layer == door.OPEN_SOLID)
 	scene.player.rotation.y = float(scene.manifest.start_facing)
-	check("Quince tipos de prop como mínimo", preload("res://game/world/generation/floor_definition.gd").RECIPES.reduce(func(acc, recipe):
+	check("Quince tipos de prop como mínimo", preload("res://game/floors/palettes/hotel_palette.gd").RECIPES.reduce(func(acc, recipe):
 		for prop in recipe: acc[prop] = true
 		return acc, {}).size() >= 15)
 	# Walking where there is room to walk: the reception's door can be a few
@@ -597,7 +597,7 @@ func run() -> void:
 	for room in scene.manifest.rooms:
 		if floor_plan.is_void(room): continue
 		var fitting := scene.hotel.room_nodes[int(room.id)].get_node_or_null("Chandelier") as MeshInstance3D
-		var wanted: bool = float(room.height) > scene.hotel.CHANDELIER_HEIGHT and int(room.type) != 0 and not (int(room.type) in [4, 7, 8, 9])
+		var wanted: bool = float(room.height) > scene.hotel.palette.CHANDELIER_HEIGHT and int(room.type) != 0 and not (int(room.type) in [4, 7, 8, 9])
 		if (fitting != null) != wanted: hung_right = false
 		if fitting == null: continue
 		hung += 1

@@ -280,7 +280,7 @@ func update_steps(previous: Vector3, _delta: float) -> void:
 	step_distance = 0.0
 	if level == null or not level.world_audio.enabled: return
 	var room := FLOOR.room_at(level.manifest.rooms, global_position)
-	var hard := not room.is_empty() and int(room.type) in FLOOR.HARD_FLOORS
+	var hard: bool = not room.is_empty() and FLOOR.palette(level.manifest).hard_floor(room)
 	var set_name := "hard_walk" if hard else "carpet_run" if running and not crouched else "carpet_walk"
 	var clips: Array = STEPS.SETS[set_name]
 	var clip: Array = clips[randi() % clips.size()]
