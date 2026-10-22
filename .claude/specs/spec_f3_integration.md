@@ -1076,3 +1076,8 @@ Without the argument the test is today's. With `--floor=2`, an `office_part()` i
 8. **The cue's distance**: 2b's `CUE_RANGE` 1.6–3.2 m against OFICINAS 4's "a 2–3 m": which the batch holds her to.
 9. **`verify.ps1`'s length**: the minutes phases 2 and 3 add together (section 10), and whether some checks move to the phase-close list.
 10. **The balance batch**: the timing of one floor first and the short batch (7.5), launched only by the director, alone, within the usage window.
+
+### From step 1a (22 October 2026): the planta's card
+
+- OFICINAS 3 (line 176) sets the card of each planta in three parts: «NIVEL 1» / «PERSONAL» / «PIDE TU FICHA». 1a gives `kind.title_of(stage)` («NIVEL %d») to every live card (hotel_main `show_transit`/`show_brief`, lifts), but nothing shows the department. This phase does it: `show_transit` and `show_brief` gain the department line when the kind has one (the hotel has none, so its cards do not change).
+- Source of truth: `title_of()` for the level and `office_palette.PLANTA_NAMES` for the department. `office_floor.STAGES[n].level` and `.department` repeat them; this phase reads the two sources and removes the copies (or derives them), so the data is written once.
