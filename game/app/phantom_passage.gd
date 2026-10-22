@@ -10,6 +10,9 @@ extends Node
 ## nothing hears it, and nobody else does either. Never in the refuge, and
 ## never while the real one is close enough to be heard: the floor does not
 ## lie over the truth.
+##
+## The Locust's: its pace, its stride and its claws. Its lies make it
+## (game/app/hallucinations/locust_hallucinations.gd, walk_past).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const AURA := preload("res://game/audio/dread_aura.gd")
@@ -52,15 +55,16 @@ func walking() -> bool:
 
 ## Whether a lie of this kind can be told now: the real one far and quiet.
 func allowed() -> bool:
-	if level.in_refuge() or not is_instance_valid(level.locust): return false
+	var creature = level.creature
+	if level.in_refuge() or not is_instance_valid(creature): return false
 	var aura = level.world_audio.aura
 	if aura != null and float(aura.intensity) > REAL_AURA: return false
 	var listener: Vector3 = level.player.global_position
-	var creature: Vector3 = level.locust.global_position
-	if FLOOR.planta_of(creature.y) != FLOOR.planta_of(listener.y): return true
-	if creature.distance_to(listener) > REAL_NEAR * 1.5: return true
+	var real: Vector3 = creature.global_position
+	if FLOOR.planta_of(real.y) != FLOOR.planta_of(listener.y): return true
+	if real.distance_to(listener) > REAL_NEAR * 1.5: return true
 	var map: RID = level.get_world_3d().navigation_map
-	var route := FLOOR.navigation_path(map, listener, creature)
+	var route := FLOOR.navigation_path(map, listener, real)
 	var metres := 0.0
 	for i in range(1, route.size()): metres += route[i].distance_to(route[i - 1])
 	return route.size() < 2 or metres > REAL_NEAR

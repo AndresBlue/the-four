@@ -551,10 +551,10 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 
 | Grupo | Qué tiene |
 |---|---|
-| Identidad y control | `kind_id()`, `set_control()`, `tune()`, `can(&"lifts"/&"tv_travel"/&"ducts"/&"wardrobes")` |
+| Identidad y control | `kind_id()`, `set_control()` y `control`, `grace`, `tune()`, `can(&"lifts"/&"tv_travel"/&"ducts"/&"wardrobes")` |
 | Estado | `activity()` con nombres en vez de `Mode`, y en la base los predicados `is_hostile()`, `is_hunting()`, `is_engaged()`, `is_roaming()` y `alarm_level()` |
 | Sentidos | `eye_point()`, `face_point()`, `gaze()`, `sees()`, `hear()`, `hear_route()`, `watched()` |
-| Director | `lead_to()`, `investigate()`, `dull`, `searched_until`, `travel_metres()` (con ductos), `in_transit()` |
+| Director | `lead_to()`, `investigate()`, `dull`, `searched_lately()` (en The Locust, su `searched_until`), `noticing()`, `travel_metres()` (con ductos), `in_transit()` |
 | Movimiento | `teleport()` (único), `follow_to_planta()`, `den_point()`, `save_state()`, `restore_state()` |
 | Red | `pack_state()`, `push_state()`, `play_call()`, `validate_strike()` (en el anfitrión) |
 | Captura | `capture_style()` (estrategia), `begin_capture()`, `end_capture()`, `capture_length()` |

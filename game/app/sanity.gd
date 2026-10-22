@@ -46,23 +46,27 @@ const SANITY_GLIMPSE := 4.0
 const SANITY_STARE := 15.0
 const SANITY_SIGHT_REST := 5.0
 ## How near its gaze has to point at your eyes to be a stare: its head turns
-## to whoever it is after (locust_visual.look_point), its body to where it walks.
+## to whoever it is after, its body to where it walks (creature.gaze).
 const STARE_CONE := 30.0
 const SANITY_UNEASY := 60.0
 const SANITY_BACK := 25.0
 const SANITY_SEEN := 28.0
 const HALLUCINATION_WAIT := Vector2(13.0, 42.0)
-const GRUNTS := preload("res://game/audio/grunt_segments.gd")
-const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
-const PHANTOM_CLIP := "res://assets/audio/sfx/chase/grunts.ogg"
-const PASSAGE := preload("res://game/app/phantom_passage.gd")
 const SIGHT := preload("res://game/app/phantom_sight.gd")
 ## Of the lies told, how often it is the creature walking past, from the top
 ## of UNEASY to the bottom of the meter.
 const PASSAGE_SHARE := Vector2(0.2, 0.45)
-## The creature walking past that is not there, and the tape's jolt when a
-## thing that was not there goes (phantom_sight), easing off.
-var passage
+## The creature's own lies (creature.hallucinations(): for The Locust,
+## game/app/hallucinations/locust_hallucinations.gd), made the first time
+## one is needed and kept while the floor's creature tells the same ones.
+var lies: Node
+## It walking past where it is not (The Locust's lies' phantom_passage), once
+## there is one: for the tests, which look inside it. The mind itself only
+## asks the lies (walk_past(), walk_start()).
+var passage:
+	get: return lies.get("passage") if is_instance_valid(lies) else null
+## The tape's jolt when a thing that was not there goes (phantom_sight),
+## easing off.
 var glitch := 0.0
 ## The creature seen where it is not (phantom_sight): made the first time the
 ## mind of this machine's survivor starts to go.
@@ -75,8 +79,6 @@ var sight_paid := 0.0
 ## kept by the authority. The local survivor's meter is its own player.sanity.
 var minds := {}
 var hallucination_wait := 0.0
-var phantom: AudioStreamPlayer3D
-var phantom_left := 0.0
 
 func tick(delta: float) -> void:
 	glitch = maxf(0.0, glitch - delta * 2.0)
@@ -165,14 +167,16 @@ func lit_at(point: Vector3) -> bool:
 func sees_creature(body: Node3D, lit: bool) -> bool:
 	return sight_of_creature(body, lit) > 0
 
-## 0 not seen, 1 seen, 2 seen looking back: its gaze -- the head turned to
-## whoever it watches (look_point, also on a guest's puppet, which is sent
-## it), else the way its body faces -- points within STARE_CONE of this
-## survivor's eyes. Seeing its back across a room is not meeting its eyes.
+## 0 not seen, 1 seen, 2 seen looking back: its gaze (creature.gaze(): The
+## Locust's head turned to whoever it watches, also on a guest's puppet,
+## which is sent it, else the way its body faces), from its face, points
+## within STARE_CONE of this survivor's eyes. Seeing its back across a room is
+## not meeting its eyes.
 func sight_of_creature(body: Node3D, lit: bool) -> int:
-	if not is_instance_valid(level.locust) or level.locust.grace > 0.0 or not is_instance_valid(body.camera): return 0
+	var creature = level.creature
+	if not is_instance_valid(creature) or creature.grace > 0.0 or not is_instance_valid(body.camera): return 0
 	var eye: Vector3 = body.camera.global_position
-	var towards: Vector3 = level.locust.global_position + Vector3(0, 1.2, 0) - eye
+	var towards: Vector3 = creature.global_position + Vector3(0, 1.2, 0) - eye
 	var gap := towards.length()
 	if gap > SANITY_SEEN or gap < 0.01: return 0
 	if not lit and not body.torch.visible and gap > 6.0: return 0
@@ -180,17 +184,17 @@ func sight_of_creature(body: Node3D, lit: bool) -> int:
 	var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1 | 8 | 64)
 	query.exclude = [body.get_rid()]
 	if not level.get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return 0
-	var head: Vector3 = level.locust.global_position + Vector3(0, level.locust.EYE_HEIGHT, 0)
-	var gaze: Vector3 = -level.locust.global_basis.z
-	var visual = level.locust.visual
-	if is_instance_valid(visual) and "look_point" in visual and visual.look_point != Vector3.INF: gaze = visual.look_point - head
+	var head: Vector3 = creature.face_point()
+	var gaze: Vector3 = creature.gaze()
 	var to_eye := eye - head
 	if gaze.length() < 0.01 or to_eye.length() < 0.01: return 1
 	return 2 if gaze.normalized().dot(to_eye.normalized()) >= cos(deg_to_rad(STARE_CONE)) else 1
 
 ## The floor lying: a door, a wardrobe or the creature's own call, somewhere
 ## nobody is. Local to this machine -- it is not a noise, nothing hears it and
-## nobody else does either.
+## nobody else does either. The call and the creature walking past are the
+## creature's own lies (creature_lies()); one that has none leaves the floor
+## its doors and wardrobes.
 var last_lie := {}
 func hallucinate(delta: float) -> void:
 	if level.player.sanity > SANITY_UNEASY or level.player.reading: return
@@ -202,28 +206,49 @@ func hallucinate(delta: float) -> void:
 	var voice: bool = gone > 0.5 and randf() < gone * 0.45
 	# The creature walking past, the whole sound of it near.
 	if not voice and randf() < lerpf(PASSAGE_SHARE.x, PASSAGE_SHARE.y, gone) and walk_past():
-		last_lie = {"point": passage.path[0], "voice": false, "passage": true, "time": Time.get_ticks_msec() / 1000.0}
+		last_lie = {"point": lies.walk_start(), "voice": false, "passage": true, "time": Time.get_ticks_msec() / 1000.0}
 		return
 	last_lie = {"point": point, "voice": voice, "time": Time.get_ticks_msec() / 1000.0}
 	# A silent run (tests, captures) keeps the cadence: the lie counts as told.
 	if not level.world_audio.enabled: return
-	if voice: false_call(point)
+	var told: Node = creature_lies() if voice else null
+	if told != null: told.false_call(point)
 	else: level.world_audio.play_at(level.world_audio.choose(["close_far", "open_far", "hide_leave", "open_slow"][randi() % 4]), point, -4.0)
 
+## The creature's own lies, made the first time they are needed and made again
+## if the floor's creature tells others; null when it has none of its own.
+## The sight is made of them, so it goes with them.
+func creature_lies() -> Node:
+	var creature = level.creature
+	if not is_instance_valid(creature): return lies if is_instance_valid(lies) else null
+	var kind: Variant = creature.hallucinations()
+	if is_instance_valid(lies) and lies.get_script() == kind: return lies
+	if is_instance_valid(lies): lies.queue_free()
+	if is_instance_valid(sight): sight.queue_free()
+	lies = null
+	sight = null
+	if kind == null: return null
+	lies = kind.new()
+	add_child(lies)
+	lies.setup(level)
+	return lies
+
+## The creature seen where it is not (phantom_sight), in the model and poses
+## of its own lies; null for a creature with none.
 func ensure_sight():
 	if not is_instance_valid(sight):
+		var told := creature_lies()
+		if told == null: return null
 		sight = SIGHT.new()
 		add_child(sight)
-		sight.setup(level)
+		sight.setup(level, told)
 	return sight
 
-## Starts the creature that is not there walking past (phantom_passage).
+## Starts the creature that is not there walking past (its lies'
+## walk_past(): for The Locust, phantom_passage).
 func walk_past() -> bool:
-	if not is_instance_valid(passage):
-		passage = PASSAGE.new()
-		add_child(passage)
-		passage.setup(level)
-	return passage.begin()
+	var told := creature_lies()
+	return told != null and told.walk_past()
 
 ## Somewhere on the floor around, in a room and not inside a wall.
 func hallucination_point(reach: float) -> Vector3:
@@ -231,38 +256,10 @@ func hallucination_point(reach: float) -> Vector3:
 	var point: Vector3 = level.player.global_position + Vector3(sin(angle), 0, cos(angle)) * reach
 	return FLOOR.closest(level.get_world_3d().navigation_map, point)
 
-## Its voice, from where it is not. Its own throat is elsewhere: this one has
-## a level.player of its own so the real call is never cut short by a made-up one.
-## A call, never one of the short barks: those are the tell of a strike
-## (hotel_locust.warn), and the floor lies about where it is, not about that.
-## And heard the way a real one would be, round through a doorway: it used to
-## come straight through the walls.
-func false_call(point: Vector3) -> void:
-	if not is_instance_valid(phantom):
-		phantom = AudioStreamPlayer3D.new()
-		phantom.name = "Phantom"
-		phantom.bus = "Threat"
-		phantom.stream = load(PHANTOM_CLIP)
-		phantom.unit_size = 7.0
-		phantom.max_distance = 40.0
-		add_child(phantom)
-	var calls: Array = []
-	for segment in GRUNTS.SEGMENTS:
-		if float(segment[1]) >= LOCUST.AGGRESSIVE_GRUNT: calls.append(segment)
-	if calls.is_empty(): return
-	var segment: Array = calls[randi() % calls.size()]
-	var route: Dictionary = level.world_audio.route_source(point + Vector3(0, 1.6, 0))
-	if not route.audible: return
-	level.world_audio.apply_route(phantom, route, -4.0, "Threat")
-	phantom.pitch_scale = randf_range(0.8, 0.95)
-	phantom.play(segment[0])
-	phantom_left = float(segment[1]) / phantom.pitch_scale
-
-## A made-up call lasts as long as the piece of the recording it came from.
+## A made-up call lasts as long as the piece of the recording it came from
+## (the lies' quiet()).
 func phantom_quiet(delta: float) -> void:
-	if not is_instance_valid(phantom) or not phantom.playing: return
-	phantom_left -= delta
-	if phantom_left <= 0.0: phantom.stop()
+	if is_instance_valid(lies): lies.quiet(delta)
 
 ## Everybody whose mind has gone, wherever they are: what the pacing director
 ## plays on (never the creature's to know) and, in versus, the motes.

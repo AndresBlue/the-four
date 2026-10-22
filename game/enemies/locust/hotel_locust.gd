@@ -63,10 +63,6 @@ var doubt_rest := 0.0
 const TIRED_FOR := 3.0
 ## This floor's (the difficulty's "tired").
 var tired_for := TIRED_FOR
-## How much of its hearing it has at the moment, 0 to 1: the director dulls
-## it while it is resting somebody who has earned it (pacing_director), so
-## that being left alone is not undone by the first footstep.
-var dull := 1.0
 var chase_time := 0.0
 var tired_until := -INF
 ## It has been after somebody since it last gave up: giving up now is losing
@@ -290,7 +286,6 @@ var certain := false
 var detection := 0.0
 var lost_time := 0.0
 var state_time := 0.0
-var grace := 15.0
 var repath := 0.0
 var path := PackedVector3Array()
 var path_index := 0
@@ -403,10 +398,6 @@ var sniff_hide: Node3D
 ## The survivor it is watching or hunting (see level.survivors()); several
 ## players can be on the floor, it only ever pursues one at a time.
 var focus: Node3D
-## Who decides what it does. "ai": its own behaviour (offline, or the host of a
-## co-op match). "puppet": it follows the state sent by the machine in charge.
-## "player": a player drives it (versus, see locust_player.gd).
-var control := "ai"
 ## Versus: the controller that reads the local player's input, and its camera.
 var driver: Node
 var camera: Camera3D
@@ -2190,6 +2181,26 @@ func gaze() -> Vector3:
 func travel_metres(room_id: int) -> Dictionary: return walk_from(room_id)
 
 func in_transit() -> bool: return lift_bound
+
+func searched_lately(room_id: int) -> bool: return float(searched_until.get(room_id, -INF)) > clock
+
+func noticing() -> bool: return detection >= SUSPICION
+
+## The way it would walk to the listener, on this planta only, and the cues a
+## few metres along it (dread_aura.route_to).
+func presence_route(listener: Vector3) -> Array:
+	return level.world_audio.aura.route_to(listener, global_position)
+
+## Its presence, heard from where world_audio places it, round through the
+## doorways; its own body is no wall to it.
+func sound_route(listener: Vector3) -> Dictionary:
+	return level.world_audio.route_source(global_position + level.world_audio.PRESENCE_RISE, get_rid(), listener)
+
+## Its lies (game/app/hallucinations/locust_hallucinations.gd): its call from
+## where it is not, it walking past, its head round a door. Loaded when asked
+## for, not preloaded: that script knows this one.
+const HALLUCINATIONS := "res://game/app/hallucinations/locust_hallucinations.gd"
+func hallucinations() -> Variant: return load(HALLUCINATIONS)
 
 func capture_length() -> float: return EXECUTION_TIME
 

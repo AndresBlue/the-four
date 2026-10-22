@@ -95,7 +95,11 @@ const HUM_UNIT := 4.0
 const HUM_REACH := 13.0
 var ambient_clock := 0.0
 var route_clock := 0.0
+## How the presence reaches the listener: the creature's sound_route(), or
+## the route from the imagined one. Every quarter of a second.
 var presence_route := {}
+## Where a creature's presence is heard from: this far above its feet.
+const PRESENCE_RISE := Vector3(0, 1.4, 0)
 ## A lit set hisses, softly, once the burst of static it came on with has died
 ## down: the nearest few of them, placed like the hums.
 const TV_HISS := "res://assets/audio/intro/tv_static.wav"
@@ -415,13 +419,15 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 ## heard from the last opening visible from the listener (a doorway or corner),
 ## quieter, duller and with an echo for the extra distance. Walls never let
 ## sound through.
+## `listener`: where it is heard, when the caller has it already (INF: the
+## listener's own position, listener_position()).
 ## What a shut door between takes off a sound: this much quieter, and nothing
 ## above this much of its top end gets through the wood.
 const SHUT_DOOR_LOSS := 8.0
 const SHUT_DOOR_CUTOFF := 1500.0
-func route_source(point: Vector3, emitter := RID()) -> Dictionary:
-	var listener := listener_position()
-	if not occluded(point, emitter):
+func route_source(point: Vector3, emitter := RID(), listener := Vector3.INF) -> Dictionary:
+	if listener == Vector3.INF: listener = listener_position()
+	if not occluded(point, emitter, listener):
 		return {"audible": true, "position": point, "gain": 0.0, "cutoff": 20000.0, "echo": false, "distance": listener.distance_to(point)}
 	# A walked route is never shorter than the straight line less the gap from
 	# each end down to the walkable floor (a few metres at most), so past this
@@ -507,8 +513,9 @@ func behind(point: Vector3) -> float:
 	if local.length_squared() < 0.01: return 0.0
 	return smoothstep(0.0, 1.0, maxf(0.0, local.normalized().z))
 
-func occluded(point: Vector3, emitter := RID()) -> bool:
-	var ray := PhysicsRayQueryParameters3D.create(point, listener_position(), 1 | 8 | 64)
+func occluded(point: Vector3, emitter := RID(), listener := Vector3.INF) -> bool:
+	if listener == Vector3.INF: listener = listener_position()
+	var ray := PhysicsRayQueryParameters3D.create(point, listener, 1 | 8 | 64)
 	if emitter.is_valid(): ray.exclude = [emitter]
 	return not level.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
 
@@ -574,17 +581,17 @@ func _physics_process(delta: float) -> void:
 	update_hum_levels()
 	update_hiss_levels()
 	update_space(delta)
-	if not is_instance_valid(level.locust) or level.session.state != level.session.State.PLAYING: return
-	var creature = level.locust
-	var voice_point: Vector3 = creature.global_position + Vector3(0, 1.4, 0)
+	var creature = level.creature
+	if not is_instance_valid(creature) or level.session.state != level.session.State.PLAYING: return
+	var voice_point: Vector3 = creature.global_position + PRESENCE_RISE
 	# A creature imagined nearer than the real one is the one heard.
 	var listener := listener_position()
 	presence_phantom = phantom_point != Vector3.INF and (creature.grace > 0.0 or phantom_point.distance_to(listener) < creature.global_position.distance_to(listener))
-	if presence_phantom: voice_point = phantom_point + Vector3(0, 1.4, 0)
+	if presence_phantom: voice_point = phantom_point + PRESENCE_RISE
 	route_clock -= delta
 	if route_clock <= 0.0 or presence_route.is_empty():
 		route_clock = 0.25
-		presence_route = route_source(voice_point, RID() if presence_phantom else creature.get_rid())
+		presence_route = route_source(voice_point, RID(), listener) if presence_phantom else creature.sound_route(listener)
 	# Heard straight, it sits on the creature; heard around corners, it drifts to the opening.
 	var target: Vector3 = voice_point if not presence_route.get("echo", false) else presence_route.position
 	update_ears(target, delta)

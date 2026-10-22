@@ -8,12 +8,14 @@ extends Node3D
 ##
 ## Local to this machine, like every lie of the floor: one model of it, no
 ## body, no collision, in no group, told to nobody. Never in the refuge, never
-## while the real one is near or hunting, never for the one who drives it,
-## the observer or the test bots.
+## while the real one is near or on to somebody, never for the one who drives
+## it, the observer or the test bots.
+##
+## Where and when are this script's; what is seen is the creature's own lies'
+## (creature.hallucinations(), given to setup()): the model, its head and the
+## bones a peek must keep behind the jamb, and the poser that leans it out
+## (pose_peek) or stands it (pose_stare).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const LOOK := preload("res://game/enemies/locust/locust_look.gd")
-const POSER := preload("res://game/enemies/locust/locust_poser.gd")
-const MODEL := preload("res://assets/enemies/locust.glb")
 const SIGHT_MASK := 1 | 8 | 64
 ## Where: a door standing open this far off, or the far end of a straight run
 ## of corridor this far off (at least RUN_CELLS cells long).
@@ -46,11 +48,12 @@ const REAL_NEAR := 25.0
 const PEEK_IN := 0.4
 ## How far past the jamb it stands (metres beyond the edge of the doorway),
 ## tried in turn, and how far it leans out: the head has to clear the jamb and
-## nothing else may (BODY_BONES).
+## nothing else may (the lies' BODY_BONES).
 const JAMB_BEHIND := [0.55, 0.4, 0.7]
 const PEEK_LEAN := 0.6
-const BODY_BONES := ["Spine", "Spine2", "Pelvis", "L_Forearm", "R_Forearm", "L_Hand", "R_Hand"]
 var level
+## The creature's lies it is made of.
+var lies
 var model: Node3D
 var poser
 var rng := RandomNumberGenerator.new()
@@ -70,20 +73,17 @@ var turn_rate := 0.0
 var shown := 0
 var last_end := ""
 
-func setup(owner_level) -> void:
+func setup(owner_level, own_lies) -> void:
 	level = owner_level
+	lies = own_lies
 	name = "PhantomSight"
 	rng.randomize()
 	rest = rng.randf_range(REST.x, REST.y) * 0.5
 
 func ensure_model() -> void:
 	if is_instance_valid(model): return
-	model = MODEL.instantiate()
-	model.name = "Phantom"
-	model.scale = Vector3.ONE * 1.95
-	add_child(model)
-	LOOK.apply(model)
-	poser = POSER.new(model)
+	model = lies.sight_model(self)
+	poser = lies.sight_poser(model)
 	model.visible = false
 
 func showing() -> bool:
@@ -93,9 +93,9 @@ func showing() -> bool:
 func allowed() -> bool:
 	if level.observer or level.bot_match or level.match_net.local_is_locust() or not level.local_alive(): return false
 	if level.player.sanity >= UNEASY or level.player.hidden or level.player.reading or level.in_refuge(): return false
-	var creature = level.locust
+	var creature = level.creature
 	if not is_instance_valid(creature): return false
-	if creature.mode in [creature.Mode.ALERT, creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.EXECUTE]: return false
+	if creature.is_attacking(): return false
 	return creature.global_position.distance_to(level.player.global_position) > REAL_NEAR or FLOOR.planta_of(creature.global_position.y) != FLOOR.planta_of(level.player.global_position.y)
 
 func _physics_process(delta: float) -> void:
@@ -227,7 +227,7 @@ func place_peek(door, camera: Camera3D) -> bool:
 			var model_x: Vector3 = model.global_basis.x.normalized()
 			lean_side = 1.0 if model_x.dot(-along * side) > 0.0 else -1.0
 			pose(1.0)
-			var head: Vector3 = poser.point("Head1")
+			var head: Vector3 = poser.point(lies.HEAD)
 			if clear(eye, head) and lit(head, camera) and hidden_body(eye):
 				face_point = head
 				return true
@@ -237,7 +237,7 @@ func place_peek(door, camera: Camera3D) -> bool:
 ## Everything of it but the head and neck behind the wall: its middle, its
 ## hips and its hanging arms.
 func hidden_body(eye: Vector3) -> bool:
-	for bone in BODY_BONES:
+	for bone in lies.BODY_BONES:
 		if clear(eye, poser.point(bone)): return false
 	return true
 
@@ -249,7 +249,7 @@ func place_stand(point: Vector3, camera: Camera3D) -> bool:
 	var to_eye := camera.global_position - point
 	model.rotation = Vector3(0, atan2(to_eye.x, to_eye.z), 0)
 	pose(1.0)
-	face_point = poser.point("Head1")
+	face_point = poser.point(lies.HEAD)
 	return true
 
 ## The far end of the straight open run of corridor cells the camera stands

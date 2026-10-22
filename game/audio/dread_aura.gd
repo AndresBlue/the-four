@@ -114,11 +114,12 @@ func route_to(listener: Vector3, source: Vector3) -> Array:
 	for i in range(1, path.size()): length += path[i].distance_to(path[i - 1])
 	return [length, along(path, minf(lerpf(cue_distance_far, cue_distance_near, intensity), length))]
 
-## The creature, or the one a mind going imagines walking past
+## The creature (its presence_route(): The Locust's is route_to() from where
+## it stands), or the one a mind going imagines walking past
 ## (world_audio.phantom_point), whichever is nearer: the aura is the same.
 var from_phantom := false
 func update_route(listener: Vector3, creature: Node3D, real: bool) -> void:
-	var best: Array = route_to(listener, creature.global_position) if real else [INF, Vector3.INF]
+	var best: Array = creature.presence_route(listener) if real else [INF, Vector3.INF]
 	from_phantom = false
 	if world_audio.phantom_point != Vector3.INF:
 		var imagined := route_to(listener, world_audio.phantom_point)
@@ -132,7 +133,7 @@ func _physics_process(delta: float) -> void:
 	var level = world_audio.level
 	if level == null or not world_audio.enabled: return
 	clock += delta
-	var creature = level.locust
+	var creature = level.creature
 	var playing: bool = is_instance_valid(creature) and level.session.state == level.session.State.PLAYING and not level.in_refuge() and not level.match_net.local_is_locust()
 	var real: bool = playing and creature.grace <= 0
 	var active: bool = real or (playing and world_audio.phantom_point != Vector3.INF)
@@ -147,13 +148,15 @@ func _physics_process(delta: float) -> void:
 		# Rises steadily with closeness instead of saturating early.
 		target = pow(clampf((start_distance - route_distance) / (start_distance - full_distance), 0.0, 1.0), 1.3)
 		var near := clampf((start_distance * 1.5 - route_distance) / (start_distance * 0.5), 0.0, 1.0)
-		# Its state sharpens the dread: hunting reads worse than wandering.
-		match -1 if from_phantom else int(creature.mode):
+		# Its state sharpens the dread (alarm_level()): hunting reads worse
+		# than wandering. An imagined one only walks.
+		var alarm: int = 0 if from_phantom else int(creature.alarm_level())
+		match alarm:
 			# Scaled by how near it is: at full strength anywhere, a hunter
 			# sprinting down an empty corridor across the floor told every
 			# survivor it was running.
-			creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER, creature.Mode.ALERT: target = maxf(target + 0.25 * near, 0.7 * near)
-			creature.Mode.INVESTIGATE, creature.Mode.SEARCH: target += 0.08 * near
+			2: target = maxf(target + 0.25 * near, 0.7 * near)
+			1: target += 0.08 * near
 		target = clampf(target, 0.0, 1.0)
 		menace = target
 		# Waiting beside a wardrobe for whoever is in it (hotel_locust, the

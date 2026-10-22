@@ -104,8 +104,8 @@ static func run(level) -> Dictionary:
 		# A floor is drawn before its creature is put on it (hotel_main:
 		# build_floor, then populate_floor), so there never was one to show:
 		# a figure of it stands in, the same mesh in the same material (what
-		# a hallucination of it is made of, phantom_sight.gd). The first time
-		# it is seen can be with its face in the lens.
+		# a hallucination of it is made of, locust_hallucinations.gd). The
+		# first time it is seen can be with its face in the lens.
 		var figure: Node3D = CREATURE_MODEL.instantiate()
 		figure.scale = Vector3.ONE * 1.95
 		level.hotel.add_child(figure)

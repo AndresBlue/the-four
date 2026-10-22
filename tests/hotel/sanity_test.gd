@@ -237,6 +237,7 @@ func phantom_passage_checks(lit: Dictionary) -> void:
 	audio.aura.reset()
 	var started: bool = level.sanity.walk_past()
 	check("Con la cabeza yéndose, la criatura pasa cerca sin estar", started and level.sanity.passage.walking())
+	check("Y sus mentiras dicen de dónde sale", level.sanity.lies.walk_start() == level.sanity.passage.path[0])
 	var peak := 0.0
 	var nearest := INF
 	var presence := false
@@ -250,7 +251,7 @@ func phantom_passage_checks(lit: Dictionary) -> void:
 	check("Pero no es un ruido: la criatura no se entera", level.locust.last_known == known_before and int(level.locust.mode) == mode_before)
 	level.sanity.passage.stop()
 	await frames(2)
-	check("Y al acabar no queda nada", audio.phantom_point == Vector3.INF)
+	check("Y al acabar no queda nada", audio.phantom_point == Vector3.INF and level.sanity.lies.walk_start() == Vector3.INF)
 	audio.enabled = was_enabled
 
 ## The creature seen where it is not: only where it could be (its head round

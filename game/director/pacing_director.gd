@@ -6,14 +6,15 @@ extends Node
 ## gone, what is left to do (the sets still dark, the drawers with a number,
 ## the keypad, the refuge) -- and the creature's own state. The creature is
 ## never given a position. It is given *leads*: a part of the floor to go
-## round for a while (hotel_locust.lead_to), a room or three wide, never the
+## round for a while (creature.lead_to), a room or three wide, never the
 ## room anybody is in, never next to somebody hidden, never somewhere it has
 ## just searched. What it finds there is down to its own eyes and ears. Like
 ## somebody enjoying moving the beast about to tease the players, but not to
 ## hand it a kill.
 ##
-## It keeps a MENACE for the team -- how near the creature is, by walking,
-## with a hunt counting for more -- and plays in three phases:
+## It keeps a MENACE for the team -- how near the creature is, by its own way
+## to them (reach(); for The Locust, walking), with a hunt counting for more
+## -- and plays in three phases:
 ##  - BUILD: a lead every LEAD_EVERY seconds, each one nearer the team than
 ##    the last, from PROWL_START down to its nearest (PROWL_MIN; further in a
 ##    blackout, and further for every death of the last few minutes).
@@ -225,12 +226,15 @@ func _physics_process(delta: float) -> void:
 	if level == null or level.session.state != level.session.State.PLAYING: return
 	tick(delta)
 
+## The floor's creature (game/enemies/creature.gd), asked only what that
+## contract answers; null when there is none.
 func creature():
-	return level.locust if is_instance_valid(level.locust) else null
+	var it = level.creature
+	return it if is_instance_valid(it) else null
 
 func hostile() -> bool:
 	var it = creature()
-	return it != null and it.mode in [it.Mode.ALERT, it.Mode.CHASE, it.Mode.WINDUP, it.Mode.RECOVER, it.Mode.EXECUTE, it.Mode.LURK]
+	return it != null and it.is_hostile()
 
 ## Everybody out there it plays for: alive, outside the refuge, not in a car.
 func active_survivors() -> Array:
@@ -273,12 +277,12 @@ func update_strain(delta: float) -> void:
 	else: strain = maxf(0.0, strain - STRAIN_EBB * delta)
 
 ## Somebody shut in a wardrobe with the creature within HIDE_NEAR metres of
-## walking of them.
+## its way to them (reach).
 func pressed_in_hiding() -> bool:
 	var it = creature()
 	if it == null: return false
 	var from := room_id(it.global_position)
-	return active_survivors().any(func(body): return body.hidden and walk(from, room_id(body.global_position)) < HIDE_NEAR)
+	return active_survivors().any(func(body): return body.hidden and reach(from, room_id(body.global_position)) < HIDE_NEAR)
 
 ## The rooms the team is making for: the stage's refuge, its sets still dark
 ## and, on the last stage, the furniture with a number in it and the keypad.
@@ -315,7 +319,7 @@ func set_phase(next: Phase) -> void:
 ## in the wing it is in.
 func silent() -> bool:
 	var it = creature()
-	if it == null or it.control != "ai" or it.grace > 0.0 or it.lift_bound: return true
+	if it == null or it.control != "ai" or it.grace > 0.0 or it.in_transit(): return true
 	if level.lifts.creature_car(level.session.stage) >= 0: return true
 	var wing := wing_of(it.global_position)
 	return not active_survivors().any(func(body): return wing_of(body.global_position) == wing)
@@ -326,11 +330,24 @@ func wing_of(point: Vector3) -> int:
 func room_id(point: Vector3) -> int:
 	return int(FLOOR.room_at(level.manifest.rooms, point).get("id", -1))
 
-## Metres of walking between two rooms (INF when there is no way).
+## Metres of walking between two rooms, by their doors (INF when there is no
+## way): a survivor's to wherever, and the creature's own walk where the way
+## it goes is the point (by way of somebody, or not). Kept by room for the
+## floor, which has a director of its own.
+var walks := {}
 func walk(from_room: int, to_room: int) -> float:
+	if from_room < 0 or to_room < 0: return INF
+	if not walks.has(from_room): walks[from_room] = FLOOR.route_metres(level.manifest, from_room)
+	return float(walks[from_room].get(to_room, INF))
+
+## Metres of the creature's own travel between two rooms, by whatever ways it
+## has (creature.travel_metres: its walk, and the ducts of one that has
+## them): how near it is to somebody. INF when there is no way, or no
+## creature. For The Locust, the same numbers as walk().
+func reach(from_room: int, to_room: int) -> float:
 	var it = creature()
 	if from_room < 0 or to_room < 0 or it == null: return INF
-	return float(it.walk_from(from_room).get(to_room, INF))
+	return float(it.travel_metres(from_room).get(to_room, INF))
 
 func tick(delta: float) -> void:
 	clock += delta
@@ -370,7 +387,7 @@ func tick(delta: float) -> void:
 	roll_clock -= delta
 	if roll_clock > 0.0 and not force: return
 	roll_clock = 1.0
-	if it.mode != it.Mode.PATROL and it.mode != it.Mode.SEARCH: return
+	if not it.accepts_leads(): return
 	if burnt_lead(): return
 	match phase:
 		Phase.RELIEF:
@@ -411,13 +428,13 @@ func peak_limit() -> float:
 func nearest_prowl() -> float:
 	return (prowl_min_dark if level.hotel.dark else prowl_min) + death_ease * deaths.size()
 
-## Metres of walking from the creature to the nearest survivor out there.
+## Metres of the creature's way (reach) to the nearest survivor out there.
 func nearest_walk() -> float:
 	var it = creature()
 	if it == null: return INF
 	var from := room_id(it.global_position)
 	var best := INF
-	for body in active_survivors(): best = minf(best, walk(from, room_id(body.global_position)))
+	for body in active_survivors(): best = minf(best, reach(from, room_id(body.global_position)))
 	return best
 
 func update_menace(delta: float) -> void:
@@ -426,7 +443,7 @@ func update_menace(delta: float) -> void:
 	if it != null:
 		var from := room_id(it.global_position)
 		for body in active_survivors():
-			var metres := walk(from, room_id(body.global_position))
+			var metres := reach(from, room_id(body.global_position))
 			if metres == INF: continue
 			target = maxf(target, clampf((MENACE_FAR - metres) / (MENACE_FAR - MENACE_NEAR), 0.0, 1.0))
 		if hostile(): target = minf(1.0, target * HOSTILE_MENACE + 0.3)
@@ -442,7 +459,7 @@ func pick_target() -> Node3D:
 	var best_score := -INF
 	for body in active_survivors():
 		if body.hidden: continue
-		var score := minf(walk(from, room_id(body.global_position)), 90.0) + rng.randf_range(0.0, 25.0)
+		var score := minf(reach(from, room_id(body.global_position)), 90.0) + rng.randf_range(0.0, 25.0)
 		if score > best_score:
 			best_score = score
 			best = body
@@ -650,7 +667,7 @@ func far_lead(kind: String) -> bool:
 ## The director plays with them; it does not hand them over.
 func distraction() -> void:
 	var it = creature()
-	if clock - last_distraction < distract_rest or it.detection >= it.SUSPICION: return
+	if clock - last_distraction < distract_rest or it.noticing(): return
 	var bodies := active_survivors()
 	if bodies.is_empty() or not bodies.all(func(body): return body.hidden): return
 	var from := room_id(it.global_position)
@@ -694,7 +711,7 @@ func burnt_lead() -> bool:
 	var marked: Array = active_survivors().filter(func(body): return bool(body.get("burnt")))
 	if marked.is_empty(): return false
 	var it = creature()
-	if it.mode != it.Mode.PATROL: return false
+	if it.activity() != &"roam": return false
 	burnt_next = clock + rng.randf_range(burnt_every.x, burnt_every.y)
 	var body: Node3D = marked[rng.randi_range(0, marked.size() - 1)]
 	var theirs := room_id(body.global_position)
@@ -725,7 +742,7 @@ func validate_lead(point: Vector3, allow_searched := false) -> bool:
 		if body.global_position.distance_to(point) < CLEAR_STRAIGHT: return false
 		if walk(theirs, int(room.id)) < CLEAR_WALK: return false
 		if body.hidden and body.global_position.distance_to(point) < CLEAR_HIDDEN + LEAD_RADIUS: return false
-	if not allow_searched and float(it.searched_until.get(int(room.id), -INF)) > it.clock: return false
+	if not allow_searched and it.searched_lately(int(room.id)): return false
 	return true
 
 ## The rooms of a lead nobody is standing in, and none next to a hidden

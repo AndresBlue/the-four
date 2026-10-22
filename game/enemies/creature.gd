@@ -8,11 +8,13 @@ extends CharacterBody3D
 ## the same body under its old name).
 ##
 ## Each creature says what it is doing in the words of activity(), and the
-## questions the game still asks with lists of The Locust's modes are answered
-## here from those words, the same for any creature: each predicate is one of
-## those lists (tests/hotel/creature_contract_test.gd holds them to it) until
-## the places that ask move over to it. The rest are defaults for a creature
-## that has nothing of the kind: one that does overrides them.
+## questions the game asks with lists of The Locust's modes are answered here
+## from those words, the same for any creature: each predicate is one of those
+## lists (tests/hotel/creature_contract_test.gd holds them to it). The
+## director, the dread aura, the world's sound, the mind and its phantoms ask
+## the creature only through this; the rest of the game still reads The
+## Locust until it moves over too. Everything else here is a default for a
+## creature that has nothing of the kind: one that does overrides it.
 
 ## Hostile: anybody near it has reason to be afraid (pacing_director.hostile).
 const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait"]
@@ -32,6 +34,19 @@ const WARY: Array[StringName] = [&"investigate", &"search"]
 
 # --- Identity and control ------------------------------------------------------
 
+## Who decides what it does. "ai": its own behaviour (offline, or the host of a
+## co-op match). "puppet": it follows the state sent by the machine in charge.
+## "player": a player drives it (versus).
+var control := "ai"
+## Seconds before it starts: nobody is hunted, seen or felt meanwhile. The
+## floor's difficulty gives it (hotel_main.spawn_creature), a stage given back
+## gives it some more (revival).
+var grace := 15.0
+## How much of its hearing it has at the moment, 0 to 1: the director dulls
+## it while it is resting somebody who has earned it (pacing_director), so
+## that being left alone is not undone by the first footstep.
+var dull := 1.0
+
 ## Which creature this is (&"locust", &"lurker"...).
 func kind_id() -> StringName: return &""
 
@@ -39,9 +54,8 @@ func kind_id() -> StringName: return &""
 ## &"wardrobes", &"shriek".
 func can(_ability: StringName) -> bool: return false
 
-## Who decides what it does: "ai", "puppet" (states from the machine in
-## charge) or "player" (versus).
-func set_control(_kind: String) -> void: pass
+## Who decides what it does (`control`).
+func set_control(kind: String) -> void: control = kind
 
 ## The numbers of the floor's difficulty (game/floors/difficulty.gd).
 func tune(_profile: Dictionary) -> void: pass
@@ -115,6 +129,14 @@ func travel_metres(_room_id: int) -> Dictionary: return {}
 ## On its way somewhere the director should leave it alone (a lift).
 func in_transit() -> bool: return false
 
+## Whether it keeps away from a room for now, having just searched round it:
+## no lead is given there.
+func searched_lately(_room_id: int) -> bool: return false
+
+## Whether it has begun to make somebody out: the director does not distract
+## a creature that has.
+func noticing() -> bool: return false
+
 # --- Moving ----------------------------------------------------------------------
 
 ## The one way a creature is put somewhere without walking there: a lift, a
@@ -153,7 +175,21 @@ func capture_length() -> float: return 0.0
 ## Whether what tells of it is dying away.
 func hushed() -> bool: return false
 
-## Its own set of lies to a mind that is going (null: the floor's own).
+## How it is felt coming by somebody at `listener` (the dread aura): [metres
+## of its way to them, where the cues of it sit]. [INF, INF]: not at all.
+func presence_route(_listener: Vector3) -> Array: return [INF, Vector3.INF]
+
+## How its own sound, the presence it carries, reaches the listener: a route
+## as world_audio.route_source() gives one ({audible, position, gain, cutoff,
+## echo, distance}).
+func sound_route(_listener: Vector3) -> Dictionary: return {"audible": false, "distance": INF}
+
+## The script of its own lies to a mind that is going: a Node that sanity.gd
+## makes under itself and keeps, with setup(level), false_call(point),
+## walk_past() (true when it starts walking), walk_start() (where that walk
+## began, Vector3.INF when none is on), quiet(delta), and the model and poses
+## phantom_sight shows it in. Null: the floor lies with its own doors and wardrobes, and nothing of
+## the creature.
 func hallucinations() -> Variant: return null
 
 # --- The observer ----------------------------------------------------------------
