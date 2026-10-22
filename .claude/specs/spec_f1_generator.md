@@ -27,16 +27,23 @@ Assumed done exactly as in `scratchpad/oficinas_specs.md`:
 
 **Check these first** (`git grep`, 10 minutes). Fix them in 1a as pure refactors, with the golden test as proof:
 
-1. **The generator must read palette data through an instance member.** In GDScript a constant read inside a base-class method is bound to the base script. A subclass cannot shadow it, and redeclaring a parent constant is a parse error. So `map_generator.gd` must hold `var palette: GDScript = HOTEL_PALETTE`, and read every constant 0d moved through it (`palette.MODULE_SIZES`, `palette.DECKS`, `palette.TIDY_ROOMS`, `palette.WARDROBES` and the rest, plus the questions, for example `palette.may_be_dark(room)` in `light_rooms()`). If 0d used `const PALETTE := preload(...)` or `FLOOR.*` inside the generator, convert those reads to `palette.`. Do the same in `map_validator.gd`: `var palette: GDScript`, set at the top of `validate(data)` and of `validate_physics(world, data)` from `FLOOR.palette(data)`. In the validator that covers at least `fittings()` (`FLOOR.WARDROBES` at line 95, `FLOOR.may_be_dark` at line 94, `type == 19` at line 95), `plantas()` (`FLOOR.tv_rooms(area)` at line 175; the office returns 0) and `validate_physics()` (item 6).
+1. **The generator must read palette data through an instance member.** In GDScript a constant read inside a base-class method is bound to the base script. A subclass cannot shadow it, and redeclaring a parent constant is a parse error. So `map_generator.gd` must hold `var palette: GDScript = HOTEL_PALETTE`, and read every constant 0d moved through it (`palette.MODULE_SIZES`, `palette.DECKS`, `palette.TIDY_ROOMS`, `palette.WARDROBES` and the rest, plus the questions, for example `palette.may_be_dark(room)` in `light_rooms()`). If 0d used `const PALETTE := preload(...)` or `FLOOR.*` inside the generator, convert those reads to `palette.`. Do the same in `map_validator.gd`: `var palette: GDScript`, set at the top of `validate(data)` and of `validate_physics(world, data)` from `FLOOR.palette(data)`. In the validator that covers at least `fittings()` (`palette.WARDROBES`, `palette.may_be_dark()`, and the refuge test `palette.REFUGE`), `plantas()` (`palette.tv_rooms(area)`; the office returns 0) and `validate_physics()` (item 6). 0d has already done these in the hotel's validator, so 1a only checks them.
 2. **Static functions are not virtual.** `map_generator.numbered(room)` is static, and `tests/hotel/hotel_test.gd:136` calls `GEN.numbered(room)`. Keep the static function as the hotel rule. Add an instance method `func numbers(room: Dictionary) -> bool: return palette.numbered(room)`, and use it in `number_rooms()` and `keep_to_hundred()`. `hotel_palette.numbered(room)` is today's body of `numbered()`.
 3. **The generator must not hard-code its validator.** `generate()` calls `VALIDATOR.new().validate(result)` (line 185). Make that `validator().validate(result)`, with `func validator() -> RefCounted: return VALIDATOR.new()`.
-4. **No hotel-sized array may be indexed by a type id.** Office type ids go up to 25. `grep -n "TYPES\[\|NAMES\[\|RECIPES\[" game tools tests` must show only palette-routed reads. One example is `hotel_geometry.gd:1031` (`FLOOR.TYPES[room.type]` in node names); another is `map_generator.finish()` line 1775 (`FLOOR.RECIPES`).
+4. **No hotel-sized array may be indexed by a type id.** Office type ids go up to 25. `grep -n "TYPES\[\|NAMES\[\|RECIPES\[" game tools tests` must show only palette-routed reads. The two examples were `hotel_geometry.gd` (a `TYPES` table read in node names, now `palette.TYPES`) and `map_generator.finish()` (`RECIPES`, now `palette.RECIPES`); 0d moved both.
 5. **Off-limits rooms come from the palette.** `hotel_main.off_limits_rooms()` (line 1343) becomes `return FLOOR.palette(manifest).off_limits_rooms(manifest)`. `hotel_palette.off_limits_rooms(manifest)` keeps today's body, in today's order: exit, refuges, gate beyonds. `point_protected()` and `revival.stage_den()` already go through it.
 6. **Physical checks ask the palette.** `map_validator.validate_physics()` (alcove list `[1,2,3,4,7,15,16]` at line 244, `type != 19` at line 250) and `hang_doors()` (`DOMESTIC`) must ask the palette (`palette.domestic(room)`, refuge role). Otherwise office type 4 (aseos) would be treated as a hotel bathroom with alcoves.
 
 If any 0x name differs from what is written here (for example `PAPERS` holds a different type), follow 0x and keep the meaning.
 
 ---
+
+### What 0d left (22 October 2026, work orders in .claude/specs/encargos_0d.json)
+
+- The office manifest MUST carry "floor": 2. `map_generator.candidate()` returns the hotel's without the key (the golden needs it so), and `FLOOR.palette()`, the validator and every reader in play pick the palette by that key: an office generator that does not write it is validated and played with the hotel's palette. `office_test` checks `FLOOR.palette(office manifest) == OFFICE_PALETTE`.
+- Code in play reaches the palette with `FLOOR.palette(level.manifest)`; static helpers without a manifest use `FLOOR.palette({})` only for structural roles (`exit_route_signs.circulation()` reads `CIRCULATION`).
+- Changed signatures: `room_dressing.stretches(room, palette)` (R2's `wall_stretches` passes `palette`), `hint_placement.room_said(room, palette)`, `hotel_geometry.prop_transform(room, prop, room_palette: GDScript = null)`. Only `build_room()` passes a palette to `prop_transform()` today; in H8 the callers in game/ (document_placement, hint_placement, tv_placement) must pass `FLOOR.palette(manifest)`, or the office's toilets (type 4) get the hotel's domestic 0.85 scale.
+- `numbered()`: each palette keeps its own (the hotel's: hall < 0, not corridor, not service, not in NO_NUMBER); 1.2's office definition stands.
 
 ## 1. Step 1a: the kind, the palette, the null creature
 
@@ -279,6 +286,8 @@ static func shaft_box(manifest) -> AABB
 ```
 
 Both cache by manifest identity (`is_same`, as `FLOOR.room_at()` does): `crawling_at()` runs every physics frame per body.
+
+**Parity with the hotel (from 0d):** `office_palette.gd` defines every name `hotel_palette.gd` has, so office_test 1.7 holds. Besides the above, that means `area_for()`, `areas_for()` and `article(room)`, and the consts `ARTICLES`, `HARD_FLOORS` (the office answers `hard_floor()` from its finishes, but the const exists), `HALL_HEIGHT`, `CHANDELIER_HEIGHT`, `BATTEN_ROOMS`, `PUBLIC_ROOMS`, `SMEAR_ROOMS`, `CIRCULATION` (roles 0, 9, 10, 12; the office may copy it) and `SERVICE` (prop_factory's). Where the office has no use for one, it is empty or the hotel's value, with a `##` line saying so.
 
 ### 1.3 `office_floor.gd`
 
@@ -573,7 +582,7 @@ All picks are among local cells of the planta in use. The result goes to `f.spec
      - If it has more than one door, keep one: the one to a corridor if any, else the first by id. Unlink the rest, then `join(f, alive, arrival, back, rng, [cell])`. Rooms cut off get doors elsewhere, never to it.
      - Accept only if all of these hold, else `restore()` and try the next:
        - `reach(f, arrival, alive).size() == alive.size()`;
-       - `cycles(f, alive) >= FLOOR.rings(drawing)`;
+       - `cycles(f, alive) >= palette.rings(drawing)`;
        - `in_depth(f, rooms_only, arrival, refuge.room)`, with `rooms_only` being alive minus the landing;
        - `WALKER.score(f.rooms, f.adjacency, base + arrival, base + refuge.room, population).hits == 0`;
        - the security share is still in band.

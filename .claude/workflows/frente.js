@@ -21,6 +21,7 @@ export const meta = {
 //   unidades: [{ id, encargo, archivos: [..], no_tocar: [..], verificar: 'órdenes y resultado esperado' }],
 //   integrar: true | false,          // false: solo unidades y revisión (para áreas que se integran juntas)
 //   archivo: '.claude/specs/encargos_<area>.json',  // opcional: el JSON que dejó el flujo encargos
+//   primero: [ids],                  // opcional: unidades que van antes y solas, en orden
 // }
 // Con `archivo`, contexto, aceptación, pruebas y el texto de cada unidad se leen de ese JSON (no se copian
 // en los argumentos) y `unidades` solo necesita {id, archivos}.
@@ -75,11 +76,15 @@ Cómo se verifica y qué se espera: ${unitText(u, 'verificar')}${extra ? '\n\n' 
 
 phase('Unidades')
 const reports = {}
+// args.primero: ids de las unidades que van antes y solas, en orden (p. ej. la que crea el archivo que leen las demás).
+const firsts = A.unidades.filter(u => (A.primero || []).includes(u.id))
+const wave = A.unidades.filter(u => !(A.primero || []).includes(u.id))
+for (const u of firsts) reports[u.id] = await agent(unitPrompt(u), { label: `unidad ${u.id}`, phase: 'Unidades', schema: UNIT, ...WORKER })
 if (A.paralelo) {
-  const done = await parallel(A.unidades.map(u => () => agent(unitPrompt(u), { label: `unidad ${u.id}`, phase: 'Unidades', schema: UNIT, ...WORKER })))
-  A.unidades.forEach((u, i) => { reports[u.id] = done[i] })
+  const done = await parallel(wave.map(u => () => agent(unitPrompt(u), { label: `unidad ${u.id}`, phase: 'Unidades', schema: UNIT, ...WORKER })))
+  wave.forEach((u, i) => { reports[u.id] = done[i] })
 } else {
-  for (const u of A.unidades) reports[u.id] = await agent(unitPrompt(u), { label: `unidad ${u.id}`, phase: 'Unidades', schema: UNIT, ...WORKER })
+  for (const u of wave) reports[u.id] = await agent(unitPrompt(u), { label: `unidad ${u.id}`, phase: 'Unidades', schema: UNIT, ...WORKER })
 }
 const misfits = A.unidades.filter(u => reports[u.id] && reports[u.id].no_encaja)
 if (misfits.length) log(`${misfits.length} unidades dicen que su encargo no encaja`)

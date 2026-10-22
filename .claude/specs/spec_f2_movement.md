@@ -982,3 +982,9 @@ Raised by the critics on 22 October 2026. Until each is answered, 2a builds what
 7. **Reliable duct events** (OFICINAS 11.6) deferred to phase 4 because a new RPC breaks the wire check (8.3): confirm.
 8. **`resume_state()`, `play_call()`, `validate_strike()`** for her deferred to phase 4 (8.2): confirm.
 9. **`DUCT_GAP`** keeps her from passing a body in the visible duct (7.3): how close she may come there is 2b's capture rule; confirm 2a's guard stays under it.
+
+### Resolved by the director (22 October 2026, step 0f)
+
+- Difficulty key names are spec_f2_mind.md 4.1's (`lit_takes`, `freeze_time`, `creep_scale`, `peek_every` if the author gives the peeks numbers), not this draft's `lit_grab`, `stare_time`, `approach_scale` and `peek_rate`. Rename them here before `encargos`.
+- Still open for phase 2: this draft's default `duct_speed` in code (1.6, Equilibrada) against MIND's rule that code defaults are Desafiante's (2.0); and the base of `creep_scale` (MIND's CREEP_SPEED 1.0 or this draft's CRAWL_SPEED 1.35).
+- Line 19 is out of date: `set_floor()` exists since 0c (9f759db).

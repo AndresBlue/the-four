@@ -1186,3 +1186,9 @@ Checks:
 6. **Bots and the remote cone** (3.1): `is_remote()` is `body != level.player`, so bots on the host get the 45-degree cone; whether to tell bots apart (a marker on `bot_body.gd`) is the director's.
 7. **Part B's coverage minimums** (10.2): run it once against the reference warning and fix them before 2b-1 is handed out.
 8. **Phase 3 notes**: her aura profile without breaths (9.2); `bot_threat_lurker` with a person's turn rate and reaction (13); `tools/capture/execution_capture.gd` calls `capture_survivor()` without `forced` and reads `level.locust`: on floor 2 it must set `forced`.
+
+### Notes from step 0f (22 October 2026)
+
+- `game/floors/difficulty.gd` has `CREATURE_PROFILES[&"lurker"]` with the eight keys of OFICINAS 4 that have values, named as 4.1. Out until the author gives numbers: the peeks, `sated`, `forget`, spec_f1_systems 1.8's six system keys and every director adjustment (4.2 is a draft).
+- `DIFFICULTY.value(id, key)` still knows no creature: with one of her keys it fails (it always evaluates `PROFILES[REFERENCE][key]`). Phase 2 reads `level.tuning()`, or extends `value()` first.
+- `TRAITS` stays indexed by difficulty; her four lines are the author's to write, and the difficulty screen's fixed subtitle (hotel_ui.gd, «LA BESTIA QUE TE ESPERA EN EL HOTEL») will need the floor's creature then.
