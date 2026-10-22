@@ -20,6 +20,8 @@ param(
     [ValidateRange(1,100000)][int]$Runs = 10,
     [int]$Seed = 81,
     [int[]]$Seeds = @(),
+    # The floor the bots play (hotel_main.floor_asked()): 1 is the hotel.
+    [ValidateRange(1,4)][int]$Floor = 1,
     # The creature's strike only noted: every floor reaches its end.
     [switch]$Mercy,
     # No creature at all, and bots that know everything: routes and doors only.
@@ -56,7 +58,7 @@ function Start-Run($index, $seedValue, $worker) {
     $dir = Join-Path $batch $name
     New-Item -ItemType Directory -Force $dir | Out-Null
     $log = Join-Path $dir 'run.log'
-    $arguments = @('--headless','--path',$projectPath,'--rendering-method','forward_plus','--fixed-fps','60','--script','res://tools/bots/bot_run.gd','--log-file',$log,'--','--test-profile','--automation','--silent',"--profile-tag=w$worker","--bots=$Bots","--seed=$seedValue","--out=$dir","--commit=$commit")
+    $arguments = @('--headless','--path',$projectPath,'--rendering-method','forward_plus','--fixed-fps','60','--script','res://tools/bots/bot_run.gd','--log-file',$log,'--','--test-profile','--automation','--silent',"--profile-tag=w$worker","--bots=$Bots","--seed=$seedValue","--floor=$Floor","--out=$dir","--commit=$commit")
     if ($Mercy) { $arguments += '--mercy' }
     if ($NoEnemy) { $arguments += '--no-enemy' }
     if ($Oracle) { $arguments += '--knowledge=oracle' }

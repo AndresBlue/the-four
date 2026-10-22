@@ -9,9 +9,11 @@ const KINDS := {
 ## How many floors the building has, built or not.
 const COUNT := 4
 
-## The script of a floor, or null for one that does not exist yet.
+## The script of a floor; the hotel's for a number that is not built, so a
+## floor asked for by mistake (--floor=7) is still a floor. Who needs to tell
+## them apart asks built().
 static func kind(number: int) -> GDScript:
-	return KINDS.get(number)
+	return KINDS.get(number, KINDS[1])
 
 static func built(number: int) -> bool:
 	return KINDS.has(number)
@@ -23,3 +25,16 @@ static func title(number: int) -> String:
 ## The milestones of a floor, or none.
 static func milestones(number: int) -> Array:
 	return KINDS[number].MILESTONES if KINDS.has(number) else []
+
+## The numbers of the floors that are built, lowest first.
+static func numbers() -> Array:
+	var result: Array = KINDS.keys()
+	result.sort()
+	return result
+
+## Each built floor's generator version, by number: two machines play together
+## only if they agree on every one (net_session.register()).
+static func versions() -> Dictionary:
+	var result := {}
+	for number in numbers(): result[number] = int(KINDS[number].GENERATOR_VERSION)
+	return result

@@ -974,7 +974,7 @@ func old_den(stage: int) -> int:
 func dens(it) -> void:
 	var wrong: Array = []
 	var found := 0
-	for stage in range(1, level.session.STAGES + 1):
+	for stage in range(1, level.session.stages + 1):
 		var room := old_den(stage)
 		var point := Vector3.INF
 		if room >= 0:

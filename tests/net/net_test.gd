@@ -271,7 +271,7 @@ func host() -> void:
 	var won: bool = await cross_to_the_end(Vector3(0.8, 0, 0), 150.0)
 	check("Cruzarla lleva a la etapa siguiente y no termina el piso", level.session.stage > 1)
 	check("La etapa de los televisores se jugó de verdad", level.televisions.size() >= 4 and level.televisions_on() >= 2)
-	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.STAGES)
+	check("Salen del piso al cerrar la última etapa", won and level.session.stage == level.session.stages)
 	var tape: Dictionary = level.ui.summary
 	check("El parte lleva a los tres, con su puntaje y quién fue el más valioso", tape.get("team", []).size() == 3 and int(tape.get("score", 0)) > 0 and int(tape.get("mvp", 0)) in [1, 2, 3] and int(tape.team[0].get("tvs", 0)) >= 2 and int(tape.team[1].get("hides", 0)) >= 1, str(tape.get("team", [])))
 	check("Jugada con otras reglas, la cinta lo dice y va a su propio tablón", tape.get("rules", {}) == {"plan_fade": 300, "restarts": 1} and String(tape.get("difficulty", "")) == "equilibrada" and String(tape.get("company", "")) == level.records.CUSTOM and level.ui.outcome.milestones.is_empty())

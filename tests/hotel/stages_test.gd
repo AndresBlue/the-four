@@ -150,7 +150,7 @@ func run() -> void:
 	# no wing at all, now that there are three of them stacked.)
 	var den: Vector3 = level.locust.global_position
 	level.player.set_physics_process(false)
-	check("Un piso empieza en la etapa 1", session.stage == 1 and session.STAGES == 3)
+	check("Un piso empieza en la etapa 1", session.stage == 1 and session.stages == 3)
 	check("Y su condición es la del refugio", session.goal.kind == "refuge")
 	# Every car opens on to its lobby. On this seed two of them backed on to
 	# a +X or +Z wall and were built the other way round: a shut box with the

@@ -6,7 +6,9 @@ extends SceneTree
 ## it comes back where it was and not at its beginning; that a floor begun
 ## afresh has nothing of the old one; that a checkpoint with nothing kept
 ## beside it still starts its floor from the beginning; and that being caught
-## with no stage left to be given back leaves nothing to go on with.
+## with no stage left to be given back leaves nothing to go on with; and that a
+## checkpoint with no floor number is the hotel's, and one of a floor that is
+## not built is refused.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
 var checks: Array = []
@@ -146,6 +148,31 @@ func run() -> void:
 	# next keeping gives Continuar its floor back.
 	level.release_execution()
 	check("Soltado con vida, el piso se vuelve a guardar entero", level.keep_floor() and not session.checkpoint().is_empty() and not session.read_state(81).is_empty())
+	# One of a floor that is not built is refused, and the file stays.
+	level.drawn_for = 2
+	await level.start_floor(81, false, [1], "equilibrada")
+	level.on_action("pause")
+	await process_frame
+	level.on_action("main")
+	await process_frame
+	var unbuilt := FileAccess.open(session.checkpoint_path, FileAccess.WRITE)
+	unbuilt.store_string(JSON.stringify({"format": 1, "generator": FLOOR.VERSION, "seed": 81, "floor": 3, "fallback": false, "difficulty": "equilibrada"}))
+	unbuilt.close()
+	check("Un punto de control de un piso sin construir se rechaza y se conserva", session.checkpoint().is_empty() and FileAccess.file_exists(session.checkpoint_path))
+	# One kept before floors had numbers says none: it is the hotel's, and
+	# Continuar plays it on the hotel whatever floor the session had last.
+	DirAccess.remove_absolute(session.state_path())
+	var old := FileAccess.open(session.checkpoint_path, FileAccess.WRITE)
+	old.store_string(JSON.stringify({"format": 1, "generator": FLOOR.VERSION, "seed": 81, "fallback": false, "difficulty": "equilibrada"}))
+	old.close()
+	check("Un punto de control sin número de piso es del hotel", int(session.checkpoint().get("floor", -1)) == 1)
+	session.floor_number = 7
+	session.stages = 0
+	level.on_action("continue")
+	await loaded()
+	check("Y Continuar lo juega en el piso 1", session.state == session.State.PLAYING and session.run_seed == 81 and session.floor_number == 1 and session.stages == 3 and int(level.kind.NUMBER) == 1)
+	# And the checkpoint it keeps again is the one the hotel always wrote.
+	check("Y deja el punto de control de siempre", FileAccess.get_file_as_string(session.checkpoint_path) == JSON.stringify({"format": 1, "generator": FLOOR.VERSION, "seed": 81, "floor": 1, "fallback": false, "difficulty": "equilibrada"}))
 	var file := FileAccess.open("res://evidence/continue_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	file.close()

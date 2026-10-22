@@ -17,6 +17,8 @@ extends Node
 ## (locust_state, locust_call, locust_rode...): the wire is the same.
 const REMOTE := preload("res://game/net/remote_player.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+## The floors of the building: a checkpoint is checked against its floor's generator.
+const FLOORS := preload("res://game/floors/floor_index.gd")
 const SEND_RATE := 20.0
 const SESSION_RATE := 2.0
 ## A dropped player's body stays on the floor this long before counting as lost.
@@ -113,6 +115,7 @@ func begin(data: Dictionary, snapshot := {}) -> void:
 	config.players = seats
 	config.locust_seat = int(data.locust_seat)
 	config.mode = int(data.mode)
+	config.floor = int(data.get("floor", 1))
 	rejoin_snapshot = snapshot
 	level.start_online_floor(config)
 
@@ -1114,8 +1117,10 @@ func back_to_room() -> void:
 # --- Checkpoint ---------------------------------------------------------------------
 
 func write_checkpoint() -> void:
+	# The floor being played, with the version of its own generator: saved_checkpoint() reads both back.
+	var floor_number: int = level.session.floor_number
 	var file := FileAccess.open(checkpoint_path, FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify({"format": 1, "generator": FLOOR.VERSION, "seed": config.seed, "mode": config.mode}))
+	if file: file.store_string(JSON.stringify({"format": 1, "generator": FLOORS.kind(floor_number).GENERATOR_VERSION, "seed": config.seed, "floor": floor_number, "mode": config.mode}))
 
 func clear_checkpoint() -> void:
 	if FileAccess.file_exists(checkpoint_path): DirAccess.remove_absolute(checkpoint_path)
@@ -1123,6 +1128,14 @@ func clear_checkpoint() -> void:
 func saved_checkpoint() -> Dictionary:
 	if not FileAccess.file_exists(checkpoint_path): return {}
 	var data = JSON.parse_string(FileAccess.get_file_as_string(checkpoint_path))
-	if not data is Dictionary or data.get("format") != 1 or data.get("generator") != FLOOR.VERSION: return {}
+	if not data is Dictionary or data.get("format") != 1: return {}
+	# One kept before the floors had numbers is the hotel's. A number that is not
+	# a whole one is no floor.
+	var number := 1
+	if data.has("floor"):
+		var raw = data.get("floor")
+		number = int(raw) if (raw is float or raw is int) and float(raw) == floorf(float(raw)) else -1
+	if not FLOORS.built(number) or data.get("generator") != FLOORS.kind(number).GENERATOR_VERSION: return {}
 	if not (data.get("seed") is float or data.get("seed") is int): return {}
+	data["floor"] = number
 	return data

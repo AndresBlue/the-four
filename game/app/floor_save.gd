@@ -77,7 +77,7 @@ static func take(level) -> Dictionary:
 static func give(level, state: Dictionary) -> void:
 	var player = level.player
 	var session = level.session
-	var stage := clampi(int(state.get("stage", 1)), 1, session.STAGES)
+	var stage := clampi(int(state.get("stage", 1)), 1, session.stages)
 	# Told, not heard: every door and every set would sound at once.
 	level.world_audio.hush = true
 	session.elapsed = float(state.get("elapsed", 0.0))

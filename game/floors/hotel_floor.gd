@@ -11,12 +11,32 @@ extends RefCounted
 ## "televisions" (the sets of the stage's wing, lit; the last one but one
 ## takes the power: game/app/televisions.gd) and "code" (the four numbers
 ## read into the keypad of the last door: game/app/code_lock.gd).
-## A stage is played on the planta of the same number (FLOOR.PLANTAS), and
-## game_session.STAGES has to agree with the list (tests/hotel/hotel_test.gd).
+## A stage is played on the planta of the same number (FLOOR.PLANTAS), and the
+## session counts its stages from count() when the floor is chosen
+## (hotel_main.set_floor(); checked by tests/hotel/hotel_test.gd).
 
 ## Its number in the building and what the boards call it.
 const NUMBER := 1
 const NAME := "EL HOTEL"
+
+## How the floor is made: the generator that draws it, the validator of what
+## that draws and the geometry that builds it (hotel_main.build_floor()). A
+## floor of another kind names its own.
+const GENERATOR := preload("res://game/world/generation/map_generator.gd")
+const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
+const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
+## The version of what GENERATOR draws: a checkpoint or a match of another
+## version is refused rather than rebuilt as a different floor.
+const GENERATOR_VERSION := preload("res://game/world/generation/floor_definition.gd").VERSION
+## Its colours and materials: step 0d fills it in (docs/OFICINAS.md 15).
+const PALETTE = null
+## Its creature as a path, not a preload: loaded when the floor puts it down
+## (hotel_main.spawn_creature()), so what only reads the rules does not load it.
+const CREATURE := "res://game/enemies/locust/locust.tscn"
+const CREATURE_KEY := &"locust"
+## The set of papers its hints are drawn from: the hotel's is the only one
+## (game/world/generation/hint_placement.gd) and has no constant of its own.
+const PAPERS := "hotel"
 
 ## The time a tape is measured against: every second under it is worth points
 ## to the team (game/services/run_score.gd).

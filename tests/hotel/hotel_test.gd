@@ -220,7 +220,7 @@ func run() -> void:
 	# (and wants FLOOR.VERSION bumped); moving code about must not make one.
 	# The floor's rules and its plantas are counted in three places that have to
 	# agree: the rules (hotel_floor.gd), the session and the generator.
-	check("Las reglas del hotel tienen una etapa por planta", preload("res://game/floors/hotel_floor.gd").count() == preload("res://game/services/game_session.gd").STAGES and preload("res://game/services/game_session.gd").STAGES == FLOOR.PLANTAS)
+	check("Las reglas del hotel tienen una etapa por planta", preload("res://game/floors/hotel_floor.gd").count() == FLOOR.PLANTAS)
 	check("Los pisos 81 y 777 son los de siempre", hash(JSON.stringify(generator.generate(81))) == 388120810 and hash(JSON.stringify(generator.generate(777))) == 4201817092)
 	var scene = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(scene)
@@ -237,6 +237,8 @@ func run() -> void:
 	await scene.start_floor(81)
 	await physics_frame
 	check("Se inicia un hotel grande y libre de objetivos", scene.manifest.rooms.size() >= 100 and scene.session.state == scene.session.State.PLAYING)
+	# The session counts the stages of the floor chosen (hotel_main.set_floor()).
+	check("La sesión cuenta las etapas del piso elegido", scene.session.stages == scene.kind.count() and scene.session.floor_number == 1 and scene.kind == preload("res://game/floors/hotel_floor.gd"))
 	check("Validación física de todos los pasos y coberturas", scene.physical_errors.is_empty())
 	# The corridors' way-out signs: four to six a planta, in the circulation,
 	# each arrow a real way on, and the arrows followed from any of them end

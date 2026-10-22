@@ -7,7 +7,7 @@ llegó hasta aquí —con todo lo comprobado, medido y fechado— quedó en
 [history/PLAN_2026-09-21.md](history/PLAN_2026-09-21.md).
 
 Estado: juego **1.2.0** (20 de octubre de 2026), generador de mapas **v8** (tres plantas enteras, del tamaño de los supervivientes), protocolo de red
-**the-four-net-19**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
+**the-four-net-21**, Godot 4.7.2. Cada casilla es trabajo por hacer; se marca
 cuando está **comprobado**, no cuando está escrito. Lo que se comprueba con
 `./tools/verify.ps1` y las demás herramientas está en la guía de desarrollo.
 
@@ -583,6 +583,23 @@ observador (todo descrito en la guía de desarrollo). Falta:
 - `four-e3n.2` **La tabla de lo que se ve** (`tools/bots/bot_senses.gd`): contrastarla
   con una partida de verdad, sobre todo las notas (9 m con luz, 12 con
   linterna, 1,5 a oscuras) y las teles en el nicho de las suites.
+
+### Pendientes del paso 0c (tipo de piso y número de piso)
+
+Quedaron fuera de 0c a propósito. Cada uno se recoge en la fase que se indica:
+
+- **Cabecera de las grabaciones de bots.** `tools/bots/bot_recorder.gd` no escribe
+  el piso en `header.json`, y `bot_replay.gd` lo vuelve a levantar con el piso
+  elegido en ese momento (`--floor`, o el 1). Se recoge en la fase 3
+  (`.claude/specs/spec_f3_integration.md`).
+- **Dibujo de presentación.** `game/app/presentation_rig.gd` (líneas 216 y 217)
+  escribe en `level.GEOMETRY`, que es la geometría del hotel, y no en
+  `kind.GEOMETRY`. Con otro tipo de piso, esas variables tendrían que aplicarse a
+  la geometría de ese tipo. Se recoge en la fase 1
+  (`.claude/specs/spec_f1_geometry.md`).
+- **Control de piso en las opciones de la sala.** La sala no tiene ningún control
+  `floor`: hoy el piso es siempre el 1. Se recoge en la fase 3
+  (`.claude/specs/spec_f3_integration.md`).
 
 ### El ejecutable
 

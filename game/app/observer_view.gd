@@ -540,7 +540,7 @@ func report() -> String:
 	# What the generator made of the planta on screen, to put a name to what
 	# the plan shows when floors are compared.
 	lines.append("Planta %d de %d%s" % [planta + 1, FLOOR.PLANTAS, (", " + planta_notes[planta]) if planta < planta_notes.size() else ""])
-	lines.append("Sector %d/%d, %s, %s" % [session.stage, session.STAGES, estado(session.state), String(session.goal.get("kind", "?"))])
+	lines.append("Sector %d/%d, %s, %s" % [session.stage, session.stages, estado(session.state), String(session.goal.get("kind", "?"))])
 	lines.append("Meta %s %d/%d%s, código %s, teles %d" % ["lista" if session.goal.get("ready", false) else "pendiente", int(session.goal.get("done", 0)), int(session.goal.get("needed", 0)), ", apagón" if session.goal.get("blackout", false) else "", "puesto" if level.code_entered else "no", level.televisions_on()])
 	lines.append("")
 	lines.append("SUPERVIVIENTES")

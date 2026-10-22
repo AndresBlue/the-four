@@ -422,7 +422,7 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		# them -- not the stage in hand plus one, which is wrong for anybody
 		# riding a car after the floor has already moved on.
 		var wing := int(FLOOR.room_at(level.manifest.rooms, point).get("wing", level.session.stage))
-		var arriving: int = clampi(wing + 1, 1, level.session.STAGES)
+		var arriving: int = clampi(wing + 1, 1, level.session.stages)
 		level.ui.show_transit("SECTOR %d" % arriving, stage_errand(arriving), RIDE_TIME)
 		pending_brief = arriving
 	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].ride_to(point)

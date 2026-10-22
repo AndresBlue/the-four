@@ -1,6 +1,7 @@
 extends Node3D
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const HIDE := preload("res://game/world/interactables/hiding_place.gd")
+## Kept loaded, so the hotel's creature is not read from disk as a floor is put up; which creature a floor has is its kind's (CREATURE).
 const LOCUST := preload("res://game/enemies/locust/locust.tscn")
 var world_audio
 var locust
@@ -100,6 +101,8 @@ var floor_map
 ## number.
 const HOTEL_FLOOR := preload("res://game/floors/hotel_floor.gd")
 var kind: GDScript = HOTEL_FLOOR
+## The floors of the building by number: set_floor() picks this one's kind.
+const FLOORS := preload("res://game/floors/floor_index.gd")
 ## Its objectives (game/floors/objectives/), one handler for each its kind
 ## lists, built with the floor: host_gate(), the lifts' lines and the
 ## director ask them rather than naming each.
@@ -203,6 +206,8 @@ func _enter_tree() -> void:
 	# it ran, and what it left to go on with was its own floor, with the
 	# survivor where the probe keeps them: two hundred metres under the hotel.
 	elif scripted: session.keeps_checkpoint = false
+	# The floor every start_floor() builds until another is chosen (--floor=N).
+	set_floor(floor_asked())
 	discoveries = DISCOVERIES.new()
 	discoveries.name = "Discoveries"
 	if OS.get_cmdline_user_args().has("--test-profile"): discoveries.save_path = "user://test_hotel_%s_discoveries.json" % test_name
@@ -623,12 +628,32 @@ func finish_intro() -> void:
 	environment.ambient_light_energy = ambient_energy
 	player.visible = true
 	player.camera.current = true
-	start_floor(intro_seed)
+	# A new game is the floor --floor asks for, not the one continued last.
+	start_floor(intro_seed, false, [1], "", floor_asked())
+
+## The floor built next, by its number in the building (game/floors/floor_index.gd):
+## its kind says how it is drawn, built and checked, and how many stages it has.
+## A number with no floor built gets the hotel, and the session keeps 1.
+func set_floor(number: int) -> void:
+	kind = FLOORS.kind(number)
+	session.floor_number = int(kind.NUMBER)
+	session.stages = int(kind.count())
+
+## --floor=N: the floor a test, a probe, the bots or the observer play; 1 without
+## it. Only a whole number counts (some probes have a --floor of their own).
+static func floor_asked() -> int:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--floor="):
+			var value: String = argument.trim_prefix("--floor=")
+			if value.is_valid_int(): return int(value)
+	return 1
 
 ## slots: the seats playing it (session.start); the bots bring their own.
 ## `difficulty_id`: the creature's (game/floors/difficulty.gd); empty, the one
 ## the player last chose.
-func start_floor(seed_value: int, force_fallback := false, slots: Array = [1], difficulty_id := "") -> void:
+## `floor_number`: the floor to build (set_floor()); 0, the one chosen last.
+func start_floor(seed_value: int, force_fallback := false, slots: Array = [1], difficulty_id := "", floor_number := 0) -> void:
+	if floor_number > 0: set_floor(floor_number)
 	if not await build_floor(seed_value, force_fallback, slots.size()): return
 	set_difficulty(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
 	camcorder.start_tape(seed_value)
@@ -647,6 +672,8 @@ func start_floor(seed_value: int, force_fallback := false, slots: Array = [1], d
 ## before floors were kept, or one that cannot be read -- from its beginning.
 func continue_floor(data: Dictionary) -> void:
 	var seed_value := int(data.seed)
+	# Its floor first: what was kept of it is read against that floor's generator.
+	set_floor(int(data.get("floor", 1)))
 	# Read before the floor starts: starting one forgets what was kept.
 	var state: Dictionary = session.read_state(seed_value)
 	await start_floor(seed_value, data.get("fallback", false) == true, [1], String(data.get("difficulty", DIFFICULTY.REFERENCE)))
@@ -761,14 +788,14 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 		remove_child(hotel)
 		hotel.queue_free()
 	if match_net != null: match_net.floor_building()
-	manifest = GENERATOR.new().generate(seed_value, drawn_for if drawn_for > 0 else survivors)
+	manifest = kind.GENERATOR.new().generate(seed_value, drawn_for if drawn_for > 0 else survivors)
 	if force_fallback:
-		manifest = GENERATOR.new().candidate(404, 0, true)
+		manifest = kind.GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
 	build_objectives()
 	tv_sets = settle_objectives(survivors).get("televisions", {})
-	hotel = GEOMETRY.new()
+	hotel = kind.GEOMETRY.new()
 	hotel.name = "GeneratedHotel"
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(hotel)
@@ -794,16 +821,16 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	get_tree().paused = false
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	physical_errors = VALIDATOR.new().validate_physics(get_world_3d(), manifest)
+	physical_errors = kind.VALIDATOR.new().validate_physics(get_world_3d(), manifest)
 	if not physical_errors.is_empty():
 		push_warning("Physical map rejection: %s" % physical_errors)
 		remove_child(hotel)
 		hotel.queue_free()
-		manifest = GENERATOR.new().candidate(404, 0, true)
+		manifest = kind.GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
 		tv_sets = settle_objectives(survivors).get("televisions", {})
-		hotel = GEOMETRY.new()
+		hotel = kind.GEOMETRY.new()
 		hotel.name = "GeneratedHotel"
 		hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(hotel)
@@ -811,7 +838,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 		configure_hotel()
 		await get_tree().physics_frame
 		await get_tree().physics_frame
-		physical_errors = VALIDATOR.new().validate_physics(get_world_3d(), manifest)
+		physical_errors = kind.VALIDATOR.new().validate_physics(get_world_3d(), manifest)
 		if not physical_errors.is_empty():
 			save_error = "El mapa de respaldo no superó la validación física. No se inició la partida."
 			session.set_state(session.State.MENU)
@@ -899,6 +926,8 @@ func start_online_floor(config: Dictionary) -> void:
 	if reading_paper(): close_document()
 	if session.state == session.State.LOADING:
 		await session.changed
+	# The room's floor, by its number (net_session.start_match() puts it in the config).
+	set_floor(int(config.get("floor", 1)))
 	if not await build_floor(int(config.seed), false, config.survivors.size()):
 		if is_same(match_net.config, config): net.shutdown("No se pudo construir el piso de la partida.")
 		return
@@ -1395,7 +1424,7 @@ func point_in_refuge(point: Vector3) -> bool:
 func spawn_locust() -> void: spawn_creature()
 
 func spawn_creature() -> void:
-	locust = LOCUST.instantiate()
+	locust = (load(kind.CREATURE) as PackedScene).instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
 	# Where it starts the first stage (its den_room()): well into the first

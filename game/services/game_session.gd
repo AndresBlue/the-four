@@ -6,15 +6,20 @@ signal revived(restart: bool)
 ## CUTSCENE: the opening scene of a new game, before its floor is built.
 enum State { MENU, LOADING, PLAYING, PAUSED, TRANSITION, WON, FAILED, CUTSCENE }
 enum Life { EXPLORING, REFUGE, DEAD }
-const GENERATOR_VERSION := preload("res://game/world/generation/floor_definition.gd").VERSION
+## The floors of the building (game/floors/floor_index.gd): a checkpoint is kept
+## with its floor's number and the version of that floor's generator.
+const FLOORS := preload("res://game/floors/floor_index.gd")
 var state := State.MENU
 ## A floor is three chained stages. Each one is closed by its own condition and
 ## opens the way to the next; only the last one ends the floor. The condition
 ## of stage 1 is the refuge as it always was; the other two get theirs as they
 ## are built, and until then they use the same one, so a floor can always be
 ## finished.
-const STAGES := 3
+## How many the floor being played has: its kind's (hotel_main.set_floor()).
+var stages: int = FLOORS.kind(1).count()
 var stage := 1
+## The floor being played, by its number in the building (hotel_main.set_floor()).
+var floor_number := 1
 ## A floor forgives one collapse: the stage starts again with everyone alive.
 ## The second time there is nobody left to start it again for. Alone, the
 ## game as it was forgave nothing -- one person caught was the end of that
@@ -132,7 +137,7 @@ func finish_stage() -> void:
 	set_state(State.TRANSITION)
 
 ## True while the floor goes on: the last stage is the one that ends it.
-func more_stages() -> bool: return stage < STAGES
+func more_stages() -> bool: return stage < stages
 
 func capture(id: int) -> bool:
 	if state != State.PLAYING or not participants.has(id) or participants[id] != Life.EXPLORING: return false
@@ -223,7 +228,7 @@ func write_state(state: Dictionary) -> bool:
 	var temp := state_path() + ".tmp"
 	var file := FileAccess.open(temp, FileAccess.WRITE)
 	if not file: return false
-	file.store_var({"format": STATE_FORMAT, "generator": GENERATOR_VERSION, "seed": run_seed, "state": state})
+	file.store_var({"format": STATE_FORMAT, "generator": generator_version(), "seed": run_seed, "state": state})
 	file.close()
 	# The one before stays until the whole new one exists.
 	if FileAccess.file_exists(state_path()): DirAccess.remove_absolute(state_path())
@@ -237,7 +242,7 @@ func read_state(seed_value: int) -> Dictionary:
 	var file := FileAccess.open(state_path(), FileAccess.READ)
 	if not file or file.get_length() < 8: return {}
 	var data = file.get_var()
-	if not data is Dictionary or data.get("format") != STATE_FORMAT or data.get("generator") != GENERATOR_VERSION: return {}
+	if not data is Dictionary or data.get("format") != STATE_FORMAT or data.get("generator") != generator_version(): return {}
 	if int(data.get("seed", -1)) != seed_value or not data.get("state") is Dictionary: return {}
 	return data.state
 
@@ -247,19 +252,29 @@ func forget_state() -> void:
 func pause() -> void:
 	if state == State.PLAYING: set_state(State.PAUSED)
 
+## The version of the generator of the floor being played (its kind's): what a
+## checkpoint and the state kept beside it are written with and read against.
+func generator_version() -> int: return int(FLOORS.kind(floor_number).GENERATOR_VERSION)
+
 func checkpoint() -> Dictionary:
 	message = ""
 	if not FileAccess.file_exists(checkpoint_path): return {}
 	var data = JSON.parse_string(FileAccess.get_file_as_string(checkpoint_path))
-	if not data is Dictionary or not data.has_all(["format", "generator", "seed", "floor"]):
+	if not data is Dictionary or not data.has_all(["format", "generator", "seed"]):
 		message = "El checkpoint no se puede leer. Puedes iniciar una partida nueva."
 		return {}
-	if data.format != 1 or data.generator != GENERATOR_VERSION or data.floor != 1:
+	# One kept before the floors had numbers says none: it is the hotel's. A
+	# number that is not a whole one is no floor.
+	var number := 1
+	if data.has("floor"):
+		number = int(data.floor) if (data.floor is float or data.floor is int) and float(data.floor) == floorf(float(data.floor)) else -1
+	if data.format != 1 or not FLOORS.built(number) or data.generator != FLOORS.kind(number).GENERATOR_VERSION:
 		message = "Checkpoint incompatible con esta versión. Se conserva el archivo original."
 		return {}
 	if not (data.seed is float or data.seed is int) or not is_finite(float(data.seed)) or data.seed < 0 or data.seed > 2147483647:
 		message = "El checkpoint contiene una semilla inválida."
 		return {}
+	data.floor = number
 	return data
 
 func write_checkpoint() -> bool:
@@ -268,7 +283,7 @@ func write_checkpoint() -> bool:
 	if not file:
 		message = "No se pudo guardar el inicio del piso."
 		return false
-	file.store_string(JSON.stringify({"format": 1, "generator": GENERATOR_VERSION, "seed": run_seed, "floor": 1, "fallback": map_fallback, "difficulty": difficulty}))
+	file.store_string(JSON.stringify({"format": 1, "generator": generator_version(), "seed": run_seed, "floor": floor_number, "fallback": map_fallback, "difficulty": difficulty}))
 	file.close()
 	# Preserve the previous valid checkpoint until the complete replacement exists.
 	var backup := checkpoint_path + ".bak"

@@ -36,8 +36,8 @@ const MAX_SURVIVORS := 5
 const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-20"
-const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const PROTOCOL := "the-four-net-21"
+const FLOORS := preload("res://game/floors/floor_index.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 enum Mode { COOP, VERSUS }
@@ -61,7 +61,8 @@ var players := {}
 ## `rules`: what the room changed of the game's rules, and only that
 ## (game/floors/match_rules.gd).
 ## `difficulty`: the creature's, in a match against it (game/floors/difficulty.gd).
-var options := {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}, "difficulty": DIFFICULTY.REFERENCE}
+## `floor`: the number of the floor the match is played on (game/floors/floor_index.gd).
+var options := {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}, "difficulty": DIFFICULTY.REFERENCE, "floor": 1}
 ## True from the host's start until everyone is back in the room.
 var in_match := false
 var local_seat := 0
@@ -131,7 +132,7 @@ func as_host(opened: MultiplayerPeer, kind: String, player_name: String, charact
 	observers.clear()
 	# The host's last choice of difficulty, which is the one its room offers.
 	var chosen: String = DIFFICULTY.valid(level.settings.values.get("difficulty", DIFFICULTY.REFERENCE)) if level != null else DIFFICULTY.REFERENCE
-	options = {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}, "difficulty": chosen}
+	options = {"mode": Mode.COOP, "locust": RANDOM, "resume": false, "rules": {}, "difficulty": chosen, "floor": 1}
 	status = ""
 	lobby_changed.emit()
 
@@ -254,7 +255,7 @@ func player_name(seat: int) -> String:
 
 func _connected() -> void:
 	status = "Conectado. Entrando en la sala…"
-	register.rpc_id(1, PROTOCOL, FLOOR.VERSION, pending_profile.name, pending_profile.character, bool(pending_profile.get("observer", false)))
+	register.rpc_id(1, PROTOCOL, hash(JSON.stringify(FLOORS.versions())), pending_profile.name, pending_profile.character, bool(pending_profile.get("observer", false)))
 
 func _peer_connected(_id: int) -> void:
 	pass
@@ -276,12 +277,15 @@ func _peer_disconnected(id: int) -> void:
 	broadcast_lobby()
 
 ## A guest introduces itself. The host seats it, or refuses with a reason.
+## `generator`: a hash of every built floor's generator version (floor_index.versions()).
+## It is an int, as a build of before sends, so that a mismatch is refused with its
+## reason and not with a type error of the call (which would leave the guest waiting).
 @rpc("any_peer", "call_remote", "reliable")
 func register(protocol: String, generator: int, player_name: String, character: int, observer := false) -> void:
 	if not is_host: return
 	var id := multiplayer.get_remote_sender_id()
 	var wanted := clean_name(player_name)
-	if protocol != PROTOCOL or generator != FLOOR.VERSION:
+	if protocol != PROTOCOL or generator != hash(JSON.stringify(FLOORS.versions())):
 		refuse(id, "Versiones distintas del juego: actualizad todos al mismo exe.")
 		return
 	if observer:
@@ -366,6 +370,7 @@ func set_option(key: String, value: Variant) -> void:
 	if not is_host or in_match: return
 	if key == "rules": value = RULES.changed(value)
 	elif key == "difficulty": value = DIFFICULTY.valid(value)
+	elif key == "floor": value = int(value) if FLOORS.built(int(value)) else 1
 	options[key] = value
 	if key == "mode" and value == Mode.COOP: options.locust = RANDOM
 	broadcast_lobby()
@@ -406,9 +411,12 @@ func start_match(seed_value := -1) -> bool:
 	var locust_seat := 0
 	if options.mode == Mode.VERSUS:
 		locust_seat = int(options.locust) if options.locust != RANDOM else seats[randi() % seats.size()]
+	var floor_number: int = int(options.get("floor", 1))
 	if seed_value < 0:
 		var saved: Dictionary = match_net.saved_checkpoint() if options.get("resume", false) else {}
 		seed_value = int(saved.seed) if not saved.is_empty() else randi_range(0, 2147483647)
+		# Resumed, the floor is the one kept with the seed (match_net.saved_checkpoint()).
+		if not saved.is_empty(): floor_number = int(saved.get("floor", 1))
 	var config := {
 		"seed": seed_value,
 		"mode": options.mode,
@@ -416,6 +424,7 @@ func start_match(seed_value := -1) -> bool:
 		"survivors": seats.filter(func(seat): return seat != locust_seat),
 		"players": players.duplicate(true),
 		"rules": RULES.changed(options.get("rules", {})),
+		"floor": floor_number,
 		# Against a player there is no difficulty: the creature is a person.
 		"difficulty": DIFFICULTY.valid(options.get("difficulty")) if int(options.mode) == Mode.COOP else DIFFICULTY.REFERENCE,
 	}

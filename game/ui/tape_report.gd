@@ -94,7 +94,8 @@ static func summary(ui, page: VBoxContainer, line: Dictionary, outcome: Dictiona
 		block.add_child(STYLE.text("NOTA", 14, STYLE.SOFT))
 		block.add_child(STYLE.stamp(grade, 40, STYLE.AMBER if SCORE.grade_at_least(grade, "A") else STYLE.INK, -0.1, 1.5))
 	elif not won:
-		var kind: GDScript = FLOORS.kind(int(line.get("floor", 1)))
+		# None for a floor not built: floor_index.kind() would give the hotel's.
+		var kind: GDScript = (FLOORS.kind(int(line.get("floor", 1))) if FLOORS.built(int(line.get("floor", 1))) else null)
 		STYLE.figure(figures, "SECTOR ALCANZADO", "%d / %d" % [int(line.get("stage", 1)), kind.count() if kind != null else 3], 34)
 	# The floor in four counts, whoever they were.
 	var members: Array = line.get("team", [])
@@ -239,7 +240,8 @@ static func signed(value: int) -> String:
 
 static func sectors(ui, page: VBoxContainer, line: Dictionary, outcome: Dictionary) -> void:
 	page.add_theme_constant_override("separation", 4)
-	var kind: GDScript = FLOORS.kind(int(line.get("floor", 1)))
+	# None for a floor not built: floor_index.kind() would give the hotel's.
+	var kind: GDScript = (FLOORS.kind(int(line.get("floor", 1))) if FLOORS.built(int(line.get("floor", 1))) else null)
 	var marks: Array = line.get("sectors", [])
 	var won := SCORE.won(line)
 	var took: Array = []
