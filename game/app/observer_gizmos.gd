@@ -4,6 +4,9 @@ extends Node3D
 ## so nothing here can change what the floor does -- it has no collision, no
 ## light and no shadow.
 ##
+## The creature draws its own (creature.draw_gizmos), on the layer being
+## drawn (`layer`); the way to its car and every trail are drawn here.
+##
 ## Layers, each with its own key (see observer_view):
 ##   1 el camino de la criatura, su destino y lo último que supo
 ##   2 el rastro de cada cuerpo, los últimos segundos
@@ -22,7 +25,7 @@ const COLOURS := {
 	"lift_route": Color(0.2, 0.4, 1.0),
 	"aim": Color(1.0, 0.45, 0.35),
 	"trail": Color(0.6, 1.0, 0.6),
-	"locust_trail": Color(1.0, 0.5, 0.5),
+	"creature_trail": Color(1.0, 0.5, 0.5),
 	"noise": Color(1.0, 0.9, 0.4),
 	"door": Color(0.55, 0.8, 0.55),
 	"shut": Color(0.9, 0.7, 0.3),
@@ -49,6 +52,8 @@ var scale_hint := 1.0
 ## worked out again twice a second.
 var lift_route := PackedVector3Array()
 var lift_route_clock := 0.0
+## The layer being drawn, for the creature's own marks: &"path" or &"sight".
+var layer := &""
 
 func setup(owner_level) -> void:
 	name = "ObserverGizmos"
@@ -96,11 +101,11 @@ func remember(delta: float) -> void:
 	if trail_clock > 0.0: return
 	trail_clock = TRAIL_EVERY
 	var bodies: Array = level.survivors()
-	if is_instance_valid(level.locust) and level.locust.is_inside_tree(): bodies.append(level.locust)
+	if is_instance_valid(level.creature) and level.creature.is_inside_tree(): bodies.append(level.creature)
 	for body in bodies:
 		if not is_instance_valid(body): continue
 		var key: int = body.get_instance_id()
-		if not trails.has(key): trails[key] = {"points": [], "locust": body == level.locust}
+		if not trails.has(key): trails[key] = {"points": [], "creature": body == level.creature}
 		var points: Array = trails[key].points
 		points.append(body.global_position)
 		while points.size() > int(TRAIL_TIME / TRAIL_EVERY): points.pop_front()
@@ -134,7 +139,7 @@ func ring(point: Vector3, radius: float, colour: Color, steps := 24) -> void:
 		before = next
 
 func draw_creature() -> void:
-	var creature = level.locust
+	var creature = level.creature
 	if not is_instance_valid(creature) or not creature.is_inside_tree() or not here(creature.global_position): return
 	lift_route_clock -= get_process_delta_time()
 	if lift_route_clock <= 0.0:
@@ -142,20 +147,14 @@ func draw_creature() -> void:
 		var car: int = level.lifts.creature_car(level.session.stage)
 		lift_route = FLOOR.navigation_path(level.get_world_3d().navigation_map, creature.global_position, level.hotel.lifts[car]) if car >= 0 and car < level.hotel.lifts.size() else PackedVector3Array()
 	for i in range(1, lift_route.size()): line(lift_route[i - 1] + Vector3(0, 0.2, 0), lift_route[i] + Vector3(0, 0.2, 0), COLOURS.lift_route)
-	var before: Vector3 = creature.global_position + Vector3(0, 0.1, 0)
-	for point in creature.path:
-		line(before, point + Vector3(0, 0.1, 0), COLOURS.path)
-		before = point + Vector3(0, 0.1, 0)
-	mark(creature.destination, COLOURS.path, 0.7)
-	mark(creature.last_known, COLOURS.aim, 0.4)
-	# The pacing director's lead, and the place it is searching.
-	if creature.lead_active() and here(creature.lead.point): ring(creature.lead.point, float(creature.lead.radius), COLOURS.lead, 32)
-	if creature.search_origin != Vector3.INF and here(creature.search_origin): ring(creature.search_origin, creature.AREA_SAME, COLOURS.search, 28)
+	# Its way, where it is going and what it last knew, the director's lead.
+	layer = &"path"
+	creature.draw_gizmos(self)
 
 func draw_trails() -> void:
 	for key in trails:
 		var points: Array = trails[key].points
-		var colour: Color = COLOURS.locust_trail if trails[key].locust else COLOURS.trail
+		var colour: Color = COLOURS.creature_trail if trails[key].creature else COLOURS.trail
 		for index in range(1, points.size()):
 			if not here(points[index]) or not here(points[index - 1]): continue
 			var fade: float = float(index) / maxf(float(points.size()), 1.0)
@@ -196,7 +195,7 @@ func draw_errand() -> void:
 ## What the creature can see: the edges of its cone, and a line to whoever it
 ## is after while it can see them.
 func draw_sight() -> void:
-	var creature = level.locust
+	var creature = level.creature
 	# Asking what it can see is a question for the physics of a floor that is
 	# being played, and it answers with rays.
 	if not is_instance_valid(creature) or not creature.is_inside_tree() or not here(creature.global_position): return
@@ -204,10 +203,5 @@ func draw_sight() -> void:
 	# Watching a recording, what it saw is what was recorded (bot_replay.gd
 	# draws it): asked now, the rays would make it up from puppets.
 	if level.replaying: return
-	var eye: Vector3 = creature.global_position + Vector3(0, creature.EYE_HEIGHT, 0)
-	var half := deg_to_rad(creature.sight_half_angle)
-	var reach: float = minf(creature.SIGHT_RANGE, 22.0)
-	for side in [-half, half]:
-		line(eye, eye + (-creature.global_basis.z).rotated(Vector3.UP, side) * reach, Color(COLOURS.sight, 0.5))
-	var seen = creature.seen_survivor() if creature.has_method("seen_survivor") else null
-	if is_instance_valid(seen): line(eye, seen.global_position + Vector3(0, 1.5, 0), COLOURS.aim)
+	layer = &"sight"
+	creature.draw_gizmos(self)

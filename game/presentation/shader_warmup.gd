@@ -91,15 +91,15 @@ static func run(level) -> Dictionary:
 	# The creature, if this floor already has one: four metres ahead, the
 	# distance it is first seen from, and back where it was.
 	var creature_frames := 0
-	if is_instance_valid(level.locust) and not stops.is_empty():
-		var kept: Transform3D = level.locust.global_transform
-		level.locust.global_position = camera.global_position + camera.global_basis.z * -4.0 + Vector3(0, -level.player.eye_height, 0)
+	if is_instance_valid(level.creature) and not stops.is_empty():
+		var kept: Transform3D = level.creature.global_transform
+		level.creature.global_position = camera.global_position + camera.global_basis.z * -4.0 + Vector3(0, -level.player.eye_height, 0)
 		for frame in 2:
 			viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 			await RenderingServer.frame_post_draw
 			await tree.process_frame
 			creature_frames += 1
-		level.locust.global_transform = kept
+		level.creature.global_transform = kept
 	elif not stops.is_empty():
 		# A floor is drawn before its creature is put on it (hotel_main:
 		# build_floor, then populate_floor), so there never was one to show:

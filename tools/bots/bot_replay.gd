@@ -16,7 +16,7 @@ extends Node
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PUPPET := preload("res://tools/bots/bot_replay_puppet.gd")
 const RECORDER := preload("res://tools/bots/bot_recorder.gd")
-const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
+const THREATS := preload("res://tools/bots/bot_threats.gd")
 const COLOURS := [Color(0.2, 0.9, 1.0), Color(0.4, 1.0, 0.35), Color(1.0, 0.9, 0.2), Color(1.0, 0.35, 0.9), Color(1.0, 1.0, 1.0)]
 const CREATURE := Color(1.0, 0.2, 0.15)
 const SEVERITY := {"leve": Color(0.7, 0.7, 0.7), "media": Color(1.0, 0.6, 0.1), "grave": Color(1.0, 0.1, 0.1)}
@@ -50,6 +50,9 @@ var show_goals := true
 var show_routes := true
 var current_incident := -1
 var problem := ""
+## The threat model of the creature recorded (bot_threats.gd): it puts the
+## creature back the way the recording keeps it.
+var model
 
 func setup(owner_level, path: String) -> void:
 	level = owner_level
@@ -124,8 +127,9 @@ func begin(at: float) -> void:
 		return
 	level.session.authority = false
 	if is_instance_valid(level.director): level.director.process_mode = Node.PROCESS_MODE_DISABLED
-	level.locust.set_control("puppet")
-	level.locust.grace = 0.0
+	level.creature.set_control("puppet")
+	level.creature.grace = 0.0
+	model = THREATS.make(level)
 	var names: Array = header.get("names", [])
 	var characters: Array = header.get("characters", [])
 	for i in seats.size():
@@ -183,8 +187,7 @@ func apply(entry: Dictionary, quiet: bool) -> void:
 		"lives": set_lives(entry.value)
 		"armario": set_hide(int(entry.hide), int(entry.seat))
 		"mode":
-			level.locust.mode = int(entry.value)
-			level.locust.state_time = 0.0
+			if model != null: model.replay_mode(int(entry.value))
 	if quiet: return
 	# What is worth a line in the observer's log.
 	var words := ""
@@ -328,12 +331,8 @@ func pose_everyone() -> void:
 		if Vector3(b[o], b[o + 1], b[o + 2]).distance_to(Vector3(a[o], a[o + 1], a[o + 2])) > 3.0: moving = Vector3.ZERO
 		puppet.pose(at, lerp_angle(a[o + 3], b[o + 3], w), lerpf(a[o + 4], b[o + 4], w), moving, flags & RECORDER.Flag.CROUCHED != 0, flags & RECORDER.Flag.TORCH != 0)
 	var c := seats.size() * fields
-	if c + 4 <= a.size() and is_instance_valid(level.locust):
-		var creature = level.locust
-		creature.global_position = Vector3(a[c], a[c + 1], a[c + 2]).lerp(Vector3(b[c], b[c + 1], b[c + 2]), w)
-		creature.rotation.y = lerp_angle(a[c + 3], b[c + 3], w)
-		creature.velocity = (Vector3(b[c], b[c + 1], b[c + 2]) - Vector3(a[c], a[c + 1], a[c + 2])) / span
-		creature.net_states.clear()
+	if c + 4 <= a.size() and is_instance_valid(level.creature) and model != null:
+		model.replay_pose(Vector3(a[c], a[c + 1], a[c + 2]).lerp(Vector3(b[c], b[c + 1], b[c + 2]), w), lerp_angle(a[c + 3], b[c + 3], w), (Vector3(b[c], b[c + 1], b[c + 2]) - Vector3(a[c], a[c + 1], a[c + 2])) / span)
 
 # --- Keys ---------------------------------------------------------------------
 
@@ -523,7 +522,7 @@ func draw_routes(planta: int) -> int:
 	for seat in chosen:
 		var colour: Color = CREATURE if int(seat) == 0 else COLOURS[seats.find(int(seat)) % COLOURS.size()]
 		var points: PackedVector3Array = chosen[seat].path
-		var from: Vector3 = level.locust.global_position if int(seat) == 0 else (puppets[int(seat)].global_position if puppets.has(int(seat)) else Vector3.INF)
+		var from: Vector3 = level.creature.global_position if int(seat) == 0 else (puppets[int(seat)].global_position if puppets.has(int(seat)) else Vector3.INF)
 		for point in points:
 			if from != Vector3.INF and FLOOR.planta_of(point.y) == planta:
 				line(from + Vector3(0, 0.3, 0), point + Vector3(0, 0.3, 0), Color(colour, 0.45))
@@ -605,10 +604,10 @@ func draw_sight(planta: int) -> int:
 	var i := clampi(times.bsearch(t, false) - 1, 0, times.size() - 1)
 	var values: PackedFloat32Array = frames[i]
 	var c := seats.size() * int(header.get("bot_fields", RECORDER.BOT_FIELDS))
-	if c + 6 > values.size() or not is_instance_valid(level.locust): return 0
+	if c + 6 > values.size() or not is_instance_valid(level.creature): return 0
 	var focus := int(values[c + 5])
 	if focus < 0 or not puppets.has(focus): return 0
-	var from: Vector3 = level.locust.global_position + Vector3(0, 2.4, 0)
+	var from: Vector3 = level.creature.eye_point()
 	if FLOOR.planta_of(from.y) != planta: return 0
 	line(from, puppets[focus].camera.global_position, Color(1, 0.1, 0.1, 0.9))
 	return 1

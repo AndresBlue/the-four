@@ -28,6 +28,17 @@ extends SceneTree
 ## down -- and the same places at every beat of the scene; begin_capture()
 ## and end_capture() do what was done to it by hand; and a creature with no
 ## style catches nobody.
+##
+## And the net (match_net.gd), the observer (observer_view.gd and
+## observer_gizmos.gd), the floor's ledger, the wardrobe got into, the
+## settings and every bot file but The Locust's own threat model ask the
+## creature only the contract: the RPCs are the ones they were, with their
+## arguments; what is packed and pushed is the same bytes and does the same;
+## a strike its hunter claims takes, over staged strikes from the open, a
+## corner and a wardrobe, with one survivor and two, whom it took before;
+## what its hunter is shown and how the machine takes over are what they
+## were; the observer's lines, dump and marks are the ones it wrote and drew;
+## and the bots mind it with the threat model of its kind.
 const CREATURE := preload("res://game/enemies/creature.gd")
 const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const LOCUST_SCENE := preload("res://game/enemies/locust/locust.tscn")
@@ -35,6 +46,9 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const SAVE := preload("res://game/app/floor_save.gd")
 const SCORE := preload("res://game/app/capture_score.gd")
+const REMOTE := preload("res://game/net/remote_player.gd")
+const GIZMOS := preload("res://game/app/observer_gizmos.gd")
+const THREATS := preload("res://tools/bots/bot_threats.gd")
 const LIES_PATH := "res://game/app/hallucinations/locust_hallucinations.gd"
 const STYLE_PATH := "res://game/app/capture_styles/locust_capture.gd"
 ## What plays a capture out: the creature read only through the contract,
@@ -45,6 +59,25 @@ const CONSUMERS := ["res://game/director/pacing_director.gd", "res://game/audio/
 ## Of those, what holds nothing of The Locust's own either: its passage is
 ## one of its lies (locust_hallucinations), and knows whose.
 const NEUTRAL := ["res://game/director/pacing_director.gd", "res://game/audio/dread_aura.gd", "res://game/audio/world_audio.gd", "res://game/app/sanity.gd", "res://game/app/phantom_sight.gd", "res://game/app/lifts.gd", "res://game/app/televisions.gd", "res://game/app/revival.gd", "res://game/app/floor_save.gd"]
+## The last to move over (docs/OFICINAS.md 11.1, steps 9 to 11): the net, the
+## observer and what else of the game still read The Locust; and, scanned
+## from their folder, the bots but for The Locust's threat model, which is
+## The Locust's to know.
+const NET := "res://game/net/match_net.gd"
+const MOVED := [NET, "res://game/app/observer_view.gd", "res://game/app/observer_gizmos.gd", "res://game/app/run_ledger.gd", "res://game/app/interaction.gd", "res://game/app/presentation_rig.gd"]
+const BOTS := "res://tools/bots"
+const THREAT_MODEL := "res://tools/bots/bot_threat.gd"
+## The one thing of the Locust's folder each may still name: the observer's
+## reading by ear is its echo_view (only for a creature that can(&"echo")),
+## and the bots thread their own routes through doorways with
+## door_threading, which knows nothing of it.
+const KEPT := {"observer_view.gd": "res://game/enemies/locust/echo_view.gd", "bot_nav.gd": "res://game/enemies/locust/door_threading.gd"}
+## match_net's RPCs and how many arguments each takes, as they were before it
+## asked the contract: the wire is these.
+const RPCS := {"begin": 2, "report_ready": 1, "go": 0, "player_state": 2, "locust_state": 1, "minds_state": 1, "session_state": 6, "request_door": 3, "door_swung": 4, "door_settled": 2, "request_television": 1, "television_state": 2, "request_warp": 1, "warp_state": 1, "request_container": 1, "container_state": 3, "request_panel": 2, "panel_state": 2, "request_code": 1, "code_state": 0, "revived_state": 3, "request_lift": 1, "ride_state": 2, "floor_left": 0, "locust_rode": 1, "request_hide": 3, "hide_state": 3, "hide_forced": 1, "player_noise": 3, "play_world_sound": 4, "locust_call": 3, "strike": 2, "request_force": 1, "request_shriek": 0, "shriek_reveal": 1, "heard_contact": 6, "execute_start": 4, "tell_lens": 3, "lens_settled": 3, "floor_summary": 1, "player_card": 2, "sheet_chunk": 3, "sheet_confirmed": 3, "restore": 7, "back_to_room": 0}
+## The observer's words for The Locust's modes, as it wrote them (in the order
+## of hotel_locust.Mode).
+const OLD_WORDS := ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta", "acecha"]
 var level
 var checks: Array = []
 var failed := 0
@@ -66,6 +99,8 @@ static func literal_lists() -> Dictionary:
 		"is_attacking": [LOCUST.Mode.ALERT, LOCUST.Mode.CHASE, LOCUST.Mode.WINDUP, LOCUST.Mode.RECOVER, LOCUST.Mode.EXECUTE],
 		# dread_aura, its worst
 		"is_hunting": [LOCUST.Mode.CHASE, LOCUST.Mode.WINDUP, LOCUST.Mode.RECOVER, LOCUST.Mode.ALERT],
+		# run_ledger.follow_hunt(): a chase
+		"is_chasing": [LOCUST.Mode.CHASE, LOCUST.Mode.WINDUP, LOCUST.Mode.RECOVER],
 		# match_net.warp_busy() and lifts.creature_crossing()'s `busy` (the
 		# rest of that list is lifts_questions())
 		"is_engaged": [LOCUST.Mode.WINDUP, LOCUST.Mode.RECOVER, LOCUST.Mode.EXECUTE, LOCUST.Mode.WARDROBE, LOCUST.Mode.LURK],
@@ -132,6 +167,14 @@ func run() -> void:
 	staged_captures(it)
 	it.control = "ai"
 	it.mode = LOCUST.Mode.PATROL
+	moved_readers()
+	await wire(it)
+	await strikes(it)
+	hunter(it)
+	observed(it)
+	threat_models(it)
+	it.control = "ai"
+	it.mode = LOCUST.Mode.PATROL
 	bare()
 	var file := FileAccess.open("res://evidence/creature_contract_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
@@ -176,7 +219,7 @@ func predicates(it) -> void:
 
 func identity(it) -> void:
 	check("kind_id() es locust", it.kind_id() == &"locust")
-	check("Sube en ascensor, sale por las teles, abre armarios y chilla", it.can(&"lifts") and it.can(&"tv_travel") and it.can(&"wardrobes") and it.can(&"shriek"))
+	check("Sube en ascensor, sale por las teles, abre armarios, chilla y se la caza de oído", it.can(&"lifts") and it.can(&"tv_travel") and it.can(&"wardrobes") and it.can(&"shriek") and it.can(&"echo"))
 	check("Por los ductos no, ni nada que no exista", not it.can(&"ducts") and not it.can(&"nada"))
 	check("capture_length() es lo que dura su ejecución", is_equal_approx(it.capture_length(), LOCUST.EXECUTION_TIME))
 	var bound: bool = it.lift_bound
@@ -192,7 +235,7 @@ func identity(it) -> void:
 	var style: Variant = it.capture_style()
 	var made = level.executions.style()
 	check("Sus capturas las juega su estilo (locust_capture.gd), hecho una vez y guardado", style is Script and (style as Script).resource_path == STYLE_PATH and made != null and made.get_script() == style and level.executions.style() == made and made.level == level)
-	check("Unas líneas para el observador", not it.debug_lines().is_empty() and it.debug_state().get("kind") == &"locust")
+	check("Unas líneas para el observador, la primera su nombre", not it.debug_lines().is_empty() and it.debug_lines()[0].begins_with("THE LOCUST (") and String(it.debug_state().get("modo", "")) == OLD_WORDS[it.mode])
 
 func senses(it) -> void:
 	var eye: Vector3 = it.eye_point()
@@ -1364,7 +1407,545 @@ func bare() -> void:
 	nobody.follow_to_planta(2, true)
 	nobody.search_from(Vector3.ONE, Vector3.FORWARD)
 	check("Ni tiene guarida, ni guarda nada de sí con el piso, ni anda buscando a nadie", nobody.den_point(1) == Vector3.INF and nobody.save_state().is_empty() and not nobody.is_wary() and nobody.activity() == &"roam")
+	var steps: Dictionary = nobody.wardrobe_steps()
+	check("Ni golpea a nadie, ni va a por nadie, ni se la caza de oído; y abre un armario al paso de siempre", nobody.validate_strike(Vector3.ZERO, Vector3.FORWARD, level.player) == INF and nobody.quarry() == null and not nobody.can(&"echo") and is_equal_approx(nobody.sense_scale(), 1.0) and not nobody.is_chasing() and steps == {"burst": 0.55, "reach": 0.7, "done": 1.7})
+	# Where it stands is asked of it in the tree, as the observer asks it.
+	nobody.collision_layer = 0
+	nobody.collision_mask = 0
+	root.add_child(nobody)
+	var lines: Array = Array(nobody.debug_lines())
+	check("Y el observador la nombra por su clase, con su mando, lo que hace y dónde", lines.size() == 2 and String(lines[0]) == " (ai)" and String(lines[1]).begins_with("  roam, gracia") and nobody.debug_state().modo == "roam" and nobody.debug_state().mando == "ai")
 	var defaults: bool = nobody.control == "ai" and is_equal_approx(nobody.grace, 15.0) and is_equal_approx(nobody.dull, 1.0)
 	nobody.set_control("puppet")
 	check("Con su mando, su gracia y su oído enteros, y el mando es el que se le da", defaults and nobody.control == "puppet")
 	nobody.free()
+
+# --- The net, the observer and the bots, on the contract ----------------------------
+
+## Every `it.` and `creature.` of the net, the observer, the ledger, the
+## wardrobe got into, the settings and the bots (but The Locust's own threat
+## model) against the contract, by name too; no mode of The Locust, nothing
+## of LOCUST and never level.locust; nothing of its folder but what each is
+## let keep (KEPT). And match_net asks it what it says: what it packs and
+## pushes, its calls, whether it is engaged, its verdict on a strike, what its
+## hunter is shown and how it is left to the machine.
+func moved_readers() -> void:
+	var names := contract_names()
+	var reads := RegEx.create_from_string("\\b(?:it|creature)\\.([A-Za-z_][A-Za-z0-9_]*)")
+	var by_name := RegEx.create_from_string("\\b(?:it|creature)\\.(?:get|set)\\(\"([A-Za-z_][A-Za-z0-9_]*)\"|\"([A-Za-z_][A-Za-z0-9_]*)\" in (?:it|creature)\\b")
+	var locust_ways := RegEx.create_from_string("\\b(?:it|creature)\\.(?:mode|Mode)\\b|\\bLOCUST\\b|\\blevel\\.locust\\b")
+	var bots: Array = []
+	for file in DirAccess.get_files_at(BOTS):
+		var path := BOTS.path_join(file)
+		if file.ends_with(".gd") and path != THREAT_MODEL: bots.append(path)
+	var bot_foreign := {}
+	var bot_modes: Array = []
+	var bot_own: Array = []
+	for path in MOVED + bots:
+		var code := code_of(path)
+		var file: String = path.get_file()
+		var foreign := {}
+		for hit in reads.search_all(code):
+			if not names.has(hit.get_string(1)): foreign[hit.get_string(1)] = true
+		for hit in by_name.search_all(code):
+			var member: String = hit.get_string(1) if not hit.get_string(1).is_empty() else hit.get_string(2)
+			if not names.has(member): foreign[member] = true
+		var found := locust_ways.search(code)
+		var own: String = code.replace(String(KEPT[file]), "") if KEPT.has(file) else code
+		var keeps: bool = own.contains("enemies/locust") or own.contains("hotel_locust")
+		if path in bots:
+			for member in foreign: bot_foreign["%s: %s" % [file, member]] = true
+			if found != null: bot_modes.append("%s: %s" % [file, found.get_string()])
+			if keeps: bot_own.append(file)
+			continue
+		check("%s le pregunta a la criatura solo lo del contrato" % file, foreign.is_empty(), "lee %s" % str(foreign.keys()))
+		check("%s no compara modos de The Locust ni la lee por level.locust" % file, found == null, "encuentra %s" % (found.get_string() if found != null else ""))
+		check("%s no guarda nada propio de The Locust%s" % [file, (", salvo %s" % String(KEPT[file]).get_file()) if KEPT.has(file) else ""], not keeps)
+	check("Los bots (%d archivos, sin su modelo de The Locust) le preguntan solo lo del contrato" % bots.size(), bot_foreign.is_empty() and bots.size() >= 10, str(bot_foreign.keys()))
+	check("Ni comparan sus modos, ni la nombran, ni la leen por level.locust", bot_modes.is_empty(), str(bot_modes))
+	check("Ni guardan nada suyo, salvo door_threading en bot_nav.gd", bot_own.is_empty(), str(bot_own))
+	var net := code_of(NET)
+	var asked: Array = ["creature.pack_state()", "creature.push_state(", "creature.play_call(", "level.creature.is_engaged()", "creature.validate_strike(", "creature.hunter_reveal(", "level.creature.hunter_contact(", "level.creature.resume_state(", "creature.hunter_gone()", "creature.sense_scale()", "creature.saw_enter(", "level.creature.wardrobe_steps()"]
+	var missing: Array = asked.filter(func(said): return not net.contains(said))
+	check("match_net.gd sí le pregunta: lo que manda y recibe, sus llamadas, si está ocupada, su veredicto de un golpe y lo que se enseña a su cazador", missing.is_empty(), "no pregunta %s" % str(missing))
+
+## pack_state() as it was: where, which way, how fast, its mode, its grace and
+## where its head is turned.
+func old_pack(it) -> Array:
+	return [it.global_position, it.rotation.y, it.velocity, it.mode, it.grace, it.visual.look_point if is_instance_valid(it.visual) and "look_point" in it.visual else Vector3.INF]
+
+## push_state() as it was, on a copy.
+func old_push(copy, data: Array) -> void:
+	if data.size() < 6: return
+	if copy.ride_hold > 0.0:
+		if (data[0] as Vector3).distance_to(copy.ride_point) > 3.0: return
+		copy.ride_hold = 0.0
+	copy.net_states.append({"time": copy.net_clock, "position": data[0], "yaw": data[1], "velocity": data[2]})
+	while copy.net_states.size() > 10: copy.net_states.pop_front()
+	var next: int = data[3]
+	if next != copy.mode:
+		copy.mode = next
+		copy.state_time = 0.0
+	copy.grace = data[4]
+	copy.net_look = data[5]
+
+## A copy as it stands before a state arrives: just carried by a lift (and
+## the state from far from the car, or from beside it) or not.
+static func ready_copy(copy, sent: Array, case: int) -> void:
+	copy.net_states.clear()
+	for i in case % 12: copy.net_states.append({"time": 0.1 * i, "position": Vector3.ONE * i, "yaw": 0.0, "velocity": Vector3.ZERO})
+	copy.net_clock = 0.7
+	copy.ride_hold = 1.0 if case % 2 == 1 else 0.0
+	copy.ride_point = (sent[0] as Vector3) + (Vector3(5, 0, 0) if case % 3 == 0 else Vector3(1, 0, 0))
+	copy.mode = LOCUST.Mode.PATROL
+	copy.state_time = 2.0
+	copy.grace = 9.0
+	copy.net_look = Vector3.ONE
+
+## What a copy holds of what it is sent.
+static func received(copy) -> Dictionary:
+	return {"net_states": copy.net_states.duplicate(true), "mode": copy.mode, "state_time": copy.state_time, "grace": copy.grace, "net_look": copy.net_look, "ride_hold": copy.ride_hold}
+
+## match_net.restore() for its hunter coming back, as it was.
+func old_resume(it, data: Array) -> void:
+	it.global_position = data[0]
+	it.rotation.y = data[1]
+	if data.size() > 4: it.grace = float(data[4])
+
+## What crosses the wire is what crossed it: match_net's RPCs are the ones
+## they were, with their arguments; what the machine in charge sends is the
+## same bytes in every mode, and a copy given it does with it what it did; a
+## hunter coming back is put where it was as by hand.
+func wire(it) -> void:
+	var script: Script = level.match_net.get_script()
+	var config: Variant = script.get_rpc_config()
+	var rpcs := {}
+	if config is Dictionary:
+		for key in config: rpcs[String(key)] = true
+	var args := {}
+	for method in script.get_script_method_list(): args[String(method.name)] = (method.args as Array).size()
+	var wrong: Array = []
+	for name in RPCS:
+		if not rpcs.has(name) or int(args.get(name, -1)) != int(RPCS[name]): wrong.append(name)
+	check("Las RPC de la red son las de antes, con sus argumentos (%d)" % RPCS.size(), wrong.is_empty() and rpcs.size() == RPCS.size(), "difieren %s; hay %d" % [str(wrong), rpcs.size()])
+	var copy = await puppet()
+	var twin = await puppet()
+	var at := room_point()
+	var draws: int = it.rng.state
+	var look: Vector3 = it.visual.look_point
+	var bytes_wrong: Array = []
+	var pushed_wrong: Array = []
+	var resumed_wrong: Array = []
+	var cases := 0
+	for mode in LOCUST.Mode.values():
+		for turned in [false, true]:
+			pose(it, "ai", mode, at, draws)
+			it.rotation.y = 0.2 + 0.3 * mode
+			it.velocity = Vector3(0.5 * mode, 0.0, -1.5)
+			it.grace = 0.75 * mode
+			it.visual.look_point = it.global_position + Vector3(1.0, 1.5, 0.2 * mode) if turned else Vector3.INF
+			var sent: Array = it.pack_state()
+			var bytes: PackedByteArray = var_to_bytes(sent)
+			var label := "%s%s" % [LOCUST.Mode.keys()[mode], ", mirando" if turned else ""]
+			if bytes != var_to_bytes(old_pack(it)) or sent.size() != 6: bytes_wrong.append(label)
+			# As it arrives, on two copies alike, one of them the old way.
+			var arrived: Array = bytes_to_var(bytes)
+			ready_copy(copy, arrived, cases)
+			ready_copy(twin, arrived, cases)
+			copy.push_state(arrived)
+			old_push(twin, arrived)
+			if received(copy) != received(twin): pushed_wrong.append(label)
+			# Its hunter back: from where it stood, in full and without grace.
+			for data in [arrived, arrived.slice(0, 4)]:
+				pose(it, "player", LOCUST.Mode.PATROL, at, draws)
+				old_resume(it, data)
+				var before := state_of(it)
+				pose(it, "player", LOCUST.Mode.PATROL, at, draws)
+				it.resume_state(data)
+				for key in differences(before, state_of(it)): resumed_wrong.append("%s: %s" % [label, key])
+			cases += 1
+	it.visual.look_point = look
+	it.velocity = Vector3.ZERO
+	it.control = "ai"
+	it.rng.state = draws
+	copy.queue_free()
+	twin.queue_free()
+	await process_frame
+	check("Lo que manda es lo de antes, byte a byte, en cada modo (%d casos)" % cases, bytes_wrong.is_empty() and cases == LOCUST.Mode.size() * 2, str(bytes_wrong.slice(0, 6)))
+	check("Y una copia lo recibe como antes, recién bajada de un ascensor o no", pushed_wrong.is_empty(), str(pushed_wrong.slice(0, 6)))
+	check("Su cazador de vuelta la retoma donde estaba y con su gracia, como a mano", resumed_wrong.is_empty(), str(resumed_wrong.slice(0, 6)))
+
+## resolve_strike() as it was, reading The Locust itself: whom a strike took.
+## `why` counts what spared each one it did not take.
+func old_strike(it, origin: Vector3, facing: Vector3, why: Dictionary) -> Node3D:
+	if origin.distance_to(it.global_position) > 3.0: origin = it.global_position
+	facing.y = 0.0
+	var best: Node3D = null
+	var best_distance: float = LOCUST.STRIKE_REACH
+	for body in level.survivors():
+		if not level.survivor_active(body): continue
+		var offset: Vector3 = body.global_position - origin
+		offset.y = 0.0
+		var distance := offset.length()
+		if distance >= best_distance:
+			why["lejos"] = int(why.get("lejos", 0)) + 1
+			continue
+		if distance > 0.8 and facing.length() > 0.1 and rad_to_deg(facing.angle_to(offset)) > 70.0:
+			why["de lado"] = int(why.get("de lado", 0)) + 1
+			continue
+		if body.hidden and not (is_instance_valid(body.hiding_place) and body.hiding_place.ajar()):
+			why["escondido"] = int(why.get("escondido", 0)) + 1
+			continue
+		var ray := PhysicsRayQueryParameters3D.create(origin + Vector3(0, LOCUST.EYE_HEIGHT, 0), body.camera.global_position, 1 | 8 | 64)
+		ray.exclude = [it.get_rid()]
+		if not it.get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+			why["tapado"] = int(why.get("tapado", 0)) + 1
+			continue
+		best = body
+		best_distance = distance
+	return best
+
+## Strikes its hunter claims, judged on the host: from the middle of a room
+## and from a corner (the walls between), with the claimed spot its own, a
+## step off or too far off to be taken, facing ahead, up, behind or nowhere,
+## at every reach and side; at a wardrobe shut and ajar; and with a second
+## survivor, nearer and further. match_net takes, through validate_strike(),
+## whom the old judgement took, and the metres it gives are the old ones.
+func strikes(it) -> void:
+	var body = level.player
+	var room := capture_room()
+	var centre: Vector3 = FLOOR.position_of(room) + Vector3(0, 0.04, 0)
+	var span: Vector2 = FLOOR.size_of(room)
+	var corner: Vector3 = centre + Vector3(span.x * 0.5 - 0.6, 0, span.y * 0.5 - 0.6)
+	var kept_body: Transform3D = body.global_transform
+	var kept_it: Transform3D = it.global_transform
+	var grace: float = it.grace
+	it.grace = 0.0
+	var why := {}
+	var differ: Array = []
+	var cases := 0
+	var taken := 0
+	for from in [centre, corner]:
+		for yaw in [0.0, 2.2]:
+			it.global_position = from
+			it.rotation.y = yaw
+			var ahead: Vector3 = -it.global_basis.z
+			for claim in [Vector3.ZERO, Vector3(1.0, 0.0, 0.5), Vector3(5.0, 0.0, 0.0)]:
+				for facing in [ahead, ahead + Vector3(0, 0.8, 0), -ahead, Vector3.ZERO, ahead * 0.05]:
+					for metres in [0.5, 1.5, 2.6, 3.15, 3.3]:
+						for turn in [0.0, 45.0, 69.0, 72.0, 120.0, 180.0]:
+							body.global_position = from + ahead.rotated(Vector3.UP, deg_to_rad(turn)) * metres
+							var origin: Vector3 = from + claim
+							var old: Node3D = old_strike(it, origin, facing, why)
+							var now: Node3D = level.match_net.strike_victim(origin, facing)
+							var metres_now: float = it.validate_strike(origin, facing, body)
+							var flat: Vector3 = body.global_position - (origin if origin.distance_to(from) <= 3.0 else from)
+							flat.y = 0.0
+							var active: bool = level.survivor_active(body)
+							cases += 1
+							if now == body: taken += 1
+							if old != now or (active and (now == body) != (metres_now < INF)) or (now == body and not is_equal_approx(metres_now, flat.length())): differ.append("%s %0.1f %s %s %0.2f %0.0f" % ["rincón" if from == corner else "centro", yaw, claim, facing, metres, turn])
+	# In a wardrobe, its doors shut and ajar.
+	var hide = level.hotel.hides[0] if not level.hotel.hides.is_empty() else null
+	var hidden_cases := 0
+	if hide != null:
+		var inside: Vector3 = hide.to_global(hide.inside_offset)
+		var front: Vector3 = hide.to_global(hide.exit_offset)
+		var towards: Vector3 = inside - front
+		towards.y = 0.0
+		for ajar in [false, true]:
+			hide.set_ease(1.0 if ajar else 0.0, body)
+			for back in [0.0, 0.8]:
+				it.global_position = front - towards.normalized() * back
+				it.rotation.y = atan2(-towards.x, -towards.z)
+				body.global_position = inside
+				body.hidden = true
+				body.hiding_place = hide
+				for facing in [towards, -towards]:
+					var old: Node3D = old_strike(it, it.global_position, facing, why)
+					var now: Node3D = level.match_net.strike_victim(it.global_position, facing)
+					hidden_cases += 1
+					if now == body: taken += 1
+					if old != now: differ.append("armario %s %0.1f %s" % [ajar, back, facing])
+		hide.set_ease(0.0, body)
+		body.hidden = false
+		body.hiding_place = null
+	# Two survivors: whichever is nearer, the first of two as near, nobody
+	# reached but one.
+	var other = REMOTE.new()
+	other.setup(level, 4, "Otro", 1)
+	level.add_child(other)
+	level.match_net.bodies[4] = other
+	level.session.participants[4] = level.session.Life.EXPLORING
+	await process_frame
+	var pairs := 0
+	var others := 0
+	it.global_position = centre
+	it.rotation.y = 0.0
+	var ahead: Vector3 = -it.global_basis.z
+	for one in [0.6, 1.4, 2.2, 3.0, 3.5]:
+		for two in [0.6, 1.4, 2.2, 3.0, 3.5]:
+			for side in [0.0, 40.0, 100.0]:
+				body.global_position = centre + ahead * one
+				other.global_position = centre + ahead.rotated(Vector3.UP, deg_to_rad(side)) * two
+				var old: Node3D = old_strike(it, centre, ahead, why)
+				var now: Node3D = level.match_net.strike_victim(centre, ahead)
+				pairs += 1
+				if now == other: others += 1
+				if old != now: differ.append("dos %0.1f %0.1f %0.0f" % [one, two, side])
+	level.match_net.bodies.erase(4)
+	level.session.participants.erase(4)
+	other.queue_free()
+	await process_frame
+	body.global_transform = kept_body
+	it.global_transform = kept_it
+	it.grace = grace
+	check("Un golpe del cazador se lleva a quien se llevaba (%d golpes, %d en un armario, %d con dos; %d alcanzados, %d el otro; %s)" % [cases, hidden_cases, pairs, taken, others, str(why)], differ.is_empty() and taken > 0 and others > 0 and why.size() == 4 and hidden_cases == 8, str(differ.slice(0, 6)))
+
+## seat_dropped()'s own hand on the creature, as it was.
+func old_hunter_gone(it) -> void:
+	it.patrol_room = it.nearest_room()
+	if it.mode not in [LOCUST.Mode.EXECUTE, LOCUST.Mode.WARDROBE]: it.set_mode(LOCUST.Mode.SEARCH)
+
+## What its hunter is shown goes to its hunter's side as it went; with its
+## hunter gone, the machine takes it up as seat_dropped() did by hand; the
+## room's onslaught stretches its cry; who it is after; seen getting into a
+## wardrobe, it is sure of it, and of a bot getting in only as sure as it was.
+func hunter(it) -> void:
+	var source := GDScript.new()
+	source.source_code = "extends Node\nvar channel_open := true\nvar echo: Node\nvar revealed: Array = []\nvar heard: Array = []\nfunc reveal(points): revealed.append(points)\nfunc hear_contact(point, apparent, distance, strength, kind, muffle): heard.append([point, apparent, distance, strength, kind, muffle])\n"
+	source.reload()
+	var reading := GDScript.new()
+	reading.source_code = "extends Node\nvar applied := 0\nfunc apply_quality(): applied += 1\n"
+	reading.reload()
+	var driver := Node.new()
+	driver.set_script(source)
+	var echo := Node.new()
+	echo.set_script(reading)
+	driver.add_child(echo)
+	driver.set("echo", echo)
+	it.add_child(driver)
+	it.driver = driver
+	var points := PackedVector3Array([Vector3(1, 2, 3), Vector3(4, 5, 6)])
+	it.hunter_reveal(points)
+	it.hunter_contact(Vector3.ONE, Vector3(2, 0, 2), 7.5, 0.6, 3, 0.4)
+	it.apply_quality()
+	var shown: bool = driver.get("revealed") == [points] and driver.get("heard") == [[Vector3.ONE, Vector3(2, 0, 2), 7.5, 0.6, 3, 0.4]] and int(echo.get("applied")) == 1
+	it.driver = null
+	it.hunter_reveal(points)
+	it.hunter_contact(Vector3.ONE, Vector3.ONE, 1.0, 1.0, 0, 1.0)
+	it.apply_quality()
+	driver.queue_free()
+	check("A su cazador le llega lo que encontró su chillido, lo que oye y la calidad de su lectura; sin cazador, nada", shown)
+	# The rounds it had are another room's: where the hunter last took it.
+	var before_rounds := int(FLOOR.room_at(level.manifest.rooms, room_point()).get("id", -1))
+	var at := room_point(before_rounds)
+	var here := int(FLOOR.room_at(level.manifest.rooms, at).get("id", -1))
+	var draws: int = it.rng.state
+	var differ: Array = []
+	var moved := 0
+	for mode in LOCUST.Mode.values():
+		pose(it, "puppet", mode, at, draws)
+		it.patrol_room = before_rounds
+		it.set_control("ai")
+		old_hunter_gone(it)
+		var before := state_of(it)
+		pose(it, "puppet", mode, at, draws)
+		it.patrol_room = before_rounds
+		it.set_control("ai")
+		it.hunter_gone()
+		if it.patrol_room == here: moved += 1
+		for key in differences(before, state_of(it)): differ.append("%s: %s" % [LOCUST.Mode.keys()[mode], key])
+	check("Sin su cazador, la máquina la retoma como lo hacía la red a mano, modo a modo", differ.is_empty() and moved == LOCUST.Mode.size() and here != before_rounds, str(differ.slice(0, 6)))
+	it.control = "ai"
+	it.rng.state = draws
+	var scale: float = it.reach_scale
+	it.reach_scale = LOCUST.ONSLAUGHT_REACH
+	var stretched: bool = is_equal_approx(it.sense_scale(), LOCUST.ONSLAUGHT_REACH)
+	it.reach_scale = 1.0
+	check("Su chillido llega tan lejos como la embestida estira sus sentidos", stretched and is_equal_approx(it.sense_scale(), 1.0))
+	it.reach_scale = scale
+	var focus = it.focus
+	it.focus = level.player
+	var after: bool = it.quarry() == level.player
+	it.focus = null
+	check("quarry() es a quien tiene en mente (focus)", after and it.quarry() == null)
+	it.focus = focus
+	var hides: Array = level.hotel.hides
+	var sure := false
+	var unsure := false
+	if hides.size() >= 2:
+		it.observed_hide = null
+		it.saw_enter(hides[0], false)
+		unsure = it.observed_hide == hides[0] and not it.certain
+		it.saw_enter(hides[1])
+		sure = it.observed_hide == hides[1] and it.certain
+		it.saw_enter(hides[0], false)
+		unsure = unsure and it.observed_hide == hides[0] and it.certain
+		it.observed_hide = null
+	check("Vista entrar a un jugador en un armario, está segura; a un bot, solo sabe cuál y no está más segura que antes", sure and unsure and not it.certain)
+
+## The observer's lines on it as observer_view.report() wrote them.
+func old_lines(it) -> Array:
+	var lines: Array = []
+	var session = level.session
+	lines.append("THE LOCUST (%s)" % it.control)
+	lines.append("  %s, vista %0.0f m, oído ×%0.2f, aviso %0.1f s, caza %0.1f m/s, sin ver %0.1f s, se rinde %0.0f–%0.0f s" % [level.DIFFICULTY.title(level.difficulty).to_upper(), it.sight_range * it.reach_scale, it.hearing * it.reach_scale, it.alert_time, it.chase_speed, it.lose_after, it.give_up, it.give_up_hard])
+	lines.append("  %s, gracia %0.1f, velocidad %0.1f, detección %0.2f" % [OLD_WORDS[it.mode], it.grace, it.speed, it.detection])
+	lines.append("  ala %d, %0.0f, %0.0f, sin ver %0.1f s" % [int(FLOOR.room_at(level.manifest.rooms, it.global_position).get("wing", -1)), it.global_position.x, it.global_position.z, it.lost_time])
+	lines.append("  destino a %0.1f m, camino %d puntos, repath %0.2f, %d puertas en la ruta" % [it.global_position.distance_to(it.destination), it.path.size(), it.repath, it.crossings.size()])
+	var counts: Array = it.stuck_counts
+	lines.append("  atascos, paso %d ahora, %d/%d/%d/%d/%d (pasos 1 a 5)" % [it.stuck_level, counts[1], counts[2], counts[3], counts[4], counts[5]])
+	var nearest := -1
+	var gap := INF
+	for index in level.hotel.lifts.size():
+		var to_car: float = it.global_position.distance_to(level.hotel.lifts[index])
+		if to_car < gap:
+			gap = to_car
+			nearest = index
+	if nearest >= 0: lines.append("  ascensor más cerca: %d a %0.1f m%s" % [nearest, gap, " (arriba)" if level.lifts.lift_gone(nearest) else ""])
+	lines.append("  el coche que le toca: %s" % ("ninguno, ya está en el ala en juego" if level.lifts.creature_car(session.stage) < 0 else str(level.lifts.creature_car(session.stage))))
+	if is_instance_valid(it.focus): lines.append("  va a por %s" % it.focus.name)
+	if it.leaving: lines.append("  se va: dejó una zona sin encontrar nada")
+	if it.mode == LOCUST.Mode.SEARCH: lines.append("  busca, %d sitios por mirar, %0.1f s sin pistas" % [it.search_plan.size(), it.clue_idle])
+	return lines
+
+## The observer's dump (F5) of it as observer_view.snapshot() wrote it.
+func old_dump(it) -> Dictionary:
+	return {"modo": OLD_WORDS[it.mode], "mando": it.control, "donde": [it.global_position.x, it.global_position.y, it.global_position.z], "ala": int(FLOOR.room_at(level.manifest.rooms, it.global_position).get("wing", -1)), "destino": [it.destination.x, it.destination.z], "camino": it.path.size(), "atascos": it.stuck_counts, "paso": it.stuck_level}
+
+## observer_gizmos' draw_creature() and draw_sight() as they drew it, past
+## their guards.
+func old_marks(g, it) -> void:
+	for i in range(1, g.lift_route.size()): g.line(g.lift_route[i - 1] + Vector3(0, 0.2, 0), g.lift_route[i] + Vector3(0, 0.2, 0), g.COLOURS.lift_route)
+	var before: Vector3 = it.global_position + Vector3(0, 0.1, 0)
+	for point in it.path:
+		g.line(before, point + Vector3(0, 0.1, 0), g.COLOURS.path)
+		before = point + Vector3(0, 0.1, 0)
+	g.mark(it.destination, g.COLOURS.path, 0.7)
+	g.mark(it.last_known, g.COLOURS.aim, 0.4)
+	if it.lead_active() and g.here(it.lead.point): g.ring(it.lead.point, float(it.lead.radius), g.COLOURS.lead, 32)
+	if it.search_origin != Vector3.INF and g.here(it.search_origin): g.ring(it.search_origin, it.AREA_SAME, g.COLOURS.search, 28)
+	if level.session.state != level.session.State.PLAYING or level.replaying: return
+	var eye: Vector3 = it.global_position + Vector3(0, it.EYE_HEIGHT, 0)
+	var half := deg_to_rad(it.sight_half_angle)
+	var reach: float = minf(it.SIGHT_RANGE, 22.0)
+	for side in [-half, half]:
+		g.line(eye, eye + (-it.global_basis.z).rotated(Vector3.UP, side) * reach, Color(g.COLOURS.sight, 0.5))
+	var seen = it.seen_survivor() if it.has_method("seen_survivor") else null
+	if is_instance_valid(seen): g.line(eye, seen.global_position + Vector3(0, 1.5, 0), g.COLOURS.aim)
+
+## The lines a gizmo mesh holds once `drawing` has drawn on it.
+static func drawn(g, drawing: Callable) -> Array:
+	g.mesh.clear_surfaces()
+	g.mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	drawing.call()
+	g.mesh.surface_end()
+	var arrays: Array = g.mesh.surface_get_arrays(0) if g.mesh.get_surface_count() > 0 else []
+	g.mesh.clear_surfaces()
+	return [arrays[Mesh.ARRAY_VERTEX], arrays[Mesh.ARRAY_COLOR]] if not arrays.is_empty() else []
+
+## The observer's panel lines, its dump and its marks are the ones it wrote
+## and drew itself: in every mode, after somebody and not, walking off,
+## searching with a plan, stuck and led by the director, seen and unseen.
+func observed(it) -> void:
+	var g = GIZMOS.new()
+	g.setup(level)
+	level.add_child(g)
+	g.set_process(false)
+	g.lift_route = PackedVector3Array([it.global_position, it.global_position + Vector3(3, 0, 0), it.global_position + Vector3(3, 0, 4)])
+	var at := room_point()
+	var draws: int = it.rng.state
+	var counts: Array = it.stuck_counts.duplicate()
+	var body = level.player
+	var kept_body: Transform3D = body.global_transform
+	var lines_wrong: Array = []
+	var dump_wrong: Array = []
+	var marks_wrong: Array = []
+	var cases := 0
+	var marked := 0
+	for mode in LOCUST.Mode.values():
+		for busy in [false, true]:
+			pose(it, "ai" if not busy else "player", mode, at, draws)
+			it.grace = 0.0
+			it.rotation.y = 0.4
+			if busy:
+				it.focus = body
+				it.leaving = true
+				it.search_plan = [{"point": at + Vector3(2, 0, 0)}, {"point": at + Vector3(0, 0, 2)}]
+				it.stuck_counts = [0, 3, 2, 1, 1, 0]
+				it.stuck_level = 2
+				it.path = PackedVector3Array([at + Vector3(1, 0, 0), at + Vector3(2, 0, 1), at + Vector3(4, 0, 1)])
+				it.search_origin = at + Vector3(0, 0, 1)
+				it.lead = {"point": at + Vector3(1, 0, 1), "radius": 6.0, "until": it.clock + 10.0}
+				# In its sight, ahead of it.
+				body.global_position = at - Basis(Vector3.UP, 0.4).z * 4.0
+			else:
+				it.leaving = false
+				it.stuck_counts = [0, 0, 0, 0, 0, 0]
+				it.stuck_level = 0
+				body.global_transform = kept_body
+			var label := "%s%s" % [LOCUST.Mode.keys()[mode], ", ocupada" if busy else ""]
+			if Array(it.debug_lines()) != old_lines(it): lines_wrong.append(label)
+			var dump: Dictionary = it.debug_state()
+			if dump != old_dump(it) or JSON.stringify(dump) != JSON.stringify(old_dump(it)): dump_wrong.append(label)
+			g.lift_route_clock = 1000.0
+			var before: Array = drawn(g, func(): old_marks(g, it))
+			g.lift_route_clock = 1000.0
+			var now: Array = drawn(g, func():
+				g.draw_creature()
+				g.draw_sight())
+			cases += 1
+			if before.is_empty() or now != before: marks_wrong.append(label)
+			elif (before[0] as PackedVector3Array).size() > marked: marked = (before[0] as PackedVector3Array).size()
+	pose(it, "ai", LOCUST.Mode.PATROL, at, draws)
+	it.stuck_counts = counts
+	it.stuck_level = 0
+	it.path = PackedVector3Array()
+	it.search_origin = Vector3.INF
+	it.lead = {}
+	it.rng.state = draws
+	body.global_transform = kept_body
+	g.queue_free()
+	check("Las líneas del panel del observador son las que escribía, modo a modo (%d casos)" % cases, lines_wrong.is_empty() and cases == LOCUST.Mode.size() * 2, str(lines_wrong.slice(0, 6)))
+	check("Lo que vigila su registro y guarda su volcado, lo de antes", dump_wrong.is_empty(), str(dump_wrong.slice(0, 6)))
+	check("Y sus marcas sobre el piso, las que dibujaba, trazo a trazo (hasta %d vértices)" % marked, marks_wrong.is_empty() and marked > 100, str(marks_wrong.slice(0, 6)))
+
+## The bots' threat model is the one of its kind: The Locust's for The Locust
+## (and for no creature, which it then does not mind), none for a creature
+## they have no model of. And what a recording keeps of it is what the
+## recorder kept itself.
+func threat_models(it) -> void:
+	var made = THREATS.make(level)
+	var kept = level.creature
+	level.creature = null
+	var none = THREATS.make(level)
+	var nobody = CREATURE.new()
+	level.creature = nobody
+	var unknown = THREATS.make(level)
+	level.creature = kept
+	nobody.free()
+	check("Los bots la miran con el modelo de su clase: el de The Locust para ella y sin criatura, ninguno para una que no conocen", made != null and made.get_script().resource_path == THREAT_MODEL and none != null and none.get_script().resource_path == THREAT_MODEL and unknown == null)
+	var at := room_point()
+	var draws: int = it.rng.state
+	pose(it, "ai", LOCUST.Mode.SEARCH, at, draws)
+	it.focus = level.player
+	it.detection = 0.37
+	it.path = PackedVector3Array([at + Vector3(1, 0, 0), at + Vector3(2, 0, 1)])
+	var c: Vector3 = it.global_position
+	var row := [c.x, c.y, c.z, it.rotation.y, int(it.mode), int(level.player.slot), float(it.detection), int(it.stuck_level), it.destination.x, it.destination.z, it.last_known.x, it.last_known.z]
+	var route := PackedVector3Array()
+	for i in range(int(it.path_index), mini(it.path.size(), int(it.path_index) + 16)): route.append(it.path[i])
+	var watch := {"mode": int(it.mode), "focus": int(level.player.slot)}
+	var change := {"where": [snappedf(c.x, 0.01), snappedf(c.y, 0.01), snappedf(c.z, 0.01)], "detection": snappedf(0.37, 0.01)}
+	var kept_row: bool = made.recorded_row() == row and made.recorded_route() == route and made.recorded_watch() == watch and made.recorded_mode_change() == change
+	# Refreshed as it is refreshed in a match: with the creature moving.
+	it.set_physics_process(true)
+	made.refresh()
+	it.set_physics_process(false)
+	var words: bool = made.activity == it.activity() and made.leaving() == bool(it.leaving) and is_equal_approx(made.chase_earshot(), LOCUST.CHASE_EARSHOT)
+	pose(it, "ai", LOCUST.Mode.PATROL, at, draws)
+	it.path = PackedVector3Array()
+	it.rng.state = draws
+	check("Lo que la grabación guarda de ella lo dice su modelo, como lo guardaba la grabadora", kept_row)
+	check("Y lo que hace, si se va y hasta dónde oye en una persecución", words)

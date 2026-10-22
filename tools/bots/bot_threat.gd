@@ -7,6 +7,12 @@ extends RefCounted
 ## the game's balance; what is, is what they run into anyway.
 ##
 ## Refreshed a few times a second and shared by the whole team.
+##
+## This is The Locust's model (bot_threats.gd picks it by its kind), and reads
+## The Locust itself; the rest of the bots ask this, and the creature only its
+## contract. It also says what a recording keeps of it, and how a replay puts
+## it back (bot_recorder.gd, bot_replay.gd).
+const RECORDER := preload("res://tools/bots/bot_recorder.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
@@ -39,6 +45,8 @@ var position := Vector3.ZERO
 var eye := Vector3.ZERO
 var forward := Vector3.FORWARD
 var mode := 0
+## The same, in the words every creature uses (creature.activity()).
+var activity: StringName = &""
 var planta := -1
 var room := -1
 ## Rooms the next PATH_AHEAD metres of its route go through.
@@ -100,10 +108,17 @@ func hearing_scale() -> float:
 func lose_after() -> float:
 	return float(creature.lose_after) if is_instance_valid(creature) else LOCUST.LOSE_AFTER
 
+## Metres round where it last knew somebody it still hears in, while it runs
+## them down.
+func chase_earshot() -> float: return LOCUST.CHASE_EARSHOT
+
+## Whether it is walking off from a part of the floor it found nobody in.
+func leaving() -> bool: return bool(creature.leaving)
+
 ## Everything, once more. Nothing to fear from a creature that is not moving
 ## (--no-enemy), still in its grace, or on another planta than `wing`.
 func refresh() -> void:
-	creature = level.locust
+	creature = level.creature
 	active = is_instance_valid(creature) and creature.is_physics_processing() and creature.control == "ai"
 	path_rooms.clear()
 	danger.clear()
@@ -122,6 +137,7 @@ func refresh() -> void:
 	eye = position + Vector3(0, LOCUST.EYE_HEIGHT, 0)
 	forward = -creature.global_basis.z
 	mode = int(creature.mode)
+	activity = creature.activity()
 	planta = FLOOR.planta_of(position.y)
 	var here: Dictionary = FLOOR.room_at(level.manifest.rooms, position)
 	room = int(here.get("id", -1))
@@ -357,3 +373,67 @@ func room_cost(room_id: int) -> float:
 	var centre := FLOOR.position_of(level.manifest.rooms[room_id])
 	if centre.distance_to(position) < sight_range() and visible(centre): extra += COST_SEEN
 	return extra
+
+# --- What a recording keeps of it (bot_recorder.gd, bot_replay.gd) ----------------
+#
+# Asked of the floor's creature as it is now, not of the last refresh.
+
+## Its row of a recorded frame, in the order of bot_recorder.CREATURE_FIELDS:
+## x, y, z, yaw, mode, the seat it is after, detection, stuck step,
+## destination x, z, last known x, z. Empty with no creature. The replay
+## poses it from the first four and draws its line to the sixth
+## (bot_replay.gd), so any creature's model keeps those there.
+func recorded_row() -> Array:
+	var it = level.creature
+	if not is_instance_valid(it): return []
+	var c: Vector3 = it.global_position
+	var focus: int = int(it.focus.slot) if is_instance_valid(it.focus) and "slot" in it.focus else -1
+	return [c.x, c.y, c.z, it.rotation.y, int(it.mode), focus, float(it.detection), int(it.stuck_level), it.destination.x, it.destination.z, it.last_known.x, it.last_known.z]
+
+## The next sixteen points of its route; null with no creature.
+func recorded_route() -> Variant:
+	var it = level.creature
+	if not is_instance_valid(it): return null
+	var points := PackedVector3Array()
+	for i in range(int(it.path_index), mini(it.path.size(), int(it.path_index) + 16)): points.append(it.path[i])
+	return points
+
+## What the recording's log watches of it: its mode and the seat it is after
+## (-1: nobody). Empty with no creature.
+func recorded_watch() -> Dictionary:
+	var it = level.creature
+	if not is_instance_valid(it): return {}
+	return {"mode": int(it.mode), "focus": int(it.focus.slot) if is_instance_valid(it.focus) and "slot" in it.focus else -1}
+
+## Said with a change of its mode: where it is and how near it was to making
+## somebody out. Empty with no creature.
+func recorded_mode_change() -> Dictionary:
+	var it = level.creature
+	if not is_instance_valid(it): return {}
+	return {"where": RECORDER.vec(it.global_position), "detection": snappedf(float(it.detection), 0.01)}
+
+## Each part of the floor it gives a search up in, told to `heard`
+## (origin, next): the recording's "abandona".
+func on_gave_up(heard: Callable) -> void:
+	var it = level.creature
+	if is_instance_valid(it) and it.has_signal("area_abandoned"): it.area_abandoned.connect(heard)
+
+## Its protocol for getting unstuck going up a step (step, where), and each
+## route it gives up (where), told to the watchdog (bot_watchdog.gd).
+func on_stuck(it, escalated: Callable, abandoned: Callable) -> void:
+	it.stuck_escalated.connect(escalated)
+	it.route_abandoned.connect(abandoned)
+
+## A replay's puppet of it, put where the recording has it: there, turned so
+## and moving so, with no state of its own on the way to pull it elsewhere.
+func replay_pose(at: Vector3, yaw: float, moving: Vector3) -> void:
+	var it = level.creature
+	it.global_position = at
+	it.rotation.y = yaw
+	it.velocity = moving
+	it.net_states.clear()
+
+## And doing what the recording says it was doing then.
+func replay_mode(value: int) -> void:
+	level.creature.mode = value
+	level.creature.state_time = 0.0

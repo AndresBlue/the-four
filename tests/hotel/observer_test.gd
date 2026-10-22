@@ -95,7 +95,16 @@ func run() -> void:
 	await wait_for(func(): return false, 10)
 	check("Sin el plano y subiendo, sigue en la planta elegida", not view.map_view and view.planta == 1 and level.hotel.eye_planta == 1)
 	check("Y se mira sin la lente de la cámara", not level.lens_layer.visible)
-	var named: Array = [LOCUST.Mode.PATROL, LOCUST.Mode.CHASE, LOCUST.Mode.SEARCH, LOCUST.Mode.ALERT, LOCUST.Mode.WARDROBE, LOCUST.Mode.EXECUTE].map(func(mode: int): return view.modo(mode))
+	# The words are the creature's own (its debug_lines and debug_state): the
+	# panel says each one where it says what it is doing.
+	var creature = view.live_locust()
+	var kept_mode: int = creature.mode
+	var named: Array = []
+	for mode in [LOCUST.Mode.PATROL, LOCUST.Mode.CHASE, LOCUST.Mode.SEARCH, LOCUST.Mode.ALERT, LOCUST.Mode.WARDROBE, LOCUST.Mode.EXECUTE]:
+		creature.mode = mode
+		var word := String(creature.debug_state().get("modo", ""))
+		named.append(word if view.report().contains("\n  %s, gracia" % word) else "?")
+	creature.mode = kept_mode
 	check("El panel nombra cada modo de la criatura por el suyo", named == ["patrulla", "persigue", "busca", "alerta", "armario", "ejecuta"], str(named))
 	var file := FileAccess.open("res://evidence/observer_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))

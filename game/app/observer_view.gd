@@ -3,7 +3,11 @@ extends Node3D
 ## doing written down the side of the screen, and marks drawn over the world
 ## (observer_gizmos.gd). It is the game itself with `--observer`, so the hotel,
 ## the creature and the replication are the real ones; what is missing is a
-## body. Two uses:
+## body. The creature is asked only its contract (game/enemies/creature.gd):
+## its part of the panel (debug_lines), what the log watches and the dump
+## keeps of it (debug_state) and its marks (draw_gizmos). Its reading by ear
+## (V) is The Locust's (echo_view.gd), for a creature whose hunter reads the
+## floor so (can(&"echo")). Two uses:
 ##
 ## - Watching a match from outside: it connects like a guest and takes no seat
 ##   (net_session.join_observer), so a hunter, three survivors and somebody
@@ -31,6 +35,8 @@ extends Node3D
 ##   F5           guarda lo que se ve en user://observer_<hora>.json
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const GIZMOS := preload("res://game/app/observer_gizmos.gd")
+## The reading by ear of a creature whose hunter reads so (can(&"echo")):
+## The Locust's.
 const ECHO := preload("res://game/enemies/locust/echo_view.gd")
 
 ## What the creature's own view asks of whoever drives it (echo_view.setup):
@@ -178,8 +184,11 @@ func alone() -> bool:
 ## The creature, while it is in the floor. One going with its floor (R, the
 ## end of a match) is still there out of the tree until the frame ends, and
 ## asking it where it stood then only raised errors.
-func live_locust():
-	return level.locust if is_instance_valid(level.locust) and level.locust.is_inside_tree() else null
+func live_creature():
+	return level.creature if is_instance_valid(level.creature) and level.creature.is_inside_tree() else null
+
+## The same under its old name.
+func live_locust(): return live_creature()
 
 ## Another floor to look at, the view left as it is (arrived()).
 func rebuild(seed_value: int) -> void:
@@ -266,7 +275,7 @@ func watchable() -> Array:
 	for seat in level.match_net.bodies:
 		if is_instance_valid(level.match_net.bodies[seat]): bodies.append(level.match_net.bodies[seat])
 	if is_instance_valid(level.player) and level.player.visible: bodies.append(level.player)
-	if live_locust() != null: bodies.append(live_locust())
+	if live_creature() != null: bodies.append(live_creature())
 	return bodies
 
 func follow_next() -> void:
@@ -280,13 +289,13 @@ func follow_next() -> void:
 ## whoever drives the creature; here nobody does, so it is given the same three
 ## things a driver gives it (Ears) and this camera to draw into.
 func toggle_echo() -> void:
-	if live_locust() == null:
+	if live_creature() == null or not live_creature().can(&"echo"):
 		note("no hay criatura que oír")
 		return
 	echoing = not echoing
 	if echoing and echo == null:
 		ears = Ears.new()
-		ears.creature = level.locust
+		ears.creature = level.creature
 		ears.level = level
 		ears.camera = camera
 		add_child(ears)
@@ -296,7 +305,7 @@ func toggle_echo() -> void:
 	if echo == null: return
 	if echoing:
 		# From its own head: the reading is drawn round where it is standing.
-		following = level.locust
+		following = level.creature
 		map_view = false
 		echo.enable()
 	else: echo.disable()
@@ -441,8 +450,8 @@ func _process(delta: float) -> void:
 	if not level.manifest.is_empty() and not is_same(level.manifest, floor_seen) and level.session.state != level.session.State.LOADING and is_instance_valid(level.hotel) and not level.hotel.building: arrived()
 	# The reading is clicked by whoever drives the creature; watching, nobody
 	# does, so it is clicked here (echo_view.advance).
-	var creature = live_locust()
-	if echoing and echo != null and creature != null: echo.advance(delta, creature.mode == creature.Mode.CHASE)
+	var creature = live_creature()
+	if echoing and echo != null and creature != null: echo.advance(delta, creature.activity() == &"chase")
 	fly(delta)
 	# Whatever took the view off the plan (M, TAB, V), what the plan changed
 	# goes with it: TAB used to follow a body with the plan's flat camera.
@@ -459,7 +468,7 @@ func _process(delta: float) -> void:
 func fly(delta: float) -> void:
 	# Its reading is drawn from its head: to see what it hears, you stand where
 	# it stands and look where it looks, which is what the hunter does.
-	var creature = live_locust()
+	var creature = live_creature()
 	if echoing and creature != null:
 		planta = FLOOR.planta_of(creature.global_position.y)
 		global_position = creature.global_position + Ears.EYE
@@ -499,9 +508,9 @@ func watch_changes() -> void:
 		"ejecución": int(level.execution.get("seat", -1)) if not level.execution.is_empty() else -1,
 		"saliendo": level.lifts.leaving >= 0.0,
 	}
-	var creature = live_locust()
+	var creature = live_creature()
 	if creature != null:
-		now["criatura"] = "%s en ala %d" % [modo(creature.mode), wing_of(creature.global_position)]
+		now["criatura"] = "%s en ala %d" % [String(creature.debug_state().get("modo", "")), wing_of(creature.global_position)]
 		now["mando"] = String(creature.control)
 	for seat in session.participants: now["vida %d" % int(seat)] = ["explorando", "en refugio", "muerto"][int(session.participants[seat])]
 	for index in level.hotel.lifts.size(): now["coche %d" % index] = level.lifts.lift_gone(index)
@@ -547,7 +556,7 @@ func report() -> String:
 		var mind := ""
 		if is_instance_valid(body):
 			spot = "ala %d, %0.0f, %0.0f" % [wing_of(body.global_position), body.global_position.x, body.global_position.z]
-			if live_locust() != null: spot += ", a %0.0f m" % body.global_position.distance_to(live_locust().global_position)
+			if live_creature() != null: spot += ", a %0.0f m" % body.global_position.distance_to(live_creature().global_position)
 			if body.get("hidden"): spot += ", escondido"
 		var minds: Dictionary = level.sanity.minds if level.sanity != null else {}
 		if minds.has(int(seat)): mind = ", cordura %0.0f" % float(minds[int(seat)].get("sanity", 100.0))
@@ -556,30 +565,9 @@ func report() -> String:
 		lines.append("  %d %s, %s, %s%s%s" % [int(seat), level.seat_name(int(seat)), life, spot, mind, riding])
 	if not anybody: lines.append("  ninguno, piso de prueba, solo la criatura")
 	lines.append("")
-	var creature = live_locust()
-	if creature != null:
-		lines.append("THE LOCUST (%s)" % creature.control)
-		# Its difficulty and the numbers it plays by (game/floors/difficulty.gd).
-		lines.append("  %s, vista %0.0f m, oído ×%0.2f, aviso %0.1f s, caza %0.1f m/s, sin ver %0.1f s, se rinde %0.0f–%0.0f s" % [level.DIFFICULTY.title(level.difficulty).to_upper(), creature.sight_range * creature.reach_scale, creature.hearing * creature.reach_scale, creature.alert_time, creature.chase_speed, creature.lose_after, creature.give_up, creature.give_up_hard])
-		lines.append("  %s, gracia %0.1f, velocidad %0.1f, detección %0.2f" % [modo(creature.mode), creature.grace, creature.speed, creature.detection])
-		lines.append("  ala %d, %0.0f, %0.0f, sin ver %0.1f s" % [wing_of(creature.global_position), creature.global_position.x, creature.global_position.z, creature.lost_time])
-		lines.append("  destino a %0.1f m, camino %d puntos, repath %0.2f, %d puertas en la ruta" % [creature.global_position.distance_to(creature.destination), creature.path.size(), creature.repath, creature.crossings.size()])
-		# Its protocol for getting unstuck (hotel_locust.escalate): the step it
-		# is on and how many times each has been reached this floor.
-		var counts: Array = creature.stuck_counts
-		lines.append("  atascos, paso %d ahora, %d/%d/%d/%d/%d (pasos 1 a 5)" % [creature.stuck_level, counts[1], counts[2], counts[3], counts[4], counts[5]])
-		var nearest := -1
-		var gap := INF
-		for index in level.hotel.lifts.size():
-			var to_car: float = creature.global_position.distance_to(level.hotel.lifts[index])
-			if to_car < gap:
-				gap = to_car
-				nearest = index
-		if nearest >= 0: lines.append("  ascensor más cerca: %d a %0.1f m%s" % [nearest, gap, " (arriba)" if level.lifts.lift_gone(nearest) else ""])
-		lines.append("  el coche que le toca: %s" % ("ninguno, ya está en el ala en juego" if level.lifts.creature_car(session.stage) < 0 else str(level.lifts.creature_car(session.stage))))
-		if is_instance_valid(creature.focus): lines.append("  va a por %s" % creature.focus.name)
-		if creature.leaving: lines.append("  se va: dejó una zona sin encontrar nada")
-		if creature.mode == creature.Mode.SEARCH: lines.append("  busca, %d sitios por mirar, %0.1f s sin pistas" % [creature.search_plan.size(), creature.clue_idle])
+	var creature = live_creature()
+	# Its own part: what it is, what it plays by, what it is doing, where.
+	if creature != null: lines.append_array(creature.debug_lines())
 	lines.append("")
 	if is_instance_valid(level.director) and level.director.has_method("status_lines"):
 		lines.append_array(level.director.status_lines())
@@ -643,9 +631,8 @@ func snapshot() -> void:
 	for seat in level.session.participants:
 		var body: Node3D = level.match_net.body_of(int(seat)) if level.match_net.in_match() else level.player
 		if is_instance_valid(body): data.cuerpos[str(seat)] = {"vida": int(level.session.participants[seat]), "donde": [body.global_position.x, body.global_position.y, body.global_position.z], "ala": wing_of(body.global_position)}
-	var creature = live_locust()
-	if creature != null:
-		data["criatura"] = {"modo": modo(creature.mode), "mando": creature.control, "donde": [creature.global_position.x, creature.global_position.y, creature.global_position.z], "ala": wing_of(creature.global_position), "destino": [creature.destination.x, creature.destination.z], "camino": creature.path.size(), "atascos": creature.stuck_counts, "paso": creature.stuck_level}
+	var creature = live_creature()
+	if creature != null: data["criatura"] = creature.debug_state()
 	data["ascensores"] = {}
 	for index in level.hotel.lifts.size(): data.ascensores[str(index)] = {"arriba": level.lifts.lift_gone(index), "llave": level.hotel.gates[index].locked if level.hotel.gates.size() > index else null}
 	var path := "user://observer_%d.json" % int(Time.get_unix_time_from_system())
@@ -662,8 +649,3 @@ func wing_of(point: Vector3) -> int:
 
 func estado(state: int) -> String:
 	return ["menú", "cargando", "jugando", "en pausa", "cambio de sector", "ganado", "perdido", "escena"][clampi(state, 0, 7)]
-
-## In the order of hotel_locust.Mode. It was once in another, and the panel
-## said "busca" of a creature running somebody down.
-func modo(mode: int) -> String:
-	return ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta", "acecha"][clampi(mode, 0, 9)]

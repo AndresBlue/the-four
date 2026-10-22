@@ -9,7 +9,6 @@ extends RefCounted
 ##    walked much longer than the one there was.
 ## Every finding goes to the match (bot_match.report) with where and when.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 ## Shut in: within SHUT_RADIUS for SHUT_TIME while it means to go somewhere;
 ## or through no more than SHUT_ROOMS rooms in SHUT_SPAN with bots about.
 const SHUT_RADIUS := 5.0
@@ -57,17 +56,19 @@ func tick(delta: float) -> void:
 
 ## The creature of this floor, connected once it exists.
 func watch_creature() -> void:
-	if not is_instance_valid(level.locust): return
-	if creature != level.locust:
-		creature = level.locust
-		creature.stuck_escalated.connect(on_escalated)
-		creature.route_abandoned.connect(on_abandoned)
+	if not is_instance_valid(level.creature): return
+	if creature != level.creature:
+		creature = level.creature
+		# Its own protocol for getting unstuck is its model's to know.
+		owner_match.threat.on_stuck(creature, on_escalated, on_abandoned)
 		anchor = Vector3.INF
 		room_log.clear()
 		rooms_from = clock
 	if not creature.is_physics_processing() or creature.control != "ai" or creature.grace > 0.0: return
 	var at: Vector3 = creature.global_position
-	var moving: bool = int(creature.mode) in [LOCUST.Mode.PATROL, LOCUST.Mode.INVESTIGATE, LOCUST.Mode.CHASE]
+	# On its rounds, going to look at something or after somebody: meaning to
+	# get somewhere.
+	var moving: bool = creature.activity() in [&"roam", &"investigate", &"chase"]
 	if not is_finite(anchor.x) or at.distance_to(anchor) > SHUT_RADIUS or not moving:
 		anchor = at
 		anchor_since = clock
@@ -118,7 +119,7 @@ func on_abandoned(where: Vector3) -> void:
 		owner_match.report("criatura_sin_ruta", "media", null, "la criatura abandona %d rutas en un minuto" % abandons.size(), {"where": where, "creature": true})
 
 func mode_name() -> String:
-	return String(LOCUST.Mode.keys()[int(creature.mode)]).to_lower()
+	return creature.mode_name().to_lower()
 
 ## A bot on the same errand for a minute that walked a lot and got nowhere.
 func watch_sway(brain, delta: float) -> void:

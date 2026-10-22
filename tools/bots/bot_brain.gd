@@ -9,7 +9,6 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const NAV := preload("res://tools/bots/bot_nav.gd")
 const BODY := preload("res://tools/bots/bot_body.gd")
 const CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
-const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 enum State { IDLE, MOVE, DOOR, ACT, WAIT, UNSTICK, OUT, HIDDEN, SWEEP }
 const STATE_NAMES := ["quieto", "va", "puerta", "usa", "espera", "desatasca", "fuera", "escondido", "mira"]
 ## Looking round a room from where it stands: to one side, the other, and
@@ -740,7 +739,7 @@ func mind_creature(delta: float) -> bool:
 	# The chase goes on until it has lost them: hunting still, or searching
 	# near.
 	if chased:
-		if threat.hostile or (threat.mode == LOCUST.Mode.SEARCH and threat.route_to(me) < 25.0):
+		if threat.hostile or (threat.activity == &"search" and threat.route_to(me) < 25.0):
 			run_away(delta)
 			return true
 		chased = false
@@ -858,7 +857,7 @@ func run_away(delta: float) -> void:
 	# open (past its earshot in a chase, or out of hearing otherwise).
 	if not seen:
 		# A novice thinks of a wardrobe late: only one right beside it.
-		if hide_target == null or not is_instance_valid(hide_target): hide_target = near_hide(5.0 if threat.novice else 10.0, threat.mode == LOCUST.Mode.CHASE)
+		if hide_target == null or not is_instance_valid(hide_target): hide_target = near_hide(5.0 if threat.novice else 10.0, threat.activity == &"chase")
 		if hide_target != null and try_hide(): return
 	# Running is heard, and in a chase every step near where it last knew
 	# them is where it goes next: a trail it follows to the end. Running only
@@ -1050,8 +1049,8 @@ func way_unseen(way: PackedVector3Array) -> bool:
 ## A wardrobe within `reach` (walking) it can get into before the creature
 ## gets near, unseen, unheard, and not where its search will look. In a chase
 ## (`chase`) it hears nothing away from where it last knew them
-## (CHASE_EARSHOT) and opens only a wardrobe right there: one past that, got
-## into out of its sight, is not found.
+## (threat.chase_earshot) and opens only a wardrobe right there: one past
+## that, got into out of its sight, is not found.
 func near_hide(reach: float, chase := false):
 	var threat = owner_match.threat
 	var me: Vector3 = body.global_position
@@ -1062,7 +1061,7 @@ func near_hide(reach: float, chase := false):
 		var front: Vector3 = hide.to_global(hide.exit_offset)
 		if FLOOR.planta_of(front.y) != planta() or flat_gap(front, me) > reach: continue
 		if threat.searched_near(front, HIDE_CLEAR) or front.distance_to(threat.destination) < HIDE_CLEAR: continue
-		if front.distance_to(threat.last_known) < (LOCUST.CHASE_EARSHOT + 2.0 if chase else HIDE_CLEAR): continue
+		if front.distance_to(threat.last_known) < (threat.chase_earshot() + 2.0 if chase else HIDE_CLEAR): continue
 		if owner_match.bodies.any(func(other): return other != body and not other.dead and flat_gap(other.global_position, front) < 2.5): continue
 		if threat.time_to_sight(front) < (2.5 if chase else 6.0) or threat.visible(front): continue
 		if not (chase and threat.deaf_to(front)) and threat.audible(front, "wardrobe"): continue
@@ -1162,7 +1161,7 @@ func leave_hide_now() -> bool:
 	if not threat.near_planta(point): return stayed > 2.0
 	if threat.audible(point, "wardrobe") or threat.hostile or threat.busy: return false
 	var away: float = threat.route_to(point)
-	if bool(threat.creature.leaving) and away > 20.0: return true
+	if threat.leaving() and away > 20.0: return true
 	if away > 25.0 and threat.arrival(point, 10.0) == INF and threat.time_to_sight(point) > 8.0: return true
 	if body.mind() < 20.0 and away > 20.0: return true
 	return stayed > 150.0

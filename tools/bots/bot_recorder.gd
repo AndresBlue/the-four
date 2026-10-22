@@ -25,8 +25,9 @@ const SEGMENT := 60.0
 const KEYFRAME := 30.0
 const HEARTBEAT := 10.0
 ## Per bot in a frame: x, y, z, yaw, pitch, flags, hide, intent, sanity,
-## speed, stamina, life. The creature: x, y, z, yaw, mode, focus seat,
-## detection, stuck step, destination x, z, last known x, z.
+## speed, stamina, life. The creature: what its threat model says
+## (bot_threat.recorded_row: for The Locust x, y, z, yaw, mode, focus seat,
+## detection, stuck step, destination x, z, last known x, z).
 const BOT_FIELDS := 12
 const CREATURE_FIELDS := 12
 enum Flag { CROUCHED = 1, TORCH = 2, HIDDEN = 4, DEAD = 8, RUNNING = 16, HELD = 32, RIDING = 64, BURNT = 128 }
@@ -104,8 +105,7 @@ func start() -> void:
 			data["move"] = data.get("kind", "")
 			data.erase("kind")
 			event("director", data))
-	if is_instance_valid(level.locust) and level.locust.has_signal("area_abandoned"):
-		level.locust.area_abandoned.connect(func(origin, next): event("abandona", {"from": vec(origin), "to": vec(next)}))
+	owner_match.threat.on_gave_up(func(origin, next): event("abandona", {"from": vec(origin), "to": vec(next)}))
 	beat_msec = Time.get_ticks_msec()
 	keyframe()
 	frame()
@@ -169,14 +169,9 @@ func frame() -> void:
 		for value in row:
 			values[at] = float(value)
 			at += 1
-	var creature = level.locust
-	if is_instance_valid(creature):
-		var c: Vector3 = creature.global_position
-		var focus: int = int(creature.focus.slot) if is_instance_valid(creature.focus) and "slot" in creature.focus else -1
-		var row := [c.x, c.y, c.z, creature.rotation.y, int(creature.mode), focus, float(creature.detection), int(creature.stuck_level), creature.destination.x, creature.destination.z, creature.last_known.x, creature.last_known.z]
-		for value in row:
-			values[at] = float(value)
-			at += 1
+	for value in owner_match.threat.recorded_row():
+		values[at] = float(value)
+		at += 1
 	stream().store_var(["f", snappedf(clock, 0.01), values])
 
 ## Where everybody meant to go: the rest of each bot's route and the
@@ -188,11 +183,8 @@ func routes() -> void:
 		if brain.nav.active():
 			for i in range(brain.nav.index, mini(brain.nav.path.size(), brain.nav.index + 12)): points.append(brain.nav.path[i])
 		out[brain.seat] = {"path": points, "task": String(brain.task.get("label", "")), "kind": String(brain.task.get("kind", ""))}
-	var creature = level.locust
-	if is_instance_valid(creature):
-		var points := PackedVector3Array()
-		for i in range(int(creature.path_index), mini(creature.path.size(), int(creature.path_index) + 16)): points.append(creature.path[i])
-		out[0] = {"path": points}
+	var ahead: Variant = owner_match.threat.recorded_route()
+	if ahead != null: out[0] = {"path": ahead}
 	stream().store_var(["r", snappedf(clock, 0.01), out])
 
 ## The whole floor as it stands: what a jump in time starts from.
@@ -212,17 +204,14 @@ func watch_changes() -> void:
 		"leaving": level.lifts.leaving >= 0.0,
 		"execution": int(level.execution.get("seat", -1)),
 	}
-	var creature = level.locust
-	if is_instance_valid(creature):
-		now["mode"] = int(creature.mode)
-		now["focus"] = int(creature.focus.slot) if is_instance_valid(creature.focus) and "slot" in creature.focus else -1
+	now.merge(owner_match.threat.recorded_watch())
 	for field in now:
 		if last.has(field) and last[field] == now[field]: continue
 		if last.has(field) or field in ["stage", "state"]:
 			var data := {"value": now[field]}
-			if field == "mode" and is_instance_valid(creature):
-				data["where"] = vec(creature.global_position)
-				data["detection"] = snappedf(float(creature.detection), 0.01)
+			var told: Dictionary = owner_match.threat.recorded_mode_change() if field == "mode" else {}
+			if not told.is_empty():
+				data.merge(told)
 				data["focus"] = now.get("focus", -1)
 			event(field, data)
 	last = now

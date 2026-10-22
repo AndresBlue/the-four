@@ -247,6 +247,9 @@ const TORCH_NOTICE_ANGLE := 32.0
 ## what a player who drives it still does (locust_player.strike, WINDUP_TIME).
 const ATTACK_RANGE := 2.4
 const STRIKE_REACH := 3.2
+## Angle either side of its facing within which a player's strike connects
+## (validate_strike).
+const STRIKE_ANGLE := 70.0
 const WINDUP_TIME := 0.3
 const RECOVER_TIME := 0.6
 ## Eye height of the creature for line-of-sight checks.
@@ -1273,9 +1276,11 @@ func follow_state(delta: float) -> void:
 	update_visual(delta)
 
 ## It saw somebody get into this wardrobe (or sees them in it): it knows.
-func saw_enter(hide: Node3D) -> void:
+## Not `sure`, it only has the wardrobe to search, and is no surer of it than
+## it was.
+func saw_enter(hide: Node3D, sure := true) -> void:
 	observed_hide = hide
-	certain = true
+	if sure: certain = true
 
 # --- The feint (docs/EXECUTION.md, 13.3) -------------------------------------------
 #
@@ -2162,9 +2167,10 @@ func watched(point: Vector3) -> bool:
 
 ## Its modes in the words every creature uses.
 const ACTIVITY := {Mode.PATROL: &"roam", Mode.INVESTIGATE: &"investigate", Mode.SEARCH: &"search", Mode.ALERT: &"alert", Mode.CHASE: &"chase", Mode.WINDUP: &"strike", Mode.RECOVER: &"recover", Mode.EXECUTE: &"capture", Mode.WARDROBE: &"open", Mode.LURK: &"wait"}
-## What it does: rides the lifts, steps out of the sets, opens wardrobes and
-## shrieks (its hunter's cry). It has no business in the ducts.
-const ABILITIES: Array[StringName] = [&"lifts", &"tv_travel", &"wardrobes", &"shriek"]
+## What it does: rides the lifts, steps out of the sets, opens wardrobes,
+## shrieks (its hunter's cry), and its hunter reads the floor by ear
+## (echo_view.gd). It has no business in the ducts.
+const ABILITIES: Array[StringName] = [&"lifts", &"tv_travel", &"wardrobes", &"shriek", &"echo"]
 
 func kind_id() -> StringName: return &"locust"
 
@@ -2192,6 +2198,8 @@ func in_transit() -> bool: return lift_bound
 func searched_lately(room_id: int) -> bool: return float(searched_until.get(room_id, -INF)) > clock
 
 func noticing() -> bool: return detection >= SUSPICION
+
+func quarry() -> Node3D: return focus
 
 ## The way it would walk to the listener, on this planta only, and the cues a
 ## few metres along it (dread_aura.route_to).
@@ -2227,6 +2235,116 @@ func end_capture() -> void:
 	if control != "puppet" and mode == Mode.EXECUTE: set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
 
 func capture_length() -> float: return EXECUTION_TIME
+
+# --- The net and its hunter -------------------------------------------------------
+
+## Its hunter back in a match: where the host's packed state (pack_state())
+## left it standing, facing that way, with the grace it had. A fresh
+## creature's fifteen seconds used to come back.
+func resume_state(data: Array) -> void:
+	global_position = data[0]
+	rotation.y = data[1]
+	if data.size() > 4: grace = float(data[4])
+
+## A strike its hunter claims, judged on the host with the host's own copy of
+## everyone: from where the host sees it (a claimed spot more than three
+## metres off is not taken), within STRIKE_REACH, in front of it (close up,
+## any way it faces), not shut in a wardrobe unless its doors are open, and in
+## clear sight of the eyes.
+func validate_strike(origin: Vector3, facing: Vector3, body: Node3D) -> float:
+	if origin.distance_to(global_position) > 3.0: origin = global_position
+	facing.y = 0.0
+	var offset: Vector3 = body.global_position - origin
+	offset.y = 0.0
+	var distance := offset.length()
+	if distance >= STRIKE_REACH: return INF
+	if distance > 0.8 and facing.length() > 0.1 and rad_to_deg(facing.angle_to(offset)) > STRIKE_ANGLE: return INF
+	if body.hidden and not (is_instance_valid(body.hiding_place) and body.hiding_place.ajar()): return INF
+	var ray := PhysicsRayQueryParameters3D.create(origin + Vector3(0, EYE_HEIGHT, 0), body.camera.global_position, 1 | 8 | 64)
+	ray.exclude = [get_rid()]
+	if not get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): return INF
+	return distance
+
+## The room's onslaught (hotel_main.arm_creature).
+func sense_scale() -> float: return reach_scale
+
+func hunter_reveal(points: PackedVector3Array) -> void:
+	if is_instance_valid(driver): driver.reveal(points)
+
+func hunter_contact(point: Vector3, apparent: Vector3, distance: float, strength: float, kind: int, muffle: float) -> void:
+	if is_instance_valid(driver): driver.hear_contact(point, apparent, distance, strength, kind, muffle)
+
+## Left to the machine: its rounds from the room it stands in, and a look
+## round, unless it is holding somebody or opening a wardrobe.
+func hunter_gone() -> void:
+	patrol_room = nearest_room()
+	if mode not in [Mode.EXECUTE, Mode.WARDROBE]: set_mode(Mode.SEARCH)
+
+## Its hunter's reading (locust_player's echo_view).
+func apply_quality() -> void:
+	if driver != null and is_instance_valid(driver.echo): driver.echo.apply_quality()
+
+# --- The observer ---------------------------------------------------------------
+
+## Its modes in the observer's words, in the order of Mode. It was once in
+## another, and the panel said "busca" of a creature running somebody down.
+const MODE_WORDS: Array[String] = ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta", "acecha"]
+
+func wing_of(point: Vector3) -> int:
+	return int(FLOOR.room_at(level.manifest.rooms, point).get("wing", -1))
+
+## The numbers it plays by, what it is doing, where it is going, its protocol
+## for getting unstuck (escalate: the step it is on and how many times each has
+## been reached this floor), the lifts it has to do with, and whom it is after.
+func debug_lines() -> Array[String]:
+	var lines: Array[String] = []
+	var session = level.session
+	lines.append("THE LOCUST (%s)" % control)
+	# Its difficulty and the numbers it plays by (game/floors/difficulty.gd).
+	lines.append("  %s, vista %0.0f m, oído ×%0.2f, aviso %0.1f s, caza %0.1f m/s, sin ver %0.1f s, se rinde %0.0f–%0.0f s" % [level.DIFFICULTY.title(level.difficulty).to_upper(), sight_range * reach_scale, hearing * reach_scale, alert_time, chase_speed, lose_after, give_up, give_up_hard])
+	lines.append("  %s, gracia %0.1f, velocidad %0.1f, detección %0.2f" % [MODE_WORDS[mode], grace, speed, detection])
+	lines.append("  ala %d, %0.0f, %0.0f, sin ver %0.1f s" % [wing_of(global_position), global_position.x, global_position.z, lost_time])
+	lines.append("  destino a %0.1f m, camino %d puntos, repath %0.2f, %d puertas en la ruta" % [global_position.distance_to(destination), path.size(), repath, crossings.size()])
+	var counts: Array = stuck_counts
+	lines.append("  atascos, paso %d ahora, %d/%d/%d/%d/%d (pasos 1 a 5)" % [stuck_level, counts[1], counts[2], counts[3], counts[4], counts[5]])
+	var nearest := -1
+	var gap := INF
+	for index in level.hotel.lifts.size():
+		var to_car: float = global_position.distance_to(level.hotel.lifts[index])
+		if to_car < gap:
+			gap = to_car
+			nearest = index
+	if nearest >= 0: lines.append("  ascensor más cerca: %d a %0.1f m%s" % [nearest, gap, " (arriba)" if level.lifts.lift_gone(nearest) else ""])
+	lines.append("  el coche que le toca: %s" % ("ninguno, ya está en el ala en juego" if level.lifts.creature_car(session.stage) < 0 else str(level.lifts.creature_car(session.stage))))
+	if is_instance_valid(focus): lines.append("  va a por %s" % focus.name)
+	if leaving: lines.append("  se va: dejó una zona sin encontrar nada")
+	if mode == Mode.SEARCH: lines.append("  busca, %d sitios por mirar, %0.1f s sin pistas" % [search_plan.size(), clue_idle])
+	return lines
+
+func debug_state() -> Dictionary:
+	return {"modo": MODE_WORDS[mode], "mando": control, "donde": [global_position.x, global_position.y, global_position.z], "ala": wing_of(global_position), "destino": [destination.x, destination.z], "camino": path.size(), "atascos": stuck_counts, "paso": stuck_level}
+
+## Its route, where it is going and what it last knew, the director's lead
+## and the place it is searching; and the edges of its cone, with a line to
+## whoever it can see.
+func draw_gizmos(g) -> void:
+	if g.layer == &"path":
+		var before: Vector3 = global_position + Vector3(0, 0.1, 0)
+		for point in path:
+			g.line(before, point + Vector3(0, 0.1, 0), g.COLOURS.path)
+			before = point + Vector3(0, 0.1, 0)
+		g.mark(destination, g.COLOURS.path, 0.7)
+		g.mark(last_known, g.COLOURS.aim, 0.4)
+		if lead_active() and g.here(lead.point): g.ring(lead.point, float(lead.radius), g.COLOURS.lead, 32)
+		if search_origin != Vector3.INF and g.here(search_origin): g.ring(search_origin, AREA_SAME, g.COLOURS.search, 28)
+	elif g.layer == &"sight":
+		var eye: Vector3 = global_position + Vector3(0, EYE_HEIGHT, 0)
+		var half := deg_to_rad(sight_half_angle)
+		var reach: float = minf(SIGHT_RANGE, 22.0)
+		for side in [-half, half]:
+			g.line(eye, eye + (-global_basis.z).rotated(Vector3.UP, side) * reach, Color(g.COLOURS.sight, 0.5))
+		var seen = seen_survivor()
+		if is_instance_valid(seen): g.line(eye, seen.global_position + Vector3(0, 1.5, 0), g.COLOURS.aim)
 
 ## What each way of moving it drops (teleport()'s reason), beyond its place,
 ## its momentum and the states still on their way from where it was, which

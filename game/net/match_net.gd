@@ -9,6 +9,12 @@ extends Node
 ## the shared world (a door, a wardrobe) are asked of the host, which applies
 ## them and tells everyone. Noises are sent to the host, which is where the
 ## creature listens.
+##
+## The creature (level.creature) is asked only what its contract says
+## (game/enemies/creature.gd): what it packs and pushes, its calls, whether
+## it is engaged, how it judges a strike, what its hunter is shown. The RPCs
+## keep the names and the payloads they had when it could only be The Locust
+## (locust_state, locust_call, locust_rode...): the wire is the same.
 const REMOTE := preload("res://game/net/remote_player.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SEND_RATE := 20.0
@@ -233,7 +239,7 @@ func _process(delta: float) -> void:
 	# search went on counting and resumed half done.
 	if is_instance_valid(level) and is_instance_valid(level.hotel) and in_charge() and not get_tree().paused:
 		update_wardrobe_jobs(delta)
-		if is_instance_valid(level.locust): update_shriek(delta)
+		if is_instance_valid(level.creature): update_shriek(delta)
 	if not in_match() or not net.active(): return
 	# Dead teammates leave no body in the way.
 	for seat in bodies:
@@ -267,7 +273,7 @@ func _physics_process(delta: float) -> void:
 	send_clock = 1.0 / SEND_RATE
 	if is_survivor(net.local_seat) and level.session.participants.get(net.local_seat, 2) != level.session.Life.DEAD:
 		to_everyone(&"player_state", [net.local_seat, pack_local()])
-	var creature = level.locust
+	var creature = level.creature
 	if is_instance_valid(creature) and creature.control != "puppet":
 		to_everyone(&"locust_state", [creature.pack_state()])
 
@@ -330,7 +336,7 @@ func player_state(seat: int, data: Array) -> void:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func locust_state(data: Array) -> void:
-	var creature = level.locust
+	var creature = level.creature
 	if not is_instance_valid(creature): return
 	var author := 1 if not versus() else int(net.players.get(locust_seat(), {}).get("peer", -1))
 	if not from_host(): return
@@ -404,8 +410,8 @@ func near_sender(point: Vector3) -> bool:
 	return body != null and body.global_position.distance_to(point) < REACH
 
 func body_of(seat: int) -> Node3D:
-	if seat == net.local_seat: return level.locust if local_is_locust() else level.player
-	if seat == locust_seat() and versus(): return level.locust
+	if seat == net.local_seat: return level.creature if local_is_locust() else level.player
+	if seat == locust_seat() and versus(): return level.creature
 	return bodies.get(seat)
 
 # --- Televisions -----------------------------------------------------------------
@@ -460,7 +466,7 @@ func request_warp(index: int) -> void:
 const WARP_SLACK := 1.5
 ## Mid-strike, holding somebody or opening a wardrobe: no stepping through a set.
 func warp_busy() -> bool:
-	return level.locust.mode in [level.locust.Mode.WINDUP, level.locust.Mode.RECOVER, level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.LURK]
+	return level.creature.is_engaged()
 
 @rpc("authority", "call_remote", "reliable")
 func warp_state(index: int) -> void:
@@ -629,7 +635,7 @@ func request_hide(index: int, entering: bool, quiet: bool) -> void:
 	if entering:
 		if not hide.has_room() or not near_sender(hide.global_position): return
 		# Seen climbing in, the creature knows where they are.
-		var creature = level.locust
+		var creature = level.creature
 		if is_instance_valid(creature) and creature.control == "ai" and creature.sees(body, true): creature.saw_enter(hide)
 		remote_enters(hide, body)
 		hide_state.rpc(index, seat, false)
@@ -696,13 +702,11 @@ func locust_call(kind: String, segment: int, pitch: float) -> void:
 	# Only whoever drives it calls out: the host itself, or the hunter.
 	if net.is_host and (not versus() or multiplayer.get_remote_sender_id() != locust_peer()): return
 	relay(&"locust_call", [kind, segment, pitch], multiplayer.get_remote_sender_id())
-	var creature = level.locust
+	var creature = level.creature
 	if is_instance_valid(creature) and creature.control == "puppet": creature.play_call(kind, segment, pitch)
 
 # --- Versus: a player is The Locust --------------------------------------------------
 
-## Angle either side of its facing within which a strike connects.
-const STRIKE_ANGLE := 70.0
 ## The shriek: how far it listens, how long it keeps listening and how often
 ## it sends what it found.
 const SHRIEK_RANGE := 26.0
@@ -724,31 +728,27 @@ func strike(origin: Vector3, facing: Vector3) -> void:
 	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
 	resolve_strike(origin, facing)
 
-## The host judges a strike with its own copy of everyone's positions: the
-## nearest living survivor in reach, in front and in clear sight (a hidden one
-## only through open wardrobe doors) is struck down.
+## The host judges a strike with its own copy of everyone's positions: of the
+## living survivors the creature says the strike reaches
+## (creature.validate_strike), the nearest is struck down.
 func resolve_strike(origin: Vector3, facing: Vector3) -> void:
-	var creature = level.locust
+	var creature = level.creature
 	if not is_instance_valid(creature) or creature.grace > 0.0: return
-	# The claimed spot must match where the host sees the creature.
-	if origin.distance_to(creature.global_position) > 3.0: origin = creature.global_position
-	facing.y = 0.0
+	level.capture_survivor(strike_victim(origin, facing))
+
+## Whom a strike from `origin` facing `facing` takes: the nearest living
+## survivor it reaches (the first, of two as near), or nobody.
+func strike_victim(origin: Vector3, facing: Vector3) -> Node3D:
+	var creature = level.creature
 	var best: Node3D = null
-	var best_distance: float = creature.STRIKE_REACH
+	var best_distance := INF
 	for body in level.survivors():
 		if not level.survivor_active(body): continue
-		var offset: Vector3 = body.global_position - origin
-		offset.y = 0.0
-		var distance := offset.length()
-		if distance >= best_distance: continue
-		if distance > 0.8 and facing.length() > 0.1 and rad_to_deg(facing.angle_to(offset)) > STRIKE_ANGLE: continue
-		if body.hidden and not (is_instance_valid(body.hiding_place) and body.hiding_place.ajar()): continue
-		var ray := PhysicsRayQueryParameters3D.create(origin + Vector3(0, creature.EYE_HEIGHT, 0), body.camera.global_position, 1 | 8 | 64)
-		ray.exclude = [creature.get_rid()]
-		if not creature.get_world_3d().direct_space_state.intersect_ray(ray).is_empty(): continue
-		best = body
-		best_distance = distance
-	level.capture_survivor(best)
+		var distance: float = creature.validate_strike(origin, facing, body)
+		if distance < best_distance:
+			best = body
+			best_distance = distance
+	return best
 
 ## The Locust player searches a wardrobe: the host runs it (the doors thrown
 ## open, then a look inside).
@@ -762,7 +762,7 @@ func request_force(index: int) -> void:
 	if not net.is_host or not versus() or multiplayer.get_remote_sender_id() != locust_peer(): return
 	if index < 0 or index >= level.hotel.hides.size(): return
 	var hide = level.hotel.hides[index]
-	if hide.global_position.distance_to(level.locust.global_position) < REACH: level.open_wardrobe(hide)
+	if hide.global_position.distance_to(level.creature.global_position) < REACH: level.open_wardrobe(hide)
 
 ## The Locust player shrieked: the host listens for it for a few seconds.
 func locust_shriek() -> void:
@@ -795,7 +795,7 @@ func update_shriek(delta: float) -> void:
 	shriek_clock -= delta
 	if shriek_clock > 0.0: return
 	shriek_clock = 1.0 / SHRIEK_RATE
-	var creature = level.locust
+	var creature = level.creature
 	if not is_instance_valid(creature): return
 	var points := PackedVector3Array()
 	for body in level.survivors():
@@ -808,15 +808,14 @@ func update_shriek(delta: float) -> void:
 		# fifth of a second to tell anyone apart from the furniture.
 		if before == null: continue
 		if (here - before).length() * SHRIEK_RATE < SHRIEK_STIR: continue
-		if here.distance_to(creature.global_position) > SHRIEK_RANGE * float(creature.reach_scale): continue
+		if here.distance_to(creature.global_position) > SHRIEK_RANGE * float(creature.sense_scale()): continue
 		points.append(here + Vector3(0, 1.2, 0))
-	if locust_seat() == net.local_seat or not net.active():
-		if is_instance_valid(creature.driver): creature.driver.reveal(points)
+	if locust_seat() == net.local_seat or not net.active(): creature.hunter_reveal(points)
 	elif locust_peer() > 0: shriek_reveal.rpc_id(locust_peer(), points)
 
 @rpc("authority", "call_remote", "unreliable")
 func shriek_reveal(points: PackedVector3Array) -> void:
-	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.reveal(points)
+	if local_is_locust() and is_instance_valid(level.creature): level.creature.hunter_reveal(points)
 
 ## A noise the creature would hear: shown to the player who is The Locust.
 ## A noise the creature hears, as it hears it. `point` is where it happened and
@@ -825,13 +824,13 @@ func shriek_reveal(points: PackedVector3Array) -> void:
 func tell_hunter(point: Vector3, route: Dictionary, radius: float, kind: int) -> void:
 	var strength := clampf(radius / 16.0, 0.25, 1.0)
 	if locust_seat() == net.local_seat or not net.active():
-		if is_instance_valid(level.locust.driver): level.locust.driver.hear_contact(point, route.apparent, route.distance, strength, kind, route.muffle)
+		level.creature.hunter_contact(point, route.apparent, route.distance, strength, kind, route.muffle)
 	elif locust_peer() > 0:
 		heard_contact.rpc_id(locust_peer(), point, route.apparent, route.distance, strength, kind, route.muffle)
 
 @rpc("authority", "call_remote", "unreliable")
 func heard_contact(point: Vector3, apparent: Vector3, distance: float, strength: float, kind: int, muffle: float) -> void:
-	if local_is_locust() and is_instance_valid(level.locust) and is_instance_valid(level.locust.driver): level.locust.driver.hear_contact(point, apparent, distance, strength, kind, muffle)
+	if local_is_locust() and is_instance_valid(level.creature): level.creature.hunter_contact(point, apparent, distance, strength, kind, muffle)
 
 # --- Wardrobes searched by the creature, and executions -------------------------------
 
@@ -852,7 +851,7 @@ func update_wardrobe_jobs(delta: float) -> void:
 			wardrobe_jobs.erase(job)
 			continue
 		job.time += delta
-		var steps: Dictionary = level.locust.wardrobe_steps() if is_instance_valid(level.locust) else {"burst": 0.55, "reach": 0.7, "done": 1.7}
+		var steps: Dictionary = level.creature.wardrobe_steps() if is_instance_valid(level.creature) else {"burst": 0.55, "reach": 0.7, "done": 1.7}
 		if job.step < 2 and job.time >= steps.burst:
 			job.step = 2
 			level.burst_wardrobe(job.hide)
@@ -865,7 +864,7 @@ func update_wardrobe_jobs(delta: float) -> void:
 				if is_instance_valid(inside) and level.survivor_active(inside):
 					occupant = inside
 					break
-			var creature = level.locust
+			var creature = level.creature
 			if occupant != null and is_instance_valid(creature) and creature.global_position.distance_to(job.hide.global_position) < 3.4:
 				level.capture_survivor(occupant)
 		elif job.step == 3 and job.time >= steps.done + 0.4:
@@ -1020,11 +1019,10 @@ func seat_dropped(seat: int) -> void:
 		# floor. It gets the same grace as anybody, and meanwhile the host's
 		# machine hunts in its place; it hands the creature back on return.
 		away[seat] = 0.0
-		var creature = level.locust
+		var creature = level.creature
 		if net.is_host and is_instance_valid(creature) and creature.control == "puppet":
 			creature.set_control("ai")
-			creature.patrol_room = creature.nearest_room()
-			if creature.mode not in [creature.Mode.EXECUTE, creature.Mode.WARDROBE]: creature.set_mode(creature.Mode.SEARCH)
+			creature.hunter_gone()
 		return
 	if level.session.participants.get(seat, 2) == level.session.Life.DEAD: return
 	away[seat] = 0.0
@@ -1058,7 +1056,7 @@ func catch_up(seat: int, id: int) -> void:
 	# The one coming back gets a second look: where it was may be a wing the
 	# floor has already left.
 	if places.has(seat): places[seat][0] = level.return_place(places[seat][0])
-	var creature = level.locust
+	var creature = level.creature
 	var sets: Array = []
 	for set in level.televisions: sets.append(is_instance_valid(set) and set.on)
 	# And what the floor has been through that a rebuilt floor does not know:
@@ -1076,7 +1074,7 @@ func catch_up(seat: int, id: int) -> void:
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 
 @rpc("authority", "call_remote", "reliable")
-func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sheet: Array, sets: Array, progress: Dictionary = {}) -> void:
+func restore(doors: Array, hides: Array, places: Dictionary, creature_state: Array, sheet: Array, sets: Array, progress: Dictionary = {}) -> void:
 	# The start everybody gets may have come first (go): then there is only
 	# the state to bring in.
 	if not floor_live: level.begin_online_play(config)
@@ -1097,14 +1095,12 @@ func restore(doors: Array, hides: Array, places: Dictionary, creature: Array, sh
 	level.world_audio.hush = true
 	for index in mini(hides.size(), level.hotel.hides.size()):
 		for inside in hides[index]: hide_state(index, int(inside), false)
-	if not creature.is_empty() and is_instance_valid(level.locust):
-		if local_is_locust():
-			# Back in control where the creature was left standing, and with
-			# the grace it had: a fresh creature's fifteen seconds came back.
-			level.locust.global_position = creature[0]
-			level.locust.rotation.y = creature[1]
-			if creature.size() > 4: level.locust.grace = float(creature[4])
-		else: level.locust.push_state(creature)
+	if not creature_state.is_empty() and is_instance_valid(level.creature):
+		# Its hunter is back in control where it was left standing, with the
+		# grace it had (a fresh creature's fifteen seconds came back); a copy
+		# is sent it like any state.
+		if local_is_locust(): level.creature.resume_state(creature_state)
+		else: level.creature.push_state(creature_state)
 	for index in mini(sets.size(), level.televisions.size()):
 		if bool(sets[index]): level.apply_television(index, true, true)
 	level.world_audio.hush = false

@@ -307,7 +307,8 @@ func drive_local(delta: float) -> void:
 		return
 	var hiding_target = aimed if aimed is HIDE else null
 	if Input.is_action_just_pressed("interact") and not level.player.hidden and is_instance_valid(hiding_target):
-		if is_instance_valid(level.locust) and level.locust.control == "ai" and level.locust.sees(level.player, true): level.locust.saw_enter(hiding_target)
+		var creature = level.creature
+		if is_instance_valid(creature) and creature.control == "ai" and creature.sees(level.player, true): creature.saw_enter(hiding_target)
 		level.match_net.use_hide(hiding_target, true)
 		hide_hold = 0.0
 		hide_armed = false

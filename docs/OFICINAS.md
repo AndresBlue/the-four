@@ -1,6 +1,6 @@
 # Piso 2: las oficinas secretas
 
-La hoja de dirección del segundo piso: cómo se juega, cómo asusta, cómo se ve y cómo suena, y cómo se construye. **La aprobó el autor el 22 de octubre de 2026**, con sus decisiones (sección 14). **Nada de esto está hecho todavía**, salvo la criatura que se ve ([LURKER.md](LURKER.md)); es el diseño que se sigue, y lo que no cuadre al jugarlo se cambia aquí.
+La hoja de dirección del segundo piso: cómo se juega, cómo asusta, cómo se ve y cómo suena, y cómo se construye. **La aprobó el autor el 22 de octubre de 2026**, con sus decisiones (sección 14). **Del piso en sí no hay nada hecho todavía**: ni oficinas, ni sistemas de planta, ni el cerebro de The Lurker, que existe solo como la criatura que se ve ([LURKER.md](LURKER.md)). **De la fase 0 está hecho el paso 0a**, el contrato de criatura (sección 11.1), con sus once migraciones: el director, el aura, el audio, la cordura y sus fantasmas, los ascensores, las teles, la reaparición, el piso guardado, la captura, la red, el observador y los bots ya solo le preguntan a la criatura por el contrato, salvo lo que [DEVELOPMENT.md](DEVELOPMENT.md) deja dicho que sigue siendo de The Locust; el hotel juega igual. Los pasos 0b a 0f están por hacer. Es el diseño que se sigue, y lo que no cuadre al jugarlo se cambia aquí.
 
 - **Lo confirmado de la historia** está en [LORE.md](LORE.md). Lo que aquí es lore (los cuatro documentos, quién escribió qué) va como propuesta, y solo entra en LORE.md lo que el autor confirma.
 - **Cuándo se hace cada fase**, en [PLAN.md](PLAN.md) (sección 5, `four-7ly.2`). El autor decide cuándo empezar según cómo vaya el desarrollo.
@@ -551,13 +551,14 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 
 | Grupo | Qué tiene |
 |---|---|
-| Identidad y control | `kind_id()`, `set_control()` y `control`, `grace`, `rng` (su azar), `tune()`, `can(&"lifts"/&"tv_travel"/&"ducts"/&"wardrobes")` |
-| Estado | `activity()` con nombres en vez de `Mode`, y en la base los predicados `is_hostile()`, `is_hunting()`, `is_engaged()`, `is_roaming()`, `is_wary()` y `alarm_level()` |
-| Sentidos | `eye_point()`, `face_point()`, `gaze()`, `sees()`, `hear()`, `hear_route()`, `watched()` |
+| Identidad y control | `kind_id()`, `set_control()` y `control`, `grace`, `rng` (su azar), `tune()`, `can(&"lifts"/&"tv_travel"/&"ducts"/&"wardrobes"/&"shriek"/&"echo")` |
+| Estado | `activity()` con nombres en vez de `Mode`, y en la base los predicados `is_hostile()`, `is_hunting()`, `is_chasing()`, `is_engaged()`, `is_roaming()`, `is_wary()` y `alarm_level()` |
+| Sentidos | `eye_point()`, `face_point()`, `gaze()`, `sees()`, `hear()`, `hear_route()`, `watched()`, `quarry()` (a quién tiene en mente), `saw_enter()` (vio a alguien meterse en un escondite) |
 | Director | `lead_to()`, `investigate()`, `dull`, `searched_lately()` (en The Locust, su `searched_until`), `noticing()`, `travel_metres()` (con ductos), `in_transit()` |
 | Movimiento | `teleport()` (único, y lo que suelta según el motivo), `relocate()` (olvidar a todos y esperar), `search_from()`, `follow_to_planta()`, `den_point()`, `save_state()`, `restore_state()` |
-| Red | `pack_state()`, `push_state()`, `play_call()`, `validate_strike()` (en el anfitrión) |
-| Captura | `capture_style()` (estrategia), `begin_capture()`, `end_capture()`, `capture_length()` |
+| Red | `pack_state()`, `push_state()`, `play_call()`, `resume_state()` (su cazador vuelve), `validate_strike()` (en el anfitrión) |
+| Su cazador (versus) | `sense_scale()` (lo que la embestida estira sus sentidos), `hunter_reveal()` y `hunter_contact()` (lo que se le enseña), `hunter_gone()` (la máquina la retoma), `apply_quality()` (su vista) |
+| Captura | `capture_style()` (estrategia), `begin_capture()`, `end_capture()`, `capture_length()`, `wardrobe_steps()` (los tiempos de abrir un escondite) |
 | Audio | `sound_route(listener)`, `presence_route(listener)`, `hushed()` |
 | Mente | `hallucinations()`: su juego de mentiras |
 | Observador | `debug_lines()`, `debug_state()`, `draw_gizmos()` |

@@ -12,12 +12,14 @@ extends CharacterBody3D
 ## from those words, the same for any creature: each predicate is one of those
 ## lists (tests/hotel/creature_contract_test.gd holds them to it). The
 ## director, the dread aura, the world's sound, the mind and its phantoms, the
-## lifts, the sets, coming back, the floor kept to be continued and the
-## capture (executions.gd, its tape and its blood, with the creature's own
-## part in its capture style) ask the creature only through this; the rest of
-## the game still reads The Locust until it moves over too. Everything else
-## here is a default for a creature that has nothing of the kind: one that
-## does overrides it.
+## lifts, the sets, coming back, the floor kept to be continued, the capture
+## (executions.gd, its tape and its blood, with the creature's own part in its
+## capture style), the net (match_net.gd, its RPCs as they were), the
+## observer, the floor's ledger and the bots (through the threat model of its
+## kind, tools/bots/bot_threats.gd) ask the creature only through this; what
+## still reads The Locust itself, and why, is in docs/DEVELOPMENT.md.
+## Everything else here is a default for a creature that has nothing of the
+## kind: one that does overrides it.
 
 ## Hostile: anybody near it has reason to be afraid (pacing_director.hostile).
 const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait"]
@@ -25,6 +27,8 @@ const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &
 const ATTACKING: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture"]
 ## Hunting: after somebody it has seen (dread_aura's worst).
 const HUNTING: Array[StringName] = [&"chase", &"strike", &"recover", &"alert"]
+## Chasing: running somebody down, or striking at them (run_ledger's chase).
+const CHASING: Array[StringName] = [&"chase", &"strike", &"recover"]
 ## Engaged: busy with somebody or a hiding place where it stands, not to be
 ## taken off it by a set or a lift (match_net.warp_busy, lifts.creature_busy).
 const ENGAGED: Array[StringName] = [&"strike", &"recover", &"capture", &"open", &"wait"]
@@ -61,7 +65,8 @@ var rng := RandomNumberGenerator.new()
 func kind_id() -> StringName: return &""
 
 ## Whether it does this at all: &"lifts", &"tv_travel", &"ducts",
-## &"wardrobes", &"shriek".
+## &"wardrobes", &"shriek" (its hunter's cry), &"echo" (its hunter reads the
+## floor by ear, echo_view.gd, which the observer's V shows too).
 func can(_ability: StringName) -> bool: return false
 
 ## Who decides what it does (`control`).
@@ -91,6 +96,7 @@ func mode_name() -> String: return String(activity())
 func is_hostile() -> bool: return activity() in HOSTILE
 func is_attacking() -> bool: return activity() in ATTACKING
 func is_hunting() -> bool: return activity() in HUNTING
+func is_chasing() -> bool: return activity() in CHASING
 func is_engaged() -> bool: return activity() in ENGAGED
 func is_roaming() -> bool: return activity() in ROAMING
 func accepts_leads() -> bool: return activity() in LEADABLE
@@ -124,6 +130,16 @@ func hear_route(point: Vector3, _radius: float) -> Dictionary:
 
 ## Whether any survivor has this spot in view.
 func watched(_point: Vector3) -> bool: return false
+
+## Whoever it has in mind: the survivor it is making out, after or holding.
+## Null: nobody.
+func quarry() -> Node3D: return null
+
+## Somebody was seen getting into this hiding place (interaction.gd,
+## match_net.request_hide). `sure`: it saw them, and knows somebody is in
+## there; not sure, it only has a reason to search it (a bot getting in,
+## bot_body.enter_wardrobe, as it always has).
+func saw_enter(_hide: Node3D, _sure := true) -> void: pass
 
 # --- The director ----------------------------------------------------------------
 
@@ -214,6 +230,40 @@ func push_state(_data: Array) -> void: pass
 ## A call decided where it is controlled, replayed here.
 func play_call(_kind: String, _segment: int, _pitch: float) -> void: pass
 
+## The same, received by the machine of its hunter coming back into a match
+## (match_net.restore): it stands where it was left, facing that way, with
+## the grace it had; the rest is the hunter's to drive again.
+func resume_state(_data: Array) -> void: pass
+
+## The host's verdict on a strike its hunter claims, from `origin` facing
+## `facing` (match_net.resolve_strike), against one survivor: the metres to
+## them when it reaches them, INF when it does not. Of everybody it reaches,
+## the nearest is taken.
+func validate_strike(_origin: Vector3, _facing: Vector3, _body: Node3D) -> float: return INF
+
+# --- Its hunter (versus) -----------------------------------------------------------
+
+## How much further than its own measures it sees and hears for now (a room's
+## onslaught): what its hunter's cry reaches is stretched as much
+## (match_net.update_shriek).
+func sense_scale() -> float: return 1.0
+
+## On its hunter's machine, where its cry found somebody moving.
+func hunter_reveal(_points: PackedVector3Array) -> void: pass
+
+## On its hunter's machine, a noise it hears as it hears it (hear_route()'s
+## apparent spot, metres and muffle): match_net.tell_hunter.
+func hunter_contact(_point: Vector3, _apparent: Vector3, _distance: float, _strength: float, _kind: int, _muffle: float) -> void: pass
+
+## Its hunter has dropped out of a versus match and the machine in charge
+## drives it meanwhile (set_control("ai") has been said): it takes the floor
+## up from where it stands (match_net.seat_dropped).
+func hunter_gone() -> void: pass
+
+## The graphics settings changed (presentation_rig.apply_settings): whatever
+## of it is drawn by them follows (its hunter's view).
+func apply_quality() -> void: pass
+
 # --- The capture -----------------------------------------------------------------
 
 ## How it plays a capture out (game/app/capture_styles/): a script that
@@ -235,6 +285,10 @@ func end_capture() -> void: pass
 
 ## Seconds a capture of its lasts, from the grab.
 func capture_length() -> float: return 0.0
+
+## The beats of throwing a hiding place open (match_net.update_wardrobe_jobs),
+## seconds from its start: the leaves burst, it reaches in, it is done.
+func wardrobe_steps() -> Dictionary: return {"burst": 0.55, "reach": 0.7, "done": 1.7}
 
 # --- Sound and mind --------------------------------------------------------------
 
@@ -260,10 +314,17 @@ func hallucinations() -> Variant: return null
 
 # --- The observer ----------------------------------------------------------------
 
-## A few lines on what it is doing, for whoever watches.
+## Its part of the observer's panel (observer_view.report): a few lines on
+## what it is doing and where, the first one its name.
 func debug_lines() -> Array[String]:
-	return ["%s, %s, %0.0f, %0.0f" % [String(kind_id()), mode_name(), global_position.x, global_position.z]]
+	return ["%s (%s)" % [String(kind_id()).to_upper(), control], "  %s, gracia %0.1f, %0.0f, %0.0f" % [mode_name(), grace, global_position.x, global_position.z]]
 
-## The same, as values.
+## The same, as values: what the observer's log watches ("modo", what it is
+## doing in the panel's words) and its dump (F5) keeps of it.
 func debug_state() -> Dictionary:
-	return {"kind": kind_id(), "activity": activity(), "mode": mode_name(), "position": global_position}
+	return {"modo": mode_name(), "mando": control, "donde": [global_position.x, global_position.y, global_position.z]}
+
+## Its marks over the floor (observer_gizmos.gd), on the layer `g` is drawing
+## now (g.layer): &"path", where it is going; &"sight", what it sees. Drawn
+## with g.line(), g.mark() and g.ring() in g.COLOURS, only where g.here().
+func draw_gizmos(_g) -> void: pass

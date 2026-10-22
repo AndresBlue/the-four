@@ -193,7 +193,7 @@ func note_dark() -> void:
 ## Once a physics frame while the floor is played, on the machine in charge.
 func tick(delta: float) -> void:
 	if level.manifest.is_empty() or delta <= 0.0: return
-	var creature = level.locust
+	var creature = level.creature
 	var session = level.session
 	room_clock -= delta
 	var look_rooms := room_clock <= 0.0
@@ -242,7 +242,7 @@ func tick(delta: float) -> void:
 ## them, or it hunting them.
 func sign_of(body: Node3D, creature) -> bool:
 	if not is_instance_valid(creature) or creature.grace > 0.0 or absf(creature.global_position.y - body.global_position.y) >= 3.0: return false
-	if creature.control == "ai" and creature.focus == body and (creature.detection >= creature.SUSPICION or creature.mode in [creature.Mode.ALERT, creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER]): return true
+	if creature.control == "ai" and creature.quarry() == body and (creature.noticing() or creature.is_hunting()): return true
 	return level.sanity.sight_of_creature(body, level.sanity.lit_at(body.global_position)) > 0
 
 ## A sign for a seat: a new encounter, if the last one was long enough ago.
@@ -258,8 +258,8 @@ func met(seat: int) -> void:
 ## nothing is counted for it.
 func follow_hunt(delta: float, creature) -> void:
 	var hunted := 0
-	if is_instance_valid(creature) and creature.control == "ai" and creature.mode in [creature.Mode.CHASE, creature.Mode.WINDUP, creature.Mode.RECOVER] and is_instance_valid(creature.focus):
-		hunted = int(creature.focus.slot)
+	if is_instance_valid(creature) and creature.control == "ai" and creature.is_chasing() and is_instance_valid(creature.quarry()):
+		hunted = int(creature.quarry().slot)
 	if hunted != int(hunt.get("seat", 0)):
 		let_go(creature)
 		if hunted != 0:
@@ -282,7 +282,7 @@ func let_go(creature) -> void:
 	var time := float(hunt.get("time", 0.0))
 	hunt = {}
 	if seat == 0 or time < CHASE_LEAST or not alive(seat): return
-	var held: bool = int(level.execution.get("seat", 0)) == seat or (is_instance_valid(creature) and creature.mode == creature.Mode.EXECUTE)
+	var held: bool = int(level.execution.get("seat", 0)) == seat or (is_instance_valid(creature) and creature.activity() == &"capture")
 	if not held: loose[seat] = {"wait": LOOSE_WAIT, "time": time}
 
 func got_away(seat: int) -> void:
@@ -297,7 +297,7 @@ func got_away(seat: int) -> void:
 ## The floor is over: the line it leaves, settled. Whoever was still being
 ## looked for when it ended got away.
 func close(won: bool) -> Dictionary:
-	let_go(level.locust)
+	let_go(level.creature)
 	for seat in loose.keys(): got_away(seat)
 	var session = level.session
 	var players: Array = session.participants.keys()

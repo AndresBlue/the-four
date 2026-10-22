@@ -314,7 +314,7 @@ func apply_settings() -> void:
 	level.player.avatar.set_body_shadow(preset.body_shadow)
 	level.player.autofocus = preset.autofocus and not hunter
 	configure_hotel()
-	if is_instance_valid(level.locust) and level.locust.driver != null and is_instance_valid(level.locust.driver.echo): level.locust.driver.echo.apply_quality()
+	if is_instance_valid(level.creature): level.creature.apply_quality()
 
 ## The floor's share of the settings: preset, reduced effects, creature's view.
 func configure_hotel() -> void:

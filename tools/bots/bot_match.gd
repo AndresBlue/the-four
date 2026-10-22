@@ -13,7 +13,9 @@ const TEAM := preload("res://tools/bots/bot_team.gd")
 const WATCHDOG := preload("res://tools/bots/bot_watchdog.gd")
 const RECORDER := preload("res://tools/bots/bot_recorder.gd")
 const ERROR_TAP := preload("res://tools/bots/bot_error_tap.gd")
-const THREAT := preload("res://tools/bots/bot_threat.gd")
+## The threat model of the floor's kind of creature (bot_threat.gd for The
+## Locust).
+const THREATS := preload("res://tools/bots/bot_threats.gd")
 const NAMES := ["Bot 1", "Bot 2", "Bot 3", "Bot 4", "Bot 5"]
 ## Caps of simulated time: a stage, and the whole floor.
 const STAGE_CAP := 1800.0
@@ -86,12 +88,17 @@ func begin() -> bool:
 	watchdog = WATCHDOG.new(self)
 	error_tap = ERROR_TAP.new()
 	OS.add_logger(error_tap)
+	# Before the recording, which keeps of the creature what its model says.
+	threat = THREATS.make(level)
+	if threat == null:
+		push_warning("Los bots no tienen modelo de la criatura %s." % String(level.creature.kind_id()))
+		outcome = "sin_modelo"
+		return false
+	threat.novice = String(options.get("skill", "experto")) == "novato"
+	threat.refresh()
 	if not String(options.get("out", "")).is_empty():
 		recorder = RECORDER.new(self, String(options.out))
 		recorder.start()
-	threat = THREAT.new(level)
-	threat.novice = String(options.get("skill", "experto")) == "novato"
-	threat.refresh()
 	note("piso", null, {"seed": int(level.session.run_seed), "fallback": bool(level.manifest.get("fallback", false)), "bots": bodies.size()})
 	return true
 
@@ -225,7 +232,7 @@ func walks_from(room_id: int) -> Dictionary:
 ## Something worth looking at: kind, how bad ("leve", "media", "grave"), the
 ## bot it happened to (or null), in words, and anything else worth keeping.
 func report(kind: String, severity: String, brain, words: String, extra := {}) -> void:
-	var at: Vector3 = brain.body.global_position if brain != null else (level.locust.global_position if extra.get("creature", false) and is_instance_valid(level.locust) else Vector3.INF)
+	var at: Vector3 = brain.body.global_position if brain != null else (level.creature.global_position if extra.get("creature", false) and is_instance_valid(level.creature) else Vector3.INF)
 	if extra.has("where"): at = extra.where
 	# About the floor, not a place on it: the stage's own planta, no room.
 	var placed := at != Vector3.INF
@@ -293,8 +300,8 @@ func spare_survivor(body) -> bool:
 	var index := bodies.find(body)
 	if index < 0: return false
 	var brain = brains[index]
-	var creature = level.locust
-	var mode: String = creature.Mode.keys()[creature.mode].to_lower() if is_instance_valid(creature) else "?"
+	var creature = level.creature
+	var mode: String = creature.mode_name().to_lower() if is_instance_valid(creature) else "?"
 	report("captura", "grave", brain, "atrapado (perdonado) · la criatura en %s" % mode, {"spared": true})
 	if body.hidden and is_instance_valid(body.hiding_place): level.match_net.remote_leaves(body.hiding_place, body)
 	level.untouchable[int(body.slot)] = SPARED_FOR
@@ -309,11 +316,11 @@ func spare_survivor(body) -> bool:
 ## With mercy, a creature found shut in is taken somewhere else once it has
 ## been said: the finding is made, and the floor goes on.
 func free_creature() -> void:
-	if not bool(options.get("mercy", false)) or not is_instance_valid(level.locust): return
-	var away := far_room(level.locust.global_position)
+	if not bool(options.get("mercy", false)) or not is_instance_valid(level.creature): return
+	var away := far_room(level.creature.global_position)
 	if away == Vector3.INF: return
-	level.locust.relocate(away + Vector3(0, 0.04, 0), 0.0)
-	note("criatura_apartada", null, {"to": RECORDER.vec(level.locust.global_position), "why": "encerrada"})
+	level.creature.relocate(away + Vector3(0, 0.04, 0), 0.0)
+	note("criatura_apartada", null, {"to": RECORDER.vec(level.creature.global_position), "why": "encerrada"})
 
 ## A room of the creature's planta at least SPARE_AWAY metres of walking from
 ## every living bot, the nearest such; INF when there is none.

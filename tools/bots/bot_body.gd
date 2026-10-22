@@ -120,11 +120,12 @@ func sync_life() -> void:
 	set_dead(life == level.session.Life.DEAD)
 
 ## Into a wardrobe as a player gets in: seen doing it, the creature knows
-## which; heard doing it, it comes to look.
+## which (and, unlike with a player, is no surer that somebody is in it:
+## creature.saw_enter); heard doing it, it comes to look.
 func enter_wardrobe(hide: Node3D) -> bool:
 	if hidden or dead or not hide.has_room(): return false
-	var creature = level.locust
-	if is_instance_valid(creature) and creature.control == "ai" and creature.sees(self, true): creature.observed_hide = hide
+	var creature = level.creature
+	if is_instance_valid(creature) and creature.control == "ai" and creature.sees(self, true): creature.saw_enter(hide, false)
 	level.match_net.remote_enters(hide, self)
 	global_position = hide.to_global(hide.inside_of(self))
 	velocity = Vector3.ZERO
