@@ -2,6 +2,9 @@ extends RefCounted
 ## Optional documents found on the floors: four per creature, sixteen in all.
 ## They explain what the player has seen and give hints, never power.
 ## Only The Locust's floor exists so far; the other twelve slots stay locked.
+## Those that are the hotel's own paperwork carry `form`: what is typed in the
+## fields of its form around the body (game/ui/hotel_form.gd), which is how
+## they are read and how they look lying on a table.
 const TOTAL := 16
 const ENTRIES := [
 	{
@@ -10,12 +13,14 @@ const ENTRIES := [
 		"title": "Nota para el turno de noche",
 		"header": "Recepción, papel con membrete del hotel",
 		"body": "Tres quejas más de la planta primera. Dicen que la tele se enciende sola pasadas las tres y que en la pantalla sale alguien mirando desde muy cerca. El 107 pidió cambiar de habitación. El 112 no contestó al teléfono.\n\nYa desenchufé dos aparatos y volvieron a encenderse. No subas solo. Si oyes golpes en una puerta, no abras para ver quién es.",
+		"form": {"number": "0417", "post": "RECEPCIÓN", "place": "PLANTA PRIMERA", "subject": "NOTA PARA EL TURNO DE NOCHE", "type": "incidente", "action": {"informar": "TURNO DE NOCHE"}, "priority": "alta", "state": "pendiente", "signed": true, "seed": 417},
 	},
 	{
 		"id": "locust_maintenance",
 		"creature": "locust",
 		"title": "Parte de mantenimiento",
 		"header": "Hoja de avería, sin firmar",
+		"form": {"number": "0388", "post": "MANTENIMIENTO", "place": "HABITACIÓN 107", "subject": "PANTALLA DEL TELEVISOR ROTA", "type": "incidente", "action": {"seguimiento": true}, "priority": "urgente", "state": "pendiente", "seed": 388},
 		"body": "Habitación 107: pantalla del televisor rota. Los cristales están fuera, sobre la moqueta, no dentro del tubo. Lo rompieron desde dentro.\n\nMarcas en el marco de la puerta, a más de dos metros y medio de altura, como de algo que se agacha para pasar. Arañazos en el interior de dos armarios del pasillo. Pido que alguien más venga a verlo antes de cambiar nada.",
 	},
 	{

@@ -51,6 +51,17 @@ static func write_digit(on: CanvasItem, value: int, box: Rect2, ink: Color, weig
 			points.append(box.position + turns[turns.size() - 1] * box.size)
 			on.draw_polyline(points, Color(ink, ink.a * (1.0 if pass_index == 0 else 0.55)), weight * (1.0 if pass_index == 0 else 0.7), true)
 
+## A line of words written by hand: the fallback typeface (there is no
+## handwritten one), leaning a little and a little off true by the seed, and
+## gone over twice, the second time a hair off the first.
+static func write_line(on: CanvasItem, at: Vector2, text: String, font_size: int, ink: Color, seed_value := 0) -> void:
+	var font := ThemeDB.fallback_font
+	var tilt := jitter(float(seed_value), 7.0) * 0.035
+	on.draw_set_transform_matrix(Transform2D(tilt, Vector2.ONE, -0.18, at))
+	on.draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ink)
+	on.draw_string(font, Vector2(0.7, 0.4), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(ink, ink.a * 0.38))
+	on.draw_set_transform_matrix(Transform2D.IDENTITY)
+
 ## A short dash either side of a small number: how a page is numbered.
 static func write_page(on: CanvasItem, value: int, centre: Vector2, height: float, ink: Color, seed_value := 0) -> void:
 	var width := height * 0.62

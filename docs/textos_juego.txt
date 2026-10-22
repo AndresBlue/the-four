@@ -1434,7 +1434,7 @@ CORRECCIÓN:
 ACTUAL: Nota para el turno de noche
 CORRECCIÓN:
 
-[DOC.01b] locust_reception: encabezado bajo el título
+[DOC.01b] locust_reception: procedencia (en la ficha del Archivo; en el juego se lee en el impreso del hotel)
 ACTUAL: Recepción · papel con membrete del hotel
 CORRECCIÓN:
 
@@ -1444,11 +1444,15 @@ ACTUAL: Tres quejas más de la planta primera. Dicen que la tele se enciende sol
 | Ya desenchufé dos aparatos y volvieron a encenderse. No subas solo. Si oyes golpes en una puerta, no abras para ver quién es.
 CORRECCIÓN:
 
+[DOC.01d] locust_reception: a máquina en los campos del impreso (N.º, cargo, ubicación, asunto e «Informar a»; marcadas Incidente, Alta y Pendiente; firmada)
+ACTUAL: 0417 · RECEPCIÓN · PLANTA PRIMERA · NOTA PARA EL TURNO DE NOCHE · TURNO DE NOCHE
+CORRECCIÓN:
+
 [DOC.02] locust_maintenance: título
 ACTUAL: Parte de mantenimiento
 CORRECCIÓN:
 
-[DOC.02b] locust_maintenance: encabezado bajo el título
+[DOC.02b] locust_maintenance: procedencia (en la ficha del Archivo; en el juego se lee en el impreso del hotel)
 ACTUAL: Hoja de avería · sin firmar
 CORRECCIÓN:
 
@@ -1456,6 +1460,10 @@ CORRECCIÓN:
 ACTUAL: Habitación 107: pantalla del televisor rota. Los cristales están fuera, sobre la moqueta, no dentro del tubo. Lo rompieron desde dentro.
 |
 | Marcas en el marco de la puerta, a más de dos metros y medio de altura, como de algo que se agacha para pasar. Arañazos en el interior de dos armarios del pasillo. Pido que alguien más venga a verlo antes de cambiar nada.
+CORRECCIÓN:
+
+[DOC.02d] locust_maintenance: a máquina en los campos del impreso (N.º, cargo, ubicación y asunto; marcadas Incidente, Seguimiento posterior, Urgente y Pendiente; sin firmar)
+ACTUAL: 0388 · MANTENIMIENTO · HABITACIÓN 107 · PANTALLA DEL TELEVISOR ROTA
 CORRECCIÓN:
 
 [DOC.03] locust_letter: título
@@ -1622,15 +1630,15 @@ CORRECCIÓN:
 22. PISTAS DE LA TERCERA ETAPA (los papeles de la última planta: los de la vista se leen con E; los de los muebles, al registrarlos; cuelgan en TUS NOTAS)
 --------------------------------------------------------------------------------------------------------------------------------------------------
 
-[PIST.01] Parte de limpieza (impreso, con su lista de habitaciones; lo último, a lápiz)
-ACTUAL: PARTE DE LIMPIEZA · PLANTA %d, TURNO DE NOCHE · HAB. · ESTADO ·
+[PIST.01] Parte de limpieza (a máquina en el impreso del hotel: N.º, cargo, ubicación, asunto y su lista de habitaciones; marcadas Tarea y En curso; lo último, a lápiz)
+ACTUAL: %04d · LIMPIEZA, TURNO DE NOCHE · PLANTA %d · PARTE DE LIMPIEZA · HAB.        ESTADO ·
 | HECHA / NO MOLESTAR / SIN TOALLAS / CAMA SIN HACER / NO ABRE ·
 | En una de estas, un papel con un número %s. No lo toqué.
 |    (%s: en un cajón / en una estantería / en un mueble / en unas cajas)
 CORRECCIÓN:
 
-[PIST.02] Orden de trabajo (impresa, con su sello; lo último, a lápiz)
-ACTUAL: ORDEN DE TRABAJO N.º %04d · PLANTA %d · PENDIENTE ·
+[PIST.02] Orden de trabajo (a máquina en el impreso del hotel: N.º, cargo, ubicación y asunto; marcadas Tarea, Media o Alta y Pendiente; lo último, a lápiz)
+ACTUAL: %04d · MANTENIMIENTO · PLANTA %d · ORDEN DE TRABAJO ·
 | Sin luz en %s. Revisar el diferencial. · Dentro hay papeles con números. No es cosa mía. /
 | Fuga de agua en el pasillo, frente a la %d. Puesto el cartel de suelo mojado. · Por ahí cerca había un papel con un número.
 |    (%s: la 344, la 346 y la 348; o el almacén, los baños...)

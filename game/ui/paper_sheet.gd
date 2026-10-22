@@ -323,7 +323,8 @@ func hold_up(hint: Dictionary) -> void:
 	held.add_child(shade)
 	var view := HINT_VIEW.new()
 	view.setup(hint, hint_walls)
-	var fit := minf(minf(size.x * 0.62 / view.card.x, size.y * 0.78 / view.card.y), 1.5)
+	# A whole sheet of the hotel's form (hotel_form.gd) to nearly the height.
+	var fit := minf(minf(size.x * 0.62 / view.card.x, size.y * (0.93 if view.card.y >= HINT_VIEW.FORM.CARD.y else 0.78) / view.card.y), 1.5)
 	view.scale = Vector2.ONE * fit
 	view.position = (size - view.card * fit) * 0.5
 	held.add_child(view)

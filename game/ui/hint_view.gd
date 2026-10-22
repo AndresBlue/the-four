@@ -1,12 +1,16 @@
 extends Control
 ## One of the hints of the last planta (hint_placement.gd) as the paper it
-## is: a maid's sheet with its block of rooms, a work order, a few lines in
-## pencil torn off a notebook, a sign off a door, a carbon copy with the
+## is: a maid's sheet with its block of rooms and a work order, both typed on
+## the hotel's own form (hotel_form.gd), a few lines in pencil torn off a
+## notebook, a sign off a door, a carbon copy with the
 ## circle pressed into it, a torn corner of an evacuation plan, the note about
 ## the chalk, or somebody else's sheet with four circles on it. Drawn, not
 ## laid out, at its own size (`card`); whoever shows it scales it.
 const STYLE := preload("res://game/ui/osd_style.gd")
 const HAND := preload("res://game/ui/handwork.gd")
+const FORM := preload("res://game/ui/hotel_form.gd")
+## The hints that are the hotel's own paperwork, on its form.
+const FORMS := ["limpieza", "orden"]
 const PAPER := Color(0.86, 0.82, 0.71)
 const PRINT := Color(0.13, 0.12, 0.11)
 const GRAPHITE := Color(0.16, 0.15, 0.15, 0.92)
@@ -17,9 +21,8 @@ const CARBON := Color(0.11, 0.11, 0.19)
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"limpieza": Vector2(500, 0), "orden": Vector2(560, 0), "indicaciones": Vector2(580, 0), "cartel": Vector2(540, 300), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "tiza": Vector2(460, 240), "hoja": Vector2(700, 460)}
+const SIZES := {"indicaciones": Vector2(580, 0), "cartel": Vector2(540, 300), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "tiza": Vector2(460, 240), "hoja": Vector2(700, 460)}
 const LINE := 36.0
-const ROW := 38.0
 var hint: Dictionary
 ## The walls of the hint's planta, [[a, b]] in plan (x, z), for the plans.
 var walls: Array = []
@@ -29,12 +32,18 @@ func setup(data: Dictionary, plan_walls: Array) -> void:
 	hint = data
 	walls = plan_walls
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for old in get_children(): old.queue_free()
+	if FORMS.has(String(hint.get("kind", ""))):
+		var sheet := FORM.new()
+		sheet.setup(hint.get("form", {}), hint.get("hand", []))
+		add_child(sheet)
+		card = FORM.CARD
+		custom_minimum_size = card
+		size = card
+		return
 	card = SIZES.get(String(hint.get("kind", "")), Vector2(500, 400))
-	var printed: Array = hint.get("printed", [])
 	var hand: Array = hint.get("hand", [])
 	match String(hint.get("kind", "")):
-		"limpieza": card.y = 240.0 + float(hint.get("rows", []).size()) * ROW + float(hand.size()) * LINE + 50.0
-		"orden": card.y = 120.0 + float(wrapped(printed.slice(2), 20, card.x - 90.0).size()) * 30.0 + float(hand.size()) * LINE + 90.0
 		"indicaciones": card.y = 90.0 + float(wrapped(hand, 24, card.x - 90.0, true).size()) * 44.0 + 40.0
 	custom_minimum_size = card
 	size = card
@@ -42,8 +51,6 @@ func setup(data: Dictionary, plan_walls: Array) -> void:
 
 func _draw() -> void:
 	match String(hint.get("kind", "")):
-		"limpieza": cleaning()
-		"orden": order()
 		"indicaciones": notebook()
 		"cartel": door_sign()
 		"calco": carbon()
@@ -52,42 +59,6 @@ func _draw() -> void:
 		"hoja": other_sheet()
 
 # --- The papers ---------------------------------------------------------------------------
-
-func cleaning() -> void:
-	paper(Rect2(Vector2.ZERO, card), PAPER, 31)
-	var printed: Array = hint.get("printed", [])
-	words(Vector2(40, 64), String(printed[0]) if printed.size() > 0 else "", 28, PRINT)
-	words(Vector2(40, 96), String(printed[1]) if printed.size() > 1 else "", 17, PRINT)
-	draw_line(Vector2(36, 116), Vector2(card.x - 36, 116), Color(PRINT, 0.8), 2.0)
-	words(Vector2(44, 150), "HAB.", 15, Color(PRINT, 0.75))
-	words(Vector2(170, 150), "ESTADO", 15, Color(PRINT, 0.75))
-	var y := 190.0
-	var rows: Array = hint.get("rows", [])
-	for index in rows.size():
-		var row: Array = rows[index]
-		draw_line(Vector2(36, y + 12), Vector2(card.x - 36, y + 12), Color(PRINT, 0.25), 1.0)
-		words(Vector2(44, y), String(row[0]), 21, PRINT)
-		words(Vector2(170, y), String(row[1]), 17, PRINT)
-		# Her tick, in pencil, beside what she did.
-		if String(row[1]) == "HECHA":
-			var at := Vector2(card.x - 70, y - 8)
-			var lean := HAND.jitter(float(index), 3.0) * 4.0
-			draw_polyline(PackedVector2Array([at + Vector2(-9, -2 + lean), at + Vector2(-2, 7), at + Vector2(12, -12 + lean)]), GRAPHITE, 2.4, true)
-		y += ROW
-	pencil(Vector2(44, y + 24), hint.get("hand", []), card.x - 80.0)
-
-func order() -> void:
-	paper(Rect2(Vector2.ZERO, card), Color(0.88, 0.86, 0.8), 53)
-	var printed: Array = hint.get("printed", [])
-	draw_rect(Rect2(28, 28, card.x - 56, 64), Color(PRINT, 0.08))
-	words(Vector2(44, 66), String(printed[0]) if printed.size() > 0 else "", 24, PRINT)
-	words(Vector2(44, 120), String(printed[1]) if printed.size() > 1 else "", 17, PRINT)
-	var y := 160.0
-	for line in wrapped(printed.slice(2), 20, card.x - 90.0):
-		words(Vector2(44, y), line, 20, PRINT)
-		y += 30.0
-	stamp(Vector2(card.x - 160, 128), "PENDIENTE", -0.18)
-	pencil(Vector2(44, y + 30), hint.get("hand", []), card.x - 80.0)
 
 func notebook() -> void:
 	var torn := torn_bottom(Rect2(Vector2.ZERO, card), 77)
@@ -189,20 +160,7 @@ func pencil(at: Vector2, lines: Array, width: float) -> void:
 		y += LINE
 
 func handwriting(at: Vector2, text: String, font_size: int, seed_value: int) -> void:
-	var font := ThemeDB.fallback_font
-	var tilt := HAND.jitter(float(seed_value), 7.0) * 0.035
-	draw_set_transform_matrix(Transform2D(tilt, Vector2.ONE, -0.18, at))
-	draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, GRAPHITE)
-	draw_string(font, Vector2(0.7, 0.4), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(GRAPHITE, 0.35))
-	draw_set_transform_matrix(Transform2D.IDENTITY)
-
-func stamp(at: Vector2, text: String, turn: float) -> void:
-	var font := STYLE.font()
-	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
-	draw_set_transform(at, turn, Vector2.ONE)
-	draw_rect(Rect2(-8, -24, width + 16, 32), Color(RED, 0.7), false, 2.0)
-	draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(RED, 0.7))
-	draw_set_transform_matrix(Transform2D.IDENTITY)
+	HAND.write_line(self, at, text, font_size, GRAPHITE, seed_value)
 
 ## A circle drawn by hand: a little out of round, its end past its start.
 func circle(centre: Vector2, radius: float, ink: Color, weight: float, seed_value: int) -> void:

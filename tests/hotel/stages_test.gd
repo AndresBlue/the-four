@@ -515,6 +515,16 @@ func run() -> void:
 	check("La que las marca todas está en un mueble, más a trasmano que las otras siete", other.size() == 1 and String(other[0].place) == "container" and hints.all(func(hint): return float(walked.get(int(hint.room), 0.0)) <= float(walked.get(int(other[0].room), 0.0)) + 0.01))
 	var said := JSON.stringify(hints)
 	check("Ninguna dice nada con punto medio ni guion largo", not said.contains("·") and not said.contains("—"))
+	# The maid's sheet and the work order are the hotel's own paperwork: typed
+	# on its form (hotel_form.gd), whatever the paper is shown in.
+	var paperwork: Array = hints.filter(func(hint): return String(hint.kind) in ["limpieza", "orden"])
+	var typed := true
+	for hint in paperwork:
+		var view: Control = load("res://game/ui/hint_view.gd").new()
+		view.setup(hint, [])
+		if String(hint.get("form", {}).get("subject", "")).is_empty() or view.get_child_count() != 1 or view.card != load("res://game/ui/hotel_form.gd").CARD: typed = false
+		view.free()
+	check("El parte de limpieza y la orden de trabajo van a máquina en el impreso del hotel", typed)
 	# What they put on the plan is true: the circle holds its page, the corner
 	# of the plan has it under its cross, the other sheet's four are the four.
 	var truthful := true

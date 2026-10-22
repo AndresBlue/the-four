@@ -220,6 +220,9 @@ func run() -> void:
 	player.active = true
 	level.open_document(document)
 	check("Leer muestra la hoja y detiene al jugador", player.reading and is_instance_valid(level.ui.reading))
+	var official: bool = load("res://game/discovery/discovery_catalog.gd").entry(document.entry_id).has("form")
+	var form_script: Script = load("res://game/ui/hotel_form.gd")
+	check("Un papel del hotel se lee en su impreso, a máquina, y los demás como texto", level.ui.reading.get_children().any(func(node): return node.get_script() == form_script) == official)
 	var before: Vector3 = player.position
 	Input.action_press("forward")
 	await frames(20)

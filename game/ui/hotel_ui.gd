@@ -1100,6 +1100,7 @@ var dossier: Control
 const PAPER := Color(0.86, 0.84, 0.77)
 const PAPER_INK := Color(0.12, 0.11, 0.1)
 const HINT_VIEW := preload("res://game/ui/hint_view.gd")
+const FORM := preload("res://game/ui/hotel_form.gd")
 const CREATURES := {"locust": "THE LOCUST", "sunman": "SUNMAN", "boiled": "THE BOILED ONE", "guilt": "GUILT"}
 
 func show_dossier(number: int, item: Dictionary) -> void:
@@ -1190,19 +1191,27 @@ func show_hint(item: Dictionary, walls: Array) -> void:
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reading.add_child(shade)
-	var screen_size := get_viewport().get_visible_rect().size
 	var view := HINT_VIEW.new()
 	view.setup(item, walls)
-	var fit := minf(minf(screen_size.x * 0.62 / view.card.x, screen_size.y * 0.7 / view.card.y), 1.4)
+	hold_paper(view, view.card)
+
+## A paper held up to the camera, as large as it reads, and the key that
+## keeps it under it; a whole sheet of the hotel's form (hotel_form.gd) is
+## held up to nearly the height of the screen, the key beside its foot.
+func hold_paper(view: Control, card: Vector2) -> void:
+	var screen_size := get_viewport().get_visible_rect().size
+	var sheet := card.y >= FORM.CARD.y
+	var fit := minf(minf(screen_size.x * 0.62 / card.x, screen_size.y * (0.93 if sheet else 0.7) / card.y), 1.4)
 	view.scale = Vector2.ONE * fit
-	view.position = (screen_size - view.card * fit) * 0.5 - Vector2(0, 22)
+	view.position = (screen_size - card * fit) * 0.5 - Vector2(0, 0 if sheet else 22)
 	reading.add_child(view)
 	var key: String = settings.prompt_name("interact") if settings != null else "E"
 	var keep := label(reading, "[%s] GUARDAR" % key, 16)
 	keep.add_theme_color_override("font_color", STYLE.FAINT)
-	keep.position = Vector2(view.position.x, view.position.y + view.card.y * fit + 18)
+	keep.position = Vector2(view.position.x + card.x * fit + 18, view.position.y + card.y * fit - 30) if sheet else Vector2(view.position.x, view.position.y + card.y * fit + 18)
 
-## A document held up to the camera while play goes on behind it.
+## A document held up to the camera while play goes on behind it: the
+## hotel's own paperwork on its form, typed, the rest as words on the dark.
 func show_document(item: Dictionary) -> void:
 	hide_document()
 	reading = Control.new()
@@ -1215,6 +1224,13 @@ func show_document(item: Dictionary) -> void:
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reading.add_child(shade)
+	if item.has("form"):
+		var form: Dictionary = (item.form as Dictionary).duplicate()
+		form["lines"] = Array(String(item.body).split("\n"))
+		var paper := FORM.new()
+		paper.setup(form)
+		hold_paper(paper, FORM.CARD)
+		return
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE

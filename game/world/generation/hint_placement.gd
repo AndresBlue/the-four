@@ -134,6 +134,8 @@ static func zone_hint(manifest: Dictionary, kind: String, page: Dictionary, entr
 
 ## The maid's sheet: the block of rooms she had, the page's among them, each
 ## with how she left it, and under them in pencil that a paper turned up in one.
+## Typed on the hotel's form (hotel_form.gd), like the work order: its number
+## from the floor's seed, never from where the page is.
 static func cleaning(manifest: Dictionary, page: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var rooms: Array = manifest.rooms
 	var target: Dictionary = rooms[int(page.room)]
@@ -150,7 +152,9 @@ static func cleaning(manifest: Dictionary, page: Dictionary, rng: RandomNumberGe
 	var rows: Array = []
 	for id in block: rows.append([str(int(rooms[id].number)), String(STATES[rng.randi_range(0, STATES.size() - 1)])])
 	if int(target.get("number", 0)) <= 0: rows.append([String(FLOOR.NAMES[int(target.type)]).to_upper(), String(STATES[rng.randi_range(0, 3)])])
-	return {"kind": "limpieza", "printed": ["PARTE DE LIMPIEZA", "PLANTA %d, TURNO DE NOCHE" % (int(target.wing) + 1)], "rows": rows, "hand": ["En una de estas, un papel con", "un número %s. No lo toqué." % String(IN_PIECE.get(String(page.kind), "en un mueble"))]}
+	var number := 1000 + absi(hash([manifest.seed, "limpieza"])) % 9000
+	var form := {"number": "%04d" % number, "post": "LIMPIEZA, TURNO DE NOCHE", "place": "PLANTA %d" % (int(target.wing) + 1), "subject": "PARTE DE LIMPIEZA", "type": "tarea", "rows": rows, "state": "en_curso", "signed": true, "seed": number}
+	return {"kind": "limpieza", "form": form, "printed": [], "rows": [], "hand": ["En una de estas, un papel con", "un número %s. No lo toqué." % String(IN_PIECE.get(String(page.kind), "en un mueble"))]}
 
 ## A work order: the dark stretch the page's room is in, by its numbers, or,
 ## when it is lit, a leak in the corridor near it with the wet floor sign put
@@ -159,7 +163,7 @@ static func work_order(manifest: Dictionary, page: Dictionary, rng: RandomNumber
 	var rooms: Array = manifest.rooms
 	var target: Dictionary = rooms[int(page.room)]
 	var number := rng.randi_range(210, 980)
-	var head: Array = ["ORDEN DE TRABAJO N.º %04d" % number, "PLANTA %d" % (int(target.wing) + 1), ""]
+	var form := {"number": "%04d" % number, "post": "MANTENIMIENTO", "place": "PLANTA %d" % (int(target.wing) + 1), "subject": "ORDEN DE TRABAJO", "type": "tarea", "priority": "media", "state": "pendiente", "seed": number}
 	if bool(target.get("dark", false)):
 		var stretch: Array = [int(page.room)]
 		var queue: Array = [int(page.room)]
@@ -174,12 +178,15 @@ static func work_order(manifest: Dictionary, page: Dictionary, rng: RandomNumber
 		for id in stretch: named.append(room_said(rooms[id]))
 		if named.size() >= 2:
 			named.sort()
-			return {"kind": "orden", "printed": head + ["Sin luz en %s." % listed(named), "Revisar el diferencial."], "rows": [], "hand": ["Dentro hay papeles con números.", "No es cosa mía."]}
+			form["lines"] = ["Sin luz en %s." % listed(named), "Revisar el diferencial."]
+			return {"kind": "orden", "form": form, "printed": [], "rows": [], "hand": ["Dentro hay papeles con números.", "No es cosa mía."]}
 	# Lit: a leak a door or two along the corridor, said by a room that is not
 	# the page's.
 	var sign := leak_spot(manifest, page)
 	if sign.is_empty(): return {}
-	return {"kind": "orden", "printed": head + ["Fuga de agua en el pasillo, frente a %s." % String(sign.said), "Puesto el cartel de suelo mojado."], "rows": [], "hand": ["Por ahí cerca había un papel", "con un número."], "sign": sign}
+	form["lines"] = ["Fuga de agua en el pasillo, frente a %s." % String(sign.said), "Puesto el cartel de suelo mojado."]
+	form["priority"] = "alta"
+	return {"kind": "orden", "form": form, "printed": [], "rows": [], "hand": ["Por ahí cerca había un papel", "con un número."], "sign": sign}
 
 ## Where the leak is: a corridor cell beside the page's room or one along from
 ## it, and the room it is said to be in front of (never the page's own).

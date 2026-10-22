@@ -1,6 +1,14 @@
 extends Area3D
 ## A loose sheet of paper that can be read. The Area3D is only the interaction
 ## target (hiding layer, found by the same focus ray as wardrobes).
+const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
+## The hotel's form as it is seen lying there (tools/textures/
+## bake_hotel_note.py): for its own paperwork, here and among the hints
+## (hotel_hint.gd), read held up on the whole form (game/ui/hotel_form.gd).
+const FORM_FAR := preload("res://assets/textures/nota-hotel-lejos.png")
+## A sheet of it, in metres: the picture's proportions, near enough an A4.
+const FORM_SHEET := Vector2(0.2, 0.3)
+static var form_material: StandardMaterial3D
 var entry_id := ""
 
 func _ready() -> void:
@@ -13,22 +21,30 @@ func _ready() -> void:
 	shape.shape = box
 	shape.position = Vector3(0, 0.08, 0)
 	add_child(shape)
+	var official: bool = CATALOG.entry(entry_id).has("form")
 	var paper := StandardMaterial3D.new()
 	paper.albedo_color = Color(0.86, 0.83, 0.74)
 	paper.roughness = 0.95
 	var ink := StandardMaterial3D.new()
 	ink.albedo_color = Color(0.25, 0.23, 0.22)
 	ink.roughness = 1.0
-	# Two sheets, the top one askew, with a few lines of handwriting.
+	# Two sheets, the top one askew, with a few lines of handwriting; the
+	# hotel's own paperwork is its form on top.
 	for sheet in 2:
 		var mesh := BoxMesh.new()
-		mesh.size = Vector3(0.21, 0.002, 0.297)
+		mesh.size = Vector3(FORM_SHEET.x, 0.002, FORM_SHEET.y) if official and sheet == 1 else Vector3(0.21, 0.002, 0.297)
 		mesh.material = paper
 		var instance := MeshInstance3D.new()
 		instance.mesh = mesh
 		instance.position = Vector3(0, 0.002 + sheet * 0.002, 0)
 		instance.rotation.y = sheet * 0.18
 		add_child(instance)
+	if official:
+		var form := form_sheet()
+		form.position = Vector3(0, 0.0052, 0)
+		form.rotation.y = 0.18
+		add_child(form)
+		return
 	for line in 7:
 		var mesh := BoxMesh.new()
 		mesh.size = Vector3(0.15 - (0.05 if line == 6 else 0.0), 0.0005, 0.006)
@@ -38,3 +54,22 @@ func _ready() -> void:
 		instance.position = Basis(Vector3.UP, 0.18) * Vector3(-0.01 if line == 6 else 0.0, 0.0055, -0.1 + line * 0.03)
 		instance.rotation.y = 0.18
 		add_child(instance)
+
+## The form, face up, its header away from whoever put it down: a plane with
+## the picture, cut out along the paper's worn corners.
+static func form_sheet() -> MeshInstance3D:
+	if form_material == null:
+		form_material = StandardMaterial3D.new()
+		form_material.albedo_texture = FORM_FAR
+		form_material.roughness = 0.95
+		form_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		form_material.alpha_scissor_threshold = 0.5
+		form_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	var plane := PlaneMesh.new()
+	plane.size = FORM_SHEET
+	plane.material = form_material
+	var instance := MeshInstance3D.new()
+	instance.name = "Form"
+	instance.mesh = plane
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return instance
