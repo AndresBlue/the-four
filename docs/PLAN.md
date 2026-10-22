@@ -769,7 +769,7 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
 | Piso | Nombre | Criatura | Estado |
 |---|---|---|---|
 | 1 | El hotel | The Locust | Jugable |
-| 2 | Las oficinas secretas (La Oficina) | The Lurker ([LURKER.md](LURKER.md)) | Modelo y animaciones; nada jugable |
+| 2 | Las oficinas secretas (La Oficina) | The Lurker ([LURKER.md](LURKER.md)) | Diseñado ([OFICINAS.md](OFICINAS.md)); de la criatura, modelo y animaciones; nada jugable |
 | 3 | Radiation Lab | Sin asignar | Sin empezar |
 | 4 | The Containment | Sin asignar | Sin empezar |
 
@@ -777,13 +777,30 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
   decidió el 21 de octubre de 2026; faltan las de los pisos 3 y 4) y lo demás que
   LORE.md deja abierto: quién juega, cómo se nota el ente que dirige a la
   bestia, cómo acaba.
-- `four-7ly.2` **Las oficinas secretas:** su conjunto procedural, su criatura y sus
-  papeles. De la criatura ya están el modelo, el esqueleto, ocho animaciones
-  (acecho, reptar, escabullirse, ducto, huir, la pose de la imagen, el susto y
-  asomarse), la oscuridad que la envuelve y las manos que se agarran a suelos,
-  paredes y techos, mirados dentro del hotel; faltan la IA que la lleve por las
-  sombras, las paredes, los techos y los ductos, las alucinaciones y sus
-  sonidos (LURKER.md).
+- `four-7ly.2` **Las oficinas secretas.** El diseño entero está en
+  [OFICINAS.md](OFICINAS.md), aprobado por el autor el 22 de octubre de 2026:
+  las tres plantas (el correo, la corriente y el aire), The Lurker, su captura,
+  versus, arte, audio, papeles, la dirección técnica y las fases. De la
+  criatura ya están el modelo, el esqueleto, ocho animaciones, la oscuridad y
+  las manos (LURKER.md). Cuándo empieza cada fase lo decide el autor según
+  vaya el desarrollo. Las fases, cada una con su verificación (OFICINAS.md,
+  sección 15):
+  - **A. Assets**, descargados por los agentes con su criterio y licencias que
+    lo permitan, sin NC, ND ni SA (sección 12).
+  - **B. Banco del Lurker** sobre una oficina fija.
+  - **Fase 0. Cimientos:** contrato de criatura con `level.locust` como alias,
+    objetivos como manejadores, tipo de piso seleccionable, paletas de salas,
+    luz por sala, dificultad y reglas por criatura. El hotel no cambia ni un
+    byte (prueba dorada del manifiesto).
+  - **Fase 1. Las oficinas sin ella:** generador, validador y geometría;
+    falso techo, plénum y ductos; los sistemas de cada planta (tubos y fichas,
+    cuadro y minuteros, climatización y ducto a gatas); el montacargas.
+  - **Fase 2. Su cerebro en un banco:** cáscara, rutas, ductos, sentidos y la
+    garantía del aviso de la espalda, con su prueba de justicia.
+  - **Fase 3. El piso 2 jugable en solitario.**
+  - **Fase 4. En red y versus.**
+  - **Fase 5. Acabado:** rendimiento, mezcla, dificultad con gente, la
+    continuación desde el piso 1 y su desbloqueo (con `four-7ly.10`).
 - `four-7ly.3` **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
 - `four-7ly.4` **The Containment:** lo mismo; es donde estaban guardadas todas.
 

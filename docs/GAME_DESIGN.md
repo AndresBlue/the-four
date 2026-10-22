@@ -14,6 +14,7 @@ La experiencia final será de terror ambiental cooperativo para **2–5 jugadore
 - La salida está disponible desde la generación. No necesita fusibles, relés, transmisores, autenticaciones, llaves, consumibles ni tiempo mínimo de supervivencia.
 - Investigar proporciona información y narrativa opcional. No desbloquea la salida.
 - Cuatro pisos, una criatura principal por piso, sin combate, fabricación, mejoras permanentes o búsqueda sistemática de recursos. Los cuatro, de arriba abajo: **el hotel** (The Locust), **las oficinas secretas** de La Oficina, **Radiation Lab** y **The Containment**; el hotel era la fachada de lo que hay debajo. La historia está en [LORE.md](LORE.md).
+- **El piso 2, las oficinas secretas, está diseñado y sin hacer** ([OFICINAS.md](OFICINAS.md), aprobado por el autor el 22 de octubre de 2026). No repite el ciclo del hotel: cada planta es uno de los sistemas del edificio (el correo, la corriente y el aire) y cambia las reglas de la luz y del sonido, con The Lurker siguiendo a quien da la espalda. **Se llega continuando desde el piso 1**, y una vez desbloqueado se puede elegir, en la dificultad en que se desbloqueó (decisión del autor, 22 de octubre de 2026).
 - Linterna sin batería consumible en esta primera versión.
 - Duración objetivo: **25–40 minutos por piso**, 100–160 minutos por campaña sin reintentos. Es una meta de balance pendiente de partidas humanas. Encontrar antes la salida es válido.
 

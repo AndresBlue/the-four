@@ -2,6 +2,8 @@
 
 Procedencia, licencias y permisos pendientes de todo lo que entra en el juego. Mientras queden permisos sin resolver, no se distribuye.
 
+**Para el piso 2** los agentes pueden buscar y descargar assets por su cuenta (autorizado por el autor el 22 de octubre de 2026): CC0 o dominio público primero, luego CC BY con su crédito, luego licencias libres de regalías con uso comercial; **nunca NC, ND ni SA**. Cada uno entra con su fuente, autor, licencia y enlace en este documento. El criterio y la lista de lo que hace falta están en [OFICINAS.md](OFICINAS.md) (sección 12).
+
 ## Hotel actual
 
 - **GodotSteam 4.22.1** (GDExtension, `addons/godotsteam/`): © 2015-actualidad GP Garcia, Chris Ridenour y colaboradores, licencia MIT (`addons/godotsteam/license.md`). Descargado el 25/09/2026 de la [Asset Library de Godot (ficha 2445)](https://godotengine.org/asset-library/asset/2445), que remite al [repositorio en Codeberg](https://codeberg.org/godotsteam/godotsteam); zip de 32.104.325 bytes, SHA-256 `aa31d7208c651f80ef1fccf1be96a4e476c1abf0fb018dd72d9db7bc2929971d`. Solo se conservan los binarios de Windows 64 bits, sin el actualizador del editor. Incluye `steam_api64.dll` de Valve (Steamworks SDK 1.65), redistribuible con el juego según el acuerdo del Steamworks SDK.

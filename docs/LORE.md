@@ -51,7 +51,14 @@ El piso de **las oficinas secretas** tiene su criatura, una nueva que ocupa el s
 - **Su aspecto** es el de la imagen de terror analógico que trajo el autor, y el autor lo precisó ese mismo día: **no es humanoide ni tiene piernas**; es un cuerpo de araña, sin tronco, con **siete brazos, ninguno igual a otro**, para que ni su forma ni su paso sean simétricos, garras grandes y **púas como varillas** largas y finas que le salen del cuerpo en todas direcciones, algunas quebradas. Es liso, sin pelo, y **negro de verdad, sin luz ninguna**: el cuerpo es una masa sin forma, como **tinta o un vapor muy denso que se mueve sobre él**, que se mezcla con la oscuridad del fondo, como si la criatura misma hiciera sombra. Lo único que se ve es la cara.
 - **La cara** es una calavera pálida y esquelética, de forma irregular, **vieja y quebrada**: agrietada, porosa y manchada de carbón. La nariz es **una raja negra en el cráneo**, sin tabique. La **mandíbula va en triángulo con el mentón en punta**, y mandíbula y punta son **piezas que se mueven por separado**. La boca es oscura entera y los dientes le salen a media boca. Los ojos tienen **solo pupila**, grande, negra y sin brillo, y **miran siempre a quien la mira**. Las cuencas y **todo lo de dentro del cráneo son negros del todo**.
 - **Se mueve como una araña** por suelos, paredes y techos, en cualquier ángulo, agarrándose a lo que tenga cerca, **con la cabeza siempre adelantada** hacia quien mira. **Sus brazos nunca se estiran del todo**: van doblados, con los codos marcados, y se agarran con las garras clavadas. En un sitio estrecho avanza **levantada, agarrada a las paredes, sin que el cuerpo toque el suelo**. Es **grande y de patas muy largas, como una viuda negra o una araña tigre**, y se mueve a **paso lento**: zancadas largas, agarrándose muy por delante y soltándose muy por detrás, de lo que tenga cerca.
-- El modelo, sus animaciones, la oscuridad y cómo trepa están en [LURKER.md](LURKER.md).
+- **Sus ojos se quedan en la sombra, sin brillo**: no devuelven la luz de la linterna (el autor, 22 de octubre de 2026).
+- El modelo, sus animaciones, la oscuridad y cómo trepa están en [LURKER.md](LURKER.md); cómo es su piso, en [OFICINAS.md](OFICINAS.md).
+
+## Confirmado el 22 de octubre de 2026
+
+### Restos de personas en todos los pisos
+
+**En todos los pisos hay restos de personas.** También en las oficinas queda rastro de alguien que estuvo antes, como la hoja del hotel. Quiénes eran, y qué les pasó, no está decidido.
 
 ## Lo que el juego ya tiene y casa con esto
 

@@ -80,7 +80,7 @@ Lo que sigue siendo distinto: la imagen es una pintura y esto es un modelo, con 
 
 ## Lo que falta
 
-- **Que exista en el juego:** quien la mueva (una IA que la lleve por suelos, paredes y techos, fuera de la vista y por el rabillo del ojo), el susto por la espalda, los ductos de ventilación de las oficinas, las alucinaciones visuales y auditivas, y sus sonidos (`footfall` ya está). Todo es del piso 2, que no ha empezado (`four-7ly.2`).
+- **Que exista en el juego:** quien la mueva (una IA que la lleve por suelos, paredes y techos, fuera de la vista y por el rabillo del ojo), el susto por la espalda, los ductos de ventilación de las oficinas, las alucinaciones visuales y auditivas, y sus sonidos (`footfall` ya está). Todo es del piso 2, que no ha empezado (`four-7ly.2`). **Cómo se comporta, sus reglas, su captura y cómo se construye están decididos en [OFICINAS.md](OFICINAS.md)** (secciones 1, 4 a 7 y 11).
 - **Medir su coste** en una partida: la oscuridad da diez pasos por cada píxel que cubre, con cinco muestras de ruido en cada paso y en dos capas, y las manos lanzan unos 22 rayos por fotograma.
 - **La calidad más baja:** allí las lámparas solo alumbran la capa de su habitación, y la criatura está en la suya; su cara no recibiría la luz de la sala.
-- **Por decidir:** si los ojos devuelven la luz de la linterna (como los de un animal) para delatarla en la oscuridad o si se queda del todo en la sombra.
+- **Los ojos se quedan en la sombra, sin brillo** (el autor, 22 de octubre de 2026): no devuelven la luz de la linterna. Lo que la delata en la oscuridad es la cara pálida y las luces que tiemblan a su paso, no un reflejo.
