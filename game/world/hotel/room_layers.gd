@@ -55,6 +55,16 @@ static func put_on(mesh: GeometryInstance3D, bits: int) -> void:
 	mesh.layers = layers
 	RenderingServer.instance_set_visible(mesh.get_instance(), mesh.is_visible_in_tree())
 
+## An actor's mesh (a body's, the creature's) on a room's bits, as put_on()
+## and with its protocol, also when it is not on layer 1: a mesh drawn on a
+## layer of its own still takes its room's lamps on Muy bajo.
+static func put_on_actor(mesh: GeometryInstance3D, bits: int) -> void:
+	var layers := (mesh.layers & ~ROOMS) | bits
+	if mesh.layers == layers: return
+	RenderingServer.instance_set_visible(mesh.get_instance(), false)
+	mesh.layers = layers
+	RenderingServer.instance_set_visible(mesh.get_instance(), mesh.is_visible_in_tree())
+
 static func light_only(light: Light3D, mask: int) -> void:
 	if light.light_cull_mask == mask: return
 	RenderingServer.instance_set_visible(light.get_instance(), false)

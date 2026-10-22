@@ -1184,4 +1184,4 @@ func wants_torch() -> bool:
 	if body.hidden: return false
 	if owner_match.threat != null and owner_match.threat.torch_catches(body): return false
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)
-	return level.hotel.dark or (not room.is_empty() and level.hotel.dark_ids.has(int(room.id)))
+	return level.hotel.dark or (not room.is_empty() and not level.hotel.lit(int(room.id)))

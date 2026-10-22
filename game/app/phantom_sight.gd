@@ -177,7 +177,7 @@ func torch_on(camera: Camera3D) -> bool:
 ## Lit enough to be made out: its room's lamps, or the torch pointing that way.
 func lit(point: Vector3, camera: Camera3D) -> bool:
 	var room := FLOOR.room_at(level.manifest.rooms, point)
-	if not room.is_empty() and not level.hotel.dark and not level.hotel.dark_ids.has(int(room.id)): return true
+	if not room.is_empty() and level.hotel.lit(int(room.id)): return true
 	var offset := point - camera.global_position
 	return level.player.torch.visible and offset.length() < 22.0 and (-camera.global_basis.z).angle_to(offset) < deg_to_rad(40.0)
 

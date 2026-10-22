@@ -65,7 +65,7 @@ static func targets(level, stage: int) -> Array:
 ## or a lit set near it.
 static func lit(level, point: Vector3) -> bool:
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
-	if not room.is_empty() and not level.hotel.dark and not level.hotel.dark_ids.has(int(room.id)): return true
+	if not room.is_empty() and level.hotel.lit(int(room.id)): return true
 	for index in level.stage_televisions():
 		var set = level.televisions[index]
 		if set.on and set.global_position.distance_to(point) < TV_LIGHT: return true

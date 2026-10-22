@@ -154,10 +154,11 @@ func apply(told: Dictionary) -> void:
 		elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]):
 			level.match_net.bodies[seat].set_burnt(bool(row[1]))
 
-## Whether a place has its lights on: not the blackout, not a dark room.
+## Whether a place has its lights on, as its room's lamps say (hotel.lit():
+## not the blackout, not a dark room, power on, not drained).
 func lit_at(point: Vector3) -> bool:
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
-	return not level.hotel.dark and not room.is_empty() and not level.hotel.dark_ids.has(int(room.id))
+	return not room.is_empty() and level.hotel.lit(int(room.id))
 
 ## The creature in plain view: in the picture, near enough to make out, lit by
 ## something, and nothing in between. In the pitch dark with the torch off

@@ -89,6 +89,16 @@ var dark := false
 ## Room ids whose lamps are out: the floor's `dark` rooms (map_generator.
 ## light_rooms()), read once in build().
 var dark_ids := {}
+## Rooms whose own power is cut (set_room_power()): their lamp stays out.
+## Local: nothing sends or saves it (phase 1's systems will).
+var unpowered := {}
+## How much of each room's lamp is drained, 0 to 1 (drain()), and the energy
+## it had before, so draining back to 0 gives that exact energy back.
+var drains := {}
+var drain_from := {}
+## Drained this far, a room is dark for the rules (lit()); a passive drain
+## stays under it.
+const LIT_DRAIN := 0.9
 ## Set while a dark room's furniture is built: its lamps stay out.
 var building_dark := false
 ## The module whose furniture is being built (prop_factory.gd), -1 otherwise.
@@ -929,8 +939,9 @@ func blackout(on: bool) -> void:
 	for light in lights:
 		# The lamp of a cell with nothing in it is out for good.
 		if light.has_meta("void"): continue
+		# A room whose own power is cut stays out (set_room_power()).
 		if on: light.set_meta("off", true)
-		elif not dark_ids.has(int(light.get_meta("room", -1))): light.remove_meta("off")
+		elif not dark_ids.has(int(light.get_meta("room", -1))) and not unpowered.has(int(light.get_meta("room", -1))): light.remove_meta("off")
 		light.visible = light.visible and not on
 	for lamp in practicals: lamp.visible = lamp.visible and not on
 	for lamp in sconce_lights: lamp.visible = lamp.visible and not on
@@ -1148,6 +1159,10 @@ func build(data: Dictionary) -> void:
 ## (0.98 m either side) would be on the casing.
 const PAINTING_CLEAR := 2.2
 
+## A room in steps, each a function another floor's builder can override:
+## floor_surface, ceiling, walls, fittings, room_lamp and extras. The order is
+## the hotel's: the walls' blockers end in the occluder, and extras retouches
+## the lamp room_lamp made.
 func build_room(node: Node3D, room: Dictionary) -> void:
 	var height: float = room.height
 	var span := FLOOR.size_of(room)
@@ -1155,8 +1170,48 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	# of a hall (no wall, the next cell goes on): no grime gathers there.
 	batch_roots[node.get_instance_id()] = Color(span.x * 0.5, span.y * 0.5, height, 0.0)
 	wall_material = palette.wall_material(room)
+	floor_surface(node, room)
+	ceiling(node, room)
+	walls(node, room)
+	fittings(node, room)
+	room_lamp(node, room)
+	if room.hall == room.id and room.hall >= 0:
+		if RenderingServer.get_current_rendering_method() == "forward_plus":
+			var fog := FogVolume.new()
+			fog.size = Vector3(span.x * 0.65, 0.7, span.y * 0.65)
+			fog.position.y = 0.45
+			var fog_mat := FogMaterial.new()
+			fog_mat.density = 0.025
+			fog_mat.albedo = Color("81775f")
+			fog.material = fog_mat
+			node.add_child(fog)
+			fog_volumes.append(fog)
+	# Every lit room can have a reflection probe the size of the room; the
+	# preset decides which are in use (probes: every third hall, or every lit
+	# room), and only the nearest exist (update_visibility). A dark room has
+	# none and stays black.
+	if not dark_room(room):
+		probe_slots.append({"room": int(room.id), "parent": node, "height": height, "size": Vector3(span.x - 0.2, height - 0.05, span.y - 0.2), "every_third": room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0, "probe": null})
+	extras(node, room)
+	build_occluder(node)
+
+## The slab the room stands on.
+func floor_surface(node: Node3D, room: Dictionary) -> void:
+	var span := FLOOR.size_of(room)
 	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), palette.floor_finish(room), true)
+
+## The slab over it: plaster, or the service rooms' own.
+func ceiling(node: Node3D, room: Dictionary) -> void:
+	var height: float = room.height
+	var span := FLOOR.size_of(room)
 	box(node, Vector3(0, height + 0.1, 0), Vector3(span.x, 0.2, span.y), "ceiling_service" if room.type in palette.SERVICE_CEILINGS else "ceiling", true)
+
+## Its four sides: open on to a merged cell, a wall with its doorway and
+## switch, a bare one with the room's grille, or the lift wall; wall_art()
+## on the long ones.
+func walls(node: Node3D, room: Dictionary) -> void:
+	var height: float = room.height
+	var span := FLOOR.size_of(room)
 	# The wall a lift's car is behind, in the lobbies that have one.
 	var lift_back := FLOOR.lift_wall(room)
 	var grilled := false
@@ -1224,6 +1279,11 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 			# Nor behind a lift wall standing across the end of this one.
 			if not lift_clear(room, direction, lift_back, side * 3.5): continue
 			wall_art(boundary, room, side * 3.5, inner)
+
+## What stands in it: the corner props, a domestic room's alcoves, the
+## wardrobes, the corner posts, the ceiling fittings and the dressing.
+func fittings(node: Node3D, room: Dictionary) -> void:
+	var height: float = room.height
 	for prop in room.props:
 		var furniture := Node3D.new()
 		furniture.name = "Prop_%d_%s" % [prop.slot, prop.kind]
@@ -1265,6 +1325,12 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	corner_posts(node, room)
 	ceiling_fittings(node, room)
 	DRESSING.dress(self, node, room)
+
+## Its ceiling lamp: the fixture and its one shadowed light, filed in
+## lights (a room's lamp is lights[id]).
+func room_lamp(node: Node3D, room: Dictionary) -> void:
+	var height: float = room.height
+	var span := FLOOR.size_of(room)
 	# Central sightlines remain open; booths sit against the perimeter.
 	var lamp: String = palette.lamp_of(room)
 	var service: bool = lamp == "batten"
@@ -1346,23 +1412,13 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	if service: tubes.append({"light": light, "energy": light.light_energy})
 	if failing:
 		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials["tube_%d" % flickers.size()], "glow": materials.light.emission_energy_multiplier})
-	if room.hall == room.id and room.hall >= 0:
-		if RenderingServer.get_current_rendering_method() == "forward_plus":
-			var fog := FogVolume.new()
-			fog.size = Vector3(span.x * 0.65, 0.7, span.y * 0.65)
-			fog.position.y = 0.45
-			var fog_mat := FogMaterial.new()
-			fog_mat.density = 0.025
-			fog_mat.albedo = Color("81775f")
-			fog.material = fog_mat
-			node.add_child(fog)
-			fog_volumes.append(fog)
-	# Every lit room can have a reflection probe the size of the room; the
-	# preset decides which are in use (probes: every third hall, or every lit
-	# room), and only the nearest exist (update_visibility). A dark room has
-	# none and stays black.
-	if not dark_room(room):
-		probe_slots.append({"room": int(room.id), "parent": node, "height": height, "size": Vector3(span.x - 0.2, height - 0.05, span.y - 0.2), "every_third": room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0, "probe": null})
+
+## What only some rooms have: the reception's red beacon and the refuge's
+## exit signs. Both retouch the lamp room_lamp() has just made.
+func extras(node: Node3D, room: Dictionary) -> void:
+	var height: float = room.height
+	# lights.back(), not lights[id]: the module gallery builds every room as id 0.
+	var light: OmniLight3D = lights.back()
 	if room.type == palette.RECEPTION:
 		# Where the night started: a red emergency lamp blinking over the
 		# reception, the one landmark to find the way back by.
@@ -1396,7 +1452,6 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 		exit_sign(node, Vector3(0, 2.25, -2.5), 0.0, height)
 		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
 		light.light_color = Color("b8d4b6")
-	build_occluder(node)
 
 ## Where a salon or a corridor turns a corner round a cell that is not part of
 ## it, each of the two walls of that cell is drawn by the room on its side and
@@ -1751,7 +1806,7 @@ const PANEL_SIZE := Vector2(0.62, 0.31)
 
 ## `front` is what the sheet is engraved with, read from the side it faces;
 ## `back`, when given, what its other face says (read from there).
-func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float, front: Texture2D = EXIT_ENGRAVING, back: Texture2D = null, size := PANEL_SIZE) -> void:
+func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling_y: float, front: Texture2D = EXIT_ENGRAVING, back: Texture2D = null, size := PANEL_SIZE) -> void:
 	var board := Node3D.new()
 	board.name = "ExitSign"
 	board.position = pos
@@ -1764,9 +1819,9 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling: float, front: Te
 	box(board, Vector3(0, top + 0.058, 0), Vector3(size.x + 0.062, 0.006, 0.072), "black")
 	for side in [-1.0, 1.0]:
 		box(board, Vector3(side * (size.x * 0.5 - 0.012), top - 0.022, 0), Vector3(0.05, 0.06, 0.034), "black")
-	var drop := ceiling - pos.y - top - 0.06
+	var drop := ceiling_y - pos.y - top - 0.06
 	box(board, Vector3(0, top + 0.06 + drop * 0.5, 0), Vector3(0.016, drop, 0.016), "metal", false, "cylinder")
-	box(board, Vector3(0, ceiling - 0.01, 0), Vector3(0.1, 0.02, 0.1), "metal")
+	box(board, Vector3(0, ceiling_y - 0.01, 0), Vector3(0.1, 0.02, 0.1), "metal")
 	var glass := ShaderMaterial.new()
 	glass.shader = EXIT_PANEL
 	glass.set_shader_parameter("engraving", front)
@@ -2186,7 +2241,11 @@ func follow_bodies() -> void:
 		var bit := layer_at((body as Node3D).global_position + Vector3(0, 0.9, 0))
 		if bit == 0 or (int(body.get_meta("room_layer", 0)) == bit and body_clock % 20 != 0): continue
 		body.set_meta("room_layer", bit)
-		for mesh in body.find_children("*", "GeometryInstance3D", true, false): ROOM_LAYERS.put_on(mesh, bit)
+		for mesh in body.find_children("*", "GeometryInstance3D", true, false):
+			# A mesh off layer 1 that asks for it (the Lurker's face) follows the
+			# rooms too; a first-person body on layer 2 alone must not.
+			if mesh.has_meta("follow_rooms"): ROOM_LAYERS.put_on_actor(mesh, bit)
+			else: ROOM_LAYERS.put_on(mesh, bit)
 
 ## Something put down in a room that is nobody's body and in no group (the
 ## figure a frayed mind sees): on the layer of the room it stands in, once.
@@ -2305,16 +2364,16 @@ func bounce_groups(planta: int) -> Dictionary:
 ## A cell where two stretches cross goes to the longer; a stretch of one cell
 ## keeps its own volume. Where two stretches meet the cut remains, at a turn.
 func corridor_runs(planta: int) -> Dictionary:
-	var lit := {}
+	var lit_rooms := {}
 	for i in room_nodes.size():
 		var room: Dictionary = manifest.rooms[i]
-		if room_planta[i] == planta and bool(room.get("corridor", false)) and int(room.get("hall", -1)) < 0 and not dark_room(room) and not FLOOR.is_void(room): lit[i] = true
+		if room_planta[i] == planta and bool(room.get("corridor", false)) and int(room.get("hall", -1)) < 0 and not dark_room(room) and not FLOOR.is_void(room): lit_rooms[i] = true
 	var runs := []
 	for way in [Vector2i(1, 0), Vector2i(0, 1)]:
-		for i in lit:
-			if open_between(i, FLOOR.beside(manifest.rooms[i], -way), lit): continue
+		for i in lit_rooms:
+			if open_between(i, FLOOR.beside(manifest.rooms[i], -way), lit_rooms): continue
 			var run := [i]
-			while open_between(run[-1], FLOOR.beside(manifest.rooms[run[-1]], way), lit): run.append(FLOOR.beside(manifest.rooms[run[-1]], way))
+			while open_between(run[-1], FLOOR.beside(manifest.rooms[run[-1]], way), lit_rooms): run.append(FLOOR.beside(manifest.rooms[run[-1]], way))
 			if run.size() > 1: runs.append(run)
 	runs.sort_custom(func(a: Array, b: Array) -> bool: return run_length(a) > run_length(b))
 	var first := {}
@@ -2388,8 +2447,8 @@ func run_on(halls: Dictionary, stretches: Dictionary, planta: int) -> void:
 			over[next] = int(over.get(next, 0)) + 1
 
 ## Two cells of corridor open on to each other, both lit.
-func open_between(a: int, b: int, lit: Dictionary) -> bool:
-	return b >= 0 and lit.has(b) and open_pairs.has(Vector2i(mini(a, b), maxi(a, b)))
+func open_between(a: int, b: int, lit_rooms: Dictionary) -> bool:
+	return b >= 0 and lit_rooms.has(b) and open_pairs.has(Vector2i(mini(a, b), maxi(a, b)))
 
 func run_length(run: Array) -> float:
 	var metres := 0.0
@@ -2514,7 +2573,8 @@ func _process(delta: float) -> void:
 			var chatter := sin(t * 71.0) * sin(t * 23.0)
 			level = 0.95 + sin(t * 314.0) * 0.02
 			if burst: level = 0.25 if chatter > 0.1 else 1.0
-		lamp.light_energy = entry.energy * level
+		# A drained room's tube flickers at what is left of it (drain()).
+		lamp.light_energy = entry.energy * level * (1.0 - drained(int(lamp.get_meta("room", -1))))
 		entry.material.emission_energy_multiplier = entry.glow * level
 
 ## Public-domain paintings (assets/paintings, tools/textures/ingest_dressing.py)
@@ -2755,6 +2815,47 @@ func decide_dark(data: Dictionary) -> void:
 	for room in data.rooms:
 		if bool(room.get("dark", false)): dark_ids[int(room.id)] = true
 
+## Whether a room has its light: the floor has power, the room is not one of
+## its dark ones, its own power is on and its lamp is not drained past
+## LIT_DRAIN. Dictionary reads only: sanity and the bots ask every frame.
+func lit(room_id: int) -> bool:
+	return not dark and not dark_ids.has(room_id) and not unpowered.has(room_id) and float(drains.get(room_id, 0.0)) < LIT_DRAIN
+
+## Cuts or gives back one room's power. Its ceiling lamp goes out marked
+## "off", so the room culling does not show it again, and comes back only
+## where neither the blackout nor the floor's dark rooms keep it out.
+func set_room_power(room_id: int, on: bool) -> void:
+	if on != unpowered.has(room_id): return
+	if on: unpowered.erase(room_id)
+	else: unpowered[room_id] = true
+	var light: OmniLight3D = lights[room_id]
+	# The lamp of a cell with nothing in it is out for good.
+	if light.has_meta("void"): return
+	if not on:
+		light.set_meta("off", true)
+		light.visible = false
+	elif not dark and not dark_ids.has(room_id):
+		light.remove_meta("off")
+
+## How much of a room's lamp is drained, 0 to 1.
+func drained(room_id: int) -> float:
+	return float(drains.get(room_id, 0.0))
+
+## Drains a room's lamp: its energy scaled by what is left, with no new light
+## and no new material. Back to 0 it has the exact energy it had before.
+func drain(room_id: int, amount: float) -> void:
+	var light: OmniLight3D = lights[room_id]
+	var share := clampf(amount, 0.0, 1.0)
+	if share <= 0.0:
+		if not drains.has(room_id): return
+		light.light_energy = float(drain_from[room_id])
+		drains.erase(room_id)
+		drain_from.erase(room_id)
+		return
+	if not drain_from.has(room_id): drain_from[room_id] = light.light_energy
+	drains[room_id] = share
+	light.light_energy = float(drain_from[room_id]) * (1.0 - share)
+
 ## reach_over: the observer looking at the whole floor from above asks for
 ## everything to be drawn, whatever the preset would hide (0: the preset's).
 ## show_all: nothing is hidden at all -- every room, every door with its
@@ -2930,15 +3031,15 @@ func round_lamps() -> void:
 	bounce.show_near(player_position, preset.bounce and not echo_view and not dark, here)
 	for k in practicals.size():
 		var lamp := practicals[k]
-		var lit: bool = not dark and not echo_view and (show_all or practical_spots[k].distance_to(player_position) < preset.furniture_lamps)
-		if lamp.visible != lit: lamp.visible = lit
+		var shown: bool = not dark and not echo_view and (show_all or practical_spots[k].distance_to(player_position) < preset.furniture_lamps)
+		if lamp.visible != shown: lamp.visible = shown
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# The exit signs keep theirs through a power cut: they are the one thing
 	# here that would have a battery, and the refuge stays findable.
 	for k in exit_lamps.size():
 		var lamp := exit_lamps[k]
-		var lit: bool = not echo_view and (show_all or exit_spots[k].distance_to(player_position) < EXIT_REACH)
-		if lamp.visible != lit: lamp.visible = lit
+		var shown: bool = not echo_view and (show_all or exit_spots[k].distance_to(player_position) < EXIT_REACH)
+		if lamp.visible != shown: lamp.visible = shown
 		if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
 	# The cars' lamps keep theirs looking at the whole floor as well: there are
 	# a handful, and they fit in the atlas where a hundred room lamps do not.
