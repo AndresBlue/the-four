@@ -12,10 +12,12 @@ extends CharacterBody3D
 ## from those words, the same for any creature: each predicate is one of those
 ## lists (tests/hotel/creature_contract_test.gd holds them to it). The
 ## director, the dread aura, the world's sound, the mind and its phantoms, the
-## lifts, the sets, coming back and the floor kept to be continued ask the
-## creature only through this; the rest of the game still reads The Locust
-## until it moves over too. Everything else here is a default for a creature
-## that has nothing of the kind: one that does overrides it.
+## lifts, the sets, coming back, the floor kept to be continued and the
+## capture (executions.gd, its tape and its blood, with the creature's own
+## part in its capture style) ask the creature only through this; the rest of
+## the game still reads The Locust until it moves over too. Everything else
+## here is a default for a creature that has nothing of the kind: one that
+## does overrides it.
 
 ## Hostile: anybody near it has reason to be afraid (pacing_director.hostile).
 const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait"]
@@ -213,6 +215,23 @@ func push_state(_data: Array) -> void: pass
 func play_call(_kind: String, _segment: int, _pitch: float) -> void: pass
 
 # --- The capture -----------------------------------------------------------------
+
+## How it plays a capture out (game/app/capture_styles/): a script that
+## executions.gd makes one of, with `level` set, and asks where it stands to
+## its victim, how they were caught, the room for the body to go down in and
+## where everything of the scene is at each second; death_tape.gd frames its
+## picture in the face it gives, blood.gd takes where it stands and faces
+## from it. Null: it catches nobody.
+func capture_style() -> Variant: return null
+
+## It has hold of somebody: the capture the host staged (executions'
+## `execution`) starts, on every machine.
+func begin_capture(_data: Dictionary) -> void: pass
+
+## The capture is cut short, its victim let go alive
+## (executions.release_execution): it leaves it. Played to its end, it lets
+## go by itself, after capture_length().
+func end_capture() -> void: pass
 
 ## Seconds a capture of its lasts, from the grab.
 func capture_length() -> float: return 0.0

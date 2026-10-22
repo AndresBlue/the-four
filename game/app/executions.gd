@@ -10,6 +10,14 @@ extends Node
 ## This is the scene as it is in the world, the same for everybody. What the
 ## camcorder of whoever dies makes of it is death_tape.gd, on their machine
 ## only; every beat and curve of it is in capture_score.gd.
+##
+## The creature's own part of it is its capture style's
+## (creature.capture_style(), game/app/capture_styles/): where it stands to
+## its victim and which way it faces, how they were caught, the room for the
+## body to go down in, and where everything is at each second. This keeps
+## the capture itself -- the host's word and what is sent of it, the clock and
+## its beats, the props on the floor, the death or letting go -- and asks the
+## creature only what the contract (creature.gd) answers.
 const SCORE := preload("res://game/app/capture_score.gd")
 const CAMCORDER := preload("res://assets/props/camcorder/camcorder.res")
 const AVATAR := preload("res://game/player/avatars/avatar_visual.gd")
@@ -111,6 +119,13 @@ const TORCH_TURN := 1.5
 ## What is spilt in a capture, and what of it stays (blood.gd).
 var blood: Node
 
+## How captures are played out (creature.capture_style()): one of each kind,
+## made the first time it is asked for and kept. The one in use is that of
+## the floor's creature, or of the last there was: a scene whose creature has
+## gone finishes as it began.
+var styles := {}
+var current_style
+
 func _ready() -> void:
 	rng.randomize()
 	blood = BLOOD.new()
@@ -138,10 +153,25 @@ func release_wardrobes() -> void:
 		if is_instance_valid(wardrobe): wardrobe.release_open()
 	held_open.clear()
 
+## The style captures are played out in now (current_style): the floor
+## creature's, asked again each time in case the creature has changed.
+func style():
+	var creature = level.creature
+	if is_instance_valid(creature):
+		var kind: Variant = creature.capture_style()
+		if kind != null:
+			if not styles.has(kind):
+				var made = kind.new()
+				made.level = level
+				styles[kind] = made
+			current_style = styles[kind]
+	return current_style
+
 ## The creature reached this survivor: the execution starts and the death is
-## registered when it ends (host, or offline).
+## registered when it ends (host, or offline). A creature with no way of
+## playing a capture out catches nobody.
 func capture_survivor(body: Node3D) -> void:
-	if body == null or level.net.is_client() or not execution.is_empty() or not is_instance_valid(level.locust): return
+	if body == null or level.net.is_client() or not execution.is_empty() or not is_instance_valid(level.creature) or level.creature.capture_style() == null: return
 	if level.session.participants.get(body.slot, level.session.Life.DEAD) != level.session.Life.EXPLORING: return
 	if level.lifts.riding.has(int(body.slot)) or level.point_protected(body.global_position): return
 	if level.spare.is_valid() and bool(level.spare.call(body)): return
@@ -149,7 +179,7 @@ func capture_survivor(body: Node3D) -> void:
 	# is taken out of whatever it was hiding in.
 	var data := stage_capture(body)
 	if level.match_net.in_match(): level.match_net.free_victim_hide(body.slot)
-	var point: Vector3 = level.locust.global_position
+	var point: Vector3 = level.creature.global_position
 	apply_execution(body.slot, point, float(data.yaw), data)
 	if level.match_net.in_match(): level.match_net.execute_start.rpc(body.slot, point, float(data.yaw), data)
 	# Alone, with no stage left to be given back, the floor is lost from this
@@ -160,23 +190,13 @@ func capture_survivor(body: Node3D) -> void:
 ## What the host decides about a capture: everything the scene needs that is
 ## not the same on every machine by itself.
 func stage_capture(body: Node3D) -> Dictionary:
-	var creature = level.locust
-	var away: Vector3 = body.global_position - creature.global_position
-	away.y = 0.0
-	var distance := away.length()
-	# It is on them in the same instant it is in reach: the last of the way is
-	# its own, as far as the place lets its body go, and its victim is drawn in
-	# over what is left (place_victim). Too near, it is the one that gives way:
-	# pushed back to arm's length, somebody against a wall went into it.
-	var wanted := clampf(distance, SCORE.HOLD_FAR.x, SCORE.HOLD_FAR.y)
-	if distance >= 0.05 and absf(distance - wanted) > 0.02 and creature.control != "puppet" and not bool(body.hidden):
-		creature.move_and_collide(away / distance * (distance - wanted))
-		away = body.global_position - creature.global_position
-		away.y = 0.0
-		distance = away.length()
-	# It turns to its victim, wherever it was facing when it reached them.
-	var yaw: float = creature.rotation.y if distance < 0.05 else atan2(-away.x, -away.z)
-	var chosen := choose_entry(body, away)
+	var creature = level.creature
+	# Where it is once it has them, which way it faces and how far from it
+	# they are held are its own to say (its style: The Locust is on them at
+	# arm's length, turned to them), and so is how they were caught.
+	var placed: Dictionary = style().approach(body)
+	var yaw := float(placed.yaw)
+	var chosen := choose_entry(body, placed.away)
 	captures += 1
 	var seat := int(body.slot)
 	var alone: bool = level.session.roster_count <= 1
@@ -184,12 +204,11 @@ func stage_capture(body: Node3D) -> Dictionary:
 	if forced.has("glance"): look = bool(forced.glance)
 	glanced[seat] = look
 	var side: float = float(forced.get("side", chosen[1]))
-	var feet: Vector3 = creature.global_position - Basis(Vector3.UP, yaw).z * SCORE.HOLD_NEAR
-	var room := fall_room(feet, yaw, side, [body.get_rid(), creature.get_rid()])
+	var room := fall_room(placed.feet, yaw, side, [body.get_rid(), creature.get_rid()])
 	var hide: int = level.hotel.hides.find(body.hiding_place) if bool(body.hidden) and is_instance_valid(body.hiding_place) else -1
 	return {
 		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "straight": bool(room[1]), "slump": bool(room[2]), "room": float(room[3]), "yaw": yaw, "hide": hide, "partner": partner_of(body),
-		"far": clampf(distance, SCORE.HOLD_FAR.x, SCORE.HOLD_FAR.y), "from": body.global_position, "facing": body.rotation.y,
+		"far": float(placed.far), "from": body.global_position, "facing": body.rotation.y,
 		"crouched": bool(body.crouched), "torch": is_instance_valid(body.torch) and body.torch.visible,
 		"glance": look, "seed": int(forced.get("seed", rng.randi() & 0x7fffffff)), "id": captures,
 	}
@@ -204,55 +223,20 @@ func partner_of(body: Node3D) -> int:
 		if level.session.participants.get(int(other.slot), level.session.Life.DEAD) == level.session.Life.EXPLORING: return int(other.slot)
 	return -1
 
-## How somebody is caught, from where they and the creature are: [entry, side].
-## In a wardrobe it is the wardrobe's; crouching, it comes from above; and on
-## their feet it is where they were looking -- at it, away from it or neither.
-## The side is the hand it is on (1 their right), or chance when it is ahead
-## or behind.
+## How somebody is caught, from where they and the creature are: [entry,
+## side], the creature's style's to say, with one draw of this node's chance.
 func choose_entry(body: Node3D, away: Vector3) -> Array:
-	var creature = level.locust
-	var chance := 1.0 if rng.randf() < 0.5 else -1.0
-	if bool(body.hidden) and is_instance_valid(body.hiding_place): return ["ambush" if creature.get("pouncing") == true else "wardrobe", chance]
-	if bool(body.crouched): return ["above", chance]
-	if away.length() < 0.05: return ["front", chance]
-	var look := -Basis(Vector3.UP, body.rotation.y).z
-	var towards := -away.normalized()
-	var angle := rad_to_deg(look.angle_to(towards))
-	if angle <= 50.0: return ["front", chance]
-	if angle >= 130.0: return ["back", chance]
-	return ["side", 1.0 if towards.dot(Basis(Vector3.UP, body.rotation.y).x) > 0.0 else -1.0]
+	return style().choose_entry(body, away, rng)
 
 ## How the body goes down when it is let go, from the room there is where it
-## hangs: laid out back and to one side, to the other side if that one is
-## taken, straight back if neither is free, and with no room to lie at all,
-## folded up against whatever is behind it. [side, straight, slump, room]:
-## the last is how far back it is clear, in metres. (Folded up it used to
-## lean back a fixed half of the way down whatever was there: through the
-## side of a wardrobe, or a wall.)
+## hangs: [side, straight, slump, room] (its style's fall_room).
 func fall_room(feet: Vector3, yaw: float, side: float, exclude: Array) -> Array:
-	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
-	for way in [side, -side]:
-		if clear_along(space, feet, fall_way(yaw, float(way)), [0.35], exclude) >= SCORE.LIE_ROOM: return [float(way), false, false, SCORE.LIE_ROOM]
-	var behind := clear_along(space, feet, fall_way(yaw, 0.0), [0.2, 0.6], exclude)
-	if behind >= SCORE.LIE_ROOM: return [side, true, false, behind]
-	return [side, false, true, behind]
+	return style().fall_room(feet, yaw, side, exclude)
 
-## How far it is clear from a spot on the floor in a direction, at the
-## nearest of some heights, up to the length of a body.
-func clear_along(space: PhysicsDirectSpaceState3D, feet: Vector3, along: Vector3, heights: Array, exclude: Array) -> float:
-	var least: float = SCORE.LIE_ROOM
-	for height in heights:
-		var from: Vector3 = feet + Vector3.UP * float(height)
-		var query := PhysicsRayQueryParameters3D.create(from, from + along * SCORE.LIE_ROOM, 1 | 8)
-		query.exclude = exclude
-		var hit := space.intersect_ray(query)
-		if not hit.is_empty(): least = minf(least, from.distance_to(hit.position))
-	return least
-
-## The way a body falls, in the world: back from the creature and to a side
-## (the avatar's own, avatar_visual.pose_capture); straight back with no side.
-static func fall_way(yaw: float, side: float) -> Vector3:
-	return (Basis(Vector3.UP, yaw + PI) * Vector3(side * 0.62, 0.0, 0.78)).normalized()
+## The way a body falls, in the world, from the way the creature faces and the
+## side it goes to (its style's fall_way).
+func fall_way(yaw: float, side: float) -> Vector3:
+	return style().fall_way(yaw, side)
 
 ## Everyone plays out the execution, from what the host decided. The victim's
 ## own machine hands its picture to its tape.
@@ -276,10 +260,11 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		"glance": bool(data.get("glance", false)), "seed": int(data.get("seed", 0)), "id": int(data.get("id", 0)),
 		"ending": "leave",
 	}
-	if is_instance_valid(level.locust):
-		if level.locust.control != "puppet": level.locust.begin_execution()
+	var creature = level.creature
+	if is_instance_valid(creature):
+		creature.begin_capture(execution)
 		# Turned to its victim on every machine: the scene is laid out along it.
-		level.locust.rotation.y = yaw
+		creature.rotation.y = yaw
 	if bool(execution.torch): drop_torch()
 	blood.begin(execution)
 	# Taken out of a wardrobe, its doors stay as they are thrown: the body is
@@ -333,7 +318,7 @@ func scream() -> void:
 			level.scream_sound.play()
 	# Everybody else hears it wherever they are on the floor: somebody has been
 	# caught, and nobody should miss that it happened.
-	else: level.world_audio.play_everywhere(SCREAM, creature_point() + Vector3(0, 2.0, 0), -4.0, 0.0)
+	else: level.world_audio.play_everywhere(SCREAM, style().creature_point(execution) + Vector3(0, 2.0, 0), -4.0, 0.0)
 
 ## The clock of the scene, what is heard at each beat, the bodies put where
 ## it says and, on the host, the death at the end.
@@ -342,11 +327,12 @@ func update_execution(delta: float) -> void:
 	execution.time += delta
 	var time := float(execution.time)
 	var mine: bool = int(execution.seat) == level.player.slot and not level.bot_match
+	var staged = style()
 	scream()
 	# The whoosh starts with the arm and its impact lands as the arm does:
 	# heard from where the creature is, by its victim too.
 	if int(execution.stabs) == 0 and time >= ARM_TIME:
-		if level.world_audio.enabled: level.world_audio.play_everywhere(KILL_BLOW, creature_point() + Vector3(0, 1.7, 0), -1.0, 0.0)
+		if level.world_audio.enabled: level.world_audio.play_everywhere(KILL_BLOW, staged.creature_point(execution) + Vector3(0, 1.7, 0), -1.0, 0.0)
 		execution.stabs = 1
 	if int(execution.stabs) == 1 and time >= KILL_TIME:
 		if mine: level.rumble(0.2, 1.0, 0.35)
@@ -356,13 +342,15 @@ func update_execution(delta: float) -> void:
 	# black, where it read as a second blow; seen falling, it has to be heard.
 	if int(execution.stabs) == 2 and time >= DROP_TIME + SCORE.FALL_LENGTH * 0.85:
 		execution.stabs = 3
-		if level.world_audio.enabled: level.world_audio.play_at(BODY_FALL[int(execution.seed) % BODY_FALL.size()], body_rest() + Vector3.UP * 0.2, -7.0, RID(), -1.0, 0.74)
+		if level.world_audio.enabled: level.world_audio.play_at(BODY_FALL[int(execution.seed) % BODY_FALL.size()], staged.body_rest(execution) + Vector3.UP * 0.2, -7.0, RID(), -1.0, 0.74)
 		if mine: level.rumble(0.3, 0.5, 0.2)
 	place_victim(delta)
 	move_torch(time)
 	move_camcorder(time)
-	if is_instance_valid(level.locust) and is_instance_valid(level.locust.visual) and "scene" in level.locust.visual: level.locust.visual.scene = scene_for()
-	var ends: float = level.locust.EXECUTION_TIME + 0.3 if is_instance_valid(level.locust) else SCORE.END_TIME
+	# The creature's body is the scene's too, posed from it at this second.
+	staged.pose(execution)
+	var creature = level.creature
+	var ends: float = creature.capture_length() + 0.3 if is_instance_valid(creature) else SCORE.END_TIME
 	if time >= ends: finish_execution()
 
 ## The scene has run its length: the body is the floor's, and the death the
@@ -435,8 +423,8 @@ func release_execution() -> void:
 		level.player.held = not level.lifts.boarding.is_empty() or level.lifts.leaving >= 0.0
 		if is_instance_valid(level.scream_sound): level.scream_sound.stop()
 		level.clear_screen_cues()
-	if is_instance_valid(level.locust) and level.locust.control != "puppet" and level.locust.mode == level.locust.Mode.EXECUTE:
-		level.locust.set_mode(level.locust.Mode.SEARCH if level.locust.control == "ai" else level.locust.Mode.PATROL)
+	var creature = level.creature
+	if is_instance_valid(creature): creature.end_capture()
 
 ## The scene lets go of the creature, and of the body if it is still alive:
 ## a body that was killed stays as it fell until it is taken away or stood up
@@ -444,7 +432,8 @@ func release_execution() -> void:
 func leave_scene(alive := false) -> void:
 	var body := victim_body()
 	if alive and body != null and "avatar" in body and body.avatar != null: body.avatar.end_capture()
-	if is_instance_valid(level.locust) and is_instance_valid(level.locust.visual) and "scene" in level.locust.visual: level.locust.visual.scene = {}
+	var staged = style()
+	if staged != null: staged.unpose()
 	torch = {}
 	# Wherever the scene stopped, the camcorder is on the floor.
 	if not camcorder.is_empty() and is_instance_valid(camcorder.node):
@@ -455,12 +444,6 @@ func leave_scene(alive := false) -> void:
 
 # --- Where everything is ------------------------------------------------------------
 
-func creature_point() -> Vector3:
-	return level.locust.global_position if is_instance_valid(level.locust) else execution.point
-
-func creature_forward() -> Vector3:
-	return -Basis(Vector3.UP, float(execution.yaw)).z
-
 ## Whoever is being executed, as a body on this machine: its own player, a
 ## teammate's or a bot's.
 func victim_body() -> Node3D:
@@ -470,70 +453,18 @@ func victim_body() -> Node3D:
 	if is_instance_valid(other): return other
 	return level.player if seat == level.player.slot else null
 
-## Where the victim of the execution in hand is: on the arm in front of the
-## creature, at arm's length while the face lasts, then lifted and drawn in
-## as it straightens, and on the floor once it lets go.
+## Where the victim of the execution in hand is, at this second of it (its
+## style's to say: on the arm in front of The Locust, lifted, let fall).
 func victim_hold_point() -> Vector3:
-	var time := float(execution.time)
-	var far := float(execution.get("far", SCORE.HOLD_FAR.y))
-	var reach := lerpf(far, SCORE.HOLD_NEAR, SCORE.closing(time))
-	return creature_point() + creature_forward() * reach + Vector3(0, SCORE.HOLD_STAND * (1.0 - SCORE.fall(time)) + SCORE.lift(time) * SCORE.LIFT_HEIGHT, 0)
+	return style().victim_hold_point(execution)
 
-## Where the victim's camera is while the face lasts: at its own eyes, where
-## it was pulled to.
+## Where the victim's camera is while the face lasts.
 func lens_point() -> Vector3:
-	var far := float(execution.get("far", SCORE.HOLD_FAR.y))
-	var eyes := 0.9 if bool(execution.get("crouched", false)) else 1.64
-	return creature_point() + creature_forward() * far + Vector3(0, SCORE.HOLD_STAND + eyes, 0)
-
-## From the lens, which way the mask is: ahead and a little over it; and
-## straight above somebody caught crouching.
-func mask_from() -> Vector3:
-	if bool(execution.get("crouched", false)): return (Vector3.UP * 0.9 - creature_forward() * 0.35).normalized()
-	return (-creature_forward() + Vector3.UP * 0.2).normalized()
-
-## The floor where the body is let go, and where it lies: along the way it
-## falls, or in a heap where it dropped.
-func drop_point() -> Vector3:
-	return creature_point() + creature_forward() * SCORE.HOLD_NEAR
-
-## The way the body goes down: back and to its side, or straight back when
-## that is all the room there is (laid out so, or folded up).
-func fall_dir() -> Vector3:
-	var straight: bool = bool(execution.get("straight", false)) or bool(execution.get("slump", false))
-	return fall_way(float(execution.yaw), 0.0 if straight else float(execution.get("side", 1.0)))
-
-func body_rest() -> Vector3:
-	var room := float(execution.get("room", 0.0))
-	return drop_point() + fall_dir() * (SCORE.seat_back(room) + 0.3 * sin(SCORE.seat_lean(room)))
-
-## Where its head comes to lie (or to hang, sitting).
-func head_rest() -> Vector3:
-	var room := float(execution.get("room", 0.0))
-	return drop_point() + fall_dir() * (SCORE.seat_back(room) + 0.1 + 0.7 * sin(SCORE.seat_lean(room)))
+	return style().lens_point(execution)
 
 ## What the tape of whoever dies needs to know of the place (death_tape.plan).
 func staging() -> Dictionary:
-	var far := float(execution.get("far", SCORE.HOLD_FAR.y))
-	return {
-		"lens": lens_point(), "middle": creature_point() + creature_forward() * far * 0.5, "hold": drop_point(), "body": body_rest(),
-		"head": head_rest(), "creature": creature_point(),
-	}
-
-## What the creature needs to pose itself (locust_visual.pose_capture):
-## places in the world, at this second.
-func scene_for() -> Dictionary:
-	var time := float(execution.time)
-	var hold := victim_hold_point()
-	# Somebody caught crouching is on their feet by the time they are lifted.
-	var low := (1.0 - SCORE.lift(time)) if bool(execution.get("crouched", false)) else 0.0
-	var lens = execution.get("lens")
-	return {
-		"time": time, "entry": String(execution.get("entry", "front")), "side": float(execution.get("side", 1.0)),
-		"ending": String(execution.get("ending", "leave")), "lens": lens_point(), "mask_from": mask_from(),
-		"chest": hold + Vector3.UP * lerpf(1.2, 0.68, low), "face": hold + Vector3.UP * lerpf(1.58, 0.88, low),
-		"body": body_rest() + Vector3.UP * 0.12, "glance": (lens as Transform3D).origin if lens is Transform3D else Vector3.INF,
-	}
+	return style().staging(execution)
 
 ## The victim's body put where the scene has it, on whichever machine this
 ## is, and posed: turned to the creature (round on its arm, caught from
@@ -541,10 +472,11 @@ func scene_for() -> Dictionary:
 func place_victim(delta: float) -> void:
 	var body := victim_body()
 	if body == null: return
+	var staged = style()
 	var time := float(execution.time)
 	var entry := String(execution.get("entry", "front"))
 	if "velocity" in body: body.velocity = Vector3.ZERO
-	var wanted := victim_hold_point()
+	var wanted: Vector3 = staged.victim_hold_point(execution)
 	# Pulled on to the arm over the first frames; from there it is the scene's.
 	body.global_position = wanted if time > 0.3 else body.global_position.lerp(wanted, minf(1.0, delta * 18.0))
 	var towards := float(execution.yaw) + PI
@@ -554,28 +486,14 @@ func place_victim(delta: float) -> void:
 		body.avatar.pose_capture({
 			"lift": SCORE.lift(time), "limp": SCORE.limp(time), "fall": SCORE.fall(time), "time": time, "side": float(execution.get("side", 1.0)),
 			"slump": bool(execution.get("slump", false)), "straight": bool(execution.get("straight", false)), "room": float(execution.get("room", SCORE.LIE_ROOM)),
-			"height": body.global_position.y - creature_point().y, "sill": seat_floor(), "clear": scene_bodies(), "away": head_away(), "bleed": blood.wanted(),
+			"height": body.global_position.y - staged.creature_point(execution).y, "sill": seat_floor(), "clear": scene_bodies(), "away": staged.head_away(execution), "bleed": blood.wanted(),
 		})
-
-## To which side the head of whoever dies turns once it is dead (1 its left,
-## -1 its right): away from where its camcorder lies, as it will be lying
-## when it has fallen -- on its back, its head along the way it went over --,
-## so that the last of the tape is not its face looking into the lens. With
-## no word yet of where the camera is, the side it falls to.
-func head_away() -> float:
-	var lens = execution.get("lens")
-	var side := float(execution.get("side", 1.0))
-	if not (lens is Transform3D): return side
-	var level_way := Vector3(0.0 if bool(execution.get("straight", false)) or bool(execution.get("slump", false)) else side * 0.62, 0.0, 0.78).normalized()
-	var its_right := Basis(Vector3.UP, float(execution.yaw) + PI + atan2(level_way.x, level_way.z)) * Vector3.RIGHT
-	var beside := ((lens as Transform3D).origin - head_rest()).dot(its_right)
-	if absf(beside) < 0.05: return side
-	return 1.0 if beside > 0.0 else -1.0
 
 ## The bodies of the scene, which what looks for walls looks through.
 func scene_bodies() -> Array:
 	var said: Array = []
-	if is_instance_valid(level.locust): said.append(level.locust.get_rid())
+	var creature = level.creature
+	if is_instance_valid(creature): said.append(creature.get_rid())
 	if level.player is CollisionObject3D: said.append(level.player.get_rid())
 	for other in level.match_net.bodies.values():
 		if is_instance_valid(other) and other is CollisionObject3D: said.append(other.get_rid())
@@ -649,7 +567,8 @@ func move_camcorder(time: float) -> void:
 	node.visible = true
 	if not camcorder.has("fall"):
 		var exclude: Array = []
-		if is_instance_valid(level.locust): exclude.append(level.locust.get_rid())
+		var creature = level.creature
+		if is_instance_valid(creature): exclude.append(creature.get_rid())
 		var body := victim_body()
 		if body != null: exclude.append(body.get_rid())
 		camcorder["from"] = Transform3D(Basis(Vector3.UP, float(execution.yaw) + PI), lens_point())
@@ -663,35 +582,9 @@ func move_camcorder(time: float) -> void:
 
 # --- The torch on the floor ------------------------------------------------------------
 
-## Where the victim's torch ends up, and pointing where: to the side the swipe
-## sends things, a step or two from where the body hangs, lying on the floor
-## and turned back towards the creature -- so that its beam runs along the
-## carpet, up the creature and on to the wall behind it. Drawn from the
-## capture's seed and stopped by the walls, which are the same on every
-## machine: everybody sees it come to rest in the same place.
-func torch_rest() -> Transform3D:
-	var draw := RandomNumberGenerator.new()
-	draw.seed = int(execution.get("seed", 0)) ^ 0x51ed
-	var forward := creature_forward()
-	var right := forward.cross(Vector3.UP)
-	var side := float(execution.get("side", 1.0))
-	var out := (forward * draw.randf_range(0.5, 0.9) - right * side * draw.randf_range(0.6, 1.0)).normalized()
-	var from := lens_point() - Vector3.UP * 0.3
-	# Far enough for its beam, level with the floor, to have opened up to the
-	# height of legs by the time it reaches them.
-	var spot := drop_point() + out * draw.randf_range(2.1, 2.9)
-	var query := PhysicsRayQueryParameters3D.create(from, spot + Vector3.UP * 0.2, 1)
-	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty():
-		var back := from - (hit.position as Vector3)
-		back.y = 0.0
-		spot = (hit.position as Vector3) + back.normalized() * 0.25
-	spot.y = creature_point().y + 0.035
-	var aim := drop_point().lerp(creature_point(), 0.5) + Vector3.UP * 0.9 - spot
-	return Transform3D(Basis(Vector3.UP, atan2(-aim.x, -aim.z) + draw.randf_range(-0.22, 0.22)) * Basis(Vector3.RIGHT, deg_to_rad(4.0)), spot)
-
 ## The victim's torch leaves its hand: the lamp it carried goes dark and one
-## like it, with a body to it, takes its place in the world.
+## like it, with a body to it, takes its place in the world, to come to rest
+## where the creature's style says (torch_rest).
 func drop_torch() -> void:
 	var body := victim_body()
 	if body == null or not is_instance_valid(body.torch) or not is_instance_valid(level.hotel): return
@@ -703,7 +596,7 @@ func drop_torch() -> void:
 	level.hotel.add_child(node)
 	node.global_transform = hand
 	leavings.append(node)
-	torch = {"node": node, "lamp": made.lamp, "hand": hand, "rest": torch_rest(), "turn": float(execution.get("side", 1.0)) * TORCH_TURN}
+	torch = {"node": node, "lamp": made.lamp, "hand": hand, "rest": style().torch_rest(execution), "turn": float(execution.get("side", 1.0)) * TORCH_TURN}
 
 ## A torch out of somebody's hand: the thing itself and the light it had
 ## there. {node, lamp}.
@@ -801,7 +694,8 @@ func move_torch(time: float) -> void:
 	var rest: Transform3D = torch.rest
 	var entry := String(execution.get("entry", "front"))
 	var falls := SCORE.face_end(entry) + SCORE.SWIPE_REACH
-	var forward := creature_forward()
+	var staged = style()
+	var forward: Vector3 = staged.creature_forward(execution)
 	var right := forward.cross(Vector3.UP)
 	var side := float(execution.get("side", 1.0))
 	if time < falls:
@@ -810,8 +704,8 @@ func move_torch(time: float) -> void:
 		# the edge of the light.
 		# In the hand, out to one side of the body and just ahead of it: level
 		# with the mask, so what reaches the mask comes across it, not at it.
-		var at: Vector3 = victim_hold_point() + Vector3.UP * (0.8 if bool(execution.get("crouched", false)) else 1.34) - forward * 0.2 - right * side * 0.32
-		var mask := lens_point() + mask_from() * 0.17
+		var at: Vector3 = staged.victim_hold_point(execution) + Vector3.UP * (0.8 if bool(execution.get("crouched", false)) else 1.34) - forward * 0.2 - right * side * 0.32
+		var mask: Vector3 = staged.lens_point(execution) + staged.mask_from(execution) * 0.17
 		var aside := at + (-forward * 0.5 - right * side * 0.75 - Vector3.UP * 0.45).normalized()
 		var struck := SCORE.smooth(SCORE.ramp(time, 0.0, 0.05))
 		var aim := mask.lerp(aside, struck)

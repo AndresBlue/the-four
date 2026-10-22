@@ -218,7 +218,7 @@ func is_dark(execution: Dictionary) -> bool:
 func plan(execution: Dictionary) -> Dictionary:
 	var stage: Dictionary = level.executions.staging()
 	var exclude: Array = [level.player.get_rid()]
-	if is_instance_valid(level.locust): exclude.append(level.locust.get_rid())
+	if is_instance_valid(level.creature): exclude.append(level.creature.get_rid())
 	for body in level.match_net.bodies.values():
 		if is_instance_valid(body): exclude.append(body.get_rid())
 	var scene := {
@@ -300,10 +300,11 @@ func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 
 ## The mask in the lens, `since` seconds after it got there: framed in the
 ## mask's own space, so the picture is the same against a wall as in the
-## middle of a room.
+## middle of a room. Where the mask is, the creature's capture style says.
 func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
-	if not is_instance_valid(level.locust) or not is_instance_valid(level.locust.visual) or not "scene" in level.locust.visual: return thrown
-	var mask: Transform3D = level.locust.visual.mask_transform()
+	var framed: Variant = level.executions.style().mask_transform()
+	if not (framed is Transform3D): return thrown
+	var mask: Transform3D = framed
 	var side := float(execution.get("side", 1.0))
 	var arrived := 1.0 if busy else SCORE.smooth(since / SCORE.ARRIVE)
 	var jerk := SCORE.smooth(SCORE.ramp(since, SCORE.JERK_TIME, SCORE.JERK_TIME + SCORE.JERK_LENGTH))

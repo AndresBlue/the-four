@@ -8,7 +8,7 @@ extends RefCounted
 ## Seconds from the grab (`T0`), all of them.
 
 ## How somebody is caught, which is the first second of the scene. The host
-## chooses (executions.choose_entry); "busy" is not one of these: it is the
+## chooses (locust_capture.choose_entry); "busy" is not one of these: it is the
 ## victim's own tape laid over whichever the host chose.
 const ENTRIES := ["front", "back", "side", "above", "wardrobe", "ambush"]
 

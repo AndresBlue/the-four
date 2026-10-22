@@ -1311,7 +1311,7 @@ const POUNCE_ACCELERATION := 10.0
 const POUNCE_TURN := 12.0
 ## What it is doing by a wardrobe: {hide, who, phase, until, spot, ajar}.
 var lurk := {}
-## It is going for somebody it waited for (executions.choose_entry).
+## It is going for somebody it waited for (locust_capture.choose_entry).
 var pouncing := false
 var stood := 0.0
 
@@ -2208,6 +2208,23 @@ func sound_route(listener: Vector3) -> Dictionary:
 ## for, not preloaded: that script knows this one.
 const HALLUCINATIONS := "res://game/app/hallucinations/locust_hallucinations.gd"
 func hallucinations() -> Variant: return load(HALLUCINATIONS)
+
+## How it catches somebody (game/app/capture_styles/locust_capture.gd): on
+## them at arm's length, the mask at their lens, lifted, the blow, let fall.
+## Preloaded: that script does not know this one.
+const CAPTURE_STYLE := preload("res://game/app/capture_styles/locust_capture.gd")
+func capture_style() -> Variant: return CAPTURE_STYLE
+
+## Holding its victim (begin_execution), where it drives itself or a player
+## does: a copy's mode comes with what it is sent.
+func begin_capture(_data: Dictionary) -> void:
+	if control != "puppet": begin_execution()
+
+## A victim let go alive: it leaves the kill, to look round where it drives
+## itself and to its rounds where a player does. Played to its end it leaves
+## by itself (update_execution).
+func end_capture() -> void:
+	if control != "puppet" and mode == Mode.EXECUTE: set_mode(Mode.SEARCH if control == "ai" else Mode.PATROL)
 
 func capture_length() -> float: return EXECUTION_TIME
 

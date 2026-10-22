@@ -45,9 +45,10 @@ const BLADE := 0.36
 const MASK_REACH := 0.17
 ## The capture it is playing a part in, or nothing. While there is one, the
 ## whole pose is that scene's and a function of its clock (pose_capture):
-## executions.gd writes this every frame of an execution, the same on every
-## machine. {time, entry, side, ending, lens, mask_from, chest, face, body,
-## glance} -- points in the world, see executions.scene_for().
+## its capture style (game/app/capture_styles/locust_capture.gd) writes this
+## every frame of an execution, the same on every machine. {time, entry,
+## side, ending, lens, mask_from, chest, face, body, glance} -- points in the
+## world, see locust_capture.scene_for().
 var scene := {}
 ## Rest lengths of the back (hips to neck, neck to head) and of each arm.
 var back := Vector2.ZERO

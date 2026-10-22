@@ -131,8 +131,10 @@ func heard(record: Dictionary, clock: float) -> void:
 ## What of the scene the blood needs, kept: the scene itself will be gone.
 func snapshot(execution: Dictionary) -> Dictionary:
 	var yaw := float(execution.yaw)
-	var forward := -Basis(Vector3.UP, yaw).z
-	var point: Vector3 = level.locust.global_position if is_instance_valid(level.locust) else execution.point
+	# Where the creature stands and which way it faces: its capture style's.
+	var staged = level.executions.style()
+	var forward: Vector3 = staged.creature_forward(execution)
+	var point: Vector3 = staged.creature_point(execution)
 	var exclude: Array = level.executions.scene_bodies()
 	var straight: bool = bool(execution.get("straight", false)) or bool(execution.get("slump", false))
 	return {
@@ -143,7 +145,8 @@ func snapshot(execution: Dictionary) -> Dictionary:
 		"room": float(execution.get("room", SCORE.LIE_ROOM)), "sill": level.executions.seat_floor(),
 	}
 
-## Where the body is held at a second of the scene (executions.victim_hold_point).
+## Where the body is held at a second of the scene (the capture style's
+## victim_hold_point, The Locust's, from what was kept of it).
 func held_at(scene: Dictionary, time: float) -> Vector3:
 	var reach := lerpf(float(scene.far), SCORE.HOLD_NEAR, SCORE.closing(time))
 	return (scene.point as Vector3) + (scene.forward as Vector3) * reach + Vector3.UP * (SCORE.HOLD_STAND * (1.0 - SCORE.fall(time)) + SCORE.lift(time) * SCORE.LIFT_HEIGHT)
