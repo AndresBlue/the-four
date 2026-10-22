@@ -2,7 +2,7 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 22 de octubre de 2026, 13:10, al pasar al trabajo en tres niveles (`CLAUDE.md`, «Cómo se trabaja»).
+**Última actualización:** 22 de octubre de 2026, 13:25, al pasar al trabajo en tres niveles (`CLAUDE.md`, «Cómo se trabaja»).
 
 ## En qué estamos
 
@@ -14,16 +14,11 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 | 0a2 Director, aura, audio, cordura y fantasmas por el contrato | Hecho (`1171788`) |
 | 0a3 Ascensores, teles, reaparición y guardado; un teletransporte | Hecho (`d59cf8d`) |
 | 0a4 Capturas como estrategia de cada criatura | Hecho (`a854b6f`) |
-| 0a5 Red, observador y bots por el contrato | **En el árbol de trabajo, sin commit:** implementado y revisado, falta `verify.ps1` |
+| 0a5 Red, observador y bots por el contrato | Hecho (`d32f23a`) |
 | 0b a 0f | Pendientes (`.claude/specs/fase0_pasos.md`) |
 | Fases 1 a 5 | Pendientes |
 
-**Lo primero al retomar:** cerrar 0a5.
-1. `git status` debe mostrar solo sus archivos: `match_net.gd`, el observador, `run_ledger`, `interaction`, `presentation_rig`, `shader_warmup`, `creature.gd`, `hotel_locust.gd`, los bots, `tools/bots/bot_threats.gd` y las pruebas.
-2. Pasar `verify.ps1` con un agente de la batería.
-3. Si está en verde, hacer el commit. Si no, un frente corto de arreglos.
-
-Hay 0 commits sin subir (el último subido es `a854b6f`).
+**Lo primero al retomar:** el paso 0b (objetivos como manejadores). Su nota de diseño está en `.claude/specs/fase0_pasos.md`. Va por el flujo `encargos` y después por `frente`. El árbol de trabajo está limpio y todo está subido (`d32f23a`).
 
 ## Especificaciones (en `.claude/specs/`)
 
