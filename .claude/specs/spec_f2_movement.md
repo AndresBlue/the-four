@@ -988,3 +988,7 @@ Raised by the critics on 22 October 2026. Until each is answered, 2a builds what
 - Difficulty key names are spec_f2_mind.md 4.1's (`lit_takes`, `freeze_time`, `creep_scale`, `peek_every` if the author gives the peeks numbers), not this draft's `lit_grab`, `stare_time`, `approach_scale` and `peek_rate`. Rename them here before `encargos`.
 - Still open for phase 2: this draft's default `duct_speed` in code (1.6, Equilibrada) against MIND's rule that code defaults are Desafiante's (2.0); and the base of `creep_scale` (MIND's CREEP_SPEED 1.0 or this draft's CRAWL_SPEED 1.35).
 - Line 19 is out of date: `set_floor()` exists since 0c (9f759db).
+
+### From step 0e (22 October 2026)
+
+- `ROOM_LAYERS.put_on_actor(mesh, bits)` exists, but `follow_bodies()` uses it only for meshes with the meta `"follow_rooms"` (none on floor 1; the first-person body is on layer 2 and must not move). Her face (lurker_visual.gd, LAYER 4) needs that meta and her body in the group follow_bodies walks (or `body_bit`, spec_f1_geometry H10).

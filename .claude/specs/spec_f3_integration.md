@@ -22,7 +22,7 @@ Floor 1 stays identical through every step of this spec: every change to a share
 ### 0.1 Phase 0 and phase 1 (as specified in `.claude/specs/fase0_pasos.md` and the phase 1 specs)
 
 - `level.creature` (alias `level.locust`), the contract in `game/enemies/creature.gd`, `level.kind` (0c), `level.set_floor(n)` and `--floor=N`, `level.objective(id)` (0b's accessor), `level.tuning()` returning `DIFFICULTY.profile(id, kind.CREATURE_KEY)` merged (0f), `FLOOR.palette(manifest)` (0d), `level.point_protected(point)`.
-- 0e: `hotel.lit(room_id)`, `hotel.set_room_power(room_id, on)`, `hotel.drain(room_id, amount)`, `ROOM_LAYERS.put_on_actor(mesh, bits)` used by `follow_bodies()` for actor meshes not on layer 1.
+- 0e: `hotel.lit(room_id)`, `hotel.set_room_power(room_id, on)`, `hotel.drain(room_id, amount)`, `ROOM_LAYERS.put_on_actor(mesh, bits)` used by `follow_bodies()` only for meshes with the meta `"follow_rooms"` (none on floor 1; the rest keep `put_on()`).
 - 1a: `office_floor.gd` with `CREATURE := "res://game/enemies/null_creature.tscn"` and `CREATURE_KEY := &"lurker"`; `null_creature.gd` with `heard`.
 - 1d: `office_geometry.gd` (troffers, `lens_of`, `battens_of`, per-room lens duplicates for drain, the failing-troffer flicker entry with `share`), `hum_path()`, `PLENUM_LAYER := 8`.
 - 1e to 1g: `conduit_graph.gd`, `play_moving()`, `mask_db()`, `level.sound_mask(point)`, `level.crawling_at(point)`, `air.ducts_closed()`, the objectives `files`, `power`, `air` with `snapshot()/restore()`, `floor_save` writing `"objectives"`, the office RPCs (a circuit given travels there, reliably, with catch-up for late joiners).
@@ -615,7 +615,7 @@ Every frame of the scene (`executions.update_execution()` calls `staged.pose(exe
   The Lurker's: `{"far": 0.6, "held": 0.34, "close": 0.3, "near": 0.24, "lunge_time": 0.0, "back_dip": -0.12}` (her face is 0.36 m tall in the game: at 0.34 m it fills about nine tenths of the picture; "a un palmo"). `lunge_to` is not read when `lunge_time` is 0. The up vector stays `Vector3.UP` (she hangs head down, so her face is upside down in the picture; the code's `absf(ahead.normalized().y) > 0.85` branch is untouched). The implementer writes the constant's real name in each row before coding (lines 37 to 38 and 312 to 314 are `MASK_LUNGE` and `LUNGE`).
 - **Rising.** After computing its transform `facing()` returns `style.tape_pose(execution, time, transform)` when the style has it. The Lurker's: with `k = score().lift(time)`, origin raised by `k * extra.lift * 0.9`, basis tilted up about its own x by `0.35 * k` rad: the picture rises into the dark of the ceiling.
 - **The fall.** `plan()` copies `stage.get("look_up", false)` and `stage.get("ceiling", Vector3.INF)` into the scene for `camera_fall.solve()` (5.7). `fly_at()` = `face_end + SWIPE_REACH` = 2.4 from her score.
-- `is_dark()` asks `level.hotel.lit()` (0e) for the room at `execution.from`.
+- `is_dark()` will ask `not level.hotel.lit(...)` for the room at `execution.from`. Phase 1 makes that change, not 0e (see the notes from step 0e in `spec_f1_systems.md`): `game/app/death_tape.gd` still reads `dark_ids`. 3c checks it.
 
 ### 5.7 The camera falls looking up (`camera_fall.gd`; OFICINAS 6)
 
@@ -853,7 +853,7 @@ Missed after 8.2 and 8.3: the fallbacks, in this order, are one step less per qu
 
 ### 8.4 Her face on Muy bajo
 
-- `hotel_geometry.follow_bodies()` (0e uses `put_on_actor()` for actor meshes not on layer 1): `var meshes: Array = body.layer_meshes() if body.has_method("layer_meshes") else body.find_children("*", "GeometryInstance3D", true, false)`. `lurker.gd`: `func layer_meshes() -> Array: return visual.layer_meshes()`. Her model then carries the room's bit beside value 4, and on `static_light` the room's lamp lights her face, eyes and teeth; the ink (unshaded) keeps value 4 alone. `light_body()` likewise (4.5).
+- `hotel_geometry.follow_bodies()` (0e uses `put_on_actor()` only for meshes with the meta `"follow_rooms"`; 3g must set that meta on her face, eyes and teeth (not on the ink) and put her body in the group `hotel_actors`, which `follow_bodies()` walks; nothing does either yet, see `spec_f2_movement.md`, from step 0e): `var meshes: Array = body.layer_meshes() if body.has_method("layer_meshes") else body.find_children("*", "GeometryInstance3D", true, false)`. `lurker.gd`: `func layer_meshes() -> Array: return visual.layer_meshes()`. Her model then carries the room's bit beside value 4, and on `static_light` the room's lamp lights her face, eyes and teeth; the ink (unshaded) keeps value 4 alone. `light_body()` likewise (4.5).
 - Checked in 9.1 case M and in the capture `tools/capture/lurker_capture.gd --preset=4` (add the option: `level.settings.set_designed(int)` before the shots) beside the same shot on Alto: her face reads in both.
 
 ---

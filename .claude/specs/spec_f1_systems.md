@@ -1302,3 +1302,10 @@ New `.gd` files get their `.gd.uid` committed (Godot generates them on the first
 10. **Ducts that meet the main duct.** If a network duct, a gap's plenum cell or a duct exit crosses the main duct's box, the crawl is blocked or another duct shows through the inside of this one. The generator's guarantees (0.2) and geometry's clipping prevent it, and `office_test` (6.2) and the duct capsule test (6.1) catch it.
 11. **The duct cuts walls.** Without `wall_holes()`, a 4.4 m room's wall stands across the duct. The capsule test fails at the first such wall; build the holes before the holder.
 12. **Nothing but the handlers powers a room on floor 2.** The hotel's fuse boxes (`hotel_panel.gd`, hung by `room_dressing.fuse_boxes_left()` in `FUSE_ROOMS`) give a wing its lights back in the blackout, which is the hotel kind's. If the office palette keeps any fuse room, their switches must not call `set_room_power()`. Power on planta 2 is only `power_objective.refresh_power()`.
+
+## Notes from step 0e (22 October 2026, work orders in .claude/specs/encargos_0e.json)
+
+- `hotel.set_room_power(room_id, on)` and `drain(room_id, amount)` act on the room's ceiling lamp only (`lights[id]`); `lit(room_id)` is `not dark and not dark_ids.has(id) and not unpowered.has(id) and drained(id) < LIT_DRAIN` (0.9), and `drained(room_id) -> float` exists. Local API: no RPC, no save (this phase makes them host-authoritative and saved).
+- NOT done by 0e, so this phase does it where it cuts a zone's power: take the room out of the baked bounce (today `round_lamps()` shows the bounce again with `not dark`, hotel_geometry.gd, and only the whole floor's blackout hides it), and its reflection probe (`probe_slots` is decided at build; only the seed's dark rooms lack one). Otherwise rooms of planta 2 glow without power.
+- Also this phase: `game/app/death_tape.gd` (`is_dark`, reads `dark_ids`) and `game/app/floor_map.gd` (the map's reach, `level.hotel.dark or ... dark_room(room)`) still ignore `unpowered` and drains; they move to `not level.hotel.lit(...)`.
+- Sconces, practicals and the emissive lenses are left to the office geometry's overrides (spec_f1_geometry 7.3).
