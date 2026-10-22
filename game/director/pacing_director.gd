@@ -284,17 +284,12 @@ func pressed_in_hiding() -> bool:
 	var from := room_id(it.global_position)
 	return active_survivors().any(func(body): return body.hidden and reach(from, room_id(body.global_position)) < HIDE_NEAR)
 
-## The rooms the team is making for: the stage's refuge, its sets still dark
-## and, on the last stage, the furniture with a number in it and the keypad.
+## The rooms the team is making for: the stage's refuge and what its
+## objectives still ask (level.goal_points(): its sets still dark and, on the
+## last stage, the furniture with a number in it and the keypad).
 func goal_rooms() -> Array:
 	var rooms: Array = [int(level.refuge_room())]
-	for index in level.stage_televisions():
-		var set = level.televisions[index]
-		if is_instance_valid(set) and not set.on: rooms.append(room_id(set.global_position))
-	if int(level.session.stage) >= 3:
-		for piece in level.containers:
-			if is_instance_valid(piece) and int(piece.digit) >= 0 and not piece.searched: rooms.append(room_id(piece.global_position))
-		if is_instance_valid(level.lock) and not level.code_entered: rooms.append(room_id(level.lock.global_position))
+	for point in level.goal_points(): rooms.append(room_id(point))
 	return rooms.filter(func(id): return id >= 0)
 
 ## Whether a room stands between somebody and something they are making for:
@@ -589,14 +584,8 @@ func prowl_round(target: Node3D, metres: float, kind: String) -> bool:
 ## Something the team still has to do, far enough from all of them: it waits
 ## there a while.
 func ambush(target: Node3D) -> bool:
-	var spots: Array = []
-	for index in level.stage_televisions():
-		var set = level.televisions[index]
-		if is_instance_valid(set) and not set.on: spots.append(set.global_position)
-	if int(level.session.stage) >= 3:
-		for piece in level.containers:
-			if is_instance_valid(piece) and int(piece.digit) >= 0 and not piece.searched: spots.append(piece.global_position)
-		if is_instance_valid(level.lock) and not level.code_entered: spots.append(level.lock.global_position)
+	# What the stage still asks of its objectives, where it stands.
+	var spots: Array = level.goal_points()
 	var from := room_id(target.global_position)
 	var fair: Array = []
 	for spot in spots:

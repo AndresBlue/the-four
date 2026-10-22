@@ -6,10 +6,11 @@ extends RefCounted
 ## arriving say it in its own words.
 ##
 ## A floor of another kind is another script of this shape: its stages, their
-## objectives and texts. The objectives it can ask for are the ones the game
-## knows how to run -- "televisions" (the sets of the stage's wing, lit; the
-## last one but one takes the power: game/app/televisions.gd) and "code" (the
-## four numbers read into the keypad of the last door: game/app/code_lock.gd).
+## objectives and texts. The objectives it can ask for are the ones in
+## OBJECTIVES, each run by its handler (game/floors/objectives/): here
+## "televisions" (the sets of the stage's wing, lit; the last one but one
+## takes the power: game/app/televisions.gd) and "code" (the four numbers
+## read into the keypad of the last door: game/app/code_lock.gd).
 ## A stage is played on the planta of the same number (FLOOR.PLANTAS), and
 ## game_session.STAGES has to agree with the list (tests/hotel/hotel_test.gd).
 
@@ -53,6 +54,14 @@ const STAGES := [
 	{"objectives": ["televisions"], "errand": "ENCIENDE LOS TELEVISORES", "brief": "Enciende los televisores y busca la salida."},
 	{"objectives": ["televisions", "code"], "errand": "DESCUBRE EL CÓDIGO", "brief": "Busca las notas con el código, enciende televisores y sal del piso."},
 ]
+
+## The objectives a stage can ask for, by the name STAGES uses, and the
+## handler that runs each. Paths, not preloads: the sets' handler preloads
+## tv_placement.gd, which preloads this script.
+const OBJECTIVES := {
+	"televisions": "res://game/floors/objectives/televisions_objective.gd",
+	"code": "res://game/floors/objectives/code_objective.gd",
+}
 
 ## How many stages the floor has.
 static func count() -> int: return STAGES.size()

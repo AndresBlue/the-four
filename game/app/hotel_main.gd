@@ -100,6 +100,10 @@ var floor_map
 ## number.
 const HOTEL_FLOOR := preload("res://game/floors/hotel_floor.gd")
 var kind: GDScript = HOTEL_FLOOR
+## Its objectives (game/floors/objectives/), one handler for each its kind
+## lists, built with the floor: host_gate(), the lifts' lines and the
+## director ask them rather than naming each.
+var objectives := {}
 const TELEVISIONS := preload("res://game/app/televisions.gd")
 var tvs
 const CODE_LOCK := preload("res://game/app/code_lock.gd")
@@ -762,7 +766,8 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 		manifest = GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
-	tv_sets = TV_PLACEMENT.settle(manifest, survivors)
+	build_objectives()
+	tv_sets = settle_objectives(survivors).get("televisions", {})
 	hotel = GEOMETRY.new()
 	hotel.name = "GeneratedHotel"
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -797,7 +802,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 		manifest = GENERATOR.new().candidate(404, 0, true)
 		manifest["fallback"] = true
 		manifest["requested_seed"] = seed_value
-		tv_sets = TV_PLACEMENT.settle(manifest, survivors)
+		tv_sets = settle_objectives(survivors).get("televisions", {})
 		hotel = GEOMETRY.new()
 		hotel.name = "GeneratedHotel"
 		hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -851,8 +856,9 @@ func bounce_ready() -> void:
 func populate_floor(with_director: bool) -> void:
 	camera_cut()
 	spawn_locust()
-	place_televisions()
-	place_containers()
+	# The sets, then the drawers with the numbers and the keypad: each by its
+	# objective, in the order the floor lists them.
+	for objective_name in objectives: objectives[objective_name].place()
 	# After the furniture: a document may be shut in a suitcase, and the key
 	# goes in a drawer with nothing else in it.
 	place_documents()
@@ -1507,42 +1513,65 @@ func track_refuges() -> void:
 	if net.is_client(): return
 	for body in survivors(): session.set_refuge(body.slot, point_in_refuge(body.global_position))
 
+## One handler for each objective the floor's kind can ask for, in the order
+## it lists them; built before anything of the floor is settled.
+func build_objectives() -> void:
+	objectives.clear()
+	for objective_name in kind.OBJECTIVES:
+		var handler = load(kind.OBJECTIVES[objective_name]).new()
+		handler.setup(self)
+		objectives[objective_name] = handler
+
+## What each objective fixes of the manifest before the hotel is built, by
+## name (the sets it keeps: tv_sets).
+func settle_objectives(survivors: int) -> Dictionary:
+	var settled := {}
+	for objective_name in objectives:
+		var handler_script = load(kind.OBJECTIVES[objective_name])
+		settled[objective_name] = handler_script.settle(manifest, survivors, kind)
+	return settled
+
+## The handlers a stage asks, in the order it lists them (kind.STAGES).
+func stage_objectives(stage := -1) -> Array:
+	var number: int = session.stage if stage < 0 else stage
+	var result: Array = []
+	if number < 1 or number > kind.count(): return result
+	for objective_name in kind.stage(number).objectives:
+		if objectives.has(objective_name): result.append(objectives[objective_name])
+	return result
+
+## Where what the stage in hand still asks stands, objective by objective in
+## its order: the director's goals and ambushes.
+func goal_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for handler in stage_objectives(): points.append_array(handler.goal_points(session.stage))
+	return points
+
 func host_gate(delta: float) -> void:
 	for seat in untouchable.keys():
 		untouchable[seat] = float(untouchable[seat]) - delta
 		if untouchable[seat] <= 0.0: untouchable.erase(seat)
-	creature_channel_hop(delta)
-	# A stage that asks for sets is played on its own wing's: each counts the
-	# ones standing in its wing and starts from nothing.
-	var sets: Array = stage_televisions() if kind.asks(session.stage, "televisions") else []
-	var lit_enough := true
-	if not sets.is_empty():
-		var needed: int = TV_PLACEMENT.needed(session.roster_count)
-		var done: int = televisions_on()
-		lit_enough = done >= needed
-		session.goal["sets_done"] = done
-		session.goal["sets_needed"] = needed
-		# With one set left to light, this wing loses its power and the
-		# creature hunts without tiring. It is the wing's power, not the
-		# floor's: the next one is found lit.
-		# Not again once the floor's key has given it its lights back.
-		if rule("blackout") == 1 and done >= needed - 1 and not session.goal.get("blackout", false) and not session.goal.get("restored", false):
-			session.goal["blackout"] = true
-			ledger.note_dark()
-			session.changed.emit()
-	if kind.asks(session.stage, "code") and not containers.is_empty():
-		# The code comes on top of the sets (the last stage of the hotel asks
-		# for both): the four numbers read into the keypad.
-		session.goal["kind"] = "code"
-		session.goal["done"] = found_digits.size()
-		session.goal["needed"] = DIGITS.COUNT
-		session.update_goal(delta, code_entered and lit_enough)
-	elif not sets.is_empty():
-		session.goal["kind"] = "televisions"
-		session.goal["done"] = int(session.goal.get("sets_done", 0))
-		session.goal["needed"] = int(session.goal.get("sets_needed", 0))
-		session.update_goal(delta, lit_enough)
-	else: session.update_goal(delta, session.can_depart())
+	# Every objective of the floor, every frame, whatever the stage: the
+	# creature's hop between lit sets runs on any of them, and what an
+	# objective writes of its own into the goal is there before it is read.
+	for objective_name in objectives: objectives[objective_name].tick(delta)
+	# What the stage asks, in its order. One that does not apply neither holds
+	# the door nor names the goal; the last that does names it (the code, on
+	# top of the sets), and a stage with none that applies is met in its refuge.
+	var met := true
+	var naming := {}
+	for handler in stage_objectives():
+		var progress: Dictionary = handler.progress(session.stage)
+		if String(progress.kind).is_empty(): continue
+		met = met and bool(progress.ready)
+		for key in progress.extra: session.goal[key] = progress.extra[key]
+		naming = progress
+	if naming.is_empty(): session.update_goal(delta, session.can_depart())
+	else:
+		session.goal["kind"] = String(naming.kind)
+		session.goal["done"] = int(naming.done)
+		session.goal["needed"] = int(naming.needed)
+		session.update_goal(delta, met)
 	lifts.ride_lifts()
 
 func _process(delta: float) -> void:

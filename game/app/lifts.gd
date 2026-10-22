@@ -19,16 +19,13 @@ func stage_errand(stage: int) -> String: return String(level.kind.stage(stage).e
 ## what the pause screen keeps for anybody who wants to check.
 func stage_brief(stage: int) -> String: return String(level.kind.stage(stage).brief)
 
-## How the sector is going, in the lines the pause screen shows under it: the
-## sets that are on and the numbers found, where the sector asks for them
-## (game/floors/hotel_floor.gd). Nothing that cannot be counted by looking at
-## the floor.
+## How the sector is going, in the lines the pause screen shows under it:
+## each of its objectives' (game/floors/objectives/), in the order the sector
+## lists them: the sets that are on and the numbers found. Nothing that cannot
+## be counted by looking at the floor.
 func stage_progress() -> Array:
 	var lines: Array = []
-	if level.kind.asks(level.session.stage, "televisions") and not level.stage_televisions().is_empty():
-		lines.append(["TELEVISORES", "%d / %d" % [level.televisions_on(), level.TV_PLACEMENT.needed(level.session.roster_count)]])
-	if level.kind.asks(level.session.stage, "code"):
-		lines.append(["NÚMEROS DEL CÓDIGO", "%d / %d" % [level.found_digits.size(), level.DIGITS.COUNT]])
+	for handler in level.stage_objectives(): lines.append_array(handler.progress(level.session.stage).lines)
 	return lines
 
 ## The notice of a sector, once its lift has opened and the picture is back:
