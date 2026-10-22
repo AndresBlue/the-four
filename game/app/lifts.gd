@@ -53,18 +53,15 @@ const FIRST_LEAD := "The Locust va a por ti…"
 const FIRST_BRIEF := "Busca refugio, escóndete y encuentra la salida."
 const FIRST_HOLD := 11.0
 
-## A stage has closed: the creature is put on the trail of the lift the
-## survivors took, instead of hunting a wing nobody will come back to. It is
-## not moved anywhere -- it has to walk there and ride it, like they did.
+## A stage has closed: the creature is put on the survivors' trail, instead of
+## hunting a wing nobody will come back to. It is not moved anywhere, and it is
+## told whether it rides lifts or not: how it follows them is its own
+## (creature.follow_to_planta()). The Locust has to walk to the car out of its
+## wing (creature_car()) and ride it, like they did.
 func follow_players(stage: int) -> void:
-	if level.net.is_client() or not is_instance_valid(level.locust) or level.manifest.is_empty(): return
-	var index := creature_car(stage)
-	if index < 0 or index >= level.hotel.lifts.size(): return
-	# It is told in the only language it has: its own voice. A hunter also sees
-	# the way to the car, laid out in blue in its reading for as long as it has
-	# not taken it -- worked out on its own machine (locust_player.lift_route).
-	level.locust.grunt()
-	aim_at_lift(index)
+	var creature = level.creature
+	if level.net.is_client() or not is_instance_valid(creature) or level.manifest.is_empty(): return
+	creature.follow_to_planta(stage, true)
 
 ## Seconds the car spends up there before it comes back down for whoever is
 ## left -- a straggler, or the creature. It is the head start the survivors
@@ -146,9 +143,10 @@ func count_away(delta: float) -> void:
 	# Its time at the doors of the car it has to take, while it stands in
 	# that lobby; stepping out a moment (after somebody left behind) does not
 	# start it again.
-	if not is_instance_valid(level.locust) or level.manifest.is_empty(): return
+	var creature = level.creature
+	if not is_instance_valid(creature) or level.manifest.is_empty(): return
 	var car := creature_car(level.session.stage)
-	if car >= 0 and in_lobby(car, level.locust.global_position): lobby_time[car] = float(lobby_time.get(car, 0.0)) + delta
+	if car >= 0 and in_lobby(car, creature.global_position): lobby_time[car] = float(lobby_time.get(car, 0.0)) + delta
 
 ## The car that lets out at this point, or -1.
 func car_arriving_at(point: Vector3) -> int:
@@ -162,30 +160,15 @@ func car_arriving_at(point: Vector3) -> int:
 ## The car out of the wing the creature is standing in, while that wing is
 ## behind the one being played; -1 otherwise. Its own wing's car and not the
 ## last stage's: a creature that stayed two wings back (chasing a straggler
-## through a whole stage) was aimed at a car it could never walk to.
+## through a whole stage) was aimed at a car it could never walk to. None for
+## a creature that does not ride them.
 func creature_car(stage: int) -> int:
-	if not is_instance_valid(level.locust): return -1
-	var here: Dictionary = FLOOR.room_at(level.manifest.rooms, level.locust.global_position)
+	var creature = level.creature
+	if not is_instance_valid(creature) or not creature.can(&"lifts"): return -1
+	var here: Dictionary = FLOOR.room_at(level.manifest.rooms, creature.global_position)
 	if here.is_empty(): return -1
 	var wing := int(here.get("wing", 0))
 	return wing if wing < stage - 1 else -1
-
-## Points the creature at a car, without taking it off anything it is already
-## doing: somebody left behind in this wing comes before the lift.
-func aim_at_lift(index: int) -> void:
-	if level.locust.control != "ai" or index < 0 or index >= level.hotel.lifts.size(): return
-	if level.locust.mode not in [level.locust.Mode.PATROL, level.locust.Mode.SEARCH, level.locust.Mode.INVESTIGATE]: return
-	if level.locust.detection >= level.locust.SUSPICION: return
-	var car: Vector3 = level.hotel.lifts[index]
-	if level.locust.mode == level.locust.Mode.INVESTIGATE and level.locust.destination.distance_to(car) < 1.0: return
-	level.locust.set_mode(level.locust.Mode.INVESTIGATE)
-	level.locust.destination = car
-	level.locust.lift_bound = true
-	# Its patrolling belongs to the wing it is in; the lobby of the lift is
-	# where it should be wandering while it waits for the car.
-	var gates: Array = level.manifest.get("gates", [])
-	if index < gates.size(): level.locust.patrol_room = int(gates[index].get("beyond", level.locust.patrol_room))
-	level.locust.repath = 0
 
 ## The creature crossing on its own two feet: a wing behind, it makes for the
 ## car, waits for it to come back down and rides it. Nothing carries it and
@@ -194,26 +177,29 @@ func aim_at_lift(index: int) -> void:
 const CROSS_AIM := 2.5
 var cross_clock := 0.0
 func creature_crossing(delta: float) -> void:
-	if not is_instance_valid(level.locust) or level.manifest.is_empty() or level.hotel.lifts.is_empty(): return
+	var creature = level.creature
+	if not is_instance_valid(creature) or not creature.can(&"lifts") or level.manifest.is_empty() or level.hotel.lifts.is_empty(): return
 	# Already across, or standing nowhere the floor knows about.
 	var index: int = creature_car(level.session.stage)
 	if index < 0 or index >= level.hotel.lifts.size() or index >= level.hotel.arrivals.size(): return
 	if level.hotel.arrivals[index] == Vector3.ZERO: return
-	# Never in the middle of something: a kill by the car used to go up with
-	# it, the victim dragged through the walls after it. The machine hunts
-	# first and rides after; a player hunting rides when it is free to.
-	var busy: Array = [level.locust.Mode.EXECUTE, level.locust.Mode.WARDROBE, level.locust.Mode.WINDUP, level.locust.Mode.RECOVER, level.locust.Mode.LURK]
-	if level.locust.control == "ai": busy += [level.locust.Mode.CHASE, level.locust.Mode.ALERT]
-	if level.locust.mode in busy: return
+	if creature_busy(): return
 	# At its doorway will do: the creature is taller than the doors.
-	if level.hotel.in_car(index, level.locust.global_position, 0.9) and creature_may_ride(index):
+	if level.hotel.in_car(index, creature.global_position, 0.9) and creature_may_ride(index):
 		lift_away[index] = LIFT_RETURN
 		level.match_net.locust_ride(level.hotel.arrivals[index] + Vector3(0, 0.04, 0))
 		return
 	cross_clock -= delta
 	if cross_clock > 0.0: return
 	cross_clock = CROSS_AIM
-	aim_at_lift(index)
+	creature.follow_to_planta(level.session.stage)
+
+## Never in the middle of something: a kill by the car used to go up with it,
+## the victim dragged through the walls after it. The machine hunts first and
+## rides after; a player hunting rides when it is free to.
+func creature_busy() -> bool:
+	var creature = level.creature
+	return creature.is_engaged() or (creature.control == "ai" and creature.is_hunting())
 
 ## The lift's recordings (tools/audio/prepare_lift_sfx.py): its doors running
 ## shut, the car going down, its doors opening where it arrives, and the bell
@@ -229,30 +215,21 @@ const DESCENT_GAIN := -6.0
 
 ## The creature steps out of the car in the wing ahead. Applied on every
 ## machine, including the hunter's, which is the one that owns where it
-## stands the rest of the time.
+## stands the rest of the time. Put there by teleport() (a puppet ignores the
+## states still on their way from the old car; where it drives itself, its
+## rounds start from the lobby it is let out in).
 func apply_locust_ride(point: Vector3) -> void:
-	if not is_instance_valid(level.locust): return
+	var creature = level.creature
+	if not is_instance_valid(creature) or not creature.can(&"lifts"): return
 	var car := car_arriving_at(point)
 	if car >= 0:
 		lift_away[car] = LIFT_RETURN
 		lobby_time.erase(car)
 		# Its doors there open on it as it is let out.
 		open_arrival(car, 0.0)
-	level.locust.global_position = point
-	level.locust.velocity = Vector3.ZERO
-	level.locust.net_states.clear()
-	level.locust.net_clock = 0.0
-	if level.locust.control == "puppet":
-		level.locust.ride_point = point
-		level.locust.ride_hold = 2.0
-	if level.locust.control == "ai":
-		var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
-		if not room.is_empty(): level.locust.patrol_room = int(room.id)
-		if level.locust.mode in [level.locust.Mode.PATROL, level.locust.Mode.SEARCH, level.locust.Mode.INVESTIGATE]:
-			# It looks round where the car let it out, then goes about the wing.
-			level.locust.last_known = point
-			level.locust.last_heading = Vector3.ZERO
-			level.locust.set_mode(level.locust.Mode.SEARCH)
+	creature.teleport(point, NAN, &"lift")
+	# It looks round where the car let it out, then goes about the wing.
+	if creature.control == "ai" and creature.is_roaming(): creature.search_from(point, Vector3.ZERO)
 	# The bell of the car, over the whole floor: the lift has come down, which
 	# is all the warning there is.
 	if level.world_audio.enabled: level.world_audio.play_everywhere(LIFT_DING, point + Vector3(0, 2.2, 0), DING_GAIN)

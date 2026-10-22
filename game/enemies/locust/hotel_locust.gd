@@ -289,15 +289,14 @@ var state_time := 0.0
 var repath := 0.0
 var path := PackedVector3Array()
 var path_index := 0
-var rng := RandomNumberGenerator.new()
 var signal_player: AudioStreamPlayer3D
 var visual: Node3D
 var patrol_room := 0
 var footstep: AudioStreamPlayer3D
 ## Current ground speed; accelerates toward the speed each behaviour wants.
 var speed := 0.0
-## Making for the car of the lift the survivors took (lifts.aim_at_lift):
-## until anything else sets its mode.
+## Making for the car of the lift the survivors took (aim_at_lift()): until
+## anything else sets its mode.
 var lift_bound := false
 var pause_time := 0.0
 var light_exposure := 0.0
@@ -856,7 +855,15 @@ func lead_active() -> bool:
 ## before it moves again. A stage given back after the team fell raises
 ## everybody at the stage's door, and it used to be left wherever it had last
 ## killed -- a metre from them, and the stage was lost again in two seconds.
+## Where somebody else drives it (revival.relocate_creature), it is only put
+## there to wait as long: a hunter's, in the middle of something, is put back
+## on its rounds, and a puppet is told the rest by its states.
 func relocate(point: Vector3, rest: float) -> void:
+	if control != "ai":
+		global_position = point
+		grace = maxf(grace, rest)
+		if control == "player" and mode != Mode.PATROL: set_mode(Mode.PATROL)
+		return
 	global_position = point
 	velocity = Vector3.ZERO
 	speed = 0.0
@@ -2204,22 +2211,134 @@ func hallucinations() -> Variant: return load(HALLUCINATIONS)
 
 func capture_length() -> float: return EXECUTION_TIME
 
-## Put somewhere else (teleport()): all that the three places that move it
-## drop each by hand (lifts.apply_locust_ride, televisions.warp_creature,
-## revival.relocate_creature), in one. No speed and no states still on their
-## way from where it was; a puppet ignores the ones that still come for a
-## moment (ride_hold); a hunter's channels are closed; no route, no doorway
-## half crossed, no count of being stuck; and its rounds start from the room
-## it is in. What it forgets of anybody is relocate()'s.
-func forget_journey(point: Vector3, _reason: StringName) -> void:
-	speed = 0.0
+## What each way of moving it drops (teleport()'s reason), beyond its place,
+## its momentum and the states still on their way from where it was, which
+## every way drops: exactly what each of the three places that move it
+## dropped by hand before there was one teleport, so the hotel plays as it
+## did. Any other reason drops it all (ALL_DROPS).
+##   speed      its stride: it sets off from a standstill
+##   channels   a hunter's channels (locust_player) are closed
+##   route      its route, a doorway half crossed, its count of being stuck
+##              (forget_route); own_route: only where it drives itself
+##   rounds     its rounds start from the room it arrives in, where it drives
+##              itself
+## The car (lifts.apply_locust_ride) keeps its stride, its route and a
+## hunter's channels; a set (televisions.warp_creature) keeps the room of its
+## rounds; a stage given back (revival.relocate_creature) keeps the channels,
+## and where it drives itself relocate() has already dropped its route and
+## moved its rounds.
+const JOURNEY_DROPS := {
+	&"lift": [&"rounds"],
+	&"television": [&"speed", &"channels", &"own_route"],
+	&"revival": [&"speed"],
+}
+const ALL_DROPS: Array[StringName] = [&"speed", &"channels", &"route", &"rounds"]
+
+## Put somewhere else (teleport()): no states still on their way from where
+## it was, and a puppet ignores the ones that still come for a moment
+## (ride_hold); the rest by how it was moved (JOURNEY_DROPS). What it forgets
+## of anybody is relocate()'s.
+func forget_journey(point: Vector3, reason: StringName) -> void:
+	var drops: Array = JOURNEY_DROPS.get(reason, ALL_DROPS)
+	if drops.has(&"speed"): speed = 0.0
 	net_states.clear()
 	net_clock = 0.0
 	if control == "puppet":
 		ride_point = point
 		ride_hold = 2.0
-	if is_instance_valid(driver): driver.channel_open = false
-	forget_route()
-	if control == "ai" and level != null and not level.manifest.is_empty():
+	if drops.has(&"channels") and is_instance_valid(driver): driver.channel_open = false
+	if drops.has(&"route") or (drops.has(&"own_route") and control == "ai"): forget_route()
+	if drops.has(&"rounds") and control == "ai" and level != null and not level.manifest.is_empty():
 		var room := FLOOR.room_at(level.manifest.rooms, point)
 		if not room.is_empty(): patrol_room = int(room.id)
+
+## Where the car or the set let it out: it looks round from there, then goes
+## about the wing.
+func search_from(point: Vector3, heading: Vector3) -> void:
+	last_known = point
+	last_heading = heading
+	set_mode(Mode.SEARCH)
+
+## After the survivors, to the planta of `stage`: by the car out of the wing
+## it is standing in (lifts.creature_car), which it walks to, waits for and
+## rides (lifts.creature_crossing) like they did. Told the moment they have
+## gone (fresh) in the only language it has: its own voice. A hunter also
+## sees the way to the car, laid out in blue in its reading for as long as it
+## has not taken it -- worked out on its own machine (locust_player.lift_route).
+func follow_to_planta(stage: int, fresh := false) -> void:
+	var index: int = level.lifts.creature_car(stage)
+	if index < 0 or index >= level.hotel.lifts.size(): return
+	if fresh: grunt()
+	aim_at_lift(index)
+
+## Points it at a car, without taking it off anything it is already doing:
+## somebody left behind in this wing comes before the lift. Only where it
+## drives itself.
+func aim_at_lift(index: int) -> void:
+	if control != "ai" or index < 0 or index >= level.hotel.lifts.size(): return
+	if mode not in [Mode.PATROL, Mode.SEARCH, Mode.INVESTIGATE]: return
+	if detection >= SUSPICION: return
+	var car: Vector3 = level.hotel.lifts[index]
+	if mode == Mode.INVESTIGATE and destination.distance_to(car) < 1.0: return
+	set_mode(Mode.INVESTIGATE)
+	destination = car
+	lift_bound = true
+	# Its patrolling belongs to the wing it is in; the lobby of the lift is
+	# where it should be wandering while it waits for the car.
+	var gates: Array = level.manifest.get("gates", [])
+	if index < gates.size(): patrol_room = int(gates[index].get("beyond", patrol_room))
+	repath = 0
+
+const GENERATOR := preload("res://game/world/generation/map_generator.gd")
+
+## Where it starts a stage, as a room: well into that stage's planta, between
+## half and four fifths of the way from the door everybody comes in by to its
+## farthest room -- so the stage starts away from that door -- and not in a
+## refuge, next to one, or in the lift lobby behind one, whose only way out is
+## the refuge it will not cross: it spent the stage shut in there, waiting
+## right where everybody had to go. Which room of those is drawn from the
+## floor's seed (the same one every time for a stage: it is its place), not
+## the first in the list. -1 when the planta has none. The first stage's is
+## where it is put when the floor begins (hotel_main.spawn_creature); every
+## stage's, where it goes back to when that stage is given back (den_point()).
+func den_room(stage: int) -> int:
+	var wing := stage - 1
+	var entry := int(level.manifest.get("start", 0)) if wing <= 0 else FLOOR.entry_of(level.manifest, wing)
+	var refuges: Array = level.manifest.get("refuges", [])
+	var refuge := int(level.manifest.get("exit", -1)) if wing <= 0 or wing >= refuges.size() else int(refuges[wing])
+	if entry < 0 or entry >= level.manifest.rooms.size(): return -1
+	var distances: Array = GENERATOR.distance_map(level.manifest.adjacency, entry)
+	var near_refuge: Array = GENERATOR.distance_map(level.manifest.adjacency, refuge) if refuge >= 0 else []
+	var shut_out: Array = level.off_limits_rooms()
+	var reach := 0
+	for room in level.manifest.rooms:
+		if int(room.get("wing", 0)) == wing and not shut_out.has(int(room.id)): reach = maxi(reach, int(distances[room.id]))
+	var dens: Array = []
+	for room in level.manifest.rooms:
+		var hops: int = distances[room.id]
+		if int(room.get("wing", 0)) != wing or shut_out.has(int(room.id)) or FLOOR.is_void(room) or hops <= 3: continue
+		if not near_refuge.is_empty() and near_refuge[room.id] <= 2: continue
+		if hops >= int(reach * 0.5) and hops <= int(ceil(reach * 0.8)): dens.append(int(room.id))
+	if dens.is_empty(): return -1
+	var draw := RandomNumberGenerator.new()
+	# The first stage's draw is the one the floor has always made.
+	draw.seed = hash([int(level.manifest.seed), "den"]) if wing <= 0 else hash([int(level.manifest.seed), "den", stage])
+	return int(dens[draw.randi_range(0, dens.size() - 1)])
+
+## The floor of its den for that stage (den_room()), where it stands in it.
+func den_point(stage: int) -> Vector3:
+	var room := den_room(stage)
+	if room < 0: return Vector3.INF
+	var point := FLOOR.position_of(level.manifest.rooms[room])
+	var map: RID = level.get_world_3d().navigation_map
+	if NavigationServer3D.map_get_iteration_id(map) > 0: point = FLOOR.closest(map, point)
+	return point + Vector3(0, 0.04, 0)
+
+## Kept with a floor left to be continued (floor_save): where it stood and
+## which way it faced, as it always was ({at, yaw}). What it was doing is not
+## kept: put back, it has to find them again.
+func save_state() -> Dictionary: return {"at": global_position, "yaw": rotation.y}
+
+func restore_state(state: Dictionary, rest: float) -> void:
+	relocate(state.at, rest)
+	rotation.y = float(state.get("yaw", 0.0))

@@ -7,7 +7,6 @@ extends Node
 ## and the tests reach through it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const AVATAR := preload("res://game/player/avatars/avatar_visual.gd")
-const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 var level
 
 ## The view of a dead player, through the camera of the teammate watched.
@@ -27,22 +26,23 @@ func on_revived(restart: bool) -> void:
 	for seat in level.session.participants:
 		if not level.session.dropped.has(seat): places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
 	# A stage given back is given back whole, the creature too: it goes back
-	# to where it starts that stage (stage_den), away from the door everybody
-	# is raised at and from the one they have to reach, and waits there as
-	# long as it did when the floor began. Left where it stood, it was often
-	# a metre from them, or camped at the way in or the way out. Whoever
+	# to where it starts that stage (its den_point()), away from the door
+	# everybody is raised at and from the one they have to reach, and waits
+	# there as long as it did when the floor began. Left where it stood, it was
+	# often a metre from them, or camped at the way in or the way out. Whoever
 	# drives it: a hunter's creature goes back too (it used to be theirs to
 	# walk back, and they did not).
 	var den := Vector3.INF
 	if restart: level.ledger.note_restart()
-	if restart and is_instance_valid(level.locust):
-		var room := stage_den(level.session.stage)
-		den = den_point(room) if room >= 0 else den_away(point, RESTART_DEN)
+	var creature = level.creature
+	if restart and is_instance_valid(creature):
+		den = creature.den_point(level.session.stage)
+		if den == Vector3.INF: den = den_away(point, RESTART_DEN)
 	apply_revival(places, restart, den)
 	if level.match_net.in_match(): level.match_net.revive_everyone(places, restart, den)
 
 ## How far (metres of walking) from the stage's door the creature is put when
-## a stage is given back and the wing has no den of its own (stage_den), and
+## a stage is given back and it has no den there (creature.den_point()), and
 ## the least it stands there before it moves: the difficulty's own grace, the
 ## one the floor began with, when that is longer (restart_grace).
 const RESTART_DEN := 45.0
@@ -51,48 +51,6 @@ const RESTART_GRACE := 12.0
 
 func restart_grace() -> float:
 	return maxf(RESTART_GRACE, float(level.tuning().grace))
-
-## Where the creature starts a stage, as a room: well into that stage's
-## planta, between half and four fifths of the way from the door everybody
-## comes in by to its farthest room -- so the stage starts away from that door
-## -- and not in a refuge, next to one, or in the lift lobby behind one, whose
-## only way out is the refuge it will not cross: it spent the stage shut in
-## there, waiting right where everybody had to go. Which room of those is
-## drawn from the floor's seed (the same one every time for a stage: it is
-## its place), not the first in the list. -1 when the planta has none.
-## The first stage's is where it is put when the floor begins
-## (hotel_main.spawn_locust); every stage's, where it goes back to when that
-## stage is given back.
-func stage_den(stage: int) -> int:
-	var wing := stage - 1
-	var entry := int(level.manifest.get("start", 0)) if wing <= 0 else FLOOR.entry_of(level.manifest, wing)
-	var refuges: Array = level.manifest.get("refuges", [])
-	var refuge := int(level.manifest.get("exit", -1)) if wing <= 0 or wing >= refuges.size() else int(refuges[wing])
-	if entry < 0 or entry >= level.manifest.rooms.size(): return -1
-	var distances: Array = GENERATOR.distance_map(level.manifest.adjacency, entry)
-	var near_refuge: Array = GENERATOR.distance_map(level.manifest.adjacency, refuge) if refuge >= 0 else []
-	var shut_out: Array = level.off_limits_rooms()
-	var reach := 0
-	for room in level.manifest.rooms:
-		if int(room.get("wing", 0)) == wing and not shut_out.has(int(room.id)): reach = maxi(reach, int(distances[room.id]))
-	var dens: Array = []
-	for room in level.manifest.rooms:
-		var hops: int = distances[room.id]
-		if int(room.get("wing", 0)) != wing or shut_out.has(int(room.id)) or FLOOR.is_void(room) or hops <= 3: continue
-		if not near_refuge.is_empty() and near_refuge[room.id] <= 2: continue
-		if hops >= int(reach * 0.5) and hops <= int(ceil(reach * 0.8)): dens.append(int(room.id))
-	if dens.is_empty(): return -1
-	var draw := RandomNumberGenerator.new()
-	# The first stage's draw is the one the floor has always made.
-	draw.seed = hash([int(level.manifest.seed), "den"]) if wing <= 0 else hash([int(level.manifest.seed), "den", stage])
-	return int(dens[draw.randi_range(0, dens.size() - 1)])
-
-## The floor of a den, where the creature stands in it.
-func den_point(room: int) -> Vector3:
-	var point := FLOOR.position_of(level.manifest.rooms[room])
-	var map: RID = level.get_world_3d().navigation_map
-	if NavigationServer3D.map_get_iteration_id(map) > 0: point = FLOOR.closest(map, point)
-	return point + Vector3(0, 0.04, 0)
 
 ## A place for the creature in the wing of the stage in hand, at least `least`
 ## metres of walking from `away_from`: drawn among the rooms that far (the
@@ -128,24 +86,16 @@ func den_away(away_from: Vector3, least: float) -> Vector3:
 ## The creature put somewhere else at once, on every machine: where it is
 ## driven it forgets everybody and waits `rest` seconds -- a hunter's too,
 ## which cannot strike, shriek or trace while that lasts (locust_player), and
-## the host judges its strikes by the same count; a puppet drops the states
-## still on their way from where it was, or it would slide across the floor
-## to get there (the same as stepping out of a set, warp_creature).
+## whatever it was in the middle of where it stood is not carried over; the
+## host judges its strikes by the same count (creature.relocate()). And it
+## arrives stopped, a puppet dropping the states still on their way from where
+## it was, or it would slide across the floor to get there (teleport(), the
+## same as stepping out of a set, warp_creature).
 func relocate_creature(point: Vector3, rest: float) -> void:
-	if not is_instance_valid(level.locust) or point == Vector3.INF: return
-	if level.locust.control == "ai": level.locust.relocate(point, rest)
-	else:
-		level.locust.global_position = point
-		level.locust.grace = maxf(level.locust.grace, rest)
-		# Whatever it was in the middle of where it stood is not carried over.
-		if level.locust.control == "player" and level.locust.mode != level.locust.Mode.PATROL: level.locust.set_mode(level.locust.Mode.PATROL)
-	level.locust.velocity = Vector3.ZERO
-	level.locust.speed = 0.0
-	if level.locust.control == "puppet":
-		level.locust.ride_point = point
-		level.locust.ride_hold = 2.0
-	level.locust.net_states.clear()
-	level.locust.net_clock = 0.0
+	var creature = level.creature
+	if not is_instance_valid(creature) or point == Vector3.INF: return
+	creature.relocate(point, rest)
+	creature.teleport(point, NAN, &"revival")
 
 ## Where somebody who comes back after dropping is put: the place the floor
 ## remembers for them. Unless the floor crossed to another wing while they were

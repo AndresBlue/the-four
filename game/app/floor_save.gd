@@ -33,8 +33,10 @@ static func take(level) -> Dictionary:
 	for index in level.containers.size():
 		var piece = level.containers[index]
 		if is_instance_valid(piece) and piece.searched: searched.append([index, int(level.found_by.get(piece.slot, player.slot))])
-	var creature := {}
-	if is_instance_valid(level.locust): creature = {"at": level.locust.global_position, "yaw": level.locust.rotation.y}
+	# What the creature keeps of itself (creature.save_state(): The Locust's
+	# is where it stood and which way it faced, as it always was).
+	var creature = level.creature
+	var kept: Dictionary = creature.save_state() if is_instance_valid(creature) else {}
 	return {
 		"stage": session.stage,
 		"elapsed": session.elapsed,
@@ -63,7 +65,7 @@ static func take(level) -> Dictionary:
 		"hints": level.code.hints_read.keys(),
 		"code": level.code_entered,
 		"lifts": {"away": level.lifts.lift_away.duplicate(), "hold": level.lifts.creature_hold.duplicate(), "lobby": level.lifts.lobby_time.duplicate(), "arrived": arrived},
-		"creature": creature,
+		"creature": kept,
 		"dark": level.hotel.dark,
 		"sheet": level.sheet_snapshot(),
 		"plan": level.floor_map.pack(),
@@ -119,10 +121,9 @@ static func give(level, state: Dictionary) -> void:
 	# The creature where it was, with a moment before it looks about: what it
 	# was doing is not kept. A wing behind, it makes for its car by itself
 	# (lifts.creature_crossing).
-	var creature: Dictionary = state.get("creature", {})
-	if not creature.is_empty() and is_instance_valid(level.locust) and level.locust.control == "ai":
-		level.locust.relocate(creature.at, GRACE)
-		level.locust.rotation.y = float(creature.get("yaw", 0.0))
+	var kept: Dictionary = state.get("creature", {})
+	var creature = level.creature
+	if not kept.is_empty() and is_instance_valid(creature) and creature.control == "ai": creature.restore_state(kept, GRACE)
 	# What the tape and the page held. Last: the wardrobe above counted a
 	# hiding, and this puts the count back as it was.
 	level.restore_sheet(state.get("sheet", []))

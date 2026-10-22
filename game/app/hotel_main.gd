@@ -1392,10 +1392,10 @@ func spawn_creature() -> void:
 	locust = LOCUST.instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
-	# Where it starts the first stage (revival.stage_den): well into the
-	# first planta, away from the door everyone comes in by and from the
-	# refuge. It goes back there if that stage is given back.
-	var chosen: int = revival.stage_den(1)
+	# Where it starts the first stage (its den_room()): well into the first
+	# planta, away from the door everyone comes in by and from the refuge. It
+	# goes back there if that stage is given back (den_point()).
+	var chosen: int = locust.den_room(1)
 	if chosen < 0: chosen = int(manifest.get("start", 0))
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
 	locust.patrol_room = chosen

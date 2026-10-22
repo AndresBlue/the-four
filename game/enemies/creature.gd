@@ -11,10 +11,11 @@ extends CharacterBody3D
 ## questions the game asks with lists of The Locust's modes are answered here
 ## from those words, the same for any creature: each predicate is one of those
 ## lists (tests/hotel/creature_contract_test.gd holds them to it). The
-## director, the dread aura, the world's sound, the mind and its phantoms ask
-## the creature only through this; the rest of the game still reads The
-## Locust until it moves over too. Everything else here is a default for a
-## creature that has nothing of the kind: one that does overrides it.
+## director, the dread aura, the world's sound, the mind and its phantoms, the
+## lifts, the sets, coming back and the floor kept to be continued ask the
+## creature only through this; the rest of the game still reads The Locust
+## until it moves over too. Everything else here is a default for a creature
+## that has nothing of the kind: one that does overrides it.
 
 ## Hostile: anybody near it has reason to be afraid (pacing_director.hostile).
 const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait"]
@@ -23,13 +24,15 @@ const ATTACKING: Array[StringName] = [&"alert", &"chase", &"strike", &"recover",
 ## Hunting: after somebody it has seen (dread_aura's worst).
 const HUNTING: Array[StringName] = [&"chase", &"strike", &"recover", &"alert"]
 ## Engaged: busy with somebody or a hiding place where it stands, not to be
-## taken off it by a set or a lift (match_net.warp_busy, lifts.creature_crossing).
+## taken off it by a set or a lift (match_net.warp_busy, lifts.creature_busy).
 const ENGAGED: Array[StringName] = [&"strike", &"recover", &"capture", &"open", &"wait"]
-## Roaming: going about the floor on its own account (lifts.aim_at_lift).
+## Roaming: going about the floor on its own account (lifts.apply_locust_ride,
+## and The Locust's aim_at_lift).
 const ROAMING: Array[StringName] = [&"roam", &"search", &"investigate"]
 ## What the director may send it somewhere from (pacing_director.update).
 const LEADABLE: Array[StringName] = [&"roam", &"search"]
-## Wary: looking for somebody, nobody found yet (dread_aura's lesser).
+## Wary: looking for somebody, nobody found yet (dread_aura's lesser, and
+## televisions.creature_channel_hop: looking for nobody at a set).
 const WARY: Array[StringName] = [&"investigate", &"search"]
 
 # --- Identity and control ------------------------------------------------------
@@ -46,6 +49,11 @@ var grace := 15.0
 ## it while it is resting somebody who has earned it (pacing_director), so
 ## that being left alone is not undone by the first footstep.
 var dull := 1.0
+## Its own draws, seeded with the floor by the creature itself: whatever
+## chooses something for it (the set it steps out of:
+## televisions.creature_channel_hop) draws from them, in the order it always
+## has.
+var rng := RandomNumberGenerator.new()
 
 ## Which creature this is (&"locust", &"lurker"...).
 func kind_id() -> StringName: return &""
@@ -84,12 +92,13 @@ func is_hunting() -> bool: return activity() in HUNTING
 func is_engaged() -> bool: return activity() in ENGAGED
 func is_roaming() -> bool: return activity() in ROAMING
 func accepts_leads() -> bool: return activity() in LEADABLE
+func is_wary() -> bool: return activity() in WARY
 
 ## How alarming what it does is, to whoever feels it coming (the dread): 2
 ## hunting, 1 looking for somebody, 0 anything else.
 func alarm_level() -> int:
 	if is_hunting(): return 2
-	return 1 if activity() in WARY else 0
+	return 1 if is_wary() else 0
 
 # --- Senses ----------------------------------------------------------------------
 
@@ -139,11 +148,15 @@ func noticing() -> bool: return false
 
 # --- Moving ----------------------------------------------------------------------
 
-## The one way a creature is put somewhere without walking there: a lift, a
-## set it steps out of, a stage given back (`reason`: &"lift", &"television",
-## &"revival", or anything else). It arrives still, facing `yaw` (NAN: the
-## way it was facing), and forget_journey() drops what it carried of the way
-## it was going. What it does once there is for whoever moved it to say.
+## The one way a creature is put somewhere without walking there: a lift
+## (lifts.apply_locust_ride), a set it steps out of
+## (televisions.warp_creature), a stage given back (revival.relocate_creature)
+## (`reason`: &"lift", &"television", &"revival", or anything else). It
+## arrives still, facing `yaw` (NAN: the way it was facing), and
+## forget_journey() drops what it carried of the way it was going: what each
+## of those three dropped by hand before there was one teleport, and all of it
+## for any other reason. Neither what it is doing nor its grace is touched:
+## what it does once there is for whoever moved it to say.
 func teleport(point: Vector3, yaw: float, reason := &"") -> void:
 	global_position = point
 	if not is_nan(yaw): rotation.y = yaw
@@ -151,8 +164,42 @@ func teleport(point: Vector3, yaw: float, reason := &"") -> void:
 	forget_journey(point, reason)
 
 ## Everything of the way it was going that teleport() must not carry over,
-## beyond its place and its momentum.
+## beyond its place and its momentum, by how it was moved.
 func forget_journey(_point: Vector3, _reason: StringName) -> void: pass
+
+## Put somewhere at once, having forgotten everybody, with `rest` seconds
+## before it moves again (grace, at least): a stage given back, a floor
+## continued. What it knew of anybody, and what it was in the middle of, goes
+## here; what it carried of the way it was going is teleport()'s
+## (revival.relocate_creature does both). The default only puts it there to
+## wait.
+func relocate(point: Vector3, rest: float) -> void:
+	global_position = point
+	grace = maxf(grace, rest)
+
+## It looks round from `point` (first the way of `heading`, or none in
+## particular) and then goes about the planta: where a car or a set has just
+## let it out.
+func search_from(_point: Vector3, _heading: Vector3) -> void: pass
+
+## The survivors have gone on to the planta of `stage` and it is behind them:
+## it makes for the way they took, without being taken off anything it is
+## already doing. `fresh`: they have only just gone (lifts.follow_players),
+## not a reminder while it is still behind (lifts.creature_crossing).
+func follow_to_planta(_stage: int, _fresh := false) -> void: pass
+
+## Where it starts a stage, and goes back to when that stage is given back.
+## INF: nowhere of its own, and whoever puts it there finds it a place far
+## enough from everybody (revival.den_away).
+func den_point(_stage: int) -> Vector3: return Vector3.INF
+
+## What of it is kept with a floor left to be continued (floor_save), in a
+## form the session can write (no objects).
+func save_state() -> Dictionary: return {}
+
+## That put back on the floor built again, having forgotten everybody, with
+## `rest` seconds before it moves.
+func restore_state(_state: Dictionary, _rest: float) -> void: pass
 
 # --- The net ---------------------------------------------------------------------
 

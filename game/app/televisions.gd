@@ -1,7 +1,8 @@
 extends Node
 ## The television sets of a floor: which ones each stage is played on, putting
 ## them in the hotel, switching them on (with their static and the noise it
-## makes), counting them, and the creature travelling through the lit ones.
+## makes), counting them, and the creature travelling through the lit ones,
+## if it is one that does (creature.can(&"tv_travel")).
 ## Split out of hotel_main.gd, which owns it (`level.tvs`); the level keeps
 ## delegates of what the network, the bots and the tests reach through it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -102,11 +103,13 @@ func lit_televisions() -> Array:
 
 ## The lit set the creature is standing at, or -1. `reach`: the host judging
 ## a hunter's request allows for its copy of the creature running behind.
+## Always -1 for a creature that does not travel by them.
 func creature_at_television(reach := WARP_REACH) -> int:
-	if not is_instance_valid(level.locust): return -1
+	var creature = level.creature
+	if not is_instance_valid(creature) or not creature.can(&"tv_travel"): return -1
 	for index in stage_televisions():
 		var set = televisions[index]
-		if set.on and set.global_position.distance_to(level.locust.global_position) < reach: return index
+		if set.on and set.global_position.distance_to(creature.global_position) < reach: return index
 	return -1
 
 ## Where the creature comes out of a set: a step in front of it, on floor it
@@ -122,40 +125,30 @@ func television_exit(index: int) -> Vector3:
 ## It comes out of the set at `index`, a step in front of it, looking into the
 ## room. Applied on every machine, whoever decided it.
 func warp_creature(index: int) -> void:
-	if index < 0 or index >= televisions.size() or not is_instance_valid(level.locust): return
+	var creature = level.creature
+	if index < 0 or index >= televisions.size() or not is_instance_valid(creature) or not creature.can(&"tv_travel"): return
 	var set = televisions[index]
 	if not is_instance_valid(set) or not set.on: return
-	var from: Vector3 = level.locust.global_position
-	level.locust.global_position = television_exit(index) + Vector3(0, 0.04, 0)
-	# Facing the room it came out into, not back at the screen.
-	level.locust.rotation.y = set.rotation.y + PI
-	# A puppet ignores the states still on their way from beside the old set.
-	if level.locust.control == "puppet":
-		level.locust.ride_point = level.locust.global_position
-		level.locust.ride_hold = 2.0
-	level.locust.velocity = Vector3.ZERO
-	level.locust.speed = 0.0
-	# A puppet interpolates between the states it is sent: without this it
-	# would slide across the floor instead of stepping out of a screen.
-	level.locust.net_states.clear()
-	level.locust.net_clock = 0.0
-	if is_instance_valid(level.locust.driver): level.locust.driver.channel_open = false
+	var from: Vector3 = creature.global_position
+	# Facing the room it came out into, not back at the screen, and stopped
+	# dead. A puppet interpolates between the states it is sent: they are
+	# dropped, and the ones still on their way from beside the old set are
+	# ignored a moment, or it would slide across the floor instead of stepping
+	# out of a screen. A hunter's channels close; where it drives itself, its
+	# route goes too (teleport()).
+	creature.teleport(television_exit(index) + Vector3(0, 0.04, 0), set.rotation.y + PI, &"television")
 	# The machine looks round the room it came out into, and then goes about
 	# the wing. Nothing of the old place comes with it: it used to hear its own
 	# arrival -- a noise 1.4 m over its head it never reached -- and stood
 	# twelve seconds where it stepped out, and a wardrobe beside the set was
 	# opened on the strength of it.
-	if level.locust.control == "ai":
-		level.locust.forget_route()
-		level.locust.last_known = level.locust.global_position
-		level.locust.last_heading = -level.locust.global_basis.z
-		level.locust.set_mode(level.locust.Mode.SEARCH)
+	if creature.control == "ai": creature.search_from(creature.global_position, -creature.global_basis.z)
 	# On players of their own: in the pool of short cues the next doors cut
 	# fourteen seconds of static off after one or two. What the survivors hear
 	# is this static, from both sets; the creature hears nothing of itself.
 	if level.world_audio.enabled:
 		level.world_audio.play_long(WARP_SOUND, from + Vector3(0, 1.4, 0), -6.0, RID(), false, 0.0, "warp")
-		level.world_audio.play_long(WARP_SOUND, level.locust.global_position + Vector3(0, 1.4, 0), -4.0, RID(), false, 0.0, "warp")
+		level.world_audio.play_long(WARP_SOUND, creature.global_position + Vector3(0, 1.4, 0), -4.0, RID(), false, 0.0, "warp")
 
 ## How many of the stage's own sets are on. What burns in another wing is not
 ## counted: every stage from the second starts its tally at nothing.
@@ -191,8 +184,10 @@ func creature_channel_hop(delta: float) -> void:
 	hop_rest = maxf(0.0, hop_rest - delta)
 	# The difficulty says how often (tv_hop; nought: never), the room whether at all.
 	var every: float = float(level.tuning().tv_hop)
-	if not is_instance_valid(level.locust) or level.locust.control != "ai" or level.rule("tv_travel") == 0 or every <= 0.0: return
-	var looking: bool = level.locust.mode in [level.locust.Mode.SEARCH, level.locust.Mode.INVESTIGATE] and not level.locust.lift_bound
+	var creature = level.creature
+	if not is_instance_valid(creature) or not creature.can(&"tv_travel") or creature.control != "ai" or level.rule("tv_travel") == 0 or every <= 0.0: return
+	# Looking for nobody (searching, or come to see), and not on its way to a lift.
+	var looking: bool = creature.is_wary() and not creature.in_transit()
 	var here: int = creature_at_television() if looking else -1
 	hop_wait = hop_wait + delta if here >= 0 else 0.0
 	if hop_rest > 0.0 or hop_wait < HOP_PATIENCE: return
@@ -200,7 +195,7 @@ func creature_channel_hop(delta: float) -> void:
 	if lit.size() < 2: return
 	var choices: Array = lit.filter(func(index): return index != here and television_clear(index))
 	if choices.is_empty(): return
-	var pick: int = choices[level.locust.rng.randi_range(0, choices.size() - 1)]
+	var pick: int = choices[creature.rng.randi_range(0, choices.size() - 1)]
 	hop_wait = 0.0
 	hop_rest = every
 	warp_creature(pick)
@@ -212,4 +207,4 @@ func television_clear(index: int) -> bool:
 	var out := television_exit(index)
 	for body in level.survivors():
 		if level.survivor_active(body) and body.global_position.distance_to(out) < HOP_CLEAR: return false
-	return not level.locust.watched(out)
+	return not level.creature.watched(out)

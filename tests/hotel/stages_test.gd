@@ -668,13 +668,13 @@ func run() -> void:
 	# Not anywhere far: where it starts this stage, which is neither the door
 	# they come in by nor the one they have to reach, and for as long as it
 	# waited when the floor began.
-	var den_id: int = level.revival.stage_den(session.stage)
+	var den_id: int = level.locust.den_room(session.stage)
 	var refuges: Array = level.manifest.get("refuges", [])
 	var way_out: int = int(refuges[session.stage - 1]) if session.stage - 1 < refuges.size() else int(level.manifest.exit)
 	var from_exit: int = level.GENERATOR.distance_map(level.manifest.adjacency, way_out)[den_id] if den_id >= 0 else -1
 	check("Vuelve a su punto de aparición de la etapa, lejos también de la salida", den_id >= 0 and int(den_room.get("id", -1)) == den_id and from_exit > 2)
 	check("Y espera lo que esperó al empezar el piso", level.locust.grace >= float(level.tuning().grace) - 1.0 and level.locust.grace >= level.revival.RESTART_GRACE - 1.0)
-	check("El primer sector empieza en ese mismo sitio", level.revival.stage_den(1) >= 0 and int(level.manifest.rooms[level.revival.stage_den(1)].get("wing", -1)) == 0)
+	check("El primer sector empieza en ese mismo sitio", level.locust.den_room(1) >= 0 and int(level.manifest.rooms[level.locust.den_room(1)].get("wing", -1)) == 0)
 	# A creature somebody drives goes back too, and waits too: it used to be
 	# left where it stood, at the door, free to strike.
 	var kept_control: String = level.locust.control
@@ -682,8 +682,8 @@ func run() -> void:
 	level.locust.control = "puppet"
 	level.locust.grace = 0.0
 	level.locust.global_position = level.revival_point() + Vector3(1.5, 0.04, 0)
-	level.revival.relocate_creature(level.revival.den_point(den_id), level.revival.restart_grace())
-	check("La bestia que lleva un jugador también vuelve y espera", level.locust.global_position.distance_to(level.revival.den_point(den_id)) < 0.5 and level.locust.grace >= level.revival.RESTART_GRACE)
+	level.revival.relocate_creature(level.creature.den_point(session.stage), level.revival.restart_grace())
+	check("La bestia que lleva un jugador también vuelve y espera", level.locust.global_position.distance_to(level.creature.den_point(session.stage)) < 0.5 and level.locust.grace >= level.revival.RESTART_GRACE)
 	level.locust.control = kept_control
 	level.locust.grace = kept_grace
 	# What a guest goes through, played out on one machine: the word that it
