@@ -913,7 +913,7 @@ func populate_floor(with_director: bool) -> void:
 	# of what this one wants follows once the card is gone. Not over the
 	# observer: watching is not filming, and the card covered every floor R put up.
 	if not automation and not observer and not match_net.local_is_locust():
-		ui.show_transit("SECTOR %d" % session.stage, lifts.stage_errand(session.stage), lifts.OPENING_CARD)
+		ui.show_transit(kind.title_of(session.stage), lifts.stage_errand(session.stage), lifts.OPENING_CARD)
 	lifts.pending_brief = session.stage
 	lifts.brief_wait = lifts.OPENING_CARD if not automation else 0.0
 
@@ -1026,7 +1026,7 @@ func open_online_menu() -> void:
 ## What the pause screens show of the sector in hand. The hunter has no errand.
 func refresh_briefing() -> void:
 	if match_net.local_is_locust() or manifest.is_empty(): ui.set_briefing("", "", [])
-	else: ui.set_briefing("SECTOR %d" % session.stage, lifts.stage_brief(session.stage), lifts.stage_progress())
+	else: ui.set_briefing(kind.title_of(session.stage), lifts.stage_brief(session.stage), lifts.stage_progress())
 
 func close_online_menu() -> void:
 	if not online_menu: return
@@ -1479,7 +1479,7 @@ func catch_up_progress(progress: Dictionary) -> void:
 	if stage != session.stage:
 		session.stage = stage
 		if not automation and not match_net.local_is_locust():
-			ui.show_transit("SECTOR %d" % stage, lifts.stage_errand(stage), lifts.OPENING_CARD)
+			ui.show_transit(kind.title_of(stage), lifts.stage_errand(stage), lifts.OPENING_CARD)
 		lifts.pending_brief = stage
 
 func _physics_process(delta: float) -> void:

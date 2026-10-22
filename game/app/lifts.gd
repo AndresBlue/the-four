@@ -39,10 +39,10 @@ func announce_sector(delta := 0.0) -> void:
 		# The very first floor played on this machine says what is going on
 		# before what to do: somebody new has no other way of knowing.
 		if pending_brief == 1 and not bool(level.settings.values.get("first_game_done", false)) and not level.observer and not level.bot_match:
-			level.ui.show_brief("SECTOR 1", FIRST_BRIEF, FIRST_LEAD, FIRST_HOLD)
+			level.ui.show_brief(level.kind.title_of(1), FIRST_BRIEF, FIRST_LEAD, FIRST_HOLD)
 			level.settings.values.first_game_done = true
 			level.settings.save_settings()
-		else: level.ui.show_brief("SECTOR %d" % pending_brief, stage_brief(pending_brief))
+		else: level.ui.show_brief(level.kind.title_of(pending_brief), stage_brief(pending_brief))
 	pending_brief = 0
 
 ## What the first floor anybody plays opens with, and how long it stays.
@@ -423,7 +423,7 @@ func apply_ride(seat: int, point: Vector3) -> void:
 		# riding a car after the floor has already moved on.
 		var wing := int(FLOOR.room_at(level.manifest.rooms, point).get("wing", level.session.stage))
 		var arriving: int = clampi(wing + 1, 1, level.session.stages)
-		level.ui.show_transit("SECTOR %d" % arriving, stage_errand(arriving), RIDE_TIME)
+		level.ui.show_transit(level.kind.title_of(arriving), stage_errand(arriving), RIDE_TIME)
 		pending_brief = arriving
 	elif level.match_net.bodies.has(seat) and is_instance_valid(level.match_net.bodies[seat]): level.match_net.bodies[seat].ride_to(point)
 

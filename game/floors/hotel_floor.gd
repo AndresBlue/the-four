@@ -91,6 +91,11 @@ static func count() -> int: return STAGES.size()
 static func stage(number: int) -> Dictionary:
 	return STAGES[clampi(number, 1, STAGES.size()) - 1]
 
+## What the card, the notice and the pause call a stage (lifts.gd,
+## hotel_main.gd): the hotel's are sectors.
+static func title_of(number: int) -> String:
+	return "SECTOR %d" % number
+
 ## Whether that stage asks for this objective.
 static func asks(number: int, objective: String) -> bool:
 	return number >= 1 and number <= STAGES.size() and STAGES[number - 1].objectives.has(objective)

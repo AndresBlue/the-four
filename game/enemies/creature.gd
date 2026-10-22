@@ -61,7 +61,7 @@ var dull := 1.0
 ## has.
 var rng := RandomNumberGenerator.new()
 
-## Which creature this is (&"locust", &"lurker"...).
+## Which creature this is (&"locust", &"lurker"..., &"none" the null one).
 func kind_id() -> StringName: return &""
 
 ## Whether it does this at all: &"lifts", &"tv_travel", &"ducts",
@@ -88,6 +88,7 @@ func tune(_profile: Dictionary) -> void: pass
 ##   capture      holding somebody: the capture is being played
 ##   open         throwing a hiding place open
 ##   wait         waiting by a hiding place for whoever is in it to come out
+##   idle         does nothing at all (the null creature, null_creature.gd)
 func activity() -> StringName: return &"roam"
 
 ## The name of its own state, for logs and the observer.

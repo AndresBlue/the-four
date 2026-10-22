@@ -39,6 +39,9 @@ extends SceneTree
 ## what its hunter is shown and how the machine takes over are what they
 ## were; the observer's lines, dump and marks are the ones it wrote and drew;
 ## and the bots mind it with the threat model of its kind.
+##
+## And the null creature (game/enemies/null_creature.gd), floor 2's until its
+## own: the whole contract, and nothing done with it.
 const CREATURE := preload("res://game/enemies/creature.gd")
 const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const LOCUST_SCENE := preload("res://game/enemies/locust/locust.tscn")
@@ -49,6 +52,9 @@ const SCORE := preload("res://game/app/capture_score.gd")
 const REMOTE := preload("res://game/net/remote_player.gd")
 const GIZMOS := preload("res://game/app/observer_gizmos.gd")
 const THREATS := preload("res://tools/bots/bot_threats.gd")
+const NULL_SCENE := preload("res://game/enemies/null_creature.tscn")
+const NULL_CREATURE := preload("res://game/enemies/null_creature.gd")
+const OFFICE_GENERATOR := preload("res://game/world/generation/office_generator.gd")
 const LIES_PATH := "res://game/app/hallucinations/locust_hallucinations.gd"
 const STYLE_PATH := "res://game/app/capture_styles/locust_capture.gd"
 ## What plays a capture out: the creature read only through the contract,
@@ -176,6 +182,7 @@ func run() -> void:
 	it.control = "ai"
 	it.mode = LOCUST.Mode.PATROL
 	bare()
+	null_creature()
 	var file := FileAccess.open("res://evidence/creature_contract_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	print("CREATURE_CONTRACT_RESULT ", checks.size() - failed, "/", checks.size())
@@ -1419,6 +1426,47 @@ func bare() -> void:
 	nobody.set_control("puppet")
 	check("Con su mando, su gracia y su oído enteros, y el mando es el que se le da", defaults and nobody.control == "puppet")
 	nobody.free()
+
+## The null creature (game/enemies/null_creature.gd): floor 2's until its
+## own comes. The whole contract, and nothing done with it: no predicate takes it
+## for anything, it can do nothing, sends and takes nothing over the net,
+## stands out of everybody's way and sight, is neither felt nor heard, keeps
+## the noises it is told of, and has its den, with no draw, on each planta of
+## an office floor, never in the off-limits rooms, and goes there when the
+## survivors go on.
+func null_creature() -> void:
+	var it = NULL_SCENE.instantiate()
+	check("La criatura nula es una criatura del contrato: none, idle, nula", it is CREATURE and it.kind_id() == &"none" and it.activity() == &"idle" and it.mode_name() == "nula")
+	var predicates := ["is_hostile", "is_attacking", "is_hunting", "is_chasing", "is_engaged", "is_roaming", "accepts_leads", "is_wary"]
+	check("Ningún predicado la toma por nada, y no alarma a nadie", predicates.all(func(name): return not bool(it.call(name))) and it.alarm_level() == 0)
+	check("No sabe hacer nada", not it.can(&"lifts") and not it.can(&"tv_travel") and not it.can(&"ducts") and not it.can(&"wardrobes") and not it.can(&"shriek"))
+	check("No va a ninguna parte, no golpea ni coge a nadie", it.travel_metres(0).is_empty() and it.capture_length() == 0.0 and it.capture_style() == null and it.validate_strike(Vector3.ZERO, Vector3.FORWARD, level.player) == INF)
+	it.position = Vector3(1, 2, 3)
+	var packed: Array = it.pack_state()
+	it.push_state([])
+	check("No manda nada por la red, lo que recibe no la mueve y no guarda nada con el piso", packed.is_empty() and it.position == Vector3(1, 2, 3) and it.save_state().is_empty())
+	root.add_child(it)
+	check("En el árbol no choca con nada, no corre y no se ve", it.collision_layer == 0 and it.collision_mask == 0 and not it.is_physics_processing() and not it.is_processing() and not it.visible)
+	var felt: Array = it.presence_route(Vector3.ZERO)
+	check("Ni se la siente venir, ni se la oye, ni miente", it.hushed() and float(felt[0]) == INF and not bool(it.sound_route(Vector3.ZERO).audible) and it.hallucinations() == null)
+	for i in 70: it.hear(Vector3(i, 0, 0), 2.0)
+	check("Apunta lo que oye, las últimas 64 veces", it.heard.size() == 64 and it.heard[0] == [Vector3(6, 0, 0), 2.0] and it.heard[63] == [Vector3(69, 0, 0), 2.0])
+	check("Sin piso no tiene guarida", it.den_point(1) == Vector3.INF)
+	var office: Dictionary = OFFICE_GENERATOR.new().generate(1)
+	var shut: Array = FLOOR.palette(office).off_limits_rooms(office)
+	var dens_right := true
+	for stage in [1, 2, 3]:
+		var room: int = NULL_CREATURE.den_room(office, stage)
+		if room < 0 or int(office.rooms[room].wing) != stage - 1 or shut.has(room) or FLOOR.is_void(office.rooms[room]) or NULL_CREATURE.den_room(office, stage) != room: dens_right = false
+	check("Su guarida en un piso de oficinas está en la planta de cada etapa, nunca en lo vedado ni en el vacío, y siempre la misma", dens_right)
+	# A Dictionary answers .manifest as a level does.
+	it.level = {"manifest": office}
+	var den := NULL_CREATURE.den_room(office, 2)
+	var expected: Vector3 = FLOOR.position_of(office.rooms[den]) + Vector3(0, 0.04, 0) if den >= 0 else Vector3.INF
+	var point: Vector3 = it.den_point(2)
+	it.follow_to_planta(2, true)
+	check("Con un piso de oficinas, su guarida es la de den_room() y al seguir a los supervivientes se pone en ella", den >= 0 and point.is_equal_approx(expected) and it.global_position.is_equal_approx(expected), "%s %s" % [str(point), str(it.global_position)])
+	it.free()
 
 # --- The net, the observer and the bots, on the contract ----------------------------
 

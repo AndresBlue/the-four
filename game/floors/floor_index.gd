@@ -2,10 +2,18 @@ extends RefCounted
 ## The floors of the building, by number: which script says what each one asks
 ## for (game/floors/hotel_floor.gd is the first), and what to call the ones
 ## that are not built yet. The records, the milestones and the boards are kept
-## floor by floor and ask here; a new floor is one more line.
+## floor by floor and ask here; a new floor is one more line in KINDS, and one
+## in RELEASED the day players get to it.
 const KINDS := {
 	1: preload("res://game/floors/hotel_floor.gd"),
+	2: preload("res://game/floors/office_floor.gd"),
 }
+## The floors anybody can see on the boards: a floor is built (KINDS) long
+## before it is released (the continuation from floor 1, phase 5). Unreleased,
+## it has no title of its own and no milestones, so no board, list of
+## achievements or Steam shows them, and a tape only if it is of that floor;
+## --floor=N, the net and the tools still build it (kind(), built()).
+const RELEASED := [1]
 ## How many floors the building has, built or not.
 const COUNT := 4
 
@@ -18,13 +26,17 @@ static func kind(number: int) -> GDScript:
 static func built(number: int) -> bool:
 	return KINDS.has(number)
 
-## "PISO 1: EL HOTEL", or "PISO 3" for one nobody has filmed.
-static func title(number: int) -> String:
-	return ("PISO %d: %s" % [number, String(KINDS[number].NAME)]) if KINDS.has(number) else "PISO %d" % number
+## Whether players get to it (RELEASED).
+static func released(number: int) -> bool:
+	return KINDS.has(number) and RELEASED.has(number)
 
-## The milestones of a floor, or none.
+## "PISO 1: EL HOTEL", or "PISO 3" for one nobody has filmed (not released).
+static func title(number: int) -> String:
+	return ("PISO %d: %s" % [number, String(KINDS[number].NAME)]) if released(number) else "PISO %d" % number
+
+## The milestones of a released floor, or none.
 static func milestones(number: int) -> Array:
-	return KINDS[number].MILESTONES if KINDS.has(number) else []
+	return KINDS[number].MILESTONES if released(number) else []
 
 ## The numbers of the floors that are built, lowest first.
 static func numbers() -> Array:

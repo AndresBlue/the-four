@@ -11,7 +11,7 @@ const VERSION := 8
 ## Each floor's palette, by its number (docs/OFICINAS.md 11.2): what its room
 ## types are. Here and not in game/floors/floor_index.gd, which preloads the
 ## floors' scripts and, through them, the generator that preloads this one.
-const PALETTES := {1: preload("res://game/floors/palettes/hotel_palette.gd")}
+const PALETTES := {1: preload("res://game/floors/palettes/hotel_palette.gd"), 2: preload("res://game/floors/palettes/office_palette.gd")}
 
 ## The palette of the floor a manifest is of: the hotel's for a manifest that
 ## does not say (the hotel's never do) or names a floor without one.
