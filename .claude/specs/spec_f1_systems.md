@@ -11,7 +11,7 @@ Line numbers are from the tree at `d59cf8d` (after step 0a3). Later phase-0 step
 ### 0.1 Phase 0 as specified in `oficinas_specs.md` (assume it exists exactly so)
 
 - `level.creature` with the contract (`creature.gd`), `level.locust` alias. Phase 1 runs the office floor against `null_creature.gd` (step 1a), which never captures. This spec only needs `creature.hear(point, radius)` on it. **Add to `null_creature.gd` (if 1a did not)** `var heard: Array = []`, with `hear()` appending `[point, radius]` (cap 64). The tests read it.
-- Objectives as handlers, `game/floors/objectives/objective.gd`: `static settle(manifest, survivors, kind) -> Dictionary`, `setup(level)`, `place()`, `reset()`, `progress(stage) -> {ready, done, needed, kind, lines, extra}`, `goal_points(stage) -> Array[Vector3]`, `tick(delta)`, `snapshot()`, `restore(data)`. `host_gate()` loops the stage's handlers (met = AND of `ready`). `lifts.stage_progress()` concatenates their `lines`. Below, `level.objective(id: StringName)` means 0b's accessor for a handler of the floor. If 0b named it differently, use 0b's name; do not add a second registry.
+- Objectives as handlers, `game/floors/objectives/objective.gd`: `static settle(manifest, survivors, kind) -> Dictionary`, `setup(level)`, `place()`, `reset()`, `progress(stage) -> {ready, done, needed, kind, lines, extra}`, `goal_points(stage) -> Array[Vector3]`, `tick(delta)`, `snapshot()`, `restore(data)`. `host_gate()` loops the stage's handlers (met = AND of `ready`). `lifts.stage_progress()` concatenates their `lines`. 0b's names (done, 22 October 2026): `level.objectives` is the Dictionary of the floor's handlers keyed by the String names of `kind.OBJECTIVES` (which holds res:// paths, loaded by `hotel_main.build_objectives()`, because preloading them makes a cycle through `tv_placement.gd`); `level.stage_objectives(stage := -1) -> Array` gives the stage's in `STAGES` order; `level.goal_points() -> Array[Vector3]`. Below, `level.objective(id)` means `level.objectives[id]`; do not add a second registry.
 - `office_floor.gd` (1a) with `GENERATOR/GEOMETRY/VALIDATOR/PALETTE/CREATURE/CREATURE_KEY = &"lurker"/OBJECTIVES/PAPERS`, `floor_index.KINDS[2]`, `--floor=N`, `level.set_floor(n)`.
 - Palettes with structural roles 0 start, 9 landing, 10 lobby, 11 corridor, 12 gallery, 19 refuge, 20 void. `FLOOR.palette(manifest)` returns the office palette for floor 2.
 - `hotel.lit(room_id)`, `hotel.set_room_power(room_id, on)`, `hotel.drain(room_id, amount)`, `ROOM_LAYERS.put_on_actor(mesh, bits)`, and `build_room` split into steps (0e), among them `extras(node, room)`.
@@ -516,7 +516,7 @@ Register them in `docs/ASSETS.md` and `docs/asset_hashes.json`, as the other `pr
 - Changes:
   - `objective.gd`, `hotel_main.gd`, `interaction.gd`, `match_net.gd`, `net_session.gd`, `floor_save.gd`, `code_lock.gd`, `world_audio.gd`, `noise_kinds.gd`, `difficulty.gd`, `camcorder_osd.gd` (`date_parts`);
   - `executions.gd` (one call);
-  - `revival.gd`, only if 0b did not route the restart through `reset()`;
+  - `revival.gd`: 0b did NOT route the restart through `reset()` (nobody calls it; revival.gd:154-166 still switches the stage's sets off, sends `television_state` and clears `goal.blackout` itself). 1e adds, in `apply_revival()` on every machine, `for h in level.stage_objectives(): h.reset()`, and leaves the hotel's own block as it is (the televisions handler's `reset()` stays a no-op, so floor 1 does not change);
   - `office_geometry.gd` (one line in `extras()`);
   - `office_floor.gd` (`OBJECTIVES` gets `"files"`).
 
@@ -609,7 +609,7 @@ The generator guarantees every station is at least `STATION_TUBE_MIN` of tube fr
   - Everywhere: a `card_pickup` at that point: the card's far texture on a 0.2 x 0.13 plane, a usable with `action = "pick"`, word `"COGER"`, hold `PICK_TIME`.
   - `apply("pick")`: the card is `HELD` by the picker, and the pickup is freed.
   - Also call `objectives_on_death` from wherever `session.drop(seat)` is called for a seat gone for good, with the last known body position.
-- **Restart** (`reset()`, called on every machine by `revival.apply_revival(places, restart, ...)` at line 125, as 0b does for the sets): all of this stage is cleared. Capsules and their sounds stop, lamps go off, pickups are freed, and this stage's photos are dropped. Gate 0 is relocked there already (`relock_gate`, revival.gd:154).
+- **Restart** (`reset()`, called on every machine by `revival.apply_revival(places, restart, ...)` at line 125; 1e wires that call, see the `revival.gd` change above): all of this stage is cleared. Capsules and their sounds stop, lamps go off, pickups are freed, and this stage's photos are dropped. Gate 0 is relocked there already (`relock_gate`, revival.gd:154).
 - **`goal_points(1)`:** the stand while somebody has no request, stations with a card in the tray, and the reader while cards are held unswiped.
 - **`own_papers(seat)`:** the receipts and cards of this seat (2.5). Cards held by the seat are listed (with the owner's photo); receipts only for its own requests.
 - **`snapshot()`:** `{requests, swiped, photos}`. Requests carry `sent`, so a capsule caught up mid-way is rebuilt at the right place.

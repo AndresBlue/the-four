@@ -20,8 +20,17 @@ export const meta = {
 //   pruebas: 'las pruebas de Godot del área que el revisor repite (órdenes exactas)',
 //   unidades: [{ id, encargo, archivos: [..], no_tocar: [..], verificar: 'órdenes y resultado esperado' }],
 //   integrar: true | false,          // false: solo unidades y revisión (para áreas que se integran juntas)
+//   archivo: '.claude/specs/encargos_<area>.json',  // opcional: el JSON que dejó el flujo encargos
 // }
+// Con `archivo`, contexto, aceptación, pruebas y el texto de cada unidad se leen de ese JSON (no se copian
+// en los argumentos) y `unidades` solo necesita {id, archivos}.
 const A = args
+const SRC = A.archivo ? `E:/Projects/The Four/${A.archivo}` : null
+const CONTEXTO = SRC ? `Está en ${SRC} (JSON), campo "contexto": léelo entero antes de nada.` : A.contexto
+const ACEPTACION = SRC ? `la del campo "aceptacion" de ${SRC}` : A.aceptacion
+const PRUEBAS = SRC ? `las del campo "pruebas" de ${SRC}` : A.pruebas
+const UNIDADES = SRC ? `Están en ${SRC}, campo "unidades".` : JSON.stringify(A.unidades, null, 1)
+const unitText = (u, field) => SRC ? `el campo "${field}" de la unidad ${u.id} en ${SRC}` : u[field]
 const WORKER = { model: 'haiku', effort: 'xhigh' }
 const REVIEWER = { model: 'opus', effort: 'high' }
 const UNIT = { type: 'object', properties: {
@@ -54,14 +63,14 @@ function unitPrompt(u, extra) {
 
 Área: ${A.area}
 Contexto común:
-${A.contexto}
+${CONTEXTO}
 
 Tu unidad: ${u.id}
 Encargo:
-${u.encargo}
+${unitText(u, 'encargo')}
 Archivos que escribes: ${(u.archivos || []).join(', ')}
-No toques: ${(u.no_tocar || []).join(', ') || 'nada fuera de tus archivos'}
-Cómo se verifica y qué se espera: ${u.verificar}${extra ? '\n\n' + extra : ''}`
+No toques: ${SRC ? unitText(u, 'no_tocar') : (u.no_tocar || []).join(', ') || 'nada fuera de tus archivos'}
+Cómo se verifica y qué se espera: ${unitText(u, 'verificar')}${extra ? '\n\n' + extra : ''}`
 }
 
 phase('Unidades')
@@ -81,13 +90,13 @@ for (let round = 1; round <= 3; round++) {
   phase('Revisión')
   verdict = await agent(`Eres el revisor del área "${A.area}" (Opus, esfuerzo high). No lanzas agentes ni haces commit.
 Encargo completo del área:
-${A.contexto}
+${CONTEXTO}
 Unidades y sus encargos:
-${JSON.stringify(A.unidades, null, 1)}
+${UNIDADES}
 Informes de la batería (no te fíes de ellos):
 ${JSON.stringify(reports, null, 1)}
-Prueba de aceptación del área: ${A.aceptacion}
-Lee el cambio real de cada unidad (git -C "E:/Projects/The Four" diff y los archivos nuevos), repite la verificación (estas pruebas, de una en una: ${A.pruebas}) y acepta solo lo resuelto como lo habría resuelto el director: correcto, mínimo, fiel al diseño y en el estilo del código de alrededor. Ya aceptadas en rondas anteriores: ${[...accepted].join(', ') || 'ninguna'}. Ronda ${round}.
+Prueba de aceptación del área: ${ACEPTACION}
+Lee el cambio real de cada unidad (git -C "E:/Projects/The Four" diff y los archivos nuevos), repite la verificación (estas pruebas, de una en una: ${PRUEBAS}) y acepta solo lo resuelto como lo habría resuelto el director: correcto, mínimo, fiel al diseño y en el estilo del código de alrededor. Ya aceptadas en rondas anteriores: ${[...accepted].join(', ') || 'ninguna'}. Ronda ${round}.
 Devuelve las aceptadas, las correcciones concretas (con sus archivos), lo que no te corresponde decidir (al_director) y un resumen.`, { label: `revisor ${A.area} r${round}`, phase: 'Revisión', schema: VERDICT, ...REVIEWER })
   if (!verdict) break
   verdict.aceptadas.forEach(id => accepted.add(id))
@@ -97,11 +106,11 @@ Devuelve las aceptadas, las correcciones concretas (con sus archivos), lo que no
   const fix = c => agent(`${WORKER_NOTE}${A.paralelo ? ' No ejecutes Godot.' : ''}
 
 Área: ${A.area}. Contexto:
-${A.contexto}
+${CONTEXTO}
 Corrección que manda el revisor para la unidad ${c.id}:
 ${c.que}
 Archivos: ${c.archivos.join(', ')}
-Encargo original de la unidad: ${JSON.stringify(A.unidades.find(u => u.id === c.id) || {})}`, { label: `corrige ${c.id} r${round}`, phase: 'Correcciones', schema: UNIT, ...WORKER })
+Encargo original de la unidad: ${SRC ? `la unidad ${c.id} en ${SRC}` : JSON.stringify(A.unidades.find(u => u.id === c.id) || {})}`, { label: `corrige ${c.id} r${round}`, phase: 'Correcciones', schema: UNIT, ...WORKER })
   if (serial) { for (const c of verdict.correcciones) reports[c.id] = await fix(c) }
   else { const out = await parallel(verdict.correcciones.map(c => () => fix(c))); verdict.correcciones.forEach((c, i) => { reports[c.id] = out[i] }) }
 }
@@ -126,7 +135,7 @@ for (let attempt = 1; ver && !ver.verde && attempt <= 2; attempt++) {
 La verificación completa falló tras el área "${A.area}". Fallos:
 ${JSON.stringify(ver.fallos, null, 1)}
 Contexto del área:
-${A.contexto}
+${CONTEXTO}
 Encuentra la causa en los cambios sin commit (o demuestra que la prueba es inestable corriéndola dos veces sola) y arréglala bien. Corre las pruebas que fallaron, de una en una, hasta que pasen. No corras verify.ps1.`, { label: `arregla verify ${attempt}`, phase: 'Arreglos', ...WORKER })
   ver = await verifyAll(`${A.area} ${attempt + 1}`)
 }
@@ -138,7 +147,7 @@ const LENSES = [
   'DISEÑO Y DOCUMENTOS: lo que el área no hace de su diseño (docs/OFICINAS.md y el contexto), y documentos que ya no dicen la verdad.',
 ]
 const found = await parallel(LENSES.map((l, i) => () => agent(`Revisión adversarial (SOLO LECTURA: no edites, no ejecutes Godot) de los cambios sin commit del área "${A.area}" (git -C "E:/Projects/The Four" status y diff). Contexto:
-${A.contexto}
+${CONTEXTO}
 Tu enfoque: ${l}
 Solo problemas concretos y comprobables, con archivo y línea. Una lista vacía es una buena respuesta.`, { label: `costura ${i + 1}`, phase: 'Costuras', schema: FINDINGS, ...REVIEWER })))
 const seen = new Set()
@@ -156,7 +165,7 @@ if (real.length) {
 Arregla estos defectos confirmados en los cambios del área "${A.area}" (si uno no lo es, explica por qué y déjalo):
 ${JSON.stringify(real, null, 1)}
 Contexto:
-${A.contexto}
+${CONTEXTO}
 Corre de una en una las pruebas que toquen. No corras verify.ps1.`, { label: 'arregla costuras', phase: 'Arreglos', ...WORKER })
   ver = await verifyAll(`${A.area} final`)
 }
