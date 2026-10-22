@@ -236,15 +236,15 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 	if not is_instance_valid(piece) or not piece.set_searched(value): return
 	if not value: return
 	# Its own drawer, box or door (hotel_container.search_sounds()), and the
-	# piece left open with it, the drawer reaching its stop on the knock. One
-	# that makes no sound (a console, a bookcase, crates, a suitcase) is not
-	# heard by anybody, the creature either.
+	# piece left open with it, the drawer reaching its stop on the knock. Of a
+	# console, a bookcase, crates or a suitcase only the paper is heard, close
+	# by: the creature does not hear it.
 	var sounds: Array = piece.search_sounds()
-	var path: String = sounds[randi() % sounds.size()] if not sounds.is_empty() else ""
-	piece.show_searched(0.0 if quiet else piece.SILENT_OPEN if path.is_empty() else SEARCH_TIMING.stop(path, piece.DOOR_SWING))
-	if level.world_audio.enabled and not quiet and not path.is_empty():
-		level.world_audio.play_at(path, piece.global_position + Vector3(0, 0.8, 0), piece.SEARCH_CREAK_DB if path == piece.SEARCH_SOUND else piece.SEARCH_DB)
-	if not level.net.is_client() and not quiet and not path.is_empty(): level.on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
+	var path: String = sounds[randi() % sounds.size()]
+	piece.show_searched(0.0 if quiet else SEARCH_TIMING.stop(path, piece.UNTIMED_OPEN if piece.hushed() else piece.DOOR_SWING))
+	if level.world_audio.enabled and not quiet:
+		level.world_audio.play_at(path, piece.global_position + Vector3(0, 0.8, 0), piece.search_db(path))
+	if not level.net.is_client() and not quiet and not piece.hushed(): level.on_noise(piece.global_position + Vector3(0, 0.8, 0), piece.noise_radius(), NOISE.Kind.DOOR)
 	# A document of the archive in a suitcase is read by whoever finds it, at
 	# once, and goes into their archive; the paper leaves with them.
 	if not piece.document.is_empty():

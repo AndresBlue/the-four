@@ -17,7 +17,7 @@ La atenuación direccional usa AudioStreamPlayer3D; la oclusión por pared es un
 
 ## Preparados o reservados
 
-- `paper/paper.ogg`: suena al leer un documento (sonido local, no es un ruido para la IA). También está previsto para abrir la futura hoja de dibujo.
+- `paper/paper.ogg`: suena al leer un documento y al abrir la hoja (sonido local, no es un ruido para la IA), y en el mueble, para todos los que estén cerca, al registrar lo que no tiene sonido propio (consola, librería, cajas de plástico, maleta; «Registrar muebles»).
 - `heartbeat/1.ogg` y `2.ogg`: son los latidos del aura (`dread_aura.gd`, ver «Aura de The Locust»).
 - Cuatro grabaciones `hard-*`: se usan como portazo cuando el jugador abre o cierra una puerta mientras corre. Ese giro es más rápido y su ruido jugable llega a 18 m (normal: 12 m; lento: 3 m).
 - `sub-riser-presence.wav` y `creaky-wooden-door-slow-opening.mp3`: fuera del juego desde el 19 de octubre de 2026, por su licencia no comercial ([ASSETS.md](ASSETS.md)); los originales siguen en `sfx/`.
@@ -151,9 +151,9 @@ Cada mueble registrable suena como lo que es (`hotel_container.SEARCH_SOUNDS`, p
 | Cajonera de oficina (`drawers`) | `soft_drawer_1..5.wav`: las cinco tomas de «cajon.wav» (ANFEGORES108, CC0), un cajón moderno; una al azar |
 | Cajas (`boxes`) | `box.wav`: «open-cardboard-box-compartment.wav» (newagesoup, CC0), las solapas de una caja de cartón |
 | Vitrina (`cabinet` en salas cuidadas) | `big_drawer.wav`, como la cómoda (decisión del autor, 21 de octubre de 2026) |
-| Consola, librería, una pila solo de cajas de plástico y la maleta tumbada (`luggage`) | nada: no suenan, y la criatura no oye nada (decisión del autor, 21 de octubre de 2026; hasta entonces sonaban a puerta abierta despacio) |
+| Consola, librería, una pila solo de cajas de plástico y la maleta tumbada (`luggage`) | el papel de la hoja (`paper/paper.ogg`, en el mueble, a −24 dB), y la criatura no lo oye (decisión del autor, 21 de octubre de 2026; hasta entonces sonaban a puerta abierta despacio) |
 
-Los cortes de la apertura están en `OPENING` (segundos de cada grabación, leídos en su envolvente: el tirón, el deslizamiento y el golpe del cajón al llegar al tope); las cinco tomas de `soft-drawer.wav` se separan por los silencios digitales que dejó su autor. **El cajón sale con su sonido:** la herramienta escribe también `game/audio/search_timing.gd`, cuándo da cada grabación su último golpe (el cajón contra el tope: 0,69 s el grande, 1,02 el de madera, de 0,84 a 1,38 las tomas de la cajonera), y el cajón tarda eso en salir; la puerta de la vitrina, con el cajón grande; lo que se abre sin sonido (la tapa de la maleta) tarda `SILENT_OPEN`, 0,8 s. El ruido que oye la criatura es el de una puerta abierta despacio (`hotel_container.noise_radius()`), y no lo hay cuando el mueble no suena (`silent()`). Lo comprueba `stages_test`.
+Los cortes de la apertura están en `OPENING` (segundos de cada grabación, leídos en su envolvente: el tirón, el deslizamiento y el golpe del cajón al llegar al tope); las cinco tomas de `soft-drawer.wav` se separan por los silencios digitales que dejó su autor. **El cajón sale con su sonido:** la herramienta escribe también `game/audio/search_timing.gd`, cuándo da cada grabación su último golpe (el cajón contra el tope: 0,69 s el grande, 1,02 el de madera, de 0,84 a 1,38 las tomas de la cajonera), y el cajón tarda eso en salir; la puerta de la vitrina, con el cajón grande; lo que se abre con el papel, que no tiene golpe (la tapa de la maleta), tarda `UNTIMED_OPEN`, 0,8 s. El ruido que oye la criatura es el de una puerta abierta despacio (`hotel_container.noise_radius()`), y no lo hay cuando del mueble solo se oye el papel (`hushed()`). Lo comprueba `stages_test`.
 
 ## Puerta lenta
 

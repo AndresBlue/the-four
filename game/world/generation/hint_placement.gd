@@ -99,7 +99,14 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 	shuffle(marked, rng)
 	var ways := POINT_KINDS.duplicate()
 	shuffle(ways, rng)
-	var drawers := drawer_spots(manifest, containers, hiding, wing, metres, deepest, refuge, POINT_SPAN).filter(func(spot): return not held.has(int(spot.container)))
+	# Of the papers that help (the hints and the documents), one at most is
+	# shut in a suitcase on a floor: the rest are seen at a glance (the
+	# author's word, 21 October 2026).
+	var suitcases := {}
+	for index in containers.size():
+		if DOCUMENTS.HOLDERS.has(String(containers[index].get("kind", ""))): suitcases[index] = true
+	var shut_one := held.keys().any(func(index): return int(index) >= 0)
+	var drawers := drawer_spots(manifest, containers, hiding, wing, metres, deepest, refuge, POINT_SPAN).filter(func(spot): return not held.has(int(spot.container)) and not (shut_one and suitcases.has(int(spot.container))))
 	var used := {}
 	for index in mini(POINTS, marked.size()):
 		var page: Dictionary = marked[index]
@@ -114,10 +121,13 @@ static func choose(manifest: Dictionary, containers: Array, hiding: Array, stage
 		if spot.is_empty(): continue
 		blocked[int(spot.room)] = true
 		drawers = drawers.filter(func(other): return int(other.room) != int(spot.room))
+		if suitcases.has(int(spot.container)):
+			shut_one = true
+			drawers = drawers.filter(func(other): return not suitcases.has(int(other.container)))
 		made.merge({"id": hints.size(), "slot": int(page.slot), "place": "container", "container": int(spot.container), "room": int(spot.room), "position": spot.position, "yaw": float(spot.yaw)}, true)
 		hints.append(made)
 	# And the other sheet, in the room nobody would go to.
-	var far := remotest(manifest, containers, hiding, wing, metres, deepest, refuge, blocked)
+	var far := remotest(manifest, containers, hiding, wing, metres, deepest, refuge, blocked, suitcases if shut_one else {})
 	if not far.is_empty():
 		var points: Array = []
 		for page in pages: points.append(Vector2(float(page.position.x), float(page.position.z)))
@@ -437,11 +447,12 @@ static func pick_spot(spots: Array, page: Dictionary, hints: Array, _rooms: Arra
 
 ## The most out-of-the-way piece of furniture of the planta: the deepest walk
 ## from the lobby, more in a room with one door, more in the dark, never with
-## a page in it, nor in a room already holding a paper.
-static func remotest(manifest: Dictionary, containers: Array, hiding: Array, wing: int, metres: Dictionary, deepest: float, refuge: int, blocked: Dictionary) -> Dictionary:
+## a page in it, nor in a room already holding a paper, nor one of `skip`.
+static func remotest(manifest: Dictionary, containers: Array, hiding: Array, wing: int, metres: Dictionary, deepest: float, refuge: int, blocked: Dictionary, skip: Dictionary = {}) -> Dictionary:
 	var best := {}
 	var best_score := -INF
 	for spot in drawer_spots(manifest, containers, hiding, wing, metres, deepest, refuge, Vector2(0.0, 1.01)):
+		if skip.has(int(spot.container)): continue
 		if blocked.has(int(spot.room)): continue
 		var room: Dictionary = manifest.rooms[int(spot.room)]
 		var score := float(metres.get(int(spot.room), 0.0))

@@ -6,8 +6,8 @@ extends Area3D
 ##
 ## Going through one is not instant: it takes a second of standing there with
 ## your back to the room, and most of them can be heard from the rooms next
-## door. That is the price of looking. What makes no sound (SEARCH_SOUNDS) is
-## not heard by anybody, the creature either.
+## door. That is the price of looking. What only rustles, the paper being
+## taken (hushed()), is heard close by and not by the creature.
 signal searched_changed
 const NOISE := preload("res://game/audio/noise_kinds.gd")
 const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
@@ -60,33 +60,44 @@ func noise_radius() -> float: return NOISE.radius("door_slow")
 ## is worked out on, room_dressing.note_fold()): the drawers of the gothic
 ## commode are big, and so is the glazed cabinet's lower door; those of the
 ## painted cabinet small and old, the office's drawer cabinet is a modern one,
-## and a stack opens a cardboard box (tools/audio/prepare_search_sfx.py). The
-## console, the bookcase, a stack of only crates and a suitcase make none (the
-## author's word, 21 October 2026). Anything else would sound like a door
-## opened slowly, as everything did before 19 October 2026.
+## and a stack opens a cardboard box (tools/audio/prepare_search_sfx.py). Of
+## the console, the bookcase, a stack of only crates and a suitcase only the
+## paper is heard, the sheet's own (the author's word, 21 October 2026).
+## Anything else would sound like a door opened slowly, as everything did
+## before 19 October 2026.
+const PAPER_SOUND := "res://assets/audio/sfx/paper/paper.ogg"
 const SEARCH_SOUNDS := {
 	"GothicCommode_01": ["res://assets/audio/sfx/search/big_drawer.wav"],
 	"vintage_cabinet_01": ["res://assets/audio/sfx/search/big_drawer.wav"],
-	"ClassicConsole_01": [],
-	"wooden_bookshelf_worn": [],
-	"plastic_crate_02": [],
-	"vintage_suitcase_b": [],
+	"ClassicConsole_01": [PAPER_SOUND],
+	"wooden_bookshelf_worn": [PAPER_SOUND],
+	"plastic_crate_02": [PAPER_SOUND],
+	"vintage_suitcase_b": [PAPER_SOUND],
 	"painted_wooden_cabinet": ["res://assets/audio/sfx/search/wooden_drawer.wav"],
 	"drawer_cabinet": ["res://assets/audio/sfx/search/soft_drawer_1.wav", "res://assets/audio/sfx/search/soft_drawer_2.wav", "res://assets/audio/sfx/search/soft_drawer_3.wav", "res://assets/audio/sfx/search/soft_drawer_4.wav", "res://assets/audio/sfx/search/soft_drawer_5.wav"],
 	"cardboard_box_01": ["res://assets/audio/sfx/search/box.wav"],
 }
 const SEARCH_SOUND := "res://assets/audio/sfx/door/opening/slow-opening.wav"
-## Its level: the drawer close by, about as loud as the slow creak was.
+## Its level: the drawer close by, about as loud as the slow creak was; the
+## paper, a little under the drawers.
 const SEARCH_DB := -20.0
 const SEARCH_CREAK_DB := -10.0
+const SEARCH_PAPER_DB := -24.0
 
 ## The recordings it may sound with.
 func search_sounds() -> Array:
 	return SEARCH_SOUNDS.get(String(note_spot.get("model", "")), [SEARCH_SOUND])
 
-## Gone through without a sound: nobody hears it, the creature either.
-func silent() -> bool:
-	return search_sounds().is_empty()
+## Gone through with no more than the paper's rustle: the creature does not
+## hear it.
+func hushed() -> bool:
+	return search_sounds() == [PAPER_SOUND]
+
+## How loud a recording of going through it is played.
+func search_db(path: String) -> float:
+	if path == SEARCH_SOUND: return SEARCH_CREAK_DB
+	if path == PAPER_SOUND: return SEARCH_PAPER_DB
+	return SEARCH_DB
 
 ## Gone through and left as it was: nothing of it opens or is moved (the
 ## author's word, 21 October 2026).
@@ -119,8 +130,9 @@ const DRAWER_OUT := 0.5
 const DOOR_OPEN := 1.1
 const DOOR_SWING := 1.2
 const LID_OPEN := 1.45
-## How long what opens takes when there is no recording to keep time with.
-const SILENT_OPEN := 0.8
+## How long what opens takes when its recording has no knock to keep time
+## with (the paper's).
+const UNTIMED_OPEN := 0.8
 ## How far in front of the piece a thing taken down is left (metres, past
 ## where it stood), how far a box with nothing on top is shoved, how much
 ## either is turned (radians), and how long an ornament takes to fall over.

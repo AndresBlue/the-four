@@ -438,6 +438,7 @@ func run() -> void:
 	# A suitcase lying on the floor is gone through too, and holds only what
 	# is not needed: never a number of the code (digit_placement.NO_PAGES).
 	var suitcases: Array = level.containers.filter(func(piece): return piece.kind == "luggage")
+	check("Como mucho un papel de ayuda por piso queda en una maleta: los demás, a la vista", suitcases.filter(func(piece): return piece.hint >= 0 or not piece.document.is_empty()).size() <= 1)
 	check("Las maletas tumbadas se registran, y nunca guardan un número", suitcases.size() > 10 and suitcases.all(func(piece): return piece.digit < 0 and not piece.main.is_empty() and String(piece.note_spot.get("model", "")) == "vintage_suitcase_b"))
 	var muebles: int = level.containers.size()
 	check("Se puede registrar cualquier mueble con cajones", muebles > 100 and level.containers.all(func(piece): return not piece.searched))
@@ -448,11 +449,12 @@ func run() -> void:
 	var CONTAINER := preload("res://game/world/interactables/hotel_container.gd")
 	var recorded: bool = CONTAINER.SEARCH_SOUNDS.values().all(func(paths): return paths.all(func(path): return load(path) is AudioStream and (load(path) as AudioStream).get_length() > 0.5))
 	check("Cada mueble suena como lo que es al registrarlo", recorded and not models.has("") and models.has("GothicCommode_01") and models.has("drawer_cabinet") and models.has("cardboard_box_01") and level.containers.all(func(piece): return piece.search_sounds() == CONTAINER.SEARCH_SOUNDS.get(String(piece.note_spot.model), [CONTAINER.SEARCH_SOUND])))
-	# The author's word, 21 October 2026: the console and the bookcase make no
-	# sound and nothing of them is moved; the glazed cabinet sounds like the
-	# commode's big drawer; crates alone and suitcases make no sound.
+	# The author's word, 21 October 2026: of the console and the bookcase only
+	# the paper is heard (the sheet's) and nothing of them is moved; the glazed
+	# cabinet sounds like the commode's big drawer; of crates alone and of
+	# suitcases, the paper too.
 	var by_model := func(model: String) -> Array: return level.containers.filter(func(piece): return String(piece.note_spot.get("model", "")) == model)
-	check("Consola y estantería sin sonido y sin mover nada; el aparador, cajón grande; cajas de plástico y maletas, sin sonido", by_model.call("ClassicConsole_01").all(func(piece): return piece.silent() and piece.still()) and by_model.call("wooden_bookshelf_worn").all(func(piece): return piece.silent() and piece.still()) and by_model.call("vintage_cabinet_01").all(func(piece): return piece.search_sounds() == CONTAINER.SEARCH_SOUNDS.GothicCommode_01 and not piece.still()) and by_model.call("plastic_crate_02").all(func(piece): return piece.silent() and not piece.still()) and suitcases.all(func(piece): return piece.silent() and not piece.still()) and not by_model.call("ClassicConsole_01").is_empty())
+	check("Consola y estantería suenan a papel y no se mueven; el aparador, cajón grande; cajas de plástico y maletas, a papel", by_model.call("ClassicConsole_01").all(func(piece): return piece.hushed() and piece.still()) and by_model.call("wooden_bookshelf_worn").all(func(piece): return piece.hushed() and piece.still()) and by_model.call("vintage_cabinet_01").all(func(piece): return piece.search_sounds() == CONTAINER.SEARCH_SOUNDS.GothicCommode_01 and not piece.still() and not piece.hushed()) and by_model.call("plastic_crate_02").all(func(piece): return piece.hushed() and not piece.still()) and suitcases.all(func(piece): return piece.hushed() and not piece.still()) and not by_model.call("ClassicConsole_01").is_empty() and CONTAINER.PAPER_SOUND == level.paper_sound.stream.resource_path)
 	for piece in hidden:
 		level.search_container(piece)
 		await frames(2)

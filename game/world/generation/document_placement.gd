@@ -12,6 +12,8 @@ const SURFACES := {"table": 0.84, "desk": 0.84, "nightstand": 0.84}
 ## The pieces of furniture a document may be shut in (room_dressing.CONTAINERS),
 ## and how often one is, where there is one to be had: there are some hundred
 ## suitcases to a floor, and left to their number most documents were in one.
+## One at most: the rest are seen at a glance (the author's word, 21 October
+## 2026; hint_placement keeps to it too, with the hints in it).
 const HOLDERS := ["luggage"]
 const SHUT_IN := 0.25
 const PER_FLOOR := 2
@@ -76,4 +78,5 @@ static func choose(manifest: Dictionary, creature: String, containers: Array = [
 		used[spot.planta] = true
 		spot["entry"] = entries[order[result.size()]].id
 		result.append(spot)
+		if int(spot.container) >= 0: shut.clear()
 	return result

@@ -261,13 +261,13 @@ func run() -> void:
 	fresh.free()
 	# A document shut in a suitcase (document_placement.HOLDERS) is read the
 	# moment the suitcase is gone through, by whoever does, and its paper
-	# leaves with them; the suitcase opens its lid and makes no sound.
+	# leaves with them; the suitcase opens its lid with only the paper heard.
 	var suitcase = level.containers.filter(func(piece): return piece.kind == "luggage" and not piece.searched and piece.digit < 0 and piece.hint < 0 and piece.document.is_empty())[0]
 	suitcase.document = document.entry_id
 	suitcase.plant_note()
 	level.apply_search(level.containers.find(suitcase), true, false, player.slot)
 	await frames(60)
-	check("Un documento en una maleta se lee al abrirla, y su papel se va con quien la abre", level.interaction.reading_entry == document.entry_id and is_instance_valid(level.ui.reading) and not is_instance_valid(suitcase.note) and suitcase.silent() and String(suitcase.left.get("part", "")).begins_with("lid"))
+	check("Un documento en una maleta se lee al abrirla, y su papel se va con quien la abre", level.interaction.reading_entry == document.entry_id and is_instance_valid(level.ui.reading) and not is_instance_valid(suitcase.note) and suitcase.hushed() and String(suitcase.left.get("part", "")).begins_with("lid"))
 	level.close_document()
 	await process_frame
 	level.ui.menu("archive")
