@@ -4,6 +4,12 @@ const HIDE := preload("res://game/world/interactables/hiding_place.gd")
 const LOCUST := preload("res://game/enemies/locust/locust.tscn")
 var world_audio
 var locust
+## The floor's creature (game/enemies/creature.gd): the same body as `locust`,
+## the name everything still reads it by. That one keeps holding it, so the
+## many places that read it every frame have no getter in the way.
+var creature:
+	get: return locust
+	set(value): locust = value
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/map_validator.gd")
 const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
@@ -1379,7 +1385,10 @@ func point_in_refuge(point: Vector3) -> bool:
 	var rise := point.y - center.y
 	return absf(point.x - center.x) < span.x * 0.5 - 0.55 and absf(point.z - center.z) < span.y * 0.5 - 0.55 and rise >= -0.1 and rise < 2.0
 
-func spawn_locust() -> void:
+## The floor's creature under its old name.
+func spawn_locust() -> void: spawn_creature()
+
+func spawn_creature() -> void:
 	locust = LOCUST.instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE

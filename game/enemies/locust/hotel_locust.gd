@@ -1,4 +1,4 @@
-extends CharacterBody3D
+extends "res://game/enemies/creature.gd"
 @export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const THREAD := preload("res://game/enemies/locust/door_threading.gd")
@@ -2159,3 +2159,56 @@ func watched(point: Vector3) -> bool:
 		query.exclude = [body.get_rid(), get_rid()]
 		if get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return true
 	return false
+
+# --- The creature's contract (game/enemies/creature.gd) ----------------------------
+
+## Its modes in the words every creature uses.
+const ACTIVITY := {Mode.PATROL: &"roam", Mode.INVESTIGATE: &"investigate", Mode.SEARCH: &"search", Mode.ALERT: &"alert", Mode.CHASE: &"chase", Mode.WINDUP: &"strike", Mode.RECOVER: &"recover", Mode.EXECUTE: &"capture", Mode.WARDROBE: &"open", Mode.LURK: &"wait"}
+## What it does: rides the lifts, steps out of the sets, opens wardrobes and
+## shrieks (its hunter's cry). It has no business in the ducts.
+const ABILITIES: Array[StringName] = [&"lifts", &"tv_travel", &"wardrobes", &"shriek"]
+
+func kind_id() -> StringName: return &"locust"
+
+func can(ability: StringName) -> bool: return ability in ABILITIES
+
+func activity() -> StringName:
+	var word: StringName = ACTIVITY.get(mode, &"")
+	return word
+
+func mode_name() -> String:
+	return String(Mode.keys()[mode]) if mode >= 0 and mode < Mode.size() else str(mode)
+
+func eye_point() -> Vector3: return global_position + Vector3(0, EYE_HEIGHT, 0)
+
+## Its head turned to whoever it watches (locust_visual.look_point, sent to a
+## puppet too), else the way its body faces: what sanity reads as its stare.
+func gaze() -> Vector3:
+	if is_instance_valid(visual) and "look_point" in visual and visual.look_point != Vector3.INF: return visual.look_point - eye_point()
+	return -global_basis.z
+
+func travel_metres(room_id: int) -> Dictionary: return walk_from(room_id)
+
+func in_transit() -> bool: return lift_bound
+
+func capture_length() -> float: return EXECUTION_TIME
+
+## Put somewhere else (teleport()): all that the three places that move it
+## drop each by hand (lifts.apply_locust_ride, televisions.warp_creature,
+## revival.relocate_creature), in one. No speed and no states still on their
+## way from where it was; a puppet ignores the ones that still come for a
+## moment (ride_hold); a hunter's channels are closed; no route, no doorway
+## half crossed, no count of being stuck; and its rounds start from the room
+## it is in. What it forgets of anybody is relocate()'s.
+func forget_journey(point: Vector3, _reason: StringName) -> void:
+	speed = 0.0
+	net_states.clear()
+	net_clock = 0.0
+	if control == "puppet":
+		ride_point = point
+		ride_hold = 2.0
+	if is_instance_valid(driver): driver.channel_open = false
+	forget_route()
+	if control == "ai" and level != null and not level.manifest.is_empty():
+		var room := FLOOR.room_at(level.manifest.rooms, point)
+		if not room.is_empty(): patrol_room = int(room.id)

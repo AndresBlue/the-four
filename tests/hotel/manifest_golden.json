@@ -1,0 +1,2300 @@
+{
+	"version": 8,
+	"cases": [
+		{
+			"key": "81/1",
+			"seed": 81,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "857f48112bfd5cde8d9a3fcb019992eae09cef62f8a4486cc8d9ebd6372be87f",
+			"televisions": "7ae36056128529b28fa808d4e5eb3cf612a97c1c675c04a8a0db69436c52fc7d"
+		},
+		{
+			"key": "202/1",
+			"seed": 202,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "325aae6c45ead9874840906c7193ca0155e165ca7529fb97081703ffffdf077a",
+			"televisions": "8f9b5c8f2552ea6306d03e3bc6dcebe329d0526b38431495d5303cca6acb53bb"
+		},
+		{
+			"key": "213/1",
+			"seed": 213,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a4db49c3540cd6fd003377f02fa6f803615f3d2e7a7f076d7e02d6fb47167221",
+			"televisions": "6e6a08d4a7ab3a2e1e6e5301573e670948c915e8b394ded5498d1aa8110ff5a6"
+		},
+		{
+			"key": "777/1",
+			"seed": 777,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "0825a380efc40ec439d7b097f77f3d4aacb17f5b5de33d9fec5f99d0f264984a",
+			"televisions": "80efecebc013e24477f909d5091dd1dc2d5ef7a55bc1f12d62b1791334b09007"
+		},
+		{
+			"key": "4242/1",
+			"seed": 4242,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2cb704f4809f7ac25934adb88f3619866727d290804bf9d564dd1cb6f25e118c",
+			"televisions": "01998f1d18f94f39d4ec425c3390b343070c6068f989f5d37e2b5f79f9028fd9"
+		},
+		{
+			"key": "9001/1",
+			"seed": 9001,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "0daa59f55cb58a0ac4bbe7881b2db703bf61100df4c8d6aaaf0c4175ca23c7d1",
+			"televisions": "0cff3816c155a04b110d35cd1fdf1d90cf0f652e3182b360cae1b3d4c10353ee"
+		},
+		{
+			"key": "1/1",
+			"seed": 1,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7184f75bdb8a685945eb9d43c2ae215605dd8d8ff8df60be3a1958e3d1acff76",
+			"televisions": "7a4b7affef04ce5079ba0bb6d0bca19afc3b49bfaef1bdccc6516ca23bef5e84"
+		},
+		{
+			"key": "3/1",
+			"seed": 3,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "fda63a20bc292e88b2a87d1230375597d841658f259106f14759b034a4a657f0",
+			"televisions": "1fadef684bdfa7a6fb002f4af26ce653c0b127e088592eb23669e8308ca57cb8"
+		},
+		{
+			"key": "7/1",
+			"seed": 7,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "acb0b0bd7d43bcd874c48585e38d60f501e7c7141e883979df3c29202d4bc57b",
+			"televisions": "2e5d54436799bdbcb0dfdd095202bf0c2aa0343e5c75602875960b77dff0458b"
+		},
+		{
+			"key": "11/1",
+			"seed": 11,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d30275eeba53f41b8c2284e9a7e85d2a057f98c47100c9638b7e37bc4298082b",
+			"televisions": "fa0df80cda039b83f04cca8f41396ef4f3d72ed77168b4a7aa252182e97f53b6"
+		},
+		{
+			"key": "17/1",
+			"seed": 17,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "8064c9f3c72a506f771e4b83327048570c5fbb8117845f4b219be2f249ee9a41",
+			"televisions": "6bffde2620ba7425d7c2887a04b1b07619e40644f7655241d8bb3e4fde555e1d"
+		},
+		{
+			"key": "23/1",
+			"seed": 23,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "12fb24e0ba9eb9f6b5674997d5f3b208dc54b1044b0438077031d152eb68c5b4",
+			"televisions": "3489aa223e370f311c3c1f5a1b1a97c70df444f293dc16b9aa2b4ce8555ff215"
+		},
+		{
+			"key": "31/1",
+			"seed": 31,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "aa39e41a2bcddf2215e590aa63b87c5cf9d42c54305e84343e224f71908bcbc1",
+			"televisions": "6c46cdc7148c787cce35ed1b0e10058b1bfa261ee44c2cd86d4605f211f822e0"
+		},
+		{
+			"key": "42/1",
+			"seed": 42,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "39f4a373d4a34b831cd5a26a35a0e19454af5b78d4c12a141ba034f22481168b",
+			"televisions": "2b253673b0cab97d4fe120ab97a6657d75aa8a520a758e62e832a3a40342c512"
+		},
+		{
+			"key": "64/1",
+			"seed": 64,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c8805ee42b837bbcb5359def64d5f0166f8d1c6fe071c3a69c7d1dd16af61db4",
+			"televisions": "e863a8792e113fa9dc90477d0f3c78a5dfea33c5bc74438d263f2a93e167dba2"
+		},
+		{
+			"key": "77/1",
+			"seed": 77,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d54a0e3c4ac109820a08a3360c1484e8ee56009657d0a65173b721e1ad4198f7",
+			"televisions": "4188cbe9ba38a516fbb4d05c0e777a517bb2c089902cafcc4f1f5970352688dd"
+		},
+		{
+			"key": "99/1",
+			"seed": 99,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "88b47cf09bb83f6199f9837c58427141d49e418fcc99426ea496c9e96c9330cd",
+			"televisions": "47023f47524b961c56092a8b98c6023b2d8cbcb41ef937783e91f6ed15a89172"
+		},
+		{
+			"key": "123/1",
+			"seed": 123,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b5e21e13f9f62ac02edf9e9f730c2f5b25360a21664fa5e8d5d1e7d004bb75a0",
+			"televisions": "cda4bf4c98a8f46f26c8c6a168433c3237322284745515d0ed6faf4068705941"
+		},
+		{
+			"key": "128/1",
+			"seed": 128,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "03a13eaa64d2ac352ecf20e421cd3be45e647b19f5ba8d476972085b060b14a5",
+			"televisions": "14045774e7f772b9132b804ade5f209cb7b7970059f09c40c1be30aa9262c955"
+		},
+		{
+			"key": "256/1",
+			"seed": 256,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "51450ee8a28c7a47adf465118c85bb61c1d6d6f9b3f2ed5ec27b62250c0cf281",
+			"televisions": "6529a77f56f6c71f7e28134d609af23047f3361aeb1adc9fb1ac9e54535ced3c"
+		},
+		{
+			"key": "314/1",
+			"seed": 314,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "da65519aa7bc78b5433157947d2376248627333699f6b4f853d3e95bf39e21ad",
+			"televisions": "ad9bbaaf9d197e511508b3be67cb73f2b0e185afd2a5f0c5551582c752bfa508"
+		},
+		{
+			"key": "404/1",
+			"seed": 404,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a88f32ef43dd8b402a5458864fc8984a5b30c5cca1aea6b95674107848b833e6",
+			"televisions": "3704b8b6f7cd73aad00fe909cf40a4535a98cd423ba5d3e00260c40c69a1894f"
+		},
+		{
+			"key": "500/1",
+			"seed": 500,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "14903eb7c289ee112dd440d74086791d4ea176e6b81a02d0114a6f7f94ca7945",
+			"televisions": "478464aa7aeb41762abbe5caf515ea7309f8cb8eaf1671061ddb8c5f792e8951"
+		},
+		{
+			"key": "555/1",
+			"seed": 555,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d9ff7edc68a75d3054eb082ea66b160c0303c85fc3014aa873c55da983192462",
+			"televisions": "faaa8bac195a1790169d275cb0998ec05d571ef3f6a02a03dc8bc0243c87fec8"
+		},
+		{
+			"key": "666/1",
+			"seed": 666,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e106df876d8e4d8555bb73f6d58cfee803c8638f85894f90bfa2c13a57bde27f",
+			"televisions": "4ea4ed56b63a474597cdf1c4d9264c839afbadf0bc5480b9e5aa7b109e8a5388"
+		},
+		{
+			"key": "808/1",
+			"seed": 808,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "81d32fafae318acd7579732e15dfa2f7f86415b1278f79f40a1e9d415e7fd271",
+			"televisions": "bfee199f885b17855bf02f6c82ad2c80473b3adb6e31946f35e03c5892cdd992"
+		},
+		{
+			"key": "999/1",
+			"seed": 999,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "34d2e6c85806181d554fce4831e2c46139f226854a4ccd333376aace9b91f52e",
+			"televisions": "dcb890070c265e3326df3475e2a4f6aa7d660fc6d94427b5a16d0611485e6abe"
+		},
+		{
+			"key": "1000/1",
+			"seed": 1000,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e02109e00b824cbd3c84e3ee6dee52cdda6b8ce7b6b5995d3b455a7a7a11cd1c",
+			"televisions": "6432ef0b0e410660afb219b8d814ef507511fcd44679a1601f584f4d45c59286"
+		},
+		{
+			"key": "1111/1",
+			"seed": 1111,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "81170d45dfdc1f02e0bdbeeabf8a385ecdb22abd04eb1163d7ddb96106d0cc8f",
+			"televisions": "f622c3facd0950a99167b587e6b69b492eae19527c3cae6ca25391a386982c8e"
+		},
+		{
+			"key": "1234/1",
+			"seed": 1234,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "5e7cb9aa1897d6aee5861da58dd2b305af781c18049a453173242748f94aa1ba",
+			"televisions": "67d83f6744d7c85729754cf0e1cbbb4f5835fa304c4b4163ec05bc37e4cf324d"
+		},
+		{
+			"key": "1337/1",
+			"seed": 1337,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f094fc7da5fa4f9eeca59457a66d7d49cd7ac324480b730e2e5178dbef81fd6d",
+			"televisions": "690cd79e4124fa6388cb133a61cbc0b6fc6a95880ca1a6748b159c4ff4021b8c"
+		},
+		{
+			"key": "1500/1",
+			"seed": 1500,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c57c6e34a61c3f2a61bd1726f56d4583bae9c3e5478dabfac09183295ef4958a",
+			"televisions": "b251afe406a923e5a524d32fc085daef4df65272ffd065fa5298985984e7f8ef"
+		},
+		{
+			"key": "2024/1",
+			"seed": 2024,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "3d83f489d1a8586a1a3c638fc380f1cd73fe45e3cc3fd7678d473968bf784b8b",
+			"televisions": "530cc41df4b6bdc1944f931623974599493913380af9a81e00aee406c6483de5"
+		},
+		{
+			"key": "2048/1",
+			"seed": 2048,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2f95b7b04275394930278aa6314ce401f11dd93b16e197bd364f088b9668eb3a",
+			"televisions": "80e885d9c0301a21e9b88a312dfbd2fdf89daeac2f8c69b86c889608acddadb0"
+		},
+		{
+			"key": "2500/1",
+			"seed": 2500,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "8704e56c67a1d44b3bd63aaf4055173c8c969b008f2ae584e499e4d0fc409051",
+			"televisions": "e75b8cb8c93f31f3c7fb42d93f4b273dda5920a754405a1086e3604cb454744d"
+		},
+		{
+			"key": "2718/1",
+			"seed": 2718,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "07917a71bd616bab3ec8c2645999951a11a8284035f847e0c56e30e27462cac0",
+			"televisions": "a68d3841c8c5529004f2971d26d7c8ef8c07b89ece34a9ca046b57bf793efe1e"
+		},
+		{
+			"key": "3000/1",
+			"seed": 3000,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "0306b069ea2cdc1065c8b095bf33f7a431d0d820287821c3b09479f42a0f1201",
+			"televisions": "6ae789a067b10fc69b23b03282261a7666a76674f4138e46382c79daa0cbc2a0"
+		},
+		{
+			"key": "3141/1",
+			"seed": 3141,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a515007d87e73c93dd694134558f6746edb281e3bfa539f2f4f309d98a67989c",
+			"televisions": "18d48330705647630592ecd89ff0cc30bfed96ce88ab381c4ac6146402db4551"
+		},
+		{
+			"key": "4096/1",
+			"seed": 4096,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "41b125030320367288a9b66b0a884696905f2cf15d50cd87c3ffc8f34984493d",
+			"televisions": "4b511e7d726f75697381c18f9ac5d95cbd38f99ee4e8404c453832cafa3a7029"
+		},
+		{
+			"key": "4444/1",
+			"seed": 4444,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b63ccf282daeeefac62a9b36cb14151da67cd72ca9c6d86bfd688e8ac45f115b",
+			"televisions": "50f640de684c67f634aeeda98fbf5bb302533d083642acf44dc4b7b1062fdb06"
+		},
+		{
+			"key": "5000/1",
+			"seed": 5000,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4be3430ca12e544737e5d66a68a4c88929dd9e3efed3b83917d0fe541aebb02d",
+			"televisions": "1fb1e1627c823586803eeb6bb86b34af702c4e4dea00a879e16c3fe324f4e3b5"
+		},
+		{
+			"key": "6000/1",
+			"seed": 6000,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "5650323512d2d276b98636b8b082bafb39247029f3f73ab962cff6e4e1d6bd33",
+			"televisions": "38249df2e574c95e745d6cc622119bd1cf02eb74196194bd1cd3dae0f8b782d8"
+		},
+		{
+			"key": "6502/1",
+			"seed": 6502,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "8f329345a63b8eb9d76024297a8b9977aa4a418268ec5de4a9926bcf418317b7",
+			"televisions": "b799477a90148bb6c197039041dd59108c0ab200f434d358de87209ec74f4dee"
+		},
+		{
+			"key": "7777/1",
+			"seed": 7777,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "0f75a2e84cca77351628722e57a8d52e6b47781ad854886cec482fd993e45800",
+			"televisions": "3be144a5c91cc5447ca2559621225ec0f799e3c57f59b1f9461a79f3b48c0ef1"
+		},
+		{
+			"key": "8080/1",
+			"seed": 8080,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "72277bfa3b1e58991504f299c3bca44314af3cc32cd037e98f3531ae649dc005",
+			"televisions": "69c758dd75c2e0bac8cd60dabd6cf51ad9f6ac8ba921acd14d500bed057a0d32"
+		},
+		{
+			"key": "8192/1",
+			"seed": 8192,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f5ac012f81149660ad910ae70d4e2675faf026f7b443f299cee29686e4af5c83",
+			"televisions": "2a6cc0d8e3c80603d3e3f66cd1ea79cc0b5778f8e2352ce95acf9eea711cdac5"
+		},
+		{
+			"key": "9999/1",
+			"seed": 9999,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "31ae783e146330c4fff1c98006d9516aff261ef6069429149579491300a87a0a",
+			"televisions": "2ac37fc77fc419572ec3704e9b66b5bd7310782bb3e5cd61e820fd0c8b0a3311"
+		},
+		{
+			"key": "10000/1",
+			"seed": 10000,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e2835009b50d33184527ee4e69e5ac7a8f7ecab9b2e29682fb6b66d8511bb962",
+			"televisions": "d21038a63c1406ad0e39a5fc7f5feb9583deeb1e19d09291d4f79491901f5bf6"
+		},
+		{
+			"key": "12345/1",
+			"seed": 12345,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7266aadeec13bfa8f5d412b9e9fd8ac3e9151d4edde565984118d416632c35e3",
+			"televisions": "05f6209dc55e0d0c7f467effbc958462f90bbb9be4cf53c714c1a8e4d7bbe39d"
+		},
+		{
+			"key": "31337/1",
+			"seed": 31337,
+			"survivors": 1,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1cfe091a76d42403fc959cba277c64c06277a5b59d4ea8588bdb4380b758de5b",
+			"televisions": "5121e0e4df10603c2fa90e12c81265820c23a9254d453017f76d370bdb089745"
+		},
+		{
+			"key": "standby 81/1",
+			"seed": 81,
+			"survivors": 1,
+			"fallback": true,
+			"fell_back": true,
+			"manifest": "7475a325a928e43fbd9e3d431ad44fd482ef1e47677e1d19f2a6e0576781bca9",
+			"televisions": "67686fe5c2a5d38244e620200a1bbf58edcc7a0844e2f3923328c1d087bf35c7"
+		},
+		{
+			"key": "81/2",
+			"seed": 81,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f7eb4796c30c206d2755ffc3928835989b3768f56f035d9f80d132faa6bf3393",
+			"televisions": "2a873b3e548f89150a524a6b8eb8926af0a11be794c0c720c09b13f19a415b46"
+		},
+		{
+			"key": "202/2",
+			"seed": 202,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "161df64d94e630e5ce2ed8b17b893695cb55a4bcdbfcb82551f470a68a0d1c05",
+			"televisions": "719d4197363c707ec012ad0aa54e5036b8dc26a1efd9de79ff3c23438316715a"
+		},
+		{
+			"key": "213/2",
+			"seed": 213,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c1cdba4bf21c23c5ad1a8d881c7eb3987fb40209f5c04a43ba3a1f4c122f38f5",
+			"televisions": "97a31c3a10b9c7881ff53659fed381b8393a71d3a8947f083b5679e6c1557b5d"
+		},
+		{
+			"key": "777/2",
+			"seed": 777,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "959cd996f57eadb8e2ae15375371537cd976b54485a86801d0ce54b6747fbf88",
+			"televisions": "0a6a6a5e655de9d71ed8850ef4cc6f3c8a149d561b7f14a8445db054d3c823a0"
+		},
+		{
+			"key": "4242/2",
+			"seed": 4242,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "bee38a5c41f601421e108aba757af1237e5392b1c6f39158f80757641753db17",
+			"televisions": "e03cd0701b3302a5320979bcd0c7103b347c8efcf47c0588dafe7b7923ae4739"
+		},
+		{
+			"key": "9001/2",
+			"seed": 9001,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "54e4ad646883df6dce7d453c846484dd0ae8116ad76ee7cc21e4eb22af8d897c",
+			"televisions": "376c9a0a4b1d079ee1f55c0dbee010300cca199be6801b435bcc0a7afbb59e7c"
+		},
+		{
+			"key": "1/2",
+			"seed": 1,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "535c48f4a51a1b9e151d0baac8277c4ad8b0fcfa135378210625d1b4ac62461f",
+			"televisions": "4603e6a2a8af021f837ee05343bea377662b2aca307904d72b19b2ef27ff3ad7"
+		},
+		{
+			"key": "3/2",
+			"seed": 3,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "aa1d69cecab3921b898cdd3de7e2a7aabae99e1ee154c983548f3d3c6c57e02c",
+			"televisions": "72209905a6f153743911c0c191cd7a33e509452590ce3ad4556bbde9a680ca90"
+		},
+		{
+			"key": "7/2",
+			"seed": 7,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a1ef360b867e243f74ef30b933a95e7643bba3742127bae3eb2879e51bb63bc2",
+			"televisions": "ed960e201f024ef0846485858ea1602e60a4711b3c5f8cb43871f4f053c3f1a0"
+		},
+		{
+			"key": "11/2",
+			"seed": 11,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b76c58b8ef962c178c271542727e856bef42705b1ce52e48d940decee0ed74c7",
+			"televisions": "3f99d05ef3ffbe94881c75df35e39ece5918374731d7dd51c20d45926dc8f631"
+		},
+		{
+			"key": "17/2",
+			"seed": 17,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a6f32f7704ab89820d25afd848519b3fb296fcaffc3c530057cbad08f6ab7b1e",
+			"televisions": "c36c2b3c462ad42a28678e90f994b8699f3b65d149800b7c59b15fb24aa761f4"
+		},
+		{
+			"key": "23/2",
+			"seed": 23,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "eddd405627d51de1db1240a3350cedeec054cee1c22b96d6b6a2f64e496051ce",
+			"televisions": "529126f98a592814a76391a2fffe2f661897877d0946a8ff0d9ef07d1996b89d"
+		},
+		{
+			"key": "31/2",
+			"seed": 31,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7acf2ee0ecd4ba929082f5f3c80d421e35f8cba5c0166e7c436df5d702a32704",
+			"televisions": "f8bd6fac8e5d8acd3e0b3aed9796e589fd79ecf0ef4fef559db918ba5d4bf856"
+		},
+		{
+			"key": "42/2",
+			"seed": 42,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "73175be991f06cb490d6fd85a7447c5d087a6bf69c97ac9de2aea4b8771dd7cd",
+			"televisions": "c390da2875cae8f46fb57132dc7de1f839cad3bfac350fb513e2cc714fab722b"
+		},
+		{
+			"key": "64/2",
+			"seed": 64,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9749d73cf23e0aba952dcfbdfa6cb65f2a330ed5d678b468ab2fe140c22ebe36",
+			"televisions": "47756d2ce8392db89c7faa5f56e45b973cc77a0f1d76d2fb14b2657c89d5007e"
+		},
+		{
+			"key": "77/2",
+			"seed": 77,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1354338779533cee384bda1e4f206ef1717f599f3b1ddfd94ff9b532eaf5d3d9",
+			"televisions": "d993964cc2de31793048746c12f72e804de2a982d69bb437eebb0898808f7ce2"
+		},
+		{
+			"key": "99/2",
+			"seed": 99,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "42c8ad813543f35a9f2c3715abc922618a984d16021d4792c8f5b46e3fceafb9",
+			"televisions": "5a10d04829d1fbe9e2561ab71c197e1df860245a44fb5f477a2b66180cc316a5"
+		},
+		{
+			"key": "123/2",
+			"seed": 123,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1ec0b11b406732044fdaab0cada7e865dab4c40d6dbc9af6dabfffd71e595f6e",
+			"televisions": "cab5f6cda28cc16a6a555d1e63dbec6f559e24c518b68d0501e957dea5ac6d8d"
+		},
+		{
+			"key": "128/2",
+			"seed": 128,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6a7e4ec8d69f47068a70bff8f530c4ec5e5828639e120d915a0b85565f1d8b3d",
+			"televisions": "6f1b306be2dd0a13b551e1faa3ffcb88d9e770a081a725810380d78ad5efdc20"
+		},
+		{
+			"key": "256/2",
+			"seed": 256,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "829b9c76a897aa4f27adc83106cc8f4b60863c4648c74e1dee15e8f156279b95",
+			"televisions": "a3965ade8d8889d4360821a2b92db7e8987d0f814d1931ed4501235386418af6"
+		},
+		{
+			"key": "314/2",
+			"seed": 314,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9cae6b18d73ded5468a5323448eefab0de3db131b9f736ccf718ef26cca97fd7",
+			"televisions": "a898a7ef3f64009667e6f3ed0e159fab4e643cbd85930dfb58da286a5d1e5163"
+		},
+		{
+			"key": "404/2",
+			"seed": 404,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "8ff1f6956a9da779742dcc7d0d981a9754622b1fc5736f0f1a715574fe197af6",
+			"televisions": "1376acd64c3d886a72ca5ce5afc41a784995e7be99516ae209dac2b21f80975b"
+		},
+		{
+			"key": "500/2",
+			"seed": 500,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "94680db84596c7765decfe3ca020a26d759e9f96fafec1a1be18c1acd272e833",
+			"televisions": "0197205d18abb0d01443b5c4b63899562c38f0e5fa63c98f4377113c2706620b"
+		},
+		{
+			"key": "555/2",
+			"seed": 555,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4c7ef10b79d3c0937770d595c32d3eec438e8f8947796ada66d1355a3efdc9ad",
+			"televisions": "650483698c5c3f674c574fddfe0080f60a984f6dcce272f2e2ca0f2eb7791321"
+		},
+		{
+			"key": "666/2",
+			"seed": 666,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "3dda3a4a4a8c05fc24255998e38b6a490c6b6b964e7c7a22a1bfd4cc3751cdc5",
+			"televisions": "57b707265bd83c7f1b092e75eb46e4529397c8cef5181304bf660abdb2882909"
+		},
+		{
+			"key": "808/2",
+			"seed": 808,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "85b9a7707d168374d825f6f7ccd05d7eae01883de5aaa821c8ebad474b37df63",
+			"televisions": "92397a17780ad599bdb445b5e0ed18c3b744af88de0dad235d9c613dee34fc73"
+		},
+		{
+			"key": "999/2",
+			"seed": 999,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "5c6a76fe422614467182fe478a0de7b52934ec694238a43d882039c942c3e9b7",
+			"televisions": "fbc3b6d479843bef0abc18e722839ad9d4660b19e72d8a602bbfc9a21ea372ea"
+		},
+		{
+			"key": "1000/2",
+			"seed": 1000,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "965b2bc02578d3cb5844dd2c6f01c01256f1d60e93995f10f88f2bd74998d561",
+			"televisions": "4220eef3777cbe592607133364b31b200505b27bb775629a44f414c25d3ab3ce"
+		},
+		{
+			"key": "1111/2",
+			"seed": 1111,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "836eb258625294f954903d8ac3b84650459c568d2a2305d11097928963b48f52",
+			"televisions": "76377b1caa607cd49bc6aaad4cb8b6cd6ca89a8f40ff45d707c97100c2041998"
+		},
+		{
+			"key": "1234/2",
+			"seed": 1234,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e3078370babef0f646220d531b6d0138656c85b83808f3455c6ac055ee0adf64",
+			"televisions": "fa1c037af9e7053c9baf7d6158d470f03032ccc722311be06cc73aaa887755fa"
+		},
+		{
+			"key": "1337/2",
+			"seed": 1337,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "645f0b46ba1f156bd6eec0c162b2de2202a7a20642956ad2f70edcd7cac5b59d",
+			"televisions": "6772e331f0ee70d865096daff4e81a89fc5d9973b8cf40e7ca600a4d1e46b022"
+		},
+		{
+			"key": "1500/2",
+			"seed": 1500,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c0e10ae9162bc77c43c8d7bd982bbc5f3437e243a0000377c6bd6d5fc8679bc5",
+			"televisions": "3f5947857942c42f0e11b03593c2337e3ef9a6fb7bef1ea2db1b1600b44cfbbf"
+		},
+		{
+			"key": "2024/2",
+			"seed": 2024,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f16e9015907ba21b0ea4a582c307179aac654fedd36fcd7ac6d2d022b00f9001",
+			"televisions": "298754aec62a5ec0b4e8b425f61815594056b0c8169e4f8286e8d61bfa360c59"
+		},
+		{
+			"key": "2048/2",
+			"seed": 2048,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "beb66632fe39f6b14a258a1526ea2966364f71e40d753b831d4652eacfd740ef",
+			"televisions": "240816fad413b98bb1a385d89fce24895beebc3f5f7862aa8b1b26148d501928"
+		},
+		{
+			"key": "2500/2",
+			"seed": 2500,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "ca3cc4045636d989e106584065280ddbbeb1edf8f8199cdc1afe219ea43d0a61",
+			"televisions": "091245b3c5dd0a909cd323e5ff3e5bd46bcfad68de7205c1585099cb9624c587"
+		},
+		{
+			"key": "2718/2",
+			"seed": 2718,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "48131ef2a4a907a418d3208c76e5293ce1f6361075620db80e9795695a0b64fc",
+			"televisions": "f5faccdfe75814aba9a27cf3bdfb3f74802875ff365e13bc60b0819522d1d148"
+		},
+		{
+			"key": "3000/2",
+			"seed": 3000,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c6f86898fa7597d843ffb9f64f8c2da80c004cd3624b63ba73f6b712b29d6dfe",
+			"televisions": "18338e596a925c636bb7bfc3e7ad9e6485dbb6e9360c57e108ff31f239583986"
+		},
+		{
+			"key": "3141/2",
+			"seed": 3141,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6dfcc24a413ed761ede9148b592c60348f3ea63d2749f2e582266be0e775b981",
+			"televisions": "a434e34c561c3ceb7b36c1bfddc8840616e130dcc6bfd7f5a6b1203d05f080c2"
+		},
+		{
+			"key": "4096/2",
+			"seed": 4096,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2438da42e7b0434c051bbef2c23e61857860f859459061bbcb80e4ea7a25e7d7",
+			"televisions": "2c396cc02f311560a2dfaca8f96dad69d148ef6144344fafecfc258d5dd87646"
+		},
+		{
+			"key": "4444/2",
+			"seed": 4444,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a1ea2d8f6dbdb1bd75634a15771137b57bb819a6d328bbae80903a780764b5f4",
+			"televisions": "aee6a9c0d449d244c0eb487be99a4c9a95f806f9b81ada6b5f7b947bf403d752"
+		},
+		{
+			"key": "5000/2",
+			"seed": 5000,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6215364d09492ec61469ca58cf4bf94916438ce0ce7649f40a07f8856b9c2c94",
+			"televisions": "be0edd2ea74f57542bc14d9f678dc845ee89aafc81be27ce022b9f5aa6c9ed60"
+		},
+		{
+			"key": "6000/2",
+			"seed": 6000,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "85094a3a02fe501504182b807dfecfafd579768619a849e6b9752382fc2fc007",
+			"televisions": "edea14f31a42ba2d3a04db9c0416d24baa3275dbf02b531b3b4f6a21a153b69b"
+		},
+		{
+			"key": "6502/2",
+			"seed": 6502,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d9d334b111bdf23a268e3d943f3349e36555c2f502fa7d4cf108c62b3275149e",
+			"televisions": "e5ad4cb752d6d046b2f1c4d5f3ce6248821a852f7ca6d632350a456edf99796a"
+		},
+		{
+			"key": "7777/2",
+			"seed": 7777,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2fecce122351a6631c267f10590874a528f18175909950775ad91b9a2b8b63f7",
+			"televisions": "8114227959b9e1f4f8e2c464c78fc80ce049365927a162ea50a713e7cd9d5019"
+		},
+		{
+			"key": "8080/2",
+			"seed": 8080,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "217c096a5ac5133263130942d2065dfb3ab64e58512d7cf51e90e5927fa9dba8",
+			"televisions": "4b540c2d949924710c2acafd9a3c11357dc50639955e65f8a13bc03815b8f7fb"
+		},
+		{
+			"key": "8192/2",
+			"seed": 8192,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c7e2442c5f52bcf5cd7576b1fc008d8d5ea04dc014064c66734ae41bf09eb8df",
+			"televisions": "e8abed22e17e0738f8cd10603d65aa61e6fabe9a012b326e14d573b73b8c0fb4"
+		},
+		{
+			"key": "9999/2",
+			"seed": 9999,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "55d6e1efdb87f60ec19de8d971784d7b7c792e9317ad882d554ba396dfdb19e9",
+			"televisions": "6de9509127aa1e1ee5ab162e6f26be4a7e26c946fd1848fae34e666e3d525104"
+		},
+		{
+			"key": "10000/2",
+			"seed": 10000,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e740be88d854db796fca25805480cd435fec5c8913ed2e1c41d88c684c5c8acc",
+			"televisions": "df9cfc61d4e739e5b541d51f0e6d0796d10b504074be34cce634e39c148a9f78"
+		},
+		{
+			"key": "12345/2",
+			"seed": 12345,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "bcce8160ab03a24f10292d7baf5ba7ef30cc5d4b189fff4bb5acd99fed9871cd",
+			"televisions": "b7265af7d2f7a66a2bd39e46b515d92fade00965646ba8a78c69fb08bdba3ad6"
+		},
+		{
+			"key": "31337/2",
+			"seed": 31337,
+			"survivors": 2,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d755d846366291ee4128b50fbb3330cb9df903f7b416f14d9b7a8f883694fd96",
+			"televisions": "aac897bc05cea4d0470524c9ede72d47b05905c863a8801b67ff814af659a000"
+		},
+		{
+			"key": "standby 81/2",
+			"seed": 81,
+			"survivors": 2,
+			"fallback": true,
+			"fell_back": true,
+			"manifest": "7475a325a928e43fbd9e3d431ad44fd482ef1e47677e1d19f2a6e0576781bca9",
+			"televisions": "cd5dcfd6f318e5c0a5b2ec3f0cb72f6c8787ae9c9e33579319c404bffd8c5ecc"
+		},
+		{
+			"key": "81/3",
+			"seed": 81,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f7eb4796c30c206d2755ffc3928835989b3768f56f035d9f80d132faa6bf3393",
+			"televisions": "c3c8b58200f001622624d6cd34f7aedfdcfcc60f54b66485ccd8f5c9b35a119d"
+		},
+		{
+			"key": "202/3",
+			"seed": 202,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "161df64d94e630e5ce2ed8b17b893695cb55a4bcdbfcb82551f470a68a0d1c05",
+			"televisions": "7f283311c43e1a5ca83da7b8231a151758e022188ccf325dd670c84b85126ffb"
+		},
+		{
+			"key": "213/3",
+			"seed": 213,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c1cdba4bf21c23c5ad1a8d881c7eb3987fb40209f5c04a43ba3a1f4c122f38f5",
+			"televisions": "8f0af69af3bc52e1fa315321c2cffcbd67449d53ea9f85b127ca532d6aa892a6"
+		},
+		{
+			"key": "777/3",
+			"seed": 777,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "959cd996f57eadb8e2ae15375371537cd976b54485a86801d0ce54b6747fbf88",
+			"televisions": "53c5896f3246e32874ec76cedc6f946ceebe40ca49386b38157c84781824d9cb"
+		},
+		{
+			"key": "4242/3",
+			"seed": 4242,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "bee38a5c41f601421e108aba757af1237e5392b1c6f39158f80757641753db17",
+			"televisions": "fb85f8d9eb09f3aa265656c3fba9284c11cf248690cfad7cb8c7d2297d833010"
+		},
+		{
+			"key": "9001/3",
+			"seed": 9001,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "54e4ad646883df6dce7d453c846484dd0ae8116ad76ee7cc21e4eb22af8d897c",
+			"televisions": "076c3262540bb7a9a938ca231cce8fb59fa5774f60d80d674908bdd9c2e448c0"
+		},
+		{
+			"key": "1/3",
+			"seed": 1,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "535c48f4a51a1b9e151d0baac8277c4ad8b0fcfa135378210625d1b4ac62461f",
+			"televisions": "c53e3e002ce28b4b7a346459dad9930b21f9b51f7eed1f9916b6fdbaaac0df7d"
+		},
+		{
+			"key": "3/3",
+			"seed": 3,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "aa1d69cecab3921b898cdd3de7e2a7aabae99e1ee154c983548f3d3c6c57e02c",
+			"televisions": "9f527b4c0fa117760dae7619731d73c7a5ae65449fdce1cf8232fdff4bddab49"
+		},
+		{
+			"key": "7/3",
+			"seed": 7,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a1ef360b867e243f74ef30b933a95e7643bba3742127bae3eb2879e51bb63bc2",
+			"televisions": "a7a3e621970a5e8f102b7c447b5bda01a227cb3a94609fb4f6d3918fc8b870a2"
+		},
+		{
+			"key": "11/3",
+			"seed": 11,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b76c58b8ef962c178c271542727e856bef42705b1ce52e48d940decee0ed74c7",
+			"televisions": "1f54b5c334776b57ea565a74cd58e80dd4997bfd2025c13a5d15abbf53356342"
+		},
+		{
+			"key": "17/3",
+			"seed": 17,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a6f32f7704ab89820d25afd848519b3fb296fcaffc3c530057cbad08f6ab7b1e",
+			"televisions": "f81e6521323f66f8974da9499b413efeef6d33010c42315fe2b0ef470bc8ab91"
+		},
+		{
+			"key": "23/3",
+			"seed": 23,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "eddd405627d51de1db1240a3350cedeec054cee1c22b96d6b6a2f64e496051ce",
+			"televisions": "068ca45f577501bb5c8507c1e4218239631c0bc36533cd40b973f51edd0ab645"
+		},
+		{
+			"key": "31/3",
+			"seed": 31,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7acf2ee0ecd4ba929082f5f3c80d421e35f8cba5c0166e7c436df5d702a32704",
+			"televisions": "53832fad431a01aa54c67d01f9e1b44af935ae38885720d1ab310932b4b3af1a"
+		},
+		{
+			"key": "42/3",
+			"seed": 42,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "73175be991f06cb490d6fd85a7447c5d087a6bf69c97ac9de2aea4b8771dd7cd",
+			"televisions": "18cfbb5dcc518ae46987382bab9b983494502ce0ee7c5f71b63cf482ed2db698"
+		},
+		{
+			"key": "64/3",
+			"seed": 64,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9749d73cf23e0aba952dcfbdfa6cb65f2a330ed5d678b468ab2fe140c22ebe36",
+			"televisions": "664abee663adc4b05d61e0b5c1101799c0a2d7729c4cad04f28dcaf39cb4e312"
+		},
+		{
+			"key": "77/3",
+			"seed": 77,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1354338779533cee384bda1e4f206ef1717f599f3b1ddfd94ff9b532eaf5d3d9",
+			"televisions": "a76042bb118b47944ade0f780bf10b3431244dc94670874aefb40ef8a8c97ad4"
+		},
+		{
+			"key": "99/3",
+			"seed": 99,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "42c8ad813543f35a9f2c3715abc922618a984d16021d4792c8f5b46e3fceafb9",
+			"televisions": "ac0335d15b342f45e848ca4fb12a217b66a7e8d42af937b26ca7bd1adc3d5cc4"
+		},
+		{
+			"key": "123/3",
+			"seed": 123,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1ec0b11b406732044fdaab0cada7e865dab4c40d6dbc9af6dabfffd71e595f6e",
+			"televisions": "8409eeb5c290d90d4748763944b5179439874980accdce732ef3c5c90fb71706"
+		},
+		{
+			"key": "128/3",
+			"seed": 128,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6a7e4ec8d69f47068a70bff8f530c4ec5e5828639e120d915a0b85565f1d8b3d",
+			"televisions": "532e4a7ddc02b088acd8405136c653437c7981ed2de28c43b11309eeece3d6a4"
+		},
+		{
+			"key": "256/3",
+			"seed": 256,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "829b9c76a897aa4f27adc83106cc8f4b60863c4648c74e1dee15e8f156279b95",
+			"televisions": "d07171309859cd245db0d5c76b7d3be41bece3d355131b58de7f58429a0ebfa0"
+		},
+		{
+			"key": "314/3",
+			"seed": 314,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9cae6b18d73ded5468a5323448eefab0de3db131b9f736ccf718ef26cca97fd7",
+			"televisions": "5f342839a070cf65105e8a1d895f5252713b10ee35816e3fce8aad9576e8db40"
+		},
+		{
+			"key": "404/3",
+			"seed": 404,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "8ff1f6956a9da779742dcc7d0d981a9754622b1fc5736f0f1a715574fe197af6",
+			"televisions": "8d1952acad6740a891a3c497946adc01c6adb742dfa9d688c55849981c8f71ee"
+		},
+		{
+			"key": "500/3",
+			"seed": 500,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "94680db84596c7765decfe3ca020a26d759e9f96fafec1a1be18c1acd272e833",
+			"televisions": "c6dbfc69a415372b46d13c25c271d927de859409152c265ef6e6336dace10ef8"
+		},
+		{
+			"key": "555/3",
+			"seed": 555,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4c7ef10b79d3c0937770d595c32d3eec438e8f8947796ada66d1355a3efdc9ad",
+			"televisions": "d327cba1d0625d5f8e69ab8c27e7dc1e1c270dd75572a73c3eb55d37f5c6aa51"
+		},
+		{
+			"key": "666/3",
+			"seed": 666,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "3dda3a4a4a8c05fc24255998e38b6a490c6b6b964e7c7a22a1bfd4cc3751cdc5",
+			"televisions": "6a0757196a08270a975052d1063e487aa4c69a8d1a7bf3ef55720448cda3685d"
+		},
+		{
+			"key": "808/3",
+			"seed": 808,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "85b9a7707d168374d825f6f7ccd05d7eae01883de5aaa821c8ebad474b37df63",
+			"televisions": "27d691931dafe3dde32f7e553396417c36e44d4b86e7c354184263ab0da19d3f"
+		},
+		{
+			"key": "999/3",
+			"seed": 999,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "5c6a76fe422614467182fe478a0de7b52934ec694238a43d882039c942c3e9b7",
+			"televisions": "59efcae95a44de0c4f650d8c6f710411259eee505148d9dba328d7f2b535d289"
+		},
+		{
+			"key": "1000/3",
+			"seed": 1000,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "965b2bc02578d3cb5844dd2c6f01c01256f1d60e93995f10f88f2bd74998d561",
+			"televisions": "dd1bb8b74acaee57b7d7c6e72234c867fb98b33b958b361f1cbb17c2d0317333"
+		},
+		{
+			"key": "1111/3",
+			"seed": 1111,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "836eb258625294f954903d8ac3b84650459c568d2a2305d11097928963b48f52",
+			"televisions": "f1b648c917bd24f4cd4d0c9f8e3f4205e581ee567df16093c71f4b8c0d5bd6e9"
+		},
+		{
+			"key": "1234/3",
+			"seed": 1234,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e3078370babef0f646220d531b6d0138656c85b83808f3455c6ac055ee0adf64",
+			"televisions": "f6bef43198f6049242ede6ff4cf24b930c8d45c5bf6f899536c1c754325ec635"
+		},
+		{
+			"key": "1337/3",
+			"seed": 1337,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "645f0b46ba1f156bd6eec0c162b2de2202a7a20642956ad2f70edcd7cac5b59d",
+			"televisions": "194e700fac68e42db69a0f58990f4e109c2ad2fb7d5278f2dc108383fe742b88"
+		},
+		{
+			"key": "1500/3",
+			"seed": 1500,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c0e10ae9162bc77c43c8d7bd982bbc5f3437e243a0000377c6bd6d5fc8679bc5",
+			"televisions": "b919527cefc888bbd8fab6e4b3d5374e2909be1e8c863d6dc1ec95f878f863da"
+		},
+		{
+			"key": "2024/3",
+			"seed": 2024,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f16e9015907ba21b0ea4a582c307179aac654fedd36fcd7ac6d2d022b00f9001",
+			"televisions": "7322f51642cbf33834600c22baed3e6a7c1483d57d896df49b062304179ca271"
+		},
+		{
+			"key": "2048/3",
+			"seed": 2048,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "beb66632fe39f6b14a258a1526ea2966364f71e40d753b831d4652eacfd740ef",
+			"televisions": "183d7ee82b323a0b1be9cc2a8f03034d66ea8909db990c779f9694f3636c3d3b"
+		},
+		{
+			"key": "2500/3",
+			"seed": 2500,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "ca3cc4045636d989e106584065280ddbbeb1edf8f8199cdc1afe219ea43d0a61",
+			"televisions": "449fca6c2e1ed54e56ab1d25ec46599f38a7c68a175225eb5d89a262667ad5d9"
+		},
+		{
+			"key": "2718/3",
+			"seed": 2718,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "48131ef2a4a907a418d3208c76e5293ce1f6361075620db80e9795695a0b64fc",
+			"televisions": "c68470eee8965cc1562c31509b594611ecc306ded1ff544135887b0968532683"
+		},
+		{
+			"key": "3000/3",
+			"seed": 3000,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c6f86898fa7597d843ffb9f64f8c2da80c004cd3624b63ba73f6b712b29d6dfe",
+			"televisions": "ba8a27c05168197579ed0e9a1dcf6b08efc0c7ebd14df068c9d675ac552aa93e"
+		},
+		{
+			"key": "3141/3",
+			"seed": 3141,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6dfcc24a413ed761ede9148b592c60348f3ea63d2749f2e582266be0e775b981",
+			"televisions": "d3ec70cffdeb58b4fd008745455459111ceabe65a7328c22845138d52ffd3813"
+		},
+		{
+			"key": "4096/3",
+			"seed": 4096,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2438da42e7b0434c051bbef2c23e61857860f859459061bbcb80e4ea7a25e7d7",
+			"televisions": "a24ac5d01d3257454479e4b50365fb913f8f07367df850b92be372421b057a36"
+		},
+		{
+			"key": "4444/3",
+			"seed": 4444,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a1ea2d8f6dbdb1bd75634a15771137b57bb819a6d328bbae80903a780764b5f4",
+			"televisions": "f75a491e29d15d43c0511543e27dfd76fa7cd2cb8305eba99a4dfbe21e195955"
+		},
+		{
+			"key": "5000/3",
+			"seed": 5000,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6215364d09492ec61469ca58cf4bf94916438ce0ce7649f40a07f8856b9c2c94",
+			"televisions": "c0d2dd6bd66c700e96097b14c598f892633ca0f58d2e9d33460591f871ac449c"
+		},
+		{
+			"key": "6000/3",
+			"seed": 6000,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "85094a3a02fe501504182b807dfecfafd579768619a849e6b9752382fc2fc007",
+			"televisions": "d22db6bd5ee74949b59e3923f18b7be492c5ec5b38d652cbb1575fd784ada652"
+		},
+		{
+			"key": "6502/3",
+			"seed": 6502,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d9d334b111bdf23a268e3d943f3349e36555c2f502fa7d4cf108c62b3275149e",
+			"televisions": "fe8e2254568ae50879db7b64bc79139cd2304ff75ada13aa7cc32b080db7f5a2"
+		},
+		{
+			"key": "7777/3",
+			"seed": 7777,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2fecce122351a6631c267f10590874a528f18175909950775ad91b9a2b8b63f7",
+			"televisions": "429543f5392a2cb7a6c93e7d5df6fce0c83df6a5dead14fb137275dc1c832982"
+		},
+		{
+			"key": "8080/3",
+			"seed": 8080,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "217c096a5ac5133263130942d2065dfb3ab64e58512d7cf51e90e5927fa9dba8",
+			"televisions": "b9950b979c54ab01910debd4122ba880cb86a4336483c230819531faa804652c"
+		},
+		{
+			"key": "8192/3",
+			"seed": 8192,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c7e2442c5f52bcf5cd7576b1fc008d8d5ea04dc014064c66734ae41bf09eb8df",
+			"televisions": "efe6bb8e9d6ca4cbb13b9997b9a800a5d4482c3a6c9b9d300e7b6bd4f126a5e9"
+		},
+		{
+			"key": "9999/3",
+			"seed": 9999,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "55d6e1efdb87f60ec19de8d971784d7b7c792e9317ad882d554ba396dfdb19e9",
+			"televisions": "e3713b19f3624d49a6d8481fe1b6c8f34599c22f8f2245c6f298b22f86dc0938"
+		},
+		{
+			"key": "10000/3",
+			"seed": 10000,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e740be88d854db796fca25805480cd435fec5c8913ed2e1c41d88c684c5c8acc",
+			"televisions": "3a40f24367a6a2f30bc2bc868c67f7ea07479d9f52caa1ea9c6fa5be07c330df"
+		},
+		{
+			"key": "12345/3",
+			"seed": 12345,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "bcce8160ab03a24f10292d7baf5ba7ef30cc5d4b189fff4bb5acd99fed9871cd",
+			"televisions": "3095c2042b2cb6b96b3c6305d158cec272afdbe0cff896c294ba70d6190952b0"
+		},
+		{
+			"key": "31337/3",
+			"seed": 31337,
+			"survivors": 3,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d755d846366291ee4128b50fbb3330cb9df903f7b416f14d9b7a8f883694fd96",
+			"televisions": "999c6d4690d7997865cf49b2d3353214e54d7a5afe3f1f968b13913e4b2a20d1"
+		},
+		{
+			"key": "standby 81/3",
+			"seed": 81,
+			"survivors": 3,
+			"fallback": true,
+			"fell_back": true,
+			"manifest": "7475a325a928e43fbd9e3d431ad44fd482ef1e47677e1d19f2a6e0576781bca9",
+			"televisions": "07ce03e3233e98e0f2d99abee4366a5366343abbc3f5fc43893b5effab522625"
+		},
+		{
+			"key": "81/4",
+			"seed": 81,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "27235f1730a37905b5f3c2f91d92a17cc45b46e50a07f1c54a87bad672c981f7",
+			"televisions": "83f364d85dea7c6f4775ef285d7f27a5d9274bb314358cf5a2924d6956c3606f"
+		},
+		{
+			"key": "202/4",
+			"seed": 202,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9148d0064255d6e0b167aa7f313a1aed98c8dc1865498aaeb3a89b01d486ad54",
+			"televisions": "df166b867953f2a81cf9eff24a505af0f9140053119f48ceafcd8420c8c3c87c"
+		},
+		{
+			"key": "213/4",
+			"seed": 213,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a52ee465747db9b7e7f6c67520093cd71963c0a8cf8843de09b4d6b8deca4db9",
+			"televisions": "feae36968fd2a8510b1d1c0d99ccc99c6bc53514caaa18536c3514bf542a953e"
+		},
+		{
+			"key": "777/4",
+			"seed": 777,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "ca534d4b0e4175da92f5cb3eb75a3da145d4d15fb59abd403df924a21f48bb8a",
+			"televisions": "4270772186f4abfdb2aa6721322ae14db9b6900f09ee81e1d91e2dfabfff7ab5"
+		},
+		{
+			"key": "4242/4",
+			"seed": 4242,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e82d5326e6a9ca1565be7a188efeffc2ebf13bd10a466420af7386381966b365",
+			"televisions": "080cab28607aa31df199fdd37e38142cfeaa8b218b2fadf5c2b64435746f5957"
+		},
+		{
+			"key": "9001/4",
+			"seed": 9001,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f2877f53042bd1e8591da59d24f94e58d148f561bccc785713563e8af7ffd098",
+			"televisions": "d06568f88d8546d01916cf821c0b7b7fac6fbe85af7e91159a67f10fcb7c1826"
+		},
+		{
+			"key": "1/4",
+			"seed": 1,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "fc1b770e13bfbd837f976ee01c12610f7da3c90e2a120a720c6b5b2c0c284bf3",
+			"televisions": "f72e235602533dcdbec0e06c95d7e7499867b82996918cf67acf4cf1b166509f"
+		},
+		{
+			"key": "3/4",
+			"seed": 3,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "350137cd4e25e26f86bb1dfe5510d09b4e47b2293d1a82b4546fb6cafc5c5dca",
+			"televisions": "8a31584507092fb28f374c9a38aa79ab87109142ccaf5db497715f694636fefc"
+		},
+		{
+			"key": "7/4",
+			"seed": 7,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "967158fd6acd4c0d5b3b93512a14fcf54392624d65ba67c48f7cd0f8f37e8236",
+			"televisions": "dae589e734311556e7ec0e18572db9b04cbb389d5f5a1e1cfc35cc8403106f50"
+		},
+		{
+			"key": "11/4",
+			"seed": 11,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "04fa3bbfa402a6c56ca3a28f55cefe3c5ffcab0a79fad4e00853a9f66dca9d71",
+			"televisions": "f54179d59f2989f0799ed167fddc57fea2c556f5c6fe7c4f997ee0211133b1a1"
+		},
+		{
+			"key": "17/4",
+			"seed": 17,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b444000dd8d88141e16ff8a2ca07c840a73e387b026dca1ecae7f3e462bb9571",
+			"televisions": "328eb34d56e72dca790708e97b6586cb45b3fc78d644bdb31de8c1d87acbdc4d"
+		},
+		{
+			"key": "23/4",
+			"seed": 23,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "fad9a7c89abd4111b58968e262be85a91954f8f1c7ac57a7575f49676c84e331",
+			"televisions": "937f6666e8561a1ef6547adc985077d667ff0db0fa7f8bf492b6763ed028ccb4"
+		},
+		{
+			"key": "31/4",
+			"seed": 31,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "aeb72bd1d92edc71d5ff7f7d1f77b3da9b8d9de1e6e673eabaac1201fbff433d",
+			"televisions": "5f29d6141b95dd565f1b7b81b5ca8e137dad07e86abf19d3a48070396979e9c8"
+		},
+		{
+			"key": "42/4",
+			"seed": 42,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "16ba2368122d4ca0769d45b4937bd6679caccd329263df092443666d75f49008",
+			"televisions": "df43a57fdd19aa8af921cb4e6588bf2632573b47e4a2564515bd05db9707bdc4"
+		},
+		{
+			"key": "64/4",
+			"seed": 64,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "34290de2762a0e10d47e64aff736d026fb39aa5776fcaacce23f1a9bde56d7f0",
+			"televisions": "682fbdb5887b975c3a6b8d0cad094898f5ee17cc000ae520ea2dc784653fc30d"
+		},
+		{
+			"key": "77/4",
+			"seed": 77,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "178550e5cb884c10a9ad74f981a62a033186121bc0b1a284672e7ccdb26701b0",
+			"televisions": "5d4f02f3b50299aa31c9def765861519f718929a41d072742dbb34e27c80a3a0"
+		},
+		{
+			"key": "99/4",
+			"seed": 99,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "dd32a8d54c6df497479704ecee8ebf29332ed9d2571c0f98ef7e5e8f780d4de6",
+			"televisions": "e947a72af3840905ca2d545eb75fa6683f3f618dbe03fb2780d7eb3f6066a407"
+		},
+		{
+			"key": "123/4",
+			"seed": 123,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "fd7161e5f1841c09c28a029f2333b37c64dcf47808a9c37485f969b23537a62f",
+			"televisions": "a7bcc18b0442dda9e5b890ec97ff0dabfaf2ba12db9ed78805a484f4600279d2"
+		},
+		{
+			"key": "128/4",
+			"seed": 128,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c6657a1c8323ab9f908621a9b16a93f6af3f878e17cea134bcea6c5b92d6b972",
+			"televisions": "7467872bbdb1ea483681cb81059f54a96e3d432b40c0b31b933da5f2fc8eb5f0"
+		},
+		{
+			"key": "256/4",
+			"seed": 256,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "5f6c3fe0f1a2cdf4b6981b2b1f8c5a2ed600a53d612daa9744c89e7d2f036ed5",
+			"televisions": "bfc6e604aac6720e762e3911d93a5709e27e2711da6d46cc990b65c67ef4d9d3"
+		},
+		{
+			"key": "314/4",
+			"seed": 314,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "55aa3d0521b6c3d06164b284f9750cb9f747ec46b5976b7e136ed36439dbe7a8",
+			"televisions": "d42b658d09e3237f64d98e57dc9919902decf9689c65667109ffca1ad422c840"
+		},
+		{
+			"key": "404/4",
+			"seed": 404,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "fc4c218c32688118b0309aedebb91a86a1c7b9934fc055c8e29867fb90e7aaff",
+			"televisions": "53adb4e64f54d2071735e28d9244ea1fdb91b85feae800fe2e6d65c989ebef7b"
+		},
+		{
+			"key": "500/4",
+			"seed": 500,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b1bf0c6d36b574b99879f02e08dedb3eb5b83e3bb44b3dcde40ca1df4402b599",
+			"televisions": "95f6aea89377e1d78b059c5c2e1fdc029f1c62ed033195a0f54ff60934c724ef"
+		},
+		{
+			"key": "555/4",
+			"seed": 555,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "748636ac5fcb91de9034b1a340160d09479c75f730bf76dfa733a11d98323f2a",
+			"televisions": "4558efcfa181fd8d4b9cb9172296c7c7ea62f7b79427f261b111ddbc06cca169"
+		},
+		{
+			"key": "666/4",
+			"seed": 666,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "09df01bc92369865eec30144d6b93bac9ded120267f60985cd1f6951abc51105",
+			"televisions": "da3f79da358ef64c600f4cbccef0ff3f932adcfcfb1b866a9ff93d4a6036e646"
+		},
+		{
+			"key": "808/4",
+			"seed": 808,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "85554ca3fe139e5c9ccd0058c7de0ac1bee2880a149a830995a10d75f134b348",
+			"televisions": "d9e4d9a5ed45ab14b566f27027d3610dfe27d32bf2e010b107dbb0e6db36e655"
+		},
+		{
+			"key": "999/4",
+			"seed": 999,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "445cabaa834f50747940b6608d25456ab8167e89385fdd36febf53fa925d0834",
+			"televisions": "7dc1dcc0c8cd4c45707bd5e09dfac686312bba58a3f03631b5e81e57397cb44e"
+		},
+		{
+			"key": "1000/4",
+			"seed": 1000,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "07b106af04439a6dd001eb827890ab7d77365ab8d023f02c067b74e2904033cc",
+			"televisions": "74e9e10c0611966fd4742eb2f31c92480cc438d454d75f859c4ff18be6a93da9"
+		},
+		{
+			"key": "1111/4",
+			"seed": 1111,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1c2229efc323c3558ff772b18f458bd45d66fdc5a05cf016401ea6131c62c98e",
+			"televisions": "b75607d49cd18486f1d443b4b7bbdf55c8084cf29056cf274a3fe498d9d77ded"
+		},
+		{
+			"key": "1234/4",
+			"seed": 1234,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "894bea3004ce32cc63238c5e3be1759a063e291fc523567570b17cb00c966e2d",
+			"televisions": "dbedae99eff87d210adab191d6c6cdb00ec45a4072ad50316ccd94b63b6655ba"
+		},
+		{
+			"key": "1337/4",
+			"seed": 1337,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d3d142bf3a56367db744b755b82e2803d791e16ade3e94ee5780ff6e2532bae3",
+			"televisions": "5488df1a2425cbeab8238fc44a7c8c6e729e01bd8cc4731850e75f76088cb66b"
+		},
+		{
+			"key": "1500/4",
+			"seed": 1500,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d7bc7e949eaf826da7a2dd602acdf46e240b1d9c2572498bab323dd6e6a30d55",
+			"televisions": "71a72f0b96a27c5bac09bd122d9f0a319702f501734fd92ca870ef9394fa69ca"
+		},
+		{
+			"key": "2024/4",
+			"seed": 2024,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "18cf7985bd300e680b7c6714fbc0cf7d43c78844901f5aa3418f2056a9f7a34d",
+			"televisions": "4bbb166f800b9b5b44fe8c0e62fc9adcc1a2de7186a4f9d78991e5b90bc2825c"
+		},
+		{
+			"key": "2048/4",
+			"seed": 2048,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2ae556b6ea96ce589c9c8070731ef5c5d4701ce9cd6382f71b85691aaf3e9235",
+			"televisions": "2e549cba3e6fc63ee22abcf6e6e47b029e09721cfc4208547b103d1651574d83"
+		},
+		{
+			"key": "2500/4",
+			"seed": 2500,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "16dfd7eb737713a26172dfcfb26d4bcc2bbba6be1d2317130cec3309cef8898d",
+			"televisions": "1466a8dcf4b29d1c401bd41e5064fead00743a0f52db4de50b18c78e46b60ffb"
+		},
+		{
+			"key": "2718/4",
+			"seed": 2718,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "5420e935780ec29b375ed7fb2a10ba88ff72e37d898fc4a6b43f22befb443160",
+			"televisions": "218041b93908577aacdc84c4e53ea855afb99f90422e03a487c933d3283c44bc"
+		},
+		{
+			"key": "3000/4",
+			"seed": 3000,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6372c98fd61a78f9a889d1abd6ec2c7db3a7ca629fd540e2a5a9778f8af58563",
+			"televisions": "5e108cdbf3ef5c5b8d7a877c27099f423c69c5e937c3aa748ce668f5f7012542"
+		},
+		{
+			"key": "3141/4",
+			"seed": 3141,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "27bd995a24cfe034a738aa53f108b376eef5713f1d8a5f851a79aea5d2c07391",
+			"televisions": "960268f95b101eb1808d4a9131403626b72d8c689853ed6649817a4a5218dba8"
+		},
+		{
+			"key": "4096/4",
+			"seed": 4096,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "8c14bf0f8e9c82b543ec727bd8717f24b9959b65245cef44a6792b41adf764aa",
+			"televisions": "7707a1fdd24ce1132ba8603fb125c438dfb1601f754225ae3a5cb8f9edde6a52"
+		},
+		{
+			"key": "4444/4",
+			"seed": 4444,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "312ed346c8bca0683c01711fe7c47d2fda62e213409e1d219c2454817ceb311c",
+			"televisions": "3df1eabec19101f32dde9e938b0c25f9582b6bccaa5a5f6abcf17fd969bf524b"
+		},
+		{
+			"key": "5000/4",
+			"seed": 5000,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "fa83c783654f2b2a65bf27b77c2c175bcbdf48fc45a3e91b7f64ab2104a750b6",
+			"televisions": "3ba94ef02dc645b077c3b41df9f563d7f8dc789a15a3ade1068687d0e1e644f6"
+		},
+		{
+			"key": "6000/4",
+			"seed": 6000,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4424d0fdd35ab09001308f930b2f97ce2909f75cc46ab7adebe609598f987e71",
+			"televisions": "32c6d5797c1715e331caffa99de9796ddad7edbbb9cac1a0b4b611154709e66b"
+		},
+		{
+			"key": "6502/4",
+			"seed": 6502,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "ca282d0cd7d4b4cbc63a1daa254336a33446ad3446d7dfd5d0d1159422212796",
+			"televisions": "5fdcf1676d67dfc5142426fbb2c42cc3d6820592707f5115461404a1eac284d8"
+		},
+		{
+			"key": "7777/4",
+			"seed": 7777,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d840a5a6f1a1e87f5c53d7505ffa16de50a18636453a5449ed9f2d2ed400160d",
+			"televisions": "db72c0d71e4f5df67e12ac5f1b98cc2fdb33d0b59ee8e00b4328d3672d94f9f8"
+		},
+		{
+			"key": "8080/4",
+			"seed": 8080,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "183dfdeddbb79e6885298b8252b1af5ce631ae8869033f3eb29ea1126c36049c",
+			"televisions": "2ae2140abca7a5d5d7a5e003fed3b46f64412668cd4966464d6400541441eb6e"
+		},
+		{
+			"key": "8192/4",
+			"seed": 8192,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2f92c10fe78d7a8419a7e5f9d967ca225678409f338e502cd104fb2b96b3e811",
+			"televisions": "a7ac0d45876144a980c47f51e345291981ae5334664d395e2c4a6223cc2beb37"
+		},
+		{
+			"key": "9999/4",
+			"seed": 9999,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "bd733d258f6b8b27a944959c4a8e4b65ce43ac25ff13574dc51fd4fefd57064f",
+			"televisions": "7bdea34a6e18b4e3dd1fd21b36936e0a8fa2ecbec9bbe696d87a25b7df1601d2"
+		},
+		{
+			"key": "10000/4",
+			"seed": 10000,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "70605eceff46cf4d7e997248602b701696cba0d1a781a6f62a47655e25395c38",
+			"televisions": "8115a99d7bc9c4567f3db3e6fed02031db6724cdf91d1a712fa0aa4dcd2abb3e"
+		},
+		{
+			"key": "12345/4",
+			"seed": 12345,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2c3c54a0eaa796223e0a95e2df0ec7b680ed6d929b24c7b1591a4e5f7858b4d8",
+			"televisions": "8a92991c481eb1ed89a4d1b2ada1aa99a289763c99deeca3bb400782d8c50394"
+		},
+		{
+			"key": "31337/4",
+			"seed": 31337,
+			"survivors": 4,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "e1d4e8872884be992238eb54ad420c19b82be025b103593ae3798f6320378f11",
+			"televisions": "a3f8c59371e6f328c044df57bb043f19ae8472e9a6650150889253dc87c2426f"
+		},
+		{
+			"key": "standby 81/4",
+			"seed": 81,
+			"survivors": 4,
+			"fallback": true,
+			"fell_back": true,
+			"manifest": "7475a325a928e43fbd9e3d431ad44fd482ef1e47677e1d19f2a6e0576781bca9",
+			"televisions": "44f7422f1b19c4713fd0411233bb9919444286835b415d445392c1493200114e"
+		},
+		{
+			"key": "81/5",
+			"seed": 81,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7f7fc15c6e82b4a3344ccfc5a129be744fba36ae60289e2fdbcfdb9e2336a9b2",
+			"televisions": "a7fe3349329970b6eb64238dcd814875a2124c2e1b7ab244acc7de6425f5ad05"
+		},
+		{
+			"key": "202/5",
+			"seed": 202,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2627deb28b205a601ef21265557031f3e4e8bf495ef8ad2f0201fecee20e38c2",
+			"televisions": "d515cf991a910eb4f2519309797be95beee2084259c46e3fd3912664be254b79"
+		},
+		{
+			"key": "213/5",
+			"seed": 213,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7c8fa7754445fe3be85bfff784971649b8c57db946b451d332c97b655fc8be0f",
+			"televisions": "a1a5e9bc9b8ddb91d0d47f153e19161d89bc5fe0d21d97165b5f8aa43e62feae"
+		},
+		{
+			"key": "777/5",
+			"seed": 777,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7a9e7021c84bc367001aa3a568a709d8a276b0a7f6b841912313e29c0c6e0871",
+			"televisions": "d7263fb34d55442f1df784e91c6e99c5e9cca38e975d6ef85b822aebbf19fde8"
+		},
+		{
+			"key": "4242/5",
+			"seed": 4242,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "917402ba00756770d4948bde1d889754b5d9415d1eac823b4db81e0c00e44a47",
+			"televisions": "2b81e3e7fe65afb7ac26d55e4df16c15b30ec68c1abde72bf092960c3a994c90"
+		},
+		{
+			"key": "9001/5",
+			"seed": 9001,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4b72b801047f670ba42b68ff626ff9c4f1d16fd008a70fcbfbd6895ffc637687",
+			"televisions": "ea487eda87d58c92ea50b27bd9434827ade902679086245f4247fdf75f63ea02"
+		},
+		{
+			"key": "1/5",
+			"seed": 1,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "df6959e3850778df1f660854af64dd26865757d30be8ade808cddc0063ae8d35",
+			"televisions": "c1d58856456172491928674b51888fc52562db4b45db3a1644d44fce4281c974"
+		},
+		{
+			"key": "3/5",
+			"seed": 3,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9b06ef98923729d234791c288fbb26d40ef4b58eb31cdeca130465b2bb47b9f1",
+			"televisions": "f36852613aa91749340baf1800ad41c11ec89dbf64e00997dd2850d36770a44f"
+		},
+		{
+			"key": "7/5",
+			"seed": 7,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7781547e9353f7884859f2abc9a7135f0d2cfd37903e96788fd5a73a443d1c98",
+			"televisions": "487c0a5b337c8fef2a9620fb7f31a7ca953766e21c162395e15c165642f1664b"
+		},
+		{
+			"key": "11/5",
+			"seed": 11,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "81910e4f152e0fcce4c4d0099956a15851ccfc700e8f8fc7d01d2c6991b2ef27",
+			"televisions": "4d47c916e16e7b85202eb5d2453f3d2c117d3e19ce4f8a35dd8f9a4df52bc65e"
+		},
+		{
+			"key": "17/5",
+			"seed": 17,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f6bb3664a8241d971595494eca6b3053b5ef38d77929c07b06857a682f0eb481",
+			"televisions": "9fdb19db0878bc6e68ff0a8bd2d63f9e511467d1d0cfa804f2032cc300cfda35"
+		},
+		{
+			"key": "23/5",
+			"seed": 23,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2f560a5d6fcbf995d53ae6a04d8d4f29dc1537c64fbfac72af5dcda311b6f6d9",
+			"televisions": "c9cc5f7502309b6726cf4ab32e4fcec20fc913ea0551918513b13b42c446e090"
+		},
+		{
+			"key": "31/5",
+			"seed": 31,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d3e1cf0f419a39d89d0597e4a3d26d4c1b3fbb2eef9606cfe942fc7377bcc142",
+			"televisions": "b92c948286a609a8578e25b1b96334872e26e3cdf01fc1926a8d8b3493e31f07"
+		},
+		{
+			"key": "42/5",
+			"seed": 42,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c45e4a5b20c123eee2bddc39442dd9722a42a420d7eac84d011ff37376c643c8",
+			"televisions": "be1ecb31263eb6d41823f6612ba5da9f279a2738b1a4e11d0d2187ccc264fff1"
+		},
+		{
+			"key": "64/5",
+			"seed": 64,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7b35f438177df3120db85f35b8ef1a92d3d4e4a61308ccd4c45039475ea53c53",
+			"televisions": "e469c1268d89c4963766582bc807a305cea15d2ec42cfe5a093c3b64c569c5ac"
+		},
+		{
+			"key": "77/5",
+			"seed": 77,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "3b9f83b06bbeebaff38226a6ea520f925f95175bca6cca613da994f1ac9e9782",
+			"televisions": "f2ab5d1b6c65602684add3ead7251de0094b098de6faa2229d723858819a1189"
+		},
+		{
+			"key": "99/5",
+			"seed": 99,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4fe050302c5edcc35b5c38b1fd2bc3132d8ce5a4256bd2c234c60066f390af52",
+			"televisions": "8a73d054ab6423d86cf648536f04a4df7c9dca66022e98ca5a72d276e8a6ce7e"
+		},
+		{
+			"key": "123/5",
+			"seed": 123,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "07eb22ae2640a151751818bd7439ffae8d6e5ba993a9c789d4df6b4d65515347",
+			"televisions": "3470eb9834ef3cd315ba946e5917ececcf0653ee32779fb6bbe4c8c3e5a0cf3f"
+		},
+		{
+			"key": "128/5",
+			"seed": 128,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "877ecfca000f8a75eb360aaf40b6f821ace273e9b11d139111746ac42475f4f2",
+			"televisions": "ff42c7fcf6e00853b8c8c5c42cf41f57ea7689181224c323cc687475361857b5"
+		},
+		{
+			"key": "256/5",
+			"seed": 256,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6bf519fcaa165cebd823d0918482873f73f52485bc371682b45947fd09087b03",
+			"televisions": "0b68112c96eda7784302b463b96f13acb4d96edbba8d6a142183e1828c8ac17c"
+		},
+		{
+			"key": "314/5",
+			"seed": 314,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "dfcc47ca3934ae6e6590c0b9f513d771e41b33944fadcfcdbcb49617353579bf",
+			"televisions": "a1bce5d0379db1230dcf739eb9fa1a83fc6eab17c819fe9b3452ddb4c050c84e"
+		},
+		{
+			"key": "404/5",
+			"seed": 404,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d51f04b01f3097ddc58c4cc4295885cf327be2e2920aa0961651f9a9745d26d1",
+			"televisions": "8d3aa7d2e149966ae31ad3a4e1e1efe21b0e1b26056e05d4f6c5e97caa351f8d"
+		},
+		{
+			"key": "500/5",
+			"seed": 500,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "232189f07f326e964bac102f669f08bc18bb0581ab253c714a5a098f9f05faf5",
+			"televisions": "c2b248d59762d13757b6cd83feafc4c571bc7e95bc649c7a5197492cfb417537"
+		},
+		{
+			"key": "555/5",
+			"seed": 555,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "67f8eb974ec46d729158516ea3c8ac95fcad5cc484682ed4774050879586d4bf",
+			"televisions": "120a22846d0ed01f2f6c133ca408fe6e457cde9b7fc10d237817a0562e2b30b1"
+		},
+		{
+			"key": "666/5",
+			"seed": 666,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4893a066bb0a6a87880a6f4853620f929b54e02414e41e7c18e2b1e7fe73dac6",
+			"televisions": "f9ae70345cff734699018f86546e54d6e930a1255870f353b2be692f98e7e75c"
+		},
+		{
+			"key": "808/5",
+			"seed": 808,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b24d20c9db7ef814b6d2364d428c74e573c43f5881635966a53727f807284b63",
+			"televisions": "1a3a5449d23d06206a87c72d1abc7a3268c548a6498a96d0f5f487e7adc6b742"
+		},
+		{
+			"key": "999/5",
+			"seed": 999,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "2ec029add21414c5c2a0afa4b87ad9f879079306c78de3eb051dfab2e0322b30",
+			"televisions": "788e7397ff5fe2283c6d343fd95214658b8c495098675ceb9ddcbf73b4bba8c7"
+		},
+		{
+			"key": "1000/5",
+			"seed": 1000,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "7f7aa1703c4826e25eda5a6d954de1a60576dd776e616757853e47ffbe604b32",
+			"televisions": "701f5ccf7ec53a9eabcaa42438e19feabfc1091f29ac07731cc1afc50786662a"
+		},
+		{
+			"key": "1111/5",
+			"seed": 1111,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f337cd57a5f8287171fe18143d98c97e7af7bfcab48c919be36bc38bc36af66c",
+			"televisions": "3a6f95a986e315bf6d7444bba365ef5a920a5e39916ce3c64e97721ac8341469"
+		},
+		{
+			"key": "1234/5",
+			"seed": 1234,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "1343642fa511675a207a9ed0c27b4082cde3087196c5b157ad1ab43f0e2b53dd",
+			"televisions": "0c2a3529725e48529d08923c737373777aa8de9cdb17cb0fe1f2a01b4540c24b"
+		},
+		{
+			"key": "1337/5",
+			"seed": 1337,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b50ad6e57d10d50c2fd84e3225fd00add58be11ad3da9aa272991f3f313e1332",
+			"televisions": "af5ae265c15e8d73393c20e7af596d8576825ee7ee0c3f98b8438a60f282c597"
+		},
+		{
+			"key": "1500/5",
+			"seed": 1500,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "b936a3a535b42c571a334d2f4af4de495700fd279477367d494b6253861f985d",
+			"televisions": "07a75cd2682d1fb16bff0e9bc85689e35b7684039f4a3dd3f422ec4202de05d3"
+		},
+		{
+			"key": "2024/5",
+			"seed": 2024,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "6e68aaae9f6413c4558acae05bc79516f714477d7eda546eb9b0ea88cf30436f",
+			"televisions": "03b77e99f1d0278acb1a3e782d4093b4d8d54f7f7514a6f34e29700aaf827580"
+		},
+		{
+			"key": "2048/5",
+			"seed": 2048,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "f23817f3c83eb2cd944a827b59df97db34cd7c72f694b7433848469d3e730ff8",
+			"televisions": "f884ec45367e4798c638522e48e39eb6c352735ec0f0981fd6e34165debfd698"
+		},
+		{
+			"key": "2500/5",
+			"seed": 2500,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "c16ee676c1dd5cf08ab0733db83877b503cf60f12ff5d2f499602913065c850c",
+			"televisions": "434e9607fe2570a2d24efcd5e39d4c670724f312539f9343fd2023b509525141"
+		},
+		{
+			"key": "2718/5",
+			"seed": 2718,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "4dbcb8d4df789a20bc8cc245f61c063701ff7e74093ad92acd587c233587aa9b",
+			"televisions": "aa1b03f79872cb65718c9bfcb1f29df786cf899f92afd1f6c2f5903d6248c105"
+		},
+		{
+			"key": "3000/5",
+			"seed": 3000,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9c4741a143a91c168b6ae34c3050743a7c3db93721b120ff09458ce3cf149f76",
+			"televisions": "c80efffa56e6c8b9719de78505b7fafe5358a26a1655359d725f40a8a69252cb"
+		},
+		{
+			"key": "3141/5",
+			"seed": 3141,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d5d565cbede76b42a1ec8cd7c817ebd03c91c74b7ca5c9d4a549eb4c559957d7",
+			"televisions": "34ee7a06d0491b3bfbcb5d24db96230636c9a31c7ce3fa5b8889ac062c4629a3"
+		},
+		{
+			"key": "4096/5",
+			"seed": 4096,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "90eb04bb0bb701e8533d00355c419475c8976caf5118e735e095661a7ce20386",
+			"televisions": "5738ac1494ba05ccd78a4a0371d7d4683b2e680bb54f25dc8f730cfc899baf07"
+		},
+		{
+			"key": "4444/5",
+			"seed": 4444,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "9d4d5927b48ec6e7c4d216318cad0db8844024aa3dd7ac4b20a35241a3f8685c",
+			"televisions": "85fb5bcad8877b005dfa3aa0cacff71ca060ffa328a6edd200942200eea190c6"
+		},
+		{
+			"key": "5000/5",
+			"seed": 5000,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "3d5d60ee477396b6cf5158c9ae9e71bbae52e6b9ff15bac0435fd1739f2aaa5c",
+			"televisions": "3e04f0fc0ee70b2b90e43437ae36b6449b21d679938c855c2dc76655eebee584"
+		},
+		{
+			"key": "6000/5",
+			"seed": 6000,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d522d58662c92ea6e9bcf74f7ff2ac4ee32a4560ea9ae4c5e70d7ccbb22f62e9",
+			"televisions": "87355bc5ff3df1bd10307345dd9e0a3a4ea0778120ee87af9baa6d4fde142933"
+		},
+		{
+			"key": "6502/5",
+			"seed": 6502,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "60c74d52f4fc1ce03b00f5ac8ae1b8a2ab9f3a04cdd2119386b6ef26f4895fec",
+			"televisions": "52438d85392a89d2ea7b0fbe2d26309f5fbe67f3fc3d7570fc624d310b7eacac"
+		},
+		{
+			"key": "7777/5",
+			"seed": 7777,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "67bedbabafa6c2050b8d7de4923329a0c410586fccc69402dcbed7a4eac4c2b2",
+			"televisions": "1e4f8a2e41d10805ca5e581249c454d61415c96ac9d4d4e6b1e0720dd8741d93"
+		},
+		{
+			"key": "8080/5",
+			"seed": 8080,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "eca69947ae16b86f181458c7eb7dde80debbb593398eb367e3c4454825695587",
+			"televisions": "7d1941bab8cf020ad82a36b382e5e6b5122a26104faef4f3e2d07eeaee7fba12"
+		},
+		{
+			"key": "8192/5",
+			"seed": 8192,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "12f54f170958f29a1fac0dc3e5462baaca39a12de49c50a490b4e8a2698e97e7",
+			"televisions": "0f34441046667990bb0ca4ec8472a1a444703e354db10872408cce8817014767"
+		},
+		{
+			"key": "9999/5",
+			"seed": 9999,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "d80074c4c87f205c9e184cb47512b99365bceff2569ee34572887c919d796097",
+			"televisions": "301856a4d092a19d3d85bb67344cc54b5db18274f0283616148e56278bde17d0"
+		},
+		{
+			"key": "10000/5",
+			"seed": 10000,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "013ba9de8c390e40d1b833cefa490c6f5c781a017106eee36052a45750863788",
+			"televisions": "402d49b168d445d28bc0e89cd5e14b37f5082dd15c617dfbd664e78c8f9a4df2"
+		},
+		{
+			"key": "12345/5",
+			"seed": 12345,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "49d1b17e11e446321e4c237e021f05518e43c1944419123d8eceb32f130288e1",
+			"televisions": "03b3ab0dcabf06b9f28fd41d5b9519529e6cc9e7759b266138f073ef78889e9e"
+		},
+		{
+			"key": "31337/5",
+			"seed": 31337,
+			"survivors": 5,
+			"fallback": false,
+			"fell_back": false,
+			"manifest": "a444d88381154fc171b299bf1e518053e850774d83a6e205e41b95ed196b8572",
+			"televisions": "cf29666087d2ed215c685f521a9814c58e68bbc0dbb73451e75a75525444dde3"
+		},
+		{
+			"key": "standby 81/5",
+			"seed": 81,
+			"survivors": 5,
+			"fallback": true,
+			"fell_back": true,
+			"manifest": "7475a325a928e43fbd9e3d431ad44fd482ef1e47677e1d19f2a6e0576781bca9",
+			"televisions": "c84abf40c8d313d92fbbab55752a304c2d79043050b050bb252f9e6aa8edd647"
+		}
+	]
+}
