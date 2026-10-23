@@ -18,6 +18,7 @@ const HOTEL_GEN := preload("res://game/world/generation/map_generator.gd")
 const CREATURE := preload("res://game/enemies/creature.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
+const OFFICE_METRICS := preload("res://tools/dev/office_metrics.gd")
 ## What geometry and the systems call of the palette (spec_f1_geometry.md
 ## 0.2, spec_f1_systems.md 0.2).
 const CONTRACT := ["false_ceiling", "floor_finish", "wall_material", "lamp_of", "plaque", "stripe_color", "zone_label", "hide_kind", "always_lit", "ceiling_rect", "full_tiles", "troffers", "free_tiles", "tile_of", "tile_centre", "crawl_boxes", "shaft_box", "POWER", "STRIPES", "LETTERS", "TYPE_LETTERS", "PLENUM", "FURNITURE", "FURNITURE_TOP", "TILE", "MODULE_SET", "FUSE_ROOMS", "TUBE_Y", "STATION_Y", "AIR_UNIT", "HATCH", "STUB"]
@@ -968,6 +969,12 @@ func validator_checks() -> void:
 	swap_window(lenient)
 	lenient["fallback"] = true
 	var errors: Array = v.validate(lenient)
+	var missing: Array = []
+	for run_seed in range(1, 4):
+		var measures: Dictionary = OFFICE_METRICS.floor_measures(GEN.new().generate(run_seed, 2))
+		for key in OFFICE_METRICS.MEASURES:
+			if not measures.has(key): missing.append("%d:%s" % [run_seed, key])
+	check("office_metrics mide todo lo suyo en las semillas 1 a 3", missing.is_empty(), str(missing))
 	check("Un piso de reserva acepta la ventanilla fuera de su banda", not errors.any(func(e): return String(e).begins_with("depth_")), str(errors.slice(0, 5)))
 
 ## Applies a change to a copy of seed 7's floor and checks the validator names it.
