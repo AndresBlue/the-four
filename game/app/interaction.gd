@@ -65,7 +65,7 @@ func toggle_sheet() -> void:
 	if level.match_net.local_is_locust() or reading(): return
 	level.ui.sheet.seat = level.player.slot
 	level.ui.sheet.map.marks = level.code.hint_marks()
-	level.ui.sheet.open(level.local_alive(), level.settings.prompt_name("sheet"), level.notes_found(), level.code.own_hints(), level.code.hint_walls())
+	level.ui.sheet.open(level.local_alive(), level.settings.prompt_name("sheet"), level.notes_found(), level.own_papers(), level.code.hint_walls())
 	level.player.reading = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if level.world_audio.enabled: level.paper_sound.play()

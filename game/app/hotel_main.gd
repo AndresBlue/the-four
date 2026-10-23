@@ -1576,6 +1576,13 @@ func ride_allowed(index: int, riders: Array) -> bool:
 		if not handler.allows_ride(index + 1, riders): return false
 	return true
 
+## What this machine's player keeps on the sheet: the hints of the code,
+## and every handler's papers (the offices' receipt and card).
+func own_papers() -> Array:
+	var papers: Array = code.own_hints().duplicate()
+	for handler in objectives.values(): papers.append_array(handler.own_papers(player.slot))
+	return papers
+
 ## The handlers a stage asks, in the order it lists them (kind.STAGES).
 func stage_objectives(stage := -1) -> Array:
 	var number: int = session.stage if stage < 0 else stage

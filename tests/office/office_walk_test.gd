@@ -176,6 +176,8 @@ func the_card(tag: String) -> void:
 	level.match_net.use_office(&"files", "take", station)
 	check("%s: la ficha en la mano, y a la vista" % tag, files.has_card(player.slot) and not files.lamps[station - 1].visible and level.interaction.reading_hint == files.PAPER_BASE + player.slot * 10 + 1)
 	level.interaction.close_document()
+	var kinds: Array = level.own_papers().map(func(paper): return String(paper.kind))
+	check("%s: TUS NOTAS guarda el resguardo y la ficha" % tag, kinds.has("resguardo") and kinds.has("ficha"), str(kinds))
 	var reader: int = files.reader_index()
 	player.global_position = files.usables[reader].stand + Vector3(0, 0.04, 0)
 	await frames(3)

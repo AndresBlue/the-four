@@ -55,6 +55,9 @@ func loop_at(file: String, point: Vector3, gain: float):
 func stop_loop(voice) -> void:
 	if voice != null: level.world_audio.stop_long(voice)
 
+## The papers this seat keeps of it (TUS NOTAS), as hint dictionaries.
+func own_papers(_seat: int) -> Array: return []
+
 ## Whether the car of that stage may leave with these riders (lifts.press):
 ## the offices' freight lift waits for its clock.
 func allows_ride(_stage: int, _riders: Array) -> bool: return true

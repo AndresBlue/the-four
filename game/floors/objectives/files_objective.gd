@@ -271,6 +271,13 @@ func office_card(owner: int) -> Dictionary:
 	var date: Array = level.camcorder.date_parts
 	return {"id": PAPER_BASE + owner * 10 + 1, "kind": "ficha", "planta": 0, "form": {"paper": "ficha", "name": level.seat_name(owner).to_upper(), "number": String(r.number), "department": "SERVICIOS GENERALES", "date": "%02d/%02d/%02d" % [int(date[0]), int(date[1]), int(date[2])], "level": "1"}}
 
+## A seat's papers: the receipt of its own request, and every card it holds.
+func own_papers(seat: int) -> Array:
+	var papers: Array = []
+	if requests.has(seat): papers.append(receipt(seat))
+	for owner in held_cards(seat): papers.append(office_card(int(owner)))
+	return papers
+
 ## The host: a capsule that has run its tube arrives in its tray.
 func tick(_delta: float) -> void:
 	if level.net.is_client(): return
