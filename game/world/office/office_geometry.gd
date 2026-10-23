@@ -6,8 +6,13 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal"}
 const PROPS := preload("res://game/world/office/office_props.gd")
+const GATE := preload("res://game/world/office/scissor_gate.gd")
+## The freight car's gate (7.4): shut and open x, the fixed end's x.
+const GATE_SHUT_X := 0.85
+const GATE_OPEN_X := -0.62
+const GATE_FIXED_X := -0.85
 ## Finishes that stand in as a plain colour until their scans are ingested:
 ## the hotel has no plain paint, block or concrete.
 const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4")}
@@ -177,6 +182,39 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 		var at := x - length * 0.5 + length * k / count
 		box(boundary, Vector3(at, GLASS_SILL + band * 0.5, 0), Vector3(MULLION, band, 0.06), "steel_frame")
 	for y in [GLASS_SILL, GLASS_HEAD]: box(boundary, Vector3(x, y, 0), Vector3(length, MULLION, 0.07), "steel_frame")
+
+## The freight car (7.4) inside the hotel's CAR_INSIDE, so riding, arriving
+## and the car's rect are untouched: a steel floor, sides and back of steel
+## plate to 1.1 m and cage mesh above, a steel roof, corner posts, a guarded
+## bulb, and the scissor gate as its leaves.
+func car_body(car: Node3D, _room: Dictionary) -> Array:
+	var inside := CAR_INSIDE
+	var centre := inside.get_center()
+	var top := inside.end.y
+	box(car, Vector3(centre.x, 0.01, centre.z), Vector3(inside.size.x, 0.02, inside.size.z), "steel_plate")
+	box(car, Vector3(centre.x, top + 0.01, centre.z), Vector3(inside.size.x, 0.02, inside.size.z), "steel_plate")
+	for band in [[0.0, 1.1, "steel_plate"], [1.1, top, "cage_mesh"]]:
+		var low: float = band[0]
+		var high: float = band[1]
+		var y := (low + high) * 0.5
+		box(car, Vector3(centre.x, y, inside.position.z - 0.01), Vector3(inside.size.x, high - low, 0.02), String(band[2]))
+		for x in [inside.position.x - 0.01, inside.end.x + 0.01]: box(car, Vector3(x, y, centre.z), Vector3(0.02, high - low, inside.size.z), String(band[2]))
+	for x in [inside.position.x, inside.end.x]:
+		for z in [inside.position.z, inside.end.z]: box(car, Vector3(x, top * 0.5, z), Vector3(0.05, top, 0.05), "gate_steel")
+	box(car, Vector3(centre.x, top - 0.08, centre.z), Vector3(0.1, 0.1, 0.1), "light")
+	var gate = GATE.new()
+	gate.name = "ScissorGate"
+	gate.material = materials.gate_steel
+	gate.fixed_x = GATE_FIXED_X
+	gate.position = Vector3(GATE_SHUT_X, 0, -0.03)
+	car.add_child(gate)
+	return [{"node": gate, "shut": GATE_SHUT_X, "open": GATE_OPEN_X}]
+
+## The car's one lamp, warm as a bulb (7.4).
+func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
+	var at := super(room, facing)
+	car_lamps.back().light_color = LIGHTING.light_color(2700.0)
+	return at
 
 ## No paintings and no sconces on an office wall (6.5: the notice boards,
 ## clocks and poster spots come later).
