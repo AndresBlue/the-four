@@ -53,6 +53,7 @@ func run() -> void:
 	kind_checks()
 	generator_checks()
 	validator_checks()
+	await physics_checks()
 	texts()
 	var seconds := float(Time.get_ticks_msec() - began) / 1000.0
 	var file := FileAccess.open("res://evidence/office_test.json", FileAccess.WRITE)
@@ -1014,6 +1015,25 @@ static func swap_window(m: Dictionary) -> void:
 		if deepest < 0 or float(route[int(room.id)]) > float(route[deepest]): deepest = int(room.id)
 	m.rooms[deepest].type = OFFICE.WINDOW
 	m.rooms[win].type = OFFICE.OFFICE
+
+# --- Física ------------------------------------------------------------------
+
+## Three floors of offices built in a level and checked by the office
+## validator's physics (spec_f1_generator.md 3.5): nothing in the way of a
+## door, a passage, an aisle, a grille or the ceiling band.
+func physics_checks() -> void:
+	var level = load("res://game/app/hotel.tscn").instantiate()
+	root.add_child(level)
+	await physics_frame
+	var found: Array = []
+	for run_seed in [7, 21, 33]:
+		await level.start_floor(run_seed, false, [1], "", 2)
+		for i in 4: await physics_frame
+		var errors: Array = level.kind.VALIDATOR.new().validate_physics(level.get_world_3d(), level.manifest)
+		if not errors.is_empty(): found.append("%d: %s" % [run_seed, str(errors.slice(0, 5))])
+	check("Tres pisos de oficinas montados pasan la comprobación física", found.is_empty(), str(found))
+	level.queue_free()
+	await physics_frame
 
 ## A cell's sides are the office's: a module's both from MODULE_SIZES, a
 ## crossing's both from LANE_WIDTHS, a lane's one from each.

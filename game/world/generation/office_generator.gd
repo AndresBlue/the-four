@@ -1164,6 +1164,9 @@ func furnish_sockets(job: Dictionary) -> String:
 			keep_clear.append(LAYOUT.wall_rect(room, String(hw.wall), float(hw.along), LAYOUT.LOCKER.x / 2, LAYOUT.LOCKER.y))
 		for fx in LAYOUT.fixtures(view, int(room.id)):
 			keep_clear.append(LAYOUT.wall_rect(room, String(fx.wall), float(fx.along), LAYOUT.FIXTURE_CLEAR.x / 2, LAYOUT.FIXTURE_CLEAR.y))
+		# Where a door's leaf swings: a corner piece there stops it.
+		for way in FLOOR.doorways(room):
+			keep_clear.append(LAYOUT.wall_rect(room, String(way.wall), float(way.along), FLOOR.PORTAL / 2 + LAYOUT.DOOR_SIDE, LAYOUT.DOOR_BAND))
 		if int(room.id) == plant:
 			keep_clear.append(job.hatch_square)
 			keep_clear.append(job.unit_box)

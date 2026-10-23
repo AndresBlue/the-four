@@ -11,6 +11,7 @@ const AISLE_MIN := 0.95
 const SLACK := 0.01
 const SLEEVE := 0.05          # round a crawl box in the ceiling band (geometry 4.1)
 const PLENUM_KEYS := ["ceiling", "slab", "duct_y", "main", "duct", "branch"]
+const HIDE := preload("res://game/world/interactables/hiding_place.gd")
 
 func validate(data: Dictionary) -> Array[String]:
 	var errors := super.validate(data)
@@ -772,6 +773,8 @@ func corners_ok(data: Dictionary, errors: Array[String]) -> void:
 			keep.append(LAYOUT.wall_rect(room, String(hw.wall), float(hw.along), LAYOUT.LOCKER.x / 2, LAYOUT.LOCKER.y))
 		for fx in spots.get(id, []):
 			keep.append(LAYOUT.wall_rect(room, String(fx.wall), float(fx.along), LAYOUT.FIXTURE_CLEAR.x / 2, LAYOUT.FIXTURE_CLEAR.y))
+		for way in FLOOR.doorways(room):
+			keep.append(LAYOUT.wall_rect(room, String(way.wall), float(way.along), FLOOR.PORTAL / 2 + LAYOUT.DOOR_SIDE, LAYOUT.DOOR_BAND))
 		if id == plant_id:
 			var hl := local_of(room, v3(air.hatch.point))
 			keep.append(Rect2(hl - Vector2(0.75, 0.75), Vector2(1.5, 1.5)))
@@ -888,6 +891,9 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 				if absf(ends[0] - spine.x) > absf(ends[1] - spine.x): ends.reverse()
 				near_end = Vector2(ends[0], mid.y)
 				far_end = Vector2(ends[1], mid.y)
+			# To a capsule short of the far end, which is the long wall's face.
+			var run := far_end - near_end
+			far_end -= run.normalized() * (0.32 + 0.05)
 			query.transform = Transform3D(Basis.IDENTITY, Vector3(near_end.x, py + 0.94, near_end.y))
 			query.motion = Vector3(far_end.x - near_end.x, 0, far_end.y - near_end.y)
 			if space.cast_motion(query)[0] < 0.99:
@@ -936,7 +942,10 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 			if r.size.x <= 0.01 or r.size.y <= 0.01: continue
 			box.size = Vector3(r.size.x, top - bottom, r.size.y)
 			band.transform = Transform3D(Basis.IDENTITY, Vector3(r.get_center().x, (bottom + top) / 2, r.get_center().y))
-			if not space.intersect_shape(band, 1).is_empty():
+			# The lockers stand 2.3 high against the walls (hiding_place.HEIGHT,
+			# kept by the office skin): they are no fitting in the band.
+			var found: Array = space.intersect_shape(band, 8).filter(func(hit): return not (hit.collider is Node and hit.collider.get_parent() is HIDE))
+			if not found.is_empty():
 				errors.append("ceiling_band_%d" % int(room.id))
 				break
 	# Room to walk down both long sides of the boardroom's table.
