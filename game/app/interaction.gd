@@ -115,7 +115,7 @@ func read_paper(paper: Dictionary) -> void:
 	if is_instance_valid(reading_document) or not reading_entry.is_empty(): close_document()
 	reading_hint = int(paper.get("id", 0))
 	level.player.reading = true
-	level.ui.show_hint(paper, [])
+	level.ui.show_hint(paper, paper.get("plan_walls", []))
 	if level.world_audio.enabled: level.paper_sound.play()
 
 ## A hint of the last planta held up (hint_view.gd), and kept: from now on it

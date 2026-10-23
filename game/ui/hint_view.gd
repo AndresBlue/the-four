@@ -30,7 +30,7 @@ const CARBON := Color(0.11, 0.11, 0.19, 0.62)
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"memo": Vector2(520, 720), "resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
+const SIZES := {"red": Vector2(960, 680), "memo": Vector2(520, 720), "resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
 ## The card's printed front and its back (tools/textures/bake_do_not_disturb.py),
 ## and the Polaroid's picture square in its frame.
 const CARD_FACE := preload("res://assets/textures/no-molestar.png")
@@ -86,6 +86,7 @@ func _draw() -> void:
 		"resguardo": receipt()
 		"ficha": office_card()
 		"memo": office_memo()
+		"red": tube_map()
 
 # --- The papers ---------------------------------------------------------------------------
 
@@ -194,6 +195,36 @@ func receipt() -> void:
 	words(Vector2(36, 430), "N.º  " + String(form.get("number", "")), 17, PRINT)
 	var time: Array = form.get("time", [0, 0])
 	words(Vector2(36, 470), "HORA  %d:%02d" % [int(time[0]), int(time[1])], 17, PRINT)
+
+## The pneumatic network's map beside the window: the planta's walls, the
+## tubes as double lines, the stations as numbered circles and the window.
+func tube_map() -> void:
+	var face := Rect2(Vector2.ZERO, card)
+	paper(face, Color(0.9, 0.9, 0.86), 5101)
+	words(Vector2(40, 52), "LA OFICINA", 20, PRINT)
+	words(Vector2(40, 82), "RED DE TUBOS NEUMÁTICOS. PLANTA 1, PERSONAL", 14, PRINT)
+	if walls.is_empty(): return
+	var bounds := Rect2(walls[0][0], Vector2.ZERO)
+	for wall in walls: bounds = bounds.expand(wall[0]).expand(wall[1])
+	var frame := Rect2(40, 110, card.x - 80, card.y - 150)
+	var scale := minf(frame.size.x / maxf(bounds.size.x, 1.0), frame.size.y / maxf(bounds.size.y, 1.0))
+	var to_card := func(point: Vector2) -> Vector2: return frame.get_center() + (point - bounds.get_center()) * scale
+	for wall in walls: draw_line(to_card.call(wall[0]), to_card.call(wall[1]), Color(0.18, 0.18, 0.2, 0.7), 1.6, true)
+	var tube_ink := Color(0.45, 0.3, 0.12)
+	for pipe in hint.get("tubes", []):
+		var a: Vector2 = to_card.call(pipe[0])
+		var b: Vector2 = to_card.call(pipe[1])
+		var across := (b - a).orthogonal().normalized() * 1.6 if a.distance_to(b) > 0.01 else Vector2.ZERO
+		draw_line(a + across, b + across, tube_ink, 1.2, true)
+		draw_line(a - across, b - across, tube_ink, 1.2, true)
+	var window: Vector2 = to_card.call(hint.get("window", Vector2.ZERO))
+	draw_rect(Rect2(window - Vector2(8, 8), Vector2(16, 16)), RED)
+	words(window + Vector2(12, -10), "VENTANILLA", 13, RED)
+	for station in hint.get("stations", []):
+		var at: Vector2 = to_card.call(station[0])
+		draw_circle(at, 13.0, Color(0.9, 0.9, 0.86))
+		draw_arc(at, 13.0, 0.0, TAU, 24, tube_ink, 2.0, true)
+		centred(at + Vector2(0, 5), str(int(station[1])), 13, PRINT)
 
 ## A memo of La Oficina: water-green paper, two filing holes, the ruled
 ## heading and its lines typed under it.

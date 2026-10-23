@@ -98,6 +98,12 @@ func place() -> void:
 	var eye := v3(m.mail.camera)
 	var camera_box := piece(eye, Vector3(0.12, 0.1, 0.24), Color("2b2b28"), 0.0)
 	camera_box.look_at(v3(m.mail.camera_target), Vector3.UP)
+	# The network's map on the wall beside the window (read, nothing asked).
+	var map_spot: Dictionary = m.mail.map
+	var map_at := v3(map_spot.point) + facing(float(map_spot.yaw)) * 0.01
+	var sheet := piece(map_at, Vector3(0.42, 0.3, 0.005), Color(0.9, 0.9, 0.86), float(map_spot.yaw))
+	sheet.name = "TubeMap"
+	add_usable(Transform3D(Basis(Vector3.UP, float(map_spot.yaw)), map_at), "read", Vector3.INF, NAN)
 	var reader: Dictionary = m.mail.reader
 	var reader_at := v3(reader.point)
 	var reader_out := facing(float(reader.yaw))
@@ -288,6 +294,7 @@ func held_cards(seat: int) -> Array:
 func has_card(seat: int) -> bool: return not held_cards(seat).is_empty()
 
 func word_of(usable, seat: int) -> String:
+	if String(usable.action) == "read": return "LEER"
 	if not alive(seat) or level.session.stage != 1: return ""
 	match String(usable.action):
 		"type": return "ESCRIBIR" if not requests.has(seat) else ""
@@ -297,6 +304,7 @@ func word_of(usable, seat: int) -> String:
 				if int(r.station) == int(usable.index) - 1 and int(r.state) == Card.IN_TRAY and (int(owner) == seat or not alive(int(owner))): return "RECOGER"
 			return ""
 		"swipe": return "PASAR FICHA" if held_unswiped(seat) >= 0 else ""
+		"read": return "LEER"
 	return ""
 
 func hold_of(usable, _seat: int) -> float:
@@ -431,6 +439,22 @@ func choose(seat: int) -> Dictionary:
 
 ## Paper ids, clear of the hotel's hints: PAPER_BASE + seat * 10, + 1 for the card.
 const PAPER_BASE := 1000
+const MAP_ID := 2002
+
+## The network's map (1h, "red"): the planta's walls, the tubes, the
+## stations with their numbers and the window, in plan.
+func paper_of(_index: int) -> Dictionary:
+	var m := manifest()
+	var walls: Array = []
+	for wall in level.hotel.plan_walls:
+		if int(wall[2]) == 0: walls.append([wall[0], wall[1]])
+	var flat := func(p: Array) -> Vector2: return Vector2(float(p[0]), float(p[2]))
+	var pipes: Array = []
+	for edge in m.tubes.edges: pipes.append([flat.call(m.tubes.nodes[int(edge[0])]), flat.call(m.tubes.nodes[int(edge[1])])])
+	var stations: Array = []
+	for e in station_exits: stations.append([flat.call(e.point), int(e.number)])
+	var window: Dictionary = m.rooms[int(m.mail.window)]
+	return {"id": MAP_ID, "kind": "red", "plan_walls": walls, "tubes": pipes, "stations": stations, "window": Vector2(float(window.px), float(window.pz))}
 
 ## The receipt of a seat's request: the station it went to, its number and
 ## the time on the tape.
