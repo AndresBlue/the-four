@@ -1010,6 +1010,26 @@ func passage_path(a: Dictionary, b: Dictionary) -> Array:
 	var b_spine := spine_point(b, path[2])
 	if b_spine.is_finite(): path.insert(3, b_spine)
 	if a_spine.is_finite(): path.insert(1, a_spine)
+	return round_ladder(path)
+
+## The plant ladder up to the main duct's hatch (spec_f1_systems 4.5) stands
+## on the way across the air salon when the duct leaves along it: a leg that
+## comes within a metre of it steps a metre and a half to its side.
+func round_ladder(path: Array) -> Array:
+	var air: Dictionary = physics_data.get("air", {})
+	if not air.has("hatch"): return path
+	var yaw := float(air.hatch.yaw)
+	var out := Vector2(sin(yaw), cos(yaw))
+	var hp: Array = air.hatch.point
+	var ladder := Vector2(float(hp[0]), float(hp[2])) + out * 0.12
+	var side := Vector2(out.y, -out.x)
+	for i in range(path.size() - 1, 0, -1):
+		var a: Vector3 = path[i - 1]
+		var b: Vector3 = path[i]
+		var near := Geometry2D.get_closest_point_to_segment(ladder, Vector2(a.x, a.z), Vector2(b.x, b.z))
+		if near.distance_to(ladder) >= 1.0 or absf(a.y - float(physics_data.rooms[int(air.plant)].py) - 0.94) > 1.0: continue
+		var step := ladder + side * 1.5
+		path.insert(i, Vector3(step.x, a.y, step.y))
 	return path
 
 ## The point on an archive cell's spine line (through its middle along its

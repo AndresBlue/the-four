@@ -17,6 +17,11 @@ const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 const PLACEMENT := preload("res://game/world/generation/document_placement.gd")
 const HINT_PAPER := preload("res://game/world/interactables/hotel_hint.gd")
 const PANEL := preload("res://game/world/interactables/hotel_panel.gd")
+const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
+## The office usable being held (spec_f1_systems 1.2), kept until the key is
+## let go: the aim may drift while the body is turned to it.
+var using = null
+var use_time := 0.0
 var level
 
 var pressed_door
@@ -202,6 +207,7 @@ func door_behind():
 ## teammate once it is dead.
 func drive_local(delta: float) -> void:
 	level.track_refuges()
+	level.player.crawling = level.crawling_at(level.player.global_position)
 	# The bots drive their own bodies; this machine's player is parked, and
 	# everything below is for a player who is playing. Run, it put the parked
 	# body back in sight and in reach every frame (stop_watching).
@@ -273,6 +279,37 @@ func drive_local(delta: float) -> void:
 			return
 		search_time = 0.0
 	else: search_time = 0.0
+	# Something of the offices worked by hand: its word, held for its time.
+	var usable = aimed if aimed is USABLE else null
+	if is_instance_valid(using) and not Input.is_action_pressed("interact"):
+		using.cancel(level.player.slot)
+		using = null
+		use_time = 0.0
+	if (is_instance_valid(usable) or is_instance_valid(using)) and not level.player.hidden:
+		var used = using if is_instance_valid(using) else usable
+		var word: String = used.word(level.player.slot)
+		if not word.is_empty():
+			var need: float = used.hold_time(level.player.slot)
+			if need <= 0.0 and Input.is_action_just_pressed("interact"):
+				used.use(level.player.slot)
+				was_held = true
+				return
+			if need > 0.0 and Input.is_action_pressed("interact") and (is_instance_valid(using) or Input.is_action_just_pressed("interact")):
+				if not is_instance_valid(using):
+					using = used
+					use_time = 0.0
+					used.begin(level.player.slot)
+				use_time += delta
+				used.holding(level.player.slot, use_time / need)
+				level.ui.hold(use_time / need)
+				if use_time >= need:
+					using = null
+					use_time = 0.0
+					used.use(level.player.slot)
+				level.camcorder.focus(word)
+				level.ui.hint.text = ""
+				was_held = true
+				return
 	# Standing in a car that can go: the button. It leaves with everybody who
 	# is in it (lifts.gd), so a team waits for each other before pressing.
 	var car: int = level.lifts.car_at(level.player.global_position) if not level.player.hidden else -1
@@ -326,7 +363,7 @@ func drive_local(delta: float) -> void:
 	if not is_instance_valid(target) and not is_instance_valid(hiding_target): target = door_behind()
 	var held := Input.is_action_pressed("interact")
 	# Camcorder-style focus brackets replace the old control prompts.
-	level.camcorder.focus("TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else panel_word(panel_target) if is_instance_valid(panel_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
+	level.camcorder.focus(usable.word(level.player.slot) if is_instance_valid(usable) else "TECLADO" if is_instance_valid(lock_target) and not level.code_entered else "ENCENDER" if is_instance_valid(television_target) and not television_target.on else "LEER" if is_instance_valid(document_target) or is_instance_valid(hint_target) else panel_word(panel_target) if is_instance_valid(panel_target) else ("ESCONDERSE" if hiding_target.has_room() else "OCUPADO") if is_instance_valid(hiding_target) else ("CERRAR" if target.opened else "ABRIR") if is_instance_valid(target) else focused_teammate())
 	if held and not was_held:
 		pressed_door = target
 		press_time = 0

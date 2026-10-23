@@ -9,6 +9,7 @@ const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
+const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
@@ -157,6 +158,45 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
 	building_room = {}
 
+## The main duct of planta 3 (spec_f1_systems 4.5), its own holder, and the
+## outer boxes the walls it crosses leave open.
+var main_duct: Node3D = null
+var duct_holes: Array[AABB] = []
+
+## The hotel's build, then the main duct and the shaft: after the navigation
+## bake, which nobody crawls, and before the physics check, which sees them.
+func build(data: Dictionary) -> void:
+	duct_holes = MAIN_DUCT.outer_boxes(data)
+	await super(data)
+	if data.has("air") and data.air.has("main"):
+		main_duct = MAIN_DUCT.build(self, data)
+		add_child(main_duct)
+
+## Out of sight off planta 3, like every room of the other plantas.
+func put_away(here: int) -> void:
+	super(here)
+	if is_instance_valid(main_duct): main_duct.visible = here == 2
+
+## Where the main duct crosses this stretch of wall: [x0, x1, y0, y1] in the
+## boundary's own frame. Only the tall rooms' walls reach the duct's floor.
+func duct_cuts(boundary: Node3D, x: float, length: float, height: float) -> Array:
+	var cuts: Array = []
+	var room_node := boundary.get_parent() as Node3D
+	if duct_holes.is_empty() or room_node == null: return cuts
+	var to_local := (room_node.transform * boundary.transform).affine_inverse()
+	for box in duct_holes:
+		var low := Vector3(INF, INF, INF)
+		var high := -low
+		for i in 8:
+			var p: Vector3 = to_local * box.get_endpoint(i)
+			low = low.min(p)
+			high = high.max(p)
+		if low.z > 0.09 or high.z < -0.09 or low.y >= height: continue
+		var a := maxf(low.x, x - length * 0.5)
+		var b := minf(high.x, x + length * 0.5)
+		if b - a > 0.01: cuts.append([a, b, maxf(low.y, 0.0), minf(high.y, height)])
+	return cuts
+
 ## An office wall (6.2): plain paint, a cove base on this room's face, and in
 ## a corridor its department's stripe; none of the hotel's dado, rails,
 ## sockets or cornice.
@@ -164,6 +204,22 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 	var side := String(SIDE_OF.get(String(boundary.name), ""))
 	if not building_room.is_empty() and building_room.get("glazed", []).has(side):
 		glazed_run(boundary, x, length, height, inner)
+		return
+	# The main duct through a tall room's wall: the stretch either side as
+	# usual, and over the opening only the wall under and over it.
+	var cuts := duct_cuts(boundary, x, length, height) if height > 3.0 else []
+	if not cuts.is_empty():
+		var cut: Array = cuts[0]
+		var left := float(cut[0]) - (x - length * 0.5)
+		var right := x + length * 0.5 - float(cut[1])
+		if left > 0.01: wall_run(boundary, x - length * 0.5 + left * 0.5, left, height, inner)
+		if right > 0.01: wall_run(boundary, float(cut[1]) + right * 0.5, right, height, inner)
+		var mid := float(cut[1]) - float(cut[0])
+		var mx := (float(cut[0]) + float(cut[1])) * 0.5
+		if float(cut[2]) > 0.01:
+			wall_core(boundary, Vector3(mx, float(cut[2]) * 0.5, 0), Vector3(mid, float(cut[2]), 0.18), inner)
+			box(boundary, Vector3(mx, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(mid, SKIRT.x, SKIRT.y), "skirting")
+		if float(cut[3]) < height - 0.01: wall_core(boundary, Vector3(mx, (float(cut[3]) + height) * 0.5, 0), Vector3(mid, height - float(cut[3]), 0.18), inner)
 		return
 	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
 	var room_node := boundary.get_parent() as Node3D

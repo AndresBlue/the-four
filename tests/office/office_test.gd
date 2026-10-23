@@ -262,7 +262,7 @@ func kind_checks() -> void:
 	for method in hotel_kind.get_script_method_list():
 		if not methods.has(String(method.name)): missing.append(String(method.name))
 	check("El tipo de piso de oficinas tiene todo lo que tiene el del hotel", missing.is_empty(), str(missing))
-	check("Es el piso 2, con su paleta, su generador y su validador, y sin objetivos todavía", KIND.NUMBER == 2 and KIND.PALETTE == OFFICE and KIND.GENERATOR == GEN and KIND.VALIDATOR == OFFICE_VALIDATOR and KIND.OBJECTIVES.is_empty())
+	check("Es el piso 2, con su paleta, su generador y su validador, y de objetivos solo el aire del nivel 3", KIND.NUMBER == 2 and KIND.PALETTE == OFFICE and KIND.GENERATOR == GEN and KIND.VALIDATOR == OFFICE_VALIDATOR and KIND.OBJECTIVES.keys() == ["air"] and KIND.stage(3).objectives == ["air"] and KIND.LEAVE == "ladder")
 	check("Tres etapas, una por planta", KIND.count() == FLOOR.PLANTAS)
 	var stages_right := true
 	for number in range(1, KIND.count() + 1):
@@ -389,7 +389,7 @@ func generator_checks() -> void:
 	for count in per_cell: spread[count] = int(spread.get(count, 0)) + 1
 	# The design asks for 2 (spec 2.9); the lattice gives 1 for now, a
 	# calibration pending with the author: this keeps it from getting worse.
-	check("La mediana de muebles por celda de oficina abierta es 1 o más (el diseño pide 2, pendiente)", not per_cell.is_empty() and int(per_cell[per_cell.size() / 2]) >= 1, str(spread))
+	check("La mediana de muebles por celda de oficina abierta es 2 o más", not per_cell.is_empty() and int(per_cell[per_cell.size() / 2]) >= 2, str(spread))
 	var with_shortcut := shortcut_plantas.count(true)
 	check("Tres de cada cuatro plantas o más tienen un atajo suelto de conducto", with_shortcut * 4 >= shortcut_plantas.size() * 3, "%d de %d" % [with_shortcut, shortcut_plantas.size()])
 	var standby: Dictionary = GEN.new().candidate(404, 0, true)

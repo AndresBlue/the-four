@@ -32,6 +32,14 @@ var burnt := false
 var recovery_delay := 0.0
 var exhausted := false
 var crouched := false
+## In a crawl space (the offices' main duct), set every tick by the
+## interaction from level.crawling_at(): crouched by force, slow, slower
+## backing out, and slow to turn round. The eye is down on all fours.
+var crawling := false
+var crawl_back := false
+var turn_budget := 0.0
+const CRAWL_EYE := 0.62
+const CRAWL_TURN_RATE := 2.4
 var hidden := false
 ## Impaled and lifted during an execution: the body is placed, not walked.
 var held := false
@@ -248,6 +256,10 @@ func _unhandled_input(event: InputEvent) -> void:
 ## the one place the picture is actually turned.
 func look_by(amount: Vector2) -> void:
 	var up: float = amount.y * (-1.0 if settings.values.invert else 1.0)
+	# On all fours the body turns round slowly: the yaw spends a budget.
+	if crawling:
+		amount.x = clampf(amount.x, -turn_budget, turn_budget)
+		turn_budget -= absf(amount.x)
 	turn_delta += Vector2(amount.x, up)
 	rotate_y(amount.x)
 	if hidden:
@@ -287,9 +299,11 @@ func _physics_process(delta: float) -> void:
 	# keys that jump and crouch are read from the whole keyboard, so a space
 	# typed while reading used to jump -- and a jump is heard. It stays as it
 	# was, crouched or standing.
-	var wants_crouch: bool = crouched if reading else active and not hidden and pad.wants("crouch", settings)
+	var wants_crouch: bool = crawling or (crouched if reading else active and not hidden and pad.wants("crouch", settings))
+	crawl_back = crawling and axis.y > 0.1
+	turn_budget = minf(turn_budget + CRAWL_TURN_RATE * delta, CRAWL_TURN_RATE * 0.1)
 	MOVEMENT.set_crouch(self, wants_crouch)
-	var running := MOVEMENT.tire(self, active and not hidden and push > RUN_PUSH and pad.wants("sprint", settings), delta)
+	var running := MOVEMENT.tire(self, active and not hidden and not crawling and push > RUN_PUSH and pad.wants("sprint", settings), delta)
 	pad.settle(push > 0.1, exhausted or hidden, delta)
 	# Out of the body (dead, watching, between floors): nothing stays flipped on.
 	if not active: pad.reset()
@@ -308,7 +322,7 @@ func _physics_process(delta: float) -> void:
 	# cadence and camera motion always match the actual ground speed.
 	var planar := Vector2(velocity.x, velocity.z).length()
 	if planar > 0.25 and is_on_floor() and not hidden:
-		var stride := MOVEMENT.stride(crouched, running)
+		var stride := MOVEMENT.CRAWL_STRIDE if crawling else MOVEMENT.stride(crouched, running)
 		var previous := floori(step_phase / PI)
 		var rate := planar / stride * PI
 		step_phase += rate * delta
@@ -329,7 +343,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		bob_weight = move_toward(bob_weight, 0.0, delta * 4.0)
 		step_scheduled = -1
-	eye_height = move_toward(eye_height, 0.9 if crouched else 1.64, delta * 5.0)
+	eye_height = move_toward(eye_height, CRAWL_EYE if crawling else 0.9 if crouched else 1.64, delta * 5.0)
 	# Head is highest mid-stride and dips at each heel strike; it sways toward
 	# the planted foot once per two steps.
 	# Kept subtle: about 1.5 cm walking and 2.5 cm running at the default setting.
@@ -729,7 +743,7 @@ func step_transit(delta: float) -> void:
 	# The look levels out as it steps in, and the feet walk it.
 	if hidden: camera.rotation.x = lerpf(camera.rotation.x, 0.0, minf(1.0, delta * 8.0))
 	avatar.update_pose((global_position - before) / maxf(delta, 0.001), crouched, delta, true)
-	eye_height = move_toward(eye_height, 0.9 if crouched else 1.64, delta * 5.0)
+	eye_height = move_toward(eye_height, CRAWL_EYE if crawling else 0.9 if crouched else 1.64, delta * 5.0)
 	update_peek(delta)
 	camera.position = Vector3(0.0, eye_height, 0.0) + peek_lean()
 	if t >= 1.0:

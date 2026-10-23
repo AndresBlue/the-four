@@ -1309,3 +1309,14 @@ New `.gd` files get their `.gd.uid` committed (Godot generates them on the first
 - NOT done by 0e, so this phase does it where it cuts a zone's power: take the room out of the baked bounce (today `round_lamps()` shows the bounce again with `not dark`, hotel_geometry.gd, and only the whole floor's blackout hides it), and its reflection probe (`probe_slots` is decided at build; only the seed's dark rooms lack one). Otherwise rooms of planta 2 glow without power.
 - Also this phase: `game/app/death_tape.gd` (`is_dark`, reads `dark_ids`) and `game/app/floor_map.gd` (the map's reach, `level.hotel.dark or ... dark_room(room)`) still ignore `unpowered` and drains; they move to `not level.hotel.lit(...)`.
 - Sconces, practicals and the emissive lenses are left to the office geometry's overrides (spec_f1_geometry 7.3).
+
+---
+
+## Notes from building 1g in part (23 October 2026, director)
+
+- Built ahead of 1e and 1f, to play floor 2 from start to end: `main_duct_geometry.gd` (no seams, hangers nor kit models yet; the stand-in materials `galvanized`, `bone`, `coverall` are plain colours), `office_usable.gd`, `match_net.use_office()` and its RPCs, `air_objective.gd` with `ACTIONS := ["hatch", "climb", "ladder"]`, the crawl in `hotel_player.gd` and `survivor_gait.gd`, and `lifts.gd` leaving by the ladder.
+- **`released` starts true** until the post, its console and the fans exist: the hatch opens whenever nothing runs. `progress()` keeps the 4.3 shape (`needed` 3).
+- The mouth's climb-down usable sits just inside the hatch, facing into the duct, so a crawler coming back sees it.
+- `office_validator.round_ladder()`: a passage leg that comes within 1 m of the plant ladder steps 1.5 m to its side. In seed 33 the air room and the plant are one salon and the ladder stood on the straight line between their middles.
+- No sounds yet (`hatch.wav`, `crawl_*.wav`, `ladder.wav` are not prepared), no `follow_bodies()` override, no `sanity.lit_at()` change, no bot crawl.
+- `tests/office/office_walk_test.gd` plays seeds 7 and 33 from the first refuge to the shaft's ladder.

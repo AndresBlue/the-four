@@ -513,14 +513,30 @@ func begin_leaving() -> void:
 	if level.player.hidden: level.player.force_leave_hide()
 	level.player.velocity = Vector3.ZERO
 	level.player.held = true
+	# Down a ladder (the offices' shaft): no car, no doors; the body goes down
+	# the rungs in ride_out().
+	leave_from = level.player.global_position
+	if by_ladder(): return
 	# Its doors, where the car is: heard by whoever rode it and whoever stands
 	# near. It used to sound at every machine's own player, wherever that was.
 	# Then the car going down, from inside.
 	if not level.hotel.lifts.is_empty(): car_doors(level.hotel.lifts[level.hotel.lifts.size() - 1], DOORS_GAIN)
 	if level.world_audio.enabled: level.world_audio.play_long(DESCENT, Vector3(0, 0.5, 0), DESCENT_GAIN, RID(), true)
 
+## Whether this floor's last stage is left by a ladder (kind.LEAVE).
+func by_ladder() -> bool:
+	return String(level.kind.get_script_constant_map().get("LEAVE", "")) == "ladder"
+
+## Where the body was when it started down, and how far a ladder takes it
+## while the picture goes.
+var leave_from := Vector3.ZERO
+const LADDER_DROP := 1.4
+
 ## Counted on every machine; the one that runs the floor ends it.
 func ride_out(delta: float) -> void:
 	if leaving < 0.0: return
 	leaving += delta
+	if by_ladder():
+		level.player.global_position = leave_from - Vector3(0, LADDER_DROP * minf(1.0, leaving / LEAVE_TIME), 0)
+		level.player.camera.rotation.x = move_toward(level.player.camera.rotation.x, -1.0, delta * 1.5)
 	if leaving >= LEAVE_TIME and not level.net.is_client(): level.session.finish_stage()

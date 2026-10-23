@@ -33,6 +33,11 @@ const HEIGHT_STANDING := 1.8
 const HEIGHT_CROUCHED := 1.05
 const MIDDLE_STANDING := 0.91
 const MIDDLE_CROUCHED := 0.54
+## On all fours in the offices' main duct (spec_f1_systems 4.4): forward,
+## backing out, and one stride.
+const SPEED_CRAWL := 1.2
+const SPEED_CRAWL_BACK := 0.6
+const CRAWL_STRIDE := 0.55
 
 ## Crouched if it wants to be, standing only where there is room above. The
 ## capsule follows, and only on a change: every write rebuilds the shape.
@@ -70,14 +75,15 @@ static func tire(body, wants_run: bool, delta: float) -> bool:
 		if body.stamina >= EXHAUSTED_UNTIL: body.exhausted = false
 	return running
 
-static func speed(crouched: bool, running: bool) -> float:
+static func speed(crouched: bool, running: bool, crawling := false, backwards := false) -> float:
+	if crawling: return SPEED_CRAWL_BACK if backwards else SPEED_CRAWL
 	return SPEED_CROUCH if crouched else SPEED_RUN if running else SPEED_WALK
 
 ## Towards `direction` (flat, at most unit long: a pad pushed half way is half
 ## the gait's speed) at the gait's speed, and down while off the floor. The
 ## caller moves the body.
 static func accelerate(body, direction: Vector3, running: bool, delta: float) -> void:
-	var top := speed(body.crouched, running)
+	var top := speed(body.crouched, running, body.get("crawling") == true, body.get("crawl_back") == true)
 	body.velocity.x = move_toward(body.velocity.x, direction.x * top, ACCELERATION * delta)
 	body.velocity.z = move_toward(body.velocity.z, direction.z * top, ACCELERATION * delta)
 	if not body.is_on_floor(): body.velocity.y -= GRAVITY * delta

@@ -417,6 +417,50 @@ func body_of(seat: int) -> Node3D:
 	if seat == locust_seat() and versus(): return level.creature
 	return bodies.get(seat)
 
+# --- The office floor's systems (game/floors/objectives) ----------------------
+
+## Working something of the offices by hand (spec_f1_systems 1.3): offline or
+## on the host it is judged and done now; a guest asks, and the host judges it
+## and tells everyone.
+func use_office(objective: StringName, action: String, index: int, seat := -1) -> void:
+	if seat < 0: seat = level.player.slot
+	var handler = level.objective(objective)
+	if handler == null: return
+	if not in_match() or net.is_host:
+		if not handler.allow(action, index, seat, level.body_of_seat(seat)):
+			handler.refused(action, index, seat)
+			return
+		tell_office(objective, action, index, seat, handler.apply(action, index, seat, {}, false))
+		return
+	request_office.rpc_id(1, String(objective), action, index)
+
+## The host's own events: applied here already, told to the rest.
+func tell_office(objective: StringName, action: String, index: int, seat: int, data: Dictionary) -> void:
+	if in_match() and net.is_host: office_state.rpc(String(objective), action, index, seat, data)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_office(objective: String, action: String, index: int) -> void:
+	if not net.is_host: return
+	var handler = level.objective(StringName(objective))
+	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
+	if handler == null or not handler.ACTIONS.has(action): return
+	var body := body_of(seat)
+	if body == null or not handler.allow(action, index, seat, body):
+		office_refused.rpc_id(multiplayer.get_remote_sender_id(), objective, action, index)
+		return
+	var data: Dictionary = handler.apply(action, index, seat, {}, false)
+	office_state.rpc(objective, action, index, seat, data)
+
+@rpc("authority", "call_remote", "reliable")
+func office_state(objective: String, action: String, index: int, seat: int, data: Dictionary) -> void:
+	var handler = level.objective(StringName(objective))
+	if handler != null and floor_live: handler.apply(action, index, seat, data, false)
+
+@rpc("authority", "call_remote", "reliable")
+func office_refused(objective: String, action: String, index: int) -> void:
+	var handler = level.objective(StringName(objective))
+	if handler != null: handler.refused(action, index, net.local_seat)
+
 # --- Televisions -----------------------------------------------------------------
 
 ## Switching a set on. Offline or on the host it happens now; a guest asks,

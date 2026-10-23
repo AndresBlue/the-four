@@ -1560,6 +1560,15 @@ func settle_objectives(survivors: int) -> Dictionary:
 		settled[objective_name] = handler_script.settle(manifest, survivors, kind)
 	return settled
 
+## The handler of that objective on this floor, or null.
+func objective(id: StringName):
+	return objectives.get(String(id))
+
+## Whether a point is in a crawl space of this floor (the offices' main duct).
+func crawling_at(point: Vector3) -> bool:
+	var air = objectives.get("air")
+	return air != null and air.crawling_at(point)
+
 ## The handlers a stage asks, in the order it lists them (kind.STAGES).
 func stage_objectives(stage := -1) -> Array:
 	var number: int = session.stage if stage < 0 else stage
