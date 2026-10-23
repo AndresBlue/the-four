@@ -267,6 +267,12 @@ func tick(_delta: float) -> void:
 		apply("armed", red_index(), -1, {}, false)
 		level.match_net.tell_office(ID, "armed", red_index(), -1, {})
 
+## The bots: the red lever, pulled by whoever is nearest; then the clock,
+## waited out in the freight lobby (the team's refuge task).
+func bot_errands(team) -> Array:
+	if usables.is_empty() or red != Red.DOWN or level.session.stage != 2: return []
+	return [team.office_task("power:red", usables[red_index()])]
+
 ## The freight lift of this level goes down only once the red lever's clock
 ## has run out, and with the quota in it.
 func allows_ride(stage: int, riders: Array) -> bool:

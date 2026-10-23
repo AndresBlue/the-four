@@ -73,6 +73,10 @@ Add-Check 'dev/body_clip_probe' 'body_clip_probe' (Godot-Arguments 'res://tools/
 # (tests/hotel/bots_test.gd).
 $log = Join-Path $evidence 'verify_bots_test.log'
 Add-Check 'hotel/bots_test' 'bots_test' (Godot-Arguments 'res://tests/hotel/bots_test.gd' $log $true @('--automation','--test-profile','--silent')) 600 'plain' 1 $log
+# And on floor 2: two oracle bots play the offices to the end on their own
+# (tests/office/office_bots_test.gd).
+$log = Join-Path $evidence 'verify_office_bots_test.log'
+Add-Check 'office/office_bots_test' 'office_bots_test' (Godot-Arguments 'res://tests/office/office_bots_test.gd' $log $true @('--automation','--test-profile','--silent')) 600 'plain' 1 $log
 # The creature heard from on top of the furniture: no piece of the floor's
 # navigation left up there, and no route to the ear shorter than the straight
 # line (tools/dev/hearing_probe.gd).

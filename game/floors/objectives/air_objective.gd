@@ -304,7 +304,12 @@ func apply(action: String, index: int, seat: int, _data: Dictionary, quiet: bool
 			fans_voice = null
 		"climb":
 			if not quiet: sound_at("ladder.wav", MAIN_DUCT.foot(manifest()).origin + Vector3(0, 1.5, 0), -4.0)
-			if seat == level.player.slot and level.body_of_seat(seat) == level.player: climb(index)
+			var climber = level.body_of_seat(seat)
+			if climber == level.player and seat == level.player.slot: climb(index)
+			# A bot's body (offline: this machine owns it) is put up there.
+			elif climber != null and level.bot_match and climber.has_method("place"):
+				var to := MAIN_DUCT.mouth(manifest()) if index == 0 else MAIN_DUCT.foot(manifest())
+				climber.place(to.origin + Vector3(0, 0.05, 0), to.basis.get_euler().y)
 		"ladder":
 			if not level.net.is_client(): level.lifts.leave_floor()
 	return {}
@@ -327,6 +332,51 @@ func tick(delta: float) -> void:
 	if not level.net.is_client() and running() and float(level.session.elapsed) >= running_until:
 		apply("stopped", 4, -1, {}, false)
 		level.match_net.tell_office(ID, "stopped", 4, -1, {})
+
+## The bots: a card holder opens the post and starts the fans, somebody
+## stops them, the hatch; then each climbs up, crawls the duct to the landing,
+## and once the quota is there the ladder down.
+func bot_errands(team) -> Array:
+	var errands: Array = []
+	if not built() or level.session.stage != 3 or usables.is_empty(): return errands
+	if not post_open:
+		for brain in team.brains:
+			if brain.alive() and has_card(brain.seat):
+				errands.append(team.office_task("air:post", usables[3], brain.seat))
+				break
+		return errands
+	if not released:
+		if charges > 0 and not running(): errands.append(team.office_task("air:start", usables[4]))
+		return errands
+	if running():
+		errands.append(team.office_task("air:stop", usables[5]))
+		return errands
+	if not hatch_open:
+		if spin == 0.0: errands.append(team.office_task("air:hatch", usables[0]))
+		return errands
+	var m := manifest()
+	var line: Array = []
+	for n in m.air.main.nodes.slice(1):
+		var node: Array = m.ducts.nodes[int(n)]
+		line.append(Vector3(float(node[0]), MAIN_DUCT.floor_y(m) + 0.05, float(node[2])))
+	var r: Array = m.air.shaft.rect
+	line.append(Vector3(float(r[0]), MAIN_DUCT.floor_y(m) + 0.05, float(r[1])))
+	var ladder_given := false
+	for brain in team.brains:
+		if not brain.alive(): continue
+		var at: Vector3 = brain.body.global_position
+		if MAIN_DUCT.on_landing(m, at):
+			# One goes down the ladder for all; the others wait on the landing.
+			if in_shaft() >= level.session.minimum_survivors() and not ladder_given:
+				ladder_given = true
+				errands.append({"kind": "use", "key": "air:ladder", "label": "la escalerilla del pozo", "node": usables[2], "aim": usables[2].global_position, "stands": [at], "reached": true, "seat": brain.seat})
+			# Waiting on the landing for the others, off the navigation.
+			else: errands.append({"kind": "hold", "key": "air:wait:%d" % brain.seat, "label": "el pozo", "stands": [at], "seat": brain.seat})
+		elif crawling_at(at):
+			errands.append({"kind": "route", "key": "air:crawl:%d" % brain.seat, "label": "el ducto", "route": [MAIN_DUCT.mouth(m).origin + Vector3(0, 0.05, 0)] + line, "stands": [at], "seat": brain.seat})
+		else:
+			errands.append(team.office_task("air:climb:%d" % brain.seat, usables[0], brain.seat))
+	return errands
 
 ## The local player up the ladder into the duct, or back down to its foot.
 func climb(index: int) -> void:

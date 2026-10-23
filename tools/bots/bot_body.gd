@@ -15,6 +15,9 @@ enum Pace { STILL, CROUCH, WALK, RUN }
 ## What the brain wants this frame.
 var wish := Vector3.ZERO
 var pace := Pace.WALK
+## In a crawl space (the offices' main duct), set every tick; never backing out.
+var crawling := false
+var crawl_back := false
 var look_yaw := 0.0
 var look_pitch := 0.0
 var torch_wanted := false
@@ -88,7 +91,9 @@ func _physics_process(delta: float) -> void:
 	var flat := Vector3(wish.x, 0, wish.z)
 	if flat.length() > 1.0: flat = flat.normalized()
 	if pace == Pace.STILL: flat = Vector3.ZERO
-	MOVEMENT.set_crouch(self, pace == Pace.CROUCH)
+	# On all fours in the offices' main duct: crouched by force, the crawl's pace.
+	crawling = level.crawling_at(global_position)
+	MOVEMENT.set_crouch(self, pace == Pace.CROUCH or crawling)
 	running = MOVEMENT.tire(self, pace == Pace.RUN and flat.length() > 0.1, delta)
 	MOVEMENT.accelerate(self, flat, running, delta)
 	move_and_slide()

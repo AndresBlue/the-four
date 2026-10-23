@@ -524,6 +524,19 @@ func keep_photo(seat: int, bytes: PackedByteArray) -> void:
 	photos[seat] = bytes
 	textures[seat] = ImageTexture.create_from_image(image)
 
+## The bots: whoever has no request types; a card in its tray is taken by
+## its owner (who read the receipt); a card in hand goes through the reader.
+func bot_errands(team) -> Array:
+	var errands: Array = []
+	if usables.is_empty() or level.session.stage != 1: return errands
+	for brain in team.brains:
+		if not brain.alive(): continue
+		var seat: int = brain.seat
+		if not requests.has(seat): errands.append(team.office_task("files:type:%d" % seat, usables[0], seat))
+		elif int(requests[seat].state) == Card.IN_TRAY: errands.append(team.office_task("files:take:%d" % seat, usables[int(requests[seat].station) + 1], seat))
+		if held_unswiped(seat) >= 0: errands.append(team.office_task("files:swipe:%d" % seat, usables[reader_index()], seat))
+	return errands
+
 ## The host: whoever falls drops the cards they hold where they fell, on what
 ## is under them (the duct's floor in the duct), told to everyone.
 func on_death(seat: int, point: Vector3) -> void:

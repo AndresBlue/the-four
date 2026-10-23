@@ -181,6 +181,22 @@ func move(delta: float) -> void:
 	if clock < wait_until:
 		halt()
 		return
+	# A way given point by point (the offices' main duct, which is not in the
+	# navigation): walked crouched, without a route.
+	if task.has("route"):
+		var points: Array = task.route
+		var leg := int(task.get("leg", 0))
+		while leg < points.size() and flat_gap(body.global_position, points[leg]) < 0.35: leg += 1
+		task["leg"] = leg
+		if leg >= points.size():
+			arrive()
+			return
+		var to: Vector3 = points[leg]
+		walk_towards(Vector3(to.x - body.global_position.x, 0, to.z - body.global_position.z).normalized(), BODY.Pace.CROUCH)
+		# No route to linger on: only not moving is being stuck here.
+		linger_clock = 0.0
+		watch_progress(delta)
+		return
 	var goal := stand()
 	# A place on another planta is a task from before a lift: the team gives
 	# another one on its next round.
@@ -268,6 +284,10 @@ func arrive() -> void:
 	if kind == "explore":
 		sweep_from = body.rotation.y
 		state = State.SWEEP
+		return
+	if kind == "route":
+		owner_match.team.finished(self, task)
+		set_task({})
 		return
 	state = State.WAIT if kind in ["refuge", "lift", "goto", "hold"] else State.ACT
 
@@ -406,6 +426,19 @@ func act(delta: float) -> void:
 		"search":
 			if timer < 0.25 + CONTAINER.SEARCH_TIME: return
 			level.match_net.use_container(node, seat)
+			owner_match.team.finished(self, task)
+			set_task({})
+		"use":
+			# Something of the offices worked by hand: begun, held for its
+			# time, then used (it asks the host like a player's would).
+			if not bool(task.get("begun", false)):
+				task["begun"] = true
+				node.begin(seat)
+			var need: float = node.hold_time(seat)
+			node.holding(seat, (timer - 0.25) / maxf(need, 0.01))
+			if timer < 0.25 + need: return
+			node.use(seat)
+			owner_match.note("usa", self, {"what": String(task.get("key", ""))})
 			owner_match.team.finished(self, task)
 			set_task({})
 		"code":

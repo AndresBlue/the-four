@@ -126,6 +126,15 @@ func plan_objectives(here: Array) -> void:
 	for errand in errands:
 		if free.is_empty(): break
 		if claims.has(errand.key): continue
+		# An errand that is one seat's own (its card, its climb): that bot's.
+		if errand.has("seat"):
+			for brain in free:
+				if brain.seat != int(errand.seat): continue
+				claims[errand.key] = brain.seat
+				brain.set_task(errand)
+				free.erase(brain)
+				break
+			continue
 		var best = null
 		var best_cost := INF
 		for brain in free:
@@ -161,7 +170,16 @@ func objectives() -> Array:
 			if is_instance_valid(piece) and not piece.searched: errands.append(note_task(int(index)))
 		if knowledge.keypad and not level.code_entered and level.found_digits.size() >= DIGITS.COUNT and level.sets_lit() and is_instance_valid(level.lock):
 			errands.append(code_task())
+	# The other floors' handlers say their own (the offices'); the hotel's two
+	# have theirs above.
+	for handler in level.stage_objectives(stage): errands.append_array(handler.bot_errands(self))
 	return errands
+
+## A task on an office usable (office_usable.gd), worked like a player does.
+func office_task(key: String, usable, seat := -1) -> Dictionary:
+	var task := usable_task({"kind": "use", "key": key, "label": key}, usable, usable.aim_point())
+	if seat >= 0: task["seat"] = seat
+	return task
 
 ## Nothing of its own to do. Knowing the refuge and all this stage needs, it
 ## waits there -- safe, and where the way out is; on a stage that asks for

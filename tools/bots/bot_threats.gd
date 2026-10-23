@@ -4,7 +4,7 @@ extends RefCounted
 ## creature's own measures and what a recording keeps of it. The rest of the
 ## bots ask the model, and the creature only its contract
 ## (game/enemies/creature.gd).
-const MODELS := {&"locust": preload("res://tools/bots/bot_threat.gd")}
+const MODELS := {&"locust": preload("res://tools/bots/bot_threat.gd"), &"none": preload("res://tools/bots/bot_threat_none.gd")}
 
 ## A model of the creature on `level`'s floor. With no creature there, The
 ## Locust's, which then has nothing to mind (bot_threat.refresh), as it always
