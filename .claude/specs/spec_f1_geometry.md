@@ -828,3 +828,11 @@ Shots, each on Alto, Muy bajo and with `--rendering-method gl_compatibility`: op
 - **Draw calls and instances**: per room about 15 batches; tiles are runs (about 20 to 30 boxes a room, not 400). Measure a planta 0 walk against a hotel planta on Bajo.
 - **Untrusted downloads**: whitelist extraction, no `.blend`/`.cs`, Python `-I`; licences per registro (all picks CC0 or Pixabay; only WWS Hoist would need a credit).
 - **Time**: lockers (9.7) and the office door bake (6.6) are the separable parts; ship H1 with the hotel leaf if the bake is late, never a mismatched leaf size.
+
+## Notes from the hooks (23 October 2026, done by the director without work orders)
+
+- H1 to H10 and R1 to R4 are in, with floor 1 unchanged: the module gallery built before and after is the same once normalized (evidence/gallery_twice.txt's sed), and the golden, stages_test, room_light_test and the contract test pass. light_layers_scan reads only manifests, which the hooks do not touch.
+- H5 keeps the hotel's product exactly: a lamp with no `share` (or 1.0) uses `level` itself, not `1 - (1 - level)`.
+- H8 returns the socket as it is when `room.sockets` exists: the generator has already pulled the lift-side sockets clear (2.5f).
+- H9 gives `lift_sounds()` and `hum_path()` only. lifts.gd keeps its four constants and world_audio its hum path until the office sounds are ingested; the hum is made in world_audio's setup, before any floor, so it will have to be swapped when a floor is built.
+- The creature contract step (before this one) named the presence sound `presence_sound()`, not `sound_profile()`: The Locust's `sound_profile` is a variable.

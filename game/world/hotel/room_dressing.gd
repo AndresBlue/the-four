@@ -199,7 +199,7 @@ static func dress(builder, node: Node3D, room: Dictionary) -> void:
 	if set_name == "corridor" and minf(FLOOR.size_of(room).x, FLOOR.size_of(room).y) < 5.0: set_name = "passage"
 	var sets: Array = SETS.get(set_name, [])
 	var k := 0
-	for stretch in stretches(room, builder.palette):
+	for stretch in builder.wall_stretches(room):
 		var frame: Transform3D = stretch[0]
 		var holder := Node3D.new()
 		holder.name = "Stretch_%d" % k
@@ -338,18 +338,20 @@ static func furnish(builder, holder: Node3D, pick: String, width: float, seed_po
 			# Where nobody empties them any more, a full bag left beside it.
 			elif kept >= 1: put(builder, holder, "trashbag", Vector3(0.42, 0, 0.3), v.call(45) * TAU, 1.0, true)
 		_:
-			# A long-case clock on a bare stretch of a room, a lounge or a
-			# dining room that is still kept (and has no wall clock here).
-			if kept == 0 and int(room.type) in builder.palette.CLOCK_ROOMS and v.call(46) >= 0.3 and v.call(133) < 0.45: put(builder, holder, "vintage_grandfather_clock_01", Vector3(0, 0, 0.25), 0.0, 1.0, true)
-			# A bare stretch: what a neglected room leaves lying about.
-			if kept >= 1: litter(builder, holder, seed_pos, kept)
+			# A floor kind's own picks first (R1); the rest as the hotel's.
+			if not builder.furnish_pick(holder, pick, width, seed_pos, kept, room):
+				# A long-case clock on a bare stretch of a room, a lounge or a
+				# dining room that is still kept (and has no wall clock here).
+				if kept == 0 and int(room.type) in builder.palette.CLOCK_ROOMS and v.call(46) >= 0.3 and v.call(133) < 0.45: put(builder, holder, "vintage_grandfather_clock_01", Vector3(0, 0, 0.25), 0.0, 1.0, true)
+				# A bare stretch: what a neglected room leaves lying about.
+				if kept >= 1: litter(builder, holder, seed_pos, kept)
 	# A clock on one wall in some rooms.
 	if pick in ["", "chairs", "armchair", "chair"] and v.call(46) < 0.3:
 		place(builder, holder, "wall_clock", Transform3D(Basis.IDENTITY, Vector3(0.2, 2.05, WALL_FACE + 0.027)))
 	# A fuse box on the wall of some service rooms, over nothing taller than a
 	# stack of boxes. Every planta has one at least (fuse_boxes_left()): the
 	# stretches it could hang on are kept for that.
-	if pick in ["", "boxes", "bins", "baskets"]:
+	if builder.fuse_boxes() and pick in ["", "boxes", "bins", "baskets"]:
 		if int(room.type) in builder.palette.FUSE_ROOMS and v.call(134) < 0.4: fuse_box(builder, holder, room)
 		elif int(room.type) != builder.palette.REFUGE and not bool(room.get("landing", false)): builder.panel_spares.append({"wing": int(room.get("wing", 0)), "holder": holder, "room": room})
 
@@ -553,6 +555,8 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 	var span := FLOOR.size_of(room)
 	var height: float = room.height
 	var open: Array = room.get("open_sides", [])
+	# No grime on glass (R4; the hotel has none).
+	var glazed: Array = room.get("glazed", [])
 	var count: int = [4, 9, 16][kept]
 	var base := node.position
 	var ways := FLOOR.doorways(room)
@@ -561,7 +565,7 @@ static func decals(builder, node: Node3D, room: Dictionary, kept: int) -> void:
 		var along: float = builder.vary(base, 220 + i) * 2.0 - 1.0
 		var sides := []
 		for wall in walls(span):
-			if not open.has(wall[0]): sides.append(wall)
+			if not open.has(wall[0]) and not glazed.has(wall[0]): sides.append(wall)
 		if sides.is_empty() or roll < 0.3:
 			# On the floor: stains, gum in public rooms, footprints where it is abandoned.
 			var pick: String = ["SurfaceImperfections001", "SurfaceImperfections013", "SurfaceImperfections017"][int(builder.vary(base, 240 + i) * 3)]

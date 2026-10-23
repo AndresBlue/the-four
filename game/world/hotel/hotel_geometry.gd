@@ -582,6 +582,9 @@ static func material_of(group: String) -> String:
 ## through a still copy instead (a 3.5 cm sway never shows in a shadow).
 const SWAYING := ["curtain"]
 
+## Whether a batch of pieces stands in the bounce light (H4).
+func bounces(_group: String) -> bool: return true
+
 func flush() -> void:
 	for batch in batches.values():
 		for group in batch.groups:
@@ -615,7 +618,7 @@ func flush() -> void:
 			elif group.ends_with("@plain"): kit_plain(instance, batch.parent)
 			batch.parent.add_child(instance)
 			# The bounce light is baked from the plain pieces on every preset.
-			if room != null and not only_kit: bounce.add(batch.parent.get_instance_id(), group, transforms)
+			if room != null and not only_kit and bounces(group): bounce.add(batch.parent.get_instance_id(), group, transforms)
 			if material_of(group) in SWAYING:
 				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				var still := MultiMeshInstance3D.new()
@@ -889,12 +892,12 @@ const SEAL_DEPTH := 0.04
 const SEAL_OVERLAP := 0.12
 const SEAL_LIP := 0.04
 const OPENING_HIGH := 2.65
-func light_seal() -> MeshInstance3D:
-	var bounds := DOOR_LEAF.get_aabb()
+func light_seal(mesh: Mesh = DOOR_LEAF) -> MeshInstance3D:
+	var bounds := mesh.get_aabb()
 	return shadow_block("LightSeal", Vector3(bounds.size.x - 0.02, bounds.size.y - 0.02, SEAL_DEPTH), bounds.get_center() * Vector3(1, 1, 0))
 
-func jamb_seal(center: Vector3, yaw: float) -> Node3D:
-	var stop := door_stop()
+func jamb_seal(center: Vector3, yaw: float, frame: Mesh = null) -> Node3D:
+	var stop := door_stop(frame)
 	stop.name = "JambSeal"
 	stop.position = center
 	stop.rotation.y = yaw
@@ -903,7 +906,7 @@ func jamb_seal(center: Vector3, yaw: float) -> Node3D:
 ## The jamb strips are drawn, like the stop of a real door frame: through the
 ## crack beside a shut leaf you saw straight into the lit room next door.
 ## The two sides and the head are one mesh, the same for every doorway.
-func door_stop() -> MeshInstance3D:
+func door_stop(frame: Mesh = null) -> MeshInstance3D:
 	if stop_mesh == null:
 		var edge := FLOOR.PORTAL * 0.5
 		var side_width := SEAL_LIP + SEAL_OVERLAP
@@ -921,8 +924,36 @@ func door_stop() -> MeshInstance3D:
 	var block := MeshInstance3D.new()
 	block.name = "Stop"
 	block.mesh = stop_mesh
-	block.material_override = DOOR_FRAME.surface_get_material(0)
+	block.material_override = (frame if frame != null else DOOR_FRAME).surface_get_material(0)
 	return block
+
+## Each face shows the number of the room behind the door, as seen from the
+## room that face looks into, on a brass plaque screwed to the leaf. A door
+## into service or common space has no plaque at all. (H2: a floor kind may
+## mark its doors otherwise.)
+func door_plaques(door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, yaw: float) -> void:
+	var half := FLOOR.LEAF_WIDTH * 0.5
+	var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
+	for which in 2:
+		var behind: Dictionary = a if which == 0 else b
+		var number := int(behind.get("number", 0))
+		if number <= 0: continue
+		var side := b_side if which == 0 else -b_side
+		# On a holder of its own, which says which face it is on: 0 the one
+		# that looks the way the shut leaf's +z does, 1 the other
+		# (door_halves).
+		var plaque := Node3D.new()
+		plaque.name = "Plaque_%d" % which
+		plaque.set_meta("side", 0 if side > 0.0 else 1)
+		door.add_child(plaque)
+		box(plaque, Vector3(half, 1.94, side * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
+		text(door, str(number), Vector3(half, 1.94, side * (LEAF_FACE + 0.005)), 0.0 if side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
+
+## The leaf and the casing of the door between two rooms: a floor kind may
+## hang other doors (spec_f1_geometry.md H1).
+func leaf_mesh(_a: Dictionary, _b: Dictionary) -> Mesh: return DOOR_LEAF
+
+func frame_mesh(_a: Dictionary, _b: Dictionary) -> Mesh: return DOOR_FRAME
 
 ## The power goes. Every light in the hotel dies at once: the ceilings, the
 ## lamps inside the furniture, the wall sconces, the service battens and the
@@ -1087,13 +1118,13 @@ func build(data: Dictionary) -> void:
 		add_child(door)
 		var leaf := MeshInstance3D.new()
 		leaf.name = "Leaf"
-		leaf.mesh = DOOR_LEAF
+		leaf.mesh = leaf_mesh(a, b)
 		# A leaf and its casing stand in both rooms' bounce volumes: Godot
 		# lit each face with both, and a shut door's far face glowed with the
 		# lamps of the room behind it. Doors take no bounce light.
 		leaf.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		door.add_child(leaf)
-		door.add_child(light_seal())
+		door.add_child(light_seal(leaf.mesh))
 		# The body keeps the leaf's original box: walking, the creature's reach
 		# and the physical checks were all tuned against it.
 		var shape := CollisionShape3D.new()
@@ -1106,33 +1137,16 @@ func build(data: Dictionary) -> void:
 		# The casing belongs to the wall, not the leaf: it stays when it swings.
 		var casing := MeshInstance3D.new()
 		casing.name = "Casing_%d_%d" % [a.id, b.id]
-		casing.mesh = DOOR_FRAME
+		casing.mesh = frame_mesh(a, b)
 		casing.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		casing.position = center
 		casing.rotation.y = yaw
 		add_child(casing)
-		var stop := jamb_seal(center, yaw)
+		var stop := jamb_seal(center, yaw, casing.mesh)
 		add_child(stop)
 		# They belong to the wall, but are shown only as far as the door is.
 		door_fixtures.append([casing, stop])
-		# Each face shows the number of the room behind the door, as seen from
-		# the room that face looks into, on a brass plaque screwed to the leaf.
-		# A door into service or common space has no plaque at all.
-		var b_side := signf((FLOOR.position_of(b) - center).dot(Basis(Vector3.UP, yaw).z))
-		for which in 2:
-			var behind: Dictionary = a if which == 0 else b
-			var number := int(behind.get("number", 0))
-			if number <= 0: continue
-			var side := b_side if which == 0 else -b_side
-			# On a holder of its own, which says which face it is on: 0 the one
-			# that looks the way the shut leaf's +z does, 1 the other
-			# (door_halves).
-			var plaque := Node3D.new()
-			plaque.name = "Plaque_%d" % which
-			plaque.set_meta("side", 0 if side > 0.0 else 1)
-			door.add_child(plaque)
-			box(plaque, Vector3(half, 1.94, side * (LEAF_FACE + 0.002)), Vector3(0.34, 0.19, 0.004), "gold")
-			text(door, str(number), Vector3(half, 1.94, side * (LEAF_FACE + 0.005)), 0.0 if side > 0 else PI, 20, NUMBER_REACH, PLAQUE_INK)
+		door_plaques(door, a, b, center, yaw)
 		# The door on to the next wing is the gate of its stage: shut, locked,
 		# and never open at the start.
 		var stage := gate_stage(data, int(a.id), int(b.id))
@@ -1329,12 +1343,18 @@ func fittings(node: Node3D, room: Dictionary) -> void:
 ## Its ceiling lamp: the fixture and its one shadowed light, filed in
 ## lights (a room's lamp is lights[id]).
 func room_lamp(node: Node3D, room: Dictionary) -> void:
+	lamp_light(node, room, lamp_fixture(node, room))
+
+## The room lamp's fixture (H6): builds what is seen of it and says what its
+## light is: {color, energy, profile, position, specular, tube (a fluorescent
+## the blackout and the drain treat as one), failing (the material of a tube
+## that flickers, or "")}. A floor kind draws its own fixtures.
+func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 	var height: float = room.height
-	var span := FLOOR.size_of(room)
 	# Central sightlines remain open; booths sit against the perimeter.
 	var lamp: String = palette.lamp_of(room)
 	var service: bool = lamp == "batten"
-	var light := OmniLight3D.new()
+	var light := {"tube": service, "failing": "", "specular": 0.45 if service else 0.6}
 	var failing := service and vary(node.position, 3) < 0.35
 	if service:
 		# Fluorescent batten: cold, even, occasionally failing.
@@ -1343,11 +1363,12 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 			tube = "tube_%d" % flickers.size()
 			materials[tube] = materials.light.duplicate()
 			materials[tube].emission = Color("d8f0dc")
+			light.failing = tube
 		box(node, Vector3(0, height - 0.04, 0), Vector3(1.5, 0.08, 0.32), "metal")
 		for z in [-0.08, 0.08]: box(node, Vector3(0, height - 0.11, z), Vector3(0.05, 1.38, 0.05), tube, false, "cylinder", Vector3(0, 0, PI / 2))
-		light.light_color = LIGHTING.light_color(LIGHTING.FLUORESCENT, LIGHTING.TUBE_TINT)
-		light.light_energy = 3.4 * LIGHTING.PROFILE_GAIN
-		light.set_meta("profile", LIGHTING.profile("tube"))
+		light.color = LIGHTING.light_color(LIGHTING.FLUORESCENT, LIGHTING.TUBE_TINT)
+		light.energy = 3.4 * LIGHTING.PROFILE_GAIN
+		light.profile = LIGHTING.profile("tube")
 		light.position = Vector3(0, height - 0.35, 0)
 	elif lamp == "chandelier":
 		# A chandelier, its light among its shades.
@@ -1364,9 +1385,9 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		else: lit_sconces.append(chandelier)
 		node.add_child(chandelier)
 		if not (room.type in palette.SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
-		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
-		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
-		light.set_meta("profile", LIGHTING.profile("chandelier"))
+		light.color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
+		light.energy = 3.6 * LIGHTING.PROFILE_GAIN
+		light.profile = LIGHTING.profile("chandelier")
 		light.position = Vector3(0, height - drop + 0.26 * CHANDELIER_SCALE, 0)
 	else:
 		# Frosted dome in a brass ring: warm pool with darker corners.
@@ -1374,14 +1395,26 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		# A plaster rose round it (the kit's), where the ceiling is plaster.
 		if not (room.type in palette.SERVICE_CEILINGS): place(node, MOULDINGS.rose(), Transform3D(Basis.IDENTITY, Vector3(0, height, 0)), false, "ceiling", true)
 		box(node, Vector3(0, height - 0.13, 0), Vector3(0.46, 0.16, 0.46), "light_off" if dark_room(room) else "light", false, "cone", Vector3(PI, 0, 0))
-		light.light_color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
-		light.light_energy = 3.6 * LIGHTING.PROFILE_GAIN
-		light.set_meta("profile", LIGHTING.profile("dome"))
+		light.color = LIGHTING.light_color(LIGHTING.INCANDESCENT)
+		light.energy = 3.6 * LIGHTING.PROFILE_GAIN
+		light.profile = LIGHTING.profile("dome")
 		light.position = Vector3(0, height - 0.45, 0)
+	return light
+
+## The room's one shadowed light, from what its fixture says (H6): the same
+## for every floor kind, as the tools and the layers read lights[id].
+func lamp_light(node: Node3D, room: Dictionary, spec: Dictionary) -> OmniLight3D:
+	var span := FLOOR.size_of(room)
+	var service: bool = spec.tube
+	var light := OmniLight3D.new()
+	light.light_color = spec.color
+	light.light_energy = spec.energy
+	light.set_meta("profile", spec.profile)
+	light.position = spec.position
 	light.omni_range = ROOM_LAYERS.lamp_range(span)
 	light.omni_attenuation = 1.25
 	light.light_size = LAMP_SIZE * preset.penumbra
-	light.light_specular = 0.45 if service else 0.6
+	light.light_specular = spec.specular
 	light.shadow_enabled = true
 	# Small biases so thin shelves and trays still block light and glints.
 	# Lower ones (0.01 and 0.25 were tried) cover walls and ceilings in
@@ -1410,8 +1443,9 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		light.set_meta("off", true)
 		light.visible = false
 	if service: tubes.append({"light": light, "energy": light.light_energy})
-	if failing:
-		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials["tube_%d" % flickers.size()], "glow": materials.light.emission_energy_multiplier})
+	if not String(spec.failing).is_empty():
+		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[spec.failing], "glow": materials.light.emission_energy_multiplier})
+	return light
 
 ## What only some rooms have: the reception's red beacon and the refuge's
 ## exit signs. Both retouch the lamp room_lamp() has just made.
@@ -1539,6 +1573,7 @@ func build_exit_door(data: Dictionary) -> void:
 	# The cell behind that door is the lift lobby, and its doorway is the wall
 	# the two of them share.
 	var beyond := int(last.get("beyond", -1))
+	var other: Dictionary = data.rooms[beyond] if beyond >= 0 else room
 	var yaw := PI / 2 if direction.x != 0 else 0.0
 	var turn: float = DOOR.OPEN_TURN
 	if beyond >= 0:
@@ -1563,9 +1598,9 @@ func build_exit_door(data: Dictionary) -> void:
 	door.gate_stage = int(last.stage)
 	var leaf := MeshInstance3D.new()
 	leaf.name = "Leaf"
-	leaf.mesh = DOOR_LEAF
+	leaf.mesh = leaf_mesh(room, other)
 	door.add_child(leaf)
-	door.add_child(light_seal())
+	door.add_child(light_seal(leaf.mesh))
 	var shape := CollisionShape3D.new()
 	# By this name the door finds it to tell whether somebody stands in the
 	# leaf (hotel_door.holds_somebody); unnamed, it never found it and went
@@ -1579,11 +1614,11 @@ func build_exit_door(data: Dictionary) -> void:
 	add_child(door)
 	var casing := MeshInstance3D.new()
 	casing.name = "ExitCasing"
-	casing.mesh = DOOR_FRAME
+	casing.mesh = frame_mesh(room, other)
 	casing.position = centre
 	casing.rotation.y = yaw
 	add_child(casing)
-	var stop := jamb_seal(centre, yaw)
+	var stop := jamb_seal(centre, yaw, casing.mesh)
 	add_child(stop)
 	# Same as every other door: its casing and stop are shown with it.
 	door_fixtures.append([casing, stop])
@@ -1687,33 +1722,7 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	car.rotation.y = atan2(-back.x, -back.z)
 	node.add_child(car)
 	car_frame = node.transform * car.transform
-	var body := MeshInstance3D.new()
-	body.name = "Car"
-	body.mesh = LIFT_CAR
-	car.add_child(body)
-	car_leaves = []
-	for k in LIFT_LEAVES.size():
-		var leaf := MeshInstance3D.new()
-		leaf.name = "Leaf"
-		leaf.mesh = LIFT_LEAVES[k]
-		# Seen from the lobby and from inside: lit by both.
-		leaf.set_meta("lobby_side", true)
-		car.add_child(leaf)
-		car_leaves.append({"node": leaf, "shut": 0.0, "open": LEAF_TRAVEL[k]})
-	var call := MeshInstance3D.new()
-	call.name = "CallButtons"
-	call.mesh = LIFT_CALL
-	call.position = Vector3(CALL_AT.x, CALL_AT.y, LIFT_PROUD - 0.001)
-	call.set_meta("lobby_side", true)
-	car.add_child(call)
-	var screen := MeshInstance3D.new()
-	screen.name = "Display"
-	screen.mesh = LIFT_SCREEN
-	screen.position = Vector3(0, SCREEN_AT, LIFT_PROUD - 0.001)
-	screen.set_meta("lobby_side", true)
-	car.add_child(screen)
-	car_digits(screen, Vector3(0, 0, 0.027), 0.0)
-	car_digits(car, PANEL_SCREEN - Vector3(0, 0, 0.003), PI)
+	car_leaves = car_body(car, room)
 	# What stops a body: the lift wall has the doorway, and behind it are the
 	# car's sides, back and ceiling. The rest of the space between the lift
 	# wall and the cell's own is filled, so nobody is ever in it and the
@@ -1733,6 +1742,39 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	# Its light, which is the only one it has and never goes out with the rest.
 	car.add_child(box_light(Vector3(inside.get_center().x, inside.end.y - 0.25, inside.get_center().z)))
 	return node.position + car.position + car.basis * Vector3(inside.get_center().x, 0, inside.get_center().z) - Vector3(0, 0.006, 0)
+
+## What is seen of the car (H7): its model, its leaves, the call buttons and
+## the floor display with their digits; returns the leaves as car_leaves
+## keeps them ({node, shut, open}). A floor kind's car looks otherwise.
+func car_body(car: Node3D, _room: Dictionary) -> Array:
+	var body := MeshInstance3D.new()
+	body.name = "Car"
+	body.mesh = LIFT_CAR
+	car.add_child(body)
+	var leaves: Array = []
+	for k in LIFT_LEAVES.size():
+		var leaf := MeshInstance3D.new()
+		leaf.name = "Leaf"
+		leaf.mesh = LIFT_LEAVES[k]
+		# Seen from the lobby and from inside: lit by both.
+		leaf.set_meta("lobby_side", true)
+		car.add_child(leaf)
+		leaves.append({"node": leaf, "shut": 0.0, "open": LEAF_TRAVEL[k]})
+	var call := MeshInstance3D.new()
+	call.name = "CallButtons"
+	call.mesh = LIFT_CALL
+	call.position = Vector3(CALL_AT.x, CALL_AT.y, LIFT_PROUD - 0.001)
+	call.set_meta("lobby_side", true)
+	car.add_child(call)
+	var screen := MeshInstance3D.new()
+	screen.name = "Display"
+	screen.mesh = LIFT_SCREEN
+	screen.position = Vector3(0, SCREEN_AT, LIFT_PROUD - 0.001)
+	screen.set_meta("lobby_side", true)
+	car.add_child(screen)
+	car_digits(screen, Vector3(0, 0, 0.027), 0.0)
+	car_digits(car, PANEL_SCREEN - Vector3(0, 0, 0.003), PI)
+	return leaves
 
 ## The lobby's wall with the lift in it: the width of the cell, FLOOR.LIFT_DEPTH
 ## in from the wall the car backs on to, finished like every other wall
@@ -1905,6 +1947,9 @@ static func prop_transform(room: Dictionary, prop: Dictionary, room_palette: GDS
 	var corner := 4.35 if domestic else 3.95
 	var basis := Basis(Vector3.UP, prop.rotation * PI / 2).scaled(Vector3.ONE * (0.85 if domestic else 1.0))
 	var at := Vector3(-corner if prop.slot % 2 == 0 else corner, 0, -corner if prop.slot < 2 else corner)
+	# A floor that writes its corner sockets (room.sockets, the offices) has
+	# already pulled them clear of a lift (H8); the hotel's rooms have none.
+	if room.has("sockets"): return Transform3D(basis, Vector3(float(room.sockets[prop.slot][0]), 0, float(room.sockets[prop.slot][1])))
 	# In a lobby with a lift the two corners at its end are in front of the
 	# lift wall, not behind it (FLOOR.LIFT_DEPTH).
 	var lift := FLOOR.lift_wall(room)
@@ -2187,11 +2232,13 @@ func apply_static_light() -> void:
 ## Every door's halves (door_halves).
 func make_halves() -> void:
 	if not door_halves.is_empty() or room_layers.is_empty(): return
-	var casings := HALVES.of(DOOR_FRAME)
-	var leaves := HALVES.of(DOOR_LEAF)
 	for i in doors.size():
 		var door: Node3D = doors[i]
 		var casing: MeshInstance3D = door_fixtures[i][0]
+		# Each door's own meshes (leaf_mesh(), frame_mesh()): HALVES caches by mesh.
+		var leaf_node := door.get_node_or_null("Leaf") as MeshInstance3D
+		var casings := HALVES.of(casing.mesh)
+		var leaves := HALVES.of(leaf_node.mesh if leaf_node != null else DOOR_LEAF)
 		var across: Vector3 = Basis(Vector3.UP, door.closed_rotation).z * 0.7
 		var bits := [layer_at(door.doorway + across + Vector3.UP), layer_at(door.doorway - across + Vector3.UP)]
 		var entry := {"bits": bits, "casing": [], "sided": [], "open": true}
@@ -2234,18 +2281,22 @@ func late_arrival(node: Node) -> void:
 func bodies() -> Array:
 	return get_tree().get_nodes_in_group(&"hotel_players") + get_tree().get_nodes_in_group(&"hotel_actors")
 
+## The room layer a body at `at` (its feet) is on: negative for none, as in a
+## crawl space outside every room (H10); the hotel's is always a room's or 0.
+func body_bit(at: Vector3) -> int: return layer_at(at + Vector3(0, 0.9, 0))
+
 func follow_bodies() -> void:
 	body_clock += 1
 	for body in bodies():
 		if not body is Node3D: continue
-		var bit := layer_at((body as Node3D).global_position + Vector3(0, 0.9, 0))
+		var bit := body_bit((body as Node3D).global_position)
 		if bit == 0 or (int(body.get_meta("room_layer", 0)) == bit and body_clock % 20 != 0): continue
 		body.set_meta("room_layer", bit)
 		for mesh in body.find_children("*", "GeometryInstance3D", true, false):
 			# A mesh off layer 1 that asks for it (the Lurker's face) follows the
 			# rooms too; a first-person body on layer 2 alone must not.
-			if mesh.has_meta("follow_rooms"): ROOM_LAYERS.put_on_actor(mesh, bit)
-			else: ROOM_LAYERS.put_on(mesh, bit)
+			if mesh.has_meta("follow_rooms"): ROOM_LAYERS.put_on_actor(mesh, maxi(bit, 0))
+			else: ROOM_LAYERS.put_on(mesh, maxi(bit, 0))
 
 ## Something put down in a room that is nobody's body and in no group (the
 ## figure a frayed mind sees): on the layer of the room it stands in, once.
@@ -2574,7 +2625,11 @@ func _process(delta: float) -> void:
 			level = 0.95 + sin(t * 314.0) * 0.02
 			if burst: level = 0.25 if chatter > 0.1 else 1.0
 		# A drained room's tube flickers at what is left of it (drain()).
-		lamp.light_energy = entry.energy * level * (1.0 - drained(int(lamp.get_meta("room", -1))))
+		# A lamp that is one of several (a failing troffer) moves the room light
+		# by its share only (H5); the whole lamp is share 1.
+		var share := float(entry.get("share", 1.0))
+		var lit_level := level if share == 1.0 else 1.0 - share * (1.0 - level)
+		lamp.light_energy = entry.energy * lit_level * (1.0 - drained(int(lamp.get_meta("room", -1))))
 		entry.material.emission_energy_multiplier = entry.glow * level
 
 ## Public-domain paintings (assets/paintings, tools/textures/ingest_dressing.py)
@@ -2703,11 +2758,30 @@ func big_hide(furniture: Node3D) -> void:
 func build_prop(node: Node3D, kind: String) -> void:
 	preload("res://game/world/hotel/prop_factory.gd").build(self, node, kind)
 
+## The lift's sounds and the fluorescent hum of this floor (H9). lifts.gd and
+## world_audio.gd still name the hotel's own; they ask these once a floor has
+## other sounds (1d's office ingest).
+func lift_sounds() -> Dictionary:
+	return {"close": "res://assets/audio/sfx/lift/doors_close.wav", "open": "res://assets/audio/sfx/lift/doors_open.wav", "descent": "res://assets/audio/sfx/lift/descent.wav", "bell": "res://assets/audio/sfx/lift/bell.wav"}
+
+func hum_path() -> String: return "res://assets/audio/dread/fluorescent_hum.wav"
+
+## room_dressing's hooks (R1 to R3): a floor kind's own wall picks (true when
+## it placed the pick), its stretches of wall, and whether it hangs fuse boxes.
+func furnish_pick(_holder: Node3D, _pick: String, _width: float, _seed_pos: Vector3, _kept: int, _room: Dictionary) -> bool: return false
+
+func wall_stretches(room: Dictionary) -> Array: return DRESSING.stretches(room, palette)
+
+func fuse_boxes() -> bool: return true
+
+## How far from the walls the navigation keeps (H3).
+func nav_agent_radius() -> float: return 0.4
+
 func build_navigation() -> void:
 	var nav := NavigationMesh.new()
 	nav.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
 	nav.geometry_collision_mask = 1
-	nav.agent_radius = 0.4
+	nav.agent_radius = nav_agent_radius()
 	nav.agent_height = 1.8
 	nav.agent_max_climb = 0.1
 	# Four voxels to the agent's radius. At 0.2 the rasterised bake lost width
