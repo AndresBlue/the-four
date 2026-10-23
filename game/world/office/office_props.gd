@@ -143,8 +143,9 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"desk":
 			desk(builder, holder, Vector3(0, 0, -size.y * 0.5 + 0.375), 1.0, seed_pos)
 		"desk_pair":
-			desk(builder, holder, Vector3(0, 0, -0.375), 1.0, seed_pos)
-			desk(builder, holder, Vector3(0, 0, 0.375), -1.0, seed_pos + Vector3(0.5, 0, 0))
+			# Back to back, each chair out on its own side (the pair's 2.6 m).
+			desk(builder, holder, Vector3(0, 0, -0.375), -1.0, seed_pos)
+			desk(builder, holder, Vector3(0, 0, 0.375), 1.0, seed_pos + Vector3(0.5, 0, 0))
 		"partition":
 			builder.box(holder, Vector3(0, 0.75, 0), Vector3(size.x, 1.5, 0.05), "partition_fabric", true)
 			builder.box(holder, Vector3(0, 1.51, 0), Vector3(size.x, 0.02, 0.06), "steel_frame")
@@ -180,6 +181,10 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 const DESK_MODEL := "res://assets/props/hotel/metal_office_desk.res"
 const DESK_FIT := Vector3(0.75, 0.96, 0.79)
 static var desk_mesh: Mesh = null
+## The chair's model, likewise.
+const CHAIR_MODEL := "res://assets/props/hotel/SchoolChair_01.res"
+const CHAIR_FIT := 0.8
+static var chair_mesh: Mesh = null
 
 ## A steel desk (top at 0.74) with its chair pulled up on the side `face`
 ## looks to (+Z for 1).
@@ -200,6 +205,12 @@ static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed
 ## A stacking chair facing `face` (+Z for 1): seat 0.45 high, back behind.
 static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float) -> void:
 	builder.box(holder, at + Vector3(0, 0.23, 0), Vector3(0.44, 0.46, 0.42), "", true)
+	if chair_mesh == null and ResourceLoader.exists(CHAIR_MODEL): chair_mesh = load(CHAIR_MODEL)
+	if chair_mesh != null:
+		# Poly Haven's stacking chair, 1.01 m tall as downloaded: at 0.8, a
+		# real one's height.
+		builder.place(holder, chair_mesh, Transform3D(Basis(Vector3.UP, 0.0 if face > 0.0 else PI).scaled(Vector3.ONE * CHAIR_FIT), at))
+		return
 	builder.box(holder, at + Vector3(0, 0.45, 0), Vector3(0.44, 0.03, 0.42), "steel_olive")
 	builder.box(holder, at + Vector3(0, 0.7, -face * 0.2), Vector3(0.42, 0.4, 0.03), "steel_olive")
 	for x in [-0.19, 0.19]:
