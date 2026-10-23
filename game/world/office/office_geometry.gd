@@ -30,6 +30,7 @@ const MULLION_PITCH := 1.2
 const GLASS_THICK := 0.008
 const BLIND_PITCH := 0.022
 const BLIND := preload("res://game/presentation/shaders/venetian_blind.gdshader")
+const WIRED_GLASS := preload("res://game/presentation/shaders/wired_glass.gdshader")
 ## A door's plaque on the wall (6.7): size, height, distance past the frame.
 const PLAQUE := Vector2(0.26, 0.09)
 const PLAQUE_Y := 1.55
@@ -52,12 +53,9 @@ const FAILING := 0.12              # lit rooms with one failing troffer (vary sa
 
 func _init() -> void:
 	super()
-	var glass := StandardMaterial3D.new()
-	glass.albedo_color = Color(0.72, 0.8, 0.78, 0.18)
-	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	glass.roughness = 0.05
-	glass.metallic_specular = 0.8
-	glass.set_meta("stand_in", true)
+	# Wired glass: a tinted pane with its square mesh of wire (6.3).
+	var glass := ShaderMaterial.new()
+	glass.shader = WIRED_GLASS
 	materials["wired_glass"] = glass
 	for key in PLAIN:
 		var plain := StandardMaterial3D.new()
