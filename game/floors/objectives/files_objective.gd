@@ -3,7 +3,8 @@ extends "res://game/floors/objectives/objective.gd"
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
 ## the reader beside the freight lift's door, which then opens. Not built yet:
-## the photo (2.4) and a dropped card. The receipt and the card are held up when they come (1h, drawn by
+## a dropped card, and a photo sent to the others (each machine keeps the one
+## its own player was taken in). The receipt and the card are held up when they come (1h, drawn by
 ## hint_view.gd), and the pause lines say where the card is.
 const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -38,6 +39,12 @@ var typing_voice = null
 ## each request's capsule: {node, path (points), length, hiss}.
 var tube_parent: Array = []
 var capsules := {}
+## Owner seat -> the ceiling camera's picture of them typing (this machine's).
+var textures := {}
+var snapping := false
+## The picture: its size, and how far into the typing it is taken.
+const PHOTO_SIZE := Vector2i(240, 304)
+const TYPE_PHOTO_AT := 0.6
 const TUBE_RADIUS := 0.055
 
 func manifest() -> Dictionary: return level.manifest
@@ -87,6 +94,10 @@ func place() -> void:
 		lamps.append(lamp)
 		usable.set_meta("number", int(e.number))
 	tubes_built(m)
+	# The ceiling camera over the window, looking at whoever types.
+	var eye := v3(m.mail.camera)
+	var camera_box := piece(eye, Vector3(0.12, 0.1, 0.24), Color("2b2b28"), 0.0)
+	camera_box.look_at(v3(m.mail.camera_target), Vector3.UP)
 	var reader: Dictionary = m.mail.reader
 	var reader_at := v3(reader.point)
 	var reader_out := facing(float(reader.yaw))
@@ -235,7 +246,7 @@ func add_usable(xform: Transform3D, action: String, stand: Vector3, yaw: float):
 	return usable
 
 ## A plain box standing in for a model to come (1h and the ingest).
-func piece(at: Vector3, size: Vector3, colour: Color, yaw: float) -> void:
+func piece(at: Vector3, size: Vector3, colour: Color, yaw: float) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	var cube := BoxMesh.new()
 	cube.size = size
@@ -247,6 +258,7 @@ func piece(at: Vector3, size: Vector3, colour: Color, yaw: float) -> void:
 	mesh.position = at
 	mesh.rotation.y = yaw
 	level.hotel.add_child(mesh)
+	return mesh
 
 ## The station lamps: on while a card waits in their tray.
 func show_state() -> void:
@@ -295,11 +307,53 @@ func hold_of(usable, _seat: int) -> float:
 	return 0.0
 
 func begin_use(usable, seat: int) -> void:
+	# A new attempt is a new picture.
+	if String(usable.action) == "type" and seat == level.player.slot: textures.erase(seat)
 	if String(usable.action) == "type" and seat == level.player.slot:
 		stop_loop(typing_voice)
 		typing_voice = loop_at("typing.wav", usable.global_position, -6.0)
 
-func holding(_usable, _seat: int, _fraction: float) -> void: pass
+## Partway into the typing the ceiling camera takes this machine's player.
+func holding(usable, seat: int, fraction: float) -> void:
+	if String(usable.action) == "type" and seat == level.player.slot and fraction >= TYPE_PHOTO_AT and not snapping and not textures.has(seat): snap(seat)
+
+## The ceiling camera's picture (spec 2.4): the world as it is, from the
+## camera to the typist, grey and grainy as a security monitor. Nothing on a
+## headless machine.
+func snap(seat: int) -> void:
+	if DisplayServer.get_name() == "headless": return
+	snapping = true
+	var m := manifest()
+	var view := SubViewport.new()
+	view.name = "CardPhoto"
+	view.size = PHOTO_SIZE
+	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var camera := Camera3D.new()
+	camera.fov = 48.0
+	camera.current = true
+	view.add_child(camera)
+	level.add_child(view)
+	camera.look_at_from_position(v3(m.mail.camera), v3(m.mail.camera_target), Vector3.UP)
+	var room_node: Node3D = level.hotel.room_nodes[int(m.mail.window)]
+	for frame in 2:
+		await RenderingServer.frame_pre_draw
+		if not is_instance_valid(view):
+			snapping = false
+			return
+		room_node.visible = true
+		view.render_target_update_mode = SubViewport.UPDATE_ONCE
+		await RenderingServer.frame_post_draw
+	var image := view.get_texture().get_image()
+	view.queue_free()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([int(m.seed), "photo", seat])
+	for y in image.get_height():
+		for x in image.get_width():
+			var c := image.get_pixel(x, y)
+			var grey := clampf(c.r * 0.3 + c.g * 0.59 + c.b * 0.11 + rng.randf_range(-0.05, 0.05), 0.0, 1.0)
+			image.set_pixel(x, y, Color(grey * 0.92, grey, grey * 0.9))
+	textures[seat] = ImageTexture.create_from_image(image)
+	snapping = false
 
 func cancel_use(_usable, _seat: int) -> void:
 	stop_loop(typing_voice)
@@ -391,7 +445,7 @@ func office_card(owner: int) -> Dictionary:
 	var r: Dictionary = requests.get(owner, {})
 	if r.is_empty(): return {}
 	var date: Array = level.camcorder.date_parts
-	return {"id": PAPER_BASE + owner * 10 + 1, "kind": "ficha", "planta": 0, "form": {"paper": "ficha", "name": level.seat_name(owner).to_upper(), "number": String(r.number), "department": "SERVICIOS GENERALES", "date": "%02d/%02d/%02d" % [int(date[0]), int(date[1]), int(date[2])], "level": "1"}}
+	return {"id": PAPER_BASE + owner * 10 + 1, "kind": "ficha", "planta": 0, "form": {"paper": "ficha", "name": level.seat_name(owner).to_upper(), "number": String(r.number), "department": "SERVICIOS GENERALES", "date": "%02d/%02d/%02d" % [int(date[0]), int(date[1]), int(date[2])], "level": "1", "photo": textures.get(owner)}}
 
 ## A seat's papers: the receipt of its own request, and every card it holds.
 func own_papers(seat: int) -> Array:
@@ -443,6 +497,7 @@ func reset() -> void:
 		capsules[seat].node.queue_free()
 		stop_loop(capsules[seat].hiss)
 	capsules.clear()
+	textures.clear()
 	requests.clear()
 	swiped.clear()
 	show_state()
