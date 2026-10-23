@@ -1116,7 +1116,7 @@ func catch_up(seat: int, id: int) -> void:
 		if is_instance_valid(piece) and piece.searched:
 			var by: int = int(level.found_by.get(piece.slot, 0)) if piece.digit >= 0 else int(level.code.hints_taken.get(piece.hint, 0)) if piece.hint >= 0 else level.code.key_holder if index == level.code.key_in else 0
 			searched.append([index, by])
-	var progress := {"searched": searched, "code": level.code_entered, "panels": level.code.opened_panels(), "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage}
+	var progress := {"searched": searched, "code": level.code_entered, "panels": level.code.opened_panels(), "lift_away": level.lifts.lift_away.duplicate(), "stage": level.session.stage, "objectives": level.objective_snapshots()}
 	restore.rpc_id(id, doors, hides, places, creature.pack_state() if is_instance_valid(creature) else [], level.sheet_snapshot() if level.rule("shared_sheet") == 1 else [], sets, progress)
 	session_state.rpc_id(id, level.session.state, level.session.participants, level.session.elapsed, level.session.message, level.session.stage, level.session.goal)
 

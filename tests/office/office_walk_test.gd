@@ -186,6 +186,12 @@ func the_card(tag: String) -> void:
 	check("%s: en el lector, PASAR FICHA" % tag, files.word_of(files.usables[reader], player.slot) == "PASAR FICHA")
 	level.match_net.use_office(&"files", "swipe", reader)
 	await frames(10)
+	# What a guest catching up, or Continuar, would be given, given back to a
+	# handler forgetting it: it stands as it was.
+	var kept: Dictionary = level.objective_snapshots()
+	files.reset()
+	level.catch_up_progress({"objectives": kept, "stage": session.stage})
+	check("%s: la ficha vuelve con la instantánea del piso" % tag, kept.has("files") and not kept.has("televisions") and files.swiped.has(player.slot) and files.has_card(player.slot))
 	check("%s: con la cuota pasada, el nivel 1 se cumple y su puerta se abre" % tag, bool(session.goal.get("ready", false)) and not level.hotel.gates[0].locked)
 
 ## Level 2: a zone's lever up lights its rooms, one over the budget trips

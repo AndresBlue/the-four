@@ -368,6 +368,8 @@ func reset() -> void:
 		level.player.transit = {}
 		level.player.global_position = MAIN_DUCT.foot(manifest()).origin + Vector3(0, 0.04, 0)
 
+func snapshotted() -> bool: return true
+
 func snapshot() -> Dictionary: return {"charges": charges, "running_until": running_until, "released": released, "post": post_open, "hatch": hatch_open}
 
 func restore(data: Dictionary) -> void:

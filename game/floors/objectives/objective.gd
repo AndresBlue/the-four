@@ -55,6 +55,10 @@ func loop_at(file: String, point: Vector3, gain: float):
 func stop_loop(voice) -> void:
 	if voice != null: level.world_audio.stop_long(voice)
 
+## Whether its state travels in the floor's own snapshot (catch-up, Continuar:
+## spec_f1_systems 1.4). The hotel's two are carried as they always were.
+func snapshotted() -> bool: return false
+
 ## A paper a usable of this handler shows when read ("read" usables).
 func paper_of(_index: int) -> Dictionary: return {}
 

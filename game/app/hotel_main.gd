@@ -1473,6 +1473,10 @@ func catch_up_progress(progress: Dictionary) -> void:
 		code_entered = true
 		if is_instance_valid(lock): lock.set_open(true)
 	for index in progress.get("panels", []): code.apply_panel(int(index), "open", true)
+	# The offices' handlers: the card, the board, the air, as the host has them.
+	var kept: Dictionary = progress.get("objectives", {})
+	for objective_name in kept:
+		if objectives.has(String(objective_name)): objectives[String(objective_name)].restore(kept[objective_name])
 	var away: Dictionary = progress.get("lift_away", {})
 	for index in away: lifts.lift_away[int(index)] = float(away[index])
 	var stage := int(progress.get("stage", session.stage))
@@ -1582,6 +1586,13 @@ func own_papers() -> Array:
 	var papers: Array = code.own_hints().duplicate()
 	for handler in objectives.values(): papers.append_array(handler.own_papers(player.slot))
 	return papers
+
+## The state of the handlers that carry it in the floor's snapshot, by name.
+func objective_snapshots() -> Dictionary:
+	var kept := {}
+	for objective_name in objectives:
+		if objectives[objective_name].snapshotted(): kept[objective_name] = objectives[objective_name].snapshot()
+	return kept
 
 ## The handlers a stage asks, in the order it lists them (kind.STAGES).
 func stage_objectives(stage := -1) -> Array:

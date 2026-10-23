@@ -318,11 +318,13 @@ func reset() -> void:
 	swiped.clear()
 	show_state()
 
+func snapshotted() -> bool: return true
+
 func snapshot() -> Dictionary: return {"requests": requests.duplicate(true), "swiped": swiped.duplicate()}
 
 func restore(data: Dictionary) -> void:
 	requests = {}
 	var kept: Dictionary = data.get("requests", {})
 	for seat in kept: requests[int(seat)] = kept[seat]
-	swiped = data.get("swiped", []).duplicate()
+	swiped = data.get("swiped", []).map(func(seat): return int(seat))
 	show_state()

@@ -68,6 +68,7 @@ static func take(level) -> Dictionary:
 		"creature": kept,
 		"dark": level.hotel.dark,
 		"sheet": level.sheet_snapshot(),
+		"objectives": level.objective_snapshots(),
 		"plan": level.floor_map.pack(),
 		"ledger": level.ledger.pack(),
 		"tape": [level.tape_rewound, level.stage_tape],
@@ -92,7 +93,7 @@ static func give(level, state: Dictionary) -> void:
 	# With the sector it had reached, and that sector's card over the arrival
 	# (catch_up_progress); reached, not just arrived at: the creature is not
 	# sent after a lift nobody has just taken.
-	level.catch_up_progress({"searched": state.get("searched", []), "code": state.get("code", false), "panels": state.get("panels", []), "lift_away": state.get("lifts", {}).get("away", {}), "stage": stage})
+	level.catch_up_progress({"searched": state.get("searched", []), "code": state.get("code", false), "panels": state.get("panels", []), "lift_away": state.get("lifts", {}).get("away", {}), "stage": stage, "objectives": state.get("objectives", {})})
 	for id in state.get("hints", []): level.code.note_read(int(id))
 	level.last_stage = session.stage
 	var lifts: Dictionary = state.get("lifts", {})

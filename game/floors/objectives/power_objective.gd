@@ -294,10 +294,12 @@ func reset() -> void:
 	show_handles()
 	refresh_power(true)
 
+func snapshotted() -> bool: return true
+
 func snapshot() -> Dictionary: return {"on": on_order.duplicate(), "red": red, "started": red_started, "switches": switch_until.duplicate()}
 
 func restore(data: Dictionary) -> void:
-	on_order = data.get("on", []).duplicate()
+	on_order = data.get("on", []).map(func(z): return int(z))
 	red = int(data.get("red", Red.DOWN))
 	red_started = float(data.get("started", 0.0))
 	var kept: Array = data.get("switches", [])
