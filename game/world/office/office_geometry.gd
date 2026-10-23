@@ -143,6 +143,23 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			box(node, at + Vector3(0, h + 0.01, 0), Vector3(0.595, 0.02, 0.595), "grille_metal")
 		else:
 			box(node, at + Vector3(0, h + 0.6, 0), Vector3(0.6, 1.2, 0.6), "plenum_dark")
+			# Its tile (5.4): hanging from one edge of the hole, or down on
+			# the floor below; no collider either way.
+			var spot: Vector3 = node.position + at
+			if vary(spot, 161) < HANGING:
+				var yaw := floori(vary(spot, 166) * 4.0) * PI * 0.5
+				var drop := lerpf(HANG_ANGLE.x, HANG_ANGLE.y, vary(spot, 167))
+				var hinge := at + Basis(Vector3.UP, yaw) * Vector3(OFFICE.TILE * 0.5, h, 0)
+				var swung := Basis.from_euler(Vector3(0, yaw, drop)) * Vector3(-OFFICE.TILE * 0.5, 0, 0)
+				box(node, hinge + swung, Vector3(OFFICE.TILE, TILE_THICK, OFFICE.TILE), "ceiling_service", false, "box", Vector3(0, yaw, drop))
+			elif vary(spot, 162) < FALLEN:
+				box(node, Vector3(at.x, 0.008, at.z) + Vector3(vary(spot, 163) - 0.5, 0, vary(spot, 164) - 0.5) * 0.8, Vector3(OFFICE.TILE, TILE_THICK, OFFICE.TILE), "ceiling_service", false, "box", Vector3(0, vary(spot, 165) * TAU, 0))
+
+## A gap's tile (spec 5.4): how many hang from the hole and how far they
+## drop (radians), and how many lie on the floor below.
+const HANG_ANGLE := Vector2(0.6, 1.2)
+const HANGING := 0.4
+const FALLEN := 0.5
 
 ## The room being built, for the walls that need it (its stripe).
 var building_room := {}
