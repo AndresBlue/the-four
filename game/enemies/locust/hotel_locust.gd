@@ -2477,3 +2477,20 @@ func save_state() -> Dictionary: return {"at": global_position, "yaw": rotation.
 func restore_state(state: Dictionary, rest: float) -> void:
 	relocate(state.at, rest)
 	rotation.y = float(state.get("yaw", 0.0))
+
+# --- What the level asks at the start (creature.gd) --------------------------
+
+func start_room(stage: int) -> int: return den_room(stage)
+
+func place_at(room_id: int) -> void: patrol_room = room_id
+
+func arm(onslaught: bool) -> void:
+	reach_scale = ONSLAUGHT_REACH if onslaught else 1.0
+	relentless = onslaught
+
+func presence_sound() -> Resource: return sound_profile
+
+func hunter_camera() -> Camera3D: return camera if is_instance_valid(camera) else null
+
+func blackout() -> void:
+	if is_instance_valid(driver) and driver.has_method("mark_blackout"): driver.mark_blackout()

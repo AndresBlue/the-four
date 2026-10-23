@@ -212,6 +212,26 @@ func follow_to_planta(_stage: int, _fresh := false) -> void: pass
 ## enough from everybody (revival.den_away).
 func den_point(_stage: int) -> Vector3: return Vector3.INF
 
+## The room it starts a stage in, on the floor in play; -1 for none (the
+## level then puts it in the floor's start).
+func start_room(_stage: int) -> int: return -1
+
+## Put in a room at the start of the run: where its round begins.
+func place_at(_room_id: int) -> void: pass
+
+## Armed for the run by the difficulty's rules: onslaught, it reaches further
+## and does not ease off.
+func arm(_onslaught: bool) -> void: pass
+
+## The profile its presence plays through world_audio; null for none.
+func presence_sound() -> Resource: return null
+
+## The camera its hunter sees through in versus; null when it has none.
+func hunter_camera() -> Camera3D: return null
+
+## The lights went out: its hunter's view is told.
+func blackout() -> void: pass
+
 ## What of it is kept with a floor left to be continued (floor_save), in a
 ## form the session can write (no objects).
 func save_state() -> Dictionary: return {}

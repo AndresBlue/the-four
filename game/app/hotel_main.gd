@@ -172,8 +172,7 @@ func apply_tuning() -> void:
 func arm_creature() -> void:
 	if not is_instance_valid(locust): return
 	locust.tune(tuning())
-	locust.reach_scale = locust.ONSLAUGHT_REACH if rule("onslaught") == 1 else 1.0
-	locust.relentless = rule("onslaught") == 1
+	locust.arm(rule("onslaught") == 1)
 ## The local player is holding interact inside the refuge (online, the host
 ## counts everyone holding).
 ## Online, Esc opens a menu over the running match instead of pausing it.
@@ -507,7 +506,7 @@ func hand_creature_to_player() -> void:
 	if not is_instance_valid(locust): return
 	locust.set_control("player")
 	player.camera.current = false
-	locust.camera.current = true
+	if locust.hunter_camera() != null: locust.hunter_camera().current = true
 	# It never hears its own presence, online or here.
 	world_audio.set_creature(null)
 	apply_settings()
@@ -901,7 +900,7 @@ func populate_floor(with_director: bool) -> void:
 		hotel.add_child(director)
 	# Watching, its presence is nobody's: a floor built again (the host started
 	# another one) would otherwise bring the sound back.
-	world_audio.set_creature(null if observer else locust.sound_profile)
+	world_audio.set_creature(null if observer else locust.presence_sound())
 	for door in hotel.doors: door.sound_requested.connect(world_audio.door_cue)
 	# Easing wardrobe doors creaks: a quiet noise the creature can pick up.
 	for hide in hotel.hides: hide.peek_started.connect(on_peek)
@@ -975,7 +974,7 @@ func begin_online_play(config: Dictionary) -> void:
 	player.camera.current = not locust_player
 	execution = {}
 	if locust_player:
-		locust.camera.current = true
+		if locust.hunter_camera() != null: locust.hunter_camera().current = true
 		# The hunter does not hear its own presence or dread.
 		world_audio.set_creature(null)
 	# Re-derived, never remembered: the Environment is shared, so the hunter's
@@ -1286,7 +1285,7 @@ func apply_blackout() -> void:
 	rumble(0.35, 0.0, 0.25)
 	hotel.blackout(true)
 	if world_audio.enabled and not world_audio.long_playing(BLACKOUT_SOUND, 1.5, "warp"): world_audio.play_long(BLACKOUT_SOUND, Vector3(0, 2.5, 0), 0.0, RID(), true)
-	if is_instance_valid(locust) and is_instance_valid(locust.driver) and locust.driver.has_method("mark_blackout"): locust.driver.mark_blackout()
+	if is_instance_valid(locust): locust.blackout()
 
 ## And the power comes back, in the wing ahead. What went out belonged to the
 ## wing where the last set was lit: crossing into the next one finds its lights
@@ -1317,7 +1316,7 @@ func update_title_scene() -> void:
 		if is_instance_valid(hotel): hotel.visible = not hotel.building
 		player.visible = not hunter_seat()
 		player.camera.current = not hunter_seat()
-		if hunter_seat() and is_instance_valid(locust) and is_instance_valid(locust.camera): locust.camera.current = true
+		if hunter_seat() and is_instance_valid(locust) and locust.hunter_camera() != null: locust.hunter_camera().current = true
 
 func in_refuge() -> bool:
 	return point_in_refuge(player.position)
@@ -1427,13 +1426,14 @@ func spawn_creature() -> void:
 	locust = (load(kind.CREATURE) as PackedScene).instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
-	# Where it starts the first stage (its den_room()): well into the first
-	# planta, away from the door everyone comes in by and from the refuge. It
-	# goes back there if that stage is given back (den_point()).
-	var chosen: int = locust.den_room(1)
+	# Where it starts the first stage (start_room(), The Locust's den_room()):
+	# well into the first planta, away from the door everyone comes in by and
+	# from the refuge. It goes back there if that stage is given back
+	# (den_point()).
+	var chosen: int = locust.start_room(1)
 	if chosen < 0: chosen = int(manifest.get("start", 0))
 	locust.position = FLOOR.position_of(manifest.rooms[chosen]) + Vector3(0, 0.04, 0)
-	locust.patrol_room = chosen
+	locust.place_at(chosen)
 	arm_creature()
 	locust.grace = float(tuning().grace)
 	add_child(locust)

@@ -16,14 +16,14 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 | 1a Tipo de piso de oficina, paleta, criatura nula | Hecho (`54e99d9`): construido, sin publicar (`floor_index.RELEASED = [1]`) |
 | 1b Generador de oficinas | **Hecho**: U1 a U5 `3bf5ab6`, U6 `6010f41`, U7 a U10 `8dcc122`, U11 y U12 `1231cb5` |
 | 1c Validador y `office_metrics` | **A medias**, sin encargos (el director solo): hechos el refactor de la física base (`room_sweeps()`, `passage_path()`), `office_validator.validate()` con los 15 grupos de la spec 3.1 y la sección «validador» de `office_test` (28 mutaciones y el piso de respaldo); `validate_physics()` de oficinas (3.2) escrito, sin probar hasta 1d; `tools/dev/office_metrics.gd` (3.3) hecho; falta la mutación de la altura de la sala de juntas; `duct_shortcuts` no se exige (ver «Enlaces sueltos») |
-| Contrato para montar el piso 2 en escena | Paso propio antes de 1d, sin encargos (lo describe `spec_f1_generator.md`, notas finales de 1a) |
+| Contrato para montar el piso 2 en escena | **Hecho** (commit siguiente a `b2a16ec`): `creature.gd` suma `start_room()`, `place_at()`, `arm()`, `presence_sound()` (no `sound_profile()`: The Locust ya tiene una variable con ese nombre), `hunter_camera()` y `blackout()`; `hotel_main` solo pregunta eso; `creature_contract_test` 177/177. Queda de las notas de 1a: el Continuar de un piso 2 fuera de `--test-profile` (`built(2)`) |
 | 1c a 1i, fases 2 a 5 | Pendientes |
 
 **Lo primero al retomar:**
 1. Leer el uso (`mcp__ccd_session_mgmt__get_usage`). Hasta el 24 de octubre a las 05:00, el tope es el 90 %.
 2. Si el commit de 1c no está hecho (`git log`): estaba pendiente de un `verify.ps1` en verde. Archivos: `game/world/generation/map_validator.gd`, `game/world/generation/office_validator.gd`, `tests/office/office_test.gd` (124 checks, unos 205 s solo), `tools/verify.ps1` (600 s para `office_test`), `docs/DEVELOPMENT.md`, `.claude/relevo.md`.
-3. Cerrar 1c: leer `evidence/office_metrics.json` (la pasada de 1000 semillas se lanzó al final de la sesión del 23 de octubre; si no está, lanzarla: `godot --headless --script tools/dev/office_metrics.gd -- 1000`, unos 25 minutos, y después `--survivors=1` y `--survivors=5` con menos semillas) y poner su línea de resultado aquí. Con 20 pisos (y los troncos rectos) falla la parte de atajos (5,8 %, decisión 2) y el p99 del tiempo (más de 2.000 ms contra 700 de la spec; la mediana, unos 1.400).
-4. Después: el paso del contrato (antes de 1d).
+3. 1c está cerrado. `office_metrics -- 1000` (23 de octubre, con los troncos rectos): **54/56**; respaldo 0,2 %, 0 rechazados, mediana 1.281 ms; FAIL atajos 5 % (spec 10 %) y p99 2.924 ms (spec 700). Falta correrlo con `--survivors=1` y `--survivors=5`. Con 20 pisos (y los troncos rectos) falla la parte de atajos (5,8 %, decisión 2) y el p99 del tiempo (más de 2.000 ms contra 700 de la spec; la mediana, unos 1.400).
+4. Después: 1d (geometría de oficinas, `spec_f1_geometry.md`), que necesita los assets que piden sesión (ver «Assets»); y probar `--floor=2` de punta a punta. Probado el 23 de octubre sin ventana (`start_floor(7, ..., 2)`): el manifiesto sale (507 salas) con la criatura nula, pero el montaje se para en la geometría del hotel, que no tiene materiales para los acabados de oficina (`vinyl`, `block`); eso es de 1d.
 
 ## Lo que 1b hizo distinto de la especificación (decisiones del director)
 

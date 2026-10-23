@@ -979,6 +979,7 @@ func old_den(stage: int) -> int:
 ## Its den, stage by stage: the room revival.stage_den() drew, and the point
 ## revival.den_point() put it at.
 func dens(it) -> void:
+	var starts: Array = []
 	var wrong: Array = []
 	var found := 0
 	for stage in range(1, level.session.stages + 1):
@@ -991,7 +992,19 @@ func dens(it) -> void:
 			if NavigationServer3D.map_get_iteration_id(map) > 0: point = FLOOR.closest(map, point)
 			point += Vector3(0, 0.04, 0)
 		if int(it.den_room(stage)) != room or it.den_point(stage) != point: wrong.append(stage)
+		if it.start_room(stage) != int(it.den_room(stage)): starts.append(stage)
 	check("den_point() es, etapa a etapa, la guarida que sorteaba la reaparición (%d con guarida)" % found, wrong.is_empty() and found > 0, "difiere en %s" % str(wrong))
+	check("start_room() es den_room(), con la que spawn_creature() la ponía a mano", starts.is_empty(), str(starts))
+	# arm() leaves it as arm_creature() did by hand; put back after.
+	var was := [it.reach_scale, it.relentless]
+	it.arm(true)
+	var onslaught: bool = is_equal_approx(it.reach_scale, LOCUST.ONSLAUGHT_REACH) and it.relentless
+	it.arm(false)
+	var plain: bool = is_equal_approx(it.reach_scale, 1.0) and not it.relentless
+	it.reach_scale = was[0]
+	it.relentless = was[1]
+	check("arm() pone el alcance y la saña de la embestida como lo hacía arm_creature()", onslaught and plain)
+	check("presence_sound() es su sound_profile y hunter_camera() su cámara o nada", it.presence_sound() == it.sound_profile and (it.hunter_camera() == it.camera if is_instance_valid(it.camera) else it.hunter_camera() == null))
 
 ## What a floor kept holds of it is what it held ({at, yaw}, the same bytes),
 ## and a checkpoint's put back does what floor_save.give() did by hand.
@@ -1466,6 +1479,10 @@ func null_creature() -> void:
 	var point: Vector3 = it.den_point(2)
 	it.follow_to_planta(2, true)
 	check("Con un piso de oficinas, su guarida es la de den_room() y al seguir a los supervivientes se pone en ella", den >= 0 and point.is_equal_approx(expected) and it.global_position.is_equal_approx(expected), "%s %s" % [str(point), str(it.global_position)])
+	it.arm(true)
+	it.place_at(den)
+	it.blackout()
+	check("Empieza en esa guarida (start_room()), sin sonido de presencia ni cámara de cazador", it.start_room(2) == den and it.presence_sound() == null and it.hunter_camera() == null)
 	it.free()
 
 # --- The net, the observer and the bots, on the contract ----------------------------

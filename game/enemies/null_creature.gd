@@ -70,3 +70,8 @@ static func den_room(manifest: Dictionary, stage: int) -> int:
 	return best
 
 func debug_lines() -> Array[String]: return ["criatura nula: no hace nada"]
+
+## Its den on the first planta, as den_point() finds it.
+func start_room(stage: int) -> int:
+	if level == null or level.manifest.is_empty(): return -1
+	return den_room(level.manifest, stage)
