@@ -121,6 +121,8 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 
 ## The room being built, for the walls that need it (its stripe).
 var building_room := {}
+## The corridor cells whose zone name is already on a stripe.
+var labelled := {}
 
 func build_room(node: Node3D, room: Dictionary) -> void:
 	building_room = room
@@ -148,6 +150,13 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 		stripe.roughness = 0.7
 		materials[key] = stripe
 	box(boundary, Vector3(x, (STRIPE.x + STRIPE.y) * 0.5, inner * (0.09 + STRIPE_PROUD)), Vector3(length, STRIPE.y - STRIPE.x, 0.004), key)
+	# Once a corridor cell, on its first run long enough, the zone's name on
+	# the stripe.
+	if length < 3.0 or labelled.has(int(building_room.id)): return
+	var label: String = OFFICE.zone_label(manifest, building_room)
+	if label.is_empty(): return
+	labelled[int(building_room.id)] = true
+	text(boundary, label, Vector3(x, (STRIPE.x + STRIPE.y) * 0.5, inner * (0.09 + STRIPE_PROUD + 0.004)), 0.0 if inner > 0 else PI, 12, NUMBER_REACH, Color("f1ead8"))
 
 ## A glazed run (6.3): sill and head as wall, the glass between with its
 ## collider and a mullion every MULLION_PITCH. Both rooms build their half of
