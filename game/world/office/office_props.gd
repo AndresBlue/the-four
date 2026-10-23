@@ -103,3 +103,32 @@ static func shelving(builder: Node3D, node: Node3D, width: float, depth: float, 
 		for k in int(width / 0.36):
 			if builder.vary(seed_pos + Vector3(k, s, 0), 21) > fill: continue
 			builder.box(node, at(y + 0.135, depth) + Vector3(-width * 0.5 + 0.2 + k * 0.36, 0, 0), Vector3(0.33, 0.25, minf(0.39, depth - 0.02)), "cardboard")
+
+## A piece of an archive row (spec 9.4), room-local: slotted-angle shelving
+## `height` tall along x (`along_x`) or z, uprights every metre, six shelves,
+## archive boxes on 60 to 90 % of the places; on a mobile row, a carriage
+## 0.1 high with a crank wheel and two floor rails. One collider for it all.
+static func row(builder: Node3D, node: Node3D, centre: Vector3, length: float, depth: float, height: float, along_x: bool, mobile: bool, seed_pos: Vector3) -> void:
+	var size := Vector3(length, height, depth) if along_x else Vector3(depth, height, length)
+	builder.box(node, centre + Vector3(0, height * 0.5, 0), size, "", true)
+	var along := Vector3(1, 0, 0) if along_x else Vector3(0, 0, 1)
+	var across := Vector3(0, 0, 1) if along_x else Vector3(1, 0, 0)
+	var flat := func(l: float, h: float, d: float) -> Vector3: return Vector3(l, h, d) if along_x else Vector3(d, h, l)
+	var base := 0.0
+	if mobile:
+		base = 0.1
+		builder.box(node, centre + Vector3(0, 0.05, 0), flat.call(length, 0.1, depth), "steel_frame")
+		for side in [-1.0, 1.0]: builder.box(node, centre + across * side * (depth * 0.5 - 0.06) + Vector3(0, 0.005, 0), flat.call(length + 0.4, 0.01, 0.04), "steel_frame")
+		builder.cylinder(node, centre + along * (length * 0.5 + 0.03) + Vector3(0, 1.0, 0), 0.12, 0.03, "metal", Vector3(0, 0, PI / 2) if along_x else Vector3(PI / 2, 0, 0))
+	var bays := maxi(1, roundi(length))
+	for k in bays + 1:
+		var a := -length * 0.5 + length * k / bays
+		for side in [-1.0, 1.0]: builder.box(node, centre + along * a + across * side * (depth * 0.5 - 0.015) + Vector3(0, base + (height - base) * 0.5, 0), flat.call(0.03, height - base, 0.03), "steel_olive")
+	var fill: float = 0.6 + builder.vary(seed_pos, 30) * 0.3
+	for s in 6:
+		var y := base + 0.05 + (height - base - 0.1) * s / 5.0
+		builder.box(node, centre + Vector3(0, y, 0), flat.call(length, 0.02, depth), "steel_olive")
+		if s == 5: continue
+		for k in int(length / 0.36):
+			if builder.vary(seed_pos + Vector3(k, s, 0), 31) > fill: continue
+			builder.box(node, centre + along * (-length * 0.5 + 0.2 + k * 0.36) + Vector3(0, y + 0.135, 0), flat.call(0.33, 0.25, minf(0.39, depth - 0.02)), "cardboard")

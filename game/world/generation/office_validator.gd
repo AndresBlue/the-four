@@ -855,12 +855,15 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 ## Whether the floor in the physics check is the offices' (validate_physics()
 ## sets it), for the sweeps the base asks of room_sweeps() and passage_path().
 var is_office := false
+## The manifest in the physics check, for passage_path()'s archives.
+var physics_data := {}
 
 ## The base's sweeps with the office's turns, then what only the offices need:
 ## the archives' aisles walked, a clear way under every grille, nothing in the
 ## band over the false ceiling but the main duct, room round the boardroom's table.
 func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 	is_office = int(data.get("floor", 1)) == 2
+	physics_data = data
 	var errors := super.validate_physics(world, data)
 	if not is_office: return errors
 	var space := world.direct_space_state
@@ -914,7 +917,12 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 			legs = [[p, p + Basis(Vector3.UP, float(e.yaw)).z * 1.0]]
 		for leg in legs:
 			var ray := PhysicsRayQueryParameters3D.create(leg[0], leg[1], 1)
-			if not space.intersect_ray(ray).is_empty():
+			var hit := space.intersect_ray(ray)
+			# A locker's top (2.3) is no fitting (as in the band below).
+			while not hit.is_empty() and hit.collider is Node and hit.collider.get_parent() is HIDE:
+				ray.exclude = ray.exclude + [hit.rid]
+				hit = space.intersect_ray(ray)
+			if not hit.is_empty():
 				errors.append("exit_way_%d" % int(room.id))
 				break
 	# The band over the false ceiling: nothing in it, but the main duct.
@@ -973,9 +981,20 @@ func room_sweeps(room: Dictionary) -> Array:
 	if not is_office: return super.room_sweeps(room)
 	var t := int(room.type)
 	if t == OFFICE.ARCHIVE or t == OFFICE.MOBILE_ARCHIVE or t == OFFICE.BOARDROOM: return []
+	# No corner pieces, no cover to reach (the air plant).
+	if room.get("props", []).is_empty(): return []
 	var c := LAYOUT.cover_reach(room)
 	if c <= 0.0: return []
-	return [Vector3(-c, 0, -c), Vector3(c, 0, -c), Vector3(-c, 0, c), Vector3(c, 0, c)]
+	var corners: Array = [Vector3(-c, 0, -c), Vector3(c, 0, -c), Vector3(-c, 0, c), Vector3(c, 0, c)]
+	# In a lobby with a lift, short of the lift wall by a capsule.
+	var lift := FLOOR.lift_wall(room)
+	if lift != Vector2i.ZERO:
+		var axis := Vector3(lift.x, 0, lift.y)
+		var most: float = FLOOR.size_of(room).dot(Vector2(absf(lift.x), absf(lift.y))) * 0.5 - FLOOR.LIFT_DEPTH - 0.32 - 0.05
+		for k in corners.size():
+			var along: float = (corners[k] as Vector3).dot(axis)
+			if along > most: corners[k] -= axis * (along - most)
+	return corners
 
 ## Into or out of an archive the way goes square, down the spine to the
 ## doorway's line, then to a metre short of the doorway: the base's straight
@@ -983,14 +1002,22 @@ func room_sweeps(room: Dictionary) -> Array:
 func passage_path(a: Dictionary, b: Dictionary) -> Array:
 	var path := super.passage_path(a, b)
 	if not is_office: return path
-	var shelves := func(room: Dictionary) -> bool: return int(room.type) == OFFICE.ARCHIVE or int(room.type) == OFFICE.MOBILE_ARCHIVE
-	var door := FLOOR.portal_between(a, b)
-	if shelves.call(a):
-		var at := FLOOR.position_of(a)
-		var spine := Vector3(door.x, at.y + 0.94, at.z) if int(a.x) == int(b.x) else Vector3(at.x, at.y + 0.94, door.z)
-		path.insert(1, spine)
-	if shelves.call(b):
-		var at := FLOOR.position_of(b)
-		var spine := Vector3(door.x, at.y + 0.94, at.z) if int(a.x) == int(b.x) else Vector3(at.x, at.y + 0.94, door.z)
-		path.insert(path.size() - 1, spine)
+	# path: a's middle, a metre short of the doorway in a, a metre past it in
+	# b, b's middle. In an archive the turn is on the spine line: level with
+	# the doorway on a long wall, at the spine's end on a short one, and from
+	# there across the aisle.
+	var a_spine := spine_point(a, path[1])
+	var b_spine := spine_point(b, path[2])
+	if b_spine.is_finite(): path.insert(3, b_spine)
+	if a_spine.is_finite(): path.insert(1, a_spine)
 	return path
+
+## The point on an archive cell's spine line (through its middle along its
+## unit's axis) nearest `point`; INF when the room is no archive.
+func spine_point(room: Dictionary, point: Vector3) -> Vector3:
+	if int(room.type) != OFFICE.ARCHIVE and int(room.type) != OFFICE.MOBILE_ARCHIVE: return Vector3.INF
+	var axis := "x"
+	for unit in physics_data.get("archives", []):
+		if unit.rooms.has(int(room.id)): axis = String(unit.axis)
+	var middle := FLOOR.position_of(room)
+	return Vector3(point.x, point.y, middle.z) if axis == "x" else Vector3(middle.x, point.y, point.z)

@@ -1022,18 +1022,22 @@ static func swap_window(m: Dictionary) -> void:
 ## validator's physics (spec_f1_generator.md 3.5): nothing in the way of a
 ## door, a passage, an aisle, a grille or the ceiling band.
 func physics_checks() -> void:
-	var level = load("res://game/app/hotel.tscn").instantiate()
-	root.add_child(level)
-	await physics_frame
 	var found: Array = []
+	var built: Array = []
+	# A level of its own for each: start_floor() on one already playing does
+	# not build again.
 	for run_seed in [7, 21, 33]:
+		var level = load("res://game/app/hotel.tscn").instantiate()
+		root.add_child(level)
+		await physics_frame
 		await level.start_floor(run_seed, false, [1], "", 2)
 		for i in 4: await physics_frame
+		built.append(int(level.manifest.get("seed", -1)))
 		var errors: Array = level.kind.VALIDATOR.new().validate_physics(level.get_world_3d(), level.manifest)
 		if not errors.is_empty(): found.append("%d: %s" % [run_seed, str(errors.slice(0, 5))])
-	check("Tres pisos de oficinas montados pasan la comprobación física", found.is_empty(), str(found))
-	level.queue_free()
-	await physics_frame
+		level.queue_free()
+		for i in 2: await physics_frame
+	check("Tres pisos de oficinas montados pasan la comprobación física", found.is_empty() and built == [7, 21, 33], "%s %s" % [str(built), str(found)])
 
 ## A cell's sides are the office's: a module's both from MODULE_SIZES, a
 ## crossing's both from LANE_WIDTHS, a lane's one from each.
