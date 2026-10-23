@@ -216,6 +216,46 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	car_lamps.back().light_color = LIGHTING.light_color(2700.0)
 	return at
 
+## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
+## at either end, so it files the empty entries the hotel's own branches do and
+## every list keeps one entry per gate. The other gates are the hotel's.
+func build_lifts(data: Dictionary) -> void:
+	for gate in data.get("gates", []):
+		if String(gate.get("kind", "lift")) == "shaft":
+			lifts.append(Vector3.ZERO)
+			car_frames.append(Transform3D())
+			depart_leaves.append([])
+			arrivals.append(Vector3.ZERO)
+			arrive_leaves.append([])
+			arrival_cars.append(Vector3.ZERO)
+			arrival_facing.append(Vector3.ZERO)
+			continue
+		var out: Array = gate.get("out", [1, 0])
+		var lobby := int(gate.get("beyond", -1))
+		lifts.append(build_car(data.rooms[lobby], Vector2i(-int(out[0]), -int(out[1]))) if lobby >= 0 else Vector3.ZERO)
+		car_frames.append(car_frame if lobby >= 0 else Transform3D())
+		depart_leaves.append(car_leaves.duplicate() if lobby >= 0 else [])
+		var arrive := int(gate.get("arrive", -1))
+		if arrive < 0:
+			arrivals.append(Vector3.ZERO)
+			arrive_leaves.append([])
+			arrival_cars.append(Vector3.ZERO)
+			arrival_facing.append(Vector3.ZERO)
+			continue
+		var facing := Vector2i(-int(out[0]), -int(out[1]))
+		var car := build_car(data.rooms[arrive], facing)
+		arrive_leaves.append(car_leaves.duplicate())
+		arrival_cars.append(car)
+		arrival_facing.append(Vector3(facing.x, 0, facing.y))
+		arrivals.append(car + Vector3(facing.x, 0, facing.y) * 1.8)
+
+## No exit door on a shaft (7.8): the air room and the plant are one salon,
+## and the way out is the ladder (1g).
+func build_exit_door(data: Dictionary) -> void:
+	var gates_list: Array = data.get("gates", [])
+	if not gates_list.is_empty() and String(gates_list[-1].get("kind", "lift")) == "shaft": return
+	super(data)
+
 ## No paintings and no sconces on an office wall (6.5: the notice boards,
 ## clocks and poster spots come later).
 func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> void: pass
