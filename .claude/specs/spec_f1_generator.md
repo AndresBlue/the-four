@@ -1215,3 +1215,9 @@ Each system step builds its own static pieces (systems 0.2, geometry 1): 1d buil
 - `place_musts()` locks the rooms each must counts on (its first units by lowest id, a salon as one) and the toilets already there: the toilets step and `cap_numbers()` took a boardroom or toilets the mix had drawn, and the must went short.
 - office_test asks for toilets only in sectors with a plain room on a corridor, and a boardroom only where a large module is free (the generator's own rules). The open-office median is 1 item per cell, not 2: the test keeps «1 or more» while the author decides (zones, lattice or threshold).
 - Free tiles and the main duct's line are cached per floor; the median is about 1.4 s a floor, half of it in `furnish_ducts`.
+
+## Notes from step 1c, first part (23 October 2026, done by the director without work orders)
+
+- `office_validator.validate()` has the 15 groups of 3.1 but `duct_shortcuts_<planta>`: with the loose links pending (notes of 1b), it would reject every floor. A `bridge` may join two rooms with a door (1b's notes).
+- The stand, the map and the hub are checked on the window's walls; the desk's point is 0.55 m in from its wall (2.5c), and the tube runs are sampled at the middles of 0.5 m steps, since a doorway node stands on two rooms.
+- office_test's «validador» section has 28 of the 29 mutations of 3.4 (not the boardroom's height: seed 7 may have none) and the lenient copy. `validate_physics()` (3.2) and `office_metrics.gd` (3.3) are still to do; the base's `room_sweeps()` and `passage_path()` are factored out.

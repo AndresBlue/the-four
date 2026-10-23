@@ -8,21 +8,22 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 ## En qué estamos
 
-**El piso 2, las oficinas secretas** ([docs/OFICINAS.md](../docs/OFICINAS.md)). La fase 0 está cerrada y la fase 1 va por 1c.
+**El piso 2, las oficinas secretas** ([docs/OFICINAS.md](../docs/OFICINAS.md)). La fase 0 está cerrada; de la fase 1, 1a y 1b están hechos y 1c, a medias.
 
 | Paso | Estado |
 |---|---|
 | Fase 0 (0a a 0f) | Hecha: 0a `3b909f0`..`d32f23a`, 0b `86a4333`, 0c `9f759db`, 0d `592dce2`, 0f `1f09795`, 0e `db7eca1` |
 | 1a Tipo de piso de oficina, paleta, criatura nula | Hecho (`54e99d9`): construido, sin publicar (`floor_index.RELEASED = [1]`) |
-| 1b Generador de oficinas | **Hecho**: U1 a U5 `3bf5ab6`, U6 `6010f41`, U7 a U10 `8dcc122`, U11 y U12 en el commit siguiente (ver «Lo primero al retomar») |
+| 1b Generador de oficinas | **Hecho**: U1 a U5 `3bf5ab6`, U6 `6010f41`, U7 a U10 `8dcc122`, U11 y U12 `1231cb5` |
+| 1c Validador y `office_metrics` | **A medias**, sin encargos (el director solo): hechos el refactor de la física base (`room_sweeps()`, `passage_path()`), `office_validator.validate()` con los 15 grupos de la spec 3.1 y la sección «validador» de `office_test` (28 mutaciones y el piso de respaldo); faltan `validate_physics()` de oficinas (3.2), `tools/dev/office_metrics.gd` (3.3), la mutación de la altura de la sala de juntas y `duct_shortcuts` (decisión 2 del autor) |
 | Contrato para montar el piso 2 en escena | Paso propio antes de 1d, sin encargos (lo describe `spec_f1_generator.md`, notas finales de 1a) |
 | 1c a 1i, fases 2 a 5 | Pendientes |
 
 **Lo primero al retomar:**
 1. Leer el uso (`mcp__ccd_session_mgmt__get_usage`). Hasta el 24 de octubre a las 05:00, el tope es el 90 %.
-2. Si el commit de U11 y U12 no está hecho (`git log`): estaba pendiente de un `verify.ps1` en verde con `office_test` nuevo (95 checks, unos 170 s solo; `verify` le da 360 s). Archivos: `tests/office/office_test.gd`, `docs/DEVELOPMENT.md`, `game/world/generation/office_generator.gd` (el respaldo y los musts, abajo), `.claude/relevo.md`. Después, push.
-3. Corregir en `spec_f1_generator.md` las líneas de código que cita y ya no casan (punto 1 de `al_director_resuelto` en el JSON) y anotar al final de su sección 2 lo que el director cambió en 1b (lista de abajo).
-4. Después: los encargos de 1c (validador y `office_metrics`, sección 3 de la misma especificación) y el paso del contrato.
+2. Si el commit de 1c no está hecho (`git log`): estaba pendiente de un `verify.ps1` en verde. Archivos: `game/world/generation/map_validator.gd`, `game/world/generation/office_validator.gd`, `tests/office/office_test.gd` (124 checks, unos 205 s solo), `tools/verify.ps1` (600 s para `office_test`), `docs/DEVELOPMENT.md`, `.claude/relevo.md`.
+3. Seguir 1c: `validate_physics()` de oficinas (3.2: sobrescribir `room_sweeps()` y `passage_path()`, los barridos nuevos; sin prueba hasta 1d) y `tools/dev/office_metrics.gd` (3.3, con `floor_measures()` y su check en `office_test`), y correrlo con 1000 semillas.
+4. Después: el paso del contrato (antes de 1d).
 
 ## Lo que 1b hizo distinto de la especificación (decisiones del director)
 
@@ -32,6 +33,7 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 - **Musts:** `place_musts` bloquea las salas con las que cuenta cada must (las primeras unidades por id, un salón como una) y los aseos que ya hay, porque los aseos y `cap_numbers` se llevaban la única sala de juntas o los aseos dibujados por la mezcla.
 - **office_test:** los aseos se exigen solo en sectores con alguna sala libre junto a un pasillo (la regla de `place_musts`), y la sala de juntas solo donde hay un módulo grande libre.
 - **Cachés** por piso de las tejas libres y de la línea del conducto principal (la mediana bajó de unos 1.500 ms a unos 1.400).
+- **Validador (1c):** acepta `bridge` entre salas con puerta (las que une el árbol de ramas), mide el despeje de las salidas aunque estén fuera de su sala, y agrupa por sala los puntos de pared una vez por piso (sin eso `office_test` tardaba 253 s; ahora unos 205).
 
 ## Decisiones que esperan al autor
 

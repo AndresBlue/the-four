@@ -245,7 +245,7 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 		if not world.direct_space_state.intersect_shape(query).is_empty(): errors.append("center_%d" % room.id)
 		# A corridor is a lane of three or four metres: its walls are there.
 		if bool(room.get("corridor", false)): continue
-		for corner in [Vector3(-2.2, 0, -2.2), Vector3(2.2, 0, -2.2), Vector3(-2.2, 0, 2.2), Vector3(2.2, 0, 2.2)]:
+		for corner in room_sweeps(room):
 			query.motion = corner
 			var result := world.direct_space_state.cast_motion(query)
 			if result[0] < 0.99: errors.append("cover_access_%d" % room.id)
@@ -278,11 +278,8 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 		# Through the doorway: from the middle of one to a metre short of the
 		# doorway, across it, and on to the middle of the other. A straight
 		# line from middle to middle misses a door moved along its wall.
-		var door := FLOOR.portal_between(a, b) + Vector3(0, 0.94, 0)
-		var through := FLOOR.position_of(b) - FLOOR.position_of(a)
-		through = Vector3(through.x, 0, through.z).normalized()
-		var path := [FLOOR.position_of(a) + Vector3(0, 0.94, 0), door - through, door + through, FLOOR.position_of(b) + Vector3(0, 0.94, 0)]
-		for leg in 3:
+		var path := passage_path(a, b)
+		for leg in path.size() - 1:
 			query.transform = Transform3D(Basis.IDENTITY, path[leg])
 			query.motion = path[leg + 1] - path[leg]
 			if world.direct_space_state.cast_motion(query)[0] < 0.99:
@@ -304,3 +301,16 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 				errors.append("leaf_arc_%d_%d" % [a.id, b.id])
 				break
 	return errors
+
+## Where the capsule sweeps from a room's middle so the cover in its corners
+## can be reached: a floor kind's validator may sweep elsewhere or not at all.
+func room_sweeps(_room: Dictionary) -> Array:
+	return [Vector3(-2.2, 0, -2.2), Vector3(2.2, 0, -2.2), Vector3(-2.2, 0, 2.2), Vector3(2.2, 0, 2.2)]
+
+## The capsule's way from one room's middle to the next at chest height: to a
+## metre short of the doorway, across it, and on to the other's middle.
+func passage_path(a: Dictionary, b: Dictionary) -> Array:
+	var door := FLOOR.portal_between(a, b) + Vector3(0, 0.94, 0)
+	var through := FLOOR.position_of(b) - FLOOR.position_of(a)
+	through = Vector3(through.x, 0, through.z).normalized()
+	return [FLOOR.position_of(a) + Vector3(0, 0.94, 0), door - through, door + through, FLOOR.position_of(b) + Vector3(0, 0.94, 0)]

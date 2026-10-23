@@ -51,6 +51,7 @@ func run() -> void:
 	palette_crawl()
 	kind_checks()
 	generator_checks()
+	validator_checks()
 	texts()
 	var seconds := float(Time.get_ticks_msec() - began) / 1000.0
 	var file := FileAccess.open("res://evidence/office_test.json", FileAccess.WRITE)
@@ -359,7 +360,9 @@ func generator_checks() -> void:
 			elif run_seed <= 40: fallen.append(run_seed)
 			continue
 		if survivors >= 4 and numbering: fallen_big.append("%d/%d numbered" % [run_seed, survivors])
-		if run_seed == 7 and survivors == 2: kept = manifest
+		if run_seed == 7 and survivors == 2:
+			kept = manifest
+			seven = manifest
 		var tag := "%d/%d" % [run_seed, survivors]
 		floor_basics(generator, manifest, tag)
 		floor_specials(manifest, tag)
@@ -753,6 +756,222 @@ func pieces_checks() -> void:
 	layout_ok = layout_ok and cut.size() == 4 and near.call(area, 12.0) and LAYOUT.rect_minus([Rect2(0, 0, 4, 4)], Rect2(5, 5, 1, 1)) == [Rect2(0, 0, 4, 4)]
 	layout_ok = layout_ok and LAYOUT.fits_in(Rect2(0, 0, 1, 1), Rect2(0, 0, 1.0005, 1)) and not LAYOUT.fits_in(Rect2(0, 0, 1, 1), Rect2(0, 0, 1.01, 1)) and LAYOUT.apart(Rect2(0, 0, 1, 1), Rect2(1.9, 0, 1, 1), 0.9) and not LAYOUT.apart(Rect2(0, 0, 1, 1), Rect2(1.8, 0, 1, 1), 0.9)
 	check("office_layout mide salas, segmentos, recortes y holguras como debe", layout_ok)
+
+# --- Validador ---------------------------------------------------------------
+
+## Seed 7's floor, kept by generator_checks() for the mutations.
+var seven: Dictionary = {}
+
+## Each mutation of spec 3.4 on a deep copy of seed 7's floor: the validator
+## names it.
+func validator_checks() -> void:
+	if seven.is_empty():
+		check("El piso de la semilla 7 está para las mutaciones", false)
+		return
+	var v = OFFICE_VALIDATOR.new()
+	var rooms: Array = seven.rooms
+	var nodes: Array = seven.ducts.nodes
+	# An exit, the only one of its room.
+	var only := -1
+	var counts := {}
+	for e in seven.ducts.exits:
+		if String(e.kind) != "gap" and String(e.kind) != "hatch": counts[int(e.room)] = int(counts.get(int(e.room), 0)) + 1
+	for i in seven.ducts.exits.size():
+		var e: Dictionary = seven.ducts.exits[i]
+		if only < 0 and String(e.kind) in ["ceiling", "wall"] and int(counts[int(e.room)]) == 1 and not bool(rooms[int(e.room)].corridor): only = i
+	mutation(v, "Una sala sin salida", "duct_room_exit_", func(m): m.ducts.exits.remove_at(only))
+	var change_1 := func(m: Dictionary) -> void:
+		var lobby: Dictionary = m.rooms[int(m.refuges[0])]
+		m.ducts.nodes.append([float(lobby.px), float(lobby.py) + 3.7, float(lobby.pz), int(lobby.id), "exit"])
+		m.ducts.edges.append([0, m.ducts.nodes.size() - 1, snappedf(v3(m.ducts.nodes[0]).distance_to(v3(m.ducts.nodes[-1])), 0.001), "drop"])
+	mutation(v, "Un nodo en el vestíbulo del montacargas", "duct_off_limits_", change_1)
+	var cut := -1
+	for i in seven.ducts.edges.size():
+		var edge: Array = seven.ducts.edges[i]
+		if cut >= 0 or String(edge[3]) != "trunk": continue
+		var trial: Dictionary = seven.ducts.duplicate(true)
+		trial.edges.remove_at(i)
+		var wing := int(rooms[int(nodes[int(edge[0])][3])].wing)
+		var ids: Array = range(nodes.size()).filter(func(k): return String(nodes[k][4]) in ["trunk", "branch", "stub"] and int(rooms[int(nodes[k][3])].wing) == wing)
+		if METRES.pieces(trial, ids, ["main", "cross", "drop"]) > 1: cut = i
+	mutation(v, "Un tronco menos parte la planta", "duct_split_", func(m): m.ducts.edges.remove_at(cut))
+	var short: Array = []
+	for room in rooms:
+		if not short.is_empty() or int(room.type) == OFFICE.VOID or OFFICE.off_limits(room): continue
+		var b := FLOOR.beside(room, Vector2i(1, 0))
+		if b < 0 or seven.adjacency[int(room.id)].has(b) or int(rooms[b].type) == OFFICE.VOID or OFFICE.off_limits(rooms[b]): continue
+		var length := FLOOR.position_of(room).distance_to(FLOOR.position_of(rooms[b]))
+		if float(METRES.walk_within(rooms, seven.adjacency, int(room.id), INF).get(b, INF)) * 0.55 > length: short = [int(room.id), b]
+	var change_2 := func(m: Dictionary) -> void:
+		var na := node_of_room(m, int(short[0]))
+		var nb := node_of_room(m, int(short[1]))
+		m.ducts.edges.append([na, nb, snappedf(v3(m.ducts.nodes[na]).distance_to(v3(m.ducts.nodes[nb])), 0.001), "loose"])
+	mutation(v, "Un enlace suelto que ataja de más", "duct_band_", change_2)
+	var change_3 := func(m: Dictionary) -> void:
+		for arch in m.archives:
+			if arch.aisles.is_empty(): continue
+			var aisle: Array = arch.aisles[0]
+			if String(arch.axis) == "x": aisle[2] = float(aisle[0]) + 0.9
+			else: aisle[3] = float(aisle[1]) + 0.9
+			return
+	mutation(v, "Un pasillo de archivo de 0,9", "aisle_", change_3)
+	var change_4 := func(m: Dictionary) -> void:
+		var stations: Array = m.tubes.exits.filter(func(e): return String(e.kind) == "station")
+		for e in stations.slice(7): m.tubes.exits.erase(e)
+		m.mail.stations = 7
+	mutation(v, "Siete estaciones", "station_count", change_4)
+	var change_5 := func(m: Dictionary) -> void:
+		var shaft := int(m.air.main.nodes[-1])
+		var e := Vector2i(int(m.air.shaft.side[0]), int(m.air.shaft.side[1]))
+		var n: Array = m.ducts.nodes[shaft]
+		n[0] = float(n[0]) + e.x * 12.0
+		n[2] = float(n[2]) + e.y * 12.0
+		for edge in m.ducts.edges:
+			if String(edge[3]) == "main" and (int(edge[0]) == shaft or int(edge[1]) == shaft): edge[2] = snappedf(v3(m.ducts.nodes[int(edge[0])]).distance_to(v3(m.ducts.nodes[int(edge[1])])), 0.001)
+	mutation(v, "El pozo 12 m más allá", "main_length", change_5)
+	var change_6 := func(m: Dictionary) -> void:
+		var sec := int(m.air.security.room)
+		for way in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n := FLOOR.beside(m.rooms[sec], way)
+			if n >= 0 and int(m.rooms[n].type) != OFFICE.VOID and not m.adjacency[sec].has(n):
+				m.adjacency[sec].append(n)
+				m.adjacency[n].append(sec)
+				return
+	mutation(v, "La seguridad con otra puerta", "security_doors", change_6)
+	var change_7 := func(m: Dictionary) -> void:
+		var lobby: Dictionary = m.rooms[int(m.entries[1])]
+		var e: Dictionary = m.ducts.exits.filter(func(x): return String(x.kind) == "ceiling")[0]
+		e.point = [float(lobby.px), float(e.point[1]), float(lobby.pz)]
+	mutation(v, "Una salida en un vestíbulo", "exit_off_limits_", change_7)
+	var change_8 := func(m: Dictionary) -> void:
+		m.ducts.exits.erase(m.ducts.exits.filter(func(x): return String(x.kind) == "gap")[0])
+	mutation(v, "Un hueco menos", "gaps_", change_8)
+	var change_9 := func(m: Dictionary) -> void:
+		var e: Dictionary = m.ducts.exits.filter(func(x): return String(x.kind) == "ceiling")[0]
+		e.point = [float(e.point[0]) + 0.3, float(e.point[1]), float(e.point[2])]
+	mutation(v, "Una rejilla 0,3 m fuera de su teja", "exit_tile_", change_9)
+	var change_10 := func(m: Dictionary) -> void:
+		for e in m.ducts.exits:
+			if String(e.kind) != "ceiling": continue
+			var room: Dictionary = m.rooms[int(e.room)]
+			var lamps: Array = OFFICE.troffers(room)
+			if lamps.is_empty(): continue
+			var at := OFFICE.tile_centre(lamps[0].tiles[0], float(e.point[1]))
+			e.point = [at.x, at.y, at.z]
+			return
+	mutation(v, "Una rejilla sobre una luminaria", "exit_tile_", change_10)
+	var change_11 := func(m: Dictionary) -> void:
+		var line_node: Array = m.ducts.nodes[int(m.air.main.nodes[1])]
+		for e in m.ducts.exits:
+			if String(e.kind) == "gap" and int(m.rooms[int(e.room)].wing) == 2:
+				e.point = [float(line_node[0]), float(e.point[1]), float(line_node[2])]
+				return
+	mutation(v, "Un hueco sobre el conducto principal", "main_clear_", change_11)
+	var change_12 := func(m: Dictionary) -> void:
+		for t in m.power.timers:
+			for d in FLOOR.doorways(m.rooms[int(t.room)]):
+				t.wall = String(d.wall)
+				t.along = float(d.along) + FLOOR.PORTAL / 2 + 0.5
+				return
+	mutation(v, "Un minutero a 0,5 m de una puerta", "timer_", change_12)
+	mutation(v, "Una sala fuera de su circuito", "circuit_cover", func(m): m.power.circuits[0].rooms.remove_at(0))
+	mutation(v, "La ventanilla al fondo de la planta", "depth_window_0", func(m): swap_window(m))
+	mutation(v, "La planta 2 sale por un ascensor", "shaft", func(m): m.gates[2].kind = "lift")
+	var change_13 := func(m: Dictionary) -> void:
+		m.air.shaft.rect[2] = 1.8
+		m.air.shaft.rect[3] = 1.8
+	mutation(v, "El pozo de 1,8 por 1,8", "shaft", change_13)
+	var change_14 := func(m: Dictionary) -> void:
+		var e := Vector2i(int(m.air.shaft.side[0]), int(m.air.shaft.side[1]))
+		m.air.shaft.rect[0] = float(m.air.shaft.rect[0]) - e.x * 3.0
+		m.air.shaft.rect[1] = float(m.air.shaft.rect[1]) - e.y * 3.0
+	mutation(v, "El pozo 3 m dentro de la planta", "shaft", change_14)
+	var change_15 := func(m: Dictionary) -> void:
+		var landing: Dictionary = m.rooms[int(m.gates[0].beyond)]
+		m.mail.reader.point = [float(landing.px), float(m.mail.reader.point[1]), float(landing.pz)]
+	mutation(v, "El lector del correo en el rellano", "mail_reader", change_15)
+	var change_16 := func(m: Dictionary) -> void:
+		var plant: Dictionary = m.rooms[int(m.air.plant)]
+		var c1: Dictionary = m.rooms[int(m.air.main.cells[1])]
+		var d1 := Vector2i(int(c1.x) - int(plant.x), int(c1.z) - int(plant.z))
+		m.air.unit.wall = LAYOUT.wall_of(d1)
+		var hp: Array = m.air.hatch.point
+		m.air.unit.along = float(hp[2]) - float(plant.pz) if d1.x != 0 else float(hp[0]) - float(plant.px)
+	mutation(v, "La climatizadora sobre la escotilla", "unit", change_16)
+	var change_17 := func(m: Dictionary) -> void:
+		var s: Array = m.ducts.nodes[int(m.air.main.cross)]
+		for edge in m.ducts.edges:
+			if String(edge[3]) != "cross": continue
+			var stub := int(edge[1]) if int(edge[0]) == int(m.air.main.cross) else int(edge[0])
+			m.ducts.nodes[stub] = [s[0], s[1], s[2], int(m.ducts.nodes[stub][3]), "stub"]
+			edge[2] = 0.0
+	mutation(v, "El ramal del cruce sin largo", "main_cross", change_17)
+	var change_18 := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			for it in room.get("furniture", []):
+				if String(it.kind) == "desk_pair":
+					it.at = [0.0, 0.0]
+					return
+	mutation(v, "Un escritorio en medio de la sala", "furniture_", change_18)
+	var change_19 := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			for it in room.get("furniture", []):
+				if String(it.kind) == "partition":
+					it.extra.height = 2.4
+					return
+	mutation(v, "Una mampara de 2,4 de alto", "furniture_", change_19)
+	var change_20 := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			if int(room.type) == OFFICE.OFFICE and room.get("glazed", []).is_empty():
+				room.glazed.append("west")
+				return
+	mutation(v, "Cristal en un solo lado", "glazed_", change_20)
+	var change_21 := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			for h in room.get("hides", []):
+				var wall := String(LAYOUT.hide_wall(h).wall)
+				var n := FLOOR.beside(room, LAYOUT.way_of(wall))
+				if n < 0 or room.glazed.has(wall): continue
+				room.glazed.append(wall)
+				m.rooms[n].glazed.append(LAYOUT.wall_of(-LAYOUT.way_of(wall)))
+				return
+	mutation(v, "Cristal sobre una taquilla", "glazed_", change_21)
+	mutation(v, "La ventanilla sin cristal", "glazed_window", func(m): m.rooms[int(m.mail.window)].glazed = [])
+	var change_22 := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			if room.get("sockets", []).size() == 4:
+				room.sockets[0] = [float(room.sockets[0][0]) + 0.5, float(room.sockets[0][1])]
+				return
+	mutation(v, "Un enchufe 0,5 m fuera de sitio", "sockets_", change_22)
+	var lenient: Dictionary = seven.duplicate(true)
+	swap_window(lenient)
+	lenient["fallback"] = true
+	var errors: Array = v.validate(lenient)
+	check("Un piso de reserva acepta la ventanilla fuera de su banda", not errors.any(func(e): return String(e).begins_with("depth_")), str(errors.slice(0, 5)))
+
+## Applies a change to a copy of seed 7's floor and checks the validator names it.
+func mutation(v, title: String, code: String, change: Callable) -> void:
+	var m: Dictionary = seven.duplicate(true)
+	change.call(m)
+	var errors: Array = v.validate(m)
+	check("El validador ve: %s" % title, errors.any(func(e): return String(e).begins_with(code)), str(errors.slice(0, 5)))
+
+## The cell node of a room in the ducts.
+static func node_of_room(m: Dictionary, id: int) -> int:
+	for i in m.ducts.nodes.size():
+		if int(m.ducts.nodes[i][3]) == id and String(m.ducts.nodes[i][4]) in ["trunk", "branch"]: return i
+	return -1
+
+## The window's type swapped with the deepest plain office of planta 0.
+static func swap_window(m: Dictionary) -> void:
+	var win := int(m.mail.window)
+	var route := FLOOR.route_metres(m, int(m.entries[0]))
+	var deepest := -1
+	for room in m.rooms:
+		if int(room.wing) != 0 or int(room.type) != OFFICE.OFFICE or not route.has(int(room.id)): continue
+		if deepest < 0 or float(route[int(room.id)]) > float(route[deepest]): deepest = int(room.id)
+	m.rooms[deepest].type = OFFICE.WINDOW
+	m.rooms[win].type = OFFICE.OFFICE
 
 ## A cell's sides are the office's: a module's both from MODULE_SIZES, a
 ## crossing's both from LANE_WIDTHS, a lane's one from each.

@@ -53,7 +53,9 @@ foreach ($test in $tests) {
     # Its own port: a game left open on this machine hosts on the default one,
     # and the observer went and watched that instead of building its floors.
     if ($name -eq 'observer_test') { $user += '--port=24640' }
-    Add-Check $test $name (Godot-Arguments ('res://tests/' + $test + '.gd') $log (-not $audio) $user) 360 'plain' $(if ($audio) { 3 } else { 1 }) $log
+    # The offices' test makes 64 floors twice, each one validated as it is drawn.
+    $limit = if ($name -eq 'office_test') { 600 } else { 360 }
+    Add-Check $test $name (Godot-Arguments ('res://tests/' + $test + '.gd') $log (-not $audio) $user) $limit 'plain' $(if ($audio) { 3 } else { 1 }) $log
 }
 # The creature on its own feet: journeys between rooms, walking and hunting.
 # Any stop over two seconds, any hop of its last-resort protocol and any
