@@ -203,10 +203,22 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 	var wear := RandomNumberGenerator.new()
 	wear.seed = hash([run_seed, "wear", attempt])
 	light_rooms(f, wear)
+	# What a floor of another kind adds once doors, lockers and lamps are there
+	# (office_generator.furnish()): nothing in the hotel.
+	var extra := furnish(f, gates, doors, run_seed, attempt, standby)
+	if extra.has("fail"): return fail(String(extra.fail))
 	var merged: Array = f.merged.values()
 	merged.sort_custom(func(a, b): return int(a[0]) < int(b[0]) or (int(a[0]) == int(b[0]) and int(a[1]) < int(b[1])))
 	var grids: Array = f.plantas.map(func(dims): return {"base": dims.base, "width": dims.width, "height": dims.height})
-	return {"version": FLOOR.VERSION, "seed": run_seed, "area": drawn.reduce(func(a, b): return a + b, 0.0) / float(drawn.size()), "areas": drawn, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
+	var result := {"version": FLOOR.VERSION, "seed": run_seed, "area": drawn.reduce(func(a, b): return a + b, 0.0) / float(drawn.size()), "areas": drawn, "walk": walk, "attempt": attempt, "plantas": grids, "start": start, "exit": refuges[0], "refuges": refuges, "gates": gates, "wings": WINGS, "rooms": f.rooms, "edges": f.edges, "adjacency": f.adjacency, "ambient_seed": run_seed + 4000037, "merged": merged, "doors": doors, "wall_hits": hits, "entries": entries, "plans": plans, "start_facing": facing(f, start)}
+	if not extra.is_empty(): result.merge(extra, true)
+	return result
+
+## What a floor of another kind adds to its manifest once its rooms have
+## doors, lockers and lamps (office_generator.gd): keys merged into it, or
+## {"fail": reason}. The hotel adds nothing.
+func furnish(_f: Dictionary, _gates: Array, _doors: Dictionary, _run_seed: int, _attempt: int, _standby: bool) -> Dictionary:
+	return {}
 
 # --- The grid --------------------------------------------------------------------------
 
@@ -376,6 +388,9 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	trim(f, planta, alive, arrival, refuge, target, rng)
 	tidy(f, alive)
 	if not standby: expose(f, planta, alive, arrival, refuge, rng)
+	# A floor of another kind lays its own rooms here, before the checks below
+	# judge the planta as they leave it (office_generator.place_specials()).
+	if not place_specials(f, planta, alive, arrival, back, refuge, rng, standby): return {}
 	var landing: int = refuge.landing
 	var count := count_rooms(f, planta, alive, arrival, landing)
 	var window: Vector2i = palette.rooms_window(drawing)
@@ -400,6 +415,12 @@ func lay_planta(f: Dictionary, planta: int, arrival: int, back: Vector2i, plan: 
 	rooms[base + landing].service = false
 	var hops := distances(f.adjacency, base + arrival)
 	return {"arrival": arrival, "refuge": refuge.room, "landing": landing, "out": refuge.out, "hits": refuge.hits, "walk": maxi(0, hops[base + int(refuge.room)]), "shape": shape, "count": count, "bearing": refuge.bearing}
+
+## Rooms a floor of another kind lays on a planta once its refuge is there
+## (office_generator.gd); the hotel lays none. False draws the planta again,
+## and the hook says why with fail().
+func place_specials(_f: Dictionary, _planta: int, _alive: Dictionary, _arrival: int, _back: Vector2i, _refuge: Dictionary, _rng: RandomNumberGenerator, _standby: bool) -> bool:
+	return true
 
 ## How much of a hotel each cell still is: 1 is a plan somebody drew, 0 what
 ## the place turned into. A base per planta, falling as one goes down, a
