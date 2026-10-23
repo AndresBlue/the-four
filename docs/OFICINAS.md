@@ -54,7 +54,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 
 ### Por qué es más lenta y aun así da miedo
 
-- Velocidades en el juego (escala 1,35): repta a ~1,35 m/s, se escabulle a ~3,5, en ducto va a ~0,75 y huye a ~2.
+- Velocidades en el juego (escala 1,35): repta a ~1,35 m/s, se escabulle a ~3,5 y huye a ~2. En los conductos, lo de la sección 4: 1 m/s en el ducto principal y de 1,2 a 2,4 en los de encima del techo.
 - Los supervivientes andan a 3,8. Huir de ella siempre es posible **si sabes dónde está**.
 - El peligro está en **lo que obliga a dar la espalda**:
   - escribir la solicitud en la ventanilla;
@@ -335,6 +335,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 
 - **Una red real** (sección 11): entra y sale por rejillas y placas que faltan.
   - Por dentro va más deprisa que reptando: de 1,2 a 2,4 m/s según la dificultad.
+  - **En el ducto principal, el de tamaño humano, va a 1 m/s en todas las dificultades** (decisión del autor, 23 de octubre): un superviviente repta a 1,2, así que huir de ella por él siempre es posible.
   - La animación de ducto solo se ve cuando asoma.
   - Los ductos siguen la rejilla de la planta, no las puertas: **dan atajos**, sin ser teletransportes.
 - **Nunca llega a los vestíbulos del montacargas**, ni pasa por encima. Allí no se oye nada.

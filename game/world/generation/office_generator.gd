@@ -1286,10 +1286,22 @@ func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 	var pods: bool = int(room.type) == palette.CUBICLES
 	var size: Vector2 = Vector2(1.92, 1.49) if pods else palette.FURNITURE.desk_pair.size
 	if turn % 2 == 1: size = Vector2(size.y, size.x)
+	# The lattice shifted by quarters of a step both ways, keeping the shift
+	# that seats the most: one fixed from the corner lands on the sweeps.
+	var step := size + Vector2(LAYOUT.ITEM_GAP, LAYOUT.ITEM_GAP)
+	var best: Array = []
+	for shift in 16:
+		room.furniture = []
+		lattice_at(room, zones, turn, pods, size, Vector2(shift % 4, floori(shift / 4.0)) * step / 4.0)
+		if room.furniture.size() > best.size(): best = room.furniture
+	room.furniture = best
+
+## One lattice of lay_lattice(), its first item shifted from the inner corner.
+func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vector2, shift: Vector2) -> void:
 	var space := LAYOUT.inner(room)
-	var z := space.position.y + size.y / 2
+	var z := space.position.y + size.y / 2 + shift.y
 	while LAYOUT.fits_in(space, Rect2(Vector2(space.position.x, z - size.y / 2), size)):
-		var x := space.position.x + size.x / 2
+		var x := space.position.x + size.x / 2 + shift.x
 		var column := 0
 		while LAYOUT.fits_in(space, Rect2(Vector2(x - size.x / 2, z - size.y / 2), size)):
 			var at := Vector2(x, z)
@@ -1447,16 +1459,17 @@ func furnish_ducts(job: Dictionary) -> String:
 		# Straight trunks over the rooms, the doors left aside: the duct is her
 		# shortcut (OFICINAS 11.3), between SHORTCUT_MIN and EXPRESS_MOST of
 		# the walk from door to door, over cells all hers to cross.
-		# Each start keeps its longest trunk that cuts the walk enough.
+		# Each start keeps the way of its longest trunk that cuts the walk
+		# enough, and stops on it wherever no two stops come under SHORTCUT_MIN.
 		var starts: Array = cells[planta].duplicate()
 		shuffle(starts, rng)
 		if not job.has("door_graph"): job["door_graph"] = METRES.door_graph(rooms, f.adjacency)
+		var reach := 12.0 * EXPRESS_CELLS.y / SHORTCUT_MIN
 		var laid := 0
 		for a in starts.slice(0, EXPRESS_STARTS):
 			if laid >= EXPRESS_PER: break
-			var from: Dictionary = rooms[int(a)]
-			var walks := METRES.door_metres_all(rooms, job.door_graph, int(a), 12.0 * EXPRESS_CELLS.y / SHORTCUT_MIN)
-			var best := -1
+			var walks := METRES.door_metres_all(rooms, job.door_graph, int(a), reach)
+			var best_way := Vector2i.ZERO
 			var best_length := 0.0
 			for way in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var b := int(a)
@@ -1464,14 +1477,39 @@ func furnish_ducts(job: Dictionary) -> String:
 					b = FLOOR.beside(rooms[b], way)
 					if b < 0 or not in_c.has(b): break
 					if k + 1 < EXPRESS_CELLS.x or job.duct_pairs.has(pair_key(int(a), b)) or not walks.has(b): continue
-					var length := FLOOR.position_of(from).distance_to(FLOOR.position_of(rooms[b]))
+					var length := FLOOR.position_of(rooms[int(a)]).distance_to(FLOOR.position_of(rooms[b]))
 					var ratio := length / float(walks[b])
 					if ratio >= SHORTCUT_MIN and ratio <= EXPRESS_MOST and length > best_length:
-						best = b
+						best_way = way
 						best_length = length
-			if best < 0: continue
-			duct_edge(job, int(a), best, "express")
-			laid += 1
+			if best_way == Vector2i.ZERO: continue
+			var stops: Array = [int(a)]
+			var stop_walks: Array = [walks]
+			var c := int(a)
+			var since := 0
+			for k in EXPRESS_CELLS.y:
+				c = FLOOR.beside(rooms[c], best_way)
+				if c < 0 or not in_c.has(c): break
+				since += 1
+				if since < EXPRESS_CELLS.x or job.duct_pairs.has(pair_key(int(stops.back()), c)): continue
+				var fits := true
+				var cuts := false
+				for i in stops.size():
+					var w: Dictionary = stop_walks[i]
+					if not w.has(c):
+						fits = false
+						break
+					var ratio := FLOOR.position_of(rooms[int(stops[i])]).distance_to(FLOOR.position_of(rooms[c])) / float(w[c])
+					if ratio < SHORTCUT_MIN:
+						fits = false
+						break
+					if ratio <= EXPRESS_MOST: cuts = true
+				if not fits or not cuts: continue
+				duct_edge(job, int(stops.back()), c, "express")
+				stops.append(c)
+				stop_walks.append(METRES.door_metres_all(rooms, job.door_graph, c, reach))
+				since = 0
+			if stops.size() > 1: laid += 1
 	var crossed := duct_cross(job, rng)
 	if not crossed.is_empty(): return crossed
 	for planta in 3:
