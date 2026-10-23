@@ -3,7 +3,7 @@ extends "res://game/floors/objectives/objective.gd"
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
 ## the reader beside the freight lift's door, which then opens. Not built yet:
-## a dropped card, and a photo sent to the others (each machine keeps the one
+## a photo sent to the others (each machine keeps the one
 ## its own player was taken in). The receipt and the card are held up when they come (1h, drawn by
 ## hint_view.gd), and the pause lines say where the card is.
 const ID := &"files"
@@ -11,7 +11,8 @@ const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
 
 enum Card { TRAVELLING, IN_TRAY, HELD, DROPPED }
-const ACTIONS := ["type", "take", "swipe"]
+const ACTIONS := ["type", "take", "swipe", "pick"]
+const PICK_TIME := 1.0
 ## The hold at the typewriter (tuning().typing_time to come, 1.8: Desafiante's),
 ## at the tray and at the reader.
 const TYPE_TIME := 5.0
@@ -39,6 +40,8 @@ var typing_voice = null
 ## each request's capsule: {node, path (points), length, hiss}.
 var tube_parent: Array = []
 var capsules := {}
+## Owner seat -> the usable of a card lying where its holder fell.
+var pickups := {}
 ## Owner seat -> the ceiling camera's picture of them typing (this machine's).
 var textures := {}
 var snapping := false
@@ -304,6 +307,7 @@ func word_of(usable, seat: int) -> String:
 				if int(r.station) == int(usable.index) - 1 and int(r.state) == Card.IN_TRAY and (int(owner) == seat or not alive(int(owner))): return "RECOGER"
 			return ""
 		"swipe": return "PASAR FICHA" if held_unswiped(seat) >= 0 else ""
+		"pick": return "COGER"
 		"read": return "LEER"
 	return ""
 
@@ -312,6 +316,7 @@ func hold_of(usable, _seat: int) -> float:
 		"type": return TYPE_TIME
 		"take": return TAKE_TIME
 		"swipe": return SWIPE_TIME
+		"pick": return PICK_TIME
 	return 0.0
 
 func begin_use(usable, seat: int) -> void:
@@ -373,6 +378,8 @@ func refused(_action: String, _index: int, _seat: int) -> void: pass
 func allow(action: String, index: int, seat: int, body) -> bool:
 	if not built() or body == null or index < 0 or index >= usables.size() or not ACTIONS.has(action): return false
 	if not alive(seat) or bool(body.get("hidden")) or level.lifts.riding.has(seat): return false
+	# A card on the floor: its usable is not in the list, its owner is the index.
+	if action == "pick": return pickups.has(index) and body.global_position.distance_to(pickups[index].global_position) <= USE_REACH + SLACK
 	var usable = usables[index]
 	if String(usable.action) != action: return false
 	if body.global_position.distance_to(usable.global_position) > USE_REACH + (0.0 if body == level.player else SLACK): return false
@@ -403,6 +410,21 @@ func apply(action: String, index: int, seat: int, data: Dictionary, quiet: bool)
 					r.holder = seat
 					if seat == level.player.slot and not quiet: level.interaction.read_paper(office_card(int(owner)))
 					break
+		"drop":
+			if requests.has(index):
+				requests[index].state = Card.DROPPED
+				requests[index].holder = -1
+				var at: Vector3 = data.get("at", Vector3.ZERO)
+				requests[index]["drop"] = at
+				lay_card(index, at)
+		"pick":
+			if requests.has(index) and int(requests[index].state) == Card.DROPPED:
+				requests[index].state = Card.HELD
+				requests[index].holder = seat
+				if pickups.has(index):
+					pickups[index].queue_free()
+					pickups.erase(index)
+				if seat == level.player.slot and not quiet: level.interaction.read_paper(office_card(index))
 		"swipe":
 			var owner := held_unswiped(seat)
 			if owner >= 0:
@@ -478,6 +500,42 @@ func own_papers(seat: int) -> Array:
 	for owner in held_cards(seat): papers.append(office_card(int(owner)))
 	return papers
 
+## The host: whoever falls drops the cards they hold where they fell, on what
+## is under them (the duct's floor in the duct), told to everyone.
+func on_death(seat: int, point: Vector3) -> void:
+	if level.net.is_client(): return
+	var ray := PhysicsRayQueryParameters3D.create(point + Vector3(0, 0.5, 0), point - Vector3(0, 2.0, 0), 1)
+	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(ray)
+	var at: Vector3 = (hit.position as Vector3) + Vector3(0, 0.01, 0) if not hit.is_empty() else point
+	for owner in held_cards(seat):
+		apply("drop", int(owner), seat, {"at": at}, false)
+		level.match_net.tell_office(ID, "drop", int(owner), seat, {"at": at})
+
+## A dropped card lying on the floor: the card's colour on a small plate, a
+## usable to pick it up (its index is the card's owner).
+func lay_card(owner: int, at: Vector3) -> void:
+	if pickups.has(owner): pickups[owner].queue_free()
+	var usable := USABLE.new()
+	usable.name = "DroppedCard_%d" % owner
+	usable.level = level
+	usable.handler = self
+	usable.index = owner
+	usable.action = "pick"
+	usable.box = Vector3(0.4, 0.3, 0.4)
+	usable.position = at - Vector3(0, 0, 0.2)
+	level.hotel.add_child(usable)
+	var card_mesh := MeshInstance3D.new()
+	var plate := BoxMesh.new()
+	plate.size = Vector3(0.2, 0.004, 0.13)
+	card_mesh.mesh = plate
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color8(222, 205, 165)
+	card_mesh.material_override = material
+	card_mesh.position = Vector3(0, 0.002, 0.2)
+	card_mesh.rotation.y = randf() * TAU
+	usable.add_child(card_mesh)
+	pickups[owner] = usable
+
 ## Every machine moves the capsules; the host: a capsule that has run its
 ## tube arrives in its tray.
 func tick(_delta: float) -> void:
@@ -521,6 +579,8 @@ func reset() -> void:
 		capsules[seat].node.queue_free()
 		stop_loop(capsules[seat].hiss)
 	capsules.clear()
+	for owner in pickups: pickups[owner].queue_free()
+	pickups.clear()
 	textures.clear()
 	requests.clear()
 	swiped.clear()
@@ -535,4 +595,6 @@ func restore(data: Dictionary) -> void:
 	var kept: Dictionary = data.get("requests", {})
 	for seat in kept: requests[int(seat)] = kept[seat]
 	swiped = data.get("swiped", []).map(func(seat): return int(seat))
+	for owner in requests:
+		if int(requests[owner].state) == Card.DROPPED: lay_card(int(owner), requests[owner].get("drop", Vector3.ZERO))
 	show_state()

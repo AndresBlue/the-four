@@ -1594,6 +1594,11 @@ func objective_snapshots() -> Dictionary:
 		if objectives[objective_name].snapshotted(): kept[objective_name] = objectives[objective_name].snapshot()
 	return kept
 
+## The host: a survivor fell where it stood; every handler hears of it (the
+## offices' cards drop with their holder).
+func objectives_on_death(seat: int, point: Vector3) -> void:
+	for handler in objectives.values(): handler.on_death(seat, point)
+
 ## The handlers a stage asks, in the order it lists them (kind.STAGES).
 func stage_objectives(stage := -1) -> Array:
 	var number: int = session.stage if stage < 0 else stage

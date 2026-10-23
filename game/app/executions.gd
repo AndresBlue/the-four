@@ -378,10 +378,14 @@ func finish_execution() -> void:
 	if not level.net.is_client():
 		level.ledger.note_death(seat)
 		level.session.capture(seat)
+		var fallen = level.body_of_seat(seat)
+		if fallen != null: level.objectives_on_death(seat, fallen.global_position)
 		# And whoever was in the wardrobe with it.
 		if partner >= 0:
 			level.ledger.note_death(partner)
 			level.session.capture(partner)
+			var beside = level.body_of_seat(partner)
+			if beside != null: level.objectives_on_death(partner, beside.global_position)
 	# Alone, and the floor giving the stage back: there is nobody to watch,
 	# so the picture stays gone and the body still until it is up again at
 	# the stage's door (revival.restore_local_player).

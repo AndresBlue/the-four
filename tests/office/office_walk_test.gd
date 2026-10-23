@@ -178,6 +178,13 @@ func the_card(tag: String) -> void:
 	level.match_net.use_office(&"files", "take", station)
 	check("%s: la ficha en la mano, y a la vista" % tag, files.has_card(player.slot) and not files.lamps[station - 1].visible and level.interaction.reading_hint == files.PAPER_BASE + player.slot * 10 + 1)
 	level.interaction.close_document()
+	# Fallen with it in hand, it lies there; picked up, it is in hand again.
+	level.objectives_on_death(player.slot, player.global_position)
+	check("%s: quien cae suelta su ficha donde estaba" % tag, int(files.requests[player.slot].state) == files.Card.DROPPED and files.pickups.has(player.slot))
+	check("%s: en el suelo, COGER" % tag, files.word_of(files.pickups[player.slot], player.slot) == "COGER")
+	level.match_net.use_office(&"files", "pick", player.slot)
+	check("%s: y se recoge" % tag, files.has_card(player.slot) and not files.pickups.has(player.slot))
+	level.interaction.close_document()
 	var kinds: Array = level.own_papers().map(func(paper): return String(paper.kind))
 	check("%s: TUS NOTAS guarda el resguardo y la ficha" % tag, kinds.has("resguardo") and kinds.has("ficha"), str(kinds))
 	var reader: int = files.reader_index()

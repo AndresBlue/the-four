@@ -263,6 +263,7 @@ func _process(delta: float) -> void:
 		if away[seat] >= RECONNECT_GRACE and level.session.state == level.session.State.PLAYING:
 			away.erase(seat)
 			level.session.drop(seat)
+			if bodies.has(seat) and is_instance_valid(bodies[seat]): level.objectives_on_death(seat, bodies[seat].global_position)
 			if bodies.has(seat): bodies[seat].visible = false
 	session_clock -= delta
 	if session_clock <= 0.0:
