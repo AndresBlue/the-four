@@ -372,6 +372,71 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		light.set_meta("off", true)
 		light.visible = false
 
+## Office doors (6.6), made once and kept: the hotel leaf's bounds and
+## conventions (hinge at the origin, the leaf along +X, centred on its
+## thickness), so the seal, the collider, the swing and the halves are the
+## hotel's. A painted leaf with a vision panel; a steel one with a panic bar
+## for service rooms, the plant rooms and the stage gates; a pressed-steel frame.
+static var office_doors := {}
+
+func leaf_mesh(a: Dictionary, b: Dictionary) -> Mesh:
+	var steel: bool = bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
+	var key := "service" if steel else "vision"
+	if not office_doors.has(key): office_doors[key] = door_leaf_mesh(steel)
+	return office_doors[key]
+
+func frame_mesh(_a: Dictionary, _b: Dictionary) -> Mesh:
+	if not office_doors.has("frame"): office_doors["frame"] = door_frame_mesh()
+	return office_doors["frame"]
+
+## A flat leaf the hotel leaf's size; its face one surface, the vision panel
+## (or the panic bar) another.
+func door_leaf_mesh(steel: bool) -> ArrayMesh:
+	var bounds := DOOR_LEAF.get_aabb()
+	var mesh := ArrayMesh.new()
+	var face := SurfaceTool.new()
+	face.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var slab := BoxMesh.new()
+	slab.size = bounds.size
+	face.append_from(slab, 0, Transform3D(Basis.IDENTITY, bounds.get_center()))
+	face.commit(mesh)
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = Color("6f7069") if steel else Color("9a8f78")
+	paint.roughness = 0.5 if steel else 0.75
+	paint.metallic = 0.6 if steel else 0.0
+	mesh.surface_set_material(0, paint)
+	var extra := SurfaceTool.new()
+	extra.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var piece := BoxMesh.new()
+	if steel:
+		# The panic bar across the push side, at 1.0.
+		piece.size = Vector3(bounds.size.x * 0.75, 0.05, 0.05)
+		extra.append_from(piece, 0, Transform3D(Basis.IDENTITY, Vector3(bounds.get_center().x, 1.0, bounds.size.z * 0.5 + 0.04)))
+	else:
+		# The vision panel, 0.2 by 0.6 from 1.15 to 1.75, proud of both faces.
+		piece.size = Vector3(0.2, 0.6, bounds.size.z + 0.004)
+		extra.append_from(piece, 0, Transform3D(Basis.IDENTITY, Vector3(bounds.get_center().x, 1.45, bounds.get_center().z)))
+	extra.commit(mesh)
+	mesh.surface_set_material(1, materials.steel_frame if steel else materials.wired_glass)
+	return mesh
+
+## A pressed-steel frame round the doorway: two jambs and a head.
+func door_frame_mesh() -> ArrayMesh:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var half := FLOOR.PORTAL * 0.5
+	for part in [[Vector3(0.05, OPENING_HIGH, 0.22), Vector3(-half - 0.025, OPENING_HIGH * 0.5, 0)], [Vector3(0.05, OPENING_HIGH, 0.22), Vector3(half + 0.025, OPENING_HIGH * 0.5, 0)], [Vector3(FLOOR.PORTAL + 0.1, 0.05, 0.22), Vector3(0, OPENING_HIGH + 0.025, 0)]]:
+		var box_mesh := BoxMesh.new()
+		box_mesh.size = part[0]
+		tool.append_from(box_mesh, 0, Transform3D(Basis.IDENTITY, part[1]))
+	var mesh := tool.commit()
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color("5d5f5a")
+	steel.metallic = 0.5
+	steel.roughness = 0.55
+	mesh.surface_set_material(0, steel)
+	return mesh
+
 ## The office's corner pieces first (9.3); the hotel's own kinds as the hotel.
 func build_prop(node: Node3D, kind: String) -> void:
 	if not PROPS.build(self, node, kind): super(node, kind)
