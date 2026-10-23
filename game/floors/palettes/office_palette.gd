@@ -541,7 +541,12 @@ static func free_tiles(room: Dictionary) -> Array[Vector2i]:
 			var tile := Vector2i(i, j)
 			if taken.has(tile): continue
 			var centre := Vector2((float(i) + 0.5) * TILE, (float(j) + 0.5) * TILE)
-			if centres.any(func(other): return centre.distance_to(other) < GRILLE_CLEAR): continue
+			var near := false
+			for other in centres:
+				if centre.distance_to(other) < GRILLE_CLEAR:
+					near = true
+					break
+			if near: continue
 			if walled:
 				if not open.has("west") and centre.x - rect.position.x < GRILLE_WALL: continue
 				if not open.has("east") and rect.end.x - centre.x < GRILLE_WALL: continue

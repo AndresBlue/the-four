@@ -1418,9 +1418,25 @@ func furnish_ducts(job: Dictionary) -> String:
 			if not job.duct_pairs.has(pair_key(int(pair[0]), int(pair[1]))): loose.append(pair)
 		loose.sort_custom(func(x, y): return int(x[0]) < int(y[0]) or (int(x[0]) == int(y[0]) and int(x[1]) < int(y[1])))
 		shuffle(loose, rng)
+		var drawn := 0
 		for pair in loose:
 			if rng.randf() >= LOOSE_P: continue
-			if shortcut(f, int(pair[0]), int(pair[1])) >= SHORTCUT_MIN: duct_edge(job, int(pair[0]), int(pair[1]), "loose")
+			if shortcut(f, int(pair[0]), int(pair[1])) >= SHORTCUT_MIN:
+				duct_edge(job, int(pair[0]), int(pair[1]), "loose")
+				drawn += 1
+		# A planta the draw left without one gets the best shortcut there is,
+		# lowest pair on a tie; some have none in reach (one in five or so),
+		# and drawing those again cost too many floors.
+		if drawn == 0:
+			var best: Array = []
+			var best_ratio := SHORTCUT_MIN
+			loose.sort_custom(func(x, y): return int(x[0]) < int(y[0]) or (int(x[0]) == int(y[0]) and int(x[1]) < int(y[1])))
+			for pair in loose:
+				var ratio := shortcut(f, int(pair[0]), int(pair[1]))
+				if ratio > best_ratio or (best.is_empty() and ratio >= SHORTCUT_MIN):
+					best_ratio = ratio
+					best = pair
+			if not best.is_empty(): duct_edge(job, int(best[0]), int(best[1]), "loose")
 	var crossed := duct_cross(job, rng)
 	if not crossed.is_empty(): return crossed
 	for planta in 3:
@@ -1462,10 +1478,11 @@ func grid_pairs(f: Dictionary, cells: Array, in_c: Dictionary, doors := false) -
 			if b >= 0 and in_c.has(b) and (doors or not f.adjacency[int(a)].has(b)): pairs.append([int(a), b])
 	return pairs
 
-## A link's length over the walk it saves; 0 when the walk is too long.
+## A link's length over the walk it saves, walked from door to door; 0 when
+## the walk is too long.
 func shortcut(f: Dictionary, a: int, b: int) -> float:
 	var length := FLOOR.position_of(f.rooms[a]).distance_to(FLOOR.position_of(f.rooms[b]))
-	var walk := float(METRES.walk_within(f.rooms, f.adjacency, a, length / SHORTCUT_MIN).get(b, INF))
+	var walk := METRES.door_metres(f.rooms, f.adjacency, a, b, length / SHORTCUT_MIN)
 	return length / walk if walk > 0.0 else 0.0
 
 ## {cell: piece} of a planta's cells over the duct edges so far, by union and find.

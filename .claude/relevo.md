@@ -15,14 +15,14 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 | Fase 0 (0a a 0f) | Hecha: 0a `3b909f0`..`d32f23a`, 0b `86a4333`, 0c `9f759db`, 0d `592dce2`, 0f `1f09795`, 0e `db7eca1` |
 | 1a Tipo de piso de oficina, paleta, criatura nula | Hecho (`54e99d9`): construido, sin publicar (`floor_index.RELEASED = [1]`) |
 | 1b Generador de oficinas | **Hecho**: U1 a U5 `3bf5ab6`, U6 `6010f41`, U7 a U10 `8dcc122`, U11 y U12 `1231cb5` |
-| 1c Validador y `office_metrics` | **A medias**, sin encargos (el director solo): hechos el refactor de la física base (`room_sweeps()`, `passage_path()`), `office_validator.validate()` con los 15 grupos de la spec 3.1 y la sección «validador» de `office_test` (28 mutaciones y el piso de respaldo); faltan `validate_physics()` de oficinas (3.2), `tools/dev/office_metrics.gd` (3.3), la mutación de la altura de la sala de juntas y `duct_shortcuts` (decisión 2 del autor) |
+| 1c Validador y `office_metrics` | **A medias**, sin encargos (el director solo): hechos el refactor de la física base (`room_sweeps()`, `passage_path()`), `office_validator.validate()` con los 15 grupos de la spec 3.1 y la sección «validador» de `office_test` (28 mutaciones y el piso de respaldo); `validate_physics()` de oficinas (3.2) escrito, sin probar hasta 1d; faltan `tools/dev/office_metrics.gd` (3.3) y la mutación de la altura de la sala de juntas; `duct_shortcuts` no se exige (ver «Enlaces sueltos») |
 | Contrato para montar el piso 2 en escena | Paso propio antes de 1d, sin encargos (lo describe `spec_f1_generator.md`, notas finales de 1a) |
 | 1c a 1i, fases 2 a 5 | Pendientes |
 
 **Lo primero al retomar:**
 1. Leer el uso (`mcp__ccd_session_mgmt__get_usage`). Hasta el 24 de octubre a las 05:00, el tope es el 90 %.
 2. Si el commit de 1c no está hecho (`git log`): estaba pendiente de un `verify.ps1` en verde. Archivos: `game/world/generation/map_validator.gd`, `game/world/generation/office_validator.gd`, `tests/office/office_test.gd` (124 checks, unos 205 s solo), `tools/verify.ps1` (600 s para `office_test`), `docs/DEVELOPMENT.md`, `.claude/relevo.md`.
-3. Seguir 1c: `validate_physics()` de oficinas (3.2: sobrescribir `room_sweeps()` y `passage_path()`, los barridos nuevos; sin prueba hasta 1d) y `tools/dev/office_metrics.gd` (3.3, con `floor_measures()` y su check en `office_test`), y correrlo con 1000 semillas.
+3. Acabar 1c: `tools/dev/office_metrics.gd` (3.3, con `floor_measures()` y su check en `office_test`), y correrlo con 1000 semillas (y `--survivors=1` y `5`).
 4. Después: el paso del contrato (antes de 1d).
 
 ## Lo que 1b hizo distinto de la especificación (decisiones del director)
@@ -33,16 +33,16 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 - **Musts:** `place_musts` bloquea las salas con las que cuenta cada must (las primeras unidades por id, un salón como una) y los aseos que ya hay, porque los aseos y `cap_numbers` se llevaban la única sala de juntas o los aseos dibujados por la mezcla.
 - **office_test:** los aseos se exigen solo en sectores con alguna sala libre junto a un pasillo (la regla de `place_musts`), y la sala de juntas solo donde hay un módulo grande libre.
 - **Cachés** por piso de las tejas libres y de la línea del conducto principal (la mediana bajó de unos 1.500 ms a unos 1.400).
+- **Enlaces sueltos (decisión del autor, 23 de octubre):** el atajo se mide contra el paseo de puerta a puerta (`conduit_metres.door_metres()`: del centro a la puerta, de puerta a puerta cruzando cada sala y al centro de la otra), con el umbral de 0,55. Pasan pocos pares (de 0 a 6 de unos 70 por planta): si el sorteo deja una planta sin ninguno, el generador pone el mejor que pase. Exigir uno en cada planta tiraba demasiados pisos (4 de respaldo en 40), así que es lo mejor posible: `office_test` pide que lo tengan tres de cada cuatro plantas o más. El validador no exige `duct_shortcuts`.
 - **Validador (1c):** acepta `bridge` entre salas con puerta (las que une el árbol de ramas), mide el despeje de las salidas aunque estén fuera de su sala, y agrupa por sala los puntos de pared una vez por piso (sin eso `office_test` tardaba 253 s; ahora unos 205).
 
 ## Decisiones que esperan al autor
 
 1. **Muebles de las oficinas abiertas:** la especificación pide una mediana de 2 piezas por celda y sale 1 (de 927 celdas, 270 vacías). Las zonas de paso (`clear_zones`: el centro, los barridos a las esquinas, las puertas, las taquillas, los props de esquina) se comen la retícula. `office_test` vigila «1 o más» hasta decidir: ajustar las zonas, la retícula (probar otras esquinas) o el umbral.
-2. **Enlaces sueltos de conductos:** con `SHORTCUT_MIN` 0,55 medido de centro a centro, no sale ninguno en 20 semillas (dos salas vecinas sin puerta se separan unos 2 metros de paseo por cada metro de línea). OFICINAS 11.3 cuenta con ellos como los atajos de la criatura: bajar el umbral o medir de otra manera.
-3. **Tiempo del generador:** mediana de unos 1.400 ms por piso (tope de la prueba, 1.500). La mitad es `furnish_ducts` (sobre todo las salidas). Si 1c añade comprobaciones, habrá que recortar.
-4. Las secciones «Pending decisions» de `spec_f2_movement` (§15, 13 para el autor), `spec_f2_mind` (§14) y `spec_f3_integration` (§15, 11 para el autor).
-5. **Dificultad de The Lurker:** los asomos por dificultad, `sated`, `forget`, las seis claves de sistema de `spec_f1_systems` 1.8 y los ajustes del director.
-6. **Textos:** las cuatro líneas de The Lurker en el menú de dificultad (`TRAITS`), y una revisión de los textos del piso 2 que entraron con 1a (nombres de sala, departamentos, hitos, encargos de planta) y de los artículos (`ARTICLES`).
+2. **Tiempo del generador:** mediana de unos 1.400 ms por piso (tope de la prueba, 1.500). Con el validador de 1c y los recortes (`free_tiles()` sin lambda, el validador agrupando los puntos de pared por sala) quedó en unos 1.270 ms solo; dentro de `verify`, con la máquina ocupada, sube a unos 1.550, así que `office_test` pide 2.000 y el presupuesto de 1.500 queda para `office_metrics`, que corre solo.
+3. Las secciones «Pending decisions» de `spec_f2_movement` (§15, 13 para el autor), `spec_f2_mind` (§14) y `spec_f3_integration` (§15, 11 para el autor).
+4. **Dificultad de The Lurker:** los asomos por dificultad, `sated`, `forget`, las seis claves de sistema de `spec_f1_systems` 1.8 y los ajustes del director.
+5. **Textos:** las cuatro líneas de The Lurker en el menú de dificultad (`TRAITS`), y una revisión de los textos del piso 2 que entraron con 1a (nombres de sala, departamentos, hitos, encargos de planta) y de los artículos (`ARTICLES`).
 
 ## Cómo se trabaja sin flujos (aprendido en 1b)
 

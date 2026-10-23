@@ -43,6 +43,7 @@ func office(data: Dictionary) -> Array[String]:
 var spots := {}
 
 func fixtures_by_room(data: Dictionary) -> Dictionary:
+	raw = {}
 	var found: Array = []
 	for key in ["mail", "power", "air"]: LAYOUT.gather(data.get(key, {}), found)
 	for exit in data.get("tubes", {}).get("exits", []):
@@ -62,7 +63,13 @@ func fixtures_by_room(data: Dictionary) -> Dictionary:
 		var along: float = local.y if wall == "west" or wall == "east" else local.x
 		if not out.has(int(room.id)): out[int(room.id)] = []
 		out[int(room.id)].append({"wall": wall, "along": along, "half": LAYOUT.FIXTURE_CLEAR.x / 2})
+		if not raw.has(int(room.id)): raw[int(room.id)] = []
+		raw[int(room.id)].append(spot)
 	return out
+
+## The wall spots themselves, by room (fixtures_by_room() fills it): a room's
+## own make the manifest clear_zones() reads, so it does not gather them all.
+var raw := {}
 
 static func v3(a: Array) -> Vector3:
 	return Vector3(float(a[0]), float(a[1]), float(a[2]))
@@ -569,7 +576,8 @@ func cross_ok(data: Dictionary, chain: Array, cells: Array, errors: Array[String
 	if bad or not linked: errors.append("main_cross")
 
 ## 11. The duct network: its edges, one piece a planta, no shortcut under
-## SHORTCUT_MIN, an exit in every room and every lane run, the exits where
+## SHORTCUT_MIN walked door to door, an exit
+## in every room and every lane run, the exits where
 ## they may be, the gaps.
 func ducts_ok(data: Dictionary, errors: Array[String]) -> void:
 	if not data.has("ducts"): return
@@ -613,14 +621,14 @@ func ducts_ok(data: Dictionary, errors: Array[String]) -> void:
 		if not square or step != 1 or not right: errors.append("duct_link_%d_%d" % [int(ra.id), int(rb.id)])
 		if kind == "loose" or (kind == "bridge" and not door):
 			var length := float(edge[2])
-			var walk := float(METRES.walk_within(rooms, data.adjacency, int(ra.id), length / SHORTCUT_MIN).get(int(rb.id), INF))
+			var walk := METRES.door_metres(rooms, data.adjacency, int(ra.id), int(rb.id), length / SHORTCUT_MIN)
 			if length / walk < SHORTCUT_MIN - 0.001: errors.append("duct_band_%d_%d" % [int(ra.id), int(rb.id)])
 	if halves.size() == 2:
 		var ends: Array = halves.map(func(edge): return int(dn[int(edge[1]) if int(edge[0]) == stub else int(edge[0])][3]))
 		var length: float = float(halves[0][2]) + float(halves[1][2])
 		var door: bool = data.adjacency[int(ends[0])].has(int(ends[1]))
 		if not door:
-			var walk := float(METRES.walk_within(rooms, data.adjacency, int(ends[0]), length / SHORTCUT_MIN).get(int(ends[1]), INF))
+			var walk := METRES.door_metres(rooms, data.adjacency, int(ends[0]), int(ends[1]), length / SHORTCUT_MIN)
 			if length / walk < SHORTCUT_MIN - 0.001: errors.append("duct_band_%d_%d" % [int(ends[0]), int(ends[1])])
 	for planta in 3:
 		if METRES.pieces(ducts, by_wing[planta], ["main", "cross", "drop"]) != 1: errors.append("duct_split_%d" % planta)
@@ -797,7 +805,8 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 		if items.is_empty(): continue
 		var id := int(room.id)
 		var allowed: Array = kinds.get(int(room.type), [])
-		var zones := LAYOUT.clear_zones(data, room, int(room.type) == OFFICE.BOARDROOM)
+		var view := {"rooms": data.rooms, "adjacency": data.adjacency, "mail": raw.get(id, [])}
+		var zones := LAYOUT.clear_zones(view, room, int(room.type) == OFFICE.BOARDROOM)
 		var ok: bool = true
 		for i in items.size():
 			var it: Dictionary = items[i]
@@ -817,3 +826,142 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 			for j in items.size():
 				if j != i and int(items[j].extra.group) != int(it.extra.group) and not LAYOUT.apart(r, LAYOUT.footprint(items[j]), LAYOUT.ITEM_GAP): ok = false
 		if not ok: errors.append("furniture_%d" % id)
+
+# --- In the built floor (spec 3.2; called from build_floor, switched on in 1d) -
+
+## Whether the floor in the physics check is the offices' (validate_physics()
+## sets it), for the sweeps the base asks of room_sweeps() and passage_path().
+var is_office := false
+
+## The base's sweeps with the office's turns, then what only the offices need:
+## the archives' aisles walked, a clear way under every grille, nothing in the
+## band over the false ceiling but the main duct, room round the boardroom's table.
+func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
+	is_office = int(data.get("floor", 1)) == 2
+	var errors := super.validate_physics(world, data)
+	if not is_office: return errors
+	var space := world.direct_space_state
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.32
+	capsule.height = 1.8
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = capsule
+	query.collision_mask = 1
+	var rooms: Array = data.rooms
+	# The narrow aisles of the archives, from the spine to their far end.
+	for i in data.get("archives", []).size():
+		var arch: Dictionary = data.archives[i]
+		var s: Array = arch.spine
+		var spine := Vector2((float(s[0]) + float(s[2])) / 2, (float(s[1]) + float(s[3])) / 2)
+		var py := float(rooms[int(arch.rooms[0])].py)
+		for aisle in arch.aisles:
+			var mid := Vector2((float(aisle[0]) + float(aisle[2])) / 2, (float(aisle[1]) + float(aisle[3])) / 2)
+			var near_end: Vector2
+			var far_end: Vector2
+			if String(arch.axis) == "x":
+				var ends := [float(aisle[1]), float(aisle[3])]
+				if absf(ends[0] - spine.y) > absf(ends[1] - spine.y): ends.reverse()
+				near_end = Vector2(mid.x, ends[0])
+				far_end = Vector2(mid.x, ends[1])
+			else:
+				var ends := [float(aisle[0]), float(aisle[2])]
+				if absf(ends[0] - spine.x) > absf(ends[1] - spine.x): ends.reverse()
+				near_end = Vector2(ends[0], mid.y)
+				far_end = Vector2(ends[1], mid.y)
+			query.transform = Transform3D(Basis.IDENTITY, Vector3(near_end.x, py + 0.94, near_end.y))
+			query.motion = Vector3(far_end.x - near_end.x, 0, far_end.y - near_end.y)
+			if space.cast_motion(query)[0] < 0.99:
+				errors.append("archive_aisle_%d" % i)
+				break
+	# Under every grille a clear way down and on to the room's middle; out of
+	# every low grille, a clear metre.
+	for e in data.get("ducts", {}).get("exits", []):
+		var kind := String(e.kind)
+		var room: Dictionary = rooms[int(e.room)]
+		var py := float(room.py)
+		var p := v3(e.point)
+		var legs: Array = []
+		if kind == "ceiling" or kind == "duct":
+			var low := Vector3(p.x, py + 2.25, p.z)
+			legs = [[p - Vector3(0, 0.05, 0), low], [low, Vector3(float(room.px), py + 2.6, float(room.pz))]]
+		elif kind == "wall":
+			legs = [[p, p + Basis(Vector3.UP, float(e.yaw)).z * 1.0]]
+		for leg in legs:
+			var ray := PhysicsRayQueryParameters3D.create(leg[0], leg[1], 1)
+			if not space.intersect_ray(ray).is_empty():
+				errors.append("exit_way_%d" % int(room.id))
+				break
+	# The band over the false ceiling: nothing in it, but the main duct.
+	var main_cells: Array = data.get("air", {}).get("main", {}).get("cells", [])
+	var plant := int(data.get("air", {}).get("plant", -1))
+	var crawl: Array = OFFICE.crawl_boxes(data)
+	var box := BoxShape3D.new()
+	var band := PhysicsShapeQueryParameters3D.new()
+	band.shape = box
+	band.collision_mask = 1
+	for room in rooms:
+		if int(room.type) == OFFICE.VOID or OFFICE.off_limits(room) or int(room.id) == plant: continue
+		var py := float(room.py)
+		var bottom := py + 2.25
+		var top := py + float(room.height) - 0.05
+		if top <= bottom: continue
+		var inset := 0.25 + OFFICE.WALL_HALF
+		var plan: Array = [Rect2(float(room.px) - float(room.span_x) / 2 + inset, float(room.pz) - float(room.span_z) / 2 + inset, float(room.span_x) - 2 * inset, float(room.span_z) - 2 * inset)]
+		if main_cells.has(int(room.id)):
+			for c in crawl:
+				var cut: AABB = c
+				plan = LAYOUT.rect_minus(plan, Rect2(cut.position.x, cut.position.z, cut.size.x, cut.size.z).grow(SLEEVE))
+		for item in plan:
+			var r: Rect2 = item
+			if r.size.x <= 0.01 or r.size.y <= 0.01: continue
+			box.size = Vector3(r.size.x, top - bottom, r.size.y)
+			band.transform = Transform3D(Basis.IDENTITY, Vector3(r.get_center().x, (bottom + top) / 2, r.get_center().y))
+			if not space.intersect_shape(band, 1).is_empty():
+				errors.append("ceiling_band_%d" % int(room.id))
+				break
+	# Room to walk down both long sides of the boardroom's table.
+	for room in rooms:
+		if int(room.type) != OFFICE.BOARDROOM: continue
+		for it in room.get("furniture", []):
+			if String(it.kind) != "meeting_table": continue
+			var size := Vector2(float(it.size[0]), float(it.size[1]))
+			var long := Vector3(1, 0, 0) if int(it.turn) % 2 == 0 else Vector3(0, 0, 1)
+			var side := Vector3(0, 0, 1) if int(it.turn) % 2 == 0 else Vector3(1, 0, 0)
+			var centre := Vector3(float(room.px) + float(it.at[0]), float(room.py) + 0.94, float(room.pz) + float(it.at[1]))
+			var half := size.x / 2 + 0.6
+			for way in [-1.0, 1.0]:
+				query.transform = Transform3D(Basis.IDENTITY, centre + side * float(way) * 1.2 - long * half)
+				query.motion = long * half * 2
+				if space.cast_motion(query)[0] < 0.99:
+					errors.append("boardroom_%d" % int(room.id))
+					break
+	return errors
+
+## The cover in the corners is reached from the middle, as far as the room
+## lets it (LAYOUT.cover_reach); not in archives, all shelving, nor round the
+## boardroom's table.
+func room_sweeps(room: Dictionary) -> Array:
+	if not is_office: return super.room_sweeps(room)
+	var t := int(room.type)
+	if t == OFFICE.ARCHIVE or t == OFFICE.MOBILE_ARCHIVE or t == OFFICE.BOARDROOM: return []
+	var c := LAYOUT.cover_reach(room)
+	if c <= 0.0: return []
+	return [Vector3(-c, 0, -c), Vector3(c, 0, -c), Vector3(-c, 0, c), Vector3(c, 0, c)]
+
+## Into or out of an archive the way goes square, down the spine to the
+## doorway's line, then to a metre short of the doorway: the base's straight
+## line would go through shelving.
+func passage_path(a: Dictionary, b: Dictionary) -> Array:
+	var path := super.passage_path(a, b)
+	if not is_office: return path
+	var shelves := func(room: Dictionary) -> bool: return int(room.type) == OFFICE.ARCHIVE or int(room.type) == OFFICE.MOBILE_ARCHIVE
+	var door := FLOOR.portal_between(a, b)
+	if shelves.call(a):
+		var at := FLOOR.position_of(a)
+		var spine := Vector3(door.x, at.y + 0.94, at.z) if int(a.x) == int(b.x) else Vector3(at.x, at.y + 0.94, door.z)
+		path.insert(1, spine)
+	if shelves.call(b):
+		var at := FLOOR.position_of(b)
+		var spine := Vector3(door.x, at.y + 0.94, at.z) if int(a.x) == int(b.x) else Vector3(at.x, at.y + 0.94, door.z)
+		path.insert(path.size() - 1, spine)
+	return path
