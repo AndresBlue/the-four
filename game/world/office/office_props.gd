@@ -175,13 +175,25 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			for r in 4:
 				for c in 3: builder.box(holder, Vector3(-size.x / 3.0 + c * size.x / 3.0, 0.18 + r * 0.28, size.y * 0.5 + 0.004), Vector3(0.12, 0.03, 0.01), "gold")
 
+## The desk's model (tools/props/build_catalogue.gd) and its scale to the
+## generator's desk; loaded once.
+const DESK_MODEL := "res://assets/props/hotel/metal_office_desk.res"
+const DESK_FIT := Vector3(0.75, 0.96, 0.79)
+static var desk_mesh: Mesh = null
+
 ## A steel desk (top at 0.74) with its chair pulled up on the side `face`
 ## looks to (+Z for 1).
 static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed_pos: Vector3) -> void:
 	builder.box(holder, at + Vector3(0, 0.38, 0), Vector3(1.5, 0.76, 0.75), "", true)
-	builder.box(holder, at + Vector3(0, 0.74, 0), Vector3(1.5, 0.03, 0.75), "laminate")
-	builder.box(holder, at + Vector3(0.5, 0.36, 0), Vector3(0.42, 0.72, 0.7), "steel_olive")
-	builder.box(holder, at + Vector3(-0.72, 0.36, 0), Vector3(0.04, 0.72, 0.7), "steel_olive")
+	if desk_mesh == null and ResourceLoader.exists(DESK_MODEL): desk_mesh = load(DESK_MODEL)
+	if desk_mesh != null:
+		# Poly Haven's metal desk (2.00 x 0.79 x 0.95) brought to the
+		# generator's 1.5 x 0.76 x 0.75 footprint, its front to the chair.
+		builder.place(holder, desk_mesh, Transform3D(Basis(Vector3.UP, 0.0 if face > 0.0 else PI).scaled(DESK_FIT), at))
+	else:
+		builder.box(holder, at + Vector3(0, 0.74, 0), Vector3(1.5, 0.03, 0.75), "laminate")
+		builder.box(holder, at + Vector3(0.5, 0.36, 0), Vector3(0.42, 0.72, 0.7), "steel_olive")
+		builder.box(holder, at + Vector3(-0.72, 0.36, 0), Vector3(0.04, 0.72, 0.7), "steel_olive")
 	if builder.vary(seed_pos, 41) < 0.5: builder.box(holder, at + Vector3(-0.3, 0.77, 0), Vector3(0.21, 0.02, 0.3), "linen")
 	chair(builder, holder, at + Vector3(0, 0, face * 0.55), -face)
 

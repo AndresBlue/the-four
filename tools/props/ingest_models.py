@@ -32,7 +32,8 @@ MAX_SIZE = 1024
 ## Downloads the game does not use (they were taken out in the September 2026
 ## cleanup): not brought in, not registered. Chandelier_01 is still read from
 ## source_assets/ by the trailer (tools/trailer3d).
-SKIP = {"Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "metal_office_desk", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"}
+## (metal_office_desk came back in October 2026: the offices' desks.)
+SKIP = {"Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02"}
 ## Downloaded in October 2026 (tools/props/fetch_models.py) and not placed
 ## yet: the frame wants its own way of being hung, the ducts a run along a
 ## ceiling.
@@ -254,6 +255,8 @@ def main():
     rows = []
     for model in sorted(os.listdir(SOURCE)):
         if not os.path.isdir(os.path.join(SOURCE, model)) or model in SKIP: continue
+        # A folder of pieces that are not a glTF (the key's: tools/props/bake_key.gd).
+        if not any(f.endswith(".gltf") for f in os.listdir(os.path.join(SOURCE, model))): continue
         info, names = ingest(model)
         rows.append((model, info))
         print(model, names)

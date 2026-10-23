@@ -180,6 +180,7 @@ Poly Haven, CC0 (dominio público): no exigen atribución: constan aquí y no en
 | [Industrial Storage Cart](https://polyhaven.com/a/industrial_storage_cart) | Jule Bielitz | CC0 1.0 |
 | [Jug 01](https://polyhaven.com/a/jug_01) | Kuutti Siitonen | CC0 1.0 |
 | [Mantel Clock 01](https://polyhaven.com/a/mantel_clock_01) | Yann Kervran, Rico Cilliers | CC0 1.0 |
+| [Metal Office Desk](https://polyhaven.com/a/metal_office_desk) | Ulan Cabanilla | CC0 1.0 |
 | [Metal Trash Can](https://polyhaven.com/a/metal_trash_can) | GurJas Studios | CC0 1.0 |
 | [Multi Cleaner Bottle](https://polyhaven.com/a/multi_cleaner_bottle) | James Ray Cock | CC0 1.0 |
 | [Office Notepads](https://polyhaven.com/a/office_notepads) | Ulan Cabanilla | CC0 1.0 |

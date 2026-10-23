@@ -73,6 +73,19 @@ func run() -> void:
 	level.interaction.read_paper(level.objective(&"power").paper_of(0))
 	await shot("memo_cuadro")
 	level.interaction.close_document()
+	# An open office's desks.
+	for room in m.rooms:
+		if int(room.wing) != 0 or int(room.type) != OFFICE.OPEN_OFFICE or level.hotel.dark_ids.has(int(room.id)) or room.get("furniture", []).is_empty(): continue
+		var oc := FLOOR.position_of(room)
+		var it: Dictionary = room.furniture[0]
+		var desk_at := oc + Vector3(float(it.at[0]), 0, float(it.at[1]))
+		look(desk_at + Vector3(1.8, 1.6, 1.8), desk_at + Vector3(0, 0.6, 0))
+		await shot("mesas")
+		look(desk_at + Vector3(0.9, 1.2, 1.4), desk_at + Vector3(0, 0.5, 0))
+		level.player.torch.visible = true
+		await shot("mesa_cerca")
+		level.player.torch.visible = false
+		break
 	# A glazed office seen from its corridor.
 	for room in m.rooms:
 		if int(room.wing) != 0 or room.get("glazed", []).is_empty() or level.hotel.dark_ids.has(int(room.id)): continue
