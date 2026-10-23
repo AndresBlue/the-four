@@ -44,6 +44,8 @@ const TROFFER_BODY := 0.11
 const LENS_RECESS := 0.012
 const LAMP_ENERGY := 3.6
 const LAMP_DROP := 0.35
+const LAMP_ATTENUATION := 0.9      # flatter than the hotel's 1.25: offices are evenly lit
+const FAILING := 0.12              # lit rooms with one failing troffer (vary salt 160)
 
 func _init() -> void:
 	super()
@@ -115,11 +117,21 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 		box(node, Vector3(rect.get_center().x, h + TEE.y * 0.5, z) - origin, Vector3(rect.size.x, TEE.y, TEE.x), "tgrid")
 	# The troffers: a housing over two tiles and its prismatic lens.
 	var lens := "lens_off" if dark_room(room) else "troffer_lens"
-	for lamp in lamps:
+	# One troffer of some lit rooms fails (salt 160, which one 164): its lens
+	# flickers whole, the room's light by its share (room_lamp(), H5).
+	var failing := -1
+	failing_lens = ""
+	if not dark_room(room) and not lamps.is_empty() and vary(node.position, 160) < FAILING:
+		failing = int(vary(node.position, 164) * lamps.size()) % lamps.size()
+		failing_lens = "troffer_fail_%d" % flickers.size()
+		materials[failing_lens] = materials.troffer_lens.duplicate()
+		failing_share = 1.0 / lamps.size()
+	for k in lamps.size():
+		var lamp: Dictionary = lamps[k]
 		var size := Vector3(0.6, TROFFER_BODY, 1.2) if bool(lamp.along_z) else Vector3(1.2, TROFFER_BODY, 0.6)
 		var at := Vector3(lamp.centre.x, 0, lamp.centre.y) - origin
 		box(node, at + Vector3(0, h + TILE_FACE + TROFFER_BODY * 0.5, 0), size, "troffer_body")
-		box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(size.x - 0.04, 0.01, size.z - 0.04), lens)
+		box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(size.x - 0.04, 0.01, size.z - 0.04), failing_lens if k == failing else lens)
 	# The grilles in their tiles; over a gap, the dark of the plenum.
 	for e in exits:
 		var at := OFFICE.tile_centre(OFFICE.tile_of(Vector3(float(e.point[0]), 0, float(e.point[2]))), 0.0) - origin
@@ -131,6 +143,10 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 
 ## The room being built, for the walls that need it (its stripe).
 var building_room := {}
+## The failing troffer's lens of the room being built (ceiling() to
+## room_lamp()) and its share of the room's light.
+var failing_lens := ""
+var failing_share := 1.0
 ## The corridor cells whose zone name is already on a stripe.
 var labelled := {}
 
@@ -383,6 +399,11 @@ func archive_battens(node: Node3D, room: Dictionary) -> bool:
 ## The electrical room's lamp is made (lights[id] must exist) but stays out.
 func room_lamp(node: Node3D, room: Dictionary) -> void:
 	var light := lamp_light(node, room, lamp_fixture(node, room))
+	if OFFICE.lamp_of(room) == "troffer":
+		light.omni_attenuation = LAMP_ATTENUATION
+		if not failing_lens.is_empty():
+			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials.troffer_lens.emission_energy_multiplier, "share": failing_share})
+	failing_lens = ""
 	if OFFICE.lamp_of(room) == "emergency":
 		light.set_meta("off", true)
 		light.visible = false
