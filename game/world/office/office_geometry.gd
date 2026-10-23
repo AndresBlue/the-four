@@ -450,6 +450,53 @@ func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, 
 		box(holder, at, Vector3(PLAQUE.x, PLAQUE.y, 0.004), "plaque", false, "box", Vector3(0, yaw, 0))
 		text(holder, words, at + normal * side * 0.004, yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
 
+## The office's lockers (9.7): the wardrobe's measures and hinges in olive
+## steel, louvred at eye height, made once and kept (the baked locker of
+## tools/props/build_locker.gd stands for later).
+static var locker := {}
+const WARDROBE := preload("res://game/world/interactables/hiding_place.gd")
+
+func hide_skin(_room: Dictionary) -> Dictionary:
+	if locker.is_empty():
+		var steel := StandardMaterial3D.new()
+		steel.albedo_color = Color("5f6650")
+		steel.metallic = 0.5
+		steel.roughness = 0.55
+		var dark := StandardMaterial3D.new()
+		dark.albedo_color = Color("1c1d19")
+		var shell := WARDROBE.BODY.get_aabb()
+		var body := SurfaceTool.new()
+		body.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for part in [[Vector3(shell.size.x, shell.size.y, 0.02), Vector3(shell.get_center().x, shell.get_center().y, shell.position.z + 0.01)], [Vector3(0.02, shell.size.y, shell.size.z), Vector3(shell.position.x + 0.01, shell.get_center().y, shell.get_center().z)], [Vector3(0.02, shell.size.y, shell.size.z), Vector3(shell.end.x - 0.01, shell.get_center().y, shell.get_center().z)], [Vector3(shell.size.x, 0.02, shell.size.z), Vector3(shell.get_center().x, shell.end.y - 0.01, shell.get_center().z)], [Vector3(shell.size.x, 0.02, shell.size.z), Vector3(shell.get_center().x, shell.position.y + 0.01, shell.get_center().z)]]:
+			var piece := BoxMesh.new()
+			piece.size = part[0]
+			body.append_from(piece, 0, Transform3D(Basis.IDENTITY, part[1]))
+		var body_mesh := body.commit()
+		body_mesh.surface_set_material(0, steel)
+		locker["body"] = body_mesh
+		for side in ["left", "right"]:
+			var leaf_mesh: Mesh = WARDROBE.LEAVES[side]
+			var bounds := leaf_mesh.get_aabb()
+			var mesh := ArrayMesh.new()
+			var face := SurfaceTool.new()
+			face.begin(Mesh.PRIMITIVE_TRIANGLES)
+			var slab := BoxMesh.new()
+			slab.size = bounds.size
+			face.append_from(slab, 0, Transform3D(Basis.IDENTITY, bounds.get_center()))
+			face.commit(mesh)
+			mesh.surface_set_material(0, steel)
+			var slots := SurfaceTool.new()
+			slots.begin(Mesh.PRIMITIVE_TRIANGLES)
+			for k in 5:
+				var slot := BoxMesh.new()
+				slot.size = Vector3(bounds.size.x * 0.5, 0.012, bounds.size.z + 0.004)
+				slots.append_from(slot, 0, Transform3D(Basis.IDENTITY, Vector3(bounds.get_center().x, 1.55 + k * 0.035, bounds.get_center().z)))
+			slots.commit(mesh)
+			mesh.surface_set_material(1, dark)
+			if leaf_mesh.has_meta("hinge"): mesh.set_meta("hinge", leaf_mesh.get_meta("hinge"))
+			locker[side] = mesh
+	return locker
+
 ## Office doors (6.6), made once and kept: the hotel leaf's bounds and
 ## conventions (hinge at the origin, the leaf along +X, centred on its
 ## thickness), so the seal, the collider, the swing and the halves are the

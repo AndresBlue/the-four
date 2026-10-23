@@ -72,6 +72,10 @@ signal forced
 ## built it stands (0.85 in the rooms with alcoves) and the hotel's materials
 ## for its leaves (hotel_geometry.materials).
 var big := false
+## Another skin than the wardrobe's, for a floor's own (an office locker,
+## spec_f1_geometry.md 9.7): {body, left, right} meshes of the wardrobe's
+## measures and hinges, set before it enters the tree. Empty: the wardrobe.
+var skin := {}
 var scale_by := 1.0
 var materials := {}
 ## This wardrobe's own size and right hinge, and how many it takes.
@@ -164,7 +168,7 @@ func _ready() -> void:
 	if not big:
 		var body := MeshInstance3D.new()
 		body.name = "WardrobeBody"
-		body.mesh = BODY
+		body.mesh = skin.get("body", BODY)
 		# Off the floor by a hair: the wardrobe is drawn from both sides (so the
 		# inside of its doors shows), and its underside, in the plane of the
 		# carpet, flickered into it wherever one looked in at its floor.
@@ -205,12 +209,12 @@ func _ready() -> void:
 		pivot.position = Vector3(axis.x, STAND, axis.z)
 		add_child(pivot)
 		var leaf := MeshInstance3D.new()
-		leaf.mesh = big_leaf(side, scale_by) if big else LEAVES[side]
+		leaf.mesh = big_leaf(side, scale_by) if big else skin.get(side, LEAVES[side])
 		if big:
 			for surface in BIG_LEAF_MATERIALS.size():
 				if materials.has(BIG_LEAF_MATERIALS[surface]): leaf.set_surface_override_material(surface, materials[BIG_LEAF_MATERIALS[surface]])
 		pivot.add_child(leaf)
-		if not big:
+		if not big and not skin.has(side):
 			var inside := MeshInstance3D.new()
 			inside.name = "Inside"
 			inside.mesh = INSIDES[side]

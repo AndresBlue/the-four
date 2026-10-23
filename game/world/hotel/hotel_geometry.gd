@@ -1332,6 +1332,7 @@ func fittings(node: Node3D, room: Dictionary) -> void:
 			hide.name = "Wardrobe_%d" % node.get_child_count()
 			hide.position = corner
 			hide.rotation.y = FLOOR.hiding_yaw(corner)
+			hide.skin = hide_skin(room)
 			hides.append(hide)
 			# The wardrobe builds its own model, frame colliders and door leaves.
 			node.add_child(hide)
@@ -2773,6 +2774,10 @@ func furnish_pick(_holder: Node3D, _pick: String, _width: float, _seed_pos: Vect
 func wall_stretches(room: Dictionary) -> Array: return DRESSING.stretches(room, palette)
 
 func fuse_boxes() -> bool: return true
+
+## The skin of a room's hiding places (hiding_place.skin): the hotel's
+## wardrobe, or a floor kind's own (the offices' lockers, 9.7).
+func hide_skin(_room: Dictionary) -> Dictionary: return {}
 
 ## How far from the walls the navigation keeps (H3).
 func nav_agent_radius() -> float: return 0.4
