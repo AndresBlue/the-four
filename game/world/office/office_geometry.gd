@@ -6,7 +6,7 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "vinyl": "tile", "terrazzo": "tile", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "vinyl": "tile", "terrazzo": "tile", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 ## Finishes that stand in as a plain colour until their scans are ingested:
 ## the hotel has no plain paint, block or concrete.
@@ -150,6 +150,16 @@ func build_prop(node: Node3D, kind: String) -> void:
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
+	# The room's free-standing furniture (9.2), each item in a holder of its own.
+	var items: Array = room.get("furniture", [])
+	for k in items.size():
+		var item: Dictionary = items[k]
+		var holder := Node3D.new()
+		holder.name = "Furniture_%d" % k
+		holder.position = Vector3(float(item.at[0]), 0, float(item.at[1]))
+		holder.rotation.y = int(item.turn) * PI / 2
+		node.add_child(holder)
+		PROPS.build_item(self, holder, item, node.position + holder.position)
 	if int(room.type) != OFFICE.ARCHIVE and int(room.type) != OFFICE.MOBILE_ARCHIVE: return
 	var cell := Rect2(float(room.px) - float(room.span_x) / 2, float(room.pz) - float(room.span_z) / 2, float(room.span_x), float(room.span_z))
 	for unit in manifest.get("archives", []):

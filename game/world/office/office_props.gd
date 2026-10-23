@@ -132,3 +132,63 @@ static func row(builder: Node3D, node: Node3D, centre: Vector3, length: float, d
 		for k in int(length / 0.36):
 			if builder.vary(seed_pos + Vector3(k, s, 0), 31) > fill: continue
 			builder.box(node, centre + along * (-length * 0.5 + 0.2 + k * 0.36) + Vector3(0, y + 0.135, 0), flat.call(0.33, 0.25, minf(0.39, depth - 0.02)), "cardboard")
+
+## A room.furniture item (spec 9.2) in its holder (at its `at`, turned by
+## `turn`, its back at local -Z). The desk and the chairs are procedural
+## stand-ins for metal_office_desk and school_chair_01 until their ingest; the
+## card index stands in for vintage_wooden_drawer_01.
+static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_pos: Vector3) -> void:
+	var size := Vector2(float(item.size[0]), float(item.size[1]))
+	match String(item.kind):
+		"desk":
+			desk(builder, holder, Vector3(0, 0, -size.y * 0.5 + 0.375), 1.0, seed_pos)
+		"desk_pair":
+			desk(builder, holder, Vector3(0, 0, -0.375), 1.0, seed_pos)
+			desk(builder, holder, Vector3(0, 0, 0.375), -1.0, seed_pos + Vector3(0.5, 0, 0))
+		"partition":
+			builder.box(holder, Vector3(0, 0.75, 0), Vector3(size.x, 1.5, 0.05), "partition_fabric", true)
+			builder.box(holder, Vector3(0, 1.51, 0), Vector3(size.x, 0.02, 0.06), "steel_frame")
+		"meeting_table":
+			builder.box(holder, Vector3(0, 0.38, 0), Vector3(size.x, 0.76, size.y), "", true)
+			builder.box(holder, Vector3(0, 0.74, 0), Vector3(size.x, 0.04, size.y), "veneer")
+			for x in [-size.x * 0.35, size.x * 0.35]: builder.box(holder, Vector3(x, 0.36, 0), Vector3(0.05, 0.72, size.y * 0.8), "veneer")
+			var each := 4 + int(builder.vary(seed_pos, 40) * 2)
+			for side in [-1.0, 1.0]:
+				for k in each:
+					var x: float = -size.x * 0.5 + size.x * (k + 0.5) / each
+					chair(builder, holder, Vector3(x, 0, side * (size.y * 0.5 + 0.05)), side)
+		"pigeonholes":
+			builder.box(holder, Vector3(0, 0.95, 0), Vector3(size.x, 1.9, size.y), "", true)
+			for c in 7:
+				builder.box(holder, Vector3(-size.x * 0.5 + size.x * c / 6.0, 0.95, 0), Vector3(0.015, 1.9, size.y), "laminate")
+			for r in 9:
+				builder.box(holder, Vector3(0, 0.02 + 1.86 * r / 8.0, 0), Vector3(size.x, 0.015, size.y), "laminate")
+		"copier":
+			builder.box(holder, Vector3(0, 0.475, 0), Vector3(size.x, 0.95, size.y), "enamel", true)
+			builder.box(holder, Vector3(0, 0.96, 0), Vector3(size.x * 0.8, 0.02, size.y * 0.8), "black")
+			builder.box(holder, Vector3(size.x * 0.5 + 0.12, 0.6, 0), Vector3(0.24, 0.03, size.y * 0.7), "enamel")
+		"vending":
+			builder.box(holder, Vector3(0, 0.9, 0), Vector3(size.x, 1.8, size.y), "enamel", true)
+			builder.box(holder, Vector3(-0.1, 1.05, size.y * 0.5 + 0.005), Vector3(size.x * 0.6, 1.2, 0.01), "black")
+		"card_index":
+			builder.box(holder, Vector3(0, 0.6, 0), Vector3(size.x, 1.2, size.y), "wood", true)
+			for r in 4:
+				for c in 3: builder.box(holder, Vector3(-size.x / 3.0 + c * size.x / 3.0, 0.18 + r * 0.28, size.y * 0.5 + 0.004), Vector3(0.12, 0.03, 0.01), "gold")
+
+## A steel desk (top at 0.74) with its chair pulled up on the side `face`
+## looks to (+Z for 1).
+static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed_pos: Vector3) -> void:
+	builder.box(holder, at + Vector3(0, 0.38, 0), Vector3(1.5, 0.76, 0.75), "", true)
+	builder.box(holder, at + Vector3(0, 0.74, 0), Vector3(1.5, 0.03, 0.75), "laminate")
+	builder.box(holder, at + Vector3(0.5, 0.36, 0), Vector3(0.42, 0.72, 0.7), "steel_olive")
+	builder.box(holder, at + Vector3(-0.72, 0.36, 0), Vector3(0.04, 0.72, 0.7), "steel_olive")
+	if builder.vary(seed_pos, 41) < 0.5: builder.box(holder, at + Vector3(-0.3, 0.77, 0), Vector3(0.21, 0.02, 0.3), "linen")
+	chair(builder, holder, at + Vector3(0, 0, face * 0.55), -face)
+
+## A stacking chair facing `face` (+Z for 1): seat 0.45 high, back behind.
+static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float) -> void:
+	builder.box(holder, at + Vector3(0, 0.23, 0), Vector3(0.44, 0.46, 0.42), "", true)
+	builder.box(holder, at + Vector3(0, 0.45, 0), Vector3(0.44, 0.03, 0.42), "steel_olive")
+	builder.box(holder, at + Vector3(0, 0.7, -face * 0.2), Vector3(0.42, 0.4, 0.03), "steel_olive")
+	for x in [-0.19, 0.19]:
+		for z in [-0.17, 0.17]: builder.box(holder, at + Vector3(x, 0.22, z), Vector3(0.025, 0.44, 0.025), "steel_frame")
