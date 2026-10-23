@@ -414,6 +414,10 @@ func office_host() -> void:
 	check("La foto de Alpha llega al anfitrión", await wait_for(func(): return files.photos.has(alpha), 40.0))
 	check("Las dos fichas pasan por el lector", await wait_for(func(): return files.swiped.size() >= 2, 60.0))
 	check("Con la cuota, la puerta del montacargas se abre", await wait_for(func(): return not level.hotel.gates[0].locked, 15.0))
+	var power = level.objective(&"power")
+	var air = level.objective(&"air")
+	check("El cuadro de los invitados se aplica en el anfitrión", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 90.0))
+	check("Y el aire: la seguridad abierta, los ventiladores encendidos y parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 90.0))
 	# The guests check what they were told before the room goes.
 	await pause_for(8.0)
 
@@ -427,14 +431,15 @@ func office_guest(words: String, index: int) -> void:
 	check("Entra en el piso del anfitrión, las oficinas", await wait_for(playing, 120.0) and int(level.manifest.get("floor", 1)) == 2)
 	var files = level.objective(&"files")
 	var seat: int = net.local_seat
-	var asked := func(action: String, usable: int, done: Callable) -> bool:
-		var stand: Vector3 = files.usables[usable].stand
+	var asked := func(action: String, usable: int, done: Callable, objective := &"files") -> bool:
+		var handler = level.objective(objective)
+		var stand: Vector3 = handler.usables[usable].stand
 		for attempt in 30:
 			if done.call(): return true
 			level.player.global_position = stand + Vector3(0, 0.05, 0)
 			level.player.velocity = Vector3.ZERO
 			await pause_for(0.5)
-			level.match_net.use_office(&"files", action, usable)
+			level.match_net.use_office(objective, action, usable)
 			await pause_for(0.5)
 		return done.call()
 	check("Su petición la confirma el anfitrión", await asked.call("type", 0, func(): return files.requests.has(seat)))
@@ -453,6 +458,27 @@ func office_guest(words: String, index: int) -> void:
 	if words == "Bravo":
 		var alpha := seat_named("Alpha")
 		check("La foto de Alpha le llega por el anfitrión, igual", await wait_for(func(): return files.photos.has(alpha) and files.textures.has(alpha), 30.0))
+	# The board of planta 2 and the post of planta 3, worked by both guests.
+	var power = level.objective(&"power")
+	var air = level.objective(&"air")
+	var zone_room := func(z: int) -> int:
+		for id in power.zones[z].rooms:
+			if not power.lit_always.has(int(id)) and not level.hotel.dark_ids.has(int(id)): return int(id)
+		return -1
+	if words == "Alpha":
+		check("Sube una zona del cuadro", await asked.call("lever", 0, func(): return power.on_order.has(0), &"power"))
+		check("Y la sala de esa zona se enciende aquí", await wait_for(func(): return level.hotel.lit(zone_room.call(0)), 10.0))
+		check("Pasa su ficha por el lector de la seguridad", await asked.call("post", 3, func(): return air.post_open, &"air"))
+	else:
+		check("Ve subir la zona que subió Alpha", await wait_for(func(): return power.on_order == [0], 60.0))
+		for z in range(1, power.budget + 1):
+			await asked.call("lever", z, func(): return power.on_order.has(z), &"power")
+		check("Pasado el presupuesto, cae la primera", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 20.0))
+		check("Ve abierta la seguridad que abrió Alpha", await wait_for(func(): return air.post_open and not air.post_door.locked, 60.0))
+		check("Enciende los ventiladores desde la consola", await asked.call("start", 4, func(): return air.running(), &"air"))
+		check("Y los para", await asked.call("stop", 5, func(): return not air.running(), &"air"))
+	check("El cuadro queda igual en todos", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 60.0))
+	check("Y el aire también: la seguridad abierta, una carga gastada, parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 60.0))
 
 func multiplayer_peers() -> Array:
 	return Array(level.multiplayer.get_peers())
