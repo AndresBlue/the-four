@@ -25,6 +25,8 @@ const GENERATOR_VERSION := PALETTE.VERSION
 ## Lurker's.
 const CREATURE := "res://game/enemies/null_creature.tscn"
 const CREATURE_KEY := &"lurker"
+## Who is after you, said in red over the first notice anybody gets (lifts.gd).
+const FIRST_LEAD := "The Lurker acecha entre las sombras, no dejes que te atrape"
 ## No papers until step 1h.
 const PAPERS := ""
 

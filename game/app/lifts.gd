@@ -39,14 +39,14 @@ func announce_sector(delta := 0.0) -> void:
 		# The very first floor played on this machine says what is going on
 		# before what to do: somebody new has no other way of knowing.
 		if pending_brief == 1 and not bool(level.settings.values.get("first_game_done", false)) and not level.observer and not level.bot_match:
-			level.ui.show_brief(level.kind.title_of(1), FIRST_BRIEF, FIRST_LEAD, FIRST_HOLD)
+			level.ui.show_brief(level.kind.title_of(1), FIRST_BRIEF, level.kind.FIRST_LEAD, FIRST_HOLD)
 			level.settings.values.first_game_done = true
 			level.settings.save_settings()
 		else: level.ui.show_brief(level.kind.title_of(pending_brief), stage_brief(pending_brief))
 	pending_brief = 0
 
-## What the first floor anybody plays opens with, and how long it stays.
-const FIRST_LEAD := "The Locust va a por ti…"
+## What the first floor anybody plays opens with (after the floor's own
+## FIRST_LEAD), and how long it stays.
 const FIRST_BRIEF := "Busca refugio, escóndete y encuentra la salida."
 const FIRST_HOLD := 11.0
 

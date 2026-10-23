@@ -1205,6 +1205,8 @@ ACTUAL: OBJETIVO, SECTOR 1 · Encuentra la salida del sector. /
 | OBJETIVO, SECTOR 3 · Busca las notas con el código, enciende televisores y sal del piso.
 | (Solo el primer piso que se juega en el equipo, en lugar del de SECTOR 1:)
 | OBJETIVO, SECTOR 1 · The Locust va a por ti… · Busca refugio, escóndete y encuentra la salida.
+| (Lo mismo si ese primer piso es el de las oficinas:)
+| OBJETIVO, NIVEL 1 · The Lurker acecha entre las sombras, no dejes que te atrape · Busca refugio, escóndete y encuentra la salida.
 CORRECCIÓN:
 
 [HUD.08] Progreso del sector, en la pausa bajo el objetivo (televisores desde el

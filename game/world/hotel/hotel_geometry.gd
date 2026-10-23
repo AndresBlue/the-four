@@ -1448,6 +1448,9 @@ func lamp_light(node: Node3D, room: Dictionary, spec: Dictionary) -> OmniLight3D
 		flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[spec.failing], "glow": materials.light.emission_energy_multiplier})
 	return light
 
+## How hard the beacon's glass glows when lit; a tenth of it between blinks.
+const BEACON_GLOW := 9.0
+
 ## What only some rooms have: the reception's red beacon and the refuge's
 ## exit signs. Both retouch the lamp room_lamp() has just made.
 func extras(node: Node3D, room: Dictionary) -> void:
@@ -1462,7 +1465,7 @@ func extras(node: Node3D, room: Dictionary) -> void:
 		beacon_glass.albedo_color = Color(0.5, 0.02, 0.02)
 		beacon_glass.emission_enabled = true
 		beacon_glass.emission = Color(1.0, 0.08, 0.04)
-		beacon_glass.emission_energy_multiplier = 4.0
+		beacon_glass.emission_energy_multiplier = BEACON_GLOW
 		var lens := MeshInstance3D.new()
 		var dome := SphereMesh.new()
 		dome.radius = 0.11
@@ -2612,7 +2615,7 @@ func _process(delta: float) -> void:
 		var on := 1.0 if t < 0.8 else 0.0
 		if on > 0.0 and not reduced: on *= 0.75 + 0.25 * sign(sin(flicker_clock * 37.0))
 		beacon.light.light_energy = beacon.energy * (0.08 + 0.92 * on)
-		beacon.material.emission_energy_multiplier = 0.4 + 3.6 * on
+		beacon.material.emission_energy_multiplier = BEACON_GLOW * (0.1 + 0.9 * on)
 	if flickers.is_empty(): return
 	for entry in flickers:
 		var lamp: OmniLight3D = entry.light
