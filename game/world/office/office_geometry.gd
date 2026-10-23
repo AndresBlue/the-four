@@ -15,7 +15,7 @@ const GATE_OPEN_X := -0.62
 const GATE_FIXED_X := -0.85
 ## Finishes that stand in as a plain colour until their scans are ingested:
 ## the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4"), "plaque": Color("2f4a3a")}
+const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4"), "plaque": Color("2f4a3a"), "switch": Color("d8d0bc")}
 ## The cove base along the walls and the department stripe in the corridors
 ## (spec 4.1): height and thickness; bottom and top.
 const SKIRT := Vector2(0.10, 0.006)
@@ -31,6 +31,7 @@ const GLASS_THICK := 0.008
 const PLAQUE := Vector2(0.26, 0.09)
 const PLAQUE_Y := 1.55
 const PLAQUE_FROM_JAMB := 0.22
+const SWITCH_Y := 1.15
 ## A wall boundary's name (hotel walls(): "Wall_<dx>_<dz>") and its side.
 const SIDE_OF := {"Wall_-1_0": "west", "Wall_1_0": "east", "Wall_0_-1": "north", "Wall_0_1": "south"}
 ## The false ceiling (spec 4.1): tile thickness and face over the grid's
@@ -291,6 +292,16 @@ func build_exit_door(data: Dictionary) -> void:
 	if not gates_list.is_empty() and String(gates_list[-1].get("kind", "lift")) == "shaft": return
 	super(data)
 
+## The light switch beside the door (6.1): a beige plastic rocker plate at
+## SWITCH_Y instead of the hotel's brass one.
+func switch_plate(boundary: Node3D, x: float, inner: int) -> void:
+	box(boundary, Vector3(x, SWITCH_Y, inner * 0.094), Vector3(0.08, 0.12, 0.008), "switch", false, "detail")
+	box(boundary, Vector3(x, SWITCH_Y, inner * 0.1), Vector3(0.03, 0.05, 0.008), "switch", false, "detail", Vector3(inner * -0.2, 0, 0))
+
+## The hotel hangs a vent grille on a bare wall; the offices' grilles are
+## the duct network's (extras(), ceiling()).
+func grille(_boundary: Node3D, _x: float, _inner: int) -> void: pass
+
 ## What hangs on an office wall instead of the hotel's paintings and sconces
 ## (6.5), by vary: a cork notice board in offices and corridors, the hotel's
 ## wall clock in offices, the break room and the archives; otherwise the spot
@@ -469,6 +480,15 @@ func build_prop(node: Node3D, kind: String) -> void:
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
+	# The duct network's low wall grilles (ducts.exits of kind "wall"), where
+	# the generator put them: a frame and slats over the dark of the duct.
+	for e in manifest.get("ducts", {}).get("exits", []):
+		if int(e.room) != int(room.id) or String(e.kind) != "wall": continue
+		var at := Vector3(float(e.point[0]), float(e.point[1]), float(e.point[2])) - node.position
+		var face := Basis(Vector3.UP, float(e.yaw)).z
+		var flat: bool = absf(face.z) > 0.5
+		box(node, at + face * 0.002, Vector3(0.45, 0.25, 0.004) if flat else Vector3(0.004, 0.25, 0.45), "black")
+		for k in 5: box(node, at + face * 0.01 + Vector3(0, -0.1 + k * 0.05, 0), Vector3(0.43, 0.012, 0.016) if flat else Vector3(0.016, 0.012, 0.43), "grille_metal")
 	if int(room.id) == int(manifest.get("start", -1)) and manifest.has("arrival_lift"): arrival_lift(node, room)
 	# The room's free-standing furniture (9.2), each item in a holder of its own.
 	var items: Array = room.get("furniture", [])
