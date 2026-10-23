@@ -216,6 +216,37 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	car_lamps.back().light_color = LIGHTING.light_color(2700.0)
 	return at
 
+## The lift the floor is come down by (7.7): on the reception's wall that
+## arrival_lift names, the hotel lift's front, shut, in a steel casing; its
+## screen dark, no car behind it and nothing to use (phase 5's).
+func arrival_lift(node: Node3D, room: Dictionary) -> void:
+	var back := Vector3(float(manifest.arrival_lift[0]), 0, float(manifest.arrival_lift[1]))
+	var span := FLOOR.size_of(room)
+	var half: float = span.x * 0.5 if back.x != 0 else span.y * 0.5
+	var front := Node3D.new()
+	front.name = "ArrivalLift"
+	front.position = back * (half - 0.09 - LIFT_PROUD)
+	front.rotation.y = atan2(-back.x, -back.z)
+	node.add_child(front)
+	var bounds := AABB()
+	for k in LIFT_LEAVES.size():
+		var leaf := MeshInstance3D.new()
+		leaf.name = "Leaf"
+		leaf.mesh = LIFT_LEAVES[k]
+		front.add_child(leaf)
+		bounds = LIFT_LEAVES[k].get_aabb() if k == 0 else bounds.merge(LIFT_LEAVES[k].get_aabb())
+	for part in [[LIFT_CALL, Vector3(CALL_AT.x, CALL_AT.y, 0.0)], [LIFT_SCREEN, Vector3(0, SCREEN_AT, 0.0)]]:
+		var piece := MeshInstance3D.new()
+		piece.mesh = part[0]
+		piece.position = part[1]
+		front.add_child(piece)
+	# The casing round the leaves.
+	var x0 := bounds.position.x - 0.04
+	var x1 := bounds.end.x + 0.04
+	var top := bounds.end.y + 0.04
+	for x in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.02), Vector3(0.08, top, 0.04), "steel_frame")
+	box(front, Vector3((x0 + x1) * 0.5, top, 0.02), Vector3(x1 - x0 + 0.08, 0.08, 0.04), "steel_frame")
+
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
 ## every list keeps one entry per gate. The other gates are the hotel's.
@@ -328,6 +359,7 @@ func build_prop(node: Node3D, kind: String) -> void:
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
+	if int(room.id) == int(manifest.get("start", -1)) and manifest.has("arrival_lift"): arrival_lift(node, room)
 	# The room's free-standing furniture (9.2), each item in a holder of its own.
 	var items: Array = room.get("furniture", [])
 	for k in items.size():
