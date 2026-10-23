@@ -15,6 +15,10 @@ const SHAFT_HEAD := 2.6            ## clear height over the landing
 const SHAFT_PIT := 6.5             ## how far the shaft goes down under the landing (black)
 const MANHOLE := Vector2(0.7, 0.7)
 const SHAFT_WALL := 0.18
+## The shaft's ladder: the kit's (tools/props/build_catalogue.gd PARTS) when
+## baked, and how far its top rises over the landing.
+const SHAFT_LADDER_MODEL := "res://assets/props/hotel/modular_fire_escape_ladder.res"
+const LADDER_OVER := 1.1
 ## Through a wall: the duct's outer section and a little more.
 const HOLE_PAD := 0.02
 
@@ -216,12 +220,21 @@ static func build(builder, manifest: Dictionary) -> Node3D:
 	# Nobody falls in: the landing is solid over the manhole too.
 	collider(body, AABB(Vector3(rect.position.x, y - 0.04, rect.position.y), Vector3(rect.size.x, 0.04, rect.size.y)))
 	solid(parts, null, "black", AABB(Vector3(rect.position.x, bottom, rect.position.y), Vector3(rect.size.x, 0.05, rect.size.y)))
-	for s: float in [-1.0, 1.0]:
-		var rail := Vector3(hole_at.x, 0, hole_at.y) + Vector3(-e.z, 0, e.x) * s * 0.2
-		solid(parts, null, "steel_frame", AABB(Vector3(rail.x - 0.025, bottom, rail.z - 0.025), Vector3(0.05, y - bottom + 1.1, 0.05)))
-	for k in int((y - bottom) / 0.3):
-		var rung_y := bottom + 0.3 * (k + 1)
-		solid(parts, null, "steel_frame", AABB(Vector3(hole_at.x - 0.2 * absf(e.z) - 0.012, rung_y, hole_at.y - 0.2 * absf(e.x) - 0.012), Vector3(0.4 * absf(e.z) + 0.024, 0.024, 0.4 * absf(e.x) + 0.024)))
+	if ResourceLoader.exists(SHAFT_LADDER_MODEL):
+		# The fire escape kit's vertical ladder (Poly Haven, CC0), down the
+		# manhole, its hoop LADDER_OVER above the landing.
+		var ladder := MeshInstance3D.new()
+		ladder.name = "ShaftLadder"
+		ladder.mesh = load(SHAFT_LADDER_MODEL)
+		ladder.transform = Transform3D(Basis(Vector3.UP, atan2(e.x, e.z)), Vector3(hole_at.x, y + LADDER_OVER - ladder.mesh.get_aabb().size.y, hole_at.y))
+		holder.add_child(ladder)
+	else:
+		for s: float in [-1.0, 1.0]:
+			var rail := Vector3(hole_at.x, 0, hole_at.y) + Vector3(-e.z, 0, e.x) * s * 0.2
+			solid(parts, null, "steel_frame", AABB(Vector3(rail.x - 0.025, bottom, rail.z - 0.025), Vector3(0.05, y - bottom + LADDER_OVER, 0.05)))
+		for k in int((y - bottom) / 0.3):
+			var rung_y := bottom + 0.3 * (k + 1)
+			solid(parts, null, "steel_frame", AABB(Vector3(hole_at.x - 0.2 * absf(e.z) - 0.012, rung_y, hole_at.y - 0.2 * absf(e.x) - 0.012), Vector3(0.4 * absf(e.z) + 0.024, 0.024, 0.4 * absf(e.x) + 0.024)))
 	# The remains of whoever tried before (OFICINAS 3), against one side wall.
 	var remains_p: Array = manifest.air.remains.point
 	var r_at := Vector3(float(remains_p[0]), y, float(remains_p[2]))

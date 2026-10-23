@@ -418,8 +418,13 @@ func office_host() -> void:
 	var air = level.objective(&"air")
 	check("El cuadro de los invitados se aplica en el anfitrión", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 90.0))
 	check("Y el aire: la seguridad abierta, los ventiladores encendidos y parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 90.0))
+	# Bravo leaves and comes back: its seat is held for it, and it is put up
+	# to date when it has built the floor again.
+	var bravo_back := await wait_for(func(): return level.match_net.away.has(bravo), 60.0)
+	check("Bravo se va y su plaza le espera", bravo_back)
+	check("Y vuelve", await wait_for(func(): return not level.match_net.away.has(bravo) and net.connected_seats().has(bravo), 120.0))
 	# The guests check what they were told before the room goes.
-	await pause_for(8.0)
+	await pause_for(20.0)
 
 ## A guest on floor 2: types its request at the window, takes its card from
 ## its station once in, and puts it through the reader; Alpha also sends a
@@ -479,6 +484,21 @@ func office_guest(words: String, index: int) -> void:
 		check("Y los para", await asked.call("stop", 5, func(): return not air.running(), &"air"))
 	check("El cuadro queda igual en todos", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 60.0))
 	check("Y el aire también: la seguridad abierta, una carga gastada, parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 60.0))
+	if words != "Bravo": return
+	# Bravo leaves and comes back: it builds the floor again, and the host's
+	# catch-up gives it the card, the board and the air as they stand.
+	var alpha_seat := seat_named("Alpha")
+	var budget: int = power.budget
+	net.shutdown("")
+	await pause_for(3.0)
+	check("Vuelve a la sala", net.join("127.0.0.1", words, index, port) == OK)
+	check("Y al piso, montado otra vez", await wait_for(func(): return playing() and level.objective(&"files") != files, 120.0))
+	files = level.objective(&"files")
+	power = level.objective(&"power")
+	air = level.objective(&"air")
+	check("Puesto al día: las dos fichas, pasadas, y la foto de Alpha", await wait_for(func(): return files.requests.size() == 2 and files.swiped.size() == 2 and files.photos.has(alpha_seat), 30.0))
+	check("El cuadro como lo tiene el anfitrión", power.on_order.size() == budget and not power.on_order.has(0))
+	check("Y el aire: la seguridad abierta y su puerta sin llave", air.post_open and air.released and air.charges == 1 and not air.running() and not air.post_door.locked)
 
 func multiplayer_peers() -> Array:
 	return Array(level.multiplayer.get_peers())

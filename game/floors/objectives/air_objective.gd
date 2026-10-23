@@ -26,6 +26,9 @@ const CLIMB_DOWN := 2.0
 ## copy running behind (lifts.RIDE_SLACK).
 const USE_REACH := 2.5
 const SLACK := 0.5
+## The air handler's in-line fan and its round duct (tools/props/build_catalogue.gd).
+const FAN_MODEL := "res://assets/props/hotel/modular_airduct_circular_01_fan.res"
+const ROUND_DUCT_MODEL := "res://assets/props/hotel/modular_airduct_circular_01_duct.res"
 ## The post's reader, the console and the isolator; the fans' spin up and
 ## down (s), and how much of every sound on planta 3 they cover.
 const POST_SWIPE := 0.5
@@ -110,6 +113,19 @@ func place() -> void:
 		var side_way := Basis(Vector3.UP, float(unit.yaw)) * Vector3(-0.7 + k * 1.4, 0, 0)
 		rotors.append(box_at(spot_point(unit) + unit_face * (unit_size.z + 0.03) + side_way + Vector3(0, 1.2, 0), float(unit.yaw), Vector3(0.9, 0.08, 0.02), Color("2b2b28")))
 	box_at(spot_point(m.air.stop), float(m.air.stop.yaw), Vector3(0.2, 0.3, 0.12), Color("a3271f"))
+	# On the handler's top, the kit's in-line fan, axis up, and its round duct
+	# on to the slab (Poly Haven's circular air duct, CC0).
+	if ResourceLoader.exists(FAN_MODEL) and ResourceLoader.exists(ROUND_DUCT_MODEL):
+		var top := spot_point(unit) + unit_face * unit_size.z / 2 + Vector3(0, unit_size.y, 0)
+		var upright := Basis(Vector3.RIGHT, -PI / 2)
+		model_at(FAN_MODEL, Transform3D(upright, top + Vector3(0, 0.075, 0)))
+		var duct_mesh: Mesh = load(ROUND_DUCT_MODEL)
+		var piece := duct_mesh.get_aabb().size.z
+		var slab := float(m.rooms[int(m.air.plant)].py) + float(m.get("plenum", OFFICE.PLENUM).get("slab", 4.4))
+		var y := top.y + 0.15
+		while y + piece * 0.5 < slab:
+			model_at(ROUND_DUCT_MODEL, Transform3D(upright, Vector3(top.x, y + piece * 0.5, top.z)))
+			y += piece
 	# The instructions, pinned on the post's wall beside the console.
 	var desk: Dictionary = m.air.security.desk
 	var memo_at := spot_point(desk) + Basis(Vector3.UP, float(desk.yaw)) * Vector3(0.8, 1.45, 0.01)
@@ -173,6 +189,13 @@ func wall_use(spot: Dictionary, action: String, up: float) -> Array:
 
 func spot_point(spot: Dictionary) -> Vector3:
 	return Vector3(float(spot.point[0]), float(spot.point[1]), float(spot.point[2]))
+
+## A baked model of the props pipeline, as it is.
+func model_at(path: String, xform: Transform3D) -> void:
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = load(path)
+	mesh.transform = xform
+	level.hotel.add_child(mesh)
 
 ## A plain box standing in for a model to come.
 func box_at(at: Vector3, yaw: float, size: Vector3, colour: Color) -> MeshInstance3D:

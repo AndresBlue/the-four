@@ -114,6 +114,11 @@ func run() -> void:
 	var out: Vector3 = MD.facing(float(m.air.hatch.yaw))
 	look(foot.origin + out * 2.5 + Vector3(0, 1.6, 0), hatch + Vector3(0, 0.3, 0))
 	await shot("planta_escalerilla")
+	var unit: Dictionary = m.air.unit
+	var unit_at := Vector3(float(unit.point[0]), float(unit.point[1]), float(unit.point[2]))
+	var unit_out: Vector3 = Basis(Vector3.UP, float(unit.yaw)).z
+	look(unit_at + unit_out * 4.5 + Vector3(0, 1.7, 0), unit_at + Vector3(0, 2.6, 0))
+	await shot("climatizadora")
 	level.objective(&"air").hatch_open = true
 	level.objective(&"air").show_hatch(false)
 	await shot("compuerta_abierta")

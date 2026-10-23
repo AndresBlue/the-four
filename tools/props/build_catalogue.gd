@@ -25,6 +25,10 @@ const PARTS := {
 	"vintage_suitcase": {"a": "^vintage_suitcase_01", "b": "^vintage_suitcase_02"},
 	"wine_bottles_01": {"bordeaux": "bordeaux$", "alsace": "alsace$", "burgundy": "burgundy$", "champagne": "champagne$"},
 	"office_notepads": {"a4": "^office_notepads_a4", "pad": "^office_notepads_yellow"},
+	# The offices' air handler (its in-line fan and a round duct) and the
+	# shaft's ladder down into the pit.
+	"modular_airduct_circular_01": {"fan": "^modular_airduct_circular_fan$", "duct": "^modular_airduct_circular_single$"},
+	"modular_fire_escape": {"ladder": "^modular_fire_escape_ladder_bottom$"},
 }
 ## Clocks, whose hands turn in the game (hotel_geometry.gd, tell_time): each
 ## hand is baked apart, as <id>_<hand>.res -- pointing at twelve, turning
