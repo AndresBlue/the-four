@@ -6,8 +6,16 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "vinyl": "tile", "terrazzo": "tile", "concrete": "ceiling_service", "office_paint": "plaster", "block": "plaster_decrepit", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "vinyl": "tile", "terrazzo": "tile", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror"}
 const PROPS := preload("res://game/world/office/office_props.gd")
+## Finishes that stand in as a plain colour until their scans are ingested:
+## the hotel has no plain paint, block or concrete.
+const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741")}
+## The cove base along the walls and the department stripe in the corridors
+## (spec 4.1): height and thickness; bottom and top.
+const SKIRT := Vector2(0.10, 0.006)
+const STRIPE := Vector2(1.05, 1.20)
+const STRIPE_PROUD := 0.003
 ## The false ceiling (spec 4.1): tile thickness and face over the grid's
 ## underside, the T-grid's flange width, thickness and web height, the
 ## troffer's housing depth and lens recess, its light.
@@ -21,6 +29,12 @@ const LAMP_DROP := 0.35
 
 func _init() -> void:
 	super()
+	for key in PLAIN:
+		var plain := StandardMaterial3D.new()
+		plain.albedo_color = PLAIN[key]
+		plain.roughness = 0.9
+		plain.set_meta("stand_in", true)
+		materials[key] = plain
 	for key in STAND_INS:
 		var path := "res://game/presentation/materials/office/%s.tres" % key
 		if ResourceLoader.exists(path):
@@ -89,6 +103,36 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			box(node, at + Vector3(0, h + 0.01, 0), Vector3(0.595, 0.02, 0.595), "grille_metal")
 		else:
 			box(node, at + Vector3(0, h + 0.6, 0), Vector3(0.6, 1.2, 0.6), "plenum_dark")
+
+## The room being built, for the walls that need it (its stripe).
+var building_room := {}
+
+func build_room(node: Node3D, room: Dictionary) -> void:
+	building_room = room
+	super(node, room)
+	building_room = {}
+
+## An office wall (6.2): plain paint, a cove base on this room's face, and in
+## a corridor its department's stripe; none of the hotel's dado, rails,
+## sockets or cornice.
+func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
+	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
+	var room_node := boundary.get_parent() as Node3D
+	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
+	box(boundary, Vector3(x, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(length, SKIRT.x, SKIRT.y), "skirting")
+	if building_room.is_empty() or not (int(building_room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY]): return
+	var colour: Color = OFFICE.stripe_color(manifest, building_room)
+	var key := "stripe_%s" % colour.to_html(false)
+	if not materials.has(key):
+		var stripe := StandardMaterial3D.new()
+		stripe.albedo_color = colour
+		stripe.roughness = 0.7
+		materials[key] = stripe
+	box(boundary, Vector3(x, (STRIPE.x + STRIPE.y) * 0.5, inner * (0.09 + STRIPE_PROUD)), Vector3(length, STRIPE.y - STRIPE.x, 0.004), key)
+
+## No paintings and no sconces on an office wall (6.5: the notice boards,
+## clocks and poster spots come later).
+func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> void: pass
 
 ## The troffers (built by ceiling()) light the room as a fluorescent tube
 ## does (7.1); the battens and the boardroom's pendant are the hotel's.
