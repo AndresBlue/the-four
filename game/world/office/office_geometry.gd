@@ -202,6 +202,139 @@ func lenses_of(room_id: int) -> Array:
 	room_lenses[room_id] = found
 	return found
 
+## The battery units (spec_f1_geometry 7.2): how high, how far they are lit
+## from the player, how many of the nearest cast (on Compatibility, fewer),
+## and their light.
+const EMERGENCY_Y := 2.45
+const EMERGENCY_REACH := 18.0
+const EMERGENCY_CAST := 6
+const EMERGENCY_CAST_COMPAT := 3
+const EMERGENCY_ENERGY := 1.4
+const EMERGENCY_RANGE := 9.0
+const EMERGENCY_ANGLE := 55.0
+const EMERGENCY_KELVIN := 2400.0
+## The shortest plain stretch of wall a unit hangs on.
+const EMERGENCY_RUN := 1.2
+## Every unit: {light, lens, room, planta, spot}.
+var emergency: Array = []
+## The plain runs of the room being built: [boundary, x, inner].
+var emergency_runs: Array = []
+
+## Landings, lobbies, corridors, galleries and the electrical room keep a
+## battery unit where the planta has any power at all (not Dirección).
+func emergency_room(room: Dictionary) -> bool:
+	var t := int(room.type)
+	return (t in [OFFICE.LANDING, OFFICE.LOBBY, OFFICE.CORRIDOR, OFFICE.GALLERY, OFFICE.ELECTRICAL]) and String(OFFICE.POWER[int(room.get("wing", 0))]) != "none"
+
+## The unit of a room, on its plain run nearest the room's middle: an enamel
+## box with two heads, a lens that lights when the room has no power, a red
+## charge pip, and a spot light along the wall, down.
+func emergency_unit(node: Node3D, room: Dictionary) -> void:
+	var runs := emergency_runs
+	emergency_runs = []
+	if runs.is_empty() or not emergency_room(room): return
+	var best: Array = []
+	var best_distance := INF
+	for run in runs:
+		var boundary: Node3D = run[0]
+		var at: Vector3 = boundary.transform * Vector3(float(run[1]), 0, 0)
+		if Vector2(at.x, at.z).length() < best_distance:
+			best_distance = Vector2(at.x, at.z).length()
+			best = run
+	var wall: Node3D = best[0]
+	var inner := int(best[2])
+	var unit := Node3D.new()
+	unit.name = "EmergencyUnit"
+	unit.transform = wall.transform * Transform3D(Basis(Vector3.UP, 0.0 if inner > 0 else PI), Vector3(float(best[1]), EMERGENCY_Y, inner * 0.09))
+	node.add_child(unit)
+	unit_box(unit, Vector3(0, 0, 0.05), Vector3(0.32, 0.18, 0.10), plain_material(Color("e6e1d3")))
+	var lens := MeshInstance3D.new()
+	var lens_mesh := BoxMesh.new()
+	lens_mesh.size = Vector3(0.24, 0.04, 0.012)
+	lens.mesh = lens_mesh
+	lens.position = Vector3(0, -0.05, 0.105)
+	unit.add_child(lens)
+	for side: float in [-1.0, 1.0]:
+		var head := unit_box(unit, Vector3(side * 0.11, -0.11, 0.08), Vector3(0.07, 0.07, 0.08), plain_material(Color("d9d3c3")))
+		head.rotation = Vector3(deg_to_rad(-35.0), side * deg_to_rad(30.0), 0)
+	var pip_material := StandardMaterial3D.new()
+	pip_material.albedo_color = Color(0.5, 0.02, 0.02)
+	pip_material.emission_enabled = true
+	pip_material.emission = Color(1.0, 0.05, 0.03)
+	pip_material.emission_energy_multiplier = 2.0
+	unit_box(unit, Vector3(0.13, 0.05, 0.102), Vector3(0.004, 0.004, 0.004), pip_material)
+	var light := SpotLight3D.new()
+	light.name = "EmergencyLight"
+	light.light_color = LIGHTING.light_color(EMERGENCY_KELVIN)
+	light.light_energy = EMERGENCY_ENERGY
+	light.spot_range = EMERGENCY_RANGE
+	light.spot_angle = EMERGENCY_ANGLE
+	light.shadow_enabled = true
+	light.shadow_bias = 0.04
+	light.light_bake_mode = Light3D.BAKE_DISABLED
+	light.light_volumetric_fog_energy = 0.0
+	# Out of the wall and 35 degrees down: -Z of the light along +Z of the unit.
+	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, -0.1, 0.15))
+	light.visible = false
+	unit.add_child(light)
+	emergency.append({"light": light, "lens": lens, "room": int(room.id), "planta": int(room.get("wing", 0)), "spot": node.position + unit.transform.origin})
+
+func unit_box(parent: Node3D, at: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	var cube := BoxMesh.new()
+	cube.size = size
+	mesh.mesh = cube
+	mesh.material_override = material
+	mesh.position = at
+	parent.add_child(mesh)
+	return mesh
+
+## A plain stand-in colour, one material per colour.
+func plain_material(colour: Color) -> StandardMaterial3D:
+	var key := "unit_%s" % colour.to_html(false)
+	if not materials.has(key):
+		var plain := StandardMaterial3D.new()
+		plain.albedo_color = colour
+		plain.roughness = 0.5
+		materials[key] = plain
+	return materials[key]
+
+## The emergency lens alight.
+var emergency_glow: StandardMaterial3D = null
+func emergency_on() -> StandardMaterial3D:
+	if emergency_glow == null:
+		emergency_glow = StandardMaterial3D.new()
+		emergency_glow.albedo_color = Color(1.0, 0.8, 0.55)
+		emergency_glow.emission_enabled = true
+		emergency_glow.emission = LIGHTING.light_color(EMERGENCY_KELVIN)
+		emergency_glow.emission_energy_multiplier = 3.0
+	return emergency_glow
+
+## The hotel's round, then the battery units: on where their room has no
+## light, on this planta and near, the nearest few casting and the rest out
+## (an unshadowed lamp would shine through the walls).
+func round_lamps() -> void:
+	super()
+	if emergency.is_empty() or round_at.is_empty(): return
+	var at: Vector3 = round_at.position
+	var casting: bool = round_at.shadows and not echo_view
+	var most := EMERGENCY_CAST_COMPAT if RenderingServer.get_current_rendering_method() == "gl_compatibility" else EMERGENCY_CAST
+	var near: Array = []
+	for k in emergency.size():
+		var e: Dictionary = emergency[k]
+		var out: bool = int(e.planta) == int(round_at.here) and not lit(int(e.room))
+		var lens: MeshInstance3D = e.lens
+		var lens_material: Material = emergency_on() if out else plain_material(Color("bdb8a8"))
+		if lens.material_override != lens_material: lens.material_override = lens_material
+		var distance: float = (e.spot as Vector3).distance_to(at)
+		if out and casting and distance < EMERGENCY_REACH: near.append([distance, k])
+		elif e.light.visible: e.light.visible = false
+	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for place in near.size():
+		var light: SpotLight3D = emergency[int(near[place][1])].light
+		var shown: bool = place < most
+		if light.visible != shown: light.visible = shown
+
 ## Out of sight off planta 3, like every room of the other plantas.
 func put_away(here: int) -> void:
 	super(here)
@@ -255,6 +388,7 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 	var room_node := boundary.get_parent() as Node3D
 	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
 	box(boundary, Vector3(x, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(length, SKIRT.x, SKIRT.y), "skirting")
+	if not building_room.is_empty() and length >= EMERGENCY_RUN and emergency_room(building_room): emergency_runs.append([boundary, x, inner])
 	if building_room.is_empty() or not (int(building_room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY]): return
 	var colour: Color = OFFICE.stripe_color(manifest, building_room)
 	var key := "stripe_%s" % colour.to_html(false)
@@ -657,6 +791,7 @@ func build_prop(node: Node3D, kind: String) -> void:
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
+	emergency_unit(node, room)
 	# The duct network's low wall grilles (ducts.exits of kind "wall"), where
 	# the generator put them: a frame and slats over the dark of the duct.
 	for e in manifest.get("ducts", {}).get("exits", []):
