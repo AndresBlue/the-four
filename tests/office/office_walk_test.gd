@@ -87,6 +87,11 @@ func walk(seed_asked: int) -> void:
 	level.match_net.use_office(&"air", "start", 4)
 	await frames(30)
 	check("%s: la consola enciende los ventiladores con una carga" % tag, air.running() and air.released and air.charges == 1 and air.spin > 0.0)
+	for i in 200:
+		await physics_frame
+		if air.spin >= 1.0: break
+	var below: Vector3 = player.global_position
+	check("%s: en marcha tapan el sonido de la planta 3 y no el de la 2" % tag, is_equal_approx(level.sound_mask(below), air.AIR_MASK) and level.sound_mask(below + Vector3(0, 6, 0)) == 0.0 and air.ducts_closed() and level.world_audio.mask_db(below) < -8.0)
 	player.global_position = MAIN_DUCT.foot(m).origin + Vector3(0, 0.04, 0)
 	await frames(3)
 	check("%s: con los ventiladores en marcha la compuerta no se abre" % tag, air.word_of(air.usables[0], player.slot) == "")

@@ -392,6 +392,8 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 		var oldest := voices.pop_front() as AudioStreamPlayer3D
 		oldest.stop()
 		oldest.queue_free()
+	# Under the offices' fans a sound is that much quieter (0 dB elsewhere).
+	gain += mask_db(point)
 	var voice := AudioStreamPlayer3D.new()
 	voice.name = "WorldCue"
 	voice.bus = "Effects"
@@ -413,6 +415,11 @@ func play_at(path: String, point: Vector3, gain: float, emitter := RID(), start 
 		voice.queue_free()
 	)
 	voice.play(start)
+
+## What the level's handlers cover of a sound at a point, in dB (0: nothing).
+func mask_db(point: Vector3) -> float:
+	var covered: float = level.sound_mask(point) if level != null and level.has_method("sound_mask") else 0.0
+	return linear_to_db(maxf(1.0 - covered, 0.05))
 
 ## How a sound reaches the listener. With nothing solid in between it comes
 ## straight from the source. Otherwise it follows the walkable route and is

@@ -1041,6 +1041,8 @@ const HUNTER_WARDROBE_RADIUS: float = NOISE.HEARD["wardrobe_hunter"] / NOISE.HEA
 ## A noise the creature may hear, wherever the creature is decided.
 func locust_hear(point: Vector3, radius: float, kind := NOISE.Kind.FOOTSTEP) -> void:
 	if not is_instance_valid(locust): return
+	# The offices' fans cover what is heard on their planta.
+	radius *= 1.0 - sound_mask(point)
 	if locust.control == "ai":
 		locust.hear(point, radius)
 	elif not net.is_client() and (match_net.versus() or match_net.local_is_locust()) and locust.grace <= 0.0:
@@ -1598,6 +1600,13 @@ func objective_snapshots() -> Dictionary:
 ## offices' cards drop with their holder).
 func objectives_on_death(seat: int, point: Vector3) -> void:
 	for handler in objectives.values(): handler.on_death(seat, point)
+
+## How much of a sound at a point is covered (the offices' fans running on
+## planta 3): the most any handler covers. Nothing on floor 1.
+func sound_mask(point: Vector3) -> float:
+	var most := 0.0
+	for handler in objectives.values(): most = maxf(most, handler.sound_mask(point))
+	return most
 
 ## The handlers a stage asks, in the order it lists them (kind.STAGES).
 func stage_objectives(stage := -1) -> Array:

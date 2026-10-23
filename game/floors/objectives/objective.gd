@@ -65,6 +65,9 @@ func stop_loop(voice) -> void:
 ## spec_f1_systems 1.4). The hotel's two are carried as they always were.
 func snapshotted() -> bool: return false
 
+## How much of every sound at a point it covers, 0..1 (the offices' fans).
+func sound_mask(_point: Vector3) -> float: return 0.0
+
 ## The test bots' errands on this stage (tools/bots/bot_team.gd): tasks made
 ## with team.office_task() or by hand. The hotel's are the team's own.
 func bot_errands(_team) -> Array: return []
