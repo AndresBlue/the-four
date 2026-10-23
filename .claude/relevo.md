@@ -2,65 +2,81 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 22 de octubre de 2026, por la noche, con el contexto de la sesión al 51 %. La semana va al 78 %: el tope del autor es el 80 % hasta que se renueve, el 24 de octubre a las 05:00.
+**Última actualización:** 23 de octubre de 2026, de madrugada. La semana va al 80 %: el autor subió su tope al **90 %** hasta que se renueve, el 24 de octubre a las 05:00.
 
-**Última instrucción del autor:** seguir el desarrollo **sin workflows, solo con el agente principal**. U1 a U5 de 1b se hicieron así, leyendo cada unidad de `encargos_1b.json` y verificándola con su sonda.
+**Última instrucción del autor:** seguir el desarrollo **sin workflows, solo con el agente principal**, hasta el 90 % semanal. 1b se hizo así entera, unidad a unidad de `encargos_1b.json`, cada una con su sonda en `evidence/1b_probe_U<n>.gd`.
 
 ## En qué estamos
 
-**El piso 2, las oficinas secretas** ([docs/OFICINAS.md](../docs/OFICINAS.md)). La fase 0 está cerrada y la fase 1 ha empezado.
+**El piso 2, las oficinas secretas** ([docs/OFICINAS.md](../docs/OFICINAS.md)). La fase 0 está cerrada y la fase 1 va por 1c.
 
 | Paso | Estado |
 |---|---|
 | Fase 0 (0a a 0f) | Hecha: 0a `3b909f0`..`d32f23a`, 0b `86a4333`, 0c `9f759db`, 0d `592dce2`, 0f `1f09795`, 0e `db7eca1` |
 | 1a Tipo de piso de oficina, paleta, criatura nula | Hecho (`54e99d9`): construido, sin publicar (`floor_index.RELEASED = [1]`) |
-| 1b Generador de oficinas | **U1 a U6 hechos** (ganchos en `map_generator`, `conduit_metres.gd`, `office_layout.gd`, `place_specials`, `finish`, y `furnish` con el vestíbulo y los archivos; los demás pasos de `furnish` son stubs que devuelven ""); faltan U7 a U12 (correo y tubos, corriente y aire, enchufes, cristal y muebles, conductos, `office_test`, documentos) |
+| 1b Generador de oficinas | **Hecho**: U1 a U5 `3bf5ab6`, U6 `6010f41`, U7 a U10 `8dcc122`, U11 y U12 en el commit siguiente (ver «Lo primero al retomar») |
 | Contrato para montar el piso 2 en escena | Paso propio antes de 1d, sin encargos (lo describe `spec_f1_generator.md`, notas finales de 1a) |
 | 1c a 1i, fases 2 a 5 | Pendientes |
 
 **Lo primero al retomar:**
-1. Leer el uso (`mcp__ccd_session_mgmt__get_usage`). Si la semana sigue sin renovarse, el tope del autor es el 80 %.
-2. Seguir 1b por U7, en serie, como se hicieron U1 a U5: leer la unidad en `encargos_1b.json` (`python -c` con `PYTHONIOENCODING=utf-8`), escribir el código (bloques largos con Write a un archivo, nunca heredocs con apóstrofos), su sonda `evidence/1b_probe_U<n>.gd` y las pruebas con `scratchpad/gt.sh` o una orden equivalente (Godot con `--test-profile` y `git restore` después). Al acabar U12, `verify.ps1` y commit.
-   - Lo que dejaron U4 y U5: con 100 semillas a 2 supervivientes, 0 pisos de respaldo, 0 inválidos, mediana de 175 ms; con 32 pisos a 2, 4 y 5, 0 de respaldo y DEPOT en 4 y 5. Dos pisos de 5 supervivientes (semillas 41 y 42) quedan sin sala de juntas en la planta 1 porque no hay módulo grande: el encargo lo admite (se convierten las candidatas que haya).
-   - `furnish()` ya escribe en el manifiesto `floor`, `version`, `departments` (sin `focus`), `plenum`, `arrival_lift` y `archives`; `f.specials` sigue solo en el trabajo del generador. Con 20 semillas, 0 de respaldo.
-   - **Cuidado con Godot colgado:** un error de análisis en un script que precarga la sonda deja el proceso parado sin salir. Lanzar las sondas con `timeout 500` delante, y si se cuelga, cerrar solo ese proceso de Godot (nunca `TheFour.exe`). En `office_generator.gd`, lo que se lee de `palette.` es Variant: nada de `:=` con él.
-3. Al cerrar 1b: corregir en `spec_f1_generator.md` las líneas de código que cita y que ya no casan (punto 1 de `al_director_resuelto` en el JSON).
+1. Leer el uso (`mcp__ccd_session_mgmt__get_usage`). Hasta el 24 de octubre a las 05:00, el tope es el 90 %.
+2. Si el commit de U11 y U12 no está hecho (`git log`): estaba pendiente de un `verify.ps1` en verde con `office_test` nuevo (95 checks, unos 170 s solo; `verify` le da 360 s). Archivos: `tests/office/office_test.gd`, `docs/DEVELOPMENT.md`, `game/world/generation/office_generator.gd` (el respaldo y los musts, abajo), `.claude/relevo.md`. Después, push.
+3. Corregir en `spec_f1_generator.md` las líneas de código que cita y ya no casan (punto 1 de `al_director_resuelto` en el JSON) y anotar al final de su sección 2 lo que el director cambió en 1b (lista de abajo).
 4. Después: los encargos de 1c (validador y `office_metrics`, sección 3 de la misma especificación) y el paso del contrato.
+
+## Lo que 1b hizo distinto de la especificación (decisiones del director)
+
+- **Puentes de conductos:** el árbol de ramas cuelga cada sala de un solo padre, así que dos salas con puerta entre ellas podían quedar en trozos distintos; se unen primero esas puertas (como andar, 1,0), por par menor, y solo después vecinas sin puerta con L / paseo >= 0,55. Sin esto, 19 de 20 semillas caían al piso de respaldo.
+- **Tubos:** los tramos van a 0,3 m de la cara interior de la pared (no del borde de la celda), para que el vano y la boca de una misma pared queden alineados.
+- **Piso de respaldo:** con todas las paredes con puerta, el cuadro, la mesa de la ventanilla y la consola de la seguridad pueden ir en una pared con vano (lejos de él, como una taquilla).
+- **Musts:** `place_musts` bloquea las salas con las que cuenta cada must (las primeras unidades por id, un salón como una) y los aseos que ya hay, porque los aseos y `cap_numbers` se llevaban la única sala de juntas o los aseos dibujados por la mezcla.
+- **office_test:** los aseos se exigen solo en sectores con alguna sala libre junto a un pasillo (la regla de `place_musts`), y la sala de juntas solo donde hay un módulo grande libre.
+- **Cachés** por piso de las tejas libres y de la línea del conducto principal (la mediana bajó de unos 1.500 ms a unos 1.400).
+
+## Decisiones que esperan al autor
+
+1. **Muebles de las oficinas abiertas:** la especificación pide una mediana de 2 piezas por celda y sale 1 (de 927 celdas, 270 vacías). Las zonas de paso (`clear_zones`: el centro, los barridos a las esquinas, las puertas, las taquillas, los props de esquina) se comen la retícula. `office_test` vigila «1 o más» hasta decidir: ajustar las zonas, la retícula (probar otras esquinas) o el umbral.
+2. **Enlaces sueltos de conductos:** con `SHORTCUT_MIN` 0,55 medido de centro a centro, no sale ninguno en 20 semillas (dos salas vecinas sin puerta se separan unos 2 metros de paseo por cada metro de línea). OFICINAS 11.3 cuenta con ellos como los atajos de la criatura: bajar el umbral o medir de otra manera.
+3. **Tiempo del generador:** mediana de unos 1.400 ms por piso (tope de la prueba, 1.500). La mitad es `furnish_ducts` (sobre todo las salidas). Si 1c añade comprobaciones, habrá que recortar.
+4. Las secciones «Pending decisions» de `spec_f2_movement` (§15, 13 para el autor), `spec_f2_mind` (§14) y `spec_f3_integration` (§15, 11 para el autor).
+5. **Dificultad de The Lurker:** los asomos por dificultad, `sated`, `forget`, las seis claves de sistema de `spec_f1_systems` 1.8 y los ajustes del director.
+6. **Textos:** las cuatro líneas de The Lurker en el menú de dificultad (`TRAITS`), y una revisión de los textos del piso 2 que entraron con 1a (nombres de sala, departamentos, hitos, encargos de planta) y de los artículos (`ARTICLES`).
+
+## Cómo se trabaja sin flujos (aprendido en 1b)
+
+- Leer la unidad: `PYTHONIOENCODING=utf-8 python -c "import json;p=json.load(open('.claude/specs/encargos_1b.json',encoding='utf-8'));print(p['unidades'][n]['encargo'])"`.
+- Bloques de código largos: Write a un archivo del scratchpad y un script de Python que sustituya el stub (los heredocs con apóstrofos fallan).
+- Sondas con `timeout 500` delante: un error de análisis deja a Godot parado sin salir. Si se cuelga, cerrar solo ese proceso de Godot (nunca `TheFour.exe`).
+- En `office_generator.gd`, todo lo que se lee de `palette.` es Variant: nada de `:=` con él (ni con comparaciones como `x == palette.TIPO`).
+- No tocar archivos de Godot mientras corre `verify.ps1` en segundo plano: la pasada los compila a medias.
 
 ## Cómo se trabaja con los flujos (aprendido el 22 de octubre)
 
 - **Siempre por `scriptPath`** (`E:/Projects/The Four/.claude/workflows/frente.js` o `encargos.js`). Por nombre se ejecuta la copia cargada al abrir la sesión.
 - `frente` admite `archivo` (lee del JSON de `encargos` el contexto, la aceptación, las pruebas y el texto de cada unidad; en `unidades` basta `{id, archivos}`) y `primero` (unidades que van antes y solas).
 - Antes de un frente que no debe cambiar nada visible, el director saca la línea base sin ventana: la galería (`tools/editor/build_gallery.gd`, comparada normalizada con el sed de `evidence/gallery_twice.txt`) y `light_layers_scan` con 40 semillas (todo menos `slowest_ms`).
-- Las decisiones del director sobre lo que escala un redactor se añaden al final del `contexto` del JSON («DECISIONES DEL DIRECTOR…») y lo escalado pasa a `al_director_resuelto`.
-- Coste medido hoy: unos `encargos`, de 1 a 2 puntos semanales; un frente, de 1 a 2. El autor quiere el modo completo en todos los pasos.
+- Coste medido: unos `encargos`, de 1 a 2 puntos semanales; un frente, de 1 a 2.
 
 ## Especificaciones (en `.claude/specs/`)
 
 | Archivo | Estado |
 |---|---|
 | `fase0_pasos.md` | Fase 0 hecha |
-| `encargos_0b` a `encargos_1a.json` | Construidos; `encargos_1b.json` aprobado, por construir |
-| `spec_f1_generator.md` | Revisado por críticos; al día con 0d y 1a (notas al final) |
+| `encargos_0b` a `encargos_1b.json` | Construidos |
+| `spec_f1_generator.md` | Revisado; al día con 0d y 1a; falta anotar 1b (punto 3 de arriba) |
 | `spec_f1_geometry.md` | Revisado; R2 y H8 al día con 0d |
-| `spec_f1_systems.md` | Revisado; notas de 0e al final (corriente de sala, rebote, sonda, `death_tape` y `floor_map`) |
-| `spec_f2_movement.md`, `spec_f2_mind.md` | Revisados por críticos el 22 de octubre, **no aprobados**; decisiones pendientes al final de cada uno; nombres de claves de dificultad: los de `spec_f2_mind` 4.1 |
-| `spec_f3_integration.md` | Revisado, **no aprobado**; no se parte en unidades hasta reconciliar 2a y 2b; nota de 1a sobre el departamento en la tarjeta de planta |
-
-## Decisiones que esperan al autor
-
-1. Las secciones «Pending decisions» de `spec_f2_movement` (§15, 13 para el autor), `spec_f2_mind` (§14, con las seis de siempre: quién salva a la víctima, la linterna según la cámara, la latencia en la ventana del aviso, la captura hasta 0,6 s después, no abre taquillas, beber la luz) y `spec_f3_integration` (§15, 11 para el autor).
-2. **Dificultad de The Lurker:** los asomos por dificultad, `sated`, `forget`, las seis claves de sistema de `spec_f1_systems` 1.8 y los ajustes del director (0f dejó solo las ocho claves con valor en OFICINAS §4).
-3. **Textos:** las cuatro líneas de The Lurker en el menú de dificultad (`TRAITS`), y una revisión de los textos del piso 2 que entraron con 1a desde la especificación (nombres de sala, departamentos, hitos, encargos de planta) y de los artículos (`ARTICLES`), que se sacaron por gramática.
+| `spec_f1_systems.md` | Revisado; notas de 0e al final |
+| `spec_f2_movement.md`, `spec_f2_mind.md` | Revisados por críticos, **no aprobados**; decisiones pendientes al final de cada uno |
+| `spec_f3_integration.md` | Revisado, **no aprobado**; no se parte en unidades hasta reconciliar 2a y 2b |
 
 ## Assets del piso 2 (`source_assets/oficinas/`, fuera de git)
 
 - `RESUMEN.md` y un `registro.json` por grupo: 98 se quedan, con su licencia auditada.
-- **91 piden sesión** (44 modelos de Sketchfab, 47 sonidos de Freesound). Las descargas de Sketchfab por la extensión se cortan hacia los 10 MB (navegador Chromium; sospechas: su ajuste de descargas o Kaspersky). Freesound no se ha probado. Hacen falta en 1d.
+- **91 piden sesión** (44 modelos de Sketchfab, 47 sonidos de Freesound). Las descargas de Sketchfab por la extensión se cortan hacia los 10 MB. Hacen falta en 1d.
 
 ## Pendientes menores
 
-- `evidence/` tiene líneas base y registros sin seguimiento: se pueden borrar.
-- `assets/props/comprobante.pdf` apareció sin seguimiento durante la sesión y no es de ningún paso: no se ha tocado.
-- Los scripts nuevos (`objectives_test`, `palette_scan_test`, `room_light_test`, `hotel_palette`, los del piso 2) no tienen `.uid`: Godot los creará al abrir el editor; entonces se confirman.
+- `evidence/` tiene líneas base, sondas y registros sin seguimiento: se pueden borrar (las sondas `1b_probe_U*.gd` sirven de ejemplo para 1c).
+- `assets/props/comprobante.pdf` apareció sin seguimiento y no es de ningún paso: no se ha tocado.
+- Los scripts nuevos (`objectives_test`, `palette_scan_test`, `room_light_test`, `hotel_palette`, los del piso 2) no tienen `.uid`: Godot los creará al abrir el editor.
 - beads `four-7ly.2.1` y `docs/PLAN.md`: el piso en las grabaciones de bots, `presentation_rig`, el control de piso en la sala y `tools/godot.ps1 -Floor`.

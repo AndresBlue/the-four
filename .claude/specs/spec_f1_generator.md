@@ -1204,3 +1204,14 @@ Each system step builds its own static pieces (systems 0.2, geometry 1): 1d buil
 - NOT in 1a, a step of its own before 1d: the creature contract gains `place_at(room_id)`, `start_room(stage) -> int`, `arm(onslaught: bool)` and `sound_profile() -> Resource` (null for the null creature), and hotel_main's `spawn_creature()` (`den_room(1)`, `patrol_room`), `arm_creature()` (`reach_scale`, `ONSLAUGHT_REACH`, `relentless`) and populate (`sound_profile`) ask only those; versus's `camera`, `driver` and `mark_blackout()` too. Until then `--floor=2` builds the office manifest with the hotel's geometry and fails at `spawn_creature()`; and `built(2)` is true, so a floor-2 checkpoint made outside `--test-profile` would be offered by Continue.
 - At release (phase 5): tape_report's SECTOR column and «SECTOR %d CERRADO», FIRST_LEAD, and records_service sealing every tape with FLOOR.VERSION instead of the kind's GENERATOR_VERSION.
 - For 1f: `always_lit(manifest, 0)` lights every non-void room of Personal's wing but the electrical room; spec_f1_systems 0.2 names only wings 1 and 2.
+
+## Notes from step 1b (23 October 2026, .claude/specs/encargos_1b.json)
+
+- Line numbers quoted in sections 1 and 2 are of the code before 1b, and U1 moved `map_generator.gd`: go by the names. `al_director_resuelto` in the JSON lists where each quoted place was when the work orders were written.
+- Duct bridges (2.5i step 4): the branch tree hangs each room from one parent, so two rooms with a door between them can end up in different pieces. Those doors are joined first (as good as walking, lowest pair first), then grid neighbours with no door at `L / walk >= SHORTCUT_MIN`. Without it, 19 of 20 seeds fell to the floor of last resort.
+- Loose links (2.5i step 5): with `SHORTCUT_MIN` 0.55 measured centre to centre, none comes out in 20 seeds (two neighbours with no door are some 2 m of walking per metre of line apart). Pending with the author.
+- Tube runs (2.5c) keep 0.3 m off a wall's inner face, not off the cell edge, so a doorway and a mouth on the same wall line up.
+- On the floor of last resort, where every wall can be a doorway, the window desk, the board and the security desk may stand on a wall with a doorway, clear of it as a locker is.
+- `place_musts()` locks the rooms each must counts on (its first units by lowest id, a salon as one) and the toilets already there: the toilets step and `cap_numbers()` took a boardroom or toilets the mix had drawn, and the must went short.
+- office_test asks for toilets only in sectors with a plain room on a corridor, and a boardroom only where a large module is free (the generator's own rules). The open-office median is 1 item per cell, not 2: the test keeps «1 or more» while the author decides (zones, lattice or threshold).
+- Free tiles and the main duct's line are cached per floor; the median is about 1.4 s a floor, half of it in `furnish_ducts`.

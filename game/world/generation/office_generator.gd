@@ -506,6 +506,20 @@ func place_musts(f: Dictionary, planta: int, locked: Dictionary) -> void:
 			for id in unit.members:
 				f.rooms[int(id)].type = int(t)
 				locked[int(id)] = true
+	# What the musts count on stays, lowest id first and a salon as one:
+	# toilets and cap_numbers() take only unlocked rooms, and one drawn by the
+	# mix can be the planta's only one.
+	for t in types:
+		var units := {}
+		for room in rooms:
+			if int(room.type) != int(t): continue
+			var key := int(room.hall) if int(room.hall) >= 0 else -1 - int(room.id)
+			if not units.has(key): units[key] = []
+			units[key].append(int(room.id))
+		var kept: Array = units.values()
+		kept.sort_custom(func(x, y): return int(x.min()) < int(y.min()))
+		for members in kept.slice(0, int(musts[t])):
+			for id in members: locked[int(id)] = true
 	if planta == 1:
 		var has_archive := false
 		for hall in salons(rooms, {}):
@@ -527,7 +541,9 @@ func place_musts(f: Dictionary, planta: int, locked: Dictionary) -> void:
 	for sector in sectors:
 		var members: Array = by_sector[sector]
 		if members.size() < 5: continue
-		if members.any(func(r): return int(r.type) == palette.TOILETS): continue
+		var toilets: Array = members.filter(func(r): return int(r.type) == palette.TOILETS)
+		for r in toilets: locked[int(r.id)] = true
+		if not toilets.is_empty(): continue
 		var pool: Array = members.filter(func(r): return flat_cell(r, locked) and f.adjacency[int(r.id)].any(func(g): return bool(f.rooms[int(g)].corridor)))
 		if pool.is_empty(): continue
 		pool.sort_custom(func(a, b): return float(a.order) < float(b.order) or (float(a.order) == float(b.order) and int(a.id) < int(b.id)))
@@ -600,6 +616,7 @@ func stream(run_seed: int, attempt: int, name: String) -> RandomNumberGenerator:
 ## none lands on another, or {"fail": reason}.
 func furnish(f: Dictionary, gates: Array, doors: Dictionary, run_seed: int, attempt: int, standby: bool) -> Dictionary:
 	job_rooms = f.rooms
+	job_standby = standby
 	var job := {"f": f, "gates": gates, "doors": doors, "seed": run_seed, "attempt": attempt, "standby": standby, "out": {}, "taken": {}}
 	for room in f.rooms:
 		for h in room.get("hides", []):
@@ -1017,7 +1034,7 @@ func furnish_air(job: Dictionary) -> String:
 	var desk := {}
 	var doors := doorway_walls(sec_room)
 	for wall in ["west", "east", "north", "south"]:
-		if sec_room.get("open_sides", []).has(wall) or doors.has(wall): continue
+		if sec_room.get("open_sides", []).has(wall) or (doors.has(wall) and not bool(job.standby)): continue
 		var clear := true
 		for h in sec_room.get("hides", []):
 			var hw := LAYOUT.hide_wall(h)
@@ -1823,13 +1840,17 @@ func doorway_walls(room: Dictionary) -> Array:
 		if not walls.has(String(way.wall)): walls.append(String(way.wall))
 	return walls
 
-## The closed walls with no doorway, the farthest from a doorway first.
+## The closed walls with no doorway, the farthest from a doorway first; on
+## the floor of last resort, where every wall can be a doorway, any closed one.
 func far_walls(room: Dictionary) -> Array:
 	var rooms: Array = job_rooms
 	var doors := doorway_walls(room)
 	var walls: Array = []
 	for wall in ["west", "east", "north", "south"]:
 		if not room.get("open_sides", []).has(wall) and not doors.has(wall): walls.append(wall)
+	if walls.is_empty() and job_standby:
+		for wall in ["west", "east", "north", "south"]:
+			if not room.get("open_sides", []).has(wall): walls.append(wall)
 	var points: Array = []
 	for way in FLOOR.doorways(room):
 		var p := FLOOR.portal_between(room, rooms[int(way.other)])
@@ -1844,9 +1865,10 @@ func far_walls(room: Dictionary) -> Array:
 	ranked.sort_custom(func(a, b): return float(a.far) > float(b.far) or (float(a.far) == float(b.far) and int(a.i) < int(b.i)))
 	return ranked.map(func(entry): return String(entry.wall))
 
-## The rooms of the floor being furnished (set by furnish()), for helpers
-## that only get a room.
+## The rooms of the floor being furnished and whether it is the floor of last
+## resort (set by furnish()), for helpers that only get a room.
 var job_rooms: Array = []
+var job_standby := false
 
 ## A room's main door: the first neighbour that is a corridor, else the first
 ## (facing()'s choice); -1 with none.
