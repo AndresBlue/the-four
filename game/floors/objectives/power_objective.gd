@@ -3,14 +3,16 @@ extends "res://game/floors/objectives/objective.gd"
 ## the electrical room has a lever per zone, and no more than `budget` zones
 ## are lit at once (the oldest drops); the minuteros light their corridor for a
 ## while; the red lever cuts the whole planta and starts the freight lift's
-## clock, and the lift only goes down once it has run out. Not built yet: the
-## legend memo (1h) and the kit's models.
+## clock, and the lift only goes down once it has run out. Beside the board,
+## a memo says how it works. Not built yet: the kit's models.
 const ID := &"power"
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 
 enum Red { DOWN, RUNNING, ARMED }
 const ACTIONS := ["lever", "red", "switch"]
+## The legend memo's paper id, clear of the hotel's hints and the cards.
+const MEMO_ID := 2000
 const RED_HOLD := 1.0
 const USE_REACH := 2.5
 const SLACK := 0.5
@@ -102,8 +104,21 @@ func place() -> void:
 		level.hotel.add_child(pilot)
 		pilots.append(pilot)
 		switch_until.append(0.0)
+	# The legend, pinned beside the board.
+	var memo_at := origin + basis * Vector3(BOARD.x / 2 + 0.4, 1.5, 0.11)
+	pin_memo(memo_at, yaw)
+	add_usable(Transform3D(basis, memo_at), "read", Vector3.INF, NAN)
 	refresh_power(true)
 	show_handles()
+
+## The board's legend: each zone's lever, the budget and the red lever.
+func paper_of(_index: int) -> Dictionary:
+	var lines: Array = []
+	for z in zones: lines.append("%s %s" % [String(z.code), String(z.name)])
+	lines.append("")
+	lines.append("NO MÁS DE %d ZONAS A LA VEZ." % budget)
+	lines.append("PALANCA ROJA: MONTACARGAS. CORTA LA PLANTA. ARRANQUE CON RETARDO.")
+	return memo(MEMO_ID, "CUADRO GENERAL", lines)
 
 ## A lever's pivot in the board's frame (+Z out of the wall).
 func lever_at(i: int) -> Vector3:
@@ -183,6 +198,7 @@ func word_of(usable, seat: int) -> String:
 		"lever": return ("BAJAR" if on_order.has(int(usable.index)) else "SUBIR") if red == Red.DOWN else ""
 		"red": return "SUBIR" if red == Red.DOWN else ""
 		"switch": return "PULSAR"
+		"read": return "LEER"
 	return ""
 
 func hold_of(usable, _seat: int) -> float: return RED_HOLD if String(usable.action) == "red" else 0.0

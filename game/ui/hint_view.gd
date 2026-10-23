@@ -30,7 +30,7 @@ const CARBON := Color(0.11, 0.11, 0.19, 0.62)
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
+const SIZES := {"memo": Vector2(520, 720), "resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
 ## The card's printed front and its back (tools/textures/bake_do_not_disturb.py),
 ## and the Polaroid's picture square in its frame.
 const CARD_FACE := preload("res://assets/textures/no-molestar.png")
@@ -85,6 +85,7 @@ func _draw() -> void:
 		"hoja": other_sheet()
 		"resguardo": receipt()
 		"ficha": office_card()
+		"memo": office_memo()
 
 # --- The papers ---------------------------------------------------------------------------
 
@@ -193,6 +194,26 @@ func receipt() -> void:
 	words(Vector2(36, 430), "N.º  " + String(form.get("number", "")), 17, PRINT)
 	var time: Array = form.get("time", [0, 0])
 	words(Vector2(36, 470), "HORA  %d:%02d" % [int(time[0]), int(time[1])], 17, PRINT)
+
+## A memo of La Oficina: water-green paper, two filing holes, the ruled
+## heading and its lines typed under it.
+func office_memo() -> void:
+	var form: Dictionary = hint.get("form", {})
+	var face := Rect2(Vector2.ZERO, card)
+	paper(face, Color8(214, 232, 220), 3301)
+	for k in 2: draw_circle(Vector2(26, card.y * (k + 1) / 3.0), 9.0, Color(0, 0, 0, 0.55))
+	words(Vector2(60, 64), "LA OFICINA", 20, PRINT)
+	words(Vector2(60, 100), "MEMORÁNDUM INTERNO", 16, PRINT)
+	var y := 150.0
+	for field in [["DE", "MANTENIMIENTO"], ["PARA", "TODO EL PERSONAL"], ["ASUNTO", String(form.get("subject", ""))]]:
+		words(Vector2(60, y), String(field[0]), 12, Color(PRINT, 0.7))
+		words(Vector2(150, y), String(field[1]), 15, Color(0.1, 0.1, 0.12))
+		draw_line(Vector2(146, y + 8), Vector2(card.x - 40, y + 8), Color(PRINT, 0.35), 1.0)
+		y += 36.0
+	y += 24.0
+	for line in wrapped(form.get("lines", []), 15, card.x - 110):
+		words(Vector2(60, y), String(line), 15, Color(0.1, 0.1, 0.12))
+		y += 30.0
 
 ## The card of La Oficina (planta 1): beige, punched along the top, the
 ## photo box, the typed fields and the red PROVISIONAL band.

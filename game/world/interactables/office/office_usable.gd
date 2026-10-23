@@ -42,7 +42,12 @@ func holding(seat: int, fraction: float) -> void: handler.holding(self, seat, fr
 
 func cancel(seat: int) -> void: handler.cancel_use(self, seat)
 
-func use(seat: int) -> void: level.match_net.use_office(handler.ID, action, index, seat)
+func use(seat: int) -> void:
+	# A paper on the wall is read on this machine only: nothing changes.
+	if action == "read":
+		level.interaction.read_paper(handler.paper_of(index))
+		return
+	level.match_net.use_office(handler.ID, action, index, seat)
 
 ## For the bots' reach check.
 func aim_point() -> Vector3: return global_transform * Vector3(0, 0, box.z * 0.5)

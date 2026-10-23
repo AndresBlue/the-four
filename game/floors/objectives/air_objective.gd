@@ -14,6 +14,8 @@ const MOVEMENT := preload("res://game/player/survivor_gait.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 
 const ACTIONS := ["hatch", "climb", "ladder", "post", "start", "stop"]
+## The instructions memo's paper id.
+const MEMO_ID := 2001
 ## How long each is held, and how long a climb takes.
 const HATCH_TIME := 2.0
 const CLIMB_HOLD := 0.5
@@ -108,6 +110,19 @@ func place() -> void:
 		var side_way := Basis(Vector3.UP, float(unit.yaw)) * Vector3(-0.7 + k * 1.4, 0, 0)
 		rotors.append(box_at(spot_point(unit) + unit_face * (unit_size.z + 0.03) + side_way + Vector3(0, 1.2, 0), float(unit.yaw), Vector3(0.9, 0.08, 0.02), Color("2b2b28")))
 	box_at(spot_point(m.air.stop), float(m.air.stop.yaw), Vector3(0.2, 0.3, 0.12), Color("a3271f"))
+	# The instructions, pinned on the post's wall beside the console.
+	var desk: Dictionary = m.air.security.desk
+	var memo_at := spot_point(desk) + Basis(Vector3.UP, float(desk.yaw)) * Vector3(0.8, 1.45, 0.01)
+	pin_memo(memo_at, float(desk.yaw))
+	var reading := USABLE.new()
+	reading.name = "AirUsable_memo"
+	reading.level = level
+	reading.handler = self
+	reading.index = 6
+	reading.action = "read"
+	reading.transform = Transform3D(Basis(Vector3.UP, float(desk.yaw)), memo_at)
+	level.hotel.add_child(reading)
+	usables.append(reading)
 	# The post's door: shut and locked until a card goes through its reader.
 	var key: PackedStringArray = String(m.air.security.door).split(":")
 	if key.size() == 2:
@@ -210,6 +225,7 @@ func word_of(usable, seat: int) -> String:
 		"post": return "PASAR FICHA" if not post_open and has_card(seat) else ""
 		"start": return "ENCENDER" if charges > 0 and not running() else ""
 		"stop": return "PARAR" if running() else ""
+		"read": return "LEER"
 		"climb":
 			if int(usable.index) == 0: return "ENTRAR" if hatch_open and not crawling_at(body.global_position) else ""
 			return "BAJAR" if crawling_at(body.global_position) and body.global_position.distance_to(MAIN_DUCT.mouth(manifest()).origin) <= MOUTH_REACH else ""
@@ -292,6 +308,10 @@ func apply(action: String, index: int, seat: int, _data: Dictionary, quiet: bool
 		"ladder":
 			if not level.net.is_client(): level.lifts.leave_floor()
 	return {}
+
+## The post's instructions.
+func paper_of(_index: int) -> Dictionary:
+	return memo(MEMO_ID, "VENTILACIÓN", ["1. PASE LA FICHA.", "2. ARRANQUE DESDE ESTA CONSOLA. BATERÍA: %d CARGAS." % charges, "3. CON LOS VENTILADORES EN MARCHA NO SE ABRE LA COMPUERTA."])
 
 ## Whether a seat holds a card from level 1 (the files handler's).
 func has_card(seat: int) -> bool:

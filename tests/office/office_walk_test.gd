@@ -73,6 +73,8 @@ func walk(seed_asked: int) -> void:
 	var air = level.objective(&"air")
 	var player = level.player
 	check("%s: el nivel 3 pide el aire" % tag, String(session.goal.get("kind", "")) == "air")
+	var memo = air.usables.back()
+	check("%s: en la seguridad, las instrucciones" % tag, String(memo.action) == "read" and String(air.paper_of(memo.index).form.subject) == "VENTILACIÓN")
 	# The post: its door locked until the card from level 1 goes through.
 	check("%s: la puerta de la seguridad, cerrada con llave" % tag, air.post_door != null and air.post_door.locked)
 	player.global_position = air.usables[3].stand + Vector3(0, 0.04, 0)
@@ -196,6 +198,8 @@ func the_power(tag: String) -> void:
 	var session = level.session
 	check("%s: el nivel 2 pide la corriente" % tag, power != null and String(session.goal.get("kind", "")) == "power" and power.zones.size() >= 2)
 	if power == null or power.zones.size() < 2: return
+	var legend = power.usables.back()
+	check("%s: junto al cuadro, un memorándum que se lee" % tag, String(legend.action) == "read" and power.word_of(legend, level.player.slot) == "LEER" and power.paper_of(legend.index).form.lines.size() == power.zones.size() + 3)
 	power.lift_timer = 3.0
 	var room_of = func(z: int) -> int:
 		for id in power.zones[z].rooms:

@@ -55,6 +55,27 @@ func loop_at(file: String, point: Vector3, gain: float):
 func stop_loop(voice) -> void:
 	if voice != null: level.world_audio.stop_long(voice)
 
+## A paper a usable of this handler shows when read ("read" usables).
+func paper_of(_index: int) -> Dictionary: return {}
+
+## A memo of La Oficina (1h): pale green, its subject and its lines typed.
+static func memo(id: int, subject: String, lines: Array) -> Dictionary:
+	return {"id": id, "kind": "memo", "form": {"paper": "memo", "subject": subject, "lines": lines}}
+
+## The sheet of a memo pinned flat to a wall at `at`, facing `yaw`.
+func pin_memo(at: Vector3, yaw: float) -> void:
+	var sheet := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.21, 0.297)
+	sheet.mesh = quad
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color8(214, 232, 220)
+	material.roughness = 0.9
+	sheet.material_override = material
+	sheet.position = at
+	sheet.rotation.y = yaw
+	level.hotel.add_child(sheet)
+
 ## The papers this seat keeps of it (TUS NOTAS), as hint dictionaries.
 func own_papers(_seat: int) -> Array: return []
 
