@@ -2,8 +2,9 @@ extends SceneTree
 ## Floor 2 played from its first stage to its end (spec_f1_systems 2 and 4):
 ## on level 1 the request typed, the card taken from its station and through
 ## the reader; on level 2 the board, a minutero and the red lever's clock; the
-## freight lift down each time; and on the third the hatch, the climb into the
-## main duct and back, the crouched body passing all of it, and the shaft's
+## freight lift down each time; and on the third the post opened with the
+## card, the fans started and stopped, the hatch, the climb into the main duct
+## and back, the crouched body passing all of it, and the shaft's
 ## ladder ending the floor.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
@@ -72,6 +73,28 @@ func walk(seed_asked: int) -> void:
 	var air = level.objective(&"air")
 	var player = level.player
 	check("%s: el nivel 3 pide el aire" % tag, String(session.goal.get("kind", "")) == "air")
+	# The post: its door locked until the card from level 1 goes through.
+	check("%s: la puerta de la seguridad, cerrada con llave" % tag, air.post_door != null and air.post_door.locked)
+	player.global_position = air.usables[3].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: en el lector de la seguridad, PASAR FICHA" % tag, air.word_of(air.usables[3], player.slot) == "PASAR FICHA")
+	level.match_net.use_office(&"air", "post", 3)
+	check("%s: con la ficha se abre la seguridad" % tag, air.post_open and not air.post_door.locked and air.post_door.opened)
+	player.global_position = air.usables[4].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	level.match_net.use_office(&"air", "start", 4)
+	await frames(30)
+	check("%s: la consola enciende los ventiladores con una carga" % tag, air.running() and air.released and air.charges == 1 and air.spin > 0.0)
+	player.global_position = MAIN_DUCT.foot(m).origin + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: con los ventiladores en marcha la compuerta no se abre" % tag, air.word_of(air.usables[0], player.slot) == "")
+	player.global_position = air.usables[5].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	level.match_net.use_office(&"air", "stop", 5)
+	for i in 300:
+		await physics_frame
+		if air.spin == 0.0: break
+	check("%s: parados, se quedan quietos" % tag, not air.running() and air.spin == 0.0)
 	player.global_position = MAIN_DUCT.foot(m).origin + Vector3(0, 0.04, 0)
 	await frames(3)
 	check("%s: al pie de la escalerilla, ABRIR" % tag, air.word_of(air.usables[0], player.slot) == "ABRIR")

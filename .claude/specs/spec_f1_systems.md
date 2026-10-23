@@ -1315,7 +1315,7 @@ New `.gd` files get their `.gd.uid` committed (Godot generates them on the first
 ## Notes from building 1g in part (23 October 2026, director)
 
 - Built ahead of 1e and 1f, to play floor 2 from start to end: `main_duct_geometry.gd` (no seams, hangers nor kit models yet; the stand-in materials `galvanized`, `bone`, `coverall` are plain colours), `office_usable.gd`, `match_net.use_office()` and its RPCs, `air_objective.gd` with `ACTIONS := ["hatch", "climb", "ladder"]`, the crawl in `hotel_player.gd` and `survivor_gait.gd`, and `lifts.gd` leaving by the ladder.
-- **`released` starts true** until the post, its console and the fans exist: the hatch opens whenever nothing runs. `progress()` keeps the 4.3 shape (`needed` 3).
+- `released` started true until the post existed; the same day the post (reader in mode "post" as a usable of the air handler, index 3), the console (4) and the isolator (5) came, with charges, `fan_time`, the spin and the lockdown, so it starts false again as 4.2 says. The air handler finds the post's door by its doorway and locks it itself.
 - The mouth's climb-down usable sits just inside the hatch, facing into the duct, so a crawler coming back sees it.
 - `office_validator.round_ladder()`: a passage leg that comes within 1 m of the plant ladder steps 1.5 m to its side. In seed 33 the air room and the plant are one salon and the ladder stood on the straight line between their middles.
 - No sounds yet (`hatch.wav`, `crawl_*.wav`, `ladder.wav` are not prepared), no `follow_bodies()` override, no `sanity.lit_at()` change, no bot crawl.
