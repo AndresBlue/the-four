@@ -181,6 +181,27 @@ func decide_dark(data: Dictionary) -> void:
 	for room in data.rooms:
 		if int(room.get("wing", 0)) == 2 and not kept.has(int(room.id)): dark_ids[int(room.id)] = true
 
+## A room's power cut or given back (planta 2's board, spec_f1_systems 3):
+## its troffer lenses, battens and globes go dark with its lamp, or they
+## would glow over a room with no light.
+func set_room_power(room_id: int, on: bool) -> void:
+	super(room_id, on)
+	if room_id < 0 or room_id >= room_nodes.size(): return
+	var glowing: bool = on and not dark and not dark_ids.has(room_id)
+	var off: Material = materials.get("lens_off", materials.get("light_off"))
+	for mesh in lenses_of(room_id): mesh.material_override = null if glowing else off
+
+## The meshes that glow with a room's lamp, found once.
+var room_lenses := {}
+func lenses_of(room_id: int) -> Array:
+	if room_lenses.has(room_id): return room_lenses[room_id]
+	var found: Array = []
+	for pattern in ["Mesh_troffer_lens*", "Mesh_light*"]:
+		for node in room_nodes[room_id].find_children(pattern, "GeometryInstance3D", true, false):
+			if not "_off" in String(node.name): found.append(node)
+	room_lenses[room_id] = found
+	return found
+
 ## Out of sight off planta 3, like every room of the other plantas.
 func put_away(here: int) -> void:
 	super(here)
