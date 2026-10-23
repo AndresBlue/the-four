@@ -3,7 +3,7 @@ extends "res://game/floors/objectives/objective.gd"
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
 ## the reader beside the freight lift's door, which then opens. Not built yet:
-## the photo (2.4), the papers (1h), the sounds, the capsule seen travelling
+## the photo (2.4), the papers (1h), the capsule seen and heard travelling
 ## and a dropped card: the station and where the card is are the pause lines.
 const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -32,6 +32,8 @@ var station_exits: Array = []
 ## The usables: 0 the typewriter, 1.. the stations, last the reader.
 var usables: Array = []
 var lamps: Array = []
+## The keys going while this machine's player types.
+var typing_voice = null
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -169,11 +171,16 @@ func hold_of(usable, _seat: int) -> float:
 		"swipe": return SWIPE_TIME
 	return 0.0
 
-func begin_use(_usable, _seat: int) -> void: pass
+func begin_use(usable, seat: int) -> void:
+	if String(usable.action) == "type" and seat == level.player.slot:
+		stop_loop(typing_voice)
+		typing_voice = loop_at("typing.wav", usable.global_position, -6.0)
 
 func holding(_usable, _seat: int, _fraction: float) -> void: pass
 
-func cancel_use(_usable, _seat: int) -> void: pass
+func cancel_use(_usable, _seat: int) -> void:
+	stop_loop(typing_voice)
+	typing_voice = null
 
 func refused(_action: String, _index: int, _seat: int) -> void: pass
 
@@ -187,7 +194,7 @@ func allow(action: String, index: int, seat: int, body) -> bool:
 	return not word_of(usable, seat).is_empty()
 
 ## Applied on every machine (the host first, deciding the station).
-func apply(action: String, index: int, seat: int, data: Dictionary, _quiet: bool) -> Dictionary:
+func apply(action: String, index: int, seat: int, data: Dictionary, quiet: bool) -> Dictionary:
 	var out := data
 	match action:
 		"type":
@@ -195,8 +202,13 @@ func apply(action: String, index: int, seat: int, data: Dictionary, _quiet: bool
 			var exit: Dictionary = station_exits[int(out.station)]
 			var sent: float = float(level.session.elapsed) + SEND_DELAY
 			requests[seat] = {"station": int(out.station), "state": Card.TRAVELLING, "holder": -1, "swiped": false, "number": String(out.number), "sent": sent, "arrive": sent + float(exit.tube) / CAPSULE_SPEED}
+			if seat == level.player.slot:
+				stop_loop(typing_voice)
+				typing_voice = null
+			if not quiet: sound_at("typing_bell.wav", usables[0].global_position, -2.0)
 		"arrived":
 			if requests.has(seat): requests[seat].state = Card.IN_TRAY
+			if not quiet and index + 1 < usables.size(): sound_at("tube_bell.wav", usables[index + 1].global_position, -2.0)
 		"take":
 			for owner in requests:
 				var r: Dictionary = requests[owner]
@@ -209,6 +221,7 @@ func apply(action: String, index: int, seat: int, data: Dictionary, _quiet: bool
 			if owner >= 0:
 				requests[owner].swiped = true
 				swiped.append(owner)
+				if not quiet: sound_at("lever_1.wav", usables[index].global_position, -4.0)
 	show_state()
 	return out
 

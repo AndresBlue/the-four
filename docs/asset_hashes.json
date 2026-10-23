@@ -14,5 +14,65 @@
   "source_assets/song.mp3": {
     "bytes": 6154797,
     "sha256": "96f5b8f1f5061bc00ef15be8c530691d2e9514e36032310cb5686aa83cf368a7"
+  },
+  "assets/audio/sfx/office/breaker.wav": {
+    "bytes": 176444,
+    "sha256": "af4a638dc213a79c259d772d247fe0f2a97d3e98bb1811c9e3a509e7b7f11e56"
+  },
+  "assets/audio/sfx/office/crawl_1.wav": {
+    "bytes": 68024,
+    "sha256": "408f755bb78ee3a4d2f2b2bcce24d8875aa36bc9d1484a53cd0ef552ed873bf8"
+  },
+  "assets/audio/sfx/office/crawl_2.wav": {
+    "bytes": 70364,
+    "sha256": "1c9a2095fa25c73c300fc5e7a611c8b5f4add9d517de580e115754581b693678"
+  },
+  "assets/audio/sfx/office/fans.wav": {
+    "bytes": 679184,
+    "sha256": "55218ee1e7fa7ea5dd0ad68f61e9ff5f8c275c940490a5944f2927811b84bf55"
+  },
+  "assets/audio/sfx/office/hatch.wav": {
+    "bytes": 176444,
+    "sha256": "56478d947efda71a51602fa62bb387b7ef4f984b3d14431dd5c64a4d642a6529"
+  },
+  "assets/audio/sfx/office/ladder.wav": {
+    "bytes": 352844,
+    "sha256": "7fb30c0fad85440e5e5215198ca2b7cfed057678b7444055c69c97a109fcedb6"
+  },
+  "assets/audio/sfx/office/lever_1.wav": {
+    "bytes": 88244,
+    "sha256": "b3a5a24ca4c7b3a01bda4cd5dfdc35d0bc0748929ab3d8d5e5824ac4cee0028c"
+  },
+  "assets/audio/sfx/office/lever_2.wav": {
+    "bytes": 88244,
+    "sha256": "bc301cc29e894d6ed46bfcf107ca1034c494688d9f55cef6d5ca9f754dabecd3"
+  },
+  "assets/audio/sfx/office/lever_3.wav": {
+    "bytes": 88244,
+    "sha256": "51bc8b85c803fdeedff76c27e06e696d7bd276f4e5c244e119ea575bd6a6a433"
+  },
+  "assets/audio/sfx/office/lift_motor.wav": {
+    "bytes": 529244,
+    "sha256": "9ca7601628e429abf8fad0e50a405d39611e71607285f02422f34c51447f2455"
+  },
+  "assets/audio/sfx/office/tick.wav": {
+    "bytes": 326384,
+    "sha256": "bf560205100a1c006007a42c96458c0a11b8de778872f0eb134df2e627191705"
+  },
+  "assets/audio/sfx/office/tube_bell.wav": {
+    "bytes": 132030,
+    "sha256": "0fa5d00ee0544afacdcb962f0558294b30779d9fc8d0e9e16fceae5298f0a560"
+  },
+  "assets/audio/sfx/office/tube_hiss.wav": {
+    "bytes": 238184,
+    "sha256": "8aea1c91dd6267e35ebe584d3cca420252e8ee35ed9b9438b560494d1d0a262e"
+  },
+  "assets/audio/sfx/office/typing.wav": {
+    "bytes": 502784,
+    "sha256": "1791b1782c8799159416f18dbe2f9691c17cb3cdedd4413571c4a66f6ecddbc0"
+  },
+  "assets/audio/sfx/office/typing_bell.wav": {
+    "bytes": 159844,
+    "sha256": "e1e773f95ad9af071ae5b919682d0071fae2d7eb13794c3eb6faf838ef8ae6e0"
   }
 }

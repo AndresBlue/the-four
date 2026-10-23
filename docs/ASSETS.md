@@ -289,6 +289,22 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 - **Se modeló a partir de una imagen** que aportó el autor ese día (`art/lurker/referencia.webp`, una pintura de terror analógico de una bestia en una escalera): el autor la da por de libre uso, sin licencia ni condiciones. No se sabe quién la pintó ni se ha comprobado de dónde sale; el modelo no incluye la imagen, pero su diseño es el de esa criatura. Conviene confirmar su origen antes de una entrega pública.
 - Archivos: `art/lurker/lurker.blend` (fuente, con la escena de comparación), `assets/enemies/lurker/lurker.glb` (lo que importa Godot), sus tres materiales `.tres` (cuerpo, cara, ojos y dientes) y la textura que Godot extrae del GLB, y en `game/enemies/lurker/` la escena que la planta en paredes y techos y la niebla que la envuelve (hechas para el proyecto). Cómo se hace, en [LURKER.md](LURKER.md).
 
+## Sonidos de las oficinas (piso 2)
+
+`tools/audio/prepare_office_sfx.py` saca copias de trabajo en `assets/audio/sfx/office/` de grabaciones descargadas en `source_assets/oficinas/` (cada una con su ficha en el `registro.json` de su grupo, en estado «ok»). Los originales no se tocan; los tramos de los bucles los eligió el director sin escucharlos y el autor debería oírlos.
+
+| Copia | Original | Autor y fuente | Licencia |
+|---|---|---|---|
+| `typing.wav` (bucle), `typing_bell.wav` | `bsb_2835_typewriter_2.wav`, `bsb_2844_typewriter_bell_1.wav` | Joseph SARDIN, BigSoundBank | CC0 |
+| `tube_hiss.wav` (bucle, sin usar aún), `tube_bell.wav` | `bsb_0138_compressed_air.wav`, `bsb_1922_industrial_bell_2.wav` | BigSoundBank | CC0 |
+| `lever_1..3.wav`, `breaker.wav` | `bsb_3061..3063_industrial_switch_*.flac`, `bsb_1092_electric_circuit_breaker.flac` | BigSoundBank | CC0 |
+| `tick.wav` (bucle) | `bsb_0082_timer_2_kitchen.flac` | BigSoundBank | CC0 |
+| `lift_motor.wav` | `bsb_1712_elevator_6_floors.flac` | BigSoundBank | CC0 |
+| `fans.wav` (bucle) | `bsb_3598_ventilation_5.flac` | BigSoundBank | CC0 |
+| `hatch.wav` | `bsb_0773_metal_filing_cabinet.wav` | BigSoundBank | CC0 |
+| `crawl_1.wav`, `crawl_2.wav` | `pixabay_83044_heater_vent_hit_lower_evdawg.mp3`, `pixabay_103305_heater_vent_hit_higher_evdawg.mp3` | Ev-Dawg, Pixabay | Pixabay Content License |
+| `ladder.wav` | `pixabay_76052_ladder_aluminum_erik90.mp3` | erik90, Pixabay | Pixabay Content License |
+
 ## Música
 
 - Archivo recibido: `source_assets/song.mp3`.

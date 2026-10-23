@@ -740,6 +740,8 @@ pueda jugar entero sin tocar el teclado.
 
 ## 4 · Assets que faltan (tuyos)
 
+- **Grabaciones de verdad para las oficinas** (23 de octubre de 2026): el tubo neumático (hoy aire comprimido de BigSoundBank), alguien a gatas por un ducto de chapa (hoy dos golpes en una rejilla de calefacción) y la reja de tijera del montacargas; las de NoiseCollector y Ultra-Edward piden cuenta. Y que oigas los bucles de `assets/audio/sfx/office/` (máquina de escribir, siseo, tictac, ventiladores), cuyos tramos se eligieron sin escucharlos.
+
 - **La llave y el cuadro eléctrico** (22 de octubre de 2026): el tintineo de una llave al cogerla, la puertecita de metal del cuadro al abrirse (hoy la de un armario) y el golpe de un interruptor al dar la luz (hoy la estática del cambio de ala).
 
 - `four-7xp.1` **El goteo de la sangre** no suena: falta una gota espesa sobre

@@ -5,7 +5,7 @@ extends "res://game/floors/objectives/objective.gd"
 ## card from level 1, its console starting the fans on the battery's few
 ## charges (which lifts the lockdown), and the isolator by the air handler
 ## that stops them: the hatch opens only once they have run and stand still.
-## Not built yet: the sounds and their mask, the kit's models.
+## Not built yet: the fans' mask on what is heard, the kit's models.
 const ID := &"air"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
@@ -51,6 +51,8 @@ var hatch_open := false
 var spin := 0.0
 var post_door = null
 var rotors: Array = []
+## The fans' roar at the air handler while they run.
+var fans_voice = null
 ## The usables: 0 the plant ladder (the hatch's release, then the climb), 1
 ## the climb back down at the mouth, 2 the shaft ladder, 3 the post's reader,
 ## 4 the console, 5 the isolator.
@@ -263,21 +265,29 @@ func allow(action: String, index: int, seat: int, body) -> bool:
 
 ## Applied on every machine (the host first): the hatch swings, a climber's
 ## own machine moves it, and the shaft ladder takes the floor with it.
-func apply(action: String, index: int, seat: int, _data: Dictionary, _quiet: bool) -> Dictionary:
+func apply(action: String, index: int, seat: int, _data: Dictionary, quiet: bool) -> Dictionary:
 	match action:
 		"hatch":
 			hatch_open = true
 			show_hatch(true)
+			if not quiet: sound_at("hatch.wav", MAIN_DUCT.hatch_floor(manifest()), 0.0)
 		"post":
 			post_open = true
 			show_post()
+			if not quiet: sound_at("lever_1.wav", usables[3].global_position, -4.0)
 		"start":
 			charges -= 1
 			running_until = float(level.session.elapsed) + fan_time
 			released = true
+			if not quiet:
+				stop_loop(fans_voice)
+				fans_voice = loop_at("fans.wav", usables[5].global_position + Vector3(0, 1.0, 0), 0.0)
 		"stop", "stopped":
 			running_until = 0.0
+			stop_loop(fans_voice)
+			fans_voice = null
 		"climb":
+			if not quiet: sound_at("ladder.wav", MAIN_DUCT.foot(manifest()).origin + Vector3(0, 1.5, 0), -4.0)
 			if seat == level.player.slot and level.body_of_seat(seat) == level.player: climb(index)
 		"ladder":
 			if not level.net.is_client(): level.lifts.leave_floor()
@@ -324,6 +334,8 @@ func goal_points(stage: int) -> Array[Vector3]:
 ## A stage given back: the hatch shut, and whoever is in the duct put back at
 ## the ladder's foot (each machine its own player).
 func reset() -> void:
+	stop_loop(fans_voice)
+	fans_voice = null
 	charges = 2
 	running_until = 0.0
 	spin = 0.0

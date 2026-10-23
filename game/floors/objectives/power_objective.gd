@@ -4,7 +4,7 @@ extends "res://game/floors/objectives/objective.gd"
 ## are lit at once (the oldest drops); the minuteros light their corridor for a
 ## while; the red lever cuts the whole planta and starts the freight lift's
 ## clock, and the lift only goes down once it has run out. Not built yet: the
-## sounds, the legend memo (1h) and the kit's models.
+## legend memo (1h) and the kit's models.
 const ID := &"power"
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
@@ -40,6 +40,8 @@ var applied := {}
 var usables: Array = []
 var handles: Array = []
 var pilots: Array = []
+## The red timer ticking at the board while it runs.
+var tick_voice = null
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -201,24 +203,35 @@ func allow(action: String, index: int, seat: int, body) -> bool:
 	if body.global_position.distance_to(usable.global_position) > USE_REACH + (0.0 if body == level.player else SLACK): return false
 	return not word_of(usable, seat).is_empty()
 
-func apply(action: String, index: int, _seat: int, _data: Dictionary, _quiet: bool) -> Dictionary:
+func apply(action: String, index: int, _seat: int, _data: Dictionary, quiet: bool) -> Dictionary:
+	var at: Vector3 = usables[index].global_position if index >= 0 and index < usables.size() else Vector3.ZERO
 	match action:
 		"lever":
 			if red == Red.DOWN:
+				if not quiet: sound_at("lever_%d.wav" % (index % 3 + 1), at, -4.0)
 				if on_order.has(index): on_order.erase(index)
 				else:
 					on_order.append(index)
 					# Over the budget the oldest zone's breaker trips.
+					if on_order.size() > budget and not quiet: sound_at("breaker.wav", at, -4.0)
 					while on_order.size() > budget: on_order.pop_front()
 		"red":
 			red = Red.RUNNING
 			red_started = level.session.elapsed
 			on_order.clear()
+			if not quiet:
+				sound_at("breaker.wav", at, -4.0)
+				stop_loop(tick_voice)
+				tick_voice = loop_at("tick.wav", at, -6.0)
 		"armed":
 			red = Red.ARMED
+			stop_loop(tick_voice)
+			tick_voice = null
+			if not quiet and level.hotel.lifts.size() > 1: sound_at("lift_motor.wav", level.hotel.lifts[1] + Vector3(0, 1.5, 0), -6.0)
 		"switch":
 			var i := index - red_index() - 1
 			if i >= 0 and i < switch_until.size(): switch_until[i] = float(level.session.elapsed) + switch_time
+			if not quiet: sound_at("lever_1.wav", at, -8.0)
 	show_handles()
 	refresh_power()
 	return {}
@@ -257,6 +270,8 @@ func goal_points(stage: int) -> Array[Vector3]:
 	return points
 
 func reset() -> void:
+	stop_loop(tick_voice)
+	tick_voice = null
 	on_order.clear()
 	red = Red.DOWN
 	for i in switch_until.size(): switch_until[i] = 0.0

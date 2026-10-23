@@ -516,7 +516,9 @@ func begin_leaving() -> void:
 	# Down a ladder (the offices' shaft): no car, no doors; the body goes down
 	# the rungs in ride_out().
 	leave_from = level.player.global_position
-	if by_ladder(): return
+	if by_ladder():
+		if level.world_audio.enabled: level.world_audio.play_at("res://assets/audio/sfx/office/ladder.wav", leave_from + Vector3(0, 1.0, 0), -4.0)
+		return
 	# Its doors, where the car is: heard by whoever rode it and whoever stands
 	# near. It used to sound at every machine's own player, wherever that was.
 	# Then the car going down, from inside.

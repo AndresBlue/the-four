@@ -397,7 +397,19 @@ static func beam_pattern() -> Texture2D:
 
 ## Starts a step clip so its impact sounds `ahead` seconds from now. Returns
 ## false while it is still too early for this clip's lead-in.
+## On all fours in the duct, a knee or a hand on the sheet instead of a step.
+const CRAWL_STEPS := [preload("res://assets/audio/sfx/office/crawl_1.wav"), preload("res://assets/audio/sfx/office/crawl_2.wav")]
+
 func play_step(running: bool, ahead: float) -> bool:
+	if crawling:
+		if ahead > 0.0: return false
+		var knee := step_voices[step_voice]
+		step_voice = (step_voice + 1) % step_voices.size()
+		knee.stream = CRAWL_STEPS[randi() % CRAWL_STEPS.size()]
+		knee.pitch_scale = randf_range(0.92, 1.05)
+		knee.volume_db = -30.0
+		knee.play()
+		return true
 	var set_name := ("hard_walk" if hard_floor else "carpet_run" if running and not crouched else "carpet_walk")
 	var clips: Array = step_clips[set_name]
 	var clip: Dictionary = clips[randi() % clips.size()]

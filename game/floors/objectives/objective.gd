@@ -40,6 +40,21 @@ func goal_points(_stage: int) -> Array[Vector3]:
 	var points: Array[Vector3] = []
 	return points
 
+## A recording of the offices (tools/audio/prepare_office_sfx.py) heard at
+## a point; and one repeated there until stop_loop().
+func sound_at(file: String, point: Vector3, gain: float) -> void:
+	if level.world_audio.enabled: level.world_audio.play_at("res://assets/audio/sfx/office/" + file, point, gain)
+
+func loop_at(file: String, point: Vector3, gain: float):
+	var voice = level.world_audio.play_long("res://assets/audio/sfx/office/" + file, point, gain)
+	if voice == null: return null
+	voice.stream = level.world_audio.loop_stream(voice.stream)
+	voice.play()
+	return voice
+
+func stop_loop(voice) -> void:
+	if voice != null: level.world_audio.stop_long(voice)
+
 ## Whether the car of that stage may leave with these riders (lifts.press):
 ## the offices' freight lift waits for its clock.
 func allows_ride(_stage: int, _riders: Array) -> bool: return true
