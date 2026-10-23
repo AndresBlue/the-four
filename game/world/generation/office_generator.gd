@@ -585,3 +585,308 @@ func cap_numbers(f: Dictionary, locked: Dictionary) -> void:
 			room.service = true
 			room.type = palette.DEPOT
 	f.merge(was, true)
+
+# --- Systems (furnish) -------------------------------------------------------------------
+
+## A random stream of its own for each system, so one system's draws never
+## move another's.
+func stream(run_seed: int, attempt: int, name: String) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run_seed, "office", name, attempt])
+	return rng
+
+## What the offices add to the manifest once doors, lockers and lamps are
+## there: each system in the order of spec 2.5l, every wall spot registered so
+## none lands on another, or {"fail": reason}.
+func furnish(f: Dictionary, gates: Array, doors: Dictionary, run_seed: int, attempt: int, standby: bool) -> Dictionary:
+	job_rooms = f.rooms
+	var job := {"f": f, "gates": gates, "doors": doors, "seed": run_seed, "attempt": attempt, "standby": standby, "out": {}, "taken": {}}
+	for room in f.rooms:
+		for h in room.get("hides", []):
+			var hw := LAYOUT.hide_wall(h)
+			register(job, int(room.id), String(hw.wall), float(hw.along), 0.65)
+	for step_call in [furnish_lobby, furnish_archives, furnish_mail, furnish_power, furnish_air, furnish_sockets, furnish_glass, furnish_furniture, furnish_ducts, furnish_main]:
+		var reason: String = step_call.call(job)
+		if not reason.is_empty(): return {"fail": reason}
+	var out: Dictionary = job.out
+	out["floor"] = 2
+	out["version"] = palette.VERSION
+	var departments: Array = []
+	for planta in f.departments:
+		departments.append(planta.map(func(entry): return {"sector": int(entry.sector), "name": String(entry.name), "colour": int(entry.colour)}))
+	out["departments"] = departments
+	out["plenum"] = palette.PLENUM.duplicate(true)
+	return out
+
+## Spec 2.5c, the post and its tubes: written by step 1b's U7.
+func furnish_mail(_job: Dictionary) -> String: return ""
+
+## Spec 2.5d, the board, the zones and their timers: written by U8.
+func furnish_power(_job: Dictionary) -> String: return ""
+
+## Spec 2.5e, the air plant and its hatch: written by U8.
+func furnish_air(_job: Dictionary) -> String: return ""
+
+## Spec 2.5f, the corner sockets: written by U9.
+func furnish_sockets(_job: Dictionary) -> String: return ""
+
+## Spec 2.5g, the glazed walls: written by U9.
+func furnish_glass(_job: Dictionary) -> String: return ""
+
+## Spec 2.5h, the free-standing furniture: written by U9.
+func furnish_furniture(_job: Dictionary) -> String: return ""
+
+## Spec 2.5i, the duct network and its exits: written by U10.
+func furnish_ducts(_job: Dictionary) -> String: return ""
+
+## Spec 2.5j, the crawlable main duct: written by U10.
+func furnish_main(_job: Dictionary) -> String: return ""
+
+## A point on a wall's inner face, world, at height y, inset into the room.
+func wall_point(room: Dictionary, wall: String, along: float, y: float, inset := 0.0) -> Vector3:
+	var n := LAYOUT.inward(wall)
+	var point := Vector3(float(room.px), y, float(room.pz))
+	if wall == "west" or wall == "east":
+		point.x += LAYOUT.face(room, wall)
+		point.z += along
+	else:
+		point.z += LAYOUT.face(room, wall)
+		point.x += along
+	point.x += n.x * inset
+	point.z += n.y * inset
+	return point
+
+## A wall spot as the manifest keeps it: {wall, along, point, yaw}.
+func wall_spot(room: Dictionary, wall: String, along: float, y: float, inset := 0.0) -> Dictionary:
+	return {"wall": wall, "along": snappedf(along, 0.001), "point": rounded(wall_point(room, wall, along, y, inset)), "yaw": LAYOUT.wall_yaw(wall)}
+
+## A point stored to the millimetre.
+static func rounded(p: Vector3) -> Array:
+	return [snappedf(p.x, 0.001), snappedf(p.y, 0.001), snappedf(p.z, 0.001)]
+
+## Whether a wall spot is free: on a closed wall, clear of its doorways as a
+## locker is, inside the wall, and WALL_APART from every spot already there.
+func spot_free(job: Dictionary, room: Dictionary, wall: String, along: float, half: float) -> bool:
+	if room.get("open_sides", []).has(wall): return false
+	for way in FLOOR.doorways(room):
+		if String(way.wall) == wall and absf(along - float(way.along)) < HIDE_CLEAR: return false
+	if absf(along) > LAYOUT.wall_length(room, wall) / 2 - 0.4 - half: return false
+	for entry in job.taken.get(int(room.id), []):
+		if String(entry.wall) == wall and absf(along - float(entry.along)) < float(palette.WALL_APART): return false
+	return true
+
+## Marks a stretch of wall as taken.
+func register(job: Dictionary, room_id: int, wall: String, along: float, half: float) -> void:
+	if not job.taken.has(room_id): job.taken[room_id] = []
+	job.taken[room_id].append({"wall": wall, "along": along, "half": half})
+
+## The walls with a doorway in them.
+func doorway_walls(room: Dictionary) -> Array:
+	var walls: Array = []
+	for way in FLOOR.doorways(room):
+		if not walls.has(String(way.wall)): walls.append(String(way.wall))
+	return walls
+
+## The closed walls with no doorway, the farthest from a doorway first.
+func far_walls(room: Dictionary) -> Array:
+	var rooms: Array = job_rooms
+	var doors := doorway_walls(room)
+	var walls: Array = []
+	for wall in ["west", "east", "north", "south"]:
+		if not room.get("open_sides", []).has(wall) and not doors.has(wall): walls.append(wall)
+	var points: Array = []
+	for way in FLOOR.doorways(room):
+		var p := FLOOR.portal_between(room, rooms[int(way.other)])
+		points.append(Vector2(p.x, p.z))
+	var far := func(wall: String) -> float:
+		var mid := wall_point(room, wall, 0.0, 0.0)
+		var least := INF
+		for p in points: least = minf(least, Vector2(mid.x, mid.z).distance_to(p))
+		return least
+	var ranked: Array = []
+	for i in walls.size(): ranked.append({"wall": walls[i], "far": float(far.call(walls[i])), "i": i})
+	ranked.sort_custom(func(a, b): return float(a.far) > float(b.far) or (float(a.far) == float(b.far) and int(a.i) < int(b.i)))
+	return ranked.map(func(entry): return String(entry.wall))
+
+## The rooms of the floor being furnished (set by furnish()), for helpers
+## that only get a room.
+var job_rooms: Array = []
+
+## A room's main door: the first neighbour that is a corridor, else the first
+## (facing()'s choice); -1 with none.
+func main_door(f: Dictionary, id: int) -> int:
+	var doors: Array = f.adjacency[id].duplicate()
+	doors.sort()
+	if doors.is_empty(): return -1
+	for d in doors:
+		if bool(f.rooms[int(d)].corridor): return int(d)
+	return int(doors[0])
+
+## The manifest as it stands while furnishing, as LAYOUT reads one.
+func working(job: Dictionary) -> Dictionary:
+	var f: Dictionary = job.f
+	var view := {"rooms": f.rooms, "adjacency": f.adjacency}
+	for key in ["mail", "power", "air", "tubes", "ducts"]:
+		if job.out.has(key): view[key] = job.out[key]
+	return view
+
+## Where the lift the floor is come down by stands in the reception: a closed
+## wall with no doorway, the one opposite its main door first.
+func furnish_lobby(job: Dictionary) -> String:
+	var f: Dictionary = job.f
+	var rooms: Array = f.rooms
+	var start := -1
+	for room in rooms:
+		if int(room.type) == palette.RECEPTION: start = int(room.id)
+	if start < 0: return ""
+	var reception: Dictionary = rooms[start]
+	var walls: Array = []
+	var d := main_door(f, start)
+	if d >= 0:
+		var dw := LAYOUT.wall_of(Vector2i(int(rooms[d].x) - int(reception.x), int(rooms[d].z) - int(reception.z)))
+		var opposite := LAYOUT.wall_of(-LAYOUT.way_of(dw))
+		if opposite != "": walls.append(opposite)
+	for wall in ["west", "east", "north", "south"]:
+		if not walls.has(wall): walls.append(wall)
+	var doors := doorway_walls(reception)
+	for wall in walls:
+		if reception.get("open_sides", []).has(wall) or doors.has(wall): continue
+		var way := LAYOUT.way_of(wall)
+		job.out["arrival_lift"] = [way.x, way.y]
+		register(job, start, wall, 0.0, 1.5)
+		break
+	return ""
+
+## The archives' shelving: rows across a spine through each unit, cross aisles
+## to its doors, and in the mobile ones the rows packed with one gap a side.
+func furnish_archives(job: Dictionary) -> String:
+	var f: Dictionary = job.f
+	var rooms: Array = f.rooms
+	var rng := stream(int(job.seed), int(job.attempt), "archives")
+	var a: Dictionary = palette.ARCHIVE_LAYOUT
+	var units: Array = []
+	var halls := {}
+	for room in rooms:
+		var t := int(room.type)
+		if int(room.hall) >= 0:
+			if t != palette.ARCHIVE: continue
+			if not halls.has(int(room.hall)): halls[int(room.hall)] = []
+			halls[int(room.hall)].append(int(room.id))
+		elif t == palette.ARCHIVE or t == palette.MOBILE_ARCHIVE:
+			units.append([int(room.id)])
+	for hall in halls: units.append(halls[hall])
+	units.sort_custom(func(x, y): return int(x.min()) < int(y.min()))
+	var archives: Array = []
+	for members in units:
+		archives.append(lay_archive(f, members, a, rng))
+	job.out["archives"] = archives
+	return ""
+
+## One archive unit's spine, rows and aisles (spec 2.5b).
+func lay_archive(f: Dictionary, members: Array, a: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var rooms: Array = f.rooms
+	var first: Dictionary = rooms[int(members[0])]
+	var mobile: bool = members.size() == 1 and int(first.type) == palette.MOBILE_ARCHIVE
+	var axis := "x"
+	if members.size() > 1:
+		var zs := {}
+		for id in members: zs[int(rooms[int(id)].z)] = true
+		axis = "x" if zs.size() == 1 else "z"
+	elif mobile:
+		var walls := doorway_walls(first)
+		axis = "z" if not walls.is_empty() and walls.all(func(w): return w == "north" or w == "south") else "x"
+	else:
+		axis = "x" if float(first.span_x) >= float(first.span_z) else "z"
+	var inset := float(a.inset)
+	var x0 := INF
+	var x1 := -INF
+	var z0 := INF
+	var z1 := -INF
+	var centre := 0.0
+	for id in members:
+		var r: Dictionary = rooms[int(id)]
+		x0 = minf(x0, float(r.px) - float(r.span_x) / 2)
+		x1 = maxf(x1, float(r.px) + float(r.span_x) / 2)
+		z0 = minf(z0, float(r.pz) - float(r.span_z) / 2)
+		z1 = maxf(z1, float(r.pz) + float(r.span_z) / 2)
+		centre += float(r.pz) if axis == "x" else float(r.px)
+	centre /= float(members.size())
+	x0 += inset
+	x1 -= inset
+	z0 += inset
+	z1 -= inset
+	var a0 := x0 if axis == "x" else z0
+	var a1 := x1 if axis == "x" else z1
+	var b0 := z0 if axis == "x" else x0
+	var b1 := z1 if axis == "x" else x1
+	var length := a1 - a0
+	var gaps: Array = a.wall_gap
+	var wall_gap := float(gaps[rng.randi_range(0, 1)])
+	var row := float(a.row)
+	var aisle := float(a.aisle)
+	var spine := float(a.spine)
+	var e0 := float(a.end_min)
+	var e1 := float(a.end_min)
+	# The short walls: west and east of the ends along x, north and south along z.
+	var low_wall := "west" if axis == "x" else "north"
+	var high_wall := "east" if axis == "x" else "south"
+	var low_id := int(members[0])
+	var high_id := int(members[0])
+	for id in members:
+		var key: float = float(rooms[int(id)].px) if axis == "x" else float(rooms[int(id)].pz)
+		if key < (float(rooms[low_id].px) if axis == "x" else float(rooms[low_id].pz)): low_id = int(id)
+		if key > (float(rooms[high_id].px) if axis == "x" else float(rooms[high_id].pz)): high_id = int(id)
+	if doorway_walls(rooms[low_id]).has(low_wall): e0 = maxf(e0, float(a.door_depth))
+	if doorway_walls(rooms[high_id]).has(high_wall): e1 = maxf(e1, float(a.door_depth))
+	# The long walls' doorways, by side: north or west is the side of less.
+	var minus_wall := "north" if axis == "x" else "west"
+	var plus_wall := "south" if axis == "x" else "east"
+	var minus_doors: Array = []
+	var plus_doors: Array = []
+	for id in members:
+		var r: Dictionary = rooms[int(id)]
+		for way in FLOOR.doorways(r):
+			var at: float = (float(r.px) if axis == "x" else float(r.pz)) + float(way.along)
+			if String(way.wall) == minus_wall: minus_doors.append(at)
+			elif String(way.wall) == plus_wall: plus_doors.append(at)
+	var sides := [[b0 + wall_gap, centre - spine / 2], [centre + spine / 2, b1 - wall_gap]]
+	var rows: Array = []
+	var aisles: Array = []
+	var opened: Array = []
+	if mobile:
+		var nm := floori((length - e0 - e1 - aisle) / row)
+		var rem := length - e0 - e1 - aisle - float(nm) * row
+		var kl := rng.randi_range(0, nm)
+		var kr := rng.randi_range(0, nm)
+		opened = [kl, kr]
+		for side in 2:
+			var k: int = opened[side]
+			var starts: Array = []
+			for i in nm: starts.append(a0 + e0 + rem / 2 + float(i) * row + (aisle if i >= k else 0.0))
+			for s in starts: rows.append(rect_of(axis, s, s + row, float(sides[side][0]), float(sides[side][1])))
+			if k > 0 and k < nm:
+				var gap_start: float = float(starts[k - 1]) + row
+				aisles.append(rect_of(axis, gap_start, gap_start + aisle, float(sides[side][0]), float(sides[side][1])))
+	else:
+		var pitch := row + aisle
+		var n := floori((length - e0 - e1 + aisle) / pitch)
+		var rem := length - (float(n) * row + float(n - 1) * aisle) - e0 - e1
+		for side in 2:
+			var doors: Array = minus_doors if side == 0 else plus_doors
+			var kept: Array = []
+			for i in n:
+				var s := a0 + e0 + rem / 2 + float(i) * pitch
+				var cut := false
+				for door in doors:
+					if s < float(door) + float(a.door_band) and s + row > float(door) - float(a.door_band): cut = true
+				if not cut: kept.append(s)
+			for s in kept: rows.append(rect_of(axis, s, s + row, float(sides[side][0]), float(sides[side][1])))
+			for i in range(1, kept.size()):
+				var gap_start: float = float(kept[i - 1]) + row
+				if absf(float(kept[i]) - gap_start - aisle) <= 0.001: aisles.append(rect_of(axis, gap_start, float(kept[i]), float(sides[side][0]), float(sides[side][1])))
+	return {"rooms": members.duplicate(), "axis": axis, "mobile": mobile, "open": opened, "height": float(a.shelf), "wall_gap": wall_gap, "spine": rect_of(axis, a0, a1, centre - spine / 2, centre + spine / 2), "rows": rows, "aisles": aisles}
+
+## [x0, z0, x1, z1] of a span along the axis and one across it, to the millimetre.
+func rect_of(axis: String, along0: float, along1: float, across0: float, across1: float) -> Array:
+	if axis == "x": return [snappedf(along0, 0.001), snappedf(across0, 0.001), snappedf(along1, 0.001), snappedf(across1, 0.001)]
+	return [snappedf(across0, 0.001), snappedf(along0, 0.001), snappedf(across1, 0.001), snappedf(along1, 0.001)]

@@ -14,15 +14,16 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 |---|---|
 | Fase 0 (0a a 0f) | Hecha: 0a `3b909f0`..`d32f23a`, 0b `86a4333`, 0c `9f759db`, 0d `592dce2`, 0f `1f09795`, 0e `db7eca1` |
 | 1a Tipo de piso de oficina, paleta, criatura nula | Hecho (`54e99d9`): construido, sin publicar (`floor_index.RELEASED = [1]`) |
-| 1b Generador de oficinas | **U1 a U5 hechos** (ganchos en `map_generator`, `conduit_metres.gd`, `office_layout.gd`, `place_specials` y `finish`); faltan U6 a U12 (`furnish` y sus sistemas, `office_test`, documentos) |
+| 1b Generador de oficinas | **U1 a U6 hechos** (ganchos en `map_generator`, `conduit_metres.gd`, `office_layout.gd`, `place_specials`, `finish`, y `furnish` con el vestíbulo y los archivos; los demás pasos de `furnish` son stubs que devuelven ""); faltan U7 a U12 (correo y tubos, corriente y aire, enchufes, cristal y muebles, conductos, `office_test`, documentos) |
 | Contrato para montar el piso 2 en escena | Paso propio antes de 1d, sin encargos (lo describe `spec_f1_generator.md`, notas finales de 1a) |
 | 1c a 1i, fases 2 a 5 | Pendientes |
 
 **Lo primero al retomar:**
 1. Leer el uso (`mcp__ccd_session_mgmt__get_usage`). Si la semana sigue sin renovarse, el tope del autor es el 80 %.
-2. Seguir 1b por U6, en serie, como se hicieron U1 a U5: leer la unidad en `encargos_1b.json` (`python -c` con `PYTHONIOENCODING=utf-8`), escribir el código (bloques largos con Write a un archivo, nunca heredocs con apóstrofos), su sonda `evidence/1b_probe_U<n>.gd` y las pruebas con `scratchpad/gt.sh` o una orden equivalente (Godot con `--test-profile` y `git restore` después). Al acabar U12, `verify.ps1` y commit.
+2. Seguir 1b por U7, en serie, como se hicieron U1 a U5: leer la unidad en `encargos_1b.json` (`python -c` con `PYTHONIOENCODING=utf-8`), escribir el código (bloques largos con Write a un archivo, nunca heredocs con apóstrofos), su sonda `evidence/1b_probe_U<n>.gd` y las pruebas con `scratchpad/gt.sh` o una orden equivalente (Godot con `--test-profile` y `git restore` después). Al acabar U12, `verify.ps1` y commit.
    - Lo que dejaron U4 y U5: con 100 semillas a 2 supervivientes, 0 pisos de respaldo, 0 inválidos, mediana de 175 ms; con 32 pisos a 2, 4 y 5, 0 de respaldo y DEPOT en 4 y 5. Dos pisos de 5 supervivientes (semillas 41 y 42) quedan sin sala de juntas en la planta 1 porque no hay módulo grande: el encargo lo admite (se convierten las candidatas que haya).
-   - `f.specials` y `f.departments` están en el trabajo del generador, no en el manifiesto: los escribe `furnish()` (U6 en adelante).
+   - `furnish()` ya escribe en el manifiesto `floor`, `version`, `departments` (sin `focus`), `plenum`, `arrival_lift` y `archives`; `f.specials` sigue solo en el trabajo del generador. Con 20 semillas, 0 de respaldo.
+   - **Cuidado con Godot colgado:** un error de análisis en un script que precarga la sonda deja el proceso parado sin salir. Lanzar las sondas con `timeout 500` delante, y si se cuelga, cerrar solo ese proceso de Godot (nunca `TheFour.exe`). En `office_generator.gd`, lo que se lee de `palette.` es Variant: nada de `:=` con él.
 3. Al cerrar 1b: corregir en `spec_f1_generator.md` las líneas de código que cita y que ya no casan (punto 1 de `al_director_resuelto` en el JSON).
 4. Después: los encargos de 1c (validador y `office_metrics`, sección 3 de la misma especificación) y el paso del contrato.
 
