@@ -3,8 +3,7 @@ extends "res://game/floors/objectives/objective.gd"
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
 ## the reader beside the freight lift's door, which then opens. Not built yet:
-## the photo (2.4), the capsule seen and heard travelling and a dropped
-## card. The receipt and the card are held up when they come (1h, drawn by
+## the photo (2.4) and a dropped card. The receipt and the card are held up when they come (1h, drawn by
 ## hint_view.gd), and the pause lines say where the card is.
 const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -35,6 +34,11 @@ var usables: Array = []
 var lamps: Array = []
 ## The keys going while this machine's player types.
 var typing_voice = null
+## The tubes' tree from the hub (parent node of each, -1 at the hub), and
+## each request's capsule: {node, path (points), length, hiss}.
+var tube_parent: Array = []
+var capsules := {}
+const TUBE_RADIUS := 0.055
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -50,12 +54,14 @@ func place() -> void:
 	var m := manifest()
 	for e in m.tubes.exits:
 		if String(e.kind) == "station": station_exits.append(e)
+		# The hub's sender at the window, where the tubes start.
+		if String(e.kind) == "hub": piece(v3(e.point) + Vector3(0, 0.14, 0) - facing(float(e.yaw)) * 0.06, Vector3(0.36, 0.52, 0.24), Color("6f6a5c"), float(e.yaw))
 	var desk: Dictionary = m.mail.desk
 	var stand: Dictionary = m.mail.stand
-	var desk_at := v3(desk.point) + facing(float(desk.yaw)) * 0.4
+	var desk_at := v3(desk.point) + facing(float(desk.yaw)) * 0.22
 	add_usable(Transform3D(Basis(Vector3.UP, float(desk.yaw)), desk_at + Vector3(0, 0.9, 0)), "type", v3(stand.point), look_yaw(-facing(float(stand.yaw))))
 	# The typewriter on the window's desk.
-	piece(desk_at + Vector3(0, 0.82, 0), Vector3(0.46, 0.2, 0.38), Color("3a3d3a"), float(desk.yaw))
+	piece(desk_at + Vector3(0, 0.855, 0), Vector3(0.46, 0.2, 0.38), Color("3a3d3a"), float(desk.yaw))
 	for e in station_exits:
 		var at := v3(e.point)
 		var out := facing(float(e.yaw))
@@ -80,6 +86,7 @@ func place() -> void:
 		level.hotel.add_child(lamp)
 		lamps.append(lamp)
 		usable.set_meta("number", int(e.number))
+	tubes_built(m)
 	var reader: Dictionary = m.mail.reader
 	var reader_at := v3(reader.point)
 	var reader_out := facing(float(reader.yaw))
@@ -88,6 +95,121 @@ func place() -> void:
 	show_state()
 
 func v3(p: Array) -> Vector3: return Vector3(float(p[0]), float(p[1]), float(p[2]))
+
+## The tubes drawn (spec 2.6: brass-coloured stand-ins until the kit's pipes),
+## and the tree the capsules run, from the hub.
+func tubes_built(m: Dictionary) -> void:
+	var nodes: Array = m.tubes.nodes
+	var edges: Array = m.tubes.edges
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	var pipe := CylinderMesh.new()
+	pipe.top_radius = TUBE_RADIUS
+	pipe.bottom_radius = TUBE_RADIUS
+	pipe.height = 1.0
+	pipe.radial_segments = 10
+	pipe.rings = 1
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("8a7a52")
+	material.metallic = 0.7
+	material.roughness = 0.4
+	pipe.material = material
+	multi.mesh = pipe
+	multi.instance_count = edges.size()
+	var near: Array = []
+	near.resize(nodes.size())
+	for i in nodes.size(): near[i] = []
+	for k in edges.size():
+		var a := v3(nodes[int(edges[k][0])])
+		var b := v3(nodes[int(edges[k][1])])
+		near[int(edges[k][0])].append(int(edges[k][1]))
+		near[int(edges[k][1])].append(int(edges[k][0]))
+		# The unit cylinder stretched along the edge: its y is the edge.
+		var run := b - a
+		var up := run.normalized() if run.length() > 0.001 else Vector3.UP
+		var side := up.cross(Vector3.FORWARD if absf(up.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
+		multi.set_instance_transform(k, Transform3D(Basis(side, up * maxf(run.length(), 0.001), side.cross(up)), (a + b) / 2))
+	var holder := MultiMeshInstance3D.new()
+	holder.name = "PneumaticTubes"
+	holder.multimesh = multi
+	level.hotel.add_child(holder)
+	tube_parent.clear()
+	tube_parent.resize(nodes.size())
+	tube_parent.fill(-2)
+	var hub := int(m.tubes.hub)
+	tube_parent[hub] = -1
+	var queue: Array = [hub]
+	while not queue.is_empty():
+		var n: int = queue.pop_front()
+		for other in near[n]:
+			if int(tube_parent[other]) == -2:
+				tube_parent[other] = n
+				queue.append(other)
+
+## The way a capsule runs, from the hub to a node, as points.
+func tube_path(to: int) -> Array:
+	var points: Array = []
+	var n := to
+	while n >= 0 and n < tube_parent.size():
+		points.push_front(v3(manifest().tubes.nodes[n]))
+		n = int(tube_parent[n])
+	return points
+
+## A point `metres` along a path.
+static func along(points: Array, metres: float) -> Vector3:
+	var left := metres
+	for i in range(1, points.size()):
+		var piece: float = (points[i] as Vector3).distance_to(points[i - 1])
+		if left <= piece: return (points[i - 1] as Vector3).lerp(points[i], left / maxf(piece, 0.001))
+		left -= piece
+	return points.back() if not points.is_empty() else Vector3.ZERO
+
+## The capsule of a request, made on every machine from the request alone.
+func capsule_for(seat: int) -> Dictionary:
+	if capsules.has(seat): return capsules[seat]
+	var r: Dictionary = requests[seat]
+	var body := MeshInstance3D.new()
+	var shape := CapsuleMesh.new()
+	shape.radius = 0.045
+	shape.height = 0.26
+	body.mesh = shape
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("b8b2a2")
+	material.metallic = 0.5
+	body.material_override = material
+	level.hotel.add_child(body)
+	var path := tube_path(int(station_exits[int(r.station)].node))
+	capsules[seat] = {"node": body, "path": path, "hiss": null}
+	return capsules[seat]
+
+## The capsules where their request has them: running, in the tray, gone.
+func show_capsules() -> void:
+	var now: float = level.session.elapsed
+	for seat in requests:
+		var r: Dictionary = requests[seat]
+		var state := int(r.state)
+		if state == Card.HELD or state == Card.DROPPED:
+			if capsules.has(seat):
+				capsules[seat].node.queue_free()
+				stop_loop(capsules[seat].hiss)
+				capsules.erase(seat)
+			continue
+		var c := capsule_for(int(seat))
+		var node: MeshInstance3D = c.node
+		if state == Card.IN_TRAY:
+			var exit: Dictionary = station_exits[int(r.station)]
+			node.position = v3(exit.point) + facing(float(exit.yaw)) * 0.05 - Vector3(0, 0.05, 0)
+			node.rotation = Vector3(0, float(exit.yaw), PI / 2)
+			if c.hiss != null:
+				stop_loop(c.hiss)
+				c.hiss = null
+			continue
+		var run: float = (now - float(r.sent)) * CAPSULE_SPEED
+		node.visible = run >= 0.0
+		if run < 0.0: continue
+		node.position = along(c.path, run)
+		if c.hiss == null: c.hiss = loop_at("tube_hiss.wav", node.position, -8.0)
+		else: move_loop(c.hiss, node.position)
 
 ## The way a yaw faces (+Z turned by it), and a body's rotation.y that looks
 ## that way (-Z forward).
@@ -278,8 +400,11 @@ func own_papers(seat: int) -> Array:
 	for owner in held_cards(seat): papers.append(office_card(int(owner)))
 	return papers
 
-## The host: a capsule that has run its tube arrives in its tray.
+## Every machine moves the capsules; the host: a capsule that has run its
+## tube arrives in its tray.
 func tick(_delta: float) -> void:
+	if not built() or tube_parent.is_empty(): return
+	show_capsules()
 	if level.net.is_client(): return
 	for seat in requests:
 		var r: Dictionary = requests[seat]
@@ -314,6 +439,10 @@ func goal_points(stage: int) -> Array[Vector3]:
 
 ## A stage given back: this stage's requests and cards are gone.
 func reset() -> void:
+	for seat in capsules:
+		capsules[seat].node.queue_free()
+		stop_loop(capsules[seat].hiss)
+	capsules.clear()
 	requests.clear()
 	swiped.clear()
 	show_state()

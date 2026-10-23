@@ -202,6 +202,20 @@ func lenses_of(room_id: int) -> Array:
 	room_lenses[room_id] = found
 	return found
 
+## A narrow steel desk with its back to a wall spot: no collider, so the
+## body put at the spot's stand to work at it is not pushed off.
+const POST_DESK := Vector3(1.2, 0.755, 0.45)
+func post_desk(node: Node3D, spot: Dictionary) -> void:
+	var yaw := float(spot.yaw)
+	var holder := Node3D.new()
+	holder.name = "PostDesk"
+	holder.position = Vector3(float(spot.point[0]), float(spot.point[1]), float(spot.point[2])) - node.position + Basis(Vector3.UP, yaw).z * (POST_DESK.z * 0.5)
+	holder.rotation.y = yaw
+	node.add_child(holder)
+	box(holder, Vector3(0, POST_DESK.y - 0.015, 0), Vector3(POST_DESK.x, 0.03, POST_DESK.z), "laminate")
+	for side: float in [-1.0, 1.0]: box(holder, Vector3(side * (POST_DESK.x * 0.5 - 0.02), (POST_DESK.y - 0.03) * 0.5, 0), Vector3(0.04, POST_DESK.y - 0.03, POST_DESK.z - 0.04), "steel_olive")
+	box(holder, Vector3(0, 0.45, -POST_DESK.z * 0.5 + 0.02), Vector3(POST_DESK.x - 0.08, 0.5, 0.02), "steel_olive")
+
 ## The battery units (spec_f1_geometry 7.2): how high, how far they are lit
 ## from the player, how many of the nearest cast (on Compatibility, fewer),
 ## and their light.
@@ -792,6 +806,12 @@ func build_prop(node: Node3D, kind: String) -> void:
 func extras(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
 	emergency_unit(node, room)
+	# The window's typing desk and the post's console desk (stand-ins for
+	# 1d's metal_office_desk), against their wall spots.
+	var mail: Dictionary = manifest.get("mail", {})
+	if not mail.is_empty() and int(room.id) == int(mail.window): post_desk(node, mail.desk)
+	var air: Dictionary = manifest.get("air", {})
+	if air.has("security") and int(room.id) == int(air.security.room): post_desk(node, air.security.desk)
 	# The duct network's low wall grilles (ducts.exits of kind "wall"), where
 	# the generator put them: a frame and slats over the dark of the duct.
 	for e in manifest.get("ducts", {}).get("exits", []):

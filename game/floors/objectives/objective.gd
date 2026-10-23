@@ -52,6 +52,12 @@ func loop_at(file: String, point: Vector3, gain: float):
 	voice.play()
 	return voice
 
+## A looping sound that travels (a capsule in its tube): heard from `point` now.
+func move_loop(voice, point: Vector3) -> void:
+	if voice == null: return
+	for cue in level.world_audio.long_cues:
+		if cue.player == voice: cue.point = point
+
 func stop_loop(voice) -> void:
 	if voice != null: level.world_audio.stop_long(voice)
 

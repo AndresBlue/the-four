@@ -101,7 +101,7 @@ func place() -> void:
 	# The stand-ins: the reader, the console on the post's desk, the air
 	# handler with its two fan rotors, and the isolator.
 	box_at(spot_point(m.air.security.reader), float(m.air.security.reader.yaw), Vector3(0.12, 0.2, 0.06), Color("2c2e30"))
-	box_at(spot_point(m.air.security.desk) + Vector3(0, 0.85, 0) + MAIN_DUCT.facing(float(m.air.security.desk.yaw)) * 0.3, float(m.air.security.desk.yaw), Vector3(0.6, 0.25, 0.4), Color("4d5244"))
+	box_at(spot_point(m.air.security.desk) + Vector3(0, 0.88, 0) + MAIN_DUCT.facing(float(m.air.security.desk.yaw)) * 0.22, float(m.air.security.desk.yaw), Vector3(0.6, 0.25, 0.4), Color("4d5244"))
 	var unit: Dictionary = m.air.unit
 	var unit_face := MAIN_DUCT.facing(float(unit.yaw))
 	var unit_size: Vector3 = OFFICE.AIR_UNIT
