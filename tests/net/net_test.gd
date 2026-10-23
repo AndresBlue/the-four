@@ -75,6 +75,9 @@ func run() -> void:
 		"watch_host": await watch_host()
 		"watch_guest": await watch_guest()
 		"watcher": await watcher()
+		"office_host": await office_host()
+		"office_alpha": await office_guest("Alpha", 1)
+		"office_bravo": await office_guest("Bravo", 2)
 	var file := FileAccess.open("res://evidence/net_%s.json" % role, FileAccess.WRITE)
 	file.store_string(JSON.stringify({"role": role, "passed": failed == 0 and not checks.is_empty(), "checks": checks}, "\t"))
 	file.close()
@@ -386,6 +389,70 @@ func guest(words: String, index: int) -> void:
 	check("Sin conexión directa con él: solo con el anfitrión", multiplayer_peers() == [1])
 	if words == "Alpha": await alpha_part()
 	else: await bravo_part()
+
+# --- Floor 2 online (spec_f1_systems 6.3): the card, on every machine -------------
+
+## The host: a room on floor 2. It waits for both guests' requests, sends
+## their capsules in at once, and sees the quota through the reader open
+## the freight lift's door.
+func office_host() -> void:
+	var net = level.net
+	check("La sala se abre", net.host("Anfitrión", 0, port) == OK)
+	check("Tres jugadores en la sala", await wait_for(func(): return net.connected_seats().size() == 3, 40.0))
+	net.set_option("mode", net.Mode.COOP)
+	net.set_option("floor", 2)
+	check("Empieza la partida en el piso 2", net.start_match(7))
+	check("Todos construyen las oficinas y se juega", await wait_for(playing, 90.0) and int(level.manifest.get("floor", 1)) == 2)
+	var files = level.objective(&"files")
+	var alpha := seat_named("Alpha")
+	var bravo := seat_named("Bravo")
+	check("Las dos peticiones llegan al anfitrión", await wait_for(func(): return files.requests.has(alpha) and files.requests.has(bravo), 60.0))
+	check("Y van a estaciones distintas", files.requests.has(alpha) and files.requests.has(bravo) and int(files.requests[alpha].station) != int(files.requests[bravo].station))
+	# The capsules in at once, rather than 25 s of tube.
+	for seat in files.requests: files.requests[seat].arrive = float(level.session.elapsed)
+	check("Las cápsulas llegan a sus bandejas", await wait_for(func(): return files.requests.values().all(func(r): return int(r.state) != files.Card.TRAVELLING), 10.0))
+	check("La foto de Alpha llega al anfitrión", await wait_for(func(): return files.photos.has(alpha), 40.0))
+	check("Las dos fichas pasan por el lector", await wait_for(func(): return files.swiped.size() >= 2, 60.0))
+	check("Con la cuota, la puerta del montacargas se abre", await wait_for(func(): return not level.hotel.gates[0].locked, 15.0))
+	# The guests check what they were told before the room goes.
+	await pause_for(8.0)
+
+## A guest on floor 2: types its request at the window, takes its card from
+## its station once in, and puts it through the reader; Alpha also sends a
+## photo, which Bravo has to get through the host.
+func office_guest(words: String, index: int) -> void:
+	var net = level.net
+	await pause_for(1.0 + index * 0.5)
+	check("Se conecta a la sala", net.join("127.0.0.1", words, index, port) == OK)
+	check("Entra en el piso del anfitrión, las oficinas", await wait_for(playing, 120.0) and int(level.manifest.get("floor", 1)) == 2)
+	var files = level.objective(&"files")
+	var seat: int = net.local_seat
+	var asked := func(action: String, usable: int, done: Callable) -> bool:
+		var stand: Vector3 = files.usables[usable].stand
+		for attempt in 30:
+			if done.call(): return true
+			level.player.global_position = stand + Vector3(0, 0.05, 0)
+			level.player.velocity = Vector3.ZERO
+			await pause_for(0.5)
+			level.match_net.use_office(&"files", action, usable)
+			await pause_for(0.5)
+		return done.call()
+	check("Su petición la confirma el anfitrión", await asked.call("type", 0, func(): return files.requests.has(seat)))
+	check("Y ve también la del otro, por el anfitrión", await wait_for(func(): return files.requests.size() == 2, 30.0))
+	check("Su cápsula llega a la bandeja que le dijo el anfitrión", await wait_for(func(): return files.requests.has(seat) and int(files.requests[seat].state) == files.Card.IN_TRAY and files.lamps[int(files.requests[seat].station)].visible, 30.0))
+	if words == "Alpha":
+		var grey := Image.create(240, 304, false, Image.FORMAT_RGB8)
+		grey.fill(Color(0.35, 0.35, 0.35))
+		files.textures[seat] = ImageTexture.create_from_image(grey)
+		files.send_photo(seat)
+	var station: int = int(files.requests[seat].station) + 1
+	check("Recoge su ficha", await asked.call("take", station, func(): return files.has_card(seat)))
+	level.interaction.close_document()
+	check("Y la pasa por el lector", await asked.call("swipe", files.reader_index(), func(): return files.swiped.has(seat)))
+	check("La puerta del montacargas se abre también aquí", await wait_for(func(): return not level.hotel.gates[0].locked, 30.0))
+	if words == "Bravo":
+		var alpha := seat_named("Alpha")
+		check("La foto de Alpha le llega por el anfitrión, igual", await wait_for(func(): return files.photos.has(alpha) and files.textures.has(alpha), 30.0))
 
 func multiplayer_peers() -> Array:
 	return Array(level.multiplayer.get_peers())
