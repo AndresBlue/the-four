@@ -16,6 +16,14 @@ const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "conc
 const SKIRT := Vector2(0.10, 0.006)
 const STRIPE := Vector2(1.05, 1.20)
 const STRIPE_PROUD := 0.003
+## A glazed run (6.3): sill and head heights, mullions and the glass.
+const GLASS_SILL := 0.95
+const GLASS_HEAD := 2.65
+const MULLION := 0.05
+const MULLION_PITCH := 1.2
+const GLASS_THICK := 0.008
+## A wall boundary's name (hotel walls(): "Wall_<dx>_<dz>") and its side.
+const SIDE_OF := {"Wall_-1_0": "west", "Wall_1_0": "east", "Wall_0_-1": "north", "Wall_0_1": "south"}
 ## The false ceiling (spec 4.1): tile thickness and face over the grid's
 ## underside, the T-grid's flange width, thickness and web height, the
 ## troffer's housing depth and lens recess, its light.
@@ -29,6 +37,13 @@ const LAMP_DROP := 0.35
 
 func _init() -> void:
 	super()
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.72, 0.8, 0.78, 0.18)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.roughness = 0.05
+	glass.metallic_specular = 0.8
+	glass.set_meta("stand_in", true)
+	materials["wired_glass"] = glass
 	for key in PLAIN:
 		var plain := StandardMaterial3D.new()
 		plain.albedo_color = PLAIN[key]
@@ -116,6 +131,10 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 ## a corridor its department's stripe; none of the hotel's dado, rails,
 ## sockets or cornice.
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
+	var side := String(SIDE_OF.get(String(boundary.name), ""))
+	if not building_room.is_empty() and building_room.get("glazed", []).has(side):
+		glazed_run(boundary, x, length, height, inner)
+		return
 	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
 	var room_node := boundary.get_parent() as Node3D
 	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
@@ -129,6 +148,26 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 		stripe.roughness = 0.7
 		materials[key] = stripe
 	box(boundary, Vector3(x, (STRIPE.x + STRIPE.y) * 0.5, inner * (0.09 + STRIPE_PROUD)), Vector3(length, STRIPE.y - STRIPE.x, 0.004), key)
+
+## A glazed run (6.3): sill and head as wall, the glass between with its
+## collider and a mullion every MULLION_PITCH. Both rooms build their half of
+## the sill and head; the glass and mullions only the room whose west or
+## north side it is (inner > 0), so the pane is there once.
+func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
+	wall_core(boundary, Vector3(x, GLASS_SILL / 2, 0), Vector3(length, GLASS_SILL, 0.18), inner)
+	wall_core(boundary, Vector3(x, (GLASS_HEAD + height) / 2, 0), Vector3(length, height - GLASS_HEAD, 0.18), inner)
+	var room_node := boundary.get_parent() as Node3D
+	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
+	box(boundary, Vector3(x, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(length, SKIRT.x, SKIRT.y), "skirting")
+	if inner < 0: return
+	var band := GLASS_HEAD - GLASS_SILL
+	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, 0.06), "", true)
+	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, GLASS_THICK), "wired_glass")
+	var count := maxi(1, roundi(length / MULLION_PITCH))
+	for k in count + 1:
+		var at := x - length * 0.5 + length * k / count
+		box(boundary, Vector3(at, GLASS_SILL + band * 0.5, 0), Vector3(MULLION, band, 0.06), "steel_frame")
+	for y in [GLASS_SILL, GLASS_HEAD]: box(boundary, Vector3(x, y, 0), Vector3(length, MULLION, 0.07), "steel_frame")
 
 ## No paintings and no sconces on an office wall (6.5: the notice boards,
 ## clocks and poster spots come later).
