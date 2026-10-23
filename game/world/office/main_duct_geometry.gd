@@ -230,8 +230,9 @@ static func build(builder, manifest: Dictionary) -> Node3D:
 		if c.grow(0.05).has_point(r_at + Vector3(0, 0.1, 0)):
 			r_side = Vector3(0, 0, 1) if c.size.x >= c.size.z else Vector3(1, 0, 0)
 			break
-	var skull := r_at + r_side * 0.3 + Vector3(0, 0.07, 0)
-	solid(parts, null, "bone", AABB(skull - Vector3(0.07, 0.07, 0.08), Vector3(0.14, 0.14, 0.16)))
+	var skull := r_at + r_side * 0.3
+	if ResourceLoader.exists(SKULL_MODEL): holder.add_child(skull_mesh(skull, r_side))
+	else: solid(parts, null, "bone", AABB(skull + Vector3(0, 0.07, 0) - Vector3(0.07, 0.07, 0.08), Vector3(0.14, 0.14, 0.16)))
 	var along := Vector3(r_side.z, 0, r_side.x)
 	for k in 5:
 		var bone_at := r_at + r_side * (0.22 - k * 0.04) + along * (-0.25 + k * 0.12) + Vector3(0, 0.02, 0)
@@ -240,6 +241,28 @@ static func build(builder, manifest: Dictionary) -> Node3D:
 	solid(parts, null, "coverall", AABB(r_at + r_side * 0.12 - Vector3(0.18, 0.0, 0.18), Vector3(0.36, 0.01, 0.36)))
 	for key in parts: holder.add_child(merged(builder, key, parts[key]))
 	return holder
+
+## The skull (OpenGameArt "Human Skull", CDmir, CC0): its mesh as
+## downloaded is about 1.9 m across, so SKULL_SCALE brings it to a real
+## one's 0.14 m; SKULL_FLOOR is how far its origin stands over what it lies on.
+const SKULL_MODEL := "res://assets/props/office/skull/skull.obj"
+const SKULL_SCALE := 0.073
+const SKULL_FLOOR := 1.783
+
+static func skull_mesh(at: Vector3, side: Vector3) -> MeshInstance3D:
+	var skull := MeshInstance3D.new()
+	skull.name = "Skull"
+	skull.mesh = load(SKULL_MODEL)
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load("res://assets/props/office/skull/skull_albedo.png")
+	material.normal_enabled = true
+	material.normal_texture = load("res://assets/props/office/skull/skull_normal.png")
+	material.roughness_texture = load("res://assets/props/office/skull/skull_rough.png")
+	skull.material_override = material
+	# Looking out across the duct, from against its side wall, tipped a little.
+	var basis := Basis(Vector3.UP, atan2(-side.x, -side.z)) * Basis(Vector3.FORWARD, 0.25)
+	skull.transform = Transform3D(basis.scaled(Vector3.ONE * SKULL_SCALE), at + Vector3(0, SKULL_FLOOR * SKULL_SCALE, 0))
+	return skull
 
 ## A box drawn with this material, and, with a body, solid.
 static func solid(parts: Dictionary, body: StaticBody3D, material: String, box: AABB) -> void:

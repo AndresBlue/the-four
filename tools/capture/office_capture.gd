@@ -121,6 +121,15 @@ func run() -> void:
 	var into: Vector3 = -out
 	look(mouth.origin + Vector3(0, 0.62, 0), mouth.origin + into * 6.0 + Vector3(0, 0.55, 0))
 	await shot("ducto_dentro")
+	var rp: Array = m.air.remains.point
+	var remains := Vector3(float(rp[0]), MD.floor_y(m), float(rp[2]))
+	var along := Vector3(1, 0, 0)
+	for box in MD.boxes(m):
+		if (box as AABB).grow(0.05).has_point(remains + Vector3(0, 0.1, 0)):
+			along = Vector3(1, 0, 0) if box.size.x >= box.size.z else Vector3(0, 0, 1)
+			break
+	look(remains + along * 1.1 + Vector3(0, 0.6, 0), remains + Vector3(0, 0.1, 0))
+	await shot("restos")
 	var r: Array = m.air.shaft.rect
 	var sp: Array = m.air.shaft.point
 	var landing := Vector3(float(r[0]), MD.floor_y(m), float(r[1]))

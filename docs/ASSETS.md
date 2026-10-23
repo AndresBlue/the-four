@@ -307,6 +307,11 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | `crawl_1.wav`, `crawl_2.wav` | `pixabay_83044_heater_vent_hit_lower_evdawg.mp3`, `pixabay_103305_heater_vent_hit_higher_evdawg.mp3` | Ev-Dawg, Pixabay | Pixabay Content License |
 | `ladder.wav` | `pixabay_76052_ladder_aluminum_erik90.mp3` | erik90, Pixabay | Pixabay Content License |
 
+## Modelos de las oficinas (piso 2)
+
+- **Cráneo de los restos del ducto principal:** OpenGameArt «Human Skull», de CDmir, CC0 (`source_assets/oficinas/equipos/human_skull_oga/`, con su ficha en el `registro.json`). En `assets/props/office/skull/`: el OBJ sin su biblioteca de materiales y tres texturas reducidas a 512 px (color, normal y rugosidad). `main_duct_geometry.gd` lo pone a 0,073 de su tamaño (unos 0,14 m de ancho).
+- La mesa metálica y la silla apilable de Poly Haven (CC0) van con el resto de modelos de Poly Haven, arriba.
+
 ## Música
 
 - Archivo recibido: `source_assets/song.mp3`.
