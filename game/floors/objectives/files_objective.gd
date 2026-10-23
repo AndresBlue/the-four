@@ -3,8 +3,7 @@ extends "res://game/floors/objectives/objective.gd"
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
 ## the reader beside the freight lift's door, which then opens. Not built yet:
-## a photo sent to the others (each machine keeps the one
-## its own player was taken in). The receipt and the card are held up when they come (1h, drawn by
+## nothing: the photo goes to every machine (match_net.send_photo). The receipt and the card are held up when they come (1h, drawn by
 ## hint_view.gd), and the pause lines say where the card is.
 const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -48,6 +47,11 @@ var snapping := false
 ## The picture: its size, and how far into the typing it is taken.
 const PHOTO_SIZE := Vector2i(240, 304)
 const TYPE_PHOTO_AT := 0.6
+## As a JPEG on the wire: its quality, and no bigger than this.
+const PHOTO_QUALITY := 0.7
+const PHOTO_MAX_BYTES := 24576
+## Owner seat -> the JPEG of their photo, as sent and kept (snapshot).
+var photos := {}
 const TUBE_RADIUS := 0.055
 
 func manifest() -> Dictionary: return level.manifest
@@ -399,6 +403,9 @@ func apply(action: String, index: int, seat: int, data: Dictionary, quiet: bool)
 				typing_voice = null
 			if not quiet: sound_at("typing_bell.wav", usables[0].global_position, -2.0)
 			if seat == level.player.slot and not quiet: level.interaction.read_paper(receipt(seat))
+			# The typist's own machine sends the photo it took, now that the
+			# request is real.
+			if seat == level.player.slot and textures.has(seat): send_photo(seat)
 		"arrived":
 			if requests.has(seat): requests[seat].state = Card.IN_TRAY
 			if not quiet and index + 1 < usables.size(): sound_at("tube_bell.wav", usables[index + 1].global_position, -2.0)
@@ -500,6 +507,23 @@ func own_papers(seat: int) -> Array:
 	for owner in held_cards(seat): papers.append(office_card(int(owner)))
 	return papers
 
+## This machine's photo of a seat as a JPEG, kept and sent to the others.
+func send_photo(seat: int) -> void:
+	var image: Image = (textures[seat] as ImageTexture).get_image()
+	var bytes := image.save_jpg_to_buffer(PHOTO_QUALITY)
+	if bytes.size() > PHOTO_MAX_BYTES: bytes = image.save_jpg_to_buffer(0.55)
+	if bytes.size() > PHOTO_MAX_BYTES: return
+	photos[seat] = bytes
+	print("PHOTO_BYTES seat=%d bytes=%d" % [seat, bytes.size()])
+	level.match_net.send_photo(seat, bytes)
+
+## A photo of a seat that came over the wire (or from a snapshot).
+func keep_photo(seat: int, bytes: PackedByteArray) -> void:
+	var image := Image.new()
+	if image.load_jpg_from_buffer(bytes) != OK: return
+	photos[seat] = bytes
+	textures[seat] = ImageTexture.create_from_image(image)
+
 ## The host: whoever falls drops the cards they hold where they fell, on what
 ## is under them (the duct's floor in the duct), told to everyone.
 func on_death(seat: int, point: Vector3) -> void:
@@ -582,19 +606,22 @@ func reset() -> void:
 	for owner in pickups: pickups[owner].queue_free()
 	pickups.clear()
 	textures.clear()
+	photos.clear()
 	requests.clear()
 	swiped.clear()
 	show_state()
 
 func snapshotted() -> bool: return true
 
-func snapshot() -> Dictionary: return {"requests": requests.duplicate(true), "swiped": swiped.duplicate()}
+func snapshot() -> Dictionary: return {"requests": requests.duplicate(true), "swiped": swiped.duplicate(), "photos": photos.duplicate()}
 
 func restore(data: Dictionary) -> void:
 	requests = {}
 	var kept: Dictionary = data.get("requests", {})
 	for seat in kept: requests[int(seat)] = kept[seat]
 	swiped = data.get("swiped", []).map(func(seat): return int(seat))
+	var kept_photos: Dictionary = data.get("photos", {})
+	for seat in kept_photos: keep_photo(int(seat), kept_photos[seat])
 	for owner in requests:
 		if int(requests[owner].state) == Card.DROPPED: lay_card(int(owner), requests[owner].get("drop", Vector3.ZERO))
 	show_state()

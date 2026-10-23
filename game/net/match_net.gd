@@ -457,6 +457,25 @@ func office_state(objective: String, action: String, index: int, seat: int, data
 	var handler = level.objective(StringName(objective))
 	if handler != null and floor_live: handler.apply(action, index, seat, data, false)
 
+## A card's photo (files_objective): sent by the machine that took it, kept
+## and passed on by the host. Only a JPEG, only the sender's own seat, and at
+## most files.PHOTO_MAX_BYTES.
+func send_photo(seat: int, bytes: PackedByteArray) -> void:
+	if not in_match(): return
+	if net.is_host: office_photo.rpc(seat, bytes)
+	else: office_photo.rpc_id(1, seat, bytes)
+
+@rpc("any_peer", "call_remote", "reliable")
+func office_photo(seat: int, bytes: PackedByteArray) -> void:
+	var files = level.objective(&"files")
+	if files == null or bytes.size() > files.PHOTO_MAX_BYTES or bytes.size() < 2 or bytes[0] != 0xFF or bytes[1] != 0xD8: return
+	var sender := multiplayer.get_remote_sender_id()
+	if net.is_host:
+		if net.seat_of_peer(sender) != seat: return
+		files.keep_photo(seat, bytes)
+		relay(&"office_photo", [seat, bytes], sender)
+	elif sender == 1: files.keep_photo(seat, bytes)
+
 @rpc("authority", "call_remote", "reliable")
 func office_refused(objective: String, action: String, index: int) -> void:
 	var handler = level.objective(StringName(objective))

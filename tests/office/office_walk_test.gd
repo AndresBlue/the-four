@@ -163,6 +163,16 @@ func the_card(tag: String) -> void:
 	var request: Dictionary = files.requests.get(player.slot, {})
 	check("%s: la petición sale hacia una estación" % tag, not request.is_empty() and int(request.state) == files.Card.TRAVELLING)
 	if request.is_empty(): return
+	# A photo (headless takes none: a grey one stands in) goes out as a JPEG
+	# and comes back from one.
+	var grey := Image.create(240, 304, false, Image.FORMAT_RGB8)
+	grey.fill(Color(0.4, 0.4, 0.4))
+	files.textures[player.slot] = ImageTexture.create_from_image(grey)
+	files.send_photo(player.slot)
+	var bytes: PackedByteArray = files.photos.get(player.slot, PackedByteArray())
+	files.textures.clear()
+	files.keep_photo(player.slot, bytes)
+	check("%s: la foto de la ficha viaja como JPEG y vuelve" % tag, bytes.size() > 2 and bytes.size() <= files.PHOTO_MAX_BYTES and bytes[0] == 0xFF and files.textures.has(player.slot))
 	var receipt: Dictionary = files.receipt(player.slot)
 	check("%s: se sostiene el resguardo con su estación" % tag, level.interaction.reading_hint == files.PAPER_BASE + player.slot * 10 and String(receipt.form.station) == str(int(files.station_exits[int(request.station)].number)))
 	level.interaction.close_document()
