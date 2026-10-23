@@ -30,7 +30,7 @@ const CARBON := Color(0.11, 0.11, 0.19, 0.62)
 const OTHER := Color(0.29, 0.1, 0.33)
 const PLAN_INK := Color(0.32, 0.17, 0.09)
 ## The size of each paper, before what it carries makes it longer.
-const SIZES := {"polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
+const SIZES := {"resguardo": Vector2(300, 620), "ficha": Vector2(720, 450), "polaroid": Vector2(440, 540), "calco": Vector2(460, 600), "plano": Vector2(640, 480), "nomolestar": Vector2(500, 590), "hoja": Vector2(1491, 1055)}
 ## The card's printed front and its back (tools/textures/bake_do_not_disturb.py),
 ## and the Polaroid's picture square in its frame.
 const CARD_FACE := preload("res://assets/textures/no-molestar.png")
@@ -83,6 +83,8 @@ func _draw() -> void:
 		"plano": evacuation()
 		"nomolestar": do_not_disturb()
 		"hoja": other_sheet()
+		"resguardo": receipt()
+		"ficha": office_card()
 
 # --- The papers ---------------------------------------------------------------------------
 
@@ -170,6 +172,50 @@ func other_sheet() -> void:
 	var points: Array = hint.get("points", [])
 	for index in points.size():
 		circle(to_card.call(points[index]), maxf(16.0, float(hint.get("radius", 2.6)) * scale * 1.6), OTHER, 4.2, 400 + index)
+
+## The pneumatic tube's receipt (the offices, planta 1): a strip of thermal
+## paper torn at both ends, the station the capsule went to in big figures.
+func receipt() -> void:
+	var form: Dictionary = hint.get("form", {})
+	var strip := PackedVector2Array()
+	var teeth := 14
+	for k in teeth + 1: strip.append(Vector2(card.x * k / teeth, 8.0 if k % 2 == 0 else 0.0))
+	for k in range(teeth, -1, -1): strip.append(Vector2(card.x * k / teeth, card.y - (8.0 if k % 2 == 0 else 0.0)))
+	draw_colored_polygon(shifted(strip, Vector2(4, 5)), Color(0, 0, 0, 0.35))
+	draw_colored_polygon(strip, Color8(240, 238, 230))
+	centred(Vector2(card.x / 2, 56), "LA OFICINA", 22, PRINT)
+	centred(Vector2(card.x / 2, 88), "TUBO NEUMÁTICO", 15, PRINT)
+	centred(Vector2(card.x / 2, 136), "RESGUARDO", 20, PRINT)
+	draw_line(Vector2(30, 160), Vector2(card.x - 30, 160), Color(PRINT, 0.6), 1.5)
+	centred(Vector2(card.x / 2, 210), "ENVIADA A ESTACIÓN", 15, PRINT)
+	centred(Vector2(card.x / 2, 330), String(form.get("station", "")), 110, PRINT)
+	draw_line(Vector2(30, 380), Vector2(card.x - 30, 380), Color(PRINT, 0.6), 1.5)
+	words(Vector2(36, 430), "N.º  " + String(form.get("number", "")), 17, PRINT)
+	var time: Array = form.get("time", [0, 0])
+	words(Vector2(36, 470), "HORA  %d:%02d" % [int(time[0]), int(time[1])], 17, PRINT)
+
+## The card of La Oficina (planta 1): beige, punched along the top, the
+## photo box, the typed fields and the red PROVISIONAL band.
+func office_card() -> void:
+	var form: Dictionary = hint.get("form", {})
+	var face := Rect2(Vector2.ZERO, card)
+	paper(face, Color8(222, 205, 165), 2207)
+	for k in 18: draw_circle(Vector2(40 + k * 36, 16), 5.0, Color(0, 0, 0, 0.55))
+	words(Vector2(36, 66), "LA OFICINA", 24, PRINT)
+	words(Vector2(card.x - 250, 66), "FICHA DE PERSONAL", 16, PRINT)
+	var photo := Rect2(36, 96, 190, 240)
+	draw_rect(photo, Color(PRINT, 0.7), false, 2.0)
+	var picture = form.get("photo")
+	if picture is Texture2D: draw_texture_rect(picture, photo.grow(-6), false)
+	else: centred(photo.get_center() + Vector2(0, 6), "FOTO", 16, Color(PRINT, 0.5))
+	var y := 120.0
+	for field in [["NOMBRE", "name"], ["NÚMERO", "number"], ["DEPARTAMENTO", "department"], ["ALTA", "date"], ["NIVEL DE ACCESO", "level"]]:
+		words(Vector2(260, y), String(field[0]), 12, Color(PRINT, 0.7))
+		draw_line(Vector2(260, y + 34), Vector2(card.x - 40, y + 34), Color(PRINT, 0.35), 1.0)
+		words(Vector2(270, y + 28), String(form.get(String(field[1]), "")), 19, Color(0.1, 0.1, 0.12))
+		y += 54.0
+	draw_rect(Rect2(0, card.y - 70, card.x, 44), Color8(170, 30, 25))
+	centred(Vector2(card.x / 2, card.y - 38), "PROVISIONAL", 24, Color8(222, 205, 165))
 
 # --- How things are put on paper ---------------------------------------------------------
 

@@ -161,6 +161,9 @@ func the_card(tag: String) -> void:
 	var request: Dictionary = files.requests.get(player.slot, {})
 	check("%s: la petición sale hacia una estación" % tag, not request.is_empty() and int(request.state) == files.Card.TRAVELLING)
 	if request.is_empty(): return
+	var receipt: Dictionary = files.receipt(player.slot)
+	check("%s: se sostiene el resguardo con su estación" % tag, level.interaction.reading_hint == files.PAPER_BASE + player.slot * 10 and String(receipt.form.station) == str(int(files.station_exits[int(request.station)].number)))
+	level.interaction.close_document()
 	var station: int = int(request.station) + 1
 	var waited := 0
 	while int(files.requests[player.slot].state) != files.Card.IN_TRAY and waited < 60 * 60:
@@ -171,7 +174,8 @@ func the_card(tag: String) -> void:
 	await frames(3)
 	check("%s: en su estación, RECOGER" % tag, files.word_of(files.usables[station], player.slot) == "RECOGER")
 	level.match_net.use_office(&"files", "take", station)
-	check("%s: la ficha en la mano" % tag, files.has_card(player.slot) and not files.lamps[station - 1].visible)
+	check("%s: la ficha en la mano, y a la vista" % tag, files.has_card(player.slot) and not files.lamps[station - 1].visible and level.interaction.reading_hint == files.PAPER_BASE + player.slot * 10 + 1)
+	level.interaction.close_document()
 	var reader: int = files.reader_index()
 	player.global_position = files.usables[reader].stand + Vector3(0, 0.04, 0)
 	await frames(3)

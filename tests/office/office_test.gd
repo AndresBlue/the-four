@@ -984,6 +984,14 @@ func validator_checks() -> void:
 				edge[2] = snappedf(v3(m.ducts.nodes[int(edge[0])]).distance_to(v3(m.ducts.nodes[n])), 0.001)
 				return
 	mutation(v, "Un tronco recto torcido", "duct_express_", bent)
+	# The boardroom's own height (3.25), lowered to the offices' 2.95.
+	var board := -1
+	for room in rooms:
+		if int(room.type) == OFFICE.BOARDROOM:
+			board = int(room.id)
+			break
+	check("La semilla 7 tiene sala de juntas para la mutación de su altura", board >= 0)
+	if board >= 0: mutation(v, "La sala de juntas a 2,95 de alto", "height_%d" % board, func(m): m.rooms[board].height = 2.95)
 	var missing: Array = []
 	for run_seed in range(1, 4):
 		var measures: Dictionary = OFFICE_METRICS.floor_measures(GEN.new().generate(run_seed, 2))

@@ -109,6 +109,15 @@ func close_document() -> void:
 	level.player.reading = false
 	level.ui.hide_document()
 
+## A paper of the offices held up (a handler's: the receipt, the card), the
+## way a hint is, and put down with the key.
+func read_paper(paper: Dictionary) -> void:
+	if is_instance_valid(reading_document) or not reading_entry.is_empty(): close_document()
+	reading_hint = int(paper.get("id", 0))
+	level.player.reading = true
+	level.ui.show_hint(paper, [])
+	if level.world_audio.enabled: level.paper_sound.play()
+
 ## A hint of the last planta held up (hint_view.gd), and kept: from now on it
 ## hangs on this player's sheet, and what it marks is on their plan. A blank
 ## "do not disturb" card (one on another door) is held up the same, with

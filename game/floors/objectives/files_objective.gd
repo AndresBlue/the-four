@@ -3,8 +3,9 @@ extends "res://game/floors/objectives/objective.gd"
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
 ## the reader beside the freight lift's door, which then opens. Not built yet:
-## the photo (2.4), the papers (1h), the capsule seen and heard travelling
-## and a dropped card: the station and where the card is are the pause lines.
+## the photo (2.4), the capsule seen and heard travelling and a dropped
+## card. The receipt and the card are held up when they come (1h, drawn by
+## hint_view.gd), and the pause lines say where the card is.
 const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
@@ -206,6 +207,7 @@ func apply(action: String, index: int, seat: int, data: Dictionary, quiet: bool)
 				stop_loop(typing_voice)
 				typing_voice = null
 			if not quiet: sound_at("typing_bell.wav", usables[0].global_position, -2.0)
+			if seat == level.player.slot and not quiet: level.interaction.read_paper(receipt(seat))
 		"arrived":
 			if requests.has(seat): requests[seat].state = Card.IN_TRAY
 			if not quiet and index + 1 < usables.size(): sound_at("tube_bell.wav", usables[index + 1].global_position, -2.0)
@@ -215,6 +217,7 @@ func apply(action: String, index: int, seat: int, data: Dictionary, quiet: bool)
 				if int(r.station) == index - 1 and int(r.state) == Card.IN_TRAY and (int(owner) == seat or not alive(int(owner))):
 					r.state = Card.HELD
 					r.holder = seat
+					if seat == level.player.slot and not quiet: level.interaction.read_paper(office_card(int(owner)))
 					break
 		"swipe":
 			var owner := held_unswiped(seat)
@@ -249,6 +252,24 @@ func choose(seat: int) -> Dictionary:
 		for s in order:
 			if int(used.get(int(s), 0)) < int(used.get(station, 0)): station = int(s)
 	return {"station": station, "number": "P-%04d" % (absi(hash([int(manifest().seed), "ficha", seat])) % 9000 + 1000)}
+
+## Paper ids, clear of the hotel's hints: PAPER_BASE + seat * 10, + 1 for the card.
+const PAPER_BASE := 1000
+
+## The receipt of a seat's request: the station it went to, its number and
+## the time on the tape.
+func receipt(seat: int) -> Dictionary:
+	var r: Dictionary = requests.get(seat, {})
+	if r.is_empty(): return {}
+	var clock := int(level.camcorder.start_seconds + level.tape_seconds())
+	return {"id": PAPER_BASE + seat * 10, "kind": "resguardo", "planta": 0, "form": {"paper": "resguardo", "station": str(int(station_exits[int(r.station)].number)), "number": String(r.number), "time": [clock / 3600, (clock / 60) % 60]}}
+
+## The card of a seat (its owner's, whoever holds it).
+func office_card(owner: int) -> Dictionary:
+	var r: Dictionary = requests.get(owner, {})
+	if r.is_empty(): return {}
+	var date: Array = level.camcorder.date_parts
+	return {"id": PAPER_BASE + owner * 10 + 1, "kind": "ficha", "planta": 0, "form": {"paper": "ficha", "name": level.seat_name(owner).to_upper(), "number": String(r.number), "department": "SERVICIOS GENERALES", "date": "%02d/%02d/%02d" % [int(date[0]), int(date[1]), int(date[2])], "level": "1"}}
 
 ## The host: a capsule that has run its tube arrives in its tray.
 func tick(_delta: float) -> void:

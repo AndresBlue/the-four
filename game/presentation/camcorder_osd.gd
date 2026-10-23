@@ -137,6 +137,9 @@ func _ready() -> void:
 	hide()
 
 ## The recording date derives from the floor seed, so a retry shows the same tape.
+## The tape's date as [day, month, year in two figures] (the offices' card).
+var date_parts: Array = [1, 1, 92]
+
 func start_tape(run_seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = run_seed + 1989
@@ -145,6 +148,7 @@ func start_tape(run_seed: int) -> void:
 	var day := rng.randi_range(1, 28)
 	start_seconds = 2 * 3600 + rng.randi_range(0, 3599)
 	date_text = "%s %d %d" % [MONTHS[month], day, year]
+	date_parts = [day, month + 1, year % 100]
 	stamina = 1.0
 	stamina_alpha = 0.0
 	full_time = 99.0
