@@ -15,7 +15,7 @@ const GATE_OPEN_X := -0.62
 const GATE_FIXED_X := -0.85
 ## Finishes that stand in as a plain colour until their scans are ingested:
 ## the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4")}
+const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4"), "plaque": Color("2f4a3a")}
 ## The cove base along the walls and the department stripe in the corridors
 ## (spec 4.1): height and thickness; bottom and top.
 const SKIRT := Vector2(0.10, 0.006)
@@ -27,6 +27,10 @@ const GLASS_HEAD := 2.65
 const MULLION := 0.05
 const MULLION_PITCH := 1.2
 const GLASS_THICK := 0.008
+## A door's plaque on the wall (6.7): size, height, distance past the frame.
+const PLAQUE := Vector2(0.26, 0.09)
+const PLAQUE_Y := 1.55
+const PLAQUE_FROM_JAMB := 0.22
 ## A wall boundary's name (hotel walls(): "Wall_<dx>_<dz>") and its side.
 const SIDE_OF := {"Wall_-1_0": "west", "Wall_1_0": "east", "Wall_0_-1": "north", "Wall_0_1": "south"}
 ## The false ceiling (spec 4.1): tile thickness and face over the grid's
@@ -371,6 +375,25 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 	if OFFICE.lamp_of(room) == "emergency":
 		light.set_meta("off", true)
 		light.visible = false
+
+## Door plaques (6.7, H2): not on the leaf but on the wall beside the door,
+## latch side, PLAQUE_FROM_JAMB past the frame: the number of the room behind
+## (OFFICE.plaque()) on the face of the room it is read from, parented to
+## that room so it batches and layers with it. Not yet kept off reserved spots.
+func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, yaw: float) -> void:
+	var turn := Basis(Vector3.UP, yaw)
+	var normal := turn.z
+	var along := turn.x
+	for pair in [[a, b], [b, a]]:
+		var viewer: Dictionary = pair[0]
+		var behind: Dictionary = pair[1]
+		var words: String = OFFICE.plaque(behind)
+		if words.is_empty(): continue
+		var side := signf((FLOOR.position_of(viewer) - center).dot(normal))
+		var holder: Node3D = room_nodes[int(viewer.id)]
+		var at := center + along * (FLOOR.PORTAL * 0.5 + 0.05 + PLAQUE_FROM_JAMB + PLAQUE.x * 0.5) + normal * side * (0.09 + 0.002) + Vector3(0, PLAQUE_Y, 0) - holder.position
+		box(holder, at, Vector3(PLAQUE.x, PLAQUE.y, 0.004), "plaque", false, "box", Vector3(0, yaw, 0))
+		text(holder, words, at + normal * side * 0.004, yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
 
 ## Office doors (6.6), made once and kept: the hotel leaf's bounds and
 ## conventions (hinge at the origin, the leaf along +X, centred on its
