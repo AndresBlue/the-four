@@ -27,6 +27,8 @@ const GLASS_HEAD := 2.65
 const MULLION := 0.05
 const MULLION_PITCH := 1.2
 const GLASS_THICK := 0.008
+const BLIND_PITCH := 0.022
+const BLIND := preload("res://game/presentation/shaders/venetian_blind.gdshader")
 ## A door's plaque on the wall (6.7): size, height, distance past the frame.
 const PLAQUE := Vector2(0.26, 0.09)
 const PLAQUE_Y := 1.55
@@ -203,6 +205,27 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 		var at := x - length * 0.5 + length * k / count
 		box(boundary, Vector3(at, GLASS_SILL + band * 0.5, 0), Vector3(MULLION, band, 0.06), "steel_frame")
 	for y in [GLASS_SILL, GLASS_HEAD]: box(boundary, Vector3(x, y, 0), Vector3(length, MULLION, 0.07), "steel_frame")
+	# Blinds on the office side of each pane (6.4), not the corridor's.
+	var office_side: int = -inner if int(building_room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY] else inner
+	for k in count:
+		var pane := length / count
+		var centre := x - length * 0.5 + pane * (k + 0.5)
+		var spot := (room_node.position if room_node != null else Vector3.ZERO) + boundary.transform * Vector3(centre, 0, 0)
+		var roll := vary(spot, 170)
+		var blind := ShaderMaterial.new()
+		blind.shader = BLIND
+		blind.set_shader_parameter("pitch", BLIND_PITCH)
+		blind.set_shader_parameter("height", band)
+		blind.set_shader_parameter("open", 0.05 if roll < 0.33 else 0.0 if roll >= 0.66 else 0.35 + vary(spot, 171) * 0.3)
+		blind.set_shader_parameter("drop", 1.0 if roll < 0.66 else 0.25 / band)
+		var quad := QuadMesh.new()
+		quad.size = Vector2(pane - MULLION, band - 0.06)
+		quad.material = blind
+		var sheet := MeshInstance3D.new()
+		sheet.mesh = quad
+		sheet.position = Vector3(centre, GLASS_SILL + band * 0.5 - 0.03, office_side * 0.045)
+		boundary.add_child(sheet)
+		box(boundary, Vector3(centre, GLASS_HEAD - 0.05, office_side * 0.045), Vector3(pane - MULLION, 0.04, 0.04), "steel_frame")
 
 ## The freight car (7.4) inside the hotel's CAR_INSIDE, so riding, arriving
 ## and the car's rect are untouched: a steel floor, sides and back of steel
