@@ -7,8 +7,7 @@ extends SceneTree
 ##
 ##   godot --path . --script res://tools/capture/office_capture.gd -- --test-profile [--seed=7]
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
-## Open offices, cubicles and offices: rooms with troffers.
-const OFFICE_TYPES := [1, 2, 3]
+const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 var level
 
 func _initialize() -> void: run.call_deferred()
@@ -121,7 +120,7 @@ func run() -> void:
 	var target := -1
 	for id in power.zones[0].rooms:
 		var room: Dictionary = m.rooms[int(id)]
-		if not bool(room.get("corridor", false)) and not level.hotel.dark_ids.has(int(id)) and OFFICE_TYPES.has(int(room.type)):
+		if not bool(room.get("corridor", false)) and not level.hotel.dark_ids.has(int(id)) and String(OFFICE.lamp_of(room)) == "troffer":
 			target = int(id)
 			break
 	if target < 0: target = int(power.zones[0].rooms[0])
@@ -132,7 +131,7 @@ func run() -> void:
 	power.apply("lever", 0, 1, {}, true)
 	await shot("planta2_con_corriente")
 	# A corridor of planta 2 with no power: the battery units.
-	var units: Array = level.hotel.emergency.filter(func(e): return int(e.planta) == 1 and int(m.rooms[int(e.room)].type) == 11 and not level.hotel.lit(int(e.room)))
+	var units: Array = level.hotel.emergency.filter(func(e): return int(e.planta) == 1 and int(m.rooms[int(e.room)].type) == OFFICE.CORRIDOR and not level.hotel.lit(int(e.room)))
 	print("LOOK emergency units %d, on planta 2 unlit corridors %d" % [level.hotel.emergency.size(), units.size()])
 	if not units.is_empty():
 		var e: Dictionary = units[units.size() / 2]
