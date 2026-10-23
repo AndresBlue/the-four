@@ -1,7 +1,7 @@
 extends SceneTree
 ## Floor 2 played from its first stage to its end (spec_f1_systems 2 and 4):
 ## on level 1 the request typed, the card taken from its station and through
-## the reader; level 2 met in its refuge (its power is not built yet); the
+## the reader; on level 2 the board, a minutero and the red lever's clock; the
 ## freight lift down each time; and on the third the hatch, the climb into the
 ## main duct and back, the crouched body passing all of it, and the shaft's
 ## ladder ending the floor.
@@ -44,9 +44,14 @@ func walk(seed_asked: int) -> void:
 	check("%s: se monta la semilla pedida" % tag, int(level.manifest.seed) == seed_asked and int(level.manifest.get("floor", 1)) == 2, str(level.manifest.seed))
 	level.player.set_physics_process(false)
 	await the_card(tag)
-	# Level 2: into the refuge; each level, then into the car and the button.
+	# Each level, into the car and the button; level 2 asks for the power
+	# first (the_power), once its car is reached.
+	var powered := false
 	var left := 60.0
 	while left > 0.0 and not (session.stage == 3 and session.state == session.State.PLAYING and level.lifts.boarding.is_empty()):
+		if session.stage == 2 and not powered and level.lifts.boarding.is_empty() and session.state == session.State.PLAYING and not level.lifts.riding.has(level.player.slot):
+			powered = true
+			await the_power(tag)
 		if level.lifts.boarding.is_empty() and session.state == session.State.PLAYING:
 			var car: Vector3 = level.hotel.lifts[session.stage - 1]
 			if session.goal.get("ready", false) and car != Vector3.ZERO:
@@ -151,6 +156,51 @@ func the_card(tag: String) -> void:
 	level.match_net.use_office(&"files", "swipe", reader)
 	await frames(10)
 	check("%s: con la cuota pasada, el nivel 1 se cumple y su puerta se abre" % tag, bool(session.goal.get("ready", false)) and not level.hotel.gates[0].locked)
+
+## Level 2: a zone's lever up lights its rooms, one over the budget trips
+## the oldest, a minutero lights its corridor, and the red lever cuts the
+## planta and runs the freight lift's clock, which holds the car until it is
+## out.
+func the_power(tag: String) -> void:
+	var power = level.objective(&"power")
+	var player = level.player
+	var session = level.session
+	check("%s: el nivel 2 pide la corriente" % tag, power != null and String(session.goal.get("kind", "")) == "power" and power.zones.size() >= 2)
+	if power == null or power.zones.size() < 2: return
+	power.lift_timer = 3.0
+	var room_of = func(z: int) -> int:
+		for id in power.zones[z].rooms:
+			if not power.lit_always.has(int(id)) and not level.hotel.dark_ids.has(int(id)): return int(id)
+		return -1
+	var first: int = room_of.call(0)
+	check("%s: con todo abajo, la planta 2 a oscuras" % tag, first >= 0 and not level.hotel.lit(first))
+	player.global_position = power.usables[0].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: en el cuadro, SUBIR" % tag, power.word_of(power.usables[0], player.slot) == "SUBIR")
+	level.match_net.use_office(&"power", "lever", 0)
+	check("%s: la zona subida se enciende" % tag, power.on_order == [0] and level.hotel.lit(first))
+	power.budget = 1
+	player.global_position = power.usables[1].stand + Vector3(0, 0.04, 0)
+	await frames(2)
+	level.match_net.use_office(&"power", "lever", 1)
+	check("%s: pasado el presupuesto cae la más antigua" % tag, power.on_order == [1] and not level.hotel.lit(first))
+	var timer: int = power.red_index() + 1
+	if timer < power.usables.size():
+		player.global_position = power.usables[timer].stand + Vector3(0, 0.04, 0)
+		await frames(2)
+		level.match_net.use_office(&"power", "switch", timer)
+		var lit_corridor: bool = level.manifest.power.timers[0].rooms.all(func(id): return power.powered(int(id)))
+		check("%s: el minutero enciende su pasillo" % tag, lit_corridor)
+	var red: int = power.red_index()
+	player.global_position = power.usables[red].stand + Vector3(0, 0.04, 0)
+	await frames(2)
+	level.match_net.use_office(&"power", "red", red)
+	check("%s: la roja corta la planta y corre el reloj" % tag, power.red == power.Red.RUNNING and power.on_order.is_empty())
+	check("%s: el montacargas no baja con el reloj corriendo" % tag, not level.ride_allowed(1, [player]))
+	for i in 600:
+		await physics_frame
+		if power.red == power.Red.ARMED: break
+	check("%s: acabado el reloj, el nivel 2 se cumple" % tag, power.red == power.Red.ARMED and bool(session.goal.get("ready", false)) and level.ride_allowed(1, [player]))
 
 ## Until the body's climb (its transit) is over, and a moment more.
 func settle(player) -> void:

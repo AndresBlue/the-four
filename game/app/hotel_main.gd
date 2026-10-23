@@ -1569,6 +1569,13 @@ func crawling_at(point: Vector3) -> bool:
 	var air = objectives.get("air")
 	return air != null and air.crawling_at(point)
 
+## Whether the car of a lift may leave with these riders: every handler of
+## its stage agrees (the hotel's always do).
+func ride_allowed(index: int, riders: Array) -> bool:
+	for handler in stage_objectives(index + 1):
+		if not handler.allows_ride(index + 1, riders): return false
+	return true
+
 ## The handlers a stage asks, in the order it lists them (kind.STAGES).
 func stage_objectives(stage := -1) -> Array:
 	var number: int = session.stage if stage < 0 else stage

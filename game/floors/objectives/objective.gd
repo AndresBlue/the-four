@@ -40,6 +40,10 @@ func goal_points(_stage: int) -> Array[Vector3]:
 	var points: Array[Vector3] = []
 	return points
 
+## Whether the car of that stage may leave with these riders (lifts.press):
+## the offices' freight lift waits for its clock.
+func allows_ride(_stage: int, _riders: Array) -> bool: return true
+
 ## Once a frame on the machine in charge, whatever the stage.
 func tick(_delta: float) -> void: pass
 

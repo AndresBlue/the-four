@@ -257,7 +257,7 @@ func ride_lifts() -> void:
 	creature_crossing(delta)
 	for index in called.keys():
 		called.erase(index)
-		if not car_ready(index): continue
+		if not car_ready(index) or not level.ride_allowed(index, inside(index)): continue
 		# The last one does not arrive anywhere on this floor: it is a ride
 		# into the dark, for everybody, and then the floor is over.
 		if index >= level.hotel.arrivals.size() or level.hotel.arrivals[index] == Vector3.ZERO:
@@ -321,7 +321,7 @@ func car_at(point: Vector3) -> int:
 
 ## The button, on the authority. A guest asks through match_net.call_lift.
 func press(index: int) -> void:
-	if car_ready(index): called[index] = true
+	if car_ready(index) and level.ride_allowed(index, inside(index)): called[index] = true
 
 ## A sound of a car, heard where the car is: once however many ride in it.
 ## apply_ride runs once per rider, and a team of four used to shut the same
