@@ -969,6 +969,20 @@ func validator_checks() -> void:
 	swap_window(lenient)
 	lenient["fallback"] = true
 	var errors: Array = v.validate(lenient)
+	var bent := func(m: Dictionary) -> void:
+		for edge in m.ducts.edges:
+			if String(edge[3]) != "express": continue
+			var far: Dictionary = m.rooms[int(m.ducts.nodes[int(edge[1])][3])]
+			for way in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				var n := node_of_room(m, FLOOR.beside(far, way)) if FLOOR.beside(far, way) >= 0 else -1
+				var near: Dictionary = m.rooms[int(m.ducts.nodes[int(edge[0])][3])]
+				if n < 0: continue
+				var moved: Dictionary = m.rooms[int(m.ducts.nodes[n][3])]
+				if int(moved.x) == int(near.x) or int(moved.z) == int(near.z): continue
+				edge[1] = n
+				edge[2] = snappedf(v3(m.ducts.nodes[int(edge[0])]).distance_to(v3(m.ducts.nodes[n])), 0.001)
+				return
+	mutation(v, "Un tronco recto torcido", "duct_express_", bent)
 	var missing: Array = []
 	for run_seed in range(1, 4):
 		var measures: Dictionary = OFFICE_METRICS.floor_measures(GEN.new().generate(run_seed, 2))

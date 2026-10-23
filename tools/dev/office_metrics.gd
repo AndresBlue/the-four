@@ -10,7 +10,7 @@ const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
 ## The keys floor_measures() gives for every floor (office_test checks them).
-const MEASURES := ["rooms", "numbered", "refuge_share", "window_share", "electrical_share", "security_share", "walk_0", "area_0", "stations", "tube_min", "sectors_served", "sectors", "timer_cover", "archives_1", "aisle_min", "aisles_per_salon", "lockers", "main_length", "main_bends", "crossings", "duct_pieces", "rooms_with_exit", "ratio_min", "ratio_band", "loose", "gaps", "gaps_wanted", "dark", "open_items", "boardrooms", "boardrooms_with_table", "glazed", "props"]
+const MEASURES := ["rooms", "numbered", "refuge_share", "window_share", "electrical_share", "security_share", "walk_0", "area_0", "stations", "tube_min", "sectors_served", "sectors", "timer_cover", "archives_1", "aisle_min", "aisles_per_salon", "lockers", "main_length", "main_bends", "crossings", "duct_pieces", "rooms_with_exit", "ratio_min", "ratio_band", "loose", "express", "gaps", "gaps_wanted", "dark", "open_items", "boardrooms", "boardrooms_with_table", "glazed", "props"]
 
 var results: Array = []
 var failed := 0
@@ -131,11 +131,17 @@ static func floor_measures(data: Dictionary) -> Dictionary:
 		want_exit += 1
 		if has_exit.has(int(room.id)): got_exit += 1
 	out["rooms_with_exit"] = float(got_exit) / maxf(1.0, float(want_exit))
+	out["express"] = [0, 1, 2].map(func(p): return ducts.edges.filter(func(e): return String(e[3]) == "express" and int(rooms[int(ducts.nodes[int(e[0])][3])].wing) == p).size())
 	out["gaps"] = gaps
 	out["gaps_wanted"] = [0, 1, 2].map(func(p): return roundi(float(OFFICE.GAP_SHARE[p]) * float(eligible[p])))
 	out["loose"] = [0, 1, 2].map(func(p): return ducts.edges.filter(func(e): return String(e[3]) == "loose" and int(rooms[int(ducts.nodes[int(e[0])][3])].wing) == p).size())
 	# Shortcuts: 40 drawn pairs of exits a planta that walk 12 m or more apart,
-	# duct metres (no crawl duct) over walking metres, door to door.
+	# duct metres from cell node to cell node (no crawl duct, no drops: the way
+	# from a grille to its room's middle is walked in the room either way) over
+	# walking metres door to door from the middle of one room to the other's.
+	var cell_node := {}
+	for i in ducts.nodes.size():
+		if String(ducts.nodes[i][4]) in ["trunk", "branch"]: cell_node[int(ducts.nodes[i][3])] = i
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([int(data.seed), "office_metrics"])
 	var ratios: Array = []
@@ -148,10 +154,12 @@ static func floor_measures(data: Dictionary) -> Dictionary:
 			if int(a.room) == int(b.room): continue
 			var walk := METRES.door_metres(rooms, data.adjacency, int(a.room), int(b.room))
 			if walk < 12.0 or walk == INF: continue
-			var duct := float(METRES.metres(ducts, int(a.node), INF, ["main", "cross"]).get(int(b.node), INF))
+			if not cell_node.has(int(a.room)) or not cell_node.has(int(b.room)): continue
+			var duct := float(METRES.metres(ducts, int(cell_node[int(a.room)]), INF, ["main", "cross", "drop"]).get(int(cell_node[int(b.room)]), INF))
 			ratios.append(duct / walk)
 	out["ratio_min"] = ratios.reduce(func(m, r): return minf(m, r), INF)
 	out["ratio_band"] = float(ratios.filter(func(r): return r >= 0.55 and r <= 0.9).size()) / maxf(1.0, float(ratios.size()))
+	out["ratio_median"] = quantile(ratios, 0.5)
 	return out
 
 func _initialize() -> void:
@@ -194,6 +202,7 @@ func _initialize() -> void:
 		judge("Taquillas de la planta %d, p5" % p, quantile(per.call("lockers", p), 0.05), quantile(per.call("lockers", p), 0.05) >= 8.0 * quantile(areas, 0.05), ">= 8 × área")
 		judge("Una pieza de conducto en la planta %d" % p, (per.call("duct_pieces", p) as Array).all(func(n): return int(n) == 1), (per.call("duct_pieces", p) as Array).all(func(n): return int(n) == 1), "100 %")
 		judge("Enlaces sueltos en la planta %d, mediana" % p, quantile(per.call("loose", p), 0.5), true, "informativo")
+		judge("Troncos rectos en la planta %d, mediana" % p, quantile(per.call("express", p), 0.5), true, "informativo")
 		var gaps_ok: bool = all.all(func(m): return int(m.gaps[p]) == int(m.gaps_wanted[p]))
 		judge("Huecos de la planta %d según GAP_SHARE" % p, gaps_ok, gaps_ok, "todos")
 		judge("Salas a oscuras en la planta %d, media" % p, snappedf((per.call("dark", p) as Array).reduce(func(a, b): return a + b, 0.0) / maxf(1.0, float(made)), 0.01), true, "hacia 0,23, 0,29, 0,36 (informativo)")
@@ -219,6 +228,7 @@ func _initialize() -> void:
 	judge("Cruces del principal", (each.call("crossings") as Array).all(func(n): return int(n) == 1), (each.call("crossings") as Array).all(func(n): return int(n) == 1), "uno en cada piso")
 	judge("Salas con salida de conducto", snappedf(quantile(each.call("rooms_with_exit"), 0.0), 0.001), quantile(each.call("rooms_with_exit"), 0.0) >= 1.0, "100 %")
 	judge("Atajo de conducto más corto (puerta a puerta)", snappedf(quantile(each.call("ratio_min"), 0.0), 0.001), quantile(each.call("ratio_min"), 0.0) >= 0.55, ">= 0,55")
+	judge("Razón conducto / paseo de los pares, mediana", snappedf(quantile(each.call("ratio_median"), 0.5), 0.01), true, "informativo")
 	judge("Pares con atajo entre 0,55 y 0,9, mediana", snappedf(quantile(each.call("ratio_band"), 0.5), 0.001), quantile(each.call("ratio_band"), 0.5) >= 0.10, ">= 0,10")
 	judge("Muebles por celda de oficina abierta, mediana", quantile(each.call("open_items"), 0.5), true, "informativo")
 	var boards := float((each.call("boardrooms_with_table") as Array).reduce(func(a, b): return a + b, 0)) / maxf(1.0, float((each.call("boardrooms") as Array).reduce(func(a, b): return a + b, 0)))

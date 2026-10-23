@@ -24,6 +24,10 @@ const TABLE_OFFSET := 2.2     # the meeting table's centre from the boardroom's 
 const DESKS_MOST := 8         # free-standing items per cell
 ## The band a duct shortcut keeps against the walk (1c's validator has its own).
 const SHORTCUT_MIN := 0.55
+const EXPRESS_PER := 30       # straight trunks over the rooms, per planta
+const EXPRESS_CELLS := Vector2i(2, 12) # how many cells one spans
+const EXPRESS_MOST := 0.9     # a straight trunk cuts the walk to this or less
+const EXPRESS_STARTS := 80    # cells tried as a trunk's start, per planta
 
 func _init() -> void: palette = OFFICE_PALETTE
 
@@ -1437,6 +1441,34 @@ func furnish_ducts(job: Dictionary) -> String:
 					best_ratio = ratio
 					best = pair
 			if not best.is_empty(): duct_edge(job, int(best[0]), int(best[1]), "loose")
+		# Straight trunks over the rooms, the doors left aside: the duct is her
+		# shortcut (OFICINAS 11.3), between SHORTCUT_MIN and EXPRESS_MOST of
+		# the walk from door to door, over cells all hers to cross.
+		# Each start keeps its longest trunk that cuts the walk enough.
+		var starts: Array = cells[planta].duplicate()
+		shuffle(starts, rng)
+		if not job.has("door_graph"): job["door_graph"] = METRES.door_graph(rooms, f.adjacency)
+		var laid := 0
+		for a in starts.slice(0, EXPRESS_STARTS):
+			if laid >= EXPRESS_PER: break
+			var from: Dictionary = rooms[int(a)]
+			var walks := METRES.door_metres_all(rooms, job.door_graph, int(a), 12.0 * EXPRESS_CELLS.y / SHORTCUT_MIN)
+			var best := -1
+			var best_length := 0.0
+			for way in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var b := int(a)
+				for k in EXPRESS_CELLS.y:
+					b = FLOOR.beside(rooms[b], way)
+					if b < 0 or not in_c.has(b): break
+					if k + 1 < EXPRESS_CELLS.x or job.duct_pairs.has(pair_key(int(a), b)) or not walks.has(b): continue
+					var length := FLOOR.position_of(from).distance_to(FLOOR.position_of(rooms[b]))
+					var ratio := length / float(walks[b])
+					if ratio >= SHORTCUT_MIN and ratio <= EXPRESS_MOST and length > best_length:
+						best = b
+						best_length = length
+			if best < 0: continue
+			duct_edge(job, int(a), best, "express")
+			laid += 1
 	var crossed := duct_cross(job, rng)
 	if not crossed.is_empty(): return crossed
 	for planta in 3:

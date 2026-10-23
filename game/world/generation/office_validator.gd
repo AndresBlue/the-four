@@ -609,6 +609,9 @@ func ducts_ok(data: Dictionary, errors: Array[String]) -> void:
 		var rb: Dictionary = rooms[int(dn[b][3])]
 		if not near(pa.distance_to(pb), float(edge[2]), 0.01) or int(ra.wing) != int(rb.wing): errors.append("duct_edge_%d_%d" % [a, b])
 		var kind := String(edge[3])
+		if kind == "express":
+			if not express_ok(data, ra, rb, pa, pb, float(edge[2])): errors.append("duct_express_%d_%d" % [int(ra.id), int(rb.id)])
+			continue
 		if not (kind in ["trunk", "branch", "bridge", "loose"]): continue
 		if a == stub or b == stub:
 			halves.append(edge)
@@ -633,6 +636,23 @@ func ducts_ok(data: Dictionary, errors: Array[String]) -> void:
 	for planta in 3:
 		if METRES.pieces(ducts, by_wing[planta], ["main", "cross", "drop"]) != 1: errors.append("duct_split_%d" % planta)
 	exits_ok(data, errors)
+
+## A straight trunk over the rooms: square at the duct's height, two cells or
+## more along one row or column, over non-void cells of its planta that are
+## not off-limits, and no shorter than SHORTCUT_MIN of the walk door to door.
+func express_ok(data: Dictionary, ra: Dictionary, rb: Dictionary, pa: Vector3, pb: Vector3, length: float) -> bool:
+	var y := float(ra.py) + float(data.plenum.duct_y)
+	var dx := int(rb.x) - int(ra.x)
+	var dz := int(rb.z) - int(ra.z)
+	if not near(pa.y, y) or not near(pb.y, y) or (dx != 0 and dz != 0) or absi(dx) + absi(dz) < 2: return false
+	var way := Vector2i(signi(dx), signi(dz))
+	var at := int(ra.id)
+	while at != int(rb.id):
+		at = FLOOR.beside(data.rooms[at], way)
+		if at < 0: return false
+		var cell: Dictionary = data.rooms[at]
+		if int(cell.type) == OFFICE.VOID or OFFICE.off_limits(cell) or int(cell.wing) != int(ra.wing): return false
+	return length / METRES.door_metres(data.rooms, data.adjacency, int(ra.id), int(rb.id), length / SHORTCUT_MIN) >= SHORTCUT_MIN - 0.001
 
 ## The exits of the ducts and the gaps.
 func exits_ok(data: Dictionary, errors: Array[String]) -> void:

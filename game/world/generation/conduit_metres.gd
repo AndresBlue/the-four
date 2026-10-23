@@ -129,6 +129,58 @@ static func door_metres(rooms: Array, adjacency: Array, from: int, to: int, limi
 					heap_push(heap, step, d)
 	return INF
 
+## The doors of a floor once, for door_metres_all(): {doors: [[a, b, point]],
+## of: [door ids of each room]}, every middle of a doorway where
+## FLOOR.portal_between() puts it.
+static func door_graph(rooms: Array, adjacency: Array) -> Dictionary:
+	var doors: Array = []
+	var of: Array = []
+	var index := {}
+	for room in rooms: of.append([])
+	for a in adjacency.size():
+		for n in adjacency[a]:
+			var b := int(n)
+			var key := mini(a, b) * 65536 + maxi(a, b)
+			if not index.has(key):
+				index[key] = doors.size()
+				doors.append([mini(a, b), maxi(a, b), FLOOR.portal_between(rooms[mini(a, b)], rooms[maxi(a, b)])])
+			of[a].append(int(index[key]))
+	return {"doors": doors, "of": of}
+
+## door_metres() from one room to every room within limit, at once, over a
+## door_graph(): {room: metres}, the room itself at 0.
+static func door_metres_all(rooms: Array, graph: Dictionary, from: int, limit: float = INF) -> Dictionary:
+	var doors: Array = graph.doors
+	var of: Array = graph.of
+	var centres := {}
+	var reached := {from: 0.0}
+	var best := {}
+	var heap: Array = []
+	var start := FLOOR.position_of(rooms[from])
+	for d in of[from]:
+		var cost := start.distance_to(doors[d][2])
+		if cost <= limit and cost < float(best.get(d, INF)):
+			best[d] = cost
+			heap_push(heap, cost, d)
+	while not heap.is_empty():
+		var top := heap_pop(heap)
+		var cost: float = top[0]
+		var at: int = top[1]
+		if cost > float(best.get(at, INF)): continue
+		var here: Vector3 = doors[at][2]
+		for side in 2:
+			var room: int = doors[at][side]
+			if not centres.has(room): centres[room] = FLOOR.position_of(rooms[room])
+			var there := cost + here.distance_to(centres[room])
+			if there <= limit and there < float(reached.get(room, INF)): reached[room] = there
+			for d in of[room]:
+				if d == at: continue
+				var step := cost + here.distance_to(doors[d][2])
+				if step <= limit and step < float(best.get(d, INF)) - 0.0001:
+					best[d] = step
+					heap_push(heap, step, d)
+	return reached
+
 ## Puts [cost, id] on the heap; ties go to the lower id, so searches are the
 ## same on every machine.
 static func heap_push(heap: Array, cost: float, id: int) -> void:
