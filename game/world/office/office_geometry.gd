@@ -6,7 +6,7 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
@@ -287,9 +287,31 @@ func build_exit_door(data: Dictionary) -> void:
 	if not gates_list.is_empty() and String(gates_list[-1].get("kind", "lift")) == "shaft": return
 	super(data)
 
-## No paintings and no sconces on an office wall (6.5: the notice boards,
-## clocks and poster spots come later).
-func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> void: pass
+## What hangs on an office wall instead of the hotel's paintings and sconces
+## (6.5), by vary: a cork notice board in offices and corridors, the hotel's
+## wall clock in offices, the break room and the archives; otherwise the spot
+## is kept for 1h's rule posters (poster_spots). Nothing on glass.
+func wall_art(boundary: Node3D, room: Dictionary, at: float, inner: int) -> void:
+	if room.get("glazed", []).has(String(SIDE_OF.get(String(boundary.name), ""))): return
+	var t := int(room.type)
+	var roll := vary(node_point(boundary, at), 170)
+	var face := inner * 0.09
+	var turn := Basis(Vector3.UP, PI if inner < 0 else 0.0)
+	if t in [OFFICE.OFFICE, OFFICE.EXEC_OFFICE, OFFICE.CORRIDOR] and roll < 0.4:
+		box(boundary, Vector3(at, 1.5, face + inner * 0.012), Vector3(1.2, 0.9, 0.02), "cork")
+		box(boundary, Vector3(at, 1.5, face + inner * 0.01), Vector3(1.26, 0.96, 0.016), "steel_frame")
+	elif t in [OFFICE.OFFICE, OFFICE.EXEC_OFFICE, OFFICE.BREAK_ROOM, OFFICE.ARCHIVE] and roll < 0.7:
+		DRESSING.place(self, boundary, "wall_clock", Transform3D(turn, Vector3(at, 2.05, face + inner * 0.027)))
+	else:
+		poster_spots.append({"room": int(room.id), "transform": boundary.global_transform * Transform3D(turn, Vector3(at, 1.5, face + inner * 0.005)) if boundary.is_inside_tree() else Transform3D(turn, Vector3(at, 1.5, face))})
+
+## A point along a wall boundary, for vary().
+func node_point(boundary: Node3D, at: float) -> Vector3:
+	var room_node := boundary.get_parent() as Node3D
+	return (room_node.position if room_node != null else Vector3.ZERO) + boundary.transform * Vector3(at, 0, 0)
+
+## Free wall spots for 1h's rule posters: {room, transform}.
+var poster_spots: Array[Dictionary] = []
 
 ## The troffers (built by ceiling()) light the room as a fluorescent tube
 ## does (7.1); the battens and the boardroom's pendant are the hotel's.
