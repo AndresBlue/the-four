@@ -6,11 +6,11 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "vinyl": "tile", "terrazzo": "tile", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 ## Finishes that stand in as a plain colour until their scans are ingested:
 ## the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741")}
+const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4")}
 ## The cove base along the walls and the department stripe in the corridors
 ## (spec 4.1): height and thickness; bottom and top.
 const SKIRT := Vector2(0.10, 0.006)
@@ -137,9 +137,61 @@ func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> 
 ## The troffers (built by ceiling()) light the room as a fluorescent tube
 ## does (7.1); the battens and the boardroom's pendant are the hotel's.
 func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
-	if OFFICE.lamp_of(room) != "troffer": return super(node, room)
+	var lamp: String = OFFICE.lamp_of(room)
 	var h := float(room.height)
-	return {"tube": true, "failing": "", "specular": 0.45, "color": LIGHTING.light_color(LIGHTING.FLUORESCENT, LIGHTING.TUBE_TINT), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("tube"), "position": Vector3(0, h - LAMP_DROP, 0)}
+	var tube := {"tube": true, "failing": "", "specular": 0.45, "color": LIGHTING.light_color(LIGHTING.FLUORESCENT, LIGHTING.TUBE_TINT), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("tube"), "position": Vector3(0, h - LAMP_DROP, 0)}
+	match lamp:
+		"troffer":
+			return tube
+		"batten":
+			if not archive_battens(node, room): return super(node, room)
+			tube.energy = float(tube.energy) * 0.85
+			return tube
+		"pendant":
+			# Two opal globes on rods over the meeting table.
+			var at := Vector3.ZERO
+			var long := Vector3(1, 0, 0)
+			for item in room.get("furniture", []):
+				if String(item.kind) != "meeting_table": continue
+				at = Vector3(float(item.at[0]), 0, float(item.at[1]))
+				long = Vector3(1, 0, 0) if int(item.turn) % 2 == 0 else Vector3(0, 0, 1)
+			for side in [-1.0, 1.0]:
+				var globe: Vector3 = at + long * float(side) * 0.9
+				box(node, globe + Vector3(0, (h + 2.25) * 0.5, 0), Vector3(0.012, h - 2.25, 0.012), "metal", false, "cylinder")
+				box(node, globe + Vector3(0, 2.15, 0), Vector3(0.32, 0.32, 0.32), "light_off" if dark_room(room) else "light", false, "cylinder")
+			return {"tube": false, "failing": "", "specular": 0.6, "color": LIGHTING.light_color(3000.0), "energy": 3.6 * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("dome"), "position": at + Vector3(0, 2.0, 0)}
+		"emergency":
+			# No lamp of its own: the electrical room's battery unit lights it (7.2).
+			tube.energy = 0.0
+			return tube
+	return super(node, room)
+
+## Over each narrow aisle of an archive cell, a fluorescent batten on chains
+## along the aisle (7.1); false when the room has no aisles here.
+func archive_battens(node: Node3D, room: Dictionary) -> bool:
+	if int(room.type) != OFFICE.ARCHIVE and int(room.type) != OFFICE.MOBILE_ARCHIVE: return false
+	var cell := Rect2(float(room.px) - float(room.span_x) / 2, float(room.pz) - float(room.span_z) / 2, float(room.span_x), float(room.span_z))
+	var y := minf(float(room.height) - 0.6, 2.9)
+	var any := false
+	for unit in manifest.get("archives", []):
+		if not unit.rooms.has(int(room.id)): continue
+		for a in unit.aisles:
+			var piece := Rect2(float(a[0]), float(a[1]), float(a[2]) - float(a[0]), float(a[3]) - float(a[1])).intersection(cell)
+			if piece.size.x < 0.3 or piece.size.y < 0.3: continue
+			var along_x := piece.size.x >= piece.size.y
+			var length := minf(1.5, maxf(piece.size.x, piece.size.y) - 0.3)
+			var at := Vector3(piece.get_center().x - float(room.px), y, piece.get_center().y - float(room.pz))
+			box(node, at, Vector3(length, 0.07, 0.16) if along_x else Vector3(0.16, 0.07, length), "metal")
+			box(node, at - Vector3(0, 0.05, 0), Vector3(length - 0.1, 0.03, 0.05) if along_x else Vector3(0.05, 0.03, length - 0.1), "light_off" if dark_room(room) else "light")
+			any = true
+	return any
+
+## The electrical room's lamp is made (lights[id] must exist) but stays out.
+func room_lamp(node: Node3D, room: Dictionary) -> void:
+	var light := lamp_light(node, room, lamp_fixture(node, room))
+	if OFFICE.lamp_of(room) == "emergency":
+		light.set_meta("off", true)
+		light.visible = false
 
 ## The office's corner pieces first (9.3); the hotel's own kinds as the hotel.
 func build_prop(node: Node3D, kind: String) -> void:
