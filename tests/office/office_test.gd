@@ -262,7 +262,7 @@ func kind_checks() -> void:
 	for method in hotel_kind.get_script_method_list():
 		if not methods.has(String(method.name)): missing.append(String(method.name))
 	check("El tipo de piso de oficinas tiene todo lo que tiene el del hotel", missing.is_empty(), str(missing))
-	check("Es el piso 2, con su paleta, su generador y su validador, y de objetivos solo el aire del nivel 3", KIND.NUMBER == 2 and KIND.PALETTE == OFFICE and KIND.GENERATOR == GEN and KIND.VALIDATOR == OFFICE_VALIDATOR and KIND.OBJECTIVES.keys() == ["air"] and KIND.stage(3).objectives == ["air"] and KIND.LEAVE == "ladder")
+	check("Es el piso 2, con su paleta, su generador y su validador, y de objetivos la ficha del nivel 1 y el aire del 3", KIND.NUMBER == 2 and KIND.PALETTE == OFFICE and KIND.GENERATOR == GEN and KIND.VALIDATOR == OFFICE_VALIDATOR and KIND.OBJECTIVES.keys() == ["files", "air"] and KIND.stage(1).objectives == ["files"] and KIND.stage(3).objectives == ["air"] and KIND.LEAVE == "ladder")
 	check("Tres etapas, una por planta", KIND.count() == FLOOR.PLANTAS)
 	var stages_right := true
 	for number in range(1, KIND.count() + 1):

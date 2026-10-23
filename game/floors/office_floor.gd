@@ -54,14 +54,14 @@ const MILESTONES := [
 ## Stage by stage, from the first: {objectives, level and department (what
 ## the planta is), errand (the card), brief (the notice)}.
 const STAGES := [
-	{"objectives": [], "level": "NIVEL 1", "department": "PERSONAL", "errand": "PIDE TU FICHA", "brief": "Pide tu ficha en la ventanilla de Personal, recógela en su estación y pásala por el lector del montacargas."},
+	{"objectives": ["files"], "level": "NIVEL 1", "department": "PERSONAL", "errand": "PIDE TU FICHA", "brief": "Pide tu ficha en la ventanilla de Personal, recógela en su estación y pásala por el lector del montacargas."},
 	{"objectives": [], "level": "NIVEL 2", "department": "REGISTRO Y ARCHIVO", "errand": "ARRANCA EL MONTACARGAS", "brief": "Da la corriente desde el cuadro, sube la palanca roja del montacargas y baja cuando acabe el reloj."},
 	{"objectives": ["air"], "level": "NIVEL 3", "department": "DIRECCIÓN", "errand": "SAL POR EL DUCTO", "brief": "Enciende la climatización desde seguridad, abre la compuerta del ducto principal y llega al pozo."},
 ]
 
-## The objectives a stage can ask for, and their handlers: the air's so far
-## (1e adds "files", 1f "power").
-const OBJECTIVES := {"air": "res://game/floors/objectives/air_objective.gd"}
+## The objectives a stage can ask for, and their handlers: the card's and the
+## air's so far (1f adds "power").
+const OBJECTIVES := {"files": "res://game/floors/objectives/files_objective.gd", "air": "res://game/floors/objectives/air_objective.gd"}
 ## How the last stage leaves the floor: down the shaft's ladder, not in a car
 ## (lifts.begin_leaving()).
 const LEAVE := "ladder"

@@ -1,9 +1,10 @@
 extends SceneTree
-## Floor 2 played from its first stage to its end (spec_f1_systems 4): the
-## freight lift from each refuge to the next level, and on the third the
-## hatch, the climb into the main duct and back, the crouched body passing
-## all of it, and the shaft's ladder ending the floor. The objectives of
-## levels 1 and 2 are not built yet, so those stages are met in their refuge.
+## Floor 2 played from its first stage to its end (spec_f1_systems 2 and 4):
+## on level 1 the request typed, the card taken from its station and through
+## the reader; level 2 met in its refuge (its power is not built yet); the
+## freight lift down each time; and on the third the hatch, the climb into the
+## main duct and back, the crouched body passing all of it, and the shaft's
+## ladder ending the floor.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 ## A floor whose plant ladder stands in the air salon's way (33) and one whose
@@ -42,7 +43,8 @@ func walk(seed_asked: int) -> void:
 	var tag := "semilla %d" % seed_asked
 	check("%s: se monta la semilla pedida" % tag, int(level.manifest.seed) == seed_asked and int(level.manifest.get("floor", 1)) == 2, str(level.manifest.seed))
 	level.player.set_physics_process(false)
-	# Levels 1 and 2: into the refuge, then into the car and the button.
+	await the_card(tag)
+	# Level 2: into the refuge; each level, then into the car and the button.
 	var left := 60.0
 	while left > 0.0 and not (session.stage == 3 and session.state == session.State.PLAYING and level.lifts.boarding.is_empty()):
 		if level.lifts.boarding.is_empty() and session.state == session.State.PLAYING:
@@ -114,6 +116,41 @@ func walk(seed_asked: int) -> void:
 		await physics_frame
 		if session.state == session.State.WON: break
 	check("%s: la escalerilla del pozo acaba el piso" % tag, session.state == session.State.WON, "estado %d" % session.state)
+
+## Level 1: the request typed at the window, the card taken from its
+## station's tray once the capsule is in, and through the reader.
+func the_card(tag: String) -> void:
+	var files = level.objective(&"files")
+	var player = level.player
+	var session = level.session
+	await frames(3)
+	check("%s: el nivel 1 pide la ficha" % tag, files != null and String(session.goal.get("kind", "")) == "files" and files.usables.size() >= 3)
+	if files == null or files.usables.size() < 3: return
+	player.global_position = files.usables[0].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: en la ventanilla, ESCRIBIR" % tag, files.word_of(files.usables[0], player.slot) == "ESCRIBIR")
+	level.match_net.use_office(&"files", "type", 0)
+	var request: Dictionary = files.requests.get(player.slot, {})
+	check("%s: la petición sale hacia una estación" % tag, not request.is_empty() and int(request.state) == files.Card.TRAVELLING)
+	if request.is_empty(): return
+	var station: int = int(request.station) + 1
+	var waited := 0
+	while int(files.requests[player.slot].state) != files.Card.IN_TRAY and waited < 60 * 60:
+		await physics_frame
+		waited += 1
+	check("%s: la cápsula llega a la bandeja (%.0f s de tubo)" % [tag, float(files.station_exits[station - 1].tube) / files.CAPSULE_SPEED], int(files.requests[player.slot].state) == files.Card.IN_TRAY and files.lamps[station - 1].visible)
+	player.global_position = files.usables[station].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: en su estación, RECOGER" % tag, files.word_of(files.usables[station], player.slot) == "RECOGER")
+	level.match_net.use_office(&"files", "take", station)
+	check("%s: la ficha en la mano" % tag, files.has_card(player.slot) and not files.lamps[station - 1].visible)
+	var reader: int = files.reader_index()
+	player.global_position = files.usables[reader].stand + Vector3(0, 0.04, 0)
+	await frames(3)
+	check("%s: en el lector, PASAR FICHA" % tag, files.word_of(files.usables[reader], player.slot) == "PASAR FICHA")
+	level.match_net.use_office(&"files", "swipe", reader)
+	await frames(10)
+	check("%s: con la cuota pasada, el nivel 1 se cumple y su puerta se abre" % tag, bool(session.goal.get("ready", false)) and not level.hotel.gates[0].locked)
 
 ## Until the body's climb (its transit) is over, and a moment more.
 func settle(player) -> void:

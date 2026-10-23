@@ -152,6 +152,9 @@ func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF
 		# Its door too: shut and locked again, or the stage given back could
 		# be walked out of without doing it again.
 		level.hotel.relock_gate(level.session.stage)
+		# The stage's own handlers forget it too (the offices' card, the air;
+		# the hotel's do nothing here, their sets are put out just below).
+		for handler in level.stage_objectives(): handler.reset()
 		# The stage as it was found: its own wing's sets go out again. What was
 		# lit in the wings behind is not this stage's to undo.
 		for index in level.stage_televisions():
