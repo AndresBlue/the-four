@@ -111,6 +111,7 @@ func walk(seed_asked: int) -> void:
 	level.match_net.use_office(&"air", "climb", 0)
 	await settle(player)
 	check("%s: sube al ducto, a gatas" % tag, level.crawling_at(player.global_position) and player.crouched and is_equal_approx(player.eye_height, player.CRAWL_EYE), str(player.global_position))
+	check("%s: dentro del ducto no hay luz, y nada de la sala de abajo lo alumbra" % tag, not level.sanity.lit_at(player.global_position) and level.hotel.body_bit(player.global_position) == -1)
 	check("%s: en la boca, BAJAR" % tag, air.word_of(air.usables[1], player.slot) == "BAJAR")
 	level.match_net.use_office(&"air", "climb", 1)
 	await settle(player)

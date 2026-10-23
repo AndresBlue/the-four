@@ -157,6 +157,8 @@ func apply(told: Dictionary) -> void:
 ## Whether a place has its lights on, as its room's lamps say (hotel.lit():
 ## not the blackout, not a dark room, power on, not drained).
 func lit_at(point: Vector3) -> bool:
+	# The offices' main duct is dark, whatever the room under it.
+	if level.crawling_at(point): return false
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, point)
 	return not room.is_empty() and level.hotel.lit(int(room.id))
 

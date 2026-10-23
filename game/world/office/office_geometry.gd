@@ -349,6 +349,13 @@ func round_lamps() -> void:
 		var shown: bool = place < most
 		if light.visible != shown: light.visible = shown
 
+## A body in the main duct is on no room's layers (-1, which follow_bodies()
+## puts on none): the lamp of the room under it cannot light it through the
+## false ceiling; the torches still do.
+func body_bit(at: Vector3) -> int:
+	if not manifest.is_empty() and MAIN_DUCT.inside(manifest, at, 0.1): return -1
+	return super(at)
+
 ## Out of sight off planta 3, like every room of the other plantas.
 func put_away(here: int) -> void:
 	super(here)
