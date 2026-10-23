@@ -13,7 +13,7 @@ const NAME := "LAS OFICINAS"
 ## hotel's until office_geometry.gd (step 1d).
 const GENERATOR := preload("res://game/world/generation/office_generator.gd")
 const VALIDATOR := preload("res://game/world/generation/office_validator.gd")
-const GEOMETRY := preload("res://game/world/hotel/hotel_geometry.gd")
+const GEOMETRY := preload("res://game/world/office/office_geometry.gd")
 ## Its rooms (game/floors/palettes/); FLOOR.palette() gives the same from a
 ## manifest that says "floor": 2.
 const PALETTE := preload("res://game/floors/palettes/office_palette.gd")

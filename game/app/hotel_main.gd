@@ -824,7 +824,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	await get_tree().physics_frame
 	physical_errors = kind.VALIDATOR.new().validate_physics(get_world_3d(), manifest)
 	if not physical_errors.is_empty():
-		push_warning("Physical map rejection: %s" % physical_errors)
+		push_warning("Physical map rejection: %s" % str(physical_errors))
 		remove_child(hotel)
 		hotel.queue_free()
 		manifest = kind.GENERATOR.new().candidate(404, 0, true)
