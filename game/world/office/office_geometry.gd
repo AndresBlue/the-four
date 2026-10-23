@@ -172,6 +172,15 @@ func build(data: Dictionary) -> void:
 		main_duct = MAIN_DUCT.build(self, data)
 		add_child(main_duct)
 
+## Dirección is in lockdown (OFICINAS, planta 3): no power, every room dark
+## but those always lit (the arrival lobby, the security post), on top of the
+## dark rooms the manifest draws.
+func decide_dark(data: Dictionary) -> void:
+	super(data)
+	var kept: Array = OFFICE.always_lit(data, 2)
+	for room in data.rooms:
+		if int(room.get("wing", 0)) == 2 and not kept.has(int(room.id)): dark_ids[int(room.id)] = true
+
 ## Out of sight off planta 3, like every room of the other plantas.
 func put_away(here: int) -> void:
 	super(here)
