@@ -17,6 +17,8 @@ const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
 const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
+const CAPTURE := preload("res://game/app/capture_styles/lurker_capture.gd")
+const SCORE := preload("res://game/app/capture_styles/lurker_score.gd")
 ## Her sound out of the plenum, through the tile under her: this much quieter
 ## and duller than in the room (spec_f3_integration 3.5).
 const PLENUM_LOSS := -6.0
@@ -77,6 +79,11 @@ var voice
 var car_clock := 0.0
 var route_memo := {}
 var was_in_duct := false
+## Her capture holds her where it poses her (lurker_capture.pose()): her
+## motion waits (her mind goes on, taking).
+var scene_held := false
+## Every capture of hers: {seat, cue, at, forced} (spec_f3_integration 5.9).
+var takes: Array = []
 
 func kind_id() -> StringName: return &"lurker"
 
@@ -456,9 +463,10 @@ func _physics_process(delta: float) -> void:
 		"ai":
 			if motion != null:
 				think(delta)
-				motion.cue = cue
-				motion.tick(delta)
-				apply_motion()
+				if not scene_held:
+					motion.cue = cue
+					motion.tick(delta)
+					apply_motion()
 		"puppet":
 			follow_state(delta)
 	drain_step(delta)
@@ -897,6 +905,14 @@ func turn_for_capture(_yaw: float) -> void: pass
 
 func begin_capture(data: Dictionary) -> void:
 	if brain != null: brain.on_captured(data)
+	if motion != null: motion.hold()
+	if visual != null: visual.crawling = true
+	var forced: bool = level.get("executions") != null and not level.executions.forced.is_empty()
+	takes.append({"seat": int(data.get("seat", -1)), "cue": int(data.get("cue", -1)), "at": brain.clock if brain != null else 0.0, "forced": forced})
+
+func capture_style() -> Variant: return CAPTURE
+
+func capture_length() -> float: return SCORE.CUT_TIME
 
 func end_capture() -> void:
 	if brain != null: brain.on_released()

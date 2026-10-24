@@ -225,6 +225,10 @@ func stage_capture(body: Node3D) -> Dictionary:
 	# payload is as it was).
 	var cue: int = creature.cue_of(body)
 	if cue >= 0: staged["cue"] = cue
+	# What only its style needs sent (The Lurker's: where she hangs, how high
+	# she can lift them); the hotel's creature sends nothing more.
+	var extra: Dictionary = style().stage_extra(body, placed, staged) if style().has_method("stage_extra") else {}
+	if not extra.is_empty(): staged["extra"] = extra
 	return staged
 
 ## Whoever shares a wardrobe with somebody caught in it, still on their feet:
@@ -274,6 +278,7 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		"glance": bool(data.get("glance", false)), "seed": int(data.get("seed", 0)), "id": int(data.get("id", 0)),
 		"ending": "leave",
 	}
+	if data.has("extra"): execution["extra"] = data.extra
 	if data.has("cue"): execution["cue"] = int(data.cue)
 	var creature = level.creature
 	if is_instance_valid(creature):
@@ -503,11 +508,15 @@ func place_victim(delta: float) -> void:
 	if entry == "back": body.rotation.y = lerp_angle(float(execution.get("facing", towards)), towards, score().turned(entry, time))
 	else: body.rotation.y = lerp_angle(body.rotation.y, towards, minf(1.0, delta * 16.0))
 	if "avatar" in body and body.avatar != null:
-		body.avatar.pose_capture({"score": score(),
+		# Held over the floor it was caught on (where the body is let go: under
+		# The Locust, its feet; under The Lurker, the ceiling is hers).
+		var state := {"score": score(),
 			"lift": score().lift(time), "limp": score().limp(time), "fall": score().fall(time), "time": time, "side": float(execution.get("side", 1.0)),
 			"slump": bool(execution.get("slump", false)), "straight": bool(execution.get("straight", false)), "room": float(execution.get("room", score().LIE_ROOM)),
-			"height": body.global_position.y - staged.creature_point(execution).y, "sill": seat_floor(), "clear": scene_bodies(), "away": staged.head_away(execution), "bleed": blood.wanted(),
-		})
+			"height": body.global_position.y - staged.drop_point(execution).y, "sill": seat_floor(), "clear": scene_bodies(), "away": staged.head_away(execution), "bleed": blood.wanted(),
+		}
+		if bool(staged.get_script().get_script_constant_map().get("HANG", false)): state["hang"] = true
+		body.avatar.pose_capture(state)
 
 ## The bodies of the scene, which what looks for walls looks through.
 func scene_bodies() -> Array:

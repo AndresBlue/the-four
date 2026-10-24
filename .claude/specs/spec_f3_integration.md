@@ -687,6 +687,16 @@ Every frame of the scene (`executions.update_execution()` calls `staged.pose(exe
 
 ---
 
+### 5.10 Step 3d as landed, so far (24 October 2026, director)
+
+- **5.1** in `ac78d78`, as written (the proof in its message). `executions.score()` falls back on the hotel's `SCORE` with no style.
+- **5.2** `lurker_score.gd` as the table; `lurker_capture_test` checks the parity of names (constants and functions) and `GRAB`.
+- **5.3** `stage_extra(body, placed, data)`: the data as staged so far is passed too (the entry decides on which side of the victim she hangs). The hang is `HANG_BEHIND` 0.45 m behind or in front of the head's top, 0.05 m under the ceiling there.
+- **5.4** `lurker_capture.gd` as written; `creature_point()` eases over `ARRIVE`; `kill_point()` is `mask_transform()`'s origin (her face point); `mask_transform()` is looked at from her face to the lens with her head down. `posable()` asks for her visual's limbs. `in_aisle()` reads `manifest.archives[].aisles` rects.
+- **5.5** her transform as written, held with `lurker.scene_held` (her motion waits, her mind goes on taking: her brain's clock must run, or the take's tick would stay open; `begin_capture()` also holds the motion, turns her hands on and writes `takes`). Grips on `a.L`/`a.R` from the avatar's `la`/`ra` bones; `lurker_limbs.upright_share` (not `upright`: the name is a local of `_look()`). The tile as written. `place_victim()` reads the avatar's `height` over `drop_point()` (the same y as `creature_point()` for The Locust), and passes `hang` only when the style's `HANG` is true; the avatar with `hang` is not bent over (`over` IDENTITY). **Not yet:** the arms raised 25 degrees while hung.
+- **Not yet:** 5.6 (the tape's framing and rising), 5.7 (the camera falling looking up: `staging()` already says `look_up` and `ceiling`), 5.8 (her blood), 9.2 and the watchdog's pairing (5.9's record is in `takes`).
+- **Tests:** `tests/office/lurker_capture_test.gd` (8 checks); `capture_test`, `creature_contract_test` and `body_clip_probe --strict` still the same as before 5.1.
+
 ## 6. Step 3e: the observer and the data formats phase 4 inherits
 
 ### 6.1 Gizmos (`draw_gizmos(g)`, layer 7)

@@ -636,7 +636,8 @@ func pose_capture(state: Dictionary) -> void:
 	var recline: float = beat.seat_lean(room)
 	# Which way it goes over: back, and to a side where there is one to go to.
 	var way := Vector3(0.0 if slump or bool(state.get("straight", false)) else side * 0.62, 0.0, 0.78).normalized()
-	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - sat))
+	# Hung from above (The Lurker's) it is not bent over an arm.
+	var over := Basis.IDENTITY if bool(state.get("hang", false)) else Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - sat))
 	var leant := recline * (gone - 0.07 * jolt)
 	var turned := Basis(Vector3.UP, atan2(way.x, way.z) * gone) * Basis(Vector3.RIGHT, leant) * over
 	if rig == null: return

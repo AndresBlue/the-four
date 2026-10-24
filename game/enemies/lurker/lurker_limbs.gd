@@ -112,6 +112,12 @@ var cling := 0.0
 var look_point := Vector3.INF
 ## Off, the clip moves the arms and only the head and the eyes are turned here.
 var hands := true
+## Holds the scene gives its hands (her capture): limb name -> {point,
+## normal}, planted there every frame, no step and no probe.
+var grips := {}
+## How much of UPRIGHT the face is turned by: 1 always but in her capture,
+## where it stays upside down.
+var upright_share := 1.0
 ## World metres to one of the skeleton's: the creature is shown bigger than it
 ## was built (lurker_visual.gd, size).
 var size := 1.0
@@ -252,6 +258,16 @@ func _process_modification_with_delta(delta: float) -> void:
 	for limb in limbs:
 		var socket: Vector3 = xf * skeleton.get_bone_global_pose(limb.upper).origin
 		limb.tuck = socket + ((basis * limb.out) * 0.35 + up * 0.12) * limb.reach * size
+		var held: Dictionary = grips.get(limb.name, {})
+		if not held.is_empty():
+			limb.hold = held.point
+			limb.normal = held.normal
+			limb.free = false
+			limb.planted = true
+			limb.swing = false
+			limb.t = 1.0
+			_reach(limb, skeleton, xf, basis, up, space)
+			continue
 		if not limb.planted or limb.hold.distance_to(socket) > limb.reach * size * 2.5:
 			_probe(limb, skeleton, xf, basis, up, space)
 			limb.free = not limb.has_best
@@ -569,7 +585,7 @@ func _look(skeleton: Skeleton3D, xf: Transform3D, delta: float) -> void:
 	var want: Vector3 = sky - face_axis * sky.dot(face_axis)
 	var have: Vector3 = upright.basis.y - face_axis * upright.basis.y.dot(face_axis)
 	if want.length_squared() > 1e-6 and have.length_squared() > 1e-6:
-		var roll := clampf(have.signed_angle_to(want, face_axis), -UPRIGHT, UPRIGHT)
+		var roll := clampf(have.signed_angle_to(want, face_axis), -UPRIGHT, UPRIGHT) * upright_share
 		upright.basis = Basis(face_axis, roll) * upright.basis
 	# eased, so a turn of the body never snaps the face round
 	var frame := xf.basis.orthonormalized()
