@@ -4,7 +4,7 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 **Última actualización:** 23 de octubre de 2026, por la mañana. La semana va al 84 %: el autor subió su tope al **90 %** hasta que se renueve, el 24 de octubre a las 05:00.
 
-**Última instrucción del autor:** seguir el desarrollo hasta tener **el piso 2 jugable** o hasta el 90 % semanal, lo que llegue antes (23 de octubre, mañana), **sin workflows, solo con el agente principal**, **sin parar por la ventana de contexto** (23 de octubre: la regla del 60 % de CLAUDE.md no rige en esta tanda). 1b se hizo así entera, unidad a unidad de `encargos_1b.json`, cada una con su sonda en `evidence/1b_probe_U<n>.gd`.
+**Última instrucción del autor (24 de octubre):** la fase 2 (The Lurker) **la hace el director solo, sin flujos, como la fase 1**, unidad a unidad, con `verify` en verde antes de cada commit. Semana nueva desde el 24 de octubre a las 05:00 (1 % al empezar). Plan: (1) reconciliar `spec_f2_movement.md` y `spec_f2_mind.md` entre sí y con las decisiones del autor del 24 de octubre (claves de dificultad de 2b 4.1, ritmos de 2b 7.2, la guarida de la planta 3 en la sala de climatización, el salto desde el techo M1, el encogerse M2, el aviso desde arriba C5); (2) 2a-I, lo puro: el grafo de ductos (`duct_graph.gd` sobre `conduit_metres`), las rutas y sus pruebas sin cuerpo; (3) 2a-II, la cáscara con cuerpo y su sonda; (4) 2b, el cerebro, en el banco `lurker_arena`.
 
 ## En qué estamos
 
