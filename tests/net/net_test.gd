@@ -423,8 +423,26 @@ func office_host() -> void:
 	var bravo_back := await wait_for(func(): return level.match_net.away.has(bravo), 60.0)
 	check("Bravo se va y su plaza le espera", bravo_back)
 	check("Y vuelve", await wait_for(func(): return not level.match_net.away.has(bravo) and net.connected_seats().has(bravo), 120.0))
+	# The rides: the three into the first car, the button; the red lever's
+	# clock (short here) on level 2; the three into the second car.
+	power.lift_timer = 3.0
+	await pause_for(15.0)
+	check("Los tres bajan al nivel 2", await host_ride(0, 2))
+	check("La palanca roja de Alpha arma el montacargas", await wait_for(func(): return power.red == power.Red.ARMED, 90.0))
+	check("Los tres bajan al nivel 3", await host_ride(1, 3))
 	# The guests check what they were told before the room goes.
-	await pause_for(20.0)
+	await pause_for(15.0)
+
+## The host in a car, pressing until the floor is on `stage` (its riders in).
+func host_ride(car: int, stage: int) -> bool:
+	for attempt in 240:
+		if level.session.stage >= stage and level.lifts.boarding.is_empty(): return true
+		if level.lifts.boarding.is_empty() and not level.lifts.riding.has(level.player.slot):
+			level.player.global_position = level.hotel.lifts[car] + Vector3(0, 0.1, 0.3)
+			level.player.velocity = Vector3.ZERO
+			if level.lifts.inside(car).size() >= 3: level.match_net.call_lift(car)
+		await pause_for(0.5)
+	return level.session.stage >= stage
 
 ## A guest on floor 2: types its request at the window, takes its card from
 ## its station once in, and puts it through the reader; Alpha also sends a
@@ -484,7 +502,46 @@ func office_guest(words: String, index: int) -> void:
 		check("Y los para", await asked.call("stop", 5, func(): return not air.running(), &"air"))
 	check("El cuadro queda igual en todos", await wait_for(func(): return not power.on_order.has(0) and power.on_order.size() == power.budget, 60.0))
 	check("Y el aire también: la seguridad abierta, una carga gastada, parados", await wait_for(func(): return air.post_open and air.released and air.charges == 1 and not air.running(), 60.0))
-	if words != "Bravo": return
+	if words == "Bravo":
+		await office_return(words, index)
+	await office_rides(words)
+
+## Into a car and stood there until the floor is on `stage` (the host presses).
+func ride_to(car: int, stage: int, offset: Vector3) -> bool:
+	for attempt in 360:
+		if level.session.stage >= stage and level.lifts.boarding.is_empty(): return true
+		if level.lifts.boarding.is_empty() and not level.lifts.riding.has(level.net.local_seat):
+			level.player.global_position = level.hotel.lifts[car] + offset + Vector3(0, 0.1, 0)
+			level.player.velocity = Vector3.ZERO
+		await pause_for(0.5)
+	return level.session.stage >= stage
+
+## Both guests ride with the host to level 2; Alpha pulls the red lever there;
+## then the three ride on to level 3.
+func office_rides(words: String) -> void:
+	var offset := Vector3(0.4 if words == "Alpha" else -0.4, 0, 0)
+	check("Baja con los demás al nivel 2", await ride_to(0, 2, offset))
+	var power = level.objective(&"power")
+	if words == "Alpha":
+		var red: int = power.red_index()
+		var stand: Vector3 = power.usables[red].stand
+		for attempt in 30:
+			if power.red != power.Red.DOWN: break
+			level.player.global_position = stand + Vector3(0, 0.05, 0)
+			level.player.velocity = Vector3.ZERO
+			await pause_for(0.5)
+			level.match_net.use_office(&"power", "red", red)
+			await pause_for(0.5)
+		check("Tira de la palanca roja", power.red != power.Red.DOWN)
+	check("El reloj del montacargas acaba también aquí", await wait_for(func(): return power.red == power.Red.ARMED, 60.0))
+	check("Y bajan juntos al nivel 3", await ride_to(1, 3, offset))
+
+## Bravo leaves and comes back.
+func office_return(words: String, index: int) -> void:
+	var net = level.net
+	var files = level.objective(&"files")
+	var power = level.objective(&"power")
+	var air = level.objective(&"air")
 	# Bravo leaves and comes back: it builds the floor again, and the host's
 	# catch-up gives it the card, the board and the air as they stand.
 	var alpha_seat := seat_named("Alpha")
