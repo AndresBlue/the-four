@@ -159,7 +159,7 @@ class Profile extends RefCounted:
 ```
 
 - `y = py + room.height` if `OFFICE.false_ceiling(room)`, else `py + EXPOSED_CEILING` (service corridors 12, air room 22, plant 23: their slab is at 4.4, the network ducts hang under it with no collider, the main duct's floor is at 3.1; at 3.05 she rides above the door heads and under all of it).
-- **Open (section 15, author):** in those three types nothing is at 3.05. The network ducts, the cable tray and its rods have no collider (`spec_f1_geometry` 5.3), the slab is at 4.4, and her hands only ray layer 1 (`lurker_limbs.gd` `world_mask`) within about `ARM_SPAN` 0.88 x 1.35: she would float with nothing to hold. The battens hang at `minf(height - 0.6, 2.9) = 2.9` along the long axis (`spec_f1_geometry` 7.1), in her lane and inside her body. Until the author picks how she goes along a service corridor, these trays are built as written and the probe records, per trip, the metres she spends on them.
+- **Decided by the author (M1, 24 October 2026):** in those three types she goes **by the walls and by the ceiling**. The trays stay at 3.05 (over the door heads, under the main duct's floor and the network ducts); the walls are the wall strips below. What her hands hold at 3.05 (nothing has a collider there: the network ducts, the cable tray and its rods, `spec_f1_geometry` 5.3; her hands ray layer 1 only) is 2a-II's: colliders on a layer only her hands ray, on the ducts and cable trays over those rooms (7.1). Checked against the code: their battens are the hotel's (`office_geometry.lamp_fixture()` hands every batten room but the archives to `hotel_geometry.lamp_fixture()`, which hangs it at `height - 0.04`, on the slab), so nothing hangs in her lane there; only the archives' battens hang low (`minf(height - 0.6, 2.9)`, 2.35 m, over the aisles: 3.7). **New:** with a survivor near, she drops from the ceiling at them in **a long leap**; that is a move of `lurker_motion.gd` with its own clip, and its reach and timing are 2b's capture.
 - `rect` = `OFFICE.ceiling_rect(room)` (the cell less `WALL_HALF` on walled sides) shrunk by `TRAY_INSET` on every side that is **not** in `open_sides`. Across an open side the rect runs to the cell edge.
 - An open side whose neighbour's tray `y` differs by more than 0.001 is treated as walled (none expected: halls share a type; the merged air room and plant share 3.05).
 - `u, v` on a tray are world `x, z`. Frame: `Tu = +X`, `Tv = +Z`, `N = (0, -1, 0)`. Anchor `(u, y - hang, v)`.
@@ -187,6 +187,7 @@ class Profile extends RefCounted:
 - Outline point `o = origin + axis * v + across * p.x + UP * p.y`; section centre `c = origin + axis * v + UP * height / 2`. **Anchor (radial inset, never folds):** `c + (o - c) * maxf(0.0, 1.0 - hang / (o - c).length())`. At the middle of the ceiling stretch this is exactly `hang` under the ceiling, the same point a tray gives (the seam). `N` = the outline's normal at `u` (as the bench: `Y` is the outline's normal, not the inset direction). `Tu = across * t.x + UP * t.y`, `Tv = axis`.
 - `hang` in a channel is clamped to `CH_HANG_SHARE * minf(width, height) / 2` (0.30 for a 1.0 m aisle). `u` wraps (closed); `v` in `[0, length]`.
 - The walls of the section go up to the room's ceiling although the shelves stop at 2.1 m: above them the hands find the shelf tops and the ceiling by their own rays. Accepted, as in the bench.
+- An aisle may run on to the wall: the channel's `length` is cut, 1 cm at a time, to where its centre line leaves the `rect`s of its unit's trays at the same height (the trays' inset then keeps her off the wall there). A channel whose mouth is outside them is not built.
 
 ### 3.4 Band profiles (numbers for a 2.95 m room)
 
@@ -207,7 +208,7 @@ K5 = ( (t/2 + PORTAL_REACH), hB - c)    on b's ceiling
 - The boardroom (3.25, header 0.60, `s = 0`) goes straight down 0.6 m, fillets 0.30. Exposed rooms (3.05, header 0.40, `s = 0.2`) fillet about 0.36.
 - `origin = FLOOR.portal_between(a, b)` (on the floor, `py` of `a`); `across` = the unit grid step from `a` to `b` (`(signf(b.x - a.x), 0, 0)` or `(0, 0, signf(b.z - a.z))`); `width = PORTAL_WIDTH`.
 - Clearance (tested): the anchor curve stays at least `0.8 * c` from the head's two edges `(+-t/2, OPEN)`, never above `h - c + 1e-4`, never below `OPEN - c - 1e-4`. With 2.95 rooms the nearest approach is about 0.46 m.
-- **Open (section 15, author):** under the head the anchor is at 2.30, so with `BODY_DEPTH` 0.7 her body, and the 0.3 m sphere on layer 32, reach down to about 1.58 to 1.60 m, under the top of a survivor's capsule (1.81 m, `player.tscn`): she blocks the doorway at head height (mask 169 includes 32), and, moved by transform, pushes whoever is there. Whether she may is the author's call; the probe measures it (11.2).
+- **Decided by the author (M3, M4, M6):** under the head the anchor is at 2.30, so her body and the 0.3 m sphere on layer 32 come down to about 1.6 m: she **may block a doorway at head height**; survivors **are stopped by her, not pushed** (8.1: she is moved by transform, so the motion must not move her into a capsule); a leaf shutting on her **bounces off her** as off a body (7.3).
 
 **Wall band** (to a grille low on a wall; `n` measured from the wall's inner face, negative in the room):
 
@@ -219,6 +220,11 @@ K2 = (-c,          bottom)     bottom = point[1] - py + GRILLE_ABOVE (0.90 for W
 
 - The shell reads the manifest's raw exits (`manifest.ducts.exits[i]`: `{node, room, kind, point: [x, y, z], yaw}`), not `conduit_graph.exits`, and preloads nothing of the objectives (it stays pure): `across = -(Basis(Vector3.UP, yaw) * Vector3.BACK)` written inline (towards the wall; `Basis(UP, yaw).z` points into the room, the same as `facing(yaw)` of systems §0.2), `origin = Vector3(point[0], py, point[2])`, `width = WALL_BAND_WIDTH`. One 90 degree fillet of 0.45. At `K2` the frame is: `Tu = -UP` (head down), `N = -across` (into the room).
 - `func wall_band(room: int, side: String, along: float, bottom: float) -> int` makes one on demand for 2b (stalking down a wall, "sobre una mampara"), cached by `"%d:%s:%0.2f:%0.2f"`. `along` is as `FLOOR.doorways()` gives it. Same profile with `bottom` given.
+- Every band's `K0` is kept inside its tray's `rect` at `v = 0` (`fit_reach()`: the reach shrinks in 5 cm steps down to `c + 0.2`, or `t/2 + c + s + 0.2` on a door band; risk 2). `K2` is never above `h - c - BEND`, so the fillet always fits.
+
+**Wall strips** (the author, M1: "por las paredes"), in every room with a tray and no false ceiling, `walls_of[room]`: one wall band per walled side and stretch, the stretch the side's inner length less `WALL_CORNER` (0.45) at each end, less every doorway (`FLOOR.PORTAL / 2 + WALL_DOOR`, 0.3, either side), every locker (`LAYOUT.LOCKER.x / 2 + 0.1`) and every piece of furniture standing within `BAND_CLEAR + 0.3` of that face (its extent along the wall `+ 0.1`); stretches under `WALL_MIN` (1.0) are dropped. Its `origin` is the stretch's middle on the inner face, its `width` the stretch, `bottom = WALL_LOW` (1.0 over the floor), and the record carries `wall` (the side). A junction cell of a service corridor (all four sides open) has none.
+
+**Locker fronts** (the author, M8: down the locker's front to the slot, head down), `lockers_of[room]`: one wall band per entry of `room.hides`, on the locker's front (`LAYOUT.hide_wall()`, the face plus `LAYOUT.LOCKER.y`), `width = LAYOUT.LOCKER.x / 2`, `bottom = LOCKER_SLOT + FACE_OFFSET.z` (1.6 + 0.3: her face, 0.3 ahead of the anchor along a heading that points down, is level with a hider's eyes). The record carries `hide` (the index). Her face is then `BAND_CLEAR + FACE_OFFSET.y` (0.8 m) out from the front, not "a un palmo": the head bone's pose for that (2b) closes it.
 
 ### 3.5 State and its transform
 
@@ -229,6 +235,7 @@ class State extends RefCounted:
 	var v := 0.0
 	var heading := 0.0     ## radians in the patch's (Tu, Tv) plane: H = Tu * cos(heading) + Tv * sin(heading)
 	var hang := DEFAULT_HANG
+	var lowered := false   ## come down for a cue (M11): on a tray her hang may reach CUE_HANG_MAX
 	func copy() -> State
 ```
 
@@ -247,13 +254,18 @@ func max_hang(s: State) -> float                          ## HANG_MAX on a tray;
 func tray_state(room: int, x: float, z: float, hang := DEFAULT_HANG) -> State   ## clamped into rect; null without a tray
 func state_at(point: Vector3, hang := DEFAULT_HANG) -> State   ## the tray of room_at(point); outside any tray, the nearest tray rect point of that planta (plan distance, ties lower room id)
 func band_start(band: int, from_room: int, v := 0.0) -> State  ## u = 0 (from rooms[0]) or length (from rooms[1]), heading into the band (0 or PI)
-func band_end_state(band: int, to_room: int) -> State     ## the tray State at the far end, heading kept
+func band_end_state(band: int, to_room: int, v := 0.0) -> State   ## the tray State at that end, heading kept
 func channel_mouth(channel: int) -> State                 ## u at the middle of the ceiling stretch, v = 0, heading PI / 2 (into the aisle), hang = channel entry hang
 func channel_u_on_wall(channel: int, side: float, height: float) -> float  ## lurker_test.on_wall() on this section: side -1 left, 1 right, height clamped to [BEND, h - BEND]
 func switch_to(s: State, patch: int) -> State             ## the same transform on another patch; null if s is not on a seam to it
 func room_of(s: State) -> int
+func face_of(s: State) -> Vector3                         ## transform_of(s) * FACE_OFFSET
+func plenum_mouth(point: Vector3) -> Vector3              ## 3.6: where her sound comes out over the tiles
 func dump() -> Array                                      ## deterministic plain description (tests)
 ```
+
+- `max_hang()` on a tray is `CUE_HANG_MAX` when `lowered`. A band State switches only to the trays of its own `ends`.
+- Anchors are `Vector3`, 32-bit: the seam tests compare with `1e-5` of slack (`channel_seam() + 1e-5`), and the shell test's round trips hold to `2e-5`.
 
 - `transform_of()` must give an orthonormal basis for every valid State: on every patch `Tu`, `Tv` are orthonormal and both are perpendicular to `N` by construction, so `H` is unit and perpendicular to `N`.
 - **`advance()`**:
@@ -270,9 +282,14 @@ func dump() -> Array                                      ## deterministic plain
 
 ### 3.6 What the shell does not cover
 
-Floors and plain walls in general (versus, phase 4, will add a WALL patch kind on the same sweep machinery), the plenum over the false ceiling, the crawl spaces and the shaft (ducts are not surfaces: section 7.5). Rooms on another floor kind: `build()` returns null.
+Floors and plain walls in general (versus, phase 4, will add a WALL patch kind on the same sweep machinery; the wall strips of the rooms with no false ceiling and the locker fronts are bands, 3.3), the crawl spaces and the shaft (ducts are not surfaces: section 7.5). Rooms on another floor kind: `build()` returns null.
 
-**Open (section 15):** OFICINAS asks for her in the plenum in three places (4 "Rondar: Por ductos y plénum"; 2 "Una placa que se mueve, cruje en la perfilería [...] es ella arriba"; the open office "se la oye correr por encima"), the "Encima" posture over a locker (OFICINAS 2 and 4) is out of reach of any tray (a locker keeps the wardrobe's 2.3 m height, `hiding_place.gd:24`, leaving 0.65 m under a 2.95 ceiling, less than `BODY_DEPTH`), and 2b expects floor and wall patches (`spec_f2_mind` 0.1 and 8.3). 2a does not add any of these until they are decided.
+**Decided by the author (24 October 2026):**
+
+- **The plenum (M7)** is also a hidden layer over the tiles, with her sound coming out of the tile under her. It is not a surface (she is not seen there): the duct graph's gap and drop edges are her way through it (5.2), and `plenum_mouth(point)` gives the sound its source, the middle of the full tile under `point` on the false ceiling (`OFFICE.tile_of()`, clamped into `OFFICE.full_tiles()`), or `point` itself where the room has no false ceiling. 2b and phase 3 use it for her sounds in the plenum ("se la oye correr por encima", "cruje en la perfilería").
+- **Over a locker (M8):** the locker fronts of 3.3.
+- **Under the tallest furniture (M2):** her body shrinks to pass under it; that is the motion's (7.1, a squeeze of the body under a low lane) and is set once `BODY_DEPTH` is measured in the game.
+- 2b's floor patches and walls elsewhere (`spec_f2_mind` 0.1 and 8.3) stay with director decision 5 (section 15).
 
 ### 3.7 Lamps in her way
 
@@ -286,7 +303,10 @@ Troffer omnis sit at `height - LAMP_DROP` (0.35) at the middle of a room (`spec_
 
 ### 3.8 The back cue's posture (`cue_pose`)
 
-2b needs the torch to find her face (`TORCH_FACE_ANGLE` 20 degrees, `CUE_RANGE` 1.6 to 3.2 m, `spec_f2_mind.md`), and the face hangs above the victim's eye: on a 2.95 m ceiling at hang 0.35 the face (anchor + 0.45 along +Y) is at 2.15 m, 0.51 m over a standing eye (camera at 1.64), 17.7 degrees at 1.6 m; in the boardroom (3.25) 26.8 degrees at 1.6 m. `cue_pose(eye, view, distance)`: of the tray States in `eye`'s room `distance` behind `eye` (`eye - flat(view) * distance`, clamped into the rect), the one with the smallest hang that keeps the face at most `CUE_ANGLE` (15 degrees) above the horizontal of `eye`, within `max_hang()` and with the measured body clearance (7.1) over the floor of that point; null when none. The face offset is `FACE_OFFSET := Vector3(0, 0.45, 0.3)` in her frame, the same `face_point()` uses (8.2); who defines the face for good, 2a's offset or 2b's head bone, is in section 15. A crouched victim (camera near 0.9 m) has no such pose from any ceiling: section 15 (author).
+2b needs the torch to find her face (`TORCH_FACE_ANGLE` 20 degrees, `CUE_RANGE` 1.6 to 3.2 m, `spec_f2_mind.md`), and the face hangs above the victim's eye: on a 2.95 m ceiling at hang 0.35 the face (anchor + 0.45 along +Y) is at 2.15 m, 0.51 m over a standing eye (camera at 1.64), 17.7 degrees at 1.6 m; in the boardroom (3.25) 26.8 degrees at 1.6 m. `cue_pose(eye, view, distance)`: of the tray States in `eye`'s room `distance` behind `eye` (`eye - flat(view) * distance`, clamped into the rect), the one with the smallest hang that keeps the face at most `CUE_ANGLE` (15 degrees) above the horizontal of `eye`, within `max_hang()` and with the measured body clearance (7.1) over the floor of that point; null when none. The face offset is `FACE_OFFSET := Vector3(0, 0.45, 0.3)` in her frame, the same `face_point()` uses (8.2); who defines the face for good, 2a's offset or 2b's head bone, is in section 15.
+
+- **As built:** her heading points at the eye in plan, so the face is 0.3 nearer the victim than the anchor; the hang is solved exactly (`top - FACE_OFFSET.y - eye.y - tan(CUE_ANGLE) * plan`, at least `HANG_MIN`). When the room's rect clamps the point to under `CUE_NEAR` (1.0 m) in plan from the eye, there is no pose (her face would be in the victim's).
+- **A crouched victim (the author, M11: "baja ella"):** when no hang up to `HANG_MAX` does it, she comes down further, up to `CUE_HANG_MAX` (1.5), with her face at least `CUE_FACE_LOW` (0.6) over the floor; the State is `lowered`. Measured on seeds 1 to 3 (11.1 I2): standing, a pose in 89 % of the cases, none lowered; crouched, 89 %, 72 % lowered.
 
 ---
 
@@ -849,6 +869,16 @@ O. **Rutas** (stub level: `manifest`, `hotel` with `lit(room)` from a set, `door
 P. **Texto.** No U+00B7 or U+2014 in the six new scripts (read with `FileAccess`).
 
 Add `'office/lurker_shell_test'` to `$tests` in `tools/verify.ps1`.
+
+**As built (24 October 2026, director).** `tests/office/lurker_shell_test.gd`, 35 checks, about 64 s (21 s of it generating the ten floors), in `verify.ps1`:
+
+- E: a door band's ends at `v = +-0.6` that fall outside their tray's `rect` (a door near a corner) are not seams and are counted (`door_band_ends_off_their_tray`, 450 on seeds 1 to 10); at `v = 0` every end must be inside. A channel's widest seam is allowed `SEAM_TOL + 1e-4` of position, one step past it none.
+- G: every band of seed 1 at 5 mm and `v` in `{-0.5, 0, 0.5}`, the other seeds at 2 cm and `v = 0`; channels on seeds 1 to 3. The step bounds carry `2e-6` of slack for 32-bit vectors.
+- I: a channel's `length` is at most its aisle's long side (cut at the trays, 3.3); its mouth, middle and end lie inside its unit's trays.
+- New, the author's: the wall strips of every walled side of a room with no false ceiling that has nothing on it, ending at `WALL_LOW` and inside the room's ceiling less 0.3; every locker's front band ending at `LOCKER_SLOT + FACE_OFFSET.z`, `BAND_CLEAR` in front of the locker; `plenum_mouth()` on the fixture and in a room without a false ceiling.
+- I2: `clear_point()` of every room's centre on seeds 1 to 10 (no room is without a clear point); `cue_pose()` on seeds 1 to 3, eye at 1.64 and at 0.9; `den_point()` comes with `lurker.gd` (2a-II).
+- N is covered by `conduit_graph_test.gd`; O comes with `lurker_routes.gd`.
+- Figures in `evidence/lurker_shell_test.json`: `min_radius` 0.30, `head_edge_nearest` 0.35 (the boardroom, straight down), 160 rooms with no false ceiling with 511 strips, 951 locker fronts.
 
 ### 11.2 `tools/dev/lurker_route_probe.gd`
 
