@@ -20,6 +20,9 @@ const SCORE := preload("res://game/app/capture_score.gd")
 const FALL := preload("res://game/app/camera_fall.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 var level
+## The score of the scene being played (executions.score()): its creature's
+## capture style's.
+func score(): return level.executions.score() if level != null and level.get("executions") != null else SCORE
 
 ## The face in the lens: how far the lens is from the mask as it arrives, once
 ## it is there, and after the last jerk (metres; the pale of the mask is 14 cm
@@ -152,7 +155,7 @@ func reset() -> void:
 ## Whether the victim's picture is snow at this second of its capture: from
 ## the cut on, or -- the short version -- from when the camera came to rest.
 func lost(time: float) -> bool:
-	return time >= SCORE.CUT_TIME or gone
+	return time >= score().CUT_TIME or gone
 
 func recording() -> bool:
 	return running
@@ -195,7 +198,7 @@ func begin(execution: Dictionary, covered := false) -> void:
 	if dark or entry in ["wardrobe", "ambush"]: player.pilot_as = LAMP_FACE
 	elif bool(execution.get("torch", false)): player.pilot_as = LAMP_FACE_LIT
 	# The face is there on the next frame: a jump, not a move to smear.
-	if SCORE.face_start(entry) <= 0.0 or busy: level.rig.motion_cut()
+	if score().face_start(entry) <= 0.0 or busy: level.rig.motion_cut()
 	take = plan(execution)
 	level.executions.report_lens(id, take.rest, int(take.kind) == FALL.VIEW and not brief and not dark)
 	if soft:
@@ -254,7 +257,7 @@ func update(execution: Dictionary) -> void:
 # --- The camera -------------------------------------------------------------------
 
 func fly_at() -> float:
-	return SCORE.face_end(entry) + SCORE.SWIPE_REACH
+	return score().face_end(entry) + score().SWIPE_REACH
 
 func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 	var player = level.player
@@ -263,12 +266,12 @@ func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 	if player.zoom > 1.0:
 		player.zoom_wanted = 1.0
 		player.zoom = pow(2.0, move_toward(log(player.zoom) / log(2.0), 0.0, delta * 2.6 / 0.08))
-	var face_from := 0.0 if busy else SCORE.face_start(entry)
+	var face_from: float = 0.0 if busy else score().face_start(entry)
 	var wanted := camera.global_transform
 	# The lamp's blink is set again from the floor, so that the blow falls in
 	# the three tenths it is dark and the body comes down in its light
 	# (docs/EXECUTION.md, 10).
-	if once("lamp", time, SCORE.KILL_TIME - LAMP_BEFORE): level.camcorder.blink = 0.0
+	if once("lamp", time, score().KILL_TIME - LAMP_BEFORE): level.camcorder.blink = 0.0
 	if thrown_at < 0.0 and time >= fly_at():
 		thrown_at = fly_at()
 		landed_at = thrown_at + (0.0 if plain else float(take.landed))
@@ -306,10 +309,10 @@ func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
 	if not (framed is Transform3D): return thrown
 	var mask: Transform3D = framed
 	var side := float(execution.get("side", 1.0))
-	var arrived := 1.0 if busy else SCORE.smooth(since / SCORE.ARRIVE)
-	var jerk := SCORE.smooth(SCORE.ramp(since, SCORE.JERK_TIME, SCORE.JERK_TIME + SCORE.JERK_LENGTH))
+	var arrived: float = 1.0 if busy else score().smooth(since / score().ARRIVE)
+	var jerk: float = score().smooth(score().ramp(since, score().JERK_TIME, score().JERK_TIME + score().JERK_LENGTH))
 	var distance := maxf(MASK_NEAR, lerpf(MASK_FAR, MASK_HELD, arrived) - (MASK_HELD - MASK_CLOSE) * jerk)
-	var coming := 0.0 if soft else SCORE.ramp(time, SCORE.face_end(entry) - LUNGE, SCORE.face_end(entry))
+	var coming: float = 0.0 if soft else score().ramp(time, score().face_end(entry) - LUNGE, score().face_end(entry))
 	coming *= coming
 	distance = lerpf(distance, MASK_LUNGE, coming)
 	var eye := mask.origin + mask.basis.z * distance
@@ -339,8 +342,8 @@ func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
 func turning(execution: Dictionary, time: float) -> Transform3D:
 	var side := float(execution.get("side", 1.0))
 	var face := facing(execution, 0.0, time)
-	var turned := SCORE.turned(entry, time)
-	var pulled := SCORE.smooth(minf(time / (SCORE.BACK_TURN_FROM * 0.45), 1.0))
+	var turned: float = score().turned(entry, time)
+	var pulled: float = score().smooth(minf(time / (score().BACK_TURN_FROM * 0.45), 1.0))
 	# The long way round or the short one, it goes the way the arm takes it.
 	var from_yaw := hand.basis.get_euler().y
 	var to_yaw := face.basis.get_euler().y
@@ -360,7 +363,7 @@ func clear_of_head(point: Vector3) -> bool:
 
 ## When the body is on the floor beside the camera.
 func body_at() -> float:
-	return SCORE.DROP_TIME + SCORE.FALL_LENGTH * 0.85
+	return score().DROP_TIME + score().FALL_LENGTH * 0.85
 
 ## The lens's focus: on the mask while the face lasts, and left wherever it
 ## was when the camera hit the floor -- the carpet in front of it.
@@ -391,7 +394,7 @@ func frame_picture(time: float) -> void:
 	# words that say so with it; the rest is heard.
 	if brief and not gone and rested_at >= 0.0 and time >= rested_at + 0.15:
 		gone = true
-		level.ui.lost_signal(SCORE.END_TIME - time + level.executions.LOST_HOLD)
+		level.ui.lost_signal(score().END_TIME - time + level.executions.LOST_HOLD)
 	var hit := 0.0
 	var band := -1.0
 	var fray := 0.0
@@ -410,14 +413,14 @@ func frame_picture(time: float) -> void:
 			hit = maxf(hit, strength)
 			band = 1.0 - (time - float(blow[0])) / (blow[1] as Vector2).y
 		# From the body's fall the mechanism does not settle again.
-		fray = pow(SCORE.ramp(time, body_at(), SCORE.CUT_TIME), 2.2)
+		fray = pow(score().ramp(time, body_at(), score().CUT_TIME), 2.2)
 	level.post_material.set_shader_parameter("tape_hit", hit)
 	level.post_material.set_shader_parameter("tape_band", band)
 	level.post_material.set_shader_parameter("tape_fray", fray)
 	# Lying within reach of what the blow throws, the lens has some of it on
 	# its glass from a tenth of a second after (blood.gd): to the end.
 	var spattered := 0.0
-	if not plain and not gone and rested_at >= 0.0 and rested_at <= SCORE.KILL_TIME and level.executions.blood.on_lens(id, (take.rest as Transform3D).origin): spattered = maxf(0.0, time - SCORE.KILL_TIME - 0.1)
+	if not plain and not gone and rested_at >= 0.0 and rested_at <= score().KILL_TIME and level.executions.blood.on_lens(id, (take.rest as Transform3D).origin): spattered = maxf(0.0, time - score().KILL_TIME - 0.1)
 	level.post_material.set_shader_parameter("lens_blood", spattered)
 	level.post_material.set_shader_parameter("lens_seed", float(id % 89) + 0.37)
 	# And which way it runs on the glass: down, as the camera lies.
@@ -437,14 +440,14 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 	if is_instance_valid(scream):
 		# It does not last the scene: once the camera is out of the hands it is
 		# a sound left behind in the room, and it is over before the floor.
-		var leaving := SCORE.ramp(time, SCORE.face_end(entry), 1.1)
+		var leaving: float = score().ramp(time, score().face_end(entry), 1.1)
 		if leaving > 0.0 and scream.playing:
 			scream.pitch_scale = lerpf(1.0, 0.9, leaving)
 			scream.volume_db = (SOFT_DB if soft else 0.0) + lerpf(0.0, -42.0, leaving * leaving)
 			if leaving >= 1.0: scream.stop()
 	# From the swipe on, what is heard is what the camcorder's microphone
 	# picks up from where it lies.
-	if thrown_at >= 0.0 and mic.is_empty() and time < SCORE.CUT_TIME:
+	if thrown_at >= 0.0 and mic.is_empty() and time < score().CUT_TIME:
 		mic_on()
 		hiss.volume_db = HISS_DB
 		hiss.play()
@@ -460,19 +463,19 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 				if once("knock%d" % index, time, thrown_at + float(again[index][0])):
 					gain = minf(gain, AGC_FLOOR * float(again[index][1]))
 					play_case(-3.0 + linear_to_db(float(again[index][1])) - 3.0, 0.82 + 0.06 * float(index), index)
-		if once("blow", time, SCORE.KILL_TIME): gain = minf(gain, AGC_BLOW)
+		if once("blow", time, score().KILL_TIME): gain = minf(gain, AGC_BLOW)
 		if once("body", time, body_at()): gain = minf(gain, AGC_FLOOR + 2.0)
 		(mic[2] as AudioEffectAmplify).volume_db = gain + dropout(time)
-	if once("rustle", time, SCORE.LIFT_FROM + 0.2): rustle(execution, 0)
-	if once("rustle_again", time, SCORE.LIFT_FROM + 0.8): rustle(execution, 1)
+	if once("rustle", time, score().LIFT_FROM + 0.2): rustle(execution, 0)
+	if once("rustle_again", time, score().LIFT_FROM + 0.8): rustle(execution, 1)
 	# The picture going is the channel dying: the same instant, not a beat
 	# late. The short version loses its picture early and goes on hearing
 	# through the snow, which is quieter until the tape really ends.
-	var ended := time >= SCORE.CUT_TIME
+	var ended: bool = time >= score().CUT_TIME
 	if lost(time) and once("snow", time, 0.0) and is_instance_valid(level.static_sound):
 		level.static_sound.volume_db = -2.0 if ended else -15.0
 		level.static_sound.play()
-	if ended and once("cut", time, SCORE.CUT_TIME):
+	if ended and once("cut", time, score().CUT_TIME):
 		mic_off()
 		hiss.stop()
 		if is_instance_valid(level.static_sound): level.static_sound.volume_db = -2.0
@@ -482,7 +485,7 @@ func frame_sound(execution: Dictionary, time: float, delta: float) -> void:
 ## of it is the same however often it is asked.
 func dropout(time: float) -> float:
 	if plain or gone: return 0.0
-	var fray := pow(SCORE.ramp(time, body_at(), SCORE.CUT_TIME), 2.2)
+	var fray := pow(score().ramp(time, body_at(), score().CUT_TIME), 2.2)
 	if fray <= 0.02: return 0.0
 	var piece := floorf(time * DROPOUT_RATE)
 	var draw := fposmod(sin(piece * 12.9898 + float(id) * 78.233) * 43758.5453, 1.0)

@@ -42,6 +42,9 @@ const SPRAY_DB := -6.0
 const WELL_DB := -10.0
 const WELL_FADE := 3.5
 var level
+## The score of the scene being played (executions.score()): its creature's
+## capture style's.
+func score(): return level.executions.score() if level != null and level.get("executions") != null else SCORE
 
 ## What stops a drop: walls, floors, ceilings and furniture. Not doors or the
 ## leaves of wardrobes, which move; not bodies.
@@ -111,12 +114,12 @@ func begin(execution: Dictionary) -> void:
 func sounds(scene: Dictionary, rng: RandomNumberGenerator, sparing: bool) -> Array:
 	var said: Array = [
 		{"time": 0.04, "path": GUSHES[rng.randi_range(0, GUSHES.size() - 1)], "at": chest_at(scene, 0.04), "db": GRAB_DB},
-		{"time": SCORE.KILL_TIME + 0.02, "path": SPRAY, "at": face_at(scene, SCORE.KILL_TIME), "db": SPRAY_DB},
+		{"time": score().KILL_TIME + 0.02, "path": SPRAY, "at": face_at(scene, score().KILL_TIME), "db": SPRAY_DB},
 	]
 	if sparing: return said
 	var first := rng.randi_range(0, GUSHES.size() - 1)
 	for pulse in 4:
-		var at: float = SCORE.DROP_TIME + 0.04 + 0.21 * float(pulse)
+		var at: float = score().DROP_TIME + 0.04 + 0.21 * float(pulse)
 		said.append({"time": at, "path": GUSHES[(first + pulse) % GUSHES.size()], "at": chest_at(scene, at), "db": WELL_DB - WELL_FADE * float(pulse)})
 	return said
 
@@ -139,28 +142,28 @@ func snapshot(execution: Dictionary) -> Dictionary:
 	var straight: bool = bool(execution.get("straight", false)) or bool(execution.get("slump", false))
 	return {
 		"seed": int(execution.get("seed", 0)), "point": point, "forward": forward, "right": forward.cross(Vector3.UP),
-		"far": float(execution.get("far", SCORE.HOLD_FAR.y)), "crouched": bool(execution.get("crouched", false)),
+		"far": float(execution.get("far", score().HOLD_FAR.y)), "crouched": bool(execution.get("crouched", false)),
 		"side": float(execution.get("side", 1.0)), "exclude": exclude,
 		"fall": level.executions.fall_way(yaw, 0.0 if straight else float(execution.get("side", 1.0))),
-		"room": float(execution.get("room", SCORE.LIE_ROOM)), "sill": level.executions.seat_floor(),
+		"room": float(execution.get("room", score().LIE_ROOM)), "sill": level.executions.seat_floor(),
 	}
 
 ## Where the body is held at a second of the scene (the capture style's
 ## victim_hold_point, The Locust's, from what was kept of it).
 func held_at(scene: Dictionary, time: float) -> Vector3:
-	var reach := lerpf(float(scene.far), SCORE.HOLD_NEAR, SCORE.closing(time))
-	return (scene.point as Vector3) + (scene.forward as Vector3) * reach + Vector3.UP * (SCORE.HOLD_STAND * (1.0 - SCORE.fall(time)) + SCORE.lift(time) * SCORE.LIFT_HEIGHT)
+	var reach := lerpf(float(scene.far), score().HOLD_NEAR, score().closing(time))
+	return (scene.point as Vector3) + (scene.forward as Vector3) * reach + Vector3.UP * (score().HOLD_STAND * (1.0 - score().fall(time)) + score().lift(time) * score().LIFT_HEIGHT)
 
 ## The wound in its chest at a second of the scene: where the blade holds it,
 ## and once it is let go, down and back with it.
 func chest_at(scene: Dictionary, time: float) -> Vector3:
-	var falling := SCORE.fall(time)
-	var low := (1.0 - SCORE.lift(time)) if bool(scene.crouched) else 0.0
-	var up := lerpf(lerpf(1.2, 0.68, low), 0.3, SCORE.sunk(falling))
-	return held_at(scene, time) + Vector3.UP * up + (scene.fall as Vector3) * SCORE.seat_back(float(scene.room)) * SCORE.sunk(falling)
+	var falling: float = score().fall(time)
+	var low: float = (1.0 - score().lift(time)) if bool(scene.crouched) else 0.0
+	var up := lerpf(lerpf(1.2, 0.68, low), 0.3, score().sunk(falling))
+	return held_at(scene, time) + Vector3.UP * up + (scene.fall as Vector3) * score().seat_back(float(scene.room)) * score().sunk(falling)
 
 func face_at(scene: Dictionary, time: float) -> Vector3:
-	var low := (1.0 - SCORE.lift(time)) if bool(scene.crouched) else 0.0
+	var low: float = (1.0 - score().lift(time)) if bool(scene.crouched) else 0.0
 	return held_at(scene, time) + Vector3.UP * lerpf(1.58, 0.88, low)
 
 ## A direction within `spread` radians of another.
@@ -187,29 +190,29 @@ func spill(scene: Dictionary, rng: RandomNumberGenerator, drops: Array, sparing:
 	# Held: it runs down the blade and off the body, a drop at a time and
 	# then faster, from wherever the body is by then.
 	var when := 0.35
-	while when < SCORE.DROP_TIME:
+	while when < score().DROP_TIME:
 		var from := chest_at(scene, when) - forward * rng.randf_range(0.02, 0.2) + right * rng.randf_range(-0.1, 0.1) - Vector3.UP * rng.randf_range(0.1, 0.5)
 		drop(drops, when, from, Vector3(rng.randf_range(-0.15, 0.15), 0.0, rng.randf_range(-0.15, 0.15)), rng.randf_range(0.11, 0.2))
-		when += rng.randf_range(0.16, 0.42) * lerpf(1.0, 0.55, SCORE.ramp(when, 0.0, SCORE.KILL_TIME))
+		when += rng.randf_range(0.16, 0.42) * lerpf(1.0, 0.55, score().ramp(when, 0.0, score().KILL_TIME))
 	# The blow: through the face and out behind, the way the arm was going --
 	# from the creature's shoulder, above, so most of it goes down the room.
-	var face := face_at(scene, SCORE.KILL_TIME)
+	var face := face_at(scene, score().KILL_TIME)
 	var struck := (face - ((scene.point as Vector3) + Vector3.UP * (face.y - (scene.point as Vector3).y + 0.35) - right * 0.3)).normalized()
 	var behind := face + struck * 0.13
 	for index in 54:
 		var fast := rng.randf()
-		drop(drops, SCORE.KILL_TIME + rng.randf() * 0.1, behind + Vector3(rng.randf_range(-0.04, 0.04), rng.randf_range(-0.04, 0.04), rng.randf_range(-0.04, 0.04)), scattered(rng, struck, lerpf(0.75, 0.3, fast)) * lerpf(1.2, 7.5, fast * fast), lerpf(0.24, 0.07, fast) * rng.randf_range(0.8, 1.25))
+		drop(drops, score().KILL_TIME + rng.randf() * 0.1, behind + Vector3(rng.randf_range(-0.04, 0.04), rng.randf_range(-0.04, 0.04), rng.randf_range(-0.04, 0.04)), scattered(rng, struck, lerpf(0.75, 0.3, fast)) * lerpf(1.2, 7.5, fast * fast), lerpf(0.24, 0.07, fast) * rng.randf_range(0.8, 1.25))
 	# And the blade comes back out and up: what is on it leaves it in a line.
 	var swing := Basis(right, 0.0)
 	for index in 9:
 		var along := float(index) / 8.0
 		swing = Basis(-right, lerpf(0.5, 2.1, along))
-		drop(drops, SCORE.KILL_TIME + 0.2 + 0.12 * along, face - struck * 0.25 * along + Vector3.UP * 0.1, (swing * forward + right * rng.randf_range(-0.08, 0.08)).normalized() * rng.randf_range(4.5, 6.0), rng.randf_range(0.06, 0.1))
+		drop(drops, score().KILL_TIME + 0.2 + 0.12 * along, face - struck * 0.25 * along + Vector3.UP * 0.1, (swing * forward + right * rng.randf_range(-0.08, 0.08)).normalized() * rng.randf_range(4.5, 6.0), rng.randf_range(0.06, 0.1))
 	if sparing: return
 	# Let go: the wound in the chest is open, and it wells -- a few times,
 	# each weaker than the last, as the body goes down.
 	for pulse in 4:
-		var at: float = SCORE.DROP_TIME + 0.04 + 0.21 * float(pulse)
+		var at: float = score().DROP_TIME + 0.04 + 0.21 * float(pulse)
 		var strength := 1.0 - 0.24 * float(pulse)
 		for index in 7 - pulse:
 			drop(drops, at + rng.randf() * 0.07, chest_at(scene, at) - forward * 0.12, scattered(rng, (-forward * 0.6 + Vector3.UP).normalized(), 0.75) * rng.randf_range(0.8, 2.3) * strength, rng.randf_range(0.09, 0.18))
@@ -337,9 +340,9 @@ func lay(record: Dictionary, stains: Array) -> void:
 ## Where the body comes to lie, the pool: under its trunk, as far each way as
 ## nothing stops it.
 func pool(record: Dictionary, space: PhysicsDirectSpaceState3D, scene: Dictionary, rng: RandomNumberGenerator) -> void:
-	var lean := SCORE.seat_lean(float(scene.room))
-	var back := SCORE.seat_back(float(scene.room))
-	var feet: Vector3 = (scene.point as Vector3) + (scene.forward as Vector3) * SCORE.HOLD_NEAR
+	var lean: float = score().seat_lean(float(scene.room))
+	var back: float = score().seat_back(float(scene.room))
+	var feet: Vector3 = (scene.point as Vector3) + (scene.forward as Vector3) * score().HOLD_NEAR
 	# Under its head and its chest, and a little to the side its head lolls to.
 	var middle := feet + (scene.fall as Vector3) * (back + 0.6 * sin(lean)) + (scene.right as Vector3) * float(scene.side) * rng.randf_range(0.05, 0.16)
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, middle)
@@ -383,7 +386,7 @@ func pool(record: Dictionary, space: PhysicsDirectSpaceState3D, scene: Dictionar
 	holder.global_transform = Transform3D(Basis.IDENTITY, middle + Vector3.UP * 0.003)
 	(record.nodes as Array).append(holder)
 	record["pool"] = material
-	record["pool_from"] = SCORE.DROP_TIME + SCORE.FALL_LENGTH * 0.8
+	record["pool_from"] = score().DROP_TIME + score().FALL_LENGTH * 0.8
 	record["pool_at"] = middle
 
 ## The drops while they are in the air: a streak each, as long as the frame
@@ -466,7 +469,7 @@ func on_lens(id: int, lens: Vector3) -> bool:
 	for record in records:
 		if int(record.id) != id: continue
 		var scene: Dictionary = record.scene
-		var held := (scene.point as Vector3) + (scene.forward as Vector3) * SCORE.HOLD_NEAR
+		var held: Vector3 = (scene.point as Vector3) + (scene.forward as Vector3) * score().HOLD_NEAR
 		return Vector2(lens.x - held.x, lens.z - held.z).length() < LENS_REACH and (lens - (scene.point as Vector3)).dot(scene.forward as Vector3) > 0.1
 	return false
 

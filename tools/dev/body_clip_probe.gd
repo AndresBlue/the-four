@@ -135,7 +135,8 @@ func watch(title: String) -> void:
 		return
 	var worst := {}
 	var guard := 0
-	var until: float = SCORE.DROP_TIME + SCORE.FALL_LENGTH + 0.35
+	var beat = level.executions.score()
+	var until: float = beat.DROP_TIME + beat.FALL_LENGTH + 0.35
 	while not level.execution.is_empty() and guard < 700 and float(level.execution.time) < until:
 		await process_frame
 		guard += 1

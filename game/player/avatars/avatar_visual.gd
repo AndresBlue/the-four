@@ -391,7 +391,7 @@ var stain: ShaderMaterial
 ## The wounds as they are this frame: the blade that holds it, through the
 ## chest from the grab; and the blow, through the face at KILL_TIME. `since`
 ## is the scene's clock.
-func bleed(since: float) -> void:
+func bleed(since: float, kill_time := SCORE.KILL_TIME) -> void:
 	if stain == null:
 		stain = ShaderMaterial.new()
 		stain.shader = WORN_BLOOD
@@ -418,7 +418,7 @@ func bleed(since: float) -> void:
 			frames.append(global_basis.orthonormalized().inverse())
 	stain.set_shader_parameter("wound_at", PackedVector3Array(places))
 	stain.set_shader_parameter("wound_frame", frames)
-	stain.set_shader_parameter("wound_age", PackedFloat32Array([since - 0.03, since - SCORE.KILL_TIME]))
+	stain.set_shader_parameter("wound_age", PackedFloat32Array([since - 0.03, since - kill_time]))
 
 ## Nobody is bleeding: the stain is off whatever wore it.
 func staunch() -> void:
@@ -612,26 +612,28 @@ func under_floor(floor_y: float) -> float:
 ## `clear`: the bodies the scene's own rays go through (kept_out).
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
+	# The score of the scene (the creature's capture style's).
+	var beat = state.get("score", SCORE)
 	var lift := float(state.get("lift", 0.0))
 	var limp := float(state.get("limp", 0.0))
 	var fall := float(state.get("fall", 0.0))
 	var time := float(state.get("time", 0.0))
 	var side := float(state.get("side", 1.0))
 	var slump := bool(state.get("slump", false))
-	var room := float(state.get("room", SCORE.LIE_ROOM))
+	var room := float(state.get("room", beat.LIE_ROOM))
 	fallen = fall > 0.0
-	if bool(state.get("bleed", false)): bleed(time)
+	if bool(state.get("bleed", false)): bleed(time, beat.KILL_TIME)
 	elif stain != null: staunch()
-	var sat := SCORE.sunk(fall)
-	var gone := SCORE.toppled(fall)
-	var jolt := SCORE.jolt(fall)
+	var sat: float = beat.sunk(fall)
+	var gone: float = beat.toppled(fall)
+	var jolt: float = beat.jolt(fall)
 	# Half way over is where what trails it trails most.
 	var trail := sin(PI * sqrt(gone)) * (1.0 - jolt)
 	var clear := {}
 	if rig != null and state.has("clear") and is_inside_tree() and get_parent_node_3d() != null:
 		clear = {"space": get_world_3d().direct_space_state, "exclude": state.clear, "floor": get_parent_node_3d().global_position.y - float(state.get("height", 0.0)) - STANDS_OVER + float(state.get("sill", 0.0)) * sat}
-	var seat := SCORE.seat_back(room)
-	var recline := SCORE.seat_lean(room)
+	var seat: float = beat.seat_back(room)
+	var recline: float = beat.seat_lean(room)
 	# Which way it goes over: back, and to a side where there is one to go to.
 	var way := Vector3(0.0 if slump or bool(state.get("straight", false)) else side * 0.62, 0.0, 0.78).normalized()
 	var over := Basis(Vector3.RIGHT, -(0.06 + 0.1 * lift + 0.12 * limp) * (1.0 - sat))
@@ -640,7 +642,7 @@ func pose_capture(state: Dictionary) -> void:
 	if rig == null: return
 	# Its hips come down where its legs give, a little behind its feet.
 	var hips := hip_rest()
-	var low := lerpf(SCORE.SEAT_HEIGHT, LAID_HIPS, gone * clampf(recline / 1.45, 0.0, 1.0))
+	var low := lerpf(beat.SEAT_HEIGHT, LAID_HIPS, gone * clampf(recline / 1.45, 0.0, 1.0))
 	var sitting := Vector3(hips.x + way.x * seat * sat, lerpf(hips.y, low + float(state.get("sill", 0.0)), sat), hips.z + way.z * seat * sat)
 	# Held, it is bent about its feet, as it always was; down, about its hips.
 	transform = Transform3D(turned, (sitting - turned * hips) * minf(1.0, sat * 4.0))
@@ -671,7 +673,7 @@ func pose_capture(state: Dictionary) -> void:
 	# as somebody's does who has gone, and it stays turned -- nobody's face
 	# is left looking into the lens.
 	var away := float(state.get("away", side))
-	var faded := SCORE.smooth(SCORE.ramp(time, SCORE.KILL_TIME + 0.05, SCORE.KILL_TIME + 0.75))
+	var faded: float = beat.smooth(beat.ramp(time, beat.KILL_TIME + 0.05, beat.KILL_TIME + 0.75))
 	turn_bone("head", -below, away * 0.95 * faded)
 	turn_bone("head", forward, -away * (0.12 * limp + 0.1 * faded))
 	if not clear.is_empty():
@@ -737,9 +739,9 @@ func pose_capture(state: Dictionary) -> void:
 		# back: the thighs hang a little forward of the hips and the shins a
 		# little behind the knees, as legs with nothing under them do. (Turned
 		# the other way, as they were, the knees were pushed in backwards.)
-		var since := time - SCORE.LIFT_FROM
-		var fight := alive * SCORE.smooth(since / 0.2) * (1.0 - SCORE.smooth((since - 0.45) / 0.55))
-		var tread := alive * SCORE.smooth((since - 0.55) / 0.6) * (1.0 - 0.6 * SCORE.ramp(time, SCORE.LIFT_TO, SCORE.KILL_TIME))
+		var since: float = time - beat.LIFT_FROM
+		var fight: float = alive * beat.smooth(since / 0.2) * (1.0 - beat.smooth((since - 0.45) / 0.55))
+		var tread: float = alive * beat.smooth((since - 0.55) / 0.6) * (1.0 - 0.6 * beat.ramp(time, beat.LIFT_TO, beat.KILL_TIME))
 		# No two legs alike: one leads, harder and quicker; the other follows
 		# late, less, at a pace of its own, and hangs a little further forward.
 		var lead := leg_side * side > 0.0
@@ -748,7 +750,7 @@ func pose_capture(state: Dictionary) -> void:
 		var reach := 1.0 if lead else 0.6
 		var kicking := 0.65 * sin(time * 11.5 * pace + own) + 0.35 * sin(time * 18.0 * pace + own * 1.7)
 		var treading := sin(time * 4.2 * pace + own)
-		var swinging := limp * sin((time - SCORE.KILL_TIME) * 5.5 * pace + own * 0.5) * exp(-maxf(0.0, time - SCORE.KILL_TIME) * 2.2)
+		var swinging: float = limp * sin((time - beat.KILL_TIME) * 5.5 * pace + own * 0.5) * exp(-maxf(0.0, time - beat.KILL_TIME) * 2.2)
 		var hip := (0.04 if lead else 0.1) + 0.12 * lift + 0.22 * reach * fight * kicking + 0.12 * reach * tread * treading + 0.07 * swinging
 		var knee := (0.12 if lead else 0.2) + 0.14 * lift + 0.3 * reach * fight * (0.5 - 0.5 * kicking) + 0.2 * reach * tread * (0.5 + 0.5 * sin(time * 4.2 * pace + own + 1.2)) + 0.12 * limp + 0.05 * swinging
 		turn_bone(key + "t", right, hip)

@@ -17,6 +17,17 @@ extends RefCounted
 const SCORE := preload("res://game/app/capture_score.gd")
 var level
 
+## The score of its scene (capture_score.gd), and its blow: the sound, when
+## it lands and where (executions.update_execution()).
+const KILL_BLOW := "res://assets/audio/events/execution_hit.wav"
+func score(): return SCORE
+
+func kill_sound(_seed: int) -> String: return KILL_BLOW
+
+func kill_sound_at() -> float: return SCORE.ARM_TIME
+
+func kill_point(execution: Dictionary) -> Vector3: return creature_point(execution) + Vector3(0, 1.7, 0)
+
 # --- What the host decides ---------------------------------------------------------
 
 ## It is on them in the same instant it is in reach: the last of the way is
