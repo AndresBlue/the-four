@@ -213,6 +213,15 @@ func _hook(limb: Dictionary) -> void:
 		limb.touch[f] = _claw_height(hand, limb.origins[f], limb.rests[f], on_hold, limb.claws[f], k, Vector3.ZERO, n, f)
 
 
+## Every hand lets go and looks for a new hold (after the body has been
+## somewhere else: out of a duct, a planta further down).
+func replant() -> void:
+	for limb in limbs:
+		limb.planted = false
+		limb.swing = false
+		limb.t = 1.0
+
+
 func _process_modification_with_delta(delta: float) -> void:
 	var skeleton := get_skeleton()
 	if skeleton == null or delta <= 0.0: return

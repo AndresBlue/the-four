@@ -621,7 +621,7 @@ func plenum() -> void:
 
 func text() -> void:
 	var bad: Array = []
-	for path in ["res://game/enemies/lurker/lurker_shell.gd", "res://game/enemies/lurker/lurker_routes.gd", "res://game/enemies/lurker/lurker_motion.gd", "res://tests/office/lurker_fixture.gd", "res://game/enemies/lurker/duct_graph.gd", "res://game/world/generation/conduit_graph.gd"]:
+	for path in ["res://game/enemies/lurker/lurker_shell.gd", "res://game/enemies/lurker/lurker_routes.gd", "res://game/enemies/lurker/lurker_motion.gd", "res://game/enemies/lurker/lurker.gd", "res://tools/dev/lurker_route_probe.gd", "res://tests/office/lurker_fixture.gd", "res://game/enemies/lurker/duct_graph.gd", "res://game/world/generation/conduit_graph.gd"]:
 		var body := FileAccess.get_file_as_string(path)
 		if body.contains(char(0xB7)) or body.contains(char(0x2014)): bad.append(path)
 	check("Texto: ni punto medio ni guion largo en los guiones nuevos", bad.is_empty(), str(bad))

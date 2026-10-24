@@ -755,6 +755,18 @@ var net_states: Array = []; var net_clock := 0.0; var net_jump := -1; var net_fl
 
 **`_physics_process(delta)`**: `grace = maxf(0, grace - delta)`. `"ai"`: `motion.tick(delta)` (moving even in grace is the brain's call; 2a moves when told). `"puppet"`: `follow_state(delta)`. `"player"`: nothing (phase 4). Then `global_transform = motion.transform()` (puppet: the interpolated one), `velocity`, `collision_layer`, `visual.velocity = velocity`, `visual.crawling = surface`, `visual.cling` (tray 0.3, band 0.5, channel 0.6, the bench's 0.6 held up; a puppet takes the patch kind from the `TRAY` and `BAND` flags, so both machines agree), and the clip: `idle` at speed under 0.05, `crawl` up to 1.6 m/s (`animator.speed_scale = speed / 1.35`), `crawl_fast` above (`speed / 3.5`); 2b overrides by setting `clip`.
 
+### 8.2b As built (24 October 2026, director)
+
+`game/enemies/lurker/lurker.gd` and `lurker_creature.tscn` as 8.1 and 8.2, with:
+
+- `motion.left_behind` from `level.survivors()` and `level.survivor_active()` (alive, not in a lobby, not riding) on her planta (M10); `motion.bodies_ahead` a sphere cast (radius 0.3, mask 4) along the line; `motion.clearance` the ray of 7.3 step 3, unclamped so the motion can shrink her (M2).
+- `save_state()` also keeps `hang`, and `restore_state()` puts her back at it (otherwise the default 0.35 moved her when she hung lower).
+- `den_point(3)` is `manifest.air.room` (M9).
+- `show_body()`: the `Visual` scaled along its +Y by `motion.squash` and the `BodyShape` brought up with it (M2); `replant()` on coming out of hiding.
+- `creature.gd` gains `transit_phase()` and `lurker_limbs.gd` `replant()` (8.5); `creature_contract_test` still 177/177.
+
+Found by the probe and fixed: an open side's crossing point is clamped into both trays' `rect`s (the edge's span less `TRAY_INSET` left it 9 cm outside a walled end's inset, and she pushed against the edge for ever); a tray leg that stops moving her for 0.25 s counts as reached; the transit ends as the squeeze out starts (7.6 step 3), so she is never seen during `&"arriving"`.
+
 ### 8.3 Network state
 
 ```text
@@ -959,6 +971,8 @@ Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://
 ```
 
 `<limit>`: the reviewer runs the short version once, alone, and writes here and in `verify.ps1` twice the wall time it measured (rounded up to 30 s); not 480 by default.
+
+**As built (24 October 2026, director).** `tools/dev/lurker_route_probe.gd`: setup and trips as written; every frame checks 1 (jumps; a leap allowed its own speed), 3 (basis), 4 (off-limits), 5 (no band switch onto a shut door), 6 (hidden only inside or in the drop); after each trip, its arrival and check 8 (the default stop at `clear_point()`). Special trips of the first seed: a door toggled shut two legs ahead (out of `remaining_pairs()` within two frames, then arriving or blocked, with a budget from the new plan's cost: one detour measured 299 m of ducts), every door of planta 2 shut by `set_state(false)` with no signal (arrives by the ducts, duct seconds within 10 % plus 0.5 s plus the squeezes of `metres / segment_speed()`), the cue holding her and the deferred transit after it, the planta transit (one jump `&"planta"`, `hushed()` exactly in the drop, never seen between going in and coming out, out on planta 2), saved in `&"leaving"`, `&"drop"` and `&"arriving"` and restored on a fresh body (planta 2, out of the ducts, no transit), a puppet fed `pack_state()` every 4 frames (render-time distance within 0.35 m for now; the 0.1 m of the spec needs the host's frames kept by its own clock), and the contract (including saved in a duct and restored at its node). Not yet: check 2 (turn rate), check 7's lowest bone, the leaf over her, the body under her, nobody passed in the main duct, the archive aisle, the arrival band share and the drop's overlap with a ride. `--seeds=7 --trips=2 --short --strict`: PASS 37/37 in 34 s alone; in `verify.ps1` with a limit of 90 s.
 
 ### 11.3 Regression
 

@@ -489,6 +489,11 @@ func tray_legs(legs: Array, from: Vector2, to: Vector2, chain: Array, hang: floa
 		else:
 			var t := (middle.x - at.x) / (to.x - at.x) if absf(to.x - at.x) > 1e-9 else 0.5
 			cross = Vector2(middle.x, clampf(at.y + (to.y - at.y) * t, lo, hi))
+		# Inside both ceilings: their walled ends keep further in than the edge's.
+		var ra: Rect2 = shell.patches[int(shell.tray_of[int(chain[i - 1])])].rect
+		var rb: Rect2 = shell.patches[int(shell.tray_of[int(chain[i])])].rect
+		if bool(edge[3]): cross.x = clampf(cross.x, maxf(ra.position.x, rb.position.x), minf(ra.end.x, rb.end.x))
+		else: cross.y = clampf(cross.y, maxf(ra.position.y, rb.position.y), minf(ra.end.y, rb.end.y))
 		legs.append({"kind": "tray", "to": cross, "room": int(chain[i]), "hang": NAN})
 		at = cross
 	legs.append({"kind": "tray", "to": to, "room": int(chain[chain.size() - 1]), "hang": hang})

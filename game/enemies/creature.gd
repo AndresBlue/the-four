@@ -157,6 +157,10 @@ func travel_metres(_room_id: int) -> Dictionary: return {}
 ## On its way somewhere the director should leave it alone (a lift).
 func in_transit() -> bool: return false
 
+## Where it is on its way to another planta without the lifts (the Lurker's
+## ducts): &"" when not.
+func transit_phase() -> StringName: return &""
+
 ## Whether it keeps away from a room for now, having just searched round it:
 ## no lead is given there.
 func searched_lately(_room_id: int) -> bool: return false

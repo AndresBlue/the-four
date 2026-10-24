@@ -123,6 +123,8 @@ var ray_clock := 0.0
 var shut_seen := -1
 var epoch_seen := -1
 var waiting := false
+## Seconds a tray leg has gone without moving her (its waypoint out of reach).
+var stall := 0.0
 ## Heading out of a duct the fans shut.
 var ejecting := false
 var stuck := ""
@@ -161,7 +163,7 @@ func log_jump(reason: StringName, from: Vector3, to: Vector3) -> void:
 	jump_id += 1
 
 ## Put on a surface at a point (teleport, relocate, restore): logged.
-func place_at(at: Vector3, heading_world: Vector3, reason: StringName) -> void:
+func place_at(at: Vector3, heading_world: Vector3, reason: StringName, hang := SHELL.DEFAULT_HANG) -> void:
 	var from := anchor() if state != null or in_duct or on_floor else at
 	clear_legs()
 	transit = {}
@@ -170,7 +172,7 @@ func place_at(at: Vector3, heading_world: Vector3, reason: StringName) -> void:
 	hidden = false
 	on_floor = false
 	mouth_exit = -1
-	state = shell.state_at(at)
+	state = shell.state_at(at, hang)
 	if state != null and heading_world.length() > 1e-6: shell.set_heading(state, heading_world)
 	speed = 0.0
 	last_anchor = Vector3.INF
@@ -620,6 +622,9 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	var to: Vector2 = leg.to
 	var here := Vector2(state.u, state.v)
 	var left := here.distance_to(to)
+	# A waypoint her tray cannot reach (an edge it stops short of): as near
+	# as it lets her is there.
+	if stall > 0.25: left = 0.0
 	var next_band: bool = legs.size() > 1 and String(legs[1].kind) == "band"
 	var heading_to := Vector3(to.x - here.x, 0, to.y - here.y)
 	if next_band and left <= LOOKAHEAD: ease_heading(band_heading(legs[1]), HEADING_RATE, delta)
@@ -631,6 +636,7 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 			band_switch(legs[1], delta)
 			return
 		speed = 0.0 if legs.size() == 1 else speed
+		stall = 0.0
 		next_leg()
 		return
 	var want := pace
@@ -644,8 +650,9 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	# Straight to the waypoint; the heading she shows eases after it.
 	var shown: float = state.heading
 	state.heading = atan2(dir.z, dir.x)
-	shell.advance(state, step)
+	var moved: float = shell.advance(state, step)
 	state.heading = shown
+	stall = stall + delta if step > 1e-4 and moved < 1e-5 else 0.0
 
 ## At a band's start: heading round to the band's, hang at BAND_CLEAR and
 ## room under the head; then onto it, or, waiting too long, the door banned.
@@ -662,6 +669,7 @@ func band_switch(band_leg: Dictionary, delta: float) -> void:
 			if pair.x >= 0: routes.ban(pair, ROUTES.BAN_TIME)
 			replan(goal)
 		return
+	stall = 0.0
 	state.hang = SHELL.BAND_CLEAR
 	var on_band = shell.switch_to(state, int(band_leg.patch))
 	if on_band == null:
@@ -710,6 +718,7 @@ func follow_squeeze(leg: Dictionary, delta: float) -> void:
 		if not bool(leg.into):
 			in_duct = false
 			hidden = false
+			if transit.get("phase", &"") == &"arriving": transit = {}
 	var length := maxf(from.distance_to(to), 1e-4)
 	leg_clock += SQUEEZE_SPEED * delta
 	var t := minf(leg_clock / length, 1.0)
