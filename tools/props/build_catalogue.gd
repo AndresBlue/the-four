@@ -29,6 +29,8 @@ const PARTS := {
 	# shaft's ladder down into the pit.
 	"modular_airduct_circular_01": {"fan": "^modular_airduct_circular_fan$", "duct": "^modular_airduct_circular_single$"},
 	"modular_fire_escape": {"ladder": "^modular_fire_escape_ladder_bottom$"},
+	# The archives' battens over their aisles.
+	"mounted_fluorescent_lights": {"batten": "^mounted_fluorescent_lights_a$"},
 }
 ## Clocks, whose hands turn in the game (hotel_geometry.gd, tell_time): each
 ## hand is baked apart, as <id>_<hand>.res -- pointing at twelve, turning

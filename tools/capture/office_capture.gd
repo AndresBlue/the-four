@@ -96,6 +96,19 @@ func run() -> void:
 		await shot("mesa_cerca")
 		level.player.torch.visible = false
 		break
+	# An archive aisle under its batten.
+	for unit in m.get("archives", []):
+		var a: Array = unit.aisles[0]
+		var mid := Vector3((float(a[0]) + float(a[2])) / 2, float(m.rooms[int(unit.rooms[0])].py), (float(a[1]) + float(a[3])) / 2)
+		if int(m.rooms[int(unit.rooms[0])].wing) != 1: continue
+		var long_x: bool = absf(float(a[2]) - float(a[0])) > absf(float(a[3]) - float(a[1]))
+		# Planta 2 starts with no power: the board's zone over this archive on.
+		var board = level.objective(&"power")
+		for z in board.zones.size():
+			if board.zones[z].rooms.has(int(unit.rooms[0])): board.apply("lever", z, 1, {}, true)
+		look(mid + (Vector3(2.0, 1.6, 0) if long_x else Vector3(0, 1.6, 2.0)), mid + Vector3(0, 2.4, 0))
+		await shot("archivo_regleta")
+		break
 	# A glazed office seen from its corridor.
 	for room in m.rooms:
 		if int(room.wing) != 0 or room.get("glazed", []).is_empty() or level.hotel.dark_ids.has(int(room.id)): continue

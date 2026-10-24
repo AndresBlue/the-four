@@ -204,7 +204,10 @@ func set_room_power(room_id: int, on: bool) -> void:
 	if room_id < 0 or room_id >= room_nodes.size(): return
 	var glowing: bool = on and not dark and not dark_ids.has(room_id)
 	var off: Material = materials.get("lens_off", materials.get("light_off"))
-	for mesh in lenses_of(room_id): mesh.material_override = null if glowing else off
+	for mesh in lenses_of(room_id):
+		# A model keeps its glass apart (the battens): only that goes dark.
+		if mesh.has_meta("glow_surface"): (mesh as MeshInstance3D).set_surface_override_material(int(mesh.get_meta("glow_surface")), null if glowing else off)
+		else: mesh.material_override = null if glowing else off
 
 ## The meshes that glow with a room's lamp, found once.
 var room_lenses := {}
@@ -670,10 +673,30 @@ func archive_battens(node: Node3D, room: Dictionary) -> bool:
 			var along_x := piece.size.x >= piece.size.y
 			var length := minf(1.5, maxf(piece.size.x, piece.size.y) - 0.3)
 			var at := Vector3(piece.get_center().x - float(room.px), y, piece.get_center().y - float(room.pz))
-			box(node, at, Vector3(length, 0.07, 0.16) if along_x else Vector3(0.16, 0.07, length), "metal")
-			box(node, at - Vector3(0, 0.05, 0), Vector3(length - 0.1, 0.03, 0.05) if along_x else Vector3(0.05, 0.03, length - 0.1), "light_off" if dark_room(room) else "light")
+			if ResourceLoader.exists(BATTEN_MODEL): batten_model(node, room, at, along_x, length)
+			else:
+				box(node, at, Vector3(length, 0.07, 0.16) if along_x else Vector3(0.16, 0.07, length), "metal")
+				box(node, at - Vector3(0, 0.05, 0), Vector3(length - 0.1, 0.03, 0.05) if along_x else Vector3(0.05, 0.03, length - 0.1), "light_off" if dark_room(room) else "light")
 			any = true
 	return any
+
+## Poly Haven's mounted fluorescent light (CC0, tools/props/build_catalogue.gd
+## PARTS), stretched along its aisle; its glass glows with the room's power
+## (set_room_power(), through the "glow_surface" it keeps).
+const BATTEN_MODEL := "res://assets/props/hotel/mounted_fluorescent_lights_batten.res"
+func batten_model(node: Node3D, room: Dictionary, at: Vector3, along_x: bool, length: float) -> void:
+	var batten := MeshInstance3D.new()
+	batten.name = "Mesh_light_batten_%d" % node.get_child_count()
+	batten.mesh = load(BATTEN_MODEL)
+	var glass := 0
+	for i in batten.mesh.get_surface_count():
+		var material := batten.mesh.surface_get_material(i)
+		if material != null and "glass" in material.resource_path: glass = i
+	batten.set_meta("glow_surface", glass)
+	var stretch: float = length / maxf(batten.mesh.get_aabb().size.x, 0.01)
+	batten.transform = Transform3D(Basis(Vector3.UP, 0.0 if along_x else PI / 2) * Basis.from_scale(Vector3(stretch, 1.6, 1.6)), at)
+	if dark_room(room): batten.set_surface_override_material(glass, materials.light_off)
+	node.add_child(batten)
 
 ## The electrical room's lamp is made (lights[id] must exist) but stays out.
 func room_lamp(node: Node3D, room: Dictionary) -> void:

@@ -44,7 +44,7 @@ SKIP |= {"korean_fire_extinguisher_01", "korean_public_payphone_01"}
 ## Materials that glow, which their glTF does not say: colour and strength.
 ## A chandelier's bulbs are lit lamps (hotel_geometry.gd puts them out in a
 ## dark room and with the power).
-EMISSION = {"Chandelier_02_bulb": ((1.0, 0.8, 0.52), 9.0)}
+EMISSION = {"Chandelier_02_bulb": ((1.0, 0.8, 0.52), 9.0), "mounted_fluorescent_lights_glass": ((0.92, 0.97, 1.0), 4.0)}
 ## Cloth shades painted on the same image as the brass they hang from: what
 ## is white on that image glows (a mask made here, <image>_glow.jpg), in this
 ## colour and at this strength.
