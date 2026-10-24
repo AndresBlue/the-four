@@ -83,6 +83,9 @@ const REACHABLE := 0.8
 const CLOSEST := 0.4
 ## How thick an elbow is with its knob (skeleton units): the room it needs.
 const ELBOW := 0.05
+## How finely the elbow is turned round the line from the shoulder to the
+## hand looking for a way clear of what is solid: steps of PI / ELBOW_STEPS.
+const ELBOW_STEPS := 12
 const DUE := 0.85
 const MUST := 0.97
 const KNEES := 1.6
@@ -94,6 +97,10 @@ const UPRIGHT := PI
 const TURN := 5.0
 ## Physics layers a hand can hold on to: walls, floors and furniture.
 @export_flags_3d_physics var world_mask := 1
+## What an arm may not go through: the world and furniture (1), survivors (4),
+## shut doors and the lockers' leaves (8), open leaves (128). Not 16 (the
+## areas things are used by) nor 32 (the creatures' own bodies).
+@export_flags_3d_physics var solid_mask := 1 | 4 | 8 | 128
 ## The body's velocity in the world, written every frame by whoever moves it.
 var velocity := Vector3.ZERO
 ## 0..1: how hard the fingers grip.
@@ -275,9 +282,11 @@ func _probe(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	for angle in PROBES:
 		var a := deg_to_rad(angle)
 		var direction: Vector3 = (out * cos(a) - up * sin(a)).normalized()
-		var query := PhysicsRayQueryParameters3D.create(from, from + direction * float(limb.reach) * size, world_mask)
+		# the first solid thing that way: a hold only if it is one to hold (a
+		# survivor or a leaf in the way blocks it, never reached through)
+		var query := PhysicsRayQueryParameters3D.create(from, from + direction * float(limb.reach) * size, world_mask | solid_mask)
 		var hit := space.intersect_ray(query)
-		if hit.is_empty(): continue
+		if hit.is_empty() or ((hit.collider as CollisionObject3D).collision_layer & world_mask) == 0: continue
 		var wrist_at: Vector3 = hit.position + (hit.normal as Vector3) * float(limb.wrist_up) * size
 		var share: float = from.distance_to(wrist_at) / (limb.reach * size)
 		if share > REACHABLE or share < CLOSEST: continue
@@ -429,22 +438,35 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 
 ## How far round the line from the shoulder to the hand the elbow must turn
 ## from where the knees want it for neither half of the arm to go through
-## anything. Rays down both halves, a little short of their ends; the turn it
-## had last time is tried first, then turns either way of the wanted one.
+## anything solid (solid_mask: a survivor's head, a cabinet, a leaf as much as
+## a wall), worked out again every frame as the body and what is round it
+## move. Rays down both halves, a little short of their ends, and room for
+## the knob of the elbow; the turn it had last time is tried first, then
+## turns either way of the wanted one, nearest first. With no way clear, the
+## turn that goes through least.
 func _clear_elbow(limb: Dictionary, xf: Transform3D, s: Vector3, middle: Vector3, side: Vector3, h: float, along: Vector3, tip: Vector3, space: PhysicsDirectSpaceState3D) -> float:
 	var tries := [float(limb.elbow_turn), 0.0]
-	for k in range(1, 7):
-		tries.append(k * PI / 6.0)
-		tries.append(-k * PI / 6.0)
+	for k in range(1, ELBOW_STEPS + 1):
+		tries.append(k * PI / ELBOW_STEPS)
+		tries.append(-k * PI / ELBOW_STEPS)
+	var least := 4
+	var least_angle := float(limb.elbow_turn)
 	for angle in tries:
 		var elbow: Vector3 = s + middle + side.rotated(along, angle) * h
-		if _clear(xf * s, xf * elbow, space) and _clear(xf * elbow, xf * tip, space) and _room(xf * elbow, space):
-			# eased towards the clear turn, never past it
+		var blocked := 0
+		if not _room(xf * elbow, space): blocked += 1
+		if blocked < least and not _clear(xf * s, xf * elbow, space): blocked += 1
+		if blocked < least and not _clear(xf * elbow, xf * tip, space): blocked += 1
+		if blocked == 0:
 			limb.elbow_turn = angle
 			limb.elbow_stuck = false
 			return angle
+		if blocked < least:
+			least = blocked
+			least_angle = angle
+	limb.elbow_turn = least_angle
 	limb.elbow_stuck = true
-	return float(limb.elbow_turn)
+	return least_angle
 
 
 ## Whether there is room for the knob of an elbow at a point.
@@ -452,7 +474,7 @@ func _room(at: Vector3, space: PhysicsDirectSpaceState3D) -> bool:
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = elbow_ball
 	query.transform = Transform3D(Basis(), at)
-	query.collision_mask = world_mask
+	query.collision_mask = solid_mask
 	elbow_ball.radius = ELBOW * size
 	return space.intersect_shape(query, 1).is_empty()
 
@@ -462,7 +484,7 @@ func _clear(from: Vector3, to: Vector3, space: PhysicsDirectSpaceState3D) -> boo
 	var span := to - from
 	if span.length() < 0.06: return true
 	var inset := span.normalized() * 0.03
-	var query := PhysicsRayQueryParameters3D.create(from + inset, to - inset, world_mask)
+	var query := PhysicsRayQueryParameters3D.create(from + inset, to - inset, solid_mask)
 	query.hit_back_faces = false
 	return space.intersect_ray(query).is_empty()
 

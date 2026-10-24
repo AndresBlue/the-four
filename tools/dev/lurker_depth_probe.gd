@@ -22,6 +22,9 @@ const TRUNK := ["body", "abdomen", "head"]
 
 var body: Node3D
 var results := {}
+## Every bone's depth as the hands left it (read when the modifier has run:
+## afterwards the skeleton is back at the clip's pose), [depth, name].
+var sampled: Array = []
 
 func _initialize() -> void: run.call_deferred()
 
@@ -43,6 +46,7 @@ func run() -> void:
 	body = BODY.instantiate()
 	root.add_child(body)
 	body.cling = CLING
+	body.limbs.modification_processed.connect(func(): sampled = bone_depths())
 	await physics_frame
 	var worst := 0.0
 	var worst_clip := ""
@@ -61,8 +65,8 @@ func run() -> void:
 			body.velocity = Vector3(pace, 0, 0)
 			await physics_frame
 			if i < 30: continue
-			deepest = maxf(deepest, depth())
-			for b in bone_depths():
+			for b in sampled:
+				deepest = maxf(deepest, float(b[0]))
 				bones[b[1]] = maxf(float(bones.get(b[1], -INF)), float(b[0]))
 		var names: Array = bones.keys()
 		names.sort_custom(func(a, b): return float(bones[a]) > float(bones[b]))
@@ -96,13 +100,3 @@ func bone_depths() -> Array:
 		out.append([(at - anchor).dot(up), skeleton.get_bone_name(bone)])
 	return out
 
-## The farthest bone from the anchor along the body's +Y.
-func depth() -> float:
-	var skeleton: Skeleton3D = body.skeleton
-	var anchor: Vector3 = body.global_position
-	var up: Vector3 = body.global_basis.y
-	var most := 0.0
-	for bone in skeleton.get_bone_count():
-		var at := skeleton.global_transform * skeleton.get_bone_global_pose(bone).origin
-		most = maxf(most, (at - anchor).dot(up))
-	return most

@@ -67,6 +67,10 @@ Add-Check 'dev/creature_stuck_probe' 'stuck_probe' (Godot-Arguments 'res://tools
 # (tools/dev/lurker_route_probe.gd). Twice the 34 s it takes alone.
 $log = Join-Path $evidence 'verify_lurker_route_probe.log'
 Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--short','--strict','--automation','--silent')) 90 'plain' 1 $log
+# The Lurker's arms never through anything solid: cabinets, a locker's leaf, an
+# open leaf and survivors under her way (tools/dev/lurker_elbow_probe.gd).
+$log = Join-Path $evidence 'verify_lurker_elbow_probe.log'
+Add-Check 'dev/lurker_elbow_probe' 'lurker_elbow_probe' (Godot-Arguments 'res://tools/dev/lurker_elbow_probe.gd' $log $true @('--test-profile','--strict','--automation','--silent')) 90 'plain' 1 $log
 # The body of whoever is caught, kept out of the walls: fifty-six captures
 # staged against walls, in corners, in doorways and in wardrobes, and no joint
 # of it more than four centimetres into anything at any frame
