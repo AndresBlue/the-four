@@ -6,9 +6,13 @@ extends SceneTree
 ## corridor under its emergency units. PNGs in evidence/office_capture_*.png.
 ##
 ##   godot --path . --script res://tools/capture/office_capture.gd -- --test-profile [--seed=7]
+##     [--quality=0] [--prefix=muybajo]   (Muy bajo, as torch_capture does)
+##   and with --rendering-method gl_compatibility for Compatibility.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 var level
+## Before each picture's name, for a run at another quality or renderer.
+var prefix := ""
 
 func _initialize() -> void: run.call_deferred()
 
@@ -22,7 +26,7 @@ func shot(name: String) -> void:
 	level.hotel.update_visibility(level.player.global_position, true)
 	for i in 40: await process_frame
 	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png("res://evidence/office_capture_%s.png" % name)
+	root.get_texture().get_image().save_png("res://evidence/office_capture_%s%s.png" % [prefix, name])
 
 func run() -> void:
 	DisplayServer.window_set_size(Vector2i(1280, 720))
@@ -30,9 +34,15 @@ func run() -> void:
 	root.add_child(level)
 	level.ui.finish_intro()
 	var seed_value := 7
+	var quality := -1
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
+		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
+		if argument.begins_with("--prefix="): prefix = argument.trim_prefix("--prefix=") + "_"
 	await level.start_floor(seed_value, false, [1], "", 2)
+	if quality >= 0:
+		level.settings.values.quality = quality
+		level.apply_settings()
 	level.player.set_physics_process(false)
 	# Planta 1's papers: the receipt, then the card.
 	var m: Dictionary = level.manifest
