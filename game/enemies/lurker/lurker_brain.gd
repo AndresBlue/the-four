@@ -64,6 +64,8 @@ var clock := 0.0
 var state := State.ROAM
 var state_time := 0.0
 var prey := -1
+## A noise she heard: {point, at}; it moves her only in ROAM and LISTEN (2b-2).
+var clue := {}
 ## seat -> clock until which she leaves them be.
 var spurned := {}
 var sated_until := -INF
@@ -250,6 +252,10 @@ func take_tick(_p) -> Dictionary:
 		prey = -1
 		enter(State.FLEE)
 	return hold()
+
+## A noise she heard: kept as a clue.
+func on_heard(_route: Dictionary, point: Vector3) -> void:
+	clue = {"point": point, "at": clock}
 
 func on_captured(execution: Dictionary) -> void:
 	if execution.has("cue"): warning.captured(int(execution.cue))

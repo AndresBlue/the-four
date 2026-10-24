@@ -526,11 +526,62 @@ func occluded(point: Vector3, emitter := RID(), listener := Vector3.INF) -> bool
 	if emitter.is_valid(): ray.exclude = [emitter]
 	return not level.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
 
-func show_caption(words: String, is_presence: bool) -> void:
+## The ears held on a point for a while (her warning): update_ears() aims there
+## instead of at her presence or a phantom of it. {"point", "left"}.
+var ears_hold := {}
+## A caption held for a while: no other caption replaces it meanwhile.
+var caption_lock := 0.0
+## The last warning played here, for the tests (set even when the sound is off).
+var last_cue := {}
+
+## `hold`: kept that long, no other caption over it (her warning); the hotel
+## never holds one.
+func show_caption(words: String, is_presence: bool, hold := 0.0) -> void:
+	if caption_lock > 0.0 and hold <= 0.0: return
 	if is_presence and caption_cooldown > 0: return
 	caption_text = words
 	caption_time = 2.5
+	if hold > 0.0:
+		caption_lock = hold
+		caption_time = maxf(2.5, hold)
 	if is_presence: caption_cooldown = 18.0
+
+## Her warning (docs/OFICINAS.md 1), from where she is: in the victim's own
+## ears on the creature bus, straight, with no head shadow and no air (it is
+## always behind them, and the shadow would dull it most of all); heard by
+## the floor's routes by anybody else. Never under the fans' mask: the warning
+## always reaches. The ears are held on it while it lasts.
+func play_cue(path: String, point: Vector3, mine: bool, gain := 0.0) -> AudioStreamPlayer3D:
+	if not streams.has(path): streams[path] = load(path)
+	var stream: AudioStream = streams[path]
+	last_cue = {"path": path, "point": point, "mine": mine, "time": Time.get_ticks_msec() / 1000.0}
+	if mine: ears_hold = {"point": point, "left": stream.get_length() if stream != null else 1.0}
+	if not enabled or hush: return null
+	var voice := AudioStreamPlayer3D.new()
+	voice.name = "Cue"
+	voice.stream = stream
+	voice.unit_size = 6.0
+	voice.max_distance = 40.0
+	voice.area_mask = ACOUSTIC_MASK
+	voice.pitch_scale = 1.0
+	add_child(voice)
+	if mine:
+		apply_route(voice, {"audible": true, "position": point, "gain": 0.0, "cutoff": 20000.0, "echo": false, "distance": 0.0}, gain, "Threat", true)
+		voice.volume_db = gain
+		voice.attenuation_filter_cutoff_hz = 20000.0
+	else:
+		var route := route_source(point)
+		if not route.audible:
+			voice.queue_free()
+			return null
+		apply_route(voice, route, gain - 6.0, "Threat", true)
+	voices.append(voice)
+	voice.finished.connect(func():
+		voices.erase(voice)
+		voice.queue_free()
+	)
+	voice.play()
+	return voice
 
 func reset() -> void:
 	for voice in voices:
@@ -551,6 +602,8 @@ func reset() -> void:
 	caption_time = 0
 	caption_cooldown = 0
 	caption_text = ""
+	caption_lock = 0.0
+	ears_hold = {}
 
 ## A grunt aimed at this listener takes the scene: everything else the
 ## creature brings with it -- the aura, its feet -- and the hotel's own bed
@@ -575,7 +628,11 @@ func _physics_process(delta: float) -> void:
 	duck = move_toward(duck, 1.0 if duck_hold > 0.0 else 0.0, delta / (DUCK_ATTACK if duck_hold > 0.0 else DUCK_RELEASE))
 	caption_time = maxf(0, caption_time - delta)
 	caption_cooldown = maxf(0, caption_cooldown - delta)
+	caption_lock = maxf(0.0, caption_lock - delta)
 	if caption_time <= 0: caption_text = ""
+	if not ears_hold.is_empty():
+		ears_hold.left = float(ears_hold.left) - delta
+		if float(ears_hold.left) <= 0.0: ears_hold = {}
 	if not enabled: return
 	# Out of play (the end of a floor, its menus) nothing frightens any more.
 	mood.step(mood.felt(level, self) if level.session.state == level.session.State.PLAYING else 0.0, delta)
@@ -601,6 +658,7 @@ func _physics_process(delta: float) -> void:
 		presence_route = route_source(voice_point, RID(), listener) if presence_phantom else creature.sound_route(listener)
 	# Heard straight, it sits on the creature; heard around corners, it drifts to the opening.
 	var target: Vector3 = voice_point if not presence_route.get("echo", false) else presence_route.position
+	if not ears_hold.is_empty(): target = ears_hold.point
 	update_ears(target, delta)
 	if profile == null: return
 	var distance: float = presence_route.get("distance", INF)

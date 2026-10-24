@@ -79,6 +79,8 @@ func spawn(control: String):
 	body.control = control
 	level.add_child(body)
 	body.grace = 0.0
+	# Her movement alone: the mind would set `cue` and order her about.
+	body.thinking = false
 	body.tune(DIFFICULTY.profile("equilibrada", &"lurker"))
 	return body
 

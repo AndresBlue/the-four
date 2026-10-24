@@ -5,8 +5,8 @@ extends SceneTree
 ## (theirs or a teammate's) or running away saves. Part B: 200 seeded
 ## approaches on a straight corridor with no scene, her brain against the
 ## harness's own truth and an oracle that does not read the brain; walking
-## away does not save (the author, 24 October 2026), running does. Part A,
-## in the world, comes with 2b-2.
+## away does not save (the author, 24 October 2026), running does. Part A:
+## she on a built floor 2, her senses, brain and warning together.
 const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
@@ -81,6 +81,7 @@ func run() -> void:
 	rules()
 	recordings()
 	never_faked()
+	await part_a()
 	var file := FileAccess.open("res://evidence/lurker_fairness_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"checks": checks, "counts": counts, "by_difficulty": by_id, "last_moment": last_moment, "approaches": results}, "\t"))
 	print("LURKER_FAIRNESS_TEST_RESULT ", checks.size() - failed, "/", checks.size())
@@ -295,3 +296,200 @@ func judge(truth: Array, at: float, due: float, lit_takes: bool) -> Dictionary:
 			if ran: return {"outcome": "saved", "end": t}
 		if t > due + WARNING.TAKE_HOLD + EPS: return {"outcome": "expired", "end": t}
 	return {"outcome": "active", "end": -1.0}
+
+# --- Part A: in the world (spec_f2_mind 10.2) -----------------------------------------------
+
+const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const SEEDS := [2026, 7, 11, 23]
+var level
+var lurker
+var corridor := {}
+var took_ok: Array = []
+
+## The common floor: the first seed whose planta 1 has a corridor for the cases.
+func part_a() -> void:
+	level = load("res://game/app/hotel.tscn").instantiate()
+	root.add_child(level)
+	level.creature_scene = "lurker"
+	level.set_floor(2)
+	for seed_value in SEEDS:
+		await level.start_floor(int(seed_value), false, [1], "equilibrada")
+		corridor = find_corridor()
+		if not corridor.is_empty():
+			corridor["seed"] = int(seed_value)
+			break
+	if corridor.is_empty():
+		check("Parte A: un pasillo para los casos", false, "ninguna semilla")
+		return
+	lurker = level.creature
+	check("Parte A: en el piso 2 la criatura es The Lurker", lurker != null and lurker.kind_id() == &"lurker")
+	if lurker == null or lurker.kind_id() != &"lurker": return
+	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
+	level.player.set_physics_process(false)
+	lurker.brain.took.connect(func(seat: int): took_ok.append(lurker.may_capture(level.player) and seat == int(level.player.slot)))
+	await back_turned()
+	await torch_turn()
+	await dark_turn()
+	await lit_cases()
+	await lobby()
+	await tool_forced()
+	var audit: Array = WARNING.audit(lurker.capture_log())
+	check("Parte A: el registro de avisos pasa la auditoría", audit.is_empty(), str(audit))
+	level.queue_free()
+	await process_frame
+
+## The lowest-id corridor cell of planta 1 at least 8 m long, not next to an
+## off-limits room: {room, centre, along}.
+func find_corridor() -> Dictionary:
+	var off: Array = level.off_limits_rooms()
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
+		var span := FLOOR.size_of(room)
+		if maxf(span.x, span.y) < 8.0 or not level.creature.shell.tray_of.has(int(room.id)): continue
+		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
+		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
+		return {"room": int(room.id), "centre": FLOOR.position_of(room), "along": along}
+	return {}
+
+func place_player(point: Vector3, facing: Vector3) -> void:
+	var player = level.player
+	player.global_position = point
+	player.rotation.y = atan2(-facing.x, -facing.z)
+	player.camera.rotation.x = 0.0
+	player.velocity = Vector3.ZERO
+	for i in 3: await physics_frame
+
+## The player's view turned on to a point.
+func aim_at(point: Vector3) -> void:
+	var player = level.player
+	var to: Vector3 = point - player.camera.global_position
+	player.rotation.y = atan2(-to.x, -to.z)
+	player.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+
+## The player 1.5 m along the corridor facing on, her 2.4 m behind them on
+## the ceiling, closing in; the corridor dark or lit, the torch on or off.
+func set_up(dark: bool, torch: bool) -> void:
+	lurker.brain.forget_all(0.0)
+	# A fresh approach: neither the calm after a fright nor after a take.
+	lurker.brain.spurned = {}
+	lurker.brain.sated_until = -INF
+	if not level.executions.execution.is_empty(): level.release_execution()
+	level.hotel.set_room_power(int(corridor.room), not dark)
+	var centre: Vector3 = corridor.centre
+	var along: Vector3 = corridor.along
+	await place_player(centre + along * 1.5, along)
+	level.player.torch.visible = torch
+	lurker.place_over(centre - along * 0.9, level.player.camera.global_position)
+	lurker.grace = 0.0
+	lurker.thinking = true
+	await physics_frame
+	lurker.brain.force(&"creep", {"seat": int(level.player.slot)})
+
+## Physics frames until the warning in hand ends (or none starts), at most
+## `seconds`; `each` is called every frame with the brain.
+func run_cue(seconds: float, each := Callable()) -> Dictionary:
+	var before: int = lurker.warning.ledger.size()
+	var started := false
+	for i in int(seconds * 60.0):
+		await physics_frame
+		if each.is_valid(): each.call(lurker.brain)
+		if lurker.warning.ledger.size() > before: started = true
+		if started and lurker.warning.active.is_empty(): break
+	return lurker.warning.ledger[lurker.warning.ledger.size() - 1] if lurker.warning.ledger.size() > before else {}
+
+func back_turned() -> void:
+	var bad: Array = []
+	for id in DIFFICULTY.ORDER:
+		level.set_difficulty(id)
+		level.arm_creature()
+		var W := float(level.tuning().back_window)
+		took_ok = []
+		await set_up(true, false)
+		var entry := await run_cue(6.0)
+		await physics_frame
+		var ok: bool = not entry.is_empty() and String(entry.outcome) == "taken" and absf(float(entry.window) - W) < 1e-6
+		if ok: ok = float(entry.take_at) - float(entry.at) >= W - 1e-6 and float(entry.take_at) - float(entry.at) <= W + 1.0 / 60.0 + 1e-6
+		if ok: ok = took_ok == [true] and not lurker.may_capture(level.player)
+		if not ok: bad.append([id, entry.get("outcome", "nada"), entry.get("at", -1), entry.get("take_at", -1), took_ok])
+	check("Parte A: de espaldas a oscuras la coge al final de su ventana, en las cuatro dificultades", bad.is_empty(), str(bad))
+	level.set_difficulty("equilibrada")
+	level.arm_creature()
+
+func torch_turn() -> void:
+	await set_up(true, true)
+	level.player.rotation.y += PI
+	await physics_frame
+	level.player.rotation.y -= PI
+	var turned := [false]
+	var entry := await run_cue(6.0, func(brain):
+		var active: Dictionary = lurker.warning.active
+		if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+			turned[0] = true
+			aim_at(lurker.face_point()))
+	var ok: bool = not entry.is_empty() and String(entry.outcome) == "saved" and String(entry.reason) == "linterna" and int(entry.by) == int(level.player.slot) and float(entry.end) < float(entry.due)
+	check("Parte A: darse la vuelta con la linterna a falta de 0,3 s la espanta", ok, str(entry))
+	var spurned: float = float(lurker.brain.spurned.get(int(level.player.slot), -INF))
+	check("Parte A: y la deja en paz su rato", ok and spurned >= float(entry.end) + float(level.tuning().scare_calm) - 0.01, str(spurned))
+
+func dark_turn() -> void:
+	await set_up(true, false)
+	var turned := [false]
+	var entry := await run_cue(6.0, func(brain):
+		var active: Dictionary = lurker.warning.active
+		if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+			turned[0] = true
+			aim_at(lurker.face_point()))
+	check("Parte A: a oscuras y sin linterna, darse la vuelta no basta", not entry.is_empty() and String(entry.outcome) == "taken", str(entry))
+
+func lit_cases() -> void:
+	await set_up(false, false)
+	var turned := [false]
+	var entry := await run_cue(6.0, func(brain):
+		var active: Dictionary = lurker.warning.active
+		if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+			turned[0] = true
+			aim_at(lurker.face_point()))
+	check("Parte A: con luz, mirarla la salva", not entry.is_empty() and String(entry.outcome) == "saved" and String(entry.reason) == "mirada", str(entry))
+	level.set_difficulty("apacible")
+	level.arm_creature()
+	await set_up(false, false)
+	var none := await run_cue(3.0)
+	check("Parte A: en Apacible, con luz, no avisa", none.is_empty())
+	level.set_difficulty("equilibrada")
+	level.arm_creature()
+
+## The freight lobby of planta 1: never a warning there.
+func lobby() -> void:
+	var refuge := -1
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) == 0 and int(room.type) == OFFICE.REFUGE:
+			refuge = int(room.id)
+			break
+	if refuge < 0:
+		check("Parte A: un vestíbulo del montacargas", false)
+		return
+	var room: Dictionary = level.manifest.rooms[refuge]
+	var door: Dictionary = FLOOR.doorways(room)[0] if not FLOOR.doorways(room).is_empty() else {}
+	var centre := FLOOR.position_of(room)
+	lurker.brain.forget_all(0.0)
+	await place_player(centre, Vector3(1, 0, 0))
+	lurker.place_over(centre - Vector3(2.4, 0, 0), level.player.camera.global_position)
+	lurker.brain.force(&"creep", {"seat": int(level.player.slot)})
+	var none := await run_cue(4.0)
+	check("Parte A: nunca avisa en el vestíbulo del montacargas", none.is_empty() and lurker.brain.state != lurker.brain.State.CUE, str(door))
+
+## A tool's capture goes through and is logged as forced.
+func tool_forced() -> void:
+	level.executions.forced = {"glance": false}
+	var let: bool = lurker.may_capture(level.player)
+	var last: Dictionary = lurker.warning.ledger[lurker.warning.ledger.size() - 1]
+	level.executions.forced = {}
+	check("Parte A: una herramienta que fuerza la captura pasa y queda apuntada como forzada", let and bool(last.forced) and String(last.reason) == "forzada")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9000
+	var stray := false
+	for i in 10:
+		for k in rng.randi_range(1, 5): await physics_frame
+		if lurker.may_capture(level.player): stray = true
+	check("Parte A: fuera del instante de una cogida, nunca puede capturar", not stray)

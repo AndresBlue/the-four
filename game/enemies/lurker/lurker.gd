@@ -12,6 +12,10 @@ const ROUTES := preload("res://game/enemies/lurker/lurker_routes.gd")
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const SIGHT := preload("res://game/enemies/creature_sight.gd")
+const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
+const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
+const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 const WORDS: Array[StringName] = [&"roam", &"investigate", &"search", &"alert", &"chase", &"strike", &"recover", &"capture", &"open", &"wait", &"idle", &"stalk", &"withdraw"]
 const CLIPS := ["idle", "crawl", "crawl_fast", "vent_crawl", "retreat", "loom", "scare", "peek"]
 const PACK_SIZE := 10
@@ -62,11 +66,14 @@ func can(ability: StringName) -> bool: return ability == &"ducts"
 func tune(profile: Dictionary) -> void:
 	tuning = profile
 	duct_speed = float(profile.get("duct_speed", 1.6))
+	drain_reach = float(profile.get("drain_reach", drain_reach))
 	if routes != null: routes.duct_speed = duct_speed
+	if brain != null: brain.tune(profile)
+	if senses != null: senses.tune(profile)
 
 func activity() -> StringName: return word
 
-func mode_name() -> String: return "ronda"
+func mode_name() -> String: return brain.state_name() if brain != null and control == "ai" else "ronda"
 
 func eye_point() -> Vector3: return global_transform * FACE_OFFSET
 
@@ -119,6 +126,7 @@ func arrive() -> void:
 	motion.busy = func() -> bool: return is_engaged() or is_hunting() or cue
 	motion.bodies_ahead = bodies_ahead
 	motion.left_behind = left_behind
+	think_setup()
 	var stage := int(level.session.stage) if level.get("session") != null else 1
 	var den := den_point(stage)
 	if den != Vector3.INF: teleport(den, 0.0, &"den")
@@ -174,6 +182,7 @@ func teleport(point: Vector3, yaw: float, reason := &"") -> void:
 	apply_motion()
 
 func forget_journey(_point: Vector3, _reason: StringName) -> void:
+	if brain != null and not warning.active.is_empty(): warning.cancel(brain.clock, "movida")
 	if motion != null:
 		motion.clear_legs()
 		motion.transit = {}
@@ -181,6 +190,8 @@ func forget_journey(_point: Vector3, _reason: StringName) -> void:
 	net_states.clear()
 
 func relocate(point: Vector3, rest: float) -> void:
+	if brain != null: brain.forget_all(rest)
+	undrain()
 	if motion != null:
 		motion.place_at(point, global_basis.z, &"relocate")
 		motion.hold()
@@ -234,6 +245,8 @@ func save_state() -> Dictionary:
 
 func restore_state(data: Dictionary, rest: float) -> void:
 	if motion == null: return
+	undrain()
+	if brain != null: brain.forget_all(rest)
 	grace = maxf(grace, rest)
 	var wing_goal := int(data.get("wing_goal", -1))
 	if wing_goal >= 0:
@@ -346,11 +359,13 @@ func _physics_process(delta: float) -> void:
 	match control:
 		"ai":
 			if motion != null:
+				think(delta)
 				motion.cue = cue
 				motion.tick(delta)
 				apply_motion()
 		"puppet":
 			follow_state(delta)
+	drain_step(delta)
 	show_body()
 
 ## Her transform and velocity from the motion.
@@ -438,3 +453,284 @@ func debug_state() -> Dictionary:
 	out["transit"] = String(motion.transit_phase())
 	out["jump_id"] = motion.jump_id
 	return out
+
+# --- Her mind (spec_f2_mind 8): senses, brain and the warning ---------------------------
+
+## Tests and probes switch the mind off (the senses still answer).
+var thinking := true
+var senses
+var brain
+## Held here, on the machine in charge, whoever drives her: the only way to a take.
+var warning = WARNING.new()
+var intent := {}
+var last_order := {}
+var order_failed := false
+## The light she drinks: room -> applied amount, room -> target.
+var drained := {}
+var drain_targets := {}
+var drain_clock := 0.0
+var drain_reach := 3.5
+var drain_cache := {}
+var drain_time := 0.0
+
+func think_setup() -> void:
+	senses = SENSES.new()
+	senses.setup(level, self, ducts)
+	senses.tune(tuning)
+	brain = BRAIN.new()
+	brain.setup(self, rng, warning)
+	brain.tune(tuning)
+	brain.cue_started.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue"): level.match_net.send_cue(int(entry.seat), int(entry.id), Vector3(entry.point[0], entry.point[1], entry.point[2]), float(entry.due) - float(entry.at)))
+	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
+
+func think(delta: float) -> void:
+	if control != "ai" or not thinking or brain == null: return
+	var p = senses.perceive(delta, brain.clock, brain.prey_seat())
+	for click in senses.clicks: brain.on_heard(click.route, click.point)
+	senses.clicks = []
+	intent = brain.tick(delta, p)
+	apply_intent(intent)
+	word = brain.activity()
+	cue = brain.state == BRAIN.State.CUE
+
+## The one place her mind talks to her motion (spec_f2_mind 8.3): an order
+## only when the intent changed.
+func apply_intent(wanted: Dictionary) -> void:
+	var what: StringName = wanted.get("do", &"hold")
+	var clip_name: String = String(wanted.get("clip", ""))
+	if clip_name != "": clip = maxi(CLIPS.find(clip_name), 0)
+	if visual != null: visual.look_point = wanted.get("look", Vector3.INF)
+	var same: bool = last_order.get("do", &"") == what
+	match what:
+		&"keep":
+			return
+		&"hold":
+			if not same: motion.hold()
+		&"go":
+			var to: Vector3 = wanted.to
+			if not same or (last_order.get("to", Vector3.INF) as Vector3).distance_to(to) > 0.3 or float(last_order.get("speed", 0.0)) != float(wanted.speed):
+				order_failed = not motion.go_to(to, float(wanted.speed))
+		&"duct", &"listen":
+			if not same or int(last_order.get("exit", -2)) != int(wanted.exit):
+				order_failed = not motion.go_to_exit(int(wanted.exit), float(wanted.get("speed", BRAIN.CRAWL_SPEED)))
+		&"take":
+			var victim = senses.body_of(int(wanted.seat))
+			if wanted.get("leap", false) and victim != null: motion.leap(FLOOR.floor_point(victim.global_position))
+			else: motion.hold()
+			if victim != null and level.has_method("capture_survivor"): level.capture_survivor(victim)
+	last_order = wanted.duplicate()
+
+# --- The getters her percept reads (8.3) ---------------------------------------------------
+
+func in_network_duct() -> bool: return motion != null and motion.in_duct and motion.hidden
+
+func duct_node() -> int: return motion.near_node if motion != null and motion.in_duct else -1
+
+func at_exit() -> int:
+	if not in_network_duct() or not motion.legs.is_empty(): return -1
+	if motion.mouth_exit >= 0: return motion.mouth_exit
+	for e in ducts.exits.size():
+		if int(ducts.exits[e].node) == motion.near_node: return e
+	return -1
+
+func ahead(metres: float) -> PackedVector3Array:
+	return motion.ahead(metres) if motion != null and not motion.legs.is_empty() else PackedVector3Array()
+
+func moving() -> bool: return motion != null and motion.route_state() == &"moving"
+
+func arrived() -> bool: return motion != null and motion.at_goal()
+
+func route_failed() -> bool: return order_failed or (motion != null and motion.route_state() == &"blocked")
+
+func on_channel() -> bool: return motion != null and motion.on_channel()
+
+# --- What she knows of the map: the world port (7.9, 8.4) -------------------------------------
+
+## Behind them along their look, on her ceiling over that point.
+func behind_point(seen, metres: float) -> Vector3:
+	var view: Vector3 = seen.view
+	var flat := Vector3(view.x, 0, view.z)
+	if flat.length() < 0.01: flat = Vector3.FORWARD
+	var at: Vector3 = (seen.eye as Vector3) - flat.normalized() * metres
+	var room := FLOOR.room_at(level.manifest.rooms, seen.point)
+	if not room.is_empty() and shell.tray_of.has(int(room.id)):
+		var s = shell.tray_state(int(room.id), at.x, at.z)
+		return shell.anchor_of(s)
+	var s = shell.state_at(Vector3(at.x, (seen.point as Vector3).y + 1.0, at.z))
+	return shell.anchor_of(s) if s != null else at
+
+func plan_start() -> Dictionary:
+	var from: Dictionary = motion.plan_start()
+	return from.get("start", {"room": motion.room()})
+
+func flee_exit(away_from: Vector3) -> int:
+	return routes.flee_exit(plan_start(), away_from, global_position)
+
+## The nearest dark ceiling at least 4 m from `away_from`, else her nearest exit.
+func dark_retreat(away_from: Vector3) -> Vector3:
+	var here: int = motion.room()
+	var metres: Dictionary = routes.travel_metres(here) if here >= 0 else {}
+	var best := Vector3.INF
+	var best_m := INF
+	for r in metres:
+		var point := room_point(int(r))
+		if point.distance_to(away_from) < 4.0 or SIGHT.lit_point(level, point): continue
+		if float(metres[r]) < best_m:
+			best_m = float(metres[r])
+			best = point
+	if best != Vector3.INF: return best
+	var e: int = routes.nearest_exit(plan_start())
+	return ducts.exits[e].position if e >= 0 else global_position
+
+func exit_of_room(room: int) -> int:
+	var exits: PackedInt32Array = ducts.exits_of_room(room)
+	return exits[0] if not exits.is_empty() else -1
+
+## A room's tray point clear of its lamps.
+func room_point(room: int) -> Vector3:
+	var r: Dictionary = level.manifest.rooms[room]
+	var p: Vector2 = shell.clear_point(room, float(r.px), float(r.pz))
+	return shell.anchor_of(shell.tray_state(room, p.x, p.y))
+
+## The ceiling over a locker.
+func above_locker(hide: Node3D) -> Vector3:
+	var s = shell.state_at(hide.global_position + Vector3.UP)
+	return shell.anchor_of(s) if s != null else hide.global_position
+
+## Her shriek, at her face, for everybody.
+func scream(point: Vector3) -> void:
+	var path: String = BRAIN.SCARE_SOUNDS[rng.randi_range(0, BRAIN.SCARE_SOUNDS.size() - 1)]
+	var audio = level.get("world_audio")
+	if audio != null and audio.has_method("play_at"): audio.play_at(path, point, BRAIN.SCARE_GAIN)
+	if level.get("match_net") != null and level.match_net.has_method("world_sound"): level.match_net.world_sound(path, point, BRAIN.SCARE_GAIN, 0.0)
+
+# --- The contract, through her mind ---------------------------------------------------------
+
+func sees(player: Node3D, ignore_concealment := false) -> bool:
+	return senses != null and senses.sees(player, ignore_concealment)
+
+func hear(point: Vector3, radius: float) -> void:
+	if control != "ai" or grace > 0.0 or senses == null: return
+	var route: Dictionary = senses.hear_route(point, radius)
+	if bool(route.audible): brain.on_heard(route, point)
+
+func hear_route(point: Vector3, radius: float) -> Dictionary:
+	return senses.hear_route(point, radius) if senses != null else {"audible": false, "apparent": point, "distance": INF, "muffle": 1.0}
+
+func watched(point: Vector3) -> bool: return SIGHT.watched(level, point, [get_rid()])
+
+func quarry() -> Node3D:
+	if brain == null or not brain.noticing(): return null
+	return senses.body_of(brain.prey_seat())
+
+func saw_enter(hide: Node3D, _sure := true) -> void:
+	if senses != null: senses.saw_enter(hide)
+
+func noticing() -> bool: return brain != null and brain.noticing()
+
+## The gate: the machine in charge only; a tool's forced capture is let
+## through and logged.
+func may_capture(body: Node3D) -> bool:
+	if level.get("match_net") != null and level.match_net.has_method("in_charge") and not level.match_net.in_charge(): return false
+	var clock: float = brain.clock if brain != null else 0.0
+	if level.get("executions") != null and not level.executions.forced.is_empty():
+		warning.forced_take(int(body.slot), clock)
+		return true
+	return warning.may_capture(int(body.slot), clock)
+
+func cue_of(body: Node3D) -> int:
+	var clock: float = brain.clock if brain != null else 0.0
+	for i in range(warning.ledger.size() - 1, -1, -1):
+		var entry: Dictionary = warning.ledger[i]
+		if int(entry.seat) == int(body.slot) and String(entry.outcome) == "taken" and absf(float(entry.take_at) - clock) <= WARNING.EPS: return int(entry.id)
+	return -1
+
+func capture_log() -> Array: return warning.ledger.duplicate(true)
+
+func begin_capture(data: Dictionary) -> void:
+	if brain != null: brain.on_captured(data)
+
+func end_capture() -> void:
+	if brain != null: brain.on_released()
+
+## Her warning, played here from where she is: in the victim's own ears, and
+## heard by the floor by anybody else (spec_f2_mind 9.2).
+func play_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
+	var audio = level.get("world_audio")
+	if audio == null or not audio.has_method("play_cue"): return
+	var mine: bool = level.get("player") != null and seat == int(level.player.slot) and (not level.has_method("local_alive") or level.local_alive())
+	var path: String = WARNING.CUE_SOUNDS[cue_id % WARNING.CUE_SOUNDS.size()]
+	audio.play_cue(path, point, mine)
+	var entry: Dictionary = warning.active if not warning.active.is_empty() else {}
+	var caption: String = WARNING.CUE_CAPTION_ABOVE if bool(entry.get("above", false)) else WARNING.CUE_CAPTION
+	if mine: audio.show_caption(caption, false, hold)
+	elif bool(audio.route_source(point, RID(), level.player.camera.global_position).get("audible", false)) and point.distance_to(level.player.camera.global_position) <= 10.0:
+		audio.show_caption(WARNING.CUE_CAPTION_NEAR, false)
+
+func cue_over(_cue_id: int, _outcome: String) -> void:
+	var audio = level.get("world_audio")
+	if audio != null and "caption_lock" in audio: audio.caption_lock = 0.0
+
+## Tests and the workbench: on the ceiling over a point, facing `toward`, held.
+func place_over(point: Vector3, toward := Vector3.INF) -> void:
+	var s = shell.state_at(Vector3(point.x, point.y + 1.0, point.z))
+	if s == null: return
+	var at: Vector3 = shell.anchor_of(s)
+	var heading := global_basis.z
+	if toward != Vector3.INF: heading = Vector3(toward.x - at.x, 0, toward.z - at.z)
+	motion.place_at(at, heading, &"probe")
+	motion.hold()
+	apply_motion()
+
+## Tests: inside the duct at that exit's node, hidden.
+func place_in_exit(exit: int) -> void:
+	motion.place_in_duct(int(ducts.exits[exit].node))
+	motion.mouth_exit = exit
+	apply_motion()
+
+# --- The light she drinks (spec_f2_mind 5.6) ----------------------------------------------------
+
+## Every DRAIN_EVERY on every machine, from her own position: the targets.
+func drain_step(delta: float) -> void:
+	drain_clock -= delta
+	if drain_clock > 0.0: return
+	drain_clock = SENSES.DRAIN_EVERY
+	var quiet: bool = grace > 0.0 or in_transit() or hushed() or level == null
+	drain_targets = {} if quiet else SENSES.drain_rooms(level, global_position, drain_reach, drain_cache)
+
+## Every frame: each room's light eased towards its target and trembling
+## while she drinks (all its lamps together), nothing trembling on reduced
+## effects.
+func _process(delta: float) -> void:
+	if level == null or level.get("hotel") == null: return
+	drain_time += delta
+	var hotel = level.hotel
+	var reduced: bool = bool(hotel.get("reduced"))
+	var rooms := {}
+	for r in drained: rooms[r] = true
+	for r in drain_targets: rooms[r] = true
+	for r in rooms:
+		var target := float(drain_targets.get(r, 0.0))
+		var now := move_toward(float(drained.get(r, 0.0)), target, SENSES.DRAIN_EASE * delta)
+		var sent := now
+		if target > 0.0 and not reduced: sent = clampf(now + SENSES.DRAIN_WOBBLE * sin(TAU * float(hash(int(r)) % 5 + 7) * drain_time + float(r)), 0.0, 0.89)
+		if now <= 0.0:
+			drained.erase(r)
+			hotel.drain(int(r), 0.0)
+			if hotel.has_method("drain_emergency"): hotel.drain_emergency(int(r), 0.0)
+			continue
+		if absf(sent - float(hotel.drained(int(r)))) > 0.01:
+			hotel.drain(int(r), sent)
+			if hotel.has_method("drain_emergency"): hotel.drain_emergency(int(r), sent)
+		drained[r] = now
+	draining = not drained.is_empty()
+
+## Every room she drank given back at once (a stage given back, a floor continued).
+func undrain() -> void:
+	if level == null or level.get("hotel") == null: return
+	for r in drained:
+		level.hotel.drain(int(r), 0.0)
+		if level.hotel.has_method("drain_emergency"): level.hotel.drain_emergency(int(r), 0.0)
+	drained = {}
+	drain_targets = {}
+	draining = false

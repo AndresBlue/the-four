@@ -640,6 +640,19 @@ func set_floor(number: int) -> void:
 	session.floor_number = int(kind.NUMBER)
 	session.stages = int(kind.count())
 
+## The creature to put on the floor instead of the kind's (tests, probes,
+## the workbenches): a key of CREATURE_SCENES, or "" for the kind's own.
+## --creature=<key> on the command line sets it.
+const CREATURE_SCENES := {"locust": "res://game/enemies/locust/locust.tscn", "lurker": "res://game/enemies/lurker/lurker_creature.tscn", "none": "res://game/enemies/null_creature.tscn"}
+var creature_scene := ""
+
+static func creature_asked() -> String:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--creature="):
+			var key: String = argument.trim_prefix("--creature=")
+			if CREATURE_SCENES.has(key): return key
+	return ""
+
 ## --floor=N: the floor a test, a probe, the bots or the observer play; 1 without
 ## it. Only a whole number counts (some probes have a --floor of their own).
 static func floor_asked() -> int:
@@ -1425,7 +1438,9 @@ func point_in_refuge(point: Vector3) -> bool:
 func spawn_locust() -> void: spawn_creature()
 
 func spawn_creature() -> void:
-	locust = (load(kind.CREATURE) as PackedScene).instantiate()
+	if creature_scene == "": creature_scene = creature_asked()
+	var scene: String = CREATURE_SCENES[creature_scene] if CREATURE_SCENES.has(creature_scene) else kind.CREATURE
+	locust = (load(scene) as PackedScene).instantiate()
 	locust.level = self
 	locust.process_mode = Node.PROCESS_MODE_PAUSABLE
 	# Where it starts the first stage (start_room(), The Locust's den_room()):

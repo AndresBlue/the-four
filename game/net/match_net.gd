@@ -752,6 +752,16 @@ func player_noise(point: Vector3, radius: float, kind: int) -> void:
 	if net.is_host and net.seat_of_peer(multiplayer.get_remote_sender_id()) != 0: level.locust_hear(point, radius, kind)
 
 ## A world sound decided on the host (director events), heard by everyone.
+## Her warning behind somebody (docs/OFICINAS.md 1), decided on the machine in
+## charge: played here from where she really is. Phase 4 also sends it,
+## reliable, to every machine (the victim's in its own ears).
+func send_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
+	if is_instance_valid(level.creature): level.creature.play_cue(seat, cue_id, point, hold)
+
+## That warning is over here (phase 4: and on every machine).
+func send_cue_over(cue_id: int, outcome: String) -> void:
+	if is_instance_valid(level.creature): level.creature.cue_over(cue_id, outcome)
+
 func world_sound(path: String, point: Vector3, gain: float, start: float) -> void:
 	if in_match() and net.is_host: play_world_sound.rpc(path, point, gain, start)
 
