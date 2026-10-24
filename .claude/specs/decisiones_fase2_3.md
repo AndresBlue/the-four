@@ -1,6 +1,6 @@
 # Decisiones del autor para las fases 2 y 3 (The Lurker)
 
-24 de octubre de 2026. Reúne en un sitio las decisiones «para el autor» de `spec_f2_movement.md` (§15), `spec_f2_mind.md` (§14) y `spec_f3_integration.md` (§15). Cada una lleva la recomendación del director. Basta con contestar «todas las recomendadas» o dar el número y otra opción. Mientras no estén resueltas, la fase 2 no se reparte.
+24 de octubre de 2026. Reúne en un sitio las decisiones «para el autor» de `spec_f2_movement.md` (§15), `spec_f2_mind.md` (§14) y `spec_f3_integration.md` (§15). Cada una lleva la recomendación del director. **El autor las resolvió el 24 de octubre** (sección «Resuelto por el autor», al final): todas como se recomendaba salvo M1, M2, C3, C5, C7 e I2.
 
 La M es del movimiento (2a), la C del cerebro (2b) y la I de la integración (fase 3).
 
@@ -58,3 +58,14 @@ La M es del movimiento (2a), la C del cerebro (2b) y la I de la integración (fa
 - Velocidad en el ducto principal: 1 m/s en todas las dificultades (23 de octubre).
 - Atajos de los conductos: al menos el 10 % (23 de octubre; sale un 12,7 %).
 - Aviso del primer piso: «The Lurker acecha entre las sombras, no dejes que te atrape» (23 de octubre).
+
+## Resuelto por el autor (24 de octubre de 2026)
+
+Todas como la recomendación, salvo estas:
+
+- **M1:** va **por las paredes y también por el techo**. Si tiene a un jugador cerca, **salta desde el techo para atacarlo**, abalanzándose sobre él con **un salto largo**.
+- **M2:** **su cuerpo muta y se encoge** para pasar por debajo de los muebles altos. Se rectificará cuando se mida su cuerpo en el juego.
+- **C3:** durante la ventana del aviso, **alejarse solo salva corriendo, no andando**.
+- **C5:** **sí hay aviso desde arriba**, en las salas altas.
+- **C7:** su cara solo se ve a oscuras **a muy poca distancia**; a media y larga distancia no se ve.
+- **I2:** **los golpes del director en las puertas se mantienen** en el piso 2: asustan cuando no hay peligro.

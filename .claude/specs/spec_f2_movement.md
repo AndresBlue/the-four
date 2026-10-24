@@ -992,3 +992,9 @@ Raised by the critics on 22 October 2026. Until each is answered, 2a builds what
 ### From step 0e (22 October 2026)
 
 - `ROOM_LAYERS.put_on_actor(mesh, bits)` exists, but `follow_bodies()` uses it only for meshes with the meta `"follow_rooms"` (none on floor 1; the first-person body is on layer 2 and must not move). Her face (lurker_visual.gd, LAYER 4) needs that meta and her body in the group follow_bodies walks (or `body_bit`, spec_f1_geometry H10).
+
+### Resolved by the author (24 October 2026; .claude/specs/decisiones_fase2_3.md)
+
+- **1:** walls **and** ceiling in the service corridors, air room and plant (bring the WALL patch forward and keep the ceiling where there is one). New behaviour: **with a survivor near, she drops from the ceiling in a long leap at them** (a lunge; its own motion and clip, its reach and timing to be specified with 2b's capture).
+- **2:** **her body shrinks** to pass under the tallest furniture (a squeeze of the shell under a low lane); the numbers are corrected once `BODY_DEPTH` is measured in the game.
+- **3, 4, 6, 7, 8, 9, 10, 11, 12, 13:** as recommended: she may block a doorway at head height; survivors collide with her (stopped, not pushed); a shutting leaf bounces off her; the plenum is also a hidden layer over the tiles with her sound out of the tile under her; above a locker she goes down its front to the slot, head down; wing 2's den is the air room; between plantas she takes the ride's 8.5 s and goes after whoever stays behind first; she comes down for a crouched victim's cue; no lockers opened; `peek_rate` as a multiplier and the minuteros herd her like the board's zones.

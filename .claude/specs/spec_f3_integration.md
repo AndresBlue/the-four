@@ -1081,3 +1081,8 @@ Without the argument the test is today's. With `--floor=2`, an `office_part()` i
 
 - OFICINAS 3 (line 176) sets the card of each planta in three parts: «NIVEL 1» / «PERSONAL» / «PIDE TU FICHA». 1a gives `kind.title_of(stage)` («NIVEL %d») to every live card (hotel_main `show_transit`/`show_brief`, lifts), but nothing shows the department. This phase does it: `show_transit` and `show_brief` gain the department line when the kind has one (the hotel has none, so its cards do not change).
 - Source of truth: `title_of()` for the level and `office_palette.PLANTA_NAMES` for the department. `office_floor.STAGES[n].level` and `.department` repeat them; this phase reads the two sources and removes the copies (or derives them), so the data is written once.
+
+### Resolved by the author (24 October 2026; .claude/specs/decisiones_fase2_3.md)
+
+- **1, 3 to 11:** as recommended: her passive drain does not make a room dark for the rules; faces every 40 to 90 s and sound lies at the hotel's pace; the last crawler may look back freely with the camera (the body still turns slowly), no longer window; the cue stays out of the fans' mask; her real duct and tile sounds lose their captions (the cue and the shriek keep theirs); the breath above a locker reads «[Algo respira encima]» (the author may change the text); she drinks light from inside a duct; planta 2's emergency lamps tremble with her; in versus a person driving her also enters the main duct only behind the last crawler; 0.5's decisions and 2b 4.2's numbers approved, to be tuned with the balance batch.
+- **2:** **the director's knuckles on doors stay on floor 2** ("mismas reglas"): they frighten when there is no danger.

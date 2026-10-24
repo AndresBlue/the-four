@@ -1192,3 +1192,10 @@ Checks:
 - `game/floors/difficulty.gd` has `CREATURE_PROFILES[&"lurker"]` with the eight keys of OFICINAS 4 that have values, named as 4.1. Out until the author gives numbers: the peeks, `sated`, `forget`, spec_f1_systems 1.8's six system keys and every director adjustment (4.2 is a draft).
 - `DIFFICULTY.value(id, key)` still knows no creature: with one of her keys it fails (it always evaluates `PROFILES[REFERENCE][key]`). Phase 2 reads `level.tuning()`, or extends `value()` first.
 - `TRAITS` stays indexed by difficulty; her four lines are the author's to write, and the difficulty screen's fixed subtitle (hotel_ui.gd, «LA BESTIA QUE TE ESPERA EN EL HOTEL») will need the floor's creature then.
+
+### Resolved by the author (24 October 2026; .claude/specs/decisiones_fase2_3.md)
+
+- **1, 2, 4, 6, 8, 9, 10, 11:** as recommended: the six rules of 0.3; only the victim's latency, capped at 0.5 s; Pesadilla beatable on the pad at the default sensitivity, and the cue closes the paper being read and stops the typing; "o la sala tiene luz" is the victim's room; stalking has its own word, `stalk`; she drinks lamps from a duct over the room but never in the freight lobbies; `creep_scale` over 1.0 m/s and a 0.8 m/s retreat; the draft's new keys approved, `ambush` 0 on Apacible.
+- **3:** leaving during the window **saves only running, not walking**.
+- **5:** **a cue from above exists** in rooms over 3.3 m (its own caption and test).
+- **7:** her pale face is seen in the dark **only very close**; at middle and long range it is not.
