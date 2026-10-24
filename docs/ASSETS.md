@@ -311,6 +311,17 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | `crawl_1.wav`, `crawl_2.wav` | `pixabay_83044_heater_vent_hit_lower_evdawg.mp3`, `pixabay_103305_heater_vent_hit_higher_evdawg.mp3` | Ev-Dawg, Pixabay | Pixabay Content License |
 | `ladder.wav` | `pixabay_76052_ladder_aluminum_erik90.mp3` | erik90, Pixabay | Pixabay Content License |
 
+## Sonidos de The Lurker (piso 2)
+
+`tools/audio/prepare_lurker_sfx.py` hace su aviso y su chillido en `assets/audio/sfx/lurker/` con grabaciones de animales descargadas en `source_assets/oficinas/audio_criatura/` (fichas en estado «ok»): nada sintetizado y nada humano. Cada aviso es una exhalación entera de caballo desde su primer sonido y dos chasquidos de hueso o nudillo pasados por un filtro paso alto a 2 kHz; el primero a 0,70 s. El aviso cuenta su ventana desde que suena, así que el guion falla si una copia tarda más de 20 ms en empezar (empiezan a unos 16 ms). En Pesadilla, con 1,2 s de ventana, quedan unos 0,5 s tras el primer chasquido. Los MP3 de BigSoundBank están por cambiar por sus WAV (`docs/PLAN.md`).
+
+| Copia | Original | Autor y fuente | Licencia |
+|---|---|---|---|
+| `cue_0.wav`, `cue_2.wav` (respiración) | `bsb_0285_breath_of_a_horse_1.mp3` | DenisChardonnet, BigSoundBank | CC0 |
+| `cue_1.wav` (respiración) | `bsb_1543_breath_horse_4.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
+| `cue_0..2.wav` (chasquidos) | `bsb_0596_bones_cracking_1.mp3`; `knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, por freesound_community en Pixabay | CC0; Pixabay Content License |
+| `scare_0.wav`, `scare_1.wav` | `bsb_1400_barn_owl_1.mp3`, `bsb_1403_barn_owl_2.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
+
 ## Modelos de las oficinas (piso 2)
 
 - **Cráneo de los restos del ducto principal:** OpenGameArt «Human Skull», de CDmir, CC0 (`source_assets/oficinas/equipos/human_skull_oga/`, con su ficha en el `registro.json`). En `assets/props/office/skull/`: el OBJ sin su biblioteca de materiales y tres texturas reducidas a 512 px (color, normal y rugosidad). `main_duct_geometry.gd` lo pone a 0,073 de su tamaño (unos 0,14 m de ancho).

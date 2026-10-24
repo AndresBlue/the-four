@@ -40,6 +40,9 @@ const CREEP_LOSE := 2.0
 ## s with nothing to play the capture before the take is over (phase 2 has
 ## no capture style).
 const TAKE_EMPTY := 0.2
+## Her shriek when she is frightened (tools/audio/prepare_lurker_sfx.py).
+const SCARE_SOUNDS := ["res://assets/audio/sfx/lurker/scare_0.wav", "res://assets/audio/sfx/lurker/scare_1.wav"]
+const SCARE_GAIN := -2.0
 
 enum State { ROAM, LISTEN, STALK, PEEK, FREEZE, CREEP, CUE, TAKE, RECOIL, FLEE, TRANSIT, WAIT_ABOVE }
 ## Her words, by state (creature.gd's lists): stalking is her own word,

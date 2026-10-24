@@ -74,5 +74,25 @@
   "assets/audio/sfx/office/typing_bell.wav": {
     "bytes": 159844,
     "sha256": "e1e773f95ad9af071ae5b919682d0071fae2d7eb13794c3eb6faf838ef8ae6e0"
+  },
+  "assets/audio/sfx/lurker/cue_0.wav": {
+    "bytes": 95300,
+    "sha256": "0efdf6bb4911cc7f0fd092808b144a277474717c4a022e9034734b88e2da7db0"
+  },
+  "assets/audio/sfx/lurker/cue_1.wav": {
+    "bytes": 98828,
+    "sha256": "fc952cdf13a6bca39b0a409d50dd89d5e90f5ed68b61024cd3162f6c05b5bd94"
+  },
+  "assets/audio/sfx/lurker/cue_2.wav": {
+    "bytes": 102356,
+    "sha256": "5cff6282c8aeb3dfbcfab15c24cef9fdbcc97a1443324f9ecd2348e6f4d32fd7"
+  },
+  "assets/audio/sfx/lurker/scare_0.wav": {
+    "bytes": 123522,
+    "sha256": "4d69b45d9a4ad0a6fa830a058eb185e669975d09bce9f014198d5c1c93080bed"
+  },
+  "assets/audio/sfx/lurker/scare_1.wav": {
+    "bytes": 123522,
+    "sha256": "23e7f9a6b249520a587e395d15bd6f0320297610ed48e84d09d6308b468d94f4"
   }
 }

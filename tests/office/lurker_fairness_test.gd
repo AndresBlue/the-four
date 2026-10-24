@@ -79,6 +79,8 @@ func run() -> void:
 		if int(counts[key]) < int(COVERAGE[key]): short.append("%s %d" % [key, int(counts[key])])
 	check("Cubre cogidas, salvadas, abortadas, caducadas y sin aviso: %s" % str(counts), short.is_empty(), ", ".join(short))
 	rules()
+	recordings()
+	never_faked()
 	var file := FileAccess.open("res://evidence/lurker_fairness_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"checks": checks, "counts": counts, "by_difficulty": by_id, "last_moment": last_moment, "approaches": results}, "\t"))
 	print("LURKER_FAIRNESS_TEST_RESULT ", checks.size() - failed, "/", checks.size())
@@ -108,6 +110,41 @@ func rules() -> void:
 		var entry: Dictionary = w.ledger[0]
 		if String(entry.outcome) != String(c[2]) or String(entry.reason) != String(c[3]): bad.append([c, entry.outcome, entry.reason])
 	check("Alejarse andando no salva y el aviso caduca lejos; corriendo, salva; andando al alcance del salto, coge", bad.is_empty(), str(bad))
+
+## Her warning's three recordings load and each is over before the shortest
+## window (Pesadilla's) could end in a take; her two shrieks load.
+func recordings() -> void:
+	var shortest := INF
+	for id in DIFFICULTY.ORDER: shortest = minf(shortest, float(DIFFICULTY.profile(id, &"lurker").back_window))
+	var bad: Array = []
+	for path in WARNING.CUE_SOUNDS:
+		var stream = load(path)
+		if not stream is AudioStream or (stream as AudioStream).get_length() >= shortest: bad.append(path)
+	for path in BRAIN.SCARE_SOUNDS:
+		if not load(path) is AudioStream: bad.append(path)
+	check("Sus tres avisos suenan enteros antes de la ventana más corta, y sus chillidos cargan", bad.is_empty(), str(bad))
+
+## The hallucinations never fake her warning (docs/OFICINAS.md 5): no script
+## of the game but lurker.gd and lurker_warning.gd names its sounds or its
+## caption.
+func never_faked() -> void:
+	var allowed := ["res://game/enemies/lurker/lurker.gd", "res://game/enemies/lurker/lurker_warning.gd"]
+	var found: Array = []
+	for path in scripts("res://game"):
+		if allowed.has(path): continue
+		var body := FileAccess.get_file_as_string(path)
+		for word in ["lurker/cue_", "CUE_SOUNDS", "CUE_CAPTION"]:
+			if body.contains(word): found.append("%s: %s" % [path, word])
+	check("Ninguna alucinación ni nada más que ella puede imitar su aviso", found.is_empty(), str(found))
+
+func scripts(dir: String) -> Array:
+	var out: Array = []
+	var access := DirAccess.open(dir)
+	if access == null: return out
+	for name in access.get_files():
+		if name.ends_with(".gd"): out.append(dir.path_join(name))
+	for sub in access.get_directories(): out.append_array(scripts(dir.path_join(sub)))
+	return out
 
 ## One approach: the draws, her brain run against the harness's truth, and
 ## the oracle's verdict on the same truth.
