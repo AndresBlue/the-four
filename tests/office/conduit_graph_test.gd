@@ -3,9 +3,11 @@ extends SceneTree
 ## 1.5 and spec_f2_movement 5.1) on the manifests of two floors: the tube tree
 ## and the duct network connected, the way from the window's hub to every
 ## station as long as the generator measured it, the nearest exits in order,
-## and a closed network shut to a search but not to one that ignores it.
+## and a closed network shut to a search but not to one that ignores it; and
+## her ducts (duct_graph.gd): gaps hung on, wings, and closure per wing.
 const GEN := preload("res://game/world/generation/office_generator.gd")
 const GRAPH := preload("res://game/world/generation/conduit_graph.gd")
+const DUCTS := preload("res://game/enemies/lurker/duct_graph.gd")
 var checks: Array = []
 var failed := 0
 
@@ -42,5 +44,21 @@ func run() -> void:
 		check("%s: las salidas más cercanas, en orden" % tag, ordered and float(near[0].metres) == 0.0, str(near))
 		ducts.closed = true
 		check("%s: cerrados, no se pasa; ignorando el cierre, sí" % tag, ducts.nearest_exits(start, 5).size() <= 1 and ducts.nearest_exits(start, 5, Callable(), true).size() == 5)
+		# Her ducts (duct_graph.gd): every gap a way in, the wings, closure per wing.
+		var hers = DUCTS.of(m)
+		var loose: Array = []
+		for e in hers.exits:
+			if String(e.kind) == "gap" and (int(e.node) < 0 or hers.adjacency[int(e.node)].is_empty()): loose.append(e.room)
+		check("%s: cada placa que falta es una entrada enganchada a la red" % tag, loose.is_empty(), str(loose))
+		check("%s: cada nodo sabe su planta" % tag, hers.node_wings.size() == hers.nodes.size() and Array(hers.node_wings).all(func(w): return w >= 0 and w <= 2))
+		var main_nodes: Array = m.air.main.nodes
+		check("%s: el conducto principal se ve como tal" % tag, hers.edge_kind(int(main_nodes[0]), int(main_nodes[1])) == "main")
+		var near_trunk: int = hers.trunk_nearest(hers.nodes[int(main_nodes[1])], 2)
+		check("%s: el tronco más cercano, de su planta" % tag, near_trunk >= 0 and hers.node_wings[near_trunk] == 2 and hers.node_kinds[near_trunk] == "trunk")
+		var top: int = hers.trunk_nearest(Vector3.ZERO, 0)
+		var low: int = hers.trunk_nearest(Vector3.ZERO, 2)
+		var before_top: int = hers.nearest_exits(top, 3).size()
+		hers.closed_wings[2] = 1
+		check("%s: los ventiladores cierran los ductos de su planta y no los de otra" % tag, hers.nearest_exits(low, 3).size() <= 1 and hers.nearest_exits(top, 3).size() == before_top and hers.nearest_exits(low, 3, Callable(), true).size() == 3)
 	print("CONDUIT_GRAPH_RESULT ", checks.size() - failed, "/", checks.size())
 	quit(1 if failed > 0 else 0)
