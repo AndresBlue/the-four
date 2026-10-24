@@ -283,7 +283,7 @@ func creature_lies() -> Node:
 func ensure_sight():
 	if not is_instance_valid(sight):
 		var told := creature_lies()
-		if told == null or not told.has_method("sight_model"): return null
+		if told == null: return null
 		sight = SIGHT.new()
 		add_child(sight)
 		sight.setup(level, told)

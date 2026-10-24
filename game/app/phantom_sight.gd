@@ -188,9 +188,14 @@ func lit(point: Vector3, camera: Camera3D) -> bool:
 func beside_view(point: Vector3, camera: Camera3D) -> bool:
 	return SHARED_SIGHT.beside_view(camera, point, PLACE_OFF)
 
-## Somewhere to be: a door or the end of a corridor. False when there is none.
+## Somewhere to be: a door or the end of a corridor, or where the creature's
+## own lies say (sight_spots()). False when there is none.
 func place(camera: Camera3D) -> bool:
 	ensure_model()
+	if lies.has_method("sight_spots"):
+		for spot in lies.sight_spots(self, camera):
+			if place_spot(spot, camera): return true
+		return false
 	var spots: Array = []
 	var eye := camera.global_position
 	for door in level.hotel.doors:
@@ -233,6 +238,29 @@ func place_peek(door, camera: Camera3D) -> bool:
 				face_point = head
 				return true
 			kind = ""
+	return false
+
+## A spot of the creature's own lies ({kind, point, up, facing, side, head}):
+## its model there facing the spot's way (or the camera), its up the spot's,
+## posed, its head moved to the spot's height or point; valid as a peek
+## is: the head in view and lit and, round a jamb or over a partition, its
+## body hidden. "peek" is posed as one, the others stare.
+func place_spot(spot: Dictionary, camera: Camera3D) -> bool:
+	var eye := camera.global_position
+	kind = "peek" if String(spot.kind) == "peek" else "stand"
+	var to_eye: Vector3 = eye - (spot.point as Vector3)
+	var facing: Vector3 = spot.get("facing", Vector3(to_eye.x, 0, to_eye.z).normalized())
+	model.global_transform = Transform3D(Basis.looking_at(-facing, spot.up), spot.point)
+	lean_side = float(spot.get("side", 1.0))
+	pose(1.0)
+	# Its head to the spot's height, or to the spot's point for it.
+	if spot.get("head") is Vector3: model.global_position += (spot.head as Vector3) - poser.point(lies.HEAD)
+	elif spot.has("head"): model.global_position.y += float(spot.head) - poser.point(lies.HEAD).y
+	pose(1.0)
+	face_point = poser.point(lies.HEAD)
+	var hidden: bool = String(spot.kind) == "corner" or hidden_body(eye)
+	if clear(eye, face_point) and lit(face_point, camera) and hidden: return true
+	kind = ""
 	return false
 
 ## Everything of it but the head and neck behind the wall: its middle, its

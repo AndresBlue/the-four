@@ -6,8 +6,10 @@ extends SceneTree
 ## plays her warning or any sound of hers that means something, touches an
 ## objective, follows the listener or captions; one lamp fails alone; with the
 ## red lever running there is no timer and with the fans running no fans nor
-## ducts; in the freight lobby nothing of her; in a locker the mind wears as
-## in the dark; and a room she drinks stays lit for the mind.
+## ducts; in the freight lobby nothing of her; her face where she is not is
+## her own model, round a dark door's jamb, over a partition and in a ceiling
+## corner, peeking or staring; in a locker the mind wears as in the dark; and
+## a room she drinks stays lit for the mind.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const LIES := preload("res://game/app/hallucinations/lurker_hallucinations.gd")
@@ -46,6 +48,7 @@ func run() -> void:
 	await plantas()
 	await one_lamp()
 	await conditions()
+	await faces()
 	await locker()
 	drained()
 	finish()
@@ -200,6 +203,73 @@ func conditions() -> void:
 		if not said.is_empty(): kinds[String(said.kind)] = true
 	check("En el vestíbulo protegido ni garras ni ductos", not kinds.has("garras") and not kinds.has("ducto"), str(kinds.keys()))
 	for k in lies.jobs.duplicate(): lies.step(k, 100.0)
+
+## Case 7: her face where she is not.
+func faces() -> void:
+	level.player.sanity = 30.0
+	var sight = level.sanity.ensure_sight()
+	if sight == null:
+		check("Su cara donde no está", false)
+		return
+	sight.ensure_model()
+	var own: bool = sight.model.get_script() == preload("res://game/enemies/lurker/lurker_visual.gd") and not sight.model.find_children("*", "Skeleton3D", true, false).is_empty()
+	var head: Vector3 = sight.poser.point(LIES.HEAD)
+	check("Su cara donde no está es su modelo, con su cabeza", own and head.is_finite())
+	check("Su descanso entre caras es el suyo", sight.rest >= LIES.SIGHT_REST.x * 0.5 - 1e-3 and sight.rest <= LIES.SIGHT_REST.y + 1e-3, "%.1f" % sight.rest)
+	level.player.torch.visible = true
+	var found := {}
+	var offered := {}
+	var peek := await staged_peek(sight)
+	if not peek.is_empty(): found["peek"] = peek
+	for room in level.manifest.rooms:
+		if found.has("partition") and found.has("corner"): break
+		if FLOOR.is_void(room) or bool(room.get("landing", false)) or level.point_protected(FLOOR.position_of(room)): continue
+		await stand_at(FLOOR.position_of(room) + Vector3(0, 0.04, 0))
+		for yaw in [0.0, PI * 0.5, PI, PI * 1.5]:
+			level.player.rotation.y = yaw
+			level.player.camera.rotation.x = 0.1
+			await physics_frame
+			var camera: Camera3D = level.player.camera
+			for spot in lies.sight_spots(sight, camera):
+				var k := String(spot.kind)
+				if found.has(k) or k == "peek": continue
+				offered[k] = int(offered.get(k, 0)) + 1
+				if sight.place_spot(spot, camera): found[k] = String(sight.poser.animator.assigned_animation)
+				sight.kind = ""
+	sight.model.visible = false
+	level.player.torch.visible = false
+	level.player.camera.rotation.x = 0.0
+	level.player.sanity = 100.0
+	check("Se la ve tras el marco de una puerta a oscuras asomándose, y sobre una mampara y en una esquina del techo mirando", found.get("peek", "") == "peek" and found.get("partition", "") == "idle" and found.get("corner", "") == "idle", "%s de %s" % [str(found), str(offered)])
+
+## A door to a dark room staged in view: the listener 11 to 18 m back from
+## it on the lit side, the doorway 45 degrees off the middle of the picture;
+## the clip she was posed in when a peek of hers there was accepted, or "".
+func staged_peek(sight) -> String:
+	for door in level.hotel.doors:
+		if not is_instance_valid(door) or door.locked: continue
+		for flip in [1.0, -1.0]:
+			var across: Vector3 = door.across() * flip
+			var far := FLOOR.room_at(level.manifest.rooms, door.doorway + across * 0.8)
+			if far.is_empty() or level.hotel.lit(int(far.id)): continue
+			for back in [11.0, 14.0, 18.0]:
+				var stand: Vector3 = door.doorway - across * back
+				stand.y = FLOOR.planta_y(FLOOR.planta_of(door.doorway.y)) + 0.04
+				var room := FLOOR.room_at(level.manifest.rooms, stand)
+				if room.is_empty() or level.point_protected(stand): continue
+				if not door.opened: door.open_immediately()
+				await stand_at(stand)
+				for turn in [deg_to_rad(45.0), deg_to_rad(-45.0)]:
+					var to: Vector3 = door.doorway - stand
+					level.player.rotation.y = atan2(-to.x, -to.z) + turn
+					level.player.camera.rotation.x = 0.0
+					await physics_frame
+					for spot in lies.sight_spots(sight, level.player.camera):
+						if String(spot.kind) == "peek" and sight.place_spot(spot, level.player.camera):
+							var clip := String(sight.poser.animator.assigned_animation)
+							sight.kind = ""
+							return clip
+	return ""
 
 ## Case 8.
 func locker() -> void:

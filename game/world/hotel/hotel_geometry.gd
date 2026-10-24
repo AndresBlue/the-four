@@ -2307,7 +2307,10 @@ func follow_bodies() -> void:
 func light_body(body: Node3D) -> void:
 	var bit := layer_at(body.global_position + Vector3(0, 0.9, 0))
 	if bit == 0: return
-	for mesh in body.find_children("*", "GeometryInstance3D", true, false): ROOM_LAYERS.put_on(mesh, bit)
+	for mesh in body.find_children("*", "GeometryInstance3D", true, false):
+		# A body drawn on a layer of its own (The Lurker's) is put on the room as an actor.
+		if (mesh.layers & 1) == 0: ROOM_LAYERS.put_on_actor(mesh, bit)
+		else: ROOM_LAYERS.put_on(mesh, bit)
 
 # A lamp that really lights its surroundings (no shadows, culled by distance).
 func practical(parent: Node3D, pos: Vector3, color: Color, energy: float, reach: float) -> void:

@@ -6,12 +6,31 @@ extends Node
 ## a shadow behind a blind, one lamp failing, a lever, a timer ticking, the
 ## fans starting. Each is this machine's alone: nothing is captioned, nothing
 ## goes on the net, no room's light is drunk, no objective is touched, and
-## none of her sounds that mean something (NEVER) is ever played. sanity.gd
-## makes this under itself and keeps it.
+## none of her sounds that mean something (NEVER) is ever played. And her
+## face where she is not (phantom_sight, sight_spots()): round the jamb of a
+## door to a dark room, over a cubicle's partition, hanging in a ceiling
+## corner. sanity.gd makes this under itself and keeps it.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
+const VISUAL := preload("res://game/enemies/lurker/lurker.tscn")
+const POSER := preload("res://game/app/hallucinations/lurker_poser.gd")
 const OWN_LIES := true
+## The bone her face is looked at by, and those that must stay hidden behind
+## a jamb or a partition: her body. Her arms may show, holding on to the edge.
+const HEAD := "head"
+const BODY_BONES := ["body", "abdomen"]
+## Where her face is seen: a door this far off, a partition, a room's corner;
+## and her head's height on a jamb (under the lintel), over a partition, under
+## a ceiling. Each only just off the middle of the picture and in a clear line
+## (phantom_sight.beside_view(), clear()), as The Locust's: never in plain view.
+const PEEK_RANGE := Vector2(10.0, 35.0)
+const PARTITION_RANGE := Vector2(10.0, 25.0)
+const CORNER_RANGE := Vector2(8.0, 20.0)
+const PEEK_HEAD := Vector2(1.7, 2.0)
+const OVER_PARTITION := 0.25
+const UNDER_CEILING := 0.35
+const SPOTS_MOST := 6
 ## Her sound lies come at the hotel's pace, her faces every 40 to 90 s (the
 ## author's I3).
 const WAIT_SCALE := 1.0
@@ -511,6 +530,84 @@ func _exit_tree() -> void:
 		if job.has("voice") and job.voice != null: level.world_audio.stop_long(job.voice)
 		if job.has("quad") and is_instance_valid(job.quad): job.quad.queue_free()
 	jobs = []
+
+# --- Her face where she is not --------------------------------------------------------
+
+## Her model for phantom_sight, under `host`: her hands still, her head on
+## whoever looks.
+func sight_model(host: Node) -> Node3D:
+	var model: Node3D = VISUAL.instantiate()
+	model.name = "Phantom"
+	host.add_child(model)
+	model.crawling = false
+	model.look_point = Vector3.INF
+	return model
+
+func sight_poser(model: Node3D):
+	return POSER.new(model)
+
+## Up to SPOTS_MOST places her face may be seen from `camera`, shuffled:
+## {kind ("peek", "partition" or "corner"), point (her origin), up (the
+## surface she holds), facing (where her body points; none: the camera),
+## side (the lean), head (her head's height, or where it is)}. She holds on as she does: to
+## the far face of the wall beside a jamb, her head out into the doorway; to
+## the back of a partition, head up over its top; upside down in a corner.
+## phantom_sight.place_spot() tries them.
+func sight_spots(sight, camera: Camera3D) -> Array:
+	var eye := camera.global_position
+	var wing := FLOOR.planta_of(eye.y)
+	var base := FLOOR.planta_y(wing)
+	var spots: Array = []
+	for door in level.hotel.doors:
+		if not is_instance_valid(door) or not door.opened or door.moving or door.locked: continue
+		var gap: float = door.doorway.distance_to(eye)
+		if gap < PEEK_RANGE.x or gap > PEEK_RANGE.y or FLOOR.planta_of(door.doorway.y) != wing: continue
+		var across: Vector3 = Basis(Vector3.UP, door.closed_rotation) * Vector3(0, 0, 1)
+		if across.dot(door.doorway - eye) < 0.0: across = -across
+		var far := FLOOR.room_at(level.manifest.rooms, door.doorway + across * 0.8)
+		if far.is_empty() or level.hotel.lit(int(far.id)): continue
+		var along := Vector3.UP.cross(across).normalized()
+		var jamb: Vector3 = door.doorway + Vector3(0, base + PEEK_HEAD.x - door.doorway.y, 0)
+		if not sight.beside_view(jamb, camera) or not sight.clear(eye, jamb): continue
+		# Either side of the doorway, her body on the far face of the wall, her
+		# head just in the opening.
+		for side in [1.0, -1.0]:
+			var point: Vector3 = door.doorway + across * 0.2 + along * side * (FLOOR.PORTAL * 0.5 + 0.35)
+			point.y = base
+			var head: Vector3 = door.doorway + across * 0.15 + along * side * (FLOOR.PORTAL * 0.5 - 0.12)
+			head.y = base + rng.randf_range(PEEK_HEAD.x, PEEK_HEAD.y)
+			spots.append({"kind": "peek", "point": point, "up": across, "facing": -along * side, "side": -side, "head": head})
+	for room in level.manifest.rooms:
+		if FLOOR.is_void(room) or int(room.get("wing", -1)) != wing: continue
+		var centre := FLOOR.position_of(room)
+		var straight := Vector2(centre.x - eye.x, centre.z - eye.z).length()
+		if straight > maxf(PARTITION_RANGE.y, CORNER_RANGE.y) + 10.0: continue
+		for item in room.get("furniture", []):
+			if String(item.kind) != "partition": continue
+			var at := centre + Vector3(float(item.at[0]), 0, float(item.at[1]))
+			var gap := at.distance_to(eye)
+			var over := at + Vector3(0, float(item.extra.height) + OVER_PARTITION, 0)
+			if gap < PARTITION_RANGE.x or gap > PARTITION_RANGE.y or not sight.beside_view(over, camera) or not sight.clear(eye, over): continue
+			var away := Vector3(at.x - eye.x, 0, at.z - eye.z).normalized()
+			spots.append({"kind": "partition", "point": at + away * 0.12, "up": away, "facing": Vector3.UP, "side": 1.0, "head": base + float(item.extra.height) + OVER_PARTITION})
+		var top: float = float(room.get("py", 0.0)) + float(room.height)
+		var half := Vector2(float(room.span_x) * 0.5 - 0.4, float(room.span_z) * 0.5 - 0.4)
+		for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+			var at := Vector3(centre.x + corner.x * half.x, top, centre.z + corner.y * half.y)
+			var gap := at.distance_to(eye)
+			var under := at - Vector3(0, UNDER_CEILING, 0)
+			if gap < CORNER_RANGE.x or gap > CORNER_RANGE.y or not sight.beside_view(under, camera) or not sight.clear(eye, under): continue
+			spots.append({"kind": "corner", "point": at, "up": Vector3.DOWN, "side": 1.0, "head": top - UNDER_CEILING})
+	shuffle(spots)
+	return spots.slice(0, SPOTS_MOST)
+
+## Shuffled with her own rng (tests seed it).
+func shuffle(list: Array) -> void:
+	for i in range(list.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var kept = list[i]
+		list[i] = list[j]
+		list[j] = kept
 
 # --- The base API ---------------------------------------------------------------------
 
