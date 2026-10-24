@@ -215,7 +215,7 @@ func is_dark(execution: Dictionary) -> bool:
 	if not is_instance_valid(level.hotel): return false
 	if level.hotel.dark: return true
 	var room := FLOOR.room_at(level.manifest.rooms, execution.get("from", level.player.global_position))
-	return not room.is_empty() and level.hotel.dark_ids.has(int(room.id))
+	return not room.is_empty() and not level.hotel.lit(int(room.id))
 
 ## Where the camera is going to land, for this capture.
 func plan(execution: Dictionary) -> Dictionary:
@@ -229,6 +229,11 @@ func plan(execution: Dictionary) -> Dictionary:
 		"torch": (level.executions.torch.rest as Transform3D).origin if not level.executions.torch.is_empty() else Vector3.INF, "dark": dark, "exclude": exclude,
 		"allowed": func(point: Vector3) -> bool: return not level.point_protected(point) and not door_sweeps(point),
 	}
+	# Taken up off the floor (The Lurker's): the camera falls looking up at her.
+	if bool(stage.get("look_up", false)):
+		scene["look_up"] = true
+		scene["ceiling"] = stage.get("ceiling", Vector3.INF)
+		scene["lift"] = float(execution.get("extra", {}).get("lift", 0.0))
 	return FALL.solve(level.get_world_3d().direct_space_state, scene, int(execution.get("seed", 0)))
 
 ## Whether a place on the floor is where a door on the move is about to be.
@@ -305,16 +310,25 @@ func frame_camera(execution: Dictionary, time: float, delta: float) -> void:
 ## mask's own space, so the picture is the same against a wall as in the
 ## middle of a room. Where the mask is, the creature's capture style says.
 func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
-	var framed: Variant = level.executions.style().mask_transform()
+	var staged = level.executions.style()
+	var framed: Variant = staged.mask_transform()
 	if not (framed is Transform3D): return thrown
 	var mask: Transform3D = framed
 	var side := float(execution.get("side", 1.0))
+	# How near the face is held and whether it comes at the lens: the style's
+	# when it says (tape_framing()), the file's otherwise.
+	var framing := framing_of(staged)
+	var far := float(framing.get("far", MASK_FAR))
+	var held := float(framing.get("held", MASK_HELD))
+	var close := float(framing.get("close", MASK_CLOSE))
+	var near := float(framing.get("near", MASK_NEAR))
+	var lunge := float(framing.get("lunge_time", LUNGE))
 	var arrived: float = 1.0 if busy else score().smooth(since / score().ARRIVE)
 	var jerk: float = score().smooth(score().ramp(since, score().JERK_TIME, score().JERK_TIME + score().JERK_LENGTH))
-	var distance := maxf(MASK_NEAR, lerpf(MASK_FAR, MASK_HELD, arrived) - (MASK_HELD - MASK_CLOSE) * jerk)
-	var coming: float = 0.0 if soft else score().ramp(time, score().face_end(entry) - LUNGE, score().face_end(entry))
+	var distance := maxf(near, lerpf(far, held, arrived) - (held - close) * jerk)
+	var coming: float = 0.0 if soft or lunge <= 0.0 else score().ramp(time, score().face_end(entry) - lunge, score().face_end(entry))
 	coming *= coming
-	distance = lerpf(distance, MASK_LUNGE, coming)
+	distance = lerpf(distance, float(framing.get("lunge_to", MASK_LUNGE)), coming)
 	var eye := mask.origin + mask.basis.z * distance
 	# Where the lens points: under the mask at first, so it comes down into
 	# the picture; from the side, off to that side.
@@ -333,7 +347,14 @@ func facing(execution: Dictionary, since: float, time: float) -> Transform3D:
 		var fade := exp(-since / SHAKE_FADE) + 0.25 + 2.0 * coming
 		var tremble := deg_to_rad(SHAKE) * fade
 		basis = basis * Basis.from_euler(Vector3(sin(time * TAU * SHAKE_RATE) * tremble, sin(time * TAU * SHAKE_RATE * 0.83 + 1.1) * tremble, sin(time * TAU * SHAKE_RATE * 1.21 + 2.3) * tremble * 0.7))
+	# The style's last word on the picture (The Lurker's: it rises into the dark).
+	if staged.has_method("tape_pose"): return staged.tape_pose(execution, time, Transform3D(basis, eye))
 	return Transform3D(basis, eye)
+
+## What the style says of how its face is framed ({far, held, close, near,
+## lunge_to, lunge_time, back_dip}); {} for the file's own.
+func framing_of(staged) -> Dictionary:
+	return staged.tape_framing() if staged != null and staged.has_method("tape_framing") else {}
 
 ## Caught from behind: the camera is pulled up short with its owner -- back
 ## on to the arm, tipping forward, far enough to see what has come through
@@ -350,7 +371,8 @@ func turning(execution: Dictionary, time: float) -> Transform3D:
 	var sweep := fposmod((to_yaw - from_yaw) * side, TAU)
 	if sweep < 0.6: sweep += TAU
 	var yaw := from_yaw + side * sweep * turned
-	var pitch := lerpf(hand.basis.get_euler().x - BACK_DIP * pulled, face.basis.get_euler().x, turned)
+	var dip := float(framing_of(level.executions.style()).get("back_dip", BACK_DIP))
+	var pitch := lerpf(hand.basis.get_euler().x - dip * pulled, face.basis.get_euler().x, turned)
 	var roll := side * 0.5 * sin(PI * turned)
 	var held: Vector3 = hand.origin.lerp(level.executions.lens_point(), pulled)
 	return Transform3D(Basis.from_euler(Vector3(pitch, yaw, roll)), held.lerp(face.origin, turned))

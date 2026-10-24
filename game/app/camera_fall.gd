@@ -17,8 +17,14 @@ extends RefCounted
 
 ## What the fallen camera records: the body held up and its fall; only part of
 ## it; or nothing but the carpet.
-enum { VIEW, PARTIAL, DOWN }
-const NAMES := ["ve", "ve a medias", "boca abajo"]
+enum { VIEW, PARTIAL, DOWN, UP }
+const NAMES := ["ve", "ve a medias", "boca abajo", "mira arriba"]
+## Fallen looking up (a capture that took its owner up off the floor, The
+## Lurker's): how steeply it looks, how far it may roll, and how far from
+## under what took them it best lies.
+const UP_PITCH := Vector2(55.0, 84.0)
+const UP_ROLL := 18.0
+const UP_REACH := 1.2
 
 ## Candidate places: this many directions round the middle of the capture, at
 ## each of these distances (metres), on the floor.
@@ -101,6 +107,7 @@ static func solve(space: PhysicsDirectSpaceState3D, scene: Dictionary, seed_valu
 	var from: Vector3 = scene.from
 	var middle: Vector3 = scene.middle
 	var exclude: Array = scene.get("exclude", [])
+	var up := bool(scene.get("look_up", false))
 	var best := {}
 	var tried := 0
 	var valid := 0
@@ -113,10 +120,11 @@ static func solve(space: PhysicsDirectSpaceState3D, scene: Dictionary, seed_valu
 			if spot.is_empty(): continue
 			valid += 1
 			for side in [-1.0, 1.0]:
-				var take := frame(space, scene, spot, side, rng, exclude)
+				var take := frame_up(space, scene, spot, side, rng, exclude) if up else frame(space, scene, spot, side, rng, exclude)
 				if take.is_empty(): continue
 				if best.is_empty() or float(take.score) > float(best.score): best = take
-	if best.is_empty() or int(best.kind) == DOWN: best = face_down(space, scene, rng, exclude)
+	if up and best.is_empty(): best = face_up(space, scene, rng, exclude)
+	elif best.is_empty() or int(best.kind) == DOWN: best = face_down(space, scene, rng, exclude)
 	best["tried"] = tried
 	best["valid"] = valid
 	route(space, best, from, seed_value, exclude)
@@ -279,6 +287,52 @@ static func frame(space: PhysicsDirectSpaceState3D, scene: Dictionary, spot: Dic
 	if bool(spot.leaned): score -= 0.3
 	score += rng.randf() * 0.3
 	return {"rest": rest, "kind": kind, "leaned": bool(spot.leaned), "score": score, "covered": covered, "side": side}
+
+## The camcorder lying on its back, looking up at what took its owner: aimed at
+## `scene.ceiling`, tipped up UP_PITCH, rolled a little. Never with the body's
+## landing in the picture (the fall may be seen, never the blow): a spot that
+## would see the landing or the last half metre over it is not one. Best when
+## it sees the ceiling where she is and the body held up under her, about
+## UP_REACH from under her.
+static func frame_up(space: PhysicsDirectSpaceState3D, scene: Dictionary, spot: Dictionary, side: float, rng: RandomNumberGenerator, exclude: Array) -> Dictionary:
+	var ground: Vector3 = spot.ground
+	var ceiling: Vector3 = scene.get("ceiling", Vector3.INF)
+	if ceiling == Vector3.INF: return {}
+	var eye := ground + Vector3.UP * 0.05
+	var to := ceiling - eye
+	var flat := Vector2(to.x, to.z).length()
+	var yaw := atan2(-to.x, -to.z)
+	var pitch := deg_to_rad(clampf(rad_to_deg(atan2(to.y, maxf(flat, 0.01))), UP_PITCH.x, UP_PITCH.y))
+	var roll := side * deg_to_rad(rng.randf_range(4.0, UP_ROLL))
+	var rest := Transform3D(Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Basis(Vector3.BACK, roll), eye + Vector3.UP * 0.06)
+	var forward := -rest.basis.z
+	var landing: Vector3 = (scene.body as Vector3) + Vector3.UP * 0.3
+	for over in [0.0, 0.25, 0.5]:
+		if forward.angle_to(landing + Vector3.UP * float(over) - rest.origin) < VIEW_HALF * 1.1: return {}
+	var held: Vector3 = (scene.hold as Vector3) + Vector3.UP * (1.2 + float(scene.get("lift", 0.0)))
+	var sees_ceiling := sees(space, rest.origin, ceiling, exclude)
+	var sees_held := sees(space, rest.origin, held, exclude)
+	if not sees_ceiling and not sees_held: return {}
+	var score := (3.0 if sees_ceiling else 0.0) + (1.5 if sees_held else 0.0)
+	score += 2.4 * (1.0 - clampf(absf(flat - UP_REACH) / UP_REACH, 0.0, 1.0))
+	var torch: Vector3 = scene.get("torch", Vector3.INF)
+	if torch != Vector3.INF and (ceiling - torch).length() > 0.01: score += 1.2 * maxf(0.0, forward.dot((ceiling - torch).normalized()))
+	if bool(spot.leaned): score -= 0.3
+	score += rng.randf() * 0.3
+	return {"rest": rest, "kind": VIEW if sees_ceiling and sees_held else PARTIAL, "leaned": bool(spot.leaned), "score": score, "covered": 0.0, "side": side}
+
+## No place to see her from: at its owner's feet, lens up, turned away from
+## where the body lands.
+static func face_up(space: PhysicsDirectSpaceState3D, scene: Dictionary, rng: RandomNumberGenerator, exclude: Array) -> Dictionary:
+	var from: Vector3 = scene.from
+	var level_y: float = (scene.middle as Vector3).y
+	var ground := floor_under(space, Vector3(from.x, level_y, from.z), exclude)
+	if ground == Vector3.INF or absf(ground.y - level_y) > 0.6: ground = Vector3(from.x, level_y, from.z)
+	var landing: Vector3 = scene.body
+	var away := Vector3(ground.x - landing.x, 0.0, ground.z - landing.z)
+	var yaw: float = atan2(-away.x, -away.z) if away.length() > 0.05 else rng.randf() * TAU
+	var rest := Transform3D(Basis.from_euler(Vector3(deg_to_rad(rng.randf_range(UP_PITCH.x, UP_PITCH.y)), yaw, 0.0)) * Basis(Vector3.BACK, rng.randf_range(-0.3, 0.3)), ground + Vector3.UP * 0.06)
+	return {"rest": rest, "kind": UP, "leaned": false, "score": 0.0, "covered": 0.0, "side": 1.0}
 
 ## No place to see from: at its owner's feet, lens to the carpet.
 static func face_down(space: PhysicsDirectSpaceState3D, scene: Dictionary, rng: RandomNumberGenerator, exclude: Array) -> Dictionary:

@@ -565,6 +565,8 @@ const HEAD_REST := 0.095
 ## creature's, from which the scene measures): the floor is that much lower
 ## than either, and a body laid on "the floor" without it lay a finger over it.
 const STANDS_OVER := 0.035
+## Hung from above: how far both upper arms are raised.
+const HUNG_ARMS := 25.0
 ## How high the hips of somebody lying flat are, over that origin.
 const LAID_HIPS := 0.075
 func rest_head(floor_y: float, weight: float) -> void:
@@ -609,7 +611,9 @@ func under_floor(floor_y: float) -> float:
 ## wardrobe's bottom board), and height (how far above the floor the body is
 ## held), away (to which side its head turns once it is dead: 1 its
 ## left) and bleed (whether this machine shows what soaks out of it). And, for none of it to end up in a wall or under the floor,
-## `clear`: the bodies the scene's own rays go through (kept_out).
+## `clear`: the bodies the scene's own rays go through (kept_out). And hang:
+## hung from above (The Lurker's), not bent over an arm, both upper arms raised
+## HUNG_ARMS degrees while it is held up.
 func pose_capture(state: Dictionary) -> void:
 	if not initialized: return
 	# The score of the scene (the creature's capture style's).
@@ -715,6 +719,8 @@ func pose_capture(state: Dictionary) -> void:
 		var struggle := clampf(lift * 1.6, 0.0, 1.0)
 		var upper := flung.lerp(clutch, struggle).lerp(dead, limp).lerp(thrown, sat * late).lerp(left_behind, 0.55 * trail).normalized()
 		var fore := flung_fore.lerp(clutch_fore, struggle).lerp(dead_fore, limp).lerp(thrown_fore, sat * late).lerp(left_behind, 0.75 * trail).normalized()
+		# Hung from above, both raised a little, to the hands on the shoulders.
+		if bool(state.get("hang", false)) and fall == 0.0: upper = upper.rotated(forward, -deg_to_rad(HUNG_ARMS) * hand_side * clampf(lift * 4.0, 0.0, 1.0))
 		# And they give once more when it lands.
 		upper = (upper - sag * 0.25 * jolt).normalized()
 		fore = (fore - sag * 0.45 * jolt).normalized()

@@ -216,6 +216,62 @@ func unpose() -> void:
 	creature.visual.limbs.grips = {}
 	creature.visual.limbs.upright_share = 1.0
 
+# --- The tape and the blood ----------------------------------------------------------
+
+## Her face fills the picture, a span away, and does not come at the lens
+## (death_tape.facing()).
+func tape_framing() -> Dictionary:
+	return {"far": 0.6, "held": 0.34, "close": 0.3, "near": 0.24, "lunge_time": 0.0, "back_dip": -0.12}
+
+## As she pulls them up the picture rises into the dark of the ceiling.
+func tape_pose(execution: Dictionary, time: float, framed: Transform3D) -> Transform3D:
+	var k: float = LURKER_SCORE.lift(time)
+	var lift := float(extra_of(execution).get("lift", LURKER_SCORE.LIFT_HEIGHT))
+	return Transform3D(framed.basis * Basis(Vector3.RIGHT, 0.35 * k), framed.origin + Vector3.UP * k * lift * 0.9)
+
+## Where the body is held, its chest and its face, from what blood.gd kept of
+## the scene: over their feet, lifted as she lifts them.
+func blood_held(scene: Dictionary, time: float) -> Vector3:
+	var lift := float((scene.get("extra", {}) as Dictionary).get("lift", LURKER_SCORE.LIFT_HEIGHT))
+	return (scene.feet as Vector3) + Vector3.UP * LURKER_SCORE.lift(time) * lift
+
+func blood_chest(scene: Dictionary, time: float) -> Vector3:
+	var falling: float = LURKER_SCORE.fall(time)
+	var sunk: float = LURKER_SCORE.sunk(falling)
+	return blood_held(scene, time) + Vector3.UP * lerpf(1.2, 0.3, sunk) + (scene.fall as Vector3) * LURKER_SCORE.seat_back(float(scene.room)) * sunk
+
+func blood_face(scene: Dictionary, time: float) -> Vector3:
+	return blood_held(scene, time) + Vector3.UP * 1.58
+
+## No wound at the grab (the cause is seen, not the blow); at the bite a spray
+## from the face held up, half of it up to the ceiling and half down round
+## the feet; let go, the chest on the floor wells four times. Sparing, the
+## spray only.
+func spill(scene: Dictionary, rng: RandomNumberGenerator, drops: Array, sparing: bool, blood) -> void:
+	var face := blood_face(scene, LURKER_SCORE.KILL_TIME)
+	for index in 40:
+		var towards := Vector3.UP if index % 2 == 0 else Vector3.DOWN
+		var from := face + Vector3(rng.randf_range(-0.05, 0.05), rng.randf_range(-0.05, 0.05), rng.randf_range(-0.05, 0.05))
+		blood.drop(drops, LURKER_SCORE.KILL_TIME + rng.randf() * 0.1, from, blood.scattered(rng, towards, 0.55 if index % 2 == 0 else 0.9) * rng.randf_range(2.0, 6.0), rng.randf_range(0.07, 0.2))
+	if sparing: return
+	for pulse in 4:
+		var at: float = LURKER_SCORE.DROP_TIME + 0.04 + 0.21 * float(pulse)
+		var strength := 1.0 - 0.24 * float(pulse)
+		for index in 7 - pulse:
+			blood.drop(drops, at + rng.randf() * 0.07, blood_chest(scene, at), blood.scattered(rng, Vector3.UP, 0.75) * rng.randf_range(0.8, 2.3) * strength, rng.randf_range(0.09, 0.18))
+
+## What is heard of it: the spray at the bite, and the chest welling after the
+## drop (nothing at the grab).
+func blood_sounds(scene: Dictionary, rng: RandomNumberGenerator, sparing: bool, blood) -> Array:
+	var said: Array = [{"time": LURKER_SCORE.KILL_TIME + 0.02, "path": blood.SPRAY, "at": blood_face(scene, LURKER_SCORE.KILL_TIME), "db": blood.SPRAY_DB}]
+	if sparing: return said
+	var gushes: Array = blood.GUSHES
+	var first := rng.randi_range(0, gushes.size() - 1)
+	for pulse in 4:
+		var at: float = LURKER_SCORE.DROP_TIME + 0.04 + 0.21 * float(pulse)
+		said.append({"time": at, "path": gushes[(first + pulse) % gushes.size()], "at": blood_chest(scene, at), "db": blood.WELL_DB - blood.WELL_FADE * float(pulse)})
+	return said
+
 ## Her face as a frame: at her face, +Z to the lens, +Y the top of her head
 ## (down, while she hangs).
 func mask_transform() -> Variant:

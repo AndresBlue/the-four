@@ -99,11 +99,13 @@ func begin(execution: Dictionary) -> void:
 	rng.seed = int(scene.seed) ^ 0xb100d
 	var sparing: bool = bool(level.settings.values.get("reduced", false))
 	var drops: Array = []
-	spill(scene, rng, drops, sparing)
+	if own(scene, "spill"): scene.style.spill(scene, rng, drops, sparing, self)
+	else: spill(scene, rng, drops, sparing)
 	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
 	var stains: Array = []
 	for drop in drops: land(space, scene, rng, drop, stains)
-	var record := {"id": int(execution.get("id", -1)), "clock": 0.0, "nodes": [], "materials": [], "pool": null, "air": null, "flying": [], "still": false, "scene": scene, "stains": stains, "sounds": sounds(scene, rng, sparing)}
+	var said: Array = scene.style.blood_sounds(scene, rng, sparing, self) if own(scene, "blood_sounds") else sounds(scene, rng, sparing)
+	var record := {"id": int(execution.get("id", -1)), "clock": 0.0, "nodes": [], "materials": [], "pool": null, "air": null, "flying": [], "still": false, "scene": scene, "stains": stains, "sounds": said}
 	lay(record, stains)
 	pool(record, space, scene, rng)
 	if not sparing: fly(record, drops)
@@ -140,31 +142,50 @@ func snapshot(execution: Dictionary) -> Dictionary:
 	var point: Vector3 = staged.creature_point(execution)
 	var exclude: Array = level.executions.scene_bodies()
 	var straight: bool = bool(execution.get("straight", false)) or bool(execution.get("slump", false))
-	return {
+	var scene := {
 		"seed": int(execution.get("seed", 0)), "point": point, "forward": forward, "right": forward.cross(Vector3.UP),
 		"far": float(execution.get("far", score().HOLD_FAR.y)), "crouched": bool(execution.get("crouched", false)),
 		"side": float(execution.get("side", 1.0)), "exclude": exclude,
 		"fall": level.executions.fall_way(yaw, 0.0 if straight else float(execution.get("side", 1.0))),
 		"room": float(execution.get("room", score().LIE_ROOM)), "sill": level.executions.seat_floor(),
 	}
+	# A style with blood of its own (The Lurker's) is kept with what it needs:
+	# where the body stands and what the host sent of the capture.
+	if staged.has_method("blood_held"):
+		scene["style"] = staged
+		scene["feet"] = staged.drop_point(execution)
+		scene["extra"] = execution.get("extra", {})
+	return scene
 
 ## Where the body is held at a second of the scene (the capture style's
 ## victim_hold_point, The Locust's, from what was kept of it).
 func held_at(scene: Dictionary, time: float) -> Vector3:
+	if own(scene, "blood_held"): return scene.style.blood_held(scene, time)
 	var reach := lerpf(float(scene.far), score().HOLD_NEAR, score().closing(time))
 	return (scene.point as Vector3) + (scene.forward as Vector3) * reach + Vector3.UP * (score().HOLD_STAND * (1.0 - score().fall(time)) + score().lift(time) * score().LIFT_HEIGHT)
 
 ## The wound in its chest at a second of the scene: where the blade holds it,
 ## and once it is let go, down and back with it.
 func chest_at(scene: Dictionary, time: float) -> Vector3:
+	if own(scene, "blood_chest"): return scene.style.blood_chest(scene, time)
 	var falling: float = score().fall(time)
 	var low: float = (1.0 - score().lift(time)) if bool(scene.crouched) else 0.0
 	var up := lerpf(lerpf(1.2, 0.68, low), 0.3, score().sunk(falling))
 	return held_at(scene, time) + Vector3.UP * up + (scene.fall as Vector3) * score().seat_back(float(scene.room)) * score().sunk(falling)
 
 func face_at(scene: Dictionary, time: float) -> Vector3:
+	if own(scene, "blood_face"): return scene.style.blood_face(scene, time)
 	var low: float = (1.0 - score().lift(time)) if bool(scene.crouched) else 0.0
 	return held_at(scene, time) + Vector3.UP * lerpf(1.58, 0.88, low)
+
+## Where the body stands to be let go: the style's, or in front of the
+## creature (The Locust's, as it always was).
+func feet_of(scene: Dictionary) -> Vector3:
+	return scene.feet if scene.has("feet") else (scene.point as Vector3) + (scene.forward as Vector3) * score().HOLD_NEAR
+
+## Whether the capture style of a scene has its own way of a part of it.
+func own(scene: Dictionary, what: String) -> bool:
+	return scene.get("style") != null and scene.style.has_method(what)
 
 ## A direction within `spread` radians of another.
 func scattered(rng: RandomNumberGenerator, towards: Vector3, spread: float) -> Vector3:
@@ -342,12 +363,12 @@ func lay(record: Dictionary, stains: Array) -> void:
 func pool(record: Dictionary, space: PhysicsDirectSpaceState3D, scene: Dictionary, rng: RandomNumberGenerator) -> void:
 	var lean: float = score().seat_lean(float(scene.room))
 	var back: float = score().seat_back(float(scene.room))
-	var feet: Vector3 = (scene.point as Vector3) + (scene.forward as Vector3) * score().HOLD_NEAR
+	var feet: Vector3 = feet_of(scene)
 	# Under its head and its chest, and a little to the side its head lolls to.
 	var middle := feet + (scene.fall as Vector3) * (back + 0.6 * sin(lean)) + (scene.right as Vector3) * float(scene.side) * rng.randf_range(0.05, 0.16)
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, middle)
 	if room.is_empty() or int(room.id) >= level.hotel.room_nodes.size() or not is_instance_valid(level.hotel.room_nodes[int(room.id)]): return
-	var floor_y: float = (scene.point as Vector3).y - 0.04 + float(scene.sill)
+	var floor_y: float = feet_of(scene).y - 0.04 + float(scene.sill)
 	middle.y = floor_y
 	var radius := rng.randf_range(POOL_RADIUS.x, POOL_RADIUS.y)
 	# Each way round: as far as the first thing standing on the floor, and no
@@ -469,7 +490,7 @@ func on_lens(id: int, lens: Vector3) -> bool:
 	for record in records:
 		if int(record.id) != id: continue
 		var scene: Dictionary = record.scene
-		var held: Vector3 = (scene.point as Vector3) + (scene.forward as Vector3) * score().HOLD_NEAR
+		var held: Vector3 = feet_of(scene)
 		return Vector2(lens.x - held.x, lens.z - held.z).length() < LENS_REACH and (lens - (scene.point as Vector3)).dot(scene.forward as Vector3) > 0.1
 	return false
 

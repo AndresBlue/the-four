@@ -4,7 +4,9 @@ extends SceneTree
 ## she hangs, how high she can lift them, the tile over her), her hanging head
 ## down through the scene with her hands on the shoulders and her face upside
 ## down, the victim lifted no higher than the ceiling allows and let fall where
-## they stood, the swinging tile, the bite at her face, and the scene over at
+## they stood, the swinging tile, the bite at her face, the tape holding her
+## face a span from the lens, the camcorder falling to look up at her, her
+## blood (nothing at the grab, the spray at the bite), and the scene over at
 ## her own length with her let go and the capture written down.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
@@ -58,8 +60,15 @@ func run() -> void:
 	if execution.is_empty():
 		finish()
 		return
+	var take: Dictionary = level.tape.take
+	var looks_up: bool = not take.is_empty() and -(take.rest as Transform3D).basis.z.y > 0.7
+	check("La cámara caerá mirando hacia arriba", looks_up, "%s %s" % [str(take.get("kind", "")), str(take.get("rest", ""))])
+	var records: Array = level.executions.blood.records
+	var said: Array = records[records.size() - 1].sounds if not records.is_empty() else []
+	check("Su sangre: nada al agarrar, el chorro al morder", not said.is_empty() and absf(float(said[0].time) - (SCORE.KILL_TIME + 0.02)) < 1e-4 and String(said[0].path) == level.executions.blood.SPRAY, str(said.slice(0, 2)))
 	var from: Vector3 = execution.from
 	var lift: float = float(extra.lift)
+	var spans: Array = []
 	var down := true
 	var gripped := false
 	var upside := true
@@ -75,6 +84,7 @@ func run() -> void:
 		if lurker.global_basis.y.normalized().dot(Vector3.DOWN) < 0.99: down = false
 		if t > 0.4 and t < SCORE.DROP_TIME - 0.1 and lurker.visual.limbs.grips.size() == 2: gripped = true
 		if t > 0.5 and t < SCORE.face_end("back") and lurker.visual.limbs.upright_share != 0.0: upside = false
+		if t > 1.0 and t < 1.5: spans.append(player.camera.global_position.distance_to(lurker.face_point()))
 		highest = maxf(highest, player.global_position.y - from.y)
 		for child in level.hotel.get_children():
 			if String(child.name) == "SwingingTile": tile_seen = true
@@ -82,6 +92,8 @@ func run() -> void:
 	check("Cuelga cabeza abajo toda la escena, con las manos en los hombros y la cara boca abajo", down and gripped and upside, "%s %s %s" % [str(down), str(gripped), str(upside)])
 	check("Levanta a la víctima tanto como deja el techo, no más", highest > lift * 0.9 and highest <= lift + 0.02, "%.2f de %.2f" % [highest, lift])
 	check("La placa se balancea donde entró, y el mordisco suena", tile_seen and bite)
+	var span_ok: bool = not spans.is_empty() and spans.all(func(d): return d > 0.25 and d < 0.5)
+	check("En la cinta su cara está a un palmo del objetivo", span_ok, str(spans.slice(0, 3)))
 	check("La escena dura lo suyo y la suelta", clock >= SCORE.CUT_TIME and clock <= SCORE.CUT_TIME + 0.6 and not lurker.scene_held and lurker.visual.limbs.grips.is_empty() and lurker.visual.limbs.upright_share == 1.0, "%.2f s" % clock)
 	check("La captura queda apuntada", lurker.takes.size() == 1 and bool(lurker.takes[0].forced) and int(lurker.takes[0].seat) == int(player.slot), str(lurker.takes))
 	check("La víctima cae donde estaba", Vector2(player.global_position.x - from.x, player.global_position.z - from.z).length() < 1.6)
