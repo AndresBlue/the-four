@@ -163,8 +163,10 @@ func tile_shift(point: Vector3, dust := true) -> void:
 	get_tree().create_timer(0.15).timeout.connect(func(): if is_instance_valid(self) and may_sound(): play_routed(file, point, DUST_DB, 20000.0, "tile"))
 	puff(point)
 
-## A one-shot of grey dust under the tile, freed after 3 s.
-func puff(point: Vector3) -> void:
+## A one-shot of grey dust under the tile, freed after 3 s (her lies' too).
+func puff(point: Vector3) -> void: dust_puff(level, point)
+
+static func dust_puff(level, point: Vector3) -> void:
 	var dust := CPUParticles3D.new()
 	dust.one_shot = true
 	dust.amount = 40
@@ -191,7 +193,7 @@ func puff(point: Vector3) -> void:
 	dust.global_position = point + Vector3(0, -0.05, 0)
 	if level.get("hotel") != null and level.hotel.has_method("adopt"): level.hotel.adopt(dust)
 	dust.emitting = true
-	get_tree().create_timer(3.0).timeout.connect(func(): if is_instance_valid(dust): dust.queue_free())
+	dust.get_tree().create_timer(3.0).timeout.connect(func(): if is_instance_valid(dust): dust.queue_free())
 
 ## Her shriek, heard: its caption within CAPTION_NEAR of the listener (the
 ## sound is the brain's scream(), on every machine).

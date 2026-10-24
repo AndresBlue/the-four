@@ -2624,7 +2624,8 @@ func _process(delta: float) -> void:
 		if not reduced:
 			# Mostly steady, with short irregular dropouts and a faint hum.
 			var t: float = flicker_clock + entry.phase
-			var burst := fposmod(t, 7.3) < 0.45
+			# A lens made to fail (office_geometry.flicker_one) chatters all along.
+			var burst: bool = fposmod(t, 7.3) < 0.45 or entry.has("quad")
 			var chatter := sin(t * 71.0) * sin(t * 23.0)
 			level = 0.95 + sin(t * 314.0) * 0.02
 			if burst: level = 0.25 if chatter > 0.1 else 1.0
@@ -2634,7 +2635,8 @@ func _process(delta: float) -> void:
 		var share := float(entry.get("share", 1.0))
 		var lit_level := level if share == 1.0 else 1.0 - share * (1.0 - level)
 		lamp.light_energy = entry.energy * lit_level * (1.0 - drained(int(lamp.get_meta("room", -1))))
-		entry.material.emission_energy_multiplier = entry.glow * level
+		if entry.material != null: entry.material.emission_energy_multiplier = entry.glow * level
+		if entry.has("quad") and is_instance_valid(entry.quad): entry.quad.visible = level < 0.6
 
 ## Public-domain paintings (assets/paintings, tools/textures/ingest_dressing.py)
 ## in their frames: a gold, carved frame (Poly Haven's, its own canvas taken

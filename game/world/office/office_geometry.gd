@@ -182,6 +182,7 @@ var duct_holes: Array[AABB] = []
 ## bake, which nobody crawls, and before the physics check, which sees them.
 func build(data: Dictionary) -> void:
 	duct_holes = MAIN_DUCT.outer_boxes(data)
+	panes = []
 	await super(data)
 	if data.has("air") and data.air.has("main"):
 		main_duct = MAIN_DUCT.build(self, data)
@@ -484,7 +485,47 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 		sheet.mesh = quad
 		sheet.position = Vector3(centre, GLASS_SILL + band * 0.5 - 0.03, office_side * 0.045)
 		boundary.add_child(sheet)
+		panes.append(sheet)
 		box(boundary, Vector3(centre, GLASS_HEAD - 0.05, office_side * 0.045), Vector3(pane - MULLION, 0.04, 0.04), "steel_frame")
+
+## Every blind of a glazed run, its sheet (The Lurker's lie of a shadow
+## behind one, lurker_hallucinations).
+var panes: Array = []
+
+## A lie (lurker_hallucinations, "lampara"): one troffer of a lit room fails
+## for `seconds`, on this machine only, as a failing troffer does: a dark lens
+## (lens_off) just under its lens, shown with the flicker, and the room's light
+## moved by that troffer's share at most (H5). No new material and never
+## drain(). False when the room has fewer than two troffers or already
+## flickers.
+func flicker_one(room_id: int, seconds: float, seed_value: int) -> bool:
+	if room_id < 0 or room_id >= lights.size() or not lit(room_id): return false
+	var room: Dictionary = manifest.rooms[room_id]
+	var lamps: Array = OFFICE.troffers(room)
+	if lamps.size() < 2: return false
+	var light: OmniLight3D = lights[room_id]
+	for entry in flickers:
+		if entry.light == light: return false
+	var lamp: Dictionary = lamps[posmod(seed_value, lamps.size())]
+	var quad := MeshInstance3D.new()
+	quad.name = "LensFailing"
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(0.56, 1.16) if bool(lamp.along_z) else Vector2(1.16, 0.56)
+	quad.mesh = mesh
+	quad.material_override = materials.get("lens_off", materials.get("light_off"))
+	quad.visible = false
+	add_child(quad)
+	quad.global_transform = Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(lamp.centre.x, float(room.get("py", 0.0)) + float(room.height) + LENS_RECESS - 0.007, lamp.centre.y))
+	adopt(quad)
+	var entry := {"light": light, "energy": float(drain_from.get(room_id, light.light_energy)), "phase": 0.0, "material": null, "glow": 0.0, "share": 1.0 / lamps.size(), "quad": quad}
+	flickers.append(entry)
+	get_tree().create_timer(seconds).timeout.connect(func(): end_flicker(entry, room_id))
+	return true
+
+func end_flicker(entry: Dictionary, room_id: int) -> void:
+	flickers.erase(entry)
+	if is_instance_valid(entry.quad): entry.quad.queue_free()
+	if is_instance_valid(entry.light): entry.light.light_energy = float(entry.energy) * (1.0 - drained(room_id))
 
 ## The freight car (7.4) inside the hotel's CAR_INSIDE, so riding, arriving
 ## and the car's rect are untouched: a steel floor, sides and back of steel

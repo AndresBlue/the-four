@@ -52,6 +52,10 @@ const CREDITS := [
 		"«toaster oven or lift/elevator bell», de azumarill (CC BY 3.0).",
 		"«custom_heavy_whoosh_punch_kick_thud_impact_sound_10022025», de Artninja (CC BY 4.0).",
 	]],
+	["SONIDO DE LAS OFICINAS", [
+		"«Photocopy Machine», de Daniel Simion (SoundBible.com, CC BY 3.0).",
+		"«Office Chair Roll SFX Sound Effect», de Nicole Marie T (OpenGameArt, CC BY 4.0).",
+	]],
 	["EL RESTO DEL SONIDO", [
 		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],

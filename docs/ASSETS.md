@@ -309,6 +309,10 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | `fans.wav` (bucle) | `bsb_3598_ventilation_5.flac` | BigSoundBank | CC0 |
 | `hatch.wav` | `bsb_0773_metal_filing_cabinet.wav` | BigSoundBank | CC0 |
 | `crawl_1.wav`, `crawl_2.wav` | `pixabay_83044_heater_vent_hit_lower_evdawg.mp3`, `pixabay_103305_heater_vent_hit_higher_evdawg.mp3` | Ev-Dawg, Pixabay | Pixabay Content License |
+| `phone_ring.wav` (bucle: un timbrazo y su pausa; para las mentiras de The Lurker) | `bsb_3532_socotel_discreet_rings.wav` | Joseph SARDIN, BigSoundBank | CC0 |
+| `copier.wav` (sus primeros 4 s) | `soundbible_2169_photocopy_machine.wav` | Daniel Simion, [SoundBible.com](https://soundbible.com/2169-Photocopy-Machine.html), en los créditos del juego | CC BY 3.0 |
+| `chair_roll.wav` | `oga_nicolemariet_office_chair_roll.wav` | Nicole Marie T, [OpenGameArt](https://opengameart.org/content/office-chair-roll-sfx-sound-effect), en los créditos del juego (conviene confirmar la licencia en su propia página antes de publicar) | CC BY 4.0 |
+| `starter.wav` (sus primeros 3 s) | `pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3` | EverydaySounds, Freesound (CC0), en Pixabay | Pixabay Content License |
 | `ladder.wav` | `pixabay_76052_ladder_aluminum_erik90.mp3` | erik90, Pixabay | Pixabay Content License |
 
 ## Sonidos de The Lurker (piso 2)

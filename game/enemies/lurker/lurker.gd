@@ -815,6 +815,9 @@ func above_locker(hide: Node3D) -> Vector3:
 
 func presence_sound() -> Resource: return sound_profile
 
+## Her lies to a mind that is going (spec_f3_integration 4).
+func hallucinations() -> Variant: return load("res://game/app/hallucinations/lurker_hallucinations.gd")
+
 ## A moment of hers every machine must hear of (6.3). Told on this machine
 ## only for now: the net's reliable event is phase 4's.
 func on_event(kind: String, data: Array) -> void:

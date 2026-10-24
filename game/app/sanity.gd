@@ -228,6 +228,15 @@ func hallucinate(delta: float) -> void:
 	if level.player.sanity > SANITY_UNEASY or level.player.reading: return
 	hallucination_wait -= delta
 	if hallucination_wait > 0.0: return
+	# A creature that chooses its own lies (The Lurker's): before any draw of
+	# the floor's, so the hotel's draws stay as they were.
+	if lies_tell_own():
+		var own := creature_lies()
+		var gone_own: float = 1.0 - level.player.sanity / SANITY_UNEASY
+		hallucination_wait = lerpf(HALLUCINATION_WAIT.y, HALLUCINATION_WAIT.x, gone_own) * randf_range(0.7, 1.3) * float(own.wait_scale())
+		last_lie = own.lie(hallucination_point(randf_range(4.0, 14.0)), gone_own)
+		last_lie["time"] = Time.get_ticks_msec() / 1000.0
+		return
 	var gone: float = 1.0 - level.player.sanity / SANITY_UNEASY
 	hallucination_wait = lerpf(HALLUCINATION_WAIT.y, HALLUCINATION_WAIT.x, gone) * randf_range(0.7, 1.3)
 	var point := hallucination_point(randf_range(4.0, 14.0))
@@ -242,6 +251,14 @@ func hallucinate(delta: float) -> void:
 	var told: Node = creature_lies() if voice else null
 	if told != null: told.false_call(point)
 	else: level.world_audio.play_at(level.world_audio.choose(["close_far", "open_far", "hide_leave", "open_slow"][randi() % 4]), point, -4.0)
+
+## Whether the floor's creature chooses its own lies (its hallucinations()'
+## OWN_LIES): nothing is made and nothing drawn to know.
+func lies_tell_own() -> bool:
+	var creature = level.creature
+	if not is_instance_valid(creature): return false
+	var kind: Variant = creature.hallucinations()
+	return kind != null and bool((kind as Script).get_script_constant_map().get("OWN_LIES", false))
 
 ## The creature's own lies, made the first time they are needed and made again
 ## if the floor's creature tells others; null when it has none of its own.
@@ -266,7 +283,7 @@ func creature_lies() -> Node:
 func ensure_sight():
 	if not is_instance_valid(sight):
 		var told := creature_lies()
-		if told == null: return null
+		if told == null or not told.has_method("sight_model"): return null
 		sight = SIGHT.new()
 		add_child(sight)
 		sight.setup(level, told)

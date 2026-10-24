@@ -538,6 +538,13 @@ The lenses of a room are one `MultiMeshInstance3D` (`lens_of`), so one troffer's
 
 ---
 
+### 4.7 Step 3c as landed, the sound lies (24 October 2026, director)
+
+- **`lurker_hallucinations.gd`** in `game/app/hallucinations/` (beside The Locust's), as 4.1 without the faces yet: `sight_model`, `sight_poser` and `sight_spots` are the next unit, and until then `sanity.ensure_sight()` makes no sight for lies without `sight_model()`. `SIGHT_REST` is the author's I3, 40 to 90 s; `WAIT_SCALE` 1.0. `NEVER` is built from `BASE` (the director's 7: the fairness test's scan stays strict). What a lie leaves going is a `jobs` entry moved by `quiet()` (the phone until the listener is within 4 m or 8 s, the duct knocks, the tube's hiss, the fans' shape, the shadow). Walked candidates (`room_near()`, `desk_near()`) are kept `FOUND_KEEP` 2 s per listener's metre cell.
+- **Kinds (4.3):** as the table. Rooms by the palette: `OFFICE.has_phone()` (3, 16, 24), `has_typewriter()` (3, 16, 17, 24), `has_copier()` (7). `ducto` is a random walk of 3 to 6 edges on the listener's planta from a node within 12 m, refused within 3 m of her real duct point; its knocks go out by `ducts.sound_route()` on the duct bus, as hers. `tubo` moves a looped `tube_hiss` long cue along `files.tube_path()` at the capsule's speed and stops it at 60 to 80 % (no bell, no station lamp). `persiana` uses `office_geometry.panes` (every blind's sheet), the room 0.6 m behind the pane on the far side not lit; the shadow is an unshaded quad with a square alpha gradient (its own material: it is not a light). `tictac` ticks from a planta 2 corridor cell centre, 6 to 20 m off and 6 m from every timer button. `garras` and `ducto` never with the listener protected.
+- **`flicker_one()` (4.6)** on troffers only: a batten room returns false. The temporary `flickers` entry has no material and a `quad` (the dark lens, `lens_off`); `hotel_geometry`'s flicker loop skips a null material, shows the quad while the level is under 0.6, and makes such an entry chatter the whole time. The hotel's entries are unchanged.
+- **Tests (9.5):** `tests/office/office_lies_test.gd` (its own script, not `sanity_test --floor=2`, so the hotel's test stays as it was), cases 1 to 6b, 8 and 9 (14 checks); the faces (case 7) come with the faces.
+
 ## 5. Step 3d: her capture (`lurker_capture.gd`)
 
 ### 5.1 The score belongs to the style (pure refactor first, the hotel byte-identical)

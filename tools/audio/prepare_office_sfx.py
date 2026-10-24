@@ -1,7 +1,8 @@
 """Working copies of the offices' recordings (spec_f1_systems 1.8), from the
 originals in source_assets/oficinas/ into assets/audio/sfx/office/. The
 originals are never touched. Every source is marked "ok" in its group's
-registro.json, CC0 (BigSoundBank) or the Pixabay Content License.
+registro.json, CC0 (BigSoundBank), the Pixabay Content License or CC BY (the
+copier and the chair, credited in the game).
 
   typing.wav       steady keys, a loop          bsb_2835_typewriter_2.wav
   typing_bell.wav  the request done             bsb_2844_typewriter_bell_1.wav
@@ -15,6 +16,13 @@ registro.json, CC0 (BigSoundBank) or the Pixabay Content License.
   hatch.wav        the hatch's latches          bsb_0773_metal_filing_cabinet.wav
   crawl_1..2.wav   a knee on sheet metal        the two Ev-Dawg heater vent hits (Pixabay)
   ladder.wav       a ladder climbed             pixabay_76052_ladder_aluminum_erik90.mp3
+
+And the lies The Lurker tells (spec_f3_integration 4.3):
+
+  phone_ring.wav   a ring and its pause, a loop bsb_3532_socotel_discreet_rings.wav
+  copier.wav       a copier warming up          soundbible_2169_photocopy_machine.wav (CC BY 3.0, Daniel Simion)
+  chair_roll.wav   an office chair rolling      oga_nicolemariet_office_chair_roll.wav (CC BY 4.0, Nicole Marie T)
+  starter.wav      a tube's starter clicking    pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3
 
 Each is decoded by ffmpeg (audio/dsp.py finds one), made mono, cut, faded and
 brought to its peak; a loop is a stretch from inside the recording whose end
@@ -60,6 +68,10 @@ CLIPS = [
     (BUILDING / "crawl_sheet_metal/pixabay_83044_heater_vent_hit_lower_evdawg.mp3", "crawl_1.wav", 0.6, -1, 1.0, False),
     (BUILDING / "crawl_sheet_metal/pixabay_103305_heater_vent_hit_higher_evdawg.mp3", "crawl_2.wav", 0.6, -1, 1.0, False),
     (BUILDING / "metal_ladder_climb/pixabay_76052_ladder_aluminum_erik90.mp3", "ladder.wav", 0.7, -1, 4.0, False),
+    (OFFICE / "telefono_antiguo/bsb_3532_socotel_discreet_rings.wav", "phone_ring.wav", 0.6, -1, 4.3, True),
+    (OFFICE / "fotocopiadora/soundbible_2169_photocopy_machine.wav", "copier.wav", 0.6, 0.0, 4.0, False),
+    (OFFICE / "silla_oficina_ruedas/oga_nicolemariet_office_chair_roll.wav", "chair_roll.wav", 0.6, -1, 0.0, False),
+    (BUILDING / "fluorescent_starter_flicker/pixabay_61228_faulty_fluorescent_starter_hum_everydaysounds.mp3", "starter.wav", 0.6, 0.0, 3.0, False),
 ]
 
 

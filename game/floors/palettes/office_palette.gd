@@ -360,6 +360,12 @@ static func wall_material(room: Dictionary) -> String:
 	if int(room.type) in CARPET and int(room.get("wing", 0)) == 2: return "veneer"
 	return "block" if int(room.type) in BLOCK_WALLS else "office_paint"
 
+## The rooms The Lurker's lies use (spec_f3_integration 4.3): where a phone
+## could ring, keys be struck, a copier start.
+static func has_phone(room: Dictionary) -> bool: return int(room.type) in [OFFICE, EXEC_OFFICE, SECRETARY]
+static func has_typewriter(room: Dictionary) -> bool: return int(room.type) in [OFFICE, EXEC_OFFICE, WINDOW, SECRETARY]
+static func has_copier(room: Dictionary) -> bool: return int(room.type) == COPY_ROOM
+
 ## Whether a room can have its lamps out: salons too ("zonas apagadas").
 static func may_be_dark(room: Dictionary) -> bool:
 	return not int(room.type) in NEVER_DARK

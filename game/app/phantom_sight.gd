@@ -79,7 +79,8 @@ func setup(owner_level, own_lies) -> void:
 	lies = own_lies
 	name = "PhantomSight"
 	rng.randomize()
-	rest = rng.randf_range(REST.x, REST.y) * 0.5
+	var span: Vector2 = lies.sight_rest() if lies.has_method("sight_rest") else REST
+	rest = rng.randf_range(span.x, span.y) * 0.5
 
 func ensure_model() -> void:
 	if is_instance_valid(model): return
@@ -160,7 +161,8 @@ func vanish(why: String) -> void:
 		last_end = why
 	kind = ""
 	if is_instance_valid(model): model.visible = false
-	rest = rng.randf_range(REST.x, REST.y)
+	var span: Vector2 = lies.sight_rest() if lies.has_method("sight_rest") else REST
+	rest = rng.randf_range(span.x, span.y)
 	var view = level.get("observer_view")
 	if view != null and is_instance_valid(view): view.note("alucinación, %s" % why)
 

@@ -286,5 +286,21 @@
   "assets/audio/sfx/lurker/wood_scratch_2.wav": {
     "bytes": 70604,
     "sha256": "8ac99b6279848de2a2a197f81ab9a1aa799d6cbf5edaa1a721b8a3b724d4052b"
+  },
+  "assets/audio/sfx/office/phone_ring.wav": {
+    "bytes": 352844,
+    "sha256": "d3afd5bc7f85f257c131c3118671de650ceaee721c68750284b4a690fbdc8592"
+  },
+  "assets/audio/sfx/office/copier.wav": {
+    "bytes": 352844,
+    "sha256": "21bf61a58eef6d5796dfda43d0d3ca79e6d594add536208b3506f70872e465c1"
+  },
+  "assets/audio/sfx/office/chair_roll.wav": {
+    "bytes": 218084,
+    "sha256": "2c4cd5bbd5269d35d18067d92b932b3a85a1c3009feb835b2096f8b2e93b98d4"
+  },
+  "assets/audio/sfx/office/starter.wav": {
+    "bytes": 264644,
+    "sha256": "46d2a2ea47c9db806d27394ec80c10c62b3b7ec6475d786fbd6e57db4a5679c1"
   }
 }
