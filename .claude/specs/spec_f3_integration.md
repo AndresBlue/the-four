@@ -55,6 +55,22 @@ None of 0b to 0f, phase 1 or phase 2 exists in the tree today. Section 12 says w
 
 Rule: if a name differs as landed, use the landed one and say so in the commit message. If something this spec needs is missing from phase 2 as landed, stop and report it; never add a second shell, duct graph, drain, cue path or state list.
 
+### 0.2b Phase 2 as landed (24 October 2026, director; up to `ba62e00`)
+
+Phases 0, 1 and 2 are in the tree. Where the table above differs from what landed, use what landed:
+
+- **The warning** is `lurker.warning` (held by `lurker.gd`; the brain holds the same object). Its entries also carry `above`, `ran`, `forced`; reasons add `"corriendo"` (the author: leaving saves only running) and `"forzada"`. Captions: `CUE_CAPTION`, `CUE_CAPTION_NEAR`, `CUE_CAPTION_ABOVE` ("[Algo respira sobre ti]", a proposal).
+- **Placing her:** `place_over(point, toward)` and `place_in_exit(exit)`, not `place_on()`. `teleport()`, `relocate()`, `restore_state()` as 2a 8.2b.
+- **Her words:** `WORDS` ends with `&"stalk"` and `&"withdraw"`; STALK says `stalk` (the author: hostile, not hunting nor chasing), FLEE says `withdraw`. `creature.gd`'s `HOSTILE` has `stalk`.
+- **Pack flags:** `IN_DUCT 1, HIDDEN 2, SURFACE 4, DRAINING 8, CUE 16, DROP 32, ARRIVING 64, TRAY 128, BAND 256`; `PACK_SIZE` 10 as written.
+- **`save_state()`** is `{at, heading, hang, in_duct, near, wing_goal}`; restore puts her where a transit would have ended, in her duct at its node, or back at `at` with her hang.
+- **The drain:** `lurker.drain_step(delta)` (targets, every machine), `_process()` (the applied drain and its tremble), `undrain()`; `SENSES.drain_rooms()`, `DRAIN`, `DRAIN_WOBBLE`; `LIT_DRAIN` is `hotel_geometry`'s (0.9), and the applied drain never goes over 0.89. From a duct over a room too; never an off-limits room. Emergency units are lamp points: `office_geometry.drain_emergency(room, amount)` is called when it exists (phase 3 adds it: the author's I9).
+- **The net:** only `match_net.send_cue()` and `send_cue_over()`, on this machine. `cue_behind`, `cue_reached`, `cue_closed`, `latency_of()`, the reliable event and the `PROTOCOL` bump are phase 4's.
+- **Not landed:** the brain's `alongside_car()` signal; ceiling crosses and doorframes as show spots (a show is a peek at a dark room's ceiling); spec_f2_mind 10.2 case 11 (turning on the pad, a measurement).
+- **Spawning:** `hotel_main.creature_scene` / `--creature=lurker` (8.6) put her on a floor; `office_floor.CREATURE` is still the null creature: step 3a switches it. Her den on planta 3 is the air room. `arm_creature()` needs no guard (nothing of The Locust is read there any more).
+- **Her elbows** keep clear of anything with a collider (`lurker_limbs.solid_mask`); the bench is `tools/workbenches/lurker_arena.tscn`.
+- **The author's decisions** of 24 October (`.claude/specs/decisiones_fase2_3.md`, and the "Resolved by the author" note at the end of this spec) settle 0.5: a lie never captions, her real duct and tile sounds lose their captions too (I6); her presence loop only above a locker (I11); the main-duct rule holds in versus too (I10); "desde arriba" over 3.0 m (I11; the warning's own `over_of()` is geometric, step 3 checks the room's height where it starts the cue); the director's knocks stay (I2: `raps` 0.7).
+
 ### 0.3 Her states
 
 Phase 2's (2b 7.1): the twelve `State` values, their `activity()` words and the base `alarm_level()` from those words; `hushed()` is 2a's (the drop). Phase 3 adds no table of its own. Where this spec names a state it uses 2b's enum (`STALK`, `CREEP`, `WAIT_ABOVE`...). On the wire the state travels as that enum's value (6.2).
