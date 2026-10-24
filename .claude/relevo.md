@@ -2,13 +2,35 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 24 de octubre de 2026, por la tarde. Semana nueva desde el 24 de octubre a las 05:00 (al 2 % a media tarde).
+**Última actualización:** 24 de octubre de 2026, tarde. Relevo por contexto (la sesión llegó al 62 %). Ventana de 5 horas al 20 %, semana al 3 %.
 
-**Última instrucción del autor (24 de octubre):** la fase 2 (The Lurker) **la hace el director solo, sin flujos, como la fase 1**, unidad a unidad, con `verify` en verde antes de cada commit. **2a-I, lo puro, está hecho:** `conduit_graph.gd` y `duct_graph.gd` (con `conduit_graph_test`), `lurker_shell.gd` (techos, franjas de puerta y de rejilla, pasillos de archivo, y lo del autor: paredes en las salas sin falso techo, el frente de cada taquilla hasta la rendija, el aviso que baja para una víctima agachada, el sonido del plénum por la placa de debajo) y `lurker_routes.gd` (A* por coste, piernas, puertas vigiladas, `travel_metres`, salidas; `power_objective.herds()`), probados en `tests/office/lurker_shell_test.gd` (54 comprobaciones, unos 65 s, en `verify`). `spec_f2_movement.md` lleva las secciones 3 y 6 al día («As built», 3.3, 3.6, 3.8, 6.5, 11.1). **2a-II hecho en lo principal:** `BODY_DEPTH` medido (`tools/dev/lurker_depth_probe.gd`: el tronco 0,695 m, se queda 0,70; los codos cuelgan hasta unos 1,3 m y, por decisión del autor del 24 de octubre, esquivan todo lo que tiene collider: `lurker_limbs.gd` con `solid_mask`, guardado por `tools/dev/lurker_elbow_probe.gd` en `verify`), `lurker_motion.gd` (secciones 7 y 7.6b, con las decisiones del autor) con `tests/office/lurker_motion_test.gd` (16 comprobaciones) y el plano común `tests/office/lurker_fixture.gd`, `lurker.gd` y `lurker_creature.tscn` (8, «As built» 8.2b), `transit_phase()` en `creature.gd`, `replant()` en `lurker_limbs.gd`, y la sonda `tools/dev/lurker_route_probe.gd` sobre el piso 2 montado (37/37 en 34 s, en `verify` con límite 90 s). Falta de la sonda (11.2, «As built»): el giro por fotograma, el hueso más bajo contra el rayo, la hoja sobre ella, un cuerpo debajo, nadie adelantado en el ducto principal, el pasillo de archivo y la cuota de llegada. Nadie la usa aún en el juego: `office_floor.CREATURE` sigue siendo la criatura nula hasta la fase 3. Luego 2b (el cerebro, `spec_f2_mind.md`, en el banco `lurker_arena`), tras reconciliar sus claves de dificultad (2b 4.1) y ritmos (2b 7.2) con la 2a.
+**Última instrucción del autor (24 de octubre):** «Sigue avanzando con el desarrollo». La fase 2 la hace **el director solo, sin flujos**, unidad a unidad, con `verify` en verde antes de cada commit (`verify` da 55 líneas en verde a 90b4daa).
+
+### Estado del plan (OFICINAS 15)
+
+- **Fase 0:** hecha.
+- **Fase 1** (las oficinas, sin ella): jugable de punta a punta con sus tres tareas, bots, red, sonidos, papeles y modelos. Quedan menores: `office_stages_test` tal cual la spec 6.1, la celda del plénum de 5.4, la escalerilla de la sala de máquinas (procedural).
+- **Fase 2a** (cómo se mueve): **hecha**. Commits `37ea75c` conduit_graph, `bec5996` duct_graph, `47e8088` lurker_shell, `eb58133` lurker_routes, `86949bc` lurker_motion, `8f7deb1` lurker.gd + escena + sonda de rutas, `90b4daa` codos que esquivan todo lo que tiene collider (decisión del autor). Pruebas en `verify`: `lurker_shell_test` (54), `lurker_motion_test` (16), `lurker_route_probe` (37, 46 s), `lurker_elbow_probe`. Lo que falta de la sonda de rutas está en `spec_f2_movement` 11.2 «As built». **Ojo, aprendido:** desde Godot 4.3 la pose que deja un `SkeletonModifier3D` solo dura hasta dibujar; los huesos se leen en su señal `modification_processed` (lo hacen las sondas de profundidad y de codos).
+- **Fase 2b** (cómo percibe y decide): **lo siguiente**. Ver «Cómo seguir con 2b» abajo.
+- **Fase 2c:** el banco `tools/workbenches/lurker_arena` (OFICINAS 15, fase 2).
+- **Fases 3, 4 y 5:** pendientes (`spec_f3_integration.md` revisado, sin aprobar; corregirlo contra 2b antes de partirlo).
+
+### Cómo seguir con 2b (`spec_f2_mind.md`, sección 11)
+
+Las decisiones del autor del 24 de octubre ya están al final de la spec («Resolved by the author») y en `decisiones_fase2_3.md`; las que cambian lo escrito: **C3** alejarse en la ventana salva **solo corriendo**; **C5** hay **aviso desde arriba** en salas de más de 3,3 m (su subtítulo y su prueba); **C7** su cara a oscuras se ve **solo muy de cerca**; **C8** palabra propia `stalk` (hostil, ni caza ni persecución: añadirla a `HOSTILE` y a `WORDS` de `lurker.gd`, que hoy no la tiene); **I2** los golpes del director en las puertas se quedan. Las claves de dificultad ya están en `difficulty.gd` con los nombres de 2b 4.1 (`lit_takes`, `freeze_time`, `creep_scale`, `back_window`...). `RETREAT_SPEED` de 2a ya es 0,8 (C10).
+
+Orden (2b-1, nada de esto pide más que lo que hay):
+1. Contrato y compuerta (2.1, 2.2): `may_capture`, `cue_of`, `capture_log`, `play_cue`, `cue_over` en `creature.gd` (la palabra `withdraw` en la lista de `activity()`), la compuerta en `executions.capture_survivor()`. Prueba: `capture_test`, `creature_contract_test`.
+2. `game/enemies/creature_sight.gd` y las dos delegaciones (3.3) con sus pruebas de equivalencia.
+3. `game/enemies/lurker/lurker_warning.gd` (6) con C3.
+4. Los estados del aviso del cerebro y la **Parte B** de `tests/office/lurker_fairness_test.gd` (10.2), a `verify`.
+5. Las grabaciones (9.3): **sin voces ni gritos humanos sintéticos** (regla del proyecto); usar audios que ya hay y anotar en `docs/PLAN.md` lo que falte.
+
+Luego 2b-2 (11): la tabla de 0.2 rehecha con un grep, `lurker_senses.gd`, el resto del cerebro, la parte de 2b de `lurker.gd` (`apply_intent()` es el único punto que habla con `lurker_motion`), el aviso en los oídos, `lurker_senses_test` y la Parte A.
 
 ## En qué estamos
 
-**El piso 2, las oficinas secretas** ([docs/OFICINAS.md](../docs/OFICINAS.md)). La fase 0 está cerrada; de la fase 1, 1a y 1b están hechos y 1c, a medias.
+**El piso 2, las oficinas secretas** ([docs/OFICINAS.md](../docs/OFICINAS.md)). Fases 0 y 1 cerradas en lo jugable, 2a hecha; la tabla de abajo es el detalle de la fase 1.
 
 | Paso | Estado |
 |---|---|
