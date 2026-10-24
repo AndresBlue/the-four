@@ -36,6 +36,15 @@ The names to confirm:
 8. 0a5's observer gizmo API (`draw_gizmos(g)`: what `g` offers). `resume_state(data)` is already in the contract (`creature.gd:236`, called by `match_net.gd:1102` only when the local player is the hunter): 2a keeps the base no-op (section 8.2).
 9. Lamp positions as pure data (for section 3.7): whether 1d's palette exposes `OFFICE.troffers(room)` and the positions of battens and pendants per room from the manifest. If not, section 15 (director) decides where they come from.
 
+### Section 0 checked against the code (24 October 2026, director)
+
+- **1.** `conduit_graph.gd` **does not exist**: 1e drew and ran the pneumatic tubes inside `files_objective.gd` (its own tree walk, `tube_path()`, `along()`). 2a-I starts by creating it with the API of systems §1.5 plus this spec's 5.1, and `files_objective.gd` moves onto it later (not required). `conduit_metres.gd` has `adjacency()`, `metres()`, `pieces()`, `walk_within()`, `door_metres()`, `door_graph()`, `door_metres_all()` and the public heap helpers `heap_push()`, `heap_pop()`, `before()`.
+- **2.** `office_palette.gd` has every name listed: `WALL_HALF`, `PLENUM`, `TILE`, `false_ceiling()`, `ceiling_rect()`, `off_limits()`, `off_limits_rooms()`, `height_of()`, `ARCHIVE`, `WALL_GRILLE_Y`, and `troffers()` (item 9: troffer positions are pure data; battens are over `archives[].aisles`, pendants two over the boardroom table).
+- **4.** `hotel_main` has `set_floor()`, `start_floor()`, `objective(id)`, `tuning()`, `off_limits_rooms()`; also `crawling_at()`, `sound_mask()`, `ride_allowed()`, `objectives_on_death()` (1e to 1g).
+- **7.** `power_objective.gd` has `applied` and `lit_always` (no `herds()` yet: 2a adds it); `air_objective.gd` has `hatch_open` and `ducts_closed()` (spin over 0.5).
+- `creature.gd` has `resume_state()` but no `transit_phase()` yet (2a adds it).
+- The author's decisions of 24 October (end of section 15) add to 2a: walls **and** ceiling in the tall rooms, the long leap from the ceiling at a near survivor, and a body that shrinks under tall furniture.
+
 ---
 
 ## 1. Files
