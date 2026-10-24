@@ -276,6 +276,21 @@ func take_tick(_p) -> Dictionary:
 		enter(State.FLEE)
 	return hold()
 
+## The light came on in the room she is in (OFICINAS 3: the light herds her):
+## she leaves by the ducts for the dark, with no fright and no shriek.
+func on_room_lit(face: Vector3) -> void:
+	if not state in [State.ROAM, State.STALK, State.CREEP]: return
+	away_from = face
+	hidden_since = -1.0
+	enter(State.FLEE)
+
+## The fans stopped (planta 3): back in by the nearest grille, before the
+## survivors are through (OFICINAS 3: "es una carrera por entrar antes").
+func on_ducts_open(exit_point: Vector3) -> void:
+	if not state in [State.ROAM, State.LISTEN]: return
+	clue = {"point": exit_point, "at": clock}
+	goal = {}
+
 ## A noise she heard: kept as a clue.
 func on_heard(_route: Dictionary, point: Vector3) -> void:
 	clue = {"point": point, "at": clock}

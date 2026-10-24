@@ -222,6 +222,19 @@ Three questions stay with the author (Pending, author 1, 8, 9): whether her pass
 
 ---
 
+### 2.8 Step 3a as landed (24 October 2026, director)
+
+- **Spawning** (088a9c4): `office_floor.CREATURE` is `lurker_creature.tscn`; `office_test`, `office_walk_test`, `office_bots_test`, `office_capture`, `lurker_route_probe` and the net scenarios `office_host` / `office_guest` set `creature_scene = "none"`. `bot_threats.MODELS[&"lurker"]` is the null threat until 3f's `bot_threat_lurker`.
+- **The contract:** `turn_for_capture()`, `on_event()`, `tally()`, `voice_point()` (reads `WORLD_AUDIO.PRESENCE_RISE`), `presence_on()` in `creature.gd`, approved. `lurker.gd` overrides `turn_for_capture` (pass), `voice_point()` (hidden in a duct: where her last `sound_route()` came out, `heard_at`, else the duct point; out of one, `face_point()`) and `presence_on()` (`activity() == &"wait"`, so it reads the same on every machine). `on_event()` and `tally()` keep the defaults until 6.3 and 7.3. `world_audio` reads `voice_point()` and mutes the presence when `not presence_on()` (not for a phantom).
+- **Light (2.6):** `lurker.watch_systems()` every `SYSTEMS_EVERY` 0.25 s in `think()`; the room is `motion.room()` (none in a duct). `brain.on_room_lit(face)` enters FLEE from ROAM, STALK or CREEP with `away_from = face`, no spurn and no shriek; FLEE's own `flee_exit(away_from)` picks the exit. The tile shift and knocks are 3b's.
+- **Fans (2.6):** on wing 2's ducts going from shut to open, `brain.on_ducts_open(point)` (ROAM or LISTEN) sets her clue to the exit `routes.nearest_exit()` gives, not "the first within stalk_distance".
+- **The main duct (2.6, I10):** `lurker_routes.cross_shut`, read every `tick()`: a survivor `crawling_at()` with `along_main()` under the crossing's plus `CROSS_CLEAR` (1.0 m) bars the cross edge into the main (`cross_barred()`, in `edge_cost()` and `edge_metres()`, and in the `travel_metres()` cache key). Out of the main through it is always open; the hatch exit stays usable while the hatch is open.
+- **Kept (2.7):** `save_state()` keys stay 2a's (`near`, `wing_goal`, not `duct_node` / `transit_wing`) plus `calm`; `restore_state()` sets `brain.spurned` from it after `forget_all()`.
+- **The director (2.4):** no `raps` knob: the author keeps the knocks at 0.7 (I2), so the literal stays.
+- **The hum (2.5):** `HUM_DRAIN_PITCH` 0.08 in `world_audio.update_hum_levels()`.
+- **The car (2.3):** moved to 3b with her voice (`voice.outside_car()`).
+- Tested in `lurker_senses_test` (`systems()`, `main_duct()`): 29 checks.
+
 ## 3. Step 3b: her sound
 
 ### 3.1 The recordings (rows added to 2b's `tools/audio/prepare_lurker_sfx.py`)

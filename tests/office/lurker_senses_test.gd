@@ -5,8 +5,10 @@ extends SceneTree
 ## room and through her ducts, never from another planta, and hears a torch
 ## clicked; she drinks the light of the lamps near her, all together, never
 ## past dark for the rules, and gives it back; she picks her prey herself; the
-## director gives her zones, never people; and the words the rest of the game
-## reads of her.
+## director gives her zones, never people; the words the rest of the game
+## reads of her; and what the floor's systems tell her: her room lit, the fans
+## stopping, the main duct's crossing while somebody crawls before it, whom
+## she leaves be kept across a save.
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
@@ -65,6 +67,7 @@ func run() -> void:
 	await torch_click()
 	await drain()
 	await director_and_words()
+	await systems()
 	finish()
 
 func finish() -> void:
@@ -245,6 +248,102 @@ func director_and_words() -> void:
 	await physics_frame
 	check("Huir es withdraw, la última palabra", lurker.activity() == &"withdraw" and lurker.WORDS.find(&"withdraw") == lurker.WORDS.size() - 1 and not lurker.is_hostile())
 	lurker.thinking = false
+
+## The floor's systems told to her mind (spec_f3_integration 2.2 and 2.7).
+func systems() -> void:
+	level.player.global_position = Vector3(0, -200, 0)
+	var room := int(corridor.room)
+	level.hotel.set_room_power(room, false)
+	lurker.place_over(corridor.centre, corridor.centre + corridor.along)
+	lurker.thinking = true
+	for i in 12: await physics_frame
+	lurker.brain.forget_all(0.0)
+	lurker.brain.force(&"roam")
+	for i in 20: await physics_frame
+	var before: String = lurker.brain.state_name()
+	check("Fuera de los ductos su voz sale de su cara, y su presencia no suena si no espera encima de una taquilla", lurker.voice_point().is_equal_approx(lurker.face_point()) and not lurker.presence_on())
+	level.hotel.set_room_power(room, true)
+	var fled := false
+	for i in 30:
+		await physics_frame
+		if lurker.brain.state == BRAIN.State.FLEE: fled = true
+	check("La luz que se enciende en su sala la hace huir", fled, "%s antes, sala %d, ella en %d" % [before, room, lurker.motion.room()])
+	var air = level.objective(&"air")
+	var high := {}
+	var off: Array = level.off_limits_rooms()
+	for r in level.manifest.rooms:
+		if int(r.get("wing", -1)) == 2 and not off.has(int(r.id)) and lurker.shell.tray_of.has(int(r.id)):
+			high = r
+			break
+	if air == null or high.is_empty():
+		check("Los ventiladores y una sala de la planta 3", false)
+	else:
+		var at := FLOOR.position_of(high)
+		lurker.place_over(at, at + Vector3(1, 0, 0))
+		lurker.brain.forget_all(0.0)
+		lurker.brain.force(&"roam")
+		# Past FAN_SPIN both ways.
+		air.running_until = 1.0e9
+		for i in 200: await physics_frame
+		var shut_seen: bool = lurker.ducts_were_shut
+		air.running_until = 0.0
+		var stopped_at: float = lurker.brain.clock
+		var clued := false
+		for i in 200:
+			await physics_frame
+			var clue: Dictionary = lurker.brain.clue
+			if clue.is_empty() or float(clue.at) < stopped_at: continue
+			for e in lurker.ducts.exits:
+				if (e.position as Vector3).distance_to(clue.point) < 0.01: clued = true
+		check("Al parar los ventiladores va a la rejilla más cercana", shut_seen and clued, "cerrados %s, %s" % [str(shut_seen), lurker.brain.state_name()])
+	main_duct()
+	var seat := int(level.player.slot)
+	lurker.brain.spurned[seat] = lurker.brain.clock + 30.0
+	var data: Dictionary = lurker.save_state()
+	lurker.brain.spurned.erase(seat)
+	lurker.restore_state(data, 0.0)
+	var left: float = float(lurker.brain.spurned.get(seat, -INF)) - float(lurker.brain.clock)
+	check("A quien la espantó la sigue dejando en paz tras guardar y cargar", left > 29.9 and left <= 30.0 + 1e-4, "%.3f" % left)
+	lurker.thinking = false
+
+## The main duct's crossing shut to her while somebody crawls between the
+## hatch and it, open again once they are past it; out of the main through it
+## always (the author's I10).
+func main_duct() -> void:
+	var routes = lurker.routes
+	var main: Dictionary = level.manifest.get("air", {}).get("main", {})
+	if routes.main_cross < 0 or main.is_empty():
+		check("El ducto principal y su cruce", false, "%d" % routes.main_cross)
+		return
+	var nodes: Array = main.nodes
+	var ci: int = nodes.find(int(main.cross))
+	var into := []
+	var out_of := []
+	for link in routes.graph[routes.main_cross]:
+		if int(link[6]) == routes.cross_edge: out_of = link
+	var stub: int = int(out_of[0]) if not out_of.is_empty() else -1
+	if stub >= 0:
+		for link in routes.graph[stub]:
+			if int(link[6]) == routes.cross_edge: into = link
+	var factors = routes.factors_for(2)
+	var before: Vector3 = (routes.main_line[0] + routes.main_line[1]) / 2.0
+	level.player.global_position = before
+	routes.tick(0.0)
+	var shut_before: bool = routes.cross_shut and routes.edge_cost(into, factors, false) == INF and routes.edge_cost(out_of, factors, false) < INF
+	check("Con alguien reptando entre la compuerta y el cruce no entra por el cruce, y sí sale", level.crawling_at(before) and not into.is_empty() and shut_before, "repta %s, cruce %d de %d" % [str(level.crawling_at(before)), ci, nodes.size()])
+	var past := Vector3.INF
+	for i in range(ci + 1, nodes.size() - 1):
+		var p: Vector3 = routes.main_line[i]
+		if routes.along_main(p) >= routes.cross_along + routes.CROSS_CLEAR and level.crawling_at(p):
+			past = p
+			break
+	if past != Vector3.INF:
+		level.player.global_position = past
+		routes.tick(0.0)
+		check("Pasado el cruce hacia el pozo, entra por detrás", not routes.cross_shut and routes.edge_cost(into, factors, false) < INF)
+	level.player.global_position = Vector3(0, -200, 0)
+	routes.tick(0.0)
+	check("Sin nadie en el ducto principal el cruce es suyo", not routes.cross_shut and routes.edge_cost(into, factors, false) < INF)
 
 ## Her own choice of prey (7.7), on a bare brain with a fake world.
 func prey_choice() -> void:

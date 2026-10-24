@@ -20,6 +20,7 @@ extends CharacterBody3D
 ## still reads The Locust itself, and why, is in docs/DEVELOPMENT.md.
 ## Everything else here is a default for a creature that has nothing of the
 ## kind: one that does overrides it.
+const WORLD_AUDIO := preload("res://game/audio/world_audio.gd")
 
 ## Hostile: anybody near it has reason to be afraid (pacing_director.hostile).
 const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait", &"stalk"]
@@ -259,6 +260,10 @@ func push_state(_data: Array) -> void: pass
 ## A call decided where it is controlled, replayed here.
 func play_call(_kind: String, _segment: int, _pitch: float) -> void: pass
 
+## A moment of it every machine must hear of, told reliably by whoever drives
+## it (docs/OFICINAS.md 11.6) and applied here on the others.
+func on_event(_kind: String, _data: Array) -> void: pass
+
 ## The same, received by the machine of its hunter coming back into a match
 ## (match_net.restore): it stands where it was left, facing that way, with
 ## the grace it had; the rest is the hunter's to drive again.
@@ -359,6 +364,12 @@ func presence_route(_listener: Vector3) -> Array: return [INF, Vector3.INF]
 ## echo, distance}).
 func sound_route(_listener: Vector3) -> Dictionary: return {"audible": false, "distance": INF}
 
+## Where its presence and its voice sound from (world_audio).
+func voice_point() -> Vector3: return global_position + WORLD_AUDIO.PRESENCE_RISE
+
+## Whether its presence loop may play now (world_audio).
+func presence_on() -> bool: return true
+
 ## The script of its own lies to a mind that is going: a Node that sanity.gd
 ## makes under itself and keeps, with setup(level), false_call(point),
 ## walk_past() (true when it starts walking), walk_start() (where that walk
@@ -368,6 +379,10 @@ func sound_route(_listener: Vector3) -> Dictionary: return {"audible": false, "d
 func hallucinations() -> Variant: return null
 
 # --- The observer ----------------------------------------------------------------
+
+## What it did on the floor, for the bots' summary (bot_match.finish());
+## empty: nothing of its own to count.
+func tally() -> Dictionary: return {}
 
 ## Its part of the observer's panel (observer_view.report): a few lines on
 ## what it is doing and where, the first one its name.

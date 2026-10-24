@@ -38,6 +38,9 @@ const MAIN_DUCT_SPEED := 1.0
 ## Through a door she keeps this far from the band's middle, away from the
 ## hinge, so her hands miss the open leaf.
 const DOOR_SIDE := 0.25
+## How far past the main duct's crossing, towards the shaft, every crawler
+## must be before she comes in through it: a body's length.
+const CROSS_CLEAR := 1.0
 
 enum Edge { OPEN, DOOR, IN, OUT, DUCT }
 
@@ -74,6 +77,17 @@ var signatures := {}
 var last_signature := {}
 var travel_cache := {}
 var walk_cache := {}
+## The main duct (planta 3): its crossing node as a graph node, the cross edge
+## into it from her ducts, its line from the hatch and how far along that line
+## the crossing is; -1 and empty on a floor without one.
+var main_cross := -1
+var cross_edge := -1
+var main_line := PackedVector3Array()
+var cross_along := INF
+## A survivor crawls in the main between the hatch and the crossing: she does
+## not come in through it (the author's I10: only behind the last crawler,
+## whoever drives her). Read every tick().
+var cross_shut := false
 
 func setup(source_level, source_shell, source_ducts, watch_doors: bool) -> void:
 	teardown()
@@ -109,6 +123,7 @@ func setup(source_level, source_shell, source_ducts, watch_doors: bool) -> void:
 		var b := room_count + int(e[1])
 		graph[a].append([b, Edge.DUCT, float(e[2]), 0.0, -1, -1, k])
 		graph[b].append([a, Edge.DUCT, float(e[2]), 0.0, -1, -1, k])
+	read_main()
 	door_nodes = {}
 	var hotel = level.hotel
 	for edge in manifest.get("edges", []):
@@ -125,6 +140,52 @@ func setup(source_level, source_shell, source_ducts, watch_doors: bool) -> void:
 			door.swung.connect(on_swung)
 			door.settled.connect(on_settled)
 			connections.append([door, on_swung, on_settled])
+
+func read_main() -> void:
+	main_cross = -1
+	cross_edge = -1
+	main_line = PackedVector3Array()
+	cross_along = INF
+	cross_shut = false
+	var main: Dictionary = manifest.get("air", {}).get("main", {})
+	if main.is_empty() or int(main.get("cross", -1)) < 0: return
+	for k in ducts.edges.size():
+		if String(ducts.edges[k][3]) == "cross": cross_edge = k
+	if cross_edge < 0: return
+	main_cross = room_count + int(main.cross)
+	for n in main.nodes: main_line.append(ducts.nodes[int(n)])
+	cross_along = along_main(ducts.nodes[int(main.cross)])
+
+## How far along the main duct from the hatch a point is, in plan.
+func along_main(point: Vector3) -> float:
+	var p := Vector2(point.x, point.z)
+	var best := INF
+	var best_along := 0.0
+	var run := 0.0
+	for i in range(1, main_line.size()):
+		var a := Vector2(main_line[i - 1].x, main_line[i - 1].z)
+		var b := Vector2(main_line[i].x, main_line[i].z)
+		var piece := a.distance_to(b)
+		var t := clampf((p - a).dot(b - a) / (piece * piece), 0.0, 1.0) if piece > 0.0 else 0.0
+		var d := p.distance_to(a.lerp(b, t))
+		if d < best:
+			best = d
+			best_along = run + t * piece
+		run += piece
+	return best_along
+
+## Whether somebody crawling in the main has not yet got CROSS_CLEAR past the
+## crossing towards the shaft.
+func crawler_before_cross() -> bool:
+	if main_cross < 0 or not level.has_method("survivors") or not level.has_method("crawling_at"): return false
+	for body in level.survivors():
+		if not is_instance_valid(body) or not level.crawling_at(body.global_position): continue
+		if along_main(body.global_position) < cross_along + CROSS_CLEAR: return true
+	return false
+
+## The cross edge taken into the main while it is shut to her.
+func cross_barred(link: Array) -> bool:
+	return cross_shut and int(link[6]) == cross_edge and int(link[0]) == main_cross
 
 ## Lets go of every door signal (lurker.gd calls it on leaving the tree and
 ## before a rebuild).
@@ -297,6 +358,7 @@ func ban(pair: Vector2i, seconds: float) -> void:
 	bans[pair] = maxf(seconds, float(bans.get(pair, 0.0)))
 
 func tick(delta: float) -> void:
+	cross_shut = crawler_before_cross()
 	for pair in bans.keys():
 		bans[pair] = float(bans[pair]) - delta
 		if float(bans[pair]) <= 0.0: bans.erase(pair)
@@ -322,6 +384,7 @@ func edge_cost(link: Array, factors: PackedFloat32Array, escape: bool) -> float:
 			return LEAVE_COST + float(link[3]) * factors[int(link[5])] / CRAWL_SPEED
 	var edge := int(link[6])
 	if not escape and ducts.edge_closed(edge): return INF
+	if cross_barred(link): return INF
 	return float(link[2]) / segment_speed(String(ducts.edges[edge][3]))
 
 ## Plain metres of an edge, for travel_metres() (INF where shut).
@@ -337,7 +400,7 @@ func edge_metres(link: Array) -> float:
 			return float(link[2])
 		Edge.OUT:
 			return float(link[3]) if exit_usable(int(link[6])) else INF
-	return INF if ducts.edge_closed(int(link[6])) else float(link[2])
+	return INF if ducts.edge_closed(int(link[6])) or cross_barred(link) else float(link[2])
 
 func factors_for(wing: int) -> PackedFloat32Array:
 	var out := PackedFloat32Array()
@@ -651,7 +714,7 @@ func legs_of(start: Dictionary, goal: Dictionary, path: PackedInt32Array, links:
 func travel_metres(room: int) -> Dictionary:
 	if room < 0 or room >= room_count or not shell.tray_of.has(room): return {}
 	var wing := int(rooms[room].get("wing", -1))
-	var key := [door_signature(wing), door_epoch, Array(ducts.closed_wings)]
+	var key := [door_signature(wing), door_epoch, Array(ducts.closed_wings), cross_shut]
 	if travel_cache.has(room) and travel_cache[room][0] == key: return travel_cache[room][1]
 	var count := graph.size()
 	var metres := PackedFloat64Array()

@@ -241,12 +241,21 @@ func save_state() -> Dictionary:
 	if motion != null:
 		wing_goal = int(motion.transit.get("wing", motion.pending_wing))
 	var hang: float = motion.state.hang if motion != null and motion.surface() else SHELL.DEFAULT_HANG
-	return {"at": global_position, "heading": global_basis.z, "hang": hang, "in_duct": motion != null and motion.in_duct, "near": motion.near_node if motion != null else -1, "wing_goal": wing_goal}
+	# Whom she leaves be, and for how long more (spec_f3_integration 2.7).
+	var calm := {}
+	if brain != null:
+		for seat in brain.spurned:
+			var left: float = float(brain.spurned[seat]) - float(brain.clock)
+			if left > 0.0: calm[int(seat)] = left
+	return {"at": global_position, "heading": global_basis.z, "hang": hang, "in_duct": motion != null and motion.in_duct, "near": motion.near_node if motion != null else -1, "wing_goal": wing_goal, "calm": calm}
 
 func restore_state(data: Dictionary, rest: float) -> void:
 	if motion == null: return
 	undrain()
-	if brain != null: brain.forget_all(rest)
+	if brain != null:
+		brain.forget_all(rest)
+		var calm: Dictionary = data.get("calm", {})
+		for seat in calm: brain.spurned[int(seat)] = brain.clock + float(calm[seat])
 	grace = maxf(grace, rest)
 	var wing_goal := int(data.get("wing_goal", -1))
 	if wing_goal >= 0:
@@ -277,14 +286,32 @@ func view() -> Dictionary:
 		return {"drop": phase == &"drop", "arriving": phase == &"arriving", "leaving": phase == &"leaving", "in_duct": motion.in_duct, "hidden": motion.hidden, "duct_point": motion.duct_point, "near": motion.near_node}
 	return {"drop": net_flags & Flag.DROP != 0, "arriving": net_flags & Flag.ARRIVING != 0, "leaving": false, "in_duct": net_flags & Flag.IN_DUCT != 0, "hidden": net_flags & Flag.HIDDEN != 0, "duct_point": global_position, "near": net_near}
 
+## Where her last way out of a hidden duct to the listener came out
+## (sound_route()); Vector3.INF when none.
+var heard_at := Vector3.INF
+
+## Where her presence and her voice sound from (world_audio): hidden in a duct,
+## where her way to the listener comes out of it, or else the duct itself; out
+## of one, her face.
+func voice_point() -> Vector3:
+	var v := view()
+	if bool(v.in_duct) and bool(v.hidden): return heard_at if heard_at != Vector3.INF else v.duct_point
+	return face_point()
+
+## Her presence loop only over a locker, waiting (the author's I11).
+func presence_on() -> bool: return activity() == &"wait"
+
 func room_of_point(p: Vector3) -> int:
 	return int(FLOOR.room_at(level.manifest.rooms, p).get("id", -1))
 
 func sound_route(listener: Vector3) -> Dictionary:
 	var v := view()
+	heard_at = Vector3.INF
 	if bool(v.drop): return {"audible": false, "distance": INF}
 	if bool(v.in_duct) and bool(v.hidden) and ducts != null:
-		return ducts.sound_route(v.duct_point, int(v.near), listener, room_of_point, level.get("world_audio"))
+		var route: Dictionary = ducts.sound_route(v.duct_point, int(v.near), listener, room_of_point, level.get("world_audio"))
+		if bool(route.audible): heard_at = route.position
+		return route
 	var audio = level.get("world_audio") if level != null else null
 	if audio == null: return {"audible": false, "distance": INF}
 	return audio.route_source(global_position, get_rid(), listener)
@@ -472,6 +499,12 @@ var drain_clock := 0.0
 var drain_reach := 3.5
 var drain_cache := {}
 var drain_time := 0.0
+## What the floor's systems last showed her (every SYSTEMS_EVERY): whether her
+## room was lit, whether her planta's ducts were shut.
+const SYSTEMS_EVERY := 0.25
+var systems_clock := 0.0
+var room_was_lit := {}
+var ducts_were_shut := false
 
 func think_setup() -> void:
 	senses = SENSES.new()
@@ -488,11 +521,29 @@ func think(delta: float) -> void:
 	var p = senses.perceive(delta, brain.clock, brain.prey_seat())
 	for click in senses.clicks: brain.on_heard(click.route, click.point)
 	senses.clicks = []
+	watch_systems(delta, p.face)
 	intent = brain.tick(delta, p)
 	senses.listening = brain.listening
 	apply_intent(intent)
 	word = brain.activity()
 	cue = brain.state == BRAIN.State.CUE
+
+## The light coming on where she is, and the fans stopping, told to her mind.
+func watch_systems(delta: float, face: Vector3) -> void:
+	systems_clock -= delta
+	if systems_clock > 0.0: return
+	systems_clock = SYSTEMS_EVERY
+	var room: int = motion.room() if not motion.in_duct else -1
+	if room >= 0 and level.get("hotel") != null:
+		var lit_now: bool = level.hotel.lit(room)
+		if room_was_lit.has(room) and not bool(room_was_lit[room]) and lit_now: brain.on_room_lit(face)
+		room_was_lit = {room: lit_now}
+	var wing: int = clampi(motion.wing(), 0, ducts.closed_wings.size() - 1)
+	var shut: bool = ducts.closed_wings[wing] != 0
+	if ducts_were_shut and not shut:
+		var e: int = routes.nearest_exit(plan_start())
+		if e >= 0: brain.on_ducts_open(ducts.exits[e].position)
+	ducts_were_shut = shut
 
 ## The one place her mind talks to her motion (spec_f2_mind 8.3): an order
 ## only when the intent changed.

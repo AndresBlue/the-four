@@ -91,6 +91,8 @@ var hums: Array[AudioStreamPlayer3D] = []
 ## the tube and across its room, gone a room away. Fixtures hang at ceiling
 ## height, so the listener is never much closer than about 1.5 m.
 const HUM_DB := -28.0
+## How far a lamp's hum drops in pitch with its room's light all drunk.
+const HUM_DRAIN_PITCH := 0.08
 const HUM_UNIT := 4.0
 const HUM_REACH := 13.0
 var ambient_clock := 0.0
@@ -647,7 +649,7 @@ func _physics_process(delta: float) -> void:
 	update_space(delta)
 	var creature = level.creature
 	if not is_instance_valid(creature) or level.session.state != level.session.State.PLAYING: return
-	var voice_point: Vector3 = creature.global_position + PRESENCE_RISE
+	var voice_point: Vector3 = creature.voice_point()
 	# A creature imagined nearer than the real one is the one heard.
 	var listener := listener_position()
 	presence_phantom = phantom_point != Vector3.INF and (creature.grace > 0.0 or phantom_point.distance_to(listener) < creature.global_position.distance_to(listener))
@@ -665,6 +667,8 @@ func _physics_process(delta: float) -> void:
 	var audible: bool = level.session.state == level.session.State.PLAYING and (creature.grace <= 0 or presence_phantom) and not level.in_refuge() and presence_route.audible and distance < profile.audible_distance
 	# Holding still beside a wardrobe it makes no sound of its own (the feint).
 	if not presence_phantom and creature.hushed(): audible = false
+	# A creature whose presence plays only at times (the Lurker's, over a locker).
+	if not presence_phantom and not creature.presence_on(): audible = false
 	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
 	presence.bus = CREATURE_BUS[presence_route.get("echo", false)]
 	if audible and not presence.playing: presence.play()
@@ -769,3 +773,5 @@ func update_hum_levels() -> void:
 		if entry == null or not hum.playing: continue
 		var level_ratio: float = clampf(entry.light.light_energy / maxf(entry.energy, 0.01), 0.0, 1.0)
 		hum.volume_db = HUM_DB + float(hum.get_meta("route_gain", 0.0)) + linear_to_db(maxf(level_ratio, 0.001))
+		# Lower where the light is being drunk (the hotel's is never drained).
+		hum.pitch_scale = 1.0 - HUM_DRAIN_PITCH * float(level.hotel.drained(int(entry.light.get_meta("room", -1))))
