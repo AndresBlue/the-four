@@ -31,6 +31,9 @@ const PARTS := {
 	"modular_fire_escape": {"ladder": "^modular_fire_escape_ladder_bottom$"},
 	# The archives' battens over their aisles.
 	"mounted_fluorescent_lights": {"batten": "^mounted_fluorescent_lights_a$"},
+	# The pneumatic tubes: a straight metre of steel pipe, stretched along
+	# each run of the tube tree.
+	"modular_pipes": {"straight": "^pipe_100cm_metal$"},
 }
 ## Clocks, whose hands turn in the game (hotel_geometry.gd, tell_time): each
 ## hand is baked apart, as <id>_<hand>.res -- pointing at twelve, turning

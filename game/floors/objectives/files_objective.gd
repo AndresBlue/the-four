@@ -53,6 +53,8 @@ const PHOTO_MAX_BYTES := 24576
 ## Owner seat -> the JPEG of their photo, as sent and kept (snapshot).
 var photos := {}
 const TUBE_RADIUS := 0.055
+## The kit's straight metre of pipe (tools/props/build_catalogue.gd PARTS).
+const PIPE_MODEL := "res://assets/props/hotel/modular_pipes_straight.res"
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -139,6 +141,10 @@ func tubes_built(m: Dictionary) -> void:
 	material.roughness = 0.4
 	pipe.material = material
 	multi.mesh = pipe
+	# Poly Haven's straight steel pipe when it is baked: a metre along its y
+	# from its end, so each run is laid from its first node.
+	var kit: bool = ResourceLoader.exists(PIPE_MODEL)
+	if kit: multi.mesh = load(PIPE_MODEL)
 	multi.instance_count = edges.size()
 	var near: Array = []
 	near.resize(nodes.size())
@@ -152,7 +158,7 @@ func tubes_built(m: Dictionary) -> void:
 		var run := b - a
 		var up := run.normalized() if run.length() > 0.001 else Vector3.UP
 		var side := up.cross(Vector3.FORWARD if absf(up.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
-		multi.set_instance_transform(k, Transform3D(Basis(side, up * maxf(run.length(), 0.001), side.cross(up)), (a + b) / 2))
+		multi.set_instance_transform(k, Transform3D(Basis(side, up * maxf(run.length(), 0.001), side.cross(up)), a if kit else (a + b) / 2))
 	var holder := MultiMeshInstance3D.new()
 	holder.name = "PneumaticTubes"
 	holder.multimesh = multi
