@@ -46,6 +46,8 @@ const CREATURE := preload("res://game/enemies/creature.gd")
 const LOCUST := preload("res://game/enemies/locust/hotel_locust.gd")
 const LOCUST_SCENE := preload("res://game/enemies/locust/locust.tscn")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const SHARED_SIGHT := preload("res://game/enemies/creature_sight.gd")
+const PHANTOM := preload("res://game/app/phantom_sight.gd")
 const GENERATOR := preload("res://game/world/generation/map_generator.gd")
 const SAVE := preload("res://game/app/floor_save.gd")
 const SCORE := preload("res://game/app/capture_score.gd")
@@ -156,6 +158,7 @@ func run() -> void:
 	director_questions(it)
 	routes(it)
 	stares(it)
+	shared_sight(it)
 	hallucinations(it)
 	var copy = await puppet()
 	round_trip(it, copy)
@@ -423,6 +426,63 @@ func routes(it) -> void:
 ## sanity.sight_of_creature() through face_point() and gaze(): seen and
 ## stared at as it was, with The Locust's head turned and not, ahead of the
 ## camera and off it.
+## The shared sight (game/enemies/creature_sight.gd, spec_f2_mind 3.3):
+## The Locust's watched() and phantom_sight's beside_view() hand over to it
+## and say what their old bodies said, on 100 seeded points and directions;
+## and the capture contract (spec_f2_mind 2.1) a hotel creature answers as
+## any other: may take, no warning, no log.
+func shared_sight(it) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8101
+	var player = level.player
+	var kept_at: Vector3 = player.global_position
+	var kept_yaw: float = player.rotation.y
+	var rooms: Array = level.manifest.rooms.filter(func(room): return not FLOOR.is_void(room) and int(room.get("wing", 0)) == 0)
+	var wrong := 0
+	var seen := 0
+	for i in 100:
+		var room: Dictionary = rooms[rng.randi_range(0, rooms.size() - 1)]
+		var centre := FLOOR.position_of(room)
+		player.global_position = centre + Vector3(rng.randf_range(-2.0, 2.0), 0, rng.randf_range(-2.0, 2.0))
+		player.rotation.y = rng.randf_range(-PI, PI)
+		var point := centre + Vector3(rng.randf_range(-12.0, 12.0), 0, rng.randf_range(-12.0, 12.0))
+		var old := old_watched(it, point)
+		if old != it.watched(point): wrong += 1
+		if old: seen += 1
+	player.global_position = kept_at
+	player.rotation.y = kept_yaw
+	check("watched() pasa por la mirada compartida y dice lo mismo en 100 puntos (%d vistos)" % seen, wrong == 0 and seen >= 5 and seen <= 95, "%d distintos" % wrong)
+	var camera: Camera3D = player.camera
+	var beside_wrong := 0
+	var inside := 0
+	for i in 100:
+		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.5, 0.5), rng.randf_range(-1, 1)).normalized()
+		var point := camera.global_position + dir * rng.randf_range(2.0, 20.0)
+		var towards := point - camera.global_position
+		var dot := (-camera.global_basis.z).dot(towards.normalized())
+		var old: bool = dot >= PHANTOM.PLACE_OFF.x and dot <= PHANTOM.PLACE_OFF.y
+		if old != SHARED_SIGHT.beside_view(camera, point, PHANTOM.PLACE_OFF): beside_wrong += 1
+		if old: inside += 1
+	check("beside_view() de las alucinaciones dice lo mismo que la mirada compartida en 100 direcciones (%d al borde)" % inside, beside_wrong == 0 and inside >= 3)
+	var nobody = load("res://game/enemies/null_creature.gd").new()
+	var answers := func(c) -> bool: return c.may_capture(player) and c.cue_of(player) == -1 and c.capture_log().is_empty()
+	check("The Locust y la criatura nula cogen sin aviso, no avisan ni llevan registro", answers.call(it) and answers.call(nobody))
+	nobody.free()
+
+## hotel_locust.watched() as it was before it handed over to creature_sight.gd.
+func old_watched(it, point: Vector3) -> bool:
+	for body in level.survivors():
+		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera): continue
+		var eye: Vector3 = body.camera.global_position
+		var towards: Vector3 = point + Vector3(0, 1.2, 0) - eye
+		var gap := towards.length()
+		if gap > LOCUST.SIGHT_RANGE or gap < 0.01: continue
+		if -body.camera.global_basis.z.dot(towards / gap) < 0.35: continue
+		var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1 | 8 | 64)
+		query.exclude = [body.get_rid(), it.get_rid()]
+		if it.get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return true
+	return false
+
 func stares(it) -> void:
 	var body = level.player
 	var kept: Vector3 = it.global_position

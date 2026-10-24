@@ -12,7 +12,7 @@ const ROUTES := preload("res://game/enemies/lurker/lurker_routes.gd")
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
-const WORDS: Array[StringName] = [&"roam", &"investigate", &"search", &"alert", &"chase", &"strike", &"recover", &"capture", &"open", &"wait", &"idle"]
+const WORDS: Array[StringName] = [&"roam", &"investigate", &"search", &"alert", &"chase", &"strike", &"recover", &"capture", &"open", &"wait", &"idle", &"stalk", &"withdraw"]
 const CLIPS := ["idle", "crawl", "crawl_fast", "vent_crawl", "retreat", "loom", "scare", "peek"]
 const PACK_SIZE := 10
 ## TRAY and BAND: the patch kind (neither: a channel), for visual.cling.

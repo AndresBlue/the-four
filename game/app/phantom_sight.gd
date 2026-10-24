@@ -16,6 +16,7 @@ extends Node3D
 ## bones a peek must keep behind the jamb, and the poser that leans it out
 ## (pose_peek) or stands it (pose_stare).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const SHARED_SIGHT := preload("res://game/enemies/creature_sight.gd")
 const SIGHT_MASK := 1 | 8 | 64
 ## Where: a door standing open this far off, or the far end of a straight run
 ## of corridor this far off (at least RUN_CELLS cells long).
@@ -183,9 +184,7 @@ func lit(point: Vector3, camera: Camera3D) -> bool:
 
 ## Just off to the side of the picture, where a turn of the head will find it.
 func beside_view(point: Vector3, camera: Camera3D) -> bool:
-	var towards := point - camera.global_position
-	var dot := (-camera.global_basis.z).dot(towards.normalized())
-	return dot >= PLACE_OFF.x and dot <= PLACE_OFF.y
+	return SHARED_SIGHT.beside_view(camera, point, PLACE_OFF)
 
 ## Somewhere to be: a door or the end of a corridor. False when there is none.
 func place(camera: Camera3D) -> bool:

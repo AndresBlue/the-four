@@ -175,6 +175,9 @@ func capture_survivor(body: Node3D) -> void:
 	if level.session.participants.get(body.slot, level.session.Life.DEAD) != level.session.Life.EXPLORING: return
 	if level.lifts.riding.has(int(body.slot)) or level.point_protected(body.global_position): return
 	if level.spare.is_valid() and bool(level.spare.call(body)): return
+	# The Lurker takes nobody she has not warned, and only once the warning
+	# has run out (lurker_warning.gd): asked here, last, whoever asked.
+	if not level.creature.may_capture(body): return
 	# How it was caught is read off where everybody is now, before the victim
 	# is taken out of whatever it was hiding in.
 	var data := stage_capture(body)
@@ -206,12 +209,17 @@ func stage_capture(body: Node3D) -> Dictionary:
 	var side: float = float(forced.get("side", chosen[1]))
 	var room := fall_room(placed.feet, yaw, side, [body.get_rid(), creature.get_rid()])
 	var hide: int = level.hotel.hides.find(body.hiding_place) if bool(body.hidden) and is_instance_valid(body.hiding_place) else -1
-	return {
+	var staged := {
 		"entry": String(forced.get("entry", chosen[0])), "side": float(room[0]), "straight": bool(room[1]), "slump": bool(room[2]), "room": float(room[3]), "yaw": yaw, "hide": hide, "partner": partner_of(body),
 		"far": float(placed.far), "from": body.global_position, "facing": body.rotation.y,
 		"crouched": bool(body.crouched), "torch": is_instance_valid(body.torch) and body.torch.visible,
 		"glance": look, "seed": int(forced.get("seed", rng.randi() & 0x7fffffff)), "id": captures,
 	}
+	# The warning this capture answers (the hotel's creature has none: the
+	# payload is as it was).
+	var cue: int = creature.cue_of(body)
+	if cue >= 0: staged["cue"] = cue
+	return staged
 
 ## Whoever shares a wardrobe with somebody caught in it, still on their feet:
 ## both die. The creature does not take one out of a wardrobe and leave the
@@ -260,6 +268,7 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 		"glance": bool(data.get("glance", false)), "seed": int(data.get("seed", 0)), "id": int(data.get("id", 0)),
 		"ending": "leave",
 	}
+	if data.has("cue"): execution["cue"] = int(data.cue)
 	var creature = level.creature
 	if is_instance_valid(creature):
 		creature.begin_capture(execution)

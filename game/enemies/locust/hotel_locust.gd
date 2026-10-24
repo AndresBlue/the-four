@@ -2,6 +2,7 @@ extends "res://game/enemies/creature.gd"
 @export var sound_profile: Resource = preload("res://game/audio/profiles/locust.tres")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const THREAD := preload("res://game/enemies/locust/door_threading.gd")
+const SHARED_SIGHT := preload("res://game/enemies/creature_sight.gd")
 enum Mode { PATROL, INVESTIGATE, CHASE, SEARCH, WINDUP, RECOVER, ALERT, WARDROBE, EXECUTE, LURK }
 ## Perception and pacing. Distances in metres, speeds in m/s.
 ## It perceives the player from much farther than the player can sense it:
@@ -2151,17 +2152,7 @@ func body_fits(point: Vector3) -> bool:
 ## Whether any survivor, from where its eyes are and the way it is looking,
 ## has this spot in view.
 func watched(point: Vector3) -> bool:
-	for body in level.survivors():
-		if not is_instance_valid(body) or not level.survivor_active(body) or not "camera" in body or not is_instance_valid(body.camera): continue
-		var eye: Vector3 = body.camera.global_position
-		var towards: Vector3 = point + Vector3(0, 1.2, 0) - eye
-		var gap := towards.length()
-		if gap > SIGHT_RANGE or gap < 0.01: continue
-		if -body.camera.global_basis.z.dot(towards / gap) < 0.35: continue
-		var query := PhysicsRayQueryParameters3D.create(eye, eye + towards, 1 | 8 | 64)
-		query.exclude = [body.get_rid(), get_rid()]
-		if get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return true
-	return false
+	return SHARED_SIGHT.watched(level, point + Vector3(0, 1.2, 0), [get_rid()], SIGHT_RANGE, 0.35)
 
 # --- The creature's contract (game/enemies/creature.gd) ----------------------------
 

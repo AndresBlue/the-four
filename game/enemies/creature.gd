@@ -22,7 +22,7 @@ extends CharacterBody3D
 ## kind: one that does overrides it.
 
 ## Hostile: anybody near it has reason to be afraid (pacing_director.hostile).
-const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait"]
+const HOSTILE: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture", &"wait", &"stalk"]
 ## Attacking: on to somebody, or holding them (phantom_sight.allowed).
 const ATTACKING: Array[StringName] = [&"alert", &"chase", &"strike", &"recover", &"capture"]
 ## Hunting: after somebody it has seen (dread_aura's worst).
@@ -89,6 +89,10 @@ func tune(_profile: Dictionary) -> void: pass
 ##   open         throwing a hiding place open
 ##   wait         waiting by a hiding place for whoever is in it to come out
 ##   idle         does nothing at all (the null creature, null_creature.gd)
+##   stalk        following somebody out of their sight, keeping its distance
+##                (the Lurker's stalking: hostile, not hunting nor chasing)
+##   withdraw     drawing off after a fright, nobody in mind, not to be led
+##                (the Lurker's flight to a duct)
 func activity() -> StringName: return &"roam"
 
 ## The name of its own state, for logs and the observer.
@@ -310,6 +314,28 @@ func end_capture() -> void: pass
 
 ## Seconds a capture of its lasts, from the grab.
 func capture_length() -> float: return 0.0
+
+## Whether it may take this survivor now, asked by executions.capture_survivor()
+## at the last moment, on the machine that decides. The Lurker only at the end
+## of her warning behind them (docs/OFICINAS.md 11.5, lurker_warning.gd);
+## every other creature: yes.
+func may_capture(_body: Node3D) -> bool: return true
+
+## The warning a capture of this survivor answers (its id in capture_log()),
+## -1 for none: executions.stage_capture() keeps it with the capture.
+func cue_of(_body: Node3D) -> int: return -1
+
+## Every warning it has given this floor, and what came of each
+## (lurker_warning.gd ledger): what the tests and the bots' watcher check.
+func capture_log() -> Array: return []
+
+## Its warning behind `seat`, decided on the machine in charge, played here
+## from `point`, where it really is (match_net.send_cue).
+func play_cue(_seat: int, _cue_id: int, _point: Vector3, _hold: float) -> void: pass
+
+## That warning is over (taken, saved, given up): whatever of it is still
+## held on this machine lets go.
+func cue_over(_cue_id: int, _outcome: String) -> void: pass
 
 ## The beats of throwing a hiding place open (match_net.update_wardrobe_jobs),
 ## seconds from its start: the leaves burst, it reaches in, it is done.
