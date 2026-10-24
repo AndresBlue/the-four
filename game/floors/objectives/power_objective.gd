@@ -178,6 +178,12 @@ func powered(room_id: int) -> bool:
 			if zones[int(z)].rooms.has(room_id): return true
 	return false
 
+## Whether the team's power keeps The Lurker off a room (spec_f2_movement
+## 6.2; the author, 24 October 2026: a minutero's light herds her like the
+## board's zones): powered by them, not lit always.
+func herds(room_id: int) -> bool:
+	return built() and not lit_always.has(room_id) and powered(room_id)
+
 ## Each room's power given again only where it changed.
 func refresh_power(all := false) -> void:
 	if not built(): return

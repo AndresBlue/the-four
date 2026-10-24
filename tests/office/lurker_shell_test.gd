@@ -1,17 +1,23 @@
 extends SceneTree
-## The Lurker's shell (game/enemies/lurker/lurker_shell.gd, spec_f2_movement 3
-## and 11.1): its curves against the bench's, the transform of every place,
+## The Lurker's shell and routes (game/enemies/lurker/lurker_shell.gd and
+## lurker_routes.gd, spec_f2_movement 3, 6 and 11.1): the shell's curves
+## against the bench's, the transform of every place,
 ## the seams between ceilings, bands and aisles, how far it keeps from door
 ## heads and lamps, every room and door covered, the walls of the tall rooms
 ## and the fronts of the lockers (the author, 24 October 2026), the back
-## cue's posture for a victim standing and crouched, and the same build twice.
-## No floor is built and nothing of physics runs.
+## cue's posture for a victim standing and crouched, and the same build twice;
+## her routes on a stub level: by doors, by ducts when one shuts, dearer
+## through light, never through an off-limits room. No floor is built and
+## nothing of physics runs.
 const GEN := preload("res://game/world/generation/office_generator.gd")
 const HOTEL_GEN := preload("res://game/world/generation/map_generator.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
+const ROUTES := preload("res://game/enemies/lurker/lurker_routes.gd")
+const DUCTS := preload("res://game/enemies/lurker/duct_graph.gd")
+const FIX := preload("res://tests/office/lurker_fixture.gd")
 const Profile := SHELL.Profile
 const State := SHELL.State
 const SEEDS := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -46,6 +52,9 @@ func run() -> void:
 	fixture_cases()
 	determinism()
 	plenum()
+	await route_cases()
+	duct_steps()
+	route_seeds()
 	text()
 	figures["total_ms"] = Time.get_ticks_msec() - started
 	var file := FileAccess.open("res://evidence/lurker_shell_test.json", FileAccess.WRITE)
@@ -83,30 +92,6 @@ func door_bands(shell) -> Array:
 
 func exit_bands(shell) -> Array:
 	return kind_of(shell, SHELL.Kind.BAND).filter(func(b): return int(shell.patches[b].exit) >= 0)
-
-## The fixture of 11.1: planta 0, one row of four cells (a despacho, a
-## corridor, an archive, an off-limits room), two ducts' exits and one aisle.
-func fixture(merge := false) -> Dictionary:
-	var table := [[0, 3, 0.0, 8.0, [[1, 0.0]]], [1, 11, 5.2, 2.4, [[0, 0.0], [2, 1.0]]], [2, 6, 11.4, 10.0, [[1, 1.0], [3, 0.0]]], [3, 19, 20.4, 8.0, [[2, 0.0]]]]
-	var rooms: Array = []
-	for row in table:
-		rooms.append({"id": row[0], "x": row[0], "z": 0, "cols": 4, "rows": 1, "wing": 0, "py": 0.0, "pz": 0.0, "span_z": 8.0, "height": 2.95, "open_sides": [],
-			"type": row[1], "px": row[2], "span_x": row[3], "doors": row[4], "hides": [], "furniture": []})
-	var m := {"floor": 2, "plenum": OFFICE.PLENUM.duplicate(true), "rooms": rooms, "edges": [[0, 1], [1, 2], [2, 3]], "adjacency": [[1], [0, 2], [1, 3], [2]], "merged": [], "entries": [0], "seed": 1}
-	var n3 := Vector3(-1.5, 2.95, 1.5)
-	var n4 := Vector3(11.4, 0.35, 3.91)
-	m["ducts"] = {"nodes": [[0.0, 3.7, 0.0, 0, "branch"], [5.2, 3.7, 0.0, 1, "trunk"], [11.4, 3.7, 0.0, 2, "branch"], [n3.x, n3.y, n3.z, 0, "exit"], [n4.x, n4.y, n4.z, 2, "exit"]],
-		"edges": [[0, 1, 5.2, "branch"], [1, 2, 6.2, "branch"], [3, 0, n3.distance_to(Vector3(0, 3.7, 0)), "drop"], [4, 2, n4.distance_to(Vector3(11.4, 3.7, 0)), "drop"]],
-		"exits": [{"node": 3, "room": 0, "kind": "ceiling", "point": [n3.x, n3.y, n3.z], "yaw": 0.0}, {"node": 4, "room": 2, "kind": "wall", "point": [n4.x, n4.y, n4.z], "yaw": PI}]}
-	m["archives"] = [{"rooms": [2], "axis": "x", "mobile": false, "spine": [6.75, -0.8, 16.05, 0.8], "aisles": [[8.0, 0.8, 9.0, 3.85]]}]
-	if merge:
-		m.merged = [[0, 1]]
-		rooms[0].open_sides = ["east"]
-		rooms[1].open_sides = ["west"]
-		rooms[0].doors = []
-		rooms[1].doors = [[2, 1.0]]
-		m.edges = [[0, 1], [1, 2], [2, 3]]
-	return m
 
 # --- A to C: curves and constants ------------------------------------------------
 
@@ -422,7 +407,7 @@ func coverage() -> void:
 					if shell.tray_of.has(int(r)) and (shell.patches[int(shell.tray_of[int(r)])].rect as Rect2).grow(1e-4).has_point(Vector2(p.x, p.z)): inside = true
 				if not inside: bad.append([seed_value, "pasillo fuera", channel, v])
 	check("Cobertura: cada sala, puerta, rejilla y pasillo estrecho tiene su superficie, y ninguna sala prohibida", bad.is_empty(), str(bad.slice(0, 6)))
-	var shell = SHELL.build(fixture())
+	var shell = SHELL.build(FIX.fixture())
 	check("Cobertura: en el plano de prueba, tres techos, dos puertas y nada en la sala prohibida", shell.tray_of.size() == 3 and not shell.tray_of.has(3) and shell.band_of_pair.size() == 2 and not shell.band_of_pair.has(Vector2i(2, 3)) and shell.wall_band_of_exit.has(1) and shell.channels_of.get(2, []).size() == 1)
 
 ## The author's walls (M1) and lockers (M8).
@@ -567,7 +552,7 @@ func lamps_and_cue() -> void:
 # --- K, L and M: the fixture, points and determinism ------------------------------------
 
 func fixture_cases() -> void:
-	var shell = SHELL.build(fixture())
+	var shell = SHELL.build(FIX.fixture())
 	var s: State = shell.tray_state(0, 0.0, 0.0)
 	var before: Vector3 = shell.anchor_of(s)
 	var moved: float = shell.advance(s, 1.0)
@@ -576,7 +561,7 @@ func fixture_cases() -> void:
 	wall.heading = PI
 	var short: float = shell.advance(wall, 1.0)
 	check("Avanzar: contra una pared se para dentro de su techo", short < 1.0 and (shell.patches[int(shell.tray_of[0])].rect as Rect2).grow(1e-6).has_point(Vector2(wall.u, wall.v)), str(short))
-	var open = SHELL.build(fixture(true))
+	var open = SHELL.build(FIX.fixture(true))
 	var across: State = open.tray_state(0, 3.0, 0.0)
 	var start: Vector3 = open.anchor_of(across)
 	var went: float = open.advance(across, 2.0)
@@ -621,7 +606,7 @@ func determinism() -> void:
 
 ## The author's plenum (M7): her sound out of the tile under her.
 func plenum() -> void:
-	var shell = SHELL.build(fixture())
+	var shell = SHELL.build(FIX.fixture())
 	var mouth: Vector3 = shell.plenum_mouth(Vector3(1.0, 3.7, 1.0))
 	check("El plénum: se la oye por la placa que tiene debajo", absf(mouth.y - 2.95) < 1e-6 and absf(mouth.x - 0.9) < 1e-6 and absf(mouth.z - 0.9) < 1e-6, str(mouth))
 	var seeded = shells[1]
@@ -636,7 +621,205 @@ func plenum() -> void:
 
 func text() -> void:
 	var bad: Array = []
-	for path in ["res://game/enemies/lurker/lurker_shell.gd", "res://game/enemies/lurker/duct_graph.gd", "res://game/world/generation/conduit_graph.gd"]:
+	for path in ["res://game/enemies/lurker/lurker_shell.gd", "res://game/enemies/lurker/lurker_routes.gd", "res://game/enemies/lurker/lurker_motion.gd", "res://tests/office/lurker_fixture.gd", "res://game/enemies/lurker/duct_graph.gd", "res://game/world/generation/conduit_graph.gd"]:
 		var body := FileAccess.get_file_as_string(path)
 		if body.contains(char(0xB7)) or body.contains(char(0x2014)): bad.append(path)
 	check("Texto: ni punto medio ni guion largo en los guiones nuevos", bad.is_empty(), str(bad))
+
+# --- O: routes, on a stub level ---------------------------------------------------------
+
+func kinds_of(legs: Array) -> Array:
+	return legs.map(func(leg): return String(leg.kind))
+
+## The 6.2 cost of a door edge from the shell's lengths, by hand.
+func door_cost(routes, a: int, b: int, factor_a := 1.0, factor_b := 1.0) -> float:
+	var shell = routes.shell
+	var band: int = shell.band_of_pair[ROUTES.key_of(a, b)]
+	var half: float = shell.patches[band].profile.length / 2.0
+	var near: Vector3 = shell.anchor_of(shell.band_start(band, a))
+	var far: Vector3 = shell.anchor_of(shell.band_start(band, b))
+	var ma: float = routes.plan_point(a).distance_to(Vector2(near.x, near.z)) + half
+	var mb: float = half + Vector2(far.x, far.z).distance_to(routes.plan_point(b))
+	return (ma * factor_a + mb * factor_b) / ROUTES.CRAWL_SPEED + ROUTES.PORTAL_COST
+
+func door_metres(routes, a: int, b: int) -> Array:
+	var shell = routes.shell
+	var band: int = shell.band_of_pair[ROUTES.key_of(a, b)]
+	var half: float = shell.patches[band].profile.length / 2.0
+	var near: Vector3 = shell.anchor_of(shell.band_start(band, a))
+	var far: Vector3 = shell.anchor_of(shell.band_start(band, b))
+	return [routes.plan_point(a).distance_to(Vector2(near.x, near.z)) + half, half + Vector2(far.x, far.z).distance_to(routes.plan_point(b))]
+
+func route_cases() -> void:
+	var m := FIX.fixture()
+	var lvl := FIX.stub_level(m)
+	var routes = FIX.routes_on(m, lvl)
+	var shell = routes.shell
+	var open_plan: Dictionary = routes.plan({"room": 0}, {"room": 2})
+	var v_ok := true
+	for leg in open_plan.legs:
+		if String(leg.kind) == "band" and absf(absf(float(leg.v)) - ROUTES.DOOR_SIDE) > 1e-9: v_ok = false
+		if String(leg.kind) == "band" and float(leg.v) < 0.0: v_ok = false
+	var by_hand: float = door_cost(routes, 0, 1) + door_cost(routes, 1, 2)
+	check("Rutas: con todo abierto y a oscuras va de puerta en puerta", bool(open_plan.ok) and kinds_of(open_plan.legs) == ["tray", "band", "tray", "band", "tray"] and open_plan.pairs == [Vector2i(0, 1), Vector2i(1, 2)], str(kinds_of(open_plan.legs)) + " " + str(open_plan.pairs))
+	check("Rutas: por cada puerta pasa a un palmo del centro, lejos de la bisagra", v_ok)
+	check("Rutas: lo que cuesta es la cuenta de 6.2", absf(float(open_plan.cost) - by_hand) < 1e-4, "%f %f" % [float(open_plan.cost), by_hand])
+	# Door 1-2 shut: by the ducts.
+	var door_12: FIX.StubDoor = lvl.hotel.doors["Door_1_2"]
+	door_12.opened = false
+	var shut_plan: Dictionary = routes.plan({"room": 0}, {"room": 2})
+	var kinds := kinds_of(shut_plan.legs)
+	check("Rutas: con la puerta cerrada entra por la rejilla del techo y sale por la de la pared", bool(shut_plan.ok) and kinds.has("squeeze") and kinds.has("duct") and kinds.count("squeeze") == 2 and kinds.has("band") and not shut_plan.pairs.has(Vector2i(1, 2)), str(kinds))
+	var duct_metres := 0.0
+	for leg in shut_plan.legs:
+		if String(leg.kind) == "duct":
+			for k in range(1, (leg.nodes as PackedInt32Array).size()): duct_metres += float(routes.ducts.edges[routes.ducts.edge_between(leg.nodes[k - 1], leg.nodes[k])][2])
+	var timed := true
+	var base := -1.0
+	for speed: float in [1.2, 1.6, 2.0, 2.4]:
+		routes.duct_speed = speed
+		var c: float = float(routes.plan({"room": 0}, {"room": 2}).cost) - duct_metres / speed
+		if base < 0.0: base = c
+		elif absf(c - base) > 1e-6: timed = false
+	routes.duct_speed = 1.6
+	check("Rutas: por los ductos tarda sus metros entre la velocidad de su dificultad", timed and duct_metres > 0.0, str(duct_metres))
+	var duct_cost: float = float(routes.plan({"room": 0}, {"room": 2}).cost)
+	door_12.opened = true
+	lvl.hotel.lit_rooms[1] = true
+	var metres := door_metres(routes, 0, 1)
+	var metres_b := door_metres(routes, 1, 2)
+	var lit_door: float = by_hand + (ROUTES.LIT_FACTOR - 1.0) * (float(metres[1]) + float(metres_b[0])) / ROUTES.CRAWL_SPEED
+	var lit_plan: Dictionary = routes.plan({"room": 0}, {"room": 2})
+	check("Rutas: una sala con luz encarece el paso y elige el camino más barato", absf(float(lit_plan.cost) - minf(lit_door, duct_cost)) < 1e-4, "%f %f %f" % [float(lit_plan.cost), lit_door, duct_cost])
+	var replanned: float = routes.path_cost({"room": 0}, open_plan.nodes)
+	check("Rutas: recalculado con la luz, el plan viejo cuesta lo que dice la cuenta", absf(replanned - lit_door) < 1e-4, "%f %f" % [replanned, lit_door])
+	lvl.hotel.lit_rooms.erase(1)
+	var never := true
+	for goal in [0, 1, 2]:
+		for from in [0, 1, 2]:
+			if (routes.plan({"room": from}, {"room": goal}).nodes as PackedInt32Array).has(3): never = false
+	check("Rutas: nunca pasa por la sala prohibida ni llega a ella", never and not bool(routes.plan({"room": 0}, {"room": 3}).ok) and not routes.travel_metres(0).has(3))
+	var hand_1: float = door_metres(routes, 0, 1)[0] + door_metres(routes, 0, 1)[1]
+	var hand_2: float = hand_1 + door_metres(routes, 1, 2)[0] + door_metres(routes, 1, 2)[1]
+	var travel: Dictionary = routes.travel_metres(0)
+	check("Rutas: los metros a cada sala, con todo abierto, son los de las puertas", absf(float(travel.get(1, INF)) - hand_1) < 1e-4 and absf(float(travel.get(2, INF)) - hand_2) < 1e-4, str(travel))
+	var door_01: FIX.StubDoor = lvl.hotel.doors["Door_0_1"]
+	door_01.swung.emit(false, false, false)
+	door_01.opened = false
+	check("Rutas: una puerta que se cierra queda apuntada con su fotograma", routes.last_shut == Vector2i(0, 1) and routes.shut_frame >= 0)
+	var shut_travel: Dictionary = routes.travel_metres(0)
+	check("Rutas: con la puerta cerrada, los metros van por los ductos", float(shut_travel.get(2, 0.0)) > hand_2 and float(shut_travel.get(1, 0.0)) > hand_1, str(shut_travel))
+	await physics_frame
+	var signature: int = routes.door_signature(0)
+	var epoch: int = routes.door_epoch
+	door_01.opened = true
+	await physics_frame
+	var after: int = routes.door_signature(0)
+	check("Rutas: una puerta que cambia sin señal se nota igual", after != signature and routes.door_epoch > epoch and absf(float(routes.travel_metres(0).get(1, INF)) - hand_1) < 1e-4)
+	var p := Vector3(1.0, 3.7, 0.0)
+	var duct_plan: Dictionary = routes.plan({"duct": [0, 1], "metres": [1.0, 4.2], "point": p}, {"room": 0})
+	var first_duct: Dictionary = {}
+	for leg in duct_plan.legs:
+		if String(leg.kind) == "duct" and first_duct.is_empty(): first_duct = leg
+	check("Rutas: desde dentro de un ducto vuelve por donde es más corto, desde su punto", bool(duct_plan.ok) and duct_plan.nodes[0] == routes.room_count + 0 and not first_duct.is_empty() and (first_duct.points as PackedVector3Array)[0] == p, str(duct_plan.nodes))
+	var merged_m := FIX.fixture(true)
+	var merged_routes = FIX.routes_on(merged_m, FIX.stub_level(merged_m))
+	merged_routes.door_nodes[Vector2i(1, 2)] = null
+	merged_routes.report_missing = false
+	check("Rutas: un lado abierto está abierto sin puerta; una puerta que no se encuentra, cerrada", merged_routes.door_open(Vector2i(0, 1)) and not merged_routes.door_open(Vector2i(1, 2)) and merged_routes.missing_reported.has(Vector2i(1, 2)))
+	var merged_plan: Dictionary = merged_routes.plan({"room": 0}, {"room": 1})
+	check("Rutas: por un lado abierto va de un techo al otro sin franja", bool(merged_plan.ok) and not kinds_of(merged_plan.legs).has("band") and merged_plan.pairs.is_empty(), str(kinds_of(merged_plan.legs)))
+	for door in lvl.hotel.doors.values(): door.opened = true
+	routes.teardown()
+	var connected := false
+	for door in lvl.hotel.doors.values():
+		if door.swung.get_connections().size() > 0: connected = true
+	check("Rutas: al desmontarlas sueltan cada puerta", not connected)
+
+## Rule 5: where the main or a cross meets the network, a vertical step.
+func duct_steps() -> void:
+	var m: Dictionary = shells[7].manifest
+	var lvl := FIX.stub_level(m)
+	var routes = FIX.routes_on(m, lvl)
+	var ducts = routes.ducts
+	var found := []
+	for n in ducts.nodes.size():
+		var low := -1
+		var high := -1
+		for link in ducts.adjacency[n]:
+			var kind: String = ducts.edges[int(link[2])][3]
+			if ducts.visible_kinds.has(kind): low = int(link[0])
+			elif kind != "drop": high = int(link[0])
+		if low >= 0 and high >= 0:
+			found = [high, n, low]
+			break
+	if found.is_empty():
+		check("Rutas: un paso vertical donde el conducto principal se junta con la red", false, "sin nudo")
+		return
+	var leg: Dictionary = routes.duct_leg(PackedInt32Array(found), Vector3.INF)
+	var points: PackedVector3Array = leg.points
+	var vertical := false
+	var short := true
+	for i in range(1, points.size()):
+		var step := points[i] - points[i - 1]
+		if Vector2(step.x, step.z).length() < 1e-4 and absf(step.y) > 0.1: vertical = true
+		if step.length() > float(ducts.edges[ducts.edge_between(found[0], found[1])][2]) + float(ducts.edges[ducts.edge_between(found[1], found[2])][2]) + 1e-4: short = false
+	check("Rutas: un paso vertical donde el conducto principal se junta con la red", vertical and short and (leg.kinds as PackedStringArray).size() == points.size() - 1, str(points))
+
+func route_seeds() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var bad: Array = []
+	var plans := 0
+	for seed_value in [1, 2, 3, 4, 5]:
+		var m: Dictionary = shells[seed_value].manifest
+		var lvl := FIX.stub_level(m)
+		var routes = FIX.routes_on(m, lvl)
+		var off: Array = OFFICE.off_limits_rooms(m)
+		var with_exit := {}
+		for e in routes.ducts.exits: with_exit[int(e.room)] = true
+		for wing in 3:
+			var ids: Array = routes.shell.tray_of.keys().filter(func(r): return int(m.rooms[int(r)].get("wing", -1)) == wing)
+			ids.sort()
+			if ids.size() < 2: continue
+			for i in 20:
+				var a: int = ids[rng.randi_range(0, ids.size() - 1)]
+				var b: int = ids[rng.randi_range(0, ids.size() - 1)]
+				for door in lvl.hotel.doors.values(): door.opened = true
+				var open_plan: Dictionary = routes.plan({"room": a}, {"room": b})
+				plans += 1
+				if not bool(open_plan.ok): bad.append([seed_value, a, b, "abierto", open_plan.why])
+				for door in lvl.hotel.doors.values(): door.opened = false
+				var shut_plan: Dictionary = routes.plan({"room": a}, {"room": b})
+				plans += 1
+				if with_exit.has(a) and with_exit.has(b) and (not bool(shut_plan.ok) or not shut_plan.pairs.is_empty()): bad.append([seed_value, a, b, "cerrado", shut_plan.why])
+				for plan in [open_plan, shut_plan]:
+					for n in plan.nodes:
+						if int(n) < routes.room_count and off.has(int(n)): bad.append([seed_value, a, b, "prohibida"])
+		routes.teardown()
+	figures["route_plans"] = plans
+	check("Rutas: en cinco semillas, con puertas abiertas o cerradas, llega y nunca por una sala prohibida", bad.is_empty(), str(bad.slice(0, 5)))
+	var m7: Dictionary = shells[7].manifest
+	var routes7 = FIX.routes_on(m7, FIX.stub_level(m7))
+	var draws: Array = []
+	var shares_ok := true
+	var walk := FLOOR.route_metres(m7, FLOOR.entry_of(m7, 1))
+	var top := 0.0
+	for r in walk:
+		if routes7.shell.tray_of.has(int(r)) and int(m7.rooms[int(r)].get("wing", -1)) == 1: top = maxf(top, float(walk[r]))
+	var rng3 := RandomNumberGenerator.new()
+	rng3.seed = 3
+	for i in 50:
+		var e: int = routes7.arrival_exit(1, rng3)
+		draws.append(e)
+		if e < 0: shares_ok = false
+		else:
+			var share := float(walk.get(int(routes7.ducts.exits[e].room), 0.0)) / top
+			if share < ROUTES.ARRIVE_BAND.x - 1e-9 or share > ROUTES.ARRIVE_BAND.y + 1e-9: shares_ok = false
+	var again := RandomNumberGenerator.new()
+	again.seed = 3
+	var same := true
+	for i in 50:
+		if routes7.arrival_exit(1, again) != draws[i]: same = false
+	check("Rutas: sale lejos del vestíbulo, entre la mitad y nueve décimos del camino, y siempre igual", shares_ok and same)
+	routes7.teardown()
