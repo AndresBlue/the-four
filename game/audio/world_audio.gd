@@ -197,6 +197,7 @@ func set_creature(next: Resource) -> void:
 	presence.stop()
 	profile = next
 	presence_gain = 0
+	if aura != null: aura.use_profile(next)
 	if profile == null: return
 	presence.stream = loop_stream(profile.presence)
 	presence.max_distance = profile.audible_distance
@@ -506,12 +507,40 @@ func apply_route(player: AudioStreamPlayer3D, route: Dictionary, gain: float, dr
 	if creature:
 		player.bus = CREATURE_BUS[route.echo]
 		player.panning_strength = 0.0
+	# A route may name its own bus (hers out of a duct, DUCT_BUS).
+	if route.has("bus"): player.bus = route.bus
 	var rear := behind(route.position)
 	var far := clampf(float(route.get("distance", 0.0)) / AIR_REACH, 0.0, 1.0)
 	player.volume_db = gain + route.gain + REAR_GAIN * rear + AIR_GAIN * far
 	# The square root front-loads it: the first metres already dull a sound,
 	# which is what tells a room away from a floor away.
 	player.attenuation_filter_cutoff_hz = minf(minf(route.cutoff, lerpf(20000.0, REAR_CUTOFF, rear)), lerpf(20000.0, AIR_CUTOFF, sqrt(far)))
+
+## Her sounds through the ducts: a sheet-metal box (a narrow boost round
+## 1 kHz, no lows, a short bright reflection), then into the creature's
+## binaural bus. Made at run time on her floor only: the layout file is never
+## edited.
+const DUCT_BUS := &"Ducts"
+func ensure_duct_bus() -> void:
+	if AudioServer.get_bus_index(DUCT_BUS) >= 0: return
+	AudioServer.add_bus()
+	var index := AudioServer.bus_count - 1
+	AudioServer.set_bus_name(index, DUCT_BUS)
+	AudioServer.set_bus_send(index, CREATURE_BUS[false])
+	var eq := AudioEffectEQ6.new()
+	var gains := [-12.0, -6.0, 0.0, 5.0, 2.0, -4.0]
+	for band in gains.size(): eq.set_band_gain_db(band, gains[band])
+	AudioServer.add_bus_effect(index, eq)
+	var box := AudioEffectReverb.new()
+	box.room_size = 0.18
+	box.damping = 0.15
+	box.spread = 0.3
+	box.predelay_msec = 8.0
+	box.predelay_feedback = 0.5
+	box.hipass = 0.2
+	box.dry = 1.0
+	box.wet = 0.28
+	AudioServer.add_bus_effect(index, box)
 
 ## 0 in front of or beside the listener, 1 straight behind (smooth in between).
 func behind(point: Vector3) -> float:
@@ -670,7 +699,7 @@ func _physics_process(delta: float) -> void:
 	# A creature whose presence plays only at times (the Lurker's, over a locker).
 	if not presence_phantom and not creature.presence_on(): audible = false
 	presence.global_position = target if not presence_route.get("echo", false) or presence.global_position.distance_to(target) > 8.0 else presence.global_position.lerp(target, minf(1.0, delta * 4.0))
-	presence.bus = CREATURE_BUS[presence_route.get("echo", false)]
+	presence.bus = presence_route.get("bus", CREATURE_BUS[presence_route.get("echo", false)])
 	if audible and not presence.playing: presence.play()
 	presence_gain = move_toward(presence_gain, 1.0 if audible else 0.0, delta * 0.6)
 	if presence_gain <= 0 and presence.playing: presence.stop()

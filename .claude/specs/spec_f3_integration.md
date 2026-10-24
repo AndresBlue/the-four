@@ -408,6 +408,17 @@ func sound_route_from(point: Vector3, listener: Vector3) -> Dictionary   # 2a's 
 
 ---
 
+### 3.9 Step 3b as landed (24 October 2026, director)
+
+- **Recordings (3.1):** her rows as the table, in `prepare_lurker_sfx.py` (`sounds()`, run after the cues; the cues and shrieks come out byte-identical). The bite's knuckle is the fifth of `click_cuts()` on the knuckles (the warning's high-passed clicks): `onsets()` found only two peaks over -24 dB there. `presence.wav`: 20.5 s from 10 s, pitch 0.85, lowpass 3.5 kHz, cut to 20.5 s and its last 0.5 s crossfaded into its start: a 20.0 s loop. Picked by the script, unheard. The office rows for 3c's lies are not made yet. Registered in `docs/ASSETS.md` and `docs/asset_hashes.json`.
+- **Profile and aura (3.2, 3.6):** as written; `caption` is the author's I7 proposal, "[Algo respira encima]". `dread_aura.use_profile()` from `world_audio.set_creature()`; the breath player stops while `breath_enabled` is false.
+- **Duct bus and routes (3.3, 3.5):** as written. A grille's duct node is the grille itself (0.0 m on seed 81), so a duct route that ends in the listener's room already ends at the grille. `presence_route()`: nothing to a protected listener; on a surface the aura's point is raised to her face's height. The duct part is kept `ROUTE_MEMO` 0.25 s per node and listener's 2 m cell (`route_memo`). There is no plenum patch in the shell (M7's layer is the duct graph's gap and drop edges): her medium is `&"plenum"` while her nearest duct node is a `gap` node.
+- **The voice (3.4):** `lurker_voice.gd` as written, but: no captions for her claws, knocks or tiles (the author's I6); only the shriek's (`SHRIEK_CAPTION` "[Un chillido]", 16 m). `quiet_until` is INF with no warning open. Every routed sound of hers takes its own player, at most `STEP_VOICES` at once. `travel(delta, speed)` makes nothing while she holds still (speed under 0.05). `history` notes every sound attempted, heard or not. `footfall` gets the hand's normal (`lurker_limbs.footfall` and `lurker_visual.footfall` carry it). There is no `duct_in`/`duct_out` event yet: `lurker.sound_step()` calls `tile_shift()` when `view().in_duct` changes within 1.5 m of a `ceiling` or `gap` exit, on every machine.
+- **The shriek (3.7):** `brain.scared` calls `on_event("scare", [seat, cause, face])` on the driving machine only (the reliable event is phase 4's). Its fright is applied on the authority to every survivor on her planta within `SHRIEK_FRIGHT` 12 m with a clear line, not by each machine to its own player: `sanity.gd` keeps every mind on the authority (`wear()`, `minds`). `sanity.fright(body, cost)` uses `wear()`'s rest and paid bookkeeping; `SANITY_SHRIEK` 6.0.
+- **The cue (3.7):** `play_cue()` sets `voice.quiet_until` on the victim's machine and emits `cue_played(seat, cue_id, point)`; `cue_over()` clears it.
+- **The car (2.3, 3.8):** `lurker.sound_step()`: while `lifts.boarding.car >= 0` and her `view().drop`, `voice.outside_car()` every `CAR_SCRATCH` (drawn from the voice's rng, not hers).
+- **Tests:** `tests/office/office_audio_test.gd` in verify's audio batch (seed 81). Not built of 9.4: case 4 (out of the ducts' reach: the fallback through the air can still be heard, so the check needs a room picked for it), case 9 on three wings with the mask compared in dB (one wing, the clean half second and the ears only), and the aura's ear position.
+
 ## 4. Step 3c: her lies
 
 ### 4.1 `lurker_hallucinations.gd`

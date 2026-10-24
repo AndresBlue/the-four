@@ -96,6 +96,31 @@ func tick(delta: float) -> void:
 	phantom_quiet(delta)
 	if level.player.sanity < SANITY_UNEASY and not is_instance_valid(sight): ensure_sight()
 
+## Her shriek heard close by (the Lurker's, spec_f3_integration 3.7).
+const SANITY_SHRIEK := 6.0
+## A fright that is not a sight of the creature: like a sight, one per
+## SANITY_SIGHT_REST, and only what it costs over what that rest has paid.
+func fright(body: Node3D, cost: float) -> void:
+	if level.rule("sanity") != 1: return
+	var local: bool = body == level.player
+	var mind: Dictionary = minds.get(int(body.slot), {"sanity": 100.0, "rest": 0.0, "paid": 0.0})
+	var value: float = level.player.sanity if local else float(mind.sanity)
+	var rest: float = sight_rest if local else float(mind.rest)
+	var paid: float = sight_paid if local else float(mind.get("paid", 0.0))
+	if rest <= 0.0:
+		rest = SANITY_SIGHT_REST
+		paid = cost
+		value = maxf(0.0, value - cost)
+	elif cost > paid:
+		value = maxf(0.0, value - (cost - paid))
+		paid = cost
+	else: return
+	if local:
+		level.player.sanity = value
+		sight_rest = rest
+		sight_paid = paid
+	else: minds[int(body.slot)] = {"sanity": value, "rest": rest, "paid": paid}
+
 ## One survivor's mind, one frame of it, on the authority.
 func wear(body: Node3D, delta: float) -> void:
 	var local: bool = body == level.player

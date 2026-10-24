@@ -16,6 +16,22 @@ const SIGHT := preload("res://game/enemies/creature_sight.gd")
 const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
 const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
+const VOICE := preload("res://game/enemies/lurker/lurker_voice.gd")
+## Her sound out of the plenum, through the tile under her: this much quieter
+## and duller than in the room (spec_f3_integration 3.5).
+const PLENUM_LOSS := -6.0
+const PLENUM_CUTOFF := 1800.0
+## Her duct routes kept this long per node and listener's 2 m cell.
+const ROUTE_MEMO := 0.25
+## Her claws outside the car, every so often, while a survivor rides between
+## plantas and she drops through the ducts (2.3).
+const CAR_SCRATCH := Vector2(0.6, 1.3)
+## Her shriek frightens whoever is this near with a clear line to it (3.7).
+const SHRIEK_FRIGHT := 12.0
+## A warning played here (the bots react to it, 7.1).
+signal cue_played(seat: int, cue_id: int, point: Vector3)
+## Her presence over a locker and her aura (game/audio/creature_audio_profile.gd).
+@export var sound_profile: Resource = preload("res://game/audio/profiles/lurker.tres")
 const WORDS: Array[StringName] = [&"roam", &"investigate", &"search", &"alert", &"chase", &"strike", &"recover", &"capture", &"open", &"wait", &"idle", &"stalk", &"withdraw"]
 const CLIPS := ["idle", "crawl", "crawl_fast", "vent_crawl", "retreat", "loom", "scare", "peek"]
 const PACK_SIZE := 10
@@ -56,6 +72,11 @@ var net_jump := -1
 var net_flags := 0
 var net_look := Vector3.INF
 var net_near := -1
+## What is heard of her (lurker_voice.gd).
+var voice
+var car_clock := 0.0
+var route_memo := {}
+var was_in_duct := false
 
 func kind_id() -> StringName: return &"lurker"
 
@@ -97,6 +118,13 @@ func hushed() -> bool: return bool(view().drop)
 
 func _ready() -> void:
 	visual = get_node_or_null("Visual")
+	voice = VOICE.new()
+	voice.name = "Voice"
+	add_child(voice)
+	if level != null:
+		voice.setup(self)
+		if is_instance_valid(level.get("world_audio")) and level.world_audio.has_method("ensure_duct_bus"): level.world_audio.ensure_duct_bus()
+	if visual != null and visual.has_signal("footfall"): visual.footfall.connect(voice.footfall)
 	body_shape = get_node_or_null("BodyShape")
 	if body_shape != null: shape_rest = body_shape.position
 	if level != null: rng.seed = hash([int(level.manifest.get("seed", 0)), "lurker"])
@@ -306,24 +334,65 @@ func room_of_point(p: Vector3) -> int:
 
 func sound_route(listener: Vector3) -> Dictionary:
 	var v := view()
-	heard_at = Vector3.INF
-	if bool(v.drop): return {"audible": false, "distance": INF}
-	if bool(v.in_duct) and bool(v.hidden) and ducts != null:
-		var route: Dictionary = ducts.sound_route(v.duct_point, int(v.near), listener, room_of_point, level.get("world_audio"))
-		if bool(route.audible): heard_at = route.position
-		return route
+	var hid: bool = bool(v.in_duct) and bool(v.hidden)
+	var route := sound_route_from(v.duct_point if hid else face_point(), listener)
+	heard_at = route.position if hid and bool(route.get("audible", false)) else Vector3.INF
+	return route
+
+## How a sound of hers made at `point` reaches the listener (3.5): not at all
+## to a listener where nothing of her is heard, or on another planta; out of
+## a hidden duct by its grilles, on the duct bus; out of the plenum by the
+## tile under her; else by the room's own route. Every route ends where the
+## listener can see it.
+func sound_route_from(point: Vector3, listener: Vector3) -> Dictionary:
+	var silent := {"audible": false, "position": point, "gain": -80.0, "cutoff": 20000.0, "echo": false, "distance": INF}
+	var v := view()
 	var audio = level.get("world_audio") if level != null else null
-	if audio == null: return {"audible": false, "distance": INF}
-	return audio.route_source(global_position, get_rid(), listener)
+	if bool(v.drop) or audio == null: return silent
+	if level.has_method("point_protected") and level.point_protected(listener): return silent
+	if FLOOR.planta_of(point.y) != FLOOR.planta_of(listener.y): return silent
+	if bool(v.in_duct) and bool(v.hidden) and ducts != null:
+		if voice != null and voice.medium() == &"plenum": return plenum_route(point, listener, audio)
+		return duct_route(point, int(v.near), listener, audio)
+	return audio.route_source(point, get_rid(), listener)
+
+## Out of a duct by its grilles (conduit_graph.sound_route: a grille's node is
+## the grille itself), kept ROUTE_MEMO s per node and listener's cell.
+func duct_route(point: Vector3, near: int, listener: Vector3, audio) -> Dictionary:
+	var key := [near, Vector3i((listener / 2.0).floor())]
+	var now := Time.get_ticks_msec() / 1000.0
+	var kept = route_memo.get(key)
+	if kept != null and now - float(kept[0]) < ROUTE_MEMO: return kept[1]
+	var route: Dictionary = ducts.sound_route(point, near, listener, room_of_point, audio)
+	if bool(route.audible): route["bus"] = audio.DUCT_BUS
+	if route_memo.size() > 64: route_memo = {}
+	route_memo[key] = [now, route]
+	return route
+
+## Out of the plenum by the middle of the tile under her (the author's M7),
+## quieter and duller than in the room.
+func plenum_route(point: Vector3, listener: Vector3, audio) -> Dictionary:
+	var p: Vector3 = shell.plenum_mouth(point) - Vector3(0, 0.05, 0)
+	if room_of_point(p) == room_of_point(listener):
+		return {"audible": true, "position": p, "gain": PLENUM_LOSS, "cutoff": PLENUM_CUTOFF, "echo": false, "distance": p.distance_to(listener)}
+	var route: Dictionary = audio.route_source(p, RID(), listener)
+	if bool(route.audible):
+		route["gain"] = float(route.gain) + PLENUM_LOSS
+		route["cutoff"] = minf(float(route.cutoff), PLENUM_CUTOFF)
+	return route
 
 func presence_route(listener: Vector3) -> Array:
+	if level != null and level.has_method("point_protected") and level.point_protected(listener): return [INF, Vector3.INF]
 	var v := view()
 	if bool(v.in_duct) and bool(v.hidden) and ducts != null:
 		var route: Dictionary = sound_route(listener)
 		return [float(route.distance), route.position] if bool(route.get("audible", false)) else [INF, Vector3.INF]
 	var audio = level.get("world_audio") if level != null else null
 	if audio == null or audio.get("aura") == null: return [INF, Vector3.INF]
-	return audio.aura.route_to(listener, FLOOR.floor_point(global_position))
+	var felt: Array = audio.aura.route_to(listener, FLOOR.floor_point(global_position))
+	# Felt from where her face is, not from the floor under her.
+	if felt[1] != Vector3.INF: felt[1] = Vector3(felt[1].x, face_point().y, felt[1].z)
+	return felt
 
 # --- The net (8.3) --------------------------------------------------------------------------
 
@@ -394,6 +463,39 @@ func _physics_process(delta: float) -> void:
 			follow_state(delta)
 	drain_step(delta)
 	show_body()
+	sound_step(delta)
+
+## Every machine: her travel in the ducts heard, a tile shifted where she goes
+## into or out of the ceiling, and her claws outside a riding car.
+func sound_step(delta: float) -> void:
+	if voice == null or level == null or level.get("world_audio") == null: return
+	var v := view()
+	var inside := bool(v.in_duct)
+	if inside != was_in_duct:
+		var e := exit_near(v.duct_point if inside else global_position)
+		if e >= 0 and String(ducts.exits[e].kind) in ["ceiling", "gap"]: voice.tile_shift(ducts.exits[e].position)
+		was_in_duct = inside
+	if inside and bool(v.hidden): voice.travel(delta, velocity.length())
+	var lifts = level.get("lifts")
+	if lifts == null or int(lifts.boarding.get("car", -1)) < 0 or not bool(v.drop):
+		car_clock = 0.0
+		return
+	car_clock -= delta
+	if car_clock > 0.0: return
+	car_clock = voice.rng.randf_range(CAR_SCRATCH.x, CAR_SCRATCH.y)
+	voice.outside_car()
+
+## The exit nearest a point within 1.5 m; -1 when none.
+func exit_near(point: Vector3) -> int:
+	if ducts == null: return -1
+	var best := -1
+	var best_d := 1.5
+	for e in ducts.exits.size():
+		var d: float = (ducts.exits[e].position as Vector3).distance_to(point)
+		if d < best_d:
+			best_d = d
+			best = e
+	return best
 
 ## Her transform and velocity from the motion.
 func apply_motion() -> void:
@@ -515,6 +617,7 @@ func think_setup() -> void:
 	brain.tune(tuning)
 	brain.cue_started.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue"): level.match_net.send_cue(int(entry.seat), int(entry.id), Vector3(entry.point[0], entry.point[1], entry.point[2]), float(entry.due) - float(entry.at)))
 	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
+	brain.scared.connect(func(cause: String, seat: int): on_event("scare", [seat, cause, face_point()]))
 
 func think(delta: float) -> void:
 	if control != "ai" or not thinking or brain == null: return
@@ -710,6 +813,31 @@ func above_locker(hide: Node3D) -> Vector3:
 	var s = shell.state_at(hide.global_position + Vector3.UP)
 	return shell.anchor_of(s) if s != null else hide.global_position
 
+func presence_sound() -> Resource: return sound_profile
+
+## A moment of hers every machine must hear of (6.3). Told on this machine
+## only for now: the net's reliable event is phase 4's.
+func on_event(kind: String, data: Array) -> void:
+	match kind:
+		"scare":
+			var at: Vector3 = data[2]
+			if voice != null: voice.shriek_heard(at)
+			frighten(at)
+
+## Her shriek frightens the minds near it (on the authority, where minds
+## are kept): on her planta, within SHRIEK_FRIGHT and with a clear line.
+func frighten(at: Vector3) -> void:
+	var mind = level.get("sanity")
+	var audio = level.get("world_audio")
+	if mind == null or not mind.has_method("fright") or audio == null or not level.has_method("survivors"): return
+	if level.get("match_net") != null and level.match_net.has_method("in_charge") and not level.match_net.in_charge(): return
+	for body in level.survivors():
+		if not is_instance_valid(body) or body.get("camera") == null: continue
+		var ear: Vector3 = body.camera.global_position
+		if FLOOR.planta_of(ear.y) != FLOOR.planta_of(at.y) or ear.distance_to(at) > SHRIEK_FRIGHT: continue
+		if audio.occluded(at, get_rid(), ear): continue
+		mind.fright(body, mind.SANITY_SHRIEK)
+
 ## Her shriek, at her face, for everybody.
 func scream(point: Vector3) -> void:
 	var path: String = BRAIN.SCARE_SOUNDS[rng.randi_range(0, BRAIN.SCARE_SOUNDS.size() - 1)]
@@ -783,8 +911,13 @@ func play_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
 	if mine: audio.show_caption(caption, false, hold)
 	elif bool(audio.route_source(point, RID(), level.player.camera.global_position).get("audible", false)) and point.distance_to(level.player.camera.global_position) <= 10.0:
 		audio.show_caption(WARNING.CUE_CAPTION_NEAR, false)
+	# Nothing else of hers starts on the victim's machine from CLEAN before its
+	# due time until it is over (0.5.6).
+	if mine and voice != null: voice.quiet_until = voice.now() + hold
+	cue_played.emit(seat, cue_id, point)
 
 func cue_over(_cue_id: int, _outcome: String) -> void:
+	if voice != null: voice.quiet_until = INF
 	var audio = level.get("world_audio")
 	if audio != null and "caption_lock" in audio: audio.caption_lock = 0.0
 

@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force (Join-Path $projectPath 'evidence') | Out-Nu
 #      (evidence/verification.json).
 #   2. Online play, the four scenarios at once, each on its own port: host and
 #      guests on the real clock.
-#   3. The two audio tests, on the real clock as well and with nothing else
+#   3. The audio tests, on the real clock as well and with nothing else
 #      building floors beside them.
 # A check that runs out of time is a failure, and the rest go on.
 if ($Jobs -le 0) { $Jobs = [Math]::Max(2, [Math]::Min(8, [int][Math]::Floor([Environment]::ProcessorCount / 3))) }
@@ -42,12 +42,12 @@ function Godot-Arguments([string]$source, [string]$log, [bool]$fixed, [string[]]
     return ,$arguments
 }
 
-$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test')
+$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test')
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
     $log = Join-Path $evidence ('verify_' + $name + '.log')
-    # Audio capture needs real time: those two run last, on their own.
-    $audio = $name -in @('hotel_audio_test','spatial_audio_test')
+    # Audio capture needs real time: those run last, on their own.
+    $audio = $name -in @('hotel_audio_test','spatial_audio_test','office_audio_test')
     $user = @('--automation','--test-profile','--silent')
     if ($name -in @('hotel_test','intro_test')) { $user += '--no-enemy' }
     # Its own port: a game left open on this machine hosts on the default one,

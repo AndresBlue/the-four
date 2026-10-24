@@ -13,7 +13,7 @@ const DARKNESS := preload("res://game/enemies/lurker/lurker_darkness.gdshader")
 ## Render layer 3, its own. (Layer 2 is the player's own body; 5 to 20 are
 ## rooms at the lowest preset, room_layers.gd.)
 const LAYER := 4
-signal footfall(point: Vector3, strength: float)
+signal footfall(point: Vector3, strength: float, normal: Vector3)
 
 ## The hands plant themselves on what is near; off, the clip moves the arms.
 @export var crawling := true: set = set_crawling
@@ -49,7 +49,7 @@ func _ready() -> void:
 	head_bone = skeleton.find_bone("head")
 	limbs = LIMBS.new()
 	limbs.name = "Limbs"
-	limbs.footfall.connect(func(point, strength): footfall.emit(point, strength))
+	limbs.footfall.connect(func(point, strength, normal): footfall.emit(point, strength, normal))
 	skeleton.add_child(limbs)
 	limbs.hands = crawling
 	ink = fog("Ink", 0.95 * size, 0.24 * size, 40.0, 0.0, 0.17 * size)

@@ -7,6 +7,15 @@ never touched.
   cue_0..2.wav  one wet exhalation, then two jaw clicks   (BigSoundBank CC0; Pixabay)
   scare_0..1.wav  her shriek                              (BigSoundBank CC0)
 
+And her sounds on the floor (spec_f3_integration 3.1), all Pixabay but the
+bite's bones (BigSoundBank CC0):
+
+  tile_1..6, tile_creak_1..3, tile_grind, dust_1..2   the false ceiling
+  metal_1..4, scrape_1, knock_1..8                    sheet metal, the ducts
+  hard_1..8, drag_1..2, wood_1..8, wood_scratch_1..2  walls and floors
+  presence.wav                                        a cow's breath, looped
+  bite_1..2                                           bones and a knuckle
+
 Each horse breath is a single exhalation of about 0.7 s, so each is taken
 whole from its first sound: copies 0 and 2 share the first one, with other
 clicks and another gap. The warning's window counts from when its sound
@@ -142,6 +151,122 @@ def write(name, x):
     return x
 
 
+def run_ffmpeg(x, filters):
+    """x through an ffmpeg audio filter chain, mono at RATE."""
+    raw = subprocess.run([ffmpeg(), "-v", "error", "-f", "f32le", "-ar", str(RATE), "-ac", "1", "-i", "-", "-af", filters, "-f", "f32le", "-ac", "1", "-ar", str(RATE), "-"], input=x.astype(np.float32).tobytes(), capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.float32).astype(np.float64)
+
+
+def pitch(x, ratio):
+    """Slower and lower by `ratio` (under 1), as a tape played slow."""
+    return run_ffmpeg(x, "asetrate=%d,aresample=%d" % (int(round(RATE * ratio)), RATE))
+
+
+def lowpass(x, hz):
+    return run_ffmpeg(x, "lowpass=f=%d:p=2" % int(hz))
+
+
+def onsets(x, count, gap, pre, post):
+    """The `count` loudest peaks of the 5 ms envelope over -24 dB of its
+    maximum, at least `gap` s apart, in time order, each cut from `pre` s
+    before it to `post` s after."""
+    size = int(0.005 * RATE)
+    env = np.convolve(np.abs(x), np.ones(size) / size, mode="same")
+    floor = env.max() * 10 ** (-24 / 20)
+    peaks = [i for i in range(1, len(env) - 1) if env[i] >= floor and env[i] >= env[i - 1] and env[i] > env[i + 1]]
+    peaks.sort(key=lambda i: (-env[i], i))
+    taken = []
+    for i in peaks:
+        if all(abs(i - t) >= int(gap * RATE) for t in taken) and i - int(pre * RATE) >= 0 and i + int(post * RATE) <= len(x):
+            taken.append(i)
+        if len(taken) == count:
+            break
+    if len(taken) < count:
+        sys.exit("only %d onsets of %d" % (len(taken), count))
+    return [x[i - int(pre * RATE):i + int(post * RATE)] for i in sorted(taken)]
+
+
+def mix(a, b, at, gain_db):
+    """b laid over a from `at` s on, `gain_db` down."""
+    i = int(at * RATE)
+    out = np.zeros(max(len(a), i + len(b)))
+    out[:len(a)] += a
+    out[i:i + len(b)] += b * 10 ** (gain_db / 20)
+    return out
+
+
+def loop(x, seconds):
+    """The end crossfaded into the start over `seconds`, so it repeats
+    without a seam: the last `seconds` fade out over the first ones."""
+    n = int(seconds * RATE)
+    head = x[:n]
+    body = x[n:].copy()
+    ramp = np.linspace(0, 1, n)
+    body[len(body) - n:] = body[len(body) - n:] * (1 - ramp) + head * ramp
+    return body
+
+
+def out(name, x, peak=0.7):
+    """A floor sound: 4 ms in, 30 ms out, to `peak`."""
+    x = fade(x, 0.004, 0.03)
+    x = x / (np.max(np.abs(x)) or 1.0) * peak
+    with wave.open(str(OUT / name), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(np.round(np.clip(x, -1, 1) * 32767).astype("<i2").tobytes())
+    print("%-18s %.2f s" % (name, len(x) / RATE))
+
+
+def sounds():
+    OUT.mkdir(parents=True, exist_ok=True)
+    src = lambda slug, name: load(SOURCE / slug / name)
+    for k, cut in enumerate(onsets(src("ceiling_claws_cardboard_scratch", "freesound_community-scratching-on-box-40160.mp3"), 6, 0.15, 0.02, 0.22)):
+        out("tile_%d.wav" % (k + 1), cut)
+    rattle = src("tile_grid_metal_rattle", "freesound_community-air-conditioner-vent-metal-ring-clank-26871.mp3")
+    for k, cut in enumerate(onsets(rattle, 3, 1.0, 0.03, 0.5)):
+        out("tile_creak_%d.wav" % (k + 1), pitch(cut, 0.9))
+    grind = src("tile_styrofoam_grind", "freesound_community-grinding-styrofoam-46849.mp3")
+    (_, start), = loudest_windows([grind], 1.2, 1, 0.0)
+    out("tile_grind.wav", grind[start:start + int(1.2 * RATE)])
+    out("dust_1.wav", src("debris_sandfall", "freesound_community-sandfall5-83468.mp3"), 0.5)
+    out("dust_2.wav", src("debris_gravel_dirt_small", "freesound_community-gravel-stone-dirt-debris-falling-small-1-3-36216.mp3")[:int(2.5 * RATE)], 0.5)
+    nail = src("metal_fingernail_elevator_ceiling", "freesound_community-20131209_fingernail-on-elevator-ceiling_olympusls10_xy-87239.mp3")
+    for k, cut in enumerate(onsets(nail[:int(1.8 * RATE)], 4, 0.12, 0.01, 0.18)):
+        out("metal_%d.wav" % (k + 1), cut)
+    out("scrape_1.wav", nail[len(nail) - int(0.9 * RATE):])
+    for k, cut in enumerate(onsets(src("duct_impacts_metal_box", "freesound_community-duct-impacts-76170.mp3"), 6, 0.4, 0.02, 0.35)):
+        out("knock_%d.wav" % (k + 1), pitch(cut, 0.85))
+    out("knock_7.wav", pitch(src("duct_heater_vent_hits", "freesound_community-heater-vent-hit-lower-part-83044.mp3"), 0.8))
+    out("knock_8.wav", pitch(src("duct_heater_vent_hits", "freesound_community-heater-vent-hit-higher-part-103305.mp3"), 0.8))
+    for k, cut in enumerate(onsets(src("wall_claws_smooth_rock", "freesound_community-claws-on-smooth-rock-65642.mp3"), 8, 0.15, 0.01, 0.16)):
+        out("hard_%d.wav" % (k + 1), cut)
+    plaster = src("plaster_tool_scrape", "freesound_community-plaster-screaming-55526.mp3")
+    for k, (_, start) in enumerate(sorted(loudest_windows([plaster], 0.7, 2, 0.0), key=lambda w: w[1])):
+        out("drag_%d.wav" % (k + 1), pitch(lowpass(plaster[start:start + int(0.7 * RATE)], 5000), 0.9))
+    for k, cut in enumerate(onsets(src("wood_claws_skittering_dog", "freesound_community-skittering-dog-33523.mp3"), 8, 0.15, 0.01, 0.16)):
+        out("wood_%d.wav" % (k + 1), cut)
+    nails = src("wood_fingernail_scratch", "freesound_community-scratching-with-fingernails-79478.mp3")
+    for k, (_, start) in enumerate(sorted(loudest_windows([nails], 0.8, 2, 0.0), key=lambda w: w[1])):
+        out("wood_scratch_%d.wav" % (k + 1), nails[start:start + int(0.8 * RATE)])
+    cow = src("breath_cow_bodot", "freesound_community-breath-of-cow-78843.mp3")
+    breath = lowpass(pitch(cow[int(10 * RATE):int(30.5 * RATE)], 0.85), 3500)
+    breath = loop(breath[:int((20.0 + 0.5) * RATE)], 0.5)
+    breath = breath / (np.max(np.abs(breath)) or 1.0) * 0.6
+    with wave.open(str(OUT / "presence.wav"), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(np.round(np.clip(breath, -1, 1) * 32767).astype("<i2").tobytes())
+    print("%-18s %.2f s (loop)" % ("presence.wav", len(breath) / RATE))
+    # The fifth click of the knuckles, cut as the warning's clicks are.
+    knuckles = click_cuts([src("bone_knuckles_crack", "freesound_community-knuckles-cracking-98331.mp3")])
+    knuckle = knuckles[min(4, len(knuckles) - 1)]
+    for k, name in enumerate(["bsb_1408_bones_cracking_2.mp3", "bsb_1409_bones_cracking_3.mp3"]):
+        bones = pitch(src("bone_celery_bsb", name), 0.8)
+        out("bite_%d.wav" % (k + 1), mix(bones, knuckle / (np.max(np.abs(knuckle)) or 1.0) * np.max(np.abs(bones)), 0.05, -6.0))
+
+
 def main():
     breaths = [from_first_sound(load(SOURCE / b), BREATH) for b in BREATHS]
     clicks = click_cuts([load(SOURCE / c) for c in CLICKS])
@@ -169,6 +294,7 @@ def main():
         print("scare_%d.wav   %.2f s" % (v, len(cut) / RATE))
     if bad:
         sys.exit("a cue starts later than %d ms" % int(ONSET_MOST * 1000))
+    sounds()
 
 
 if __name__ == "__main__":

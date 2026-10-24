@@ -6,6 +6,7 @@ extends Node
 ## way it is coming from, but the cues never reveal its exact position.
 ## Presentation only: it reads the creature, never changes its behaviour.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const PROFILE := preload("res://game/audio/creature_audio_profile.gd")
 const CHITTERS := ["res://assets/audio/dread/chitter_0.wav", "res://assets/audio/dread/chitter_1.wav", "res://assets/audio/dread/chitter_2.wav", "res://assets/audio/dread/chitter_3.wav"]
 const HEART_LUB := "res://assets/audio/sfx/heartbeat/1.ogg"
 const HEART_DUB := "res://assets/audio/sfx/heartbeat/2.ogg"
@@ -44,6 +45,10 @@ var chitter_clock := 2.0
 var heart_clock := 0.0
 var clock := 0.0
 var muffle: AudioEffectLowPassFilter
+## Whether the breath layer plays, and how far over the cue point the ear sits
+## (use_profile()).
+var breath_enabled := true
+var rise := 1.5
 var rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -61,7 +66,8 @@ func _ready() -> void:
 	heart.name = "Heartbeat"
 	heart.bus = "Threat"
 	add_child(heart)
-	for path in CHITTERS: chitter_streams.append(load(path))
+	if chitter_streams.is_empty():
+		for path in CHITTERS: chitter_streams.append(load(path))
 	lub = load(HEART_LUB)
 	dub = load(HEART_DUB)
 	var ambience := AudioServer.get_bus_index("Ambience")
@@ -169,16 +175,31 @@ func _physics_process(delta: float) -> void:
 	var shaped := pow(intensity, 1.4)
 	apply_levels(shaped, delta, listener)
 	if intensity > 0.02 and cue_point != Vector3.INF:
-		var ear := cue_point + Vector3.UP * 1.5
+		var ear := cue_point + Vector3.UP * rise
 		breath.global_position = ear if breath.global_position.distance_to(ear) > 6.0 else breath.global_position.lerp(ear, minf(1.0, delta * 2.5))
 	update_chitters(delta)
 	update_heart(delta)
 
+## The floor's creature's aura (creature_audio_profile's aura_*); null: the
+## defaults, as the aura always was.
+func use_profile(profile: Resource) -> void:
+	var p: Resource = profile if profile != null and "aura_start" in profile else PROFILE.new()
+	start_distance = float(p.aura_start)
+	full_distance = float(p.aura_full)
+	breath_enabled = bool(p.aura_breath)
+	rise = float(p.aura_rise)
+	chitter_streams = []
+	for stream in p.aura_clicks: chitter_streams.append(stream)
+	if chitter_streams.is_empty():
+		for path in CHITTERS: chitter_streams.append(load(path))
+	if not breath_enabled and breath != null: breath.stop()
+
 func apply_levels(shaped: float, _delta: float, _listener: Vector3) -> void:
 	var audible := intensity > 0.01
 	for player in [drone, breath]:
-		if audible and not player.playing: player.play(rng.randf() * 4.0)
-		elif not audible and player.playing: player.stop()
+		var on: bool = audible and (player != breath or breath_enabled)
+		if on and not player.playing: player.play(rng.randf() * 4.0)
+		elif not on and player.playing: player.stop()
 	# The drone wavers slightly off pitch, which reads as wrong rather than musical.
 	# Pressure stays underneath: the directional layers must stay readable.
 	drone.volume_db = lerpf(-42.0, -15.0, shaped) + world_audio.duck_db()

@@ -322,6 +322,25 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | `cue_0..2.wav` (chasquidos) | `bsb_0596_bones_cracking_1.mp3`; `knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, por freesound_community en Pixabay | CC0; Pixabay Content License |
 | `scare_0.wav`, `scare_1.wav` | `bsb_1400_barn_owl_1.mp3`, `bsb_1403_barn_owl_2.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
 
+El mismo guion hace sus sonidos en el piso (fase 3): las garras según lo que hay bajo cada mano, los golpes dentro de un ducto, el falso techo que cruje, su presencia y su mordisco. Cada copia es un tramo de su original elegido por el guion sin escucharlo (los picos más fuertes, o la ventana más fuerte), a veces más grave y con un filtro; el autor debería oírlos. Todos los de Pixabay son grabaciones de Freesound que freesound_community subió a Pixabay.
+
+| Copia | Original | Autor y fuente | Licencia |
+|---|---|---|---|
+| `tile_1..6.wav` (garras en una placa) | `scratching-on-box-40160.mp3` | MrTeeXD, Freesound, en Pixabay | Pixabay Content License |
+| `tile_creak_1..3.wav` (la perfilería) | `air-conditioner-vent-metal-ring-clank-26871.mp3` | rsellick, Freesound, en Pixabay | Pixabay Content License |
+| `tile_grind.wav` | `grinding-styrofoam-46849.mp3` | lurpsis, Freesound, en Pixabay | Pixabay Content License |
+| `dust_1.wav` | `sandfall5-83468.mp3` | Wagna (sobre una grabación de lolamadeus), Freesound, en Pixabay | Pixabay Content License |
+| `dust_2.wav` | `gravel-stone-dirt-debris-falling-small-1-3-36216.mp3` | Sheyvan, Freesound, en Pixabay | Pixabay Content License |
+| `metal_1..4.wav`, `scrape_1.wav` (chapa) | `20131209_fingernail-on-elevator-ceiling_olympusls10_xy-87239.mp3` | Soundscape_Leuphana, Freesound, en Pixabay | Pixabay Content License |
+| `knock_1..6.wav` (dentro del ducto) | `duct-impacts-76170.mp3` | j1987, Freesound, en Pixabay | Pixabay Content License |
+| `knock_7.wav`, `knock_8.wav` | `heater-vent-hit-lower-part-83044.mp3`, `heater-vent-hit-higher-part-103305.mp3` | Ev-Dawg, Freesound, en Pixabay | Pixabay Content License |
+| `hard_1..8.wav` (yeso, bloque y suelos duros) | `claws-on-smooth-rock-65642.mp3` | magzlurban, Freesound, en Pixabay | Pixabay Content License |
+| `drag_1.wav`, `drag_2.wav` | `plaster-screaming-55526.mp3` | tlipfert, Freesound, en Pixabay | Pixabay Content License |
+| `wood_1..8.wav` (chapa de madera) | `skittering-dog-33523.mp3` | sittingmonkeyanim, Freesound, en Pixabay | Pixabay Content License |
+| `wood_scratch_1.wav`, `wood_scratch_2.wav` | `scratching-with-fingernails-79478.mp3` | danthaiwang, Freesound, en Pixabay | Pixabay Content License |
+| `presence.wav` (bucle de 20 s) | `breath-of-cow-78843.mp3` | bodot, Freesound, en Pixabay | Pixabay Content License |
+| `bite_1.wav`, `bite_2.wav` | `bsb_1408_bones_cracking_2.mp3`, `bsb_1409_bones_cracking_3.mp3`; un chasquido de `knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, en Pixabay | CC0; Pixabay Content License |
+
 ## Modelos de las oficinas (piso 2)
 
 - **Cráneo de los restos del ducto principal:** OpenGameArt «Human Skull», de CDmir, CC0 (`source_assets/oficinas/equipos/human_skull_oga/`, con su ficha en el `registro.json`). En `assets/props/office/skull/`: el OBJ sin su biblioteca de materiales y tres texturas reducidas a 512 px (color, normal y rugosidad). `main_duct_geometry.gd` lo pone a 0,073 de su tamaño (unos 0,14 m de ancho).

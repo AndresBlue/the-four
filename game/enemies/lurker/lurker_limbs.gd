@@ -20,7 +20,7 @@ extends SkeletonModifier3D
 ## Presentation only: it never moves the body (whoever owns it does, and says
 ## how fast in `velocity`) and changes no collision. Runs after the animation
 ## player, so the clip still moves the body and the jaw.
-signal footfall(point: Vector3, strength: float)
+signal footfall(point: Vector3, strength: float, normal: Vector3)
 
 const FINGERS := ["thumb", "index", "middle", "ring", "pinky"]
 const LIMBS := ["a.L", "a.R", "b.L", "c.R", "d.L", "e.R", "f.L"]
@@ -322,7 +322,7 @@ func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> voi
 			limb.normal = limb.to_n
 			limb.free = limb.to_free
 			limb.dwell = 0.0
-			if not limb.free: footfall.emit(limb.to, clampf(speed / 2.5, 0.2, 1.0) * limb.scale)
+			if not limb.free: footfall.emit(limb.to, clampf(speed / 2.5, 0.2, 1.0) * limb.scale, limb.to_n)
 		return
 	limb.dwell += delta
 	# how far the arm is drawn out: to where its wrist is, off the hold

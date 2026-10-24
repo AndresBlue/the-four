@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://game/audio/creature_audio_profile.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lurker/presence.wav" id="2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lurker/hard_2.wav" id="3"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lurker/tile_3.wav" id="4"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lurker/metal_2.wav" id="5"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lurker/wood_5.wav" id="6"]
+
+[resource]
+script = ExtResource("1")
+presence = ExtResource("2")
+volume_db = -14.0
+audible_distance = 14.0
+caption = "[Algo respira encima]"
+aura_start = 22.0
+aura_full = 3.0
+aura_breath = false
+aura_clicks = Array[AudioStream]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6")])
+aura_rise = 0.0

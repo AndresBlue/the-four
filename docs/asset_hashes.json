@@ -94,5 +94,197 @@
   "assets/audio/sfx/lurker/scare_1.wav": {
     "bytes": 123522,
     "sha256": "23e7f9a6b249520a587e395d15bd6f0320297610ed48e84d09d6308b468d94f4"
+  },
+  "assets/audio/sfx/lurker/bite_1.wav": {
+    "bytes": 94124,
+    "sha256": "ae62b8f1492866d59b00773d35c4e84e585fe46eeec7b2c55010466e8ff7e17d"
+  },
+  "assets/audio/sfx/lurker/bite_2.wav": {
+    "bytes": 103534,
+    "sha256": "8a877eb0cc5c6badc7cef1f1f9e6e4527cce64f2698cf1a91a718ca231dfd803"
+  },
+  "assets/audio/sfx/lurker/drag_1.wav": {
+    "bytes": 68642,
+    "sha256": "f49ec752a57cbf509642589a4e892fa67956d67a7a53dbfc2791a7ef7de69b3c"
+  },
+  "assets/audio/sfx/lurker/drag_2.wav": {
+    "bytes": 68642,
+    "sha256": "8b37393d0ac6741e5777d3294baa35571a15d980d50d86a90456776466abfa16"
+  },
+  "assets/audio/sfx/lurker/dust_1.wav": {
+    "bytes": 398004,
+    "sha256": "c939439f001db8da3fec64d558f39463f249312b3d17b59091513c4da18d1610"
+  },
+  "assets/audio/sfx/lurker/dust_2.wav": {
+    "bytes": 220544,
+    "sha256": "46a943c8e8d9d89515f04f1f74240801d35e0d5d4a4938824b135b78c6bfbaf7"
+  },
+  "assets/audio/sfx/lurker/hard_1.wav": {
+    "bytes": 15038,
+    "sha256": "f325a39be150cd3921a38e70de1a2f24381381db4969e54caa37f8d2b5e6b325"
+  },
+  "assets/audio/sfx/lurker/hard_2.wav": {
+    "bytes": 15038,
+    "sha256": "a729224182c8be728608d13aecb52a4b1574e907182313233d19abad5b93f120"
+  },
+  "assets/audio/sfx/lurker/hard_3.wav": {
+    "bytes": 15038,
+    "sha256": "5669fc3b3b6dda28887ad26edbb6ea422870db9048ee1c8ea8988e73fc976c86"
+  },
+  "assets/audio/sfx/lurker/hard_4.wav": {
+    "bytes": 15038,
+    "sha256": "d4b46e4b565953fd41d8f64dae04272757cb1a756a4f9486ca868b35ae23f522"
+  },
+  "assets/audio/sfx/lurker/hard_5.wav": {
+    "bytes": 15038,
+    "sha256": "32744446b3537926e4cfb08ce4198f6afe76e7aed730cf321ead08491ac1da85"
+  },
+  "assets/audio/sfx/lurker/hard_6.wav": {
+    "bytes": 15038,
+    "sha256": "9d8b46cce95bdf6e5ea2ee881ebd984be3190186e2d5fb42e2d933082f333436"
+  },
+  "assets/audio/sfx/lurker/hard_7.wav": {
+    "bytes": 15038,
+    "sha256": "1529f7a46f2e7c3d0540746a378b4bc2670d9ce6d3dccfc91dae0c5259f2a6d5"
+  },
+  "assets/audio/sfx/lurker/hard_8.wav": {
+    "bytes": 15038,
+    "sha256": "4d5aa6b8cf95d33f7a5973d6a3caa82bb0c149ed1c86fd49ff192918ff61810e"
+  },
+  "assets/audio/sfx/lurker/knock_1.wav": {
+    "bytes": 38436,
+    "sha256": "2721dfc4cfeb92aef6b63da8a82a822bf80853123f934fbd7d96df16d4b1d000"
+  },
+  "assets/audio/sfx/lurker/knock_2.wav": {
+    "bytes": 38436,
+    "sha256": "0ad6ddf791612052420963815dea09c53a1c0d20f216697cacf420d90e1e336f"
+  },
+  "assets/audio/sfx/lurker/knock_3.wav": {
+    "bytes": 38436,
+    "sha256": "c3cc80d4427d120a4980581c00c7cec9f23d0c7172906226c46a03a3e3eeeec3"
+  },
+  "assets/audio/sfx/lurker/knock_4.wav": {
+    "bytes": 38436,
+    "sha256": "4a4e3c6062a5d012bfa3564b62fb7753ce9d1b30c0a64679b104e684a5a8f200"
+  },
+  "assets/audio/sfx/lurker/knock_5.wav": {
+    "bytes": 38436,
+    "sha256": "2e00ad8be4fd81e0f4ac028b751d5f472fe58c3edc60fc829c8e3be214e7709d"
+  },
+  "assets/audio/sfx/lurker/knock_6.wav": {
+    "bytes": 38436,
+    "sha256": "e6d3bc0113821e0522a24d472bb6190e40fd3bd61064977058bc1dd5155a3d7c"
+  },
+  "assets/audio/sfx/lurker/knock_7.wav": {
+    "bytes": 89324,
+    "sha256": "fc60a3178fcf1b657df98379aefb8c3b9faee7e621f079e0ade218073c328cf8"
+  },
+  "assets/audio/sfx/lurker/knock_8.wav": {
+    "bytes": 92204,
+    "sha256": "612b052b2f4df1a8f0280aa1e4db084e0afb95bed8acbdf7f42725552e1c1b57"
+  },
+  "assets/audio/sfx/lurker/metal_1.wav": {
+    "bytes": 16802,
+    "sha256": "20c96ebc59b1b60ff6039fc022146d1b4af45688be901e1a2c1ab48f36aa84f8"
+  },
+  "assets/audio/sfx/lurker/metal_2.wav": {
+    "bytes": 16802,
+    "sha256": "952a5a1b7a79c5898799bb89e9de7159e5f7714d6825121a49eb3eceb05ec38d"
+  },
+  "assets/audio/sfx/lurker/metal_3.wav": {
+    "bytes": 16802,
+    "sha256": "caac849ecd6693c9501944c42be2a779fd748710753eb500cc395f4943c7fc75"
+  },
+  "assets/audio/sfx/lurker/metal_4.wav": {
+    "bytes": 16802,
+    "sha256": "3eb8f3c7d0329cefc1d70af5f123e8f9e44ad693f0725861d0c74252d25408b1"
+  },
+  "assets/audio/sfx/lurker/presence.wav": {
+    "bytes": 1764044,
+    "sha256": "cc7686246292a20716ebadfc2fb19f46d85abeb3494e41e4ed17f138208a506d"
+  },
+  "assets/audio/sfx/lurker/scrape_1.wav": {
+    "bytes": 79424,
+    "sha256": "7979d2d9a9dfd23c87e4092c476edf29fac82cb52bafb5f68906b3a99e3547d8"
+  },
+  "assets/audio/sfx/lurker/tile_1.wav": {
+    "bytes": 21212,
+    "sha256": "a8ca77960620a345c1bb624a7190572b0b7b1ba8c1c08b0bf4a2ff0ea8964fb5"
+  },
+  "assets/audio/sfx/lurker/tile_2.wav": {
+    "bytes": 21212,
+    "sha256": "8dd7bda3db7717fc20404adf44275a74005cf66c1242d7ea4d788cde6b0d83ad"
+  },
+  "assets/audio/sfx/lurker/tile_3.wav": {
+    "bytes": 21212,
+    "sha256": "f17b69598ad4e80e94076451009480ddb5e987074c8ad48644bd7eae7d3b1635"
+  },
+  "assets/audio/sfx/lurker/tile_4.wav": {
+    "bytes": 21212,
+    "sha256": "3b67afe6c9e431b620e68aa58710f897aac1dcd573db95eeb00f1b6da2adfef1"
+  },
+  "assets/audio/sfx/lurker/tile_5.wav": {
+    "bytes": 21212,
+    "sha256": "4eab5d6e324ea0da0a4cd2a2db9ada664289503cd58e8ff5045a19893c6c7349"
+  },
+  "assets/audio/sfx/lurker/tile_6.wav": {
+    "bytes": 21212,
+    "sha256": "d040f0f326e116519874d533f262624661741e3bf4a53496305bfe54ffe76abd"
+  },
+  "assets/audio/sfx/lurker/tile_creak_1.wav": {
+    "bytes": 51984,
+    "sha256": "6fe87caede18a70903623ce5383d403c1a35e29fde6b658d3e57112e85948ebd"
+  },
+  "assets/audio/sfx/lurker/tile_creak_2.wav": {
+    "bytes": 51984,
+    "sha256": "779621a26e704b901dbe4450bd7cc78f0f1970ead3d0e386a0f333a348292272"
+  },
+  "assets/audio/sfx/lurker/tile_creak_3.wav": {
+    "bytes": 51984,
+    "sha256": "9e7d0a0c3360ce2e6d1dbd89af3eddd6ce6f4115092427e5cb552f166b3a4b75"
+  },
+  "assets/audio/sfx/lurker/tile_grind.wav": {
+    "bytes": 105884,
+    "sha256": "cf308b7ad7788bf2b6a71467c721a66028b4e2a58a2f003d6e2be17fc765b341"
+  },
+  "assets/audio/sfx/lurker/wood_1.wav": {
+    "bytes": 15038,
+    "sha256": "e7f1f37be24a37e936291b41aaa2a77eccc3e96cdd497970bd0af85be279cc7f"
+  },
+  "assets/audio/sfx/lurker/wood_2.wav": {
+    "bytes": 15038,
+    "sha256": "c419e526b50655d9cf2e27c8c801bf880f5048bfde3c7988eac958903ca0a339"
+  },
+  "assets/audio/sfx/lurker/wood_3.wav": {
+    "bytes": 15038,
+    "sha256": "c2411f3176b397c75e7c2ce414bbe882e15e2a3b7ab78aa01044effcfb6b0700"
+  },
+  "assets/audio/sfx/lurker/wood_4.wav": {
+    "bytes": 15038,
+    "sha256": "33a199ce2d54dce9e51a876875121602eda9f0caa70ff916921b92a88db03970"
+  },
+  "assets/audio/sfx/lurker/wood_5.wav": {
+    "bytes": 15038,
+    "sha256": "726a9404b44606602cb621a9916545cbc80d66b07e6eb9c51d86e543ec09e907"
+  },
+  "assets/audio/sfx/lurker/wood_6.wav": {
+    "bytes": 15038,
+    "sha256": "2074c1d3a2355561f6c059aedd473abf3e049b33823308d88474a742d26a136a"
+  },
+  "assets/audio/sfx/lurker/wood_7.wav": {
+    "bytes": 15038,
+    "sha256": "f99cc36dff5b8e4f9c3673db45a4c9cb351713edd499689526c958a74b772f14"
+  },
+  "assets/audio/sfx/lurker/wood_8.wav": {
+    "bytes": 15038,
+    "sha256": "6431aebdd7b5777e77d6ddc68fe549d976e2be84feb911bff660e4ff1c49c8cc"
+  },
+  "assets/audio/sfx/lurker/wood_scratch_1.wav": {
+    "bytes": 70604,
+    "sha256": "e26c29d04f6d01b090fc20982458303351cfa0c723b500c62a4f6dd282d76e4b"
+  },
+  "assets/audio/sfx/lurker/wood_scratch_2.wav": {
+    "bytes": 70604,
+    "sha256": "8ac99b6279848de2a2a197f81ab9a1aa799d6cbf5edaa1a721b8a3b724d4052b"
   }
 }
