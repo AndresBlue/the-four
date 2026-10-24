@@ -833,6 +833,17 @@ El autor autoriza (22 de octubre de 2026) que **los agentes busquen y descarguen
 | 12 | Cómo se llega | **Se continúa desde el piso 1.** Una vez desbloqueado, se puede elegir, **en la dificultad en que se desbloqueó** |
 | 13 | La llave de los cuadros | No hay en el piso 2 |
 
+**Decidido el 24 de octubre de 2026** (las preguntas de las fases 2 y 3; las demás, como recomendaron los agentes):
+
+- **Por dónde va en las salas altas** (pasillos de servicio, climatización, máquinas): **por las paredes y por el techo**; con un jugador cerca, **salta desde el techo** sobre él con un salto largo.
+- **Bajo los muebles más altos** su cuerpo **se encoge** para pasar; se rectificará midiéndolo en el juego.
+- **Alejarse durante el aviso salva solo corriendo**, no andando.
+- **Hay aviso desde arriba** en las salas altas.
+- **Su cara a oscuras** solo se ve **muy de cerca**.
+- **Los golpes del director en las puertas se quedan** en el piso 2: asustan cuando no hay peligro.
+- **Sus codos** esquivan todo lo que tiene colisión.
+- Lo demás, como se recomendó: tapa el vano a la altura de la cabeza y los supervivientes chocan con ella sin que los empuje; el plénum es también una capa oculta sobre las placas; su nido en la planta 3 es la sala de climatización; entre plantas tarda lo del montacargas y va primero a por quien se queda atrás; no abre taquillas; bebe la luz también desde un ducto, nunca en los vestíbulos, y sin dejar ninguna sala a oscuras para las reglas; la mirada con luz de un compañero también salva; cuenta solo la latencia de la víctima, hasta 0,5 s; acechar tiene palabra propia.
+
 **Abierto, menor** (se resuelve al hacerlo, salvo que el autor diga otra cosa):
 - La foto de la ficha en red: si cada máquina saca la suya y la envía, o si cada una la saca con el avatar remoto.
 - Las cifras de cada planta: estaciones, presupuesto K, relojes, cargas de los ventiladores y largo del ducto. Se afinan con bots y con gente.
