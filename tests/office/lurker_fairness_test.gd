@@ -310,6 +310,7 @@ func judge(truth: Array, at: float, due: float, lit_takes: bool) -> Dictionary:
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SEEDS := [2026, 7, 11, 23]
+const REMOTE := preload("res://game/net/remote_player.gd")
 var level
 var lurker
 var corridor := {}
@@ -340,6 +341,8 @@ func part_a() -> void:
 	await torch_turn()
 	await dark_turn()
 	await lit_cases()
+	await mate_torch()
+	await mate_latency()
 	await lobby()
 	await tool_forced()
 	var audit: Array = WARNING.audit(lurker.capture_log())
@@ -468,6 +471,79 @@ func lit_cases() -> void:
 	check("Parte A: en Apacible, con luz, no avisa", none.is_empty())
 	level.set_difficulty("equilibrada")
 	level.arm_creature()
+
+## A teammate (seat 2) standing where the case puts them, facing `facing`.
+func mate(point: Vector3, facing: Vector3):
+	var other = REMOTE.new()
+	other.setup(level, 2, "Prueba", 1)
+	level.add_child(other)
+	other.set_physics_process(false)
+	other.place(point, atan2(-facing.x, -facing.z))
+	level.match_net.bodies[2] = other
+	level.session.participants[2] = level.session.Life.EXPLORING
+	return other
+
+func drop_mate(other) -> void:
+	level.match_net.bodies.erase(2)
+	level.session.participants.erase(2)
+	if is_instance_valid(other): other.queue_free()
+
+## A teammate's torch on her face saves; their look in the dark does not.
+func mate_torch() -> void:
+	var along: Vector3 = corridor.along
+	var side := Vector3(-along.z, 0, along.x)
+	var bad: Array = []
+	for torch in [true, false]:
+		await set_up(true, false)
+		var other = mate((corridor.centre as Vector3) + along * 4.0 + side * 0.8, along)
+		other.torch.visible = torch
+		var aimed := [false]
+		var entry := await run_cue(6.0, func(brain):
+			var active: Dictionary = lurker.warning.active
+			if not aimed[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.5:
+				aimed[0] = true
+				other.camera.look_at(lurker.face_point()))
+		if torch and (entry.is_empty() or String(entry.outcome) != "saved" or int(entry.by) != 2 or String(entry.reason) != "linterna"): bad.append(["con linterna", entry])
+		if not torch and (entry.is_empty() or String(entry.outcome) != "taken"): bad.append(["a oscuras", entry])
+		drop_mate(other)
+		await physics_frame
+	check("Parte A: la linterna de un compañero en su cara la salva; su mirada a oscuras, no", bad.is_empty(), str(bad))
+
+## The victim's own latency is added to their window, capped; a victim who
+## leaves during it ends the warning.
+func mate_latency() -> void:
+	var along: Vector3 = corridor.along
+	var W := float(level.tuning().back_window)
+	var cases := [[0.25, 0.25], [0.9, 0.5]]
+	var bad: Array = []
+	for c in cases:
+		await set_up(true, false)
+		level.player.global_position = (corridor.centre as Vector3) + Vector3(0, -200, 0)
+		var other = mate((corridor.centre as Vector3) + along * 1.5, along)
+		lurker.warning.latency_for[2] = float(c[0])
+		lurker.brain.force(&"creep", {"seat": 2})
+		var entry := await run_cue(6.0)
+		var given := float(c[1])
+		if entry.is_empty() or String(entry.outcome) != "taken" or absf(float(entry.latency) - given) > 1e-6 or absf(float(entry.due) - float(entry.at) - (W + given)) > 1e-6:
+			bad.append([c, entry])
+		elif float(entry.take_at) - float(entry.at) < W + given - 1e-6 or float(entry.take_at) - float(entry.at) > W + given + 1.0 / 60.0 + 1e-6:
+			bad.append([c, "a destiempo", entry])
+		drop_mate(other)
+		await physics_frame
+	check("Parte A: la latencia del que la sufre se suma a su ventana, hasta 0,5 s", bad.is_empty(), str(bad))
+	await set_up(true, false)
+	level.player.global_position = (corridor.centre as Vector3) + Vector3(0, -200, 0)
+	# Held in an array: a lambda that captured the body itself would complain
+	# once it is freed.
+	var leaving := [mate((corridor.centre as Vector3) + along * 1.5, along)]
+	lurker.warning.latency_for.erase(2)
+	lurker.brain.force(&"creep", {"seat": 2})
+	var gone := [false]
+	var entry := await run_cue(6.0, func(_brain):
+		if not gone[0] and not lurker.warning.active.is_empty():
+			gone[0] = true
+			drop_mate(leaving[0]))
+	check("Parte A: si la víctima se va durante el aviso, se deja sin error", not entry.is_empty() and String(entry.outcome) == "aborted" and String(entry.reason) == "fuera", str(entry))
 
 ## The freight lobby of planta 1: never a warning there.
 func lobby() -> void:
