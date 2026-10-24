@@ -1039,6 +1039,8 @@ func physics_checks() -> void:
 	for run_seed in [7, 21, 33]:
 		var level = load("res://game/app/hotel.tscn").instantiate()
 		root.add_child(level)
+		# The floor itself, without her (phase 1's).
+		level.creature_scene = "none"
 		await physics_frame
 		await level.start_floor(run_seed, false, [1], "", 2)
 		for i in 4: await physics_frame

@@ -315,6 +315,10 @@ func end_capture() -> void: pass
 ## Seconds a capture of its lasts, from the grab.
 func capture_length() -> float: return 0.0
 
+## Turned to its victim for the capture (executions.apply_execution()); a
+## creature whose capture places it some other way leaves itself as it is.
+func turn_for_capture(yaw: float) -> void: rotation.y = yaw
+
 ## Whether it may take this survivor now, asked by executions.capture_survivor()
 ## at the last moment, on the machine that decides. The Lurker only at the end
 ## of her warning behind them (docs/OFICINAS.md 11.5, lurker_warning.gd);

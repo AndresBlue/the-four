@@ -1,9 +1,9 @@
 extends RefCounted
 ## What the offices ask of the survivors, stage by stage (docs/OFICINAS.md 3
 ## and 15; floor 2): the shape of hotel_floor.gd, every name it has. Built and
-## not released (floor_index.RELEASED). Until steps 1e, 1f and 1g give it its
-## objectives, every stage ends with the living in its refuge
-## (game_session.can_depart()), and its creature is the null one.
+## not released (floor_index.RELEASED). Its creature is The Lurker (phase 3);
+## the tests of the floor without her put the null one on it
+## (hotel_main.creature_scene = "none").
 
 ## Its number in the building and what the boards call it.
 const NUMBER := 2
@@ -20,10 +20,9 @@ const PALETTE := preload("res://game/floors/palettes/office_palette.gd")
 ## The version of what GENERATOR draws, the palette's: a checkpoint or a match
 ## of another version is refused rather than rebuilt as a different floor.
 const GENERATOR_VERSION := PALETTE.VERSION
-## Its creature as a path (hotel_main.spawn_creature()): the null one until
-## The Lurker's (phase 3). The difficulty and the rules are already the
-## Lurker's.
-const CREATURE := "res://game/enemies/null_creature.tscn"
+## Its creature as a path (hotel_main.spawn_creature()): The Lurker
+## (game/enemies/lurker/, docs/LURKER.md).
+const CREATURE := "res://game/enemies/lurker/lurker_creature.tscn"
 const CREATURE_KEY := &"lurker"
 ## Who is after you, said in red over the first notice anybody gets (lifts.gd).
 const FIRST_LEAD := "The Lurker acecha entre las sombras, no dejes que te atrape"

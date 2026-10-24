@@ -39,6 +39,8 @@ func run() -> void:
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
 		if argument.begins_with("--prefix="): prefix = argument.trim_prefix("--prefix=") + "_"
+	# The rooms as they are, without her drinking their light.
+	level.creature_scene = "none"
 	await level.start_floor(seed_value, false, [1], "", 2)
 	if quality >= 0:
 		level.settings.values.quality = quality

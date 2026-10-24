@@ -273,7 +273,7 @@ func apply_execution(seat: int, point: Vector3, yaw: float, data := {}) -> void:
 	if is_instance_valid(creature):
 		creature.begin_capture(execution)
 		# Turned to its victim on every machine: the scene is laid out along it.
-		creature.rotation.y = yaw
+		creature.turn_for_capture(yaw)
 	if bool(execution.torch): drop_torch()
 	blood.begin(execution)
 	# Taken out of a wardrobe, its doors stay as they are thrown: the body is

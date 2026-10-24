@@ -709,6 +709,10 @@ func cue_of(body: Node3D) -> int:
 
 func capture_log() -> Array: return warning.ledger.duplicate(true)
 
+## Her place in a capture is her capture style's (phase 3), not a yaw: her
+## basis is upside down on a ceiling.
+func turn_for_capture(_yaw: float) -> void: pass
+
 func begin_capture(data: Dictionary) -> void:
 	if brain != null: brain.on_captured(data)
 

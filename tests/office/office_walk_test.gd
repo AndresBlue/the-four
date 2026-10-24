@@ -39,6 +39,8 @@ func walk(seed_asked: int) -> void:
 		await frames(2)
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
+	# The floor walked by hand, without her (phase 1's).
+	level.creature_scene = "none"
 	await level.start_floor(seed_asked, false, [1], "", 2)
 	var session = level.session
 	var tag := "semilla %d" % seed_asked

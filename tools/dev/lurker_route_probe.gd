@@ -55,6 +55,8 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.set_floor(2)
+	# The floor's own creature out of the way: the probe brings hers.
+	level.creature_scene = "none"
 	for run_seed in seeds:
 		seed_now = int(run_seed)
 		await level.start_floor(seed_now, false, [1], "equilibrada")

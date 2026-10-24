@@ -28,6 +28,8 @@ func play(seed_value: int) -> void:
 	await process_frame
 	Engine.max_fps = 0
 	level.set_floor(2)
+	# Won by the bots without her until they have a model of her (phase 3).
+	level.creature_scene = "none"
 	var bot_match = MATCH.new()
 	bot_match.setup(level, {"bots": 2, "seed": seed_value, "knowledge": "oracle", "stage_cap": 600.0, "run_cap": 1500.0, "verbose": false, "out": ""})
 	root.add_child(bot_match)

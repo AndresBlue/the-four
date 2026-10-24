@@ -397,6 +397,8 @@ func guest(words: String, index: int) -> void:
 ## the freight lift's door.
 func office_host() -> void:
 	var net = level.net
+	# The floor's systems over the net, without her (phase 1's).
+	level.creature_scene = "none"
 	check("La sala se abre", net.host("Anfitrión", 0, port) == OK)
 	check("Tres jugadores en la sala", await wait_for(func(): return net.connected_seats().size() == 3, 40.0))
 	net.set_option("mode", net.Mode.COOP)
@@ -449,6 +451,7 @@ func host_ride(car: int, stage: int) -> bool:
 ## photo, which Bravo has to get through the host.
 func office_guest(words: String, index: int) -> void:
 	var net = level.net
+	level.creature_scene = "none"
 	await pause_for(1.0 + index * 0.5)
 	check("Se conecta a la sala", net.join("127.0.0.1", words, index, port) == OK)
 	check("Entra en el piso del anfitrión, las oficinas", await wait_for(playing, 120.0) and int(level.manifest.get("floor", 1)) == 2)
