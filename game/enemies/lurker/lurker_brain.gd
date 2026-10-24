@@ -6,10 +6,10 @@ extends RefCounted
 ## only from the rng it is given. Above all of it is the warning
 ## (lurker_warning.gd): the only way to a take.
 ##
-## This step (2b-1) has the states of the warning (closing in, the cue, the
-## take, the recoil and the flight) and being frozen by a look; the round,
-## listening, stalking, the shows and waiting above a locker hold still until
-## 2b-2 fills them.
+## Her states: her round (by ducts and ceilings), listening at a grille,
+## stalking her prey out of their sight, a show at the edge of a view,
+## frozen by a look in the light, closing in, the warning, the take, the
+## recoil, the flight, the way between plantas and waiting above a locker.
 const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
 const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
 
@@ -105,6 +105,8 @@ func tune(profile: Dictionary) -> void:
 	scare_calm = float(profile.get("scare_calm", scare_calm))
 	creep_scale = float(profile.get("creep_scale", creep_scale))
 	sated = float(profile.get("sated", sated))
+	var every = profile.get("peek_every")
+	if every is Vector2: peek_every = every
 
 func activity() -> StringName: return WORDS[state]
 
@@ -127,14 +129,26 @@ func enter(next: State) -> void:
 func force(next: StringName, data := {}) -> void:
 	var wanted := String(next).to_upper()
 	if wanted == "CUE" or wanted == "TAKE" or not State.has(wanted): return
+	# Forced, whatever warning was running is given up.
+	warning.cancel(clock, "movida")
 	if data.has("seat"): prey = int(data.seat)
+	if data.has("hide"):
+		locker = data.hide
+		hold_until = clock + rng.randf_range(WAIT_ABOVE_TIME.x, WAIT_ABOVE_TIME.y)
 	enter(State[wanted])
+	if State[wanted] == State.STALK: peek_clock = rng.randf_range(peek_every.x, peek_every.y)
 
 ## Everything of the moment forgotten (a teleport, a stage given back): the
 ## warning in hand given up.
 func forget_all(_rest: float) -> void:
 	warning.cancel(clock, "movida")
 	prey = -1
+	lead = {}
+	clue = {}
+	show = {}
+	goal = {}
+	locker = null
+	listening = false
 	enter(State.ROAM)
 
 func intent(what: StringName, fields := {}) -> Dictionary:
@@ -179,6 +193,11 @@ func tick(delta: float, p) -> Dictionary:
 		State.RECOIL: return recoil_tick(p)
 		State.FLEE: return flee_tick(p)
 		State.FREEZE: return freeze_tick(p)
+		State.ROAM: return roam_tick(p)
+		State.LISTEN: return listen_tick(p)
+		State.STALK: return stalk_tick(p)
+		State.PEEK: return peek_tick(p)
+		State.WAIT_ABOVE: return wait_above_tick(p)
 	return hold()
 
 ## She only moves along a stretch nobody has exposed.
@@ -227,7 +246,11 @@ func cue_tick(p) -> Dictionary:
 			return recoil_tick(p)
 		&"aborted":
 			cue_ended.emit(entry)
-			enter(State.WAIT_ABOVE if String(entry.reason) == "escondida" and v != null and bool(v.hide_known) else State.STALK)
+			if String(entry.reason) == "escondida" and v != null and bool(v.hide_known):
+				locker = v.hide
+				hold_until = clock + rng.randf_range(WAIT_ABOVE_TIME.x, WAIT_ABOVE_TIME.y)
+				enter(State.WAIT_ABOVE)
+			else: enter(State.STALK)
 			return hold()
 		&"expired":
 			cue_ended.emit(entry)
@@ -308,3 +331,242 @@ func freeze_tick(p) -> Dictionary:
 		# Looked at too long: she backs off, slowly, into the dark.
 		return intent(&"go", {"to": world.dark_retreat(look if look != Vector3.INF else p.face), "speed": RETREAT_SPEED, "exposed_ok": true, "clip": "retreat", "look": look})
 	return hold(look, "idle")
+
+# --- Her round, listening, stalking, the shows, waiting above (7.5) ---------------------------
+
+const STALK_SLACK := 2.0
+const STALK_REPATH := 0.5
+const LISTEN_TIME := Vector2(4.0, 8.0)
+const LISTEN_P := 0.5
+const SHOW_WAIT := 10.0
+const PEEK_TIME := 4.0
+const PEEK_SEEN := 0.35
+const WAIT_ABOVE_TIME := Vector2(20.0, 40.0)
+const SEARCHED_FOR := 60.0
+const SWITCH_MARGIN := 0.3
+const CHASE_EARSHOT := 9.0
+## s a noise stays worth going to.
+const CLUE_FOR := 20.0
+## A room is stale for her round after this long.
+const VISIT_STALE := 60.0
+
+## {point, radius, until, kind, rooms, once, sniff}
+var lead := {}
+## room -> clock until which she leaves it be (listened at), room -> clock
+## she was last there.
+var searched := {}
+var visited := {}
+## Where her round is going: {point, room}; {} picks again.
+var goal := {}
+var hold_until := 0.0
+var repath := 0.0
+## PEEK: {kind, point, seat}.
+var show := {}
+var locker: Node3D = null
+var peek_clock := 0.0
+var peek_every := Vector2(40.0, 65.0)
+## LISTEN: she hears further (lurker.gd copies it to her senses).
+var listening := false
+
+func searched_lately(room: int) -> bool:
+	return float(searched.get(room, -INF)) > clock
+
+## The director's zones (7.8): only while she goes about on her own.
+func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once := false, avoid := [], sniff := false) -> bool:
+	if not state in [State.ROAM, State.LISTEN]: return false
+	var rooms: Array = world.lead_rooms(point, radius, avoid)
+	if rooms.is_empty(): return false
+	lead = {"point": point, "radius": radius, "until": clock + seconds, "kind": kind, "rooms": rooms, "once": once, "sniff": sniff}
+	goal = {}
+	if state == State.LISTEN: enter(State.ROAM)
+	return true
+
+## At the zone of a "cruce" lead: a show for the first fair seat she perceives.
+func on_lead_reached(p = null) -> void:
+	if String(lead.get("kind", "")) != "cruce" or p == null: return
+	for seat in sorted_seats(p):
+		var seen = p.bodies[seat]
+		if bool(seen.seen) and bool(seen.fair) and not bool(seen.hidden):
+			start_show(int(seat), p)
+			lead = {}
+			return
+
+func sorted_seats(p) -> Array:
+	var seats: Array = p.bodies.keys()
+	seats.sort()
+	return seats
+
+## Her own choice of prey (7.7): the one alone and in the dark, from what she
+## perceives; never while sated, never one she spurned.
+func candidates(p) -> Array:
+	var out: Array = []
+	if clock < sated_until: return out
+	for seat in sorted_seats(p):
+		var seen = p.bodies[seat]
+		if bool(seen.seen) and bool(seen.fair) and not bool(seen.hidden) and float(spurned.get(int(seat), -INF)) <= clock: out.append(int(seat))
+	return out
+
+func score(seen) -> float:
+	return 0.6 * clampf(float(seen.alone) / 15.0, 0.0, 1.0) + 0.4 * (0.0 if bool(seen.lit) else 1.0)
+
+func choose_prey(p) -> int:
+	var found := candidates(p)
+	if found.is_empty(): return -1
+	if found.size() == 1: return int(found[0])
+	var best := int(found[0])
+	for seat in found:
+		if score(p.bodies[seat]) > score(p.bodies[best]): best = int(seat)
+	return best
+
+func roam_tick(p) -> Dictionary:
+	listening = false
+	var chosen := choose_prey(p)
+	if chosen >= 0:
+		prey = chosen
+		enter(State.STALK)
+		peek_clock = rng.randf_range(peek_every.x, peek_every.y)
+		return hold()
+	if not lead.is_empty() and clock >= float(lead.until): lead = {}
+	if bool(p.failed): goal = {}
+	if goal.is_empty():
+		var room := -1
+		if not lead.is_empty():
+			var metres: Dictionary = world.travel_metres(int(p.room)) if int(p.room) >= 0 else {}
+			var best := INF
+			for r in lead.rooms:
+				var stale: bool = clock - float(visited.get(int(r), -INF)) >= VISIT_STALE
+				var m := float(metres.get(int(r), INF))
+				if stale and m < best:
+					best = m
+					room = int(r)
+			if room < 0: lead = {}
+		if room >= 0: goal = {"point": world.room_point(room), "room": room}
+		elif not clue.is_empty() and clock - float(clue.at) < CLUE_FOR: goal = {"point": world.clue_point(clue.point), "room": -1}
+		else:
+			var patrol: int = world.patrol_room()
+			if patrol >= 0: goal = {"point": world.room_point(patrol), "room": patrol}
+		if goal.is_empty(): return hold()
+	if bool(p.arrived) and state_time > 0.5:
+		var here := int(goal.get("room", int(p.room)))
+		if here >= 0: visited[here] = clock
+		if not lead.is_empty():
+			if String(lead.kind) == "cruce": on_lead_reached(p)
+			elif bool(lead.once): lead = {}
+		goal = {}
+		if state == State.PEEK: return hold()
+		if int(p.room) >= 0 and world.exit_of_room(int(p.room)) >= 0 and rng.randf() < LISTEN_P:
+			enter(State.LISTEN)
+			hold_until = clock + rng.randf_range(LISTEN_TIME.x, LISTEN_TIME.y)
+		return hold()
+	if exposed(p): return hold()
+	return intent(&"go", {"to": goal.point, "speed": CRAWL_SPEED})
+
+func listen_tick(p) -> Dictionary:
+	listening = true
+	var chosen := choose_prey(p)
+	if chosen >= 0:
+		listening = false
+		prey = chosen
+		enter(State.STALK)
+		return hold()
+	if not clue.is_empty() and float(clue.at) > clock - 0.2:
+		listening = false
+		goal = {}
+		enter(State.ROAM)
+		return hold()
+	if clock >= hold_until:
+		listening = false
+		if int(p.room) >= 0: searched[int(p.room)] = clock + SEARCHED_FOR
+		enter(State.ROAM)
+		return hold()
+	var exit: int = world.exit_of_room(int(p.room)) if int(p.room) >= 0 else int(p.exit_here)
+	return intent(&"listen", {"exit": exit}) if exit >= 0 else hold()
+
+func stalk_tick(p) -> Dictionary:
+	var seen = p.bodies.get(prey)
+	if seen == null:
+		var last = p.victim
+		clue = {"point": last.point if last != null else p.face, "at": clock}
+		prey = -1
+		enter(State.ROAM)
+		return hold()
+	var v = p.victim
+	if v != null and bool(v.hidden) and bool(v.hide_known):
+		locker = v.hide
+		enter(State.WAIT_ABOVE)
+		hold_until = clock + rng.randf_range(WAIT_ABOVE_TIME.x, WAIT_ABOVE_TIME.y)
+		return hold()
+	if v != null and creep_ready(v, p):
+		enter(State.CREEP)
+		return hold(v.eye)
+	# Another one more alone and in the dark: she changes her mind.
+	for seat in candidates(p):
+		if int(seat) != prey and score(p.bodies[seat]) > score(seen) + SWITCH_MARGIN:
+			prey = int(seat)
+			return hold()
+	if bool(seen.seen):
+		peek_clock -= step
+		if peek_clock <= 0.0:
+			if start_show(prey, p): return hold()
+			peek_clock = 5.0
+	repath -= step
+	if float(seen.distance) <= stalk_distance + STALK_SLACK and float(seen.distance) >= stalk_distance - STALK_SLACK: return hold(seen.eye)
+	if exposed(p): return hold(seen.eye)
+	if repath > 0.0 and last_go != Vector3.INF: return intent(&"go", {"to": last_go, "speed": CRAWL_SPEED, "look": seen.eye})
+	repath = STALK_REPATH
+	last_go = world.behind_point(seen, stalk_distance)
+	return intent(&"go", {"to": last_go, "speed": CRAWL_SPEED, "look": seen.eye})
+
+var last_go := Vector3.INF
+
+## Everything creeping in needs: they are hers, fair, behind, unwatched.
+func creep_ready(v, p) -> bool:
+	return bool(v.seen) and bool(v.fair) and not bool(v.hidden) and bool(v.behind) and float(v.distance) <= stalk_distance + 1.0 \
+		and (not bool(v.lit) or lit_takes) and p.regarded_by.is_empty() and p.torch_by.is_empty() \
+		and clock >= sated_until and float(spurned.get(prey, -INF)) <= clock
+
+## A show at the edge of somebody's view (OFICINAS 4: "se asoma").
+func start_show(seat: int, p) -> bool:
+	var seen = p.bodies.get(seat)
+	if seen == null: return false
+	var spot: Dictionary = world.show_spot(seen, "peek")
+	if spot.is_empty(): return false
+	show = {"kind": "peek", "point": spot.point, "seat": seat, "arrived": false}
+	prey = seat
+	enter(State.PEEK)
+	return true
+
+func peek_tick(p) -> Dictionary:
+	var seen = p.bodies.get(int(show.get("seat", -1)))
+	var look: Vector3 = seen.eye if seen != null else Vector3.INF
+	if not bool(show.get("arrived", false)):
+		if bool(p.arrived) and state_time > 0.3:
+			show["arrived"] = true
+			hold_until = clock + PEEK_TIME
+		elif state_time > SHOW_WAIT:
+			enter(State.STALK if prey >= 0 else State.ROAM)
+			return hold()
+		elif exposed(p): return hold(look)
+		else: return intent(&"go", {"to": show.point, "speed": CRAWL_SPEED, "look": look})
+	# She looks, and goes all at once: when it is over, or once looked at.
+	if regard_time >= PEEK_SEEN or clock >= hold_until:
+		away_from = look if look != Vector3.INF else p.face
+		hidden_since = -1.0
+		enter(State.FLEE)
+		return hold(look)
+	return hold(look, "peek")
+
+func wait_above_tick(p) -> Dictionary:
+	var v = p.victim
+	if v != null and not bool(v.hidden) and bool(v.fair):
+		enter(State.CREEP)
+		return hold(v.eye)
+	if clock >= hold_until or not is_instance_valid(locker):
+		if int(p.room) >= 0: searched[int(p.room)] = clock + SEARCHED_FOR
+		locker = null
+		prey = -1
+		enter(State.ROAM)
+		return hold()
+	var over: Vector3 = world.above_locker(locker)
+	if (p.face as Vector3).distance_to(over) > 0.6 and not exposed(p): return intent(&"go", {"to": over, "speed": CRAWL_SPEED})
+	return hold(locker.global_position, "idle")

@@ -1,0 +1,282 @@
+extends SceneTree
+## The Lurker's senses (game/enemies/lurker/lurker_senses.gd, spec_f2_mind
+## 10.1) on a built floor 2: she sees in the dark far and into the light
+## little, a torch on her face blinds her, walls hide; she hears through the
+## room and through her ducts, never from another planta, and hears a torch
+## clicked; she drinks the light of the lamps near her, all together, never
+## past dark for the rules, and gives it back; she picks her prey herself; the
+## director gives her zones, never people; and the words the rest of the game
+## reads of her.
+const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const SENSES := preload("res://game/enemies/lurker/lurker_senses.gd")
+const BRAIN := preload("res://game/enemies/lurker/lurker_brain.gd")
+const WARNING := preload("res://game/enemies/lurker/lurker_warning.gd")
+const NOISE := preload("res://game/audio/noise_kinds.gd")
+const SEEDS := [2026, 7, 11, 23]
+var checks: Array = []
+var failed := 0
+var level
+var lurker
+var corridor := {}
+
+func _initialize() -> void: run.call_deferred()
+
+func check(title: String, passed: bool, detail := "") -> void:
+	checks.append({"check": title, "passed": passed, "detail": detail if not passed else ""})
+	if not passed: failed += 1
+	print("PASS " if passed else "FAIL ", title, ("  (" + detail + ")") if not passed and not detail.is_empty() else "")
+
+class FakeWorld extends RefCounted:
+	func behind_point(seen, metres: float) -> Vector3: return Vector3(seen.point.x - metres, 0, 0)
+	func flee_exit(_away: Vector3) -> int: return 0
+	func dark_retreat(_away: Vector3) -> Vector3: return Vector3(-20, 0, 0)
+	func scream(_point: Vector3) -> void: pass
+	func show_spot(_seen, _kind: String) -> Dictionary: return {}
+	func room_point(_room: int) -> Vector3: return Vector3.ZERO
+	func clue_point(point: Vector3) -> Vector3: return point
+	func patrol_room() -> int: return -1
+	func travel_metres(_room: int) -> Dictionary: return {}
+	func exit_of_room(_room: int) -> int: return -1
+	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return [1]
+	func above_locker(_hide) -> Vector3: return Vector3.ZERO
+
+func run() -> void:
+	prey_choice()
+	level = load("res://game/app/hotel.tscn").instantiate()
+	root.add_child(level)
+	level.creature_scene = "lurker"
+	level.set_floor(2)
+	for seed_value in SEEDS:
+		await level.start_floor(int(seed_value), false, [1], "desafiante")
+		corridor = find_corridor()
+		if not corridor.is_empty(): break
+	lurker = level.creature
+	if corridor.is_empty() or lurker == null or lurker.kind_id() != &"lurker":
+		check("Un pasillo largo y ella en el piso", false)
+		finish()
+		return
+	if level.director != null: level.director.process_mode = Node.PROCESS_MODE_DISABLED
+	level.player.set_physics_process(false)
+	lurker.thinking = false
+	lurker.grace = 0.0
+	await sight()
+	await hearing()
+	await torch_click()
+	await drain()
+	await director_and_words()
+	finish()
+
+func finish() -> void:
+	var file := FileAccess.open("res://evidence/lurker_senses_test.json", FileAccess.WRITE)
+	if file != null: file.store_string(JSON.stringify({"checks": checks, "seed": corridor.get("seed", -1)}, "\t"))
+	print("LURKER_SENSES_TEST_RESULT ", checks.size() - failed, "/", checks.size())
+	if level != null: level.queue_free()
+	await process_frame
+	quit(1 if failed > 0 else 0)
+
+## The longest corridor cell of planta 1 (at least 9 m), not next to an
+## off-limits room: {room, centre, along, half}.
+func find_corridor() -> Dictionary:
+	var off: Array = level.off_limits_rooms()
+	var best := {}
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
+		var span := FLOOR.size_of(room)
+		if maxf(span.x, span.y) < 9.0 or not level.creature.shell.tray_of.has(int(room.id)): continue
+		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
+		if not best.is_empty() and maxf(span.x, span.y) <= float(best.half) * 2.0: continue
+		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
+		best = {"room": int(room.id), "centre": FLOOR.position_of(room), "along": along, "half": maxf(span.x, span.y) / 2.0}
+	return best
+
+func place_player(point: Vector3, facing: Vector3) -> void:
+	var player = level.player
+	player.global_position = point
+	player.rotation.y = atan2(-facing.x, -facing.z)
+	player.camera.rotation.x = 0.0
+	for i in 2: await physics_frame
+
+func aim_at(point: Vector3) -> void:
+	var player = level.player
+	var to: Vector3 = point - player.camera.global_position
+	player.rotation.y = atan2(-to.x, -to.z)
+	player.camera.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+
+## Her over one end of the corridor facing along it, the player `metres`
+## along from her (in plan) facing on.
+func line_up(metres: float, dark: bool, torch: bool) -> void:
+	level.hotel.set_room_power(int(corridor.room), not dark)
+	var along: Vector3 = corridor.along
+	var start: Vector3 = (corridor.centre as Vector3) - along * (float(corridor.half) - 0.8)
+	lurker.place_over(start, start + along * 10.0)
+	await place_player(start + along * metres, along)
+	level.player.torch.visible = torch
+	await physics_frame
+
+func sight() -> void:
+	var span := float(corridor.half) * 2.0 - 1.6
+	var far := minf(span - 0.2, 12.0)
+	await line_up(far, true, false)
+	check("Ver a oscuras: a %.0f m de espaldas y sin linterna, lo ve" % far, lurker.sees(level.player))
+	await line_up(6.0, false, false)
+	check("Con luz, la luz la ciega: a 6 m no lo ve", not lurker.sees(level.player))
+	await line_up(3.0, false, false)
+	check("Con luz, a 3 m sí", lurker.sees(level.player))
+	await line_up(6.0, true, true)
+	aim_at(lurker.face_point())
+	check("Con la linterna en la cara no ve a quien la alumbra", not lurker.sees(level.player))
+	# A wall between: the player in a room of the planta with no door to hers.
+	var walled := -1
+	for room in level.manifest.rooms:
+		if int(room.get("wing", -1)) != 0 or FLOOR.is_void(room) or int(room.id) == int(corridor.room): continue
+		if level.manifest.adjacency[int(corridor.room)].has(int(room.id)): continue
+		if FLOOR.position_of(room).distance_to(corridor.centre) < 14.0 and lurker.shell.tray_of.has(int(room.id)):
+			walled = int(room.id)
+			break
+	if walled >= 0:
+		level.hotel.set_room_power(walled, false)
+		await place_player(FLOOR.position_of(level.manifest.rooms[walled]), Vector3(1, 0, 0))
+		level.player.torch.visible = false
+		lurker.place_over(corridor.centre, level.player.camera.global_position)
+		await physics_frame
+		check("Las paredes tapan", not lurker.sees(level.player))
+
+func hearing() -> void:
+	await line_up(5.0, true, false)
+	var near: Dictionary = lurker.hear_route(level.player.global_position, NOISE.radius("walk"))
+	check("Oye unos pasos a 5 m por la sala", bool(near.audible) and String(near.via) == "room" and float(near.muffle) == 0.0, str(near))
+	var down: Vector3 = level.player.global_position + Vector3(0, FLOOR.planta_y(1), 0)
+	var other: Dictionary = lurker.hear_route(down, NOISE.radius("slam"))
+	check("No oye nada de otra planta", not bool(other.audible))
+	# Through her ducts: inside a grille, a noise right under another grille
+	# of the same network a short way along it.
+	var ducts = lurker.ducts
+	var pair := []
+	for a in ducts.exits.size():
+		var ea: Dictionary = ducts.exits[a]
+		if String(ea.kind) != "ceiling" or int(ea.node) < 0 or FLOOR.planta_of((ea.position as Vector3).y) != 0: continue
+		var near_exits: Array = ducts.nearest_exits(int(ea.node), 4)
+		for found in near_exits:
+			var b := int(found.exit)
+			if b == a or float(found.metres) > 12.0 or String(ducts.exits[b].kind) != "ceiling" or int(ducts.exits[b].room) == int(ea.room): continue
+			pair = [a, b]
+			break
+		if not pair.is_empty(): break
+	if pair.is_empty():
+		check("Dos rejillas de techo cerca por los ductos", false)
+		return
+	lurker.place_in_exit(int(pair[0]))
+	await physics_frame
+	var under: Vector3 = (ducts.exits[int(pair[1])].position as Vector3) - Vector3(0, 1.5, 0)
+	var by_duct: Dictionary = lurker.hear_route(under, NOISE.radius("run"))
+	check("Dentro de un ducto oye lo que pasa bajo otra rejilla, por los ductos", bool(by_duct.audible) and String(by_duct.via) == "duct", str(by_duct))
+	ducts.closed_wings[0] = 1
+	var shut: Dictionary = lurker.hear_route(under, NOISE.radius("run"))
+	ducts.closed_wings[0] = 0
+	check("Con los ductos cerrados por ahí no le llega", not bool(shut.audible) or String(shut.via) != "duct", str(shut))
+
+func torch_click() -> void:
+	await line_up(4.0, true, false)
+	lurker.thinking = true
+	lurker.brain.forget_all(0.0)
+	await physics_frame
+	level.player.torch.visible = true
+	await physics_frame
+	await physics_frame
+	var clue: Dictionary = lurker.brain.clue
+	lurker.thinking = false
+	check("Oye el clic de la linterna a 4 m", not clue.is_empty() and (clue.point as Vector3).distance_to(level.player.camera.global_position) < 0.5, str(clue))
+
+func drain() -> void:
+	var room := -1
+	var troffer := Vector3.ZERO
+	var off: Array = level.off_limits_rooms()
+	for r in level.manifest.rooms:
+		if int(r.get("wing", -1)) != 0 or off.has(int(r.id)) or OFFICE.lamp_of(r) != "troffer" or not lurker.shell.tray_of.has(int(r.id)): continue
+		var list: Array = OFFICE.troffers(r)
+		if list.is_empty(): continue
+		room = int(r.id)
+		troffer = Vector3((list[0].centre as Vector2).x, float(r.get("py", 0.0)), (list[0].centre as Vector2).y)
+		break
+	if room < 0:
+		check("Una sala con luminarias", false)
+		return
+	level.hotel.set_room_power(room, true)
+	level.hotel.reduced = true
+	lurker.place_over(troffer, troffer + Vector3(1, 0, 0))
+	var dropped := true
+	var last := 0.0
+	for i in 36:
+		await physics_frame
+		var now: float = level.hotel.drained(room)
+		if now < last - 1e-6: dropped = false
+		last = now
+	var at := float(level.hotel.drained(room))
+	check("Bebe la luz de la sala sobre la que está, sin temblar con efectos reducidos", dropped and at >= SENSES.DRAIN.x - 0.01 and at <= SENSES.DRAIN.y + 0.01, "%.3f" % at)
+	check("Y la sala sigue con luz para las reglas", level.hotel.lit(room))
+	level.hotel.reduced = false
+	var wobble_ok := true
+	for i in 36:
+		await physics_frame
+		var now: float = level.hotel.drained(room)
+		if now > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE + 0.01 or now >= level.hotel.LIT_DRAIN: wobble_ok = false
+	check("Con efectos, tiembla sin pasar nunca de lo que deja la sala a oscuras", wobble_ok and level.hotel.lit(room))
+	lurker.relocate(corridor.centre, 0.0)
+	check("Al moverla de golpe, la luz vuelve entera en el mismo fotograma", level.hotel.drained(room) == 0.0)
+
+func director_and_words() -> void:
+	lurker.thinking = true
+	level.player.global_position = Vector3(0, -200, 0)
+	# Past her next look (every SENSE_EVERY), so she no longer sees them.
+	for i in 12: await physics_frame
+	lurker.brain.forget_all(0.0)
+	await physics_frame
+	var off: Array = level.off_limits_rooms()
+	var player_room := int(FLOOR.room_at(level.manifest.rooms, corridor.centre).get("id", -1))
+	var led: bool = lurker.lead_to(corridor.centre, 12.0, 30.0, "merodea", false, [player_room])
+	var rooms: Array = lurker.brain.lead.get("rooms", [])
+	check("El director le da una zona, sin salas vedadas ni la que evita", led and not rooms.is_empty() and not rooms.any(func(r): return off.has(int(r)) or int(r) == player_room), "%s %s %s" % [str(rooms), lurker.brain.state_name(), str(lurker.lead_rooms(corridor.centre, 12.0, [player_room]))])
+	lurker.brain.force(&"stalk", {"seat": int(level.player.slot)})
+	check("Acechando no acepta zonas", not lurker.lead_to(corridor.centre, 12.0, 30.0, "merodea"))
+	await physics_frame
+	check("Acechar tiene palabra propia: stalk", lurker.activity() == &"stalk" and lurker.is_hostile() and not lurker.is_hunting() and not lurker.is_chasing())
+	lurker.brain.force(&"flee")
+	await physics_frame
+	check("Huir es withdraw, la última palabra", lurker.activity() == &"withdraw" and lurker.WORDS.find(&"withdraw") == lurker.WORDS.size() - 1 and not lurker.is_hostile())
+	lurker.thinking = false
+
+## Her own choice of prey (7.7), on a bare brain with a fake world.
+func prey_choice() -> void:
+	var brain = BRAIN.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	brain.setup(FakeWorld.new(), rng, WARNING.new())
+	var p = SENSES.Percept.new()
+	p.bodies[1] = seen_of(1, true, 2.0)
+	brain.tick(1.0 / 60.0, p)
+	check("Elige presa ella: la primera que ve", brain.prey == 1 and brain.state == BRAIN.State.STALK)
+	p.bodies[2] = seen_of(2, false, 18.0)
+	brain.tick(1.0 / 60.0, p)
+	check("Acechando, cambia a la que está más sola y a oscuras", brain.prey == 2)
+	brain.prey = 1
+	brain.force(&"creep", {"seat": 1})
+	p.victim = p.bodies[1]
+	brain.tick(1.0 / 60.0, p)
+	check("Acercándose no cambia de presa", brain.prey == 1)
+	brain.force(&"stalk", {"seat": 1})
+	brain.spurned[2] = brain.clock + 30.0
+	brain.tick(1.0 / 60.0, p)
+	check("A la que la espantó la deja en paz", brain.prey == 1)
+
+func seen_of(seat: int, lit: bool, alone: float):
+	var s = SENSES.Seen.new()
+	s.seat = seat
+	s.seen = true
+	s.fair = true
+	s.lit = lit
+	s.alone = alone
+	s.distance = 9.0
+	s.point = Vector3(float(seat) * 3.0, 0, 0)
+	s.eye = s.point + Vector3(0, 1.64, 0)
+	return s

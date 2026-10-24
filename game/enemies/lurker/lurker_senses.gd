@@ -328,6 +328,8 @@ func perceive(delta: float, clock: float, prey_seat: int):
 		if clock - float(memory[seat].seen_at) > forget: memory.erase(seat)
 	for seat in memory:
 		var s = memory[seat]
+		# Remembered is not seen: only this look's verdict says she sees them now.
+		s.seen = bool(looked.get(int(seat), false))
 		s.alone = INF
 		for other in memory:
 			if other != seat: s.alone = minf(s.alone, (s.point as Vector3).distance_to(memory[other].point))

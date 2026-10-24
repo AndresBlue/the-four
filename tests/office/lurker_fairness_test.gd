@@ -36,6 +36,14 @@ class FakeWorld extends RefCounted:
 	func flee_exit(_away: Vector3) -> int: return 0
 	func dark_retreat(_away: Vector3) -> Vector3: return Vector3(-20, 0, 0)
 	func scream(_point: Vector3) -> void: screams += 1
+	func show_spot(_seen, _kind: String) -> Dictionary: return {}
+	func room_point(_room: int) -> Vector3: return Vector3.ZERO
+	func clue_point(point: Vector3) -> Vector3: return point
+	func patrol_room() -> int: return -1
+	func travel_metres(_room: int) -> Dictionary: return {}
+	func exit_of_room(_room: int) -> int: return -1
+	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return []
+	func above_locker(_hide) -> Vector3: return Vector3.ZERO
 
 func run() -> void:
 	var results: Array = []
@@ -370,6 +378,8 @@ func aim_at(point: Vector3) -> void:
 ## The player 1.5 m along the corridor facing on, her 2.4 m behind them on
 ## the ceiling, closing in; the corridor dark or lit, the torch on or off.
 func set_up(dark: bool, torch: bool) -> void:
+	# Her mind off while they are put in place: she would start on them early.
+	lurker.thinking = false
 	lurker.brain.forget_all(0.0)
 	# A fresh approach: neither the calm after a fright nor after a take.
 	lurker.brain.spurned = {}
@@ -472,9 +482,11 @@ func lobby() -> void:
 	var room: Dictionary = level.manifest.rooms[refuge]
 	var door: Dictionary = FLOOR.doorways(room)[0] if not FLOOR.doorways(room).is_empty() else {}
 	var centre := FLOOR.position_of(room)
+	lurker.thinking = false
 	lurker.brain.forget_all(0.0)
 	await place_player(centre, Vector3(1, 0, 0))
 	lurker.place_over(centre - Vector3(2.4, 0, 0), level.player.camera.global_position)
+	lurker.thinking = true
 	lurker.brain.force(&"creep", {"seat": int(level.player.slot)})
 	var none := await run_cue(4.0)
 	check("Parte A: nunca avisa en el vestíbulo del montacargas", none.is_empty() and lurker.brain.state != lurker.brain.State.CUE, str(door))

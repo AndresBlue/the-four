@@ -1143,6 +1143,15 @@ Checks:
 
 ---
 
+**2b-2 as built (24 October 2026, director):**
+
+- **0.2's table:** nothing left to guard. Phases 0 and 1 already put every creature through the contract (`spawn_creature()` asks `start_room()`/`place_at()`, the noises `hear()`/`hear_route()`); the null creature plays floor 2 that way.
+- **`lurker_senses.gd`** as 5, with the author's: she drinks the lamps from a duct over the room too (C9, I8), never an off-limits room (the freight lobbies), and the applied drain is capped at 0.89, under `LIT_DRAIN` (I1); the emergency units of the room are lamp points as well (I9: they tremble with her; `hotel.drain_emergency()` is called when the floor has it, which phase 3 adds). Memory entries are `seen` only on the look that saw them (a remembered survivor is not seen now).
+- **`lurker_brain.gd`**: every state of 7.5. Simplified for now: a show is always a peek (no ceiling cross yet), its spot a dark room's ceiling 5 to 16 m from the eye, beside the view and in plain sight of it (no doorframes or corners yet); `force()` gives up a running warning.
+- **`lurker.gd`** as 8, with `think()` before her motion's tick, `apply_intent()` (a take with `leap` makes her leap at the victim, the author's M1), the getters of 8.3 and the world port of 8.4 (`patrol_room`, `lead_rooms`, `clue_point`, `show_spot`, `dark_retreat`, `behind_point`, `above_locker`, `scream`); the drain targets every `DRAIN_EVERY` and the applied drain every frame (`_process`), on every machine.
+- **`hotel_main.creature_scene`** and `--creature=` (8.6). **`world_audio.play_cue()`**, `ears_hold`, `caption_lock`, `show_caption(..., hold)`, `last_cue` (9.2); **`match_net.send_cue()`/`send_cue_over()`** on this machine (9.1).
+- **Tests:** Part A of `lurker_fairness_test` (cases 1 to 4, 7, 8 and 10 of 10.2 on a built floor 2; 5, 6 and 11 need mates and a pad, still to come), 22 checks with Part B, about 14 s; `tests/office/lurker_senses_test.gd` (sight dark and lit, the torch blinding her, walls, hearing by the room and the ducts and not from another planta, the torch click, the drain and its tremble never darkening the room, prey choice, the director's zones, her words), 22 checks; both in `verify`. The route probe runs with `thinking = false` (its own orders, its own `cue`).
+
 ## 12. Docs (Spanish, `docs/` voice; no «·» or «—» in game text)
 
 - `docs/LURKER.md`: a section "Cómo percibe y decide" (sus sentidos, sus estados, la garantía del aviso y su registro, la luz que bebe), and "Lo que falta" updated (2b hecho: sentidos, cerebro, aviso; falta: captura, sonidos de ductos y garras, red, versus). It says honestly that the warning tells left from right but not front from back by sound: the rule and the subtitle say "detrás".

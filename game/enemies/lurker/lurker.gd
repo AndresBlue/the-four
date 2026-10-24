@@ -489,6 +489,7 @@ func think(delta: float) -> void:
 	for click in senses.clicks: brain.on_heard(click.route, click.point)
 	senses.clicks = []
 	intent = brain.tick(delta, p)
+	senses.listening = brain.listening
 	apply_intent(intent)
 	word = brain.activity()
 	cue = brain.state == BRAIN.State.CUE
@@ -591,6 +592,67 @@ func room_point(room: int) -> Vector3:
 	var r: Dictionary = level.manifest.rooms[room]
 	var p: Vector2 = shell.clear_point(room, float(r.px), float(r.pz))
 	return shell.anchor_of(shell.tray_state(room, p.x, p.y))
+
+## Her round (7.9): a room of her planta she has not listened at lately,
+## farther than 6 m, the staler and nearer the likelier.
+func patrol_room() -> int:
+	var here: int = motion.room()
+	if here < 0: return -1
+	var metres: Dictionary = routes.travel_metres(here)
+	var rooms: Array = []
+	var weights: Array = []
+	for r in metres:
+		var room := int(r)
+		if room == here or float(metres[r]) < 6.0 or brain.searched_lately(room): continue
+		rooms.append(room)
+		weights.append((1.0 + minf(brain.clock - float(brain.visited.get(room, -300.0)), 300.0) / 60.0) / (1.0 + float(metres[r]) / 40.0))
+	if rooms.is_empty(): return -1
+	var total := 0.0
+	for w in weights: total += float(w)
+	var pick := rng.randf() * total
+	for i in rooms.size():
+		pick -= float(weights[i])
+		if pick <= 0.0: return int(rooms[i])
+	return int(rooms[rooms.size() - 1])
+
+## The director's zone: rooms of that planta with a ceiling for her, not in
+## `avoid`, their middle within `radius`.
+func lead_rooms(point: Vector3, radius: float, avoid: Array) -> Array:
+	var out: Array = []
+	var planta := FLOOR.planta_of(point.y)
+	for room in level.manifest.rooms:
+		var id := int(room.id)
+		if not shell.tray_of.has(id) or avoid.has(id) or int(room.get("wing", -1)) != planta: continue
+		if FLOOR.position_of(room).distance_to(FLOOR.floor_point(point)) <= radius: out.append(id)
+	return out
+
+## Where a noise is worth going: her ceiling over it.
+func clue_point(point: Vector3) -> Vector3:
+	var s = shell.state_at(FLOOR.floor_point(point) + Vector3.UP)
+	return shell.anchor_of(s) if s != null else point
+
+## A spot for a show at the edge of somebody's view: a dark ceiling 5 to 16 m
+## from their eye, beside their look, in plain view of it, that she can reach.
+func show_spot(seen, kind: String) -> Dictionary:
+	var eye: Vector3 = seen.eye
+	var found: Array = []
+	for id in shell.tray_of:
+		var point := room_point(int(id))
+		var d := point.distance_to(eye)
+		if d < 5.0 or d > 16.0 or FLOOR.planta_of(point.y) != FLOOR.planta_of(eye.y): continue
+		if SIGHT.lit_point(level, point) or not SIGHT.beside(eye, seen.view, point): continue
+		if not SIGHT.clear(level, eye, point, [get_rid()]): continue
+		found.append(point)
+	if found.is_empty(): return {}
+	return {"kind": kind, "point": found[rng.randi_range(0, found.size() - 1)]}
+
+func lead_to(point: Vector3, radius: float, seconds: float, kind: String, once := false, avoid: Array = [], sniff := false) -> bool:
+	return control == "ai" and brain != null and brain.lead_to(point, radius, seconds, kind, once, avoid, sniff)
+
+func investigate(point: Vector3) -> void:
+	if brain != null: brain.clue = {"point": point, "at": brain.clock}
+
+func searched_lately(room_id: int) -> bool: return brain != null and brain.searched_lately(room_id)
 
 ## The ceiling over a locker.
 func above_locker(hide: Node3D) -> Vector3:
