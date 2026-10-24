@@ -498,6 +498,18 @@ Rules:
 
 Every waypoint lies inside a tray's `rect` or on a band or exit by construction (the shell test checks band ends and exit points against `rect`).
 
+### 6.5 As built (24 October 2026, director)
+
+`game/enemies/lurker/lurker_routes.gd`, tested in section O of `lurker_shell_test.gd` (19 checks, 600 plans on seeds 1 to 5):
+
+- `segment_speed(kind)` lives here: `MAIN_DUCT_SPEED` (1.0) on `ducts.visible_kinds`, `duct_speed` on every other kind; `DUCT` edges cost `metres / segment_speed(kind)`, and the heuristic divides by the fastest of `CRAWL_SPEED`, `duct_speed` and `MAIN_DUCT_SPEED`. The search reopens a node it finds cheaper (stale heap entries are skipped), so an exit whose node is not at its grille cannot make it miss the best way.
+- `IN` is shut while the exit node's wing is closed; `DUCT` edges of a closed wing are let through only when the plan starts inside a duct of that wing (her way out, 7.6).
+- A goal `{"exit": e}` ends at its node, which is the mouth: `"mouth"` stops at the same place (the squeeze in, or the duct leg to it from inside).
+- `travel_metres()` caches by `[door_signature(wing), door_epoch, closed_wings]`: a door signal recomputes at once, a change without one on the next physics frame.
+- `path_cost(start, nodes)` re-costs an old plan as things stand (the motion compares it when it replans, 7.3).
+- A plan from a State on a band starts with the rest of that band towards the start room; from a channel, with a channel leg back to its mouth.
+- `herds(room)` is `power_objective.herds()`: powered by a running minutero or a zone the team put on, not the rooms lit always (the author, M13).
+
 ---
 
 ## 7. `lurker_motion.gd`
@@ -522,7 +534,7 @@ const ACCEL := 5.0               ## m/s2 (lurker_test.gd): her hands could not k
 const HEADING_RATE := 3.0        ## rad/s while moving on a surface
 const TURN_RATE := 4.0           ## rad/s for a "turn" leg (slerp)
 const HANG_RATE := 0.5           ## m/s
-const BODY_DEPTH := 0.7          ## anchor to her lowest point along +Y; a guess until the first unit of 2a-I measures it (risk 6)
+const BODY_DEPTH := 0.7          ## anchor to the lowest point of her trunk along +Y: measured 0.695 (12, step 1)
 const HEAD_CLEAR := 0.25         ## kept between her lowest point and whatever is under her
 const RAY_EVERY := 0.25
 const RAY_MASK := 1 | 4          ## the world and the survivors (player.tscn layer 4)
@@ -635,6 +647,15 @@ OFICINAS 4: "Entre plantas no usa el ascensor: baja por los ductos, sin que nadi
 - `follow_to_planta(stage, fresh)` (`lurker.gd`): `wing = stage - 1`; if `busy.call()` sets `pending_wing`, else starts now. `lifts.follow_players()` calls it once per closed stage; `creature_crossing()` never does for her (`can(&"lifts")` is false, `lifts.gd:181`). Since nobody calls it again, the wing she is heading for is part of what is saved (8.2 `save_state`).
 - `teleport()` and `relocate()` cancel a transit. `restore_state()` does not lose it: it places her as 8.2 says.
 - **Fans** (wing 2, phase 3 adds the sound): every `RAY_EVERY`, **whatever wing she is on**, for each wing `w`: `ducts.closed_wings[w] = 1` if `w == 2` and `level.objective(&"air")` has `ducts_closed()` and it returns true, else 0. If her own wing is closed and she is in a duct: `eject()` (deferred while `cue`).
+
+### 7.6b The author's decisions in the motion (24 October 2026, director)
+
+- **M1, the long leap.** `func leap(to: Vector3, seconds := LEAP_TIME) -> bool`: from a tray (or a wall strip), only with `to` within `LEAP_REACH` (4.0 m) in plan and below her anchor; a `leap` leg: the anchor follows a parabola from where she is to `to` with its top `LEAP_RISE` (0.3 m) over the straight line, the basis slerps from hers to upright (`Y = UP`, `Z` towards `to` in plan) over the first third; at the end `state = null`, `on_floor = true`, `floor_point = to`. `func climb_back(pace_) -> bool`: from the floor straight up to the tray State over `floor_point` (`state_at()`, hang 0.35), basis back to the ceiling's over the climb, at `CLIMB_SPEED` (1.5 m/s). It is continuous, so no jump is logged; the probe's speed rule allows `distance / seconds` while a leap runs. What triggers it (a survivor near, 2b's capture) is 2b's.
+- **M2, shrinking.** When the ray finds the lane short (`clearance_short > 0`), she shrinks instead of failing: `squash` = `clampf((hang_limit_raw + BODY_DEPTH) / BODY_DEPTH, SQUASH_MIN, 1.0)` eased at `SQUASH_RATE` (1.0 per second), `SQUASH_MIN` 0.4; `lurker.gd` scales the `Visual` along its +Y by it and the `BodyShape` likewise. The probe records the least `squash` per trip instead of failing on `clearance_short` (11.2 check 7). Rectified once `BODY_DEPTH` is measured in the game (12, step 1).
+- **M3, M4: stopped, not pushed.** On a surface, when her lowest point (`anchor + Y * BODY_DEPTH * squash`) is under `py + SURVIVOR_TOP` (1.85 m), each frame she asks `bodies_ahead.call(anchor, heading, BODY_GAP + speed * delta)` (the same callable as in the visible duct) and does not move closer than `BODY_GAP` (0.45 m) to a survivor's body: she holds her place in a doorway and lets them be stopped by her (layer 32 is in their mask), never moving into a capsule.
+- **M6:** already so. A door's leaf never bounces off anybody (`hotel_door.swing_to()`: it always ends where it was sent); over a body on `TRAPPED` (4 | 32, so her too) it stays a ghost until the body is out, exactly as with a survivor. Nothing to add.
+- **M10, between plantas.** The drop lasts `RIDE_TIME` (8.5 s, `lifts.gd`) whatever the difficulty, and she does not start a transit while somebody is still on her planta: a callable `left_behind: Callable` (() -> bool, `lurker.gd`: a living survivor on her wing) keeps `pending_wing` waiting as `busy` does; 2b goes after that one first.
+- **M9, the den:** `den_point(3)` is the air room (`manifest.air.room`), 2b's "Su nido".
 
 ### 7.7 The jump log
 
@@ -870,15 +891,19 @@ P. **Texto.** No U+00B7 or U+2014 in the six new scripts (read with `FileAccess`
 
 Add `'office/lurker_shell_test'` to `$tests` in `tools/verify.ps1`.
 
-**As built (24 October 2026, director).** `tests/office/lurker_shell_test.gd`, 35 checks, about 64 s (21 s of it generating the ten floors), in `verify.ps1`:
+**As built (24 October 2026, director).** `tests/office/lurker_shell_test.gd`, 54 checks (35 of the shell, 19 of the routes), about 65 s (20 s of it generating the ten floors), in `verify.ps1`:
 
 - E: a door band's ends at `v = +-0.6` that fall outside their tray's `rect` (a door near a corner) are not seams and are counted (`door_band_ends_off_their_tray`, 450 on seeds 1 to 10); at `v = 0` every end must be inside. A channel's widest seam is allowed `SEAM_TOL + 1e-4` of position, one step past it none.
 - G: every band of seed 1 at 5 mm and `v` in `{-0.5, 0, 0.5}`, the other seeds at 2 cm and `v = 0`; channels on seeds 1 to 3. The step bounds carry `2e-6` of slack for 32-bit vectors.
 - I: a channel's `length` is at most its aisle's long side (cut at the trays, 3.3); its mouth, middle and end lie inside its unit's trays.
 - New, the author's: the wall strips of every walled side of a room with no false ceiling that has nothing on it, ending at `WALL_LOW` and inside the room's ceiling less 0.3; every locker's front band ending at `LOCKER_SLOT + FACE_OFFSET.z`, `BAND_CLEAR` in front of the locker; `plenum_mouth()` on the fixture and in a room without a false ceiling.
 - I2: `clear_point()` of every room's centre on seeds 1 to 10 (no room is without a clear point); `cue_pose()` on seeds 1 to 3, eye at 1.64 and at 0.9; `den_point()` comes with `lurker.gd` (2a-II).
-- N is covered by `conduit_graph_test.gd`; O comes with `lurker_routes.gd`.
+- N is covered by `conduit_graph_test.gd`. O as written, on the fixture with stub doors (hinges 0.65 m to the -z or -x side of each doorway), plus: a merged pair crossed with no band, and `teardown()` leaving no door connected; the seeds' 600 plans with every door open, then every door shut (no door pair used where both rooms have an exit).
 - Figures in `evidence/lurker_shell_test.json`: `min_radius` 0.30, `head_edge_nearest` 0.35 (the boardroom, straight down), 160 rooms with no false ceiling with 511 strips, 951 locker fronts.
+
+### 11.1b `tests/office/lurker_motion_test.gd` (added by the director, 24 October 2026)
+
+The motion with no body and no physics, 60 ticks a second, on the fixture (now `tests/office/lurker_fixture.gd`, shared with the shell test: the plan, `StubDoor` with `shut()`, `StubHotel`, `StubLevel`, `StubAir`, `stub_level()`, `routes_on()`) and on seed 7: by the doors (bands seen, no duct); by the ducts with door 1-2 shut (hidden in the network, out at the end); a door shut while she is on room 1's tray (another way, by the ducts); waiting under a head with no room (`clearance` 0.2 there) until the door is banned, then the ducts; per tick never more than `(SCURRY_SPEED + 0.5) * delta` without a logged jump (a leap: its own speed), an upright basis; the leap and the climb back (M1); shrinking under a short lane and back (M2); stopped by a body at head height, then on (M3, M4); no transit while somebody is left behind, then the drop in `RIDE_TIME` with one jump `&"planta"` (M10); out of a duct the fans shut; the same twice. 16 checks, about 6 s, in `verify.ps1`. Figures: 10.8 s by the doors, 19 s by the ducts, the drop 8.5 s.
 
 ### 11.2 `tools/dev/lurker_route_probe.gd`
 
@@ -954,6 +979,8 @@ Two areas (section 0). Units that share a file or need Godot go in series; the s
 5. `lurker_routes.gd`: graph, `door_open`, `door_signature`, costs, A*, legs, door watching, `travel_metres`, exit choices. Test section O with the stub level. Section P.
 6. **Acceptance of 2a-I:** `lurker_shell_test` green on seeds 1 to 10, with I2's figures in its evidence; `office_test`, `office_stages_test` and the tube tests unchanged.
 
+**Step 1, measured (24 October 2026, director):** `tools/dev/lurker_depth_probe.gd` (`--fixed-fps 60`, `evidence/lurker_depth_probe.json`), `lurker.tscn` upside down at hang 0.35 under a 2.95 ceiling, `cling` 0.3 as on a tray, each clip 5 s at its pace, in a 4 m and a 12 m wide room (the same figures): the **trunk** (bones `body`, `abdomen`, `head`, plus 0.05) reaches **0.695 m** (`crawl`; `idle` 0.49, `crawl_fast` 0.64, `peek` 0.67 with the skin), so `BODY_DEPTH` stays 0.70 and the lane question is not reopened. The **elbows** hang much lower, **1.36 m** (`forearm_a.L` crawling; 1.06 idle, 1.32 crawl_fast, 1.27 peek): `lurker_limbs.gd` keeps "the knees (its elbows) riding high" in her own frame, and on a ceiling her +Y points down. On a 2.95 m ceiling they come down to about 1.25 m over the floor, through survivors' heads and desks (they have no collider). That is the author's call (section 15, new item 14).
+
 **2a-II, body and probe** (after 0b, 0c, 0e, 0f, 1d to 1g, and 2a-I approved):
 
 7. `lurker_motion.gd` with stub `clearance`, `busy` and `bodies_ahead` (unit-testable without physics), then `lurker.gd`, `lurker_creature.tscn`, the small changes of 8.5, the difficulty keys.
@@ -1009,6 +1036,8 @@ Raised by the critics on 22 October 2026. Until each is answered, 2a builds what
 11. **A crouched victim** (camera near 0.9 m) cannot have her face within 20 degrees from any ceiling: must the victim look up, or does she come down for the cue (3.8)?
 12. **No wardrobes** (`can(&"wardrobes")` false) follows OFICINAS 2 "no abre taquillas" and stays provisional with decision 5 of `spec_f2_mind.md` (8.2).
 13. **Minor:** `peek_rate` as a multiplier for "Muchos, Muchos, Normales, Pocos"; whether a minutero's light herds her like the board's zones (`herds` and `lit()` are nearly the same rooms on wing 1, so `POWER_FACTOR` and `LIT_FACTOR` barely differ there) (section 10, 6.2).
+
+14. **Her elbows on a ceiling (measured 24 October 2026):** they hang to 1.36 m under her anchor, about 1.25 m over the floor of a 2.95 m room, because the black widow's high knees are high in her own frame. Keep it (she fills the room, and her elbows pass through heads and desks), or turn the elbows towards the surface she holds when it is over her (a change in `lurker_limbs.gd`, seen also on the bench)?
 
 ### For the director (contracts, architecture)
 
