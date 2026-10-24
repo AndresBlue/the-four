@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('play','gallery','lurker','build-gallery','playtest','locust','rehearsal','bench','bench-films','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export','export-mac')][string]$Mode = 'play',
+    [ValidateSet('play','gallery','lurker','lurker-arena','build-gallery','playtest','locust','rehearsal','bench','bench-films','survival-test','editor','test','hotel-batch','hotel-walkthrough','hotel-audio','hotel-benchmark','compatibility','observer','bots','hunt','bots-run','bots-replay','export','export-mac')][string]$Mode = 'play',
     [int]$Seed = 81,
     # Extra flags for the script behind the mode, e.g. -Extra '--shots'.
     [string]$Extra = '',
@@ -26,11 +26,14 @@ if (-not $GodotPath -or -not (Test-Path -LiteralPath $GodotPath)) {
 $arguments = @('--path', $projectPath)
 # The player's renderer choice (Ajustes, user://renderer.cfg) is for playing:
 # tests, captures and benchmarks run the renderer they were written for.
-if ($Mode -notin @('play','playtest','locust','rehearsal','bench','editor','gallery','lurker','compatibility','observer','bots','hunt','bots-replay','export','export-mac')) { $arguments += @('--rendering-method','forward_plus') }
+if ($Mode -notin @('play','playtest','locust','rehearsal','bench','editor','gallery','lurker','lurker-arena','compatibility','observer','bots','hunt','bots-replay','export','export-mac')) { $arguments += @('--rendering-method','forward_plus') }
 switch ($Mode) {
     'gallery' { $arguments += 'res://tools/workbenches/module_gallery.tscn' }
     # The Lurker coming down a corridor at you, played (tools/workbenches/lurker_test.gd).
     'lurker' { $arguments += 'res://tools/workbenches/lurker_test.tscn' }
+    # The Lurker on floor 2 with her mind running and what she does written over it
+    # (tools/workbenches/lurker_arena.gd); the test profile, never the real one.
+    'lurker-arena' { $arguments += @('res://tools/workbenches/lurker_arena.tscn','--','--test-profile') }
     'build-gallery' { $arguments += @('--headless','--script','res://tools/editor/build_gallery.gd') }
     # The parentheses matter: inside an array literal, PowerShell reads
     # @('--', 'x=' + $Seed) as @('--','x=') + $Seed and splits it in two.
