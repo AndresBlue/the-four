@@ -833,6 +833,12 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
     - Le falta estética de oficina: tiene más cara de hospital.
     - Fallos de iluminación.
     - Y varias cosas más que el autor irá diciendo.
+    - En Pesadilla la vio inerte, sin moverse ni saltar a matar. Eran dos
+      fallos de su mente, corregidos el mismo día: las zonas que le da el
+      director se perdían si estaba en un ducto, y parada en una sala sin
+      rejilla no volvía a moverse. Que no ataque a quien la mira con luz es
+      su regla (se queda quieta y retrocede): solo coge por la espalda y a
+      oscuras, después del aviso.
 - `four-7ly.3` **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
 - `four-7ly.4` **The Containment:** lo mismo; es donde estaban guardadas todas.
 
