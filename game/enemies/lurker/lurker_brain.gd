@@ -77,6 +77,15 @@ var regard_time := 0.0
 ## hang there on the ceiling (the author's games, 25 October 2026).
 var failed_for := 0.0
 const GIVE_UP := 3.0
+## And leaves them be this long, so she goes elsewhere rather than straight
+## back to the way that failed.
+const GIVE_UP_REST := 20.0
+## Seconds somebody's view of her way ahead (exposed()) has held her still:
+## past HOLD_MOST she goes into the ceiling instead, rather than wait for
+## them to look away (the author's games, 25 October 2026: in a lit room
+## whoever looked her way held her up there for good).
+var held_for := 0.0
+const HOLD_MOST := 2.5
 var unregard_time := 0.0
 var creep_lost := 0.0
 ## The state a freeze goes back to.
@@ -220,10 +229,17 @@ func tick(delta: float, p) -> Dictionary:
 		hidden_since = -1.0
 		if state in [State.STALK, State.CREEP]: failed_attempt(prey)
 		enter(State.FLEE)
+	held_for = held_for + delta if exposed(p) and not bool(p.in_duct) and state in [State.ROAM, State.LISTEN, State.STALK, State.WAIT_ABOVE] else 0.0
+	if held_for > HOLD_MOST:
+		held_for = 0.0
+		away_from = p.face
+		hidden_since = -1.0
+		enter(State.FLEE)
 	failed_for = failed_for + delta if bool(p.failed) and state in [State.STALK, State.CREEP, State.PEEK] else 0.0
 	if failed_for > GIVE_UP:
 		failed_for = 0.0
 		if prey >= 0 and p.victim != null: clue = {"point": p.victim.point, "at": clock}
+		if prey >= 0: spurned[prey] = maxf(float(spurned.get(prey, -INF)), clock + GIVE_UP_REST)
 		prey = -1
 		goal = {}
 		enter(State.ROAM)
@@ -481,13 +497,15 @@ func sorted_seats(p) -> Array:
 	return seats
 
 ## Her own choice of prey (7.7): the one alone and in the dark, from what she
-## perceives; never while sated, never one she spurned.
+## perceives; never while sated, never one she spurned, never one in a
+## protected room (a lift's lobby: she never goes in, and seen through its
+## doorway she hung on the ceiling stalking them, the author's games).
 func candidates(p) -> Array:
 	var out: Array = []
 	if clock < sated_until: return out
 	for seat in sorted_seats(p):
 		var seen = p.bodies[seat]
-		if bool(seen.seen) and bool(seen.fair) and not bool(seen.hidden) and float(spurned.get(int(seat), -INF)) <= clock: out.append(int(seat))
+		if bool(seen.seen) and bool(seen.fair) and not bool(seen.hidden) and not bool(seen.protected) and float(spurned.get(int(seat), -INF)) <= clock: out.append(int(seat))
 	return out
 
 func score(seen) -> float:

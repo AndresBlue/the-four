@@ -51,6 +51,7 @@ func run() -> void:
 	roaming()
 	encounter()
 	gives_up()
+	not_held()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.creature_scene = "lurker"
@@ -386,6 +387,22 @@ func roaming() -> void:
 ## after the last she leaves that survivor be for the rest.
 ## Her way after somebody failing for good (the author's games, 25 October
 ## 2026: she hung on the ceiling): past GIVE_UP she lets them go and roams.
+## Somebody's view of her way holding her still (a lit room, a look her
+## way): past HOLD_MOST she goes into the ceiling, never hangs there.
+func not_held() -> void:
+	var world := FakeWorld.new()
+	var brain = BRAIN.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8
+	brain.setup(world, rng, WARNING.new())
+	brain.enter(BRAIN.State.ROAM)
+	var p = SENSES.Percept.new()
+	p.stretch_exposed = true
+	for i in int((BRAIN.HOLD_MOST - 0.5) * 60.0): brain.tick(1.0 / 60.0, p)
+	var waited: bool = brain.state == BRAIN.State.ROAM
+	for i in 60: brain.tick(1.0 / 60.0, p)
+	check("Si alguien vigila su camino, espera un poco y luego se mete en el techo", waited and brain.state == BRAIN.State.FLEE, brain.state_name())
+
 func gives_up() -> void:
 	var world := FakeWorld.new()
 	var brain = BRAIN.new()
@@ -395,12 +412,17 @@ func gives_up() -> void:
 	brain.prey = 1
 	brain.enter(BRAIN.State.STALK)
 	var p = SENSES.Percept.new()
+	# In sight, far, and her way to them failing.
+	p.bodies[1] = seen_of(1, false, 20.0)
+	p.bodies[1].distance = 30.0
+	p.victim = p.bodies[1]
 	p.failed = true
 	for i in int((BRAIN.GIVE_UP - 0.5) * 60.0): brain.tick(1.0 / 60.0, p)
-	var still: bool = brain.state == BRAIN.State.STALK or brain.state == BRAIN.State.ROAM
-	var before_give_up: bool = brain.failed_for > 0.0 or brain.state != BRAIN.State.STALK
+	var still: bool = brain.state == BRAIN.State.STALK and brain.prey == 1
+	var before_give_up: bool = brain.failed_for > 0.0
 	for i in 60: brain.tick(1.0 / 60.0, p)
 	check("Si su camino tras alguien no deja de fallar, lo deja y vuelve a rondar", still and before_give_up and brain.state != BRAIN.State.STALK and brain.prey == -1, "%s %d" % [brain.state_name(), brain.prey])
+	check("Y lo deja en paz un rato: no vuelve en seguida al camino que falló", float(brain.spurned.get(1, -INF)) - brain.clock > BRAIN.GIVE_UP_REST - 1.0, str(brain.spurned))
 
 func encounter() -> void:
 	var world := FakeWorld.new()
@@ -446,6 +468,13 @@ func prey_choice() -> void:
 	brain.spurned[2] = brain.clock + 30.0
 	brain.tick(1.0 / 60.0, p)
 	check("A la que la espantó la deja en paz", brain.prey == 1)
+	var safe = BRAIN.new()
+	safe.setup(FakeWorld.new(), rng, WARNING.new())
+	var q = SENSES.Percept.new()
+	q.bodies[3] = seen_of(3, false, 20.0)
+	q.bodies[3].protected = true
+	safe.tick(1.0 / 60.0, q)
+	check("A quien está en una sala protegida no la elige: no podría llegar", safe.prey == -1 and safe.state != BRAIN.State.STALK, "%d %s" % [safe.prey, safe.state_name()])
 
 func seen_of(seat: int, lit: bool, alone: float):
 	var s = SENSES.Seen.new()

@@ -246,6 +246,21 @@ Lo que hay para medir, y lo que falta:
 - **Ya existe:** los bots en lote (`tools/bots.ps1`), con resultado, duración, caídas y capturas por piso, y su grabación para repasar; y el parte de cada cinta, que ya guarda por jugador persecuciones, huidas, tiempo perseguido, caídas y lo más cerca que la tuvo.
 - **Falta:** los bots novatos; contar los **encuentros** en el parte (la viste —la cordura ya sabe cuándo alguien la ve—, se fijó en ti, te persiguió) y el tiempo entre uno y otro; la dificultad en la cinta; lotes por dificultad, tamaño de equipo y clase de bot, juntados en una tabla; y ver las palancas en vivo en el observador.
 
+### El piso 2: el primer lote con bots (25 de octubre de 2026)
+
+Con los bots que ya la tienen en cuenta (paso 3f: se giran con la linterna a su aviso, alumbran el de un compañero, se cubren la espalda y miran atrás). Los expertos saben siempre dónde está ella.
+
+- **Lo que tarda:** un piso 2 con 3 expertos en Equilibrada (semilla 81) duró 12:34 de juego y 2:58 de reloj, de uno en uno. El piso 1 no se midió para comparar.
+- **El lote corto se paró a medias** por decisión del autor, que prefiere probarlo con gente; se jugaron 8 pisos:
+  - Equilibrada, 3 expertos, semilla 81: ganado.
+  - Apacible, semilla 81: 3 expertos ganan, 3 novatos ganan y 1 experto a solas no acaba a tiempo.
+  - Apacible, 3 expertos, semillas 81 a 84: ganan 2 de 4; los otros 2 se quedan sin tiempo.
+- **Ella no avisó a ningún bot en ninguno:** 0 avisos, 0 capturas y 0 muertes, con algún espanto (de 0 a 5 por piso). Con eso no se pueden medir todavía las bandas del lote (salvadas por aviso, avisos por bot, ventana cumplida).
+- **Incidencias graves:**
+  - bots atascados en puertas de las oficinas, que ya salían antes;
+  - ella encerrada en una sola sala durante minutos (semillas 81 y 83). Era lo mismo que el autor vio jugando con un amigo: desde el techo veía a alguien dentro de un vestíbulo protegido, donde nunca entra, y se quedaba acechándolo para siempre; o la retenía quien vigilaba con luz su camino por delante. Corregido: no elige a quien está en una sala protegida, deja en paz 20 s a quien no consigue alcanzar en 3 s, y a los 2,5 s de vigilancia se mete en el techo. Repetida la semilla 81, ya no se queda encerrada.
+- **Lo que queda:** el lote entero, más adelante, cuando los bots dejen de atascarse en las puertas. Las cifras que cuentan son las de las partidas con gente.
+
 ## 7 · Dónde se elige y qué pasa con las marcas
 
 - **Individual:** al empezar «Nueva partida», una pantalla con las cuatro y una línea de cada una; se recuerda la última. «Continuar» y «Reintentar» conservan la del piso. No se cambia a mitad de un piso.
