@@ -89,6 +89,19 @@ var lit_takes := true
 var stalk_distance := 8.0
 var freeze_time := 4.0
 var scare_calm := 35.0
+## An encounter (the author, 24 October 2026): several attempts on a survivor
+## from the dark; each failed one sends her into the ceiling and back out
+## (emerge_*), and after `tries` she leaves them be for rest_after.
+var tries := 3
+var rest_after := 90.0
+var emerge_delay := Vector2(4.0, 7.0)
+var emerge_mode := "near"
+var emerge_range := Vector2(6.0, 10.0)
+## Seat -> failed attempts in the encounter on.
+var attempts := {}
+## The next attempt: {seat, at}; and the point she is coming back out at.
+var comeback := {}
+var emerging := Vector3.INF
 var creep_scale := 1.0
 var sated := 40.0
 
@@ -104,6 +117,13 @@ func tune(profile: Dictionary) -> void:
 	stalk_distance = float(profile.get("stalk_distance", stalk_distance))
 	freeze_time = float(profile.get("freeze_time", freeze_time))
 	scare_calm = float(profile.get("scare_calm", scare_calm))
+	tries = int(profile.get("attempts", tries))
+	rest_after = float(profile.get("encounter_rest", rest_after))
+	emerge_mode = String(profile.get("emerge_mode", emerge_mode))
+	var delay = profile.get("emerge_delay")
+	if delay is Array and delay.size() == 2: emerge_delay = Vector2(float(delay[0]), float(delay[1]))
+	var span = profile.get("emerge_range")
+	if span is Array and span.size() == 2: emerge_range = Vector2(float(span[0]), float(span[1]))
 	creep_scale = float(profile.get("creep_scale", creep_scale))
 	sated = float(profile.get("sated", sated))
 	var every = profile.get("peek_every")
@@ -193,6 +213,7 @@ func tick(delta: float, p) -> Dictionary:
 		for seen in p.bodies.values():
 			if int(seen.seat) == int(p.regarded_by[0]): away_from = seen.eye
 		hidden_since = -1.0
+		if state in [State.STALK, State.CREEP]: failed_attempt(prey)
 		enter(State.FLEE)
 	match state:
 		State.CREEP: return creep_tick(p)
@@ -314,7 +335,7 @@ func on_released() -> void:
 # --- Frightened ---------------------------------------------------------------------
 
 func recoil(by: int, cause: String, p) -> void:
-	if prey >= 0: spurned[prey] = clock + scare_calm
+	failed_attempt(prey)
 	away_from = p.face
 	for seen in p.bodies.values():
 		if int(seen.seat) == by: away_from = seen.eye
@@ -332,10 +353,39 @@ func recoil_tick(p) -> Dictionary:
 		hidden_since = -1.0
 	return hold(away_from, "scare")
 
+## An attempt on `seat` failed (saved from her warning, or lit while she was
+## after them): after `tries` she leaves them be for rest_after; until then
+## she comes back out of the ceiling for another, emerge_delay later.
+func failed_attempt(seat: int) -> void:
+	if seat < 0: return
+	attempts[seat] = int(attempts.get(seat, 0)) + 1
+	if int(attempts[seat]) >= tries:
+		attempts.erase(seat)
+		spurned[seat] = clock + rest_after
+		comeback = {}
+		return
+	comeback = {"seat": seat, "at": clock + rng.randf_range(emerge_delay.x, emerge_delay.y)}
+
 func flee_tick(p) -> Dictionary:
+	# Coming back out for another attempt: there, she looks for them again.
+	if emerging != Vector3.INF:
+		if bool(p.failed) or (bool(p.arrived) and not bool(p.in_duct) and state_time > 0.5):
+			emerging = Vector3.INF
+			enter(State.ROAM)
+			return hold()
+		return intent(&"go", {"to": emerging, "speed": FLEE_SPEED, "clip": "crawl_fast"})
 	if bool(p.in_duct):
 		if hidden_since < 0.0: hidden_since = clock
-		if clock - hidden_since >= FLEE_HIDE: enter(State.ROAM)
+		if not comeback.is_empty() and clock >= float(comeback.at):
+			var seat := int(comeback.seat)
+			comeback = {}
+			var out: Vector3 = world.emerge_point(seat, emerge_mode, emerge_range)
+			if out != Vector3.INF:
+				prey = seat
+				emerging = out
+				state_time = 0.0
+				return intent(&"go", {"to": emerging, "speed": FLEE_SPEED, "clip": "crawl_fast"})
+		if comeback.is_empty() and clock - hidden_since >= FLEE_HIDE: enter(State.ROAM)
 		return hold()
 	var exit: int = world.flee_exit(away_from)
 	if exit >= 0: return intent(&"duct", {"exit": exit, "speed": FLEE_SPEED, "clip": "crawl_fast"})

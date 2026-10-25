@@ -43,10 +43,13 @@ class FakeWorld extends RefCounted:
 	func exit_of_room(_room: int) -> int: return -1
 	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return [1]
 	func above_locker(_hide) -> Vector3: return Vector3.ZERO
+	var emerge := Vector3.INF
+	func emerge_point(_seat: int, _mode: String, _span: Vector2) -> Vector3: return emerge
 
 func run() -> void:
 	prey_choice()
 	roaming()
+	encounter()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.creature_scene = "lurker"
@@ -376,6 +379,31 @@ func roaming() -> void:
 	brain.tick(1.0 / 60.0, p)
 	var intent: Dictionary = brain.tick(1.0 / 60.0, p)
 	check("Parada en una sala, la meta que elige no cuenta como alcanzada: se pone en marcha", String(intent.get("do", "")) == "go" and int(brain.goal.get("room", -1)) == 2, str(intent))
+
+## An encounter of several attempts (the author, 24 October 2026): each
+## failed one sends her out of sight and back out where the difficulty says;
+## after the last she leaves that survivor be for the rest.
+func encounter() -> void:
+	var world := FakeWorld.new()
+	var brain = BRAIN.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	brain.setup(world, rng, WARNING.new())
+	brain.tune({"attempts": 3, "encounter_rest": 90.0, "emerge_delay": [1.0, 1.0], "emerge_mode": "behind", "emerge_range": [3.0, 5.0]})
+	var p = SENSES.Percept.new()
+	brain.prey = 1
+	brain.recoil(1, "mirada", p)
+	var after_one: bool = int(brain.attempts.get(1, 0)) == 1 and not brain.spurned.has(1) and not brain.comeback.is_empty()
+	world.emerge = Vector3(9, 0, 0)
+	brain.enter(BRAIN.State.FLEE)
+	p.in_duct = true
+	var intent: Dictionary = {}
+	for i in 90: intent = brain.tick(1.0 / 60.0, p)
+	var back_out: bool = String(intent.get("do", "")) == "go" and (intent.get("to", Vector3.INF) as Vector3) == Vector3(9, 0, 0) and brain.prey == 1
+	check("Un intento fallido no la aparta: sale del techo por donde toca y vuelve a por esa persona", after_one and back_out, "%s %s" % [str(brain.attempts), str(intent)])
+	brain.recoil(1, "linterna", p)
+	brain.recoil(1, "corriendo", p)
+	check("Al fallar el último intento la deja en paz su rato", not brain.attempts.has(1) and float(brain.spurned.get(1, -INF)) - brain.clock > 89.0 and brain.comeback.is_empty(), str(brain.spurned))
 
 ## Her own choice of prey (7.7), on a bare brain with a fake world.
 func prey_choice() -> void:

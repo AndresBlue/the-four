@@ -368,7 +368,10 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 | En la luz | Se va al instante | Se va al instante | Se va al instante | Se va al instante |
 | Sin que nadie la vea, por una superficie | 3 m/s | 3,5 m/s | 4 m/s | 4,5 m/s |
 | Sin que nadie la vea, por un ducto oculto | 2 m/s | 3 m/s | 4 m/s | 5 m/s |
-| Calma tras espantarse | 60 s | 45 s | 35 s | 25 s |
+| Intentos de un encuentro | 2 | 3 | 4 | 5 |
+| Tras un intento fallido, vuelve a salir a los | 8 a 12 s | 4 a 7 s | 2 a 4 s | 1 a 2 s |
+| Por dónde vuelve a salir | Lejos (10 a 15 m) | Cerca (6 a 10 m) | Por tu espalda (3 a 6 m) | Por tu espalda (3 a 5 m) |
+| Descanso tras el último intento | 120 s | 90 s | 60 s | 45 s |
 | Velocidad al acercarse | ×0,8 | ×0,9 | ×1,3 | ×1,5 |
 | Lámpara que bebe | 3 m | 3 m | 3,5 m | 4 m |
 | Asomos al borde de la vista | Muchos | Muchos | Normales | Pocos |

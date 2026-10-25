@@ -44,6 +44,8 @@ class FakeWorld extends RefCounted:
 	func exit_of_room(_room: int) -> int: return -1
 	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return []
 	func above_locker(_hide) -> Vector3: return Vector3.ZERO
+	var emerge := Vector3.INF
+	func emerge_point(_seat: int, _mode: String, _span: Vector2) -> Vector3: return emerge
 
 func run() -> void:
 	var results: Array = []
@@ -441,8 +443,11 @@ func torch_turn() -> void:
 			aim_at(lurker.face_point()))
 	var ok: bool = not entry.is_empty() and String(entry.outcome) == "saved" and String(entry.reason) == "linterna" and int(entry.by) == int(level.player.slot) and float(entry.end) < float(entry.due)
 	check("Parte A: darse la vuelta con la linterna a falta de 0,3 s la espanta", ok, str(entry))
-	var spurned: float = float(lurker.brain.spurned.get(int(level.player.slot), -INF))
-	check("Parte A: y la deja en paz su rato", ok and spurned >= float(entry.end) + float(level.tuning().scare_calm) - 0.01, str(spurned))
+	# One failed attempt of an encounter (the author, 24 October 2026): she
+	# comes back for another; she leaves them be only after the last.
+	var seat := int(level.player.slot)
+	var again: bool = int(lurker.brain.attempts.get(seat, 0)) == 1 and not lurker.brain.spurned.has(seat) and int(lurker.brain.comeback.get("seat", -1)) == seat
+	check("Parte A: y no la deja: es un intento de su encuentro, y volverá", ok and again, "%s %s" % [str(lurker.brain.attempts), str(lurker.brain.comeback)])
 
 func dark_turn() -> void:
 	await set_up(true, false)

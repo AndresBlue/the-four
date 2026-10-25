@@ -746,6 +746,38 @@ func plan_start() -> Dictionary:
 func flee_exit(away_from: Vector3) -> int:
 	return routes.flee_exit(plan_start(), away_from, global_position)
 
+## Where she comes back out of the ceiling for another attempt on `seat`
+## (spec_f3_aggression): her ceiling just under a way out of the ducts of
+## their planta, in a room not lit and not off limits, `span` metres from
+## them ("behind": behind their back; "far" and "near": by the span alone);
+## the nearest to the middle of the span. Vector3.INF with none.
+func emerge_point(seat: int, mode: String, span: Vector2) -> Vector3:
+	var body = senses.body_of(seat) if senses != null else null
+	if body == null or ducts == null: return Vector3.INF
+	var at: Vector3 = body.global_position
+	var look: Vector3 = -(body.camera.global_basis.z if body.get("camera") != null else body.global_basis.z)
+	var forward := Vector3(look.x, 0, look.z).normalized()
+	var best := -1
+	var best_score := INF
+	for e in ducts.exits.size():
+		var exit = ducts.exits[e]
+		if String(exit.kind) == "hatch" or not routes.exit_usable(e): continue
+		var p: Vector3 = exit.position
+		if FLOOR.planta_of(p.y) != FLOOR.planta_of(at.y) or level.point_protected(p): continue
+		if int(exit.room) >= 0 and level.hotel.lit(int(exit.room)): continue
+		var flat := Vector3(p.x - at.x, 0, p.z - at.z)
+		var d := flat.length()
+		if d < span.x or d > span.y: continue
+		var score := absf(d - (span.x + span.y) * 0.5)
+		if mode == "behind":
+			var ahead := forward.dot(flat / maxf(d, 0.01))
+			if ahead > -0.2: continue
+			score += ahead * 2.0
+		if score < best_score:
+			best_score = score
+			best = e
+	return clue_point(ducts.exits[best].position) if best >= 0 else Vector3.INF
+
 ## The nearest dark ceiling at least 4 m from `away_from`, else her nearest exit.
 func dark_retreat(away_from: Vector3) -> Vector3:
 	var here: int = motion.room()
