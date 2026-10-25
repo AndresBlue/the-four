@@ -788,7 +788,7 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
 | Piso | Nombre | Criatura | Estado |
 |---|---|---|---|
 | 1 | El hotel | The Locust | Jugable |
-| 2 | Las oficinas secretas (La Oficina) | The Lurker ([LURKER.md](LURKER.md)) | Diseñado ([OFICINAS.md](OFICINAS.md)); de la criatura, modelo y animaciones; nada jugable |
+| 2 | Las oficinas secretas (La Oficina) | The Lurker ([LURKER.md](LURKER.md)) | Jugable en solitario de punta a punta, con ella (fase 3 en marcha); provisional en arte, sonido y acabado |
 | 3 | Radiation Lab | Sin asignar | Sin empezar |
 | 4 | The Containment | Sin asignar | Sin empezar |
 
@@ -820,6 +820,19 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
   - **Fase 4. En red y versus.**
   - **Fase 5. Acabado:** rendimiento, mezcla, dificultad con gente, la
     continuación desde el piso 1 y su desbloqueo (con `four-7ly.10`).
+  - **La primera partida del autor** (24 de octubre de 2026, en solitario, en
+    Apacible; salió del piso: 36:31 el nivel 1, 4:39 el 2 y 11:01 el 3). Es
+    funcional y va bien; queda mucho por ajustar:
+    - Al principio no se entiende cómo se ven los puntos que importan de cada
+      nivel (dónde está lo que hay que usar); después se vuelve más dinámico.
+    - Los niveles 2 y 3 se hacen un poco pequeños.
+    - Los sonidos de la bestia y los de las tuberías.
+    - La construcción general de los niveles.
+    - Los props: hay muchos rectángulos (muebles y piezas provisionales) que no
+      se sabe qué son, y faltan muchos assets para cubrir bien el piso.
+    - Le falta estética de oficina: tiene más cara de hospital.
+    - Fallos de iluminación.
+    - Y varias cosas más que el autor irá diciendo.
 - `four-7ly.3` **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
 - `four-7ly.4` **The Containment:** lo mismo; es donde estaban guardadas todas.
 
