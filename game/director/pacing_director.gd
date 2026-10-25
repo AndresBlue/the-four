@@ -194,6 +194,13 @@ const CROSS_NEAR := 15.0
 const CROSS_FAR := 32.0
 const CROSS_SIGHT := 30.0
 const CROSS_REST := 30.0
+## The creature's forced encounters (the Lurker's, spec_f3_aggression): when
+## it last got at somebody (it was noticing somebody, or hunting), how long a
+## lead into somebody's room lasts, and how soon one that could not be given
+## is tried again.
+var last_contact := 0.0
+const FORCED_TIME := 40.0
+const FORCED_RETRY := 5.0
 
 func setup(owner_level, seed_value: int) -> void:
 	level = owner_level
@@ -356,6 +363,7 @@ func tick(delta: float) -> void:
 		# The hunt is over: a rest before anything else.
 		breathe(rest_chase)
 	was_hostile = now_hostile
+	if it != null and (now_hostile or it.noticing()): last_contact = clock
 	update_menace(delta)
 	update_strain(delta)
 	# Resting somebody who earned it, it hears half as far: the rest is for
@@ -394,6 +402,7 @@ func tick(delta: float) -> void:
 				coming_back = {}
 				# Only if it is still fair now: somebody may be standing there.
 				if validate_lead(back, true): play("vuelve", back, LEAD_RADIUS, true)
+			elif forced_due(): pass
 			elif encounter_due(): pass
 			elif force or clock >= next_lead: build()
 
@@ -446,19 +455,55 @@ func update_menace(delta: float) -> void:
 
 ## The survivor the next lead is played around: somebody out and about, not
 ## hidden, and the less pressed the likelier -- whoever has had the easiest
-## time of it gets the visit.
-func pick_target() -> Node3D:
+## time of it gets the visit. With `wing`, only somebody in it.
+func pick_target(wing := -1) -> Node3D:
 	var it = creature()
 	var from := room_id(it.global_position)
 	var best: Node3D = null
 	var best_score := -INF
 	for body in active_survivors():
-		if body.hidden: continue
+		if body.hidden or (wing >= 0 and wing_of(body.global_position) != wing): continue
 		var score := minf(reach(from, room_id(body.global_position)), 90.0) + rng.randf_range(0.0, 25.0)
 		if score > best_score:
 			best_score = score
 			best = body
 	return best
+
+## The creature's forced encounter (spec_f3_aggression): after its
+## forced_after() seconds without getting at anybody, counted from the end of
+## the last rest, it is led into the room of somebody out there in its wing
+## and not hidden (pick_target()'s choice), clear of the rooms of anybody
+## hidden and of the rooms next to them: the one exception to "never where
+## anybody is". What happens there is its senses' and its warning's. True
+## when it was.
+func forced_due() -> bool:
+	var it = creature()
+	var after: float = it.forced_after()
+	if after <= 0.0 or clock - maxf(last_contact, rest_until) < after: return false
+	var target := pick_target(wing_of(it.global_position))
+	var room := room_id(target.global_position) if target != null else -1
+	if room < 0:
+		last_contact = clock - after + FORCED_RETRY
+		return false
+	var avoid: Array = []
+	for body in active_survivors():
+		if not body.hidden: continue
+		var theirs := room_id(body.global_position)
+		if theirs < 0: continue
+		avoid.append(theirs)
+		for other in level.manifest.adjacency[theirs]: avoid.append(int(other))
+	avoid = avoid.filter(func(id): return id != room)
+	var centre := FLOOR.position_of(level.manifest.rooms[room])
+	var ok: bool = it.lead_to(centre, 1.0, FORCED_TIME, "encuentro", true, avoid, false)
+	say("encuentro", {"point": centre, "ok": ok, "target": String(target.name)})
+	if not ok:
+		last_contact = clock - after + FORCED_RETRY
+		return false
+	current = {"kind": "encuentro", "point": centre, "until": clock + FORCED_TIME, "target": String(target.name)}
+	last_contact = clock
+	last_kind = "encuentro"
+	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) * spacing()
+	return true
 
 ## Whoever out there has gone longest without a sign of the creature, if it
 ## has been encounter_every: the creature is brought across their view.
@@ -782,6 +827,8 @@ func status_lines() -> Array:
 	if calm > 0.0: lines.append("  carga %0.2f, un descanso vale hasta %0.0f s más" % [strain, calm * spacing()])
 	if phase == Phase.RELIEF: lines.append("  descanso %0.0f s más" % maxf(0.0, rest_until - clock))
 	elif phase == Phase.BUILD: lines.append("  próxima pista en %0.0f s, a %0.0f m del equipo" % [maxf(0.0, next_lead - clock), prowl])
+	var after: float = creature().forced_after() if creature() != null else 0.0
+	if after > 0.0 and phase == Phase.BUILD: lines.append("  a una sala con alguien en %0.0f s" % maxf(0.0, after - (clock - maxf(last_contact, rest_until))))
 	if not current.is_empty() and clock < float(current.until): lines.append("  %s, sala %d%s, %0.0f s" % [current.kind, room_id(current.point), (", por " + String(current.target)) if not String(current.target).is_empty() else "", float(current.until) - clock])
 	if not deaths.is_empty(): lines.append("  %d muertes recientes: más lejos" % deaths.size())
 	return lines

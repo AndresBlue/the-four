@@ -36,7 +36,7 @@ Unchanged: the warning (OFICINAS 1: never a take without a warning at the back),
 - **Unseen**: no survivor's eyes have her in view (`creature_sight.watched()`, the shared sight) and she is not in a warning: her moves run at the unseen speed. Seen, her speeds of today.
 - **The long leap (7)**: the warning may start from 2 to 5 m (was 2 to 3); at the end of the window, if not saved, she takes from up to 7 m with the leap (was 3.4 m, or 7.4 m only after walking away).
 - **Not stopped without light (3)**: `exposed()` holds her only for regard with light or a torch, not for being in somebody's view in the dark.
-- **Forced encounters (1)**: the director, after that long without her reaching anybody, leads her into the room of the survivor it picks (its "never where anybody is" rule gives way only here).
+- **Forced encounters (1)**: the director, after that long without her reaching anybody, leads her into the room of the survivor it picks (its "never where anybody is" rule gives way only here). As built: `creature.forced_after()` (the Lurker's `forced_after` key; nought for every other creature); the director's `last_contact` is the last tick she was noticing somebody or hunting, the wait counts from the end of the last rest too, and in BUILD `forced_due()` leads her (kind "encuentro", 40 s, once) to the middle of the room of `pick_target()` in her wing, never somebody hidden and never the rooms of the hidden nor the ones next to them; one that cannot be given is tried again 5 s later.
 
 ## Ways in and out (3, 4)
 

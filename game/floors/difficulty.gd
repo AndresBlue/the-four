@@ -157,15 +157,17 @@ const PROFILES := {
 ##  attempts (failed ones on a survivor before she leaves them be),
 ##  encounter_rest (s she leaves them be after), emerge_delay (s in the
 ##  ceiling before the next attempt), emerge_mode ("far", "near", "behind")
-##  and emerge_range (m from them where she comes back out),
+##  and emerge_range (m from them where she comes back out), forced_after
+##  (s without getting at anybody before the director brings her to
+##  somebody's room; 0 never),
 ##  drain_reach (m from a
 ##  lamp at which she drinks it).
 const CREATURE_PROFILES := {
 	&"lurker": {
-		"apacible": {"back_window": 2.2, "lit_takes": false, "duct_speed": 1.2, "stalk_distance": 12.0, "freeze_time": 2.0, "scare_calm": 60.0, "creep_scale": 0.8, "drain_reach": 3.0, "unseen_speed": 3.0, "unseen_duct": 2.0, "attempts": 2, "encounter_rest": 120.0, "emerge_delay": [8.0, 12.0], "emerge_mode": "far", "emerge_range": [10.0, 15.0]},
-		"equilibrada": {"back_window": 1.5, "lit_takes": true, "duct_speed": 1.6, "stalk_distance": 8.0, "freeze_time": 3.0, "scare_calm": 45.0, "creep_scale": 0.9, "drain_reach": 3.0, "unseen_speed": 3.5, "unseen_duct": 3.0, "attempts": 3, "encounter_rest": 90.0, "emerge_delay": [4.0, 7.0], "emerge_mode": "near", "emerge_range": [6.0, 10.0]},
-		"desafiante": {"back_window": 1.2, "lit_takes": true, "duct_speed": 2.0, "stalk_distance": 6.0, "freeze_time": 4.0, "scare_calm": 35.0, "creep_scale": 1.3, "drain_reach": 3.5, "unseen_speed": 4.0, "unseen_duct": 4.0, "attempts": 4, "encounter_rest": 60.0, "emerge_delay": [2.0, 4.0], "emerge_mode": "behind", "emerge_range": [3.0, 6.0]},
-		"pesadilla": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 4.0, "freeze_time": 6.0, "scare_calm": 25.0, "creep_scale": 1.5, "drain_reach": 4.0, "unseen_speed": 4.5, "unseen_duct": 5.0, "attempts": 5, "encounter_rest": 45.0, "emerge_delay": [1.0, 2.0], "emerge_mode": "behind", "emerge_range": [3.0, 5.0]},
+		"apacible": {"back_window": 2.2, "lit_takes": false, "duct_speed": 1.2, "stalk_distance": 12.0, "freeze_time": 2.0, "scare_calm": 60.0, "creep_scale": 0.8, "drain_reach": 3.0, "unseen_speed": 3.0, "unseen_duct": 2.0, "attempts": 2, "encounter_rest": 120.0, "emerge_delay": [8.0, 12.0], "emerge_mode": "far", "emerge_range": [10.0, 15.0], "forced_after": 0.0},
+		"equilibrada": {"back_window": 1.5, "lit_takes": true, "duct_speed": 1.6, "stalk_distance": 8.0, "freeze_time": 3.0, "scare_calm": 45.0, "creep_scale": 0.9, "drain_reach": 3.0, "unseen_speed": 3.5, "unseen_duct": 3.0, "attempts": 3, "encounter_rest": 90.0, "emerge_delay": [4.0, 7.0], "emerge_mode": "near", "emerge_range": [6.0, 10.0], "forced_after": 150.0},
+		"desafiante": {"back_window": 1.2, "lit_takes": true, "duct_speed": 2.0, "stalk_distance": 6.0, "freeze_time": 4.0, "scare_calm": 35.0, "creep_scale": 1.3, "drain_reach": 3.5, "unseen_speed": 4.0, "unseen_duct": 4.0, "attempts": 4, "encounter_rest": 60.0, "emerge_delay": [2.0, 4.0], "emerge_mode": "behind", "emerge_range": [3.0, 6.0], "forced_after": 90.0},
+		"pesadilla": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 4.0, "freeze_time": 6.0, "scare_calm": 25.0, "creep_scale": 1.5, "drain_reach": 4.0, "unseen_speed": 4.5, "unseen_duct": 5.0, "attempts": 5, "encounter_rest": 45.0, "emerge_delay": [1.0, 2.0], "emerge_mode": "behind", "emerge_range": [3.0, 5.0], "forced_after": 60.0},
 	},
 }
 

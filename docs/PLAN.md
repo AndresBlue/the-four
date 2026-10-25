@@ -837,8 +837,13 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
       fallos de su mente, corregidos el mismo día: las zonas que le da el
       director se perdían si estaba en un ducto, y parada en una sala sin
       rejilla no volvía a moverse. Que no ataque a quien la mira con luz es
-      su regla (se queda quieta y retrocede): solo coge por la espalda y a
-      oscuras, después del aviso.
+      su regla: solo coge por la espalda, después del aviso. Después, a
+      petición del autor, más agresiva (24 y 25 de octubre,
+      `.claude/specs/spec_f3_aggression.md`): la primera etapa más oscura según
+      la dificultad, iluminada se va al instante al techo, sin que la vean
+      corre mucho más, un encuentro son varios intentos, entra y sale por
+      cualquier placa y el director la lleva a tu sala si pasa mucho sin
+      alcanzar a nadie.
 - `four-7ly.3` **Radiation Lab:** lo mismo, con lo que la radiación le hace al sitio.
 - `four-7ly.4` **The Containment:** lo mismo; es donde estaban guardadas todas.
 

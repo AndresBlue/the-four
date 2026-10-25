@@ -379,6 +379,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 | Tras un intento fallido, vuelve a salir a los | 8 a 12 s | 4 a 7 s | 2 a 4 s | 1 a 2 s |
 | Por dónde vuelve a salir (una rejilla, un hueco o cualquier placa) | Lejos (10 a 15 m) | Cerca (6 a 10 m) | Por tu espalda (3 a 6 m) | Por tu espalda (3 a 5 m) |
 | Descanso tras el último intento | 120 s | 90 s | 60 s | 45 s |
+| Sin alcanzar a nadie, el director la lleva a la sala de alguien a los | Nunca | 150 s | 90 s | 60 s |
 | Velocidad al acercarse | ×0,8 | ×0,9 | ×1,3 | ×1,5 |
 | Lámpara que bebe | 3 m | 3 m | 3,5 m | 4 m |
 | Asomos al borde de la vista | Muchos | Muchos | Normales | Pocos |

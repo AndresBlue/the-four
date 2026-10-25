@@ -85,6 +85,8 @@ var scene_held := false
 ## Her speeds while nobody sees her (tune(); spec_f3_aggression).
 var unseen_speed := 0.0
 var unseen_duct := 0.0
+## Her forced encounters' wait (tune(); the director reads forced_after()).
+var force_after := 0.0
 ## Every capture of hers: {seat, cue, at, forced} (spec_f3_integration 5.9).
 var takes: Array = []
 
@@ -99,6 +101,7 @@ func tune(profile: Dictionary) -> void:
 	duct_speed = float(profile.get("duct_speed", 1.6))
 	unseen_speed = float(profile.get("unseen_speed", 0.0))
 	unseen_duct = float(profile.get("unseen_duct", 0.0))
+	force_after = float(profile.get("forced_after", 0.0))
 	drain_reach = float(profile.get("drain_reach", drain_reach))
 	if routes != null: routes.duct_speed = duct_speed
 	if brain != null: brain.tune(profile)
@@ -962,6 +965,8 @@ func saw_enter(hide: Node3D, _sure := true) -> void:
 	if senses != null: senses.saw_enter(hide)
 
 func noticing() -> bool: return brain != null and brain.noticing()
+
+func forced_after() -> float: return force_after
 
 ## The gate: the machine in charge only; a tool's forced capture is let
 ## through and logged.

@@ -174,6 +174,11 @@ func searched_lately(_room_id: int) -> bool: return false
 ## a creature that has.
 func noticing() -> bool: return false
 
+## Seconds without getting at anybody after which the director brings it into
+## somebody's room (the Lurker's forced encounters, spec_f3_aggression); 0:
+## never.
+func forced_after() -> float: return 0.0
+
 # --- Moving ----------------------------------------------------------------------
 
 ## The one way a creature is put somewhere without walking there: a lift
