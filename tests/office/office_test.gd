@@ -29,9 +29,9 @@ const SETS := ["office_open", "office_private", "mail", "copy", "break", "locker
 ## The office's types, 0 to 25.
 const TYPE_COUNT := 26
 ## Table 1.2, type by type on wing 0: the floor, the lamp and the walls.
-const FINISHES_12 := ["terrazzo", "vinyl", "vinyl", "vinyl", "tile", "vinyl", "vinyl", "vinyl", "concrete", "terrazzo", "terrazzo", "vinyl", "concrete", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete", "terrazzo", "vinyl", "vinyl", "concrete", "concrete", "vinyl", "concrete"]
+const FINISHES_12 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
 const LAMPS_12 := ["troffer", "troffer", "troffer", "troffer", "troffer", "pendant", "batten", "troffer", "batten", "troffer", "troffer", "troffer", "batten", "batten", "troffer", "troffer", "troffer", "troffer", "emergency", "troffer", "emergency", "troffer", "batten", "batten", "troffer", "batten"]
-const WALLS_12 := ["office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "block", "block", "office_paint", "office_paint", "block", "block", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
+const WALLS_12 := ["office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
 var checks: Array = []
 var failed := 0
 ## What each floor of the generator drew and how long it took, for the evidence.
@@ -108,7 +108,7 @@ func palette_tables() -> void:
 	check("La lámpara de cada tipo es la de la tabla 1.2", lamps == LAMPS_12, str(lamps))
 	var walls: Array = range(TYPE_COUNT).map(func(type): return OFFICE.wall_material({"type": type, "wing": 0}))
 	check("Las paredes de cada tipo son las de la tabla 1.2", walls == WALLS_12, str(walls))
-	check("Moqueta solo en la planta 3, en juntas, dirección y secretaría", soft == [Vector2i(5, 2), Vector2i(16, 2), Vector2i(24, 2)], str(soft))
+	check("Moqueta en las naves de la planta 1 y en juntas, dirección y secretaría de la planta 3", soft == [Vector2i(1, 0), Vector2i(2, 0), Vector2i(5, 2), Vector2i(16, 2), Vector2i(24, 2)], str(soft))
 	check("Nunca a oscuras los vestíbulos, la ventanilla, el cuarto eléctrico, el vacío, seguridad y la climatización, y un salón puede estarlo", never_dark == [0, 9, 10, 17, 18, 19, 20, 21, 22, 23] and OFFICE.may_be_dark({"type": OFFICE.OPEN_OFFICE, "hall": 6, "id": 6}), str(never_dark))
 	var plenum: Dictionary = OFFICE.PLENUM
 	var duct_y := float(plenum.duct_y)

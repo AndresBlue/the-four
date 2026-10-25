@@ -106,8 +106,8 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 | **Puesto de seguridad** (planta 3) | Módulo | La batería de seguridad | Mesa de control con monitores apagados, armero vacío; se abre con la ficha y desde aquí se encienden los ventiladores | |
 | **Vestíbulo del montacargas** | Como el del ascensor del hotel | Siempre con luz (también en la 2) | El montacargas con reja; en la 1, su lector de fichas | Nunca entra |
 
-- **Pasillos:** 2,2 a 3 m, con **franjas de color por departamento** pintadas en la pared a media altura. Orientan y dan identidad a cada zona sin un solo texto en pantalla.
-- **Puertas:** del tamaño de las del hotel (2,65 m; decisión del autor: se prueban así), con ventanuco de vidrio armado. Las de servicio, metálicas con barra antipánico. Por eso el falso techo va a 2,95 m.
+- **Pasillos:** 2,2 a 3 m, con un friso de dos tonos igual en todos (taupe hasta 1 m bajo una moldura de nogal, greige encima) y, en cada celda de pasillo, un rótulo negro de letras claras a 1,6 m con el nombre de su zona y un cuadradito del color de su departamento.
+- **Puertas:** del tamaño de las del hotel (2,65 m; decisión del autor: se prueban así): hoja de roble color miel con manilla de latón en marco de nogal, algunas con un ventanuco estrecho de vidrio claro. Las de servicio y las de etapa, de acero verde gris con barra antipánico. Por eso el falso techo va a 2,95 m.
 - **Una regla de construcción:** nada dentro de una sala pasa de 2,2 m (mamparas, estanterías, archivadores). Así **el techo de cada sala es un camino libre** para ella. Las cristaleras con persiana van solo en las paredes entre salas; los despachos son salas propias.
 
 ### Lo de arriba: el falso techo, el plénum y los ductos
@@ -226,7 +226,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - Archivos de estanterías altas con pasillos de un metro, correo, microfichas.
 
 **El grupo electrógeno da para poco.** En el **cuarto eléctrico** (hondo, entre el 40 y el 70 % del recorrido) está el **cuadro general**:
-- una fila de palancas, **una por zona**, con el código de departamento pintado en las franjas de los pasillos (R-2 ARCHIVO, R-4 CORREO);
+- una fila de palancas, **una por zona**, con el código que llevan los rótulos de zona de los pasillos (R-2 ARCHIVO, R-4 CORREO);
 - y una más, roja: **MONTACARGAS**.
 
 **La regla:**
@@ -464,11 +464,11 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - beige, verde oliva, mostaza, marrón de chapa de madera, gris acero;
   - luz **fría y plana**, 4.000–4.500 K. Es lo contrario del hotel, cálido, con moqueta y papel pintado: al bajar se nota.
 - **Materiales:**
-  - suelo de losetas vinílicas (beige con motas) y terrazo en vestíbulos;
+  - suelo de terrazo oscuro en pasillos, vestíbulos, correo y archivo, y de losetas vinílicas claras (beige con motas) en las salas;
   - bloque de hormigón pintado;
-  - paneles de chapa de madera en Dirección, moqueta en losetas en los despachos de Dirección;
+  - paneles de chapa de nogal en el despacho de dirección, una pared de nogal en secretaría y zócalo de nogal en despachos, juntas y seguridad; moqueta en losetas en Dirección y en las naves de la planta 1;
   - placas acústicas con perfilería de aluminio;
-  - vidrio armado y mamparas de acero con persianas venecianas;
+  - vidrio claro (armado solo junto a seguridad) en marco de nogal, con persianas venecianas beige;
   - tela de mampara;
   - chapa galvanizada en los ductos;
   - corcho en los tablones.
@@ -511,7 +511,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - goteo;
   - el zumbido del cuadro;
   - **silencio seco en los archivos** (el papel se lo come todo).
-- **Pasos:** las losetas suenan más (el ruido llega más lejos). La moqueta de Dirección los apaga: allí se oye menos a todos, también a ella.
+- **Pasos:** las losetas suenan más (el ruido llega más lejos). La moqueta de Dirección y la de las naves de la planta 1 los apagan: allí se oye menos a todos, también a ella.
 - **Ella:**
   - garra en placa (toque blando y crujido de perfilería);
   - garra en ducto (golpe de chapa con resonancia);

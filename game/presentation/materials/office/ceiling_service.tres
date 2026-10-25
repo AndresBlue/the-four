@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/materials/office/ceiling_tile.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.66, 0.62, 0.52, 1)
+shader_parameter/base_color = Color(0.7, 0.66, 0.55, 1)
+shader_parameter/yellow_color = Color(0.66, 0.58, 0.4, 1)
+shader_parameter/stain_color = Color(0.47, 0.39, 0.25, 1)
+shader_parameter/map_metres = 3.6
+shader_parameter/map_mode = 2
+shader_parameter/map_detail = 0.6
+shader_parameter/map_roughness = 0.15
+metadata/scan = "officeceiling001"

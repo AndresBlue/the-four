@@ -6,7 +6,7 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather", "walnut": "trim", "walnut_object": "trim", "oak_door": "door"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
@@ -14,14 +14,39 @@ const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
 const GATE_FIXED_X := -0.85
-## Finishes that stand in as a plain colour until their scans are ingested:
-## the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("c4bfae"), "block": Color("a8a59b"), "concrete": Color("8b8780"), "skirting": Color("4a4741"), "vinyl": Color("a9a493"), "terrazzo": Color("bdb6a6"), "opal": Color("f2eee4"), "plaque": Color("2f4a3a"), "switch": Color("d8d0bc")}
-## The cove base along the walls and the department stripe in the corridors
-## (spec 4.1): height and thickness; bottom and top.
+## Finishes that stand in as a plain colour until their own material is made
+## (MATERIAL_DIR): the hotel has no plain paint, block or concrete.
+const PLAIN := {"office_paint": Color("b9ad96"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74")}
+## Where the office's own materials are (spec_rediseno 8): a key's <key>.tres
+## there takes the place of its stand-in, or of the hotel material of the same
+## name (OWN_OVER: the carpet, the ceiling tile).
+const MATERIAL_DIR := "res://game/presentation/materials/office/%s.tres"
+const OWN_OVER := ["carpet", "ceiling_service"]
+## The cove base along the walls (spec 4.1): height and thickness.
 const SKIRT := Vector2(0.10, 0.006)
-const STRIPE := Vector2(1.05, 1.20)
-const STRIPE_PROUD := 0.003
+## The lower wall (spec_rediseno 2, wall_trim()): the frieze's taupe up to
+## FRIEZE_TOP under a walnut rail (height, proud), the walnut dado up to
+## DADO_TOP and its cap (height, proud), the air rooms' darker paint up to
+## TWO_TONE_TOP; paint is LINING proud of the wall, the dado DADO_THICK. The
+## rail stays inside a door frame's 2 cm.
+const FRIEZE_TOP := 1.0
+const RAIL := Vector2(0.06, 0.016)
+const DADO_TOP := 1.05
+const DADO_CAP := Vector2(0.04, 0.018)
+const DADO_THICK := 0.015
+const TWO_TONE_TOP := 1.2
+const LINING := 0.004
+## A corridor cell's zone sign (R5): its height, the plate's height and
+## depth, its width per letter and its margin, and the swatch of the zone's
+## department colour.
+const SIGN_Y := 1.6
+const SIGN_HIGH := 0.12
+const SIGN_DEPTH := 0.006
+const SIGN_LETTER := 0.055
+const SIGN_MARGIN := 0.03
+const SWATCH := 0.05
+## A notice board's frame, half its width (wall_art()): what a zone sign must clear.
+const BOARD_HALF := 0.63
 ## A glazed run (6.3): sill and head heights, mullions and the glass.
 const GLASS_SILL := 0.95
 const GLASS_HEAD := 2.65
@@ -29,15 +54,33 @@ const MULLION := 0.05
 const MULLION_PITCH := 1.2
 const GLASS_THICK := 0.008
 const BLIND_PITCH := 0.022
+## The walnut sill board over a glazed run's sill wall: thickness, and how far
+## past the wall's face (inside a door frame's 2 cm); its top SILL_OVER over
+## the sill wall's and the lower wall's, so no two faces share a plane; the
+## blinds' beige (6.4).
+const SILL_BOARD := Vector2(0.03, 0.016)
+const SILL_OVER := 0.002
+const BLIND_COLOR := Color("cbbf9f")
 const BLIND := preload("res://game/presentation/shaders/venetian_blind.gdshader")
 const WIRED_GLASS := preload("res://game/presentation/shaders/wired_glass.gdshader")
 ## A door's plaque on the wall (6.7): size, height, distance past the frame.
 const PLAQUE := Vector2(0.26, 0.09)
 const PLAQUE_Y := 1.55
 const PLAQUE_FROM_JAMB := 0.22
+## The plaque's depth off the wall (proud of a panelled wall too), the
+## doorway's frame (jamb width, how far past each face of the wall), the
+## metal threshold strip across a doorway (the frame's depth, its height),
+## and the share of wooden doors with a vision panel (vary salt 172).
+const PLAQUE_DEPTH := 0.019
+const JAMB_WIDE := 0.09
+const JAMB_PROUD := 0.02
+const THRESHOLD := Vector2(0.18 + JAMB_PROUD * 2.0, 0.006)
+const VISION := 0.35
 const SWITCH_Y := 1.15
 ## A wall boundary's name (hotel walls(): "Wall_<dx>_<dz>") and its side.
 const SIDE_OF := {"Wall_-1_0": "west", "Wall_1_0": "east", "Wall_0_-1": "north", "Wall_0_1": "south"}
+## A wall boundary's step to the cell on its other side (FLOOR.beside()).
+const SIDE_STEP := {"Wall_-1_0": Vector2i(-1, 0), "Wall_1_0": Vector2i(1, 0), "Wall_0_-1": Vector2i(0, -1), "Wall_0_1": Vector2i(0, 1)}
 ## The false ceiling (spec 4.1): tile thickness and face over the grid's
 ## underside, the T-grid's flange width, thickness and web height, the
 ## troffer's housing depth and lens recess, its light.
@@ -57,6 +100,12 @@ func _init() -> void:
 	var glass := ShaderMaterial.new()
 	glass.shader = WIRED_GLASS
 	materials["wired_glass"] = glass
+	# Clear glass, a little dirty: the same pane without its wire.
+	var clear := ShaderMaterial.new()
+	clear.shader = WIRED_GLASS
+	clear.set_shader_parameter("wire", 0.0)
+	clear.set_shader_parameter("glass_color", Color(0.78, 0.8, 0.76, 0.12))
+	materials["clear_glass"] = clear
 	for key in PLAIN:
 		var plain := StandardMaterial3D.new()
 		plain.albedo_color = PLAIN[key]
@@ -64,22 +113,40 @@ func _init() -> void:
 		plain.set_meta("stand_in", true)
 		materials[key] = plain
 	for key in STAND_INS:
-		var path := "res://game/presentation/materials/office/%s.tres" % key
-		if ResourceLoader.exists(path):
-			materials[key] = load(path).duplicate()
-			materials[key].set_meta("lite", key)
-			apply_scan(materials[key], small_maps)
-		else:
-			materials[key] = materials[STAND_INS[key]].duplicate()
-			materials[key].set_meta("stand_in", true)
+		materials[key] = materials[STAND_INS[key]].duplicate()
+		materials[key].set_meta("stand_in", true)
+	for key in PLAIN.keys() + STAND_INS.keys() + OWN_OVER:
+		var path: String = MATERIAL_DIR % key
+		if not ResourceLoader.exists(path): continue
+		materials[key] = load(path).duplicate()
+		# No lite picture of its own: on Muy bajo, its flat_color.
+		materials[key].set_meta("lite", "office/" + key)
+		apply_scan(materials[key], small_maps)
+
+## The office's own scans leave the static cache with their floor: scan_maps()
+## keeps every set it loads, so a hotel built next in this process would carry
+## the office's pictures in video memory. A set the hotel shares (officeceiling001)
+## only leaves the cache; its picture stays with the hotel's own material.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_PREDELETE: return
+	for key in materials:
+		var material: Material = materials[key]
+		if not material is ShaderMaterial or not material.has_meta("scan"): continue
+		if not String(material.get_meta("lite", "")).begins_with("office/"): continue
+		var set_name := String(material.get_meta("scan"))
+		scans.erase(set_name)
+		scans.erase(set_name + "_1k")
 
 ## A false ceiling of 0.6 m tiles on the world's lattice (5.2): its collider
 ## over the tiles, runs of tiles round the troffers, grilles and gaps, the
 ## T-grid, the troffers, the grilles, and the dark of the plenum over a gap.
-## A room with no false ceiling keeps the hotel's slab (5.3).
+## A room with no false ceiling shows the bare concrete slab (spec_rediseno 2).
 func ceiling(node: Node3D, room: Dictionary) -> void:
 	if not OFFICE.false_ceiling(room):
-		super(node, room)
+		# The slab itself, the plenum's concrete (spec_rediseno 2), not the
+		# hotel's ceiling over its service rooms.
+		var slab_span := FLOOR.size_of(room)
+		box(node, Vector3(0, float(room.height) + 0.1, 0), Vector3(slab_span.x, 0.2, slab_span.y), "slab", true)
 		return
 	var h := float(room.height)
 	var span := FLOOR.size_of(room)
@@ -271,17 +338,29 @@ const HANG_ANGLE := Vector2(0.6, 1.2)
 const HANGING := 0.4
 const FALLEN := 0.5
 
-## The room being built, for the walls that need it (its stripe).
+## The room being built, for the walls that need it (its lower wall, its sign).
 var building_room := {}
 ## The failing troffer's lens of the room being built (ceiling() to
 ## room_lamp()) and its share of the room's light.
 var failing_lens := ""
 var failing_share := 1.0
-## The corridor cells whose zone name is already on a stripe.
+## The corridor cells whose zone sign is already up.
 var labelled := {}
+## The span along its wall of each boundary's zone sign (zone_sign()), by the
+## boundary's instance id: wall_art() hangs nothing over it.
+var sign_spans := {}
+## The secretary's one panelled wall (wall_trim() "panel_wall"): the side
+## build_room() chose, "" in any other room.
+var panel_side := ""
 
 func build_room(node: Node3D, room: Dictionary) -> void:
 	building_room = room
+	panel_side = ""
+	if OFFICE.wall_trim(room) == "panel_wall":
+		for side in ["north", "south", "west", "east"]:
+			if not room.get("open_sides", []).has(side) and not room.get("glazed", []).has(side):
+				panel_side = side
+				break
 	super(node, room)
 	building_room = {}
 
@@ -533,9 +612,9 @@ func duct_cuts(boundary: Node3D, x: float, length: float, height: float) -> Arra
 		if b - a > 0.01: cuts.append([a, b, maxf(low.y, 0.0), minf(high.y, height)])
 	return cuts
 
-## An office wall (6.2): plain paint, a cove base on this room's face, and in
-## a corridor its department's stripe; none of the hotel's dado, rails,
-## sockets or cornice.
+## An office wall (6.2; spec_rediseno 2): its paint, a cove base and the
+## room's lower wall on this room's face, and once in a corridor cell its zone
+## sign; none of the hotel's dado, rails, sockets or cornice.
 func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
 	var side := String(SIDE_OF.get(String(boundary.name), ""))
 	if not building_room.is_empty() and building_room.get("glazed", []).has(side):
@@ -555,62 +634,166 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 		if float(cut[2]) > 0.01:
 			wall_core(boundary, Vector3(mx, float(cut[2]) * 0.5, 0), Vector3(mid, float(cut[2]), 0.18), inner)
 			box(boundary, Vector3(mx, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(mid, SKIRT.x, SKIRT.y), "skirting")
+			lower_wall(boundary, mx, mid, height, inner, float(cut[2]))
 		if float(cut[3]) < height - 0.01: wall_core(boundary, Vector3(mx, (float(cut[3]) + height) * 0.5, 0), Vector3(mid, height - float(cut[3]), 0.18), inner)
 		return
 	wall_core(boundary, Vector3(x, height / 2, 0), Vector3(length, height, 0.18), inner)
 	var room_node := boundary.get_parent() as Node3D
 	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
 	box(boundary, Vector3(x, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(length, SKIRT.x, SKIRT.y), "skirting")
+	lower_wall(boundary, x, length, height, inner)
 	if not building_room.is_empty() and length >= EMERGENCY_RUN and emergency_room(building_room): emergency_runs.append([boundary, x, inner])
 	if building_room.is_empty() or not (int(building_room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY]): return
-	var colour: Color = OFFICE.stripe_color(manifest, building_room)
-	var key := "stripe_%s" % colour.to_html(false)
-	if not materials.has(key):
-		var stripe := StandardMaterial3D.new()
-		stripe.albedo_color = colour
-		stripe.roughness = 0.7
-		materials[key] = stripe
-	box(boundary, Vector3(x, (STRIPE.x + STRIPE.y) * 0.5, inner * (0.09 + STRIPE_PROUD)), Vector3(length, STRIPE.y - STRIPE.x, 0.004), key)
-	# Once a corridor cell, on its first run long enough, the zone's name on
-	# the stripe.
+	# Once a corridor cell, on its first run long enough, the zone's sign.
 	if length < 3.0 or labelled.has(int(building_room.id)): return
 	var label: String = OFFICE.zone_label(manifest, building_room)
 	if label.is_empty(): return
 	labelled[int(building_room.id)] = true
-	text(boundary, label, Vector3(x, (STRIPE.x + STRIPE.y) * 0.5, inner * (0.09 + STRIPE_PROUD + 0.004)), 0.0 if inner > 0 else PI, 12, NUMBER_REACH, Color("f1ead8"))
+	zone_sign(boundary, x, inner, label, OFFICE.stripe_color(manifest, building_room))
 
-## A glazed run (6.3): sill and head as wall, the glass between with its
-## collider and a mullion every MULLION_PITCH. Both rooms build their half of
-## the sill and head; the glass and mullions only the room whose west or
-## north side it is (inner > 0), so the pane is there once.
+## The lower part of this room's face of a wall (wall_trim()): nothing, the
+## frieze (taupe under a walnut rail), the walnut dado and its cap, the air
+## rooms' darker paint, or a panelled wall of walnut veneer on the
+## secretary's panel_side. A glazed run or a duct cuts it at `top`.
+func lower_wall(boundary: Node3D, x: float, length: float, height: float, inner: int, top := INF) -> void:
+	if building_room.is_empty() or top <= SKIRT.x + 0.01: return
+	var face := inner * 0.09
+	match OFFICE.wall_trim(building_room):
+		"frieze":
+			var high := minf(FRIEZE_TOP, top)
+			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * LINING * 0.5), Vector3(length, high - SKIRT.x, LINING), "taupe")
+			if top > FRIEZE_TOP: box(boundary, Vector3(x, FRIEZE_TOP, face + inner * RAIL.y * 0.5), Vector3(length, RAIL.x, RAIL.y), "walnut")
+		"dado":
+			var high := minf(DADO_TOP, top)
+			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * DADO_THICK * 0.5), Vector3(length, high - SKIRT.x, DADO_THICK), "walnut")
+			if top > DADO_TOP: box(boundary, Vector3(x, DADO_TOP + DADO_CAP.x * 0.5, face + inner * DADO_CAP.y * 0.5), Vector3(length, DADO_CAP.x, DADO_CAP.y), "walnut")
+		"two_tone":
+			var high := minf(TWO_TONE_TOP, top)
+			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * LINING * 0.5), Vector3(length, high - SKIRT.x, LINING), "two_tone_low")
+		"panel_wall":
+			if String(SIDE_OF.get(String(boundary.name), "")) != panel_side: return
+			var high := minf(height, top)
+			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * DADO_THICK * 0.5), Vector3(length, high - SKIRT.x, DADO_THICK), "veneer")
+
+## How far this room's lower wall stands off the face of its wall on `side`
+## (wall_trim()), for what is fixed low on it: the duct's wall grilles.
+func lining(side: String) -> float:
+	if building_room.is_empty(): return 0.0
+	match OFFICE.wall_trim(building_room):
+		"frieze", "two_tone": return LINING
+		"dado": return DADO_THICK
+		"panel_wall": return DADO_THICK if side == panel_side else 0.0
+	return 0.0
+
+## How far the secretary's panelled wall stands off a wall boundary's face:
+## DADO_THICK on panel_side, 0 elsewhere (the switch and the posters sit on it).
+func panel_lift(boundary: Node3D) -> float:
+	return DADO_THICK if not panel_side.is_empty() and String(SIDE_OF.get(String(boundary.name), "")) == panel_side else 0.0
+
+## A corridor cell's zone sign (R5): a black plate at SIGN_Y with the zone's
+## name in light letters and a swatch of its department's colour.
+func zone_sign(boundary: Node3D, x: float, inner: int, label: String, colour: Color) -> void:
+	var key := "swatch_%s" % colour.to_html(false)
+	if not materials.has(key):
+		var swatch := StandardMaterial3D.new()
+		swatch.albedo_color = colour
+		swatch.roughness = 0.7
+		materials[key] = swatch
+	var wide := SIGN_MARGIN * 3.0 + SWATCH + SIGN_LETTER * label.length()
+	# wall_art() keeps its board and its posters off this span.
+	sign_spans[boundary.get_instance_id()] = Vector2(x - wide * 0.5, x + wide * 0.5)
+	var face := inner * 0.09
+	box(boundary, Vector3(x, SIGN_Y, face + inner * SIGN_DEPTH * 0.5), Vector3(wide, SIGN_HIGH, SIGN_DEPTH), "plaque")
+	box(boundary, Vector3(x - wide * 0.5 + SIGN_MARGIN + SWATCH * 0.5, SIGN_Y, face + inner * (SIGN_DEPTH + 0.0005)), Vector3(SWATCH, SWATCH, 0.001), key)
+	text(boundary, label, Vector3(x + (SIGN_MARGIN + SWATCH) * 0.5, SIGN_Y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 12, NUMBER_REACH, Color("e8e4d6"))
+
+## Whether this boundary's zone sign reaches within `half` of `at` along the wall.
+func sign_under(boundary: Node3D, at: float, half: float) -> bool:
+	if not sign_spans.has(boundary.get_instance_id()): return false
+	var span: Vector2 = sign_spans[boundary.get_instance_id()]
+	return at + half > span.x and at - half < span.y
+
+## No cornice in the offices (spec_rediseno 2): the wall meets the false
+## ceiling's grid, and over a doorway the frame's head is all there is.
+func cornice(_boundary: Node3D, _x: float, _length: float, _height: float, _inner: int, _both := true) -> void:
+	pass
+
+## The corner round a cell that is not part of the room (found as the
+## hotel's corner_posts() finds it): the wall's post, its skirting and its
+## lower wall carried round, none of the hotel's dado, rails or cornice.
+func corner_posts(node: Node3D, room: Dictionary) -> void:
+	var span := FLOOR.size_of(room)
+	var height: float = room.height
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			var a: int = FLOOR.beside(room, Vector2i(sx, 0))
+			var b: int = FLOOR.beside(room, Vector2i(0, sz))
+			if a < 0 or b < 0 or not opens_on(int(room.id), a) or not opens_on(int(room.id), b): continue
+			var d: int = FLOOR.beside(manifest.rooms[a], Vector2i(0, sz))
+			if d < 0 or opens_on(a, d) or opens_on(b, d): continue
+			var corner := Vector3(sx * span.x * 0.5, 0, sz * span.y * 0.5)
+			var into := Vector3(-sx, 0, -sz)
+			box(node, corner + into * 0.045 + Vector3(0, height * 0.5, 0), Vector3(0.09, height, 0.09), wall_material)
+			corner_piece(node, corner, into, 0.0, SKIRT.x, SKIRT.y, "skirting")
+			match OFFICE.wall_trim(room):
+				"frieze":
+					corner_piece(node, corner, into, SKIRT.x, FRIEZE_TOP, LINING, "taupe")
+					corner_piece(node, corner, into, FRIEZE_TOP - RAIL.x * 0.5, FRIEZE_TOP + RAIL.x * 0.5, RAIL.y, "walnut")
+				"dado":
+					corner_piece(node, corner, into, SKIRT.x, DADO_TOP, DADO_THICK, "walnut")
+					corner_piece(node, corner, into, DADO_TOP, DADO_TOP + DADO_CAP.x, DADO_CAP.y, "walnut")
+				"two_tone":
+					corner_piece(node, corner, into, SKIRT.x, TWO_TONE_TOP, LINING, "two_tone_low")
+
+## A square piece filling a corner post's notch from `low` to `high`, `proud`
+## past the faces of its two walls.
+func corner_piece(node: Node3D, corner: Vector3, into: Vector3, low: float, high: float, proud: float, material: String) -> void:
+	var side := 0.09 + proud
+	box(node, corner + into * (side * 0.5) + Vector3(0, (low + high) * 0.5, 0), Vector3(side, high - low, side), material)
+
+## A glazed run (6.3; spec_rediseno 2): the sill and the head as wall, this
+## room's lower wall up to the sill under a walnut sill board, the glass
+## between with its collider, walnut mullions every MULLION_PITCH. Both rooms
+## build their half of the sill, the board and the head; the glass and
+## mullions only the room whose west or north side it is (inner > 0), so the
+## pane is there once. Clear glass, wired beside the security post; a beige
+## blind on the office side of each pane, none at the window counter or the
+## security post (spec_rediseno 8: not in panes).
 func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
 	wall_core(boundary, Vector3(x, GLASS_SILL / 2, 0), Vector3(length, GLASS_SILL, 0.18), inner)
 	wall_core(boundary, Vector3(x, (GLASS_HEAD + height) / 2, 0), Vector3(length, height - GLASS_HEAD, 0.18), inner)
 	var room_node := boundary.get_parent() as Node3D
 	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
 	box(boundary, Vector3(x, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(length, SKIRT.x, SKIRT.y), "skirting")
+	lower_wall(boundary, x, length, height, inner, GLASS_SILL)
+	box(boundary, Vector3(x, GLASS_SILL + SILL_OVER - SILL_BOARD.x * 0.5, inner * (0.09 + SILL_BOARD.y) * 0.5), Vector3(length, SILL_BOARD.x, 0.09 + SILL_BOARD.y), "walnut")
 	if inner < 0: return
 	var band := GLASS_HEAD - GLASS_SILL
+	var both: Array = [int(building_room.type), int(room_across(boundary).get("type", -1))]
 	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, 0.06), "", true)
-	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, GLASS_THICK), "wired_glass")
+	box(boundary, Vector3(x, GLASS_SILL + band * 0.5, 0), Vector3(length, band, GLASS_THICK), "wired_glass" if OFFICE.SECURITY in both else "clear_glass")
 	var count := maxi(1, roundi(length / MULLION_PITCH))
 	for k in count + 1:
 		var at := x - length * 0.5 + length * k / count
-		box(boundary, Vector3(at, GLASS_SILL + band * 0.5, 0), Vector3(MULLION, band, 0.06), "steel_frame")
-	for y in [GLASS_SILL, GLASS_HEAD]: box(boundary, Vector3(x, y, 0), Vector3(length, MULLION, 0.07), "steel_frame")
+		box(boundary, Vector3(at, GLASS_SILL + band * 0.5, 0), Vector3(MULLION, band, 0.06), "walnut")
+	for y in [GLASS_SILL, GLASS_HEAD]: box(boundary, Vector3(x, y, 0), Vector3(length, MULLION, 0.07), "walnut")
+	if OFFICE.SECURITY in both or OFFICE.WINDOW in both: return
 	# Blinds on the office side of each pane (6.4), not the corridor's.
 	var office_side: int = -inner if int(building_room.type) in [OFFICE.CORRIDOR, OFFICE.GALLERY] else inner
 	for k in count:
 		var pane := length / count
 		var centre := x - length * 0.5 + pane * (k + 0.5)
-		var spot := (room_node.position if room_node != null else Vector3.ZERO) + boundary.transform * Vector3(centre, 0, 0)
+		var spot: Vector3 = (room_node.position if room_node != null else Vector3.ZERO) + boundary.transform * Vector3(centre, 0, 0)
 		var roll := vary(spot, 170)
 		var blind := ShaderMaterial.new()
 		blind.shader = BLIND
 		blind.set_shader_parameter("pitch", BLIND_PITCH)
 		blind.set_shader_parameter("height", band)
+		blind.set_shader_parameter("color", BLIND_COLOR)
 		blind.set_shader_parameter("open", 0.05 if roll < 0.33 else 0.0 if roll >= 0.66 else 0.35 + vary(spot, 171) * 0.3)
-		blind.set_shader_parameter("drop", 1.0 if roll < 0.66 else 0.25 / band)
+		# Most of them half down (spec_rediseno 2), some right down, a few up.
+		var drop: float = 1.0 if roll < 0.25 else 0.5 if roll < 0.8 else 0.25 / band
+		blind.set_shader_parameter("drop", drop)
 		var quad := QuadMesh.new()
 		quad.size = Vector2(pane - MULLION, band - 0.06)
 		quad.material = blind
@@ -619,7 +802,16 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 		sheet.position = Vector3(centre, GLASS_SILL + band * 0.5 - 0.03, office_side * 0.045)
 		boundary.add_child(sheet)
 		panes.append(sheet)
-		box(boundary, Vector3(centre, GLASS_HEAD - 0.05, office_side * 0.045), Vector3(pane - MULLION, 0.04, 0.04), "steel_frame")
+		box(boundary, Vector3(centre, GLASS_HEAD - 0.05, office_side * 0.045), Vector3(pane - MULLION, 0.04, 0.04), "tgrid")
+
+## The room on the other side of a wall boundary of the room being built, or
+## {} past the planta's edge.
+func room_across(boundary: Node3D) -> Dictionary:
+	var step: Vector2i = SIDE_STEP.get(String(boundary.name), Vector2i.ZERO)
+	if step == Vector2i.ZERO: return {}
+	var id: int = FLOOR.beside(building_room, step)
+	if id < 0 or id >= manifest.rooms.size(): return {}
+	return manifest.rooms[id]
 
 ## Every blind of a glazed run, its sheet (The Lurker's lie of a shadow
 ## behind one, lurker_hallucinations).
@@ -702,7 +894,9 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	var half: float = span.x * 0.5 if back.x != 0 else span.y * 0.5
 	var front := Node3D.new()
 	front.name = "ArrivalLift"
-	front.position = back * (half - 0.09 - LIFT_PROUD)
+	# Clear of the frieze's rail; the casing reaches back to the wall.
+	var proud: float = RAIL.y if OFFICE.wall_trim(room) == "frieze" else 0.0
+	front.position = back * (half - 0.09 - LIFT_PROUD - proud)
 	front.rotation.y = atan2(-back.x, -back.z)
 	node.add_child(front)
 	var bounds := AABB()
@@ -721,8 +915,8 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	var x0 := bounds.position.x - 0.04
 	var x1 := bounds.end.x + 0.04
 	var top := bounds.end.y + 0.04
-	for x in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.02), Vector3(0.08, top, 0.04), "steel_frame")
-	box(front, Vector3((x0 + x1) * 0.5, top, 0.02), Vector3(x1 - x0 + 0.08, 0.08, 0.04), "steel_frame")
+	for x in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.02 - proud * 0.5), Vector3(0.08, top, 0.04 + proud), "steel_frame")
+	box(front, Vector3((x0 + x1) * 0.5, top, 0.02 - proud * 0.5), Vector3(x1 - x0 + 0.08, 0.08, 0.04 + proud), "steel_frame")
 
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
@@ -767,8 +961,10 @@ func build_exit_door(data: Dictionary) -> void:
 ## The light switch beside the door (6.1): a beige plastic rocker plate at
 ## SWITCH_Y instead of the hotel's brass one.
 func switch_plate(boundary: Node3D, x: float, inner: int) -> void:
-	box(boundary, Vector3(x, SWITCH_Y, inner * 0.094), Vector3(0.08, 0.12, 0.008), "switch", false, "detail")
-	box(boundary, Vector3(x, SWITCH_Y, inner * 0.1), Vector3(0.03, 0.05, 0.008), "switch", false, "detail", Vector3(inner * -0.2, 0, 0))
+	# Proud of the secretary's panelled wall where it is on it.
+	var lift := panel_lift(boundary)
+	box(boundary, Vector3(x, SWITCH_Y, inner * (0.094 + lift)), Vector3(0.08, 0.12, 0.008), "switch", false, "detail")
+	box(boundary, Vector3(x, SWITCH_Y, inner * (0.1 + lift)), Vector3(0.03, 0.05, 0.008), "switch", false, "detail", Vector3(inner * -0.2, 0, 0))
 
 ## The hotel hangs a vent grille on a bare wall; the offices' grilles are
 ## the duct network's (extras(), ceiling()).
@@ -784,13 +980,19 @@ func wall_art(boundary: Node3D, room: Dictionary, at: float, inner: int) -> void
 	var roll := vary(node_point(boundary, at), 170)
 	var face := inner * 0.09
 	var turn := Basis(Vector3.UP, PI if inner < 0 else 0.0)
+	# The board clear of the frieze's rail and the dado's cap.
+	var board_y: float = 1.6 if OFFICE.wall_trim(room) in ["frieze", "dado"] else 1.5
+	# Nothing hangs over a zone sign (zone_sign()): not the board, not a poster.
+	var signed := sign_under(boundary, at, BOARD_HALF)
 	if t in [OFFICE.OFFICE, OFFICE.EXEC_OFFICE, OFFICE.CORRIDOR] and roll < 0.4:
-		box(boundary, Vector3(at, 1.5, face + inner * 0.012), Vector3(1.2, 0.9, 0.02), "cork")
-		box(boundary, Vector3(at, 1.5, face + inner * 0.01), Vector3(1.26, 0.96, 0.016), "steel_frame")
+		if not signed:
+			box(boundary, Vector3(at, board_y, face + inner * 0.012), Vector3(1.2, 0.9, 0.02), "cork")
+			box(boundary, Vector3(at, board_y, face + inner * 0.01), Vector3(1.26, 0.96, 0.016), "steel_frame")
 	elif t in [OFFICE.OFFICE, OFFICE.EXEC_OFFICE, OFFICE.BREAK_ROOM, OFFICE.ARCHIVE] and roll < 0.7:
 		DRESSING.place(self, boundary, "wall_clock", Transform3D(turn, Vector3(at, 2.05, face + inner * 0.027)))
-	else:
-		poster_spots.append({"room": int(room.id), "transform": boundary.global_transform * Transform3D(turn, Vector3(at, 1.5, face + inner * 0.005)) if boundary.is_inside_tree() else Transform3D(turn, Vector3(at, 1.5, face))})
+	elif not signed:
+		var lift := panel_lift(boundary)
+		poster_spots.append({"room": int(room.id), "transform": boundary.global_transform * Transform3D(turn, Vector3(at, 1.5, face + inner * (0.005 + lift))) if boundary.is_inside_tree() else Transform3D(turn, Vector3(at, 1.5, face + inner * lift))})
 
 ## A point along a wall boundary, for vary().
 func node_point(boundary: Node3D, at: float) -> Vector3:
@@ -887,11 +1089,19 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 ## Door plaques (6.7, H2): not on the leaf but on the wall beside the door,
 ## latch side, PLAQUE_FROM_JAMB past the frame: the number of the room behind
 ## (OFFICE.plaque()) on the face of the room it is read from, parented to
-## that room so it batches and layers with it. Not yet kept off reserved spots.
+## that room so it batches and layers with it, proud enough to stand off a
+## panelled wall; not yet kept off reserved spots. The doorway's threshold
+## strip too.
 func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, yaw: float) -> void:
 	var turn := Basis(Vector3.UP, yaw)
 	var normal := turn.z
 	var along := turn.x
+	# The threshold (spec_rediseno 2): a metal strip across the doorway where
+	# one floor meets the next, each room's half on its own batch.
+	for room: Dictionary in [a, b]:
+		var floor_holder: Node3D = room_nodes[int(room.id)]
+		var toward := signf((FLOOR.position_of(room) - center).dot(normal))
+		box(floor_holder, center + normal * toward * THRESHOLD.x * 0.25 + Vector3(0, THRESHOLD.y * 0.5, 0) - floor_holder.position, Vector3(FLOOR.PORTAL, THRESHOLD.y, THRESHOLD.x * 0.5), "threshold", false, "box", Vector3(0, yaw, 0))
 	for pair in [[a, b], [b, a]]:
 		var viewer: Dictionary = pair[0]
 		var behind: Dictionary = pair[1]
@@ -899,9 +1109,9 @@ func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, 
 		if words.is_empty(): continue
 		var side := signf((FLOOR.position_of(viewer) - center).dot(normal))
 		var holder: Node3D = room_nodes[int(viewer.id)]
-		var at := center + along * (FLOOR.PORTAL * 0.5 + 0.05 + PLAQUE_FROM_JAMB + PLAQUE.x * 0.5) + normal * side * (0.09 + 0.002) + Vector3(0, PLAQUE_Y, 0) - holder.position
-		box(holder, at, Vector3(PLAQUE.x, PLAQUE.y, 0.004), "plaque", false, "box", Vector3(0, yaw, 0))
-		text(holder, words, at + normal * side * 0.004, yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
+		var at := center + along * (FLOOR.PORTAL * 0.5 + JAMB_WIDE + PLAQUE_FROM_JAMB + PLAQUE.x * 0.5) + normal * side * (0.09 + PLAQUE_DEPTH * 0.5) + Vector3(0, PLAQUE_Y, 0) - holder.position
+		box(holder, at, Vector3(PLAQUE.x, PLAQUE.y, PLAQUE_DEPTH), "plaque", false, "box", Vector3(0, yaw, 0))
+		text(holder, words, at + normal * side * (PLAQUE_DEPTH * 0.5 + 0.001), yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
 
 ## The office's lockers (9.7): the wardrobe's measures and hinges in olive
 ## steel, louvred at eye height, made once and kept (the baked locker of
@@ -950,69 +1160,83 @@ func hide_skin(_room: Dictionary) -> Dictionary:
 			locker[side] = mesh
 	return locker
 
-## Office doors (6.6), made once and kept: the hotel leaf's bounds and
-## conventions (hinge at the origin, the leaf along +X, centred on its
-## thickness), so the seal, the collider, the swing and the halves are the
-## hotel's. A painted leaf with a vision panel; a steel one with a panic bar
-## for service rooms, the plant rooms and the stage gates; a pressed-steel frame.
-static var office_doors := {}
+## Office doors (spec_rediseno 2), made once a floor and kept: the honey oak
+## leaf, plain or with its narrow vision panel, with a worn brass lever; the
+## green-grey steel one with the panic bar for service and the stages; a
+## walnut frame round every doorway. Per builder, so they wear this floor's
+## materials (presets and lacquer change them in place).
+var office_doors := {}
 
 func leaf_mesh(a: Dictionary, b: Dictionary) -> Mesh:
 	var steel: bool = bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
-	var key := "service" if steel else "vision"
-	if not office_doors.has(key): office_doors[key] = door_leaf_mesh(steel)
+	var key: String = "service" if steel else ("vision" if vary(FLOOR.portal_between(a, b), 172) < VISION else "plain")
+	if not office_doors.has(key): office_doors[key] = door_leaf_mesh(steel, key == "vision")
 	return office_doors[key]
 
 func frame_mesh(_a: Dictionary, _b: Dictionary) -> Mesh:
 	if not office_doors.has("frame"): office_doors["frame"] = door_frame_mesh()
 	return office_doors["frame"]
 
-## A flat leaf the hotel leaf's size; its face one surface, the vision panel
-## (or the panic bar) another.
-func door_leaf_mesh(steel: bool) -> ArrayMesh:
+## A flat leaf the hotel leaf's size: its face one surface (oak or steel),
+## the lever or the panic bar another, and a vision panel's clear glass a
+## third, in a hole cut through the face.
+func door_leaf_mesh(steel: bool, vision: bool) -> ArrayMesh:
 	var bounds := DOOR_LEAF.get_aabb()
+	var c := bounds.get_center()
+	var hole := Rect2(c.x - 0.075, 1.2, 0.15, 0.6)
+	var pieces: Array = [[bounds.size, c]]
+	if vision: pieces = [[Vector3(bounds.size.x, hole.position.y - bounds.position.y, bounds.size.z), Vector3(c.x, (bounds.position.y + hole.position.y) * 0.5, c.z)], [Vector3(bounds.size.x, bounds.end.y - hole.end.y, bounds.size.z), Vector3(c.x, (hole.end.y + bounds.end.y) * 0.5, c.z)], [Vector3(hole.position.x - bounds.position.x, hole.size.y, bounds.size.z), Vector3((bounds.position.x + hole.position.x) * 0.5, hole.get_center().y, c.z)], [Vector3(bounds.end.x - hole.end.x, hole.size.y, bounds.size.z), Vector3((hole.end.x + bounds.end.x) * 0.5, hole.get_center().y, c.z)]]
 	var mesh := ArrayMesh.new()
 	var face := SurfaceTool.new()
 	face.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var slab := BoxMesh.new()
-	slab.size = bounds.size
-	face.append_from(slab, 0, Transform3D(Basis.IDENTITY, bounds.get_center()))
+	for part in pieces:
+		var slab := BoxMesh.new()
+		slab.size = part[0]
+		face.append_from(slab, 0, Transform3D(Basis.IDENTITY, part[1]))
 	face.commit(mesh)
-	var paint := StandardMaterial3D.new()
-	paint.albedo_color = Color("6f7069") if steel else Color("9a8f78")
-	paint.roughness = 0.5 if steel else 0.75
-	paint.metallic = 0.6 if steel else 0.0
-	mesh.surface_set_material(0, paint)
+	mesh.surface_set_material(0, materials.steel_olive if steel else materials.oak_door)
 	var extra := SurfaceTool.new()
 	extra.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var piece := BoxMesh.new()
 	if steel:
 		# The panic bar across the push side, at 1.0.
-		piece.size = Vector3(bounds.size.x * 0.75, 0.05, 0.05)
-		extra.append_from(piece, 0, Transform3D(Basis.IDENTITY, Vector3(bounds.get_center().x, 1.0, bounds.size.z * 0.5 + 0.04)))
+		var bar := BoxMesh.new()
+		bar.size = Vector3(bounds.size.x * 0.75, 0.05, 0.05)
+		extra.append_from(bar, 0, Transform3D(Basis.IDENTITY, Vector3(c.x, 1.0, bounds.size.z * 0.5 + 0.04)))
 	else:
-		# The vision panel, 0.2 by 0.6 from 1.15 to 1.75, proud of both faces.
-		piece.size = Vector3(0.2, 0.6, bounds.size.z + 0.004)
-		extra.append_from(piece, 0, Transform3D(Basis.IDENTITY, Vector3(bounds.get_center().x, 1.45, bounds.get_center().z)))
+		# A lever on each face at the latch side, 1.0 up: its rose, its spindle
+		# and its handle turned towards the hinge.
+		var latch := bounds.end.x - 0.08
+		for side: float in [-1.0, 1.0]:
+			var out := c.z + side * bounds.size.z * 0.5
+			for part in [[Vector3(0.05, 0.05, 0.012), Vector3(latch, 1.0, out + side * 0.006)], [Vector3(0.018, 0.018, 0.04), Vector3(latch, 1.0, out + side * 0.025)], [Vector3(0.12, 0.018, 0.018), Vector3(latch - 0.05, 1.0, out + side * 0.045)]]:
+				var piece := BoxMesh.new()
+				piece.size = part[0]
+				extra.append_from(piece, 0, Transform3D(Basis.IDENTITY, part[1]))
 	extra.commit(mesh)
-	mesh.surface_set_material(1, materials.steel_frame if steel else materials.wired_glass)
+	mesh.surface_set_material(1, materials.steel_frame if steel else materials.gold)
+	if vision:
+		var glass := SurfaceTool.new()
+		glass.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var pane := BoxMesh.new()
+		pane.size = Vector3(hole.size.x, hole.size.y, 0.006)
+		glass.append_from(pane, 0, Transform3D(Basis.IDENTITY, Vector3(hole.get_center().x, hole.get_center().y, c.z)))
+		glass.commit(mesh)
+		mesh.surface_set_material(2, materials.clear_glass)
 	return mesh
 
-## A pressed-steel frame round the doorway: two jambs and a head.
+## A walnut frame round the doorway: two jambs JAMB_WIDE wide, JAMB_PROUD past
+## each face of the wall, and the head.
 func door_frame_mesh() -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var half := FLOOR.PORTAL * 0.5
-	for part in [[Vector3(0.05, OPENING_HIGH, 0.22), Vector3(-half - 0.025, OPENING_HIGH * 0.5, 0)], [Vector3(0.05, OPENING_HIGH, 0.22), Vector3(half + 0.025, OPENING_HIGH * 0.5, 0)], [Vector3(FLOOR.PORTAL + 0.1, 0.05, 0.22), Vector3(0, OPENING_HIGH + 0.025, 0)]]:
+	var deep := 0.18 + JAMB_PROUD * 2.0
+	for part in [[Vector3(JAMB_WIDE, OPENING_HIGH, deep), Vector3(-half - JAMB_WIDE * 0.5, OPENING_HIGH * 0.5, 0)], [Vector3(JAMB_WIDE, OPENING_HIGH, deep), Vector3(half + JAMB_WIDE * 0.5, OPENING_HIGH * 0.5, 0)], [Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE, deep), Vector3(0, OPENING_HIGH + JAMB_WIDE * 0.5, 0)]]:
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = part[0]
 		tool.append_from(box_mesh, 0, Transform3D(Basis.IDENTITY, part[1]))
 	var mesh := tool.commit()
-	var steel := StandardMaterial3D.new()
-	steel.albedo_color = Color("5d5f5a")
-	steel.metallic = 0.5
-	steel.roughness = 0.55
-	mesh.surface_set_material(0, steel)
+	mesh.surface_set_material(0, materials.walnut_object)
 	return mesh
 
 ## The office's corner pieces first (9.3); the hotel's own kinds as the hotel.
@@ -1038,8 +1262,11 @@ func extras(node: Node3D, room: Dictionary) -> void:
 		var at := Vector3(float(e.point[0]), float(e.point[1]), float(e.point[2])) - node.position
 		var face := Basis(Vector3.UP, float(e.yaw)).z
 		var flat: bool = absf(face.z) > 0.5
-		box(node, at + face * 0.002, Vector3(0.45, 0.25, 0.004) if flat else Vector3(0.004, 0.25, 0.45), "black")
-		for k in 5: box(node, at + face * 0.01 + Vector3(0, -0.1 + k * 0.05, 0), Vector3(0.43, 0.012, 0.016) if flat else Vector3(0.016, 0.012, 0.43), "grille_metal")
+		# Proud of the room's lower wall on the wall it faces away from.
+		var wall_side: String = ("north" if face.z > 0.0 else "south") if flat else ("west" if face.x > 0.0 else "east")
+		var lift := lining(wall_side)
+		box(node, at + face * (0.002 + lift), Vector3(0.45, 0.25, 0.004) if flat else Vector3(0.004, 0.25, 0.45), "black")
+		for k in 5: box(node, at + face * (0.01 + lift) + Vector3(0, -0.1 + k * 0.05, 0), Vector3(0.43, 0.012, 0.016) if flat else Vector3(0.016, 0.012, 0.43), "grille_metal")
 	if int(room.id) == int(manifest.get("start", -1)) and manifest.has("arrival_lift"): arrival_lift(node, room)
 	# The room's free-standing furniture (9.2), each item in a holder of its own.
 	var items: Array = room.get("furniture", [])

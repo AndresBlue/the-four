@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/tile.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.45, 0.4, 0.34, 1)
+shader_parameter/tile_color = Color(0.47, 0.42, 0.36, 1)
+shader_parameter/alternate_color = Color(0.44, 0.39, 0.33, 1)
+shader_parameter/grout_color = Color(0.3, 0.28, 0.25, 1)
+shader_parameter/tile_size = 0.2
+shader_parameter/grout_width = 0.003
+shader_parameter/checker = 0.2
+shader_parameter/grime = 0.5
+shader_parameter/tile_count = 6.0
+shader_parameter/map_metres = 1.2
+shader_parameter/map_mode = 1
+shader_parameter/map_tint = Color(0.47, 0.42, 0.36, 1)
+shader_parameter/map_roughness = 0.0
+shader_parameter/map_metallic = 0.0
+metadata/scan = "office_anti_skid_tiles"

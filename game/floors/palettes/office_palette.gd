@@ -227,15 +227,30 @@ const LETTERS := ["P", "R", "D"]
 const TYPE_LETTERS := {21: "S", 8: "M", 18: "M", 22: "M"}
 ## Where the creature never goes and nobody is taken.
 const OFF_LIMITS := [9, 10, 19]
-## Carpet and veneer: on wing 2 only.
+## Carpet (floor_finish(), spec_rediseno 0): on wing 2 under the rugs of the
+## boardroom, the director's office and the secretary's; on wing 0 the open
+## office and the cubicles, with its soft step.
 const CARPET := [5, 16, 24]
-## The floor of each type (floor_finish()); CARPET on wing 2 is carpet instead.
-const FINISH_BY_TYPE := ["terrazzo", "vinyl", "vinyl", "vinyl", "tile", "vinyl", "vinyl", "vinyl", "concrete", "terrazzo", "terrazzo", "vinyl", "concrete", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete", "terrazzo", "vinyl", "vinyl", "concrete", "concrete", "vinyl", "concrete"]
-const FINISHES := ["terrazzo", "tile", "carpet", "concrete", "vinyl"]
-## Concrete block walls (wall_material()): corridors, toilets, service and
-## plant rooms.
-const BLOCK_WALLS := [4, 7, 8, 11, 12, 14, 18, 22, 23, 25]
-const WALLS := ["office_paint", "block", "veneer"]
+const NAVE_CARPET := [1, 2]
+## The floor of each type (floor_finish(), spec_rediseno 2): dark terrazzo in
+## the corridors, lobbies, mail and archives; light vinyl in the rooms;
+## sealed concrete in the store, the service corridor and the depot; the
+## electrical room's ridged tile (quarry). CARPET on wing 2 and NAVE_CARPET on
+## wing 0 are carpet instead.
+const FINISH_BY_TYPE := ["vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
+const FINISHES := ["terrazzo", "tile", "carpet", "concrete", "vinyl", "quarry"]
+## Painted concrete block (wall_material()): the store, the service
+## corridor, the electrical room, the air rooms and the depot.
+const BLOCK_WALLS := [8, 12, 18, 22, 23, 25]
+const WALLS := ["office_paint", "block", "veneer", "partition"]
+## The lower wall of each type (wall_trim(), spec_rediseno 2): the frieze of
+## the corridors, the lobbies and the reception, the walnut dado round the
+## office, the boardroom and the security post, the air rooms' two tones of
+## paint, the secretary's one panelled wall; "" none.
+const FRIEZE_ROOMS := [0, 10, 11, 19]
+const DADO_ROOMS := [3, 5, 21]
+const TWO_TONE_ROOMS := [22, 23]
+const TRIMS := ["", "frieze", "dado", "two_tone", "panel_wall"]
 const LAMPS := ["troffer", "batten", "pendant", "emergency"]
 ## Where the special rooms lie, as a share of the walk.
 const WINDOW_DEPTH := Vector2(0.15, 0.45)
@@ -351,14 +366,28 @@ static func hard_floor(room: Dictionary) -> bool:
 
 ## The floor's material (FINISHES).
 static func floor_finish(room: Dictionary) -> String:
-	if int(room.type) in CARPET and int(room.get("wing", 0)) == 2: return "carpet"
-	return String(FINISH_BY_TYPE[int(room.type)])
+	var room_type := int(room.type)
+	var wing := int(room.get("wing", 0))
+	if (room_type in CARPET and wing == 2) or (room_type in NAVE_CARPET and wing == 0): return "carpet"
+	return String(FINISH_BY_TYPE[room_type])
 
-## The walls' material (WALLS): veneer where the carpet is, block where the
-## building shows, paint elsewhere.
+## The walls' material (WALLS): the director's walnut veneer, the copy room's
+## demountable partition, block where the building shows, the greige vinyl
+## wallcovering elsewhere.
 static func wall_material(room: Dictionary) -> String:
-	if int(room.type) in CARPET and int(room.get("wing", 0)) == 2: return "veneer"
-	return "block" if int(room.type) in BLOCK_WALLS else "office_paint"
+	var room_type := int(room.type)
+	if room_type == EXEC_OFFICE and int(room.get("wing", 0)) == 2: return "veneer"
+	if room_type == COPY_ROOM: return "partition"
+	return "block" if room_type in BLOCK_WALLS else "office_paint"
+
+## The lower wall of a room (TRIMS).
+static func wall_trim(room: Dictionary) -> String:
+	var room_type := int(room.type)
+	if room_type == SECRETARY: return "panel_wall"
+	if room_type in FRIEZE_ROOMS: return "frieze"
+	if room_type in DADO_ROOMS: return "dado"
+	if room_type in TWO_TONE_ROOMS: return "two_tone"
+	return ""
 
 ## The rooms The Lurker's lies use (spec_f3_integration 4.3): where a phone
 ## could ring, keys be struck, a copier start.

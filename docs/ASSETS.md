@@ -264,11 +264,27 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 <!-- OFFICE_SCANS: generado por tools/textures/ingest_pbr.py --set=office, no editar a mano -->
 ## Materiales escaneados de las oficinas (piso 2)
 
-Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con sus registros (`materiales/registro.json` y `registro_materiales_2.json`); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px (al tamaño de la descarga si es menor) y a 1024 px (`_1k`).
+Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con sus registros (`materiales/registro.json` y `registro_materiales_2.json`); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM con el lado mayor a 2048 px (al de la descarga si es menor), con la proporción de la descarga, y a 1024 px (`_1k`).
 
 | Set | Asset | Autoría | Licencia | Uso |
 |---|---|---|---|---|
+| `office_anti_skid_tiles` | [Poly Haven](https://polyhaven.com/a/anti_skid_tiles) | Amal Kumar (Poly Haven) | CC0 1.0 | Baldosa con relieve (cuarto electrico) |
+| `office_bricks019` | [ambientCG Bricks019](https://ambientcg.com/a/Bricks019) | ambientCG (Lennart Demes) | CC0 1.0 | Bloque de hormigon pintado |
+| `office_cardboard004` | [ambientCG Cardboard004](https://ambientcg.com/a/Cardboard004) | ambientCG (Lennart Demes) | CC0 1.0 | Carton y papel de carpeta (manila) |
+| `office_concrete_wall_008` | [Poly Haven concrete_wall_008](https://polyhaven.com/a/concrete_wall_008) | Charlotte Baglioni (fotografia), Dario Barresi (procesado) | CC0 1.0 | Losa de hormigon visto (cara inferior, plenum) |
+| `office_cork003` | [ambientCG Cork003](https://ambientcg.com/a/Cork003) | ambientCG (Lennart Demes) | CC0 1.0 | Corcho de tablon de anuncios |
+| `office_dark_paneled_wood` | [Poly Haven](https://polyhaven.com/a/dark_paneled_wood) | Dimitrios Savva (Poly Haven) | CC0 1.0 | Paneles de nogal oscuro (direccion, zocalos de nogal) |
+| `office_fabric026` | [ambientCG](https://ambientcg.com/a/Fabric026) | ambientCG | CC0 1.0 | Moqueta de pelo corto granate apagado (naves, planta 1) |
+| `office_fabric028` | [ambientCG](https://ambientcg.com/a/Fabric028) | ambientCG | CC0 1.0 | Moqueta de pelo corto gris pardo (naves, planta 1) |
 | `office_galvanizedsteel02` | [cgbookcase Galvanized Steel 02](https://www.cgbookcase.com/textures/galvanized-steel-02) | cgbookcase.com (Dorian Zgraggen) | CC0 1.0 | Chapa galvanizada (ductos) |
+| `office_hessian_380` | [Poly Haven hessian_380](https://polyhaven.com/a/hessian_380) | colormass (fotografia), Rico Cilliers (procesado) | CC0 1.0 | Tela de mampara de cubiculo |
+| `office_painted_concrete_02` | [Poly Haven](https://polyhaven.com/a/painted_concrete_02) | Rob Tuytel (Poly Haven) | CC0 1.0 | Hormigon sellado (almacen, deposito, pasillo de servicio) |
+| `office_paintedmetal006` | [ambientCG](https://ambientcg.com/a/PaintedMetal006) | ambientCG | CC0 1.0 | Pintura de acero verde gris gastada (armarios, puertas de servicio, cuadro) |
+| `office_teak_veneer` | [Poly Haven](https://polyhaven.com/a/teak_veneer) | Jenelle van Heerden (Poly Haven) | CC0 1.0 | Teca color miel en chapa (mobiliario, hojas de puerta, casilleros) |
+| `office_terrazzo003` | [ambientCG](https://ambientcg.com/a/Terrazzo003) | ambientCG | CC0 1.0 | Terrazo oscuro sal y pimienta pulido (pasillos, vestibulos, archivo) |
+| `office_tiles032` | [ambientCG](https://ambientcg.com/a/Tiles032) | ambientCG | CC0 1.0 | Azulejo oscuro para la franja (aseos) |
+| `office_tiles110` | [ambientCG Tiles110](https://ambientcg.com/a/Tiles110) | ambientCG (Lennart Demes) | CC0 1.0 | Loseta vinilica (VCT) beige con motas |
+| `office_walnut_veneer` | [Poly Haven walnut_veneer](https://polyhaven.com/a/walnut_veneer) | Jenelle van Heerden | CC0 1.0 | Paneles de chapa de madera (Direccion) |
 <!-- /OFFICE_SCANS -->
 
 ## Modelos aportados por el usuario

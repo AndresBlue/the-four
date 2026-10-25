@@ -2,11 +2,47 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 24 de octubre de 2026, noche. Ventana de 5 horas al 5 %, semana al 5 % (la semana se renovó; se renueva el 31 de octubre a las 08:00).
+**Última actualización:** 25 de octubre de 2026, tarde. Semana al 21 % (se renueva el 31 de octubre a las 08:00). Esta tarea para al **60 % semanal** (decisión del autor).
 
-**Última instrucción del autor (24 de octubre):** «Sí, avanza con 3, por mientras deja exportado para ir probando paralelamente», y antes «Sigamos acá con el desarrollo, ignora el tema del contexto». La fase 3 la hace **el director solo, sin flujos**, unidad a unidad, con `verify` en verde antes de cada commit.
+**Última instrucción del autor (25 de octubre):** el rediseño visual y ambiental completo del piso 2 con las referencias de `docs/referencias/` (abajo). Respondió por el chat todas las decisiones (R1 a R10 en la nota de diseño) para que se trabaje sin preguntarle.
 
-### En curso: The Lurker más agresiva (24 de octubre, noche)
+### En curso: el rediseño del piso 2 (25 de octubre)
+
+**El encargo.** Rediseño integral de las oficinas según las 15 imágenes de `docs/referencias/` (una por sala) y las tres generales de `docs/referencias/oficinas/LEEME.md`, como base directa y no como inspiración: oficina corporativa de finales de los 80, foto analógica, fluorescente cálido, coherencia de edificio. **Terminado es:** el piso reconstruido, `verify.ps1` en verde, capturas sala por sala junto a su referencia, documentos al día y **una sola exportación al final** (R8), con `tools/godot.ps1 export` y `exports/windows/Probar piso 2.bat` añadido al zip como `The Four/Probar piso 2.bat`. El hotel, ni un byte. The Lurker sigue funcionando sobre la geometría nueva.
+
+**La nota de diseño:** `.claude/specs/spec_rediseno.md` (versión 2, atacada por tres críticos). Manda. Sus secciones 0 (decisiones del autor R1 a R10 y del director), 2 (lenguaje constructivo), 6 (receta de cada sala), 11 (criterio de aceptación de las capturas) y 12 (áreas y orden).
+
+**Orden de las áreas** (cambiado respecto de la tabla de la nota: 1a va antes que 3b):
+1. **0, herramientas y líneas base: hecha** (`4b5ee11`). `tools/capture/office_rooms_capture.gd` (con ventana: cada sala junto a su referencia, cifras en `cifras.json`, veredicto con umbrales: estructura 0,6 o más, luminancia dentro de un 25 %, tono dentro de 20 grados), las capturas «antes» en `evidence/rediseno/antes/` (todas suspenden: tono de pared cian, 170 grados frente a 27), banco del piso 2 (`--floor=2 --difficulty=apacible`, base en `docs/PERFORMANCE.md` sección 13), `ingest_models.py --set=office` a `assets/props/office/`, `ingest_pbr.py --set=office --only=office_<id>`, `decimate.py`, `asset_hashes.py`, `light_layers_scan --floor=2`.
+2. **3a, kit constructivo: frente en marcha** al escribir esto (`encargos_rd3a.json`; sus 16 texturas ya ingeridas en `assets/textures/office_*` y su prueba `office/office_finishes_test` ya añadida a `verify.ps1`, sin commit todavía). Al acabar: revisar el resultado, mirar `git status`, commit con rutas explícitas (también las texturas `office_*` y sus `.import`, y `.claude/workflows/frente_resumen.js`).
+3. **1a, pasillos, juntas a 2,95 y seguridad acristalada:** encargos listos (`encargos_rd1a.json`, con las decisiones del director al final del contexto).
+4. **3b, luz:** encargos listos (`encargos_rd3b.json`). Antes del frente, añadir `office/office_light_test` a `verify.ps1`.
+5. **1b+2, naves, columnas y The Lurker:** encargos listos (`encargos_rd1b2.json`, 12 unidades, con las decisiones del director al final del contexto). Al integrarlo, puede hacer falta poner en `verify.ps1` la semilla de la sonda de rutas que tenga nave (decisión 8) y subir sus límites de tiempo (decisión 10).
+6. **4a piezas en código, 4b recetas, 4c modelos, lo menudo y el abandono, 5 equipos, 6 cierre:** sin encargos. Se redactan con el flujo `encargos` cuando su área anterior esté integrada (o en paralelo si no se cruzan los archivos).
+- Si la cuota no da: se corta primero el abandono de 4c y después la mitad del área 5.
+
+**Cómo se lanza cada área:**
+- Encargos: Workflow con `scriptPath` `E:/Projects/The Four/.claude/workflows/encargos.js` y `args` `{area, nota, preguntas, salida}`. La nota: «Lee entera .claude/specs/spec_rediseno.md; esta área es la fila X de la sección 12», más lo que haya cambiado. Las decisiones del director sobre el `al_director` se añaden al final del campo `contexto` del JSON (como en rd0, rd3a, rd3b y rd1a).
+- Frente: Workflow con `scriptPath` `E:/Projects/The Four/.claude/workflows/frente_resumen.js` y `args` `{area, archivo: '.claude/specs/encargos_<x>.json', unidades: [{id, archivos}]}`; devuelve un resumen corto. Las unidades se sacan del JSON: `PYTHONIOENCODING=utf-8 python -c "import json;p=json.load(open('.claude/specs/encargos_rd1a.json',encoding='utf-8'));print(json.dumps([{'id':u['id'],'archivos':u['archivos']} for u in p['unidades']],ensure_ascii=False))"`.
+- Los resultados largos de un flujo se leen con Python desde el archivo de salida de la tarea (`json.load(...)['result']`), no enteros.
+- Coste medido hoy: un `encargos` de área grande, unos 2 puntos semanales; el frente del área 0, unos 3.
+
+**Assets:**
+- Modelos de Poly Haven bajados a `source_assets/props/` sin ingerir: `sofa_02`, `potted_plant_01`, `pachira_aquatica_01`, `calathea_orbifolia_01`, `anthurium_botany_01`, `plastic_bottle_gallon`, `mid_century_lounge_chair`. Ya horneados en el proyecto y útiles: los de la nota, sección 5.1.
+- Materiales: 27 sets nuevos en `source_assets/oficinas/materiales/` (registro `registro_materiales_2.json`); ingeridos solo los 16 de 3a. Para sillas y tapicería: `acg_leather006`, `acg_fabric018` (verde), `acg_fabric029` (marrón).
+- **Imágenes para láminas y alfombras: no hay ninguna.** El Art Institute of Chicago (Cloudflare) y el Met (Incapsula, con `v1.1/search`) bloquean las descargas automáticas. Siete candidatos del Met en `source_assets/oficinas/registro_imagenes.json`. Opciones: reintentar el Met muy despacio (una petición cada pocos segundos), que el autor baje a mano, u hacerlas en código (fotos de ciudad no; láminas sobrias y alfombras con dibujo procedural sí).
+- **Sketchfab (R6, con la sesión del autor en Chrome):** la extensión de Claude en Chrome no estaba conectada el 25 por la mañana (se le avisó). Los 44 modelos con enlace están en `source_assets/oficinas/RESUMEN.md`. Antes de bajar, la carpeta de descargas de Chrome tiene que ser Descargas (no `assets/props`).
+- Los CC BY van a CREDITS (`hotel_ui.gd`) al integrar el mobiliario.
+
+**Pendientes que salieron y no son de ningún área todavía:**
+- `drain_emergency` no existe: las unidades de emergencia cuentan en `lamp_points` pero no tiemblan cuando ella bebe la luz (en la planta 2, la de la corriente de emergencia, falta la señal). Apuntar en PLAN.md o hacerlo en 3b o 5.
+- La baliza roja de la recepción tiñe de rojo todo el techo (captura `evidence/rediseno/antes/recepcion.png`); el autor quiso que brillara más. Mirar en 3b o 4c que no inunde la sala.
+- `OFFICE.VERSION` sube una vez, en el área 6.
+- `office_metrics` falla el p99 desde antes (3,6 s, `duct_bridge`); se acepta.
+- `tools/art/lurker/bake_ink_noise.gd` y `tools/history.ps1` están sin seguimiento y no son de este trabajo: no entran en ningún `git add`.
+
+
+### Antes: The Lurker más agresiva (24 de octubre, noche)
 
 El autor la vio inerte en su primera partida y pidió (sus palabras y las cifras, en `.claude/specs/spec_f3_aggression.md`): la primera etapa más oscura según la dificultad; que al ser iluminada salga de la luz al instante buscando escape; entrar y salir por **cualquier placa** del falso techo (la abre con una mano, la deja a medio abrir, y al volver a entrar la cierra); que al esconderse en el techo reaparezca por otra parte, más rápido y por la espalda del jugador según sube la dificultad («me vio, sabe dónde estoy, ¿por dónde saldrá?»); **muy rápida cuando no se la ve**; un **encuentro son varios intentos** desde las sombras y, tras fallar varias veces, se retira y deja tranquilo al jugador un tiempo; y el paquete 1, 2, 3, 4, 6 y 7 que propuse (encuentros forzados, acecho más cerca, no la para mirarla sin luz —ya era así—, ventana más corta, menos tregua, salto largo).
 
