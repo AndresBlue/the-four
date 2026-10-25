@@ -2,6 +2,32 @@
 
 El autor dio tres imágenes como referencia el 25 de octubre de 2026, para cuando se rediseñe la generación del piso 2 y se busquen sus modelos. Llegaron por el chat y no se pudieron guardar desde allí: van en esta carpeta como `referencia_1.jpg`, `referencia_2.jpg` y `referencia_3.jpg` cuando el autor las copie. Mientras tanto, esto es lo que se ve en ellas.
 
+## Una referencia por sala
+
+El autor dejó en `docs/referencias/` una imagen por sala del piso (25 de octubre de 2026):
+- archivo;
+- correo;
+- cuarto eléctrico;
+- despacho;
+- despacho de dirección;
+- puesto de seguridad;
+- recepción;
+- reprografía y microfichas;
+- sala de aseos;
+- sala de climatización;
+- sala de descanso;
+- sala de juntas;
+- salida del montacargas;
+- secretaría;
+- ventanilla de personal.
+
+Cada archivo lleva el nombre de su sala. Faltan, de las salas del piso:
+- la oficina abierta y los cubículos, que cubren las tres referencias de abajo;
+- el archivo móvil;
+- el almacén y el depósito;
+- los pasillos y los pasillos de servicio;
+- el vestíbulo del montacargas.
+
 ## Lo que el autor dijo
 
 - Hoy el piso parece un hospital: pasillos angostos, poca variedad frente al hotel, «un hotel blanco y muy poco pulido».
