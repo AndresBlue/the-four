@@ -8,6 +8,13 @@ extends SceneTree
 ##   python tools/props/ingest_models.py
 ##   godot --headless --path . --import
 ##   godot --headless --path . --script res://tools/props/build_catalogue.gd [-- --only=<id>] [--moving]
+##   godot --headless --path . --script res://tools/props/build_catalogue.gd -- --target=res://assets/props/office/ --sources=res://assets/props/office/sources.json [--only=<slug>]
+## (the offices: ingest_models.py --set=office writes sources.json, each
+## model's glTF folder by its slug; --source=<res folder> takes the models from
+## another folder of model folders, as SOURCE is.) YAW, SCALE, PARTS and the
+## rest are looked up by that key: a hotel download's id, an office model's
+## slug. The offices' Poly Haven kits the hotel bakes are left out of
+## --set=office (OFFICE_HOTEL_KITS there), so no office kit needs PARTS.
 ## (--moving bakes only the parts of MOVING, leaving every <id>.res as it is.)
 const SOURCE := "res://source_assets/props/"
 const TARGET := "res://assets/props/hotel/"
@@ -17,9 +24,12 @@ const YAW := {}
 const SCALE := {"steel_frame_shelves_01": 0.1}
 ## Downloads that hold several objects side by side: each is baked on its own,
 ## as <id>_<name>.res, from the glTF nodes whose name matches.
-## Downloads the game does not use (tools/props/ingest_models.py SKIP).
+## Downloads the game does not use (tools/props/ingest_models.py SKIP). The
+## seven at the end are the offices' downloads (source_assets/props/ holds them
+## too): left out of the hotel's bake, baked from a --sources list.
 const SKIP := ["Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02",
-	"hanging_picture_frame_01", "modular_airduct_rectangular_01", "korean_fire_extinguisher_01", "korean_public_payphone_01"]
+	"hanging_picture_frame_01", "modular_airduct_rectangular_01", "korean_fire_extinguisher_01", "korean_public_payphone_01",
+	"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair"]
 const PARTS := {
 	"metal_trash_can": {"clean": "^metal_trash_can(_handle_left|_handle_right|_lid)?$", "rust": "^metal_trash_can_rust"},
 	"vintage_suitcase": {"a": "^vintage_suitcase_01", "b": "^vintage_suitcase_02"},
@@ -87,28 +97,46 @@ const LAID := {"stationery_supplies": "_(pen|pencil)_|_eraser$"}
 ## How far askew, at most (radians either way).
 const ASKEW := 0.06
 var failed := false
+## Where the meshes go (--target=): the hotel's unless told.
+var target := TARGET
 
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
 	var only := ""
+	var folder := ProjectSettings.globalize_path(SOURCE)
+	var sources: Dictionary = {}
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--only="): only = argument.trim_prefix("--only=")
+		if argument.begins_with("--source="): folder = ProjectSettings.globalize_path(argument.trim_prefix("--source=").trim_suffix("/") + "/")
+		if argument.begins_with("--target="): target = argument.trim_prefix("--target=").trim_suffix("/") + "/"
+		if argument.begins_with("--sources="):
+			var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(argument.trim_prefix("--sources=")))
+			if not parsed is Dictionary:
+				print("CATALOGUE_FAILED sources ", argument)
+				quit(1)
+				return
+			sources = parsed
 	var moving_only := OS.get_cmdline_user_args().has("--moving")
-	var folder := ProjectSettings.globalize_path(SOURCE)
-	for model in DirAccess.get_directories_at(folder):
-		if (not only.is_empty() and model != only) or model in SKIP: continue
+	var models: Array = Array(DirAccess.get_directories_at(folder))
+	if not sources.is_empty():
+		models = sources.keys()
+		models.sort()
+	for model in models:
+		# The hotel's SKIP is about source_assets/props/: a list of sources says itself what to bake.
+		if (not only.is_empty() and model != only) or (sources.is_empty() and model in SKIP): continue
+		var place: String = ProjectSettings.globalize_path(String(sources[model])) if not sources.is_empty() else folder + model
 		if MOVING.has(model):
 			if PARTS.has(model):
-				for part in PARTS[model]: bake_moving(model, folder + model, part, PARTS[model][part])
-			else: bake_moving(model, folder + model)
+				for part in PARTS[model]: bake_moving(model, place, part, PARTS[model][part])
+			else: bake_moving(model, place)
 		if moving_only: continue
 		if CLOCKS.has(model):
-			bake_clock(model, folder + model)
+			bake_clock(model, place)
 		elif PARTS.has(model):
-			for part in PARTS[model]: bake(model, folder + model, part, PARTS[model][part])
+			for part in PARTS[model]: bake(model, place, part, PARTS[model][part])
 		else:
-			bake(model, folder + model)
+			bake(model, place)
 	quit(1 if failed else 0)
 
 ## Every mesh under node with its transform from the scene's root and the
@@ -278,7 +306,7 @@ func bake_clock(model: String, folder: String) -> void:
 				tool.generate_tangents()
 				arrays = tool.commit_to_arrays()
 			triangles += arrays[Mesh.ARRAY_INDEX].size() / 3
-			var path: String = TARGET + model + "/" + key + ".tres"
+			var path: String = target + model + "/" + key + ".tres"
 			var material: Material = load(path) if ResourceLoader.exists(path) else null
 			if material == null: print("CATALOGUE_WARNING ", model, " has no ", path)
 			importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, material, key)
@@ -288,7 +316,7 @@ func bake_clock(model: String, folder: String) -> void:
 		result.resource_name = name
 		if where == "": result.set_meta("hands", PackedStringArray(hand_names))
 		else: result.set_meta("pivot", pivots[where])
-		ResourceSaver.save(result, TARGET + name + ".res")
+		ResourceSaver.save(result, target + name + ".res")
 		var size := result.get_aabb().size
 		print("CATALOGUE %s size=(%.3f, %.3f, %.3f) triangles=%d surfaces=%d%s" % [name, size.x, size.y, size.z, triangles, result.get_surface_count(), "" if where == "" else " pivot=%s" % pivots[where]])
 	scene.free()
@@ -377,7 +405,7 @@ func bake_moving(model: String, folder: String, part := "", pattern := "") -> vo
 				tool.generate_tangents()
 				arrays = tool.commit_to_arrays()
 			triangles += arrays[Mesh.ARRAY_INDEX].size() / 3
-			var path: String = TARGET + model + "/" + key + ".tres"
+			var path: String = target + model + "/" + key + ".tres"
 			var material: Material = load(path) if ResourceLoader.exists(path) else null
 			if material == null: print("CATALOGUE_WARNING ", model, " has no ", path)
 			importer.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, material, key)
@@ -389,7 +417,7 @@ func bake_moving(model: String, folder: String, part := "", pattern := "") -> vo
 		else:
 			result.set_meta("pivot", pivots[where])
 			result.set_meta("box", boxes[where])
-		ResourceSaver.save(result, TARGET + name + ".res")
+		ResourceSaver.save(result, target + name + ".res")
 		var size := result.get_aabb().size
 		print("CATALOGUE %s size=(%.3f, %.3f, %.3f) triangles=%d surfaces=%d%s" % [name, size.x, size.y, size.z, triangles, result.get_surface_count(), "" if where == "" else " pivot=%s box=%s" % [pivots[where], boxes[where]]])
 	scene.free()
@@ -484,7 +512,7 @@ func bake(model: String, folder: String, part := "", pattern := "") -> void:
 			tool.generate_tangents()
 			arrays = tool.commit_to_arrays()
 		triangles += arrays[Mesh.ARRAY_INDEX].size() / 3
-		var path: String = TARGET + model + "/" + key + ".tres"
+		var path: String = target + model + "/" + key + ".tres"
 		var material: Material = load(path) if ResourceLoader.exists(path) else null
 		if material == null:
 			print("CATALOGUE_WARNING ", model, " has no ", path)
@@ -492,7 +520,7 @@ func bake(model: String, folder: String, part := "", pattern := "") -> void:
 	importer.generate_lods(60.0, 25.0, [])
 	var result := importer.get_mesh()
 	result.resource_name = name
-	ResourceSaver.save(result, TARGET + name + ".res")
+	ResourceSaver.save(result, target + name + ".res")
 	var size := result.get_aabb().size
 	print("CATALOGUE %s size=(%.2f, %.2f, %.2f) triangles=%d surfaces=%d" % [name, size.x, size.y, size.z, triangles, result.get_surface_count()])
 	scene.free()

@@ -4,7 +4,8 @@ Reads the glTF downloads in source_assets/props/<id>/ (outside git; Poly Haven
 glTF with its textures and info.json) and writes, for each model, to
 assets/props/hotel/<id>/:
 
-    <image>.jpg          its textures, at most MAX_SIZE px (2048 for the big
+    <image>.jpg (.png with alpha)
+                         its textures, at most MAX_SIZE px (2048 for the big
                          pieces in KEEP_2K), with a .import beside each (VRAM
                          compressed, mipmaps; normal maps as normal maps)
     <material>.tres      one material per glTF material: ORMMaterial3D when
@@ -15,11 +16,24 @@ Step two, in Godot, bakes the meshes with these materials:
 tools/props/build_catalogue.gd. The register (source, authors, licence) goes
 to docs/ASSETS.md between the MODELS markers.
 
+The offices (--set=office, docs/OFICINAS.md 12) read their downloads from
+source_assets/oficinas/<group>/<slug>/ (each group's registro.json) and from
+source_assets/props/<slug>/ (registro_polyhaven_modelos.json), and write to
+assets/props/office/<slug>/. A model's glTF is looked for in _gltf/ (the copy
+Blender writes), in the download itself, or in its zip unpacked into _zip/.
+assets/props/office/sources.json gets each glTF folder, and the OFFICE_MODELS
+block of docs/ASSETS.md the register. NC, ND and SA licences are left out, and
+a licence that is not CC0 prints a CREDIT line for the game's credits.
+
     python tools/props/ingest_models.py
+    python -E -P tools/props/ingest_models.py [--only=<id>]
+    python -E -P tools/props/ingest_models.py --set=office [--only=<slug>]
 """
 import json
 import os
 import re
+import sys
+import zipfile
 
 from PIL import Image, ImageChops, ImageFilter
 
@@ -27,6 +41,21 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SOURCE = os.path.join(ROOT, "source_assets", "props")
 TARGET = os.path.join(ROOT, "assets", "props", "hotel")
 REGISTER = os.path.join(ROOT, "docs", "ASSETS.md")
+## The offices' downloads (--set=office): each in
+## source_assets/oficinas/<group>/<slug>/ with its group's registro.json, or in
+## source_assets/props/<slug>/ by registro_polyhaven_modelos.json; out to
+## assets/props/office/<slug>/.
+OFFICE_ROOT = os.path.join(ROOT, "source_assets", "oficinas")
+OFFICE_GROUPS = ["muebles_a", "muebles_b", "equipos"]
+OFFICE_TARGET = os.path.join(ROOT, "assets", "props", "office")
+## Where each office model's glTF is (res://), for build_catalogue.gd --sources=.
+OFFICE_SOURCES = os.path.join(OFFICE_TARGET, "sources.json")
+## Licences a model never comes in with (docs/OFICINAS.md 12).
+BANNED = re.compile(r"\b(NC|ND|SA)\b|NonCommercial|NoDerivatives|ShareAlike")
+## The res:// folder materials and imports point to: the offices' with --set=office.
+RES = "res://assets/props/hotel/"
+## A model's source folder when it is not SOURCE/<id> (the offices').
+FOLDERS = {}
 
 MAX_SIZE = 1024
 ## Downloads the game does not use (they were taken out in the September 2026
@@ -41,6 +70,14 @@ SKIP |= {"hanging_picture_frame_01", "modular_airduct_rectangular_01"}
 ## And two that will not be: their labels are in Korean, and the
 ## extinguisher's inspection card is dated 2019.
 SKIP |= {"korean_fire_extinguisher_01", "korean_public_payphone_01"}
+## The offices' Poly Haven downloads that went to source_assets/props/
+## (source_assets/oficinas/registro_polyhaven_modelos.json): --set=office
+## brings them in, never the hotel.
+SKIP |= {"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair"}
+## The offices' Poly Haven kits the hotel already bakes by id (its PARTS and
+## YAW): --set=office leaves them out. Under their slugs they would be baked
+## again with no PARTS to split them, so each would come out as one mesh.
+OFFICE_HOTEL_KITS = {"duct_fans_circular_polyhaven", "fire_escape_ladder_polyhaven", "fluorescent_battens_polyhaven", "pipes_modular_polyhaven", "silla_apilable_school_chair_01"}
 ## Materials that glow, which their glTF does not say: colour and strength.
 ## A chandelier's bulbs are lit lamps (hotel_geometry.gd puts them out in a
 ## dark room and with the power).
@@ -69,7 +106,7 @@ type="CompressedTexture2D"
 
 [deps]
 
-source_file="res://assets/props/hotel/{model}/{file}"
+source_file="{res}{model}/{file}"
 
 [params]
 
@@ -108,7 +145,7 @@ def copy_image(model, source_folder, uri, normal, size):
         image.convert("RGB").save(path, quality=90)
     if not os.path.exists(path + ".import"):
         with open(path + ".import", "w", newline="\n") as f:
-            f.write(IMPORT.format(model=model, file=file, normal=1 if normal else 2))
+            f.write(IMPORT.format(res=RES, model=model, file=file, normal=1 if normal else 2))
     return file
 
 
@@ -129,12 +166,36 @@ def glow_mask(model, source_folder, uri, size):
     mask.convert("RGB").save(path, quality=90)
     if not os.path.exists(path + ".import"):
         with open(path + ".import", "w", newline="\n") as f:
-            f.write(IMPORT.format(model=model, file=file, normal=2))
+            f.write(IMPORT.format(res=RES, model=model, file=file, normal=2))
+    return file
+
+
+def rough_from_gloss(model, source_folder, uri, factor, size):
+    """A roughness image from a specular-glossiness one: one minus its alpha."""
+    gloss = Image.open(os.path.join(source_folder, uri)).convert("RGBA").getchannel("A").point(lambda v: round(v * factor))
+    rough = ImageChops.invert(gloss)
+    if rough.width > size:
+        rough = rough.resize((size, round(rough.height * size / rough.width)), Image.LANCZOS)
+    file = safe(os.path.splitext(os.path.basename(uri))[0]) + "_rough.jpg"
+    path = os.path.join(TARGET, model, file)
+    rough.convert("RGB").save(path, quality=90)
+    if not os.path.exists(path + ".import"):
+        with open(path + ".import", "w", newline="\n") as f:
+            f.write(IMPORT.format(res=RES, model=model, file=file, normal=2))
     return file
 
 
 def material_tres(model, gltf, material, textures):
     pbr = material.get("pbrMetallicRoughness", {})
+    # A specular-glossiness material (KHR_materials_pbrSpecularGlossiness, older
+    # Sketchfab exports) is read as metal-roughness: its diffuse as the albedo,
+    # no metal, roughness one minus its glossiness (from the alpha of its
+    # specular-glossiness image when it has one; its specular colour is dropped).
+    gloss = material.get("extensions", {}).get("KHR_materials_pbrSpecularGlossiness")
+    if gloss is not None and "pbrMetallicRoughness" in material: gloss = None
+    if gloss is not None:
+        pbr = {"baseColorFactor": gloss.get("diffuseFactor", [1, 1, 1, 1]), "metallicFactor": 0.0, "roughnessFactor": 1.0 if "specularGlossinessTexture" in gloss else 1.0 - gloss.get("glossinessFactor", 1.0)}
+        if "diffuseTexture" in gloss: pbr["baseColorTexture"] = gloss["diffuseTexture"]
 
     def image_of(ref):
         return gltf["images"][gltf["textures"][ref["index"]]["source"]]["uri"] if ref else None
@@ -148,7 +209,7 @@ def material_tres(model, gltf, material, textures):
     lines = []
 
     def texture(uri, key, is_normal=False):
-        file = textures.setdefault(uri, copy_image(model, os.path.join(SOURCE, model), uri, is_normal, textures["__size"]))
+        file = textures.setdefault(uri, copy_image(model, folder_of(model), uri, is_normal, textures["__size"]))
         resources.append(file)
         lines.append(f'{key} = ExtResource("{len(resources)}")')
 
@@ -174,6 +235,10 @@ def material_tres(model, gltf, material, textures):
         if occlusion:
             lines.append("ao_enabled = true")
             texture(occlusion, "ao_texture")
+    if gloss is not None and "specularGlossinessTexture" in gloss:
+        resources.append(rough_from_gloss(model, folder_of(model), image_of(gloss["specularGlossinessTexture"]), gloss.get("glossinessFactor", 1.0), textures["__size"]))
+        lines.append(f'roughness_texture = ExtResource("{len(resources)}")')
+        lines.append("roughness_texture_channel = 0")
     if normal:
         lines.append("normal_enabled = true")
         texture(normal, "normal_texture", True)
@@ -199,7 +264,7 @@ def material_tres(model, gltf, material, textures):
         lines.append("emission_energy_multiplier = %g" % strength)
     if material["name"] in GLOW_WHITE and albedo:
         glow, strength = GLOW_WHITE[material["name"]]
-        resources.append(glow_mask(model, os.path.join(SOURCE, model), albedo, textures["__size"]))
+        resources.append(glow_mask(model, folder_of(model), albedo, textures["__size"]))
         lines.append("emission_enabled = true")
         lines.append("emission = Color(%g, %g, %g, 1)" % glow)
         lines.append("emission_energy_multiplier = %g" % strength)
@@ -209,12 +274,16 @@ def material_tres(model, gltf, material, textures):
     kind = "ORMMaterial3D" if orm else "StandardMaterial3D"
     head = [f'[gd_resource type="{kind}" load_steps={len(resources) + 1} format=3]', ""]
     for k, file in enumerate(resources):
-        head.append(f'[ext_resource type="Texture2D" path="res://assets/props/hotel/{model}/{file}" id="{k + 1}"]')
+        head.append(f'[ext_resource type="Texture2D" path="{RES}{model}/{file}" id="{k + 1}"]')
     return "\n".join(head + ["", "[resource]", f'resource_name = "{material["name"]}"'] + lines) + "\n"
 
 
-def ingest(model):
-    folder = os.path.join(SOURCE, model)
+def folder_of(model):
+    return FOLDERS.get(model) or os.path.join(SOURCE, model)
+
+
+def ingest_materials(model):
+    folder = folder_of(model)
     gltf_file = next(f for f in os.listdir(folder) if f.endswith(".gltf"))
     gltf = json.load(open(os.path.join(folder, gltf_file), encoding="utf-8"))
     os.makedirs(os.path.join(TARGET, model), exist_ok=True)
@@ -225,11 +294,16 @@ def ingest(model):
         with open(os.path.join(TARGET, model, name + ".tres"), "w", encoding="utf-8", newline="\n") as f:
             f.write(material_tres(model, gltf, material, textures))
         names.append(name)
-    info = json.load(open(os.path.join(folder, "info.json"), encoding="utf-8"))
+    return names
+
+
+def ingest(model):
+    names = ingest_materials(model)
+    info = json.load(open(os.path.join(folder_of(model), "info.json"), encoding="utf-8"))
     return info, names
 
 
-def register(rows):
+def models_block(rows):
     lines = [
         "<!-- MODELS: generado por tools/props/ingest_models.py, no editar a mano -->",
         "## Mobiliario y objetos (fase 4 de REALISM.md)",
@@ -242,7 +316,11 @@ def register(rows):
     for model, info in rows:
         lines.append(f"| [{info['name']}](https://polyhaven.com/a/{model}) | {', '.join(info['authors'])} | CC0 1.0 |")
     lines.append("<!-- /MODELS -->")
-    block = "\n".join(lines)
+    return "\n".join(lines)
+
+
+def register(rows):
+    block = models_block(rows)
     text = open(REGISTER, encoding="utf-8").read()
     if "<!-- MODELS" in text:
         text = re.sub(r"<!-- MODELS.*?<!-- /MODELS -->", lambda _: block, text, flags=re.S)
@@ -251,12 +329,118 @@ def register(rows):
     open(REGISTER, "w", encoding="utf-8", newline="\n").write(text)
 
 
+def write_block(name, block):
+    text = open(REGISTER, encoding="utf-8").read()
+    if f"<!-- {name}:" in text:
+        text = re.sub(rf"<!-- {name}:.*?<!-- /{name} -->", lambda _: block, text, flags=re.S)
+    else:
+        text = text.replace("\n## Modelos aportados", "\n" + block + "\n\n## Modelos aportados", 1)
+    open(REGISTER, "w", encoding="utf-8", newline="\n").write(text)
+
+
+def office_entries():
+    """Every office model the registers mark ok, by slug: (folder, entry)."""
+    found = {}
+    for group in OFFICE_GROUPS:
+        for entry in json.load(open(os.path.join(OFFICE_ROOT, group, "registro.json"), encoding="utf-8")):
+            if entry.get("status") == "ok": found[entry["slug"]] = (os.path.join(OFFICE_ROOT, group, entry["slug"]), entry)
+    for entry in json.load(open(os.path.join(OFFICE_ROOT, "registro_polyhaven_modelos.json"), encoding="utf-8")):
+        if entry.get("estado") == "ok": found[entry["slug"]] = (os.path.join(ROOT, entry["carpeta"]), entry)
+    return found
+
+
+def office_bakes(entries):
+    """The slugs --set=office bakes: every ok entry but the hotel's kits."""
+    return sorted(slug for slug in entries if slug not in OFFICE_HOTEL_KITS)
+
+
+def gltf_folder(folder):
+    """Where a download's glTF is: the copy Blender wrote (_gltf/,
+    tools/props/decimate.py), the download itself, or its zip unpacked into
+    _zip/ (Sketchfab); None without one."""
+    def has_gltf(place):
+        return os.path.isdir(place) and any(f.endswith(".gltf") for f in os.listdir(place))
+    for place in (os.path.join(folder, "_gltf"), folder):
+        if has_gltf(place): return place
+    unpacked = os.path.join(folder, "_zip")
+    if not os.path.isdir(unpacked) and os.path.isdir(folder):
+        for name in sorted(os.listdir(folder)):
+            if not name.lower().endswith(".zip"): continue
+            with zipfile.ZipFile(os.path.join(folder, name)) as archive:
+                members = archive.namelist()
+                if not any(m.endswith(".gltf") for m in members): continue
+                # Nothing written outside _zip/.
+                if any(m.startswith(("/", "\\")) or ":" in m or ".." in m.replace("\\", "/").split("/") for m in members): continue
+                archive.extractall(unpacked)
+            break
+    for here, _, files in sorted(os.walk(unpacked)):
+        if any(f.endswith(".gltf") for f in files): return here
+    return None
+
+
+def office_block(rows):
+    lines = [
+        "<!-- OFFICE_MODELS: generado por tools/props/ingest_models.py --set=office, no editar a mano -->",
+        "## Mobiliario y equipos de las oficinas (piso 2)",
+        "",
+        "Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_assets/props/<slug>/` (fuera de git), con su registro (`registro.json`, `registro_polyhaven_modelos.json`); en `assets/props/office/<slug>/` quedan las texturas y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/office/<slug>.res`. Las que no son CC0 piden su línea en los créditos del juego (`CREDITS` de `game/ui/hotel_ui.gd`).",
+        "",
+        "| Modelo | Id | Autoría | Fuente | Licencia |",
+        "|---|---|---|---|---|",
+    ]
+    for slug, entry in rows:
+        lines.append(f"| [{entry['item']}]({entry['url']}) | `{slug}` | {entry['author']} | {entry['source']} | {entry['licence']} |")
+    lines.append("<!-- /OFFICE_MODELS -->")
+    return "\n".join(lines)
+
+
+def office_main(only):
+    global TARGET, RES
+    TARGET = OFFICE_TARGET
+    RES = "res://assets/props/office/"
+    entries = office_entries()
+    sources = json.load(open(OFFICE_SOURCES, encoding="utf-8")) if os.path.exists(OFFICE_SOURCES) else {}
+    # A kit an earlier run wrote under its slug must not stay in the list the bake reads.
+    for slug in OFFICE_HOTEL_KITS: sources.pop(slug, None)
+    if only and only not in entries: print("SKIP", only, "not ok in the registers")
+    if only in OFFICE_HOTEL_KITS: print("SKIP", only, "baked for the hotel, in assets/props/hotel/")
+    for slug in office_bakes(entries):
+        if only and slug != only: continue
+        folder, entry = entries[slug]
+        licence = entry.get("licence", "")
+        if BANNED.search(licence):
+            print("SKIP", slug, "licence", licence)
+            continue
+        place = gltf_folder(folder)
+        if place is None:
+            print("SKIP", slug, "no glTF")
+            continue
+        FOLDERS[slug] = place
+        print(slug, ingest_materials(slug))
+        sources[slug] = "res://" + os.path.relpath(place, ROOT).replace("\\", "/")
+        # Anything but plain CC0 ("CC-BY 4.0 (model); texture source CC0" too) asks for a credit.
+        if not licence.strip().upper().startswith("CC0"): print("CREDIT", slug, licence, entry.get("attribution", ""))
+    os.makedirs(OFFICE_TARGET, exist_ok=True)
+    with open(OFFICE_SOURCES, "w", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps(dict(sorted(sources.items())), indent=1, ensure_ascii=False) + "\n")
+    write_block("OFFICE_MODELS", office_block([(slug, entries[slug][1]) for slug in sorted(sources) if slug in entries]))
+
+
 def main():
+    args = sys.argv[1:]
+    only = next((a[len("--only="):] for a in args if a.startswith("--only=")), "")
+    if "--set=office" in args:
+        office_main(only)
+        return
     rows = []
     for model in sorted(os.listdir(SOURCE)):
         if not os.path.isdir(os.path.join(SOURCE, model)) or model in SKIP: continue
         # A folder of pieces that are not a glTF (the key's: tools/props/bake_key.gd).
         if not any(f.endswith(".gltf") for f in os.listdir(os.path.join(SOURCE, model))): continue
+        if only and model != only:
+            # Still in the register: --only writes the whole MODELS block again.
+            rows.append((model, json.load(open(os.path.join(folder_of(model), "info.json"), encoding="utf-8"))))
+            continue
         info, names = ingest(model)
         rows.append((model, info))
         print(model, names)

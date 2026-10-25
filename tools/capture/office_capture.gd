@@ -6,7 +6,7 @@ extends SceneTree
 ## corridor under its emergency units. PNGs in evidence/office_capture_*.png.
 ##
 ##   godot --path . --script res://tools/capture/office_capture.gd -- --test-profile [--seed=7]
-##     [--quality=0] [--prefix=muybajo]   (Muy bajo, as torch_capture does)
+##     [--quality=4] [--prefix=muybajo]   (4 is Muy bajo: graphics_presets.NAMES)
 ##   and with --rendering-method gl_compatibility for Compatibility.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")

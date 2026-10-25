@@ -4,7 +4,7 @@ Auditoría técnica de GPU, CPU, VRAM, llamadas de dibujo, sombras, geometría y
 
 ## Cómo se mide
 
-`./tools/benchmarks/run_bench.ps1 -Label nombre` ejecuta `tools/benchmarks/hotel_benchmark.gd` a 1080p con la semilla 81 y deja `evidence/bench/<nombre>_<renderizador>/report.json`, más capturas de cada vista y calidad. Hay dos capturas por vista: `_raw` sin filtro de cinta, para comparar píxeles, y `_vhs`, tal como se juega. El faro y los fluorescentes quedan congelados encendidos en ambas.
+`./tools/benchmarks/run_bench.ps1 -Label nombre` ejecuta `tools/benchmarks/hotel_benchmark.gd` a 1080p con la semilla 81 (otra con `-Extra '--seed=N'`; el piso 2 con `--floor=2`) y deja `evidence/bench/<nombre>_<renderizador>/report.json`, más capturas de cada vista y calidad. Hay dos capturas por vista: `_raw` sin filtro de cinta, para comparar píxeles, y `_vhs`, tal como se juega. El faro y los fluorescentes quedan congelados encendidos en ambas.
 
 Cada vista mide, por calidad:
 - tiempo de fotograma (media, p95, p99 y máximo), de GPU y del hilo de render;
@@ -595,3 +595,32 @@ En total, con la criatura cerca y el sonido en marcha: percentil 95 de 11,69 a 1
 - Alrededor de un fotograma de cada nueve sigue siendo un diente: los que llevan un tick de física (cuerpos, puertas, la criatura y su navegación). No se ha tocado.
 - Los picos de la primera vez que se ve una sala.
 - Juzgarlo jugando: [PLAN.md](PLAN.md), «Lo que hay que mirar».
+
+## 13. Piso 2: línea base del rediseño (octubre de 2026)
+
+Medida antes de tocar el piso 2 (`.claude/specs/spec_rediseno.md`, sección 10), con `./tools/benchmarks/run_bench.ps1 -Label piso2_base -Extra '--floor=2 --seed=7 --difficulty=apacible --qualities=2,4'`, en Forward+ y con `-Compatibility`. Semilla 7, dificultad apacible (`--difficulty=apacible`: la que deja más salas con luz), criatura quieta (`--no-enemy`), viewport de 1920x1080, adaptador NVIDIA GeForce RTX 4060 Ti. Vistas fijas: el inicio, la sala de la planta 1 a medio camino y la sala de la planta 1 más alejada del inicio; el paseo va del inicio a esa sala (19 puntos de ruta). Las salas de las plantas 2 y 3 no se miden. Informes en `evidence/bench/piso2_base_<renderizador>/report.json`.
+
+| Renderizador | Calidad | Vista | Fotograma medio (ms) | p95 | p99 | Máximo | GPU media (ms) | Llamadas de dibujo |
+|---|---|---|---|---|---|---|---|---|
+| Forward+ | Alto (2) | still_room112 | 10,36 | 15,01 | 19,73 | 31,46 | 8,44 | 118 |
+| Forward+ | Alto (2) | still_room5 | 7,42 | 8,82 | 9,94 | 12,87 | 6,29 | 56 |
+| Forward+ | Alto (2) | still_room12 | 6,36 | 7,51 | 8,13 | 11,89 | 5,24 | 67 |
+| Forward+ | Alto (2) | arrival | 10,31 | 21,78 | 31,11 | 33,56 | 7,63 | 266 |
+| Forward+ | Alto (2) | walk | 9,94 | 14,89 | 22,16 | 30,43 | 8,01 | 212 |
+| Forward+ | Muy bajo (4) | still_room112 | 2,09 | 3,02 | 4,51 | 9,58 | 0,47 | 89 |
+| Forward+ | Muy bajo (4) | still_room5 | 2,03 | 2,97 | 3,36 | 10,44 | 0,45 | 53 |
+| Forward+ | Muy bajo (4) | still_room12 | 2,00 | 3,15 | 3,57 | 10,54 | 0,45 | 67 |
+| Forward+ | Muy bajo (4) | arrival | 3,51 | 6,71 | 9,45 | 12,60 | 0,51 | 230 |
+| Forward+ | Muy bajo (4) | walk | 2,31 | 3,52 | 4,58 | 13,09 | 0,49 | 188 |
+| Compatibilidad | Alto (2) | still_room112 | 13,82 | 39,55 | 54,14 | 62,35 | 5,23 | 3.545 |
+| Compatibilidad | Alto (2) | still_room5 | 6,31 | 9,23 | 21,57 | 28,23 | 2,96 | 1.132 |
+| Compatibilidad | Alto (2) | still_room12 | 4,14 | 5,32 | 7,14 | 12,77 | 2,59 | 392 |
+| Compatibilidad | Alto (2) | arrival | 13,72 | 37,77 | 96,07 | 101,67 | 6,10 | 2.602 |
+| Compatibilidad | Alto (2) | walk | 11,51 | 34,41 | 46,88 | 50,81 | 4,99 | 2.718 |
+| Compatibilidad | Muy bajo (4) | still_room112 | 2,80 | 3,82 | 4,53 | 11,35 | 1,02 | 92 |
+| Compatibilidad | Muy bajo (4) | still_room5 | 2,69 | 3,62 | 4,54 | 10,86 | 1,01 | 53 |
+| Compatibilidad | Muy bajo (4) | still_room12 | 2,87 | 4,31 | 5,02 | 10,51 | 1,02 | 67 |
+| Compatibilidad | Muy bajo (4) | arrival | 3,75 | 7,02 | 8,94 | 9,07 | 1,06 | 240 |
+| Compatibilidad | Muy bajo (4) | walk | 3,63 | 5,22 | 6,47 | 7,75 | 1,08 | 190 |
+
+Montaje del piso (`floor_load_ms`): 13.199 ms en Forward+ y 13.217 ms en Compatibilidad. Nodos: 20.539. VRAM en Alto: 2.093,32 MB (texturas 1.805,55 MB); en Compatibilidad, 627,76 MB.

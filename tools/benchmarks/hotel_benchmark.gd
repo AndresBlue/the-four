@@ -2,7 +2,8 @@ extends SceneTree
 ## Frame cost of the hotel at 1080p, per quality: three still views and a walk
 ## along the route from the reception, which is what a real run looks like
 ## (moving casters re-render the shadows round them).
-##   godot --path . --script res://tools/benchmarks/hotel_benchmark.gd -- --test-profile --automation --no-enemy --silent [--bench-label=name]
+##   godot --path . --script res://tools/benchmarks/hotel_benchmark.gd -- --test-profile --automation --no-enemy --silent [--bench-label=name] [--floor=2] [--seed=N] [--difficulty=apacible]
+## --floor=2 measures the offices (hotel_main.floor_asked() picks the floor); --seed= replaces the hotel's 81; --difficulty= the settings' difficulty.
 ## Writes evidence/bench/<label>/report.json and, per quality and view, a
 ## capture without the tape filter (<view>_q<n>_raw.png, for
 ## tools/benchmarks/compare_captures.gd) and one with it (_vhs.png, as played).
@@ -60,8 +61,12 @@ func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
 	var qualities := range(PRESETS.count())
+	var seed_value := 81
+	var difficulty := ""
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--bench-label="): label = argument.trim_prefix("--bench-label=")
+		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
+		if argument.begins_with("--difficulty="): difficulty = argument.trim_prefix("--difficulty=")
 		if argument == "--passes": passes = true
 		if argument.begins_with("--size="): window = Vector2i(int(argument.trim_prefix("--size=").get_slice("x", 0)), int(argument.trim_prefix("--size=").get_slice("x", 1)))
 		if argument.begins_with("--pixels="): pixels = float(argument.trim_prefix("--pixels="))
@@ -84,9 +89,15 @@ func run() -> void:
 	# through several keeps some of what the ones before it loaded).
 	level.settings.values = level.settings.DEFAULTS.duplicate()
 	level.settings.set_designed(int(qualities[0]))
+	# --difficulty=: the floor's difficulty instead of the settings' default (desafiante).
+	if not difficulty.is_empty(): level.settings.values.difficulty = difficulty
 	var load_start := Time.get_ticks_msec()
-	await level.start_floor(81)
+	await level.start_floor(seed_value)
 	var load_ms := Time.get_ticks_msec() - load_start
+	# Floor 2: the walk and the third view end in the room of its first planta
+	# furthest from the start by doors (farthest_on_first()), not at manifest.exit.
+	var far: int = int(level.manifest.exit) if level.session.floor_number == 1 else farthest_on_first(level.manifest)
+	var from: Vector3 = Vector3(0, 0.04, 0) if level.session.floor_number == 1 else FLOOR.position_of(level.manifest.rooms[int(level.manifest.start)]) + Vector3(0, 0.04, 0)
 	DisplayServer.window_set_size(window)
 	if pixels > 1.0:
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
@@ -117,7 +128,7 @@ func run() -> void:
 		process_started = now)
 	RenderingServer.frame_pre_draw.connect(func() -> void: process_spent = Time.get_ticks_usec() - process_started)
 	# The walk: the navigation route from the reception towards the exit.
-	var route := FLOOR.navigation_path(level.get_world_3d().navigation_map, Vector3(0, 0.04, 0), FLOOR.position_of(level.manifest.rooms[int(level.manifest.exit)]))
+	var route := FLOOR.navigation_path(level.get_world_3d().navigation_map, from, FLOOR.position_of(level.manifest.rooms[far]))
 	var results: Array = []
 	var legacy: Array = []
 	var peak_memory := 0.0
@@ -149,10 +160,10 @@ func run() -> void:
 		var hops: Array = preload("res://game/world/generation/map_generator.gd").distance_map(level.manifest.adjacency, int(level.manifest.start))
 		var halfway := int(level.manifest.start)
 		for room in level.manifest.rooms:
-			if int(room.wing) == 0 and hops[int(room.id)] == hops[int(level.manifest.exit)] / 2:
+			if int(room.wing) == 0 and hops[int(room.id)] == hops[far] / 2:
 				halfway = int(room.id)
 				break
-		for id in [int(level.manifest.start), halfway, int(level.manifest.exit)]:
+		for id in [int(level.manifest.start), halfway, far]:
 			drawn["%d:%d" % [quality, id]] = true
 			var room: Dictionary = level.manifest.rooms[id]
 			level.player.position = FLOOR.position_of(room) + Vector3(0, 0.04, 0)
@@ -180,7 +191,7 @@ func run() -> void:
 			results.append(summary("arrival", quality, arrivals))
 			all_frames.append_array(arrivals)
 		# Walking: the body moves every frame, as in play.
-		level.player.position = route[0] if route.size() > 0 else Vector3(0, 0.04, 0)
+		level.player.position = route[0] if route.size() > 0 else from
 		await settle()
 		var walked := [0.0]
 		var step := func(_frame: int) -> void:
@@ -198,7 +209,7 @@ func run() -> void:
 		times.sort()
 		legacy.append({"quality": quality, "mean_frame_ms": mean(times), "p95_frame_ms": times[int(times.size() * 0.95)], "sample_count": times.size()})
 	var memory := {"video_mem_used": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED), "texture_mem_used": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED), "buffer_mem_used": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_BUFFER_MEM_USED), "peak_static_memory_bytes": peak_memory}
-	var report := {"label": label, "renderer": RenderingServer.get_current_rendering_method(), "adapter": RenderingServer.get_video_adapter_name(), "viewport": str(root.size), "pixels": pixels, "rooms": level.manifest.rooms.size(), "floor_load_ms": load_ms, "node_count": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "memory": memory, "results": results}
+	var report := {"label": label, "floor": level.session.floor_number, "seed": seed_value, "difficulty": String(level.settings.values.difficulty), "walk_points": route.size(), "renderer": RenderingServer.get_current_rendering_method(), "adapter": RenderingServer.get_video_adapter_name(), "viewport": str(root.size), "pixels": pixels, "rooms": level.manifest.rooms.size(), "floor_load_ms": load_ms, "node_count": Performance.get_monitor(Performance.OBJECT_NODE_COUNT), "memory": memory, "results": results}
 	var file := FileAccess.open(out_dir + "/report.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(report, "\t"))
 	file.close()
@@ -220,6 +231,15 @@ func settle() -> void:
 	while frames < 60 or Time.get_ticks_msec() - started < 1500:
 		await process_frame
 		frames += 1
+
+## The room of the first planta furthest from the start by doors (a planta
+## of the offices: the lift is the only way to the others).
+static func farthest_on_first(manifest: Dictionary) -> int:
+	var hops: Array = preload("res://game/world/generation/map_generator.gd").distance_map(manifest.adjacency, int(manifest.start))
+	var best := int(manifest.start)
+	for room in manifest.rooms:
+		if int(room.wing) == 0 and int(hops[int(room.id)]) > int(hops[best]): best = int(room.id)
+	return best
 
 ## Point at a distance along a polyline (its end past the last point).
 static func along(line: PackedVector3Array, distance: float) -> Vector3:
@@ -336,6 +356,8 @@ func fresh_rooms(level: Node, quality: int, count: int) -> Array:
 		var id: int = ids[i]
 		if drawn.has("%d:%d" % [quality, id]): continue
 		if level.hotel.dark_room(level.manifest.rooms[id]): continue
+		# Floor 2: only rooms of its first planta (no void cells, nor the plantas without power).
+		if level.session.floor_number != 1 and (FLOOR.is_void(level.manifest.rooms[id]) or int(level.manifest.rooms[id].get("wing", 0)) != 0): continue
 		drawn["%d:%d" % [quality, id]] = true
 		out.append(id)
 		if out.size() >= count: break

@@ -251,6 +251,26 @@ Cuadros: imágenes de dominio público del Art Institute of Chicago (CC0, open a
 | [Bouquet of Flowers in an Earthenware Vase](https://www.artic.edu/artworks/64029) | Attributed to Jan Brueghel the Elder (Flemish, 1568–1625) | c. 1610 |
 <!-- /DRESSING -->
 
+<!-- OFFICE_MODELS: generado por tools/props/ingest_models.py --set=office, no editar a mano -->
+## Mobiliario y equipos de las oficinas (piso 2)
+
+Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_assets/props/<slug>/` (fuera de git), con su registro (`registro.json`, `registro_polyhaven_modelos.json`); en `assets/props/office/<slug>/` quedan las texturas y los materiales, y `tools/props/build_catalogue.gd` hornea `assets/props/office/<slug>.res`. Las que no son CC0 piden su línea en los créditos del juego (`CREDITS` de `game/ui/hotel_ui.gd`).
+
+| Modelo | Id | Autoría | Fuente | Licencia |
+|---|---|---|---|---|
+| [archivador de madera de 6 cajones](https://polyhaven.com/a/vintage_wooden_drawer_01) | `fichero_vintage_wooden_drawer_01` | James Ray Cock | Poly Haven | CC0 1.0 |
+<!-- /OFFICE_MODELS -->
+
+<!-- OFFICE_SCANS: generado por tools/textures/ingest_pbr.py --set=office, no editar a mano -->
+## Materiales escaneados de las oficinas (piso 2)
+
+Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con sus registros (`materiales/registro.json` y `registro_materiales_2.json`); en `assets/textures/<set>/` quedan color, normal (OpenGL) y ORM a 2048 px (al tamaño de la descarga si es menor) y a 1024 px (`_1k`).
+
+| Set | Asset | Autoría | Licencia | Uso |
+|---|---|---|---|---|
+| `office_galvanizedsteel02` | [cgbookcase Galvanized Steel 02](https://www.cgbookcase.com/textures/galvanized-steel-02) | cgbookcase.com (Dorian Zgraggen) | CC0 1.0 | Chapa galvanizada (ductos) |
+<!-- /OFFICE_SCANS -->
+
 ## Modelos aportados por el usuario
 
 Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. El sofá, el aplique y la monstera ya tienen ficha y licencia (arriba); el resto sigue por verificar antes de cualquier distribución.

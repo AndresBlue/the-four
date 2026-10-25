@@ -1,5 +1,6 @@
 ## Runs the hotel benchmark under a label and prints its summary lines.
 ##   ./tools/benchmarks/run_bench.ps1 -Label base [-Extra '--atlas-quads=2,3,4,4'] [-Compatibility]
+##   ./tools/benchmarks/run_bench.ps1 -Label piso2 -Extra '--floor=2 --seed=7 --difficulty=apacible --qualities=2,4'   (floor 2)
 ## -Modest stands for a modest laptop's processor (docs/PERFORMANCE.md, "Equipo
 ## modesto"): the game is held to four cores, one thread each, and the other
 ## thread of each of those cores is kept busy, so the game's threads run at
@@ -34,5 +35,7 @@ try {
     if (-not $process.WaitForExit(1800000)) { $process.Kill(); throw "Benchmark timed out: $log" }
 } finally {
     foreach ($load in $busy) { if (-not $load.HasExited) { $load.Kill() } }
+    # The run rewrites these two (CLAUDE.md): put them back, even after a timeout.
+    git -C $projectPath restore default_bus_layout.tres assets/audio/the_four_theme.mp3.import
 }
 Get-Content $log | Select-String 'BENCHMARK|SCRIPT ERROR|^ERROR' | ForEach-Object { $_.Line }
