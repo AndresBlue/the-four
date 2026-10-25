@@ -102,11 +102,14 @@ const LAMP_SPECULAR := 0.7
 ## (lens_key()).
 const LENS_ALBEDO := Color("e6e2d8")
 ## The troffer families (troffer_face()): the narrow lens's width and its
-## louvre's pitch, the parabolic lens's depth and its grid's pitch along, and
-## how far the wraparound diffuser comes down below the ceiling.
+## louvre's pitch; the parabolic lens's depth, its grid's blades' depth (both
+## shallow, so that from a doorway the lens shows between them and not a dark
+## grid) and its pitch along; and how far the wraparound diffuser comes down
+## below the ceiling.
 const NARROW_LENS := 0.28
 const LOUVRE_PITCH := 0.1
-const PARABOLIC_DEPTH := 0.06
+const PARABOLIC_DEPTH := 0.02
+const PARABOLIC_BLADE := 0.012
 const PARABOLIC_PITCH := 0.19
 const WRAP_DROP := 0.09
 ## The glow on the tiles round each lit troffer (spec_rediseno 4, mechanism
@@ -120,6 +123,10 @@ const HALO_ENERGY := 0.59
 ## shows no glow in the hole.
 const HOLE_CAP := 0.01
 const HALO_SHADER := preload("res://game/presentation/materials/office/ceiling_halo.gdshader")
+## The reception's red beacon (the hotel's extras()) glows as the hotel's, but
+## its light reaches no further than this, and the room's lamp, which the
+## hotel keeps low under it, stays whole here.
+const BEACON_REACH := 3.0
 ## Room id -> its halo: {"material": ShaderMaterial, "base": float (its lamp's
 ## energy as room_lamp() made it), "energy": float (as last set)}.
 var halos := {}
@@ -327,11 +334,11 @@ func troffer_face(node: Node3D, at: Vector3, size: Vector3, h: float, glow: Stri
 			box(node, at + Vector3(0, h + PARABOLIC_DEPTH, 0), inner, glow)
 			for c in [-0.25, 0.0, 0.25]:
 				var across: float = float(c) * width
-				box(node, at + (Vector3(0, 0, across) if along_x else Vector3(across, 0, 0)) + Vector3(0, h + 0.025, 0), Vector3(length, 0.05, 0.006) if along_x else Vector3(0.006, 0.05, length), "enamel")
+				box(node, at + (Vector3(0, 0, across) if along_x else Vector3(across, 0, 0)) + Vector3(0, h + PARABOLIC_BLADE * 0.5, 0), Vector3(length, PARABOLIC_BLADE, 0.006) if along_x else Vector3(0.006, PARABOLIC_BLADE, length), "enamel")
 			var cells := maxi(1, roundi(length / PARABOLIC_PITCH))
 			for b in range(1, cells):
 				var step := (float(b) / float(cells) - 0.5) * length
-				box(node, at + (Vector3(step, 0, 0) if along_x else Vector3(0, 0, step)) + Vector3(0, h + 0.025, 0), Vector3(0.006, 0.05, width) if along_x else Vector3(width, 0.05, 0.006), "enamel")
+				box(node, at + (Vector3(step, 0, 0) if along_x else Vector3(0, 0, step)) + Vector3(0, h + PARABOLIC_BLADE * 0.5, 0), Vector3(0.006, PARABOLIC_BLADE, width) if along_x else Vector3(width, PARABOLIC_BLADE, 0.006), "enamel")
 		"wrap":
 			box(node, at + Vector3(0, h - 0.015, 0), Vector3(size.x, 0.03, size.z), "enamel")
 			box(node, at + Vector3(0, h - (0.03 + WRAP_DROP) * 0.5, 0), Vector3(size.x - 0.06, WRAP_DROP - 0.03, size.z - 0.06), glow)
@@ -1464,7 +1471,13 @@ func build_prop(node: Node3D, kind: String) -> void:
 ## at the cell's edges and built under the cell, so it batches and layers
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
+	# The reception's lamp as room_lamp() made it: the hotel's extras() turns
+	# it down under the beacon, which here reaches BEACON_REACH and no more.
+	var whole: float = lights.back().light_energy
 	super(node, room)
+	if int(room.type) == OFFICE.RECEPTION:
+		lights.back().light_energy = whole
+		(beacons.back().light as OmniLight3D).omni_range = BEACON_REACH
 	emergency_unit(node, room)
 	# The halo in its lamp's colour as the hotel's extras() left it (the
 	# refuge's green).
@@ -1526,10 +1539,10 @@ func _process(delta: float) -> void:
 	glow_halos()
 
 ## The halos of the planta looked from, at their lamp's energy now over its
-## energy as built (her drain, a failing tube; the reception's lamp is kept low
-## by its beacon, and so its halo), nothing while the lamp is out or hidden,
-## fading out with the distance from its room as the lamp does (preset
-## lamp_fade). Another planta's halos go out once, when the eye leaves it.
+## energy as built (her drain, a failing tube), nothing while the lamp is out
+## or hidden, fading out with the distance from its room as the lamp does
+## (preset lamp_fade). Another planta's halos go out once, when the eye leaves
+## it.
 func glow_halos() -> void:
 	if halos.is_empty() or round_at.is_empty(): return
 	var here: int = round_at.here
@@ -1589,6 +1602,7 @@ func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colou
 	lamp.visible = false
 	parent.add_child(lamp)
 	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true})
+	settle_accent(room_id, [lamp])
 	return lamp
 
 ## Out by furniture_lamps, as the hotel's table and floor lamps.
@@ -1610,7 +1624,26 @@ func accent_sconce(boundary: Node3D, room_id: int, pos: Vector3, yaw: float) -> 
 	boundary.add_child(sconce)
 	sconce_light(boundary, sconce)
 	accents.add(room_id, {"light": sconce_lights.back(), "energy": SCONCE_ENERGY, "sconce": sconce_lights.size() - 1, "mesh": sconce, "glowing": true})
+	settle_accent(room_id, [sconce, sconce_lights.back()])
 	return sconce
+
+## A new accent as its room is from its first frame (refresh_accents()); made
+## after assign_layers() (a lamp put up once the floor stands), on its room's
+## layers too, filed with what its room's lamps may light, as assign_layers()
+## files the rest.
+func settle_accent(room_id: int, made: Array) -> void:
+	if not room_layers.is_empty() and room_id >= 0 and room_id < room_layers.layer.size() and int(room_layers.layer[room_id]) != 0:
+		var bit: int = room_layers.layer[room_id]
+		var glow: int = room_layers.mask[room_id]
+		for item: Node3D in made:
+			if item is GeometryInstance3D: ROOM_LAYERS.put_on(item, bit)
+			elif item is Light3D:
+				keep_lamp(item, glow)
+				var entry: Dictionary = kept_lamps[item.get_instance_id()]
+				entry.looked_after = item is OmniLight3D and sconce_lights.has(item)
+				light_lamp(entry)
+			lay(item, bit, bit, glow)
+	refresh_accents(room_id)
 
 ## A room's accents with its power and her drain: out and dark while the room
 ## is not lit, at what she leaves of them while she drinks it.

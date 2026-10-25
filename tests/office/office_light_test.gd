@@ -4,8 +4,8 @@ extends SceneTree
 ## office colours; and on a floor built at seed 7: each lamp in its room's
 ## colour, the lenses and tubes put out with their room, each family's face
 ## under a housing open below, the reception lift's wall lamps, the ceiling
-## halo following its lamp, the lie's dark lens under its family's face, and
-## the accent register.
+## halo following its lamp, the lie's dark lens under its family's face, the
+## accent register, the reception's beacon and no halo over a hole.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const OG := preload("res://game/world/office/office_geometry.gd")
@@ -255,6 +255,12 @@ func block_lift(hotel) -> void:
 		check("La luz, 22 cm sobre el aplique", absf(light.global_position.y - (m0.global_position.y + 0.22)) < 0.01)
 		check("Las dos luces, en las capas de su sala", hotel.kept_lamps.has(light.get_instance_id()) and hotel.kept_lamps.has((entries[1].light as Object).get_instance_id()))
 	check("Ningún otro sitio tiene acentos todavía", hotel.accents.rooms.keys() == [start], str(hotel.accents.rooms.keys()))
+	var beacon := {}
+	for entry: Dictionary in hotel.beacons:
+		if int(entry.room) == start: beacon = entry
+	check("La baliza de la recepción brilla y su luz no pasa de 3 m", not beacon.is_empty() and float(beacon.energy) > 0.0 and (beacon.material as BaseMaterial3D).emission_enabled and (beacon.light as OmniLight3D).omni_range <= 3.001)
+	if not hotel.halos.has(start) or hotel.flickers.any(func(e): return e.light == hotel.lights[start]): print("INFO la lámpara de la recepción falla o no tiene halo en la semilla 7")
+	else: check("La lámpara de la recepción, entera bajo la baliza", absf(hotel.lights[start].light_energy - float(hotel.halos[start].base)) < 0.001, "%.3f de %.3f" % [hotel.lights[start].light_energy, float(hotel.halos[start].base)])
 
 ## The ceiling halo of each troffer room, following its lamp (U4).
 func block_halos(hotel) -> void:
@@ -332,6 +338,8 @@ func block_accents(hotel) -> void:
 		var made: Array = []
 		for k in 4: made.append(hotel.accent_spot(hotel.room_nodes[ida], ida, Vector3(0, 1.2, 0), Vector3(0.3, 0.75, 0), Color(1.0, 0.85, 0.6), 2.0, 4.0, 40.0))
 		check("Tres acentos por sala y no más", made[0] != null and made[1] != null and made[2] != null and made[3] == null)
+		var spots_kept: bool = made.slice(0, 3).all(func(l): return l != null and hotel.kept_lamps.has((l as Object).get_instance_id()) and int(hotel.kept_lamps[(l as Object).get_instance_id()].mask) == int(hotel.room_layers.mask[ida]))
+		check("Los focos hechos con el piso ya montado, en las capas de su sala", spots_kept)
 		var spot: SpotLight3D = made[0]
 		check("El foco, con sombra y apagado hasta la ronda", spot.shadow_enabled and not spot.visible and spot.spot_angle == 40.0)
 		var here := FLOOR.position_of(a) + Vector3(0, 1.5, 0)
@@ -367,6 +375,8 @@ func block_accents(hotel) -> void:
 		var idb := int(b.id)
 		var sconce: MeshInstance3D = hotel.accent_sconce(hotel.room_nodes[idb], idb, Vector3(0, 1.6, 0), 0.0)
 		check("Un aplique de acento", sconce != null)
+		var bit_b: int = int(hotel.room_layers.layer[idb])
+		check("El aplique hecho con el piso ya montado y su luz, en las capas de su sala", sconce != null and bit_b != 0 and (sconce.layers & bit_b) != 0 and hotel.kept_lamps.has((hotel.sconce_lights.back() as Object).get_instance_id()))
 		hotel.update_visibility(here, true)
 		var k: int = hotel.sconce_lights.size() - 1
 		check("El aplique, en el registro por su índice", int(hotel.accents.by_sconce.get(k, -1)) == idb)
@@ -380,6 +390,53 @@ func block_accents(hotel) -> void:
 		hotel.set_sconce(k, 1)
 		var back: bool = hotel.sconce_lights[k].visible and range(sconce.mesh.get_surface_count()).all(func(s): return sconce.get_surface_override_material(s) == null)
 		check("El aplique se apaga con su sala, también su pantalla, y vuelve", on and off and back, "%s %s %s" % [on, off, back])
+		# Made in a room already out, or in one she drinks: as its room from the first frame.
+		hotel.set_room_power(idb, false)
+		var late: MeshInstance3D = hotel.accent_sconce(hotel.room_nodes[idb], idb, Vector3(0.6, 1.6, 0), 0.0)
+		var late_dark: bool = late != null and range(late.mesh.get_surface_count()).any(func(s): return late.get_surface_override_material(s) != null)
+		hotel.set_room_power(idb, true)
+		hotel.drain(idb, 0.5)
+		var drunk: SpotLight3D = hotel.accent_spot(hotel.room_nodes[idb], idb, Vector3(0, 1.2, 0.6), Vector3(0.3, 0.75, 0.6), Color(1.0, 0.85, 0.6), 2.0, 4.0, 40.0)
+		var drunk_energy: float = drunk.light_energy if drunk != null else -1.0
+		hotel.drain(idb, 0.0)
+		check("Un aplique hecho en una sala sin luz sale apagado; un foco hecho en una sala que ella bebe, a lo que ella deja", late_dark and absf(drunk_energy - 1.0) < 0.001, "%s %.3f" % [late_dark, drunk_energy])
+
+## No halo over a hole (T5): the dark of the plenum over a gap, and over a
+## tile she opens from the moment it opens, comes HOLE_CAP below the tiles,
+## past the halo (HALO_BELOW), which is depth-tested behind it.
+func block_holes(hotel) -> void:
+	check("Lo oscuro de un hueco baja más que el halo", OG.HOLE_CAP > OG.HALO_BELOW)
+	var capped := true
+	var gaps := 0
+	for id: int in hotel.halos:
+		var want := 0
+		for e in hotel.manifest.ducts.exits:
+			if int(e.room) == id and String(e.kind) == "gap": want += 1
+		gaps += want
+		if count(hotel.room_nodes[id], "plenum_dark") != want: capped = false
+	check("Cada hueco de una sala con halo, con lo oscuro del plénum encima", capped and gaps > 0, "%d huecos" % gaps)
+	var room := {}
+	var tile := Vector2i.ZERO
+	for candidate in hotel.manifest.rooms:
+		if not room.is_empty(): break
+		var id := int(candidate.id)
+		if FLOOR.is_void(candidate) or int(candidate.get("wing", 0)) != 0 or not hotel.halos.has(id) or not hotel.lit(id): continue
+		for t: Vector2i in OFFICE.free_tiles(candidate):
+			if hotel.turn_tile(id, t, true, false) != null:
+				room = candidate
+				tile = t
+				break
+	check("Hay una placa que ella puede abrir en una sala con halo", not room.is_empty())
+	if room.is_empty(): return
+	var hinge: Node3D = hotel.moved_tiles[Vector3i(int(room.id), tile.x, tile.y)]
+	var dark: Node3D = hinge.get_meta("dark")
+	var at_once: bool = dark.visible
+	await create_timer(OG.TILE_SWING + 0.2).timeout
+	var open: bool = dark.visible
+	hotel.turn_tile(int(room.id), tile, false, false)
+	var closing: bool = dark.visible
+	await create_timer(OG.TILE_SWING + 0.2).timeout
+	check("Una placa que ella abre muestra lo oscuro desde que se abre, mientras está abierta y hasta que vuelve a su sitio", at_once and open and closing and not dark.visible, "%s %s %s %s" % [at_once, open, closing, dark.visible])
 
 func run() -> void:
 	block_palette()
@@ -396,6 +453,7 @@ func run() -> void:
 	block_halos(hotel)
 	block_wrap_lie(hotel)
 	block_accents(hotel)
+	await block_holes(hotel)
 	var file := FileAccess.open("res://evidence/office_light_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"checks": checks}, "\t"))
 	print("OFFICE_LIGHT_TEST_RESULT ", checks.size() - failed, "/", checks.size())

@@ -6,6 +6,9 @@ extends SceneTree
 ## floors of the office generator, each made twice, come out valid and the
 ## same, with their special pieces, post, power, air, ducts, archives and
 ## furniture as the design asks, in time, without moving the hotel's.
+## verify.ps1 runs it as three parts side by side (`part`, set by
+## office_test_generator.gd, office_test_validator.gd and
+## office_test_physics.gd); on its own it runs all of them.
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const HOTEL := preload("res://game/floors/palettes/hotel_palette.gd")
 const KIND := preload("res://game/floors/office_floor.gd")
@@ -36,6 +39,10 @@ var checks: Array = []
 var failed := 0
 ## What each floor of the generator drew and how long it took, for the evidence.
 var seeds: Array = []
+## The part this run checks: "generator" the palette, the kind, the 64 floors
+## and the texts; "validator" the mutations of seed 7's floor; "physics" the
+## three floors built in a level; "" all of them.
+var part := ""
 
 func _initialize() -> void: run.call_deferred()
 
@@ -46,17 +53,20 @@ func check(title: String, passed: bool, detail := "") -> void:
 
 func run() -> void:
 	var began := Time.get_ticks_msec()
-	palette_tables()
-	palette_places()
-	palette_lattice()
-	palette_crawl()
-	kind_checks()
-	generator_checks()
-	validator_checks()
-	await physics_checks()
-	texts()
+	if part.is_empty() or part == "generator":
+		palette_tables()
+		palette_places()
+		palette_lattice()
+		palette_crawl()
+		kind_checks()
+		generator_checks()
+	if part.is_empty() or part == "validator":
+		if part == "validator": seven = seed_seven()
+		validator_checks()
+	if part.is_empty() or part == "physics": await physics_checks()
+	if part.is_empty() or part == "generator": texts()
 	var seconds := float(Time.get_ticks_msec() - began) / 1000.0
-	var file := FileAccess.open("res://evidence/office_test.json", FileAccess.WRITE)
+	var file := FileAccess.open("res://evidence/office_test%s.json" % ("" if part.is_empty() else "_" + part), FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"passed": failed == 0, "seconds": seconds, "checks": checks, "seeds": seeds}, "\t"))
 	print("OFFICE_TEST_RESULT ", checks.size() - failed, "/", checks.size(), " in %.1f s" % seconds)
 	quit(1 if failed > 0 else 0)
@@ -790,6 +800,14 @@ func pieces_checks() -> void:
 
 ## Seed 7's floor, kept by generator_checks() for the mutations.
 var seven: Dictionary = {}
+
+## Seed 7's floor at two survivors as generator_checks() keeps it, made here
+## when the validator's part runs on its own (a floor comes out the same every
+## time: generator_checks() checks it).
+func seed_seven() -> Dictionary:
+	var manifest: Dictionary = GEN.new().generate(7, 2)
+	if manifest.is_empty() or bool(manifest.get("fallback", false)): return {}
+	return manifest
 
 ## Each mutation of spec 3.4 on a deep copy of seed 7's floor: the validator
 ## names it.

@@ -42,7 +42,7 @@ function Godot-Arguments([string]$source, [string]$log, [bool]$fixed, [string[]]
     return ,$arguments
 }
 
-$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','office/office_lies_test','office/lurker_capture_test','office/office_dark_test','office/lurker_tiles_test','office/lurker_forced_test','office/lurker_observer_test','office/lurker_bots_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test','office/office_finishes_test','office/office_light_test')
+$tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test_generator','office/office_test_validator','office/office_test_physics','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','office/office_lies_test','office/lurker_capture_test','office/office_dark_test','office/lurker_tiles_test','office/lurker_forced_test','office/lurker_observer_test','office/lurker_bots_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test','office/office_finishes_test','office/office_light_test')
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
     $log = Join-Path $evidence ('verify_' + $name + '.log')
@@ -53,8 +53,9 @@ foreach ($test in $tests) {
     # Its own port: a game left open on this machine hosts on the default one,
     # and the observer went and watched that instead of building its floors.
     if ($name -eq 'observer_test') { $user += '--port=24640' }
-    # The offices' test makes 64 floors twice, each one validated as it is drawn.
-    $limit = if ($name -eq 'office_test') { 600 } else { 360 }
+    # The offices' test runs as three parts side by side; its generator part
+    # makes 64 floors twice, each one validated as it is drawn.
+    $limit = if ($name -eq 'office_test_generator') { 600 } else { 360 }
     Add-Check $test $name (Godot-Arguments ('res://tests/' + $test + '.gd') $log (-not $audio) $user) $limit 'plain' $(if ($audio) { 3 } else { 1 }) $log
 }
 # The creature on its own feet: journeys between rooms, walking and hunting.
@@ -64,9 +65,9 @@ $log = Join-Path $evidence 'verify_stuck_probe.log'
 Add-Check 'dev/creature_stuck_probe' 'stuck_probe' (Godot-Arguments 'res://tools/dev/creature_stuck_probe.gd' $log $true @('--test-profile','--seeds=81,213','--trips=6','--strict','--automation','--silent')) 480 'plain' 1 $log
 # The Lurker on her surfaces and in her ducts: trips on floor 2, no jump she did
 # not declare, never in an off-limits room, never through a shut door
-# (tools/dev/lurker_route_probe.gd). Twice the 34 s it takes alone.
+# (tools/dev/lurker_route_probe.gd). It takes some 60 s alone (since area 3b); 150 under verify's load.
 $log = Join-Path $evidence 'verify_lurker_route_probe.log'
-Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--short','--strict','--automation','--silent')) 90 'plain' 1 $log
+Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--short','--strict','--automation','--silent')) 150 'plain' 1 $log
 # The same trips at Pesadilla's speeds of going unseen (spec_f3_aggression),
 # her most usual now: she arrives at 4.5 m/s on a ceiling and 5 in a duct.
 $log = Join-Path $evidence 'verify_lurker_route_unseen.log'
