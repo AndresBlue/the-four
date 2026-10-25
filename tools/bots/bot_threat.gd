@@ -424,6 +424,12 @@ func on_stuck(it, escalated: Callable, abandoned: Callable) -> void:
 	it.stuck_escalated.connect(escalated)
 	it.route_abandoned.connect(abandoned)
 
+## A replay's frame of it: the recording's row (from `c` in frames a and b,
+## `w` of the way from a to b, `span` seconds apart) put on its puppet.
+func replay_row(a: PackedFloat32Array, b: PackedFloat32Array, c: int, w: float, span: float) -> void:
+	if c + 4 > a.size(): return
+	replay_pose(Vector3(a[c], a[c + 1], a[c + 2]).lerp(Vector3(b[c], b[c + 1], b[c + 2]), w), lerp_angle(a[c + 3], b[c + 3], w), (Vector3(b[c], b[c + 1], b[c + 2]) - Vector3(a[c], a[c + 1], a[c + 2])) / span)
+
 ## A replay's puppet of it, put where the recording has it: there, turned so
 ## and moving so, with no state of its own on the way to pull it elsewhere.
 func replay_pose(at: Vector3, yaw: float, moving: Vector3) -> void:

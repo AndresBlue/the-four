@@ -36,9 +36,12 @@ signal cue_played(seat: int, cue_id: int, point: Vector3)
 @export var sound_profile: Resource = preload("res://game/audio/profiles/lurker.tres")
 const WORDS: Array[StringName] = [&"roam", &"investigate", &"search", &"alert", &"chase", &"strike", &"recover", &"capture", &"open", &"wait", &"idle", &"stalk", &"withdraw"]
 const CLIPS := ["idle", "crawl", "crawl_fast", "vent_crawl", "retreat", "loom", "scare", "peek"]
-const PACK_SIZE := 10
+## 2a's ten (8.3) and phase 3's two: her mind's state and her prey's seat
+## (spec_f3_integration 6.2).
+const PACK_SIZE := 12
 ## TRAY and BAND: the patch kind (neither: a channel), for visual.cling.
-enum Flag { IN_DUCT = 1, HIDDEN = 2, SURFACE = 4, DRAINING = 8, CUE = 16, DROP = 32, ARRIVING = 64, TRAY = 128, BAND = 256 }
+## SCARED: drawing back from a fright or fleeing it.
+enum Flag { IN_DUCT = 1, HIDDEN = 2, SURFACE = 4, DRAINING = 8, CUE = 16, DROP = 32, ARRIVING = 64, TRAY = 128, BAND = 256, SCARED = 512 }
 ## Her face in her frame: the offset shell.cue_pose() uses.
 const FACE_OFFSET := SHELL.FACE_OFFSET
 ## How hard her hands hold on, by what she holds (the bench's 0.6 held up).
@@ -74,6 +77,10 @@ var net_jump := -1
 var net_flags := 0
 var net_look := Vector3.INF
 var net_near := -1
+## Her mind's state (lurker_brain.State) and her prey's seat as the one who
+## drives her sent them; -1 before the first pack.
+var net_mind := -1
+var net_prey := -1
 ## What is heard of her (lurker_voice.gd).
 var voice
 var car_clock := 0.0
@@ -169,7 +176,7 @@ func arrive() -> void:
 	motion.busy = func() -> bool: return is_engaged() or is_hunting() or cue
 	motion.bodies_ahead = bodies_ahead
 	motion.left_behind = left_behind
-	motion.tile_turned.connect(_on_tile_turned)
+	motion.tile_turned.connect(func(room: int, tile: Vector2i, open: bool, from_below: bool): tell("tile", [room, tile.x, tile.y, open, from_below]))
 	think_setup()
 	var stage := int(level.session.stage) if level.get("session") != null else 1
 	var den := den_point(stage)
@@ -426,11 +433,13 @@ func flags() -> int:
 	if cue: out |= Flag.CUE
 	if motion.transit_phase() == &"drop": out |= Flag.DROP
 	if motion.transit_phase() == &"arriving": out |= Flag.ARRIVING
+	if brain != null and brain.state in [BRAIN.State.RECOIL, BRAIN.State.FLEE]: out |= Flag.SCARED
 	return out
 
 func pack_state() -> Array:
 	var look: Vector3 = visual.look_point if visual != null else Vector3.INF
-	return [global_position, global_basis.get_rotation_quaternion(), velocity, maxi(WORDS.find(word), 0), flags(), grace, look, clip, motion.near_node if motion != null else -1, motion.jump_id if motion != null else 0]
+	return [global_position, global_basis.get_rotation_quaternion(), velocity, maxi(WORDS.find(word), 0), flags(), grace, look, clip, motion.near_node if motion != null else -1, motion.jump_id if motion != null else 0,
+		int(brain.state) if brain != null else -1, int(brain.prey) if brain != null else -1]
 
 func push_state(data: Array) -> void:
 	if data.size() != PACK_SIZE: return
@@ -448,6 +457,8 @@ func push_state(data: Array) -> void:
 	net_look = data[6]
 	clip = int(data[7])
 	net_near = int(data[8])
+	net_mind = int(data[10])
+	net_prey = int(data[11])
 
 func follow_state(delta: float) -> void:
 	net_clock += delta
@@ -598,6 +609,8 @@ func debug_lines() -> Array[String]:
 		hang = motion.state.hang
 	var leg := String(motion.legs[0].kind) if not motion.legs.is_empty() else "parada"
 	lines.append("  lurker, %s, %s %d, u %.1f v %.1f, cuelga %.2f, %s, ducto %s, viaje %s" % [String(word), kind, room_id, u, v, hang, leg, "si" if motion.in_duct else "no", String(motion.transit_phase())])
+	if brain != null: lines.append("  mente %s, presa %d%s" % [brain.state_name(), int(brain.prey), (", aviso %.1f s" % maxf(0.0, float(warning.active.due) - brain.clock)) if not warning.active.is_empty() else ""])
+	if not drained.is_empty(): lines.append("  bebe " + ", ".join(PackedStringArray(drained.keys().map(func(r): return "%d (%.2f)" % [int(r), float(drained[r])]))))
 	return lines
 
 func debug_state() -> Dictionary:
@@ -611,7 +624,87 @@ func debug_state() -> Dictionary:
 	out["legs"] = motion.legs.size()
 	out["transit"] = String(motion.transit_phase())
 	out["jump_id"] = motion.jump_id
+	out["state"] = brain.state_name() if brain != null else ""
+	out["prey"] = int(brain.prey) if brain != null else -1
+	out["bebe"] = drained.duplicate()
 	return out
+
+# --- The observer (spec_f3_integration 6.1) -----------------------------------------------
+
+## Her marks (observer_gizmos.gd), only where g.here(). &"path": her way
+## ahead, the outline of the ceiling she is on and a tick along her normal,
+## the director's lead, the warning in hand (a line to the victim's head and
+## a ring round them that closes with its window) and every room she drinks.
+## &"sight": her dark sight as the edges of her view, and a line to her prey
+## while she sees them. &"ducts": the network of the planta looked at (the
+## plenum fainter, the main duct thick), every grille and gap (red while it
+## is shut to her), the tiles she left open, her way inside and where she is.
+func draw_gizmos(g) -> void:
+	if motion == null: return
+	match g.layer:
+		&"path": gizmo_path(g)
+		&"sight": gizmo_sight(g)
+		&"ducts": gizmo_ducts(g)
+
+func gizmo_path(g) -> void:
+	var points: PackedVector3Array = motion.ahead(30.0)
+	for i in range(1, points.size()):
+		if g.here(points[i]): g.line(points[i - 1], points[i], g.COLOURS.path)
+	if motion.surface():
+		var patch: Dictionary = shell.patches[motion.state.patch]
+		if int(patch.kind) == SHELL.Kind.TRAY:
+			var r: Rect2 = patch.rect
+			var y := float(patch.y) - 0.02
+			var corners := [Vector3(r.position.x, y, r.position.y), Vector3(r.end.x, y, r.position.y), Vector3(r.end.x, y, r.end.y), Vector3(r.position.x, y, r.end.y)]
+			for k in 4: g.line(corners[k], corners[(k + 1) % 4], g.COLOURS.shell)
+		var at: Vector3 = motion.anchor()
+		g.line(at, at + motion.transform().basis.y * 0.5, g.COLOURS.shell)
+	if brain != null and not brain.lead.is_empty() and g.here(brain.lead.point): g.ring(FLOOR.floor_point(brain.lead.point), float(brain.lead.radius), g.COLOURS.lead, 32)
+	if brain != null and not warning.active.is_empty():
+		var victim = senses.body_of(int(warning.active.seat)) if senses != null else null
+		if victim != null:
+			var head: Vector3 = victim.camera.global_position if victim.get("camera") != null else victim.global_position + Vector3.UP * 1.6
+			var left := clampf((float(warning.active.due) - brain.clock) / maxf(float(warning.active.window), 0.01), 0.0, 1.0)
+			g.line(face_point(), head, g.COLOURS.cue)
+			g.ring(victim.global_position, 0.3 + 1.2 * left, g.COLOURS.cue, 20)
+	for r in drained:
+		var centre := FLOOR.position_of(level.manifest.rooms[int(r)])
+		if g.here(centre): g.ring(centre, 0.5, Color(g.COLOURS.drain, clampf(float(drained[r]), 0.1, 1.0)), 12)
+
+func gizmo_sight(g) -> void:
+	if motion.in_duct or not g.here(global_position): return
+	var eye := face_point()
+	var forward := Vector3(global_basis.z.x, 0, global_basis.z.z)
+	if forward.length() < 0.1: return
+	forward = forward.normalized()
+	for side in [-1.0, 1.0]: g.line(eye, eye + forward.rotated(Vector3.UP, deg_to_rad(SENSES.SIGHT_HALF) * side) * SENSES.SIGHT_DARK, g.COLOURS.sight)
+	var body = senses.body_of(int(brain.prey)) if senses != null and brain != null and int(brain.prey) >= 0 else null
+	if body != null and senses.sees(body): g.line(eye, body.global_position + Vector3.UP * 1.5, g.COLOURS.aim)
+
+func gizmo_ducts(g) -> void:
+	if ducts == null: return
+	for e in ducts.edges:
+		var a: Vector3 = ducts.nodes[int(e[0])]
+		var b: Vector3 = ducts.nodes[int(e[1])]
+		if not g.here(a) or not g.here(b): continue
+		var colour: Color = g.COLOURS.duct if String(e[3]) != "plenum" else Color(g.COLOURS.duct, 0.35)
+		g.line(a, b, colour)
+		if ducts.visible_kinds.has(String(e[3])): g.line(a + Vector3.UP * 0.03, b + Vector3.UP * 0.03, colour)
+	for x in ducts.exits.size():
+		var exit: Dictionary = ducts.exits[x]
+		if String(exit.kind) == "tile" or not g.here(exit.position): continue
+		var node := int(exit.node)
+		var shut: bool = not routes.exit_usable(x) or (node >= 0 and ducts.closed_wings[ducts.node_wings[node]] != 0)
+		g.mark(exit.position, g.COLOURS.closed if shut else g.COLOURS.exit, 0.25)
+	for room in ducts.open_tiles:
+		for tile in ducts.open_tiles[room]:
+			var p: Vector3 = ducts.tile_point(int(room), tile)
+			if g.here(p): g.ring(p, 0.35, g.COLOURS.exit, 8)
+	for leg in motion.legs:
+		if String(leg.kind) != "duct": continue
+		var points: PackedVector3Array = leg.points
+		for i in range(1, points.size()): g.line(points[i - 1], points[i], g.COLOURS.duct_path)
+	if motion.in_duct and g.here(motion.duct_point): g.ring(motion.duct_point, 0.4, g.COLOURS.duct_path, 12)
 
 # --- Her mind (spec_f2_mind 8): senses, brain and the warning ---------------------------
 
@@ -647,7 +740,7 @@ func think_setup() -> void:
 	brain.tune(tuning)
 	brain.cue_started.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue"): level.match_net.send_cue(int(entry.seat), int(entry.id), Vector3(entry.point[0], entry.point[1], entry.point[2]), float(entry.due) - float(entry.at)))
 	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
-	brain.scared.connect(func(cause: String, seat: int): on_event("scare", [seat, cause, face_point()]))
+	brain.scared.connect(func(cause: String, seat: int): tell("scare", [seat, cause, face_point()]))
 
 func think(delta: float) -> void:
 	if control != "ai" or not thinking or brain == null: return
@@ -792,10 +885,11 @@ func emerge_point(seat: int, mode: String, span: Vector2) -> Vector3:
 ## A tile she goes through (spec_f3_aggression): the hotel swings it (down
 ## and left half open as she comes out; up and shut again after her as she
 ## goes in), the grid creaks with dust, one hand takes it for the swing, and
-## the plenum keeps which ones she left open. Local to each machine for now.
+## the plenum keeps which ones she left open. On every machine, by her event
+## "tile" (tell()).
 const TILE_HAND := "a.R"
 const TILE_GRIP := 0.4
-func _on_tile_turned(room: int, tile: Vector2i, open: bool, from_below: bool) -> void:
+func turn_tile(room: int, tile: Vector2i, open: bool, from_below: bool) -> void:
 	var list: Array = ducts.open_tiles.get(room, [])
 	if open and from_below and list.has(tile): return
 	if open and not from_below and not list.has(tile): list.append(tile)
@@ -912,14 +1006,28 @@ func presence_sound() -> Resource: return sound_profile
 ## Her lies to a mind that is going (spec_f3_integration 4).
 func hallucinations() -> Variant: return load("res://game/app/hallucinations/lurker_hallucinations.gd")
 
-## A moment of hers every machine must hear of (6.3). Told on this machine
-## only for now: the net's reliable event is phase 4's.
+## A moment of hers every machine must hear of (spec_f3_integration 6.3):
+## applied here and, in a match, told reliably to the others, whose puppet
+## applies it with on_event() (match_net.creature_event()).
+##   "scare" [by_seat, cause, at]: her shriek heard, and the minds near it
+##           frightened where minds are kept
+##   "tile"  [room, tile_x, tile_y, open, from_below]: a tile she went through
+## Phase 4 adds "room_off" [room, seconds] (versus: a room she drinks dark).
+## Her going into and out of a grille is heard on every machine from her
+## flags (sound_step()), with no event of its own.
+func tell(kind: String, data: Array) -> void:
+	on_event(kind, data)
+	var net = level.get("match_net") if level != null else null
+	if net != null and is_instance_valid(net) and net.has_method("creature_event"): net.creature_event(kind, data)
+
 func on_event(kind: String, data: Array) -> void:
 	match kind:
 		"scare":
 			var at: Vector3 = data[2]
 			if voice != null: voice.shriek_heard(at)
 			frighten(at)
+		"tile":
+			if ducts != null and data.size() == 5: turn_tile(int(data[0]), Vector2i(int(data[1]), int(data[2])), bool(data[3]), bool(data[4]))
 
 ## Her shriek frightens the minds near it (on the authority, where minds
 ## are kept): on her planta, within SHRIEK_FRIGHT and with a clear line.

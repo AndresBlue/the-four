@@ -14,6 +14,8 @@ extends Node3D
 ##   4 las puertas (abierta, cerrada, con llave), armarios y ascensores
 ##   5 lo que pide el sector: televisores, cajones con número, documentos
 ##   6 la vista de la criatura: su cono y la línea a lo que mira
+##   7 los ductos de una criatura que los tiene (The Lurker): la red de la
+##     planta, sus entradas y salidas, y su camino por dentro
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## Seconds a trail remembers, and how often a point is added.
 const TRAIL_TIME := 12.0
@@ -38,13 +40,20 @@ const COLOURS := {
 	"sight": Color(1.0, 0.8, 0.5),
 	"lead": Color(1.0, 0.35, 0.9),
 	"search": Color(1.0, 0.6, 0.2),
+	"shell": Color(0.75, 0.55, 1.0),
+	"duct": Color(0.5, 0.5, 0.55),
+	"duct_path": Color(1.0, 0.8, 0.3),
+	"exit": Color(0.6, 0.8, 1.0),
+	"closed": Color(1.0, 0.3, 0.3),
+	"cue": Color(1.0, 0.2, 0.15),
+	"drain": Color(1.0, 1.0, 0.6),
 }
 var level
 var mesh := ImmediateMesh.new()
 var trails := {}
 var trail_clock := 0.0
 var noises: Array = []
-var shown := {"path": true, "trails": true, "noises": true, "doors": true, "errand": true, "sight": true}
+var shown := {"path": true, "trails": true, "noises": true, "doors": true, "errand": true, "sight": true, "ducts": true}
 ## Marks are drawn this much bigger, for the floor seen from above.
 var scale_hint := 1.0
 ## The way to the car the creature has to take, while it is on a floor the
@@ -52,7 +61,8 @@ var scale_hint := 1.0
 ## worked out again twice a second.
 var lift_route := PackedVector3Array()
 var lift_route_clock := 0.0
-## The layer being drawn, for the creature's own marks: &"path" or &"sight".
+## The layer being drawn, for the creature's own marks: &"path", &"sight" or
+## &"ducts".
 var layer := &""
 
 func setup(owner_level) -> void:
@@ -93,6 +103,7 @@ func _process(delta: float) -> void:
 	if shown.doors: draw_doors()
 	if shown.errand: draw_errand()
 	if shown.sight: draw_sight()
+	if shown.ducts: draw_ducts()
 	mesh.surface_end()
 
 ## Where everybody has been, kept for a few seconds.
@@ -191,6 +202,14 @@ func draw_errand() -> void:
 		if is_instance_valid(piece) and piece.digit >= 0 and here(piece.global_position): mark(piece.global_position, Color(COLOURS.digit, 0.3 if piece.searched else 1.0), 0.35)
 	for document in get_tree().get_nodes_in_group("hotel_documents"):
 		if here(document.global_position): mark(document.global_position, COLOURS.document, 0.25)
+
+## The ducts of a creature that has them (The Lurker): drawn on the planta
+## looked at, wherever it is.
+func draw_ducts() -> void:
+	var creature = level.creature
+	if not is_instance_valid(creature) or not creature.is_inside_tree(): return
+	layer = &"ducts"
+	creature.draw_gizmos(self)
 
 ## What the creature can see: the edges of its cone, and a line to whoever it
 ## is after while it can see them.

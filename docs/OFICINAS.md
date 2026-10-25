@@ -124,7 +124,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 - **Cualquier placa entera es también su puerta** (el autor, 24 de octubre de 2026): menos las de las lámparas, las que tienen el centro de una lámpara a menos de 0,9 m y, fuera de los pasillos, las que tienen una pared a menos de 1 m. En las salas prohibidas, ninguna.
   - Para salir la empuja desde arriba con una mano y la deja **colgando a medio abrir** (60°) sobre su hueco oscuro. Una placa abierta dice por dónde ha salido.
   - Si vuelve a entrar por esa placa, la cierra tras de sí. Si entra por una cerrada, la levanta hacia el plénum y la placa cae cerrada.
-  - Por ahora cada máquina mueve sus placas por su cuenta: el evento de la red es de la fase 4.
+  - Cada placa que mueve llega a todas las máquinas por el evento de la criatura (paso 3e); falta verlo en una partida en red.
 
 ### Escondites
 

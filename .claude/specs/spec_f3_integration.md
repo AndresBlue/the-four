@@ -757,6 +757,14 @@ Not here, because they already have their reliable way: the cue and its end (2b'
 
 ---
 
+### 6.5 Step 3e as landed (25 October 2026, director)
+
+- Gizmos as 6.1: `lurker.draw_gizmos()` with `gizmo_path()`, `gizmo_sight()` and `gizmo_ducts()` (there were none of 2a's to build on); the plenum's edges drawn fainter; tile exits are not marked (any tile is one), the tiles she left open are rings. `debug_lines()` gains the mind line and "bebe"; `debug_state()` gains `state`, `prey`, `bebe`.
+- The pack as 6.2, but the flag `SCARED` is 512: 32 to 256 were already 2a's (`DROP`, `ARRIVING`, `TRAY`, `BAND`). A puppet keeps them as `net_mind` and `net_prey`.
+- Events as 6.3: `match_net.creature_event()` and `creature_event_rpc` (locust_call's checks and relay); `lurker.tell()` applies and sends. Kinds: `"scare"` and `"tile"` `[room, tile_x, tile_y, open, from_below]` (spec_f3_aggression's tile, now on every machine); not `"duct_in"`/`"duct_out"`: every machine already hears her grilles from her flags (`sound_step()`); `"room_off"` stays phase 4's. PROTOCOL `the-four-net-22` (Pending, director 3: this is the bump).
+- Recordings as 6.4: `tools/bots/bot_threat_lurker.gd` (extends the null threat: the bots still mind nothing of her; 3f teaches it), its row as 6.4, `recorded_route()` her first sixteen points ahead; the replay reads the creature's row through its model (`replay_row()`, the Locust's the old lines moved into `bot_threat.gd`).
+- Tested by `tests/office/lurker_observer_test.gd` (16 checks), in `verify.ps1`. The late joiner's reserve (6.3) and the contract test's Lurker section wait for phase 4.
+
 ## 7. Step 3f: the bots and the balance batch
 
 ### 7.1 `tools/bots/bot_threat_lurker.gd`

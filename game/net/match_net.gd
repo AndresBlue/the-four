@@ -769,6 +769,22 @@ func world_sound(path: String, point: Vector3, gain: float, start: float) -> voi
 func play_world_sound(path: String, point: Vector3, gain: float, start: float) -> void:
 	if path.begins_with("res://assets/audio/"): level.world_audio.play_at(path, point, gain, RID(), start)
 
+## A moment of the creature every machine must hear of (docs/OFICINAS.md
+## 11.6; spec_f3_integration 6.3), told reliably by whoever drives it and
+## applied by creature.on_event() on the others. The kinds and what they
+## carry are the creature's (lurker.gd, tell()).
+func creature_event(kind: String, data: Array) -> void:
+	if in_match(): to_everyone(&"creature_event_rpc", [kind, data])
+
+@rpc("any_peer", "call_remote", "reliable")
+func creature_event_rpc(kind: String, data: Array) -> void:
+	if not from_host(): return
+	# Only whoever drives it tells: the host itself, or the hunter.
+	if net.is_host and (not versus() or multiplayer.get_remote_sender_id() != locust_peer()): return
+	relay(&"creature_event_rpc", [kind, data], multiplayer.get_remote_sender_id())
+	var creature = level.creature
+	if is_instance_valid(creature) and creature.control == "puppet": creature.on_event(kind, data)
+
 ## The creature called out (grunt or strike warning) where it is authoritative.
 func creature_call(kind: String, segment: int, pitch: float) -> void:
 	if in_match(): to_everyone(&"locust_call", [kind, segment, pitch])

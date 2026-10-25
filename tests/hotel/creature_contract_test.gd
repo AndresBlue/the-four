@@ -75,6 +75,9 @@ const NET := "res://game/net/match_net.gd"
 const MOVED := [NET, "res://game/app/observer_view.gd", "res://game/app/observer_gizmos.gd", "res://game/app/run_ledger.gd", "res://game/app/interaction.gd", "res://game/app/presentation_rig.gd"]
 const BOTS := "res://tools/bots"
 const THREAT_MODEL := "res://tools/bots/bot_threat.gd"
+## Each creature's own model reads that creature, as The Locust's does
+## (bot_threats.gd picks it by kind): The Lurker's (spec_f3_integration 6.4).
+const OWN_MODELS := [THREAT_MODEL, "res://tools/bots/bot_threat_lurker.gd"]
 ## The one thing of the Locust's folder each may still name: the observer's
 ## reading by ear is its echo_view (only for a creature that can(&"echo")),
 ## and the bots thread their own routes through doorways with
@@ -82,7 +85,7 @@ const THREAT_MODEL := "res://tools/bots/bot_threat.gd"
 const KEPT := {"observer_view.gd": "res://game/enemies/locust/echo_view.gd", "bot_nav.gd": "res://game/enemies/locust/door_threading.gd"}
 ## match_net's RPCs and how many arguments each takes, as they were before it
 ## asked the contract: the wire is these.
-const RPCS := {"begin": 2, "report_ready": 1, "go": 0, "player_state": 2, "locust_state": 1, "minds_state": 1, "session_state": 6, "request_door": 3, "door_swung": 4, "door_settled": 2, "request_television": 1, "television_state": 2, "request_warp": 1, "warp_state": 1, "request_container": 1, "container_state": 3, "request_panel": 2, "panel_state": 2, "request_code": 1, "code_state": 0, "revived_state": 3, "request_lift": 1, "ride_state": 2, "floor_left": 0, "locust_rode": 1, "request_hide": 3, "hide_state": 3, "hide_forced": 1, "player_noise": 3, "play_world_sound": 4, "locust_call": 3, "strike": 2, "request_force": 1, "request_shriek": 0, "shriek_reveal": 1, "heard_contact": 6, "execute_start": 4, "tell_lens": 3, "lens_settled": 3, "floor_summary": 1, "player_card": 2, "sheet_chunk": 3, "sheet_confirmed": 3, "restore": 7, "back_to_room": 0, "request_office": 3, "office_state": 5, "office_refused": 3, "office_photo": 2}
+const RPCS := {"begin": 2, "report_ready": 1, "go": 0, "player_state": 2, "locust_state": 1, "minds_state": 1, "session_state": 6, "request_door": 3, "door_swung": 4, "door_settled": 2, "request_television": 1, "television_state": 2, "request_warp": 1, "warp_state": 1, "request_container": 1, "container_state": 3, "request_panel": 2, "panel_state": 2, "request_code": 1, "code_state": 0, "revived_state": 3, "request_lift": 1, "ride_state": 2, "floor_left": 0, "locust_rode": 1, "request_hide": 3, "hide_state": 3, "hide_forced": 1, "player_noise": 3, "play_world_sound": 4, "locust_call": 3, "creature_event_rpc": 2, "strike": 2, "request_force": 1, "request_shriek": 0, "shriek_reveal": 1, "heard_contact": 6, "execute_start": 4, "tell_lens": 3, "lens_settled": 3, "floor_summary": 1, "player_card": 2, "sheet_chunk": 3, "sheet_confirmed": 3, "restore": 7, "back_to_room": 0, "request_office": 3, "office_state": 5, "office_refused": 3, "office_photo": 2}
 ## The observer's words for The Locust's modes, as it wrote them (in the order
 ## of hotel_locust.Mode).
 const OLD_WORDS := ["patrulla", "investiga", "persigue", "busca", "prepara", "se repone", "alerta", "armario", "ejecuta", "acecha"]
@@ -1562,7 +1565,7 @@ func moved_readers() -> void:
 	var bots: Array = []
 	for file in DirAccess.get_files_at(BOTS):
 		var path := BOTS.path_join(file)
-		if file.ends_with(".gd") and path != THREAT_MODEL: bots.append(path)
+		if file.ends_with(".gd") and not OWN_MODELS.has(path): bots.append(path)
 	var bot_foreign := {}
 	var bot_modes: Array = []
 	var bot_own: Array = []
@@ -1586,7 +1589,7 @@ func moved_readers() -> void:
 		check("%s le pregunta a la criatura solo lo del contrato" % file, foreign.is_empty(), "lee %s" % str(foreign.keys()))
 		check("%s no compara modos de The Locust ni la lee por level.locust" % file, found == null, "encuentra %s" % (found.get_string() if found != null else ""))
 		check("%s no guarda nada propio de The Locust%s" % [file, (", salvo %s" % String(KEPT[file]).get_file()) if KEPT.has(file) else ""], not keeps)
-	check("Los bots (%d archivos, sin su modelo de The Locust) le preguntan solo lo del contrato" % bots.size(), bot_foreign.is_empty() and bots.size() >= 10, str(bot_foreign.keys()))
+	check("Los bots (%d archivos, sin el modelo de cada criatura) le preguntan solo lo del contrato" % bots.size(), bot_foreign.is_empty() and bots.size() >= 10, str(bot_foreign.keys()))
 	check("Ni comparan sus modos, ni la nombran, ni la leen por level.locust", bot_modes.is_empty(), str(bot_modes))
 	check("Ni guardan nada suyo, salvo door_threading en bot_nav.gd", bot_own.is_empty(), str(bot_own))
 	var net := code_of(NET)

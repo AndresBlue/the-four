@@ -4,9 +4,9 @@ extends RefCounted
 ## creature's own measures and what a recording keeps of it. The rest of the
 ## bots ask the model, and the creature only its contract
 ## (game/enemies/creature.gd).
-## The Lurker's is the null creature's until bot_threat_lurker (phase 3:
-## with a person's turn and reaction, spec_f2_mind 13).
-const MODELS := {&"locust": preload("res://tools/bots/bot_threat.gd"), &"none": preload("res://tools/bots/bot_threat_none.gd"), &"lurker": preload("res://tools/bots/bot_threat_none.gd")}
+## The Lurker's records and replays her and minds nothing of her yet (3f
+## teaches it her, with a person's turn and reaction, spec_f2_mind 13).
+const MODELS := {&"locust": preload("res://tools/bots/bot_threat.gd"), &"none": preload("res://tools/bots/bot_threat_none.gd"), &"lurker": preload("res://tools/bots/bot_threat_lurker.gd")}
 
 ## A model of the creature on `level`'s floor. With no creature there, The
 ## Locust's, which then has nothing to mind (bot_threat.refresh), as it always

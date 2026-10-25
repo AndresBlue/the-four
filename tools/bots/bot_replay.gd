@@ -330,9 +330,8 @@ func pose_everyone() -> void:
 		var moving := (Vector3(b[o], b[o + 1], b[o + 2]) - Vector3(a[o], a[o + 1], a[o + 2])) / span
 		if Vector3(b[o], b[o + 1], b[o + 2]).distance_to(Vector3(a[o], a[o + 1], a[o + 2])) > 3.0: moving = Vector3.ZERO
 		puppet.pose(at, lerp_angle(a[o + 3], b[o + 3], w), lerpf(a[o + 4], b[o + 4], w), moving, flags & RECORDER.Flag.CROUCHED != 0, flags & RECORDER.Flag.TORCH != 0)
-	var c := seats.size() * fields
-	if c + 4 <= a.size() and is_instance_valid(level.creature) and model != null:
-		model.replay_pose(Vector3(a[c], a[c + 1], a[c + 2]).lerp(Vector3(b[c], b[c + 1], b[c + 2]), w), lerp_angle(a[c + 3], b[c + 3], w), (Vector3(b[c], b[c + 1], b[c + 2]) - Vector3(a[c], a[c + 1], a[c + 2])) / span)
+	# The creature's row, read by its own model (each keeps its own).
+	if is_instance_valid(level.creature) and model != null: model.replay_row(a, b, seats.size() * fields, w, span)
 
 # --- Keys ---------------------------------------------------------------------
 

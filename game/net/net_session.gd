@@ -36,7 +36,7 @@ const MAX_SURVIVORS := 5
 const OBSERVERS := 2
 const MIN_PLAYERS := 2
 ## Bumped whenever the messages change: mismatched builds refuse to play.
-const PROTOCOL := "the-four-net-21"
+const PROTOCOL := "the-four-net-22"
 const FLOORS := preload("res://game/floors/floor_index.gd")
 const RULES := preload("res://game/floors/match_rules.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")

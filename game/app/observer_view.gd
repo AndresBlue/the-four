@@ -23,7 +23,7 @@ extends Node3D
 ##   movimiento   vuela (correr: más rápido; saltar/agacharse: subir y bajar)
 ##   TAB / F      seguir al siguiente cuerpo (la criatura incluida) / soltar
 ##   M            el piso desde arriba
-##   1..6         capas de dibujo: camino, rastros, ruidos, puertas, objetivos, vista
+##   1..7         capas de dibujo: camino, rastros, ruidos, puertas, objetivos, vista, ductos
 ##   L            su propia luz (el hotel está a oscuras y esto no es jugar)
 ##   C            quitar los techos, para mirar el piso desde arriba
 ##   V            su lectura acústica: lo que oye la criatura, desde su sitio
@@ -209,8 +209,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN: speed = clampf(speed / 1.25, SPEED_RANGE.x, SPEED_RANGE.y)
 	if not event is InputEventKey or not event.pressed or event.echo: return
 	var key: int = (event as InputEventKey).physical_keycode
-	var layers := ["path", "trails", "noises", "doors", "errand", "sight"]
-	if key >= KEY_1 and key <= KEY_6:
+	var layers := ["path", "trails", "noises", "doors", "errand", "sight", "ducts"]
+	if key >= KEY_1 and key <= KEY_7:
 		var name: String = layers[key - KEY_1]
 		gizmos.shown[name] = not gizmos.shown[name]
 		note("capa %s %s" % [name, "sí" if gizmos.shown[name] else "no"])

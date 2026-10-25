@@ -27,7 +27,8 @@ const HEARTBEAT := 10.0
 ## Per bot in a frame: x, y, z, yaw, pitch, flags, hide, intent, sanity,
 ## speed, stamina, life. The creature: what its threat model says
 ## (bot_threat.recorded_row: for The Locust x, y, z, yaw, mode, focus seat,
-## detection, stuck step, destination x, z, last known x, z).
+## detection, stuck step, destination x, z, last known x, z; for The Lurker,
+## bot_threat_lurker.gd's).
 const BOT_FIELDS := 12
 const CREATURE_FIELDS := 12
 enum Flag { CROUCHED = 1, TORCH = 2, HIDDEN = 4, DEAD = 8, RUNNING = 16, HELD = 32, RIDING = 64, BURNT = 128 }

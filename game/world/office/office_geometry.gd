@@ -165,7 +165,8 @@ const TILE_UP := 1.22
 const TILE_SWING := 0.25
 
 ## Moves one of her tiles; where its free edge ends up (her hand takes it
-## there), null when the room has no such tile. Local to each machine.
+## there), null when the room has no such tile. On this machine (her event
+## "tile" brings it to the others: lurker.tell()).
 func turn_tile(room_id: int, tile: Vector2i, open: bool, from_below: bool) -> Variant:
 	var key := Vector3i(room_id, tile.x, tile.y)
 	var hinge: Node3D = moved_tiles.get(key)
