@@ -21,7 +21,7 @@ const CRAWL_SPEED := 1.35
 const CREEP_SPEED := 1.0
 const CUE_FOLLOW := 3.8
 const SCURRY_SPEED := 3.5
-const FLEE_SPEED := 2.0
+const FLEE_SPEED := 3.5
 const RETREAT_SPEED := 0.8
 ## The warning: from this near to this far behind them (OFICINAS 4 said 2 to
 ## 3 m; 5 since her long leap is her attack, spec_f3_aggression), and the spot
@@ -29,7 +29,7 @@ const RETREAT_SPEED := 0.8
 const CUE_RANGE := Vector2(2.0, 5.0)
 const CUE_DIST := 2.4
 ## s of a torch on her face before she recoils (in a warning, one tick).
-const TORCH_SCARE := 0.2
+const TORCH_SCARE := 0.0
 ## s looked at in the light before she freezes; s unlooked-at before she goes on.
 const FREEZE_AFTER := 0.3
 const UNFREEZE := 1.0
@@ -175,7 +175,7 @@ func tick(delta: float, p) -> Dictionary:
 	# A torch on her face: she recoils.
 	if not state in [State.TAKE, State.RECOIL, State.FLEE]:
 		torch_time = torch_time + delta if not p.torch_by.is_empty() else 0.0
-		if torch_time >= TORCH_SCARE:
+		if not p.torch_by.is_empty() and torch_time >= TORCH_SCARE:
 			recoil(int(p.torch_by[0]), "linterna", p)
 			return recoil_tick(p)
 	# Looked at: what is looked at in the light does not come on.
@@ -185,9 +185,15 @@ func tick(delta: float, p) -> Dictionary:
 	else:
 		regard_time += delta
 		unregard_time = 0.0
-	if regard_time >= FREEZE_AFTER and state in [State.ROAM, State.LISTEN, State.STALK, State.CREEP, State.WAIT_ABOVE]:
-		resume = state
-		enter(State.FREEZE)
+	# Lit by somebody's look: out of the light at once, for the nearest way into
+	# the ceiling, away from who sees her (the author, 24 October 2026: she no
+	# longer stands still in it).
+	if regard_time > 0.0 and state in [State.ROAM, State.LISTEN, State.STALK, State.CREEP, State.WAIT_ABOVE]:
+		away_from = p.face
+		for seen in p.bodies.values():
+			if int(seen.seat) == int(p.regarded_by[0]): away_from = seen.eye
+		hidden_since = -1.0
+		enter(State.FLEE)
 	match state:
 		State.CREEP: return creep_tick(p)
 		State.TAKE: return take_tick(p)

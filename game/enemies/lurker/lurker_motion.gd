@@ -81,6 +81,12 @@ var deferred := {}
 var speed := 0.0
 ## Wanted m/s on surfaces (the brain or the order sets it).
 var pace := 1.35
+## Nobody sees her (lurker.gd, every frame): on a surface she goes at least
+## unseen_pace, in a hidden duct at least unseen_duct (the author: "cuando no
+## la ves, MUY rápido"). The visible main duct keeps its own speed.
+var unseen := false
+var unseen_pace := 0.0
+var unseen_duct := 0.0
 var hang_goal := SHELL.DEFAULT_HANG
 ## From the ray; and how far short the lane was at the last one (0: enough).
 var hang_limit := SHELL.HANG_MAX
@@ -355,6 +361,10 @@ func at_exit() -> int:
 
 func on_channel() -> bool:
 	return surface() and int(shell.patches[state.patch].kind) == SHELL.Kind.CHANNEL
+
+## Her pace on a surface now: faster unseen.
+func pace_now() -> float:
+	return maxf(pace, unseen_pace) if unseen else pace
 
 func at_goal() -> bool:
 	return legs.is_empty() and stuck == "" and transit.is_empty()
@@ -640,7 +650,7 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 		stall = 0.0
 		next_leg()
 		return
-	var want := pace
+	var want := pace_now()
 	if legs.size() == 1 or next_band: want = minf(want, sqrt(2.0 * ACCEL * left))
 	speed = move_toward(speed, want, ACCEL * delta)
 	var dir := heading_to.normalized()
@@ -697,7 +707,7 @@ func follow_band(leg: Dictionary, delta: float) -> void:
 			dir = -dir
 			deferred = goal
 	state.heading = 0.0 if dir > 0 else PI
-	speed = move_toward(speed, pace, ACCEL * delta)
+	speed = move_toward(speed, pace_now(), ACCEL * delta)
 	shell.advance(state, speed * delta)
 	var at_end: bool = state.u >= length - 1e-6 if dir > 0 else state.u <= 1e-6
 	if not at_end: return
@@ -790,6 +800,7 @@ func follow_duct(leg: Dictionary, delta: float) -> void:
 	var flat := Vector3(dir.x, 0, dir.z)
 	if flat.length() > 1e-6: duct_dir = flat.normalized()
 	var run: float = routes.segment_speed(kind)
+	if unseen and not visible: run = maxf(run, unseen_duct)
 	if visible and bodies_ahead.is_valid() and float(bodies_ahead.call(duct_point, duct_dir, DUCT_GAP + 1.0)) < DUCT_GAP:
 		run = 0.0
 	speed = run
@@ -830,7 +841,7 @@ func follow_channel(leg: Dictionary, delta: float) -> void:
 	var length: float = record.profile.length
 	var v_to := float(leg.v_to)
 	var u_goal := float(leg.u_goal)
-	speed = move_toward(speed, pace, ACCEL * delta)
+	speed = move_toward(speed, pace_now(), ACCEL * delta)
 	var dv := clampf(v_to - state.v, -speed * delta, speed * delta)
 	state.v += dv
 	var du := wrapf(u_goal - state.u, -length / 2.0, length / 2.0)

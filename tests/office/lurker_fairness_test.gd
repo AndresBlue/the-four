@@ -430,10 +430,9 @@ func back_turned() -> void:
 	level.arm_creature()
 
 func torch_turn() -> void:
+	# No glance at her first: lit for a single frame she is gone (the author,
+	# 24 October 2026: out of the light at once).
 	await set_up(true, true)
-	level.player.rotation.y += PI
-	await physics_frame
-	level.player.rotation.y -= PI
 	var turned := [false]
 	var entry := await run_cue(6.0, func(brain):
 		var active: Dictionary = lurker.warning.active

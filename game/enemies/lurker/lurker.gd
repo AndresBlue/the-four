@@ -82,6 +82,9 @@ var was_in_duct := false
 ## Her capture holds her where it poses her (lurker_capture.pose()): her
 ## motion waits (her mind goes on, taking).
 var scene_held := false
+## Her speeds while nobody sees her (tune(); spec_f3_aggression).
+var unseen_speed := 0.0
+var unseen_duct := 0.0
 ## Every capture of hers: {seat, cue, at, forced} (spec_f3_integration 5.9).
 var takes: Array = []
 
@@ -94,6 +97,8 @@ func can(ability: StringName) -> bool: return ability == &"ducts"
 func tune(profile: Dictionary) -> void:
 	tuning = profile
 	duct_speed = float(profile.get("duct_speed", 1.6))
+	unseen_speed = float(profile.get("unseen_speed", 0.0))
+	unseen_duct = float(profile.get("unseen_duct", 0.0))
 	drain_reach = float(profile.get("drain_reach", drain_reach))
 	if routes != null: routes.duct_speed = duct_speed
 	if brain != null: brain.tune(profile)
@@ -465,6 +470,9 @@ func _physics_process(delta: float) -> void:
 				think(delta)
 				if not scene_held:
 					motion.cue = cue
+					motion.unseen = unseen_now()
+					motion.unseen_pace = unseen_speed
+					motion.unseen_duct = unseen_duct
 					motion.tick(delta)
 					apply_motion()
 		"puppet":
@@ -504,6 +512,15 @@ func exit_near(point: Vector3) -> int:
 			best_d = d
 			best = e
 	return best
+
+## Nobody has her in view (the shared sight's watched(), from where she is:
+## her face, or her point in a duct) while she goes about: roaming, going to
+## listen, fleeing, between plantas. Stalking and closing in keep their own
+## pace (her slow creep at a back is the warning's).
+func unseen_now() -> bool:
+	if cue or brain == null or not brain.state in [BRAIN.State.ROAM, BRAIN.State.LISTEN, BRAIN.State.FLEE, BRAIN.State.TRANSIT]: return false
+	var at: Vector3 = motion.duct_point if motion.in_duct else face_point()
+	return not SIGHT.watched(level, at, [get_rid()])
 
 ## Her transform and velocity from the motion.
 func apply_motion() -> void:

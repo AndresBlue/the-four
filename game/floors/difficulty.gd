@@ -152,14 +152,16 @@ const PROFILES := {
 ##  (she takes from behind in a lit room too), duct_speed (m/s in the
 ##  ducts), stalk_distance (m she keeps while stalking), freeze_time (s
 ##  still in the light before she backs away), scare_calm (s of calm after
-##  a fright), creep_scale (x her speed closing in), drain_reach (m from a
+##  a fright), creep_scale (x her speed closing in), unseen_speed and
+##  unseen_duct (m/s on a surface and in a hidden duct while nobody sees her),
+##  drain_reach (m from a
 ##  lamp at which she drinks it).
 const CREATURE_PROFILES := {
 	&"lurker": {
-		"apacible": {"back_window": 2.2, "lit_takes": false, "duct_speed": 1.2, "stalk_distance": 12.0, "freeze_time": 2.0, "scare_calm": 60.0, "creep_scale": 0.8, "drain_reach": 3.0},
-		"equilibrada": {"back_window": 1.5, "lit_takes": true, "duct_speed": 1.6, "stalk_distance": 8.0, "freeze_time": 3.0, "scare_calm": 45.0, "creep_scale": 0.9, "drain_reach": 3.0},
-		"desafiante": {"back_window": 1.2, "lit_takes": true, "duct_speed": 2.0, "stalk_distance": 6.0, "freeze_time": 4.0, "scare_calm": 35.0, "creep_scale": 1.3, "drain_reach": 3.5},
-		"pesadilla": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 4.0, "freeze_time": 6.0, "scare_calm": 25.0, "creep_scale": 1.5, "drain_reach": 4.0},
+		"apacible": {"back_window": 2.2, "lit_takes": false, "duct_speed": 1.2, "stalk_distance": 12.0, "freeze_time": 2.0, "scare_calm": 60.0, "creep_scale": 0.8, "drain_reach": 3.0, "unseen_speed": 3.0, "unseen_duct": 2.0},
+		"equilibrada": {"back_window": 1.5, "lit_takes": true, "duct_speed": 1.6, "stalk_distance": 8.0, "freeze_time": 3.0, "scare_calm": 45.0, "creep_scale": 0.9, "drain_reach": 3.0, "unseen_speed": 3.5, "unseen_duct": 3.0},
+		"desafiante": {"back_window": 1.2, "lit_takes": true, "duct_speed": 2.0, "stalk_distance": 6.0, "freeze_time": 4.0, "scare_calm": 35.0, "creep_scale": 1.3, "drain_reach": 3.5, "unseen_speed": 4.0, "unseen_duct": 4.0},
+		"pesadilla": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 4.0, "freeze_time": 6.0, "scare_calm": 25.0, "creep_scale": 1.5, "drain_reach": 4.0, "unseen_speed": 4.5, "unseen_duct": 5.0},
 	},
 }
 

@@ -84,6 +84,9 @@ func spawn(control: String):
 	# Her movement alone: the mind would set `cue` and order her about.
 	body.thinking = false
 	body.tune(DIFFICULTY.profile("equilibrada", &"lurker"))
+	# Her routes at her own speeds: not the faster ones of going unseen.
+	body.unseen_speed = 0.0
+	body.unseen_duct = 0.0
 	return body
 
 ## Rooms of a planta with a ceiling for her.
@@ -255,6 +258,9 @@ func ducts_only() -> void:
 	var ids_speed := ["equilibrada"] if short else ["apacible", "equilibrada", "desafiante", "pesadilla"]
 	for id in ids_speed:
 		lurker.tune(DIFFICULTY.profile(id, &"lurker"))
+		# Her routes at her own speeds: not the faster ones of going unseen.
+		lurker.unseen_speed = 0.0
+		lurker.unseen_duct = 0.0
 		lurker.teleport(centre(far[0]), 0.0, &"probe")
 		await physics_frame
 		lurker.motion.go_to_room(far[1], 1.35)
@@ -272,6 +278,9 @@ func ducts_only() -> void:
 		check("planta 2 cerrada a %s: llega por los ductos" % id, lurker.motion.at_goal() and metres > 0.0, "%.1f m" % metres)
 		check("planta 2 cerrada a %s: el tiempo en ductos es el de sus metros" % id, absf(float(seen.duct_seconds) - expected) <= expected * 0.1 + 0.5 + 2.0 * MOTION.SQUEEZE_SPEED, "%.1f s, %.1f s" % [float(seen.duct_seconds), expected])
 	lurker.tune(DIFFICULTY.profile("equilibrada", &"lurker"))
+	# Her routes at her own speeds: not the faster ones of going unseen.
+	lurker.unseen_speed = 0.0
+	lurker.unseen_duct = 0.0
 	for door in doors: door.set_state(true)
 	await physics_frame
 

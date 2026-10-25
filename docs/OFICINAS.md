@@ -365,7 +365,9 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 | Coge en una sala con luz (de espaldas, tras el aviso) | No | Sí | Sí | Sí |
 | Velocidad en los ductos | 1,2 m/s | 1,6 m/s | 2,0 m/s | 2,4 m/s |
 | Distancia de acecho | 12 m | 8 m | 6 m | 4 m |
-| Tiempo quieta en la luz antes de irse | 2 s | 3 s | 4 s | 6 s |
+| En la luz | Se va al instante | Se va al instante | Se va al instante | Se va al instante |
+| Sin que nadie la vea, por una superficie | 3 m/s | 3,5 m/s | 4 m/s | 4,5 m/s |
+| Sin que nadie la vea, por un ducto oculto | 2 m/s | 3 m/s | 4 m/s | 5 m/s |
 | Calma tras espantarse | 60 s | 45 s | 35 s | 25 s |
 | Velocidad al acercarse | ×0,8 | ×0,9 | ×1,3 | ×1,5 |
 | Lámpara que bebe | 3 m | 3 m | 3,5 m | 4 m |
