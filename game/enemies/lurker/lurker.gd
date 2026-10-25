@@ -505,6 +505,7 @@ func sound_step(delta: float) -> void:
 	if inside != was_in_duct:
 		var e := exit_near(v.duct_point if inside else global_position)
 		if e >= 0 and String(ducts.exits[e].kind) in ["ceiling", "gap"]: voice.tile_shift(ducts.exits[e].position)
+		if inside: duct_trips += 1
 		was_in_duct = inside
 	if inside and bool(v.hidden): voice.travel(delta, velocity.length())
 	var lifts = level.get("lifts")
@@ -740,7 +741,9 @@ func think_setup() -> void:
 	brain.tune(tuning)
 	brain.cue_started.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue"): level.match_net.send_cue(int(entry.seat), int(entry.id), Vector3(entry.point[0], entry.point[1], entry.point[2]), float(entry.due) - float(entry.at)))
 	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
-	brain.scared.connect(func(cause: String, seat: int): tell("scare", [seat, cause, face_point()]))
+	brain.scared.connect(func(cause: String, seat: int):
+		scares += 1
+		tell("scare", [seat, cause, face_point()]))
 
 func think(delta: float) -> void:
 	if control != "ai" or not thinking or brain == null: return
@@ -752,6 +755,9 @@ func think(delta: float) -> void:
 	senses.listening = brain.listening
 	apply_intent(intent)
 	word = brain.activity()
+	if int(brain.state) != tally_state:
+		tally_state = int(brain.state)
+		if brain.state == BRAIN.State.PEEK: peeks += 1
 	cue = brain.state == BRAIN.State.CUE
 
 ## The light coming on where she is, and the fans stopping, told to her mind.
@@ -787,7 +793,9 @@ func apply_intent(wanted: Dictionary) -> void:
 		&"go":
 			var to: Vector3 = wanted.to
 			if not same or (last_order.get("to", Vector3.INF) as Vector3).distance_to(to) > 0.3 or float(last_order.get("speed", 0.0)) != float(wanted.speed):
-				order_failed = not motion.go_to(to, float(wanted.speed))
+				# Going with somebody in her eye (stalking, closing in, a show):
+				# over surfaces, never into the ceiling, where she sees nothing.
+				order_failed = not motion.go_to(to, float(wanted.speed), wanted.has("look"))
 		&"duct", &"listen":
 			if not same or int(last_order.get("exit", -2)) != int(wanted.exit):
 				order_failed = not motion.go_to_exit(int(wanted.exit), float(wanted.get("speed", BRAIN.CRAWL_SPEED)))
@@ -1094,6 +1102,33 @@ func cue_of(body: Node3D) -> int:
 	return -1
 
 func capture_log() -> Array: return warning.ledger.duplicate(true)
+
+func capture_records() -> Array: return takes.duplicate(true)
+
+## What a bots' match counts of her (spec_f3_integration 7.3): her warnings
+## and what came of them (her ledger), her takes, a tool's or not, and the
+## ones without their warning; her frights, peeks and trips into the ducts.
+var scares := 0
+var peeks := 0
+var duct_trips := 0
+var tally_state := -1
+func tally() -> Dictionary:
+	var out := {"cues": 0, "saves": 0, "captures": 0, "forced": 0, "scares": scares, "scares_torch": 0, "scares_turn": 0, "scares_mate": 0, "peeks": peeks, "duct_trips": duct_trips, "unpaired": 0}
+	for e in warning.ledger:
+		if bool(e.get("forced", false)): continue
+		out.cues += 1
+		if String(e.outcome) != "saved": continue
+		out.saves += 1
+		if int(e.get("by", -1)) >= 0 and int(e.by) != int(e.seat): out.scares_mate += 1
+		elif String(e.reason) == "linterna": out.scares_torch += 1
+		elif String(e.reason) == "mirada": out.scares_turn += 1
+	for take in takes:
+		if bool(take.forced):
+			out.forced += 1
+			continue
+		out.captures += 1
+		if not warning.ledger.any(func(e): return int(e.id) == int(take.cue) and int(e.seat) == int(take.seat) and String(e.outcome) == "taken"): out.unpaired += 1
+	return out
 
 ## Her place in a capture is her capture style's (phase 3), not a yaw: her
 ## basis is upside down on a ceiling.

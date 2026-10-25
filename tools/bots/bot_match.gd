@@ -450,6 +450,12 @@ func finish() -> Dictionary:
 		"restarts": int(level.session.restarts),
 	}
 	summary["realtime_factor"] = snappedf(float(summary.sim_seconds) / maxf(float(summary.wall_seconds), 0.001), 0.01)
+	# What the creature counts of itself, and each of its warnings as the
+	# victim had it (The Lurker's, spec_f3_integration 7.3 and 7.5).
+	if is_instance_valid(level.creature):
+		summary["creature_kind"] = String(level.creature.kind_id())
+		summary["creature"] = level.creature.tally()
+	if threat != null and threat.has_method("cue_summary"): summary["cues"] = threat.cue_summary()
 	summary["revealed"] = team.revealed if team != null else []
 	for entry in incidents: entry["replay_at"] = maxf(0.0, float(entry.t) - 8.0)
 	engine_errors()

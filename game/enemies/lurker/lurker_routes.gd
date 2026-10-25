@@ -434,7 +434,7 @@ func wing_of_start(start: Dictionary) -> int:
 
 ## A* (or Dijkstra with no goal) by cost from the start: {g, parent, via}
 ## (via: the edge record each node was reached by).
-func search(start: Dictionary, goal_node: int, factors: PackedFloat32Array) -> Dictionary:
+func search(start: Dictionary, goal_node: int, factors: PackedFloat32Array, surface := false) -> Dictionary:
 	var count := graph.size()
 	var g := PackedFloat64Array()
 	g.resize(count)
@@ -464,7 +464,7 @@ func search(start: Dictionary, goal_node: int, factors: PackedFloat32Array) -> D
 		if n == goal_node: break
 		for link in graph[n]:
 			var to := int(link[0])
-			if node_wings[to] != wing: continue
+			if node_wings[to] != wing or (surface and int(link[1]) == Edge.IN): continue
 			var cost := edge_cost(link, factors, escape)
 			if cost == INF: continue
 			var next := g[n] + cost
@@ -477,8 +477,10 @@ func search(start: Dictionary, goal_node: int, factors: PackedFloat32Array) -> D
 
 ## start: {"room": r} on a surface, or {"duct": [a, b], "metres": [ma, mb],
 ## "point": p} in a duct (a, b the ends of her segment, ma, mb the conduit
-## metres from p to each). goal: {"room": r, "point": p (optional)} or
-## {"exit": e, "mouth": bool (optional)}. {ok, cost, nodes, legs, pairs, why}.
+## metres from p to each). goal: {"room": r, "point": p (optional),
+## "surface": true (optional: into no exit on the way; out of one, from a
+## duct, she may)} or {"exit": e, "mouth": bool (optional)}. {ok, cost,
+## nodes, legs, pairs, why}.
 func plan(start: Dictionary, goal: Dictionary, from_state = null, from_point := Vector3.INF) -> Dictionary:
 	var failed := {"ok": false, "cost": INF, "nodes": PackedInt32Array(), "legs": [], "pairs": [], "why": ""}
 	var wing := wing_of_start(start)
@@ -500,7 +502,7 @@ func plan(start: Dictionary, goal: Dictionary, from_state = null, from_point := 
 	if node_wings[goal_node] != wing:
 		failed.why = "wing"
 		return failed
-	var found := search(start, goal_node, factors_for(wing))
+	var found := search(start, goal_node, factors_for(wing), bool(goal.get("surface", false)))
 	if float(found.g[goal_node]) == INF:
 		failed.why = "unreachable"
 		return failed

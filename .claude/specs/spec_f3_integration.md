@@ -837,6 +837,13 @@ After phase 1's `office_part()` (null creature, no threat), a `lurker_part()` on
 2. The Lurker forced to stalk A (`brain.force(&"stalk", {"seat": A.seat})`) from the dark ceiling 6 m behind A, B parked out of reach: a cue starts on A within 30 s; A's camera faces her within `REACT.experto + 0.4 s` of the cue being played, with its torch on; the cue ends `"saved"`; no capture.
 3. A novice with its reaction forced to 3.0 s (beyond any window): the capture happens and passes the pairing of 5.9; the watchdog reports no `captura_sin_aviso` and no `registro_injusto`.
 
+### 7.4b Step 3f as landed, the bots' part (25 October 2026, director)
+
+- `bot_threat_lurker.gd` extends `bot_threat.gd` (so every member of 7.1 is there) and overrides what reads The Locust: her measures, `refresh()` (her way ahead from `motion.ahead()`), `exposed()`/`visible()` (her dark sight, 4 m into the light, blind in a duct), `route_to()` by `travel_metres()`, `hunted()`, `torch_catches()` false, `deaf_to()` her take, `searched_near()` her lately. `mind()` as 7.1 items 1 to 3; item 4 (looking back) is `looks_back(brain)`, asked by a third hook in `bot_brain.walk_towards()` (its look is set there, after `mind()`). `wants_torch()` as 7.1.
+- The watchdog's checks (7.3) are the model's `audit_creature(report)`, called by `bot_watchdog.watch_creature()` (the watchdog keeps to the contract); the takes reach it by a contract addition, `creature.capture_records()` (`[]` but for her). `lurker.tally()` as 7.3. `bot_match.finish()` writes `creature_kind`, `creature` (the tally) and `cues` (`cue_summary()`: each cue record with its ledger outcome). `bots.ps1 -Floor` was already there (0c).
+- `tests/office/lurker_bots_test.gd` stages 7.4 on a bot match whose own loop is stopped: cover (a worker at a "use" task, the guard behind it within 1 m, facing within 30 degrees of away), an expert turning with the torch within its reaction plus 0.4 s and the cue saved, and a bot made to turn 3 s late left standing (driven, it runs, and running saves too) and taken, the watchdog silent and `tally().unpaired` 0. 7 checks, in `verify.ps1`.
+- Found on the way: since unit 5 of spec_f3_aggression her stalking went into the plenum, where she sees nothing, and she lost her prey. A go intent that carries `look` (stalk, creep, the cue's follow, a show) now plans over surfaces only (`motion.go_to(..., surface)`, the goal's `"surface"`, `lurker_routes.search()` skipping the edges into exits).
+
 ### 7.5 The balance batch (OFICINAS 15: "un lote de equilibrio con bots")
 
 **Cost first.** The machine is the scarce thing (CLAUDE.md): the batch never runs beside `verify.ps1` or the net scenarios, and the director checks it fits the usage window before launching it.

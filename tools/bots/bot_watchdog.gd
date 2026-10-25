@@ -65,6 +65,8 @@ func watch_creature() -> void:
 		room_log.clear()
 		rooms_from = clock
 	if not creature.is_physics_processing() or creature.control != "ai" or creature.grace > 0.0: return
+	# What its model knows to ask of its fairness (The Lurker's warnings).
+	if owner_match.threat != null and owner_match.threat.has_method("audit_creature"): owner_match.threat.audit_creature(func(kind: String, severity: String, words: String, extra: Dictionary): owner_match.report(kind, severity, null, words, extra))
 	var at: Vector3 = creature.global_position
 	# On its rounds, going to look at something or after somebody: meaning to
 	# get somewhere.

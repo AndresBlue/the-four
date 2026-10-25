@@ -174,6 +174,9 @@ func walk_towards(direction: Vector3, pace: int) -> void:
 		var glance: float = sin(clock * TAU / GAZE_PERIOD + float(seat)) * GAZE if pace != BODY.Pace.RUN else 0.0
 		body.look_yaw = atan2(-direction.x, -direction.z) + glance
 		body.look_pitch = -0.12
+		# The last of a team going through her dark looks behind it now and
+		# then (her model's; The Locust's has no such thing).
+		if owner_match.threat != null and owner_match.threat.has_method("looks_back") and owner_match.threat.looks_back(self): body.look_yaw += PI
 
 # --- Going somewhere ------------------------------------------------------------
 
@@ -746,6 +749,11 @@ func mind_creature(delta: float) -> bool:
 			escape = Vector3.INF
 			state = State.MOVE if not task.is_empty() else State.IDLE
 		return true
+	# What a person does against this creature first, where its model says
+	# (The Lurker's: turning to a warning, a teammate's torch, cover).
+	if threat.has_method("mind"):
+		var took = threat.mind(self, delta)
+		if took != null: return bool(took)
 	var me: Vector3 = body.global_position
 	# It is coming up after them: not where the car lets it out.
 	if threat.landing != Vector3.INF and FLOOR.planta_of(threat.landing.y) == planta() and flat_gap(me, threat.landing) < LANDING_CLEAR and not level.point_in_refuge(me) and String(task.get("kind", "")) != "lift":
@@ -1214,6 +1222,7 @@ func ahead_watched(ahead: Vector3) -> bool:
 ## The torch where there is no light to see by, never while hidden, and never
 ## where its beam would fall on the creature (which it notices).
 func wants_torch() -> bool:
+	if owner_match.threat != null and owner_match.threat.has_method("wants_torch"): return owner_match.threat.wants_torch(body)
 	if body.hidden: return false
 	if owner_match.threat != null and owner_match.threat.torch_catches(body): return false
 	var room: Dictionary = FLOOR.room_at(level.manifest.rooms, body.global_position)

@@ -218,13 +218,16 @@ func clear_legs() -> void:
 
 # --- Orders -------------------------------------------------------------------------
 
-func go_to(at: Vector3, pace_: float) -> bool:
+## `surface`: over her surfaces only, no duct nor plenum on the way.
+func go_to(at: Vector3, pace_: float, surface := false) -> bool:
 	var r := int(FLOOR.room_at(shell.rooms, at).get("id", -1))
 	if not shell.tray_of.has(r):
 		var s = shell.state_at(at)
 		if s == null: return false
 		r = shell.room_of(s)
-	return order({"room": r, "point": at}, pace_)
+	var wanted := {"room": r, "point": at}
+	if surface: wanted["surface"] = true
+	return order(wanted, pace_)
 
 func go_to_room(r: int, pace_: float) -> bool:
 	return order({"room": r}, pace_)

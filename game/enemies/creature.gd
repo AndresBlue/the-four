@@ -389,6 +389,10 @@ func hallucinations() -> Variant: return null
 ## empty: nothing of its own to count.
 func tally() -> Dictionary: return {}
 
+## Every capture it made, {seat, cue, at, forced}, for one that keeps them
+## with a warning ledger (The Lurker; the bots' watchdog pairs them).
+func capture_records() -> Array: return []
+
 ## Its part of the observer's panel (observer_view.report): a few lines on
 ## what it is doing and where, the first one its name.
 func debug_lines() -> Array[String]:
