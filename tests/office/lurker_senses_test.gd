@@ -37,7 +37,8 @@ class FakeWorld extends RefCounted:
 	func show_spot(_seen, _kind: String) -> Dictionary: return {}
 	func room_point(_room: int) -> Vector3: return Vector3.ZERO
 	func clue_point(point: Vector3) -> Vector3: return point
-	func patrol_room() -> int: return -1
+	var patrol := -1
+	func patrol_room() -> int: return patrol
 	func travel_metres(_room: int) -> Dictionary: return {}
 	func exit_of_room(_room: int) -> int: return -1
 	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return [1]
@@ -45,6 +46,7 @@ class FakeWorld extends RefCounted:
 
 func run() -> void:
 	prey_choice()
+	roaming()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.creature_scene = "lurker"
@@ -344,6 +346,36 @@ func main_duct() -> void:
 	level.player.global_position = Vector3(0, -200, 0)
 	routes.tick(0.0)
 	check("Sin nadie en el ducto principal el cruce es suyo", not routes.cross_shut and routes.edge_cost(into, factors, false) < INF)
+
+## Two ways she used to stand still (24 October 2026, the author's first
+## game): a lead given her in a duct, where she has no room to measure from,
+## was dropped; and a goal chosen while standing still was taken as reached
+## on the same tick, so in a room with no grille she never moved again.
+func roaming() -> void:
+	var world := FakeWorld.new()
+	var brain = BRAIN.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	brain.setup(world, rng, WARNING.new())
+	var p = SENSES.Percept.new()
+	p.room = -1
+	p.in_duct = true
+	brain.lead_to(Vector3(10, 0, 0), 12.0, 60.0, "merodea")
+	brain.tick(1.0 / 60.0, p)
+	check("Una zona que le da el director dentro de un ducto no la tira: va", not brain.lead.is_empty() and int(brain.goal.get("room", -1)) == 1, str(brain.goal))
+	brain.force(&"roam")
+	brain.lead = {}
+	brain.goal = {}
+	world.patrol = 2
+	p.room = 3
+	p.in_duct = false
+	# Walking to a room, then there, standing still.
+	p.arrived = false
+	for i in 40: brain.tick(1.0 / 60.0, p)
+	p.arrived = true
+	brain.tick(1.0 / 60.0, p)
+	var intent: Dictionary = brain.tick(1.0 / 60.0, p)
+	check("Parada en una sala, la meta que elige no cuenta como alcanzada: se pone en marcha", String(intent.get("do", "")) == "go" and int(brain.goal.get("room", -1)) == 2, str(intent))
 
 ## Her own choice of prey (7.7), on a bare brain with a fake world.
 func prey_choice() -> void:

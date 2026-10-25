@@ -443,6 +443,9 @@ func roam_tick(p) -> Dictionary:
 		return hold()
 	if not lead.is_empty() and clock >= float(lead.until): lead = {}
 	if bool(p.failed): goal = {}
+	# p.arrived is "standing still": a goal chosen on this tick is not reached
+	# on it (in a room with no grille to listen at she stood there for good).
+	var fresh := goal.is_empty()
 	if goal.is_empty():
 		var room := -1
 		if not lead.is_empty():
@@ -450,7 +453,9 @@ func roam_tick(p) -> Dictionary:
 			var best := INF
 			for r in lead.rooms:
 				var stale: bool = clock - float(visited.get(int(r), -INF)) >= VISIT_STALE
-				var m := float(metres.get(int(r), INF))
+				# In a duct (no room of hers) the nearest in a straight line: else
+				# every lead given her there was dropped, and she never came.
+				var m: float = float(metres.get(int(r), INF)) if not metres.is_empty() else (p.face as Vector3).distance_to(world.room_point(int(r)))
 				if stale and m < best:
 					best = m
 					room = int(r)
@@ -461,7 +466,7 @@ func roam_tick(p) -> Dictionary:
 			var patrol: int = world.patrol_room()
 			if patrol >= 0: goal = {"point": world.room_point(patrol), "room": patrol}
 		if goal.is_empty(): return hold()
-	if bool(p.arrived) and state_time > 0.5:
+	if bool(p.arrived) and state_time > 0.5 and not fresh:
 		var here := int(goal.get("room", int(p.room)))
 		if here >= 0: visited[here] = clock
 		if not lead.is_empty():
