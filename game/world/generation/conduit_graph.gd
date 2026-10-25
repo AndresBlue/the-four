@@ -160,8 +160,12 @@ func mouths_in_room(room: int) -> PackedInt32Array:
 			if node_rooms[i] == room: out.append(i)
 		return out
 	for e in exits:
-		if int(e.room) == room and int(e.node) >= 0: out.append(int(e.node))
+		if int(e.room) == room and int(e.node) >= 0 and sounding(e): out.append(int(e.node))
 	return out
+
+## Whether sound goes in and out by an exit (all of them here; duct_graph.gd
+## leaves out the closed tiles of a false ceiling).
+func sounding(_exit: Dictionary) -> bool: return true
 
 ## Exit indices of a room.
 func exits_of_room(room: int) -> PackedInt32Array:
@@ -225,7 +229,7 @@ func sound_route(source: Vector3, near_node: int, listener: Vector3, room_of: Ca
 func mouths_of_all() -> PackedInt32Array:
 	var out := PackedInt32Array()
 	for e in exits:
-		if int(e.node) >= 0 and out.find(int(e.node)) < 0: out.append(int(e.node))
+		if int(e.node) >= 0 and sounding(e) and out.find(int(e.node)) < 0: out.append(int(e.node))
 	return out
 
 ## A sound made at `point` (heard `radius` out) reaching somebody inside at
@@ -241,7 +245,7 @@ func inbound(point: Vector3, radius: float, to_node: int, room_of: Callable) -> 
 	var best := silent
 	for i in exits.size():
 		var e: Dictionary = exits[i]
-		if int(e.room) != room or int(e.node) < 0: continue
+		if int(e.room) != room or int(e.node) < 0 or not sounding(e): continue
 		var air := (e.position as Vector3).distance_to(point)
 		if air > radius or inside[int(e.node)] > REACH: continue
 		var total := air + inside[int(e.node)]

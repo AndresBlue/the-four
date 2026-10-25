@@ -71,13 +71,13 @@ func may_sound() -> bool:
 	if level.has_method("point_protected") and level.point_protected(audio.listener_position()): return false
 	return now() < quiet_until - CLEAN or quiet_until == INF
 
-## Where she is: in a duct, in the plenum over the tiles (on a gap's drop), or
-## in a room.
+## Where she is: in a duct, in the plenum over the tiles (on a gap's drop or
+## by a tile, spec_f3_aggression), or in a room.
 func medium() -> StringName:
 	var v: Dictionary = creature.view()
 	if not bool(v.in_duct): return &"room"
 	var near := int(v.near)
-	if creature.ducts != null and near >= 0 and near < creature.ducts.node_kinds.size() and creature.ducts.node_kinds[near] == "gap": return &"plenum"
+	if creature.ducts != null and near >= 0 and near < creature.ducts.node_kinds.size() and creature.ducts.node_kinds[near] in ["gap", "plenum"]: return &"plenum"
 	return &"duct"
 
 ## The surface under a hand (3.4's table).

@@ -81,7 +81,8 @@ static func stub_level(m: Dictionary) -> StubLevel:
 		lvl.hotel.doors["Door_%d_%d" % [int(edge[0]), int(edge[1])]] = door
 	return lvl
 
-static func routes_on(m: Dictionary, lvl: StubLevel):
+## `plenum` false: her ducts without the plenum over the false ceilings.
+static func routes_on(m: Dictionary, lvl: StubLevel, plenum := true):
 	var routes = ROUTES.new()
-	routes.setup(lvl, SHELL.build(m), DUCTS.of(m), true)
+	routes.setup(lvl, SHELL.build(m), DUCTS.of(m, plenum), true)
 	return routes

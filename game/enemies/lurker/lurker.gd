@@ -166,6 +166,7 @@ func arrive() -> void:
 	motion.busy = func() -> bool: return is_engaged() or is_hunting() or cue
 	motion.bodies_ahead = bodies_ahead
 	motion.left_behind = left_behind
+	motion.tile_turned.connect(_on_tile_turned)
 	think_setup()
 	var stage := int(level.session.stage) if level.get("session") != null else 1
 	var den := den_point(stage)
@@ -507,6 +508,7 @@ func exit_near(point: Vector3) -> int:
 	var best := -1
 	var best_d := 1.5
 	for e in ducts.exits.size():
+		if String(ducts.exits[e].kind) == "tile": continue
 		var d: float = (ducts.exits[e].position as Vector3).distance_to(point)
 		if d < best_d:
 			best_d = d
@@ -748,35 +750,64 @@ func flee_exit(away_from: Vector3) -> int:
 
 ## Where she comes back out of the ceiling for another attempt on `seat`
 ## (spec_f3_aggression): her ceiling just under a way out of the ducts of
-## their planta, in a room not lit and not off limits, `span` metres from
-## them ("behind": behind their back; "far" and "near": by the span alone);
-## the nearest to the middle of the span. Vector3.INF with none.
+## their planta (a grille, a gap or any tile of a false ceiling), in a room
+## not lit and not off limits, `span` metres from them ("behind": behind
+## their back; "far" and "near": by the span alone); the nearest to the
+## middle of the span. Vector3.INF with none.
 func emerge_point(seat: int, mode: String, span: Vector2) -> Vector3:
 	var body = senses.body_of(seat) if senses != null else null
 	if body == null or ducts == null: return Vector3.INF
 	var at: Vector3 = body.global_position
 	var look: Vector3 = -(body.camera.global_basis.z if body.get("camera") != null else body.global_basis.z)
 	var forward := Vector3(look.x, 0, look.z).normalized()
-	var best := -1
+	var best := Vector3.INF
 	var best_score := INF
 	for e in ducts.exits.size():
 		var exit = ducts.exits[e]
 		if String(exit.kind) == "hatch" or not routes.exit_usable(e): continue
-		var p: Vector3 = exit.position
-		if FLOOR.planta_of(p.y) != FLOOR.planta_of(at.y) or level.point_protected(p): continue
-		if int(exit.room) >= 0 and level.hotel.lit(int(exit.room)): continue
-		var flat := Vector3(p.x - at.x, 0, p.z - at.z)
-		var d := flat.length()
-		if d < span.x or d > span.y: continue
-		var score := absf(d - (span.x + span.y) * 0.5)
-		if mode == "behind":
-			var ahead := forward.dot(flat / maxf(d, 0.01))
-			if ahead > -0.2: continue
-			score += ahead * 2.0
-		if score < best_score:
-			best_score = score
-			best = e
-	return clue_point(ducts.exits[best].position) if best >= 0 else Vector3.INF
+		var room := int(exit.room)
+		if room >= 0 and level.hotel.lit(room): continue
+		var ways: Array = [exit.position]
+		if String(exit.kind) == "tile":
+			if not shell.tray_of.has(room): continue
+			ways = ducts.room_tiles[room].map(func(t): return ducts.tile_point(room, t))
+		for p in ways:
+			if FLOOR.planta_of(p.y) != FLOOR.planta_of(at.y) or level.point_protected(p): continue
+			var flat := Vector3(p.x - at.x, 0, p.z - at.z)
+			var d := flat.length()
+			if d < span.x or d > span.y: continue
+			var score := absf(d - (span.x + span.y) * 0.5)
+			if mode == "behind":
+				var ahead := forward.dot(flat / maxf(d, 0.01))
+				if ahead > -0.2: continue
+				score += ahead * 2.0
+			if score < best_score:
+				best_score = score
+				best = p
+	return clue_point(best) if best != Vector3.INF else Vector3.INF
+
+## A tile she goes through (spec_f3_aggression): the hotel swings it (down
+## and left half open as she comes out; up and shut again after her as she
+## goes in), the grid creaks with dust, one hand takes it for the swing, and
+## the plenum keeps which ones she left open. Local to each machine for now.
+const TILE_HAND := "a.R"
+const TILE_GRIP := 0.4
+func _on_tile_turned(room: int, tile: Vector2i, open: bool, from_below: bool) -> void:
+	var list: Array = ducts.open_tiles.get(room, [])
+	if open and from_below and list.has(tile): return
+	if open and not from_below and not list.has(tile): list.append(tile)
+	if not open or from_below: list.erase(tile)
+	ducts.open_tiles[room] = list
+	var at: Vector3 = ducts.tile_point(room, tile)
+	var hotel = level.get("hotel") if level != null else null
+	if hotel != null and hotel.has_method("turn_tile"):
+		var held = hotel.turn_tile(room, tile, open, from_below)
+		if held is Vector3: at = held
+	if voice != null: voice.tile_shift(at)
+	var limbs = visual.get("limbs") if visual != null else null
+	if limbs == null or not limbs.grips.is_empty(): return
+	limbs.grips = {TILE_HAND: {"point": at, "normal": Vector3.DOWN}}
+	get_tree().create_timer(TILE_GRIP).timeout.connect(func(): if is_instance_valid(limbs) and limbs.grips.has(TILE_HAND) and limbs.grips.size() == 1: limbs.grips = {})
 
 ## The nearest dark ceiling at least 4 m from `away_from`, else her nearest exit.
 func dark_retreat(away_from: Vector3) -> Vector3:
@@ -794,9 +825,12 @@ func dark_retreat(away_from: Vector3) -> Vector3:
 	var e: int = routes.nearest_exit(plan_start())
 	return ducts.exits[e].position if e >= 0 else global_position
 
+## A grille or a gap of the room (she listens at one: a closed tile lets
+## nothing through); -1 with none.
 func exit_of_room(room: int) -> int:
-	var exits: PackedInt32Array = ducts.exits_of_room(room)
-	return exits[0] if not exits.is_empty() else -1
+	for e in ducts.exits_of_room(room):
+		if ducts.sounding(ducts.exits[e]): return e
+	return -1
 
 ## A room's tray point clear of its lamps.
 func room_point(room: int) -> Vector3:

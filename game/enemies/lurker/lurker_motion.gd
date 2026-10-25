@@ -60,6 +60,10 @@ const BODY_GAP := 0.45
 const RIDE_TIME := 8.5
 
 signal arrived
+## A tile she goes through (spec_f3_aggression): moved as she starts the
+## squeeze (`open`, from below going in or from above coming out), and going
+## in shut after her at its end.
+signal tile_turned(room: int, tile: Vector2i, open: bool, from_below: bool)
 signal blocked(why: String)
 
 var shell
@@ -726,6 +730,7 @@ func follow_squeeze(leg: Dictionary, delta: float) -> void:
 		leg["basis_from"] = transform().basis.orthonormalized()
 		point = from
 		state = null
+		if leg.has("tile"): tile_turned.emit(int(leg.room), leg.tile, true, bool(leg.into))
 		if not bool(leg.into):
 			in_duct = false
 			hidden = false
@@ -742,6 +747,7 @@ func follow_squeeze(leg: Dictionary, delta: float) -> void:
 		duct_point = to
 		near_node = ducts.nearest_node(to)
 		mouth_exit = int(leg.exit) if legs.size() == 1 else -1
+		if leg.has("tile"): tile_turned.emit(int(leg.room), leg.tile, false, true)
 	else:
 		var next_is_band: bool = legs.size() > 1 and String(legs[1].kind) == "band"
 		if next_is_band:

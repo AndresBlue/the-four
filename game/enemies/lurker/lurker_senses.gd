@@ -144,6 +144,8 @@ func eye_point() -> Vector3:
 		var e: int = body.at_exit()
 		if e < 0: return Vector3.INF
 		var exit: Dictionary = graph.exits[e]
+		# Nothing is seen through a closed tile.
+		if String(exit.kind) == "tile": return Vector3.INF
 		return (exit.position as Vector3) - (exit.normal as Vector3) * 0.05
 	return body.face_point()
 

@@ -121,6 +121,10 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
   - **Son sus puertas.** La rejilla doblada hacia fuera y las manchas negras alrededor dicen por dónde ha salido.
 - **Placas que faltan, colgando o con manchas de agua:** las primeras plantas tienen pocas y las de abajo, muchas.
   - Una placa que se mueve, cruje en la perfilería y suelta un hilo de polvo **es ella arriba**.
+- **Cualquier placa entera es también su puerta** (el autor, 24 de octubre de 2026): menos las de las lámparas, las que tienen el centro de una lámpara a menos de 0,9 m y, fuera de los pasillos, las que tienen una pared a menos de 1 m. En las salas prohibidas, ninguna.
+  - Para salir la empuja desde arriba con una mano y la deja **colgando a medio abrir** (60°) sobre su hueco oscuro. Una placa abierta dice por dónde ha salido.
+  - Si vuelve a entrar por esa placa, la cierra tras de sí. Si entra por una cerrada, la levanta hacia el plénum y la placa cae cerrada.
+  - Por ahora cada máquina mueve sus placas por su cuenta: el evento de la red es de la fase 4.
 
 ### Escondites
 
@@ -333,7 +337,10 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 
 ### Ductos
 
-- **Una red real** (sección 11): entra y sale por rejillas y placas que faltan.
+- **Una red real** (sección 11): entra y sale por rejillas, placas que faltan y cualquier placa entera.
+  - El plénum de cada sala con falso techo se une al ducto de la sala y al plénum de las salas con las que tiene puerta o lado abierto. Por él va a la velocidad de los ductos ocultos.
+  - Se mete en el techo por la placa que tiene encima, o por la que dejó abierta si está a menos de 2,5 m, y sale por la placa más cercana a donde va.
+  - Por una placa cerrada no entra ni sale el sonido, y desde el plénum no ve nada.
   - Por dentro va más deprisa que reptando: de 1,2 a 2,4 m/s según la dificultad.
   - **En el ducto principal, el de tamaño humano, va a 1 m/s en todas las dificultades** (decisión del autor, 23 de octubre): un superviviente repta a 1,2, así que huir de ella por él siempre es posible.
   - La animación de ducto solo se ve cuando asoma.
@@ -370,7 +377,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 | Sin que nadie la vea, por un ducto oculto | 2 m/s | 3 m/s | 4 m/s | 5 m/s |
 | Intentos de un encuentro | 2 | 3 | 4 | 5 |
 | Tras un intento fallido, vuelve a salir a los | 8 a 12 s | 4 a 7 s | 2 a 4 s | 1 a 2 s |
-| Por dónde vuelve a salir | Lejos (10 a 15 m) | Cerca (6 a 10 m) | Por tu espalda (3 a 6 m) | Por tu espalda (3 a 5 m) |
+| Por dónde vuelve a salir (una rejilla, un hueco o cualquier placa) | Lejos (10 a 15 m) | Cerca (6 a 10 m) | Por tu espalda (3 a 6 m) | Por tu espalda (3 a 5 m) |
 | Descanso tras el último intento | 120 s | 90 s | 60 s | 45 s |
 | Velocidad al acercarse | ×0,8 | ×0,9 | ×1,3 | ×1,5 |
 | Lámpara que bebe | 3 m | 3 m | 3,5 m | 4 m |
@@ -814,7 +821,7 @@ El autor autoriza (22 de octubre de 2026) que **los agentes busquen y descarguen
   - **la cara en la capa de luz de la sala en que está**, para que en Muy bajo se le vea la cara igual. Ninguna calidad da ventaja.
 - **Más cosas que medir:**
   - el falso techo como MultiMesh, igual que el resto;
-  - el plénum solo se dibuja donde falta una placa;
+  - el plénum solo se dibuja donde falta una placa o donde ella ha dejado una abierta;
   - las luces que bebe son las mismas de la sala, sin luces nuevas;
   - probarlo en Compatibilidad.
 

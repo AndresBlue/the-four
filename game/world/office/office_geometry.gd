@@ -153,6 +153,117 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			elif vary(spot, 162) < FALLEN:
 				box(node, Vector3(at.x, 0.008, at.z) + Vector3(vary(spot, 163) - 0.5, 0, vary(spot, 164) - 0.5) * 0.8, Vector3(OFFICE.TILE, TILE_THICK, OFFICE.TILE), "ceiling_service", false, "box", Vector3(0, vary(spot, 165) * TAU, 0))
 
+## The tiles she goes through (spec_f3_aggression): Vector3i(room, i, j) ->
+## its hinge, a node of its own from the first time she moves it. Coming out
+## she pushes it down to TILE_DOWN and leaves it hanging there, half open;
+## going in by a shut one she lifts it TILE_UP into the plenum and it drops
+## shut after her; going in by an open one she pulls it shut. TILE_SWING
+## seconds a move.
+var moved_tiles := {}
+const TILE_DOWN := 1.05
+const TILE_UP := 1.22
+const TILE_SWING := 0.25
+
+## Moves one of her tiles; where its free edge ends up (her hand takes it
+## there), null when the room has no such tile. Local to each machine.
+func turn_tile(room_id: int, tile: Vector2i, open: bool, from_below: bool) -> Variant:
+	var key := Vector3i(room_id, tile.x, tile.y)
+	var hinge: Node3D = moved_tiles.get(key)
+	if hinge == null:
+		hinge = lift_out(room_id, tile)
+		if hinge == null: return null
+		moved_tiles[key] = hinge
+	var dark: Node3D = hinge.get_meta("dark")
+	var angle: float = 0.0
+	if open: angle = -TILE_UP if from_below else TILE_DOWN
+	if open: dark.visible = true
+	var swing := hinge.create_tween()
+	swing.tween_property(hinge, "rotation:z", angle, TILE_SWING).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if not open: swing.tween_callback(func(): dark.visible = false)
+	return hinge.get_parent().to_global(hinge.position + Basis.from_euler(Vector3(0, hinge.rotation.y, angle)) * Vector3(-OFFICE.TILE, 0, 0))
+
+## Takes a whole tile out of the run it was batched in (the run cut round it),
+## and gives it a hinge of its own on one of its edges, shut, with the dark of
+## the plenum over its hole, hidden. Null with no such tile.
+func lift_out(room_id: int, tile: Vector2i) -> Node3D:
+	if room_id < 0 or room_id >= room_nodes.size() or not is_instance_valid(room_nodes[room_id]): return null
+	var node: Node3D = room_nodes[room_id]
+	var runs := node.get_node_or_null("Mesh_ceiling_service") as MultiMeshInstance3D
+	if runs == null: return null
+	var room: Dictionary = manifest.rooms[room_id]
+	var face := float(room.height) + TILE_FACE + TILE_THICK * 0.5
+	var size := float(OFFICE.TILE)
+	var centre: Vector3 = OFFICE.tile_centre(tile, face) - Vector3(node.position.x, 0, node.position.z)
+	var multi := runs.multimesh
+	var drawn: Array = service_runs.get(node.get_instance_id(), [[], Color()])
+	var custom: Color = drawn[1]
+	var kept: Array = []
+	var found := false
+	for run in drawn[0]:
+		var t: Transform3D = run
+		var extent := t.basis.get_scale()
+		var o := t.origin
+		var inside: bool = not found and absf(o.y - face) < 0.003 and absf(o.z - centre.z) < 0.01 and absf(extent.z - size) < 0.01 and centre.x - size * 0.5 > o.x - extent.x * 0.5 - 0.003 and centre.x + size * 0.5 < o.x + extent.x * 0.5 + 0.003 and t.basis.is_equal_approx(Basis.from_scale(extent))
+		if not inside:
+			kept.append(t)
+			continue
+		found = true
+		var low := o.x - extent.x * 0.5
+		var high := o.x + extent.x * 0.5
+		var cut_low := centre.x - size * 0.5
+		var cut_high := centre.x + size * 0.5
+		if cut_low - low > 0.003:
+			kept.append(Transform3D(Basis.from_scale(Vector3(cut_low - low, extent.y, extent.z)), Vector3((low + cut_low) * 0.5, o.y, o.z)))
+		if high - cut_high > 0.003:
+			kept.append(Transform3D(Basis.from_scale(Vector3(high - cut_high, extent.y, extent.z)), Vector3((cut_high + high) * 0.5, o.y, o.z)))
+	if not found: return null
+	service_runs[node.get_instance_id()] = [kept, custom]
+	multi.instance_count = kept.size()
+	for i in kept.size():
+		multi.set_instance_transform(i, kept[i])
+		if multi.use_custom_data: multi.set_instance_custom_data(i, custom)
+	# Its hinge on one edge, by its place (salt 168), the tile half a tile in.
+	var yaw := floori(vary(node.position + centre, 168) * 4.0) * PI * 0.5
+	var hinge := Node3D.new()
+	hinge.name = "Tile_%d_%d" % [tile.x, tile.y]
+	hinge.position = centre + Basis(Vector3.UP, yaw) * Vector3(size * 0.5, 0, 0)
+	hinge.rotation = Vector3(0, yaw, 0)
+	node.add_child(hinge)
+	hinge.add_child(single(Transform3D(Basis.from_scale(Vector3(size, TILE_THICK, size)), Vector3(-size * 0.5, 0, 0)), "ceiling_service", custom))
+	var dark := single(Transform3D(Basis.from_scale(Vector3(size, 1.2, size)), centre + Vector3(0, 0.6 - (face - float(room.height)), 0)), "plenum_dark", custom)
+	dark.visible = false
+	node.add_child(dark)
+	hinge.set_meta("dark", dark)
+	return hinge
+
+## Every room's batch of "ceiling_service" as flush() draws it, and the
+## room's data it wears, by the room node's instance id: kept to cut a tile
+## out of (a MultiMesh's transforms are not read back on every renderer).
+var service_runs := {}
+func flush() -> void:
+	service_runs = {}
+	for key in batches:
+		var batch: Dictionary = batches[key]
+		var room: Variant = batch_roots.get(batch.parent.get_instance_id())
+		if room != null and batch.groups.has("ceiling_service"): service_runs[batch.parent.get_instance_id()] = [(batch.groups.ceiling_service as Array).duplicate(), room]
+	super()
+
+## One box of a room's, batched alone (so it wears the room's data as its
+## batches do).
+func single(xform: Transform3D, material: String, custom: Color) -> MultiMeshInstance3D:
+	var mesh := unit_mesh(material)
+	mesh.material = materials[material]
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	multi.use_custom_data = true
+	multi.mesh = mesh
+	multi.instance_count = 1
+	multi.set_instance_transform(0, xform)
+	multi.set_instance_custom_data(0, custom)
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = multi
+	return instance
+
 ## A gap's tile (spec 5.4): how many hang from the hole and how far they
 ## drop (radians), and how many lie on the floor below.
 const HANG_ANGLE := Vector2(0.6, 1.2)

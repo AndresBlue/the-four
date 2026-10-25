@@ -650,10 +650,12 @@ func door_metres(routes, a: int, b: int) -> Array:
 	var far: Vector3 = shell.anchor_of(shell.band_start(band, b))
 	return [routes.plan_point(a).distance_to(Vector2(near.x, near.z)) + half, half + Vector2(far.x, far.z).distance_to(routes.plan_point(b))]
 
+## The doors, the grilles and the ducts, without the plenum over the false
+## ceilings (any tile a way in and out: lurker_tiles_test.gd).
 func route_cases() -> void:
 	var m := FIX.fixture()
 	var lvl := FIX.stub_level(m)
-	var routes = FIX.routes_on(m, lvl)
+	var routes = FIX.routes_on(m, lvl, false)
 	var shell = routes.shell
 	var open_plan: Dictionary = routes.plan({"room": 0}, {"room": 2})
 	var v_ok := true

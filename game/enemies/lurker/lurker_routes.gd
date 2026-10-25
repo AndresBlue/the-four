@@ -41,6 +41,9 @@ const DOOR_SIDE := 0.25
 ## How far past the main duct's crossing, towards the shaft, every crawler
 ## must be before she comes in through it: a body's length.
 const CROSS_CLEAR := 1.0
+## Back into the ceiling by a tile she left open this near her (the author:
+## "si entra de nuevo por ahí que la cierre de vuelta").
+const TILE_REUSE := 2.5
 
 enum Edge { OPEN, DOOR, IN, OUT, DUCT }
 
@@ -564,8 +567,9 @@ func tray_legs(legs: Array, from: Vector2, to: Vector2, chain: Array, hang: floa
 ## The duct points of a run of duct nodes (6.4 rule 5): main and cross
 ## segments on the duct's floor, and where one meets the network a vertical
 ## step, of the lowered side's kind, so the leg never jumps. A start inside
-## a duct begins at her point, on a segment of `first_kind`.
-func duct_leg(nodes_run: PackedInt32Array, first_point: Vector3, first_kind := "") -> Dictionary:
+## a duct begins at her point, on a segment of `first_kind`; a way out by a
+## tile ends at it (`last_point`), over the plenum.
+func duct_leg(nodes_run: PackedInt32Array, first_point: Vector3, first_kind := "", last_point := Vector3.INF) -> Dictionary:
 	var lower := float(manifest.get("plenum", OFFICE.PLENUM).get("main", OFFICE.PLENUM.main)) / 2.0 - 0.02
 	var points := PackedVector3Array()
 	var kinds := PackedStringArray()
@@ -589,12 +593,27 @@ func duct_leg(nodes_run: PackedInt32Array, first_point: Vector3, first_kind := "
 			points.append(a)
 		points.append(b)
 		kinds.append(kind)
+	if last_point != Vector3.INF:
+		if points.is_empty(): points.append(ducts.nodes[nodes_run[0]])
+		points.append(last_point)
+		kinds.append("plenum")
 	var length := 0.0
 	for i in range(1, points.size()): length += points[i].distance_to(points[i - 1])
 	return {"kind": "duct", "nodes": nodes_run, "points": points, "kinds": kinds, "length": length}
 
 func squeeze(from: Vector3, to: Vector3, into: bool, e: int, basis: Basis) -> Dictionary:
 	return {"kind": "squeeze", "from": from, "to": to, "into": into, "exit": e, "basis": basis}
+
+## The tile she goes through by a tile exit (spec_f3_aggression): going in,
+## the nearest her (one she left open near her first); coming out, the
+## nearest where she is going. [tile, its point at the ceiling, its plan
+## point on the tray].
+func tile_way(e: int, near: Vector3, going_in: bool) -> Array:
+	var room := int(ducts.exits[e].room)
+	var tile: Vector2i = ducts.tile_near(room, near, TILE_REUSE if going_in else 0.0)
+	var through: Vector3 = ducts.tile_point(room, tile)
+	var s = shell.tray_state(room, through.x, through.z)
+	return [tile, through, Vector2(s.u, s.v)]
 
 ## The basis of a tray State at a plan point heading along `toward`.
 func tray_basis(room: int, at: Vector2, toward: Vector2) -> Basis:
@@ -655,6 +674,9 @@ func legs_of(start: Dictionary, goal: Dictionary, path: PackedInt32Array, links:
 				var ex: Dictionary = ducts.exits[e]
 				var way := exit_way(e)
 				var target: Vector2 = way[0]
+				var by_tile: bool = String(ex.kind) == "tile"
+				var tile_at: Array = tile_way(e, Vector3(at.x, 0, at.y), true) if by_tile else []
+				if by_tile: target = tile_at[2]
 				var toward: Vector2 = target - at
 				tray_legs(legs, at, target, chain, SHELL.BAND_CLEAR)
 				var basis: Basis
@@ -666,21 +688,41 @@ func legs_of(start: Dictionary, goal: Dictionary, path: PackedInt32Array, links:
 					basis = shell.transform_of(bottom).basis
 				else:
 					basis = tray_basis(int(ex.room), target, toward)
-				legs.append(squeeze(exit_anchor(e), ex.position, true, e, basis))
+				if by_tile:
+					var into := squeeze(shell.anchor_of(shell.tray_state(int(ex.room), target.x, target.y)), tile_at[1], true, e, basis)
+					into["room"] = int(ex.room)
+					into["tile"] = tile_at[0]
+					legs.append(into)
+				else: legs.append(squeeze(exit_anchor(e), ex.position, true, e, basis))
 				run = PackedInt32Array([int(link[0]) - room_count])
-				run_first = Vector3.INF
+				run_first = tile_at[1] if by_tile else Vector3.INF
+				if by_tile: run_kind = "plenum"
 				chain = []
 			Edge.DUCT:
 				run.append(int(link[0]) - room_count)
 			Edge.OUT:
-				if run.size() > 1 or run_first != Vector3.INF: legs.append(duct_leg(run, run_first, run_kind))
-				run = PackedInt32Array()
-				run_first = Vector3.INF
 				var e := int(link[6])
 				var ex: Dictionary = ducts.exits[e]
-				var way := exit_way(e)
 				var room := int(ex.room)
-				if int(way[1]) >= 0:
+				var tile_at: Array = []
+				if String(ex.kind) == "tile":
+					# Out where she is going: the goal's point in this room, else
+					# the next room's middle.
+					var aim: Vector3 = positions[path[i + 1]] if i + 1 < path.size() else positions[room]
+					if i + 1 >= path.size() and goal.has("point"): aim = goal.point
+					tile_at = tile_way(e, aim, false)
+				var last: Vector3 = tile_at[1] if not tile_at.is_empty() else Vector3.INF
+				if run.size() > 1 or run_first != Vector3.INF or last != Vector3.INF: legs.append(duct_leg(run, run_first, run_kind, last))
+				run = PackedInt32Array()
+				run_first = Vector3.INF
+				var way := exit_way(e)
+				if not tile_at.is_empty():
+					var plan_at: Vector2 = tile_at[2]
+					var out := squeeze(tile_at[1], shell.anchor_of(shell.tray_state(room, plan_at.x, plan_at.y)), false, e, tray_basis(room, plan_at, Vector2.ZERO))
+					out["room"] = room
+					out["tile"] = tile_at[0]
+					legs.append(out)
+				elif int(way[1]) >= 0:
 					var band := int(way[1])
 					var bottom = shell.band_start(band, room)
 					bottom.u = float(shell.patches[band].profile.length)
@@ -689,7 +731,7 @@ func legs_of(start: Dictionary, goal: Dictionary, path: PackedInt32Array, links:
 					legs.append({"kind": "band", "patch": band, "dir": -1, "v": 0.0})
 				else:
 					legs.append(squeeze(ex.position, exit_anchor(e), false, e, tray_basis(room, way[0], Vector2.ZERO)))
-				at = way[0]
+				at = way[0] if tile_at.is_empty() else tile_at[2]
 				chain = [room]
 	# Into an exit: the squeeze in, then (from inside) the duct to its node,
 	# which is the mouth, so "mouth" stops at the same place.
@@ -779,7 +821,8 @@ func flee_exit(start: Dictionary, threat: Vector3, from_point: Vector3) -> int:
 	var best_cost := INF
 	for e in costs.size():
 		if costs[e] == INF: continue
-		var to: Vector3 = (ducts.exits[e].position as Vector3) - from_point
+		# A tile is the one over her: never towards anybody.
+		var to: Vector3 = (ducts.exits[e].position as Vector3) - from_point if String(ducts.exits[e].kind) != "tile" else Vector3.ZERO
 		var cosine := 0.0
 		if to.length() > 1e-6 and away.length() > 1e-6: cosine = to.normalized().dot(away.normalized())
 		var cost := costs[e] + FLEE_TOWARD * maxf(0.0, cosine)

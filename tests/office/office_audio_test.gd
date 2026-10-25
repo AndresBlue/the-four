@@ -140,7 +140,8 @@ func grille() -> void:
 		if int(room.get("wing", -1)) != 0 or level.off_limits_rooms().has(int(other)): continue
 		var mine: Array = []
 		for e in lurker.ducts.exits.size():
-			if int(lurker.ducts.exits[e].room) == int(other) and String(lurker.ducts.exits[e].kind) != "hatch": mine.append(lurker.ducts.exits[e].position)
+			# A closed tile lets no sound through (spec_f3_aggression): its grilles and gaps.
+			if int(lurker.ducts.exits[e].room) == int(other) and not String(lurker.ducts.exits[e].kind) in ["hatch", "tile"]: mine.append(lurker.ducts.exits[e].position)
 		if not mine.is_empty():
 			q = room
 			q_exits = mine
