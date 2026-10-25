@@ -794,8 +794,11 @@ func apply_intent(wanted: Dictionary) -> void:
 			var to: Vector3 = wanted.to
 			if not same or (last_order.get("to", Vector3.INF) as Vector3).distance_to(to) > 0.3 or float(last_order.get("speed", 0.0)) != float(wanted.speed):
 				# Going with somebody in her eye (stalking, closing in, a show):
-				# over surfaces, never into the ceiling, where she sees nothing.
+				# over surfaces, never into the ceiling, where she sees nothing;
+				# with no way over them (a door shut, glass between), by the
+				# plenum after all, to come out by them.
 				order_failed = not motion.go_to(to, float(wanted.speed), wanted.has("look"))
+				if order_failed and wanted.has("look"): order_failed = not motion.go_to(to, float(wanted.speed))
 		&"duct", &"listen":
 			if not same or int(last_order.get("exit", -2)) != int(wanted.exit):
 				order_failed = not motion.go_to_exit(int(wanted.exit), float(wanted.get("speed", BRAIN.CRAWL_SPEED)))

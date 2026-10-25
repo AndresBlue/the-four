@@ -50,6 +50,7 @@ func run() -> void:
 	prey_choice()
 	roaming()
 	encounter()
+	gives_up()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.creature_scene = "lurker"
@@ -383,6 +384,24 @@ func roaming() -> void:
 ## An encounter of several attempts (the author, 24 October 2026): each
 ## failed one sends her out of sight and back out where the difficulty says;
 ## after the last she leaves that survivor be for the rest.
+## Her way after somebody failing for good (the author's games, 25 October
+## 2026: she hung on the ceiling): past GIVE_UP she lets them go and roams.
+func gives_up() -> void:
+	var world := FakeWorld.new()
+	var brain = BRAIN.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6
+	brain.setup(world, rng, WARNING.new())
+	brain.prey = 1
+	brain.enter(BRAIN.State.STALK)
+	var p = SENSES.Percept.new()
+	p.failed = true
+	for i in int((BRAIN.GIVE_UP - 0.5) * 60.0): brain.tick(1.0 / 60.0, p)
+	var still: bool = brain.state == BRAIN.State.STALK or brain.state == BRAIN.State.ROAM
+	var before_give_up: bool = brain.failed_for > 0.0 or brain.state != BRAIN.State.STALK
+	for i in 60: brain.tick(1.0 / 60.0, p)
+	check("Si su camino tras alguien no deja de fallar, lo deja y vuelve a rondar", still and before_give_up and brain.state != BRAIN.State.STALK and brain.prey == -1, "%s %d" % [brain.state_name(), brain.prey])
+
 func encounter() -> void:
 	var world := FakeWorld.new()
 	var brain = BRAIN.new()

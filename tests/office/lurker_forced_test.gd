@@ -93,3 +93,25 @@ func play(level) -> void:
 	director.last_contact = director.clock - 30.0
 	director.tick(1.0 / 60.0)
 	check("Y eso cuenta como contacto: el reloj del encuentro forzado vuelve a cero", found and is_equal_approx(director.last_contact, director.clock))
+	# With every door of her planta shut there is no way over her surfaces to
+	# another room: going there with somebody in her eye, by the plenum.
+	lurker.thinking = false
+	var shut: Array = []
+	for door in level.hotel.doors:
+		if is_instance_valid(door) and bool(door.opened) and FLOOR.planta_of(door.doorway.y) == FLOOR.planta_of(lurker.global_position.y):
+			door.set_state(false)
+			shut.append(door)
+	lurker.teleport(lurker.room_point(room), 0.0, &"prueba")
+	await physics_frame
+	var here: int = lurker.motion.room()
+	var there := -1
+	for r in level.manifest.rooms:
+		var id := int(r.id)
+		if id != here and int(r.get("wing", -1)) == wing and lurker.shell.tray_of.has(id) and not level.off_limits_rooms().has(id) and float(lurker.travel_metres(here).get(id, INF)) > 15.0 and not lurker.motion.go_to(lurker.room_point(id), 1.35, true):
+			there = id
+			break
+	lurker.last_order = {}
+	if there >= 0: lurker.apply_intent({"do": &"go", "to": lurker.room_point(there), "speed": 1.35, "look": level.player.global_position})
+	var kinds: Array = lurker.motion.legs.map(func(leg): return String(leg.kind))
+	check("Sin camino por los techos, una ida mirando a alguien va por el pleno, no se queda colgada", there >= 0 and not lurker.order_failed and kinds.has("duct"), "%d %s" % [there, str(kinds)])
+	for door in shut: door.set_state(true)

@@ -133,6 +133,19 @@ func grille() -> void:
 	check("Desde el ducto, en su sala se la oye por la rejilla, en el bus de los ductos", bool(route.audible) and (route.position as Vector3).distance_to(grille_at) <= 0.02 and String(route.get("bus", "")) == "Ducts", "%s a %.2f m de la rejilla" % [str(route.get("bus", "")), (route.position as Vector3).distance_to(grille_at)])
 	var last := knock()
 	check("Un golpe suyo dentro del ducto suena en la rejilla, en el bus de los ductos", String(last.path).contains("knock_") and (last.point as Vector3).distance_to(grille_at) <= 0.02 and String(last.bus) == "Ducts", str(last))
+	# Her steps come in runs (the author, 25 October 2026): 6 to 8 very fast,
+	# then a silence, never a steady pace.
+	var gaps: Array = []
+	lurker.voice.run_left = 0
+	for i in 60: gaps.append(lurker.voice.next_step())
+	var runs: Array = []
+	var count := 0
+	for gap in gaps:
+		count += 1
+		if float(gap) >= VOICE.RUN_REST.x:
+			runs.append(count)
+			count = 0
+	check("Sus pasos en el ducto van en tandas: de 6 a 8 muy rápidos y un silencio", runs.size() >= 6 and runs.all(func(n): return n >= VOICE.RUN.x and n <= VOICE.RUN.y) and gaps.all(func(g): return float(g) <= VOICE.RUN_STEP.y or float(g) >= VOICE.RUN_REST.x), str(runs))
 	var q := {}
 	var q_exits: Array = []
 	for other in level.manifest.adjacency[int(room_r.id)]:

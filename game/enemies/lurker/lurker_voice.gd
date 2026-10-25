@@ -21,8 +21,17 @@ const SOFT_CUTOFF := 1200.0
 const STEP_GAP := 0.09
 const STEP_VOICES := 3
 const KNOCK_DB := -6.0
-const SCRAPE_EVERY := Vector2(2.0, 4.0)
 const CREAK_DB := -10.0
+## Her steps in a duct and over the tiles come in runs (the author, 25 October
+## 2026: a steady pace saturates, then bores, and tells exactly where she
+## comes from): RUN steps very fast, RUN_STEP apart, then RUN_REST of
+## silence, then another run; RUN_DB quieter than the steady steps were.
+## At the end of a run, now and then (SCRAPE_CHANCE), her claws on the metal.
+const RUN := Vector2i(6, 8)
+const RUN_STEP := Vector2(0.06, 0.09)
+const RUN_REST := Vector2(1.2, 2.6)
+const RUN_DB := -4.0
+const SCRAPE_CHANCE := 0.35
 const DUST_DB := -16.0
 const CAR_DB := -8.0
 ## Seconds before a warning's due time from which nothing of hers starts on
@@ -40,9 +49,10 @@ var players: Array = []
 var step_at := -INF
 var last_file := {}
 var knock_clock := 0.0
-var scrape_clock := 0.0
 var creak_clock := 0.0
 var knock_turn := 0
+## Steps left in the run under way (0: the next starts a run).
+var run_left := 0
 var last_gap := -1
 ## The last sound and the last 32 with their time, for the tests (written with
 ## world_audio off too): {"path", "point", "bus", "material", "gain", "cutoff", "time"}.
@@ -53,7 +63,6 @@ func setup(owner) -> void:
 	creature = owner
 	level = owner.level
 	rng.seed = hash(["lurker voice", int(level.manifest.get("seed", 0)) if level != null else 0])
-	scrape_clock = rng.randf_range(SCRAPE_EVERY.x, SCRAPE_EVERY.y)
 
 func _exit_tree() -> void:
 	for p in players:
@@ -129,23 +138,26 @@ func travel(delta: float, speed: float) -> void:
 	var point: Vector3 = creature.view().duct_point
 	if at == &"duct":
 		knock_clock -= delta
-		scrape_clock -= delta
 		if knock_clock <= 0.0:
-			knock_clock = maxf(0.18, 0.5 / maxf(speed, 0.01))
+			knock_clock = next_step()
 			if may_sound():
 				knock_turn = knock_turn % KNOCKS + 1
-				play_routed(BASE + "knock_%d.wav" % knock_turn, point, KNOCK_DB, 20000.0, "metal")
-		if scrape_clock <= 0.0:
-			scrape_clock = rng.randf_range(SCRAPE_EVERY.x, SCRAPE_EVERY.y)
-			if may_sound(): play_routed(BASE + "scrape_1.wav", point, KNOCK_DB, 20000.0, "metal")
+				play_routed(BASE + "knock_%d.wav" % knock_turn, point, KNOCK_DB + RUN_DB, 20000.0, "metal")
+				if run_left == 0 and rng.randf() < SCRAPE_CHANCE: play_routed(BASE + "scrape_1.wav", point, KNOCK_DB + RUN_DB, 20000.0, "metal")
 		return
 	creak_clock -= delta
 	if creak_clock <= 0.0:
-		creak_clock = 0.6 / maxf(speed, 0.5)
-		if may_sound(): play_routed(pick("tile", int(SETS.tile)), point, CREAK_DB, 20000.0, "tile")
+		creak_clock = next_step()
+		if may_sound(): play_routed(pick("tile", int(SETS.tile)), point, CREAK_DB + RUN_DB, 20000.0, "tile")
 	var gap := gap_near(point)
 	if gap >= 0 and gap != last_gap: tile_shift(creature.ducts.exits[gap].position)
 	last_gap = gap
+
+## The seconds to her next step: a run's short ones, and a rest after its last.
+func next_step() -> float:
+	if run_left <= 0: run_left = rng.randi_range(RUN.x, RUN.y)
+	run_left -= 1
+	return rng.randf_range(RUN_REST.x, RUN_REST.y) if run_left == 0 else rng.randf_range(RUN_STEP.x, RUN_STEP.y)
 
 func gap_near(point: Vector3) -> int:
 	var exits: Array = creature.ducts.exits

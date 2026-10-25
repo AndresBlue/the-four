@@ -72,6 +72,11 @@ var spurned := {}
 var sated_until := -INF
 var torch_time := 0.0
 var regard_time := 0.0
+## Seconds her way after somebody has kept failing (stalking, closing in, a
+## show): past GIVE_UP she lets them go and goes round again, rather than
+## hang there on the ceiling (the author's games, 25 October 2026).
+var failed_for := 0.0
+const GIVE_UP := 3.0
 var unregard_time := 0.0
 var creep_lost := 0.0
 ## The state a freeze goes back to.
@@ -215,6 +220,13 @@ func tick(delta: float, p) -> Dictionary:
 		hidden_since = -1.0
 		if state in [State.STALK, State.CREEP]: failed_attempt(prey)
 		enter(State.FLEE)
+	failed_for = failed_for + delta if bool(p.failed) and state in [State.STALK, State.CREEP, State.PEEK] else 0.0
+	if failed_for > GIVE_UP:
+		failed_for = 0.0
+		if prey >= 0 and p.victim != null: clue = {"point": p.victim.point, "at": clock}
+		prey = -1
+		goal = {}
+		enter(State.ROAM)
 	match state:
 		State.CREEP: return creep_tick(p)
 		State.TAKE: return take_tick(p)

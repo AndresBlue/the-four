@@ -833,6 +833,7 @@ quedó dicho el 5 de octubre de 2026 (la historia entera, en
     - Le falta estética de oficina: tiene más cara de hospital.
     - Fallos de iluminación.
     - Y varias cosas más que el autor irá diciendo.
+  - **Rediseño de la generación del piso 2** (el autor, 25 de octubre de 2026, para cuando nos enfoquemos en ello): hoy parece un hospital, con pasillos angostos, poca variedad frente al hotel, «un hotel blanco y muy poco pulido». Se rediseña la generación con las tres referencias que dio: una planta abierta enorme con columnas y cubículos, una oficina de los noventa abandonada a medias y una de los ochenta con ventanales y un despacho de vidrio (descritas en [referencias/oficinas/LEEME.md](referencias/oficinas/LEEME.md); los archivos de imagen los copia el autor ahí). Y se buscan en páginas diversas modelos 3D para todo lo que esa estética pide, no lo que se ve tal cual: muchos props se ven mal por no tener un modelo adecuado.
     - En Pesadilla la vio inerte, sin moverse ni saltar a matar. Eran dos
       fallos de su mente, corregidos el mismo día: las zonas que le da el
       director se perdían si estaba en un ducto, y parada en una sala sin
