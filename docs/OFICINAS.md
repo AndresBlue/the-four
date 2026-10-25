@@ -92,7 +92,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 | **Oficina abierta** | Salón (dos módulos o más) | Rejilla de fluorescentes; zonas apagadas | Mesas metálicas en filas, sillas, archivadores bajos | Techo largo de placas: se la oye correr por encima |
 | **Cubículos** | Salón | Igual | Mamparas de tela de 1,5 m que cortan la vista: laberinto a la altura de los ojos | Se asoma por encima de una mampara; desde el techo ve todos los pasillos |
 | **Despacho** | Módulo | Fluorescente o flexo en la mesa | Mesa, sillón, archivador, perchero, **cristalera con persiana al pasillo** | Su silueta pasa por detrás de las lamas |
-| **Sala de juntas** | Módulo grande | Lámparas colgantes | Mesa larga, sillas, proyector, pizarra | El techo alto la deja colgar sobre la mesa |
+| **Sala de juntas** | Módulo grande | Fluorescentes empotrados en el falso techo a 2,95 m, como los despachos | Mesa larga, sillas, proyector, pizarra | |
 | **Archivo** | Salón alargado | Tubos sueltos sobre los pasillos | **Estanterías de 2,1 m con pasillos de 1 m** | Su sitio: avanza sostenida entre las dos estanterías |
 | **Archivo móvil** | Módulo | Igual | Estanterías sobre raíles con manivela: girarla abre un pasillo y hace ruido | Un pasillo que se abre y se cierra |
 | **Correo** | Módulo | Fluorescente | Casilleros, carros, sacos y la central del tubo neumático | El tubo suena: no siempre es una cápsula |
@@ -103,10 +103,10 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 | **Sala de descanso** | Módulo | Fluorescente | Máquina expendedora, fuente de agua, mesas, nevera | La máquina zumba: tapa el sonido |
 | **Aseos y vestuario** | Módulo | Fluorescente | **Taquillas metálicas (escondite)** | Espera encima |
 | **Sala de climatización** (planta 3) | Salón | Nada | Climatizadora, **ductos a escala humana**, la compuerta del ducto principal | Su nido |
-| **Puesto de seguridad** (planta 3) | Módulo | La batería de seguridad | Mesa de control con monitores apagados, armero vacío; se abre con la ficha y desde aquí se encienden los ventiladores | |
+| **Puesto de seguridad** (planta 3) | Módulo | La batería de seguridad | Mesa de control con monitores apagados, armero vacío; se abre con la ficha y desde aquí se encienden los ventiladores; como un despacho, puede tener una cristalera a un pasillo, de vidrio armado y sin persiana | |
 | **Vestíbulo del montacargas** | Como el del ascensor del hotel | Siempre con luz (también en la 2) | El montacargas con reja; en la 1, su lector de fichas | Nunca entra |
 
-- **Pasillos:** 2,2 a 3 m, con un friso de dos tonos igual en todos (taupe hasta 1 m bajo una moldura de nogal, greige encima) y, en cada celda de pasillo, un rótulo negro de letras claras a 1,6 m con el nombre de su zona y un cuadradito del color de su departamento.
+- **Pasillos:** de 3 a 3,6 m (alguno de 2,4), con un friso de dos tonos igual en todos (arrimadero de roble color miel hasta 1 m bajo una moldura de nogal, greige encima) y, en cada celda de pasillo, un rótulo negro de letras claras a 1,6 m con el nombre de su zona y un cuadradito del color de su departamento.
 - **Puertas:** del tamaño de las del hotel (2,65 m; decisión del autor: se prueban así): hoja de roble color miel con manilla de latón en marco de nogal, algunas con un ventanuco estrecho de vidrio claro. Las de servicio y las de etapa, de acero verde gris con barra antipánico. Por eso el falso techo va a 2,95 m.
 - **Una regla de construcción:** nada dentro de una sala pasa de 2,2 m (mamparas, estanterías, archivadores). Así **el techo de cada sala es un camino libre** para ella. Las cristaleras con persiana van solo en las paredes entre salas; los despachos son salas propias.
 
@@ -630,7 +630,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 ### 11.3 El generador y la geometría de las oficinas
 
 - **`office_generator.gd`:**
-  - el motor de rejilla del hotel con la paleta de oficinas (módulos de 8 a 12 m, pasillos de 2,4 a 3 m);
+  - el motor de rejilla del hotel con la paleta de oficinas (módulos de 8 a 12 m, pasillos de 3 a 3,6 m y alguno de 2,4);
   - su propio `finish()`: tipos, falso techo a 2,95, taquillas en vez de armarios, muebles;
   - y lo de cada planta:
     - en la 1, la ventanilla, las estaciones y la red de tubos;

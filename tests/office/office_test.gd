@@ -30,7 +30,7 @@ const SETS := ["office_open", "office_private", "mail", "copy", "break", "locker
 const TYPE_COUNT := 26
 ## Table 1.2, type by type on wing 0: the floor, the lamp and the walls.
 const FINISHES_12 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
-const LAMPS_12 := ["troffer", "troffer", "troffer", "troffer", "troffer", "pendant", "batten", "troffer", "batten", "troffer", "troffer", "troffer", "batten", "batten", "troffer", "troffer", "troffer", "troffer", "emergency", "troffer", "emergency", "troffer", "batten", "batten", "troffer", "batten"]
+const LAMPS_12 := ["troffer", "troffer", "troffer", "troffer", "troffer", "troffer", "batten", "troffer", "batten", "troffer", "troffer", "troffer", "batten", "batten", "troffer", "troffer", "troffer", "troffer", "emergency", "troffer", "emergency", "troffer", "batten", "batten", "troffer", "batten"]
 const WALLS_12 := ["office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
 var checks: Array = []
 var failed := 0
@@ -83,8 +83,8 @@ func palette_tables() -> void:
 	check("TYPES, NAMES, ARTICLES, RECIPES, HEIGHTS, MODULE_SET y FINISH_BY_TYPE tienen 26 entradas", sizes.all(func(size): return int(size) == TYPE_COUNT), str(sizes))
 	check("Cada receta tiene sus cuatro rincones", OFFICE.RECIPES.all(func(recipe): return recipe.size() == 4))
 	check("Los papeles estructurales tienen su número y su tipo", OFFICE.RECEPTION == 0 and OFFICE.LANDING == 9 and OFFICE.LOBBY == 10 and OFFICE.CORRIDOR == 11 and OFFICE.GALLERY == 12 and OFFICE.REFUGE == 19 and OFFICE.VOID == 20 and FLOOR.VOID == OFFICE.VOID and OFFICE.TYPES[OFFICE.LANDING] == "montacargas" and OFFICE.TYPES[OFFICE.REFUGE] == "vestibulo_montacargas")
-	var heights_right: bool = is_equal_approx(OFFICE.height_of({"type": OFFICE.OFFICE}), 2.95) and is_equal_approx(OFFICE.height_of({"type": OFFICE.ELECTRICAL}), 2.95) and is_equal_approx(OFFICE.height_of({"type": OFFICE.BOARDROOM}), 3.25) and [OFFICE.GALLERY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT].all(func(type): return is_equal_approx(OFFICE.height_of({"type": type}), 4.4))
-	check("Alturas: 2,95 el despacho y el cuarto eléctrico, 3,25 la sala de juntas, 4,4 el pasillo de servicio y las dos de climatización", heights_right)
+	var heights_right: bool = is_equal_approx(OFFICE.height_of({"type": OFFICE.OFFICE}), 2.95) and is_equal_approx(OFFICE.height_of({"type": OFFICE.ELECTRICAL}), 2.95) and is_equal_approx(OFFICE.height_of({"type": OFFICE.BOARDROOM}), 2.95) and [OFFICE.GALLERY, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT].all(func(type): return is_equal_approx(OFFICE.height_of({"type": type}), 4.4))
+	check("Alturas: 2,95 el despacho, el cuarto eléctrico y la sala de juntas, 4,4 el pasillo de servicio y las dos de climatización", heights_right)
 	var open_ceilings: Array = []
 	var unknown: Array = []
 	var soft: Array = []
@@ -171,7 +171,8 @@ func palette_lattice() -> void:
 	for at in [0.0, 0.37, 5.05]:
 		for span in [8.0, 9.0, 10.0, 12.0]:
 			rooms.append({"id": 0, "type": OFFICE.OFFICE, "wing": 0, "px": at, "pz": -at, "span_x": span, "span_z": span, "open_sides": []})
-		rooms.append({"id": 0, "type": OFFICE.CORRIDOR, "wing": 0, "px": at, "pz": -at, "span_x": 2.4, "span_z": 10.0, "open_sides": ["north", "south"], "corridor": true})
+		for lane in [2.4, 3.6]:
+			rooms.append({"id": 0, "type": OFFICE.CORRIDOR, "wing": 0, "px": at, "pz": -at, "span_x": lane, "span_z": 10.0, "open_sides": ["north", "south"], "corridor": true})
 	rooms.append({"id": 0, "type": OFFICE.OFFICE, "wing": 0, "px": 0.37, "pz": 0.37, "span_x": 8.0, "span_z": 8.0, "open_sides": ["east"]})
 	var inside := true
 	var pairs := true
@@ -989,14 +990,14 @@ func validator_checks() -> void:
 				edge[2] = snappedf(v3(m.ducts.nodes[int(edge[0])]).distance_to(v3(m.ducts.nodes[n])), 0.001)
 				return
 	mutation(v, "Un tronco recto torcido", "duct_express_", bent)
-	# The boardroom's own height (3.25), lowered to the offices' 2.95.
+	# The boardroom raised to its old 3.25: no longer its height.
 	var board := -1
 	for room in rooms:
 		if int(room.type) == OFFICE.BOARDROOM:
 			board = int(room.id)
 			break
 	check("La semilla 7 tiene sala de juntas para la mutación de su altura", board >= 0)
-	if board >= 0: mutation(v, "La sala de juntas a 2,95 de alto", "height_%d" % board, func(m): m.rooms[board].height = 2.95)
+	if board >= 0: mutation(v, "La sala de juntas a 3,25 de alto", "height_%d" % board, func(m): m.rooms[board].height = 3.25)
 	var missing: Array = []
 	for run_seed in range(1, 4):
 		var measures: Dictionary = OFFICE_METRICS.floor_measures(GEN.new().generate(run_seed, 2))

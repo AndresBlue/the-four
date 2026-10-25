@@ -86,14 +86,15 @@ func finish() -> void:
 	quit(1 if failed > 0 else 0)
 
 ## The longest corridor cell of planta 1 (at least 9 m), not next to an
-## off-limits room: {room, centre, along, half}.
+## off-limits room nor kept dark by the first stage's draw (its light cases
+## give it power and need its lamp): {room, centre, along, half}.
 func find_corridor() -> Dictionary:
 	var off: Array = level.off_limits_rooms()
 	var best := {}
 	for room in level.manifest.rooms:
 		if int(room.get("wing", -1)) != 0 or int(room.type) != OFFICE.CORRIDOR: continue
 		var span := FLOOR.size_of(room)
-		if maxf(span.x, span.y) < 9.0 or not level.creature.shell.tray_of.has(int(room.id)): continue
+		if maxf(span.x, span.y) < 9.0 or not level.creature.shell.tray_of.has(int(room.id)) or level.hotel.dark_ids.has(int(room.id)): continue
 		if level.manifest.adjacency[int(room.id)].any(func(other): return off.has(int(other))): continue
 		if not best.is_empty() and maxf(span.x, span.y) <= float(best.half) * 2.0: continue
 		var along := Vector3(1, 0, 0) if span.x >= span.y else Vector3(0, 0, 1)
@@ -203,7 +204,8 @@ func drain() -> void:
 	var troffer := Vector3.ZERO
 	var off: Array = level.off_limits_rooms()
 	for r in level.manifest.rooms:
-		if int(r.get("wing", -1)) != 0 or off.has(int(r.id)) or OFFICE.lamp_of(r) != "troffer" or not lurker.shell.tray_of.has(int(r.id)): continue
+		# Not one the first stage's draw keeps dark: power alone does not light it.
+		if int(r.get("wing", -1)) != 0 or off.has(int(r.id)) or OFFICE.lamp_of(r) != "troffer" or not lurker.shell.tray_of.has(int(r.id)) or level.hotel.dark_ids.has(int(r.id)): continue
 		var list: Array = OFFICE.troffers(r)
 		if list.is_empty(): continue
 		room = int(r.id)

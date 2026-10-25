@@ -388,7 +388,8 @@ func coverage() -> void:
 				for channel in kind_of(shell, SHELL.Kind.CHANNEL):
 					var record: Dictionary = shell.patches[channel]
 					var o: Vector3 = record.origin
-					if absf(float(record.width) - short) < 1e-4 and float(record.length) <= maxf(size.x, size.y) + 1e-4 and float(record.length) > 0.0 and Rect2(Vector2(float(aisle[0]), float(aisle[1])), size).grow(1e-4).has_point(Vector2(o.x, o.z)): found = channel
+					# Its own unit's channel: another planta's aisle may lie over it in plan.
+					if record.unit == unit.rooms and absf(float(record.width) - short) < 1e-4 and float(record.length) <= maxf(size.x, size.y) + 1e-4 and float(record.length) > 0.0 and Rect2(Vector2(float(aisle[0]), float(aisle[1])), size).grow(1e-4).has_point(Vector2(o.x, o.z)): found = channel
 				var wanted := short < SHELL.CHANNEL_MAX and not bool(unit.get("mobile", false))
 				if (found >= 0) != wanted: bad.append([seed_value, "pasillo", aisle])
 		for band in kind_of(shell, SHELL.Kind.BAND):
@@ -471,7 +472,7 @@ func clean_sides(room: Dictionary) -> Array:
 	return out
 
 func heights() -> void:
-	var want := {3: 2.95, 5: 3.25, 12: 3.05, 22: 3.05, 23: 3.05}
+	var want := {3: 2.95, 5: 2.95, 12: 3.05, 22: 3.05, 23: 3.05}
 	var bad: Array = []
 	var seen := {}
 	for seed_value in SEEDS:
@@ -481,7 +482,7 @@ func heights() -> void:
 			if not want.has(int(room.type)): continue
 			seen[int(room.type)] = true
 			if absf(shell.tray_height(int(id)) - float(want[int(room.type)])) > 1e-4: bad.append([seed_value, int(id), int(room.type)])
-	check("Alturas: despacho 2,95, sala de juntas 3,25, pasillo de servicio, climatización y máquinas 3,05", bad.is_empty() and seen.size() == want.size(), str(bad.slice(0, 4)) + " " + str(seen.keys()))
+	check("Alturas: despacho y sala de juntas 2,95, pasillo de servicio, climatización y máquinas 3,05", bad.is_empty() and seen.size() == want.size(), str(bad.slice(0, 4)) + " " + str(seen.keys()))
 
 # --- I2: lamps and the cue ---------------------------------------------------------
 

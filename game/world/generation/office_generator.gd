@@ -43,6 +43,41 @@ func candidate(run_seed: int, attempt: int, standby := false) -> Dictionary:
 		result["version"] = OFFICE_PALETTE.VERSION
 	return result
 
+## The base's doors, with a doorway in a side wall of a lift lobby kept short
+## of the wall its car stands behind (hotel_geometry.lift_wall(), LIFT_DEPTH in
+## from the lift's side): in an 8 m lobby a door at 1.5 had that wall standing
+## in it (seed 2026, passage_210_220); and a leaf into an archive hung from
+## the jamb away from the middle of its wall. Only offsets and hinges move,
+## with no draw of their own, so every other door stays as it was.
+func hang_doors(f: Dictionary, gates: Array, rng: RandomNumberGenerator) -> Dictionary:
+	var doors := super.hang_doors(f, gates, rng)
+	for key in doors:
+		var ids := String(key).split(":")
+		var a: Dictionary = f.rooms[int(ids[0])]
+		var b: Dictionary = f.rooms[int(ids[1])]
+		# Side by side in x the offset runs along z, else along x (FLOOR.door_offset()).
+		var beside_x := int(a.x) != int(b.x)
+		var offset := float(doors[key].offset)
+		for room in [a, b]:
+			var lift := FLOOR.lift_wall(room)
+			var toward: int = lift.y if beside_x else lift.x
+			if toward == 0: continue
+			var half := float(room.span_z if beside_x else room.span_x) * 0.5
+			var most := half - FLOOR.LIFT_DEPTH - FLOOR.PORTAL * 0.5
+			if offset * toward > most: offset = toward * most
+		# Into an archive the leaf hangs from the jamb away from the middle of
+		# its wall: open, it lies against the end of the room, not across the
+		# way from the spine to the doorway (seed 33, room 329).
+		var into: Dictionary = b if int(doors[key].swing) > 0 else a
+		if int(into.type) in [palette.ARCHIVE, palette.MOBILE_ARCHIVE] and absf(offset) > 0.001: doors[key].hinge = 1 if offset > 0.0 else -1
+		if is_equal_approx(offset, float(doors[key].offset)): continue
+		doors[key].offset = offset
+		for entry in a.doors:
+			if int(entry[0]) == int(b.id): entry[1] = offset
+		for entry in b.doors:
+			if int(entry[0]) == int(a.id): entry[1] = offset
+	return doors
+
 ## Each planta's own band for its refuge (the climb, the power room's lift, the air plant).
 func depth_wanted() -> Vector2: return palette.DEPTHS[laying]
 
@@ -132,7 +167,10 @@ func pick_special(_f: Dictionary, pool: Array, band: Vector2, standby: bool, rng
 	if standby:
 		var middle := (band.x + band.y) / 2
 		var ranked := pool.duplicate()
-		ranked.sort_custom(func(a, b): return absf(float(a.share) - middle) < absf(float(b.share) - middle) or (absf(float(a.share) - middle) == absf(float(b.share) - middle) and int(a.room) < int(b.room)))
+		# Every wall that can be a doorway is one here: the window's desk needs a
+		# wall with none (furnish_mail()), so the window goes to the fewest doors.
+		var doors_of := func(entry: Dictionary) -> int: return int(entry.doors) if rule == "window" else 0
+		ranked.sort_custom(func(a, b): return doors_of.call(a) < doors_of.call(b) or (doors_of.call(a) == doors_of.call(b) and (absf(float(a.share) - middle) < absf(float(b.share) - middle) or (absf(float(a.share) - middle) == absf(float(b.share) - middle) and int(a.room) < int(b.room)))))
 		return int(ranked[0].room)
 	return int(weighted(pool, rng).room)
 

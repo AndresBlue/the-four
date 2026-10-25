@@ -73,8 +73,6 @@ const WALL_MIN := 1.0
 ## Over a locker she goes down its front to the slot, head down (the author,
 ## 24 October 2026): the slot is at a hider's eyes.
 const LOCKER_SLOT := 1.6
-## A pendant's globes, either side of the meeting table (office_geometry.gd).
-const PENDANT_APART := 0.9
 
 ## 2D curves with an arc-length parameter.
 class Profile extends RefCounted:
@@ -496,22 +494,13 @@ func channel_radius(c: Dictionary) -> float:
 # --- Lamps (3.7) -------------------------------------------------------------
 
 ## A room's lamps in plan, as office_geometry.gd hangs them: the tube's omni
-## at the middle, a batten over each aisle of an archive, the boardroom's two
-## globes; the emergency unit is not in her way.
+## at the middle, a batten over each aisle of an archive; the emergency unit
+## is not in her way.
 func lamps_in(room: Dictionary) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var centre := Vector2(float(room.px), float(room.pz))
 	match OFFICE.lamp_of(room):
 		"emergency":
-			return out
-		"pendant":
-			var at := Vector2.ZERO
-			var long := Vector2(1, 0)
-			for item in room.get("furniture", []):
-				if String(item.kind) != "meeting_table": continue
-				at = Vector2(float(item.at[0]), float(item.at[1]))
-				long = Vector2(1, 0) if int(item.turn) % 2 == 0 else Vector2(0, 1)
-			for side in [-1.0, 1.0]: out.append(centre + at + long * float(side) * PENDANT_APART)
 			return out
 		"batten":
 			var cell := Rect2(centre - FLOOR.size_of(room) * 0.5, FLOOR.size_of(room))

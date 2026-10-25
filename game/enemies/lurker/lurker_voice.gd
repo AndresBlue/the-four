@@ -96,7 +96,8 @@ func material_at(point: Vector3, normal: Vector3, at: StringName) -> StringName:
 	var room := FLOOR.room_at(level.manifest.rooms, point)
 	if room.is_empty(): return &"metal"
 	if normal.y < -0.7: return &"tile" if OFFICE.false_ceiling(room) else &"hard"
-	if normal.y > 0.7: return &"soft" if OFFICE.floor_finish(room) == "carpet" else &"hard"
+	# Either scan of carpet is soft underfoot: ask the palette, not one name.
+	if normal.y > 0.7: return &"hard" if OFFICE.hard_floor(room) else &"soft"
 	if in_archive(point): return &"metal"
 	return &"wood" if OFFICE.wall_material(room) == "veneer" else &"hard"
 

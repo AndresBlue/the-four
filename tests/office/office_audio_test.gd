@@ -203,6 +203,8 @@ func walls() -> void:
 		return
 	var safe := centre_of(lobby) + EAR
 	await listen_at(centre_of(lobby))
+	# The voice keeps 32 sounds at most: a count from an empty log.
+	lurker.voice.history.clear()
 	var before: int = lurker.voice.history.size()
 	for i in 30: knock()
 	var felt: Array = lurker.presence_route(safe)
@@ -214,7 +216,8 @@ func real_audio() -> void:
 	await listen_at(centre_of(room_r))
 	var index := AudioServer.get_bus_index("Ducts")
 	var capture := AudioEffectCapture.new()
-	capture.buffer_length = 2.0
+	# The whole window and its tail: a two-second buffer keeps only its last part.
+	capture.buffer_length = 4.0
 	AudioServer.add_bus_effect(index, capture)
 	var near := await knock_peak(capture)
 	var high := {}
@@ -228,12 +231,14 @@ func real_audio() -> void:
 	check("Sus golpes suenan de verdad en el bus de los ductos desde su sala, y nada desde otra planta", near > 1e-5 and far < 1e-6, "%s %s" % [str(near), str(far)])
 
 func knock_peak(capture: AudioEffectCapture) -> float:
-	# Past the tail of what was playing (her longest knock is about a second).
+	# Past the tail of what was playing. Her runs of knocks end in a rest of up to
+	# 2.6 s (lurker_voice RUN_REST): a second's window can fall inside it and hear
+	# nothing of her, so the window is three.
 	await wait(1.6)
 	capture.clear_buffer()
 	var peak := 0.0
 	var started := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - started < 1000:
+	while Time.get_ticks_msec() - started < 3000:
 		lurker.voice.travel(1.0 / 60.0, 2.0)
 		await process_frame
 	await wait(0.3)
@@ -254,7 +259,8 @@ func surfaces() -> void:
 	for room in level.manifest.rooms:
 		if FLOOR.is_void(room): continue
 		if block.is_empty() and OFFICE.wall_material(room) == "block": block = room
-		if veneer.is_empty() and OFFICE.wall_material(room) == "veneer" and OFFICE.floor_finish(room) == "carpet": veneer = room
+		if veneer.is_empty() and OFFICE.wall_material(room) == "veneer" and not OFFICE.hard_floor(room): veneer = room
+	check("Hay sala de chapa en la planta 3 (el despacho de dirección)", not veneer.is_empty())
 	if not block.is_empty():
 		var hard := await step(centre_of(block) + Vector3(0, 1.0, 0), Vector3(1, 0, 0))
 		check("En una pared de bloque, a duro", String(hard.path).contains("/hard_") and String(hard.material) == "hard", str(hard))
@@ -272,13 +278,15 @@ func step(point: Vector3, normal: Vector3) -> Dictionary:
 ## Case 9, the clean half second: her warning on this machine, and nothing
 ## of hers starts from CLEAN before it is due until it is over.
 func clean_cue() -> void:
+	lurker.voice.history.clear()
 	await in_duct_at_e()
 	await listen_at(centre_of(room_r))
 	var face: Vector3 = level.player.camera.global_position + Vector3(0, 0.4, 1.5)
 	lurker.play_cue(int(level.player.slot), 0, face, 1.2)
 	check("El aviso suena en los oídos de la víctima, desde ella", String(audio.last_cue.get("path", "")).contains("lurker/cue_") and bool(audio.last_cue.get("mine", false)) and not audio.ears_hold.is_empty() and (audio.ears_hold.point as Vector3).distance_to(face) <= 0.1, str(audio.last_cue))
 	var at_start: int = lurker.voice.history.size()
-	var early_ok: bool = String(knock().get("path", "")).contains("knock_") and lurker.voice.history.size() == at_start + 1
+	knock()
+	var early_ok: bool = knocks_since(at_start) == 1
 	await wait(1.2 - VOICE.CLEAN + 0.1)
 	var before: int = lurker.voice.history.size()
 	knock()
@@ -287,7 +295,15 @@ func clean_cue() -> void:
 	var hushed: bool = lurker.voice.history.size() == before
 	lurker.cue_over(0, "saved")
 	knock()
-	check("Antes de su medio segundo limpio suena; dentro de él, nada suyo; acabado el aviso, vuelve", early_ok and hushed and lurker.voice.history.size() == before + 1)
+	check("Antes de su medio segundo limpio suena; dentro de él, nada suyo; acabado el aviso, vuelve", early_ok and hushed and knocks_since(before) == 1)
+
+## The knocks the voice made from entry `from` of its log on: scrapes are
+## in the log too, and the log is cut at 32, so sizes are no count of them.
+func knocks_since(from: int) -> int:
+	var count := 0
+	for entry in lurker.voice.history.slice(from):
+		if String(entry.get("path", "")).contains("knock_"): count += 1
+	return count
 
 ## Case 10.
 func aura() -> void:

@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/carpet.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.34, 0.33, 0.31, 1)
+shader_parameter/base_color = Color(0.36, 0.35, 0.33, 1)
+shader_parameter/field_color = Color(0.34, 0.33, 0.31, 1)
+shader_parameter/line_color = Color(0.36, 0.35, 0.33, 1)
+shader_parameter/accent_color = Color(0.34, 0.33, 0.31, 1)
+shader_parameter/pattern = 0.0
+shader_parameter/wear = 0.5
+shader_parameter/map_metres = 1.0
+shader_parameter/map_mode = 0
+shader_parameter/map_tint = Color(1, 1, 1, 1)
+shader_parameter/map_detail = 1.6
+shader_parameter/map_no_tile = true
+shader_parameter/map_roughness = 0.3
+shader_parameter/normal_strength = 1.2
+metadata/scan = "office_fabric028"

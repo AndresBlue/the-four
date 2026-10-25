@@ -11,7 +11,7 @@ const HG := preload("res://game/world/hotel/hotel_geometry.gd")
 const DIR := "res://game/presentation/materials/office/%s.tres"
 const TYPE_COUNT := 26
 ## The office's own scanned materials, each with the set it names (3a U3, U4).
-const SCANNED := {"vinyl": "office_tiles110", "terrazzo": "office_terrazzo003", "concrete": "office_painted_concrete_02", "slab": "office_concrete_wall_008", "carpet": "office_fabric026", "ceiling_service": "officeceiling001", "office_paint": "wallpaper001a", "taupe": "wallpaper001a", "block": "office_bricks019", "veneer": "office_dark_paneled_wood", "walnut": "office_walnut_veneer", "walnut_object": "office_walnut_veneer", "oak_door": "office_teak_veneer", "steel_olive": "office_paintedmetal006", "cork": "office_cork003", "partition_fabric": "office_hessian_380", "cardboard": "office_cardboard004", "quarry": "office_anti_skid_tiles"}
+const SCANNED := {"vinyl": "office_tiles110", "terrazzo": "office_terrazzo003", "concrete": "office_painted_concrete_02", "slab": "office_concrete_wall_008", "carpet": "office_fabric026", "carpet_exec": "office_fabric028", "ceiling_service": "officeceiling001", "office_paint": "wallpaper001a", "taupe": "wallpaper001a", "block": "office_bricks019", "veneer": "office_dark_paneled_wood", "walnut": "office_walnut_veneer", "walnut_object": "office_walnut_veneer", "oak_door": "office_teak_veneer", "dado_oak": "office_teak_veneer", "steel_olive": "office_paintedmetal006", "cork": "office_cork003", "partition_fabric": "office_hessian_380", "cardboard": "office_cardboard004", "quarry": "office_anti_skid_tiles"}
 ## The office's own plain materials, with no scan set (3a U3, U4).
 const PLAIN_TRES := ["tgrid", "threshold", "partition"]
 ## Table 1.2 of office_test.gd on wing 0: the floors, the walls and the lower walls by type.
@@ -129,7 +129,7 @@ func check_palette(office_geo) -> void:
 	check("Pared de dirección en el ala 2: nogal", OFFICE.wall_material({"type": OFFICE.EXEC_OFFICE, "wing": 2}) == "veneer")
 	check("Pared del tipo 24 en el ala 2: pintura", OFFICE.wall_material({"type": OFFICE.SECRETARY, "wing": 2}) == "office_paint")
 	check("Pared de la sala de juntas en el ala 2: pintura", OFFICE.wall_material({"type": OFFICE.BOARDROOM, "wing": 2}) == "office_paint")
-	check("Suelo de la sala de juntas en el ala 2: moqueta", OFFICE.floor_finish({"type": OFFICE.BOARDROOM, "wing": 2}) == "carpet")
+	check("Suelo de la sala de juntas en el ala 2: moqueta de dirección", OFFICE.floor_finish({"type": OFFICE.BOARDROOM, "wing": 2}) == "carpet_exec")
 	check("Suelo del despacho en la planta 0: vinilo", OFFICE.floor_finish({"type": OFFICE.OFFICE, "wing": 0}) == "vinyl")
 	check("Suelo de la oficina abierta en la planta 1: vinilo", OFFICE.floor_finish({"type": OFFICE.OPEN_OFFICE, "wing": 1}) == "vinyl")
 	var soft: Array = []
@@ -148,7 +148,7 @@ func check_walls(hotel) -> void:
 	var rail_missing: Array = []
 	var dado_bare: Array = []
 	var two_tone_bare: Array = []
-	var wrong_taupe: Array = []
+	var wrong_oak: Array = []
 	var secretaries := 0
 	var veneer_walls := 0
 	var bad_slabs: Array = []
@@ -162,7 +162,7 @@ func check_walls(hotel) -> void:
 		cornices += count(node, "trim-plain")
 		dado_panels += count(node, "panel")
 		if trim == "frieze" and walls > 0:
-			if count(node, "taupe") == 0: frieze_bare.append(int(room.id))
+			if count(node, "dado_oak") == 0: frieze_bare.append(int(room.id))
 			# A frieze room glazed on every walled side has no rail: its lower wall stops at the sill.
 			var walled: Array = ["north", "south", "west", "east"].filter(func(s): return not room.get("open_sides", []).has(s) and not room.get("glazed", []).has(s))
 			var rail := walled.is_empty()
@@ -171,7 +171,7 @@ func check_walls(hotel) -> void:
 			if not rail: rail_missing.append(int(room.id))
 		if trim == "dado" and walls > 0 and count(node, "walnut") == 0: dado_bare.append(int(room.id))
 		if trim == "two_tone" and walls > 0 and count(node, "two_tone_low") == 0: two_tone_bare.append(int(room.id))
-		if trim != "frieze" and count(node, "taupe") > 0: wrong_taupe.append(int(room.id))
+		if trim != "frieze" and count(node, "dado_oak") > 0: wrong_oak.append(int(room.id))
 		if trim == "panel_wall":
 			secretaries += 1
 			for t in instances(node, "veneer"):
@@ -206,7 +206,7 @@ func check_walls(hotel) -> void:
 		var grille_trim: String = OFFICE.wall_trim(hotel.manifest.rooms[int(e.room)])
 		var face := Basis(Vector3.UP, float(e.yaw)).z
 		var local := Vector3(float(e.point[0]), float(e.point[1]), float(e.point[2])) - grille_node.position
-		var lift_of := {"frieze": OG.LINING, "two_tone": OG.LINING, "dado": OG.DADO_THICK, "panel_wall": OG.DADO_THICK}
+		var lift_of := {"frieze": OG.DADO_THICK, "two_tone": OG.LINING, "dado": OG.DADO_THICK, "panel_wall": OG.DADO_THICK}
 		var lifts: Array = [0.002 + float(lift_of.get(grille_trim, 0.0))]
 		if grille_trim == "panel_wall": lifts.append(0.002)
 		var placed := false
@@ -222,7 +222,7 @@ func check_walls(hotel) -> void:
 	check("Moldura de nogal a 1 m en cada friso", rail_missing.is_empty(), str(rail_missing))
 	check("Zócalo de nogal donde va", dado_bare.is_empty(), str(dado_bare))
 	check("Dos tonos en climatización", two_tone_bare.is_empty(), str(two_tone_bare))
-	check("El taupe solo en el friso", wrong_taupe.is_empty(), str(wrong_taupe))
+	check("El roble solo en el friso", wrong_oak.is_empty(), str(wrong_oak))
 	check("La pared de nogal de secretaría", secretaries > 0 and veneer_walls == secretaries, "%d secretarías, %d con chapa" % [secretaries, veneer_walls])
 	check("Losa vista sin techo del hotel donde no hay falso techo", bad_slabs.is_empty(), str(bad_slabs))
 	check("Un rótulo de zona a 1,6 m en cada celda rotulada", not hotel.labelled.is_empty() and signed == hotel.labelled.size(), "%d de %d" % [signed, hotel.labelled.size()])
@@ -243,8 +243,8 @@ func check_glazing(hotel) -> void:
 		if FLOOR.is_void(room): continue
 		var node: Node3D = hotel.room_nodes[int(room.id)]
 		if not is_instance_valid(node): continue
-		# The frieze's taupe and the skirting under it stand equally many times.
-		if OFFICE.wall_trim(room) == "frieze" and count(node, "taupe") != count(node, "skirting"): frieze_uneven.append(int(room.id))
+		# The frieze's oak and the skirting under it stand equally many times.
+		if OFFICE.wall_trim(room) == "frieze" and count(node, "dado_oak") != count(node, "skirting"): frieze_uneven.append(int(room.id))
 		var glazed: Array = room.get("glazed", [])
 		if not glazed.is_empty():
 			glazed_rooms += 1

@@ -7,12 +7,12 @@ export const meta = {
   ],
 }
 
-// args: { area: 'nombre corto', archivo: '.claude/specs/encargos_<area>.json', unidades: [{id, archivos}], paralelo: false, integrar: true }
+// args: { area: 'nombre corto', archivo: '.claude/specs/encargos_<area>.json', unidades: [{id, archivos}], paralelo: false, integrar: true, primero: [ids] }
 const A = args
 phase('Frente')
 const f = await workflow({ scriptPath: 'E:/Projects/The Four/.claude/workflows/frente.js' }, {
   area: A.area, archivo: A.archivo, unidades: A.unidades,
-  paralelo: A.paralelo === true, integrar: A.integrar !== false,
+  paralelo: A.paralelo === true, integrar: A.integrar !== false, primero: A.primero || [],
 })
 const v = f && f.veredicto
 return {

@@ -113,10 +113,10 @@ const RECIPES := [
 	["shelf", "boxes", "shelf", "cart"],
 ]
 
-## How tall a room is (height_of()): a false ceiling at 2.95, the boardroom's
-## at 3.25 (the trunk duct clears it by 5 cm), none where the slab is the
-## ceiling (4.4).
-const HEIGHTS := [2.95, 2.95, 2.95, 2.95, 2.95, 3.25, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 4.4, 2.95, 2.95]
+## How tall a room is (height_of()): a false ceiling at 2.95 in every room
+## that has one, the boardroom too (spec_rediseno 3.5), none where the slab
+## is the ceiling (4.4).
+const HEIGHTS := [2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 2.95, 4.4, 4.4, 2.95, 2.95]
 ## The hotel's: height_of() does not read it, a salon is as tall as its type.
 const HALL_HEIGHT := 4.8
 ## Rooms whose lamps are never out (may_be_dark()): the lit lobbies, the
@@ -132,10 +132,11 @@ const UNRULY_ROOMS := [3, 8, 7, 15, 13]
 const SERVICE_ROOMS := [8, 8, 7, 4]
 const HALL_ROOMS := [1, 2]
 
-## Module sizes and corridor lanes, in metres (OFICINAS 11.3): about 0.73 of
-## the hotel's.
+## Module sizes in metres (OFICINAS 11.3), about 0.73 of the hotel's; the
+## corridor lanes 3 to 3.6 m with a narrow 2.4 now and then (spec_rediseno
+## 3.2): axis() draws evenly from the list, so a repeat is its weight.
 const MODULE_SIZES := [8.0, 9.0, 10.0, 10.0, 11.0, 12.0]
-const LANE_WIDTHS := [2.4, 2.6, 2.8, 3.0]
+const LANE_WIDTHS := [3.0, 3.0, 3.2, 3.2, 3.4, 3.6, 2.4]
 
 ## Plans per planta: Personal presentable, Registro combs and blocks for the
 ## archives, Dirección tidier, with suites opening on to suites. Abandoned,
@@ -238,7 +239,7 @@ const NAVE_CARPET := [1, 2]
 ## electrical room's ridged tile (quarry). CARPET on wing 2 and NAVE_CARPET on
 ## wing 0 are carpet instead.
 const FINISH_BY_TYPE := ["vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
-const FINISHES := ["terrazzo", "tile", "carpet", "concrete", "vinyl", "quarry"]
+const FINISHES := ["terrazzo", "tile", "carpet", "carpet_exec", "concrete", "vinyl", "quarry"]
 ## Painted concrete block (wall_material()): the store, the service
 ## corridor, the electrical room, the air rooms and the depot.
 const BLOCK_WALLS := [8, 12, 18, 22, 23, 25]
@@ -251,7 +252,7 @@ const FRIEZE_ROOMS := [0, 10, 11, 19]
 const DADO_ROOMS := [3, 5, 21]
 const TWO_TONE_ROOMS := [22, 23]
 const TRIMS := ["", "frieze", "dado", "two_tone", "panel_wall"]
-const LAMPS := ["troffer", "batten", "pendant", "emergency"]
+const LAMPS := ["troffer", "batten", "emergency"]
 ## Where the special rooms lie, as a share of the walk.
 const WINDOW_DEPTH := Vector2(0.15, 0.45)
 const ELECTRICAL_DEPTH := Vector2(0.4, 0.7)
@@ -303,8 +304,10 @@ const WALL_APART := 1.5
 const SOCKET_INSET := 1.3
 ## Nothing in a room is taller (OFICINAS 2).
 const FURNITURE_TOP := 2.2
-## Rooms that may have a glass partition to a corridor.
-const GLAZED_TYPES := [3, 16, 17, 24]
+## Rooms that may have a glass partition to a corridor or a gallery: the
+## offices, the director's, the window, the security post (spec_rediseno
+## 3.6) and the secretary's.
+const GLAZED_TYPES := [3, 16, 17, 21, 24]
 ## The zones' stripes, one per department of a planta.
 const STRIPES := [Color("8a7a3c"), Color("5f6b3a"), Color("8b5a3c"), Color("4f6470"), Color("7a6a55"), Color("a39a7a"), Color("6e3b3b"), Color("3f5a4c")]
 ## Departments per planta: [name, focus types]. The first is the one of the
@@ -360,15 +363,17 @@ static func height_of(room: Dictionary) -> float:
 static func false_ceiling(room: Dictionary) -> bool:
 	return height_of(room) < float(PLENUM.slab) - 0.01
 
-## Hard underfoot: everything but carpet.
+## Hard underfoot: everything but carpet, either scan of it.
 static func hard_floor(room: Dictionary) -> bool:
-	return floor_finish(room) != "carpet"
+	return not (floor_finish(room) in ["carpet", "carpet_exec"])
 
 ## The floor's material (FINISHES).
 static func floor_finish(room: Dictionary) -> String:
 	var room_type := int(room.type)
 	var wing := int(room.get("wing", 0))
-	if (room_type in CARPET and wing == 2) or (room_type in NAVE_CARPET and wing == 0): return "carpet"
+	# Wing 2's carpet is the director's own scan (carpet_exec); the naves' is carpet.
+	if room_type in CARPET and wing == 2: return "carpet_exec"
+	if room_type in NAVE_CARPET and wing == 0: return "carpet"
 	return String(FINISH_BY_TYPE[room_type])
 
 ## The walls' material (WALLS): the director's walnut veneer, the copy room's
@@ -400,11 +405,10 @@ static func may_be_dark(room: Dictionary) -> bool:
 	return not int(room.type) in NEVER_DARK
 
 ## The lamp on a room's ceiling (LAMPS): the electrical room and the void only
-## the emergency unit, the boardroom a pendant.
+## the emergency unit; the boardroom has troffers like any office.
 static func lamp_of(room: Dictionary) -> String:
 	var room_type := int(room.type)
 	if room_type == ELECTRICAL or room_type == VOID: return "emergency"
-	if room_type == BOARDROOM: return "pendant"
 	return "batten" if room_type in BATTEN_ROOMS else "troffer"
 
 ## No room has the hotel's domestic alcoves.

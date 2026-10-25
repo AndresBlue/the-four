@@ -6,7 +6,7 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather", "walnut": "trim", "walnut_object": "trim", "oak_door": "door"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather", "walnut": "trim", "walnut_object": "trim", "oak_door": "door", "dado_oak": "wood", "carpet_exec": "carpet"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
@@ -24,11 +24,11 @@ const MATERIAL_DIR := "res://game/presentation/materials/office/%s.tres"
 const OWN_OVER := ["carpet", "ceiling_service"]
 ## The cove base along the walls (spec 4.1): height and thickness.
 const SKIRT := Vector2(0.10, 0.006)
-## The lower wall (spec_rediseno 2, wall_trim()): the frieze's taupe up to
+## The lower wall (spec_rediseno 2, wall_trim()): the frieze's honey oak up to
 ## FRIEZE_TOP under a walnut rail (height, proud), the walnut dado up to
 ## DADO_TOP and its cap (height, proud), the air rooms' darker paint up to
-## TWO_TONE_TOP; paint is LINING proud of the wall, the dado DADO_THICK. The
-## rail stays inside a door frame's 2 cm.
+## TWO_TONE_TOP; paint is LINING proud of the wall, the oak and the dado
+## DADO_THICK. The rail stays inside a door frame's 2 cm.
 const FRIEZE_TOP := 1.0
 const RAIL := Vector2(0.06, 0.016)
 const DADO_TOP := 1.05
@@ -410,7 +410,7 @@ func darken_first_stage(data: Dictionary) -> void:
 			"pesadilla": if may and roll >= LIT_LEFT: dark_ids[id] = true
 
 ## A room's power cut or given back (planta 2's board, spec_f1_systems 3):
-## its troffer lenses, battens and globes go dark with its lamp, or they
+## its troffer lenses and battens go dark with its lamp, or they
 ## would glow over a room with no light.
 func set_room_power(room_id: int, on: bool) -> void:
 	super(room_id, on)
@@ -612,6 +612,30 @@ func duct_cuts(boundary: Node3D, x: float, length: float, height: float) -> Arra
 		if b - a > 0.01: cuts.append([a, b, maxf(low.y, 0.0), minf(high.y, height)])
 	return cuts
 
+## Every piece of a wall's core leaves the main duct's way open where the duct
+## crosses it: wall_run() cuts a plain run itself, but the band over a glazed
+## run and the head over a doorway (hotel_geometry.walls()) are pieces of
+## their own, and standing in the duct they stopped the crawl (seed 33).
+func wall_core(boundary: Node3D, pos: Vector3, size: Vector3, inner: int) -> void:
+	var bottom := pos.y - size.y * 0.5
+	var top := pos.y + size.y * 0.5
+	for cut in duct_cuts(boundary, pos.x, size.x, top):
+		var y0 := maxf(float(cut[2]), bottom)
+		var y1 := minf(float(cut[3]), top)
+		if y1 - y0 <= 0.01: continue
+		var a := float(cut[0])
+		var b := float(cut[1])
+		var x0 := pos.x - size.x * 0.5
+		var x1 := pos.x + size.x * 0.5
+		# Either side of the opening, then under and over it: each piece is cut
+		# again by any other hole it crosses.
+		if a - x0 > 0.01: wall_core(boundary, Vector3((x0 + a) * 0.5, pos.y, pos.z), Vector3(a - x0, size.y, size.z), inner)
+		if x1 - b > 0.01: wall_core(boundary, Vector3((b + x1) * 0.5, pos.y, pos.z), Vector3(x1 - b, size.y, size.z), inner)
+		if y0 - bottom > 0.01: wall_core(boundary, Vector3((a + b) * 0.5, (bottom + y0) * 0.5, pos.z), Vector3(b - a, y0 - bottom, size.z), inner)
+		if top - y1 > 0.01: wall_core(boundary, Vector3((a + b) * 0.5, (y1 + top) * 0.5, pos.z), Vector3(b - a, top - y1, size.z), inner)
+		return
+	super(boundary, pos, size, inner)
+
 ## An office wall (6.2; spec_rediseno 2): its paint, a cove base and the
 ## room's lower wall on this room's face, and once in a corridor cell its zone
 ## sign; none of the hotel's dado, rails, sockets or cornice.
@@ -652,7 +676,7 @@ func wall_run(boundary: Node3D, x: float, length: float, height: float, inner: i
 	zone_sign(boundary, x, inner, label, OFFICE.stripe_color(manifest, building_room))
 
 ## The lower part of this room's face of a wall (wall_trim()): nothing, the
-## frieze (taupe under a walnut rail), the walnut dado and its cap, the air
+## frieze (honey oak under a walnut rail), the walnut dado and its cap, the air
 ## rooms' darker paint, or a panelled wall of walnut veneer on the
 ## secretary's panel_side. A glazed run or a duct cuts it at `top`.
 func lower_wall(boundary: Node3D, x: float, length: float, height: float, inner: int, top := INF) -> void:
@@ -661,7 +685,7 @@ func lower_wall(boundary: Node3D, x: float, length: float, height: float, inner:
 	match OFFICE.wall_trim(building_room):
 		"frieze":
 			var high := minf(FRIEZE_TOP, top)
-			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * LINING * 0.5), Vector3(length, high - SKIRT.x, LINING), "taupe")
+			box(boundary, Vector3(x, (SKIRT.x + high) * 0.5, face + inner * DADO_THICK * 0.5), Vector3(length, high - SKIRT.x, DADO_THICK), "dado_oak")
 			if top > FRIEZE_TOP: box(boundary, Vector3(x, FRIEZE_TOP, face + inner * RAIL.y * 0.5), Vector3(length, RAIL.x, RAIL.y), "walnut")
 		"dado":
 			var high := minf(DADO_TOP, top)
@@ -680,8 +704,8 @@ func lower_wall(boundary: Node3D, x: float, length: float, height: float, inner:
 func lining(side: String) -> float:
 	if building_room.is_empty(): return 0.0
 	match OFFICE.wall_trim(building_room):
-		"frieze", "two_tone": return LINING
-		"dado": return DADO_THICK
+		"frieze", "dado": return DADO_THICK
+		"two_tone": return LINING
 		"panel_wall": return DADO_THICK if side == panel_side else 0.0
 	return 0.0
 
@@ -737,7 +761,7 @@ func corner_posts(node: Node3D, room: Dictionary) -> void:
 			corner_piece(node, corner, into, 0.0, SKIRT.x, SKIRT.y, "skirting")
 			match OFFICE.wall_trim(room):
 				"frieze":
-					corner_piece(node, corner, into, SKIRT.x, FRIEZE_TOP, LINING, "taupe")
+					corner_piece(node, corner, into, SKIRT.x, FRIEZE_TOP, DADO_THICK, "dado_oak")
 					corner_piece(node, corner, into, FRIEZE_TOP - RAIL.x * 0.5, FRIEZE_TOP + RAIL.x * 0.5, RAIL.y, "walnut")
 				"dado":
 					corner_piece(node, corner, into, SKIRT.x, DADO_TOP, DADO_THICK, "walnut")
@@ -1003,7 +1027,7 @@ func node_point(boundary: Node3D, at: float) -> Vector3:
 var poster_spots: Array[Dictionary] = []
 
 ## The troffers (built by ceiling()) light the room as a fluorescent tube
-## does (7.1); the battens and the boardroom's pendant are the hotel's.
+## does (7.1); a batten is the archives' own over each aisle, or the hotel's.
 func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 	var lamp: String = OFFICE.lamp_of(room)
 	var h := float(room.height)
@@ -1015,19 +1039,6 @@ func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 			if not archive_battens(node, room): return super(node, room)
 			tube.energy = float(tube.energy) * 0.85
 			return tube
-		"pendant":
-			# Two opal globes on rods over the meeting table.
-			var at := Vector3.ZERO
-			var long := Vector3(1, 0, 0)
-			for item in room.get("furniture", []):
-				if String(item.kind) != "meeting_table": continue
-				at = Vector3(float(item.at[0]), 0, float(item.at[1]))
-				long = Vector3(1, 0, 0) if int(item.turn) % 2 == 0 else Vector3(0, 0, 1)
-			for side in [-1.0, 1.0]:
-				var globe: Vector3 = at + long * float(side) * 0.9
-				box(node, globe + Vector3(0, (h + 2.25) * 0.5, 0), Vector3(0.012, h - 2.25, 0.012), "metal", false, "cylinder")
-				box(node, globe + Vector3(0, 2.15, 0), Vector3(0.32, 0.32, 0.32), "light_off" if dark_room(room) else "light", false, "cylinder")
-			return {"tube": false, "failing": "", "specular": 0.6, "color": LIGHTING.light_color(3000.0), "energy": 3.6 * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("dome"), "position": at + Vector3(0, 2.0, 0)}
 		"emergency":
 			# No lamp of its own: the electrical room's battery unit lights it (7.2).
 			tube.energy = 0.0
