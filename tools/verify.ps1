@@ -67,6 +67,10 @@ Add-Check 'dev/creature_stuck_probe' 'stuck_probe' (Godot-Arguments 'res://tools
 # (tools/dev/lurker_route_probe.gd). Twice the 34 s it takes alone.
 $log = Join-Path $evidence 'verify_lurker_route_probe.log'
 Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--short','--strict','--automation','--silent')) 90 'plain' 1 $log
+# The same trips at Pesadilla's speeds of going unseen (spec_f3_aggression),
+# her most usual now: she arrives at 4.5 m/s on a ceiling and 5 in a duct.
+$log = Join-Path $evidence 'verify_lurker_route_unseen.log'
+Add-Check 'dev/lurker_route_probe --unseen' 'lurker_route_unseen' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--unseen=pesadilla','--strict','--automation','--silent')) 90 'plain' 1 $log
 # The Lurker's arms never through anything solid: cabinets, a locker's leaf, an
 # open leaf and survivors under her way (tools/dev/lurker_elbow_probe.gd).
 $log = Join-Path $evidence 'verify_lurker_elbow_probe.log'

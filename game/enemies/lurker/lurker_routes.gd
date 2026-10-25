@@ -44,6 +44,10 @@ const CROSS_CLEAR := 1.0
 ## Back into the ceiling by a tile she left open this near her (the author:
 ## "si entra de nuevo por ahí que la cierre de vuelta").
 const TILE_REUSE := 2.5
+## A crossing of an open side keeps this far inside both ceilings' ends
+## along it: on a corner of one, the way on ran out of it by its wall and she
+## stood there (seed 7, 228 to 220, corridors meeting in an L).
+const CROSS_IN := 0.1
 
 enum Edge { OPEN, DOOR, IN, OUT, DUCT }
 
@@ -558,11 +562,17 @@ func tray_legs(legs: Array, from: Vector2, to: Vector2, chain: Array, hang: floa
 		# Inside both ceilings: their walled ends keep further in than the edge's.
 		var ra: Rect2 = shell.patches[int(shell.tray_of[int(chain[i - 1])])].rect
 		var rb: Rect2 = shell.patches[int(shell.tray_of[int(chain[i])])].rect
-		if bool(edge[3]): cross.x = clampf(cross.x, maxf(ra.position.x, rb.position.x), minf(ra.end.x, rb.end.x))
-		else: cross.y = clampf(cross.y, maxf(ra.position.y, rb.position.y), minf(ra.end.y, rb.end.y))
+		if bool(edge[3]): cross.x = inside(cross.x, maxf(ra.position.x, rb.position.x), minf(ra.end.x, rb.end.x))
+		else: cross.y = inside(cross.y, maxf(ra.position.y, rb.position.y), minf(ra.end.y, rb.end.y))
 		legs.append({"kind": "tray", "to": cross, "room": int(chain[i]), "hang": NAN})
 		at = cross
 	legs.append({"kind": "tray", "to": to, "room": int(chain[chain.size() - 1]), "hang": hang})
+
+## `value` kept CROSS_IN inside low..high (their middle when that is shorter
+## than twice CROSS_IN).
+static func inside(value: float, low: float, high: float) -> float:
+	if high - low <= 2.0 * CROSS_IN: return (low + high) * 0.5
+	return clampf(value, low + CROSS_IN, high - CROSS_IN)
 
 ## The duct points of a run of duct nodes (6.4 rule 5): main and cross
 ## segments on the duct's floor, and where one meets the network a vertical

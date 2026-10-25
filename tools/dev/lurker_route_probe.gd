@@ -12,7 +12,9 @@ extends SceneTree
 ##       --script res://tools/dev/lurker_route_probe.gd -- --test-profile --seeds=7 --trips=2 --short --strict
 ##
 ## A line per seed and a total; --trace adds a line per trip; --strict exits
-## 1 on any failure. evidence/lurker_route_probe.json keeps every failure.
+## 1 on any failure; --unseen=<difficulty> makes the trips at that
+## difficulty's speeds of going unseen (spec_f3_aggression), without the
+## special trips. evidence/lurker_route_probe.json keeps every failure.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
@@ -29,6 +31,8 @@ var passed := 0
 var total := 0
 var seed_now := 0
 var trip_now := -1
+## --unseen: the difficulty whose unseen speeds she keeps ("": none).
+var unseen_id := ""
 
 func _initialize() -> void: run.call_deferred()
 
@@ -51,6 +55,7 @@ func run() -> void:
 		if argument == "--trace": trace = true
 		if argument == "--short": short = true
 		if argument == "--strict": strict = true
+		if argument.begins_with("--unseen="): unseen_id = argument.trim_prefix("--unseen=")
 	var started := Time.get_ticks_msec()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -65,7 +70,7 @@ func run() -> void:
 		lurker = spawn("ai")
 		var result := await trips_of(trips)
 		print("SEED %d, %d trayectos, %d llegaron, %.0f s en ductos" % [seed_now, result.trips, result.arrived, result.duct_seconds])
-		if seed_now == int(seeds[0]): await specials()
+		if seed_now == int(seeds[0]) and unseen_id.is_empty(): await specials()
 		lurker.queue_free()
 		await physics_frame
 	figures["wall_ms"] = Time.get_ticks_msec() - started
@@ -83,10 +88,12 @@ func spawn(control: String):
 	body.grace = 0.0
 	# Her movement alone: the mind would set `cue` and order her about.
 	body.thinking = false
-	body.tune(DIFFICULTY.profile("equilibrada", &"lurker"))
-	# Her routes at her own speeds: not the faster ones of going unseen.
-	body.unseen_speed = 0.0
-	body.unseen_duct = 0.0
+	body.tune(DIFFICULTY.profile(unseen_id if not unseen_id.is_empty() else "equilibrada", &"lurker"))
+	# Her routes at her own speeds: not the faster ones of going unseen,
+	# unless those are what is being looked at.
+	if unseen_id.is_empty():
+		body.unseen_speed = 0.0
+		body.unseen_duct = 0.0
 	return body
 
 ## Rooms of a planta with a ceiling for her.
@@ -167,7 +174,7 @@ func watch(seconds: float, done: Callable, each := Callable()) -> Dictionary:
 		var delta := 1.0 / 60.0
 		var jumped: bool = m.jump_id != jumps_before
 		var leaping: bool = not m.legs.is_empty() and String(m.legs[0].kind) == "leap"
-		var fastest: float = maxf(MOTION.SCURRY_SPEED, lurker.duct_speed)
+		var fastest: float = maxf(maxf(MOTION.SCURRY_SPEED, lurker.duct_speed), maxf(lurker.unseen_speed, lurker.unseen_duct))
 		if not jumped and not leaping and now.origin.distance_to(last.origin) > fastest * delta * 1.25 + 0.01:
 			fail("salto de %.3f m" % now.origin.distance_to(last.origin), now.origin)
 		var b := now.basis
