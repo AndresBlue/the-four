@@ -23,9 +23,10 @@ const CUE_FOLLOW := 3.8
 const SCURRY_SPEED := 3.5
 const FLEE_SPEED := 2.0
 const RETREAT_SPEED := 0.8
-## The warning: from this near to this far behind them (OFICINAS 4: 2 to 3 m),
-## and the spot she creeps to.
-const CUE_RANGE := Vector2(2.0, 3.0)
+## The warning: from this near to this far behind them (OFICINAS 4 said 2 to
+## 3 m; 5 since her long leap is her attack, spec_f3_aggression), and the spot
+## she creeps to.
+const CUE_RANGE := Vector2(2.0, 5.0)
 const CUE_DIST := 2.4
 ## s of a torch on her face before she recoils (in a warning, one tick).
 const TORCH_SCARE := 0.2

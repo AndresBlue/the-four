@@ -14,7 +14,7 @@ extends RefCounted
 const TAKE_HOLD := 0.6
 ## m from her face to the victim's eye: no take from farther...
 const TAKE_REACH := 3.4
-## ...unless they only walked away: then her long leap (lurker_motion.gd
+## ...unless they did not run: then her long leap (lurker_motion.gd
 ## LEAP_REACH) closes the rest.
 const TAKE_REACH_WALKED := TAKE_REACH + 4.0
 ## m/s: faster than this during the window is running (survivor_gait.gd
@@ -26,6 +26,11 @@ const LATENCY_CAP := 0.5
 const REMOTE_VIEW := 0.1
 const EPS := 0.000001
 const CUE_SOUNDS := ["res://assets/audio/sfx/lurker/cue_0.wav", "res://assets/audio/sfx/lurker/cue_1.wav", "res://assets/audio/sfx/lurker/cue_2.wav"]
+## The same, shorter (about 0.8 s), for less time than LONG_CUE until the take
+## (Pesadilla's window): a warning is always heard whole before it.
+const CUE_SOUNDS_SHORT := ["res://assets/audio/sfx/lurker/cue_short_0.wav", "res://assets/audio/sfx/lurker/cue_short_1.wav", "res://assets/audio/sfx/lurker/cue_short_2.wav"]
+const LONG_CUE := 1.2
+static func cue_sounds(hold: float) -> Array: return CUE_SOUNDS if hold >= LONG_CUE else CUE_SOUNDS_SHORT
 const CUE_CAPTION := "[Algo respira a tu espalda]"
 const CUE_CAPTION_NEAR := "[Algo respira cerca]"
 ## The cue from above, in a tall room (the author, 24 October 2026).

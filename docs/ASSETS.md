@@ -323,6 +323,7 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 |---|---|---|---|
 | `cue_0.wav`, `cue_2.wav` (respiración) | `bsb_0285_breath_of_a_horse_1.mp3` | DenisChardonnet, BigSoundBank | CC0 |
 | `cue_1.wav` (respiración) | `bsb_1543_breath_horse_4.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
+| `cue_short_0..2.wav` (el mismo aviso, más corto: medio segundo de respiración y los dos chasquidos detrás; para las ventanas de menos de 1,2 s) | los de `cue_0..2.wav` | los de `cue_0..2.wav` | CC0; Pixabay Content License |
 | `cue_0..2.wav` (chasquidos) | `bsb_0596_bones_cracking_1.mp3`; `knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, por freesound_community en Pixabay | CC0; Pixabay Content License |
 | `scare_0.wav`, `scare_1.wav` | `bsb_1400_barn_owl_1.mp3`, `bsb_1403_barn_owl_2.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
 

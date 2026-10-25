@@ -923,7 +923,8 @@ func play_cue(seat: int, cue_id: int, point: Vector3, hold: float) -> void:
 	var audio = level.get("world_audio")
 	if audio == null or not audio.has_method("play_cue"): return
 	var mine: bool = level.get("player") != null and seat == int(level.player.slot) and (not level.has_method("local_alive") or level.local_alive())
-	var path: String = WARNING.CUE_SOUNDS[cue_id % WARNING.CUE_SOUNDS.size()]
+	var sounds: Array = WARNING.cue_sounds(hold)
+	var path: String = sounds[cue_id % sounds.size()]
 	audio.play_cue(path, point, mine)
 	var entry: Dictionary = warning.active if not warning.active.is_empty() else {}
 	var caption: String = WARNING.CUE_CAPTION_ABOVE if bool(entry.get("above", false)) else WARNING.CUE_CAPTION

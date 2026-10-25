@@ -40,7 +40,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 
 - **Antes de cogerte, siempre se oye detrás de ti**: el **aviso de la espalda**.
   - Es una exhalación húmeda y dos chasquidos de mandíbula, pegados a la nuca, en binaural.
-  - Desde el aviso hay una **ventana para darte la vuelta**: 2,2 s en Apacible, 1,8 en Equilibrada, 1,5 en Desafiante y 1,2 en Pesadilla. En red se suma la latencia de quien la sufre.
+  - Desde el aviso hay una **ventana para darte la vuelta**: 2,2 s en Apacible, 1,5 en Equilibrada, 1,2 en Desafiante y 0,9 en Pesadilla (el autor, 24 de octubre de 2026; antes 1,8, 1,5 y 1,2). En red se suma la latencia de quien la sufre. Con menos de 1,2 s hasta la toma suena un aviso más corto, para que se oiga entero.
   - Si en ese tiempo la tienes delante y la alumbras (o la sala tiene luz), se espanta. Si no, te coge.
   - Cumple «se la oye antes de verla» y «medio segundo limpio».
   - Con subtítulos, sale también como subtítulo.
@@ -361,17 +361,19 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 
 | Clave | Apacible | Equilibrada | Desafiante | Pesadilla |
 |---|---|---|---|---|
-| Ventana de la espalda | 2,2 s | 1,8 s | 1,5 s | 1,2 s |
+| Ventana de la espalda | 2,2 s | 1,5 s | 1,2 s | 0,9 s |
 | Coge en una sala con luz (de espaldas, tras el aviso) | No | Sí | Sí | Sí |
 | Velocidad en los ductos | 1,2 m/s | 1,6 m/s | 2,0 m/s | 2,4 m/s |
-| Distancia de acecho | 12 m | 10 m | 8 m | 6 m |
+| Distancia de acecho | 12 m | 8 m | 6 m | 4 m |
 | Tiempo quieta en la luz antes de irse | 2 s | 3 s | 4 s | 6 s |
 | Calma tras espantarse | 60 s | 45 s | 35 s | 25 s |
-| Velocidad al acercarse | ×0,8 | ×0,9 | ×1 | ×1,15 |
+| Velocidad al acercarse | ×0,8 | ×0,9 | ×1,3 | ×1,5 |
 | Lámpara que bebe | 3 m | 3 m | 3,5 m | 4 m |
 | Asomos al borde de la vista | Muchos | Muchos | Normales | Pocos |
 
 En Apacible, más asomos y menos capturas: miedo sin castigo.
+
+**Más agresiva** (el autor, 24 de octubre de 2026, tras su primera partida; el detalle en `.claude/specs/spec_f3_aggression.md`): la primera etapa se oscurece con la dificultad (Apacible con todas las luces, Equilibrada como el manifiesto, Desafiante mucho más oscura, Pesadilla casi toda a oscuras); la ventana, el acecho y el acercamiento de la tabla de arriba son ya los nuevos; avisa desde hasta 5 m y su salto largo llega a 7,5 m.
 
 ---
 

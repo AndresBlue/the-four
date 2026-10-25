@@ -40,7 +40,7 @@ const SFX := "res://assets/audio/sfx/office/"
 ## Her sounds that mean something, never a lie's (0.5.2): her warning, her
 ## shriek, her presence, her bite, and a station's bell. Built from BASE so
 ## that no script but hers names her warning's clips.
-const NEVER := [BASE + "cue_0.wav", BASE + "cue_1.wav", BASE + "cue_2.wav", BASE + "scare_0.wav", BASE + "scare_1.wav", BASE + "presence.wav", BASE + "bite_1.wav", BASE + "bite_2.wav", SFX + "tube_bell.wav"]
+const NEVER := [BASE + "cue_0.wav", BASE + "cue_1.wav", BASE + "cue_2.wav", BASE + "cue_short_0.wav", BASE + "cue_short_1.wav", BASE + "cue_short_2.wav", BASE + "scare_0.wav", BASE + "scare_1.wav", BASE + "presence.wav", BASE + "bite_1.wav", BASE + "bite_2.wav", SFX + "tube_bell.wav"]
 ## How much each kind is told where it may be (4.3); `ducto` weighs more on
 ## planta 3 and the phone on planta 1.
 const WEIGHTS := {"garras": 3.0, "ducto": 2.0, "telefono": 1.5, "maquina": 1.0, "tubo": 2.0, "fotocopiadora": 0.7, "silla": 0.7, "persiana": 1.0, "lampara": 1.5, "palanca": 1.5, "tictac": 1.5, "ventiladores": 1.5}

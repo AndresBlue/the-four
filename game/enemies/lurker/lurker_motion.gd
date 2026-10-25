@@ -43,8 +43,9 @@ const LOOKAHEAD := 0.8
 const DUCT_GAP := 1.5
 ## A new plan is kept only this much cheaper than the rest of the old one.
 const REPLAN_GAIN := 0.05
-## The author's long leap from the ceiling (M1): how far, how long, how high.
-const LEAP_REACH := 4.0
+## The author's long leap from the ceiling (M1): how far (as far as the
+## warning takes from, lurker_warning.TAKE_REACH_WALKED), how long, how high.
+const LEAP_REACH := 7.5
 const LEAP_TIME := 0.6
 const LEAP_RISE := 0.3
 const CLIMB_SPEED := 1.5

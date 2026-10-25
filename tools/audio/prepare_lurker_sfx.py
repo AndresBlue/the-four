@@ -5,6 +5,7 @@ horse's breath, bones and knuckles cracking, a barn owl. The originals are
 never touched.
 
   cue_0..2.wav  one wet exhalation, then two jaw clicks   (BigSoundBank CC0; Pixabay)
+  cue_short_0..2.wav  the same, shorter, for windows under 1.2 s (Pesadilla's)
   scare_0..1.wav  her shriek                              (BigSoundBank CC0)
 
 And her sounds on the floor (spec_f3_integration 3.1), all Pixabay but the
@@ -47,6 +48,12 @@ SHRIEKS = ["shriek_barn_owl_bsb/bsb_1400_barn_owl_1.mp3", "shriek_barn_owl_bsb/b
 BREATH = 0.7
 FIRST_CLICK = 0.72
 SECOND_GAP = [0.18, 0.22, 0.26]
+## The short warning, for a window under 1.2 s (Pesadilla's 0.9): the breath
+## cut to this, its clicks right after, and the silence after them.
+SHORT_BREATH = 0.5
+SHORT_FIRST = 0.5
+SHORT_GAP = [0.12, 0.14, 0.16]
+SHORT_TAIL = 0.05
 CLICK_BEFORE = 0.010
 CLICK_AFTER = 0.070
 CLICK_APART = 0.15
@@ -284,6 +291,19 @@ def main():
         cue = write("cue_%d.wav" % v, cue)
         first = onset(cue)
         print("cue_%d.wav     %.2f s, onset %.1f ms, first click %.3f s after it" % (v, len(cue) / RATE, first * 1000.0, FIRST_CLICK - first))
+        if first > ONSET_MOST:
+            bad = True
+    for v in range(3):
+        breath = fade(breaths[v % len(breaths)][:int(SHORT_BREATH * RATE)], 0.003, 0.1)
+        second = SHORT_FIRST + SHORT_GAP[v]
+        cue = np.zeros(int((second + CLICK_AFTER + CLICK_BEFORE + SHORT_TAIL) * RATE))
+        cue[:len(breath)] += breath / (np.max(np.abs(breath)) or 1.0)
+        for at, click in [(SHORT_FIRST, clicks[2 * v]), (second, clicks[2 * v + 1])]:
+            i = int((at - CLICK_BEFORE) * RATE)
+            cue[i:i + len(click)] += click / (np.max(np.abs(click)) or 1.0) * 0.8
+        cue = write("cue_short_%d.wav" % v, cue)
+        first = onset(cue)
+        print("cue_short_%d.wav %.2f s, onset %.1f ms" % (v, len(cue) / RATE, first * 1000.0))
         if first > ONSET_MOST:
             bad = True
     for v, s in enumerate(SHRIEKS):

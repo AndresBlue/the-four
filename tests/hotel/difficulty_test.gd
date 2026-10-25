@@ -96,9 +96,9 @@ func run() -> void:
 	var as_before: bool = DIFFICULTY.ORDER.all(func(id): return DIFFICULTY.profile(id) == DIFFICULTY.PROFILES[id] and DIFFICULTY.profile(id, &"locust") == DIFFICULTY.PROFILES[id] and DIFFICULTY.profile(id).keys() == DIFFICULTY.PROFILES[id].keys() and DIFFICULTY.profile(id, &"locust").keys() == DIFFICULTY.PROFILES[id].keys())
 	check("The Locust juega con los perfiles de siempre, clave por clave y en su orden", as_before and not DIFFICULTY.CREATURE_PROFILES.has(&"locust") and DIFFICULTY.profile("imposible", &"locust") == DIFFICULTY.PROFILES.desafiante)
 	var hers := {
-		"back_window": [2.2, 1.8, 1.5, 1.2], "lit_takes": [false, true, true, true], "duct_speed": [1.2, 1.6, 2.0, 2.4],
-		"stalk_distance": [12.0, 10.0, 8.0, 6.0], "freeze_time": [2.0, 3.0, 4.0, 6.0], "scare_calm": [60.0, 45.0, 35.0, 25.0],
-		"creep_scale": [0.8, 0.9, 1.0, 1.15], "drain_reach": [3.0, 3.0, 3.5, 4.0],
+		"back_window": [2.2, 1.5, 1.2, 0.9], "lit_takes": [false, true, true, true], "duct_speed": [1.2, 1.6, 2.0, 2.4],
+		"stalk_distance": [12.0, 8.0, 6.0, 4.0], "freeze_time": [2.0, 3.0, 4.0, 6.0], "scare_calm": [60.0, 45.0, 35.0, 25.0],
+		"creep_scale": [0.8, 0.9, 1.3, 1.5], "drain_reach": [3.0, 3.0, 3.5, 4.0],
 	}
 	var lurker_wrong: Array = []
 	for step in DIFFICULTY.ORDER.size():

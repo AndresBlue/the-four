@@ -120,18 +120,18 @@ func rules() -> void:
 		if String(entry.outcome) != String(c[2]) or String(entry.reason) != String(c[3]): bad.append([c, entry.outcome, entry.reason])
 	check("Alejarse andando no salva y el aviso caduca lejos; corriendo, salva; andando al alcance del salto, coge", bad.is_empty(), str(bad))
 
-## Her warning's three recordings load and each is over before the shortest
-## window (Pesadilla's) could end in a take; her two shrieks load.
+## Her warnings load and, in every difficulty, the ones played for its
+## window are over before it could end in a take; her two shrieks load.
 func recordings() -> void:
-	var shortest := INF
-	for id in DIFFICULTY.ORDER: shortest = minf(shortest, float(DIFFICULTY.profile(id, &"lurker").back_window))
 	var bad: Array = []
-	for path in WARNING.CUE_SOUNDS:
-		var stream = load(path)
-		if not stream is AudioStream or (stream as AudioStream).get_length() >= shortest: bad.append(path)
+	for id in DIFFICULTY.ORDER:
+		var window := float(DIFFICULTY.profile(id, &"lurker").back_window)
+		for path in WARNING.cue_sounds(window):
+			var stream = load(path)
+			if not stream is AudioStream or (stream as AudioStream).get_length() >= window: bad.append("%s %s" % [id, path])
 	for path in BRAIN.SCARE_SOUNDS:
 		if not load(path) is AudioStream: bad.append(path)
-	check("Sus tres avisos suenan enteros antes de la ventana más corta, y sus chillidos cargan", bad.is_empty(), str(bad))
+	check("Sus avisos suenan enteros antes de la ventana de cada dificultad, y sus chillidos cargan", bad.is_empty(), str(bad))
 
 ## The hallucinations never fake her warning (docs/OFICINAS.md 5): no script
 ## of the game but lurker.gd and lurker_warning.gd names its sounds or its

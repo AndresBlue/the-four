@@ -668,8 +668,9 @@ static func floor_asked() -> int:
 ## `floor_number`: the floor to build (set_floor()); 0, the one chosen last.
 func start_floor(seed_value: int, force_fallback := false, slots: Array = [1], difficulty_id := "", floor_number := 0) -> void:
 	if floor_number > 0: set_floor(floor_number)
-	if not await build_floor(seed_value, force_fallback, slots.size()): return
-	set_difficulty(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
+	var chosen: String = difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty)
+	if not await build_floor(seed_value, force_fallback, slots.size(), chosen): return
+	set_difficulty(chosen)
 	camcorder.start_tape(seed_value)
 	# A new tape starts with the lens wide.
 	player.zoom = 1.0
@@ -771,7 +772,9 @@ func keep_floor() -> bool:
 ## 0, as in the game, is the ones who play it.
 var drawn_for := 0
 
-func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bool:
+## `difficulty_id`: the difficulty it is built for (the offices darken their
+## first stage by it; the hotel does not read it).
+func build_floor(seed_value: int, force_fallback := false, survivors := 1, difficulty_id := "") -> bool:
 	if session.state == session.State.LOADING: return false
 	session.set_state(session.State.LOADING)
 	await get_tree().process_frame
@@ -812,6 +815,7 @@ func build_floor(seed_value: int, force_fallback := false, survivors := 1) -> bo
 	hotel = kind.GEOMETRY.new()
 	hotel.name = "GeneratedHotel"
 	hotel.process_mode = Node.PROCESS_MODE_PAUSABLE
+	if "difficulty_id" in hotel: hotel.difficulty_id = DIFFICULTY.valid(difficulty_id if not difficulty_id.is_empty() else String(settings.values.difficulty))
 	add_child(hotel)
 	await hotel.build(manifest)
 	configure_hotel()
@@ -942,7 +946,7 @@ func start_online_floor(config: Dictionary) -> void:
 		await session.changed
 	# The room's floor, by its number (net_session.start_match() puts it in the config).
 	set_floor(int(config.get("floor", 1)))
-	if not await build_floor(int(config.seed), false, config.survivors.size()):
+	if not await build_floor(int(config.seed), false, config.survivors.size(), String(config.get("difficulty", DIFFICULTY.REFERENCE))):
 		if is_same(match_net.config, config): net.shutdown("No se pudo construir el piso de la partida.")
 		return
 	# The match this floor was for may have gone while it was being put up

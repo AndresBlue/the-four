@@ -302,5 +302,17 @@
   "assets/audio/sfx/office/starter.wav": {
     "bytes": 264644,
     "sha256": "46d2a2ea47c9db806d27394ec80c10c62b3b7ec6475d786fbd6e57db4a5679c1"
+  },
+  "assets/audio/sfx/lurker/cue_short_0.wav": {
+    "bytes": 66194,
+    "sha256": "0d4003a321c91cc4753ace2659df7b031eb6c51374f225edc01b990b6e8d8711"
+  },
+  "assets/audio/sfx/lurker/cue_short_1.wav": {
+    "bytes": 67958,
+    "sha256": "e5ef2dea1ecca2529a97db9a48edc98b59b02cbc5dc88fcd755ba5378b921303"
+  },
+  "assets/audio/sfx/lurker/cue_short_2.wav": {
+    "bytes": 69722,
+    "sha256": "95c0469c274822df82e60fc4a8dc28b43af480e73fbe489802f8498164586185"
   }
 }
