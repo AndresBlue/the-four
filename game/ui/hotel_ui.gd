@@ -160,6 +160,7 @@ const MATCH_RULES := preload("res://game/floors/match_rules.gd")
 const RULES_SCREEN := preload("res://game/ui/rules_screen.gd")
 ## The creature's difficulties (game/floors/difficulty.gd).
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
+const FLOORS := preload("res://game/floors/floor_index.gd")
 ## The button focus_first() marks instead of the first one, when there is one.
 var focus_wanted := ""
 ## The tab of the rules being looked at, and whether the screen has to be
@@ -901,6 +902,10 @@ func lobby_screen() -> void:
 			choice(column, "Dificultad", names, DIFFICULTY.rank(net.options.get("difficulty")), func(index):
 				net.set_option("difficulty", DIFFICULTY.ORDER[index])
 				settings.set_value("difficulty", DIFFICULTY.ORDER[index]), LOBBY_CHOICE)
+			# Which floor, among those built (the ones not released yet too,
+			# to try them with somebody).
+			var floors: Array = FLOORS.numbers()
+			choice(column, "Piso", floors.map(func(n): return "Piso %d" % int(n)), maxi(0, floors.find(int(net.options.get("floor", 1)))), func(index): net.set_option("floor", int(floors[index])), LOBBY_CHOICE)
 		if mode == NET.Mode.VERSUS:
 			var names: Array = ["Al azar"]
 			var ids: Array = [NET.RANDOM]
@@ -917,7 +922,9 @@ func lobby_screen() -> void:
 			column.add_child(resume)
 	else:
 		label(column, NET.MODE_NAMES[mode], 20)
-		if mode == NET.Mode.COOP: label(column, "Dificultad: %s" % DIFFICULTY.title(net.options.get("difficulty")), 20)
+		if mode == NET.Mode.COOP:
+			label(column, "Dificultad: %s" % DIFFICULTY.title(net.options.get("difficulty")), 20)
+			label(column, "Piso %d" % int(net.options.get("floor", 1)), 20)
 		if mode == NET.Mode.VERSUS:
 			label(column, "The Locust: %s" % ("al azar" if int(net.options.locust) == NET.RANDOM else net.player_name(int(net.options.locust))), 20)
 	spacer(column, 18)

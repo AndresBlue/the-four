@@ -373,6 +373,8 @@ func set_option(key: String, value: Variant) -> void:
 	elif key == "floor": value = int(value) if FLOORS.built(int(value)) else 1
 	options[key] = value
 	if key == "mode" and value == Mode.COOP: options.locust = RANDOM
+	# Versus is the hotel's only, until floor 2 has its own (phase 4).
+	if key == "mode" and value == Mode.VERSUS: options.floor = 1
 	broadcast_lobby()
 
 ## A player picks another character in the room.
