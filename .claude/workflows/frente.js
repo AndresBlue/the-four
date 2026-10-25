@@ -132,19 +132,6 @@ Después: git restore default_bus_layout.tres assets/audio/the_four_theme.mp3.im
 Copia cada línea "<nombre> : True/False". Para cada False, lee su log en evidence/verify_<nombre>.log y di la causa exacta. No edites nada.`, { label: `verify ${tag}`, phase: 'Verificación', schema: VERIFY, ...WORKER })
 }
 
-let ver = await verifyAll(`${A.area} 1`)
-for (let attempt = 1; ver && !ver.verde && attempt <= 2; attempt++) {
-  phase('Arreglos')
-  await agent(`${WORKER_NOTE}
-
-La verificación completa falló tras el área "${A.area}". Fallos:
-${JSON.stringify(ver.fallos, null, 1)}
-Contexto del área:
-${CONTEXTO}
-Encuentra la causa en los cambios sin commit (o demuestra que la prueba es inestable corriéndola dos veces sola) y arréglala bien. Corre las pruebas que fallaron, de una en una, hasta que pasen. No corras verify.ps1.`, { label: `arregla verify ${attempt}`, phase: 'Arreglos', ...WORKER })
-  ver = await verifyAll(`${A.area} ${attempt + 1}`)
-}
-
 phase('Costuras')
 const LENSES = [
   'EL HOTEL: algo de este cambio que pueda alterar cómo se genera, se ve, suena, se juega, se guarda o va en red el piso 1.',
@@ -172,6 +159,19 @@ ${JSON.stringify(real, null, 1)}
 Contexto:
 ${CONTEXTO}
 Corre de una en una las pruebas que toquen. No corras verify.ps1.`, { label: 'arregla costuras', phase: 'Arreglos', ...WORKER })
-  ver = await verifyAll(`${A.area} final`)
 }
+// Seams first, then one verify: the fixes the seam review asks for go into the same pass.
+let ver = await verifyAll(`${A.area} 1`)
+for (let attempt = 1; ver && !ver.verde && attempt <= 2; attempt++) {
+  phase('Arreglos')
+  await agent(`${WORKER_NOTE}
+
+La verificación completa falló tras el área "${A.area}". Fallos:
+${JSON.stringify(ver.fallos, null, 1)}
+Contexto del área:
+${CONTEXTO}
+Encuentra la causa en los cambios sin commit (o demuestra que la prueba es inestable corriéndola dos veces sola) y arréglala bien. Corre las pruebas que fallaron, de una en una, hasta que pasen. No corras verify.ps1.`, { label: `arregla verify ${attempt}`, phase: 'Arreglos', ...WORKER })
+  ver = await verifyAll(`${A.area} ${attempt + 1}`)
+}
+
 return { area: A.area, estado: ver && ver.verde ? 'verde' : 'rojo', veredicto: verdict, aceptadas: [...accepted], costuras: real, verificacion: ver, informes: reports }

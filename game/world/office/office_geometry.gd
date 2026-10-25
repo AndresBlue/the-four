@@ -10,6 +10,8 @@ const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "
 const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
+const ACCENTS := preload("res://game/world/office/office_accents.gd")
+const OFFICE_BOUNCE := preload("res://game/world/office/office_bounce.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
@@ -93,6 +95,36 @@ const LAMP_ENERGY := 3.6
 const LAMP_DROP := 0.35
 const LAMP_ATTENUATION := 0.9      # flatter than the hotel's 1.25: offices are evenly lit
 const FAILING := 0.12              # lit rooms with one failing troffer (vary salt 160)
+## The troffers' share of specular light: their highlight on a waxed floor is
+## the floor's reflection of them where there is no SSR (spec_rediseno 4).
+const LAMP_SPECULAR := 0.7
+## A lit lens's own colour, white acrylic; it glows in its room's lamp colour
+## (lens_key()).
+const LENS_ALBEDO := Color("e6e2d8")
+## The troffer families (troffer_face()): the narrow lens's width and its
+## louvre's pitch, the parabolic lens's depth and its grid's pitch along, and
+## how far the wraparound diffuser comes down below the ceiling.
+const NARROW_LENS := 0.28
+const LOUVRE_PITCH := 0.1
+const PARABOLIC_DEPTH := 0.06
+const PARABOLIC_PITCH := 0.19
+const WRAP_DROP := 0.09
+## The glow on the tiles round each lit troffer (spec_rediseno 4, mechanism
+## b): how far past the troffer it reaches, how far under the tiles it is
+## drawn, and its strength at the troffer's edge with the lamp at full energy.
+const HALO_REACH := 1.2
+const HALO_BELOW := 0.002
+const HALO_ENERGY := 0.59
+## How far a hole's dark reaches below the tiles' plane (a gap, a tile she
+## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
+## shows no glow in the hole.
+const HOLE_CAP := 0.01
+const HALO_SHADER := preload("res://game/presentation/materials/office/ceiling_halo.gdshader")
+## Room id -> its halo: {"material": ShaderMaterial, "base": float (its lamp's
+## energy as room_lamp() made it), "energy": float (as last set)}.
+var halos := {}
+## The planta whose halos are kept up to date (glow_halos()).
+var halo_planta := -2
 
 func _init() -> void:
 	super()
@@ -122,6 +154,12 @@ func _init() -> void:
 		# No lite picture of its own: on Muy bajo, its flat_color.
 		materials[key].set_meta("lite", "office/" + key)
 		apply_scan(materials[key], small_maps)
+	# A dark lens is the white acrylic unlit, not the hotel's amber glass.
+	if materials.lens_off is BaseMaterial3D: (materials.lens_off as BaseMaterial3D).albedo_color = LENS_ALBEDO.darkened(0.55)
+	# The bounce light's stand-in in the office's own colours (office_bounce.gd).
+	var office_bounce := OFFICE_BOUNCE.new()
+	office_bounce.own_colours(materials, OWN_OVER)
+	bounce = office_bounce
 
 ## The office's own scans leave the static cache with their floor: scan_maps()
 ## keeps every set it loads, so a hotel built next in this process would carry
@@ -183,8 +221,10 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 	for j in range(ceili(rect.position.y / tile), ceili(rect.end.y / tile)):
 		var z := j * tile
 		box(node, Vector3(rect.get_center().x, h + TEE.y * 0.5, z) - origin, Vector3(rect.size.x, TEE.y, TEE.x), "tgrid")
-	# The troffers: a housing over two tiles and its prismatic lens.
-	var lens := "lens_off" if dark_room(room) else "troffer_lens"
+	# The troffers: a housing over two tiles and its face (troffer_face()).
+	# Lit in its lamp's colour even in a dark room: a dark room's lenses are
+	# put out after the build (build(), glow_room()), so they light with it.
+	var lens := lens_key(room)
 	# One troffer of some lit rooms fails (salt 160, which one 164): its lens
 	# flickers whole, the room's light by its share (room_lamp(), H5).
 	var failing := -1
@@ -192,14 +232,15 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 	if not dark_room(room) and not lamps.is_empty() and vary(node.position, 160) < FAILING:
 		failing = int(vary(node.position, 164) * lamps.size()) % lamps.size()
 		failing_lens = "troffer_fail_%d" % flickers.size()
-		materials[failing_lens] = materials.troffer_lens.duplicate()
+		materials[failing_lens] = materials[lens].duplicate()
 		failing_share = 1.0 / lamps.size()
+	var look: String = OFFICE.troffer_look(room)
 	for k in lamps.size():
 		var lamp: Dictionary = lamps[k]
 		var size := Vector3(0.6, TROFFER_BODY, 1.2) if bool(lamp.along_z) else Vector3(1.2, TROFFER_BODY, 0.6)
 		var at := Vector3(lamp.centre.x, 0, lamp.centre.y) - origin
-		box(node, at + Vector3(0, h + TILE_FACE + TROFFER_BODY * 0.5, 0), size, "troffer_body")
-		box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(size.x - 0.04, 0.01, size.z - 0.04), failing_lens if k == failing else lens)
+		troffer_face(node, at, size, h, failing_lens if k == failing else lens, look)
+	ceiling_halo(node, room, lamps, rect)
 	# The grilles in their tiles; over a gap, the dark of the plenum.
 	for e in exits:
 		var at := OFFICE.tile_centre(OFFICE.tile_of(Vector3(float(e.point[0]), 0, float(e.point[2]))), 0.0) - origin
@@ -207,7 +248,7 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			box(node, at + Vector3(0, h + 0.15, 0), Vector3(0.58, 0.3, 0.58), "black")
 			box(node, at + Vector3(0, h + 0.01, 0), Vector3(0.595, 0.02, 0.595), "grille_metal")
 		else:
-			box(node, at + Vector3(0, h + 0.6, 0), Vector3(0.6, 1.2, 0.6), "plenum_dark")
+			box(node, at + Vector3(0, h + 0.6 - HOLE_CAP * 0.5, 0), Vector3(0.6, 1.2 + HOLE_CAP, 0.6), "plenum_dark")
 			# Its tile (5.4): hanging from one edge of the hole, or down on
 			# the floor below; no collider either way.
 			var spot: Vector3 = node.position + at
@@ -219,6 +260,124 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 				box(node, hinge + swung, Vector3(OFFICE.TILE, TILE_THICK, OFFICE.TILE), "ceiling_service", false, "box", Vector3(0, yaw, drop))
 			elif vary(spot, 162) < FALLEN:
 				box(node, Vector3(at.x, 0.008, at.z) + Vector3(vary(spot, 163) - 0.5, 0, vary(spot, 164) - 0.5) * 0.8, Vector3(OFFICE.TILE, TILE_THICK, OFFICE.TILE), "ceiling_service", false, "box", Vector3(0, vary(spot, 165) * TAU, 0))
+
+## The lens material of a room's troffers, "troffer_lens_<kelvin>": the
+## stand-in lens in white acrylic glowing in the room's lamp colour
+## (OFFICE.lamp_kelvin()), made once for each colour temperature.
+func lens_key(room: Dictionary) -> String:
+	var kelvin := int(OFFICE.lamp_kelvin(room))
+	var key := "troffer_lens_%d" % kelvin
+	if materials.has(key): return key
+	var lens: Material = materials.troffer_lens.duplicate()
+	if lens is BaseMaterial3D:
+		(lens as BaseMaterial3D).albedo_color = LENS_ALBEDO
+		(lens as BaseMaterial3D).emission = LIGHTING.light_color(float(kelvin))
+	materials[key] = lens
+	return key
+
+## The glass of a room's fluorescent battens, "light_glass_<kelvin>": the
+## hotel's light glowing in the room's lamp colour (OFFICE.lamp_kelvin()), made
+## once for each colour temperature. Its name starts with "light", as lenses_of()
+## and bounce_light.gd's SKIP (by the part before "_") expect of lamp glass.
+func batten_glass_key(room: Dictionary) -> String:
+	var kelvin := int(OFFICE.lamp_kelvin(room))
+	var key := "light_glass_%d" % kelvin
+	if materials.has(key): return key
+	var glass: Material = materials.light.duplicate()
+	if glass is BaseMaterial3D:
+		(glass as BaseMaterial3D).emission = LIGHTING.light_color(float(kelvin))
+	materials[key] = glass
+	return key
+
+## The hotel's batten boxes its tubes as "light" while lamp_fixture() builds
+## them; while glass_of_tubes is set they take the room's glass instead.
+var glass_of_tubes := ""
+func box(parent: Node3D, pos: Vector3, size: Vector3, material: String, solid := false, form := "box", euler := Vector3.ZERO) -> void:
+	var key: String = glass_of_tubes if material == "light" and not glass_of_tubes.is_empty() else material
+	super(parent, pos, size, key, solid, form, euler)
+
+## A troffer under the ceiling (spec_rediseno 2): a housing open below, so
+## that its face shows (a closed one hid the lens), and the face of its family
+## (OFFICE.troffer_look()): the prismatic lens; a narrow lens behind a white
+## louvre on an enamel reflector; a parabolic grid, four cells across, over a
+## deeper lens; or, with no housing, a box on the ceiling with an opal
+## wraparound diffuser down to WRAP_DROP. Its glowing part is always `glow`,
+## which lenses_of() finds.
+func troffer_face(node: Node3D, at: Vector3, size: Vector3, h: float, glow: String, look: String) -> void:
+	if look != "wrap":
+		var top := h + TILE_FACE + TROFFER_BODY
+		var middle := h + TILE_FACE + TROFFER_BODY * 0.5
+		box(node, at + Vector3(0, top - 0.005, 0), Vector3(size.x, 0.01, size.z), "troffer_body")
+		for side in [-1.0, 1.0]:
+			box(node, at + Vector3(0, middle, float(side) * (size.z * 0.5 - 0.005)), Vector3(size.x, TROFFER_BODY, 0.01), "troffer_body")
+			box(node, at + Vector3(float(side) * (size.x * 0.5 - 0.005), middle, 0), Vector3(0.01, TROFFER_BODY, size.z - 0.02), "troffer_body")
+	var along_x: bool = size.x > size.z
+	var inner := Vector3(size.x - 0.04, 0.01, size.z - 0.04)
+	var length: float = inner.x if along_x else inner.z
+	var width: float = inner.z if along_x else inner.x
+	match look:
+		"narrow":
+			box(node, at + Vector3(0, h + LENS_RECESS + 0.008, 0), inner, "enamel")
+			box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(length, 0.01, NARROW_LENS) if along_x else Vector3(NARROW_LENS, 0.01, length), glow)
+			var blades := int(length / LOUVRE_PITCH)
+			for b in blades:
+				var step := ((float(b) + 0.5) / float(blades) - 0.5) * length
+				box(node, at + (Vector3(step, 0, 0) if along_x else Vector3(0, 0, step)) + Vector3(0, h + 0.002, 0), Vector3(0.006, 0.02, NARROW_LENS) if along_x else Vector3(NARROW_LENS, 0.02, 0.006), "enamel")
+		"parabolic":
+			box(node, at + Vector3(0, h + PARABOLIC_DEPTH, 0), inner, glow)
+			for c in [-0.25, 0.0, 0.25]:
+				var across: float = float(c) * width
+				box(node, at + (Vector3(0, 0, across) if along_x else Vector3(across, 0, 0)) + Vector3(0, h + 0.025, 0), Vector3(length, 0.05, 0.006) if along_x else Vector3(0.006, 0.05, length), "enamel")
+			var cells := maxi(1, roundi(length / PARABOLIC_PITCH))
+			for b in range(1, cells):
+				var step := (float(b) / float(cells) - 0.5) * length
+				box(node, at + (Vector3(step, 0, 0) if along_x else Vector3(0, 0, step)) + Vector3(0, h + 0.025, 0), Vector3(0.006, 0.05, width) if along_x else Vector3(width, 0.05, 0.006), "enamel")
+		"wrap":
+			box(node, at + Vector3(0, h - 0.015, 0), Vector3(size.x, 0.03, size.z), "enamel")
+			box(node, at + Vector3(0, h - (0.03 + WRAP_DROP) * 0.5, 0), Vector3(size.x - 0.06, WRAP_DROP - 0.03, size.z - 0.06), glow)
+		_:
+			box(node, at + Vector3(0, h + LENS_RECESS, 0), inner, glow)
+
+## The halo of a room's troffers (spec_rediseno 4): one mesh just under the
+## tiles, a rectangle round each troffer HALO_REACH wide, clipped to the room's
+## ceiling so it never shows in the next room; UV is the offset from its
+## troffer's centre, its long side first (ceiling_halo.gdshader). Built dark,
+## lit by glow_halos(). Also in a dark room, which may be lit again.
+func ceiling_halo(node: Node3D, room: Dictionary, lamps: Array, rect: Rect2) -> void:
+	if lamps.is_empty(): return
+	var origin := Vector3(float(room.px), 0, float(room.pz))
+	var y := float(room.height) - HALO_BELOW
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var made := 0
+	for lamp: Dictionary in lamps:
+		var centre: Vector2 = lamp.centre
+		var along_z := bool(lamp.along_z)
+		var half: Vector2 = Vector2(0.3, 0.6) if along_z else Vector2(0.6, 0.3)
+		var reach := Vector2(HALO_REACH, HALO_REACH)
+		var area := Rect2(centre - half - reach, (half + reach) * 2.0).intersection(rect)
+		if area.size.x <= 0.0 or area.size.y <= 0.0: continue
+		var corners: Array[Vector2] = [area.position, Vector2(area.end.x, area.position.y), area.end, Vector2(area.position.x, area.end.y)]
+		for k: int in [0, 1, 2, 0, 2, 3]:
+			var offset := corners[k] - centre
+			tool.set_normal(Vector3.DOWN)
+			tool.set_uv(Vector2(offset.y, offset.x) if along_z else offset)
+			tool.add_vertex(Vector3(corners[k].x, y, corners[k].y) - origin)
+		made += 1
+	if made == 0: return
+	var glow := ShaderMaterial.new()
+	glow.shader = HALO_SHADER
+	glow.set_shader_parameter("glow", LIGHTING.light_color(OFFICE.lamp_kelvin(room)))
+	glow.set_shader_parameter("reach", HALO_REACH)
+	glow.set_shader_parameter("energy", 0.0)
+	var halo := MeshInstance3D.new()
+	halo.name = "CeilingHalo"
+	halo.mesh = tool.commit()
+	halo.material_override = glow
+	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	halo.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	node.add_child(halo)
+	halos[int(room.id)] = {"material": glow, "base": 0.0, "energy": 0.0}
 
 ## The tiles she goes through (spec_f3_aggression): Vector3i(room, i, j) ->
 ## its hinge, a node of its own from the first time she moves it. Coming out
@@ -298,7 +457,7 @@ func lift_out(room_id: int, tile: Vector2i) -> Node3D:
 	hinge.rotation = Vector3(0, yaw, 0)
 	node.add_child(hinge)
 	hinge.add_child(single(Transform3D(Basis.from_scale(Vector3(size, TILE_THICK, size)), Vector3(-size * 0.5, 0, 0)), "ceiling_service", custom))
-	var dark := single(Transform3D(Basis.from_scale(Vector3(size, 1.2, size)), centre + Vector3(0, 0.6 - (face - float(room.height)), 0)), "plenum_dark", custom)
+	var dark := single(Transform3D(Basis.from_scale(Vector3(size, 1.2 + HOLE_CAP, size)), centre + Vector3(0, 0.6 - HOLE_CAP * 0.5 - (face - float(room.height)), 0)), "plenum_dark", custom)
 	dark.visible = false
 	node.add_child(dark)
 	hinge.set_meta("dark", dark)
@@ -375,6 +534,11 @@ func build(data: Dictionary) -> void:
 	duct_holes = MAIN_DUCT.outer_boxes(data)
 	panes = []
 	await super(data)
+	# A dark room's lenses were built lit (lens_key()): out with the room.
+	for id: int in dark_ids:
+		if id < room_nodes.size() and is_instance_valid(room_nodes[id]): glow_room(id, false)
+	# Accents made in a dark room start out (refresh_accents()).
+	for room_id: int in accents.rooms: refresh_accents(room_id)
 	if data.has("air") and data.air.has("main"):
 		main_duct = MAIN_DUCT.build(self, data)
 		add_child(main_duct)
@@ -415,19 +579,29 @@ func darken_first_stage(data: Dictionary) -> void:
 func set_room_power(room_id: int, on: bool) -> void:
 	super(room_id, on)
 	if room_id < 0 or room_id >= room_nodes.size(): return
-	var glowing: bool = on and not dark and not dark_ids.has(room_id)
+	glow_room(room_id, on and not dark and not dark_ids.has(room_id))
+	refresh_accents(room_id)
+
+## Puts a room's glowing meshes out, or lights them again (lenses_of()).
+func glow_room(room_id: int, glowing: bool) -> void:
 	var off: Material = materials.get("lens_off", materials.get("light_off"))
 	for mesh in lenses_of(room_id):
-		# A model keeps its glass apart (the battens): only that goes dark.
-		if mesh.has_meta("glow_surface"): (mesh as MeshInstance3D).set_surface_override_material(int(mesh.get_meta("glow_surface")), null if glowing else off)
+		# A model keeps its glass apart (the battens): that goes dark, and lights
+		# again in its room's glass (batten_model()).
+		if mesh.has_meta("glow_surface"):
+			var glass: Material = mesh.get_meta("lit_glass", off) if glowing else off
+			(mesh as MeshInstance3D).set_surface_override_material(int(mesh.get_meta("glow_surface")), glass)
 		else: mesh.material_override = null if glowing else off
 
-## The meshes that glow with a room's lamp, found once.
+## The meshes that glow with a room's lamp, found once: its lenses (the
+## failing one too), the battens' glass and their failing tubes, the globes,
+## and any material keyed glow_<name> (spec_rediseno 4: what glows with its
+## room and has no light).
 var room_lenses := {}
 func lenses_of(room_id: int) -> Array:
 	if room_lenses.has(room_id): return room_lenses[room_id]
 	var found: Array = []
-	for pattern in ["Mesh_troffer_lens*", "Mesh_light*"]:
+	for pattern in ["Mesh_troffer_lens*", "Mesh_troffer_fail*", "Mesh_tube_*", "Mesh_glow_*", "Mesh_light*"]:
 		for node in room_nodes[room_id].find_children(pattern, "GeometryInstance3D", true, false):
 			if not "_off" in String(node.name): found.append(node)
 	room_lenses[room_id] = found
@@ -560,6 +734,7 @@ func emergency_on() -> StandardMaterial3D:
 ## (an unshadowed lamp would shine through the walls).
 func round_lamps() -> void:
 	super()
+	round_accents()
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
 	var casting: bool = round_at.shadows and not echo_view
@@ -864,7 +1039,12 @@ func flicker_one(room_id: int, seconds: float, seed_value: int) -> bool:
 	quad.material_override = materials.get("lens_off", materials.get("light_off"))
 	quad.visible = false
 	add_child(quad)
-	quad.global_transform = Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(lamp.centre.x, float(room.get("py", 0.0)) + float(room.height) + LENS_RECESS - 0.007, lamp.centre.y))
+	# The dark lens hangs under its family's face (troffer_face()).
+	var look: String = OFFICE.troffer_look(room)
+	var below: float = LENS_RECESS - 0.007
+	if look == "wrap": below = -WRAP_DROP - 0.002
+	elif look == "parabolic": below = PARABOLIC_DEPTH - 0.007
+	quad.global_transform = Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(lamp.centre.x, float(room.get("py", 0.0)) + float(room.height) + below, lamp.centre.y))
 	adopt(quad)
 	var entry := {"light": light, "energy": float(drain_from.get(room_id, light.light_energy)), "phase": 0.0, "material": null, "glow": 0.0, "share": 1.0 / lamps.size(), "quad": quad}
 	flickers.append(entry)
@@ -909,6 +1089,11 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	car_lamps.back().light_color = LIGHTING.light_color(2700.0)
 	return at
 
+## The reception lift's two wall lamps (spec_rediseno 6): how far out from the
+## casing or the call button, whichever is further out, and how high (the lamp
+## model's origin).
+const LIFT_SCONCE := Vector2(0.35, 1.75)
+
 ## The lift the floor is come down by (7.7): on the reception's wall that
 ## arrival_lift names, the hotel lift's front, shut, in a steel casing; its
 ## screen dark, no car behind it and nothing to use (phase 5's).
@@ -941,6 +1126,10 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	var top := bounds.end.y + 0.04
 	for x in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.02 - proud * 0.5), Vector3(0.08, top, 0.04 + proud), "steel_frame")
 	box(front, Vector3((x0 + x1) * 0.5, top, 0.02 - proud * 0.5), Vector3(x1 - x0 + 0.08, 0.08, 0.04 + proud), "steel_frame")
+	# Two wall lamps flanking it (spec_rediseno 6) on the wall's paint, clear
+	# of the casing and of the call button: the reception's accents.
+	var flank: float = maxf(maxf(-x0, x1), -CALL_AT.x) + LIFT_SCONCE.x
+	for x: float in [-flank, flank]: accent_sconce(front, int(room.id), Vector3(x, LIFT_SCONCE.y, -LIFT_PROUD - proud + LINING), 0.0)
 
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
@@ -1027,16 +1216,27 @@ func node_point(boundary: Node3D, at: float) -> Vector3:
 var poster_spots: Array[Dictionary] = []
 
 ## The troffers (built by ceiling()) light the room as a fluorescent tube
-## does (7.1); a batten is the archives' own over each aisle, or the hotel's.
+## does (7.1); a batten is the archives' own over each aisle, or the hotel's. All in
+## the room's warm light (OFFICE.lamp_kelvin(), spec_rediseno 4), with
+## LAMP_SPECULAR's highlight on the floor.
 func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 	var lamp: String = OFFICE.lamp_of(room)
 	var h := float(room.height)
-	var tube := {"tube": true, "failing": "", "specular": 0.45, "color": LIGHTING.light_color(LIGHTING.FLUORESCENT, LIGHTING.TUBE_TINT), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("tube"), "position": Vector3(0, h - LAMP_DROP, 0)}
+	var tube := {"tube": true, "failing": "", "specular": LAMP_SPECULAR, "color": LIGHTING.light_color(OFFICE.lamp_kelvin(room)), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("tube"), "position": Vector3(0, h - LAMP_DROP, 0)}
 	match lamp:
 		"troffer":
 			return tube
 		"batten":
-			if not archive_battens(node, room): return super(node, room)
+			if not archive_battens(node, room):
+				# The hotel's batten, in this floor's warm light; its failing
+				# tube too, which lenses_of() puts out with the room.
+				glass_of_tubes = batten_glass_key(room)
+				var batten: Dictionary = super(node, room)
+				glass_of_tubes = ""
+				batten.color = tube.color
+				batten.specular = LAMP_SPECULAR
+				if not String(batten.failing).is_empty(): (materials[batten.failing] as BaseMaterial3D).emission = tube.color
+				return batten
 			tube.energy = float(tube.energy) * 0.85
 			return tube
 		"emergency":
@@ -1063,7 +1263,7 @@ func archive_battens(node: Node3D, room: Dictionary) -> bool:
 			if ResourceLoader.exists(BATTEN_MODEL): batten_model(node, room, at, along_x, length)
 			else:
 				box(node, at, Vector3(length, 0.07, 0.16) if along_x else Vector3(0.16, 0.07, length), "metal")
-				box(node, at - Vector3(0, 0.05, 0), Vector3(length - 0.1, 0.03, 0.05) if along_x else Vector3(0.05, 0.03, length - 0.1), "light_off" if dark_room(room) else "light")
+				box(node, at - Vector3(0, 0.05, 0), Vector3(length - 0.1, 0.03, 0.05) if along_x else Vector3(0.05, 0.03, length - 0.1), "light_off" if dark_room(room) else batten_glass_key(room))
 			any = true
 	return any
 
@@ -1082,16 +1282,22 @@ func batten_model(node: Node3D, room: Dictionary, at: Vector3, along_x: bool, le
 	batten.set_meta("glow_surface", glass)
 	var stretch: float = length / maxf(batten.mesh.get_aabb().size.x, 0.01)
 	batten.transform = Transform3D(Basis(Vector3.UP, 0.0 if along_x else PI / 2) * Basis.from_scale(Vector3(stretch, 1.6, 1.6)), at)
-	if dark_room(room): batten.set_surface_override_material(glass, materials.light_off)
+	# Its glass in this room's lamp colour (batten_glass_key()); glow_room() gives
+	# it back from lit_glass after a power cut.
+	var lit: Material = materials[batten_glass_key(room)]
+	batten.set_meta("lit_glass", lit)
+	var shown: Material = materials.light_off if dark_room(room) else lit
+	batten.set_surface_override_material(glass, shown)
 	node.add_child(batten)
 
 ## The electrical room's lamp is made (lights[id] must exist) but stays out.
 func room_lamp(node: Node3D, room: Dictionary) -> void:
 	var light := lamp_light(node, room, lamp_fixture(node, room))
+	if halos.has(int(room.id)): halos[int(room.id)].base = light.light_energy
 	if OFFICE.lamp_of(room) == "troffer":
 		light.omni_attenuation = LAMP_ATTENUATION
 		if not failing_lens.is_empty():
-			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials.troffer_lens.emission_energy_multiplier, "share": failing_share})
+			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials[failing_lens].emission_energy_multiplier, "share": failing_share})
 	failing_lens = ""
 	if OFFICE.lamp_of(room) == "emergency":
 		light.set_meta("off", true)
@@ -1260,6 +1466,9 @@ func build_prop(node: Node3D, kind: String) -> void:
 func extras(node: Node3D, room: Dictionary) -> void:
 	super(node, room)
 	emergency_unit(node, room)
+	# The halo in its lamp's colour as the hotel's extras() left it (the
+	# refuge's green).
+	if halos.has(int(room.id)): (halos[int(room.id)].material as ShaderMaterial).set_shader_parameter("glow", lights.back().light_color)
 	# The window's typing desk and the post's console desk (stand-ins for
 	# 1d's metal_office_desk), against their wall spots.
 	var mail: Dictionary = manifest.get("mail", {})
@@ -1310,3 +1519,166 @@ func wall_stretches(room: Dictionary) -> Array:
 
 ## Furniture keeps clear of the walls by less in an office (H3).
 func nav_agent_radius() -> float: return 0.3
+
+## Each room's halo follows its lamp, every frame (spec_rediseno 4).
+func _process(delta: float) -> void:
+	super(delta)
+	glow_halos()
+
+## The halos of the planta looked from, at their lamp's energy now over its
+## energy as built (her drain, a failing tube; the reception's lamp is kept low
+## by its beacon, and so its halo), nothing while the lamp is out or hidden,
+## fading out with the distance from its room as the lamp does (preset
+## lamp_fade). Another planta's halos go out once, when the eye leaves it.
+func glow_halos() -> void:
+	if halos.is_empty() or round_at.is_empty(): return
+	var here: int = round_at.here
+	if here != halo_planta:
+		halo_planta = here
+		for id: int in halos: set_halo(halos[id], 0.0)
+	var eye: Vector3 = round_at.position
+	var begin: float = preset.lamp_fade[0]
+	var length: float = maxf(float(preset.lamp_fade[1]), 0.01)
+	for id: int in things_on(here).rooms:
+		if not halos.has(id): continue
+		var entry: Dictionary = halos[id]
+		var light: OmniLight3D = lights[id]
+		var energy := 0.0
+		if float(entry.base) > 0.0 and light.visible and not light.has_meta("off"):
+			var far: float = 1.0 - clampf((room_spots[id].distance_to(eye) - begin) / length, 0.0, 1.0)
+			energy = HALO_ENERGY * light.light_energy / float(entry.base) * far
+		set_halo(entry, energy)
+
+## A halo's strength, sent to its shader only when it changes (always when
+## it goes out).
+func set_halo(entry: Dictionary, energy: float) -> void:
+	if energy == float(entry.energy) or (energy > 0.0 and absf(energy - float(entry.energy)) <= 0.0005): return
+	entry.energy = energy
+	(entry.material as ShaderMaterial).set_shader_parameter("energy", energy)
+
+## The floor's accent lights (spec_rediseno 4) and an accent spot's penumbra
+## (times the preset's, as the hotel's LAMP_SIZE).
+var accents := ACCENTS.new()
+const ACCENT_SIZE := 0.08
+
+## An accent spot (a desk lamp, a track spot; spec_rediseno 4) at `pos` in
+## `parent`'s frame, aimed at `aim` (same frame, not `pos`): a SpotLight3D with
+## its shadow, shown in the round of lamps while its room is lit, within
+## furniture_lamps of the player (0 on Bajo and Muy bajo: never) and never on
+## Compatibility, dimmed with her drain. Null when the room has ACCENTS.MOST.
+func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colour: Color, energy: float, reach: float, angle: float) -> SpotLight3D:
+	if not accents.has_room(room_id): return null
+	var toward := aim - pos
+	var up: Vector3 = Vector3.FORWARD if absf(toward.normalized().y) > 0.99 else Vector3.UP
+	var lamp := SpotLight3D.new()
+	lamp.name = "AccentSpot"
+	lamp.transform = Transform3D(Basis.looking_at(toward, up), pos)
+	lamp.light_color = colour
+	lamp.light_energy = energy
+	lamp.spot_range = reach
+	lamp.spot_angle = angle
+	lamp.light_size = ACCENT_SIZE * preset.penumbra
+	lamp.light_specular = 0.3
+	lamp.light_bake_mode = Light3D.BAKE_DISABLED
+	lamp.light_volumetric_fog_energy = 0.0
+	lamp.shadow_enabled = true
+	lamp.shadow_bias = 0.04
+	lamp.shadow_normal_bias = 0.6
+	lamp.distance_fade_enabled = true
+	accent_fade(lamp)
+	lamp.visible = false
+	parent.add_child(lamp)
+	accents.add(room_id, {"light": lamp, "energy": energy, "sconce": -1, "mesh": null, "glowing": true})
+	return lamp
+
+## Out by furniture_lamps, as the hotel's table and floor lamps.
+func accent_fade(lamp: Light3D) -> void:
+	var out: float = preset.furniture_lamps
+	if out > 0.0: set_fade(lamp, out - 10.0, 8.0)
+
+## A wall lamp as an accent (spec_rediseno 4): the hotel's lamp model and its
+## light (sconce_light(), lit by the hotel's round on the presets with wall
+## lamps), out with its room (set_sconce()). `pos` and `yaw` in `boundary`'s
+## frame, +Z into the room. Null when the room has ACCENTS.MOST.
+func accent_sconce(boundary: Node3D, room_id: int, pos: Vector3, yaw: float) -> MeshInstance3D:
+	if not accents.has_room(room_id): return null
+	var sconce := MeshInstance3D.new()
+	sconce.name = "AccentSconce"
+	sconce.mesh = WALL_LAMP
+	sconce.position = pos
+	sconce.rotation.y = yaw
+	boundary.add_child(sconce)
+	sconce_light(boundary, sconce)
+	accents.add(room_id, {"light": sconce_lights.back(), "energy": SCONCE_ENERGY, "sconce": sconce_lights.size() - 1, "mesh": sconce, "glowing": true})
+	return sconce
+
+## A room's accents with its power and her drain: out and dark while the room
+## is not lit, at what she leaves of them while she drinks it.
+func refresh_accents(room_id: int) -> void:
+	var on: bool = lit(room_id)
+	var left := 1.0 - drained(room_id)
+	for entry: Dictionary in accents.of_room(room_id):
+		var lamp: Light3D = entry.light
+		var k := int(entry.sconce)
+		if k >= 0:
+			var casting: bool = k < sconce_state.size() and sconce_state[k] == SCONCE_CAST
+			lamp.light_energy = (SCONCE_ENERGY if casting else SCONCE_ENERGY * SCONCE_FILL_ENERGY) * left
+		else: lamp.light_energy = float(entry.energy) * left
+		if not on and lamp.visible: lamp.visible = false
+		var mesh: MeshInstance3D = entry.mesh
+		if mesh != null and bool(entry.glowing) != on:
+			entry.glowing = on
+			if on: switch_on(mesh)
+			else: switch_off(mesh)
+
+## The accent spots in the round of lamps, by the hotel's rule for table and
+## floor lamps; wall lamps go by the hotel's own round (set_sconce()).
+func round_accents() -> void:
+	if accents.rooms.is_empty() or round_at.is_empty(): return
+	var at: Vector3 = round_at.position
+	var shadows: bool = round_at.shadows
+	var show_all: bool = round_at.show_all
+	var allowed: bool = not echo_view and RenderingServer.get_current_rendering_method() != "gl_compatibility"
+	for room_id: int in accents.rooms:
+		var on: bool = allowed and lit(room_id)
+		for entry: Dictionary in accents.of_room(room_id):
+			if int(entry.sconce) >= 0: continue
+			var lamp: Light3D = entry.light
+			var shown: bool = on and (show_all or lamp.global_position.distance_to(at) < float(preset.furniture_lamps))
+			if lamp.visible != shown: lamp.visible = shown
+			if lamp.shadow_enabled != shadows: lamp.shadow_enabled = shadows
+
+## Her drain dims a room's accents with its lamp.
+func drain(room_id: int, amount: float) -> void:
+	super(room_id, amount)
+	refresh_accents(room_id)
+
+## A blackout puts every accent out, and gives them back after.
+func blackout(on: bool) -> void:
+	super(on)
+	for room_id: int in accents.rooms: refresh_accents(room_id)
+
+## An accent's wall lamp stays out while its room is not lit, and is dimmed
+## with her drain.
+func set_sconce(k: int, state: int) -> void:
+	var room_id: int = accents.by_sconce.get(k, -1)
+	var wanted: int = SCONCE_OUT if room_id >= 0 and not lit(room_id) else state
+	super(k, wanted)
+	if room_id >= 0 and wanted != SCONCE_OUT: sconce_lights[k].light_energy *= 1.0 - drained(room_id)
+
+## A new preset reaches the accent spots' penumbra and fade too.
+func apply_quality(new_preset: Dictionary) -> void:
+	super(new_preset)
+	for room_id: int in accents.rooms:
+		for entry: Dictionary in accents.of_room(room_id):
+			if int(entry.sconce) >= 0: continue
+			var lamp: Light3D = entry.light
+			accent_fade(lamp)
+			var size: float = ACCENT_SIZE * preset.penumbra
+			if lamp.light_size != size: lamp.light_size = size
+
+## Lenses and whatever glows with a room (lenses_of()) stay out of the bounce
+## stand-in, as the hotel's lamp glass does (bounce_light.gd SKIP).
+func bounces(group: String) -> bool:
+	var material := material_of(group)
+	return not (material.begins_with("troffer_lens") or material.begins_with("troffer_fail") or material.begins_with("lens_off") or material.begins_with("glow_"))

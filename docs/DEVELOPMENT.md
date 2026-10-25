@@ -237,6 +237,29 @@ Las del área 0 de la nota de diseño del rediseño (`.claude/specs/spec_redisen
 - **Hashes de los assets:** `python -I tools/dev/asset_hashes.py add <archivo o carpeta>...` y `python -I tools/dev/asset_hashes.py check` (`docs/asset_hashes.json`).
 - **Descargas del navegador:** `source_assets/oficinas/_herramientas/recoger_descarga.py` vigila solo la carpeta de Descargas.
 
+## La luz del piso 2
+
+Lo que dejó el área de luz del rediseño (`.claude/specs/spec_rediseno.md` 4), para quien ponga muebles y equipos:
+
+- **Color.**
+  - Cada tipo de sala tiene su temperatura: `LAMP_KELVIN` y `lamp_kelvin()` de `office_palette.gd`.
+  - La luz de techo y la lente de sus pantallas salen de ahí (`lens_key()` en `office_geometry.gd`), vistas con el balance de 3.200 K de la cámara (`lighting.gd`).
+  - El vestíbulo del montacargas (el refugio) conserva la luz verdosa que le da `extras()` del hotel, y su halo la sigue. El cuarto eléctrico no tiene lámpara de techo: solo su unidad de emergencia.
+- **Familias de pantalla.**
+  - Se eligen con `troffer_look()` de la paleta.
+  - `troffer_face()` las dibuja en el mismo hueco de dos placas, bajo una carcasa abierta por abajo (la envolvente va sobre el techo, sin carcasa): `troffers()`, y lo que usa The Lurker, no cambian.
+- **Halo del techo.**
+  - `ceiling_halo()` pone por sala una malla bajo las placas alrededor de cada pantalla, recortada al techo de la sala. Su sombreador es `game/presentation/materials/office/ceiling_halo.gdshader`.
+  - `glow_halos()` ajusta cada fotograma los de la planta desde la que se mira a la energía de su lámpara: corriente, drenaje, parpadeo y distancia. En la recepción, cuya lámpara va al 30 % por la baliza roja, el halo también.
+  - `HALO_ENERGY` se calibró con las capturas de `tools/capture/office_rooms_capture.gd` (semilla 7, Alto, Medio y Muy bajo).
+- **Acentos.**
+  - `accent_spot()` (flexo o foco: `SpotLight3D` con sombra) y `accent_sconce()` (aplique, con la luz de pared del hotel) los dan de alta en el registro de `office_accents.gd`, como mucho tres por sala.
+  - Se apagan sin corriente o en un apagón y bajan cuando ella bebe la sala.
+  - Los focos salen en la ronda de lámparas como las lámparas de mueble del hotel: hasta `furniture_lamps`, que es 0 en Bajo y en Muy bajo, y nunca en Compatibilidad.
+  - Los apliques dan luz donde el preajuste enciende los del hotel (Alto y Ultra); en los demás solo brilla su pantalla.
+- **Lo que brilla sin luz.** Un material cuya clave empiece por `glow_` se apaga y se enciende con su sala (`lenses_of()`), sin más código.
+- **Rebote.** `office_bounce.gd` hornea los materiales propios de la oficina con su `flat_color` (o el color de un material estándar); los del hotel siguen con `material_albedo.gd`.
+
 ## The Lurker (piso 2)
 
 Sus piezas, de lo más puro a lo que toca la escena (las especificaciones, en `.claude/specs/spec_f2_movement.md` y `spec_f2_mind.md`):

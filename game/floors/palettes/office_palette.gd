@@ -253,6 +253,23 @@ const DADO_ROOMS := [3, 5, 21]
 const TWO_TONE_ROOMS := [22, 23]
 const TRIMS := ["", "frieze", "dado", "two_tone", "panel_wall"]
 const LAMPS := ["troffer", "batten", "emergency"]
+## The colour temperature of each type's lamps, in kelvin (lamp_kelvin(),
+## spec_rediseno 4): warm fluorescent, about 3000 in the rooms and 3500 in the
+## corridors; amber in the reception and the break room; neutral in the
+## boardroom and the director's office. Seen through the camcorder's fixed
+## 3200 K balance (lighting.gd CAMERA_WHITE). The electrical room's entry waits
+## for a ceiling lamp (today it has only its emergency unit), and the refuge's
+## lamp is turned green after (the hotel's extras()). Starting values, set
+## against the references in the captures.
+const LAMP_KELVIN := [2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3300.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3500.0, 3500.0, 3000.0, 3000.0, 2700.0, 3300.0, 3000.0, 2700.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0, 3000.0]
+## The troffer families (troffer_look(), spec_rediseno 2): narrow with a louvre
+## in the reception and the boardroom, parabolic in the secretary's office, a
+## surface-mounted wraparound in the director's office, prismatic elsewhere.
+## Only how they look: troffers() is the same for every family.
+const TROFFER_LOOKS := ["prismatic", "narrow", "parabolic", "wrap"]
+const NARROW_TROFFERS := [RECEPTION, BOARDROOM]
+const PARABOLIC_TROFFERS := [SECRETARY]
+const WRAP_TROFFERS := [EXEC_OFFICE]
 ## Where the special rooms lie, as a share of the walk.
 const WINDOW_DEPTH := Vector2(0.15, 0.45)
 const ELECTRICAL_DEPTH := Vector2(0.4, 0.7)
@@ -410,6 +427,18 @@ static func lamp_of(room: Dictionary) -> String:
 	var room_type := int(room.type)
 	if room_type == ELECTRICAL or room_type == VOID: return "emergency"
 	return "batten" if room_type in BATTEN_ROOMS else "troffer"
+
+## A room's lamp colour temperature (LAMP_KELVIN).
+static func lamp_kelvin(room: Dictionary) -> float:
+	return float(LAMP_KELVIN[int(room.type)])
+
+## A room's troffer family (TROFFER_LOOKS).
+static func troffer_look(room: Dictionary) -> String:
+	var room_type := int(room.type)
+	if room_type in NARROW_TROFFERS: return "narrow"
+	if room_type in PARABOLIC_TROFFERS: return "parabolic"
+	if room_type in WRAP_TROFFERS: return "wrap"
+	return "prismatic"
 
 ## No room has the hotel's domestic alcoves.
 static func domestic(_room: Dictionary) -> bool:

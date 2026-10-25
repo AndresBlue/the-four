@@ -462,7 +462,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 - **Época y tono:**
   - modernismo institucional feo, 1965 a 1980;
   - beige, verde oliva, mostaza, marrón de chapa de madera, gris acero;
-  - luz **fría y plana**, 4.000–4.500 K. Es lo contrario del hotel, cálido, con moqueta y papel pintado: al bajar se nota.
+  - luz de fluorescente **cálido**, difusa y de poco contraste (rediseño, `.claude/specs/spec_rediseno.md` 4): unos 3.000 K en las salas y 3.500 en los pasillos, ámbar (2.700) en la recepción y la sala de descanso, y neutra (3.300) en las juntas y la dirección, vista con el balance fijo de 3.200 K de la cámara. El vestíbulo del montacargas conserva la luz verdosa del hotel y el cuarto eléctrico solo tiene su unidad de emergencia.
 - **Materiales:**
   - suelo de terrazo oscuro en pasillos, vestíbulos, correo y archivo, y de losetas vinílicas claras (beige con motas) en las salas;
   - bloque de hormigón pintado;
@@ -473,10 +473,10 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - chapa galvanizada en los ductos;
   - corcho en los tablones.
 - **Luz:**
-  - pantallas de fluorescentes 60 × 120 con difusor prismático;
+  - pantallas de fluorescentes 60 × 120, por familias: difusor prismático en general; estrecha con rejilla en la recepción y en las juntas; parabólica de cuatro celdas a lo ancho en la secretaría; de superficie, con difusor envolvente, en el despacho de dirección. Un halo en las placas alrededor de cada pantalla encendida sigue a su lámpara para que el techo no quede más oscuro que la pared;
   - focos de emergencia con batería;
   - carteles de salida;
-  - flexos cálidos en algunas mesas: islas cálidas en lo frío;
+  - luces de acento (flexos, focos, apliques), como mucho tres por sala: se apagan con la sala y bajan cuando ella la bebe. Los dos apliques del ascensor de llegada de la recepción ya están; los flexos y los focos llegan con el mobiliario;
   - nada de monitores encendidos (las pantallas son de otra criatura pensada, The Boiled One).
 - **Abandono:**
   - papeles por el suelo, sillas volcadas, cajones abiertos, abrigos en perchas, tazas;
@@ -498,7 +498,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
     - casillas de NOMBRE, NÚMERO, DEPARTAMENTO, ALTA y NIVEL DE ACCESO, y una banda roja de «PROVISIONAL».
   - **Resguardo del tubo:** una tira de papel térmico con el número de estación.
   - Todo a máquina, con el sistema del impreso del hotel (`hotel_form.gd`), y su versión de lejos para verlo en el mundo.
-- **La cámara sigue siendo la cinta:** lo frío del piso se ve a través del mismo vídeo de 1990.
+- **La cámara sigue siendo la cinta:** la luz del piso se ve a través del mismo vídeo de 1990.
 
 ---
 
@@ -652,7 +652,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   Y en físico: rayos desde cada salida, barridos por los pasillos de archivo. **Mil semillas** con `tools/dev/office_metrics.gd`.
 - **`office_geometry.gd`**, que hereda de `hotel_geometry`. Antes, `build_room()` se parte en pasos que se pueden sustituir. Añade:
   - la perfilería y las placas del falso techo (MultiMesh);
-  - pantallas de fluorescentes con el perfil `tube`;
+  - pantallas de fluorescentes con el perfil `tube`, del color de su sala (`lamp_kelvin()` de la paleta) y de su familia (`troffer_look()`);
   - rejillas, placas que faltan y el plénum (solo se dibuja lo que se ve por un hueco);
   - cristaleras con persiana; las puertas, las del hotel;
   - los muebles de oficina (`room_dressing`, con su juego `office` ampliado).
