@@ -86,6 +86,8 @@ const ELBOW := 0.05
 ## How finely the elbow is turned round the line from the shoulder to the
 ## hand looking for a way clear of what is solid: steps of PI / ELBOW_STEPS.
 const ELBOW_STEPS := 12
+## How far off what it stops at a hand in the air stays (_reach()).
+const SHORT_OF := 0.04
 const DUE := 0.85
 const MUST := 0.97
 const KNEES := 1.6
@@ -313,11 +315,29 @@ func _probe(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 		score -= cling * 0.22 * (1.0 - absf((hit.normal as Vector3).dot(up)))
 		# and each arm its habit: up for the ceiling, down for the floor
 		score -= REACH_UP * float(limb.habit) * direction.dot(Vector3.UP)
-		if score < best_score:
+		if score < best_score and _holds_going_by(limb, from, wrist_at, space):
 			best_score = score
 			limb.best = hit.position
 			limb.best_n = hit.normal
 			limb.has_best = true
+
+
+## Whether a hold at `wrist_at`, chosen from `from`, will still do while she goes on
+## as she is going, until the arm drawn out to MUST lets go of it (never past a
+## wall): its shoulder keeps it in sight, for lost behind something she goes past (a
+## column, a corner) the arm would be through that, and never nearer than CLOSEST.
+func _holds_going_by(limb: Dictionary, from: Vector3, wrist_at: Vector3, space: PhysicsDirectSpaceState3D) -> bool:
+	if velocity.length() < 0.05: return true
+	var heading := velocity.normalized()
+	var toward := wrist_at - from
+	var ahead := toward.dot(heading)
+	var off := (toward - heading * ahead).length()
+	var most := float(limb.reach) * size * MUST
+	var there := from + heading * (ahead + sqrt(maxf(most * most - off * off, 0.0)))
+	var wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, there, world_mask))
+	if not wall.is_empty(): there = (wall.position as Vector3) - heading * 0.05
+	if ahead > 0.0 and off < CLOSEST * float(limb.reach) * size and (there - from).dot(heading) > ahead: return false
+	return _clear(there, wrist_at, space)
 
 
 func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> void:
@@ -385,6 +405,11 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	var held: bool = not limb.free and not (limb.swing and limb.to_free)
 	var target_world: Vector3 = limb.hold + normal_world * float(limb.wrist_up) * size if held else limb.hold
 	var s: Vector3 = skeleton.get_bone_global_pose(limb.upper).origin
+	# in the air, or holding nothing, it stops at what stands between it and its
+	# shoulder (a column it would swing through), and slides round as she goes on
+	if limb.swing or limb.free:
+		var between := space.intersect_ray(PhysicsRayQueryParameters3D.create(xf * s, target_world, solid_mask))
+		if not between.is_empty(): target_world = (between.position as Vector3) + (between.normal as Vector3) * SHORT_OF
 	var t: Vector3 = inv * target_world
 	var pole: Vector3 = inv.basis * (up * KNEES + out_world * 0.5)
 	var a: float = limb.l1

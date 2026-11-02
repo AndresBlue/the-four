@@ -60,6 +60,7 @@ func run() -> void:
 		palette_crawl()
 		kind_checks()
 		generator_checks()
+		nave_checks()
 	if part.is_empty() or part == "validator":
 		if part == "validator": seven = seed_seven()
 		validator_checks()
@@ -827,6 +828,20 @@ func validator_checks() -> void:
 		var e: Dictionary = seven.ducts.exits[i]
 		if only < 0 and String(e.kind) in ["ceiling", "wall"] and int(counts[int(e.room)]) == 1 and not bool(rooms[int(e.room)].corridor): only = i
 	mutation(v, "Una sala sin salida", "duct_room_exit_", func(m): m.ducts.exits.remove_at(only))
+	# Spec_rediseno 3.3: the rings of planta 1 counted as lying inside its nave;
+	# a corner prop put on the nave's central aisle.
+	var inside := func(m: Dictionary) -> void:
+		var seam: Array = m.merged.filter(func(pair): return String(m.rooms[int(pair[0])].get("nave_axis", "")) != "" and int(m.rooms[int(pair[0])].hall) == int(m.rooms[int(pair[1])].hall))[0]
+		for k in 40: m.merged.append(seam)
+	mutation(v, "Los anillos de la planta 1 dentro de su nave no cuentan", "rings_0", inside)
+	var on_aisle := func(m: Dictionary) -> void:
+		var cell: Dictionary = m.rooms.filter(func(r): return not OFFICE.aisle_strips(r).is_empty())[0]
+		for slot in cell.sockets.size():
+			var prop := {"kind": "plant", "slot": slot, "rotation": 0}
+			if OFFICE.aisle_strips(cell).any(func(strip: Rect2): return OFFICE_VALIDATOR.prop_rect(cell, prop).intersects(strip)):
+				cell.props.append(prop)
+				return
+	mutation(v, "Una pieza de esquina en el pasillo de la nave", "nave_aisle_", on_aisle)
 	var change_1 := func(m: Dictionary) -> void:
 		var lobby: Dictionary = m.rooms[int(m.refuges[0])]
 		m.ducts.nodes.append([float(lobby.px), float(lobby.py) + 3.7, float(lobby.pz), int(lobby.id), "exit"])
@@ -1048,14 +1063,75 @@ static func swap_window(m: Dictionary) -> void:
 	m.rooms[deepest].type = OFFICE.WINDOW
 	m.rooms[win].type = OFFICE.OFFICE
 
+## The naves of planta 1 and their columns (spec_rediseno 3.3, 3.4), on eight
+## floors drawn with the columns on (OFFICE.columns_test): each valid, never
+## a fallback and the same twice; a nave on most, its axis only on its cells;
+## every column on the seam of a nave two cells wide, COLUMN_OFF from the
+## aisle's line; no free tile within COLUMN_TILE of one; no furniture in the
+## central aisle; none with them off (while COLUMNS is).
+func nave_checks() -> void:
+	OFFICE.columns_test = true
+	var floors: Array = []
+	var naves := 0
+	var columns := 0
+	var bad: Array = []
+	for run_seed in range(1, 9):
+		var generator = GEN.new()
+		var m: Dictionary = generator.generate(run_seed, 2)
+		var again: Dictionary = GEN.new().generate(run_seed, 2)
+		if bool(m.get("fallback", false)) or not generator.validator().validate(m).is_empty() or JSON.stringify(m, "", true, true) != JSON.stringify(again, "", true, true):
+			floors.append(run_seed)
+			continue
+		var nave: Array = m.rooms.filter(func(r): return String(r.get("nave_axis", "")) != "")
+		if nave.size() >= 2: naves += 1
+		for room in m.rooms:
+			var id := int(room.id)
+			var axis := String(room.get("nave_axis", ""))
+			if axis != "" and (int(room.wing) != 0 or int(room.hall) < 0 or nave.any(func(o): return int(o.hall) != int(room.hall))): bad.append("%d: eje en %d" % [run_seed, id])
+			var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
+			var open: Array = room.get("open_sides", [])
+			var strips: Array = []
+			if axis == "x":
+				if open.has("north"): strips.append(Rect2(-half.x, -half.y, half.x * 2.0, OFFICE.NAVE_AISLE * 0.5))
+				if open.has("south"): strips.append(Rect2(-half.x, half.y - OFFICE.NAVE_AISLE * 0.5, half.x * 2.0, OFFICE.NAVE_AISLE * 0.5))
+			elif axis == "z":
+				if open.has("west"): strips.append(Rect2(-half.x, -half.y, OFFICE.NAVE_AISLE * 0.5, half.y * 2.0))
+				if open.has("east"): strips.append(Rect2(half.x - OFFICE.NAVE_AISLE * 0.5, -half.y, OFFICE.NAVE_AISLE * 0.5, half.y * 2.0))
+			for it in room.get("furniture", []):
+				if strips.any(func(s): return LAYOUT.footprint(it).intersects((s as Rect2).grow(-0.01))): bad.append("%d: mueble en el pasillo de %d" % [run_seed, id])
+			for p in room.get("props", []):
+				if strips.any(func(s): return OFFICE_VALIDATOR.prop_rect(room, p).intersects((s as Rect2).grow(-0.01))): bad.append("%d: pieza de esquina en el pasillo de %d" % [run_seed, id])
+			for c in room.get("columns", []):
+				columns += 1
+				var seam: float = absf(float(c.x)) if axis == "x" else absf(float(c.z))
+				var along: float = absf(float(c.z)) if axis == "x" else absf(float(c.x))
+				var width: float = half.x if axis == "x" else half.y
+				var depth: float = half.y if axis == "x" else half.x
+				if axis == "" or absf(seam - width) > 0.002 or absf(along - (depth - OFFICE.COLUMN_OFF)) > 0.002: bad.append("%d: columna en %d" % [run_seed, id])
+			for tile in OFFICE.free_tiles(room):
+				var p: Vector3 = OFFICE.tile_centre(tile, 0.0)
+				for r in OFFICE.column_rects(room):
+					if LAYOUT.point_rect_distance(Vector2(p.x, p.z), r) < OFFICE.COLUMN_TILE - 1e-6: bad.append("%d: placa junto a columna en %d" % [run_seed, id])
+	OFFICE.columns_test = false
+	var off: Dictionary = GEN.new().generate(7, 2)
+	var stray: Array = off.rooms.filter(func(r): return not r.get("columns", []).is_empty())
+	check("Naves: con columnas, cada piso vale, sin reserva y sale igual dos veces", floors.is_empty(), str(floors))
+	check("Naves: la planta 1 tiene nave en la mayoría de pisos", naves * 2 > 8, "%d de 8" % naves)
+	check("Naves: cada columna en la junta de una nave de dos celdas de ancho, a 2,1 m del pasillo, ninguna placa libre a menos de 0,6 m y ningún mueble ni pieza de esquina en el pasillo", columns > 0 and bad.is_empty(), "%d columnas %s" % [columns, str(bad.slice(0, 4))])
+	# Once COLUMNS is on, columns_on() is true whatever the test asks: no case.
+	check("Naves: con las columnas apagadas no sale ninguna", OFFICE.COLUMNS or stray.is_empty(), str(stray.map(func(r): return int(r.id))))
+
 # --- Física ------------------------------------------------------------------
 
-## Three floors of offices built in a level and checked by the office
+## Floors of offices built in a level, with their naves' columns, and checked by the office
 ## validator's physics (spec_f1_generator.md 3.5): nothing in the way of a
 ## door, a passage, an aisle, a grille or the ceiling band.
 func physics_checks() -> void:
 	var found: Array = []
 	var built: Array = []
+	# With their naves' columns (spec_rediseno 3.4), whatever COLUMNS says.
+	OFFICE.columns_test = true
+	var columns := 0
 	# A level of its own for each: start_floor() on one already playing does
 	# not build again.
 	for run_seed in [7, 21, 33]:
@@ -1067,11 +1143,13 @@ func physics_checks() -> void:
 		await level.start_floor(run_seed, false, [1], "", 2)
 		for i in 4: await physics_frame
 		built.append(int(level.manifest.get("seed", -1)))
+		columns += level.manifest.rooms.filter(func(r): return not r.get("columns", []).is_empty()).size()
 		var errors: Array = level.kind.VALIDATOR.new().validate_physics(level.get_world_3d(), level.manifest)
 		if not errors.is_empty(): found.append("%d: %s" % [run_seed, str(errors.slice(0, 5))])
 		level.queue_free()
 		for i in 2: await physics_frame
-	check("Tres pisos de oficinas montados pasan la comprobación física", found.is_empty() and built == [7, 21, 33], "%s %s" % [str(built), str(found)])
+	OFFICE.columns_test = false
+	check("Los pisos de oficinas montados, con columnas en sus naves, pasan la comprobación física", found.is_empty() and built == [7, 21, 33] and columns > 0, "%s %s %d" % [str(built), str(found), columns])
 
 ## A cell's sides are the office's: a module's both from MODULE_SIZES, a
 ## crossing's both from LANE_WIDTHS, a lane's one from each.

@@ -73,6 +73,12 @@ const WALL_MIN := 1.0
 ## Over a locker she goes down its front to the slot, head down (the author,
 ## 24 October 2026): the slot is at a hider's eyes.
 const LOCKER_SLOT := 1.6
+## Round a column of a nave (spec_rediseno 9): how far her anchor keeps from
+## a column's faces, more than TRAY_INSET from a wall (lurker_elbow_probe
+## and body_clip_probe check it); and what a crossing of an open side keeps
+## clear of a column's faces beyond that (the note: 0.3 m and her radius).
+const RADIUS := 0.45
+const COLUMN_MARGIN := 0.3
 
 ## 2D curves with an arc-length parameter.
 class Profile extends RefCounted:
@@ -226,6 +232,9 @@ var walls_of := {}
 var lockers_of := {}
 ## Room -> its lamps in plan (3.7).
 var lamps_of := {}
+## Room -> its columns' centres in plan (spec_rediseno 9): discs for
+## clear_point(), as its lamps are.
+var columns_of := {}
 ## wall_band()'s cache.
 var made := {}
 ## The worst fillet of the build (R_MIN is the floor).
@@ -293,8 +302,16 @@ func add_tray(room: Dictionary) -> void:
 	if not open.has("south"): high.y -= TRAY_INSET
 	var half := FLOOR.size_of(room) * 0.5
 	var centre := Vector2(float(room.px), float(room.pz))
+	# Its columns, grown by RADIUS: she stops at them (advance_tray()); their
+	# centres are clear_point()'s discs.
+	var posts: Array = []
+	var centres := PackedVector2Array()
+	for column: Rect2 in OFFICE.column_rects(room):
+		posts.append(column.grow(RADIUS))
+		centres.append(column.get_center())
+	if not centres.is_empty(): columns_of[int(room.id)] = centres
 	tray_of[int(room.id)] = patches.size()
-	patches.append({"kind": Kind.TRAY, "room": int(room.id), "wing": int(room.get("wing", 0)), "y": y, "rect": Rect2(low, high - low), "cell": Rect2(centre - half, half * 2.0), "open": {}})
+	patches.append({"kind": Kind.TRAY, "room": int(room.id), "wing": int(room.get("wing", 0)), "y": y, "rect": Rect2(low, high - low), "cell": Rect2(centre - half, half * 2.0), "open": {}, "posts": posts, "blocked": {}})
 
 ## The neighbours across a room's open sides whose tray is at the same height.
 func open_sides_of(id: int) -> void:
@@ -307,6 +324,55 @@ func open_sides_of(id: int) -> void:
 		if other < 0 or not tray_of.has(other): continue
 		if absf(float(patches[int(tray_of[other])].y) - float(tray.y)) > 0.001: continue
 		tray.open[String(side)] = other
+		var spans := column_spans(tray, String(side), columns_of.get(id, PackedVector2Array()))
+		if not spans.is_empty(): tray.blocked[String(side)] = spans
+
+## The spans of a tray's open side that its columns on that side hold, world
+## along the side (z on west and east, x on north and south): each a column
+## and COLUMN_MARGIN and RADIUS either way (spec_rediseno 9).
+func column_spans(tray: Dictionary, side: String, centres: PackedVector2Array) -> Array:
+	var cell: Rect2 = tray.cell
+	var along_z := side == "west" or side == "east"
+	var line := 0.0
+	match side:
+		"west": line = cell.position.x
+		"east": line = cell.end.x
+		"north": line = cell.position.y
+		_: line = cell.end.y
+	var half: float = OFFICE.COLUMN * 0.5 + COLUMN_MARGIN + RADIUS
+	var out: Array = []
+	for c in centres:
+		var across: float = c.x if along_z else c.y
+		if absf(across - line) > 0.01: continue
+		var along: float = c.y if along_z else c.x
+		out.append(Vector2(along - half, along + half))
+	return out
+
+## Whether a tray's open side is held by a column at `along` (column_spans()).
+func blocked_at(patch: Dictionary, side: String, along: float) -> bool:
+	for item in patch.get("blocked", {}).get(side, []):
+		var span: Vector2 = item
+		if along > span.x and along < span.y: return true
+	return false
+
+## The spans of `room`'s open side to `other` that its columns hold
+## (column_spans()); [] for none (lurker_routes.tray_legs()).
+func spans_toward(room: int, other: int) -> Array:
+	if not tray_of.has(room): return []
+	var tray: Dictionary = patches[int(tray_of[room])]
+	for side in tray.open:
+		if int(tray.open[side]) == other: return tray.get("blocked", {}).get(side, [])
+	return []
+
+## Whether the plan segment from a to b comes within `clear` of a column on
+## planta `planta` (spec_rediseno 9: a leap past one, a cue behind one).
+func column_near(a: Vector2, b: Vector2, planta: int, clear: float) -> bool:
+	for id in columns_of:
+		if FLOOR.planta_of(float(rooms[int(id)].get("py", 0.0)) + 1.0) != planta: continue
+		for c in columns_of[id]:
+			var column := Rect2(c - Vector2.ONE * OFFICE.COLUMN * 0.5, Vector2.ONE * OFFICE.COLUMN)
+			if LAYOUT.segment_rect_distance(a, b, column) < clear: return true
+	return false
 
 # --- Bands --------------------------------------------------------------------
 
@@ -514,12 +580,13 @@ func lamps_in(room: Dictionary) -> PackedVector2Array:
 	return out
 
 ## The point of a room's tray nearest (x, z) at least LAMP_CLEAR in plan from
-## every lamp of the room; with none, the tray point farthest from its nearest
+## every lamp and column of the room; with none, the tray point farthest from its nearest
 ## lamp (ties: lower x, then lower z).
 func clear_point(room: int, x: float, z: float) -> Vector2:
 	if not tray_of.has(room): return Vector2(x, z)
 	var rect: Rect2 = patches[int(tray_of[room])].rect
-	var lamps: PackedVector2Array = lamps_of.get(room, PackedVector2Array())
+	# Its columns are discs as its lamps are (spec_rediseno 9).
+	var lamps: PackedVector2Array = lamps_of.get(room, PackedVector2Array()) + columns_of.get(room, PackedVector2Array())
 	var q := Vector2(x, z)
 	var p0 := Vector2(clampf(x, rect.position.x, rect.end.x), clampf(z, rect.position.y, rect.end.y))
 	if clear_of(p0, lamps, rect): return p0
@@ -701,6 +768,13 @@ func advance_tray(s: State, metres: float) -> float:
 		if dir.y > 1e-12: tz = (rect.end.y - s.v) / dir.y
 		elif dir.y < -1e-12: tz = (rect.position.y - s.v) / dir.y
 		var t := maxf(minf(tx, tz), 0.0)
+		# A column, grown by RADIUS, stops her where she would meet it
+		# (spec_rediseno 9); her legs go round it (lurker_routes round_posts()).
+		var hit := post_hit(patch, Vector2(s.u, s.v), dir)
+		if hit < minf(t, left):
+			s.u += dir.x * hit
+			s.v += dir.y * hit
+			return moved + hit
 		if t >= left:
 			s.u += dir.x * left
 			s.v += dir.y * left
@@ -715,6 +789,12 @@ func advance_tray(s: State, metres: float) -> float:
 			s.u = clampf(target.x, rect.position.x, rect.end.x)
 			s.v = clampf(target.y, rect.position.y, rect.end.y)
 			return moved + start.distance_to(Vector2(s.u, s.v))
+		# The span of an open side a column holds: she stops at the seam.
+		var along: float = s.v + dir.y * t if side == "east" or side == "west" else s.u + dir.x * t
+		if blocked_at(patch, side, along):
+			s.u += dir.x * t
+			s.v += dir.y * t
+			return moved + t
 		s.u += dir.x * t
 		s.v += dir.y * t
 		moved += t
@@ -725,6 +805,36 @@ func advance_tray(s: State, metres: float) -> float:
 		s.u = clampf(s.u, next_rect.position.x, next_rect.end.x)
 		s.v = clampf(s.v, next_rect.position.y, next_rect.end.y)
 	return moved
+
+## When a straight move from `start` along `dir` (unit) enters one of the
+## tray's columns grown by RADIUS; INF when it enters none. Inside one (a
+## corner clear_point()'s discs leave), only a move away from its middle
+## goes: any other stops at once.
+func post_hit(patch: Dictionary, start: Vector2, dir: Vector2) -> float:
+	var best := INF
+	for item in patch.get("posts", []):
+		var r: Rect2 = item
+		if r.grow(-0.001).has_point(start):
+			if dir.dot(start - r.get_center()) < 0.0: best = 0.0
+			continue
+		var t_in := -INF
+		var t_out := INF
+		for axis in 2:
+			var p: float = start[axis]
+			var d: float = dir[axis]
+			var lo: float = r.position[axis]
+			var hi: float = r.end[axis]
+			if absf(d) < 1e-12:
+				if p < lo or p > hi:
+					t_in = INF
+					break
+				continue
+			var t0 := (lo - p) / d
+			var t1 := (hi - p) / d
+			t_in = maxf(t_in, minf(t0, t1))
+			t_out = minf(t_out, maxf(t0, t1))
+		if t_in <= t_out and t_in > -0.001: best = minf(best, maxf(t_in, 0.0))
+	return best
 
 ## A tray State, clamped into the rect; null without a tray.
 func tray_state(room: int, x: float, z: float, hang := DEFAULT_HANG) -> State:
@@ -937,6 +1047,10 @@ func cue_pose(eye: Vector3, view: Vector3, distance: float) -> State:
 	var s := tray_state(room, behind.x, behind.z, HANG_MIN)
 	var toward := Vector3(eye.x - s.u, 0, eye.z - s.v)
 	if toward.length() < CUE_NEAR: return null
+	# Not where a column stands between her and the eye, nor against one
+	# (spec_rediseno 9).
+	var planta := FLOOR.planta_of(eye.y)
+	if column_near(Vector2(s.u, s.v), Vector2(eye.x, eye.z), planta, 0.05) or column_near(Vector2(s.u, s.v), Vector2(s.u, s.v), planta, RADIUS): return null
 	set_heading(s, toward)
 	var face_ahead := FACE_OFFSET.z
 	var plan := maxf(toward.length() - face_ahead, 0.0)

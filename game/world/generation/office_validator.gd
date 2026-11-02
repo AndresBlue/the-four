@@ -37,6 +37,8 @@ func office(data: Dictionary) -> Array[String]:
 	corners_ok(data, errors)
 	glazed_ok(data, errors)
 	furniture_ok(data, errors)
+	columns_ok(data, errors)
+	rings_ok(data, errors)
 	return errors
 
 ## LAYOUT.fixtures() of every room at once, by room id: one pass over the
@@ -850,6 +852,87 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 				if j != i and int(items[j].extra.group) != int(it.extra.group) and not LAYOUT.apart(r, LAYOUT.footprint(items[j]), LAYOUT.ITEM_GAP): ok = false
 		if not ok: errors.append("furniture_%d" % id)
 
+## 16. The naves and their columns (spec_rediseno 3.3, 3.4): a nave's axis
+## only on planta 1's salons of open offices or cubicles; columns only while
+## OFFICE.columns_on(), in a nave, on an open side and in the cell across it
+## too, clear of the paths, the door sweeps, the troffers, the furniture, the
+## corner props and every grille's way down to its room's middle.
+func columns_ok(data: Dictionary, errors: Array[String]) -> void:
+	var rooms: Array = data.rooms
+	var exits: Array = data.get("ducts", {}).get("exits", [])
+	for room in rooms:
+		var id := int(room.id)
+		var axis := String(room.get("nave_axis", ""))
+		if axis != "" and (not (axis in ["x", "z"]) or int(room.wing) != 0 or int(room.hall) < 0 or not (int(room.type) in [OFFICE.OPEN_OFFICE, OFFICE.CUBICLES])):
+			errors.append("nave_%d" % id)
+			continue
+		var strips: Array[Rect2] = OFFICE.aisle_strips(room)
+		if strips.any(func(s: Rect2): return room.get("props", []).any(func(p): return prop_rect(room, p).intersects(s.grow(-SLACK))) or room.get("furniture", []).any(func(it): return LAYOUT.footprint(it).intersects(s.grow(-SLACK)))):
+			errors.append("nave_aisle_%d" % id)
+		var columns: Array = room.get("columns", [])
+		if columns.is_empty(): continue
+		if not OFFICE.columns_on() or axis == "":
+			errors.append("column_%d" % id)
+			continue
+		var view := {"rooms": rooms, "adjacency": data.adjacency, "mail": raw.get(id, [])}
+		var zones := LAYOUT.clear_zones(view, room, false)
+		var rects: Array = OFFICE.column_rects(room)
+		var middle := Vector2(float(room.px), float(room.pz))
+		var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
+		var ok := true
+		for k in columns.size():
+			var c: Dictionary = columns[k]
+			var world: Rect2 = rects[k]
+			var local := Rect2(world.position - middle, world.size)
+			var way := Vector2i.ZERO
+			if near(absf(float(c.x)), half.x, 0.002): way = Vector2i(int(signf(float(c.x))), 0)
+			elif near(absf(float(c.z)), half.y, 0.002): way = Vector2i(0, int(signf(float(c.z))))
+			var other: int = FLOOR.beside(room, way) if way != Vector2i.ZERO else -1
+			if other < 0 or not room.get("open_sides", []).has(LAYOUT.wall_of(way)) or not OFFICE.column_rects(rooms[other]).any(func(r): return r.get_center().distance_to(world.get_center()) < 0.002): ok = false
+			elif LAYOUT.blocked(local.grow(OFFICE.COLUMN_PAD - SLACK), zones): ok = false
+			elif FLOOR.doorways(room).any(func(w): return LAYOUT.wall_rect(room, String(w.wall), float(w.along), FLOOR.PORTAL / 2 + LAYOUT.DOOR_SIDE, LAYOUT.DOOR_BAND).intersects(local.grow(OFFICE.COLUMN_CLEAR - SLACK))): ok = false
+			elif OFFICE.troffers(room).any(func(t): return LAYOUT.point_rect_distance(t.centre, world) < OFFICE.COLUMN_LAMP - SLACK): ok = false
+			elif room.get("furniture", []).any(func(it): return LAYOUT.footprint(it).intersects(local.grow(OFFICE.COLUMN_CLEAR - SLACK))): ok = false
+			elif room.get("props", []).any(func(p): return prop_rect(room, p).intersects(local.grow(OFFICE.COLUMN_CLEAR - SLACK))): ok = false
+			elif exits.any(func(e): return int(e.room) == id and String(e.kind) == "ceiling" and LAYOUT.segment_rect_distance(Vector2(float(e.point[0]), float(e.point[2])), middle, world) < OFFICE.COLUMN_PAD - SLACK): ok = false
+			if not ok: break
+		if not ok: errors.append("column_%d" % id)
+
+## 17. Rings to walk round on each planta with those inside a salon left out
+## (spec_rediseno 3.3): a nave's squares of cells have no wall between them to
+## go round, and map_validator.plantas() counts them.
+func rings_ok(data: Dictionary, errors: Array[String]) -> void:
+	var rooms: Array = data.rooms
+	var cells := {}
+	var seams := {}
+	for room in rooms:
+		if int(room.hall) >= 0 and not FLOOR.is_void(room): cells[int(room.hall)] = int(cells.get(int(room.hall), 0)) + 1
+	for pair in data.get("merged", []):
+		var hall := int(rooms[int(pair[0])].hall)
+		if hall >= 0 and hall == int(rooms[int(pair[1])].hall): seams[hall] = int(seams.get(hall, 0)) + 1
+	var areas: Array = data.get("areas", [])
+	for planta in int(data.get("wings", FLOOR.PLANTAS)):
+		var base := int(data.plantas[planta].base)
+		var per := int(data.plantas[planta].width) * int(data.plantas[planta].height)
+		var area := float(areas[planta]) if planta < areas.size() else float(data.get("area", 1.0))
+		var members := 0
+		var doors := 0
+		for local in per:
+			if FLOOR.is_void(rooms[base + local]): continue
+			members += 1
+			doors += data.adjacency[base + local].size()
+		var inside := 0
+		for hall in cells:
+			if int(hall) >= base and int(hall) < base + per: inside += maxi(0, int(seams.get(hall, 0)) - int(cells[hall]) + 1)
+		if doors / 2 - members + 1 - inside < OFFICE.rings(area): errors.append("rings_%d" % planta)
+
+## A corner prop's rect in its cell, from its socket and turn
+## (office_generator.furnish_sockets()).
+static func prop_rect(room: Dictionary, prop: Dictionary) -> Rect2:
+	var s: Array = room.sockets[int(prop.slot)]
+	var size := Vector2(2.3, 1.4) if int(prop.rotation) % 2 == 0 else Vector2(1.4, 2.3)
+	return Rect2(Vector2(float(s[0]), float(s[1])) - size / 2, size)
+
 # --- In the built floor (spec 3.2; called from build_floor, switched on in 1d) -
 
 ## Whether the floor in the physics check is the offices' (validate_physics()
@@ -945,6 +1028,9 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 			for c in crawl:
 				var cut: AABB = c
 				plan = LAYOUT.rect_minus(plan, Rect2(cut.position.x, cut.position.z, cut.size.x, cut.size.z).grow(SLEEVE))
+		# A column stands up to the ceiling (spec_rediseno 3.4): no fitting.
+		for post in OFFICE.column_rects(room):
+			plan = LAYOUT.rect_minus(plan, post.grow(SLEEVE))
 		for item in plan:
 			var r: Rect2 = item
 			if r.size.x <= 0.01 or r.size.y <= 0.01: continue

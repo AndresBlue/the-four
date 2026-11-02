@@ -12,6 +12,7 @@ const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
+const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 
 ## What plans are timed at on surfaces (the clip's 1.0 m/s x 1.35).
 const CRAWL_SPEED := 1.35
@@ -48,6 +49,12 @@ const TILE_REUSE := 2.5
 ## along it: on a corner of one, the way on ran out of it by its wall and she
 ## stood there (seed 7, 228 to 220, corridors meeting in an L).
 const CROSS_IN := 0.1
+## Either side of a seam with a column, her waypoints this far from it
+## (spec_rediseno 9): half a column, SHELL.RADIUS and a little.
+const APPROACH := 0.8
+## Round a column on her way: her waypoints this far out from the column
+## grown by SHELL.RADIUS, at its corners (round_posts()).
+const DETOUR := 0.05
 
 enum Edge { OPEN, DOOR, IN, OUT, DUCT }
 
@@ -546,7 +553,7 @@ func door_v(band: int) -> float:
 	return -signf(side) * DOOR_SIDE if absf(side) > 1e-6 else 0.0
 
 ## Tray legs from `from` to `to` through the rooms of `chain` (crossing the
-## open sides where the straight line meets them).
+## open sides where the straight line meets them, out of a column's span and round the columns).
 func tray_legs(legs: Array, from: Vector2, to: Vector2, chain: Array, hang: float) -> void:
 	var at := from
 	for i in range(1, chain.size()):
@@ -566,8 +573,28 @@ func tray_legs(legs: Array, from: Vector2, to: Vector2, chain: Array, hang: floa
 		var rb: Rect2 = shell.patches[int(shell.tray_of[int(chain[i])])].rect
 		if bool(edge[3]): cross.x = inside(cross.x, maxf(ra.position.x, rb.position.x), minf(ra.end.x, rb.end.x))
 		else: cross.y = inside(cross.y, maxf(ra.position.y, rb.position.y), minf(ra.end.y, rb.end.y))
+		# A column on this open side (spec_rediseno 9): the crossing kept out
+		# of the span it holds, with a waypoint APPROACH either side of the
+		# seam, square to it, so that her body never grazes the column.
+		var spans: Array = shell.spans_toward(int(chain[i - 1]), int(chain[i]))
+		if not spans.is_empty():
+			var low: float = (maxf(ra.position.x, rb.position.x) if bool(edge[3]) else maxf(ra.position.y, rb.position.y)) + CROSS_IN
+			var high: float = (minf(ra.end.x, rb.end.x) if bool(edge[3]) else minf(ra.end.y, rb.end.y)) - CROSS_IN
+			if bool(edge[3]): cross.x = out_of_spans(cross.x, spans, low, high)
+			else: cross.y = out_of_spans(cross.y, spans, low, high)
+			var normal: Vector2 = Vector2(0.0, signf(rb.get_center().y - ra.get_center().y)) if bool(edge[3]) else Vector2(signf(rb.get_center().x - ra.get_center().x), 0.0)
+			var before := clamp_into(cross - normal * APPROACH, ra)
+			round_posts(legs, at, before, int(chain[i - 1]))
+			legs.append({"kind": "tray", "to": before, "room": int(chain[i - 1]), "hang": NAN})
+			legs.append({"kind": "tray", "to": cross, "room": int(chain[i]), "hang": NAN})
+			var after := clamp_into(cross + normal * APPROACH, rb)
+			legs.append({"kind": "tray", "to": after, "room": int(chain[i]), "hang": NAN})
+			at = after
+			continue
+		round_posts(legs, at, cross, int(chain[i - 1]))
 		legs.append({"kind": "tray", "to": cross, "room": int(chain[i]), "hang": NAN})
 		at = cross
+	round_posts(legs, at, to, int(chain[chain.size() - 1]))
 	legs.append({"kind": "tray", "to": to, "room": int(chain[chain.size() - 1]), "hang": hang})
 
 ## `value` kept CROSS_IN inside low..high (their middle when that is shorter
@@ -575,6 +602,72 @@ func tray_legs(legs: Array, from: Vector2, to: Vector2, chain: Array, hang: floa
 static func inside(value: float, low: float, high: float) -> float:
 	if high - low <= 2.0 * CROSS_IN: return (low + high) * 0.5
 	return clampf(value, low + CROSS_IN, high - CROSS_IN)
+
+## `value` moved to the nearest end of a span it falls in (a millimetre past
+## it) that is within low..high and in no other span; as it was when it is
+## in none, or when no end will do.
+static func out_of_spans(value: float, spans: Array, low: float, high: float) -> float:
+	if not spans.any(func(s): return value > float(s.x) and value < float(s.y)): return value
+	var best := value
+	var best_d := INF
+	for item in spans:
+		var span: Vector2 = item
+		for end: float in [span.x - 0.001, span.y + 0.001]:
+			if end < low or end > high: continue
+			if spans.any(func(s): return end > float(s.x) and end < float(s.y)): continue
+			if absf(end - value) < best_d:
+				best_d = absf(end - value)
+				best = end
+	return best
+
+## A point kept inside a rect.
+static func clamp_into(p: Vector2, r: Rect2) -> Vector2:
+	return Vector2(clampf(p.x, r.position.x, r.end.x), clampf(p.y, r.position.y, r.end.y))
+
+## The way on `room`'s tray from `from` to `to` round its columns
+## (spec_rediseno 9): when the straight line enters a column grown by
+## SHELL.RADIUS, a waypoint by a corner of it grown DETOUR more (two when
+## one will not do), the shortest that keeps clear, kept inside the tray,
+## appended to `legs` before the leg to `to`. A column `from` or `to` is
+## inside does not count.
+func round_posts(legs: Array, from: Vector2, to: Vector2, room: int) -> void:
+	if not shell.tray_of.has(room): return
+	var patch: Dictionary = shell.patches[int(shell.tray_of[room])]
+	var rect: Rect2 = patch.rect
+	var posts: Array = patch.get("posts", []).filter(func(r): return not (r as Rect2).grow(-0.001).has_point(from) and not (r as Rect2).grow(-0.001).has_point(to))
+	if posts.is_empty() or path_clear([from, to], posts): return
+	var corners: Array = []
+	for item in posts:
+		var r: Rect2 = (item as Rect2).grow(DETOUR)
+		for c: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]: corners.append(clamp_into(c, rect))
+	var best: Array = []
+	var best_d := INF
+	for a: Vector2 in corners:
+		var way: Array = [from, a, to]
+		if path_clear(way, posts) and path_length(way) < best_d:
+			best_d = path_length(way)
+			best = [a]
+	if best.is_empty():
+		for a: Vector2 in corners:
+			for b: Vector2 in corners:
+				var way: Array = [from, a, b, to]
+				if a != b and path_clear(way, posts) and path_length(way) < best_d:
+					best_d = path_length(way)
+					best = [a, b]
+	for p: Vector2 in best: legs.append({"kind": "tray", "to": p, "room": room, "hang": NAN})
+
+## Whether no leg of the polyline enters a column grown by SHELL.RADIUS.
+static func path_clear(points: Array, posts: Array) -> bool:
+	for i in range(1, points.size()):
+		for item in posts:
+			if LAYOUT.segment_rect_distance(points[i - 1], points[i], (item as Rect2).grow(-0.0005)) <= 0.0: return false
+	return true
+
+## A polyline's length.
+static func path_length(points: Array) -> float:
+	var total := 0.0
+	for i in range(1, points.size()): total += (points[i - 1] as Vector2).distance_to(points[i])
+	return total
 
 ## The duct points of a run of duct nodes (6.4 rule 5): main and cross
 ## segments on the duct's floor, and where one meets the network a vertical

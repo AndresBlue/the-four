@@ -5,7 +5,9 @@ extends SceneTree
 ## front, from behind and from a side, and in a wardrobe; and at every frame
 ## of each, every joint of the body looked for on the wrong side of something.
 ##
-##   godot --headless --fixed-fps 60 --script res://tools/dev/body_clip_probe.gd -- --test-profile [--character=2] [--strict] [--only=corner] [--trace]
+##   godot --headless --fixed-fps 60 --script res://tools/dev/body_clip_probe.gd -- --test-profile [--character=2] [--strict] [--only=corner] [--trace] [--columns] [--seed=81]
+## --floor=2 --creature=locust stages the captures beside a column of a nave
+## (spec_rediseno 9); --columns draws the columns while COLUMNS is off.
 ##
 ## A joint is through something when the ray to it from the joint it hangs
 ## from (the hips, from where the creature stands) is stopped short of it, by
@@ -13,6 +15,7 @@ extends SceneTree
 ## something that is nearer its middle than it is thick. Prints the deepest of
 ## each scene, joint by joint, and with --strict fails over LIMIT.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const SCORE := preload("res://game/app/capture_score.gd")
 ## What a body may not be in: walls and furniture, and doors shut.
 const SOLID := 1 | 8
@@ -46,6 +49,19 @@ func staging_room() -> Dictionary:
 			best_area = span.x * span.y
 			best = room
 	return best
+
+## The first column of planta 0 not in a protected place: {at, its foot a
+## little over the floor; away, square to its seam, into the cell}; {} with none.
+func column_spot() -> Dictionary:
+	for room in level.manifest.rooms:
+		if int(room.get("wing", 0)) != 0: continue
+		for c in room.get("columns", []):
+			var at := FLOOR.position_of(room) + Vector3(float(c.x), 0.04, float(c.z))
+			if level.point_protected(at): continue
+			var on_x: bool = absf(absf(float(c.x)) - float(room.span_x) * 0.5) < 0.01
+			var away: Vector3 = Vector3(-signf(float(c.x)), 0, 0) if on_x else Vector3(0, 0, -signf(float(c.z)))
+			return {"at": at, "away": away}
+	return {}
 
 func put(at: Vector3, looking: Vector3, creature_at: Vector3) -> void:
 	var player = level.player
@@ -188,6 +204,7 @@ func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
 	level.ui.finish_intro()
+	if options.has("columns"): OFFICE.columns_test = true
 	await level.start_floor(int(options.get("seed", 81)), false, [1], "apacible")
 	level.ui.hide_transit()
 	level.lifts.brief_wait = 0.0
@@ -223,6 +240,17 @@ func run() -> void:
 			var corner: Vector3 = centre - along * (half - float(gap)) + across * (half_across - float(gap))
 			var out := (along - across).normalized()
 			await stage("corner %.1f, %s" % [gap, entry], corner, out if entry != "back" else -out, corner + out * 1.5, entry)
+	# Beside a column of a nave (spec_rediseno 9), the first the floor has:
+	# their back to it, the creature a step and a half out from it.
+	var column_stages := 0
+	var beside := column_spot()
+	if not beside.is_empty():
+		var away: Vector3 = beside.away
+		var by_column: Vector3 = beside.at + away * 0.7
+		for entry in ["front", "back", "side"]:
+			await stage("column, %s" % entry, by_column, away if entry != "back" else -away, by_column + away * 1.5, entry)
+			column_stages += 1
+	print("COLUMN_STAGES %d" % column_stages)
 	# In doorways: under the lintel, the creature a step and a half into each room.
 	var tried := 0
 	for door in level.hotel.doors_near(centre, 40.0):

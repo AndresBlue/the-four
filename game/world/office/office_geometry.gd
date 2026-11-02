@@ -91,6 +91,12 @@ const TILE_FACE := 0.004
 const TEE := Vector3(0.024, 0.004, 0.032)
 const TROFFER_BODY := 0.11
 const LENS_RECESS := 0.012
+## A column of a nave (spec_rediseno 2, 3.4): its cream plaster, and its dark
+## rubber base and cap, COLUMN_BASE and COLUMN_CAP high, COLUMN_PROUD proud.
+const COLUMN_PLASTER := Color("cbc1a8")
+const COLUMN_BASE := 0.1
+const COLUMN_CAP := 0.08
+const COLUMN_PROUD := 0.012
 const LAMP_ENERGY := 3.6
 const LAMP_DROP := 0.35
 const LAMP_ATTENUATION := 0.9      # flatter than the hotel's 1.25: offices are evenly lit
@@ -184,7 +190,8 @@ func _notification(what: int) -> void:
 
 ## A false ceiling of 0.6 m tiles on the world's lattice (5.2): its collider
 ## over the tiles, runs of tiles round the troffers, grilles and gaps, the
-## T-grid, the troffers, the grilles, and the dark of the plenum over a gap.
+## T-grid, the troffers, the grilles, the dark of the plenum over a gap; the
+## runs cut round the room's columns (tile_run()).
 ## A room with no false ceiling shows the bare concrete slab (spec_rediseno 2).
 func ceiling(node: Node3D, room: Dictionary) -> void:
 	if not OFFICE.false_ceiling(room):
@@ -206,6 +213,7 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 	var exits: Array = manifest.get("ducts", {}).get("exits", []).filter(func(e): return int(e.room) == int(room.id) and String(e.kind) in ["ceiling", "gap"])
 	for e in exits: holes[OFFICE.tile_of(Vector3(float(e.point[0]), 0, float(e.point[2])))] = true
 	var face := h + TILE_FACE + TILE_THICK * 0.5
+	var posts: Array[Rect2] = OFFICE.column_rects(room)
 	for j in range(floori(rect.position.y / tile), ceili(rect.end.y / tile)):
 		var z0 := maxf(j * tile, rect.position.y)
 		var z1 := minf((j + 1) * tile, rect.end.y)
@@ -216,7 +224,7 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			var cut := i == i_end or holes.has(Vector2i(i, j))
 			if cut and start < INF:
 				var stop := minf(i * tile, rect.end.x)
-				box(node, Vector3((start + stop) * 0.5, face, (z0 + z1) * 0.5) - origin, Vector3(stop - start, TILE_THICK, z1 - z0), "ceiling_service")
+				tile_run(node, start, stop, z0, z1, face, origin, posts)
 				start = INF
 			elif not cut and start == INF: start = maxf(i * tile, rect.position.x)
 	# The T-grid: a line on every lattice line inside the rect (on a shared
@@ -386,6 +394,28 @@ func ceiling_halo(node: Node3D, room: Dictionary, lamps: Array, rect: Rect2) -> 
 	node.add_child(halo)
 	halos[int(room.id)] = {"material": glow, "base": 0.0, "energy": 0.0}
 
+## A run of tiles from start to stop (world x) on the row z0 to z1 (world z),
+## cut round the columns standing in it (spec_rediseno 3.4): the pieces
+## either side keep the row's whole depth, where lift_out() finds a tile;
+## over a column's width only what the column leaves of the row. With no
+## column in it, the one box it always was.
+func tile_run(node: Node3D, start: float, stop: float, z0: float, z1: float, face: float, origin: Vector3, posts: Array[Rect2]) -> void:
+	var cuts: Array = posts.filter(func(r: Rect2): return r.end.x > start and r.position.x < stop and r.end.y > z0 and r.position.y < z1)
+	if cuts.is_empty():
+		box(node, Vector3((start + stop) * 0.5, face, (z0 + z1) * 0.5) - origin, Vector3(stop - start, TILE_THICK, z1 - z0), "ceiling_service")
+		return
+	cuts.sort_custom(func(a: Rect2, b: Rect2): return a.position.x < b.position.x)
+	var x := start
+	for item in cuts:
+		var cut: Rect2 = item
+		var x0 := maxf(cut.position.x, start)
+		var x1 := minf(cut.end.x, stop)
+		if x0 - x > 0.003: box(node, Vector3((x + x0) * 0.5, face, (z0 + z1) * 0.5) - origin, Vector3(x0 - x, TILE_THICK, z1 - z0), "ceiling_service")
+		if cut.position.y - z0 > 0.003: box(node, Vector3((x0 + x1) * 0.5, face, (z0 + cut.position.y) * 0.5) - origin, Vector3(x1 - x0, TILE_THICK, cut.position.y - z0), "ceiling_service")
+		if z1 - cut.end.y > 0.003: box(node, Vector3((x0 + x1) * 0.5, face, (cut.end.y + z1) * 0.5) - origin, Vector3(x1 - x0, TILE_THICK, z1 - cut.end.y), "ceiling_service")
+		x = maxf(x, x1)
+	if stop - x > 0.003: box(node, Vector3((x + stop) * 0.5, face, (z0 + z1) * 0.5) - origin, Vector3(stop - x, TILE_THICK, z1 - z0), "ceiling_service")
+
 ## The tiles she goes through (spec_f3_aggression): Vector3i(room, i, j) ->
 ## its hinge, a node of its own from the first time she moves it. Coming out
 ## she pushes it down to TILE_DOWN and leaves it hanging there, half open;
@@ -528,7 +558,51 @@ func build_room(node: Node3D, room: Dictionary) -> void:
 				panel_side = side
 				break
 	super(node, room)
+	columns(node, room)
 	building_room = {}
+
+## The room's columns (spec_rediseno 2, 3.4), each built by the cell it is on
+## the east or south side of: a COLUMN square of cream plaster from the floor
+## into the false ceiling, its dark base and its dark cap under the tiles, no
+## piece casting a shadow (a light per cell would draw stars round it); and
+## its collider from the floor to the ceiling, on the static layer.
+func columns(node: Node3D, room: Dictionary) -> void:
+	var h := float(room.height)
+	var half := FLOOR.size_of(room) * 0.5
+	var side: float = OFFICE.COLUMN
+	var wide: float = side + COLUMN_PROUD * 2.0
+	var list: Array = room.get("columns", [])
+	for k in list.size():
+		var x := float(list[k].x)
+		var z := float(list[k].z)
+		if absf(x - half.x) > 0.01 and absf(z - half.y) > 0.01: continue
+		box(node, Vector3(x, h * 0.5, z), Vector3(side, h, side), "", true)
+		var top := h + TILE_FACE + TILE_THICK
+		column_piece(node, "Column_%d_body" % k, Vector3(x, top * 0.5, z), Vector3(side, top, side), column_paint())
+		column_piece(node, "Column_%d_base" % k, Vector3(x, COLUMN_BASE * 0.5, z), Vector3(wide, COLUMN_BASE, wide), materials["skirting"])
+		column_piece(node, "Column_%d_cap" % k, Vector3(x, h - COLUMN_CAP * 0.5, z), Vector3(wide, COLUMN_CAP, wide), materials["skirting"])
+
+## One piece of a column, a box of its own with no shadow (columns()).
+func column_piece(node: Node3D, title: String, at: Vector3, size: Vector3, paint: Material) -> void:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	var piece := MeshInstance3D.new()
+	piece.name = title
+	piece.mesh = mesh
+	piece.material_override = paint
+	piece.position = at
+	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.add_child(piece)
+
+## The columns' plaster, made once: outside `materials`, so it has no batch
+## nor bounce stand-in of its own.
+static var column_plaster: StandardMaterial3D = null
+static func column_paint() -> StandardMaterial3D:
+	if column_plaster == null:
+		column_plaster = StandardMaterial3D.new()
+		column_plaster.albedo_color = COLUMN_PLASTER
+		column_plaster.roughness = 0.9
+	return column_plaster
 
 ## The main duct of planta 3 (spec_f1_systems 4.5), its own holder, and the
 ## outer boxes the walls it crosses leave open.

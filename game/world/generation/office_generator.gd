@@ -28,6 +28,7 @@ const EXPRESS_PER := 30       # straight trunks over the rooms, per planta
 const EXPRESS_CELLS := Vector2i(2, 12) # how many cells one spans
 const EXPRESS_MOST := 0.9     # a straight trunk cuts the walk to this or less
 const EXPRESS_STARTS := 80    # cells tried as a trunk's start, per planta
+const NAVE_LONG := 0.6       # a nave of 2 x 3 tried before one of 2 x 2 this often
 
 func _init() -> void: palette = OFFICE_PALETTE
 
@@ -83,6 +84,110 @@ func depth_wanted() -> Vector2: return palette.DEPTHS[laying]
 
 ## The least walk to the refuge, grown with the floor as the hotel's is.
 func least_walk() -> float: return float(palette.LEAST_WALKS[laying]) * sqrt(drawing)
+
+## Rings to walk round (map_generator.cycles()), less those inside a salon: a
+## nave's squares of cells have no wall between them to go round (spec_rediseno 3.3).
+func cycles(f: Dictionary, alive: Dictionary) -> int:
+	var base: int = f.base
+	var cells := {}
+	var seams := {}
+	for local in alive:
+		var hall := int(at(f, int(local)).hall)
+		if hall < 0: continue
+		cells[hall] = int(cells.get(hall, 0)) + 1
+		for other in f.adjacency[base + int(local)]:
+			var next := int(other) - base
+			if next > int(local) and alive.has(next) and int(at(f, next).hall) == hall and f.merged.has(pair_key(base + int(local), int(other))): seams[hall] = int(seams.get(hall, 0)) + 1
+	var inside := 0
+	for hall in cells: inside += maxi(0, int(seams.get(hall, 0)) - int(cells[hall]) + 1)
+	return super(f, alive) - inside
+
+## Planta 1's first salon is a nave (spec_rediseno 3.3), laid before the rest
+## take the budget; on the other plantas, and with what the nave leaves, the
+## hotel's salons.
+func make_halls(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomNumberGenerator, budget: int) -> void:
+	if laying != 0:
+		super(f, alive, arrival, rng, budget)
+		return
+	f["nave"] = {}
+	var spent := make_nave(f, alive, arrival, rng, budget)
+	super(f, alive, arrival, rng, budget - spent)
+
+## The shapes a nave may take, as cell offsets from its first cell, in the
+## order they are tried: the blocks two cells wide (2 x 3 either way and
+## 2 x 2, the longer first NAVE_LONG of the time), then lines of five to
+## three, then Ls of five and four. Each {cells, axis, wide}: the axis its
+## aisle runs along ("" for a 2 x 2 until it is laid, and for an L).
+func nave_shapes(rng: RandomNumberGenerator) -> Array:
+	var long_x := {"cells": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)], "axis": "x", "wide": true}
+	var long_z := {"cells": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(0, 2), Vector2i(1, 2)], "axis": "z", "wide": true}
+	var square := {"cells": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)], "axis": "", "wide": true}
+	var shapes: Array = [long_x, long_z, square] if rng.randf() < NAVE_LONG else [square, long_x, long_z]
+	for n in [5, 4, 3]:
+		for axis in ["x", "z"]:
+			var cells: Array = []
+			for k in n: cells.append(Vector2i(k, 0) if axis == "x" else Vector2i(0, k))
+			shapes.append({"cells": cells, "axis": axis, "wide": false})
+	for arms in [Vector2i(3, 3), Vector2i(3, 2), Vector2i(2, 3)]:
+		for turn in [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+			var cells: Array = [Vector2i.ZERO]
+			for k in range(1, arms.x): cells.append(Vector2i(k * turn.x, 0))
+			for k in range(1, arms.y): cells.append(Vector2i(0, k * turn.y))
+			shapes.append({"cells": cells, "axis": "", "wide": false})
+	return shapes
+
+## The nave: the first of nave_shapes() that fits on cells free for a salon
+## (shuffled, as make_halls() takes them), costs no more than the budget (a
+## salon of n cells is n - 1 rooms fewer), has no row or column longer than
+## a straight open run may be, and leaves a module big enough for the
+## boardroom where the planta has one. Its cells' hall is its first cell's,
+## every two of them side by side are merged, and f.nave says which they
+## are, its axis and whether it is two cells wide. What it spent.
+func make_nave(f: Dictionary, alive: Dictionary, arrival: int, rng: RandomNumberGenerator, budget: int) -> int:
+	var base: int = f.base
+	var shapes := nave_shapes(rng)
+	var cells: Array = alive.keys()
+	cells.sort()
+	shuffle(cells, rng)
+	var boards: Array = cells.filter(func(local): return free_for_hall(f, alive, int(local), arrival) and minf(float(at(f, int(local)).span_x), float(at(f, int(local)).span_z)) >= float(palette.BOARDROOM_SIDE))
+	for shape in shapes:
+		var offsets: Array = shape.cells
+		if offsets.size() - 1 > budget: continue
+		for local in cells:
+			var members: Array = []
+			for by: Vector2i in offsets:
+				var spot := offset(f, int(local), by)
+				if not free_for_hall(f, alive, spot, arrival): break
+				members.append(spot)
+			if members.size() < offsets.size() or not runs_fit(f, members): continue
+			if not boards.is_empty() and not boards.any(func(b): return not members.has(b)): continue
+			var hall: int = base + int(members[0])
+			for member in members: at(f, int(member)).hall = hall
+			for i in members.size():
+				for j in range(i + 1, members.size()):
+					for way: Vector2i in WAYS:
+						if step(f, int(members[i]), way) == int(members[j]): merge(f, base + int(members[i]), base + int(members[j]))
+			var axis := String(shape.axis)
+			if axis == "" and bool(shape.wide): axis = "x" if line_length(f, members, true) >= line_length(f, members, false) else "z"
+			f["nave"] = {"hall": hall, "members": members.map(func(m): return base + int(m)), "axis": axis, "wide": bool(shape.wide)}
+			return members.size() - 1
+	return 0
+
+## Whether no row or column of the cells is longer than a straight open run
+## may be (map_validator open_runs()).
+func runs_fit(f: Dictionary, members: Array) -> bool:
+	return line_length(f, members, true) <= OPEN_RUN and line_length(f, members, false) <= OPEN_RUN
+
+## The longest row (along x) or column (along z) of the cells, in metres.
+func line_length(f: Dictionary, members: Array, along_x: bool) -> float:
+	var lines := {}
+	for local in members:
+		var room: Dictionary = at(f, int(local))
+		var key: int = int(room.z) if along_x else int(room.x)
+		lines[key] = float(lines.get(key, 0.0)) + (float(room.span_x) if along_x else float(room.span_z))
+	var most := 0.0
+	for key in lines: most = maxf(most, float(lines[key]))
+	return most
 
 ## The planta's own piece, laid once its refuge is there: the post's window on
 ## the first, the electrical room on the second, the security post and the
@@ -405,6 +510,13 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		typed[int(room.id)] = true
 	for planta in WINGS: place_musts(f, planta, locked)
 	cap_numbers(f, locked)
+	# The nave (spec_rediseno 3.3): its axis on each of its cells while it is
+	# still whole and an open office or cubicles; "" on every other room.
+	for room in f.rooms: room["nave_axis"] = ""
+	var nave: Dictionary = f.get("nave", {})
+	if not nave.is_empty() and nave.members.all(func(id): return int(f.rooms[int(id)].hall) == int(nave.hall) and int(f.rooms[int(id)].type) in [palette.OPEN_OFFICE, palette.CUBICLES]):
+		for id in nave.members: f.rooms[int(id)].nave_axis = String(nave.axis)
+	else: f["nave"] = {}
 	for room in f.rooms:
 		room.props = []
 		room.cover_slots = 0
@@ -664,7 +776,7 @@ func furnish(f: Dictionary, gates: Array, doors: Dictionary, run_seed: int, atte
 		for h in room.get("hides", []):
 			var hw := LAYOUT.hide_wall(h)
 			register(job, int(room.id), String(hw.wall), float(hw.along), 0.65)
-	for step_call in [furnish_lobby, furnish_archives, furnish_mail, furnish_power, furnish_air, furnish_sockets, furnish_glass, furnish_furniture, furnish_ducts, furnish_main]:
+	for step_call in [furnish_lobby, furnish_archives, furnish_mail, furnish_power, furnish_air, furnish_sockets, furnish_glass, furnish_columns, furnish_furniture, furnish_ducts, furnish_main]:
 		var reason: String = step_call.call(job)
 		if not reason.is_empty(): return {"fail": reason}
 	var out: Dictionary = job.out
@@ -1276,6 +1388,105 @@ func glaze(job: Dictionary, room: Dictionary, wall: String) -> void:
 	room.glazed.append(wall)
 	job.f.rooms[FLOOR.beside(room, way)].glazed.append(LAYOUT.wall_of(-way))
 
+## Spec_rediseno 3.4, the columns of the nave: on each seam between its
+## modules along its aisle, one in each row, COLUMN_OFF from the aisle's line;
+## each kept only where column_fits() both cells it stands in, the corner
+## props within COLUMN_CLEAR of it giving way (an open corner has no wall to
+## hold them), and written into both. None while palette.columns_on() is
+## false or the nave is not a block two cells wide. Before the furniture (it
+## keeps clear of them) and the ducts (no grille's way down passes one:
+## exit_tiles()).
+func furnish_columns(job: Dictionary) -> String:
+	var f: Dictionary = job.f
+	for room in f.rooms: room["columns"] = []
+	var nave: Dictionary = f.get("nave", {})
+	if nave.is_empty(): return ""
+	# Its aisle runs free with the columns on or off: the corner props on it give way.
+	for id in nave.members:
+		var cell: Dictionary = f.rooms[int(id)]
+		cell.props = props_off_aisle(cell)
+	if not palette.columns_on() or not bool(nave.wide): return ""
+	var view := working(job)
+	for spot in nave_spots(f, nave):
+		var point: Vector2 = spot.point
+		var pair: Array = spot.rooms
+		var kept := {}
+		for id in pair: kept[int(id)] = props_clear_of(f.rooms[int(id)], point)
+		if not pair.all(func(id): return column_fits(view, with_props(f.rooms[int(id)], kept[int(id)]), point)): continue
+		for id in pair:
+			var room: Dictionary = f.rooms[int(id)]
+			room.props = kept[int(id)]
+			room.columns.append({"x": snappedf(point.x - float(room.px), 0.001), "z": snappedf(point.y - float(room.pz), 0.001)})
+	return ""
+
+## Where the nave's columns may stand, world x and z, each with the two cells
+## either side of its seam: [{point, rooms}], by the first cell's id.
+func nave_spots(f: Dictionary, nave: Dictionary) -> Array:
+	var along_x: bool = String(nave.axis) == "x"
+	var by_place := {}
+	for id in nave.members:
+		var room: Dictionary = f.rooms[int(id)]
+		by_place[Vector2i(int(room.x), int(room.z))] = int(id)
+	var out: Array = []
+	for place: Vector2i in by_place:
+		var next: Vector2i = place + (Vector2i(1, 0) if along_x else Vector2i(0, 1))
+		if not by_place.has(next): continue
+		# The other row of the nave: the aisle's line is the seam between the two.
+		var across: Vector2i = Vector2i(0, 1) if along_x else Vector2i(1, 0)
+		var toward := 1.0
+		if not by_place.has(place + across):
+			if not by_place.has(place - across): continue
+			toward = -1.0
+		var room: Dictionary = f.rooms[int(by_place[place])]
+		var centre := Vector2(float(room.px), float(room.pz))
+		var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
+		var point: Vector2
+		if along_x: point = Vector2(centre.x + half.x, centre.y + toward * (half.y - float(palette.COLUMN_OFF)))
+		else: point = Vector2(centre.x + toward * (half.x - float(palette.COLUMN_OFF)), centre.y + half.y)
+		out.append({"point": point, "rooms": [int(by_place[place]), int(by_place[next])]})
+	out.sort_custom(func(a, b): return int(a.rooms[0]) < int(b.rooms[0]))
+	return out
+
+## A room's corner props less those whose corner rect comes within
+## COLUMN_CLEAR of a column at `point` (world).
+func props_clear_of(room: Dictionary, point: Vector2) -> Array:
+	var side := float(palette.COLUMN)
+	var reach := Rect2(point - Vector2(float(room.px), float(room.pz)) - Vector2.ONE * side * 0.5, Vector2.ONE * side).grow(float(palette.COLUMN_CLEAR))
+	var sockets: Array = room.get("sockets", [])
+	return room.get("props", []).filter(func(prop): return int(prop.slot) >= sockets.size() or not corner_rect(sockets[int(prop.slot)], int(prop.rotation)).intersects(reach))
+
+## A nave cell's corner props less those whose corner rect stands on its half
+## of the central aisle.
+func props_off_aisle(room: Dictionary) -> Array:
+	var strips: Array[Rect2] = palette.aisle_strips(room)
+	var sockets: Array = room.get("sockets", [])
+	return room.get("props", []).filter(func(prop): return int(prop.slot) >= sockets.size() or not strips.any(func(s: Rect2): return corner_rect(sockets[int(prop.slot)], int(prop.rotation)).intersects(s)))
+
+## A corner prop's rect in its cell, from its socket and turn (furnish_sockets()).
+static func corner_rect(socket: Array, rotation: int) -> Rect2:
+	var size := Vector2(2.3, 1.4) if rotation % 2 == 0 else Vector2(1.4, 2.3)
+	return Rect2(Vector2(float(socket[0]), float(socket[1])) - size / 2, size)
+
+## A copy of a room with other corner props, for column_fits().
+static func with_props(room: Dictionary, props: Array) -> Dictionary:
+	var copy: Dictionary = room.duplicate()
+	copy["props"] = props
+	return copy
+
+## Whether a column at `point` (world) keeps clear in a cell it stands in:
+## COLUMN_PAD more than clear of its paths (LAYOUT.clear_zones()),
+## COLUMN_CLEAR from its door sweeps and COLUMN_LAMP from its troffers.
+func column_fits(view: Dictionary, room: Dictionary, point: Vector2) -> bool:
+	var side := float(palette.COLUMN)
+	var world := Rect2(point - Vector2.ONE * side * 0.5, Vector2.ONE * side)
+	var local := Rect2(world.position - Vector2(float(room.px), float(room.pz)), world.size)
+	if LAYOUT.blocked(local.grow(float(palette.COLUMN_PAD)), LAYOUT.clear_zones(view, room, false)): return false
+	for way in FLOOR.doorways(room):
+		if LAYOUT.wall_rect(room, String(way.wall), float(way.along), FLOOR.PORTAL / 2 + LAYOUT.DOOR_SIDE, LAYOUT.DOOR_BAND).intersects(local.grow(float(palette.COLUMN_CLEAR))): return false
+	for lamp in palette.troffers(room):
+		if LAYOUT.point_rect_distance(lamp.centre, world) < float(palette.COLUMN_LAMP): return false
+	return true
+
 ## Spec 2.5h, the free-standing furniture: desks on a lattice, cubicle pods
 ## kept whole, the boardroom's table, and the pieces that stand on a wall.
 func furnish_furniture(job: Dictionary) -> String:
@@ -1288,12 +1499,24 @@ func furnish_furniture(job: Dictionary) -> String:
 		var t := int(room.type)
 		if t != palette.OPEN_OFFICE and t != palette.CUBICLES and t != palette.BOARDROOM and t != palette.COPY_ROOM and t != palette.MAIL and t != palette.SECRETARY: continue
 		var zones := LAYOUT.clear_zones(view, room, t == palette.BOARDROOM)
+		if t == palette.OPEN_OFFICE or t == palette.CUBICLES: zones.append_array(nave_zones(room))
 		if t == palette.OPEN_OFFICE or t == palette.CUBICLES: lay_lattice(f, room, zones)
 		elif t == palette.BOARDROOM: lay_table(room, zones)
 		else:
 			var kind: String = "copier" if t == palette.COPY_ROOM else "pigeonholes" if t == palette.MAIL else "card_index"
 			lay_on_wall(job, room, zones, kind, 2 if t == palette.MAIL else 1)
 	return ""
+
+## What a nave keeps free of furniture in one of its cells (spec_rediseno 3.3,
+## 3.4): its half of the central aisle along the seam to the other row, and
+## COLUMN_CLEAR round each of its columns.
+func nave_zones(room: Dictionary) -> Array:
+	var zones: Array = []
+	for strip in palette.aisle_strips(room): zones.append({"rect": strip})
+	var reach := float(palette.COLUMN) * 0.5 + float(palette.COLUMN_CLEAR)
+	for c in room.get("columns", []):
+		zones.append({"rect": Rect2(Vector2(float(c.x), float(c.z)) - Vector2.ONE * reach, Vector2.ONE * reach * 2.0)})
+	return zones
 
 ## A furniture item as the manifest keeps it.
 func item(kind: String, at: Vector2, turn: int, group: int, length := 0.0) -> Dictionary:
@@ -1313,10 +1536,12 @@ func item_fits(room: Dictionary, zones: Array, piece: Dictionary) -> bool:
 	return true
 
 ## Open offices and cubicles: a lattice from the inner corner, desks turned
-## along the hall; a cubicle pod is kept whole or not at all.
+## along the hall (a nave's along its axis); a cubicle pod is kept whole or not at all.
 func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 	var along_x := float(room.span_x) >= float(room.span_z)
-	if int(room.hall) >= 0:
+	var axis := String(room.get("nave_axis", ""))
+	if axis != "": along_x = axis == "x"
+	elif int(room.hall) >= 0:
 		along_x = true
 		for other in f.rooms:
 			if int(other.hall) == int(room.hall) and int(other.z) != int(room.z): along_x = false
@@ -1703,9 +1928,13 @@ func exit_tiles(job: Dictionary, room: Dictionary) -> Array:
 	if job.tiles.has(int(room.id)): return job.tiles[int(room.id)]
 	var out: Array = []
 	var shelves: bool = int(room.type) == palette.ARCHIVE or int(room.type) == palette.MOBILE_ARCHIVE
+	var posts: Array = palette.column_rects(room)
+	var middle := Vector2(float(room.px), float(room.pz))
 	for tile in palette.free_tiles(room):
 		var c: Vector3 = palette.tile_centre(tile, 0.0)
 		if int(room.wing) == 2 and not main_clear(job, Vector2(c.x, c.z)): continue
+		# A grille's way down to the room's middle never by a column (spec_rediseno 3.4).
+		if posts.any(func(r): return LAYOUT.segment_rect_distance(Vector2(c.x, c.z), middle, r) < float(palette.COLUMN_PAD)): continue
 		if shelves:
 			var under := false
 			for unit in job.out.archives:

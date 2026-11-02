@@ -337,6 +337,8 @@ func leap(to: Vector3, seconds := LEAP_TIME) -> bool:
 	if not surface(): return false
 	var from := anchor()
 	if Vector2(to.x - from.x, to.z - from.z).length() > LEAP_REACH or to.y >= from.y: return false
+	# Never past a column (spec_rediseno 9): her body would go through it.
+	if shell.column_near(Vector2(from.x, from.z), Vector2(to.x, to.z), FLOOR.planta_of(from.y), SHELL.RADIUS): return false
 	var flat := Vector3(to.x - from.x, 0, to.z - from.z)
 	var forward := flat.normalized() if flat.length() > 1e-6 else Vector3.FORWARD
 	var upright := Basis(Vector3.UP.cross(forward).normalized(), Vector3.UP, forward)

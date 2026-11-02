@@ -52,6 +52,8 @@ func run() -> void:
 	fixture_cases()
 	determinism()
 	plenum()
+	naves()
+	nave_legs()
 	await route_cases()
 	duct_steps()
 	route_seeds()
@@ -619,6 +621,123 @@ func plenum() -> void:
 	var room: Dictionary = seeded.rooms[exposed]
 	var point := Vector3(float(room.px), float(room.get("py", 0.0)) + 3.7, float(room.pz))
 	check("El plénum: donde no hay falso techo, el sonido sale de donde está", seeded.plenum_mouth(point) == point)
+
+# --- Naves: her round the columns (spec_rediseno 9) ------------------------------------
+
+## The fixture's nave: each ceiling keeps its columns and the span each holds
+## on its open side; random moves never take her anchor within RADIUS of a
+## column, not even halfway through a move; in a corner the discs leave she
+## only moves out; a default stop keeps a column a metre off; no cue behind
+## a column or against one.
+func naves() -> void:
+	var m := FIX.nave_fixture()
+	var shell = SHELL.build(m)
+	var columns: Array = []
+	for room in m.rooms:
+		for r in OFFICE.column_rects(room): columns.append(r)
+	var east: Array = shell.patches[int(shell.tray_of[0])].blocked.get("east", [])
+	var south: Array = shell.patches[int(shell.tray_of[0])].blocked.get("south", [])
+	var held: bool = east.size() == 1 and (east[0] as Vector2).is_equal_approx(Vector2(4.85, 6.95)) and south.is_empty() and shell.columns_of.size() == 4 and shell.spans_toward(2, 3).size() == 1 and shell.spans_toward(0, 2).is_empty()
+	check("Naves: cada techo guarda sus columnas y el tramo que cada una cierra en su lado abierto", held, "%s %s" % [str(east), str(south)])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31
+	var inside: Array = []
+	var crossed := 0
+	var stopped := 0
+	for trial in 2000:
+		var room := rng.randi_range(0, 3)
+		var r: Dictionary = m.rooms[room]
+		var p: Vector2 = shell.clear_point(room, float(r.px) + rng.randf_range(-4.0, 4.0), float(r.pz) + rng.randf_range(-4.0, 4.0))
+		if columns.any(func(c): return (c as Rect2).grow(SHELL.RADIUS).has_point(p)): continue
+		var s: State = shell.tray_state(room, p.x, p.y)
+		for step in 6:
+			var from_patch: int = s.patch
+			var before: Vector3 = shell.anchor_of(s)
+			s.heading = rng.randf_range(-PI, PI)
+			var want := rng.randf_range(0.2, 6.0)
+			var moved: float = shell.advance(s, want)
+			if s.patch != from_patch: crossed += 1
+			if moved < want - 1e-6: stopped += 1
+			var a: Vector3 = shell.anchor_of(s)
+			if columns.any(func(c): return LAYOUT.segment_rect_distance(Vector2(before.x, before.z), Vector2(a.x, a.z), c) < SHELL.RADIUS - 0.01): inside.append([trial, step, snappedf(a.x, 0.01), snappedf(a.z, 0.01)])
+	figures["nave_moves"] = {"crossed": crossed, "stopped": stopped}
+	check("Naves: moviéndose al azar nunca pasa a menos de RADIUS de una columna, ni a mitad de un avance", inside.is_empty() and crossed > 0 and stopped > 0, "%s %d %d" % [str(inside.slice(0, 3)), crossed, stopped])
+	var corner: State = shell.tray_state(1, 8.72, 6.62)
+	corner.heading = atan2(5.9 - 6.62, 8.0 - 8.72)
+	var into: float = shell.advance(corner, 1.0)
+	var away: State = shell.tray_state(1, 8.72, 6.62)
+	away.heading = atan2(6.62 - 5.9, 8.72 - 8.0)
+	var out: float = shell.advance(away, 1.0)
+	check("Naves: en la esquina que dejan los discos solo se aleja de la columna", into < 1e-6 and out > 0.5, "%f %f" % [into, out])
+	var stop: Vector2 = shell.clear_point(0, 7.9, 5.9)
+	check("Naves: una parada por defecto queda a un metro de la columna", stop.distance_to(Vector2(8.0, 5.9)) >= SHELL.LAMP_CLEAR - 1e-6, str(stop))
+	var hidden: State = shell.cue_pose(Vector3(8.15, 1.5, 4.0), Vector3(0, 0, -1), 3.0)
+	var against: State = shell.cue_pose(Vector3(9.4, 1.5, 5.9), Vector3(1, 0, 0), 2.5)
+	var open: State = shell.cue_pose(Vector3(10.0, 1.5, 4.0), Vector3(0, 0, -1), 3.0)
+	check("Naves: el aviso no se da tapado por una columna ni pegado a una, y a un lado sí", hidden == null and against == null and open != null, "%s %s %s" % [str(hidden == null), str(against == null), str(open != null)])
+
+## Her legs in the fixture's nave (spec_rediseno 9): across its seam from
+## beside a column to beside it in the next cell, and from middle to middle,
+## the crossing out of the column's span with a waypoint either side of the
+## seam; and on 200 random ways in it, no leg within RADIUS of a column.
+func nave_legs() -> void:
+	var m := FIX.nave_fixture()
+	var routes = FIX.routes_on(m, FIX.stub_level(m), false)
+	var columns: Array = []
+	for room in m.rooms:
+		for r in OFFICE.column_rects(room): columns.append(r)
+	var cases := [[{"room": 0}, {"room": 1, "point": Vector3(10.0, 0.0, 6.5)}, Vector3(6.0, 0.0, 6.5)], [{"room": 0}, {"room": 1}, Vector3.INF], [{"room": 2}, {"room": 3, "point": Vector3(10.0, 0.0, 9.5)}, Vector3(6.0, 0.0, 9.5)]]
+	var bad: Array = []
+	for k in cases.size():
+		var from: Vector3 = cases[k][2]
+		var plan: Dictionary = routes.plan(cases[k][0], cases[k][1], null, from)
+		if not bool(plan.ok):
+			bad.append([k, "sin plan"])
+			continue
+		var at: Vector2 = routes.plan_point(int(cases[k][0].room)) if from == Vector3.INF else Vector2(from.x, from.z)
+		var seam := 0
+		for leg in plan.legs:
+			if String(leg.kind) != "tray": continue
+			var to: Vector2 = leg.to
+			for c in columns:
+				if LAYOUT.segment_rect_distance(at, to, c) < SHELL.RADIUS - 1e-3: bad.append([k, "cerca", at, to])
+			if absf(to.x - 8.0) < 1e-6:
+				seam += 1
+				for c in columns:
+					if absf(to.y - (c as Rect2).get_center().y) < OFFICE.COLUMN * 0.5 + SHELL.COLUMN_MARGIN + SHELL.RADIUS: bad.append([k, "en el tramo", to])
+			at = to
+		if seam != 1: bad.append([k, "cruces %d" % seam])
+		if plan.legs.filter(func(leg): return String(leg.kind) == "tray").size() != 4: bad.append([k, "tramos", kinds_of(plan.legs)])
+	check("Naves: sus piernas cruzan la junta fuera del tramo de la columna, con un punto a cada lado, y nunca a menos de RADIUS de una columna", bad.is_empty(), str(bad.slice(0, 3)))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 57
+	var grazing: Array = []
+	var ways := 0
+	var tries := 0
+	while ways < 200 and tries < 4000:
+		tries += 1
+		var a := rng.randi_range(0, 3)
+		var b := rng.randi_range(0, 3)
+		var ra: Dictionary = m.rooms[a]
+		var rb: Dictionary = m.rooms[b]
+		var p := Vector3(float(ra.px) + rng.randf_range(-3.6, 3.6), 0.0, float(ra.pz) + rng.randf_range(-3.6, 3.6))
+		var q := Vector3(float(rb.px) + rng.randf_range(-3.6, 3.6), 0.0, float(rb.pz) + rng.randf_range(-3.6, 3.6))
+		if columns.any(func(c): return (c as Rect2).grow(SHELL.RADIUS + 0.01).has_point(Vector2(p.x, p.z)) or (c as Rect2).grow(SHELL.RADIUS + 0.01).has_point(Vector2(q.x, q.z))): continue
+		ways += 1
+		var plan: Dictionary = routes.plan({"room": a}, {"room": b, "point": q}, null, p)
+		if not bool(plan.ok):
+			grazing.append([a, b, "sin plan"])
+			continue
+		var s = routes.shell.tray_state(a, p.x, p.z)
+		var at := Vector2(s.u, s.v)
+		for leg in plan.legs:
+			if String(leg.kind) != "tray": continue
+			var to: Vector2 = leg.to
+			for c in columns:
+				if LAYOUT.segment_rect_distance(at, to, c) < SHELL.RADIUS - 1e-3: grazing.append([a, b, snappedf(at.x, 0.01), snappedf(at.y, 0.01), snappedf(to.x, 0.01), snappedf(to.y, 0.01)])
+			at = to
+	figures["nave_ways"] = {"ways": ways, "grazing": grazing.size()}
+	check("Naves: en 200 caminos al azar por la nave, ningún tramo a menos de RADIUS de una columna", ways == 200 and grazing.is_empty(), "%d %s" % [ways, str(grazing.slice(0, 3))])
 
 func text() -> void:
 	var bad: Array = []

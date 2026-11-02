@@ -76,6 +76,22 @@ func plenum() -> void:
 	var b := int(hers.plenum_node.get(1, -1))
 	check("Por el pleno se pasa a la sala de al lado", a >= 0 and b >= 0 and hers.edge_kind(a, b) == "plenum")
 	check("Una placa cerrada no deja pasar el sonido", b >= 0 and hers.mouths_in_room(1).is_empty() and not hers.mouths_in_room(0).is_empty())
+	# Spec_rediseno 9: none of her tiles within COLUMN_TILE of a column of a
+	# nave, and the columns take some from the cells they stand in.
+	var nave: Dictionary = FIX.nave_fixture()
+	var by_nave = DUCTS.of(nave)
+	var near_column: Array = []
+	var fewer := 0
+	for room in nave.rooms:
+		var bare: Dictionary = room.duplicate(true)
+		bare.columns = []
+		if OFFICE.free_tiles(room).size() < OFFICE.free_tiles(bare).size(): fewer += 1
+		for tile in by_nave.room_tiles.get(int(room.id), []):
+			var c: Vector3 = OFFICE.tile_centre(tile, 0.0)
+			for r in OFFICE.column_rects(room):
+				var nearest := Vector2(clampf(c.x, r.position.x, r.end.x), clampf(c.z, r.position.y, r.end.y))
+				if Vector2(c.x, c.z).distance_to(nearest) < OFFICE.COLUMN_TILE - 1e-6: near_column.append([int(room.id), tile])
+	check("Placas: ninguna de las suyas a menos de 0,6 m de una columna, y las columnas le quitan alguna", near_column.is_empty() and fewer > 0 and not by_nave.room_tiles.is_empty(), "%s %d" % [str(near_column.slice(0, 3)), fewer])
 
 func ways() -> void:
 	var m: Dictionary = FIX.fixture()

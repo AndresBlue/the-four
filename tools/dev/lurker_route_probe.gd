@@ -15,6 +15,9 @@ extends SceneTree
 ## 1 on any failure; --unseen=<difficulty> makes the trips at that
 ## difficulty's speeds of going unseen (spec_f3_aggression), without the
 ## special trips. evidence/lurker_route_probe.json keeps every failure.
+## --columns draws the floor with its naves' columns while COLUMNS is off;
+## every frame she must be clear of every column, and the first seed's trips
+## end with one round a column of its nave, in both variants (spec_rediseno 9).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
@@ -56,6 +59,7 @@ func run() -> void:
 		if argument == "--short": short = true
 		if argument == "--strict": strict = true
 		if argument.begins_with("--unseen="): unseen_id = argument.trim_prefix("--unseen=")
+		if argument == "--columns": OFFICE.columns_test = true
 	var started := Time.get_ticks_msec()
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -70,6 +74,8 @@ func run() -> void:
 		lurker = spawn("ai")
 		var result := await trips_of(trips)
 		print("SEED %d, %d trayectos, %d llegaron, %.0f s en ductos" % [seed_now, result.trips, result.arrived, result.duct_seconds])
+		# Round a column of the nave in both variants: specials() runs in one.
+		if seed_now == int(seeds[0]): await nave_trip()
 		if seed_now == int(seeds[0]) and unseen_id.is_empty(): await specials()
 		lurker.queue_free()
 		await physics_frame
@@ -154,10 +160,19 @@ func clear_of_lamps(room: int) -> bool:
 	var want: Vector2 = lurker.shell.clear_point(room, float(level.manifest.rooms[room].px), float(level.manifest.rooms[room].pz))
 	return Vector2(at.x, at.z).distance_to(want) < 0.05 or lamps.size() == 0
 
+## Every column of the floor in plan, grown by a quarter metre (her anchor
+## never comes nearer, spec_rediseno 9), with its planta.
+func column_posts() -> Array:
+	var out: Array = []
+	for room in level.manifest.rooms:
+		for r in OFFICE.column_rects(room): out.append({"rect": r.grow(0.25), "planta": FLOOR.planta_of(float(room.get("py", 0.0)) + 1.0)})
+	return out
+
 ## Physics frames until `done` or `seconds`, every frame held to checks 1 to
 ## 6 of 11.2; {seconds, duct_seconds}.
 func watch(seconds: float, done: Callable, each := Callable()) -> Dictionary:
 	var off: Array = OFFICE.off_limits_rooms(level.manifest)
+	var posts: Array = column_posts()
 	var last: Transform3D = lurker.global_transform
 	var last_patch := -1
 	var was_hidden := false
@@ -182,6 +197,9 @@ func watch(seconds: float, done: Callable, each := Callable()) -> Dictionary:
 			fail("base torcida", now.origin)
 		var room := int(FLOOR.room_at(level.manifest.rooms, now.origin).get("id", -1))
 		if room >= 0 and off.has(room): fail("en una sala prohibida %d" % room, now.origin)
+		if not m.in_duct:
+			for post in posts:
+				if int(post.planta) == FLOOR.planta_of(now.origin.y) and (post.rect as Rect2).has_point(Vector2(now.origin.x, now.origin.z)): fail("dentro de una columna", now.origin)
 		if m.surface():
 			var record: Dictionary = lurker.shell.patches[m.state.patch]
 			if m.state.patch != last_patch and int(record.kind) == SHELL.Kind.BAND and (record.pair as Vector2i).x >= 0 and not lurker.routes.door_open(record.pair):
@@ -206,6 +224,38 @@ func specials() -> void:
 	await saved_mid_transit()
 	await puppet_follows()
 	contract()
+
+## A column of the floor's nave (spec_rediseno 9): from a metre and a half
+## before its seam to as far past it, the straight way through the column,
+## over her surfaces; she goes round it and gets there, every frame held as
+## on the other trips. While the columns are on, the seed must have one.
+func nave_trip() -> void:
+	var from := -1
+	var start := Vector3.INF
+	var target := Vector3.INF
+	for room in level.manifest.rooms:
+		var columns: Array = room.get("columns", [])
+		if columns.is_empty() or not lurker.shell.tray_of.has(int(room.id)): continue
+		var c: Dictionary = columns[0]
+		var on_x: bool = absf(absf(float(c.x)) - float(room.span_x) * 0.5) < 0.01
+		var way: Vector3 = Vector3(signf(float(c.x)), 0, 0) if on_x else Vector3(0, 0, signf(float(c.z)))
+		var foot := Vector3(float(room.px) + float(c.x), float(room.get("py", 0.0)) + 1.0, float(room.pz) + float(c.z))
+		from = int(room.id)
+		start = foot - way * 1.5
+		target = foot + way * 1.5
+		break
+	if OFFICE.columns_on(): check("la semilla %d tiene una nave con columnas" % seed_now, from >= 0)
+	if from < 0: return
+	trip_now = -2
+	lurker.teleport(start, 0.0, &"probe")
+	if not lurker.motion.go_to(target, 1.35, true):
+		fail("sin plan alrededor de la columna", start)
+		trip_now = -1
+		return
+	await watch(20.0, func(): return lurker.motion.at_goal())
+	var at: Vector3 = lurker.global_position
+	check("rodea la columna y llega", lurker.motion.at_goal() and Vector2(at.x, at.z).distance_to(Vector2(target.x, target.z)) < 0.3, where())
+	trip_now = -1
 
 ## A door band two legs ahead, its door toggled shut: she finds another way
 ## or says she is blocked.

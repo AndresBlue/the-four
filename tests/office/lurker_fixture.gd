@@ -86,3 +86,19 @@ static func routes_on(m: Dictionary, lvl: StubLevel, plenum := true):
 	var routes = ROUTES.new()
 	routes.setup(lvl, SHELL.build(m), DUCTS.of(m, plenum), true)
 	return routes
+
+## A nave of four 8 m cells of open office on planta 0, two by two, open to
+## one another: its aisle along x over the seam between its rows (z = 8) and a
+## column on the seam between its columns (x = 8) in each row, 2.1 m from the
+## aisle's line (spec_rediseno 3.3, 3.4); no doors, ducts nor archives.
+static func nave_fixture() -> Dictionary:
+	var table := [[0, 0, 0, 4.0, 4.0, ["east", "south"], 1.9], [1, 1, 0, 12.0, 4.0, ["west", "south"], 1.9], [2, 0, 1, 4.0, 12.0, ["east", "north"], -1.9], [3, 1, 1, 12.0, 12.0, ["west", "north"], -1.9]]
+	var rooms: Array = []
+	for row in table:
+		var seam: float = 4.0 if int(row[1]) == 0 else -4.0
+		rooms.append({"id": row[0], "x": row[1], "z": row[2], "cols": 2, "rows": 2, "wing": 0, "py": 0.0, "px": row[3], "pz": row[4], "span_x": 8.0, "span_z": 8.0, "height": 2.95,
+			"type": OFFICE.OPEN_OFFICE, "hall": 0, "nave_axis": "x", "open_sides": row[5], "doors": [], "hides": [], "furniture": [], "columns": [{"x": seam, "z": row[6]}]})
+	var m := {"floor": 2, "plenum": OFFICE.PLENUM.duplicate(true), "rooms": rooms, "edges": [[0, 1], [0, 2], [1, 3], [2, 3]], "adjacency": [[1, 2], [0, 3], [0, 3], [1, 2]], "merged": [[0, 1], [0, 2], [1, 3], [2, 3]], "entries": [0], "seed": 1}
+	m["ducts"] = {"nodes": [], "edges": [], "exits": []}
+	m["archives"] = []
+	return m

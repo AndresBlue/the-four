@@ -6,7 +6,9 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 **Última instrucción del autor (25 de octubre):** el rediseño visual y ambiental completo del piso 2 con las referencias de `docs/referencias/` (abajo). Respondió por el chat todas las decisiones (R1 a R10 en la nota de diseño) para que se trabaje sin preguntarle.
 
-### En curso: el rediseño del piso 2 (25 de octubre)
+### En curso: el rediseño del piso 2 (25 de octubre; sigue el 1 de noviembre, semana nueva)
+
+**1 de noviembre:** 1b+2 hecha. Orden que queda: 4a, 4b, 5, 4c (4c usa piezas de 5), 6. Encargos de todas listos con decisiones; a 4c hay que añadirle `office/office_dressing_test` en verify antes de su frente. Con la semana nueva, el abandono no se corta. Tope de cuota sin cambiar: 60 % semanal.
 
 **El encargo.** Rediseño integral de las oficinas según las 15 imágenes de `docs/referencias/` (una por sala) y las tres generales de `docs/referencias/oficinas/LEEME.md`, como base directa y no como inspiración: oficina corporativa de finales de los 80, foto analógica, fluorescente cálido, coherencia de edificio. **Terminado es:** el piso reconstruido, `verify.ps1` en verde, capturas sala por sala junto a su referencia, documentos al día y **una sola exportación al final** (R8), con `tools/godot.ps1 export` y `exports/windows/Probar piso 2.bat` añadido al zip como `The Four/Probar piso 2.bat`. El hotel, ni un byte. The Lurker sigue funcionando sobre la geometría nueva.
 

@@ -1,13 +1,13 @@
 extends SceneTree
 ## Whether The Lurker's arms go through things (lurker_limbs.gd): lurker.tscn
-## upside down under a 2.95 m ceiling, going along it over tall cabinets, a
-## locker and survivors standing under her way, then still over a survivor;
-## every frame each arm sampled from shoulder to elbow to wrist, and a frame
-## counts when any sample is inside something solid (the world, a survivor, a
-## shut door or a locker's leaf, an open leaf). The arms are read when the
-## hands' modifier has run (afterwards the skeleton is back at the clip's
-## pose). --strict exits 1 when any arm goes through anything: verify.ps1
-## runs it so.
+## upside down under a 2.95 m ceiling, going along it beside a column of a
+## nave, over tall cabinets, a locker and survivors standing under her way,
+## then still over a survivor; every frame each arm sampled from shoulder to
+## elbow to wrist, and a frame counts when any sample is inside something
+## solid (the world, a survivor, a shut door or a locker's leaf, an open
+## leaf). The arms are read when the hands' modifier has run (afterwards the
+## skeleton is back at the clip's pose). --strict exits 1 when any arm goes
+## through anything: verify.ps1 runs it so.
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/dev/lurker_elbow_probe.gd -- --test-profile --strict
 const BODY := preload("res://game/enemies/lurker/lurker.tscn")
 const CEILING := 2.95
@@ -70,6 +70,9 @@ func run() -> void:
 	# a locker's leaf (2.3 m) and an open door's leaf
 	solid(Vector3(-6, 1.15, -0.9), Vector3(1.25, 2.3, 0.05), 8)
 	solid(Vector3(6, 1.2, 0.9), Vector3(0.9, 2.1, 0.05), 128)
+	# a column of a nave beside her way, its face 0.45 m (lurker_shell RADIUS)
+	# from her line (spec_rediseno 9)
+	solid(Vector3(10, CEILING * 0.5, 0.75), Vector3(0.6, CEILING, 0.6), 1)
 	for x in [-16.0, -8.0, 0.0, 8.0, 16.0]: survivor(x, 0.0)
 	body = BODY.instantiate()
 	root.add_child(body)

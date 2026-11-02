@@ -162,6 +162,30 @@ const LEAST_WALKS := [110.0, 0.0, 0.0]
 ## Salons on a planta: more than the hotel's (open offices, cubicles, archives).
 const HALLS := Vector2i(4, 8)
 
+## The naves of planta 1 (spec_rediseno 3.3): an open office or cubicles of
+## 2 x 2 or 2 x 3 modules, with an aisle NAVE_AISLE wide down the seam between
+## its two rows (office_generator.make_nave()).
+const NAVE_AISLE := 3.0
+## Its free-standing columns (spec_rediseno 3.4), on since The Lurker goes
+## round them: COLUMN a side, their centres COLUMN_OFF from the aisle's line
+## on the seams between modules along it, kept COLUMN_PAD more than clear of
+## every path, COLUMN_CLEAR from furniture, corner props and door sweeps and
+## COLUMN_LAMP from every troffer's centre; no tile a grille, a gap or she
+## may take within COLUMN_TILE of one.
+const COLUMNS := true
+const COLUMN := 0.6
+const COLUMN_OFF := 2.1
+const COLUMN_PAD := 0.3
+const COLUMN_CLEAR := 1.3
+const COLUMN_LAMP := 0.9
+const COLUMN_TILE := 0.6
+## The tests and probes switch the columns on before COLUMNS is.
+static var columns_test := false
+
+## Whether floors are drawn with columns (COLUMNS, or a test's columns_test).
+static func columns_on() -> bool:
+	return COLUMNS or columns_test
+
 ## Exposed corridors per planta (hotel_palette.gd says what they are).
 const EXPOSED := [0.0, 25.0, 35.0]
 const EXPOSED_CHANCE := [0.0, 0.5, 0.8]
@@ -592,7 +616,7 @@ static func troffers(room: Dictionary) -> Array:
 ## The whole tiles a ceiling exit or a gap may take: no troffer's, at least
 ## GRILLE_CLEAR from every troffer's centre and, but in corridors, at least
 ## GRILLE_WALL from every walled side of ceiling_rect(). Rows (j) first, then
-## columns (i), ascending.
+## columns (i), ascending; none within COLUMN_TILE of a column (spec_rediseno 9).
 static func free_tiles(room: Dictionary) -> Array[Vector2i]:
 	var rect := ceiling_rect(room)
 	var tiles := full_tiles(room)
@@ -600,6 +624,7 @@ static func free_tiles(room: Dictionary) -> Array[Vector2i]:
 	var walled := int(room.type) != CORRIDOR
 	var taken := {}
 	var centres: Array = []
+	var posts := column_rects(room)
 	for troffer in troffers(room):
 		for tile in troffer.tiles: taken[tile] = true
 		centres.append(troffer.centre)
@@ -615,12 +640,44 @@ static func free_tiles(room: Dictionary) -> Array[Vector2i]:
 					near = true
 					break
 			if near: continue
+			var by_column := false
+			for post in posts:
+				var nearest := Vector2(clampf(centre.x, post.position.x, post.end.x), clampf(centre.y, post.position.y, post.end.y))
+				if centre.distance_to(nearest) < COLUMN_TILE:
+					by_column = true
+					break
+			if by_column: continue
 			if walled:
 				if not open.has("west") and centre.x - rect.position.x < GRILLE_WALL: continue
 				if not open.has("east") and rect.end.x - centre.x < GRILLE_WALL: continue
 				if not open.has("north") and centre.y - rect.position.y < GRILLE_WALL: continue
 				if not open.has("south") and rect.end.y - centre.y < GRILLE_WALL: continue
 			out.append(tile)
+	return out
+
+## A room's columns in world x and z, each a COLUMN square (room.columns:
+## {x, z} from the cell's centre, in every cell a column stands in).
+static func column_rects(room: Dictionary) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for c in room.get("columns", []):
+		var centre := Vector2(float(room.px) + float(c.x), float(room.pz) + float(c.z))
+		out.append(Rect2(centre - Vector2.ONE * COLUMN * 0.5, Vector2.ONE * COLUMN))
+	return out
+
+## A nave cell's half of the central aisle, in the cell's own x and z: along
+## the seam to the nave's other row (spec_rediseno 3.3); none in a line or an L.
+static func aisle_strips(room: Dictionary) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
+	var aisle := NAVE_AISLE * 0.5
+	var open: Array = room.get("open_sides", [])
+	match String(room.get("nave_axis", "")):
+		"x":
+			if open.has("north"): out.append(Rect2(-half.x, -half.y, half.x * 2.0, aisle))
+			if open.has("south"): out.append(Rect2(-half.x, half.y - aisle, half.x * 2.0, aisle))
+		"z":
+			if open.has("west"): out.append(Rect2(-half.x, -half.y, aisle, half.y * 2.0))
+			if open.has("east"): out.append(Rect2(half.x - aisle, -half.y, aisle, half.y * 2.0))
 	return out
 
 ## The tile a world point is under.

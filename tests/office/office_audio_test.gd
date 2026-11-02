@@ -183,6 +183,8 @@ func walls() -> void:
 	for room in level.manifest.rooms:
 		if tried >= 20: break
 		if FLOOR.is_void(room) or int(room.get("wing", -1)) != 0: continue
+		# Shelves are no wall, and the middle of an archive stands among them.
+		if int(room.type) in [OFFICE.ARCHIVE, OFFICE.MOBILE_ARCHIVE]: continue
 		var listener := centre_of(room) + EAR
 		if level.point_protected(listener): continue
 		tried += 1
@@ -321,7 +323,8 @@ func hum() -> void:
 	var lamp := Vector3.ZERO
 	var off: Array = level.off_limits_rooms()
 	for r in level.manifest.rooms:
-		if FLOOR.is_void(r) or off.has(int(r.id)) or OFFICE.lamp_of(r) != "batten" or not lurker.shell.tray_of.has(int(r.id)): continue
+		# Not one of the floor's dark rooms: there is no lamp alight there to drink.
+		if FLOOR.is_void(r) or off.has(int(r.id)) or OFFICE.lamp_of(r) != "batten" or level.hotel.dark_ids.has(int(r.id)) or not lurker.shell.tray_of.has(int(r.id)): continue
 		room = int(r.id)
 		lamp = centre_of(r)
 		break

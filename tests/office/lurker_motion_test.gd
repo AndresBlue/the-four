@@ -5,7 +5,7 @@ extends SceneTree
 ## a stub ray and stub bodies, sixty ticks a second. She gets where she is
 ## sent by the doors, by the ducts when one is shut or shuts on her way, and
 ## after waiting at a door she cannot pass; she never moves more in a tick
-## than her pace allows and logs every jump; she leaps from the ceiling and
+## than her pace allows and logs every jump; she leaps from the ceiling (never past a column) and
 ## climbs back, shrinks under a short lane, stops short of a survivor, goes
 ## down to the next planta in a ride's time only once nobody is left on hers,
 ## and leaves a duct the fans shut.
@@ -33,6 +33,7 @@ func run() -> void:
 	door_shuts_on_the_way()
 	waits_then_bans()
 	leap_and_climb()
+	leap_columns()
 	shrinks()
 	stops_short()
 	planta()
@@ -148,6 +149,16 @@ func leap_and_climb() -> void:
 	var back := drive(motion, 6.0, func(mo): return mo.surface() and mo.legs.is_empty())
 	check("Movimiento: salta del techo sobre un punto y vuelve a subir", started and landed and motion.surface() and motion.room() == 0 and not motion.leap(Vector3(20.0, 0.0, 0.0)), "%s %s" % [str(started), str(landed)])
 	check("Movimiento: el salto y la subida son seguidos, sin saltos en el registro", seen.worst <= 0.0 and back.worst <= 0.0 and motion.jumps.is_empty() and seen.bad_basis == 0 and back.bad_basis == 0, "%f %f" % [seen.worst, back.worst])
+
+## Not past a column of a nave (spec_rediseno 9): a leap that would graze one
+## is refused, one clear of them is not.
+func leap_columns() -> void:
+	var m := FIX.nave_fixture()
+	var lvl := FIX.stub_level(m)
+	var motion = motion_on(m, lvl, 0)
+	var grazing: bool = motion.leap(Vector3(7.4, 0.0, 6.4))
+	var far: bool = motion.leap(Vector3(2.0, 0.0, 6.0))
+	check("Movimiento: no salta pegado a una columna, y lejos de ellas sí", not grazing and far, "%s %s" % [str(grazing), str(far)])
 
 func shrinks() -> void:
 	var m := FIX.fixture()

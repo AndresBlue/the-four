@@ -89,8 +89,8 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 
 | Sala | Tamaño | Luz | Qué tiene | Para ella |
 |---|---|---|---|---|
-| **Oficina abierta** | Salón (dos módulos o más) | Rejilla de fluorescentes; zonas apagadas | Mesas metálicas en filas, sillas, archivadores bajos | Techo largo de placas: se la oye correr por encima |
-| **Cubículos** | Salón | Igual | Mamparas de tela de 1,5 m que cortan la vista: laberinto a la altura de los ojos | Se asoma por encima de una mampara; desde el techo ve todos los pasillos |
+| **Oficina abierta** | Salón de dos o tres módulos. En la planta 1, además, una nave de oficina abierta o de cubículos: un bloque de 2 × 2 o 2 × 3 módulos con un pasillo central de 3 m sobre la junta de sus dos filas y, donde caben, columnas exentas de 60 cm a los lados, a 2,1 m de su eje (si no cabe el bloque, una fila de tres a cinco módulos o una L de cuatro o cinco, sin columnas) | Rejilla de fluorescentes; zonas apagadas | Mesas metálicas en filas, sillas, archivadores bajos | Techo largo de placas: se la oye correr por encima; rodea las columnas |
+| **Cubículos** | Salón de dos o tres módulos, o la nave de la planta 1 | Igual | Mamparas de tela de 1,5 m que cortan la vista: laberinto a la altura de los ojos | Se asoma por encima de una mampara; desde el techo ve todos los pasillos |
 | **Despacho** | Módulo | Fluorescente o flexo en la mesa | Mesa, sillón, archivador, perchero, **cristalera con persiana al pasillo** | Su silueta pasa por detrás de las lamas |
 | **Sala de juntas** | Módulo grande | Fluorescentes empotrados en el falso techo a 2,95 m, como los despachos | Mesa larga, sillas, proyector, pizarra | |
 | **Archivo** | Salón alargado | Tubos sueltos sobre los pasillos | **Estanterías de 2,1 m con pasillos de 1 m** | Su sitio: avanza sostenida entre las dos estanterías |
@@ -108,11 +108,12 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 
 - **Pasillos:** de 3 a 3,6 m (alguno de 2,4), con un friso de dos tonos igual en todos (arrimadero de roble color miel hasta 1 m bajo una moldura de nogal, greige encima) y, en cada celda de pasillo, un rótulo negro de letras claras a 1,6 m con el nombre de su zona y un cuadradito del color de su departamento.
 - **Puertas:** del tamaño de las del hotel (2,65 m; decisión del autor: se prueban así): hoja de roble color miel con manilla de latón en marco de nogal, algunas con un ventanuco estrecho de vidrio claro. Las de servicio y las de etapa, de acero verde gris con barra antipánico. Por eso el falso techo va a 2,95 m.
-- **Una regla de construcción:** nada dentro de una sala pasa de 2,2 m (mamparas, estanterías, archivadores). Así **el techo de cada sala es un camino libre** para ella. Las cristaleras con persiana van solo en las paredes entre salas; los despachos son salas propias.
+- **El pasillo central de una nave queda libre:** ni muebles ni piezas de esquina dentro (el validador lo mira, `nave_aisle_`). Los anillos de la planta no cuentan las costuras dentro de una nave: un bloque de módulos abierto no es una vuelta.
+- **Una regla de construcción:** nada dentro de una sala pasa de 2,2 m (mamparas, estanterías, archivadores). Así **el techo de cada sala es un camino libre** para ella. Solo las columnas de las naves de la planta 1 suben hasta el techo, y ella las rodea. Las cristaleras con persiana van solo en las paredes entre salas; los despachos son salas propias.
 
 ### Lo de arriba: el falso techo, el plénum y los ductos
 
-- **Falso techo** a 2,95 m, por encima de las puertas del hotel: perfilería de aluminio y placas acústicas. Ya hay textura, `officeceiling001`. Debajo, entre 2,2 m (lo más alto de los muebles) y el techo, queda la franja por la que ella va.
+- **Falso techo** a 2,95 m, por encima de las puertas del hotel: perfilería de aluminio y placas acústicas. Ya hay textura, `officeceiling001`. Debajo, entre 2,2 m (lo más alto de los muebles) y el techo, queda la franja por la que ella va. En las naves de la planta 1 la cortan las columnas.
 - **El plénum**, entre el falso techo y la losa:
   - ductos rectangulares de chapa (troncos sobre los pasillos y ramales a las salas), bandejas de cables y tuberías;
   - solo se ve **donde faltan placas** (oscuridad con formas dentro) y en los pasillos de servicio sin falso techo, con los ductos a la vista;
@@ -121,7 +122,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
   - **Son sus puertas.** La rejilla doblada hacia fuera y las manchas negras alrededor dicen por dónde ha salido.
 - **Placas que faltan, colgando o con manchas de agua:** las primeras plantas tienen pocas y las de abajo, muchas.
   - Una placa que se mueve, cruje en la perfilería y suelta un hilo de polvo **es ella arriba**.
-- **Cualquier placa entera es también su puerta** (el autor, 24 de octubre de 2026): menos las de las lámparas, las que tienen el centro de una lámpara a menos de 0,9 m y, fuera de los pasillos, las que tienen una pared a menos de 1 m. En las salas prohibidas, ninguna.
+- **Cualquier placa entera es también su puerta** (el autor, 24 de octubre de 2026): menos las de las lámparas, las que tienen el centro de una lámpara a menos de 0,9 m y, fuera de los pasillos, las que tienen una pared a menos de 1 m, y las que tienen el centro a menos de 0,6 m de una columna. En las salas prohibidas, ninguna.
   - Para salir la empuja desde arriba con una mano y la deja **colgando a medio abrir** (60°) sobre su hueco oscuro. Una placa abierta dice por dónde ha salido.
   - Si vuelve a entrar por esa placa, la cierra tras de sí. Si entra por una cerrada, la levanta hacia el plénum y la placa cae cerrada.
   - Cada placa que mueve llega a todas las máquinas por el evento de la criatura (paso 3e); falta verlo en una partida en red.
