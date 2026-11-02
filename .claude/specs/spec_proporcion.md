@@ -67,6 +67,18 @@ La ventanilla va en el hub, con ≤7,5 de lado largo si la colocación lo permit
 
 **D12. Capturas que sirvan de prueba.** El cuarto eléctrico se captura con luz. Climatización se compara con el tipo 23, que tiene la climatizadora.
 
+**D13. Lo que salió de revisar las costuras** (`relleno_4d_costuras.md`, decidido por el director el 2 de noviembre; se hace después de U8 y U11 y antes de U15):
+- **La regla de D8 cambia en un punto:** la mediana de 2.000 ms o menos se exige solo en `office_metrics -- 200`. En `--survivors=1` y `=5` se anota, porque crece con los supervivientes y las candidatas no cambian el número de salas. `-- 200` corre a solas y sin el corte de 590 s.
+- **Intentos:** gancho `attempts()` en `map_generator.gd`, 8 en el hotel y 12 en oficinas. Solo cambia los pisos que iban a la reserva.
+- **Tiempo:** los arreglos D2, D1, D4, D3 y D5 de la nota, cada uno con el manifiesto idéntico en las semillas 1 a 40.
+- **Colocación:** G1, G2, G3, G5 y G6 de la nota. La mesa S lleva silla cercana en ±(largo/2 - 0,3) si el bucle no puso ninguna (G4), lo que completa D6.
+- **Recepción:** zona de radio 1,5 m alrededor del centro de la sala de inicio y largo de recepción de 8 m o más (L2), para que los asientos de salida no caigan en el mostrador.
+- **La reanimación** se aparta de la pared del montacargas en oficinas, con prueba de física (L1). El cartel de salida se acerca dentro de la sala (L5).
+- **`office_lies_test`:** se escenifica la mampara como `staged_peek`, con una mutación temporal que demuestre que la prueba sigue probando lo mismo. No se cambia de semilla.
+- **Papeles:** la prueba de proporción cuenta solo las salas que pasan `least` (L3).
+- **Rojos previstos hasta U15:** `office_proportion_test`, `office_lies_test` 16/17 (la planta 1 no tiene teléfonos porque la lista de hoy no deja despachos dentro de su banda) y la silla cercana (227 de 286). Se juzgan con la candidata. No hay commit de 4d hasta entonces.
+- **Mampara de `office_lies_test`:** la comprobación ve que se ofrece y se posa, pero no de qué lado de la mampara (`place_spot` acepta lo mismo con +0,12 que con -0,12). Se acepta esa sensibilidad y queda como pendiente; lo demuestran las mutaciones que dan `offered` 0 y `offered` sin recorte.
+
 ## Lo que no se hace
 
 Salas por debajo de 6 m; mesa de largo continuo; tocar la puerta de 2,65 x 1,3 m o el techo de 2,95 m; recetas nuevas de archivo; perseguir el primer plano de las fotos; cambiar el hotel (`hotel_geometry.gd`, `map_generator.gd`, `map_validator.gd` y `room_layers.gd` solo por ganchos con el hotel igual byte a byte).
