@@ -3,7 +3,11 @@ extends SceneTree
 ## card with its photo, the tubes, the window's desk, the tube map, the board's
 ## memo, a glazed office, a ceiling gap, the plant ladder and hatch, inside the
 ## main duct, the shaft, a planta-2 room without power and with it, and a
-## corridor under its emergency units. PNGs in evidence/office_capture_*.png.
+## corridor under its emergency units; and the equipment (spec_rediseno 12,
+## area 5): the tube central, the window from its corridor, a station with a
+## card waiting, the freight lift's reader and car, the security post's
+## console and glass (seed 29 glazes it), the main duct's sign, the board and
+## a minutero. PNGs in evidence/office_capture_*.png.
 ##
 ##   godot --path . --script res://tools/capture/office_capture.gd -- --test-profile [--seed=7]
 ##     [--quality=4] [--prefix=muybajo]   (4 is Muy bajo: graphics_presets.NAMES)
@@ -27,6 +31,21 @@ func shot(name: String) -> void:
 	for i in 40: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://evidence/office_capture_%s%s.png" % [prefix, name])
+
+## What stands in a room with no light to show it whole: a lamp at the eye,
+## for this picture only, and no torch.
+func lit_shot(title: String) -> void:
+	var torch_on: bool = level.player.torch.visible
+	level.player.torch.visible = false
+	var lamp := OmniLight3D.new()
+	lamp.omni_range = 14.0
+	lamp.light_energy = 1.2
+	lamp.omni_attenuation = 0.6
+	level.hotel.add_child(lamp)
+	lamp.global_position = level.player.camera.global_position + Vector3(0, 0.4, 0)
+	await shot(title)
+	lamp.free()
+	level.player.torch.visible = torch_on
 
 func run() -> void:
 	DisplayServer.window_set_size(Vector2i(1280, 720))
@@ -73,8 +92,29 @@ func run() -> void:
 	var desk_in: Vector3 = Basis(Vector3.UP, float(desk_spot.yaw)).z
 	look(wall_at + desk_in * 2.6 + Vector3(desk_in.z, 0, -desk_in.x) * 1.2 + Vector3(0, 1.7, 0), wall_at + Vector3(0, 0.8, 0))
 	await shot("ventanilla")
+	# The tube central at the hub, its lamps and its tubes (spec_rediseno 6.3).
+	look(hub_at + hub_out * 1.7 + Vector3(hub_out.z, 0, -hub_out.x) * 0.5 + Vector3(0, 0.3, 0), hub_at + Vector3(0, 0.1, 0))
+	await shot("central")
+	# The window counter from its corridor: its ledge and its sign (6.2).
+	var win_room: Dictionary = m.rooms[int(m.mail.window)]
+	# From the corridor, framed on its sign so the door's leaf is not in the way.
+	for plate_node in level.hotel.find_children("*", "Label3D", true, false):
+		if String(plate_node.text) != "PERSONAL": continue
+		var sign_at: Vector3 = plate_node.global_position
+		var sign_out: Vector3 = (plate_node.global_basis.z as Vector3).normalized()
+		look(Vector3(sign_at.x, float(win_room.py) + 1.6, sign_at.z) + sign_out * 3.0 + Vector3(sign_out.z, 0, -sign_out.x), sign_at - Vector3(0, 1.0, 0))
+		await shot("ventanilla_pasillo")
+		break
 	level.player.torch.visible = false
 	files.requests[level.player.slot].state = files.Card.IN_TRAY
+	# Its station with the card waiting: the receiver, its number, its lamp lit (6.3).
+	files.show_state()
+	files.show_capsules()
+	var waiting: Dictionary = files.station_exits[int(files.requests[level.player.slot].station)]
+	var st_at := Vector3(float(waiting.point[0]), float(waiting.point[1]), float(waiting.point[2]))
+	var st_out: Vector3 = Basis(Vector3.UP, float(waiting.yaw)).z
+	look(st_at + st_out * 1.4 + Vector3(st_out.z, 0, -st_out.x) * 0.5 + Vector3(0, 0.3, 0), st_at)
+	await shot("estacion")
 	files.apply("take", int(files.requests[level.player.slot].station) + 1, level.player.slot, {}, false)
 	await shot("ficha")
 	level.interaction.close_document()
@@ -85,6 +125,16 @@ func run() -> void:
 	level.interaction.read_paper(level.objective(&"power").paper_of(0))
 	await shot("memo_cuadro")
 	level.interaction.close_document()
+	# The card reader by the freight lift's door and what it says, then the
+	# car from its lobby (6.15).
+	var rd: Dictionary = m.mail.reader
+	var rd_at := Vector3(float(rd.point[0]), float(rd.point[1]), float(rd.point[2]))
+	var rd_out: Vector3 = Basis(Vector3.UP, float(rd.yaw)).z
+	look(rd_at + rd_out * 1.4 + Vector3(rd_out.z, 0, -rd_out.x) * 0.3 + Vector3(0, 0.35, 0), rd_at + Vector3(0, 0.25, 0))
+	await shot("lector")
+	var car_frame: Transform3D = level.hotel.car_frames[0]
+	look(car_frame * Vector3(0.0, 1.6, 2.6), car_frame * Vector3(-0.5, 1.1, -1.2))
+	await shot("montacargas")
 	# An open office's desks.
 	for room in m.rooms:
 		if int(room.wing) != 0 or int(room.type) != OFFICE.OPEN_OFFICE or level.hotel.dark_ids.has(int(room.id)) or room.get("furniture", []).is_empty(): continue
@@ -111,17 +161,23 @@ func run() -> void:
 		look(mid + (Vector3(2.0, 1.6, 0) if long_x else Vector3(0, 1.6, 2.0)), mid + Vector3(0, 2.4, 0))
 		await shot("archivo_regleta")
 		break
-	# A glazed office seen from its corridor.
+	# The security post's wired glass seen from its corridor (6.12), when the
+	# floor glazes it (seed 29 does).
+	var glass_shot := false
 	for room in m.rooms:
-		if int(room.wing) != 0 or room.get("glazed", []).is_empty() or level.hotel.dark_ids.has(int(room.id)): continue
+		if int(room.type) != OFFICE.SECURITY or room.get("glazed", []).is_empty(): continue
 		var side: String = room.glazed[0]
 		var way: Vector3 = {"west": Vector3(-1, 0, 0), "east": Vector3(1, 0, 0), "north": Vector3(0, 0, -1), "south": Vector3(0, 0, 1)}[side]
 		var c := FLOOR.position_of(room)
 		var half: float = (float(room.span_x) if absf(way.x) > 0.5 else float(room.span_z)) * 0.5
 		var pane := c + way * half
 		look(pane + way * 1.0 + Vector3(way.z, 0, -way.x) * 0.8 + Vector3(0, 1.6, 0), pane + Vector3(0, 1.6, 0))
+		level.player.torch.visible = true
 		await shot("cristal_armado")
+		level.player.torch.visible = false
+		glass_shot = true
 		break
+	if not glass_shot: print("LOOK cristal_armado none")
 	# A ceiling gap with its tile hanging.
 	for e in m.ducts.exits:
 		if String(e.kind) != "gap" or int(m.rooms[int(e.room)].wing) != 0: continue
@@ -142,11 +198,28 @@ func run() -> void:
 	var unit: Dictionary = m.air.unit
 	var unit_at := Vector3(float(unit.point[0]), float(unit.point[1]), float(unit.point[2]))
 	var unit_out: Vector3 = Basis(Vector3.UP, float(unit.yaw)).z
-	look(unit_at + unit_out * 4.5 + Vector3(0, 1.7, 0), unit_at + Vector3(0, 2.6, 0))
-	await shot("climatizadora")
+	var unit_side: Vector3 = Basis(Vector3.UP, float(unit.yaw)).x
+	# Three quarters from the side of its pipes: its doors and plate show too.
+	look(unit_at + unit_out * 3.0 + unit_side * 2.2 + Vector3(0, 1.6, 0), unit_at + unit_out * 1.0 + unit_side * 1.0 + Vector3(0, 1.1, 0))
+	await lit_shot("climatizadora")
+	look(hatch + out * 2.2 + Vector3(out.z, 0, -out.x) * 0.5 + Vector3(0, 0.3, 0), hatch + Vector3(0, 0.3, 0))
+	await lit_shot("compuerta")
 	level.objective(&"air").hatch_open = true
 	level.objective(&"air").show_hatch(false)
-	await shot("compuerta_abierta")
+	await lit_shot("compuerta_abierta")
+	# The security post's console on its desk (6.12).
+	var post: Dictionary = m.air.security.desk
+	var post_at := Vector3(float(post.point[0]), float(post.point[1]), float(post.point[2]))
+	var post_in: Vector3 = Basis(Vector3.UP, float(post.yaw)).z
+	look(post_at + post_in * 1.8 + Vector3(post_in.z, 0, -post_in.x) * 0.7 + Vector3(0, 1.55, 0), post_at + post_in * 0.2 + Vector3(0, 1.0, 0))
+	await shot("seguridad_consola")
+	# The main duct's sign (6.14), seen from the side of the plant's middle.
+	var plant_room: Dictionary = m.rooms[int(m.air.plant)]
+	var duct_side := Vector3(out.z, 0, -out.x)
+	if (FLOOR.position_of(plant_room) - hatch).dot(duct_side) < 0.0: duct_side = -duct_side
+	var duct_sign_at := hatch - out * 0.75 + duct_side * 0.6 + Vector3(0, 0.74, 0)
+	look(duct_sign_at + duct_side * 1.8 + out * 0.5, duct_sign_at)
+	await lit_shot("ducto_rotulo")
 	var mouth: Transform3D = MD.mouth(m)
 	var into: Vector3 = -out
 	look(mouth.origin + Vector3(0, 0.62, 0), mouth.origin + into * 6.0 + Vector3(0, 0.55, 0))
@@ -193,4 +266,23 @@ func run() -> void:
 		var away := Vector3(c.x - spot.x, 0, c.z - spot.z).normalized()
 		look(c + away * 0.6 + Vector3(0, 1.6, 0) + Vector3(away.z, 0, -away.x) * 3.0, spot)
 		await shot("emergencia_pasillo")
+	# The board in the electrical room (6.13), powered and lit for the picture; the torch stays on for the minutero.
+	var board_spot: Dictionary = m.power.board
+	var b_at := Vector3(float(board_spot.point[0]), float(board_spot.point[1]), float(board_spot.point[2]))
+	var b_out: Vector3 = Basis(Vector3.UP, float(board_spot.yaw)).z
+	level.hotel.set_room_power(int(m.power.room), true)
+	level.player.torch.visible = true
+	look(b_at + b_out * 3.0 + Vector3(b_out.z, 0, -b_out.x) * 0.6 + Vector3(0, 1.6, 0), b_at + Vector3(0, 1.4, 0))
+	await lit_shot("cuadro")
+	# A minutero running: its pilot lit.
+	var timers: Array = m.power.timers
+	if not timers.is_empty():
+		var timer_spot: Dictionary = timers[0]
+		var t_at := Vector3(float(timer_spot.point[0]), float(timer_spot.point[1]), float(timer_spot.point[2]))
+		var t_out: Vector3 = Basis(Vector3.UP, float(timer_spot.yaw)).z
+		power.apply("switch", power.red_index() + 1, 1, {}, true)
+		power.tick(0.0)
+		look(t_at + t_out * 1.1 + Vector3(t_out.z, 0, -t_out.x) * 0.4 + Vector3(0, 0.4, 0), t_at)
+		await shot("minutero")
+	level.player.torch.visible = false
 	quit()

@@ -14,8 +14,13 @@ const DESKS := preload("res://game/world/office/pieces/desks.gd")
 const CABINETS := preload("res://game/world/office/pieces/cabinets.gd")
 const STORAGE := preload("res://game/world/office/pieces/storage.gd")
 const STATIONERY := preload("res://game/world/office/pieces/stationery.gd")
-## The samples the eight families give (area 4a U2 to U9).
-const PIECES := 67
+## Area 5's pieces at the sizes their handlers place them at (power_objective,
+## files_objective, office_geometry), not only at their samples'.
+const EQ_MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
+const EQ_POWER := preload("res://game/world/office/pieces/power_equipment.gd")
+const EQ_DESKS := preload("res://game/world/office/pieces/desks.gd")
+## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5).
+const PIECES := 88
 ## The pieces' own materials (kit.gd, area 4a U1).
 const OWN := ["paper", "laminate_light", "plastic_beige", "steel_mint", "steel_grey", "steel_dark", "cloth_red", "cloth_green", "cloth_navy"]
 ## Woods mapped per batched box (no object_space): wrong on a baked mesh.
@@ -52,13 +57,20 @@ func run() -> void:
 	var began := Time.get_ticks_usec()
 	var first: Array = INDEX.samples(builder)
 	var bake_ms := float(Time.get_ticks_usec() - began) / 1000.0
-	check("Las ocho familias dan sus %d piezas" % PIECES, first.size() == PIECES, str(first.size()))
+	check("Las %d familias dan sus %d piezas" % [INDEX.FAMILIES.size(), PIECES], first.size() == PIECES, str(first.size()))
 	var names := {}
 	for entry: Array in first:
 		var title: String = entry[0]
 		check(title + " tiene un nombre que no se repite", not names.has(title))
 		names[title] = true
 		check_piece(builder, title, entry[1])
+	# What the handlers place at other sizes than the samples' (area 5): the
+	# board with one to seven zones, the narrowest map, low and high conduits,
+	# the window's and the security post's desks.
+	for zones in range(1, 8): check_piece(builder, "power_board_%d" % zones, EQ_POWER.power_board(builder, EQ_POWER.BOARD, zones))
+	check_piece(builder, "network_map", EQ_MAIL.network_map(builder, Vector3(0.42, 0.62, 0.025)))
+	for high: float in [0.25, 0.54]: check_piece(builder, "board_conduits", EQ_POWER.board_conduits(builder, Vector3(2.6, high, EQ_POWER.CONDUITS_DEPTH)))
+	for wide: float in [1.2, 1.8]: check_piece(builder, "desk_steel", EQ_DESKS.desk_steel(builder, Vector3(wide, 0.755, 0.45)))
 	var again: Array = INDEX.samples(builder)
 	var same: bool = again.size() == first.size()
 	for i in mini(again.size(), first.size()):

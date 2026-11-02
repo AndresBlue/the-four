@@ -5,13 +5,17 @@ extends "res://game/floors/objectives/objective.gd"
 ## card from level 1, its console starting the fans on the battery's few
 ## charges (which lifts the lockdown), and the isolator by the air handler
 ## that stops them: the hatch opens only once they have run and stand still.
-## Not built yet: the fans' mask on what is heard, the kit's models.
+## The equipment looks as its references (spec_rediseno 6.12 and 6.14, area 5:
+## pieces/air_equipment.gd).
 const ID := &"air"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
 const MOVEMENT := preload("res://game/player/survivor_gait.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const AIR_LOOK := preload("res://game/world/office/pieces/air_equipment.gd")
+const MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
+const WALL := preload("res://game/world/office/pieces/wall.gd")
 
 const ACTIONS := ["hatch", "climb", "ladder", "post", "start", "stop"]
 ## The instructions memo's paper id.
@@ -72,6 +76,7 @@ func built() -> bool: return manifest().has("air") and manifest().air.has("main"
 
 func place() -> void:
 	usables.clear()
+	rotors.clear()
 	if not built(): return
 	var m := manifest()
 	var out := MAIN_DUCT.facing(float(m.air.hatch.yaw))
@@ -101,18 +106,30 @@ func place() -> void:
 		usable.transform = spots[i][0]
 		level.hotel.add_child(usable)
 		usables.append(usable)
-	# The stand-ins: the reader, the console on the post's desk, the air
-	# handler with its two fan rotors, and the isolator.
-	box_at(spot_point(m.air.security.reader), float(m.air.security.reader.yaw), Vector3(0.12, 0.2, 0.06), Color("2c2e30"))
-	box_at(spot_point(m.air.security.desk) + Vector3(0, 0.88, 0) + MAIN_DUCT.facing(float(m.air.security.desk.yaw)) * 0.22, float(m.air.security.desk.yaw), Vector3(0.6, 0.25, 0.4), Color("4d5244"))
+	# The equipment (spec_rediseno 6.12 and 6.14): the post's reader and its
+	# console on the desk, the air handler and its two fans' rotors, and the
+	# control box that stops them.
+	var reader: Dictionary = m.air.security.reader
+	equipment(MAIL.card_reader(level.hotel, MAIL.READER), wall_xform(MAIL.READER, spot_point(reader), spot_point(reader).y - MAIL.READER.y * 0.5, float(reader.yaw)))
+	var desk_spot: Dictionary = m.air.security.desk
+	equipment(AIR_LOOK.security_console(level.hotel, AIR_LOOK.CONSOLE), Transform3D(Basis(Vector3.UP, float(desk_spot.yaw)), spot_point(desk_spot) + MAIN_DUCT.facing(float(desk_spot.yaw)) * AIR_LOOK.DESK_MIDDLE + Vector3(0, AIR_LOOK.DESK_TOP, 0)))
 	var unit: Dictionary = m.air.unit
 	var unit_face := MAIN_DUCT.facing(float(unit.yaw))
 	var unit_size: Vector3 = OFFICE.AIR_UNIT
-	box_at(spot_point(unit) + unit_face * unit_size.z / 2 + Vector3(0, unit_size.y / 2, 0), float(unit.yaw), unit_size, Color("8d9296"))
+	var unit_basis := Basis(Vector3.UP, float(unit.yaw))
+	var unit_middle := spot_point(unit) + unit_face * unit_size.z / 2
+	var unit_body := equipment(AIR_LOOK.air_handler(level.hotel, unit_size), Transform3D(unit_basis, unit_middle))
+	plate_text("CLIMATIZADORA\nAH-1", plate_spot(unit_body), float(unit.yaw), 36)
 	for k in 2:
-		var side_way := Basis(Vector3.UP, float(unit.yaw)) * Vector3(-0.7 + k * 1.4, 0, 0)
-		rotors.append(box_at(spot_point(unit) + unit_face * (unit_size.z + 0.03) + side_way + Vector3(0, 1.2, 0), float(unit.yaw), Vector3(0.9, 0.08, 0.02), Color("2b2b28")))
-	box_at(spot_point(m.air.stop), float(m.air.stop.yaw), Vector3(0.2, 0.3, 0.12), Color("a3271f"))
+		# Each rotor turns about its own middle (tick()): a pivot there.
+		var pivot := Node3D.new()
+		pivot.name = "FanRotor"
+		pivot.transform = Transform3D(unit_basis, unit_middle + unit_basis * Vector3(-AIR_LOOK.FAN_X + k * AIR_LOOK.FAN_X * 2.0, AIR_LOOK.FAN_Y, AIR_LOOK.ROTOR_Z))
+		level.hotel.add_child(pivot)
+		equipment(AIR_LOOK.fan_rotor(level.hotel, AIR_LOOK.ROTOR), Transform3D(Basis.IDENTITY, Vector3(0, -AIR_LOOK.ROTOR.y * 0.5, 0)), pivot)
+		rotors.append(pivot)
+	var stop: Dictionary = m.air.stop
+	equipment(AIR_LOOK.control_box(level.hotel, AIR_LOOK.CONTROL), wall_xform(AIR_LOOK.CONTROL, spot_point(stop), spot_point(stop).y - AIR_LOOK.CONTROL.y * 0.5, float(stop.yaw)))
 	# On the handler's top, the kit's in-line fan, axis up, and its round duct
 	# on to the slab (Poly Haven's circular air duct, CC0).
 	if ResourceLoader.exists(FAN_MODEL) and ResourceLoader.exists(ROUND_DUCT_MODEL):
@@ -165,6 +182,11 @@ func place() -> void:
 	panel.position = Vector3(across * (size / 2 + 0.03), size / 2, 0)
 	panel.material_override = MAIN_DUCT.material_of(level.hotel, "galvanized")
 	hinge.add_child(panel)
+	# Its red hand wheel and its plate (spec_rediseno 6.14), swinging with it.
+	var leaf_middle := Vector3(across * (size / 2 + 0.03), size / 2, 0)
+	equipment(AIR_LOOK.hand_wheel(level.hotel, AIR_LOOK.WHEEL), Transform3D(Basis.IDENTITY, leaf_middle + Vector3(0, -AIR_LOOK.WHEEL.y * 0.5, 0.02 + AIR_LOOK.WHEEL.z * 0.5)), hinge)
+	var leaf_sign := equipment(WALL.sign_plate(level.hotel, AIR_LOOK.HATCH_SIGN), Transform3D(Basis.IDENTITY, leaf_middle + Vector3(0, 0.15 - size / 2, 0.02 + AIR_LOOK.HATCH_SIGN.z * 0.5)), hinge)
+	plate_text("COMPUERTA\nDUCTO PRINCIPAL", plate_spot(leaf_sign), 0.0, 30, PLATE_INK, hinge)
 	leaf_body = StaticBody3D.new()
 	leaf_body.collision_layer = 1
 	leaf_body.collision_mask = 0
@@ -177,6 +199,13 @@ func place() -> void:
 	hinge.add_child(leaf_body)
 	leaf = hinge
 	leaf.set_meta("across", across)
+	# Both sides of the duct's last stretch say what it is (spec_rediseno 6.14).
+	for s: float in [-1.0, 1.0]:
+		var away := side * s
+		var away_yaw := atan2(away.x, away.z)
+		var face_at := hatch_at - out * AIR_LOOK.DUCT_SIGN_BACK + away * (size / 2 + MAIN_DUCT.SHEET)
+		var duct_sign := equipment(WALL.sign_plate(level.hotel, AIR_LOOK.DUCT_SIGN), wall_xform(AIR_LOOK.DUCT_SIGN, face_at, hatch_at.y + size * 0.62 - AIR_LOOK.DUCT_SIGN.y * 0.5, away_yaw))
+		plate_text("DUCTO PRINCIPAL\nAIRE DE IMPULSIÓN", plate_spot(duct_sign), away_yaw, 30)
 	show_hatch(false)
 
 ## A usable on a wall spot (its point, facing into the room), the body stood
@@ -196,21 +225,6 @@ func model_at(path: String, xform: Transform3D) -> void:
 	mesh.mesh = load(path)
 	mesh.transform = xform
 	level.hotel.add_child(mesh)
-
-## A plain box standing in for a model to come.
-func box_at(at: Vector3, yaw: float, size: Vector3, colour: Color) -> MeshInstance3D:
-	var mesh := MeshInstance3D.new()
-	var cube := BoxMesh.new()
-	cube.size = size
-	mesh.mesh = cube
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.roughness = 0.6
-	mesh.material_override = material
-	mesh.position = at
-	mesh.rotation.y = yaw
-	level.hotel.add_child(mesh)
-	return mesh
 
 ## The post's door locked while the post is shut, swung open once it is not.
 func show_post() -> void:

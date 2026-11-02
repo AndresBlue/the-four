@@ -7,16 +7,21 @@ const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
-const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather", "walnut": "trim", "walnut_object": "trim", "oak_door": "door", "dado_oak": "wood", "carpet_exec": "carpet"}
+const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather", "walnut": "trim", "walnut_object": "trim", "oak_door": "door", "dado_oak": "wood", "car_oak": "wood", "carpet_exec": "carpet"}
 const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 const ACCENTS := preload("res://game/world/office/office_accents.gd")
+const DESKS := preload("res://game/world/office/pieces/desks.gd")
 const OFFICE_BOUNCE := preload("res://game/world/office/office_bounce.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
 const GATE_FIXED_X := -0.85
+## The freight car's walls (spec_rediseno 6.15): the steel kick plate's
+## height, and the handrail's height and how far off the panels.
+const CAR_KICK := 0.15
+const CAR_RAIL := Vector2(0.95, 0.04)
 ## Finishes that stand in as a plain colour until their own material is made
 ## (MATERIAL_DIR): the hotel has no plain paint, block or concrete.
 const PLAIN := {"office_paint": Color("b9ad96"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74")}
@@ -66,6 +71,9 @@ const BLIND_PITCH := 0.022
 ## blinds' beige (6.4).
 const SILL_BOARD := Vector2(0.03, 0.016)
 const SILL_OVER := 0.002
+## At the window counter the sill board is a ledge standing this far out of
+## each face (spec_rediseno 6.2).
+const COUNTER_LEDGE := 0.2
 const BLIND_COLOR := Color("cbbf9f")
 const BLIND := preload("res://game/presentation/shaders/venetian_blind.gdshader")
 const WIRED_GLASS := preload("res://game/presentation/shaders/wired_glass.gdshader")
@@ -692,19 +700,20 @@ func lenses_of(room_id: int) -> Array:
 	room_lenses[room_id] = found
 	return found
 
-## A narrow steel desk with its back to a wall spot: no collider, so the
-## body put at the spot's stand to work at it is not pushed off.
+## A narrow steel desk with its back to a wall spot (spec_rediseno 6.2 and
+## 6.12: pieces/desks.gd's desk_steel): no collider, so the body put at the
+## spot's stand to work at it is not pushed off. The security post's is
+## wider, for its console's four monitors.
 const POST_DESK := Vector3(1.2, 0.755, 0.45)
-func post_desk(node: Node3D, spot: Dictionary) -> void:
+const SECURITY_DESK := Vector3(1.8, 0.755, 0.45)
+func post_desk(node: Node3D, spot: Dictionary, size := POST_DESK) -> void:
 	var yaw := float(spot.yaw)
 	var holder := Node3D.new()
 	holder.name = "PostDesk"
-	holder.position = Vector3(float(spot.point[0]), float(spot.point[1]), float(spot.point[2])) - node.position + Basis(Vector3.UP, yaw).z * (POST_DESK.z * 0.5)
+	holder.position = Vector3(float(spot.point[0]), float(spot.point[1]), float(spot.point[2])) - node.position + Basis(Vector3.UP, yaw).z * (size.z * 0.5)
 	holder.rotation.y = yaw
 	node.add_child(holder)
-	box(holder, Vector3(0, POST_DESK.y - 0.015, 0), Vector3(POST_DESK.x, 0.03, POST_DESK.z), "laminate")
-	for side: float in [-1.0, 1.0]: box(holder, Vector3(side * (POST_DESK.x * 0.5 - 0.02), (POST_DESK.y - 0.03) * 0.5, 0), Vector3(0.04, POST_DESK.y - 0.03, POST_DESK.z - 0.04), "steel_olive")
-	box(holder, Vector3(0, 0.45, -POST_DESK.z * 0.5 + 0.02), Vector3(POST_DESK.x - 0.08, 0.5, 0.02), "steel_olive")
+	place(holder, DESKS.desk_steel(self, size), Transform3D.IDENTITY)
 
 ## The battery units (spec_f1_geometry 7.2): how high, how far they are lit
 ## from the player, how many of the nearest cast (on Compatibility, fewer),
@@ -737,6 +746,13 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	var runs := emergency_runs
 	emergency_runs = []
 	if runs.is_empty() or not emergency_room(room): return
+	# The board covers its wall up to the ceiling (spec_rediseno 6.13): the
+	# electrical room's unit hangs on another wall when it has a run there.
+	var power_spec: Dictionary = manifest.get("power", {})
+	if power_spec.has("board") and int(power_spec.room) == int(room.id):
+		var board_way := LAYOUT.way_of(String(power_spec.board.wall))
+		var others: Array = runs.filter(func(entry: Array) -> bool: return SIDE_STEP.get(String(entry[0].name), Vector2i.ZERO) != board_way)
+		if not others.is_empty(): runs = others
 	var best: Array = []
 	var best_distance := INF
 	for run in runs:
@@ -1050,7 +1066,12 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 	plan_wall(room_node, boundary.transform * Vector3(x - length * 0.5, 0, 0), boundary.transform * Vector3(x + length * 0.5, 0, 0))
 	box(boundary, Vector3(x, SKIRT.x * 0.5, inner * (0.09 + SKIRT.y * 0.5)), Vector3(length, SKIRT.x, SKIRT.y), "skirting")
 	lower_wall(boundary, x, length, height, inner, GLASS_SILL)
-	box(boundary, Vector3(x, GLASS_SILL + SILL_OVER - SILL_BOARD.x * 0.5, inner * (0.09 + SILL_BOARD.y) * 0.5), Vector3(length, SILL_BOARD.x, 0.09 + SILL_BOARD.y), "walnut")
+	# At the window counter the board is a ledge out of both faces, and its
+	# "PERSONAL" over the glass faces the side it is come to from (6.2).
+	var at_counter: bool = OFFICE.WINDOW in [int(building_room.type), int(room_across(boundary).get("type", -1))]
+	var ledge_proud: float = COUNTER_LEDGE if at_counter else SILL_BOARD.y
+	box(boundary, Vector3(x, GLASS_SILL + SILL_OVER - SILL_BOARD.x * 0.5, inner * (0.09 + ledge_proud) * 0.5), Vector3(length, SILL_BOARD.x, 0.09 + ledge_proud), "walnut")
+	if at_counter and int(building_room.type) != OFFICE.WINDOW: personal_sign(boundary, x, length, height, inner)
 	if inner < 0: return
 	var band := GLASS_HEAD - GLASS_SILL
 	var both: Array = [int(building_room.type), int(room_across(boundary).get("type", -1))]
@@ -1087,6 +1108,21 @@ func glazed_run(boundary: Node3D, x: float, length: float, height: float, inner:
 		boundary.add_child(sheet)
 		panes.append(sheet)
 		box(boundary, Vector3(centre, GLASS_HEAD - 0.05, office_side * 0.045), Vector3(pane - MULLION, 0.04, 0.04), "tgrid")
+
+## The window counter's "PERSONAL" (spec_rediseno 6.2): a black plate in the
+## head over the glass, on the face of the room it is come to from; once a
+## window, on its first run long enough for it.
+const PERSONAL_SIGN := Vector2(0.62, 0.14)
+var personal_signs := {}
+func personal_sign(boundary: Node3D, x: float, length: float, height: float, inner: int) -> void:
+	var window := int(room_across(boundary).get("id", -1))
+	var top := minf(height, GLASS_HEAD + 0.3)
+	if window < 0 or personal_signs.has(window) or length < PERSONAL_SIGN.x + 0.2 or top - GLASS_HEAD - MULLION * 0.5 < PERSONAL_SIGN.y + 0.04: return
+	personal_signs[window] = true
+	var y := (GLASS_HEAD + MULLION * 0.5 + top) * 0.5
+	var face := inner * 0.09
+	box(boundary, Vector3(x, y, face + inner * SIGN_DEPTH * 0.5), Vector3(PERSONAL_SIGN.x, PERSONAL_SIGN.y, SIGN_DEPTH), "plaque")
+	text(boundary, "PERSONAL", Vector3(x, y, face + inner * (SIGN_DEPTH + 0.001)), 0.0 if inner > 0 else PI, 14, NUMBER_REACH, Color("d3bd8e"))
 
 ## The room on the other side of a wall boundary of the room being built, or
 ## {} past the planta's edge.
@@ -1141,25 +1177,38 @@ func end_flicker(entry: Dictionary, room_id: int) -> void:
 	if is_instance_valid(entry.quad): entry.quad.queue_free()
 	if is_instance_valid(entry.light): entry.light.light_energy = float(entry.energy) * (1.0 - drained(room_id))
 
-## The freight car (7.4) inside the hotel's CAR_INSIDE, so riding, arriving
-## and the car's rect are untouched: a steel floor, sides and back of steel
-## plate to 1.1 m and cage mesh above, a steel roof, corner posts, a guarded
-## bulb, and the scissor gate as its leaves.
+## The freight car (spec_rediseno 6.15) inside the hotel's CAR_INSIDE, so
+## riding, arriving and the car's rect are untouched: a steel plate floor and
+## roof, honey oak panels (car_oak, not the frieze's) over a steel kick plate
+## on its sides and back with a steel handrail, steel corner posts, a guarded
+## bulb, its button panel by the doorway and the call panel outside it, and
+## the scissor gate as its leaves.
 func car_body(car: Node3D, _room: Dictionary) -> Array:
 	var inside := CAR_INSIDE
 	var centre := inside.get_center()
 	var top := inside.end.y
 	box(car, Vector3(centre.x, 0.01, centre.z), Vector3(inside.size.x, 0.02, inside.size.z), "steel_plate")
 	box(car, Vector3(centre.x, top + 0.01, centre.z), Vector3(inside.size.x, 0.02, inside.size.z), "steel_plate")
-	for band in [[0.0, 1.1, "steel_plate"], [1.1, top, "cage_mesh"]]:
+	for band in [[0.0, CAR_KICK, "steel_plate"], [CAR_KICK, top, "car_oak"]]:
 		var low: float = band[0]
 		var high: float = band[1]
 		var y := (low + high) * 0.5
 		box(car, Vector3(centre.x, y, inside.position.z - 0.01), Vector3(inside.size.x, high - low, 0.02), String(band[2]))
 		for x in [inside.position.x - 0.01, inside.end.x + 0.01]: box(car, Vector3(x, y, centre.z), Vector3(0.02, high - low, inside.size.z), String(band[2]))
+	# The handrail along the back and the sides, CAR_RAIL.y off the panels.
+	box(car, Vector3(centre.x, CAR_RAIL.x, inside.position.z + CAR_RAIL.y), Vector3(inside.size.x - 0.2, 0.04, 0.03), "gate_steel")
+	for x in [inside.position.x + CAR_RAIL.y, inside.end.x - CAR_RAIL.y]: box(car, Vector3(x, CAR_RAIL.x, centre.z), Vector3(0.03, 0.04, inside.size.z - 0.3), "gate_steel")
 	for x in [inside.position.x, inside.end.x]:
 		for z in [inside.position.z, inside.end.z]: box(car, Vector3(x, top * 0.5, z), Vector3(0.05, top, 0.05), "gate_steel")
 	box(car, Vector3(centre.x, top - 0.08, centre.z), Vector3(0.1, 0.1, 0.1), "light")
+	# The bulb's guard: two steel bars over it.
+	for s: float in [-1.0, 1.0]: box(car, Vector3(centre.x + s * 0.06, top - 0.08, centre.z), Vector3(0.008, 0.12, 0.14), "gate_steel")
+	# The button panel inside by the doorway, its lamp over its button; and
+	# the call panel outside, where the hotel's buttons are (CALL_AT).
+	box(car, Vector3(inside.end.x - 0.012, 1.2, inside.end.z - 0.25), Vector3(0.02, 0.28, 0.1), "gate_steel")
+	for k in 2: box(car, Vector3(inside.end.x - 0.025, 1.26 - k * 0.1, inside.end.z - 0.25), Vector3(0.008, 0.035, 0.035), "light" if k == 0 else "black")
+	box(car, Vector3(CALL_AT.x, CALL_AT.y, LIFT_PROUD + 0.004), Vector3(0.09, 0.26, 0.008), "gate_steel")
+	for k in 3: box(car, Vector3(CALL_AT.x, CALL_AT.y + 0.08 - k * 0.08, LIFT_PROUD + 0.01), Vector3(0.035, 0.035, 0.006), "light" if k == 0 else "black")
 	var gate = GATE.new()
 	gate.name = "ScissorGate"
 	gate.material = materials.gate_steel
@@ -1173,6 +1222,10 @@ func build_car(room: Dictionary, facing: Vector2i) -> Vector3:
 	var at := super(room, facing)
 	car_lamps.back().light_color = LIGHTING.light_color(2700.0)
 	return at
+
+## The freight lift's doorway cased in steel (spec_rediseno 6.15).
+func lift_casing_material() -> String:
+	return "gate_steel"
 
 ## The reception lift's two wall lamps (spec_rediseno 6): how far out from the
 ## casing or the call button, whichever is further out, and how high (the lamp
@@ -1565,7 +1618,7 @@ func extras(node: Node3D, room: Dictionary) -> void:
 	var mail: Dictionary = manifest.get("mail", {})
 	if not mail.is_empty() and int(room.id) == int(mail.window): post_desk(node, mail.desk)
 	var air: Dictionary = manifest.get("air", {})
-	if air.has("security") and int(room.id) == int(air.security.room): post_desk(node, air.security.desk)
+	if air.has("security") and int(room.id) == int(air.security.room): post_desk(node, air.security.desk, SECURITY_DESK)
 	# The duct network's low wall grilles (ducts.exits of kind "wall"), where
 	# the generator put them: a frame and slats over the dark of the duct.
 	for e in manifest.get("ducts", {}).get("exits", []):

@@ -4,10 +4,15 @@ extends "res://game/floors/objectives/objective.gd"
 ## are lit at once (the oldest drops); the minuteros light their corridor for a
 ## while; the red lever cuts the whole planta and starts the freight lift's
 ## clock, and the lift only goes down once it has run out. Beside the board,
-## a memo says how it works. Not built yet: the kit's models.
+## a memo says how it works. The board, its levers and the minuteros look as
+## their reference (spec_rediseno 6.13, area 5: pieces/power_equipment.gd).
 const ID := &"power"
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const POWER_LOOK := preload("res://game/world/office/pieces/power_equipment.gd")
+const MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
+const FLOOR := preload("res://game/world/generation/floor_definition.gd")
+const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 
 enum Red { DOWN, RUNNING, ARMED }
 const ACTIONS := ["lever", "red", "switch"]
@@ -42,6 +47,8 @@ var applied := {}
 var usables: Array = []
 var handles: Array = []
 var pilots: Array = []
+## Per minutero, its pilot's lenses [lit, dark], shown in turn with its pilot.
+var pilot_lenses: Array = []
 ## The red timer ticking at the board while it runs.
 var tick_voice = null
 
@@ -55,6 +62,7 @@ func place() -> void:
 	usables.clear()
 	handles.clear()
 	pilots.clear()
+	pilot_lenses.clear()
 	on_order.clear()
 	red = Red.DOWN
 	applied.clear()
@@ -68,33 +76,45 @@ func place() -> void:
 	var out := Vector3(sin(yaw), 0, cos(yaw))
 	var basis := Basis(Vector3.UP, yaw)
 	var origin := Vector3(float(board.point[0]), float(board.point[1]), float(board.point[2]))
-	piece(origin + basis * Vector3(0, 0.5 + BOARD.y / 2, BOARD.z / 2), BOARD, Color("4d5244"), yaw)
+	# The board (spec_rediseno 6.13): a row of cabinets from the floor, one a
+	# lever, the red one's apart, its conduits on to the ceiling and the main
+	# supply box beside it. BOARD and lever_at() still lay the levers out.
+	var board_piece := equipment(POWER_LOOK.power_board(level.hotel, POWER_LOOK.BOARD, zones.size()), wall_xform(POWER_LOOK.BOARD, origin, origin.y, yaw))
+	plate_text("TABLERO ELÉCTRICO", plate_spot(board_piece), yaw, 40)
+	var el_room: Dictionary = m.rooms[int(m.power.room)]
+	var rise := float(el_room.height) - POWER_LOOK.BOARD.y - 0.01
+	if rise >= 0.25:
+		var conduit_size := Vector3(POWER_LOOK.BOARD.x, snappedf(rise, 0.01), POWER_LOOK.CONDUITS_DEPTH)
+		equipment(POWER_LOOK.board_conduits(level.hotel, conduit_size), wall_xform(conduit_size, origin, origin.y + POWER_LOOK.BOARD.y, yaw))
+	supply_box(m, origin, yaw)
 	for i in zones.size() + 1:
 		var pivot := origin + basis * lever_at(i)
 		var stand := origin + out * 0.8 + basis * Vector3(lever_at(i).x, 0, 0)
 		var usable = add_usable(Transform3D(basis, pivot), "red" if i == red_index() else "lever", stand, atan2(out.x, out.z))
 		usable.box = Vector3(0.26, 0.4, 0.3)
-		# The handle: a flat bar with a grip, swinging up about its pivot.
+		# The handle hanging from its pivot (the red one bigger), swinging up about it.
 		var hinge := Node3D.new()
 		hinge.transform = Transform3D(basis, pivot)
 		level.hotel.add_child(hinge)
-		var bar := piece_under(hinge, Vector3(0, -0.12, 0.08), Vector3(0.04, 0.25, 0.03), Color("a3271f") if i == red_index() else Color("2b2b28"))
-		bar.position = Vector3(0, -0.12, 0.08)
+		var red_one: bool = i == red_index()
+		var handle_size: Vector3 = POWER_LOOK.RED_HANDLE if red_one else POWER_LOOK.HANDLE
+		equipment(POWER_LOOK.lever_handle(level.hotel, handle_size, red_one), Transform3D(Basis.IDENTITY, Vector3(0, 0.02 - handle_size.y, 0.02)), hinge)
 		handles.append(hinge)
-		var label := Label3D.new()
-		label.text = "MONTACARGAS" if i == red_index() else "%s\n%s" % [String(zones[i].code), String(zones[i].name)]
-		label.font_size = 18 if i == red_index() else 14
-		label.pixel_size = 0.0015
-		label.modulate = Color("e8e2cf")
-		label.position = pivot + out * 0.07 + Vector3(0, -0.3, 0)
-		label.rotation.y = yaw
-		level.hotel.add_child(label)
+		# Its plate on its cabinet, over its meter; the red one's where its
+		# cabinet's plate is (spec_rediseno 6.13).
+		var plate_x: float = POWER_LOOK.red_plate_x(zones.size()) if i == red_index() else lever_at(i).x
+		plate_text("MONTACARGAS" if i == red_index() else "%s\n%s" % [String(zones[i].code), String(zones[i].name)], origin + basis * Vector3(plate_x, POWER_LOOK.PLATE_Y, POWER_LOOK.PLATE_Z), yaw, 18 if i == red_index() else 14)
 	switch_until.clear()
 	for entry in m.power.timers:
 		var at := Vector3(float(entry.point[0]), float(entry.point[1]), float(entry.point[2]))
 		var t_out := Vector3(sin(float(entry.yaw)), 0, cos(float(entry.yaw)))
 		add_usable(Transform3D(Basis(Vector3.UP, float(entry.yaw)), at), "switch", at + t_out * 0.6 - Vector3(0, at.y - float(m.rooms[int(entry.room)].py), 0), atan2(t_out.x, t_out.z))
-		piece(at + t_out * 0.02, Vector3(0.08, 0.08, 0.04), Color("d8d0bc"), float(entry.yaw))
+		equipment(POWER_LOOK.timer_switch(level.hotel, POWER_LOOK.SWITCH), wall_xform(POWER_LOOK.SWITCH, at, at.y - POWER_LOOK.SWITCH.y * 0.5, float(entry.yaw)))
+		# Its pilot's lenses, under the button, lit while it runs (tick()).
+		var lens_at := Transform3D(Basis(Vector3.UP, float(entry.yaw)), at + Vector3(0, POWER_LOOK.SWITCH_LENS_Y - POWER_LOOK.SWITCH.y * 0.5, 0) + t_out * (POWER_LOOK.SWITCH_FACE + POWER_LOOK.SWITCH_LENS.z * 0.5))
+		var lit := equipment(MAIL.lamp_lens(level.hotel, POWER_LOOK.SWITCH_LENS, "glow_amber"), lens_at)
+		lit.visible = false
+		pilot_lenses.append([lit, equipment(MAIL.lamp_lens(level.hotel, POWER_LOOK.SWITCH_LENS, "lamp_off"), lens_at)])
 		var pilot := OmniLight3D.new()
 		pilot.light_color = Color(1.0, 0.55, 0.2)
 		pilot.omni_range = 0.6
@@ -125,6 +145,27 @@ func lever_at(i: int) -> Vector3:
 	var x := -BOARD.x / 2 + 0.25 + i * LEVER_PITCH + (RED_GAP if i == red_index() else 0.0)
 	return Vector3(x, LEVER_Y, BOARD.z + 0.05)
 
+## The main supply box with its three meters (spec_rediseno 6.13), left of the
+## board when the wall has room for it there: clear of the wall's end, of its
+## doorways and of its wardrobes; none otherwise.
+func supply_box(m: Dictionary, origin: Vector3, yaw: float) -> void:
+	var board: Dictionary = m.power.board
+	var room: Dictionary = m.rooms[int(m.power.room)]
+	var wall := String(board.wall)
+	# The board's +x runs with the wall's along on north and east, against it on south and west.
+	var way: float = 1.0 if wall == "north" or wall == "east" else -1.0
+	var x := -POWER_LOOK.BOARD.x * 0.5 - POWER_LOOK.SUPPLY_GAP - POWER_LOOK.SUPPLY.x * 0.5
+	var along := float(board.along) + way * x
+	var half := POWER_LOOK.SUPPLY.x * 0.5
+	if absf(along) + half > LAYOUT.wall_length(room, wall) * 0.5 - 0.15: return
+	for h in room.get("hides", []):
+		var hw := LAYOUT.hide_wall(h)
+		if String(hw.wall) == wall and absf(float(hw.along) - along) < half + 0.9: return
+	for door in FLOOR.doorways(room):
+		if String(door.wall) == wall and absf(float(door.along) - along) < half + 0.75: return
+	var box := equipment(POWER_LOOK.main_supply_box(level.hotel, POWER_LOOK.SUPPLY), wall_xform(POWER_LOOK.SUPPLY, origin + Basis(Vector3.UP, yaw) * Vector3(x, 0, 0), origin.y + POWER_LOOK.SUPPLY_Y, yaw))
+	plate_text("ALIMENTACIÓN\nPRINCIPAL", plate_spot(box), yaw, 22)
+
 func add_usable(xform: Transform3D, action: String, stand: Vector3, body_yaw: float):
 	var usable := USABLE.new()
 	usable.name = "PowerUsable_%d" % usables.size()
@@ -138,25 +179,6 @@ func add_usable(xform: Transform3D, action: String, stand: Vector3, body_yaw: fl
 	level.hotel.add_child(usable)
 	usables.append(usable)
 	return usable
-
-func piece(at: Vector3, size: Vector3, colour: Color, yaw: float) -> MeshInstance3D:
-	var mesh := piece_under(level.hotel, at, size, colour)
-	mesh.rotation.y = yaw
-	return mesh
-
-## A plain box standing in for a model to come.
-func piece_under(parent: Node3D, at: Vector3, size: Vector3, colour: Color) -> MeshInstance3D:
-	var mesh := MeshInstance3D.new()
-	var cube := BoxMesh.new()
-	cube.size = size
-	mesh.mesh = cube
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.roughness = 0.6
-	mesh.material_override = material
-	mesh.position = at
-	parent.add_child(mesh)
-	return mesh
 
 ## The handles where the board stands: a zone's up while it is on, the red
 ## one up once it is pulled.
@@ -267,6 +289,9 @@ func tick(_delta: float) -> void:
 		var running: bool = switch_until[i] > now
 		if pilots[i].visible != running:
 			pilots[i].visible = running
+			if i < pilot_lenses.size():
+				pilot_lenses[i][0].visible = running
+				pilot_lenses[i][1].visible = not running
 			changed = true
 	if changed: refresh_power()
 	if not level.net.is_client() and red == Red.RUNNING and now >= red_started + lift_timer:

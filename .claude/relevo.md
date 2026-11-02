@@ -8,7 +8,9 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 ### En curso: el rediseño del piso 2 (25 de octubre; sigue el 1 de noviembre, semana nueva)
 
-**1 de noviembre:** 1b+2 hecha. Orden que queda: 4a, 4b, 5, 4c (4c usa piezas de 5), 6. Encargos de todas listos con decisiones; a 4c hay que añadirle `office/office_dressing_test` en verify antes de su frente. Con la semana nueva, el abandono no se corta. Tope de cuota sin cambiar: 60 % semanal.
+**2 de noviembre:** 1b+2, 4a y 4b hechas y subidas (`1e1d160`). Corre el frente 5 (`encargos_rd5.json`). Área nueva del director, **4d proporción** (`.claude/specs/spec_proporcion.md`, críticas en `spec_proporcion_criticas.md`): las salas salen enormes y vacías frente a las referencias, y se encogen los módulos y se llenan las recetas; sus encargos se redactan en `encargos_rd4d.json`. Orden que queda: 5, 4d, 4c (sus encargos se levantan de nuevo tras 4d; hay que añadir `office/office_dressing_test` a verify antes de su frente), 6. Con esta semana, el abandono no se corta. Tope de cuota: 60 % semanal (se renueva el 7 de noviembre).
+
+**Para el informe final al autor:** el generador tarda unos 1.855 ms de mediana (390 ms más que la base de 1b+2, por encima de los 150 que preveía la nota; aceptado porque sigue bajo sus 2.000); 4d la añadió el director.
 
 **El encargo.** Rediseño integral de las oficinas según las 15 imágenes de `docs/referencias/` (una por sala) y las tres generales de `docs/referencias/oficinas/LEEME.md`, como base directa y no como inspiración: oficina corporativa de finales de los 80, foto analógica, fluorescente cálido, coherencia de edificio. **Terminado es:** el piso reconstruido, `verify.ps1` en verde, capturas sala por sala junto a su referencia, documentos al día y **una sola exportación al final** (R8), con `tools/godot.ps1 export` y `exports/windows/Probar piso 2.bat` añadido al zip como `The Four/Probar piso 2.bat`. El hotel, ni un byte. The Lurker sigue funcionando sobre la geometría nueva.
 

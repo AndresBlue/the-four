@@ -95,8 +95,8 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 | **Sala de juntas** | Módulo grande | Fluorescentes empotrados en el falso techo a 2,95 m, como los despachos | Mesa larga, sillas, proyector, pizarra | |
 | **Archivo** | Salón alargado | Tubos sueltos sobre los pasillos | **Estanterías de 2,1 m con pasillos de 1 m** | Su sitio: avanza sostenida entre las dos estanterías |
 | **Archivo móvil** | Módulo | Igual | Estanterías sobre raíles con manivela: girarla abre un pasillo y hace ruido | Un pasillo que se abre y se cierra |
-| **Correo** | Módulo | Fluorescente | Casilleros, carros, sacos y la central del tubo neumático | El tubo suena: no siempre es una cápsula |
-| **Ventanilla de Personal** (planta 1) | Módulo | Fluorescente | Mostrador con cristal, máquina de escribir, el mapa de la red de tubos | Quien escribe le da la espalda a la sala |
+| **Correo** | Módulo | Fluorescente | Casilleros, carros, sacos y una segunda central del tubo neumático, decorativa y sin función (4c) | El tubo suena: no siempre es una cápsula |
+| **Ventanilla de Personal** (planta 1) | Módulo | Fluorescente | Mostrador con cristal, máquina de escribir, el mapa de la red de tubos y la central neumática de la que nacen los tubos | Quien escribe le da la espalda a la sala |
 | **Estación del tubo** (planta 1, en 8–14 salas) | En la pared | Su lucecita | Boca del tubo, bandeja y timbre | Se recoge de espaldas |
 | **Cuarto eléctrico** (planta 2) | Módulo pequeño | Foco de emergencia | El cuadro general con sus palancas y la roja del montacargas | El más expuesto de la planta |
 | **Reprografía y microfichas** | Módulo | Fluorescente | Fotocopiadora, lectores, cajas | |
@@ -109,7 +109,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 - **Pasillos:** de 3 a 3,6 m (alguno de 2,4), con un friso de dos tonos igual en todos (arrimadero de roble color miel hasta 1 m bajo una moldura de nogal, greige encima) y, en cada celda de pasillo, un rótulo negro de letras claras a 1,6 m con el nombre de su zona y un cuadradito del color de su departamento.
 - **Puertas:** del tamaño de las del hotel (2,65 m; decisión del autor: se prueban así): hoja de roble color miel con manilla de latón en marco de nogal, algunas con un ventanuco estrecho de vidrio claro. Las de servicio y las de etapa, de acero verde gris con barra antipánico. Por eso el falso techo va a 2,95 m.
 - **El pasillo central de una nave queda libre:** ni muebles ni piezas de esquina dentro (el validador lo mira, `nave_aisle_`). Los anillos de la planta no cuentan las costuras dentro de una nave: un bloque de módulos abierto no es una vuelta.
-- **Una regla de construcción:** nada dentro de una sala pasa de 2,2 m (mamparas, estanterías, archivadores). Así **el techo de cada sala es un camino libre** para ella. Solo las columnas de las naves de la planta 1 suben hasta el techo, y ella las rodea. Las cristaleras con persiana van solo en las paredes entre salas; los despachos son salas propias.
+- **Una regla de construcción:** nada dentro de una sala pasa de 2,2 m (mamparas, estanterías, archivadores). Así **el techo de cada sala es un camino libre** para ella. Solo las columnas de las naves de la planta 1 suben hasta el techo, y ella las rodea. Excepción: lo plano contra la pared (0,2 m de fondo o menos y sin colisión, como el cuadro eléctrico y sus conducciones) puede pasar de 2,2 m y no quita placas al techo. Las cristaleras con persiana van solo en las paredes entre salas; los despachos son salas propias.
 
 ### Lo de arriba: el falso techo, el plénum y los ductos
 

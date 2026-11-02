@@ -111,3 +111,67 @@ func tick(_delta: float) -> void: pass
 func snapshot() -> Dictionary: return {}
 
 func restore(_data: Dictionary) -> void: pass
+
+## The look of the equipment (spec_rediseno 12, area 5): pieces of
+## game/world/office/pieces/ put after the floor is built. Nothing under this
+## tall casts a shadow or is drawn farther than the building's small things
+## (hotel_geometry SMALL_REACH); text on a plate stands this far off it, this
+## small a pixel, in light letters or, on a light plate, dark ones.
+const SHADOW_PIECE := 0.6
+const EQUIPMENT_REACH := 16.0
+const PLATE_OFF := 0.0015
+const PLATE_PIXEL := 0.0015
+const PLATE_INK := Color("e8e2cf")
+const PLATE_DARK := Color("1c1b19")
+
+## A piece at `xform` in `parent` (the floor when none), on the light layer of
+## the room it stands in. No collider: nothing used is in its way.
+func equipment(mesh: ArrayMesh, xform: Transform3D, parent: Node3D = null) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.transform = xform
+	var size: Vector3 = mesh.get_meta("size", mesh.get_aabb().size)
+	if size.y < SHADOW_PIECE:
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.visibility_range_end = EQUIPMENT_REACH
+	var holder: Node3D = parent if parent != null else level.hotel
+	holder.add_child(node)
+	lay_on_room(node)
+	return node
+
+## Something put on the floor after it was built, on its room's light layer
+## as what the floor built is (hotel_geometry.adopt()).
+func lay_on_room(node: Node3D) -> void:
+	if level.hotel.has_method("adopt"): level.hotel.adopt(node)
+
+## A wall piece's transform: the middle of its back on the wall's face at
+## `point`, its bottom at `bottom`, facing `yaw` (into the room).
+func wall_xform(size: Vector3, point: Vector3, bottom: float, yaw: float) -> Transform3D:
+	var turn := Basis(Vector3.UP, yaw)
+	return Transform3D(turn, Vector3(point.x, bottom, point.z) + turn.z * (size.z * 0.5))
+
+## Where a piece's text goes ("text_plate" metadata), just off the plate,
+## in the frame of the piece's parent.
+func plate_spot(node: MeshInstance3D) -> Vector3:
+	var spot: Array = node.mesh.get_meta("text_plate")
+	var centre: Vector3 = spot[0]
+	var normal: Vector3 = spot[2]
+	return node.transform * (centre + normal * PLATE_OFF)
+
+## Words on a plate, lit as the building's signs are, at `at` in `parent`'s
+## frame (the floor when none), turned to `yaw`.
+func plate_text(words: String, at: Vector3, yaw: float, font: int, ink := PLATE_INK, parent: Node3D = null) -> Label3D:
+	var label := Label3D.new()
+	label.text = words
+	label.font_size = font
+	label.pixel_size = PLATE_PIXEL
+	label.modulate = ink
+	label.outline_size = 0
+	label.shaded = true
+	label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	label.position = at
+	label.rotation.y = yaw
+	var holder: Node3D = parent if parent != null else level.hotel
+	holder.add_child(label)
+	lay_on_room(label)
+	return label

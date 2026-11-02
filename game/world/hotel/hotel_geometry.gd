@@ -1780,6 +1780,11 @@ func car_body(car: Node3D, _room: Dictionary) -> Array:
 	car_digits(car, PANEL_SCREEN - Vector3(0, 0, 0.003), PI)
 	return leaves
 
+## The material of a lift doorway's casing: the hotel's wood (a floor kind's
+## lift may be cased otherwise).
+func lift_casing_material() -> String:
+	return "trim"
+
 ## The lobby's wall with the lift in it: the width of the cell, FLOOR.LIFT_DEPTH
 ## in from the wall the car backs on to, finished like every other wall
 ## (wall_run(): plaster, the panelled dado and its rails, the cornice), with
@@ -1805,8 +1810,8 @@ func lift_wall(node: Node3D, room: Dictionary, direction: Vector2i, length: floa
 	# The casing stands out past the dado and its rails, which stop against it.
 	var out: float = inner * (0.09 + LIFT_CASING.y * 0.5)
 	for side in [-1, 1]:
-		box(boundary, Vector3(side * (gap + LIFT_CASING.x * 0.5), (top + LIFT_CASING.x) * 0.5, out), Vector3(LIFT_CASING.x, top + LIFT_CASING.x, LIFT_CASING.y), "trim")
-	box(boundary, Vector3(0, top + LIFT_CASING.x * 0.5, out), Vector3(gap * 2.0, LIFT_CASING.x, LIFT_CASING.y), "trim")
+		box(boundary, Vector3(side * (gap + LIFT_CASING.x * 0.5), (top + LIFT_CASING.x) * 0.5, out), Vector3(LIFT_CASING.x, top + LIFT_CASING.x, LIFT_CASING.y), lift_casing_material())
+	box(boundary, Vector3(0, top + LIFT_CASING.x * 0.5, out), Vector3(gap * 2.0, LIFT_CASING.x, LIFT_CASING.y), lift_casing_material())
 	for side in [-1, 1]: wall_art(boundary, room, side * 3.5, inner)
 
 ## The car's floor number in the violet light of the model's displays, over

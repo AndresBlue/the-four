@@ -2,12 +2,18 @@ extends "res://game/floors/objectives/objective.gd"
 ## Planta 1 of the offices, the card (spec_f1_systems section 2): each survivor
 ## types a request at the window, the pneumatic tube sends the card to one of
 ## the stations, it is taken from the tray, and the quota of cards goes through
-## the reader beside the freight lift's door, which then opens. Not built yet:
-## nothing: the photo goes to every machine (match_net.send_photo). The receipt and the card are held up when they come (1h, drawn by
-## hint_view.gd), and the pause lines say where the card is.
+## the reader beside the freight lift's door, which then opens. The photo goes
+## to every machine (match_net.send_photo); the receipt and the card are held
+## up when they come (1h, drawn by hint_view.gd), and the pause lines say where
+## the card is. The equipment looks as its references (spec_rediseno 6.2, 6.3
+## and 6.15, area 5: pieces/mail_equipment.gd).
 const ID := &"files"
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const USABLE := preload("res://game/world/interactables/office/office_usable.gd")
+const MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
+const WALL := preload("res://game/world/office/pieces/wall.gd")
+const LAYOUT := preload("res://game/world/generation/office_layout.gd")
+const ROOM_LAYERS := preload("res://game/world/hotel/room_layers.gd")
 
 enum Card { TRAVELLING, IN_TRAY, HELD, DROPPED }
 const ACTIONS := ["type", "take", "swipe", "pick"]
@@ -30,9 +36,11 @@ var requests := {}
 var swiped: Array = []
 ## The "station" entries of tubes.exits, in list order (station index = place here).
 var station_exits: Array = []
-## The usables: 0 the typewriter, 1.. the stations, last the reader.
+## The usables: 0 the typewriter, 1.. the stations, then the map, last the reader.
 var usables: Array = []
 var lamps: Array = []
+## Per station, its lamp's lenses [lit, dark], shown in turn with its lamp.
+var lenses: Array = []
 ## The keys going while this machine's player types.
 var typing_voice = null
 ## The tubes' tree from the hub (parent node of each, -1 at the hub), and
@@ -55,6 +63,8 @@ var photos := {}
 const TUBE_RADIUS := 0.055
 ## The kit's straight metre of pipe (tools/props/build_catalogue.gd PARTS).
 const PIPE_MODEL := "res://assets/props/hotel/modular_pipes_straight.res"
+## The window desk's top (office_geometry.gd POST_DESK).
+const DESK_TOP := 0.755
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -65,39 +75,42 @@ func reader_index() -> int: return usables.size() - 1
 func place() -> void:
 	usables.clear()
 	lamps.clear()
+	lenses.clear()
 	station_exits.clear()
 	if not built(): return
 	var m := manifest()
 	for e in m.tubes.exits:
 		if String(e.kind) == "station": station_exits.append(e)
-		# The hub's sender at the window, where the tubes start.
-		if String(e.kind) == "hub": piece(v3(e.point) + Vector3(0, 0.14, 0) - facing(float(e.yaw)) * 0.06, Vector3(0.36, 0.52, 0.24), Color("6f6a5c"), float(e.yaw))
+		# The hub's central at the window (spec_rediseno 6.3), where the tubes
+		# start: its back on the wall, the hub's mouth inside it.
+		if String(e.kind) == "hub":
+			var central := equipment(MAIL.mail_central(level.hotel, MAIL.CENTRAL), wall_xform(MAIL.CENTRAL, v3(e.point), v3(e.point).y - MAIL.CENTRAL_HUB, float(e.yaw)))
+			plate_text("CORREO NEUMÁTICO", plate_spot(central), float(e.yaw), 22)
 	var desk: Dictionary = m.mail.desk
 	var stand: Dictionary = m.mail.stand
 	var desk_at := v3(desk.point) + facing(float(desk.yaw)) * 0.22
 	add_usable(Transform3D(Basis(Vector3.UP, float(desk.yaw)), desk_at + Vector3(0, 0.9, 0)), "type", v3(stand.point), look_yaw(-facing(float(stand.yaw))))
 	# The typewriter on the window's desk.
-	piece(desk_at + Vector3(0, 0.855, 0), Vector3(0.46, 0.2, 0.38), Color("3a3d3a"), float(desk.yaw))
+	equipment(MAIL.typewriter(level.hotel, MAIL.TYPEWRITER), Transform3D(Basis(Vector3.UP, float(desk.yaw)), desk_at + Vector3(0, DESK_TOP, 0)))
 	for e in station_exits:
 		var at := v3(e.point)
 		var out := facing(float(e.yaw))
 		var usable = add_usable(Transform3D(Basis(Vector3.UP, float(e.yaw)), at), "take", at + out * 0.55 - Vector3(0, at.y - floor_y(at), 0), look_yaw(-out))
-		# The receiver: its body over the tray, its number under it, and the
-		# lamp that tells a card is waiting.
-		piece(at + Vector3(0, 0.14, 0) - out * 0.06, Vector3(0.36, 0.52, 0.24), Color("6f6a5c"), float(e.yaw))
-		var plate := Label3D.new()
-		plate.text = str(int(e.number))
-		plate.font_size = 48
-		plate.pixel_size = 0.002
-		plate.modulate = Color("e8e2cf")
-		plate.position = at + out * 0.07 + Vector3(0, -0.2, 0)
-		plate.rotation.y = float(e.yaw)
-		level.hotel.add_child(plate)
+		# The receiver (spec_rediseno 6.3): its bay where the capsule lies, its
+		# number under it, the brass collar where its tube comes in, and the
+		# lamp that tells a card is waiting, its lit and dark lenses in turn.
+		var receiver := equipment(MAIL.station_receiver(level.hotel, MAIL.RECEIVER), wall_xform(MAIL.RECEIVER, at, at.y - MAIL.RECEIVER_MOUTH, float(e.yaw)))
+		plate_text(str(int(e.number)), plate_spot(receiver), float(e.yaw), 36)
+		equipment(MAIL.tube_collar(level.hotel, MAIL.COLLAR), Transform3D(Basis.IDENTITY, at + Vector3(0, MAIL.RECEIVER.y - MAIL.RECEIVER_MOUTH, 0)))
+		var lens_at := Transform3D(Basis(Vector3.UP, float(e.yaw)), at + Vector3(0, MAIL.RECEIVER_LENS - MAIL.RECEIVER_MOUTH - MAIL.LENS.y * 0.5, 0) + out * (MAIL.RECEIVER.z + MAIL.LENS.z * 0.5))
+		var lit := equipment(MAIL.lamp_lens(level.hotel, MAIL.LENS, "glow_amber"), lens_at)
+		lit.visible = false
+		lenses.append([lit, equipment(MAIL.lamp_lens(level.hotel, MAIL.LENS, "lamp_off"), lens_at)])
 		var lamp := OmniLight3D.new()
 		lamp.light_color = STATION_LAMP
 		lamp.omni_range = 1.5
 		lamp.light_energy = 0.6
-		lamp.position = at + out * 0.2 + Vector3(0, 0.45, 0)
+		lamp.position = at + out * (MAIL.RECEIVER.z + 0.2) + Vector3(0, MAIL.RECEIVER_LENS - MAIL.RECEIVER_MOUTH, 0)
 		lamp.visible = false
 		level.hotel.add_child(lamp)
 		lamps.append(lamp)
@@ -105,19 +118,32 @@ func place() -> void:
 	tubes_built(m)
 	# The ceiling camera over the window, looking at whoever types.
 	var eye := v3(m.mail.camera)
-	var camera_box := piece(eye, Vector3(0.12, 0.1, 0.24), Color("2b2b28"), 0.0)
-	camera_box.look_at(v3(m.mail.camera_target), Vector3.UP)
+	# Wholly behind the eye the card's photo is taken from (snap()): its lens
+	# just in front of that eye, looking where the photo looks.
+	var cam_basis := Basis.looking_at(v3(m.mail.camera_target) - eye, Vector3.UP)
+	equipment(MAIL.ceiling_camera(level.hotel, MAIL.CAMERA), Transform3D(cam_basis, eye - cam_basis * Vector3(0, 0.04, -0.125)))
 	# The network's map on the wall beside the window (read, nothing asked).
 	var map_spot: Dictionary = m.mail.map
 	var map_at := v3(map_spot.point) + facing(float(map_spot.yaw)) * 0.01
-	var sheet := piece(map_at, Vector3(0.42, 0.3, 0.005), Color(0.9, 0.9, 0.86), float(map_spot.yaw))
+	# As wide as the wall leaves it beside the window (spec_rediseno 6.2).
+	var window_room: Dictionary = m.rooms[int(m.mail.window)]
+	var map_wide := clampf(2.0 * (LAYOUT.wall_length(window_room, String(map_spot.wall)) * 0.5 - absf(float(map_spot.along)) - 0.05), 0.42, MAIL.MAP.x)
+	var map_size := Vector3(snappedf(map_wide, 0.01), MAIL.MAP.y, MAIL.MAP.z)
+	var sheet := equipment(MAIL.network_map(level.hotel, map_size), wall_xform(map_size, v3(map_spot.point), v3(map_spot.point).y - map_size.y * 0.5, float(map_spot.yaw)))
 	sheet.name = "TubeMap"
+	plate_text("RED DE TUBOS", plate_spot(sheet), float(map_spot.yaw), 24, PLATE_DARK)
 	add_usable(Transform3D(Basis(Vector3.UP, float(map_spot.yaw)), map_at), "read", Vector3.INF, NAN)
 	var reader: Dictionary = m.mail.reader
 	var reader_at := v3(reader.point)
 	var reader_out := facing(float(reader.yaw))
 	add_usable(Transform3D(Basis(Vector3.UP, float(reader.yaw)), reader_at), "swipe", reader_at + reader_out * 0.6 - Vector3(0, reader_at.y - floor_y(reader_at), 0), look_yaw(-reader_out))
-	piece(reader_at + reader_out * 0.03, Vector3(0.12, 0.2, 0.06), Color("2c2e30"), float(reader.yaw))
+	# The reader and, over it, how to use it and who for (spec_rediseno 6.15).
+	equipment(MAIL.card_reader(level.hotel, MAIL.READER), wall_xform(MAIL.READER, reader_at, reader_at.y - MAIL.READER.y * 0.5, float(reader.yaw)))
+	var steps := equipment(MAIL.instruction_plate(level.hotel, MAIL.STEPS), wall_xform(MAIL.STEPS, reader_at, reader_at.y + 0.22, float(reader.yaw)))
+	plate_text("1. INSERTE FICHA\n2. ESPERE SEÑAL\n3. RETIRE FICHA", plate_spot(steps), float(reader.yaw), 17, PLATE_DARK)
+	var notice_size := Vector3(0.4, 0.14, 0.01)
+	var notice := equipment(WALL.sign_plate(level.hotel, notice_size), wall_xform(notice_size, reader_at, reader_at.y + 0.45, float(reader.yaw)))
+	plate_text("USO EXCLUSIVO\nDE PERSONAL", plate_spot(notice), float(reader.yaw), 30)
 	show_state()
 
 func v3(p: Array) -> Vector3: return Vector3(float(p[0]), float(p[1]), float(p[2]))
@@ -162,7 +188,35 @@ func tubes_built(m: Dictionary) -> void:
 	var holder := MultiMeshInstance3D.new()
 	holder.name = "PneumaticTubes"
 	holder.multimesh = multi
+	# Worn brass, as the reference's (spec_rediseno 6.3).
+	holder.material_override = level.hotel.materials.get("gold")
+	# They cross many rooms: on every room's layer, and not moved by the floor
+	# to the layer of the one at their origin (hotel_geometry.late_arrival()).
+	holder.set_meta("laid", true)
 	level.hotel.add_child(holder)
+	ROOM_LAYERS.put_on(holder, ROOM_LAYERS.ROOMS)
+	# A brass collar a little way into each run, at both its ends.
+	var collars := MultiMesh.new()
+	collars.transform_format = MultiMesh.TRANSFORM_3D
+	collars.mesh = MAIL.tube_collar(level.hotel, MAIL.COLLAR)
+	collars.instance_count = edges.size() * 2
+	for k in edges.size():
+		var ca := v3(nodes[int(edges[k][0])])
+		var cb := v3(nodes[int(edges[k][1])])
+		var crun := cb - ca
+		var cup: Vector3 = crun.normalized() if crun.length() > 0.001 else Vector3.UP
+		var cside := cup.cross(Vector3.FORWARD if absf(cup.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
+		var turn := Basis(cside, cup, cside.cross(cup))
+		var reach := minf(0.02, crun.length() * 0.25)
+		collars.set_instance_transform(k * 2, Transform3D(turn, ca + cup * reach))
+		collars.set_instance_transform(k * 2 + 1, Transform3D(turn, cb - cup * (reach + MAIL.COLLAR.y)))
+	var ring := MultiMeshInstance3D.new()
+	ring.name = "PneumaticCollars"
+	ring.multimesh = collars
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.set_meta("laid", true)
+	level.hotel.add_child(ring)
+	ROOM_LAYERS.put_on(ring, ROOM_LAYERS.ROOMS)
 	tube_parent.clear()
 	tube_parent.resize(nodes.size())
 	tube_parent.fill(-2)
@@ -207,7 +261,10 @@ func capsule_for(seat: int) -> Dictionary:
 	material.albedo_color = Color("b8b2a2")
 	material.metallic = 0.5
 	body.material_override = material
+	body.set_meta("laid", true)
 	level.hotel.add_child(body)
+	# It travels through many rooms, as the tubes: lit by any of them.
+	ROOM_LAYERS.put_on(body, ROOM_LAYERS.ROOMS)
 	var path := tube_path(int(station_exits[int(r.station)].node))
 	capsules[seat] = {"node": body, "path": path, "hiss": null}
 	return capsules[seat]
@@ -264,21 +321,6 @@ func add_usable(xform: Transform3D, action: String, stand: Vector3, yaw: float):
 	usables.append(usable)
 	return usable
 
-## A plain box standing in for a model to come (1h and the ingest).
-func piece(at: Vector3, size: Vector3, colour: Color, yaw: float) -> MeshInstance3D:
-	var mesh := MeshInstance3D.new()
-	var cube := BoxMesh.new()
-	cube.size = size
-	mesh.mesh = cube
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.roughness = 0.6
-	mesh.material_override = material
-	mesh.position = at
-	mesh.rotation.y = yaw
-	level.hotel.add_child(mesh)
-	return mesh
-
 ## The station lamps: on while a card waits in their tray.
 func show_state() -> void:
 	for i in lamps.size():
@@ -286,6 +328,9 @@ func show_state() -> void:
 		for seat in requests:
 			if int(requests[seat].station) == i and int(requests[seat].state) == Card.IN_TRAY: waiting = true
 		lamps[i].visible = waiting
+		if i < lenses.size():
+			lenses[i][0].visible = waiting
+			lenses[i][1].visible = not waiting
 
 func alive(seat: int) -> bool:
 	return int(level.session.participants.get(seat, level.session.Life.DEAD)) != level.session.Life.DEAD
