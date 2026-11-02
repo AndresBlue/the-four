@@ -21,6 +21,7 @@ const HOTEL_GEN := preload("res://game/world/generation/map_generator.gd")
 const CREATURE := preload("res://game/enemies/creature.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
+const RECIPES := preload("res://game/world/generation/office_recipes.gd")
 const OFFICE_METRICS := preload("res://tools/dev/office_metrics.gd")
 ## What geometry and the systems call of the palette (spec_f1_geometry.md
 ## 0.2, spec_f1_systems.md 0.2).
@@ -325,7 +326,10 @@ const T_SHORT := "Ningún atajo de conducto baja de 0,55 del paseo de puerta a p
 const T_GAPS := "Los huecos según GAP_SHARE, las rejillas y los huecos en el centro de su teja y lejos del principal"
 const T_ARCHIVES := "Dos archivos o más en la planta 1, pasillos de 0,95 y ninguna fila en una puerta"
 const T_ROOMS := "Enchufes en cada sala, cristal en espejo y muebles que dejan paso"
-const T_ORDER := [T_VALID, T_NAME, T_TYPES, T_SIZES, T_SPECIALS, T_SHARES, T_FREIGHT, T_MUSTS, T_ARCHIVE_HALL, T_TOILETS, T_MOBILE, T_DEPOT, T_DEPTS, T_READER, T_SHAFT_GATE, T_SECURITY, T_STATIONS, T_TUBES, T_CIRCUITS, T_MAIN, T_DUCTS, T_SHORT, T_GAPS, T_ARCHIVES, T_ROOMS]
+const T_RECIPES := "Ningún mueble delante de una cristalera"
+const T_FIRST_PIECE := "La pared característica de recepción, reprografía, correo, descanso, secretaría, almacén y depósito es la de su primera pieza contra una pared"
+const T_ONCE := "Cada salón de dirección tiene un solo escritorio y una sola pared característica"
+const T_ORDER := [T_VALID, T_NAME, T_TYPES, T_SIZES, T_SPECIALS, T_SHARES, T_FREIGHT, T_MUSTS, T_ARCHIVE_HALL, T_TOILETS, T_MOBILE, T_DEPOT, T_DEPTS, T_READER, T_SHAFT_GATE, T_SECURITY, T_STATIONS, T_TUBES, T_CIRCUITS, T_MAIN, T_DUCTS, T_SHORT, T_GAPS, T_ARCHIVES, T_ROOMS, T_RECIPES, T_FIRST_PIECE, T_ONCE]
 const KEYS := ["floor", "version", "departments", "plenum", "ducts", "archives", "mail", "tubes", "power", "air"]
 
 ## Culprits by check title, while the floors are looked at.
@@ -354,6 +358,7 @@ func generator_checks() -> void:
 	var unequal: Array = []
 	var times: Array = []
 	var per_cell: Array = []
+	var tally := {"rooms": 0, "sure": 0, "whole": 0, "featureless": 0, "secretaries": 0, "suites": 0, "suite_doors": 0, "suite_open": 0, "lit_doors": 0, "open_doors": 0, "types": {}}
 	var kept: Dictionary = {}
 	for run in runs:
 		var run_seed: int = run[0]
@@ -392,6 +397,7 @@ func generator_checks() -> void:
 		floor_ducts(manifest, tag)
 		floor_archives(manifest, tag)
 		floor_rooms(manifest, tag, per_cell)
+		floor_recipes(manifest, tag, tally)
 	check("Como mucho un piso de reserva en las semillas 1 a 40", fallen.size() <= 1, str(fallen))
 	check("Ningún piso de reserva ni fallo de numeración con 4 y 5 supervivientes", fallen_big.is_empty(), str(fallen_big))
 	check("Cada piso sale igual dos veces, y el hotel de en medio no cambia nada", unequal.is_empty(), str(unequal))
@@ -399,9 +405,21 @@ func generator_checks() -> void:
 	per_cell.sort()
 	var spread := {}
 	for count in per_cell: spread[count] = int(spread.get(count, 0)) + 1
-	# The design asks for 2 (spec 2.9); the lattice gives 1 for now, a
-	# calibration pending with the author: this keeps it from getting worse.
+	# Spec 2.9 asks for 2 a cell, the naves' cells too: where their aisle and
+	# columns (spec_rediseno 3.3) leave the desk pairs under two, the lattice
+	# lays single desks where they seat more (area 4b).
 	check("La mediana de muebles por celda de oficina abierta es 2 o más", not per_cell.is_empty() and int(per_cell[per_cell.size() / 2]) >= 2, str(spread))
+	check("Las salas con piezas seguras en su receta las tienen todas en 3 de cada 4 o más", int(tally.whole) * 4 >= int(tally.sure) * 3, "%d de %d" % [int(tally.whole), int(tally.sure)])
+	var thin: Array = []
+	for type_id in tally.types:
+		var each: Dictionary = tally.types[type_id]
+		if int(each.rooms) >= 4 and int(each.whole) * 2 < int(each.rooms): thin.append("%s %d de %d" % [String(OFFICE.TYPES[int(type_id)]), int(each.whole), int(each.rooms)])
+	check("Cada tipo con receta y 4 salas o más tiene todas sus piezas seguras en la mitad o más", thin.is_empty(), str(thin))
+	check("Como mucho una de cada diez salas con receta se queda sin pared característica", int(tally.featureless) * 10 <= int(tally.rooms), "%d de %d" % [int(tally.featureless), int(tally.rooms)])
+	check("Más de la mitad de las secretarías tienen puerta a un despacho de dirección", int(tally.suites) * 2 > int(tally.secretaries), "%d de %d" % [int(tally.suites), int(tally.secretaries)])
+	check("Todas las puertas entre secretaría y dirección están abiertas", int(tally.suite_doors) > 0 and int(tally.suite_open) == int(tally.suite_doors), "%d de %d" % [int(tally.suite_open), int(tally.suite_doors)])
+	var share: float = float(tally.open_doors) / maxf(1.0, float(tally.lit_doors))
+	check("Entre el 50 y el 70 % de las puertas de las salas con luz están abiertas", share >= 0.5 and share <= 0.7, "%.3f de %d" % [share, int(tally.lit_doors)])
 	var with_shortcut := shortcut_plantas.count(true)
 	check("Tres de cada cuatro plantas o más tienen un atajo suelto de conducto", with_shortcut * 4 >= shortcut_plantas.size() * 3, "%d de %d" % [with_shortcut, shortcut_plantas.size()])
 	var standby: Dictionary = GEN.new().candidate(404, 0, true)
@@ -760,6 +778,91 @@ func floor_rooms(m: Dictionary, tag: String, per_cell: Array) -> void:
 			for j in furniture.size():
 				if j != i and int(furniture[j].extra.group) != int(furniture[i].extra.group) and not LAYOUT.apart(r, LAYOUT.footprint(furniture[j]), LAYOUT.ITEM_GAP): note(T_ROOMS, "%s: muebles juntos en %d" % [tag, id])
 
+## The recipes on one floor (spec_rediseno 3.6, 5.2 and 6; area 4b): the
+## furnished rooms with their feature wall and each sure piece of their
+## recipe (not the lattice's nor the boardroom table's), by type too, nothing
+## before glass, the secretaries beside a director's office with the door
+## between them open, the first piece on its wall, a salon's one desk, and the
+## lit rooms' open doors, into `tally`.
+func floor_recipes(m: Dictionary, tag: String, tally: Dictionary) -> void:
+	var rooms: Array = m.rooms
+	var by_type: Dictionary = tally.types
+	var heads := RECIPES.hall_heads(rooms)
+	var salons := {}
+	for room in rooms:
+		if int(room.type) == OFFICE.VOID or bool(room.corridor): continue
+		var t := int(room.type)
+		var id := int(room.id)
+		var furniture: Array = room.get("furniture", [])
+		var recipe: Array = OFFICE.ROOM_FURNITURE.get(t, [])
+		if not recipe.is_empty():
+			tally.rooms = int(tally.rooms) + 1
+			if String(room.get("feature", "")) == "": tally.featureless = int(tally.featureless) + 1
+			var have := {}
+			for it in furniture: have[String(it.kind)] = true
+			# A piece a salon has once is only sure in its head cell, and its other
+			# cells count for no type: the bar stays on the cells that hold the recipe.
+			var head := int(heads.get(int(room.hall), id))
+			var once: Array = OFFICE.ONE_PER_HALL.get(t, []) if head != id else []
+			var sure: Array = []
+			for entry in recipe:
+				if int(entry[2]) >= 1 and not ["lattice", "table", "closed", "spare", "hall"].has(String(entry[1])) and not once.has(String(entry[0])): sure.append(String(entry[0]))
+			var whole: bool = sure.all(func(kind): return have.has(kind))
+			if not by_type.has(t): by_type[t] = {"rooms": 0, "whole": 0}
+			var each: Dictionary = by_type[t]
+			if head == id:
+				each.rooms = int(each.rooms) + 1
+				if whole: each.whole = int(each.whole) + 1
+			if not sure.is_empty():
+				tally.sure = int(tally.sure) + 1
+				if whole: tally.whole = int(tally.whole) + 1
+			if OFFICE.FEATURE_FIRST_PIECE.has(t): first_piece(room, recipe, tag)
+			if heads.has(int(room.hall)):
+				var salon: Dictionary = salons.get(int(room.hall), {"once": 0, "walls": {}})
+				salon.walls[String(room.get("feature", ""))] = true
+				for it in furniture:
+					if OFFICE.ONE_PER_HALL[t].has(String(it.kind)): salon.once = int(salon.once) + 1
+				salons[int(room.hall)] = salon
+		for wall in room.get("glazed", []):
+			var strip := RECIPES.glass_band(room, String(wall))
+			for it in furniture:
+				if LAYOUT.footprint(it).intersects(strip): note(T_RECIPES, "%s: %s delante del cristal en %d" % [tag, String(it.kind), id])
+		if t == OFFICE.SECRETARY:
+			tally.secretaries = int(tally.secretaries) + 1
+			if FLOOR.doorways(room).any(func(way): return int(rooms[int(way.other)].type) == OFFICE.EXEC_OFFICE): tally.suites = int(tally.suites) + 1
+	for hall in salons:
+		if int(salons[hall].once) > 1 or salons[hall].walls.size() != 1: note(T_ONCE, "%s: salón %d: %d, %s" % [tag, int(hall), int(salons[hall].once), str(salons[hall].walls.keys())])
+	var shut := {}
+	for gate in m.gates: shut["%d:%d" % [mini(int(gate.room), int(gate.beyond)), maxi(int(gate.room), int(gate.beyond))]] = true
+	for key in m.doors:
+		var spec: Dictionary = m.doors[key]
+		if shut.has(String(key)) or spec.has("lock"): continue
+		var ids := String(key).split(":")
+		var a: Dictionary = rooms[int(ids[0])]
+		var b: Dictionary = rooms[int(ids[1])]
+		var ta := int(a.type)
+		var tb := int(b.type)
+		if (ta == OFFICE.SECRETARY and tb == OFFICE.EXEC_OFFICE) or (ta == OFFICE.EXEC_OFFICE and tb == OFFICE.SECRETARY):
+			tally.suite_doors = int(tally.suite_doors) + 1
+			if bool(spec.get("open", false)): tally.suite_open = int(tally.suite_open) + 1
+		if (not bool(a.corridor) and not bool(a.dark)) or (not bool(b.corridor) and not bool(b.dark)):
+			tally.lit_doors = int(tally.lit_doors) + 1
+			if bool(spec.get("open", false)): tally.open_doors = int(tally.open_doors) + 1
+
+## A room's first piece against a wall stands against its feature wall
+## (palette.FEATURE_FIRST_PIECE): its back to it, WALL_GAP off its face.
+func first_piece(room: Dictionary, recipe: Array, tag: String) -> void:
+	var on_walls: Array = recipe.filter(func(entry): return String(entry[1]) != "middle").map(func(entry): return String(entry[0]))
+	for it in room.get("furniture", []):
+		if not on_walls.has(String(it.kind)): continue
+		var wall := String(room.get("feature", ""))
+		var ok: bool = wall != "" and int(it.turn) == int(RECIPES.TURNS[wall])
+		if ok:
+			var out: float = (Vector2(float(it.at[0]), float(it.at[1])) - RECIPES.wall_front(room, wall, 0.0, 0.0)).dot(LAYOUT.inward(wall))
+			ok = absf(out - (RECIPES.WALL_GAP + float(it.size[1]) / 2.0)) < 0.01
+		if not ok: note(T_FIRST_PIECE, "%s: %s en %d, pared %s" % [tag, String(it.kind), int(room.id), wall])
+		return
+
 ## The shared pieces on their own: conduit_metres on a conduit written by
 ## hand and against FLOOR.route_metres, office_layout on known cases.
 func pieces_checks() -> void:
@@ -982,6 +1085,31 @@ func validator_checks() -> void:
 					it.extra.height = 2.4
 					return
 	mutation(v, "Una mampara de 2,4 de alto", "furniture_", change_19)
+	# Where only office_recipes.air_zones() sees it: the hatch's square, and the
+	# handler's box past what its wall spot clears.
+	var change_hatch := func(m: Dictionary) -> void:
+		var plant: Dictionary = m.rooms[int(m.air.plant)]
+		var hp: Array = m.air.hatch.point
+		plant.furniture = [RECIPES.item("air_desk", Vector2(float(hp[0]) - float(plant.px), float(hp[2]) - float(plant.pz)), 0, 99)]
+	mutation(v, "La mesa de climatización sobre la escotilla", "furniture_", change_hatch)
+	var change_unit := func(m: Dictionary) -> void:
+		var plant: Dictionary = m.rooms[int(m.air.plant)]
+		plant.furniture = [RECIPES.item("air_desk", RECIPES.wall_front(plant, String(m.air.unit.wall), float(m.air.unit.along), 1.9), 0, 99)]
+	mutation(v, "La mesa de climatización dentro de la climatizadora", "furniture_", change_unit)
+	var change_glass := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			if room.get("glazed", []).is_empty(): continue
+			var at := RECIPES.wall_front(room, String(room.glazed[0]), 0.0, 0.4)
+			room.furniture.append({"kind": "filing", "at": [at.x, at.y], "turn": 0, "size": [0.5, 0.65], "extra": {"height": 1.32, "group": 99}})
+			return
+	mutation(v, "Un archivador delante de una cristalera", "glass_", change_glass)
+	var change_hall := func(m: Dictionary) -> void:
+		for room in m.rooms:
+			if int(room.type) != OFFICE.CORRIDOR: continue
+			var upright: bool = float(room.span_x) < float(room.span_z)
+			room.furniture.append({"kind": "bench_slat", "at": [0.0, 0.0], "turn": 1 if upright else 0, "size": [1.5, 0.9], "extra": {"height": 0.5, "group": 99}})
+			return
+	mutation(v, "Un banco de 0,9 de fondo en un pasillo", "hall_", change_hall)
 	var change_20 := func(m: Dictionary) -> void:
 		for room in m.rooms:
 			if int(room.type) == OFFICE.OFFICE and room.get("glazed", []).is_empty():

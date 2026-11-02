@@ -15,6 +15,9 @@ uniform float relief = 1.0;
 uniform float sheen : hint_range(0.0, 1.0) = 0.0;
 uniform float grime : hint_range(0.0, 1.0) = 0.35;
 uniform float backlight : hint_range(0.0, 1.0) = 0.0;
+// How much of a scan's roughness is kept, the rest being `roughness`: painted
+// steel's scan is flaking paint, and under a lamp its patches draw as stains.
+uniform float map_rough_keep : hint_range(0.0, 1.0) = 1.0;
 
 void vertex() { SURFACE_VERTEX; }
 
@@ -68,7 +71,7 @@ void fragment() {
 		AO = ao;
 		METALLIC = scan_metallic(l, metallic);
 		SPECULAR = specular;
-		ROUGHNESS = clamp((use_maps ? scan_roughness(l, rough) : rough) + dirt * 0.25, 0.02, 1.0);
+		ROUGHNESS = clamp((use_maps ? mix(rough, scan_roughness(l, rough), map_rough_keep) : rough) + dirt * 0.25, 0.02, 1.0);
 		if (sheen > 0.0) {
 			RIM = sheen;
 			RIM_TINT = 0.6;

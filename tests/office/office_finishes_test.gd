@@ -87,6 +87,9 @@ func check_materials(office_geo, hotel_geo) -> void:
 		var tint = scanned.get_shader_parameter("map_tint")
 		var recolour: bool = mode == null or int(mode) == 1
 		check(key + " tiñe su escaneo", not recolour or (tint is Color and not (tint as Color).is_equal_approx(Color.WHITE)), str(tint))
+	for key in ["steel_olive", "steel_mint", "steel_grey", "steel_dark"]:
+		var steel: ShaderMaterial = load(DIR % key)
+		check(key + " no dibuja la rugosidad de su escaneo en el brillo", is_zero_approx(float(steel.get_shader_parameter("map_rough_keep"))) and float(steel.get_shader_parameter("roughness")) >= 0.6, str(steel.get_shader_parameter("map_rough_keep")))
 	for key in PLAIN_TRES:
 		var plain = load(DIR % key)
 		check(key + " existe y no lleva set de escaneo", plain != null and not plain.has_meta("scan"))

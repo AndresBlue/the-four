@@ -12,6 +12,7 @@ extends SceneTree
 ## picture not dark ("lampara", "emergencia", "a_oscuras" say which).
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 ## Each room with a reference: its name, its picture, and the types that are
 ## it (the first room found of the first type that has one).
 const ROOMS := [
@@ -52,6 +53,14 @@ const DARK_LUMA := 0.02
 ## height looked at (level: the eye's own) and the horizontal field of view.
 const EYE := 1.5
 const OUT := 0.2
+## frame(): a feature wall more than 25 degrees aside from straight in (its
+## cosine) is framed from INSIDE metres into the room, past the door's leaf.
+const ASIDE := 0.9
+const INSIDE := 1.2
+## frame(): a feature wall that is the doorway's own is framed from across the
+## room, this far from the wall opposite: past what stands against it (0.65 m)
+## and over what stands deeper (1.3 m).
+const ACROSS_OFF := 1.2
 const AIM := 1.5
 const FOV := 55.0
 var level
@@ -174,18 +183,41 @@ func open_doors(at: Vector3) -> void:
 	for door in level.hotel.doors_near(at, 1.2):
 		if door.has_method("open_immediately"): door.open_immediately()
 
-## From the corridor, OUT metres back from the doorway, looking into the room.
-## wide_view: the reference's framing (55 degrees, the width kept); otherwise
-## the game's own camera.
-func frame(door: Dictionary, wide_view: bool) -> void:
+## From the corridor, OUT metres back from the doorway, looking at the room's
+## feature wall (aim_of()), or from across the room when that wall is the
+## doorway's own. wide_view: the reference's framing (55 degrees,
+## the width kept); otherwise the game's own camera.
+func frame(door: Dictionary, room: Dictionary, wide_view: bool) -> void:
 	var from: Vector3 = door.portal - door.inward * OUT + Vector3(0, EYE, 0)
-	look(from, from + door.inward * 6.0 + Vector3(0, AIM - EYE, 0))
+	var aim := aim_of(room, door, from)
+	var wall := String(room.get("feature", ""))
+	var way: Vector2i = LAYOUT.way_of(wall) if wall != "" else Vector2i.ZERO
+	if Vector3(way.x, 0, way.y).dot(door.inward) < -0.5:
+		var depth: float = FLOOR.size_of(room).x if absf(door.inward.x) > 0.5 else FLOOR.size_of(room).y
+		from = FLOOR.position_of(room) + door.inward * (depth * 0.5 - ACROSS_OFF) + Vector3(0, EYE, 0)
+	elif (aim - from).normalized().dot(door.inward) < ASIDE:
+		# A feature wall too far aside is not seen past the jamb and the open door.
+		from = door.portal + door.inward * INSIDE + Vector3(0, EYE, 0)
+		aim = aim_of(room, door, from)
+	look(from, aim)
 	if wide_view:
 		level.player.camera.keep_aspect = Camera3D.KEEP_WIDTH
 		level.player.camera.fov = FOV
 	else:
 		level.player.camera.keep_aspect = game_keep
 		level.player.camera.fov = game_fov
+
+## Where the camera looks in a room: the middle of its feature wall
+## (room.feature, palette.FEATURE_WALLS; spec_rediseno 6) at AIM over its
+## floor, or 6 m straight in from the doorway when it has none.
+static func aim_of(room: Dictionary, door: Dictionary, from: Vector3) -> Vector3:
+	var straight: Vector3 = from + door.inward * 6.0 + Vector3(0, AIM - EYE, 0)
+	var wall := String(room.get("feature", ""))
+	if wall == "": return straight
+	var centre := FLOOR.position_of(room)
+	var face := LAYOUT.face(room, wall)
+	var at: Vector3 = Vector3(centre.x + face, centre.y + AIM, centre.z) if wall == "west" or wall == "east" else Vector3(centre.x, centre.y + AIM, centre.z + face)
+	return at
 
 func wide() -> void:
 	level.player.camera.keep_aspect = Camera3D.KEEP_WIDTH
@@ -318,7 +350,7 @@ func run() -> void:
 			continue
 		var door: Dictionary = door_of(room)
 		open_doors(door.portal)
-		frame(door, true)
+		frame(door, room, true)
 		var capture: Image = await grab(true)
 		var reference: Image = Image.load_from_file(ProjectSettings.globalize_path("res://docs/referencias/" + file_name))
 		if reference == null or reference.is_empty():
@@ -353,11 +385,11 @@ func run() -> void:
 			var dark_picture: bool = maxf(maxf(float(bands.techo.captura.l), float(bands.pared.captura.l)), float(bands.suelo.captura.l)) < DARK_LUMA
 			var lit_now: bool = (lamp_now or battery_now) and not dark_picture
 			if dark_picture: print("ROOMS_CAPTURE_DARK %s" % label)
-			cifras.append({"room": int(room.id), "type": int(room.type), "planta": int(room.wing) + 1, "lit": lit_now, "lampara": lamp_now, "emergencia": battery_now, "a_oscuras": dark_picture, "estructura": structure_value, "bandas": bands, "techo_no_mas_oscuro": techo_no_mas_oscuro, "fondo": snappedf(depth, 0.01), "techo_visto": techo_visto, "suelo_visto": suelo_visto, "veredicto": {"a": a_ok, "b": b_ok}})
+			cifras.append({"room": int(room.id), "type": int(room.type), "pared": String(room.get("feature", "")), "planta": int(room.wing) + 1, "lit": lit_now, "lampara": lamp_now, "emergencia": battery_now, "a_oscuras": dark_picture, "estructura": structure_value, "bandas": bands, "techo_no_mas_oscuro": techo_no_mas_oscuro, "fondo": snappedf(depth, 0.01), "techo_visto": techo_visto, "suelo_visto": suelo_visto, "veredicto": {"a": a_ok, "b": b_ok}})
 			print("ROOMS_CAPTURE %s room=%d planta=%d lit=%s estructura=%.3f techo=%.3f pared=%.3f suelo=%.3f techo_visto=%s" % [label, int(room.id), int(room.wing) + 1, str(lit_now), structure_value, float(bands.techo.captura.l), float(bands.pared.captura.l), float(bands.suelo.captura.l), str(techo_visto)])
 			print("ROOMS_CAPTURE_VERDICT %s a=%s b=%s" % [label, str(a_ok), str(b_ok)])
 			beside(reference, capture).save_png(out_dir + "/" + label + ".png")
-			frame(door, false)
+			frame(door, room, false)
 			var game: Image = await grab(false)
 			game.save_png(out_dir + "/" + label + "_juego.png")
 			if THROUGH.has(label):

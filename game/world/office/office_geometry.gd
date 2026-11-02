@@ -4,6 +4,7 @@ extends "res://game/world/hotel/hotel_geometry.gd"
 ## office's own materials are ingested (spec 4.4 and 10), each finish the
 ## palette names stands in as the nearest hotel material, marked "stand_in".
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
+const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 ## A finish of the office palette (floor_finish(), wall_material()) and the
 ## hotel material that stands in for it.
 const STAND_INS := {"tgrid": "metal", "troffer_body": "metal", "troffer_lens": "light", "lens_off": "light_off", "grille_metal": "metal", "plenum_dark": "black", "veneer": "panel", "laminate": "wood", "enamel": "ceramic", "steel_olive": "metal", "steel_frame": "metal", "cardboard": "fabric", "bottle": "mirror", "partition_fabric": "fabric", "steel_plate": "metal", "cage_mesh": "metal", "gate_steel": "metal", "cork": "leather", "walnut": "trim", "walnut_object": "trim", "oak_door": "door", "dado_oak": "wood", "carpet_exec": "carpet"}
@@ -1587,25 +1588,50 @@ func extras(node: Node3D, room: Dictionary) -> void:
 		holder.position = Vector3(float(item.at[0]), 0, float(item.at[1]))
 		holder.rotation.y = int(item.turn) * PI / 2
 		node.add_child(holder)
-		PROPS.build_item(self, holder, item, node.position + holder.position)
+		PROPS.build_item(self, holder, item, node.position + holder.position, room)
 	if int(room.type) != OFFICE.ARCHIVE and int(room.type) != OFFICE.MOBILE_ARCHIVE: return
 	var cell := Rect2(float(room.px) - float(room.span_x) / 2, float(room.pz) - float(room.span_z) / 2, float(room.span_x), float(room.span_z))
 	for unit in manifest.get("archives", []):
 		if not unit.rooms.has(int(room.id)): continue
-		for r in unit.rows:
-			var piece := Rect2(float(r[0]), float(r[1]), float(r[2]) - float(r[0]), float(r[3]) - float(r[1])).intersection(cell)
+		var rows: Array = unit.rows
+		var spine: Array = unit.spine
+		for k in rows.size():
+			var r: Array = rows[k]
+			var full := Rect2(float(r[0]), float(r[1]), float(r[2]) - float(r[0]), float(r[3]) - float(r[1]))
+			var piece := full.intersection(cell)
 			if piece.size.x < 0.05 or piece.size.y < 0.05: continue
 			# A row runs across the unit's axis, from the spine to the long wall.
 			var along_x := piece.size.x >= piece.size.y
 			var centre := Vector3(piece.get_center().x - float(room.px), 0, piece.get_center().y - float(room.pz))
 			var length: float = piece.size.x if along_x else piece.size.y
 			var depth: float = piece.size.y if along_x else piece.size.x
-			PROPS.row(self, node, centre, length, depth, float(unit.height), along_x, bool(unit.mobile), node.position + centre)
+			var to_spine: float = signf((float(spine[0]) + float(spine[2])) * 0.5 - piece.get_center().x) if along_x else signf((float(spine[1]) + float(spine[3])) * 0.5 - piece.get_center().y)
+			# A row in two cells of a nave is numbered once, by the cell with its middle.
+			var number: int = k + 1 if cell.has_point(full.get_center()) else 0
+			PROPS.row(self, node, centre, length, depth, float(unit.height), along_x, bool(unit.mobile), node.position + centre, to_spine, number)
 
-## Archives are all shelving: no dressing on their walls (9.5).
+## How far out from its wall a stretch's band reaches, for the furniture that
+## stands in it: the litter lies out to about a metre (room_dressing.litter()).
+const BARE_DEPTH := 1.0
+
+## Archives are all shelving: no dressing on their walls (9.5). A stretch that
+## a piece of furniture stands in (its band BARE_DEPTH out from the wall) is
+## left bare: the litter and the fuse box the dressing would put there would
+## stand in the piece or against it. The dressing's draws are by position
+## (vary()), so the stretches kept keep what they had.
 func wall_stretches(room: Dictionary) -> Array:
 	if int(room.type) == OFFICE.ARCHIVE or int(room.type) == OFFICE.MOBILE_ARCHIVE: return []
-	return super(room)
+	var items: Array = room.get("furniture", [])
+	var out: Array = []
+	for stretch in super(room):
+		var frame: Transform3D = stretch[0]
+		var centre := Vector2(frame.origin.x, frame.origin.z)
+		var half_along := Vector2(frame.basis.x.x, frame.basis.x.z) * float(stretch[1]) / 2.0
+		var out_from_wall := Vector2(frame.basis.z.x, frame.basis.z.z) * BARE_DEPTH
+		var band := Rect2(centre - half_along, Vector2.ZERO).expand(centre + half_along).expand(centre + out_from_wall - half_along).expand(centre + out_from_wall + half_along)
+		if items.any(func(it: Dictionary) -> bool: return LAYOUT.footprint(it).intersects(band)): continue
+		out.append(stretch)
+	return out
 
 ## Furniture keeps clear of the walls by less in an office (H3).
 func nav_agent_radius() -> float: return 0.3

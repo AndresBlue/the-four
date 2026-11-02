@@ -8,6 +8,7 @@ const OFFICE_PALETTE := preload("res://game/floors/palettes/office_palette.gd")
 const OFFICE_VALIDATOR := preload("res://game/world/generation/office_validator.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
+const RECIPES := preload("res://game/world/generation/office_recipes.gd")
 ## Generator-only tuning (not read by anything else).
 const LOOSE_P := 0.3          # loose duct links between rooms (OFICINAS 11.3)
 const CORRIDOR_EXIT_P := 0.5  # grilles on corridor cells
@@ -509,6 +510,7 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 			room.type = pick
 		typed[int(room.id)] = true
 	for planta in WINGS: place_musts(f, planta, locked)
+	suites(f, locked)
 	cap_numbers(f, locked)
 	# The nave (spec_rediseno 3.3): its axis on each of its cells while it is
 	# still whole and an open office or cubicles; "" on every other room.
@@ -544,6 +546,70 @@ func finish(f: Dictionary, start: int, refuges: Array, entries: Array, decoratio
 		var direction := "east" if int(b.x) > int(a.x) else "south"
 		a.open_sides.append(direction)
 		b.open_sides.append("west" if direction == "east" else "north")
+
+## Spec_rediseno 3.6: a secretary's office beside a director's, with a door
+## between them. A secretary's with none swaps types with the lowest room of
+## its planta (palette.SUITE_SWAP: no salon, no service, not locked) with a
+## door to a director's office, never the director's of a secretary's that
+## has one: no type's count changes, so place_musts() still holds, and no draw
+## is taken.
+func suites(f: Dictionary, locked: Dictionary) -> void:
+	var kept := {}
+	for s in f.rooms:
+		if int(s.type) != palette.SECRETARY: continue
+		for n in door_ids(f, int(s.id)):
+			if int(f.rooms[int(n)].type) == palette.EXEC_OFFICE: kept[int(n)] = true
+	for s in f.rooms:
+		if int(s.type) != palette.SECRETARY or bool(s.corridor) or int(s.hall) >= 0 or bool(s.service): continue
+		var sid := int(s.id)
+		if door_ids(f, sid).any(func(n): return int(f.rooms[int(n)].type) == palette.EXEC_OFFICE): continue
+		if locked.has(sid) and frees_toilets(f, s): continue
+		var best := -1
+		var partner := -1
+		for e in f.rooms:
+			if int(e.type) != palette.EXEC_OFFICE or int(e.wing) != int(s.wing): continue
+			for n in door_ids(f, int(e.id)):
+				var other: Dictionary = f.rooms[int(n)]
+				if int(n) == sid or locked.has(int(n)) or kept.has(int(n)) or bool(other.corridor) or int(other.hall) >= 0 or bool(other.service): continue
+				if not palette.SUITE_SWAP.has(int(other.type)): continue
+				if undercuts(f, locked, s, palette.SECRETARY, int(n)) or undercuts(f, locked, s, int(other.type), sid): continue
+				if best < 0 or int(n) < best:
+					best = int(n)
+					partner = int(e.id)
+		if best < 0: continue
+		var was := int(f.rooms[best].type)
+		f.rooms[best].type = palette.SECRETARY
+		s.type = was
+		kept[partner] = true
+		if locked.has(sid):
+			locked.erase(sid)
+			locked[best] = true
+
+## Whether a locked secretary's room, freed, is where place_musts() would have
+## put its sector's toilets: on a corridor, in a sector of 5 or more with none.
+func frees_toilets(f: Dictionary, s: Dictionary) -> bool:
+	if not door_ids(f, int(s.id)).any(func(n): return bool(f.rooms[int(n)].corridor)): return false
+	var members: Array = f.rooms.filter(func(r): return int(r.type) != palette.VOID and not bool(r.corridor) and int(r.wing) == int(s.wing) and int(r.sector) == int(s.sector))
+	return members.size() >= 5 and not members.any(func(r): return int(r.type) == palette.TOILETS)
+
+## Whether a room of type `t` at `id` would come before one locked for that type
+## on s's planta: place_musts() keeps each must's lowest ids, and they must stay
+## its lowest after a swap.
+func undercuts(f: Dictionary, locked: Dictionary, s: Dictionary, t: int, id: int) -> bool:
+	if not palette.MUSTS[int(s.wing)].has(t): return false
+	return f.rooms.any(func(r): return int(r.type) == t and int(r.wing) == int(s.wing) and int(r.id) > id and int(r.id) != int(s.id) and locked.has(int(r.id)))
+
+## The rooms a room will have a door to: its edges not merged into a salon
+## (hang_doors() hangs one on each).
+func door_ids(f: Dictionary, id: int) -> Array:
+	var out: Array = []
+	for edge in f.edges:
+		var a := int(edge[0])
+		var b := int(edge[1])
+		if a != id and b != id: continue
+		if f.merged.has(pair_key(a, b)): continue
+		out.append(b if a == id else a)
+	return out
 
 ## Each planta's departments, one per sector: the entrance's sector gets the
 ## first, the rest are drawn; on the third, the security post's sector is
@@ -1487,25 +1553,78 @@ func column_fits(view: Dictionary, room: Dictionary, point: Vector2) -> bool:
 		if LAYOUT.point_rect_distance(lamp.centre, world) < float(palette.COLUMN_LAMP): return false
 	return true
 
-## Spec 2.5h, the free-standing furniture: desks on a lattice, cubicle pods
-## kept whole, the boardroom's table, and the pieces that stand on a wall.
+## Spec 2.5h and spec_rediseno 5.2, the free-standing furniture: each room's
+## feature wall, the corner pieces before glass or stood in for giving way,
+## then its recipe (palette.ROOM_FURNITURE, office_recipes.gd) on a stream of
+## its own: desks on a lattice, cubicle pods kept whole, the boardroom's table,
+## the pieces against its walls and in its middle; the corners whose stand-in
+## was not laid back; then the lit rooms' open doors. A salon of a type with a
+## piece it has once (palette.ONE_PER_HALL) lays it in its head cell and shares
+## that cell's feature wall; a type of palette.FEATURE_FIRST_PIECE ends up
+## framed by the wall its first piece landed on.
 func furnish_furniture(job: Dictionary) -> String:
 	var f: Dictionary = job.f
 	var rooms: Array = f.rooms
 	var view := working(job)
+	var rng := stream(int(job.seed), int(job.attempt), "recipes")
 	job["wall_items"] = {}
-	for room in rooms: room["furniture"] = []
 	for room in rooms:
+		room["furniture"] = []
+		room["feature"] = ""
+	var heads := RECIPES.hall_heads(rooms)
+	for room in rooms:
+		if int(room.type) == palette.VOID or bool(room.corridor): continue
+		# A salon with a piece it has once is framed as one, by its head cell's wall.
+		var head := int(heads.get(int(room.hall), -1))
+		room.feature = RECIPES.feature_of(view, rooms[head] if head >= 0 else room)
+		RECIPES.clear_glass(room)
 		var t := int(room.type)
-		if t != palette.OPEN_OFFICE and t != palette.CUBICLES and t != palette.BOARDROOM and t != palette.COPY_ROOM and t != palette.MAIL and t != palette.SECRETARY: continue
-		var zones := LAYOUT.clear_zones(view, room, t == palette.BOARDROOM)
+		var recipe: Array = palette.ROOM_FURNITURE.get(t, [])
+		if recipe.is_empty(): continue
+		var gone := RECIPES.drop(room)
+		var taken: Array = job.taken.get(int(room.id), [])
+		var zones := RECIPES.keep_clear(view, room, taken)
 		if t == palette.OPEN_OFFICE or t == palette.CUBICLES: zones.append_array(nave_zones(room))
-		if t == palette.OPEN_OFFICE or t == palette.CUBICLES: lay_lattice(f, room, zones)
-		elif t == palette.BOARDROOM: lay_table(room, zones)
-		else:
-			var kind: String = "copier" if t == palette.COPY_ROOM else "pigeonholes" if t == palette.MAIL else "card_index"
-			lay_on_wall(job, room, zones, kind, 2 if t == palette.MAIL else 1)
+		var walk: Array = zones + RECIPES.ways_in(room, taken)
+		var first_wall := ""
+		var once: Array = palette.ONE_PER_HALL.get(t, []) if head >= 0 and head != int(room.id) else []
+		for entry in recipe:
+			if once.has(String(entry[0])): continue
+			var how := String(entry[1])
+			if how == "lattice": lay_lattice(f, room, zones)
+			elif how == "table": lay_table(room, zones)
+			else:
+				for run in RECIPES.lay(room, walk, entry, rng):
+					if first_wall == "": first_wall = String(run.wall)
+					if not job.wall_items.has(int(room.id)): job.wall_items[int(room.id)] = []
+					job.wall_items[int(room.id)].append(run)
+		RECIPES.restore(room, gone)
+		if first_wall != "" and palette.FEATURE_FIRST_PIECE.has(t): room.feature = first_wall
+	for hall in heads: once_elsewhere(job, view, int(hall), rng)
+	# The corridors' floor furniture, on a stream of its own.
+	var halls := RECIPES.lay_halls(view, job.taken, stream(int(job.seed), int(job.attempt), "halls"))
+	for id in halls:
+		if not job.wall_items.has(int(id)): job.wall_items[int(id)] = []
+		job.wall_items[int(id)].append_array(halls[id])
+	RECIPES.open_doors(rooms, job.doors, job.gates, stream(int(job.seed), int(job.attempt), "open_doors"))
 	return ""
+
+## A salon whose head cell had no room for a piece it has once: the first of
+## its cells, in order, that has room, past what they were furnished with.
+func once_elsewhere(job: Dictionary, view: Dictionary, hall: int, rng: RandomNumberGenerator) -> void:
+	var cells: Array = job.f.rooms.filter(func(r): return int(r.hall) == hall and palette.ONE_PER_HALL.has(int(r.type)))
+	var t := int(cells[0].type)
+	var once: Array = palette.ONE_PER_HALL[t]
+	for entry in palette.ROOM_FURNITURE[t]:
+		var kind := String(entry[0])
+		if not once.has(kind) or cells.any(func(r): return r.furniture.any(func(it): return String(it.kind) == kind)): continue
+		for room in cells:
+			var taken: Array = job.taken.get(int(room.id), [])
+			var runs: Array = RECIPES.lay(room, RECIPES.keep_clear(view, room, taken) + RECIPES.ways_in(room, taken), entry, rng)
+			if runs.is_empty(): continue
+			if not job.wall_items.has(int(room.id)): job.wall_items[int(room.id)] = []
+			job.wall_items[int(room.id)].append_array(runs)
+			break
 
 ## What a nave keeps free of furniture in one of its cells (spec_rediseno 3.3,
 ## 3.4): its half of the central aisle along the seam to the other row, and
@@ -1518,22 +1637,14 @@ func nave_zones(room: Dictionary) -> Array:
 		zones.append({"rect": Rect2(Vector2(float(c.x), float(c.z)) - Vector2.ONE * reach, Vector2.ONE * reach * 2.0)})
 	return zones
 
-## A furniture item as the manifest keeps it.
+## A furniture item as the manifest keeps it (office_recipes.item()).
 func item(kind: String, at: Vector2, turn: int, group: int, length := 0.0) -> Dictionary:
-	var spec: Dictionary = palette.FURNITURE[kind]
-	var size: Vector2 = spec.size
-	if kind == "partition": size.x = length
-	return {"kind": kind, "at": [snappedf(at.x, 0.001), snappedf(at.y, 0.001)], "turn": turn, "size": [snappedf(size.x, 0.001), snappedf(size.y, 0.001)], "extra": {"height": float(spec.height), "group": group}}
+	return RECIPES.item(kind, at, turn, group, length)
 
 ## Whether an item fits: inside the walls, clear of every zone, ITEM_GAP from
-## the pieces of other groups.
+## the pieces of other groups (office_recipes.fits()).
 func item_fits(room: Dictionary, zones: Array, piece: Dictionary) -> bool:
-	var r := LAYOUT.footprint(piece)
-	if not LAYOUT.fits_in(LAYOUT.inner(room), r) or LAYOUT.blocked(r, zones): return false
-	for other in room.furniture:
-		if int(other.extra.group) == int(piece.extra.group): continue
-		if not LAYOUT.apart(r, LAYOUT.footprint(other), LAYOUT.ITEM_GAP): return false
-	return true
+	return RECIPES.fits(room, zones, piece)
 
 ## Open offices and cubicles: a lattice from the inner corner, desks turned
 ## along the hall (a nave's along its axis); a cubicle pod is kept whole or not at all.
@@ -1557,10 +1668,25 @@ func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 		room.furniture = []
 		lattice_at(room, zones, turn, pods, size, Vector2(shift % 4, floori(shift / 4.0)) * step / 4.0)
 		if room.furniture.size() > best.size(): best = room.furniture
+	# An open office cell the pairs leave with fewer than two desks (a nave's
+	# aisle and columns, spec_rediseno 3.3) takes single desks where they seat
+	# more people than the pairs (a pair seats two).
+	if not pods and best.size() < 2:
+		var seats := best.size() * 2
+		var single: Vector2 = palette.FURNITURE.desk.size
+		if turn % 2 == 1: single = Vector2(single.y, single.x)
+		var single_step := single + Vector2(LAYOUT.ITEM_GAP, LAYOUT.ITEM_GAP)
+		for shift in 16:
+			room.furniture = []
+			lattice_at(room, zones, turn, false, single, Vector2(shift % 4, floori(shift / 4.0)) * single_step / 4.0, "desk")
+			if room.furniture.size() > seats:
+				best = room.furniture
+				seats = best.size()
 	room.furniture = best
 
-## One lattice of lay_lattice(), its first item shifted from the inner corner.
-func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vector2, shift: Vector2) -> void:
+## One lattice of lay_lattice(), its first item shifted from the inner corner;
+## `kind` is the item laid where it is not a cubicle pod.
+func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vector2, shift: Vector2, kind := "desk_pair") -> void:
 	var space := LAYOUT.inner(room)
 	var z := space.position.y + size.y / 2 + shift.y
 	while LAYOUT.fits_in(space, Rect2(Vector2(space.position.x, z - size.y / 2), size)):
@@ -1570,7 +1696,7 @@ func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vec
 			var at := Vector2(x, z)
 			var group: int = room.furniture.size()
 			if not pods:
-				var piece := item("desk_pair", at, turn, group)
+				var piece := item(kind, at, turn, group)
 				if room.furniture.size() < DESKS_MOST and item_fits(room, zones, piece): room.furniture.append(piece)
 			else:
 				var side := 1.0 if column % 2 == 0 else -1.0
@@ -1595,24 +1721,6 @@ func lay_table(room: Dictionary, zones: Array) -> void:
 		if not LAYOUT.fits_in(LAYOUT.inner(room), clear): continue
 		room.furniture.append(piece)
 		return
-
-## Up to `most` pieces of a kind with their backs to a closed wall.
-func lay_on_wall(job: Dictionary, room: Dictionary, zones: Array, kind: String, most: int) -> void:
-	var spec: Dictionary = palette.FURNITURE[kind]
-	var size: Vector2 = spec.size
-	var turns := {"north": 0, "west": 1, "south": 2, "east": 3}
-	for wall in ["west", "east", "north", "south"]:
-		if room.get("open_sides", []).has(wall): continue
-		var n := LAYOUT.inward(wall)
-		var off := LAYOUT.face(room, wall) + (n.x + n.y) * (0.05 + size.y / 2)
-		for along in [0.0, -2.0, 2.0]:
-			var at := Vector2(off, along) if wall == "west" or wall == "east" else Vector2(along, off)
-			var piece := item(kind, at, int(turns[wall]), room.furniture.size())
-			if not item_fits(room, zones, piece): continue
-			room.furniture.append(piece)
-			if not job.wall_items.has(int(room.id)): job.wall_items[int(room.id)] = []
-			job.wall_items[int(room.id)].append({"wall": wall, "along": along, "half": size.x / 2})
-			if room.furniture.size() >= most: return
 
 ## Spec 2.5i, the ducts: one graph over the three plantas, trunks along the
 ## corridors and a branch to every room, bridges and loose links that keep

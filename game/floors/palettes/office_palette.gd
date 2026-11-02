@@ -371,9 +371,11 @@ const SERVICE_BY_PLANTA := [[4, 15, 8, 7], [8, 7, 4, 8], [8, 4, 15, 8]]
 const MUSTS := [{15: 1, 5: 1}, {6: 2, 14: 1, 7: 1}, {5: 1, 16: 2, 24: 1}]
 ## A large module ("módulo grande"): both sides at least this.
 const BOARDROOM_SIDE := 10.0
-## Free-standing furniture (room.furniture, step 1b): footprint [w, d] with the
-## chairs (a partition's size.x is its length), and height, all under
-## FURNITURE_TOP.
+## Free-standing furniture (room.furniture): footprint [w, d] with the chairs
+## and the room to use it (a partition's size.x is its length), and height,
+## all under FURNITURE_TOP. Step 1b's lattice and table pieces, and the
+## recipes' (spec_rediseno 5.2 and 6, area 4b), each built from the pieces
+## made in code (office_props.build_item()).
 const FURNITURE := {
 	"desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
 	"desk_pair": {"size": Vector2(1.5, 2.6), "height": 1.3},
@@ -383,7 +385,115 @@ const FURNITURE := {
 	"copier": {"size": Vector2(1.3, 0.7), "height": 1.05},
 	"vending": {"size": Vector2(0.9, 0.8), "height": 1.8},
 	"card_index": {"size": Vector2(1.7, 0.5), "height": 1.2},
+	"office_desk": {"size": Vector2(1.8, 2.2), "height": 1.3},
+	"exec_desk": {"size": Vector2(2.2, 2.3), "height": 1.3},
+	"secretary_desk": {"size": Vector2(1.9, 2.2), "height": 1.3},
+	"work_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
+	"reception_counter": {"size": Vector2(2.4, 2.2), "height": 1.3},
+	"waiting_row": {"size": Vector2(2.5, 0.6), "height": 0.9},
+	"filing": {"size": Vector2(0.5, 0.65), "height": 1.32},
+	"bookcase": {"size": Vector2(0.9, 0.4), "height": 2.0},
+	"sideboard": {"size": Vector2(1.8, 0.5), "height": 0.8},
+	"wood_shelving": {"size": Vector2(1.2, 0.45), "height": 1.8},
+	"shelving": {"size": Vector2(2.0, 0.45), "height": 2.1},
+	"cart_boxes": {"size": Vector2(0.8, 0.55), "height": 1.0},
+	"mail_cart": {"size": Vector2(0.9, 0.65), "height": 0.9},
+	"pigeon_counter": {"size": Vector2(2.4, 0.85), "height": 1.1},
+	"sorting_table": {"size": Vector2(2.0, 0.95), "height": 1.02},
+	"reader_table": {"size": Vector2(1.4, 1.4), "height": 1.3},
+	"work_table": {"size": Vector2(2.0, 1.0), "height": 0.74},
+	"dining_set": {"size": Vector2(1.4, 2.0), "height": 0.9},
+	"kitchen": {"size": Vector2(3.0, 0.65), "height": 2.15},
+	"cubicles": {"size": Vector2(2.7, 1.6), "height": 2.0},
+	"printer_cart": {"size": Vector2(0.8, 0.55), "height": 1.0},
+	"whiteboard": {"size": Vector2(1.5, 0.6), "height": 1.9},
+	"bin_floor": {"size": Vector2(0.45, 0.45), "height": 0.66},
+	"plant_floor": {"size": Vector2(0.5, 0.5), "height": 1.3},
+	"bench_slat": {"size": Vector2(1.5, 0.4), "height": 0.5},
+	"air_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
 }
+## What office_recipes.gd lays in each furnished type, in order (spec_rediseno
+## 6): [kind, how, least, most, row]. how: "lattice" (lay_lattice(): desk
+## pairs, cubicle pods) or "table" (lay_table()) in the generator; "back",
+## against the feature wall alone; "wall", against it or else another free
+## wall; "side", against another free wall or else it; "middle", standing free
+## toward it; "closed", against a wall with no door nor lift; "spare", as "side",
+## but where it may not fit, so no test requires it; "hall", by lay_halls(), a
+## corridor's. From least to most runs, drawn; row pieces side by side in a run.
+const ROOM_FURNITURE := {
+	RECEPTION: [["reception_counter", "side", 1, 1, 1], ["waiting_row", "side", 1, 1, 1]],
+	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1]],
+	CUBICLES: [["desk", "lattice", 1, 1, 1]],
+	OFFICE: [["office_desk", "wall", 1, 1, 1], ["filing", "side", 1, 1, 1], ["sideboard", "side", 0, 1, 1]],
+	TOILETS: [["cubicles", "wall", 1, 1, 1]],
+	BOARDROOM: [["meeting_table", "table", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["whiteboard", "side", 1, 1, 1]],
+	COPY_ROOM: [["copier", "side", 1, 1, 1], ["reader_table", "side", 1, 2, 1], ["card_index", "side", 0, 1, 1], ["work_table", "middle", 1, 1, 1]],
+	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
+	MAIL: [["pigeonholes", "side", 2, 2, 1], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "side", 1, 2, 1], ["sorting_table", "middle", 0, 1, 1]],
+	BREAK_ROOM: [["kitchen", "side", 1, 1, 1], ["vending", "side", 1, 1, 1], ["dining_set", "middle", 1, 2, 1]],
+	EXEC_OFFICE: [["exec_desk", "wall", 1, 1, 1], ["bookcase", "back", 0, 2, 1], ["sideboard", "side", 0, 1, 1]],
+	WINDOW: [["filing", "side", 1, 1, 3], ["wood_shelving", "side", 0, 1, 1]],
+	ELECTRICAL: [["work_desk", "side", 1, 1, 1]],
+	SECURITY: [["filing", "side", 1, 1, 2]],
+	SECRETARY: [["secretary_desk", "side", 1, 1, 1], ["filing", "side", 1, 1, 2], ["printer_cart", "side", 0, 1, 1], ["waiting_row", "side", 0, 1, 1]],
+	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
+	LOBBY: [["filing", "closed", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
+	REFUGE: [["filing", "closed", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
+	AIR_ROOM: [["air_desk", "spare", 1, 1, 1]],
+	AIR_PLANT: [["air_desk", "spare", 1, 1, 1]],
+	CORRIDOR: [["bin_floor", "hall", 0, 1, 1], ["bench_slat", "hall", 0, 1, 1], ["plant_floor", "hall", 0, 1, 1]],
+}
+## The kinds a lattice lays (office_generator.lay_lattice()): an open office's
+## desk pairs, or single desks where they seat more than the pairs (a nave's
+## aisle and columns); the cubicles' pods.
+const LATTICE_KINDS := {OPEN_OFFICE: ["desk_pair", "desk"], CUBICLES: ["desk", "partition"]}
+## The corner pieces (RECIPES) a type's furniture stands in for, each with the
+## piece of its recipe that does: they give way to it, and come back where it
+## was not laid (office_recipes.drop(), restore()); "", a corner that always
+## gives way (an unbuilt one, for room). Never a desk or a table, where papers
+## are put (document_placement.SURFACES).
+const CORNERS_REPLACED := {RECEPTION: {"reception": "reception_counter", "chairs": "waiting_row"}, OPEN_OFFICE: {"filing": ""}, CUBICLES: {"filing": ""}, OFFICE: {"filing": "filing"}, BOARDROOM: {"sideboard": "sideboard", "board": "whiteboard"}, LOBBY: {"bin": "bin_floor"}, REFUGE: {"bin": "bin_floor"}, COPY_ROOM: {"copier": "copier", "reader": "reader_table"}, MAIL: {"sorter": "pigeonholes"}, BREAK_ROOM: {"vending": "vending"}, WINDOW: {"filing": "filing"}, SECURITY: {"filing": "filing"}, SECRETARY: {"filing": "filing"}}
+## The wall each type is framed by and furnished against first (spec_rediseno
+## 6; office_recipes.feature_of(), office_rooms_capture.gd): "far", the closed
+## wall farthest from its main door; "suite", the wall of its door to a
+## director's office; "window", "board", "console", "unit": the wall of the
+## window's desk, the electrical board, the security post's console, the air
+## handler; "lift", the wall its car stands behind. Each falls back to "far".
+## A type not here has none, and its capture looks straight in. The types of
+## FEATURE_FIRST_PIECE end up with another (office_generator.furnish_furniture()).
+const FEATURE_WALLS := {RECEPTION: "far", OPEN_OFFICE: "far", CUBICLES: "far", OFFICE: "far", TOILETS: "far", BOARDROOM: "far", COPY_ROOM: "far", STORE: "far", LANDING: "lift", LOBBY: "lift", MAIL: "far", BREAK_ROOM: "far", EXEC_OFFICE: "far", WINDOW: "window", ELECTRICAL: "board", REFUGE: "lift", SECURITY: "console", AIR_ROOM: "far", AIR_PLANT: "unit", SECRETARY: "suite", DEPOT: "far"}
+## The types with no "wall" nor "back" entry in their recipe: the rule above only
+## orders their pieces, so they end up framed by the wall their first piece
+## against a wall landed on.
+const FEATURE_FIRST_PIECE := [RECEPTION, COPY_ROOM, STORE, MAIL, BREAK_ROOM, SECRETARY, DEPOT]
+## The pieces a salon of a type has once, in its head cell (office_recipes
+## hall_heads()): a director's desk. Salons are open offices, cubicles, archives
+## and directors' offices only (HALL_MIX): no other one-desk type takes one.
+const ONE_PER_HALL := {EXEC_OFFICE: ["exec_desk"]}
+## The filing cabinets' finish by type (spec_rediseno 6; office_props.gd):
+## mint at the window, grey in an office and the security post, beige at the
+## secretary's; olive elsewhere.
+const FILING_FINISH := {OFFICE: "steel_grey", WINDOW: "steel_mint", SECURITY: "steel_grey", SECRETARY: "plastic_beige"}
+## Nothing stands this deep before a glazed wall (spec_rediseno 3.6) but the
+## corner pieces under its sill (0.95 m).
+const GLASS_CLEAR := 0.6
+const GLASS_LOW := ["desk", "table", "sideboard", "bench", "bin", "chairs", "armchair"]
+## The share of the doors of lit rooms that stand open (spec_rediseno 3.6).
+const OPEN_LIT := 0.6
+## The types a secretary's office may swap with to stand beside a director's
+## (office_generator.suites()): the plain rooms of the third planta, and a
+## director's office with a door to another.
+const SUITE_SWAP := [TOILETS, STORE, BREAK_ROOM, EXEC_OFFICE]
+## A corridor's floor furniture (office_recipes.lay_halls()): in one this wide or
+## more, a piece no deeper than HALL_DEPTH every HALL_STEP metres along a wall,
+## leaving HALL_PASS to walk and HALL_SIGN_CLEAR each side of where the zone sign
+## may be.
+const HALL_KINDS := ["bin_floor", "bench_slat", "plant_floor"]
+const HALL_WIDTH := 3.0
+const HALL_DEPTH := 0.5
+const HALL_STEP := Vector2(10.0, 14.0)
+const HALL_PASS := 2.0
+const HALL_SIGN_CLEAR := 0.7
 
 # --- Questions ---------------------------------------------------------------
 

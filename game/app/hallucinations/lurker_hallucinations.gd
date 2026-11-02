@@ -209,7 +209,7 @@ func desk_near(ear: Vector3, wing: int, low: float, high: float) -> Vector3:
 			var at := FLOOR.position_of(room)
 			if Vector2(at.x - ear.x, at.z - ear.z).length() > high: continue
 			for item in room.get("furniture", []):
-				if not String(item.kind) in ["desk", "desk_pair"]: continue
+				if not String(item.kind) in ["desk", "desk_pair", "office_desk", "exec_desk", "secretary_desk", "work_desk", "air_desk", "reader_table"]: continue
 				var spot := at + Vector3(float(item.at[0]), 0.4, float(item.at[1]))
 				var walked := walk_metres(ear, spot)
 				if walked >= low and walked <= high: found.append(spot)

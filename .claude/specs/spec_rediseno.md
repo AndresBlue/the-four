@@ -105,7 +105,7 @@ Falso techo a 2,95 en todas las salas que lo tienen (juntas también). Puertas d
 - **Cada tipo de pieza tiene su pieza en código de reserva**: el área de mobiliario no espera a las descargas.
 
 ### 5.2 Quién decide qué
-- **El generador** pone en `room.furniture` lo que ocupa suelo (choca, tapa, lo esquivan bots y ella): tabla `FURNITURE` con medidas, altura y colisión de cada pieza nueva; `furniture_ok` por sala; `DESKS_MOST`; recetas en `office_recipes.gd` con su propio stream de azar (no mueve los ductos). Presupuesto de tiempo del generador: recetas y columnas, 150 ms de mediana por piso como mucho (la mediana total sigue bajo los 2.000 ms del autor; si no cabe, se le pregunta).
+- **El generador** pone en `room.furniture` lo que ocupa suelo (choca, tapa, lo esquivan bots y ella): tabla `FURNITURE` con medidas, altura y colisión de cada pieza nueva; `furniture_ok` por sala; `DESKS_MOST`; recetas en `office_recipes.gd` con su propio stream de azar (no mueve los ductos). Presupuesto de tiempo del generador: recetas y columnas, unos 390 ms de mediana por piso sobre la base de 1b+2, cifra medida en 4b y aceptada por el director (la mediana total, unos 1.855 ms en reposo, sigue bajo los 2.000 ms del autor; si no cabe, se le pregunta).
 - **La geometría** elige el modelo y pone lo menudo (`office_clutter.gd`), con `vary()` por sala, sin colisión, sin cuerpos con física, respetando una **función de huecos reservados por sala**: estaciones, lector, cuadro, minuteros, taquillas, salidas de ducto y rejillas, placas de salida de ella, `poster_spots`, barridos de puertas y la línea de la cámara a la mecanógrafa de la ventanilla (la foto de la ficha).
 
 ## 6. Cada sala según su referencia

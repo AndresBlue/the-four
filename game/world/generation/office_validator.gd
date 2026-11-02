@@ -6,6 +6,7 @@ extends "res://game/world/generation/map_validator.gd"
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
+const RECIPES := preload("res://game/world/generation/office_recipes.gd")
 const SHORTCUT_MIN := 0.55
 const AISLE_MIN := 0.95
 const SLACK := 0.01
@@ -37,6 +38,8 @@ func office(data: Dictionary) -> Array[String]:
 	corners_ok(data, errors)
 	glazed_ok(data, errors)
 	furniture_ok(data, errors)
+	glass_ok(data, errors)
+	hall_ok(data, errors)
 	columns_ok(data, errors)
 	rings_ok(data, errors)
 	return errors
@@ -821,17 +824,18 @@ func glazed_ok(data: Dictionary, errors: Array[String]) -> void:
 		if win.get("glazed", []).has(String(d.wall)) and bool(rooms[int(d.other)].corridor): glazed_door = true
 	if not glazed_door: errors.append("glazed_window")
 
-## 15. Furniture of its kinds and sizes, in the rooms that take it, clear of
-## every path and apart from other groups.
+## 15. Furniture of its type's kinds (palette.ROOM_FURNITURE through
+## office_recipes.kinds()) and sizes, clear of every path, the air plant's
+## hatch and handler (office_recipes.air_zones()) and apart from other groups.
 func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
-	var kinds := {OFFICE.OPEN_OFFICE: ["desk_pair"], OFFICE.CUBICLES: ["desk", "partition"], OFFICE.BOARDROOM: ["meeting_table"], OFFICE.COPY_ROOM: ["copier"], OFFICE.MAIL: ["pigeonholes"], OFFICE.SECRETARY: ["card_index"]}
 	for room in data.rooms:
 		var items: Array = room.get("furniture", [])
 		if items.is_empty(): continue
 		var id := int(room.id)
-		var allowed: Array = kinds.get(int(room.type), [])
+		var allowed: Array = RECIPES.kinds(int(room.type))
 		var view := {"rooms": data.rooms, "adjacency": data.adjacency, "mail": raw.get(id, [])}
 		var zones := LAYOUT.clear_zones(view, room, int(room.type) == OFFICE.BOARDROOM)
+		zones.append_array(RECIPES.air_zones(room, data.get("air", {})))
 		var ok: bool = true
 		for i in items.size():
 			var it: Dictionary = items[i]
@@ -932,6 +936,39 @@ static func prop_rect(room: Dictionary, prop: Dictionary) -> Rect2:
 	var s: Array = room.sockets[int(prop.slot)]
 	var size := Vector2(2.3, 1.4) if int(prop.rotation) % 2 == 0 else Vector2(1.4, 2.3)
 	return Rect2(Vector2(float(s[0]), float(s[1])) - size / 2, size)
+
+## 18. Nothing before a glazed wall (spec_rediseno 3.6; the director, 1a: the
+## gun rack before the security post's glass): no furniture within
+## GLASS_CLEAR of it, nor a corner piece over the sill (GLASS_LOW are under).
+func glass_ok(data: Dictionary, errors: Array[String]) -> void:
+	for room in data.rooms:
+		var glazed: Array = room.get("glazed", [])
+		if glazed.is_empty(): continue
+		var sockets: Array = room.get("sockets", [])
+		var hit := false
+		for wall in glazed:
+			var strip := RECIPES.glass_band(room, String(wall))
+			for it in room.get("furniture", []):
+				if LAYOUT.footprint(it).intersects(strip): hit = true
+			for prop in room.get("props", []):
+				if int(prop.slot) >= sockets.size() or OFFICE.GLASS_LOW.has(String(prop.kind)): continue
+				if RECIPES.prop_rect(room, prop).intersects(strip): hit = true
+		if hit: errors.append("glass_%d" % int(room.id))
+
+## 19. A corridor's floor furniture (the director, 4b): only in one HALL_WIDTH
+## wide or more, no deeper than HALL_DEPTH, with HALL_PASS left to walk.
+func hall_ok(data: Dictionary, errors: Array[String]) -> void:
+	for room in data.rooms:
+		var t := int(room.type)
+		var items: Array = room.get("furniture", [])
+		if t != OFFICE.CORRIDOR or items.is_empty(): continue
+		var along_x: bool = float(room.span_x) >= float(room.span_z)
+		var ok: bool = minf(float(room.span_x), float(room.span_z)) >= float(OFFICE.HALL_WIDTH) - 0.001 and RECIPES.hall_gap(room, items) >= float(OFFICE.HALL_PASS) - 0.001
+		for it in items:
+			var r := LAYOUT.footprint(it)
+			var deep: float = r.size.y if along_x else r.size.x
+			if deep > float(OFFICE.HALL_DEPTH) + 0.001: ok = false
+		if not ok: errors.append("hall_%d" % int(room.id))
 
 # --- In the built floor (spec 3.2; called from build_floor, switched on in 1d) -
 
