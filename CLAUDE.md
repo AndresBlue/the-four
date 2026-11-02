@@ -102,7 +102,7 @@ Ningún paso se da por bueno por el informe del agente que lo hizo.
   - Los errores de GDExtension de godotsteam son normales.
 - **El usuario:** nunca matar un proceso `TheFour.exe` ni tocar su perfil real (`%APPDATA%\Godot\app_userdata\THE FOUR — Hotel`).
 - **Git:** los agentes no hacen commit, push, stash ni reset, ni descartan cambios ajenos.
-  - Mientras `bd` esté roto, el director hace commit con los ganchos desactivados (`git -c core.hooksPath=<carpeta vacía> commit --no-verify`), con rutas explícitas en `git add` y el mensaje en inglés.
+  - El director hace commit con rutas explícitas en `git add` y el mensaje en inglés.
   - El push, cada 3 o 4 commits.
 - **Bash:** los heredocs con apóstrofos fallan en este equipo. Los guiones auxiliares se escriben a un archivo y se ejecutan.
 - **Código:**
