@@ -279,7 +279,7 @@ Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con
 | `office_galvanizedsteel02` | [cgbookcase Galvanized Steel 02](https://www.cgbookcase.com/textures/galvanized-steel-02) | cgbookcase.com (Dorian Zgraggen) | CC0 1.0 | Chapa galvanizada (ductos) |
 | `office_hessian_380` | [Poly Haven hessian_380](https://polyhaven.com/a/hessian_380) | colormass (fotografia), Rico Cilliers (procesado) | CC0 1.0 | Tela de mampara de cubiculo |
 | `office_painted_concrete_02` | [Poly Haven](https://polyhaven.com/a/painted_concrete_02) | Rob Tuytel (Poly Haven) | CC0 1.0 | Hormigon sellado (almacen, deposito, pasillo de servicio) |
-| `office_paintedmetal006` | [ambientCG](https://ambientcg.com/a/PaintedMetal006) | ambientCG | CC0 1.0 | Pintura de acero verde gris gastada (armarios, puertas de servicio, cuadro) |
+| `office_paintedmetal006` | [ambientCG](https://ambientcg.com/a/PaintedMetal006) | ambientCG | CC0 1.0 | Pintura de acero gastada, como detalle sobre su color (steel_olive, steel_mint, steel_grey y steel_dark: armarios, muebles de acero, puertas de servicio, cuadro) |
 | `office_teak_veneer` | [Poly Haven](https://polyhaven.com/a/teak_veneer) | Jenelle van Heerden (Poly Haven) | CC0 1.0 | Teca color miel en chapa (mobiliario, hojas de puerta, casilleros, arrimadero de los pasillos) |
 | `office_terrazzo003` | [ambientCG](https://ambientcg.com/a/Terrazzo003) | ambientCG | CC0 1.0 | Terrazo oscuro sal y pimienta pulido (pasillos, vestibulos, archivo) |
 | `office_tiles032` | [ambientCG](https://ambientcg.com/a/Tiles032) | ambientCG | CC0 1.0 | Azulejo oscuro para la franja (aseos) |

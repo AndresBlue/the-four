@@ -25,6 +25,13 @@ uniform bool object_space = false;
 // face, as a board is cut: along a plank, up a table leg, round a frame.
 varying vec2 grain;
 varying vec3 grain_t;
+// The instance's own basis, as the columns of its model matrix: a MultiMesh's
+// instance transform is in MODEL_MATRIX in vertex() only, so an object-space
+// normal turned in fragment() would miss the piece's turn in its room. Three
+// vectors and not a mat3, which Godot may not accept as a varying.
+varying vec3 object_x;
+varying vec3 object_y;
+varying vec3 object_z;
 
 void vertex() {
 	if (object_space) {
@@ -33,6 +40,9 @@ void vertex() {
 		room_data = vec4(0.0);
 		grain = face_uv();
 		grain_t = face_tangent();
+		object_x = MODEL_MATRIX[0].xyz;
+		object_y = MODEL_MATRIX[1].xyz;
+		object_z = MODEL_MATRIX[2].xyz;
 	} else {
 		SURFACE_VERTEX;
 		vec3 scale = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
@@ -126,7 +136,7 @@ void fragment() {
 #endif
 		float height = (use_maps ? 0.0 : ring_line * 0.0004 - pores * 0.0005) - groove * 0.004;
 		vec3 n = bump_world(scan_normal_frame(l, wn, t, b), dFdx(wp), dFdy(wp), dFdx(height), dFdy(height), 1.0);
-		if (object_space) n = normalize(mat3(MODEL_MATRIX) * n);
+		if (object_space) n = normalize(mat3(object_x, object_y, object_z) * n);
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	}
 }

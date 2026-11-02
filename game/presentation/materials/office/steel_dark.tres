@@ -1,0 +1,20 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/finish.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.23, 0.24, 0.24, 1)
+shader_parameter/albedo = Color(0.24, 0.25, 0.25, 1)
+shader_parameter/variation_color = Color(0.2, 0.21, 0.21, 1)
+shader_parameter/roughness = 0.45
+shader_parameter/metallic = 0.0
+shader_parameter/finish = 0
+shader_parameter/grime = 0.15
+shader_parameter/map_metres = 1.0
+shader_parameter/map_mode = 2
+shader_parameter/map_detail = 0.15
+shader_parameter/normal_strength = 0.25
+shader_parameter/map_tint = Color(0.24, 0.25, 0.25, 1)
+shader_parameter/map_metallic = 0.0
+metadata/scan = "office_paintedmetal006"

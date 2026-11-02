@@ -24,6 +24,9 @@ const PLAIN := {"office_paint": Color("b9ad96"), "block": Color("c7bfa5"), "conc
 ## name (OWN_OVER: the carpet, the ceiling tile).
 const MATERIAL_DIR := "res://game/presentation/materials/office/%s.tres"
 const OWN_OVER := ["carpet", "ceiling_service"]
+## An office material with no stand-in and no hotel namesake: placed by its key
+## (a piece's "light_strip"), so it is loaded before any box asks for it.
+const OWN_ONLY := ["glow_strip"]
 ## The cove base along the walls (spec 4.1): height and thickness.
 const SKIRT := Vector2(0.10, 0.006)
 ## The lower wall (spec_rediseno 2, wall_trim()): the frieze's honey oak up to
@@ -160,7 +163,7 @@ func _init() -> void:
 	for key in STAND_INS:
 		materials[key] = materials[STAND_INS[key]].duplicate()
 		materials[key].set_meta("stand_in", true)
-	for key in PLAIN.keys() + STAND_INS.keys() + OWN_OVER:
+	for key in PLAIN.keys() + STAND_INS.keys() + OWN_OVER + OWN_ONLY:
 		var path: String = MATERIAL_DIR % key
 		if not ResourceLoader.exists(path): continue
 		materials[key] = load(path).duplicate()
