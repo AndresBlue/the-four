@@ -1,5 +1,6 @@
 extends Node
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
+const SAVE_FILE := preload("res://game/services/save_file.gd")
 signal changed
 signal display_pending(seconds: int)
 const DEFAULTS := {"character": 2, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
@@ -100,8 +101,8 @@ func load_settings() -> void:
 	if not FileAccess.file_exists(save_path):
 		first_run()
 		return
-	var data = JSON.parse_string(FileAccess.get_file_as_string(save_path))
-	if not data is Dictionary: return
+	var data := SAVE_FILE.read(save_path)
+	if data.is_empty(): return
 	var stored = data.get("values", {})
 	var current_curve: bool = data.get("audio_curve", 0) == AUDIO_CURVE
 	var current_display: bool = data.get("display_rev", 0) == DISPLAY_REVISION
@@ -210,7 +211,7 @@ func set_value(key: String, value: Variant) -> void:
 	# Choosing a preset touches nothing else: the render scale, the upscaler,
 	# its sharpness and the edge smoothing are the player's own, and stay as
 	# they were left -- Ultra over FSR 2.2 at 67 % is asked for once.
-	if key == "renderer": write_renderer()
+	if key == "renderer" and manages_window(): write_renderer()
 	if key in DISPLAY_KEYS:
 		countdown = 12.0
 		display_pending.emit(12)
@@ -441,6 +442,9 @@ var mute_threat := false
 
 ## Tests and capture tools size their own window and must not go fullscreen.
 static func manages_window() -> bool:
+	# Flag or no flag, a script is not the player's game (hotel_main._enter_tree()).
+	for argument in OS.get_cmdline_args():
+		if argument.ends_with(".gd"): return false
 	var args := OS.get_cmdline_user_args()
 	return DisplayServer.get_name() != "headless" and not args.has("--automation") and not args.has("--test-profile")
 
@@ -490,8 +494,7 @@ static func slider_db(volume: float) -> float:
 	return linear_to_db(maxf(volume * 2.0, 0.0002))
 
 func save_settings() -> void:
-	var file := FileAccess.open(save_path, FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "pad_rev": PAD_REVISION, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION, "character_rev": CHARACTER_REVISION}))
+	SAVE_FILE.write(save_path, JSON.stringify({"values": values, "bindings": bindings, "pad_bindings": pad_bindings, "pad_rev": PAD_REVISION, "audio_curve": AUDIO_CURVE, "display_rev": DISPLAY_REVISION, "subtitle_rev": SUBTITLE_REVISION, "character_rev": CHARACTER_REVISION}))
 
 func _process(delta: float) -> void:
 	if countdown > 0:

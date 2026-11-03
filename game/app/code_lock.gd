@@ -190,8 +190,17 @@ func place_key() -> void:
 	containers[key_in].plant_key()
 
 ## Whether this machine's player has the key.
-func has_key() -> bool:
-	return key_holder >= 0 and key_holder == level.player.slot
+func has_key() -> bool: return holds_key(level.player.slot)
+
+## The key is its finder's alone, until they have gone: it went with them, and
+## the panels with it.
+func holds_key(seat: int) -> bool:
+	return key_holder >= 0 and (key_holder == seat or gone(key_holder))
+
+## Out of the match, for now or for good: what they found has nobody to say it
+## out loud, and the furniture has already been searched.
+func gone(seat: int) -> bool:
+	return not level.net.players.get(seat, {}).get("connected", true)
 
 ## A panel opened, or its switches thrown: the host decides, as with
 ## everything else (match_net.use_panel), and here it is done on every
@@ -430,13 +439,18 @@ func apply_search(index: int, value: bool, quiet := false, seat := -1) -> void:
 
 ## The slips this player took, in the order the code reads: which place, the
 ## number on it, and the room it came out of. Only its own -- what the others
-## found is theirs to say out loud, which is half of playing together.
+## found is theirs to say out loud, which is half of playing together -- and
+## what was left by anybody who has gone.
 func notes_found() -> Array:
 	var slips: Array = []
 	for slot in range(1, DIGITS.COUNT + 1):
-		if not found_digits.has(slot) or int(found_by.get(slot, level.player.slot)) != level.player.slot: continue
+		if not found_digits.has(slot) or not holds_note(slot): continue
 		slips.append({"slot": slot, "digit": int(found_digits[slot]), "where": String(found_where.get(slot, ""))})
 	return slips
+
+func holds_note(slot: int) -> bool:
+	var finder := int(found_by.get(slot, level.player.slot))
+	return finder == level.player.slot or gone(finder)
 
 ## What is written down: nothing until the first number turns up, and from
 ## then on the code with a dash in the places still missing.
@@ -447,7 +461,7 @@ func noted_code() -> String: return "" if notes_found().is_empty() else code_so_
 func code_so_far(own := false) -> String:
 	var text := ""
 	for slot in range(1, DIGITS.COUNT + 1):
-		var known: bool = found_digits.has(slot) and (not own or int(found_by.get(slot, level.player.slot)) == level.player.slot)
+		var known: bool = found_digits.has(slot) and (not own or holds_note(slot))
 		text += str(found_digits[slot]) if known else "–"
 	return text
 

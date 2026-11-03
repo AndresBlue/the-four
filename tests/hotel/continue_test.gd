@@ -173,6 +173,26 @@ func run() -> void:
 	check("Y Continuar lo juega en el piso 1", session.state == session.State.PLAYING and session.run_seed == 81 and session.floor_number == 1 and session.stages == 3 and int(level.kind.NUMBER) == 1)
 	# And the checkpoint it keeps again is the one the hotel always wrote.
 	check("Y deja el punto de control de siempre", FileAccess.get_file_as_string(session.checkpoint_path) == JSON.stringify({"format": 1, "generator": FLOOR.VERSION, "seed": 81, "floor": 1, "fallback": false, "difficulty": "equilibrada"}))
+	# Kept again and again over what is there. And a write that cannot finish (a
+	# folder where its temporary file goes, as good as a full disk) changes nothing.
+	check("El piso se vuelve a guardar sobre lo que había", level.keep_floor() and level.keep_floor() and not session.read_state(81).is_empty())
+	var state_before := FileAccess.get_file_as_bytes(session.state_path())
+	var start_before := FileAccess.get_file_as_string(session.checkpoint_path)
+	for path in [session.state_path() + ".tmp", session.checkpoint_path + ".tmp"]: DirAccess.make_dir_absolute(path)
+	check("Si no se puede escribir, lo guardado sigue entero", not level.keep_floor() and not session.write_checkpoint() and FileAccess.get_file_as_bytes(session.state_path()) == state_before and FileAccess.get_file_as_string(session.checkpoint_path) == start_before)
+	for path in [session.state_path() + ".tmp", session.checkpoint_path + ".tmp"]: DirAccess.remove_absolute(path)
+	# One cut short by something else: the one before it was kept for this.
+	session.write_checkpoint()
+	for attempt in [session.checkpoint_path, session.checkpoint_path + ".bak"]:
+		var cut := FileAccess.open(attempt, FileAccess.WRITE)
+		cut.store_string("{\"format\": 1, \"gener")
+		cut.close()
+		if attempt == session.checkpoint_path:
+			var previous := FileAccess.open(session.checkpoint_path + ".bak", FileAccess.WRITE)
+			previous.store_string(start_before)
+			previous.close()
+			check("Un punto de control cortado cae en el anterior", int(session.checkpoint().get("seed", -1)) == 81)
+	check("Y sin ninguno que se pueda leer se dice, y el archivo se conserva", session.checkpoint().is_empty() and session.message.contains("no se puede leer") and FileAccess.file_exists(session.checkpoint_path))
 	var file := FileAccess.open("res://evidence/continue_tests.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify({"passed": failed == 0, "checks": checks}, "\t"))
 	file.close()

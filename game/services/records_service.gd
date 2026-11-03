@@ -16,6 +16,7 @@ signal changed
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const SCORE := preload("res://game/services/run_score.gd")
 const FLOORS := preload("res://game/floors/floor_index.gd")
+const SAVE_FILE := preload("res://game/services/save_file.gd")
 var save_path := "user://records.json"
 const VERSION := 2
 ## Lines a table shows. A board keeps the ones that are in any of its tables.
@@ -62,8 +63,8 @@ func load_records() -> void:
 	milestones = {}
 	rivals = {}
 	id = ""
-	var data = JSON.parse_string(FileAccess.get_file_as_string(save_path)) if FileAccess.file_exists(save_path) else null
-	if data is Dictionary:
+	var data := SAVE_FILE.read(save_path)
+	if not data.is_empty():
 		if data.get("runs") is Array:
 			for entry in data.runs:
 				if entry is Dictionary and entry.has("time"): runs.append(entry)
@@ -398,7 +399,4 @@ func rival_cards() -> Array:
 	return cards
 
 func save() -> void:
-	var file := FileAccess.open(save_path, FileAccess.WRITE)
-	if file == null: return
-	file.store_string(JSON.stringify({"version": VERSION, "id": id, "runs": runs, "career": career, "milestones": milestones, "rivals": rivals}, "\t"))
-	file.close()
+	SAVE_FILE.write(save_path, JSON.stringify({"version": VERSION, "id": id, "runs": runs, "career": career, "milestones": milestones, "rivals": rivals}, "\t"))

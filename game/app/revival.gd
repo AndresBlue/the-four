@@ -152,6 +152,9 @@ func apply_revival(places: Dictionary, restart: bool, creature_at := Vector3.INF
 		# Its door too: shut and locked again, or the stage given back could
 		# be walked out of without doing it again.
 		level.hotel.relock_gate(level.session.stage)
+		# Its goal too, until the authority works it out again: the session's next
+		# word (the power, just below) would have opened the door again.
+		level.session.goal["ready"] = false
 		# The stage's own handlers forget it too (the offices' card, the air;
 		# the hotel's do nothing here, their sets are put out just below).
 		for handler in level.stage_objectives(): handler.reset()

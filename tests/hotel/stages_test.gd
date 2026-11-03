@@ -518,6 +518,18 @@ func run() -> void:
 	var letter: Node = level.ui.sheet.pages.get_node_or_null("Letter")
 	check("Las notas se pueden releer en la hoja, con su habitación", words_under(level.ui.sheet.slips).contains("TUS NOTAS") and is_instance_valid(letter) and level.notes_found().all(func(note): return not String(note.get("where", "")).is_empty()))
 	check("Y son los cuatro trozos de una carta, uno por número del código", level.notes_found().map(func(note): return int(note.slot)) == [1, 2, 3, 4])
+	# What another found is theirs to say out loud; once they have gone there is
+	# nobody to say it, and the furniture has already been searched.
+	var key_before: int = level.code.key_holder
+	level.found_by[1] = 2
+	level.code.key_holder = 2
+	level.net.players = {2: {"connected": true}}
+	check("Lo que encontró otro no está en tus notas, ni su llave", level.notes_found().size() == DIG.COUNT - 1 and level.code_so_far(true).begins_with("–") and not level.code.has_key())
+	level.net.players[2].connected = false
+	check("Pero lo de quien se ha ido queda para los demás", level.notes_found().size() == DIG.COUNT and not level.code_so_far(true).contains("–") and level.code.has_key())
+	level.net.players = {}
+	level.found_by[1] = level.player.slot
+	level.code.key_holder = key_before
 	# The third sector counts both: the sets, and the numbers found.
 	level.refresh_briefing()
 	check("En el sector 3 la pausa cuenta televisores y números", level.ui.briefing.progress.size() == 2 and String(level.ui.briefing.progress[1][1]) == "%d / %d" % [DIG.COUNT, DIG.COUNT])
@@ -675,6 +687,14 @@ func run() -> void:
 	check("Vuelve a su punto de aparición de la etapa, lejos también de la salida", den_id >= 0 and int(den_room.get("id", -1)) == den_id and from_exit > 2)
 	check("Y espera lo que esperó al empezar el piso", level.locust.grace >= float(level.tuning().grace) - 1.0 and level.locust.grace >= level.revival.RESTART_GRACE - 1.0)
 	check("El primer sector empieza en ese mismo sitio", level.locust.den_room(1) >= 0 and int(level.manifest.rooms[level.locust.den_room(1)].get("wing", -1)) == 0)
+	# Given back with its condition met and the power out: putting the power
+	# back tells the level, and the level opens a door whose goal is still met.
+	session.goal["blackout"] = true
+	session.goal["ready"] = true
+	level.hotel.open_gates(session.stage, true)
+	level.apply_revival({1: level.revival_point()}, true)
+	var given_back: Array = level.hotel.gates.filter(func(door): return is_instance_valid(door) and door.gate_stage == session.stage)
+	check("La puerta de una etapa devuelta no se reabre al volver la luz", not given_back.is_empty() and given_back.all(func(door): return door.locked))
 	# A creature somebody drives goes back too, and waits too: it used to be
 	# left where it stood, at the door, free to strike.
 	var kept_control: String = level.locust.control
@@ -733,6 +753,18 @@ func run() -> void:
 	session.capture(2)
 	check("La segunda vez sí se acaba", session.capture(1) and session.state == session.State.FAILED)
 	await frames(10)
+	# A guest whose match changed while its floor went up: another start can be
+	# waiting on the session for this one to finish. It has to say so.
+	var outrun := {"seed": 81, "floor": 1, "mode": 0, "survivors": [1], "locust_seat": 0}
+	level.match_net.config = outrun
+	level.start_online_floor(outrun)
+	level.match_net.config = outrun.duplicate()
+	var waited := 0
+	while session.state == session.State.LOADING and waited < 6000:
+		await process_frame
+		waited += 1
+	check("Un piso que se queda sin partida no deja la pantalla de carga puesta", session.state == session.State.MENU)
+	level.match_net.config = {}
 	# Back to a floor in hand for the rest of the checks.
 	await level.start_floor(81)
 	session = level.session

@@ -9,6 +9,7 @@ enum Life { EXPLORING, REFUGE, DEAD }
 ## The floors of the building (game/floors/floor_index.gd): a checkpoint is kept
 ## with its floor's number and the version of that floor's generator.
 const FLOORS := preload("res://game/floors/floor_index.gd")
+const SAVE_FILE := preload("res://game/services/save_file.gd")
 var state := State.MENU
 ## A floor is three chained stages. Each one is closed by its own condition and
 ## opens the way to the next; only the last one ends the floor. The condition
@@ -228,10 +229,14 @@ func write_state(state: Dictionary) -> bool:
 	var temp := state_path() + ".tmp"
 	var file := FileAccess.open(temp, FileAccess.WRITE)
 	if not file: return false
-	file.store_var({"format": STATE_FORMAT, "generator": generator_version(), "seed": run_seed, "state": state})
+	var kept := {"format": STATE_FORMAT, "generator": generator_version(), "seed": run_seed, "state": state}
+	file.store_var(kept)
 	file.close()
-	# The one before stays until the whole new one exists.
-	if FileAccess.file_exists(state_path()): DirAccess.remove_absolute(state_path())
+	# Read back, as a full disk says nothing until then (store_var() puts the
+	# length first). The one before stays until the whole new one replaces it.
+	if FileAccess.get_file_as_bytes(temp).size() != var_to_bytes(kept).size() + 4:
+		DirAccess.remove_absolute(temp)
+		return false
 	return DirAccess.rename_absolute(temp, state_path()) == OK
 
 ## What was kept of the floor with this seed, or nothing: another floor's, an
@@ -259,8 +264,11 @@ func generator_version() -> int: return int(FLOORS.kind(floor_number).GENERATOR_
 func checkpoint() -> Dictionary:
 	message = ""
 	if not FileAccess.file_exists(checkpoint_path): return {}
-	var data = JSON.parse_string(FileAccess.get_file_as_string(checkpoint_path))
-	if not data is Dictionary or not data.has_all(["format", "generator", "seed"]):
+	var data := start_in(checkpoint_path)
+	# The one before, which write_checkpoint() keeps for this. Only for one that
+	# cannot be read: none at all means the floor was won or lost.
+	if data.is_empty(): data = start_in(checkpoint_path + ".bak")
+	if data.is_empty():
 		message = "El checkpoint no se puede leer. Puedes iniciar una partida nueva."
 		return {}
 	# One kept before the floors had numbers says none: it is the hotel's. A
@@ -277,14 +285,17 @@ func checkpoint() -> Dictionary:
 	data.floor = number
 	return data
 
+## What a checkpoint file holds, or nothing if it cannot be read as one.
+func start_in(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path): return {}
+	var data := SAVE_FILE.parse(FileAccess.get_file_as_string(path))
+	return data if data.has_all(["format", "generator", "seed"]) else {}
+
 func write_checkpoint() -> bool:
 	var temp := checkpoint_path + ".tmp"
-	var file := FileAccess.open(temp, FileAccess.WRITE)
-	if not file:
+	if not SAVE_FILE.write_temp(temp, JSON.stringify({"format": 1, "generator": generator_version(), "seed": run_seed, "floor": floor_number, "fallback": map_fallback, "difficulty": difficulty})):
 		message = "No se pudo guardar el inicio del piso."
 		return false
-	file.store_string(JSON.stringify({"format": 1, "generator": generator_version(), "seed": run_seed, "floor": floor_number, "fallback": map_fallback, "difficulty": difficulty}))
-	file.close()
 	# Preserve the previous valid checkpoint until the complete replacement exists.
 	var backup := checkpoint_path + ".bak"
 	if FileAccess.file_exists(backup): DirAccess.remove_absolute(backup)

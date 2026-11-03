@@ -259,8 +259,30 @@ func run() -> void:
 	scene.ui.records = scene.records
 	scene.ui.menu("main")
 	await process_frame
+	# A save that cannot finish leaves the one there as it was (a folder where its
+	# temporary file goes is as good as a full disk), and one found cut short is
+	# set aside: taken for an empty one, the next save wrote over it for good.
+	records.save()
+	var saved_board := FileAccess.get_file_as_string(records.save_path)
+	var runs_saved: int = records.runs.size()
+	DirAccess.make_dir_absolute(records.save_path + ".tmp")
+	records.runs.pop_back()
+	records.save()
+	DirAccess.remove_absolute(records.save_path + ".tmp")
+	check("Un guardado que no puede terminar no toca lo guardado", FileAccess.get_file_as_string(records.save_path) == saved_board)
+	# Caught between taking the old one away and putting the new one in place.
+	DirAccess.rename_absolute(records.save_path, records.save_path + ".tmp")
+	records.load_records()
+	check("Un cierre a medio cambiar el archivo no pierde el tablón", records.runs.size() == runs_saved and FileAccess.file_exists(records.save_path) and not FileAccess.file_exists(records.save_path + ".tmp"))
+	var cut_board := FileAccess.open(records.save_path, FileAccess.WRITE)
+	cut_board.store_string("{\"runs\": [")
+	cut_board.close()
+	records.load_records()
+	records.save()
+	check("Un archivo cortado se aparta entero y el siguiente guardado no lo pisa", records.runs.is_empty() and FileAccess.get_file_as_string(records.save_path + ".corrupt") == "{\"runs\": [" and FileAccess.file_exists(records.save_path))
 	records.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_records_contract.json"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_records_contract.json.corrupt"))
 	# The picture settings: what the player asks for over the preset, and how
 	# the drawn picture is brought up to the window.
 	var presets := preload("res://game/presentation/graphics_presets.gd")

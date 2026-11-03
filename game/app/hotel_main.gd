@@ -197,25 +197,25 @@ func _enter_tree() -> void:
 	# their own files: sharing them, each overwrote the others' settings.
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--profile-tag="): test_name += "_" + argument.trim_prefix("--profile-tag=").validate_filename()
-	if OS.get_cmdline_user_args().has("--test-profile"):
+	# A floor a script runs -- a test, a probe, a capture, a bench -- is
+	# nobody's game, flag or no flag: it has files of its own. Without the flag
+	# it used to write over the player's Continuar: the stuck probe of
+	# tools/verify.ps1 did, every time it ran, and what it left to go on with
+	# was its own floor, with the survivor where the probe keeps them, two
+	# hundred metres under the hotel. And the tests emptied the player's board.
+	var own_files: bool = scripted or OS.get_cmdline_user_args().has("--test-profile")
+	if own_files:
 		settings.save_path = "user://test_hotel_%s_settings.json" % test_name
 		session.checkpoint_path = "user://test_hotel_%s_checkpoint.json" % test_name
-	# A floor a script runs -- a test, a probe, a capture, a bench -- is
-	# nobody's game. With --test-profile it has files of its own; without it
-	# it reads the player's settings, and it used to write over the player's
-	# Continuar as well. The stuck probe of tools/verify.ps1 did, every time
-	# it ran, and what it left to go on with was its own floor, with the
-	# survivor where the probe keeps them: two hundred metres under the hotel.
-	elif scripted: session.keeps_checkpoint = false
 	# The floor every start_floor() builds until another is chosen (--floor=N).
 	set_floor(floor_asked())
 	discoveries = DISCOVERIES.new()
 	discoveries.name = "Discoveries"
-	if OS.get_cmdline_user_args().has("--test-profile"): discoveries.save_path = "user://test_hotel_%s_discoveries.json" % test_name
+	if own_files: discoveries.save_path = "user://test_hotel_%s_discoveries.json" % test_name
 	$Services.add_child(discoveries)
 	records = RECORDS.new()
 	records.name = "Records"
-	if OS.get_cmdline_user_args().has("--test-profile"): records.save_path = "user://test_hotel_%s_records.json" % test_name
+	if own_files: records.save_path = "user://test_hotel_%s_records.json" % test_name
 	$Services.add_child(records)
 	player.settings = settings
 	ui.settings = settings
@@ -225,7 +225,7 @@ func _enter_tree() -> void:
 	net.level = self
 	match_net = net.match_net
 	match_net.level = self
-	if OS.get_cmdline_user_args().has("--test-profile"): match_net.checkpoint_path = "user://test_coop_%s_checkpoint.json" % test_name
+	if own_files: match_net.checkpoint_path = "user://test_coop_%s_checkpoint.json" % test_name
 	$Services.add_child(net)
 	ui.net = net
 	sanity = MIND.new()
@@ -344,6 +344,9 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--observer"):
 		await begin_observing(seed_wanted)
 	elif seed_wanted >= 0:
+		# A floor asked for by its number is a look at it, nobody's game: it wrote
+		# over the player's Continuar and went on their board.
+		session.keeps_checkpoint = false
 		if OS.get_cmdline_user_args().has("--locust"): await take_locust(seed_wanted)
 		else: start_floor(seed_wanted)
 
@@ -951,8 +954,11 @@ func start_online_floor(config: Dictionary) -> void:
 		return
 	# The match this floor was for may have gone while it was being put up
 	# (the host left, or started again): reporting it then broke on an empty
-	# match and left the loading screen up over the menu.
-	if not match_net.in_match() or not is_same(match_net.config, config): return
+	# match and left the loading screen up over the menu. The start that came
+	# meanwhile is waiting on the session (above), and would have waited for good.
+	if not match_net.in_match() or not is_same(match_net.config, config):
+		if match_net.in_match() and session.state == session.State.LOADING: session.set_state(session.State.MENU)
+		return
 	# Coming back into a floor that is already being played says so: the wait
 	# is the same, what it means is not.
 	ui.menu("loading", false, "Volviendo a la partida…" if match_net.rejoin_snapshot.get("returning", false) else "Esperando a los demás jugadores…")

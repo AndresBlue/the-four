@@ -19,6 +19,7 @@ const REMOTE := preload("res://game/net/remote_player.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 ## The floors of the building: a checkpoint is checked against its floor's generator.
 const FLOORS := preload("res://game/floors/floor_index.gd")
+const SAVE_FILE := preload("res://game/services/save_file.gd")
 const SEND_RATE := 20.0
 const SESSION_RATE := 2.0
 ## A dropped player's body stays on the floor this long before counting as lost.
@@ -575,7 +576,7 @@ func use_panel(index: int, action: String, seat := -1) -> void:
 	if index < 0: return
 	if seat < 0: seat = level.player.slot
 	if not in_match() or net.is_host:
-		if seat != level.code.key_holder: return
+		if not level.code.holds_key(seat): return
 		level.code.apply_panel(index, action)
 		if in_match(): panel_state.rpc(index, action)
 		return
@@ -586,7 +587,7 @@ func request_panel(index: int, action: String) -> void:
 	if not net.is_host or index < 0 or index >= level.code.panels.size() or not action in ["open", "power"]: return
 	var panel = level.code.panels[index]
 	var seat: int = net.seat_of_peer(multiplayer.get_remote_sender_id())
-	if not is_instance_valid(panel) or seat != level.code.key_holder or not near_sender(panel.global_position): return
+	if not is_instance_valid(panel) or not level.code.holds_key(seat) or not near_sender(panel.global_position): return
 	level.code.apply_panel(index, action)
 	panel_state.rpc(index, action)
 
@@ -1209,8 +1210,7 @@ func back_to_room() -> void:
 func write_checkpoint() -> void:
 	# The floor being played, with the version of its own generator: saved_checkpoint() reads both back.
 	var floor_number: int = level.session.floor_number
-	var file := FileAccess.open(checkpoint_path, FileAccess.WRITE)
-	if file: file.store_string(JSON.stringify({"format": 1, "generator": FLOORS.kind(floor_number).GENERATOR_VERSION, "seed": config.seed, "floor": floor_number, "mode": config.mode}))
+	SAVE_FILE.write(checkpoint_path, JSON.stringify({"format": 1, "generator": FLOORS.kind(floor_number).GENERATOR_VERSION, "seed": config.seed, "floor": floor_number, "mode": config.mode}))
 
 func clear_checkpoint() -> void:
 	if FileAccess.file_exists(checkpoint_path): DirAccess.remove_absolute(checkpoint_path)
