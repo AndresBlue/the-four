@@ -258,7 +258,7 @@ func block_lift(hotel) -> void:
 	var beacon := {}
 	for entry: Dictionary in hotel.beacons:
 		if int(entry.room) == start: beacon = entry
-	check("La baliza de la recepción brilla y su luz no pasa de 3 m", not beacon.is_empty() and float(beacon.energy) > 0.0 and (beacon.material as BaseMaterial3D).emission_enabled and (beacon.light as OmniLight3D).omni_range <= 3.001)
+	check("La baliza de la recepción brilla y su luz no pinta nada", not beacon.is_empty() and float(beacon.energy) == 0.0 and (beacon.material as BaseMaterial3D).emission_enabled and (beacon.light as OmniLight3D).light_energy == 0.0)
 	if not hotel.halos.has(start) or hotel.flickers.any(func(e): return e.light == hotel.lights[start]): print("INFO la lámpara de la recepción falla o no tiene halo en la semilla 7")
 	else: check("La lámpara de la recepción, entera bajo la baliza", absf(hotel.lights[start].light_energy - float(hotel.halos[start].base)) < 0.001, "%.3f de %.3f" % [hotel.lights[start].light_energy, float(hotel.halos[start].base)])
 

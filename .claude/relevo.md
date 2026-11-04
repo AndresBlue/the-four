@@ -2,48 +2,30 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 2 de noviembre de 2026. Esta tarea para al **60 % semanal** (decisión del autor; la semana se renueva el 7 de noviembre).
+**Última actualización:** 4 de noviembre de 2026. Esta tarea para al **60 % semanal** (decisión del autor; la semana se renueva el 7 de noviembre).
 
-**Última instrucción del autor (2 de noviembre):** «Cuando terminemos con esta parte, detengamos el desarrollo, para después retomarlo en otro momento». **El desarrollo está detenido:** no se sigue hasta que el autor lo pida. Antes (25 de octubre) pidió el rediseño visual y ambiental completo del piso 2 con las referencias de `docs/referencias/` (abajo) y respondió por el chat todas las decisiones (R1 a R10 en la nota de diseño).
+**Última instrucción del autor (4 de noviembre):** «Continuemos con el desarrollo del proyecto, primero arma una hoja de ruta de las cosas que tenemos pendientes y luego arranca con ello». Hoja de ruta: 1) cerrar 4d (hecho), 2) 4c, lo menudo y el abandono, con sus encargos levantados de nuevo, 3) área 6 (capturas finales, rendimiento, documentos, `OFFICE.VERSION`, créditos, exportación con `Probar piso 2.bat` y Drive), 4) relleno, 5) las decisiones de licencias que esperan al autor. Antes (25 de octubre) pidió el rediseño visual y ambiental completo del piso 2 con las referencias de `docs/referencias/` y respondió por el chat todas las decisiones (R1 a R10 en la nota de diseño). Commits sin `emptyhooks` ni `--no-verify` (5329de1).
 
-### Dónde se paró: el área 4d sin cerrar (2 de noviembre)
+### Dónde se está: el área 4d cerrada (4 de noviembre)
 
-**Estado del código.** `main` termina en el área 5, con `verify` en verde: es lo que se puede jugar. El área 4d **no tiene commit en `main`** porque no está en verde. Está sin confirmar en el árbol de trabajo y, como copia, en la rama local `wip/4d-proporcion`, sin subir. Esa copia lleva el último estado, salvo `evidence/` y los archivos ajenos. Nada de 4d se ha exportado.
+**Estado del código.** 4d tiene commit en `main` con `verify` en verde. La rama local `wip/4d-proporcion` es una copia vieja de 4d y ya no hace falta. Nada de 4d se ha exportado.
 
-**Por qué se paró.** La sonda de medidas (U15) llegó a la tercera y última candidata, `MODULE_SIZES` `[7.0, 7.5, 8.0, 8.5, 9.0, 10.0]`, que sigue puesta en `office_palette.gd`. Cumple la regla de D8, pero la regla no miraba la física: **36 de 40 pisos los rechaza `validate_physics` y se monta el de respaldo, la semilla 404** (`evidence/4d_revD2_phys_probe.gd` y su registro `evidence/4d_revD2_phys.log`; `office_test_physics` en rojo, `built = [7, 404 x 7]`). Con la lista anterior, `[8.0, 9.0, 10.0, 10.0, 11.0, 12.0]`, pasaba.
+**Cómo se cerró** (`.claude/specs/spec_4d_fisica.md` manda en este tramo): `MODULE_SIZES` es C1, `[6, 6.5, 7, 7.5, 8, 9]`. Las reservas de `plant` y `basin` son la pieza dibujada (F1). Una taquilla de esconderse no se pone en la banda de una puerta (`hide_free`, P2), y dos de paredes vecinas no comparten esquina (`hide_apart`, Q1). Los aseos tienen la receta de Q2. La fila a de las lámparas (`OFFICE_LAMP_LEAST` 8, `OFFICE_LATE_REACH` 6) deja las capas de luz del piso 2 en 13 sin choques. 40 de 40 pisos pasan la física. `lurker_senses_test` dependía de la geometría y se arregló en la prueba. `lurker_route_probe` corre en la semilla 8 porque la 7 se quedó sin nave.
 
-**Lo medido** (detalle en `evidence/4d_sonda/c1.txt`, `c2.txt`, `c3.txt` y `evidence/4d_revD2_summary.txt`):
+**`office_proportion_test` está fuera de `verify` hasta 4c.** Da 42/55: el suelo ocupado queda por debajo de su banda en 10 tipos (ventanilla 15,9 de 20, archivo 13,6 de 20, eléctrico 11,1 de 16...), y hay una sola mesa para los papeles por planta, cuando pide dos. La pieza principal está bajo 30 en secretaría (29,8) y aseos (21,2). No se bajó ningún umbral. 4c la vuelve a meter en `verify` y tiene que dejarla en verde, o subir al director lo que no llegue.
 
-| | C1 `[6, 6.5, 7, 7.5, 8, 9]` | C2 `[6.5, 7, 7.5, 8, 9, 10]` | C3 `[7, 7.5, 8, 8.5, 9, 10]` |
-|---|---|---|---|
-| Veredicto de la regla | No cumple | No cumple | Cumple |
-| Capas de luz, `most_layers` (tope 15) | 16 | 16 | 15 |
-| `lurker_tiles_test` | 11/12 | 11/12 | 15/15 |
-| `lurker_bots_test` | 0/1 | 0/1 | 7/7 |
-| `office_proportion_test` | 42/55 | 38/55 | 39/55 |
-| Generación p50 en `-- 200` (ms) | 1367 | 1730 | 1556 |
+**Pendientes para 4c:**
+- La reserva de `LOCKER` es corta: 1,3 x 0,7 frente a 1,1 real. Además, en 108 casos faltan cabinas por las reservas de taquilla.
+- Al sacar `plant` y `basin` de `HOTEL_KINDS`, U8 tiene que volver a mover sus filas de `CORNER_SIZES`.
+- La silla cercana (G4).
+- `office_proportion_test` pone un tope de 100 al suelo de `archivo_movil`, y U11 decía «sin tope».
+- La mampara de `office_lies_test` no distingue de qué lado posa.
+- C6b sin ejecutar.
+- La cuota de cue baja a 0,876 (la base es 0,900).
+- El umbral de 2.750 ms de `office_test_generator` es inestable bajo la carga de `verify` y está cerca de su tope de 600 s.
+- El p99 de `office_metrics` sigue fallando, y está aceptado.
 
-Los verdes de C3 valen menos de lo que parecen: senses, fairness y bots tienen un rechazo físico en su registro y siguieron sobre el piso 404.
-
-**Las causas de los rechazos con C3:** aseos con lado corto de 7 o 7,5 m (`hide_approach` 46, `hide_entry` 21) y juntas (`boardroom` 13, el paso del lado lejano de la mesa). En 29 de los 36 no hay otra causa. Los bloquea el `Solid` de la sala. Las salas listadas llevan `basin` o `plant` de esquina, pero eso es una correlación sin comprobar pieza a pieza. Pista sin comprobar: C7 dejó `plant` y `basin` dibujados fuera de su reserva hasta 4c. Además, con C3 los aseos nunca caen en su banda (0 de 162, G7), y `office_proportion_test` da 16 FAIL: 13 tipos de sala por debajo de su umbral de suelo, y 2 de pieza principal.
-
-**Lo primero al retomar, en este orden. Es una propuesta del director, sin medir:**
-1. Comparar `git diff main wip/4d-proporcion --stat` con el árbol de trabajo, para ver que nada se perdió. Mirar con `git status` que no haya otro trabajo a medias.
-2. Averiguar pieza a pieza qué bloquea los barridos de aseos y juntas con `evidence/4d_revD2_phys_rooms.gd`. Medir también `evidence/4d_revD2_phys_probe.gd` con C1, que aquí no se midió: los FAIL de tiles y bots de C1 y C2 parecen venir de esa misma causa (el piso de respaldo tampoco pasa la física y la partida no arranca), deducido del código y sin aislar.
-3. **Que la regla de D8 cuente los pisos rechazados por la física.** `office_metrics` solo pasa el validador de planta y da «Pisos de respaldo 0.0»: ninguna medida salvo `office_test_physics` lo ve.
-4. Arreglada la física, repetir la sonda empezando por C1 con la fila a de la tabla de U15 para `most_layers`: es la única lista donde los aseos caben en su banda y la que mejor sale en proporción. Hay que decidir si los umbrales de suelo se alcanzan solo con 4d o necesitan lo menudo de 4c: no bajar ninguno sin decirlo.
-5. Después, como estaba previsto: U16 (capturas), U17 (documentos), `verify`, commit de 4d; luego 4c y el área 6. Partes y listas exactas: `encargos_rd4d.json`, con U15 aceptada por su encargo.
-
-**Lo que ya está hecho de 4d y sigue valiendo:** las partes A, B y C (U0 a U14), y los arreglos de costuras C0 a C18, con el manifiesto idéntico en los arreglos de tiempo y `attempts()` en 12 (`relleno_4d_costuras.md`, D13 en `spec_proporcion.md`).
-
-**Pendientes que dejó esta ronda:**
-- `office_lies_test`: con la lista antigua, 16/17, porque la planta 1 no tiene teléfonos. Con C3, 17/17 y «En la planta 1 miente con lo suyo» en PASS. Con C1 y C2 se cortó a los 590 s: hay que mirar su tiempo.
-- La comprobación de la mampara de `office_lies_test` no distingue de qué lado de la mampara posa (`place_spot` acepta lo mismo con +0,12 que con -0,12).
-- La segunda vuelta de seguridad de C6b no se ha ejecutado en ninguna medida (`security` no aparece en el `-- 200` de C2 ni de C3 ni en `survivors=1` de C3).
-- El umbral de 2.750 ms de `office_test_generator` es inestable: dio 2.790 en una pasada con la máquina ocupada. Puede dar un rojo falso en `verify`.
-- La silla cercana y las secretarías (32 de 64, con la lista antigua) se juzgan con la lista final. Si las secretarías siguen en rojo, ampliar `SUITE_SWAP` sin bajar el umbral.
-- La cuota de cue baja de 0,900 a 0,887 con C3. Con C3, la sonda de caras baja: mamparas 71 frente a 178 de referencia, esquinas 69 frente a 249, con parte de esa caída por el piso de respaldo.
-- Decisiones de assets para 4c: `relleno_assets.md`.
+**Lo que se vio en las capturas** (`evidence/rediseno/4d_sheet.png`): las salas ya tienen tamaño de sala y las piezas grandes están en su sitio, pero casi todas están vacías de lo menudo (es 4c). En cinco capturas la hoja de la puerta tapa un tercio del cuadro (archivo, secretaría, aseos, eléctrico y ascensor): es del encuadre de `office_rooms_capture`, y es para el área 6.
 
 **Para el informe final al autor, además de lo de abajo:** The Locust (CC BY-NC-ND) y Realistic Female (CC BY-SA) impiden vender el juego, y hay assets sin licencia comprobada (`relleno_assets.md`, «Licencias»). Tras el área 5, las estructuras de `cifras.json` no llegan a 0,6: ventanilla -0,152, seguridad 0,208, eléctrico -0,178, climatización 0,034, montacargas -0,054.
 

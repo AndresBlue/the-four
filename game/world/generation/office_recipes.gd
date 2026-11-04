@@ -19,11 +19,16 @@ const TURNS := {"north": 0, "west": 1, "south": 2, "east": 3}
 const WALL_GAP := 0.05
 ## Where along a wall a run is tried, from the middle out.
 const ALONG := [0.0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]
+## Where a run from a corner is tried first (spec_proporcion D4): metres in from
+## the wall's end, past the wall across it, at each end in turn; then ALONG.
+const FROM_CORNER := [0.12, 0.42, 0.72, 1.02, 1.32, 1.62, 1.92, 2.22]
+## How far short of the wall across a run may end and still turn its corner.
+const TURN_GAP := 0.5
 ## Where a free-standing piece is tried: metres toward the feature wall from
-## the middle (negative, away from it), and aside. The cover sweeps keep the
-## two metres round the middle.
-const MIDDLE_DEPTHS := [2.0, 2.4, 2.8, 3.2, -2.0, -2.4, -2.8, -3.2]
-const MIDDLE_SIDES := [0.0, 1.0, -1.0]
+## the middle (negative, away from it), and aside, off the middle as the
+## references have them (spec_proporcion D5).
+const MIDDLE_DEPTHS := [1.1, 1.4, 1.7, 2.0, 2.4, 2.8, 3.2, -1.1, -1.4, -1.7, -2.0, -2.4, -2.8, -3.2]
+const MIDDLE_SIDES := [0.0, 1.0, -1.0, 1.7, -1.7, 2.4, -2.4]
 ## The free-standing pieces with no back, which lay_middle() also tries a
 ## quarter turned (a dining set beside the kitchen, in a cell of 10 m).
 const ANY_WAY := ["dining_set", "work_table", "sorting_table", "cart_boxes"]
@@ -33,6 +38,8 @@ const ANY_WAY := ["dining_set", "work_table", "sorting_table", "cart_boxes"]
 ## middle of the room, to TAKEN_OUT in front of it.
 const TAKEN_PAST := 0.1
 const TAKEN_OUT := 0.6
+## What a corner piece keeps from a meeting table: a capsule's way down its side.
+const TABLE_WALK := 0.7
 ## A corridor's floor furniture: off its cell's ends, the stretch of wall that
 ## takes a zone sign (a little under office_geometry's 3 m, for its jambs), and
 ## how far along another piece still narrows the way.
@@ -210,9 +217,7 @@ static func glass_band(room: Dictionary, wall: String) -> Rect2:
 
 ## A corner piece's rect in its cell (office_generator.furnish_sockets()).
 static func prop_rect(room: Dictionary, prop: Dictionary) -> Rect2:
-	var s: Array = room.sockets[int(prop.slot)]
-	var size: Vector2 = Vector2(2.3, 1.4) if int(prop.rotation) % 2 == 0 else Vector2(1.4, 2.3)
-	return Rect2(Vector2(float(s[0]), float(s[1])) - size / 2, size)
+	return OFFICE.corner_rect(String(prop.kind), room.sockets[int(prop.slot)], int(prop.rotation))
 
 ## A corner piece's rect run out to the corner it stands in, so nothing is
 ## laid behind it.
@@ -239,44 +244,52 @@ static func clear_glass(room: Dictionary) -> void:
 		if not before: kept.append(prop)
 	room.props = kept
 
-## The corner pieces a type's furniture stands in for give way
-## (palette.CORNERS_REPLACED); returns them, for restore().
+## Every corner piece leaves the room before its recipe is laid (spec_proporcion
+## D3); returns them, for restore().
 static func drop(room: Dictionary) -> Array:
-	var t := int(room.type)
-	var swaps: Dictionary = OFFICE.CORNERS_REPLACED.get(t, {})
-	var kept: Array = []
-	var gone: Array = []
-	for prop in room.props:
-		if swaps.has(String(prop.kind)): gone.append(prop)
-		else: kept.append(prop)
-	room.props = kept
+	var gone: Array = room.props
+	room.props = []
 	return gone
 
-## Puts back each corner piece drop() took whose stand-in was not laid, where
-## no piece laid covers it, the props kept in their slots' order.
-static func restore(room: Dictionary, gone: Array) -> void:
+## Puts back the corner pieces drop() took that still fit (spec_proporcion D3),
+## in their slots' order: not one a stand-in was laid for (palette.CORNERS_REPLACED),
+## none on `zones` (the room's ways, made with no corner in them), none with a
+## piece laid on it or behind it (corner_zone()), none whose sweep from the middle
+## a piece stands on. A meeting table keeps TABLE_WALK round it, to walk down its
+## long sides.
+static func restore(room: Dictionary, gone: Array, zones: Array) -> void:
 	if gone.is_empty(): return
 	var t := int(room.type)
 	var swaps: Dictionary = OFFICE.CORNERS_REPLACED.get(t, {})
 	var laid := {}
 	for it in room.furniture: laid[String(it.kind)] = true
+	var reach := LAYOUT.cover_reach(room)
 	for prop in gone:
-		var stand_in := String(swaps.get(String(prop.kind), ""))
-		if stand_in == "" or laid.has(stand_in): continue
-		var r := prop_rect(room, prop)
-		var covered := false
+		var kind := String(prop.kind)
+		if swaps.has(kind) and (String(swaps[kind]) == "" or laid.has(String(swaps[kind]))): continue
+		if hits(prop_rect(room, prop), zones): continue
+		var out_to_corner := corner_zone(room, prop)
+		var corner := LAYOUT.corner_of(int(prop.slot)) * reach
+		var fits_here := true
 		for it in room.furniture:
-			if LAYOUT.footprint(it).intersects(r): covered = true
-		if not covered: room.props.append(prop)
+			var foot := LAYOUT.footprint(it)
+			if foot.grow(TABLE_WALK if String(it.kind).begins_with("meeting_table") else 0.0).intersects(out_to_corner) or (t != OFFICE.BOARDROOM and reach > 0.0 and LAYOUT.segment_rect_distance(Vector2.ZERO, corner, foot) < LAYOUT.SWEEP_CLEAR):
+				fits_here = false
+				break
+		if fits_here: room.props.append(prop)
 	room.props.sort_custom(func(x, y): return int(x.slot) < int(y.slot))
 
-## The FURNITURE kinds a type may have (office_validator.furniture_ok()).
+## The FURNITURE kinds a type may have (office_validator.furniture_ok()): a
+## table recipe's, every one of TABLE_KINDS and its near side's chair.
 static func kinds(t: int) -> Array:
 	var out: Array = []
 	for entry in OFFICE.ROOM_FURNITURE.get(t, []):
 		if String(entry[1]) == "lattice":
 			for kind in OFFICE.LATTICE_KINDS.get(t, []):
 				if not out.has(String(kind)): out.append(String(kind))
+		elif String(entry[1]) == "table":
+			for kind in OFFICE.TABLE_KINDS: out.append(String(kind))
+			out.append("table_chair")
 		elif not out.has(String(entry[0])): out.append(String(entry[0]))
 	return out
 
@@ -301,66 +314,159 @@ static func walls_for(room: Dictionary, how: String) -> Array:
 
 ## One recipe entry laid in a room: its runs, drawn from least to most (one
 ## draw whether or not they fit), each the first place that takes `row`
-## pieces side by side as one group. Returns the wall runs' {wall, along,
-## half} (office_generator.wall_exit() keeps off them).
-static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberGenerator) -> Array:
+## pieces side by side as one group. "back", "wall" and "run" start from the
+## corners; "run" goes on from the room's last wall run, kept in `chain`
+## (lay_run()); "center" holds `chain` on it, so the runs after it go to either
+## side (lay_center()). Returns the wall runs' {wall, along, half, group}
+## (office_generator.wall_exit() keeps off them).
+static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberGenerator, chain := {}) -> Array:
 	var kind := String(entry[0])
 	var how := String(entry[1])
 	var runs := rng.randi_range(int(entry[2]), int(entry[3]))
 	var row := int(entry[4])
 	var out: Array = []
 	for _run in runs:
+		# A try that failed changed nothing, so the next would fail the same.
 		if how == "middle":
-			lay_middle(room, zones, kind)
+			if not lay_middle(room, zones, kind, row): break
 			continue
-		for wall in walls_for(room, how):
-			var placed := lay_wall(room, zones, kind, row, String(wall))
-			if not placed.is_empty():
-				out.append(placed)
-				break
+		var placed := {}
+		if how == "run": placed = lay_run(room, zones, kind, row, chain)
+		if how == "center": placed = lay_center(room, zones, kind, row)
+		if placed.is_empty():
+			for wall in walls_for(room, "wall" if how in ["run", "center"] else how):
+				placed = lay_wall(room, zones, kind, row, String(wall), how in ["back", "wall", "run", "center"])
+				if not placed.is_empty(): break
+		if placed.is_empty(): break
+		out.append(placed)
+		if not chain.get("center", false): chain.merge(placed, true)
 	return out
 
-## A run of `row` pieces with their backs to a wall, WALL_GAP off its face,
-## at the first of ALONG that fits; {wall, along, half}, or {} where none does.
-static func lay_wall(room: Dictionary, zones: Array, kind: String, row: int, wall: String) -> Dictionary:
+## A run of `row` pieces with their backs to a wall, WALL_GAP off its face, at
+## the first place that fits (ALONG, or corner_first()); {wall, along, half,
+## group}, or {} where none does.
+static func lay_wall(room: Dictionary, zones: Array, kind: String, row: int, wall: String, from_corner := false) -> Dictionary:
 	var spec: Dictionary = OFFICE.FURNITURE[kind]
 	var size: Vector2 = spec.size
 	var width := size.x * row
 	var reach := LAYOUT.wall_length(room, wall) / 2
-	var off := wall_front(room, wall, 0.0, WALL_GAP + size.y / 2)
-	var along_z: bool = wall == "west" or wall == "east"
-	for along in ALONG:
+	var group: int = room.furniture.size()
+	for along in (corner_first(reach, width) if from_corner else ALONG):
 		var a := float(along)
 		if absf(a) + width / 2 > reach: continue
-		var group: int = room.furniture.size()
-		var pieces: Array = []
-		for k in row:
-			var at_along := a + (float(k) - float(row - 1) / 2.0) * size.x
-			var at: Vector2 = Vector2(off.x, at_along) if along_z else Vector2(at_along, off.y)
-			pieces.append(item(kind, at, int(TURNS[wall]), group))
-		var ok := true
-		for piece in pieces:
-			if not fits(room, zones, piece): ok = false
-		if ok:
-			room.furniture.append_array(pieces)
-			return {"wall": wall, "along": a, "half": width / 2}
+		var pieces := wall_pieces(room, kind, row, wall, a, group)
+		if not all_fit(room, zones, pieces, false): continue
+		room.furniture.append_array(pieces)
+		return {"wall": wall, "along": a, "half": width / 2, "group": group}
 	return {}
 
-## A free-standing piece toward the feature wall, its back to it (or a
-## quarter turned, for ANY_WAY), at the first of MIDDLE_DEPTHS and
+## `row` pieces side by side against a wall, centred `a` along it.
+static func wall_pieces(room: Dictionary, kind: String, row: int, wall: String, a: float, group: int) -> Array:
+	var spec: Dictionary = OFFICE.FURNITURE[kind]
+	var size: Vector2 = spec.size
+	var off := wall_front(room, wall, 0.0, WALL_GAP + size.y / 2)
+	var along_z: bool = wall == "west" or wall == "east"
+	var pieces: Array = []
+	for k in row:
+		var at_along := a + (float(k) - float(row - 1) / 2.0) * size.x
+		var at: Vector2 = Vector2(off.x, at_along) if along_z else Vector2(at_along, off.y)
+		pieces.append(item(kind, at, int(TURNS[wall]), group))
+	return pieces
+
+## Whether every piece fits; `apart`: and overlaps nothing laid, its own group too
+## (touching is no overlap: positions are rounded, so by more than LAYOUT.EPS).
+static func all_fit(room: Dictionary, zones: Array, pieces: Array, apart: bool) -> bool:
+	for piece in pieces:
+		if not fits(room, zones, piece): return false
+		if not apart: continue
+		var r := LAYOUT.footprint(piece)
+		for other in room.furniture:
+			if r.grow(-LAYOUT.EPS).intersects(LAYOUT.footprint(other)): return false
+	return true
+
+## The places along a wall from its corners first, then ALONG.
+static func corner_first(reach: float, width: float) -> Array:
+	var out: Array = []
+	for off in FROM_CORNER:
+		var a: float = reach - float(off) - width / 2
+		if a <= 0.0: break
+		out.append(-a)
+		out.append(a)
+	return out + ALONG
+
+## Pieces joined to the room's last wall run (spec_proporcion D4), in its group:
+## past either of its ends with no gap, else round the corner it reaches (TURN_GAP)
+## on the wall across; {} with no run or where none fits.
+static func lay_run(room: Dictionary, zones: Array, kind: String, row: int, chain: Dictionary) -> Dictionary:
+	if chain.is_empty(): return {}
+	var wall := String(chain.wall)
+	var group := int(chain.group)
+	var spec: Dictionary = OFFICE.FURNITURE[kind]
+	var size: Vector2 = spec.size
+	var width := size.x * row
+	var reach := LAYOUT.wall_length(room, wall) / 2
+	for a: float in [float(chain.along) + float(chain.half) + width / 2, float(chain.along) - float(chain.half) - width / 2]:
+		if absf(a) + width / 2 > reach: continue
+		var pieces := wall_pieces(room, kind, row, wall, a, group)
+		if not all_fit(room, zones, pieces, true): continue
+		room.furniture.append_array(pieces)
+		return {"wall": wall, "along": a, "half": width / 2, "group": group}
+	# Past no end: round the corner the run reaches, from the corner the walls share;
+	# a piece elsewhere would be no run, and goes as "wall".
+	if reach - absf(float(chain.along)) - float(chain.half) > float(FROM_CORNER[0]) + size.y + TURN_GAP: return {}
+	var high: bool = float(chain.along) >= 0.0
+	var other: String = ("south" if high else "north") if wall == "west" or wall == "east" else ("east" if high else "west")
+	if not usable(room, other): return {}
+	var far := LAYOUT.wall_length(room, other) / 2
+	var side: float = 1.0 if wall == "south" or wall == "east" else -1.0
+	for off in FROM_CORNER:
+		var a: float = side * (far - float(off) - width / 2)
+		if a * side <= 0.0: break
+		var pieces := wall_pieces(room, kind, row, other, a, group)
+		if not all_fit(room, zones, pieces, true): continue
+		room.furniture.append_array(pieces)
+		return {"wall": other, "along": a, "half": width / 2, "group": group}
+	return {}
+
+## `row` pieces in the middle of the feature wall, where a pair of its flanks
+## (palette.CENTER_FLANKS, laid by the "run" entry after it) fits either side, all
+## one group, as the director's room in its reference; {wall, along, half, group,
+## center}, or {} where the whole does not fit, and the entry goes as "wall".
+static func lay_center(room: Dictionary, zones: Array, kind: String, row: int) -> Dictionary:
+	var wall := String(room.get("feature", ""))
+	if wall == "" or not usable(room, wall): return {}
+	var spec: Dictionary = OFFICE.FURNITURE[kind]
+	var size: Vector2 = spec.size
+	var half := size.x * row / 2
+	var flank := String(OFFICE.CENTER_FLANKS[kind])
+	var flank_spec: Dictionary = OFFICE.FURNITURE[flank]
+	var flank_size: Vector2 = flank_spec.size
+	var group: int = room.furniture.size()
+	var pieces := wall_pieces(room, kind, row, wall, 0.0, group)
+	var whole: Array = pieces + wall_pieces(room, flank, 1, wall, half + flank_size.x / 2, group) + wall_pieces(room, flank, 1, wall, -half - flank_size.x / 2, group)
+	if not all_fit(room, zones, whole, false): return {}
+	room.furniture.append_array(pieces)
+	return {"wall": wall, "along": 0.0, "half": half, "group": group, "center": true}
+
+## `row` free-standing pieces side by side toward the feature wall, their backs
+## to it (or a quarter turned, for ANY_WAY), at the first of MIDDLE_DEPTHS and
 ## MIDDLE_SIDES that fits; false where none does.
-static func lay_middle(room: Dictionary, zones: Array, kind: String) -> bool:
+static func lay_middle(room: Dictionary, zones: Array, kind: String, row := 1) -> bool:
 	var wall := String(room.get("feature", ""))
 	var n: Vector2 = LAYOUT.inward(wall) if wall != "" else Vector2(0, 1)
 	var side := Vector2(-n.y, n.x)
 	var turn: int = int(TURNS[wall]) if wall != "" else 0
-	var turns: Array = [turn, (turn + 1) % 4] if ANY_WAY.has(kind) else [turn]
+	var turns: Array = [turn, (turn + 1) % 4] if ANY_WAY.has(kind) and row == 1 else [turn]
+	var spec: Dictionary = OFFICE.FURNITURE[kind]
+	var size: Vector2 = spec.size
 	for depth in MIDDLE_DEPTHS:
 		for aside in MIDDLE_SIDES:
 			for spin in turns:
-				var piece := item(kind, -n * float(depth) + side * float(aside), int(spin), room.furniture.size())
-				if fits(room, zones, piece):
-					room.furniture.append(piece)
+				var group: int = room.furniture.size()
+				var pieces: Array = []
+				for k in row: pieces.append(item(kind, -n * float(depth) + side * (float(aside) + (float(k) - float(row - 1) / 2.0) * size.x), int(spin), group))
+				if all_fit(room, zones, pieces, false):
+					room.furniture.append_array(pieces)
 					return true
 	return false
 

@@ -9,7 +9,7 @@ extends SceneTree
 ## contract.
 ##
 ##   godot --headless --path . --rendering-method forward_plus --fixed-fps 60 \
-##       --script res://tools/dev/lurker_route_probe.gd -- --test-profile --seeds=7 --trips=2 --short --strict
+##       --script res://tools/dev/lurker_route_probe.gd -- --test-profile --seeds=8 --trips=2 --short --strict
 ##
 ## A line per seed and a total; --trace adds a line per trip; --strict exits
 ## 1 on any failure; --unseen=<difficulty> makes the trips at that

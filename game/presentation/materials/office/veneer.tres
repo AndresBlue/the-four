@@ -13,4 +13,4 @@ shader_parameter/panel_spacing = 1.2
 shader_parameter/map_metres = 1.8
 shader_parameter/map_mode = 1
 shader_parameter/map_tint = Color(0.24, 0.15, 0.09, 1)
-metadata/scan = "office_dark_paneled_wood"
+metadata/scan = "office_walnut_veneer"

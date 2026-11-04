@@ -33,6 +33,9 @@ const ALL := 0xFFFFF
 ## How far past its own cell a lamp put anywhere in a room may reach: the
 ## longest is a television's glow (hotel_television.RANGE).
 const LATE_REACH := 8.0
+## The offices' rooms are smaller, their lamps nearer (spec_proporcion D10).
+const OFFICE_LATE_REACH := 6.0
+const OFFICE_LAMP_LEAST := 8.0
 ## A car's lamp (hotel_geometry.box_light()), from the middle of its strip.
 const CAR_REACH := 5.5
 
@@ -73,8 +76,8 @@ static func light_only(light: Light3D, mask: int) -> void:
 
 ## A ceiling lamp's range, from its room's footprint: it has to light the
 ## room's own corners.
-static func lamp_range(span: Vector2) -> float:
-	return maxf(10.0, maxf(span.x, span.y) * 0.85)
+static func lamp_range(span: Vector2, least := 10.0) -> float:
+	return maxf(least, maxf(span.x, span.y) * 0.85)
 
 static func rect_of(room: Dictionary) -> Rect2:
 	var span := FLOOR.size_of(room)
@@ -103,6 +106,7 @@ static func reaches(lamp: Vector2, reach: float, rect: Rect2) -> bool:
 ## clashes, seams}.
 static func assign(manifest: Dictionary) -> Dictionary:
 	var rooms: Array = manifest.rooms
+	var office: bool = int(manifest.get("floor", 1)) == 2
 	# The things to colour: rooms, and after them the cars.
 	var nodes: Array = []
 	var node_of := {}
@@ -110,7 +114,7 @@ static func assign(manifest: Dictionary) -> Dictionary:
 		if FLOOR.is_void(room): continue
 		var rect := rect_of(room)
 		node_of[int(room.id)] = nodes.size()
-		nodes.append({"room": int(room.id), "car": false, "planta": int(room.get("wing", 0)), "rect": rect, "lamp": rect.get_center(), "reach": lamp_range(rect.size), "open": [], "near": [], "colour": -1})
+		nodes.append({"room": int(room.id), "car": false, "planta": int(room.get("wing", 0)), "rect": rect, "lamp": rect.get_center(), "reach": lamp_range(rect.size, OFFICE_LAMP_LEAST if office else 10.0), "open": [], "near": [], "colour": -1})
 	for room in rooms:
 		var strip := car_rect(room)
 		if FLOOR.is_void(room) or strip.size == Vector2.ZERO: continue
@@ -132,7 +136,7 @@ static func assign(manifest: Dictionary) -> Dictionary:
 			var a: Dictionary = nodes[group[m]]
 			for n in range(m + 1, group.size()):
 				var b: Dictionary = nodes[group[n]]
-				if gap(a.rect, b.rect) < LATE_REACH or reaches(a.lamp, a.reach, b.rect) or reaches(b.lamp, b.reach, a.rect):
+				if gap(a.rect, b.rect) < (OFFICE_LATE_REACH if office else LATE_REACH) or reaches(a.lamp, a.reach, b.rect) or reaches(b.lamp, b.reach, a.rect):
 					a.near.append(group[n])
 					b.near.append(group[m])
 	# One open space after another, each from its lowest cell outwards, so a

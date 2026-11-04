@@ -483,7 +483,7 @@ func floor_specials(m: Dictionary, tag: String) -> void:
 	var freight := share_of(m, int(m.refuges[1]))
 	if freight < 0.8: note(T_FREIGHT, "%s: montacargas a %.2f" % [tag, freight])
 	var walk := float(FLOOR.route_metres(m, int(m.entries[0])).get(int(m.refuges[0]), 0.0))
-	if walk < 110.0 * sqrt(float(m.areas[0])): note(T_FREIGHT, "%s: paseo %.1f" % [tag, walk])
+	if walk < float(OFFICE.LEAST_WALKS[0]) * sqrt(float(m.areas[0])): note(T_FREIGHT, "%s: paseo %.1f" % [tag, walk])
 
 ## What finish() promises: the musts, the archive salon, toilets by sector,
 ## the mobile archives, the depots and the departments.
@@ -500,11 +500,11 @@ func floor_finish(m: Dictionary, tag: String, survivors: int) -> void:
 					halls[int(room.hall)] = true
 				units += 1
 			if units >= int(musts[t]): continue
-			# A boardroom wants a large module: short only when none was free.
+			# A boardroom wants its band (palette.ROOM_BANDS): short only when no such cell was free.
 			var free := 0
 			for room in m.rooms:
 				if int(room.wing) != planta or int(room.type) == OFFICE.VOID or String(room.kind) != "module" or bool(room.corridor) or bool(room.service) or int(room.hall) >= 0: continue
-				if minf(float(room.span_x), float(room.span_z)) < OFFICE.BOARDROOM_SIDE or specials.has(int(room.type)) or musts.has(int(room.type)): continue
+				if not OFFICE.fits_band(OFFICE.BOARDROOM, room) or specials.has(int(room.type)) or musts.has(int(room.type)): continue
 				if planta == 2 and m.air.main.cells.has(int(room.id)): continue
 				free += 1
 			if int(t) != OFFICE.BOARDROOM or free > 0: note(T_MUSTS, "%s: planta %d tipo %d, %d de %d, %d candidatas" % [tag, planta, int(t), units, int(musts[t]), free])
@@ -1112,7 +1112,7 @@ func validator_checks() -> void:
 	mutation(v, "Un banco de 0,9 de fondo en un pasillo", "hall_", change_hall)
 	var change_20 := func(m: Dictionary) -> void:
 		for room in m.rooms:
-			if int(room.type) == OFFICE.OFFICE and room.get("glazed", []).is_empty():
+			if OFFICE.GLAZED_TYPES.has(int(room.type)) and room.get("glazed", []).is_empty():
 				room.glazed.append("west")
 				return
 	mutation(v, "Cristal en un solo lado", "glazed_", change_20)
@@ -1188,6 +1188,11 @@ static func swap_window(m: Dictionary) -> void:
 	for room in m.rooms:
 		if int(room.wing) != 0 or int(room.type) != OFFICE.OFFICE or not route.has(int(room.id)): continue
 		if deepest < 0 or float(route[int(room.id)]) > float(route[deepest]): deepest = int(room.id)
+	# With few offices (their band, spec_proporcion D9), the deepest room of any type.
+	if deepest < 0:
+		for room in m.rooms:
+			if int(room.wing) != 0 or int(room.id) == win or bool(room.corridor) or not route.has(int(room.id)): continue
+			if deepest < 0 or float(route[int(room.id)]) > float(route[deepest]): deepest = int(room.id)
 	m.rooms[deepest].type = OFFICE.WINDOW
 	m.rooms[win].type = OFFICE.OFFICE
 
@@ -1251,6 +1256,8 @@ func nave_checks() -> void:
 
 # --- Física ------------------------------------------------------------------
 
+## With smaller modules, more of them (spec_proporcion, acceptance 6).
+const PHYSICS_SEEDS := [7, 21, 33, 3, 12, 19, 28, 38]
 ## Floors of offices built in a level, with their naves' columns, and checked by the office
 ## validator's physics (spec_f1_generator.md 3.5): nothing in the way of a
 ## door, a passage, an aisle, a grille or the ceiling band.
@@ -1260,9 +1267,13 @@ func physics_checks() -> void:
 	# With their naves' columns (spec_rediseno 3.4), whatever COLUMNS says.
 	OFFICE.columns_test = true
 	var columns := 0
+	var raised: Array = []
+	var raise_points := 0
+	var signs: Array = []
+	var sign_count := 0
 	# A level of its own for each: start_floor() on one already playing does
 	# not build again.
-	for run_seed in [7, 21, 33]:
+	for run_seed in PHYSICS_SEEDS:
 		var level = load("res://game/app/hotel.tscn").instantiate()
 		root.add_child(level)
 		# The floor itself, without her (phase 1's).
@@ -1274,10 +1285,52 @@ func physics_checks() -> void:
 		columns += level.manifest.rooms.filter(func(r): return not r.get("columns", []).is_empty()).size()
 		var errors: Array = level.kind.VALIDATOR.new().validate_physics(level.get_world_3d(), level.manifest)
 		if not errors.is_empty(): found.append("%d: %s" % [run_seed, str(errors.slice(0, 5))])
+		raise_points += revival_clear(level, run_seed, raised)
+		var signs_here := signs_inside(level, run_seed, signs)
+		if signs_here < 2: signs.append("%d: %d carteles" % [run_seed, signs_here])
+		sign_count += signs_here
 		level.queue_free()
 		for i in 2: await physics_frame
 	OFFICE.columns_test = false
-	check("Los pisos de oficinas montados, con columnas en sus naves, pasan la comprobación física", found.is_empty() and built == [7, 21, 33] and columns > 0, "%s %s %d" % [str(built), str(found), columns])
+	check("Los pisos de oficinas montados, con columnas en sus naves, pasan la comprobación física", found.is_empty() and built == PHYSICS_SEEDS and columns > 0, "%s %s %d" % [str(built), str(found), columns])
+	check("Donde se reanima cada etapa cabe un cuerpo, en el punto y en los cuatro extremos del reparto", raised.is_empty() and raise_points > 0, "%s %d" % [str(raised.slice(0, 5)), raise_points])
+	check("Los carteles de salida de los vestíbulos cuelgan dentro de la sala", signs.is_empty() and sign_count > 0, "%s %d" % [str(signs.slice(0, 5)), sign_count])
+
+## Every exit sign of a lift lobby, well inside its room (spec_proporcion D13); how
+## many there are.
+func signs_inside(level, run_seed: int, bad: Array) -> int:
+	var count := 0
+	for room in level.manifest.rooms:
+		if int(room.type) != OFFICE.REFUGE: continue
+		for child in level.hotel.room_nodes[int(room.id)].get_children():
+			# A room's second one the engine renames: by what hangs in it.
+			if child.get_node_or_null("ExitGlow") == null: continue
+			count += 1
+			if absf(float(child.position.z)) >= float(room.span_z) / 2 - OFFICE.WALL_HALF - 0.05: bad.append("%d: %d, z %.2f" % [run_seed, int(room.id), float(child.position.z)])
+	return count
+
+## A body's capsule at the point each stage is raised at and at the four ends of its
+## spread (spec_proporcion D13): nothing there. How many tried.
+func revival_clear(level, run_seed: int, bad: Array) -> int:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.3
+	capsule.height = 1.8
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = capsule
+	query.collision_mask = 1
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	var spread: float = level.revival.revival_spread()
+	var was: int = level.session.stage
+	var tried := 0
+	for stage in [1, 2, 3]:
+		level.session.stage = stage
+		var at: Vector3 = level.revival.revival_point()
+		for off in [Vector2.ZERO, Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+			query.transform = Transform3D(Basis.IDENTITY, at + Vector3(off.x * spread, 0.94, off.y * spread))
+			tried += 1
+			if not space.intersect_shape(query, 1).is_empty(): bad.append("%d: etapa %d, %s" % [run_seed, stage, str(off)])
+	level.session.stage = was
+	return tried
 
 ## A cell's sides are the office's: a module's both from MODULE_SIZES, a
 ## crossing's both from LANE_WIDTHS, a lane's one from each.

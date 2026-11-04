@@ -43,6 +43,7 @@ function Godot-Arguments([string]$source, [string]$log, [bool]$fixed, [string[]]
 }
 
 $tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test_generator','office/office_test_validator','office/office_test_physics','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','office/office_lies_test','office/lurker_capture_test','office/office_dark_test','office/lurker_tiles_test','office/lurker_forced_test','office/lurker_observer_test','office/lurker_bots_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test','office/office_finishes_test','office/office_light_test','office/office_pieces_test')
+# office/office_proportion_test stays out until area 4c: it measures the small things 4c lays (spec_4d_fisica, after Q1 and Q2).
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
     $log = Join-Path $evidence ('verify_' + $name + '.log')
@@ -67,11 +68,11 @@ Add-Check 'dev/creature_stuck_probe' 'stuck_probe' (Godot-Arguments 'res://tools
 # not declare, never in an off-limits room, never through a shut door
 # (tools/dev/lurker_route_probe.gd). It takes some 60 s alone (since area 3b); 150 under verify's load.
 $log = Join-Path $evidence 'verify_lurker_route_probe.log'
-Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--short','--strict','--automation','--silent')) 150 'plain' 1 $log
+Add-Check 'dev/lurker_route_probe' 'lurker_route_probe' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=8','--trips=2','--short','--strict','--automation','--silent')) 150 'plain' 1 $log
 # The same trips at Pesadilla's speeds of going unseen (spec_f3_aggression),
 # her most usual now: she arrives at 4.5 m/s on a ceiling and 5 in a duct.
 $log = Join-Path $evidence 'verify_lurker_route_unseen.log'
-Add-Check 'dev/lurker_route_probe --unseen' 'lurker_route_unseen' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=7','--trips=2','--unseen=pesadilla','--strict','--automation','--silent')) 90 'plain' 1 $log
+Add-Check 'dev/lurker_route_probe --unseen' 'lurker_route_unseen' (Godot-Arguments 'res://tools/dev/lurker_route_probe.gd' $log $true @('--test-profile','--seeds=8','--trips=2','--unseen=pesadilla','--strict','--automation','--silent')) 90 'plain' 1 $log
 # The Lurker's arms never through anything solid: cabinets, a locker's leaf, an
 # open leaf and survivors under her way (tools/dev/lurker_elbow_probe.gd).
 $log = Join-Path $evidence 'verify_lurker_elbow_probe.log'
@@ -101,6 +102,9 @@ Add-Check 'dev/hearing_probe' 'hearing_probe' (Godot-Arguments 'res://tools/dev/
 # sharing a layer with a room one of its lamps reaches.
 $log = Join-Path $evidence 'verify_light_layers.log'
 Add-Check 'dev/light_layers_scan' 'light_layers' @('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$log,'--','40') 360 'layers' 1 $log
+# The same on floor 2 (spec_proporcion D10): smaller rooms, the same reaches.
+$log = Join-Path $evidence 'verify_light_layers_office.log'
+Add-Check 'dev/light_layers_scan --floor=2' 'light_layers_office' @('--headless','--path',$projectPath,'--script','res://tools/dev/light_layers_scan.gd','--log-file',$log,'--','40','--floor=2') 360 'layers' 1 $log
 # Shaders: only a real device compiles them, so this one runs with a window and
 # is judged by its log. On a machine without a GPU it reports SHADERS_SKIPPED
 # and counts as passed, because a skipped check is not a failed one.

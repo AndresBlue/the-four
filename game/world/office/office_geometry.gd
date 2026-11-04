@@ -141,10 +141,6 @@ const HALO_ENERGY := 0.59
 ## shows no glow in the hole.
 const HOLE_CAP := 0.01
 const HALO_SHADER := preload("res://game/presentation/materials/office/ceiling_halo.gdshader")
-## The reception's red beacon (the hotel's extras()) glows as the hotel's, but
-## its light reaches no further than this, and the room's lamp, which the
-## hotel keeps low under it, stays whole here.
-const BEACON_REACH := 3.0
 ## Room id -> its halo: {"material": ShaderMaterial, "base": float (its lamp's
 ## energy as room_lamp() made it), "energy": float (as last set)}.
 var halos := {}
@@ -1431,6 +1427,7 @@ func batten_model(node: Node3D, room: Dictionary, at: Vector3, along_x: bool, le
 ## The electrical room's lamp is made (lights[id] must exist) but stays out.
 func room_lamp(node: Node3D, room: Dictionary) -> void:
 	var light := lamp_light(node, room, lamp_fixture(node, room))
+	light.omni_range = ROOM_LAYERS.lamp_range(FLOOR.size_of(room), ROOM_LAYERS.OFFICE_LAMP_LEAST)
 	if halos.has(int(room.id)): halos[int(room.id)].base = light.light_energy
 	if OFFICE.lamp_of(room) == "troffer":
 		light.omni_attenuation = LAMP_ATTENUATION
@@ -1598,17 +1595,32 @@ func door_frame_mesh() -> ArrayMesh:
 func build_prop(node: Node3D, kind: String) -> void:
 	if not PROPS.build(self, node, kind): super(node, kind)
 
+## How far along z from a lift lobby's middle its signs may hang while extras() makes
+## them, 0 otherwise: the hotel hangs them at fixed distances, and a shorter room's
+## wall comes first (spec_proporcion D13). 0.2 is what its 4.8 leaves in a 10 m module.
+var signs_reach := 0.0
+
+func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling_y: float, front: Texture2D = EXIT_ENGRAVING, back: Texture2D = null, size := PANEL_SIZE) -> void:
+	if signs_reach > 0.0: pos.z = clampf(pos.z, -signs_reach, signs_reach)
+	super(node, pos, yaw, ceiling_y, front, back, size)
+
 ## An archive cell's share of its unit's rows (9.4): each row rectangle cut
 ## at the cell's edges and built under the cell, so it batches and layers
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
 	# The reception's lamp as room_lamp() made it: the hotel's extras() turns
-	# it down under the beacon, which here reaches BEACON_REACH and no more.
+	# it down under the beacon, whose glass here glows and paints nothing round
+	# it (spec_proporcion D11).
 	var whole: float = lights.back().light_energy
+	signs_reach = float(room.span_z) / 2 - 0.2 if int(room.type) == OFFICE.REFUGE else 0.0
 	super(node, room)
+	signs_reach = 0.0
 	if int(room.type) == OFFICE.RECEPTION:
 		lights.back().light_energy = whole
-		(beacons.back().light as OmniLight3D).omni_range = BEACON_REACH
+		var beacon: Dictionary = beacons.back()
+		beacon.energy = 0.0
+		(beacon.light as OmniLight3D).light_energy = 0.0
+		(beacon.light as OmniLight3D).shadow_enabled = false
 	emergency_unit(node, room)
 	# The halo in its lamp's colour as the hotel's extras() left it (the
 	# refuge's green).

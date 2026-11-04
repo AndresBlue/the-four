@@ -88,7 +88,7 @@ const RECIPES := [
 	["reception", "chairs", "plant", "coat_rack"],
 	["desk", "desk", "filing", "coat_rack"],
 	["filing", "desk", "bin", "coat_rack"],
-	["desk", "filing", "coat_rack", "shelf"],
+	["", "filing", "coat_rack", "shelf"],
 	["basin", "basin", "bench", "bin"],
 	["sideboard", "board", "plant", "projector"],
 	["", "", "", ""],
@@ -132,10 +132,10 @@ const UNRULY_ROOMS := [3, 8, 7, 15, 13]
 const SERVICE_ROOMS := [8, 8, 7, 4]
 const HALL_ROOMS := [1, 2]
 
-## Module sizes in metres (OFICINAS 11.3), about 0.73 of the hotel's; the
-## corridor lanes 3 to 3.6 m with a narrow 2.4 now and then (spec_rediseno
-## 3.2): axis() draws evenly from the list, so a repeat is its weight.
-const MODULE_SIZES := [8.0, 9.0, 10.0, 10.0, 11.0, 12.0]
+## Module sizes in metres (spec_proporcion D8: the first of its candidates that
+## held); the corridor lanes 3 to 3.6 m with a narrow 2.4 now and then
+## (spec_rediseno 3.2): axis() draws evenly from the list, so a repeat is its weight.
+const MODULE_SIZES := [6.0, 6.5, 7.0, 7.5, 8.0, 9.0]
 const LANE_WIDTHS := [3.0, 3.0, 3.2, 3.2, 3.4, 3.6, 2.4]
 
 ## Plans per planta: Personal presentable, Registro combs and blocks for the
@@ -154,10 +154,11 @@ const DEPTHS := [Vector2(0.65, 0.9), Vector2(0.8, 0.97), Vector2(0.6, 0.9)]
 ## The hotel's generator reads one for the first planta and one for the rest.
 const FIRST_DEPTH: Vector2 = DEPTHS[0]
 const DEPTH: Vector2 = DEPTHS[2]
-## The hotel's 150 m, for modules about 0.73 of its own.
-const FIRST_WALK := 110.0
+## The least walk to the refuge on planta 0, times sqrt(area), for the smaller
+## modules (spec_proporcion D10). office_generator reads LEAST_WALKS.
+const FIRST_WALK := 90.0
 ## The least walk to the refuge slot per planta, times sqrt(area).
-const LEAST_WALKS := [110.0, 0.0, 0.0]
+const LEAST_WALKS := [90.0, 0.0, 0.0]
 
 ## Salons on a planta: more than the hotel's (open offices, cubicles, archives).
 const HALLS := Vector2i(4, 8)
@@ -187,10 +188,10 @@ static func columns_on() -> bool:
 	return COLUMNS or columns_test
 
 ## Exposed corridors per planta (hotel_palette.gd says what they are).
-const EXPOSED := [0.0, 25.0, 35.0]
+const EXPOSED := [0.0, 20.0, 28.0]
 const EXPOSED_CHANCE := [0.0, 0.5, 0.8]
 const SECOND_EXPOSED := 0.0
-const EXPOSED_LONGEST := 70.0
+const EXPOSED_LONGEST := 56.0
 
 ## Where a door stands in a wall, from its middle. No room has the hotel's
 ## domestic alcoves.
@@ -369,8 +370,31 @@ const PLANTA_MIX := [
 const HALL_MIX := [{1: 3.0, 2: 3.0}, {6: 4.0, 2: 1.5, 1: 1.0}, {1: 1.5, 16: 1.5, 6: 0.5}]
 const SERVICE_BY_PLANTA := [[4, 15, 8, 7], [8, 7, 4, 8], [8, 4, 15, 8]]
 const MUSTS := [{15: 1, 5: 1}, {6: 2, 14: 1, 7: 1}, {5: 1, 16: 2, 24: 1}]
-## A large module ("módulo grande"): both sides at least this.
-const BOARDROOM_SIDE := 10.0
+## The cell each type wants (spec_proporcion D9): [short side at least, at most,
+## long side at least, at most], 0 for no bound. Types are drawn among those
+## that fit, and with none, the band gives way (office_generator.fitting()).
+const ROOM_BANDS := {
+	RECEPTION: [6.5, 0.0, 8.0, 0.0],
+	MAIL: [6.0, 0.0, 6.5, 0.0],
+	ARCHIVE: [6.5, 0.0, 0.0, 0.0],
+	MOBILE_ARCHIVE: [6.5, 0.0, 0.0, 0.0],
+	COPY_ROOM: [6.0, 0.0, 0.0, 0.0],
+	OFFICE: [0.0, 0.0, 0.0, 7.5],
+	EXEC_OFFICE: [0.0, 0.0, 0.0, 8.0],
+	SECRETARY: [0.0, 0.0, 0.0, 7.5],
+	BOARDROOM: [6.5, 0.0, 8.0, 0.0],
+	BREAK_ROOM: [7.0, 0.0, 8.0, 0.0],
+	TOILETS: [0.0, 6.5, 7.0, 0.0],
+	SECURITY: [0.0, 0.0, 0.0, 7.0],
+	WINDOW: [0.0, 0.0, 0.0, 7.5],
+	ELECTRICAL: [0.0, 6.5, 0.0, 0.0],
+	AIR_ROOM: [7.0, 0.0, 8.0, 0.0],
+	REFUGE: [6.0, 0.0, 0.0, 7.0],
+}
+## A nave two cells wide keeps its size with smaller modules: at least this
+## across and along, and modules this deep across its aisle (COLUMN_OFF).
+const NAVE_SIZE := Vector2(12.0, 16.0)
+const NAVE_MODULE := 6.5
 ## Free-standing furniture (room.furniture): footprint [w, d] with the chairs
 ## and the room to use it (a partition's size.x is its length), and height,
 ## all under FURNITURE_TOP. Step 1b's lattice and table pieces, and the
@@ -380,16 +404,13 @@ const FURNITURE := {
 	"desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
 	"desk_pair": {"size": Vector2(1.5, 2.6), "height": 1.3},
 	"partition": {"size": Vector2(0.0, 0.06), "height": 1.5},
-	"meeting_table": {"size": Vector2(3.6, 1.2), "height": 0.9},
 	"pigeonholes": {"size": Vector2(1.8, 0.4), "height": 1.9},
 	"copier": {"size": Vector2(1.3, 0.7), "height": 1.05},
 	"vending": {"size": Vector2(0.9, 0.8), "height": 1.8},
 	"card_index": {"size": Vector2(1.7, 0.5), "height": 1.2},
-	"office_desk": {"size": Vector2(1.8, 2.2), "height": 1.3},
 	"exec_desk": {"size": Vector2(2.2, 2.3), "height": 1.3},
 	"secretary_desk": {"size": Vector2(1.9, 2.2), "height": 1.3},
 	"work_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
-	"reception_counter": {"size": Vector2(2.4, 2.2), "height": 1.3},
 	"waiting_row": {"size": Vector2(2.5, 0.6), "height": 0.9},
 	"filing": {"size": Vector2(0.5, 0.65), "height": 1.32},
 	"bookcase": {"size": Vector2(0.9, 0.4), "height": 2.0},
@@ -401,7 +422,7 @@ const FURNITURE := {
 	"pigeon_counter": {"size": Vector2(2.4, 0.85), "height": 1.1},
 	"sorting_table": {"size": Vector2(2.0, 0.95), "height": 1.02},
 	"reader_table": {"size": Vector2(1.4, 1.4), "height": 1.3},
-	"work_table": {"size": Vector2(2.0, 1.0), "height": 0.74},
+	"work_table": {"size": Vector2(2.4, 1.8), "height": 0.74},
 	"dining_set": {"size": Vector2(1.4, 2.0), "height": 0.9},
 	"kitchen": {"size": Vector2(3.0, 0.65), "height": 2.15},
 	"cubicles": {"size": Vector2(2.7, 1.6), "height": 2.0},
@@ -411,6 +432,50 @@ const FURNITURE := {
 	"plant_floor": {"size": Vector2(0.5, 0.5), "height": 1.3},
 	"bench_slat": {"size": Vector2(1.5, 0.4), "height": 0.5},
 	"air_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
+	"reception_counter_l": {"size": Vector2(3.6, 2.2), "height": 1.3},
+	"waiting_row_4": {"size": Vector2(3.2, 0.8), "height": 0.9},
+	"office_suite": {"size": Vector2(2.0, 2.7), "height": 1.3},
+	"meeting_table_s": {"size": Vector2(3.6, 1.85), "height": 0.9},
+	"meeting_table_m": {"size": Vector2(4.2, 1.85), "height": 0.9},
+	"meeting_table_l": {"size": Vector2(4.8, 1.85), "height": 0.9},
+	"table_chair": {"size": Vector2(0.6, 0.6), "height": 0.9},
+	"locker_bank": {"size": Vector2(2.7, 0.5), "height": 1.9},
+	"fan_unit": {"size": Vector2(1.5, 1.2), "height": 1.6},
+}
+## The boardroom's tables, the longest first (office_generator.lay_table()).
+const TABLE_KINDS := ["meeting_table_l", "meeting_table_m", "meeting_table_s"]
+## The corner pieces' real footprints (spec_proporcion D3): [width, depth, back],
+## back the local z where the piece starts, at rotation 0 round its socket. What
+## office_props.build() draws, or prop_factory for the hotel's kinds (plant, bin,
+## basin and cart, centred on the socket; plant and basin till area 4c draws its own:
+## spec_4d_fisica); for the other kinds not drawn yet and those area 4c changes
+## (spec_proporcion D13), the piece it stands there. The boxes' row holds the ladder and the work light of the store and the depot.
+const CORNER_SIZES := {
+	"reception": [2.24, 1.14, -0.7],
+	"shelf": [2.0, 0.4, -0.7],
+	"coat_rack": [1.22, 0.5, -0.75],
+	"bench": [1.5, 0.45, -0.7],
+	"sideboard": [1.8, 0.48, -0.7],
+	"table": [1.6, 0.9, -0.7],
+	"board": [1.5, 0.6, -0.7],
+	"projector": [0.8, 0.5, -0.7],
+	"cooler": [0.34, 0.34, -0.7],
+	"fridge": [0.6, 0.65, -0.7],
+	"cabinet": [1.0, 0.5, -0.7],
+	"gun_rack": [1.0, 0.45, -0.7],
+	"boxes": [2.2, 0.6, -0.7],
+	"plant": [0.55, 0.55, -0.275],
+	"bin": [0.5, 0.5, -0.25],
+	"basin": [1.1, 0.75, -0.375],
+	"cart": [1.35, 0.75, -0.375],
+	"desk": [1.5, 1.4, -0.7],
+	"filing": [1.0, 0.62, -0.7],
+	"chairs": [1.74, 0.6, -0.7],
+	"armchair": [2.3, 1.4, -0.7],
+	"copier": [1.1, 0.7, -0.7],
+	"reader": [1.4, 1.3, -0.7],
+	"sorter": [1.8, 0.4, -0.7],
+	"vending": [0.9, 0.8, -0.7],
 }
 ## What office_recipes.gd lays in each furnished type, in order (spec_rediseno
 ## 6): [kind, how, least, most, row]. how: "lattice" (lay_lattice(): desk
@@ -418,28 +483,31 @@ const FURNITURE := {
 ## against the feature wall alone; "wall", against it or else another free
 ## wall; "side", against another free wall or else it; "middle", standing free
 ## toward it; "closed", against a wall with no door nor lift; "spare", as "side",
-## but where it may not fit, so no test requires it; "hall", by lay_halls(), a
+## but where it may not fit, so no test requires it; "run", joined to the room's
+## last wall run, or else as "wall" (lay_run()); "center", the middle of the
+## feature wall, where a pair of CENTER_FLANKS fits beside it, or else as "wall"
+## (lay_center()); "hall", by lay_halls(), a
 ## corridor's. From least to most runs, drawn; row pieces side by side in a run.
 const ROOM_FURNITURE := {
-	RECEPTION: [["reception_counter", "side", 1, 1, 1], ["waiting_row", "side", 1, 1, 1]],
+	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["waiting_row_4", "side", 1, 1, 1], ["plant_floor", "spare", 2, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1]],
 	CUBICLES: [["desk", "lattice", 1, 1, 1]],
-	OFFICE: [["office_desk", "wall", 1, 1, 1], ["filing", "side", 1, 1, 1], ["sideboard", "side", 0, 1, 1]],
-	TOILETS: [["cubicles", "wall", 1, 1, 1]],
-	BOARDROOM: [["meeting_table", "table", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["whiteboard", "side", 1, 1, 1]],
-	COPY_ROOM: [["copier", "side", 1, 1, 1], ["reader_table", "side", 1, 2, 1], ["card_index", "side", 0, 1, 1], ["work_table", "middle", 1, 1, 1]],
+	OFFICE: [["office_suite", "wall", 1, 1, 1], ["filing", "run", 1, 2, 2], ["plant_floor", "spare", 1, 1, 1]],
+	TOILETS: [["cubicles", "wall", 1, 1, 1], ["locker_bank", "wall", 1, 2, 1], ["bench_slat", "middle", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["sideboard", "side", 1, 2, 1], ["wood_shelving", "spare", 1, 1, 1]],
+	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1]],
 	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
-	MAIL: [["pigeonholes", "side", 2, 2, 1], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "side", 1, 2, 1], ["sorting_table", "middle", 0, 1, 1]],
-	BREAK_ROOM: [["kitchen", "side", 1, 1, 1], ["vending", "side", 1, 1, 1], ["dining_set", "middle", 1, 2, 1]],
-	EXEC_OFFICE: [["exec_desk", "wall", 1, 1, 1], ["bookcase", "back", 0, 2, 1], ["sideboard", "side", 0, 1, 1]],
-	WINDOW: [["filing", "side", 1, 1, 3], ["wood_shelving", "side", 0, 1, 1]],
-	ELECTRICAL: [["work_desk", "side", 1, 1, 1]],
-	SECURITY: [["filing", "side", 1, 1, 2]],
-	SECRETARY: [["secretary_desk", "side", 1, 1, 1], ["filing", "side", 1, 1, 2], ["printer_cart", "side", 0, 1, 1], ["waiting_row", "side", 0, 1, 1]],
+	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "side", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1]],
+	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1]],
+	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["sideboard", "spare", 1, 1, 1]],
+	WINDOW: [["filing", "wall", 1, 1, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1]],
+	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 3, 1], ["cart_boxes", "spare", 1, 2, 1]],
+	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1]],
+	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "side", 1, 1, 1]],
 	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
-	LOBBY: [["filing", "closed", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
-	REFUGE: [["filing", "closed", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
-	AIR_ROOM: [["air_desk", "spare", 1, 1, 1]],
+	LOBBY: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
+	REFUGE: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
+	AIR_ROOM: [["fan_unit", "wall", 2, 3, 1], ["work_table", "middle", 1, 1, 1], ["air_desk", "spare", 1, 1, 1]],
 	AIR_PLANT: [["air_desk", "spare", 1, 1, 1]],
 	CORRIDOR: [["bin_floor", "hall", 0, 1, 1], ["bench_slat", "hall", 0, 1, 1], ["plant_floor", "hall", 0, 1, 1]],
 }
@@ -447,12 +515,15 @@ const ROOM_FURNITURE := {
 ## desk pairs, or single desks where they seat more than the pairs (a nave's
 ## aisle and columns); the cubicles' pods.
 const LATTICE_KINDS := {OPEN_OFFICE: ["desk_pair", "desk"], CUBICLES: ["desk", "partition"]}
+## What flanks a piece laid "center" (office_recipes.lay_center()): the director's
+## desk between two bookcases, as in its reference (spec_proporcion D7).
+const CENTER_FLANKS := {"exec_desk": "bookcase"}
 ## The corner pieces (RECIPES) a type's furniture stands in for, each with the
-## piece of its recipe that does: they give way to it, and come back where it
-## was not laid (office_recipes.drop(), restore()); "", a corner that always
+## piece of its recipe that does: they come back only where it was not laid
+## (office_recipes.restore()); "", a corner that always
 ## gives way (an unbuilt one, for room). Never a desk or a table, where papers
 ## are put (document_placement.SURFACES).
-const CORNERS_REPLACED := {RECEPTION: {"reception": "reception_counter", "chairs": "waiting_row"}, OPEN_OFFICE: {"filing": ""}, CUBICLES: {"filing": ""}, OFFICE: {"filing": "filing"}, BOARDROOM: {"sideboard": "sideboard", "board": "whiteboard"}, LOBBY: {"bin": "bin_floor"}, REFUGE: {"bin": "bin_floor"}, COPY_ROOM: {"copier": "copier", "reader": "reader_table"}, MAIL: {"sorter": "pigeonholes"}, BREAK_ROOM: {"vending": "vending"}, WINDOW: {"filing": "filing"}, SECURITY: {"filing": "filing"}, SECRETARY: {"filing": "filing"}}
+const CORNERS_REPLACED := {RECEPTION: {"reception": "reception_counter_l", "chairs": "waiting_row_4"}, OPEN_OFFICE: {"filing": ""}, CUBICLES: {"filing": ""}, OFFICE: {"filing": "filing"}, BOARDROOM: {"sideboard": "sideboard", "board": "whiteboard"}, LOBBY: {"bin": "bin_floor"}, REFUGE: {"bin": "bin_floor"}, COPY_ROOM: {"copier": "copier", "reader": "reader_table"}, MAIL: {"sorter": "pigeonholes"}, BREAK_ROOM: {"vending": "vending"}, WINDOW: {"filing": "filing"}, SECURITY: {"filing": "filing"}, SECRETARY: {"filing": "filing"}}
 ## The wall each type is framed by and furnished against first (spec_rediseno
 ## 6; office_recipes.feature_of(), office_rooms_capture.gd): "far", the closed
 ## wall farthest from its main door; "suite", the wall of its door to a
@@ -462,10 +533,9 @@ const CORNERS_REPLACED := {RECEPTION: {"reception": "reception_counter", "chairs
 ## A type not here has none, and its capture looks straight in. The types of
 ## FEATURE_FIRST_PIECE end up with another (office_generator.furnish_furniture()).
 const FEATURE_WALLS := {RECEPTION: "far", OPEN_OFFICE: "far", CUBICLES: "far", OFFICE: "far", TOILETS: "far", BOARDROOM: "far", COPY_ROOM: "far", STORE: "far", LANDING: "lift", LOBBY: "lift", MAIL: "far", BREAK_ROOM: "far", EXEC_OFFICE: "far", WINDOW: "window", ELECTRICAL: "board", REFUGE: "lift", SECURITY: "console", AIR_ROOM: "far", AIR_PLANT: "unit", SECRETARY: "suite", DEPOT: "far"}
-## The types with no "wall" nor "back" entry in their recipe: the rule above only
-## orders their pieces, so they end up framed by the wall their first piece
-## against a wall landed on.
-const FEATURE_FIRST_PIECE := [RECEPTION, COPY_ROOM, STORE, MAIL, BREAK_ROOM, SECRETARY, DEPOT]
+## The types that end up framed by the wall their first piece against a wall
+## landed on, whichever the rule above tried first.
+const FEATURE_FIRST_PIECE := [RECEPTION, OFFICE, TOILETS, COPY_ROOM, STORE, MAIL, BREAK_ROOM, SECRETARY, DEPOT]
 ## The pieces a salon of a type has once, in its head cell (office_recipes
 ## hall_heads()): a director's desk. Salons are open offices, cubicles, archives
 ## and directors' offices only (HALL_MIX): no other one-desk type takes one.
@@ -526,6 +596,31 @@ static func floor_finish(room: Dictionary) -> String:
 	if room_type in CARPET and wing == 2: return "carpet_exec"
 	if room_type in NAVE_CARPET and wing == 0: return "carpet"
 	return String(FINISH_BY_TYPE[room_type])
+
+## Whether a cell is one a type wants (ROOM_BANDS).
+static func fits_band(room_type: int, room: Dictionary) -> bool:
+	var band: Array = ROOM_BANDS.get(room_type, [])
+	if band.is_empty(): return true
+	var short_side := minf(float(room.span_x), float(room.span_z))
+	var long_side := maxf(float(room.span_x), float(room.span_z))
+	if float(band[0]) > 0.0 and short_side < float(band[0]) - 0.001: return false
+	if float(band[1]) > 0.0 and short_side > float(band[1]) + 0.001: return false
+	if float(band[2]) > 0.0 and long_side < float(band[2]) - 0.001: return false
+	return float(band[3]) <= 0.0 or long_side <= float(band[3]) + 0.001
+
+## A corner piece's plan rect in its cell, from its socket and turn (the basis
+## hotel_geometry.prop_transform() gives it: a quarter takes local (x, z) to (z, -x)).
+static func corner_rect(kind: String, socket: Array, rotation: int) -> Rect2:
+	var spec: Array = CORNER_SIZES[kind]
+	var wide: float = spec[0]
+	var deep: float = spec[1]
+	var back: float = spec[2]
+	var at := Vector2(float(socket[0]), float(socket[1]))
+	match rotation % 4:
+		0: return Rect2(at.x - wide * 0.5, at.y + back, wide, deep)
+		1: return Rect2(at.x + back, at.y - wide * 0.5, deep, wide)
+		2: return Rect2(at.x - wide * 0.5, at.y - back - deep, wide, deep)
+	return Rect2(at.x - back - deep, at.y - wide * 0.5, deep, wide)
 
 ## The walls' material (WALLS): the director's walnut veneer, the copy room's
 ## demountable partition, block where the building shows, the greige vinyl

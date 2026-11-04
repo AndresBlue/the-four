@@ -205,7 +205,8 @@ func drain() -> void:
 	var off: Array = level.off_limits_rooms()
 	for r in level.manifest.rooms:
 		# Not one the first stage's draw keeps dark: power alone does not light it.
-		if int(r.get("wing", -1)) != 0 or off.has(int(r.id)) or OFFICE.lamp_of(r) != "troffer" or not lurker.shell.tray_of.has(int(r.id)) or level.hotel.dark_ids.has(int(r.id)): continue
+		# Nor her own corridor: moving her off it is what puts the light back.
+		if int(r.get("wing", -1)) != 0 or int(r.id) == int(corridor.room) or off.has(int(r.id)) or OFFICE.lamp_of(r) != "troffer" or not lurker.shell.tray_of.has(int(r.id)) or level.hotel.dark_ids.has(int(r.id)): continue
 		var list: Array = OFFICE.troffers(r)
 		if list.is_empty(): continue
 		room = int(r.id)
@@ -238,6 +239,8 @@ func drain() -> void:
 	check("Al moverla de golpe, la luz vuelve entera en el mismo fotograma", level.hotel.drained(room) == 0.0)
 
 func director_and_words() -> void:
+	# Her room dark, whatever drain() lit: a light coming on there sends her off (on_room_lit).
+	level.hotel.set_room_power(int(corridor.room), false)
 	lurker.thinking = true
 	level.player.global_position = Vector3(0, -200, 0)
 	# Past her next look (every SENSE_EVERY), so she no longer sees them.

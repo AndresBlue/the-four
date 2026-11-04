@@ -170,7 +170,7 @@ func depths_ok(data: Dictionary, errors: Array[String]) -> void:
 		var share := share_in(data, planta, int(data.refuges[planta]))
 		if share < band.x - SLACK or share > band.y + SLACK: errors.append("depth_refuge_%d" % planta)
 	var walk := float(FLOOR.route_metres(data, int(data.entries[0])).get(int(data.refuges[0]), 0.0))
-	if walk < 110.0 * sqrt(float(data.areas[0])) - 0.5: errors.append("depth_walk_0")
+	if walk < float(OFFICE.LEAST_WALKS[0]) * sqrt(float(data.areas[0])) - 0.5: errors.append("depth_walk_0")
 
 ## 5. A department per sector, names and colours unique, SEGURIDAD on the
 ## security office's.
@@ -199,7 +199,7 @@ func departments_ok(data: Dictionary, errors: Array[String]) -> void:
 			if security.size() == 1 and int(names.get("SEGURIDAD", -1)) != int(security[0].sector): ok = false
 		if not ok: errors.append("departments_%d" % planta)
 
-## 6. Lockers only where the type keeps them, clear of the wall spots.
+## 6. Lockers only where the type keeps them, clear of the wall spots and out of the doorways' bands.
 func lockers_ok(data: Dictionary, errors: Array[String]) -> void:
 	for room in data.rooms:
 		var hides: Array = room.get("hides", [])
@@ -211,7 +211,7 @@ func lockers_ok(data: Dictionary, errors: Array[String]) -> void:
 		var fixed: Array = spots.get(id, [])
 		for h in hides:
 			var hw := LAYOUT.hide_wall(h)
-			if fixed.any(func(s): return String(s.wall) == String(hw.wall) and absf(float(s.along) - float(hw.along)) < OFFICE.WALL_APART - 0.001):
+			if LAYOUT.locker_in_doorway(room, String(hw.wall), float(hw.along)) or fixed.any(func(s): return String(s.wall) == String(hw.wall) and absf(float(s.along) - float(hw.along)) < OFFICE.WALL_APART - 0.001):
 				errors.append("lockers_%d" % id)
 				break
 
@@ -785,9 +785,7 @@ func corners_ok(data: Dictionary, errors: Array[String]) -> void:
 			keep.append(Rect2(hl - Vector2(0.75, 0.75), Vector2(1.5, 1.5)))
 			keep.append(LAYOUT.wall_rect(room, String(air.unit.wall), float(air.unit.along), OFFICE.AIR_UNIT.x / 2, OFFICE.AIR_UNIT.z))
 		for prop in room.props:
-			var s: Array = sockets[int(prop.slot)]
-			var size := Vector2(2.3, 1.4) if int(prop.rotation) % 2 == 0 else Vector2(1.4, 2.3)
-			var corner := Rect2(Vector2(float(s[0]), float(s[1])) - size / 2, size)
+			var corner: Rect2 = OFFICE.corner_rect(String(prop.kind), sockets[int(prop.slot)], int(prop.rotation))
 			if keep.any(func(r): return corner.grow(-0.001).intersects(r)):
 				errors.append("props_%d" % id)
 				break
@@ -836,6 +834,7 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 		var view := {"rooms": data.rooms, "adjacency": data.adjacency, "mail": raw.get(id, [])}
 		var zones := LAYOUT.clear_zones(view, room, int(room.type) == OFFICE.BOARDROOM)
 		zones.append_array(RECIPES.air_zones(room, data.get("air", {})))
+		RECIPES.prepare(zones)
 		var ok: bool = true
 		for i in items.size():
 			var it: Dictionary = items[i]
@@ -851,7 +850,7 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 			elif not near(float(it.size[0]), size.x) or not near(float(it.size[1]), size.y): ok = false
 			if not near(height, float(spec.height)) or height > OFFICE.FURNITURE_TOP + 0.001: ok = false
 			var r := LAYOUT.footprint(it)
-			if not LAYOUT.fits_in(LAYOUT.inner(room), r) or LAYOUT.blocked(r, zones): ok = false
+			if not LAYOUT.fits_in(LAYOUT.inner(room), r) or RECIPES.hits(r, zones): ok = false
 			for j in items.size():
 				if j != i and int(items[j].extra.group) != int(it.extra.group) and not LAYOUT.apart(r, LAYOUT.footprint(items[j]), LAYOUT.ITEM_GAP): ok = false
 		if not ok: errors.append("furniture_%d" % id)
@@ -933,9 +932,7 @@ func rings_ok(data: Dictionary, errors: Array[String]) -> void:
 ## A corner prop's rect in its cell, from its socket and turn
 ## (office_generator.furnish_sockets()).
 static func prop_rect(room: Dictionary, prop: Dictionary) -> Rect2:
-	var s: Array = room.sockets[int(prop.slot)]
-	var size := Vector2(2.3, 1.4) if int(prop.rotation) % 2 == 0 else Vector2(1.4, 2.3)
-	return Rect2(Vector2(float(s[0]), float(s[1])) - size / 2, size)
+	return OFFICE.corner_rect(String(prop.kind), room.sockets[int(prop.slot)], int(prop.rotation))
 
 ## 18. Nothing before a glazed wall (spec_rediseno 3.6; the director, 1a: the
 ## gun rack before the security post's glass): no furniture within
@@ -1083,14 +1080,20 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 	for room in rooms:
 		if int(room.type) != OFFICE.BOARDROOM: continue
 		for it in room.get("furniture", []):
-			if String(it.kind) != "meeting_table": continue
+			if not String(it.kind).begins_with("meeting_table"): continue
 			var size := Vector2(float(it.size[0]), float(it.size[1]))
 			var long := Vector3(1, 0, 0) if int(it.turn) % 2 == 0 else Vector3(0, 0, 1)
 			var side := Vector3(0, 0, 1) if int(it.turn) % 2 == 0 else Vector3(1, 0, 0)
 			var centre := Vector3(float(room.px) + float(it.at[0]), float(room.py) + 0.94, float(room.pz) + float(it.at[1]))
-			var half := size.x / 2 + 0.6
+			var spot := Vector3(float(it.at[0]), 0, float(it.at[1]))
 			for way in [-1.0, 1.0]:
-				query.transform = Transform3D(Basis.IDENTITY, centre + side * float(way) * 1.2 - long * half)
+				# The far side from past one head to past the other (lay_table() leaves
+				# 0.6 m there); the near side beyond its chairs (0.6 deep), along them
+				# only: past its heads stand the pieces against the side walls.
+				var to_middle: bool = side.dot(spot) * float(way) < 0.0
+				var off: float = size.y / 2 + (0.93 if to_middle else 0.33)
+				var half: float = size.x / 2 + (-0.45 if to_middle else 0.25)
+				query.transform = Transform3D(Basis.IDENTITY, centre + side * float(way) * off - long * half)
 				query.motion = long * half * 2
 				if space.cast_motion(query)[0] < 0.99:
 					errors.append("boardroom_%d" % int(room.id))
@@ -1104,11 +1107,13 @@ func room_sweeps(room: Dictionary) -> Array:
 	if not is_office: return super.room_sweeps(room)
 	var t := int(room.type)
 	if t == OFFICE.ARCHIVE or t == OFFICE.MOBILE_ARCHIVE or t == OFFICE.BOARDROOM: return []
-	# No corner pieces, no cover to reach (the air plant).
-	if room.get("props", []).is_empty(): return []
 	var c := LAYOUT.cover_reach(room)
 	if c <= 0.0: return []
-	var corners: Array = [Vector3(-c, 0, -c), Vector3(c, 0, -c), Vector3(-c, 0, c), Vector3(c, 0, c)]
+	# Only to the corners with a piece (spec_proporcion D3).
+	var corners: Array = []
+	for prop in room.get("props", []):
+		var way := LAYOUT.corner_of(int(prop.slot))
+		corners.append(Vector3(way.x * c, 0, way.y * c))
 	# In a lobby with a lift, short of the lift wall by a capsule.
 	var lift := FLOOR.lift_wall(room)
 	if lift != Vector2i.ZERO:

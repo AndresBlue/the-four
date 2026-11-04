@@ -221,18 +221,20 @@ func faces() -> void:
 	var offered := {}
 	var peek := await staged_peek(sight)
 	if not peek.is_empty(): found["peek"] = peek
+	var stage: Dictionary = await staged_partition(sight)
+	if not String(stage.clip).is_empty(): found["partition"] = stage.clip
 	for room in level.manifest.rooms:
-		if found.has("partition") and found.has("corner"): break
+		if found.has("corner"): break
 		if FLOOR.is_void(room) or bool(room.get("landing", false)) or level.point_protected(FLOOR.position_of(room)): continue
 		await stand_at(FLOOR.position_of(room) + Vector3(0, 0.04, 0))
-		for yaw in [0.0, PI * 0.5, PI, PI * 1.5]:
-			level.player.rotation.y = yaw
+		for i in 12:
+			level.player.rotation.y = i * PI / 6.0
 			level.player.camera.rotation.x = 0.1
 			await physics_frame
 			var camera: Camera3D = level.player.camera
 			for spot in lies.sight_spots(sight, camera):
 				var k := String(spot.kind)
-				if found.has(k) or k == "peek": continue
+				if k != "corner" or found.has(k): continue
 				offered[k] = int(offered.get(k, 0)) + 1
 				if sight.place_spot(spot, camera): found[k] = String(sight.poser.animator.assigned_animation)
 				sight.kind = ""
@@ -240,7 +242,42 @@ func faces() -> void:
 	level.player.torch.visible = false
 	level.player.camera.rotation.x = 0.0
 	level.player.sanity = 100.0
-	check("Se la ve tras el marco de una puerta a oscuras asomándose, y sobre una mampara y en una esquina del techo mirando", found.get("peek", "") == "peek" and found.get("partition", "") == "idle" and found.get("corner", "") == "idle", "%s de %s" % [str(found), str(offered)])
+	check("Se la ve tras el marco de una puerta a oscuras asomándose, y sobre una mampara y en una esquina del techo mirando", found.get("peek", "") == "peek" and found.get("partition", "") == "idle" and found.get("corner", "") == "idle", "%s de %s, mampara: %s" % [str(found), str(offered), str(stage)])
+
+## A partition staged in view: the listener 10.5 to 18 m back along its normal, it
+## 35 degrees off the middle of the picture (in the band, and in the torch's 40).
+## {clip, posed, offered}: posed 0, no place on this floor; offered 0, the offer;
+## offered and no clip, a regression.
+func staged_partition(sight) -> Dictionary:
+	var out := {"clip": "", "posed": 0, "offered": 0}
+	for room in level.manifest.rooms:
+		if FLOOR.is_void(room): continue
+		for item in room.get("furniture", []):
+			if String(item.kind) != "partition": continue
+			var at: Vector3 = FLOOR.position_of(room) + Vector3(float(item.at[0]), 0, float(item.at[1]))
+			var normal: Vector3 = Basis(Vector3.UP, int(item.turn) * PI / 2) * Vector3(0, 0, 1)
+			for flip in [1.0, -1.0]:
+				for back in [10.5, 12.0, 14.0, 18.0]:
+					var stand: Vector3 = at + normal * flip * back
+					stand.y = at.y + 0.04
+					if FLOOR.room_at(level.manifest.rooms, stand).is_empty() or level.point_protected(stand): continue
+					await stand_at(stand)
+					for turn in [deg_to_rad(35.0), deg_to_rad(-35.0)]:
+						var to: Vector3 = at - stand
+						level.player.rotation.y = atan2(-to.x, -to.z) + turn
+						level.player.camera.rotation.x = 0.0
+						await physics_frame
+						out.posed += 1
+						for _try in 8: # SPOTS_MOST cuts a shuffled list
+							for spot in lies.sight_spots(sight, level.player.camera):
+								if String(spot.kind) != "partition": continue
+								out.offered += 1
+								if sight.place_spot(spot, level.player.camera):
+									out.clip = String(sight.poser.animator.assigned_animation)
+									sight.kind = ""
+									return out
+								sight.kind = ""
+	return out
 
 ## A door to a dark room staged in view: the listener 11 to 18 m back from
 ## it on the lit side, the doorway 45 degrees off the middle of the picture;

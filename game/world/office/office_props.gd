@@ -1,7 +1,7 @@
 extends RefCounted
 ## The offices' corner pieces (room.props at room.sockets; spec_f1_geometry.md
 ## 9.3), built from boxes and cylinders so they batch with their room. Each
-## stands in the hotel desk's footprint (2.3 × 1.4 round the socket), its back
+## stands in its footprint (palette.CORNER_SIZES) round the socket, its back
 ## at local -Z, under FURNITURE_TOP, its big parts with a box collider. The
 ## corner kinds that want an ingested model (desk, filing, chairs, armchair,
 ## copier, reader, sorter, vending) are not built yet; the hotel's own kinds
@@ -17,6 +17,7 @@ const STORAGE := preload("res://game/world/office/pieces/storage.gd")
 const MACHINES := preload("res://game/world/office/pieces/machines.gd")
 const MOVABLES := preload("res://game/world/office/pieces/movables.gd")
 const FIXTURES := preload("res://game/world/office/pieces/fixtures.gd")
+const ROOM_EQUIPMENT := preload("res://game/world/office/pieces/room_equipment.gd")
 const KIT := preload("res://game/world/office/pieces/kit.gd")
 
 ## Builds an office corner piece; false for a kind it leaves to prop_factory.
@@ -172,13 +173,6 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			station(builder, holder, Vector3(0, 0, 0.375), 1.0, seed_pos + Vector3(0.5, 0, 0), room)
 		"partition":
 			piece(builder, holder, MOVABLES.partition_screen(builder, Vector3(size.x, 1.5, 0.06)), Vector3.ZERO)
-		"meeting_table":
-			piece(builder, holder, DESKS.meeting_table(builder, Vector3(size.x, 0.75, size.y)), Vector3.ZERO)
-			var each := 4 + int(builder.vary(seed_pos, 40) * 2)
-			for side in [-1.0, 1.0]:
-				for k in each:
-					var x: float = -size.x * 0.5 + size.x * (k + 0.5) / each
-					chair(builder, holder, Vector3(x, 0, side * (size.y * 0.5 + 0.05)), side)
 		"pigeonholes":
 			piece(builder, holder, CABINETS.pigeonholes(builder, Vector3(size.x, 1.9, size.y), variant), Vector3.ZERO)
 		"copier":
@@ -188,12 +182,6 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			builder.box(holder, Vector3(-0.1, 1.05, size.y * 0.5 + 0.005), Vector3(size.x * 0.6, 1.2, 0.01), "black")
 		"card_index":
 			piece(builder, holder, CABINETS.card_index(builder, Vector3(size.x, 1.2, size.y)), Vector3.ZERO)
-		"office_desk":
-			# The walnut desk faces the room: its drawers to the chair behind it,
-			# two chairs before it (spec_rediseno 6.6).
-			chair(builder, holder, Vector3(0, 0, -0.72), 1.0)
-			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(1.6, 0.75, 0.8)), Vector3.ZERO, true)
-			for x in [-0.45, 0.45]: chair(builder, holder, Vector3(x, 0, 0.75), -1.0)
 		"exec_desk":
 			chair(builder, holder, Vector3(0, 0, -0.8), 1.0)
 			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(2.0, 0.76, 0.9)), Vector3.ZERO, true)
@@ -204,12 +192,9 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"work_desk":
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
 			chair(builder, holder, Vector3(0, 0, 0.3), -1.0)
-		"reception_counter":
-			chair(builder, holder, Vector3(0, 0, -0.75), 1.0)
-			piece(builder, holder, DESKS.reception_counter(builder, Vector3(2.4, 1.1, 1.5)), Vector3(0, 0, 0.35))
-		"waiting_row":
+		"waiting_row", "waiting_row_4":
 			# The chairs its length takes and the low table at its end (spec_rediseno 6.1, 6.8).
-			var seats: int = 3 if size.x >= 2.5 else 2
+			var seats: int = 4 if size.x >= 3.0 else (3 if size.x >= 2.5 else 2)
 			for k in seats: chair(builder, holder, Vector3(-size.x * 0.5 + 0.22 + 0.65 * k, 0, 0), 1.0)
 			piece(builder, holder, DESKS.low_table(builder, Vector3(0.6, 0.42, 0.5), "laminate_light"), Vector3(size.x * 0.5 - 0.33, 0, 0))
 		"filing":
@@ -238,7 +223,7 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, DESKS.consult_table(builder, Vector3(1.4, 0.74, 0.7)), Vector3(0, 0, -0.35))
 			chair(builder, holder, Vector3(0, 0, 0.3), -1.0)
 		"work_table":
-			piece(builder, holder, DESKS.dining_table(builder, Vector3(2.0, 0.74, 1.0)), Vector3.ZERO)
+			piece(builder, holder, DESKS.dining_table(builder, Vector3(2.4, 0.74, 1.2)), Vector3.ZERO)
 		"dining_set":
 			piece(builder, holder, DESKS.dining_table(builder, Vector3(1.2, 0.74, 0.8)), Vector3.ZERO)
 			for x in [-0.3, 0.3]:
@@ -265,6 +250,34 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"plant_floor":
 			builder.box(holder, Vector3(0, 0.27, 0), Vector3(0.45, 0.54, 0.45), "", true)
 			fitted(builder, holder, String(PLANT_MODELS[int(builder.vary(seed_pos, 47) * 2.0)]), 0.55, 1.3, builder.vary(seed_pos, 48) * TAU)
+		"reception_counter_l":
+			chair(builder, holder, Vector3(0, 0, -0.75), 1.0)
+			piece(builder, holder, DESKS.reception_counter(builder, Vector3(3.6, 1.1, 1.5)), Vector3(0, 0, 0.35))
+		"office_suite":
+			# Against the wall the sideboard, then the chair and the walnut desk that
+			# faces the room, two chairs before it (spec_proporcion D7).
+			piece(builder, holder, CABINETS.sideboard(builder, Vector3(1.8, 0.8, 0.48)), Vector3(0, 0, -1.11))
+			chair(builder, holder, Vector3(0, 0, -0.62), 1.0)
+			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(1.6, 0.75, 0.8)), Vector3(0, 0, 0.1), true)
+			for x in [-0.45, 0.45]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0)
+		"meeting_table_s", "meeting_table_m", "meeting_table_l":
+			# Its local -Z to the room's middle, which stays free (spec_proporcion D6):
+			# chairs along its far side and one at each head, all in its footprint; the
+			# near side's are items of their own (office_generator.lay_near_chairs()).
+			var top := Vector3(size.x - 1.2, 0.75, 1.2)
+			var table_z := -size.y * 0.5 + 0.6
+			piece(builder, holder, DESKS.meeting_table(builder, top), Vector3(0, 0, table_z))
+			var seats_along := int(top.x / 0.7)
+			for k in seats_along: chair(builder, holder, Vector3(-top.x * 0.5 + top.x * (float(k) + 0.5) / float(seats_along), 0, table_z + 0.86), -1.0)
+			for head: float in [-1.0, 1.0]: chair(builder, holder, Vector3(head * (top.x * 0.5 + 0.3), 0, table_z), 1.0)
+		"table_chair":
+			# A near-side chair of the boardroom's table (office_generator.lay_near_chairs()),
+			# as close to it as the far row, its back to the room's middle.
+			chair(builder, holder, Vector3(0, 0, 0.04), 1.0)
+		"locker_bank":
+			piece(builder, holder, ROOM_EQUIPMENT.locker_bank(builder, Vector3(2.7, 1.9, 0.45)), Vector3.ZERO)
+		"fan_unit":
+			piece(builder, holder, ROOM_EQUIPMENT.fan_unit(builder, Vector3(1.5, 1.6, 1.2)), Vector3.ZERO)
 		"air_desk":
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
 			# A stool at it (spec_rediseno 6.14): no piece of its own.

@@ -631,7 +631,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 ### 11.3 El generador y la geometría de las oficinas
 
 - **`office_generator.gd`:**
-  - el motor de rejilla del hotel con la paleta de oficinas (módulos de 8 a 12 m, pasillos de 3 a 3,6 m y alguno de 2,4);
+  - el motor de rejilla del hotel con la paleta de oficinas (módulos de 6 a 9 m, pasillos de 3 a 3,6 m y alguno de 2,4);
   - su propio `finish()`: tipos, falso techo a 2,95, taquillas en vez de armarios, muebles;
   - y lo de cada planta:
     - en la 1, la ventanilla, las estaciones y la red de tubos;

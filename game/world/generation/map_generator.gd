@@ -104,7 +104,7 @@ var palette: GDScript = HOTEL_PALETTE
 ## more). Two is the hotel as it always was, for the tools that only want one.
 func generate(run_seed: int, survivors := 2) -> Dictionary:
 	areas = palette.areas_for(survivors)
-	for attempt in ATTEMPTS:
+	for attempt in attempts():
 		var result := candidate(run_seed, attempt)
 		if result.is_empty(): continue
 		if int(result.walk) < min_walk():
@@ -119,6 +119,10 @@ func generate(run_seed: int, survivors := 2) -> Dictionary:
 	fallback["requested_seed"] = run_seed
 	fallback["fallback"] = true
 	return fallback
+
+## How many tries at a floor before the standby floor: a generator of another
+## kind may take more.
+func attempts() -> int: return ATTEMPTS
 
 ## The validator of what this generator draws: a generator of another kind
 ## returns its own.
@@ -1398,6 +1402,9 @@ func on_edge(f: Dictionary, local: int, alive: Dictionary) -> bool:
 
 # --- The refuge ------------------------------------------------------------------------
 
+## Whether a floor's own rule lets a cell be the refuge (the hotel's lets all).
+func refuge_fits(_room: Dictionary) -> bool: return true
+
 ## The refuge and the lift lobby behind it. Not the room farthest in, which is
 ## what made every floor solve alike ("the back, the corner"): any ordinary
 ## room between 55 and 90 % of the way in, as the route goes, rather one that
@@ -1432,6 +1439,7 @@ func place_refuge(f: Dictionary, alive: Dictionary, arrival: int, back: Vector2i
 	for local in cells:
 		var room: Dictionary = at(f, local)
 		if room.kind != "module" or local == arrival or room.hall >= 0 or room.service or not metres.has(local): continue
+		if not refuge_fits(room): continue
 		var share: float = float(metres[local]) / deepest
 		var depth := depth_wanted()
 		if share < depth.x or share > depth.y: continue
@@ -1887,7 +1895,7 @@ func place_hides(f: Dictionary, rng: RandomNumberGenerator) -> void:
 			if room.open_sides.has(wall): continue
 			var spots: Array = []
 			for along in HIDE_SPOTS:
-				if not ways.any(func(way): return way.wall == wall and absf(float(way.along) - float(along)) < HIDE_CLEAR): spots.append(along)
+				if hide_free(room, ways, wall, along): spots.append(along)
 			if not spots.is_empty(): free[wall] = spots
 		var span := FLOOR.size_of(room) * 0.5 - Vector2.ONE * 0.8
 		var taken: Array = []
@@ -1897,14 +1905,25 @@ func place_hides(f: Dictionary, rng: RandomNumberGenerator) -> void:
 			var wall: String = walls[rng.randi_range(0, walls.size() - 1)]
 			var along: float = free[wall][rng.randi_range(0, free[wall].size() - 1)]
 			taken.append([wall, along])
-			free[wall] = free[wall].filter(func(other): return absf(float(other) - along) >= HIDE_APART)
-			if free[wall].is_empty(): free.erase(wall)
+			for side: String in free.keys():
+				free[side] = free[side].filter(func(other): return hide_apart(room, wall, along, side, float(other)))
+				if free[side].is_empty(): free.erase(side)
 		for spot in taken:
 			match spot[0]:
 				"west": room.hides.append([-span.x, spot[1]])
 				"east": room.hides.append([span.x, spot[1]])
 				"north": room.hides.append([spot[1], -span.y])
 				"south": room.hides.append([spot[1], span.y])
+
+## Whether a wardrobe may stand on `wall` at `along`: clear of that wall's
+## doorways and of what their leaves sweep. A floor of another kind may ask more.
+func hide_free(_room: Dictionary, ways: Array, wall: String, along: float) -> bool:
+	return not ways.any(func(way): return way.wall == wall and absf(float(way.along) - along) < HIDE_CLEAR)
+
+## Whether a wardrobe may stand on `other_wall` at `other_along` once one stands
+## on `wall` at `along`: HIDE_APART off it on the same wall. A floor of another kind may ask more.
+func hide_apart(_room: Dictionary, wall: String, along: float, other_wall: String, other_along: float) -> bool:
+	return other_wall != wall or absf(other_along - along) >= HIDE_APART
 
 ## Which rooms have their lamps out (`dark`) and how kept each one is
 ## (`kept`), by seed: the same corner of two floors has nothing to do with

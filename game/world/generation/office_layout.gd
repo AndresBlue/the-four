@@ -5,11 +5,21 @@ extends RefCounted
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const PALETTE := preload("res://game/floors/palettes/office_palette.gd")
 const CENTRE_CLEAR := 0.6
+## Round the reception's middle: the seats a floor starts on (match_net.SPAWN_RADIUS)
+## and a body's 0.3 (spec_proporcion D13).
+const START_CLEAR := 1.5
 const SWEEP_CLEAR := 0.45      # capsule 0.32 plus a margin
 const DOOR_BAND := 1.5         # out from a doorway's wall (the leaf sweeps 1.2)
 const DOOR_SIDE := 0.3         # past each jamb along the wall
 const FIXTURE_CLEAR := Vector2(1.2, 1.2)
 const LOCKER := Vector2(1.3, 0.7)
+## How far out from its wall's face a locker stands: its spot is 0.8 off the
+## wall's line (map_generator.place_hides()) and hiding_place.DEPTH 0.78 deep about it.
+const LOCKER_OUT := 1.1
+## How far out from its wall's face a locker's way in reaches: its approach is
+## 1.1 in front of its spot (FLOOR.hiding_approach()), 1.9 off the wall's line,
+## and map_validator's hide_entry capsule 0.32 round it.
+const LOCKER_REACH := 2.2
 const ITEM_GAP := 0.9
 const INNER_PAD := 0.02
 ## Room for rounding: positions are stored to the millimetre.
@@ -93,6 +103,21 @@ static func hide_wall(hide: Array) -> Dictionary:
 	if absf(x) > absf(z): return {"wall": "west" if x < 0 else "east", "along": z}
 	return {"wall": "north" if z < 0 else "south", "along": x}
 
+## Whether a locker on `wall` at `along` stands in a doorway's band (the one
+## clear_zones() keeps), on its own wall or on one beside it: in a 6 m room a
+## door 1.5 along its wall had the locker round the corner in its passage.
+static func locker_in_doorway(room: Dictionary, wall: String, along: float) -> bool:
+	var body := wall_rect(room, wall, along, LOCKER.x / 2, LOCKER_OUT)
+	return FLOOR.doorways(room).any(func(way): return body.intersects(wall_rect(room, String(way.wall), float(way.along), FLOOR.PORTAL / 2 + DOOR_SIDE, DOOR_BAND)))
+
+## Whether two lockers stand in each other's way: the body of either
+## (LOCKER_OUT deep) in the other's way in (LOCKER_REACH deep), across the
+## width of its front. On walls beside each other, a corner they share.
+static func lockers_meet(room: Dictionary, wall: String, along: float, other_wall: String, other_along: float) -> bool:
+	var one := wall_rect(room, wall, along, LOCKER.x / 2, LOCKER_OUT)
+	var other := wall_rect(room, other_wall, other_along, LOCKER.x / 2, LOCKER_OUT)
+	return one.intersects(wall_rect(room, other_wall, other_along, LOCKER.x / 2, LOCKER_REACH)) or other.intersects(wall_rect(room, wall, along, LOCKER.x / 2, LOCKER_REACH))
+
 ## Whether r lies inside outer, allowing for the millimetre rounding.
 static func fits_in(outer: Rect2, r: Rect2) -> bool:
 	return outer.grow(EPS).encloses(r)
@@ -115,6 +140,10 @@ static func footprint(item: Dictionary) -> Rect2:
 	if int(item.turn) % 2 == 1: size = Vector2(size.y, size.x)
 	return Rect2(centre - size / 2, size)
 
+## The way from a room's middle to a corner socket (furnish_sockets()'s order).
+static func corner_of(slot: int) -> Vector2:
+	return Vector2(-1.0 if slot % 2 == 0 else 1.0, -1.0 if slot < 2 else 1.0)
+
 ## How far the cover sweeps reach toward the corners.
 static func cover_reach(room: Dictionary) -> float:
 	return minf(2.2, minf(float(room.span_x), float(room.span_z)) * 0.5 - 2.5)
@@ -122,26 +151,55 @@ static func cover_reach(room: Dictionary) -> float:
 ## Room-local {wall, along, half} of every wall spot in the room: what the
 ## mail, the power, the air, the stations and the wall exits fix to its walls.
 static func fixtures(manifest: Dictionary, room_id: int) -> Array:
+	if manifest.has("spots"):
+		var known: Dictionary = manifest.spots
+		return known.get(room_id, [])
+	var room: Dictionary = manifest.rooms[room_id]
+	var out: Array = []
+	for spot in wall_spots(manifest):
+		if int(FLOOR.room_at(manifest.rooms, spot_point(spot)).get("id", -1)) != room_id: continue
+		var fixture := fixture_of(room, spot)
+		if not fixture.is_empty(): out.append(fixture)
+	return out
+
+## fixtures() of every room at once, by room id: one pass over the wall spots.
+## A furnishing step adding no wall spot keeps it in its view as "spots".
+static func fixtures_by_room(manifest: Dictionary) -> Dictionary:
+	var out := {}
+	for spot in wall_spots(manifest):
+		var room: Dictionary = FLOOR.room_at(manifest.rooms, spot_point(spot))
+		if room.is_empty(): continue
+		var fixture := fixture_of(room, spot)
+		if fixture.is_empty(): continue
+		if not out.has(int(room.id)): out[int(room.id)] = []
+		out[int(room.id)].append(fixture)
+	return out
+
+## Every spot the mail, the power, the air, the stations and the wall exits fix.
+static func wall_spots(manifest: Dictionary) -> Array:
 	var found: Array = []
 	for key in ["mail", "power", "air"]: gather(manifest.get(key, {}), found)
 	for exit in manifest.get("tubes", {}).get("exits", []):
 		if exit is Dictionary and String(exit.get("kind", "")) == "station": found.append(exit)
 	for exit in manifest.get("ducts", {}).get("exits", []):
 		if exit is Dictionary and String(exit.get("kind", "")) == "wall": found.append(exit)
-	var room: Dictionary = manifest.rooms[room_id]
-	var out: Array = []
-	for spot in found:
-		var point: Array = spot.point
-		var p := Vector3(float(point[0]), float(point[1]), float(point[2]))
-		if int(FLOOR.room_at(manifest.rooms, p).get("id", -1)) != room_id: continue
-		var wall := wall_of_yaw(float(spot.yaw))
-		if wall == "": continue
-		var local := Vector2(p.x - float(room.px), p.z - float(room.pz))
-		var off: float = local.x if wall == "west" or wall == "east" else local.y
-		if absf(off - face(room, wall)) > 0.6: continue
-		var along: float = local.y if wall == "west" or wall == "east" else local.x
-		out.append({"wall": wall, "along": along, "half": FIXTURE_CLEAR.x / 2})
-	return out
+	return found
+
+## A wall spot's point.
+static func spot_point(spot: Dictionary) -> Vector3:
+	var point: Array = spot.point
+	return Vector3(float(point[0]), float(point[1]), float(point[2]))
+
+## A spot in `room` as {wall, along, half}; {} when it is on none of its walls.
+static func fixture_of(room: Dictionary, spot: Dictionary) -> Dictionary:
+	var p := spot_point(spot)
+	var wall := wall_of_yaw(float(spot.yaw))
+	if wall == "": return {}
+	var local := Vector2(p.x - float(room.px), p.z - float(room.pz))
+	var off: float = local.x if wall == "west" or wall == "east" else local.y
+	if absf(off - face(room, wall)) > 0.6: return {}
+	var along: float = local.y if wall == "west" or wall == "east" else local.x
+	return {"wall": wall, "along": along, "half": FIXTURE_CLEAR.x / 2}
 
 ## Every Dictionary with a point and a yaw, however deep under value.
 static func gather(value: Variant, out: Array) -> void:
@@ -155,14 +213,15 @@ static func gather(value: Variant, out: Array) -> void:
 ## What free-standing furniture must keep clear in a room, as capsules
 ## {a, b, r} and rects {rect}, room-local.
 static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bool) -> Array:
-	var zones: Array = [{"a": Vector2.ZERO, "b": Vector2.ZERO, "r": CENTRE_CLEAR}]
+	var zones: Array = [{"a": Vector2.ZERO, "b": Vector2.ZERO, "r": START_CLEAR if int(room.type) == PALETTE.RECEPTION else CENTRE_CLEAR}]
 	var span_x := float(room.span_x)
 	var span_z := float(room.span_z)
 	if not exempt_cover:
 		var c := cover_reach(room)
 		if c > 0:
-			for corner in [Vector2(-c, -c), Vector2(c, -c), Vector2(-c, c), Vector2(c, c)]:
-				zones.append({"a": Vector2.ZERO, "b": corner, "r": SWEEP_CLEAR})
+			# Only to the corners with a piece (spec_proporcion D3).
+			for prop in room.get("props", []):
+				zones.append({"a": Vector2.ZERO, "b": corner_of(int(prop.slot)) * c, "r": SWEEP_CLEAR})
 	var rooms: Array = manifest.rooms
 	var open: Array = room.get("open_sides", [])
 	for n in manifest.adjacency[int(room.id)]:
@@ -185,10 +244,7 @@ static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bo
 		zones.append({"a": Vector2(ap.x, ap.z), "b": Vector2(float(h[0]), float(h[1])), "r": SWEEP_CLEAR})
 	if room.has("sockets"):
 		for prop in room.get("props", []):
-			var s: Array = room.sockets[int(prop.slot)]
-			var size := Vector2(2.3, 1.4) if int(prop.rotation) % 2 == 0 else Vector2(1.4, 2.3)
-			var centre := Vector2(float(s[0]), float(s[1]))
-			zones.append({"rect": Rect2(centre - size / 2, size)})
+			zones.append({"rect": PALETTE.corner_rect(String(prop.kind), room.sockets[int(prop.slot)], int(prop.rotation))})
 	for fx in fixtures(manifest, int(room.id)):
 		zones.append({"rect": wall_rect(room, String(fx.wall), float(fx.along), FIXTURE_CLEAR.x / 2, FIXTURE_CLEAR.y)})
 	var lift := FLOOR.lift_wall(room)

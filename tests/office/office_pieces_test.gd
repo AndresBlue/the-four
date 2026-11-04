@@ -19,8 +19,10 @@ const STATIONERY := preload("res://game/world/office/pieces/stationery.gd")
 const EQ_MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
 const EQ_POWER := preload("res://game/world/office/pieces/power_equipment.gd")
 const EQ_DESKS := preload("res://game/world/office/pieces/desks.gd")
-## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5).
-const PIECES := 88
+## The hotel's corner pieces the offices still take from prop_factory.
+const PROPS := preload("res://game/world/office/office_props.gd")
+## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5, area 4d: 2).
+const PIECES := 90
 ## The pieces' own materials (kit.gd, area 4a U1).
 const OWN := ["paper", "laminate_light", "plastic_beige", "steel_mint", "steel_grey", "steel_dark", "cloth_red", "cloth_green", "cloth_navy"]
 ## Woods mapped per batched box (no object_space): wrong on a baked mesh.
@@ -85,6 +87,7 @@ func run() -> void:
 	check_piece(builder, "low_table", waiting)
 	check("low_table en laminado es otra malla, en laminate_light", not is_same(waiting, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.5))) and waiting.surface_get_name(0) == "laminate_light")
 	check_glow_strip(builder)
+	check_corner_reserves(builder)
 	for key: String in OWN:
 		var made = builder.materials.get(key)
 		check(key + " es material propio de la oficina, con su lite", made is ShaderMaterial and String(made.get_meta("lite", "")) == "office/" + key and not made.has_meta("stand_in"))
@@ -230,3 +233,28 @@ func check_glow_strip(builder) -> void:
 	check("La caja de glow_strip no rebota", not builder.bounces("glow_strip"))
 	builder.room_nodes.clear()
 	room.free()
+
+## The corner pieces prop_factory draws for the offices (office_props.HOTEL_KINDS):
+## their colliders fill the footprint palette.CORNER_SIZES reserves round the
+## socket, no more and no less, or the generator keeps the wrong floor clear
+## (spec_4d_fisica: the basins and plants that cut the capsule's sweeps).
+func check_corner_reserves(builder) -> void:
+	for kind: String in PROPS.HOTEL_KINDS:
+		var node := Node3D.new()
+		builder.build_prop(node, kind)
+		var drawn := Rect2()
+		var found := false
+		for body in node.get_children():
+			if not body is StaticBody3D: continue
+			for child in body.get_children():
+				var shape := child as CollisionShape3D
+				if shape == null or not shape.shape is BoxShape3D: continue
+				var size: Vector3 = (shape.shape as BoxShape3D).size
+				var at: Vector3 = (body as StaticBody3D).position + shape.position
+				var r := Rect2(at.x - size.x / 2, at.z - size.z / 2, size.x, size.z)
+				drawn = drawn.merge(r) if found else r
+				found = true
+		var kept: Rect2 = OFFICE.corner_rect(kind, [0.0, 0.0], 0)
+		var same: bool = found and kept.grow(0.005).encloses(drawn) and drawn.grow(0.005).encloses(kept)
+		check("La esquina %s reserva lo que dibuja prop_factory" % kind, same, "%s frente a %s" % [str(drawn), str(kept)])
+		node.free()

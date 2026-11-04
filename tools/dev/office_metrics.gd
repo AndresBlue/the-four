@@ -10,7 +10,7 @@ const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const METRES := preload("res://game/world/generation/conduit_metres.gd")
 ## The keys floor_measures() gives for every floor (office_test checks them).
-const MEASURES := ["rooms", "numbered", "refuge_share", "window_share", "electrical_share", "security_share", "walk_0", "area_0", "stations", "tube_min", "sectors_served", "sectors", "timer_cover", "archives_1", "aisle_min", "aisles_per_salon", "lockers", "main_length", "main_bends", "crossings", "duct_pieces", "rooms_with_exit", "ratio_min", "ratio_band", "loose", "express", "gaps", "gaps_wanted", "dark", "open_items", "boardrooms", "boardrooms_with_table", "glazed", "props"]
+const MEASURES := ["rooms", "numbered", "refuge_share", "window_share", "electrical_share", "security_share", "walk_0", "area_0", "stations", "tube_min", "sectors_served", "sectors", "timer_cover", "archives_1", "aisle_min", "aisles_per_salon", "lockers", "main_length", "main_bends", "crossings", "duct_pieces", "rooms_with_exit", "ratio_min", "ratio_band", "loose", "express", "gaps", "gaps_wanted", "dark", "open_items", "boardrooms", "boardrooms_with_table", "glazed", "props", "tiles_least"]
 
 var results: Array = []
 var failed := 0
@@ -53,7 +53,7 @@ static func floor_measures(data: Dictionary) -> Dictionary:
 		if int(room.type) == OFFICE.OPEN_OFFICE: open_items.append(room.get("furniture", []).size())
 		if int(room.type) == OFFICE.BOARDROOM:
 			boardrooms += 1
-			if room.get("furniture", []).any(func(it): return String(it.kind) == "meeting_table"): tables += 1
+			if room.get("furniture", []).any(func(it): return String(it.kind).begins_with("meeting_table")): tables += 1
 	out["rooms"] = count
 	out["numbered"] = numbered
 	out["dark"] = [0, 1, 2].map(func(w): return float(dark[w]) / maxf(1.0, float(count[w])))
@@ -131,6 +131,12 @@ static func floor_measures(data: Dictionary) -> Dictionary:
 		want_exit += 1
 		if has_exit.has(int(room.id)): got_exit += 1
 	out["rooms_with_exit"] = float(got_exit) / maxf(1.0, float(want_exit))
+	# The tiles she can come out of (spec_proporcion D8): at least one in every room.
+	var tiles_least := INF
+	for room in rooms:
+		if int(room.type) == OFFICE.VOID or bool(room.corridor) or not OFFICE.false_ceiling(room): continue
+		tiles_least = minf(tiles_least, float(OFFICE.free_tiles(room).size()))
+	out["tiles_least"] = tiles_least
 	out["express"] = [0, 1, 2].map(func(p): return ducts.edges.filter(func(e): return String(e[3]) == "express" and int(rooms[int(ducts.nodes[int(e[0])][3])].wing) == p).size())
 	out["gaps"] = gaps
 	out["gaps_wanted"] = [0, 1, 2].map(func(p): return roundi(float(OFFICE.GAP_SHARE[p]) * float(eligible[p])))
@@ -207,8 +213,8 @@ func _initialize() -> void:
 		judge("Huecos de la planta %d según GAP_SHARE" % p, gaps_ok, gaps_ok, "todos")
 		judge("Salas a oscuras en la planta %d, media" % p, snappedf((per.call("dark", p) as Array).reduce(func(a, b): return a + b, 0.0) / maxf(1.0, float(made)), 0.01), true, "hacia 0,23, 0,29, 0,36 (informativo)")
 		judge("Lados de cristal en la planta %d, mediana" % p, quantile(per.call("glazed", p), 0.5), true, "informativo")
-	var walks_ok: bool = all.all(func(m): return float(m.walk_0) >= 110.0 * sqrt(float(m.area_0)) - 0.5)
-	judge("Paseo al montacargas de la planta 0", snappedf(quantile(each.call("walk_0"), 0.0), 0.1), walks_ok, ">= 110 × raíz del área")
+	var walks_ok: bool = all.all(func(m): return float(m.walk_0) >= float(OFFICE.LEAST_WALKS[0]) * sqrt(float(m.area_0)) - 0.5)
+	judge("Paseo al montacargas de la planta 0", snappedf(quantile(each.call("walk_0"), 0.0), 0.1), walks_ok, ">= %d × raíz del área" % int(OFFICE.LEAST_WALKS[0]))
 	for want in [["window_share", OFFICE.WINDOW_DEPTH, "Ventanilla"], ["electrical_share", OFFICE.ELECTRICAL_DEPTH, "Cuarto eléctrico"], ["security_share", OFFICE.SECURITY_DEPTH, "Seguridad"]]:
 		var shares: Array = each.call(want[0])
 		var band: Vector2 = want[1]
@@ -233,6 +239,7 @@ func _initialize() -> void:
 	judge("Muebles por celda de oficina abierta, mediana", quantile(each.call("open_items"), 0.5), quantile(each.call("open_items"), 0.5) >= 2.0, ">= 2")
 	var boards := float((each.call("boardrooms_with_table") as Array).reduce(func(a, b): return a + b, 0)) / maxf(1.0, float((each.call("boardrooms") as Array).reduce(func(a, b): return a + b, 0)))
 	judge("Salas de juntas con mesa", snappedf(boards, 0.001), boards >= 0.8, ">= 80 %")
+	judge("Placas libres por sala, mín", quantile(each.call("tiles_least"), 0.0), quantile(each.call("tiles_least"), 0.0) >= 1.0, ">= 1")
 	judge("Props de esquina por sala, mediana", quantile(each.call("props"), 0.5), true, "informativo")
 	var area_most := quantile(areas, 1.0)
 	judge("Generación p50 (ms)", snappedf(quantile(times, 0.5), 1.0), quantile(times, 0.5) <= 2000.0, "<= 2000, solo (decisión del autor)")

@@ -20,11 +20,12 @@ var watch_camera: Camera3D
 func on_revived(restart: bool) -> void:
 	if level.net.is_client() or level.manifest.is_empty(): return
 	var point := revival_point()
+	var spread := revival_spread()
 	var places := {}
 	# Nobody for a seat lost for the floor: raised here, it was a body nobody
 	# drove, counted alive and never dropped again.
 	for seat in level.session.participants:
-		if not level.session.dropped.has(seat): places[seat] = point + Vector3(randf_range(-1.2, 1.2), 0.1, randf_range(-1.2, 1.2))
+		if not level.session.dropped.has(seat): places[seat] = point + Vector3(randf_range(-spread, spread), 0.1, randf_range(-spread, spread))
 	# A stage given back is given back whole, the creature too: it goes back
 	# to where it starts that stage (its den_point()), away from the door
 	# everybody is raised at and from the one they have to reach, and waits
@@ -118,7 +119,20 @@ func revival_point() -> Vector3:
 	var gate: Dictionary = gates_list[index]
 	var arrive := int(gate.get("arrive", -1))
 	if arrive < 0: return FLOOR.position_of(level.manifest.rooms[level.refuge_room()])
-	return FLOOR.position_of(level.manifest.rooms[arrive])
+	var room: Dictionary = level.manifest.rooms[arrive]
+	var point := FLOOR.position_of(room)
+	if int(level.manifest.get("floor", 1)) != 2: return point
+	var lift := FLOOR.lift_wall(room)
+	return point - Vector3(lift.x, 0, lift.y) * LIFT_AWAY
+
+## How far a stage's point in the offices stands from its lobby's middle, away from
+## the lift's wall: in a lobby of under 8 m a body reached it (spec_proporcion D13).
+const LIFT_AWAY := 0.9
+
+## How far from revival_point() a body is raised, either way, along x and along z:
+## less in the offices, or it would reach the piece on the wall across.
+func revival_spread() -> float:
+	return 0.9 if int(level.manifest.get("floor", 1)) == 2 else 1.2
 
 ## Applied on every machine: the local body comes back where it is told, the
 ## others are placed, and a stage that was lost starts again as it was found.

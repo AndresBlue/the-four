@@ -273,7 +273,7 @@ Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con
 | `office_cardboard004` | [ambientCG Cardboard004](https://ambientcg.com/a/Cardboard004) | ambientCG (Lennart Demes) | CC0 1.0 | Carton y papel de carpeta (manila) |
 | `office_concrete_wall_008` | [Poly Haven concrete_wall_008](https://polyhaven.com/a/concrete_wall_008) | Charlotte Baglioni (fotografia), Dario Barresi (procesado) | CC0 1.0 | Losa de hormigon visto (cara inferior, plenum) |
 | `office_cork003` | [ambientCG Cork003](https://ambientcg.com/a/Cork003) | ambientCG (Lennart Demes) | CC0 1.0 | Corcho de tablon de anuncios |
-| `office_dark_paneled_wood` | [Poly Haven](https://polyhaven.com/a/dark_paneled_wood) | Dimitrios Savva (Poly Haven) | CC0 1.0 | Paneles de nogal oscuro (direccion, zocalos de nogal) |
+| `office_dark_paneled_wood` | [Poly Haven](https://polyhaven.com/a/dark_paneled_wood) | Dimitrios Savva (Poly Haven) | CC0 1.0 | Sin uso desde el area 4d (salia como casetones) |
 | `office_fabric026` | [ambientCG](https://ambientcg.com/a/Fabric026) | ambientCG | CC0 1.0 | Moqueta de pelo corto granate apagado (naves, planta 1) |
 | `office_fabric028` | [ambientCG](https://ambientcg.com/a/Fabric028) | ambientCG | CC0 1.0 | Moqueta de pelo corto gris pardo (Dirección, planta 3) |
 | `office_galvanizedsteel02` | [cgbookcase Galvanized Steel 02](https://www.cgbookcase.com/textures/galvanized-steel-02) | cgbookcase.com (Dorian Zgraggen) | CC0 1.0 | Chapa galvanizada (ductos) |
@@ -284,7 +284,7 @@ Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con
 | `office_terrazzo003` | [ambientCG](https://ambientcg.com/a/Terrazzo003) | ambientCG | CC0 1.0 | Terrazo oscuro sal y pimienta pulido (pasillos, vestibulos, archivo) |
 | `office_tiles032` | [ambientCG](https://ambientcg.com/a/Tiles032) | ambientCG | CC0 1.0 | Azulejo oscuro para la franja (aseos) |
 | `office_tiles110` | [ambientCG Tiles110](https://ambientcg.com/a/Tiles110) | ambientCG (Lennart Demes) | CC0 1.0 | Loseta vinilica (VCT) beige con motas |
-| `office_walnut_veneer` | [Poly Haven walnut_veneer](https://polyhaven.com/a/walnut_veneer) | Jenelle van Heerden | CC0 1.0 | Paneles de chapa de madera (Direccion) |
+| `office_walnut_veneer` | [Poly Haven walnut_veneer](https://polyhaven.com/a/walnut_veneer) | Jenelle van Heerden | CC0 1.0 | Paneles de chapa de nogal (direccion, secretaria, aparadores) |
 <!-- /OFFICE_SCANS -->
 
 ## Modelos aportados por el usuario
