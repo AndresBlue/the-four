@@ -100,6 +100,8 @@ Ningún paso se da por bueno por el informe del agente que lo hizo.
   - **Siempre `--test-profile`.**
   - Después de cada ejecución: `git restore default_bus_layout.tres assets/audio/the_four_theme.mp3.import`.
   - Los errores de GDExtension de godotsteam son normales.
+  - **API de Godot:** antes de usar una clase o una firma que no esté ya en el código, buscarla en `.claude/godot-api/` (la referencia de clases del mismo ejecutable; la versión está en `VERSION`). Si Steam actualiza Godot, se regenera con `tools/dev/godot_api.ps1`.
+  - **Chequeo rápido de un script:** la misma orden con `--check-only` en vez de ejecutarlo. Tarda un segundo y detecta errores de sintaxis y de tipos, pero no los métodos mal escritos: no sustituye a las pruebas.
 - **El usuario:** nunca matar un proceso `TheFour.exe` ni tocar su perfil real (`%APPDATA%\Godot\app_userdata\THE FOUR — Hotel`).
 - **Git:** los agentes no hacen commit, push, stash ni reset, ni descartan cambios ajenos.
   - El director hace commit con rutas explícitas en `git add` y el mensaje en inglés.

@@ -45,3 +45,6 @@ __pycache__/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Godot API reference dumped with --doctool for agents
+.claude/godot-api/
