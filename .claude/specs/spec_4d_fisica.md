@@ -103,4 +103,4 @@ Después siguen U16 (capturas) y U17 (documentos y `verify`) de `encargos_rd4d.j
 
 ## Al cerrar (4 de noviembre)
 
-`office_proportion_test` sale de `verify` hasta 4c: da 42/55, con el suelo ocupado bajo su banda en 10 tipos y una mesa para los papeles por planta. Mide lo menudo que pone 4c, y sus umbrales no se bajan. `lurker_route_probe` y su variante `--unseen` pasan a la semilla 8, porque la 7 no tiene nave con C1 (39/39 y 14/14).
+`office_proportion_test` sale de `verify` hasta 4e (ver `spec_4c.md`): da 42/55, con el suelo ocupado bajo su banda en 10 tipos y una mesa para los papeles por planta. Sus umbrales no se bajan. `lurker_route_probe` y su variante `--unseen` pasan a la semilla 8, porque la 7 no tiene nave con C1 (39/39 y 14/14).
