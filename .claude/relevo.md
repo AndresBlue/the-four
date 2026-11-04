@@ -14,6 +14,8 @@ Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relev
 
 **`office_proportion_test` está fuera de `verify` hasta 4e, la de las recetas llenas** (`spec_4c.md`: solo cuenta muebles y esquinas, y 4c no añade ninguno). Da 42/55: el suelo ocupado queda por debajo de su banda en 10 tipos (ventanilla 15,9 de 20, archivo 13,6 de 20, eléctrico 11,1 de 16...), y hay una sola mesa para los papeles por planta, cuando pide dos. La pieza principal está bajo 30 en secretaría (29,8) y aseos (21,2). No se bajó ningún umbral. 4e la vuelve a meter en `verify` y tiene que dejarla en verde.
 
+**Lo siguiente: el frente de 4c, tras la renovación del 7 de noviembre.** Los encargos están aprobados en `encargos_rd4c2.json` (19 unidades, `al_director` vacío), con `paralelo: false`. Hay que lanzar `frente_resumen.js` primero con el tramo A, U1 a U14 y `integrar: true`, y después el tramo B, U15 a U17. Los archivos de cada unidad salen de su campo `archivos`. Al integrar, el director añade `office_dressing_test` a `verify.ps1`. La redacción costó unos 2 puntos de la semana.
+
 **Pendientes para 4c:**
 - La reserva de `LOCKER` es corta: 1,3 x 0,7 frente a 1,1 real. Además, en 108 casos faltan cabinas por las reservas de taquilla.
 - Al sacar `plant` y `basin` de `HOTEL_KINDS`, U8 tiene que volver a mover sus filas de `CORNER_SIZES`.
