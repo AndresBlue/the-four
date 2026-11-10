@@ -20,8 +20,9 @@ const ROUTE_CLEAR := 2.0
 ## How far behind a chair it may end up, pushed back or fallen.
 const SWEEP := 1.3
 ## Items whose chair stands among pieces of its own holder (office_suite's
-## sideboard behind its exec chair): the sweep cannot see those, so it stays put.
-const CROWDED := ["office_suite"]
+## sideboard behind its exec chair, the secretary's long wing beside hers): the
+## sweep cannot see those, so it stays put.
+const CROWDED := ["office_suite", "secretary_desk"]
 ## By how bad a room is (mess_of(), 0 to 4): how often a chair is knocked
 ## over, faces away (once to a room), is pushed aside; a filing cabinet has a
 ## drawer out; a desk has a cable; a phone is off its hook; a box is spilled.
@@ -93,7 +94,10 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 			desk_things(builder, node, holder, room, Vector3(0, 0, -0.375), -1.0, seed_pos, mess)
 			desk_things(builder, node, holder, room, Vector3(0, 0, 0.375), 1.0, seed_pos + Vector3(0.5, 0, 0), mess)
 		# A meeting table's tops sit on its board (table_z, office_props.build_item()).
-		var shift: Vector3 = Vector3(0, 0, -float(item.size[1]) * 0.5 + 0.6) if kind.begins_with("meeting_table") else Vector3.ZERO
+		var shift: Vector3 = Vector3.ZERO
+		if kind.begins_with("meeting_table"): shift = Vector3(0, 0, -float(item.size[1]) * 0.5 + 0.6)
+		# The secretary's tops keep their place from its back as its wing grows.
+		elif kind == "secretary_desk": shift = Vector3(0, 0, -float(item.size[1]) * 0.5 + 1.1)
 		for thing: Array in TOPS.get(kind, []):
 			var at: Vector3 = (thing[1] as Vector3) + shift
 			var yaw: float = float(thing[2]) + (builder.vary(seed_pos + at, 410) - 0.5) * 0.3

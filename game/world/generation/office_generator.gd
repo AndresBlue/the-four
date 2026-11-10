@@ -1693,6 +1693,12 @@ func furnish_furniture(job: Dictionary) -> String:
 		var recipe: Array = palette.ROOM_FURNITURE.get(t, [])
 		if recipe.is_empty(): continue
 		var gone := RECIPES.drop(room)
+		# The papers' top a type keeps (spec_4e E): back in its corner before the
+		# recipe, so keep_clear() keeps the recipe off it.
+		var top := String(palette.PAPER_TOPS_KEPT.get(t, ""))
+		for prop in gone:
+			if String(prop.kind) == top: room.props.append(prop)
+		gone = gone.filter(func(p): return String(p.kind) != top)
 		var taken: Array = job.taken.get(int(room.id), [])
 		var zones := RECIPES.keep_clear(view, room, taken)
 		if t == palette.OPEN_OFFICE or t == palette.CUBICLES: zones.append_array(nave_zones(room))
@@ -1708,6 +1714,8 @@ func furnish_furniture(job: Dictionary) -> String:
 				lay_table(room, zones)
 				lay_near_chairs(room, walk)
 			else:
+				# The director's lounge first where its corner stood (spec_4e D).
+				if RECIPES.lay_corner(room, walk, gone, String(entry[0])): continue
 				for run in RECIPES.lay(room, walk, entry, rng, chain):
 					if first_wall == "": first_wall = String(run.wall)
 					if not job.wall_items.has(int(room.id)): job.wall_items[int(room.id)] = []
@@ -2602,8 +2610,9 @@ func lay_archive(f: Dictionary, members: Array, a: Dictionary, rng: RandomNumber
 	var row := float(a.row)
 	var aisle := float(a.aisle)
 	var spine := float(a.spine)
-	var e0 := float(a.end_min)
-	var e1 := float(a.end_min)
+	# A one-room unit's short walls with no doorway take no end aisle (spec_4e D).
+	var e0: float = 0.0 if members.size() == 1 else float(a.end_min)
+	var e1: float = 0.0 if members.size() == 1 else float(a.end_min)
 	# The short walls: west and east of the ends along x, north and south along z.
 	var low_wall := "west" if axis == "x" else "north"
 	var high_wall := "east" if axis == "x" else "south"
@@ -2626,7 +2635,19 @@ func lay_archive(f: Dictionary, members: Array, a: Dictionary, rng: RandomNumber
 			var at: float = (float(r.px) if axis == "x" else float(r.pz)) + float(way.along)
 			if String(way.wall) == minus_wall: minus_doors.append(at)
 			elif String(way.wall) == plus_wall: plus_doors.append(at)
-	var sides := [[b0 + wall_gap, centre - spine / 2], [centre + spine / 2, b1 - wall_gap]]
+	# The gap by each long wall (spec_4e D); wall_gap is drawn all the same, so
+	# the "archives" stream does not move.
+	var gap0 := wall_gap
+	var gap1 := wall_gap
+	# A unit of one room has none: its rows reach its walls, as the reference's shelving.
+	if members.size() == 1:
+		gap0 = 0.0
+		gap1 = 0.0
+	# A salon keeps its gap by one long wall only, the one with more doorways.
+	if members.size() > 1:
+		if minus_doors.size() > plus_doors.size(): gap1 = 0.0
+		else: gap0 = 0.0
+	var sides := [[b0 + gap0, centre - spine / 2], [centre + spine / 2, b1 - gap1]]
 	var rows: Array = []
 	var aisles: Array = []
 	var opened: Array = []
@@ -2661,7 +2682,7 @@ func lay_archive(f: Dictionary, members: Array, a: Dictionary, rng: RandomNumber
 			for i in range(1, kept.size()):
 				var gap_start: float = float(kept[i - 1]) + row
 				if absf(float(kept[i]) - gap_start - aisle) <= 0.001: aisles.append(rect_of(axis, gap_start, float(kept[i]), float(sides[side][0]), float(sides[side][1])))
-	return {"rooms": members.duplicate(), "axis": axis, "mobile": mobile, "open": opened, "height": float(a.shelf), "wall_gap": wall_gap, "spine": rect_of(axis, a0, a1, centre - spine / 2, centre + spine / 2), "rows": rows, "aisles": aisles}
+	return {"rooms": members.duplicate(), "axis": axis, "mobile": mobile, "open": opened, "height": float(a.shelf), "wall_gap": [gap0, gap1], "spine": rect_of(axis, a0, a1, centre - spine / 2, centre + spine / 2), "rows": rows, "aisles": aisles}
 
 ## [x0, z0, x1, z1] of a span along the axis and one across it, to the millimetre.
 func rect_of(axis: String, along0: float, along1: float, across0: float, across1: float) -> Array:

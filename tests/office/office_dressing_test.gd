@@ -239,7 +239,7 @@ func clutter_checks(hotel, rooms: Array, notes: Dictionary) -> void:
 		if kind in ["chair_fallen", "chair_odd", "drawer"]: bad[planta] = int(bad[planta]) + 1
 		if kind.begins_with("chair_") or kind == "drawer" or kind == "filing_shut": all[planta] = int(all[planta]) + 1
 	check("Hay teléfonos, pantallas, bandejas y tazas encima de las mesas", on_tops > 0, str(on_tops))
-	check("Ningún papel del suelo en la ruta de la ficha ni a menos de 2 m de una puerta", near.is_empty(), str(near.slice(0, 8)))
+	check("Ningún papel del suelo en la ruta de la ficha ni a menos de 2 m de una puerta, un lado abierto o la recta entre dos accesos", near.is_empty(), str(near.slice(0, 8)))
 	check("Como mucho un detalle raro por sala", odd.values().all(func(n) -> bool: return int(n) <= 1), str(odd))
 	check("Nada en el suelo de los pasillos", hall_floor == 0, str(hall_floor))
 	var first: float = float(bad[0]) / maxf(float(all[0]), 1.0)
@@ -249,7 +249,8 @@ func clutter_checks(hotel, rooms: Array, notes: Dictionary) -> void:
 ## Whether a paper lies clear of the card's way, worked out here and not by
 ## office_clutter.gd: not in a room it crosses for certain (circulation,
 ## corridors, the refuge, the window, a room or nave with a mail or tube spot)
-## and 2 m or more from each of the room's doorways.
+## and 2 m or more from each of its doorways, its open sides (all their length)
+## and the straight way between two of them.
 func paper_clear(rooms: Array, room: Dictionary, at: Vector3, spots: Array) -> bool:
 	var t := int(room.type)
 	if t in OFFICE.CIRCULATION or t == OFFICE.CORRIDOR or t == OFFICE.REFUGE or t == OFFICE.WINDOW: return false
@@ -260,9 +261,24 @@ func paper_clear(rooms: Array, room: Dictionary, at: Vector3, spots: Array) -> b
 		if here.is_empty(): continue
 		if int(here.id) == int(room.id) or (hall >= 0 and int(here.get("hall", -1)) == hall): return false
 	var centre := FLOOR.position_of(room)
+	var local := Vector2(at.x - centre.x, at.z - centre.z)
+	var span := FLOOR.size_of(room)
+	var ways: Array = []
 	for way in FLOOR.doorways(room):
 		var wall := String(way.wall)
 		var face := LAYOUT.face(room, wall)
-		var door: Vector2 = Vector2(face, float(way.along)) if wall == "west" or wall == "east" else Vector2(float(way.along), face)
-		if Vector2(at.x - centre.x, at.z - centre.z).distance_to(door) < 2.0: return false
+		ways.append(Vector2(face, float(way.along)) if wall == "west" or wall == "east" else Vector2(float(way.along), face))
+	for side in room.get("open_sides", []):
+		var wall := String(side)
+		var face := LAYOUT.face(room, wall)
+		var across := wall == "west" or wall == "east"
+		var a: Vector2 = Vector2(face, -span.y * 0.5) if across else Vector2(-span.x * 0.5, face)
+		var b: Vector2 = Vector2(face, span.y * 0.5) if across else Vector2(span.x * 0.5, face)
+		if Geometry2D.get_closest_point_to_segment(local, a, b).distance_to(local) < 2.0: return false
+		ways.append((a + b) * 0.5)
+	for i in ways.size():
+		var a: Vector2 = ways[i]
+		if local.distance_to(a) < 2.0: return false
+		for j in range(i + 1, ways.size()):
+			if Geometry2D.get_closest_point_to_segment(local, a, ways[j]).distance_to(local) < 2.0: return false
 	return true

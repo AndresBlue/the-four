@@ -279,6 +279,31 @@ static func restore(room: Dictionary, gone: Array, zones: Array) -> void:
 		if fits_here: room.props.append(prop)
 	room.props.sort_custom(func(x, y): return int(x.slot) < int(y.slot))
 
+## A piece of IN_ITS_CORNER tried first where the corner it stands in for
+## (CORNERS_REPLACED) stood before drop(): on that socket, which the corner's
+## plan is centred on, its back to one of the corner's two walls, never to the
+## room (spec_4e D). Whether it was laid; if not, the recipe lays it as its
+## entry says.
+static func lay_corner(room: Dictionary, zones: Array, gone: Array, kind: String) -> bool:
+	if not OFFICE.IN_ITS_CORNER.has(kind): return false
+	var t := int(room.type)
+	var swaps: Dictionary = OFFICE.CORNERS_REPLACED.get(t, {})
+	var sockets: Array = room.get("sockets", [])
+	for prop in gone:
+		if String(swaps.get(String(prop.kind), "")) != kind or int(prop.slot) >= sockets.size(): continue
+		var socket: Array = sockets[int(prop.slot)]
+		var c := LAYOUT.corner_of(int(prop.slot))
+		var walls: Array[String] = ["north" if c.y < 0.0 else "south", "west" if c.x < 0.0 else "east"]
+		var turns: Array[int] = [0 if c.y < 0.0 else 2, 1 if c.x < 0.0 else 3]
+		for k in 2:
+			# Its back goes to one of the corner's walls, and only to one that takes pieces.
+			if not usable(room, walls[k]): continue
+			var piece := item(kind, Vector2(float(socket[0]), float(socket[1])), turns[k], room.furniture.size())
+			if not fits(room, zones, piece): continue
+			room.furniture.append(piece)
+			return true
+	return false
+
 ## The FURNITURE kinds a type may have (office_validator.furniture_ok()): a
 ## table recipe's, every one of TABLE_KINDS and its near side's chair.
 static func kinds(t: int) -> Array:

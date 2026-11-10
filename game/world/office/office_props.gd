@@ -93,17 +93,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
 			for x: float in [-0.65, 0.0, 0.65]: chair(builder, node, at(0.0, 0.6) + Vector3(x, 0, 0), 1.0, seat)
 		"armchair":
-			# The director's corner (spec_rediseno 6.7): the leather sofa or the
-			# lounge chair with the low walnut table, and the floor lamp beside it.
-			if builder.vary(seed_pos, 50) < 0.6:
-				builder.box(node, at(0.4, 0.85) + Vector3(-0.24, 0, 0), Vector3(1.8, 0.8, 0.85), "", true)
-				MODELS.put(builder, node, "sofa", Transform3D(Basis.IDENTITY, at(0.0, 0.85) + Vector3(-0.24, 0, 0)))
-				piece(builder, node, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.42)), Vector3(-0.24, 0, 0.49))
-			else:
-				builder.box(node, at(0.45, 1.2) + Vector3(-0.45, 0, 0), Vector3(1.0, 0.9, 1.2), "", true)
-				MODELS.put(builder, node, "lounge_chair", Transform3D(Basis.IDENTITY, at(0.0, 1.2) + Vector3(-0.45, 0, 0)))
-				piece(builder, node, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.42)), Vector3(0.6, 0, 0.35))
-			MODELS.lamp(builder, node, int(builder.building_room.get("id", -1)), "floor_lamp", Transform3D(Basis.IDENTITY, at(0.0, 0.45) + Vector3(0.9, 0, 0)))
+			lounge(builder, node, seed_pos, int(builder.building_room.get("id", -1)))
 		"reader":
 			piece(builder, node, DESKS.consult_table(builder, Vector3(1.4, 0.74, 0.7)), at(0.0, 0.7))
 			microfiche(builder, node, at(0.74, 0.7) + Vector3(0, 0, -0.1))
@@ -145,6 +135,21 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 				builder.box(node, at(0.75, 0.4) + Vector3(-0.8, 0, 0), Vector3(0.4, 1.5, 0.4), "", true)
 				MODELS.put(builder, node, "work_light", Transform3D(Basis(Vector3.UP, 0.5), at(0.0, 0.4) + Vector3(-0.8, 0, 0)))
 	return true
+
+## The director's corner (spec_rediseno 6.7, spec_4e D), in a corner socket
+## (build(), "armchair") or as a recipe's piece (build_item(), "lounge"), round
+## the holder's origin with its back at BACK: the leather sofa or the lounge
+## chair with the low walnut table, and the floor lamp beside it.
+static func lounge(builder: Node3D, node: Node3D, seed_pos: Vector3, room_id: int) -> void:
+	if builder.vary(seed_pos, 50) < 0.6:
+		builder.box(node, at(0.4, 0.85) + Vector3(-0.24, 0, 0), Vector3(1.8, 0.8, 0.85), "", true)
+		MODELS.put(builder, node, "sofa", Transform3D(Basis.IDENTITY, at(0.0, 0.85) + Vector3(-0.24, 0, 0)))
+		piece(builder, node, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.42)), Vector3(-0.24, 0, 0.49))
+	else:
+		builder.box(node, at(0.45, 1.2) + Vector3(-0.45, 0, 0), Vector3(1.0, 0.9, 1.2), "", true)
+		MODELS.put(builder, node, "lounge_chair", Transform3D(Basis.IDENTITY, at(0.0, 1.2) + Vector3(-0.45, 0, 0)))
+		piece(builder, node, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.42)), Vector3(0.6, 0, 0.35))
+	MODELS.lamp(builder, node, room_id, "floor_lamp", Transform3D(Basis.IDENTITY, at(0.0, 0.45) + Vector3(0.9, 0, 0)))
 
 ## A point at height y, centred on a piece of depth d whose back is at BACK.
 static func at(y: float, depth: float) -> Vector3:
@@ -225,14 +230,21 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(2.0, 0.76, 0.9)), Vector3.ZERO, true)
 			for x in [-0.5, 0.5]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0, "visitor_chair")
 			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis(Vector3.UP, PI), Vector3(-0.75, 0.76, 0.2)))
+		"lounge":
+			lounge(builder, holder, seed_pos, int(room.get("id", -1)))
 		"secretary_desk":
-			piece(builder, holder, DESKS.desk_l_walnut(builder, Vector3(1.8, 0.75, 1.5)), Vector3(0, 0, -0.35))
-			chair(builder, holder, Vector3(0, 0, 0.75), -1.0, "office_chair")
-			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis.IDENTITY, Vector3(-0.7, 0.75, -0.95)))
+			# The L's wing as long as the footprint lets it (spec_4e D), always on the
+			# right; the chair and the lamp keep their place from its back.
+			var back := -size.y * 0.5
+			piece(builder, holder, DESKS.desk_l_walnut(builder, Vector3(1.8, 0.75, size.y - 0.7)), Vector3(0, 0, -0.35))
+			chair(builder, holder, Vector3(0, 0, back + 1.85), -1.0, "office_chair")
+			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis.IDENTITY, Vector3(-0.7, 0.75, back + 0.15)))
 		"work_desk":
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
 			chair(builder, holder, Vector3(0, 0, 0.3), -1.0)
 			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_arm", Transform3D(Basis.IDENTITY, Vector3(-0.55, 0.75, -0.5)))
+			# The window's clerk types behind the glass (spec_4e D).
+			if int(room.get("type", -1)) == OFFICE.WINDOW: MODELS.put(builder, holder, "typewriter", Transform3D(Basis.IDENTITY, Vector3(0.2, 0.75, -0.4)))
 		"waiting_row", "waiting_row_4":
 			# The chairs its length takes and the low table at its end (spec_rediseno 6.1, 6.8).
 			var seats: int = 4 if size.x >= 3.0 else (3 if size.x >= 2.5 else 2)
