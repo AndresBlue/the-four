@@ -29,6 +29,8 @@ const STATIONERY := preload("res://game/world/office/pieces/stationery.gd")
 const STAND := preload("res://game/world/office/pieces/stand_ins.gd")
 ## The downloads and their stand-ins (area 4c).
 const MODELS := preload("res://game/world/office/office_models.gd")
+## How each chair was left (area 4c, tramo B).
+const CLUTTER := preload("res://game/world/office/office_clutter.gd")
 
 ## Builds an office corner piece; false for a kind it leaves to prop_factory.
 static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
@@ -355,7 +357,7 @@ const DESK_L := Vector3(1.5, 0.76, 1.3)
 static func station(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed_pos: Vector3, room: Dictionary) -> void:
 	var t := int(room.get("type", -1))
 	if t != OFFICE.OPEN_OFFICE or builder.vary(seed_pos, 44) >= 1.0 / 3.0:
-		desk(builder, holder, at, face, seed_pos)
+		desk(builder, holder, at, face)
 		return
 	piece(builder, holder, DESKS.desk_l(builder, DESK_L), at + Vector3(0, 0, face * 0.275), face < 0.0)
 	chair(builder, holder, at + Vector3(-face * 0.1, 0, face * 0.55), -face, "office_chair")
@@ -414,7 +416,7 @@ static var desk_mesh: Mesh = null
 
 ## A steel desk (top at 0.74) with its chair pulled up on the side `face`
 ## looks to (+Z for 1).
-static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed_pos: Vector3) -> void:
+static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float) -> void:
 	builder.box(holder, at + Vector3(0, 0.38, 0), Vector3(1.5, 0.76, 0.75), "", true)
 	if desk_mesh == null and ResourceLoader.exists(DESK_MODEL): desk_mesh = load(DESK_MODEL)
 	if desk_mesh != null:
@@ -425,7 +427,6 @@ static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed
 		builder.box(holder, at + Vector3(0, 0.74, 0), Vector3(1.5, 0.03, 0.75), "laminate")
 		builder.box(holder, at + Vector3(0.5, 0.36, 0), Vector3(0.42, 0.72, 0.7), "steel_olive")
 		builder.box(holder, at + Vector3(-0.72, 0.36, 0), Vector3(0.04, 0.72, 0.7), "steel_olive")
-	if builder.vary(seed_pos, 41) < 0.5: builder.box(holder, at + Vector3(-0.3, 0.77, 0), Vector3(0.21, 0.02, 0.3), "linen")
 	chair(builder, holder, at + Vector3(0, 0, face * 0.55), -face, "office_chair")
 
 ## A chair of `kind` (office_models.gd: its model or its stand-in) facing
@@ -433,7 +434,7 @@ static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed
 ## collider; noted, as drawn, for the dressing test (builder.dressing_log.chairs).
 static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float, kind := "stacking_chair", yaw := 0.0) -> void:
 	builder.box(holder, at + Vector3(0, 0.23, 0), Vector3(0.44, 0.46, 0.42), "", true)
-	var pose := Transform3D(Basis(Vector3.UP, (0.0 if face > 0.0 else PI) + yaw), at)
+	var pose := CLUTTER.chair_pose(builder, holder, at, face, kind, yaw)
 	MODELS.put(builder, holder, kind, pose)
 	# By room and holder name: drop_empty() frees the emptied holders once the room is batched.
 	builder.dressing_log.chairs.append({"room": int(builder.building_room.get("id", -1)), "holder": String(holder.name), "at": pose.origin, "front": pose.basis.z, "kind": kind})

@@ -306,7 +306,7 @@ Lo que dejó el área 4c del rediseño (`.claude/specs/spec_rediseno.md` 5, 6 y 
   - `put()` lo coloca con `place()`. Una silla horneada mirando a -Z se gira (`backed()`); el sofá viene horneado mirando a +Z y no se gira. Una planta que viene sin maceta va en la suya.
   - Lo diezmado con `tools/props/decimate.py` (Blender) queda en `source_assets/props/<slug>/_gltf/`, que es lo que lee la ingesta. Las descargas de varias plantas se hornean por partes (`PARTS` de `build_catalogue.gd`).
   - `tools/props/catalogue_sheet.gd -- --target=res://assets/props/office/` saca su hoja.
-- **Sillas.** `office_props.chair()` pone el modelo o la reserva de cada clase (apilable, de oficina, sillón de dirección, de confianza, butaca verde) mirando a donde dice su receta, girada `yaw` más. Las de la mesa de juntas miran a la mesa, también las de las cabeceras y las del lado cercano (`table_chair`).
+- **Sillas.** `office_props.chair()` pone el modelo o la reserva de cada clase (apilable, de oficina, sillón de dirección, de confianza, butaca verde) mirando a donde dice su receta, girada `yaw` más. Las de la mesa de juntas miran a la mesa, también las de las cabeceras y las del lado cercano (`table_chair`). Cómo quedó cada una (derecha, apartada, caída o del revés) lo decide `office_clutter.chair_pose()`.
 - **Piezas de esquina.** Ahora se construyen todas las que no van al hotel (la papelera y el carrito sí), cada una dentro de su huella de `CORNER_SIZES`, que comprueba `office_pieces_test`:
   - la mesa auxiliar «desk», de acero, con su tablero a 0,84, donde se dejan los papeles, y su silla;
   - los archivadores, la fila de sillas y la copiadora;
@@ -335,6 +335,12 @@ Lo que dejó el área 4c del rediseño (`.claude/specs/spec_rediseno.md` 5, 6 y 
   - Son acentos los flexos del despacho, de dirección, de la secretaría, de la recepción y de las mesas de trabajo y la lámpara de pie (`office_models.lamp()`), y la luz de la expendedora en el suelo (`office_models.light()`).
   - Lo que se enciende (la ventana de la expendedora, la pantalla del lector) es una caja `glow_` aparte, porque una pieza colocada con `place()` no se apaga con su sala.
 - **Lo heredado del hotel.** `wall_stretches()` está vacío en las oficinas: no quedan sus relojes, pulsadores ni papeles. Tampoco hay cuadros de fusibles: `fuse_boxes()` devuelve `false`, porque en el piso 2 no hay llave ni nada que abra uno. `wall_art()` no cuelga nada.
+- **Lo menudo y el abandono.**
+  - `office_clutter.gd` pone lo que hay encima de las mesas, los mostradores y los archivadores: teléfonos, pantallas con teclado en las naves, bandejas, carpetas, tazas, la máquina de escribir de la secretaría. Lo hace con `vary()` de cada sitio y sin colisión.
+  - También el abandono de «se fueron de golpe»: sillas apartadas, alguna caída con papeles al lado, un cajón sacado, cables, un teléfono descolgado y una caja volcada. Como mucho hay un detalle raro por sala (una silla mirando al otro lado).
+  - Una silla solo se aparta o cae donde lo que barre no toca otros muebles, puertas, taquillas ni esquinas. Su colisionador se queda donde estaba de pie.
+  - Empeora con la planta y con el descuido de la sala (`mess_of()`: `room.wing` más `room.kept`).
+  - Los pasillos no tienen nada en el suelo. Ningún papel cae en la ruta de la ficha (`clear_of_route()`): ni en la ventanilla, ni en las salas o naves de las estaciones o del lector, ni a menos de 2 m de una puerta, de un lado abierto o de la recta entre dos de ellos.
 - **La prueba.** `tests/office/office_dressing_test.gd`.
 
 ## The Lurker (piso 2)

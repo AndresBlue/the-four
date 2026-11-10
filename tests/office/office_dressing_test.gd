@@ -75,6 +75,7 @@ func run() -> void:
 	for label: Label3D in hotel.find_children("*", "Label3D", true, false):
 		if label.text.contains("·") or label.text.contains("—"): bad_text.append(label.text)
 	check("Ningún rótulo lleva «·» ni «—»", bad_text.is_empty(), str(bad_text))
+	clutter_checks(hotel, rooms, notes)
 	print("OFFICE_DRESSING_RESULT ", checks - failed, "/", checks)
 	level.queue_free()
 	await process_frame
@@ -210,3 +211,58 @@ func floors_and_leftovers(hotel, rooms: Array) -> void:
 	check("Dirección: vinilo a la vista con su alfombra encima, y suena a moqueta", soft > 0 and wrong.is_empty(), "%d salas, mal: %s" % [soft, str(wrong)])
 	check("Ninguna sala lleva los tramos de pared del hotel, y el piso no tiene cuadros de fusibles", stretches == 0 and hotel.panels.is_empty(), "%d tramos, %d cuadros" % [stretches, hotel.panels.size()])
 	check("Los aseos con cabinas tienen su zona húmeda alicatada", toilets > 0 and tiled == toilets, "%d de %d" % [tiled, toilets])
+
+## Tramo B (office_clutter.gd): things on the desks, no paper on the card's
+## way (paper_clear(), worked out here), one odd thing at most to a room, the
+## corridors' floor clear, and planta 3 left worse than planta 1: chairs
+## fallen or turned away and drawers out, among chairs and filing cabinets.
+func clutter_checks(hotel, rooms: Array, notes: Dictionary) -> void:
+	var on_tops := 0
+	var near: Array = []
+	var odd := {}
+	var hall_floor := 0
+	var bad: Array = [0, 0, 0]
+	var all: Array = [0, 0, 0]
+	var spots: Array = []
+	LAYOUT.gather(hotel.manifest.get("mail", {}), spots)
+	for exit in hotel.manifest.get("tubes", {}).get("exits", []):
+		if exit is Dictionary and exit.has("point"): spots.append(exit)
+	for entry: Dictionary in notes.clutter:
+		var room: Dictionary = rooms[int(entry.room)]
+		var t := int(room.type)
+		var kind := String(entry.kind)
+		if kind in ["phone", "phone_off", "crt", "tray", "mug", "typewriter"]: on_tops += 1
+		if bool(entry.paper) and not paper_clear(rooms, room, entry.at, spots): near.append("%d %s" % [int(entry.room), kind])
+		if bool(entry.odd): odd[int(entry.room)] = int(odd.get(int(entry.room), 0)) + 1
+		if bool(entry.floor) and (t == OFFICE.CORRIDOR or t == OFFICE.GALLERY): hall_floor += 1
+		var planta := clampi(int(room.get("wing", 0)), 0, 2)
+		if kind in ["chair_fallen", "chair_odd", "drawer"]: bad[planta] = int(bad[planta]) + 1
+		if kind.begins_with("chair_") or kind == "drawer" or kind == "filing_shut": all[planta] = int(all[planta]) + 1
+	check("Hay teléfonos, pantallas, bandejas y tazas encima de las mesas", on_tops > 0, str(on_tops))
+	check("Ningún papel del suelo en la ruta de la ficha ni a menos de 2 m de una puerta", near.is_empty(), str(near.slice(0, 8)))
+	check("Como mucho un detalle raro por sala", odd.values().all(func(n) -> bool: return int(n) <= 1), str(odd))
+	check("Nada en el suelo de los pasillos", hall_floor == 0, str(hall_floor))
+	var first: float = float(bad[0]) / maxf(float(all[0]), 1.0)
+	var third: float = float(bad[2]) / maxf(float(all[2]), 1.0)
+	check("La planta 3 está más abandonada que la 1", int(all[0]) > 0 and int(all[2]) > 0 and third > first, "%.2f frente a %.2f" % [third, first])
+
+## Whether a paper lies clear of the card's way, worked out here and not by
+## office_clutter.gd: not in a room it crosses for certain (circulation,
+## corridors, the refuge, the window, a room or nave with a mail or tube spot)
+## and 2 m or more from each of the room's doorways.
+func paper_clear(rooms: Array, room: Dictionary, at: Vector3, spots: Array) -> bool:
+	var t := int(room.type)
+	if t in OFFICE.CIRCULATION or t == OFFICE.CORRIDOR or t == OFFICE.REFUGE or t == OFFICE.WINDOW: return false
+	var hall := int(room.get("hall", -1))
+	for spot: Dictionary in spots:
+		var p: Array = spot.point
+		var here := FLOOR.room_at(rooms, Vector3(float(p[0]), float(p[1]), float(p[2])))
+		if here.is_empty(): continue
+		if int(here.id) == int(room.id) or (hall >= 0 and int(here.get("hall", -1)) == hall): return false
+	var centre := FLOOR.position_of(room)
+	for way in FLOOR.doorways(room):
+		var wall := String(way.wall)
+		var face := LAYOUT.face(room, wall)
+		var door: Vector2 = Vector2(face, float(way.along)) if wall == "west" or wall == "east" else Vector2(float(way.along), face)
+		if Vector2(at.x - centre.x, at.z - centre.z).distance_to(door) < 2.0: return false
+	return true

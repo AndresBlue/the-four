@@ -18,6 +18,7 @@ const OFFICE_BOUNCE := preload("res://game/world/office/office_bounce.gd")
 ## walls and the curtains.
 const WALLS := preload("res://game/world/office/office_walls.gd")
 const FITTINGS := preload("res://game/world/office/office_fittings.gd")
+const CLUTTER := preload("res://game/world/office/office_clutter.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
@@ -1636,6 +1637,8 @@ func extras(node: Node3D, room: Dictionary) -> void:
 	# walls (clear of the tiles).
 	FITTINGS.dress(self, node, room)
 	WALLS.dress(self, node, room)
+	# What is left lying about (tramo B).
+	CLUTTER.dress(self, node, room)
 	if int(room.type) != OFFICE.ARCHIVE and int(room.type) != OFFICE.MOBILE_ARCHIVE: return
 	var cell := Rect2(float(room.px) - float(room.span_x) / 2, float(room.pz) - float(room.span_z) / 2, float(room.span_x), float(room.span_z))
 	for unit in manifest.get("archives", []):
