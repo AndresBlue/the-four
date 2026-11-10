@@ -14,6 +14,10 @@ const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 const ACCENTS := preload("res://game/world/office/office_accents.gd")
 const DESKS := preload("res://game/world/office/pieces/desks.gd")
 const OFFICE_BOUNCE := preload("res://game/world/office/office_bounce.gd")
+## Area 4c: what hangs on the walls, the ceilings' fittings, the rugs, the wet
+## walls and the curtains.
+const WALLS := preload("res://game/world/office/office_walls.gd")
+const FITTINGS := preload("res://game/world/office/office_fittings.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
@@ -622,6 +626,7 @@ var duct_holes: Array[AABB] = []
 func build(data: Dictionary) -> void:
 	duct_holes = MAIN_DUCT.outer_boxes(data)
 	panes = []
+	dressing_log = {"walls": [], "ceiling": [], "chairs": [], "clutter": []}
 	await super(data)
 	# A dark room's lenses were built lit (lens_key()): out with the room.
 	for id: int in dark_ids:
@@ -1317,37 +1322,10 @@ func switch_plate(boundary: Node3D, x: float, inner: int) -> void:
 ## the duct network's (extras(), ceiling()).
 func grille(_boundary: Node3D, _x: float, _inner: int) -> void: pass
 
-## What hangs on an office wall instead of the hotel's paintings and sconces
-## (6.5), by vary: a cork notice board in offices and corridors, the hotel's
-## wall clock in offices, the break room and the archives; otherwise the spot
-## is kept for 1h's rule posters (poster_spots). Nothing on glass.
-func wall_art(boundary: Node3D, room: Dictionary, at: float, inner: int) -> void:
-	if room.get("glazed", []).has(String(SIDE_OF.get(String(boundary.name), ""))): return
-	var t := int(room.type)
-	var roll := vary(node_point(boundary, at), 170)
-	var face := inner * 0.09
-	var turn := Basis(Vector3.UP, PI if inner < 0 else 0.0)
-	# The board clear of the frieze's rail and the dado's cap.
-	var board_y: float = 1.6 if OFFICE.wall_trim(room) in ["frieze", "dado"] else 1.5
-	# Nothing hangs over a zone sign (zone_sign()): not the board, not a poster.
-	var signed := sign_under(boundary, at, BOARD_HALF)
-	if t in [OFFICE.OFFICE, OFFICE.EXEC_OFFICE, OFFICE.CORRIDOR] and roll < 0.4:
-		if not signed:
-			box(boundary, Vector3(at, board_y, face + inner * 0.012), Vector3(1.2, 0.9, 0.02), "cork")
-			box(boundary, Vector3(at, board_y, face + inner * 0.01), Vector3(1.26, 0.96, 0.016), "steel_frame")
-	elif t in [OFFICE.OFFICE, OFFICE.EXEC_OFFICE, OFFICE.BREAK_ROOM, OFFICE.ARCHIVE] and roll < 0.7:
-		DRESSING.place(self, boundary, "wall_clock", Transform3D(turn, Vector3(at, 2.05, face + inner * 0.027)))
-	elif not signed:
-		var lift := panel_lift(boundary)
-		poster_spots.append({"room": int(room.id), "transform": boundary.global_transform * Transform3D(turn, Vector3(at, 1.5, face + inner * (0.005 + lift))) if boundary.is_inside_tree() else Transform3D(turn, Vector3(at, 1.5, face + inner * lift))})
-
-## A point along a wall boundary, for vary().
-func node_point(boundary: Node3D, at: float) -> Vector3:
-	var room_node := boundary.get_parent() as Node3D
-	return (room_node.position if room_node != null else Vector3.ZERO) + boundary.transform * Vector3(at, 0, 0)
-
-## Free wall spots for 1h's rule posters: {room, transform}.
-var poster_spots: Array[Dictionary] = []
+## The hotel's paintings and sconces are not the offices': their walls are
+## dressed by office_walls.gd (area 4c), from extras().
+func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> void:
+	pass
 
 ## The troffers (built by ceiling()) light the room as a fluorescent tube
 ## does (7.1); a batten is the archives' own over each aisle, or the hotel's. All in
@@ -1654,6 +1632,10 @@ func extras(node: Node3D, room: Dictionary) -> void:
 		holder.rotation.y = int(item.turn) * PI / 2
 		node.add_child(holder)
 		PROPS.build_item(self, holder, item, node.position + holder.position, room)
+	# Area 4c: the rugs, the wet walls and the curtains, then what hangs on the
+	# walls (clear of the tiles).
+	FITTINGS.dress(self, node, room)
+	WALLS.dress(self, node, room)
 	if int(room.type) != OFFICE.ARCHIVE and int(room.type) != OFFICE.MOBILE_ARCHIVE: return
 	var cell := Rect2(float(room.px) - float(room.span_x) / 2, float(room.pz) - float(room.span_z) / 2, float(room.span_x), float(room.span_z))
 	for unit in manifest.get("archives", []):
@@ -1675,28 +1657,29 @@ func extras(node: Node3D, room: Dictionary) -> void:
 			var number: int = k + 1 if cell.has_point(full.get_center()) else 0
 			PROPS.row(self, node, centre, length, depth, float(unit.height), along_x, bool(unit.mobile), node.position + centre, to_spine, number)
 
-## How far out from its wall a stretch's band reaches, for the furniture that
-## stands in it: the litter lies out to about a metre (room_dressing.litter()).
-const BARE_DEPTH := 1.0
+## No hotel dressing on the offices' walls (area 4c): office_walls.gd hangs
+## theirs; the archives never had any (9.5).
+func wall_stretches(_room: Dictionary) -> Array: return []
 
-## Archives are all shelving: no dressing on their walls (9.5). A stretch that
-## a piece of furniture stands in (its band BARE_DEPTH out from the wall) is
-## left bare: the litter and the fuse box the dressing would put there would
-## stand in the piece or against it. The dressing's draws are by position
-## (vary()), so the stretches kept keep what they had.
-func wall_stretches(room: Dictionary) -> Array:
-	if int(room.type) == OFFICE.ARCHIVE or int(room.type) == OFFICE.MOBILE_ARCHIVE: return []
-	var items: Array = room.get("furniture", [])
-	var out: Array = []
-	for stretch in super(room):
-		var frame: Transform3D = stretch[0]
-		var centre := Vector2(frame.origin.x, frame.origin.z)
-		var half_along := Vector2(frame.basis.x.x, frame.basis.x.z) * float(stretch[1]) / 2.0
-		var out_from_wall := Vector2(frame.basis.z.x, frame.basis.z.z) * BARE_DEPTH
-		var band := Rect2(centre - half_along, Vector2.ZERO).expand(centre + half_along).expand(centre + out_from_wall - half_along).expand(centre + out_from_wall + half_along)
-		if items.any(func(it: Dictionary) -> bool: return LAYOUT.footprint(it).intersects(band)): continue
-		out.append(stretch)
-	return out
+## No fuse boxes on floor 2 (spec_4c): it has no key and nothing opens one,
+## as the palette says.
+func fuse_boxes() -> bool: return false
+
+## The floor as it is seen (palette.floor_look()): Dirección's carpet shows
+## polished vinyl round its rug (office_fittings.gd); it still sounds as
+## carpet (floor_finish(), hard_floor()).
+func floor_surface(node: Node3D, room: Dictionary) -> void:
+	var span := FLOOR.size_of(room)
+	box(node, Vector3(0, -0.15, 0), Vector3(span.x, 0.3, span.y), OFFICE.floor_look(room), true)
+
+## The ceiling's fittings (spec_rediseno 2, area 4c): under a false ceiling,
+## the smoke detector, the sprinkler and the supply diffusers on tiles that
+## neither a troffer nor she has (office_fittings.gd); on a bare slab, the hotel's.
+func ceiling_fittings(node: Node3D, room: Dictionary) -> void:
+	if not OFFICE.false_ceiling(room):
+		super(node, room)
+		return
+	FITTINGS.ceiling(self, node, room)
 
 ## Furniture keeps clear of the walls by less in an office (H3).
 func nav_agent_radius() -> float: return 0.3
@@ -1740,6 +1723,10 @@ func set_halo(entry: Dictionary, energy: float) -> void:
 ## The floor's accent lights (spec_rediseno 4) and an accent spot's penumbra
 ## (times the preset's, as the hotel's LAMP_SIZE).
 var accents := ACCENTS.new()
+## What area 4c hung on the walls (and tiled), set on the ceilings and drew the
+## chairs facing, and what is left lying (office_walls.gd, office_fittings.gd,
+## office_props.gd, office_clutter.gd): tests/office/office_dressing_test.gd.
+var dressing_log := {"walls": [], "ceiling": [], "chairs": [], "clutter": []}
 const ACCENT_SIZE := 0.08
 
 ## An accent spot (a desk lamp, a track spot; spec_rediseno 4) at `pos` in

@@ -37,11 +37,12 @@ static func samples(builder: Node3D) -> Array:
 
 ## The pneumatic central: a green-grey panel with two rows of lamps, the mouth
 ## the capsules come out of, and brass tubes that rise and go into the wall.
-## Its back is on the wall.
-static func mail_central(builder: Node3D, size: Vector3) -> ArrayMesh:
-	return KIT.cached(builder, KIT.key_of("mail_central", size), func() -> ArrayMesh: return make_mail_central(builder, size))
+## Its back is on the wall. Not `lit`, every lamp is out: the mail room's
+## central for show (office_walls.gd, area 4c), which nothing lights.
+static func mail_central(builder: Node3D, size: Vector3, lit := true) -> ArrayMesh:
+	return KIT.cached(builder, KIT.key_of("mail_central", size, "" if lit else "out"), func() -> ArrayMesh: return make_mail_central(builder, size, lit))
 
-static func make_mail_central(builder: Node3D, size: Vector3) -> ArrayMesh:
+static func make_mail_central(builder: Node3D, size: Vector3, lit := true) -> ArrayMesh:
 	var p := KIT.begin()
 	var w := size.x
 	var h := size.y
@@ -56,7 +57,7 @@ static func make_mail_central(builder: Node3D, size: Vector3) -> ArrayMesh:
 		for c in 7:
 			var x := -w * 0.5 + 0.07 + c * (w - 0.14) / 6.0
 			var y := ph - 0.16 - r * 0.1
-			var key: String = "glow_amber" if KIT.hash01(r * 7 + c, 31) < 0.3 else "lamp_off"
+			var key: String = "glow_amber" if lit and KIT.hash01(r * 7 + c, 31) < 0.3 else "lamp_off"
 			KIT.block(p, "black", Vector3(x, y, zb + 0.003), Vector3(0.034, 0.034, 0.006))
 			KIT.cylinder(p, key, Vector3(x, y, zb + 0.009), 0.012, 0.006, 10, KIT.along_z())
 			KIT.block(p, "metal", Vector3(x, y - 0.036, zb + 0.006), Vector3(0.008, 0.016, 0.012))

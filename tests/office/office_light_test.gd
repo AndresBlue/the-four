@@ -14,6 +14,7 @@ const OB := preload("res://game/world/office/office_bounce.gd")
 const BL := preload("res://game/world/hotel/bounce_light.gd")
 const LIGHTING := preload("res://game/world/hotel/lighting.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
+const ACCENTS := preload("res://game/world/office/office_accents.gd")
 var checks: Array = []
 var failed := 0
 
@@ -237,7 +238,8 @@ func block_faces(hotel) -> void:
 ## The reception lift's two wall lamps, the reception's accents (U6).
 func block_lift(hotel) -> void:
 	var start := int(hotel.manifest.get("start", -1))
-	var entries: Array = hotel.accents.of_room(start)
+	# Only the wall lamps: area 4c's desk lamp on the counter is an accent too (no mesh).
+	var entries: Array = hotel.accents.of_room(start).filter(func(e: Dictionary): return e.mesh != null)
 	check("Dos apliques en la recepción", entries.size() == 2, str(entries.size()))
 	if entries.size() == 2:
 		var m0: MeshInstance3D = entries[0].mesh
@@ -254,7 +256,10 @@ func block_lift(hotel) -> void:
 		check("Su luz, en el registro de apliques", hotel.sconce_lights.has(light) and int(hotel.accents.by_sconce.get(int(entries[0].sconce), -1)) == start)
 		check("La luz, 22 cm sobre el aplique", absf(light.global_position.y - (m0.global_position.y + 0.22)) < 0.01)
 		check("Las dos luces, en las capas de su sala", hotel.kept_lamps.has(light.get_instance_id()) and hotel.kept_lamps.has((entries[1].light as Object).get_instance_id()))
-	check("Ningún otro sitio tiene acentos todavía", hotel.accents.rooms.keys() == [start], str(hotel.accents.rooms.keys()))
+	# Area 4c hangs lamps in other rooms too; what holds is the register's cap per room.
+	var most := 0
+	for room_id: int in hotel.accents.rooms: most = maxi(most, hotel.accents.of_room(room_id).size())
+	check("Ninguna sala pasa de su tope de acentos", most <= ACCENTS.MOST, str(most))
 	var beacon := {}
 	for entry: Dictionary in hotel.beacons:
 		if int(entry.room) == start: beacon = entry

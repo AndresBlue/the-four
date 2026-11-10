@@ -15,6 +15,8 @@ const FAMILIES := [
 	preload("res://game/world/office/pieces/power_equipment.gd"),
 	preload("res://game/world/office/pieces/air_equipment.gd"),
 	preload("res://game/world/office/pieces/room_equipment.gd"),
+	preload("res://game/world/office/pieces/stand_ins.gd"),
+	preload("res://game/world/office/pieces/desk_things.gd"),
 ]
 
 ## Every sample of every family, in that order: [name, mesh] pairs.

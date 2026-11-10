@@ -242,14 +242,21 @@ func faces() -> void:
 	level.player.torch.visible = false
 	level.player.camera.rotation.x = 0.0
 	level.player.sanity = 100.0
-	check("Se la ve tras el marco de una puerta a oscuras asomándose, y sobre una mampara y en una esquina del techo mirando", found.get("peek", "") == "peek" and found.get("partition", "") == "idle" and found.get("corner", "") == "idle", "%s de %s, mampara: %s" % [str(found), str(offered), str(stage)])
+	check("Se la ve tras el marco de una puerta a oscuras asomándose, y sobre una mampara y en una esquina del techo mirando", found.get("peek", "") == "peek" and found.get("partition", "") == "idle" and bool(stage.far) and found.get("corner", "") == "idle", "%s de %s, mampara: %s" % [str(found), str(offered), str(stage)])
 
 ## A partition staged in view: the listener 10.5 to 18 m back along its normal, it
 ## 35 degrees off the middle of the picture (in the band, and in the torch's 40).
-## {clip, posed, offered}: posed 0, no place on this floor; offered 0, the offer;
-## offered and no clip, a regression.
+## {clip, posed, offered, far}: posed 0, no place on this floor; offered 0, the
+## offer; offered and no clip, a regression; far, the face posed beyond its own
+## partition, on the side away from the listener.
 func staged_partition(sight) -> Dictionary:
-	var out := {"clip": "", "posed": 0, "offered": 0}
+	var out := {"clip": "", "posed": 0, "offered": 0, "far": false}
+	# Every partition's centre: a spot stands 0.12 off its own (lurker_hallucinations).
+	var centres: Array = []
+	for room in level.manifest.rooms:
+		if FLOOR.is_void(room): continue
+		for item in room.get("furniture", []):
+			if String(item.kind) == "partition": centres.append(FLOOR.position_of(room) + Vector3(float(item.at[0]), 0, float(item.at[1])))
 	for room in level.manifest.rooms:
 		if FLOOR.is_void(room): continue
 		for item in room.get("furniture", []):
@@ -274,6 +281,12 @@ func staged_partition(sight) -> Dictionary:
 								out.offered += 1
 								if sight.place_spot(spot, level.player.camera):
 									out.clip = String(sight.poser.animator.assigned_animation)
+									# Its own partition, the nearest centre in plan: the face beyond it.
+									var point: Vector3 = spot.point
+									var c: Vector3 = centres[0]
+									for other: Vector3 in centres:
+										if Vector2(other.x - point.x, other.z - point.z).length() < Vector2(c.x - point.x, c.z - point.z).length(): c = other
+									out.far = (point - c).dot(spot.up as Vector3) > 0.0
 									sight.kind = ""
 									return out
 								sight.kind = ""

@@ -1,14 +1,19 @@
 extends RefCounted
 ## The offices' corner pieces (room.props at room.sockets; spec_f1_geometry.md
-## 9.3), built from boxes and cylinders so they batch with their room. Each
-## stands in its footprint (palette.CORNER_SIZES) round the socket, its back
-## at local -Z, under FURNITURE_TOP, its big parts with a box collider. The
-## corner kinds that want an ingested model (desk, filing, chairs, armchair,
-## copier, reader, sorter, vending) are not built yet; the hotel's own kinds
-## (plant, bin, basin, cart) go to prop_factory. The free-standing furniture
-## (room.furniture, build_item()) is the pieces made in code (pieces/).
+## 9.3) and their free-standing furniture (room.furniture, build_item(),
+## spec_rediseno 5.2). A corner piece stands in its footprint
+## (palette.CORNER_SIZES) round the socket, its back at local -Z, under
+## FURNITURE_TOP, its big parts with a box collider; the hotel's own kinds (bin,
+## cart) go to prop_factory. The furniture is the pieces made in code (pieces/,
+## areas 4a and 4c); what is a download or its stand-in (chairs, plants, lamps,
+## machines) comes from office_models.gd (area 4c).
 const BACK := -0.7
-const HOTEL_KINDS := ["plant", "bin", "basin", "cart"]
+## A basin and its mirror against the washroom's wall (spec_rediseno 6.11):
+## the socket stands SOCKET_INSET (1.3) off the wall's centre line and the
+## tiles' face 0.1 off it (office_fittings.gd).
+const BASIN_Z := -0.973
+const MIRROR_Z := -1.183
+const HOTEL_KINDS := ["bin", "cart"]
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 ## The pieces made in code (area 4a) that build_item() places.
 const DESKS := preload("res://game/world/office/pieces/desks.gd")
@@ -19,6 +24,11 @@ const MOVABLES := preload("res://game/world/office/pieces/movables.gd")
 const FIXTURES := preload("res://game/world/office/pieces/fixtures.gd")
 const ROOM_EQUIPMENT := preload("res://game/world/office/pieces/room_equipment.gd")
 const KIT := preload("res://game/world/office/pieces/kit.gd")
+const WALL := preload("res://game/world/office/pieces/wall.gd")
+const STATIONERY := preload("res://game/world/office/pieces/stationery.gd")
+const STAND := preload("res://game/world/office/pieces/stand_ins.gd")
+## The downloads and their stand-ins (area 4c).
+const MODELS := preload("res://game/world/office/office_models.gd")
 
 ## Builds an office corner piece; false for a kind it leaves to prop_factory.
 static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
@@ -26,68 +36,112 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 	var seed_pos: Vector3 = node.position + Vector3(0, float(kind.length()), 0)
 	match kind:
 		"reception":
-			# A counter facing into the room, with a pad on its top.
-			solid(builder, node, Vector3(2.2, 0.9, 1.1))
-			builder.box(node, at(0.45, 1.1), Vector3(2.2, 0.9, 1.1), "enamel")
-			builder.box(node, at(0.92, 1.1), Vector3(2.24, 0.04, 1.14), "laminate")
-			builder.box(node, at(0.945, 1.1) + Vector3(0.4, 0, 0.1), Vector3(0.21, 0.01, 0.3), "linen")
+			# The counter when the recipe's did not fit, its light going out with the room.
+			piece(builder, node, DESKS.reception_counter(builder, Vector3(2.2, 1.1, 1.1)), at(0.0, 1.1))
 		"shelf":
-			shelving(builder, node, 2.0, 0.4, 2.1, seed_pos)
+			# Steel with boxes where things are kept (spec_rediseno 6.13, 6.18); oak elsewhere (6.5).
+			var t := int(builder.building_room.get("type", -1))
+			var pick: int = int(builder.vary(seed_pos, 6) * 3.0)
+			if t == OFFICE.STORE or t == OFFICE.DEPOT or t == OFFICE.ELECTRICAL or t == OFFICE.SECURITY:
+				piece(builder, node, STORAGE.archive_shelving(builder, Vector3(2.0, 2.1, 0.4), pick), at(0.0, 0.4))
+			else:
+				piece(builder, node, STORAGE.wood_shelving(builder, Vector3(1.6, 2.0, 0.4), pick), at(0.0, 0.4))
 		"coat_rack":
-			builder.box(node, at(0.9, 0.4), Vector3(0.4, 1.85, 0.4), "", true)
-			builder.cylinder(node, at(0.925, 0.4), 0.022, 1.85, "wood")
-			for k in 2: builder.box(node, at(0.02, 0.4), Vector3(0.5 if k == 0 else 0.04, 0.04, 0.04 if k == 0 else 0.5), "wood")
-			for k in 6:
-				var turn := TAU * k / 6.0
-				builder.box(node, at(1.7, 0.4) + Vector3(cos(turn) * 0.09, 0, sin(turn) * 0.09), Vector3(0.12, 0.02, 0.02), "wood", false, "box", Vector3(0, -turn, 0))
-			if builder.vary(seed_pos, 1) < 0.34: builder.box(node, at(1.3, 0.4) + Vector3(0.12, 0, 0), Vector3(0.12, 0.8, 0.45), "fabric")
+			# A rail of hooks on two posts: this corner turns any way (not in
+			# WALL_KINDS), so it cannot hang on a wall.
+			solid(builder, node, Vector3(1.2, 1.75, 0.4))
+			for x: float in [-0.585, 0.585]:
+				builder.box(node, at(0.875, 0.4) + Vector3(x, 0, 0), Vector3(0.03, 1.75, 0.03), "steel_olive")
+				builder.box(node, at(0.015, 0.4) + Vector3(x, 0, 0), Vector3(0.05, 0.03, 0.4), "steel_olive")
+			builder.place(node, WALL.coat_hook_rail(builder, Vector3(1.2, 0.12, 0.09)), Transform3D(Basis.IDENTITY, at(1.6, 0.4)))
+			if builder.vary(seed_pos, 1) < 0.34: builder.place(node, STAND.coat_hanging(builder, Vector3(0.5, 0.95, 0.14)), Transform3D(Basis.IDENTITY, at(0.75, 0.4) + Vector3(-0.25, 0, 0.1)))
 		"bench":
-			solid(builder, node, Vector3(1.5, 0.45, 0.45))
-			for k in 3: builder.box(node, at(0.43, 0.45) + Vector3(0, 0, -0.14 + k * 0.14), Vector3(1.5, 0.03, 0.1), "wood")
-			for x in [-0.65, 0.65]: builder.box(node, at(0.2, 0.45) + Vector3(x, 0, 0), Vector3(0.04, 0.4, 0.4), "steel_frame")
+			piece(builder, node, MOVABLES.slat_bench(builder, Vector3(1.5, 0.45, 0.4)), at(0.0, 0.4))
 		"sideboard":
-			solid(builder, node, Vector3(1.8, 0.8, 0.48))
-			builder.box(node, at(0.4, 0.48), Vector3(1.8, 0.8, 0.48), "veneer")
+			piece(builder, node, CABINETS.sideboard(builder, Vector3(1.8, 0.8, 0.48)), at(0.0, 0.48))
+			# The director's globe on it (spec_rediseno 6.7).
+			var t := int(builder.building_room.get("type", -1))
+			if t == OFFICE.EXEC_OFFICE: MODELS.put(builder, node, "globe", Transform3D(Basis(Vector3.UP, 0.4), at(0.8, 0.48) + Vector3(0.55, 0, 0)))
 		"table":
-			solid(builder, node, Vector3(1.6, 0.84, 0.9))
-			builder.box(node, at(0.82, 0.9), Vector3(1.6, 0.04, 0.9), "laminate")
-			for x in [-0.74, 0.74]:
-				for z in [-0.38, 0.38]: builder.box(node, at(0.4, 0.9) + Vector3(x, 0, z), Vector3(0.04, 0.8, 0.04), "steel_frame")
+			# Its top at 0.84, where the papers are left (document_placement.SURFACES).
+			piece(builder, node, DESKS.dining_table(builder, Vector3(1.6, 0.84, 0.9)), at(0.0, 0.9))
 		"board":
-			solid(builder, node, Vector3(1.5, 1.9, 0.4))
-			builder.box(node, at(1.3, 0.4), Vector3(1.5, 1.0, 0.02), "enamel")
-			builder.box(node, at(0.78, 0.4) + Vector3(0, 0, 0.04), Vector3(1.4, 0.03, 0.08), "metal")
-			for x in [-0.72, 0.72]: builder.box(node, at(0.95, 0.4) + Vector3(x, 0, 0), Vector3(0.04, 1.9, 0.04), "steel_frame")
+			piece(builder, node, MOVABLES.whiteboard_mobile(builder, Vector3(1.5, 1.9, 0.6)), at(0.0, 0.6))
 		"projector":
-			solid(builder, node, Vector3(0.6, 1.25, 0.45))
-			builder.box(node, at(0.375, 0.45), Vector3(0.6, 0.75, 0.45), "metal")
-			builder.box(node, at(0.88, 0.45), Vector3(0.42, 0.26, 0.38), "enamel")
-			builder.cylinder(node, at(1.08, 0.45) + Vector3(0.12, 0, 0), 0.015, 0.3, "metal")
-			builder.box(node, at(1.2, 0.45) + Vector3(0.12, 0, 0.05), Vector3(0.12, 0.08, 0.12), "enamel")
+			# On a two-shelf cart, as the printer of the secretary's (its top shelf at 0.71).
+			piece(builder, node, MOVABLES.cart(builder, Vector3(0.8, 0.9, 0.5), false), at(0.0, 0.5))
+			builder.place(node, MACHINES.overhead_projector(builder, Vector3(0.4, 0.8, 0.45)), Transform3D(Basis.IDENTITY, at(0.71, 0.5)))
 		"cooler":
-			solid(builder, node, Vector3(0.32, 1.45, 0.32))
-			builder.box(node, at(0.5, 0.32), Vector3(0.32, 1.0, 0.32), "enamel")
-			builder.cylinder(node, at(1.22, 0.32), 0.14, 0.45, "bottle")
+			solid(builder, node, Vector3(0.34, 1.45, 0.34))
+			MODELS.put(builder, node, "cooler", Transform3D(Basis.IDENTITY, at(0.0, 0.34)))
 		"fridge":
 			solid(builder, node, Vector3(0.6, 1.6, 0.65))
-			builder.box(node, at(0.8, 0.65), Vector3(0.6, 1.6, 0.65), "enamel")
-			builder.box(node, at(1.2, 0.65) + Vector3(0.24, 0, 0.34), Vector3(0.02, 0.4, 0.03), "metal")
+			MODELS.put(builder, node, "fridge", Transform3D(Basis.IDENTITY, at(0.0, 0.65)))
+		"desk":
+			# A steel typing table and its chair: the papers are left on it at 0.84
+			# (document_placement.SURFACES).
+			piece(builder, node, DESKS.desk_steel(builder, Vector3(1.5, 0.84, 0.9)), at(0.0, 0.9))
+			chair(builder, node, at(0.0, 0.9) + Vector3(0, 0, 0.73), -1.0, "office_chair")
+		"filing":
+			var t := int(builder.building_room.get("type", -1))
+			var key: String = OFFICE.FILING_FINISH.get(t, "steel_olive")
+			for x: float in [-0.26, 0.26]: piece(builder, node, CABINETS.filing_cabinet(builder, Vector3(0.47, 1.32, 0.62), 4, key), at(0.0, 0.62) + Vector3(x, 0, 0))
+		"chairs":
+			var t := int(builder.building_room.get("type", -1))
+			var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
+			for x: float in [-0.65, 0.0, 0.65]: chair(builder, node, at(0.0, 0.6) + Vector3(x, 0, 0), 1.0, seat)
+		"armchair":
+			# The director's corner (spec_rediseno 6.7): the leather sofa or the
+			# lounge chair with the low walnut table, and the floor lamp beside it.
+			if builder.vary(seed_pos, 50) < 0.6:
+				builder.box(node, at(0.4, 0.85) + Vector3(-0.24, 0, 0), Vector3(1.8, 0.8, 0.85), "", true)
+				MODELS.put(builder, node, "sofa", Transform3D(Basis.IDENTITY, at(0.0, 0.85) + Vector3(-0.24, 0, 0)))
+				piece(builder, node, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.42)), Vector3(-0.24, 0, 0.49))
+			else:
+				builder.box(node, at(0.45, 1.2) + Vector3(-0.45, 0, 0), Vector3(1.0, 0.9, 1.2), "", true)
+				MODELS.put(builder, node, "lounge_chair", Transform3D(Basis.IDENTITY, at(0.0, 1.2) + Vector3(-0.45, 0, 0)))
+				piece(builder, node, DESKS.low_table(builder, Vector3(0.9, 0.42, 0.42)), Vector3(0.6, 0, 0.35))
+			MODELS.lamp(builder, node, int(builder.building_room.get("id", -1)), "floor_lamp", Transform3D(Basis.IDENTITY, at(0.0, 0.45) + Vector3(0.9, 0, 0)))
+		"reader":
+			piece(builder, node, DESKS.consult_table(builder, Vector3(1.4, 0.74, 0.7)), at(0.0, 0.7))
+			microfiche(builder, node, at(0.74, 0.7) + Vector3(0, 0, -0.1))
+			chair(builder, node, at(0.0, 0.7) + Vector3(0, 0, 0.7), -1.0, "office_chair")
+		"sorter":
+			piece(builder, node, CABINETS.pigeonholes(builder, Vector3(1.8, 1.9, 0.4)), at(0.0, 0.4))
+		"copier":
+			# The copy room's copier when the recipe's own did not fit (4b).
+			piece(builder, node, MACHINES.copier(builder, Vector3(1.1, 1.05, 0.7)), at(0.0, 0.7))
+		"basin":
+			# Against the washroom's tiled panel, its mirror over it (6.11).
+			piece(builder, node, FIXTURES.basin(builder, Vector3(0.55, 0.92, 0.45)), Vector3(0, 0, BASIN_Z))
+			builder.place(node, WALL.mirror(builder, Vector3(0.6, 0.8, 0.03)), Transform3D(Basis.IDENTITY, Vector3(0, 1.1, MIRROR_Z)))
+		"vending":
+			vending(builder, node, at(0.0, 0.8), int(builder.building_room.get("id", -1)))
+		"plant":
+			# Centred on its socket, as the hotel's was (its CORNER_SIZES row).
+			builder.box(node, Vector3(0, 0.27, 0), Vector3(0.55, 0.54, 0.55), "", true)
+			var t := int(builder.building_room.get("type", -1))
+			var kind_of: String = "plant" if builder.vary(seed_pos, 5) < 0.5 else "plant_bare"
+			# The secretary's tall plant (6.7).
+			if t == OFFICE.SECRETARY: kind_of = "plant_tall"
+			MODELS.put(builder, node, kind_of, Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 3) * TAU), Vector3.ZERO), int(builder.vary(seed_pos, 4) * 3.0))
 		"cabinet":
-			solid(builder, node, Vector3(1.0, 2.0, 0.5))
-			builder.box(node, at(1.0, 0.5), Vector3(1.0, 2.0, 0.5), "steel_olive")
-			builder.box(node, at(1.0, 0.5) + Vector3(0, 0, 0.252), Vector3(0.006, 1.9, 0.004), "black")
+			# Two tall steel cabinets of drawers, side by side.
+			for x: float in [-0.25, 0.25]: piece(builder, node, CABINETS.filing_cabinet(builder, Vector3(0.49, 1.96, 0.5), 6, "steel_olive"), at(0.0, 0.5) + Vector3(x, 0, 0))
 		"gun_rack":
-			solid(builder, node, Vector3(1.0, 1.9, 0.45))
-			builder.box(node, at(0.95, 0.04), Vector3(1.0, 1.9, 0.02), "steel_olive")
-			for x in [-0.49, 0.49]: builder.box(node, at(0.95, 0.45) + Vector3(x, 0, 0), Vector3(0.02, 1.9, 0.45), "steel_olive")
-			for y in [0.01, 1.89]: builder.box(node, at(y, 0.45), Vector3(1.0, 0.02, 0.45), "steel_olive")
-			for k in 6: builder.box(node, at(0.35, 0.45) + Vector3(-0.4 + k * 0.16, 0, 0.1), Vector3(0.05, 0.05, 0.1), "black")
-			builder.cylinder(node, at(1.5, 0.45) + Vector3(0.3, 0, 0.15), 0.008, 0.6, "metal")
+			piece(builder, node, STORAGE.gun_rack(builder, Vector3(1.0, 1.9, 0.45)), at(0.0, 0.45))
 		"boxes":
 			solid(builder, node, Vector3(1.0, 1.2, 0.45))
 			for column in 3:
 				var tall: int = 2 + int(builder.vary(seed_pos, 10 + column) * 3)
-				for k in tall: builder.box(node, at(0.125 + k * 0.25, 0.39) + Vector3(-0.34 + column * 0.34, 0, 0), Vector3(0.33, 0.25, 0.39), "cardboard")
+				for k in tall: builder.place(node, STATIONERY.archive_box(builder, Vector3(0.33, 0.25, 0.39)), Transform3D(Basis.IDENTITY, at(k * 0.25, 0.39) + Vector3(-0.34 + column * 0.34, 0, 0)))
+			var t := int(builder.building_room.get("type", -1))
+			if t == OFFICE.STORE or t == OFFICE.DEPOT:
+				# A step ladder and a work light left by the boxes (6.18).
+				builder.box(node, at(0.7, 0.6) + Vector3(0.85, 0, 0), Vector3(0.5, 1.4, 0.6), "", true)
+				MODELS.put(builder, node, "step_ladder", Transform3D(Basis.IDENTITY, at(0.0, 0.6) + Vector3(0.85, 0, 0)))
+				builder.box(node, at(0.75, 0.4) + Vector3(-0.8, 0, 0), Vector3(0.4, 1.5, 0.4), "", true)
+				MODELS.put(builder, node, "work_light", Transform3D(Basis(Vector3.UP, 0.5), at(0.0, 0.4) + Vector3(-0.8, 0, 0)))
 	return true
 
 ## A point at height y, centred on a piece of depth d whose back is at BACK.
@@ -97,23 +151,6 @@ static func at(y: float, depth: float) -> Vector3:
 ## The collider of a piece of `size` standing at the back.
 static func solid(builder: Node3D, node: Node3D, size: Vector3) -> void:
 	builder.box(node, at(size.y * 0.5, size.z), size, "", true)
-
-## Slotted-angle shelving: bays a metre wide, six shelves to `height`,
-## archive boxes on 60 to 90 % of the places by vary.
-static func shelving(builder: Node3D, node: Node3D, width: float, depth: float, height: float, seed_pos: Vector3) -> void:
-	solid(builder, node, Vector3(width, height, depth))
-	var bays := maxi(1, roundi(width))
-	for k in bays + 1:
-		var x := -width * 0.5 + width * k / bays
-		for z in [-depth * 0.5 + 0.015, depth * 0.5 - 0.015]: builder.box(node, at(height * 0.5, depth) + Vector3(x, 0, z), Vector3(0.03, height, 0.03), "steel_olive")
-	var fill: float = 0.6 + builder.vary(seed_pos, 20) * 0.3
-	for s in 6:
-		var y := 0.05 + (height - 0.1) * s / 5.0
-		builder.box(node, at(y, depth), Vector3(width, 0.02, depth), "steel_olive")
-		if s == 5: continue
-		for k in int(width / 0.36):
-			if builder.vary(seed_pos + Vector3(k, s, 0), 21) > fill: continue
-			builder.box(node, at(y + 0.135, depth) + Vector3(-width * 0.5 + 0.2 + k * 0.36, 0, 0), Vector3(0.33, 0.25, minf(0.39, depth - 0.02)), "cardboard")
 
 ## A tramo of a row, by metres of row: its piece's sample.
 const ROW_TRAMO := 2.0
@@ -178,24 +215,28 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"copier":
 			piece(builder, holder, MACHINES.copier(builder, Vector3(1.1, 1.05, 0.7)), Vector3.ZERO)
 		"vending":
-			builder.box(holder, Vector3(0, 0.9, 0), Vector3(size.x, 1.8, size.y), "enamel", true)
-			builder.box(holder, Vector3(-0.1, 1.05, size.y * 0.5 + 0.005), Vector3(size.x * 0.6, 1.2, 0.01), "black")
+			vending(builder, holder, Vector3.ZERO, int(room.get("id", -1)))
 		"card_index":
 			piece(builder, holder, CABINETS.card_index(builder, Vector3(size.x, 1.2, size.y)), Vector3.ZERO)
 		"exec_desk":
-			chair(builder, holder, Vector3(0, 0, -0.8), 1.0)
+			chair(builder, holder, Vector3(0, 0, -0.8), 1.0, "exec_chair")
 			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(2.0, 0.76, 0.9)), Vector3.ZERO, true)
-			for x in [-0.5, 0.5]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0)
+			for x in [-0.5, 0.5]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0, "visitor_chair")
+			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis(Vector3.UP, PI), Vector3(-0.75, 0.76, 0.2)))
 		"secretary_desk":
 			piece(builder, holder, DESKS.desk_l_walnut(builder, Vector3(1.8, 0.75, 1.5)), Vector3(0, 0, -0.35))
-			chair(builder, holder, Vector3(0, 0, 0.75), -1.0)
+			chair(builder, holder, Vector3(0, 0, 0.75), -1.0, "office_chair")
+			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis.IDENTITY, Vector3(-0.7, 0.75, -0.95)))
 		"work_desk":
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
 			chair(builder, holder, Vector3(0, 0, 0.3), -1.0)
+			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_arm", Transform3D(Basis.IDENTITY, Vector3(-0.55, 0.75, -0.5)))
 		"waiting_row", "waiting_row_4":
 			# The chairs its length takes and the low table at its end (spec_rediseno 6.1, 6.8).
 			var seats: int = 4 if size.x >= 3.0 else (3 if size.x >= 2.5 else 2)
-			for k in seats: chair(builder, holder, Vector3(-size.x * 0.5 + 0.22 + 0.65 * k, 0, 0), 1.0)
+			var t := int(room.get("type", -1))
+			var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
+			for k in seats: chair(builder, holder, Vector3(-size.x * 0.5 + 0.22 + 0.65 * k, 0, 0), 1.0, seat)
 			piece(builder, holder, DESKS.low_table(builder, Vector3(0.6, 0.42, 0.5), "laminate_light"), Vector3(size.x * 0.5 - 0.33, 0, 0))
 		"filing":
 			var t := int(room.get("type", -1))
@@ -221,7 +262,8 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, DESKS.sorting_table(builder, Vector3(2.0, 1.02, 0.9)), Vector3.ZERO)
 		"reader_table":
 			piece(builder, holder, DESKS.consult_table(builder, Vector3(1.4, 0.74, 0.7)), Vector3(0, 0, -0.35))
-			chair(builder, holder, Vector3(0, 0, 0.3), -1.0)
+			chair(builder, holder, Vector3(0, 0, 0.3), -1.0, "office_chair")
+			microfiche(builder, holder, Vector3(0, 0.74, -0.45))
 		"work_table":
 			piece(builder, holder, DESKS.dining_table(builder, Vector3(2.4, 0.74, 1.2)), Vector3.ZERO)
 		"dining_set":
@@ -235,6 +277,9 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, STORAGE.kitchen_base(builder, Vector3(1.8, 1.2, 0.6), true), Vector3(-0.6, 0, 0))
 			piece(builder, holder, STORAGE.kitchen_base(builder, Vector3(1.2, 0.9, 0.6), false), Vector3(0.9, 0, 0))
 			piece(builder, holder, STORAGE.kitchen_wall(builder, Vector3(1.8, 0.7, 0.35)), Vector3(-0.6, 1.45, -0.125))
+			# The coffee maker and the old microwave on the base unit (6.10).
+			MODELS.put(builder, holder, "coffee_maker", Transform3D(Basis.IDENTITY, Vector3(0.62, 0.9, 0.05)))
+			MODELS.put(builder, holder, "microwave", Transform3D(Basis.IDENTITY, Vector3(1.18, 0.9, 0.0)))
 		"cubicles":
 			piece(builder, holder, FIXTURES.toilet_cubicles(builder, Vector3(2.7, 2.0, 1.5), 3), Vector3.ZERO)
 		"printer_cart":
@@ -251,15 +296,17 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			builder.box(holder, Vector3(0, 0.27, 0), Vector3(0.45, 0.54, 0.45), "", true)
 			fitted(builder, holder, String(PLANT_MODELS[int(builder.vary(seed_pos, 47) * 2.0)]), 0.55, 1.3, builder.vary(seed_pos, 48) * TAU)
 		"reception_counter_l":
-			chair(builder, holder, Vector3(0, 0, -0.75), 1.0)
+			chair(builder, holder, Vector3(0, 0, -0.75), 1.0, "office_chair")
 			piece(builder, holder, DESKS.reception_counter(builder, Vector3(3.6, 1.1, 1.5)), Vector3(0, 0, 0.35))
+			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_arm", Transform3D(Basis(Vector3.UP, PI), Vector3(0.8, 0.74, 0.55)))
 		"office_suite":
 			# Against the wall the sideboard, then the chair and the walnut desk that
 			# faces the room, two chairs before it (spec_proporcion D7).
 			piece(builder, holder, CABINETS.sideboard(builder, Vector3(1.8, 0.8, 0.48)), Vector3(0, 0, -1.11))
-			chair(builder, holder, Vector3(0, 0, -0.62), 1.0)
+			chair(builder, holder, Vector3(0, 0, -0.62), 1.0, "exec_chair")
 			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(1.6, 0.75, 0.8)), Vector3(0, 0, 0.1), true)
-			for x in [-0.45, 0.45]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0)
+			for x in [-0.45, 0.45]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0, "visitor_chair")
+			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis(Vector3.UP, PI), Vector3(-0.6, 0.75, 0.25)))
 		"meeting_table_s", "meeting_table_m", "meeting_table_l":
 			# Its local -Z to the room's middle, which stays free (spec_proporcion D6):
 			# chairs along its far side and one at each head, all in its footprint; the
@@ -268,12 +315,13 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			var table_z := -size.y * 0.5 + 0.6
 			piece(builder, holder, DESKS.meeting_table(builder, top), Vector3(0, 0, table_z))
 			var seats_along := int(top.x / 0.7)
-			for k in seats_along: chair(builder, holder, Vector3(-top.x * 0.5 + top.x * (float(k) + 0.5) / float(seats_along), 0, table_z + 0.86), -1.0)
-			for head: float in [-1.0, 1.0]: chair(builder, holder, Vector3(head * (top.x * 0.5 + 0.3), 0, table_z), 1.0)
+			# Leather armchairs, each facing the table, the heads too (spec_rediseno 6.9).
+			for k in seats_along: chair(builder, holder, Vector3(-top.x * 0.5 + top.x * (float(k) + 0.5) / float(seats_along), 0, table_z + 0.86), -1.0, "visitor_chair")
+			for head: float in [-1.0, 1.0]: chair(builder, holder, Vector3(head * (top.x * 0.5 + 0.3), 0, table_z), 1.0, "visitor_chair", -head * PI / 2)
 		"table_chair":
 			# A near-side chair of the boardroom's table (office_generator.lay_near_chairs()),
 			# as close to it as the far row, its back to the room's middle.
-			chair(builder, holder, Vector3(0, 0, 0.04), 1.0)
+			chair(builder, holder, Vector3(0, 0, 0.04), 1.0, "visitor_chair")
 		"locker_bank":
 			piece(builder, holder, ROOM_EQUIPMENT.locker_bank(builder, Vector3(2.7, 1.9, 0.45)), Vector3.ZERO)
 		"fan_unit":
@@ -310,7 +358,7 @@ static func station(builder: Node3D, holder: Node3D, at: Vector3, face: float, s
 		desk(builder, holder, at, face, seed_pos)
 		return
 	piece(builder, holder, DESKS.desk_l(builder, DESK_L), at + Vector3(0, 0, face * 0.275), face < 0.0)
-	chair(builder, holder, at + Vector3(-face * 0.1, 0, face * 0.55), -face)
+	chair(builder, holder, at + Vector3(-face * 0.1, 0, face * 0.55), -face, "office_chair")
 
 ## A piece made in code (pieces/, area 4a) at `at` in the holder, its front to
 ## +Z or, with `back`, to -Z: its colliders as solid boxes (the mesh's
@@ -363,10 +411,6 @@ static func plate_text(parent: Node3D, mesh: Mesh, at: Transform3D, words: Strin
 const DESK_MODEL := "res://assets/props/hotel/metal_office_desk.res"
 const DESK_FIT := Vector3(0.75, 0.96, 0.79)
 static var desk_mesh: Mesh = null
-## The chair's model, likewise.
-const CHAIR_MODEL := "res://assets/props/hotel/SchoolChair_01.res"
-const CHAIR_FIT := 0.8
-static var chair_mesh: Mesh = null
 
 ## A steel desk (top at 0.74) with its chair pulled up on the side `face`
 ## looks to (+Z for 1).
@@ -382,18 +426,30 @@ static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed
 		builder.box(holder, at + Vector3(0.5, 0.36, 0), Vector3(0.42, 0.72, 0.7), "steel_olive")
 		builder.box(holder, at + Vector3(-0.72, 0.36, 0), Vector3(0.04, 0.72, 0.7), "steel_olive")
 	if builder.vary(seed_pos, 41) < 0.5: builder.box(holder, at + Vector3(-0.3, 0.77, 0), Vector3(0.21, 0.02, 0.3), "linen")
-	chair(builder, holder, at + Vector3(0, 0, face * 0.55), -face)
+	chair(builder, holder, at + Vector3(0, 0, face * 0.55), -face, "office_chair")
 
-## A stacking chair facing `face` (+Z for 1): seat 0.45 high, back behind.
-static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float) -> void:
+## A chair of `kind` (office_models.gd: its model or its stand-in) facing
+## `face` (+Z for 1) and turned `yaw` more, the stand-in's seat box its
+## collider; noted, as drawn, for the dressing test (builder.dressing_log.chairs).
+static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float, kind := "stacking_chair", yaw := 0.0) -> void:
 	builder.box(holder, at + Vector3(0, 0.23, 0), Vector3(0.44, 0.46, 0.42), "", true)
-	if chair_mesh == null and ResourceLoader.exists(CHAIR_MODEL): chair_mesh = load(CHAIR_MODEL)
-	if chair_mesh != null:
-		# Poly Haven's stacking chair, 1.01 m tall as downloaded: at 0.8, a
-		# real one's height.
-		builder.place(holder, chair_mesh, Transform3D(Basis(Vector3.UP, 0.0 if face > 0.0 else PI).scaled(Vector3.ONE * CHAIR_FIT), at))
-		return
-	builder.box(holder, at + Vector3(0, 0.45, 0), Vector3(0.44, 0.03, 0.42), "steel_olive")
-	builder.box(holder, at + Vector3(0, 0.7, -face * 0.2), Vector3(0.42, 0.4, 0.03), "steel_olive")
-	for x in [-0.19, 0.19]:
-		for z in [-0.17, 0.17]: builder.box(holder, at + Vector3(x, 0.22, z), Vector3(0.025, 0.44, 0.025), "steel_frame")
+	var pose := Transform3D(Basis(Vector3.UP, (0.0 if face > 0.0 else PI) + yaw), at)
+	MODELS.put(builder, holder, kind, pose)
+	# By room and holder name: drop_empty() frees the emptied holders once the room is batched.
+	builder.dressing_log.chairs.append({"room": int(builder.building_room.get("id", -1)), "holder": String(holder.name), "at": pose.origin, "front": pose.basis.z, "kind": kind})
+
+## The break room's vending machine (spec_rediseno 6.10): its stand-in and
+## collider, its window lit while its room is (a glow_ box, which
+## office_geometry.lenses_of() puts out with the room) and a soft light on
+## the floor before it (an accent, office_accents.gd).
+static func vending(builder: Node3D, holder: Node3D, at: Vector3, room_id: int) -> void:
+	piece(builder, holder, MODELS.mesh_of(builder, "vending") as ArrayMesh, at)
+	KIT.material(builder, "glow_white")
+	builder.box(holder, at + Vector3(-0.1, 1.05, 0.3855), Vector3(0.5, 1.04, 0.001), "glow_white")
+	MODELS.light(builder, holder, room_id, "vending", Transform3D(Basis.IDENTITY, at))
+
+## A microfiche reader (6.5) on its table, its screen lit while its room is.
+static func microfiche(builder: Node3D, holder: Node3D, at: Vector3) -> void:
+	builder.place(holder, MODELS.mesh_of(builder, "microfiche"), Transform3D(Basis.IDENTITY, at))
+	KIT.material(builder, "glow_white")
+	builder.box(holder, at + Vector3(0, 0.39, 0.1795), Vector3(0.36, 0.23, 0.001), "glow_white")

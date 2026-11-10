@@ -445,11 +445,11 @@ const FURNITURE := {
 ## The boardroom's tables, the longest first (office_generator.lay_table()).
 const TABLE_KINDS := ["meeting_table_l", "meeting_table_m", "meeting_table_s"]
 ## The corner pieces' real footprints (spec_proporcion D3): [width, depth, back],
-## back the local z where the piece starts, at rotation 0 round its socket. What
-## office_props.build() draws, or prop_factory for the hotel's kinds (plant, bin,
-## basin and cart, centred on the socket; plant and basin till area 4c draws its own:
-## spec_4d_fisica); for the other kinds not drawn yet and those area 4c changes
-## (spec_proporcion D13), the piece it stands there. The boxes' row holds the ladder and the work light of the store and the depot.
+## back the local z where the piece starts, at rotation 0 round its socket: what
+## office_props.build() draws (area 4c; the plant centred on the socket, the
+## basin against its tiled wall), or prop_factory for the hotel's kinds (bin and
+## cart, centred). The boxes' row holds the ladder and the work light of the
+## store and the depot.
 const CORNER_SIZES := {
 	"reception": [2.24, 1.14, -0.7],
 	"shelf": [2.0, 0.4, -0.7],
@@ -466,7 +466,7 @@ const CORNER_SIZES := {
 	"boxes": [2.2, 0.6, -0.7],
 	"plant": [0.55, 0.55, -0.275],
 	"bin": [0.5, 0.5, -0.25],
-	"basin": [1.1, 0.75, -0.375],
+	"basin": [0.55, 0.45, -1.198],
 	"cart": [1.35, 0.75, -0.375],
 	"desk": [1.5, 1.4, -0.7],
 	"filing": [1.0, 0.62, -0.7],
@@ -554,6 +554,64 @@ const OPEN_LIT := 0.6
 ## (office_generator.suites()): the plain rooms of the third planta, and a
 ## director's office with a door to another.
 const SUITE_SWAP := [TOILETS, STORE, BREAK_ROOM, EXEC_OFFICE]
+
+## What hangs on a type's walls, in order (spec_rediseno 2 and 6, area 4c;
+## office_walls.gd): [piece, how many, its RULE_TEXTS for a "rule"]. The first
+## is tried on the room's feature wall first.
+const WALL_DRESSING := {
+	RECEPTION: [["map", 1, 0], ["picture", 1, 0], ["rule", 1, 0]],
+	OPEN_OFFICE: [["notice", 2, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 1], ["plan", 1, 0]],
+	CUBICLES: [["notice", 1, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 1], ["plan", 1, 0]],
+	OFFICE: [["picture_large", 1, 0], ["diplomas", 1, 0], ["notice", 1, 0]],
+	TOILETS: [["hooks", 1, 0], ["rule", 1, 4]],
+	BOARDROOM: [["screen", 1, 0], ["map", 1, 0], ["picture", 2, 0]],
+	COPY_ROOM: [["rule", 1, 5], ["rule", 1, 6], ["rule", 1, 7], ["notice", 1, 0]],
+	LOBBY: [["notice", 1, 0], ["directory", 1, 0], ["plan", 1, 0]],
+	REFUGE: [["notice", 1, 0], ["plan", 1, 0]],
+	MAIL: [["central", 1, 0], ["clock", 1, 0], ["notice", 1, 0]],
+	BREAK_ROOM: [["notice", 1, 0], ["clock", 1, 0], ["picture", 1, 0]],
+	EXEC_OFFICE: [["map_large", 1, 0], ["picture", 1, 0]],
+	WINDOW: [["notice", 1, 0]],
+	SECURITY: [["keys", 1, 0], ["notice", 1, 0], ["clock", 1, 0]],
+	SECRETARY: [["clock_square", 1, 0], ["picture", 2, 0], ["notice", 1, 0]],
+}
+## The rule signs (docs/OFICINAS.md 9, spec_rediseno 6), a row to a line.
+const RULE_TEXTS := ["MANTENGA ENCENDIDAS\nLAS LUCES\nDE LOS PASILLOS", "NO TRABAJE\nDE ESPALDAS\nA LA PUERTA", "NO SE QUEDE SOLO\nEN EL ARCHIVO", "LAS REJILLAS\nNO SE ABREN", "MANTENGA\nEL ORDEN\nY LA LIMPIEZA", "REPROGRAFÍA", "FOTOCOPIAS\nPLANOS\nMICROFICHAS\nENCUADERNACIÓN", "USO LECTOR DE MICROFICHAS\n1. ENCIENDA EL LECTOR\n2. COLOQUE LA FICHA\n3. AJUSTE EL FOCO\n4. APAGUE AL TERMINAR"]
+## The corridors' fittings (office_walls.gd): one at every CORRIDOR_PITCH
+## metres of the building's grid along each wall, in this order, each wall of
+## a cell starting at its own quarter of it.
+const CORRIDOR_RHYTHM := ["picture", "alarm", "clock", "extinguisher", "picture", "socket", "plan", "hose", "picture", "fountain", "rule", "thermostat"]
+const CORRIDOR_PITCH := 3.0
+## How tall each corner piece (RECIPES) stands, for what hangs on the wall
+## behind it (office_walls.gd); 2.2 for any not here (the basin's mirror too).
+## With what stands on or by it: the sideboard with the director's globe, the
+## boxes with the work light, the reader with its microfiche reader; the plant
+## is the secretary's tall one.
+const CORNER_HEIGHT := {"reception": 1.1, "bench": 0.45, "sideboard": 1.3, "table": 0.84, "desk": 0.95, "chairs": 0.95, "armchair": 1.6, "bin": 0.64, "boxes": 1.5, "filing": 1.32, "cooler": 1.45, "fridge": 1.6, "projector": 1.55, "coat_rack": 1.85, "plant": 1.85, "reader": 1.3, "cart": 1.16, "copier": 1.05}
+## Either side of a floor system's spot on a wall, nothing else hangs
+## (office_walls.gd, LAYOUT.fixtures()): the electrical board with its supply
+## box and memo, the security post's desk, the air handler; 0.9 elsewhere.
+const FIXTURE_HALF := {ELECTRICAL: 2.2, SECURITY: 1.1, AIR_PLANT: 1.7}
+## The chairs of a type's waiting row and of its corner "chairs"
+## (office_props.gd, office_models.gd); the stacking chair elsewhere.
+const WAITING_CHAIR := {RECEPTION: "waiting_chair", WINDOW: "waiting_chair", SECRETARY: "visitor_chair"}
+
+## The floor as it is seen (office_geometry.floor_surface()): Dirección's
+## carpet shows polished vinyl round its rug (rug_of()); how it sounds is
+## floor_finish()'s still (hard_floor()).
+static func floor_look(room: Dictionary) -> String:
+	var finish := floor_finish(room)
+	return "vinyl" if finish == "carpet_exec" else finish
+
+## The rug of a room (office_fittings.gd): "persian" in the director's and the
+## secretary's offices of wing 2, "plain" in its boardroom, "mat" inside the
+## reception's door; "" none.
+static func rug_of(room: Dictionary) -> String:
+	var room_type := int(room.type)
+	if floor_finish(room) == "carpet_exec": return "plain" if room_type == BOARDROOM else "persian"
+	if room_type == RECEPTION: return "mat"
+	return ""
+
 ## A corridor's floor furniture (office_recipes.lay_halls()): in one this wide or
 ## more, a piece no deeper than HALL_DEPTH every HALL_STEP metres along a wall,
 ## leaving HALL_PASS to walk and HALL_SIGN_CLEAR each side of where the zone sign

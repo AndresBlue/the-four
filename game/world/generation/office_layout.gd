@@ -12,7 +12,10 @@ const SWEEP_CLEAR := 0.45      # capsule 0.32 plus a margin
 const DOOR_BAND := 1.5         # out from a doorway's wall (the leaf sweeps 1.2)
 const DOOR_SIDE := 0.3         # past each jamb along the wall
 const FIXTURE_CLEAR := Vector2(1.2, 1.2)
-const LOCKER := Vector2(1.3, 0.7)
+## A locker as the placement keeps it clear, from its wall's face: the
+## wardrobe's width with a margin (hiding_place.WIDTH 1.25) and out to where
+## its doors are (LOCKER_OUT, 1.1; spec_4c).
+const LOCKER := Vector2(1.3, 1.1)
 ## How far out from its wall's face a locker stands: its spot is 0.8 off the
 ## wall's line (map_generator.place_hides()) and hiding_place.DEPTH 0.78 deep about it.
 const LOCKER_OUT := 1.1

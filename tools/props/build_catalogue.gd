@@ -44,6 +44,12 @@ const PARTS := {
 	# The pneumatic tubes: a straight metre of steel pipe, stretched along
 	# each run of the tube tree.
 	"modular_pipes": {"straight": "^pipe_100cm_metal$"},
+	# The offices' plants that come several to a download (area 4c): each
+	# baked on its own, as <slug>_<letter>.res (a pachira's trunk and leaves
+	# together).
+	"pachira_aquatica_01": {"a": "_a$", "b": "_b$", "c": "_c$", "d": "_d$"},
+	"calathea_orbifolia_01": {"a": "_a$", "b": "_b$", "c": "_c$"},
+	"anthurium_botany_01": {"a": "_a$", "b": "_b$", "c": "_c$"},
 }
 ## Clocks, whose hands turn in the game (hotel_geometry.gd, tell_time): each
 ## hand is baked apart, as <id>_<hand>.res -- pointing at twelve, turning

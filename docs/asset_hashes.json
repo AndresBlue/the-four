@@ -314,5 +314,225 @@
   "assets/audio/sfx/lurker/cue_short_2.wav": {
     "bytes": 69722,
     "sha256": "95c0469c274822df82e60fc4a8dc28b43af480e73fbe489802f8498164586185"
+  },
+  "assets/props/office/anthurium_botany_01/anthurium_botany_01.tres": {
+    "bytes": 696,
+    "sha256": "15f8ec242e33655b7f5eb6bb06e14f814524e2d7eeabfe3828c4fab73f245f69"
+  },
+  "assets/props/office/anthurium_botany_01/anthurium_botany_01_arm_1k.jpg": {
+    "bytes": 165028,
+    "sha256": "0ce7f6563f6c6e9c00b63e5c6ef93b957a198325c852fb8693a1a13d44c511c2"
+  },
+  "assets/props/office/anthurium_botany_01/anthurium_botany_01_diff_1k.jpg": {
+    "bytes": 143757,
+    "sha256": "c88f1e134bea0cc6b21644db1f99c0fa5904334d96bfc2e98954c8ee25c66a6b"
+  },
+  "assets/props/office/anthurium_botany_01/anthurium_botany_01_nor_gl_1k.jpg": {
+    "bytes": 155862,
+    "sha256": "c7bb0a3fdae2cfe8579fc1873a2a4311aa4100e0ca370a79ac494469b24f21d7"
+  },
+  "assets/props/office/anthurium_botany_01_a.res": {
+    "bytes": 145041,
+    "sha256": "8303624ce2adabbcfb95f3d5131866eed01acb4fa73a96b1b03fe6ab5f32e7b4"
+  },
+  "assets/props/office/anthurium_botany_01_b.res": {
+    "bytes": 141725,
+    "sha256": "1da79b3d9c90d7af0d58250ca363fcc3127c03ee307cd2b19fadeaa856c0604d"
+  },
+  "assets/props/office/anthurium_botany_01_c.res": {
+    "bytes": 82385,
+    "sha256": "3c40b4c61b1b63898950b28987d48654c31129d238b0c25fa69b6b49cc8d4e0b"
+  },
+  "assets/props/office/calathea_orbifolia_01/calathea_orbifolia_01.tres": {
+    "bytes": 710,
+    "sha256": "e0fe6841cad474d68ca31487e66df82c012b4c082cf8285b53014df005ee52fa"
+  },
+  "assets/props/office/calathea_orbifolia_01/calathea_orbifolia_01_arm_1k.jpg": {
+    "bytes": 124350,
+    "sha256": "04c89b283b7858dd9b61fdd6884d4b99a790a3a0e11b146e6701e2cb8ddf1abc"
+  },
+  "assets/props/office/calathea_orbifolia_01/calathea_orbifolia_01_diff_1k.jpg": {
+    "bytes": 158711,
+    "sha256": "bbd394f4be30765b0caf01bbcf46a7f0e878deda74764e31c94db5432e27c013"
+  },
+  "assets/props/office/calathea_orbifolia_01/calathea_orbifolia_01_nor_gl_1k.jpg": {
+    "bytes": 190214,
+    "sha256": "7716c8a2fb88b58199f611152027b7e2b1ef1fd81381e33f632ba5f5d2e60410"
+  },
+  "assets/props/office/calathea_orbifolia_01_a.res": {
+    "bytes": 111633,
+    "sha256": "67dbebfac360480b14f55fb21196c305f65539993e145103de8d69587893e33d"
+  },
+  "assets/props/office/calathea_orbifolia_01_b.res": {
+    "bytes": 64897,
+    "sha256": "45e48fd7ff9201fdad85954f942c62193f647e4cbf08cc185b17ddac485c3a0d"
+  },
+  "assets/props/office/calathea_orbifolia_01_c.res": {
+    "bytes": 66861,
+    "sha256": "482707777d11dfad9d5ed8f48e5804e9e53017afe4483493d007007f345ce5a2"
+  },
+  "assets/props/office/fichero_vintage_wooden_drawer_01.res": {
+    "bytes": 194219,
+    "sha256": "cc9fc869411c8b228e4b17f51a5648f628dcbb451910f0ef7fb8f042e6415e6b"
+  },
+  "assets/props/office/fichero_vintage_wooden_drawer_01/vintage_wooden_drawer_01.tres": {
+    "bytes": 708,
+    "sha256": "c91dbb0cd107cbc97e64713c9d9aa73561021e2141778c5fbce51c2e56434ba8"
+  },
+  "assets/props/office/fichero_vintage_wooden_drawer_01/vintage_wooden_drawer_01_arm_2k.jpg": {
+    "bytes": 250287,
+    "sha256": "093bcd04c386a77e739125857007ff2fb968c58af7c21fd645a93d94b90d4f3f"
+  },
+  "assets/props/office/fichero_vintage_wooden_drawer_01/vintage_wooden_drawer_01_diff_2k.jpg": {
+    "bytes": 255957,
+    "sha256": "033966d954f27a3b417befd4efc8f8f8beb9d097923e7116e86021e19ebb1653"
+  },
+  "assets/props/office/fichero_vintage_wooden_drawer_01/vintage_wooden_drawer_01_nor_gl_2k.jpg": {
+    "bytes": 190605,
+    "sha256": "9786767180fdc243fe2fd100c9ce4904e5b6037eaa9610d20aefba6115761498"
+  },
+  "assets/props/office/mid_century_lounge_chair.res": {
+    "bytes": 190575,
+    "sha256": "522ab530b1d647adc4e9a22ae10aafe95904498b6bfded0cd78d990bc48b533d"
+  },
+  "assets/props/office/mid_century_lounge_chair/mid_century_lounge_chair.tres": {
+    "bytes": 684,
+    "sha256": "edcb3b1f76a255c06a1151548b6f8ca1bd9fcf3a4564333ce906a87bd77a343a"
+  },
+  "assets/props/office/mid_century_lounge_chair/mid_century_lounge_chair_arm_1k.jpg": {
+    "bytes": 204254,
+    "sha256": "ebce152f0b260ac4de3b9457ca6a7765123239b8c00e757268176f139fc10924"
+  },
+  "assets/props/office/mid_century_lounge_chair/mid_century_lounge_chair_diff_1k.jpg": {
+    "bytes": 219808,
+    "sha256": "eef5e419ed425f010c6e942dfdf381c1fdf8b1e1ff36a9beedaac8f2780b62c5"
+  },
+  "assets/props/office/mid_century_lounge_chair/mid_century_lounge_chair_nor_gl_1k.jpg": {
+    "bytes": 211769,
+    "sha256": "2a32e0b870950c81afea6dba62846ba9feab65ecb495122e395f2e8989cda144"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_bark.tres": {
+    "bytes": 669,
+    "sha256": "bbc4c8afa7cf3c6442f189ff808734537105c2eb27cf8ba368a979883e2c607f"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_bark_arm_1k.jpg": {
+    "bytes": 205054,
+    "sha256": "710fab1f45f1d6b13a5a2647e01d11394b24f94ea1083fb707e186af97c07489"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_bark_diff_1k.jpg": {
+    "bytes": 211219,
+    "sha256": "6b1275cc345a99160f75cf08c3cec0fe6a02fff870a04fa7d689a6e34fa6569d"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_bark_nor_gl_1k.jpg": {
+    "bytes": 253837,
+    "sha256": "7628395934cbb231fc9621dae8e978489508bc6eed24ad20eba0b620b4ac9569"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_leaves.tres": {
+    "bytes": 677,
+    "sha256": "549e86da722da74b31c1cc2c6e12f3a79a2bec8c16edd87fb11b9f8718b5143c"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_leaves_arm_1k.jpg": {
+    "bytes": 106817,
+    "sha256": "4bc0f5169f883d1ff74f109a661a371c0b2e751fddc013770451fd7eb1482455"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_leaves_diff_1k.jpg": {
+    "bytes": 109270,
+    "sha256": "3a79562652b9057b5e548a22b7bca4adb6be9b90a767d74cb3e0fa5fd050cb61"
+  },
+  "assets/props/office/pachira_aquatica_01/pachira_aquatica_01_leaves_nor_gl_1k.jpg": {
+    "bytes": 161448,
+    "sha256": "eee1ec56fbbbb5f22107a83810a68086cbf6cf7bbf3f6cc34a627c43a991ae1c"
+  },
+  "assets/props/office/pachira_aquatica_01_a.res": {
+    "bytes": 405450,
+    "sha256": "0132a16923083304bbd87f67ac7c3dc0f01276578e377672d7eda3194df665ee"
+  },
+  "assets/props/office/pachira_aquatica_01_b.res": {
+    "bytes": 96842,
+    "sha256": "d0f757330fc392a702368291d93ae9ec7ef2a2af3b3358d68a18da2c0d63a1a0"
+  },
+  "assets/props/office/pachira_aquatica_01_c.res": {
+    "bytes": 391374,
+    "sha256": "f262ea876426a67eaa485182cf0bb1f1e27cd13f0324dac56c112e7f46f21717"
+  },
+  "assets/props/office/pachira_aquatica_01_d.res": {
+    "bytes": 527890,
+    "sha256": "b21940c50fc5afb16184335d10121bf72079960604084f1c370d012fcd39614b"
+  },
+  "assets/props/office/potted_plant_01.res": {
+    "bytes": 731074,
+    "sha256": "4388c203f2daa863301a2504232c54cd18e42a133f1edd1a4c816961a63b87b6"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_leaves.tres": {
+    "bytes": 698,
+    "sha256": "0a4f64d429376924b799ae75e75d993530491fba04a0ac122ac83d6eba9b26ee"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_leaves_diff_1k.jpg": {
+    "bytes": 146959,
+    "sha256": "1d634350f0aee8551173c81fc3095859c31c4ccf06ad30eee5212f13a742f479"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_leaves_nor_gl_1k.jpg": {
+    "bytes": 207946,
+    "sha256": "3e87e34a1deb891b3a640a5f3e7b7515c1e2188d6f3cea06c6ce254be4538066"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_leaves_rough_1k.jpg": {
+    "bytes": 115607,
+    "sha256": "0864f8a36a38330b6c009b46cbf9efb75a48163e66a97524f350231673b109fc"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_pot.tres": {
+    "bytes": 639,
+    "sha256": "2507c3c44be1f3b0b8a69ef602bde1fa00a0e8b37720dfd84ab327eaf436a5cb"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_pot_diff_1k.jpg": {
+    "bytes": 246249,
+    "sha256": "6f886c54a3195dc16b144c283a1a833088328523bd33f0d51f78ffdbc5924ddc"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_pot_nor_gl_1k.jpg": {
+    "bytes": 232764,
+    "sha256": "b864928d9a4b0a32b2b02a3d4216fb6da236c0e083fa8972b2f338a871f3695b"
+  },
+  "assets/props/office/potted_plant_01/potted_plant_01_pot_rough_1k.jpg": {
+    "bytes": 214272,
+    "sha256": "039d7c6852fb895aa0811b2b9841f60f39899bfb1b40c0fc316ff55e1b221ec4"
+  },
+  "assets/props/office/skull/skull.obj": {
+    "bytes": 325779,
+    "sha256": "eac856c00f0117f3b8ca937dca1fab5bbc8bbfae1a6c239d02c8aa3d843f40cb"
+  },
+  "assets/props/office/skull/skull_albedo.png": {
+    "bytes": 171407,
+    "sha256": "727beb001ed3c8a91114abeeee594beb6bac34ffad624434fe1eba830edc0904"
+  },
+  "assets/props/office/skull/skull_normal.png": {
+    "bytes": 250690,
+    "sha256": "59900dbf0b7165211721361740cee51c836e9fae67f3a8b4d358be3e1e3feb5b"
+  },
+  "assets/props/office/skull/skull_rough.png": {
+    "bytes": 21484,
+    "sha256": "5220ec01af223bf21028ec279b0eb7842da1e054d1915337685ef750528d38df"
+  },
+  "assets/props/office/sofa_02.res": {
+    "bytes": 83779,
+    "sha256": "ba8536f2aec272f9ed05c2f487a2a1c696adc6db231f150b7941f3b3c685a387"
+  },
+  "assets/props/office/sofa_02/sofa_02.tres": {
+    "bytes": 565,
+    "sha256": "4a81e99f1c8d48f0e171d497a7b617bdbe31207548431dbcfb20e85ea6c3d2d7"
+  },
+  "assets/props/office/sofa_02/sofa_02_arm_1k.jpg": {
+    "bytes": 140168,
+    "sha256": "a60b49658caf143fbedde6681e5e6604b61054735f415ee91deb5715b4b2ad69"
+  },
+  "assets/props/office/sofa_02/sofa_02_diff_1k.jpg": {
+    "bytes": 102339,
+    "sha256": "c35f7b007e8fc710640c119f55af4943e855ec351a2c6c5ae77efe157cc1fd54"
+  },
+  "assets/props/office/sofa_02/sofa_02_nor_gl_1k.jpg": {
+    "bytes": 162776,
+    "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
+  },
+  "assets/props/office/sources.json": {
+    "bytes": 559,
+    "sha256": "03651a0edb4ca0e9cf71fe5d07a0a9ae3c3d37ad6e0f39d13a6d2bd5ce89c6a0"
   }
 }

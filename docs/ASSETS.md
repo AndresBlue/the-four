@@ -258,7 +258,13 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 
 | Modelo | Id | Autoría | Fuente | Licencia |
 |---|---|---|---|---|
+| [planta de hoja ancha y brillante, tipo anthurium o espatifilo (sin maceta)](https://polyhaven.com/a/anthurium_botany_01) | `anthurium_botany_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
+| [calathea, planta de interior sin maceta](https://polyhaven.com/a/calathea_orbifolia_01) | `calathea_orbifolia_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [archivador de madera de 6 cajones](https://polyhaven.com/a/vintage_wooden_drawer_01) | `fichero_vintage_wooden_drawer_01` | James Ray Cock | Poly Haven | CC0 1.0 |
+| [sillón de dirección de cuero marrón y madera curvada, base giratoria](https://polyhaven.com/a/mid_century_lounge_chair) | `mid_century_lounge_chair` | Kuutti Siitonen | Poly Haven | CC0 1.0 |
+| [pachira, planta de interior (cuatro ejemplares sin maceta)](https://polyhaven.com/a/pachira_aquatica_01) | `pachira_aquatica_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
+| [planta de interior en maceta de terracota](https://polyhaven.com/a/potted_plant_01) | `potted_plant_01` | Rico Cilliers | Poly Haven | CC0 1.0 |
+| [sofá de cuero capitoné con marco de madera tallada](https://polyhaven.com/a/sofa_02) | `sofa_02` | Kirill Sannikov | Poly Haven | CC0 1.0 |
 <!-- /OFFICE_MODELS -->
 
 <!-- OFFICE_SCANS: generado por tools/textures/ingest_pbr.py --set=office, no editar a mano -->

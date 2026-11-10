@@ -1,3 +1,9 @@
 {
- "fichero_vintage_wooden_drawer_01": "res://source_assets/oficinas/muebles_a/fichero_vintage_wooden_drawer_01"
+ "anthurium_botany_01": "res://source_assets/props/anthurium_botany_01/_gltf",
+ "calathea_orbifolia_01": "res://source_assets/props/calathea_orbifolia_01/_gltf",
+ "fichero_vintage_wooden_drawer_01": "res://source_assets/oficinas/muebles_a/fichero_vintage_wooden_drawer_01",
+ "mid_century_lounge_chair": "res://source_assets/props/mid_century_lounge_chair",
+ "pachira_aquatica_01": "res://source_assets/props/pachira_aquatica_01/_gltf",
+ "potted_plant_01": "res://source_assets/props/potted_plant_01/_gltf",
+ "sofa_02": "res://source_assets/props/sofa_02"
 }

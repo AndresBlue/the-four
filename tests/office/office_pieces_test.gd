@@ -19,10 +19,11 @@ const STATIONERY := preload("res://game/world/office/pieces/stationery.gd")
 const EQ_MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
 const EQ_POWER := preload("res://game/world/office/pieces/power_equipment.gd")
 const EQ_DESKS := preload("res://game/world/office/pieces/desks.gd")
-## The hotel's corner pieces the offices still take from prop_factory.
-const PROPS := preload("res://game/world/office/office_props.gd")
-## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5, area 4d: 2).
-const PIECES := 90
+## The corner pieces whose colliders fill their reserve (spec_4d_fisica F1): the
+## hotel's kinds (prop_factory) and the offices' plant and basin.
+const EXACT_CORNERS := ["plant", "bin", "basin", "cart"]
+## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5, area 4d: 2, area 4c: 24 and 10).
+const PIECES := 124
 ## The pieces' own materials (kit.gd, area 4a U1).
 const OWN := ["paper", "laminate_light", "plastic_beige", "steel_mint", "steel_grey", "steel_dark", "cloth_red", "cloth_green", "cloth_navy"]
 ## Woods mapped per batched box (no object_space): wrong on a baked mesh.
@@ -36,7 +37,7 @@ const FILL := 0.75
 ## The pieces whose one box would fill an open corner: two colliders instead.
 const TWO_BOXES := ["desk_l", "desk_l_walnut", "reception_counter"]
 ## What lies on something or flat on a wall: no StaticBody ("solid" false).
-const NOT_SOLID := ["rug_carpet_exec", "rug_black", "curtain", "blind", "keyboard", "calculator", "crt_plastic_beige", "crt_black", "dot_matrix_printer", "paper_stack", "folders", "tray", "tray_wire", "register_book", "books", "binders", "sign_plate", "picture_walnut_object", "picture_black", "clock_square", "mirror", "directory_board", "notice_board", "key_cabinet", "coat_hook_rail", "roll_screen"]
+const NOT_SOLID := ["rug_carpet_exec", "rug_black", "curtain", "blind", "keyboard", "calculator", "crt_plastic_beige", "crt_black", "dot_matrix_printer", "paper_stack", "folders", "tray", "tray_wire", "register_book", "books", "binders", "sign_plate", "picture_walnut_object", "picture_black", "clock_square", "mirror", "directory_board", "notice_board", "key_cabinet", "coat_hook_rail", "roll_screen", "phone", "phone_off", "mug", "ashtray", "pen_cup", "paper_scatter", "cable_run", "rug_persian"]
 ## The pieces that leave their light to the room ("light_strip").
 const STRIPS := ["reception_counter", "kitchen_wall"]
 ## How far a text plate's centre stands off its face, at least and at most.
@@ -73,6 +74,11 @@ func run() -> void:
 	check_piece(builder, "network_map", EQ_MAIL.network_map(builder, Vector3(0.42, 0.62, 0.025)))
 	for high: float in [0.25, 0.54]: check_piece(builder, "board_conduits", EQ_POWER.board_conduits(builder, Vector3(2.6, high, EQ_POWER.CONDUITS_DEPTH)))
 	for wide: float in [1.2, 1.8]: check_piece(builder, "desk_steel", EQ_DESKS.desk_steel(builder, Vector3(wide, 0.755, 0.45)))
+	# The mail room's central for show (area 4c): its lamps all out.
+	var dark_central: ArrayMesh = EQ_MAIL.mail_central(builder, EQ_MAIL.CENTRAL, false)
+	check_piece(builder, "mail_central", dark_central)
+	var glowing: Array = range(dark_central.get_surface_count()).filter(func(s: int) -> bool: return dark_central.surface_get_name(s).begins_with("glow_"))
+	check("La central de adorno no lleva ninguna lámpara encendida", glowing.is_empty() and not is_same(dark_central, EQ_MAIL.mail_central(builder, EQ_MAIL.CENTRAL)), str(glowing))
 	var again: Array = INDEX.samples(builder)
 	var same: bool = again.size() == first.size()
 	for i in mini(again.size(), first.size()):
@@ -234,12 +240,13 @@ func check_glow_strip(builder) -> void:
 	builder.room_nodes.clear()
 	room.free()
 
-## The corner pieces prop_factory draws for the offices (office_props.HOTEL_KINDS):
-## their colliders fill the footprint palette.CORNER_SIZES reserves round the
-## socket, no more and no less, or the generator keeps the wrong floor clear
-## (spec_4d_fisica: the basins and plants that cut the capsule's sweeps).
+## Every corner piece office_props.build() or prop_factory draws for the
+## offices keeps its colliders inside the footprint palette.CORNER_SIZES
+## reserves round the socket, or the generator keeps the wrong floor clear
+## (spec_4d_fisica: what the capsule sweeps, the placement reserves); the
+## EXACT_CORNERS fill it, no more and no less.
 func check_corner_reserves(builder) -> void:
-	for kind: String in PROPS.HOTEL_KINDS:
+	for kind: String in OFFICE.CORNER_SIZES:
 		var node := Node3D.new()
 		builder.build_prop(node, kind)
 		var drawn := Rect2()
@@ -255,6 +262,9 @@ func check_corner_reserves(builder) -> void:
 				drawn = drawn.merge(r) if found else r
 				found = true
 		var kept: Rect2 = OFFICE.corner_rect(kind, [0.0, 0.0], 0)
-		var same: bool = found and kept.grow(0.005).encloses(drawn) and drawn.grow(0.005).encloses(kept)
-		check("La esquina %s reserva lo que dibuja prop_factory" % kind, same, "%s frente a %s" % [str(drawn), str(kept)])
+		if kind in EXACT_CORNERS:
+			var same: bool = found and kept.grow(0.005).encloses(drawn) and drawn.grow(0.005).encloses(kept)
+			check("La esquina %s reserva lo que dibuja" % kind, same, "%s frente a %s" % [str(drawn), str(kept)])
+		else:
+			check("La esquina %s no se sale de su reserva" % kind, not found or kept.grow(0.005).encloses(drawn), "%s frente a %s" % [str(drawn), str(kept)])
 		node.free()

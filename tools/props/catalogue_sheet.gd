@@ -4,6 +4,8 @@ extends SceneTree
 ## its size: evidence/catalogue_sheet.png. Checks that fronts face +Z and that
 ## sizes are real. Needs a window.
 ##   godot --path . --script res://tools/props/catalogue_sheet.gd
+##   godot --path . --script res://tools/props/catalogue_sheet.gd -- --target=res://assets/props/office/
+## (the offices' models, in evidence/catalogue_sheet_office.png).
 const TARGET := "res://assets/props/hotel/"
 const CELL := 256
 const COLUMNS := 8
@@ -11,8 +13,11 @@ const COLUMNS := 8
 func _initialize() -> void: run.call_deferred()
 
 func run() -> void:
+	var target := TARGET
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--target="): target = argument.trim_prefix("--target=").trim_suffix("/") + "/"
 	var names: Array = []
-	for file in DirAccess.get_files_at(TARGET):
+	for file in DirAccess.get_files_at(target):
 		if file.ends_with(".res"): names.append(file.get_basename())
 	names.sort()
 	var viewport := SubViewport.new()
@@ -39,7 +44,7 @@ func run() -> void:
 	var rows := ceili(names.size() / float(COLUMNS))
 	var sheet := Image.create(COLUMNS * CELL, rows * CELL, false, Image.FORMAT_RGB8)
 	for k in names.size():
-		var mesh: Mesh = load(TARGET + names[k] + ".res")
+		var mesh: Mesh = load(target + names[k] + ".res")
 		holder.mesh = mesh
 		var box := mesh.get_aabb()
 		var radius := box.size.length() * 0.5
@@ -52,5 +57,5 @@ func run() -> void:
 		image.convert(Image.FORMAT_RGB8)
 		sheet.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i((k % COLUMNS) * CELL, (k / COLUMNS) * CELL))
 		print("SHEET %d %s (%.2f x %.2f x %.2f)" % [k, names[k], box.size.x, box.size.y, box.size.z])
-	sheet.save_png("res://evidence/catalogue_sheet.png")
+	sheet.save_png("res://evidence/catalogue_sheet.png" if target == TARGET else "res://evidence/catalogue_sheet_office.png")
 	quit()
