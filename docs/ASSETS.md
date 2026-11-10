@@ -55,7 +55,7 @@ De los personajes se versionan el modelo y las imágenes que su importación ext
 | `vhs_tape` | VHS | Terizmeh | CC Attribution 4.0 | [Sketchfab](https://sketchfab.com/3d-models/vhs-c11a8596c3314677a8b9321e141de275) |
 | `key` | Key Chain | Inside Out Art (@ranajitdas) | CC Attribution | [Sketchfab](https://sketchfab.com/3d-models/key-chain-e258f14fb7874f299ebef320f7aee4ee) |
 
-El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque el coche va detrás de una pared del propio hotel. Su FBX está en `assets/props/elevator/elevator.fbx` y sus texturas en la misma carpeta (madera, suelo, metal, botonera con sus mapas de emisión y de metal, y botones de llamada), con los materiales `lift_*.tres`. `tools/props/build_elevator.gd` lo hornea a 0,8 de su tamaño en cinco piezas, todas en el espacio del coche:
+El ascensor se usa entero, salvo la pared empapelada que trae alrededor, porque el coche va detrás de una pared del propio hotel. Su FBX está en `assets/props/elevator/elevator.fbx` y sus texturas en la misma carpeta (madera, suelo, metal, botonera con sus mapas de emisión y de metal, y botones de llamada), con los materiales `lift_*.tres` en `game/presentation/materials/`. `tools/props/build_elevator.gd` lo hornea a 0,8 de su tamaño en cinco piezas, todas en el espacio del coche:
 - `lift_car.res`: el coche con la botonera interior completa;
 - `lift_door_a.res` y `lift_door_b.res`: las dos hojas;
 - `lift_call.res`: los botones de llamada;
@@ -344,7 +344,7 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 | Copia | Original | Autor y fuente | Licencia |
 |---|---|---|---|
 | `typing.wav` (bucle), `typing_bell.wav` | `bsb_2835_typewriter_2.wav`, `bsb_2844_typewriter_bell_1.wav` | Joseph SARDIN, BigSoundBank | CC0 |
-| `tube_hiss.wav` (bucle, sin usar aún), `tube_bell.wav` | `bsb_0138_compressed_air.wav`, `bsb_1922_industrial_bell_2.wav` | BigSoundBank | CC0 |
+| `tube_hiss.wav` (bucle), `tube_bell.wav` | `bsb_0138_compressed_air.wav`, `bsb_1922_industrial_bell_2.wav` | BigSoundBank | CC0 |
 | `lever_1..3.wav`, `breaker.wav` | `bsb_3061..3063_industrial_switch_*.flac`, `bsb_1092_electric_circuit_breaker.flac` | BigSoundBank | CC0 |
 | `tick.wav` (bucle) | `bsb_0082_timer_2_kitchen.flac` | BigSoundBank | CC0 |
 | `lift_motor.wav` | `bsb_1712_elevator_6_floors.flac` | BigSoundBank | CC0 |
@@ -359,34 +359,34 @@ No atribuir este modelo a xerio3900 ni aplicar la licencia CC BY del candidato a
 
 ## Sonidos de The Lurker (piso 2)
 
-`tools/audio/prepare_lurker_sfx.py` hace su aviso y su chillido en `assets/audio/sfx/lurker/` con grabaciones de animales descargadas en `source_assets/oficinas/audio_criatura/` (fichas en estado «ok»): nada sintetizado y nada humano. Cada aviso es una exhalación entera de caballo desde su primer sonido y dos chasquidos de hueso o nudillo pasados por un filtro paso alto a 2 kHz; el primero a 0,70 s. El aviso cuenta su ventana desde que suena, así que el guion falla si una copia tarda más de 20 ms en empezar (empiezan a unos 16 ms). En Pesadilla, con 1,2 s de ventana, quedan unos 0,5 s tras el primer chasquido. Los MP3 de BigSoundBank están por cambiar por sus WAV (`docs/PLAN.md`).
+`tools/audio/prepare_lurker_sfx.py` hace su aviso y su chillido en `assets/audio/sfx/lurker/` con grabaciones de animales descargadas en `source_assets/oficinas/audio_criatura/` (fichas en estado «ok»): nada sintetizado y nada humano. Cada aviso es una exhalación entera de caballo desde su primer sonido y dos chasquidos de hueso o nudillo pasados por un filtro paso alto a 2 kHz; el primero a 0,70 s. El aviso cuenta su ventana desde que suena, así que el guion falla si una copia tarda más de 20 ms en empezar (empiezan a unos 16 ms). En Pesadilla, con 1,2 s de ventana, quedan unos 0,5 s tras el primer chasquido.
 
 | Copia | Original | Autor y fuente | Licencia |
 |---|---|---|---|
 | `cue_0.wav`, `cue_2.wav` (respiración) | `bsb_0285_breath_of_a_horse_1.mp3` | DenisChardonnet, BigSoundBank | CC0 |
 | `cue_1.wav` (respiración) | `bsb_1543_breath_horse_4.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
 | `cue_short_0..2.wav` (el mismo aviso, más corto: medio segundo de respiración y los dos chasquidos detrás; para las ventanas de menos de 1,2 s) | los de `cue_0..2.wav` | los de `cue_0..2.wav` | CC0; Pixabay Content License |
-| `cue_0..2.wav` (chasquidos) | `bsb_0596_bones_cracking_1.mp3`; `knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, por freesound_community en Pixabay | CC0; Pixabay Content License |
+| `cue_0..2.wav` (chasquidos) | `bsb_0596_bones_cracking_1.mp3`; `freesound_community-knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, por freesound_community en Pixabay | CC0; Pixabay Content License |
 | `scare_0.wav`, `scare_1.wav` | `bsb_1400_barn_owl_1.mp3`, `bsb_1403_barn_owl_2.mp3` | Joseph SARDIN, BigSoundBank | CC0 |
 
 El mismo guion hace sus sonidos en el piso (fase 3): las garras según lo que hay bajo cada mano, los golpes dentro de un ducto, el falso techo que cruje, su presencia y su mordisco. Cada copia es un tramo de su original elegido por el guion sin escucharlo (los picos más fuertes, o la ventana más fuerte), a veces más grave y con un filtro; el autor debería oírlos. Todos los de Pixabay son grabaciones de Freesound que freesound_community subió a Pixabay.
 
 | Copia | Original | Autor y fuente | Licencia |
 |---|---|---|---|
-| `tile_1..6.wav` (garras en una placa) | `scratching-on-box-40160.mp3` | MrTeeXD, Freesound, en Pixabay | Pixabay Content License |
-| `tile_creak_1..3.wav` (la perfilería) | `air-conditioner-vent-metal-ring-clank-26871.mp3` | rsellick, Freesound, en Pixabay | Pixabay Content License |
-| `tile_grind.wav` | `grinding-styrofoam-46849.mp3` | lurpsis, Freesound, en Pixabay | Pixabay Content License |
-| `dust_1.wav` | `sandfall5-83468.mp3` | Wagna (sobre una grabación de lolamadeus), Freesound, en Pixabay | Pixabay Content License |
-| `dust_2.wav` | `gravel-stone-dirt-debris-falling-small-1-3-36216.mp3` | Sheyvan, Freesound, en Pixabay | Pixabay Content License |
-| `metal_1..4.wav`, `scrape_1.wav` (chapa) | `20131209_fingernail-on-elevator-ceiling_olympusls10_xy-87239.mp3` | Soundscape_Leuphana, Freesound, en Pixabay | Pixabay Content License |
-| `knock_1..6.wav` (dentro del ducto) | `duct-impacts-76170.mp3` | j1987, Freesound, en Pixabay | Pixabay Content License |
-| `knock_7.wav`, `knock_8.wav` | `heater-vent-hit-lower-part-83044.mp3`, `heater-vent-hit-higher-part-103305.mp3` | Ev-Dawg, Freesound, en Pixabay | Pixabay Content License |
-| `hard_1..8.wav` (yeso, bloque y suelos duros) | `claws-on-smooth-rock-65642.mp3` | magzlurban, Freesound, en Pixabay | Pixabay Content License |
-| `drag_1.wav`, `drag_2.wav` | `plaster-screaming-55526.mp3` | tlipfert, Freesound, en Pixabay | Pixabay Content License |
-| `wood_1..8.wav` (chapa de madera) | `skittering-dog-33523.mp3` | sittingmonkeyanim, Freesound, en Pixabay | Pixabay Content License |
-| `wood_scratch_1.wav`, `wood_scratch_2.wav` | `scratching-with-fingernails-79478.mp3` | danthaiwang, Freesound, en Pixabay | Pixabay Content License |
-| `presence.wav` (bucle de 20 s) | `breath-of-cow-78843.mp3` | bodot, Freesound, en Pixabay | Pixabay Content License |
-| `bite_1.wav`, `bite_2.wav` | `bsb_1408_bones_cracking_2.mp3`, `bsb_1409_bones_cracking_3.mp3`; un chasquido de `knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, en Pixabay | CC0; Pixabay Content License |
+| `tile_1..6.wav` (garras en una placa) | `freesound_community-scratching-on-box-40160.mp3` | MrTeeXD, Freesound, en Pixabay | Pixabay Content License |
+| `tile_creak_1..3.wav` (la perfilería) | `freesound_community-air-conditioner-vent-metal-ring-clank-26871.mp3` | rsellick, Freesound, en Pixabay | Pixabay Content License |
+| `tile_grind.wav` | `freesound_community-grinding-styrofoam-46849.mp3` | lurpsis, Freesound, en Pixabay | Pixabay Content License |
+| `dust_1.wav` | `freesound_community-sandfall5-83468.mp3` | Wagna (sobre una grabación de lolamadeus), Freesound, en Pixabay | Pixabay Content License |
+| `dust_2.wav` | `freesound_community-gravel-stone-dirt-debris-falling-small-1-3-36216.mp3` | Sheyvan, Freesound, en Pixabay | Pixabay Content License |
+| `metal_1..4.wav`, `scrape_1.wav` (chapa) | `freesound_community-20131209_fingernail-on-elevator-ceiling_olympusls10_xy-87239.mp3` | Soundscape_Leuphana, Freesound, en Pixabay | Pixabay Content License |
+| `knock_1..6.wav` (dentro del ducto) | `freesound_community-duct-impacts-76170.mp3` | j1987, Freesound, en Pixabay | Pixabay Content License |
+| `knock_7.wav`, `knock_8.wav` | `freesound_community-heater-vent-hit-lower-part-83044.mp3`, `freesound_community-heater-vent-hit-higher-part-103305.mp3` | Ev-Dawg, Freesound, en Pixabay | Pixabay Content License |
+| `hard_1..8.wav` (yeso, bloque y suelos duros) | `freesound_community-claws-on-smooth-rock-65642.mp3` | magzlurban, Freesound, en Pixabay | Pixabay Content License |
+| `drag_1.wav`, `drag_2.wav` | `freesound_community-plaster-screaming-55526.mp3` | tlipfert, Freesound, en Pixabay | Pixabay Content License |
+| `wood_1..8.wav` (chapa de madera) | `freesound_community-skittering-dog-33523.mp3` | sittingmonkeyanim, Freesound, en Pixabay | Pixabay Content License |
+| `wood_scratch_1.wav`, `wood_scratch_2.wav` | `freesound_community-scratching-with-fingernails-79478.mp3` | danthaiwang, Freesound, en Pixabay | Pixabay Content License |
+| `presence.wav` (bucle de 20 s) | `freesound_community-breath-of-cow-78843.mp3` | bodot, Freesound, en Pixabay | Pixabay Content License |
+| `bite_1.wav`, `bite_2.wav` | `bsb_1408_bones_cracking_2.mp3`, `bsb_1409_bones_cracking_3.mp3`; un chasquido de `freesound_community-knuckles-cracking-98331.mp3` | Joseph SARDIN, BigSoundBank; borq1, Freesound, en Pixabay | CC0; Pixabay Content License |
 
 ## Modelos de las oficinas (piso 2)
 

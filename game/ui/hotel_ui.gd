@@ -35,7 +35,7 @@ const CREDITS := [
 		"«Sofa (Game Ready / 2K PBR)», de Meerschaum Digital, sobre «Old Sofa (FREE)» de VISJA FILIP RUMIN (Sketchfab, CC BY).",
 		"«Monstera Deliciosa Potted Mid-Century plant», de Giora / ChubbyPanda (Sketchfab, CC BY).",
 		"«Wall Lamp - 2048px²», de Mark Peters (Sketchfab, CC BY).",
-		"«Elevator with Animation LOWPOLY», de EFX (Sketchfab, CC BY): el ascensor.",
+		"«Elevator with Animation LOWPOLY», de EFX (Sketchfab, CC BY): el ascensor, reescalado y sin su pared.",
 		"«Panasonic VHS-C MOVIE CAMERA NV-A3», de Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.",
 		"«VHS», de Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
 		"«Key Chain», de Inside Out Art (Sketchfab, CC BY): la llave de los cuadros eléctricos.",
@@ -55,6 +55,7 @@ const CREDITS := [
 	["SONIDO DE LAS OFICINAS", [
 		"«Photocopy Machine», de Daniel Simion (SoundBible.com, CC BY 3.0).",
 		"«Office Chair Roll SFX Sound Effect», de Nicole Marie T (OpenGameArt, CC BY 4.0).",
+		"Estos sonidos están recortados o procesados para el juego.",
 	]],
 	["EL RESTO DEL SONIDO", [
 		"Música y el resto del paquete de efectos: aportados por el autor; autoría y licencia de origen pendientes de verificar.",

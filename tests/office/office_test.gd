@@ -294,7 +294,7 @@ func kind_checks() -> void:
 	var made = (load(KIND.CREATURE) as PackedScene).instantiate()
 	check("Su criatura se carga y es una criatura del contrato", made != null and made is CREATURE)
 	if made != null: made.free()
-	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 1", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 1)
+	check("Juega con la dificultad y las reglas del Lurker, y su generador es la versión 2", KIND.CREATURE_KEY == &"lurker" and KIND.GENERATOR_VERSION == 2)
 	check("Sus etapas se llaman niveles; las del hotel, sectores", KIND.title_of(2) == "NIVEL 2" and HOTEL_KIND.title_of(2) == "SECTOR 2")
 
 # --- Generador ---------------------------------------------------------------
@@ -302,7 +302,7 @@ func kind_checks() -> void:
 ## The checks of spec 2.9 that every floor answers: each gathers its culprits
 ## by title, so one check stands for all the floors.
 const T_VALID := "El validador de oficinas da por buenos los pisos"
-const T_NAME := "Cada manifiesto es del piso 2, versión 1, y se lee con la paleta de oficinas"
+const T_NAME := "Cada manifiesto es del piso 2, versión 2, y se lee con la paleta de oficinas"
 const T_TYPES := "Cada sala es un tipo de oficina, a la altura de su tipo"
 const T_SIZES := "Módulos y carriles de las medidas de oficina"
 const T_SPECIALS := "Una ventanilla, un cuarto eléctrico, una seguridad, una sala de climatización y una climatizadora, cada una en su planta"

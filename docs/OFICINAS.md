@@ -72,7 +72,7 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 |---|---|---|---|
 | 1 | **Personal**: la planta «presentable», con recepción interna, oficinas abiertas, cubículos, despachos acristalados, la ventanilla y el tubo neumático | **La luz se da**: casi toda encendida, salas oscuras ~23 % | Se presenta: se la oye en los ductos, asoma en los marcos, cruza un techo al borde de la vista, y sale en tu foto |
 | 2 | **Registro y Archivo**: archivos con estanterías y pasillos de un metro, correo, microfichas, el cuarto eléctrico | **La luz se raciona**: corriente de emergencia y unas pocas zonas a la vez | Caza de verdad. Pasillos estrechos donde avanza **sostenida entre las dos estanterías** (la pose de la imagen, por fin en su sitio). Se la pastorea con la luz |
-| 3 | **Dirección**: despachos con madera y moqueta, sala de juntas, puesto de seguridad y **la sala de climatización** | **No hay luz**: cierre de seguridad, sin corriente | En su casa. Los ventiladores la sacan a las salas, y el final es meterse en su ducto |
+| 3 | **Dirección**: despachos con madera y alfombras, sala de juntas, puesto de seguridad y **la sala de climatización** | **No hay luz**: cierre de seguridad, sin corriente | En su casa. Los ventiladores la sacan a las salas, y el final es meterse en su ducto |
 
 ---
 
@@ -207,7 +207,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
    - **Si ella estaba allí, sale en la foto**, porque la foto es el mundo de verdad renderizado en ese instante: una cara en una esquina del techo, detrás de ti.
    - Nadie la ha puesto ahí. Es información verdadera y es el susto de la planta.
 4. **Pasarla por el lector** del montacargas.
-   - Con las fichas de la cuota, se abre la reja.
+   - Con las fichas de la cuota, se abre la puerta de la etapa.
    - La ficha queda en TUS NOTAS, con su foto, y **vuelve a servir abajo** (en Dirección).
 
 **Por qué funciona con ella:**
@@ -260,7 +260,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 ### Planta 3. Dirección: el aire
 
 **Cómo está:** Dirección está en **cierre de seguridad**.
-- **No hay corriente**: es la planta más oscura, con moqueta (nadie se oye, tampoco ella), madera, despachos grandes, sala de juntas.
+- **No hay corriente**: es la planta más oscura, con alfombras (nadie se oye, tampoco ella), madera, despachos grandes, sala de juntas.
 - No hay montacargas más abajo.
 - **La única salida es el pozo de ventilación**, desde **la sala de climatización**: su nido.
 
@@ -461,15 +461,15 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 ## 8. Dirección de arte
 
 - **Época y tono:**
-  - modernismo institucional feo, 1965 a 1980;
+  - modernismo institucional feo, de finales de los 80 y principios de los 90;
   - beige, verde oliva, mostaza, marrón de chapa de madera, gris acero;
   - luz de fluorescente **cálido**, difusa y de poco contraste (rediseño, `.claude/specs/spec_rediseno.md` 4): unos 3.000 K en las salas y 3.500 en los pasillos, ámbar (2.700) en la recepción y la sala de descanso, y neutra (3.300) en las juntas y la dirección, vista con el balance fijo de 3.200 K de la cámara. El vestíbulo del montacargas conserva la luz verdosa del hotel y el cuarto eléctrico solo tiene su unidad de emergencia.
 - **Materiales:**
-  - suelo de terrazo oscuro en pasillos, vestíbulos, correo y archivo, y de losetas vinílicas claras (beige con motas) en las salas;
+  - suelo de terrazo oscuro en pasillos, vestíbulos, correo y archivo, y de losetas vinílicas claras (beige con motas) en las salas, salvo las naves de la planta 1 (moqueta), el cuarto eléctrico (baldosa con relieve) y el almacén, la galería y el depósito (hormigón sellado);
   - bloque de hormigón pintado;
-  - paneles de chapa de nogal en el despacho de dirección, una pared de nogal en secretaría y zócalo de nogal en despachos, juntas y seguridad; moqueta en losetas en Dirección y en las naves de la planta 1;
-  - placas acústicas con perfilería de aluminio;
-  - vidrio claro (armado solo junto a seguridad) en marco de nogal, con persianas venecianas beige;
+  - paneles de chapa de nogal en el despacho de dirección, una pared de nogal en secretaría y zócalo de nogal en despachos, juntas y seguridad; vinilo pulido bajo una alfombra grande en Dirección (persa en el despacho y la secretaría, lisa en juntas), que suena como moqueta, y moqueta en las naves de la planta 1;
+  - placas acústicas con perfilería blanco roto;
+  - vidrio claro (armado solo junto a seguridad) en marco de nogal, con persianas venecianas beige salvo en la ventanilla y en seguridad;
   - tela de mampara;
   - chapa galvanizada en los ductos;
   - corcho en los tablones.
@@ -481,7 +481,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - nada de monitores encendidos (las pantallas son de otra criatura pensada, The Boiled One).
 - **Abandono:**
   - papeles por el suelo, sillas volcadas, cajones abiertos, abrigos en perchas, tazas;
-  - placas caídas, cables colgando, manchas de agua;
+  - placas caídas, cables por el suelo y las mesas, manchas de agua;
   - un expediente a medio sellar: se fueron deprisa.
 - **Su rastro:**
   - rejillas dobladas hacia fuera, manchas de tinta negra seca alrededor;
@@ -512,7 +512,7 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - goteo;
   - el zumbido del cuadro;
   - **silencio seco en los archivos** (el papel se lo come todo).
-- **Pasos:** las losetas suenan más (el ruido llega más lejos). La moqueta de Dirección y la de las naves de la planta 1 los apagan: allí se oye menos a todos, también a ella.
+- **Pasos:** las losetas suenan más (el ruido llega más lejos). Las alfombras de Dirección y la moqueta de las naves de la planta 1 los apagan: allí se oye menos a todos, también a ella.
 - **Ella:**
   - garra en placa (toque blando y crujido de perfilería);
   - garra en ducto (golpe de chapa con resonancia);
@@ -715,8 +715,8 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
 - **Captura:**
   - `executions.gd` conserva la orquestación;
   - la coreografía pasa a estrategias:
-    - `capture_styles/locust_capture.gd`: lo de hoy, movido sin cambios;
-    - `capture_styles/lurker_capture.gd`: «levantar y soltar». Deja el cuerpo en el suelo, `camera_fall` prefiere quedar mirando hacia arriba y `death_tape` encuadra su cara del revés;
+    - `game/app/capture_styles/locust_capture.gd`: lo de hoy, movido sin cambios;
+    - `game/app/capture_styles/lurker_capture.gd`: «levantar y soltar». Deja el cuerpo en el suelo, `camera_fall` prefiere quedar mirando hacia arriba y `death_tape` encuadra su cara del revés;
   - la puntuación de la escena tiene sus tiempos propios.
 - **Versus:**
   - `lurker_player.gd` (moverse por el parche actual; contra una pared o un techo, se sube);

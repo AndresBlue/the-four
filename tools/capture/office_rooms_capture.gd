@@ -164,6 +164,19 @@ func open_doors(at: Vector3) -> void:
 	for door in level.hotel.doors_near(at, 1.2):
 		if door.has_method("open_immediately"): door.open_immediately()
 
+## The leaves of those doors, hidden while the room is framed from its
+## doorway: the one beside the camera cuts into the picture. Only their
+## meshes (Leaf, or Leaf_0/Leaf_1 and the plaques when layered): the door's
+## node is shown again by update_visibility(). Gives back what it hid.
+func hide_leaves(at: Vector3) -> Array:
+	var hidden: Array = []
+	for door in level.hotel.doors_near(at, 1.2):
+		for mesh in door.find_children("*", "GeometryInstance3D", true, false):
+			if mesh.visible:
+				mesh.visible = false
+				hidden.append(mesh)
+	return hidden
+
 ## From the corridor, OUT metres back from the doorway, looking at the room's
 ## feature wall (room_framing.gd), or from across the room when that wall is the
 ## doorway's own. wide_view: the reference's framing (55 degrees,
@@ -309,12 +322,14 @@ func run() -> void:
 			continue
 		var door: Dictionary = door_of(room)
 		open_doors(door.portal)
+		var hidden: Array = hide_leaves(door.portal)
 		frame(door, room, true)
 		var capture: Image = await grab(true)
 		var reference: Image = Image.load_from_file(ProjectSettings.globalize_path("res://docs/referencias/" + file_name))
 		if reference == null or reference.is_empty():
 			print("ROOMS_CAPTURE_NOREF %s" % label)
 			capture.save_png(out_dir + "/" + label + ".png")
+			for mesh in hidden: mesh.visible = true
 		else:
 			var depth: float = FLOOR.size_of(room).x if absf(door.inward.x) > 0.5 else FLOOR.size_of(room).y
 			var techo_visto: bool = depth + OUT >= reach(room, size, "techo")
@@ -351,6 +366,7 @@ func run() -> void:
 			frame(door, room, false)
 			var game: Image = await grab(false)
 			game.save_png(out_dir + "/" + label + "_juego.png")
+			for mesh in hidden: mesh.visible = true
 			if THROUGH.has(label):
 				var through_from: Vector3 = door.portal - door.inward * 2.0 + Vector3(0, EYE, 0)
 				look(through_from, FLOOR.position_of(room) + Vector3(0, AIM, 0))

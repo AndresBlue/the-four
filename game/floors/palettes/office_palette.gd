@@ -9,7 +9,7 @@ extends RefCounted
 ## preloads it, and the generator and the validator load it headless.
 
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
-const VERSION := 1
+const VERSION := 2
 
 ## Structural roles: the same number in every palette.
 const RECEPTION := 0

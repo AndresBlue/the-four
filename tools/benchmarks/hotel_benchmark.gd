@@ -174,7 +174,10 @@ func run() -> void:
 			await capture(level, "room%d_q%d" % [id, quality])
 			var frames := await sample(level, viewport_rid, STILL_FRAMES, Callable())
 			peak_memory = maxf(peak_memory, Performance.get_monitor(Performance.MEMORY_STATIC))
-			results.append(summary("still_room%d" % id, quality, frames))
+			var still: Dictionary = summary("still_room%d" % id, quality, frames)
+			# Its room's type: floors built differently are compared by role, not id.
+			still["type"] = int(room.type)
+			results.append(still)
 			all_frames.append_array(frames)
 		# Arriving somewhere the run has not drawn yet, with no settling: this
 		# is where a pipeline that has never been built shows up, and it is

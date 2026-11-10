@@ -624,3 +624,34 @@ Medida antes de tocar el piso 2 (`.claude/specs/spec_rediseno.md`, sección 10),
 | Compatibilidad | Muy bajo (4) | walk | 3,63 | 5,22 | 6,47 | 7,75 | 1,08 | 190 |
 
 Montaje del piso (`floor_load_ms`): 13.199 ms en Forward+ y 13.217 ms en Compatibilidad. Nodos: 20.539. VRAM en Alto: 2.093,32 MB (texturas 1.805,55 MB); en Compatibilidad, 627,76 MB.
+
+### Tras el rediseño (10 de noviembre de 2026)
+
+Medida tras el rediseño del piso 2 (`.claude/specs/spec_rediseno.md`) con la misma orden que la base: `./tools/benchmarks/run_bench.ps1 -Label piso2_final -Extra '--floor=2 --seed=7 --difficulty=apacible --qualities=2,4'`, en Forward+ y con `-Compatibility`. Las condiciones son las de la base: semilla 7, dificultad apacible, criatura quieta (`--no-enemy`), viewport de 1920x1080 y el mismo adaptador, NVIDIA GeForce RTX 4060 Ti. Los informes están en `evidence/bench/piso2_final_<renderizador>/report.json`, con `forward_plus` y `gl_compatibility`. Las vistas fijas se comparan por papel (inicio, medio y lejos), no por id, porque el rediseño cambió los ids de las salas: la base mide las salas 112, 5 y 12, y ahora las salas 142, 23 y 0. Los informes cuentan 425 salas en la base y 413 ahora, y el paseo tiene 30 puntos de ruta frente a 19. La base no guardó el tipo de sala, así que su columna lleva solo el id. El banco solo mide tres salas de la planta 1 y el paseo del inicio a la más alejada, y no comprueba el tope de 150 k triángulos visibles por sala (`spec_rediseno.md`, sección 10).
+
+| Renderizador | Calidad | Vista | Sala base | Sala ahora (tipo) | Fotograma medio (ms) | p95 | p99 | Máximo | GPU media (ms) | CPU a 60 FPS, p95 | Llamadas de dibujo | Veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Forward+ | Alto (2) | inicio | 112 | 142 (Recepción interna) | 10,36 → 11,65 | 15,01 → 16,47 | 19,73 → 20,54 | 31,46 → 22,11 | 8,44 → 10,09 | 16,64 → 17,64 | 118 → 232 | NO PASA |
+| Forward+ | Alto (2) | medio | 5 | 23 (Archivo móvil) | 7,42 → 10,91 | 8,82 → 16,62 | 9,94 → 20,24 | 12,87 → 26,73 | 6,29 → 9,48 | 10,13 → 18,87 | 56 → 140 | NO PASA |
+| Forward+ | Alto (2) | lejos | 12 | 0 (Reprografía y microfichas) | 6,36 → 7,16 | 7,51 → 8,75 | 8,13 → 9,02 | 11,89 → 12,20 | 5,24 → 6,56 | 8,75 → 9,89 | 67 → 46 | pasa |
+| Forward+ | Alto (2) | arrival | - | - | 10,31 → 11,61 | 21,78 → 25,39 | 31,11 → 45,75 | 33,56 → 45,75 | 7,63 → 8,06 | 26,01 → 34,70 | 266 → 173 | - |
+| Forward+ | Alto (2) | walk | - | - | 9,94 → 12,53 | 14,89 → 25,17 | 22,16 → 31,93 | 30,43 → 37,51 | 8,01 → 10,66 | 18,02 → 25,86 | 212 → 360 | - |
+| Forward+ | Muy bajo (4) | inicio | 112 | 142 (Recepción interna) | 2,09 → 2,29 | 3,02 → 3,10 | 4,51 → 4,18 | 9,58 → 11,99 | 0,47 → 0,59 | 4,48 → 4,75 | 89 → 188 | - |
+| Forward+ | Muy bajo (4) | medio | 5 | 23 (Archivo móvil) | 2,03 → 2,78 | 2,97 → 4,16 | 3,36 → 5,12 | 10,44 → 10,86 | 0,45 → 0,58 | 3,99 → 6,03 | 53 → 139 | - |
+| Forward+ | Muy bajo (4) | lejos | 12 | 0 (Reprografía y microfichas) | 2,00 → 1,95 | 3,15 → 2,91 | 3,57 → 3,30 | 10,54 → 10,93 | 0,45 → 0,52 | 3,91 → 3,65 | 67 → 44 | - |
+| Forward+ | Muy bajo (4) | arrival | - | - | 3,51 → 3,04 | 6,71 → 5,38 | 9,45 → 6,93 | 12,60 → 6,93 | 0,51 → 0,56 | 9,79 → 8,80 | 230 → 140 | - |
+| Forward+ | Muy bajo (4) | walk | - | - | 2,31 → 3,87 | 3,52 → 5,58 | 4,58 → 7,65 | 13,09 → 43,81 | 0,49 → 0,59 | 4,59 → 7,05 | 188 → 332 | - |
+| Compatibilidad | Alto (2) | inicio | 112 | 142 (Recepción interna) | 13,82 → 22,88 | 39,55 → 55,55 | 54,14 → 416,95 | 62,35 → 467,92 | 5,23 → 9,60 | 41,04 → 55,07 | 3.545 → 2.398 | - |
+| Compatibilidad | Alto (2) | medio | 5 | 23 (Archivo móvil) | 6,31 → 23,42 | 9,23 → 68,33 | 21,57 → 70,90 | 28,23 → 79,66 | 2,96 → 9,51 | 9,16 → 67,51 | 1.132 → 4.425 | - |
+| Compatibilidad | Alto (2) | lejos | 12 | 0 (Reprografía y microfichas) | 4,14 → 8,06 | 5,32 → 9,72 | 7,14 → 38,01 | 12,77 → 54,54 | 2,59 → 3,10 | 6,70 → 10,01 | 392 → 378 | - |
+| Compatibilidad | Alto (2) | arrival | - | - | 13,72 → 22,16 | 37,77 → 72,67 | 96,07 → 168,84 | 101,67 → 168,84 | 6,10 → 8,61 | 37,76 → 74,18 | 2.602 → 2.625 | - |
+| Compatibilidad | Alto (2) | walk | - | - | 11,51 → 22,94 | 34,41 → 70,25 | 46,88 → 172,96 | 50,81 → 320,30 | 4,99 → 10,91 | 35,95 → 69,76 | 2.718 → 3.914 | - |
+| Compatibilidad | Muy bajo (4) | inicio | 112 | 142 (Recepción interna) | 2,80 → 4,63 | 3,82 → 5,68 | 4,53 → 7,72 | 11,35 → 14,15 | 1,02 → 1,10 | 4,96 → 7,19 | 92 → 195 | - |
+| Compatibilidad | Muy bajo (4) | medio | 5 | 23 (Archivo móvil) | 2,69 → 3,60 | 3,62 → 4,62 | 4,54 → 5,47 | 10,86 → 13,40 | 1,01 → 0,69 | 4,95 → 5,58 | 53 → 139 | - |
+| Compatibilidad | Muy bajo (4) | lejos | 12 | 0 (Reprografía y microfichas) | 2,87 → 3,18 | 4,31 → 3,97 | 5,02 → 4,46 | 10,51 → 12,32 | 1,02 → 0,58 | 5,20 → 5,17 | 67 → 44 | - |
+| Compatibilidad | Muy bajo (4) | arrival | - | - | 3,75 → 4,34 | 7,02 → 6,48 | 8,94 → 8,67 | 9,07 → 8,67 | 1,06 → 0,82 | 10,13 → 9,37 | 240 → 140 | - |
+| Compatibilidad | Muy bajo (4) | walk | - | - | 3,63 → 5,84 | 5,22 → 8,66 | 6,47 → 10,07 | 7,75 → 14,52 | 1,08 → 1,12 | 6,70 → 9,68 | 190 → 341 | - |
+
+Montaje del piso (`floor_load_ms`): 13.199 → 15.195 ms en Forward+ y 13.217 → 51.077 ms en Compatibilidad. Nodos: 20.539 → 23.034 en Forward+ y 18.652 → 21.370 en Compatibilidad. VRAM en Alto (q2): 2.093,32 → 2.215,62 MB en Forward+ y 627,76 → 820,60 MB en Compatibilidad.
+
+**Veredicto.** La meta es 60 FPS a 1080p en Alto (`spec_rediseno.md`, sección 10). El criterio de la tabla, para cada vista fija de Forward+ en Alto, es un fotograma p95 de 16,7 ms o menos y que el mayor entre la GPU media y la CPU a 60 FPS (p95) también sea de 16,7 ms o menos. Pasa la vista de lejos (sala 0): fotograma p95 de 8,75 ms y CPU a 60 FPS (p95) de 9,89 ms. NO PASA la de inicio (sala 142): el fotograma p95 de 16,47 ms está dentro de 16,7 ms, pero la CPU a 60 FPS (p95) es de 17,64 ms. NO PASA la de medio (sala 23): el fotograma p95 de 16,62 ms está dentro de 16,7 ms, pero la CPU a 60 FPS (p95) es de 18,87 ms. Muy bajo, Compatibilidad, arrival, walk y el montaje van sin veredicto.

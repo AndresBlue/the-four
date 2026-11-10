@@ -13,6 +13,7 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 
 | Versión                                   | Fecha                    | Lo esencial                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [1.3.0](#130--10-de-noviembre-de-2026)    | 10 de noviembre de 2026  | El piso 2, las oficinas con The Lurker, se juega de punta a punta aunque aún no está publicado; el piso 1 gana cuadros eléctricos con llave y papeles escritos a máquina.         |
 | [1.2.0](#120--20-de-octubre-de-2026)      | 20 de octubre de 2026    | El piso va con los supervivientes, la tercera planta tiene pasillos largos sin puertas y ocho pistas sobre las páginas del código, y la salida de la primera etapa se encuentra buscando.|
 | [1.1.0](#110--19-de-octubre-de-2026)      | 19 de octubre de 2026    | Hasta cinco supervivientes (seis con The Locust en Versus), muebles que quedan abiertos tras registrarlos, música que sigue al miedo y logros.                                    |
 | [1.0.1](#101--19-de-octubre-de-2026)      | 19 de octubre de 2026    | Sonidos nuevos, libres de licencia, para la linterna, el zoom, las puertas y la televisión de la intro.                                                                           |
@@ -66,6 +67,54 @@ Cada versión es una etiqueta de git (`vX.Y.Z`) sobre su último commit, y lleva
 | [0.2.0](#020--16-de-septiembre-de-2026)   | 16 de septiembre de 2026 | El piso de prueba gana a The Locust, con su modelo 3D, y la música de The Four.                                                                                                   |
 | [0.1.0](#010--16-de-septiembre-de-2026)   | 16 de septiembre de 2026 | El primer prototipo: un piso fijo, todavía en maqueta, que se recorre en primera persona, con un enemigo aún estático.                                                            |
 
+
+
+
+## 1.3.0 — 10 de noviembre de 2026
+
+*El piso 2, las oficinas con The Lurker, se juega de punta a punta aunque aún no está publicado; el piso 1 gana cuadros eléctricos con llave y papeles escritos a máquina.*
+
+Commits `0330bf8`…`v1.3.0` (188).
+
+### Novedades
+
+- El piso 2, las oficinas secretas con The Lurker, está construido y se puede jugar de punta a punta, pero aún no está publicado.
+- Se prueba con `Probar piso 2.bat`, que va en el zip y no toca tu Continuar; también con `--floor=2`, o eligiendo el piso el anfitrión en la sala multijugador, en cooperativo.
+- Sus tres plantas son los sistemas del edificio: el correo en la primera, la corriente en la segunda y el aire en la tercera.
+- Los bots de prueba juegan el piso 2 hasta el final, y la prueba en red lo juega con un anfitrión y dos invitados, cada uno con su tarjeta.
+- El rediseño visual del piso 2: pasillos más anchos, de 3 a 3,6 m; naves de oficina abierta con columnas; luz fluorescente cálida; equipos de trabajo rehechos en código a partir de sus referencias; oficinas dejadas como si la gente hubiera salido corriendo; y salas amuebladas según su referencia, aunque la ventanilla, el despacho de dirección y la sala de juntas aún no cumplen su proporción.
+- Las pistas de papel cambian: una foto Polaroid del mueble donde está la pista, un plano numerado que marca su círculo al leerlo, la tarjeta de «no molestar» en el pomo de la puerta de la habitación y el código escrito en una carta rota en cuatro.
+- Una llave por piso abre los cuadros eléctricos: quien la lleva abre el cuadro cerrado y devuelve la luz a su ala. Es opcional.
+- Los papeles se escriben a máquina sobre su papel: la carta y el registro del guarda, y los formularios del hotel (nota de recepción, parte de mantenimiento, hoja de la camarera y orden de trabajo). Las maletas del suelo se abren, y los muebles que no hacen ruido tampoco los oye la criatura.
+
+
+
+### Cambios
+
+- El generador del piso 2 es la versión 2: un Continuar o un punto de control del piso 2 de antes no vale, y el archivo se conserva tal cual.
+- Un ejecutable de antes no juega en red con este, ni siquiera en el piso 1: la sala compara una huella de las versiones de todos los pisos construidos y rechaza a quien no coincida.
+- Los créditos señalan las modificaciones: el ascensor, reescalado y sin su pared, y los sonidos de las oficinas, recortados o procesados para el juego.
+
+
+
+### Arreglos
+
+- Los guardados (récords, ajustes, descubrimientos y el punto de control en cooperativo) se escriben con un archivo temporal que luego se renombra: un archivo ilegible se aparta como `.corrupt` sin pisarlo, un punto de control ilegible vuelve a su copia `.bak`, y si falla una escritura se conserva la anterior.
+- Las ejecuciones con `--script` usan archivos de prueba y no tocan la ventana ni `renderer.cfg`; un piso pedido por semilla no escribe puntos de control ni récords.
+- Una etapa devuelta ya no reabre su puerta cuando vuelve la corriente.
+- Los papeles con el código y la llave del cuadro eléctrico de un jugador desconectado los pueden usar los demás.
+- Un arranque que esperaba la reconstrucción de un invitado se libera cuando esta se abandona, y el invitado no se queda en la pantalla de carga.
+
+
+
+### Herramientas y documentación
+
+- Un contrato de criatura: el director, el sonido, la red y los bots preguntan a la criatura del piso y no a The Locust, y el manifiesto del hotel queda fijado mientras cambian los pisos.
+- El trabajo pendiente del plan, desde su sección 2, vive en Beads.
+- `verify` incluye las pruebas del piso 2 (`office_coop` en red, `office_bots_test` y `office_dressing_test`), y `office_test` corre en tres trabajos.
+- Las capturas de las salas van junto a su foto de referencia, y hay un banco del piso 2 (`--floor=2`) con su base en PERFORMANCE.md.
+- La referencia de clases de Godot 4.7 queda en `.claude/godot-api/`, y hay un chequeo rápido de scripts para los agentes.
+- El trabajo se reparte en tres niveles: un director, revisores Opus y una batería Haiku.
 
 
 
