@@ -2,34 +2,63 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 4 de noviembre de 2026. Esta tarea para al **60 % semanal** (decisión del autor; la semana se renueva el 7 de noviembre).
+**Última actualización:** 10 de noviembre de 2026. Esta tarea para al **60 % semanal** (decisión del autor). La semana se renueva el 14 de noviembre a las 08:00; el 10 de noviembre, al cerrar 4c, iba por el 24 %.
 
-**Última instrucción del autor (4 de noviembre):** «Continuemos con el desarrollo del proyecto, primero arma una hoja de ruta de las cosas que tenemos pendientes y luego arranca con ello». Hoja de ruta: 1) cerrar 4d (hecho), 2) 4c, lo menudo y el abandono (encargos de nuevo en `encargos_rd4c2.json`, decisiones en `spec_4c.md`), 2b) 4e, las recetas llenas, para que `office_proportion_test` pase, 3) área 6 (capturas finales, rendimiento, documentos, `OFFICE.VERSION`, créditos, exportación con `Probar piso 2.bat` y Drive), 4) relleno, 5) las decisiones de licencias que esperan al autor. Antes (25 de octubre) pidió el rediseño visual y ambiental completo del piso 2 con las referencias de `docs/referencias/` y respondió por el chat todas las decisiones (R1 a R10 en la nota de diseño). Commits sin `emptyhooks` ni `--no-verify` (5329de1).
+**Última instrucción del autor (10 de noviembre):** «Continúa el desarrollo». La hoja de ruta es la del 4 de noviembre:
+1. cerrar 4d (hecho);
+2. 4c (hecho);
+3. 4e, las recetas llenas, para que `office_proportion_test` pase;
+4. área 6 (capturas finales, rendimiento, documentos, `OFFICE.VERSION`, créditos, exportación con `Probar piso 2.bat` y Drive);
+5. relleno;
+6. las decisiones de licencias que esperan al autor.
 
-### Dónde se está: el área 4d cerrada (4 de noviembre)
+Antes (25 de octubre) pidió el rediseño visual y ambiental completo del piso 2 con las referencias de `docs/referencias/`. Commits sin `emptyhooks` ni `--no-verify`.
 
-**Estado del código.** 4d tiene commit en `main` con `verify` en verde. La rama local `wip/4d-proporcion` es una copia vieja de 4d y ya no hace falta. Nada de 4d se ha exportado.
+### Dónde se está: el área 4c cerrada (10 de noviembre)
 
-**Cómo se cerró** (`.claude/specs/spec_4d_fisica.md` manda en este tramo): `MODULE_SIZES` es C1, `[6, 6.5, 7, 7.5, 8, 9]`. Las reservas de `plant` y `basin` son la pieza dibujada (F1). Una taquilla de esconderse no se pone en la banda de una puerta (`hide_free`, P2), y dos de paredes vecinas no comparten esquina (`hide_apart`, Q1). Los aseos tienen la receta de Q2. La fila a de las lámparas (`OFFICE_LAMP_LEAST` 8, `OFFICE_LATE_REACH` 6) deja las capas de luz del piso 2 en 13 sin choques. 40 de 40 pisos pasan la física. `lurker_senses_test` dependía de la geometría y se arregló en la prueba. `lurker_route_probe` corre en la semilla 8 porque la 7 se quedó sin nave.
+**Estado del código.**
+- Tramo A en `fc41e24`: modelos, paredes, techo y sillas, con verify en verde (72 líneas).
+- Tramo B en `ff016bf`: lo menudo y el abandono, con `office_clutter.gd` y `office_dressing_test` a 19/19.
+- Hay push hasta `fc41e24`; `ff016bf` y el commit de esta nota están sin subir.
+- Nada de 4c se ha exportado.
+- La rama local `wip/4d-proporcion` es vieja y sobra.
 
-**`office_proportion_test` está fuera de `verify` hasta 4e, la de las recetas llenas** (`spec_4c.md`: solo cuenta muebles y esquinas, y 4c no añade ninguno). Da 42/55: el suelo ocupado queda por debajo de su banda en 10 tipos (ventanilla 15,9 de 20, archivo 13,6 de 20, eléctrico 11,1 de 16...), y hay una sola mesa para los papeles por planta, cuando pide dos. La pieza principal está bajo 30 en secretaría (29,8) y aseos (21,2). No se bajó ningún umbral. 4e la vuelve a meter en `verify` y tiene que dejarla en verde.
+**Cómo quedó** (`spec_4c.md` manda):
+- El piso 2 ya no tiene cuadros de fusibles (`fuse_boxes()` es `false`).
+- La taquilla reserva 1,1 de fondo.
+- Seis modelos CC0 de Poly Haven. En la hoja, ninguna planta sale como placa.
+- `dressing_log.chairs` guarda `room` y `holder` (el nombre), no el nodo.
+- Una silla solo se aparta o cae si su barrido queda dentro de `LAYOUT.inner(room)` y no toca otros muebles. `office_suite` está en `CROWDED`.
 
-**Lo siguiente: el frente de 4c, tras la renovación del 7 de noviembre.** Los encargos están aprobados en `encargos_rd4c2.json` (19 unidades, `al_director` vacío), con `paralelo: false`. Hay que lanzar `frente_resumen.js` primero con el tramo A, U1 a U14 y `integrar: true`, y después el tramo B, U15 a U17. Los archivos de cada unidad salen de su campo `archivos`. Al integrar, el director añade `office_dressing_test` a `verify.ps1`. La redacción costó unos 2 puntos de la semana.
+**Lo siguiente: 4e, las recetas llenas.** Nota de diseño, después `encargos` y después `frente`. Lo que entra:
+- `office_proportion_test` vuelve a `verify` en verde, sin bajar umbrales. Hoy da 42/55:
+  - suelo bajo su banda en 10 tipos;
+  - una sola mesa para los papeles por planta, y la prueba pide dos;
+  - la pieza principal bajo 30 en secretaría y aseos.
 
-**Pendientes para 4c:**
-- La reserva de `LOCKER` es corta: 1,3 x 0,7 frente a 1,1 real. Además, en 108 casos faltan cabinas por las reservas de taquilla.
-- Al sacar `plant` y `basin` de `HOTEL_KINDS`, U8 tiene que volver a mover sus filas de `CORNER_SIZES`.
-- La silla cercana (G4).
-- `office_proportion_test` pone un tope de 100 al suelo de `archivo_movil`, y U11 decía «sin tope».
-- La mampara de `office_lies_test` no distingue de qué lado posa.
-- C6b sin ejecutar.
-- La cuota de cue baja a 0,876 (la base es 0,900).
-- El umbral de 2.750 ms de `office_test_generator` es inestable bajo la carga de `verify` y está cerca de su tope de 600 s.
-- El p99 de `office_metrics` sigue fallando, y está aceptado.
+  Lo que sube la cifra son muebles en las recetas: lo menudo no cuenta.
+- La mesa de juntas sin nada encima: `TOPS` no tiene `meeting_table_*`, y el modelo `jug` no lo pone nadie (spec_rediseno 6.9). Faltan también revistas en las mesitas de espera (6.1 y 6.8).
+- `paper_clear()` de `office_dressing_test` solo mide la distancia a las puertas. No mide los lados abiertos ni la recta entre accesos, como sí hace `clear_of_route()`.
+- OFICINAS.md §8 pide en el abandono «cables colgando, manchas de agua» y «un expediente a medio sellar», y nadie los hace. Al diseñar 4e hay que decidir: se hacen, se anotan en PLAN.md o se quitan del diseño.
+- No se ha medido cuántos aseos quedan sin cabinas con la taquilla a 1,1. Antes eran 108 casos, y el registro de U6b no trae la cifra.
 
-**Lo que se vio en las capturas** (`evidence/rediseno/4d_sheet.png`): las salas ya tienen tamaño de sala y las piezas grandes están en su sitio, pero casi todas están vacías de lo menudo (es 4c). En cinco capturas la hoja de la puerta tapa un tercio del cuadro (archivo, secretaría, aseos, eléctrico y ascensor): es del encuadre de `office_rooms_capture`, y es para el área 6.
+**Para el área 6:**
+- El encuadre de `office_rooms_capture`: la hoja de la puerta tapa el cuadro, y cada captura ve una sola pared, así que lo colgado casi no sale.
+- La sección 11 de `cifras.json`: las 15 salas dan a=false y b=false, como en 4d.
+- La cuota de cue en 0,876 (la base es 0,900).
+- El umbral de `office_test_generator`.
+- C6b.
+- `evidence/4b_probe_props.gd` da 48/49: el `glow_strip` del mostrador y de la cocina, anterior a 4c.
 
-**Para el informe final al autor, además de lo de abajo:** The Locust (CC BY-NC-ND) y Realistic Female (CC BY-SA) impiden vender el juego, y hay assets sin licencia comprobada (`relleno_assets.md`, «Licencias»). Tras el área 5, las estructuras de `cifras.json` no llegan a 0,6: ventanilla -0,152, seguridad 0,208, eléctrico -0,178, climatización 0,034, montacargas -0,054.
+**Para los flujos:**
+- `frente_resumen.js`/`frente.js` sigue con la cadena en serie aunque una unidad devuelva `hecho: false`, y debería cortarla.
+- Las puertas de entrada que fijan el hash de HEAD rompen si hay commits entre la redacción y el lanzamiento.
+- Las costuras a veces leen una versión anterior de un archivo corregido en la misma ronda. Hay que comprobarlas contra el código antes de arreglar.
+
+**Para el informe final al autor:**
+- The Locust (CC BY-NC-ND) y Realistic Female (CC BY-SA) impiden vender el juego.
+- Hay assets sin licencia comprobada (`relleno_assets.md`, «Licencias»).
+- Tras el área 5, las estructuras de `cifras.json` no llegan a 0,6: ventanilla -0,152, seguridad 0,208, eléctrico -0,178, climatización 0,034 y montacargas -0,054.
 
 ### En curso: el rediseño del piso 2 (25 de octubre; sigue el 1 de noviembre, semana nueva)
 
