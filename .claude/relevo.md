@@ -19,7 +19,7 @@ Antes (25 de octubre) pidió el rediseño visual y ambiental completo del piso 2
 **Estado del código.**
 - Tramo A en `fc41e24`: modelos, paredes, techo y sillas, con verify en verde (72 líneas).
 - Tramo B en `ff016bf`: lo menudo y el abandono, con `office_clutter.gd` y `office_dressing_test` a 19/19.
-- Hay push hasta `fc41e24`; `ff016bf` y el commit de esta nota están sin subir.
+- Todo está subido.
 - Nada de 4c se ha exportado.
 - La rama local `wip/4d-proporcion` es vieja y sobra.
 
