@@ -2,13 +2,13 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 10 de noviembre de 2026, noche. Esta tarea para al **60 % semanal** (decisión del autor). La semana se renueva el 14 de noviembre a las 08:00; al cerrar 4e iba por el 33 %.
+**Última actualización:** 10 de noviembre de 2026, noche (área 6 cerrada). Esta tarea para al **60 % semanal** (decisión del autor). La semana se renueva el 14 de noviembre a las 08:00.
 
 **Última instrucción del autor (10 de noviembre):** «Continúa el desarrollo». La hoja de ruta es la del 4 de noviembre:
 1. cerrar 4d (hecho);
 2. 4c (hecho);
 3. 4e, las recetas llenas (hecho, con tres tipos bajo su banda);
-4. área 6 (capturas finales, rendimiento, documentos, `OFFICE.VERSION`, créditos, exportación con `Probar piso 2.bat` y Drive);
+4. área 6 (hecha salvo la subida a Drive);
 5. relleno;
 6. las decisiones de licencias que esperan al autor.
 
@@ -18,8 +18,8 @@ Antes (25 de octubre) pidió el rediseño visual y ambiental completo del piso 2
 
 **Estado del código.**
 - Tramo A en `c47d512` y tramo B en `ddcbace` (`spec_4e.md` y `spec_4e_b.md` mandan). Verify en verde: la de la integración del tramo B dio 60 de 61 a las 18:08, y la única roja era `office_proportion_test`, que ha vuelto a salir de la lista.
-- `ddcbace` no está subido todavía; lo anterior, sí.
-- Nada de 4c ni de 4e se ha exportado. La rama local `wip/4d-proporcion` es vieja y sobra.
+- Todo subido hasta `60c580e` (`v1.3.0`).
+- 4c, 4e y el área 6 van en la exportación 1.3.0. La rama local `wip/4d-proporcion` es vieja y sobra.
 
 **Cómo quedó `office_proportion_test`:** 52/55, fuera de `verify` (comentario en la línea 46). Fallan tres medianas de suelo ocupado, sin bajar umbrales:
 - ventanilla, 18,6 (pide 20);
@@ -36,15 +36,14 @@ En las semillas 1 a 40 (p30), eléctrico da 12,62 con banda 16, ventanilla 16,35
 - el título de `T_FIRST_PIECE` no nombra despacho ni aseos;
 - el comentario de `office_test.gd:428` dice 1500 ms, y `office_metrics` usa 2000.
 
-**Lo siguiente: el área 6.** Las capturas de 4e B están en `evidence/rediseno/4e_b/`.
+### El área 6 cerrada: versión 1.3.0 (10 de noviembre, noche)
 
-**Para el área 6:**
-- El encuadre de `office_rooms_capture`: la hoja de la puerta tapa el cuadro, y cada captura ve una sola pared, así que lo colgado casi no sale.
-- La sección 11 de `cifras.json`: las 15 salas dan a=false y b=false, como en 4d.
-- La cuota de cue en 0,876 (la base es 0,900).
-- El umbral de `office_test_generator`.
-- C6b.
-- `evidence/4b_probe_props.gd` da 48/49: el `glow_strip` del mostrador y de la cocina, anterior a 4c.
+- Commit `60c580e`, etiqueta `v1.3.0` y push hechos (main y la etiqueta). El zip `exports/TheFour.zip` (506.325.340 bytes, 483 MiB; antes unos 265) tiene sus cinco entradas, con `The Four/Probar piso 2.bat`.
+- **Falta la subida a Drive**: la extensión de Chrome no estaba conectada. Método de la memoria `drive-upload-of-exports` (guion `serve_zip.py` en el scratchpad de la sesión). La copia de la versión anterior se nombra con la fecha de esa exportación. El Mac no se exportó.
+- **Banco, NO PASA en Forward+ Alto** (PERFORMANCE.md §13, «Tras el rediseño»): la CPU a 60 FPS p95 da 17,64 ms en el inicio y 18,87 ms en medio. En Compatibilidad el montaje pasa de 13 a 51 s. Se exportó igual, y queda en el bead `four-mvz` (P1).
+- Capturas finales en `evidence/rediseno/final/` y `final_muybajo/`, sin la hoja de la puerta. En Muy bajo, el cuarto eléctrico sale negro del todo (en Alto se ve algo): conviene mirarlo en el relleno.
+- Las costuras que quedan: la cifra del CHANGELOG (188 commits) cuenta `60c580e`. La orden de `bench_table.ps1` con `-File` recibe la lista como un solo texto, y en los documentos solo aparece la forma de `-Command`, que funciona.
+- Para el informe final, además: la cuota de cue en 0,876 (base 0,900), C6b, la sección 11 de `cifras.json` (a y b en false en las 15 salas) y `evidence/4b_probe_props.gd` en 48/49 (el `glow_strip`).
 
 **Para los flujos:**
 - `frente_resumen.js`/`frente.js` sigue con la cadena en serie aunque una unidad devuelva `hecho: false`, y debería cortarla.
