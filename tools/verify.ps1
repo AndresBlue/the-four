@@ -43,7 +43,7 @@ function Godot-Arguments([string]$source, [string]$log, [bool]$fixed, [string[]]
 }
 
 $tests = @('hotel/scene_contract_test','hotel/hotel_test','hotel/survival_test','hotel/capture_test','hotel/intro_test','hotel/echo_test','hotel/loop_test','hotel/stages_test','hotel/rules_test','hotel/difficulty_test','hotel/continue_test','hotel/creature_test','hotel/creature_contract_test','hotel/objectives_test','hotel/palette_scan_test','hotel/room_light_test','hotel/manifest_golden_test','office/office_test_generator','office/office_test_validator','office/office_test_physics','office/office_walk_test','office/conduit_graph_test','office/lurker_shell_test','office/lurker_motion_test','office/lurker_fairness_test','office/lurker_senses_test','office/office_lies_test','office/lurker_capture_test','office/office_dark_test','office/lurker_tiles_test','office/lurker_forced_test','office/lurker_observer_test','office/lurker_bots_test','hotel/sanity_test','hotel/avatar_test','hotel/observer_test','hotel/hotel_audio_test','hotel/spatial_audio_test','office/office_audio_test','office/office_finishes_test','office/office_light_test','office/office_pieces_test','office/office_dressing_test')
-# office/office_proportion_test stays out until area 4e: its floor count wants fuller recipes (spec_4c, after the drafting).
+# office/office_proportion_test stays out: ventanilla, direccion and juntas are still below their floor band after area 4e (spec_4e_b).
 foreach ($test in $tests) {
     $name = ($test -split '/')[-1]
     $log = Join-Path $evidence ('verify_' + $name + '.log')

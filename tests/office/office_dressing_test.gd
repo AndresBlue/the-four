@@ -7,12 +7,15 @@ extends SceneTree
 ## smoke detector in every false ceiling with troffers, Dirección's floor seen
 ## polished round its rug and still carpet to the ear, none of the hotel's wall
 ## dressing nor a fuse box left, three accents at most to a room, the washroom's wet end
-## tiled, the mail room's central, and no text with a middle dot or a long
-## dash. OFFICE_DRESSING_RESULT n/n.
+## tiled, the mail room's central, no text with a middle dot or a long dash,
+## and the secretary's tops on its L. OFFICE_DRESSING_RESULT n/n.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
 const MODELS := preload("res://game/world/office/office_models.gd")
+const DESKS := preload("res://game/world/office/pieces/desks.gd")
+const KIT := preload("res://game/world/office/pieces/kit.gd")
+const CLUTTER := preload("res://game/world/office/office_clutter.gd")
 ## The office's own downloads (tools/props/build_catalogue.gd, area 4c U1).
 const OWN := ["sofa_02", "mid_century_lounge_chair", "potted_plant_01", "pachira_aquatica_01_c", "pachira_aquatica_01_d", "calathea_orbifolia_01_a", "calathea_orbifolia_01_c", "anthurium_botany_01_a", "anthurium_botany_01_c"]
 ## The kinds that are only a stand-in (office_models.stand_in()).
@@ -76,6 +79,7 @@ func run() -> void:
 		if label.text.contains("·") or label.text.contains("—"): bad_text.append(label.text)
 	check("Ningún rótulo lleva «·» ni «—»", bad_text.is_empty(), str(bad_text))
 	clutter_checks(hotel, rooms, notes)
+	secretary_tops(hotel)
 	print("OFFICE_DRESSING_RESULT ", checks - failed, "/", checks)
 	level.queue_free()
 	await process_frame
@@ -282,3 +286,23 @@ func paper_clear(rooms: Array, room: Dictionary, at: Vector3, spots: Array) -> b
 		for j in range(i + 1, ways.size()):
 			if Geometry2D.get_closest_point_to_segment(local, a, ways[j]).distance_to(local) < 2.0: return false
 	return true
+
+## The secretary's tops (office_clutter.TOPS, off by tops_shift()) each stand
+## on one of the L's two runs: make_desk_l()'s colliders, sized and set as
+## office_props.build_item() lays the L (spec_4e_b G). The floor drew the L at
+## that size: its builder's piece cache (kit.cached()) holds it.
+func secretary_tops(hotel) -> void:
+	var size: Vector2 = OFFICE.FURNITURE["secretary_desk"].size
+	var board := Vector3(size.x - 0.1, 0.75, size.y - 0.7)
+	var drawn: bool = (hotel.get_meta("office_pieces", {}) as Dictionary).has(KIT.key_of("desk_l_walnut", board))
+	var boxes: Array = DESKS.desk_l_walnut(hotel, board).get_meta("colliders")
+	var shift: Vector3 = CLUTTER.tops_shift("secretary_desk", {"size": [size.x, size.y]})
+	var loose: Array = []
+	for thing: Array in CLUTTER.TOPS["secretary_desk"]:
+		var at: Vector3 = (thing[1] as Vector3) + shift
+		var held := false
+		for box: AABB in boxes:
+			var top := Rect2(box.position.x, box.position.z - 0.35, box.size.x, box.size.z).grow(-0.05)
+			if top.has_point(Vector2(at.x, at.z)) and absf(at.y - box.end.y) < 0.01: held = true
+		if not held: loose.append(String(thing[0]))
+	check("Lo de encima de la mesa de secretaría cae sobre su L", drawn and loose.is_empty(), "dibujada=%s %s" % [str(drawn), str(loose)])

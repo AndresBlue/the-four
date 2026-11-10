@@ -410,7 +410,7 @@ const FURNITURE := {
 	"card_index": {"size": Vector2(1.7, 0.5), "height": 1.2},
 	"exec_desk": {"size": Vector2(2.2, 2.3), "height": 1.3},
 	"lounge": {"size": Vector2(2.3, 1.4), "height": 1.6},
-	"secretary_desk": {"size": Vector2(1.9, 2.5), "height": 1.3},
+	"secretary_desk": {"size": Vector2(2.1, 2.5), "height": 1.3},
 	"work_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
 	"waiting_row": {"size": Vector2(2.5, 0.6), "height": 0.9},
 	"filing": {"size": Vector2(0.5, 0.65), "height": 1.32},
@@ -493,18 +493,18 @@ const ROOM_FURNITURE := {
 	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["waiting_row_4", "side", 1, 1, 1], ["plant_floor", "spare", 2, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1]],
 	CUBICLES: [["desk", "lattice", 1, 1, 1]],
-	OFFICE: [["office_suite", "wall", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 2, 2, 1], ["plant_floor", "spare", 1, 1, 1]],
+	OFFICE: [["office_suite", "wall", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 3, 3, 1], ["plant_floor", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1]],
 	TOILETS: [["cubicles", "wall", 1, 1, 1], ["locker_bank", "run", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "middle", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1]],
+	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["plant_floor", "spare", 2, 2, 1], ["waiting_row", "spare", 1, 1, 1]],
 	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1]],
 	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
-	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "side", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1]],
+	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "spare", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1]],
 	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1]],
 	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1]],
-	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 3]],
 	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 1, 2], ["cart_boxes", "run", 2, 2, 1], ["work_table", "spare", 1, 1, 1]],
 	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1]],
-	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "side", 1, 1, 1]],
+	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1]],
 	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
 	LOBBY: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
 	REFUGE: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
@@ -531,7 +531,7 @@ const IN_ITS_CORNER := ["lounge"]
 ## The corner a paper is put on (document_placement.SURFACES) that a type keeps
 ## before its recipe is laid, so the recipe lays round it (spec_4e E): the types
 ## each planta must have (MUSTS) that have one in RECIPES.
-const PAPER_TOPS_KEPT := {BREAK_ROOM: "table", SECRETARY: "desk"}
+const PAPER_TOPS_KEPT := {BREAK_ROOM: "table", MAIL: "table", SECRETARY: "desk"}
 ## The wall each type is framed by and furnished against first (spec_rediseno
 ## 6; office_recipes.feature_of(), office_rooms_capture.gd): "far", the closed
 ## wall farthest from its main door; "suite", the wall of its door to a

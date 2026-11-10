@@ -233,10 +233,11 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"lounge":
 			lounge(builder, holder, seed_pos, int(room.get("id", -1)))
 		"secretary_desk":
-			# The L's wing as long as the footprint lets it (spec_4e D), always on the
-			# right; the chair and the lamp keep their place from its back.
+			# The L as long as the footprint lets it and 0.1 narrower (spec_4e D,
+			# spec_4e_b G), its wing always on the right; the chair and the lamp keep
+			# their place from its back.
 			var back := -size.y * 0.5
-			piece(builder, holder, DESKS.desk_l_walnut(builder, Vector3(1.8, 0.75, size.y - 0.7)), Vector3(0, 0, -0.35))
+			piece(builder, holder, DESKS.desk_l_walnut(builder, Vector3(size.x - 0.1, 0.75, size.y - 0.7)), Vector3(0, 0, -0.35))
 			chair(builder, holder, Vector3(0, 0, back + 1.85), -1.0, "office_chair")
 			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis.IDENTITY, Vector3(-0.7, 0.75, back + 0.15)))
 		"work_desk":

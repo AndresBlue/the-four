@@ -93,11 +93,7 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 		elif kind == "desk_pair":
 			desk_things(builder, node, holder, room, Vector3(0, 0, -0.375), -1.0, seed_pos, mess)
 			desk_things(builder, node, holder, room, Vector3(0, 0, 0.375), 1.0, seed_pos + Vector3(0.5, 0, 0), mess)
-		# A meeting table's tops sit on its board (table_z, office_props.build_item()).
-		var shift: Vector3 = Vector3.ZERO
-		if kind.begins_with("meeting_table"): shift = Vector3(0, 0, -float(item.size[1]) * 0.5 + 0.6)
-		# The secretary's tops keep their place from its back as its wing grows.
-		elif kind == "secretary_desk": shift = Vector3(0, 0, -float(item.size[1]) * 0.5 + 1.1)
+		var shift := tops_shift(kind, item)
 		for thing: Array in TOPS.get(kind, []):
 			var at: Vector3 = (thing[1] as Vector3) + shift
 			var yaw: float = float(thing[2]) + (builder.vary(seed_pos + at, 410) - 0.5) * 0.3
@@ -114,6 +110,14 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 				var at: Vector3 = thing[1]
 				lay(builder, node, node, room, String(thing[0]), socket * Transform3D(Basis(Vector3.UP, float(thing[2])), at), float(thing[3]), node.position + socket * at)
 	if mess >= 2 and builder.vary(node.position, 430) < float(SPILL[mess]): spill(builder, node, room)
+
+## Where a kind's TOPS stand off their rows, in its holder: a meeting table's
+## on its board (table_z, office_props.build_item()); the secretary's from its
+## back as its wing grows, and with its wing as the L widens (spec_4e_b G).
+static func tops_shift(kind: String, item: Dictionary) -> Vector3:
+	if kind.begins_with("meeting_table"): return Vector3(0, 0, -float(item.size[1]) * 0.5 + 0.6)
+	if kind == "secretary_desk": return Vector3((float(item.size[0]) - 1.9) * 0.5, 0, -float(item.size[1]) * 0.5 + 1.1)
+	return Vector3.ZERO
 
 ## One thing at `xform` in `holder`, `often` of the time by vary(); noted (in
 ## the world, `node` its room's node).
