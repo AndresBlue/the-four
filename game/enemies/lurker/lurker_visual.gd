@@ -93,6 +93,43 @@ var last_speed := 0.0
 ## Her contact with what she holds: a dark stain projected on the surface
 ## under her (a decal: nothing on the Compatibility renderer).
 var stain: Decal
+## Held to what she clings to (the grip pass; the author: "se le ve tosco"):
+## her trunk drawn up towards the surface until its middle is CONTACT off it,
+## at most PRESS_MOST nearer than her body hangs. A ball of TRUNK cast that
+## way finds the surface, an edge as well as a face, so it never goes through
+## a door head. It hangs at one distance, and her ink lies on what she holds
+## (the shader's `spill`). Drawing only: her body and its rules keep the hang.
+const CONTACT := 0.3
+const PRESS_MOST := 0.3
+const TRUNK := 0.22
+const SPILL := 1.7
+var press := 0.0
+var trunk_rest := Vector3.INF
+var press_query := PhysicsShapeQueryParameters3D.new()
+## Each hand that lands tugs her trunk ahead (a spring, SURGE_HZ, damped by
+## SURGE_DAMP): she goes in short lurches and checks, never on a rail, at most
+## SURGE_MOST either way (inside smooth()'s LAG_MOST). Her abdomen swings
+## behind them and her head is held still against them (lurker_limbs.gd).
+const SURGE_KICK := 1.2
+const SURGE_HZ := 1.8
+const SURGE_DAMP := 0.45
+const SURGE_MOST := 0.07
+const SURGE_PITCH := 0.25
+const ABDOMEN_LAG := 0.7
+const ABDOMEN_SWAY := 0.08
+var surge := 0.0
+var surge_v := 0.0
+## A stain where each hand holds on (a decal, as `stain`): it comes as the
+## hand lands, breathes while it holds and fades where it was once it lets go.
+var grip_stains: Array[Decal] = []
+var grip_fade := PackedFloat32Array()
+var breath := 0.0
+## Her bolt: drawn out along the way she runs.
+const STRETCH := 0.3
+var stretched := 0.0
+## A blot with a torn, soft edge: a radial fade broken by noise, so no stain
+## of hers reads as a round sticker.
+static var blot: ImageTexture
 var crouch := false
 var crouched := 0.0
 var trail_at := Vector3.INF
@@ -120,30 +157,59 @@ func _ready() -> void:
 	head_bone = skeleton.find_bone("head")
 	limbs = LIMBS.new()
 	limbs.name = "Limbs"
-	limbs.footfall.connect(func(point, strength, normal): footfall.emit(point, strength, normal))
+	limbs.footfall.connect(landed)
 	skeleton.add_child(limbs)
 	limbs.hands = crawling
 	ink = fog("Ink", 0.95 * size, 0.2 * size, 40.0, 0.0, 0.17 * size)
+	(ink.material_override as ShaderMaterial).set_shader_parameter("spill", SPILL)
 	stain = Decal.new()
 	stain.name = "Stain"
-	stain.size = Vector3(1.5, 0.9, 1.5) * size
-	var blot := GradientTexture2D.new()
-	var fade := Gradient.new()
-	fade.set_color(0, Color(0, 0, 0, 0.8))
-	fade.set_color(1, Color(0, 0, 0, 0))
-	blot.gradient = fade
-	blot.fill = GradientTexture2D.FILL_RADIAL
-	blot.fill_from = Vector2(0.5, 0.5)
-	blot.fill_to = Vector2(1.0, 0.5)
-	stain.texture_albedo = blot
+	stain.size = Vector3(1.1, 0.9, 1.1) * size
+	stain.texture_albedo = blot_texture()
 	stain.cull_mask = 0xFFFFF ^ LAYER
+	stain.normal_fade = 0.3
 	stain.position = Vector3.DOWN * 0.2 * size
 	add_child(stain)
+	for i in LIMBS.LIMBS.size():
+		var grip_stain := Decal.new()
+		grip_stain.name = "GripStain%d" % i
+		grip_stain.top_level = true
+		grip_stain.texture_albedo = blot
+		grip_stain.cull_mask = 0xFFFFF ^ LAYER
+		grip_stain.normal_fade = 0.5
+		grip_stain.visible = false
+		add_child(grip_stain)
+		grip_stains.append(grip_stain)
+		grip_fade.append(0.0)
+	press_query.shape = SphereShape3D.new()
+	(press_query.shape as SphereShape3D).radius = TRUNK
 	# Tighter and darker than it was: 0.46 thick in a sphere of 1.0, its thin
 	# rags reached 1.6 m and read on a lit wall as a grey cloud of smoke
 	# round her, not as her darkness.
 	vapour = fog("Vapour", 0.6 * size, 0.22 * size, gloom, 1.0, 0.17 * size)
 	animator.play("idle")
+
+
+static func blot_texture() -> ImageTexture:
+	if blot != null: return blot
+	var noise := FastNoiseLite.new()
+	noise.seed = 11
+	noise.frequency = 0.09
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	for y in 64:
+		for x in 64:
+			var r := Vector2(x - 31.5, y - 31.5).length() / 32.0 + noise.get_noise_2d(x, y) * 0.3
+			var a := clampf((1.0 - r) / 0.5, 0.0, 1.0)
+			image.set_pixel(x, y, Color(0, 0, 0, a * a * 0.85))
+	blot = ImageTexture.create_from_image(image)
+	return blot
+
+
+## A hand has landed: the sound's, and a tug on her trunk.
+func landed(point: Vector3, strength: float, normal: Vector3) -> void:
+	footfall.emit(point, strength, normal)
+	if limbs.swept or not limbs.grips.is_empty(): return
+	surge_v += SURGE_KICK * clampf(limbs.velocity.length() / 1.35, 0.0, 1.5)
 
 
 func fog(name_: String, radius: float, thickness: float, density: float, rags: float, face_clear: float) -> MeshInstance3D:
@@ -242,12 +308,15 @@ func _process(delta: float) -> void:
 	limbs.swept = limbs.velocity.length() > SWEPT_FROM
 	var camera := get_viewport().get_camera_3d()
 	limbs.look_point = look_point if look_point != Vector3.INF else (camera.global_position if camera else Vector3.INF)
+	hold_on(delta)
 	pose_body(delta)
+	stain_grips(delta)
 	var xf := skeleton.global_transform
 	var front := xf * (skeleton.get_bone_global_pose(body_bone) * Vector3(0.0, 0.2, 0.0))
 	var back := xf * (skeleton.get_bone_global_pose(abdomen_bone) * Vector3(0.0, 0.14, 0.0))
 	var head := xf * (skeleton.get_bone_global_pose(head_bone) * Vector3(0.0, 0.06, 0.1))
 	var middle := (front + back) * 0.5
+	trunk_rest = middle + global_basis.y.normalized() * press
 	# The ink lags behind a dash and catches up.
 	if trail_at == Vector3.INF or delta <= 0.0 or middle.distance_to(trail_at) > 2.0: trail_at = middle
 	trail_at = trail_at.lerp(middle, 1.0 - exp(-TRAIL_CATCH * delta))
@@ -294,6 +363,42 @@ func _process(delta: float) -> void:
 	(vapour.material_override as ShaderMaterial).set_shader_parameter("density", gloom)
 
 
+## How far her trunk is drawn up towards what she clings to (see CONTACT):
+## eased, and let go of faster than taken, so an edge coming never meets it.
+func hold_on(delta: float) -> void:
+	var goal := 0.0
+	if crawling and limbs.grips.is_empty() and trunk_rest != Vector3.INF and is_inside_tree():
+		var reach := PRESS_MOST + CONTACT - TRUNK
+		press_query.transform = Transform3D(Basis(), trunk_rest)
+		press_query.motion = -global_basis.y.normalized() * reach
+		press_query.collision_mask = limbs.world_mask
+		var room_left := get_world_3d().direct_space_state.cast_motion(press_query)
+		goal = clampf(reach * room_left[0] - (CONTACT - TRUNK), 0.0, PRESS_MOST)
+	press = lerpf(press, goal, 1.0 - exp(-(18.0 if goal < press else 4.0) * delta))
+
+
+## A stain under each hand that holds on (see grip_stains).
+func stain_grips(delta: float) -> void:
+	breath += delta
+	for i in mini(grip_stains.size(), limbs.limbs.size()):
+		var limb: Dictionary = limbs.limbs[i]
+		var mark := grip_stains[i]
+		var held: bool = crawling and limbs.grips.is_empty() and not limbs.swept and limb.planted and not limb.swing and not limb.free
+		grip_fade[i] = move_toward(grip_fade[i], 1.0 if held else 0.0, delta * (5.0 if held else 2.0))
+		mark.visible = grip_fade[i] > 0.01
+		if not mark.visible: continue
+		if held:
+			# under the palm and the claws, flat on the hold
+			var n: Vector3 = limb.normal
+			var at: Vector3 = ((limb.hold as Vector3) + (limb.claw_at as Vector3)) * 0.5
+			at -= n * (at - (limb.hold as Vector3)).dot(n)
+			var side := n.cross(Vector3.UP if absf(n.y) < 0.9 else Vector3.RIGHT).normalized().rotated(n, float(i) * 2.1)
+			mark.global_transform = Transform3D(Basis(side, n, side.cross(n)), at)
+		var wide: float = float(limb.hand_reach) * limbs.size * 0.9 * (1.0 + 0.06 * sin(breath * 1.4 + float(i)))
+		mark.size = Vector3(wide, 0.3, wide)
+		mark.modulate = Color(1, 1, 1, grip_fade[i] * (0.8 + 0.2 * sin(breath * 1.9 + float(i) * 1.3)))
+
+
 ## Her body as she holds still and as she goes (drawing only, on the Model):
 ## turned towards what she looks at past what her neck can do, pressed down
 ## before a dash, a shudder; and the tic of her head handed to the hands'
@@ -334,12 +439,25 @@ func pose_body(delta: float) -> void:
 	# Her stride in her body: a bob and a roll, and a lean into her speeding
 	# up or slowing down (her abdomen swings the other way from the clip).
 	var going: float = limbs.velocity.length()
+	# Tugged along by her hands: lurches and checks, her abdomen swinging behind
+	# and her head held still against them.
+	var w := TAU * SURGE_HZ
+	surge_v += (-w * w * surge - 2.0 * SURGE_DAMP * w * surge_v) * delta
+	surge = clampf(surge + surge_v * delta, -SURGE_MOST, SURGE_MOST)
+	if capture or limbs.swept:
+		surge = 0.0
+		surge_v = 0.0
 	stride = fmod(stride + going * delta / STRIDE, 1.0)
 	var weight: float = clampf(going / 1.0, 0.0, 1.0) * (0.0 if limbs.swept or capture else 1.0)
 	var bob: float = sin(stride * TAU * 2.0) * BOB * size * weight
 	var roll: float = sin(stride * TAU) * ROLL * weight
 	if delta > 0.0: lean = lerpf(lean, clampf((going - last_speed) / delta * LEAN, -LEAN_MOST, LEAN_MOST), 1.0 - exp(-8.0 * delta))
 	last_speed = going
-	var scaled := Vector3(size, size * (1.0 - 0.08 * crouched), size)
-	var turn := Basis(Vector3.UP, torso_yaw) * Basis(Vector3.BACK, roll) * Basis(Vector3.RIGHT, -lean)
-	model.transform = Transform3D(turn * Basis.from_scale(scaled), Vector3.DOWN * (CROUCH * size * crouched + bob) + shake)
+	limbs.abdomen_swing = Vector2(sin(stride * TAU + 0.8) * ABDOMEN_SWAY * weight, clampf(surge_v * ABDOMEN_LAG, -0.3, 0.3))
+	limbs.head_hold = global_basis * (Vector3.FORWARD * surge)
+	# Bolting, drawn out along her run.
+	stretched = move_toward(stretched, 1.0 if limbs.swept else 0.0, delta * 10.0)
+	var thin := 1.0 - 0.12 * stretched
+	var scaled := Vector3(size * thin, size * (1.0 - 0.08 * crouched) * thin, size * (1.0 + STRETCH * stretched))
+	var turn := Basis(Vector3.UP, torso_yaw) * Basis(Vector3.BACK, roll) * Basis(Vector3.RIGHT, -lean - surge_v * SURGE_PITCH)
+	model.transform = Transform3D(turn * Basis.from_scale(scaled), Vector3.DOWN * (CROUCH * size * crouched + bob + press) + Vector3.BACK * surge + shake)

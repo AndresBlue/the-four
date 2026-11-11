@@ -4,7 +4,9 @@ extends SceneTree
 ## mind off and her motion driven from here. Over a ceiling with the torch at
 ## 6 and 3 m, out of a ceiling tile and out of a grille, in a dark room with no
 ## torch and across a lit one, her ink near and far, scared and fleeing. JPGs
-## in evidence/lurker_look/<phase>/.
+## in evidence/lurker_look/<phase>/. --shots=v7 (the grip pass): two bolts, then
+## seq_techo, seq_pared (torch) and seq_pared_luz (lit) from the side, seq_dintel,
+## pasillo (towards the eye from 8 to 3 m) and quieta, the camera following her.
 ##   godot --path . --rendering-method forward_plus --fixed-fps 30 --script res://tools/capture/lurker_office_look.gd -- --automation --test-profile --silent [--phase=antes]
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
@@ -21,6 +23,8 @@ var out_dir := "res://evidence/lurker_look/antes"
 var shots := ""
 ## --trace: a line a frame of her bolt, and only the bolts.
 var trace := false
+## Where the camera films from while it follows her (film()); INF: it stays.
+var chase_eye := Vector3.INF
 
 func _initialize() -> void: run.call_deferred()
 
@@ -75,8 +79,9 @@ func run() -> void:
 		await process_frame
 		quit()
 		return
-	if shots == "v4":
-		await v4(big, tiled)
+	if shots == "v4" or shots == "v7":
+		if shots == "v7": await v7(big)
+		else: await v4(big, tiled)
 		level.queue_free()
 		await process_frame
 		quit()
@@ -145,11 +150,28 @@ func save(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_jpg(out_dir + "/" + name + ".jpg", 0.88)
 
-## `count` pictures, one every `every` frames (at 30 a second).
+## `count` pictures, one every `every` frames (at 30 a second); with a
+## `chase_eye` the camera (and the torch) stays on her trunk, as a player's would.
 func film(name: String, count: int, every: int) -> void:
 	for k in count:
-		for i in every: await process_frame
+		for i in every:
+			if chase_eye != Vector3.INF:
+				look(chase_eye, trunk())
+				# the beam on her, not where the camera converges
+				level.player.torch.look_at(trunk())
+			await process_frame
 		await save("%s_%02d" % [name, k])
+		var v = lurker.visual
+		print("LOOK  %s_%02d %.1f m press %.2f surge %+.3f lurch %+.2f" % [name, k, level.player.camera.global_position.distance_to(trunk()), v.press, v.surge, v.surge_v])
+
+## The middle of her ink: her trunk as drawn.
+func trunk() -> Vector3:
+	return lurker.visual.ink.global_position
+
+## A point kept `margin` inside a room's floor rectangle.
+func clamp_in(room: Dictionary, p: Vector3, margin := 0.4) -> Vector3:
+	var half: Vector2 = FLOOR.size_of(room) * 0.5 - Vector2(margin, margin)
+	return Vector3(clampf(p.x, float(room.px) - half.x, float(room.px) + half.x), p.y, clampf(p.z, float(room.pz) - half.y, float(room.pz) + half.y))
 
 func wait(seconds: float) -> void:
 	for i in int(seconds * 30.0): await process_frame
@@ -346,6 +368,140 @@ func bolt_shot(room: Dictionary, name: String) -> void:
 	lurker.thinking = false
 	torch(false)
 	await wait(0.5)
+
+# --- The grip pass (v7): side on, followed, the room lit or the torch on her ----------------
+
+func v7(big: Dictionary) -> void:
+	var bare := pick(func(r: Dictionary) -> bool: return not OFFICE.false_ceiling(r), 3.0)
+	if not bare.is_empty(): await bolt_shot(bare, "sin_placa")
+	var hall := corridor()
+	if not hall.is_empty(): await bolt_shot(hall, "pasillo")
+	lurker.thinking = false
+	chase_eye = Vector3.INF
+	await across(big, 3.5, true, "seq_techo", 30, 1)
+	await dash_across(big)
+	if not bare.is_empty():
+		await wall_side(bare, false)
+		await wall_side(bare, true)
+	await lintel_side()
+	await hall_toward(hall)
+	await still(big)
+
+## Her bolt seen from the side: across the ceiling 4 m off at 9 m/s, every
+## frame (her arms swept back, her body drawn out).
+func dash_across(room: Dictionary) -> void:
+	var f := frame_of(room)
+	var centre: Vector3 = f[0]
+	var along: Vector3 = f[1]
+	var side: Vector3 = f[2]
+	var half_short: float = float(f[4]) * 0.5
+	var eye := centre - along * 2.0 + Vector3.UP * EYE
+	var line := centre + along * 2.0
+	lurker.place_over(line - side * (half_short - 0.5), line)
+	torch(true)
+	look(eye, Vector3(line.x, centre.y + 2.2, line.z))
+	await wait(0.5)
+	lurker.motion.go_to(line + side * (half_short - 0.5), 9.0, true)
+	lurker.motion.bolting = true
+	lurker.motion.bolt_speed = 9.0
+	await film("huida_lado", 16, 1)
+	lurker.motion.bolting = false
+
+## Off her ceiling and down a wall of a room with no false ceiling to its
+## foot, a breath there and back up, seen from along the wall 3 to 4 m off:
+## the torch following her, or the room lit as well.
+func wall_side(room: Dictionary, lit: bool) -> void:
+	var bands: Array = lurker.shell.walls_of.get(int(room.id), [])
+	if bands.is_empty():
+		print("LOOK no wall in room %d" % int(room.id))
+		return
+	# the wall and the side of it that leave the eye furthest along it
+	var floor_y := float(room.get("py", 0.0))
+	var band := -1
+	var best := 0.0
+	for b in bands:
+		var r: Dictionary = lurker.shell.patches[int(b)]
+		for way in [1.0, -1.0]:
+			var f: Vector3 = r.origin
+			var e := clamp_in(room, Vector3(f.x, floor_y + EYE, f.z) - (r.across as Vector3) * 1.3 + (r.axis as Vector3) * 4.0 * way)
+			if e.distance_to(Vector3(f.x, floor_y + EYE, f.z)) > best:
+				best = e.distance_to(Vector3(f.x, floor_y + EYE, f.z))
+				band = int(b)
+				chase_eye = e
+	var record: Dictionary = lurker.shell.patches[band]
+	var top = lurker.shell.band_start(band, int(room.id))
+	var start: Vector3 = lurker.shell.anchor_of(top)
+	var inward: Vector3 = -(record.across as Vector3)
+	var face: Vector3 = record.origin
+	power(int(room.id), lit)
+	torch(true)
+	lurker.place_over(Vector3(start.x, floor_y, start.z) + inward * 1.6, Vector3(start.x, floor_y, start.z))
+	look(chase_eye, trunk())
+	await wait(0.4)
+	# Straight onto the band (the capture's own legs): the routes never send
+	# her down a wall for nothing.
+	lurker.motion.pace = SEEN_PACE
+	lurker.motion.legs = [{"kind": "tray", "to": Vector2(start.x, start.z), "room": int(room.id), "hang": NAN}, {"kind": "band", "patch": band, "dir": 1, "v": 0.0}]
+	var name := "seq_pared_luz" if lit else "seq_pared"
+	await film(name, 36, 2)
+	lurker.motion.legs = [{"kind": "band", "patch": band, "dir": -1, "v": 0.0}]
+	await film(name + "_sube", 18, 2)
+	print("LOOK %s eye %.1f m off the wall's foot" % [name, chase_eye.distance_to(face + Vector3.UP * EYE)])
+	chase_eye = Vector3.INF
+	power(int(room.id), false)
+
+## Across a door head into the next room, seen from that room, from the side
+## 3 to 4 m off: both rooms lit and the torch on her.
+func lintel_side() -> void:
+	for pair in lurker.shell.band_of_pair:
+		var a: int = pair.x
+		var b: int = pair.y
+		if int(level.manifest.rooms[a].get("wing", -1)) != 0 or not lurker.routes.door_open(pair): continue
+		var record: Dictionary = lurker.shell.patches[lurker.shell.band_of_pair[pair]]
+		var door: Vector3 = record.origin
+		var across_v: Vector3 = record.across
+		var start := door - across_v * 2.6
+		var far_room := FLOOR.room_at(level.manifest.rooms, door + across_v * 2.0)
+		if far_room.is_empty() or FLOOR.room_at(level.manifest.rooms, start).is_empty(): continue
+		power(a, true)
+		power(b, true)
+		torch(true)
+		lurker.place_over(start, door)
+		var floor_y := float(far_room.get("py", 0.0))
+		var wall := Vector3(across_v.z, 0, -across_v.x)
+		chase_eye = clamp_in(far_room, Vector3(door.x, floor_y + EYE, door.z) + across_v * 2.2 + wall * 2.6)
+		look(chase_eye, door + Vector3.UP * 2.4)
+		await wait(0.4)
+		lurker.motion.go_to(door + across_v * 2.4, SEEN_PACE, true)
+		await film("seq_dintel", 45, 2)
+		print("LOOK seq_dintel eye %.1f m off the door" % chase_eye.distance_to(door + Vector3.UP * EYE))
+		chase_eye = Vector3.INF
+		power(a, false)
+		power(b, false)
+		return
+	print("LOOK no open door")
+
+## Down a corridor's ceiling towards the eye, from 8 m to 3 m, the torch on.
+func hall_toward(hall: Dictionary) -> void:
+	if hall.is_empty():
+		print("LOOK no corridor")
+		return
+	var f := frame_of(hall)
+	var centre: Vector3 = f[0]
+	var along: Vector3 = f[1]
+	var half_long: float = float(f[3]) * 0.5
+	var foot := centre - along * (half_long - 0.4)
+	var far := minf(8.0, 2.0 * half_long - 1.0)
+	power(int(hall.id), false)
+	torch(true)
+	lurker.place_over(foot + along * far, foot)
+	chase_eye = foot + Vector3.UP * EYE
+	look(chase_eye, trunk())
+	await wait(0.4)
+	lurker.motion.go_to(foot + along * 3.0, SEEN_PACE, true)
+	await film("pasillo", 45, 3)
+	print("LOOK pasillo from %.1f m, ends %.1f m off" % [far, Vector2(trunk().x - chase_eye.x, trunk().z - chase_eye.z).length()])
+	chase_eye = Vector3.INF
 
 ## From her ceiling down a wall to a grille in it.
 func wall_down() -> void:

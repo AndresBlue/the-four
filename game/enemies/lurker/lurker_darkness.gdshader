@@ -30,6 +30,12 @@ uniform float face_clear = 0.17;
 uniform vec3 roots_a[9];
 uniform vec3 roots_b[9];
 uniform float roots_w[9];
+// Where the ink meets what is behind it (a ceiling, a wall), it lies on it:
+// pressed flat and spilled `spill` times as wide over it, a film FILM thick
+// whose edge is as torn as the rest and breathes, instead of being cut off
+// along the surface in a straight line. 0: none (the vapour).
+uniform float spill = 0.0;
+const float FILM = 0.1;
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 
 varying vec3 world_vertex;
@@ -56,7 +62,7 @@ float segment(vec3 p, vec3 a, vec3 b) {
 	return length(p - (a + ab * t));
 }
 
-float dark(vec3 p, float t, vec3 eye, vec3 centre) {
+float dark(vec3 p, float t, vec3 eye, vec3 centre, float widen) {
 	// the space itself is stirred, so the lumps curl instead of sliding
 	vec3 q = p * 3.0;
 	vec3 stir = vec3(noise(q + vec3(0.0, t * 0.3, 0.0)),
@@ -68,6 +74,7 @@ float dark(vec3 p, float t, vec3 eye, vec3 centre) {
 	for (int k = 0; k < 9; k++) {
 		if (roots_w[k] > 0.0) r = min(r, segment(p, roots_a[k], roots_b[k]) / (thickness * roots_w[k]));
 	}
+	r /= widen;
 	float ink = smoothstep(1.0, 0.84, r + (n - 0.5) * 1.15);
 	float wisps = smoothstep(1.7, 1.15, r + (n - 0.5) * 1.8) * smoothstep(0.52, 0.72, n);
 	// Rags with an edge, near the body: soft and wide they read as a vignette
@@ -106,15 +113,26 @@ void fragment() {
 #endif
 	vec4 view = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
 	view.xyz /= view.w;
-	t1 = min(t1, length(view.xyz));
+	float t_scene = length(view.xyz);
+	bool lies = spill > 0.0 && t_scene < t1;
+	// a torn cut where it meets the surface, never the surface's straight line:
+	// a little of it is let through and lies on it
+	float bleed = lies ? 0.16 * noise((eye + ray * t_scene) * 7.0 + vec3(0.0, TIME * 0.2, 0.0)) : 0.0;
+	t1 = min(t1, t_scene + bleed);
 	if (t1 <= t0) discard;
 	float sum = 0.0;
 	const int STEPS = 10;
 	float dt = (t1 - t0) / float(STEPS);
+	// it breathes, never on a beat
+	float widen = spill * (1.0 + 0.07 * sin(TIME * 1.3) + 0.05 * sin(TIME * 2.3 + 1.7));
 	for (int i = 0; i < STEPS; i++) {
-		vec3 p = eye + ray * (t0 + (float(i) + 0.5) * dt);
-		sum += dark(p, TIME, eye, centre) * dt;
+		float t = t0 + (float(i) + 0.5) * dt;
+		vec3 p = eye + ray * t;
+		// flattened towards what it touches: wider the nearer it lies to it
+		float press = lies ? mix(1.0, widen, smoothstep(0.25, 0.0, t_scene - t)) : 1.0;
+		sum += dark(p, TIME, eye, centre, press) * dt;
 	}
+	if (lies) sum += dark(eye + ray * t_scene, TIME, eye, centre, widen) * FILM;
 	ALBEDO = vec3(0.0);
 	ALPHA = clamp(1.0 - exp(-sum * density), 0.0, 1.0);
 }

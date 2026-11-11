@@ -140,6 +140,13 @@ var head_turned := false
 ## A tic of the head on top of where it looks (lurker_visual.gd sets it): not
 ## eased, so it snaps round in a frame or two.
 var tic_head := Quaternion.IDENTITY
+## Her gait in her trunk (lurker_visual.gd sets them): her abdomen swung off
+## the clip (yaw, pitch; radians, in the skeleton's frame), and how far her
+## head is held back in the world against a lurch of her trunk, so it stays
+## steady while the body jerks along under it.
+var abdomen_swing := Vector2.ZERO
+var head_hold := Vector3.ZERO
+var abdomen := -1
 ## The jaw drops when what it stares at is nearer than JAW_NEAR metres.
 const JAW_NEAR := 4.0
 const JAW_OPEN := 0.45
@@ -160,6 +167,7 @@ func _setup(skeleton: Skeleton3D) -> void:
 	head = skeleton.find_bone("head")
 	eyes = [skeleton.find_bone("eye.L"), skeleton.find_bone("eye.R")]
 	jaw = skeleton.find_bone("jaw")
+	abdomen = skeleton.find_bone("abdomen")
 	for limb in LIMBS:
 		var side: String = limb.substr(2, 1)
 		var sfx: String = "_" + limb
@@ -270,6 +278,10 @@ func _process_modification_with_delta(delta: float) -> void:
 	size = xf.basis.get_scale().x
 	var up := basis.y
 	var space := skeleton.get_world_3d().direct_space_state
+	if abdomen >= 0 and abdomen_swing != Vector2.ZERO:
+		var tail := skeleton.get_bone_global_pose(abdomen)
+		tail.basis = Basis(Vector3.UP, abdomen_swing.x) * Basis(Vector3.RIGHT, abdomen_swing.y) * tail.basis
+		skeleton.set_bone_global_pose(abdomen, tail)
 	if not hands:
 		_look(skeleton, xf, delta)
 		return
@@ -295,10 +307,11 @@ func _process_modification_with_delta(delta: float) -> void:
 			_reach(limb, skeleton, xf, basis, up, space)
 			continue
 		# Too fast for steps (her bolt): every arm swept back flat along the
-		# surface behind her, and a new hold for each once she slows.
+		# surface behind her, close in by her body (spread out to the sides they
+		# read as open), and a new hold for each once she slows.
 		if swept and velocity.length() > 0.1:
-			var trail: Vector3 = -velocity.normalized() * 0.8 + (basis * limb.out) * 0.4 - up * 0.15
-			limb.hold = socket + trail.normalized() * float(limb.reach) * size * 0.85
+			var trail: Vector3 = -velocity.normalized() + (basis * limb.out) * 0.12 - up * 0.3
+			limb.hold = socket + trail.normalized() * float(limb.reach) * size
 			limb.normal = up
 			limb.free = true
 			limb.planted = false
@@ -386,7 +399,11 @@ func _step(limb: Dictionary, socket: Vector3, delta: float, speed: float) -> voi
 		# wall to the one opposite
 		var inward: Vector3 = (socket - (limb.from as Vector3).lerp(limb.to, 0.5)).normalized()
 		var normal: Vector3 = (limb.from_n as Vector3).slerp(inward, eased * 2.0) if eased < 0.5 else inward.slerp(limb.to_n, eased * 2.0 - 1.0)
-		limb.hold = limb.from.lerp(limb.to, eased) + normal * lift
+		# and never folded in onto its own shoulder (her trunk held up close to
+		# the ceiling, the arc went through it): CLOSEST of its reach off it
+		var mid: Vector3 = (limb.from as Vector3).lerp(limb.to, eased)
+		lift = minf(lift, maxf(0.0, mid.distance_to(socket) - CLOSEST * float(limb.reach) * size))
+		limb.hold = mid + normal * lift
 		limb.normal = normal
 		if limb.t >= 1.0:
 			limb.swing = false
@@ -447,7 +464,8 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 		var between := space.intersect_ray(PhysicsRayQueryParameters3D.create(xf * s, target_world, solid_mask))
 		if not between.is_empty(): target_world = (between.position as Vector3) + (between.normal as Vector3) * SHORT_OF
 	var t: Vector3 = inv * target_world
-	var pole: Vector3 = inv.basis * (up * KNEES + out_world * 0.5)
+	# swept back, the elbows fold to the sides, low, not up like knees
+	var pole: Vector3 = inv.basis * ((up * 0.3 + out_world) if swept and limb.free else (up * KNEES + out_world * 0.5))
 	var a: float = limb.l1
 	var b: float = limb.l2
 	var span: Vector3 = t - s
@@ -626,7 +644,7 @@ func _look(skeleton: Skeleton3D, xf: Transform3D, delta: float) -> void:
 	var target: Vector3 = xf.affine_inverse() * look_point
 	var neck_pose := skeleton.get_bone_global_pose(neck)
 	var toward: Vector3 = target - neck_pose.origin
-	neck_pose.origin += toward.normalized() * minf(LEAD, toward.length() * 0.2)
+	neck_pose.origin += toward.normalized() * minf(LEAD, toward.length() * 0.2) + xf.affine_inverse().basis * head_hold
 	skeleton.set_bone_global_pose(neck, neck_pose)
 	for step in [[neck, 0.5, deg_to_rad(55.0)], [head, 1.0, deg_to_rad(70.0)]]:
 		var bone: int = step[0]
