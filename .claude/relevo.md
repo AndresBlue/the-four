@@ -2,7 +2,22 @@
 
 Lo que una sesión nueva tiene que saber para seguir. Se reescribe en cada relevo; lo que ya está en git o en los documentos no se repite aquí.
 
-**Última actualización:** 10 de noviembre de 2026, noche (área 6 cerrada). Esta tarea para al **60 % semanal** (decisión del autor). La semana se renueva el 14 de noviembre a las 08:00.
+**Última actualización:** 11 de noviembre de 2026 (The Lurker reconstruida, iteración 1). El tope del **60 % semanal** era de la tarea anterior; el autor no lo ha repetido para esta. La semana se renueva el 14 de noviembre a las 08:00.
+
+### En curso: dos frentes del piso 2 (el autor, 11 de noviembre)
+
+Sus palabras: primero **la IA y el monstruo** («se queda atascada, el movimiento no es fluido, los sonidos son constantes y no generan cambios de atmósfera, no persigue bien, no cumple la receta»; reconstruirla, pulida, dificultades que se noten, equilibrada en multijugador); después **la revisión del rediseño visual** («aceptable, pero para nada pulido»; que se vea real, fotogrametría y fotorrealismo). Y cómo trabajar: sin validaciones largas de motor ni vueltas en círculos, desarrollos directos, cambios grandes primero y pulido después, una revisión general al final de cada iteración. Ponytail en ultra.
+
+**Frente 1, iteración 1 hecha** (`6d7819b`, `3a6a6c0`, sin push; bead `four-1dl`). Manda `.claude/specs/spec_lurker_rebuild.md`.
+- Cerebro reescrito (`lurker_brain.gd`; estados nuevos HUSH y RETURN al final del enum), sentidos con memoria, puerto en `lurker.gd` (`stalk_point`, `mood()`, `beat_now()`), movimiento suavizado (`lurker_visual.present()`, rampas, vigilante único), `creature.mood()` moviendo el aura, la música y su voz por compás, `creature.earned_rest()` para que el director solo descanse al acabar un encuentro suyo, y el encuentro forzado que sigue a quien camina.
+- Claves nuevas de dificultad: `stalk_time`, `peek_odds`, `hush`, `noise_react`, `sated`, `approach_cap`, `haunt`. Cambiadas por el director: `forced_after` 0/70/45/30 (era 0/150/90/60) y `unseen_duct` 3/4,2/5/5,8 (era 2/3/4/5). **El autor no las ha aprobado todavía.**
+- **La revisión de cada iteración es la telemetría:** `tools/dev/lurker_telemetry.gd` con `--blind --difficulty=<d> --bots=<n> [--seed]` (unos 2 minutos; la orden en el comentario de cabecera). Línea base y pasadas en `evidence/telemetry/` (sin seguimiento). Las cifras cambian mucho entre semillas y el bot ciego camina sin parar: sirve para atascos, saltos y sonido, no para afinar el equilibrio.
+- Cómo se construyó: los tres revisores Opus del diagnóstico redactaron los encargos de su carril (`encargos_lk1_m/s/b.json`), el del cerebro escribió el archivo entero como borrador y Haiku lo instaló; el flujo `carriles` (guion en el directorio de la sesión, no guardado en `.claude/workflows/`) hace carriles en paralelo sin Godot y revisión por carril en serie. Duró unas 2 horas de punta a punta.
+- **Pruebas en verde:** justicia 25/25, contrato 180/180, movimiento 21/21, dificultad 69/69, `lurker_mood_audio_test` 5/5 (nueva, falta añadirla a `verify.ps1`), audio de oficina 21/21, y del hotel `survival_test` 99/99 y `creature_test` (ojo: a mano hay que correrlas con `--rendering-method forward_plus --fixed-fps 60`, como `verify`; sin eso fallan dos de zoom y `creature_test` no acaba).
+- **Sin hacer:** `verify.ps1` no se ha corrido. Las pruebas que afirman el cerebro viejo (`lurker_senses_test`, `lurker_forced_test`, `lurker_tiles_test`, `lurker_bots_test`, `lurker_observer_test`, quizá `office_lies_test` y `lurker_capture_test`) no se han corrido ni adaptado: esperar a que el autor confirme la conducta. Documentos sin tocar (OFICINAS 4, LURKER, DIFFICULTY). Sin exportar.
+- **Para la iteración 2** (según lo que diga el autor al jugarla con `Jugar piso 2.cmd`): esquinas redondeadas (`DETOUR`), el teletransporte de `into_channel_now`, que el silencio (HUSH) alcance al zumbido y la ventilación, el ambiente propio de las oficinas (no existe: usa el del hotel), lotes de equilibrio por dificultad y número de jugadores, y una telemetría con un bot que se detenga como un jugador.
+
+**Frente 2 (visual): sin empezar.**
 
 **Última instrucción del autor (10 de noviembre):** «Continúa el desarrollo». La hoja de ruta es la del 4 de noviembre:
 1. cerrar 4d (hecho);
