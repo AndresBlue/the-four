@@ -346,6 +346,8 @@ func part_a() -> void:
 	await lit_cases()
 	await mate_torch()
 	await mate_latency()
+	await drunk_torch()
+	await deep_look()
 	await lobby()
 	await tool_forced()
 	var audit: Array = WARNING.audit(lurker.capture_log())
@@ -549,6 +551,49 @@ func mate_latency() -> void:
 			gone[0] = true
 			drop_mate(leaving[0]))
 	check("Parte A: si la víctima se va durante el aviso, se deja sin error", not entry.is_empty() and String(entry.outcome) == "aborted" and String(entry.reason) == "fuera", str(entry))
+
+## Her drink of a torch (iteration 2, G1): turned to her with a torch she
+## drank, still taken; in a lit room, the look saves as ever.
+func drunk_torch() -> void:
+	var seat := int(level.player.slot)
+	var bad: Array = []
+	for lit in [false, true]:
+		await set_up(not lit, true)
+		lurker.drink_torches([seat], 30.0)
+		var turned := [false]
+		var entry := await run_cue(6.0, func(brain):
+			var active: Dictionary = lurker.warning.active
+			if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+				turned[0] = true
+				aim_at(lurker.face_point()))
+		var wanted := "saved" if lit else "taken"
+		if entry.is_empty() or String(entry.outcome) != wanted: bad.append(["con luz" if lit else "a oscuras", entry])
+	lurker.drunk.clear()
+	level.player.torch_dim = 1.0
+	check("Parte A: con la linterna bebida, girarse con ella no la salva; con la luz de la sala, sí", bad.is_empty(), str(bad))
+
+## A room she drank dark (iteration 2, G8) is dark: a look with no torch
+## does not save there.
+func deep_look() -> void:
+	var room := int(corridor.room)
+	await set_up(false, false)
+	lurker.thinking = false
+	lurker.snuff(room, int(level.player.slot))
+	for i in 360:
+		await physics_frame
+		if not level.hotel.lit(room): break
+	var dark: bool = not level.hotel.lit(room)
+	lurker.thinking = true
+	lurker.brain.force(&"creep", {"seat": int(level.player.slot)})
+	var turned := [false]
+	var entry := await run_cue(6.0, func(brain):
+		var active: Dictionary = lurker.warning.active
+		if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+			turned[0] = true
+			aim_at(lurker.face_point()))
+	lurker.snuff(-1, -1)
+	lurker.snuffed.clear()
+	check("Parte A: en una sala que bebió a oscuras, mirarla sin linterna no la salva", dark and not entry.is_empty() and String(entry.outcome) == "taken", "%s %s" % [str(dark), str(entry)])
 
 ## The freight lobby of planta 1: never a warning there.
 func lobby() -> void:

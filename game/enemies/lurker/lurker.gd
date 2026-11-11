@@ -94,6 +94,41 @@ var unseen_speed := 0.0
 var unseen_duct := 0.0
 ## Her forced encounters' wait (tune(); the director reads forced_after()).
 var force_after := 0.0
+## seat -> s left of a torch she drank (iteration 2, G1), on every machine
+## from her "scare" event; lurker_senses.gd reads it on the machine in charge.
+## torch_drunk: tune()'s seconds (0 never).
+var drunk := {}
+var torch_drunk := 0.0
+## A drunk beam: this share of itself, flickering; back over the last DRUNK_RAMP s.
+const DRUNK_BEAM := 0.15
+const DRUNK_RAMP := 1.0
+const DRUNK_SOUND := "res://assets/audio/sfx/flashlight/off_2.wav"
+const DRUNK_GAIN := -6.0
+## Her drink of a whole room past LIT_DRAIN (iteration 2, G8): the room, on
+## every machine from her "snuff" event (-1 none); on the machine in charge,
+## whom for, since when, how long they have been out of it, the room she is
+## counting towards it and for how long, and when each room was last given
+## back. snuff_time: tune()'s seconds (0 never).
+var deep_room := -1
+var deep_prey := -1
+var deep_since := 0.0
+var deep_out := 0.0
+var snuff_aim := -1
+var snuff_clock := 0.0
+var snuffed := {}
+var snuff_time := 0.0
+## How far she drinks it and how fast (it goes in about two seconds and comes
+## back in one), the most she keeps it, the most the prey may be out of it,
+## how soon the same room again; the tremble as it goes, and what is left of
+## it once dark.
+const DEEP := 0.93
+const DEEP_RISE := 0.3
+const DEEP_FALL := 1.0
+const DEEP_MOST := 25.0
+const DEEP_OUT := 3.0
+const DEEP_AGAIN := 45.0
+const DEEP_WOBBLE := 0.12
+const DEEP_REST_WOBBLE := 0.02
 ## Every capture of hers: {seat, cue, at, forced} (spec_f3_integration 5.9).
 var takes: Array = []
 
@@ -109,6 +144,8 @@ func tune(profile: Dictionary) -> void:
 	unseen_speed = float(profile.get("unseen_speed", 0.0))
 	unseen_duct = float(profile.get("unseen_duct", 0.0))
 	force_after = float(profile.get("forced_after", 0.0))
+	torch_drunk = float(profile.get("torch_drunk", 0.0))
+	snuff_time = float(profile.get("snuff_time", 0.0))
 	drain_reach = float(profile.get("drain_reach", drain_reach))
 	if routes != null: routes.duct_speed = duct_speed
 	if brain != null: brain.tune(profile)
@@ -488,6 +525,7 @@ func _physics_process(delta: float) -> void:
 				if not scene_held:
 					motion.cue = cue
 					motion.unseen = unseen_now()
+					motion.watched = motion.surface() and not cue and SIGHT.watched(level, face_point(), [get_rid()])
 					motion.unseen_pace = unseen_speed
 					motion.unseen_duct = unseen_duct
 					motion.tick(delta)
@@ -650,11 +688,19 @@ func show_body() -> void:
 ## crawl_fast and vent_crawl). Idle only after IDLE_AFTER under 0.05 m/s
 ## (spec_lurker_rebuild 3.3): a waypoint or a door never restarts her crawl.
 const IDLE_AFTER := 0.15
+## A pose 2b asks for (her scare, looming, peeking, backing off) is played as
+## it is: picking by pace hid every one of them under idle or crawl.
+const POSES := ["scare", "loom", "peek", "retreat"]
+var intent_clip := ""
 var still_for := 0.0
 func pick_clip(in_duct: bool) -> void:
 	var speed: float = velocity.length()
 	var animator: AnimationPlayer = visual.get("animator")
 	still_for = still_for + get_physics_process_delta_time() if speed < 0.05 else 0.0
+	if not in_duct and intent_clip in POSES:
+		clip = CLIPS.find(intent_clip)
+		if animator != null: animator.speed_scale = 1.0
+		return
 	if in_duct:
 		clip = CLIPS.find("vent_crawl")
 		if animator != null: animator.speed_scale = speed / MOTION.VENT_CLIP_SPEED if speed > 0.05 else 1.0
@@ -818,7 +864,7 @@ func think_setup() -> void:
 	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
 	brain.scared.connect(func(cause: String, seat: int):
 		scares += 1
-		tell("scare", [seat, cause, face_point()]))
+		tell("scare", [seat, cause, face_point(), brain.torches.duplicate() if torch_drunk > 0.0 else [], torch_drunk]))
 
 func think(delta: float) -> void:
 	if control != "ai" or not thinking or brain == null: return
@@ -834,6 +880,7 @@ func think(delta: float) -> void:
 		tally_state = int(brain.state)
 		if brain.state == BRAIN.State.PEEK: peeks += 1
 	cue = brain.state == BRAIN.State.CUE
+	snuff_step(delta)
 
 ## The light coming on where she is, and the fans stopping, told to her mind.
 func watch_systems(delta: float, face: Vector3) -> void:
@@ -843,7 +890,9 @@ func watch_systems(delta: float, face: Vector3) -> void:
 	var room: int = motion.room() if not motion.in_duct else -1
 	if room >= 0 and level.get("hotel") != null:
 		var lit_now: bool = level.hotel.lit(room)
-		if room_was_lit.has(room) and not bool(room_was_lit[room]) and lit_now: brain.on_room_lit(face)
+		# Her own drink given back is not somebody lighting it (G8).
+		var hers: bool = room == deep_room or float(drained.get(room, 0.0)) > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE
+		if room_was_lit.has(room) and not bool(room_was_lit[room]) and lit_now and not hers: brain.on_room_lit(face)
 		room_was_lit = {room: lit_now}
 	var wing: int = clampi(motion.wing(), 0, ducts.closed_wings.size() - 1)
 	var shut: bool = ducts.closed_wings[wing] != 0
@@ -858,6 +907,7 @@ func apply_intent(wanted: Dictionary) -> void:
 	var what: StringName = wanted.get("do", &"hold")
 	var clip_name: String = String(wanted.get("clip", ""))
 	if clip_name != "": clip = maxi(CLIPS.find(clip_name), 0)
+	intent_clip = clip_name
 	if visual != null: visual.look_point = wanted.get("look", Vector3.INF)
 	var same: bool = last_order.get("do", &"") == what
 	match what:
@@ -1166,9 +1216,11 @@ func hallucinations() -> Variant: return load("res://game/app/hallucinations/lur
 ## A moment of hers every machine must hear of (spec_f3_integration 6.3):
 ## applied here and, in a match, told reliably to the others, whose puppet
 ## applies it with on_event() (match_net.creature_event()).
-##   "scare" [by_seat, cause, at]: her shriek heard, and the minds near it
-##           frightened where minds are kept
+##   "scare" [by_seat, cause, at, seats, seconds]: her shriek heard, the minds
+##           near it frightened where minds are kept, and the torches of
+##           `seats` drunk for `seconds` (G1; the last two may be missing)
 ##   "tile"  [room, tile_x, tile_y, open, from_below]: a tile she went through
+##   "snuff" [room]: the room she drinks dark (G8), -1 when she gives it back
 ## Phase 4 adds "room_off" [room, seconds] (versus: a room she drinks dark).
 ## Her going into and out of a grille is heard on every machine from her
 ## flags (sound_step()), with no event of its own.
@@ -1183,6 +1235,9 @@ func on_event(kind: String, data: Array) -> void:
 			var at: Vector3 = data[2]
 			if voice != null: voice.shriek_heard(at)
 			frighten(at)
+			if data.size() >= 5: drink_torches(data[3], float(data[4]))
+		"snuff":
+			deep_room = int(data[0]) if data.size() >= 1 else -1
 		"tile":
 			if ducts != null and data.size() == 5: turn_tile(int(data[0]), Vector2i(int(data[1]), int(data[2])), bool(data[3]), bool(data[4]))
 
@@ -1362,11 +1417,23 @@ func _process(delta: float) -> void:
 	var rooms := {}
 	for r in drained: rooms[r] = true
 	for r in drain_targets: rooms[r] = true
+	if deep_room >= 0: rooms[deep_room] = true
+	var line := float(hotel.LIT_DRAIN)
 	for r in rooms:
-		var target := float(drain_targets.get(r, 0.0))
-		var now := move_toward(float(drained.get(r, 0.0)), target, SENSES.DRAIN_EASE * delta)
+		var deep: bool = int(r) == deep_room
+		var was := float(drained.get(r, 0.0))
+		var target: float = DEEP if deep else float(drain_targets.get(r, 0.0))
+		# Drunk dark slowly, given back in about a second (G8); else as ever.
+		var rate: float = DEEP_RISE if deep else (DEEP_FALL if was > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE else SENSES.DRAIN_EASE)
+		var now := move_toward(was, target, rate * delta)
 		var sent := now
-		if target > 0.0 and not reduced: sent = clampf(now + SENSES.DRAIN_WOBBLE * sin(TAU * float(hash(int(r)) % 5 + 7) * drain_time + float(r)), 0.0, 0.89)
+		var wave := sin(TAU * float(hash(int(r)) % 5 + 7) * drain_time + float(r))
+		if deep and not reduced:
+			# The tremble grows as it goes; once dark, what is left trembles on,
+			# never back over the line (lit() would blink).
+			if now >= line: sent = clampf(now + DEEP_REST_WOBBLE * wave, line + 0.005, 0.98)
+			else: sent = clampf(now + DEEP_WOBBLE * wave, 0.0, line - 0.01)
+		elif not deep and target > 0.0 and not reduced: sent = clampf(now + SENSES.DRAIN_WOBBLE * wave, 0.0, 0.89)
 		if now <= 0.0:
 			drained.erase(r)
 			hotel.drain(int(r), 0.0)
@@ -1377,6 +1444,80 @@ func _process(delta: float) -> void:
 			if hotel.has_method("drain_emergency"): hotel.drain_emergency(int(r), sent)
 		drained[r] = now
 	draining = not drained.is_empty()
+	torch_step(delta, reduced)
+
+## A fright by torch drinks it (iteration 2, G1): on every machine, from her
+## event. Its click where it is; no caption, nothing on screen.
+func drink_torches(seats: Array, seconds: float) -> void:
+	if seconds <= 0.0 or level == null: return
+	var audio = level.get("world_audio")
+	for seat in seats:
+		drunk[int(seat)] = seconds
+		var one = survivor_of(int(seat))
+		if one != null and audio != null and audio.has_method("play_at") and is_instance_valid(one.get("torch")): audio.play_at(DRUNK_SOUND, one.torch.global_position, DRUNK_GAIN)
+
+## Every frame: each drunk torch's beam down and flickering, back up at the
+## end; given back whole once it is over.
+func torch_step(delta: float, reduced: bool) -> void:
+	for seat in drunk.keys():
+		var left := float(drunk[seat]) - delta
+		var one = survivor_of(int(seat))
+		if left <= 0.0:
+			drunk.erase(seat)
+			if one != null and "torch_dim" in one: one.torch_dim = 1.0
+			continue
+		drunk[seat] = left
+		var low := DRUNK_BEAM
+		# Uneven: two beats that rarely meet, a filament starved of current.
+		if not reduced: low *= 0.5 + 0.5 * absf(sin(drain_time * 23.0 + float(seat))) * (0.6 + 0.4 * sin(drain_time * 7.3 + float(seat) * 1.7))
+		if one != null and "torch_dim" in one: one.torch_dim = lerpf(1.0, low, clampf(left / DRUNK_RAMP, 0.0, 1.0))
+
+## The survivor of a seat on this machine, null when none.
+func survivor_of(seat: int):
+	if level == null or not level.has_method("survivors"): return null
+	for one in level.survivors():
+		if is_instance_valid(one) and "slot" in one and int(one.slot) == seat: return one
+	return null
+
+## On the machine in charge, after her mind (G8): stalking somebody in a lit
+## room for snuff_time s on end, she drinks that room dark; she keeps it while
+## her encounter on them goes on there, and gives it back when it ends, when
+## they have been out of it DEEP_OUT s, or after DEEP_MOST s.
+func snuff_step(delta: float) -> void:
+	if snuff_time <= 0.0 or level == null or level.get("hotel") == null: return
+	var clock: float = brain.clock
+	var prey_body = senses.body_of(int(brain.prey)) if int(brain.prey) >= 0 else null
+	var theirs := room_of_point(prey_body.global_position) if prey_body != null else -1
+	if deep_room >= 0:
+		deep_out = deep_out + delta if theirs != deep_room else 0.0
+		var mine: int = motion.room()
+		var near: bool = mine == deep_room or (mine >= 0 and Array(level.manifest.adjacency[deep_room]).has(mine))
+		var going: bool = brain.state in [BRAIN.State.STALK, BRAIN.State.HUSH, BRAIN.State.CREEP, BRAIN.State.CUE] and int(brain.prey) == deep_prey
+		if not going or not near or deep_out > DEEP_OUT or clock - deep_since > DEEP_MOST: snuff(-1, -1)
+		return
+	var aim := theirs if brain.state == BRAIN.State.STALK and theirs >= 0 and level.hotel.lit(theirs) and may_snuff(theirs, clock) else -1
+	snuff_clock = snuff_clock + delta if aim >= 0 and aim == snuff_aim else 0.0
+	snuff_aim = aim
+	if aim >= 0 and snuff_clock >= snuff_time: snuff(aim, int(brain.prey))
+
+## A room she may drink dark: one that may be dark at all, not protected nor
+## off limits, and not given back in the last DEEP_AGAIN s.
+func may_snuff(room: int, clock: float) -> bool:
+	var data: Dictionary = level.manifest.rooms[room]
+	if not OFFICE.may_be_dark(data) or level.point_protected(FLOOR.position_of(data)): return false
+	if level.has_method("off_limits_rooms") and level.off_limits_rooms().has(room): return false
+	return clock - float(snuffed.get(room, -INF)) >= DEEP_AGAIN
+
+## Drinks `room` dark for `seat`, or gives it back (-1): told to every machine.
+func snuff(room: int, seat: int) -> void:
+	var clock: float = brain.clock if brain != null else 0.0
+	if room < 0 and deep_room >= 0: snuffed[deep_room] = clock
+	deep_prey = seat
+	deep_since = clock
+	deep_out = 0.0
+	snuff_clock = 0.0
+	snuff_aim = -1
+	tell("snuff", [room])
 
 ## Every room she drank given back at once (a stage given back, a floor continued).
 func undrain() -> void:
@@ -1387,3 +1528,5 @@ func undrain() -> void:
 	drained = {}
 	drain_targets = {}
 	draining = false
+	deep_room = -1
+	deep_prey = -1

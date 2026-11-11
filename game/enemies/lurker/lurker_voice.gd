@@ -241,37 +241,84 @@ func arrive_above() -> void:
 	var point: Vector3 = v.duct_point if bool(v.in_duct) else creature.global_position
 	play_routed(BASE + "tile_grind.wav", point, CREAK_DB, 20000.0, "tile")
 
-## A one-shot of grey dust under the tile, freed after 3 s (her lies' too).
+## A one-shot of dust under the tile, freed after 4 s (her lies' too).
 func puff(point: Vector3) -> void: dust_puff(level, point)
 
+## A soft round speck, white to clear from its middle (made once, no asset).
+static var speck: GradientTexture2D
+
+## Under the tile or the grille: a faint cloud that sinks and thins out, fine
+## motes drifting down through it and a few grains of grime that drop. Lit by
+## the scene (no glow in a dark room: it shows where a lamp or a torch is on
+## it), and kept to the size each speck is given (BILLBOARD_PARTICLES; with
+## BILLBOARD_ENABLED every quad was drawn a metre wide).
 static func dust_puff(level, point: Vector3) -> void:
-	var dust := CPUParticles3D.new()
-	dust.one_shot = true
-	dust.amount = 40
-	dust.lifetime = 1.6
-	dust.explosiveness = 0.6
-	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	dust.emission_box_extents = Vector3(0.25, 0.02, 0.25)
-	dust.gravity = Vector3(0, -1.5, 0)
-	dust.initial_velocity_min = 0.0
-	dust.initial_velocity_max = 0.2
-	dust.scale_amount_min = 0.01
-	dust.scale_amount_max = 0.03
-	dust.color = Color(0.62, 0.6, 0.57, 0.8)
+	if speck == null:
+		var fade := Gradient.new()
+		fade.set_color(0, Color(1, 1, 1, 1))
+		fade.set_color(1, Color(1, 1, 1, 0))
+		fade.add_point(0.45, Color(1, 1, 1, 0.55))
+		speck = GradientTexture2D.new()
+		speck.gradient = fade
+		speck.fill = GradientTexture2D.FILL_RADIAL
+		speck.fill_from = Vector2(0.5, 0.5)
+		speck.fill_to = Vector2(1.0, 0.5)
+		speck.width = 64
+		speck.height = 64
+	var at := point + Vector3(0, -0.04, 0)
+	# [amount, lifetime, size range, fall, spread, colour, explosiveness]
+	var cloud := puff_part(level, at, 6, 3.2, Vector2(0.2, 0.4), -0.12, 0.2, Color(0.22, 0.21, 0.19, 0.035), 0.9)
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.5))
+	curve.add_point(Vector2(1.0, 1.6))
+	cloud.scale_amount_curve = curve
+	puff_part(level, at, 90, 3.0, Vector2(0.007, 0.018), -0.25, 0.35, Color(0.5, 0.47, 0.42, 0.8), 0.75)
+	puff_part(level, at, 7, 1.1, Vector2(0.012, 0.03), -9.0, 0.5, Color(0.3, 0.28, 0.25, 1.0), 1.0)
+
+## One of the puff's emitters, fading out over its life and freed after 4 s.
+static func puff_part(level, at: Vector3, amount: int, life: float, size: Vector2, fall: float, spread: float, colour: Color, burst: float) -> CPUParticles3D:
+	var part := CPUParticles3D.new()
+	part.one_shot = true
+	part.amount = amount
+	part.lifetime = life
+	part.explosiveness = burst
+	part.randomness = 0.6
+	part.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	part.emission_box_extents = Vector3(0.28, 0.02, 0.28)
+	part.direction = Vector3.DOWN
+	part.spread = 70.0
+	part.initial_velocity_min = 0.02
+	part.initial_velocity_max = spread
+	part.damping_min = 0.3
+	part.damping_max = 0.8
+	part.gravity = Vector3(0, fall, 0)
+	part.scale_amount_min = size.x
+	part.scale_amount_max = size.y
+	part.angle_min = 0.0
+	part.angle_max = 360.0
+	var ramp := Gradient.new()
+	ramp.set_color(0, colour)
+	ramp.set_color(1, Color(colour.r, colour.g, colour.b, 0.0))
+	ramp.add_point(0.15, colour)
+	part.color_ramp = ramp
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(1, 1)
+	mesh.size = Vector2.ONE
 	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	material.vertex_color_use_as_albedo = true
+	material.albedo_texture = speck
+	material.roughness = 1.0
+	material.metallic_specular = 0.0
 	mesh.material = material
-	dust.mesh = mesh
-	level.add_child(dust)
-	dust.global_position = point + Vector3(0, -0.05, 0)
-	if level.get("hotel") != null and level.hotel.has_method("adopt"): level.hotel.adopt(dust)
-	dust.emitting = true
-	dust.get_tree().create_timer(3.0).timeout.connect(func(): if is_instance_valid(dust): dust.queue_free())
+	part.mesh = mesh
+	level.add_child(part)
+	part.global_position = at
+	if level.get("hotel") != null and level.hotel.has_method("adopt"): level.hotel.adopt(part)
+	part.emitting = true
+	part.get_tree().create_timer(4.0).timeout.connect(func(): if is_instance_valid(part): part.queue_free())
+	return part
 
 ## Her shriek, heard: its caption within CAPTION_NEAR of the listener (the
 ## sound is the brain's scream(), on every machine).

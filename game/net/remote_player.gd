@@ -17,6 +17,13 @@ var slot := 0
 var player_name := ""
 var camera: Camera3D
 var torch: SpotLight3D
+## Its beam's energy, and how much of it The Lurker has left it (lurker.gd
+## drink_torches()): 1 whole, as everywhere else.
+const TORCH_ENERGY := 8.0
+var torch_dim := 1.0:
+	set(value):
+		torch_dim = value
+		if is_instance_valid(torch): torch.light_energy = TORCH_ENERGY * value
 ## Its torch's switch, heard when its owner turns it on or off (kit_sounds.gd);
 ## what the owner last said of it (-1: nothing yet).
 var switch: AudioStreamPlayer3D
@@ -82,7 +89,7 @@ func setup(owner_level, seat: int, words: String, character: int) -> void:
 	torch.name = "Flashlight"
 	torch.visible = false
 	torch.light_color = Color(1, 0.9, 0.74)
-	torch.light_energy = 8.0
+	torch.light_energy = TORCH_ENERGY
 	torch.spot_range = 24.0
 	torch.spot_angle = 32.0
 	torch.spot_attenuation = 0.85

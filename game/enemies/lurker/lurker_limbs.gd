@@ -69,8 +69,11 @@ const DIG := 0.012
 const FLYING := Vector3(0.7, 1.0, 0.9)
 ## How long a step takes, walking and at its fastest; how high the hand lifts
 ## (a share of the arm's length); how many seconds of travel ahead of the shoulder it
-## looks for its next hold; and how hard the elbows are pushed up.
-const STEP := Vector2(0.85, 0.45)
+## looks for its next hold; and how hard the elbows are pushed up. The fast
+## end is her dash (STEP_FAST m/s, lurker_motion BURST_SPEED): slower steps
+## left hands behind at it.
+const STEP := Vector2(0.85, 0.28)
+const STEP_FAST := 3.4
 const LIFT := 0.22
 ## The furthest a hold may be when it is chosen (its wrist, against the arm's
 ## reach, from where the shoulder will be when the hand lands), how far the arm
@@ -532,7 +535,7 @@ func _clear(from: Vector3, to: Vector3, space: PhysicsDirectSpaceState3D) -> boo
 
 ## How long a step of this hand takes at the speed it is going.
 func _step_time(limb: Dictionary) -> float:
-	return lerpf(STEP.x, STEP.y, clampf(velocity.length() / 2.6, 0.0, 1.0)) * float(limb.pace)
+	return lerpf(STEP.x, STEP.y, clampf(velocity.length() / STEP_FAST, 0.0, 1.0)) * float(limb.pace)
 
 
 ## How far a finger must curl (a share of CLAW) for its claw's point to rest

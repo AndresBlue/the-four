@@ -42,6 +42,7 @@ func run() -> void:
 	pauses_and_brakes()
 	gives_up()
 	no_still_frame()
+	bursts()
 	planta()
 	fans()
 	same_twice()
@@ -262,6 +263,25 @@ func no_still_frame() -> void:
 		last = now
 		if motion.at_goal(): break
 	check("Movimiento: al pasar un punto de paso ningun fotograma se queda quieto", corners > 0 and still == 0 and motion.at_goal(), "%d %d" % [corners, still])
+
+## Watched on a ceiling she goes in bursts: still, a dash under a walker's
+## pace, still again; faster on the whole than her old crawl.
+func bursts() -> void:
+	var m := FIX.fixture()
+	var lvl := FIX.stub_level(m)
+	var motion = motion_on(m, lvl, 0)
+	motion.watched = true
+	motion.go_to(Vector3(-3.5, 1.0, 0.0), 1.35)
+	# [stillnesses after a dash, fastest, dashed since the last stillness]
+	var saw := [0, 0.0, false]
+	var seen := drive(motion, 10.0, at_goal, func(mo, _i):
+		saw[1] = maxf(float(saw[1]), mo.speed)
+		if mo.speed > 0.5: saw[2] = true
+		elif bool(saw[2]) and mo.speed < 1e-3 and not mo.legs.is_empty():
+			saw[0] = int(saw[0]) + 1
+			saw[2] = false)
+	var pace: float = 3.5 / (seen.frames * DT)
+	check("Movimiento: vista va a rafagas, mas deprisa que su paso de antes y nunca como quien anda", motion.at_goal() and int(saw[0]) >= 1 and float(saw[1]) <= MOTION.BURST_SPEED + 1e-3 and pace > 1.35, "%d %f %f" % [int(saw[0]), float(saw[1]), pace])
 
 func planta() -> void:
 	var m: Dictionary = GEN.new().generate(7, 2)

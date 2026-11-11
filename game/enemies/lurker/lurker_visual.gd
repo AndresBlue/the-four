@@ -20,7 +20,7 @@ signal footfall(point: Vector3, strength: float, normal: Vector3)
 ## 0..1: how much its hands would rather hold walls and ceiling than the floor.
 @export var cling := 0.0
 ## The rags of vapour round the ink: how thick.
-@export var gloom := 2.2
+@export var gloom := 4.0
 ## How much bigger than it was built it is shown.
 @export var size := 1.35
 var velocity := Vector3.ZERO
@@ -71,7 +71,10 @@ func _ready() -> void:
 	skeleton.add_child(limbs)
 	limbs.hands = crawling
 	ink = fog("Ink", 0.95 * size, 0.24 * size, 40.0, 0.0, 0.17 * size)
-	vapour = fog("Vapour", 1.0 * size, 0.46 * size, gloom, 1.0, 0.17 * size)
+	# Tighter and darker than it was: 0.46 thick in a sphere of 1.0, its thin
+	# rags reached 1.6 m and read on a lit wall as a grey cloud of smoke
+	# round her, not as her darkness.
+	vapour = fog("Vapour", 0.8 * size, 0.28 * size, gloom, 1.0, 0.17 * size)
 	animator.play("idle")
 
 

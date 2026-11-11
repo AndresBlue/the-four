@@ -23,6 +23,17 @@ const SQUEEZE_SPEED := 0.6
 ## and slowing down apart (spec_lurker_rebuild 3.5).
 const ACCEL := 4.0
 const BRAKE := 6.0
+## Watched on a surface she does not crawl on at one pace (the author: "se
+## mueve un poco lento"): still, then a short dash, then still again, a
+## spider's way. The dash stays under a survivor's walk (3.8 m/s) and the
+## whole comes to about 1.8 m/s, over the 1.35 she crawled; starting and
+## stopping it are sharp (BURST_ACCEL). Not while backing off (under
+## BURST_FROM) nor paused.
+const BURST_SPEED := 3.3
+const BURST_TIME := Vector2(0.45, 0.85)
+const STILL_TIME := Vector2(0.3, 0.7)
+const BURST_ACCEL := 20.0
+const BURST_FROM := 1.0
 ## rad/s while moving on a surface, and for a turn.
 const HEADING_RATE := 3.0
 const TURN_RATE := 4.0
@@ -104,6 +115,12 @@ var paused := false
 var unseen := false
 var unseen_pace := 0.0
 var unseen_duct := 0.0
+## Somebody has her in view on a surface (lurker.gd, every frame): she goes
+## in bursts; whether she is in one, and how long this one or this stillness
+## has left.
+var watched := false
+var bursting := false
+var burst_clock := 0.0
 var hang_goal := SHELL.DEFAULT_HANG
 ## From the ray; and how far short the lane was at the last one (0: enough).
 var hang_limit := SHELL.HANG_MAX
@@ -465,12 +482,30 @@ func on_channel() -> bool:
 ## Her pace on a surface now: faster unseen; none while paused.
 func pace_now() -> float:
 	if paused: return 0.0
+	if in_bursts(): return BURST_SPEED if bursting else 0.0
 	return maxf(pace, unseen_pace) if unseen else pace
 
+## Whether her pace now goes in bursts (BURST_SPEED).
+func in_bursts() -> bool:
+	return watched and not unseen and not paused and pace >= BURST_FROM and surface()
+
+## Her bursts' clock: a short stillness first when she is first watched (no
+## draw from rng then, so her other draws stay as they were).
+func tick_bursts(delta: float) -> void:
+	if not in_bursts():
+		bursting = false
+		burst_clock = STILL_TIME.x
+		return
+	burst_clock -= delta
+	if burst_clock > 0.0: return
+	bursting = not bursting
+	burst_clock = rng.randf_range(BURST_TIME.x, BURST_TIME.y) if bursting else rng.randf_range(STILL_TIME.x, STILL_TIME.y)
+
 ## Every change of her speed eased (spec_lurker_rebuild 3.5): up at ACCEL,
-## down at BRAKE.
+## down at BRAKE; sharp in her bursts.
 func ramp(to: float, delta: float) -> void:
-	speed = move_toward(speed, to, (ACCEL if to > speed else BRAKE) * delta)
+	var rate: float = BURST_ACCEL if in_bursts() else (ACCEL if to > speed else BRAKE)
+	speed = move_toward(speed, to, rate * delta)
 
 ## An order waiting for its plan (REPLAN_GAP) is not there yet.
 func at_goal() -> bool:
@@ -613,6 +648,7 @@ func tick(delta: float) -> void:
 		if float(transit.left) <= 0.0: finish_drop()
 	squash = move_toward(squash, squash_goal, SQUASH_RATE * delta)
 	least_squash = minf(least_squash, squash)
+	tick_bursts(delta)
 	if not legs.is_empty(): follow(delta)
 	elif surface():
 		ramp(0.0, delta)

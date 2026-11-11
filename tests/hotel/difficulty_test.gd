@@ -105,6 +105,7 @@ func run() -> void:
 		"forced_after": [0.0, 70.0, 45.0, 30.0], "haunt": [0.35, 0.6, 0.75, 0.9],
 		"stalk_time": [[25.0, 40.0], [15.0, 25.0], [8.0, 15.0], [4.0, 9.0]], "peek_odds": [0.7, 0.5, 0.3, 0.15], "hush": [3.0, 2.5, 2.0, 1.5],
 		"noise_react": [4.0, 2.0, 0.8, 0.0], "sated": [60.0, 40.0, 30.0, 20.0], "approach_cap": [3.0, 3.5, 4.0, 4.5],
+		"torch_drunk": [0.0, 3.0, 6.0, 10.0], "snuff_time": [0.0, 12.0, 7.0, 4.0],
 	}
 	var lurker_wrong: Array = []
 	for step in DIFFICULTY.ORDER.size():

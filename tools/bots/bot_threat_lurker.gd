@@ -254,6 +254,11 @@ func mind(brain, delta: float) -> Variant:
 	if not mine.is_empty():
 		if cue_over(mine): cues.erase(seat)
 		elif now() - float(mine.played_at) < float(mine.delay) or not bool(mine.turns): return null
+		elif creature.drunk.has(seat) and not lit_at(head):
+			# Its torch drunk (iteration 2, G1): turning to her saves nothing; running does.
+			brain.go_to(brain.flee_point(), BODY.Pace.RUN, delta)
+			brain.minding = "huye"
+			return true
 		else:
 			brain.halt()
 			brain.face(face)
@@ -263,7 +268,7 @@ func mind(brain, delta: float) -> Variant:
 	# 2. A teammate's: near her face and seeing it, its torch on her.
 	for other in cues.keys():
 		var theirs: Dictionary = cues[other]
-		if int(other) == seat or cue_over(theirs): continue
+		if int(other) == seat or cue_over(theirs) or creature.drunk.has(seat): continue
 		if head.distance_to(face) > MATE_REACH or not clear(head, face): continue
 		var helpers: Dictionary = theirs.helpers
 		if not helpers.has(seat): helpers[seat] = now() + REACT[skill()] + rng.randf_range(-REACT_JITTER, REACT_JITTER)

@@ -118,6 +118,9 @@ var flee_retreat := false
 var screamed := false
 var take_sent := false
 var took_point := Vector3.INF
+## The seats whose torch was on her face at her last fright by torch:
+## lurker.gd drinks them (iteration 2, G1).
+var torches: Array = []
 ## This tick's delta.
 var step := 0.0
 ## Survivors in play on her planta (Percept.team): the encounter is shared out
@@ -906,6 +909,7 @@ func recoil(by: int, cause: String, p, counts: bool) -> void:
 	for seen in p.bodies.values():
 		if int(seen.seat) == by: away_from = seen.eye
 	haunt = away_from
+	torches = Array(p.torch_by) if cause == "linterna" else []
 	enter(State.RECOIL)
 	screamed = false
 	torch_time = 0.0
@@ -934,7 +938,12 @@ func failed_attempt(seat: int) -> void:
 		comeback = {}
 		end_encounter()
 		return
-	comeback = {"seat": seat, "at": clock + rng.randf_range(emerge_delay.x, emerge_delay.y)}
+	# Each failure brings the next attempt sooner (iteration 2, G3).
+	var sooner: float = ESCALATE[mini(int(attempts[seat]) - 1, ESCALATE.size() - 1)]
+	comeback = {"seat": seat, "at": clock + rng.randf_range(emerge_delay.x, emerge_delay.y) * sooner}
+
+## emerge_delay's share for the next attempt, by failures so far (G3).
+const ESCALATE := [1.0, 0.7, 0.5, 0.4]
 
 func flee_tick(p) -> Dictionary:
 	if bool(p.in_duct):

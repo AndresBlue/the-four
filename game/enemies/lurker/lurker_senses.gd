@@ -181,7 +181,7 @@ func sees(player: Node3D, ignore_concealment := false) -> bool:
 	if bool(player.get("hidden")): return ignore_concealment and saw_hides.has(player.get("hiding_place"))
 	var eye := eye_point()
 	if eye == Vector3.INF: return false
-	if SIGHT.torch_covers(level, player, body.face_point(), [body.get_rid()]): return false
+	if not drank(player) and SIGHT.torch_covers(level, player, body.face_point(), [body.get_rid()]): return false
 	var camera: Vector3 = player.camera.global_position
 	var torch_on: bool = "torch" in player and is_instance_valid(player.torch) and player.torch.visible
 	var reach := SIGHT_LIT if SIGHT.lit_point(level, camera) else (BEAM_SEEN if torch_on else SIGHT_DARK)
@@ -333,6 +333,7 @@ func perceive(delta: float, clock: float, prey_seat: int):
 		var seen_by: Dictionary = SIGHT.regarders(level, p.face, [body.get_rid()])
 		p.regarded_by = seen_by.regarded_by
 		p.torch_by = seen_by.torch_by
+		drop_drunk(p)
 		p.stretch_exposed = SIGHT.stretch_exposed(level, body.ahead(3.0), [body.get_rid()])
 	# Her looks, every SENSE_EVERY; one survivor a tick when there are many.
 	var survivors: Array = level.survivors()
@@ -477,3 +478,25 @@ func route_to_nearest(delta: float, survivors: Array, face: Vector3) -> float:
 		if not is_instance_valid(one) or not level.survivor_active(one): continue
 		nearest_route = minf(nearest_route, float(metres.get(room_of(one.global_position), INF)))
 	return nearest_route
+
+## Whether she drank this survivor's torch (lurker.gd drunk; iteration 2, G1).
+func drank(player) -> bool:
+	return "drunk" in body and "slot" in player and body.drunk.has(int(player.slot))
+
+## A torch she drank is no light for her: it does not frighten her, and its
+## holder makes her face out only in a lit room or within SIGHT.DARK_FACE, as
+## with no torch. The warning reads these lists, so it does not save either.
+func drop_drunk(p) -> void:
+	var drunk: Dictionary = body.drunk if "drunk" in body else {}
+	if drunk.is_empty(): return
+	var lit_face := SIGHT.lit_point(level, p.face)
+	var torch_by: Array[int] = []
+	for seat in p.torch_by:
+		if not drunk.has(seat): torch_by.append(seat)
+	var regarded_by: Array[int] = []
+	for seat in p.regarded_by:
+		var one = body_of(seat) if drunk.has(seat) and not lit_face else null
+		if one != null and (one.camera.global_position as Vector3).distance_to(p.face) > SIGHT.DARK_FACE: continue
+		regarded_by.append(seat)
+	p.torch_by = torch_by
+	p.regarded_by = regarded_by

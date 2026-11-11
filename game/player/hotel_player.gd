@@ -125,6 +125,9 @@ var torch_follow := 9.0
 var torch_energy := 0.0
 var torch_warmup := 1.0
 var torch_clock := 0.0
+## How much of its beam The Lurker has left the torch (lurker.gd
+## drink_torches()): 1 whole, as everywhere else.
+var torch_dim := 1.0
 ## The camcorder is carried, not bolted to the head: on top of the look it
 ## trails quick turns and banks into them (a spring), trembles with the hand,
 ## rises and falls with breathing and nods at each heel strike. Radians
@@ -655,7 +658,7 @@ func _process(delta: float) -> void:
 	torch_warmup = minf(1.0, torch_warmup + delta * 6.0)
 	var warm := torch_warmup * torch_warmup
 	if torch_warmup < 0.6 and not reduced: warm *= 0.7 + 0.3 * absf(sin(torch_clock * 90.0))
-	torch.light_energy = torch_energy * warm * (1.0 - 0.06 * moving * absf(sin(step)) * sway)
+	torch.light_energy = torch_energy * warm * (1.0 - 0.06 * moving * absf(sin(step)) * sway) * torch_dim
 
 ## The recording lamp, as the level has it this frame: lit or between two
 ## blinks, and whether there is a tape being recorded here at all.
