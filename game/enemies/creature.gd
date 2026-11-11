@@ -179,6 +179,10 @@ func noticing() -> bool: return false
 ## never.
 func forced_after() -> float: return 0.0
 
+## Whether the hunt that just ended earns the team the director's rest. One
+## that runs its own encounters says when one is really over.
+func earned_rest() -> bool: return true
+
 # --- Moving ----------------------------------------------------------------------
 
 ## The one way a creature is put somewhere without walking there: a lift
@@ -359,6 +363,11 @@ func wardrobe_steps() -> Dictionary: return {"burst": 0.55, "reach": 0.7, "done"
 
 ## Whether what tells of it is dying away.
 func hushed() -> bool: return false
+
+## How what it is doing should feel (dread_aura, lurker_voice): {"aura": 0..1,
+## "clicks": bool, "menace": 0..1 or -1, "fast": bool, "silent": bool}.
+## Empty: by distance and alarm_level(), as always.
+func mood() -> Dictionary: return {}
 
 ## How it is felt coming by somebody at `listener` (the dread aura): [metres
 ## of its way to them, where the cues of it sit]. [INF, INF]: not at all.

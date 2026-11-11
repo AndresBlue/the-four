@@ -35,6 +35,24 @@ var body_bone := -1
 var abdomen_bone := -1
 var head_bone := -1
 var last_position := Vector3.INF
+## Drawn between her physics ticks and eased (spec_lurker_rebuild 3.1, 3.2):
+## lurker.gd hands this node every tick's body transform (present()); the
+## body that collides, senses and is sent keeps the raw one. At most TURN_MOST
+## rad/s of turn, and drawn at most LAG_MOST behind, settling in about
+## LAG_TIME; a logged jump, or showing again, is drawn at once.
+const TURN_MOST := 6.0
+const LAG_TIME := 0.08
+const LAG_MOST := 0.15
+var tick_before := Transform3D()
+var tick_after := Transform3D()
+var jump_seen := -1
+var presented_at := -1
+var drawn_at := -1
+var shown_q := Quaternion()
+var shown_origin := Vector3.ZERO
+var lag_velocity := Vector3.ZERO
+var smoothing := false
+var snap := true
 
 
 func _ready() -> void:
@@ -90,7 +108,60 @@ func play(clip: String, blend := 0.2) -> void:
 	animator.play(clip, blend)
 
 
+## This tick's transform of the body (lurker.gd apply_motion()) and its count
+## of logged jumps.
+func present(at: Transform3D, jump: int) -> void:
+	var frame := Engine.get_physics_frames()
+	if jump != jump_seen or presented_at < 0 or frame - presented_at > 1:
+		tick_before = at
+		snap = true
+	else:
+		tick_before = tick_after
+	tick_after = at
+	jump_seen = jump
+	presented_at = frame
+
+
+## Where this node is drawn this frame, as an offset from the body.
+func smooth(delta: float) -> void:
+	var frame := Engine.get_process_frames()
+	var away := drawn_at < 0 or frame - drawn_at > 1
+	drawn_at = frame
+	var body := get_parent_node_3d()
+	if body == null or presented_at < 0 or Engine.get_physics_frames() - presented_at > 1:
+		# Not presented (her capture holds her, a puppet): drawn on the body.
+		if smoothing:
+			smoothing = false
+			transform = Transform3D(Basis.from_scale(scale), Vector3.ZERO)
+		return
+	var target := tick_before.interpolate_with(tick_after, Engine.get_physics_interpolation_fraction())
+	var to_q := target.basis.get_rotation_quaternion()
+	if snap or away or not smoothing:
+		shown_q = to_q
+		shown_origin = target.origin
+		lag_velocity = Vector3.ZERO
+		snap = false
+	else:
+		var gap := shown_q.angle_to(to_q)
+		var most := TURN_MOST * delta
+		shown_q = to_q if gap <= most else shown_q.slerp(to_q, most / gap)
+		# A critically damped spring (Game Programming Gems 4, 1.10).
+		var omega := 2.0 / LAG_TIME
+		var x := omega * delta
+		var decay := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+		var change := shown_origin - target.origin
+		var push := (lag_velocity + change * omega) * delta
+		lag_velocity = (lag_velocity - push * omega) * decay
+		var off := (change + push) * decay
+		if off.length() > LAG_MOST: off = off.normalized() * LAG_MOST
+		shown_origin = target.origin + off
+	smoothing = true
+	var local := body.global_transform.affine_inverse() * Transform3D(Basis(shown_q), shown_origin)
+	transform = Transform3D(local.basis.orthonormalized() * Basis.from_scale(scale), local.origin)
+
+
 func _process(delta: float) -> void:
+	smooth(delta)
 	if delta > 0.0 and last_position != Vector3.INF and velocity == Vector3.ZERO:
 		limbs.velocity = (global_position - last_position) / delta
 	else:

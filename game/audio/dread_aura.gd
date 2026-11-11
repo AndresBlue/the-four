@@ -24,6 +24,12 @@ const ACOUSTIC_MASK := 512
 ## How much of the aura is left of a creature holding still to be taken for
 ## gone.
 const HUSHED := 0.15
+## How fast it dies away when the creature says so (mood().fast): her
+## silences fall at once.
+const FAST_FALL := 2.0
+## The deepest the muffle goes while the listener's room has its light drunk:
+## the hum's fall in pitch, her clearest tell, still comes through.
+const DRUNK_FLOOR_HZ := 1400.0
 var world_audio
 var intensity := 0.0
 var target := 0.0
@@ -50,6 +56,13 @@ var muffle: AudioEffectLowPassFilter
 var breath_enabled := true
 var rise := 1.5
 var rng := RandomNumberGenerator.new()
+## What the creature said of itself this frame (creature.mood()); {}: nothing.
+var said: Dictionary = {}
+## It has fled what frightened it (mood() fast with no menace): the theme
+## need not wait for calm (theme_mood.step()).
+var release := false
+## The listener's room is having its light drunk (drinking_here()).
+var drunk_here := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -93,6 +106,9 @@ func reset() -> void:
 	menace = 0.0
 	route_distance = INF
 	cue_point = Vector3.INF
+	said = {}
+	release = false
+	drunk_here = false
 	for player in [drone, breath, chitter, heart]: player.stop()
 	if muffle != null: muffle.cutoff_hz = 20000.0
 
@@ -135,6 +151,14 @@ func update_route(listener: Vector3, creature: Node3D, real: bool) -> void:
 	route_distance = best[0]
 	cue_point = best[1]
 
+## Whether the listener's room is having its light drunk (her drain): the
+## muffle then stops at DRUNK_FLOOR_HZ. The hotel's rooms never are.
+func drinking_here(listener: Vector3) -> bool:
+	var level = world_audio.level
+	if level == null or level.manifest.is_empty() or not is_instance_valid(level.get("hotel")): return false
+	var room := FLOOR.room_at(level.manifest.rooms, listener)
+	return not room.is_empty() and float(level.hotel.drained(int(room.get("id", -1)))) > 0.0
+
 func _physics_process(delta: float) -> void:
 	var level = world_audio.level
 	if level == null or not world_audio.enabled: return
@@ -146,32 +170,45 @@ func _physics_process(delta: float) -> void:
 	var listener: Vector3 = world_audio.listener_position()
 	target = 0.0
 	menace = 0.0
+	said = {}
 	if active:
 		route_clock -= delta
 		if route_clock <= 0.0:
 			route_clock = 0.25
 			update_route(listener, creature, real)
+			drunk_here = drinking_here(listener)
 		# Rises steadily with closeness instead of saturating early.
 		target = pow(clampf((start_distance - route_distance) / (start_distance - full_distance), 0.0, 1.0), 1.3)
 		var near := clampf((start_distance * 1.5 - route_distance) / (start_distance * 0.5), 0.0, 1.0)
 		# Its state sharpens the dread (alarm_level()): hunting reads worse
 		# than wandering. An imagined one only walks.
-		var alarm: int = 0 if from_phantom else int(creature.alarm_level())
-		match alarm:
-			# Scaled by how near it is: at full strength anywhere, a hunter
-			# sprinting down an empty corridor across the floor told every
-			# survivor it was running.
-			2: target = maxf(target + 0.25 * near, 0.7 * near)
-			1: target += 0.08 * near
-		target = clampf(target, 0.0, 1.0)
-		menace = target
+		# What it says of itself (creature.mood()) is read instead, when it says
+		# anything. An imagined one says nothing.
+		if not from_phantom: said = creature.mood()
+		if said.is_empty():
+			var alarm: int = 0 if from_phantom else int(creature.alarm_level())
+			match alarm:
+				# Scaled by how near it is: at full strength anywhere, a hunter
+				# sprinting down an empty corridor across the floor told every
+				# survivor it was running.
+				2: target = maxf(target + 0.25 * near, 0.7 * near)
+				1: target += 0.08 * near
+			target = clampf(target, 0.0, 1.0)
+			menace = target
+		else:
+			# The theme goes by its distance, or by the menace it gives.
+			menace = clampf(target, 0.0, 1.0)
+			if float(said.get("menace", -1.0)) >= 0.0: menace = clampf(float(said.menace), 0.0, 1.0)
+			target = clampf(target * float(said.get("aura", 1.0)), 0.0, 1.0)
 		# Waiting beside a wardrobe for whoever is in it (hotel_locust, the
 		# feint): it holds itself so still that what gives it away dies down,
 		# as it would if it had gone. Its feet are not part of this: it has
 		# not walked off, and nothing here says it has.
 		if not from_phantom and creature.hushed(): target *= HUSHED
+	release = bool(said.get("fast", false)) and float(said.get("menace", -1.0)) == 0.0
 	var previous := intensity
-	intensity = move_toward(intensity, target, delta * (0.6 if target > intensity else 0.18))
+	var fall: float = FAST_FALL if bool(said.get("fast", false)) else 0.18
+	intensity = move_toward(intensity, target, delta * (0.6 if target > intensity else fall))
 	var shaped := pow(intensity, 1.4)
 	apply_levels(shaped, delta, listener)
 	if intensity > 0.02 and cue_point != Vector3.INF:
@@ -206,11 +243,12 @@ func apply_levels(shaped: float, _delta: float, _listener: Vector3) -> void:
 	drone.pitch_scale = 0.97 + sin(clock * 0.21) * 0.015 + shaped * 0.02
 	breath.volume_db = lerpf(-24.0, 6.0, shaped) + world_audio.duck_db()
 	breath.pitch_scale = 0.9 + sin(clock * 0.13) * 0.04
-	if muffle != null: muffle.cutoff_hz = lerpf(20000.0, 650.0, pow(intensity, 1.8))
+	var deepest: float = DRUNK_FLOOR_HZ if drunk_here else 650.0
+	if muffle != null: muffle.cutoff_hz = lerpf(20000.0, deepest, pow(intensity, 1.8))
 
 func update_chitters(delta: float) -> void:
 	chitter_clock -= delta
-	if chitter_clock > 0.0 or intensity < 0.15 or cue_point == Vector3.INF: return
+	if chitter_clock > 0.0 or intensity < 0.15 or cue_point == Vector3.INF or not bool(said.get("clicks", true)): return
 	# Clicks jump a little around the route point so the ear keeps searching.
 	var jitter := Vector3(rng.randf_range(-1.4, 1.4), rng.randf_range(0.8, 2.4), rng.randf_range(-1.4, 1.4))
 	chitter.global_position = cue_point + jitter

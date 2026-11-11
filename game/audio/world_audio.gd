@@ -666,7 +666,7 @@ func _physics_process(delta: float) -> void:
 		if float(ears_hold.left) <= 0.0: ears_hold = {}
 	if not enabled: return
 	# Out of play (the end of a floor, its menus) nothing frightens any more.
-	mood.step(mood.felt(level, self) if level.session.state == level.session.State.PLAYING else 0.0, delta)
+	mood.step(mood.felt(level, self) if level.session.state == level.session.State.PLAYING else 0.0, delta, aura != null and bool(aura.release))
 	update_long(delta)
 	ambient_clock -= delta
 	if ambient_clock <= 0.0:

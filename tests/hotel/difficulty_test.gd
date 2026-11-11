@@ -97,12 +97,14 @@ func run() -> void:
 	check("The Locust juega con los perfiles de siempre, clave por clave y en su orden", as_before and not DIFFICULTY.CREATURE_PROFILES.has(&"locust") and DIFFICULTY.profile("imposible", &"locust") == DIFFICULTY.PROFILES.desafiante)
 	var hers := {
 		"back_window": [2.2, 1.5, 1.2, 0.9], "lit_takes": [false, true, true, true], "duct_speed": [1.2, 1.6, 2.0, 2.4],
-		"stalk_distance": [12.0, 8.0, 6.0, 4.0], "freeze_time": [2.0, 3.0, 4.0, 6.0], "scare_calm": [60.0, 45.0, 35.0, 25.0],
+		"stalk_distance": [12.0, 8.0, 6.0, 4.0],
 		"creep_scale": [0.8, 0.9, 1.3, 1.5], "drain_reach": [3.0, 3.0, 3.5, 4.0],
-		"unseen_speed": [3.0, 3.5, 4.0, 4.5], "unseen_duct": [2.0, 3.0, 4.0, 5.0],
+		"unseen_speed": [3.0, 3.5, 4.0, 4.5], "unseen_duct": [3.0, 4.2, 5.0, 5.8],
 		"attempts": [2, 3, 4, 5], "encounter_rest": [120.0, 90.0, 60.0, 45.0], "emerge_mode": ["far", "near", "behind", "behind"],
 		"emerge_delay": [[8.0, 12.0], [4.0, 7.0], [2.0, 4.0], [1.0, 2.0]], "emerge_range": [[10.0, 15.0], [6.0, 10.0], [3.0, 6.0], [3.0, 5.0]],
-		"forced_after": [0.0, 150.0, 90.0, 60.0],
+		"forced_after": [0.0, 70.0, 45.0, 30.0], "haunt": [0.35, 0.6, 0.75, 0.9],
+		"stalk_time": [[25.0, 40.0], [15.0, 25.0], [8.0, 15.0], [4.0, 9.0]], "peek_odds": [0.7, 0.5, 0.3, 0.15], "hush": [3.0, 2.5, 2.0, 1.5],
+		"noise_react": [4.0, 2.0, 0.8, 0.0], "sated": [60.0, 40.0, 30.0, 20.0], "approach_cap": [3.0, 3.5, 4.0, 4.5],
 	}
 	var lurker_wrong: Array = []
 	for step in DIFFICULTY.ORDER.size():

@@ -274,6 +274,9 @@ func surfaces() -> void:
 
 func step(point: Vector3, normal: Vector3) -> Dictionary:
 	await wait(VOICE.STEP_GAP + 0.02)
+	# The timer runs on frame time and STEP_GAP on the wall clock: a slow frame
+	# left them 0.088 s apart, so the gap is cleared outright.
+	lurker.voice.step_at = -INF
 	lurker.voice.footfall(point, 0.8, normal)
 	return lurker.voice.last
 

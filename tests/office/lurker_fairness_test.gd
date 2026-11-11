@@ -45,7 +45,8 @@ class FakeWorld extends RefCounted:
 	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return []
 	func above_locker(_hide) -> Vector3: return Vector3.ZERO
 	var emerge := Vector3.INF
-	func emerge_point(_seat: int, _mode: String, _span: Vector2) -> Vector3: return emerge
+	func emerge_point(_seat: int, _mode: String, _span: Vector2, _known: Vector3, _heading: Vector3) -> Vector3: return emerge
+	func stalk_point(seen, metres: float) -> Vector3: return Vector3(seen.point.x - metres, 0, 0)
 
 func run() -> void:
 	var results: Array = []

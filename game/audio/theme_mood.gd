@@ -36,6 +36,9 @@ const OPEN_HZ := 20000.0
 const EXECUTION_REACH := 25.0
 const GRUNT := 0.8
 const MIND := 0.35
+## Once she has fled (step()'s release): from all of it to nothing in 2.5 s,
+## so a warning saved has the theme back within 6 s.
+const RELEASE := 0.4
 
 var tension := 0.0
 ## The worst since it was last calm, which sets how long the calm must last.
@@ -81,11 +84,14 @@ func felt(level, world_audio) -> float:
 		now = maxf(now, MIND * clampf((uneasy - float(level.player.sanity)) / uneasy, 0.0, 1.0))
 	return clampf(now, 0.0, 1.0)
 
-## One frame of it, `now` being felt().
-func step(now: float, delta: float) -> void:
+## One frame of it, `now` being felt(). `release`: what frightened has fled
+## (dread_aura.release): no calm to wait out, down at RELEASE.
+func step(now: float, delta: float, release := false) -> void:
 	if now >= tension:
 		tension = move_toward(tension, now, delta * RISE)
 		calm = 0.0
+	elif release:
+		tension = maxf(now, tension - delta * RELEASE)
 	else:
 		calm += delta
 		if calm >= lerpf(CALM_HOLD.x, CALM_HOLD.y, worst): tension = maxf(now, tension - delta * (FALL_SILENT if tension > GONE else FALL))

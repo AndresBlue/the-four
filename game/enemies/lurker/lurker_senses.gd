@@ -46,6 +46,16 @@ class Seen extends RefCounted:
 	## m/s across the floor: running away during the window is what saves
 	## (the author, 24 October 2026), walking is not.
 	var speed := 0.0
+	## Their look flattened and eased over about a second (spec_lurker_rebuild
+	## 2.1: where they face, not every flick of the mouse), their velocity
+	## across the floor, seconds they have stood still, busy (reading, or
+	## still BUSY_STILL s), and metres from the middle of those she knows of
+	## (0 with one).
+	var heading := Vector3.FORWARD
+	var velocity := Vector3.ZERO
+	var still_for := 0.0
+	var busy := false
+	var straggle := 0.0
 
 class Percept extends RefCounted:
 	var grace := false
@@ -73,6 +83,11 @@ class Percept extends RefCounted:
 	var victim: Seen = null
 	## level.sound_mask(face): the fans (planta 3).
 	var mask := 0.0
+	## Survivors in play on her planta: a headcount, never where (2.3).
+	var team := 1
+	## Metres of her way to the nearest survivor in play: for her sound only
+	## (spec_lurker_rebuild 4), never for a choice.
+	var nearest_route := INF
 
 const SIGHT := preload("res://game/enemies/creature_sight.gd")
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
@@ -106,6 +121,18 @@ const DRAIN_EVERY := 0.1
 const DRAIN_EASE := 1.5
 ## The tubes flicker while she drinks: so much either way, 7 to 11 times a second.
 const DRAIN_WOBBLE := 0.08
+## s over which a survivor's heading is eased; m/s under which they stand
+## still; s still that counts as busy; s between her reckonings of the way to
+## the nearest survivor.
+const HEADING_EASE := 1.0
+const STILL_SPEED := 0.3
+const BUSY_STILL := 2.0
+const ROUTE_EVERY := 0.5
+## seat -> eased heading, seat -> s standing still (every tick, every survivor).
+var headings := {}
+var stills := {}
+var route_clock := 0.0
+var nearest_route := INF
 
 var level
 var body
@@ -301,6 +328,7 @@ func perceive(delta: float, clock: float, prey_seat: int):
 	p.transit = body.transit_phase()
 	p.on_channel = body.on_channel()
 	torch_clicks()
+	track_bodies(delta)
 	if not p.in_duct:
 		var seen_by: Dictionary = SIGHT.regarders(level, p.face, [body.get_rid()])
 		p.regarded_by = seen_by.regarded_by
@@ -328,13 +356,23 @@ func perceive(delta: float, clock: float, prey_seat: int):
 			memory[seat] = s
 	for seat in memory.keys():
 		if clock - float(memory[seat].seen_at) > forget: memory.erase(seat)
+	var middle := Vector3.ZERO
+	for seat in memory: middle += memory[seat].point
+	if not memory.is_empty(): middle /= float(memory.size())
 	for seat in memory:
 		var s = memory[seat]
 		# Remembered is not seen: only this look's verdict says she sees them now.
 		s.seen = bool(looked.get(int(seat), false))
+		if not s.seen:
+			# Where they were, from where she is now (spec_lurker_rebuild 2.1):
+			# never where they are.
+			s.distance = (p.face as Vector3).distance_to(s.eye)
+			s.behind = SIGHT.behind_of(s.eye, s.heading, p.face)
+			s.above = SIGHT.over_of(s.eye, s.heading, p.face)
 		s.alone = INF
 		for other in memory:
 			if other != seat: s.alone = minf(s.alone, (s.point as Vector3).distance_to(memory[other].point))
+		s.straggle = (s.point as Vector3).distance_to(middle) if memory.size() > 1 else 0.0
 		p.bodies[seat] = s
 	if prey_seat >= 0:
 		var prey_body = body_of(prey_seat)
@@ -343,7 +381,10 @@ func perceive(delta: float, clock: float, prey_seat: int):
 			v.seen = bool(looked.get(prey_seat, false))
 			v.seen_at = float(memory[prey_seat].seen_at) if memory.has(prey_seat) else -INF
 			v.alone = float(memory[prey_seat].alone) if memory.has(prey_seat) else INF
+			v.straggle = float(memory[prey_seat].straggle) if memory.has(prey_seat) else 0.0
 			p.victim = v
+	p.team = team_here(survivors, p.face)
+	p.nearest_route = route_to_nearest(delta, survivors, p.face)
 	return p
 
 func body_of(seat: int):
@@ -377,6 +418,11 @@ func seen_of(one, p, clock: float):
 	s.regards = p.regarded_by.has(s.seat)
 	var velocity: Vector3 = one.get("velocity") if one.get("velocity") != null else Vector3.ZERO
 	s.speed = Vector2(velocity.x, velocity.z).length()
+	s.velocity = Vector3(velocity.x, 0, velocity.z)
+	var flat := Vector3(s.view.x, 0, s.view.z)
+	s.heading = headings.get(s.seat, flat.normalized() if flat.length() > 0.01 else Vector3.FORWARD)
+	s.still_for = float(stills.get(s.seat, 0.0))
+	s.busy = one.get("reading") == true or s.still_for >= BUSY_STILL
 	return s
 
 ## A torch switched on or off where she can hear it: a noise like any other.
@@ -390,3 +436,44 @@ func torch_clicks() -> void:
 			var route := hear_route(point, TORCH_CLICK / NOISE.HEARING_SCALE)
 			if bool(route.audible): clicks.append({"route": route, "point": point})
 		torch_was[seat] = now
+
+## Every tick, every survivor: their heading eased and how long they have
+## stood still. Read into a Seen only when she perceives them.
+func track_bodies(delta: float) -> void:
+	var blend := 1.0 - exp(-delta / HEADING_EASE)
+	for one in level.survivors():
+		if not is_instance_valid(one) or not "slot" in one or not "camera" in one or not is_instance_valid(one.camera): continue
+		var seat := int(one.slot)
+		var look: Vector3 = -one.camera.global_basis.z
+		var flat := Vector3(look.x, 0, look.z)
+		if flat.length() > 0.01:
+			flat = flat.normalized()
+			var was: Vector3 = headings.get(seat, flat)
+			var mixed := was.lerp(flat, blend)
+			# Half a turn in one tick leaves nothing to ease between.
+			headings[seat] = mixed.normalized() if mixed.length() > 0.01 else flat
+		var velocity: Vector3 = one.get("velocity") if one.get("velocity") != null else Vector3.ZERO
+		stills[seat] = 0.0 if Vector2(velocity.x, velocity.z).length() > STILL_SPEED else float(stills.get(seat, 0.0)) + delta
+
+## Survivors alive and in play on the planta of `face`, at least one.
+func team_here(survivors: Array, face: Vector3) -> int:
+	var planta := FLOOR.planta_of(face.y)
+	var count := 0
+	for one in survivors:
+		if is_instance_valid(one) and SIGHT.alive(level, one) and level.survivor_active(one) and FLOOR.planta_of(one.global_position.y) == planta: count += 1
+	return maxi(1, count)
+
+## Metres of her way to the nearest survivor in play, every ROUTE_EVERY (her
+## sound's near and far, spec_lurker_rebuild 4).
+func route_to_nearest(delta: float, survivors: Array, face: Vector3) -> float:
+	route_clock -= delta
+	if route_clock > 0.0: return nearest_route
+	route_clock = ROUTE_EVERY
+	nearest_route = INF
+	var mine := room_of(face)
+	if mine < 0 or not body.has_method("travel_metres"): return nearest_route
+	var metres: Dictionary = body.travel_metres(mine)
+	for one in survivors:
+		if not is_instance_valid(one) or not level.survivor_active(one): continue
+		nearest_route = minf(nearest_route, float(metres.get(room_of(one.global_position), INF)))
+	return nearest_route

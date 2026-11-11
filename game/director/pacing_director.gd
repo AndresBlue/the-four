@@ -201,6 +201,15 @@ const CROSS_REST := 30.0
 var last_contact := 0.0
 const FORCED_TIME := 40.0
 const FORCED_RETRY := 5.0
+const FORCED_REFRESH := 8.0
+const FORCED_AHEAD := 6.0
+## A flight this long may be led (spec_lurker_rebuild 2.3: a flight of The
+## Lurker's that never ended kept every lead off her; nothing of The Locust
+## withdraws). The most a survivor's nearest other counts, in metres, when
+## the loneliest is picked.
+const FORCED_LEADABLE := 8.0
+const LONELY_CAP := 30.0
+var withdrawn_since := -1.0
 
 func setup(owner_level, seed_value: int) -> void:
 	level = owner_level
@@ -264,6 +273,12 @@ func rest(seconds: float) -> void:
 ## easier difficulties, up to `calm` more by how much that was; longer alone.
 ## The load is paid for with it.
 func breathe(base: float) -> void:
+	# One that runs its own encounters is rested when one of them ends, not
+	# each time it comes near (The Lurker is near most of the time).
+	var it = creature()
+	if it != null and not it.earned_rest():
+		set_phase(Phase.BUILD)
+		return
 	rest((base + calm * strain) * spacing())
 	strain *= STRAIN_KEPT
 
@@ -390,7 +405,7 @@ func tick(delta: float) -> void:
 	roll_clock -= delta
 	if roll_clock > 0.0 and not force: return
 	roll_clock = 1.0
-	if not it.accepts_leads(): return
+	if not leadable(it): return
 	if burnt_lead(): return
 	match phase:
 		Phase.RELIEF:
@@ -472,7 +487,7 @@ func pick_target(wing := -1) -> Node3D:
 ## The creature's forced encounter (spec_f3_aggression): after its
 ## forced_after() seconds without getting at anybody, counted from the end of
 ## the last rest, it is led into the room of somebody out there in its wing
-## and not hidden (pick_target()'s choice), clear of the rooms of anybody
+## and not hidden (lonely_target()'s choice), clear of the rooms of anybody
 ## hidden and of the rooms next to them: the one exception to "never where
 ## anybody is". What happens there is its senses' and its warning's. True
 ## when it was.
@@ -480,8 +495,11 @@ func forced_due() -> bool:
 	var it = creature()
 	var after: float = it.forced_after()
 	if after <= 0.0 or clock - maxf(last_contact, rest_until) < after: return false
-	var target := pick_target(wing_of(it.global_position))
+	var target := lonely_target(wing_of(it.global_position))
 	var room := room_id(target.global_position) if target != null else -1
+	# Where they are walking to, not the room they are leaving: she was
+	# always one room behind one who kept going.
+	if target != null and room_id(target.global_position + target.velocity * FORCED_AHEAD) >= 0: room = room_id(target.global_position + target.velocity * FORCED_AHEAD)
 	if room < 0:
 		last_contact = clock - after + FORCED_RETRY
 		return false
@@ -500,10 +518,43 @@ func forced_due() -> bool:
 		last_contact = clock - after + FORCED_RETRY
 		return false
 	current = {"kind": "encuentro", "point": centre, "until": clock + FORCED_TIME, "target": String(target.name)}
-	last_contact = clock
+	# Led again to the room they are in now until she gets at somebody: one
+	# who keeps walking was long gone from the room she was sent to.
+	last_contact = clock - after + FORCED_REFRESH
 	last_kind = "encuentro"
 	next_lead = clock + rng.randf_range(lead_every.x, lead_every.y) * spacing()
 	return true
+
+## The forced encounter's survivor (spec_lurker_rebuild 2.3): the one most on
+## their own or furthest behind the rest, out there in `wing` and not hidden:
+## metres to their nearest other (LONELY_CAP at most) and from the middle of
+## them all, a draw of the rng to part a tie. Null with nobody.
+func lonely_target(wing: int) -> Node3D:
+	var bodies: Array = active_survivors().filter(func(body): return not body.hidden and wing_of(body.global_position) == wing)
+	if bodies.is_empty(): return null
+	var middle := Vector3.ZERO
+	for body in bodies: middle += body.global_position
+	middle /= float(bodies.size())
+	var best: Node3D = null
+	var best_score := -INF
+	for body in bodies:
+		var nearest := LONELY_CAP
+		for other in bodies:
+			if other != body: nearest = minf(nearest, body.global_position.distance_to(other.global_position))
+		var score: float = nearest + body.global_position.distance_to(middle) + rng.randf_range(0.0, 0.5)
+		if score > best_score:
+			best_score = score
+			best = body
+	return best
+
+## Whether the creature may be led now: what accepts leads, and a flight
+## (withdraw) once it has lasted FORCED_LEADABLE.
+func leadable(it) -> bool:
+	if it.activity() != &"withdraw":
+		withdrawn_since = -1.0
+		return it.accepts_leads()
+	if withdrawn_since < 0.0: withdrawn_since = clock
+	return clock - withdrawn_since >= FORCED_LEADABLE
 
 ## Whoever out there has gone longest without a sign of the creature, if it
 ## has been encounter_every: the creature is brought across their view.

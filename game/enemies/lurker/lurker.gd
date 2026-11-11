@@ -492,6 +492,7 @@ func _physics_process(delta: float) -> void:
 					apply_motion()
 		"puppet":
 			follow_state(delta)
+	sound_beat(delta)
 	drain_step(delta)
 	show_body()
 	sound_step(delta)
@@ -517,6 +518,65 @@ func sound_step(delta: float) -> void:
 	car_clock = voice.rng.randf_range(CAR_SCRATCH.x, CAR_SCRATCH.y)
 	voice.outside_car()
 
+## Her beats and what each does to the dread, the music and her voice
+## (spec_lurker_rebuild 4): {aura, clicks, menace, fast, silent}. Between
+## plantas she sounds as roaming far.
+const MOODS := {
+	&"roam_far": {"aura": 0.35, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+	&"roam_near": {"aura": 0.6, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+	&"listen": {"aura": 0.0, "clicks": false, "menace": -1.0, "fast": true, "silent": false},
+	&"stalk": {"aura": 0.85, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+	&"peek": {"aura": 0.3, "clicks": false, "menace": -1.0, "fast": true, "silent": false},
+	&"hush": {"aura": 0.0, "clicks": false, "menace": 1.0, "fast": true, "silent": true},
+	&"creep": {"aura": 1.0, "clicks": false, "menace": 1.0, "fast": false, "silent": false},
+	&"cue": {"aura": 0.0, "clicks": false, "menace": 1.0, "fast": true, "silent": true},
+	&"scare": {"aura": 0.0, "clicks": false, "menace": 0.0, "fast": true, "silent": false},
+	&"return": {"aura": 0.5, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+	&"rest": {"aura": 0.2, "clicks": false, "menace": 0.0, "fast": false, "silent": false},
+	&"above": {"aura": 0.6, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+	&"transit": {"aura": 0.35, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+}
+## On a puppet: whether her way to this machine's player is short (roaming
+## near), reckoned every NEAR_EVERY.
+const NEAR_EVERY := 0.5
+var near_clock := 0.0
+var near_local := false
+
+## What her beat does now (creature.mood()); {} before she has one, as today.
+func mood() -> Dictionary:
+	var b := beat_now()
+	if b == &"": return {}
+	var out: Dictionary = (MOODS.get(b, MOODS[&"roam_far"]) as Dictionary).duplicate()
+	# Her claws' false clicks only while she goes unseen, in the plenum or a duct.
+	if b == &"stalk": out["clicks"] = bool(view().in_duct)
+	return out
+
+## Her beat: the brain's where it drives her; else from the state sent
+## (BRAIN.BEATS), roaming near or far by her way to this machine's player.
+func beat_now() -> StringName:
+	if control == "ai" and brain != null: return brain.beat
+	var b: StringName = BRAIN.BEATS.get(net_mind, &"")
+	if b == &"roam_far" and near_local: b = &"roam_near"
+	return b
+
+## Every physics tick on every machine: her beat and mood to her voice (whose
+## setter ducks the floor for the silence and the warning), and her arrival
+## over a locker heard once.
+func sound_beat(delta: float) -> void:
+	if voice == null: return
+	near_clock -= delta
+	if control != "ai" and near_clock <= 0.0:
+		near_clock = NEAR_EVERY
+		near_local = false
+		if level != null and level.get("player") != null and is_instance_valid(level.player):
+			var here := room_of_point(global_position)
+			var theirs := room_of_point(level.player.global_position)
+			near_local = here >= 0 and theirs >= 0 and float(travel_metres(here).get(theirs, INF)) <= BRAIN.NEAR_ROUTE
+	var b := beat_now()
+	if b == &"above" and voice.beat != &"above": voice.arrive_above()
+	voice.beat = b
+	voice.mood = mood()
+
 ## The exit nearest a point within 1.5 m; -1 when none.
 func exit_near(point: Vector3) -> int:
 	if ducts == null: return -1
@@ -531,19 +591,27 @@ func exit_near(point: Vector3) -> int:
 	return best
 
 ## Nobody has her in view (the shared sight's watched(), from where she is:
-## her face, or her point in a duct) while she goes about: roaming, going to
-## listen, fleeing, between plantas. Stalking and closing in keep their own
-## pace (her slow creep at a back is the warning's).
+## her face, or her point in a duct): unseen she flies in every state but
+## closing in (its own pace, the brain's) and the warning (spec_lurker_rebuild
+## 2.4).
 func unseen_now() -> bool:
-	if cue or brain == null or not brain.state in [BRAIN.State.ROAM, BRAIN.State.LISTEN, BRAIN.State.FLEE, BRAIN.State.TRANSIT]: return false
+	if cue or brain == null: return false
+	var going: bool = brain.state in [BRAIN.State.ROAM, BRAIN.State.LISTEN, BRAIN.State.STALK, BRAIN.State.FLEE, BRAIN.State.RETURN, BRAIN.State.TRANSIT] \
+		or (brain.state == BRAIN.State.PEEK and not bool(brain.show.get("arrived", false))) \
+		# Closing in through the ceiling she flies too, and creeps only once out
+		# on a surface: at a creep she trailed a walker along the plenum for good.
+		or (brain.state == BRAIN.State.CREEP and motion.in_duct)
+	if not going: return false
 	var at: Vector3 = motion.duct_point if motion.in_duct else face_point()
 	return not SIGHT.watched(level, at, [get_rid()])
 
-## Her transform and velocity from the motion.
+## Her transform and velocity from the motion; the Visual is drawn from it
+## between ticks, eased (lurker_visual.present(), spec_lurker_rebuild 3.1).
 func apply_motion() -> void:
 	if motion == null: return
 	global_transform = motion.transform()
 	velocity = motion.velocity
+	if visual != null and visual.has_method("present"): visual.present(global_transform, motion.jump_id)
 
 ## What is seen of her, the same on every machine (7.5): the Visual follows
 ## `hidden`, her body collides only out of the ducts and the drop, and her
@@ -561,7 +629,8 @@ func show_body() -> void:
 		was_hidden = hide_now
 	if hide_now: return
 	visual.velocity = velocity
-	var on_surface: bool = (motion.surface() if control == "ai" and motion != null else net_flags & Flag.SURFACE != 0)
+	# Through a grille or a tile her hands stay on (spec_lurker_rebuild 3.7).
+	var on_surface: bool = (motion.clinging() if control == "ai" and motion != null else net_flags & Flag.SURFACE != 0)
 	visual.crawling = on_surface
 	var tray: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.TRAY) if control == "ai" and motion != null and motion.surface() else net_flags & Flag.TRAY != 0
 	var band: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.BAND) if control == "ai" and motion != null and motion.surface() else net_flags & Flag.BAND != 0
@@ -576,14 +645,18 @@ func show_body() -> void:
 		visual.play(CLIPS[clip])
 
 ## The clip for her pace, unless 2b has set one (2a picks idle, crawl,
-## crawl_fast and vent_crawl).
+## crawl_fast and vent_crawl). Idle only after IDLE_AFTER under 0.05 m/s
+## (spec_lurker_rebuild 3.3): a waypoint or a door never restarts her crawl.
+const IDLE_AFTER := 0.15
+var still_for := 0.0
 func pick_clip(in_duct: bool) -> void:
 	var speed: float = velocity.length()
 	var animator: AnimationPlayer = visual.get("animator")
+	still_for = still_for + get_physics_process_delta_time() if speed < 0.05 else 0.0
 	if in_duct:
 		clip = CLIPS.find("vent_crawl")
 		if animator != null: animator.speed_scale = speed / MOTION.VENT_CLIP_SPEED if speed > 0.05 else 1.0
-	elif speed < 0.05:
+	elif speed < 0.05 and still_for >= IDLE_AFTER:
 		clip = CLIPS.find("idle")
 		if animator != null: animator.speed_scale = 1.0
 	elif speed <= 1.6:
@@ -789,19 +862,34 @@ func apply_intent(wanted: Dictionary) -> void:
 		&"keep":
 			return
 		&"hold":
+			order_failed = false
 			if not same: motion.hold()
+		&"pause":
+			# Slows to a stop keeping her way (the silence, a look): the next go
+			# to the same place goes on without a new plan.
+			order_failed = false
+			if not same: motion.pause()
 		&"go":
 			var to: Vector3 = wanted.to
-			if not same or (last_order.get("to", Vector3.INF) as Vector3).distance_to(to) > 0.3 or float(last_order.get("speed", 0.0)) != float(wanted.speed):
-				# Going with somebody in her eye (stalking, closing in, a show):
-				# over surfaces, never into the ceiling, where she sees nothing;
-				# with no way over them (a door shut, glass between), by the
-				# plenum after all, to come out by them.
-				order_failed = not motion.go_to(to, float(wanted.speed), wanted.has("look"))
-				if order_failed and wanted.has("look"): order_failed = not motion.go_to(to, float(wanted.speed))
+			var hidden: bool = bool(wanted.get("hidden", false))
+			if not same or (last_order.get("to", Vector3.INF) as Vector3).distance_to(to) > 0.3 or float(last_order.get("speed", 0.0)) != float(wanted.speed) or bool(last_order.get("hidden", false)) != hidden:
+				# Going with somebody in her eye (a look given): over surfaces,
+				# never into the ceiling, where she sees nothing; with no way
+				# over them (a door shut, glass between), or sent hidden (her
+				# way watched in the light, spec_lurker_rebuild 2.1), by the
+				# plenum.
+				var surface: bool = (wanted.get("look", Vector3.INF) as Vector3) != Vector3.INF and not hidden
+				order_failed = not motion.go_to(to, float(wanted.speed), surface)
+				if order_failed and surface: order_failed = not motion.go_to(to, float(wanted.speed))
 		&"duct", &"listen":
 			if not same or int(last_order.get("exit", -2)) != int(wanted.exit):
 				order_failed = not motion.go_to_exit(int(wanted.exit), float(wanted.get("speed", BRAIN.CRAWL_SPEED)))
+		&"vanish":
+			# Taken to be inside after a flight that would not end (2.2): into
+			# the nearest duct, only where nobody sees her go.
+			order_failed = false
+			if not same and motion.surface() and not SIGHT.watched(level, face_point(), [get_rid()]):
+				motion.place_in_duct(ducts.nearest_node(motion.anchor()))
 		&"take":
 			var victim = senses.body_of(int(wanted.seat))
 			if wanted.get("leap", false) and victim != null: motion.leap(FLOOR.floor_point(victim.global_position))
@@ -827,7 +915,15 @@ func ahead(metres: float) -> PackedVector3Array:
 
 func moving() -> bool: return motion != null and motion.route_state() == &"moving"
 
-func arrived() -> bool: return motion != null and motion.at_goal()
+## Reached the point she was last sent to (spec_lurker_rebuild 2.1), not
+## merely standing still: within ARRIVE_NEAR of it across the floor.
+const ARRIVE_NEAR := 0.6
+func arrived() -> bool:
+	if motion == null or not motion.at_goal(): return false
+	if StringName(last_order.get("do", &"")) != &"go": return true
+	var to: Vector3 = last_order.get("to", Vector3.INF)
+	var at: Vector3 = motion.anchor()
+	return Vector2(to.x - at.x, to.z - at.z).length() <= ARRIVE_NEAR
 
 func route_failed() -> bool: return order_failed or (motion != null and motion.route_state() == &"blocked")
 
@@ -835,18 +931,65 @@ func on_channel() -> bool: return motion != null and motion.on_channel()
 
 # --- What she knows of the map: the world port (7.9, 8.4) -------------------------------------
 
-## Behind them along their look, on her ceiling over that point.
+## Behind them along their eased heading (not every flick of the mouse), on
+## her ceiling over that point; never a point with no ceiling.
 func behind_point(seen, metres: float) -> Vector3:
-	var view: Vector3 = seen.view
-	var flat := Vector3(view.x, 0, view.z)
-	if flat.length() < 0.01: flat = Vector3.FORWARD
-	var at: Vector3 = (seen.eye as Vector3) - flat.normalized() * metres
+	var at: Vector3 = (seen.eye as Vector3) - flat_heading(seen) * metres
 	var room := FLOOR.room_at(level.manifest.rooms, seen.point)
 	if not room.is_empty() and shell.tray_of.has(int(room.id)):
 		var s = shell.tray_state(int(room.id), at.x, at.z)
 		return shell.anchor_of(s)
 	var s = shell.state_at(Vector3(at.x, (seen.point as Vector3).y + 1.0, at.z))
-	return shell.anchor_of(s) if s != null else at
+	return shell.anchor_of(s) if s != null else ceiling_near(seen, at)
+
+## Their eased heading, flat (lurker_senses Seen.heading), else their view.
+func flat_heading(seen) -> Vector3:
+	var h: Vector3 = seen.heading
+	var flat := Vector3(h.x, 0, h.z)
+	if flat.length() < 0.01: flat = Vector3(seen.view.x, 0, seen.view.z)
+	return flat.normalized() if flat.length() > 0.01 else Vector3.FORWARD
+
+## Where she stalks somebody from (spec_lurker_rebuild 2.4): a ceiling out of
+## their cone (STALK_CONE degrees either side of their eased heading), near
+## `metres` from them, in their room or one next to it; behind them and in
+## the dark first. Never INF.
+const STALK_CONE := 60.0
+const STALK_TURNS := [0.0, 35.0, -35.0, 70.0, -70.0, 105.0, -105.0]
+const STALK_REACH := [1.0, 0.75, 1.3]
+func stalk_point(seen, metres: float) -> Vector3:
+	var heading := flat_heading(seen)
+	var eye: Vector3 = seen.eye
+	var room := int(FLOOR.room_at(level.manifest.rooms, seen.point).get("id", -1))
+	var rooms: Array = ([room] + Array(level.manifest.adjacency[room])) if room >= 0 else []
+	var best := Vector3.INF
+	var best_score := INF
+	for turn in STALK_TURNS:
+		var away := (-heading).rotated(Vector3.UP, deg_to_rad(float(turn)))
+		for reach in STALK_REACH:
+			var at: Vector3 = eye + away * metres * float(reach)
+			var r := int(FLOOR.room_at(level.manifest.rooms, at).get("id", -1))
+			if not rooms.has(r) or not shell.tray_of.has(r): continue
+			var p: Vector3 = shell.anchor_of(shell.tray_state(r, at.x, at.z))
+			var to := Vector3(p.x - eye.x, 0, p.z - eye.z)
+			if to.length() > 0.01 and rad_to_deg(heading.angle_to(to)) < STALK_CONE: continue
+			var score: float = absf(float(turn)) / 90.0 + absf(float(reach) - 1.0) + (1.0 if SIGHT.lit_point(level, p) else 0.0)
+			if score < best_score:
+				best_score = score
+				best = p
+	return best if best != Vector3.INF else ceiling_near(seen, eye - heading * metres)
+
+## A ceiling nearest `at` for somebody at `seen`, never INF: the free tile of
+## their room or a room next to it nearest `at`; else where she is.
+func ceiling_near(seen, at: Vector3) -> Vector3:
+	var room := int(FLOOR.room_at(level.manifest.rooms, seen.point).get("id", -1))
+	var best := Vector3.INF
+	if room >= 0:
+		for r in [room] + Array(level.manifest.adjacency[room]):
+			if not ducts.room_tiles.has(int(r)) or not shell.tray_of.has(int(r)): continue
+			for t in ducts.room_tiles[int(r)]:
+				var p: Vector3 = clue_point(ducts.tile_point(int(r), t))
+				if best == Vector3.INF or p.distance_to(at) < best.distance_to(at): best = p
+	return best if best != Vector3.INF else motion.anchor()
 
 func plan_start() -> Dictionary:
 	var from: Dictionary = motion.plan_start()
@@ -856,17 +999,18 @@ func flee_exit(away_from: Vector3) -> int:
 	return routes.flee_exit(plan_start(), away_from, global_position)
 
 ## Where she comes back out of the ceiling for another attempt on `seat`
-## (spec_f3_aggression): her ceiling just under a way out of the ducts of
-## their planta (a grille, a gap or any tile of a false ceiling), in a room
+## (spec_f3_aggression), from where she knows them to be: her ceiling just
+## under a way out of the ducts of their planta (a grille, a gap or any tile
+## of a false ceiling), in a room
 ## not lit and not off limits, `span` metres from them ("behind": behind
 ## their back; "far" and "near": by the span alone); the nearest to the
 ## middle of the span. Vector3.INF with none.
-func emerge_point(seat: int, mode: String, span: Vector2) -> Vector3:
-	var body = senses.body_of(seat) if senses != null else null
-	if body == null or ducts == null: return Vector3.INF
-	var at: Vector3 = body.global_position
-	var look: Vector3 = -(body.camera.global_basis.z if body.get("camera") != null else body.global_basis.z)
-	var forward := Vector3(look.x, 0, look.z).normalized()
+func emerge_point(_seat: int, mode: String, span: Vector2, known: Vector3, heading: Vector3) -> Vector3:
+	# Where she knows them to be (spec_lurker_rebuild 2.4), never where they are.
+	if known == Vector3.INF or ducts == null: return Vector3.INF
+	var at := known
+	var forward := Vector3(heading.x, 0, heading.z)
+	forward = forward.normalized() if forward.length() > 0.01 else Vector3.FORWARD
 	var best := Vector3.INF
 	var best_score := INF
 	for e in ducts.exits.size():
@@ -1086,6 +1230,9 @@ func saw_enter(hide: Node3D, _sure := true) -> void:
 func noticing() -> bool: return brain != null and brain.noticing()
 
 func forced_after() -> float: return force_after
+
+## Her stalking comes and goes within one encounter: the rest is for its end.
+func earned_rest() -> bool: return brain == null or brain.resting()
 
 ## The gate: the machine in charge only; a tool's forced capture is let
 ## through and logged.

@@ -8,7 +8,10 @@ extends SceneTree
 ## than her pace allows and logs every jump; she leaps from the ceiling (never past a column) and
 ## climbs back, shrinks under a short lane, stops short of a survivor, goes
 ## down to the next planta in a ride's time only once nobody is left on hers,
-## and leaves a duct the fans shut.
+## and leaves a duct the fans shut. And (spec_lurker_rebuild 3): a pause and a
+## hold slow her to a stop instead of stopping her dead, the same order keeps
+## her legs, no headway three times running gives "sin avance", and no frame
+## stands still at a waypoint.
 const FIX := preload("res://tests/office/lurker_fixture.gd")
 const MOTION := preload("res://game/enemies/lurker/lurker_motion.gd")
 const SHELL := preload("res://game/enemies/lurker/lurker_shell.gd")
@@ -36,6 +39,9 @@ func run() -> void:
 	leap_columns()
 	shrinks()
 	stops_short()
+	pauses_and_brakes()
+	gives_up()
+	no_still_frame()
 	planta()
 	fans()
 	same_twice()
@@ -186,6 +192,76 @@ func stops_short() -> void:
 	motion.bodies_ahead = func(_from, _dir, _reach) -> float: return INF
 	drive(motion, 2.0, func(_mo): return false)
 	check("Movimiento: colgada a la altura de la cabeza no empuja a nadie, se para y sigue", held and motion.anchor().distance_to(before) > 0.5, "%s %f" % [str(held), motion.anchor().distance_to(before)])
+
+## A pause slows her to a stop on her way with her legs kept, the same order
+## then goes on with no new plan, and a hold brakes along her way, never dead
+## (spec_lurker_rebuild 3.5).
+func pauses_and_brakes() -> void:
+	var m := FIX.fixture()
+	var lvl := FIX.stub_level(m)
+	var motion = motion_on(m, lvl, 0)
+	var target := Vector3(-3.0, 1.0, 0.0)
+	motion.go_to(target, 1.35)
+	drive(motion, 1.0, func(_mo): return false)
+	var cruising: bool = motion.speed > 1.0
+	var at_pause: Vector3 = motion.anchor()
+	motion.pause()
+	drive(motion, 0.05, func(_mo): return false)
+	var slowing: bool = motion.speed > 0.3
+	drive(motion, 1.5, func(_mo): return false)
+	var slid: float = motion.anchor().distance_to(at_pause)
+	var kept: bool = not motion.legs.is_empty() and motion.speed < 1e-3 and slid > 0.05 and slid < 0.4
+	motion.go_to(target, 1.35)
+	var no_plan: bool = motion.replan_gap == 0.0 and not motion.paused and not motion.legs.is_empty()
+	drive(motion, 10.0, at_goal)
+	check("Movimiento: en pausa frena con rampa, conserva el camino y la misma orden sigue sin replanear", cruising and slowing and kept and no_plan and motion.at_goal(), "%s %s %s %f %s" % [str(cruising), str(slowing), str(kept), slid, str(no_plan)])
+	motion.go_to(Vector3(3.0, 1.0, 0.0), 1.35)
+	drive(motion, 2.0, func(_mo): return false)
+	var before: Vector3 = motion.anchor()
+	var fast: bool = motion.speed > 1.0
+	motion.hold()
+	drive(motion, 1.0, func(_mo): return false)
+	var braked: float = motion.anchor().distance_to(before)
+	check("Movimiento: quieta por orden frena a lo largo de su camino, no en seco", fast and braked > 0.05 and braked < 0.4 and motion.legs.is_empty() and motion.speed < 1e-3 and motion.stuck == "", "%s %f" % [str(fast), braked])
+
+## Someone always in her way: a new plan at 1.5 s, at 3 s the first door
+## ahead left out (none here) and a new plan, at 4.5 s "sin avance", her legs
+## gone (spec_lurker_rebuild 3.4).
+func gives_up() -> void:
+	var m := FIX.fixture()
+	var lvl := FIX.stub_level(m)
+	var motion = motion_on(m, lvl, 0)
+	motion.hang_goal = SHELL.HANG_MAX
+	drive(motion, 3.0, func(_mo): return false)
+	motion.bodies_ahead = func(_from, _dir, _reach) -> float: return 0.2
+	motion.go_to(Vector3(3.0, 1.0, 2.5), 1.35)
+	var seen := drive(motion, 8.0, func(mo): return mo.stuck != "")
+	var seconds: float = seen.frames * DT
+	check("Movimiento: sin avanzar se replanea y a la tercera vez dice sin avance", motion.stuck == "sin avance" and motion.legs.is_empty() and motion.route_state() == &"blocked" and seconds > 4.0 and seconds < 5.5, "%s %f" % [motion.stuck, seconds])
+
+## Past a waypoint at her pace no frame stands still: the rest of the step
+## goes on along the next leg (spec_lurker_rebuild 3.3). Rooms 0 and 1 open
+## to each other: a waypoint where she crosses.
+func no_still_frame() -> void:
+	var m := FIX.fixture(true)
+	var lvl := FIX.stub_level(m)
+	var motion = motion_on(m, lvl, 0)
+	motion.go_to_room(2, 1.35)
+	var corners := 0
+	var still := 0
+	var last: Vector3 = motion.anchor()
+	for _i in int(40.0 / DT):
+		var pair: bool = motion.legs.size() > 1 and String(motion.legs[0].kind) == "tray" and String(motion.legs[1].kind) == "tray"
+		var count: int = motion.legs.size()
+		var fast: bool = motion.speed > 0.5
+		motion.tick(DT)
+		var now: Vector3 = motion.anchor()
+		if pair and fast and motion.legs.size() < count:
+			corners += 1
+			if now.distance_to(last) < 1e-4: still += 1
+		last = now
+		if motion.at_goal(): break
+	check("Movimiento: al pasar un punto de paso ningun fotograma se queda quieto", corners > 0 and still == 0 and motion.at_goal(), "%d %d" % [corners, still])
 
 func planta() -> void:
 	var m: Dictionary = GEN.new().generate(7, 2)

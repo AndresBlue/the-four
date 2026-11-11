@@ -19,8 +19,10 @@ const RETREAT_SPEED := 0.8
 ## vent_crawl 0.55 x 1.35: the clip's own pace, scaled when she is seen in a duct.
 const VENT_CLIP_SPEED := 0.74
 const SQUEEZE_SPEED := 0.6
-## m/s2 (lurker_test.gd): her hands could not keep up otherwise.
-const ACCEL := 5.0
+## m/s2 (lurker_test.gd): her hands could not keep up otherwise. Speeding up
+## and slowing down apart (spec_lurker_rebuild 3.5).
+const ACCEL := 4.0
+const BRAKE := 6.0
 ## rad/s while moving on a surface, and for a turn.
 const HEADING_RATE := 3.0
 const TURN_RATE := 4.0
@@ -33,8 +35,6 @@ const HEAD_CLEAR := 0.25
 const RAY_EVERY := 0.25
 ## The world and the survivors (player.tscn layer 4).
 const RAY_MASK := 1 | 4
-## Longest she waits at a band's start for room under it; then she bans the door.
-const BAND_WAIT := 4.0
 ## Metres: a waypoint reached.
 const ARRIVE := 0.01
 ## Metres before a band start the heading turns to the band's.
@@ -43,6 +43,17 @@ const LOOKAHEAD := 0.8
 const DUCT_GAP := 1.5
 ## A new plan is kept only this much cheaper than the rest of the old one.
 const REPLAN_GAIN := 0.05
+## Plans no closer together than this (spec_lurker_rebuild 3.5): an order in
+## between waits in `deferred`. A goal point within SAME_GOAL of hers is hers.
+const REPLAN_GAP := 0.3
+const SAME_GOAL := 0.3
+## The one watch on her headway (spec_lurker_rebuild 3.4): with legs to
+## follow she must go PROGRESS_METRES every PROGRESS_TIME, or she plans
+## again, then leaves the first door ahead out, then gives up ("sin avance").
+const PROGRESS_METRES := 0.1
+const PROGRESS_TIME := 1.5
+## Onto a band at her speed once her heading is this near its own (3.6).
+const DOOR_ALIGN := 0.3
 ## The author's long leap from the ceiling (M1): how far (as far as the
 ## warning takes from, lurker_warning.TAKE_REACH_WALKED), how long, how high.
 const LEAP_REACH := 7.5
@@ -85,6 +96,8 @@ var deferred := {}
 var speed := 0.0
 ## Wanted m/s on surfaces (the brain or the order sets it).
 var pace := 1.35
+## Slowing to a stop on her way, her legs kept (pause()); an order lifts it.
+var paused := false
 ## Nobody sees her (lurker.gd, every frame): on a surface she goes at least
 ## unseen_pace, in a hidden duct at least unseen_duct (the author: "cuando no
 ## la ves, MUY rápido"). The visible main duct keeps its own speed.
@@ -128,7 +141,13 @@ var left_behind := Callable()
 ## {frame, reason, from, to}
 var jumps: Array = []
 var jump_id := 0
+## Seconds without PROGRESS_METRES of headway (watch_progress()), from where
+## she last made some, and how many times in a row it ran out.
 var wait_clock := 0.0
+var progress_from := Vector3.INF
+var progress_level := 0
+## Seconds before another plan may be made (REPLAN_GAP).
+var replan_gap := 0.0
 var replan_clock := 0.0
 var ray_clock := 0.0
 var shut_seen := -1
@@ -154,6 +173,11 @@ func setup(source_shell, source_routes, source_ducts, source_level) -> void:
 
 func surface() -> bool:
 	return state != null and not in_duct and not on_floor
+
+## Her hands on something (lurker.gd show_body()): on a surface, and through
+## a grille or a tile too (spec_lurker_rebuild 3.7), so they never leave the IK.
+func clinging() -> bool:
+	return surface() or (not legs.is_empty() and String(legs[0].kind) == "squeeze")
 
 func transform() -> Transform3D:
 	if surface(): return shell.transform_of(state)
@@ -215,6 +239,9 @@ func clear_legs() -> void:
 	plan_nodes = PackedInt32Array()
 	waiting = false
 	wait_clock = 0.0
+	progress_from = Vector3.INF
+	progress_level = 0
+	paused = false
 
 # --- Orders -------------------------------------------------------------------------
 
@@ -235,10 +262,34 @@ func go_to_room(r: int, pace_: float) -> bool:
 func go_to_exit(e: int, pace_: float, mouth := false) -> bool:
 	return order({"exit": e, "mouth": mouth}, pace_)
 
-## Stops where she is (a band, a channel, a duct: anywhere).
+## Stops where she is (a band, a channel, a duct: anywhere). Over a ceiling
+## at speed she brakes along her way, v2 / 2a, never dead (spec_lurker_rebuild
+## 3.5); what blocked her is forgotten.
 func hold() -> void:
+	# Half way through a grille or a tile she has no surface and no duct: cut
+	# short there she hung in the mouth for good ("sin sitio"). She finishes it.
+	if not legs.is_empty() and String(legs[0].kind) in ["squeeze", "drop", "leap", "climb", "turn"]:
+		legs = [legs[0]]
+		goal = {}
+		deferred = {}
+		stuck = ""
+		return
+	var flat := Vector2(velocity.x, velocity.z)
+	var braking: bool = surface() and int(shell.patches[state.patch].kind) == SHELL.Kind.TRAY and speed > 0.05 and flat.length() > 0.05
 	clear_legs()
-	speed = 0.0
+	stuck = ""
+	if not braking:
+		speed = 0.0
+		return
+	var rect: Rect2 = shell.patches[state.patch].rect
+	var to := Vector2(state.u, state.v) + flat.normalized() * speed * speed / (2.0 * BRAKE)
+	to = Vector2(clampf(to.x, rect.position.x, rect.end.x), clampf(to.y, rect.position.y, rect.end.y))
+	legs = [{"kind": "tray", "to": to, "room": room(), "hang": NAN}]
+
+## Slows to a stop on her way, her legs kept (spec_lurker_rebuild 2.4,
+## `pause`): the next order to the same place goes on without a new plan.
+func pause() -> void:
+	paused = true
 
 ## A leg that has to be finished before a new plan (a band, a squeeze, a
 ## drop, a leap, a climb, a turn): the order waits for its end.
@@ -246,12 +297,46 @@ func committed() -> bool:
 	if legs.is_empty(): return false
 	return String(legs[0].kind) in ["band", "squeeze", "drop", "leap", "climb", "turn"]
 
+## A new order lifts a pause and what blocked her (stuck). The same goal, or
+## a new point where her last ceiling leg ends, keeps her legs; a plan within
+## REPLAN_GAP of the last waits in `deferred` (spec_lurker_rebuild 3.5).
 func order(new_goal: Dictionary, pace_: float) -> bool:
 	pace = pace_
-	if committed():
+	paused = false
+	stuck = ""
+	if retarget(new_goal) or same_goal(new_goal): return true
+	# Standing with no legs (moved, there) there is no plan to keep: at once.
+	if committed() or (replan_gap > 0.0 and not legs.is_empty()):
 		deferred = new_goal
 		return true
 	return replan(new_goal)
+
+## Whether `wanted` is the goal she is already following (a point within
+## SAME_GOAL of it counts).
+func same_goal(wanted: Dictionary) -> bool:
+	if legs.is_empty() or goal.is_empty() or not deferred.is_empty() or wanted.size() != goal.size(): return false
+	for key in wanted:
+		if not goal.has(key): return false
+		if String(key) == "point":
+			if (goal.point as Vector3).distance_to(wanted.point) > SAME_GOAL: return false
+		elif goal[key] != wanted[key]: return false
+	return true
+
+## A new point in the room her last ceiling leg ends in: that leg moved to
+## it, no new plan. Not in a room with columns (her way round them wants a
+## plan).
+func retarget(wanted: Dictionary) -> bool:
+	if legs.is_empty() or not deferred.is_empty() or not wanted.has("point") or not goal.has("point"): return false
+	if int(wanted.get("room", -1)) != int(goal.get("room", -2)) or bool(wanted.get("surface", false)) != bool(goal.get("surface", false)): return false
+	var last: Dictionary = legs[legs.size() - 1]
+	var r := int(wanted.room)
+	if String(last.kind) != "tray" or int(last.get("room", -1)) != r or shell.columns_of.has(r): return false
+	var p: Vector3 = wanted.point
+	var s = shell.tray_state(r, p.x, p.z)
+	if s == null: return false
+	last["to"] = Vector2(s.u, s.v)
+	goal = wanted
+	return true
 
 ## Where a plan starts from now: {start, from_state, from_point}.
 func plan_start() -> Dictionary:
@@ -275,7 +360,13 @@ func plan_start() -> Dictionary:
 	return {"start": {"room": shell.room_of(state)}, "from_state": state, "from_point": anchor()}
 
 func replan(new_goal: Dictionary) -> bool:
+	replan_gap = REPLAN_GAP
 	var from := plan_start()
+	if from.is_empty() and ducts.nearest_node(point) >= 0:
+		# Left with no surface and no duct (a way out with no ceiling of hers
+		# under it): back into the nearest duct, and on from there.
+		place_in_duct(ducts.nearest_node(point))
+		from = plan_start()
 	if from.is_empty():
 		stuck = "sin sitio"
 		return false
@@ -303,7 +394,7 @@ func set_legs(new_legs: Array) -> void:
 	travelled = 0.0
 	leg_started = false
 	waiting = false
-	wait_clock = 0.0
+	# wait_clock is watch_progress()'s: a new plan is no headway (3.4).
 	mouth_exit = -1
 
 func flee(threat: Vector3) -> bool:
@@ -371,12 +462,19 @@ func at_exit() -> int:
 func on_channel() -> bool:
 	return surface() and int(shell.patches[state.patch].kind) == SHELL.Kind.CHANNEL
 
-## Her pace on a surface now: faster unseen.
+## Her pace on a surface now: faster unseen; none while paused.
 func pace_now() -> float:
+	if paused: return 0.0
 	return maxf(pace, unseen_pace) if unseen else pace
 
+## Every change of her speed eased (spec_lurker_rebuild 3.5): up at ACCEL,
+## down at BRAKE.
+func ramp(to: float, delta: float) -> void:
+	speed = move_toward(speed, to, (ACCEL if to > speed else BRAKE) * delta)
+
+## An order waiting for its plan (REPLAN_GAP) is not there yet.
 func at_goal() -> bool:
-	return legs.is_empty() and stuck == "" and transit.is_empty()
+	return legs.is_empty() and stuck == "" and transit.is_empty() and deferred.is_empty()
 
 func in_transit() -> bool:
 	return transit.get("phase", &"") in [&"drop", &"arriving"]
@@ -391,6 +489,7 @@ func route_state() -> StringName:
 	if not transit.is_empty(): return &"transit"
 	if stuck != "": return &"blocked"
 	if waiting: return &"waiting"
+	if not deferred.is_empty(): return &"moving"
 	return &"idle" if legs.is_empty() else &"moving"
 
 ## The doors the legs still go through.
@@ -503,6 +602,12 @@ func tick(delta: float) -> void:
 	if not cue:
 		watch_doors(delta)
 		if ready_to_go(): start_transit(pending_wing)
+	# An order that came too soon after the last plan (order()), planned now.
+	replan_gap = maxf(0.0, replan_gap - delta)
+	if not deferred.is_empty() and replan_gap <= 0.0 and not committed():
+		var wanted := deferred
+		deferred = {}
+		replan(wanted)
 	if not transit.is_empty() and transit.phase == &"drop":
 		transit.left = float(transit.left) - delta
 		if float(transit.left) <= 0.0: finish_drop()
@@ -510,8 +615,9 @@ func tick(delta: float) -> void:
 	least_squash = minf(least_squash, squash)
 	if not legs.is_empty(): follow(delta)
 	elif surface():
-		speed = move_toward(speed, 0.0, ACCEL * delta)
+		ramp(0.0, delta)
 		ease_hang(hang_goal, delta)
+	watch_progress(delta)
 	var now := anchor()
 	velocity = (now - last_anchor) / delta if last_anchor != Vector3.INF and delta > 0.0 else Vector3.ZERO
 	last_anchor = now
@@ -570,6 +676,49 @@ func watch_doors(delta: float) -> void:
 		plan_nodes = found.nodes
 		set_legs(found.legs)
 
+## The one watch on her headway (spec_lurker_rebuild 3.4), in place of the
+## old waits: with legs to follow, not paused and not on a leg that ends by
+## its own clock, PROGRESS_METRES every PROGRESS_TIME; else a new plan, then
+## the first door ahead left out and a new plan, then "sin avance" (the brain
+## reads it as failed).
+func watch_progress(delta: float) -> void:
+	var timed: bool = not legs.is_empty() and String(legs[0].kind) in ["squeeze", "leap", "climb", "turn"]
+	if legs.is_empty() or timed or paused:
+		progress_from = Vector3.INF
+		wait_clock = 0.0
+		if legs.is_empty(): progress_level = 0
+		return
+	var now := anchor()
+	if progress_from == Vector3.INF:
+		progress_from = now
+		wait_clock = 0.0
+		return
+	if now.distance_to(progress_from) >= PROGRESS_METRES:
+		progress_from = now
+		wait_clock = 0.0
+		progress_level = 0
+		return
+	wait_clock += delta
+	if wait_clock < PROGRESS_TIME: return
+	wait_clock = 0.0
+	progress_level += 1
+	if goal.is_empty():
+		# A brake or a climb with no goal to plan for: she stops there.
+		clear_legs()
+		speed = 0.0
+		return
+	if progress_level == 2:
+		var pairs := remaining_pairs()
+		if not pairs.is_empty(): routes.ban(pairs[0], ROUTES.BAN_TIME)
+	if progress_level <= 2:
+		replan(goal)
+		return
+	legs = []
+	progress_level = 0
+	speed = 0.0
+	stuck = "sin avance"
+	blocked.emit(stuck)
+
 func ease_hang(target: float, delta: float) -> void:
 	if state == null: return
 	state.hang = move_toward(state.hang, minf(target, hang_limit if int(shell.patches[state.patch].kind) == SHELL.Kind.TRAY else shell.max_hang(state)), HANG_RATE * delta)
@@ -592,7 +741,6 @@ func next_leg() -> void:
 	travelled = 0.0
 	leg_started = false
 	waiting = false
-	wait_clock = 0.0
 	if not deferred.is_empty() and not committed():
 		var wanted := deferred
 		deferred = {}
@@ -646,8 +794,10 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	# as it lets her is there.
 	if stall > 0.25: left = 0.0
 	var next_band: bool = legs.size() > 1 and String(legs[1].kind) == "band"
+	var next_tray: bool = legs.size() > 1 and String(legs[1].kind) == "tray"
 	var heading_to := Vector3(to.x - here.x, 0, to.y - here.y)
-	if next_band and left <= LOOKAHEAD: ease_heading(band_heading(legs[1]), HEADING_RATE, delta)
+	var band_off := PI
+	if next_band and left <= LOOKAHEAD: band_off = ease_heading(band_heading(legs[1]), HEADING_RATE, delta)
 	elif heading_to.length() > 1e-6: ease_heading(heading_to, HEADING_RATE, delta)
 	var hang_target: float = hang_goal if is_nan(float(leg.hang)) else float(leg.hang)
 	ease_hang(hang_target, delta)
@@ -658,10 +808,15 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 		speed = 0.0 if legs.size() == 1 else speed
 		stall = 0.0
 		next_leg()
+		# On at once along the next waypoint's leg (spec_lurker_rebuild 3.3):
+		# no frame stood still at a corner.
+		if next_tray and not legs.is_empty() and String(legs[0].kind) == "tray": follow_tray(legs[0], delta)
 		return
 	var want := pace_now()
-	if legs.size() == 1 or next_band: want = minf(want, sqrt(2.0 * ACCEL * left))
-	speed = move_toward(speed, want, ACCEL * delta)
+	# Slowing into a band's start only while her heading is not yet its own
+	# (spec_lurker_rebuild 3.6); to a stop at her last waypoint.
+	if legs.size() == 1 or (next_band and band_off >= DOOR_ALIGN): want = minf(want, sqrt(2.0 * BRAKE * left))
+	ramp(want, delta)
 	var dir := heading_to.normalized()
 	if body_in_way(dir, speed * delta):
 		speed = 0.0
@@ -673,22 +828,27 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	var moved: float = shell.advance(state, step)
 	state.heading = shown
 	stall = stall + delta if step > 1e-4 and moved < 1e-5 else 0.0
+	# There with some of this frame's step left (spec_lurker_rebuild 3.3): the
+	# rest goes on along the next leg now.
+	var rest := speed * delta - moved
+	if next_tray and moved >= left - ARRIVE and rest > 1e-4 and speed > 1e-4:
+		stall = 0.0
+		next_leg()
+		if not legs.is_empty() and String(legs[0].kind) == "tray": follow_tray(legs[0], rest / speed)
 
 ## At a band's start: heading round to the band's, hang at BAND_CLEAR and
-## room under the head; then onto it, or, waiting too long, the door banned.
+## room under the head; then onto it at her speed once within DOOR_ALIGN
+## (spec_lurker_rebuild 3.6). Waiting too long is watch_progress()'s.
 func band_switch(band_leg: Dictionary, delta: float) -> void:
-	speed = 0.0
 	var off := ease_heading(band_heading(band_leg), HEADING_RATE, delta)
 	ease_hang(SHELL.BAND_CLEAR, delta)
-	var ready := off < 0.05 and absf(state.hang - SHELL.BAND_CLEAR) < SHELL.SEAM_TOL and hang_limit >= SHELL.BAND_CLEAR - 1e-6
+	var ready := off < DOOR_ALIGN and absf(state.hang - SHELL.BAND_CLEAR) < SHELL.SEAM_TOL and hang_limit >= SHELL.BAND_CLEAR - 1e-6
 	if not ready:
+		# Standing at its start: nothing moves her till she is ready.
+		speed = 0.0
 		waiting = hang_limit < SHELL.BAND_CLEAR - 1e-6
-		wait_clock += delta
-		if wait_clock > BAND_WAIT:
-			var pair: Vector2i = shell.patches[int(band_leg.patch)].pair
-			if pair.x >= 0: routes.ban(pair, ROUTES.BAN_TIME)
-			replan(goal)
 		return
+	waiting = false
 	stall = 0.0
 	state.hang = SHELL.BAND_CLEAR
 	var on_band = shell.switch_to(state, int(band_leg.patch))
@@ -716,7 +876,7 @@ func follow_band(leg: Dictionary, delta: float) -> void:
 			dir = -dir
 			deferred = goal
 	state.heading = 0.0 if dir > 0 else PI
-	speed = move_toward(speed, pace_now(), ACCEL * delta)
+	ramp(pace_now(), delta)
 	shell.advance(state, speed * delta)
 	var at_end: bool = state.u >= length - 1e-6 if dir > 0 else state.u <= 1e-6
 	if not at_end: return
@@ -731,8 +891,19 @@ func follow_squeeze(leg: Dictionary, delta: float) -> void:
 	var to: Vector3 = leg.to
 	if not leg_started:
 		leg_started = true
-		# From the basis she has, so the turn into the grille's is seen whole.
-		leg["basis_from"] = transform().basis.orthonormalized()
+		# Going in, from where she is (a waypoint she stopped short of): no
+		# jump to the leg's start.
+		if bool(leg.into) and state != null:
+			leg["from"] = anchor()
+			from = leg.from
+		# Out by a ceiling: upside down from the start, facing the way her
+		# duct ran (spec_lurker_rebuild 3.7), no roll as she shows.
+		elif not bool(leg.into) and (leg.basis as Basis).y.dot(Vector3.DOWN) > 0.99:
+			var h := Vector3(duct_dir.x, 0, duct_dir.z).normalized()
+			leg["basis"] = Basis(Vector3.DOWN.cross(h), Vector3.DOWN, h)
+		# Going in, from the basis she has, so the turn into the grille's is
+		# seen whole; coming out, the way out's own from the start.
+		leg["basis_from"] = transform().basis.orthonormalized() if bool(leg.into) else (leg.basis as Basis).orthonormalized()
 		point = from
 		state = null
 		if leg.has("tile"): tile_turned.emit(int(leg.room), leg.tile, true, bool(leg.into))
@@ -741,6 +912,7 @@ func follow_squeeze(leg: Dictionary, delta: float) -> void:
 			hidden = false
 			if transit.get("phase", &"") == &"arriving": transit = {}
 	var length := maxf(from.distance_to(to), 1e-4)
+	speed = SQUEEZE_SPEED
 	leg_clock += SQUEEZE_SPEED * delta
 	var t := minf(leg_clock / length, 1.0)
 	point = from.lerp(to, t)
@@ -812,10 +984,12 @@ func follow_duct(leg: Dictionary, delta: float) -> void:
 	if flat.length() > 1e-6: duct_dir = flat.normalized()
 	var run: float = routes.segment_speed(kind)
 	if unseen and not visible: run = maxf(run, unseen_duct)
+	if paused: run = 0.0
 	if visible and bodies_ahead.is_valid() and float(bodies_ahead.call(duct_point, duct_dir, DUCT_GAP + 1.0)) < DUCT_GAP:
 		run = 0.0
-	speed = run
-	travelled = minf(travelled + run * delta, float(leg.length))
+	# Eased in the ducts too (spec_lurker_rebuild 3.5).
+	ramp(run, delta)
+	travelled = minf(travelled + speed * delta, float(leg.length))
 	duct_point = ducts.point_along(points, travelled)
 	point = duct_point
 	near_node = int(leg.point_nodes[mini(seg + 1, points.size() - 1)])
@@ -852,7 +1026,7 @@ func follow_channel(leg: Dictionary, delta: float) -> void:
 	var length: float = record.profile.length
 	var v_to := float(leg.v_to)
 	var u_goal := float(leg.u_goal)
-	speed = move_toward(speed, pace_now(), ACCEL * delta)
+	ramp(pace_now(), delta)
 	var dv := clampf(v_to - state.v, -speed * delta, speed * delta)
 	state.v += dv
 	var du := wrapf(u_goal - state.u, -length / 2.0, length / 2.0)
