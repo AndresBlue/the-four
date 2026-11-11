@@ -56,6 +56,19 @@ func run() -> void:
 		return
 	print("LOOK rooms %d %d %d" % [int(big.id), int(tiled.id), int(other.id)])
 	power(int(big.id), false)
+	if shots == "dustgame":
+		await dust_tile(tiled, false)
+		await dust_plenum(tiled)
+		level.queue_free()
+		await process_frame
+		quit()
+		return
+	if shots == "lab3":
+		await dust_lab3(tiled)
+		level.queue_free()
+		await process_frame
+		quit()
+		return
 	if shots == "dust":
 		await dust_lab(tiled)
 		level.queue_free()
@@ -415,27 +428,63 @@ func dust_plenum(room: Dictionary) -> void:
 		await wait(0.25)
 	await film("polvo_pleno", 10, 2)
 
-## The dust alone, away from her: a tile's fall 2.5 m off in the torch.
+## The dust alone, away from her, as the author would see it: a fall 2.5 m
+## off at eye height, by the torch alone, by the room's light alone, by both;
+## eight pictures 0.13 s apart from the moment it falls, then four 1.5 s apart
+## (the veil hanging).
 func dust_lab(room: Dictionary) -> void:
 	var f := frame_of(room)
 	var centre: Vector3 = f[0]
 	var along: Vector3 = f[1]
-	lurker.motion.place_in_duct(int(lurker.ducts.plenum_node[int(room.id)]))
+	var side: Vector3 = Vector3(along.z, 0, -along.x)
+	# Her far away, in a duct, drinking no light here.
+	var far := 0
+	for n in lurker.ducts.nodes.size():
+		if (lurker.ducts.nodes[n] as Vector3).distance_to(centre) > (lurker.ducts.nodes[far] as Vector3).distance_to(centre): far = n
+	lurker.motion.place_in_duct(far)
+	lurker.apply_motion()
+	var ceiling: float = float(lurker.ducts.tile_height.get(int(room.id), float(room.get("py", 0.0)) + 2.6))
+	print("LOOK volumetric fog %s lamp_fog %s fog_size %s" % [level.environment.volumetric_fog_enabled, level.hotel.preset.get("lamp_fog"), level.hotel.preset.get("fog_size")])
+	var cases := [["linterna", true, false], ["sala", false, true], ["ambas", true, true]]
+	for i in cases.size():
+		var at := Vector3(centre.x, ceiling, centre.z) + along * 1.2 + side * (float(i) - 1.0) * 0.6
+		var eye := Vector3(at.x, float(room.get("py", 0.0)) + EYE, at.z) - along * 2.5
+		torch(bool(cases[i][1]))
+		# The room's own lamp (a dark room's stays out by power alone).
+		var lamp: OmniLight3D = level.hotel.lights[int(room.id)]
+		lamp.visible = bool(cases[i][2])
+		if lamp.visible: lamp.remove_meta("off")
+		look(eye, at + Vector3.DOWN * 0.7)
+		await wait(1.0)
+		CEILING_DUST.fall(level, at, true)
+		await film("banco_%s" % cases[i][0], 8, 4)
+		await film("banco_%s_tarde" % cases[i][0], 4, 45)
+		await wait(4.0)
+	power(int(room.id), false)
+
+## Four emitters of the dust shader side by side, steady: [size, min_pixels].
+func dust_lab3(room: Dictionary) -> void:
+	var f := frame_of(room)
+	var centre: Vector3 = f[0]
+	var along: Vector3 = f[1]
+	lurker.motion.place_in_duct(0)
 	lurker.apply_motion()
 	power(int(room.id), false)
 	torch(true)
 	var ceiling: float = float(lurker.ducts.tile_height.get(int(room.id), float(room.get("py", 0.0)) + 2.6))
-	var at := Vector3(centre.x, ceiling, centre.z) + along * 1.5
-	var eye := centre - along * 0.5 + Vector3.UP * EYE
-	look(eye, at + Vector3.DOWN * 1.1)
-	await wait(0.5)
+	var at := Vector3(centre.x, ceiling - 0.6, centre.z) + along * 1.5
+	var eye := centre - along * 1.0 + Vector3.UP * EYE
+	look(eye, at + Vector3.DOWN * 0.3)
 	var side: Vector3 = Vector3(along.z, 0, -along.x)
-	CEILING_DUST.thread(level, at - side * 0.9, 1.5, 120)
-	CEILING_DUST.flakes(level, at - side * 0.3, 14)
-	CEILING_DUST.haze(level, at + side * 0.3, 4)
-	CEILING_DUST.crumbs(level, at + side * 0.9, 8)
-	await film("lab_partes", 6, 6)
-	await wait(3.0)
-	CEILING_DUST.fall(level, at, true)
-	await film("lab_placa", 10, 3)
-
+	var cases := [[0.05, 0.0], [0.01, 0.0], [0.003, 0.0], [0.003, 3.0]]
+	for i in cases.size():
+		var p := ParticleProcessMaterial.new()
+		p.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		p.emission_box_extents = Vector3(0.1, 0.1, 0.1)
+		p.gravity = Vector3(0, -0.1, 0)
+		p.scale_min = float(cases[i][0])
+		p.scale_max = float(cases[i][0])
+		p.color = Color(1, 1, 1, 1)
+		CEILING_DUST.emitter(level, at + side * (0.9 - 0.6 * i), p, null, true, 40, 4.0, false, 0.0, {"scatter": 1.0, "min_pixels": float(cases[i][1]), "twinkle": 0.0})
+	await wait(1.0)
+	await film("lab3", 1, 3)
