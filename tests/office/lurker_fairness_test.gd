@@ -47,6 +47,7 @@ class FakeWorld extends RefCounted:
 	var emerge := Vector3.INF
 	func emerge_point(_seat: int, _mode: String, _span: Vector2, _known: Vector3, _heading: Vector3) -> Vector3: return emerge
 	func stalk_point(seen, metres: float) -> Vector3: return Vector3(seen.point.x - metres, 0, 0)
+	func ambush_point(_seen) -> Vector3: return Vector3.INF
 
 func run() -> void:
 	var results: Array = []
@@ -90,6 +91,7 @@ func run() -> void:
 		if int(counts[key]) < int(COVERAGE[key]): short.append("%s %d" % [key, int(counts[key])])
 	check("Cubre cogidas, salvadas, abortadas, caducadas y sin aviso: %s" % str(counts), short.is_empty(), ", ".join(short))
 	rules()
+	ambush_rule()
 	recordings()
 	never_faked()
 	await part_a()
@@ -122,6 +124,49 @@ func rules() -> void:
 		var entry: Dictionary = w.ledger[0]
 		if String(entry.outcome) != String(c[2]) or String(entry.reason) != String(c[3]): bad.append([c, entry.outcome, entry.reason])
 	check("Alejarse andando no salva y el aviso caduca lejos; corriendo, salva; andando al alcance del salto, coge", bad.is_empty(), str(bad))
+
+## A warning straight from an ambush (iteration 3, H2): she waits still over
+## the way, the prey walks under and past her, and the warning starts there,
+## with no silence nor closing in, its window kept as ever.
+func ambush_rule() -> void:
+	var brain = BRAIN.new()
+	var draws := RandomNumberGenerator.new()
+	draws.seed = 3
+	brain.setup(FakeWorld.new(), draws, WARNING.new())
+	brain.tune(DIFFICULTY.profile("pesadilla", &"lurker"))
+	brain.force(&"ambush", {"seat": 1})
+	var face := Vector3(0, 2.2, 0)
+	var x := -8.0
+	var cue_from := -1
+	var steps: Array = []
+	for k in int(8.0 / DT):
+		x += 3.8 * DT
+		var p = SENSES.Percept.new()
+		p.face = face
+		var v = SENSES.Seen.new()
+		v.seat = 1
+		v.point = Vector3(x, 0, 0)
+		v.eye = Vector3(x, 1.64, 0)
+		v.view = Vector3(1, 0, 0)
+		v.heading = Vector3(1, 0, 0)
+		v.velocity = Vector3(3.8, 0, 0)
+		v.speed = 3.8
+		v.seen = true
+		v.fair = true
+		v.alone = 20.0
+		v.distance = face.distance_to(v.eye)
+		v.behind = SIGHT.behind_of(v.eye, v.view, face)
+		v.above = SIGHT.over_of(v.eye, v.view, face)
+		p.bodies[1] = v
+		p.victim = v
+		var was: int = brain.state
+		brain.tick(DT, p)
+		if brain.state != was: steps.append(BRAIN.NAMES[brain.state])
+		if brain.state == BRAIN.State.CUE and was != BRAIN.State.CUE: cue_from = was
+		if not brain.warning.ledger.is_empty() and brain.warning.active.is_empty(): break
+	var entry: Dictionary = brain.warning.ledger[brain.warning.ledger.size() - 1] if not brain.warning.ledger.is_empty() else {}
+	var ok: bool = cue_from == int(BRAIN.State.AMBUSH) and WARNING.audit(brain.warning.ledger).is_empty() and String(entry.get("outcome", "")) == "taken" and float(entry.take_at) - float(entry.at) >= float(entry.window) - EPS
+	check("Desde la emboscada avisa al pasar por debajo, sin silencio ni acercamiento, y respeta la ventana", ok, "%s %s" % [str(steps), str(entry)])
 
 ## Her warnings load and, in every difficulty, the ones played for its
 ## window are over before it could end in a take; her two shrieks load.
@@ -348,6 +393,7 @@ func part_a() -> void:
 	await mate_latency()
 	await drunk_torch()
 	await deep_look()
+	await dead_torch()
 	await lobby()
 	await tool_forced()
 	var audit: Array = WARNING.audit(lurker.capture_log())
@@ -594,6 +640,45 @@ func deep_look() -> void:
 	lurker.snuff(-1, -1)
 	lurker.snuffed.clear()
 	check("Parte A: en una sala que bebió a oscuras, mirarla sin linterna no la salva", dark and not entry.is_empty() and String(entry.outcome) == "taken", "%s %s" % [str(dark), str(entry)])
+
+## A turn at her with the torch up just before the due time (a fresh Callable each time).
+func turn_late() -> Callable:
+	var turned := [false]
+	var each := func(brain):
+		var active: Dictionary = lurker.warning.active
+		if not turned[0] and not active.is_empty() and brain.clock >= float(active.due) - 0.3:
+			turned[0] = true
+			aim_at(lurker.face_point())
+	return each
+
+## A torch she put out (iteration 3, H1): no light for her even once her drink
+## is over; switched off and on again, it is a torch again and saves.
+func dead_torch() -> void:
+	var seat := int(level.player.slot)
+	await set_up(true, true)
+	lurker.thinking = false
+	lurker.drink_torches([seat], 0.3)
+	lurker.kill_torches([seat])
+	for i in 40: await physics_frame
+	lurker.thinking = true
+	lurker.brain.force(&"creep", {"seat": seat})
+	var taken := await run_cue(6.0, turn_late())
+	await set_up(true, true)
+	lurker.thinking = false
+	lurker.kill_torches([seat])
+	var dark: bool = lurker.dead_torches.has(seat)
+	level.player.torch.visible = false
+	for i in 3: await physics_frame
+	level.player.torch.visible = true
+	for i in 3: await physics_frame
+	var back: bool = not lurker.dead_torches.has(seat)
+	lurker.thinking = true
+	lurker.brain.force(&"creep", {"seat": seat})
+	var saved := await run_cue(6.0, turn_late())
+	var ok: bool = not taken.is_empty() and String(taken.outcome) == "taken" and dark and back and not saved.is_empty() and String(saved.outcome) == "saved" and String(saved.reason) == "linterna"
+	check("Parte A: con la linterna apagada por ella, girarse no la salva; apagada y encendida, vuelve y salva", ok, "%s %s %s %s" % [str(dark), str(back), str(taken), str(saved)])
+	lurker.drunk.clear()
+	level.player.torch_dim = 1.0
 
 ## The freight lobby of planta 1: never a warning there.
 func lobby() -> void:

@@ -104,6 +104,15 @@ const DRUNK_BEAM := 0.15
 const DRUNK_RAMP := 1.0
 const DRUNK_SOUND := "res://assets/audio/sfx/flashlight/off_2.wav"
 const DRUNK_GAIN := -6.0
+## Torches she put out for good (iteration 3, H1; torch_kill: tune()'s chance
+## of it): dark even after her drink, until their owner switches them off and
+## on again. The machine in charge watches each one's switch (switch_was) and
+## tells every machine; a spark lasts SPARK s.
+var dead_torches := {}
+var switch_was := {}
+var sparks := {}
+var torch_kill := 0.0
+const SPARK := 0.2
 ## Her drink of a whole room past LIT_DRAIN (iteration 2, G8): the room, on
 ## every machine from her "snuff" event (-1 none); on the machine in charge,
 ## whom for, since when, how long they have been out of it, the room she is
@@ -145,6 +154,7 @@ func tune(profile: Dictionary) -> void:
 	unseen_duct = float(profile.get("unseen_duct", 0.0))
 	force_after = float(profile.get("forced_after", 0.0))
 	torch_drunk = float(profile.get("torch_drunk", 0.0))
+	torch_kill = float(profile.get("torch_kill", 0.0))
 	snuff_time = float(profile.get("snuff_time", 0.0))
 	drain_reach = float(profile.get("drain_reach", drain_reach))
 	if routes != null: routes.duct_speed = duct_speed
@@ -575,6 +585,7 @@ const MOODS := {
 	&"rest": {"aura": 0.2, "clicks": false, "menace": 0.0, "fast": false, "silent": false},
 	&"above": {"aura": 0.6, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
 	&"transit": {"aura": 0.35, "clicks": false, "menace": -1.0, "fast": false, "silent": false},
+	&"ambush": {"aura": 0.0, "clicks": false, "menace": -1.0, "fast": true, "silent": true},
 }
 ## On a puppet: whether her way to this machine's player is short (roaming
 ## near), reckoned every NEAR_EVERY.
@@ -636,7 +647,7 @@ func exit_near(point: Vector3) -> int:
 ## 2.4).
 func unseen_now() -> bool:
 	if cue or brain == null: return false
-	var going: bool = brain.state in [BRAIN.State.ROAM, BRAIN.State.LISTEN, BRAIN.State.STALK, BRAIN.State.FLEE, BRAIN.State.RETURN, BRAIN.State.TRANSIT] \
+	var going: bool = brain.state in [BRAIN.State.ROAM, BRAIN.State.LISTEN, BRAIN.State.STALK, BRAIN.State.FLEE, BRAIN.State.RETURN, BRAIN.State.TRANSIT, BRAIN.State.AMBUSH] \
 		or (brain.state == BRAIN.State.PEEK and not bool(brain.show.get("arrived", false))) \
 		# Closing in through the ceiling she flies too, and creeps only once out
 		# on a surface: at a creep she trailed a walker along the plenum for good.
@@ -865,7 +876,8 @@ func think_setup() -> void:
 	brain.cue_ended.connect(func(entry: Dictionary): if level.get("match_net") != null and level.match_net.has_method("send_cue_over"): level.match_net.send_cue_over(int(entry.id), String(entry.outcome)))
 	brain.scared.connect(func(cause: String, seat: int):
 		scares += 1
-		tell("scare", [seat, cause, face_point(), brain.torches.duplicate() if torch_drunk > 0.0 else [], torch_drunk]))
+		var seats: Array = brain.torches.duplicate() if torch_drunk > 0.0 else []
+		tell("scare", [seat, cause, face_point(), seats, torch_drunk, seats.filter(func(_one): return rng.randf() < torch_kill)]))
 
 func think(delta: float) -> void:
 	if control != "ai" or not thinking or brain == null: return
@@ -938,10 +950,16 @@ func apply_intent(wanted: Dictionary) -> void:
 			if not same or int(last_order.get("exit", -2)) != int(wanted.exit):
 				order_failed = not motion.go_to_exit(int(wanted.exit), float(wanted.get("speed", BRAIN.CRAWL_SPEED)))
 		&"vanish":
-			# Taken to be inside after a flight that would not end (2.2): into
-			# the nearest duct, only where nobody sees her go.
+			# Taken to be inside after a flight that did not get her in at once
+			# (2.2; the author: lit, never seen more than 0.4 s): into the
+			# nearest duct even if somebody sees it, gone in a smear of her ink.
 			order_failed = false
-			if not same and motion.surface() and not SIGHT.watched(level, face_point(), [get_rid()]):
+			if not same and motion.surface(): motion.place_in_duct(ducts.nearest_node(motion.anchor()))
+		&"bolt":
+			# Lit: into the ceiling at a bolt (lurker_motion.bolt()), or, with
+			# no way in near enough for it, taken in where she is.
+			order_failed = false
+			if not same and not motion.bolt(wanted.get("from", global_position)) and motion.surface():
 				motion.place_in_duct(ducts.nearest_node(motion.anchor()))
 		&"take":
 			var victim = senses.body_of(int(wanted.seat))
@@ -994,6 +1012,36 @@ func behind_point(seen, metres: float) -> Vector3:
 		return shell.anchor_of(s)
 	var s = shell.state_at(Vector3(at.x, (seen.point as Vector3).y + 1.0, at.z))
 	return shell.anchor_of(s) if s != null else ceiling_near(seen, at)
+
+## Where she lies in wait for somebody on the move (iteration 3, H2): a dark
+## ceiling AMBUSH_AHEAD metres ahead of them by their eased heading and pace,
+## out of their sight now (round a corner, or out of their torch), never in a
+## lit, protected or off-limits room nor on another planta; over a corridor or
+## round a corner first. INF with none.
+const AMBUSH_AHEAD := Vector2(8.0, 14.0)
+const AMBUSH_TURNS := [0.0, 20.0, -20.0, 40.0, -40.0]
+func ambush_point(seen) -> Vector3:
+	var heading := flat_heading(seen)
+	var eye: Vector3 = seen.eye
+	var ahead := clampf(AMBUSH_AHEAD.x + float(seen.speed) * 1.5, AMBUSH_AHEAD.x, AMBUSH_AHEAD.y)
+	var off: Array = level.off_limits_rooms() if level.has_method("off_limits_rooms") else []
+	var best := Vector3.INF
+	var best_score := INF
+	for turn in AMBUSH_TURNS:
+		var way := heading.rotated(Vector3.UP, deg_to_rad(float(turn)))
+		for share in [1.0, 0.8, 1.2]:
+			var at: Vector3 = eye + way * ahead * float(share)
+			var r := int(FLOOR.room_at(level.manifest.rooms, at).get("id", -1))
+			if r < 0 or not shell.tray_of.has(r) or off.has(r): continue
+			var p: Vector3 = shell.anchor_of(shell.tray_state(r, at.x, at.z))
+			if FLOOR.planta_of(p.y) != FLOOR.planta_of(eye.y) or level.point_protected(p) or SIGHT.lit_point(level, p): continue
+			var walled: bool = not SIGHT.clear(level, eye, p, [get_rid()])
+			if not walled and bool(seen.torch) and rad_to_deg((seen.view as Vector3).angle_to(p - eye)) < SIGHT.TORCH_FACE_ANGLE + 10.0: continue
+			var score: float = absf(float(turn)) / 90.0 + absf(float(share) - 1.0) - (0.5 if walled else 0.0) - (0.5 if int(level.manifest.rooms[r].type) == OFFICE.CORRIDOR else 0.0)
+			if score < best_score:
+				best_score = score
+				best = p
+	return best
 
 ## Their eased heading, flat (lurker_senses Seen.heading), else their view.
 func flat_heading(seen) -> Vector3:
@@ -1222,6 +1270,8 @@ func hallucinations() -> Variant: return load("res://game/app/hallucinations/lur
 ##           `seats` drunk for `seconds` (G1; the last two may be missing)
 ##   "tile"  [room, tile_x, tile_y, open, from_below]: a tile she went through
 ##   "snuff" [room]: the room she drinks dark (G8), -1 when she gives it back
+##   "torch" [seat, "back" | "spark"]: a torch she put out lights again, or
+##           only sparks (H1); "scare" carries, sixth, the seats put out
 ## Phase 4 adds "room_off" [room, seconds] (versus: a room she drinks dark).
 ## Her going into and out of a grille is heard on every machine from her
 ## flags (sound_step()), with no event of its own.
@@ -1237,6 +1287,9 @@ func on_event(kind: String, data: Array) -> void:
 			if voice != null: voice.shriek_heard(at)
 			frighten(at)
 			if data.size() >= 5: drink_torches(data[3], float(data[4]))
+			if data.size() >= 6: kill_torches(data[5])
+		"torch":
+			if data.size() >= 2: torch_event(int(data[0]), String(data[1]))
 		"snuff":
 			deep_room = int(data[0]) if data.size() >= 1 else -1
 		"tile":
@@ -1460,18 +1513,58 @@ func drink_torches(seats: Array, seconds: float) -> void:
 ## Every frame: each drunk torch's beam down and flickering, back up at the
 ## end; given back whole once it is over.
 func torch_step(delta: float, reduced: bool) -> void:
+	if control == "ai": dead_torch_step()
 	for seat in drunk.keys():
 		var left := float(drunk[seat]) - delta
 		var one = survivor_of(int(seat))
 		if left <= 0.0:
 			drunk.erase(seat)
-			if one != null and "torch_dim" in one: one.torch_dim = 1.0
+			if one != null and "torch_dim" in one: one.torch_dim = 0.0 if dead_torches.has(seat) else 1.0
 			continue
 		drunk[seat] = left
 		var low := DRUNK_BEAM
 		# Uneven: two beats that rarely meet, a filament starved of current.
 		if not reduced: low *= 0.5 + 0.5 * absf(sin(drain_time * 23.0 + float(seat))) * (0.6 + 0.4 * sin(drain_time * 7.3 + float(seat) * 1.7))
-		if one != null and "torch_dim" in one: one.torch_dim = lerpf(1.0, low, clampf(left / DRUNK_RAMP, 0.0, 1.0))
+		if one != null and "torch_dim" in one: one.torch_dim = 0.0 if dead_torches.has(seat) else lerpf(1.0, low, clampf(left / DRUNK_RAMP, 0.0, 1.0))
+	for seat in sparks.keys():
+		var left := float(sparks[seat]) - delta
+		var one = survivor_of(int(seat))
+		if left <= 0.0:
+			sparks.erase(seat)
+			if one != null and "torch_dim" in one and dead_torches.has(seat): one.torch_dim = 0.0
+			continue
+		sparks[seat] = left
+		if one != null and "torch_dim" in one: one.torch_dim = 0.8
+
+## Puts torches out for good (H1), on every machine from her "scare" event:
+## dark now, and their switch as it is, for the machine in charge to watch.
+func kill_torches(seats: Array) -> void:
+	for seat in seats:
+		dead_torches[int(seat)] = true
+		var one = survivor_of(int(seat))
+		switch_was[int(seat)] = one != null and is_instance_valid(one.get("torch")) and one.torch.visible
+		if one != null and "torch_dim" in one: one.torch_dim = 0.0
+
+## On the machine in charge, every frame: a dead torch switched on again
+## lights once her drink is over, and before that only sparks (H1).
+func dead_torch_step() -> void:
+	for seat in dead_torches.keys():
+		var one = survivor_of(int(seat))
+		if one == null or not is_instance_valid(one.get("torch")): continue
+		var on: bool = one.torch.visible
+		var was: bool = bool(switch_was.get(seat, on))
+		switch_was[seat] = on
+		if on and not was: tell("torch", [int(seat), "spark" if drunk.has(seat) else "back"])
+
+## Her "torch" event (H1), on every machine.
+func torch_event(seat: int, kind: String) -> void:
+	if kind == "spark":
+		sparks[seat] = SPARK
+		return
+	dead_torches.erase(seat)
+	sparks.erase(seat)
+	var one = survivor_of(seat)
+	if one != null and "torch_dim" in one and not drunk.has(seat): one.torch_dim = 1.0
 
 ## The survivor of a seat on this machine, null when none.
 func survivor_of(seat: int):

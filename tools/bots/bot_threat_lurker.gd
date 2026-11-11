@@ -247,6 +247,9 @@ func mind(brain, delta: float) -> Variant:
 	match_ref = brain.owner_match
 	if not active or brain.body.hidden: return null
 	var seat := int(brain.seat)
+	# Its torch put out (iteration 3, H1): off for a frame once her drink is
+	# over; on again next frame (wants_torch()) brings it back.
+	if creature.dead_torches.has(seat) and not creature.drunk.has(seat) and brain.body.torch.visible: brain.body.torch_wanted = false
 	var face: Vector3 = creature.face_point()
 	var head: Vector3 = brain.body.camera.global_position
 	# 1. Its own warning: after its reaction, round to her with the torch on.
@@ -254,7 +257,7 @@ func mind(brain, delta: float) -> Variant:
 	if not mine.is_empty():
 		if cue_over(mine): cues.erase(seat)
 		elif now() - float(mine.played_at) < float(mine.delay) or not bool(mine.turns): return null
-		elif creature.drunk.has(seat) and not lit_at(head):
+		elif (creature.drunk.has(seat) or creature.dead_torches.has(seat)) and not lit_at(head):
 			# Its torch drunk (iteration 2, G1): turning to her saves nothing; running does.
 			brain.go_to(brain.flee_point(), BODY.Pace.RUN, delta)
 			brain.minding = "huye"

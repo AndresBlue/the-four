@@ -36,12 +36,13 @@ const TORCH_SCARE := 0.0
 ## light at once): s before she backs off, s unlooked-at before she goes on.
 const FREEZE_TIME := 3.0
 const UNFREEZE := 1.0
-const RECOIL_HOLD := 0.5
 ## Her flight: s inside the duct before she goes round again; s out of the
 ## ceiling before she is taken to be inside (2.2: a flight that never ended
-## left her standing there for good); s before the director may lead her.
+## left her standing there for good; the author: never seen more than 0.4 s
+## once lit, so a bolt that has not got her in by FLEE_OUT ends with her
+## taken in where she is); s before the director may lead her.
 const FLEE_HIDE := 6.0
-const FLEE_OUT := 8.0
+const FLEE_OUT := 0.4
 const FLEE_LEADABLE := 8.0
 ## s she cannot get behind them before she drops back to stalking: a turn of
 ## their head does not undo her (2.2).
@@ -52,21 +53,21 @@ const TAKE_EMPTY := 0.2
 const SCARE_SOUNDS := ["res://assets/audio/sfx/lurker/scare_0.wav", "res://assets/audio/sfx/lurker/scare_1.wav"]
 const SCARE_GAIN := -2.0
 
-enum State { ROAM, LISTEN, STALK, PEEK, FREEZE, CREEP, CUE, TAKE, RECOIL, FLEE, TRANSIT, WAIT_ABOVE, HUSH, RETURN }
+enum State { ROAM, LISTEN, STALK, PEEK, FREEZE, CREEP, CUE, TAKE, RECOIL, FLEE, TRANSIT, WAIT_ABOVE, HUSH, RETURN, AMBUSH }
 ## Her words, by state (creature.gd's lists): stalking is her own word,
 ## hostile but not hunting; the silence before she closes in is stalking too;
 ## coming back through the ceiling is withdrawn, not to be led.
 const WORDS := {State.ROAM: &"roam", State.LISTEN: &"search", State.STALK: &"stalk", State.PEEK: &"investigate", State.FREEZE: &"alert",
 	State.CREEP: &"chase", State.CUE: &"strike", State.TAKE: &"capture", State.RECOIL: &"recover", State.FLEE: &"withdraw", State.TRANSIT: &"roam", State.WAIT_ABOVE: &"wait",
-	State.HUSH: &"stalk", State.RETURN: &"withdraw"}
+	State.HUSH: &"stalk", State.RETURN: &"withdraw", State.AMBUSH: &"stalk"}
 const NAMES := {State.ROAM: "RONDAR", State.LISTEN: "ESCUCHAR", State.STALK: "ACECHAR", State.PEEK: "ASOMARSE", State.FREEZE: "QUIETA",
 	State.CREEP: "ACERCARSE", State.CUE: "AVISO", State.TAKE: "COGER", State.RECOIL: "ESPANTARSE", State.FLEE: "HUIR", State.TRANSIT: "TRÁNSITO", State.WAIT_ABOVE: "ENCIMA",
-	State.HUSH: "SILENCIO", State.RETURN: "VOLVER"}
+	State.HUSH: "SILENCIO", State.RETURN: "VOLVER", State.AMBUSH: "EMBOSCADA"}
 ## Her beat by state, for a machine that only has the state (a puppet: it
 ## tells roaming near from far itself). The brain's own beat is `beat`.
 const BEATS := {State.ROAM: &"roam_far", State.LISTEN: &"listen", State.STALK: &"stalk", State.PEEK: &"peek", State.FREEZE: &"peek",
 	State.CREEP: &"creep", State.CUE: &"cue", State.TAKE: &"cue", State.RECOIL: &"scare", State.FLEE: &"scare", State.TRANSIT: &"transit",
-	State.WAIT_ABOVE: &"above", State.HUSH: &"hush", State.RETURN: &"return"}
+	State.WAIT_ABOVE: &"above", State.HUSH: &"hush", State.RETURN: &"return", State.AMBUSH: &"ambush"}
 ## Metres of her way to the nearest survivor under which her round is near (4).
 const NEAR_ROUTE := 12.0
 
@@ -181,6 +182,7 @@ func tune(profile: Dictionary) -> void:
 	hush_time = float(profile.get("hush", hush_time))
 	noise_react = float(profile.get("noise_react", noise_react))
 	haunt_odds = float(profile.get("haunt", haunt_odds))
+	ambush_odds = float(profile.get("ambush_odds", ambush_odds))
 	approach_cap = float(profile.get("approach_cap", approach_cap))
 	forget = float(profile.get("forget", forget))
 
@@ -195,7 +197,7 @@ func state_name() -> String: return NAMES[state]
 func prey_seat() -> int: return prey
 
 func noticing() -> bool:
-	return prey >= 0 and state in [State.STALK, State.PEEK, State.HUSH, State.CREEP, State.CUE, State.TAKE, State.WAIT_ABOVE, State.RETURN, State.FREEZE]
+	return prey >= 0 and state in [State.STALK, State.PEEK, State.HUSH, State.CREEP, State.CUE, State.TAKE, State.WAIT_ABOVE, State.RETURN, State.FREEZE, State.AMBUSH]
 
 func enter(next: State) -> void:
 	state = next
@@ -222,6 +224,8 @@ func force(next: StringName, data := {}) -> void:
 		locker = data.hide
 		hold_until = clock + rng.randf_range(WAIT_ABOVE_TIME.x, WAIT_ABOVE_TIME.y)
 	emerging = Vector3.INF
+	ambush_point = Vector3.INF
+	ambush_share = 1.0
 	if State[wanted] == State.STALK: begin_stalk(1.0)
 	else: enter(State[wanted])
 
@@ -292,7 +296,7 @@ func decide(delta: float, p) -> Dictionary:
 		unregard_time = 0.0
 	# Made out (a look in the light, or this near in the dark): out of it at
 	# once, for the ceiling (the author, 24 October 2026).
-	if regard_time > 0.0 and (state in [State.ROAM, State.LISTEN, State.STALK, State.HUSH, State.CREEP, State.WAIT_ABOVE] or (state == State.RETURN and not bool(p.in_duct))):
+	if regard_time > 0.0 and (state in [State.ROAM, State.LISTEN, State.STALK, State.HUSH, State.CREEP, State.WAIT_ABOVE, State.AMBUSH] or (state == State.RETURN and not bool(p.in_duct))):
 		if closing(p): failed_attempt(prey)
 		flee_from(p, int(p.regarded_by[0]))
 		# Who lit her is where somebody is: her round comes back about there.
@@ -315,6 +319,7 @@ func state_tick(p) -> Dictionary:
 		State.RETURN: return return_tick(p)
 		State.WAIT_ABOVE: return wait_above_tick(p)
 		State.FREEZE: return freeze_tick(p)
+		State.AMBUSH: return ambush_tick(p)
 	return hold()
 
 ## Her sound (spec_lurker_rebuild 4): what she is doing, and for her round how
@@ -555,7 +560,7 @@ func roam_tick(p) -> Dictionary:
 		prey = chosen
 		track = {}
 		remember(p)
-		begin_stalk(1.0)
+		begin_hunt(p, 1.0)
 		return pause()
 	if not lead.is_empty() and clock >= float(lead.until): lead = {}
 	if bool(p.failed):
@@ -622,7 +627,7 @@ func listen_tick(p) -> Dictionary:
 		prey = chosen
 		track = {}
 		remember(p)
-		begin_stalk(1.0)
+		begin_hunt(p, 1.0)
 		return pause()
 	if not clue.is_empty() and float(clue.at) > clock - 0.2:
 		listening = false
@@ -721,7 +726,8 @@ func hush_tick(p) -> Dictionary:
 ## A show at the edge of somebody's view (OFICINAS 4: "se asoma").
 const SHOW_WAIT := 10.0
 const PEEK_TIME := 4.0
-const PEEK_SEEN := 0.35
+## Looked at this long in a peek she bolts (lit, gone within 0.4 s).
+const PEEK_SEEN := 0.1
 ## PEEK: {kind, point, seat, arrived}.
 var show := {}
 
@@ -767,12 +773,75 @@ func peek_tick(p) -> Dictionary:
 		return pause(look)
 	return hold(look, "peek")
 
+# --- The silent ambush (iteration 3, H2) ------------------------------------------------
+
+## Now and then, instead of following a prey on the move, she goes hidden by
+## the plenum to a ceiling ahead of them, comes out and waits there, still
+## and silent; the warning straight from it as they pass under or beyond her,
+## nothing of her heard before. Back to stalking if they do not come in
+## AMBUSH_WAIT s, go AMBUSH_LEAVE m off or hide; a failed ambush is no attempt.
+const AMBUSH_WAIT := 12.0
+const AMBUSH_LEAVE := 16.0
+## s to get to her spot, and the clock she got there at.
+const AMBUSH_REACH := 10.0
+var ambush_since := -1.0
+## m/s: a prey this fast is on the move, worth waiting for ahead.
+const AMBUSH_MOVING := 1.0
+var ambush_odds := 0.3
+## Where she waits (INF: where she is, for force()), and the share of
+## stalking she would have had.
+var ambush_point := Vector3.INF
+var ambush_share := 1.0
+
+## Stalking for `share`, or now and then an ambush ahead of a prey on the move.
+func begin_hunt(p, share: float) -> void:
+	var seen = known(p)
+	if seen != null and float(seen.speed) >= AMBUSH_MOVING and rng.randf() < ambush_odds:
+		var at: Vector3 = world.ambush_point(seen)
+		if at != Vector3.INF:
+			ambush_point = at
+			ambush_share = share
+			ambush_since = -1.0
+			enter(State.AMBUSH)
+			return
+	begin_stalk(share)
+
+func ambush_tick(p) -> Dictionary:
+	var seen = known(p)
+	if seen == null: return lose(p)
+	var v = p.victim
+	if cue_ready(p):
+		var entry: Dictionary = warning.start(prey, clock, window, float(v.latency), p.face, bool(v.above))
+		enter(State.CUE)
+		cue_started.emit(entry)
+		return hold(v.eye)
+	# They go another way (measured from where she waits, not from her: she may
+	# start further off than that), or hide.
+	var gone: bool = ambush_point != Vector3.INF and (seen.point as Vector3).distance_to(ambush_point) > AMBUSH_LEAVE
+	if gone or (v != null and (bool(v.hidden) or not bool(v.fair))):
+		begin_stalk(ambush_share)
+		return pause(seen.eye)
+	var face: Vector3 = p.face
+	# There is out on the ceiling: still inside it she could never warn.
+	# (Put there by a tool, with no spot: she waits where she is.)
+	var there: bool = ambush_point == Vector3.INF or (not bool(p.in_duct) and Vector2(ambush_point.x - face.x, ambush_point.z - face.z).length() <= ARRIVE_NEAR)
+	if not there:
+		if bool(p.failed) or state_time > AMBUSH_REACH:
+			begin_stalk(ambush_share)
+			return pause(seen.eye)
+		return go(ambush_point, CRAWL_SPEED, Vector3.INF, true)
+	if ambush_since < 0.0: ambush_since = clock
+	if clock - ambush_since > AMBUSH_WAIT:
+		begin_stalk(ambush_share)
+		return pause(seen.eye)
+	return hold(seen.eye)
+
 # --- Closing in and the warning ------------------------------------------------------------
 
 ## Everything a warning needs to begin, on this tick's truth.
 func cue_ready(p) -> bool:
 	var v = p.victim
-	return state == State.CREEP and v != null and int(v.seat) == prey and bool(v.seen) and bool(v.fair) and not bool(v.hidden) \
+	return state in [State.CREEP, State.AMBUSH] and v != null and int(v.seat) == prey and bool(v.seen) and bool(v.fair) and not bool(v.hidden) \
 		and not bool(p.in_duct) and not bool(p.off_limits) and float(v.distance) >= CUE_RANGE.x and float(v.distance) <= CUE_RANGE.y \
 		and bool(v.behind) and p.regarded_by.is_empty() and p.torch_by.is_empty() and (lit_takes or not bool(v.lit)) \
 		and warning.can_start(clock) and not sated_on(v) and float(spurned.get(prey, -INF)) <= clock
@@ -859,7 +928,7 @@ func end_encounter() -> void:
 ## The light came on in the room she is in (OFICINAS 3: the light herds her):
 ## she leaves by the ducts for the dark, with no fright and no shriek.
 func on_room_lit(face: Vector3) -> void:
-	if not state in [State.ROAM, State.STALK, State.HUSH, State.CREEP]: return
+	if not state in [State.ROAM, State.STALK, State.HUSH, State.CREEP, State.AMBUSH]: return
 	away_from = face
 	hidden_since = -1.0
 	flee_retreat = false
@@ -915,16 +984,17 @@ func recoil(by: int, cause: String, p, counts: bool) -> void:
 	torch_time = 0.0
 	scared.emit(cause, by)
 
+## Her shriek and her scare clip go on the bolt itself, not before it (the
+## author: lit, she is gone in 0.4 s): no stand looking first.
 func recoil_tick(p) -> Dictionary:
 	if not screamed:
 		screamed = true
 		world.scream(p.face)
-	if state_time >= RECOIL_HOLD:
-		hidden_since = -1.0
-		flee_retreat = false
-		emerging = Vector3.INF
-		enter(State.FLEE)
-	return hold(away_from, "scare")
+	hidden_since = -1.0
+	flee_retreat = false
+	emerging = Vector3.INF
+	enter(State.FLEE)
+	return intent(&"bolt", {"from": away_from, "clip": "scare"})
 
 ## An attempt on `seat` failed: after `tries` she leaves them be for
 ## rest_after and starts nobody for a while; until then she comes back out of
@@ -961,11 +1031,9 @@ func flee_tick(p) -> Dictionary:
 		if not comeback.is_empty(): enter(State.RETURN)
 		else: enter(State.ROAM)
 		return intent(&"vanish")
-	if bool(p.failed): flee_retreat = true
-	if not flee_retreat:
-		var exit: int = world.flee_exit(away_from)
-		if exit >= 0: return intent(&"duct", {"exit": exit, "speed": FLEE_SPEED, "clip": "crawl_fast"})
-	return go(world.dark_retreat(away_from), FLEE_SPEED, Vector3.INF, true, "crawl_fast")
+	# Into the ceiling at a bolt by the nearest way in away from the light
+	# (lurker_motion.bolt()); with none near enough, lurker.gd takes her in.
+	return intent(&"bolt", {"from": away_from, "clip": "crawl_fast"})
 
 ## Coming back: in the ceiling emerge_delay, then out where she knows her
 ## prey to be now (or the one most on their own near them), and stalking them
@@ -1001,7 +1069,7 @@ func return_tick(p) -> Dictionary:
 		return pause()
 	if bool(p.arrived) and not bool(p.in_duct) and state_time > 0.5:
 		emerging = Vector3.INF
-		begin_stalk(RETURN_STALK)
+		begin_hunt(p, RETURN_STALK)
 		return pause()
 	return go(emerging, FLEE_SPEED, Vector3.INF, true, "crawl_fast")
 

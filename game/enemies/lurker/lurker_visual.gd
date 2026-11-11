@@ -76,6 +76,23 @@ const TORSO_MOST := 0.8
 const SHOULDER := 0.24
 const NECK := 0.32
 const TORSO_RATE := 5.0
+## Faster than this (her bolt) no hand can step: the arms are swept back and
+## the ink drawn out behind her twice as far.
+const SWEPT_FROM := 6.0
+## Her gait in her body (the author: "se le ve tosco"): a bob and a roll with
+## her stride (STRIDE metres a cycle), and a lean into what she speeds up or
+## slows down by (LEAN rad per m/s2, at most LEAN_MOST).
+const STRIDE := 0.9
+const BOB := 0.018
+const ROLL := 0.05
+const LEAN := 0.025
+const LEAN_MOST := 0.22
+var stride := 0.0
+var lean := 0.0
+var last_speed := 0.0
+## Her contact with what she holds: a dark stain projected on the surface
+## under her (a decal: nothing on the Compatibility renderer).
+var stain: Decal
 var crouch := false
 var crouched := 0.0
 var trail_at := Vector3.INF
@@ -107,6 +124,21 @@ func _ready() -> void:
 	skeleton.add_child(limbs)
 	limbs.hands = crawling
 	ink = fog("Ink", 0.95 * size, 0.2 * size, 40.0, 0.0, 0.17 * size)
+	stain = Decal.new()
+	stain.name = "Stain"
+	stain.size = Vector3(1.5, 0.9, 1.5) * size
+	var blot := GradientTexture2D.new()
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0, 0, 0, 0.8))
+	fade.set_color(1, Color(0, 0, 0, 0))
+	blot.gradient = fade
+	blot.fill = GradientTexture2D.FILL_RADIAL
+	blot.fill_from = Vector2(0.5, 0.5)
+	blot.fill_to = Vector2(1.0, 0.5)
+	stain.texture_albedo = blot
+	stain.cull_mask = 0xFFFFF ^ LAYER
+	stain.position = Vector3.DOWN * 0.2 * size
+	add_child(stain)
 	# Tighter and darker than it was: 0.46 thick in a sphere of 1.0, its thin
 	# rags reached 1.6 m and read on a lit wall as a grey cloud of smoke
 	# round her, not as her darkness.
@@ -207,6 +239,7 @@ func _process(delta: float) -> void:
 		limbs.velocity = velocity
 	last_position = global_position
 	limbs.cling = cling
+	limbs.swept = limbs.velocity.length() > SWEPT_FROM
 	var camera := get_viewport().get_camera_3d()
 	limbs.look_point = look_point if look_point != Vector3.INF else (camera.global_position if camera else Vector3.INF)
 	pose_body(delta)
@@ -219,7 +252,8 @@ func _process(delta: float) -> void:
 	if trail_at == Vector3.INF or delta <= 0.0 or middle.distance_to(trail_at) > 2.0: trail_at = middle
 	trail_at = trail_at.lerp(middle, 1.0 - exp(-TRAIL_CATCH * delta))
 	var drag := trail_at - middle
-	if drag.length() > TRAIL_MOST * size / 1.35: drag = drag.normalized() * TRAIL_MOST * size / 1.35
+	var trail_most: float = TRAIL_MOST * size / 1.35 * (2.0 if limbs.swept else 1.0)
+	if drag.length() > trail_most: drag = drag.normalized() * trail_most
 	# The shoulders in the ink, thinning at once so the arms come out of it
 	# sharp (from the hands' modifier, a frame old); the neck, so the face
 	# comes out of the mass; and the tail of rags behind a dash. The vapour
@@ -297,5 +331,15 @@ func pose_body(delta: float) -> void:
 		var off := atan2(to.x, to.z)
 		goal = clampf(signf(off) * maxf(0.0, absf(off) - TORSO_FROM), -TORSO_MOST, TORSO_MOST)
 	torso_yaw = lerpf(torso_yaw, goal, 1.0 - exp(-TORSO_RATE * delta))
+	# Her stride in her body: a bob and a roll, and a lean into her speeding
+	# up or slowing down (her abdomen swings the other way from the clip).
+	var going: float = limbs.velocity.length()
+	stride = fmod(stride + going * delta / STRIDE, 1.0)
+	var weight: float = clampf(going / 1.0, 0.0, 1.0) * (0.0 if limbs.swept or capture else 1.0)
+	var bob: float = sin(stride * TAU * 2.0) * BOB * size * weight
+	var roll: float = sin(stride * TAU) * ROLL * weight
+	if delta > 0.0: lean = lerpf(lean, clampf((going - last_speed) / delta * LEAN, -LEAN_MOST, LEAN_MOST), 1.0 - exp(-8.0 * delta))
+	last_speed = going
 	var scaled := Vector3(size, size * (1.0 - 0.08 * crouched), size)
-	model.transform = Transform3D(Basis(Vector3.UP, torso_yaw) * Basis.from_scale(scaled), Vector3.DOWN * CROUCH * size * crouched + shake)
+	var turn := Basis(Vector3.UP, torso_yaw) * Basis(Vector3.BACK, roll) * Basis(Vector3.RIGHT, -lean)
+	model.transform = Transform3D(turn * Basis.from_scale(scaled), Vector3.DOWN * (CROUCH * size * crouched + bob) + shake)

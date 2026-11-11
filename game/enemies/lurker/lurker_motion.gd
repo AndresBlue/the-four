@@ -261,6 +261,7 @@ func clear_legs() -> void:
 	progress_from = Vector3.INF
 	progress_level = 0
 	paused = false
+	bolting = false
 
 # --- Orders -------------------------------------------------------------------------
 
@@ -322,6 +323,7 @@ func committed() -> bool:
 func order(new_goal: Dictionary, pace_: float) -> bool:
 	pace = pace_
 	paused = false
+	bolting = false
 	stuck = ""
 	if retarget(new_goal) or same_goal(new_goal): return true
 	# Standing with no legs (moved, there) there is no plan to keep: at once.
@@ -416,6 +418,55 @@ func set_legs(new_legs: Array) -> void:
 	# wait_clock is watch_progress()'s: a new plan is no headway (3.4).
 	mouth_exit = -1
 
+## Lit, she bolts (the author, after his game: never seen more than 0.4 s):
+## to the nearest exit away from the light (the tile over her, a grille, a
+## gap) at whatever pace has her in the ceiling in BOLT_TIME, from BOLT_MIN
+## to BOLT_MAX m/s, at once: no bursts, no stop to line up at a door, through
+## the exit as fast. False when no exit is near enough for that: lurker.gd
+## then takes her in where she is.
+const BOLT_TIME := 0.3
+const BOLT_MIN := 8.0
+const BOLT_MAX := 40.0
+var bolting := false
+var bolt_speed := 0.0
+func bolt(threat: Vector3) -> bool:
+	if in_duct and hidden: return true
+	var from := plan_start()
+	if from.is_empty() or not surface(): return false
+	var e: int = routes.flee_exit(from.start, threat, anchor())
+	if e < 0 or not replan({"exit": e}): return false
+	var metres := hidden_metres()
+	if metres > BOLT_MAX * BOLT_TIME:
+		clear_legs()
+		speed = 0.0
+		return false
+	bolt_speed = clampf(metres / BOLT_TIME, BOLT_MIN, BOLT_MAX)
+	pace = bolt_speed
+	speed = bolt_speed
+	bolting = true
+	return true
+
+## Metres along her legs until she is inside (the end of the squeeze in);
+## INF when they never take her in.
+func hidden_metres() -> float:
+	var at := anchor()
+	var total := 0.0
+	for leg in legs:
+		match String(leg.kind):
+			"tray":
+				var to: Vector2 = leg.to
+				var p := Vector3(to.x, at.y, to.y)
+				total += at.distance_to(p)
+				at = p
+			"band":
+				var length: float = shell.patches[int(leg.patch)].profile.length
+				total += length
+			"channel":
+				total += float(shell.patches[int(leg.patch)].length)
+			"squeeze":
+				return total + (leg.from as Vector3).distance_to(leg.to)
+	return INF
+
 func flee(threat: Vector3) -> bool:
 	var from := plan_start()
 	if from.is_empty(): return false
@@ -483,13 +534,14 @@ func on_channel() -> bool:
 
 ## Her pace on a surface now: faster unseen; none while paused.
 func pace_now() -> float:
+	if bolting: return bolt_speed
 	if paused: return 0.0
 	if in_bursts(): return BURST_SPEED if bursting else 0.0
 	return maxf(pace, unseen_pace) if unseen else pace
 
 ## Whether her pace now goes in bursts (BURST_SPEED).
 func in_bursts() -> bool:
-	return watched and not unseen and not paused and pace >= BURST_FROM and surface()
+	return watched and not unseen and not paused and not bolting and pace >= BURST_FROM and surface()
 
 ## The last DASH_SOON of a stillness with a way to go: she presses down for it
 ## (lurker_visual.crouch; drawing only).
@@ -512,6 +564,9 @@ func tick_bursts(delta: float) -> void:
 ## Every change of her speed eased (spec_lurker_rebuild 3.5): up at ACCEL,
 ## down at BRAKE; sharp in her bursts.
 func ramp(to: float, delta: float) -> void:
+	if bolting:
+		speed = to
+		return
 	var rate: float = BURST_ACCEL if in_bursts() else (ACCEL if to > speed else BRAKE)
 	speed = move_toward(speed, to, rate * delta)
 
@@ -841,7 +896,9 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	var next_tray: bool = legs.size() > 1 and String(legs[1].kind) == "tray"
 	var heading_to := Vector3(to.x - here.x, 0, to.y - here.y)
 	var band_off := PI
-	if next_band and left <= LOOKAHEAD: band_off = ease_heading(band_heading(legs[1]), HEADING_RATE, delta)
+	# Bolting, she faces the way she shoots off at once (the visual eases it).
+	if bolting and heading_to.length() > 1e-6: ease_heading(heading_to, TAU / maxf(delta, 1e-4), delta)
+	elif next_band and left <= LOOKAHEAD: band_off = ease_heading(band_heading(legs[1]), HEADING_RATE, delta)
 	elif heading_to.length() > 1e-6: ease_heading(heading_to, HEADING_RATE, delta)
 	var hang_target: float = hang_goal if is_nan(float(leg.hang)) else float(leg.hang)
 	ease_hang(hang_target, delta)
@@ -859,10 +916,10 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	var want := pace_now()
 	# Slowing into a band's start only while her heading is not yet its own
 	# (spec_lurker_rebuild 3.6); to a stop at her last waypoint.
-	if legs.size() == 1 or (next_band and band_off >= DOOR_ALIGN): want = minf(want, sqrt(2.0 * BRAKE * left))
+	if not bolting and (legs.size() == 1 or (next_band and band_off >= DOOR_ALIGN)): want = minf(want, sqrt(2.0 * BRAKE * left))
 	ramp(want, delta)
 	var dir := heading_to.normalized()
-	if body_in_way(dir, speed * delta):
+	if not bolting and body_in_way(dir, speed * delta):
 		speed = 0.0
 		return
 	var step := minf(speed * delta, left)
@@ -875,8 +932,11 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 	# There with some of this frame's step left (spec_lurker_rebuild 3.3): the
 	# rest goes on along the next leg now.
 	var rest := speed * delta - moved
-	if next_tray and moved >= left - ARRIVE and rest > 1e-4 and speed > 1e-4:
+	if (next_tray or (bolting and next_band)) and moved >= left - ARRIVE and rest > 1e-4 and speed > 1e-4:
 		stall = 0.0
+		if next_band:
+			band_switch(legs[1], rest / speed)
+			return
 		next_leg()
 		if not legs.is_empty() and String(legs[0].kind) == "tray": follow_tray(legs[0], rest / speed)
 
@@ -886,7 +946,9 @@ func follow_tray(leg: Dictionary, delta: float) -> void:
 func band_switch(band_leg: Dictionary, delta: float) -> void:
 	var off := ease_heading(band_heading(band_leg), HEADING_RATE, delta)
 	ease_hang(SHELL.BAND_CLEAR, delta)
-	var ready := off < DOOR_ALIGN and absf(state.hang - SHELL.BAND_CLEAR) < SHELL.SEAM_TOL and hang_limit >= SHELL.BAND_CLEAR - 1e-6
+	# Bolting, nothing lines her up: onto the band as she is.
+	if bolting: state.hang = SHELL.BAND_CLEAR
+	var ready := bolting or (off < DOOR_ALIGN and absf(state.hang - SHELL.BAND_CLEAR) < SHELL.SEAM_TOL and hang_limit >= SHELL.BAND_CLEAR - 1e-6)
 	if not ready:
 		# Standing at its start: nothing moves her till she is ready.
 		speed = 0.0
@@ -956,14 +1018,17 @@ func follow_squeeze(leg: Dictionary, delta: float) -> void:
 			hidden = false
 			if transit.get("phase", &"") == &"arriving": transit = {}
 	var length := maxf(from.distance_to(to), 1e-4)
-	speed = SQUEEZE_SPEED
-	leg_clock += SQUEEZE_SPEED * delta
+	# Bolting, in through the exit at her bolt's pace.
+	var through: float = bolt_speed if bolting else SQUEEZE_SPEED
+	speed = through
+	leg_clock += through * delta
 	var t := minf(leg_clock / length, 1.0)
 	point = from.lerp(to, t)
 	basis = (leg.basis_from as Basis).slerp((leg.basis as Basis).orthonormalized(), minf(1.0, t * 2.0))
 	if t < 1.0: return
 	if bool(leg.into):
 		in_duct = true
+		bolting = false
 		hidden = not (legs.size() > 1 and String(legs[1].kind) == "duct" and not (legs[1].kinds as PackedStringArray).is_empty() and ducts.visible_kinds.has(String(legs[1].kinds[0])))
 		duct_point = to
 		near_node = ducts.nearest_node(to)

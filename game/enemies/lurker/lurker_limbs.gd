@@ -117,6 +117,8 @@ var cling := 0.0
 var look_point := Vector3.INF
 ## Off, the clip moves the arms and only the head and the eyes are turned here.
 var hands := true
+## Going too fast for any step (lurker_visual.gd sets it): arms swept back.
+var swept := false
 ## Holds the scene gives its hands (her capture): limb name -> {point,
 ## normal}, planted there every frame, no step and no probe.
 var grips := {}
@@ -288,6 +290,18 @@ func _process_modification_with_delta(delta: float) -> void:
 			limb.normal = held.normal
 			limb.free = false
 			limb.planted = true
+			limb.swing = false
+			limb.t = 1.0
+			_reach(limb, skeleton, xf, basis, up, space)
+			continue
+		# Too fast for steps (her bolt): every arm swept back flat along the
+		# surface behind her, and a new hold for each once she slows.
+		if swept and velocity.length() > 0.1:
+			var trail: Vector3 = -velocity.normalized() * 0.8 + (basis * limb.out) * 0.4 - up * 0.15
+			limb.hold = socket + trail.normalized() * float(limb.reach) * size * 0.85
+			limb.normal = up
+			limb.free = true
+			limb.planted = false
 			limb.swing = false
 			limb.t = 1.0
 			_reach(limb, skeleton, xf, basis, up, space)

@@ -183,7 +183,7 @@ func sees(player: Node3D, ignore_concealment := false) -> bool:
 	if eye == Vector3.INF: return false
 	if not drank(player) and SIGHT.torch_covers(level, player, body.face_point(), [body.get_rid()]): return false
 	var camera: Vector3 = player.camera.global_position
-	var torch_on: bool = "torch" in player and is_instance_valid(player.torch) and player.torch.visible
+	var torch_on: bool = "torch" in player and is_instance_valid(player.torch) and player.torch.visible and not put_out(player)
 	var reach := SIGHT_LIT if SIGHT.lit_point(level, camera) else (BEAM_SEEN if torch_on else SIGHT_DARK)
 	var to := camera - eye
 	if to.length() > reach: return false
@@ -481,13 +481,19 @@ func route_to_nearest(delta: float, survivors: Array, face: Vector3) -> float:
 
 ## Whether she drank this survivor's torch (lurker.gd drunk; iteration 2, G1).
 func drank(player) -> bool:
-	return "drunk" in body and "slot" in player and body.drunk.has(int(player.slot))
+	return "drunk" in body and "slot" in player and (body.drunk.has(int(player.slot)) or put_out(player))
+
+## Whether she put this survivor's torch out for good (lurker.gd dead_torches;
+## iteration 3, H1): dark until switched off and on again.
+func put_out(player) -> bool:
+	return "dead_torches" in body and "slot" in player and body.dead_torches.has(int(player.slot))
 
 ## A torch she drank is no light for her: it does not frighten her, and its
 ## holder makes her face out only in a lit room or within SIGHT.DARK_FACE, as
 ## with no torch. The warning reads these lists, so it does not save either.
 func drop_drunk(p) -> void:
-	var drunk: Dictionary = body.drunk if "drunk" in body else {}
+	var drunk: Dictionary = (body.drunk as Dictionary).duplicate() if "drunk" in body else {}
+	if "dead_torches" in body: drunk.merge(body.dead_torches)
 	if drunk.is_empty(): return
 	var lit_face := SIGHT.lit_point(level, p.face)
 	var torch_by: Array[int] = []
