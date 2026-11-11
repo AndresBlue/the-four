@@ -474,6 +474,8 @@ func follow_state(delta: float) -> void:
 	var t := clampf((wanted - float(before.time)) / maxf(float(after.time) - float(before.time), 0.001), 0.0, 1.0)
 	global_transform = Transform3D(Basis((before.rotation as Quaternion).slerp(after.rotation, t)), (before.position as Vector3).lerp(after.position, t))
 	velocity = (before.velocity as Vector3).lerp(after.velocity, t)
+	# A guest sees her drawn between ticks and eased, as the host does.
+	if visual != null and visual.has_method("present"): visual.present(global_transform, 0)
 
 # --- The frame ---------------------------------------------------------------------------
 

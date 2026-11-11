@@ -238,6 +238,10 @@ func knock_peak(capture: AudioEffectCapture) -> float:
 	# nothing of her, so the window is three.
 	await wait(1.6)
 	capture.clear_buffer()
+	# A run starts with the window: far off on her round the rest between two
+	# is longer than it (lurker_voice RUNS), and this measures the bus, not that.
+	lurker.voice.knock_clock = 0.0
+	lurker.voice.run_left = 0
 	var peak := 0.0
 	var started := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - started < 3000:

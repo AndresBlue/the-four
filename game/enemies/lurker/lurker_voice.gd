@@ -38,8 +38,11 @@ const RUN_DB := -4.0
 const SCRAPE_CHANCE := 0.35
 ## Her runs by beat: [steps, gap between them, rest after the last]. Stalking
 ## over the tiles, short runs and long silences; fleeing, one run that does
-## not stop. Any other beat: RUN, RUN_STEP and RUN_REST, as before.
-const RUNS := {&"stalk": [Vector2i(2, 4), Vector2(0.06, 0.09), Vector2(2.5, 5.0)], &"scare": [Vector2i(12, 16), Vector2(0.06, 0.09), Vector2(0.06, 0.09)]}
+## not stop; far off on her round or resting, a few knocks now and then, so
+## that near sounds different from far. Any other beat: RUN, RUN_STEP and
+## RUN_REST, as before.
+const RUNS := {&"roam_far": [Vector2i(6, 8), Vector2(0.06, 0.09), Vector2(6.0, 12.0)], &"rest": [Vector2i(6, 8), Vector2(0.06, 0.09), Vector2(9.0, 16.0)],
+	&"stalk": [Vector2i(2, 4), Vector2(0.06, 0.09), Vector2(2.5, 5.0)], &"scare": [Vector2i(12, 16), Vector2(0.06, 0.09), Vector2(0.06, 0.09)]}
 const DUST_DB := -16.0
 const CAR_DB := -8.0
 ## Seconds before a warning's due time from which nothing of hers starts on
