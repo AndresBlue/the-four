@@ -207,7 +207,7 @@ func built() -> void:
 	await physics_frame
 	var look: Vector3 = -(level.player.camera.global_basis.z if level.player.get("camera") != null else level.player.global_basis.z)
 	var forward := Vector3(look.x, 0, look.z).normalized()
-	var out: Vector3 = lurker.emerge_point(int(level.player.slot), "behind", Vector2(3.0, 6.0))
+	var out: Vector3 = lurker.emerge_point(int(level.player.slot), "behind", Vector2(3.0, 6.0), stand, forward)
 	var flat := Vector3(out.x - stand.x, 0, out.z - stand.z)
 	check("Para otro intento sale de una placa a su espalda, a la distancia pedida", out != Vector3.INF and flat.length() >= 2.9 and flat.length() <= 6.1 and forward.dot(flat.normalized()) <= -0.2, "%s %s %s" % [str(out), str(stand), str(forward)])
 	level.queue_free()

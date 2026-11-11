@@ -16,7 +16,9 @@ extends RefCounted
 ## she crawls the plenum; her lies call fall() too.
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const SHADER := preload("res://game/enemies/lurker/ceiling_dust.gdshader")
-const VEIL_SHADER := preload("res://game/enemies/lurker/ceiling_dust_veil.gdshader")
+## Loaded when a fog veil is made, not before: the OpenGL renderer has no fog
+## shaders and complains at the load.
+const VEIL_SHADER := "res://game/enemies/lurker/ceiling_dust_veil.gdshader"
 
 ## A thread's streaks (metres): width, and length along the fall.
 const STREAK_WIDTH := Vector2(0.004, 0.007)
@@ -167,7 +169,7 @@ static func veil(level, at: Vector3, strength: float) -> void:
 		veil_noise.seamless = true
 		veil_noise.noise = noise
 	var m := ShaderMaterial.new()
-	m.shader = VEIL_SHADER
+	m.shader = load(VEIL_SHADER)
 	m.set_shader_parameter("noise_tex", veil_noise)
 	m.set_shader_parameter("density", 0.0)
 	m.set_shader_parameter("albedo", Vector3(DUST_COLOUR.r, DUST_COLOUR.g, DUST_COLOUR.b) * VEIL_GLOW)

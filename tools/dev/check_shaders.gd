@@ -38,6 +38,9 @@ func run() -> void:
 	mesh.mesh = QuadMesh.new()
 	holder.add_child(mesh)
 	for path in paths:
+		# Fog shaders exist only where there is volumetric fog: the OpenGL
+		# renderer refuses the type, and nothing loads them there.
+		if RenderingServer.get_current_rendering_method() == "gl_compatibility" and FileAccess.get_file_as_string(path).contains("shader_type fog"): continue
 		var shader: Shader = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
 		if shader == null:
 			print("BROKEN ", path)

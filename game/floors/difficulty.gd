@@ -146,8 +146,8 @@ const PROFILES := {
 ## Each creature's own levers, by difficulty, laid over PROFILES (which are
 ## The Locust's, and what every creature shares: the director, the lifts,
 ## the mercy) by profile(id, creature). The Locust has none: PROFILES are
-## already its own. The Lurker's are docs/OFICINAS.md section 4's table,
-## number for number; nothing reads them until her code arrives (phase 2):
+## already its own. The Lurker's are docs/OFICINAS.md section 4's table
+## (back_window cannot go under 0.9: her short warning must be heard whole):
 ##  back_window (s from her warning at your back to the take), lit_takes
 ##  (she takes from behind in a lit room too), duct_speed (m/s in the
 ##  ducts), stalk_distance (m she keeps while stalking), creep_scale (x the
@@ -176,8 +176,8 @@ const CREATURE_PROFILES := {
 	&"lurker": {
 		"apacible": {"back_window": 2.2, "lit_takes": false, "duct_speed": 1.2, "stalk_distance": 12.0, "creep_scale": 0.8, "drain_reach": 3.0, "unseen_speed": 3.0, "unseen_duct": 3.0, "attempts": 2, "encounter_rest": 120.0, "emerge_delay": [8.0, 12.0], "emerge_mode": "far", "emerge_range": [10.0, 15.0], "haunt": 0.35, "forced_after": 0.0, "stalk_time": [25.0, 40.0], "peek_odds": 0.7, "hush": 3.0, "noise_react": 4.0, "sated": 60.0, "approach_cap": 3.0, "torch_drunk": 0.0, "snuff_time": 0.0, "torch_kill": 0.0, "ambush_odds": 0.15},
 		"equilibrada": {"back_window": 1.5, "lit_takes": true, "duct_speed": 1.6, "stalk_distance": 8.0, "creep_scale": 0.9, "drain_reach": 3.0, "unseen_speed": 3.5, "unseen_duct": 4.2, "attempts": 3, "encounter_rest": 90.0, "emerge_delay": [4.0, 7.0], "emerge_mode": "near", "emerge_range": [6.0, 10.0], "haunt": 0.6, "forced_after": 70.0, "stalk_time": [15.0, 25.0], "peek_odds": 0.5, "hush": 2.5, "noise_react": 2.0, "sated": 40.0, "approach_cap": 3.5, "torch_drunk": 3.0, "snuff_time": 12.0, "torch_kill": 0.25, "ambush_odds": 0.3},
-		"desafiante": {"back_window": 1.2, "lit_takes": true, "duct_speed": 2.0, "stalk_distance": 6.0, "creep_scale": 1.3, "drain_reach": 3.5, "unseen_speed": 4.0, "unseen_duct": 5.0, "attempts": 4, "encounter_rest": 60.0, "emerge_delay": [2.0, 4.0], "emerge_mode": "behind", "emerge_range": [3.0, 6.0], "haunt": 0.75, "forced_after": 45.0, "stalk_time": [8.0, 15.0], "peek_odds": 0.3, "hush": 2.0, "noise_react": 0.8, "sated": 30.0, "approach_cap": 4.0, "torch_drunk": 6.0, "snuff_time": 7.0, "torch_kill": 0.4, "ambush_odds": 0.45},
-		"pesadilla": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 4.0, "creep_scale": 1.5, "drain_reach": 4.0, "unseen_speed": 4.5, "unseen_duct": 5.8, "attempts": 5, "encounter_rest": 45.0, "emerge_delay": [1.0, 2.0], "emerge_mode": "behind", "emerge_range": [3.0, 5.0], "haunt": 0.9, "forced_after": 30.0, "stalk_time": [4.0, 9.0], "peek_odds": 0.15, "hush": 1.5, "noise_react": 0.0, "sated": 20.0, "approach_cap": 4.5, "torch_drunk": 10.0, "snuff_time": 4.0, "torch_kill": 0.6, "ambush_odds": 0.6},
+		"desafiante": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.4, "stalk_distance": 4.0, "creep_scale": 1.5, "drain_reach": 4.0, "unseen_speed": 4.5, "unseen_duct": 5.8, "attempts": 5, "encounter_rest": 45.0, "emerge_delay": [1.0, 2.0], "emerge_mode": "behind", "emerge_range": [3.0, 5.0], "haunt": 0.9, "forced_after": 30.0, "stalk_time": [4.0, 9.0], "peek_odds": 0.15, "hush": 1.5, "noise_react": 0.0, "sated": 20.0, "approach_cap": 4.5, "torch_drunk": 10.0, "snuff_time": 4.0, "torch_kill": 0.6, "ambush_odds": 0.6},
+		"pesadilla": {"back_window": 0.9, "lit_takes": true, "duct_speed": 2.8, "stalk_distance": 3.5, "creep_scale": 1.7, "drain_reach": 4.5, "unseen_speed": 5.0, "unseen_duct": 5.8, "attempts": 6, "encounter_rest": 30.0, "emerge_delay": [0.7, 1.5], "emerge_mode": "behind", "emerge_range": [3.0, 4.5], "haunt": 1.0, "forced_after": 20.0, "stalk_time": [3.0, 6.0], "peek_odds": 0.1, "hush": 1.0, "noise_react": 0.0, "sated": 12.0, "approach_cap": 5.0, "torch_drunk": 14.0, "snuff_time": 2.5, "torch_kill": 0.8, "ambush_odds": 0.7},
 	},
 }
 

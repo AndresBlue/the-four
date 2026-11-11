@@ -19,7 +19,7 @@ La hoja de dirección del segundo piso: cómo se juega, cómo asusta, cómo se v
 
 ## 1. La idea del miedo: del «te persigue» al «te sigue»
 
-En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En las oficinas, The Lurker **sigue**: nunca corre detrás de nadie, es más lenta que cualquier superviviente, y aun así es más peligrosa, porque **no se sabe dónde está y casi siempre está encima**.
+En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En las oficinas, The Lurker **sigue**: nunca corre detrás de nadie, a la vista es más lenta que cualquier superviviente, y aun así es más peligrosa, porque **no se sabe dónde está y casi siempre está encima**. Lo que miras no avanza; lo que no miras, vuela (la nota de la reconstrucción del 11 de noviembre de 2026, `.claude/specs/spec_lurker_rebuild.md`).
 
 ### Tres pilares
 
@@ -28,8 +28,9 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
    - La luz no es un arma: es terreno ganado.
    - Todo el piso es una negociación con las luces: dar la luz, que falle, que ella la beba.
 2. **Lo que miras no avanza. Lo que alumbras huye.**
-   - Mirada fija en una sala con luz, se queda quieta mirándote.
-   - Con la linterna en la cara, retrocede de un salto (la animación `scare`) y se va a la oscuridad o a un ducto.
+   - Vista sin que se le distinga la cara, sigue, pero a ráfagas: quieta, una carrera corta, quieta otra vez, siempre más despacio que quien anda.
+   - Mirada con luz (la de la sala o la linterna) o alumbrada, desaparece: sale disparada al techo y en menos de 0,4 s ya no está. Ya no se queda quieta mirándote ni retrocede despacio.
+   - Con la linterna en la cara, además chilla, y la linterna queda bebida (abajo).
    - Si le das la espalda, avanza.
 3. **Siempre hay algo encima.**
    - Falsos techos, ductos, placas que faltan, rejillas.
@@ -40,22 +41,29 @@ En el hotel, The Locust **persigue**: se la oye, se corre, uno se esconde. En la
 
 - **Antes de cogerte, siempre se oye detrás de ti**: el **aviso de la espalda**.
   - Es una exhalación húmeda y dos chasquidos de mandíbula, pegados a la nuca, en binaural.
-  - Desde el aviso hay una **ventana para darte la vuelta**: 2,2 s en Apacible, 1,5 en Equilibrada, 1,2 en Desafiante y 0,9 en Pesadilla (el autor, 24 de octubre de 2026; antes 1,8, 1,5 y 1,2). En red se suma la latencia de quien la sufre. Con menos de 1,2 s hasta la toma suena un aviso más corto, para que se oiga entero.
-  - Si en ese tiempo la tienes delante y la alumbras (o la sala tiene luz), se espanta. Si no, te coge.
+  - Desde el aviso hay una **ventana para darte la vuelta**: 2,2 s en Apacible, 1,5 en Equilibrada, 0,9 en Desafiante y en Pesadilla (sección 4, «Dificultad»; no baja de 0,9 porque su aviso corto tiene que oírse entero). En red se suma la latencia de quien la sufre. Con menos de 1,2 s hasta la toma suena un aviso más corto, para que se oiga entero.
+  - Si en ese tiempo la tienes delante y la alumbras (o la sala tiene luz), se espanta. Si no, te coge. **Una linterna que ella ha bebido no cuenta** (abajo).
   - Cumple «se la oye antes de verla» y «medio segundo limpio».
   - Con subtítulos, sale también como subtítulo.
 - **No abre puertas.** Una puerta cerrada le corta el paso y la obliga a ir por los ductos. Cerrar puertas sirve, pero no salva.
 - **Nunca coge a quien la está mirando en la luz**, ni a nadie en el vestíbulo del montacargas o dentro de él.
 - **Las luces tiemblan cuando está cerca.** Su tinta bebe la luz: las lámparas de la sala bajan y suben **a la vez**, y el zumbido de los fluorescentes baja de tono.
   - Es distinto del tubo que falla solo, que parpadea a su aire.
+  - **Puede beberse la sala entera** (de Equilibrada para arriba): si acecha a alguien en una sala con luz el tiempo de su dificultad, la deja a oscuras, y **a oscuras para todas las reglas**, mientras le dure el encuentro allí. Nunca un vestíbulo protegido ni una sala que no puede estar a oscuras.
+- **La linterna ya no salva siempre** (de Equilibrada para arriba). La que la espanta queda **bebida** unos segundos: el haz baja al 15 % y titila, y vuelve en el último segundo. A veces se **apaga del todo** y no vuelve hasta apagarla y encenderla (encendida antes de que acabe la bebida, solo chispea). Mientras tanto no la espanta, no sirve para distinguirle la cara y no salva del aviso. Siguen salvando la luz de la sala, la linterna de un compañero y alejarse corriendo.
 - **Por los ductos se la oye y no se la ve.** El sonido sale por las rejillas, nunca a través de los muros.
 - **Las alucinaciones no imitan nunca el aviso de la espalda** ni las luces que tiemblan juntas. Lo demás puede mentir.
-- En cooperativo, **la linterna de un compañero también la espanta**. Cubrirse la espalda es la jugada del equipo.
+- En cooperativo, **la linterna de un compañero también la espanta** (si no es una que ella ha bebido). Cubrirse la espalda es la jugada del equipo.
 
-### Por qué es más lenta y aun así da miedo
+### Lenta a la vista, rápida donde no se la mira
 
-- Velocidades en el juego (escala 1,35): repta a ~1,35 m/s, se escabulle a ~3,5 y huye a ~2. En los conductos, lo de la sección 4: 1 m/s en el ducto principal y de 1,2 a 2,4 en los de encima del techo.
-- Los supervivientes andan a 3,8. Huir de ella siempre es posible **si sabes dónde está**.
+- Los supervivientes andan a 3,8 m/s y corren a 6.
+- **Vista** (alguien la tiene en su campo de visión), por una superficie va **a ráfagas**: quieta de 0,3 a 0,7 s y una carrera de 0,45 a 0,85 s a 3,3 m/s, unos 1,8 m/s de media.
+- **Sin que nadie la vea**, por una superficie va de 3 a 5 m/s según la dificultad, y por un ducto oculto, de 3 a 5,8. Así ronda, acecha, vuelve y llega a sus emboscadas.
+- **Al acercarse por tu espalda** va a tu paso más 0,6 m/s, con un tope de 3 a 5 m/s según la dificultad: en Apacible y Equilibrada basta con andar para dejarla atrás; en Desafiante y Pesadilla hay que correr, y correr hace ruido. **Nunca alcanza a quien corre.**
+- **En el ducto principal**, el de tamaño humano, va a 1 m/s en todas.
+- **Alumbrada**, entra en el techo en 0,3 s, de 8 a 40 m/s.
+- Huir de ella siempre es posible **si sabes dónde está**.
 - El peligro está en **lo que obliga a dar la espalda**:
   - escribir la solicitud en la ventanilla;
   - recoger la ficha de una estación;
@@ -305,36 +313,47 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 - **Ve en la oscuridad** a quien está a oscuras, hasta ~20 m, sin necesitar la linterna.
   - La luz la **ciega**: no ve dentro de las salas encendidas más allá de unos metros, ni a quien la alumbra.
 - **Oye** con la cadena de ruidos de siempre (`noise_kinds`), y además oye a través de los ductos: lo que pasa junto a una rejilla le llega desde el otro extremo.
-- **Elige presa**:
-  - la primera persona que percibe, o la más sola y a oscuras;
-  - la sigue con sus sentidos, sin trampas.
-  - El director solo le da zonas, como a The Locust.
+- **Elige presa** entre quienes percibe (nunca alguien en una sala protegida, escondido, en su descanso o junto a su última captura):
+  - por cuánto está solo (35 %), a oscuras (25 %), rezagado del centro del grupo (20 %) y ocupado (20 %: leyendo, usando algo o quieto 2 s); los empates, a suertes;
+  - mientras acecha, cambia a otra si puntúa claramente más;
+  - **la guarda por memoria**, no por vista: dónde la vio u oyó por última vez, hacia dónde iba y a qué paso. Pasados 12 s sin señal la pierde, y la busca donde la vio por última vez (nunca donde está de verdad).
+  - El director solo le da zonas, como a The Locust (salvo el encuentro forzado, abajo).
 
 ### Estados
 
+Cada estado tiene un tiempo máximo y una salida, y nunca se queda quieta por miedo a que la vean: si alguien vigila con luz el camino que tiene por delante, va por el plénum. Un solo vigilante (`lurker_brain.watch_progress`): si pide moverse y en 6 s no avanza medio metro, prueba el otro camino (superficies o plénum); si vuelve a pasar, deja a su presa y vuelve a rondar por otra sala.
+
 | Estado | Qué hace | Cómo se nota |
 |---|---|---|
-| **Rondar** | Por ductos y plénum, de zona en zona (las del director o los ruidos) | Ducto que suena por encima, placas que crujen |
-| **Escuchar** | Quieta en una rejilla | Silencio de pronto donde sonaba |
-| **Acechar** | Sigue a su presa a 6–12 m, fuera de su vista: techos, paredes, salas oscuras, ductos | Tictac de garras en el techo; luces que tiemblan a su paso |
-| **Asomarse** | En un marco, sobre una mampara o en una esquina del techo, al borde de la vista. Se va si se la mira más de un instante | Una cara pálida que no estaba (la animación `peek`) |
-| **Quieta** | Vista en la luz: no se mueve y mira. Pasados unos segundos retrocede despacio (`retreat`) a lo oscuro | La cara, quieta |
-| **Acercarse** | Presa a oscuras y de espaldas: se acerca por detrás o por arriba, a paso lento | Solo las garras, cada vez más cerca |
-| **Aviso** | Detrás de ti, a 2–3 m, con la ventana de la dificultad | El aviso de la espalda |
+| **Rondar** | Siempre en marcha, deprisa si nadie la ve. Su meta: un ruido nuevo (pasado el tiempo de reacción de su dificultad, aunque fuera a otro sitio), la zona del director, cerca de donde supo de alguien por última vez (una parte de las veces según la dificultad, por el plénum) o su patrulla. Al llegar, la mitad de las veces escucha | Golpes de ducto en tandas, más seguidas cuanto más cerca |
+| **Escuchar** | Quieta en una rejilla de 3 a 6 s, oyendo más lejos | Nada |
+| **Acechar** | Sigue a su presa a la distancia de su dificultad, fuera de su cono de vista (120 grados alrededor de hacia dónde va): un techo o una pared detrás de ella, a oscuras si puede, en su sala o en una vecina. Dura el tiempo de su dificultad (menos con más supervivientes) y se corta antes si hay **ocasión**: la presa quieta 2 s, ocupada, o sola, a oscuras y de espaldas. A veces se asoma una vez | Garras en el techo y la pared; luces que tiemblan; por el plénum, tandas cortas y silencios largos |
+| **Asomarse** | Va a un punto al borde de la vista de alguien y mira hasta 4 s. Vista 0,1 s, desaparece (sin contar intento) y vuelve más tarde. Si nadie la ve, en Desafiante y Pesadilla encadena el silencio; en las demás, vuelve a acechar | Una cara pálida que no estaba (la animación `peek`) |
+| **Silencio** | Quieta y callada del todo donde está, los segundos de su dificultad; si la presa echa a andar, se acerca enseguida, y si se aleja más de 4 m sobre su distancia de acecho, vuelve a acechar | Lo que sonaba se calla de pronto |
+| **Acercarse** | Al punto del aviso, 2,4 m detrás de la presa, a su paso más 0,6 m/s con el tope de su dificultad. Si la presa se gira, rodea hasta su espalda; solo tras 5 s sin lograrlo vuelve a acechar | Solo sus garras, fuertes aunque vaya despacio |
+| **Aviso** | Detrás de ti, de 2 a 5 m, con la ventana de la dificultad | El aviso de la espalda |
 | **Coger** | Ventana cumplida | La captura (sección 6) |
-| **Espantarse** | La linterna en la cara, o vuelta a tiempo en la ventana: `scare` y huida por `crawl_fast` al ducto más cercano | Su chillido (no humano); golpe de cordura. Tarda en volver a por la misma presa |
-| **Encima** | Sobre la taquilla de alguien escondido | Respiración por las lamas |
+| **Espantarse** | La linterna en la cara (una que no haya bebido), o vuelta a tiempo en la ventana: chilla, bebe esa linterna y sale disparada | Su chillido (no humano); golpe de cordura |
+| **Huir** | Al techo por la entrada más cercana lejos de la luz (la placa de encima, una rejilla, un hueco), de modo que esté dentro en 0,3 s; si no hay ninguna a mano o a los 0,4 s sigue fuera, entra donde esté. Mirada con luz, alumbrada o con la luz de la sala encendida, huye igual, sin chillar | Golpes rápidos que se alejan |
+| **Volver** | Tras un intento fallido, espera en el techo el tiempo de su dificultad (cada fallo lo acorta: ×0,7, ×0,5, ×0,4), sale cerca de donde sabe que está la presa (o de quien esté más solo cerca de ella) y vuelve a acechar, más corto | Callada en el techo; solo cruje la placa o la rejilla por la que sale |
+| **Emboscada** | A veces, con la presa andando (1 m/s o más), en vez de seguirla va por el plénum a un techo oscuro de 8 a 14 m por delante de ella, fuera de su vista, sale y espera quieta hasta 12 s. Avisa desde ahí cuando pasa por debajo o la deja atrás. Si la presa se aleja 16 m del punto, se esconde o no llega en 10 s, vuelve a acechar; una emboscada fallida no cuenta como intento | Nada hasta el aviso |
+| **Encima** | Sobre la taquilla de alguien escondido, de 20 a 40 s; si sale, se acerca | Una placa arrastrada al llegar; respiración por las lamas |
+
+El estado **Quieta** ya no se usa: solo lo ponen a mano las herramientas.
 
 ### La luz, de los dos lados
 
-- **Bebe la luz**: a menos de ~3 m de una lámpara, la lámpara baja al 30–60 % y vuelve cuando se aleja.
+- **Bebe la luz**: a menos de la distancia de su dificultad (de 3 a 4,5 m) de una lámpara, la lámpara baja al 30–60 % y vuelve cuando se aleja.
   - Las de una misma sala bajan juntas, el zumbido cae de tono y los tubos titilan.
   - Es su señal más clara y la que la hace visible por donde pasa.
-- **En una sala con luz no coge** a quien la tiene a la vista, pero puede cruzarla por el techo, deprisa, si nadie mira hacia arriba.
+  - Este drenaje no deja la sala a oscuras para las reglas.
+- **Se bebe la sala entera** (de Equilibrada para arriba; `lurker.snuff_step()`): si acecha a alguien que está en una sala con luz el tiempo de su dificultad seguido (12 s en Equilibrada, 4 en Desafiante, 2,5 en Pesadilla), la apaga temblando en unos segundos, y **queda a oscuras para las reglas** (`hotel.lit()`). La devuelve en un segundo cuando acaba su encuentro allí, cuando la presa lleva 3 s fuera de la sala o a los 25 s, y no vuelve a beberse la misma en 45 s. Solo salas que pueden estar a oscuras, ni protegidas ni prohibidas. Que la devuelva no la espanta, como sí lo hace que alguien encienda la luz.
+- **En una sala con luz no coge** a quien la tiene a la vista, pero puede cruzarla por el techo, deprisa, si nadie mira hacia arriba. Sus emboscadas, nunca bajo un techo con luz.
 - **La linterna** sigue sin batería.
   - Es la única luz que se lleva, y el arma contra el aviso de la espalda: una vuelta a tiempo, con la linterna encendida, la espanta.
   - Con la linterna apagada y a oscuras, la vuelta a tiempo no basta: hay que alumbrarla.
-  - Llevarla encendida baja menos la cordura, pero **la delata** (ella oye el clic y ve el haz desde lejos).
+  - Llevarla encendida baja menos la cordura, pero **la delata** (ella oye el clic y ve el haz desde 35 m).
+  - **Ella la bebe** (`lurker.drink_torches()`): cada vez que una linterna la espanta, las que tenía en la cara quedan bebidas los segundos de su dificultad (nunca en Apacible): el haz al 15 % con un parpadeo irregular, de vuelta en rampa el último segundo, con un clic donde está. Con una probabilidad de su dificultad, **se apaga del todo** y no vuelve hasta que su dueño la apaga y la enciende (encendida antes de que acabe la bebida, solo chispea un instante). Una linterna bebida o apagada no la espanta, no sirve para distinguirle la cara (quien la lleva solo se la ve con la luz de la sala o a 1,2 m) y no salva del aviso.
 
 ### Ductos
 
@@ -342,7 +361,7 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
   - El plénum de cada sala con falso techo se une al ducto de la sala y al plénum de las salas con las que tiene puerta o lado abierto. Por él va a la velocidad de los ductos ocultos.
   - Se mete en el techo por la placa que tiene encima, o por la que dejó abierta si está a menos de 2,5 m, y sale por la placa más cercana a donde va.
   - Por una placa cerrada no entra ni sale el sonido, y desde el plénum no ve nada.
-  - Por dentro va más deprisa que reptando: de 1,2 a 2,4 m/s según la dificultad.
+  - Por dentro va más deprisa que reptando: de 1,2 a 2,8 m/s según la dificultad, y sin que nadie la vea, de 3 a 5,8.
   - **En el ducto principal, el de tamaño humano, va a 1 m/s en todas las dificultades** (decisión del autor, 23 de octubre): un superviviente repta a 1,2, así que huir de ella por él siempre es posible.
   - La animación de ducto solo se ve cuando asoma.
   - Los ductos siguen la rejilla de la planta, no las puertas: **dan atajos**, sin ser teletransportes.
@@ -354,40 +373,63 @@ El hotel se juega en tres vueltas de un mismo ciclo: llegar, cumplir un encargo 
 
 ### En cooperativo
 
-- Va a por el que se queda atrás.
+- **Va a por el que se queda atrás**: elige presa por quién está más solo, a oscuras, rezagado y ocupado (arriba, «Sentidos»).
+- **Cada presa lleva su cuenta**: sus intentos fallidos y su descanso.
+- **El encuentro se reparte** según cuántos supervivientes vivos hay en su planta (1, 2, 3 o 4):
+  - la pausa en la que no empieza encuentro con nadie, tras dejar en paz a una presa o tras una captura, es de 15 s por 1, 0,75, 0,55 o 0,4;
+  - el acecho dura su tiempo por 1, 0,85, 0,7 o 0,6.
+- **Tras una captura**, el descanso de su dificultad solo protege a quien estaba a menos de 8 m de ella.
+- **Tras un intento fallido**, vuelve a por quien esté más solo entre los que tenía a menos de 12 m de la presa que se le escapó: puede ser otro.
 - Dos que se cubren la espalda son casi intocables; separados, cada uno es una presa.
 - **Los muertos** miran por la cámara de un compañero, como ahora, y desde ahí ven lo que el vivo no ve: la cara en el techo detrás de él.
 
 ### El director, adaptado
 
 - **Mismas reglas:** zonas, nunca posiciones.
-- **El encuentro garantizado** (cruzarse con quien lleva mucho sin señales) pasa a ser **un asomo o un cruce de techo al borde de la vista**.
-- **El descanso** después de un susto o una muerte se respeta igual.
-- **Lo de «menace»** (cuánto de cerca está) mide también la distancia por los ductos.
+- **El encuentro garantizado** (cruzarse con quien lleva mucho sin señales) pasa a ser **un asomo al borde de la vista** de alguien que ella perciba.
+- **El descanso** del director solo llega cuando acaba un encuentro suyo (`creature.earned_rest()`: tras dejar en paz a una presa o tras una captura), no cada vez que se acerca: casi siempre está cerca. Mientras no, el director sigue en tensión creciente.
+- **El encuentro forzado** (`pacing_director.forced_due()`): si pasa el tiempo de su dificultad sin que alcance a nadie, el director la lleva a la sala de quien está más solo o más rezagado en su ala y no escondido (`lonely_target()`), nunca junto a quien se esconde; la sala es adonde va andando (su posición 6 s por delante), no la que deja, y la vuelve a llevar cada 8 s hasta que alcanza a alguien. La pista vale también en salas con luz (ella llega por el plénum), y en plena huida la acepta pasados 8 s.
+- **Lo de «menace»** (cuánto de cerca está) mide también la distancia por los ductos, y en algunos compases lo dice ella (sección 9).
 
 ### Dificultad (claves propias, a afinar jugando)
 
+Sus claves están en `game/floors/difficulty.gd` (`CREATURE_PROFILES`), encima de las compartidas con el hotel. Estas son las de hoy:
+
 | Clave | Apacible | Equilibrada | Desafiante | Pesadilla |
 |---|---|---|---|---|
-| Ventana de la espalda | 2,2 s | 1,5 s | 1,2 s | 0,9 s |
-| Coge en una sala con luz (de espaldas, tras el aviso) | No | Sí | Sí | Sí |
-| Velocidad en los ductos | 1,2 m/s | 1,6 m/s | 2,0 m/s | 2,4 m/s |
-| Distancia de acecho | 12 m | 8 m | 6 m | 4 m |
-| En la luz | Se va al instante | Se va al instante | Se va al instante | Se va al instante |
-| Sin que nadie la vea, por una superficie | 3 m/s | 3,5 m/s | 4 m/s | 4,5 m/s |
-| Sin que nadie la vea, por un ducto oculto | 2 m/s | 3 m/s | 4 m/s | 5 m/s |
-| Intentos de un encuentro | 2 | 3 | 4 | 5 |
-| Tras un intento fallido, vuelve a salir a los | 8 a 12 s | 4 a 7 s | 2 a 4 s | 1 a 2 s |
-| Por dónde vuelve a salir (una rejilla, un hueco o cualquier placa) | Lejos (10 a 15 m) | Cerca (6 a 10 m) | Por tu espalda (3 a 6 m) | Por tu espalda (3 a 5 m) |
-| Descanso tras el último intento | 120 s | 90 s | 60 s | 45 s |
-| Sin alcanzar a nadie, el director la lleva a la sala de alguien a los | Nunca | 150 s | 90 s | 60 s |
-| Velocidad al acercarse | ×0,8 | ×0,9 | ×1,3 | ×1,5 |
-| Lámpara que bebe | 3 m | 3 m | 3,5 m | 4 m |
-| Asomos al borde de la vista | Muchos | Muchos | Normales | Pocos |
+| Ventana de la espalda (`back_window`) | 2,2 s | 1,5 s | 0,9 s | 0,9 s |
+| Coge en una sala con luz, de espaldas y tras el aviso (`lit_takes`) | No | Sí | Sí | Sí |
+| Velocidad en los ductos (`duct_speed`) | 1,2 m/s | 1,6 m/s | 2,4 m/s | 2,8 m/s |
+| Distancia de acecho (`stalk_distance`) | 12 m | 8 m | 4 m | 3,5 m |
+| Sin que nadie la vea, por una superficie (`unseen_speed`) | 3 m/s | 3,5 m/s | 4,5 m/s | 5 m/s |
+| Sin que nadie la vea, por un ducto oculto (`unseen_duct`) | 3 m/s | 4,2 m/s | 5,8 m/s | 5,8 m/s |
+| Lo menos que va al acercarse (`creep_scale`, por 1 m/s) | 0,8 m/s | 0,9 m/s | 1,5 m/s | 1,7 m/s |
+| Lo más que va al acercarse (`approach_cap`) | 3 m/s | 3,5 m/s | 4,5 m/s | 5 m/s |
+| Tiempo de acecho antes del silencio (`stalk_time`) | 25 a 40 s | 15 a 25 s | 4 a 9 s | 3 a 6 s |
+| Probabilidad de asomarse una vez al acechar (`peek_odds`) | 70 % | 50 % | 15 % | 10 % |
+| Duración del silencio (`hush`) | 3 s | 2,5 s | 1,5 s | 1 s |
+| Probabilidad de que un acecho empiece en emboscada (`ambush_odds`) | 15 % | 30 % | 60 % | 70 % |
+| Tarda en ir hacia un ruido nuevo (`noise_react`) | 4 s | 2 s | Al instante | Al instante |
+| Ronda cerca de donde supo de alguien, esta parte de las veces (`haunt`) | 35 % | 60 % | 90 % | 100 % |
+| Intentos de un encuentro (`attempts`) | 2 | 3 | 5 | 6 |
+| Tras un intento fallido, vuelve a salir a los (`emerge_delay`, antes de acortarlo) | 8 a 12 s | 4 a 7 s | 1 a 2 s | 0,7 a 1,5 s |
+| Por dónde vuelve a salir: una rejilla, un hueco o cualquier placa (`emerge_mode`, `emerge_range`) | Lejos (10 a 15 m) | Cerca (6 a 10 m) | Por tu espalda (3 a 5 m) | Por tu espalda (3 a 4,5 m) |
+| Deja en paz a esa presa tras el último intento (`encounter_rest`) | 120 s | 90 s | 45 s | 30 s |
+| Deja en paz a quien estaba cerca de una captura (`sated`) | 60 s | 40 s | 20 s | 12 s |
+| Sin alcanzar a nadie, el director la lleva a la sala de alguien a los (`forced_after`) | Nunca | 70 s | 30 s | 20 s |
+| Distancia a la que bebe una lámpara (`drain_reach`) | 3 m | 3 m | 4 m | 4,5 m |
+| Se bebe la sala de su presa a los (`snuff_time`) | Nunca | 12 s | 4 s | 2,5 s |
+| Linterna que la espanta, bebida durante (`torch_drunk`) | Nunca | 3 s | 10 s | 14 s |
+| Probabilidad de que una linterna bebida se apague del todo (`torch_kill`) | 0 % | 25 % | 60 % | 80 % |
+| Primera etapa a oscuras (`office_geometry.darken_first_stage`) | Todo con luz | Las salas oscuras del manifiesto | Todas las que pueden estarlo, menos un 10 % | Todas las que pueden estarlo |
+
+El tope al acercarse queda siempre por debajo de la carrera de un superviviente (6 m/s) menos medio metro. Las demás claves (el director, los ascensores, los reintentos de etapa y el oído) son las compartidas con el hotel, las de The Locust.
 
 En Apacible, más asomos y menos capturas: miedo sin castigo.
 
-**Más agresiva** (el autor, 24 de octubre de 2026, tras su primera partida; el detalle en `.claude/specs/spec_f3_aggression.md`): la primera etapa se oscurece con la dificultad (Apacible con todas las luces, Equilibrada como el manifiesto, Desafiante mucho más oscura, Pesadilla casi toda a oscuras); la ventana, el acecho y el acercamiento de la tabla de arriba son ya los nuevos; avisa desde hasta 5 m y su salto largo llega a 7,5 m.
+**Más agresiva** (el autor, 24 de octubre de 2026, tras su primera partida; el detalle en `.claude/specs/spec_f3_aggression.md`): la primera etapa se oscurece con la dificultad (la última fila de la tabla); avisa desde hasta 5 m y su salto largo llega a 7,5 m.
+
+**La reconstrucción** (11 de noviembre de 2026, `.claude/specs/spec_lurker_rebuild.md`): el autor la jugó y pidió rehacerla entera, con dificultades que se noten y equilibrada en cooperativo. Las claves nuevas (`stalk_time`, `peek_odds`, `hush`, `noise_react`, `sated`, `approach_cap`, `haunt`, `torch_drunk`, `snuff_time`, `torch_kill`, `ambush_odds`) son del director, a afinar jugando, como los cambios de `forced_after` y `unseen_duct` de la primera iteración. Tras jugar la tercera iteración, el autor dijo: «Está bastante mejor en pesadilla, esta dificultad la guardaría como desafiante». Así que **la fila de Pesadilla que jugó es ahora la de Desafiante**, también su primera etapa a oscuras (todo menos un 10 %). **La Pesadilla de hoy es una fila nueva, del director, a afinar jugando**: más dura en casi todas las claves y con todas las salas que pueden estar a oscuras apagadas. Apacible y Equilibrada no cambiaron, y las claves compartidas con el hotel tampoco: las de Desafiante no son las de la Pesadilla que jugó el autor.
 
 ---
 
@@ -522,6 +564,17 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - el **aviso de la espalda**;
   - el **chillido al espantarse**: animal, nunca humano.
   - Todo **grabado**: foley y animales con licencia, procesados. Nada de voces ni gritos humanos sintéticos.
+- **Ella suena por compases** (`creature.mood()`, que `lurker.gd` saca de su estado con `MOODS`): cada compás dice cuánto aura deja (`dread_aura`), si la música sigue la distancia o la amenaza que ella da, si el aura cae de golpe y si su voz calla.
+  - **Lejos** (rondando a más de 12 m de camino de quien sea): golpes de ducto en tandas de 6 a 8 con silencios de 6 a 12 s; aura baja.
+  - **Cerca** (a 12 m o menos): tandas de 6 a 8 con silencios de 1,2 a 2,6 s; más aura.
+  - **Acecho**: sus garras de verdad en el techo y la pared, y a veces un arañazo o un arrastre pared abajo; por el plénum o un ducto, tandas cortas de 2 a 4 golpes y silencios de 2,5 a 5 s, y solo entonces los chasquidos falsos del aura. Casi todo el aura.
+  - **Silencio**: nada suyo; el aura cae de golpe, la música pasa a amenaza plena, y el ambiente, el aura y el tema se apartan para quien esté a menos de 14 m en su planta.
+  - **Acercarse**: solo sus garras, cada mano tan fuerte como si fuera deprisa; el aura entera y la música en amenaza plena.
+  - **Aviso**: solo el aviso; ella calla desde que empieza y lo demás se aparta como en el silencio.
+  - **Huida**: el chillido y una tanda seguida de 12 a 16 golpes que se aleja; el aura cae de golpe y la música vuelve en menos de 6 s.
+  - **Descanso** (nadie elegible cerca): golpes lejanos, con silencios de 9 a 16 s; poca aura y **vuelve la música**.
+  - **Emboscada**: nada suyo y nada de aura hasta el aviso.
+  - Además: **escuchando** (quieta, sin un ruido) y **asomada**, el aura cae de golpe; **volviendo** por el techo calla, y solo cruje la placa o la rejilla por la que sale; **encima** de una taquilla, una placa arrastrada al llegar y su respiración por las lamas.
 - **Por dónde suena:** por las rutas y por los ductos, saliendo por las rejillas. Nada atraviesa muros (AUDIO.md).
 - **La música sigue al miedo**, como ahora, con su propio color si el autor lo quiere.
 - **Carteles de normas** (diegéticos, se leen; no son interfaz). Enseñan las reglas sin decirlas:
@@ -698,11 +751,11 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - `regards()`: cámara a menos de 30° (45° en remotos), rayo libre y luz en la sala o linterna en la cara;
   - `beside_view()`.
 - **`lurker_brain.gd`:** los estados de la sección 4.
-  - Solo se mueve por un tramo si nadie la tiene **expuesta**: mirada y con luz o linterna.
-  - A oscuras y sin linterna, aunque la miren, avanza: nadie la ve.
+  - Nunca se queda quieta porque su camino esté vigilado: si alguien lo vigila con luz, va por el plénum (spec_lurker_rebuild 2.1). Mirada con luz o alumbrada, huye.
+  - A oscuras y sin linterna, aunque la miren, avanza (a ráfagas): nadie le distingue la cara.
 - **La garantía del aviso, en código.** Una captura solo sale de `CUE`:
   - con la misma víctima y tras la ventana más la latencia;
-  - si en cualquier fotograma de la ventana la víctima la mira con luz, o la linterna de alguien le da en la cara, pasa a espantarse;
+  - si en cualquier fotograma de la ventana la víctima la mira con luz, o la linterna de alguien le da en la cara, pasa a espantarse (una linterna bebida o apagada por ella no cuenta: `lurker_senses.drop_drunk()` la quita antes de que llegue al aviso);
   - el aviso va por RPC fiable a la máquina de la víctima y suena en su posición real, en binaural;
   - cada captura guarda su par aviso→captura, y una comprobación del contrato exige que exista.
 

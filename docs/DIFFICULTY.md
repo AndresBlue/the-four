@@ -258,8 +258,12 @@ Con los bots que ya la tienen en cuenta (paso 3f: se giran con la linterna a su 
 - **Ella no avisó a ningún bot en ninguno:** 0 avisos, 0 capturas y 0 muertes, con algún espanto (de 0 a 5 por piso). Con eso no se pueden medir todavía las bandas del lote (salvadas por aviso, avisos por bot, ventana cumplida).
 - **Incidencias graves:**
   - bots atascados en puertas de las oficinas, que ya salían antes;
-  - ella encerrada en una sola sala durante minutos (semillas 81 y 83). Era lo mismo que el autor vio jugando con un amigo: desde el techo veía a alguien dentro de un vestíbulo protegido, donde nunca entra, y se quedaba acechándolo para siempre; o la retenía quien vigilaba con luz su camino por delante. Corregido: no elige a quien está en una sala protegida, deja en paz 20 s a quien no consigue alcanzar en 3 s, y a los 2,5 s de vigilancia se mete en el techo. Repetida la semilla 81, ya no se queda encerrada.
+  - ella encerrada en una sola sala durante minutos (semillas 81 y 83). Era lo mismo que el autor vio jugando con un amigo: desde el techo veía a alguien dentro de un vestíbulo protegido, donde nunca entra, y se quedaba acechándolo para siempre; o la retenía quien vigilaba con luz su camino por delante. Corregido: no elige a quien está en una sala protegida, deja en paz 20 s a quien no consigue alcanzar en 3 s, y a los 2,5 s de vigilancia se mete en el techo. Repetida la semilla 81, ya no se queda encerrada. (Desde la reconstrucción del 11 de noviembre de 2026, esos dos relojes no existen: los sustituye un solo vigilante de avance, [OFICINAS.md](OFICINAS.md), sección 4.)
 - **Lo que queda:** el lote entero, más adelante, cuando los bots dejen de atascarse en las puertas. Las cifras que cuentan son las de las partidas con gente.
+
+### El piso 2: sus claves propias
+
+The Lurker tiene claves propias por dificultad (`CREATURE_PROFILES` en `game/floors/difficulty.gd`) encima de las compartidas de la sección 3, que siguen siendo las de The Locust (el director, los ascensores, los reintentos de etapa y el oído). La tabla entera, con los valores de hoy y lo que decidió el autor el 11 de noviembre de 2026, está en [OFICINAS.md](OFICINAS.md), sección 4, «Dificultad». En resumen: tras jugarla, el autor guardó como **Desafiante** la Pesadilla que había jugado, y la **Pesadilla** de hoy es una fila nueva del director, a afinar jugando. Las claves compartidas de Desafiante no se tocaron, así que no son las de la Pesadilla que jugó el autor.
 
 ## 7 · Dónde se elige y qué pasa con las marcas
 

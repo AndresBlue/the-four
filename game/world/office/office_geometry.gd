@@ -652,10 +652,9 @@ func decide_dark(data: Dictionary) -> void:
 var difficulty_id := "equilibrada"
 ## The first stage's dark by difficulty (the author, 24 October 2026;
 ## .claude/specs/spec_f3_aggression.md): Apacible all lit, Equilibrada the
-## manifest's, Desafiante that and DARKER of the rest, Pesadilla all but
-## LIT_LEFT. Rooms that may never be dark, and the off-limits ones, keep their
+## manifest's, Desafiante all but LIT_LEFT, Pesadilla every room that may be
+## dark (the author, 11 November 2026: what was Pesadilla is Desafiante). Rooms that may never be dark, and the off-limits ones, keep their
 ## light. Per room by its place, the same on every machine.
-const DARKER := 0.6
 const LIT_LEFT := 0.1
 func darken_first_stage(data: Dictionary) -> void:
 	for room in data.rooms:
@@ -665,8 +664,8 @@ func darken_first_stage(data: Dictionary) -> void:
 		var may: bool = OFFICE.may_be_dark(room) and not OFFICE.off_limits(room)
 		match difficulty_id:
 			"apacible": dark_ids.erase(id)
-			"desafiante": if may and roll < DARKER: dark_ids[id] = true
-			"pesadilla": if may and roll >= LIT_LEFT: dark_ids[id] = true
+			"desafiante": if may and roll >= LIT_LEFT: dark_ids[id] = true
+			"pesadilla": if may: dark_ids[id] = true
 
 ## A room's power cut or given back (planta 2's board, spec_f1_systems 3):
 ## its troffer lenses and battens go dark with its lamp, or they

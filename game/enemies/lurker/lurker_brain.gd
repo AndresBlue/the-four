@@ -105,6 +105,8 @@ var failed_for := 0.0
 var held_for := 0.0
 const STALL_TIME := 6.0
 const STALL_MOVE := 0.5
+## s she leaves be whom she stalled twice on the way to.
+const STALL_REST := 10.0
 var stalls := 0
 var progress_at := Vector3.INF
 ## A way that failed or stalled: the next tries go by the plenum.
@@ -359,6 +361,9 @@ func watch_progress(p, out: Dictionary) -> void:
 	route_hidden = not route_hidden
 	if stalls < 2: return
 	if int(p.room) >= 0: searched[int(p.room)] = clock + SEARCHED_FOR
+	# Still in her sight, they would be chosen again at once, and the same
+	# way stalled again: let them be a little.
+	if prey >= 0: spurned[prey] = maxf(float(spurned.get(prey, -INF)), clock + STALL_REST)
 	emerging = Vector3.INF
 	comeback = {}
 	prey = -1

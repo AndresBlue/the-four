@@ -3,7 +3,8 @@ extends SceneTree
 ## .claude/specs/spec_f3_aggression.md, unit 6), on floor 2 in Pesadilla:
 ## not before her forced_after() without getting at anybody, never towards
 ## somebody hidden, and after it the director leads her into the room of
-## somebody out there -- where she finds them on her own, by her senses.
+## somebody out there (the one they walk to, again every FORCED_REFRESH s
+## while she gets at nobody) -- where she finds them on her own, by her senses.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const DIFFICULTY := preload("res://game/floors/difficulty.gd")
@@ -42,8 +43,12 @@ func play(level) -> void:
 	var player = level.player
 	player.set_physics_process(false)
 	lurker.grace = 0.0
-	var profiles: Dictionary = DIFFICULTY.CREATURE_PROFILES.lurker
-	check("En Apacible nunca; en las demás, a los 150, 90 y 60 s sin alcanzar a nadie", float(profiles.apacible.forced_after) == 0.0 and lurker.forced_after() == 60.0 and float(profiles.equilibrada.forced_after) == 150.0 and float(profiles.desafiante.forced_after) == 90.0, str(lurker.forced_after()))
+	# Her wait read from the profiles: never on Apacible, and sooner the harder.
+	var waits: Array = DIFFICULTY.ORDER.map(func(id): return float(DIFFICULTY.profile(id, &"lurker").forced_after))
+	var sooner := true
+	for i in range(2, waits.size()): sooner = sooner and float(waits[i]) > 0.0 and float(waits[i]) <= float(waits[i - 1])
+	var after: float = lurker.forced_after()
+	check("En Apacible nunca; en las demás, antes cuanto más difícil, y el suyo es el de su perfil (%s)" % str(waits), float(waits[0]) == 0.0 and float(waits[1]) > 0.0 and sooner and after == float(DIFFICULTY.profile("pesadilla", &"lurker").forced_after), str(after))
 	# A dark room of her planta far from her by her own ways: the player
 	# stands in its middle.
 	var from: int = FLOOR.room_at(level.manifest.rooms, lurker.global_position).get("id", -1)
@@ -69,15 +74,29 @@ func play(level) -> void:
 	director.rest_until = 0.0
 	director.last_contact = director.clock
 	check("Antes de su tiempo, no la trae", not director.forced_due() and lurker.brain.lead.is_empty())
-	director.last_contact = director.clock - 61.0
+	director.last_contact = director.clock - after - 1.0
 	player.hidden = true
 	var hidden_due: bool = director.forced_due()
 	player.hidden = false
 	check("Nunca a por alguien escondido", not hidden_due and lurker.brain.lead.is_empty())
-	director.last_contact = director.clock - 61.0
+	# Somebody walking: led to where they are going, FORCED_AHEAD s on, not to
+	# the room they are leaving.
+	var next := -1
+	for other in level.manifest.adjacency[room]:
+		if not FLOOR.is_void(level.manifest.rooms[int(other)]) and int(level.manifest.rooms[int(other)].get("wing", -1)) == wing:
+			next = int(other)
+			break
+	if next >= 0:
+		player.velocity = (FLOOR.position_of(level.manifest.rooms[next]) - player.global_position) / director.FORCED_AHEAD
+		director.last_contact = director.clock - after - 1.0
+		var ahead_due: bool = director.forced_due()
+		var ahead_lead: Dictionary = lurker.brain.lead
+		player.velocity = Vector3.ZERO
+		check("A quien camina, la lleva a la sala a la que va, no a la que deja", ahead_due and String(ahead_lead.get("kind", "")) == "encuentro" and (ahead_lead.point as Vector3).is_equal_approx(FLOOR.position_of(level.manifest.rooms[next])), "%d %d %s" % [room, next, str(ahead_lead)])
+	director.last_contact = director.clock - after - 1.0
 	var due: bool = director.forced_due()
 	var lead: Dictionary = lurker.brain.lead
-	check("Pasado su tiempo, el director la lleva a la sala de alguien", due and String(lead.get("kind", "")) == "encuentro" and lead.get("rooms", []) == [room] and String(director.current.get("kind", "")) == "encuentro" and director.clock - director.last_contact < 0.01, "%s %d %s %s" % [str(due), room, str(lead), str(director.history.back() if not director.history.is_empty() else {})])
+	check("Pasado su tiempo, el director la lleva a la sala de alguien, y la vuelve a llevar cada FORCED_REFRESH s mientras no alcance a nadie", due and String(lead.get("kind", "")) == "encuentro" and lead.get("rooms", []) == [room] and String(director.current.get("kind", "")) == "encuentro" and is_equal_approx(director.last_contact, director.clock - after + director.FORCED_REFRESH), "%s %d %s %s" % [str(due), room, str(lead), str(director.history.back() if not director.history.is_empty() else {})])
 	# And there she finds them herself.
 	Engine.time_scale = 3.0
 	var found := false

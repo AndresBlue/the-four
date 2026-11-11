@@ -738,6 +738,16 @@ pueda jugar entero sin tocar el teclado.
 
 - `four-vlz.12` **Volver a generar el tráiler** (`docs/TRAILER.md`): sus títulos quemados aún llevan punto medio y guion largo; el código ya no (20 de octubre de 2026).
 
+- **Lo que quedó de la reconstrucción de The Lurker** (11 de noviembre de 2026; [LURKER.md](LURKER.md) y [OFICINAS.md](OFICINAS.md), sección 4; bead `four-1dl`).
+  - **Piden modelo o animación nuevos:** sus brazos se leen como varillas finas, y anda siempre con el mismo clip `crawl`, así que los tirones vienen del tronco y no de un paso animado.
+  - **El ambiente sonoro propio de las oficinas** (la climatización, el goteo, el cuadro, el silencio de los archivos; OFICINAS.md, sección 9) no existe: suena el del hotel.
+  - **Que su silencio alcance también al zumbido y a la ventilación**: hoy aparta el ambiente, el aura y el tema.
+  - **Movimiento:** las esquinas redondeadas y el salto de sitio al entrar en un canal (`into_channel_now`), que hoy tapa el dibujo suavizado.
+  - **En red:** quien entra a mitad de partida no ve apagada la sala que ella se está bebiendo ni las linternas que apagó.
+  - **El polvo de su techo:** el velo es tenue y los hilos algo rectos; el autor no lo ha visto moverse.
+  - **Por decidir con el autor:** en Desafiante, las claves compartidas con el hotel (el director, los ascensores, los reintentos) son las de Desafiante, no las de la Pesadilla que jugó y quiso guardar como Desafiante.
+  - Y el lote de equilibrio con bots por dificultad y por número de jugadores, las pruebas que afirmaban su mente de antes y `verify.ps1`.
+
 ## 4 · Assets que faltan (tuyos)
 
 - **Grabaciones de verdad para las oficinas** (23 de octubre de 2026): el tubo neumático (hoy aire comprimido de BigSoundBank), alguien a gatas por un ducto de chapa (hoy dos golpes en una rejilla de calefacción) y la reja de tijera del montacargas; las de NoiseCollector y Ultra-Edward piden cuenta. Y que oigas los bucles de `assets/audio/sfx/office/` (máquina de escribir, siseo, tictac, ventiladores), cuyos tramos se eligieron sin escucharlos.

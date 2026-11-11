@@ -3,8 +3,10 @@ extends SceneTree
 ## 10.1) on a built floor 2: she sees in the dark far and into the light
 ## little, a torch on her face blinds her, walls hide; she hears through the
 ## room and through her ducts, never from another planta, and hears a torch
-## clicked; she drinks the light of the lamps near her, all together, never
-## past dark for the rules, and gives it back; she picks her prey herself; the
+## clicked; she drinks the light of the lamps near her, all together, past
+## dark for the rules only when she drinks a room dark (snuff), and gives it
+## back; she picks her prey herself, never holds still for being watched and
+## gives up a way that gets her nowhere; the
 ## director gives her zones, never people; the words the rest of the game
 ## reads of her; and what the floor's systems tell her: her room lit, the fans
 ## stopping, the main duct's crossing while somebody crawls before it, whom
@@ -44,7 +46,9 @@ class FakeWorld extends RefCounted:
 	func lead_rooms(_point: Vector3, _radius: float, _avoid: Array) -> Array: return [1]
 	func above_locker(_hide) -> Vector3: return Vector3.ZERO
 	var emerge := Vector3.INF
-	func emerge_point(_seat: int, _mode: String, _span: Vector2) -> Vector3: return emerge
+	func emerge_point(_seat: int, _mode: String, _span: Vector2, _known: Vector3, _heading: Vector3) -> Vector3: return emerge
+	func stalk_point(seen, metres: float) -> Vector3: return Vector3(seen.point.x - metres, 0, 0)
+	func ambush_point(_seen) -> Vector3: return Vector3.INF
 
 func run() -> void:
 	prey_choice()
@@ -234,7 +238,26 @@ func drain() -> void:
 		await physics_frame
 		var now: float = level.hotel.drained(room)
 		if now > SENSES.DRAIN.y + SENSES.DRAIN_WOBBLE + 0.01 or now >= level.hotel.LIT_DRAIN: wobble_ok = false
-	check("Con efectos, tiembla sin pasar nunca de lo que deja la sala a oscuras", wobble_ok and level.hotel.lit(room))
+	check("Con efectos, tiembla sin pasar de lo que deja la sala a oscuras mientras no la bebe a fondo", wobble_ok and level.hotel.lit(room))
+	# Drunk dark (iteration 2, G8, her snuff_time): past LIT_DRAIN, the room dark
+	# for the rules; given back, lit again.
+	lurker.snuff(room, int(level.player.slot))
+	var dark := false
+	for i in 300:
+		await physics_frame
+		if not level.hotel.lit(room):
+			dark = true
+			break
+	var deep_at := float(level.hotel.drained(room))
+	lurker.snuff(-1, -1)
+	var back := false
+	for i in 180:
+		await physics_frame
+		if level.hotel.lit(room):
+			back = true
+			break
+	lurker.snuffed.clear()
+	check("Bebida a fondo pasa de LIT_DRAIN y la sala cuenta a oscuras; al soltarla vuelve la luz", dark and deep_at >= level.hotel.LIT_DRAIN and back, "%.3f %s %s" % [deep_at, str(dark), str(back)])
 	lurker.relocate(corridor.centre, 0.0)
 	check("Al moverla de golpe, la luz vuelve entera en el mismo fotograma", level.hotel.drained(room) == 0.0)
 
@@ -387,48 +410,52 @@ func roaming() -> void:
 	var intent: Dictionary = brain.tick(1.0 / 60.0, p)
 	check("Parada en una sala, la meta que elige no cuenta como alcanzada: se pone en marcha", String(intent.get("do", "")) == "go" and int(brain.goal.get("room", -1)) == 2, str(intent))
 
-## An encounter of several attempts (the author, 24 October 2026): each
-## failed one sends her out of sight and back out where the difficulty says;
-## after the last she leaves that survivor be for the rest.
-## Her way after somebody failing for good (the author's games, 25 October
-## 2026: she hung on the ceiling): past GIVE_UP she lets them go and roams.
-## Somebody's view of her way holding her still (a lit room, a look her
-## way): past HOLD_MOST she goes into the ceiling, never hangs there.
+## Somebody's view of her way (a lit room, a torch her way) never holds her
+## still (spec_lurker_rebuild 2.1, in place of HOLD_MOST): she goes on, by the
+## plenum.
 func not_held() -> void:
 	var world := FakeWorld.new()
+	world.patrol = 2
 	var brain = BRAIN.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 8
 	brain.setup(world, rng, WARNING.new())
 	brain.enter(BRAIN.State.ROAM)
 	var p = SENSES.Percept.new()
+	p.room = 3
 	p.stretch_exposed = true
-	for i in int((BRAIN.HOLD_MOST - 0.5) * 60.0): brain.tick(1.0 / 60.0, p)
-	var waited: bool = brain.state == BRAIN.State.ROAM
-	for i in 60: brain.tick(1.0 / 60.0, p)
-	check("Si alguien vigila su camino, espera un poco y luego se mete en el techo", waited and brain.state == BRAIN.State.FLEE, brain.state_name())
+	var always_hidden := true
+	for i in 180:
+		var intent: Dictionary = brain.tick(1.0 / 60.0, p)
+		if String(intent.get("do", "")) != "go" or not bool(intent.get("hidden", false)): always_hidden = false
+	check("Si alguien vigila su camino no se queda quieta: sigue, por el pleno", always_hidden and brain.state == BRAIN.State.ROAM, brain.state_name())
 
+## Her way after somebody not getting anywhere (in place of GIVE_UP): after
+## STALL_TIME without STALL_MOVE metres she tries another way; at the second,
+## she lets them go, roams, and leaves that room be a while.
 func gives_up() -> void:
 	var world := FakeWorld.new()
 	var brain = BRAIN.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 6
 	brain.setup(world, rng, WARNING.new())
-	brain.prey = 1
-	brain.enter(BRAIN.State.STALK)
+	brain.force(&"stalk", {"seat": 1})
 	var p = SENSES.Percept.new()
-	# In sight, far, and her way to them failing.
+	p.room = 4
+	# In sight, far, and she not getting any nearer.
 	p.bodies[1] = seen_of(1, false, 20.0)
 	p.bodies[1].distance = 30.0
 	p.victim = p.bodies[1]
-	p.failed = true
-	for i in int((BRAIN.GIVE_UP - 0.5) * 60.0): brain.tick(1.0 / 60.0, p)
-	var still: bool = brain.state == BRAIN.State.STALK and brain.prey == 1
-	var before_give_up: bool = brain.failed_for > 0.0
-	for i in 60: brain.tick(1.0 / 60.0, p)
-	check("Si su camino tras alguien no deja de fallar, lo deja y vuelve a rondar", still and before_give_up and brain.state != BRAIN.State.STALK and brain.prey == -1, "%s %d" % [brain.state_name(), brain.prey])
-	check("Y lo deja en paz un rato: no vuelve en seguida al camino que falló", float(brain.spurned.get(1, -INF)) - brain.clock > BRAIN.GIVE_UP_REST - 1.0, str(brain.spurned))
+	var hidden_before: bool = brain.route_hidden
+	for i in int((BRAIN.STALL_TIME + 0.5) * 60.0): brain.tick(1.0 / 60.0, p)
+	var other_way: bool = brain.state == BRAIN.State.STALK and brain.prey == 1 and brain.route_hidden != hidden_before
+	for i in int(BRAIN.STALL_TIME * 60.0): brain.tick(1.0 / 60.0, p)
+	check("Si su camino tras alguien no avanza, prueba otro; si sigue sin avanzar, lo deja y vuelve a rondar", other_way and brain.state == BRAIN.State.ROAM and brain.prey == -1, "%s %d %s" % [brain.state_name(), brain.prey, str(other_way)])
+	check("Y deja esa sala y a esa persona un rato: no vuelve en seguida al camino que falló", brain.searched_lately(4) and float(brain.spurned.get(1, -INF)) - brain.clock > BRAIN.STALL_REST - 1.0, "%s %s" % [str(brain.searched), str(brain.spurned)])
 
+## An encounter of several attempts (the author, 24 October 2026): each
+## failed one sends her out of sight and back out where the difficulty says,
+## where she knows them to be; after the last she leaves that survivor be.
 func encounter() -> void:
 	var world := FakeWorld.new()
 	var brain = BRAIN.new()
@@ -437,8 +464,12 @@ func encounter() -> void:
 	brain.setup(world, rng, WARNING.new())
 	brain.tune({"attempts": 3, "encounter_rest": 90.0, "emerge_delay": [1.0, 1.0], "emerge_mode": "behind", "emerge_range": [3.0, 5.0]})
 	var p = SENSES.Percept.new()
+	# Out of her sight now, remembered where she last saw them.
+	p.bodies[1] = seen_of(1, false, 20.0)
+	p.bodies[1].seen = false
+	p.bodies[1].seen_at = 0.0
 	brain.prey = 1
-	brain.recoil(1, "mirada", p)
+	brain.recoil(1, "mirada", p, true)
 	var after_one: bool = int(brain.attempts.get(1, 0)) == 1 and not brain.spurned.has(1) and not brain.comeback.is_empty()
 	world.emerge = Vector3(9, 0, 0)
 	brain.enter(BRAIN.State.FLEE)
@@ -447,8 +478,8 @@ func encounter() -> void:
 	for i in 90: intent = brain.tick(1.0 / 60.0, p)
 	var back_out: bool = String(intent.get("do", "")) == "go" and (intent.get("to", Vector3.INF) as Vector3) == Vector3(9, 0, 0) and brain.prey == 1
 	check("Un intento fallido no la aparta: sale del techo por donde toca y vuelve a por esa persona", after_one and back_out, "%s %s" % [str(brain.attempts), str(intent)])
-	brain.recoil(1, "linterna", p)
-	brain.recoil(1, "corriendo", p)
+	brain.recoil(1, "linterna", p, true)
+	brain.recoil(1, "corriendo", p, true)
 	check("Al fallar el último intento la deja en paz su rato", not brain.attempts.has(1) and float(brain.spurned.get(1, -INF)) - brain.clock > 89.0 and brain.comeback.is_empty(), str(brain.spurned))
 
 ## Her own choice of prey (7.7), on a bare brain with a fake world.

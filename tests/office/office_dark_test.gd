@@ -1,8 +1,9 @@
 extends SceneTree
 ## Floor 2's first stage dark by difficulty (the author, 24 October 2026;
 ## .claude/specs/spec_f3_aggression.md): the same seed built in the four, its
-## planta 1 all lit in Apacible, the manifest's in Equilibrada, darker in
-## Desafiante, nearly all dark in Pesadilla; the rooms that may never be dark
+## planta 1 all lit in Apacible, the manifest's in Equilibrada, all but about
+## a tenth (office_geometry.LIT_LEFT) in Desafiante, every room that may be dark
+## in Pesadilla (the author, 11 November 2026); the rooms that may never be dark
 ## lit in all of them; plantas 2 and 3 the same in all four.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
@@ -42,13 +43,16 @@ func run() -> void:
 		dark[id] = mine
 		upper[id] = above
 	var may := 0
+	var may_dark := 0
 	for room in level.manifest.rooms:
-		if not FLOOR.is_void(room) and int(room.get("wing", -1)) == 0 and OFFICE.may_be_dark(room) and not OFFICE.off_limits(room): may += 1
+		if not FLOOR.is_void(room) and int(room.get("wing", -1)) == 0 and OFFICE.may_be_dark(room) and not OFFICE.off_limits(room):
+			may += 1
+			if (dark.pesadilla as Array).has(int(room.id)): may_dark += 1
 	var sizes: Array = ORDER.map(func(id): return (dark[id] as Array).size())
 	check("Apacible: la primera etapa con todas las luces", (dark.apacible as Array).is_empty(), str(sizes))
 	check("Equilibrada: las salas a oscuras del manifiesto", dark.equilibrada == manifest_dark, "%s %s" % [str(dark.equilibrada), str(manifest_dark)])
-	check("Desafiante: mucho más oscura", (dark.desafiante as Array).size() >= (dark.equilibrada as Array).size() + may / 3, str(sizes))
-	check("Pesadilla: casi todo a oscuras", float((dark.pesadilla as Array).size()) >= float(may) * 0.8, "%s de %d" % [str(sizes), may])
+	check("Desafiante: todo a oscuras menos más o menos un décimo", float((dark.desafiante as Array).size()) >= float(may) * 0.75 and (dark.desafiante as Array).size() <= (dark.pesadilla as Array).size(), "%s de %d" % [str(sizes), may])
+	check("Pesadilla: todo lo que puede estar a oscuras", may_dark == may, "%d de %d" % [may_dark, may])
 	check("Las salas que nunca se apagan siguen con luz", never_dark_lit)
 	check("Las plantas 2 y 3, iguales en las cuatro", upper.apacible == upper.equilibrada and upper.equilibrada == upper.desafiante and upper.desafiante == upper.pesadilla)
 	var file := FileAccess.open("res://evidence/office_dark_test.json", FileAccess.WRITE)
