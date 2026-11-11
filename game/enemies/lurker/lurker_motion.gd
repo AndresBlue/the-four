@@ -39,8 +39,10 @@ const HEADING_RATE := 3.0
 const TURN_RATE := 4.0
 const HANG_RATE := 0.5
 ## Anchor to the lowest point of her trunk along +Y (tools/dev/lurker_depth_probe.gd
-## measured 0.695 crawling on a ceiling; her elbows hang lower, to 1.36).
-const BODY_DEPTH := 0.7
+## measured 0.695 crawling on a ceiling at lurker_visual size 1.35; her elbows
+## hang lower, to 1.36). Drawn at 1.62 since the visual pass, the probe's
+## trunk reaches 0.764 (crawl; her elbows 1.35).
+const BODY_DEPTH := 0.77
 ## Kept between her lowest point and whatever is under her.
 const HEAD_CLEAR := 0.25
 const RAY_EVERY := 0.25
@@ -488,6 +490,12 @@ func pace_now() -> float:
 ## Whether her pace now goes in bursts (BURST_SPEED).
 func in_bursts() -> bool:
 	return watched and not unseen and not paused and pace >= BURST_FROM and surface()
+
+## The last DASH_SOON of a stillness with a way to go: she presses down for it
+## (lurker_visual.crouch; drawing only).
+const DASH_SOON := 0.12
+func dash_soon() -> bool:
+	return in_bursts() and not bursting and burst_clock < DASH_SOON and not legs.is_empty()
 
 ## Her bursts' clock: a short stillness first when she is first watched (no
 ## draw from rng then, so her other draws stay as they were).

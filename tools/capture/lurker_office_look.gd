@@ -64,6 +64,8 @@ func run() -> void:
 	await across(other, 5.0, false, "luz")
 	# Her ink near and far, the torch on.
 	await ink(big)
+	# Still on the ceiling 3 m off, staring: her tics.
+	await still(big)
 	# Scared, then fleeing.
 	await scared(big)
 	level.queue_free()
@@ -197,6 +199,17 @@ func ink(room: Dictionary) -> void:
 	look(far, lurker.global_position)
 	await wait(1.0)
 	await save("tinta_lejos")
+
+func still(room: Dictionary) -> void:
+	var f := frame_of(room)
+	var centre: Vector3 = f[0]
+	var along: Vector3 = f[1]
+	torch(true)
+	var eye := centre - along * 1.5 + Vector3.UP * EYE
+	lurker.place_over(centre + along * 1.3, eye)
+	look(eye, lurker.global_position)
+	await wait(0.5)
+	await film("quieta", 20, 3)
 
 func scared(room: Dictionary) -> void:
 	var f := frame_of(room)

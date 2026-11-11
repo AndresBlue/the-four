@@ -672,6 +672,7 @@ func show_body() -> void:
 	# Through a grille or a tile her hands stay on (spec_lurker_rebuild 3.7).
 	var on_surface: bool = (motion.clinging() if control == "ai" and motion != null else net_flags & Flag.SURFACE != 0)
 	visual.crawling = on_surface
+	visual.crouch = control == "ai" and motion != null and motion.dash_soon()
 	var tray: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.TRAY) if control == "ai" and motion != null and motion.surface() else net_flags & Flag.TRAY != 0
 	var band: bool = (int(shell.patches[motion.state.patch].kind) == SHELL.Kind.BAND) if control == "ai" and motion != null and motion.surface() else net_flags & Flag.BAND != 0
 	visual.cling = CLING_TRAY if tray else CLING_BAND if band else CLING_CHANNEL

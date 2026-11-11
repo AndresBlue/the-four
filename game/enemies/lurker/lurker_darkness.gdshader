@@ -23,6 +23,13 @@ uniform float vapour = 0.0;
 // The face, in the world, and how wide a hole the dark leaves round it.
 uniform vec3 face = vec3(0.0, -100.0, 0.0);
 uniform float face_clear = 0.17;
+// More of the mass (lurker_visual.gd): its shoulders, so the arms come out of
+// the dark instead of off a ball, its neck, so the face comes out of it too,
+// and the tail it drags when it dashes. Each
+// a segment as wide as `thickness` times its share; a share of 0 is none.
+uniform vec3 roots_a[9];
+uniform vec3 roots_b[9];
+uniform float roots_w[9];
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 
 varying vec3 world_vertex;
@@ -58,9 +65,15 @@ float dark(vec3 p, float t, vec3 eye, vec3 centre) {
 	float n = noise(p * 6.0 + stir * 2.4 + vec3(0.0, -t * 0.45, 0.0)) * 0.6
 	        + noise(p * 14.0 + stir * 3.2 - vec3(t * 0.3)) * 0.4;
 	float r = segment(p, axis_a, axis_b) / thickness;
+	for (int k = 0; k < 9; k++) {
+		if (roots_w[k] > 0.0) r = min(r, segment(p, roots_a[k], roots_b[k]) / (thickness * roots_w[k]));
+	}
 	float ink = smoothstep(1.0, 0.84, r + (n - 0.5) * 1.15);
 	float wisps = smoothstep(1.7, 1.15, r + (n - 0.5) * 1.8) * smoothstep(0.52, 0.72, n);
-	float rags = smoothstep(2.6, 1.0, r) * smoothstep(0.5, 0.8, n);
+	// Rags with an edge, near the body: soft and wide they read as a vignette
+	// round her, and through soft holes a torch's bright spot as a glowing
+	// smoke. They only darken.
+	float rags = smoothstep(1.9, 1.15, r + (n - 0.5) * 0.9) * smoothstep(0.48, 0.56, n);
 	float d = mix(max(ink, wisps * 0.45), rags, vapour);
 	float clear = face_clear > 0.0 ? smoothstep(face_clear * 0.55, face_clear, segment(p, face, eye)) : 1.0;
 	// thinning out before the sphere it is drawn in, so its edge never shows

@@ -47,7 +47,7 @@ const RUNNING := 1.8
 const PROBES := [70.0, 46.0, 32.0, 23.0, 16.0, 10.0, 4.0, -12.0, -38.0, -64.0, -86.0]
 ## The share of an arm's reach at which a hold sits best, and the most of it
 ## an arm ever uses: never straight.
-const IDEAL := 0.66
+const IDEAL := 0.58
 const ARM_SPAN := 0.88
 ## How the fingers lie on a hold, as in the picture: the palm close over it,
 ## the fingers spread out along it and only their ends bent down, the claws
@@ -135,6 +135,20 @@ var eyes: Array[int] = []
 ## Where the head is turned, in the world, as it eases towards where it wants.
 var head_turn := Quaternion.IDENTITY
 var head_turned := false
+## A tic of the head on top of where it looks (lurker_visual.gd sets it): not
+## eased, so it snaps round in a frame or two.
+var tic_head := Quaternion.IDENTITY
+## The jaw drops when what it stares at is nearer than JAW_NEAR metres.
+const JAW_NEAR := 4.0
+const JAW_OPEN := 0.45
+var jaw := -1
+var jaw_open := 0.0
+## Each elbow's plane turned its own way round the line from shoulder to hand
+## (radians), and swaying slowly about it: no two arms alike, no scaffold of
+## parallel right angles.
+const PLANE := {"a.L": 0.5, "a.R": -0.4, "b.L": 0.8, "c.R": -0.7, "d.L": 0.25, "e.R": -0.85, "f.L": 0.6}
+const SWAY := 0.14
+var sway_time := 0.0
 var elbow_ball := SphereShape3D.new()
 
 
@@ -143,12 +157,16 @@ func _setup(skeleton: Skeleton3D) -> void:
 	neck = skeleton.find_bone("neck")
 	head = skeleton.find_bone("head")
 	eyes = [skeleton.find_bone("eye.L"), skeleton.find_bone("eye.R")]
+	jaw = skeleton.find_bone("jaw")
 	for limb in LIMBS:
 		var side: String = limb.substr(2, 1)
 		var sfx: String = "_" + limb
 		var habit: Vector2 = HABIT[limb]
 		var entry := {
 			"name": limb, "group": GROUP[limb], "habit": habit.x, "pace": habit.y,
+			"plane": PLANE[limb], "phase": float(LIMBS.find(limb)) * 1.7,
+			# where its shoulder and elbow were drawn (world), for her ink
+			"shoulder_at": Vector3.INF, "elbow_at": Vector3.INF,
 			# mirrored bones turn the other way about their Z axis
 			"mirror": -1.0 if side == "R" else 1.0,
 			"upper": skeleton.find_bone("upperarm" + sfx),
@@ -244,6 +262,7 @@ func _process_modification_with_delta(delta: float) -> void:
 	var skeleton := get_skeleton()
 	if skeleton == null or delta <= 0.0: return
 	if limbs.is_empty(): _setup(skeleton)
+	sway_time += delta
 	var xf := skeleton.global_transform
 	var basis := xf.basis.orthonormalized()
 	size = xf.basis.get_scale().x
@@ -422,7 +441,7 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	var along: Vector3 = span.normalized()
 	var side: Vector3 = pole - along * pole.dot(along)
 	if side.length_squared() < 1e-8: side = along.cross(Vector3.RIGHT)
-	side = side.normalized()
+	side = side.normalized().rotated(along, float(limb.plane) + SWAY * sin(sway_time * 0.45 + float(limb.phase)))
 	var x: float = (a * a - b * b + d * d) / (2.0 * d)
 	var h: float = sqrt(maxf(a * a - x * x, 0.0))
 	# the elbow where the knees want it, unless that puts the arm through a
@@ -432,6 +451,8 @@ func _reach(limb: Dictionary, skeleton: Skeleton3D, xf: Transform3D, basis: Basi
 	var elbow_turn: float = _clear_elbow(limb, xf, s, along * x, side, h, along, s + along * d, space)
 	var elbow: Vector3 = s + along * x + side.rotated(along, elbow_turn) * h
 	var tip: Vector3 = s + along * d
+	limb.shoulder_at = xf * s
+	limb.elbow_at = xf * elbow
 	limb.miss = tip.distance_to(t) * size if held and not limb.swing else 0.0
 	var y1: Vector3 = (elbow - s).normalized()
 	var y2: Vector3 = (tip - elbow).normalized()
@@ -620,8 +641,13 @@ func _look(skeleton: Skeleton3D, xf: Transform3D, delta: float) -> void:
 	var wanted_turn := (frame * upright.basis.orthonormalized()).get_rotation_quaternion()
 	head_turn = head_turn.slerp(wanted_turn, 1.0 - exp(-TURN * delta)) if head_turned else wanted_turn
 	head_turned = true
-	upright.basis = frame.inverse() * Basis(head_turn)
+	upright.basis = frame.inverse() * Basis(head_turn) * Basis(tic_head)
 	skeleton.set_bone_global_pose(head, upright)
+	# the jaw dropping as it stares at what is near
+	var near: bool = (xf * upright.origin).distance_to(look_point) < JAW_NEAR and grips.is_empty()
+	jaw_open = move_toward(jaw_open, 1.0 if near else 0.0, delta * (1.5 if near else 3.0))
+	if jaw >= 0 and jaw_open > 0.0:
+		skeleton.set_bone_pose_rotation(jaw, skeleton.get_bone_pose_rotation(jaw) * Quaternion(Vector3.RIGHT, JAW_OPEN * jaw_open))
 	for eye in eyes:
 		if eye < 0: continue
 		var pose := skeleton.get_bone_global_pose(eye)

@@ -21,8 +21,9 @@ signal footfall(point: Vector3, strength: float, normal: Vector3)
 @export var cling := 0.0
 ## The rags of vapour round the ink: how thick.
 @export var gloom := 4.0
-## How much bigger than it was built it is shown.
-@export var size := 1.35
+## How much bigger than it was built it is shown: 1.35 read in the offices as
+## a blot half a metre wide with sticks for arms (the visual pass, 1.2 times).
+@export var size := 1.62
 var velocity := Vector3.ZERO
 ## Where the head and the eyes turn; INF follows the camera that is drawing.
 var look_point := Vector3.INF
@@ -53,11 +54,46 @@ var shown_origin := Vector3.ZERO
 var lag_velocity := Vector3.ZERO
 var smoothing := false
 var snap := true
+## Her presence (the visual pass): the ink dragged behind her when she dashes
+## and catching up (TRAIL_CATCH a second, at most TRAIL_MOST behind, a tail
+## of rags behind that); her body pressed down for a moment before a dash
+## (`crouch`, lurker.gd sets it); still, a tic of the head held a while and a
+## shudder now and then, never on a beat; and her torso turned towards what
+## she looks at when her neck will not take her face round (from TORSO_FROM
+## off her heading, at most TORSO_MOST more). Drawing only.
+const TRAIL_CATCH := 7.0
+const TRAIL_MOST := 0.55
+const CROUCH := 0.07
+## 20 to 40 degrees.
+const TIC := Vector2(0.349, 0.698)
+const TIC_HOLD := Vector2(0.6, 1.8)
+const TIC_GAP := Vector2(1.2, 3.8)
+const TIC_SNAP := 14.0
+const SHUDDER := 0.012
+const TORSO_FROM := 1.35
+const TORSO_MOST := 0.8
+## The ink round each shoulder and up the neck: a share of the trunk's.
+const SHOULDER := 0.24
+const NECK := 0.32
+const TORSO_RATE := 5.0
+var crouch := false
+var crouched := 0.0
+var trail_at := Vector3.INF
+var tic_rng := RandomNumberGenerator.new()
+var tic_clock := 1.5
+var tic_goal := 0.0
+var tic_angle := 0.0
+var tic_axis := Vector3.BACK
+var shudder_left := 0.0
+var shudder_clock := 3.0
+var torso_yaw := 0.0
+var model: Node3D
 
 
 func _ready() -> void:
-	var model: Node3D = get_node("Model")
+	model = get_node("Model")
 	model.scale = Vector3.ONE * size
+	tic_rng.randomize()
 	skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
 	animator = model.find_children("*", "AnimationPlayer", true, false)[0]
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
@@ -70,11 +106,11 @@ func _ready() -> void:
 	limbs.footfall.connect(func(point, strength, normal): footfall.emit(point, strength, normal))
 	skeleton.add_child(limbs)
 	limbs.hands = crawling
-	ink = fog("Ink", 0.95 * size, 0.24 * size, 40.0, 0.0, 0.17 * size)
+	ink = fog("Ink", 0.95 * size, 0.2 * size, 40.0, 0.0, 0.17 * size)
 	# Tighter and darker than it was: 0.46 thick in a sphere of 1.0, its thin
 	# rags reached 1.6 m and read on a lit wall as a grey cloud of smoke
 	# round her, not as her darkness.
-	vapour = fog("Vapour", 0.8 * size, 0.28 * size, gloom, 1.0, 0.17 * size)
+	vapour = fog("Vapour", 0.6 * size, 0.22 * size, gloom, 1.0, 0.17 * size)
 	animator.play("idle")
 
 
@@ -173,15 +209,93 @@ func _process(delta: float) -> void:
 	limbs.cling = cling
 	var camera := get_viewport().get_camera_3d()
 	limbs.look_point = look_point if look_point != Vector3.INF else (camera.global_position if camera else Vector3.INF)
+	pose_body(delta)
 	var xf := skeleton.global_transform
 	var front := xf * (skeleton.get_bone_global_pose(body_bone) * Vector3(0.0, 0.2, 0.0))
 	var back := xf * (skeleton.get_bone_global_pose(abdomen_bone) * Vector3(0.0, 0.14, 0.0))
 	var head := xf * (skeleton.get_bone_global_pose(head_bone) * Vector3(0.0, 0.06, 0.1))
 	var middle := (front + back) * 0.5
+	# The ink lags behind a dash and catches up.
+	if trail_at == Vector3.INF or delta <= 0.0 or middle.distance_to(trail_at) > 2.0: trail_at = middle
+	trail_at = trail_at.lerp(middle, 1.0 - exp(-TRAIL_CATCH * delta))
+	var drag := trail_at - middle
+	if drag.length() > TRAIL_MOST * size / 1.35: drag = drag.normalized() * TRAIL_MOST * size / 1.35
+	# The shoulders in the ink, thinning at once so the arms come out of it
+	# sharp (from the hands' modifier, a frame old); the neck, so the face
+	# comes out of the mass; and the tail of rags behind a dash. The vapour
+	# takes the neck and the tail, not the arms.
+	var roots_a := PackedVector3Array()
+	var roots_b := PackedVector3Array()
+	var ink_w := PackedFloat32Array()
+	for limb in limbs.limbs:
+		var shoulder: Vector3 = limb.shoulder_at
+		var elbow: Vector3 = limb.elbow_at
+		var on: bool = crawling and shoulder != Vector3.INF
+		roots_a.append(shoulder if on else Vector3.ZERO)
+		roots_b.append(shoulder.lerp(elbow, 0.15) if on else Vector3.ZERO)
+		ink_w.append(SHOULDER if on else 0.0)
+	roots_a.resize(7)
+	roots_b.resize(7)
+	ink_w.resize(7)
+	var vapour_w := PackedFloat32Array()
+	vapour_w.resize(7)
+	roots_a.append(front)
+	roots_b.append(front.lerp(head, 0.8))
+	ink_w.append(NECK)
+	vapour_w.append(NECK)
+	roots_a.append(back + drag * 0.8)
+	roots_b.append(back + drag * 2.0)
+	var tail := 0.5 if drag.length() > 0.02 else 0.0
+	ink_w.append(tail)
+	vapour_w.append(tail)
 	for cloud in [ink, vapour]:
-		cloud.global_position = middle
+		cloud.global_position = middle + drag * 0.6
 		var material := cloud.material_override as ShaderMaterial
-		material.set_shader_parameter("axis_a", front)
-		material.set_shader_parameter("axis_b", back)
+		material.set_shader_parameter("axis_a", front + drag * 0.3)
+		material.set_shader_parameter("axis_b", back + drag)
 		material.set_shader_parameter("face", head)
+		material.set_shader_parameter("roots_a", roots_a)
+		material.set_shader_parameter("roots_b", roots_b)
+		material.set_shader_parameter("roots_w", ink_w if cloud == ink else vapour_w)
 	(vapour.material_override as ShaderMaterial).set_shader_parameter("density", gloom)
+
+
+## Her body as she holds still and as she goes (drawing only, on the Model):
+## turned towards what she looks at past what her neck can do, pressed down
+## before a dash, a shudder; and the tic of her head handed to the hands'
+## modifier. Her capture (grips held) has none of it.
+func pose_body(delta: float) -> void:
+	var capture: bool = not limbs.grips.is_empty()
+	var still: bool = limbs.velocity.length() < 0.1 and not capture
+	# The head's tic: snapped round, held, snapped back; drawn, never periodic.
+	tic_clock -= delta
+	if tic_clock <= 0.0:
+		if tic_goal != 0.0 or not still:
+			tic_goal = 0.0
+			tic_clock = tic_rng.randf_range(TIC_GAP.x, TIC_GAP.y) if still else 0.4
+		else:
+			tic_goal = tic_rng.randf_range(TIC.x, TIC.y) * (1.0 if tic_rng.randf() < 0.5 else -1.0)
+			tic_axis = Vector3.BACK if tic_rng.randf() < 0.6 else Vector3.UP
+			tic_clock = tic_rng.randf_range(TIC_HOLD.x, TIC_HOLD.y)
+	if not still: tic_goal = 0.0
+	tic_angle = move_toward(tic_angle, tic_goal, TIC_SNAP * delta)
+	limbs.tic_head = Quaternion(tic_axis, tic_angle)
+	# A shudder through her, now and then while still.
+	shudder_clock -= delta
+	if shudder_clock <= 0.0:
+		shudder_clock = tic_rng.randf_range(2.0, 6.0)
+		if still: shudder_left = tic_rng.randf_range(0.15, 0.3)
+	shudder_left = maxf(0.0, shudder_left - delta)
+	var shake := Vector3.ZERO
+	if shudder_left > 0.0: shake = Vector3(tic_rng.randf() - 0.5, tic_rng.randf() - 0.5, tic_rng.randf() - 0.5) * 2.0 * SHUDDER * size
+	# Pressed down a moment before she dashes.
+	crouched = move_toward(crouched, 1.0 if crouch and not capture else 0.0, delta * 12.0)
+	# Her torso round to what she stares at once her neck runs out.
+	var goal := 0.0
+	if limbs.look_point != Vector3.INF and not capture:
+		var to: Vector3 = global_basis.inverse() * (limbs.look_point - global_position)
+		var off := atan2(to.x, to.z)
+		goal = clampf(signf(off) * maxf(0.0, absf(off) - TORSO_FROM), -TORSO_MOST, TORSO_MOST)
+	torso_yaw = lerpf(torso_yaw, goal, 1.0 - exp(-TORSO_RATE * delta))
+	var scaled := Vector3(size, size * (1.0 - 0.08 * crouched), size)
+	model.transform = Transform3D(Basis(Vector3.UP, torso_yaw) * Basis.from_scale(scaled), Vector3.DOWN * CROUCH * size * crouched + shake)
