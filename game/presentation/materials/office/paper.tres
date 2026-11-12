@@ -4,9 +4,9 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/flat_color = Color(0.656, 0.64, 0.584, 1)
-shader_parameter/albedo = Color(0.664, 0.648, 0.592, 1)
-shader_parameter/variation_color = Color(0.608, 0.584, 0.512, 1)
+shader_parameter/flat_color = Color(0.6, 0.575, 0.5, 1)
+shader_parameter/albedo = Color(0.608, 0.582, 0.505, 1)
+shader_parameter/variation_color = Color(0.55, 0.52, 0.44, 1)
 shader_parameter/roughness = 0.9
 shader_parameter/metallic = 0.0
 shader_parameter/finish = 0

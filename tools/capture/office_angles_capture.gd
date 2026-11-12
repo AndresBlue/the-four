@@ -138,6 +138,9 @@ func frames(room: Dictionary) -> Array:
 	out.append([portal + inward * 0.5 + side * (width * 0.2) + up, centre + inward * (depth * 0.3) + Vector3(0, 0.35, 0)])
 	return out
 
+## --types=a,b: only those types (their files' names, slug()).
+var only := PackedStringArray()
+
 func run() -> void:
 	level = load("res://game/app/hotel.tscn").instantiate()
 	root.add_child(level)
@@ -148,6 +151,7 @@ func run() -> void:
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
 		if argument.begins_with("--prefix="): out_dir = "res://evidence/rediseno/" + argument.trim_prefix("--prefix=")
+		if argument.begins_with("--types="): only = argument.trim_prefix("--types=").split(",")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	level.settings.values = level.settings.DEFAULTS.duplicate()
 	level.settings.set_designed(quality)
@@ -170,6 +174,7 @@ func run() -> void:
 	types.sort()
 	for type: int in types:
 		var room: Dictionary = chosen[type]
+		if not only.is_empty() and not only.has(slug(room)): continue
 		light(room, true)
 		var views := frames(room)
 		for n in views.size():
@@ -179,6 +184,7 @@ func run() -> void:
 	for kind: int in [OFFICE.OFFICE, OFFICE.OPEN_OFFICE]:
 		if not chosen.has(kind): continue
 		var room: Dictionary = chosen[kind]
+		if not only.is_empty() and not only.has(slug(room)): continue
 		light(room, false)
 		level.player.torch.visible = true
 		var views := frames(room)

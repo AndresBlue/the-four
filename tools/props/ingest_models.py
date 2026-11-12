@@ -155,6 +155,9 @@ PATCHES = {
 ## The cloth chair's roughness (green of its metal-roughness maps) raised: its
 ## cushions matt cloth, its arms and base satin plastic, not the gloss it came with.
 TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44),
+    # The wall rack: its wood lighter, and no metal in it (its map gave the wood a quarter of it).
+    ("perchero_pared_ehnri", "Scene_-_Root_baseColor.png"): (1.9, 1.8, 1.7),
+    ("perchero_pared_ehnri", "Scene_-_Root_metallicRoughness.png"): (1.0, 1.15, 0.0),
     ("silla_tela_projectkaizen", "chairobjfinal_chair_sitting_and_back_pillow_Metallic_png-chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.png"): (1.0, 2.4, 1.0),
     ("silla_tela_projectkaizen", "chairobjfinal_seat_back_Metallic-chairobjfinal_seat_back_Roughness.png"): (1.0, 2.5, 1.0),
     ("silla_tela_projectkaizen", "chairobjfinal_seat_rest_Metallic-chairobjfinal_seat_rest_Roughness.png"): (1.0, 1.6, 1.0),

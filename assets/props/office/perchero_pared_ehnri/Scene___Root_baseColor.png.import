@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c0484ycc7w4a6"
-path.s3tc="res://.godot/imported/Scene___Root_baseColor.jpg-6b0ec09f23fb134ba7d3e1d312197315.s3tc.ctex"
-path.etc2="res://.godot/imported/Scene___Root_baseColor.jpg-6b0ec09f23fb134ba7d3e1d312197315.etc2.ctex"
+uid="uid://dcgwo6uukepkq"
+path.s3tc="res://.godot/imported/Scene___Root_baseColor.png-65fcfd9e3edecfd073c4c8ae49d1d84e.s3tc.ctex"
+path.etc2="res://.godot/imported/Scene___Root_baseColor.png-65fcfd9e3edecfd073c4c8ae49d1d84e.etc2.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/props/office/perchero_pared_ehnri/Scene___Root_baseColor.jpg"
-dest_files=["res://.godot/imported/Scene___Root_baseColor.jpg-6b0ec09f23fb134ba7d3e1d312197315.s3tc.ctex", "res://.godot/imported/Scene___Root_baseColor.jpg-6b0ec09f23fb134ba7d3e1d312197315.etc2.ctex"]
+source_file="res://assets/props/office/perchero_pared_ehnri/Scene___Root_baseColor.png"
+dest_files=["res://.godot/imported/Scene___Root_baseColor.png-65fcfd9e3edecfd073c4c8ae49d1d84e.s3tc.ctex", "res://.godot/imported/Scene___Root_baseColor.png-65fcfd9e3edecfd073c4c8ae49d1d84e.etc2.ctex"]
 
 [params]
 

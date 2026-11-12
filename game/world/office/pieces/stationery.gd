@@ -83,7 +83,8 @@ static func make_paper_stack(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	KIT.sheets(p, Vector3.ZERO, Vector2(w - 0.012, d - 0.012), h, 6, maxi(3, int(h / 0.008)))
+	# Room inside its measure for its sheets to lie askew (KIT.sheets()).
+	KIT.sheets(p, Vector3.ZERO, Vector2(w - 0.06, d - 0.06), h, 6, maxi(3, int(h / 0.008)))
 	return KIT.finish(builder, p, "paper_stack", size, {"solid": false})
 
 ## A desk tray: black plastic, or wire mesh when wire, with a few sheets in it.

@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dsisdyhdk7qcw"
-path.s3tc="res://.godot/imported/Scene___Root_metallicRoughness.jpg-be8b9dd580a728b8d78778a34a474035.s3tc.ctex"
-path.etc2="res://.godot/imported/Scene___Root_metallicRoughness.jpg-be8b9dd580a728b8d78778a34a474035.etc2.ctex"
+uid="uid://dv5j2iwju44bf"
+path.s3tc="res://.godot/imported/Scene___Root_metallicRoughness.png-b62923b010e5ee70c7ffaf1801911a79.s3tc.ctex"
+path.etc2="res://.godot/imported/Scene___Root_metallicRoughness.png-b62923b010e5ee70c7ffaf1801911a79.etc2.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/props/office/perchero_pared_ehnri/Scene___Root_metallicRoughness.jpg"
-dest_files=["res://.godot/imported/Scene___Root_metallicRoughness.jpg-be8b9dd580a728b8d78778a34a474035.s3tc.ctex", "res://.godot/imported/Scene___Root_metallicRoughness.jpg-be8b9dd580a728b8d78778a34a474035.etc2.ctex"]
+source_file="res://assets/props/office/perchero_pared_ehnri/Scene___Root_metallicRoughness.png"
+dest_files=["res://.godot/imported/Scene___Root_metallicRoughness.png-b62923b010e5ee70c7ffaf1801911a79.s3tc.ctex", "res://.godot/imported/Scene___Root_metallicRoughness.png-b62923b010e5ee70c7ffaf1801911a79.etc2.ctex"]
 
 [params]
 

@@ -203,9 +203,15 @@ static func front(parts: Dictionary, key: String, back: Vector3, size: Vector2, 
 ## A stack of `count` sheets of `size` (x, z) from `base` (the middle of its
 ## underside) up to `height`, each a little askew by `pick`.
 static func sheets(parts: Dictionary, base: Vector3, size: Vector2, height: float, pick := 0, count := 4) -> void:
+	# Each lot of sheets a little askew and off the one under it, a manila
+	# folder among them now and then, so the stack shows its edges and is no slab.
 	for k in count:
-		var shift := Vector3((hash01(pick * 53 + k, 11) - 0.5) * 0.012, height * (k + 0.5) / count, (hash01(pick * 53 + k, 12) - 0.5) * 0.012)
-		block(parts, "paper", base + shift, Vector3(size.x, height / count, size.y))
+		var n := pick * 53 + k
+		var shift := Vector3((hash01(n, 11) - 0.5) * 0.024, height * (k + 0.5) / count, (hash01(n, 12) - 0.5) * 0.024)
+		var turn := Basis(Vector3.UP, (hash01(n, 13) - 0.5) * 0.14)
+		var key := "paper_manila" if hash01(n, 14) < 0.22 else "paper"
+		var grow := 0.008 if key == "paper_manila" else 0.0
+		block(parts, key, base + shift, Vector3(size.x + grow, height / count * 0.86, size.y + grow), 0.0, turn)
 
 ## Books standing along +x from `origin` (the row's left end, on its shelf,
 ## centred in depth) over `length`, `depth` deep and up to `tall` high, their

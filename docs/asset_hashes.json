@@ -2093,15 +2093,7 @@
   },
   "assets/props/office/perchero_pared_ehnri/Scene___Root.tres": {
     "bytes": 620,
-    "sha256": "8af56d57cb51289a168b903c5dfd4c33488bba1cb715811fe8b1611785fbfe44"
-  },
-  "assets/props/office/perchero_pared_ehnri/Scene___Root_baseColor.jpg": {
-    "bytes": 154774,
-    "sha256": "66cc567a81e752d817d76b7233de9d467d0ce99a1020b1fca9f7b14f7813281b"
-  },
-  "assets/props/office/perchero_pared_ehnri/Scene___Root_metallicRoughness.jpg": {
-    "bytes": 209993,
-    "sha256": "ddcbe33c3934e2ef37728c9d2da476929c9d43fc1d661df701860b2907fc0554"
+    "sha256": "0e05cd7948d45c31db0132c12ada2433920687239964080e2be2b9790cfe706f"
   },
   "assets/props/office/perchero_pared_ehnri/Scene___Root_normal.jpg": {
     "bytes": 160662,
@@ -2214,5 +2206,21 @@
   "assets/props/office/toalla_aprilpolubiec/Scene___Root.tres": {
     "bytes": 182,
     "sha256": "d6493c0c9c224672a07b0fa2931cd67ba2c346aeb5feb2214af0681e0a1bf30c"
+  },
+  "assets/props/office/perchero_pared_ehnri/Scene___Root_baseColor.png": {
+    "bytes": 1358380,
+    "sha256": "ef54f31f8aed9bd68d3303de07ae046794468a004569bff94e0e32b4f1bfcf80"
+  },
+  "assets/props/office/perchero_pared_ehnri/Scene___Root_metallicRoughness.png": {
+    "bytes": 1160206,
+    "sha256": "ed8ae0a951eb0f705ff907b8a502a3a0e535616872b6250817c9a224d4182653"
+  },
+  "assets/textures/office_rug_met452567/albedo.png": {
+    "bytes": 3442353,
+    "sha256": "86f53855843d08be8b6e617519362d00574249a5f7b092c6e56582cf2f4f6886"
+  },
+  "assets/textures/office_rug_met452567/rug.tres": {
+    "bytes": 312,
+    "sha256": "b3fe3111ca77d7d92b9156e32fcf738a9396f11570f3c1faf395c9e2b01dd880"
   }
 }

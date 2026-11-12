@@ -88,7 +88,8 @@ const CORNER_TOPS := {
 }
 ## On a desk of the lattice, from its middle, its sitter at +Z (turned for a
 ## desk facing -Z): [thing, where, how often]; the keyboard goes with the screen.
-const DESK_THINGS := [["crt", Vector3(0.3, 0.76, -0.15), 0.6], ["keyboard", Vector3(0.3, 0.76, 0.2), 0.6], ["phone", Vector3(-0.42, 0.76, 0.12), 0.75], ["tray", Vector3(-0.62, 0.76, -0.18), 0.65], ["mug", Vector3(0.65, 0.76, 0.22), 0.5], ["folders", Vector3(-0.12, 0.76, 0.15), 0.6], ["paper_stack", Vector3(-0.25, 0.76, -0.22), 0.55], ["pen_cup", Vector3(0.62, 0.76, -0.25), 0.4]]
+## Most desks end with five to eight of these (the references are full).
+const DESK_THINGS := [["crt", Vector3(0.3, 0.76, -0.15), 0.6], ["keyboard", Vector3(0.3, 0.76, 0.2), 0.6], ["phone", Vector3(-0.42, 0.76, 0.12), 0.85], ["tray", Vector3(-0.62, 0.76, -0.18), 0.75], ["mug", Vector3(0.65, 0.76, 0.22), 0.65], ["folders", Vector3(-0.12, 0.76, 0.15), 0.75], ["paper_stack", Vector3(-0.25, 0.76, -0.22), 0.75], ["pen_cup", Vector3(0.62, 0.76, -0.25), 0.6], ["ashtray", Vector3(0.05, 0.76, -0.25), 0.4]]
 ## A filing cabinet (pieces/cabinets.gd filing_cabinet(), 0.47 × 1.32 × 0.62,
 ## four drawers): a drawer's pitch, and the drawer pulled out and where it stands.
 const DRAWER_PITCH := 0.3125

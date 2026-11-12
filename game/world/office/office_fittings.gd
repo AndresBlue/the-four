@@ -31,6 +31,9 @@ const DIFFUSERS := 4
 const DIFFUSER := Vector3(0.6, 0.05, 0.6)
 ## The rug leaves this much hard floor round it, and is not laid smaller.
 const RUG_MARGIN := 0.9
+## The oriental rug's material and its picture's length over its width.
+const RUG_ORIENTAL := "res://assets/textures/office_rug_met452567/rug.tres"
+const RUG_ASPECT := 1.355
 const RUG_LEAST := 1.5
 const MAT := Vector3(1.2, 0.012, 0.8)
 const MAT_IN := 0.75
@@ -142,6 +145,16 @@ static func rug(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 	var major: float = snappedf(maxf(inner.size.x, inner.size.y) - 0.05, 0.1)
 	var minor: float = snappedf(minf(inner.size.x, inner.size.y) - 0.05, 0.1)
 	var size := Vector3(major, 0.012, minor)
+	if look == "persian" and ResourceLoader.exists(RUG_ORIENTAL):
+		# A real oriental rug (The Met 452567, public domain), aged and dimmed, its
+		# fringe cut out of its picture: as long as its proportion lets it.
+		var long := minf(major, minor * RUG_ASPECT)
+		var quad := PlaneMesh.new()
+		quad.resource_name = "rug_oriental"
+		quad.size = Vector2(long / RUG_ASPECT, long)
+		quad.material = load(RUG_ORIENTAL)
+		builder.place(node, quad, Transform3D(Basis(Vector3.UP, PI / 2 if along_x else 0.0), Vector3(inner.get_center().x, 0.006, inner.get_center().y)), false)
+		return
 	var mesh: Mesh = THINGS.rug_persian(builder, size) if look == "persian" else FIXTURES.rug(builder, size, "carpet_exec")
 	builder.place(node, mesh, Transform3D(Basis(Vector3.UP, 0.0 if along_x else PI / 2), Vector3(inner.get_center().x, 0, inner.get_center().y)))
 
