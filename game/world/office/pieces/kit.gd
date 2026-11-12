@@ -17,9 +17,12 @@ const TOP := 2.2
 const FLAT := 0.2
 ## What a front and its pull stand out from their carcass, inside the size.
 const FRONT := 0.04
-## Spines of books and binders (book_row(), binder_row()).
-const BOOK_KEYS := ["cloth_red", "cloth_green", "cloth_navy", "cardboard", "black"]
+## Spines of books and binders (book_row(), binder_row()): muted cloths
+## (maroon, bottle green, navy), raw linen, leather and old board.
+const BOOK_KEYS := ["cloth_red", "cloth_green", "cloth_navy", "linen", "leather", "cardboard", "black", "cloth_red", "leather", "cloth_navy"]
 const BINDER_KEYS := ["black", "black", "cloth_navy", "cloth_green", "plastic_beige"]
+## What lies in a pigeonhole (post_pile()): envelopes, manila and plain paper.
+const POST_KEYS := ["paper", "plastic_beige", "linen", "cardboard", "paper"]
 ## A piece's contents at variant v (0 to 2) take their picks from pick + v * VARIANT.
 const VARIANT := 1000
 
@@ -163,6 +166,16 @@ static func handle(parts: Dictionary, key: String, back: Vector3, width: float, 
 		block(parts, key, back + Vector3(x, 0.0, depth * 0.3), Vector3(0.01, 0.01, depth * 0.6))
 	block(parts, key, back + Vector3(0.0, 0.0, depth * 0.8), Vector3(width, 0.012, depth * 0.4), 0.003)
 
+## A flat mark of `size` (x, y) centred at `centre`, facing +Z turned by `turn`:
+## two triangles, for what is printed or written on a face (a line of text, a
+## label, a sheet on a board) where a box's sides would be wasted.
+static func stroke(parts: Dictionary, key: String, centre: Vector3, size: Vector2, turn := Basis.IDENTITY) -> void:
+	var a := centre + turn * Vector3(-size.x * 0.5, -size.y * 0.5, 0.0)
+	var b := centre + turn * Vector3(size.x * 0.5, -size.y * 0.5, 0.0)
+	var c := centre + turn * Vector3(size.x * 0.5, size.y * 0.5, 0.0)
+	var d := centre + turn * Vector3(-size.x * 0.5, size.y * 0.5, 0.0)
+	quad(tool_for(parts, key), a, b, c, d, turn * Vector3.BACK)
+
 ## A round knob, its back on a front face at `back`, `depth` proud.
 static func knob(parts: Dictionary, key: String, back: Vector3, radius := 0.012, depth := 0.022) -> void:
 	cylinder(parts, key, back + Vector3(0.0, 0.0, depth * 0.5), radius, depth, 10, along_z())
@@ -195,20 +208,73 @@ static func sheets(parts: Dictionary, base: Vector3, size: Vector2, height: floa
 
 ## Books standing along +x from `origin` (the row's left end, on its shelf,
 ## centred in depth) over `length`, `depth` deep and up to `tall` high, their
-## spines flush to the front (+Z); widths, heights and cloths by `pick`.
+## spines flush to the front (+Z): sets of one to seven volumes of one cloth,
+## height and depth, the dark ones with gilt bands and the light ones with a
+## label; the row may end in a book leaning on the last one or a few lying
+## flat. Widths, heights, cloths and the end by `pick`.
 static func book_row(parts: Dictionary, origin: Vector3, length: float, depth: float, tall: float, pick := 0) -> void:
+	var roll := hash01(pick, 21)
+	var ending := 0
+	if roll < 0.3 and length > tall * 0.45 + 0.25: ending = 1
+	elif roll < 0.5 and length > tall + 0.25: ending = 2
+	var reserve := 0.0
+	if ending == 1: reserve = tall * 0.45 + 0.05
+	elif ending == 2: reserve = tall * 0.85 + 0.03
 	var x := 0.0
 	var k := 0
+	var run := 0
+	var key := ""
+	var width := 0.0
+	var height := 0.0
+	var deep := 0.0
+	var marked := 0.0
 	while true:
 		var n := pick * 131 + k
-		var width := 0.02 + hash01(n, 1) * 0.035
-		if x + width > length: break
-		var height := tall * (0.72 + hash01(n, 2) * 0.28)
-		var deep := depth * (0.8 + hash01(n, 3) * 0.2)
-		var key: String = BOOK_KEYS[int(hash01(n, 4) * BOOK_KEYS.size()) % BOOK_KEYS.size()]
-		block(parts, key, origin + Vector3(x + width * 0.5, height * 0.5, (depth - deep) * 0.5), Vector3(width, height, deep), 0.002)
-		x += width + 0.002
+		if run <= 0:
+			run = 1 + int(hash01(n, 1) * hash01(n, 9) * 7.0)
+			key = BOOK_KEYS[int(hash01(n, 4) * BOOK_KEYS.size()) % BOOK_KEYS.size()]
+			width = 0.022 + hash01(n, 5) * 0.03
+			height = tall * (0.66 + hash01(n, 2) * 0.34)
+			deep = depth * (0.7 + hash01(n, 3) * 0.3)
+			marked = hash01(n, 7)
+		if x + width > length - reserve: break
+		var c := origin + Vector3(x + width * 0.5, height * 0.5, (depth - deep) * 0.5)
+		block(parts, key, c, Vector3(width, height, deep))
+		# On the spine: a set's two gilt bands, or a paper label on a light cloth.
+		var spine := c + Vector3(0.0, 0.0, deep * 0.5 + 0.0005)
+		var light: bool = key in ["linen", "cardboard"]
+		if marked < 0.55 and not light:
+			for band: float in [0.36, 0.3]:
+				stroke(parts, "gold", spine + Vector3(0.0, height * band, 0.0), Vector2(width * 0.8, 0.005))
+		elif marked < 0.8:
+			stroke(parts, "paper" if not light else "leather", spine + Vector3(0.0, height * 0.26, 0.0), Vector2(width * 0.65, minf(0.03, height * 0.12)))
+		x += width + 0.001
 		k += 1
+		run -= 1
+	var n_end := pick * 131 + 500
+	var end_key: String = BOOK_KEYS[int(hash01(n_end, 4) * BOOK_KEYS.size()) % BOOK_KEYS.size()]
+	if ending == 1:
+		# Turned about its bottom left edge until its top meets the last book.
+		var a := 0.2 + hash01(n_end, 1) * 0.25
+		var bw := 0.025 + hash01(n_end, 2) * 0.02
+		var bh := tall * (0.75 + hash01(n_end, 3) * 0.2)
+		var bd := depth * 0.85
+		var left := x + bh * sin(a)
+		if left + bw * cos(a) <= length:
+			var turn := Basis(Vector3.BACK, a)
+			block(parts, end_key, origin + Vector3(left, 0.0, (depth - bd) * 0.5) + turn * Vector3(bw * 0.5, bh * 0.5, 0.0), Vector3(bw, bh, bd), 0.0, turn)
+	elif ending == 2:
+		var y := 0.0
+		var long := tall * 0.8
+		for i in 2 + int(hash01(n_end, 5) * 3.0):
+			var m := n_end + i
+			var thick := 0.025 + hash01(m, 6) * 0.02
+			var bd := depth * (0.75 + hash01(m, 3) * 0.1)
+			var lie_key: String = BOOK_KEYS[int(hash01(m, 4) * BOOK_KEYS.size()) % BOOK_KEYS.size()]
+			# Set back by what the turn swings out of the front.
+			var c := origin + Vector3(x + 0.01 + long * 0.5 + (hash01(m, 8) - 0.5) * 0.02, y + thick * 0.5, (depth - bd) * 0.5 - long * 0.03)
+			block(parts, lie_key, c, Vector3(long * (0.85 + hash01(m, 2) * 0.15), thick, bd), 0.0, Basis(Vector3.UP, (hash01(m, 1) - 0.5) * 0.1))
+			y += thick
 
 ## Archive boxes (0.33 wide, 0.25 high, `depth` deep) side by side along +x
 ## from `origin` (left end, on the shelf, centred in depth) over `length`, a
@@ -224,14 +290,94 @@ static func box_row(parts: Dictionary, origin: Vector3, length: float, depth: fl
 
 ## Ring binders 0.075 wide every 0.08 along +x from `origin` (left end, on the
 ## shelf, centred in depth) over `length`, `tall` high, their spine label and
-## finger ring on +Z (2 mm proud); covers by `pick`.
-static func binder_row(parts: Dictionary, origin: Vector3, length: float, depth: float, tall := 0.32, pick := 0) -> void:
+## finger ring on the side `facing` (1: +Z, -1: -Z), 2 mm proud; covers by `pick`.
+static func binder_row(parts: Dictionary, origin: Vector3, length: float, depth: float, tall := 0.32, pick := 0, facing := 1.0) -> void:
+	var turn: Basis = Basis.IDENTITY if facing > 0.0 else Basis(Vector3.UP, PI)
 	for k in int(length / 0.08):
 		var key: String = BINDER_KEYS[int(hash01(pick * 89 + k, 6) * BINDER_KEYS.size()) % BINDER_KEYS.size()]
 		var c := origin + Vector3(0.04 + 0.08 * k, tall * 0.5, 0.0)
-		block(parts, key, c, Vector3(0.075, tall, depth), 0.003)
-		block(parts, "paper", c + Vector3(0.0, tall * 0.15, depth * 0.5 + 0.0005), Vector3(0.045, tall * 0.4, 0.001))
-		cylinder(parts, "metal", c + Vector3(0.0, -tall * 0.3, depth * 0.5 + 0.001), 0.012, 0.002, 8, along_z())
+		block(parts, key, c, Vector3(0.075, tall, depth))
+		stroke(parts, "paper", c + Vector3(0.0, tall * 0.15, facing * (depth * 0.5 + 0.0005)), Vector2(0.045, tall * 0.4), turn)
+		cylinder(parts, "metal", c + Vector3(0.0, -tall * 0.3, facing * (depth * 0.5 + 0.001)), 0.012, 0.002, 6, along_z())
+
+## Files along a shelf from `origin` (left end, on the shelf, centred in depth)
+## over `length`, `depth` deep and `tall` high at most, flush to the side
+## `facing` (1: +Z, -1: -Z), filling 85 to 95 % of it as an archive's shelves
+## are: runs of archive boxes spine out (each with its written label and its
+## finger hole), runs of ring binders and piles of folders lying flat; by `pick`.
+static func file_row(parts: Dictionary, origin: Vector3, length: float, depth: float, tall: float, pick := 0, facing := 1.0) -> void:
+	var turn: Basis = Basis.IDENTITY if facing > 0.0 else Basis(Vector3.UP, PI)
+	var stop := length * (0.85 + 0.1 * hash01(pick, 30))
+	var x := 0.0
+	var k := 0
+	while x < stop and k < 40:
+		var n := pick * 173 + k
+		k += 1
+		var kind := hash01(n, 31)
+		if kind < 0.55:
+			var key: String = "cardboard" if hash01(n, 33) < 0.65 else "linen"
+			var bh := minf(tall, 0.25 + 0.025 * hash01(n, 34))
+			var bd := minf(0.33, depth)
+			for i in 2 + int(hash01(n, 32) * 5.0):
+				if x + 0.1 > length: break
+				var c := origin + Vector3(x + 0.05, bh * 0.5, facing * (depth - bd) * 0.5)
+				block(parts, key, c, Vector3(0.098, bh, bd))
+				var face := c + Vector3(0.0, 0.0, facing * (bd * 0.5 + 0.0005))
+				stroke(parts, "paper", face + Vector3(0.0, bh * 0.2, 0.0), Vector2(0.07, bh * 0.32), turn)
+				for line in 3:
+					var ink := face + Vector3(-0.005 + 0.01 * hash01(n + i, 35 + line), bh * (0.3 - 0.07 * line), facing * 0.0003)
+					stroke(parts, "cloth_navy", ink, Vector2(0.03 + 0.02 * hash01(n + i, 38 + line), 0.004), turn)
+				stroke(parts, "black", face + Vector3(0.0, -bh * 0.3, 0.0), Vector2(0.032, 0.026), turn)
+				x += 0.1
+		elif kind < 0.8:
+			var count := mini(3 + int(hash01(n, 35) * 6.0), int((length - x) / 0.08))
+			if count <= 0: break
+			var bd := minf(0.29, depth)
+			binder_row(parts, origin + Vector3(x, 0.0, facing * (depth - bd) * 0.5), count * 0.08, bd, minf(0.32, tall), n, facing)
+			x += count * 0.08
+		else:
+			var wide := 0.25 + 0.04 * hash01(n, 36)
+			if x + wide > length: break
+			var fd := minf(0.31, depth)
+			var y := 0.0
+			for i in 3 + int(hash01(n, 37) * 5.0):
+				var thick := 0.006 + 0.01 * hash01(n + i, 39)
+				if y + thick > minf(tall * 0.6, 0.16): break
+				var key: String = "cardboard" if hash01(n + i, 40) < 0.6 else "paper"
+				# Swung a little, and set in by what the swing takes.
+				var a := (hash01(n + i, 41) - 0.5) * 0.08
+				var c := origin + Vector3(x + wide * 0.5, y + thick * 0.5, facing * ((depth - fd) * 0.5 - 0.012))
+				block(parts, key, c, Vector3(wide - 0.03, thick, fd - 0.012), 0.0, Basis(Vector3.UP, a))
+				y += thick
+			x += wide
+		x += 0.006
+
+## The post in one pigeonhole from `base` (the middle of its floor): two to
+## five envelopes, manila folders and sheets in a loose pile inside `room` (x
+## across, y deep, centred on `base`) and up to `high`, pushed to the side
+## `facing` (1: +Z, -1: -Z), each swung a little; by `pick`.
+static func post_pile(parts: Dictionary, base: Vector3, room: Vector2, high: float, pick := 0, facing := 1.0) -> void:
+	var y := 0.0
+	for k in 2 + int(hash01(pick, 40) * 4.0):
+		var n := pick * 61 + k
+		var kind := hash01(n, 41)
+		var flat := Vector2(0.22, 0.11)
+		if kind > 0.75: flat = Vector2(0.21, 0.297)
+		elif kind > 0.5: flat = Vector2(0.24, 0.31)
+		var key: String = POST_KEYS[int(hash01(n, 42) * POST_KEYS.size()) % POST_KEYS.size()]
+		if kind > 0.5 and kind <= 0.75: key = "cardboard"
+		flat = Vector2(minf(flat.x, room.x - 0.02), minf(flat.y, room.y - 0.02))
+		var thick := 0.003 + 0.007 * hash01(n, 43)
+		# A bundle of envelopes in one block: a fuller cell at no cost.
+		if hash01(n, 47) < 0.35: thick = 0.015 + 0.03 * hash01(n, 48)
+		if y + thick > high: break
+		var a := (hash01(n, 44) - 0.5) * 0.16
+		var reach := Vector2(flat.x * cos(a) + flat.y * absf(sin(a)), flat.x * absf(sin(a)) + flat.y * cos(a)) * 0.5
+		var slack_x := maxf(0.0, room.x * 0.5 - reach.x)
+		var slack_z := maxf(0.0, room.y * 0.5 - reach.y)
+		var c := base + Vector3((hash01(n, 45) * 2.0 - 1.0) * slack_x, y + thick * 0.5, facing * slack_z * (1.0 - 0.4 * hash01(n, 46)))
+		block(parts, key, c, Vector3(flat.x, thick, flat.y), 0.0, Basis(Vector3.UP, a))
+		y += thick
 
 ## A number in [0, 1) from `n` and `salt`, the same on every run and machine.
 static func hash01(n: int, salt := 0) -> float:

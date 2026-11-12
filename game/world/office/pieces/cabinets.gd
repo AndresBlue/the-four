@@ -80,7 +80,8 @@ static func make_sideboard(builder: Node3D, size: Vector3) -> ArrayMesh:
 		KIT.front(p, "walnut_object", Vector3(-w / 2.0 + dw * (k + 0.5), (0.08 + h - 0.03) / 2.0, zf), Vector2(dw, h - 0.11), "knob", "gold", (h - 0.11) * 0.3, false, 0.018)
 	return KIT.finish(builder, p, "sideboard", size)
 
-## A walnut bookcase open at the front. `filled` stands books on its shelves; the
+## A walnut bookcase open at the front. `filled` stands books (KIT.book_row()),
+## some shelves led by a few ring binders, on its shelves; the
 ## filled and the empty one are two pieces, with two titles.
 ## `variant` (0 to 2) gives other contents under the same title.
 static func bookcase(builder: Node3D, size: Vector3, filled: bool, variant := 0) -> ArrayMesh:
@@ -104,11 +105,21 @@ static func make_bookcase(builder: Node3D, size: Vector3, filled: bool, variant:
 	if filled:
 		for k in n:
 			var pick: int = k + variant * KIT.VARIANT
-			KIT.book_row(p, Vector3(-w / 2.0 + 0.03, 0.102 + s_gap * k, 0.004), (w - 0.06) * (0.55 + 0.45 * KIT.hash01(pick, 7)), d - 0.04, minf(0.3, s_gap - 0.052), pick)
+			var origin := Vector3(-w / 2.0 + 0.03, 0.102 + s_gap * k, 0.004)
+			var length := (w - 0.06) * (0.8 + 0.2 * KIT.hash01(pick, 7))
+			var tall := minf(0.3, s_gap - 0.052)
+			# Some shelves start with a few ring binders, their spines flush with the books'.
+			if KIT.hash01(pick, 22) < 0.35:
+				var bd := minf(0.28, d - 0.06)
+				var run := (2 + int(KIT.hash01(pick, 23) * 4.0)) * 0.08
+				KIT.binder_row(p, origin + Vector3(0.0, 0.0, (d - 0.04 - bd) * 0.5), run, bd, tall, pick)
+				origin.x += run + 0.004
+				length -= run + 0.004
+			KIT.book_row(p, origin, length, d - 0.04, tall, pick)
 	var title: String = "bookcase" if filled else "bookcase_empty"
 	return KIT.finish(builder, p, title, size)
 
-## Oak pigeonholes for the post: a grid of open cells, some with sheets of paper in them.
+## Oak pigeonholes for the post: a grid of open cells, most with a loose pile of post (KIT.post_pile()).
 ## `variant` (0 to 2) gives other contents under the same title.
 static func pigeonholes(builder: Node3D, size: Vector3, variant := 0) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("pigeonholes", size, str(variant)), func() -> ArrayMesh: return make_pigeonholes(builder, size, variant))
@@ -136,16 +147,17 @@ static func make_pigeonholes(builder: Node3D, size: Vector3, variant: int) -> Ar
 	for c in cols:
 		for r in range(1, rows):
 			KIT.block(p, "paper", Vector3(-w / 2.0 + 0.02 + cw * (c + 0.5), 0.02 + rh * r, d / 2.0 - 0.0015), Vector3(cw * 0.4, 0.01, 0.001))
+	# The post: most cells hold a loose pile, a working rack and not a new one.
 	for c in cols:
 		for r in rows:
 			var i: int = r * cols + c + variant * KIT.VARIANT
-			if KIT.hash01(i, 8) < 0.45:
+			if KIT.hash01(i, 8) < 0.87:
 				var floor_y: float = 0.02 if r == 0 else 0.02 + rh * r + 0.006
-				KIT.sheets(p, Vector3(-w / 2.0 + 0.02 + cw * (c + 0.5), floor_y, 0.02), Vector2(minf(0.21, cw - 0.04), minf(0.297, d - 0.06)), 0.01 + 0.05 * KIT.hash01(i, 9), i, 3)
+				KIT.post_pile(p, Vector3(-w / 2.0 + 0.02 + cw * (c + 0.5), floor_y, 0.004), Vector2(cw - 0.012, d - 0.012), rh - 0.06, i)
 	return KIT.finish(builder, p, "pigeonholes", size)
 
 ## A central counter of pigeonholes for the post, open to both faces: oak
-## dividers, and papers in the cells of each face.
+## dividers, and post in most cells of each face.
 ## `variant` (0 to 2) gives other contents under the same title.
 static func pigeon_counter(builder: Node3D, size: Vector3, variant := 0) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("pigeon_counter", size, str(variant)), func() -> ArrayMesh: return make_pigeon_counter(builder, size, variant))
@@ -177,6 +189,6 @@ static func make_pigeon_counter(builder: Node3D, size: Vector3, variant: int) ->
 				var shelf_y: float = 0.1 if r == 0 else 0.1 + rh * r + 0.006
 				var cell: int = r * cols + c + variant * KIT.VARIANT
 				var slot: int = cell + (100 if f > 0.0 else 0)
-				if KIT.hash01(slot, 8) < 0.4:
-					KIT.sheets(p, Vector3(-w / 2.0 + 0.04 + cw * (c + 0.5), shelf_y, f * d / 4.0), Vector2(minf(0.21, cw - 0.04), minf(0.25, d / 2.0 - 0.08)), 0.03, cell, 3)
+				if KIT.hash01(slot, 8) < 0.85:
+					KIT.post_pile(p, Vector3(-w / 2.0 + 0.04 + cw * (c + 0.5), shelf_y, f * (d / 4.0 + 0.001)), Vector2(cw - 0.012, d / 2.0 - 0.046), rh - 0.05, slot, f)
 	return KIT.finish(builder, p, "pigeon_counter", size)

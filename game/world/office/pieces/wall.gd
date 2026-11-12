@@ -99,7 +99,19 @@ static func make_directory_board(builder: Node3D, size: Vector3) -> ArrayMesh:
 		KIT.block(p, "paper", Vector3(w * 0.5 - fw - 0.05, y, -d * 0.5 + 0.026), Vector3(0.04, 0.012, 0.002))
 	return KIT.finish(builder, p, "directory_board", size, {"wall": true, "mount": 1.1, "solid": false})
 
-## A cork notice board with papers pinned to it, each placed by its hash.
+## What goes on a notice board (make_notice_board()): sheet sizes (A4 twice,
+## A5, A4 across, an index card, a memo slip, a calendar), papers and pins.
+const NOTICE_SHEETS := [Vector2(0.21, 0.297), Vector2(0.21, 0.297), Vector2(0.148, 0.21), Vector2(0.297, 0.21), Vector2(0.127, 0.076), Vector2(0.1, 0.14), Vector2(0.26, 0.38)]
+const NOTICE_PAPERS := ["paper", "paper", "paper", "linen", "plastic_beige", "cardboard"]
+const NOTICE_PINS := ["cloth_red", "cloth_navy", "cloth_green", "plastic_beige", "gold", "cloth_red"]
+## How far each sheet lies over the one before: enough for the depth
+## buffer, and twenty of them stay inside the frame's depth.
+const NOTICE_LAYER := 0.0004
+
+## A cork notice board in an oak frame, full of notices: sheets of many sizes
+## and papers, each a little askew, with typed or written lines, ruled forms
+## and a calendar, pinned with coloured pins; a loose grid of cells so they
+## overlap a little and none clumps.
 static func notice_board(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("notice_board", size), func() -> ArrayMesh: return make_notice_board(builder, size))
 
@@ -108,22 +120,73 @@ static func make_notice_board(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	var fw := 0.025
+	var fw := 0.03
 	var cw := w - 2.0 * fw
 	var ch := h - 2.0 * fw
 	frame(p, "oak_door", w, h, d, fw)
 	KIT.block(p, "cork", Vector3(0.0, h * 0.5, -d * 0.5 + 0.008), Vector3(cw, ch, 0.016))
-	var n := 6 + int(KIT.hash01(1, 14) * 4.0)
-	for k in n:
-		var sx := 0.15 + 0.06 * KIT.hash01(k, 15)
-		var sy := 0.2 + 0.08 * KIT.hash01(k, 16)
-		# The golden ratio spreads them across the board; a hash can clump them.
-		var x := lerpf(-(cw * 0.5 - sx * 0.5 - 0.02), cw * 0.5 - sx * 0.5 - 0.02, fposmod((k + 0.5) * 0.618034, 1.0))
-		var y := h * 0.5 + lerpf(-(ch * 0.5 - sy * 0.5 - 0.02), ch * 0.5 - sy * 0.5 - 0.02, KIT.hash01(k, 18))
-		var z := -d * 0.5 + 0.0165 + 0.001 * k
-		KIT.block(p, "paper", Vector3(x, y, z), Vector3(sx, sy, 0.0005), 0.0, Basis(Vector3.BACK, (KIT.hash01(k, 19) - 0.5) * 0.12))
-		KIT.cylinder(p, "cloth_red", Vector3(x, y + sy * 0.5 - 0.015, z + 0.003), 0.004, 0.005, 6, KIT.along_z())
+	var face := -d * 0.5 + 0.0162
+	var cols := maxi(2, roundi(cw / 0.24))
+	var rows := maxi(2, roundi(ch / 0.28))
+	var layer := 0
+	for r in rows:
+		for c in cols:
+			for extra in 2:
+				var n := r * cols + c + extra * 100
+				var roll := KIT.hash01(n, 14)
+				if (extra == 0 and roll < 0.08) or (extra == 1 and roll > 0.3): continue
+				var sheet: Vector2 = NOTICE_SHEETS[int(KIT.hash01(n, 15) * NOTICE_SHEETS.size()) % NOTICE_SHEETS.size()]
+				sheet = Vector2(minf(sheet.x, cw * 0.7), minf(sheet.y, ch * 0.7))
+				var a := (KIT.hash01(n, 19) - 0.5) * 0.14
+				var reach := Vector2(sheet.x * cos(a) + sheet.y * absf(sin(a)), sheet.x * absf(sin(a)) + sheet.y * cos(a)) * 0.5 + Vector2(0.008, 0.008)
+				var x := clampf(-cw * 0.5 + cw * (c + 0.2 + 0.6 * KIT.hash01(n, 16)) / cols, -cw * 0.5 + reach.x, cw * 0.5 - reach.x)
+				var y := clampf(h * 0.5 - ch * 0.5 + ch * (r + 0.2 + 0.6 * KIT.hash01(n, 18)) / rows, h * 0.5 - ch * 0.5 + reach.y, h * 0.5 + ch * 0.5 - reach.y)
+				notice(p, Vector3(x, y, face + NOTICE_LAYER * layer), sheet, a, n)
+				layer += 1
 	return KIT.finish(builder, p, "notice_board", size, {"wall": true, "mount": 1.0, "solid": false})
+
+## One sheet pinned at `centre`, turned `a` in its plane: its paper, what is on
+## it (typed lines under a heading, a hand's lines, a ruled form or a calendar
+## under its picture) and one pin, or two on a wide one; by `n`.
+static func notice(p: Dictionary, centre: Vector3, sheet: Vector2, a: float, n: int) -> void:
+	var turn := Basis(Vector3.BACK, a)
+	var key: String = NOTICE_PAPERS[int(KIT.hash01(n, 20) * NOTICE_PAPERS.size()) % NOTICE_PAPERS.size()]
+	KIT.stroke(p, key, centre, sheet, turn)
+	var ink := centre + Vector3(0.0, 0.0, 0.00015)
+	var m := minf(0.015, sheet.x * 0.1)
+	var top := sheet.y * 0.5 - m
+	var style := KIT.hash01(n, 21)
+	if sheet.y > 0.35:
+		# A calendar: its picture over a grid of seven days by five weeks.
+		var picture: String = "cloth_green" if KIT.hash01(n, 22) < 0.5 else "cloth_navy"
+		KIT.stroke(p, picture, ink + turn * Vector3(0.0, top - sheet.y * 0.2, 0.0), Vector2(sheet.x - 2.0 * m, sheet.y * 0.4), turn)
+		var grid_top := top - sheet.y * 0.46
+		var grid_h := grid_top - (-sheet.y * 0.5 + m)
+		for row in 6:
+			KIT.stroke(p, "steel_grey", ink + turn * Vector3(0.0, grid_top - grid_h * row / 5.0, 0.0), Vector2(sheet.x - 2.0 * m, 0.0015), turn)
+		for col in 8:
+			KIT.stroke(p, "steel_grey", ink + turn * Vector3(-sheet.x * 0.5 + m + (sheet.x - 2.0 * m) * col / 7.0, grid_top - grid_h * 0.5, 0.0), Vector2(0.0015, grid_h), turn)
+	elif style < 0.25 and sheet.y > 0.15:
+		# A ruled form: full rules, and one down its first column.
+		var count := int((sheet.y - 2.0 * m - 0.03) / 0.022)
+		KIT.stroke(p, "black", ink + turn * Vector3(0.0, top - 0.008, 0.0), Vector2(sheet.x * 0.5, 0.007), turn)
+		for i in count:
+			KIT.stroke(p, "steel_grey", ink + turn * Vector3(0.0, top - 0.03 - i * 0.022, 0.0), Vector2(sheet.x - 2.0 * m, 0.0015), turn)
+		KIT.stroke(p, "steel_grey", ink + turn * Vector3(-sheet.x * 0.15, top - 0.03 - (count - 1) * 0.011, 0.0), Vector2(0.0015, (count - 1) * 0.022), turn)
+	else:
+		# Typed lines under a heading, or a hand's in blue on the small ones.
+		var hand := sheet.x < 0.15 or style > 0.8
+		var pitch := 0.018 if hand else 0.012
+		var count := mini(16, int((sheet.y - 2.0 * m - 0.02) / pitch))
+		var line_ink: String = "cloth_navy" if hand else "steel_grey"
+		if not hand: KIT.stroke(p, "black", ink + turn * Vector3(-sheet.x * 0.1, top - 0.006, 0.0), Vector2(sheet.x * 0.55, 0.008), turn)
+		for i in count:
+			var long := (sheet.x - 2.0 * m) * (0.55 + 0.45 * KIT.hash01(n * 7 + i, 23))
+			KIT.stroke(p, line_ink, ink + turn * Vector3(-sheet.x * 0.5 + m + long * 0.5, top - 0.024 - i * pitch, 0.0), Vector2(long, 0.003 if hand else 0.0025), turn)
+	var pin: String = NOTICE_PINS[int(KIT.hash01(n, 24) * NOTICE_PINS.size()) % NOTICE_PINS.size()]
+	var heads: Array = [0.0] if sheet.x < 0.25 else [-sheet.x * 0.38, sheet.x * 0.38]
+	for hx: float in heads:
+		KIT.cylinder(p, pin, centre + turn * Vector3(hx, sheet.y * 0.5 - 0.012, 0.0) + Vector3(0.0, 0.0, 0.0018), 0.005, 0.003, 6, KIT.along_z())
 
 ## An open key cabinet: a steel box with hooks on a cork back, some with a key.
 static func key_cabinet(builder: Node3D, size: Vector3) -> ArrayMesh:

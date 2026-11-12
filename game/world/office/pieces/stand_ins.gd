@@ -53,7 +53,9 @@ static func make_office_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.block(p, "cloth_navy", Vector3(0, h - 0.2, -d * 0.4), Vector3(w * 0.72, 0.36, 0.07), 0.02)
 	return KIT.finish(builder, p, "office_chair", size)
 
-## Executive armchair: leather seat, tall buttoned back and arms, on five casters.
+## Executive armchair in dark leather on five casters: a deep seat cushion with
+## a rolled front, a tall back reclined a little, its face buttoned into
+## pillows (capitoné) under a head roll, and padded arms on steel loops.
 static func exec_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("exec_chair", size), func() -> ArrayMesh: return make_exec_chair(builder, size))
 
@@ -62,38 +64,79 @@ static func make_exec_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
+	# The star: five legs dropping to their casters from a hub, a gas column.
 	for k in 5:
 		var a := TAU * k / 5
-		KIT.block(p, "black", Vector3(sin(a) * w * 0.22, 0.06, cos(a) * w * 0.22), Vector3(0.05, 0.03, w * 0.44), 0.005, Basis(Vector3.UP, a))
-		KIT.cylinder(p, "black", Vector3(sin(a) * w * 0.4, 0.025, cos(a) * w * 0.4), 0.025, 0.03, 8, KIT.along_x())
-	KIT.cylinder(p, "metal", Vector3(0, 0.24, 0), 0.028, 0.36, 10)
-	KIT.block(p, "leather", Vector3(0, 0.47, 0.03), Vector3(w * 0.78, 0.1, d * 0.76), 0.03)
-	KIT.block(p, "leather", Vector3(0, h * 0.68, -d * 0.38), Vector3(w * 0.74, h * 0.52, 0.1), 0.03)
-	for r in 3:
+		var out := Vector3(sin(a), 0.0, cos(a))
+		KIT.block(p, "black", out * w * 0.22 + Vector3(0, 0.075, 0), Vector3(0.045, 0.035, w * 0.42), 0.008, Basis(Vector3.UP, a) * Basis(Vector3.RIGHT, 0.1))
+		KIT.cylinder(p, "black", out * w * 0.4 + Vector3(0, 0.025, 0), 0.025, 0.035, 8, Basis(Vector3.UP, a) * KIT.along_x())
+	KIT.cylinder(p, "black", Vector3(0, 0.09, 0), 0.05, 0.06, 10)
+	KIT.cylinder(p, "metal", Vector3(0, 0.25, 0), 0.026, 0.3, 10)
+	KIT.block(p, "black", Vector3(0, 0.405, -0.02), Vector3(0.22, 0.04, 0.24), 0.008)
+	# The seat: a cushion with eased edges, its front rolled over.
+	var seat_w := w * 0.76
+	KIT.block(p, "leather", Vector3(0, 0.465, 0.02), Vector3(seat_w, 0.1, d * 0.74), 0.04)
+	KIT.cylinder(p, "leather", Vector3(0, 0.46, 0.02 + d * 0.37 - 0.035), 0.05, seat_w - 0.06, 12, KIT.along_x())
+	# The back, in its own frame: a pivot over the seat's rear, reclined.
+	var back := Transform3D(Basis(Vector3.RIGHT, -0.14), Vector3(0, 0.52, -d * 0.27))
+	var tall := h - 0.55
+	var back_w := w * 0.78
+	KIT.block(p, "leather", back * Vector3(0, tall * 0.48, -0.025), Vector3(back_w, tall * 0.96, 0.07), 0.03, back.basis)
+	# Its face: pillows three across and four high, buttoned where they meet.
+	var pw := (back_w - 0.06) / 3.0
+	var ph := tall * 0.18
+	for r in 4:
 		for c in 3:
-			KIT.cylinder(p, "black", Vector3(-w * 0.2 + c * w * 0.2, h * 0.55 + r * h * 0.13, -d * 0.38 + 0.052), 0.008, 0.006, 6, KIT.along_z())
+			# A little over their pitch: no gap shows, only the crease of the bevels.
+			KIT.block(p, "leather", back * Vector3((c - 1) * pw, 0.06 + ph * (r + 0.5), 0.025), Vector3(pw + 0.004, ph + 0.004, 0.05), 0.024, back.basis)
+	for r in range(1, 4):
+		for c: float in [-0.5, 0.5]:
+			KIT.cylinder(p, "black", back * Vector3(c * pw, 0.06 + ph * r, 0.046), 0.007, 0.008, 6, back.basis * KIT.along_z())
+	KIT.cylinder(p, "leather", back * Vector3(0, tall * 0.88, 0.005), 0.045, back_w - 0.04, 12, back.basis * KIT.along_x())
+	# The arms: a padded rest on a steel loop from the seat's side.
 	for s: float in [-1.0, 1.0]:
-		KIT.block(p, "leather", Vector3(s * w * 0.42, 0.64, 0.0), Vector3(0.07, 0.07, d * 0.6), 0.02)
-		KIT.block(p, "black", Vector3(s * w * 0.42, 0.56, 0.05), Vector3(0.03, 0.1, 0.04))
+		var x := s * (w * 0.5 - 0.05)
+		KIT.block(p, "leather", Vector3(x, 0.665, 0.02), Vector3(0.075, 0.05, d * 0.6), 0.022)
+		for z: float in [-0.12, 0.13]:
+			KIT.block(p, "metal", Vector3(x, 0.565, z), Vector3(0.022, 0.19, 0.03), 0.005)
+		KIT.block(p, "metal", Vector3(x, 0.47, 0.005), Vector3(0.022, 0.022, 0.28), 0.005)
+		KIT.block(p, "metal", Vector3((x + s * seat_w * 0.5) * 0.5, 0.47, 0.005), Vector3(absf(x) - seat_w * 0.5 + 0.01, 0.02, 0.04))
 	return KIT.finish(builder, p, "exec_chair", size)
 
-## Walnut visitor chair with a leather seat and back, for the desks and the boardroom.
+## Walnut visitor chair with an upholstered leather seat and back, for the desks
+## and the boardroom: square legs, the back ones raked into the back posts,
+## side and front rails, a padded back between the posts under a top rail,
+## and wooden arms on turned supports.
 static func visitor_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("visitor_chair", size), func() -> ArrayMesh: return make_visitor_chair(builder, size))
 
 static func make_visitor_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var p := KIT.begin()
 	var w := size.x
+	var h := size.y
 	var d := size.z
-	for sx: float in [-1.0, 1.0]:
-		for sz: float in [-1.0, 1.0]:
-			KIT.block(p, "walnut_object", Vector3(sx * (w / 2 - 0.03), 0.22, sz * (d / 2 - 0.03)), Vector3(0.035, 0.44, 0.035), 0.004)
-	KIT.block(p, "leather", Vector3(0, 0.47, 0.0), Vector3(w - 0.04, 0.07, d - 0.06), 0.015)
+	var lx := w / 2 - 0.035
+	var seat := 0.43
+	var rake := Basis(Vector3.RIGHT, -0.08)
 	for s: float in [-1.0, 1.0]:
-		KIT.block(p, "walnut_object", Vector3(s * (w / 2 - 0.03), 0.66, -d / 2 + 0.035), Vector3(0.035, 0.44, 0.035), 0.004)
-		KIT.block(p, "walnut_object", Vector3(s * (w / 2 - 0.03), 0.66, 0.0), Vector3(0.05, 0.03, d - 0.06), 0.006)
-		KIT.block(p, "walnut_object", Vector3(s * (w / 2 - 0.03), 0.57, d / 2 - 0.05), Vector3(0.03, 0.15, 0.03), 0.004)
-	KIT.block(p, "leather", Vector3(0, 0.7, -d / 2 + 0.04), Vector3(w - 0.1, 0.3, 0.04), 0.012)
+		# Front leg, and the back leg and its post leaning back.
+		KIT.block(p, "walnut_object", Vector3(s * lx, seat * 0.5, d / 2 - 0.05), Vector3(0.036, seat, 0.036), 0.005)
+		KIT.block(p, "walnut_object", Vector3(s * lx, seat * 0.5, -d / 2 + 0.07), Vector3(0.036, seat, 0.036), 0.005)
+		KIT.block(p, "walnut_object", Vector3(s * lx, (seat + h - 0.01) * 0.5, -d / 2 + 0.07 - 0.0165), Vector3(0.034, h - 0.01 - seat, 0.034), 0.005, rake)
+		# Rails: the seat's side, the stretcher low down.
+		KIT.block(p, "walnut_object", Vector3(s * lx, seat - 0.03, 0.0), Vector3(0.026, 0.06, d - 0.12), 0.004)
+		KIT.block(p, "walnut_object", Vector3(s * lx, 0.14, 0.0), Vector3(0.02, 0.025, d - 0.12), 0.004)
+		# The arm: a rest from the post to the front, on a support over the front leg.
+		KIT.block(p, "walnut_object", Vector3(s * lx, 0.655, 0.01), Vector3(0.05, 0.028, d - 0.11), 0.01)
+		KIT.block(p, "walnut_object", Vector3(s * lx, (seat + 0.65) * 0.5, d / 2 - 0.07), Vector3(0.03, 0.65 - seat, 0.03), 0.006, Basis(Vector3.RIGHT, 0.12))
+	KIT.block(p, "walnut_object", Vector3(0, seat - 0.03, d / 2 - 0.05), Vector3(2 * lx, 0.06, 0.026), 0.004)
+	KIT.block(p, "walnut_object", Vector3(0, seat - 0.03, -d / 2 + 0.07), Vector3(2 * lx, 0.06, 0.026), 0.004)
+	# The seat: a cushion over the rails, eased all round.
+	KIT.block(p, "leather", Vector3(0, seat + 0.04, 0.01), Vector3(2 * lx - 0.02, 0.08, d - 0.1), 0.03)
+	# The back: a pad between the posts, leaning with them, under a top rail.
+	var pad := Transform3D(rake, Vector3(0, seat + 0.07, -d / 2 + 0.07))
+	KIT.block(p, "leather", pad * Vector3(0, (h - seat - 0.12) * 0.5, 0.0), Vector3(2 * lx - 0.04, h - seat - 0.17, 0.055), 0.022, rake)
+	KIT.block(p, "walnut_object", pad * Vector3(0, h - seat - 0.1, -0.012), Vector3(2 * lx, 0.035, 0.03), 0.006, rake)
 	return KIT.finish(builder, p, "visitor_chair", size)
 
 ## Desk lamp: a banker's brass lamp with a green shade, or a black arm lamp.
@@ -132,7 +175,14 @@ static func make_floor_lamp(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.cylinder(p, "lamp_off", Vector3(0, h - 0.315, 0), w * 0.5 - 0.03, 0.004, 16)
 	return KIT.finish(builder, p, "floor_lamp", size)
 
-## Vending machine of dark steel with a screen window, for the break room.
+## What a snack machine sells, by column pair and row: bags and bars in muted
+## colours (make_vending_machine()).
+const SNACKS := ["cloth_red", "plastic_beige", "cloth_navy", "gold", "cloth_green", "cardboard", "paint_red", "leather"]
+
+## Snack machine of dark steel, for the break room: an open window over six
+## trays of bags and bars (two deep, a column sold out here and there, a price
+## tag under each), a steel panel at the side with its display, its keypad, the
+## coin slot and return and the instructions card, and the pick-up flap below.
 static func vending_machine(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("vending_machine", size), func() -> ArrayMesh: return make_vending_machine(builder, size))
 
@@ -141,17 +191,79 @@ static func make_vending_machine(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	KIT.block(p, "steel_dark", Vector3(0, h / 2, -0.02), Vector3(w, h, d - 0.04), 0.01)
-	KIT.block(p, "black", Vector3(-0.1, 1.05, d / 2 - 0.035), Vector3(w * 0.62, 1.15, 0.03))
-	KIT.block(p, "screen", Vector3(-0.1, 1.05, d / 2 - 0.018), Vector3(w * 0.56, 1.05, 0.004))
-	for r in 5:
-		var key: String = "cloth_red" if r % 2 == 0 else "plastic_beige"
-		KIT.block(p, key, Vector3(-0.1, 0.62 + r * 0.21, d / 2 - 0.011), Vector3(w * 0.5, 0.05, 0.006))
-	KIT.block(p, "metal", Vector3(w / 2 - 0.12, 1.15, d / 2 - 0.03), Vector3(0.14, 0.5, 0.04), 0.004)
-	for k in 6:
-		KIT.block(p, "black", Vector3(w / 2 - 0.12, 1.33 - k * 0.07, d / 2 - 0.008), Vector3(0.06, 0.03, 0.006))
-	KIT.block(p, "black", Vector3(w / 2 - 0.12, 0.82, d / 2 - 0.008), Vector3(0.03, 0.06, 0.006))
-	KIT.block(p, "black", Vector3(-0.1, 0.25, d / 2 - 0.03), Vector3(w * 0.5, 0.18, 0.04))
+	# The cabinet's face, the window's hollow behind it and the window's edges.
+	var front := d / 2 - 0.04
+	var hollow := 0.2
+	var left := -w / 2 + 0.03
+	var right := w / 2 - 0.28
+	var low := h * 0.235
+	var top := h - 0.12
+	var zc := front - hollow * 0.5
+	var mx := (left + right) * 0.5
+	var my := (low + top) * 0.5
+	# The cabinet round the hollow: its body behind, the panel's column, the
+	# side, the bands over and under the window.
+	KIT.block(p, "steel_dark", Vector3(0, h / 2, (front - hollow - d / 2) * 0.5), Vector3(w, h, front - hollow + d / 2), 0.008)
+	KIT.block(p, "steel_dark", Vector3((right + w / 2) * 0.5, h / 2, zc), Vector3(w / 2 - right, h, hollow))
+	KIT.block(p, "steel_dark", Vector3((left - w / 2) * 0.5, h / 2, zc), Vector3(left + w / 2, h, hollow))
+	KIT.block(p, "steel_dark", Vector3(mx, (top + h) * 0.5, zc), Vector3(right - left, h - top, hollow))
+	KIT.block(p, "steel_dark", Vector3(mx, low * 0.5, zc), Vector3(right - left, low, hollow))
+	KIT.block(p, "black", Vector3(mx, my, front - hollow + 0.002), Vector3(right - left, top - low, 0.004))
+	# The trays: each a shelf with its price rail, and the goods two deep.
+	var rows := 6
+	var cols := 6
+	var rh := (top - low) / rows
+	var cw := (right - left) / cols
+	for r in rows:
+		var y := low + rh * r
+		KIT.block(p, "metal", Vector3(mx, y + 0.004, zc), Vector3(right - left, 0.008, hollow))
+		KIT.block(p, "black", Vector3(mx, y + 0.02, front - 0.008), Vector3(right - left, 0.024, 0.016))
+		for c in cols:
+			var x := left + cw * (c + 0.5)
+			KIT.stroke(p, "paper", Vector3(x, y + 0.02, front + 0.0005), Vector2(0.03, 0.012))
+			var n := r * 10 + c
+			if KIT.hash01(n, 60) < 0.12:
+				# Sold out: its coil shows.
+				KIT.cylinder(p, "metal", Vector3(x, y + 0.045, zc), 0.03, hollow - 0.02, 6, KIT.along_z())
+				continue
+			var key: String = SNACKS[int(KIT.hash01(r * 10 + int(c / 2.0), 61) * SNACKS.size()) % SNACKS.size()]
+			var ph := rh * (0.55 + 0.15 * KIT.hash01(r, 62))
+			var lean := Basis(Vector3.RIGHT, -0.1)
+			KIT.block(p, key, Vector3(x, y + 0.035 + ph * 0.5, front - 0.045), Vector3(cw - 0.018, ph, 0.03), 0.008, lean)
+			KIT.block(p, key, Vector3(x, y + 0.035 + ph * 0.5, front - 0.12), Vector3(cw - 0.018, ph, 0.03), 0.0, lean)
+	# The window's black gasket. No pane: clear_glass baked into a MultiMesh
+	# draws as a flat white sheet over the goods, and the goods are the point.
+	for y: float in [low, top]:
+		KIT.block(p, "black", Vector3(mx, y, front + 0.012), Vector3(right - left + 0.05, 0.025, 0.024), 0.004)
+	for x: float in [left, right]:
+		KIT.block(p, "black", Vector3(x, my, front + 0.012), Vector3(0.025, top - low - 0.025, 0.024), 0.004)
+	# The panel: display, keypad, coin slot and return, coin cup, card.
+	var px := (right + w / 2) * 0.5
+	var pw := w / 2 - right - 0.05
+	var face := front + 0.012
+	KIT.block(p, "steel_grey", Vector3(px, (h * 0.47 + top - 0.04) * 0.5, front + 0.006), Vector3(pw, top - 0.04 - h * 0.47, 0.012), 0.003)
+	var dy := top - 0.1
+	KIT.block(p, "black", Vector3(px, dy, face + 0.003), Vector3(pw * 0.7, 0.055, 0.006), 0.002)
+	KIT.stroke(p, "screen", Vector3(px, dy, face + 0.0065), Vector2(pw * 0.6, 0.035))
+	for r in 4:
+		for c in 3:
+			KIT.block(p, "plastic_beige", Vector3(px + (c - 1) * 0.045, dy - 0.08 - r * 0.04, face + 0.004), Vector3(0.032, 0.024, 0.008))
+	var cy := dy - 0.3
+	KIT.block(p, "metal", Vector3(px - 0.04, cy, face + 0.004), Vector3(0.06, 0.09, 0.008), 0.003)
+	KIT.stroke(p, "black", Vector3(px - 0.04, cy + 0.01, face + 0.0085), Vector2(0.007, 0.04))
+	KIT.knob(p, "black", Vector3(px + 0.05, cy, face), 0.014, 0.012)
+	KIT.block(p, "black", Vector3(px, cy - 0.11, face + 0.002), Vector3(0.08, 0.06, 0.004))
+	KIT.block(p, "metal", Vector3(px, cy - 0.145, face + 0.008), Vector3(0.09, 0.012, 0.016), 0.003)
+	var card_y := h * 0.47 + 0.09
+	KIT.stroke(p, "paper", Vector3(px, card_y, face + 0.0005), Vector2(pw * 0.8, 0.11))
+	for i in 5:
+		KIT.stroke(p, "steel_grey", Vector3(px - pw * 0.05, card_y + 0.035 - i * 0.017, face + 0.0008), Vector2(pw * (0.5 + 0.15 * KIT.hash01(i, 63)), 0.004))
+	# The pick-up flap under the window, and the kick strip.
+	var fy := low * 0.55
+	KIT.block(p, "black", Vector3(mx, fy, front + 0.002), Vector3(right - left - 0.08, 0.17, 0.004))
+	KIT.block(p, "steel_grey", Vector3(mx, fy + 0.005, front + 0.012), Vector3(right - left - 0.12, 0.14, 0.01), 0.003, Basis(Vector3.RIGHT, 0.08))
+	KIT.block(p, "black", Vector3(mx, fy + 0.065, front + 0.022), Vector3(right - left - 0.2, 0.015, 0.01), 0.003)
+	KIT.block(p, "black", Vector3(0, 0.03, front + 0.005), Vector3(w - 0.02, 0.06, 0.01))
 	return KIT.finish(builder, p, "vending_machine", size)
 
 ## Water cooler: a beige body with a dark water bottle on top, for the break room.

@@ -17,7 +17,8 @@ static func samples(builder: Node3D) -> Array:
 		["kitchen_wall", kitchen_wall(builder, Vector3(1.8, 0.7, 0.35))],
 	]
 
-## Steel archive shelving: grey angle iron, with boxes and binders on each shelf.
+## Steel archive shelving: grey angle iron, each shelf filled as an archive's
+## (KIT.file_row()); a row deep enough for two is filled from both faces.
 ## `variant` (0 to 2) gives other contents under the same title.
 static func archive_shelving(builder: Node3D, size: Vector3, variant := 0) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("archive_shelving", size, str(variant)), func() -> ArrayMesh: return make_archive_shelving(builder, size, variant))
@@ -47,10 +48,11 @@ static func make_archive_shelving(builder: Node3D, size: Vector3, variant: int) 
 			for b in bays:
 				var ux := -w / 2.0 + 0.0175 + bw * b
 				var i: int = s * 10 + b + variant * KIT.VARIANT
-				if KIT.hash01(i, 9) < 0.6:
-					KIT.box_row(p, Vector3(ux + 0.03, y + 0.01, 0.0), bw - 0.06, minf(0.39, d - 0.04), 0.85, i)
+				if d >= 0.6:
+					for f: float in [-1.0, 1.0]:
+						KIT.file_row(p, Vector3(ux + 0.03, y + 0.01, f * d / 4.0), bw - 0.06, d / 2.0 - 0.03, gap - 0.03, i + (100 if f < 0.0 else 0), f)
 				else:
-					KIT.binder_row(p, Vector3(ux + 0.03, y + 0.01, 0.0), bw - 0.06, minf(0.29, d - 0.06), minf(0.32, gap - 0.03), i)
+					KIT.file_row(p, Vector3(ux + 0.03, y + 0.01, 0.0), bw - 0.06, d - 0.04, gap - 0.03, i)
 	# The number on a plate at the end, where the text plate goes.
 	var py: float = minf(1.5, h - 0.2)
 	KIT.block(p, "steel_grey", Vector3(w / 2.0 - 0.005, py, 0.0), Vector3(0.002, 0.14, d - 0.004))

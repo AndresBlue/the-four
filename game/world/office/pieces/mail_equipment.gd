@@ -64,12 +64,22 @@ static func make_mail_central(builder: Node3D, size: Vector3, lit := true) -> Ar
 	# The mouth the capsules come out of, and the tray under it.
 	KIT.block(p, "black", Vector3(0, 0.24, zb + 0.001), Vector3(w - 0.14, 0.12, 0.002))
 	KIT.block(p, "steel_grey", Vector3(0, 0.17, d * 0.5 - 0.02), Vector3(w - 0.1, 0.02, 0.04), 0.003)
-	# Brass tubes: a riser, a collar at its top and an elbow into the wall.
-	for x: float in [-0.21, -0.12, 0.12, 0.21]:
-		KIT.cylinder(p, "gold", Vector3(x, (ph + h - 0.05) * 0.5, -d * 0.5 + 0.05), 0.022, h - 0.05 - ph, 10)
-		KIT.cylinder(p, "gold", Vector3(x, ph + 0.03, -d * 0.5 + 0.05), 0.03, 0.06, 10)
-		KIT.cylinder(p, "gold", Vector3(x, h - 0.05, -d * 0.5 + 0.05), 0.028, 0.03, 10)
+	# The tubes: glass risers in brass (a collar at the foot, bands up them, a
+	# cap and an elbow into the wall), a capsule waiting in some.
+	var run := h - 0.05 - ph
+	var z := -d * 0.5 + 0.05
+	for k in 4:
+		var x: float = [-0.21, -0.12, 0.12, 0.21][k]
+		# Dark glossy glass: clear_glass draws white in a baked MultiMesh.
+		KIT.cylinder(p, "screen", Vector3(x, ph + run * 0.5, z), 0.024, run, 10)
+		KIT.cylinder(p, "gold", Vector3(x, ph + 0.03, z), 0.032, 0.06, 10)
+		for b in range(1, 3):
+			KIT.cylinder(p, "gold", Vector3(x, ph + run * b / 3.0, z), 0.028, 0.025, 10)
+		KIT.cylinder(p, "gold", Vector3(x, h - 0.05, z), 0.03, 0.04, 10)
 		KIT.cylinder(p, "gold", Vector3(x, h - 0.03, -d * 0.5 + 0.025), 0.022, 0.05, 10, KIT.along_z())
+		if KIT.hash01(k, 32) < 0.5:
+			# Its brass end showing through the glass, which hides the rest.
+			KIT.cylinder(p, "gold", Vector3(x, ph + 0.14 + (run - 0.28) * KIT.hash01(k, 33), z), 0.0245, 0.012, 10)
 	return KIT.finish(builder, p, "mail_central", size, {"wall": true, "mount": 0.85, "text_plate": [Vector3(0, ph - 0.06, zb + 0.005), Vector2(w - 0.1, 0.06), Vector3(0, 0, 1)]})
 
 ## A station's receiver: a steel housing with an open bay where the capsule
