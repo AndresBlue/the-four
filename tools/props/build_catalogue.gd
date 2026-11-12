@@ -19,9 +19,10 @@ extends SceneTree
 const SOURCE := "res://source_assets/props/"
 const TARGET := "res://assets/props/hotel/"
 ## Turns that bring a model's front to +Z, where the download faces elsewhere.
-const YAW := {}
-## Downloads not in metres.
-const SCALE := {"steel_frame_shelves_01": 0.1}
+## The terminal looks along +X.
+const YAW := {"crt_terminal_ibm3278_sketchfab": -PI / 2.0}
+## Downloads not in metres (the cooler and the coat rack in centimetres).
+const SCALE := {"steel_frame_shelves_01": 0.1, "water_cooler_bottle_tboiston": 0.01, "perchero_coat_rack_whostea": 0.01}
 ## Downloads that hold several objects side by side: each is baked on its own,
 ## as <id>_<name>.res, from the glTF nodes whose name matches.
 ## Downloads the game does not use (tools/props/ingest_models.py SKIP). The

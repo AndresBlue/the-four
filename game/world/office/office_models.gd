@@ -43,6 +43,13 @@ const MODELS := {
 	"stationery": {"paths": ["res://assets/props/hotel/stationery_supplies.res"]},
 	"notepad": {"paths": ["res://assets/props/hotel/office_notepads_pad.res"]},
 	"jug": {"paths": ["res://assets/props/hotel/jug_01.res"]},
+	# On its hook only: the one off its hook stays the piece made in code.
+	"phone": {"paths": ["res://assets/props/office/rotary_phone_black_sketchfab.res"]},
+	# Baked in its own units: brought to the stand-in's height.
+	"crt": {"paths": ["res://assets/props/office/crt_terminal_ibm3278_sketchfab.res"], "height": 0.36},
+	"cooler": {"paths": ["res://assets/props/office/water_cooler_bottle_tboiston.res"]},
+	# The standing coat rack of an office's and the director's corner (office_props.gd); no stand-in.
+	"coat_stand": {"paths": ["res://assets/props/office/perchero_coat_rack_whostea.res"]},
 }
 ## The pots by key (stand_ins.gd plant_pot()).
 const POTS := {"steel_dark": Vector3(0.4, 0.38, 0.4), "ceramic": Vector3(0.2, 0.16, 0.2)}

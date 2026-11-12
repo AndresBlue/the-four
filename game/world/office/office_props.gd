@@ -49,6 +49,12 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			else:
 				piece(builder, node, STORAGE.wood_shelving(builder, Vector3(1.6, 2.0, 0.4), pick), at(0.0, 0.4))
 		"coat_rack":
+			# An office's and the director's: a bentwood coat stand in the middle of the corner.
+			var t := int(builder.building_room.get("type", -1))
+			if (t == OFFICE.OFFICE or t == OFFICE.EXEC_OFFICE) and MODELS.mesh_of(builder, "coat_stand") != null:
+				solid(builder, node, Vector3(0.42, 1.8, 0.4))
+				MODELS.put(builder, node, "coat_stand", Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 2) * TAU), at(0.0, 0.4)))
+				return true
 			# A rail of hooks on two posts: this corner turns any way (not in
 			# WALL_KINDS), so it cannot hang on a wall.
 			solid(builder, node, Vector3(1.2, 1.75, 0.4))

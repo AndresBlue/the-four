@@ -282,17 +282,21 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 |---|---|---|---|---|
 | [planta de hoja ancha y brillante, tipo anthurium o espatifilo (sin maceta)](https://polyhaven.com/a/anthurium_botany_01) | `anthurium_botany_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [calathea, planta de interior sin maceta](https://polyhaven.com/a/calathea_orbifolia_01) | `calathea_orbifolia_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
+| [terminal de pantalla verde de los 80, sin teclado](https://sketchfab.com/3d-models/b0470478089a4462afb4d5c4dd827b22) | `crt_terminal_ibm3278_sketchfab` | maxdragonn (sketchfab.com/maxdragon) | Sketchfab | CC BY 4.0 |
 | [archivador de madera de 6 cajones](https://polyhaven.com/a/vintage_wooden_drawer_01) | `fichero_vintage_wooden_drawer_01` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [taburete redondo de cuero sobre base metálica industrial](https://polyhaven.com/a/metal_stool_01) | `metal_stool_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sillón de dirección de cuero marrón y madera curvada, base giratoria](https://polyhaven.com/a/mid_century_lounge_chair) | `mid_century_lounge_chair` | Kuutti Siitonen | Poly Haven | CC0 1.0 |
 | [pachira, planta de interior (cuatro ejemplares sin maceta)](https://polyhaven.com/a/pachira_aquatica_01) | `pachira_aquatica_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
+| [perchero de pie de madera curvada](https://sketchfab.com/3d-models/coat-rack-72e821fc75d9473183a63d548959693b) | `perchero_coat_rack_whostea` | Whostea | Sketchfab | CC BY 4.0 |
 | [planta de interior en maceta de terracota](https://polyhaven.com/a/potted_plant_01) | `potted_plant_01` | Rico Cilliers | Poly Haven | CC0 1.0 |
+| [teléfono negro de disco](https://sketchfab.com/3d-models/dd6cd63f0bec4c41b5cba2855d22b29b) | `rotary_phone_black_sketchfab` | jacques_3D (sketchfab.com/jacques_3D) | Sketchfab | CC BY 4.0 |
 | [mesa redonda de madera oscura y pulida](https://polyhaven.com/a/round_wooden_table_01) | `round_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [silla giratoria de oficina de los 70 (1970s swivel office chair)](https://sketchfab.com/3d-models/old-computer-chair-a311529b1ec349c48f789bf4e1f99e89) | `silla_giratoria_old_computer_chair` | Slava Izvekov (guantanamera) | Sketchfab | CC BY 4.0 |
 | [mesa pequeña de madera, vintage](https://polyhaven.com/a/small_wooden_table_01) | `small_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sofá de cuero capitoné con marco de madera tallada](https://polyhaven.com/a/sofa_02) | `sofa_02` | Kirill Sannikov | Poly Haven | CC0 1.0 |
 | [marco de pie de madera con lámina de playa](https://polyhaven.com/a/standing_picture_frame_02) | `standing_picture_frame_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [estantería de estructura de acero con baldas de madera, comercial](https://polyhaven.com/a/steel_frame_shelves_02) | `steel_frame_shelves_02` | James Ray Cock | Poly Haven | CC0 1.0 |
+| [fuente de agua con garrafa](https://sketchfab.com/3d-models/water-cooler-4b88c4c4e94c497ca39f831f374e89fc) | `water_cooler_bottle_tboiston` | tboiston | Sketchfab | CC BY 4.0 |
 <!-- /OFFICE_MODELS -->
 
 <!-- OFFICE_SCANS: generado por tools/textures/ingest_pbr.py --set=office, no editar a mano -->

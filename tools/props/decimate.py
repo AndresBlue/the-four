@@ -6,10 +6,15 @@ reads first.
 
     blender -b --factory-startup -P tools/props/decimate.py -- --in <model> --out <folder>/_gltf/<name>.gltf --tris 5000
 
---tris 0 only converts.
+--tris 0 only converts. --drop <regex> leaves out the objects whose name
+matches (what comes with a model and is not it: the table a phone stands on,
+a terminal's keyboard), so neither they nor their maps reach the game.
+--weld joins the corners that share a place before the collapse: a
+mesh that comes as loose faces (a phone's dial) is torn by it otherwise.
 """
 
 import os
+import re
 import sys
 
 import bmesh
@@ -18,7 +23,7 @@ import bpy
 
 def args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    out = {"in": None, "out": None, "tris": 0}
+    out = {"in": None, "out": None, "tris": 0, "drop": None, "weld": False}
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -31,6 +36,11 @@ def args():
         elif a == "--tris":
             out["tris"] = int(argv[i + 1])
             i += 1
+        elif a == "--drop":
+            out["drop"] = argv[i + 1]
+            i += 1
+        elif a == "--weld":
+            out["weld"] = True
         i += 1
     return out
 
@@ -82,6 +92,15 @@ def shrink(ob, ratio):
     new.update()
 
 
+def weld(ob):
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bm.to_mesh(ob.data)
+    bm.free()
+    ob.data.update()
+
+
 def main():
     opts = args()
     if not opts["in"] or not opts["out"]:
@@ -89,6 +108,9 @@ def main():
         sys.exit(2)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     load(opts["in"])
+    if opts["drop"]:
+        for ob in [ob for ob in bpy.context.scene.objects if ob.type == "MESH" and re.search(opts["drop"], ob.name)]:
+            bpy.data.objects.remove(ob)
     meshes = [ob for ob in bpy.context.scene.objects if ob.type == "MESH"]
     before = sum(tris_of(ob) for ob in meshes)
     budget = opts["tris"]
@@ -96,6 +118,7 @@ def main():
         # Every mesh gets the same ratio, so the total lands near the budget.
         ratio = budget / before
         for ob in meshes:
+            if opts["weld"]: weld(ob)
             shrink(ob, ratio)
     after = sum(tris_of(ob) for ob in meshes)
     os.makedirs(os.path.dirname(os.path.abspath(opts["out"])), exist_ok=True)

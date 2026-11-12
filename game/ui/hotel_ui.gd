@@ -40,6 +40,10 @@ const CREDITS := [
 		"«VHS», de Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
 		"«Key Chain», de Inside Out Art (Sketchfab, CC BY): la llave de los cuadros eléctricos.",
 			"«Old Computer Chair», de Guantanamera (Slava Izvekov, Sketchfab, CC BY 4.0), con texturas reducidas y escalada.",
+		"«Rotary Phone», de jacques_3D (Sketchfab, CC BY 4.0): el teléfono, sin su mesa ni sus cables, simplificado y con el emblema del disco tapado.",
+		"«IBM 3278 terminal», de maxdragonn (Sketchfab, CC BY 4.0): la pantalla de los puestos, sin teclado, con sus marcas tapadas y la pantalla apagada.",
+		"«Water cooler», de tboiston (Sketchfab, CC BY 4.0): la fuente de agua, con sus rótulos tapados.",
+		"«Coat Rack», de Whostea (Sketchfab, CC BY 4.0): el perchero de pie, con texturas reducidas.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [

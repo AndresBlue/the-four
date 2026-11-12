@@ -35,7 +35,7 @@ import re
 import sys
 import zipfile
 
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageFilter, ImageStat
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SOURCE = os.path.join(ROOT, "source_assets", "props")
@@ -97,6 +97,24 @@ GLOW_WHITE = {"Chandelier_02": ((1.0, 0.76, 0.46), 2.6)}
 NO_HIGHLIGHT = {"ornate_mirror_01"}
 ## Models whose glass has to be made clear here (material_tres()).
 CLEAR_GLASS = {"vintage_grandfather_clock_01"}
+## What is painted over on an office download's images before they are
+## brought in (docs/OFICINAS.md 12: no lettering in another language, no
+## makers' marks): by model and image, rectangles in the image's own pixels
+## (x0, y0, x1, y1), each filled with the colour round it, or with the colour
+## given after them.
+PATCHES = {
+    # The maker's emblem in the middle of the dial.
+    ("rotary_phone_black_sketchfab", "aiStandardSurface3_baseColor.png"): [(770, 3525, 935, 3700)],
+    # The maker's name on the side and the model's number under the screen;
+    # the screen's own picture (a login in English) made a dark glass, off.
+    ("crt_terminal_ibm3278_sketchfab", "ibm_3278_baseColor.png"): [(491, 111, 503, 134), (336, 216, 357, 237)],
+    ("crt_terminal_ibm3278_sketchfab", "display_baseColor.png"): [(0, 0, 512, 512, (14, 16, 15))],
+    # The plate in English at the back, the maker's name embossed on the
+    # front and the words over the hot and the cold taps (their marks stay).
+    ("water_cooler_bottle_tboiston", "lambert1_baseColor.png"): [(244, 2114, 496, 2236), (1812, 2270, 2036, 2354), (3358, 2444, 3386, 2460), (3592, 2450, 3618, 2466)],
+    ("water_cooler_bottle_tboiston", "lambert1_normal.png"): [(244, 2114, 496, 2236), (1812, 2270, 2036, 2354)],
+    ("water_cooler_bottle_tboiston", "lambert1_metallicRoughness.png"): [(244, 2114, 496, 2236), (1812, 2270, 2036, 2354)],
+}
 # Big pieces seen close up keep 2048 px.
 KEEP_2K = {"GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01", "vintage_grandfather_clock_01"}
 
@@ -133,8 +151,32 @@ def safe(name):
     return re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_") or "material"
 
 
+def paint_over(image, patches):
+    """Each rectangle of PATCHES filled with its colour or the one round it
+    (the median of a ring a little wider), its edge softened."""
+    result = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+    ring = max(2, round(image.width / 1024 * 5))
+    for patch in patches:
+        x0, y0, x1, y1 = patch[:4]
+        outer = result.crop((x0 - ring, y0 - ring, x1 + ring, y1 + ring))
+        if len(patch) > 4:
+            colour = tuple(patch[4]) + ((255,) if result.mode == "RGBA" else ())
+        else:
+            mask = Image.new("L", outer.size, 255)
+            mask.paste(0, (ring, ring, outer.width - ring, outer.height - ring))
+            colour = tuple(int(v) for v in ImageStat.Stat(outer, mask).median)
+        # Solid over the whole rectangle (a small one too), softened in its ring.
+        soft = Image.new("L", outer.size, 0)
+        soft.paste(255, (ring // 2, ring // 2, outer.width - ring // 2, outer.height - ring // 2))
+        soft = soft.filter(ImageFilter.GaussianBlur(ring * 0.2))
+        result.paste(Image.composite(Image.new(result.mode, outer.size, colour), outer, soft), (x0 - ring, y0 - ring))
+    return result
+
+
 def copy_image(model, source_folder, uri, normal, size):
     image = Image.open(os.path.join(source_folder, uri))
+    patches = PATCHES.get((model, os.path.basename(uri)))
+    if patches: image = paint_over(image, patches)
     alpha = image.mode in ("RGBA", "LA", "P") and "A" in image.convert("RGBA").getbands()
     file = safe(os.path.splitext(os.path.basename(uri))[0]) + (".png" if alpha else ".jpg")
     path = os.path.join(TARGET, model, file)

@@ -17,9 +17,9 @@ const DESKS := preload("res://game/world/office/pieces/desks.gd")
 const KIT := preload("res://game/world/office/pieces/kit.gd")
 const CLUTTER := preload("res://game/world/office/office_clutter.gd")
 ## The office's own downloads (tools/props/build_catalogue.gd, area 4c U1).
-const OWN := ["sofa_02", "mid_century_lounge_chair", "potted_plant_01", "pachira_aquatica_01_c", "pachira_aquatica_01_d", "calathea_orbifolia_01_a", "calathea_orbifolia_01_c", "anthurium_botany_01_a", "anthurium_botany_01_c"]
+const OWN := ["sofa_02", "mid_century_lounge_chair", "rotary_phone_black_sketchfab", "crt_terminal_ibm3278_sketchfab", "water_cooler_bottle_tboiston", "perchero_coat_rack_whostea", "potted_plant_01", "pachira_aquatica_01_c", "pachira_aquatica_01_d", "calathea_orbifolia_01_a", "calathea_orbifolia_01_c", "anthurium_botany_01_a", "anthurium_botany_01_c"]
 ## The kinds that are only a stand-in (office_models.stand_in()).
-const STAND_ONLY := ["desk_lamp_banker", "desk_lamp_arm", "floor_lamp", "vending", "cooler", "fridge", "coffee_maker", "microwave", "globe", "extinguisher", "work_light", "step_ladder", "phone", "phone_off", "typewriter", "microfiche", "mug", "ashtray", "pen_cup", "paper_scatter", "cable", "crt", "keyboard", "tray", "tray_wire", "folders", "paper_stack", "binders", "archive_box", "register"]
+const STAND_ONLY := ["desk_lamp_banker", "desk_lamp_arm", "floor_lamp", "vending", "fridge", "coffee_maker", "microwave", "globe", "extinguisher", "work_light", "step_ladder", "phone_off", "typewriter", "microfiche", "mug", "ashtray", "pen_cup", "paper_scatter", "cable", "keyboard", "tray", "tray_wire", "folders", "paper_stack", "binders", "archive_box", "register"]
 const SMALL_TRIANGLES := 5000
 const BIG_TRIANGLES := 20000
 var checks := 0

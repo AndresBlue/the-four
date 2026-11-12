@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 559,
-    "sha256": "03651a0edb4ca0e9cf71fe5d07a0a9ae3c3d37ad6e0f39d13a6d2bd5ce89c6a0"
+    "bytes": 1501,
+    "sha256": "2b1f621985c703a2570861b68b5c3467ffb74cc6fed838818088ea415139d04c"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -742,5 +742,81 @@
   "assets/props/office/steel_frame_shelves_02.res": {
     "bytes": 152115,
     "sha256": "bf63491bfd59847c0471442eace92a58bb1669423dd81e19470836180da2bd28"
+  },
+  "assets/props/office/rotary_phone_black_sketchfab/aiStandardSurface3.tres": {
+    "bytes": 495,
+    "sha256": "d786c4c1375c943dd05169cd82f3843b14fd0fc8ab0b824db9c98d0708eb3c4c"
+  },
+  "assets/props/office/rotary_phone_black_sketchfab/aiStandardSurface3_baseColor.jpg": {
+    "bytes": 114736,
+    "sha256": "ef2c61bd11564bf632b8dc31553d37ec4353bd26458ee1a61a61aac800e7ba28"
+  },
+  "assets/props/office/rotary_phone_black_sketchfab/aiStandardSurface3_metallicRoughness.png": {
+    "bytes": 47256,
+    "sha256": "27ac696c6b8baf6cb94e107c7b0ceff65a2097c0c63d2e2eb7f801a1fc72caba"
+  },
+  "assets/props/office/rotary_phone_black_sketchfab.res": {
+    "bytes": 177123,
+    "sha256": "e325d6f0266db7e9f182039be06aa427576643ec02ec2396ec9f89c93c547126"
+  },
+  "assets/props/office/crt_terminal_ibm3278_sketchfab/display.tres": {
+    "bytes": 341,
+    "sha256": "0bc8643f10b3611f7da90fd4edb20ce01413ddcd05b8e6a488a3b44bfcb54e36"
+  },
+  "assets/props/office/crt_terminal_ibm3278_sketchfab/display_baseColor.jpg": {
+    "bytes": 4723,
+    "sha256": "a528b825ef1c1190e8f9281f75af0aa44459f104a765f682321f92110498c78b"
+  },
+  "assets/props/office/crt_terminal_ibm3278_sketchfab/ibm_3278.tres": {
+    "bytes": 336,
+    "sha256": "012ffa6a3fb2c46909987d78d0640d008e3a07e39846d89c8e61affa4c08f11f"
+  },
+  "assets/props/office/crt_terminal_ibm3278_sketchfab/ibm_3278_baseColor.jpg": {
+    "bytes": 30416,
+    "sha256": "40631ab44231d04b2b910fe132e7e4a51b1c0228ec83cea96063f3b51790b9ca"
+  },
+  "assets/props/office/crt_terminal_ibm3278_sketchfab.res": {
+    "bytes": 52451,
+    "sha256": "bdfe3bd40d185c7b76df0614aa764e1d29fab1668cfcc7c9e08821278dd29abf"
+  },
+  "assets/props/office/water_cooler_bottle_tboiston/lambert1.tres": {
+    "bytes": 689,
+    "sha256": "1d7a949d156d53b08661f5fad221552d7ea64adbdeea0b00dbe4628cb2c872c2"
+  },
+  "assets/props/office/water_cooler_bottle_tboiston/lambert1_baseColor.png": {
+    "bytes": 332845,
+    "sha256": "6667370567ba9bf1f6950b6c9f49ac6509e78812c9b85d347e04ae130f46fdcf"
+  },
+  "assets/props/office/water_cooler_bottle_tboiston/lambert1_metallicRoughness.jpg": {
+    "bytes": 140919,
+    "sha256": "af3c871ee5b9f38a08d05313f8cb6ef72ead31d4fd6af07be544f936cf82da3d"
+  },
+  "assets/props/office/water_cooler_bottle_tboiston/lambert1_normal.jpg": {
+    "bytes": 51718,
+    "sha256": "9e6cf0355e593088df3b3cb249ff28acd72f9563044e82335816fb9778db7f28"
+  },
+  "assets/props/office/water_cooler_bottle_tboiston.res": {
+    "bytes": 78791,
+    "sha256": "8fdf450b6893f8ea4b20ff19a860798ed64228bde73849c336ef0e5375b36ab4"
+  },
+  "assets/props/office/perchero_coat_rack_whostea/Material_001.tres": {
+    "bytes": 652,
+    "sha256": "f4f7d7a5781f10fb2910252f5976c78a6e2c33b520670a70a6ef908795e1e59f"
+  },
+  "assets/props/office/perchero_coat_rack_whostea/Material_001_baseColor.jpg": {
+    "bytes": 192430,
+    "sha256": "18344b924c932b74056dcea8c72fbb8d8c73856e9f4358d335a93e96f599e551"
+  },
+  "assets/props/office/perchero_coat_rack_whostea/Material_001_metallicRoughness.jpg": {
+    "bytes": 259660,
+    "sha256": "9d3719bafa0e4d532c90118bb92a5f92dd1ab3f97058332408f17b0ccbd930e5"
+  },
+  "assets/props/office/perchero_coat_rack_whostea/Material_001_normal.jpg": {
+    "bytes": 222551,
+    "sha256": "eb43bc531a26e1f16843a08f73ab14c21ed5a5ae679505ede589920d50326920"
+  },
+  "assets/props/office/perchero_coat_rack_whostea.res": {
+    "bytes": 193327,
+    "sha256": "0ec1ae564877ec12b1662099f41645dddc94c85dae1581a38a0e814dd440daae"
   }
 }
