@@ -665,6 +665,21 @@ static func floor_asked() -> int:
 			if value.is_valid_int(): return int(value)
 	return 1
 
+## --stage=N (Saltar.cmd): the sector to be ridden to as soon as a floor is
+## played, its earlier ones skipped; 0 without it. --jumps: F9 rides to the
+## next sector. Both alone only, for looking at a floor without playing it.
+static func stage_asked() -> int:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--stage=") and argument.trim_prefix("--stage=").is_valid_int(): return int(argument.trim_prefix("--stage="))
+	return 0
+var jump_to := stage_asked()
+var jumps: bool = OS.get_cmdline_user_args().has("--jumps")
+
+## Whether a sector can be skipped now: playing alone, alive, and no ride or
+## execution under way.
+func jump_ready() -> bool:
+	return session.state == session.State.PLAYING and not net.active() and not observer and not bot_match and local_alive() and execution.is_empty() and lifts.boarding.is_empty() and lifts.leaving < 0.0
+
 ## slots: the seats playing it (session.start); the bots bring their own.
 ## `difficulty_id`: the creature's (game/floors/difficulty.gd); empty, the one
 ## the player last chose.
@@ -1676,6 +1691,10 @@ func host_gate(delta: float) -> void:
 		session.goal["done"] = int(naming.done)
 		session.goal["needed"] = int(naming.needed)
 		session.update_goal(delta, met)
+	# Saltar.cmd: the sectors before the one asked for, one ride at a time.
+	if jump_to > 0 and jump_ready():
+		if session.stage >= mini(jump_to, session.stages): jump_to = 0
+		else: lifts.skip_stage()
 	lifts.ride_lifts()
 
 func _process(delta: float) -> void:
@@ -1757,6 +1776,9 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	# Watching: the keys belong to the observer's own camera and panels.
 	if observer: return
+	if jumps and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F9 and jump_ready():
+		lifts.skip_stage()
+		return
 	if event is InputEventMouseButton and event.pressed and not local_alive() and session.state == session.State.PLAYING and not online_menu:
 		match_net.next_watch()
 		return

@@ -278,6 +278,20 @@ func ride_lifts() -> void:
 		lift_away[index] = RIDE_TIME + LIFT_RETURN
 		if level.session.stage == index + 1: level.session.finish_stage()
 
+## The ride of the stage in hand taken from wherever the survivor stands, its
+## errand not done and its car not called (Saltar.cmd: hotel_main.jump_to and
+## the F9 of --jumps). Alone only; the last stage's leaves the floor.
+func skip_stage() -> void:
+	var index: int = level.session.stage - 1
+	if index >= level.hotel.arrivals.size() or level.hotel.arrivals[index] == Vector3.ZERO:
+		leave_floor()
+		return
+	var seat := int(level.player.slot)
+	riding[seat] = RIDE_REST
+	apply_ride(seat, arrival_spot(index))
+	lift_away[index] = RIDE_TIME + LIFT_RETURN
+	level.session.finish_stage()
+
 ## Somewhere to stand inside the car a ride arrives in: the doors open on
 ## them. Still near enough the arrival point for car_arriving_at().
 func arrival_spot(index: int) -> Vector3:
