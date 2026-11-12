@@ -87,9 +87,12 @@ func check_materials(office_geo, hotel_geo) -> void:
 		var tint = scanned.get_shader_parameter("map_tint")
 		var recolour: bool = mode == null or int(mode) == 1
 		check(key + " tiñe su escaneo", not recolour or (tint is Color and not (tint as Color).is_equal_approx(Color.WHITE)), str(tint))
+	# The furniture's steels are enamel since the light's fifth pass (satin, 0.45);
+	# the dark one stays the bare steel's matt.
 	for key in ["steel_olive", "steel_mint", "steel_grey", "steel_dark"]:
 		var steel: ShaderMaterial = load(DIR % key)
-		check(key + " no dibuja la rugosidad de su escaneo en el brillo", is_zero_approx(float(steel.get_shader_parameter("map_rough_keep"))) and float(steel.get_shader_parameter("roughness")) >= 0.6, str(steel.get_shader_parameter("map_rough_keep")))
+		var least: float = 0.6 if key == "steel_dark" else 0.4
+		check(key + " no dibuja la rugosidad de su escaneo en el brillo", is_zero_approx(float(steel.get_shader_parameter("map_rough_keep"))) and float(steel.get_shader_parameter("roughness")) >= least, "%s %s" % [str(steel.get_shader_parameter("map_rough_keep")), str(steel.get_shader_parameter("roughness"))])
 	for key in PLAIN_TRES:
 		var plain = load(DIR % key)
 		check(key + " existe y no lleva set de escaneo", plain != null and not plain.has_meta("scan"))
@@ -281,9 +284,11 @@ func check_glazing(hotel) -> void:
 	check("Vidrio armado solo junto a seguridad", stray_wire.is_empty(), str(stray_wire))
 	check("Persianas beige y ninguna en ventanilla ni seguridad, mirando las dos salas", bad_blinds.is_empty(), str(bad_blinds))
 
-## The doors: a walnut frame round each doorway, steel leaves for service and the
-## stages, honey oak for the rest (plain or with a vision panel), and a metal
-## threshold on each half of every doorway (3a U7).
+## The doors: a walnut frame round each doorway and the steel door's own steel
+## frame, steel leaves for service and the stages, honey oak for the rest (plain
+## or with a vision panel), each the download of office_geometry.DOOR_MODELS (or
+## the leaf made in code where one is missing), and a metal threshold on each
+## half of every doorway (3a U7).
 func check_doors(hotel) -> void:
 	var thresholds := 0
 	for room in hotel.manifest.rooms:
@@ -300,9 +305,9 @@ func check_doors(hotel) -> void:
 	for i in range(hotel.doors.size()):
 		var door: Node = hotel.doors[i]
 		var casing: MeshInstance3D = hotel.door_fixtures[i][0]
-		if casing.mesh.surface_get_material(0) != hotel.materials.walnut_object: bad_casings.append(i)
 		var leaf := door.get_node("Leaf") as MeshInstance3D
 		var face: Material = leaf.mesh.surface_get_material(0)
+		var model := leaf.mesh.resource_path
 		var steel: bool = hotel.gates.has(door)
 		if String(door.name).begins_with("Door_"):
 			plaqued += 1
@@ -310,13 +315,14 @@ func check_doors(hotel) -> void:
 			var a: Dictionary = hotel.manifest.rooms[int(ids[1])]
 			var b: Dictionary = hotel.manifest.rooms[int(ids[2])]
 			steel = steel or bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT])
-		if steel and face != hotel.materials.steel_olive: bad_steel.append(i)
+		var walnut_frame: bool = casing.mesh.surface_get_material(0) == hotel.materials.walnut_object
+		if (steel and not (casing.mesh.resource_path == OG.STEEL_FRAME or walnut_frame)) or (not steel and not walnut_frame): bad_casings.append(i)
+		if steel and model != OG.DOOR_MODELS.service and face != hotel.materials.steel_olive: bad_steel.append(i)
 		if not steel:
-			if face == hotel.materials.oak_door:
-				if leaf.mesh.get_surface_count() == 3: vision += 1
-				else: plain += 1
+			if model == OG.DOOR_MODELS.vision or (model.is_empty() and face == hotel.materials.oak_door and leaf.mesh.get_surface_count() == 3): vision += 1
+			elif model == OG.DOOR_MODELS.plain or (model.is_empty() and face == hotel.materials.oak_door): plain += 1
 			else: bad_leaves.append(i)
-	check("Marco de nogal en cada puerta", bad_casings.is_empty(), str(bad_casings))
+	check("Marco de nogal en cada puerta, de acero en las de acero", bad_casings.is_empty(), str(bad_casings))
 	check("Acero verde gris en servicio, cuartos técnicos y etapas", bad_steel.is_empty(), str(bad_steel))
 	check("Roble en las demás", bad_leaves.is_empty(), str(bad_leaves))
 	check("Puertas de roble con y sin ventanuco", vision > 0 and plain > 0, "%d con ventanuco, %d lisas" % [vision, plain])

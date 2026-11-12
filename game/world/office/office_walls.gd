@@ -51,6 +51,8 @@ const PANEL_TOP := 9.0
 ## the low furniture (1.4 m at most with OVER), under the false ceiling.
 const RAISED := ["picture", "picture_large", "map", "map_large", "diplomas", "plan", "notice"]
 const RAISED_MOUNT := 1.5
+## The pieces hung beside each other (free_x()): the framed ones, the boards, the clocks.
+const CLUSTERED := ["picture", "picture_large", "map", "map_large", "diplomas", "plan", "notice", "clock", "clock_square", "directory", "keys"]
 ## Where a piece is tried along a wall: its middle, then this far either way, and on.
 const STEP := 0.3
 ## The signs' letters as area 5 sets its plates' (objective.gd PLATE_PIXEL):
@@ -106,8 +108,11 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 	var turn := 0
 	for entry: Array in entries:
 		for n in int(entry[1]):
+			# Every other piece tries the feature wall first, the one the room is seen
+			# by (dens6: it read bare); the others go round the walls.
+			var start: int = 0 if feature != "" and turn % 2 == 0 else turn
 			for k in order.size():
-				if hang(builder, room, order[(turn + k) % order.size()], String(entry[0]), int(entry[2]), n):
+				if hang(builder, room, order[(start + k) % order.size()], String(entry[0]), int(entry[2]), n):
 					turn += 1
 					break
 
@@ -192,16 +197,20 @@ static func hang(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 	if mount < LOW_TRIM and kind != "central" and OFFICE.wall_trim(room) in ["frieze", "dado"]: mount = LOW_TRIM
 	var low: float = 0.75 if kind == "hooks" else mount
 	var high := mount + size.y
-	var x := free_x(wall, size.x + GAP * 2.0, low, high)
+	var near := CLUSTERED.has(kind)
+	var x := free_x(wall, size.x + GAP * 2.0, low, high, near)
 	if is_nan(x) and RAISED.has(kind):
 		# Over a desk, a counter or a cabinet against the wall, as the references hang them.
 		mount = RAISED_MOUNT
 		low = mount
 		high = mount + size.y
-		x = free_x(wall, size.x + GAP * 2.0, low, high)
+		x = free_x(wall, size.x + GAP * 2.0, low, high, near)
 	if is_nan(x): return false
 	draw(builder, room, wall, kind, x, mount, size, text, int(room.id) * 3 + n)
 	wall.taken.append([x - size.x * 0.5 - GAP, x + size.x * 0.5 + GAP, low, high])
+	if near:
+		if not wall.has("hung"): wall["hung"] = []
+		wall.hung.append([x - size.x * 0.5 - GAP, x + size.x * 0.5 + GAP])
 	logged(builder, room, wall, kind, x, size.x, low, high, size.z)
 	return true
 
@@ -241,15 +250,23 @@ static func archive_signs(builder: Node3D, node: Node3D, room: Dictionary) -> vo
 			var x := to_wall(String(wall.side), float(way.along))
 			var at := xform_of(wall, x, OVER_DOOR, size.z)
 			var plate := WALL.sign_plate(builder, size)
-			builder.place(wall.boundary, plate, at)
+			builder.place(wall.boundary, plate, at, false)
 			plate_text(wall.boundary, plate, at, words, SIGN_FONT)
 			logged(builder, room, wall, "rule", x, size.x, OVER_DOOR, OVER_DOOR + size.y, size.z)
 
-## The free middle of a span `wide` along the wall from `low` to `high`,
-## tried from the wall's middle outward every STEP; NAN when there is none.
-static func free_x(wall: Dictionary, wide: float, low: float, high: float) -> float:
+## The free middle of a span `wide` along the wall from `low` to `high`: with
+## `near`, beside what CLUSTERED hangs there already, nearest the wall's middle
+## (the references hang their pictures in twos and threes); else tried from
+## the wall's middle outward every STEP; NAN when there is none.
+static func free_x(wall: Dictionary, wide: float, low: float, high: float, near := false) -> float:
 	var reach := float(wall.length) * 0.5 - END_CLEAR - wide * 0.5
 	if reach < 0.0: return NAN
+	if near:
+		var best := NAN
+		for span: Array in wall.get("hung", []):
+			for x: float in [float(span[1]) + wide * 0.5, float(span[0]) - wide * 0.5]:
+				if absf(x) <= reach and fits(wall, x, wide, low, high) and (is_nan(best) or absf(x) < absf(best)): best = x
+		if not is_nan(best): return best
 	for k in int(reach * 2.0 / STEP) + 2:
 		var x := STEP * ceili(k / 2.0) * (1.0 if k % 2 == 0 else -1.0)
 		if absf(x) > reach: continue
@@ -285,7 +302,7 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 	var face := 0.09 + lift_at(wall, mount)
 	var at := xform_of(wall, x, mount, size.z)
 	match kind:
-		"notice": builder.place(boundary, WALL.notice_board(builder, size), at)
+		"notice": builder.place(boundary, WALL.notice_board(builder, size), at, false)
 		"picture", "picture_large": framed(builder, boundary, WALL.picture_frame(builder, size, "walnut_object"), at, "print", pick)
 		"map": framed(builder, boundary, WALL.picture_frame(builder, size, "black"), at, "city", pick)
 		"map_large": framed(builder, boundary, WALL.picture_frame(builder, size, "walnut_object"), at, "city", pick)
@@ -294,26 +311,26 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 			var frame := WALL.picture_frame(builder, Vector3(0.3, 0.24, 0.02), "black")
 			for k in 4: framed(builder, boundary, frame, at * Transform3D(Basis.IDENTITY, Vector3(-0.17 + (k % 2) * 0.34, 0.3 * (k / 2), 0)), "diploma", 0)
 		"clock": MODELS.put(builder, boundary, "wall_clock", Transform3D(at.basis, Vector3(x, mount, inner * (face + 0.027))))
-		"clock_square": builder.place(boundary, WALL.clock_square(builder, size), at)
-		"screen": builder.place(boundary, WALL.roll_screen(builder, size), at)
-		"keys": builder.place(boundary, WALL.key_cabinet(builder, size), at)
+		"clock_square": builder.place(boundary, WALL.clock_square(builder, size), at, false)
+		"screen": builder.place(boundary, WALL.roll_screen(builder, size), at, false)
+		"keys": builder.place(boundary, WALL.key_cabinet(builder, size), at, false)
 		"hooks":
-			builder.place(boundary, WALL.coat_hook_rail(builder, size), at)
-			builder.place(boundary, STAND.coat_hanging(builder, Vector3(0.5, 0.95, 0.14)), xform_of(wall, x - 0.3, 0.75, 0.14))
-			builder.place(boundary, STAND.towel(builder, Vector3(0.3, 0.55, 0.04)), xform_of(wall, x + 0.3, 1.1, 0.04))
-		"directory": builder.place(boundary, WALL.directory_board(builder, size), at)
+			builder.place(boundary, WALL.coat_hook_rail(builder, size), at, false)
+			builder.place(boundary, STAND.coat_hanging(builder, Vector3(0.5, 0.95, 0.14)), xform_of(wall, x - 0.3, 0.75, 0.14), false)
+			builder.place(boundary, STAND.towel(builder, Vector3(0.3, 0.55, 0.04)), xform_of(wall, x + 0.3, 1.1, 0.04), false)
+		"directory": builder.place(boundary, WALL.directory_board(builder, size), at, false)
 		"central":
 			var central := EQ_MAIL.mail_central(builder, EQ_MAIL.CENTRAL, false)
-			builder.place(boundary, central, at)
+			builder.place(boundary, central, at, false)
 			plate_text(boundary, central, at, "CORREO NEUMÁTICO", CENTRAL_FONT)
 		"rule":
 			var plate := WALL.sign_plate(builder, size)
-			builder.place(boundary, plate, at)
+			builder.place(boundary, plate, at, false)
 			plate_text(boundary, plate, at, String(OFFICE.RULE_TEXTS[text]), SIGN_FONT)
-		"extinguisher": builder.place(boundary, STAND.extinguisher(builder, size), at)
-		"hose": builder.place(boundary, STAND.hose_cabinet(builder, size), at)
-		"fountain": builder.place(boundary, STAND.wall_fountain(builder, size), at)
-		"thermostat": builder.place(boundary, STAND.thermostat(builder, size), at)
+		"extinguisher": builder.place(boundary, STAND.extinguisher(builder, size), at, false)
+		"hose": builder.place(boundary, STAND.hose_cabinet(builder, size), at, false)
+		"fountain": builder.place(boundary, STAND.wall_fountain(builder, size), at, false)
+		"thermostat": builder.place(boundary, STAND.thermostat(builder, size), at, false)
 		"alarm": MODELS.put(builder, boundary, "fire_alarm", Transform3D(at.basis, Vector3(x, mount, inner * (face + 0.018))))
 		"socket":
 			builder.box(boundary, Vector3(x, mount + 0.045, inner * (face + 0.004)), Vector3(0.09, 0.09, 0.008), "switch", false, "detail")
@@ -321,7 +338,7 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 
 ## A frame and its picture (office_pictures.gd) in the frame's "picture" spot.
 static func framed(builder: Node3D, boundary: Node3D, frame: Mesh, at: Transform3D, look: String, pick: int) -> void:
-	builder.place(boundary, frame, at)
+	builder.place(boundary, frame, at, false)
 	var spot: Array = frame.get_meta("picture")
 	var centre: Vector3 = spot[0]
 	var area: Vector2 = spot[1]

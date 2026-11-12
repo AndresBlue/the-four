@@ -203,7 +203,7 @@ static func row(builder: Node3D, node: Node3D, centre: Vector3, length: float, d
 		var variant: int = int(builder.vary(seed_pos + along * float(k), 30) * 3.0)
 		var mesh: ArrayMesh = STORAGE.mobile_archive(builder, part, variant) if mobile else STORAGE.archive_shelving(builder, part, variant)
 		var xform := Transform3D(turn, centre + end * (-length * 0.5 + wide * (float(k) + 0.5)))
-		builder.place(node, mesh, xform)
+		builder.place(node, mesh, xform, MODELS.casts(mesh, xform))
 		if k == tramos - 1 and number > 0: plate_text(node, mesh, xform, str(number), ROW_FONT)
 
 ## A room.furniture item (spec 9.2, spec_rediseno 5.2) in its holder (at its
@@ -324,6 +324,10 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"printer_cart":
 			piece(builder, holder, MOVABLES.cart(builder, Vector3(0.8, 0.9, 0.5), false), Vector3.ZERO)
 			MODELS.put(builder, holder, "dot_matrix_printer", Transform3D(Basis.IDENTITY, Vector3(0, 0.71, 0)))
+		"tv_cart":
+			# The set on the cart's top shelf, as the printer on its own.
+			piece(builder, holder, MOVABLES.cart(builder, Vector3(0.8, 0.9, 0.5), false), Vector3.ZERO)
+			MODELS.put(builder, holder, "television", Transform3D(Basis.IDENTITY, Vector3(0, 0.71, 0)))
 		"whiteboard":
 			piece(builder, holder, MOVABLES.whiteboard_mobile(builder, Vector3(1.5, 1.9, 0.6)), Vector3.ZERO)
 		"bench_slat":
@@ -396,7 +400,8 @@ static func fitted(builder: Node3D, holder: Node3D, path: String, wide: float, t
 	var fit: float = minf(tall / bounds.size.y, wide / maxf(bounds.size.x, bounds.size.z))
 	var spin := Basis(Vector3.UP, yaw)
 	var foot: Vector3 = spin * Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z) * fit
-	builder.place(holder, mesh, Transform3D(spin.scaled(Vector3.ONE * fit), foot))
+	# A plant or a bin: no shadow (office_models.casts()).
+	builder.place(holder, mesh, Transform3D(spin.scaled(Vector3.ONE * fit), foot), false)
 
 ## A desk of an open office's lattice (spec_rediseno 6.16: stations L-shaped and
 ## straight): one in three the L in laminate, in the same half of the footprint,
@@ -443,7 +448,7 @@ static func filing(builder: Node3D, holder: Node3D, at: Vector3, key: String, ro
 ## the piece, with the room's other copies, in one MultiMesh.
 static func piece(builder: Node3D, holder: Node3D, mesh: ArrayMesh, at: Vector3, back := false) -> void:
 	var turn: Basis = Basis(Vector3.UP, PI) if back else Basis.IDENTITY
-	builder.place(holder, mesh, Transform3D(turn, at))
+	builder.place(holder, mesh, Transform3D(turn, at), MODELS.casts(mesh, Transform3D(turn, at)))
 	if mesh.get_meta("solid", true):
 		var boxes: Array = mesh.get_meta("colliders", [mesh.get_meta("collider")])
 		for box: AABB in boxes:
@@ -528,6 +533,9 @@ static func vending(builder: Node3D, holder: Node3D, at: Vector3, room_id: int) 
 		builder.box(holder, at + Vector3(0, 0.9, 0), Vector3(0.9, 1.8, 0.8), "", true)
 		MODELS.put(builder, holder, "vending", Transform3D(Basis.IDENTITY, at))
 		builder.box(holder, at + Vector3(-0.07, 1.68, 0.36), Vector3(0.5, 0.012, 0.02), "glow_white")
+		# The window's back lit behind the trays (dens6: the tube alone left it a
+		# dark box; the accent lights the floor before it).
+		builder.box(holder, at + Vector3(-0.07, 1.12, -0.2), Vector3(0.56, 1.0, 0.01), "glow_white")
 	MODELS.light(builder, holder, room_id, "vending", Transform3D(Basis.IDENTITY, at))
 
 ## A microfiche reader (6.5) on its table, its screen lit while its room is.

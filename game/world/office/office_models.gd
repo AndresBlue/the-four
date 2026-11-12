@@ -102,6 +102,8 @@ static func grey_filing(builder: Node3D, key: String) -> bool:
 	return key == "steel_grey" and mesh_of(builder, "filing_grey") != null
 ## The pots by key (stand_ins.gd plant_pot()).
 const POTS := {"steel_dark": Vector3(0.4, 0.38, 0.4), "ceramic": Vector3(0.2, 0.16, 0.2)}
+## The lamps of furniture lit to a room at most (light()).
+const LIT_MOST := 1
 ## A lamp's light in the lamp's own frame: where it is, the point it is aimed
 ## at, its colour, energy, reach and angle (office_geometry.accent_spot()).
 ## The floor lamp's sits between its pole's tip and its shade's disc, so that
@@ -142,8 +144,19 @@ static func put(builder: Node3D, parent: Node3D, kind: String, xform: Transform3
 		builder.place(parent, STAND.plant_pot(builder, pot_size, pot), xform)
 		base = xform * Transform3D(Basis.IDENTITY, Vector3(0, pot_size.y - 0.01, 0))
 	var drawn := base * fit_of(kind, mesh)
-	builder.place(parent, mesh, drawn)
+	builder.place(parent, mesh, drawn, casts(mesh, drawn))
 	return drawn
+
+## Whether a piece placed so casts a shadow on the offices' floor (the
+## director, 13 November 2026: 60 fps at Alto with the rooms full): only the
+## big pieces on the floor as drawn (CAST_LEAST: a desk, a cabinet, a counter,
+## a machine), not a chair, a plant, a lamp, what stands on a top or what is
+## flat on a wall; or a mesh that says it does.
+const CAST_LEAST := Vector3(0.9, 0.6, 0.2)
+static func casts(mesh: Mesh, xform: Transform3D) -> bool:
+	if mesh.has_meta("casts"): return true
+	var size := mesh.get_aabb().size * xform.basis.get_scale().y
+	return size.y >= CAST_LEAST.y and maxf(size.x, size.z) >= CAST_LEAST.x and minf(size.x, size.z) >= CAST_LEAST.z
 
 ## The kind's size as drawn (its model's or stand-in's, brought to scale).
 static func size_of(builder: Node3D, kind: String) -> Vector3:
@@ -231,6 +244,10 @@ static func lamp(builder: Node3D, parent: Node3D, room_id: int, kind: String, xf
 static func light(builder: Node3D, parent: Node3D, room_id: int, kind: String, xform: Transform3D) -> void:
 	var spec: Dictionary = LIGHTS.get(kind, {})
 	if spec.is_empty() or room_id < 0: return
+	# One lit lamp of furniture to a room: each is a spot with its shadow, and
+	# the full rooms of the 12th had the floor at 20 ms on Alto (dens6).
+	var lit: Array = builder.accents.of_room(room_id).filter(func(e: Dictionary) -> bool: return int(e.sconce) < 0)
+	if lit.size() >= LIT_MOST: return
 	var at: Vector3 = spec.at
 	var aim: Vector3 = spec.aim
 	builder.accent_spot(parent, room_id, xform * at, xform * aim, spec.colour, float(spec.energy), float(spec.reach), float(spec.angle))
