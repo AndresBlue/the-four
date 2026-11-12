@@ -120,7 +120,7 @@ const LAMP_DROP := 0.35
 ## room lamp is the fill, and the corners and the tops of the walls fall to
 ## dark (spec_rediseno 4, low key). Without the pools (pools_shown()) the lamp
 ## lights the room alone, flatter, or the cheap presets fall to black.
-const LAMP_ATTENUATION := 1.4
+const LAMP_ATTENUATION := 1.25
 const LAMP_ATTENUATION_ALONE := 0.9
 ## The troffer rooms' lamps, whose attenuation follows the pools (apply_quality()).
 var troffer_lamps: Array[OmniLight3D] = []
@@ -169,6 +169,25 @@ const POOL_RANGE := 7.0
 ## (spec_rediseno 4). The hotel keeps the camera's.
 const GRADE := {"key": 0.05, "white": Vector3(1.02, 1.0, 0.95), "contrast": 1.16, "saturation": 0.85}
 func grade() -> Dictionary: return GRADE
+## A room's reflection probe is its floor's (make_probe()): it reaches
+## PROBE_PAST past the floor and the ceiling (the hotel's stops 2.5 cm over the
+## floor, and a pixel outside a probe's box takes nothing from it, so a waxed
+## floor never showed a lens), at PROBE_INTENSITY, and only what is on
+## FLOOR_LAYER takes it. The rest keeps the bounce's reflections: the probe
+## does not know what a table shades, and its lenses came out as white noise
+## down the grain of every lacquered piece under one. Render layer 4: 1 is
+## everything's, 2 a body's own, 3 hers (lurker_visual.LAYER), 5 to 20 the
+## rooms' (room_layers.gd).
+const PROBE_PAST := 0.05
+const PROBE_INTENSITY := 1.0
+const FLOOR_LAYER := 8
+## A lit lens as the room's probe sees it (lens_ghosts()): a real tube is a
+## hundred times the floor it lights, and a waxed floor gives back a few
+## hundredths of it, which is still a bright streak; LENS_GLOW on screen is
+## kept low for the iris. Render layer 2, which the players' cameras leave out
+## (a body's own) and the probes take in.
+const LENS_MIRRORED := 60.0
+const PROBE_ONLY := 2
 ## How far a hole's dark reaches below the tiles' plane (a gap, a tile she
 ## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
 ## shows no glow in the hole.
@@ -297,6 +316,12 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 		var at := Vector3(lamp.centre.x, 0, lamp.centre.y) - origin
 		troffer_face(node, at, size, h, failing_lens if k == failing else lens, look)
 	ceiling_halo(node, room, lamps, rect)
+	var faces: Array = []
+	var face_y := h - (WRAP_DROP + 0.005 if look == "wrap" else 0.001)
+	for lamp: Dictionary in lamps:
+		var across: float = NARROW_LENS if look == "narrow" else 0.56
+		faces.append([Vector3(lamp.centre.x, face_y, lamp.centre.y) - origin, Vector2(across, 1.16) * 0.5 if bool(lamp.along_z) else Vector2(1.16, across) * 0.5])
+	lens_ghosts(node, room, faces)
 	# The grilles in their tiles; over a gap, the dark of the plenum.
 	for e in exits:
 		var at := OFFICE.tile_centre(OFFICE.tile_of(Vector3(float(e.point[0]), 0, float(e.point[2]))), 0.0) - origin
@@ -435,7 +460,38 @@ func ceiling_halo(node: Node3D, room: Dictionary, lamps: Array, rect: Rect2) -> 
 	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	halo.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	node.add_child(halo)
-	halos[int(room.id)] = {"material": glow, "base": 0.0, "energy": 0.0, "pools": troffer_pools(node, room, lamps)}
+	halos[int(room.id)] = {"room": int(room.id), "material": glow, "base": 0.0, "energy": 0.0, "pools": troffer_pools(node, room, lamps)}
+
+## Each lit face of a room's lamps again, just under it, at LENS_MIRRORED and
+## seen by the probes alone (PROBE_ONLY): what the floor mirrors
+## (make_probe()). `faces`: [centre in the room's frame, half size across x
+## and z]. A probe exists only while its room is lit and is made again each
+## time, so the ghosts need not follow the lamp.
+func lens_ghosts(node: Node3D, room: Dictionary, faces: Array) -> void:
+	if faces.is_empty(): return
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for face: Array in faces:
+		var at: Vector3 = face[0]
+		var half: Vector2 = face[1]
+		var corners: Array[Vector3] = [at + Vector3(-half.x, 0, -half.y), at + Vector3(half.x, 0, -half.y), at + Vector3(half.x, 0, half.y), at + Vector3(-half.x, 0, half.y)]
+		for k: int in [0, 1, 2, 0, 2, 3]:
+			tool.set_normal(Vector3.DOWN)
+			tool.add_vertex(corners[k])
+	var glow := StandardMaterial3D.new()
+	glow.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glow.albedo_color = Color.BLACK
+	glow.emission_enabled = true
+	glow.emission = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
+	glow.emission_energy_multiplier = LENS_MIRRORED
+	var ghost := MeshInstance3D.new()
+	ghost.name = "LensGhosts"
+	ghost.mesh = tool.commit()
+	ghost.material_override = glow
+	ghost.layers = PROBE_ONLY
+	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ghost.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	node.add_child(ghost)
 
 ## The pools of a room's troffers (POOL_ENERGY): built out, on the room's
 ## layers with its other lamps (assign_layers(), "own_room"), lit with the
@@ -1419,6 +1475,7 @@ func archive_battens(node: Node3D, room: Dictionary) -> bool:
 	var cell := Rect2(float(room.px) - float(room.span_x) / 2, float(room.pz) - float(room.span_z) / 2, float(room.span_x), float(room.span_z))
 	var y := minf(float(room.height) - 0.6, 2.9)
 	var any := false
+	var faces: Array = []
 	for unit in manifest.get("archives", []):
 		if not unit.rooms.has(int(room.id)): continue
 		for a in unit.aisles:
@@ -1431,7 +1488,9 @@ func archive_battens(node: Node3D, room: Dictionary) -> bool:
 			else:
 				box(node, at, Vector3(length, 0.07, 0.16) if along_x else Vector3(0.16, 0.07, length), "metal")
 				box(node, at - Vector3(0, 0.05, 0), Vector3(length - 0.1, 0.03, 0.05) if along_x else Vector3(0.05, 0.03, length - 0.1), "light_off" if dark_room(room) else batten_glass_key(room))
+			faces.append([at - Vector3(0, 0.08, 0), Vector2(length * 0.5, 0.04) if along_x else Vector2(0.04, length * 0.5)])
 			any = true
+	lens_ghosts(node, room, faces)
 	return any
 
 ## Poly Haven's mounted fluorescent light (CC0, tools/props/build_catalogue.gd
@@ -1782,6 +1841,35 @@ func set_halo(entry: Dictionary, energy: float) -> void:
 	for pool: SpotLight3D in entry.pools:
 		pool.light_energy = POOL_ENERGY * energy / HALO_ENERGY
 		if pool.visible != shown: pool.visible = shown
+	# So does its probe: a drained room's floor mirrors dimmer lenses.
+	var slot := probe_slot(int(entry.room))
+	if slot.get("probe") != null: (slot.probe as ReflectionProbe).intensity = float(slot.intensity) * energy / HALO_ENERGY
+
+## A room's probe slot (probe_slots), {} when it has none; indexed once.
+var slot_of := {}
+func probe_slot(room_id: int) -> Dictionary:
+	if slot_of.is_empty():
+		for slot in probe_slots: slot_of[int(slot.room)] = slot
+	return slot_of.get(room_id, {})
+
+## An office's probe is its floor's (PROBE_PAST, FLOOR_LAYER): the floor
+## takes it and the lenses are in it; its strength follows its room's lamp as
+## the halo does (set_halo()). Made only while the room is lit
+## (round_probes()), and dropped with the lamp: a dark room mirrors nothing.
+func make_probe(slot: Dictionary) -> void:
+	super(slot)
+	var probe: ReflectionProbe = slot.probe
+	slot["intensity"] = PROBE_INTENSITY
+	probe.size.y = float(slot.height) + PROBE_PAST * 2.0
+	probe.reflection_mask = FLOOR_LAYER
+	var ground := (slot.parent as Node3D).get_node_or_null("Mesh_" + OFFICE.floor_look(manifest.rooms[int(slot.room)])) as GeometryInstance3D
+	# Hidden while its layers change, as room_layers.put_on() does it.
+	if ground != null and (ground.layers & FLOOR_LAYER) == 0:
+		RenderingServer.instance_set_visible(ground.get_instance(), false)
+		ground.layers |= FLOOR_LAYER
+		RenderingServer.instance_set_visible(ground.get_instance(), ground.is_visible_in_tree())
+	var halo: Dictionary = halos.get(int(slot.room), {})
+	if not halo.is_empty(): probe.intensity = float(slot.intensity) * maxf(float(halo.energy), 0.0) / HALO_ENERGY
 
 ## Whether the troffers' pools light (POOL_ENERGY): only while every lamp is
 ## kept to its room's layers and the ceiling lamps cast, never on

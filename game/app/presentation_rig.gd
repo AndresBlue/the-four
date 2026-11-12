@@ -328,9 +328,12 @@ func configure_hotel() -> void:
 
 ## A floor may grade the picture its own way (office_geometry.grade()): the
 ## iris's key, the camera's white balance and the environment's contrast and
-## saturation. A floor without one, the hotel, gets back what was authored.
+## saturation. A floor without one, the hotel, and the title room over the
+## menu get back what was authored.
 func apply_grade() -> void:
-	var grade: Dictionary = level.hotel.grade() if level.hotel.has_method("grade") else {}
+	if authored_tone.is_empty(): return
+	var own: bool = is_instance_valid(level.hotel) and level.hotel.has_method("grade") and level.session.state != level.session.State.MENU
+	var grade: Dictionary = level.hotel.grade() if own else {}
 	if is_instance_valid(camera_effect):
 		camera_effect.key = grade.get("key", authored_tone.key)
 		camera_effect.white_balance = grade.get("white", authored_tone.white)

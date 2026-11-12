@@ -1329,6 +1329,8 @@ func update_title_scene() -> void:
 	var in_menu: bool = session.state == session.State.MENU
 	if not in_menu and not title_scene.visible: return
 	title_scene.set_active(in_menu)
+	# The title room in the camera's own grade, the floor in its own after.
+	rig.apply_grade()
 	if in_menu:
 		environment.ambient_light_energy = TITLE_AMBIENT
 		if is_instance_valid(hotel): hotel.visible = false
