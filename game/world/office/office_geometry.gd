@@ -29,7 +29,7 @@ const CAR_KICK := 0.15
 const CAR_RAIL := Vector2(0.95, 0.04)
 ## Finishes that stand in as a plain colour until their own material is made
 ## (MATERIAL_DIR): the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("b9ad96"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74")}
+const PLAIN := {"office_paint": Color("b9ad96"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74"), "duct_back": Color("2f302e")}
 ## Where the office's own materials are (spec_rediseno 8): a key's <key>.tres
 ## there takes the place of its stand-in, or of the hotel material of the same
 ## name (OWN_OVER: the carpet, the ceiling tile).
@@ -85,6 +85,9 @@ const BLIND := preload("res://game/presentation/shaders/venetian_blind.gdshader"
 const WIRED_GLASS := preload("res://game/presentation/shaders/wired_glass.gdshader")
 ## A door's plaque on the wall (6.7): size, height, distance past the frame.
 const PLAQUE := Vector2(0.26, 0.09)
+## A door plaque's width per letter of its words and its margins (door_plaques()).
+const PLAQUE_LETTER := 0.065
+const PLAQUE_MARGIN := 0.06
 const PLAQUE_Y := 1.55
 const PLAQUE_FROM_JAMB := 0.22
 ## The plaque's depth off the wall (proud of a panelled wall too), the
@@ -122,7 +125,9 @@ const LAMP_ENERGY := 2.3
 ## the ceiling: a lit cell of a nave beside a dark one ended at a ruled edge.
 ## Less energy than the tube's, whose profile averaged under one.
 const LAMP_PROFILE := "even"
-const LAMP_DROP := 0.35
+## Far enough under the tiles that its light reaches them spread out: at 35 cm
+## it drew a warm disc in the middle of the ceiling where no fitting hangs.
+const LAMP_DROP := 0.9
 ## Steeper than the hotel's 1.25 where the troffers have their pools: the
 ## room lamp is the fill, and the corners and the tops of the walls fall to
 ## dark (spec_rediseno 4, low key). Without the pools (pools_shown()) the lamp
@@ -204,7 +209,9 @@ const FLOOR_LAYER := 8
 ## hundredths of it, which is still a bright streak; LENS_GLOW on screen is
 ## kept low for the iris. Render layer 2, which the players' cameras leave out
 ## (a body's own) and the probes take in.
-const LENS_MIRRORED := 30.0
+## Halved from 30: in a corridor's terrazzo the streak read as a stray white
+## patch on the floor rather than the lamp's.
+const LENS_MIRRORED := 15.0
 const PROBE_ONLY := 2
 ## How far a hole's dark reaches below the tiles' plane (a gap, a tile she
 ## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
@@ -213,6 +220,21 @@ const HOLE_CAP := 0.01
 ## A ceiling exit's grille and the dark over it: the opening between the
 ## T-grid's flanges (OFFICE.TILE less TEE.x), a little less.
 const EXIT_CLEAR := 0.57
+## The slats across a duct's grille, and how far under a gap's dark its
+## slats' middle sits (its back just clear of that dark).
+const GRILLE_SLATS := 9
+const GAP_GRILLE := 0.019
+
+## A louvred grille centred on its slats' middle: painted slats in a frame
+## over a dark grey back. One flat plate in the dark of the duct read as a hole.
+func duct_grille(node: Node3D, at: Vector3) -> void:
+	box(node, at + Vector3(0, 0.015, 0), Vector3(EXIT_CLEAR, 0.006, EXIT_CLEAR), "duct_back")
+	var inner := EXIT_CLEAR - 0.04
+	for k in GRILLE_SLATS:
+		box(node, at + Vector3((k + 0.5) / GRILLE_SLATS * inner - inner * 0.5, 0, 0), Vector3(0.012, 0.024, inner), "tgrid")
+	for side: float in [-1.0, 1.0]:
+		box(node, at + Vector3(side * (EXIT_CLEAR * 0.5 - 0.01), 0, 0), Vector3(0.02, 0.024, EXIT_CLEAR), "tgrid")
+		box(node, at + Vector3(0, 0, side * (EXIT_CLEAR * 0.5 - 0.01)), Vector3(inner, 0.024, 0.02), "tgrid")
 const HALO_SHADER := preload("res://game/presentation/materials/office/ceiling_halo.gdshader")
 ## Room id -> its halo: {"material": ShaderMaterial, "base": float (its lamp's
 ## energy as room_lamp() made it), "energy": float (as last set)}.
@@ -362,14 +384,19 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			# Inside the grid's flanges (EXIT_CLEAR) and off their plane: a
 			# grille as wide as the tile shared the flanges' underside and its
 			# edge fought them.
-			box(node, at + Vector3(0, h + TEE.y + 0.151, 0), Vector3(EXIT_CLEAR, 0.3, EXIT_CLEAR), "black")
-			box(node, at + Vector3(0, h + 0.012, 0), Vector3(EXIT_CLEAR, 0.02, EXIT_CLEAR), "grille_metal")
+			# The duct's dark over the grille's back, not round its slats.
+			box(node, at + Vector3(0, h + 0.04 + 0.15, 0), Vector3(EXIT_CLEAR, 0.3, EXIT_CLEAR), "black")
+			duct_grille(node, at + Vector3(0, h + 0.018, 0))
 		else:
 			box(node, at + Vector3(0, h + 0.6 - HOLE_CAP * 0.5, 0), Vector3(0.6, 1.2 + HOLE_CAP, 0.6), "plenum_dark")
 			# Its tile (5.4): hanging from one edge of the hole, or down on
 			# the floor below; no collider either way.
 			var spot: Vector3 = node.position + at
-			if vary(spot, 161) < HANGING:
+			var hanging := vary(spot, 161) < HANGING
+			# Where no tile hangs, the duct's grille in its place, just under
+			# the plenum's dark: a bare hole read as pure black beside each lamp.
+			if not hanging: duct_grille(node, at + Vector3(0, h - HOLE_CAP - GAP_GRILLE, 0))
+			if hanging:
 				var yaw := floori(vary(spot, 166) * 4.0) * PI * 0.5
 				var drop := lerpf(HANG_ANGLE.x, HANG_ANGLE.y, vary(spot, 167))
 				# Hinged just under the hole's dark (HOLE_CAP): hinged at the
@@ -620,7 +647,29 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[SpotLi
 		pool.visible = false
 		node.add_child(pool)
 		made.append(pool)
+		# Its bounce: the floor under it lighting the ceiling, the tops of the
+		# walls and the open leaves back, faint and wide. What faced no lamp
+		# fell to black; a dark room keeps it (it goes with the halo).
+		var bounce := pool.duplicate() as SpotLight3D
+		bounce.name = "TrofferBounce"
+		bounce.position.y = BOUNCE_FROM
+		bounce.rotation.x = PI / 2
+		bounce.spot_angle = BOUNCE_ANGLE
+		bounce.spot_range = h + BOUNCE_REACH
+		bounce.spot_attenuation = 0.5
+		bounce.light_color = bounce.light_color.lerp(BOUNCE_TINT, 0.35)
+		bounce.set_meta("energy", BOUNCE_ENERGY)
+		node.add_child(bounce)
+		made.append(bounce)
 	return made
+
+## The bounce under each troffer (troffer_pools()): from just over the floor,
+## up and out to the walls' tops, a share of the pool's, tinted by the floor.
+const BOUNCE_FROM := 0.1
+const BOUNCE_ANGLE := 75.0
+const BOUNCE_REACH := 3.0
+const BOUNCE_ENERGY := 0.16
+const BOUNCE_TINT := Color(0.85, 0.72, 0.55)
 
 ## A run of tiles from start to stop (world x) on the row z0 to z1 (world z),
 ## cut round the columns standing in it (spec_rediseno 3.4): the pieces
@@ -1658,8 +1707,10 @@ func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, 
 		if words.is_empty(): continue
 		var side := signf((FLOOR.position_of(viewer) - center).dot(normal))
 		var holder: Node3D = room_nodes[int(viewer.id)]
-		var at := center + along * (FLOOR.PORTAL * 0.5 + JAMB_WIDE + PLAQUE_FROM_JAMB + PLAQUE.x * 0.5) + normal * side * (0.09 + PLAQUE_DEPTH * 0.5) + Vector3(0, PLAQUE_Y, 0) - holder.position
-		box(holder, at, Vector3(PLAQUE.x, PLAQUE.y, PLAQUE_DEPTH), "plaque", false, "box", Vector3(0, yaw, 0))
+		# As wide as its words (PLAQUE_LETTER each): a longer number ran off it.
+		var wide := maxf(PLAQUE.x, words.length() * PLAQUE_LETTER + PLAQUE_MARGIN)
+		var at := center + along * (FLOOR.PORTAL * 0.5 + JAMB_WIDE + PLAQUE_FROM_JAMB + wide * 0.5) + normal * side * (0.09 + PLAQUE_DEPTH * 0.5) + Vector3(0, PLAQUE_Y, 0) - holder.position
+		box(holder, at, Vector3(wide, PLAQUE.y, PLAQUE_DEPTH), "plaque", false, "box", Vector3(0, yaw, 0))
 		text(holder, words, at + normal * side * (PLAQUE_DEPTH * 0.5 + 0.001), yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
 
 ## The office's lockers (9.7): the wardrobe's measures and hinges in olive
@@ -1722,9 +1773,15 @@ var office_doors := {}
 const DOOR_MODELS := {"vision": "res://assets/props/office/puerta_oficina_sousinho_leaf.res", "plain": "res://assets/props/office/puerta_lisa_sousinho_leaf.res", "service": "res://assets/props/office/puerta_metal_tboiston_leaf.res"}
 const STEEL_FRAME := "res://assets/props/office/puerta_metal_tboiston_frame.res"
 
-## Whether the door between two rooms is steel: service, the plant rooms and the stages' gates.
+## Whether the door between two rooms is steel: a store's or a depot's, the
+## plant rooms' and the stages' gates. Not the other service cells' (a break
+## room, the washrooms, the copy room) nor the service corridor's: steel on a
+## room people sit in read as a hospital.
 func service_door(a: Dictionary, b: Dictionary) -> bool:
-	return bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
+	return service_room(a) or service_room(b) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
+
+static func service_room(room: Dictionary) -> bool:
+	return int(room.type) in [OFFICE.STORE, OFFICE.DEPOT]
 
 func leaf_mesh(a: Dictionary, b: Dictionary) -> Mesh:
 	var steel := service_door(a, b)
@@ -1820,6 +1877,12 @@ func door_frame_mesh() -> ArrayMesh:
 func build_prop(node: Node3D, kind: String) -> void:
 	if not PROPS.build(self, node, kind): super(node, kind)
 
+## The hotel's decals but its fingerprints by the doors: on the offices' pale
+## paint, under each plaque, they read as a square of noise.
+func decal(parent: Node3D, decal_name: String, xform: Transform3D, size: Vector3, strength: float, rank: float) -> void:
+	if decal_name.begins_with("Fingerprints"): return
+	super(parent, decal_name, xform, size, strength, rank)
+
 ## How far along z from a lift lobby's middle its signs may hang while extras() makes
 ## them, 0 otherwise: the hotel hangs them at fixed distances, and a shorter room's
 ## wall comes first (spec_proporcion D13). 0.2 is what its 4.8 leaves in a 10 m module.
@@ -1827,7 +1890,16 @@ var signs_reach := 0.0
 
 func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling_y: float, front: Texture2D = EXIT_ENGRAVING, back: Texture2D = null, size := PANEL_SIZE) -> void:
 	if signs_reach > 0.0: pos.z = clampf(pos.z, -signs_reach, signs_reach)
+	var before := exit_lamps.size()
 	super(node, pos, yaw, ceiling_y, front, back, size)
+	# Its glow only round the sign: at the hotel's strength, under the
+	# offices' dimmer lamps, it dyed a whole ceiling green.
+	if exit_lamps.size() > before:
+		exit_lamps.back().light_energy = EXIT_ENERGY
+		exit_lamps.back().omni_range = EXIT_RANGE
+
+const EXIT_ENERGY := 0.1
+const EXIT_RANGE := 1.2
 
 ## An archive cell's share of its unit's rows (9.4): each row rectangle cut
 ## at the cell's edges and built under the cell, so it batches and layers
@@ -1978,7 +2050,7 @@ func set_halo(entry: Dictionary, energy: float) -> void:
 	# The pools go as the halo goes, where the preset has them (pools_shown()).
 	var shown: bool = energy > 0.0 and pools_shown()
 	for pool: SpotLight3D in entry.pools:
-		pool.light_energy = POOL_ENERGY * energy / HALO_ENERGY
+		pool.light_energy = float(pool.get_meta("energy", POOL_ENERGY)) * energy / HALO_ENERGY
 		if pool.visible != shown: pool.visible = shown
 	# So does its probe, by her drain alone and in steps: every change of a
 	# probe's intensity renders its six faces again, and following the

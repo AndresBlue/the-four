@@ -4,13 +4,14 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/flat_color = Color(0.55, 0.39, 0.21, 1)
-shader_parameter/light_color = Color(0.62, 0.44, 0.24, 1)
-shader_parameter/dark_color = Color(0.45, 0.3, 0.15, 1)
+shader_parameter/flat_color = Color(0.4, 0.3, 0.2, 1)
+shader_parameter/light_color = Color(0.46, 0.35, 0.23, 1)
+shader_parameter/dark_color = Color(0.32, 0.23, 0.15, 1)
 shader_parameter/ring_density = 14.0
 shader_parameter/varnish = 0.55
 shader_parameter/panel_spacing = 1.2
-shader_parameter/map_metres = 1.0
+shader_parameter/map_metres = 1.6
 shader_parameter/map_mode = 1
-shader_parameter/map_tint = Color(0.56, 0.4, 0.22, 1)
+shader_parameter/map_tint = Color(0.4, 0.3, 0.2, 1)
+shader_parameter/map_no_tile = true
 metadata/scan = "office_teak_veneer"

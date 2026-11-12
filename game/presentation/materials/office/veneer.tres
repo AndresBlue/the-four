@@ -4,13 +4,14 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/flat_color = Color(0.48, 0.3, 0.18, 1)
-shader_parameter/light_color = Color(0.6, 0.38, 0.22, 1)
-shader_parameter/dark_color = Color(0.32, 0.18, 0.1, 1)
+shader_parameter/flat_color = Color(0.3, 0.23, 0.17, 1)
+shader_parameter/light_color = Color(0.37, 0.28, 0.2, 1)
+shader_parameter/dark_color = Color(0.19, 0.14, 0.1, 1)
 shader_parameter/ring_density = 18.0
 shader_parameter/varnish = 0.6
 shader_parameter/panel_spacing = 1.2
 shader_parameter/map_metres = 1.8
 shader_parameter/map_mode = 1
-shader_parameter/map_tint = Color(0.48, 0.3, 0.18, 1)
+shader_parameter/map_tint = Color(0.3, 0.23, 0.17, 1)
+shader_parameter/map_no_tile = true
 metadata/scan = "office_walnut_veneer"

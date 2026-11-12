@@ -17,21 +17,47 @@ const FRAMING := preload("res://tools/capture/room_framing.gd")
 const ANGLES := ["puerta", "rincon", "mueble", "techo", "suelo"]
 const SEATED := 1.15
 const STANDING := 1.6
-## The room types shot dark with the torch.
-const TORCH_TYPES := [OFFICE.OFFICE, OFFICE.OPEN_OFFICE]
+## How far into the room the doorway's view stands (FRAMING's own is in the
+## leaf's swing or the frame), and the ball that must be clear round an eye.
+const PAST_DOOR := 0.5
+const EYE_ROOM := 0.22
 var level
 var out_dir := "res://evidence/rediseno/rev1"
 var index: Array = []
 
 func _initialize() -> void: run.call_deferred()
 
-## The type's name as a file name: lower case, no accents, underscores.
-static func slug(type: int) -> String:
-	var name := String(OFFICE.NAMES[type]).to_lower()
+## A room's type name (OFFICE.label()) as a file name: lower case, no
+## accents, underscores.
+static func slug(room: Dictionary) -> String:
+	var name := OFFICE.label(room).to_lower()
 	for pair in [["á", "a"], ["é", "e"], ["í", "i"], ["ó", "o"], ["ú", "u"], ["ñ", "n"], [" ", "_"]]: name = name.replace(pair[0], pair[1])
 	return name
 
+## Whether an eye at a point stands clear of every collider (furniture, a
+## leaf, a frame), the player's own body left out.
+func clear_at(point: Vector3) -> bool:
+	var ball := SphereShape3D.new()
+	ball.radius = EYE_ROOM
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = ball
+	query.exclude = [level.player.get_rid()]
+	query.transform = Transform3D(Basis.IDENTITY, point)
+	return level.player.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+## The eye moved towards what it looks at, a quarter metre at a time, until
+## it is clear (clear_at()); where it was if no step is.
+func clear_eye(from: Vector3, at: Vector3) -> Vector3:
+	var ahead := Vector3(at.x - from.x, 0, at.z - from.z)
+	if ahead.length() < 0.01: return from
+	ahead = ahead.normalized() * 0.25
+	for k in 9:
+		if clear_at(from + ahead * k): return from + ahead * k
+	print("ANGLES eye not clear at %s" % from)
+	return from
+
 func look(from: Vector3, at: Vector3) -> void:
+	from = clear_eye(from, at)
 	level.player.global_position = from - Vector3(0, level.player.camera.position.y, 0)
 	var flat := Vector2(at.x - from.x, at.z - from.z)
 	level.player.rotation.y = atan2(-flat.x, -flat.y)
@@ -46,9 +72,9 @@ func shot(room: Dictionary, angle: String, n: int) -> void:
 	var started := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - started < 1200: await process_frame
 	await RenderingServer.frame_post_draw
-	var file := "%s_%d.png" % [slug(int(room.type)), n]
+	var file := "%s_%d.png" % [slug(room), n]
 	root.get_texture().get_image().save_png(out_dir + "/" + file)
-	index.append({"tipo": OFFICE.NAMES[int(room.type)], "angulo": angle, "sala": int(room.id), "archivo": file})
+	index.append({"tipo": OFFICE.label(room), "angulo": angle, "sala": int(room.id), "archivo": file})
 	print("ANGLES %s %s room=%d" % [file, angle, int(room.id)])
 
 ## The room's light on, as capture_rooms' light_all() does it.
@@ -94,7 +120,7 @@ func frames(room: Dictionary) -> Array:
 	# (1) The doorway: the reference framing when there is a door.
 	if not door.is_empty():
 		var view := FRAMING.view_of(room, door)
-		out.append([view.from, view.at])
+		out.append([view.from + door.inward * PAST_DOOR, view.at])
 	else: out.append([portal + inward * 0.4 + up, centre + Vector3(0, 1.2, 0)])
 	# (2) The far corner, looking back at the doorway.
 	var corner := centre + inward * (depth * 0.5 - 0.45) + side * (width * 0.5 - 0.45) + up
@@ -139,7 +165,6 @@ func run() -> void:
 	for wing in 3:
 		for room in level.manifest.rooms:
 			if FLOOR.is_void(room) or int(room.get("wing", 0)) != wing or chosen.has(int(room.type)): continue
-			if int(room.type) < 0 or int(room.type) >= OFFICE.NAMES.size(): continue
 			chosen[int(room.type)] = room
 	var types: Array = chosen.keys()
 	types.sort()
@@ -151,9 +176,9 @@ func run() -> void:
 			look(views[n][0], views[n][1])
 			await shot(room, ANGLES[n], n + 1)
 	# Dark, with the torch.
-	for type in TORCH_TYPES:
-		if not chosen.has(type): continue
-		var room: Dictionary = chosen[type]
+	for kind: int in [OFFICE.OFFICE, OFFICE.OPEN_OFFICE]:
+		if not chosen.has(kind): continue
+		var room: Dictionary = chosen[kind]
 		light(room, false)
 		level.player.torch.visible = true
 		var views := frames(room)

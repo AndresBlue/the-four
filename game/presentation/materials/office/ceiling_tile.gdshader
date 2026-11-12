@@ -37,7 +37,8 @@ void fragment() {
 		color = scan_albedo(l, color);
 		// A water ring: a stained patch with a tide mark, off the tile's middle.
 		vec2 at = vec2(hash12(id + 17.0), hash12(id + 23.0)) * 0.5 + 0.25;
-		float r = length(f - at) * tile;
+		// Its edge wanders (noise on the radius): a perfect circle read as a decal.
+		float r = length(f - at) * tile * (0.75 + fbm((f - at) * 5.0 + id * 3.7) * 0.5);
 		float size = 0.08 + hash12(id + 29.0) * 0.14;
 		float ring = step(1.0 - ringed, hash12(id + 5.0)) * laid;
 		float inside = smoothstep(size, size * 0.6, r) * ring;

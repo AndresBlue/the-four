@@ -314,7 +314,7 @@ func check_doors(hotel) -> void:
 			var ids := String(door.name).split("_")
 			var a: Dictionary = hotel.manifest.rooms[int(ids[1])]
 			var b: Dictionary = hotel.manifest.rooms[int(ids[2])]
-			steel = steel or bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT])
+			steel = steel or OG.service_room(a) or OG.service_room(b) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT])
 		var walnut_frame: bool = casing.mesh.surface_get_material(0) == hotel.materials.walnut_object
 		if (steel and not (casing.mesh.resource_path == OG.STEEL_FRAME or walnut_frame)) or (not steel and not walnut_frame): bad_casings.append(i)
 		if steel and model != OG.DOOR_MODELS.service and face != hotel.materials.steel_olive: bad_steel.append(i)
