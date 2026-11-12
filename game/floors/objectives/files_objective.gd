@@ -398,6 +398,9 @@ func snap(seat: int) -> void:
 	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	var camera := Camera3D.new()
 	camera.fov = 48.0
+	# Not layer 2, as the players' cameras: the lens ghosts are the probes' alone
+	# (office_geometry.PROBE_ONLY).
+	camera.cull_mask = 1048573
 	camera.current = true
 	view.add_child(camera)
 	level.add_child(view)

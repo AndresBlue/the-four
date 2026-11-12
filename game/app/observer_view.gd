@@ -139,6 +139,9 @@ func setup(owner_level) -> void:
 	camera.name = "ObserverCamera"
 	camera.far = 400.0
 	camera.fov = 75.0
+	# As the players' cameras: not layer 2, a body's own and the offices' lens
+	# ghosts that only their reflection probes see (office_geometry.PROBE_ONLY).
+	camera.cull_mask = 1048573
 	add_child(camera)
 	gizmos = GIZMOS.new()
 	gizmos.setup(level)

@@ -162,7 +162,7 @@ const LENS_GLOW := 4.0
 ## there shows no glints.
 const POOL_ENERGY := 1.0
 const POOL_SPECULAR := 0.25
-const POOL_ANGLE := 58.0
+const POOL_ANGLE := 64.0
 const POOL_RANGE := 7.0
 ## The offices' own grade of the picture (presentation_rig.apply_grade()): a
 ## lower key for the iris, warm, with contrast, as the references
@@ -1715,6 +1715,13 @@ func extras(node: Node3D, room: Dictionary) -> void:
 		(beacon.light as OmniLight3D).light_energy = 0.0
 		(beacon.light as OmniLight3D).shadow_enabled = false
 	emergency_unit(node, room)
+	# A room dark at the start gets its probe slot too, as build_room() gives a
+	# lit one: lit later (Desafiante lights them one by one), its floor mirrors
+	# its lenses; round_probes() makes the probe only while its lamp shines.
+	if dark_room(room) and not FLOOR.is_void(room):
+		var span := FLOOR.size_of(room)
+		var height := float(room.height)
+		probe_slots.append({"room": int(room.id), "parent": node, "height": height, "size": Vector3(span.x - 0.2, height - 0.05, span.y - 0.2), "every_third": room.hall == room.id and room.hall >= 0 and int(room.id) % 3 == 0, "probe": null})
 	# The halo in its lamp's colour as the hotel's extras() left it (the
 	# refuge's green).
 	if halos.has(int(room.id)): (halos[int(room.id)].material as ShaderMaterial).set_shader_parameter("glow", lights.back().light_color)
