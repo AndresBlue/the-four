@@ -490,21 +490,21 @@ const CORNER_SIZES := {
 ## (lay_center()); "hall", by lay_halls(), a
 ## corridor's. From least to most runs, drawn; row pieces side by side in a run.
 const ROOM_FURNITURE := {
-	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["waiting_row_4", "side", 1, 1, 1], ["plant_floor", "spare", 2, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
+	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "run", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1]],
 	CUBICLES: [["desk", "lattice", 1, 1, 1]],
-	OFFICE: [["office_suite", "wall", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 3, 3, 1], ["plant_floor", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1]],
+	OFFICE: [["office_suite", "center", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	TOILETS: [["cubicles", "wall", 1, 1, 1], ["locker_bank", "run", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "middle", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["plant_floor", "spare", 2, 2, 1], ["waiting_row", "spare", 1, 1, 1]],
-	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1]],
+	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1]],
+	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
-	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "spare", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1]],
-	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1]],
-	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1]],
+	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "spare", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1]],
+	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1]],
 	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 3]],
 	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 1, 2], ["cart_boxes", "run", 2, 2, 1], ["work_table", "spare", 1, 1, 1]],
-	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1]],
-	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1]],
+	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["plant_floor", "run", 1, 1, 1], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["pigeonholes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
 	LOBBY: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
 	REFUGE: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
@@ -517,8 +517,9 @@ const ROOM_FURNITURE := {
 ## aisle and columns); the cubicles' pods.
 const LATTICE_KINDS := {OPEN_OFFICE: ["desk_pair", "desk"], CUBICLES: ["desk", "partition"]}
 ## What flanks a piece laid "center" (office_recipes.lay_center()): the director's
-## desk between two bookcases, as in its reference (spec_proporcion D7).
-const CENTER_FLANKS := {"exec_desk": "bookcase"}
+## desk between two bookcases, as in its reference (spec_proporcion D7); an
+## office's between its filing cabinets, in sight from its door.
+const CENTER_FLANKS := {"exec_desk": "bookcase", "office_suite": "filing"}
 ## The corner pieces (RECIPES) a type's furniture stands in for, each with the
 ## piece of its recipe that does: they come back only where it was not laid
 ## (office_recipes.restore()); "", a corner that always
@@ -567,21 +568,21 @@ const SUITE_SWAP := [TOILETS, STORE, BREAK_ROOM, EXEC_OFFICE]
 ## office_walls.gd): [piece, how many, its RULE_TEXTS for a "rule"]. The first
 ## is tried on the room's feature wall first.
 const WALL_DRESSING := {
-	RECEPTION: [["map", 1, 0], ["picture", 1, 0], ["rule", 1, 0]],
+	RECEPTION: [["map", 1, 0], ["picture", 2, 0], ["clock", 1, 0], ["rule", 1, 0], ["plan", 1, 0]],
 	OPEN_OFFICE: [["notice", 2, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 1], ["plan", 1, 0]],
 	CUBICLES: [["notice", 1, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 1], ["plan", 1, 0]],
-	OFFICE: [["picture_large", 1, 0], ["diplomas", 1, 0], ["notice", 1, 0]],
-	TOILETS: [["hooks", 1, 0], ["rule", 1, 4]],
-	BOARDROOM: [["screen", 1, 0], ["map", 1, 0], ["picture", 2, 0]],
-	COPY_ROOM: [["rule", 1, 5], ["rule", 1, 6], ["rule", 1, 7], ["notice", 1, 0]],
+	OFFICE: [["picture_large", 1, 0], ["diplomas", 1, 0], ["notice", 1, 0], ["picture", 2, 0], ["clock_square", 1, 0]],
+	TOILETS: [["hooks", 2, 0], ["rule", 1, 4]],
+	BOARDROOM: [["screen", 1, 0], ["map", 1, 0], ["picture", 3, 0], ["clock", 1, 0]],
+	COPY_ROOM: [["rule", 1, 5], ["rule", 1, 6], ["rule", 1, 7], ["notice", 1, 0], ["clock", 1, 0], ["plan", 1, 0]],
 	LOBBY: [["notice", 1, 0], ["directory", 1, 0], ["plan", 1, 0]],
 	REFUGE: [["notice", 1, 0], ["plan", 1, 0]],
-	MAIL: [["central", 1, 0], ["clock", 1, 0], ["notice", 1, 0]],
-	BREAK_ROOM: [["notice", 1, 0], ["clock", 1, 0], ["picture", 1, 0]],
-	EXEC_OFFICE: [["map_large", 1, 0], ["picture", 1, 0]],
-	WINDOW: [["notice", 1, 0]],
-	SECURITY: [["keys", 1, 0], ["notice", 1, 0], ["clock", 1, 0]],
-	SECRETARY: [["clock_square", 1, 0], ["picture", 2, 0], ["notice", 1, 0]],
+	MAIL: [["central", 1, 0], ["clock", 1, 0], ["notice", 2, 0], ["plan", 1, 0]],
+	BREAK_ROOM: [["notice", 1, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 4]],
+	EXEC_OFFICE: [["map_large", 1, 0], ["picture", 3, 0], ["diplomas", 1, 0]],
+	WINDOW: [["notice", 1, 0], ["clock", 1, 0], ["plan", 1, 0]],
+	SECURITY: [["keys", 1, 0], ["notice", 2, 0], ["clock", 1, 0], ["plan", 1, 0]],
+	SECRETARY: [["clock_square", 1, 0], ["picture", 3, 0], ["notice", 1, 0]],
 }
 ## The rule signs (docs/OFICINAS.md 9, spec_rediseno 6), a row to a line.
 const RULE_TEXTS := ["MANTENGA ENCENDIDAS\nLAS LUCES\nDE LOS PASILLOS", "NO TRABAJE\nDE ESPALDAS\nA LA PUERTA", "NO SE QUEDE SOLO\nEN EL ARCHIVO", "LAS REJILLAS\nNO SE ABREN", "MANTENGA\nEL ORDEN\nY LA LIMPIEZA", "REPROGRAFÍA", "FOTOCOPIAS\nPLANOS\nMICROFICHAS\nENCUADERNACIÓN", "USO LECTOR DE MICROFICHAS\n1. ENCIENDA EL LECTOR\n2. COLOQUE LA FICHA\n3. AJUSTE EL FOCO\n4. APAGUE AL TERMINAR"]

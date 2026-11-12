@@ -47,6 +47,10 @@ const LOW_TRIM := 1.15
 const TRIM_TOP := 1.0
 const TWO_TONE_TOP := 1.2
 const PANEL_TOP := 9.0
+## The flat pieces that, with no room at their height, go up to this one: over
+## the low furniture (1.4 m at most with OVER), under the false ceiling.
+const RAISED := ["picture", "picture_large", "map", "map_large", "diplomas", "plan", "notice"]
+const RAISED_MOUNT := 1.5
 ## Where a piece is tried along a wall: its middle, then this far either way, and on.
 const STEP := 0.3
 ## The signs' letters as area 5 sets its plates' (objective.gd PLATE_PIXEL):
@@ -189,6 +193,12 @@ static func hang(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 	var low: float = 0.75 if kind == "hooks" else mount
 	var high := mount + size.y
 	var x := free_x(wall, size.x + GAP * 2.0, low, high)
+	if is_nan(x) and RAISED.has(kind):
+		# Over a desk, a counter or a cabinet against the wall, as the references hang them.
+		mount = RAISED_MOUNT
+		low = mount
+		high = mount + size.y
+		x = free_x(wall, size.x + GAP * 2.0, low, high)
 	if is_nan(x): return false
 	draw(builder, room, wall, kind, x, mount, size, text, int(room.id) * 3 + n)
 	wall.taken.append([x - size.x * 0.5 - GAP, x + size.x * 0.5 + GAP, low, high])

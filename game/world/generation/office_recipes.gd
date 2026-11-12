@@ -27,8 +27,10 @@ const TURN_GAP := 0.5
 ## Where a free-standing piece is tried: metres toward the feature wall from
 ## the middle (negative, away from it), and aside, off the middle as the
 ## references have them (spec_proporcion D5).
-const MIDDLE_DEPTHS := [1.1, 1.4, 1.7, 2.0, 2.4, 2.8, 3.2, -1.1, -1.4, -1.7, -2.0, -2.4, -2.8, -3.2]
-const MIDDLE_SIDES := [0.0, 1.0, -1.0, 1.7, -1.7, 2.4, -2.4]
+## A step of 0.15 by 0.35: a coarser one missed the places between the ways in
+## (a break room with three doors took one table of its four).
+const MIDDLE_DEPTHS := [1.1, 1.25, 1.4, 1.55, 1.7, 1.85, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, -1.1, -1.25, -1.4, -1.55, -1.7, -1.85, -2.0, -2.2, -2.4, -2.6, -2.8, -3.0, -3.2]
+const MIDDLE_SIDES := [0.0, 0.5, -0.5, 1.0, -1.0, 1.35, -1.35, 1.7, -1.7, 2.05, -2.05, 2.4, -2.4]
 ## The free-standing pieces with no back, which lay_middle() also tries a
 ## quarter turned (a dining set beside the kitchen, in a cell of 10 m).
 const ANY_WAY := ["dining_set", "work_table", "sorting_table", "cart_boxes"]
@@ -38,6 +40,11 @@ const ANY_WAY := ["dining_set", "work_table", "sorting_table", "cart_boxes"]
 ## middle of the room, to TAKEN_OUT in front of it.
 const TAKEN_PAST := 0.1
 const TAKEN_OUT := 0.6
+## Where a stage raises its bodies in a lobby with a lift (revival.gd
+## revival_point(), revival_spread()): LIFT_AWAY from its middle, away from the
+## lift, and the spread either way with a body's 0.3 round it.
+const RAISE_AWAY := 0.9
+const RAISE_REACH := 1.2
 ## What a corner piece keeps from a meeting table: a capsule's way down its side.
 const TABLE_WALK := 0.7
 ## A corridor's floor furniture: off its cell's ends, the stretch of wall that
@@ -96,6 +103,10 @@ static func keep_clear(view: Dictionary, room: Dictionary, taken: Array) -> Arra
 		if int(prop.slot) < sockets.size(): out.append({"rect": corner_zone(room, prop)})
 	for spot in taken: out.append({"rect": LAYOUT.wall_rect(room, String(spot.wall), float(spot.along), float(spot.half) + TAKEN_PAST, LAYOUT.FIXTURE_CLEAR.y)})
 	out.append_array(air_zones(room, view.get("air", {})))
+	var lift := FLOOR.lift_wall(room)
+	if lift != Vector2i.ZERO and int(room.type) in [OFFICE.LOBBY, OFFICE.REFUGE]:
+		var raised := -Vector2(lift) * RAISE_AWAY
+		out.append({"rect": Rect2(raised - Vector2.ONE * RAISE_REACH, Vector2.ONE * RAISE_REACH * 2.0)})
 	var mail: Dictionary = view.get("mail", {})
 	if int(mail.get("window", -1)) == int(room.id) and mail.has("camera") and mail.has("camera_target"):
 		var eye: Array = mail.camera
@@ -321,16 +332,27 @@ static func kinds(t: int) -> Array:
 ## The walls a recipe entry tries, in order: "back", the feature wall alone;
 ## "wall", the feature wall and then the other free walls; "side" and "spare",
 ## the other free walls and then the feature wall; "closed", the free walls with
-## no door. The feature wall only where pieces may stand against it (usable()):
-## a salon's cell shares its head cell's, which may be open to the next cell.
+## no door. The other walls with no doorway before those with one, and the
+## wall across from the feature wall last: a room is seen from its doorway or
+## from across, and what stands by the eye is out of sight. The feature
+## wall only where pieces may stand against it (usable()): a salon's cell
+## shares its head cell's, which may be open to the next cell.
 static func walls_for(room: Dictionary, how: String) -> Array:
-	if how == "closed":
-		var doored: Array = FLOOR.doorways(room).map(func(way): return String(way.wall))
-		return WALLS.filter(func(wall): return usable(room, String(wall)) and not doored.has(wall))
+	var doored: Array = FLOOR.doorways(room).map(func(way): return String(way.wall))
+	if how == "closed": return WALLS.filter(func(wall): return usable(room, String(wall)) and not doored.has(wall))
 	var front_wall := String(room.get("feature", ""))
+	var across := LAYOUT.wall_of(-LAYOUT.way_of(front_wall))
+	# Ranked: the wall across last, a doored one after a closed one, and of two
+	# alike the one at the feature wall's end in sight first (feature_end()).
+	var lean := feature_end(room, front_wall)
+	var along_z: bool = front_wall == "west" or front_wall == "east"
 	var others: Array = []
-	for wall in WALLS:
-		if wall != front_wall and usable(room, wall): others.append(wall)
+	for rank in 8:
+		for wall in WALLS:
+			if wall == front_wall or not usable(room, wall): continue
+			var out := LAYOUT.way_of(wall)
+			var away: bool = lean != 0.0 and float(out.y if along_z else out.x) != lean
+			if (4 if wall == across else 0) + (2 if doored.has(wall) else 0) + (1 if away else 0) == rank: others.append(wall)
 	if front_wall == "": return [] if how == "back" else others
 	if how == "back": return [front_wall] if usable(room, front_wall) else []
 	var front: Array = [front_wall] if usable(room, front_wall) else []
@@ -360,7 +382,7 @@ static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberG
 		if how == "center": placed = lay_center(room, zones, kind, row)
 		if placed.is_empty():
 			for wall in walls_for(room, "wall" if how in ["run", "center"] else how):
-				placed = lay_wall(room, zones, kind, row, String(wall), how in ["back", "wall", "run", "center"])
+				placed = lay_wall(room, zones, kind, row, String(wall), how in ["back", "wall", "run", "center"], feature_end(room, String(wall)))
 				if not placed.is_empty(): break
 		if placed.is_empty(): break
 		out.append(placed)
@@ -369,14 +391,16 @@ static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberG
 
 ## A run of `row` pieces with their backs to a wall, WALL_GAP off its face, at
 ## the first place that fits (ALONG, or corner_first()); {wall, along, half,
-## group}, or {} where none does.
-static func lay_wall(room: Dictionary, zones: Array, kind: String, row: int, wall: String, from_corner := false) -> Dictionary:
+## group}, or {} where none does. On a wall beside the feature wall (`toward`,
+## feature_end()) from its corner at that end first: the end in sight from the
+## doorway the room is looked into from.
+static func lay_wall(room: Dictionary, zones: Array, kind: String, row: int, wall: String, from_corner := false, toward := 0.0) -> Dictionary:
 	var spec: Dictionary = OFFICE.FURNITURE[kind]
 	var size: Vector2 = spec.size
 	var width := size.x * row
 	var reach := LAYOUT.wall_length(room, wall) / 2
 	var group: int = room.furniture.size()
-	for along in (corner_first(reach, width) if from_corner else ALONG):
+	for along in (corner_first(reach, width, toward) if from_corner or toward != 0.0 else ALONG):
 		var a := float(along)
 		if absf(a) + width / 2 > reach: continue
 		var pieces := wall_pieces(room, kind, row, wall, a, group)
@@ -409,15 +433,37 @@ static func all_fit(room: Dictionary, zones: Array, pieces: Array, apart: bool) 
 			if r.grow(-LAYOUT.EPS).intersects(LAYOUT.footprint(other)): return false
 	return true
 
-## The places along a wall from its corners first, then ALONG.
-static func corner_first(reach: float, width: float) -> Array:
+## The places along a wall from its corners first, then ALONG: each time the
+## corner at `toward`'s end first (-1 with none).
+static func corner_first(reach: float, width: float, toward := 0.0) -> Array:
+	var first: float = toward if toward != 0.0 else -1.0
 	var out: Array = []
 	for off in FROM_CORNER:
 		var a: float = reach - float(off) - width / 2
 		if a <= 0.0: break
-		out.append(-a)
-		out.append(a)
+		out.append(first * a)
+		out.append(-first * a)
 	return out + ALONG
+
+## Which end of a wall is in sight, along it (-1 or 1): on a wall beside the
+## feature wall, the end that meets it; on the feature wall, the end on the side
+## of a doorway in the wall across (the eye stands there), or away from one in
+## a wall beside it (the eye looks across); 0 for the wall across, a feature
+## wall with no such doorway, or a room with none.
+static func feature_end(room: Dictionary, wall: String) -> float:
+	var feature := String(room.get("feature", ""))
+	if feature == "": return 0.0
+	var along_z: bool = wall == "west" or wall == "east"
+	if wall == feature:
+		var across := LAYOUT.wall_of(-LAYOUT.way_of(feature))
+		for door in FLOOR.doorways(room):
+			var at := String(door.wall)
+			var out := LAYOUT.way_of(at)
+			if at == across and absf(float(door.along)) > 0.3: return signf(float(door.along))
+			if at != across and at != wall: return -float(out.y if along_z else out.x)
+		return 0.0
+	var way := LAYOUT.way_of(feature)
+	return float(way.y) if along_z else float(way.x)
 
 ## Pieces joined to the room's last wall run (spec_proporcion D4), in its group:
 ## past either of its ends with no gap, else round the corner it reaches (TURN_GAP)

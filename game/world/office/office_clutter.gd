@@ -34,25 +34,27 @@ const CABLE := [0.1, 0.25, 0.4, 0.5, 0.6]
 const OFF_HOOK := [0.0, 0.1, 0.2, 0.3, 0.4]
 const SPILL := [0.0, 0.1, 0.2, 0.3, 0.4]
 ## A meeting table's top, from its board's middle (dress() shifts it to the
-## board at table_z): two stacks of papers, the jug and the ashtray.
-const MEETING_TOP := [["paper_stack", Vector3(-0.75, 0.75, -0.15), 0.0, 0.9], ["paper_stack", Vector3(-0.35, 0.75, 0.2), 0.4, 0.5], ["jug", Vector3(0.3, 0.75, -0.05), 0.0, 0.8], ["ashtray", Vector3(0.6, 0.75, 0.2), 0.0, 0.5]]
+## board at table_z): a tray and the ashtray, and the seats' papers, pads and
+## a mug left as they were, within the shortest board (2.4 m). No jug: the one
+## there is (jug_01) is flowered crockery.
+const MEETING_TOP := [["paper_stack", Vector3(-0.75, 0.75, -0.15), 0.0, 0.9], ["paper_stack", Vector3(-0.35, 0.75, 0.2), 0.4, 0.5], ["tray", Vector3(0.3, 0.75, -0.05), 0.2, 0.9], ["ashtray", Vector3(0.6, 0.75, 0.2), 0.0, 0.9], ["notepad", Vector3(-1.0, 0.75, 0.3), 0.2, 0.7], ["notepad", Vector3(0.95, 0.75, -0.3), 2.9, 0.6], ["paper_stack", Vector3(0.9, 0.75, 0.3), 3.0, 0.5], ["folders", Vector3(-0.05, 0.75, -0.35), 0.3, 0.5], ["mug", Vector3(0.05, 0.75, 0.3), 0.0, 0.4]]
 ## What stands on each kind of furniture's top, in its holder's frame
 ## (office_props.build_item()): [thing (office_models.gd), where, yaw, how
 ## often]; clear of each other and of the lamps.
 const TOPS := {
-	"office_suite": [["phone", Vector3(0.55, 0.75, 0.05), PI, 0.9], ["tray", Vector3(0.15, 0.75, 0.3), PI, 0.7], ["folders", Vector3(-0.05, 0.75, -0.1), 0.2, 0.7], ["mug", Vector3(0.35, 0.75, -0.15), 0.0, 0.5], ["pen_cup", Vector3(0.7, 0.75, 0.35), 0.0, 0.6], ["paper_stack", Vector3(-0.25, 0.75, 0.3), 2.9, 0.5]],
+	"office_suite": [["phone", Vector3(0.55, 0.75, 0.05), PI, 0.9], ["tray", Vector3(0.15, 0.75, 0.3), PI, 0.7], ["folders", Vector3(-0.05, 0.75, -0.1), 0.2, 0.7], ["mug", Vector3(0.35, 0.75, -0.15), 0.0, 0.5], ["pen_cup", Vector3(0.7, 0.75, 0.35), 0.0, 0.6], ["paper_stack", Vector3(-0.25, 0.75, 0.3), 2.9, 0.5], ["books", Vector3(-0.55, 0.8, -1.15), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, -1.12), 0.0, 0.7]],
 	"exec_desk": [["phone", Vector3(0.7, 0.76, -0.05), PI, 0.9], ["tray", Vector3(0.35, 0.76, 0.22), PI, 0.7], ["pen_cup", Vector3(0.0, 0.76, 0.3), 0.0, 0.7], ["folders", Vector3(-0.2, 0.76, -0.12), 0.3, 0.6], ["ashtray", Vector3(0.65, 0.76, 0.3), 0.0, 0.5], ["paper_stack", Vector3(-0.4, 0.76, 0.25), 3.0, 0.5]],
 	"secretary_desk": [["typewriter", Vector3(-0.1, 0.75, -0.75), 0.0, 0.9], ["phone", Vector3(0.6, 0.75, -0.1), 0.0, 0.9], ["tray", Vector3(0.35, 0.75, -0.9), 0.0, 0.7], ["folders", Vector3(0.6, 0.75, 0.25), 0.4, 0.6], ["mug", Vector3(-0.45, 0.75, -0.55), 0.0, 0.5]],
 	"air_desk": [["paper_stack", Vector3(0.1, 0.75, -0.4), 0.2, 0.9], ["register", Vector3(-0.4, 0.75, -0.35), 0.1, 0.6]],
 	"work_desk": [["phone", Vector3(0.45, 0.75, -0.4), 0.0, 0.9], ["register", Vector3(-0.05, 0.75, -0.35), 0.1, 0.8], ["mug", Vector3(0.6, 0.75, -0.08), 0.0, 0.5]],
-	"reception_counter_l": [["phone", Vector3(-0.4, 0.74, 0.6), PI, 0.9], ["tray", Vector3(0.2, 0.74, 0.7), PI, 0.8], ["folders", Vector3(-0.8, 0.74, 0.6), 0.2, 0.6], ["plant_small", Vector3(-0.9, 1.1, 0.92), 0.0, 0.9]],
-	"reader_table": [["paper_stack", Vector3(0.45, 0.74, -0.25), 0.3, 0.7]],
+	"reception_counter_l": [["phone", Vector3(-0.4, 0.74, 0.6), PI, 0.9], ["tray", Vector3(0.2, 0.74, 0.7), PI, 0.8], ["folders", Vector3(-0.8, 0.74, 0.6), 0.2, 0.6], ["plant_small", Vector3(-0.9, 1.1, 0.92), 0.0, 0.9], ["paper_stack", Vector3(-1.3, 0.74, 0.58), PI + 0.3, 0.7], ["pen_cup", Vector3(0.45, 0.74, 0.62), 0.0, 0.7], ["binders", Vector3(1.4, 1.1, 0.93), PI, 0.8],["register", Vector3(-1.41, 0.74, 0.0), PI / 2, 0.6], ["paper_stack", Vector3(-0.3, 1.1, 0.93), PI + 0.2, 0.8], ["tray", Vector3(0.35, 1.1, 0.93), PI, 0.7], ["pen_cup", Vector3(0.95, 1.1, 0.95), 0.0, 0.7], ["notepad", Vector3(-1.45, 1.1, 0.93), 0.3, 0.6]],
+	"reader_table": [["paper_stack", Vector3(0.45, 0.74, -0.25), 0.3, 0.7], ["notepad", Vector3(-0.5, 0.74, -0.2), 0.3, 0.6]],
 	"work_table": [["paper_stack", Vector3(-0.6, 0.74, 0.1), 0.2, 0.9], ["paper_stack", Vector3(0.1, 0.74, -0.2), 1.7, 0.7], ["tray_wire", Vector3(0.55, 0.74, 0.2), 0.0, 0.8], ["pen_cup", Vector3(-0.1, 0.74, 0.3), 0.0, 0.7], ["archive_box", Vector3(-0.5, 0.0, 0.0), 0.1, 0.8], ["archive_box", Vector3(0.4, 0.0, -0.1), -0.2, 0.6]],
 	"dining_set": [["mug", Vector3(-0.25, 0.74, -0.15), 0.0, 0.7], ["mug", Vector3(0.3, 0.74, 0.2), 1.0, 0.5], ["ashtray", Vector3(0.0, 0.74, 0.0), 0.0, 0.6], ["paper_stack", Vector3(0.3, 0.74, -0.2), 0.4, 0.4]],
-	"sideboard": [["books", Vector3(-0.5, 0.8, 0.0), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, 0.0), 0.0, 0.6]],
+	"sideboard": [["books", Vector3(-0.5, 0.8, 0.0), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, 0.0), 0.0, 0.6], ["mug", Vector3(-0.05, 0.8, -0.05), 0.0, 0.5], ["mug", Vector3(0.18, 0.8, 0.1), 0.6, 0.4]],
 	"sorting_table": [["box", Vector3(-0.5, 1.02, 0.05), 0.2, 0.8], ["paper_stack", Vector3(0.4, 1.02, 0.1), 0.5, 0.8]],
 	"pigeon_counter": [["paper_stack", Vector3(-0.6, 1.1, 0.0), 0.0, 0.6], ["box", Vector3(0.5, 1.1, 0.0), 0.3, 0.6]],
-	"filing": [["folders", Vector3(0.0, 1.32, 0.0), 0.2, 0.4]],
+	"filing": [["binders", Vector3(0.0, 1.32, -0.125), 0.0, 0.35], ["folders", Vector3(0.0, 1.32, 0.15), 0.2, 0.4]],
 	"meeting_table_s": MEETING_TOP,
 	"meeting_table_m": MEETING_TOP,
 	"meeting_table_l": MEETING_TOP,
