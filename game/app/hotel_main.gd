@@ -542,6 +542,10 @@ func on_action(action: String) -> void:
 		# Never the same floor again: a floor lost, or given up on, is
 		# followed by another one (on the same difficulty).
 		"retry": start_floor(randi_range(0, 2147483647), false, [1], difficulty)
+		# Floor 1 won: down to floor 2 on the same difficulty, no bedroom scene.
+		"descend": start_floor(randi_range(0, 2147483647), false, [1], difficulty, 2)
+		# A new game straight on floor 2, on a difficulty it was reached on.
+		"begin_floor2": start_floor(randi_range(0, 2147483647), false, [1], "", 2)
 		"resume": session.set_state(session.State.PLAYING)
 		"pause": session.set_state(session.State.PAUSED)
 		"main": session.set_state(session.State.MENU)
@@ -586,6 +590,9 @@ func on_action(action: String) -> void:
 			net.set_option("rules", {})
 		"online_retry": net.start_match()
 		"online_new": net.start_match()
+		"online_descend":
+			net.options.floor = 2
+			net.start_match()
 		"online_room": net.return_to_lobby()
 		"online_quit":
 			net.shutdown("")
@@ -596,6 +603,14 @@ func on_action(action: String) -> void:
 			ui.menu("records")
 		"achievements": ui.menu("achievements")
 		"quit": get_tree().quit()
+
+## Floor 2 reached on the difficulty played now (settings "floor2").
+func unlock_floor2() -> void:
+	var ids: PackedStringArray = String(settings.values.floor2).split(",", false)
+	if not ids.has(difficulty):
+		ids.append(difficulty)
+		settings.set_value("floor2", ",".join(ids))
+		settings.save_settings()
 
 ## A new game opens with the bedroom scene; its floor is built when it ends.
 func start_intro(seed_value: int) -> void:
@@ -919,6 +934,9 @@ func bounce_ready() -> void:
 func populate_floor(with_director: bool) -> void:
 	camera_cut()
 	spawn_locust()
+	# A floor without the code (floor 2) still had the last one's drawers here,
+	# freed with it: its key looked in them.
+	code.containers.clear()
 	# The sets, then the drawers with the numbers and the keypad: each by its
 	# objective, in the order the floor lists them.
 	for objective_name in objectives: objectives[objective_name].place()
@@ -1186,6 +1204,10 @@ func on_state() -> void:
 		session.State.WON:
 			ui.elapsed = session.elapsed
 			if not net.is_client() and ui.summary.is_empty(): file_run(true)
+			# Floor 1 won against the machine: floor 2 is open on this difficulty.
+			var versus: bool = match_net.in_match() and int(match_net.config.mode) == NET.Mode.VERSUS
+			ui.descend = session.floor_number == 1 and FLOORS.built(2) and not versus
+			if ui.descend: unlock_floor2()
 			if match_net.in_match():
 				if net.is_host: match_net.clear_checkpoint()
 				ui.menu("online_won")

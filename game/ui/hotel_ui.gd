@@ -190,6 +190,8 @@ var reading: Control
 var discoveries
 ## Online play (net_session.gd), for the room screens.
 var net
+## Whether the floor just won leads down to floor 2 (hotel_main, State.WON).
+var descend := false
 const NET := preload("res://game/net/net_session.gd")
 const CATALOG := preload("res://game/discovery/discovery_catalog.gd")
 ## The board of tapes that got out (records_service.gd), the report of one
@@ -602,7 +604,8 @@ func menu(kind: String, can_continue := false, message := "") -> void:
 			controls_panel(side)
 		"won":
 			set_osd("■ STOP", "", "")
-			tape_screen("SALISTE DEL PISO", STYLE.INK, summary, outcome, [["Nueva partida", "new"], ["Records", "records"], ["Menú principal", "main"]])
+			var after: Array = [["Bajar al piso 2", "descend"]] if descend else []
+			tape_screen("SALISTE DEL PISO", STYLE.INK, summary, outcome, after + [["Nueva partida", "new"], ["Records", "records"], ["Menú principal", "main"]])
 		"failed":
 			set_osd("SEÑAL PERDIDA", "", "")
 			osd_left.add_theme_color_override("font_color", STYLE.ALERT)
@@ -874,13 +877,25 @@ func difficulty_screen() -> void:
 	label(column, "LA BESTIA QUE TE ESPERA EN EL HOTEL", 20).add_theme_color_override("font_color", STYLE.SOFT)
 	spacer(column, 24)
 	var chosen := DIFFICULTY.valid(settings.values.get("difficulty", DIFFICULTY.REFERENCE))
+	var reached: PackedStringArray = String(settings.values.get("floor2", "")).split(",", false)
 	for id in DIFFICULTY.ORDER:
 		var which: String = id
-		var button := entry(column, DIFFICULTY.title(which), func():
+		# A difficulty floor 2 was reached on offers it beside the hotel.
+		var row: Node = column
+		if reached.has(which):
+			row = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 18)
+			column.add_child(row)
+		var button := entry(row, DIFFICULTY.title(which), func():
 			settings.set_value("difficulty", which)
 			action_requested.emit("begin"), false, 30)
 		button.focus_entered.connect(func(): describe_difficulty(which))
 		buttons[which] = button
+		if reached.has(which):
+			var lower := entry(row, "Piso 2", func():
+				settings.set_value("difficulty", which)
+				action_requested.emit("begin_floor2"), false, 30)
+			lower.focus_entered.connect(func(): describe_difficulty(which))
 	spacer(column, 18)
 	action("Volver", "main")
 	focus_wanted = chosen
@@ -1025,6 +1040,7 @@ func online_end(won: bool) -> void:
 	var note := ""
 	if net.is_host:
 		if not won: actions.append(["Reintentar piso", "online_retry"])
+		if won and descend: actions.append(["Bajar al piso 2", "online_descend"])
 		actions.append_array([["Nueva partida", "online_new"], ["Volver a la sala", "online_room"], ["Records", "records"], ["Cerrar la sala", "online_quit"]])
 	else:
 		note = "El anfitrión decide cómo seguir…"

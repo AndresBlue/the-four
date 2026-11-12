@@ -915,7 +915,7 @@ El autor autoriza (22 de octubre de 2026) que **los agentes busquen y descarguen
 | 9 | Puertas | Las del hotel; falso techo a 2,95 m |
 | 10 | Coger de espaldas en una sala con luz | Sí, tras el aviso (salvo en Apacible) |
 | 11 | Avisos de espalda falsos | No, por ahora |
-| 12 | Cómo se llega | **Se continúa desde el piso 1.** Una vez desbloqueado, se puede elegir, **en la dificultad en que se desbloqueó** |
+| 12 | Cómo se llega | **Se continúa desde el piso 1.** Una vez desbloqueado, se puede elegir, **en la dificultad en que se desbloqueó** (hecho el 12 de noviembre de 2026: al ganar el piso 1, «Bajar al piso 2» en solitario y, para el anfitrión, en cooperativo; en «Nueva partida», «Piso 2» junto a cada dificultad en que se llegó, guardado en el ajuste `floor2`; `tests/office/descend_test.gd`. El piso sigue sin publicar en `floor_index.RELEASED`) |
 | 13 | La llave de los cuadros | No hay en el piso 2 |
 
 **Decidido el 24 de octubre de 2026** (las preguntas de las fases 2 y 3; las demás, como recomendaron los agentes):

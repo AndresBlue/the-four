@@ -3,7 +3,7 @@ const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const SAVE_FILE := preload("res://game/services/save_file.gd")
 signal changed
 signal display_pending(seconds: int)
-const DEFAULTS := {"character": 2, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
+const DEFAULTS := {"character": 2, "pad_look": 2.6, "rumble": true, "pad_sprint_toggle": true, "pad_crouch_toggle": true, "window_mode": 0, "resolution": 0, "scale": 0.67, "upscaler": "auto", "sharpness": 0.85, "aa": "preset", "ao": -1, "fog": -1, "reflections": -1, "blur": -1, "quality": 1, "shadows": true, "fps": 60, "vsync": true, "vhs": 0.3, "grain": 0.05, "chromatic": 0.25, "scanlines": 0.1, "osd": true, "bob": 0.4, "reduced": false, "startle_soft": false, "gore": true, "sensitivity": 0.0022, "invert": false, "master": 0.5, "ambience": 0.5, "music": 0.5, "effects": 0.5, "threat": 0.5, "subtitles": false, "player_name": "", "difficulty": "desafiante", "first_game_done": false, "floor2": "", "join_address": "127.0.0.1", "join_port": "38430", "host_port": "38430", "host_bind": "*", "renderer": "forward_plus"}
 const KEYS := {"forward": KEY_W, "backward": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "jump": KEY_SPACE, "interact": KEY_E, "flashlight": KEY_F, "crouch": KEY_CTRL, "sheet": KEY_TAB, "locust_trace": KEY_Q, "lean_left": KEY_1, "lean_right": KEY_3}
 ## The same actions on a pad. Moving and looking are the two sticks and are not
 ## rebound: what is bound is what a button does. Named by where the button is
@@ -180,6 +180,8 @@ func sanitize(key: String, value: Variant) -> Variant:
 	if key == "renderer": return value if value in ["forward_plus", "gl_compatibility"] else DEFAULTS[key]
 	if key == "upscaler": return value if value in PRESETS.UPSCALERS else DEFAULTS[key]
 	if key == "aa": return value if value in PRESETS.ANTIALIASING else DEFAULTS[key]
+	# The difficulties floor 2 was reached on, by id, comma separated (longer than 40).
+	if key == "floor2": return value if value is String else DEFAULTS[key]
 	if DEFAULTS[key] is bool: return value if value is bool else DEFAULTS[key]
 	if DEFAULTS[key] is String: return str(value).strip_edges().left(40) if value is String else DEFAULTS[key]
 	if not (value is float or value is int) or not is_finite(float(value)): return DEFAULTS[key]
