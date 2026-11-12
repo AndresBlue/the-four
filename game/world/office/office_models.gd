@@ -27,7 +27,7 @@ const MODELS := {
 	# sofa_02 is baked facing +Z, its arms reaching out past its back: backed() would turn it round.
 	"sofa": {"paths": ["res://assets/props/office/sofa_02.res"]},
 	"lounge_chair": {"paths": ["res://assets/props/office/mid_century_lounge_chair.res"], "seat": true},
-	# The blue cloth task chair, light enough for the naves (4 k); the plywood one stays the reserve model.
+	# The blue cloth task chair and the plywood one, light enough for the naves (4 k each): office_props.chair() picks one by where it stands.
 	"office_chair": {"paths": ["res://assets/props/office/silla_tela_projectkaizen.res", "res://assets/props/office/silla_giratoria_old_computer_chair.res"], "height": 0.95, "seat": true},
 	"exec_chair": {"paths": ["res://assets/props/office/silla_banquero_zamzam.res"], "height": 1.15, "seat": true},
 	"visitor_chair": {"paths": ["res://assets/props/office/butaca_madera_renend.res"], "height": 0.88, "seat": true},
@@ -124,8 +124,9 @@ static var backs := {}
 static func mesh_of(builder: Node3D, kind: String, pick := 0) -> Mesh:
 	var spec: Dictionary = MODELS.get(kind, {})
 	var paths: Array = spec.get("paths", [])
-	if not paths.is_empty():
-		var path: String = paths[posmod(pick, paths.size())]
+	# From the one picked on, the first whose file is there.
+	for k in paths.size():
+		var path: String = paths[posmod(pick + k, paths.size())]
 		if not models.has(path): models[path] = load(path) if ResourceLoader.exists(path) else null
 		if models[path] != null: return models[path]
 	return stand_in(builder, kind)
@@ -148,7 +149,7 @@ static func put(builder: Node3D, parent: Node3D, kind: String, xform: Transform3
 	return drawn
 
 ## Whether a piece placed so casts a shadow on the offices' floor (the
-## director, 13 November 2026: 60 fps at Alto with the rooms full): only the
+## director, 12 November 2026: 60 fps at Alto with the rooms full): only the
 ## big pieces on the floor as drawn (CAST_LEAST: a desk, a cabinet, a counter,
 ## a machine), not a chair, a plant, a lamp, what stands on a top or what is
 ## flat on a wall; or a mesh that says it does.

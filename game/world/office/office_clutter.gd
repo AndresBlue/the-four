@@ -154,7 +154,8 @@ static func tops_shift(kind: String, item: Dictionary) -> Vector3:
 ## the world, `node` its room's node).
 static func lay(builder: Node3D, node: Node3D, holder: Node3D, room: Dictionary, kind: String, xform: Transform3D, often: float, seed_pos: Vector3) -> void:
 	if builder.vary(seed_pos, 440) >= often: return
-	MODELS.put(builder, holder, kind, xform)
+	# Which of the kind's models (the books' rows, the boxes), by where it lies.
+	MODELS.put(builder, holder, kind, xform, int(builder.vary(seed_pos, 441) * 8.0))
 	var local: Vector3 = xform.origin if holder == node else holder.transform * xform.origin
 	note(builder, room, kind, node.position + local, xform.origin.y < 0.05, false)
 

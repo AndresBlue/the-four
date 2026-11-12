@@ -328,7 +328,7 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [mesa redonda de madera oscura y pulida](https://polyhaven.com/a/round_wooden_table_01) | `round_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [silla de banquero de madera](https://sketchfab.com/3d-models/wooden-office-chair-f415e04f4bb24221854198727b8f0352) | `silla_banquero_zamzam` | Zamzam2003 | Sketchfab | CC BY 4.0 |
 | [silla giratoria de oficina de los 70 (1970s swivel office chair)](https://sketchfab.com/3d-models/old-computer-chair-a311529b1ec349c48f789bf4e1f99e89) | `silla_giratoria_old_computer_chair` | Slava Izvekov (guantanamera) | Sketchfab | CC BY 4.0 |
-| [silla giratoria de tela]() | `silla_tela_projectkaizen` | projectkaizen | Sketchfab | CC BY 4.0 |
+| [silla giratoria de tela](https://sketchfab.com/3d-models/a81b0c8cbe3248328652d9cd9b8c8b86) | `silla_tela_projectkaizen` | projectkaizen | Sketchfab | CC BY 4.0 |
 | [mesa pequeña de madera, vintage](https://polyhaven.com/a/small_wooden_table_01) | `small_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sofá de cuero capitoné con marco de madera tallada](https://polyhaven.com/a/sofa_02) | `sofa_02` | Kirill Sannikov | Poly Haven | CC0 1.0 |
 | [marco de pie de madera con lámina de playa](https://polyhaven.com/a/standing_picture_frame_02) | `standing_picture_frame_02` | James Ray Cock | Poly Haven | CC0 1.0 |

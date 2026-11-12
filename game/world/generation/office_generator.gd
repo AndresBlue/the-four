@@ -24,7 +24,6 @@ const STAND_OUT := 0.6        # the typist's feet, out from the desk's point
 const TABLE_OFFSET := 1.55    # a meeting table's footprint, from the boardroom's centre (office_props)
 const TABLE_WALK := 0.66     # free each long side of it: a capsule's way (office_validator)
 const DESKS_MOST := 8         # free-standing items per cell
-const DESKS_MOST_NAVE := 16   # in a nave's cell, between its streets (the director, 12 Nov)
 ## The band a duct shortcut keeps against the walk (1c's validator has its own).
 const SHORTCUT_MIN := 0.55
 const EXPRESS_PER := 30       # straight trunks over the rooms, per planta
@@ -1824,10 +1823,10 @@ func lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 ## One lattice of lay_lattice(), its first item shifted from the inner corner;
 ## `kind` is the item laid where it is not a cubicle pod.
 func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vector2, shift: Vector2, kind := "desk_pair") -> void:
-	# A nave's pods keep its streets round them (island_room()).
-	var space := island_room(room) if LAYOUT.streets(room) else LAYOUT.inner(room)
+	# Never a nave's: lay_lattice() gives those islands.
+	var space := LAYOUT.inner(room)
 	var gap := LAYOUT.gap_of(room)
-	var most := DESKS_MOST_NAVE if LAYOUT.streets(room) else DESKS_MOST
+	var most := DESKS_MOST
 	var z := space.position.y + size.y / 2 + shift.y
 	while LAYOUT.fits_in(space, Rect2(Vector2(space.position.x, z - size.y / 2), size)):
 		var x := space.position.x + size.x / 2 + shift.x

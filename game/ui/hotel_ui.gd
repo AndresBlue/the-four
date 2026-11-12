@@ -54,7 +54,7 @@ const CREDITS := [
 		"«Retro Office Props», de YJ_ (Sketchfab, CC BY 4.0): el escritorio verde de los puestos y la silla cromada, sin el resto de la escena.",
 		"«Steelcase Tanker Desk», de lena-wachs (Sketchfab, CC BY 4.0): el escritorio metálico largo, ajustado a su medida.",
 		"«Antique Desk», de Matthew Collings (Sketchfab, CC BY 4.0): el escritorio de madera del despacho, ajustado a su medida.",
-		"«game asset chair», de projectkaizen (Sketchfab, CC BY 4.0): la silla de oficina de tela, simplificada.",
+		"«Game Asset Chair», de projectkaizen (Sketchfab, CC BY 4.0): la silla de oficina de tela, simplificada.",
 		"«Vintage Wooden Armchair - Low Poly / Game Ready», de Renend Studio (Sketchfab, CC BY 4.0): la butaca de las visitas.",
 		"«Wooden Bookcases with Books», de Matthew Collings (Sketchfab, CC BY 4.0): la librería, ajustada a su medida.",
 		"«Vending Machine», de AtTheSpeedOf (Sketchfab, CC BY 4.0): la máquina expendedora, con sus rótulos tapados.",

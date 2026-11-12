@@ -498,8 +498,8 @@ static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float) -> v
 	builder.box(holder, at + Vector3(0, 0.38, 0), Vector3(1.5, 0.76, 0.75), "", true)
 	if desk_mesh == null and ResourceLoader.exists(DESK_MODEL): desk_mesh = load(DESK_MODEL)
 	if desk_mesh != null:
-		# Poly Haven's metal desk (2.00 x 0.79 x 0.95) brought to the
-		# generator's 1.5 x 0.76 x 0.75 footprint, its front to the chair.
+		# YJ_'s green tanker desk, baked at the generator's 1.5 x 0.76 x 0.75
+		# footprint (tools/props/fit_models.json), its drawers to the chair.
 		builder.place(holder, desk_mesh, Transform3D(Basis(Vector3.UP, 0.0 if face > 0.0 else PI).scaled(DESK_FIT), at))
 	else:
 		builder.box(holder, at + Vector3(0, 0.74, 0), Vector3(1.5, 0.03, 0.75), "laminate")
@@ -513,7 +513,10 @@ static func desk(builder: Node3D, holder: Node3D, at: Vector3, face: float) -> v
 static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float, kind := "stacking_chair", yaw := 0.0) -> void:
 	builder.box(holder, at + Vector3(0, 0.23, 0), Vector3(0.44, 0.46, 0.42), "", true)
 	var pose := CLUTTER.chair_pose(builder, holder, at, face, kind, yaw)
-	MODELS.put(builder, holder, kind, pose)
+	# Which of the kind's models, by where it stands: the naves' chairs are not all one.
+	var parent := holder.get_parent() as Node3D
+	var spot: Vector3 = (parent.position if parent != null else Vector3.ZERO) + holder.transform * at
+	MODELS.put(builder, holder, kind, pose, int(builder.vary(spot, 476) * 8.0))
 	# By room and holder name: drop_empty() frees the emptied holders once the room is batched.
 	builder.dressing_log.chairs.append({"room": int(builder.building_room.get("id", -1)), "holder": String(holder.name), "at": pose.origin, "front": pose.basis.z, "kind": kind})
 
