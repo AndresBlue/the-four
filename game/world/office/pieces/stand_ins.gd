@@ -500,10 +500,12 @@ static func make_ceiling_diffuser(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	KIT.block(p, "metal", Vector3(0, h - 0.004, 0), Vector3(w - 0.005, 0.008, d - 0.005))
+	# Painted aluminium, as the T-grid: metal with nothing to mirror read as a
+	# black hole beside each lamp (spec "huecos negros junto a las pantallas").
+	KIT.block(p, "tgrid", Vector3(0, h - 0.004, 0), Vector3(w - 0.005, 0.008, d - 0.005))
 	for k in 4:
 		var s := w * (0.9 - k * 0.2)
-		KIT.block(p, "metal", Vector3(0, h - 0.013 - k * 0.01, 0), Vector3(s, 0.01, s), 0.002)
+		KIT.block(p, "tgrid", Vector3(0, h - 0.013 - k * 0.01, 0), Vector3(s, 0.01, s), 0.002)
 	return KIT.finish(builder, p, "ceiling_diffuser", size)
 
 ## Red hose cabinet with a glass door, on a corridor wall.

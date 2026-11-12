@@ -12,6 +12,8 @@ const PROPS := preload("res://game/world/office/office_props.gd")
 const GATE := preload("res://game/world/office/scissor_gate.gd")
 const MAIN_DUCT := preload("res://game/world/office/main_duct_geometry.gd")
 const ACCENTS := preload("res://game/world/office/office_accents.gd")
+const KIT := preload("res://game/world/office/pieces/kit.gd")
+const FIXTURES := preload("res://game/world/office/pieces/fixtures.gd")
 const DESKS := preload("res://game/world/office/pieces/desks.gd")
 const OFFICE_BOUNCE := preload("res://game/world/office/office_bounce.gd")
 ## Area 4c: what hangs on the walls, the ceilings' fittings, the rugs, the wet
@@ -624,6 +626,13 @@ func open_to(room_id: int) -> Array:
 				open_cells[a].append(int(pair[1 - k]))
 	return open_cells.get(room_id, [])
 
+## The reception's lamps, pools and bounce turned down (RECEPTION_DIM): its
+## reference is low key, the light in warm pools on the desk, its walnut wall
+## and the lift's lamps, the walls in half dark; 1 in every other room.
+const RECEPTION_DIM := 0.9
+static func dim_of(room: Dictionary) -> float:
+	return RECEPTION_DIM if int(room.get("type", -1)) == OFFICE.RECEPTION else 1.0
+
 ## The pools of a room's troffers (POOL_ENERGY): built out, on the room's
 ## layers with its other lamps (assign_layers(), "own_room"), lit with the
 ## halo (set_halo()).
@@ -637,6 +646,7 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[SpotLi
 		pool.position = Vector3(lamp.centre.x, h - 0.05, lamp.centre.y) - origin
 		pool.rotation.x = -PI / 2
 		pool.light_color = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
+		pool.set_meta("energy", POOL_ENERGY * dim_of(room))
 		pool.spot_angle = POOL_ANGLE
 		pool.spot_range = POOL_RANGE
 		pool.light_specular = POOL_SPECULAR
@@ -658,7 +668,7 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[SpotLi
 		bounce.spot_range = h + BOUNCE_REACH
 		bounce.spot_attenuation = 0.5
 		bounce.light_color = bounce.light_color.lerp(BOUNCE_TINT, 0.35)
-		bounce.set_meta("energy", BOUNCE_ENERGY)
+		bounce.set_meta("energy", BOUNCE_ENERGY * dim_of(room))
 		node.add_child(bounce)
 		made.append(bounce)
 	return made
@@ -1497,10 +1507,12 @@ func lift_casing_material() -> String:
 ## casing or the call button, whichever is further out, and how high (the lamp
 ## model's origin).
 const LIFT_SCONCE := Vector2(0.35, 1.75)
-## The reception's accents (office_accents.caps): its rail, the counter's lamp,
-## the wash under its ledge and the lift's two lamps, all lit at once; of its
-## spots the rail alone casts a shadow (the wall lamps' are the hotel's round).
-const RECEPTION_ACCENTS := 5
+## The reception's accents (office_accents.caps): its rail's three cans, the
+## counter's lamp, the wash on its front and the lift's two lamps, all lit at
+## once and none of its spots with a shadow (the wall lamps' are the hotel's round).
+const RECEPTION_ACCENTS := 7
+## The lift's wall lamps (pieces/fixtures.gd box_sconce()).
+const LIFT_LAMP := Vector3(0.13, 0.32, 0.09)
 ## The lift's walnut casing: its width round the leaves and how proud.
 const LIFT_ARCHITRAVE := Vector2(0.16, 0.05)
 
@@ -1546,7 +1558,10 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	# Two wall lamps flanking it (spec_rediseno 6) on the wall's paint, clear
 	# of the casing and of the call button: the reception's accents.
 	var flank: float = maxf(maxf(-x0, x1), -CALL_AT.x) + LIFT_SCONCE.x
-	for x: float in [-flank, flank]: accent_sconce(front, int(room.id), Vector3(x, LIFT_SCONCE.y, -LIFT_PROUD - proud + LINING), 0.0)
+	# Opal glass boxes on brass, not the hotel's cloth shades.
+	KIT.material(self, "glow_strip")
+	var lamp := FIXTURES.box_sconce(self, LIFT_LAMP)
+	for x: float in [-flank, flank]: accent_sconce(front, int(room.id), Vector3(x, LIFT_SCONCE.y, -LIFT_PROUD - proud + LINING), 0.0, lamp)
 
 ## The cars of the stage gates (7.8): Dirección's is a shaft, with no car
 ## at either end, so it files the empty entries the hotel's own branches do and
@@ -1612,7 +1627,7 @@ func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> 
 func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 	var lamp: String = OFFICE.lamp_of(room)
 	var h := float(room.height)
-	var tube := {"tube": true, "failing": "", "specular": LAMP_SPECULAR, "color": LIGHTING.light_color(OFFICE.lamp_kelvin(room)), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile(LAMP_PROFILE), "position": Vector3(0, h - LAMP_DROP, 0)}
+	var tube := {"tube": true, "failing": "", "specular": LAMP_SPECULAR, "color": LIGHTING.light_color(OFFICE.lamp_kelvin(room)), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN * dim_of(room), "profile": LIGHTING.profile(LAMP_PROFILE), "position": Vector3(0, h - LAMP_DROP, 0)}
 	match lamp:
 		"troffer":
 			return tube
@@ -2123,7 +2138,7 @@ const ACCENT_SIZE := 0.08
 ## its shadow, shown in the round of lamps while its room is lit, within
 ## furniture_lamps of the player (0 on Bajo and Muy bajo: never) and never on
 ## Compatibility, dimmed with her drain. Null when the room has ACCENTS.MOST.
-func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colour: Color, energy: float, reach: float, angle: float, casts := true, projector: Texture2D = null) -> SpotLight3D:
+func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colour: Color, energy: float, reach: float, angle: float, casts := true) -> SpotLight3D:
 	if not accents.has_room(room_id): return null
 	var toward := aim - pos
 	var up: Vector3 = Vector3.FORWARD if absf(toward.normalized().y) > 0.99 else Vector3.UP
@@ -2138,9 +2153,7 @@ func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colou
 	lamp.light_specular = 0.3
 	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.light_volumetric_fog_energy = 0.0
-	# A projector draws only with a shadow (hotel cast_or_fill()).
-	lamp.shadow_enabled = casts or projector != null
-	lamp.light_projector = projector
+	lamp.shadow_enabled = casts
 	lamp.shadow_bias = 0.04
 	lamp.shadow_normal_bias = 0.6
 	lamp.distance_fade_enabled = true
@@ -2160,11 +2173,11 @@ func accent_fade(lamp: Light3D) -> void:
 ## light (sconce_light(), lit by the hotel's round on the presets with wall
 ## lamps), out with its room (set_sconce()). `pos` and `yaw` in `boundary`'s
 ## frame, +Z into the room. Null when the room has ACCENTS.MOST.
-func accent_sconce(boundary: Node3D, room_id: int, pos: Vector3, yaw: float) -> MeshInstance3D:
+func accent_sconce(boundary: Node3D, room_id: int, pos: Vector3, yaw: float, mesh: Mesh = null) -> MeshInstance3D:
 	if not accents.has_room(room_id): return null
 	var sconce := MeshInstance3D.new()
 	sconce.name = "AccentSconce"
-	sconce.mesh = WALL_LAMP
+	sconce.mesh = WALL_LAMP if mesh == null else mesh
 	sconce.position = pos
 	sconce.rotation.y = yaw
 	boundary.add_child(sconce)

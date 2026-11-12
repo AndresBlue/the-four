@@ -5,8 +5,8 @@ extends RefCounted
 ## accent_sconce()).
 const MOST := 3
 ## The rooms that take more (room id -> how many): the reception, composed as
-## the floor's first view, lights its rail, its lamp, the wash under its
-## counter and its lift's two lamps.
+## the floor's first view, lights its rail's three cans, its lamp, the wash
+## on its counter and its lift's two lamps.
 var caps := {}
 ## Room id -> its accents: {"light": Light3D, "energy": float, "sconce": int
 ## (its index in sconce_lights, or -1), "mesh": MeshInstance3D or null (a wall

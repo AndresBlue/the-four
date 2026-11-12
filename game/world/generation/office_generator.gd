@@ -521,8 +521,17 @@ func across_span(room: Dictionary, way: Vector2i) -> float:
 ## at its door, as the hotel's, where no desk was laid.
 func facing(f: Dictionary, start: int) -> float:
 	for item in f.rooms[start].get("furniture", []):
-		if String(item.kind) == "reception_counter_l": return atan2(-float(item.at[0]), -float(item.at[1]))
+		if String(item.kind) != "reception_counter_l": continue
+		var look := Vector2(float(item.at[0]), float(item.at[1])).normalized()
+		# Between the desk and the arrival lift where both fit the lens (the
+		# camera takes some 100 degrees across).
+		if f.has("arrival_lift"):
+			var lift := Vector2(float(f.arrival_lift[0]), float(f.arrival_lift[1]))
+			if look.angle_to(lift) != 0.0 and absf(look.angle_to(lift)) <= deg_to_rad(FIRST_VIEW_SPREAD): look = (look + lift).normalized()
+		return atan2(-look.x, -look.y)
 	return super(f, start)
+## The widest angle between the desk and the lift the first view takes both in.
+const FIRST_VIEW_SPREAD := 90.0
 
 ## The rooms made offices: corridors and galleries, the departments of each
 ## planta, the structure and the special pieces, the salons and the modules by
@@ -2716,6 +2725,8 @@ func furnish_lobby(job: Dictionary) -> String:
 		if reception.get("open_sides", []).has(wall) or doors.has(wall): continue
 		var way := LAYOUT.way_of(wall)
 		job.out["arrival_lift"] = [way.x, way.y]
+		# For facing(): the floor's first view takes the lift in with the desk.
+		f["arrival_lift"] = [way.x, way.y]
 		register(job, start, wall, 0.0, 1.5)
 		break
 	return ""

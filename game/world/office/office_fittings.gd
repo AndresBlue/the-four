@@ -139,7 +139,7 @@ static func rug(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 			var spin := float(item.turn) * PI / 2.0
 			var out := Vector2(sin(spin), cos(spin))
 			var spot := Vector2(float(item.at[0]), float(item.at[1])) + out * (float(item.size[1]) * 0.5 + DESK_MAT_OUT)
-			builder.place(node, FIXTURES.rug(builder, DESK_MAT, "carpet"),Transform3D(Basis(Vector3.UP, spin), Vector3(spot.x, 0, spot.y)))
+			builder.place(node, FIXTURES.rug(builder, DESK_MAT, "mat_rib"),Transform3D(Basis(Vector3.UP, spin), Vector3(spot.x, 0, spot.y)))
 			return
 		var ways: Array = FLOOR.doorways(room)
 		if ways.is_empty(): return

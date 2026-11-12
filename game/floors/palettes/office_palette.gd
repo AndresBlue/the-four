@@ -502,7 +502,9 @@ const CORNER_SIZES := {
 ## (lay_center()); "hall", by lay_halls(), a
 ## corridor's. From least to most runs, drawn; row pieces side by side in a run.
 const ROOM_FURNITURE := {
-	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "side", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
+	# The desk, a big plant by it and the waiting row on beyond, the second
+	# plant closing the row: what the first view takes in (the author, 12 November 2026).
+	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["printer_cart", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
 	CUBICLES: [["desk", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OFFICE: [["office_suite", "center", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["printer_cart", "spare", 0, 1, 1]],
@@ -595,7 +597,7 @@ const SUITE_SWAP := [TOILETS, STORE, BREAK_ROOM, EXEC_OFFICE]
 ## is tried on the room's feature wall first.
 const WALL_DRESSING := {
 	# Framed prints, the clock and the directory: no rule, plan nor extinguisher in the floor's first view.
-	RECEPTION: [["map", 1, 0], ["picture", 3, 0], ["clock", 1, 0], ["directory", 1, 0], ["socket", 2, 0]],
+	RECEPTION: [["picture_large", 1, 0], ["map", 1, 0], ["picture", 2, 0], ["clock", 1, 0], ["directory", 1, 0], ["socket", 2, 0]],
 	OPEN_OFFICE: [["notice", 3, 0], ["clock", 1, 0], ["picture", 3, 0], ["rule", 1, 1], ["plan", 1, 0], ["hooks", 1, 0], ["extinguisher", 1, 0], ["thermostat", 1, 0], ["alarm", 1, 0], ["socket", 2, 0]],
 	CUBICLES: [["notice", 2, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 1], ["plan", 1, 0], ["extinguisher", 1, 0], ["thermostat", 1, 0], ["socket", 2, 0]],
 	OFFICE: [["picture_large", 1, 0], ["diplomas", 1, 0], ["notice", 1, 0], ["picture", 3, 0], ["clock_square", 1, 0], ["hooks", 1, 0], ["thermostat", 1, 0], ["socket", 1, 0]],

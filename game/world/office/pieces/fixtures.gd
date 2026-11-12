@@ -79,6 +79,22 @@ static func make_basin(builder: Node3D, size: Vector3) -> ArrayMesh:
 		KIT.cylinder(p, "metal", Vector3(s * 0.08, r_y + 0.02, -d * 0.5 + 0.06), 0.018, 0.04, 8)
 	return KIT.finish(builder, p, "basin", size)
 
+## An office wall lamp of 1987: an opal glass box between brass caps on a
+## brass back plate, its back at z 0 and its middle at y 0 (the reception's
+## lift, office_geometry.arrival_lift()). The glass glows with its room.
+static func box_sconce(builder: Node3D, size: Vector3) -> ArrayMesh:
+	return KIT.cached(builder, KIT.key_of("box_sconce", size), func() -> ArrayMesh: return make_box_sconce(builder, size))
+
+static func make_box_sconce(builder: Node3D, size: Vector3) -> ArrayMesh:
+	var p := KIT.begin()
+	var w := size.x
+	var h := size.y
+	var d := size.z
+	KIT.block(p, "gold", Vector3(0.0, 0.0, 0.006), Vector3(w, h, 0.012), 0.002)
+	KIT.block(p, "glow_strip", Vector3(0.0, 0.0, 0.012 + (d - 0.012) * 0.5), Vector3(w - 0.03, h - 0.05, d - 0.012), 0.004)
+	for s: float in [-1.0, 1.0]: KIT.block(p, "gold", Vector3(0.0, s * (h * 0.5 - 0.0125), 0.012 + (d - 0.012) * 0.5), Vector3(w - 0.02, 0.025, d - 0.008), 0.003)
+	return KIT.finish(builder, p, "box_sconce", size, {"solid": false})
+
 ## A rug of `key`'s material, fringed at both ends of its width.
 static func rug(builder: Node3D, size: Vector3, key: String) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("rug", size, key), func() -> ArrayMesh: return make_rug(builder, size, key))
@@ -89,8 +105,9 @@ static func make_rug(builder: Node3D, size: Vector3, key: String) -> ArrayMesh:
 	var h := size.y
 	var d := size.z
 	KIT.block(p, key, Vector3(0.0, h * 0.5, 0.0), Vector3(w - 0.06, h, d), minf(0.004, h * 0.4))
-	# The fringe: thin linen strands in a row at each end, outside the body.
-	for s: float in [-1.0, 1.0]:
+	# The fringe: thin linen strands in a row at each end, outside the body;
+	# none on a ribbed door mat.
+	for s: float in ([] if key.begins_with("mat") else [-1.0, 1.0]):
 		for k in int(d / 0.02):
 			KIT.block(p, "linen", Vector3(s * (w * 0.5 - 0.015), 0.001, -d * 0.5 + 0.01 + k * 0.02), Vector3(0.03, 0.002, 0.006))
 	return KIT.finish(builder, p, "rug_" + key, size, {"solid": false})
