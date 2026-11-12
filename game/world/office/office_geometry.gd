@@ -151,9 +151,9 @@ const WRAP_DROP := 0.09
 ## The glow on the tiles round each lit troffer (spec_rediseno 4, mechanism
 ## b): how far past the troffer it reaches, how far under the tiles it is
 ## drawn, and its strength at the troffer's edge with the lamp at full energy.
-const HALO_REACH := 2.6
+const HALO_REACH := 1.8
 const HALO_BELOW := 0.002
-const HALO_ENERGY := 0.45
+const HALO_ENERGY := 0.22
 ## A lit lens burns (spec_rediseno 4): its emission over the lamp colour, so
 ## that it is the brightest thing in the picture, clips, blooms and shows in
 ## a waxed floor.
@@ -161,7 +161,7 @@ const LENS_GLOW := 4.0
 ## The tubes behind a lens, across it (0 to 1), and the diffuser's glow between
 ## them as a share of a tube's (lens_texture()).
 const LENS_TUBES := [0.24, 0.5, 0.76]
-const LENS_DIFFUSER := 0.12
+const LENS_DIFFUSER := 0.35
 ## The pool under each troffer (spec_rediseno 4, low key): a spot straight
 ## down from its lens, no shadow, at POOL_ENERGY with its room's lamp whole,
 ## its cone's half angle (its edge scallops the walls near it) and its reach
@@ -298,14 +298,23 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 				start = INF
 			elif not cut and start == INF: start = maxf(i * tile, rect.position.x)
 	# The T-grid: a line on every lattice line inside the rect (on a shared
-	# edge, drawn by the cell on its low side).
+	# edge, drawn by the cell on its low side), never across a troffer: its
+	# lens is one piece, and a tee over it split it into two white tiles.
+	var housings: Array[Rect2] = []
+	for lamp in lamps:
+		var half := Vector2(0.3, 0.6) if bool(lamp.along_z) else Vector2(0.6, 0.3)
+		housings.append(Rect2(Vector2(lamp.centre) - half, half * 2.0))
 	for i in range(ceili(rect.position.x / tile), ceili(rect.end.x / tile)):
 		var x := i * tile
-		box(node, Vector3(x, h + TEE.y * 0.5, rect.get_center().y) - origin, Vector3(TEE.x, TEE.y, rect.size.y), "tgrid")
-		box(node, Vector3(x, h + TEE.y + TEE.z * 0.5, rect.get_center().y) - origin, Vector3(0.006, TEE.z, rect.size.y), "tgrid")
+		var cuts: Array = housings.filter(func(r: Rect2): return x > r.position.x + 0.01 and x < r.end.x - 0.01).map(func(r: Rect2): return Vector2(r.position.y, r.end.y))
+		for s: Vector2 in grid_spans(rect.position.y, rect.end.y, cuts):
+			box(node, Vector3(x, h + TEE.y * 0.5, (s.x + s.y) * 0.5) - origin, Vector3(TEE.x, TEE.y, s.y - s.x), "tgrid")
+			box(node, Vector3(x, h + TEE.y + TEE.z * 0.5, (s.x + s.y) * 0.5) - origin, Vector3(0.006, TEE.z, s.y - s.x), "tgrid")
 	for j in range(ceili(rect.position.y / tile), ceili(rect.end.y / tile)):
 		var z := j * tile
-		box(node, Vector3(rect.get_center().x, h + TEE.y * 0.5, z) - origin, Vector3(rect.size.x, TEE.y, TEE.x), "tgrid")
+		var cuts: Array = housings.filter(func(r: Rect2): return z > r.position.y + 0.01 and z < r.end.y - 0.01).map(func(r: Rect2): return Vector2(r.position.x, r.end.x))
+		for s: Vector2 in grid_spans(rect.position.x, rect.end.x, cuts):
+			box(node, Vector3((s.x + s.y) * 0.5, h + TEE.y * 0.5, z) - origin, Vector3(s.y - s.x, TEE.y, TEE.x), "tgrid")
 	# The troffers: a housing over two tiles and its face (troffer_face()).
 	# Lit in its lamp's colour even in a dark room: a dark room's lenses are
 	# put out after the build (build(), glow_room()), so they light with it.
@@ -367,6 +376,9 @@ func lens_key(room: Dictionary) -> String:
 		(lens as BaseMaterial3D).emission = LIGHTING.light_color(float(kelvin))
 		(lens as BaseMaterial3D).emission_energy_multiplier = LENS_GLOW
 		(lens as BaseMaterial3D).emission_texture = lens_texture()
+		# Times the picture, not plus it: added, the lens glowed whole whatever
+		# the picture said.
+		(lens as BaseMaterial3D).emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 		(lens as BaseMaterial3D).uv1_triplanar = true
 		(lens as BaseMaterial3D).uv1_offset = Vector3(0.5, 0.5, 0.5)
 	materials[key] = lens
@@ -436,6 +448,18 @@ func troffer_face(node: Node3D, at: Vector3, size: Vector3, h: float, glow: Stri
 		_:
 			lens_box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(length, 0.01, width), along_x, glow)
 
+## The stretches of a grid line from `a` to `b` left by `cuts` ([from, to]
+## along it), none shorter than 5 mm.
+static func grid_spans(a: float, b: float, cuts: Array) -> Array[Vector2]:
+	cuts.sort_custom(func(p: Vector2, q: Vector2): return p.x < q.x)
+	var spans: Array[Vector2] = []
+	var at := a
+	for c: Vector2 in cuts:
+		if minf(c.x, b) - at > 0.005: spans.append(Vector2(at, minf(c.x, b)))
+		at = maxf(at, c.y)
+	if b - at > 0.005: spans.append(Vector2(at, b))
+	return spans
+
 ## A lens, its long side along its own x whichever way it lies, so that its
 ## picture (lens_picture()) runs its tubes along it.
 func lens_box(node: Node3D, at: Vector3, size: Vector3, along_x: bool, glow: String) -> void:
@@ -452,7 +476,7 @@ static func lens_texture() -> ImageTexture:
 	for y in 64:
 		var v := (float(y) + 0.5) / 64.0
 		var tubes := 0.0
-		for at: float in LENS_TUBES: tubes = maxf(tubes, exp(-pow((v - at) / 0.07, 2.0)))
+		for at: float in LENS_TUBES: tubes = maxf(tubes, exp(-pow((v - at) / 0.09, 2.0)))
 		var edge := smoothstep(0.0, 0.14, v) * smoothstep(1.0, 0.86, v)
 		var level := (LENS_DIFFUSER + (1.0 - LENS_DIFFUSER) * tubes) * (0.2 + 0.8 * edge)
 		var shade := Color(level, level, level).linear_to_srgb()
@@ -1915,9 +1939,19 @@ func set_halo(entry: Dictionary, energy: float) -> void:
 	for pool: SpotLight3D in entry.pools:
 		pool.light_energy = POOL_ENERGY * energy / HALO_ENERGY
 		if pool.visible != shown: pool.visible = shown
-	# So does its probe: a drained room's floor mirrors dimmer lenses.
+	# So does its probe, by her drain alone and in steps: every change of a
+	# probe's intensity renders its six faces again, and following the
+	# distance and a failing tube did that every frame (10 ms of Alto's).
 	var slot := probe_slot(int(entry.room))
-	if slot.get("probe") != null: (slot.probe as ReflectionProbe).intensity = float(slot.intensity) * energy / HALO_ENERGY
+	if slot.get("probe") != null: probe_strength(slot, int(entry.room))
+
+## A probe's strength with what her drain leaves of its room's lamp, written
+## only when it moves by PROBE_STEP.
+const PROBE_STEP := 0.05
+func probe_strength(slot: Dictionary, room_id: int) -> void:
+	var probe: ReflectionProbe = slot.probe
+	var wanted := float(slot.intensity) * (1.0 - drained(room_id))
+	if absf(probe.intensity - wanted) >= PROBE_STEP or (wanted == 0.0) != (probe.intensity == 0.0): probe.intensity = wanted
 
 ## A room's probe slot (probe_slots), {} when it has none; indexed once.
 var slot_of := {}
@@ -1927,8 +1961,8 @@ func probe_slot(room_id: int) -> Dictionary:
 	return slot_of.get(room_id, {})
 
 ## An office's probe is its floor's (PROBE_PAST, FLOOR_LAYER): the floor
-## takes it and the lenses are in it; its strength follows its room's lamp as
-## the halo does (set_halo()). Made only while the room is lit
+## takes it and the lenses are in it; its strength follows her drain of its
+## room's lamp (probe_strength()). Made only while the room is lit
 ## (round_probes()), and dropped with the lamp: a dark room mirrors nothing.
 func make_probe(slot: Dictionary) -> void:
 	super(slot)
@@ -1942,8 +1976,8 @@ func make_probe(slot: Dictionary) -> void:
 		RenderingServer.instance_set_visible(ground.get_instance(), false)
 		ground.layers |= FLOOR_LAYER
 		RenderingServer.instance_set_visible(ground.get_instance(), ground.is_visible_in_tree())
-	var halo: Dictionary = halos.get(int(slot.room), {})
-	if not halo.is_empty(): probe.intensity = float(slot.intensity) * maxf(float(halo.energy), 0.0) / HALO_ENERGY
+	probe.intensity = float(slot.intensity)
+	probe_strength(slot, int(slot.room))
 
 ## Whether the troffers' pools light (POOL_ENERGY): only while every lamp is
 ## kept to its room's layers and the ceiling lamps cast, never on

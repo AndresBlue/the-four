@@ -161,10 +161,13 @@ func tubes_built(m: Dictionary) -> void:
 	pipe.height = 1.0
 	pipe.radial_segments = 10
 	pipe.rings = 1
+	# Worn brass, as the reference's (spec_rediseno 6.3), the tubes and their
+	# kit's pipe alike. Little metal: the hotel's gold, all metal, gave back the
+	# dark offices round it and read as a black tube on the ceiling.
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("8a7a52")
-	material.metallic = 0.7
-	material.roughness = 0.4
+	material.albedo_color = Color("9c8656")
+	material.metallic = 0.3
+	material.roughness = 0.5
 	pipe.material = material
 	multi.mesh = pipe
 	# Poly Haven's straight steel pipe when it is baked: a metre along its y
@@ -188,8 +191,7 @@ func tubes_built(m: Dictionary) -> void:
 	var holder := MultiMeshInstance3D.new()
 	holder.name = "PneumaticTubes"
 	holder.multimesh = multi
-	# Worn brass, as the reference's (spec_rediseno 6.3).
-	holder.material_override = level.hotel.materials.get("gold")
+	holder.material_override = material
 	# They cross many rooms: on every room's layer, and not moved by the floor
 	# to the layer of the one at their origin (hotel_geometry.late_arrival()).
 	holder.set_meta("laid", true)

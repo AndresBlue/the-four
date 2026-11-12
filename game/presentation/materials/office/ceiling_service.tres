@@ -4,12 +4,15 @@
 
 [resource]
 shader = ExtResource("1")
-shader_parameter/flat_color = Color(0.66, 0.62, 0.52, 1)
-shader_parameter/base_color = Color(0.7, 0.66, 0.55, 1)
-shader_parameter/yellow_color = Color(0.66, 0.58, 0.4, 1)
+shader_parameter/flat_color = Color(0.56, 0.52, 0.43, 1)
+shader_parameter/base_color = Color(0.6, 0.56, 0.46, 1)
+shader_parameter/yellow_color = Color(0.56, 0.48, 0.32, 1)
 shader_parameter/stain_color = Color(0.47, 0.39, 0.25, 1)
 shader_parameter/map_metres = 3.6
 shader_parameter/map_mode = 2
-shader_parameter/map_detail = 0.6
+shader_parameter/map_detail = 1.0
+shader_parameter/yellowed = 0.45
+shader_parameter/ringed = 0.22
+shader_parameter/cracked = 0.12
 shader_parameter/map_roughness = 0.15
 metadata/scan = "officeceiling001"
