@@ -536,6 +536,9 @@ func bake(model: String, folder: String, part := "", pattern := "") -> void:
 			tool.generate_tangents()
 			arrays = tool.commit_to_arrays()
 		triangles += arrays[Mesh.ARRAY_INDEX].size() / 3
+		# Custom channels and skin a download may bring (its vertex colours as
+		# floats): a static piece uses none, and the server takes them only as bytes.
+		for channel in [Mesh.ARRAY_CUSTOM0, Mesh.ARRAY_CUSTOM1, Mesh.ARRAY_CUSTOM2, Mesh.ARRAY_CUSTOM3, Mesh.ARRAY_BONES, Mesh.ARRAY_WEIGHTS]: arrays[channel] = null
 		var path: String = target + model + "/" + key + ".tres"
 		var material: Material = load(path) if ResourceLoader.exists(path) else null
 		if material == null:

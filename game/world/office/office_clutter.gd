@@ -50,15 +50,15 @@ const MEETING_TOP := [["paper_stack", Vector3(-0.75, 0.75, -0.15), 0.0, 0.9], ["
 ## often]; clear of each other and of the lamps.
 const TOPS := {
 	"office_suite": [["phone", Vector3(0.55, 0.75, 0.05), PI, 0.9], ["tray", Vector3(0.15, 0.75, 0.3), PI, 0.7], ["folders", Vector3(-0.05, 0.75, -0.1), 0.2, 0.7], ["mug", Vector3(0.35, 0.75, -0.15), 0.0, 0.5], ["pen_cup", Vector3(0.7, 0.75, 0.35), 0.0, 0.6], ["paper_stack", Vector3(-0.25, 0.75, 0.3), 2.9, 0.5], ["books", Vector3(-0.55, 0.8, -1.15), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, -1.12), 0.0, 0.7]],
-	"exec_desk": [["phone", Vector3(0.7, 0.76, -0.05), PI, 0.9], ["tray", Vector3(0.35, 0.76, 0.22), PI, 0.7], ["pen_cup", Vector3(0.0, 0.76, 0.3), 0.0, 0.7], ["folders", Vector3(-0.2, 0.76, -0.12), 0.3, 0.6], ["ashtray", Vector3(0.65, 0.76, 0.3), 0.0, 0.5], ["paper_stack", Vector3(-0.4, 0.76, 0.25), 3.0, 0.5]],
-	"secretary_desk": [["typewriter", Vector3(-0.1, 0.75, -0.75), 0.0, 0.9], ["phone", Vector3(0.6, 0.75, -0.1), 0.0, 0.9], ["tray", Vector3(0.35, 0.75, -0.9), 0.0, 0.7], ["folders", Vector3(0.6, 0.75, 0.25), 0.4, 0.6], ["mug", Vector3(-0.45, 0.75, -0.55), 0.0, 0.5]],
+	"exec_desk": [["desk_fan", Vector3(-0.8, 0.76, -0.25), PI, 0.6], ["phone", Vector3(0.7, 0.76, -0.05), PI, 0.9], ["tray", Vector3(0.35, 0.76, 0.22), PI, 0.7], ["pen_cup", Vector3(0.0, 0.76, 0.3), 0.0, 0.7], ["folders", Vector3(-0.2, 0.76, -0.12), 0.3, 0.6], ["ashtray", Vector3(0.65, 0.76, 0.3), 0.0, 0.5], ["paper_stack", Vector3(-0.4, 0.76, 0.25), 3.0, 0.5]],
+	"secretary_desk": [["stapler", Vector3(0.35, 0.75, -0.5), 0.2, 0.7], ["typewriter", Vector3(-0.1, 0.75, -0.75), 0.0, 0.9], ["phone", Vector3(0.6, 0.75, -0.1), 0.0, 0.9], ["tray", Vector3(0.35, 0.75, -0.9), 0.0, 0.7], ["folders", Vector3(0.6, 0.75, 0.25), 0.4, 0.6], ["mug", Vector3(-0.45, 0.75, -0.55), 0.0, 0.5]],
 	"air_desk": [["paper_stack", Vector3(0.1, 0.75, -0.4), 0.2, 0.9], ["register", Vector3(-0.4, 0.75, -0.35), 0.1, 0.6]],
-	"work_desk": [["phone", Vector3(0.45, 0.75, -0.4), 0.0, 0.9], ["register", Vector3(-0.05, 0.75, -0.35), 0.1, 0.8], ["mug", Vector3(0.6, 0.75, -0.08), 0.0, 0.5]],
+	"work_desk": [["thermos", Vector3(0.25, 0.75, -0.05), 0.0, 0.5], ["phone", Vector3(0.45, 0.75, -0.4), 0.0, 0.9], ["register", Vector3(-0.05, 0.75, -0.35), 0.1, 0.8], ["mug", Vector3(0.6, 0.75, -0.08), 0.0, 0.5]],
 	"reception_counter_l": [["phone", Vector3(-0.4, 0.74, 0.6), PI, 0.9], ["tray", Vector3(0.2, 0.74, 0.7), PI, 0.8], ["folders", Vector3(-0.8, 0.74, 0.6), 0.2, 0.6], ["plant_small", Vector3(-0.9, 1.1, 0.92), 0.0, 0.9], ["paper_stack", Vector3(-1.3, 0.74, 0.58), PI + 0.3, 0.7], ["pen_cup", Vector3(0.45, 0.74, 0.62), 0.0, 0.7], ["binders", Vector3(1.4, 1.1, 0.93), PI, 0.8],["register", Vector3(-1.41, 0.74, 0.0), PI / 2, 0.6], ["paper_stack", Vector3(-0.3, 1.1, 0.93), PI + 0.2, 0.8], ["tray", Vector3(0.35, 1.1, 0.93), PI, 0.7], ["pen_cup", Vector3(0.95, 1.1, 0.95), 0.0, 0.7], ["notepad", Vector3(-1.45, 1.1, 0.93), 0.3, 0.6]],
-	"reader_table": [["paper_stack", Vector3(0.45, 0.74, -0.25), 0.3, 0.7], ["notepad", Vector3(-0.5, 0.74, -0.2), 0.3, 0.6]],
+	"reader_table": [["spectacles", Vector3(0.15, 0.74, -0.05), 0.3, 0.5], ["paper_stack", Vector3(0.45, 0.74, -0.25), 0.3, 0.7], ["notepad", Vector3(-0.5, 0.74, -0.2), 0.3, 0.6]],
 	"work_table": [["paper_stack", Vector3(-0.6, 0.74, 0.1), 0.2, 0.9], ["paper_stack", Vector3(0.1, 0.74, -0.2), 1.7, 0.7], ["tray_wire", Vector3(0.55, 0.74, 0.2), 0.0, 0.8], ["pen_cup", Vector3(-0.1, 0.74, 0.3), 0.0, 0.7], ["archive_box", Vector3(-0.5, 0.0, 0.0), 0.1, 0.8], ["archive_box", Vector3(0.4, 0.0, -0.1), -0.2, 0.6]],
 	"dining_set": [["mug", Vector3(-0.25, 0.74, -0.15), 0.0, 0.7], ["mug", Vector3(0.3, 0.74, 0.2), 1.0, 0.5], ["ashtray", Vector3(0.0, 0.74, 0.0), 0.0, 0.6], ["paper_stack", Vector3(0.3, 0.74, -0.2), 0.4, 0.4]],
-	"sideboard": [["books", Vector3(-0.5, 0.8, 0.0), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, 0.0), 0.0, 0.6], ["mug", Vector3(-0.05, 0.8, -0.05), 0.0, 0.5], ["mug", Vector3(0.18, 0.8, 0.1), 0.6, 0.4]],
+	"sideboard": [["desk_clock", Vector3(0.35, 0.8, -0.1), 0.0, 0.7], ["books", Vector3(-0.5, 0.8, 0.0), 0.0, 0.8], ["plant_small", Vector3(0.6, 0.8, 0.0), 0.0, 0.6], ["mug", Vector3(-0.05, 0.8, -0.05), 0.0, 0.5], ["mug", Vector3(0.18, 0.8, 0.1), 0.6, 0.4]],
 	"sorting_table": [["box", Vector3(-0.5, 1.02, 0.05), 0.2, 0.8], ["paper_stack", Vector3(0.4, 1.02, 0.1), 0.5, 0.8]],
 	"pigeon_counter": [["paper_stack", Vector3(-0.6, 1.1, 0.0), 0.0, 0.6], ["box", Vector3(0.5, 1.1, 0.0), 0.3, 0.6]],
 	"filing": [["binders", Vector3(0.0, 1.32, -0.125), 0.0, 0.35], ["folders", Vector3(0.0, 1.32, 0.15), 0.2, 0.4]],
@@ -77,7 +77,7 @@ const TOPS := {
 ## papers go (document_placement: ±0.2 across, -0.2 to 0.1 deep, at 0.84).
 const CORNER_TOPS := {
 	"desk": [["phone", Vector3(0.55, 0.84, -0.45), 0.0, 0.7], ["tray", Vector3(-0.55, 0.84, -0.45), 0.0, 0.6], ["mug", Vector3(0.6, 0.84, 0.05), 0.0, 0.4]],
-	"table": [["ashtray", Vector3(0.6, 0.84, -0.45), 0.0, 0.5], ["paper_stack", Vector3(-0.6, 0.84, -0.4), 0.3, 0.5]],
+	"table": [["boombox", Vector3(0.0, 0.84, -0.3), 0.0, 0.5], ["ashtray", Vector3(0.6, 0.84, -0.45), 0.0, 0.5], ["paper_stack", Vector3(-0.6, 0.84, -0.4), 0.3, 0.5]],
 	# Clear of the director's globe at x 0.55 (office_props.build()).
 	"sideboard": [["books", Vector3(-0.55, 0.8, -0.46), 0.0, 0.7], ["mug", Vector3(-0.05, 0.8, -0.4), 0.0, 0.4]],
 	"filing": [["binders", Vector3(-0.26, 1.32, -0.45), 0.0, 0.5], ["folders", Vector3(0.26, 1.32, -0.35), 0.3, 0.5]],
@@ -137,6 +137,7 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 				var at: Vector3 = thing[1]
 				lay(builder, node, node, room, String(thing[0]), socket * Transform3D(Basis(Vector3.UP, float(thing[2])), at), float(thing[3]), node.position + socket * at)
 	if builder.vary(node.position, 430) < float(SPILL[mess]): spill(builder, node, room)
+	if builder.vary(node.position, 490) < float(LITTER[mess]): litter(builder, node, room)
 
 ## Where a kind's TOPS stand off their rows, in its holder: a meeting table's
 ## on its board (table_z, office_props.build_item()); the secretary's from its
@@ -210,6 +211,35 @@ static func floor_papers(builder: Node3D, node: Node3D, holder: Node3D, room: Di
 	if not clear_of_route(builder, room, world): return
 	builder.place(holder, MODELS.mesh_of(builder, "paper_scatter"), Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 492) * TAU), at))
 	note(builder, room, "paper_scatter", world, true, true)
+
+## What is left on a room's floor, by its type (litter()): the stores' tools,
+## an office's shoes and cord; and how often, by mess.
+const LITTER := [0.1, 0.2, 0.3, 0.4, 0.5]
+const LITTER_KINDS := {OFFICE.STORE: ["toolbox", "broom", "mousetrap"], OFFICE.DEPOT: ["toolbox", "broom", "mousetrap"], OFFICE.OFFICE: ["shoes", "cord_floor"], OFFICE.OPEN_OFFICE: ["cord_floor", "shoes"], OFFICE.CUBICLES: ["cord_floor"], OFFICE.BREAK_ROOM: ["mousetrap", "broom"], OFFICE.ARCHIVE: ["mousetrap", "toolbox"]}
+
+## One thing left on the floor (LITTER_KINDS) at the first of the room's
+## quarter points that nothing takes and that the route leaves alone, as
+## spill() finds its place; a broom lies with its dustpan.
+static func litter(builder: Node3D, node: Node3D, room: Dictionary) -> void:
+	var kinds: Array = LITTER_KINDS.get(int(room.type), [])
+	if kinds.is_empty(): return
+	var kind := String(kinds[int(builder.vary(node.position, 491) * kinds.size())])
+	var zones: Array = zones_of(builder, room).duplicate()
+	for item in room.get("furniture", []): zones.append({"rect": LAYOUT.footprint(item).grow(0.3)})
+	var span := FLOOR.size_of(room)
+	for corner: Vector2 in [Vector2(1, -1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, 1)]:
+		var p := corner * (span * 0.5 - Vector2(1.4, 1.4))
+		if LAYOUT.blocked(Rect2(p - Vector2(0.8, 0.8), Vector2(1.6, 1.6)), zones): continue
+		var world := node.position + Vector3(p.x, 0, p.y)
+		if not clear_of_route(builder, room, world): continue
+		var turn := Basis(Vector3.UP, builder.vary(world, 492) * TAU)
+		# A broom lies on its side, its dustpan by it.
+		var lie := Basis(Vector3.RIGHT, PI / 2) if kind == "broom" else Basis.IDENTITY
+		var lift: float = 0.06 if kind == "broom" else 0.0
+		MODELS.put(builder, node, kind, Transform3D(turn * lie, Vector3(p.x, lift, p.y)))
+		if kind == "broom": MODELS.put(builder, node, "dustpan", Transform3D(turn, Vector3(p.x, 0, p.y) + turn * Vector3(0.35, 0, 0.3)))
+		note(builder, room, "litter_" + kind, world, true, false)
+		return
 
 ## A box knocked over with its papers out of it (spec_rediseno 7), at the
 ## first of the room's quarter points that nothing takes and whose papers

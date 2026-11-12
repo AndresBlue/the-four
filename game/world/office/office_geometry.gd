@@ -1651,15 +1651,26 @@ func hide_skin(_room: Dictionary) -> Dictionary:
 ## materials (presets and lacquer change them in place).
 var office_doors := {}
 
+## The doors' downloads by leaf_mesh()'s key, baked about their hinge as the
+## hotel's leaf is (tools/props/fit_model.py); the leaf made in code where one
+## is missing. The steel door brings its own steel casing.
+const DOOR_MODELS := {"vision": "res://assets/props/office/puerta_oficina_sousinho_leaf.res", "plain": "res://assets/props/office/puerta_lisa_sousinho_leaf.res", "service": "res://assets/props/office/puerta_metal_tboiston_leaf.res"}
+const STEEL_FRAME := "res://assets/props/office/puerta_metal_tboiston_frame.res"
+
+## Whether the door between two rooms is steel: service, the plant rooms and the stages' gates.
+func service_door(a: Dictionary, b: Dictionary) -> bool:
+	return bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
+
 func leaf_mesh(a: Dictionary, b: Dictionary) -> Mesh:
-	var steel: bool = bool(a.get("service", false)) or bool(b.get("service", false)) or [int(a.type), int(b.type)].any(func(t): return t in [OFFICE.ELECTRICAL, OFFICE.AIR_ROOM, OFFICE.AIR_PLANT]) or gate_stage(manifest, int(a.id), int(b.id)) > 0
+	var steel := service_door(a, b)
 	var key: String = "service" if steel else ("vision" if vary(FLOOR.portal_between(a, b), 172) < VISION else "plain")
-	if not office_doors.has(key): office_doors[key] = door_leaf_mesh(steel, key == "vision")
+	if not office_doors.has(key): office_doors[key] = load(DOOR_MODELS[key]) if ResourceLoader.exists(DOOR_MODELS[key]) else door_leaf_mesh(steel, key == "vision")
 	return office_doors[key]
 
-func frame_mesh(_a: Dictionary, _b: Dictionary) -> Mesh:
-	if not office_doors.has("frame"): office_doors["frame"] = door_frame_mesh()
-	return office_doors["frame"]
+func frame_mesh(a: Dictionary, b: Dictionary) -> Mesh:
+	var key := "frame_steel" if service_door(a, b) and ResourceLoader.exists(STEEL_FRAME) else "frame"
+	if not office_doors.has(key): office_doors[key] = load(STEEL_FRAME) if key == "frame_steel" else door_frame_mesh()
+	return office_doors[key]
 
 ## A flat leaf the hotel leaf's size: its face one surface (oak or steel),
 ## the lever or the panic bar another, and a vision panel's clear glass a
@@ -1708,14 +1719,31 @@ func door_leaf_mesh(steel: bool, vision: bool) -> ArrayMesh:
 		mesh.surface_set_material(2, materials.clear_glass)
 	return mesh
 
-## A walnut frame round the doorway: two jambs JAMB_WIDE wide, JAMB_PROUD past
-## each face of the wall, and the head.
+## A walnut frame round the doorway, JAMB_WIDE wide: the lining through the
+## wall, and on each face a casing in two steps, its inner band JAMB_PROUD
+## proud and its outer one lower, round the jambs and the head (the stop the
+## leaf shuts against is the hotel's door_stop()).
 func door_frame_mesh() -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var half := FLOOR.PORTAL * 0.5
-	var deep := 0.18 + JAMB_PROUD * 2.0
-	for part in [[Vector3(JAMB_WIDE, OPENING_HIGH, deep), Vector3(-half - JAMB_WIDE * 0.5, OPENING_HIGH * 0.5, 0)], [Vector3(JAMB_WIDE, OPENING_HIGH, deep), Vector3(half + JAMB_WIDE * 0.5, OPENING_HIGH * 0.5, 0)], [Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE, deep), Vector3(0, OPENING_HIGH + JAMB_WIDE * 0.5, 0)]]:
+	var wall := 0.18
+	var inner := JAMB_WIDE * 0.6
+	var outer := JAMB_WIDE - inner
+	var parts := []
+	for side: float in [-1.0, 1.0]:
+		parts.append([Vector3(JAMB_WIDE, OPENING_HIGH, wall), Vector3(side * (half + JAMB_WIDE * 0.5), OPENING_HIGH * 0.5, 0)])
+	parts.append([Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE, wall), Vector3(0, OPENING_HIGH + JAMB_WIDE * 0.5, 0)])
+	for face: float in [-1.0, 1.0]:
+		for step in [[inner, 0.0, JAMB_PROUD], [outer, inner, JAMB_PROUD * 0.6]]:
+			var wide: float = step[0]
+			var from: float = step[1]
+			var proud: float = step[2]
+			var z := face * (wall * 0.5 + proud * 0.5)
+			for side: float in [-1.0, 1.0]:
+				parts.append([Vector3(wide, OPENING_HIGH + from + wide, proud), Vector3(side * (half + from + wide * 0.5), (OPENING_HIGH + from + wide) * 0.5, z)])
+			parts.append([Vector3(FLOOR.PORTAL + (from + wide) * 2.0, wide, proud), Vector3(0, OPENING_HIGH + from + wide * 0.5, z)])
+	for part in parts:
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = part[0]
 		tool.append_from(box_mesh, 0, Transform3D(Basis.IDENTITY, part[1]))

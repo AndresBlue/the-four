@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 5111,
-    "sha256": "103d5fc2912d8bb48cd17a3c5866d0cbfba76379edd16a0a9387315bb69f793e"
+    "bytes": 5160,
+    "sha256": "1db414d5c3fd1af6fa8500f60de543cbbc5d07602b5904e2f1d425c0f032de3b"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -756,8 +756,8 @@
     "sha256": "27ac696c6b8baf6cb94e107c7b0ceff65a2097c0c63d2e2eb7f801a1fc72caba"
   },
   "assets/props/office/rotary_phone_black_sketchfab.res": {
-    "bytes": 177123,
-    "sha256": "e325d6f0266db7e9f182039be06aa427576643ec02ec2396ec9f89c93c547126"
+    "bytes": 91451,
+    "sha256": "2bed2c5ef7e6bb584868c53cfe734bf35e424e221c6becdec517e6863278b12d"
   },
   "assets/props/office/crt_terminal_ibm3278_sketchfab/display.tres": {
     "bytes": 341,
@@ -1788,8 +1788,8 @@
     "sha256": "519745aa3a0b9cd4815396cf5a67ed52f774b942150f1cd23e21051f57269364"
   },
   "assets/props/office/magnifying_glass_01/magnifying_glass_01_lense.tres": {
-    "bytes": 515,
-    "sha256": "554c6699907f92b4aab3288f95a3b1edc7acec8e448a85c61515b14b60b2e35b"
+    "bytes": 498,
+    "sha256": "8d9a89e60f371c28533ccd3e884a284f5855ce86101d6a7240ef7475f4c6358e"
   },
   "assets/props/office/magnifying_glass_01/magnifying_glass_01_nor_gl_1k.jpg": {
     "bytes": 22624,
@@ -1874,5 +1874,201 @@
   "assets/props/office/boombox/boombox_speakers_diff_1k.jpg": {
     "bytes": 311232,
     "sha256": "331a59869dcd2ee19e702eaf346511edeb06c23471482fe30c5505ac6cf69b09"
+  },
+  "assets/props/office/Television_01.res": {
+    "bytes": 83315,
+    "sha256": "d2f6d00bea8005a5d539b8d08a18f241edc1b7480b18b9dc5e657c66adef3379"
+  },
+  "assets/props/office/alargador_evan4129.res": {
+    "bytes": 190393,
+    "sha256": "759b82d38731e4eedab32478ae517fdf6db6be8d3781b9c2e68e69a7572a98f4"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e_body4.res": {
+    "bytes": 34157,
+    "sha256": "7ae860c7c844b48fc86eabd4543fe80478f700fc4ec1cc2b4adfe077f0a22478"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e_drawer.res": {
+    "bytes": 31590,
+    "sha256": "85276e4ef20caac8fe81c9ae9b35c6a545eb194eee3d255fb8304efb520b4a1b"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e_shut4.res": {
+    "bytes": 158257,
+    "sha256": "c201ae2ca4e5e3cf681426336fb7165736158f3208283b9d44e8e26bdd1ee59b"
+  },
+  "assets/props/office/archivadores_palanca_janexx.res": {
+    "bytes": 120501,
+    "sha256": "5e30ceb1e6fb19ecb6e1ea86c33cfc521a0f10b6be5abc117e3d147aa0cffca2"
+  },
+  "assets/props/office/bandeja_sinnervoncrawsz.res": {
+    "bytes": 49089,
+    "sha256": "b31632075b544bddb93462273e027a1f2f3e821634a3c1770e189e509e8df96c"
+  },
+  "assets/props/office/boombox.res": {
+    "bytes": 127486,
+    "sha256": "b35dec6cc4014469873591c506409abbdf9db2661465463da6d62f372ad12575"
+  },
+  "assets/props/office/butaca_madera_renend.res": {
+    "bytes": 62079,
+    "sha256": "a7ef981904227801ff0b7693456be49b60a983282eac8a2bc22ab3072f6cfee2"
+  },
+  "assets/props/office/caja_carton_krolzuzanna.res": {
+    "bytes": 188647,
+    "sha256": "ae0eee171a04413b8ec4e14a57bd9f4b9a0aafdacd79ab617dad6d9858024600"
+  },
+  "assets/props/office/cajas_archivo_cozmoth.res": {
+    "bytes": 59366,
+    "sha256": "50c8917d5b2c0cd418c99a4d664f1ba8f0a5d2667f41fc9b8c35ed8ae42ae875"
+  },
+  "assets/props/office/cenicero_vidrio_red2000.res": {
+    "bytes": 35955,
+    "sha256": "8b5c8937de19005f48b4e42bbd0b93ae54744a07c4dc745ca733dd9d6de075a5"
+  },
+  "assets/props/office/detector_humo_sousinho.res": {
+    "bytes": 36575,
+    "sha256": "e98c86a894e1b8a57e1cf90de0212333a8aa4a1eb9431053b75ec94671bfc00b"
+  },
+  "assets/props/office/dustpan.res": {
+    "bytes": 124479,
+    "sha256": "cf2da510016d1945ac1dbb1a94c02003b75affeedfb40f0639ba1a052fc68338"
+  },
+  "assets/props/office/escritorio_madera_collings.res": {
+    "bytes": 582003,
+    "sha256": "81ced9230db65b0a188cfc3feddb622f19ca0b3f9b40d9676b402520ddf7fe57"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs.res": {
+    "bytes": 81496,
+    "sha256": "481f460666a95b3e6dbe98d2312cfb4370aa9e28048a0d57b8684c4abca89775"
+  },
+  "assets/props/office/expendedora_attheseedof.res": {
+    "bytes": 495797,
+    "sha256": "fccf0b135879f2d4b6bd8ea17fe72dcb11fedb0ea8e4654df1143e3c605ff940"
+  },
+  "assets/props/office/flexo_sousinho.res": {
+    "bytes": 152773,
+    "sha256": "38fe348cd19d7c8f94dd6e4a16589bf6725595e190959c8ba494dd3718d3ce54"
+  },
+  "assets/props/office/globo_collings.res": {
+    "bytes": 176387,
+    "sha256": "a82ec9d446b2b69f22ea4be468d29f741c8a823d249d537c4ccb79c9a924379a"
+  },
+  "assets/props/office/impresora_okidata_papaj.res": {
+    "bytes": 69249,
+    "sha256": "929f0f5f14cbbd4b7b2bf9e23ad7921ca16d4f6e109d97d12b968061059fab43"
+  },
+  "assets/props/office/lampara_banquero_meunier.res": {
+    "bytes": 157831,
+    "sha256": "f8a926709cd6acb7d9bfa97d17c1e21a9c0004907ae28a3d58a690c5ecbdd16c"
+  },
+  "assets/props/office/libreria_libros_collings.res": {
+    "bytes": 277669,
+    "sha256": "9a9a8234d5b3de87089d29174618337096f5ec6769c68cd0623c96eebb2146c8"
+  },
+  "assets/props/office/libros_frodoundead_row_a.res": {
+    "bytes": 113665,
+    "sha256": "7613b5d926245693c4dd2bec5094cdc3010d739e63fe13eeae27e54dc0d9150f"
+  },
+  "assets/props/office/libros_frodoundead_row_b.res": {
+    "bytes": 113469,
+    "sha256": "bc2d82b323232f696cc8d56f79fd5c03a94357ca1b44cbf45e543e41aa2c2964"
+  },
+  "assets/props/office/libros_frodoundead_row_c.res": {
+    "bytes": 137913,
+    "sha256": "2ae7143cb6994bd532deee57faea4a4919dc020b79924996fc8be796cde09471"
+  },
+  "assets/props/office/libros_frodoundead_row_d.res": {
+    "bytes": 132153,
+    "sha256": "c404f84ed5d58ece7512f368dceb9ccade0683908aff367ea231c9aab53f8b14"
+  },
+  "assets/props/office/magnifying_glass_01.res": {
+    "bytes": 79492,
+    "sha256": "95f0cbbe03eb563b04bd3640f41858c90968eb91164078df6bd4f645451c873a"
+  },
+  "assets/props/office/metal_toolbox.res": {
+    "bytes": 127495,
+    "sha256": "33cdf1efdb034153947808ffa790a70d7349d0e894f3e0bc13fa96ce35d9a0f7"
+  },
+  "assets/props/office/mousetrap.res": {
+    "bytes": 75655,
+    "sha256": "09d87c2a4b1113907f354b32fe72d408dbf8fbb7c44afe9314037365b6c9a5ae"
+  },
+  "assets/props/office/nevera_dylanheyes.res": {
+    "bytes": 528752,
+    "sha256": "de3d432b8705ec725be5d62a44a3622af542269ea407c39f129ca78fbe3a1922"
+  },
+  "assets/props/office/plastic_thermos.res": {
+    "bytes": 99095,
+    "sha256": "c3cf661dd5ef97a7904dc6572f6afac9a957745d1c9299cae8be3c8c63b35167"
+  },
+  "assets/props/office/portalapices_aspectstudio.res": {
+    "bytes": 437673,
+    "sha256": "e8e98fda54e7a1c4b1b8303f016efb60f979f6cef39d70142eeaf0a85a480f6f"
+  },
+  "assets/props/office/projector_screen.res": {
+    "bytes": 110163,
+    "sha256": "214a79667f445aaebb21c801ec349eb3b571d866f13292819e59d1506ebb15de"
+  },
+  "assets/props/office/puerta_lisa_sousinho_leaf.res": {
+    "bytes": 133208,
+    "sha256": "7659d740f01b44101be20a263376f6548c34564ace3f8a61dd7f0cba461128fa"
+  },
+  "assets/props/office/puerta_metal_tboiston_frame.res": {
+    "bytes": 2526,
+    "sha256": "b8bb8aa1802afcd5beb6ee232c53b375b9446f4b2298d81357bffd2839e4936c"
+  },
+  "assets/props/office/puerta_metal_tboiston_leaf.res": {
+    "bytes": 94583,
+    "sha256": "38ccd25a43e7573689149d1b13b1a0d4db8ad44b9f5ca34d17f283e3a4f9b922"
+  },
+  "assets/props/office/puerta_oficina_sousinho_leaf.res": {
+    "bytes": 47038,
+    "sha256": "56530425be94a11a2ad815271c15efdc62ab49ee86b4efcfb2933cda26ce14f6"
+  },
+  "assets/props/office/reloj_mesa_sousinho.res": {
+    "bytes": 143098,
+    "sha256": "9e5f8414db9cca07d7beeb31d508da6d8646d67757940d2944054f9b73a24b17"
+  },
+  "assets/props/office/retro_oficina_yj_chair.res": {
+    "bytes": 318849,
+    "sha256": "8385970f7e577ec476161fee6b105d096cb4ec5392bae6f463bd2dcbb4703823"
+  },
+  "assets/props/office/retro_oficina_yj_desk.res": {
+    "bytes": 105324,
+    "sha256": "5234a58aace9a33a7cb96ca923d9274633c04adbb8f0f5153af1c6f42b71b3cd"
+  },
+  "assets/props/office/round_spectacles.res": {
+    "bytes": 93287,
+    "sha256": "06e070196e5e0e17bd4b67157f15097598e222251bb308254ffa17afb02b1c6f"
+  },
+  "assets/props/office/silla_banquero_zamzam.res": {
+    "bytes": 370881,
+    "sha256": "019ac2c613f44cc6a066c35e54e19a93b7f25b1ac496fa9868f0f33afac6eb13"
+  },
+  "assets/props/office/silla_tela_projectkaizen.res": {
+    "bytes": 173755,
+    "sha256": "8f6113996001323fbabc6627afce30e7d93760c2303bc284c072663e8713eec3"
+  },
+  "assets/props/office/taquilla_zambur.res": {
+    "bytes": 597475,
+    "sha256": "ffc5fc9d9f55d62adf497d2de922984b942f4ad1ff906f9768e1f89b9239ff21"
+  },
+  "assets/props/office/ventilador_joshsmith.res": {
+    "bytes": 137045,
+    "sha256": "2e4b919e025ff073d1c68f7588b6f33b446f7c2977fe3976a6f9d8df67196a43"
+  },
+  "assets/props/office/vintage_stapler.res": {
+    "bytes": 166287,
+    "sha256": "e5f57bb2b82ed8a1ec2e74749afd84dff5f7844dd2ba322048fb35a44ee87cc8"
+  },
+  "assets/props/office/wooden_broom.res": {
+    "bytes": 151493,
+    "sha256": "0184dccd79bb1969be4b13f92ec8ee827f61536ade0ff959302e5d0f4aa9f86c"
+  },
+  "assets/props/office/wooden_ladder_02.res": {
+    "bytes": 195471,
+    "sha256": "addaacb4b6393fa93c9a03fe9c0494af0e44796bd1e404a373d5c155690892ea"
+  },
+  "assets/props/office/zapato_inciprocal.res": {
+    "bytes": 146201,
+    "sha256": "388348f065a7b5e0aa4dbf0aded4f07dfbd70e171a4971a2e541d4c7990d5e34"
   }
 }

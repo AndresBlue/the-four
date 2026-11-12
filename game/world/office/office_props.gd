@@ -84,7 +84,8 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			MODELS.put(builder, node, "cooler", Transform3D(Basis.IDENTITY, at(0.0, 0.34)))
 		"fridge":
 			solid(builder, node, Vector3(0.6, 1.6, 0.65))
-			MODELS.put(builder, node, "fridge", Transform3D(Basis.IDENTITY, at(0.0, 0.65)))
+			# Laid by its own depth (the old fridge is 0.72 deep), so its back meets the wall.
+			MODELS.put(builder, node, "fridge", Transform3D(Basis.IDENTITY, at(0.0, MODELS.size_of(builder, "fridge").z)))
 		"desk":
 			# A steel typing table and its chair: the papers are left on it at 0.84
 			# (document_placement.SURFACES).
@@ -132,7 +133,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			solid(builder, node, Vector3(1.0, 1.2, 0.45))
 			for column in 3:
 				var tall: int = 2 + int(builder.vary(seed_pos, 10 + column) * 3)
-				for k in tall: builder.place(node, STATIONERY.archive_box(builder, Vector3(0.33, 0.25, 0.39)), Transform3D(Basis.IDENTITY, at(k * 0.25, 0.39) + Vector3(-0.34 + column * 0.34, 0, 0)))
+				for k in tall: MODELS.put(builder, node, "archive_box", Transform3D(Basis.IDENTITY, at(k * 0.25, 0.39) + Vector3(-0.34 + column * 0.34, 0, 0)))
 			var t := int(builder.building_room.get("type", -1))
 			if t == OFFICE.STORE or t == OFFICE.DEPOT:
 				# A step ladder and a work light left by the boxes (6.18).
@@ -276,7 +277,12 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			var key: String = OFFICE.FILING_FINISH.get(t, "steel_olive")
 			filing(builder, holder, Vector3.ZERO, key, CLUTTER.drawer_row(builder, room, seed_pos))
 		"bookcase":
-			piece(builder, holder, CABINETS.bookcase(builder, Vector3(0.9, 2.0, 0.35), true, variant), Vector3.ZERO)
+			# The walnut bookcase with its books (the download) where it is baked, its box the collider.
+			if MODELS.mesh_of(builder, "bookcase_model") != null:
+				builder.box(holder, Vector3(0, 0.935, 0), Vector3(0.9, 1.867, 0.35), "", true)
+				MODELS.put(builder, holder, "bookcase_model", Transform3D.IDENTITY)
+			else:
+				piece(builder, holder, CABINETS.bookcase(builder, Vector3(0.9, 2.0, 0.35), true, variant), Vector3.ZERO)
 		"sideboard":
 			piece(builder, holder, CABINETS.sideboard(builder, Vector3(1.8, 0.8, 0.48)), Vector3.ZERO)
 		"wood_shelving":
@@ -317,7 +323,7 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, FIXTURES.toilet_cubicles(builder, Vector3(2.7, 2.0, 1.5), 3), Vector3.ZERO)
 		"printer_cart":
 			piece(builder, holder, MOVABLES.cart(builder, Vector3(0.8, 0.9, 0.5), false), Vector3.ZERO)
-			builder.place(holder, MACHINES.dot_matrix_printer(builder, Vector3(0.6, 0.25, 0.42)), Transform3D(Basis.IDENTITY, Vector3(0, 0.71, 0)))
+			MODELS.put(builder, holder, "dot_matrix_printer", Transform3D(Basis.IDENTITY, Vector3(0, 0.71, 0)))
 		"whiteboard":
 			piece(builder, holder, MOVABLES.whiteboard_mobile(builder, Vector3(1.5, 1.9, 0.6)), Vector3.ZERO)
 		"bench_slat":
@@ -337,7 +343,12 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			# faces the room, two chairs before it (spec_proporcion D7).
 			piece(builder, holder, CABINETS.sideboard(builder, Vector3(1.8, 0.8, 0.48)), Vector3(0, 0, -1.11))
 			chair(builder, holder, Vector3(0, 0, -0.62), 1.0, "exec_chair")
-			piece(builder, holder, DESKS.desk_walnut(builder, Vector3(1.6, 0.75, 0.8)), Vector3(0, 0, 0.1), true)
+			# The antique walnut desk (the download), its drawers to the sitter; else the piece made in code.
+			if MODELS.mesh_of(builder, "desk_walnut_suite") != null:
+				builder.box(holder, Vector3(0, 0.375, 0.1), Vector3(1.6, 0.75, 0.8), "", true)
+				MODELS.put(builder, holder, "desk_walnut_suite", Transform3D(Basis(Vector3.UP, PI), Vector3(0, 0, 0.1)))
+			else:
+				piece(builder, holder, DESKS.desk_walnut(builder, Vector3(1.6, 0.75, 0.8)), Vector3(0, 0, 0.1), true)
 			for x in [-0.45, 0.45]: chair(builder, holder, Vector3(x, 0, 0.85), -1.0, "visitor_chair")
 			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis(Vector3.UP, PI), Vector3(-0.6, 0.75, 0.25)))
 		"meeting_table_s", "meeting_table_m", "meeting_table_l":
@@ -472,8 +483,8 @@ static func plate_text(parent: Node3D, mesh: Mesh, at: Transform3D, words: Strin
 
 ## The desk's model (tools/props/build_catalogue.gd) and its scale to the
 ## generator's desk; loaded once.
-const DESK_MODEL := "res://assets/props/hotel/metal_office_desk.res"
-const DESK_FIT := Vector3(0.75, 0.96, 0.79)
+const DESK_MODEL := "res://assets/props/office/retro_oficina_yj_desk.res"
+const DESK_FIT := Vector3.ONE
 static var desk_mesh: Mesh = null
 
 ## A steel desk (top at 0.74) with its chair pulled up on the side `face`
@@ -507,9 +518,16 @@ static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float, kin
 ## over the whole window hid the trays) and a soft light on the floor before
 ## it (an accent, office_accents.gd).
 static func vending(builder: Node3D, holder: Node3D, at: Vector3, room_id: int) -> void:
-	piece(builder, holder, MODELS.mesh_of(builder, "vending") as ArrayMesh, at)
+	var mesh := MODELS.mesh_of(builder, "vending")
 	KIT.material(builder, "glow_white")
-	builder.box(holder, at + Vector3(-0.125, 1.665, 0.33), Vector3(0.56, 0.012, 0.02), "glow_white")
+	if mesh.has_meta("piece"):
+		piece(builder, holder, mesh as ArrayMesh, at)
+		builder.box(holder, at + Vector3(-0.125, 1.665, 0.33), Vector3(0.56, 0.012, 0.02), "glow_white")
+	else:
+		# The download (expendedora_attheseedof): its box the collider, the tube over its window.
+		builder.box(holder, at + Vector3(0, 0.9, 0), Vector3(0.9, 1.8, 0.8), "", true)
+		MODELS.put(builder, holder, "vending", Transform3D(Basis.IDENTITY, at))
+		builder.box(holder, at + Vector3(-0.07, 1.68, 0.36), Vector3(0.5, 0.012, 0.02), "glow_white")
 	MODELS.light(builder, holder, room_id, "vending", Transform3D(Basis.IDENTITY, at))
 
 ## A microfiche reader (6.5) on its table, its screen lit while its room is.

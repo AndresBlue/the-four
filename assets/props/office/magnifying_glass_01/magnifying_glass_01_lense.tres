@@ -9,4 +9,3 @@ albedo_color = Color(0.71648, 0.8, 0.793519, 1)
 orm_texture = ExtResource("1")
 normal_enabled = true
 normal_texture = ExtResource("2")
-transparency = 1

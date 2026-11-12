@@ -27,9 +27,10 @@ const MODELS := {
 	# sofa_02 is baked facing +Z, its arms reaching out past its back: backed() would turn it round.
 	"sofa": {"paths": ["res://assets/props/office/sofa_02.res"]},
 	"lounge_chair": {"paths": ["res://assets/props/office/mid_century_lounge_chair.res"], "seat": true},
-	"office_chair": {"paths": ["res://assets/props/office/silla_giratoria_old_computer_chair.res"], "height": 0.95, "seat": true},
-	"exec_chair": {"paths": []},
-	"visitor_chair": {"paths": []},
+	# The blue cloth task chair, light enough for the naves (4 k); the plywood one stays the reserve model.
+	"office_chair": {"paths": ["res://assets/props/office/silla_tela_projectkaizen.res", "res://assets/props/office/silla_giratoria_old_computer_chair.res"], "height": 0.95, "seat": true},
+	"exec_chair": {"paths": ["res://assets/props/office/silla_banquero_zamzam.res"], "height": 1.15, "seat": true},
+	"visitor_chair": {"paths": ["res://assets/props/office/butaca_madera_renend.res"], "height": 0.88, "seat": true},
 	"plant": {"paths": ["res://assets/props/office/potted_plant_01.res", "res://assets/props/hotel/potted_plant_02.res"]},
 	"plant_bare": {"paths": ["res://assets/props/office/anthurium_botany_01_a.res", "res://assets/props/office/pachira_aquatica_01_c.res", "res://assets/props/office/calathea_orbifolia_01_a.res"], "pot": "steel_dark"},
 	"plant_tall": {"paths": ["res://assets/props/office/pachira_aquatica_01_d.res"], "height": 1.45, "pot": "steel_dark"},
@@ -37,8 +38,9 @@ const MODELS := {
 	"wall_clock": {"paths": ["res://assets/props/hotel/wall_clock.res"]},
 	"fire_alarm": {"paths": ["res://assets/props/hotel/fire_alarm.res"]},
 	"bin": {"paths": ["res://assets/props/hotel/metal_trash_can_clean.res"], "scale": 0.62},
-	"books": {"paths": ["res://assets/props/hotel/book_encyclopedia_set_01.res"]},
-	"box": {"paths": ["res://assets/props/hotel/cardboard_box_01.res"]},
+	# Rows of books stood up, one with a pair laid on top (libros_frodoundead).
+	"books": {"paths": ["res://assets/props/office/libros_frodoundead_row_c.res", "res://assets/props/office/libros_frodoundead_row_a.res", "res://assets/props/office/libros_frodoundead_row_d.res"]},
+	"box": {"paths": ["res://assets/props/hotel/cardboard_box_01.res", "res://assets/props/office/caja_carton_krolzuzanna.res"]},
 	"clipboard": {"paths": ["res://assets/props/hotel/clipboard.res"]},
 	"stationery": {"paths": ["res://assets/props/hotel/stationery_supplies.res"]},
 	"notepad": {"paths": ["res://assets/props/hotel/office_notepads_pad.res"]},
@@ -48,6 +50,36 @@ const MODELS := {
 	# Baked in its own units: brought to the stand-in's height.
 	"crt": {"paths": ["res://assets/props/office/crt_terminal_ibm3278_sketchfab.res"], "height": 0.36},
 	"cooler": {"paths": ["res://assets/props/office/water_cooler_bottle_tboiston.res"]},
+	# Rounds 3 and 4 of the downloads (tools/props/fit_models.json): baked at their pieces' measure.
+	"fridge": {"paths": ["res://assets/props/office/nevera_dylanheyes.res"]},
+	"desk_lamp_banker": {"paths": ["res://assets/props/office/lampara_banquero_meunier.res"]},
+	"desk_lamp_arm": {"paths": ["res://assets/props/office/flexo_sousinho.res"]},
+	"ashtray": {"paths": ["res://assets/props/office/cenicero_vidrio_red2000.res"]},
+	# The wire cup of pencils (portalapices_aspectstudio) is baked but not used: its 4.8 k triangles on every desk of a nave cost 48 k.
+	"tray": {"paths": ["res://assets/props/office/bandeja_sinnervoncrawsz.res"]},
+	"archive_box": {"paths": ["res://assets/props/office/cajas_archivo_cozmoth.res"]},
+	"globe": {"paths": ["res://assets/props/office/globo_collings.res"]},
+	"binders": {"paths": ["res://assets/props/office/archivadores_palanca_janexx.res"]},
+	"step_ladder": {"paths": ["res://assets/props/office/wooden_ladder_02.res"]},
+	"dot_matrix_printer": {"paths": ["res://assets/props/office/impresora_okidata_papaj.res"]},
+	"bookcase_model": {"paths": ["res://assets/props/office/libreria_libros_collings.res"]},
+	"desk_walnut_suite": {"paths": ["res://assets/props/office/escritorio_madera_collings.res"]},
+	"vending": {"paths": ["res://assets/props/office/expendedora_attheseedof.res"]},
+	"desk_clock": {"paths": ["res://assets/props/office/reloj_mesa_sousinho.res"]},
+	"desk_fan": {"paths": ["res://assets/props/office/ventilador_joshsmith.res"]},
+	"stapler": {"paths": ["res://assets/props/office/vintage_stapler.res"]},
+	"thermos": {"paths": ["res://assets/props/office/plastic_thermos.res"]},
+	"spectacles": {"paths": ["res://assets/props/office/round_spectacles.res"]},
+	"magnifier": {"paths": ["res://assets/props/office/magnifying_glass_01.res"]},
+	"cord_floor": {"paths": ["res://assets/props/office/alargador_evan4129.res"]},
+	"shoes": {"paths": ["res://assets/props/office/zapato_inciprocal.res"]},
+	"toolbox": {"paths": ["res://assets/props/office/metal_toolbox.res"]},
+	"broom": {"paths": ["res://assets/props/office/wooden_broom.res"]},
+	"dustpan": {"paths": ["res://assets/props/office/dustpan.res"]},
+	"mousetrap": {"paths": ["res://assets/props/office/mousetrap.res"]},
+	"television": {"paths": ["res://assets/props/office/Television_01.res"]},
+	"boombox": {"paths": ["res://assets/props/office/boombox.res"]},
+	"projector_screen": {"paths": ["res://assets/props/office/projector_screen.res"]},
 	# The standing coat rack of an office's and the director's corner (office_props.gd); no stand-in.
 	"coat_stand": {"paths": ["res://assets/props/office/perchero_coat_rack_whostea.res"]},
 	# Six grey lockers in a row, at locker_bank's measure (office_props.gd); no stand-in.
@@ -76,7 +108,7 @@ const POTS := {"steel_dark": Vector3(0.4, 0.38, 0.4), "ceramic": Vector3(0.2, 0.
 ## neither shadows it.
 const LIGHTS := {
 	"desk_lamp_banker": {"at": Vector3(0, 0.28, 0.02), "aim": Vector3(0, 0, 0.35), "colour": Color(1.0, 0.84, 0.62), "energy": 1.4, "reach": 2.8, "angle": 42.0},
-	"desk_lamp_arm": {"at": Vector3(0, 0.4, 0.1), "aim": Vector3(0, 0, 0.32), "colour": Color(1.0, 0.86, 0.66), "energy": 1.4, "reach": 2.6, "angle": 40.0},
+	"desk_lamp_arm": {"at": Vector3(0, 0.42, 0.17), "aim": Vector3(0, 0, 0.4), "colour": Color(1.0, 0.86, 0.66), "energy": 1.4, "reach": 2.6, "angle": 40.0},
 	"floor_lamp": {"at": Vector3(0, 1.277, 0), "aim": Vector3(0, 0, 0.2), "colour": Color(1.0, 0.82, 0.6), "energy": 1.0, "reach": 2.4, "angle": 70.0},
 	"vending": {"at": Vector3(0, 1.65, 0.45), "aim": Vector3(0, 0.2, 1.6), "colour": Color(0.86, 0.92, 1.0), "energy": 0.7, "reach": 3.5, "angle": 70.0},
 }
