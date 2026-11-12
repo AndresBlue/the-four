@@ -1,105 +1,31 @@
 # Frente visual del piso 2: la vuelta grande (12 de noviembre de 2026)
 
-Estado de trabajo, no diseño cerrado. Lo escribió el director al quedarse sin ventana de cuota a media vuelta. Manda `.claude/relevo.md`; esto guarda lo que no cabe allí.
+Estado al cerrar la vuelta, contado desde el código. Commits: `ff97bde` (cuatro modelos de Sketchfab), `43f1321` (tono, suelos, naves, carpintería), `c385f6f` (puertas y treinta modelos), `737345a` (lentes, techo, nogal, tubos), `0580306` (rendimiento y paredes) y `3f9c230` (generador). Lo que pidió el autor: sus capturas en `evidence/autor_12nov/1.webp` a `6.webp`, y su vara en la memoria `visual-bar-real-photo` (cada escena comparable con una foto de la época, juzgada en la vista de juego).
 
-## Lo que pidió el autor
+## Hecho
 
-Sus capturas están en `evidence/autor_12nov/1.webp` a `6.webp` y su vara en la memoria `visual-bar-real-photo`: que cada escena se pueda comparar con una fotografía de la época, juzgada en la vista de juego (con la cinta).
+- **Luz** (`office_geometry.gd`; detalle en `spec_rediseno.md` 4):
+  - gradación `GRADE` con `white` (1,2, 1,0, 1,15) y `ssao_light` 0,35, que `presentation_rig.apply_grade()` pone en `ssao_light_affect`;
+  - poco especular: `LAMP_SPECULAR` 0,15 y `POOL_SPECULAR` 0,05; `POOL_ENERGY` 0,7; `LENS_MIRRORED` 30;
+  - halo corto y débil (`HALO_REACH` 1,8, `HALO_ENERGY` 0,22) con caída suave en `ceiling_halo.gdshader`;
+  - lentes con sus tubos: `lens_texture()` (`LENS_TUBES`, `LENS_DIFFUSER` 0,35), `lens_box()`, `LENS_LIT_DARK` 1 y `EMISSION_OP_MULTIPLY`; la perfilería ya no cruza una lente (`grid_spans()`);
+  - la sonda solo cambia con el drenaje (`probe_strength()`, `PROBE_STEP`);
+  - una sola lámpara de mueble encendida por sala (`office_models.LIT_MOST`).
+- **Acabados:** vinilo y terrazo satinados (`map_roughness` −0,17 y −0,12), placa del techo más oscura y manchada (`ceiling_service.tres`), nogal más claro y con paneles (`walnut.tres`, `dado_oak.tres` con `panel_spacing`), pintura más sucia (`office_paint.tres`), tubos del correo neumático de latón gastado (`files_objective.gd`), molduras a 2 cm (`RAIL`, `DADO_CAP`).
+- **Naves** (`office_layout.gd`, `office_generator.gd`, `office_palette.gd`): calles de `NAVE_STREET` 1,2 m (`streets()`, `way_out()`, `gap_of()`), islas de 4 o 6 puestos (`lay_islands()`, `desk_island`, `desk_island_6`, `ISLANDS_MOST` 3) con mamparas en cruz (`island_screens()`) y piezas en sus extremos (`island_ends()`, `ISLAND_ENDS`), paredes cerradas llenas (`lay_wall_rows()`, `NAVE_WALL_ROW`, `NAVE_WALL_DEPTH`), `DESKS_MOST_NAVE` 16, mampara de 1,2 m (`FURNITURE.partition`), y ella solo sale por placas sobre las calles (`free_tiles()`).
+- **Recetas y paredes:** más piezas en las recetas de casi todas las salas, `tv_cart` en descanso y juntas, papeles junto a lo que se usaba (`floor_papers()`), objetos tirados por tipo (`office_palette.LITTER_KINDS`, `office_clutter.litter()`), cuadros y tablones en grupos que prueban primero la pared que se ve desde la puerta (`CLUSTERED`), y un elemento cada 2 m en los pasillos (`CORRIDOR_PITCH`), con su hueco libre de muebles (`HALL_SLOT_CLEAR`). Pasillos con mueble cada 5 a 8 m (`HALL_STEP`).
+- **Modelos:** puertas (`DOOR_MODELS`, `STEEL_FRAME`, `service_door()`, marco de nogal moldurado en `door_frame_mesh()`), taquillas, archivador gris, detector de humo y unos cuarenta modelos más en `office_models.MODELS` (lista en `docs/OFICINAS.md` 12). Herramientas: `register_sketchfab.py`, `fit_model.py` con `fit_models.json`, `TINT` en `ingest_models.py`, `PLACED` en `build_catalogue.gd`.
+- **Rendimiento:** solo proyectan sombra las piezas grandes de suelo (`office_models.casts()`, `CAST_LEAST`); plantas, papeleras, lo de pared y lo de encima de los muebles, no. Banco en `evidence/bench/piso2_dens6_final_forward_plus/` (cifras en `spec_rediseno.md` 10).
+- **Generador:** `office_recipes.Near` prueba cada tramo como un solo rectángulo antes de hacer las piezas, una pieza «spare» que no cupo no se vuelve a probar con otra igual o mayor (`spare_fails`), y las naves no prueban sus «spare». El commit lo midió en un segundo por piso.
 
-## El árbol de trabajo NO está comprobado
+## No entró, y por qué
 
-Hay cambios sin confirmar de tres agentes y **ninguno ha pasado por Godot entero** (ni `--check-only`). El último estado bueno es el commit `ff97bde` (más `d581c7d`, solo la nota de relevo).
+- De Sketchfab (quedan `pendiente` en `source_assets/oficinas/`): máquina de escribir de los años 30, expendedora de café (anuncio y rótulos en inglés), persiana (las del juego son un sombreador), archivador oxidado (se lee como ruina), puertas comerciales de Delly (piezas de varias puertas mezcladas), puerta doble (un solo objeto de 3 m), manilla y pomo (las puertas traen la suya), señal de salida (la del juego ya lo es), sofá de cuero (roto), cenicero de metal (ceniza y etiqueta), silla de aluminio y libros tirados (sin preparar).
+- Horneados y sin usar: `escritorio_tanker_lenawachs`, `retro_oficina_yj_chair`, `portalapices_aspectstudio` (4,8 k triángulos en cada mesa de una nave), `libros_frodoundead_row_b`. `projector_screen` está en `MODELS` pero ninguna receta lo pone.
+- Abrigo y toalla: la simulación de tela (`tools/props/cloth_pieces.py`, sin seguimiento) no salió; siguen en código.
 
-- **Un proceso de Godot quedó colgado (PID 2800)**: una captura del agente de luz. El sistema de permisos denegó cerrarlo; se le pidió al autor. Antes de lanzar Godot, comprobar con `tasklist` que no sigue.
-- **Luz, ronda 4** (`office_geometry.gd`, `presentation_rig.gd`, `ceiling_halo.gdshader`, `vinyl.tres`, `terrazzo.tres`, `wet_tile.tres`):
-  - tono: `GRADE.white` (1,2, 1,0, 1,15); la vista de juego medida queda en matiz 29,5° (referencias 28,6°; las capturas del autor, 39,8°). El verde lo ponía la cadena de la cinta. Comprobado en `evidence/rediseno/luz4/`;
-  - reflejos: `LAMP_SPECULAR` 0,15, `POOL_SPECULAR` 0,05, vinilo `map_roughness` −0,17, terrazo −0,12, `LENS_MIRRORED` 30. Visto en `luz4/archivo_juego.png`;
-  - techo: `HALO_REACH` 2,6, `HALO_ENERGY` 0,45, caída suave. Sin ver en una nave;
-  - lentes con tubos (`LENS_LIT_DARK`, `LENS_TUBES`, `LENS_DIFFUSER`, `lens_texture()`, `lens_box()`) y azulejo de los aseos: **sin verificar** (la captura falló);
-  - sombra de contacto: `POOL_ENERGY` 0,7 y `ssao_light` 0,35 en la gradación;
-  - z-fighting: descartados cámara (`near` 0,05, `far` 95) y suelos solapados; corregida una moldura (`RAIL.y`, `DADO_CAP.y` 0,02). Sin causa única; los objetos de mesa, sin revisar.
-  - Le falta: pasada de cuatro salas, pasada completa `--prefix=luz4`, las siete pruebas cortas y `office_pieces_test`.
-- **Densidad, ronda 2** (`office_layout.gd`, `office_generator.gd`, `office_validator.gd`, `office_recipes.gd`, `office_palette.gd`, `office_clutter.gd`, `office_props.gd`, `office_walls.gd`, `tests/office/office_test.gd`): naves con calles fijas de 1,2 m (`NAVE_STREET`, `streets()`, `way_out()`), islas de 4 o 6 puestos con mamparas en cruz (`lay_islands()`, `desk_island`, `desk_island_6`), pared del fondo llena (`lay_wall_rows()`, `NAVE_WALL_ROW`), `DESKS_MOST_NAVE` 16, mampara de cubículo a 1,2 m (cambia la sección 6.17 de `spec_rediseno.md`), ella aterriza solo en calles (`free_tiles()`), más ocupación en 19 tipos de sala, ninguna superficie desnuda, papeles por el suelo (`floor_papers()`), pasillos con algo cada 5 a 8 m. Ocupación estimada de la nave fuera del pasillo: 33 a 41 %. Le falta todo lo de Godot: `--check-only` de sus archivos, sonda de ocupación y tiempo del generador, captura de una nave, `office_test_generator`, `_validator`, `_physics`, `office_walk_test`, `lurker_tiles_test`, `office_dressing_test`, `office_lies_test`, `lurker_bots_test`. Dos mentiras de `lurker_hallucinations.gd` («silla», «mampara») pierden sitio en las naves de oficina abierta.
-- **Ingesta, ronda 2** (`office_models.gd`, `office_props.gd`, `office_clutter.gd`, `office_fittings.gd`, `hotel_ui.gd`, `office_dressing_test.gd`, `tools/props/*`, `docs/ASSETS.md`, `docs/asset_hashes.json`, `docs/DEVELOPMENT.md`): seis piezas ingeridas y sin hornear. `office_dressing_test` falla hasta hornearlas.
+## Pendiente
 
-## Comprobado al cerrar la sesión (12 de noviembre, 02:40)
-
-El autor cerró el Godot colgado. Con el árbol tal cual:
-- `--check-only` de los 16 scripts cambiados: sin errores. El piso se construye y se captura sin errores de script (`evidence/rediseno/vg0/`): tono anaranjado, suelo satinado sin círculos blancos, techo entero. Las lentes grandes siguen siendo rectángulos blancos lisos.
-- Carpintería horneada: los seis slugs, sin errores.
-- En verde: `office_pieces_test` 1618/1618, `lurker_tiles_test` 15/15, `lurker_fairness_test` 29/29, `manifest_golden_test` 513/513, `creature_contract_test` 180/180.
-- **En rojo, y la causa principal es la densidad de la ronda 2: la semilla pedida no pasa su propio validador y el juego monta el piso de reserva (404).** `office_walk_test` 88/90 («semilla 7: se monta la semilla pedida (404)», y la 33); `office_test` 150/152 (los pisos montados no pasan la comprobación física: `[404, 21, 404, 404, 12, 19, 28, 38]`; la pared característica de varias salas es ahora un `bench_slat`); `office_dark_test` 3/6 y `office_dressing_test` 19/20 (cuentan sobre el piso de reserva de 40 salas; pasillos con mobiliario 83 de 155); `office_lies_test` 16/17 (la mentira de la mampara sin sitio); `office_light_test` 72/73 («Dos apliques en la recepción (0)»). Los registros están en `evidence/vg/`.
-- **Nada de esto está confirmado en git.** Lo primero de la sesión siguiente: que el agente de densidad encuentre por qué las semillas 7 y 33 caen a la reserva (`reach_ok()`, las calles, la fila de pared) y lo arregle con Godot; después repetir estas pruebas.
-
-## Carpintería: horneada, sin cablear las puertas
-
-En `source_assets/oficinas/carpinteria/` (registro propio). Hornear con `--import` y luego `build_catalogue.gd --only=<slug>`:
-`puerta_oficina_sousinho` (madera con mirilla), `puerta_lisa_sousinho` (madera lisa), `puerta_metal_tboiston` (hoja y marco de acero), `taquilla_zambur`, `archivador_gris_ahmagh2e` (cerrado, cuerpo y cajón), `detector_humo_sousinho`.
-
-No valen (quedan `pendiente`): Commercial doors de Delly (piezas mezcladas), Double door (un solo objeto de 3 m), manilla y pomo (las puertas traen la suya), señal de salida (la del juego ya es eso).
-
-### El cambio pendiente en `office_geometry.gd` para las puertas
-
-Aplicarlo cuando la luz esté cerrada (mismo archivo). Junto a `var office_doors`:
-
-```gdscript
-## The doors' downloads by leaf_mesh()'s key (tools/props/fit_model.py); the leaf made in code where one is missing.
-const DOOR_MODELS := {"vision": "res://assets/props/office/puerta_oficina_sousinho_leaf.res", "plain": "res://assets/props/office/puerta_lisa_sousinho_leaf.res", "service": "res://assets/props/office/puerta_metal_tboiston_leaf.res"}
-const STEEL_FRAME := "res://assets/props/office/puerta_metal_tboiston_frame.res"
-```
-
-Sacar a `service_door(a, b)` la condición de acero que hoy está dentro de `leaf_mesh()`; en `leaf_mesh()`, cargar `DOOR_MODELS[key]` si existe y si no `door_leaf_mesh(steel, key == "vision")`; en `frame_mesh()`, el marco de acero para las de servicio y `door_frame_mesh()` para las demás. Las hojas usan el espacio de la del hotel (eje en el origen, hoja hacia +X, suelo en y = 0). Comprobar en el juego que no rozan el marco, que las bisagras quedan en su canto y la luz por las rendijas.
-
-## Descargas sin tocar todavía
-
-Todas con licencia CC Attribution comprobada en la página al bajarlas (Sketchfab, con la sesión del autor; el navegador guarda en `models/`, carpeta del autor e ignorada por git). Procedimiento del agente de ingesta: `tools/props/register_sketchfab.py`, `fit_models.json` y `fit_model.py` para lo que se monta por partes, `decimate.py --drop --weld`, `PATCHES` en `ingest_models.py`, hornear.
-
-**Muebles y aparatos** (zip en `models/`, autor, para qué, qué tapar):
-- `steelcase_tanker_desk.zip`, lena-wachs: `desk_steel`, el puesto de las naves. Lo mejor de la búsqueda.
-- `game-asset-chair.zip`, projectkaizen: `office_chair` de tela azul (37 k: diezmar).
-- `retro_office_props.zip`, YJ_: sacar solo el escritorio verde y la silla cromada; descartar el teléfono con pantalla y el ratón.
-- `antique_desk.zip`, Matthew Collings: `desk_walnut` de dirección y secretaría.
-- `wooden_office_chair.zip`, M. Zamzam: silla de banquero de madera.
-- `herman_miller_-_eames_aluminum_chair.zip`, Photonic Studio: `exec_chair`; recolorear el naranja a negro o marrón; comprobar que no lleva logo.
-- `vintage_wooden_armchair_-_low_poly__game_ready.zip`, Renend Studio: `visitor_chair` y sillas de espera.
-- `wooden_bookcases_with_books.zip`, Matthew Collings: `bookcase`.
-- `vending_machine.zip`, AtTheSpeedOf: `vending_machine`; tapar el rótulo «Dandee Lion» y los botones en inglés.
-- `old_fridge.zip`, dylanheyes: `fridge` (32 k: diezmar).
-- `monstera_deliciosa_potted_mid-century_plant.zip`, Giora: planta grande de pasillos y naves.
-- `okidata_microline_320_turbo.zip`, Remik.Papaj: `dot_matrix_printer`; tapar el rótulo del frontal.
-- `vintage_fan.zip`, Josh Smith: ventilador de mesa.
-- `old_vintage_leather_sofa.zip`, atomizr: sofá de espera.
-
-**Objetos pequeños**:
-- `old_vintage_desk_lamp.zip`, Jeff_Meunier: lámpara de banquero verde.
-- `old_lamp.zip`, Sousinho: flexo de cuello de cisne.
-- `vintage_metal_ashtray.zip`, mattyu, y `glass_ashtray.zip`, RED2000: ceniceros.
-- `antique_book_set.zip`, FrodoUndead: 31 libros sueltos; elegir los de lomo sobrio.
-- `2_boxes.zip`, Cozmoth: cajas de archivo; virar el blanco a kraft.
-- `pencils_w_holder.zip`, AspectStudio: portalápices (diezmar).
-- `document_letter_tray__documents_organizer.zip`, sinnervoncrawsz: bandeja de tres pisos.
-- `retro_antique_desk_clock.zip`, Sousinho: reloj de mesa.
-- `antique_globe.zip`, mtcollings: globo de dirección.
-- `old_oxford_shoe.zip`, inciprocal.com: zapato (duplicar en espejo).
-- `pile_of_books.zip`, mreslan: libros tirados; recolorear una cubierta azul con estrellas.
-- `dirty_damaged_fatigued_cardboard_box.zip`, krolzuzannapl: caja sucia.
-- `several_folders.zip`, janexx: archivadores de palanca; repintar las etiquetas manuscritas en inglés.
-- `extension_cord_scan_medpoly.zip`, evan4129: alargador en el suelo (diezmar).
-
-**De Poly Haven (CC0), bajados y registrados como `pendiente`** en `source_assets/props/`: `vintage_stapler` (tapar «Haven Penworks»), `plastic_thermos` (tapar «THERMOS»), `modified_thermos`, `metal_toolbox`, `dustpan`, `wooden_ladder_02`, `wooden_broom`, `mousetrap`, `magnifying_glass_01`, `round_spectacles`, `projector_screen`, `Television_01` (tapar el logo «VTECH»), `boombox` (tapar pegatinas y rótulos). Faltan en `SKIP` de `ingest_models.py` y `build_catalogue.gd`: por eso `check_ingest_models.py` da 18 diferencias en el hotel hasta añadirlos.
-
-## Lo que no existe con licencia válida y seguirá en código
-
-Difusores y rejillas de techo, rociadores, interruptores de época, mamparas de cubículo, paneles de madera de pared, fotocopiadora de los 80, máquina de escribir eléctrica, fax, retroproyector, cafetera de época, mesa de comedor de laminado y sillas apilables, escritorio en L, abrigo colgado y toalla (hacerlos con simulación de tela en Blender), papeles y periódicos sin texto, calculadora, perforadora.
-
-## Orden para seguir
-
-1. Con Godot libre: `--check-only` de todos los `.gd` cambiados; arreglar lo que no compile.
-2. Cerrar la luz (cuatro salas, pasada `luz4`, pruebas cortas) y confirmarla sola.
-3. Hornear carpintería, aplicar el cambio de puertas, capturar y confirmar.
-4. Verificar la densidad (sonda, captura de nave, pruebas) y confirmar.
-5. Ingerir muebles y objetos, cablear por clases (las recetas no cambian), capturar.
-6. Comparar cada sala con su referencia en `_juego.png` y decir qué delata el 3D.
-7. `verify.ps1` al cerrar el frente; documentos al día.
-
-Lección de esta sesión: mientras un agente captura con Godot, nadie más escribe en el árbol código que carga el juego (una captura cayó con `office_generator.gd` a medio escribir).
+- `verify.ps1` y que el autor la juegue.
+- Lo de `docs/PLAN.md` 3 («Lo que quedó de la vuelta grande»).
+- Las puertas, en el juego: que no rocen el marco y que las bisagras queden en su canto.

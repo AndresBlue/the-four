@@ -749,12 +749,23 @@ pueda jugar entero sin tocar el teclado.
   - Y el lote de equilibrio con bots por dificultad y por número de jugadores, las pruebas que afirmaban su mente de antes y `verify.ps1`.
 
 - **Lo que quedó de la primera vuelta del frente visual de las oficinas** (11 de noviembre de 2026; `.claude/specs/spec_rediseno.md`, secciones 4 y 11). El autor la vio «aceptable, pero para nada pulido».
-  - **Aparatos pequeños que piden modelo real:** el monitor CRT, el teléfono, la máquina de escribir, la expendedora, la fuente de agua, la nevera, el perchero y las persianas. Hoy son piezas en código. Los candidatos están en `source_assets/oficinas/RESUMEN.md` y son de Sketchfab: piden la sesión del autor.
   - **Tres de Poly Haven que no entran porque sus texturas llevan rótulos:** el microondas, el hervidor y los marcos colgados.
   - **Luz:** el vinilo no tiene rugosidad propia (es la del escaneo de losetas con un ajuste); el rebote no ve los focos bajo las pantallas (van sin horneado); Medio no tiene esos focos (`pools_shown()` solo los da en Alto y Ultra).
   - **Muy bajo:** volver a hornear las imágenes pequeñas de la madera (`assets/textures/lite/`) con `tools/textures/bake_lite_maps.gd`, que necesita ventana, después de los cambios de la madera.
   - **Capturas:** en la ventanilla, los aseos, el montacargas y el despacho, el encuadre de `tools/capture/office_rooms_capture.gd` no enseña la pared característica.
   - **Densidad:** en la captura, la sala de descanso solo pone 2 de sus 4 mesas.
+
+- **Lo que quedó de la vuelta grande del frente visual** (12 de noviembre de 2026; `.claude/specs/visual_vuelta_grande.md`; [OFICINAS.md](OFICINAS.md) 12 dice qué modelos entraron y cuáles no). Falta que el autor la juegue.
+  - **Siguen en código y piden modelo:** el abrigo y la toalla colgados (la simulación de tela no salió), la máquina de escribir (la de los años 30 descargada está sin preparar), el teléfono descolgado, la fotocopiadora, la máquina de escribir eléctrica, el fax, el retroproyector, la mesa de comedor y las sillas apilables de época, los difusores y las rejillas del techo y las mamparas de cubículo (hay candidatos registrados sin ingerir, sin PBR). Las persianas siguen siendo un sombreador.
+  - **Sin sitio:** el televisor ya está en su carro en la sala de descanso y en la de juntas, pero la pantalla de proyección (`projector_screen`) no la pone ninguna receta.
+  - **Horneados sin usar:** `escritorio_tanker_lenawachs`, `retro_oficina_yj_chair` y el portalápices (`portalapices_aspectstudio`, 4,8 k triángulos en cada mesa de una nave). La silla «Old Computer Chair» sigue en la lista de `office_chair` pero no sale.
+  - **Materiales:** el vinilo y la moqueta se ven como un escaneo repetido; las aristas de las piezas en código no tienen bisel.
+  - **Naves:** su suelo ocupado fuera del pasillo, en la medida del director, es del 28,6 %; el objetivo era el 35.
+  - **Rendimiento:** el alcance de visibilidad de lo pequeño y el umbral del nivel de detalle están sin tocar. En el banco final (`evidence/bench/piso2_dens6_final_forward_plus/`) la media de Alto queda bajo 16,7 ms en todas las vistas y el p95 no.
+  - **Una sola lámpara de mueble encendida por sala** (`office_models.LIT_MOST`): decisión del director por el rendimiento, para confirmar con el autor.
+  - **Correo neumático:** los tubos no tienen soportes.
+  - **Puertas:** falta una sonda que compruebe que las hojas descargadas no rozan el marco y que las bisagras quedan en su canto.
+  - **Z-fighting:** quitado el parpadeo de las molduras sobre su panel (`RAIL` y `DADO_CAP`, ahora con 2 cm de resalte); no hay una causa única y los objetos de encima de las mesas están sin revisar.
 
 ## 4 · Assets que faltan (tuyos)
 
