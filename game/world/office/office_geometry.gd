@@ -44,11 +44,12 @@ const SKIRT := Vector2(0.10, 0.006)
 ## FRIEZE_TOP under a walnut rail (height, proud), the walnut dado up to
 ## DADO_TOP and its cap (height, proud), the air rooms' darker paint up to
 ## TWO_TONE_TOP; paint is LINING proud of the wall, the oak and the dado
-## DADO_THICK. The rail stays inside a door frame's 2 cm.
+## DADO_THICK. The rail stays inside a door frame's 2 cm, and 5 mm proud of
+## the oak it overlaps: at 1 mm the two fought, a dashed line down every wall.
 const FRIEZE_TOP := 1.0
-const RAIL := Vector2(0.06, 0.016)
+const RAIL := Vector2(0.06, 0.02)
 const DADO_TOP := 1.05
-const DADO_CAP := Vector2(0.04, 0.018)
+const DADO_CAP := Vector2(0.04, 0.02)
 const DADO_THICK := 0.015
 const TWO_TONE_TOP := 1.2
 const LINING := 0.004
@@ -125,12 +126,17 @@ const LAMP_ATTENUATION_ALONE := 0.9
 ## The troffer rooms' lamps, whose attenuation follows the pools (apply_quality()).
 var troffer_lamps: Array[OmniLight3D] = []
 const FAILING := 0.12              # lit rooms with one failing troffer (vary salt 160)
-## The troffers' share of specular light: their highlight on a waxed floor is
-## the floor's reflection of them where there is no SSR (spec_rediseno 4).
-const LAMP_SPECULAR := 0.7
+## The troffers' share of specular light, low: a lamp is a point to the
+## renderer, and its highlight on a waxed floor or a mirror is a white disc
+## where a tube would be a long soft lens. The floor's own reflection of the
+## lenses is its probe's (make_probe()).
+const LAMP_SPECULAR := 0.15
 ## A lit lens's own colour, white acrylic; it glows in its room's lamp colour
 ## (lens_key()).
 const LENS_ALBEDO := Color("e6e2d8")
+## How much darker a lit lens's own colour is than LENS_ALBEDO (lens_key()):
+## all of it, so that what it shows is its picture alone.
+const LENS_LIT_DARK := 1.0
 ## The troffer families (troffer_face()): the narrow lens's width and its
 ## louvre's pitch; the parabolic lens's depth, its grid's blades' depth (both
 ## shallow, so that from a doorway the lens shows between them and not a dark
@@ -145,13 +151,17 @@ const WRAP_DROP := 0.09
 ## The glow on the tiles round each lit troffer (spec_rediseno 4, mechanism
 ## b): how far past the troffer it reaches, how far under the tiles it is
 ## drawn, and its strength at the troffer's edge with the lamp at full energy.
-const HALO_REACH := 1.2
+const HALO_REACH := 2.6
 const HALO_BELOW := 0.002
-const HALO_ENERGY := 0.59
+const HALO_ENERGY := 0.45
 ## A lit lens burns (spec_rediseno 4): its emission over the lamp colour, so
 ## that it is the brightest thing in the picture, clips, blooms and shows in
 ## a waxed floor.
 const LENS_GLOW := 4.0
+## The tubes behind a lens, across it (0 to 1), and the diffuser's glow between
+## them as a share of a tube's (lens_texture()).
+const LENS_TUBES := [0.24, 0.5, 0.76]
+const LENS_DIFFUSER := 0.12
 ## The pool under each troffer (spec_rediseno 4, low key): a spot straight
 ## down from its lens, no shadow, at POOL_ENERGY with its room's lamp whole,
 ## its cone's half angle (its edge scallops the walls near it) and its reach
@@ -160,14 +170,14 @@ const LENS_GLOW := 4.0
 ## elsewhere it would light through the walls (pools_shown()). With no
 ## shadow it also reaches under the tables: little specular, so what it lights
 ## there shows no glints.
-const POOL_ENERGY := 1.0
-const POOL_SPECULAR := 0.25
+const POOL_ENERGY := 0.7
+const POOL_SPECULAR := 0.05
 const POOL_ANGLE := 64.0
 const POOL_RANGE := 7.0
 ## The offices' own grade of the picture (presentation_rig.apply_grade()): a
 ## lower key for the iris, warm, with contrast, as the references
 ## (spec_rediseno 4). The hotel keeps the camera's.
-const GRADE := {"key": 0.05, "white": Vector3(1.02, 1.0, 0.95), "contrast": 1.16, "saturation": 0.85}
+const GRADE := {"key": 0.05, "white": Vector3(1.2, 1.0, 1.15), "contrast": 1.16, "saturation": 0.85, "ssao_light": 0.35}
 func grade() -> Dictionary: return GRADE
 ## A room's reflection probe is its floor's (make_probe()): it reaches
 ## PROBE_PAST past the floor and the ceiling (the hotel's stops 2.5 cm over the
@@ -186,7 +196,7 @@ const FLOOR_LAYER := 8
 ## hundredths of it, which is still a bright streak; LENS_GLOW on screen is
 ## kept low for the iris. Render layer 2, which the players' cameras leave out
 ## (a body's own) and the probes take in.
-const LENS_MIRRORED := 60.0
+const LENS_MIRRORED := 30.0
 const PROBE_ONLY := 2
 ## How far a hole's dark reaches below the tiles' plane (a gap, a tile she
 ## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
@@ -351,9 +361,14 @@ func lens_key(room: Dictionary) -> String:
 	if materials.has(key): return key
 	var lens: Material = materials.troffer_lens.duplicate()
 	if lens is BaseMaterial3D:
-		(lens as BaseMaterial3D).albedo_color = LENS_ALBEDO
+		# Its light is its own (the picture): the room's lamp hangs just under it
+		# and lit its face to a flat white.
+		(lens as BaseMaterial3D).albedo_color = LENS_ALBEDO.darkened(LENS_LIT_DARK)
 		(lens as BaseMaterial3D).emission = LIGHTING.light_color(float(kelvin))
 		(lens as BaseMaterial3D).emission_energy_multiplier = LENS_GLOW
+		(lens as BaseMaterial3D).emission_texture = lens_texture()
+		(lens as BaseMaterial3D).uv1_triplanar = true
+		(lens as BaseMaterial3D).uv1_offset = Vector3(0.5, 0.5, 0.5)
 	materials[key] = lens
 	return key
 
@@ -401,13 +416,13 @@ func troffer_face(node: Node3D, at: Vector3, size: Vector3, h: float, glow: Stri
 	match look:
 		"narrow":
 			box(node, at + Vector3(0, h + LENS_RECESS + 0.008, 0), inner, "enamel")
-			box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(length, 0.01, NARROW_LENS) if along_x else Vector3(NARROW_LENS, 0.01, length), glow)
+			lens_box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(length, 0.01, NARROW_LENS), along_x, glow)
 			var blades := int(length / LOUVRE_PITCH)
 			for b in blades:
 				var step := ((float(b) + 0.5) / float(blades) - 0.5) * length
 				box(node, at + (Vector3(step, 0, 0) if along_x else Vector3(0, 0, step)) + Vector3(0, h + 0.002, 0), Vector3(0.006, 0.02, NARROW_LENS) if along_x else Vector3(NARROW_LENS, 0.02, 0.006), "enamel")
 		"parabolic":
-			box(node, at + Vector3(0, h + PARABOLIC_DEPTH, 0), inner, glow)
+			lens_box(node, at + Vector3(0, h + PARABOLIC_DEPTH, 0), Vector3(length, 0.01, width), along_x, glow)
 			for c in [-0.25, 0.0, 0.25]:
 				var across: float = float(c) * width
 				box(node, at + (Vector3(0, 0, across) if along_x else Vector3(across, 0, 0)) + Vector3(0, h + PARABOLIC_BLADE * 0.5, 0), Vector3(length, PARABOLIC_BLADE, 0.006) if along_x else Vector3(0.006, PARABOLIC_BLADE, length), "enamel")
@@ -417,9 +432,33 @@ func troffer_face(node: Node3D, at: Vector3, size: Vector3, h: float, glow: Stri
 				box(node, at + (Vector3(step, 0, 0) if along_x else Vector3(0, 0, step)) + Vector3(0, h + PARABOLIC_BLADE * 0.5, 0), Vector3(0.006, PARABOLIC_BLADE, width) if along_x else Vector3(width, PARABOLIC_BLADE, 0.006), "enamel")
 		"wrap":
 			box(node, at + Vector3(0, h - 0.015, 0), Vector3(size.x, 0.03, size.z), "enamel")
-			box(node, at + Vector3(0, h - (0.03 + WRAP_DROP) * 0.5, 0), Vector3(size.x - 0.06, WRAP_DROP - 0.03, size.z - 0.06), glow)
+			lens_box(node, at + Vector3(0, h - (0.03 + WRAP_DROP) * 0.5, 0), Vector3(length + 0.04 - 0.06, WRAP_DROP - 0.03, width + 0.04 - 0.06), along_x, glow)
 		_:
-			box(node, at + Vector3(0, h + LENS_RECESS, 0), inner, glow)
+			lens_box(node, at + Vector3(0, h + LENS_RECESS, 0), Vector3(length, 0.01, width), along_x, glow)
+
+## A lens, its long side along its own x whichever way it lies, so that its
+## picture (lens_picture()) runs its tubes along it.
+func lens_box(node: Node3D, at: Vector3, size: Vector3, along_x: bool, glow: String) -> void:
+	box(node, at, size, glow, false, "box", Vector3.ZERO if along_x else Vector3(0, PI / 2, 0))
+
+## What a lit prismatic lens shows (spec_rediseno 4): the tubes behind it as
+## brighter bands along it, the diffuser dimmer between them, falling off to
+## its frame. Linear levels across the lens, times the lens's glow; the lens
+## material lays it over its own unit box (local triplanar, lens_key()).
+static var lens_picture: ImageTexture
+static func lens_texture() -> ImageTexture:
+	if lens_picture != null: return lens_picture
+	var image := Image.create(4, 64, false, Image.FORMAT_RGB8)
+	for y in 64:
+		var v := (float(y) + 0.5) / 64.0
+		var tubes := 0.0
+		for at: float in LENS_TUBES: tubes = maxf(tubes, exp(-pow((v - at) / 0.07, 2.0)))
+		var edge := smoothstep(0.0, 0.14, v) * smoothstep(1.0, 0.86, v)
+		var level := (LENS_DIFFUSER + (1.0 - LENS_DIFFUSER) * tubes) * (0.2 + 0.8 * edge)
+		var shade := Color(level, level, level).linear_to_srgb()
+		for x in 4: image.set_pixel(x, y, shade)
+	lens_picture = ImageTexture.create_from_image(image)
+	return lens_picture
 
 ## The halo of a room's troffers (spec_rediseno 4): one mesh just under the
 ## tiles, a rectangle round each troffer HALO_REACH wide, clipped to the room's

@@ -24,6 +24,7 @@ const STAND_OUT := 0.6        # the typist's feet, out from the desk's point
 const TABLE_OFFSET := 1.55    # a meeting table's footprint, from the boardroom's centre (office_props)
 const TABLE_WALK := 0.66     # free each long side of it: a capsule's way (office_validator)
 const DESKS_MOST := 8         # free-standing items per cell
+const DESKS_MOST_NAVE := 16   # in a nave's cell, between its streets (the director, 12 Nov)
 ## The band a duct shortcut keeps against the walk (1c's validator has its own).
 const SHORTCUT_MIN := 0.55
 const EXPRESS_PER := 30       # straight trunks over the rooms, per planta
@@ -1771,6 +1772,16 @@ func item_fits(room: Dictionary, zones: Array, piece: Dictionary) -> bool:
 ## Open offices and cubicles: a lattice from the inner corner, desks turned
 ## along the hall (a nave's along its axis); a cubicle pod is kept whole or not at all.
 func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
+	# A nave's cells, open office or cubicles, take islands (the director, 12
+	# November 2026: the pods left a cubicles nave at 16 % of its floor).
+	if LAYOUT.streets(room):
+		lay_islands(room, zones)
+		lay_wall_rows(room, zones)
+		return
+	lattice(f, room, zones)
+
+## lay_lattice() for all but a nave's open office: desk pairs or cubicle pods.
+func lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 	var along_x := float(room.span_x) >= float(room.span_z)
 	var axis := String(room.get("nave_axis", ""))
 	if axis != "": along_x = axis == "x"
@@ -1784,7 +1795,8 @@ func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 	if turn % 2 == 1: size = Vector2(size.y, size.x)
 	# The lattice shifted by quarters of a step both ways, keeping the shift
 	# that seats the most: one fixed from the corner lands on the sweeps.
-	var step := size + Vector2(LAYOUT.ITEM_GAP, LAYOUT.ITEM_GAP)
+	var gap := LAYOUT.gap_of(room)
+	var step := size + Vector2(gap, gap)
 	var best: Array = []
 	for shift in 16:
 		room.furniture = []
@@ -1797,7 +1809,7 @@ func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 		var seats := best.size() * 2
 		var single: Vector2 = palette.FURNITURE.desk.size
 		if turn % 2 == 1: single = Vector2(single.y, single.x)
-		var single_step := single + Vector2(LAYOUT.ITEM_GAP, LAYOUT.ITEM_GAP)
+		var single_step := single + Vector2(gap, gap)
 		for shift in 16:
 			room.furniture = []
 			lattice_at(room, zones, turn, false, single, Vector2(shift % 4, floori(shift / 4.0)) * single_step / 4.0, "desk")
@@ -1809,7 +1821,10 @@ func lay_lattice(f: Dictionary, room: Dictionary, zones: Array) -> void:
 ## One lattice of lay_lattice(), its first item shifted from the inner corner;
 ## `kind` is the item laid where it is not a cubicle pod.
 func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vector2, shift: Vector2, kind := "desk_pair") -> void:
-	var space := LAYOUT.inner(room)
+	# A nave's pods keep its streets round them (island_room()).
+	var space := island_room(room) if LAYOUT.streets(room) else LAYOUT.inner(room)
+	var gap := LAYOUT.gap_of(room)
+	var most := DESKS_MOST_NAVE if LAYOUT.streets(room) else DESKS_MOST
 	var z := space.position.y + size.y / 2 + shift.y
 	while LAYOUT.fits_in(space, Rect2(Vector2(space.position.x, z - size.y / 2), size)):
 		var x := space.position.x + size.x / 2 + shift.x
@@ -1819,17 +1834,168 @@ func lattice_at(room: Dictionary, zones: Array, turn: int, pods: bool, size: Vec
 			var group: int = room.furniture.size()
 			if not pods:
 				var piece := item(kind, at, turn, group)
-				if room.furniture.size() < DESKS_MOST and item_fits(room, zones, piece): room.furniture.append(piece)
+				if room.furniture.size() < most and item_fits(room, zones, piece): room.furniture.append(piece)
 			else:
 				var side := 1.0 if column % 2 == 0 else -1.0
 				var spin := Basis(Vector3.UP, turn * PI / 2)
 				var back := spin * Vector3(0, 0, -0.73)
 				var beside := spin * Vector3(side * 0.93, 0, 0)
 				var pod := [item("desk", at, turn, group), item("partition", at + Vector2(back.x, back.z), turn, group, 1.8), item("partition", at + Vector2(beside.x, beside.z), (turn + 1) % 4, group, 1.46)]
-				if room.furniture.size() + 3 <= DESKS_MOST and pod.all(func(piece): return item_fits(room, zones, piece)): room.furniture.append_array(pod)
-			x += size.x + LAYOUT.ITEM_GAP
+				if room.furniture.size() + 3 <= most and pod.all(func(piece): return item_fits(room, zones, piece)): room.furniture.append_array(pod)
+			x += size.x + gap
 			column += 1
-		z += size.y + LAYOUT.ITEM_GAP
+		z += size.y + gap
+
+## Where a nave cell's islands and pods may stand: a row against each closed
+## wall (lay_wall_rows(), palette.NAVE_WALL_DEPTH) and LAYOUT.NAVE_STREET off
+## it, half a street off the sides open to the next cell of its row (the cell
+## beyond keeps the other half), up to the aisle on its seam.
+func island_room(room: Dictionary) -> Rect2:
+	var space := LAYOUT.inner(room)
+	var open: Array = room.get("open_sides", [])
+	var cut := {}
+	for side in ["west", "east", "north", "south"]:
+		if open.has(side): cut[side] = 0.0 if LAYOUT.seam(room, side) else LAYOUT.NAVE_STREET / 2
+		else: cut[side] = float(palette.NAVE_WALL_DEPTH) + LAYOUT.NAVE_STREET
+	return Rect2(space.position + Vector2(float(cut.west), float(cut.north)), space.size - Vector2(float(cut.west) + float(cut.east), float(cut.north) + float(cut.south)))
+
+## A nave cell of an open office (the director, 12 November 2026): islands of
+## desks (palette.ISLAND_KINDS) in rows along the central aisle, nearest it
+## first and centred along it, each one group with a piece of ISLAND_ENDS at
+## its ends, NAVE_STREET from every other group (fits()) and inside
+## island_room(); up to palette.ISLANDS_MOST of them.
+const ISLAND_STEP := 0.3
+## A desk pair's width along an island (office_props.ISLAND_PITCH).
+const ISLAND_PITCH := 1.5
+func lay_islands(room: Dictionary, zones: Array) -> void:
+	room.furniture = []
+	var along_x := String(room.get("nave_axis", "x")) == "x"
+	var turn := 0 if along_x else 1
+	var keep := island_room(room)
+	var strip: Rect2 = palette.aisle_strips(room)[0]
+	# Across (a) away from the aisle, along (b) it.
+	var a: int = 1 if along_x else 0
+	var b: int = 1 - a
+	var away := 1.0 if strip.get_center()[a] < 0.0 else -1.0
+	var edge: float = strip.end[a] if away > 0.0 else strip.position[a]
+	for n in palette.ISLANDS_MOST:
+		if not place_island(room, zones, keep, turn, a, b, away, edge): return
+
+## The first island of the most desks that fits (lay_islands()), with its ends;
+## whether one did.
+func place_island(room: Dictionary, zones: Array, keep: Rect2, turn: int, a: int, b: int, away: float, edge: float) -> bool:
+	for kind in palette.ISLAND_KINDS:
+		var size: Vector2 = palette.FURNITURE[kind].size
+		if turn % 2 == 1: size = Vector2(size.y, size.x)
+		var middle: float = keep.get_center()[b]
+		var reach: float = keep.size[b] / 2 - size[b] / 2
+		if reach < -LAYOUT.EPS: continue
+		var offsets: Array = [0.0]
+		var off := ISLAND_STEP
+		while off <= reach + LAYOUT.EPS:
+			offsets.append_array([off, -off])
+			off += ISLAND_STEP
+		var depth := 0.0
+		while true:
+			var across := edge + away * (size[a] / 2 + depth)
+			if absf(across - keep.get_center()[a]) + size[a] / 2 > keep.size[a] / 2 + LAYOUT.EPS: break
+			for o in offsets:
+				var at := Vector2.ZERO
+				at[a] = across
+				at[b] = middle + float(o)
+				var piece := item(String(kind), at, turn, room.furniture.size())
+				if not LAYOUT.fits_in(keep, LAYOUT.footprint(piece)) or not item_fits(room, zones, piece): continue
+				room.furniture.append(piece)
+				island_screens(room, piece, b)
+				island_ends(room, zones, keep, piece, b)
+				return true
+			depth += ISLAND_STEP
+	return false
+
+## A nave cell's closed walls filled end to end (the director, 12 November
+## 2026): palette.NAVE_WALL_ROW in turn, side by side as one group, a plant at
+## the end of a run; where nothing fits (a doorway, a locker, a system's spot,
+## the aisle) the run ends and the next starts past it, NAVE_STREET from the
+## islands and from any other run (RECIPES.fits()).
+const ROW_STEP := 0.3
+func lay_wall_rows(room: Dictionary, zones: Array) -> void:
+	var open: Array = room.get("open_sides", [])
+	var kinds: Array = palette.NAVE_WALL_ROW
+	var turn := 0
+	for wall in ["west", "east", "north", "south"]:
+		if open.has(wall) or not RECIPES.usable(room, wall): continue
+		var space := LAYOUT.inner(room)
+		var reach: float = (space.size.y if wall == "west" or wall == "east" else space.size.x) / 2
+		var a := -reach
+		var group := -1
+		while a < reach:
+			var tries: Array = []
+			for k in kinds.size(): tries.append(kinds[(turn + k) % kinds.size()])
+			var placed := false
+			for kind in tries:
+				var width: float = palette.FURNITURE[kind].size.x
+				var along := a + width / 2 + LAYOUT.EPS
+				if along + width / 2 > reach: continue
+				var g: int = group if group >= 0 else room.furniture.size()
+				var pieces := RECIPES.wall_pieces(room, String(kind), 1, wall, along, g)
+				if not RECIPES.all_fit(room, zones, pieces, true): continue
+				room.furniture.append_array(pieces)
+				group = g
+				a = along + width / 2
+				turn += 1
+				placed = true
+				break
+			if placed: continue
+			if group >= 0:
+				# The run's end: a plant where one fits.
+				var plant := RECIPES.wall_pieces(room, "plant_floor", 1, wall, a + 0.25 + LAYOUT.EPS, group)
+				if a + 0.5 <= reach and RECIPES.all_fit(room, zones, plant, true):
+					room.furniture.append_array(plant)
+					a += 0.5
+				group = -1
+			a += ROW_STEP
+
+## An island's screens as partitions of its own group, in a cross: one down its
+## middle between the facing desks and one between each two pairs, so they
+## are the floor's partitions to whatever looks for them (her face over one).
+## A cubicles nave's islands shut their ends as well. A desk pair's island
+## screens none: its own screen is drawn with it.
+func island_screens(room: Dictionary, island: Dictionary, b: int) -> void:
+	if String(island.kind) == "desk_pair": return
+	var foot := LAYOUT.footprint(island)
+	var long: float = foot.size[b]
+	var turn := int(island.turn)
+	var group := int(island.extra.group)
+	room.furniture.append(item("partition", foot.get_center(), turn, group, long))
+	var pairs: int = maxi(1, roundi(long / ISLAND_PITCH))
+	for k in pairs - 1:
+		var at := foot.get_center()
+		at[b] += (float(k) + 1.0 - float(pairs) / 2.0) * ISLAND_PITCH
+		room.furniture.append(item("partition", at, (turn + 1) % 4, group, ISLAND_PITCH))
+	# Cubicles: each end shut too, every desk in a booth of screens.
+	if int(room.type) != palette.CUBICLES: return
+	for side: float in [-1.0, 1.0]:
+		var at := foot.get_center()
+		at[b] += side * (long / 2 - 0.03)
+		room.furniture.append(item("partition", at, (turn + 1) % 4, group, ISLAND_PITCH))
+
+## A piece of palette.ISLAND_ENDS against each end of an island, in its group:
+## the first that fits, each end starting from its own in the list.
+func island_ends(room: Dictionary, zones: Array, keep: Rect2, island: Dictionary, b: int) -> void:
+	var foot := LAYOUT.footprint(island)
+	var ends: Array = palette.ISLAND_ENDS
+	for e in 2:
+		var sign_of: float = -1.0 if e == 0 else 1.0
+		for k in ends.size():
+			var kind := String(ends[(k + e) % ends.size()])
+			var size: Vector2 = palette.FURNITURE[kind].size
+			if int(island.turn) % 2 == 1: size = Vector2(size.y, size.x)
+			var at := foot.get_center()
+			at[b] += sign_of * (foot.size[b] / 2 + size[b] / 2 + LAYOUT.EPS)
+			var piece := item(kind, at, int(island.turn), int(island.extra.group))
+			if not LAYOUT.fits_in(keep, LAYOUT.footprint(piece)) or not item_fits(room, zones, piece): continue
+			room.furniture.append(piece)
+			break
 
 ## The boardroom's table, the longest of TABLE_KINDS that fits, off the middle
 ## (spec_proporcion D6), along the room's long side where it can, its local +Z

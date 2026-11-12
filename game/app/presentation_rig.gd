@@ -339,6 +339,8 @@ func apply_grade() -> void:
 		camera_effect.white_balance = grade.get("white", authored_tone.white)
 	level.environment.adjustment_contrast = grade.get("contrast", authored_tone.contrast)
 	level.environment.adjustment_saturation = grade.get("saturation", authored_tone.saturation)
+	# How much the occlusion darkens what the lamps light: the preset's, or the floor's.
+	level.environment.ssao_light_affect = grade.get("ssao_light", PRESETS.of(level.settings.values.quality, level.settings.values).ssao_shape[2])
 
 ## Wardrobe enclosure and lost signal on the analog filter. The first is
 ## off with reduced effects; the picture going is not an

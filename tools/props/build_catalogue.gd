@@ -31,7 +31,8 @@ const SCALE := {"steel_frame_shelves_01": 0.1, "water_cooler_bottle_tboiston": 0
 const SKIP := ["Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02",
 	"hanging_picture_frame_01", "modular_airduct_rectangular_01", "korean_fire_extinguisher_01", "korean_public_payphone_01",
 	"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair",
-		"metal_stool_01", "metal_stool_02", "standing_picture_frame_01", "standing_picture_frame_02", "steel_frame_shelves_02", "steel_frame_shelves_03", "side_table_01", "coffee_table_round_01", "industrial_wall_lamp", "industrial_caged_sconce", "vintage_microwave", "vintage_electric_kettle"]
+		"metal_stool_01", "metal_stool_02", "standing_picture_frame_01", "standing_picture_frame_02", "steel_frame_shelves_02", "steel_frame_shelves_03", "side_table_01", "coffee_table_round_01", "industrial_wall_lamp", "industrial_caged_sconce", "vintage_microwave", "vintage_electric_kettle",
+		"vintage_stapler", "plastic_thermos", "modified_thermos", "metal_toolbox", "dustpan", "wooden_ladder_02", "wooden_broom", "mousetrap", "magnifying_glass_01", "round_spectacles", "projector_screen", "Television_01", "boombox"]
 const PARTS := {
 	"metal_trash_can": {"clean": "^metal_trash_can(_handle_left|_handle_right|_lid)?$", "rust": "^metal_trash_can_rust"},
 	"vintage_suitcase": {"a": "^vintage_suitcase_01", "b": "^vintage_suitcase_02"},
@@ -52,7 +53,22 @@ const PARTS := {
 	"pachira_aquatica_01": {"a": "_a$", "b": "_b$", "c": "_c$", "d": "_d$"},
 	"calathea_orbifolia_01": {"a": "_a$", "b": "_b$", "c": "_c$"},
 	"anthurium_botany_01": {"a": "_a$", "b": "_b$", "c": "_c$"},
+	# The offices' doors and grey filing cabinets, made into the game's pieces
+	# by tools/props/fit_model.py (fit_models.json): a leaf with its hinges, a
+	# steel casing; a cabinet shut, its body and one drawer.
+	"puerta_oficina_sousinho": {"leaf": "^leaf"},
+	"puerta_lisa_sousinho": {"leaf": "^leaf"},
+	"puerta_metal_tboiston": {"leaf": "^leaf", "frame": "^frame"},
+	"archivador_gris_ahmagh2e": {"shut4": "^shut4_", "body4": "^body4_", "drawer": "^drawer_"},
+	# Of a whole office scene, its green tanker desk and its chrome chair.
+	"retro_oficina_yj": {"desk": "^desk_", "chair": "^chair_"},
+	# Four rows of books stood up, two with a pair laid on top (shelves where the bookcase model is not).
+	"libros_frodoundead": {"row_a": "^row_a_", "row_b": "^row_b_", "row_c": "^row_c_", "row_d": "^row_d_"},
 }
+## Downloads baked where fit_model.py put them, not centred and set on the
+## floor: a leaf about its hinge (hotel_geometry.gd set_door()), a casing on
+## its doorway, a drawer in its cabinet.
+const PLACED := ["puerta_oficina_sousinho", "puerta_lisa_sousinho", "puerta_metal_tboiston", "archivador_gris_ahmagh2e"]
 ## Clocks, whose hands turn in the game (hotel_geometry.gd, tell_time): each
 ## hand is baked apart, as <id>_<hand>.res -- pointing at twelve, turning
 ## about +Z at its own origin, with where that origin is in the body's mesh
@@ -496,7 +512,7 @@ func bake(model: String, folder: String, part := "", pattern := "") -> void:
 				var p: Vector3 = turn * (piece[1] * vertex)
 				bounds = AABB(p, Vector3.ZERO) if first else bounds.expand(p)
 				first = false
-	var fit := Transform3D(Basis.IDENTITY, -Vector3(bounds.get_center().x, bounds.position.y, bounds.get_center().z)) * turn
+	var fit := turn if model in PLACED else Transform3D(Basis.IDENTITY, -Vector3(bounds.get_center().x, bounds.position.y, bounds.get_center().z)) * turn
 	# One surface per material.
 	var groups := {}
 	for piece in parts:

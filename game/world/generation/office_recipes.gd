@@ -53,6 +53,9 @@ const TABLE_WALK := 0.7
 const HALL_END := 0.3
 const HALL_SIGN_RUN := 2.8
 const HALL_BY := 0.5
+## Half the widest corridor fitting with its gaps (the hose cabinet, 0.65 m,
+## office_walls.gd), kept clear of a fitting's slot by the corridor's floor pieces.
+const HALL_SLOT_CLEAR := 0.55
 
 ## A furniture item as the manifest keeps it (a partition's size.x is its length).
 static func item(kind: String, at: Vector2, turn: int, group: int, length := 0.0) -> Dictionary:
@@ -61,14 +64,14 @@ static func item(kind: String, at: Vector2, turn: int, group: int, length := 0.0
 	if kind == "partition": size.x = length
 	return {"kind": kind, "at": [snappedf(at.x, 0.001), snappedf(at.y, 0.001)], "turn": turn, "size": [snappedf(size.x, 0.001), snappedf(size.y, 0.001)], "extra": {"height": float(spec.height), "group": group}}
 
-## Whether a piece fits: inside the walls, clear of every zone, ITEM_GAP from
-## the pieces of other groups.
+## Whether a piece fits: inside the walls, clear of every zone, LAYOUT.gap_of()
+## (a street in a nave) from the pieces of other groups.
 static func fits(room: Dictionary, zones: Array, piece: Dictionary) -> bool:
 	var r := LAYOUT.footprint(piece)
 	if not LAYOUT.fits_in(LAYOUT.inner(room), r) or hits(r, zones): return false
 	for other in room.furniture:
 		if int(other.extra.group) == int(piece.extra.group): continue
-		if not LAYOUT.apart(r, LAYOUT.footprint(other), LAYOUT.ITEM_GAP): return false
+		if not LAYOUT.apart(r, LAYOUT.footprint(other), LAYOUT.gap_of(room)): return false
 	return true
 
 ## Gives each capsule zone its bounds grown by its radius, which hits() tries
@@ -132,11 +135,14 @@ static func air_zones(room: Dictionary, air: Dictionary) -> Array:
 	out.append({"rect": LAYOUT.wall_rect(room, String(unit.wall), float(unit.along), OFFICE.AIR_UNIT.x / 2, OFFICE.AIR_UNIT.z)})
 	return out
 
-## A way from the middle of a room to the front of each wall spot taken, for
-## the pieces a recipe lays against its walls and in its middle.
+## A way from the middle of a room (a nave's aisle, LAYOUT.way_out()) to the
+## front of each wall spot taken, for the pieces a recipe lays against its
+## walls and in its middle.
 static func ways_in(room: Dictionary, taken: Array) -> Array:
 	var out: Array = []
-	for spot in taken: out.append({"a": Vector2.ZERO, "b": wall_front(room, String(spot.wall), float(spot.along), TAKEN_OUT), "r": LAYOUT.SWEEP_CLEAR})
+	for spot in taken:
+		var front := wall_front(room, String(spot.wall), float(spot.along), TAKEN_OUT)
+		out.append({"a": LAYOUT.way_out(room, front), "b": front, "r": LAYOUT.SWEEP_CLEAR})
 	prepare(out)
 	return out
 
@@ -284,7 +290,7 @@ static func restore(room: Dictionary, gone: Array, zones: Array) -> void:
 		var fits_here := true
 		for it in room.furniture:
 			var foot := LAYOUT.footprint(it)
-			if foot.grow(TABLE_WALK if String(it.kind).begins_with("meeting_table") else 0.0).intersects(out_to_corner) or (t != OFFICE.BOARDROOM and reach > 0.0 and LAYOUT.segment_rect_distance(Vector2.ZERO, corner, foot) < LAYOUT.SWEEP_CLEAR):
+			if foot.grow(TABLE_WALK if String(it.kind).begins_with("meeting_table") else 0.0).intersects(out_to_corner) or (t != OFFICE.BOARDROOM and reach > 0.0 and LAYOUT.segment_rect_distance(LAYOUT.way_out(room, corner), corner, foot) < LAYOUT.SWEEP_CLEAR):
 				fits_here = false
 				break
 		if fits_here: room.props.append(prop)
@@ -588,6 +594,10 @@ static func lay_line(view: Dictionary, taken: Dictionary, cells: Array, wall: St
 			var a: float = float(pos) - hall_mid(room, along_x)
 			var piece := hall_piece(room, kind, wall, a)
 			if piece.is_empty() or not fits(room, zones_of[id], piece): continue
+			# Off the fittings' slots (office_walls.corridor(): every CORRIDOR_PITCH of
+			# the world along the wall), so the corridor keeps its wall dressed.
+			var pitch: float = OFFICE.CORRIDOR_PITCH
+			if absf(float(pos) - roundf(float(pos) / pitch) * pitch) < float(piece.size[0]) / 2 + HALL_SLOT_CLEAR: continue
 			var with_it: Array = room.furniture + [piece]
 			if hall_gap(room, with_it) < float(OFFICE.HALL_PASS): continue
 			room.furniture.append(piece)

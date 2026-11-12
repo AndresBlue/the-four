@@ -44,6 +44,13 @@ const CREDITS := [
 		"«IBM 3278 terminal», de maxdragonn (Sketchfab, CC BY 4.0): la pantalla de los puestos, sin teclado, con sus marcas tapadas y la pantalla apagada.",
 		"«Water cooler», de tboiston (Sketchfab, CC BY 4.0): la fuente de agua, con sus rótulos tapados.",
 		"«Coat Rack», de Whostea (Sketchfab, CC BY 4.0): el perchero de pie, con texturas reducidas.",
+		"«Office doors», de Sousinho (Sketchfab, CC BY 4.0): la puerta de madera con mirilla, ajustada al hueco, con la manilla en las dos caras y sus letreros tapados.",
+		"«Toilet / exit door», de Sousinho (Sketchfab, CC BY 4.0): la puerta de madera lisa, ajustada al hueco, con la manilla en las dos caras y sus letreros tapados.",
+		"«Metal Door 2», de tboiston (Sketchfab, CC BY 4.0): la puerta de acero y su marco, ajustados al hueco, con el texto del vidrio tapado.",
+		"«Door Hinge - 1MB», de Mehdi Shahsavan (Sketchfab, CC BY 4.0): las bisagras de las puertas, simplificadas.",
+		"«Filing Cabinet - 16MB», de Mehdi Shahsavan (Sketchfab, CC BY 4.0): el archivador gris, ajustado a su medida.",
+		"«Locker», de Zambur (Sketchfab, CC BY 4.0): las taquillas, en fila de seis, con sus rótulos tapados.",
+		"«Simple smoke detector», de Sousinho (Sketchfab, CC BY 4.0): el detector de humo, con su luz apagada.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [

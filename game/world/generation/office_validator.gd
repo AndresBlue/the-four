@@ -834,6 +834,8 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 		var view := {"rooms": data.rooms, "adjacency": data.adjacency, "mail": raw.get(id, [])}
 		var zones := LAYOUT.clear_zones(view, room, int(room.type) == OFFICE.BOARDROOM)
 		zones.append_array(RECIPES.air_zones(room, data.get("air", {})))
+		# A nave's central aisle, the street all its others lead to.
+		for strip: Rect2 in OFFICE.aisle_strips(room): zones.append({"rect": strip})
 		RECIPES.prepare(zones)
 		var ok: bool = true
 		for i in items.size():
@@ -852,8 +854,106 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 			var r := LAYOUT.footprint(it)
 			if not LAYOUT.fits_in(LAYOUT.inner(room), r) or RECIPES.hits(r, zones): ok = false
 			for j in items.size():
-				if j != i and int(items[j].extra.group) != int(it.extra.group) and not LAYOUT.apart(r, LAYOUT.footprint(items[j]), LAYOUT.ITEM_GAP): ok = false
+				if j != i and int(items[j].extra.group) != int(it.extra.group) and not LAYOUT.apart(r, LAYOUT.footprint(items[j]), LAYOUT.gap_of(room)): ok = false
+			if LAYOUT.streets(room) and float(it.extra.height) > NAVE_TOP + 0.001 and not against_wall(room, r): ok = false
 		if not ok: errors.append("furniture_%d" % id)
+		if LAYOUT.streets(room) and not reach_ok(room): errors.append("reach_%d" % id)
+
+## In a nave (LAYOUT.streets()), nothing away from a wall stands taller than
+## this (the director, 12 November 2026: seen over, and she drops in the streets).
+const NAVE_TOP := 1.3
+## Away from a wall: farther than this from every closed wall's face.
+const WALL_NEAR := 0.3
+
+## Whether a plan rect stands against one of the room's closed walls.
+static func against_wall(room: Dictionary, r: Rect2) -> bool:
+	var open: Array = room.get("open_sides", [])
+	var gaps := {"west": r.position.x - LAYOUT.face(room, "west"), "east": LAYOUT.face(room, "east") - r.end.x, "north": r.position.y - LAYOUT.face(room, "north"), "south": LAYOUT.face(room, "south") - r.end.y}
+	for side in gaps:
+		if not open.has(side) and float(gaps[side]) < WALL_NEAR: return true
+	return false
+
+## A nave cell's floor (LAYOUT.streets()) walked by a body REACH_BODY round,
+## on a grid of REACH_STEP: from its central aisle it reaches the front of each
+## doorway, each side open to the next cell of its row and each of her tiles
+## (OFFICE.free_tiles()) whose floor is free, round the furniture, the corner
+## pieces, the lockers and the columns.
+const REACH_STEP := 0.2
+const REACH_BODY := 0.32
+func reach_ok(room: Dictionary) -> bool:
+	var space := LAYOUT.inner(room)
+	var cols := ceili(space.size.x / REACH_STEP)
+	var rows := ceili(space.size.y / REACH_STEP)
+	var open: Array = room.get("open_sides", [])
+	var solids: Array = []
+	for it in room.get("furniture", []): solids.append(LAYOUT.footprint(it))
+	var sockets: Array = room.get("sockets", [])
+	for prop in room.get("props", []):
+		if int(prop.slot) < sockets.size(): solids.append(OFFICE.corner_rect(String(prop.kind), sockets[int(prop.slot)], int(prop.rotation)))
+	for h in room.get("hides", []):
+		var hw := LAYOUT.hide_wall(h)
+		solids.append(LAYOUT.wall_rect(room, String(hw.wall), float(hw.along), LAYOUT.LOCKER.x / 2, LAYOUT.LOCKER_OUT))
+	var middle := Vector2(float(room.px), float(room.pz))
+	for post: Rect2 in OFFICE.column_rects(room): solids.append(Rect2(post.position - middle, post.size))
+	var free := PackedByteArray()
+	free.resize(cols * rows)
+	for j in rows:
+		for i in cols:
+			var p := space.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * REACH_STEP
+			var ok := true
+			# Off the closed walls by a body.
+			if (not open.has("west") and p.x - space.position.x < REACH_BODY) or (not open.has("east") and space.end.x - p.x < REACH_BODY): ok = false
+			if (not open.has("north") and p.y - space.position.y < REACH_BODY) or (not open.has("south") and space.end.y - p.y < REACH_BODY): ok = false
+			if ok:
+				for r: Rect2 in solids:
+					if r.grow(REACH_BODY).has_point(p):
+						ok = false
+						break
+			free[j * cols + i] = 1 if ok else 0
+	var reached := PackedByteArray()
+	reached.resize(cols * rows)
+	var front: Array[Vector2i] = []
+	for strip: Rect2 in OFFICE.aisle_strips(room):
+		for j in rows:
+			for i in cols:
+				var p := space.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * REACH_STEP
+				if strip.has_point(p) and free[j * cols + i] == 1 and reached[j * cols + i] == 0:
+					reached[j * cols + i] = 1
+					front.append(Vector2i(i, j))
+	while not front.is_empty():
+		var c: Vector2i = front.pop_back()
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n := c + step
+			if n.x < 0 or n.y < 0 or n.x >= cols or n.y >= rows: continue
+			var k := n.y * cols + n.x
+			if free[k] == 1 and reached[k] == 0:
+				reached[k] = 1
+				front.append(n)
+	var cell_of := func(p: Vector2) -> int:
+		var i := clampi(floori((p.x - space.position.x) / REACH_STEP), 0, cols - 1)
+		var j := clampi(floori((p.y - space.position.y) / REACH_STEP), 0, rows - 1)
+		return j * cols + i
+	var targets: Array = []
+	for way in FLOOR.doorways(room):
+		targets.append(LAYOUT.wall_rect(room, String(way.wall), float(way.along), 0.0, LAYOUT.NAVE_STREET).get_center())
+	for side in open:
+		if LAYOUT.seam(room, String(side)): continue
+		# Somewhere along it, not all of it: the column's spot cuts it.
+		var along: Array = []
+		var half := LAYOUT.wall_length(room, String(side)) / 2 - 0.4
+		var t := -half
+		while t <= half:
+			along.append(LAYOUT.wall_rect(room, String(side), t, 0.0, 0.4).get_center())
+			t += REACH_STEP
+		if not along.any(func(p: Vector2) -> bool: return reached[int(cell_of.call(p))] == 1): return false
+	var height := float(room.py) + OFFICE.height_of(room)
+	for tile in OFFICE.free_tiles(room):
+		var c3 := OFFICE.tile_centre(tile, height)
+		targets.append(Vector2(c3.x, c3.z) - middle)
+	for p: Vector2 in targets:
+		var k: int = cell_of.call(p)
+		if free[k] == 1 and reached[k] == 0: return false
+	return true
 
 ## 16. The naves and their columns (spec_rediseno 3.3, 3.4): a nave's axis
 ## only on planta 1's salons of open offices or cubicles; columns only while
@@ -991,6 +1091,41 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 	query.shape = capsule
 	query.collision_mask = 1
 	var rooms: Array = data.rooms
+	# A nave's middle is no rule but its aisle is (LAYOUT.streets(), the director's
+	# 12 November): its middle and its lockers are walked again from the aisle.
+	var naves := {}
+	for room in rooms:
+		if not FLOOR.is_void(room) and LAYOUT.streets(room): naves[int(room.id)] = room
+	errors.assign(errors.filter(func(e: String) -> bool:
+		for prefix in ["center_", "hide_approach_", "hide_entry_"]:
+			if e.begins_with(prefix) and naves.has(int(e.trim_prefix(prefix))): return false
+		return true))
+	for id in naves:
+		var room: Dictionary = naves[id]
+		var at := FLOOR.position_of(room) + Vector3(0, 0.94, 0)
+		var strip: Rect2 = OFFICE.aisle_strips(room)[0]
+		query.transform = Transform3D(Basis.IDENTITY, at + Vector3(strip.get_center().x, 0, strip.get_center().y))
+		query.motion = Vector3.ZERO
+		if not space.intersect_shape(query).is_empty(): errors.append("center_%d" % int(id))
+		var corners: Array = []
+		var reach := LAYOUT.cover_reach(room)
+		if reach > 0.0:
+			for prop in room.get("props", []): corners.append(LAYOUT.corner_of(int(prop.slot)) * reach)
+		for spot in FLOOR.hiding_positions(room):
+			var approach := FLOOR.hiding_approach(spot)
+			corners.append(Vector2(approach.x, approach.z))
+		for c: Vector2 in corners:
+			var from := LAYOUT.way_out(room, c)
+			query.transform = Transform3D(Basis.IDENTITY, at + Vector3(from.x, 0, from.y))
+			query.motion = Vector3(c.x - from.x, 0, c.y - from.y)
+			if space.cast_motion(query)[0] < 0.99:
+				errors.append("cover_access_%d" % int(id))
+				break
+		for spot in FLOOR.hiding_positions(room):
+			var approach := FLOOR.hiding_approach(spot)
+			query.transform = Transform3D(Basis.IDENTITY, at + approach)
+			query.motion = spot - approach
+			if space.cast_motion(query)[0] < 0.99: errors.append("hide_entry_%d" % int(id))
 	# The narrow aisles of the archives, from the spine to their far end.
 	for i in data.get("archives", []).size():
 		var arch: Dictionary = data.archives[i]
@@ -1043,7 +1178,6 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 				errors.append("exit_way_%d" % int(room.id))
 				break
 	# The band over the false ceiling: nothing in it, but the main duct.
-	var main_cells: Array = data.get("air", {}).get("main", {}).get("cells", [])
 	var plant := int(data.get("air", {}).get("plant", -1))
 	var crawl: Array = OFFICE.crawl_boxes(data)
 	var box := BoxShape3D.new()
@@ -1058,10 +1192,11 @@ func validate_physics(world: World3D, data: Dictionary) -> Array[String]:
 		if top <= bottom: continue
 		var inset := 0.25 + OFFICE.WALL_HALF
 		var plan: Array = [Rect2(float(room.px) - float(room.span_x) / 2 + inset, float(room.pz) - float(room.span_z) / 2 + inset, float(room.span_x) - 2 * inset, float(room.span_z) - 2 * inset)]
-		if main_cells.has(int(room.id)):
-			for c in crawl:
-				var cut: AABB = c
-				plan = LAYOUT.rect_minus(plan, Rect2(cut.position.x, cut.position.z, cut.size.x, cut.size.z).grow(SLEEVE))
+		# Wherever the main duct and its cross run, not only in the main's cells:
+		# the cross's stub reaches into the air salon next to them (seed 33).
+		for c in crawl:
+			var cut: AABB = c
+			plan = LAYOUT.rect_minus(plan, Rect2(cut.position.x, cut.position.z, cut.size.x, cut.size.z).grow(SLEEVE))
 		# A column stands up to the ceiling (spec_rediseno 3.4): no fitting.
 		for post in OFFICE.column_rects(room):
 			plan = LAYOUT.rect_minus(plan, post.grow(SLEEVE))
@@ -1107,6 +1242,8 @@ func room_sweeps(room: Dictionary) -> Array:
 	if not is_office: return super.room_sweeps(room)
 	var t := int(room.type)
 	if t == OFFICE.ARCHIVE or t == OFFICE.MOBILE_ARCHIVE or t == OFFICE.BOARDROOM: return []
+	# A nave's from its aisle (validate_physics()).
+	if LAYOUT.streets(room): return []
 	var c := LAYOUT.cover_reach(room)
 	if c <= 0.0: return []
 	# Only to the corners with a piece (spec_proporcion D3).
@@ -1130,15 +1267,39 @@ func room_sweeps(room: Dictionary) -> Array:
 func passage_path(a: Dictionary, b: Dictionary) -> Array:
 	var path := super.passage_path(a, b)
 	if not is_office: return path
+	# Two cells of a nave open to each other: along or across its aisle, from
+	# the aisle's middle line in one to its middle line in the other.
+	if LAYOUT.streets(a) and LAYOUT.streets(b) and not FLOOR.doorways(a).any(func(way): return int(way.other) == int(b.id)):
+		return [aisle_line(a, path[1]), aisle_line(b, path[2])]
 	# path: a's middle, a metre short of the doorway in a, a metre past it in
 	# b, b's middle. In an archive the turn is on the spine line: level with
 	# the doorway on a long wall, at the spine's end on a short one, and from
 	# there across the aisle.
+	# A nave cell is walked from its aisle, straight from the doorway's metre
+	# (LAYOUT.clear_zones()'s street in).
+	if LAYOUT.streets(a): path[0] = aisle_of(a, path[1])
+	if LAYOUT.streets(b): path[3] = aisle_of(b, path[2])
 	var a_spine := spine_point(a, path[1])
 	var b_spine := spine_point(b, path[2])
 	if b_spine.is_finite(): path.insert(3, b_spine)
 	if a_spine.is_finite(): path.insert(1, a_spine)
 	return round_ladder(path)
+
+## The point of a nave cell's aisle's middle line nearest a world point, at its
+## height: a body there is a body's width off any island.
+func aisle_line(room: Dictionary, point: Vector3) -> Vector3:
+	var middle := FLOOR.position_of(room)
+	var strip: Rect2 = OFFICE.aisle_strips(room)[0]
+	var c := strip.get_center()
+	var local := Vector2(point.x - middle.x, point.z - middle.z)
+	var on: Vector2 = Vector2(clampf(local.x, strip.position.x, strip.end.x), c.y) if strip.size.x >= strip.size.y else Vector2(c.x, clampf(local.y, strip.position.y, strip.end.y))
+	return Vector3(middle.x + on.x, point.y, middle.z + on.y)
+
+## The point of a nave cell's aisle nearest a world point, at its height.
+func aisle_of(room: Dictionary, point: Vector3) -> Vector3:
+	var middle := FLOOR.position_of(room)
+	var out := LAYOUT.way_out(room, Vector2(point.x - middle.x, point.z - middle.z))
+	return Vector3(middle.x + out.x, point.y, middle.z + out.y)
 
 ## The plant ladder up to the main duct's hatch (spec_f1_systems 4.5) stands
 ## on the way across the air salon when the duct leaves along it: a leg that

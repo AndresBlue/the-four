@@ -50,7 +50,24 @@ const MODELS := {
 	"cooler": {"paths": ["res://assets/props/office/water_cooler_bottle_tboiston.res"]},
 	# The standing coat rack of an office's and the director's corner (office_props.gd); no stand-in.
 	"coat_stand": {"paths": ["res://assets/props/office/perchero_coat_rack_whostea.res"]},
+	# Six grey lockers in a row, at locker_bank's measure (office_props.gd); no stand-in.
+	"lockers": {"paths": ["res://assets/props/office/taquilla_zambur.res"]},
+	# The ceiling's smoke detector (office_fittings.gd), its light off; no stand-in.
+	"smoke_detector": {"paths": ["res://assets/props/office/detector_humo_sousinho.res"]},
+	# The grey filing cabinet: shut, and its body and a drawer for one left out,
+	# baked in register (office_props.filing()); no stand-in.
+	"filing_grey": {"paths": ["res://assets/props/office/archivador_gris_ahmagh2e_shut4.res"]},
+	"filing_grey_body": {"paths": ["res://assets/props/office/archivador_gris_ahmagh2e_body4.res"]},
+	"filing_grey_drawer": {"paths": ["res://assets/props/office/archivador_gris_ahmagh2e_drawer.res"]},
 }
+## The grey cabinet's drawers stand GREY_PITCH apart up from the lowest, as
+## its drawer is baked; one left out stands GREY_OUT before the rest.
+const GREY_PITCH := 0.2988
+const GREY_OUT := 0.3
+
+## Whether a filing cabinet in this finish is the grey download: a grey room's, once baked.
+static func grey_filing(builder: Node3D, key: String) -> bool:
+	return key == "steel_grey" and mesh_of(builder, "filing_grey") != null
 ## The pots by key (stand_ins.gd plant_pot()).
 const POTS := {"steel_dark": Vector3(0.4, 0.38, 0.4), "ceramic": Vector3(0.2, 0.16, 0.2)}
 ## A lamp's light in the lamp's own frame: where it is, the point it is aimed

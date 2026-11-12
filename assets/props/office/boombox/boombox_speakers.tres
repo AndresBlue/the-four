@@ -1,0 +1,13 @@
+[gd_resource type="ORMMaterial3D" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/office/boombox/boombox_speakers_diff_1k.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/office/boombox/boombox_speakers_arm_1k.jpg" id="2"]
+
+[resource]
+resource_name = "boombox_speakers"
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("1")
+orm_texture = ExtResource("2")
+transparency = 2
+alpha_scissor_threshold = 0.5
+cull_mode = 2

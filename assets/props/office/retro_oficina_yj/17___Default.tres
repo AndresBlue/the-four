@@ -1,0 +1,14 @@
+[gd_resource type="ORMMaterial3D" load_steps=4 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/office/retro_oficina_yj/17___Default_baseColor.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/office/retro_oficina_yj/17___Default_metallicRoughness.jpg" id="2"]
+[ext_resource type="Texture2D" path="res://assets/props/office/retro_oficina_yj/17___Default_normal.jpg" id="3"]
+
+[resource]
+resource_name = "17_-_Default"
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("1")
+orm_texture = ExtResource("2")
+normal_enabled = true
+normal_texture = ExtResource("3")
+cull_mode = 2

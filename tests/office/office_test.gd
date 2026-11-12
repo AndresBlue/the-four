@@ -1074,8 +1074,12 @@ func validator_checks() -> void:
 	var change_18 := func(m: Dictionary) -> void:
 		for room in m.rooms:
 			for it in room.get("furniture", []):
-				if String(it.kind) == "desk_pair":
-					it.at = [0.0, 0.0]
+				# A nave's islands as well as the lattice's pairs (lay_islands()); in a nave
+				# its middle is no rule but its aisle is.
+				if String(it.kind) in ["desk_pair", "desk_island", "desk_island_6"]:
+					var strips: Array = OFFICE.aisle_strips(room)
+					var middle: Vector2 = Vector2.ZERO if strips.is_empty() else (strips[0] as Rect2).get_center()
+					it.at = [middle.x, middle.y]
 					return
 	mutation(v, "Un escritorio en medio de la sala", "furniture_", change_18)
 	var change_19 := func(m: Dictionary) -> void:

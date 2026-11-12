@@ -46,7 +46,7 @@ REGISTER = os.path.join(ROOT, "docs", "ASSETS.md")
 ## source_assets/props/<slug>/ by registro_polyhaven_modelos.json; out to
 ## assets/props/office/<slug>/.
 OFFICE_ROOT = os.path.join(ROOT, "source_assets", "oficinas")
-OFFICE_GROUPS = ["muebles_a", "muebles_b", "equipos"]
+OFFICE_GROUPS = ["muebles_a", "muebles_b", "equipos", "carpinteria", "muebles_c", "objetos"]
 OFFICE_TARGET = os.path.join(ROOT, "assets", "props", "office")
 ## Where each office model's glTF is (res://), for build_catalogue.gd --sources=.
 OFFICE_SOURCES = os.path.join(OFFICE_TARGET, "sources.json")
@@ -75,6 +75,8 @@ SKIP |= {"korean_fire_extinguisher_01", "korean_public_payphone_01"}
 ## brings them in, never the hotel.
 SKIP |= {"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair"}
 SKIP |= {"metal_stool_01", "metal_stool_02", "standing_picture_frame_01", "standing_picture_frame_02", "steel_frame_shelves_02", "steel_frame_shelves_03", "side_table_01", "coffee_table_round_01", "industrial_wall_lamp", "industrial_caged_sconce", "vintage_microwave", "vintage_electric_kettle"}
+## And the offices' small things from Poly Haven of November 2026, the same.
+SKIP |= {"vintage_stapler", "plastic_thermos", "modified_thermos", "metal_toolbox", "dustpan", "wooden_ladder_02", "wooden_broom", "mousetrap", "magnifying_glass_01", "round_spectacles", "projector_screen", "Television_01", "boombox"}
 ## The offices' Poly Haven kits the hotel already bakes by id (its PARTS and
 ## YAW): --set=office leaves them out. Under their slugs they would be baked
 ## again with no PARTS to split them, so each would come out as one mesh.
@@ -100,8 +102,9 @@ CLEAR_GLASS = {"vintage_grandfather_clock_01"}
 ## What is painted over on an office download's images before they are
 ## brought in (docs/OFICINAS.md 12: no lettering in another language, no
 ## makers' marks): by model and image, rectangles in the image's own pixels
-## (x0, y0, x1, y1), each filled with the colour round it, or with the colour
-## given after them.
+## (x0, y0, x1, y1), each filled with the colour round it, with the colour
+## given after them (r, g, b), or with what lies an offset (dx, dy) away: wood
+## keeps its grain.
 PATCHES = {
     # The maker's emblem in the middle of the dial.
     ("rotary_phone_black_sketchfab", "aiStandardSurface3_baseColor.png"): [(770, 3525, 935, 3700)],
@@ -114,9 +117,40 @@ PATCHES = {
     ("water_cooler_bottle_tboiston", "lambert1_baseColor.png"): [(244, 2114, 496, 2236), (1812, 2270, 2036, 2354), (3358, 2444, 3386, 2460), (3592, 2450, 3618, 2466)],
     ("water_cooler_bottle_tboiston", "lambert1_normal.png"): [(244, 2114, 496, 2236), (1812, 2270, 2036, 2354)],
     ("water_cooler_bottle_tboiston", "lambert1_metallicRoughness.png"): [(244, 2114, 496, 2236), (1812, 2270, 2036, 2354)],
+    # The office door's room plate and its blue fire-door disc, in colour and relief.
+    ("puerta_oficina_sousinho", "T_meeting_room_door_baseColor.png"): [(610, 390, 1235, 585, (0, 300)), (1940, 1900, 2215, 2160, (0, -400))],
+    ("puerta_oficina_sousinho", "T_meeting_room_door_normal.png"): [(610, 390, 1235, 585, (0, 300)), (1940, 1900, 2215, 2160, (0, -400))],
+    # The plain door's toilets sign, fire exit sign and fire-door disc.
+    ("puerta_lisa_sousinho", "T_exit_door_1001_baseColor.jpg"): [(2380, 850, 2925, 1200, (0, 700)), (2390, 1245, 2920, 1465, (0, 700)), (1840, 1080, 2130, 1370, (0, 700))],
+    ("puerta_lisa_sousinho", "T_exit_door_1001_normal.png"): [(2380, 850, 2925, 1200, (0, 700)), (1840, 1080, 2130, 1370, (0, 700))],
+    # Two jokes in English printed on the steel door's glass.
+    ("puerta_metal_tboiston", "lambert1_baseColor.png"): [(958, 136, 1122, 176, (0, 60)), (1333, 139, 1485, 179, (0, 60))],
+    # The stencilled lines on the locker's door.
+    ("taquilla_zambur", "initialShadingGroup_baseColor.png"): [(80, 295, 335, 545), (470, 280, 750, 550)],
+    # The vending machine's brand sign, its snacks' made-up brands (the slots
+    # are left empty) and a sticker by the coin slot.
+    ("expendedora_attheseedof", "VendingMachine_baseColor.png"): [(59, 772, 772, 950), (59, 507, 760, 744), (261, 1655, 424, 1834)],
+    # A label with symbols under the chrome chair's seat.
+    ("retro_oficina_yj", "17_-_Default.001_baseColor.png"): [(850, 330, 1115, 780)],
+    # A comic's cover and a starry one in the books' atlas, as plain cloth.
+    ("libros_frodoundead", "Book_baseColor.png"): [(1256, 1741, 1686, 2038, (92, 62, 44)), (795, 297, 1239, 601, (92, 62, 44))],
+    # The printer's name plate and its panel's English labels.
+    ("impresora_okidata_papaj", "material_baseColor.png"): [(1432, 1540, 1768, 1752), (100, 1480, 1400, 1740), (780, 1820, 840, 1900)],
+    # The shipping label with its barcode on the dirty box.
+    ("caja_carton_krolzuzanna", "box_A_2_baseColor.png"): [(1636, 1380, 1756, 1520)],
+    # Poly Haven's small things: the stapler's maker, the flask's name, the
+    # television's maker, warning sticker and tag, the cassette player's
+    # stickers and the labels over its deck.
+    ("vintage_stapler", "vintage_stapler_diff_1k.jpg"): [(0, 35, 262, 104)],
+    ("plastic_thermos", "plastic_thermos_diff_1k.jpg"): [(780, 860, 1015, 1000)],
+    ("Television_01", "Television_01_diff_1k.jpg"): [(379, 707, 481, 731), (500, 775, 532, 905), (645, 748, 758, 901), (850, 51, 881, 143)],
+    ("boombox", "boombox_diff_1k.jpg"): [(553, 389, 680, 502), (747, 512, 840, 625), (727, 788, 819, 891), (10, 80, 410, 230)],
 }
+## Images multiplied by a colour as they are brought in: the archive box's
+## white board turned to kraft.
+TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44)}
 # Big pieces seen close up keep 2048 px.
-KEEP_2K = {"GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01", "vintage_grandfather_clock_01"}
+KEEP_2K = {"escritorio_tanker_lenawachs", "retro_oficina_yj", "escritorio_madera_collings", "expendedora_attheseedof", "GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01", "vintage_grandfather_clock_01", "puerta_oficina_sousinho", "puerta_lisa_sousinho", "puerta_metal_tboiston"}
 
 IMPORT = """[remap]
 
@@ -159,7 +193,10 @@ def paint_over(image, patches):
     for patch in patches:
         x0, y0, x1, y1 = patch[:4]
         outer = result.crop((x0 - ring, y0 - ring, x1 + ring, y1 + ring))
-        if len(patch) > 4:
+        if len(patch) > 4 and len(patch[4]) == 2:
+            dx, dy = patch[4]
+            fill = result.crop((x0 - ring + dx, y0 - ring + dy, x1 + ring + dx, y1 + ring + dy))
+        elif len(patch) > 4:
             colour = tuple(patch[4]) + ((255,) if result.mode == "RGBA" else ())
         else:
             mask = Image.new("L", outer.size, 255)
@@ -169,7 +206,8 @@ def paint_over(image, patches):
         soft = Image.new("L", outer.size, 0)
         soft.paste(255, (ring // 2, ring // 2, outer.width - ring // 2, outer.height - ring // 2))
         soft = soft.filter(ImageFilter.GaussianBlur(ring * 0.2))
-        result.paste(Image.composite(Image.new(result.mode, outer.size, colour), outer, soft), (x0 - ring, y0 - ring))
+        if not (len(patch) > 4 and len(patch[4]) == 2): fill = Image.new(result.mode, outer.size, colour)
+        result.paste(Image.composite(fill, outer, soft), (x0 - ring, y0 - ring))
     return result
 
 
@@ -177,6 +215,10 @@ def copy_image(model, source_folder, uri, normal, size):
     image = Image.open(os.path.join(source_folder, uri))
     patches = PATCHES.get((model, os.path.basename(uri)))
     if patches: image = paint_over(image, patches)
+    tint = TINT.get((model, os.path.basename(uri)))
+    if tint:
+        bands = image.convert("RGBA").split()
+        image = Image.merge("RGBA", [b.point(lambda v, k=k: round(v * k)) for b, k in zip(bands[:3], tint)] + [bands[3]])
     alpha = image.mode in ("RGBA", "LA", "P") and "A" in image.convert("RGBA").getbands()
     file = safe(os.path.splitext(os.path.basename(uri))[0]) + (".png" if alpha else ".jpg")
     path = os.path.join(TARGET, model, file)
@@ -466,7 +508,9 @@ def office_main(only):
     os.makedirs(OFFICE_TARGET, exist_ok=True)
     with open(OFFICE_SOURCES, "w", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(dict(sorted(sources.items())), indent=1, ensure_ascii=False) + "\n")
-    write_block("OFFICE_MODELS", office_block([(slug, entries[slug][1]) for slug in sorted(sources) if slug in entries]))
+    # A download that goes into another's pieces (a door's hinges: tools/props/fit_models.json) is registered as "incluido".
+    included = [(entry["slug"], entry) for group in OFFICE_GROUPS for entry in json.load(open(os.path.join(OFFICE_ROOT, group, "registro.json"), encoding="utf-8")) if entry.get("status") == "incluido"]
+    write_block("OFFICE_MODELS", office_block(sorted([(slug, entries[slug][1]) for slug in sources if slug in entries] + included, key=lambda row: row[0])))
 
 
 def main():

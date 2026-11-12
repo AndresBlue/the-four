@@ -31,6 +31,9 @@ const ROOMS := [
 	["electrico", "cuarto eléctrico.jpeg", [18]],
 	["climatizacion", "sala de climatización.jpeg", [23, 22]],
 	["montacargas", "salida montacargas.jpeg", [19, 10]],
+	# The naves (docs/referencias/oficinas/LEEME.md: no picture of their own), a cell of one.
+	["nave", "", [1]],
+	["cubiculos", "", [2]],
 ]
 ## Rooms also looked into from the room beyond their doorway.
 const THROUGH := ["seguridad", "secretaria", "montacargas"]
@@ -153,7 +156,9 @@ func battery_shining(room_id: int) -> bool:
 ## is not dark and has doors. {} if none.
 func room_of(kinds: Array) -> Dictionary:
 	for kind in kinds:
-		for room in level.manifest.rooms:
+		# A nave's cell before a lone open office or cubicles room.
+		var rooms: Array = level.manifest.rooms.filter(func(r): return String(r.get("nave_axis", "")) != "") + level.manifest.rooms
+		for room in rooms:
 			if int(room.type) == int(kind) and not FLOOR.is_void(room) and not level.hotel.dark_ids.has(int(room.id)) and (not room.get("doors", []).is_empty() or int(room.type) == OFFICE.AIR_PLANT):
 				return room
 	return {}
@@ -329,10 +334,13 @@ func run() -> void:
 		var hidden: Array = hide_leaves(door.portal)
 		frame(door, room, true)
 		var capture: Image = await grab(true)
-		var reference: Image = Image.load_from_file(ProjectSettings.globalize_path("res://docs/referencias/" + file_name))
+		var reference: Image = null if file_name.is_empty() else Image.load_from_file(ProjectSettings.globalize_path("res://docs/referencias/" + file_name))
 		if reference == null or reference.is_empty():
 			print("ROOMS_CAPTURE_NOREF %s" % label)
 			capture.save_png(out_dir + "/" + label + ".png")
+			frame(door, room, false)
+			var seen: Image = await grab(false)
+			seen.save_png(out_dir + "/" + label + "_juego.png")
 			for mesh in hidden: mesh.visible = true
 		else:
 			var depth: float = FLOOR.size_of(room).x if absf(door.inward.x) > 0.5 else FLOOR.size_of(room).y

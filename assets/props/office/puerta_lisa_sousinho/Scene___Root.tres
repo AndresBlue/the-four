@@ -1,0 +1,11 @@
+[gd_resource type="ORMMaterial3D" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/office/puerta_lisa_sousinho/Scene___Root_baseColor.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/office/puerta_lisa_sousinho/Scene___Root_metallicRoughness.jpg" id="2"]
+
+[resource]
+resource_name = "Scene_-_Root"
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("1")
+orm_texture = ExtResource("2")
+cull_mode = 2

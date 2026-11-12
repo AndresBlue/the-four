@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 1501,
-    "sha256": "2b1f621985c703a2570861b68b5c3467ffb74cc6fed838818088ea415139d04c"
+    "bytes": 5111,
+    "sha256": "103d5fc2912d8bb48cd17a3c5866d0cbfba76379edd16a0a9387315bb69f793e"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -818,5 +818,1061 @@
   "assets/props/office/perchero_coat_rack_whostea.res": {
     "bytes": 193327,
     "sha256": "0ec1ae564877ec12b1662099f41645dddc94c85dae1581a38a0e814dd440daae"
+  },
+  "assets/props/office/puerta_oficina_sousinho/Scene___Root.tres": {
+    "bytes": 467,
+    "sha256": "621824a24dccd358b1674febeae57cccd7c928f0b9168e7ddcf45bd65f6080eb"
+  },
+  "assets/props/office/puerta_oficina_sousinho/Scene___Root_baseColor.jpg": {
+    "bytes": 101568,
+    "sha256": "954040718d59e57325e35236a18f94777e5fbcefd60c675d9c97e91159f06933"
+  },
+  "assets/props/office/puerta_oficina_sousinho/Scene___Root_metallicRoughness.jpg": {
+    "bytes": 109176,
+    "sha256": "d5b22bd0812c74db4c6d7891751d4846849a8edf2aac1417585fae67548522f1"
+  },
+  "assets/props/office/puerta_oficina_sousinho/T_meeting_room_door.tres": {
+    "bytes": 718,
+    "sha256": "83f2a8f74216bf7e0ce640ed4eee68b06f994e5e0ec536ad3045cd4458c8a851"
+  },
+  "assets/props/office/puerta_oficina_sousinho/T_meeting_room_door_baseColor.png": {
+    "bytes": 3834462,
+    "sha256": "1469dcd04c8f9e2cb16497d2f8aae62eb3ba3edf6c4314a0932ee51e4a1fbafe"
+  },
+  "assets/props/office/puerta_oficina_sousinho/T_meeting_room_door_metallicRoughness.jpg": {
+    "bytes": 472829,
+    "sha256": "197ba961f75260b95e4fa488eac1ffa6cdc69bdf64bce936dc4a82d4280c16eb"
+  },
+  "assets/props/office/puerta_oficina_sousinho/T_meeting_room_door_normal.jpg": {
+    "bytes": 300295,
+    "sha256": "edc6dacf0e4bf4cbfdb9beb6c13f5489714339c5a899d2c98b0cce6d5cfcfc0d"
+  },
+  "assets/props/office/puerta_lisa_sousinho/Scene___Root.tres": {
+    "bytes": 461,
+    "sha256": "2793fbfb2da0a3165d4337eaba6f94d527204e7043730a91162b482dd65a4f5e"
+  },
+  "assets/props/office/puerta_lisa_sousinho/Scene___Root_baseColor.jpg": {
+    "bytes": 101568,
+    "sha256": "954040718d59e57325e35236a18f94777e5fbcefd60c675d9c97e91159f06933"
+  },
+  "assets/props/office/puerta_lisa_sousinho/Scene___Root_metallicRoughness.jpg": {
+    "bytes": 109176,
+    "sha256": "d5b22bd0812c74db4c6d7891751d4846849a8edf2aac1417585fae67548522f1"
+  },
+  "assets/props/office/puerta_lisa_sousinho/T_exit_door_1001.tres": {
+    "bytes": 650,
+    "sha256": "c0d19927c6bb7e78afd9a18c9abf7b52d97423b64d9c010a40ad55639eda7108"
+  },
+  "assets/props/office/puerta_lisa_sousinho/T_exit_door_1001_baseColor.jpg": {
+    "bytes": 602245,
+    "sha256": "bcf584e6221231c7b8b4085752a430dd729fc07db3ea82627ee755ff1a9b6ea5"
+  },
+  "assets/props/office/puerta_lisa_sousinho/T_exit_door_1001_metallicRoughness.jpg": {
+    "bytes": 768933,
+    "sha256": "f675df46acd548741080ef55b8b54c7dfc2ff574ca929e724dae7e98e889159a"
+  },
+  "assets/props/office/puerta_lisa_sousinho/T_exit_door_1001_normal.jpg": {
+    "bytes": 687965,
+    "sha256": "b59aad235a6406feb4f690dd2a9be8a3d27c8c60223e52423f5afe2adf58b30a"
+  },
+  "assets/props/office/puerta_metal_tboiston/Scene___Root.tres": {
+    "bytes": 463,
+    "sha256": "2db1e1a836be76368ed2d5aca6802adad68df002e880a3df329a22390fb5dda9"
+  },
+  "assets/props/office/puerta_metal_tboiston/Scene___Root_baseColor.jpg": {
+    "bytes": 101568,
+    "sha256": "954040718d59e57325e35236a18f94777e5fbcefd60c675d9c97e91159f06933"
+  },
+  "assets/props/office/puerta_metal_tboiston/Scene___Root_metallicRoughness.jpg": {
+    "bytes": 109176,
+    "sha256": "d5b22bd0812c74db4c6d7891751d4846849a8edf2aac1417585fae67548522f1"
+  },
+  "assets/props/office/puerta_metal_tboiston/lambert1.tres": {
+    "bytes": 668,
+    "sha256": "29837034bdbd5b789793bb53f1f93ed306cc4d6c969d8aca2d48ada75e5f0be9"
+  },
+  "assets/props/office/puerta_metal_tboiston/lambert1_baseColor.png": {
+    "bytes": 732174,
+    "sha256": "a6599938b08a6976fd44b7a0b70026719d71f36d166a9f164cf396a345fdd10a"
+  },
+  "assets/props/office/puerta_metal_tboiston/lambert1_metallicRoughness.jpg": {
+    "bytes": 541910,
+    "sha256": "0715c602b67d03cde80829369491838f6a9e18520a1dceb7cfa52e2ad5bfa09b"
+  },
+  "assets/props/office/puerta_metal_tboiston/lambert1_normal.jpg": {
+    "bytes": 73106,
+    "sha256": "bbdf04f14cfbac3aa07ae01ff673f5175056dd229a934f89cdc00b3381e581ed"
+  },
+  "assets/props/office/taquilla_zambur/initialShadingGroup.tres": {
+    "bytes": 647,
+    "sha256": "8885890a281e56c84be1c467c9bdcb7ce70f743769b2648867133142dc7acb0e"
+  },
+  "assets/props/office/taquilla_zambur/initialShadingGroup_baseColor.jpg": {
+    "bytes": 46182,
+    "sha256": "a8cca3698dc9cb3f38ef010d8d4ef1076c595db1ecd6a7180e9c3cf76bce296a"
+  },
+  "assets/props/office/taquilla_zambur/initialShadingGroup_metallicRoughness.jpg": {
+    "bytes": 142420,
+    "sha256": "1836608c28e9b5fb012a27df1a73c5dab5587ca66ab5da5a29813e5989e552fc"
+  },
+  "assets/props/office/taquilla_zambur/initialShadingGroup_normal.jpg": {
+    "bytes": 82575,
+    "sha256": "5775a1bcf0ac6bb4882b275ed47f4a842f9a3a7fbad65e9b98e515204d271a3f"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e/Scene___Root.tres": {
+    "bytes": 646,
+    "sha256": "770b8868995d17c91f25022e44e4fb85a905172c2780b6907a90ac7246034155"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e/Scene___Root_baseColor.jpg": {
+    "bytes": 150551,
+    "sha256": "5bc3272f5da0e645c1843df74a06d2d53dc2a14082a31469eb67e5f3f5339d5c"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e/Scene___Root_metallicRoughness.jpg": {
+    "bytes": 195125,
+    "sha256": "1e89ef63243f69addf5eb100ed7c1ea3382bb3992f462065dc41afb5cd70cd03"
+  },
+  "assets/props/office/archivador_gris_ahmagh2e/Scene___Root_normal.jpg": {
+    "bytes": 96122,
+    "sha256": "c29dcf48771a4a575fd96f5e486425bb55663b2edfc2c4c123fa0a56864311a9"
+  },
+  "assets/props/office/detector_humo_sousinho/T_smoke_alarm_1001.tres": {
+    "bytes": 664,
+    "sha256": "f0fa46ac82d301aacd170bf00fe436367ad6c15815a9b225b26d985de152e264"
+  },
+  "assets/props/office/detector_humo_sousinho/T_smoke_alarm_1001_baseColor.jpg": {
+    "bytes": 127658,
+    "sha256": "e7163950bd027434207dfbe25e4a228d6307e628816f3f25a1fd8dab188efcf2"
+  },
+  "assets/props/office/detector_humo_sousinho/T_smoke_alarm_1001_metallicRoughness.jpg": {
+    "bytes": 429115,
+    "sha256": "3a07c7f9afa07fdcc6e5f2f8fd13991d2e567595869ec003e41f83e841d0e044"
+  },
+  "assets/props/office/detector_humo_sousinho/T_smoke_alarm_1001_normal.jpg": {
+    "bytes": 169065,
+    "sha256": "2d44b2574e9018eea4d2ae4d5a4d5ece94e1d3609452ee693a4b1c2b0417f874"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default.tres": {
+    "bytes": 622,
+    "sha256": "639b040ff09d49c68420a574f839dda003c0e4fdb793891d64a5ca05c2ab9958"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_001.tres": {
+    "bytes": 638,
+    "sha256": "df8fe35edb26875e24dd9851f414ae99dd617dc7cdfd13afd103ce7c26cabfbf"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_001_baseColor.jpg": {
+    "bytes": 885042,
+    "sha256": "c4b311703017dfb4a40102a24a2be85fbaa208061cb9ed43927ec7b16158d459"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_001_metallicRoughness.jpg": {
+    "bytes": 983718,
+    "sha256": "e168f8409b91f83acb3f79f4ec22b46df733b65af6898fb62888b6fed67ba649"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_001_normal.jpg": {
+    "bytes": 507125,
+    "sha256": "e25742ba2cb811a82f050e8f6c9ea3d6a3f2b5df7cba4c100d70f76696131940"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_baseColor.jpg": {
+    "bytes": 586949,
+    "sha256": "d083bf568dbf561ae18ad9a6d52b183445e6eef1d539c98b50831226356ab258"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_metallicRoughness.jpg": {
+    "bytes": 1001582,
+    "sha256": "e77c08c613bd8a30dfa711cf09377d0bcf7435c4e9d0ce056cc48455ce418958"
+  },
+  "assets/props/office/retro_oficina_yj/17___Default_normal.jpg": {
+    "bytes": 387415,
+    "sha256": "dfddb2e09e49b178be21761af1adc9f386b8a985f6f38ff6e2ec99c8d362d2f8"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn11.tres": {
+    "bytes": 635,
+    "sha256": "fca9b0d927c9443449216f334d886269f1d2cddd6887a3b6a6c7b3b9f7dee5a6"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn11_baseColor.jpg": {
+    "bytes": 398940,
+    "sha256": "d1a0b0e0c46f65150c0c3b51c173f57df93a7a5e14a344a3ecbc6bb4a36b8766"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn11_metallicRoughness.jpg": {
+    "bytes": 596725,
+    "sha256": "fd65025aa573e75108f6e397b80511b1c6efd0fdac07218955d40160b65dcb9a"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn11_normal.jpg": {
+    "bytes": 303801,
+    "sha256": "6c1a4182a7bd3dac9a6ac019000618be5f23769a4daf92d51946d6758d6fcdce"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn12.tres": {
+    "bytes": 635,
+    "sha256": "23ce95718d9b4d707a3e90d7284e7ad2436a4f168546d961eb910069b6aa17b3"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn12_baseColor.jpg": {
+    "bytes": 382593,
+    "sha256": "8993c0852ed23c666ddb9bea9e6cef81eddb4aa957ce941922ddc8781657caa5"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn12_metallicRoughness.jpg": {
+    "bytes": 507694,
+    "sha256": "799432d286a29558826276f69cd5f7c58a58acdb77d4b56ef84034c3534d7eea"
+  },
+  "assets/props/office/escritorio_tanker_lenawachs/blinn12_normal.jpg": {
+    "bytes": 179202,
+    "sha256": "57c473cc71750c2be94e351f8a1c333b37040797cfa510a9858543311f14e83f"
+  },
+  "assets/props/office/escritorio_madera_collings/Desk.tres": {
+    "bytes": 620,
+    "sha256": "ec465a39d6c58bbc2dbeeec8ad3c1fc85af9cff581336d3d4306b610c2e61b09"
+  },
+  "assets/props/office/escritorio_madera_collings/Desk_baseColor.jpg": {
+    "bytes": 704049,
+    "sha256": "a00af310aff2a5ae9d5db29529e7dba370c3e2e4f913fa0e06ea4e2af20d4951"
+  },
+  "assets/props/office/escritorio_madera_collings/Desk_metallicRoughness.jpg": {
+    "bytes": 692646,
+    "sha256": "a3657f37f57fe829122cb87a21dc5586dce816efe0e89152d7d375b864e8f154"
+  },
+  "assets/props/office/escritorio_madera_collings/Desk_normal.jpg": {
+    "bytes": 919675,
+    "sha256": "df67ed445cabaa6f884659d3eb6c90eda40cdd05f91c0d07c23ac2d51dfc2975"
+  },
+  "assets/props/office/libreria_libros_collings/Victorian_Bookcase_Tall.tres": {
+    "bytes": 690,
+    "sha256": "df8d26be3bacd8de5854432ed0ad631e3d18d6f14362d2ba0951e89f0b700fa2"
+  },
+  "assets/props/office/libreria_libros_collings/Victorian_Bookcase_Tall_baseColor.jpg": {
+    "bytes": 140180,
+    "sha256": "af2c0888ff7db8fa1535da3e28068396456f9a9665fe827eab6d48d0f66561c0"
+  },
+  "assets/props/office/libreria_libros_collings/Victorian_Bookcase_Tall_metallicRoughness.png": {
+    "bytes": 704592,
+    "sha256": "51e5c218680c0770ccd1868a877e04f4c4f4181d3996d6bd8f78409820392875"
+  },
+  "assets/props/office/libreria_libros_collings/Victorian_Bookcase_Tall_normal.jpg": {
+    "bytes": 122457,
+    "sha256": "a8ddf69fce991497ebbd5fd42bf48bd7b1163748dc19159339d4a72087b5341d"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachine.tres": {
+    "bytes": 651,
+    "sha256": "0143d9437c11d3ccdd2842ae5e8e83ddde93b55d9089435b6fb7d5aac3bdf670"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachineGlass.tres": {
+    "bytes": 688,
+    "sha256": "8d16a6d10b3640d0ac02cb1dd6117689bdb51aa9bef2409b5bfd87fe15f15f26"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachineGlass_baseColor.png": {
+    "bytes": 187977,
+    "sha256": "6dd5bbbeafe7a96e1fc892431c2c0cc36654d724030db3027913acab7293bedb"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachineGlass_metallicRoughness.jpg": {
+    "bytes": 21515,
+    "sha256": "1ca71527ceb344dc5c2fb0007f8789c2e40212253241df54aff73c64874d1f49"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachineGlass_normal.jpg": {
+    "bytes": 9177,
+    "sha256": "1e388d9fd530777ca9e7d79d4bc7f3e4c8569644cf599b92431e8a08fed03333"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachine_baseColor.jpg": {
+    "bytes": 462029,
+    "sha256": "c76514a373537dcff50a4c68fef039d67c245f8c7857f27855415baee3a6e982"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachine_metallicRoughness.png": {
+    "bytes": 557344,
+    "sha256": "b7c9bf2e7b9ecf0f39cd35c69baf6e49265a305d35a005dc80df96a8019d9198"
+  },
+  "assets/props/office/expendedora_attheseedof/VendingMachine_normal.jpg": {
+    "bytes": 547553,
+    "sha256": "1c8fc2e9e47d4c52b306492ea4361e21f9c356637adbc3c577af6992b0304c70"
+  },
+  "assets/props/office/nevera_dylanheyes/Chrome.tres": {
+    "bytes": 601,
+    "sha256": "f7483659b9a8a26cc8506d4b2009b416bd9224fe7366a5903c0d336e01d15917"
+  },
+  "assets/props/office/nevera_dylanheyes/Chrome_baseColor.png": {
+    "bytes": 358458,
+    "sha256": "8d309d5c4de3e160eda9e072d53cbe6df914b447b04c6d6705880f92a3881541"
+  },
+  "assets/props/office/nevera_dylanheyes/Chrome_metallicRoughness.png": {
+    "bytes": 5699,
+    "sha256": "3f0831dd58032f7a80d069eada2e0a317b2e148bc05c15ec698766019e9f5572"
+  },
+  "assets/props/office/nevera_dylanheyes/Chrome_normal.jpg": {
+    "bytes": 104316,
+    "sha256": "09df728684c05c85c0a51297bd2758417f0fb0df3abff109e65a3ddd5416e063"
+  },
+  "assets/props/office/nevera_dylanheyes/DoorTrim.tres": {
+    "bytes": 609,
+    "sha256": "f9281e32a095bdbd5340dbf1afb2fe9315dd29837baa88eb0fc4c4220f9c57e9"
+  },
+  "assets/props/office/nevera_dylanheyes/DoorTrim_baseColor.png": {
+    "bytes": 26346,
+    "sha256": "4a084dbcbc5e1b793040be423a2b88a4f0be40cfce51d63f3a72d98c2cf127d3"
+  },
+  "assets/props/office/nevera_dylanheyes/DoorTrim_metallicRoughness.png": {
+    "bytes": 236858,
+    "sha256": "41c7ed94ca0156277bd2fa0c5d0e60dd82456063cccf792958f6d63f15f7aaf8"
+  },
+  "assets/props/office/nevera_dylanheyes/DoorTrim_normal.png": {
+    "bytes": 35622,
+    "sha256": "30317c1b6d079230253b3ee286fa70ba88cad929a1a48d28c1468fcfbe9d3eec"
+  },
+  "assets/props/office/nevera_dylanheyes/Element.tres": {
+    "bytes": 605,
+    "sha256": "5d32b65fdcc6b350abeeda32fc219a189141c79cd185146817e640843ac83716"
+  },
+  "assets/props/office/nevera_dylanheyes/Element_baseColor.jpg": {
+    "bytes": 65951,
+    "sha256": "ce41724d40e19094b5d4c6f5701a72a67e238353612bed39678bc75e0c1c4959"
+  },
+  "assets/props/office/nevera_dylanheyes/Element_metallicRoughness.png": {
+    "bytes": 202925,
+    "sha256": "b4455533aa4dac96991d04b3206ff4e75e272a76bf9213c1c7d686fc886e7eb8"
+  },
+  "assets/props/office/nevera_dylanheyes/Element_normal.png": {
+    "bytes": 141816,
+    "sha256": "83ccd7f5179d125436a42e2d8ce0d77a72c3e71312d863fc20acdeca17b095a1"
+  },
+  "assets/props/office/nevera_dylanheyes/Shell.tres": {
+    "bytes": 597,
+    "sha256": "e3a6d1846ddc89e013250eebddc1281747a61396746d2ce9e17c6f5e215e7745"
+  },
+  "assets/props/office/nevera_dylanheyes/Shell_baseColor.jpg": {
+    "bytes": 112686,
+    "sha256": "4909c619bd280107f6a8e9c3c57f644a24af695b94dbbf7e1354f4ad41cfe0ba"
+  },
+  "assets/props/office/nevera_dylanheyes/Shell_metallicRoughness.jpg": {
+    "bytes": 350077,
+    "sha256": "2ec0b820c3823c9fb008d71bca5ca66a49dc2664ae9931c8a094e0b6ef9b132c"
+  },
+  "assets/props/office/nevera_dylanheyes/Shell_normal.png": {
+    "bytes": 75418,
+    "sha256": "feb49db2331df45669d85e667fdf9959803b287197c89320cd87be6dee8de9a0"
+  },
+  "assets/props/office/silla_tela_projectkaizen/Material_001.tres": {
+    "bytes": 720,
+    "sha256": "5f8c702c659fcccfa2645a976160a36dacea5b30024ff945b8c093f2c993930c"
+  },
+  "assets/props/office/silla_tela_projectkaizen/Material_002.tres": {
+    "bytes": 728,
+    "sha256": "f782852e0197564b2516f89b29e2cfabd33841a64e7500eafce258e4d0925625"
+  },
+  "assets/props/office/silla_tela_projectkaizen/Material_003.tres": {
+    "bytes": 800,
+    "sha256": "57761727f88d306cc0b0cb8ae44f51cde047ca6b073f10e2cd0b6b6e0d04fc24"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_BaseColor_png.jpg": {
+    "bytes": 17011,
+    "sha256": "873dba62c00f3f1b3282a766d7e3c0bddd42d50a114ff0936629e30ad43b3dee"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_Metallic_png_chairobjfinal_back_handle_Roughness_png.jpg": {
+    "bytes": 97854,
+    "sha256": "a4e0e5df3882aa41184c6714730ef62ec58b5bab20e9a017927a857612f94876"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_Normal_png.jpg": {
+    "bytes": 21871,
+    "sha256": "178af3f8d2934093b669fc815d35a58779fdcd5e3db8959cddb69758309d88c3"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_chair_sitting_and_back_pillow_BaseColor_png.jpg": {
+    "bytes": 68971,
+    "sha256": "9494996f6a456592715a9e2a2944cd9eaf4cbab277b15918c1223c993edca5d2"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_chair_sitting_and_back_pillow_Metallic_png_chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.jpg": {
+    "bytes": 133797,
+    "sha256": "c9f1555389be4d6db0ab09b6011c0d6db3bd6254eb928f3ad730ecc841d5f24c"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_chair_sitting_and_back_pillow_Normal_png.jpg": {
+    "bytes": 328894,
+    "sha256": "86b673e2174e7ce87064bb2da6322f9c83dea52f327ec0868d33089c6151181b"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_BaseColor_png.jpg": {
+    "bytes": 17011,
+    "sha256": "873dba62c00f3f1b3282a766d7e3c0bddd42d50a114ff0936629e30ad43b3dee"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_Metallic_png_chairobjfinal_hand_rest_Roughness_png.jpg": {
+    "bytes": 212383,
+    "sha256": "d3de18a9b267d1035b9ee2c67b03c28556b1ad71b3f00f47eb62339961d1a0ba"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_Normal_png.jpg": {
+    "bytes": 27082,
+    "sha256": "936a559b607661a1e51fd99fb40a99d5480b3960a5a4560a09704d5b5c253ca9"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole2_BaseColor.jpg": {
+    "bytes": 19868,
+    "sha256": "2be808d7c99d8e597cc7544720714da1325e4904611fa66537f15a4c018c0c42"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole2_Metallic_chairobjfinal_pole2_Roughness.jpg": {
+    "bytes": 21249,
+    "sha256": "1c8cb4258fa1836e1325d0ca0ebcb9a7565f5ca76bd15888648566a8c7fd627a"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole2_Normal.jpg": {
+    "bytes": 17094,
+    "sha256": "69b3a55df87331e1d4bdb7e41e751c7f309c1e5482bb0c01409fba3ec7015fbe"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_BaseColor.jpg": {
+    "bytes": 24796,
+    "sha256": "4358ecaf1b913929d90dfad65cb96eb68d3ae25698b0ab2c796174795ce587d1"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_Metallic_chairobjfinal_pole_Roughness.jpg": {
+    "bytes": 28084,
+    "sha256": "a1ea7c21c837d55e44acc36dba9fed8046a7cd2db84c8fc455b9f0c4c72a711a"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_Normal.jpg": {
+    "bytes": 17146,
+    "sha256": "a931108d5a4162276940cc90cf33419a2459cdb6c2f91977cbb767bb683dfb24"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_back_BaseColor.jpg": {
+    "bytes": 17011,
+    "sha256": "873dba62c00f3f1b3282a766d7e3c0bddd42d50a114ff0936629e30ad43b3dee"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_back_Metallic_chairobjfinal_seat_back_Roughness.jpg": {
+    "bytes": 190641,
+    "sha256": "ad5d8a5dfb9ff9abce607cd7426c58389962aaf6cc38e95d869b857ec01d00d3"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_back_Normal.jpg": {
+    "bytes": 24711,
+    "sha256": "c5b67bba75c0a1fff7513105be7127fc6167c70dc7fb0d48813f4f9032b42129"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_BaseColor.jpg": {
+    "bytes": 82471,
+    "sha256": "b0deb8c8b117dc57de28e3d9a6ef4f7a1fb7b43b74daf67418f3bba29fb758b6"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_Metallic_chairobjfinal_seat_rest_Roughness.jpg": {
+    "bytes": 110126,
+    "sha256": "7d1f237b3c412eb4fe50ca62f2b1254735a750b84249e21f8199875414164980"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_Normal.jpg": {
+    "bytes": 60481,
+    "sha256": "c34350cc08a4383baf343b7813d6b63720a009beed224a24597733c5211afab6"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_back_BaseColor.jpg": {
+    "bytes": 42983,
+    "sha256": "08999bb0d79e7ef7c152a4095f8badbb351cd7f266753bd6df3fe8ae8bdb1eeb"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_back_Metallic_chairobjfinal_wheel_back_Roughness.jpg": {
+    "bytes": 46115,
+    "sha256": "11bff07d38ad89ca15dc15ef55c5a655b68791066f575e829182e7138ed6b031"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_back_Normal.jpg": {
+    "bytes": 22309,
+    "sha256": "f0175a2359d7fc33a6cc7c0db7ae0b87110ad1ea69a0e9987ca22621b3bcdca5"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_handle_BaseColor.jpg": {
+    "bytes": 36982,
+    "sha256": "b92ba4db3ecb416f8627eb5dee758d3e2f910e6e7748d956685219c738bb3964"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_handle_Metallic_chairobjfinal_wheel_handle_Roughness.jpg": {
+    "bytes": 52852,
+    "sha256": "18673be1ce0520198065d18cc268921da7d121f755817d877fe4f5154888472e"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_handle_Normal.jpg": {
+    "bytes": 17129,
+    "sha256": "a6e043d86e7daceefae2fcdaa2d5bf732e260f704ac58fab79e25d82c572cc7c"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheels_BaseColor.jpg": {
+    "bytes": 139416,
+    "sha256": "2112016d94ec2008dd61c715f9a6f1de38dbcebccc27c8b5f95232195dd5debf"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheels_Metallic_chairobjfinal_wheels_Roughness.jpg": {
+    "bytes": 74599,
+    "sha256": "cfff27cfa82d3005cfb253b5f10dd1a73d9b5af97b968c1ba8c2724184176be2"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheels_Normal.jpg": {
+    "bytes": 25226,
+    "sha256": "0ba335e05e8641fb1cb9fe4b68099d138f9cc717217c9bef6da4b6d728247c02"
+  },
+  "assets/props/office/silla_tela_projectkaizen/pole.tres": {
+    "bytes": 676,
+    "sha256": "e701d3ecfe5f5551492e51c3923e1c0aa206c8c6fcd2e53ecc9cc15b4d0a9d07"
+  },
+  "assets/props/office/silla_tela_projectkaizen/pole2.tres": {
+    "bytes": 681,
+    "sha256": "bc266ff822906ba05c9dd36d98978d544ded767776fb7f38e32fbade3597d57d"
+  },
+  "assets/props/office/silla_tela_projectkaizen/seat_back.tres": {
+    "bytes": 701,
+    "sha256": "58379a010a01cace5a19b4e6ac4bfff4dbbc2ac56e0b048865b7090797e0acd9"
+  },
+  "assets/props/office/silla_tela_projectkaizen/seat_rest.tres": {
+    "bytes": 701,
+    "sha256": "cf9796a54976b08f53e18ed7f1e94b3a88b8a09eeed8382ecaafbc3e297912db"
+  },
+  "assets/props/office/silla_tela_projectkaizen/wheel_back.tres": {
+    "bytes": 706,
+    "sha256": "99172fe909e6a5b26388799c64d8f8020ffad4e79a6333cf5feb20e7c44cdd1a"
+  },
+  "assets/props/office/silla_tela_projectkaizen/wheel_handle.tres": {
+    "bytes": 716,
+    "sha256": "d40bccd2dbfde29b5101fde6dd85fff3d19f472c0d0e8ebd8d5110755c11a8cd"
+  },
+  "assets/props/office/silla_tela_projectkaizen/wheels.tres": {
+    "bytes": 686,
+    "sha256": "4480b7d1382a0151a936281fdff890afce2fd8b3ba4df447e90bd0d733efee3e"
+  },
+  "assets/props/office/butaca_madera_renend/Material_006.tres": {
+    "bytes": 634,
+    "sha256": "fe2682eea7c7bd9eb6e2d184ba683dd83bf43583eb9efb44322d0ca4c188bbce"
+  },
+  "assets/props/office/butaca_madera_renend/Material_006_baseColor.jpg": {
+    "bytes": 242976,
+    "sha256": "f728086b7e366cf1083f4ece78a43dcac4f75c3a1a5bc0dcfec7d22b5c673d53"
+  },
+  "assets/props/office/butaca_madera_renend/Material_006_metallicRoughness.png": {
+    "bytes": 581860,
+    "sha256": "6061c9265741840fed9a676de0cf476722aaa333ad1563dc75e44271a889cbd0"
+  },
+  "assets/props/office/butaca_madera_renend/Material_006_normal.jpg": {
+    "bytes": 140267,
+    "sha256": "088d5ae0e085b23d9aba00dc4a8ebc2afd210717ec2b99546d6c006e4f6570ed"
+  },
+  "assets/props/office/lampara_banquero_meunier/Lamp.tres": {
+    "bytes": 614,
+    "sha256": "95038de55b133c390a64dd7cb95e271085f015cb3885d223b1e3d9975f916bfa"
+  },
+  "assets/props/office/lampara_banquero_meunier/Lamp_baseColor.jpg": {
+    "bytes": 145870,
+    "sha256": "f39e6ce7eff88c62f0975d54a780d004fbbb0cbfd1a1f4c840e5f036fa2a7dad"
+  },
+  "assets/props/office/lampara_banquero_meunier/Lamp_metallicRoughness.jpg": {
+    "bytes": 134357,
+    "sha256": "b6c847e7ddb9bc44b93198cd14246beb27658bc4b64478acc49f74751366dd6b"
+  },
+  "assets/props/office/lampara_banquero_meunier/Lamp_normal.jpg": {
+    "bytes": 38159,
+    "sha256": "39b554afd1c4c049f47a0c24a077b6c4fb7b186f790d6510d140f427861be16c"
+  },
+  "assets/props/office/flexo_sousinho/T_lamp_1001.tres": {
+    "bytes": 612,
+    "sha256": "f8187b154fc1e8b9f16c0cbf751eb328beb95ba68498392b177f3ddaaa2b8f32"
+  },
+  "assets/props/office/flexo_sousinho/T_lamp_1001_baseColor.jpg": {
+    "bytes": 194218,
+    "sha256": "985411a4437fe49d27408e36b25d0b60c76b4d22af463b70d6b471b3d24f5389"
+  },
+  "assets/props/office/flexo_sousinho/T_lamp_1001_metallicRoughness.jpg": {
+    "bytes": 238331,
+    "sha256": "c379099a6e5b7fbb60bba4f08f710f968797b490daae4c35c9adcf71a0de9dcf"
+  },
+  "assets/props/office/flexo_sousinho/T_lamp_1001_normal.jpg": {
+    "bytes": 214105,
+    "sha256": "05af70789fce76fb814dbbde41a2c452e2db5a85f7027a5dc44ad8125d4a06bc"
+  },
+  "assets/props/office/cenicero_vidrio_red2000/initialShadingGroup.tres": {
+    "bytes": 535,
+    "sha256": "2cfa2c7d05fe20a0b8404bbe20eddb76c768778ae16b9350ebccd515d53d742d"
+  },
+  "assets/props/office/cenicero_vidrio_red2000/initialShadingGroup_baseColor.jpg": {
+    "bytes": 17011,
+    "sha256": "d3806260d6b3f5bb96bd1af088461e3039f5a28bf4c203b35325d68991151fa7"
+  },
+  "assets/props/office/cenicero_vidrio_red2000/initialShadingGroup_metallicRoughness.png": {
+    "bytes": 152313,
+    "sha256": "5ef9116b4e367f6d5cfc2d254ce8ce8c065fb28233e54ed4d43c9e0b13fedf13"
+  },
+  "assets/props/office/portalapices_aspectstudio/PencilHolder_001.tres": {
+    "bytes": 686,
+    "sha256": "52080254564831bf0a42c6d7bd34883a5a829df30a9199f58ccff1198988dbc3"
+  },
+  "assets/props/office/portalapices_aspectstudio/PencilHolder_001_baseColor.jpg": {
+    "bytes": 185751,
+    "sha256": "a9f8f1a786c51f62e37b8ad8247d12864d614acc1bdf064f55f4e5e2aae526de"
+  },
+  "assets/props/office/portalapices_aspectstudio/PencilHolder_001_metallicRoughness.png": {
+    "bytes": 756456,
+    "sha256": "d18c8f7374828381139d4e4183c72e4ba4b109ef9d247f68a8cc05249983616d"
+  },
+  "assets/props/office/portalapices_aspectstudio/PencilHolder_001_normal.jpg": {
+    "bytes": 245763,
+    "sha256": "3f0c35e236f018c551c161952a1ec83851c118ab2ac7f12628bea83ad5ba920b"
+  },
+  "assets/props/office/portalapices_aspectstudio/pencil.tres": {
+    "bytes": 625,
+    "sha256": "df8995d09356ea0550c04bee20510eaa597d2e1a58af01efb52b96f7600a6411"
+  },
+  "assets/props/office/portalapices_aspectstudio/pencil_baseColor.jpg": {
+    "bytes": 57999,
+    "sha256": "af086d7d9be656aece3da6841d1d7a9b3f13143caff7f2cec717d8867e94cdac"
+  },
+  "assets/props/office/portalapices_aspectstudio/pencil_metallicRoughness.png": {
+    "bytes": 5690,
+    "sha256": "a83768861c4fa13fe1809926cd9ed07ac8c23691c0a9ae4f3349bf58859b85ec"
+  },
+  "assets/props/office/portalapices_aspectstudio/pencil_normal.jpg": {
+    "bytes": 25364,
+    "sha256": "558fce07f59da1d98a8c1a4b14a65cfc2a71be32ce0717408ce326b1329ede7d"
+  },
+  "assets/props/office/bandeja_sinnervoncrawsz/Material_001.tres": {
+    "bytes": 193,
+    "sha256": "6c7ba818a3a638a7adf66b81054da873bdae8a4284f82f7664ae807755471f0d"
+  },
+  "assets/props/office/bandeja_sinnervoncrawsz/Material_003.tres": {
+    "bytes": 208,
+    "sha256": "f80da65309ec79796f8464717b05fdfb3ac5cb1e2ac9f1d5a31a85c8a1ce3c2d"
+  },
+  "assets/props/office/bandeja_sinnervoncrawsz/Material_004.tres": {
+    "bytes": 208,
+    "sha256": "c7562d8acff35f7e80eded6fe70cc4cc04f5ace3e0e838eb9f4a6b9bcec08d83"
+  },
+  "assets/props/office/bandeja_sinnervoncrawsz/Material_005.tres": {
+    "bytes": 189,
+    "sha256": "c02bf42c6788fc182e9ec3c30e75e45221046a436de721fa8ce6f9036c9cb035"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material.tres": {
+    "bytes": 621,
+    "sha256": "4ccdbfb996b2807c05abaeff8883bb01e230c9dc5eda896b4c8dcb9cce0a02c4"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_1.tres": {
+    "bytes": 629,
+    "sha256": "9bd97242ceea876ea77360791adddefdc853b187b1250db9e109705944a73e27"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_1_baseColor.jpg": {
+    "bytes": 61537,
+    "sha256": "1a5057cc33e4e6cd7ce6975d70277e83c1654be5aac4db81beae1eb7fa0fae7d"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_1_metallicRoughness.png": {
+    "bytes": 188312,
+    "sha256": "10b979e4ba82ed04428393eabb4e05b5124a4ca7bbb671bad3d6cb6d114b8221"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_1_normal.jpg": {
+    "bytes": 152641,
+    "sha256": "db1276a013b98134010da3a1e817ae8dbaf48be1a02366bcbf13848cef4e5a68"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_baseColor.png": {
+    "bytes": 667430,
+    "sha256": "48fd7982ea93dc49a897a3a99126a6de0476f7a0be1cfec780cfa31b76b2fc3a"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_metallicRoughness.jpg": {
+    "bytes": 172132,
+    "sha256": "6e9396db26e8300ca0e247d8844f6c11ee69cdee9275ef1478a81e8b89f4236c"
+  },
+  "assets/props/office/cajas_archivo_cozmoth/material_normal.jpg": {
+    "bytes": 24607,
+    "sha256": "9b6c084b9bd08059248d98ade752408155529cd0d00347c7478b174aba796abd"
+  },
+  "assets/props/office/globo_collings/Globe_003.tres": {
+    "bytes": 604,
+    "sha256": "9aa26e5200c8c7f58549576371f4068e3f24ae437edc4d28fefc16fa6c665930"
+  },
+  "assets/props/office/globo_collings/Globe_003_baseColor.jpg": {
+    "bytes": 316625,
+    "sha256": "c6fb09a48f8972f4429c69ea74758a9d96b81a9694ceeb00a0782304b0c8eee8"
+  },
+  "assets/props/office/globo_collings/Globe_003_metallicRoughness.png": {
+    "bytes": 704891,
+    "sha256": "d420ff135dd40dcab20c194033d560e1c269afbb1e3114ca83a4114cf5407939"
+  },
+  "assets/props/office/globo_collings/Globe_003_normal.jpg": {
+    "bytes": 114054,
+    "sha256": "0041be393bb47ca9c76abdbcb9a01ba5d49fc269ee08ff4cce4e5cf2c6dc253c"
+  },
+  "assets/props/office/globo_collings/Globe_Base.tres": {
+    "bytes": 608,
+    "sha256": "e347f34ea615c5b5266f53245089822abb23af03c85d9ecc9c90e550e965fd40"
+  },
+  "assets/props/office/globo_collings/Globe_Base_baseColor.jpg": {
+    "bytes": 201224,
+    "sha256": "d3ece7979642b28a176b5c3d28c9408a3dba9c4340488e4be5a81eebe2052c7e"
+  },
+  "assets/props/office/globo_collings/Globe_Base_metallicRoughness.jpg": {
+    "bytes": 246125,
+    "sha256": "a2ae4d1efd1e45089172f43de4d947f3d9c328e861ad6c0df3e45d94263d8612"
+  },
+  "assets/props/office/globo_collings/Globe_Base_normal.jpg": {
+    "bytes": 208296,
+    "sha256": "e763c059e9e6e8192dc011d2921a3b21e5dbb4722366ae3c9ff7ed439b71210f"
+  },
+  "assets/props/office/libros_frodoundead/Book.tres": {
+    "bytes": 433,
+    "sha256": "4ac752b37f8d93e5f247a33cefa95591b6b0e67695aa52209c5710372bb8dbb3"
+  },
+  "assets/props/office/libros_frodoundead/Book_baseColor.jpg": {
+    "bytes": 284040,
+    "sha256": "04dfaa77bd3f4530c0f14c21633d7d0a7d6a956faff692208624fa6a6bcfdf3d"
+  },
+  "assets/props/office/libros_frodoundead/Book_metallicRoughness.png": {
+    "bytes": 747959,
+    "sha256": "8600e0d5ed4d208578b3c4df0167df9aa80936e90cc78bfc432d17e0ff7ed55b"
+  },
+  "assets/props/office/impresora_okidata_papaj/material.tres": {
+    "bytes": 674,
+    "sha256": "69951d03ac6f9cdc00e9369023093e472693f5ae8740fb0ce31018f3b29285f3"
+  },
+  "assets/props/office/impresora_okidata_papaj/material_baseColor.png": {
+    "bytes": 1120457,
+    "sha256": "472d44b3aea29f61d21acd0ec3aadc91975bf24b5a2aa224a5777e5d9d9e61c8"
+  },
+  "assets/props/office/impresora_okidata_papaj/material_metallicRoughness.jpg": {
+    "bytes": 203674,
+    "sha256": "fa3999f3185a318ae3afb4977f6d6cddaa6e562099d90cbd151c2e07501b6c52"
+  },
+  "assets/props/office/impresora_okidata_papaj/material_normal.jpg": {
+    "bytes": 165030,
+    "sha256": "63379905adb74989e108c4293bfc773394730628b24cd874053ef3365723b869"
+  },
+  "assets/props/office/ventilador_joshsmith/MAT_FanBase.tres": {
+    "bytes": 630,
+    "sha256": "7a3bbda0fc3d53004c811e3cc66112b7f4d65d26ecd9287f4951eafac7a6fdd3"
+  },
+  "assets/props/office/ventilador_joshsmith/MAT_FanBase_baseColor.jpg": {
+    "bytes": 80975,
+    "sha256": "6f23c0ef551e6016a3a2704f6770442e363f1d5afc0f79c0995db746a7727f51"
+  },
+  "assets/props/office/ventilador_joshsmith/MAT_FanBase_metallicRoughness.jpg": {
+    "bytes": 114466,
+    "sha256": "67c13f866bd15e3b6fd8d5481812afc280c131be97278c13f43eb3a73c2dc8cd"
+  },
+  "assets/props/office/ventilador_joshsmith/MAT_FanBase_normal.jpg": {
+    "bytes": 100691,
+    "sha256": "edaa0d80fb058e30f5134757e3bea6bb9d66f5e9620df8b9bac61809bf824a35"
+  },
+  "assets/props/office/silla_banquero_zamzam/Wooden_Chair.tres": {
+    "bytes": 637,
+    "sha256": "53d0f888c2f42a6f492725e1310f867c5265546d630c18a112e900ca0f50c9df"
+  },
+  "assets/props/office/silla_banquero_zamzam/Wooden_Chair_baseColor.jpg": {
+    "bytes": 263855,
+    "sha256": "5324b28cd7db14126b0c3db6f1129b767b60696f3022b450ed59f9845c06f631"
+  },
+  "assets/props/office/silla_banquero_zamzam/Wooden_Chair_metallicRoughness.jpg": {
+    "bytes": 241315,
+    "sha256": "84699a58c2dc4b4b137910f8fe13410292e42d7c3c49883d0f77343e004dce44"
+  },
+  "assets/props/office/silla_banquero_zamzam/Wooden_Chair_normal.jpg": {
+    "bytes": 278692,
+    "sha256": "e849ff29bd637bf5ffd2d4c9520a0961686c8f4d64187198f6ad2d5581f84c18"
+  },
+  "assets/props/office/reloj_mesa_sousinho/glass_1001.tres": {
+    "bytes": 640,
+    "sha256": "2c7e26a3d9a0c00e11398d871e0866430e3af4ef7ff65e36348c2a6983b47a6d"
+  },
+  "assets/props/office/reloj_mesa_sousinho/glass_1001_baseColor.png": {
+    "bytes": 131256,
+    "sha256": "5a7f538dc29ac4c42f668a520817b843ae05afaec4048de31a8fa6887c36083b"
+  },
+  "assets/props/office/reloj_mesa_sousinho/glass_1001_metallicRoughness.jpg": {
+    "bytes": 250980,
+    "sha256": "60d44996165db74194afcf63f3785c61321c7199e1708c7be9272ff559cfd6d2"
+  },
+  "assets/props/office/reloj_mesa_sousinho/glass_1001_normal.jpg": {
+    "bytes": 27967,
+    "sha256": "29411bf0056cc829b63e0184ab720813f0b4633f127b1cc354491a628bb2054c"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_1001.tres": {
+    "bytes": 647,
+    "sha256": "096b751a1b268780a35f52af3c5aad52960a40ae997a8eb359cfd8fef3b10d5d"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_1001_baseColor.jpg": {
+    "bytes": 102007,
+    "sha256": "0eb45e87c97404eb4bf243ffd7956f32b69609d8299d88457e01021dd0a89971"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_1001_metallicRoughness.jpg": {
+    "bytes": 121596,
+    "sha256": "3d2997bbcdd1ce8a05ec4e96455926a6f8af871cf6ef3ecf50d03121eb494c5b"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_1001_normal.jpg": {
+    "bytes": 32675,
+    "sha256": "ae480d3bfde8de5a3d1721be730f92957a83d046ac17cb339156aa2501d30533"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_hands_1001.tres": {
+    "bytes": 671,
+    "sha256": "ac3ec5db09a8da94bd5fc79b425bc459c164df2f67e9c288fa20108e7b3b8a36"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_hands_1001_baseColor.jpg": {
+    "bytes": 49881,
+    "sha256": "5e53df22c921d8101968200bada161977ca2d05122a1f86d25c3ea16f812c998"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_hands_1001_metallicRoughness.jpg": {
+    "bytes": 71481,
+    "sha256": "aaa76ad6d8ce3b11f3238fa68326c734936c6ecc753e34de8a49c9bceea66e2a"
+  },
+  "assets/props/office/reloj_mesa_sousinho/table_clock_hands_1001_normal.png": {
+    "bytes": 551868,
+    "sha256": "a187087b250c22b33fa5f9bd0fb98908c8b98d96948a589f387bedd6547e17b2"
+  },
+  "assets/props/office/caja_carton_krolzuzanna/box_A_2.tres": {
+    "bytes": 623,
+    "sha256": "7661c942b979528b0be460831bba0edbe801a7d2b447a4bafb876faed7304572"
+  },
+  "assets/props/office/caja_carton_krolzuzanna/box_A_2_baseColor.jpg": {
+    "bytes": 121924,
+    "sha256": "376f09106fffbeba67eed9a91bab8b680c9e754edc5ab907dfe26547ec3a1a6c"
+  },
+  "assets/props/office/caja_carton_krolzuzanna/box_A_2_metallicRoughness.png": {
+    "bytes": 9228,
+    "sha256": "b123f25e0c19a0d11bce09a35cfc4747abbbc92ce4eb27179e4104156baba4e8"
+  },
+  "assets/props/office/caja_carton_krolzuzanna/box_A_2_normal.jpg": {
+    "bytes": 154923,
+    "sha256": "59f98cd8dce576877949507f63cd6508f0cbfbad18f5436566eb88aae1b30894"
+  },
+  "assets/props/office/alargador_evan4129/ExtensionCord.tres": {
+    "bytes": 334,
+    "sha256": "656a3e21d765a282b311a7541e38e757b31c7313c34c63c3368947c4ed34d77a"
+  },
+  "assets/props/office/alargador_evan4129/ExtensionCord_baseColor.jpg": {
+    "bytes": 291270,
+    "sha256": "9d633828df8fe078f60e2a1f883b66474659129930df589ed40306154d06bca0"
+  },
+  "assets/props/office/archivadores_palanca_janexx/Folder_nolabel.tres": {
+    "bytes": 534,
+    "sha256": "84fb3a8a10833fedf2c02a0021209c0a64bb319e4ca010ea551a31e44689b540"
+  },
+  "assets/props/office/archivadores_palanca_janexx/Folder_nolabel_baseColor.jpg": {
+    "bytes": 113998,
+    "sha256": "3d1c900d452e126cf9ab3c66903fdcbbfde4945feb6accf5c77e0a0cf273f621"
+  },
+  "assets/props/office/archivadores_palanca_janexx/Folder_nolabel_normal.jpg": {
+    "bytes": 166478,
+    "sha256": "feebfa201a6fdb0367faee7acb2357910b388638522f0192cd7b382b912b6a67"
+  },
+  "assets/props/office/zapato_inciprocal/sh_oldOxfordShoe.tres": {
+    "bytes": 671,
+    "sha256": "a53389a54009c35719bf9c56546efda83c2ab052e19954566bc5d85d0b1692f8"
+  },
+  "assets/props/office/zapato_inciprocal/sh_oldOxfordShoe_diffuse.jpg": {
+    "bytes": 143719,
+    "sha256": "7961ae1bb8d9813c903111ecebba597cdc68d37e31dd538b65302046af01d64e"
+  },
+  "assets/props/office/zapato_inciprocal/sh_oldOxfordShoe_normal.jpg": {
+    "bytes": 161019,
+    "sha256": "fc978772b93cf846cccd71335964e410473f75bc142b8aed7d42e9514728942c"
+  },
+  "assets/props/office/zapato_inciprocal/sh_oldOxfordShoe_occlusion_sh_oldOxfordShoe_specularGlossiness_png.jpg": {
+    "bytes": 221650,
+    "sha256": "62cb8d8b7bfb969b29b6e28ca1546704f8bc6ac14d743716bab12a9f873e55e8"
+  },
+  "assets/props/office/wooden_ladder_02/wooden_ladder_02.tres": {
+    "bytes": 628,
+    "sha256": "10235999b3dc76c3b372f82ef251c2c5b0c20520c8b50466dcfbb04084207d8a"
+  },
+  "assets/props/office/wooden_ladder_02/wooden_ladder_02_arm_1k.jpg": {
+    "bytes": 226335,
+    "sha256": "7fee23af35895f05d27b13e7f6f148f0f52fcbb243188081f4f5ff8891f585e4"
+  },
+  "assets/props/office/wooden_ladder_02/wooden_ladder_02_diff_1k.jpg": {
+    "bytes": 257717,
+    "sha256": "bc22834b8dda8531e288730726edd16e683d3742dbd5ede26a42de5cb9ab606b"
+  },
+  "assets/props/office/wooden_ladder_02/wooden_ladder_02_nor_gl_1k.jpg": {
+    "bytes": 248520,
+    "sha256": "4dac68951e3a1e0a2cbd0679ee9906e49f741e59ff3b074613cbcda35401e193"
+  },
+  "assets/props/office/metal_toolbox/metal_toolbox.tres": {
+    "bytes": 607,
+    "sha256": "437568482cda32d44544d23f242f7a373f1e578f6d42b978ef8772193de14326"
+  },
+  "assets/props/office/metal_toolbox/metal_toolbox_arm_1k.jpg": {
+    "bytes": 376030,
+    "sha256": "5936a7e7492debee007a881352c4d14ece290dbb939682697130e23a53c66773"
+  },
+  "assets/props/office/metal_toolbox/metal_toolbox_diff_1k.jpg": {
+    "bytes": 207410,
+    "sha256": "07e1a90f86d32b8f99259f3669c21a8616e3916c947a1b754a23c30280835649"
+  },
+  "assets/props/office/metal_toolbox/metal_toolbox_nor_gl_1k.jpg": {
+    "bytes": 165591,
+    "sha256": "0423a6a5cd23eb87f44fa464eefae573bf6a59a47999429ff02af992d6d8bf9b"
+  },
+  "assets/props/office/wooden_broom/wooden_broom.tres": {
+    "bytes": 600,
+    "sha256": "938c148c4b9f443c7f6a1502c9275f5126debc1e06a71825454f5ae17673de12"
+  },
+  "assets/props/office/wooden_broom/wooden_broom_arm_1k.jpg": {
+    "bytes": 296405,
+    "sha256": "8f8225a70711cbeb3cc42957fba17c81d06ad6f52225764dc0e3d5bab801a4b1"
+  },
+  "assets/props/office/wooden_broom/wooden_broom_bristles.tres": {
+    "bytes": 391,
+    "sha256": "b19dffdd3c4e1cf25107de6565bc18433d40a6d2a496126784b27dc6a8c2c30a"
+  },
+  "assets/props/office/wooden_broom/wooden_broom_bristles_diff_1k.jpg": {
+    "bytes": 155663,
+    "sha256": "219a061b5ef1e4149737316483dd8ea7c801355837535e217440d7e9280af6a7"
+  },
+  "assets/props/office/wooden_broom/wooden_broom_diff_1k.jpg": {
+    "bytes": 278630,
+    "sha256": "800a53d39ee976a54edd72595a9b975b5dfe0b654eb0a6a16ca8bb1282df16b8"
+  },
+  "assets/props/office/wooden_broom/wooden_broom_nor_gl_1k.jpg": {
+    "bytes": 335342,
+    "sha256": "ffe9528dfd737cd2a80acb8b09674a525f25e967e195c13242daa893b8086f45"
+  },
+  "assets/props/office/dustpan/dustpan.tres": {
+    "bytes": 565,
+    "sha256": "9d5aff8512a2bd16524d2901ab7568028b06faa43c912be3f632ffa1a653033e"
+  },
+  "assets/props/office/dustpan/dustpan_arm_1k.jpg": {
+    "bytes": 246916,
+    "sha256": "bac5fcacd3c7d16b0349526b5945f7689e53927f2988843b677325a070578281"
+  },
+  "assets/props/office/dustpan/dustpan_diff_1k.jpg": {
+    "bytes": 239920,
+    "sha256": "2a215ab89a2c9719254e3cc89dd81e833af0bad6c84f5af6221ac441332c621f"
+  },
+  "assets/props/office/dustpan/dustpan_nor_gl_1k.jpg": {
+    "bytes": 287626,
+    "sha256": "157c5f11b23ae89757b1b000ff1eef2b9eb90f6f05e49ac58a8f517583375f43"
+  },
+  "assets/props/office/plastic_thermos/plastic_thermos.tres": {
+    "bytes": 621,
+    "sha256": "9bf2cfb666d403656aab5d2164b65170f4dc7326629c4639fa5c42b278a4ff04"
+  },
+  "assets/props/office/plastic_thermos/plastic_thermos_arm_1k.jpg": {
+    "bytes": 204451,
+    "sha256": "a5c3dbb5403d9e08d75ce6e542f558f685c84e0850da3db3c9de2b9402a0cd10"
+  },
+  "assets/props/office/plastic_thermos/plastic_thermos_diff_1k.jpg": {
+    "bytes": 90661,
+    "sha256": "ba2afe88d33affda892dbe723d4db1cd0a8e65e21a8bdff038dfd9503c582c7a"
+  },
+  "assets/props/office/plastic_thermos/plastic_thermos_nor_gl_1k.jpg": {
+    "bytes": 139063,
+    "sha256": "c7794304a8708878883e9b17954dd4e30873dc573f6555aa665b9498de63fa30"
+  },
+  "assets/props/office/vintage_stapler/vintage_stapler.tres": {
+    "bytes": 621,
+    "sha256": "62ec07efe92252158f61bdbcb4ac4e69e2b5d864caa2348dd712b94d83a4c419"
+  },
+  "assets/props/office/vintage_stapler/vintage_stapler_arm_1k.jpg": {
+    "bytes": 265920,
+    "sha256": "94d5b5b29743efc1724d3d7b9fd3e84ff2aa6af3afaf03991180f0d7c749c03c"
+  },
+  "assets/props/office/vintage_stapler/vintage_stapler_diff_1k.jpg": {
+    "bytes": 257247,
+    "sha256": "17eea0fd904da7003c6b8d4e8d94d98bb9e0a0c7293e8c1a5714fccfaff3c87a"
+  },
+  "assets/props/office/vintage_stapler/vintage_stapler_nor_gl_1k.jpg": {
+    "bytes": 187982,
+    "sha256": "011249320dafd20b61b3be67b31e584b87e341fd73279cd425854cebfcf52378"
+  },
+  "assets/props/office/round_spectacles/round_spectacles.tres": {
+    "bytes": 628,
+    "sha256": "40a0e61fb6a06ea5083b049fed7ab944674e36a3afe5fbcabc9df8968fc0a044"
+  },
+  "assets/props/office/round_spectacles/round_spectacles_arm_1k.jpg": {
+    "bytes": 214487,
+    "sha256": "9e785e97f635ae20a35d5476f18c1e9ee6ff865ad957a9fd985f0a345c9a3051"
+  },
+  "assets/props/office/round_spectacles/round_spectacles_diff_1k.jpg": {
+    "bytes": 196773,
+    "sha256": "0c8a502d3b0aaedf546dd6150729fc197f3f077546ae30b72f2abbc1f9f869d5"
+  },
+  "assets/props/office/round_spectacles/round_spectacles_glass.tres": {
+    "bytes": 651,
+    "sha256": "7180dd89f14856301e79c2d17e92ff6496b944de91db36c9d6d1021ebf73d545"
+  },
+  "assets/props/office/round_spectacles/round_spectacles_nor_gl_1k.jpg": {
+    "bytes": 172121,
+    "sha256": "e4e28e27040d2b18434ad87a65ddc87cb3fb0bd6b17160c0d027cb8b0d6024ae"
+  },
+  "assets/props/office/mousetrap/mousetrap.tres": {
+    "bytes": 579,
+    "sha256": "aed5ce8ed6b45c399ce0bf2f3c2059443be1b0e710bba70becf750a25677d451"
+  },
+  "assets/props/office/mousetrap/mousetrap_arm_1k.jpg": {
+    "bytes": 248041,
+    "sha256": "cc687c1137516c7105e027e60a839816a4f08b77cecb01e718fd7e67376d65c4"
+  },
+  "assets/props/office/mousetrap/mousetrap_diff_1k.jpg": {
+    "bytes": 239761,
+    "sha256": "08d27d79c257782521b43784f3afdfa2abbf414d0bfbf7020532c9451773903b"
+  },
+  "assets/props/office/mousetrap/mousetrap_nor_gl_1k.jpg": {
+    "bytes": 240103,
+    "sha256": "8a9ec4849c69242a54898880021f60c63ed95a54884c8f3616fd05eadc036215"
+  },
+  "assets/props/office/magnifying_glass_01/magnifying_glass_01.tres": {
+    "bytes": 651,
+    "sha256": "5f6921a88dc0669c6899662a3ea0ef32acc256728b939e0101f6a6ba793478c0"
+  },
+  "assets/props/office/magnifying_glass_01/magnifying_glass_01_arm_1k.jpg": {
+    "bytes": 130568,
+    "sha256": "3e90d550f9f5f83e18127e75c4c3411d460a7f8c19be2b4f548e86f0b52c1ac3"
+  },
+  "assets/props/office/magnifying_glass_01/magnifying_glass_01_diff_1k.jpg": {
+    "bytes": 65688,
+    "sha256": "519745aa3a0b9cd4815396cf5a67ed52f774b942150f1cd23e21051f57269364"
+  },
+  "assets/props/office/magnifying_glass_01/magnifying_glass_01_lense.tres": {
+    "bytes": 515,
+    "sha256": "554c6699907f92b4aab3288f95a3b1edc7acec8e448a85c61515b14b60b2e35b"
+  },
+  "assets/props/office/magnifying_glass_01/magnifying_glass_01_nor_gl_1k.jpg": {
+    "bytes": 22624,
+    "sha256": "09f2e3da225fd919463b94133e3b9edb05fe97afeac19665d34174e4ab5ce217"
+  },
+  "assets/props/office/magnifying_glass_01/magnifying_glass_01_rough_1k.jpg": {
+    "bytes": 111518,
+    "sha256": "d15d44448f1bee982765f26b09ce606812150003bc9c4c0cf7c6a58f5f5e49bf"
+  },
+  "assets/props/office/projector_screen/projector_screen.tres": {
+    "bytes": 628,
+    "sha256": "e3d706c6ccf06f91a8c338ddb0d711c014d552f787d9e9b091833f539d01c185"
+  },
+  "assets/props/office/projector_screen/projector_screen_arm_1k.jpg": {
+    "bytes": 162125,
+    "sha256": "f8a6f5ae2a512875bd637371c0c9ac8da5cdb572e13f388a2bbc4b69a1fe52bb"
+  },
+  "assets/props/office/projector_screen/projector_screen_diff_1k.jpg": {
+    "bytes": 86674,
+    "sha256": "e4d6854c07c93072fd6f966ddf1bbaa2712e1310b87249c2cd30c8b28eb835e6"
+  },
+  "assets/props/office/projector_screen/projector_screen_frame.tres": {
+    "bytes": 652,
+    "sha256": "85d648a5750a931f9c245610c6af14fd1e8b432fad7532ea6253ccdd6c2f906d"
+  },
+  "assets/props/office/projector_screen/projector_screen_frame_arm_1k.jpg": {
+    "bytes": 212020,
+    "sha256": "103578acc59f1cdb347310e5a9004bffe5129e98fc3a360253c9b7d331055faf"
+  },
+  "assets/props/office/projector_screen/projector_screen_frame_diff_1k.jpg": {
+    "bytes": 127147,
+    "sha256": "614afec66f6256567bf84d05ff92f03d2ab7c6c18b4b08047d4ba63dfbd57441"
+  },
+  "assets/props/office/projector_screen/projector_screen_frame_nor_gl_1k.jpg": {
+    "bytes": 128771,
+    "sha256": "c7eb9af6dfdd0a09948bfae020c8f9a9b25f23139d94214d6952b777f80d1cc0"
+  },
+  "assets/props/office/projector_screen/projector_screen_nor_gl_1k.jpg": {
+    "bytes": 133854,
+    "sha256": "b49176823aab4336ae0f0782424756d46283c38766404ea6b19bed8e0289ec67"
+  },
+  "assets/props/office/Television_01/Television_01.tres": {
+    "bytes": 607,
+    "sha256": "3ecebcb1e2c083b3179d5fe54e73c695b0189c4f04cd71f98c62ba9b40c0f61c"
+  },
+  "assets/props/office/Television_01/Television_01_arm_1k.jpg": {
+    "bytes": 217571,
+    "sha256": "9614cab02b44256c85d5f53f06fac86405f4de5ec1b7a62f85c9e0b15d194574"
+  },
+  "assets/props/office/Television_01/Television_01_diff_1k.jpg": {
+    "bytes": 114471,
+    "sha256": "51d045855487295aa11e45c862d628d08b24a46376ec33a3a84c63c6d9b47964"
+  },
+  "assets/props/office/Television_01/Television_01_nor_gl_1k.jpg": {
+    "bytes": 166265,
+    "sha256": "69757cd4798079504b70fe880945663e30ef8b7d758c6b45772865cc658116ac"
+  },
+  "assets/props/office/boombox/boombox.tres": {
+    "bytes": 565,
+    "sha256": "9803872857a7aee97c33bac3f7754a15e06aeed9bc800c256d81330f67de6c46"
+  },
+  "assets/props/office/boombox/boombox_arm_1k.jpg": {
+    "bytes": 178461,
+    "sha256": "7c391e47c439fa0ad29d5a01158a961184c911b0e9c6f9a7ddb0ced6f249c46c"
+  },
+  "assets/props/office/boombox/boombox_diff_1k.jpg": {
+    "bytes": 170250,
+    "sha256": "f163a465332c5762966a7ec6ddeb0682a429e84f6c7afe49c28bd86c5a7cdb9d"
+  },
+  "assets/props/office/boombox/boombox_nor_gl_1k.jpg": {
+    "bytes": 151966,
+    "sha256": "85c8579cf1c7bcbaf1ebb52e66736ae6f5756d2e53fd8ca6d0e1e952e1ab4b36"
+  },
+  "assets/props/office/boombox/boombox_speakers.tres": {
+    "bytes": 481,
+    "sha256": "12c05f8b3a5ca91210d2c3f282d837dfaa87c08927798861e614ba15e001aa12"
+  },
+  "assets/props/office/boombox/boombox_speakers_arm_1k.jpg": {
+    "bytes": 258238,
+    "sha256": "6595bd8844d3b61f5a86d67ce0bca526e84354cbd33172bd77e3f35abda05a11"
+  },
+  "assets/props/office/boombox/boombox_speakers_diff_1k.jpg": {
+    "bytes": 311232,
+    "sha256": "331a59869dcd2ee19e702eaf346511edeb06c23471482fe30c5505ac6cf69b09"
   }
 }

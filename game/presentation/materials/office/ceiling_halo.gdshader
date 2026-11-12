@@ -13,6 +13,7 @@ uniform float reach = 1.2;
 void fragment() {
 	vec2 outside = max(abs(UV) - inner, vec2(0.0));
 	float d = length(outside);
-	float fall = 1.0 - clamp(d / reach, 0.0, 1.0);
+	// Eased out to nothing at `reach`: no edge where it ends on a dark ceiling.
+	float fall = 1.0 - smoothstep(0.0, reach, d);
 	ALBEDO = glow * energy * fall * fall * step(0.0001, d);
 }

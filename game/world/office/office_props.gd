@@ -93,7 +93,7 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 		"filing":
 			var t := int(builder.building_room.get("type", -1))
 			var key: String = OFFICE.FILING_FINISH.get(t, "steel_olive")
-			for x: float in [-0.26, 0.26]: piece(builder, node, CABINETS.filing_cabinet(builder, Vector3(0.47, 1.32, 0.62), 4, key), at(0.0, 0.62) + Vector3(x, 0, 0))
+			for x: float in [-0.26, 0.26]: filing(builder, node, at(0.0, 0.62) + Vector3(x, 0, 0), key)
 		"chairs":
 			var t := int(builder.building_room.get("type", -1))
 			var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
@@ -221,8 +221,20 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			# Back to back, each chair out on its own side (the pair's 2.6 m).
 			station(builder, holder, Vector3(0, 0, -0.375), -1.0, seed_pos, room)
 			station(builder, holder, Vector3(0, 0, 0.375), 1.0, seed_pos + Vector3(0.5, 0, 0), room)
+			# The low screen between them that makes the pair an island (the open
+			# offices' references), under the pair's 1.3 m.
+			piece(builder, holder, MOVABLES.partition_screen(builder, PAIR_SCREEN), Vector3.ZERO)
+		"desk_island", "desk_island_6":
+			# Desk pairs side by side (office_generator.lay_islands()), straight desks
+			# with their chairs out on both long sides; its screens in a cross are
+			# partitions of its group (island_screens()).
+			var pairs := island_pairs(item)
+			for k in pairs:
+				var x := (float(k) - float(pairs - 1) / 2.0) * ISLAND_PITCH
+				desk(builder, holder, Vector3(x, 0, -0.375), -1.0)
+				desk(builder, holder, Vector3(x, 0, 0.375), 1.0)
 		"partition":
-			piece(builder, holder, MOVABLES.partition_screen(builder, Vector3(size.x, 1.5, 0.06)), Vector3.ZERO)
+			piece(builder, holder, MOVABLES.partition_screen(builder, Vector3(size.x, float(item.extra.height), 0.06)), Vector3.ZERO)
 		"pigeonholes":
 			piece(builder, holder, CABINETS.pigeonholes(builder, Vector3(size.x, 1.9, size.y), variant), Vector3.ZERO)
 		"copier":
@@ -262,7 +274,7 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 		"filing":
 			var t := int(room.get("type", -1))
 			var key: String = OFFICE.FILING_FINISH.get(t, "steel_olive")
-			piece(builder, holder, CABINETS.filing_cabinet(builder, Vector3(0.47, 1.32, 0.62), 4, key), Vector3.ZERO)
+			filing(builder, holder, Vector3.ZERO, key, CLUTTER.drawer_row(builder, room, seed_pos))
 		"bookcase":
 			piece(builder, holder, CABINETS.bookcase(builder, Vector3(0.9, 2.0, 0.35), true, variant), Vector3.ZERO)
 		"sideboard":
@@ -344,7 +356,12 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			# as close to it as the far row, its back to the room's middle.
 			chair(builder, holder, Vector3(0, 0, 0.04), 1.0, "visitor_chair")
 		"locker_bank":
-			piece(builder, holder, ROOM_EQUIPMENT.locker_bank(builder, Vector3(2.7, 1.9, 0.45)), Vector3.ZERO)
+			# Six grey lockers (the download) where they are baked, its box their collider.
+			if MODELS.mesh_of(builder, "lockers") != null:
+				builder.box(holder, Vector3(0, 0.95, 0), Vector3(2.7, 1.9, 0.45), "", true)
+				MODELS.put(builder, holder, "lockers", Transform3D.IDENTITY)
+			else:
+				piece(builder, holder, ROOM_EQUIPMENT.locker_bank(builder, Vector3(2.7, 1.9, 0.45)), Vector3.ZERO)
 		"fan_unit":
 			piece(builder, holder, ROOM_EQUIPMENT.fan_unit(builder, Vector3(1.5, 1.6, 1.2)), Vector3.ZERO)
 		"air_desk":
@@ -356,7 +373,9 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 
 ## The hotel's bins and potted plants, for the corridors and the lobbies.
 const BIN_MODELS := ["res://assets/props/hotel/metal_trash_can_clean.res", "res://assets/props/hotel/metal_trash_can_rust.res"]
-const PLANT_MODELS := ["res://assets/props/hotel/potted_plant_02.res", "res://assets/props/hotel/potted_plant_04.res"]
+## Not the hotel's potted_plant_02 (some 35 k triangles): a nave lines up
+## dozens of them (dens6, 12 November 2026).
+const PLANT_MODELS := ["res://assets/props/hotel/potted_plant_04.res", "res://assets/props/office/potted_plant_01.res"]
 
 ## A model scaled to fit `wide` by `tall`, centred on the holder and on its
 ## floor, turned by `yaw`.
@@ -373,6 +392,15 @@ static func fitted(builder: Node3D, holder: Node3D, path: String, wide: float, t
 ## its main run where the straight desk's top is, its return on the sitter's
 ## side and its chair clear of the return. Elsewhere, desk().
 const DESK_L := Vector3(1.5, 0.76, 1.3)
+## The screen between a desk pair's two desks (movables.gd's partition_screen at
+## 1.2 m), as wide as the pair's footprint.
+const PAIR_SCREEN := Vector3(1.5, 1.2, 0.06)
+## A desk pair's width along an island.
+const ISLAND_PITCH := 1.5
+
+## How many desk pairs an island item holds (palette.FURNITURE: 3 or 4.5 m).
+static func island_pairs(item: Dictionary) -> int:
+	return maxi(1, roundi(float(item.size[0]) / ISLAND_PITCH))
 static func station(builder: Node3D, holder: Node3D, at: Vector3, face: float, seed_pos: Vector3, room: Dictionary) -> void:
 	var t := int(room.get("type", -1))
 	if t != OFFICE.OPEN_OFFICE or builder.vary(seed_pos, 44) >= 1.0 / 3.0:
@@ -380,6 +408,21 @@ static func station(builder: Node3D, holder: Node3D, at: Vector3, face: float, s
 		return
 	piece(builder, holder, DESKS.desk_l(builder, DESK_L), at + Vector3(0, 0, face * 0.275), face < 0.0)
 	chair(builder, holder, at + Vector3(-face * 0.1, 0, face * 0.55), -face, "office_chair")
+
+## A four-drawer filing cabinet at `at` in the holder, in the room's finish:
+## the grey download in a grey room once baked, with a box for its collider and,
+## at `row` (office_clutter.drawer_row(), -1 for none), a drawer left out; else
+## the piece made in code.
+static func filing(builder: Node3D, holder: Node3D, at: Vector3, key: String, row := -1) -> void:
+	if not MODELS.grey_filing(builder, key):
+		piece(builder, holder, CABINETS.filing_cabinet(builder, Vector3(0.47, 1.32, 0.62), 4, key), at)
+		return
+	builder.box(holder, at + Vector3(0, 0.66, 0), Vector3(0.52, 1.32, 0.62), "", true)
+	if row < 0:
+		MODELS.put(builder, holder, "filing_grey", Transform3D(Basis.IDENTITY, at))
+		return
+	MODELS.put(builder, holder, "filing_grey_body", Transform3D(Basis.IDENTITY, at))
+	for k in 4: MODELS.put(builder, holder, "filing_grey_drawer", Transform3D(Basis.IDENTITY, at + Vector3(0, MODELS.GREY_PITCH * k, MODELS.GREY_OUT if k == row else 0.0)))
 
 ## A piece made in code (pieces/, area 4a) at `at` in the holder, its front to
 ## +Z or, with `back`, to -Z: its colliders as solid boxes (the mesh's

@@ -17,6 +17,7 @@ const KIT := preload("res://game/world/office/pieces/kit.gd")
 const STAND := preload("res://game/world/office/pieces/stand_ins.gd")
 const THINGS := preload("res://game/world/office/pieces/desk_things.gd")
 const FIXTURES := preload("res://game/world/office/pieces/fixtures.gd")
+const MODELS := preload("res://game/world/office/office_models.gd")
 const SIDE_OF := {"Wall_-1_0": "west", "Wall_1_0": "east", "Wall_0_-1": "north", "Wall_0_1": "south"}
 const SIDE_STEP := {"Wall_-1_0": Vector2i(-1, 0), "Wall_1_0": Vector2i(1, 0), "Wall_0_-1": Vector2i(0, -1), "Wall_0_1": Vector2i(0, 1)}
 ## The tiles' underside over the room's height (office_geometry TILE_FACE).
@@ -92,8 +93,13 @@ static func ceiling(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 		var at := OFFICE.tile_centre(entry.tile, 0.0) - origin
 		match String(entry.what):
 			"detector":
-				builder.box(node, at + Vector3(0, h + FACE - 0.006, 0), Vector3(0.14, 0.012, 0.14), "ceramic", false, "detail_cylinder")
-				builder.box(node, at + Vector3(0, h + FACE - 0.026, 0), Vector3(0.11, 0.03, 0.11), "ceramic", false, "detail_cylinder")
+				# The download, hung by its top, where it is baked; else two ceramic discs.
+				var detector := MODELS.mesh_of(builder, "smoke_detector")
+				if detector != null:
+					builder.place(node, detector, Transform3D(Basis.IDENTITY, at + Vector3(0, h + FACE - detector.get_aabb().size.y, 0)), false)
+				else:
+					builder.box(node, at + Vector3(0, h + FACE - 0.006, 0), Vector3(0.14, 0.012, 0.14), "ceramic", false, "detail_cylinder")
+					builder.box(node, at + Vector3(0, h + FACE - 0.026, 0), Vector3(0.11, 0.03, 0.11), "ceramic", false, "detail_cylinder")
 			"sprinkler":
 				builder.box(node, at + Vector3(0, h + FACE - 0.004, 0), Vector3(0.07, 0.008, 0.07), "metal", false, "detail_cylinder")
 				builder.box(node, at + Vector3(0, h + FACE - 0.03, 0), Vector3(0.022, 0.05, 0.022), "gold", false, "detail_cylinder")

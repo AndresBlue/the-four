@@ -1,0 +1,954 @@
+{
+ "_doc": "tools/props/fit_model.py: each download's parts, fitted in the game's frame (x, y up, z; metres). A door's leaf: hinge edge at x = -0.05, latch edge at 1.238, 0.012 to 2.638 up, centred on its thickness (hotel_geometry.gd, tools/props/build_door.gd); its casing centred on the doorway, the opening 1.3 by 2.65 (FLOOR.PORTAL, OPENING_HIGH), 0.22 deep over the wall (office_geometry.gd door_frame_mesh()).",
+ "puerta_oficina_sousinho": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/puerta_oficina.gltf",
+  "turn": 180,
+  "parts": [
+   {
+    "name": "leaf",
+    "objects": "^Object_(4|6|8)$",
+    "fit": "^Object_4$",
+    "mirror": "^Object_(6|8)$",
+    "box": [
+     [
+      -0.05,
+      1.238
+     ],
+     [
+      0.012,
+      2.638
+     ],
+     null
+    ]
+   },
+   {
+    "name": "leaf_hinge",
+    "source": "../bisagra_ahmagh2e/_zip/scene.gltf",
+    "objects": "^Disc(_5)?_2__0$",
+    "turn": 90,
+    "shrink": {
+     ".": 0.3
+    },
+    "places": [
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       0.25,
+       0.356
+      ],
+      null
+     ],
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       1.27,
+       1.376
+      ],
+      null
+     ],
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       2.29,
+       2.396
+      ],
+      null
+     ]
+    ]
+   }
+  ]
+ },
+ "puerta_lisa_sousinho": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/puerta_lisa.gltf",
+  "parts": [
+   {
+    "name": "leaf",
+    "objects": "^defaultMaterial(\\.00[12])?$",
+    "fit": "^defaultMaterial$",
+    "mirror": "^defaultMaterial\\.00[12]$",
+    "box": [
+     [
+      -0.05,
+      1.238
+     ],
+     [
+      0.012,
+      2.638
+     ],
+     null
+    ]
+   },
+   {
+    "name": "leaf_hinge",
+    "source": "../bisagra_ahmagh2e/_zip/scene.gltf",
+    "objects": "^Disc(_5)?_2__0$",
+    "turn": 90,
+    "shrink": {
+     ".": 0.3
+    },
+    "places": [
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       0.25,
+       0.356
+      ],
+      null
+     ],
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       1.27,
+       1.376
+      ],
+      null
+     ],
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       2.29,
+       2.396
+      ],
+      null
+     ]
+    ]
+   }
+  ]
+ },
+ "puerta_metal_tboiston": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/puerta_metal.gltf",
+  "turn": 180,
+  "parts": [
+   {
+    "name": "leaf",
+    "objects": "^defaultMaterial\\.00[1-4]$",
+    "fit": "^defaultMaterial\\.001$",
+    "box": [
+     [
+      -0.05,
+      1.238
+     ],
+     [
+      0.012,
+      2.638
+     ],
+     null
+    ]
+   },
+   {
+    "name": "leaf_hinge",
+    "source": "../bisagra_ahmagh2e/_zip/scene.gltf",
+    "objects": "^Disc(_5)?_2__0$",
+    "turn": 90,
+    "shrink": {
+     ".": 0.3
+    },
+    "places": [
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       0.25,
+       0.356
+      ],
+      null
+     ],
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       1.27,
+       1.376
+      ],
+      null
+     ],
+     [
+      [
+       -0.066,
+       -0.05
+      ],
+      [
+       2.29,
+       2.396
+      ],
+      null
+     ]
+    ]
+   },
+   {
+    "name": "frame",
+    "objects": "^defaultMaterial$",
+    "fit": "^defaultMaterial\\.001$",
+    "box": [
+     [
+      -0.65,
+      0.65
+     ],
+     [
+      0.0,
+      2.65
+     ],
+     {
+      "self": [
+       -0.11,
+       0.11
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "taquilla_zambur": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/taquillas.gltf",
+  "turn": -90,
+  "parts": [
+   {
+    "name": "bank",
+    "objects": "^Object_2$",
+    "repeat": 6,
+    "box": [
+     [
+      -1.35,
+      1.35
+     ],
+     [
+      0.0,
+      1.9
+     ],
+     [
+      -0.225,
+      0.225
+     ]
+    ]
+   }
+  ]
+ },
+ "archivador_gris_ahmagh2e": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/archivadores.gltf",
+  "turn": -90,
+  "parts": [
+   {
+    "name": "shut4",
+    "objects": "^(Cube_3|key_4|box_[0-3])__0$",
+    "fit": "^Cube_3__0$",
+    "box": [
+     [
+      -0.26,
+      0.26
+     ],
+     [
+      0.0,
+      1.32
+     ],
+     [
+      -0.31,
+      0.31
+     ]
+    ],
+    "shrink": {
+     "^key": 0.06
+    }
+   },
+   {
+    "name": "body4",
+    "objects": "^(Cube_3|key_4)__0$",
+    "fit": "^Cube_3__0$",
+    "box": [
+     [
+      -0.26,
+      0.26
+     ],
+     [
+      0.0,
+      1.32
+     ],
+     [
+      -0.31,
+      0.31
+     ]
+    ],
+    "shrink": {
+     "^key": 0.06
+    }
+   },
+   {
+    "name": "drawer",
+    "objects": "^box_0__0$",
+    "fit": "^Cube_3__0$",
+    "box": [
+     [
+      -0.26,
+      0.26
+     ],
+     [
+      0.0,
+      1.32
+     ],
+     [
+      -0.31,
+      0.31
+     ]
+    ]
+   }
+  ]
+ },
+ "detector_humo_sousinho": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/detector.gltf",
+  "parts": [
+   {
+    "name": "detector",
+    "objects": ".",
+    "box": [
+     [
+      -0.07,
+      0.07
+     ],
+     null,
+     [
+      -0.07,
+      0.07
+     ]
+    ]
+   }
+  ]
+ },
+ "retro_oficina_yj": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/retro_oficina.gltf",
+  "parts": [
+   {
+    "name": "desk",
+    "objects": "^PI_TankerDesk",
+    "box": [
+     [
+      -0.75,
+      0.75
+     ],
+     [
+      0.0,
+      0.76
+     ],
+     [
+      -0.375,
+      0.375
+     ]
+    ]
+   },
+   {
+    "name": "chair",
+    "objects": "^PI_OfficeChair",
+    "box": [
+     null,
+     [
+      0.0,
+      0.95
+     ],
+     null
+    ]
+   }
+  ]
+ },
+ "escritorio_tanker_lenawachs": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/tanker.gltf",
+  "parts": [
+   {
+    "name": "desk",
+    "objects": ".",
+    "box": [
+     [
+      -0.8525,
+      0.8525
+     ],
+     [
+      0.0,
+      0.76
+     ],
+     [
+      -0.373,
+      0.373
+     ]
+    ]
+   }
+  ]
+ },
+ "escritorio_madera_collings": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/escritorio.gltf",
+  "parts": [
+   {
+    "name": "desk",
+    "objects": ".",
+    "box": [
+     [
+      -0.8,
+      0.8
+     ],
+     [
+      0.0,
+      0.75
+     ],
+     [
+      -0.4,
+      0.4
+     ]
+    ]
+   }
+  ]
+ },
+ "libreria_libros_collings": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/libreria.gltf",
+  "parts": [
+   {
+    "name": "bookcase",
+    "objects": "^Victorian Bookcase Tall",
+    "box": [
+     [
+      -0.45,
+      0.45
+     ],
+     [
+      0.0,
+      1.867
+     ],
+     [
+      -0.175,
+      0.175
+     ]
+    ]
+   }
+  ]
+ },
+ "expendedora_attheseedof": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/expendedora.gltf",
+  "turn": 180,
+  "parts": [
+   {
+    "name": "vending",
+    "objects": ".",
+    "box": [
+     [
+      -0.45,
+      0.45
+     ],
+     [
+      0.0,
+      1.8
+     ],
+     [
+      -0.4,
+      0.4
+     ]
+    ]
+   }
+  ]
+ },
+ "nevera_dylanheyes": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/nevera.gltf",
+  "parts": [
+   {
+    "name": "fridge",
+    "objects": ".",
+    "box": [
+     [
+      -0.3575,
+      0.3575
+     ],
+     [
+      0.0,
+      1.6
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.45
+    }
+   }
+  ]
+ },
+ "silla_tela_projectkaizen": {
+  "in": "_zip/source/gltfblue/chairobjfinal.gltf",
+  "out": "_gltf/silla.gltf",
+  "parts": [
+   {
+    "name": "chair",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.95
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.35
+    }
+   }
+  ]
+ },
+ "lampara_banquero_meunier": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/lampara.gltf",
+  "parts": [
+   {
+    "name": "lamp",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.42
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.33
+    }
+   }
+  ]
+ },
+ "flexo_sousinho": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/flexo.gltf",
+  "parts": [
+   {
+    "name": "lamp",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.5
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.35
+    }
+   }
+  ],
+  "turn": -90
+ },
+ "cenicero_vidrio_red2000": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/cenicero.gltf",
+  "parts": [
+   {
+    "name": "ashtray",
+    "objects": ".",
+    "box": [
+     [
+      -0.07,
+      0.07
+     ],
+     null,
+     [
+      -0.07,
+      0.07
+     ]
+    ]
+   }
+  ]
+ },
+ "portalapices_aspectstudio": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/portalapices.gltf",
+  "parts": [
+   {
+    "name": "cup",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.16
+     ],
+     null
+    ],
+    "shrink": {
+     "^Pencil_Holder": 0.05,
+     "^Pencils": 0.06
+    }
+   }
+  ]
+ },
+ "bandeja_sinnervoncrawsz": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/bandeja.gltf",
+  "parts": [
+   {
+    "name": "tray",
+    "objects": ".",
+    "box": [
+     [
+      -0.13,
+      0.13
+     ],
+     null,
+     [
+      -0.17,
+      0.17
+     ]
+    ],
+    "shrink": {
+     ".": 0.35
+    }
+   }
+  ]
+ },
+ "cajas_archivo_cozmoth": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/caja.gltf",
+  "parts": [
+   {
+    "name": "box",
+    "objects": "^pCube4_",
+    "fit": "^pCube4_",
+    "box": [
+     [
+      -0.165,
+      0.165
+     ],
+     [
+      0.0,
+      0.25
+     ],
+     [
+      -0.195,
+      0.195
+     ]
+    ]
+   }
+  ]
+ },
+ "libros_frodoundead": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/filas.gltf",
+  "parts": [
+   {
+    "name": "row_a",
+    "objects": "^Object_4$",
+    "box": [
+     null,
+     [
+      0.0,
+      0.24
+     ],
+     null
+    ]
+   },
+   {
+    "name": "row_b",
+    "objects": "^Object_6$",
+    "box": [
+     null,
+     [
+      0.0,
+      0.24
+     ],
+     null
+    ]
+   },
+   {
+    "name": "row_c",
+    "objects": "^Object_8$",
+    "box": [
+     null,
+     [
+      0.0,
+      0.24
+     ],
+     null
+    ]
+   },
+   {
+    "name": "row_c",
+    "objects": "^Object_38$",
+    "box": [
+     [
+      0.05,
+      0.29
+     ],
+     [
+      0.24,
+      0.326
+     ],
+     null
+    ]
+   },
+   {
+    "name": "row_d",
+    "objects": "^Object_14$",
+    "box": [
+     null,
+     [
+      0.0,
+      0.24
+     ],
+     null
+    ]
+   },
+   {
+    "name": "row_d",
+    "objects": "^Object_40$",
+    "box": [
+     [
+      0.04,
+      0.297
+     ],
+     [
+      0.24,
+      0.377
+     ],
+     null
+    ]
+   }
+  ]
+ },
+ "impresora_okidata_papaj": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/impresora.gltf",
+  "parts": [
+   {
+    "name": "printer",
+    "objects": ".",
+    "box": [
+     null,
+     null,
+     [
+      -0.21,
+      0.21
+     ]
+    ]
+   }
+  ]
+ },
+ "ventilador_joshsmith": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/ventilador.gltf",
+  "parts": [
+   {
+    "name": "fan",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.45
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.33
+    }
+   }
+  ]
+ },
+ "silla_banquero_zamzam": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/silla.gltf",
+  "parts": [
+   {
+    "name": "chair",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      1.15
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.3
+    }
+   }
+  ]
+ },
+ "reloj_mesa_sousinho": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/reloj.gltf",
+  "parts": [
+   {
+    "name": "clock",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.15
+     ],
+     null
+    ]
+   }
+  ]
+ },
+ "caja_carton_krolzuzanna": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/caja.gltf",
+  "parts": [
+   {
+    "name": "box",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.45
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.22
+    }
+   }
+  ]
+ },
+ "alargador_evan4129": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/alargador.gltf",
+  "parts": [
+   {
+    "name": "cord",
+    "objects": ".",
+    "box": [
+     [
+      -0.6,
+      0.6
+     ],
+     null,
+     null
+    ],
+    "shrink": {
+     ".": 0.14
+    }
+   }
+  ]
+ },
+ "archivadores_palanca_janexx": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/archivadores.gltf",
+  "parts": [
+   {
+    "name": "binders",
+    "objects": "^folder_LP_nolabel",
+    "repeat": 5,
+    "box": [
+     [
+      -0.16,
+      0.16
+     ],
+     [
+      0.0,
+      0.32
+     ],
+     [
+      -0.132,
+      0.132
+     ]
+    ]
+   }
+  ]
+ },
+ "zapato_inciprocal": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/zapatos.gltf",
+  "parts": [
+   {
+    "name": "shoes",
+    "objects": ".",
+    "box": [
+     [
+      -0.143,
+      0.143
+     ],
+     [
+      0.0,
+      0.107
+     ],
+     [
+      0.01,
+      0.2
+     ]
+    ],
+    "shrink": {
+     ".": 0.12
+    }
+   },
+   {
+    "name": "shoes",
+    "objects": ".",
+    "flip": true,
+    "turn": 12,
+    "box": [
+     [
+      -0.13,
+      0.156
+     ],
+     [
+      0.0,
+      0.107
+     ],
+     [
+      -0.205,
+      -0.015
+     ]
+    ],
+    "shrink": {
+     ".": 0.12
+    }
+   }
+  ]
+ },
+ "wooden_ladder_02": {
+  "in": "wooden_ladder_02_1k.gltf",
+  "out": "_gltf/wooden_ladder_02.gltf",
+  "turn": 90,
+  "parts": [
+   {
+    "name": "ladder",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      1.4
+     ],
+     null
+    ]
+   }
+  ]
+ }
+}

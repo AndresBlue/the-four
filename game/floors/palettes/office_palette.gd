@@ -86,7 +86,7 @@ const ARTICLES := ["la", "la", "los", "el", "los", "la", "el", "la", "el", "el",
 ## own (map_generator.finish() reads four corners of every room).
 const RECIPES := [
 	["reception", "chairs", "plant", "coat_rack"],
-	["desk", "desk", "filing", "coat_rack"],
+	["desk", "desk", "filing", "cooler"],
 	["filing", "desk", "bin", "coat_rack"],
 	["", "filing", "coat_rack", "shelf"],
 	["basin", "basin", "bench", "bin"],
@@ -403,7 +403,14 @@ const NAVE_MODULE := 6.5
 const FURNITURE := {
 	"desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
 	"desk_pair": {"size": Vector2(1.5, 2.6), "height": 1.3},
-	"partition": {"size": Vector2(0.0, 0.06), "height": 1.5},
+	# A nave's islands (office_generator.lay_islands()): two or three desk pairs
+	# side by side, screens in a cross between them; as deep as their straight
+	# desks and chairs pushed in (2.27; a pair's 2.6 is for its L desks).
+	"desk_island": {"size": Vector2(3.0, 2.3), "height": 1.3},
+	"desk_island_6": {"size": Vector2(4.5, 2.3), "height": 1.3},
+	# 1.2, not the cubicles' 1.5 of spec_rediseno 6: in a nave nothing away from
+	# a wall passes 1.3 (the director, 12 November 2026).
+	"partition": {"size": Vector2(0.0, 0.06), "height": 1.2},
 	"pigeonholes": {"size": Vector2(1.8, 0.4), "height": 1.9},
 	"copier": {"size": Vector2(1.3, 0.7), "height": 1.05},
 	"vending": {"size": Vector2(0.9, 0.8), "height": 1.8},
@@ -490,32 +497,46 @@ const CORNER_SIZES := {
 ## (lay_center()); "hall", by lay_halls(), a
 ## corridor's. From least to most runs, drawn; row pieces side by side in a run.
 const ROOM_FURNITURE := {
-	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "run", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1]],
-	CUBICLES: [["desk", "lattice", 1, 1, 1]],
-	OFFICE: [["office_suite", "center", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "run", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["plant_floor", "spare", 1, 1, 1]],
+	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["printer_cart", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
+	CUBICLES: [["desk", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	OFFICE: [["office_suite", "center", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["printer_cart", "spare", 0, 1, 1]],
 	TOILETS: [["cubicles", "wall", 1, 1, 1], ["locker_bank", "run", 1, 1, 1], ["locker_bank", "spare", 1, 1, 1], ["bench_slat", "middle", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1]],
-	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
-	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "spare", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1]],
-	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1]],
-	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 3]],
-	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 1, 2], ["cart_boxes", "run", 2, 2, 1], ["work_table", "spare", 1, 1, 1]],
-	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["plant_floor", "run", 1, 1, 1], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["pigeonholes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
-	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1]],
-	LOBBY: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
-	REFUGE: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
-	AIR_ROOM: [["fan_unit", "wall", 2, 3, 1], ["work_table", "middle", 1, 1, 1], ["air_desk", "spare", 1, 1, 1]],
+	BOARDROOM: [["meeting_table_s", "table", 1, 1, 1], ["whiteboard", "wall", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["sideboard", "side", 1, 1, 1], ["sideboard", "run", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	COPY_ROOM: [["copier", "wall", 1, 1, 2], ["work_table", "middle", 1, 1, 1], ["card_index", "run", 1, 1, 1], ["reader_table", "wall", 1, 1, 2], ["reader_table", "spare", 0, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["printer_cart", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2]],
+	STORE: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1], ["shelving", "spare", 1, 2, 1]],
+	MAIL: [["pigeonholes", "wall", 1, 1, 3], ["pigeonholes", "run", 1, 1, 2], ["pigeon_counter", "middle", 1, 1, 1], ["mail_cart", "spare", 1, 1, 3], ["printer_cart", "spare", 1, 1, 1], ["filing", "run", 1, 1, 2], ["sorting_table", "middle", 0, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]],
+	BREAK_ROOM: [["kitchen", "wall", 1, 1, 1], ["vending", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["dining_set", "middle", 3, 4, 1], ["filing", "spare", 1, 1, 2], ["work_desk", "spare", 0, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	EXEC_OFFICE: [["exec_desk", "center", 1, 1, 1], ["bookcase", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["lounge", "side", 1, 1, 1], ["sideboard", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
+	WINDOW: [["filing", "run", 2, 2, 3], ["work_table", "run", 1, 1, 1], ["wood_shelving", "side", 1, 1, 1], ["work_desk", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 3], ["cart_boxes", "spare", 1, 1, 1]],
+	ELECTRICAL: [["work_desk", "side", 1, 1, 1], ["shelving", "spare", 1, 1, 2], ["cart_boxes", "run", 2, 2, 1], ["work_table", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1]],
+	SECURITY: [["filing", "run", 1, 1, 3], ["work_desk", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 2, 1], ["filing", "spare", 1, 1, 2], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["card_index", "spare", 1, 1, 1]],
+	SECRETARY: [["secretary_desk", "wall", 1, 1, 1], ["filing", "run", 1, 1, 3], ["plant_floor", "run", 1, 1, 1], ["printer_cart", "side", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["pigeonholes", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["card_index", "spare", 1, 1, 1]],
+	DEPOT: [["shelving", "side", 1, 2, 1], ["cart_boxes", "middle", 0, 1, 1], ["shelving", "spare", 1, 2, 1]],
+	LOBBY: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bench_slat", "spare", 1, 1, 1]],
+	REFUGE: [["filing", "closed", 1, 1, 2], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1], ["bench_slat", "spare", 1, 1, 1]],
+	AIR_ROOM: [["fan_unit", "wall", 2, 3, 1], ["work_table", "middle", 1, 1, 1], ["air_desk", "spare", 1, 1, 1], ["shelving", "spare", 1, 1, 1], ["cart_boxes", "spare", 1, 1, 1]],
 	AIR_PLANT: [["air_desk", "spare", 1, 1, 1]],
 	CORRIDOR: [["bin_floor", "hall", 0, 1, 1], ["bench_slat", "hall", 0, 1, 1], ["plant_floor", "hall", 0, 1, 1]],
 }
+## A nave's islands, the most desks first, and what stands against an island's
+## ends in its group (office_generator.lay_islands()), all under 1.3 m.
+const ISLAND_KINDS := ["desk_island_6", "desk_island", "desk_pair"]
+## The plant last: some 10 k triangles each, and the walls end with them.
+const ISLAND_ENDS := ["printer_cart", "cart_boxes", "bin_floor", "plant_floor"]
+## The islands a nave cell takes at most.
+const ISLANDS_MOST := 3
 ## The kinds a lattice lays (office_generator.lay_lattice()): an open office's
-## desk pairs, or single desks where they seat more than the pairs (a nave's
-## aisle and columns); the cubicles' pods.
-const LATTICE_KINDS := {OPEN_OFFICE: ["desk_pair", "desk"], CUBICLES: ["desk", "partition"]}
+## desk pairs, or single desks where they seat more than the pairs, and in a
+## nave its islands with their ends; the cubicles' pods; in both, a nave's rows
+## against its closed walls (NAVE_WALL_ROW).
+const LATTICE_KINDS := {OPEN_OFFICE: ["desk_island_6", "desk_island", "desk_pair", "desk", "partition", "printer_cart", "plant_floor", "cart_boxes", "bin_floor", "filing", "wood_shelving", "card_index", "shelving"], CUBICLES: ["desk", "partition", "desk_island_6", "desk_island", "desk_pair", "printer_cart", "plant_floor", "cart_boxes", "bin_floor", "filing", "wood_shelving", "card_index", "shelving"]}
+## What fills a nave cell's closed walls end to end (the director, 12 November
+## 2026: the references' rows of cabinets against the wall), in turn, a plant
+## at the end of a row; none deeper than NAVE_WALL_DEPTH with its gap.
+## No card index: some 6 k triangles each (dens6).
+const NAVE_WALL_ROW := ["filing", "wood_shelving", "filing", "printer_cart", "filing", "shelving"]
+const NAVE_WALL_DEPTH := 0.7
 ## What flanks a piece laid "center" (office_recipes.lay_center()): the director's
 ## desk between two bookcases, as in its reference (spec_proporcion D7); an
 ## office's between its filing cabinets, in sight from its door.
@@ -628,7 +649,7 @@ static func rug_of(room: Dictionary) -> String:
 const HALL_KINDS := ["bin_floor", "bench_slat", "plant_floor"]
 const HALL_WIDTH := 3.0
 const HALL_DEPTH := 0.5
-const HALL_STEP := Vector2(10.0, 14.0)
+const HALL_STEP := Vector2(5.0, 8.0)
 const HALL_PASS := 2.0
 const HALL_SIGN_CLEAR := 0.7
 
@@ -897,6 +918,20 @@ static func free_tiles(room: Dictionary) -> Array[Vector2i]:
 	var taken := {}
 	var centres: Array = []
 	var posts := column_rects(room)
+	# In a nave (its islands, the director's 12 November): none over the furniture
+	# or a corner piece, its floor and a body round it free, so she lands in a street.
+	var under: Array[Rect2] = []
+	if int(room.type) in [OPEN_OFFICE, CUBICLES] and not aisle_strips(room).is_empty():
+		var middle := Vector2(float(room.px), float(room.pz))
+		for it in room.get("furniture", []):
+			var size := Vector2(float(it.size[0]), float(it.size[1]))
+			if int(it.turn) % 2 == 1: size = Vector2(size.y, size.x)
+			under.append(Rect2(middle + Vector2(float(it.at[0]), float(it.at[1])) - size / 2, size).grow(TILE / 2 + 0.3))
+		var sockets: Array = room.get("sockets", [])
+		for prop in room.get("props", []):
+			if int(prop.slot) < sockets.size():
+				var r := corner_rect(String(prop.kind), sockets[int(prop.slot)], int(prop.rotation))
+				under.append(Rect2(r.position + middle, r.size).grow(TILE / 2 + 0.3))
 	for troffer in troffers(room):
 		for tile in troffer.tiles: taken[tile] = true
 		centres.append(troffer.centre)
@@ -919,6 +954,7 @@ static func free_tiles(room: Dictionary) -> Array[Vector2i]:
 					by_column = true
 					break
 			if by_column: continue
+			if under.any(func(r: Rect2) -> bool: return r.has_point(centre)): continue
 			if walled:
 				if not open.has("west") and centre.x - rect.position.x < GRILLE_WALL: continue
 				if not open.has("east") and rect.end.x - centre.x < GRILLE_WALL: continue

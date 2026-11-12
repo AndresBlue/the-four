@@ -24,6 +24,10 @@ const LOCKER_OUT := 1.1
 ## and map_validator's hide_entry capsule 0.32 round it.
 const LOCKER_REACH := 2.2
 const ITEM_GAP := 0.9
+## In a nave of open offices or cubicles (the director, 12 November 2026), a
+## street's width: its ways in from each door, between its islands and round
+## them, a body running and hers; with the central aisle, all a nave keeps.
+const NAVE_STREET := 1.2
 const INNER_PAD := 0.02
 ## Room for rounding: positions are stored to the millimetre.
 const EPS := 0.001
@@ -213,10 +217,59 @@ static func gather(value: Variant, out: Array) -> void:
 	elif value is Array:
 		for item in value: gather(item, out)
 
+## Whether a room keeps a nave's streets (NAVE_STREET) instead of a way from its
+## middle to each neighbour: an open office or cubicles cell on a nave's
+## central aisle (palette.aisle_strips()).
+static func streets(room: Dictionary) -> bool:
+	return int(room.type) in [PALETTE.OPEN_OFFICE, PALETTE.CUBICLES] and not PALETTE.aisle_strips(room).is_empty()
+
+## What pieces of different groups keep between them: a street in a nave.
+static func gap_of(room: Dictionary) -> float:
+	return NAVE_STREET if streets(room) else ITEM_GAP
+
+## Where a way in from `point` (room-local) ends: the nearest point of a nave's
+## central aisle, else the room's middle.
+static func way_out(room: Dictionary, point: Vector2) -> Vector2:
+	var best := Vector2.ZERO
+	var least := INF
+	for strip in PALETTE.aisle_strips(room):
+		var near := Vector2(clampf(point.x, strip.position.x, strip.end.x), clampf(point.y, strip.position.y, strip.end.y))
+		if point.distance_to(near) < least:
+			least = point.distance_to(near)
+			best = near
+	return best
+
+## Where a nave's column may stand on a side of a cell open to the next cell
+## of its row (office_generator.nave_spots(): COLUMN_OFF from the aisle's line),
+## with its pad and a hair, room-local: one for each seam the cell has.
+static func post_spots(room: Dictionary, side: String) -> Array:
+	var out: Array = []
+	var half := Vector2(float(room.span_x), float(room.span_z)) * 0.5
+	var size := float(PALETTE.COLUMN) + 2.0 * float(PALETTE.COLUMN_PAD) + 0.02
+	var across := way_of(side)
+	for open_side in room.get("open_sides", []):
+		if not seam(room, String(open_side)): continue
+		var to := way_of(String(open_side))
+		var c := Vector2(across.x * half.x + to.x * (half.x - float(PALETTE.COLUMN_OFF)), across.y * half.y + to.y * (half.y - float(PALETTE.COLUMN_OFF)))
+		out.append(Rect2(c - Vector2.ONE * size / 2, Vector2.ONE * size))
+	return out
+
+## Whether a side of a nave cell is its seam to the other row, the aisle's.
+static func seam(room: Dictionary, side: String) -> bool:
+	var axis := String(room.get("nave_axis", ""))
+	return (axis == "x" and side in ["north", "south"]) or (axis == "z" and side in ["west", "east"])
+
 ## What free-standing furniture must keep clear in a room, as capsules
-## {a, b, r} and rects {rect}, room-local.
+## {a, b, r} and rects {rect}, room-local. A nave cell (streets()) keeps its
+## central aisle, a street half wide along each side open to the next cell of
+## its row, and a street from each doorway to the aisle, in place of its middle
+## and the ways from it; its sweeps to corners and lockers go to the aisle too.
 static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bool) -> Array:
-	var zones: Array = [{"a": Vector2.ZERO, "b": Vector2.ZERO, "r": START_CLEAR if int(room.type) == PALETTE.RECEPTION else CENTRE_CLEAR}]
+	# The aisle itself is the generator's (office_generator.nave_zones()) and the
+	# validator's columns_ok(): a column's pad just touches it.
+	var naves := streets(room)
+	var zones: Array = []
+	if not naves: zones.append({"a": Vector2.ZERO, "b": Vector2.ZERO, "r": START_CLEAR if int(room.type) == PALETTE.RECEPTION else CENTRE_CLEAR})
 	var span_x := float(room.span_x)
 	var span_z := float(room.span_z)
 	if not exempt_cover:
@@ -224,12 +277,31 @@ static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bo
 		if c > 0:
 			# Only to the corners with a piece (spec_proporcion D3).
 			for prop in room.get("props", []):
-				zones.append({"a": Vector2.ZERO, "b": corner_of(int(prop.slot)) * c, "r": SWEEP_CLEAR})
+				var corner := corner_of(int(prop.slot)) * c
+				zones.append({"a": way_out(room, corner), "b": corner, "r": SWEEP_CLEAR})
 	var rooms: Array = manifest.rooms
 	var open: Array = room.get("open_sides", [])
 	for n in manifest.adjacency[int(room.id)]:
 		var other: Dictionary = rooms[int(n)]
 		var t := Vector2(float(int(other.x) - int(room.x)), float(int(other.z) - int(room.z)))
+		if naves:
+			var side := wall_of(Vector2i(int(t.x), int(t.y)))
+			if open.has(side):
+				# The aisle runs along the seam; across the next cell's side, a cross street,
+				# but for the spot of the column on it, whose clear goes round it.
+				if not seam(room, side):
+					var band: Array = [wall_rect(room, side, 0.0, wall_length(room, side) / 2, NAVE_STREET / 2)]
+					for post in post_spots(room, side): band = rect_minus(band, post)
+					for piece in band: zones.append({"rect": piece})
+			else:
+				# Straight in a metre, as the validator's passage walks (passage_path()),
+				# and on to the aisle.
+				var at := FLOOR.portal_between(room, other) - FLOOR.position_of(room)
+				var door := Vector2(at.x, at.z)
+				var inside := door - t
+				zones.append({"a": door, "b": inside, "r": NAVE_STREET / 2})
+				zones.append({"a": inside, "b": way_out(room, inside), "r": NAVE_STREET / 2})
+			continue
 		var d: Vector2
 		if open.has(wall_of(Vector2i(int(t.x), int(t.y)))): d = Vector2(t.x * span_x / 2, t.y * span_z / 2)
 		else:
@@ -243,7 +315,8 @@ static func clear_zones(manifest: Dictionary, room: Dictionary, exempt_cover: bo
 		var hw := hide_wall(h)
 		zones.append({"rect": wall_rect(room, String(hw.wall), float(hw.along), LOCKER.x / 2, LOCKER.y)})
 		var ap := FLOOR.hiding_approach(Vector3(float(h[0]), 0.0, float(h[1])))
-		zones.append({"a": Vector2.ZERO, "b": Vector2(ap.x, ap.z), "r": SWEEP_CLEAR})
+		var approach := Vector2(ap.x, ap.z)
+		zones.append({"a": way_out(room, approach), "b": approach, "r": NAVE_STREET / 2 if naves else SWEEP_CLEAR})
 		zones.append({"a": Vector2(ap.x, ap.z), "b": Vector2(float(h[0]), float(h[1])), "r": SWEEP_CLEAR})
 	if room.has("sockets"):
 		for prop in room.get("props", []):

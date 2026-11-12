@@ -25,14 +25,21 @@ const SWEEP := 1.3
 const CROWDED := ["office_suite", "secretary_desk"]
 ## By how bad a room is (mess_of(), 0 to 4): how often a chair is knocked
 ## over, faces away (once to a room), is pushed aside; a filing cabinet has a
-## drawer out; a desk has a cable; a phone is off its hook; a box is spilled.
-const FALLEN := [0.0, 0.04, 0.1, 0.16, 0.24]
+## drawer out; a desk has a cable; a phone is off its hook; a box is spilled;
+## a desk has papers dropped beside it. Half-abandoned from planta 1 on (the
+## author's R10): every room has some chance of each.
+const FALLEN := [0.04, 0.07, 0.1, 0.16, 0.24]
 const ODD := [0.0, 0.04, 0.08, 0.12, 0.16]
-const ASIDE := [0.15, 0.3, 0.45, 0.55, 0.65]
-const OPEN_DRAWER := [0.05, 0.12, 0.2, 0.3, 0.4]
-const CABLE := [0.1, 0.25, 0.4, 0.5, 0.6]
-const OFF_HOOK := [0.0, 0.1, 0.2, 0.3, 0.4]
-const SPILL := [0.0, 0.1, 0.2, 0.3, 0.4]
+const ASIDE := [0.3, 0.38, 0.45, 0.55, 0.65]
+const OPEN_DRAWER := [0.15, 0.2, 0.26, 0.32, 0.4]
+const CABLE := [0.2, 0.3, 0.4, 0.5, 0.6]
+const OFF_HOOK := [0.05, 0.1, 0.2, 0.3, 0.4]
+const SPILL := [0.15, 0.2, 0.26, 0.32, 0.4]
+const FLOOR_PAPERS := [0.15, 0.2, 0.28, 0.36, 0.45]
+## A desk pair's width along a nave's island (office_props.ISLAND_PITCH).
+const ISLAND_PITCH := 1.5
+## The furniture a body sat at, whose papers may end up on the floor beside it.
+const SAT_AT := ["desk", "desk_pair", "desk_island", "desk_island_6","work_desk", "office_suite", "exec_desk", "secretary_desk", "reader_table", "air_desk", "work_table", "dining_set"]
 ## A meeting table's top, from its board's middle (dress() shifts it to the
 ## board at table_z): a tray and the ashtray, and the seats' papers, pads and
 ## a mug left as they were, within the shortest board (2.4 m). No jug: the one
@@ -55,6 +62,13 @@ const TOPS := {
 	"sorting_table": [["box", Vector3(-0.5, 1.02, 0.05), 0.2, 0.8], ["paper_stack", Vector3(0.4, 1.02, 0.1), 0.5, 0.8]],
 	"pigeon_counter": [["paper_stack", Vector3(-0.6, 1.1, 0.0), 0.0, 0.6], ["box", Vector3(0.5, 1.1, 0.0), 0.3, 0.6]],
 	"filing": [["binders", Vector3(0.0, 1.32, -0.125), 0.0, 0.35], ["folders", Vector3(0.0, 1.32, 0.15), 0.2, 0.4]],
+	"card_index": [["tray", Vector3(-0.45, 1.2, 0.0), 0.1, 0.7], ["folders", Vector3(0.35, 1.2, 0.0), 0.3, 0.6]],
+	# Under 2.2 m with them (the archive box is 0.25 tall): her ceiling stays free.
+	"pigeonholes": [["archive_box", Vector3(-0.5, 1.9, 0.0), 0.1, 0.6], ["archive_box", Vector3(0.3, 1.9, 0.0), -0.15, 0.5]],
+	"locker_bank": [["archive_box", Vector3(0.6, 1.9, 0.0), 0.2, 0.4]],
+	# On the low table at the row's end (office_props.build_item()).
+	"waiting_row": [["paper_stack", Vector3(0.92, 0.42, 0.0), 0.4, 0.8]],
+	"waiting_row_4": [["paper_stack", Vector3(1.27, 0.42, 0.0), 0.4, 0.8]],
 	"meeting_table_s": MEETING_TOP,
 	"meeting_table_m": MEETING_TOP,
 	"meeting_table_l": MEETING_TOP,
@@ -64,10 +78,14 @@ const TOPS := {
 const CORNER_TOPS := {
 	"desk": [["phone", Vector3(0.55, 0.84, -0.45), 0.0, 0.7], ["tray", Vector3(-0.55, 0.84, -0.45), 0.0, 0.6], ["mug", Vector3(0.6, 0.84, 0.05), 0.0, 0.4]],
 	"table": [["ashtray", Vector3(0.6, 0.84, -0.45), 0.0, 0.5], ["paper_stack", Vector3(-0.6, 0.84, -0.4), 0.3, 0.5]],
+	# Clear of the director's globe at x 0.55 (office_props.build()).
+	"sideboard": [["books", Vector3(-0.55, 0.8, -0.46), 0.0, 0.7], ["mug", Vector3(-0.05, 0.8, -0.4), 0.0, 0.4]],
+	"filing": [["binders", Vector3(-0.26, 1.32, -0.45), 0.0, 0.5], ["folders", Vector3(0.26, 1.32, -0.35), 0.3, 0.5]],
+	"reader": [["paper_stack", Vector3(0.48, 0.74, -0.3), 0.3, 0.7]],
 }
 ## On a desk of the lattice, from its middle, its sitter at +Z (turned for a
 ## desk facing -Z): [thing, where, how often]; the keyboard goes with the screen.
-const DESK_THINGS := [["crt", Vector3(0.3, 0.76, -0.15), 0.6], ["keyboard", Vector3(0.3, 0.76, 0.2), 0.6], ["phone", Vector3(-0.42, 0.76, 0.12), 0.6], ["tray", Vector3(-0.62, 0.76, -0.18), 0.5], ["mug", Vector3(0.65, 0.76, 0.22), 0.4], ["folders", Vector3(-0.12, 0.76, 0.15), 0.5]]
+const DESK_THINGS := [["crt", Vector3(0.3, 0.76, -0.15), 0.6], ["keyboard", Vector3(0.3, 0.76, 0.2), 0.6], ["phone", Vector3(-0.42, 0.76, 0.12), 0.75], ["tray", Vector3(-0.62, 0.76, -0.18), 0.65], ["mug", Vector3(0.65, 0.76, 0.22), 0.5], ["folders", Vector3(-0.12, 0.76, 0.15), 0.6], ["paper_stack", Vector3(-0.25, 0.76, -0.22), 0.55], ["pen_cup", Vector3(0.62, 0.76, -0.25), 0.4]]
 ## A filing cabinet (pieces/cabinets.gd filing_cabinet(), 0.47 × 1.32 × 0.62,
 ## four drawers): a drawer's pitch, and the drawer pulled out and where it stands.
 const DRAWER_PITCH := 0.3125
@@ -81,7 +99,9 @@ static func mess_of(room: Dictionary) -> int:
 ## The room's leavings (office_geometry.extras(), after its furniture).
 static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 	var t := int(room.type)
-	if t == OFFICE.CORRIDOR or t == OFFICE.GALLERY or t == OFFICE.WINDOW or t == OFFICE.SECURITY: return
+	# The window and the security post too: their chairs stay put (chair_pose())
+	# and no paper falls at the window (clear_of_route()).
+	if t == OFFICE.CORRIDOR or t == OFFICE.GALLERY: return
 	var mess := mess_of(room)
 	var items: Array = room.get("furniture", [])
 	for k in items.size():
@@ -92,15 +112,20 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 		var seed_pos: Vector3 = node.position + holder.position
 		if kind == "desk":
 			desk_things(builder, node, holder, room, Vector3(0, 0, -float(item.size[1]) * 0.5 + 0.375), 1.0, seed_pos, mess)
-		elif kind == "desk_pair":
-			desk_things(builder, node, holder, room, Vector3(0, 0, -0.375), -1.0, seed_pos, mess)
-			desk_things(builder, node, holder, room, Vector3(0, 0, 0.375), 1.0, seed_pos + Vector3(0.5, 0, 0), mess)
+		elif kind == "desk_pair" or kind.begins_with("desk_island"):
+			# office_props.island_pairs() and ISLAND_PITCH (that script preloads this one).
+			var pairs: int = maxi(1, roundi(float(item.size[0]) / ISLAND_PITCH))
+			for p in pairs:
+				var x := (float(p) - float(pairs - 1) / 2.0) * ISLAND_PITCH
+				desk_things(builder, node, holder, room, Vector3(x, 0, -0.375), -1.0, seed_pos + Vector3(x, 0, 0), mess)
+				desk_things(builder, node, holder, room, Vector3(x, 0, 0.375), 1.0, seed_pos + Vector3(x + 0.5, 0, 0), mess)
 		var shift := tops_shift(kind, item)
 		for thing: Array in TOPS.get(kind, []):
 			var at: Vector3 = (thing[1] as Vector3) + shift
 			var yaw: float = float(thing[2]) + (builder.vary(seed_pos + at, 410) - 0.5) * 0.3
 			lay(builder, node, holder, room, String(thing[0]), Transform3D(Basis(Vector3.UP, yaw), at), float(thing[3]), seed_pos + at)
 		if kind == "filing": drawer(builder, node, holder, room, mess, seed_pos)
+		if kind in SAT_AT: floor_papers(builder, node, holder, room, item, mess, seed_pos)
 		if kind in ["office_suite", "exec_desk", "secretary_desk", "work_desk"] and builder.vary(seed_pos, 420) < float(CABLE[mess]):
 			lay(builder, node, holder, room, "cable", Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 421) * TAU), Vector3(0.1, 0, 0)), 1.0, seed_pos + Vector3(0, 1, 0))
 	if room.has("sockets"):
@@ -111,7 +136,7 @@ static func dress(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 			for thing: Array in spots:
 				var at: Vector3 = thing[1]
 				lay(builder, node, node, room, String(thing[0]), socket * Transform3D(Basis(Vector3.UP, float(thing[2])), at), float(thing[3]), node.position + socket * at)
-	if mess >= 2 and builder.vary(node.position, 430) < float(SPILL[mess]): spill(builder, node, room)
+	if builder.vary(node.position, 430) < float(SPILL[mess]): spill(builder, node, room)
 
 ## Where a kind's TOPS stand off their rows, in its holder: a meeting table's
 ## on its board (table_z, office_props.build_item()); the secretary's from its
@@ -146,16 +171,45 @@ static func desk_things(builder: Node3D, node: Node3D, holder: Node3D, room: Dic
 
 ## A filing cabinet with one of its two middle drawers pulled out, now and
 ## then; noted either way (the test weighs drawers out against cabinets).
-static func drawer(builder: Node3D, node: Node3D, holder: Node3D, room: Dictionary, mess: int, seed_pos: Vector3) -> void:
-	if builder.vary(seed_pos, 460) >= float(OPEN_DRAWER[mess]):
+static func drawer(builder: Node3D, node: Node3D, holder: Node3D, room: Dictionary, _mess: int, seed_pos: Vector3) -> void:
+	var row := drawer_row(builder, room, seed_pos)
+	if row < 0:
 		note(builder, room, "filing_shut", node.position + holder.position, false, false)
 		return
-	var row := 1 + int(builder.vary(seed_pos, 461) * 2.0)
 	var t := int(room.type)
 	var key: String = OFFICE.FILING_FINISH.get(t, "steel_olive")
 	var at := Vector3(0, 0.04 + DRAWER_PITCH * row + 0.02, DRAWER_Z)
-	builder.place(holder, THINGS.drawer_out(builder, DRAWER_OUT, key), Transform3D(Basis.IDENTITY, at))
+	# The grey download is laid with its own drawer out (office_props.filing()).
+	if not MODELS.grey_filing(builder, key): builder.place(holder, THINGS.drawer_out(builder, DRAWER_OUT, key), Transform3D(Basis.IDENTITY, at))
 	note(builder, room, "drawer", node.position + holder.transform * at, false, false)
+
+## Which drawer of a filing cabinet item is left out, 1 or 2 up from the
+## bottom, or -1: by vary() of where it stands and the room's mess, none in the
+## rooms dress() leaves alone. office_props.filing() asks it as well.
+static func drawer_row(builder: Node3D, room: Dictionary, seed_pos: Vector3) -> int:
+	if room.is_empty(): return -1
+	var t := int(room.type)
+	if t == OFFICE.CORRIDOR or t == OFFICE.GALLERY or t == OFFICE.WINDOW or t == OFFICE.SECURITY: return -1
+	if builder.vary(seed_pos, 460) >= float(OPEN_DRAWER[mess_of(room)]): return -1
+	return 1 + int(builder.vary(seed_pos, 461) * 2.0)
+
+## Papers dropped on the floor beside a piece that was sat at (spec_rediseno 7),
+## now and then, to one side of it: on the room's floor, off every piece and
+## every rect zone (doors, lockers, corners, systems), clear of the card's way.
+static func floor_papers(builder: Node3D, node: Node3D, holder: Node3D, room: Dictionary, item: Dictionary, mess: int, seed_pos: Vector3) -> void:
+	if builder.vary(seed_pos, 490) >= float(FLOOR_PAPERS[mess]): return
+	var side: float = 1.0 if builder.vary(seed_pos, 491) < 0.5 else -1.0
+	var at := Vector3(side * (float(item.size[0]) * 0.5 + 0.4), 0.0, 0.0)
+	var local := in_room(holder, room, at)
+	var spot := Rect2(Vector2(local.x, local.z) - Vector2(0.45, 0.45), Vector2(0.9, 0.9))
+	if not LAYOUT.inner(room).encloses(spot): return
+	var zones: Array = zones_of(builder, room).filter(func(z: Dictionary) -> bool: return z.has("rect"))
+	for other in room.get("furniture", []): zones.append({"rect": LAYOUT.footprint(other)})
+	if LAYOUT.blocked(spot, zones): return
+	var world: Vector3 = FLOOR.position_of(room) + local
+	if not clear_of_route(builder, room, world): return
+	builder.place(holder, MODELS.mesh_of(builder, "paper_scatter"), Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 492) * TAU), at))
+	note(builder, room, "paper_scatter", world, true, true)
 
 ## A box knocked over with its papers out of it (spec_rediseno 7), at the
 ## first of the room's quarter points that nothing takes and whose papers
