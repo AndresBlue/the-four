@@ -1,0 +1,11 @@
+[gd_resource type="ORMMaterial3D" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/office/standing_picture_frame_02/standing_picture_frame_02_artwork_diff_1k.jpg" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/office/standing_picture_frame_02/standing_picture_frame_02_artwork_rough_1k.jpg" id="2"]
+
+[resource]
+resource_name = "standing_picture_frame_02_artwork"
+albedo_color = Color(1, 1, 1, 1)
+albedo_texture = ExtResource("1")
+orm_texture = ExtResource("2")
+cull_mode = 2

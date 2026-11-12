@@ -39,6 +39,7 @@ const CREDITS := [
 		"«Panasonic VHS-C MOVIE CAMERA NV-A3», de Arthur Vanneste (Sketchfab, CC BY 4.0): la videocámara, con sus marcas tapadas.",
 		"«VHS», de Terizmeh (Sketchfab, CC BY 4.0): la cinta.",
 		"«Key Chain», de Inside Out Art (Sketchfab, CC BY): la llave de los cuadros eléctricos.",
+			"«Old Computer Chair», de Guantanamera (Slava Izvekov, Sketchfab, CC BY 4.0), con texturas reducidas y escalada.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [

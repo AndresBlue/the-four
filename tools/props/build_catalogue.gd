@@ -29,7 +29,8 @@ const SCALE := {"steel_frame_shelves_01": 0.1}
 ## too): left out of the hotel's bake, baked from a --sources list.
 const SKIP := ["Chandelier_01", "Ottoman_01", "hanging_picture_frame_02", "modern_arm_chair_01", "round_wooden_table_01", "small_wooden_table_01", "television_02",
 	"hanging_picture_frame_01", "modular_airduct_rectangular_01", "korean_fire_extinguisher_01", "korean_public_payphone_01",
-	"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair"]
+	"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair",
+		"metal_stool_01", "metal_stool_02", "standing_picture_frame_01", "standing_picture_frame_02", "steel_frame_shelves_02", "steel_frame_shelves_03", "side_table_01", "coffee_table_round_01", "industrial_wall_lamp", "industrial_caged_sconce", "vintage_microwave", "vintage_electric_kettle"]
 const PARTS := {
 	"metal_trash_can": {"clean": "^metal_trash_can(_handle_left|_handle_right|_lid)?$", "rust": "^metal_trash_can_rust"},
 	"vintage_suitcase": {"a": "^vintage_suitcase_01", "b": "^vintage_suitcase_02"},

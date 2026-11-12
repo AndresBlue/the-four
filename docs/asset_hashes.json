@@ -534,5 +534,213 @@
   "assets/props/office/sources.json": {
     "bytes": 559,
     "sha256": "03651a0edb4ca0e9cf71fe5d07a0a9ae3c3d37ad6e0f39d13a6d2bd5ce89c6a0"
+  },
+  "assets/paintings/office/11766.jpg": {
+    "bytes": 405762,
+    "sha256": "86e78d31d0a0ed631343a375cf14a0f8be495aae09d674aecaad27080900df97"
+  },
+  "assets/paintings/office/126487.jpg": {
+    "bytes": 124582,
+    "sha256": "6c2382efa554a580319db69a5c8b4435246324677b4011c3d628c4a23ac50616"
+  },
+  "assets/paintings/office/133358.jpg": {
+    "bytes": 197353,
+    "sha256": "14402316fc78b09b215e6207bd3d9e03f5023e130ee84df23a5438354b182bd7"
+  },
+  "assets/paintings/office/181558.jpg": {
+    "bytes": 234039,
+    "sha256": "d4dfd6b2d907242f5b16065c52c7fe9498a43a94b7790abb166fbf2d522ac510"
+  },
+  "assets/paintings/office/19.jpg": {
+    "bytes": 167087,
+    "sha256": "74157d5df75918e0c6f78ee7c3ad8a818c7861b0291dfc76d5d3eadbf2f12024"
+  },
+  "assets/paintings/office/196328.jpg": {
+    "bytes": 235833,
+    "sha256": "cd02a168612b52039447bbfb0f03bbd16bbd4b8869ca44ca3a2075ee3d9dfd04"
+  },
+  "assets/paintings/office/196332.jpg": {
+    "bytes": 268647,
+    "sha256": "152be8cec027dd19ae07a2010fd6ded0af195616ab64eccf308d05c39f5d141e"
+  },
+  "assets/paintings/office/196347.jpg": {
+    "bytes": 249820,
+    "sha256": "cc590669c50ca12bf07e51c89086f96d6d9f4f968d3b8ca169b110cb6804937d"
+  },
+  "assets/paintings/office/196350.jpg": {
+    "bytes": 249142,
+    "sha256": "ccc90ecac54010dd6f7e4fecdc329ed307b9c97248f64f9cb462699293e81fc5"
+  },
+  "assets/paintings/office/196352.jpg": {
+    "bytes": 253050,
+    "sha256": "dbd6a537bb4ac3b792234a6be013726845393fcc5a84b0f98daf5991c86c7f1b"
+  },
+  "assets/paintings/office/19853.jpg": {
+    "bytes": 124766,
+    "sha256": "e3d69a159c070c40a5f2b0e0fd47976e7c343d2984d7cf42386155aa813ac80a"
+  },
+  "assets/paintings/office/212159.jpg": {
+    "bytes": 211074,
+    "sha256": "81e0e7a5c43d6284500a97282357b73425f33b902a1d6dc2524030cfac5a915f"
+  },
+  "assets/paintings/office/22.jpg": {
+    "bytes": 226502,
+    "sha256": "ad8276e376e57aa8f48b7cfa9f66ed3a6f9c3e4ec857c86f11273676ec35886f"
+  },
+  "assets/paintings/office/65.jpg": {
+    "bytes": 80819,
+    "sha256": "6fcb0a2d4b3b661bc7c09befb7e08edadde5a8cb4249f6ac13912e6e8b9d47e1"
+  },
+  "assets/paintings/office/66711.jpg": {
+    "bytes": 184252,
+    "sha256": "4df0d734484f0dac1187e2c9bfaa29e70b0696f47f48d4432d433882190f3e4f"
+  },
+  "assets/paintings/office/90267.jpg": {
+    "bytes": 365927,
+    "sha256": "999618139cf75496c5cb676c284b35d0fbe3a4a3266f67fc658059d690b08377"
+  },
+  "assets/paintings/office/92231.jpg": {
+    "bytes": 180644,
+    "sha256": "7079f52fe9b1723adba45a05c0469241245b180e62e5dcf4206ef2a18c9528de"
+  },
+  "assets/paintings/office/paintings.json": {
+    "bytes": 2983,
+    "sha256": "75d3e9ae22fe4023b2ea58c8b2cca152885fc0afeea853d5b049185b3bc7abc3"
+  },
+  "assets/props/office/metal_stool_01/metal_stool_01.tres": {
+    "bytes": 614,
+    "sha256": "eefdbbc27a69cdaae2f41f4f3cffbd8c204538a888b2a6c053194d16511541a1"
+  },
+  "assets/props/office/metal_stool_01/metal_stool_01_arm_1k.jpg": {
+    "bytes": 265209,
+    "sha256": "7b66ba757df278153955f010cc49c9ef475f70b5242b9120819c4b4566013aa4"
+  },
+  "assets/props/office/metal_stool_01/metal_stool_01_diff_1k.jpg": {
+    "bytes": 221478,
+    "sha256": "1e8bda55b993ffa7f9ce692406f88f7df7d2a30f8c087d3d9c1466a9748260cf"
+  },
+  "assets/props/office/metal_stool_01/metal_stool_01_nor_gl_1k.jpg": {
+    "bytes": 215802,
+    "sha256": "e2b47d0ce8926f6b8f02290fc266bd18c3d7b38c4eddc77740ac63665c16c86d"
+  },
+  "assets/props/office/round_wooden_table_01/round_wooden_table_01.tres": {
+    "bytes": 663,
+    "sha256": "011a7e0d6491019fe0a73f860f9659be4d9aad113091ff2776ba3f83fc74a585"
+  },
+  "assets/props/office/round_wooden_table_01/round_wooden_table_01_arm_2k.jpg": {
+    "bytes": 169490,
+    "sha256": "52b58c2df35b5f60222b998d6398ed49f2df041eb3552704fbc79a407001e4a9"
+  },
+  "assets/props/office/round_wooden_table_01/round_wooden_table_01_diff_2k.jpg": {
+    "bytes": 155946,
+    "sha256": "96f824c7e20beb2e9ec837ec6734655aca0433629e95be402c13567d21d62305"
+  },
+  "assets/props/office/round_wooden_table_01/round_wooden_table_01_nor_gl_2k.jpg": {
+    "bytes": 66256,
+    "sha256": "7334e1c07c2ff965c12c982177453103de9eb775f18f1e5e4cf058181ab44421"
+  },
+  "assets/props/office/silla_giratoria_old_computer_chair/computerchair_material.tres": {
+    "bytes": 716,
+    "sha256": "eecbd5a79141e56405fe07f5cd32fe97fd9d87213ee883d8e158b3bf6faaf347"
+  },
+  "assets/props/office/silla_giratoria_old_computer_chair/computerchair_material_baseColor.jpg": {
+    "bytes": 175766,
+    "sha256": "57e6231f840c581902515ebe60565045d1592622cfb92608f87e4ba2637047f8"
+  },
+  "assets/props/office/silla_giratoria_old_computer_chair/computerchair_material_metallicRoughness.jpg": {
+    "bytes": 90832,
+    "sha256": "a4398ea5593cb4a973a037a6fbb4f83d80dd1d09636a57d5b29601f971cd9624"
+  },
+  "assets/props/office/silla_giratoria_old_computer_chair/computerchair_material_normal.jpg": {
+    "bytes": 135987,
+    "sha256": "ff205b693a4a4bef4cc4512056e6cc67c2eb50d25eeb6071a9380aea7eb6ebbe"
+  },
+  "assets/props/office/small_wooden_table_01/small_wooden_table_01.tres": {
+    "bytes": 663,
+    "sha256": "8e2977f8a699ddc6d4608d8ac36bfbf33597e3ef4e5f46b629ac5e212de16948"
+  },
+  "assets/props/office/small_wooden_table_01/small_wooden_table_01_arm_2k.jpg": {
+    "bytes": 196276,
+    "sha256": "87eea14a8ab20ae9085d82e77d5809464a4b8b376c89769db470e7a4aac17955"
+  },
+  "assets/props/office/small_wooden_table_01/small_wooden_table_01_diff_2k.jpg": {
+    "bytes": 187616,
+    "sha256": "329c5152f92892c6fe15c1ebc85c2fb1ef20f39a0b8d61f6e1ab26983b6243d6"
+  },
+  "assets/props/office/small_wooden_table_01/small_wooden_table_01_nor_gl_2k.jpg": {
+    "bytes": 43662,
+    "sha256": "a704e3bf8b0c66ace8f8a4e57ceff0cbc11698c4c3269a5b21e33deeccc514c0"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02.tres": {
+    "bytes": 691,
+    "sha256": "58d03777ba6d1a3f4958bbe446271547902a0659ee0faba0d959e332e8409af3"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_arm_1k.jpg": {
+    "bytes": 133666,
+    "sha256": "a62708958f47413324af3f5b892cfb7e9c5799f91eec542500cc77057f0428e7"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_artwork.tres": {
+    "bytes": 523,
+    "sha256": "5f04cc9f6337071382f2a9ea5f7685fdeb6700f5761b4007ffbbad78e74dcbaa"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_artwork_diff_1k.jpg": {
+    "bytes": 149395,
+    "sha256": "99dae57356820af31bf0e86c523b5303212fd3d409a26fb941cb76892feec830"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_artwork_rough_1k.jpg": {
+    "bytes": 17011,
+    "sha256": "5384e0a6e615d8ef5556f0ce1222b9787012a84e7610783263a408c468e3a037"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_diff_1k.jpg": {
+    "bytes": 197822,
+    "sha256": "35e71a1fc6d53c1c925c7e056a85d59904e24564deddb0310d0e4b1cfd5de3db"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_glass.tres": {
+    "bytes": 714,
+    "sha256": "0e3653721bc9ceff1970d1ab7e4414a304a9347dcbd34003ab65a2de8872a7fa"
+  },
+  "assets/props/office/standing_picture_frame_02/standing_picture_frame_02_nor_gl_1k.jpg": {
+    "bytes": 52093,
+    "sha256": "8531e8dbc4827dc3e3bc3ab52d7891cb2e53b836aec03a21ec4921c145eb2995"
+  },
+  "assets/props/office/steel_frame_shelves_02/steel_frame_shelves_02.tres": {
+    "bytes": 670,
+    "sha256": "c9b3aa66a67efcc959760aa94d1222d22c8f824c05852c759dd1fd2d6dcfb416"
+  },
+  "assets/props/office/steel_frame_shelves_02/steel_frame_shelves_02_arm_1k.jpg": {
+    "bytes": 224554,
+    "sha256": "5c078afa714d84ebb9d6f580745b7b44551e0008025e15e2a41a9b96a55f6e58"
+  },
+  "assets/props/office/steel_frame_shelves_02/steel_frame_shelves_02_diff_1k.jpg": {
+    "bytes": 171267,
+    "sha256": "ab22a40089ae3d884a6f9db56d5f376d75d547b959ec0df130a486e920111481"
+  },
+  "assets/props/office/steel_frame_shelves_02/steel_frame_shelves_02_nor_gl_1k.jpg": {
+    "bytes": 60842,
+    "sha256": "a4dc26a5df3d60b39fa5786270ab44d7396bb9b356b85457960dac08fa3073c5"
+  },
+  "assets/props/office/metal_stool_01.res": {
+    "bytes": 153087,
+    "sha256": "a53c2020624f1bc95c2d942c55f2754cf9cf4d67e666969351ab54d74f06622a"
+  },
+  "assets/props/office/round_wooden_table_01.res": {
+    "bytes": 270015,
+    "sha256": "4179da1e1663b18a7480c96cf4a516a58ffc98cfe7b56f7dee1bd49675e0c361"
+  },
+  "assets/props/office/silla_giratoria_old_computer_chair.res": {
+    "bytes": 151663,
+    "sha256": "1f66b30c285d62e1693aece270ef233c6905ab853d43ee39b592a4aa33dffc61"
+  },
+  "assets/props/office/small_wooden_table_01.res": {
+    "bytes": 103387,
+    "sha256": "a844fdd8f446e17e3a41710b75479024393f73737d2704d195765d3e7702dc81"
+  },
+  "assets/props/office/standing_picture_frame_02.res": {
+    "bytes": 100475,
+    "sha256": "cf1d8c60709236a9c1625ff1ec6a56805fe0070766ef0b3577534411e14c4087"
+  },
+  "assets/props/office/steel_frame_shelves_02.res": {
+    "bytes": 152115,
+    "sha256": "bf63491bfd59847c0471442eace92a58bb1669423dd81e19470836180da2bd28"
   }
 }

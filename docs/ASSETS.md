@@ -249,6 +249,28 @@ Cuadros: imágenes de dominio público del Art Institute of Chicago (CC0, open a
 | [York Harbor, Coast of Maine](https://www.artic.edu/artworks/152747) | Martin Johnson Heade (American, 1819–1904) | 1877 |
 | [Italian Landscape with Travelers](https://www.artic.edu/artworks/69041) | Jan Both (Dutch, c. 1618–1652) | c. 1650 |
 | [Bouquet of Flowers in an Earthenware Vase](https://www.artic.edu/artworks/64029) | Attributed to Jan Brueghel the Elder (Flemish, 1568–1625) | c. 1610 |
+
+Láminas del piso 2 (grabados, fotografías antiguas y planos que cuelgan en las oficinas): del mismo museo y con la misma licencia, en `assets/paintings/office/` (843 px); originales en `source_assets/paintings/office/`. Las cuelga `game/world/office/office_pictures.gd`.
+
+| Obra | Autor | Fecha |
+|---|---|---|
+| [Plan of the Center of the City, the 1909 Plan of Chicago](https://www.artic.edu/artworks/196352) | Daniel Hudson Burnham, American, 1846-1912 | 1909 |
+| [The City of Ambitions](https://www.artic.edu/artworks/66711) | Alfred Stieglitz | 1910 |
+| [Plate 110 from The Plan of Chicago, 1909: Chicago. Plan of the Complete System of Street Circulation (...)](https://www.artic.edu/artworks/196350) | Daniel Hudson Burnham, American, 1846-1912 | 1909 |
+| [Rue de la Montagne-Sainte-Geneviève near the Intersection of Rue LaPlace (Rue de la Montagne-Sainte-Geneviève prés de carrefour de la rue LaPlace)](https://www.artic.edu/artworks/181558) | Charles Marville | 1865/69 |
+| [Plan of Chicago, Chicago, Illinois, Diagram Showing City Growth](https://www.artic.edu/artworks/196347) | Daniel Hudson Burnham (American, 1846-1912) | 1909 |
+| [Stewart–Bentley Building, Chicago, Illinois, Elevation and Exterior Wall Section](https://www.artic.edu/artworks/90267) | Carter, Drake and Wight (American, 1871–1873) | 1872 |
+| [Market of the Patriarchs (Marché des Patriarches)](https://www.artic.edu/artworks/212159) | Charles Marville | c. 1862 |
+| [Plan of Chicago, Plate 63, Plan of a Proposed Park](https://www.artic.edu/artworks/196328) | Daniel Hudson Burnham, American, 1846–1912 | 1909 |
+| [Rue Mouffetard, Paris](https://www.artic.edu/artworks/11766) | Donald Shaw MacLaughlan | 1900 |
+| [Plan of Chicago, Chicago, Illinois, Railroad Circuits Diagram](https://www.artic.edu/artworks/196332) | Daniel Hudson Burnham (American, 1846-1912) | 1909 |
+| [View of Ponte Lugano on the Anio, from Views of Rome](https://www.artic.edu/artworks/19) | Giovanni Battista Piranesi (Italian, 1720-1778) | 1763, published 1800–07 |
+| [Montmartre](https://www.artic.edu/artworks/92231) | Artist unknown  | 1870 |
+| [Ships in the Harbor at Sète](https://www.artic.edu/artworks/126487) | Gustave Le Gray | 1857 |
+| [Villa Pamphili outside Porta S. Pancrazio, from Views of Rome](https://www.artic.edu/artworks/22) | Giovanni Battista Piranesi (Italian, 1720-1778) | 1776, published 1800–07 |
+| [Bridge, Amsterdam](https://www.artic.edu/artworks/19853) | James McNeill Whistler | 1889 |
+| [Harbor Scene with a Lighthouse](https://www.artic.edu/artworks/133358) | Claude Lorrain | 1638–41 |
+| [Fishing Craft near the Cliffs at Collioure](https://www.artic.edu/artworks/65) | Adolphe Appian | 1878 |
 <!-- /DRESSING -->
 
 <!-- OFFICE_MODELS: generado por tools/props/ingest_models.py --set=office, no editar a mano -->
@@ -261,10 +283,16 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [planta de hoja ancha y brillante, tipo anthurium o espatifilo (sin maceta)](https://polyhaven.com/a/anthurium_botany_01) | `anthurium_botany_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [calathea, planta de interior sin maceta](https://polyhaven.com/a/calathea_orbifolia_01) | `calathea_orbifolia_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [archivador de madera de 6 cajones](https://polyhaven.com/a/vintage_wooden_drawer_01) | `fichero_vintage_wooden_drawer_01` | James Ray Cock | Poly Haven | CC0 1.0 |
+| [taburete redondo de cuero sobre base metálica industrial](https://polyhaven.com/a/metal_stool_01) | `metal_stool_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sillón de dirección de cuero marrón y madera curvada, base giratoria](https://polyhaven.com/a/mid_century_lounge_chair) | `mid_century_lounge_chair` | Kuutti Siitonen | Poly Haven | CC0 1.0 |
 | [pachira, planta de interior (cuatro ejemplares sin maceta)](https://polyhaven.com/a/pachira_aquatica_01) | `pachira_aquatica_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [planta de interior en maceta de terracota](https://polyhaven.com/a/potted_plant_01) | `potted_plant_01` | Rico Cilliers | Poly Haven | CC0 1.0 |
+| [mesa redonda de madera oscura y pulida](https://polyhaven.com/a/round_wooden_table_01) | `round_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
+| [silla giratoria de oficina de los 70 (1970s swivel office chair)](https://sketchfab.com/3d-models/old-computer-chair-a311529b1ec349c48f789bf4e1f99e89) | `silla_giratoria_old_computer_chair` | Slava Izvekov (guantanamera) | Sketchfab | CC BY 4.0 |
+| [mesa pequeña de madera, vintage](https://polyhaven.com/a/small_wooden_table_01) | `small_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sofá de cuero capitoné con marco de madera tallada](https://polyhaven.com/a/sofa_02) | `sofa_02` | Kirill Sannikov | Poly Haven | CC0 1.0 |
+| [marco de pie de madera con lámina de playa](https://polyhaven.com/a/standing_picture_frame_02) | `standing_picture_frame_02` | James Ray Cock | Poly Haven | CC0 1.0 |
+| [estantería de estructura de acero con baldas de madera, comercial](https://polyhaven.com/a/steel_frame_shelves_02) | `steel_frame_shelves_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 <!-- /OFFICE_MODELS -->
 
 <!-- OFFICE_SCANS: generado por tools/textures/ingest_pbr.py --set=office, no editar a mano -->

@@ -9,6 +9,8 @@ smear from how far its roughness strays from the mean). Relief decals also get
 Paintings: the Art Institute of Chicago images in source_assets/paintings/
 (with info.json) become assets/paintings/<id>.jpg, 1024 px wide, VRAM
 compressed, and assets/paintings/paintings.json (title, artist, date, aspect).
+The offices' prints do the same from source_assets/paintings/office/ to
+assets/paintings/office/.
 
 Both registers go to docs/ASSETS.md between the DRESSING markers.
 
@@ -124,24 +126,26 @@ def decals():
     return rows
 
 
-def paintings():
-    os.makedirs(PAINTINGS_OUT, exist_ok=True)
-    info = json.load(open(os.path.join(PAINTINGS_IN, "info.json"), encoding="utf-8"))
+def paintings(sub=""):
+    # sub: "office/" for the offices' prints, kept apart so the hotel's set stays as it is.
+    source, out = os.path.join(PAINTINGS_IN, sub), os.path.join(PAINTINGS_OUT, sub)
+    os.makedirs(out, exist_ok=True)
+    info = json.load(open(os.path.join(source, "info.json"), encoding="utf-8"))
     entries = []
     for item in info:
-        image = Image.open(os.path.join(PAINTINGS_IN, f"{item['id']}.jpg")).convert("RGB")
-        path = os.path.join(PAINTINGS_OUT, f"{item['id']}.jpg")
+        image = Image.open(os.path.join(source, f"{item['id']}.jpg")).convert("RGB")
+        path = os.path.join(out, f"{item['id']}.jpg")
         image.save(path, quality=90)
-        write_import(path, f"res://assets/paintings/{item['id']}.jpg", 2, 2)
+        write_import(path, f"res://assets/paintings/{sub}{item['id']}.jpg", 2, 2)
         artist = item["artist_display"].split("\n")[0]
         entries.append({"id": item["id"], "title": item["title"], "artist": artist, "date": item["date_display"], "aspect": round(image.width / image.height, 4)})
         print("painting", item["id"], item["title"])
-    with open(os.path.join(PAINTINGS_OUT, "paintings.json"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(out, "paintings.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(entries, f, ensure_ascii=False, indent=1)
     return entries
 
 
-def register(decal_rows, painting_rows):
+def register(decal_rows, painting_rows, office_rows):
     lines = [
         "<!-- DRESSING: generado por tools/textures/ingest_dressing.py, no editar a mano -->",
         "## Decals y cuadros (fase 4 de REALISM.md)",
@@ -162,6 +166,15 @@ def register(decal_rows, painting_rows):
     ]
     for item in painting_rows:
         lines.append(f"| [{item['title']}](https://www.artic.edu/artworks/{item['id']}) | {item['artist']} | {item['date']} |")
+    lines += [
+        "",
+        "Láminas del piso 2 (grabados, fotografías antiguas y planos que cuelgan en las oficinas): del mismo museo y con la misma licencia, en `assets/paintings/office/` (843 px); originales en `source_assets/paintings/office/`. Las cuelga `game/world/office/office_pictures.gd`.",
+        "",
+        "| Obra | Autor | Fecha |",
+        "|---|---|---|",
+    ]
+    for item in office_rows:
+        lines.append(f"| [{item['title']}](https://www.artic.edu/artworks/{item['id']}) | {item['artist']} | {item['date']} |")
     lines.append("<!-- /DRESSING -->")
     block = "\n".join(lines)
     text = open(REGISTER, encoding="utf-8").read()
@@ -173,4 +186,4 @@ def register(decal_rows, painting_rows):
 
 
 if __name__ == "__main__":
-    register(decals(), paintings())
+    register(decals(), paintings(), paintings("office/"))

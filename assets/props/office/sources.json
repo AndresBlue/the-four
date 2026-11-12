@@ -2,8 +2,14 @@
  "anthurium_botany_01": "res://source_assets/props/anthurium_botany_01/_gltf",
  "calathea_orbifolia_01": "res://source_assets/props/calathea_orbifolia_01/_gltf",
  "fichero_vintage_wooden_drawer_01": "res://source_assets/oficinas/muebles_a/fichero_vintage_wooden_drawer_01",
+ "metal_stool_01": "res://source_assets/props/metal_stool_01/_gltf",
  "mid_century_lounge_chair": "res://source_assets/props/mid_century_lounge_chair",
  "pachira_aquatica_01": "res://source_assets/props/pachira_aquatica_01/_gltf",
  "potted_plant_01": "res://source_assets/props/potted_plant_01/_gltf",
- "sofa_02": "res://source_assets/props/sofa_02"
+ "round_wooden_table_01": "res://source_assets/props/round_wooden_table_01",
+ "silla_giratoria_old_computer_chair": "res://source_assets/oficinas/muebles_a/silla_giratoria_old_computer_chair/_zip",
+ "small_wooden_table_01": "res://source_assets/props/small_wooden_table_01",
+ "sofa_02": "res://source_assets/props/sofa_02",
+ "standing_picture_frame_02": "res://source_assets/props/standing_picture_frame_02",
+ "steel_frame_shelves_02": "res://source_assets/props/steel_frame_shelves_02"
 }

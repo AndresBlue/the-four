@@ -74,6 +74,7 @@ SKIP |= {"korean_fire_extinguisher_01", "korean_public_payphone_01"}
 ## (source_assets/oficinas/registro_polyhaven_modelos.json): --set=office
 ## brings them in, never the hotel.
 SKIP |= {"sofa_02", "potted_plant_01", "pachira_aquatica_01", "calathea_orbifolia_01", "anthurium_botany_01", "plastic_bottle_gallon", "mid_century_lounge_chair"}
+SKIP |= {"metal_stool_01", "metal_stool_02", "standing_picture_frame_01", "standing_picture_frame_02", "steel_frame_shelves_02", "steel_frame_shelves_03", "side_table_01", "coffee_table_round_01", "industrial_wall_lamp", "industrial_caged_sconce", "vintage_microwave", "vintage_electric_kettle"}
 ## The offices' Poly Haven kits the hotel already bakes by id (its PARTS and
 ## YAW): --set=office leaves them out. Under their slugs they would be baked
 ## again with no PARTS to split them, so each would come out as one mesh.

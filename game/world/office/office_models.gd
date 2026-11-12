@@ -26,7 +26,7 @@ const MODELS := {
 	# sofa_02 is baked facing +Z, its arms reaching out past its back: backed() would turn it round.
 	"sofa": {"paths": ["res://assets/props/office/sofa_02.res"]},
 	"lounge_chair": {"paths": ["res://assets/props/office/mid_century_lounge_chair.res"], "seat": true},
-	"office_chair": {"paths": []},
+	"office_chair": {"paths": ["res://assets/props/office/silla_giratoria_old_computer_chair.res"], "height": 0.95, "seat": true},
 	"exec_chair": {"paths": []},
 	"visitor_chair": {"paths": []},
 	"plant": {"paths": ["res://assets/props/office/potted_plant_01.res", "res://assets/props/hotel/potted_plant_02.res"]},
