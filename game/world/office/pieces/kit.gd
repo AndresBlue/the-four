@@ -18,9 +18,10 @@ const FLAT := 0.2
 ## What a front and its pull stand out from their carcass, inside the size.
 const FRONT := 0.04
 ## Spines of books and binders (book_row(), binder_row()): muted cloths
-## (maroon, bottle green, navy), raw linen, leather and old board.
-const BOOK_KEYS := ["cloth_red", "cloth_green", "cloth_navy", "linen", "leather", "cardboard", "black", "cloth_red", "leather", "cloth_navy"]
-const BINDER_KEYS := ["black", "black", "cloth_navy", "cloth_green", "plastic_beige"]
+## (maroon, bottle green, navy), leather and old board, nothing lighter than
+## a dull cream (plastic_beige): under the lamps paper and linen read white.
+const BOOK_KEYS := ["cloth_red", "cloth_green", "cloth_navy", "leather", "cardboard", "black", "cloth_red", "leather", "cloth_navy", "plastic_beige"]
+const BINDER_KEYS := ["black", "black", "cloth_navy", "cloth_green", "cloth_red", "cardboard"]
 ## What lies in a pigeonhole (post_pile()): envelopes, manila and plain paper.
 const POST_KEYS := ["paper", "plastic_beige", "linen", "cardboard", "paper"]
 ## A piece's contents at variant v (0 to 2) take their picks from pick + v * VARIANT.
@@ -209,8 +210,8 @@ static func sheets(parts: Dictionary, base: Vector3, size: Vector2, height: floa
 ## Books standing along +x from `origin` (the row's left end, on its shelf,
 ## centred in depth) over `length`, `depth` deep and up to `tall` high, their
 ## spines flush to the front (+Z): sets of one to seven volumes of one cloth,
-## height and depth, the dark ones with gilt bands and the light ones with a
-## label; the row may end in a book leaning on the last one or a few lying
+## height and depth, some with a thin band on the spine; the row may end in
+## a book leaning on the last one or a few lying
 ## flat. Widths, heights, cloths and the end by `pick`.
 static func book_row(parts: Dictionary, origin: Vector3, length: float, depth: float, tall: float, pick := 0) -> void:
 	var roll := hash01(pick, 21)
@@ -240,14 +241,11 @@ static func book_row(parts: Dictionary, origin: Vector3, length: float, depth: f
 		if x + width > length - reserve: break
 		var c := origin + Vector3(x + width * 0.5, height * 0.5, (depth - deep) * 0.5)
 		block(parts, key, c, Vector3(width, height, deep))
-		# On the spine: a set's two gilt bands, or a paper label on a light cloth.
-		var spine := c + Vector3(0.0, 0.0, deep * 0.5 + 0.0005)
-		var light: bool = key in ["linen", "cardboard"]
-		if marked < 0.55 and not light:
-			for band: float in [0.36, 0.3]:
-				stroke(parts, "gold", spine + Vector3(0.0, height * band, 0.0), Vector2(width * 0.8, 0.005))
-		elif marked < 0.8:
-			stroke(parts, "paper" if not light else "leather", spine + Vector3(0.0, height * 0.26, 0.0), Vector2(width * 0.65, minf(0.03, height * 0.12)))
+		# On the spine, at most a thin band: gilt on a dark cloth, leather on a
+		# light one. A label reads as a white square under the lamps.
+		if marked < 0.5:
+			var light: bool = key in ["cardboard", "plastic_beige"]
+			stroke(parts, "leather" if light else "gold", c + Vector3(0.0, height * 0.36, deep * 0.5 + 0.0005), Vector2(width * 0.8, 0.004))
 		x += width + 0.001
 		k += 1
 		run -= 1
@@ -297,7 +295,8 @@ static func binder_row(parts: Dictionary, origin: Vector3, length: float, depth:
 		var key: String = BINDER_KEYS[int(hash01(pick * 89 + k, 6) * BINDER_KEYS.size()) % BINDER_KEYS.size()]
 		var c := origin + Vector3(0.04 + 0.08 * k, tall * 0.5, 0.0)
 		block(parts, key, c, Vector3(0.075, tall, depth))
-		stroke(parts, "paper", c + Vector3(0.0, tall * 0.15, facing * (depth * 0.5 + 0.0005)), Vector2(0.045, tall * 0.4), turn)
+		# A cream label, not paper white: under the lamps it would burn.
+		stroke(parts, "plastic_beige", c + Vector3(0.0, tall * 0.15, facing * (depth * 0.5 + 0.0005)), Vector2(0.045, tall * 0.4), turn)
 		cylinder(parts, "metal", c + Vector3(0.0, -tall * 0.3, facing * (depth * 0.5 + 0.001)), 0.012, 0.002, 6, along_z())
 
 ## Files along a shelf from `origin` (left end, on the shelf, centred in depth)

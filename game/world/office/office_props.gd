@@ -453,13 +453,14 @@ static func chair(builder: Node3D, holder: Node3D, at: Vector3, face: float, kin
 	builder.dressing_log.chairs.append({"room": int(builder.building_room.get("id", -1)), "holder": String(holder.name), "at": pose.origin, "front": pose.basis.z, "kind": kind})
 
 ## The break room's vending machine (spec_rediseno 6.10): its stand-in and
-## collider, its window lit while its room is (a glow_ box, which
-## office_geometry.lenses_of() puts out with the room) and a soft light on
-## the floor before it (an accent, office_accents.gd).
+## collider, a tube lit at the head of its window while its room is (a glow_
+## box, which office_geometry.lenses_of() puts out with the room; a lit pane
+## over the whole window hid the trays) and a soft light on the floor before
+## it (an accent, office_accents.gd).
 static func vending(builder: Node3D, holder: Node3D, at: Vector3, room_id: int) -> void:
 	piece(builder, holder, MODELS.mesh_of(builder, "vending") as ArrayMesh, at)
 	KIT.material(builder, "glow_white")
-	builder.box(holder, at + Vector3(-0.1, 1.05, 0.3855), Vector3(0.5, 1.04, 0.001), "glow_white")
+	builder.box(holder, at + Vector3(-0.125, 1.665, 0.33), Vector3(0.56, 0.012, 0.02), "glow_white")
 	MODELS.light(builder, holder, room_id, "vending", Transform3D(Basis.IDENTITY, at))
 
 ## A microfiche reader (6.5) on its table, its screen lit while its room is.

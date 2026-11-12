@@ -19,7 +19,9 @@ static func samples(builder: Node3D) -> Array:
 		["microfiche_reader", microfiche_reader(builder, Vector3(0.45, 0.55, 0.5))],
 	]
 
-## Black desk telephone; with off_hook its handset lies beside it.
+## Black push-button desk telephone of the eighties: a body with its sloped
+## keypad, the cradle's two prongs, the curved handset on them (with
+## off_hook, lying behind it) and its coiled cord down the left side.
 static func phone(builder: Node3D, size: Vector3, off_hook: bool) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("phone", size, str(off_hook)), func() -> ArrayMesh: return make_phone(builder, size, off_hook))
 
@@ -28,30 +30,67 @@ static func make_phone(builder: Node3D, size: Vector3, off_hook: bool) -> ArrayM
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	KIT.block(p, "black", Vector3(0, 0.03, 0.03), Vector3(w, 0.06, d - 0.06), 0.01)
-	KIT.block(p, "black", Vector3(0, 0.065, 0.04), Vector3(w - 0.02, 0.02, d * 0.5), 0.006, Basis(Vector3.RIGHT, 0.2))
-	KIT.cylinder(p, "metal", Vector3(0, 0.08, 0.06), 0.035, 0.006, 16, Basis(Vector3.RIGHT, 0.2))
+	var bw := w - 0.03
+	KIT.block(p, "black", Vector3(0, 0.0225, 0.03), Vector3(bw, 0.045, d - 0.06), 0.014)
+	# The keypad on its slope, front down: twelve grey keys, four rows of three.
+	var slope := Basis(Vector3.RIGHT, 0.18)
+	var deck := Vector3(0, 0.05, 0.055)
+	KIT.block(p, "black", deck, Vector3(bw * 0.7, 0.014, 0.11), 0.005, slope)
+	for r in 4:
+		for c in 3:
+			KIT.block(p, "steel_grey", deck + slope * Vector3((c - 1) * 0.03, 0.009, -0.039 + r * 0.026), Vector3(0.02, 0.006, 0.016), 0.0, slope)
+	# The cradle's prongs over the body's back.
+	for s: float in [-1.0, 1.0]:
+		KIT.block(p, "black", Vector3(s * 0.08, 0.05, -0.03), Vector3(0.034, 0.02, 0.05), 0.007)
+		# With the handset off, the hook switch's plungers stand up out of them.
+		if off_hook: KIT.block(p, "steel_grey", Vector3(s * 0.08, 0.07, -0.03), Vector3(0.016, 0.022, 0.016), 0.0)
+	# The handset: two cups and the arched grip between them; on its prongs,
+	# or off them, lying on the desk behind the body.
+	var at := Vector3(0, 0.0, -0.03) if not off_hook else Vector3(0, -0.051, -0.09)
+	# One grip from cup to cup, the cups hanging below its ends: a jointed
+	# arch reads as a chain of blocks.
+	for s: float in [-1.0, 1.0]:
+		KIT.block(p, "black", at + Vector3(s * 0.08, 0.069, 0), Vector3(0.048, 0.028, 0.05), 0.012, Basis(Vector3.BACK, s * 0.12))
+	KIT.block(p, "black", at + Vector3(0, 0.084, 0), Vector3(0.19, 0.02, 0.036), 0.009)
+	# The coiled cord: rings down from the handset's left cup, then along the
+	# desk by the body's left side.
+	var cord_x := -bw * 0.5 - 0.007
 	if not off_hook:
-		KIT.block(p, "black", Vector3(0, h - 0.015, -0.035), Vector3(w, 0.03, 0.05), 0.012)
-		for s: float in [-1.0, 1.0]:
-			KIT.block(p, "black", Vector3(s * (w / 2 - 0.03), h - 0.025, -0.035), Vector3(0.06, 0.05, 0.06), 0.015)
+		for k in 4:
+			KIT.cylinder(p, "black", Vector3(cord_x, 0.05 - k * 0.011, -0.03), 0.006, 0.005, 5)
+		for k in 8:
+			KIT.cylinder(p, "black", Vector3(cord_x, 0.007, -0.02 + k * 0.011), 0.006, 0.005, 5, KIT.along_z())
 	else:
-		KIT.block(p, "black", Vector3(0, 0.015, -d / 2 + 0.03), Vector3(w, 0.03, 0.05), 0.012)
-		for s: float in [-1.0, 1.0]:
-			KIT.block(p, "black", Vector3(s * (w / 2 - 0.03), 0.025, -d / 2 + 0.03), Vector3(0.06, 0.05, 0.06), 0.015)
-		KIT.cylinder(p, "black", Vector3(w / 2 - 0.02, 0.006, -0.05), 0.004, 0.04, 6, KIT.along_z())
+		for k in 8:
+			KIT.cylinder(p, "black", Vector3(cord_x, 0.007, -0.075 + k * 0.011), 0.006, 0.005, 5, KIT.along_z())
 	var title: String = "phone_off" if off_hook else "phone"
 	return KIT.finish(builder, p, title, size, {"solid": false})
 
-## Ceramic mug with its handle, standing on a desk.
+## A cream stoneware mug of coffee: a thin rim over the coffee and a D handle.
 static func mug(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("mug", size), func() -> ArrayMesh: return make_mug(builder, size))
 
 static func make_mug(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var p := KIT.begin()
 	var h := size.y
-	KIT.cylinder(p, "ceramic", Vector3(-0.007, h / 2, 0), 0.04, h, 12)
-	KIT.block(p, "ceramic", Vector3(0.04, h / 2, 0), Vector3(0.014, 0.06, 0.012))
+	var c := Vector3(-0.007, 0.0, 0.0)
+	var r := 0.04
+	var level := h - 0.012
+	# The body up to the coffee, the coffee, and the thin wall round it.
+	KIT.cylinder(p, "plastic_beige", c + Vector3(0, level * 0.5, 0), r, level, 16)
+	KIT.cylinder(p, "screen", c + Vector3(0, level + 0.0005, 0), r - 0.004, 0.001, 16)
+	for k in 16:
+		var a := TAU * (k + 0.5) / 16.0
+		KIT.block(p, "plastic_beige", c + Vector3(cos(a) * (r - 0.002), level + 0.006, sin(a) * (r - 0.002)), Vector3(0.004, 0.012, TAU * r / 16.0 + 0.001), 0.0, Basis(Vector3.UP, -a))
+	# The handle: a half ellipse of eight pieces from the wall and back.
+	var hub := Vector3(c.x + r - 0.007, h * 0.5, 0.0)
+	var reach := Vector2(0.023, 0.026)
+	for k in 8:
+		var t0 := -PI * 0.5 + PI * k / 8.0
+		var t1 := -PI * 0.5 + PI * (k + 1) / 8.0
+		var a0 := hub + Vector3(cos(t0) * reach.x, sin(t0) * reach.y, 0.0)
+		var a1 := hub + Vector3(cos(t1) * reach.x, sin(t1) * reach.y, 0.0)
+		KIT.block(p, "plastic_beige", (a0 + a1) * 0.5, Vector3((a1 - a0).length() + 0.003, 0.008, 0.01), 0.0, Basis(Vector3.BACK, atan2(a1.y - a0.y, a1.x - a0.x)))
 	return KIT.finish(builder, p, "mug", size, {"solid": false})
 
 ## Glass ashtray holding a cigarette end, on a desk.
@@ -66,17 +105,35 @@ static func make_ashtray(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.block(p, "paper", Vector3(0.02, 0.025, 0.01), Vector3(0.03, 0.008, 0.008), 0.0, Basis(Vector3.UP, 0.6))
 	return KIT.finish(builder, p, "ashtray", size, {"solid": false})
 
-## Pen pot with four pens standing in it, on a desk.
+## Black pen pot, open, its rim thin: pens with their caps and clips, a
+## pencil and a steel rule, each leaning its own way.
 static func pen_cup(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("pen_cup", size), func() -> ArrayMesh: return make_pen_cup(builder, size))
 
 static func make_pen_cup(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var p := KIT.begin()
-	KIT.cylinder(p, "black", Vector3(0, 0.05, 0), 0.035, 0.1, 10)
-	for k in 4:
-		var key: String = ["cloth_red", "cloth_navy", "black", "gold"][k]
-		var tilt: float = 0.12 if k % 2 == 0 else -0.12
-		KIT.cylinder(p, key, Vector3(cos(k * 1.6) * 0.015, 0.09, sin(k * 1.6) * 0.015), 0.004, 0.13, 6, Basis(Vector3.RIGHT, tilt))
+	var r := 0.034
+	var level := 0.092
+	KIT.cylinder(p, "black", Vector3(0, level * 0.5, 0), r, level, 12)
+	for k in 12:
+		var a := TAU * (k + 0.5) / 12.0
+		KIT.block(p, "black", Vector3(cos(a) * (r - 0.002), level + 0.004, sin(a) * (r - 0.002)), Vector3(0.004, 0.008, TAU * r / 12.0 + 0.001), 0.0, Basis(Vector3.UP, -a))
+	# Pens: a body, a darker cap over its top and a steel clip down the cap.
+	var pens := [["cloth_navy", 0.4], ["cloth_red", 2.5], ["black", 4.4]]
+	for k in pens.size():
+		var key: String = pens[k][0]
+		var turn := Basis(Vector3.UP, float(pens[k][1])) * Basis(Vector3.RIGHT, 0.13)
+		var foot := Vector3(cos(k * 2.1) * 0.012, 0.03, sin(k * 2.1) * 0.012)
+		KIT.cylinder(p, key, foot + turn * Vector3(0, 0.055, 0), 0.0045, 0.11, 6, turn)
+		KIT.cylinder(p, "black", foot + turn * Vector3(0, 0.105, 0), 0.0055, 0.04, 6, turn)
+		KIT.block(p, "metal", foot + turn * Vector3(0, 0.1, 0.0065), Vector3(0.003, 0.03, 0.0015), 0.0, turn)
+	# A pencil, sharpened, and a steel rule.
+	var lean := Basis(Vector3.UP, 1.4) * Basis(Vector3.RIGHT, -0.12)
+	var stub := Vector3(-0.014, 0.03, 0.006)
+	KIT.cylinder(p, "plastic_beige", stub + lean * Vector3(0, 0.055, 0), 0.0038, 0.11, 6, lean)
+	KIT.cylinder(p, "cardboard", stub + lean * Vector3(0, 0.116, 0), 0.0028, 0.012, 6, lean)
+	var rule := Basis(Vector3.UP, 3.5) * Basis(Vector3.RIGHT, -0.1)
+	KIT.block(p, "steel_grey", Vector3(0.006, 0.03, -0.012) + rule * Vector3(0, 0.06, 0), Vector3(0.022, 0.12, 0.0015), 0.0, rule)
 	return KIT.finish(builder, p, "pen_cup", size, {"solid": false})
 
 ## Loose sheets of paper lying flat and scattered over a floor or a desk.

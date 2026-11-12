@@ -82,16 +82,24 @@ static func make_exec_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var tall := h - 0.55
 	var back_w := w * 0.78
 	KIT.block(p, "leather", back * Vector3(0, tall * 0.48, -0.025), Vector3(back_w, tall * 0.96, 0.07), 0.03, back.basis)
-	# Its face: pillows three across and four high, buttoned where they meet.
-	var pw := (back_w - 0.06) / 3.0
-	var ph := tall * 0.18
-	for r in 4:
-		for c in 3:
-			# A little over their pitch: no gap shows, only the crease of the bevels.
-			KIT.block(p, "leather", back * Vector3((c - 1) * pw, 0.06 + ph * (r + 0.5), 0.025), Vector3(pw + 0.004, ph + 0.004, 0.05), 0.024, back.basis)
-	for r in range(1, 4):
-		for c: float in [-0.5, 0.5]:
-			KIT.cylinder(p, "black", back * Vector3(c * pw, 0.06 + ph * r, 0.046), 0.007, 0.008, 6, back.basis * KIT.along_z())
+	# Its face: one padded cushion, buttoned in a diamond (capitoné): rows of
+	# big buttons offset row by row, a dark pleat from each to the ones above.
+	# Separate pillows read as a grid of blocks from across the room.
+	var face_h := tall * 0.74
+	KIT.block(p, "leather", back * Vector3(0, 0.06 + face_h * 0.5, 0.022), Vector3(back_w - 0.04, face_h, 0.05), 0.03, back.basis)
+	var step := Vector2((back_w - 0.12) / 4.0, face_h / 5.0)
+	var face_z := 0.047
+	for r in 5:
+		for c in 5:
+			if (r + c) % 2 == 1: continue
+			var at := Vector2((c - 2) * step.x, 0.06 + step.y * (r + 0.5))
+			KIT.cylinder(p, "black", back * Vector3(at.x, at.y, face_z + 0.001), 0.011, 0.006, 8, back.basis * KIT.along_z())
+			if r == 4: continue
+			for s: float in [-1.0, 1.0]:
+				if c + int(s) < 0 or c + int(s) > 4: continue
+				var mid := at + Vector2(s * step.x, step.y) * 0.5
+				var lean := atan2(-s * step.x, step.y)
+				KIT.stroke(p, "black", back * Vector3(mid.x, mid.y, face_z + 0.0005), Vector2(0.004, step.length()), back.basis * Basis(Vector3.BACK, lean))
 	KIT.cylinder(p, "leather", back * Vector3(0, tall * 0.88, 0.005), 0.045, back_w - 0.04, 12, back.basis * KIT.along_x())
 	# The arms: a padded rest on a steel loop from the seat's side.
 	for s: float in [-1.0, 1.0]:
@@ -139,7 +147,9 @@ static func make_visitor_chair(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.block(p, "walnut_object", pad * Vector3(0, h - seat - 0.1, -0.012), Vector3(2 * lx, 0.035, 0.03), 0.006, rake)
 	return KIT.finish(builder, p, "visitor_chair", size)
 
-## Desk lamp: a banker's brass lamp with a green shade, or a black arm lamp.
+## Desk lamp: a banker's lamp (a green half-round shade on a turned brass
+## stem and foot) or a black arm lamp (a weighted foot, two jointed arms with
+## their springs, a conical shade over its bulb).
 static func desk_lamp(builder: Node3D, size: Vector3, look: String) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("desk_lamp", size, look), func() -> ArrayMesh: return make_desk_lamp(builder, size, look))
 
@@ -149,16 +159,60 @@ static func make_desk_lamp(builder: Node3D, size: Vector3, look: String) -> Arra
 	var h := size.y
 	var d := size.z
 	if look == "banker":
-		KIT.block(p, "gold", Vector3(0, 0.012, 0), Vector3(w * 0.6, 0.024, d * 0.7), 0.006)
-		KIT.cylinder(p, "gold", Vector3(0, (0.024 + h - 0.07) / 2, -d * 0.15), 0.01, h - 0.094, 8)
-		KIT.cylinder(p, "gold", Vector3(0, h - 0.07, -d * 0.075), 0.008, d * 0.25, 8, KIT.along_z())
-		KIT.cylinder(p, "cloth_green", Vector3(0, h - 0.07, 0.02), 0.07, w - 0.02, 12, KIT.along_x())
-		KIT.block(p, "lamp_off", Vector3(0, h - 0.145, 0.02), Vector3(w - 0.08, 0.004, 0.06))
+		# The foot, turned: a plinth, a step and a dome; the stem with its knop.
+		var sx := -d * 0.15
+		KIT.cylinder(p, "gold", Vector3(0, 0.008, sx), 0.075, 0.016, 16)
+		KIT.cylinder(p, "gold", Vector3(0, 0.022, sx), 0.06, 0.012, 16)
+		KIT.cylinder(p, "gold", Vector3(0, 0.036, sx), 0.036, 0.016, 12)
+		var top := h - 0.1
+		KIT.cylinder(p, "gold", Vector3(0, (0.044 + top) * 0.5, sx), 0.009, top - 0.044, 8)
+		KIT.cylinder(p, "gold", Vector3(0, top * 0.45, sx), 0.016, 0.02, 10)
+		KIT.cylinder(p, "gold", Vector3(0, top, (sx + 0.02) * 0.5), 0.007, 0.02 - sx, 8, KIT.along_z())
+		# The shade: a half round of green glass along x, open below, its lips in brass.
+		var cy := h - 0.08
+		var cz := 0.02
+		var rad := 0.07
+		var span := w - 0.04
+		var n := 9
+		for k in n:
+			var th := -0.2 + (PI + 0.4) * (k + 0.5) / n
+			var chord := 2.0 * rad * sin((PI + 0.4) / n * 0.5) + 0.002
+			KIT.block(p, "cloth_green", Vector3(0, cy + sin(th) * rad, cz + cos(th) * rad), Vector3(span, 0.005, chord), 0.0, Basis(Vector3.RIGHT, PI * 0.5 - th))
+		for th: float in [-0.2, PI + 0.2]:
+			KIT.cylinder(p, "gold", Vector3(0, cy + sin(th) * rad, cz + cos(th) * rad), 0.004, span + 0.006, 6, KIT.along_x())
+		KIT.block(p, "lamp_off", Vector3(0, cy - 0.02, cz), Vector3(span - 0.06, 0.004, 0.06))
+		KIT.cylinder(p, "gold", Vector3(span * 0.3, cy - rad * 0.2 - 0.03, cz + rad * 0.7), 0.002, 0.06, 4)
 	else:
-		KIT.cylinder(p, "black", Vector3(0, 0.012, 0), w * 0.4, 0.024, 16)
-		KIT.block(p, "black", Vector3(0, 0.17, -0.02), Vector3(0.015, 0.3, 0.015), 0.0, Basis(Vector3.RIGHT, 0.25))
-		KIT.block(p, "black", Vector3(0, 0.38, 0.06), Vector3(0.015, 0.28, 0.015), 0.0, Basis(Vector3.RIGHT, 1.0))
-		KIT.cylinder(p, "black", Vector3(0, h - 0.08, d / 2 - 0.08), 0.06, 0.1, 12, Basis(Vector3.RIGHT, 0.5))
+		# The foot, and the lower arm from its hinge to the elbow, the upper on
+		# to the head: each a pair of rods with a spring beside them.
+		KIT.cylinder(p, "black", Vector3(0, 0.0125, -0.055), w * 0.4, 0.025, 16)
+		KIT.cylinder(p, "black", Vector3(0, 0.04, -0.1), 0.018, 0.03, 10)
+		var hinge := Vector3(0, 0.05, -0.1)
+		var elbow := Vector3(0, 0.33, -0.06)
+		var head := Vector3(0, 0.45, 0.03)
+		for arm: Array in [[hinge, elbow], [elbow, head]]:
+			var a: Vector3 = arm[0]
+			var b: Vector3 = arm[1]
+			var turn := Basis(Vector3.RIGHT, atan2(b.z - a.z, b.y - a.y))
+			var length := (b - a).length()
+			for s: float in [-1.0, 1.0]:
+				KIT.block(p, "black", (a + b) * 0.5 + Vector3(s * 0.012, 0, 0), Vector3(0.007, length, 0.007), 0.0, turn)
+			KIT.cylinder(p, "metal", (a + b) * 0.5 + Vector3(0.024, 0, 0), 0.005, length * 0.6, 6, turn)
+		KIT.cylinder(p, "black", elbow, 0.014, 0.034, 10, KIT.along_x())
+		# The shade: a cone of twelve leaves from its cap, aimed down and forward.
+		var aim := Basis(Vector3.RIGHT, -0.5)
+		var apex := Vector3(0, 0.445, 0.06)
+		var deep := 0.11
+		var r1 := 0.025
+		var r2 := 0.065
+		var tilt := atan2(r2 - r1, deep)
+		var leaves := 12
+		for k in leaves:
+			var a := TAU * k / leaves
+			var spin := Basis(Vector3.UP, a)
+			KIT.block(p, "black", apex + aim * spin * Vector3(0, -deep * 0.5, (r1 + r2) * 0.5), Vector3(TAU * r2 / leaves * 1.05, deep / cos(tilt), 0.003), 0.0, aim * spin * Basis(Vector3.RIGHT, -tilt))
+		KIT.cylinder(p, "black", apex + aim * Vector3(0, 0.01, 0), r1 + 0.004, 0.03, 10, aim)
+		KIT.cylinder(p, "lamp_off", apex + aim * Vector3(0, -0.05, 0), 0.022, 0.04, 8, aim)
 	return KIT.finish(builder, p, "desk_lamp_" + look, size)
 
 ## Floor lamp with a linen shade on a brass pole, for a corner by a sofa.
@@ -300,7 +354,9 @@ static func make_fridge(builder: Node3D, size: Vector3) -> ArrayMesh:
 	KIT.block(p, "black", Vector3(0, 0.04, d / 2 - 0.04), Vector3(w - 0.04, 0.08, 0.02))
 	return KIT.finish(builder, p, "fridge", size)
 
-## Filter coffee maker with its jug, on the break room counter.
+## Filter coffee maker of black plastic, on the break room counter: its base
+## with the hot plate and the red switch, the tower behind, the hood with the
+## filter basket under it, and the glass jug with its lid and handle.
 static func coffee_maker(builder: Node3D, size: Vector3) -> ArrayMesh:
 	return KIT.cached(builder, KIT.key_of("coffee_maker", size), func() -> ArrayMesh: return make_coffee_maker(builder, size))
 
@@ -309,11 +365,20 @@ static func make_coffee_maker(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var w := size.x
 	var h := size.y
 	var d := size.z
-	KIT.block(p, "black", Vector3(0, 0.02, 0), Vector3(w, 0.04, d), 0.006)
-	KIT.block(p, "black", Vector3(0, h / 2, -d / 2 + 0.05), Vector3(w, h, 0.1), 0.01)
-	KIT.block(p, "black", Vector3(0, h - 0.04, 0.0), Vector3(w, 0.08, d - 0.02), 0.01)
-	KIT.cylinder(p, "screen", Vector3(0, 0.12, 0.05), 0.065, 0.16, 12)
-	KIT.block(p, "black", Vector3(0.08, 0.12, 0.05), Vector3(0.015, 0.1, 0.02))
+	var jz := 0.035
+	KIT.block(p, "black", Vector3(0, 0.0175, 0), Vector3(w, 0.035, d), 0.008)
+	KIT.cylinder(p, "metal", Vector3(0, 0.037, jz), 0.062, 0.004, 16)
+	KIT.block(p, "paint_red", Vector3(w / 2 - 0.03, 0.018, d / 2 - 0.0005), Vector3(0.018, 0.012, 0.001))
+	KIT.block(p, "black", Vector3(0, h / 2, -d / 2 + 0.04), Vector3(w, h, 0.08), 0.012)
+	KIT.block(p, "black", Vector3(0, h - 0.035, 0.0), Vector3(w, 0.07, d - 0.02), 0.014)
+	KIT.cylinder(p, "black", Vector3(0, h - 0.085, jz), 0.05, 0.03, 12)
+	# The jug: its belly of dark glass with the coffee, its neck, lid and handle.
+	KIT.cylinder(p, "screen", Vector3(0, 0.039 + 0.045, jz), 0.064, 0.09, 16)
+	KIT.cylinder(p, "screen", Vector3(0, 0.129 + 0.018, jz), 0.05, 0.036, 16)
+	KIT.cylinder(p, "black", Vector3(0, 0.171, jz), 0.054, 0.012, 16)
+	KIT.block(p, "black", Vector3(0.082, 0.165, jz), Vector3(0.044, 0.014, 0.022), 0.004)
+	KIT.block(p, "black", Vector3(0.097, 0.115, jz), Vector3(0.014, 0.1, 0.022), 0.004)
+	KIT.block(p, "black", Vector3(0.08, 0.07, jz), Vector3(0.034, 0.014, 0.022), 0.004)
 	return KIT.finish(builder, p, "coffee_maker", size)
 
 ## Old beige microwave, on the break room counter.

@@ -748,6 +748,14 @@ pueda jugar entero sin tocar el teclado.
   - **Por decidir con el autor:** en Desafiante, las claves compartidas con el hotel (el director, los ascensores, los reintentos) son las de Desafiante, no las de la Pesadilla que jugó y quiso guardar como Desafiante.
   - Y el lote de equilibrio con bots por dificultad y por número de jugadores, las pruebas que afirmaban su mente de antes y `verify.ps1`.
 
+- **Lo que quedó de la primera vuelta del frente visual de las oficinas** (11 de noviembre de 2026; `.claude/specs/spec_rediseno.md`, secciones 4 y 11). El autor la vio «aceptable, pero para nada pulido».
+  - **Aparatos pequeños que piden modelo real:** el monitor CRT, el teléfono, la máquina de escribir, la expendedora, la fuente de agua, la nevera, el perchero y las persianas. Hoy son piezas en código. Los candidatos están en `source_assets/oficinas/RESUMEN.md` y son de Sketchfab: piden la sesión del autor.
+  - **Tres de Poly Haven que no entran porque sus texturas llevan rótulos:** el microondas, el hervidor y los marcos colgados.
+  - **Luz:** el vinilo no tiene rugosidad propia (es la del escaneo de losetas con un ajuste); el rebote no ve los focos bajo las pantallas (van sin horneado); Medio no tiene esos focos (`pools_shown()` solo los da en Alto y Ultra).
+  - **Muy bajo:** volver a hornear las imágenes pequeñas de la madera (`assets/textures/lite/`) con `tools/textures/bake_lite_maps.gd`, que necesita ventana, después de los cambios de la madera.
+  - **Capturas:** en la ventanilla, los aseos, el montacargas y el despacho, el encuadre de `tools/capture/office_rooms_capture.gd` no enseña la pared característica.
+  - **Densidad:** en la captura, la sala de descanso solo pone 2 de sus 4 mesas.
+
 ## 4 · Assets que faltan (tuyos)
 
 - **Grabaciones de verdad para las oficinas** (23 de octubre de 2026): el tubo neumático (hoy aire comprimido de BigSoundBank), alguien a gatas por un ducto de chapa (hoy dos golpes en una rejilla de calefacción) y la reja de tijera del montacargas; las de NoiseCollector y Ultra-Edward piden cuenta. Y que oigas los bucles de `assets/audio/sfx/office/` (máquina de escribir, siseo, tictac, ventiladores), cuyos tramos se eligieron sin escucharlos.

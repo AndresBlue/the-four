@@ -20,7 +20,8 @@ const EQ_MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
 ## of the pot a plant that comes without one stands in).
 const MODELS := {
 	"stacking_chair": {"paths": ["res://assets/props/hotel/SchoolChair_01.res"], "scale": 0.8, "seat": true},
-	"waiting_chair": {"paths": ["res://assets/props/hotel/GreenChair_01.res"], "height": 0.9, "seat": true},
+	# The hotel's carved chair read out of its time in a 1990 office: the walnut and leather stand-in.
+	"waiting_chair": {"paths": []},
 	"armchair": {"paths": ["res://assets/props/hotel/ArmChair_01.res"], "seat": true},
 	"dining_chair": {"paths": ["res://assets/props/hotel/dining_chair_02.res"], "seat": true},
 	# sofa_02 is baked facing +Z, its arms reaching out past its back: backed() would turn it round.
