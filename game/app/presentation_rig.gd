@@ -52,11 +52,13 @@ func build_environment() -> void:
 	lens_layer = level.get_node("Presentation/Lens")
 	level.camcorder = level.get_node("Presentation/Camcorder")
 	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), level.settings.values.reduced))
-	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length}
+	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length, "contrast": level.environment.adjustment_contrast, "saturation": level.environment.adjustment_saturation}
 	# Only where there is a RenderingDevice to run it (not headless, not
 	# Compatibility): elsewhere the game keeps AgX.
 	if RenderingServer.get_rendering_device() != null:
 		camera_effect = CAMERA_EFFECT.new()
+		authored_tone.key = camera_effect.key
+		authored_tone.white = camera_effect.white_balance
 		# The light smears while it is being exposed: blur first, then the camera.
 		blur_effect = BLUR_EFFECT.new()
 		var compositor := Compositor.new()
@@ -322,6 +324,18 @@ func configure_hotel() -> void:
 	level.hotel.reduced = level.settings.values.reduced
 	level.hotel.echo_view = echo_seat()
 	level.hotel.apply_quality(PRESETS.of(level.settings.values.quality, level.settings.values))
+	apply_grade()
+
+## A floor may grade the picture its own way (office_geometry.grade()): the
+## iris's key, the camera's white balance and the environment's contrast and
+## saturation. A floor without one, the hotel, gets back what was authored.
+func apply_grade() -> void:
+	var grade: Dictionary = level.hotel.grade() if level.hotel.has_method("grade") else {}
+	if is_instance_valid(camera_effect):
+		camera_effect.key = grade.get("key", authored_tone.key)
+		camera_effect.white_balance = grade.get("white", authored_tone.white)
+	level.environment.adjustment_contrast = grade.get("contrast", authored_tone.contrast)
+	level.environment.adjustment_saturation = grade.get("saturation", authored_tone.saturation)
 
 ## Wardrobe enclosure and lost signal on the analog filter. The first is
 ## off with reduced effects; the picture going is not an

@@ -16,5 +16,6 @@ shader_parameter/map_metres = 0.7
 shader_parameter/map_mode = 1
 shader_parameter/map_tint = Color(0.33, 0.31, 0.28, 1)
 shader_parameter/map_roughness = -0.3
+shader_parameter/normal_strength = 0.3
 shader_parameter/map_metallic = 0.0
 metadata/scan = "office_terrazzo003"

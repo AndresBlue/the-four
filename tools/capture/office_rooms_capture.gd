@@ -4,7 +4,7 @@ extends SceneTree
 ## picture, with the figures of criteria (a) and (b) of spec_rediseno 11; the
 ## same room with the game's field of view and its tape; and the building
 ## views. Built at Apacible with every room lit, planta 3 too. With a window:
-##   godot --path . --script res://tools/capture/office_rooms_capture.gd --log-file <log> -- --automation --test-profile --silent [--seed=7] [--quality=2] [--prefix=antes]
+##   godot --path . --script res://tools/capture/office_rooms_capture.gd --log-file <log> -- --automation --test-profile --silent [--seed=7] [--quality=2] [--prefix=antes] [--rooms=recepcion,archivo]
 ## Writes evidence/rediseno/<prefix>/<sala>.png (reference left, clean capture
 ## right), <sala>_juego.png, vano_<sala>.png, edificio_pasillo.png and
 ## cifras.json. Quality 2 is Alto, 4 Muy bajo (graphics_presets.NAMES). A
@@ -60,6 +60,8 @@ var game_fov := 70.0
 var game_keep: int = Camera3D.KEEP_HEIGHT
 var cifras: Array = []
 var faltan: Array = []
+## --rooms=a,b: only those rooms, and no corridor view (quick iterations).
+var only := PackedStringArray()
 
 func _initialize() -> void: run.call_deferred()
 
@@ -291,6 +293,7 @@ func run() -> void:
 		if argument.begins_with("--seed="): seed_value = int(argument.trim_prefix("--seed="))
 		if argument.begins_with("--quality="): quality = int(argument.trim_prefix("--quality="))
 		if argument.begins_with("--prefix="): out_dir += "/" + argument.trim_prefix("--prefix=")
+		if argument.begins_with("--rooms="): only = argument.trim_prefix("--rooms=").split(",")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	# Settings and floor as the bench sets them: the preset's own scale, no creature.
 	level.settings.values = level.settings.DEFAULTS.duplicate()
@@ -314,6 +317,7 @@ func run() -> void:
 	game_keep = level.player.camera.keep_aspect
 	for entry in ROOMS:
 		var label: String = entry[0]
+		if not only.is_empty() and not only.has(label): continue
 		var file_name: String = entry[1]
 		var room: Dictionary = room_of(entry[2])
 		if room.is_empty():
@@ -375,7 +379,7 @@ func run() -> void:
 				through.save_png(out_dir + "/vano_" + label + ".png")
 	# The longest corridor of planta 1 (the most doors on a tie), its far end in view.
 	var corridor: Dictionary = {}
-	var best_length := -1.0
+	var best_length := -1.0 if only.is_empty() else INF
 	var best_ways := -1
 	for room in level.manifest.rooms:
 		if int(room.type) != OFFICE.CORRIDOR or int(room.wing) != 0 or FLOOR.is_void(room): continue

@@ -114,9 +114,16 @@ const COLUMN_PLASTER := Color("cbc1a8")
 const COLUMN_BASE := 0.1
 const COLUMN_CAP := 0.08
 const COLUMN_PROUD := 0.012
-const LAMP_ENERGY := 3.6
+const LAMP_ENERGY := 3.0
 const LAMP_DROP := 0.35
-const LAMP_ATTENUATION := 0.9      # flatter than the hotel's 1.25: offices are evenly lit
+## Steeper than the hotel's 1.25 where the troffers have their pools: the
+## room lamp is the fill, and the corners and the tops of the walls fall to
+## dark (spec_rediseno 4, low key). Without the pools (pools_shown()) the lamp
+## lights the room alone, flatter, or the cheap presets fall to black.
+const LAMP_ATTENUATION := 1.4
+const LAMP_ATTENUATION_ALONE := 0.9
+## The troffer rooms' lamps, whose attenuation follows the pools (apply_quality()).
+var troffer_lamps: Array[OmniLight3D] = []
 const FAILING := 0.12              # lit rooms with one failing troffer (vary salt 160)
 ## The troffers' share of specular light: their highlight on a waxed floor is
 ## the floor's reflection of them where there is no SSR (spec_rediseno 4).
@@ -141,6 +148,27 @@ const WRAP_DROP := 0.09
 const HALO_REACH := 1.2
 const HALO_BELOW := 0.002
 const HALO_ENERGY := 0.59
+## A lit lens burns (spec_rediseno 4): its emission over the lamp colour, so
+## that it is the brightest thing in the picture, clips, blooms and shows in
+## a waxed floor.
+const LENS_GLOW := 4.0
+## The pool under each troffer (spec_rediseno 4, low key): a spot straight
+## down from its lens, no shadow, at POOL_ENERGY with its room's lamp whole,
+## its cone's half angle (its edge scallops the walls near it) and its reach
+## (long: a short one fades the pool out before the floor). Only where the
+## rooms keep their lamps by layers and the lamps cast (Alto, Ultra):
+## elsewhere it would light through the walls (pools_shown()). With no
+## shadow it also reaches under the tables: little specular, so what it lights
+## there shows no glints.
+const POOL_ENERGY := 1.0
+const POOL_SPECULAR := 0.25
+const POOL_ANGLE := 58.0
+const POOL_RANGE := 7.0
+## The offices' own grade of the picture (presentation_rig.apply_grade()): a
+## lower key for the iris, warm, with contrast, as the references
+## (spec_rediseno 4). The hotel keeps the camera's.
+const GRADE := {"key": 0.05, "white": Vector3(1.02, 1.0, 0.95), "contrast": 1.16, "saturation": 0.85}
+func grade() -> Dictionary: return GRADE
 ## How far a hole's dark reaches below the tiles' plane (a gap, a tile she
 ## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
 ## shows no glow in the hole.
@@ -300,6 +328,7 @@ func lens_key(room: Dictionary) -> String:
 	if lens is BaseMaterial3D:
 		(lens as BaseMaterial3D).albedo_color = LENS_ALBEDO
 		(lens as BaseMaterial3D).emission = LIGHTING.light_color(float(kelvin))
+		(lens as BaseMaterial3D).emission_energy_multiplier = LENS_GLOW
 	materials[key] = lens
 	return key
 
@@ -314,6 +343,7 @@ func batten_glass_key(room: Dictionary) -> String:
 	var glass: Material = materials.light.duplicate()
 	if glass is BaseMaterial3D:
 		(glass as BaseMaterial3D).emission = LIGHTING.light_color(float(kelvin))
+		(glass as BaseMaterial3D).emission_energy_multiplier = LENS_GLOW
 	materials[key] = glass
 	return key
 
@@ -405,7 +435,32 @@ func ceiling_halo(node: Node3D, room: Dictionary, lamps: Array, rect: Rect2) -> 
 	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	halo.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	node.add_child(halo)
-	halos[int(room.id)] = {"material": glow, "base": 0.0, "energy": 0.0}
+	halos[int(room.id)] = {"material": glow, "base": 0.0, "energy": 0.0, "pools": troffer_pools(node, room, lamps)}
+
+## The pools of a room's troffers (POOL_ENERGY): built out, on the room's
+## layers with its other lamps (assign_layers(), "own_room"), lit with the
+## halo (set_halo()).
+func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[SpotLight3D]:
+	var made: Array[SpotLight3D] = []
+	var origin := Vector3(float(room.px), 0, float(room.pz))
+	var h := float(room.height)
+	for lamp: Dictionary in lamps:
+		var pool := SpotLight3D.new()
+		pool.name = "TrofferPool"
+		pool.position = Vector3(lamp.centre.x, h - 0.05, lamp.centre.y) - origin
+		pool.rotation.x = -PI / 2
+		pool.light_color = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
+		pool.spot_angle = POOL_ANGLE
+		pool.spot_range = POOL_RANGE
+		pool.light_specular = POOL_SPECULAR
+		pool.light_bake_mode = Light3D.BAKE_DISABLED
+		pool.light_volumetric_fog_energy = 0.0
+		pool.shadow_enabled = false
+		pool.set_meta("own_room", true)
+		pool.visible = false
+		node.add_child(pool)
+		made.append(pool)
+	return made
 
 ## A run of tiles from start to stop (world x) on the row z0 to z1 (world z),
 ## cut round the columns standing in it (spec_rediseno 3.4): the pieces
@@ -1408,7 +1463,8 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 	light.omni_range = ROOM_LAYERS.lamp_range(FLOOR.size_of(room), ROOM_LAYERS.OFFICE_LAMP_LEAST)
 	if halos.has(int(room.id)): halos[int(room.id)].base = light.light_energy
 	if OFFICE.lamp_of(room) == "troffer":
-		light.omni_attenuation = LAMP_ATTENUATION
+		light.omni_attenuation = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
+		troffer_lamps.append(light)
 		if not failing_lens.is_empty():
 			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials[failing_lens].emission_energy_multiplier, "share": failing_share})
 	failing_lens = ""
@@ -1721,6 +1777,17 @@ func set_halo(entry: Dictionary, energy: float) -> void:
 	if energy == float(entry.energy) or (energy > 0.0 and absf(energy - float(entry.energy)) <= 0.0005): return
 	entry.energy = energy
 	(entry.material as ShaderMaterial).set_shader_parameter("energy", energy)
+	# The pools go as the halo goes, where the preset has them (pools_shown()).
+	var shown: bool = energy > 0.0 and pools_shown()
+	for pool: SpotLight3D in entry.pools:
+		pool.light_energy = POOL_ENERGY * energy / HALO_ENERGY
+		if pool.visible != shown: pool.visible = shown
+
+## Whether the troffers' pools light (POOL_ENERGY): only while every lamp is
+## kept to its room's layers and the ceiling lamps cast, never on
+## Compatibility.
+func pools_shown() -> bool:
+	return layered and not static_light and RenderingServer.get_current_rendering_method() != "gl_compatibility"
 
 ## The floor's accent lights (spec_rediseno 4) and an accent spot's penumbra
 ## (times the preset's, as the hotel's LAMP_SIZE).
@@ -1859,6 +1926,10 @@ func set_sconce(k: int, state: int) -> void:
 ## A new preset reaches the accent spots' penumbra and fade too.
 func apply_quality(new_preset: Dictionary) -> void:
 	super(new_preset)
+	# The pools come or go with the preset: every halo is written again.
+	for id: int in halos: halos[id].energy = -1.0
+	var attenuation: float = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
+	for lamp in troffer_lamps: lamp.omni_attenuation = attenuation
 	for room_id: int in accents.rooms:
 		for entry: Dictionary in accents.of_room(room_id):
 			if int(entry.sconce) >= 0: continue
