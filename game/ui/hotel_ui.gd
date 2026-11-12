@@ -69,7 +69,7 @@ const CREDITS := [
 		"«Antique Book Set», de FrodoUndead (Sketchfab, CC BY 4.0): las filas de libros.",
 		"«OKIDATA Microline 320 Turbo», de Remik.Papaj (Sketchfab, CC BY 4.0): la impresora, con sus rótulos tapados.",
 		"«Vintage Fan», de Josh Smith (Sketchfab, CC BY 4.0): el ventilador, simplificado.",
-		"«Wooden Office Chair», de Zamzam2003 (Sketchfab, CC BY 4.0): la silla de dirección, simplificada.",
+		"«Wooden Office Chair», de Zamzam2003 (Sketchfab, CC BY 4.0): una silla giratoria de madera, simplificada.",
 		"«Retro antique desk clock», de Sousinho (Sketchfab, CC BY 4.0): el reloj de mesa.",
 		"«Dirty, damaged, fatigued Cardboard Box», de SusanKing (Sketchfab, CC BY 4.0): la caja de cartón, simplificada y sin su etiqueta.",
 		"«Extension Cord Scan MEDPOLY», de EFX (Sketchfab, CC BY 4.0): el alargador, simplificado.",

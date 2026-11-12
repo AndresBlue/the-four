@@ -755,17 +755,26 @@ pueda jugar entero sin tocar el teclado.
   - **Capturas:** en la ventanilla, los aseos, el montacargas y el despacho, el encuadre de `tools/capture/office_rooms_capture.gd` no enseña la pared característica.
   - **Densidad:** en la captura, la sala de descanso solo pone 2 de sus 4 mesas.
 
-- **Lo que quedó de la vuelta grande del frente visual** (12 de noviembre de 2026; `.claude/specs/visual_vuelta_grande.md`; [OFICINAS.md](OFICINAS.md) 12 dice qué modelos entraron y cuáles no). Falta que el autor la juegue.
-  - **Siguen en código y piden modelo:** el abrigo y la toalla colgados (la simulación de tela no salió), la máquina de escribir (la de los años 30 descargada está sin preparar), el teléfono descolgado, la fotocopiadora, la máquina de escribir eléctrica, el fax, el retroproyector, la mesa de comedor y las sillas apilables de época, los difusores y las rejillas del techo y las mamparas de cubículo (hay candidatos registrados sin ingerir, sin PBR). Las persianas siguen siendo un sombreador.
-  - **Sin sitio:** el televisor ya está en su carro en la sala de descanso y en la de juntas, pero la pantalla de proyección (`projector_screen`) no la pone ninguna receta.
-  - **Horneados sin usar:** `escritorio_tanker_lenawachs`, `retro_oficina_yj_chair` y el portalápices (`portalapices_aspectstudio`, 4,8 k triángulos en cada mesa de una nave). La silla «Old Computer Chair» sigue en la lista de `office_chair` pero no sale.
-  - **Materiales:** el vinilo y la moqueta se ven como un escaneo repetido; las aristas de las piezas en código no tienen bisel.
-  - **Naves:** su suelo ocupado fuera del pasillo, en la medida del director, es del 28,6 %; el objetivo era el 35.
-  - **Rendimiento:** el alcance de visibilidad de lo pequeño y el umbral del nivel de detalle están sin tocar. En el banco final (`evidence/bench/piso2_dens6_final_forward_plus/`) la media de Alto queda bajo 16,7 ms en todas las vistas y el p95 no.
-  - **Una sola lámpara de mueble encendida por sala** (`office_models.LIT_MOST`): decisión del director por el rendimiento, para confirmar con el autor.
-  - **Correo neumático:** los tubos no tienen soportes.
-  - **Puertas:** falta una sonda que compruebe que las hojas descargadas no rozan el marco y que las bisagras quedan en su canto.
-  - **Z-fighting:** quitado el parpadeo de las molduras sobre su panel (`RAIL` y `DADO_CAP`, ahora con 2 cm de resalte); no hay una causa única y los objetos de encima de las mesas están sin revisar.
+- **Lo que queda de la vuelta grande del frente visual** (12 de noviembre de 2026, por la tarde; `.claude/specs/visual_vuelta_grande.md`; [OFICINAS.md](OFICINAS.md) 12 dice qué modelos entraron y cuáles no):
+  - que el autor confirme jugando la regla de una sola lámpara de mueble encendida por sala (`LIT_MOST`), que se puso por rendimiento;
+  - el fotograma de Alto: la media queda bajo 16,6 ms en el banco, pero el p95 ronda los 25 ms;
+  - las naves quedan en torno al 28,6 % de ocupación fuera del pasillo (medida del agente de densidad; se buscaba un 35 %);
+  - vinilo, moqueta y roble se leen como escaneos repetidos y limpios; los muebles en código tienen las aristas vivas;
+  - el z-fighting de lo que hay sobre las mesas solo se revisó en una mesa de lectura;
+  - modelos horneados y sin usar: `escritorio_tanker_lenawachs`, `retro_oficina_yj_chair`, el portalápices, la silla de banquero y la pantalla de proyección;
+  - los carros del archivo móvil;
+  - la climatizadora parece dos lavadoras; una escalera de pie en mitad de la sala; la compuerta con volante, suelta;
+  - la taquilla escondite, lisa (`hide_skin()`), y las taquillas de los aseos, en silueta;
+  - los tubos de la central del correo acaban en el aire, y los del correo neumático no tienen soportes;
+  - cajas de archivo y tablones de corcho repetidos;
+  - el zócalo del mostrador; el fregadero, con grifo;
+  - huecos negros junto a algunas pantallas en naves y cubículos, sin causa confirmada;
+  - churretes de pared a la misma altura: pide tocar un sombreado compartido con el hotel;
+  - la reja del montacargas, en bandas;
+  - centros de sala vacíos y objetos que definen la sala fuera de vista: la fotocopiadora en reprografía, los lavabos en los aseos, el mostrador con cristal en la ventanilla, una mesa de juntas pequeña;
+  - sin comprobar en captura: la placa colgante del techo, la silla azul de cerca, los blocs en la mesa de juntas, la silla de secretaría, el perchero en su sala, la puerta de mirilla girando y cerrada, y el rebote en Medio y Bajo (en el código solo existe en Alto y Ultra, con los focos);
+  - el abrigo colgado, sin modelo;
+  - el Art Institute bloquea la descarga automática.
 
 ## 4 · Assets que faltan (tuyos)
 
