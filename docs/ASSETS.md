@@ -373,6 +373,14 @@ Descargas originales en `source_assets/oficinas/materiales/` (fuera de git), con
 | `office_walnut_veneer` | [Poly Haven walnut_veneer](https://polyhaven.com/a/walnut_veneer) | Jenelle van Heerden | CC0 1.0 | Paneles de chapa de nogal (direccion, secretaria, aparadores) |
 <!-- /OFFICE_SCANS -->
 
+## Alfombra oriental de las oficinas
+
+| Imagen | Id | Fuente | Licencia |
+|---|---|---|---|
+| [Carpet, Turquía, s. XVIII (objeto 452567)](https://www.metmuseum.org/art/collection/search/452567) | `office_rug_met452567` | The Metropolitan Museum of Art, Open Access (Bequest of Joseph V. McMullan, 1973) | Dominio público (CC0) |
+
+La foto original está en `source_assets/oficinas/alfombras/met_452567/`; en `assets/textures/office_rug_met452567/` queda recortada con su fleco, a 1024 px, con el color apagado y oscurecida para que se lea gastada (`office_fittings.rug()`).
+
 ## Modelos aportados por el usuario
 
 Paquetes descargados por el usuario en `assets/props/*/*.zip` (fuera de git). Se extrajeron los FBX y las texturas necesarias, reducidas a 1024–2048 px; las mallas se hornean con `tools/props/build_model_props.gd`. El sofá, el aplique y la monstera ya tienen ficha y licencia (arriba); el resto sigue por verificar antes de cualquier distribución.

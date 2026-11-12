@@ -225,7 +225,9 @@ static func make_floor_lamp(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var h := size.y
 	KIT.cylinder(p, "black", Vector3(0, 0.015, 0), 0.16, 0.03, 16)
 	KIT.cylinder(p, "gold", Vector3(0, 0.65, 0), 0.012, 1.24, 8)
-	KIT.cylinder(p, "linen", Vector3(0, h - 0.16, 0), w * 0.5 - 0.005, 0.3, 16)
+	# A drum of cloth narrowing upwards, in rings.
+	for k in 5:
+		KIT.cylinder(p, "linen", Vector3(0, h - 0.31 + 0.03 + k * 0.06, 0), (w * 0.5 - 0.005) * (1.0 - 0.09 * k), 0.06, 20)
 	KIT.cylinder(p, "lamp_off", Vector3(0, h - 0.315, 0), w * 0.5 - 0.03, 0.004, 16)
 	return KIT.finish(builder, p, "floor_lamp", size)
 

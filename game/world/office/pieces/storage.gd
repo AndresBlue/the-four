@@ -170,17 +170,17 @@ static func make_kitchen_base(builder: Node3D, size: Vector3, sink: bool) -> Arr
 	var n := maxi(1, roundi(w / 0.6))
 	var dw: float = w / n
 	for k in n:
-		KIT.front(p, "oak_door", Vector3(-w / 2.0 + dw * (k + 0.5), ym, zf), Vector2(dw, hh), "bar", "metal", hh * 0.35, false, 0.015)
+		KIT.front(p, "walnut_object", Vector3(-w / 2.0 + dw * (k + 0.5), ym, zf), Vector2(dw, hh), "bar", "metal", hh * 0.35, false, 0.015)
 	var collider := AABB()
 	if not sink:
-		KIT.block(p, "oak_door", Vector3(0.0, ym, cz), Vector3(w, hh, cd), 0.003)
+		KIT.block(p, "walnut_object", Vector3(0.0, ym, cz), Vector3(w, hh, cd), 0.003)
 		KIT.block(p, "laminate_light", Vector3(0.0, work - 0.0175, 0.0), Vector3(w, 0.035, d), 0.006)
 	else:
 		# The carcass, open on top.
 		for s: float in [-1.0, 1.0]:
-			KIT.block(p, "oak_door", Vector3(s * (w / 2.0 - 0.009), ym, cz), Vector3(0.018, hh, cd))
-		KIT.block(p, "oak_door", Vector3(0.0, ym, -d / 2.0 + 0.009), Vector3(w - 0.036, hh, 0.018))
-		KIT.block(p, "oak_door", Vector3(0.0, (0.1 + work - 0.2) / 2.0, cz), Vector3(w - 0.036, work - 0.3, cd - 0.036))
+			KIT.block(p, "walnut_object", Vector3(s * (w / 2.0 - 0.009), ym, cz), Vector3(0.018, hh, cd))
+		KIT.block(p, "walnut_object", Vector3(0.0, ym, -d / 2.0 + 0.009), Vector3(w - 0.036, hh, 0.018))
+		KIT.block(p, "walnut_object", Vector3(0.0, (0.1 + work - 0.2) / 2.0, cz), Vector3(w - 0.036, work - 0.3, cd - 0.036))
 		# The hole for the bowl, and the worktop round it in four pieces.
 		var hx: float = minf(0.5, w * 0.4)
 		var hz := 0.38
@@ -216,9 +216,9 @@ static func make_kitchen_wall(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var h := size.y
 	var d := size.z
 	var zf := d / 2.0 - KIT.FRONT
-	KIT.block(p, "oak_door", Vector3(0.0, (0.012 + h) / 2.0, (-d / 2.0 + zf) / 2.0), Vector3(w, h - 0.012, zf + d / 2.0), 0.003)
+	KIT.block(p, "walnut_object", Vector3(0.0, (0.012 + h) / 2.0, (-d / 2.0 + zf) / 2.0), Vector3(w, h - 0.012, zf + d / 2.0), 0.003)
 	var n := maxi(1, roundi(w / 0.6))
 	var dw: float = w / n
 	for k in n:
-		KIT.front(p, "oak_door", Vector3(-w / 2.0 + dw * (k + 0.5), (0.012 + h) / 2.0, zf), Vector2(dw, h - 0.012), "bar", "metal", -(h - 0.012) * 0.38, false, 0.015)
+		KIT.front(p, "walnut_object", Vector3(-w / 2.0 + dw * (k + 0.5), (0.012 + h) / 2.0, zf), Vector2(dw, h - 0.012), "bar", "metal", -(h - 0.012) * 0.38, false, 0.015)
 	return KIT.finish(builder, p, "kitchen_wall", size, {"wall": true, "mount": 1.45, "light_strip": [Vector3(0.0, 0.006, zf - 0.04), Vector3(w - 0.1, 0.012, 0.03)]})

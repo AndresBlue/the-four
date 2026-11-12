@@ -224,14 +224,21 @@ static func make_reception_counter(builder: Node3D, size: Vector3) -> ArrayMesh:
 	var lip := 0.04
 	KIT.block(p, "walnut_object", Vector3(0.0, (0.1 + h - lip) / 2.0, d / 2.0 - 0.07), Vector3(w, h - lip - 0.1, 0.04), 0.003)
 	KIT.block(p, "black", Vector3(0.0, 0.05, d / 2.0 - 0.12), Vector3(w - 0.1, 0.1, 0.04))
-	KIT.block(p, "black", Vector3(0.0, h - lip / 2.0, d / 2.0 - 0.175), Vector3(w, lip, 0.35), 0.006)
+	# The high shelf in walnut, its edge standing proud of the front.
+	KIT.block(p, "walnut_object", Vector3(0.0, h - lip / 2.0, d / 2.0 - 0.175), Vector3(w, lip, 0.35), 0.006)
 	var n := maxi(2, int(w / 0.6)) + 1
 	for k in n:
 		var x := -w / 2.0 + 0.05 + (w - 0.1) * k / (n - 1)
 		KIT.block(p, "walnut_object", Vector3(x, (0.1 + h - lip) / 2.0, d / 2.0 - 0.045), Vector3(0.06, h - lip - 0.1, 0.01), 0.002)
+		# A raised oak panel in each bay, with a rail over and under it.
+		if k < n - 1:
+			var bay := (w - 0.1) / (n - 1)
+			KIT.block(p, "oak_door", Vector3(x + bay / 2.0, (0.1 + h - lip) / 2.0, d / 2.0 - 0.047), Vector3(bay - 0.12, h - lip - 0.34, 0.006), 0.003)
+			for y: float in [0.16, h - lip - 0.06]:
+				KIT.block(p, "walnut_object", Vector3(x + bay / 2.0, y, d / 2.0 - 0.046), Vector3(bay - 0.06, 0.04, 0.008), 0.002)
 	KIT.block(p, "walnut_object", Vector3(-w / 2.0 + 0.07, (0.1 + h - lip) / 2.0, -0.045), Vector3(0.04, h - lip - 0.1, d - 0.09), 0.003)
 	KIT.block(p, "black", Vector3(-w / 2.0 + 0.12, 0.05, -0.07), Vector3(0.04, 0.1, d - 0.14))
-	KIT.block(p, "black", Vector3(-w / 2.0 + 0.175, h - lip / 2.0, -0.175), Vector3(0.35, lip, d - 0.35), 0.006)
+	KIT.block(p, "walnut_object", Vector3(-w / 2.0 + 0.175, h - lip / 2.0, -0.175), Vector3(0.35, lip, d - 0.35), 0.006)
 	KIT.block(p, "laminate_light", Vector3(0.025, 0.725, d / 2.0 - 0.39), Vector3(w - 0.13, 0.03, 0.6), 0.004)
 	KIT.block(p, "laminate_light", Vector3(-w / 2.0 + 0.39, 0.725, -0.325), Vector3(0.6, 0.03, d - 0.73), 0.004)
 	KIT.block(p, "walnut_object", Vector3(w / 2.0 - 0.02, (h - lip) / 2.0, d / 2.0 - 0.39), Vector3(0.04, h - lip, 0.6), 0.003)
