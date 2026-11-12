@@ -1710,6 +1710,9 @@ func furnish_furniture(job: Dictionary) -> String:
 		for entry in recipe:
 			if once.has(String(entry[0])): continue
 			var how := String(entry[1])
+			# A nave's walls are full end to end (lay_wall_rows()): its spares would only
+			# try every wall in vain.
+			if how == "spare" and LAYOUT.streets(room): continue
 			if how == "lattice": lay_lattice(f, room, zones)
 			elif how == "table":
 				lay_table(room, zones)

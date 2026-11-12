@@ -378,6 +378,11 @@ static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberG
 	var runs := rng.randi_range(int(entry[2]), int(entry[3]))
 	var row := int(entry[4])
 	var out: Array = []
+	# A spare no smaller than one that found no wall in this room finds none
+	# either (the room only fills): not tried again, kept in `chain`.
+	var spec: Dictionary = OFFICE.FURNITURE[kind]
+	var foot := Vector2(float(spec.size.x) * row, float(spec.size.y))
+	if how == "spare" and (chain.get("spare_fails", []) as Array).any(func(f: Vector2) -> bool: return foot.x >= f.x - LAYOUT.EPS and foot.y >= f.y - LAYOUT.EPS): return out
 	for _run in runs:
 		# A try that failed changed nothing, so the next would fail the same.
 		if how == "middle":
@@ -390,7 +395,11 @@ static func lay(room: Dictionary, zones: Array, entry: Array, rng: RandomNumberG
 			for wall in walls_for(room, "wall" if how in ["run", "center"] else how):
 				placed = lay_wall(room, zones, kind, row, String(wall), how in ["back", "wall", "run", "center"], feature_end(room, String(wall)))
 				if not placed.is_empty(): break
-		if placed.is_empty(): break
+		if placed.is_empty():
+			if how == "spare":
+				if not chain.has("spare_fails"): chain["spare_fails"] = []
+				chain.spare_fails.append(foot)
+			break
 		out.append(placed)
 		if not chain.get("center", false): chain.merge(placed, true)
 	return out
@@ -406,9 +415,16 @@ static func lay_wall(room: Dictionary, zones: Array, kind: String, row: int, wal
 	var width := size.x * row
 	var reach := LAYOUT.wall_length(room, wall) / 2
 	var group: int = room.furniture.size()
+	var off := wall_front(room, wall, 0.0, WALL_GAP + size.y / 2)
+	var along_z: bool = wall == "west" or wall == "east"
+	# Only the zones and the pieces by this wall can stop a run against it.
+	var band: Rect2 = Rect2(off.x - size.y / 2, -reach, size.y, reach * 2) if along_z else Rect2(-reach, off.y - size.y / 2, reach * 2, size.y)
+	var near := Near.new(room, zones, group, band)
 	for along in (corner_first(reach, width, toward) if from_corner or toward != 0.0 else ALONG):
 		var a := float(along)
 		if absf(a) + width / 2 > reach: continue
+		var whole: Rect2 = Rect2(off.x - size.y / 2, a - width / 2, size.y, width) if along_z else Rect2(a - width / 2, off.y - size.y / 2, width, size.y)
+		if not near.clear(whole): continue
 		var pieces := wall_pieces(room, kind, row, wall, a, group)
 		if not all_fit(room, zones, pieces, false): continue
 		room.furniture.append_array(pieces)
@@ -427,6 +443,41 @@ static func wall_pieces(room: Dictionary, kind: String, row: int, wall: String, 
 		var at: Vector2 = Vector2(off.x, at_along) if along_z else Vector2(at_along, off.y)
 		pieces.append(item(kind, at, int(TURNS[wall]), group))
 	return pieces
+
+## Whether a rect of pieces of a new `group` may stand within `band` (fits()'s
+## test for the whole of a run at once, a hair more lenient for the rounding):
+## inside the walls, clear of every zone, LAYOUT.gap_of() from the other
+## groups, with what lies by the band picked out once. A quick no: the pieces
+## themselves are tried after it (all_fit()).
+class Near:
+	var space: Rect2
+	var gap: float
+	var zones: Array = []
+	var others: Array[Rect2] = []
+	func _init(room: Dictionary, all_zones: Array, group: int, band: Rect2) -> void:
+		space = LAYOUT.inner(room)
+		gap = LAYOUT.gap_of(room)
+		var wide := band.grow(gap + 0.5)
+		for zone in all_zones:
+			if zone.has("rect"):
+				if (zone.rect as Rect2).intersects(wide): zones.append(zone)
+			elif not zone.has("bound") or (zone.bound as Rect2).intersects(wide): zones.append(zone)
+		for other in room.furniture:
+			if int(other.extra.group) == group: continue
+			var foot := LAYOUT.footprint(other)
+			if foot.intersects(wide): others.append(foot)
+	func clear(rect: Rect2) -> bool:
+		var r := rect.grow(-LAYOUT.EPS)
+		if not LAYOUT.fits_in(space, r): return false
+		# hits(), here: an inner class does not see its script's functions.
+		for zone in zones:
+			if zone.has("rect"):
+				if r.intersects(zone.rect): return false
+			elif zone.has("bound") and not r.intersects(zone.bound): continue
+			elif LAYOUT.segment_rect_distance(zone.a, zone.b, r) < float(zone.r): return false
+		for foot in others:
+			if not LAYOUT.apart(r, foot, gap): return false
+		return true
 
 ## Whether every piece fits; `apart`: and overlaps nothing laid, its own group too
 ## (touching is no overlap: positions are rounded, so by more than LAYOUT.EPS).
@@ -475,7 +526,7 @@ static func feature_end(room: Dictionary, wall: String) -> float:
 ## past either of its ends with no gap, else round the corner it reaches (TURN_GAP)
 ## on the wall across; {} with no run or where none fits.
 static func lay_run(room: Dictionary, zones: Array, kind: String, row: int, chain: Dictionary) -> Dictionary:
-	if chain.is_empty(): return {}
+	if not chain.has("wall"): return {}
 	var wall := String(chain.wall)
 	var group := int(chain.group)
 	var spec: Dictionary = OFFICE.FURNITURE[kind]
@@ -536,10 +587,17 @@ static func lay_middle(room: Dictionary, zones: Array, kind: String, row := 1) -
 	var turns: Array = [turn, (turn + 1) % 4] if ANY_WAY.has(kind) and row == 1 else [turn]
 	var spec: Dictionary = OFFICE.FURNITURE[kind]
 	var size: Vector2 = spec.size
+	var group: int = room.furniture.size()
+	var near := Near.new(room, zones, group, LAYOUT.inner(room))
 	for depth in MIDDLE_DEPTHS:
 		for aside in MIDDLE_SIDES:
 			for spin in turns:
-				var group: int = room.furniture.size()
+				# The row's whole rect first: most places fail on it, before any piece is made.
+				var across: bool = (absf(side.x) > 0.5) == (int(spin) % 2 == 0)
+				var extent: Vector2 = Vector2(size.x * row, size.y) if across else Vector2(size.y, size.x * row)
+				if absf(side.x) < 0.5: extent = Vector2(extent.y, extent.x)
+				var centre: Vector2 = -n * float(depth) + side * float(aside)
+				if not near.clear(Rect2(centre - extent / 2, extent)): continue
 				var pieces: Array = []
 				for k in row: pieces.append(item(kind, -n * float(depth) + side * (float(aside) + (float(k) - float(row - 1) / 2.0) * size.x), int(spin), group))
 				if all_fit(room, zones, pieces, false):

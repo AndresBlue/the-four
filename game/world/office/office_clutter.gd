@@ -215,16 +215,15 @@ static func floor_papers(builder: Node3D, node: Node3D, holder: Node3D, room: Di
 	builder.place(holder, MODELS.mesh_of(builder, "paper_scatter"), Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 492) * TAU), at))
 	note(builder, room, "paper_scatter", world, true, true)
 
-## What is left on a room's floor, by its type (litter()): the stores' tools,
-## an office's shoes and cord; and how often, by mess.
+## How often something is left on a room's floor (litter()), by mess; what,
+## by its type, the palette says (office_palette.litter_of()).
 const LITTER := [0.1, 0.2, 0.3, 0.4, 0.5]
-const LITTER_KINDS := {OFFICE.STORE: ["toolbox", "broom", "mousetrap"], OFFICE.DEPOT: ["toolbox", "broom", "mousetrap"], OFFICE.OFFICE: ["shoes", "cord_floor"], OFFICE.OPEN_OFFICE: ["cord_floor", "shoes"], OFFICE.CUBICLES: ["cord_floor"], OFFICE.BREAK_ROOM: ["mousetrap", "broom"], OFFICE.ARCHIVE: ["mousetrap", "toolbox"]}
 
-## One thing left on the floor (LITTER_KINDS) at the first of the room's
+## One thing left on the floor (office_palette.litter_of()) at the first of the room's
 ## quarter points that nothing takes and that the route leaves alone, as
 ## spill() finds its place; a broom lies with its dustpan.
 static func litter(builder: Node3D, node: Node3D, room: Dictionary) -> void:
-	var kinds: Array = LITTER_KINDS.get(int(room.type), [])
+	var kinds: Array = OFFICE.litter_of(room)
 	if kinds.is_empty(): return
 	var kind := String(kinds[int(builder.vary(node.position, 491) * kinds.size())])
 	var zones: Array = zones_of(builder, room).duplicate()

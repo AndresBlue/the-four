@@ -640,6 +640,12 @@ static func floor_look(room: Dictionary) -> String:
 	var finish := floor_finish(room)
 	return "vinyl" if finish == "carpet_exec" else finish
 
+## What is left on a room's floor, by its type (office_clutter.litter()): the
+## stores' tools, an office's shoes and cord, the mousetraps.
+const LITTER_KINDS := {STORE: ["toolbox", "broom", "mousetrap"], DEPOT: ["toolbox", "broom", "mousetrap"], OFFICE: ["shoes", "cord_floor"], OPEN_OFFICE: ["cord_floor", "shoes"], CUBICLES: ["cord_floor"], BREAK_ROOM: ["mousetrap", "broom"], ARCHIVE: ["mousetrap", "toolbox"]}
+static func litter_of(room: Dictionary) -> Array:
+	return LITTER_KINDS.get(int(room.type), [])
+
 ## The rug of a room (office_fittings.gd): "persian" in the director's and the
 ## secretary's offices of wing 2, "plain" in its boardroom, "mat" inside the
 ## reception's door; "" none.
