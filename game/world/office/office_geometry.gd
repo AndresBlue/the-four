@@ -115,7 +115,13 @@ const COLUMN_PLASTER := Color("cbc1a8")
 const COLUMN_BASE := 0.1
 const COLUMN_CAP := 0.08
 const COLUMN_PROUD := 0.012
-const LAMP_ENERGY := 3.0
+const LAMP_ENERGY := 2.3
+## The room lamp's photometric profile: even (a name lighting.gd does not
+## shape). The tube's batwing, read through an omni lamp's projector, cut its
+## light off in a straight line through the lamp, on the floor, the walls and
+## the ceiling: a lit cell of a nave beside a dark one ended at a ruled edge.
+## Less energy than the tube's, whose profile averaged under one.
+const LAMP_PROFILE := "even"
 const LAMP_DROP := 0.35
 ## Steeper than the hotel's 1.25 where the troffers have their pools: the
 ## room lamp is the fill, and the corners and the tops of the walls fall to
@@ -126,11 +132,12 @@ const LAMP_ATTENUATION_ALONE := 0.9
 ## The troffer rooms' lamps, whose attenuation follows the pools (apply_quality()).
 var troffer_lamps: Array[OmniLight3D] = []
 const FAILING := 0.12              # lit rooms with one failing troffer (vary salt 160)
-## The troffers' share of specular light, low: a lamp is a point to the
-## renderer, and its highlight on a waxed floor or a mirror is a white disc
-## where a tube would be a long soft lens. The floor's own reflection of the
-## lenses is its probe's (make_probe()).
-const LAMP_SPECULAR := 0.15
+## The troffers' share of specular light: none. A lamp is a point to the
+## renderer, and a sphere the size of its shadow's penumbra: on glass, a mirror,
+## a screen or a waxed floor it drew a white disc where a tube is a long soft
+## lens. What shines in them is their reflections (the floor's probe,
+## make_probe()), never the lamp itself.
+const LAMP_SPECULAR := 0.0
 ## A lit lens's own colour, white acrylic; it glows in its room's lamp colour
 ## (lens_key()).
 const LENS_ALBEDO := Color("e6e2d8")
@@ -168,10 +175,9 @@ const LENS_DIFFUSER := 0.35
 ## (long: a short one fades the pool out before the floor). Only where the
 ## rooms keep their lamps by layers and the lamps cast (Alto, Ultra):
 ## elsewhere it would light through the walls (pools_shown()). With no
-## shadow it also reaches under the tables: little specular, so what it lights
-## there shows no glints.
+## shadow it also reaches under the tables; no specular (LAMP_SPECULAR).
 const POOL_ENERGY := 0.7
-const POOL_SPECULAR := 0.05
+const POOL_SPECULAR := 0.0
 const POOL_ANGLE := 64.0
 const POOL_RANGE := 7.0
 ## The offices' own grade of the picture (presentation_rig.apply_grade()): a
@@ -189,6 +195,8 @@ func grade() -> Dictionary: return GRADE
 ## everything's, 2 a body's own, 3 hers (lurker_visual.LAYER), 5 to 20 the
 ## rooms' (room_layers.gd).
 const PROBE_PAST := 0.05
+## A screen's and the pneumatic tubes' glass roughness (_init()).
+const SCREEN_ROUGHNESS := 0.3
 const PROBE_INTENSITY := 1.0
 const FLOOR_LAYER := 8
 ## A lit lens as the room's probe sees it (lens_ghosts()): a real tube is a
@@ -202,6 +210,9 @@ const PROBE_ONLY := 2
 ## lifts): deeper than HALO_BELOW, so the halo is depth-tested behind it and
 ## shows no glow in the hole.
 const HOLE_CAP := 0.01
+## A ceiling exit's grille and the dark over it: the opening between the
+## T-grid's flanges (OFFICE.TILE less TEE.x), a little less.
+const EXIT_CLEAR := 0.57
 const HALO_SHADER := preload("res://game/presentation/materials/office/ceiling_halo.gdshader")
 ## Room id -> its halo: {"material": ShaderMaterial, "base": float (its lamp's
 ## energy as room_lamp() made it), "energy": float (as last set)}.
@@ -239,6 +250,9 @@ func _init() -> void:
 		apply_scan(materials[key], small_maps)
 	# A dark lens is the white acrylic unlit, not the hotel's amber glass.
 	if materials.lens_off is BaseMaterial3D: (materials.lens_off as BaseMaterial3D).albedo_color = LENS_ALBEDO.darkened(0.55)
+	# A screen and the pneumatic tubes' glass satin, not a mirror: at 0.07 every
+	# reflection on a curved one broke into white sparks.
+	if materials.screen is ShaderMaterial: (materials.screen as ShaderMaterial).set_shader_parameter("roughness", SCREEN_ROUGHNESS)
 	# The bounce light's stand-in in the office's own colours (office_bounce.gd).
 	var office_bounce := OFFICE_BOUNCE.new()
 	office_bounce.own_colours(materials, OWN_OVER)
@@ -345,8 +359,11 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 	for e in exits:
 		var at := OFFICE.tile_centre(OFFICE.tile_of(Vector3(float(e.point[0]), 0, float(e.point[2]))), 0.0) - origin
 		if String(e.kind) == "ceiling":
-			box(node, at + Vector3(0, h + 0.15, 0), Vector3(0.58, 0.3, 0.58), "black")
-			box(node, at + Vector3(0, h + 0.01, 0), Vector3(0.595, 0.02, 0.595), "grille_metal")
+			# Inside the grid's flanges (EXIT_CLEAR) and off their plane: a
+			# grille as wide as the tile shared the flanges' underside and its
+			# edge fought them.
+			box(node, at + Vector3(0, h + TEE.y + 0.151, 0), Vector3(EXIT_CLEAR, 0.3, EXIT_CLEAR), "black")
+			box(node, at + Vector3(0, h + 0.012, 0), Vector3(EXIT_CLEAR, 0.02, EXIT_CLEAR), "grille_metal")
 		else:
 			box(node, at + Vector3(0, h + 0.6 - HOLE_CAP * 0.5, 0), Vector3(0.6, 1.2 + HOLE_CAP, 0.6), "plenum_dark")
 			# Its tile (5.4): hanging from one edge of the hole, or down on
@@ -355,7 +372,9 @@ func ceiling(node: Node3D, room: Dictionary) -> void:
 			if vary(spot, 161) < HANGING:
 				var yaw := floori(vary(spot, 166) * 4.0) * PI * 0.5
 				var drop := lerpf(HANG_ANGLE.x, HANG_ANGLE.y, vary(spot, 167))
-				var hinge := at + Basis(Vector3.UP, yaw) * Vector3(OFFICE.TILE * 0.5, h, 0)
+				# Hinged just under the hole's dark (HOLE_CAP): hinged at the
+				# tiles' plane it ran through that dark at a slant, a sawn edge.
+				var hinge := at + Basis(Vector3.UP, yaw) * Vector3(OFFICE.TILE * 0.5, h - HOLE_CAP - 0.004, 0)
 				var swung := Basis.from_euler(Vector3(0, yaw, drop)) * Vector3(-OFFICE.TILE * 0.5, 0, 0)
 				box(node, hinge + swung, Vector3(OFFICE.TILE, TILE_THICK, OFFICE.TILE), "ceiling_service", false, "box", Vector3(0, yaw, drop))
 			elif vary(spot, 162) < FALLEN:
@@ -496,20 +515,28 @@ func ceiling_halo(node: Node3D, room: Dictionary, lamps: Array, rect: Rect2) -> 
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var made := 0
+	# Its own ceiling and those of the cells it is open to at its height (a
+	# nave, a corridor's run): the glow goes on over the seam and fades there,
+	# and a dark cell beside it is not cut off at a straight line.
+	var pieces: Array[Rect2] = [rect]
+	for other: int in open_to(int(room.id)):
+		var next: Dictionary = manifest.rooms[other]
+		if OFFICE.false_ceiling(next) and is_equal_approx(float(next.height), float(room.height)): pieces.append(OFFICE.ceiling_rect(next))
 	for lamp: Dictionary in lamps:
 		var centre: Vector2 = lamp.centre
 		var along_z := bool(lamp.along_z)
 		var half: Vector2 = Vector2(0.3, 0.6) if along_z else Vector2(0.6, 0.3)
 		var reach := Vector2(HALO_REACH, HALO_REACH)
-		var area := Rect2(centre - half - reach, (half + reach) * 2.0).intersection(rect)
-		if area.size.x <= 0.0 or area.size.y <= 0.0: continue
-		var corners: Array[Vector2] = [area.position, Vector2(area.end.x, area.position.y), area.end, Vector2(area.position.x, area.end.y)]
-		for k: int in [0, 1, 2, 0, 2, 3]:
-			var offset := corners[k] - centre
-			tool.set_normal(Vector3.DOWN)
-			tool.set_uv(Vector2(offset.y, offset.x) if along_z else offset)
-			tool.add_vertex(Vector3(corners[k].x, y, corners[k].y) - origin)
-		made += 1
+		for piece: Rect2 in pieces:
+			var area := Rect2(centre - half - reach, (half + reach) * 2.0).intersection(piece)
+			if area.size.x <= 0.0 or area.size.y <= 0.0: continue
+			var corners: Array[Vector2] = [area.position, Vector2(area.end.x, area.position.y), area.end, Vector2(area.position.x, area.end.y)]
+			for k: int in [0, 1, 2, 0, 2, 3]:
+				var offset := corners[k] - centre
+				tool.set_normal(Vector3.DOWN)
+				tool.set_uv(Vector2(offset.y, offset.x) if along_z else offset)
+				tool.add_vertex(Vector3(corners[k].x, y, corners[k].y) - origin)
+			made += 1
 	if made == 0: return
 	var glow := ShaderMaterial.new()
 	glow.shader = HALO_SHADER
@@ -555,6 +582,20 @@ func lens_ghosts(node: Node3D, room: Dictionary, faces: Array) -> void:
 	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ghost.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	node.add_child(ghost)
+
+## The cells a room runs on into with no wall between (the manifest's merged
+## pairs), found once.
+var open_cells := {}
+var open_found := false
+func open_to(room_id: int) -> Array:
+	if not open_found:
+		open_found = true
+		for pair in manifest.get("merged", []):
+			for k in 2:
+				var a := int(pair[k])
+				if not open_cells.has(a): open_cells[a] = []
+				open_cells[a].append(int(pair[1 - k]))
+	return open_cells.get(room_id, [])
 
 ## The pools of a room's troffers (POOL_ENERGY): built out, on the room's
 ## layers with its other lamps (assign_layers(), "own_room"), lit with the
@@ -1508,7 +1549,7 @@ func wall_art(_boundary: Node3D, _room: Dictionary, _at: float, _inner: int) -> 
 func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 	var lamp: String = OFFICE.lamp_of(room)
 	var h := float(room.height)
-	var tube := {"tube": true, "failing": "", "specular": LAMP_SPECULAR, "color": LIGHTING.light_color(OFFICE.lamp_kelvin(room)), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile("tube"), "position": Vector3(0, h - LAMP_DROP, 0)}
+	var tube := {"tube": true, "failing": "", "specular": LAMP_SPECULAR, "color": LIGHTING.light_color(OFFICE.lamp_kelvin(room)), "energy": LAMP_ENERGY * LIGHTING.PROFILE_GAIN, "profile": LIGHTING.profile(LAMP_PROFILE), "position": Vector3(0, h - LAMP_DROP, 0)}
 	match lamp:
 		"troffer":
 			return tube

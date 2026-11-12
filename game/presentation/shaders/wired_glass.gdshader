@@ -3,7 +3,9 @@ shader_type spatial;
 // square mesh of wire in it, laid out in the world's metres so a long pane
 // and a short one carry the same mesh. The coordinate along the pane is x + z:
 // panes stand along one axis or the other, never on a slant.
-render_mode blend_mix, cull_disabled, depth_draw_opaque, specular_schlick_ggx;
+// No lamp's own highlight on it (office_geometry.LAMP_SPECULAR): a lamp is a
+// point, and in a pane it was a white disc. What it gives back is the room.
+render_mode blend_mix, cull_disabled, depth_draw_opaque, specular_disabled;
 
 uniform vec4 glass_color : source_color = vec4(0.72, 0.8, 0.78, 0.16);
 uniform vec4 wire_color : source_color = vec4(0.22, 0.23, 0.22, 0.75);

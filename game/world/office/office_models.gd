@@ -29,7 +29,10 @@ const MODELS := {
 	"lounge_chair": {"paths": ["res://assets/props/office/mid_century_lounge_chair.res"], "seat": true},
 	# The blue cloth task chair and the plywood one, light enough for the naves (4 k each): office_props.chair() picks one by where it stands.
 	"office_chair": {"paths": ["res://assets/props/office/silla_tela_projectkaizen.res", "res://assets/props/office/silla_giratoria_old_computer_chair.res"], "height": 0.95, "seat": true},
-	"exec_chair": {"paths": ["res://assets/props/office/silla_banquero_zamzam.res"], "height": 1.15, "seat": true},
+	# The director's tufted black leather chair (the author, 12 November: thick, wide and high in the back).
+	"exec_chair": {"paths": ["res://assets/props/office/sillon_mirey_a.res"], "height": 1.24, "seat": true},
+	# The wooden banker's chair, at the secretary's and the readers' desks.
+	"clerk_chair": {"paths": ["res://assets/props/office/silla_banquero_zamzam.res"], "height": 1.15, "seat": true},
 	"visitor_chair": {"paths": ["res://assets/props/office/butaca_madera_renend.res"], "height": 0.88, "seat": true},
 	"plant": {"paths": ["res://assets/props/office/potted_plant_01.res", "res://assets/props/hotel/potted_plant_02.res"]},
 	"plant_bare": {"paths": ["res://assets/props/office/anthurium_botany_01_a.res", "res://assets/props/office/pachira_aquatica_01_c.res", "res://assets/props/office/calathea_orbifolia_01_a.res"], "pot": "steel_dark"},
@@ -50,6 +53,11 @@ const MODELS := {
 	# Baked in its own units: brought to the stand-in's height.
 	"crt": {"paths": ["res://assets/props/office/crt_terminal_ibm3278_sketchfab.res"], "height": 0.36},
 	"cooler": {"paths": ["res://assets/props/office/water_cooler_bottle_tboiston.res"]},
+	"extinguisher": {"paths": ["res://assets/props/office/extintor_loic.res"]},
+	"microfiche": {"paths": ["res://assets/props/office/microfichas_maxdragonn.res"]},
+	# The wooden wall rack of hooks (left empty: no coat model is good enough) and the towel hung from it.
+	"coat_wall_rack": {"paths": ["res://assets/props/office/perchero_pared_ehnri.res"]},
+	"towel": {"paths": ["res://assets/props/office/toalla_aprilpolubiec.res"]},
 	# Rounds 3 and 4 of the downloads (tools/props/fit_models.json): baked at their pieces' measure.
 	"fridge": {"paths": ["res://assets/props/office/nevera_dylanheyes.res"]},
 	"desk_lamp_banker": {"paths": ["res://assets/props/office/lampara_banquero_meunier.res"]},

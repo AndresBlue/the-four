@@ -61,8 +61,9 @@ static func build(builder: Node3D, node: Node3D, kind: String) -> bool:
 			for x: float in [-0.585, 0.585]:
 				builder.box(node, at(0.875, 0.4) + Vector3(x, 0, 0), Vector3(0.03, 1.75, 0.03), "steel_olive")
 				builder.box(node, at(0.015, 0.4) + Vector3(x, 0, 0), Vector3(0.05, 0.03, 0.4), "steel_olive")
-			builder.place(node, WALL.coat_hook_rail(builder, Vector3(1.2, 0.12, 0.09)), Transform3D(Basis.IDENTITY, at(1.6, 0.4)))
-			if builder.vary(seed_pos, 1) < 0.34: builder.place(node, STAND.coat_hanging(builder, Vector3(0.5, 0.95, 0.14)), Transform3D(Basis.IDENTITY, at(0.75, 0.4) + Vector3(-0.25, 0, 0.1)))
+			# The wooden rack of hooks across the posts, its hooks empty (a coat hung was a dark lump).
+			if MODELS.mesh_of(builder, "coat_wall_rack") != null: MODELS.put(builder, node, "coat_wall_rack", Transform3D(Basis.IDENTITY, at(1.41, 0.4)))
+			else: builder.place(node, WALL.coat_hook_rail(builder, Vector3(1.2, 0.12, 0.09)), Transform3D(Basis.IDENTITY, at(1.6, 0.4)))
 		"bench":
 			piece(builder, node, MOVABLES.slat_bench(builder, Vector3(1.5, 0.45, 0.4)), at(0.0, 0.4))
 		"sideboard":
@@ -257,7 +258,7 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			# their place from its back.
 			var back := -size.y * 0.5
 			piece(builder, holder, DESKS.desk_l_walnut(builder, Vector3(size.x - 0.1, 0.75, size.y - 0.7)), Vector3(0, 0, -0.35))
-			chair(builder, holder, Vector3(0, 0, back + 1.85), -1.0, "office_chair")
+			chair(builder, holder, Vector3(0, 0, back + 1.85), -1.0, "clerk_chair")
 			MODELS.lamp(builder, holder, int(room.get("id", -1)), "desk_lamp_banker", Transform3D(Basis.IDENTITY, Vector3(-0.7, 0.75, back + 0.15)))
 		"work_desk":
 			piece(builder, holder, DESKS.desk_steel(builder, Vector3(1.5, 0.75, 0.75)), Vector3(0, 0, -0.325))
@@ -301,7 +302,7 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, DESKS.sorting_table(builder, Vector3(2.0, 1.02, 0.9)), Vector3.ZERO)
 		"reader_table":
 			piece(builder, holder, DESKS.consult_table(builder, Vector3(1.4, 0.74, 0.7)), Vector3(0, 0, -0.35))
-			chair(builder, holder, Vector3(0, 0, 0.3), -1.0, "office_chair")
+			chair(builder, holder, Vector3(0, 0, 0.3), -1.0, "clerk_chair")
 			microfiche(builder, holder, Vector3(0, 0.74, -0.45))
 		"work_table":
 			piece(builder, holder, DESKS.dining_table(builder, Vector3(2.4, 0.74, 1.2)), Vector3.ZERO)
@@ -541,8 +542,47 @@ static func vending(builder: Node3D, holder: Node3D, at: Vector3, room_id: int) 
 		builder.box(holder, at + Vector3(-0.07, 1.12, -0.2), Vector3(0.56, 1.0, 0.01), "glow_white")
 	MODELS.light(builder, holder, room_id, "vending", Transform3D(Basis.IDENTITY, at))
 
+## A microfiche reader's screen as it is lit (fiche_screen()): dark glass, a
+## faint glow.
+const FICHE_GLOW := Color(0.8, 0.82, 0.74)
+const FICHE_ENERGY := 0.3
+
+## The download's screen surface (its "filmscreen" material) copied 3 mm out
+## along its face, in a glow_ material, so that office_geometry.lenses_of()
+## finds it and puts it out with its room's lamp.
+static func fiche_screen(builder: Node3D, holder: Node3D, reader: Mesh, at: Vector3) -> void:
+	for s in reader.get_surface_count():
+		var material := reader.surface_get_material(s)
+		if material == null or not "filmscreen" in material.resource_path: continue
+		if not builder.materials.has("glow_fiche"):
+			var glow := StandardMaterial3D.new()
+			glow.albedo_color = Color(0.12, 0.13, 0.13)
+			glow.roughness = 0.4
+			glow.emission_enabled = true
+			glow.emission = FICHE_GLOW
+			glow.emission_energy_multiplier = FICHE_ENERGY
+			builder.materials["glow_fiche"] = glow
+		var arrays := reader.surface_get_arrays(s)
+		var face := Vector3.ZERO
+		for n: Vector3 in arrays[Mesh.ARRAY_NORMAL]: face += n
+		var screen := ArrayMesh.new()
+		screen.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		screen.surface_set_material(0, builder.materials["glow_fiche"])
+		var lit := MeshInstance3D.new()
+		lit.name = "Mesh_glow_fiche"
+		lit.mesh = screen
+		lit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		lit.position = at + Vector3(0, 0.002, 0) + face.normalized() * 0.003
+		holder.add_child(lit)
+
 ## A microfiche reader (6.5) on its table, its screen lit while its room is.
 static func microfiche(builder: Node3D, holder: Node3D, at: Vector3) -> void:
-	builder.place(holder, MODELS.mesh_of(builder, "microfiche"), Transform3D(Basis.IDENTITY, at))
+	var reader := MODELS.mesh_of(builder, "microfiche")
+	builder.place(holder, reader, Transform3D(Basis.IDENTITY, at))
+	# The download's screen: its own glass again, a hair in front, glowing
+	# faintly with its room (a white sheet over it read as a white rectangle).
+	if not reader.has_meta("piece"):
+		fiche_screen(builder, holder, reader, at)
+		return
 	KIT.material(builder, "glow_white")
 	builder.box(holder, at + Vector3(0, 0.39, 0.1795), Vector3(0.36, 0.23, 0.001), "glow_white")

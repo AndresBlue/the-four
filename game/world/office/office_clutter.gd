@@ -152,10 +152,17 @@ static func tops_shift(kind: String, item: Dictionary) -> Vector3:
 
 ## One thing at `xform` in `holder`, `often` of the time by vary(); noted (in
 ## the world, `node` its room's node).
+## Things thin enough to flicker with the top they lie on, and how far over it they are laid.
+const FLAT := ["notepad", "paper_stack", "folders", "register"]
+const FLAT_LIFT := 0.0015
+
 static func lay(builder: Node3D, node: Node3D, holder: Node3D, room: Dictionary, kind: String, xform: Transform3D, often: float, seed_pos: Vector3) -> void:
 	if builder.vary(seed_pos, 440) >= often: return
 	# Which of the kind's models (the books' rows, the boxes), by where it lies.
-	MODELS.put(builder, holder, kind, xform, int(builder.vary(seed_pos, 441) * 8.0))
+	# Flat things a hair over what they lie on: laid on it they flickered with its top.
+	var lifted := xform
+	if kind in FLAT: lifted.origin.y += FLAT_LIFT
+	MODELS.put(builder, holder, kind, lifted, int(builder.vary(seed_pos, 441) * 8.0))
 	var local: Vector3 = xform.origin if holder == node else holder.transform * xform.origin
 	note(builder, room, kind, node.position + local, xform.origin.y < 0.05, false)
 

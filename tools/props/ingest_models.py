@@ -144,11 +144,26 @@ PATCHES = {
     ("vintage_stapler", "vintage_stapler_diff_1k.jpg"): [(0, 35, 262, 104)],
     ("plastic_thermos", "plastic_thermos_diff_1k.jpg"): [(780, 860, 1015, 1000)],
     ("Television_01", "Television_01_diff_1k.jpg"): [(379, 707, 481, 731), (500, 775, 532, 905), (645, 748, 758, 901), (850, 51, 881, 143)],
+    # The extinguisher's instruction label and the small print beside it, as its red body.
+    ("extintor_loic", "extincteur_baseColor.jpg"): [(390, 80, 990, 945), (40, 445, 400, 940)],
+    # The microfiche reader's screen: a chart with figures, made a grey glass, off.
+    ("microfichas_maxdragonn", "filmscreen_baseColor.png"): [(0, 0, 512, 512, (48, 52, 52))],
     ("boombox", "boombox_diff_1k.jpg"): [(553, 389, 680, 502), (747, 512, 840, 625), (727, 788, 819, 891), (10, 80, 410, 230)],
 }
 ## Images multiplied by a colour as they are brought in: the archive box's
 ## white board turned to kraft.
-TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44)}
+## The cloth chair's roughness (green of its metal-roughness maps) raised: its
+## cushions matt cloth, its arms and base satin plastic, not the gloss it came with.
+TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44),
+    ("silla_tela_projectkaizen", "chairobjfinal_chair_sitting_and_back_pillow_Metallic_png-chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.png"): (1.0, 2.4, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_seat_back_Metallic-chairobjfinal_seat_back_Roughness.png"): (1.0, 2.5, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_seat_rest_Metallic-chairobjfinal_seat_rest_Roughness.png"): (1.0, 1.6, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_back_handle_Metallic_png-chairobjfinal_back_handle_Roughness_png.png"): (1.0, 2.6, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_hand_rest_Metallic_png-chairobjfinal_hand_rest_Roughness_png.png"): (1.0, 1.4, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_wheel_handle_Metallic-chairobjfinal_wheel_handle_Roughness.png"): (1.0, 4.5, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_pole_Metallic-chairobjfinal_pole_Roughness.png"): (1.0, 4.4, 1.0),
+    ("silla_tela_projectkaizen", "chairobjfinal_pole2_Metallic-chairobjfinal_pole2_Roughness.png"): (1.0, 4.8, 1.0),
+}
 # Big pieces seen close up keep 2048 px.
 KEEP_2K = {"escritorio_tanker_lenawachs", "retro_oficina_yj", "escritorio_madera_collings", "expendedora_attheseedof", "GothicBed_01", "Sofa_01", "sofa_03", "ArmChair_01", "wooden_bookshelf_worn", "GothicCommode_01", "ClassicConsole_01", "vintage_grandfather_clock_01", "puerta_oficina_sousinho", "puerta_lisa_sousinho", "puerta_metal_tboiston"}
 

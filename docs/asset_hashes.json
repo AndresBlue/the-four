@@ -532,8 +532,8 @@
     "sha256": "b2a72b1043d4d438f1b973045e5ebb7123a6405c01156db25c3effab140274aa"
   },
   "assets/props/office/sources.json": {
-    "bytes": 5160,
-    "sha256": "1db414d5c3fd1af6fa8500f60de543cbbc5d07602b5904e2f1d425c0f032de3b"
+    "bytes": 5602,
+    "sha256": "114ca81004b84f1a694a53e4bfb4d238f83604c8fa08a304269ff9fd445b2d99"
   },
   "assets/paintings/office/11766.jpg": {
     "bytes": 405762,
@@ -1145,23 +1145,19 @@
   },
   "assets/props/office/silla_tela_projectkaizen/Material_001.tres": {
     "bytes": 720,
-    "sha256": "5f8c702c659fcccfa2645a976160a36dacea5b30024ff945b8c093f2c993930c"
+    "sha256": "41b626d16a16ec42cb3effc87b20e47621336f5f32f533a3502a332e7d00d2d0"
   },
   "assets/props/office/silla_tela_projectkaizen/Material_002.tres": {
     "bytes": 728,
-    "sha256": "f782852e0197564b2516f89b29e2cfabd33841a64e7500eafce258e4d0925625"
+    "sha256": "237f38cee387cf0315438a1aacf01019254f0e0c223312a9c0db1cdec3e7ff5d"
   },
   "assets/props/office/silla_tela_projectkaizen/Material_003.tres": {
     "bytes": 800,
-    "sha256": "57761727f88d306cc0b0cb8ae44f51cde047ca6b073f10e2cd0b6b6e0d04fc24"
+    "sha256": "093cacc16d47f6a8a45b30c2ee668c5eeded79abf43888d1311550dc42ad9cc0"
   },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_BaseColor_png.jpg": {
     "bytes": 17011,
     "sha256": "873dba62c00f3f1b3282a766d7e3c0bddd42d50a114ff0936629e30ad43b3dee"
-  },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_Metallic_png_chairobjfinal_back_handle_Roughness_png.jpg": {
-    "bytes": 97854,
-    "sha256": "a4e0e5df3882aa41184c6714730ef62ec58b5bab20e9a017927a857612f94876"
   },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_Normal_png.jpg": {
     "bytes": 21871,
@@ -1171,10 +1167,6 @@
     "bytes": 68971,
     "sha256": "9494996f6a456592715a9e2a2944cd9eaf4cbab277b15918c1223c993edca5d2"
   },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_chair_sitting_and_back_pillow_Metallic_png_chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.jpg": {
-    "bytes": 133797,
-    "sha256": "c9f1555389be4d6db0ab09b6011c0d6db3bd6254eb928f3ad730ecc841d5f24c"
-  },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_chair_sitting_and_back_pillow_Normal_png.jpg": {
     "bytes": 328894,
     "sha256": "86b673e2174e7ce87064bb2da6322f9c83dea52f327ec0868d33089c6151181b"
@@ -1182,10 +1174,6 @@
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_BaseColor_png.jpg": {
     "bytes": 17011,
     "sha256": "873dba62c00f3f1b3282a766d7e3c0bddd42d50a114ff0936629e30ad43b3dee"
-  },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_Metallic_png_chairobjfinal_hand_rest_Roughness_png.jpg": {
-    "bytes": 212383,
-    "sha256": "d3de18a9b267d1035b9ee2c67b03c28556b1ad71b3f00f47eb62339961d1a0ba"
   },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_Normal_png.jpg": {
     "bytes": 27082,
@@ -1195,10 +1183,6 @@
     "bytes": 19868,
     "sha256": "2be808d7c99d8e597cc7544720714da1325e4904611fa66537f15a4c018c0c42"
   },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole2_Metallic_chairobjfinal_pole2_Roughness.jpg": {
-    "bytes": 21249,
-    "sha256": "1c8cb4258fa1836e1325d0ca0ebcb9a7565f5ca76bd15888648566a8c7fd627a"
-  },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole2_Normal.jpg": {
     "bytes": 17094,
     "sha256": "69b3a55df87331e1d4bdb7e41e751c7f309c1e5482bb0c01409fba3ec7015fbe"
@@ -1206,10 +1190,6 @@
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_BaseColor.jpg": {
     "bytes": 24796,
     "sha256": "4358ecaf1b913929d90dfad65cb96eb68d3ae25698b0ab2c796174795ce587d1"
-  },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_Metallic_chairobjfinal_pole_Roughness.jpg": {
-    "bytes": 28084,
-    "sha256": "a1ea7c21c837d55e44acc36dba9fed8046a7cd2db84c8fc455b9f0c4c72a711a"
   },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_Normal.jpg": {
     "bytes": 17146,
@@ -1219,10 +1199,6 @@
     "bytes": 17011,
     "sha256": "873dba62c00f3f1b3282a766d7e3c0bddd42d50a114ff0936629e30ad43b3dee"
   },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_back_Metallic_chairobjfinal_seat_back_Roughness.jpg": {
-    "bytes": 190641,
-    "sha256": "ad5d8a5dfb9ff9abce607cd7426c58389962aaf6cc38e95d869b857ec01d00d3"
-  },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_back_Normal.jpg": {
     "bytes": 24711,
     "sha256": "c5b67bba75c0a1fff7513105be7127fc6167c70dc7fb0d48813f4f9032b42129"
@@ -1230,10 +1206,6 @@
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_BaseColor.jpg": {
     "bytes": 82471,
     "sha256": "b0deb8c8b117dc57de28e3d9a6ef4f7a1fb7b43b74daf67418f3bba29fb758b6"
-  },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_Metallic_chairobjfinal_seat_rest_Roughness.jpg": {
-    "bytes": 110126,
-    "sha256": "7d1f237b3c412eb4fe50ca62f2b1254735a750b84249e21f8199875414164980"
   },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_Normal.jpg": {
     "bytes": 60481,
@@ -1255,10 +1227,6 @@
     "bytes": 36982,
     "sha256": "b92ba4db3ecb416f8627eb5dee758d3e2f910e6e7748d956685219c738bb3964"
   },
-  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_handle_Metallic_chairobjfinal_wheel_handle_Roughness.jpg": {
-    "bytes": 52852,
-    "sha256": "18673be1ce0520198065d18cc268921da7d121f755817d877fe4f5154888472e"
-  },
   "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_handle_Normal.jpg": {
     "bytes": 17129,
     "sha256": "a6e043d86e7daceefae2fcdaa2d5bf732e260f704ac58fab79e25d82c572cc7c"
@@ -1277,19 +1245,19 @@
   },
   "assets/props/office/silla_tela_projectkaizen/pole.tres": {
     "bytes": 676,
-    "sha256": "e701d3ecfe5f5551492e51c3923e1c0aa206c8c6fcd2e53ecc9cc15b4d0a9d07"
+    "sha256": "7df1d262ede197874c6065d7e1325be33920d7a793dca89430a85aadfc99d8e0"
   },
   "assets/props/office/silla_tela_projectkaizen/pole2.tres": {
     "bytes": 681,
-    "sha256": "bc266ff822906ba05c9dd36d98978d544ded767776fb7f38e32fbade3597d57d"
+    "sha256": "1bfe8fd9adfcc7d17bdd97bf0b8a396feb12ed5f6f1baa80cb11faf6cbf4373e"
   },
   "assets/props/office/silla_tela_projectkaizen/seat_back.tres": {
     "bytes": 701,
-    "sha256": "58379a010a01cace5a19b4e6ac4bfff4dbbc2ac56e0b048865b7090797e0acd9"
+    "sha256": "227bfbab95859092b9d4d68475efed9a802f49a5030a4ad21a47a5604528aade"
   },
   "assets/props/office/silla_tela_projectkaizen/seat_rest.tres": {
     "bytes": 701,
-    "sha256": "cf9796a54976b08f53e18ed7f1e94b3a88b8a09eeed8382ecaafbc3e297912db"
+    "sha256": "cd37033b10c54a3a20868a94bccb316f729aa781d7ac1eadf7f597701292ac61"
   },
   "assets/props/office/silla_tela_projectkaizen/wheel_back.tres": {
     "bytes": 706,
@@ -1297,7 +1265,7 @@
   },
   "assets/props/office/silla_tela_projectkaizen/wheel_handle.tres": {
     "bytes": 716,
-    "sha256": "d40bccd2dbfde29b5101fde6dd85fff3d19f472c0d0e8ebd8d5110755c11a8cd"
+    "sha256": "2a30ff076f42e7d0436d01834b44b8a3693bd0b9d5a95d8afa9cddb0238e8005"
   },
   "assets/props/office/silla_tela_projectkaizen/wheels.tres": {
     "bytes": 686,
@@ -1980,8 +1948,8 @@
     "sha256": "c404f84ed5d58ece7512f368dceb9ccade0683908aff367ea231c9aab53f8b14"
   },
   "assets/props/office/magnifying_glass_01.res": {
-    "bytes": 79492,
-    "sha256": "95f0cbbe03eb563b04bd3640f41858c90968eb91164078df6bd4f645451c873a"
+    "bytes": 79664,
+    "sha256": "1a5321523ec2dba37077744f7adb7675cd9102b35395c792ba76aeea0ac121ad"
   },
   "assets/props/office/metal_toolbox.res": {
     "bytes": 127495,
@@ -2020,8 +1988,8 @@
     "sha256": "38ccd25a43e7573689149d1b13b1a0d4db8ad44b9f5ca34d17f283e3a4f9b922"
   },
   "assets/props/office/puerta_oficina_sousinho_leaf.res": {
-    "bytes": 47038,
-    "sha256": "56530425be94a11a2ad815271c15efdc62ab49ee86b4efcfb2933cda26ce14f6"
+    "bytes": 139123,
+    "sha256": "f390b79820727b72b102560999d1295c97e447c4d3137f8d6615915623b6d782"
   },
   "assets/props/office/reloj_mesa_sousinho.res": {
     "bytes": 143098,
@@ -2070,5 +2038,181 @@
   "assets/props/office/zapato_inciprocal.res": {
     "bytes": 146201,
     "sha256": "388348f065a7b5e0aa4dbf0aded4f07dfbd70e171a4971a2e541d4c7990d5e34"
+  },
+  "assets/props/office/extintor_loic.res": {
+    "bytes": 102449,
+    "sha256": "b8cc7efeb3f89dbe890697f9d9a0c2cd55eeb3c1bd7ec6bb7a660c3e3d0122cc"
+  },
+  "assets/props/office/microfichas_maxdragonn.res": {
+    "bytes": 21242,
+    "sha256": "9ce7021a9cc34534aa6ee15cd242198f4f2e95ae36092c1c46cea1bd08139d78"
+  },
+  "assets/props/office/perchero_pared_ehnri.res": {
+    "bytes": 97887,
+    "sha256": "616499ec9b676ccaa97775bca9ae33ec239f01f4e8927f1774a3b3caabd0cc47"
+  },
+  "assets/props/office/sillon_mirey_a.res": {
+    "bytes": 170981,
+    "sha256": "e427bf6f027cb31ab9b057d76825d61850cb0e15bf604ee737561e9f85edc3de"
+  },
+  "assets/props/office/toalla_aprilpolubiec.res": {
+    "bytes": 99262,
+    "sha256": "66eb696c2a0cf6462aa15e6ffc7802a752cd5ff966ad6cadfe24ceaf3dee1454"
+  },
+  "assets/props/office/extintor_loic/extincteur.tres": {
+    "bytes": 605,
+    "sha256": "e4b95dbd63cd0a7b5a8e2f24f6f0ffa3eaa32e0d52c3d885fe4755dd9a90dd63"
+  },
+  "assets/props/office/extintor_loic/extincteur_baseColor.jpg": {
+    "bytes": 80181,
+    "sha256": "95f3f2af712d7e2616ba74ae3f846616f685009f7dd149f2749b7af5f419c3c2"
+  },
+  "assets/props/office/extintor_loic/extincteur_metallicRoughness.jpg": {
+    "bytes": 112884,
+    "sha256": "cdc77e8b5453b9fec739c8dd1c0a535c21bb5eab48c9fc1f8da0a9a4fc185903"
+  },
+  "assets/props/office/extintor_loic/extincteur_normal.jpg": {
+    "bytes": 78493,
+    "sha256": "3f4cef31bfaf0d7dd51a572debe2dfd31ddf431bfb7f4bc925a7134035307f6c"
+  },
+  "assets/props/office/microfichas_maxdragonn/filmscreen.tres": {
+    "bytes": 346,
+    "sha256": "11be26321c541a1b03ec8ada9e799383564ef725e7785f40c9bdda923db15f6c"
+  },
+  "assets/props/office/microfichas_maxdragonn/filmscreen_baseColor.jpg": {
+    "bytes": 4724,
+    "sha256": "596adce2a0dd8776bbb23cc18769876af80a6cb050ef0d151d1d2b3a70ed1f41"
+  },
+  "assets/props/office/microfichas_maxdragonn/microfiche_reader.tres": {
+    "bytes": 353,
+    "sha256": "4aeb7a0cd9e93f59e1b3711379e2716de542a98a5a101fbd700e296c27897d3c"
+  },
+  "assets/props/office/microfichas_maxdragonn/microfiche_reader_baseColor.jpg": {
+    "bytes": 94852,
+    "sha256": "1bcbba05fd16f115753cf963de784e3f1eaa578d4cbaaf0096f644545b209983"
+  },
+  "assets/props/office/perchero_pared_ehnri/Scene___Root.tres": {
+    "bytes": 620,
+    "sha256": "8af56d57cb51289a168b903c5dfd4c33488bba1cb715811fe8b1611785fbfe44"
+  },
+  "assets/props/office/perchero_pared_ehnri/Scene___Root_baseColor.jpg": {
+    "bytes": 154774,
+    "sha256": "66cc567a81e752d817d76b7233de9d467d0ce99a1020b1fca9f7b14f7813281b"
+  },
+  "assets/props/office/perchero_pared_ehnri/Scene___Root_metallicRoughness.jpg": {
+    "bytes": 209993,
+    "sha256": "ddcbe33c3934e2ef37728c9d2da476929c9d43fc1d661df701860b2907fc0554"
+  },
+  "assets/props/office/perchero_pared_ehnri/Scene___Root_normal.jpg": {
+    "bytes": 160662,
+    "sha256": "fe360fa4288d1aaba053af55eee3f82c3d39b24680f2dc018ba4cc10b7b26e50"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_back_handle_Metallic_png_chairobjfinal_back_handle_Roughness_png.png": {
+    "bytes": 117898,
+    "sha256": "4d4f3e711ef13454fe68f43c2ed165677f17d80eb54ccae50cc4d1db5db1f72b"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_chair_sitting_and_back_pillow_Metallic_png_chairobjfinal_chair_sitting_and_back_pillow_Roughness_png.png": {
+    "bytes": 369339,
+    "sha256": "fcf48d2de6b91163c06f952a3f9e70937525f5ec81b3df1634ab614875a9ed1d"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_hand_rest_Metallic_png_chairobjfinal_hand_rest_Roughness_png.png": {
+    "bytes": 356500,
+    "sha256": "6bc03c85626238e80910da326b3309b1dd65f4128107954e189a4ac83c3d639e"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole2_Metallic_chairobjfinal_pole2_Roughness.png": {
+    "bytes": 20670,
+    "sha256": "c56d499b681073e5417632a4df3ad81ed7ac159c0db544400e8f2e5a52af0c40"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_pole_Metallic_chairobjfinal_pole_Roughness.png": {
+    "bytes": 44210,
+    "sha256": "c61dc0c32bd21467693fa99d0f4b87ac24bf7620fca6d01887ef8b5c4298628b"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_back_Metallic_chairobjfinal_seat_back_Roughness.png": {
+    "bytes": 261764,
+    "sha256": "34862c7c0026314fd14d22048d4972b0d935145b7b85b51ba37a9f9335d17b46"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_seat_rest_Metallic_chairobjfinal_seat_rest_Roughness.png": {
+    "bytes": 278474,
+    "sha256": "af5fa47d53fa4e7458527477e784cd3a3546728e0b81855ff562a24fa8b8e125"
+  },
+  "assets/props/office/silla_tela_projectkaizen/chairobjfinal_wheel_handle_Metallic_chairobjfinal_wheel_handle_Roughness.png": {
+    "bytes": 199816,
+    "sha256": "ea62f7d2da45749360894b0af120ffb0f9677df23f73d3c7045657bb28b1159a"
+  },
+  "assets/props/office/sillon_mirey_a/leather_black__Instance_0.tres": {
+    "bytes": 474,
+    "sha256": "6fa909062aa459102eafd77dd1a245204bfb8b511ab3c1715fcdc931ab24a5ab"
+  },
+  "assets/props/office/sillon_mirey_a/leather_black__Instance_0_baseColor.jpg": {
+    "bytes": 150938,
+    "sha256": "e7e89ea68f6effce0d1415805706734ae995407512cc2ac95759beaffbbdaff0"
+  },
+  "assets/props/office/sillon_mirey_a/leather_black__Instance_0_metallicRoughness.jpg": {
+    "bytes": 21004,
+    "sha256": "107124999071fe7a7544abc5f27a68d0d2c86eaeb14e1715f6006285bb5ad7a2"
+  },
+  "assets/props/office/sillon_mirey_a/leather_black__Instance_1.tres": {
+    "bytes": 474,
+    "sha256": "190f047a1b183ca9f4ffd533b2663724d6e4d75106fa7e680f349373ec6be3f1"
+  },
+  "assets/props/office/sillon_mirey_a/leather_black__Instance_1_baseColor.jpg": {
+    "bytes": 161263,
+    "sha256": "d5fd765ab608309b615021c13e90ed252529421d7cf9ec4fa1fc80ffdcd9a3b9"
+  },
+  "assets/props/office/sillon_mirey_a/leather_black__Instance_1_metallicRoughness.jpg": {
+    "bytes": 19854,
+    "sha256": "93b61f3fe1453037a4274f9fa2aaf14ddb6c6895fa2da925eb8ccd9fe8b08829"
+  },
+  "assets/props/office/sillon_mirey_a/metal_black__Instance_3.tres": {
+    "bytes": 468,
+    "sha256": "533c76a4365a0d697be52d8c65452471d5a504eb7fe98ce7bbc9127f957f7d7c"
+  },
+  "assets/props/office/sillon_mirey_a/metal_black__Instance_3_baseColor.jpg": {
+    "bytes": 631,
+    "sha256": "9b7383ac5371b2456b53aef728ab88627d7db0cc699dbf061b4c3dbd85f332fd"
+  },
+  "assets/props/office/sillon_mirey_a/metal_black__Instance_3_metallicRoughness.jpg": {
+    "bytes": 40502,
+    "sha256": "aa86a4faaa21f3cc01a2a62304ceb3a29dc7217cd3a7b9b0354f5a0f7c247ca6"
+  },
+  "assets/props/office/sillon_mirey_a/metal_chrome__Instance_2.tres": {
+    "bytes": 471,
+    "sha256": "386b5ae5137b5ce6a5fd0907b0c8bb4360bafbbf52b1385bc828a0c6d4261774"
+  },
+  "assets/props/office/sillon_mirey_a/metal_chrome__Instance_2_baseColor.jpg": {
+    "bytes": 631,
+    "sha256": "b9882eddf367bf71f99f66fd3c403bf90804c9081aefb15d7e4ebab2030a14ae"
+  },
+  "assets/props/office/sillon_mirey_a/metal_chrome__Instance_2_metallicRoughness.jpg": {
+    "bytes": 32274,
+    "sha256": "3e02ddb80332cf3b14870157d4ac7ed5198bd1308cf7afba5913718f305907c3"
+  },
+  "assets/props/office/sillon_mirey_a/plastic_black__Instance_4.tres": {
+    "bytes": 474,
+    "sha256": "4579d9b33c573eca01bf4c1e1d4c518ee25f4be09f5fed0e8fa2ce18d2235cf5"
+  },
+  "assets/props/office/sillon_mirey_a/plastic_black__Instance_4_baseColor.jpg": {
+    "bytes": 631,
+    "sha256": "58d726329611767ef6de0bd9e2008c5f40a3b66cec7783cb8e06b9da3b68ad8d"
+  },
+  "assets/props/office/sillon_mirey_a/plastic_black__Instance_4_metallicRoughness.jpg": {
+    "bytes": 45667,
+    "sha256": "f5a9cddd4c18d91323eae223fe9e85a3f8eecac2b367d5048b91b5080c752864"
+  },
+  "assets/props/office/sillon_mirey_a/wood_Walnut_dark__Instance_5.tres": {
+    "bytes": 483,
+    "sha256": "9ebcd8c7ef9c7f8a17802c2dec4c0a5c9513c41ec5da08c6ae037c2b6b5ccb1e"
+  },
+  "assets/props/office/sillon_mirey_a/wood_Walnut_dark__Instance_5_baseColor.jpg": {
+    "bytes": 131367,
+    "sha256": "382f9d1e8dc2d5cf28e10be86e083924cda1880f6331b0f588ae4df1ef9dd065"
+  },
+  "assets/props/office/sillon_mirey_a/wood_Walnut_dark__Instance_5_metallicRoughness.jpg": {
+    "bytes": 29890,
+    "sha256": "a23c76e5a76e7a8201717c63e9083093641fc909f7f1b36b3dd64c6820557143"
+  },
+  "assets/props/office/toalla_aprilpolubiec/Scene___Root.tres": {
+    "bytes": 182,
+    "sha256": "d6493c0c9c224672a07b0fa2931cd67ba2c346aeb5feb2214af0681e0a1bf30c"
   }
 }

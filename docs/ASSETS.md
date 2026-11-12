@@ -299,6 +299,7 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [escritorio de madera](https://sketchfab.com/3d-models/antique-desk-c491f647da5947978ba8113951ee2efc) | `escritorio_madera_collings` | Matthew Collings | Sketchfab | CC BY 4.0 |
 | [escritorio metálico tanker](https://sketchfab.com/3d-models/steelcase-tanker-desk-99877819505c44a4b7e2b72a61f68b34) | `escritorio_tanker_lenawachs` | lena-wachs | Sketchfab | CC BY 4.0 |
 | [máquina expendedora](https://sketchfab.com/3d-models/vending-machine-af792a359ab24c6eaf1e8d98640f05a8) | `expendedora_attheseedof` | AtTheSpeedOf | Sketchfab | CC BY 4.0 |
+| [extintor](https://sketchfab.com/3d-models/fire-extinguisher-5676b179b3b744c0aaae53a3dcea2300) | `extintor_loic` | Loïc | Sketchfab | CC BY 4.0 |
 | [archivador de madera de 6 cajones](https://polyhaven.com/a/vintage_wooden_drawer_01) | `fichero_vintage_wooden_drawer_01` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [flexo](https://sketchfab.com/3d-models/old-lamp-1ec5e59201094883b780a32ff4e61637) | `flexo_sousinho` | Sousinho | Sketchfab | CC BY 4.0 |
 | [globo terráqueo](https://sketchfab.com/3d-models/antique-globe-78b47132c6be42bcb664545a69b380d9) | `globo_collings` | mtcollings | Sketchfab | CC BY 4.0 |
@@ -309,11 +310,13 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [lupa de mango negro](https://polyhaven.com/a/magnifying_glass_01) | `magnifying_glass_01` | Nazar Borodavka | Poly Haven | CC0 1.0 |
 | [taburete redondo de cuero sobre base metálica industrial](https://polyhaven.com/a/metal_stool_01) | `metal_stool_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [caja de herramientas de chapa verde gris con bandeja, desconchada](https://polyhaven.com/a/metal_toolbox) | `metal_toolbox` | Mateusz Sadek | Poly Haven | CC0 1.0 |
+| [lector de microfichas](https://sketchfab.com/3d-models/microfiche-reader-840847ca755e4ecda2a16759f11654dd) | `microfichas_maxdragonn` | maxdragonn | Sketchfab | CC BY 4.0 |
 | [sillón de dirección de cuero marrón y madera curvada, base giratoria](https://polyhaven.com/a/mid_century_lounge_chair) | `mid_century_lounge_chair` | Kuutti Siitonen | Poly Haven | CC0 1.0 |
 | [ratonera de madera y alambre, oxidada, con cebo](https://polyhaven.com/a/mousetrap) | `mousetrap` | GreenPixel | Poly Haven | CC0 1.0 |
 | [nevera antigua](https://sketchfab.com/3d-models/old-fridge-68d173f205344455933f861042b99fe3) | `nevera_dylanheyes` | dylanheyes | Sketchfab | CC BY 4.0 |
 | [pachira, planta de interior (cuatro ejemplares sin maceta)](https://polyhaven.com/a/pachira_aquatica_01) | `pachira_aquatica_01` | Rob Tuytel, Rico Cilliers | Poly Haven | CC0 1.0 |
 | [perchero de pie de madera curvada](https://sketchfab.com/3d-models/coat-rack-72e821fc75d9473183a63d548959693b) | `perchero_coat_rack_whostea` | Whostea | Sketchfab | CC BY 4.0 |
+| [perchero de pared con ganchos](https://sketchfab.com/3d-models/old-coat-rack-f7125e65dd004381aa3e9882ef74e963) | `perchero_pared_ehnri` | Ehnri | Sketchfab | CC BY 4.0 |
 | [termo de plástico verde oliva y crema con asa, de los 70](https://polyhaven.com/a/plastic_thermos) | `plastic_thermos` | PierreB3D | Poly Haven | CC0 1.0 |
 | [portalápices](https://sketchfab.com/3d-models/pencils-w-holder-820166ed87564a3389c549735075657d) | `portalapices_aspectstudio` | AspectStudios | Sketchfab | CC BY 4.0 |
 | [planta de interior en maceta de terracota](https://polyhaven.com/a/potted_plant_01) | `potted_plant_01` | Rico Cilliers | Poly Haven | CC0 1.0 |
@@ -329,11 +332,13 @@ Descargas originales en `source_assets/oficinas/<grupo>/<slug>/` y `source_asset
 | [silla de banquero de madera](https://sketchfab.com/3d-models/wooden-office-chair-f415e04f4bb24221854198727b8f0352) | `silla_banquero_zamzam` | Zamzam2003 | Sketchfab | CC BY 4.0 |
 | [silla giratoria de oficina de los 70 (1970s swivel office chair)](https://sketchfab.com/3d-models/old-computer-chair-a311529b1ec349c48f789bf4e1f99e89) | `silla_giratoria_old_computer_chair` | Slava Izvekov (guantanamera) | Sketchfab | CC BY 4.0 |
 | [silla giratoria de tela](https://sketchfab.com/3d-models/a81b0c8cbe3248328652d9cd9b8c8b86) | `silla_tela_projectkaizen` | projectkaizen | Sketchfab | CC BY 4.0 |
+| [sillón de dirección (MireyGroup)](https://sketchfab.com/3d-models/8f66d9053c1940da82e21523649e32f9) | `sillon_mirey_a` | Мирэй Групп | Sketchfab | CC BY 4.0 |
 | [mesa pequeña de madera, vintage](https://polyhaven.com/a/small_wooden_table_01) | `small_wooden_table_01` | Ulan Cabanilla | Poly Haven | CC0 1.0 |
 | [sofá de cuero capitoné con marco de madera tallada](https://polyhaven.com/a/sofa_02) | `sofa_02` | Kirill Sannikov | Poly Haven | CC0 1.0 |
 | [marco de pie de madera con lámina de playa](https://polyhaven.com/a/standing_picture_frame_02) | `standing_picture_frame_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [estantería de estructura de acero con baldas de madera, comercial](https://polyhaven.com/a/steel_frame_shelves_02) | `steel_frame_shelves_02` | James Ray Cock | Poly Haven | CC0 1.0 |
 | [taquilla gris](https://sketchfab.com/3d-models/locker-3ebc5746b7784253bb0ebd151022757b) | `taquilla_zambur` | Zambur | Sketchfab | CC BY 4.0 |
+| [toalla colgada](https://sketchfab.com/3d-models/hanging-towel-2fbb8f56b1ba47bdb6746d95b6fc2242) | `toalla_aprilpolubiec` | aprilpolubiec | Sketchfab | CC BY 4.0 |
 | [ventilador de mesa](https://sketchfab.com/3d-models/vintage-fan-36eaf8bb14eb48b1ac2b5fbf9368dfe2) | `ventilador_joshsmith` | Josh Smith | Sketchfab | CC BY 4.0 |
 | [grapadora de sobremesa de chapa esmaltada turquesa, de los 50 a los 70](https://polyhaven.com/a/vintage_stapler) | `vintage_stapler` | Mateusz Sadek | Poly Haven | CC0 1.0 |
 | [fuente de agua con garrafa](https://sketchfab.com/3d-models/water-cooler-4b88c4c4e94c497ca39f831f374e89fc) | `water_cooler_bottle_tboiston` | tboiston | Sketchfab | CC BY 4.0 |

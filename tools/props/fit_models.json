@@ -1052,16 +1052,17 @@
     "name": "magnifying_glass_01",
     "objects": ".",
     "box": [
-     null,
      [
-      0.0,
-      0.27
+      -0.066,
+      0.066
      ],
+     null,
      null
     ],
     "shrink": {
      ".": 0.35
-    }
+    },
+    "tilt": 90
    }
   ]
  },
@@ -1145,6 +1146,103 @@
     ],
     "shrink": {
      ".": 0.6
+    }
+   }
+  ]
+ },
+ "sillon_mirey_a": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/sillon.gltf",
+  "parts": [
+   {
+    "name": "chair",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      1.24
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.058
+    }
+   }
+  ]
+ },
+ "extintor_loic": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/extintor.gltf",
+  "parts": [
+   {
+    "name": "extinguisher",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.62
+     ],
+     null
+    ]
+   }
+  ]
+ },
+ "microfichas_maxdragonn": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/microfichas.gltf",
+  "parts": [
+   {
+    "name": "reader",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.55
+     ],
+     null
+    ]
+   }
+  ]
+ },
+ "perchero_pared_ehnri": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/perchero.gltf",
+  "turn": -90,
+  "parts": [
+   {
+    "name": "rack",
+    "objects": ".",
+    "box": [
+     [
+      -0.6,
+      0.6
+     ],
+     null,
+     null
+    ]
+   }
+  ]
+ },
+ "toalla_aprilpolubiec": {
+  "in": "_zip/scene.gltf",
+  "out": "_gltf/toalla.gltf",
+  "parts": [
+   {
+    "name": "towel",
+    "objects": ".",
+    "box": [
+     null,
+     [
+      0.0,
+      0.55
+     ],
+     null
+    ],
+    "shrink": {
+     ".": 0.025
     }
    }
   ]

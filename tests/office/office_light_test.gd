@@ -279,12 +279,15 @@ func block_halos(hotel) -> void:
 		if not OFFICE.false_ceiling(room): continue
 		var id := int(room.id)
 		var halo := hotel.room_nodes[id].get_node_or_null("CeilingHalo") as MeshInstance3D
-		if halo == null or not hotel.halos.has(id) or halo.mesh.surface_get_array_len(0) != 6 * lamps.size(): all_halos = false
+		# A rectangle per troffer, and one more for each open cell its glow
+		# reaches over the seam (ceiling_halo(), luz6).
+		var corners: int = 0 if halo == null else halo.mesh.surface_get_array_len(0)
+		if halo == null or not hotel.halos.has(id) or corners < 6 * lamps.size() or corners % 6 != 0: all_halos = false
 		else:
 			if halo.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF: shadowless = false
 			var bit: int = 0 if hotel.room_layers.is_empty() else int(hotel.room_layers.layer[id])
 			if bit != 0 and (halo.layers & bit) == 0: layered_ok = false
-	check("Cada sala de pantallas tiene su halo, un rectángulo por pantalla", all_halos)
+	check("Cada sala de pantallas tiene su halo, un rectángulo por pantalla (y su paso a las celdas abiertas)", all_halos)
 	check("El halo no proyecta sombra", shadowless)
 	check("El halo, en la capa de su sala", layered_ok)
 	var hue_ok := true

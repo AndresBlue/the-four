@@ -16,7 +16,7 @@ extent instead. "places" puts a copy in each of several boxes; "repeat" lays
 n copies side by side along x, each in its share of the box; "mirror" copies
 the objects it names onto the other face (z mirrored about the fit's middle):
 a lever modelled on one face only; "flip" mirrors them so instead (the
-other shoe of a pair). "shrink" collapses the objects it names to
+other shoe of a pair); "tilt" lays them down, degrees about x. "shrink" collapses the objects it names to
 a share of their triangles (welded first, tools/props/decimate.py). A stretch
 of the face (x against y) past "max_stretch" (default 1.1) is reported.
 Every part's objects are named <part>_<n>, for build_catalogue.gd's PARTS.
@@ -55,8 +55,10 @@ def imported(path):
     return meshes
 
 
-def turn(ob, degrees):
+def turn(ob, degrees, tilt=0.0):
     if degrees: ob.data.transform(Matrix.Rotation(math.radians(degrees), 4, "Z"))
+    # About the game's x (Blender's too): a thing modelled standing laid down.
+    if tilt: ob.data.transform(Matrix.Rotation(math.radians(tilt), 4, "X"))
 
 
 def bounds(objects):
@@ -158,7 +160,7 @@ def main():
                     cell[0] = [box[0][0] + wide * k, box[0][0] + wide * (k + 1)]
                 objects = copies(own)
                 reference = copies([ob for ob in pool if re.search(part.get("fit", part["objects"]), ob.name)])
-                for ob in objects + reference: turn(ob, part.get("turn", 0))
+                for ob in objects + reference: turn(ob, part.get("turn", 0), part.get("tilt", 0))
                 lo, hi = bounds(reference)
                 middle = (lo[1] + hi[1]) * 0.5
                 # By the download's own names (a copy's has a suffix).
@@ -187,6 +189,10 @@ def main():
     keep = {ob for _, ob in made}
     for ob in list(bpy.data.objects):
         if ob not in keep: bpy.data.objects.remove(ob)
+    # One UV map each: Godot reads a third and a fourth as custom channels the
+    # bake cannot store, and the surface was lost (the office door's leaf).
+    for ob in keep:
+        while len(ob.data.uv_layers) > 1: ob.data.uv_layers.remove(ob.data.uv_layers[-1])
     count = {}
     for name, ob in made:
         count[name] = count.get(name, 0) + 1

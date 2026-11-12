@@ -79,7 +79,7 @@ const PIECES := {
 	"clock_square": [Vector3(0.3, 0.3, 0.06), 1.85],
 	"screen": [Vector3(1.8, 1.6, 0.1), 1.15],
 	"keys": [Vector3(0.5, 0.6, 0.08), 1.3],
-	"hooks": [Vector3(1.2, 0.12, 0.09), 1.6],
+	"hooks": [Vector3(1.2, 0.34, 0.125), 1.6],
 	"directory": [Vector3(0.9, 0.7, 0.05), 1.1],
 	"central": [Vector3(0.56, 1.15, 0.2), 0.85],
 	"extinguisher": [Vector3(0.2, 0.62, 0.18), 0.3],
@@ -315,9 +315,10 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 		"screen": builder.place(boundary, WALL.roll_screen(builder, size), at, false)
 		"keys": builder.place(boundary, WALL.key_cabinet(builder, size), at, false)
 		"hooks":
-			builder.place(boundary, WALL.coat_hook_rail(builder, size), at, false)
-			builder.place(boundary, STAND.coat_hanging(builder, Vector3(0.5, 0.95, 0.14)), xform_of(wall, x - 0.3, 0.75, 0.14), false)
-			builder.place(boundary, STAND.towel(builder, Vector3(0.3, 0.55, 0.04)), xform_of(wall, x + 0.3, 1.1, 0.04), false)
+			# The wooden rack, its hooks empty but for a towel hung from one (a coat hung was a dark lump).
+			MODELS.put(builder, boundary, "coat_wall_rack", at)
+			var towel := MODELS.mesh_of(builder, "towel")
+			if towel != null: MODELS.put(builder, boundary, "towel", xform_of(wall, x + 0.3, mount + 0.1 - towel.get_aabb().size.y, towel.get_aabb().size.z))
 		"directory": builder.place(boundary, WALL.directory_board(builder, size), at, false)
 		"central":
 			var central := EQ_MAIL.mail_central(builder, EQ_MAIL.CENTRAL, false)
@@ -327,7 +328,11 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 			var plate := WALL.sign_plate(builder, size)
 			builder.place(boundary, plate, at, false)
 			plate_text(boundary, plate, at, String(OFFICE.RULE_TEXTS[text]), SIGN_FONT)
-		"extinguisher": builder.place(boundary, STAND.extinguisher(builder, size), at, false)
+		"extinguisher":
+			MODELS.put(builder, boundary, "extinguisher", at)
+			# Its wall bracket: a steel plate on the wall and a strap round the bottle.
+			builder.box(boundary, at * Vector3(0, 0.44, -size.z * 0.5 + 0.006), Vector3(0.07, 0.16, 0.012), "metal", false, "box", at.basis.get_euler())
+			builder.box(boundary, at * Vector3(0, 0.42, 0.0), Vector3(0.17, 0.025, 0.17), "metal", false, "box", at.basis.get_euler())
 		"hose": builder.place(boundary, STAND.hose_cabinet(builder, size), at, false)
 		"fountain": builder.place(boundary, STAND.wall_fountain(builder, size), at, false)
 		"thermostat": builder.place(boundary, STAND.thermostat(builder, size), at, false)

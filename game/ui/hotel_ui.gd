@@ -75,6 +75,11 @@ const CREDITS := [
 		"«Extension Cord Scan MEDPOLY», de EFX (Sketchfab, CC BY 4.0): el alargador, simplificado.",
 		"«Several Folders», de janexx (Sketchfab, CC BY 4.0): los archivadores de palanca, sin etiquetas.",
 		"«Old Oxford Shoe», de inciprocal (Sketchfab, CC BY 4.0): el par de zapatos.",
+		"«Кресло для руководителя Оксфорд А», de Мирэй Групп (Sketchfab, CC BY 4.0): el sillón de dirección, simplificado.",
+		"«Fire Extinguisher», de Loïc (Sketchfab, CC BY 4.0): el extintor, sin su etiqueta.",
+		"«microfiche reader», de maxdragonn (Sketchfab, CC BY 4.0): el lector de microfichas, con la pantalla apagada.",
+		"«Old coat rack», de Ehnri (Sketchfab, CC BY 4.0): el perchero de pared.",
+		"«Hanging Towel», de aprilpolubiec (Sketchfab, CC BY 4.0): la toalla, simplificada.",
 		"Televisor, cama de la escena de entrada, puerta de madera y armario: aportados por el autor; autoría y licencia de origen pendientes de verificar.",
 	]],
 	["SONIDO DE FREESOUND", [

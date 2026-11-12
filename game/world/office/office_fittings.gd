@@ -34,12 +34,12 @@ const RUG_MARGIN := 0.9
 const RUG_LEAST := 1.5
 const MAT := Vector3(1.2, 0.012, 0.8)
 const MAT_IN := 0.75
-## The wet end: the cubicles' wall and this much of the walls beside it, a
-## panel this wide behind each basin, the dark band up to WET_BAND.
-const WET_DEPTH := 2.4
-const BASIN_PANEL := 1.6
+## The washroom's tiles: the dark band up to WET_BAND.
 const WET_BAND := 0.15
 const TILE_DEPTH := 0.01
+## The edge trim where the tiles stop short of a corner.
+const TRIM := 0.018
+const LIGHTING := preload("res://game/world/hotel/lighting.gd")
 ## Beyond a doorway's opening, untiled: its jamb, its switch and its number
 ## plate (office_walls.gd DOOR_HALF less half the opening).
 const DOOR_CLEAR := 0.6
@@ -145,10 +145,11 @@ static func rug(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 	var mesh: Mesh = THINGS.rug_persian(builder, size) if look == "persian" else FIXTURES.rug(builder, size, "carpet_exec")
 	builder.place(node, mesh, Transform3D(Basis(Vector3.UP, 0.0 if along_x else PI / 2), Vector3(inner.get_center().x, 0, inner.get_center().y)))
 
-## The washroom's wet end (spec_rediseno 6.11): tiled from the floor to the
-## false ceiling, its bottom WET_BAND dark, on the wall its cubicles back on
-## to, WET_DEPTH of the two walls beside it and a panel behind each basin;
-## a sconce over each basin (an accent).
+## The washroom (spec_rediseno 6.11): every wall tiled from the floor to the
+## false ceiling, its bottom WET_BAND dark, so that the tiles end at a corner
+## or at a doorway's trim and never in the middle of a wall (a tiled stretch
+## and a panel per basin read as cut out); a fluorescent bar over each basin
+## (mirror_light(), an accent).
 static func wet_walls(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 	var wet := ""
 	for item in room.get("furniture", []):
@@ -172,18 +173,23 @@ static func wet_walls(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 		var step: Vector2i = SIDE_STEP[String(boundary.name)]
 		var inner := -(step.x + step.y)
 		var length: float = span.y if side == "west" or side == "east" else span.x
-		var runs: Array = []
-		if side == wet: runs.append(Vector2(-length * 0.5, length * 0.5))
-		elif not wet.is_empty() and beside(side, wet):
-			var end := wet_end(side, wet, length)
-			var toward := end - signf(end) * WET_DEPTH
-			runs.append(Vector2(minf(end, toward), maxf(end, toward)))
 		for panel: Dictionary in panels:
 			if String(panel.wall) != side: continue
-			var x := to_wall(side, float(panel.along))
-			runs.append(Vector2(x - BASIN_PANEL * 0.5, x + BASIN_PANEL * 0.5))
-			builder.accent_sconce(boundary, int(room.id), Vector3(x, SCONCE_Y, inner * (0.09 + TILE_DEPTH)), PI if inner < 0 else 0.0)
-		for run: Vector2 in merged(runs): tile_run(builder, boundary, room, side, run, length, h, inner)
+			mirror_light(builder, boundary, room, Vector3(to_wall(side, float(panel.along)), SCONCE_Y, inner * (0.09 + TILE_DEPTH)), inner)
+		tile_run(builder, boundary, room, side, Vector2(-length * 0.5, length * 0.5), length, h, inner)
+
+## A basin's light (spec_rediseno 6.11), an office washroom's and not the
+## hotel's shaded wall lamp: a white enamel bar over the mirror with an opal
+## strip under it that glows with the room (office_geometry.lenses_of(),
+## "glow_"), and its light down the tiles on to the basin, an accent.
+const BAR := Vector3(0.62, 0.07, 0.09)
+static func mirror_light(builder: Node3D, boundary: Node3D, room: Dictionary, at: Vector3, inner: int) -> void:
+	KIT.material(builder, "glow_white")
+	var out := Vector3(0, 0, inner)
+	builder.box(boundary, at + out * BAR.z * 0.5, BAR, "enamel")
+	builder.box(boundary, at + out * BAR.z * 0.5 + Vector3(0, -BAR.y * 0.5 - 0.004, 0), Vector3(BAR.x - 0.06, 0.008, BAR.z - 0.03), "glow_white")
+	builder.accent_spot(boundary, int(room.id), at + out * (BAR.z + 0.02) + Vector3(0, -0.06, 0), at + out * 0.45 + Vector3(0, -1.3, 0), LIGHTING.light_color(OFFICE.lamp_kelvin(room)), BAR_ENERGY, 3.0, 55.0)
+const BAR_ENERGY := 1.4
 
 ## Tiles from the floor to the false ceiling along a run of a wall (its x),
 ## cut at its doorways, its systems' spots and its lockers, the bottom
@@ -210,6 +216,11 @@ static func tile_run(builder: Node3D, boundary: Node3D, room: Dictionary, side: 
 		var mid := (piece.x + piece.y) * 0.5
 		builder.box(boundary, Vector3(mid, WET_BAND * 0.5, z), Vector3(wide, WET_BAND, TILE_DEPTH), "wet_band")
 		builder.box(boundary, Vector3(mid, (WET_BAND + h) * 0.5, z), Vector3(wide, h - WET_BAND, TILE_DEPTH), "wet_tile")
+		# Where the tiles stop short of a corner (a doorway, a fitting, a
+		# locker), a dark edge trim finishes them.
+		for end: float in [piece.x, piece.y]:
+			if absf(absf(end) - length * 0.5) < 0.01: continue
+			builder.box(boundary, Vector3(end, h * 0.5, inner * (0.09 + (TILE_DEPTH + 0.004) * 0.5)), Vector3(TRIM, h, TILE_DEPTH + 0.004), "wet_band")
 		builder.dressing_log.walls.append({"room": int(room.id), "side": side, "kind": "tiles", "from": piece.x, "to": piece.y, "low": 0.0, "high": h, "depth": TILE_DEPTH})
 
 ## The spans left of `pieces` (each from x to y along a wall) once `gap` is
@@ -223,20 +234,6 @@ static func cut(pieces: Array, gap: Vector2) -> Array:
 		if piece.x < gap.x: kept.append(Vector2(piece.x, gap.x))
 		if piece.y > gap.y: kept.append(Vector2(gap.y, piece.y))
 	return kept
-
-## Runs along a wall joined where they overlap: no two tiled boxes in one plane.
-static func merged(runs: Array) -> Array:
-	var sorted: Array = runs.duplicate()
-	sorted.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
-	var out: Array = []
-	for run: Vector2 in sorted:
-		if not out.is_empty():
-			var last: Vector2 = out.back()
-			if run.x <= last.y:
-				out[out.size() - 1] = Vector2(last.x, maxf(last.y, run.y))
-				continue
-		out.append(run)
-	return out
 
 ## The director's glass (spec_rediseno 6.7) with a velvet curtain drawn back
 ## at either end, on the room's side, clear of a doorway.
@@ -260,16 +257,6 @@ static func curtains(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 ## The wall a piece turned `turn` quarters backs on to (its back is -Z).
 static func back_wall(turn: int) -> String:
 	return ["north", "west", "south", "east"][posmod(turn, 4)]
-
-## Whether two walls meet at a corner (one runs along x, the other along z).
-static func beside(side: String, other: String) -> bool:
-	return (side == "west" or side == "east") != (other == "west" or other == "east")
-
-## The end of a wall beside the wet one that meets it, in the wall's own x:
-## the west and east walls run along -z, the north and south ones along x.
-static func wet_end(side: String, wet: String, length: float) -> float:
-	if side == "west" or side == "east": return length * 0.5 if wet == "north" else -length * 0.5
-	return -length * 0.5 if wet == "west" else length * 0.5
 
 ## A room-local point along a wall (doorways()' along) in the wall's own x.
 static func to_wall(side: String, along: float) -> float:
