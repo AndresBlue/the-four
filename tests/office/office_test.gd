@@ -35,7 +35,8 @@ const TYPE_COUNT := 26
 ## Table 1.2, type by type on wing 0: the floor, the lamp and the walls.
 const FINISHES_12 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
 const LAMPS_12 := ["troffer", "troffer", "troffer", "troffer", "troffer", "troffer", "batten", "troffer", "batten", "troffer", "troffer", "troffer", "batten", "batten", "troffer", "troffer", "troffer", "troffer", "emergency", "troffer", "emergency", "troffer", "batten", "batten", "troffer", "batten"]
-const WALLS_12 := ["office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
+## The reception kept clean (the floor's first view, 12 November 2026).
+const WALLS_12 := ["office_paint_kept", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
 var checks: Array = []
 var failed := 0
 ## What each floor of the generator drew and how long it took, for the evidence.

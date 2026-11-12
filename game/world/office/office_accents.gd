@@ -4,6 +4,10 @@ extends RefCounted
 ## the round of lamps reach them (office_geometry.gd: accent_spot(),
 ## accent_sconce()).
 const MOST := 3
+## The rooms that take more (room id -> how many): the reception, composed as
+## the floor's first view, lights its rail, its lamp, the wash under its
+## counter and its lift's two lamps.
+var caps := {}
 ## Room id -> its accents: {"light": Light3D, "energy": float, "sconce": int
 ## (its index in sconce_lights, or -1), "mesh": MeshInstance3D or null (a wall
 ## lamp's own glow), "glowing": bool}.
@@ -13,7 +17,10 @@ var by_sconce := {}
 
 ## Whether the room can take one more.
 func has_room(room_id: int) -> bool:
-	return of_room(room_id).size() < MOST
+	return of_room(room_id).size() < cap_of(room_id)
+
+func cap_of(room_id: int) -> int:
+	return int(caps.get(room_id, MOST))
 
 func add(room_id: int, entry: Dictionary) -> void:
 	if not rooms.has(room_id): rooms[room_id] = []

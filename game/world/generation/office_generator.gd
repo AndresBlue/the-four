@@ -516,6 +516,14 @@ func along_span(room: Dictionary, way: Vector2i) -> float:
 func across_span(room: Dictionary, way: Vector2i) -> float:
 	return float(room.span_z) if way.x != 0 else float(room.span_x)
 
+## The floor opens looking at the reception's front desk (the author, 12
+## November 2026: its first view), from the middle the bodies start round;
+## at its door, as the hotel's, where no desk was laid.
+func facing(f: Dictionary, start: int) -> float:
+	for item in f.rooms[start].get("furniture", []):
+		if String(item.kind) == "reception_counter_l": return atan2(-float(item.at[0]), -float(item.at[1]))
+	return super(f, start)
+
 ## The rooms made offices: corridors and galleries, the departments of each
 ## planta, the structure and the special pieces, the salons and the modules by
 ## their department's focus, what each planta must have, and the corners.
@@ -2523,6 +2531,8 @@ func duct_gaps(job: Dictionary, planta: int, cells: Array, rng: RandomNumberGene
 	for id in cells:
 		if palette.false_ceiling(rooms[id]): pool.append({"id": id, "weight": 1.0 + float(rooms[id].kept)})
 	var count := roundi(float(palette.GAP_SHARE[planta]) * float(pool.size()))
+	# Counted with it, never drawn in it: the reception is the floor's first view.
+	pool = pool.filter(func(e: Dictionary) -> bool: return int(rooms[int(e.id)].type) != palette.RECEPTION)
 	var made := 0
 	while made < count:
 		if pool.is_empty(): return "gaps"

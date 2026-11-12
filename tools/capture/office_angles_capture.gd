@@ -63,7 +63,7 @@ func look(from: Vector3, at: Vector3) -> void:
 	level.player.rotation.y = atan2(-flat.x, -flat.y)
 	level.player.camera.rotation.x = atan2(at.y - from.y, maxf(flat.length(), 0.001))
 
-func shot(room: Dictionary, angle: String, n: int) -> void:
+func shot(room: Dictionary, angle: String, n: int, name := "") -> void:
 	level.hotel.update_visibility(level.player.global_position, true)
 	level.hotel.flicker_clock = 0.4
 	level.hotel._process(0.0)
@@ -72,7 +72,7 @@ func shot(room: Dictionary, angle: String, n: int) -> void:
 	var started := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - started < 1200: await process_frame
 	await RenderingServer.frame_post_draw
-	var file := "%s_%d.png" % [slug(room), n]
+	var file := "%s_%d.png" % [slug(room) if name.is_empty() else name, n]
 	root.get_texture().get_image().save_png(out_dir + "/" + file)
 	index.append({"tipo": OFFICE.label(room), "angulo": angle, "sala": int(room.id), "archivo": file})
 	print("ANGLES %s %s room=%d" % [file, angle, int(room.id)])
@@ -164,6 +164,18 @@ func run() -> void:
 	level.player.set_physics_process(false)
 	level.player.torch.visible = false
 	level.ui.visible = false
+	# (llegada) What a player sees as the floor opens: at the spawn, looking the
+	# way the floor starts them (start_facing), then a step and two on.
+	if only.is_empty() or only.has("llegada"):
+		var start: Dictionary = level.manifest.rooms[int(level.manifest.start)]
+		light(start, true)
+		var yaw := float(level.manifest.get("start_facing", PI))
+		var ahead := Vector3(-sin(yaw), 0, -cos(yaw))
+		var eye: Vector3 = level.player.spawn + Vector3(0, level.player.camera.position.y, 0)
+		for n in 3:
+			var from := eye + ahead * 1.2 * n
+			look(from, from + ahead * 5.0)
+			await shot(start, "llegada", n + 1, "llegada")
 	# The first room of each type, planta 1 first.
 	var chosen := {}
 	for wing in 3:

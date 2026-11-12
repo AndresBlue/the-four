@@ -179,6 +179,16 @@ func run() -> void:
 			still["type"] = int(room.type)
 			results.append(still)
 			all_frames.append_array(frames)
+		# The floor's first view: from the spawn, the way the floor starts the players.
+		level.player.position = level.player.spawn
+		level.player.rotation.y = float(level.manifest.get("start_facing", 0.65))
+		level.player.camera.rotation.x = 0.0
+		level.hotel.update_visibility(level.player.position, true)
+		await settle()
+		await capture(level, "llegada_q%d" % quality)
+		var first_view := await sample(level, viewport_rid, STILL_FRAMES, Callable())
+		results.append(summary("still_llegada", quality, first_view))
+		all_frames.append_array(first_view)
 		# Arriving somewhere the run has not drawn yet, with no settling: this
 		# is where a pipeline that has never been built shows up, and it is
 		# what a player feels walking into a room for the first time.

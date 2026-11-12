@@ -23,7 +23,7 @@ const EQ_DESKS := preload("res://game/world/office/pieces/desks.gd")
 ## hotel's kinds (prop_factory) and the offices' plant and basin.
 const EXACT_CORNERS := ["plant", "bin", "basin", "cart"]
 ## The samples the families give (area 4a U2 to U9, area 5 U2 to U4: 10, 6 and 5, area 4d: 2, area 4c: 24 and 10).
-const PIECES := 124
+const PIECES := 125
 ## The pieces' own materials (kit.gd, area 4a U1).
 const OWN := ["paper", "laminate_light", "plastic_beige", "steel_mint", "steel_grey", "steel_dark", "cloth_red", "cloth_green", "cloth_navy"]
 ## Woods mapped per batched box (no object_space): wrong on a baked mesh.
@@ -39,7 +39,7 @@ const TWO_BOXES := ["desk_l", "desk_l_walnut", "reception_counter"]
 ## What lies on something or flat on a wall: no StaticBody ("solid" false).
 const NOT_SOLID := ["rug_carpet_exec", "rug_black", "curtain", "blind", "keyboard", "calculator", "crt_plastic_beige", "crt_black", "dot_matrix_printer", "paper_stack", "folders", "tray", "tray_wire", "register_book", "books", "binders", "sign_plate", "picture_walnut_object", "picture_black", "clock_square", "mirror", "directory_board", "notice_board", "key_cabinet", "coat_hook_rail", "roll_screen", "phone", "phone_off", "mug", "ashtray", "pen_cup", "paper_scatter", "cable_run", "rug_persian"]
 ## The pieces that leave their light to the room ("light_strip").
-const STRIPS := ["reception_counter", "kitchen_wall"]
+const STRIPS := ["reception_counter", "front_desk", "kitchen_wall"]
 ## How far a text plate's centre stands off its face, at least and at most.
 const PROUD := 0.0005
 const PROUD_MOST := 0.005

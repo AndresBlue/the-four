@@ -16,7 +16,8 @@ const SCANNED := {"vinyl": "office_tiles110", "terrazzo": "office_terrazzo003", 
 const PLAIN_TRES := ["tgrid", "threshold", "partition"]
 ## Table 1.2 of office_test.gd on wing 0: the floors, the walls and the lower walls by type.
 const FLOOR_WING_0 := ["vinyl", "carpet", "carpet", "vinyl", "vinyl", "vinyl", "terrazzo", "vinyl", "concrete", "terrazzo", "terrazzo", "terrazzo", "concrete", "terrazzo", "terrazzo", "vinyl", "vinyl", "vinyl", "quarry", "terrazzo", "vinyl", "vinyl", "vinyl", "vinyl", "vinyl", "concrete"]
-const WALLS_WING_0 := ["office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
+## The reception kept clean (the floor's first view, 12 November 2026).
+const WALLS_WING_0 := ["office_paint_kept", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "partition", "block", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "office_paint", "office_paint", "block", "office_paint", "office_paint", "office_paint", "block", "block", "office_paint", "block"]
 const TRIMS_WING_0 := ["frieze", "", "", "dado", "", "dado", "", "", "", "", "frieze", "frieze", "", "", "", "", "", "", "", "frieze", "", "dado", "two_tone", "two_tone", "panel_wall", ""]
 ## The rooms of the floor that are soft underfoot (carpet): the wing 0 naves and wing 2's boardroom, executive office and secretary.
 const SOFT_FLOORS := [Vector2i(1, 0), Vector2i(2, 0), Vector2i(5, 2), Vector2i(16, 2), Vector2i(24, 2)]

@@ -257,15 +257,16 @@ func block_lift(hotel) -> void:
 		check("La luz, 22 cm sobre el aplique", absf(light.global_position.y - (m0.global_position.y + 0.22)) < 0.01)
 		check("Las dos luces, en las capas de su sala", hotel.kept_lamps.has(light.get_instance_id()) and hotel.kept_lamps.has((entries[1].light as Object).get_instance_id()))
 	# Area 4c hangs lamps in other rooms too; what holds is the register's cap per room.
-	var most := 0
-	for room_id: int in hotel.accents.rooms: most = maxi(most, hotel.accents.of_room(room_id).size())
-	check("Ninguna sala pasa de su tope de acentos", most <= ACCENTS.MOST, str(most))
-	var beacon := {}
-	for entry: Dictionary in hotel.beacons:
-		if int(entry.room) == start: beacon = entry
-	check("La baliza de la recepción brilla y su luz no pinta nada", not beacon.is_empty() and float(beacon.energy) == 0.0 and (beacon.material as BaseMaterial3D).emission_enabled and (beacon.light as OmniLight3D).light_energy == 0.0)
+	# The reception takes its own cap (office_accents.caps, OG.RECEPTION_ACCENTS); the rest ACCENTS.MOST.
+	var over: Array = []
+	for room_id: int in hotel.accents.rooms:
+		if hotel.accents.of_room(room_id).size() > hotel.accents.cap_of(room_id): over.append(room_id)
+	check("Ninguna sala pasa de su tope de acentos", over.is_empty() and hotel.accents.cap_of(start) == OG.RECEPTION_ACCENTS, str(over))
+	check("Las demás salas, a su tope de siempre", hotel.accents.rooms.keys().all(func(id: int) -> bool: return id == start or hotel.accents.cap_of(id) == ACCENTS.MOST))
+	# No red beacon in the offices' reception (the author, 12 November 2026).
+	check("La recepción no lleva baliza", not hotel.beacons.any(func(e: Dictionary) -> bool: return int(e.room) == start) and hotel.room_nodes[start].find_child("StartBeacon", true, false) == null)
 	if not hotel.halos.has(start) or hotel.flickers.any(func(e): return e.light == hotel.lights[start]): print("INFO la lámpara de la recepción falla o no tiene halo en la semilla 7")
-	else: check("La lámpara de la recepción, entera bajo la baliza", absf(hotel.lights[start].light_energy - float(hotel.halos[start].base)) < 0.001, "%.3f de %.3f" % [hotel.lights[start].light_energy, float(hotel.halos[start].base)])
+	else: check("La lámpara de la recepción, entera", absf(hotel.lights[start].light_energy - float(hotel.halos[start].base)) < 0.001, "%.3f de %.3f" % [hotel.lights[start].light_energy, float(hotel.halos[start].base)])
 
 ## The ceiling halo of each troffer room, following its lamp (U4).
 func block_halos(hotel) -> void:

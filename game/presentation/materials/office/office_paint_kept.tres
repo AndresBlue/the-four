@@ -1,0 +1,23 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://game/presentation/shaders/wallpaper.gdshader" id="1"]
+
+[resource]
+shader = ExtResource("1")
+shader_parameter/flat_color = Color(0.6, 0.55, 0.46, 1)
+shader_parameter/paper_color = Color(0.62, 0.565, 0.47, 1)
+shader_parameter/print_color = Color(0.6, 0.545, 0.45, 1)
+shader_parameter/stain_color = Color(0.5, 0.42, 0.3, 1)
+shader_parameter/edge_color = Color(0.66, 0.62, 0.55, 1)
+shader_parameter/roll_width = 1.37
+shader_parameter/print_strength = 0.25
+shader_parameter/stains = 0.04
+shader_parameter/grime = 0.08
+shader_parameter/ink_bleed = 0.0
+shader_parameter/map_metres = 1.2
+shader_parameter/map_mode = 1
+shader_parameter/map_detail = 0.9
+shader_parameter/map_no_tile = true
+shader_parameter/map_roughness = 0.1
+shader_parameter/normal_strength = 1.8
+metadata/scan = "wallpaper001a"

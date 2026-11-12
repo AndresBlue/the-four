@@ -67,8 +67,12 @@ func run() -> void:
 	floors_and_leftovers(hotel, rooms)
 	var most := 0
 	var spots := 0
+	var start := int(hotel.manifest.start)
 	for room_id in hotel.accents.rooms:
-		most = maxi(most, hotel.accents.of_room(int(room_id)).size())
+		# The reception lights its own five (office_geometry RECEPTION_ACCENTS): its rail,
+		# lamp, wash and the lift's two lamps; it is checked against them on its own.
+		if int(room_id) == start: check("La recepción, a su tope de acentos", hotel.accents.of_room(start).size() <= hotel.accents.cap_of(start), str(hotel.accents.of_room(start).size()))
+		else: most = maxi(most, hotel.accents.of_room(int(room_id)).size())
 		for entry: Dictionary in hotel.accents.of_room(int(room_id)):
 			if int(entry.sconce) < 0: spots += 1
 	check("Como mucho tres acentos por sala, y hay flexos y lámparas", most <= 3 and spots > 0, "%d como mucho, %d focos" % [most, spots])

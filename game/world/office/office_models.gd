@@ -259,4 +259,5 @@ static func light(builder: Node3D, parent: Node3D, room_id: int, kind: String, x
 	if lit.size() >= LIT_MOST: return
 	var at: Vector3 = spec.at
 	var aim: Vector3 = spec.aim
-	builder.accent_spot(parent, room_id, xform * at, xform * aim, spec.colour, float(spec.energy), float(spec.reach), float(spec.angle))
+	# In the reception the rail's light is the one that casts (office_geometry RECEPTION_ACCENTS).
+	builder.accent_spot(parent, room_id, xform * at, xform * aim, spec.colour, float(spec.energy), float(spec.reach), float(spec.angle), room_id != int(builder.manifest.get("start", -1)))

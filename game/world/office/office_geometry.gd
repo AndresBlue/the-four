@@ -29,7 +29,7 @@ const CAR_KICK := 0.15
 const CAR_RAIL := Vector2(0.95, 0.04)
 ## Finishes that stand in as a plain colour until their own material is made
 ## (MATERIAL_DIR): the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("b9ad96"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74"), "duct_back": Color("2f302e")}
+const PLAIN := {"office_paint": Color("b9ad96"), "office_paint_kept": Color("b9ad96"), "vinyl_polished": Color("a99f88"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74"), "duct_back": Color("2f302e")}
 ## Where the office's own materials are (spec_rediseno 8): a key's <key>.tres
 ## there takes the place of its stand-in, or of the hotel material of the same
 ## name (OWN_OVER: the carpet, the ceiling tile).
@@ -892,6 +892,7 @@ func build(data: Dictionary) -> void:
 	duct_holes = MAIN_DUCT.outer_boxes(data)
 	panes = []
 	dressing_log = {"walls": [], "ceiling": [], "chairs": [], "clutter": []}
+	accents.caps[int(data.get("start", -1))] = RECEPTION_ACCENTS
 	await super(data)
 	# A dark room's lenses were built lit (lens_key()): out with the room.
 	for id: int in dark_ids:
@@ -1496,6 +1497,12 @@ func lift_casing_material() -> String:
 ## casing or the call button, whichever is further out, and how high (the lamp
 ## model's origin).
 const LIFT_SCONCE := Vector2(0.35, 1.75)
+## The reception's accents (office_accents.caps): its rail, the counter's lamp,
+## the wash under its ledge and the lift's two lamps, all lit at once; of its
+## spots the rail alone casts a shadow (the wall lamps' are the hotel's round).
+const RECEPTION_ACCENTS := 5
+## The lift's walnut casing: its width round the leaves and how proud.
+const LIFT_ARCHITRAVE := Vector2(0.16, 0.05)
 
 ## The lift the floor is come down by (7.7): on the reception's wall that
 ## arrival_lift names, the hotel lift's front, shut, in a steel casing; its
@@ -1523,12 +1530,19 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 		piece.mesh = part[0]
 		piece.position = part[1]
 		front.add_child(piece)
-	# The casing round the leaves.
+	# The casing round the leaves: a steel reveal and a broad walnut
+	# architrave, as a lobby's lift is framed (the reception's reference).
 	var x0 := bounds.position.x - 0.04
 	var x1 := bounds.end.x + 0.04
 	var top := bounds.end.y + 0.04
 	for x in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.02 - proud * 0.5), Vector3(0.08, top, 0.04 + proud), "steel_frame")
 	box(front, Vector3((x0 + x1) * 0.5, top, 0.02 - proud * 0.5), Vector3(x1 - x0 + 0.08, 0.08, 0.04 + proud), "steel_frame")
+	var wide := LIFT_ARCHITRAVE.x
+	var z := LIFT_ARCHITRAVE.y * 0.5 - proud * 0.5
+	for x: float in [x0 - 0.04 - wide * 0.5, x1 + 0.04 + wide * 0.5]: box(front, Vector3(x, (top + 0.04 + wide) * 0.5, z), Vector3(wide, top + 0.04 + wide, LIFT_ARCHITRAVE.y + proud), "walnut")
+	box(front, Vector3((x0 + x1) * 0.5, top + 0.04 + wide * 0.5, z), Vector3(x1 - x0 + 0.08 + wide * 2.0, wide, LIFT_ARCHITRAVE.y + proud), "walnut")
+	x0 -= 0.04 + wide
+	x1 += 0.04 + wide
 	# Two wall lamps flanking it (spec_rediseno 6) on the wall's paint, clear
 	# of the casing and of the call button: the reception's accents.
 	var flank: float = maxf(maxf(-x0, x1), -CALL_AT.x) + LIFT_SCONCE.x
@@ -1881,6 +1895,8 @@ func build_prop(node: Node3D, kind: String) -> void:
 ## paint, under each plaque, they read as a square of noise.
 func decal(parent: Node3D, decal_name: String, xform: Transform3D, size: Vector3, strength: float, rank: float) -> void:
 	if decal_name.begins_with("Fingerprints"): return
+	# Nor any stain in the reception, the floor's first view.
+	if int(building_room.get("type", -1)) == OFFICE.RECEPTION: return
 	super(parent, decal_name, xform, size, strength, rank)
 
 ## How far along z from a lift lobby's middle its signs may hang while extras() makes
@@ -1901,23 +1917,18 @@ func exit_sign(node: Node3D, pos: Vector3, yaw: float, ceiling_y: float, front: 
 const EXIT_ENERGY := 0.1
 const EXIT_RANGE := 1.2
 
+## No red beacon in the offices' reception (the author, 12 November 2026): it
+## signalled nothing here, and it hung over the floor's first view.
+func start_beacon(_node: Node3D, _room: Dictionary, _light: OmniLight3D) -> void:
+	pass
+
 ## An archive cell's share of its unit's rows (9.4): each row rectangle cut
 ## at the cell's edges and built under the cell, so it batches and layers
 ## with it.
 func extras(node: Node3D, room: Dictionary) -> void:
-	# The reception's lamp as room_lamp() made it: the hotel's extras() turns
-	# it down under the beacon, whose glass here glows and paints nothing round
-	# it (spec_proporcion D11).
-	var whole: float = lights.back().light_energy
 	signs_reach = float(room.span_z) / 2 - 0.2 if int(room.type) == OFFICE.REFUGE else 0.0
 	super(node, room)
 	signs_reach = 0.0
-	if int(room.type) == OFFICE.RECEPTION:
-		lights.back().light_energy = whole
-		var beacon: Dictionary = beacons.back()
-		beacon.energy = 0.0
-		(beacon.light as OmniLight3D).light_energy = 0.0
-		(beacon.light as OmniLight3D).shadow_enabled = false
 	emergency_unit(node, room)
 	# A room dark at the start gets its probe slot too, as build_room() gives a
 	# lit one: lit later (Desafiante lights them one by one), its floor mirrors
@@ -2112,7 +2123,7 @@ const ACCENT_SIZE := 0.08
 ## its shadow, shown in the round of lamps while its room is lit, within
 ## furniture_lamps of the player (0 on Bajo and Muy bajo: never) and never on
 ## Compatibility, dimmed with her drain. Null when the room has ACCENTS.MOST.
-func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colour: Color, energy: float, reach: float, angle: float) -> SpotLight3D:
+func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colour: Color, energy: float, reach: float, angle: float, casts := true, projector: Texture2D = null) -> SpotLight3D:
 	if not accents.has_room(room_id): return null
 	var toward := aim - pos
 	var up: Vector3 = Vector3.FORWARD if absf(toward.normalized().y) > 0.99 else Vector3.UP
@@ -2127,7 +2138,9 @@ func accent_spot(parent: Node3D, room_id: int, pos: Vector3, aim: Vector3, colou
 	lamp.light_specular = 0.3
 	lamp.light_bake_mode = Light3D.BAKE_DISABLED
 	lamp.light_volumetric_fog_energy = 0.0
-	lamp.shadow_enabled = true
+	# A projector draws only with a shadow (hotel cast_or_fill()).
+	lamp.shadow_enabled = casts or projector != null
+	lamp.light_projector = projector
 	lamp.shadow_bias = 0.04
 	lamp.shadow_normal_bias = 0.6
 	lamp.distance_fade_enabled = true

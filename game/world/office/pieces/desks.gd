@@ -17,6 +17,7 @@ static func samples(builder: Node3D) -> Array:
 		["sorting_table", sorting_table(builder, Vector3(2.0, 1.02, 0.9))],
 		["consult_table", consult_table(builder, Vector3(1.4, 0.74, 0.7))],
 		["reception_counter", reception_counter(builder, Vector3(2.4, 1.1, 1.5))],
+		["front_desk", front_desk(builder, Vector3(3.4, 1.08, 0.8))],
 		["low_table", low_table(builder, Vector3(0.9, 0.42, 0.5))],
 	]
 
@@ -208,6 +209,47 @@ static func make_consult_table(builder: Node3D, size: Vector3) -> ArrayMesh:
 		KIT.block(p, "steel_grey", Vector3(s * (w / 2.0 - 0.04), h - 0.055, 0.0), Vector3(0.02, 0.06, d - 0.1))
 	KIT.block(p, "laminate_light", Vector3(0.0, h - 0.0125, 0.0), Vector3(w, 0.025, d), 0.004)
 	return KIT.finish(builder, p, "consult_table", size)
+
+## The reception's front desk (its reference): a long straight counter, its
+## front of teak veneer panels in a walnut ground over a black plinth set back,
+## walnut ends, a high dark ledge with a walnut edge standing FRONT_OVER proud
+## of the front, and behind it, on the sitter's side (-Z), the work top at desk
+## height. The warm strip under the overhang is the room's ("light_strip").
+const FRONT_OVER := 0.12
+const FRONT_TOP := 0.05
+## How deep the high ledge is, from its front edge, and the work top's height.
+const FRONT_LEDGE := 0.4
+const FRONT_WORK := 0.74
+static func front_desk(builder: Node3D, size: Vector3) -> ArrayMesh:
+	return KIT.cached(builder, KIT.key_of("front_desk", size), func() -> ArrayMesh: return make_front_desk(builder, size))
+
+static func make_front_desk(builder: Node3D, size: Vector3) -> ArrayMesh:
+	var p := KIT.begin()
+	var w := size.x
+	var h := size.y
+	var d := size.z
+	var zf := d / 2.0 - FRONT_OVER
+	var low := h - FRONT_TOP
+	var inner := d / 2.0 - FRONT_LEDGE
+	KIT.block(p, "black", Vector3(0.0, 0.05, -0.06), Vector3(w - 0.1, 0.1, d - FRONT_OVER - 0.12))
+	for s: float in [-1.0, 1.0]:
+		KIT.block(p, "walnut_object", Vector3(s * (w / 2.0 - 0.025), low / 2.0, (zf + inner) / 2.0), Vector3(0.05, low, zf - inner), 0.004)
+		KIT.block(p, "walnut_object", Vector3(s * (w / 2.0 - 0.025), FRONT_WORK / 2.0, (inner - d / 2.0) / 2.0), Vector3(0.05, FRONT_WORK, inner + d / 2.0), 0.004)
+	KIT.block(p, "walnut_object", Vector3(0.0, (0.1 + low) / 2.0, zf - 0.02), Vector3(w - 0.1, low - 0.1, 0.04), 0.002)
+	# The upright under the ledge, over the work top, on the sitter's side.
+	KIT.block(p, "walnut_object", Vector3(0.0, (FRONT_WORK + low) / 2.0, inner + 0.01), Vector3(w - 0.1, low - FRONT_WORK, 0.02), 0.002)
+	# Teak panels in bays, a walnut rail over and under them.
+	var bays := maxi(3, roundi((w - 0.1) / 0.8))
+	var bay := (w - 0.1) / bays
+	for k in bays:
+		var x := -w / 2.0 + 0.05 + bay * (float(k) + 0.5)
+		KIT.block(p, "car_oak", Vector3(x, (0.16 + low - 0.06) / 2.0, zf + 0.003), Vector3(bay - 0.06, low - 0.06 - 0.16, 0.006), 0.002)
+	for y: float in [0.13, low - 0.03]: KIT.block(p, "walnut_object", Vector3(0.0, y, zf + 0.004), Vector3(w - 0.1, 0.04, 0.008), 0.002)
+	# The ledge, dark, with its walnut edge; the work top behind it.
+	KIT.block(p, "black", Vector3(0.0, h - FRONT_TOP / 2.0, (inner + d / 2.0 - 0.03) / 2.0), Vector3(w, FRONT_TOP - 0.004, FRONT_LEDGE - 0.03), 0.004)
+	KIT.block(p, "walnut_object", Vector3(0.0, h - FRONT_TOP / 2.0, d / 2.0 - 0.015), Vector3(w, FRONT_TOP, 0.03), 0.006)
+	KIT.block(p, "walnut_object", Vector3(0.0, FRONT_WORK - 0.015, (inner - d / 2.0) / 2.0), Vector3(w - 0.06, 0.03, inner + d / 2.0), 0.004)
+	return KIT.finish(builder, p, "front_desk", size, {"colliders": [AABB(Vector3(-w / 2.0, 0.0, -d / 2.0), Vector3(w, h, d))], "light_strip": [Vector3(0.0, low - 0.008, zf + 0.035), Vector3(w - 0.2, 0.012, 0.02)]})
 
 ## A reception counter: a walnut front on a black plinth, a black top and a
 ## return on the left. The strip under the lip is the room's to place

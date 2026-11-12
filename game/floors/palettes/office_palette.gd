@@ -268,7 +268,7 @@ const FINISHES := ["terrazzo", "tile", "carpet", "carpet_exec", "concrete", "vin
 ## Painted concrete block (wall_material()): the store, the service
 ## corridor, the electrical room, the air rooms and the depot.
 const BLOCK_WALLS := [8, 12, 18, 22, 23, 25]
-const WALLS := ["office_paint", "block", "veneer", "partition"]
+const WALLS := ["office_paint", "office_paint_kept", "block", "veneer", "partition"]
 ## The lower wall of each type (wall_trim(), spec_rediseno 2): the frieze of
 ## the corridors, the lobbies and the reception, the walnut dado round the
 ## office, the boardroom and the security post, the air rooms' two tones of
@@ -442,7 +442,10 @@ const FURNITURE := {
 	"plant_floor": {"size": Vector2(0.5, 0.5), "height": 1.3},
 	"bench_slat": {"size": Vector2(1.5, 0.4), "height": 0.5},
 	"air_desk": {"size": Vector2(1.5, 1.4), "height": 1.3},
-	"reception_counter_l": {"size": Vector2(3.6, 2.2), "height": 1.3},
+	# The reception's front desk with the walnut wall behind it, its back to that
+	# wall (office_props.front_desk()): straight, not the L it was, so it fits
+	# the small receptions too.
+	"reception_counter_l": {"size": Vector2(3.4, 1.7), "height": 2.15},
 	"waiting_row_4": {"size": Vector2(3.2, 0.8), "height": 0.9},
 	"office_suite": {"size": Vector2(2.0, 2.7), "height": 1.3},
 	"meeting_table_s": {"size": Vector2(3.6, 1.85), "height": 0.9},
@@ -499,7 +502,7 @@ const CORNER_SIZES := {
 ## (lay_center()); "hall", by lay_halls(), a
 ## corridor's. From least to most runs, drawn; row pieces side by side in a run.
 const ROOM_FURNITURE := {
-	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "run", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 2], ["plant_floor", "spare", 1, 1, 1]],
+	RECEPTION: [["reception_counter_l", "wall", 1, 1, 1], ["filing", "run", 2, 2, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row_4", "side", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["waiting_row", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 1, 1]],
 	OPEN_OFFICE: [["desk_pair", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["printer_cart", "spare", 1, 1, 1], ["plant_floor", "spare", 1, 2, 1], ["bin_floor", "spare", 1, 1, 1]],
 	CUBICLES: [["desk", "lattice", 1, 1, 1], ["filing", "spare", 1, 2, 2], ["plant_floor", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1]],
 	OFFICE: [["office_suite", "center", 1, 1, 1], ["filing", "run", 1, 2, 2], ["bookcase", "run", 1, 1, 1], ["plant_floor", "run", 1, 1, 1], ["card_index", "spare", 1, 1, 1], ["bin_floor", "spare", 1, 1, 1], ["wood_shelving", "spare", 1, 1, 1], ["filing", "spare", 1, 1, 1], ["printer_cart", "spare", 0, 1, 1]],
@@ -575,7 +578,7 @@ const ONE_PER_HALL := {EXEC_OFFICE: ["exec_desk"]}
 ## The filing cabinets' finish by type (spec_rediseno 6; office_props.gd):
 ## mint at the window, grey in an office and the security post, beige at the
 ## secretary's; olive elsewhere.
-const FILING_FINISH := {OFFICE: "steel_grey", WINDOW: "steel_mint", SECURITY: "steel_grey", SECRETARY: "plastic_beige"}
+const FILING_FINISH := {RECEPTION: "plastic_beige", OFFICE: "steel_grey", WINDOW: "steel_mint", SECURITY: "steel_grey", SECRETARY: "plastic_beige"}
 ## Nothing stands this deep before a glazed wall (spec_rediseno 3.6) but the
 ## corner pieces under its sill (0.95 m).
 const GLASS_CLEAR := 0.6
@@ -591,7 +594,8 @@ const SUITE_SWAP := [TOILETS, STORE, BREAK_ROOM, EXEC_OFFICE]
 ## office_walls.gd): [piece, how many, its RULE_TEXTS for a "rule"]. The first
 ## is tried on the room's feature wall first.
 const WALL_DRESSING := {
-	RECEPTION: [["map", 1, 0], ["picture", 3, 0], ["clock", 1, 0], ["directory", 1, 0], ["rule", 1, 0], ["plan", 1, 0], ["thermostat", 1, 0], ["extinguisher", 1, 0], ["socket", 2, 0]],
+	# Framed prints, the clock and the directory: no rule, plan nor extinguisher in the floor's first view.
+	RECEPTION: [["map", 1, 0], ["picture", 3, 0], ["clock", 1, 0], ["directory", 1, 0], ["socket", 2, 0]],
 	OPEN_OFFICE: [["notice", 3, 0], ["clock", 1, 0], ["picture", 3, 0], ["rule", 1, 1], ["plan", 1, 0], ["hooks", 1, 0], ["extinguisher", 1, 0], ["thermostat", 1, 0], ["alarm", 1, 0], ["socket", 2, 0]],
 	CUBICLES: [["notice", 2, 0], ["clock", 1, 0], ["picture", 2, 0], ["rule", 1, 1], ["plan", 1, 0], ["extinguisher", 1, 0], ["thermostat", 1, 0], ["socket", 2, 0]],
 	OFFICE: [["picture_large", 1, 0], ["diplomas", 1, 0], ["notice", 1, 0], ["picture", 3, 0], ["clock_square", 1, 0], ["hooks", 1, 0], ["thermostat", 1, 0], ["socket", 1, 0]],
@@ -638,6 +642,8 @@ const WAITING_CHAIR := {RECEPTION: "waiting_chair", WINDOW: "waiting_chair", SEC
 ## floor_finish()'s still (hard_floor()).
 static func floor_look(room: Dictionary) -> String:
 	var finish := floor_finish(room)
+	# The reception's vinyl polished, giving back its lights (its reference).
+	if int(room.type) == RECEPTION and finish == "vinyl": return "vinyl_polished"
 	return "vinyl" if finish == "carpet_exec" else finish
 
 ## What is left on a room's floor, by its type (office_clutter.litter()): the
@@ -725,9 +731,10 @@ static func corner_rect(kind: String, socket: Array, rotation: int) -> Rect2:
 
 ## The walls' material (WALLS): the director's walnut veneer, the copy room's
 ## demountable partition, block where the building shows, the greige vinyl
-## wallcovering elsewhere.
+## wallcovering elsewhere, kept clean in the reception (the floor's first view).
 static func wall_material(room: Dictionary) -> String:
 	var room_type := int(room.type)
+	if room_type == RECEPTION: return "office_paint_kept"
 	if room_type == EXEC_OFFICE and int(room.get("wing", 0)) == 2: return "veneer"
 	if room_type == COPY_ROOM: return "partition"
 	return "block" if room_type in BLOCK_WALLS else "office_paint"

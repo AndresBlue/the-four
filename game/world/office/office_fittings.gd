@@ -37,6 +37,9 @@ const RUG_ASPECT := 1.355
 const RUG_LEAST := 1.5
 const MAT := Vector3(1.2, 0.012, 0.8)
 const MAT_IN := 0.75
+## The mat before the reception's front desk, and how far out from it.
+const DESK_MAT := Vector3(2.6, 0.012, 1.1)
+const DESK_MAT_OUT := 0.85
 ## The washroom's tiles: the dark band up to WET_BAND.
 const WET_BAND := 0.15
 const TILE_DEPTH := 0.01
@@ -130,6 +133,14 @@ static func rug(builder: Node3D, node: Node3D, room: Dictionary) -> void:
 	var look := OFFICE.rug_of(room)
 	if look.is_empty(): return
 	if look == "mat":
+		# A long mat before the front desk where there is one (its reference).
+		for item in room.get("furniture", []):
+			if String(item.kind) != "reception_counter_l": continue
+			var spin := float(item.turn) * PI / 2.0
+			var out := Vector2(sin(spin), cos(spin))
+			var spot := Vector2(float(item.at[0]), float(item.at[1])) + out * (float(item.size[1]) * 0.5 + DESK_MAT_OUT)
+			builder.place(node, FIXTURES.rug(builder, DESK_MAT, "carpet"),Transform3D(Basis(Vector3.UP, spin), Vector3(spot.x, 0, spot.y)))
+			return
 		var ways: Array = FLOOR.doorways(room)
 		if ways.is_empty(): return
 		var way: Dictionary = ways[0]

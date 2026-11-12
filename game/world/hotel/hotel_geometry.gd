@@ -1457,39 +1457,42 @@ func extras(node: Node3D, room: Dictionary) -> void:
 	var height: float = room.height
 	# lights.back(), not lights[id]: the module gallery builds every room as id 0.
 	var light: OmniLight3D = lights.back()
-	if room.type == palette.RECEPTION:
-		# Where the night started: a red emergency lamp blinking over the
-		# reception, the one landmark to find the way back by.
-		box(node, Vector3(0, height - 0.12, 0), Vector3(0.36, 0.12, 0.2), "metal")
-		var beacon_glass := StandardMaterial3D.new()
-		beacon_glass.albedo_color = Color(0.5, 0.02, 0.02)
-		beacon_glass.emission_enabled = true
-		beacon_glass.emission = Color(1.0, 0.08, 0.04)
-		beacon_glass.emission_energy_multiplier = BEACON_GLOW
-		var lens := MeshInstance3D.new()
-		var dome := SphereMesh.new()
-		dome.radius = 0.11
-		dome.height = 0.14
-		dome.material = beacon_glass
-		lens.mesh = dome
-		lens.position = Vector3(0, height - 0.22, 0)
-		node.add_child(lens)
-		var beacon := OmniLight3D.new()
-		beacon.name = "StartBeacon"
-		beacon.position = Vector3(0, height - 0.45, 0)
-		beacon.light_color = Color(1.0, 0.1, 0.06)
-		beacon.light_energy = 3.2
-		beacon.omni_range = 10.0
-		# The usual warm ceiling light is kept low so the red reads from afar.
-		light.light_energy *= 0.3
-		beacon.shadow_enabled = true
-		beacon.light_volumetric_fog_energy = 0.0
-		node.add_child(beacon)
-		beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy, "room": int(room.id)})
+	if room.type == palette.RECEPTION: start_beacon(node, room, light)
 	if room.type == palette.REFUGE:
 		exit_sign(node, Vector3(0, 2.25, -2.5), 0.0, height)
 		exit_sign(node, Vector3(0, 2.45, 4.8), PI, height)
 		light.light_color = Color("b8d4b6")
+
+## Where the night started: a red emergency lamp blinking over the
+## reception, the one landmark to find the way back by; its lamp turned down.
+func start_beacon(node: Node3D, room: Dictionary, light: OmniLight3D) -> void:
+	var height: float = room.height
+	box(node, Vector3(0, height - 0.12, 0), Vector3(0.36, 0.12, 0.2), "metal")
+	var beacon_glass := StandardMaterial3D.new()
+	beacon_glass.albedo_color = Color(0.5, 0.02, 0.02)
+	beacon_glass.emission_enabled = true
+	beacon_glass.emission = Color(1.0, 0.08, 0.04)
+	beacon_glass.emission_energy_multiplier = BEACON_GLOW
+	var lens := MeshInstance3D.new()
+	var dome := SphereMesh.new()
+	dome.radius = 0.11
+	dome.height = 0.14
+	dome.material = beacon_glass
+	lens.mesh = dome
+	lens.position = Vector3(0, height - 0.22, 0)
+	node.add_child(lens)
+	var beacon := OmniLight3D.new()
+	beacon.name = "StartBeacon"
+	beacon.position = Vector3(0, height - 0.45, 0)
+	beacon.light_color = Color(1.0, 0.1, 0.06)
+	beacon.light_energy = 3.2
+	beacon.omni_range = 10.0
+	# The usual warm ceiling light is kept low so the red reads from afar.
+	light.light_energy *= 0.3
+	beacon.shadow_enabled = true
+	beacon.light_volumetric_fog_energy = 0.0
+	node.add_child(beacon)
+	beacons.append({"light": beacon, "material": beacon_glass, "energy": beacon.light_energy, "room": int(room.id)})
 
 ## Where a salon or a corridor turns a corner round a cell that is not part of
 ## it, each of the two walls of that cell is drawn by the room on its side and
