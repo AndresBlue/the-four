@@ -8,7 +8,8 @@ extends SceneTree
 ## polished round its rug and still carpet to the ear, none of the hotel's wall
 ## dressing nor a fuse box left, three accents at most to a room, the washroom's wet end
 ## tiled, the mail room's central, no text with a middle dot or a long dash,
-## and the secretary's tops on its L. OFFICE_DRESSING_RESULT n/n.
+## the secretary's tops on its L, and every machine, phone and lamp with a front
+## looking to a seat of its own piece. OFFICE_DRESSING_RESULT n/n.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
 const LAYOUT := preload("res://game/world/generation/office_layout.gd")
@@ -61,6 +62,7 @@ func run() -> void:
 	var rooms: Array = hotel.manifest.rooms
 	var notes: Dictionary = hotel.dressing_log
 	chairs_face_tables(rooms, notes)
+	fronts_face_seats(hotel, notes)
 	walls_clear(rooms, notes)
 	walls_dressed(rooms, notes)
 	ceilings(rooms, notes)
@@ -128,6 +130,39 @@ func chairs_face_tables(rooms: Array, notes: Dictionary) -> void:
 	var worst := 0
 	for n in wrong.values(): worst = maxi(worst, int(n))
 	check("Las sillas de las mesas de juntas miran a la mesa", chairs > 0 and worst <= 1, "%d sillas, hasta %d del revés en una sala" % [chairs, worst])
+
+## Each thing with a front (office_models.FRONTED) that has a seat of its own
+## piece within FRONT_REACH faces one of them within FRONT_MARGIN: a reader
+## turned to the wall, a keyboard askew. One with no seat by it (a printer on its
+## cart) is not judged.
+const FRONT_REACH := 2.0
+const FRONT_MARGIN := deg_to_rad(60.0)
+func fronts_face_seats(hotel, notes: Dictionary) -> void:
+	var seats := {}
+	for chair: Dictionary in notes.chairs:
+		var key := "%d:%s" % [int(chair.room), String(chair.holder)]
+		if not seats.has(key): seats[key] = []
+		seats[key].append(chair.at)
+	var judged := 0
+	var wrong: Array = []
+	for thing: Dictionary in notes.fronts:
+		var at: Vector3 = thing.at
+		var near: Array = seats.get("%d:%s" % [int(thing.room), String(thing.holder)], []).filter(func(p: Vector3) -> bool: return Vector2(p.x - at.x, p.z - at.z).length() < FRONT_REACH)
+		if near.is_empty(): continue
+		judged += 1
+		var front := Vector2((thing.front as Vector3).x, (thing.front as Vector3).z)
+		if not near.any(func(p: Vector3) -> bool: return absf(front.angle_to(Vector2(p.x - at.x, p.z - at.z))) <= FRONT_MARGIN):
+			wrong.append("%s en sala %d" % [String(thing.kind), int(thing.room)])
+	check("Las máquinas, teléfonos y lámparas miran a un asiento de su mueble", judged > 0 and wrong.is_empty(), "%d juzgados, mal: %s" % [judged, str(wrong)])
+	# A download baked facing elsewhere is right where it is put and wrong as
+	# drawn: the reader's screen (its "filmscreen", tilted up) must face its +Z.
+	var reader: Mesh = MODELS.mesh_of(hotel, "microfiche")
+	var face := Vector3.ZERO
+	for s in reader.get_surface_count():
+		var material := reader.surface_get_material(s)
+		if material == null or not "filmscreen" in material.resource_path: continue
+		for n: Vector3 in reader.surface_get_arrays(s)[Mesh.ARRAY_NORMAL]: face += n
+	check("La pantalla del lector de microfichas mira a su frente (+Z)", reader.has_meta("piece") or Vector2(face.x, face.z).normalized().y > 0.9, str(face.normalized()))
 
 ## What hangs on the walls: not on glass nor an open side, not over a door
 ## (below its head), under the 2.2 m rule unless flat, never over another.

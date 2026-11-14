@@ -396,7 +396,9 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			for k in 3: builder.cylinder(holder, Vector3(0.12 * cos(TAU * k / 3.0), 0.29, 0.3 + 0.12 * sin(TAU * k / 3.0)), 0.012, 0.58, "metal")
 
 ## Reception joinery and its lighting, measured from the counter's footprint.
-const FRONT_DESK := Vector3(3.4, 1.08, 0.8)
+## Deep enough that the work top (FRONT_DESK.z less the ledge) takes a terminal
+## and its keyboard before it.
+const FRONT_DESK := Vector3(3.4, 1.08, 1.0)
 const NICHE_HEIGHT := 2.48
 const NICHE_JAMB := 0.2
 ## The counter's strip: how far before its front, how bright.
@@ -444,10 +446,15 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	if builder.accent_strip(holder, room_id, strip_at + Vector3(0, -0.005, STRIP_OUT), Vector3(-1.22, 0, 0), Vector2(strip_size.x, 0.03), Color(1.0, 0.8, 0.58), STRIP_ENERGY, 1.4) != null:
 		# Its lit band as the waxed floor gives it back (the probe sees it brighter).
 		builder.mirror_ghost(holder, strip_at + Vector3(0, -0.17, -0.02), Vector2(strip_size.x, 0.32), Color(1.0, 0.72, 0.46), STRIP_MIRRORED)
-	chair(builder, holder, Vector3(0.2, 0, desk_z - FRONT_DESK.z * 0.5 - 0.28), 1.0, "exec_chair", -0.14)
-	# The terminal on the ledge, turned aside, its side to who comes in (over the ledge, as the reference's).
-	MODELS.put(builder, holder, "crt_black", Transform3D(Basis(Vector3.UP, 0.75), Vector3(-0.45, FRONT_DESK.y, ledge - 0.02)))
-	MODELS.put(builder, holder, "keyboard", Transform3D(Basis(Vector3.UP, PI - 0.5), Vector3(-0.35, DESKS.FRONT_WORK, work - 0.16)))
+	# Pulled up to the work top, its back clear of the niche (the compact counter tucks it in).
+	var seat_z := maxf(desk_z - FRONT_DESK.z * 0.5 - 0.28, face + SEAT_CLEAR)
+	chair(builder, holder, Vector3(SEAT_X, 0, seat_z), 1.0, "exec_chair", -0.14)
+	# Her terminal on the work top against the ledge's upright, its screen and its
+	# keyboard square to her; its top shows over the ledge, as the reference's.
+	var screen_z := desk_z + FRONT_DESK.z * 0.5 - DESKS.FRONT_LEDGE - 0.01 - MODELS.size_of(builder, "crt").z * 0.5
+	MODELS.put(builder, holder, "crt", Transform3D(Basis(Vector3.UP, PI), Vector3(SEAT_X, DESKS.FRONT_WORK, screen_z)))
+	var keys_z := screen_z - MODELS.size_of(builder, "crt").z * 0.5 - 0.02 - MODELS.size_of(builder, "keyboard").z * 0.5
+	MODELS.put(builder, holder, "keyboard", Transform3D(Basis(Vector3.UP, PI), Vector3(SEAT_X, DESKS.FRONT_WORK, keys_z)))
 	MODELS.put(builder, holder, "phone", Transform3D(Basis(Vector3.UP, PI + 0.3), Vector3(0.55, DESKS.FRONT_WORK, work - 0.05)))
 	MODELS.put(builder, holder, "tray", Transform3D(Basis(Vector3.UP, 0.1), Vector3(-1.25, FRONT_DESK.y, ledge)))
 	# The papers under the lamp's pool (the ledge is black: the pool shows on them).
@@ -461,7 +468,9 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 	builder.box(holder, riser, RISER, "reception_teak")
 	builder.box(holder, riser + Vector3(0, RISER.y * 0.5 + 0.015, 0.01), Vector3(RISER.x + 0.02, 0.03, RISER.z + 0.04), "black")
 	set_down(builder, holder, PLANT_MODELS[0], riser + Vector3(-0.05, RISER.y * 0.5 + 0.03, 0.02), 0.45, 0.5, 0.6)
-	# Two beige filing cabinets against the niche behind, binders on one, a plant on the other.
+	# Two beige filing cabinets against the niche behind, binders on one, a plant
+	# on the other; none where the compact counter leaves no room behind it.
+	if face + 0.64 > desk_z - FRONT_DESK.z * 0.5: return
 	for k in 2:
 		var cabinet := Vector3(-size.x * 0.5 + 0.3 + 0.5 * k, 0, face + 0.33)
 		piece(builder, holder, CABINETS.filing_cabinet(builder, Vector3(0.47, 1.02, 0.62), 3, "plastic_beige"), cabinet)
@@ -470,6 +479,10 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 
 ## The reception counter's raised right end (front_desk()).
 const RISER := Vector3(0.6, 0.18, 0.4)
+## Where her chair and terminal stand along the counter, and how far her
+## chair's middle stays off the niche (the leather chair is 0.75 deep).
+const SEAT_X := 0.2
+const SEAT_CLEAR := 0.4
 
 ## A model fitted (fitted()) standing at `at` in `holder`.
 static func set_down(builder: Node3D, holder: Node3D, path: String, at: Vector3, wide: float, tall: float, yaw: float) -> void:
@@ -681,6 +694,7 @@ static func fiche_screen(builder: Node3D, holder: Node3D, reader: Mesh, at: Vect
 static func microfiche(builder: Node3D, holder: Node3D, at: Vector3) -> void:
 	var reader := MODELS.mesh_of(builder, "microfiche")
 	builder.place(holder, reader, Transform3D(Basis.IDENTITY, at))
+	MODELS.note_front(builder, holder, "microfiche", Transform3D(Basis.IDENTITY, at))
 	# The download's screen: its own glass again, a hair in front, glowing
 	# faintly with its room (a white sheet over it read as a white rectangle).
 	if not reader.has_meta("piece"):

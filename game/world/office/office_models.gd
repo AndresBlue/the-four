@@ -156,7 +156,18 @@ static func put(builder: Node3D, parent: Node3D, kind: String, xform: Transform3
 		base = xform * Transform3D(Basis.IDENTITY, Vector3(0, pot_size.y - 0.01, 0))
 	var drawn := base * fit_of(kind, mesh)
 	builder.place(parent, mesh, drawn, casts(mesh, drawn))
+	note_front(builder, parent, kind, xform)
 	return drawn
+
+## The things whose front faces whoever uses them (front to +Z as drawn): the
+## dressing test checks each looks to a seat of its own piece. Not the arm
+## lamp, whose head is turned onto the work it lights.
+const FRONTED := ["microfiche", "typewriter", "crt", "crt_black", "keyboard", "phone", "phone_off", "dot_matrix_printer", "television", "boombox", "desk_fan", "desk_clock", "desk_lamp_banker", "coffee_maker", "microwave"]
+
+## Notes a thing with a front as put, for the dressing test (builder.dressing_log.fronts).
+static func note_front(builder: Node3D, parent: Node3D, kind: String, xform: Transform3D) -> void:
+	if not kind in FRONTED: return
+	builder.dressing_log.fronts.append({"room": int(builder.building_room.get("id", -1)), "holder": String(parent.name), "at": xform.origin, "front": xform.basis.z, "kind": kind})
 
 ## Whether a piece placed so casts a shadow on the offices' floor (the
 ## director, 12 November 2026: 60 fps at Alto with the rooms full): only the

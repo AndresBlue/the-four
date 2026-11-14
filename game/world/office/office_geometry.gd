@@ -99,6 +99,8 @@ const PLAQUE_FROM_JAMB := 0.22
 const PLAQUE_DEPTH := 0.019
 const JAMB_WIDE := 0.09
 const JAMB_PROUD := 0.02
+## How far the frame's head comes down below the wall over the doorway (door_frame_mesh()).
+const SOFFIT_DROP := 0.004
 const THRESHOLD := Vector2(0.18 + JAMB_PROUD * 2.0, 0.006)
 const VISION := 0.35
 const SWITCH_Y := 1.15
@@ -924,7 +926,7 @@ var duct_holes: Array[AABB] = []
 func build(data: Dictionary) -> void:
 	duct_holes = MAIN_DUCT.outer_boxes(data)
 	panes = []
-	dressing_log = {"walls": [], "ceiling": [], "chairs": [], "clutter": []}
+	dressing_log = {"walls": [], "ceiling": [], "chairs": [], "clutter": [], "fronts": []}
 	accents.caps[int(data.get("start", -1))] = RECEPTION_ACCENTS
 	await super(data)
 	# A dark room's lenses were built lit (lens_key()): out with the room.
@@ -1574,8 +1576,10 @@ const LIFT_PICTURE := Vector3(0.5, 0.37, 0.03)
 const RECEPTION_PROBE := 6.0
 ## How high the reception's probe captures from, over a standing head (make_probe()).
 const PROBE_EYE := 2.0
-## The lift's teak casing: its width round the leaves and how proud.
+## The lift's teak casing: its width round the leaves and how proud; and the
+## wall between it and the call panel.
 const LIFT_ARCHITRAVE := Vector2(0.24, 0.05)
+const LIFT_CALL_GAP := 0.06
 
 ## The closed arrival lift, set in front of the continuous reception wall.
 func arrival_lift(node: Node3D, room: Dictionary) -> void:
@@ -1611,6 +1615,9 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	for x: float in [x0, x1]: box(front, Vector3(x, top * 0.5, 0.028 - depth * 0.5), Vector3(0.08, top, depth), "reception_steel")
 	box(front, Vector3((x0 + x1) * 0.5, top, 0.028 - depth * 0.5), Vector3(x1 - x0 + 0.08, 0.08, depth), "reception_steel")
 	var wide := LIFT_ARCHITRAVE.x
+	# The hotel's call panel stands where its slim casing ends: past this wide
+	# teak one, a hand clear of it, or the casing covered half the buttons.
+	call.position.x = minf(CALL_AT.x, x0 - 0.04 - wide - LIFT_CALL_GAP - LIFT_CALL.get_aabb().end.x)
 	var z := LIFT_ARCHITRAVE.y * 0.5 - REVEAL * 0.5
 	KIT.material(self, "reception_teak")
 	for x: float in [x0 - 0.04 - wide * 0.5, x1 + 0.04 + wide * 0.5]: box(front, Vector3(x, (top + 0.04 + wide) * 0.5, z), Vector3(wide, top + 0.04 + wide, LIFT_ARCHITRAVE.y + REVEAL), "reception_teak")
@@ -1629,7 +1636,7 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	x1 += 0.04 + wide
 	# Two wall lamps flanking it (spec_rediseno 6) on the wall's paint, clear
 	# of the casing and of the call button: the reception's accents.
-	var flank: float = maxf(maxf(-x0, x1), -CALL_AT.x) + LIFT_SCONCE.x
+	var flank: float = maxf(maxf(-x0, x1), -call.position.x) + LIFT_SCONCE.x
 	# Opal glass boxes on brass, not the hotel's cloth shades.
 	KIT.material(self, "glow_strip")
 	var lamp := FIXTURES.box_sconce(self, LIFT_LAMP)
@@ -2018,7 +2025,9 @@ func door_frame_mesh() -> ArrayMesh:
 	var outer := JAMB_WIDE - inner
 	for side: float in [-1.0, 1.0]:
 		KIT.block(parts, "walnut_object", Vector3(side * (half + JAMB_WIDE * 0.5), OPENING_HIGH * 0.5, 0), Vector3(JAMB_WIDE, OPENING_HIGH, wall), 0.003)
-	KIT.block(parts, "walnut_object", Vector3(0, OPENING_HIGH + JAMB_WIDE * 0.5, 0), Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE, wall), 0.003)
+	# The head's soffit a hair under the opening's top, where the wall over the
+	# doorway ends: level with it, the two flickered through each other.
+	KIT.block(parts, "walnut_object", Vector3(0, OPENING_HIGH + (JAMB_WIDE - SOFFIT_DROP) * 0.5, 0), Vector3(FLOOR.PORTAL + JAMB_WIDE * 2.0, JAMB_WIDE + SOFFIT_DROP, wall), 0.003)
 	for face: float in [-1.0, 1.0]:
 		for step in [[inner, 0.0, JAMB_PROUD], [outer, inner, JAMB_PROUD * 0.57]]:
 			var wide: float = step[0]
@@ -2282,9 +2291,10 @@ func pools_shown() -> bool:
 ## (times the preset's, as the hotel's LAMP_SIZE).
 var accents := ACCENTS.new()
 ## What area 4c hung on the walls (and tiled), set on the ceilings and drew the
-## chairs facing, and what is left lying (office_walls.gd, office_fittings.gd,
-## office_props.gd, office_clutter.gd): tests/office/office_dressing_test.gd.
-var dressing_log := {"walls": [], "ceiling": [], "chairs": [], "clutter": []}
+## chairs facing, what is left lying and which way the things with a front face
+## (office_walls.gd, office_fittings.gd, office_props.gd, office_clutter.gd,
+## office_models.gd): tests/office/office_dressing_test.gd.
+var dressing_log := {"walls": [], "ceiling": [], "chairs": [], "clutter": [], "fronts": []}
 const ACCENT_SIZE := 0.08
 
 ## An accent spot (a desk lamp, a track spot; spec_rediseno 4) at `pos` in
