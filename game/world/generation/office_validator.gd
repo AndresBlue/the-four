@@ -170,7 +170,7 @@ func depths_ok(data: Dictionary, errors: Array[String]) -> void:
 		var share := share_in(data, planta, int(data.refuges[planta]))
 		if share < band.x - SLACK or share > band.y + SLACK: errors.append("depth_refuge_%d" % planta)
 	var walk := float(FLOOR.route_metres(data, int(data.entries[0])).get(int(data.refuges[0]), 0.0))
-	if walk < float(OFFICE.LEAST_WALKS[0]) * sqrt(float(data.areas[0])) - 0.5: errors.append("depth_walk_0")
+	if walk < float(OFFICE.least_walks()[0]) * sqrt(float(data.areas[0])) - 0.5: errors.append("depth_walk_0")
 
 ## 5. A department per sector, names and colours unique, SEGURIDAD on the
 ## security office's.

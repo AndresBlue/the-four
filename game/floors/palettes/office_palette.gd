@@ -11,6 +11,45 @@ extends RefCounted
 ## The manifest "version" of floor 2 (office_floor.GENERATOR_VERSION).
 const VERSION := 2
 
+## The plan drawn as a real office building (.claude/specs/planta_real.md 13):
+## off until it is accepted; a tool or a test turns it on with --real-plan on
+## the command line or real_plan_test (office_generator.real_plan).
+const REAL_PLAN := false
+static var real_plan_test := false
+
+static func real_plan_on() -> bool:
+	return REAL_PLAN or real_plan_test or OS.get_cmdline_user_args().has("--real-plan")
+
+## The real building's typologies (planta_real.md 13.7), a table each: its rows
+## from the front wall to the back, [role, sizes] ("main" and "gallery" are
+## corridor lanes); its end bands and cross corridors; the bays of 7.2 m each
+## half has (a hall bay, one cell; an offices bay, two of 3.6), the first
+## two of a half its core, and how the bays between run. Every size a multiple
+## of 0.6 (the ceiling's tiles); the front band and the ends of 1.2, so the
+## reception's middle, the floor's origin, falls on the lattice too.
+const TYPOLOGIES := {
+	"ring": {
+		"rows": [["front", [4.8, 6.0]], ["main", [2.4, 3.0]], ["central", [7.2]], ["central", [7.2]], ["main", [2.4, 3.0]], ["back", [4.8, 5.4, 6.0]], ["gallery", [2.4]], ["service", [4.8, 5.4, 6.0]]],
+		"ends": [4.8, 6.0],
+		"crosses": [2.4, 3.0],
+		"half_bays": 5,
+		"middles": [["hall", "hall", "hall"], ["offices", "hall", "hall"], ["hall", "hall", "offices"], ["hall", "offices", "hall"]],
+	},
+}
+const BAY := 7.2
+## Rooms a planta of the real building has (up to today's 99: the standby
+## floor, today's plan, is drawn under the same window), and the least walk to
+## the refuge (13.3: more direct than the hotel's 90 m).
+const REAL_ROOMS := Vector2i(45, 99)
+const REAL_LEAST_WALKS := [75.0, 0.0, 0.0]
+
+## The least walks the plan being drawn keeps (the validator asks here).
+static func least_walks() -> Array:
+	return REAL_LEAST_WALKS if real_plan_on() else LEAST_WALKS
+## How often a building has its notch: the end of its service band left
+## unexcavated (13.1).
+const NOTCH_P := 0.35
+
 ## Structural roles: the same number in every palette.
 const RECEPTION := 0
 const LANDING := 9
@@ -62,7 +101,8 @@ static func areas_for(survivors: int) -> Array:
 	return [1.0 if clampi(survivors, 1, 5) == 1 else area, area, area]
 
 static func rooms_window(area: float) -> Vector2i:
-	return Vector2i(roundi(float(ROOMS.x) * area), roundi(float(ROOMS.y) * area))
+	var rooms: Vector2i = REAL_ROOMS if real_plan_on() else ROOMS
+	return Vector2i(roundi(float(rooms.x) * area), roundi(float(rooms.y) * area))
 
 ## No stage of this floor asks for televisions.
 static func tv_rooms(_area: float) -> int:
@@ -78,6 +118,16 @@ const WARDROBES := {4: 2, 8: 1, 14: 1, 15: 1, 21: 2}
 const HARD_FLOORS := []
 const TYPES := ["recepcion_interna", "oficina_abierta", "cubiculos", "despacho", "aseos", "sala_juntas", "archivo", "reprografia", "almacen", "montacargas", "vestibulo_llegada", "pasillo", "pasillo_servicio", "archivo_movil", "correo", "sala_descanso", "despacho_direccion", "ventanilla", "cuarto_electrico", "vestibulo_montacargas", "vacio", "puesto_seguridad", "sala_climatizacion", "climatizadora", "secretaria", "deposito"]
 const NAMES := ["Recepción interna", "Oficina abierta", "Cubículos", "Despacho", "Aseos y vestuario", "Sala de juntas", "Archivo", "Reprografía y microfichas", "Almacén", "Montacargas", "Vestíbulo de llegada", "Pasillo", "Pasillo de servicio", "Archivo móvil", "Correo", "Sala de descanso", "Despacho de dirección", "Ventanilla de Personal", "Cuarto eléctrico", "Vestíbulo del montacargas", "Vacío", "Puesto de seguridad", "Sala de climatización", "Climatizadora", "Secretaría", "Depósito"]
+## How tools/dev/office_plan.gd draws each type on a planta's plan: its fill
+## and its short label, by type like NAMES.
+const PLAN_FILLS := ["d9b45a", "b9d9a0", "9fc98a", "a9c4e0", "8fd3d3", "b49ad6", "b08a62", "e6a8c0", "a8a58e", "d070c0", "d9a0d0", "d8d4cc", "b8a98a", "c9a882", "eedd77", "f0b070", "6f94c8", "f2c94c", "e05050", "e0a0e0", "000000", "a04040", "5fb0a0", "3f8f80", "8fb0e0", "8a8670"]
+const PLAN_CODES := ["REC", "ABIER", "CUB", "DESP", "ASEO", "JUNT", "ARCH", "REPR", "ALM", "MONT", "LLEG", "", "", "AMOV", "CORR", "DESC", "DIR", "VENT", "ELEC", "VEST", "", "SEG", "CLIM", "MAQ", "SECR", "DEP"]
+static func plan_fill(room: Dictionary) -> Color:
+	var kind := int(room.get("type", -1))
+	return Color(PLAN_FILLS[kind]) if kind >= 0 and kind < PLAN_FILLS.size() else Color.MAGENTA
+static func plan_code(room: Dictionary) -> String:
+	var kind := int(room.get("type", -1))
+	return PLAN_CODES[kind] if kind >= 0 and kind < PLAN_CODES.size() else "?"
 ## The article each type's name takes on a paper (hint_placement.room_said()).
 const ARTICLES := ["la", "la", "los", "el", "los", "la", "el", "la", "el", "el", "el", "el", "el", "el", "el", "la", "el", "la", "el", "el", "el", "el", "la", "la", "la", "el"]
 
