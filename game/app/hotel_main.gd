@@ -1848,6 +1848,7 @@ func step_frame(delta: float) -> void:
 			hotel.probes_at_once = 1
 			hotel.update_part(round_part, eye, settings.values.shadows and not rig.echo_seat() and not observer, 0.0, observer, shown)
 			hotel.probes_at_once = 0
+			rig.follow_grade()
 		round_part = (round_part + 1) % hotel.ROUND_PARTS if is_instance_valid(hotel) else 0
 	if due:
 		ventilation.position = Vector3(round(player.position.x / 12) * 12, FLOOR.planta_y(FLOOR.planta_of(player.position.y)) + 2.8, round(player.position.z / 12) * 12)

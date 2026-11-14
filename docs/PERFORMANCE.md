@@ -172,6 +172,7 @@ Los tres niveles de calidad (Baja, Media, Alta) apenas se distinguían, y nada e
 | Glow | sí | sí | sí, subida bicúbica | igual que Alto |
 | Debanding | no | no | sí | sí |
 | Polvo (partículas) | no | 60 | 90 | 140 |
+| Polvo en el aire de las oficinas (motas, 14 por cada una de las de arriba) | no | 840, solo donde la sala de quien mira está a oscuras | 1.260 | 1.960 |
 | Detalle de superficies | 2 octavas, sin microdetalle | 3 octavas | 4 octavas | 4 octavas, y lo que distingue una superficie de un plano dibujado: barniz en capa propia, paredes y techos que no son planos, baldosas cada una con su inclinación, pelo de moqueta (sección 11) |
 | Cuadros | lienzo | lienzo | lienzo | tras un cristal |
 | Rodapié, moldura, cornisa y paneles del friso | cajas lisas | cajas lisas | cajas lisas | con perfil y en relieve, más rosetones, interruptores y rejillas, hasta 16–26 m (REALISM.md, fase 6) |
@@ -238,6 +239,7 @@ Medido forzando un valor sobre el preset (`-Extra '--qualities=N --set=clave:val
 | Glow | Bajo | 0,10 |
 | Niebla volumétrica 48³ / 64³ | Medio / Alto | ~0,10 |
 | Lámparas hasta 64 m frente a 48 m | Ultra | ~0 caminando; 0,17 en el salón |
+| Polvo en suspensión de las oficinas: aire por planta, luces en la niebla y motas (14 de noviembre de 2026, `evidence/rediseno/polvo/tabla.md`) | Alto, planta 2 | ~0,3 caminando (unos 0,2 las motas); 0,15–0,45 en las vistas fijas; el fotograma caminando, 0,0–0,1 |
 
 **Lo que más cambia los FPS:**
 1. **Escala de render.** El coste de casi todo es por píxel: 0,85 quita un 27 % de la GPU en Medio. En gráficas modestas, que se quedan cortas por píxeles, pesa aún más.

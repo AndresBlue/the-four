@@ -52,7 +52,7 @@ func build_environment() -> void:
 	lens_layer = level.get_node("Presentation/Lens")
 	level.camcorder = level.get_node("Presentation/Camcorder")
 	get_viewport().size_changed.connect(func(): apply_lens(hunter_seat(), level.settings.values.reduced))
-	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length, "contrast": level.environment.adjustment_contrast, "saturation": level.environment.adjustment_saturation}
+	authored_tone = {"mode": level.environment.tonemap_mode, "exposure": level.environment.tonemap_exposure, "glow": level.environment.glow_hdr_threshold, "fog_length": level.environment.volumetric_fog_length, "contrast": level.environment.adjustment_contrast, "saturation": level.environment.adjustment_saturation, "fog_density": level.environment.volumetric_fog_density, "fog_anisotropy": level.environment.volumetric_fog_anisotropy}
 	# Only where there is a RenderingDevice to run it (not headless, not
 	# Compatibility): elsewhere the game keeps AgX.
 	if RenderingServer.get_rendering_device() != null:
@@ -328,12 +328,19 @@ func configure_hotel() -> void:
 
 ## A floor may grade the picture its own way (office_geometry.grade()): the
 ## iris's key, the camera's white balance and the environment's contrast and
-## saturation. A floor without one, the hotel, and the title room over the
-## menu get back what was authored.
+## saturation, and its air (the volumetric fog's density and anisotropy, how
+## much the torch lights it). A floor without one, the hotel, and the title
+## room over the menu get back what was authored.
 func apply_grade() -> void:
 	if authored_tone.is_empty(): return
 	var own: bool = is_instance_valid(level.hotel) and level.hotel.has_method("grade") and level.session.state != level.session.State.MENU
 	var grade: Dictionary = level.hotel.grade() if own else {}
+	graded_planta = level.hotel.eye_planta if is_instance_valid(level.hotel) else -2
+	level.environment.volumetric_fog_density = grade.get("fog_density", authored_tone.fog_density)
+	level.environment.volumetric_fog_anisotropy = grade.get("fog_anisotropy", authored_tone.fog_anisotropy)
+	if is_instance_valid(level.player):
+		if not authored_tone.has("torch_fog"): authored_tone.torch_fog = level.player.torch.light_volumetric_fog_energy
+		level.player.torch.light_volumetric_fog_energy = grade.get("torch_fog", authored_tone.torch_fog)
 	if is_instance_valid(camera_effect):
 		camera_effect.key = grade.get("key", authored_tone.key)
 		camera_effect.white_balance = grade.get("white", authored_tone.white)
@@ -341,6 +348,13 @@ func apply_grade() -> void:
 	level.environment.adjustment_saturation = grade.get("saturation", authored_tone.saturation)
 	# How much the occlusion darkens what the lamps light: the preset's, or the floor's.
 	level.environment.ssao_light_affect = grade.get("ssao_light", PRESETS.of(level.settings.values.quality, level.settings.values).ssao_shape[2])
+
+## The planta the grade was last written for: a floor's air may change with
+## it (office_geometry.grade()), so the floor's round asks again on a new one.
+var graded_planta := -2
+
+func follow_grade() -> void:
+	if is_instance_valid(level.hotel) and level.hotel.eye_planta != graded_planta: apply_grade()
 
 ## Wardrobe enclosure and lost signal on the analog filter. The first is
 ## off with reduced effects; the picture going is not an

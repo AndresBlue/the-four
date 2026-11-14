@@ -200,7 +200,21 @@ const POOL_RANGE := 7.0
 ## lower key for the iris, warm, with contrast, as the references
 ## (spec_rediseno 4). The hotel keeps the camera's.
 const GRADE := {"key": 0.05, "white": Vector3(1.2, 1.0, 1.15), "contrast": 1.16, "saturation": 0.85, "ssao_light": 0.35}
-func grade() -> Dictionary: return GRADE
+## The offices' air, dust in suspension (the author, 14 November 2026: an
+## abandoned place where the beams show): thicker where the dark rules
+## (Registro, Dirección) than in Personal's light, by planta; thrown more
+## forward than the hotel's, so a beam shows looking towards its lamp; and lit
+## by the torch as the small hard source it is (the hotel's 0.35 left no beam).
+## The lamps' share is air_lights()'.
+const AIR_DENSITY := [0.008, 0.02, 0.02]
+const AIR_ANISOTROPY := 0.6
+const TORCH_AIR := 3.0
+func grade() -> Dictionary:
+	var air := GRADE.duplicate()
+	air.fog_density = AIR_DENSITY[clampi(eye_planta, 0, AIR_DENSITY.size() - 1)]
+	air.fog_anisotropy = AIR_ANISOTROPY
+	air.torch_fog = TORCH_AIR
+	return air
 ## A room's reflection probe is its floor's (make_probe()): it reaches
 ## PROBE_PAST past the floor and the ceiling (the hotel's stops 2.5 cm over the
 ## floor, and a pixel outside a probe's box takes nothing from it, so a waxed
@@ -1186,6 +1200,7 @@ func round_lamps() -> void:
 			if id >= 0 and id < lights.size() and lights[id].visible: cast_or_fill(lights[id], false)
 	round_accents()
 	round_pools()
+	air_lights()
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
 	var casting: bool = round_at.shadows and not echo_view
@@ -1205,6 +1220,97 @@ func round_lamps() -> void:
 		var light: SpotLight3D = emergency[int(near[place][1])].light
 		var shown: bool = place < most
 		if light.visible != shown: light.visible = shown
+
+## How much each light of the planta lights the air (light_volumetric_fog_energy),
+## by contrast: the small hard sources a lot (the battery units, the desk and
+## track spots, the exit signs' glow), the broad soft fittings of a lit room
+## little (their pools; a room is to have air, not milk), a bounce nothing.
+## Only while it casts: the fog takes no notice of a cull mask, so a light
+## without its shadow lit the air behind the walls of its room; and a lamp
+## that lights nothing (lit_by_fittings()) lights no air either -- with the
+## hotel's 1.0 it was an unseen bulb in the middle of every lit room's air.
+const EMERGENCY_AIR := 3.0
+const ACCENT_AIR := 1.5
+const EXIT_AIR := 4.0
+const POOL_AIR := 0.12
+const LAMP_AIR := 0.25
+func air_lights() -> void:
+	if round_at.is_empty(): return
+	for id: int in things_on(round_at.here).rooms:
+		if id < lights.size() and is_instance_valid(lights[id]): air(lights[id], 0.0 if lit_by_fittings(lights[id]) else LAMP_AIR)
+		if halos.has(id):
+			# Down, a pool or an archive's batten; up, a bounce or a batten's up spot.
+			for pool: Light3D in halos[id].pools: air(pool, POOL_AIR if pool.rotation.x < 0.0 else 0.0)
+	for e: Dictionary in emergency: air(e.light, EMERGENCY_AIR)
+	for room_id: int in accents.rooms:
+		for entry: Dictionary in accents.of_room(room_id):
+			if int(entry.sconce) < 0: air(entry.light, ACCENT_AIR)
+	for lamp in exit_lamps: air(lamp, EXIT_AIR)
+
+func air(light: Light3D, energy: float) -> void:
+	var wanted: float = energy if light.shadow_enabled and preset.lamp_fog else 0.0
+	if light.light_volumetric_fog_energy != wanted: light.light_volumetric_fog_energy = wanted
+
+## Dust hanging in the air, instead of the hotel's motes (the author, 14
+## November 2026): fine specks that scatter the light reaching them (the
+## ceiling dust's shader, ceiling_dust.gdshader), so they shine in a beam and
+## under a battery unit and are nothing in the dark; drifting a few centimetres
+## a second, wrapped by the shader in a box MOTES_BOX wide round the eye, so
+## the same specks fill the air wherever one goes at no cost to the CPU; near
+## the lens, out of focus, a soft disc. MOTES_PER_DUST to each of the preset's
+## "dust" (none on Bajo, Muy bajo or with reduced effects). On no room's layer:
+## where the rooms keep their lamps by layers (Alto, Ultra) a lit room's
+## fittings leave them alone and the air of a lit room stays clear; on its
+## room's layer they speckled the reception's ceiling like snow.
+const DUST := preload("res://game/enemies/lurker/ceiling_dust.gd")
+const MOTES_BOX := 4.0
+const MOTES_PER_DUST := 14
+const MOTES_MOST := 140
+const MOTE_ALPHA := Vector2(0.6, 1.0)
+const MOTE_LOOK := {"wrap": MOTES_BOX, "speck": Vector2(0.003, 0.008), "min_pixels": 2.0, "bokeh": 10.0, "focus": 1.0, "twinkle": 0.5, "scatter": 3.0}
+var motes: MultiMeshInstance3D
+func build_dust() -> void:
+	DUST.textures()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6113
+	var many := MultiMesh.new()
+	many.transform_format = MultiMesh.TRANSFORM_3D
+	many.use_colors = true
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	var look := ShaderMaterial.new()
+	look.shader = DUST.SHADER
+	look.set_shader_parameter("shape", DUST.soft_tex)
+	for key: String in MOTE_LOOK: look.set_shader_parameter(key, MOTE_LOOK[key])
+	quad.material = look
+	many.mesh = quad
+	many.instance_count = MOTES_MOST * MOTES_PER_DUST
+	# Where each speck is, the shader says (`wrap`); here only how thick it is.
+	for i in many.instance_count:
+		many.set_instance_transform(i, Transform3D.IDENTITY)
+		many.set_instance_color(i, Color(DUST.DUST_COLOUR, rng.randf_range(MOTE_ALPHA.x, MOTE_ALPHA.y)))
+	motes = MultiMeshInstance3D.new()
+	motes.name = "Motes"
+	motes.multimesh = many
+	motes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	motes.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	# Drawn round the eye wherever the node is: never culled.
+	motes.custom_aabb = AABB(Vector3(-1e4, -1e4, -1e4), Vector3(2e4, 2e4, 2e4))
+	motes.visible = false
+	add_child(motes)
+
+## The hotel's round, then the motes: shown with the preset's dust. Where the
+## rooms do not keep their lamps by layers (Medio) a lit room's lamp lit them
+## all over, snow under the ceiling: there they hang only where the eye's room
+## is dark.
+func round_rooms() -> void:
+	super()
+	if not is_instance_valid(motes): return
+	var eye_room := FLOOR.room_at(manifest.rooms, round_at.position)
+	var shown: bool = preset.dust > 0 and not reduced and not echo_view and (layered or eye_room.is_empty() or not lit(int(eye_room.id)))
+	if motes.visible != shown: motes.visible = shown
+	var count := mini(int(preset.dust), MOTES_MOST) * MOTES_PER_DUST
+	if motes.multimesh.visible_instance_count != count: motes.multimesh.visible_instance_count = count
 
 ## A body in the main duct is on no room's layers (-1, which follow_bodies()
 ## puts on none): the lamp of the room under it cannot light it through the

@@ -523,7 +523,8 @@ Con lo que ya funciona (`executions.gd`, `death_tape.gd`, `capture_score.gd`, `c
   - focos de emergencia con batería;
   - carteles de salida;
   - luces de acento (flexos, lámpara de pie, la luz de la expendedora en el suelo, apliques), como mucho tres por sala, y de ellas una sola lámpara de mueble encendida (decisión del director del 12 de noviembre de 2026, por el rendimiento en Alto): se apagan con la sala y bajan cuando ella la bebe. Los apliques son los dos del ascensor de llegada de la recepción; sobre cada lavabo, una regleta con su foco;
-  - nada de monitores encendidos (las pantallas son de otra criatura pensada, The Boiled One).
+  - nada de monitores encendidos (las pantallas son de otra criatura pensada, The Boiled One);
+  - polvo en suspensión (el autor, 14 de noviembre de 2026: un lugar abandonado donde se vean los haces). El aire de las oficinas es suyo y el del hotel no cambia: más polvo en las plantas 2 y 3 que en la 1 y más dispersión hacia delante, de modo que un foco se ve mirando hacia él. La linterna lo alumbra mucho; los focos de emergencia, los flexos y focos de acento y los carteles de salida, también; las pantallas y las regletas de una sala encendida, poco; los rebotes y la lámpara de una sala que no alumbra, nada. Solo una luz con sombra alumbra el aire (si no, su neblina pasaba la pared). Alrededor de quien mira flotan motas que solo se ven donde las toca un foco, la linterna o una emergencia, y de cerca, desenfocadas, como discos blandos; no las alumbran las luminarias de una sala encendida (en Medio no se dibujan donde la sala de quien mira tiene luz). Nada de esto en Bajo, Muy bajo ni con efectos reducidos. La linterna de un compañero sigue sin alumbrar el aire.
 - **Abandono:**
   - papeles por el suelo, sillas volcadas, cajones abiertos, tazas;
   - placas caídas, cables por el suelo y las mesas, manchas de agua;

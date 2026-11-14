@@ -49,6 +49,7 @@ const VEIL_LIFE := 9.0
 ## fog at 0.35 of its strength, and a veil only as bright as the wall behind it
 ## was not there. No emission, so out of the light it is still nothing.
 const VEIL_GLOW := 16.0
+const VEIL_TORCH := 0.35
 
 static var soft_tex: ImageTexture
 static var flake_tex: ImageTexture
@@ -172,7 +173,11 @@ static func veil(level, at: Vector3, strength: float) -> void:
 	m.shader = load(VEIL_SHADER)
 	m.set_shader_parameter("noise_tex", veil_noise)
 	m.set_shader_parameter("density", 0.0)
-	m.set_shader_parameter("albedo", Vector3(DUST_COLOUR.r, DUST_COLOUR.g, DUST_COLOUR.b) * VEIL_GLOW)
+	# VEIL_GLOW was found with the torch at 0.35: a floor whose air the torch
+	# lights more (office_geometry.TORCH_AIR) gets the same veil.
+	var player = level.get("player")
+	var torch_air: float = player.torch.light_volumetric_fog_energy if player != null and is_instance_valid(player) else VEIL_TORCH
+	m.set_shader_parameter("albedo", Vector3(DUST_COLOUR.r, DUST_COLOUR.g, DUST_COLOUR.b) * VEIL_GLOW * VEIL_TORCH / maxf(torch_air, 0.01))
 	var fog := FogVolume.new()
 	fog.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
 	fog.material = m

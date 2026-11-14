@@ -425,6 +425,53 @@ func block_fittings(hotel) -> void:
 	check("En Medio la lámpara alumbra como siempre y las pantallas no", lamp.light_cull_mask != 0 and pools.all(func(p): return not p.visible))
 	check("En Medio la lámpara vuelve a su volumen", lamp.light_bake_mode == Light3D.BAKE_DYNAMIC)
 
+## Dust in the air (14 November 2026): the offices' air by planta through the
+## rig's grade, the torch lighting it, each light lighting it only while it
+## casts (a fitted lamp, a bounce and an unshadowed pool never), the battery
+## units at theirs; the motes round the eye instead of the hotel's, gone with
+## reduced effects and on Bajo.
+func block_air(level, hotel) -> void:
+	hotel.apply_quality(PRESETS.of(PRESETS.HIGH))
+	var spot := FLOOR.position_of(hotel.manifest.rooms[int(hotel.manifest.start)]) + Vector3(0, 1.5, 0)
+	hotel.update_visibility(spot, true)
+	level.rig.apply_grade()
+	check("Planta 1: el aire de las oficinas y la linterna en él", is_equal_approx(level.environment.volumetric_fog_density, OG.AIR_DENSITY[0]) and is_equal_approx(level.environment.volumetric_fog_anisotropy, OG.AIR_ANISOTROPY) and is_equal_approx(level.player.torch.light_volumetric_fog_energy, OG.TORCH_AIR), "%.4f %.2f %.2f" % [level.environment.volumetric_fog_density, level.environment.volumetric_fog_anisotropy, level.player.torch.light_volumetric_fog_energy])
+	hotel.eye_planta = 2
+	level.rig.follow_grade()
+	check("Planta 3: más polvo en el aire", is_equal_approx(level.environment.volumetric_fog_density, OG.AIR_DENSITY[2]) and OG.AIR_DENSITY[2] > OG.AIR_DENSITY[0])
+	hotel.update_visibility(spot, true)
+	var fitted: Array = []
+	var pools_ok := true
+	for id: int in hotel.things_on(0).rooms:
+		var lamp = hotel.lights[id] if id < hotel.lights.size() else null
+		if lamp != null and is_instance_valid(lamp) and hotel.lit_by_fittings(lamp): fitted.append(lamp)
+		if not hotel.halos.has(id): continue
+		for p: Light3D in hotel.halos[id].pools:
+			var wanted: float = OG.POOL_AIR if p.rotation.x < 0.0 and p.shadow_enabled else 0.0
+			if not is_equal_approx(p.light_volumetric_fog_energy, wanted): pools_ok = false
+	if hotel.pools_shown(): check("Una lámpara que no alumbra no alumbra el aire", not fitted.is_empty() and fitted.all(func(l): return l.light_volumetric_fog_energy == 0.0), "%d lámparas" % fitted.size())
+	check("Las pantallas, poco y solo con sombra; los rebotes, nada", pools_ok)
+	check("Los focos de emergencia alumbran el aire", not hotel.emergency.is_empty() and hotel.emergency.all(func(e): return e.light.light_volumetric_fog_energy == (OG.EMERGENCY_AIR if e.light.shadow_enabled else 0.0)))
+	check("Las motas de las oficinas, no las del hotel: %d en Alto" % (PRESETS.of(PRESETS.HIGH).dust * OG.MOTES_PER_DUST), hotel.dust == null and hotel.motes.visible and hotel.motes.multimesh.visible_instance_count == int(PRESETS.of(PRESETS.HIGH).dust) * OG.MOTES_PER_DUST)
+	hotel.reduced = true
+	hotel.update_visibility(spot, true)
+	check("Con efectos reducidos no hay motas", not hotel.motes.visible)
+	hotel.reduced = false
+	hotel.apply_quality(PRESETS.of(PRESETS.MEDIUM))
+	hotel.update_visibility(spot, true)
+	var lit_room: bool = hotel.motes.visible
+	var dark := {}
+	for room in hotel.manifest.rooms:
+		if not FLOOR.is_void(room) and hotel.dark_ids.has(int(room.id)): dark = room
+	if not dark.is_empty(): hotel.update_visibility(FLOOR.position_of(dark) + Vector3(0, 1.5, 0), true)
+	if not hotel.layered: check("En Medio, motas solo donde la sala de quien mira está a oscuras", not lit_room and not dark.is_empty() and hotel.motes.visible)
+	hotel.apply_quality(PRESETS.of(PRESETS.LOW))
+	hotel.update_visibility(spot, true)
+	check("En Bajo no hay motas ni luz en el aire", not hotel.motes.visible and hotel.emergency.all(func(e): return e.light.light_volumetric_fog_energy == 0.0))
+	hotel.apply_quality(PRESETS.of(PRESETS.HIGH))
+	hotel.eye_planta = 0
+	level.rig.follow_grade()
+
 ## A room of the hotel's battens (a service gallery, a store) at Alto (rev12,
 ## 14 November 2026): its battens light it, down, up and from the floor, and
 ## its lamp nothing; she drinks it or the power goes and they go with their
@@ -615,6 +662,7 @@ func run() -> void:
 	block_lift(hotel)
 	block_halos(hotel)
 	block_fittings(hotel)
+	block_air(level, hotel)
 	block_battens(hotel)
 	block_wrap_lie(hotel)
 	block_accents(hotel)
