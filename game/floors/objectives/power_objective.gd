@@ -51,6 +51,10 @@ var pilots: Array = []
 var pilot_lenses: Array = []
 ## The red timer ticking at the board while it runs.
 var tick_voice = null
+## The red lever's pilot: its lit lens, its dark one and its glow.
+var red_pilot: Array = []
+const RED_PILOT := Vector3(0.026, 0.026, 0.012)
+const RED_PILOT_Y := 1.66
 
 func manifest() -> Dictionary: return level.manifest
 
@@ -104,6 +108,17 @@ func place() -> void:
 		# cabinet's plate is (spec_rediseno 6.13).
 		var plate_x: float = POWER_LOOK.red_plate_x(zones.size()) if i == red_index() else lever_at(i).x
 		plate_text("MONTACARGAS" if i == red_index() else "%s\n%s" % [String(zones[i].code), String(zones[i].name)], origin + basis * Vector3(plate_x, POWER_LOOK.PLATE_Y, POWER_LOOK.PLATE_Z), yaw, 18 if i == red_index() else 14)
+	# The red cabinet's middle pilot (power_board()), lit red while its lever
+	# waits to be pulled: the liveliest thing in the room (office_landmarks.gd).
+	var pilot_at := Transform3D(basis, origin + basis * Vector3(POWER_LOOK.red_plate_x(zones.size()), RED_PILOT_Y - RED_PILOT.y * 0.5, POWER_LOOK.PLATE_Z + 0.002))
+	red_pilot = [equipment(MAIL.lamp_lens(level.hotel, RED_PILOT, "glow_red"), pilot_at), equipment(MAIL.lamp_lens(level.hotel, RED_PILOT, "lamp_off"), pilot_at)]
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.15, 0.08)
+	glow.omni_range = 0.7
+	glow.light_energy = 0.25
+	glow.position = pilot_at * Vector3(0, RED_PILOT.y * 0.5, 0.08)
+	level.hotel.add_child(glow)
+	red_pilot.append(glow)
 	switch_until.clear()
 	for entry in m.power.timers:
 		var at := Vector3(float(entry.point[0]), float(entry.point[1]), float(entry.point[2]))
@@ -186,6 +201,8 @@ func show_handles() -> void:
 	for i in handles.size():
 		var up: bool = (i == red_index() and red != Red.DOWN) or on_order.has(i)
 		handles[i].rotation.x = -LEVER_SWING if up else 0.0
+	if red_pilot.size() == 3:
+		for k in 3: red_pilot[k].visible = (red == Red.DOWN) != (k == 1)
 
 ## The rule of a room of planta 2 (spec 3.3): lit always, under a running
 ## minutero, or in a zone that is on while the red lever is down.

@@ -59,6 +59,12 @@ var hatch_open := false
 ## 0..1, how far the fans are running, eased (every machine).
 var spin := 0.0
 var post_door = null
+## The post reader's pilot: its red lens and its green one.
+var post_pilot: Array = []
+## Beside the reader's white light (mail_equipment.gd card_reader()).
+const PILOT_X := 0.055
+const PILOT_Y := 0.235
+const PILOT := Vector3(0.03, 0.03, 0.012)
 var rotors: Array = []
 ## The fans' roar at the air handler while they run.
 var fans_voice = null
@@ -110,7 +116,12 @@ func place() -> void:
 	# console on the desk, the air handler and its two fans' rotors, and the
 	# control box that stops them.
 	var reader: Dictionary = m.air.security.reader
-	equipment(MAIL.card_reader(level.hotel, MAIL.READER), wall_xform(MAIL.READER, spot_point(reader), spot_point(reader).y - MAIL.READER.y * 0.5, float(reader.yaw)))
+	var reader_at := wall_xform(MAIL.READER, spot_point(reader), spot_point(reader).y - MAIL.READER.y * 0.5, float(reader.yaw))
+	equipment(MAIL.card_reader(level.hotel, MAIL.READER), reader_at)
+	# Its pilot beside its white light (office_landmarks.gd): red while the
+	# post is shut, green once a card has opened it (show_post()).
+	var pilot_at := reader_at * Transform3D(Basis.IDENTITY, Vector3(PILOT_X, PILOT_Y - PILOT.y * 0.5, MAIL.READER.z * 0.5 - 0.002))
+	post_pilot = [equipment(MAIL.lamp_lens(level.hotel, PILOT, "glow_red"), pilot_at), equipment(MAIL.lamp_lens(level.hotel, PILOT, "glow_green"), pilot_at)]
 	var desk_spot: Dictionary = m.air.security.desk
 	equipment(AIR_LOOK.security_console(level.hotel, AIR_LOOK.CONSOLE), Transform3D(Basis(Vector3.UP, float(desk_spot.yaw)), spot_point(desk_spot) + MAIN_DUCT.facing(float(desk_spot.yaw)) * AIR_LOOK.DESK_MIDDLE + Vector3(0, AIR_LOOK.DESK_TOP, 0)))
 	var unit: Dictionary = m.air.unit
@@ -228,6 +239,9 @@ func model_at(path: String, xform: Transform3D) -> void:
 
 ## The post's door locked while the post is shut, swung open once it is not.
 func show_post() -> void:
+	if post_pilot.size() == 2:
+		post_pilot[0].visible = not post_open
+		post_pilot[1].visible = post_open
 	if post_door == null: return
 	post_door.locked = not post_open
 	if post_open and not post_door.opened: post_door.set_state(true)

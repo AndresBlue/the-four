@@ -22,6 +22,7 @@ const STAND := preload("res://game/world/office/pieces/stand_ins.gd")
 const EQ_MAIL := preload("res://game/world/office/pieces/mail_equipment.gd")
 const PICTURES := preload("res://game/world/office/office_pictures.gd")
 const MODELS := preload("res://game/world/office/office_models.gd")
+const LANDMARKS := preload("res://game/world/office/office_landmarks.gd")
 const SIDE_OF := {"Wall_-1_0": "west", "Wall_1_0": "east", "Wall_0_-1": "north", "Wall_0_1": "south"}
 const SIDE_STEP := {"Wall_-1_0": Vector2i(-1, 0), "Wall_1_0": Vector2i(1, 0), "Wall_0_-1": Vector2i(0, -1), "Wall_0_1": Vector2i(0, 1)}
 ## A piece keeps this far from its wall's ends, and this much from the next.
@@ -319,7 +320,10 @@ static func draw(builder: Node3D, room: Dictionary, wall: Dictionary, kind: Stri
 			MODELS.put(builder, boundary, "coat_wall_rack", at)
 			var towel := MODELS.mesh_of(builder, "towel")
 			if towel != null: MODELS.put(builder, boundary, "towel", xform_of(wall, x + 0.3, mount + 0.1 - towel.get_aabb().size.y, towel.get_aabb().size.z))
-		"directory": builder.place(boundary, WALL.directory_board(builder, size), at, false)
+		"directory":
+			# In an arrival, the real one: its planta's landmarks and departments (office_landmarks.gd).
+			if builder.manifest.get("entries", []).any(func(e) -> bool: return int(e) == int(room.id)): LANDMARKS.directory(builder, boundary, room, at, size)
+			else: builder.place(boundary, WALL.directory_board(builder, size), at, false)
 		"central":
 			var central := EQ_MAIL.mail_central(builder, EQ_MAIL.CENTRAL, false)
 			builder.place(boundary, central, at, false)

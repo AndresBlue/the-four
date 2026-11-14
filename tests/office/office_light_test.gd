@@ -16,6 +16,7 @@ const BL := preload("res://game/world/hotel/bounce_light.gd")
 const LIGHTING := preload("res://game/world/hotel/lighting.gd")
 const PRESETS := preload("res://game/presentation/graphics_presets.gd")
 const ACCENTS := preload("res://game/world/office/office_accents.gd")
+const LANDMARKS := preload("res://game/world/office/office_landmarks.gd")
 var checks: Array = []
 var failed := 0
 
@@ -648,6 +649,76 @@ func block_holes(hotel) -> void:
 	await create_timer(OG.TILE_SWING + 0.2).timeout
 	check("Una placa que ella abre muestra lo oscuro desde que se abre, mientras está abierta y hasta que vuelve a su sitio", at_once and open and closing and not dark.visible, "%s %s %s %s" % [at_once, open, closing, dark.visible])
 
+## The landmark rooms (office_landmarks.gd, 14 November 2026): each has its
+## banner and its door lamp, and its object its own light; the door lamps
+## stay on through a cut and a blackout and never cast; the window's light
+## goes and comes back with its room; the plant's casts only with the eye in
+## the plant; the post reader's pilot turns green when the post opens; the
+## red lever's pilot is lit while it waits.
+func block_landmarks(level, hotel) -> void:
+	hotel.apply_quality(PRESETS.of(PRESETS.HIGH))
+	var m: Dictionary = hotel.manifest
+	var compat: bool = RenderingServer.get_current_rendering_method() == "gl_compatibility"
+	var marks := {int(m.mail.window): "window", int(m.power.room): "electrical", int(m.air.security.room): "security", int(m.air.room): "machines"}
+	var labels: Array = []
+	for node in hotel.room_nodes: labels.append_array(node.find_children("*", "Label3D", false, false).map(func(l): return (l as Label3D).text))
+	for id: int in marks:
+		var kind: String = marks[id]
+		var halos: Array = hotel.landmark_lamps.filter(func(e): return int(e.room) == id and String(e.light.name) == "LandmarkDoorHalo")
+		var washes: Array = hotel.landmark_lamps.filter(func(e): return int(e.room) == id and String(e.light.name) == "LandmarkDoorWash")
+		check("%s: su banderola y su aplique (luz y aire, luz en la puerta)" % kind, labels.count(String(LANDMARKS.KINDS[kind].banner)) >= 2 and not halos.is_empty() and halos.size() == washes.size(), "%d etiquetas, %d apliques" % [labels.count(String(LANDMARKS.KINDS[kind].banner)), halos.size()])
+	check("Las salidas de las plantas 1 y 2: su cartel y ni banderola ni aplique", labels.has("MONTACARGAS") and hotel.landmark_lamps.all(func(e): return LANDMARKS.kind_of(m, int(e.room)) != "lift"))
+	var window := int(m.mail.window)
+	var accent: Array = hotel.accents.of_room(window).filter(func(e): return int(e.sconce) < 0)
+	check("La ventanilla: el flexo sobre la máquina de escribir", accent.size() == 1 and is_equal_approx(float(accent[0].energy), OG.WINDOW_LAMP_ENERGY))
+	check("El puesto de seguridad: su luz sobre la consola", not hotel.accents.of_room(int(m.air.security.room)).is_empty())
+	var unit: Array = hotel.emergency.filter(func(e): return int(e.room) == int(m.power.room))
+	var board := Vector3(float(m.power.board.point[0]), float(m.power.board.point[1]) + OG.EMERGENCY_ON_BOARD, float(m.power.board.point[2]))
+	check("El cuarto eléctrico: su foco de emergencia en el tablero", unit.size() == 1 and (-(unit[0].light as Node3D).global_basis.z).dot(((board - (unit[0].light as Node3D).global_position)).normalized()) > 0.99)
+	var plant: Array = hotel.landmark_lamps.filter(func(e): return bool(e.focal) and int(e.room) == int(m.air.plant))
+	check("La climatizadora: su luz sobre el paro", plant.size() == 1)
+	# The window's light with its room's power and her drain.
+	var here := FLOOR.position_of(m.rooms[window]) + Vector3(0, 1.5, 0)
+	var lamp: SpotLight3D = accent[0].light if not accent.is_empty() else null
+	hotel.update_visibility(here, true)
+	var lit: bool = lamp != null and lamp.visible == (not compat)
+	hotel.set_room_power(window, false)
+	hotel.update_visibility(here, true)
+	var cut: bool = lamp != null and not lamp.visible
+	hotel.set_room_power(window, true)
+	hotel.update_visibility(here, true)
+	check("La luz de la ventanilla se corta con su sala y vuelve entera", lit and cut and lamp.visible == (not compat) and is_equal_approx(lamp.light_energy, OG.WINDOW_LAMP_ENERGY))
+	# The door lamps: batteries, never casting, the halo in the air.
+	var doors: Array = hotel.landmark_lamps.filter(func(e): return not bool(e.focal))
+	var cut_before: Dictionary = hotel.unpowered.duplicate()
+	hotel.blackout(true)
+	for e: Dictionary in doors: hotel.set_room_power(int(e.room), false)
+	hotel.update_visibility(here, true)
+	var kept: bool = doors.all(func(e): return (e.light as Light3D).visible and (e.light as Light3D).light_energy > 0.0 and not (e.light as Light3D).shadow_enabled)
+	hotel.blackout(false)
+	for e: Dictionary in doors: hotel.set_room_power(int(e.room), not cut_before.has(int(e.room)))
+	check("Los apliques de las puertas siguen encendidos con la planta a oscuras, y sin sombra", not doors.is_empty() and kept)
+	check("Solo el halo alumbra el aire", doors.all(func(e): return (e.light as Light3D).light_volumetric_fog_energy == (OG.LANDMARK_AIR if bool(e.get("air", false)) else 0.0)))
+	# The plant's lamp: casting only with the eye in the plant.
+	if not plant.is_empty():
+		var light: SpotLight3D = plant[0].light
+		hotel.update_visibility(FLOOR.position_of(m.rooms[int(m.air.plant)]) + Vector3(0, 1.5, 0), true)
+		var inside: bool = light.shadow_enabled and light.light_volumetric_fog_energy == OG.FOCAL_AIR
+		hotel.update_visibility(FLOOR.position_of(m.rooms[int(m.air.security.room)]) + Vector3(0, 1.5, 0), true)
+		check("La luz de la climatizadora da sombra y alumbra el aire solo con quien mira dentro", inside and not light.shadow_enabled and light.light_volumetric_fog_energy == 0.0 and light.visible)
+	hotel.update_visibility(here, true)
+	# The pilots.
+	var air = level.objective(&"air")
+	var shut: bool = air.post_pilot.size() == 2 and air.post_pilot[0].visible and not air.post_pilot[1].visible
+	air.post_open = true
+	air.show_post()
+	var open: bool = air.post_pilot[1].visible and not air.post_pilot[0].visible
+	air.post_open = false
+	air.show_post()
+	check("El piloto del lector de la seguridad: rojo cerrada, verde al abrir", shut and open and air.post_pilot[0].visible)
+	var power = level.objective(&"power")
+	check("El piloto de la palanca roja, encendido mientras espera", power.red_pilot.size() == 3 and power.red_pilot[0].visible and power.red_pilot[2].visible and not power.red_pilot[1].visible)
+
 func run() -> void:
 	block_palette()
 	block_bounce()
@@ -666,6 +737,7 @@ func run() -> void:
 	block_battens(hotel)
 	block_wrap_lie(hotel)
 	block_accents(hotel)
+	block_landmarks(level, hotel)
 	await block_holes(hotel)
 	var file := FileAccess.open("res://evidence/office_light_test.json", FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify({"checks": checks}, "\t"))

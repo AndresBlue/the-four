@@ -21,6 +21,7 @@ const OFFICE_BOUNCE := preload("res://game/world/office/office_bounce.gd")
 const WALLS := preload("res://game/world/office/office_walls.gd")
 const FITTINGS := preload("res://game/world/office/office_fittings.gd")
 const CLUTTER := preload("res://game/world/office/office_clutter.gd")
+const LANDMARKS := preload("res://game/world/office/office_landmarks.gd")
 ## The freight car's gate (7.4): shut and open x, the fixed end's x.
 const GATE_SHUT_X := 0.85
 const GATE_OPEN_X := -0.62
@@ -656,8 +657,14 @@ const RECEPTION_HALO := 0.0
 ## took the bounce down by a sixth alone and the ceiling stayed as light as the
 ## walls at eye height, where its reference's is two thirds of them (rev13).
 const RECEPTION_BOUNCE := 0.5
+## The window's a little down too: its typewriter under its arm lamp is what
+## shows there (office_landmarks.gd).
+const WINDOW_DIM := 0.7
 static func dim_of(room: Dictionary) -> float:
-	return RECEPTION_DIM if int(room.get("type", -1)) == OFFICE.RECEPTION else 1.0
+	match int(room.get("type", -1)):
+		OFFICE.RECEPTION: return RECEPTION_DIM
+		OFFICE.WINDOW: return WINDOW_DIM
+	return 1.0
 
 ## The pools of a room's troffers (POOL_ENERGY): built out, on the room's
 ## layers with its other lamps (assign_layers(), "own_room"), lit with the
@@ -1057,6 +1064,11 @@ func lenses_of(room_id: int) -> Array:
 ## wider, for its console's four monitors.
 const POST_DESK := Vector3(1.2, 0.755, 0.45)
 const SECURITY_DESK := Vector3(1.8, 0.755, 0.45)
+## The window's arm lamp: turned from the desk's back left corner so its
+## light (office_models LIGHTS) lands on the typewriter.
+const WINDOW_LAMP_YAW := 1.29
+const WINDOW_LAMP_ENERGY := 7.0
+const WINDOW_LAMP_ANGLE := 34.0
 func post_desk(node: Node3D, spot: Dictionary, size := POST_DESK) -> void:
 	var yaw := float(spot.yaw)
 	var holder := Node3D.new()
@@ -1067,7 +1079,13 @@ func post_desk(node: Node3D, spot: Dictionary, size := POST_DESK) -> void:
 	place(holder, DESKS.desk_steel(self, size), Transform3D.IDENTITY)
 	if int(building_room.get("type", -1)) == OFFICE.WINDOW:
 		var room_id := int(building_room.id)
-		PROPS.MODELS.lamp(self, holder, room_id, "desk_lamp_arm", Transform3D(Basis(Vector3.UP, 0.42), Vector3(-0.44, size.y, -0.04)))
+		# Its arm lamp at the back corner, its head over the typewriter in the
+		# desk's middle (files_objective.gd), the landmark's own light: brighter
+		# and narrower than a desk lamp's (office_landmarks.gd).
+		var arm := Transform3D(Basis(Vector3.UP, WINDOW_LAMP_YAW), Vector3(-0.42, size.y, -0.12))
+		var spec: Dictionary = PROPS.MODELS.LIGHTS["desk_lamp_arm"]
+		PROPS.MODELS.put(self, holder, "desk_lamp_arm", arm)
+		accent_spot(holder, room_id, arm * Vector3(spec.at), arm * Vector3(spec.aim), spec.colour, WINDOW_LAMP_ENERGY, float(spec.reach), WINDOW_LAMP_ANGLE)
 		PROPS.MODELS.put(self, holder, "folders", Transform3D(Basis(Vector3.UP, 0.21), Vector3(0.38, size.y, 0.06)))
 
 ## The battery units (spec_f1_geometry 7.2): how high, how far they are lit
@@ -1081,6 +1099,9 @@ const EMERGENCY_ENERGY := 1.4
 const EMERGENCY_RANGE := 9.0
 const EMERGENCY_ANGLE := 55.0
 const EMERGENCY_KELVIN := 2400.0
+## The electrical room's unit aimed at its board, this high up it, this wide.
+const EMERGENCY_ON_BOARD := 1.3
+const EMERGENCY_BOARD_ANGLE := 40.0
 ## The shortest plain stretch of wall a unit hangs on.
 const EMERGENCY_RUN := 1.2
 ## Every unit: {light, lens, room, planta, spot}.
@@ -1104,10 +1125,17 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	# The board covers its wall up to the ceiling (spec_rediseno 6.13): the
 	# electrical room's unit hangs on another wall when it has a run there.
 	var power_spec: Dictionary = manifest.get("power", {})
+	var board_at := Vector3.INF
 	if power_spec.has("board") and int(power_spec.room) == int(room.id):
 		var board_way := LAYOUT.way_of(String(power_spec.board.wall))
 		var others: Array = runs.filter(func(entry: Array) -> bool: return SIDE_STEP.get(String(entry[0].name), Vector2i.ZERO) != board_way)
+		# The landmark's light on its board (office_landmarks.gd): from the wall
+		# across from it where it can.
+		var facing: Array = others.filter(func(entry: Array) -> bool: return SIDE_STEP.get(String(entry[0].name), Vector2i.ZERO) == -board_way)
+		if not facing.is_empty(): others = facing
 		if not others.is_empty(): runs = others
+		var board_point: Array = power_spec.board.point
+		board_at = Vector3(float(board_point[0]), float(board_point[1]) + EMERGENCY_ON_BOARD, float(board_point[2])) - node.position
 	var best: Array = []
 	var best_distance := INF
 	for run in runs:
@@ -1151,6 +1179,10 @@ func emergency_unit(node: Node3D, room: Dictionary) -> void:
 	light.light_volumetric_fog_energy = 0.0
 	# From before its heads and 35 degrees down: -Z of the light along +Z of the unit.
 	light.transform = Transform3D(Basis.looking_at(Vector3(0, -sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)))), Vector3(0, 0.1, 0.16))
+	if board_at != Vector3.INF:
+		# The electrical room's on its board, narrower: the board is what shows.
+		light.transform = Transform3D(Basis.looking_at(unit.transform.affine_inverse() * board_at - light.position), light.position)
+		light.spot_angle = EMERGENCY_BOARD_ANGLE
 	light.visible = false
 	unit.add_child(light)
 	emergency.append({"light": light, "lens": lens, "room": int(room.id), "planta": int(room.get("wing", 0)), "spot": node.position + unit.transform.origin})
@@ -1201,6 +1233,7 @@ func round_lamps() -> void:
 	round_accents()
 	round_pools()
 	air_lights()
+	round_landmarks()
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
 	var casting: bool = round_at.shadows and not echo_view
@@ -1246,6 +1279,26 @@ func air_lights() -> void:
 		for entry: Dictionary in accents.of_room(room_id):
 			if int(entry.sconce) < 0: air(entry.light, ACCENT_AIR)
 	for lamp in exit_lamps: air(lamp, EXIT_AIR)
+
+## The landmarks' battery lamps (office_landmarks.gd): {light, room, focal,
+## air}. On whatever the power, shown and put away with the room they hang in.
+## Over a door: no shadow ever; the halo (air) lights the dust of the
+## corridor, its cone kept off its wall, the wash none. Over a dark landmark's
+## object: casting, and lighting the air, only while the eye is in that room.
+var landmark_lamps: Array = []
+const LANDMARK_AIR := 6.0
+const FOCAL_AIR := 2.0
+func round_landmarks() -> void:
+	if landmark_lamps.is_empty() or round_at.is_empty(): return
+	var here: Dictionary = FLOOR.room_at(manifest.rooms, round_at.position)
+	var inside := int(here.get("id", -1))
+	for entry: Dictionary in landmark_lamps:
+		var light: Light3D = entry.light
+		var casts: bool = bool(entry.focal) and round_at.shadows and not echo_view and int(entry.room) == inside
+		if light.shadow_enabled != casts: light.shadow_enabled = casts
+		var air_share: float = (FOCAL_AIR if casts else 0.0) if bool(entry.focal) else (LANDMARK_AIR if bool(entry.get("air", false)) else 0.0)
+		var wanted: float = air_share if preset.lamp_fog else 0.0
+		if light.light_volumetric_fog_energy != wanted: light.light_volumetric_fog_energy = wanted
 
 func air(light: Light3D, energy: float) -> void:
 	var wanted: float = energy if light.shadow_enabled and preset.lamp_fog else 0.0
@@ -2082,6 +2135,8 @@ func door_plaques(_door: Node3D, a: Dictionary, b: Dictionary, center: Vector3, 
 		var at := center + along * (FLOOR.PORTAL * 0.5 + JAMB_WIDE + PLAQUE_FROM_JAMB + wide * 0.5) + normal * side * (0.09 + PLAQUE_DEPTH * 0.5) + Vector3(0, PLAQUE_Y, 0) - holder.position
 		box(holder, at, Vector3(wide, PLAQUE.y, PLAQUE_DEPTH), "plaque", false, "box", Vector3(0, yaw, 0))
 		text(holder, words, at + normal * side * (PLAQUE_DEPTH * 0.5 + 0.001), yaw + (0.0 if side > 0 else PI), 20, NUMBER_REACH, Color("e8e4d6"))
+	# A landmark's door: its sign, its banner and its lamp, outside.
+	LANDMARKS.door(self, a, b, center, yaw)
 
 ## The office's lockers (9.7): the wardrobe's measures and hinges in olive
 ## steel, louvred at eye height, made once and kept (the baked locker of
@@ -2296,6 +2351,8 @@ func extras(node: Node3D, room: Dictionary) -> void:
 	if not mail.is_empty() and int(room.id) == int(mail.window): post_desk(node, mail.desk)
 	var air: Dictionary = manifest.get("air", {})
 	if air.has("security") and int(room.id) == int(air.security.room): post_desk(node, air.security.desk, SECURITY_DESK)
+	# A landmark's object lamp, and a way sign where the way to one turns.
+	LANDMARKS.room(self, node, room)
 	# The duct network's low wall grilles (ducts.exits of kind "wall"), where
 	# the generator put them: a frame and slats over the dark of the duct.
 	for e in manifest.get("ducts", {}).get("exits", []):

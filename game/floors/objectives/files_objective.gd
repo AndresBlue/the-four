@@ -147,7 +147,7 @@ func place() -> void:
 	plate_text("1. INSERTE FICHA\n2. ESPERE SEÑAL\n3. RETIRE FICHA", plate_spot(steps), float(reader.yaw), 17, PLATE_DARK)
 	var notice_size := Vector3(0.4, 0.14, 0.01)
 	var notice := equipment(WALL.sign_plate(level.hotel, notice_size), wall_xform(notice_size, reader_at, reader_at.y + 0.45, float(reader.yaw)))
-	plate_text("USO EXCLUSIVO\nDE PERSONAL", plate_spot(notice), float(reader.yaw), 30)
+	plate_text("SOLO PERSONAL\nREGISTRADO", plate_spot(notice), float(reader.yaw), 30)
 	show_state()
 
 func v3(p: Array) -> Vector3: return Vector3(float(p[0]), float(p[1]), float(p[2]))
