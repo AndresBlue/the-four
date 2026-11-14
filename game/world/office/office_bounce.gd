@@ -43,6 +43,12 @@ func own_colours(materials: Dictionary, over: Array) -> void:
 		plain.albedo_color = colour
 		own[key] = plain
 
+## A material's mean colour (sRGB) as the stand-in takes it: the office's own,
+## else the hotel's measured, else grey.
+func colour_of(key: String) -> Color:
+	if own.has(key): return (own[key] as StandardMaterial3D).albedo_color
+	return ALBEDO.ALBEDO.get(key, Color(0.3, 0.3, 0.3))
+
 ## The hotel's, each volume's cells noted (by the room nodes' names,
 ## Room_<id>_...), its open sides run on by OVERLAP and its walled ones drawn
 ## in by INSET.

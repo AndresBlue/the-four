@@ -372,6 +372,19 @@ func block_fittings(hotel) -> void:
 	check("La sala tiene %d pantallas, cada una con su foco y su rebote, y sus lentes" % n, pools.size() == n * 2 and pools.filter(func(p): return p.has_meta("casts")).size() == n and not lenses.is_empty(), "%d luces, %d lentes" % [pools.size(), lenses.size()])
 	check("Su lámpara sigue, encendida, pero no alumbra ni da sombra", lamp.visible and lamp.light_cull_mask == 0 and not lamp.shadow_enabled and lamp.light_energy > 0.0)
 	check("Alumbran sus pantallas", pools.all(func(p): return p.visible and p.light_energy > 0.0))
+	# Each troffer's bounce: what its floor gives back, in the room's volume; the lamp out of it.
+	var bounces: Array = pools.filter(func(p): return not p.has_meta("casts"))
+	var back_of: Dictionary = hotel.bounce_of(room)
+	var wanted := OG.POOL_ENERGY * OG.dim_of(room) * float(back_of.share)
+	check("Cada rebote sale de su suelo: la energía de su foco por lo que devuelve la sala, en su volumen de rebote", bounces.size() == n and bounces.all(func(p): return absf(float(p.get_meta("energy")) - wanted) < 0.001 and p.spot_angle == OG.BOUNCE_ANGLE and p.light_bake_mode == Light3D.BAKE_DYNAMIC), "%.3f" % wanted)
+	check("La lámpara de la sala no entra en el volumen", lamp.light_bake_mode == Light3D.BAKE_DISABLED)
+	# A corridor's vinyl tile against a nave's carpet: the darker floor gives back less, and less of its colour.
+	var hall: Dictionary = hotel.bounce_of({"type": OFFICE.CORRIDOR})
+	var carpet: Dictionary = hotel.bounce_of({"type": OFFICE.OPEN_OFFICE, "wing": 0})
+	var hall_tint: Color = hall.tint
+	var carpet_tint: Color = carpet.tint
+	print("INFO rebote de la sala %.3f, de un pasillo %.3f, de una nave con moqueta %.3f" % [back_of.share, hall.share, carpet.share])
+	check("Un suelo más oscuro devuelve menos, y menos de su color", float(carpet.share) > 0.0 and float(carpet.share) < float(hall.share) and carpet_tint.r - carpet_tint.b < hall_tint.r - hall_tint.b, "%s %s" % [hall_tint, carpet_tint])
 	var casting := 0
 	for rid: int in hotel.halos:
 		for p in hotel.halos[rid].pools: if p.has_meta("casts") and p.shadow_enabled: casting += 1
@@ -382,6 +395,7 @@ func block_fittings(hotel) -> void:
 	var half_lenses := true
 	for k in lenses.size(): if absf(glow_of(lenses[k]) - float(own[k]) * 0.5) > 0.01: half_lenses = false
 	check("Ella bebe la mitad: las %d pantallas, sus rebotes y sus lentes, a la mitad a la vez" % n, half_pools and half_lenses)
+	check("Sus rebotes, a la mitad de los suyos", bounces.all(func(p): return p.visible and absf(p.light_energy - wanted * 0.5) < 0.01))
 	hotel.drain(id, 1.0)
 	hotel._process(0.016)
 	var dark_pools: bool = pools.all(func(p): return not p.visible or p.light_energy == 0.0)
@@ -389,6 +403,7 @@ func block_fittings(hotel) -> void:
 	hotel.drain(id, 0.0)
 	hotel._process(0.016)
 	check("Al soltarla vuelven las %d, con sus lentes" % n, pools.all(func(p): return p.visible and absf(p.light_energy - float(p.get_meta("energy"))) < 0.01) and lenses.all(func(m): return m.material_override == null or m.has_meta("glow_surface")))
+	check("Y sus rebotes enteros", bounces.all(func(p): return p.visible and absf(p.light_energy - wanted) < 0.01))
 	hotel.set_room_power(id, false)
 	hotel._process(0.016)
 	check("Sin corriente, las %d a oscuras, lentes incluidas" % n, pools.all(func(p): return not p.visible) and lenses.all(func(m): return glow_of(m) == 0.0))
@@ -402,6 +417,7 @@ func block_fittings(hotel) -> void:
 	hotel.update_visibility(spot, true)
 	hotel._process(0.016)
 	check("En Medio la lámpara alumbra como siempre y las pantallas no", lamp.light_cull_mask != 0 and pools.all(func(p): return not p.visible))
+	check("En Medio la lámpara vuelve a su volumen", lamp.light_bake_mode == Light3D.BAKE_DYNAMIC)
 
 ## The lie's dark lens under the wraparound and the parabolic faces (U3).
 func block_wrap_lie(hotel) -> void:

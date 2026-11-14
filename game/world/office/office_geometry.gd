@@ -132,13 +132,11 @@ const LAMP_PROFILE := "even"
 ## Far enough under the tiles that its light reaches them spread out: at 35 cm
 ## it drew a warm disc in the middle of the ceiling where no fitting hangs.
 const LAMP_DROP := 0.9
-## Steeper than the hotel's 1.25 where the troffers have their pools: there
-## the lamp lights nothing itself (lit_by_fittings()), and this is the fall of
-## what it puts in its room's bounce. Without the pools (pools_shown()) the
-## lamp lights the room alone, flatter, or the cheap presets fall to black.
-## Its place stays in the middle of its room: the bounce takes its light from
-## there, and a lamp moved up to a lens lit the next room's voxels (the dark
-## store's wall in a flat rectangle).
+## Where the troffers have their pools a fitted lamp lights nothing and feeds
+## no bounce volume (lit_by_fittings()). Without the pools (pools_shown()) the
+## lamp lights the room alone, flatter, or the cheap presets fall to black. It
+## stays in the middle of its room: a lamp moved up to a lens lit the next
+## room's voxels (the dark store's wall in a flat rectangle).
 const LAMP_ATTENUATION := 1.25
 const LAMP_ATTENUATION_ALONE := 0.9
 ## The troffer rooms' lamps, whose attenuation follows the pools (apply_quality()).
@@ -645,6 +643,7 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[Light3
 	var origin := Vector3(float(room.px), 0, float(room.pz))
 	var h := float(room.height)
 	var face := minf(h - (WRAP_DROP + 0.01 if OFFICE.troffer_look(room) == "wrap" else 0.02), OFFICE.TUBE_Y - POOL_UNDER_TUBES)
+	var back := bounce_of(room)
 	for lamp: Dictionary in lamps:
 		var pool := SpotLight3D.new()
 		pool.name = "TrofferPool"
@@ -669,8 +668,8 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[Light3
 		node.add_child(pool)
 		made.append(pool)
 		# Its bounce: the floor under it lighting the ceiling, the tops of the
-		# walls and the open leaves back, faint and wide. What faced no lamp
-		# fell to black; a dark room keeps it (it goes with the halo).
+		# walls and the open leaves back (bounce_of()). What faced no lamp fell
+		# to black; a dark room keeps it (it goes with the halo).
 		var bounce := SpotLight3D.new()
 		bounce.name = "TrofferBounce"
 		bounce.position = Vector3(lamp.centre.x, BOUNCE_FROM, lamp.centre.y) - origin
@@ -678,25 +677,51 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[Light3
 		bounce.spot_angle = BOUNCE_ANGLE
 		bounce.spot_range = h + BOUNCE_REACH
 		bounce.spot_attenuation = 0.5
-		bounce.light_color = pool.light_color.lerp(BOUNCE_TINT, 0.35)
+		bounce.light_color = pool.light_color * back.tint
 		bounce.light_specular = POOL_SPECULAR
-		bounce.light_bake_mode = Light3D.BAKE_DISABLED
+		# In the room's bounce volume (Godot's BAKE_DYNAMIC): its light in the
+		# lacquer, the steel and the waxed floor, and bounced once more.
+		bounce.light_bake_mode = Light3D.BAKE_DYNAMIC
 		bounce.light_volumetric_fog_energy = 0.0
 		bounce.shadow_enabled = false
 		bounce.set_meta("own_room", true)
-		bounce.set_meta("energy", BOUNCE_ENERGY * dim_of(room))
+		bounce.set_meta("energy", POOL_ENERGY * dim_of(room) * back.share)
 		bounce.visible = false
 		node.add_child(bounce)
 		made.append(bounce)
 	return made
 
 ## The bounce under each troffer (troffer_pools()): from just over the floor,
-## up and out to the walls' tops, a share of the pool's, tinted by the floor.
+## up and out to the walls' tops and the ceiling, a lit floor's spread (a cone
+## of 90 degrees falling off as its cosine, Godot's spot_angle_attenuation 1:
+## a lit floor gives light back over the whole half above it). Where the pools
+## light it is what a room's troffers give it back, and what its bounce volume
+## takes in (lit_by_fittings()): the volumes, fed from a lamp in the middle of
+## each cell, gave the 35 cm voxels of a corridor run nothing and an office up
+## to a third of its light, room by room as they were baked.
 const BOUNCE_FROM := 0.1
-const BOUNCE_ANGLE := 75.0
+const BOUNCE_ANGLE := 90.0
 const BOUNCE_REACH := 3.0
-const BOUNCE_ENERGY := 0.4
-const BOUNCE_TINT := Color(0.85, 0.72, 0.55)
+## What a room gives back of its troffers' light (bounce_of()): its surfaces'
+## mean reflectance r, the floor a quarter of them (FLOOR_SHARE: a corridor's
+## floor and ceiling are each a quarter of its faces, an office's too) and the
+## rest the walls and the tiles (ROOM_REFLECT: paint over a walnut dado, the
+## tiles' cream, linear); light bounced again and again, r / (1 - r) of it;
+## and BOUNCE_SHARE, the share of a pool that comes back up as one spot.
+const FLOOR_SHARE := 0.25
+const ROOM_REFLECT := 0.32
+const BOUNCE_SHARE := 0.75
+
+## A room's troffers' bounce (troffer_pools()): {"share" of POOL_ENERGY,
+## "tint" of the lamp's colour}. Its tint is the floor's own as far as the
+## floor is the light given back (its weight in the mean); the walls and tiles
+## give it back near white.
+func bounce_of(room: Dictionary) -> Dictionary:
+	var ground := (bounce as OFFICE_BOUNCE).colour_of(OFFICE.floor_look(room)).srgb_to_linear()
+	var own := maxf(ground.get_luminance(), 0.01)
+	var mean := FLOOR_SHARE * own + (1.0 - FLOOR_SHARE) * ROOM_REFLECT
+	var floor_weight := FLOOR_SHARE * own / mean
+	return {"share": BOUNCE_SHARE * mean / (1.0 - mean), "tint": Color.WHITE.lerp(ground / own, floor_weight)}
 
 ## A run of tiles from start to stop (world x) on the row z0 to z1 (world z),
 ## cut round the columns standing in it (spec_rediseno 3.4): the pieces
@@ -1849,6 +1874,7 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		# Its light from its troffers where they light (lit_by_fittings()): its
 		# own, or those of the cells it runs on into when it has none.
 		if not OFFICE.troffers(room).is_empty() or open_to(int(room.id)).any(func(id: int) -> bool: return not OFFICE.troffers(manifest.rooms[id]).is_empty()): light.set_meta("fitted", true)
+		if lit_by_fittings(light): light.light_bake_mode = Light3D.BAKE_DISABLED
 		if not failing_lens.is_empty():
 			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials[failing_lens].emission_energy_multiplier, "share": failing_share})
 	failing_lens = ""
@@ -2281,10 +2307,12 @@ func pools_shown() -> bool:
 ## Where the pools light, a room with troffers (or open to cells with them) is
 ## lit by its fittings alone (the author, 14 November 2026: a room's light is
 ## its fittings): its lamp stays, for her, the drain, the switches and the
-## halo, and still feeds its room's bounce (Godot puts a lamp in a VoxelGI
-## whatever its cull mask), but lights nothing itself and casts no shadow. From
-## a point in the middle of each cell it lit and shaded the floor and walls in
-## a pattern none of the lenses over it made, and stopped short at a cell's edge.
+## halo, but lights nothing itself, casts no shadow and stays out of its bounce
+## volume by its bake mode (apply_quality(); Godot puts a lamp in a VoxelGI
+## whatever its cull mask): its troffers' bounce spots feed it (troffer_pools()).
+## From a point in the middle of each cell it lit and shaded the floor and walls
+## in a pattern none of the lenses over it made, and stopped short at a cell's
+## edge.
 func lit_by_fittings(light: Light3D) -> bool:
 	return light.has_meta("fitted") and pools_shown()
 
@@ -2563,7 +2591,11 @@ func apply_quality(new_preset: Dictionary) -> void:
 	# The pools come or go with the preset: every halo is written again.
 	for id: int in halos: halos[id].energy = -1.0
 	var attenuation: float = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
-	for lamp in troffer_lamps: lamp.omni_attenuation = attenuation
+	for lamp in troffer_lamps:
+		lamp.omni_attenuation = attenuation
+		# Out of the bounce volumes where its troffers' bounce feeds them (lit_by_fittings()).
+		var bake := Light3D.BAKE_DISABLED if lit_by_fittings(lamp) else Light3D.BAKE_DYNAMIC
+		if lamp.light_bake_mode != bake: lamp.light_bake_mode = bake
 	for room_id: int in accents.rooms:
 		for entry: Dictionary in accents.of_room(room_id):
 			if int(entry.sconce) >= 0: continue
