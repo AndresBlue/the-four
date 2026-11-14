@@ -99,6 +99,22 @@ static func intensity(name: String, dir: Vector3) -> float:
 			# ceiling over it is lit and the walls evenly; a touch less
 			# straight down, where its own body hangs.
 			return clampf(0.88 + 0.12 * smoothstep(-0.9, 0.2, -down), 0.0, 1.0)
+		"troffer":
+			# The offices' room lamp under its recessed lenses
+			# (office_geometry.KEY_PROFILE): most of it down, the strongest
+			# straight down, a quarter of it up and out, so the tiles over it
+			# and the tops of the walls are lit less than the floor.
+			return clampf(0.25 + 0.75 * smoothstep(-0.1, 0.6, down) * (0.5 + 0.5 * down), 0.0, 1.0)
+		"box_sconce":
+			# An opal box between caps open at their ends, its light in the glass
+			# a few centimetres off the wall (the offices' lift lamps,
+			# office_geometry.BOX_LAMP_OUT): a cone up and a cone down that graze
+			# the wall from the lamp itself, and a dim glow through the glass into
+			# the room; straight back, the glass in front of the wall, which
+			# the light just before it would otherwise leave dark in its middle.
+			var into_room := -dir.z
+			var cones := smoothstep(0.4, 0.85, absf(dir.y))
+			return clampf(cones * smoothstep(-0.92, -0.6, into_room) + 0.35 * smoothstep(-0.1, 0.4, into_room) + 0.6 * smoothstep(-0.88, -0.97, into_room), 0.0, 1.0)
 		"sconce":
 			# Nothing behind (the wall); a cone up and a cone down out of the
 			# open ends of the shade, a dim glow through the cloth.

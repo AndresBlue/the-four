@@ -255,7 +255,8 @@ func block_lift(hotel) -> void:
 		check("Dentro de su pared", absf(m0.position.x) < along - 0.3 and absf(m1.position.x) < along - 0.3, "%.2f %.2f" % [m1.position.x, along])
 		var light: OmniLight3D = entries[0].light
 		check("Su luz, en el registro de apliques", hotel.sconce_lights.has(light) and int(hotel.accents.by_sconce.get(int(entries[0].sconce), -1)) == start)
-		check("La luz, 22 cm sobre el aplique", absf(light.global_position.y - (m0.global_position.y + 0.22)) < 0.01)
+		check("La luz, a la altura del aplique y BOX_LAMP_OUT delante de la pared", absf(light.global_position.y - m0.global_position.y) < 0.01 and absf(light.global_position.distance_to(m0.global_position) - OG.BOX_LAMP_OUT) < 0.01)
+		check("El aplique no proyecta sombra sobre su propia luz", m0.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 		check("Las dos luces, en las capas de su sala", hotel.kept_lamps.has(light.get_instance_id()) and hotel.kept_lamps.has((entries[1].light as Object).get_instance_id()))
 	# Area 4c hangs lamps in other rooms too; what holds is the register's cap per room.
 	# The reception takes its own cap (office_accents.caps, OG.RECEPTION_ACCENTS); the rest ACCENTS.MOST.
@@ -294,6 +295,8 @@ func block_halos(hotel) -> void:
 	check("El halo, en la capa de su sala", layered_ok)
 	var hue_ok := true
 	for id: int in hotel.halos:
+		# An archive's battens light without a halo (archive_battens()).
+		if hotel.halos[id].material == null: continue
 		if not ((hotel.halos[id].material as ShaderMaterial).get_shader_parameter("glow") as Color).is_equal_approx(hotel.lights[id].light_color): hue_ok = false
 	check("Cada halo, del color de su lámpara", hue_ok)
 	var start := int(hotel.manifest.get("start", -1))
