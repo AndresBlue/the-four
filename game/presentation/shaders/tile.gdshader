@@ -22,6 +22,9 @@ uniform float wear : hint_range(0.0, 1.0) = 0.0;
 // Each tile bedded at its own tilt below the finest preset too (the
 // reception's waxed floor: its reflections break up tile by tile).
 uniform bool tilt_always = false;
+// How far off level a tile is bedded, at most: the reception's waxed tiles
+// more, so a lamp's reflection breaks into a facet per tile as in its reference.
+uniform float tilt = 0.045;
 
 void vertex() { SURFACE_VERTEX; }
 
@@ -78,8 +81,8 @@ void fragment() {
 		if (finest_surface() || tilt_always) {
 			// No tile is bedded quite level: each throws the lamp back a little
 			// its own way, and the glare on a tiled floor breaks up tile by tile.
-			vec2 tilt = (vec2(hash12(id + 3.0), hash12(id + 11.0)) - 0.5) * 0.045;
-			n = normalize(n + face_tangent() * tilt.x + face_bitangent() * tilt.y);
+			vec2 lean = (vec2(hash12(id + 3.0), hash12(id + 11.0)) - 0.5) * tilt;
+			n = normalize(n + face_tangent() * lean.x + face_bitangent() * lean.y);
 		}
 		NORMAL = BUMPED_VIEW_NORMAL(n, height, 1.0);
 	}

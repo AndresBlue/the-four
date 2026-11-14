@@ -385,6 +385,12 @@ func block_fittings(hotel) -> void:
 	var carpet_tint: Color = carpet.tint
 	print("INFO rebote de la sala %.3f, de un pasillo %.3f, de una nave con moqueta %.3f" % [back_of.share, hall.share, carpet.share])
 	check("Un suelo más oscuro devuelve menos, y menos de su color", float(carpet.share) > 0.0 and float(carpet.share) < float(hall.share) and carpet_tint.r - carpet_tint.b < hall_tint.r - hall_tint.b, "%s %s" % [hall_tint, carpet_tint])
+	# The reception gives back RECEPTION_BOUNCE of what its floor alone would (rev13).
+	var reception: Dictionary = hotel.manifest.rooms[int(hotel.manifest.start)]
+	var ground: Color = hotel.bounce.colour_of(OFFICE.floor_look(reception)).srgb_to_linear()
+	var mean: float = OG.FLOOR_SHARE * maxf(ground.get_luminance(), 0.01) + (1.0 - OG.FLOOR_SHARE) * OG.ROOM_REFLECT
+	var plain_share: float = OG.BOUNCE_SHARE * mean / (1.0 - mean)
+	check("La recepción devuelve RECEPTION_BOUNCE de lo que daría su suelo", absf(float(hotel.bounce_of(reception).share) - OG.RECEPTION_BOUNCE * plain_share) < 0.0005, "%.3f" % float(hotel.bounce_of(reception).share))
 	var casting := 0
 	for rid: int in hotel.halos:
 		for p in hotel.halos[rid].pools: if p.has_meta("casts") and p.shadow_enabled: casting += 1
@@ -448,6 +454,9 @@ func block_battens(hotel) -> void:
 	var bounce: Array = lights.filter(func(p): return String(p.name).begins_with("BattenBounce"))
 	var share := float(hotel.bounce_of(room).share)
 	check("Su regleta: un foco abajo que da sombra larga, uno arriba y el rebote de su suelo en su volumen", lights.size() == 3 and down.size() == 1 and is_equal_approx((down[0] as Light3D).light_size, float(OG.BATTEN_DOWN.size)) and bounce.size() == 1 and absf(float(bounce[0].get_meta("energy")) - float(OG.BATTEN_DOWN.energy) * share) < 0.001 and bounce[0].light_bake_mode == Light3D.BAKE_DYNAMIC, "%d luces, %d abajo, %d rebotes" % [lights.size(), down.size(), bounce.size()])
+	# Up from just under the ceiling, raking it; its floor's bounce falling off with the distance (rev13).
+	var up: Array = lights.filter(func(p): return String(p.name).begins_with("BattenUp"))
+	check("Su luz arriba sale de BATTEN_UP_FROM bajo el techo y su rebote cae con BATTEN_BOUNCE_FALL", up.size() == 1 and is_equal_approx((up[0] as Node3D).position.y, float(room.height) - OG.BATTEN_UP_FROM) and bounce.size() == 1 and is_equal_approx((bounce[0] as SpotLight3D).spot_attenuation, OG.BATTEN_BOUNCE_FALL))
 	check("Su lámpara sigue, encendida, pero no alumbra, no da sombra ni entra en el volumen", lamp.visible and lamp.light_cull_mask == 0 and not lamp.shadow_enabled and lamp.light_bake_mode == Light3D.BAKE_DISABLED)
 	check("Alumbran la regleta y sus tubos", lights.all(func(p): return p.visible and p.light_energy > 0.0) and not tubes.is_empty() and own.all(func(g): return float(g) > 0.0), "%d tubos" % tubes.size())
 	hotel.drain(id, 1.0)

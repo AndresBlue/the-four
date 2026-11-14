@@ -637,6 +637,11 @@ const RECEPTION_DIM := 0.9
 ## over its nine troffers the whole halo lit the ceiling flat, lighter than
 ## the walls at eye height, and at 0.3 still lighter (rev12).
 const RECEPTION_HALO := 0.0
+## And its troffers' bounce, a share of what bounce_of() makes of its floor:
+## the floor weighs a quarter there (FLOOR_SHARE), so its dark waxed floor
+## took the bounce down by a sixth alone and the ceiling stayed as light as the
+## walls at eye height, where its reference's is two thirds of them (rev13).
+const RECEPTION_BOUNCE := 0.5
 static func dim_of(room: Dictionary) -> float:
 	return RECEPTION_DIM if int(room.get("type", -1)) == OFFICE.RECEPTION else 1.0
 
@@ -732,7 +737,9 @@ func bounce_of(room: Dictionary) -> Dictionary:
 	var own := maxf(ground.get_luminance(), 0.01)
 	var mean := FLOOR_SHARE * own + (1.0 - FLOOR_SHARE) * ROOM_REFLECT
 	var floor_weight := FLOOR_SHARE * own / mean
-	return {"share": BOUNCE_SHARE * mean / (1.0 - mean), "tint": Color.WHITE.lerp(ground / own, floor_weight)}
+	var share := BOUNCE_SHARE * mean / (1.0 - mean)
+	if int(room.get("type", -1)) == OFFICE.RECEPTION: share *= RECEPTION_BOUNCE
+	return {"share": share, "tint": Color.WHITE.lerp(ground / own, floor_weight)}
 
 ## A run of tiles from start to stop (world x) on the row z0 to z1 (world z),
 ## cut round the columns standing in it (spec_rediseno 3.4): the pieces
@@ -1857,22 +1864,27 @@ func batten_spot(node: Node3D, room: Dictionary, at: Vector3, casts: bool) -> Sp
 ## pools light (the author, 14 November 2026: a bare tube lights up and to the
 ## sides as well as down): from under its tubes a spot down nearly to the
 ## horizontal, soft as its tubes are long, with its floor's bounce
-## (pool_pair()); and one up from BATTEN_UP_FROM under the ceiling, the slab or
-## the tiles round it and the walls' tops (from its tubes, 11 cm under the
-## ceiling, it burnt a ring round the channel, which hides what is straight over
-## it). Lit and put out with the room's lamp, which then lights nothing
-## (lit_by_fittings()). From the lamp 35 cm under the slab, shaped as a
+## (pool_pair()); and one up from BATTEN_UP_FROM under the ceiling, raking the
+## slab or the tiles round it and the walls' tops (from its tubes, 11 cm under
+## the ceiling, it burnt a ring round the channel, which hides what is straight
+## over it). Its floor's bounce falls off as the square of the distance
+## (BATTEN_BOUNCE_FALL; a troffer's, 0.5): with the troffers' it lit the slab
+## and the tiles evenly to the corners, lighter than the walls, and the up
+## spot's patch was lost in it (rev13). Lit and put out with the room's lamp,
+## which then lights nothing (lit_by_fittings()). From the lamp 35 cm under the slab, shaped as a
 ## batwing, the slab was black and a tube under it threw a ruled black line
 ## down the floor: under 1.4 m of tubes (its penumbra "size", times "blur")
 ## a pipe's shadow is no more than a dimming.
 const BATTEN_TUBES := 0.14
 const BATTEN_DOWN := {"energy": 4.0, "angle": 85.0, "size": 1.4, "blur": 3.0}
-const BATTEN_UP := {"energy": 1.5, "angle": 80.0, "range": 4.0}
-const BATTEN_UP_FROM := 0.5
+const BATTEN_UP := {"energy": 3.0, "angle": 88.0, "range": 4.0}
+const BATTEN_UP_FROM := 0.35
+const BATTEN_BOUNCE_FALL := 2.0
 func batten_lights(node: Node3D, room: Dictionary) -> void:
 	var h := float(room.height)
 	var spots := pool_pair(node, room, Vector3(0, h - BATTEN_TUBES, 0), "Batten", float(BATTEN_DOWN.energy) * dim_of(room), float(BATTEN_DOWN.angle), float(BATTEN_DOWN.size))
 	spots[0].shadow_blur = float(BATTEN_DOWN.blur)
+	spots[1].spot_attenuation = BATTEN_BOUNCE_FALL
 	var up := SpotLight3D.new()
 	up.name = "BattenUp"
 	up.position = Vector3(0, h - BATTEN_UP_FROM, 0)
