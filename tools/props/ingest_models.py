@@ -194,8 +194,10 @@ TINT = {("cajas_archivo_cozmoth", "material_baseColor.png"): (0.8, 0.64, 0.44),
     ("perchero_pared_ehnri", "Scene_-_Root_baseColor.png"): (1.9, 1.8, 1.7),
     ("perchero_pared_ehnri", "Scene_-_Root_metallicRoughness.png"): (1.0, 1.15, 0.0),
     # The ceiling diffuser painted as the tiles round it, not bare metal (its map
-    # made it half metal, a dark mirror of the ceiling), and lighter: off-white.
-    ("ventila_techo_ahmagh2e", "material_baseColor.png"): (1.7, 1.65, 1.55),
+    # made it half metal, a dark mirror of the ceiling): its white the tiles'
+    # cream. At (1.7, 1.65, 1.55) its frame was a paper white, three times the
+    # tiles, and lit from the floor drew a light square on every ceiling.
+    ("ventila_techo_ahmagh2e", "material_baseColor.png"): (1.15, 1.1, 1.0),
     ("ventila_techo_ahmagh2e", "material_metallicRoughness.png"): (1.0, 1.0, 0.0),
     # The pilea and its terracotta pot came all metal (a black mirror): none.
     ("pilea_terracota_allquad", "PILEA_Mat_metallicRoughness.png"): (1.0, 1.0, 0.0),

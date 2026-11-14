@@ -419,6 +419,59 @@ func block_fittings(hotel) -> void:
 	check("En Medio la lámpara alumbra como siempre y las pantallas no", lamp.light_cull_mask != 0 and pools.all(func(p): return not p.visible))
 	check("En Medio la lámpara vuelve a su volumen", lamp.light_bake_mode == Light3D.BAKE_DYNAMIC)
 
+## A room of the hotel's battens (a service gallery, a store) at Alto (rev12,
+## 14 November 2026): its battens light it, down, up and from the floor, and
+## its lamp nothing; she drinks it or the power goes and they go with their
+## tubes, and all come back; at Medio the lamp as always.
+func block_battens(hotel) -> void:
+	hotel.apply_quality(PRESETS.of(PRESETS.HIGH))
+	var room := {}
+	for candidate in hotel.manifest.rooms:
+		var rid := int(candidate.id)
+		if FLOOR.is_void(candidate) or int(candidate.get("wing", 0)) != 0 or OFFICE.lamp_of(candidate) != "batten" or not hotel.lit(rid) or not hotel.halos.has(rid): continue
+		if not hotel.halos[rid].pools.any(func(p): return String(p.name).begins_with("BattenUp")): continue
+		if hotel.flickers.any(func(e): return e.light == hotel.lights[rid]): continue
+		room = candidate
+		break
+	check("Hay una sala de regletas con luz en la planta 1", not room.is_empty())
+	if room.is_empty() or not hotel.pools_shown(): return
+	var id := int(room.id)
+	var spot := FLOOR.position_of(room) + Vector3(0, 1.5, 0)
+	var lamp: OmniLight3D = hotel.lights[id]
+	var lights: Array = hotel.halos[id].pools
+	var tubes: Array = hotel.lenses_of(id)
+	var own: Array = tubes.map(func(m): return glow_of(m))
+	hotel.update_visibility(spot, true)
+	hotel._process(0.016)
+	print("INFO regletas de la sala %d (%s): %d luces, %d tubos" % [id, OFFICE.label(room), lights.size(), tubes.size()])
+	var down: Array = lights.filter(func(p): return p.has_meta("casts"))
+	var bounce: Array = lights.filter(func(p): return String(p.name).begins_with("BattenBounce"))
+	var share := float(hotel.bounce_of(room).share)
+	check("Su regleta: un foco abajo que da sombra larga, uno arriba y el rebote de su suelo en su volumen", lights.size() == 3 and down.size() == 1 and is_equal_approx((down[0] as Light3D).light_size, float(OG.BATTEN_DOWN.size)) and bounce.size() == 1 and absf(float(bounce[0].get_meta("energy")) - float(OG.BATTEN_DOWN.energy) * share) < 0.001 and bounce[0].light_bake_mode == Light3D.BAKE_DYNAMIC, "%d luces, %d abajo, %d rebotes" % [lights.size(), down.size(), bounce.size()])
+	check("Su lámpara sigue, encendida, pero no alumbra, no da sombra ni entra en el volumen", lamp.visible and lamp.light_cull_mask == 0 and not lamp.shadow_enabled and lamp.light_bake_mode == Light3D.BAKE_DISABLED)
+	check("Alumbran la regleta y sus tubos", lights.all(func(p): return p.visible and p.light_energy > 0.0) and not tubes.is_empty() and own.all(func(g): return float(g) > 0.0), "%d tubos" % tubes.size())
+	hotel.drain(id, 1.0)
+	hotel._process(0.016)
+	check("Bebida entera: la regleta y sus tubos, a oscuras", lights.all(func(p): return not p.visible or p.light_energy == 0.0) and tubes.all(func(m): return glow_of(m) == 0.0))
+	hotel.drain(id, 0.0)
+	hotel._process(0.016)
+	var back := true
+	for k in tubes.size(): if absf(glow_of(tubes[k]) - float(own[k])) > 0.001: back = false
+	check("Al soltarla vuelven enteras, tubos incluidos", back and lights.all(func(p): return p.visible and absf(p.light_energy - float(p.get_meta("energy"))) < 0.01))
+	hotel.set_room_power(id, false)
+	hotel._process(0.016)
+	check("Sin corriente, a oscuras, tubos incluidos", lights.all(func(p): return not p.visible) and tubes.all(func(m): return glow_of(m) == 0.0))
+	hotel.set_room_power(id, true)
+	hotel.update_visibility(spot, true)
+	hotel._process(0.016)
+	back = true
+	for k in tubes.size(): if absf(glow_of(tubes[k]) - float(own[k])) > 0.001: back = false
+	check("Con la corriente vuelven enteras", back and lights.all(func(p): return p.visible))
+	hotel.apply_quality(PRESETS.of(PRESETS.MEDIUM))
+	hotel.update_visibility(spot, true)
+	hotel._process(0.016)
+	check("En Medio la lámpara de la regleta alumbra como siempre, en su volumen, y sus focos no", lamp.light_cull_mask != 0 and lamp.light_bake_mode == Light3D.BAKE_DYNAMIC and lights.all(func(p): return not p.visible))
+
 ## The lie's dark lens under the wraparound and the parabolic faces (U3).
 func block_wrap_lie(hotel) -> void:
 	for pair in [["wrap", -OG.WRAP_DROP - 0.002], ["parabolic", OG.PARABOLIC_DEPTH - 0.007]]:
@@ -553,6 +606,7 @@ func run() -> void:
 	block_lift(hotel)
 	block_halos(hotel)
 	block_fittings(hotel)
+	block_battens(hotel)
 	block_wrap_lie(hotel)
 	block_accents(hotel)
 	await block_holes(hotel)

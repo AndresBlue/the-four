@@ -581,7 +581,7 @@ func ceiling_halo(node: Node3D, room: Dictionary, lamps: Array, rect: Rect2) -> 
 	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	halo.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	node.add_child(halo)
-	halos[int(room.id)] = {"room": int(room.id), "material": glow, "base": 0.0, "energy": 0.0, "pools": troffer_pools(node, room, lamps)}
+	halos[int(room.id)] = {"room": int(room.id), "material": glow, "base": 0.0, "energy": 0.0, "glow": RECEPTION_HALO if int(room.type) == OFFICE.RECEPTION else 1.0, "pools": troffer_pools(node, room, lamps)}
 
 ## Each lit face of a room's lamps again, just under it, at LENS_MIRRORED and
 ## seen by the probes alone (PROBE_ONLY): what the floor mirrors
@@ -632,6 +632,11 @@ func open_to(room_id: int) -> Array:
 ## reference is low key, the light in warm pools on the desk, its walnut wall
 ## and the lift's lamps, the walls in half dark; 1 in every other room.
 const RECEPTION_DIM := 0.9
+## And its halo, a share of the others' (ceiling_halo(), set_halo()): none.
+## Its ceiling is lit by its troffers' bounce, in half dark as its reference's;
+## over its nine troffers the whole halo lit the ceiling flat, lighter than
+## the walls at eye height, and at 0.3 still lighter (rev12).
+const RECEPTION_HALO := 0.0
 static func dim_of(room: Dictionary) -> float:
 	return RECEPTION_DIM if int(room.get("type", -1)) == OFFICE.RECEPTION else 1.0
 
@@ -641,54 +646,60 @@ static func dim_of(room: Dictionary) -> float:
 func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[Light3D]:
 	var made: Array[Light3D] = []
 	var origin := Vector3(float(room.px), 0, float(room.pz))
-	var h := float(room.height)
-	var face := minf(h - (WRAP_DROP + 0.01 if OFFICE.troffer_look(room) == "wrap" else 0.02), OFFICE.TUBE_Y - POOL_UNDER_TUBES)
-	var back := bounce_of(room)
+	var face := minf(float(room.height) - (WRAP_DROP + 0.01 if OFFICE.troffer_look(room) == "wrap" else 0.02), OFFICE.TUBE_Y - POOL_UNDER_TUBES)
 	for lamp: Dictionary in lamps:
-		var pool := SpotLight3D.new()
-		pool.name = "TrofferPool"
-		pool.position = Vector3(lamp.centre.x, face, lamp.centre.y) - origin
-		pool.rotation.x = -PI / 2
-		pool.spot_angle = POOL_ANGLE
-		pool.spot_attenuation = POOL_FALL
-		pool.spot_range = POOL_RANGE
-		pool.light_color = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
-		pool.set_meta("energy", POOL_ENERGY * dim_of(room))
-		pool.light_specular = POOL_SPECULAR
-		pool.light_bake_mode = Light3D.BAKE_DISABLED
-		pool.light_volumetric_fog_energy = 0.0
-		# Its shadow while among the nearest (round_pools()), biased as a batten's.
-		pool.shadow_enabled = false
-		pool.shadow_bias = 0.04
-		pool.shadow_normal_bias = 0.6
-		pool.light_size = POOL_SIZE
-		pool.set_meta("casts", true)
-		pool.set_meta("own_room", true)
-		pool.visible = false
-		node.add_child(pool)
-		made.append(pool)
-		# Its bounce: the floor under it lighting the ceiling, the tops of the
-		# walls and the open leaves back (bounce_of()). What faced no lamp fell
-		# to black; a dark room keeps it (it goes with the halo).
-		var bounce := SpotLight3D.new()
-		bounce.name = "TrofferBounce"
-		bounce.position = Vector3(lamp.centre.x, BOUNCE_FROM, lamp.centre.y) - origin
-		bounce.rotation.x = PI / 2
-		bounce.spot_angle = BOUNCE_ANGLE
-		bounce.spot_range = h + BOUNCE_REACH
-		bounce.spot_attenuation = 0.5
-		bounce.light_color = pool.light_color * back.tint
-		bounce.light_specular = POOL_SPECULAR
-		# In the room's bounce volume (Godot's BAKE_DYNAMIC): its light in the
-		# lacquer, the steel and the waxed floor, and bounced once more.
-		bounce.light_bake_mode = Light3D.BAKE_DYNAMIC
-		bounce.light_volumetric_fog_energy = 0.0
-		bounce.shadow_enabled = false
-		bounce.set_meta("own_room", true)
-		bounce.set_meta("energy", POOL_ENERGY * dim_of(room) * back.share)
-		bounce.visible = false
-		node.add_child(bounce)
-		made.append(bounce)
+		made.append_array(pool_pair(node, room, Vector3(lamp.centre.x, face, lamp.centre.y) - origin, "Troffer", POOL_ENERGY * dim_of(room), POOL_ANGLE, POOL_SIZE))
+	return made
+
+## A fitting's light where the pools light: a spot straight down from `at` (in
+## the room's frame), `angle` wide, soft as the fitting is `size`, casting while
+## among the nearest (round_pools()), and its bounce from the floor under it;
+## both built out, on the room's layers, lit with its lamp (set_halo()).
+func pool_pair(node: Node3D, room: Dictionary, at: Vector3, label: String, energy: float, angle: float, size: float) -> Array[Light3D]:
+	var pool := SpotLight3D.new()
+	pool.name = label + "Pool"
+	pool.position = at
+	pool.rotation.x = -PI / 2
+	pool.spot_angle = angle
+	pool.spot_attenuation = POOL_FALL
+	pool.spot_range = POOL_RANGE
+	pool.light_color = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
+	pool.set_meta("energy", energy)
+	pool.light_specular = POOL_SPECULAR
+	pool.light_bake_mode = Light3D.BAKE_DISABLED
+	pool.light_volumetric_fog_energy = 0.0
+	# Its shadow while among the nearest (round_pools()), biased as a batten's.
+	pool.shadow_enabled = false
+	pool.shadow_bias = 0.04
+	pool.shadow_normal_bias = 0.6
+	pool.light_size = size
+	pool.set_meta("casts", true)
+	pool.set_meta("own_room", true)
+	pool.visible = false
+	node.add_child(pool)
+	# Its bounce: the floor under it lighting the ceiling, the tops of the
+	# walls and the open leaves back (bounce_of()). What faced no lamp fell
+	# to black; a dark room keeps it (it goes with the halo).
+	var back := bounce_of(room)
+	var bounce := SpotLight3D.new()
+	bounce.name = label + "Bounce"
+	bounce.position = Vector3(at.x, BOUNCE_FROM, at.z)
+	bounce.rotation.x = PI / 2
+	bounce.spot_angle = BOUNCE_ANGLE
+	bounce.spot_range = float(room.height) + BOUNCE_REACH
+	bounce.spot_attenuation = 0.5
+	bounce.light_color = pool.light_color * back.tint
+	bounce.light_specular = POOL_SPECULAR
+	# In the room's bounce volume (Godot's BAKE_DYNAMIC): its light in the
+	# lacquer, the steel and the waxed floor, and bounced once more.
+	bounce.light_bake_mode = Light3D.BAKE_DYNAMIC
+	bounce.light_volumetric_fog_energy = 0.0
+	bounce.shadow_enabled = false
+	bounce.set_meta("own_room", true)
+	bounce.set_meta("energy", energy * back.share)
+	bounce.visible = false
+	node.add_child(bounce)
+	var made: Array[Light3D] = [pool, bounce]
 	return made
 
 ## The bounce under each troffer (troffer_pools()): from just over the floor,
@@ -1761,6 +1772,8 @@ func lamp_fixture(node: Node3D, room: Dictionary) -> Dictionary:
 				batten.color = tube.color
 				batten.specular = LAMP_SPECULAR
 				if not String(batten.failing).is_empty(): (materials[batten.failing] as BaseMaterial3D).emission = tube.color
+				batten_lights(node, room)
+				batten.fitted = true
 				return batten
 			tube.energy = float(tube.energy) * 0.85
 			return tube
@@ -1840,6 +1853,44 @@ func batten_spot(node: Node3D, room: Dictionary, at: Vector3, casts: bool) -> Sp
 	node.add_child(spot)
 	return spot
 
+## The light of the hotel's batten in an office (lamp_fixture()), where the
+## pools light (the author, 14 November 2026: a bare tube lights up and to the
+## sides as well as down): from under its tubes a spot down nearly to the
+## horizontal, soft as its tubes are long, with its floor's bounce
+## (pool_pair()); and one up from BATTEN_UP_FROM under the ceiling, the slab or
+## the tiles round it and the walls' tops (from its tubes, 11 cm under the
+## ceiling, it burnt a ring round the channel, which hides what is straight over
+## it). Lit and put out with the room's lamp, which then lights nothing
+## (lit_by_fittings()). From the lamp 35 cm under the slab, shaped as a
+## batwing, the slab was black and a tube under it threw a ruled black line
+## down the floor: under 1.4 m of tubes (its penumbra "size", times "blur")
+## a pipe's shadow is no more than a dimming.
+const BATTEN_TUBES := 0.14
+const BATTEN_DOWN := {"energy": 4.0, "angle": 85.0, "size": 1.4, "blur": 3.0}
+const BATTEN_UP := {"energy": 1.5, "angle": 80.0, "range": 4.0}
+const BATTEN_UP_FROM := 0.5
+func batten_lights(node: Node3D, room: Dictionary) -> void:
+	var h := float(room.height)
+	var spots := pool_pair(node, room, Vector3(0, h - BATTEN_TUBES, 0), "Batten", float(BATTEN_DOWN.energy) * dim_of(room), float(BATTEN_DOWN.angle), float(BATTEN_DOWN.size))
+	spots[0].shadow_blur = float(BATTEN_DOWN.blur)
+	var up := SpotLight3D.new()
+	up.name = "BattenUp"
+	up.position = Vector3(0, h - BATTEN_UP_FROM, 0)
+	up.rotation.x = PI / 2
+	up.spot_angle = float(BATTEN_UP.angle)
+	up.spot_range = float(BATTEN_UP.range)
+	up.light_color = LIGHTING.light_color(OFFICE.lamp_kelvin(room))
+	up.set_meta("energy", float(BATTEN_UP.energy) * dim_of(room))
+	up.light_specular = POOL_SPECULAR
+	up.light_bake_mode = Light3D.BAKE_DISABLED
+	up.light_volumetric_fog_energy = 0.0
+	up.shadow_enabled = false
+	up.set_meta("own_room", true)
+	up.visible = false
+	node.add_child(up)
+	spots.append(up)
+	halos[int(room.id)] = {"room": int(room.id), "material": null, "base": 0.0, "energy": 0.0, "pools": spots}
+
 ## Poly Haven's mounted fluorescent light (CC0, tools/props/build_catalogue.gd
 ## PARTS), stretched along its aisle; its glass glows with the room's power
 ## (set_room_power(), through the "glow_surface" it keeps).
@@ -1865,7 +1916,10 @@ func batten_model(node: Node3D, room: Dictionary, at: Vector3, along_x: bool, le
 
 ## The electrical room's lamp is made (lights[id] must exist) but stays out.
 func room_lamp(node: Node3D, room: Dictionary) -> void:
-	var light := lamp_light(node, room, lamp_fixture(node, room))
+	var spec := lamp_fixture(node, room)
+	var light := lamp_light(node, room, spec)
+	# A hotel batten's light is its own where the pools light (batten_lights()).
+	if spec.get("fitted", false): light.set_meta("fitted", true)
 	light.omni_range = ROOM_LAYERS.lamp_range(FLOOR.size_of(room), ROOM_LAYERS.OFFICE_LAMP_LEAST)
 	if halos.has(int(room.id)): halos[int(room.id)].base = light.light_energy
 	if OFFICE.lamp_of(room) == "troffer":
@@ -1874,10 +1928,10 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 		# Its light from its troffers where they light (lit_by_fittings()): its
 		# own, or those of the cells it runs on into when it has none.
 		if not OFFICE.troffers(room).is_empty() or open_to(int(room.id)).any(func(id: int) -> bool: return not OFFICE.troffers(manifest.rooms[id]).is_empty()): light.set_meta("fitted", true)
-		if lit_by_fittings(light): light.light_bake_mode = Light3D.BAKE_DISABLED
 		if not failing_lens.is_empty():
 			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials[failing_lens].emission_energy_multiplier, "share": failing_share})
 	failing_lens = ""
+	if lit_by_fittings(light): light.light_bake_mode = Light3D.BAKE_DISABLED
 	if OFFICE.lamp_of(room) == "emergency":
 		light.set_meta("off", true)
 		light.visible = false
@@ -2240,7 +2294,7 @@ func set_halo(entry: Dictionary, energy: float) -> void:
 	if energy == float(entry.energy) or (energy > 0.0 and absf(energy - float(entry.energy)) <= 0.0005): return
 	entry.energy = energy
 	# (An archive's battens have their spots and no halo: archive_battens().)
-	if entry.material != null: (entry.material as ShaderMaterial).set_shader_parameter("energy", energy)
+	if entry.material != null: (entry.material as ShaderMaterial).set_shader_parameter("energy", energy * float(entry.glow))
 	# The pools go as the halo goes, where the preset has them (pools_shown()).
 	var shown: bool = energy > 0.0 and pools_shown()
 	for pool: Light3D in entry.pools:
@@ -2591,9 +2645,10 @@ func apply_quality(new_preset: Dictionary) -> void:
 	# The pools come or go with the preset: every halo is written again.
 	for id: int in halos: halos[id].energy = -1.0
 	var attenuation: float = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
-	for lamp in troffer_lamps:
-		lamp.omni_attenuation = attenuation
-		# Out of the bounce volumes where its troffers' bounce feeds them (lit_by_fittings()).
+	for lamp in troffer_lamps: lamp.omni_attenuation = attenuation
+	for lamp in lights:
+		if not is_instance_valid(lamp) or not lamp.has_meta("fitted"): continue
+		# Out of the bounce volumes where its fittings' bounce feeds them (lit_by_fittings()).
 		var bake := Light3D.BAKE_DISABLED if lit_by_fittings(lamp) else Light3D.BAKE_DYNAMIC
 		if lamp.light_bake_mode != bake: lamp.light_bake_mode = bake
 	for room_id: int in accents.rooms:
