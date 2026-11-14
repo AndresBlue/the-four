@@ -105,6 +105,14 @@ GLASS_WORDS = ("glass", "cristal", "kanne")
 ## The least roughness a model's plain materials take: the basin came polished
 ## to 0, and every lamp made a hard spark on its glaze and its tap.
 LEAST_ROUGH = {"lavabo_juang3d": 0.2}
+## Models whose colour factor goes in as sRGB (material_tres()): glTF keeps it
+## linear and albedo_color wants sRGB, and written as it came the basin's glaze
+## turned olive. Only the models listed: the ones brought in before are left as
+## they look.
+SRGB_FACTOR = {"lavabo_juang3d"}
+## Colours the author chose over a download's own (sRGB), by model and material:
+## the basin in white porcelain (14 November 2026); its own, even in sRGB, is ivory.
+COLOUR_OF = {"lavabo_juang3d": {"Default_Material": (0.88, 0.87, 0.83)}}
 ## What is painted over on an office download's images before they are
 ## brought in (docs/OFICINAS.md 12: no lettering in another language, no
 ## makers' marks): by model and image, rectangles in the image's own pixels
@@ -351,6 +359,8 @@ def material_tres(model, gltf, material, textures):
         lines.append(f'{key} = ExtResource("{len(resources)}")')
 
     colour = list(pbr.get("baseColorFactor", [1, 1, 1, 1]))
+    if model in SRGB_FACTOR: colour[:3] = [c * 12.92 if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055 for c in colour[:3]]
+    colour[:3] = COLOUR_OF.get(model, {}).get(material["name"], colour[:3])
     glass = material.get("alphaMode") == "BLEND" and any(word in material["name"].lower() for word in GLASS_WORDS)
     if albedo: texture(albedo, "albedo_texture")
     # A pane whose glTF kept neither an alpha in its colour nor one in its

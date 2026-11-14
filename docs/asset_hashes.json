@@ -2324,12 +2324,12 @@
     "sha256": "4dd7ae94ed6369b810f5518b29246ea4ef3af98d857703e2cc79f992c38717ed"
   },
   "assets/props/office/lavabo_juang3d/Default_Material.tres": {
-    "bytes": 202,
-    "sha256": "5932e572507a8165a3a0c009e2889465725ebadf5bf232fc0cc9f1662198214c"
+    "bytes": 195,
+    "sha256": "3095ee57b763ca7f8a5d98bebff2a885f729d5c448b43a0e1a5c05629d35b1fb"
   },
   "assets/props/office/lavabo_juang3d/Metal.tres": {
-    "bytes": 181,
-    "sha256": "7f08302dc02edd49671a35bd43ff04bf4817dc0e93cfa3cafa5d4cbcb5ea8147"
+    "bytes": 196,
+    "sha256": "80f70e218aaee8a84462491a5cdbd2ef2aa70b4a1d7509d74f4f628ab8bc82ce"
   },
   "assets/props/office/luz_emergencia_sousinho/emergency_lights_UV.tres": {
     "bytes": 671,

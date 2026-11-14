@@ -3,7 +3,7 @@
 
 [resource]
 resource_name = "Default_Material"
-albedo_color = Color(0.7, 0.678817, 0.470034, 1)
+albedo_color = Color(0.88, 0.87, 0.83, 1)
 metallic = 0
 roughness = 0.2
 cull_mode = 2

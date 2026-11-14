@@ -132,20 +132,15 @@ const LAMP_PROFILE := "even"
 ## Far enough under the tiles that its light reaches them spread out: at 35 cm
 ## it drew a warm disc in the middle of the ceiling where no fitting hangs.
 const LAMP_DROP := 0.9
-## Steeper than the hotel's 1.25 where the troffers have their pools: the
-## room lamp is the fill, and the corners and the tops of the walls fall to
-## dark (spec_rediseno 4, low key). Without the pools (pools_shown()) the lamp
-## lights the room alone, flatter, or the cheap presets fall to black.
+## Steeper than the hotel's 1.25 where the troffers have their pools: there
+## the lamp lights nothing itself (lit_by_fittings()), and this is the fall of
+## what it puts in its room's bounce. Without the pools (pools_shown()) the
+## lamp lights the room alone, flatter, or the cheap presets fall to black.
+## Its place stays in the middle of its room: the bounce takes its light from
+## there, and a lamp moved up to a lens lit the next room's voxels (the dark
+## store's wall in a flat rectangle).
 const LAMP_ATTENUATION := 1.25
 const LAMP_ATTENUATION_ALONE := 0.9
-## Where the troffers have their own light (pools_shown()), the room lamp
-## sends all of its own down (lighting.gd "troffer"), as the lenses over it
-## do: evenly round its middle it lit the tops of the walls brightest and the
-## floor least, in patches between the lenses. Its energy, its place (the
-## bounce takes its light from there, and a lamp moved up to a lens lit the
-## next room's voxels: the dark store's wall in a flat rectangle) and its
-## room stay as they are.
-const KEY_PROFILE := "troffer"
 ## The troffer rooms' lamps, whose attenuation follows the pools (apply_quality()).
 var troffer_lamps: Array[OmniLight3D] = []
 const FAILING := 0.12              # lit rooms with one failing troffer (vary salt 160)
@@ -187,17 +182,18 @@ const LENS_GLOW := 4.0
 const LENS_TUBES := [0.24, 0.5, 0.76]
 const LENS_DIFFUSER := 0.35
 ## The light of each troffer (spec_rediseno 4, low key): a spot straight
-## down from its lens, no shadow, at POOL_ENERGY with its room's lamp whole,
-## its cone's half angle, how its light falls off towards the cone's edge
-## (a lens throws most straight down: the floor under it brightest, the walls
-## beside it in soft scallops) and its reach. Only where the rooms keep their
-## lamps by layers and the lamps cast (Alto, Ultra): elsewhere it would light
-## through the walls (pools_shown()). With no shadow it also reaches under
-## the tables; no specular (LAMP_SPECULAR). At 0.7 the troffers were all but
+## down from its lens, the room's whole direct light where the pools light
+## (lit_by_fittings()), the nearest casting (round_pools()), at POOL_ENERGY
+## with its room's lamp whole, its cone's half angle, how its light falls off
+## towards the cone's edge (a lens throws most straight down: the floor under
+## it brightest, the walls beside it in soft scallops) and its reach. Only
+## where the rooms keep their lamps by layers and the lamps cast (Alto,
+## Ultra): elsewhere it would light through the walls (pools_shown()). No
+## specular (LAMP_SPECULAR). At 0.7 the troffers were all but
 ## invisible beside the room's lamp, one hanging in the middle of each cell:
 ## a corridor was lit in patches between its lenses, not under them. (An
 ## area light the size of each lens cost 2.4 ms of Alto's frame.)
-const POOL_ENERGY := 2.4
+const POOL_ENERGY := 3.0
 const POOL_SPECULAR := 0.0
 const POOL_ANGLE := 75.0
 const POOL_FALL := 1.0
@@ -648,7 +644,7 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[Light3
 	var made: Array[Light3D] = []
 	var origin := Vector3(float(room.px), 0, float(room.pz))
 	var h := float(room.height)
-	var face := h - (WRAP_DROP + 0.01 if OFFICE.troffer_look(room) == "wrap" else 0.02)
+	var face := minf(h - (WRAP_DROP + 0.01 if OFFICE.troffer_look(room) == "wrap" else 0.02), OFFICE.TUBE_Y - POOL_UNDER_TUBES)
 	for lamp: Dictionary in lamps:
 		var pool := SpotLight3D.new()
 		pool.name = "TrofferPool"
@@ -662,7 +658,12 @@ func troffer_pools(node: Node3D, room: Dictionary, lamps: Array) -> Array[Light3
 		pool.light_specular = POOL_SPECULAR
 		pool.light_bake_mode = Light3D.BAKE_DISABLED
 		pool.light_volumetric_fog_energy = 0.0
+		# Its shadow while among the nearest (round_pools()), biased as a batten's.
 		pool.shadow_enabled = false
+		pool.shadow_bias = 0.04
+		pool.shadow_normal_bias = 0.6
+		pool.light_size = POOL_SIZE
+		pool.set_meta("casts", true)
 		pool.set_meta("own_room", true)
 		pool.visible = false
 		node.add_child(pool)
@@ -966,6 +967,7 @@ func set_room_power(room_id: int, on: bool) -> void:
 	if room_id < 0 or room_id >= room_nodes.size(): return
 	glow_room(room_id, on and not dark and not dark_ids.has(room_id))
 	refresh_accents(room_id)
+	dim_lenses(room_id)
 
 ## Puts a room's glowing meshes out, or lights them again (lenses_of()).
 func glow_room(room_id: int, glowing: bool) -> void:
@@ -1140,6 +1142,7 @@ func round_lamps() -> void:
 		for id: int in [reception, window]:
 			if id >= 0 and id < lights.size() and lights[id].visible: cast_or_fill(lights[id], false)
 	round_accents()
+	round_pools()
 	if emergency.is_empty() or round_at.is_empty(): return
 	var at: Vector3 = round_at.position
 	var casting: bool = round_at.shadows and not echo_view
@@ -1843,8 +1846,9 @@ func room_lamp(node: Node3D, room: Dictionary) -> void:
 	if OFFICE.lamp_of(room) == "troffer":
 		light.omni_attenuation = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
 		troffer_lamps.append(light)
-		light.set_meta("even", light.get_meta("profile"))
-		lamp_profile(light)
+		# Its light from its troffers where they light (lit_by_fittings()): its
+		# own, or those of the cells it runs on into when it has none.
+		if not OFFICE.troffers(room).is_empty() or open_to(int(room.id)).any(func(id: int) -> bool: return not OFFICE.troffers(manifest.rooms[id]).is_empty()): light.set_meta("fitted", true)
 		if not failing_lens.is_empty():
 			flickers.append({"light": light, "energy": light.light_energy, "phase": vary(node.position, 9) * 50.0, "material": materials[failing_lens], "glow": materials[failing_lens].emission_energy_multiplier, "share": failing_share})
 	failing_lens = ""
@@ -2268,20 +2272,84 @@ func make_probe(slot: Dictionary) -> void:
 	probe.intensity = float(slot.intensity)
 	probe_strength(slot, int(slot.room))
 
-## A troffer room's lamp's profile (KEY_PROFILE) where the pools light, its
-## even one elsewhere; it takes it while it casts (the hotel's round).
-func lamp_profile(light: OmniLight3D) -> void:
-	if not light.has_meta("even"): return
-	var profile: Texture2D = LIGHTING.profile(KEY_PROFILE) if pools_shown() else light.get_meta("even")
-	if light.get_meta("profile") == profile: return
-	light.set_meta("profile", profile)
-	if light.shadow_enabled: light.light_projector = profile
-
 ## Whether the troffers' pools light (POOL_ENERGY): only while every lamp is
 ## kept to its room's layers and the ceiling lamps cast, never on
 ## Compatibility.
 func pools_shown() -> bool:
 	return layered and not static_light and RenderingServer.get_current_rendering_method() != "gl_compatibility"
+
+## Where the pools light, a room with troffers (or open to cells with them) is
+## lit by its fittings alone (the author, 14 November 2026: a room's light is
+## its fittings): its lamp stays, for her, the drain, the switches and the
+## halo, and still feeds its room's bounce (Godot puts a lamp in a VoxelGI
+## whatever its cull mask), but lights nothing itself and casts no shadow. From
+## a point in the middle of each cell it lit and shaded the floor and walls in
+## a pattern none of the lenses over it made, and stopped short at a cell's edge.
+func lit_by_fittings(light: Light3D) -> bool:
+	return light.has_meta("fitted") and pools_shown()
+
+func lamp_casts(light: OmniLight3D) -> bool: return not lit_by_fittings(light)
+
+func light_lamp(entry: Dictionary) -> void:
+	super(entry)
+	var light: Light3D = entry.light
+	if not lit_by_fittings(light): return
+	ROOM_LAYERS.light_only(light, 0)
+	if light.shadow_enabled: light.shadow_enabled = false
+	light.light_projector = null
+
+## How many troffer pools cast a shadow at once: the nearest lit ones to the
+## eye, one already casting counted POOL_KEEP metres nearer, so they do not
+## swap at every step; the rest light without one, kept to their rooms'
+## layers as they always were. A spot's shadow is one place in the atlas.
+## Soft as a lens is wide (POOL_SIZE, its short side). And from POOL_UNDER_TUBES
+## under the pneumatic tubes' line (OFFICE.TUBE_Y), not from the lens: from a
+## point 13 cm over a tube, the tube hung under a corridor's troffers threw a
+## black band two metres wide down the floor, where under a lens 60 cm wide
+## it is no more than a blur.
+const POOLS_CAST := 32
+const POOL_KEEP := 1.0
+const POOL_SIZE := 0.6
+const POOL_UNDER_TUBES := 0.1
+func round_pools() -> void:
+	if halos.is_empty() or round_at.is_empty(): return
+	var casting: bool = round_at.shadows and pools_shown() and not round_at.show_all
+	var at: Vector3 = round_at.position
+	var near: Array = []
+	for id: int in things_on(round_at.here).rooms:
+		if not halos.has(id): continue
+		for pool: Light3D in halos[id].pools:
+			if not pool.has_meta("casts"): continue
+			if casting and pool.visible: near.append([pool.global_position.distance_to(at) - (POOL_KEEP if pool.shadow_enabled else 0.0), pool])
+			elif pool.shadow_enabled: pool.shadow_enabled = false
+	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for place in near.size():
+		var pool: Light3D = near[place][1]
+		var casts: bool = place < POOLS_CAST
+		if pool.shadow_enabled != casts: pool.shadow_enabled = casts
+
+## Her drain takes a room's glowing fittings with its lamp, all of them by the
+## same share (the author, 14 November 2026): each in a copy of its own
+## material, made the first time she drinks there, glowing at what she
+## leaves; its own again once she lets go. A room out of power keeps
+## glow_room()'s dark lens; in a blackout its own, which the blackout puts out.
+var dimmed := {}
+func dim_lenses(room_id: int) -> void:
+	if room_id < 0 or room_id >= room_nodes.size() or dark_ids.has(room_id) or unpowered.has(room_id): return
+	var left := 1.0 - drained(room_id)
+	if left >= 1.0 and not dimmed.has(room_id): return
+	var copies: Dictionary = dimmed.get_or_add(room_id, {})
+	for mesh: GeometryInstance3D in lenses_of(room_id):
+		var shape: Mesh = (mesh as MultiMeshInstance3D).multimesh.mesh if mesh is MultiMeshInstance3D else (mesh as MeshInstance3D).mesh
+		var own: Material = mesh.get_meta("lit_glass") if mesh.has_meta("glow_surface") else shape.surface_get_material(0)
+		var shown: Material = own
+		if left < 1.0 and not dark and own is BaseMaterial3D:
+			if not copies.has(own): copies[own] = own.duplicate()
+			shown = copies[own]
+			(shown as BaseMaterial3D).emission_energy_multiplier = (own as BaseMaterial3D).emission_energy_multiplier * left
+		if mesh.has_meta("glow_surface"): (mesh as MeshInstance3D).set_surface_override_material(int(mesh.get_meta("glow_surface")), shown)
+		else: mesh.material_override = null if shown == own else shown
+	if left >= 1.0: dimmed.erase(room_id)
 
 ## The floor's accent lights (spec_rediseno 4) and an accent spot's penumbra
 ## (times the preset's, as the hotel's LAMP_SIZE).
@@ -2463,15 +2531,18 @@ func round_accents() -> void:
 			var casts := shadows and (room_id != reception or (not compatibility and bool(entry.get("casts", false))))
 			if lamp.shadow_enabled != casts: lamp.shadow_enabled = casts
 
-## Her drain dims a room's accents with its lamp.
+## Her drain dims a room's accents and its glowing fittings with its lamp.
 func drain(room_id: int, amount: float) -> void:
 	super(room_id, amount)
 	refresh_accents(room_id)
+	dim_lenses(room_id)
 
-## A blackout puts every accent out, and gives them back after.
+## A blackout puts every accent out, and gives them back after; a room she
+## drinks shows its own lenses through it, which the blackout puts out.
 func blackout(on: bool) -> void:
 	super(on)
 	for room_id: int in accents.rooms: refresh_accents(room_id)
+	for room_id: int in dimmed.keys(): dim_lenses(room_id)
 
 ## An accent's wall lamp stays out while its room is not lit, and is dimmed
 ## with her drain.
@@ -2492,9 +2563,7 @@ func apply_quality(new_preset: Dictionary) -> void:
 	# The pools come or go with the preset: every halo is written again.
 	for id: int in halos: halos[id].energy = -1.0
 	var attenuation: float = LAMP_ATTENUATION if pools_shown() else LAMP_ATTENUATION_ALONE
-	for lamp in troffer_lamps:
-		lamp.omni_attenuation = attenuation
-		lamp_profile(lamp)
+	for lamp in troffer_lamps: lamp.omni_attenuation = attenuation
 	for room_id: int in accents.rooms:
 		for entry: Dictionary in accents.of_room(room_id):
 			if int(entry.sconce) >= 0: continue

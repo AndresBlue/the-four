@@ -3043,6 +3043,7 @@ func round_rooms() -> void:
 		# light into the dark rooms beside it (far walls of a shut dark room lit).
 		var light_reach := minf(fade_end + 2.0, reach - light.omni_range - 2.0)
 		light.visible = distance < light_reach and not light.has_meta("off") and not echo_view
+		if not lamp_casts(light): continue
 		# Only when it changes: every write makes Godot redraw that shadow. A
 		# profile only works on a shadowed light: without shadows it goes, or
 		# the lamp would give no light at all.
@@ -3151,6 +3152,10 @@ func round_lamps() -> void:
 	var cars_cast: bool = (shadows or show_all) and not static_light
 	for lamp in car_lamps:
 		if lamp.shadow_enabled != cars_cast: lamp.shadow_enabled = cars_cast
+
+## Whether a room's lamp lights and casts by the round above: every one here
+## (a floor kind may light a room from its fittings instead).
+func lamp_casts(_light: OmniLight3D) -> bool: return true
 
 ## A ceiling lamp casting, with its profile and the whole hotel to light, or
 ## -- past the preset's lamps_cast -- filling: no shadow, and nothing to light

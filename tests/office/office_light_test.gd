@@ -4,7 +4,8 @@ extends SceneTree
 ## office colours; and on a floor built at seed 7: each lamp in its room's
 ## colour, the lenses and tubes put out with their room, each family's face
 ## under a housing open below, the reception lift's wall lamps, the ceiling
-## halo following its lamp, the lie's dark lens under its family's face, the
+## halo following its lamp, the room lit by its troffers and every fitting
+## going with her drain and the power, the lie's dark lens under its family's face, the
 ## accent register, the reception's beacon and no halo over a hole.
 const FLOOR := preload("res://game/world/generation/floor_definition.gd")
 const OFFICE := preload("res://game/floors/palettes/office_palette.gd")
@@ -331,6 +332,77 @@ func block_halos(hotel) -> void:
 		check("El halo, del color de su sala", (material.get_shader_parameter("glow") as Color).is_equal_approx(LIGHTING.light_color(OFFICE.lamp_kelvin(lit_room))))
 	if not dark_room.is_empty(): check("Una sala oscura, sin halo", float(hotel.halos[int(dark_room.id)].energy) == 0.0)
 
+## What a lit fitting glows with now: its override, else its own material
+## (a batten's glass by its surface); 0 when that does not glow.
+func glow_of(mesh: GeometryInstance3D) -> float:
+	var material: Material = mesh.material_override
+	if mesh.has_meta("glow_surface"): material = (mesh as MeshInstance3D).get_surface_override_material(int(mesh.get_meta("glow_surface")))
+	elif material == null: material = ((mesh as MultiMeshInstance3D).multimesh.mesh if mesh is MultiMeshInstance3D else (mesh as MeshInstance3D).mesh).surface_get_material(0)
+	if not material is BaseMaterial3D or not (material as BaseMaterial3D).emission_enabled: return 0.0
+	return (material as BaseMaterial3D).emission_energy_multiplier
+
+## A room's light from its fittings (the author, 14 November 2026), at Alto:
+## its lamp lights nothing and casts nothing, its troffers light and the
+## nearest cast; she drinks it or the power goes and every fitting of it goes
+## at once, by the same share, lenses too; and all of them come back.
+func block_fittings(hotel) -> void:
+	hotel.apply_quality(PRESETS.of(PRESETS.HIGH))
+	var room := {}
+	for candidate in hotel.manifest.rooms:
+		var rid := int(candidate.id)
+		if FLOOR.is_void(candidate) or int(candidate.get("wing", 0)) != 0 or OFFICE.troffers(candidate).size() < 4 or not hotel.lit(rid) or not hotel.halos.has(rid): continue
+		if hotel.flickers.any(func(e): return e.light == hotel.lights[rid]): continue
+		room = candidate
+		break
+	check("Hay una sala con luz y cuatro pantallas o más en la planta 1", not room.is_empty())
+	if room.is_empty(): return
+	if not hotel.pools_shown():
+		print("INFO sin charcos con el método ", RenderingServer.get_current_rendering_method(), ": no se mira la luz de las pantallas")
+		return
+	var id := int(room.id)
+	var n := OFFICE.troffers(room).size()
+	var spot := FLOOR.position_of(room) + Vector3(0, 1.5, 0)
+	var lamp: OmniLight3D = hotel.lights[id]
+	var pools: Array = hotel.halos[id].pools
+	var lenses: Array = hotel.lenses_of(id)
+	var own: Array = lenses.map(func(m): return glow_of(m))
+	hotel.update_visibility(spot, true)
+	hotel._process(0.016)
+	hotel.update_visibility(spot, true)
+	check("La sala tiene %d pantallas, cada una con su foco y su rebote, y sus lentes" % n, pools.size() == n * 2 and pools.filter(func(p): return p.has_meta("casts")).size() == n and not lenses.is_empty(), "%d luces, %d lentes" % [pools.size(), lenses.size()])
+	check("Su lámpara sigue, encendida, pero no alumbra ni da sombra", lamp.visible and lamp.light_cull_mask == 0 and not lamp.shadow_enabled and lamp.light_energy > 0.0)
+	check("Alumbran sus pantallas", pools.all(func(p): return p.visible and p.light_energy > 0.0))
+	var casting := 0
+	for rid: int in hotel.halos:
+		for p in hotel.halos[rid].pools: if p.has_meta("casts") and p.shadow_enabled: casting += 1
+	check("Dan sombra las pantallas más cercanas, POOLS_CAST como mucho", pools.any(func(p): return p.shadow_enabled) and casting <= OG.POOLS_CAST, "%d con sombra" % casting)
+	hotel.drain(id, 0.5)
+	hotel._process(0.016)
+	var half_pools: bool = pools.all(func(p): return absf(p.light_energy - float(p.get_meta("energy")) * 0.5) < 0.01)
+	var half_lenses := true
+	for k in lenses.size(): if absf(glow_of(lenses[k]) - float(own[k]) * 0.5) > 0.01: half_lenses = false
+	check("Ella bebe la mitad: las %d pantallas, sus rebotes y sus lentes, a la mitad a la vez" % n, half_pools and half_lenses)
+	hotel.drain(id, 1.0)
+	hotel._process(0.016)
+	var dark_pools: bool = pools.all(func(p): return not p.visible or p.light_energy == 0.0)
+	check("Bebida entera: las %d a oscuras a la vez, lentes incluidas" % n, dark_pools and lenses.all(func(m): return glow_of(m) == 0.0) and lamp.light_energy == 0.0)
+	hotel.drain(id, 0.0)
+	hotel._process(0.016)
+	check("Al soltarla vuelven las %d, con sus lentes" % n, pools.all(func(p): return p.visible and absf(p.light_energy - float(p.get_meta("energy"))) < 0.01) and lenses.all(func(m): return m.material_override == null or m.has_meta("glow_surface")))
+	hotel.set_room_power(id, false)
+	hotel._process(0.016)
+	check("Sin corriente, las %d a oscuras, lentes incluidas" % n, pools.all(func(p): return not p.visible) and lenses.all(func(m): return glow_of(m) == 0.0))
+	hotel.set_room_power(id, true)
+	hotel.update_visibility(spot, true)
+	hotel._process(0.016)
+	var back := true
+	for k in lenses.size(): if absf(glow_of(lenses[k]) - float(own[k])) > 0.001: back = false
+	check("Con la corriente, vuelven todas", back and pools.all(func(p): return p.visible))
+	hotel.apply_quality(PRESETS.of(PRESETS.MEDIUM))
+	hotel.update_visibility(spot, true)
+	hotel._process(0.016)
+	check("En Medio la lámpara alumbra como siempre y las pantallas no", lamp.light_cull_mask != 0 and pools.all(func(p): return not p.visible))
+
 ## The lie's dark lens under the wraparound and the parabolic faces (U3).
 func block_wrap_lie(hotel) -> void:
 	for pair in [["wrap", -OG.WRAP_DROP - 0.002], ["parabolic", OG.PARABOLIC_DEPTH - 0.007]]:
@@ -464,6 +536,7 @@ func run() -> void:
 	block_faces(hotel)
 	block_lift(hotel)
 	block_halos(hotel)
+	block_fittings(hotel)
 	block_wrap_lie(hotel)
 	block_accents(hotel)
 	await block_holes(hotel)
