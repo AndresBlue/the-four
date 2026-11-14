@@ -276,10 +276,8 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 					MODELS.put(builder, holder, "crt_black", Transform3D(Basis(Vector3.UP, -x), Vector3(x, 0.75, -0.44)))
 		"waiting_row", "waiting_row_4":
 			var t := int(room.get("type", -1))
-			if String(item.kind) == "waiting_row_4" and t == OFFICE.RECEPTION:
-				for x: float in [-1.12, -0.31, 0.55]:
-					chair(builder, holder, Vector3(x, 0, 0), 1.0, "reception_seat", x * 0.07)
-				piece(builder, holder, DESKS.low_table(builder, Vector3(0.48, 0.42, 0.5), "walnut_object"), Vector3(1.28, 0, 0))
+			if t == OFFICE.RECEPTION:
+				waiting_seats(builder, holder, size, item, seed_pos)
 			else:
 				var seats: int = 3 if size.x >= 2.5 else 2
 				var seat: String = OFFICE.WAITING_CHAIR.get(t, "stacking_chair")
@@ -348,10 +346,10 @@ static func build_item(builder: Node3D, holder: Node3D, item: Dictionary, seed_p
 			piece(builder, holder, MOVABLES.slat_bench(builder, Vector3(1.5, 0.45, 0.4)), Vector3.ZERO)
 		"bin_floor":
 			builder.box(holder, Vector3(0, 0.31, 0), Vector3(0.4, 0.62, 0.4), "", true)
-			# The reception's bin is the clean can, upright: the rusty one is dented
-			# and slanted, and read as knocked over by the lift.
-			var bin := 0 if int(room.get("type", -1)) == OFFICE.RECEPTION else int(builder.vary(seed_pos, 45) * 2.0)
-			fitted(builder, holder, String(BIN_MODELS[bin]), 0.42, 0.62, builder.vary(seed_pos, 46) * TAU)
+			# The reception's bin is the steel cylinder (steel_bin()): both cans have
+			# their lid down beside them, and read as knocked over.
+			if int(room.get("type", -1)) == OFFICE.RECEPTION: steel_bin(builder, holder, Vector3.ZERO)
+			else: fitted(builder, holder, String(BIN_MODELS[int(builder.vary(seed_pos, 45) * 2.0)]), 0.42, 0.62, builder.vary(seed_pos, 46) * TAU)
 		"plant_floor":
 			builder.box(holder, Vector3(0, 0.27, 0), Vector3(0.45, 0.54, 0.45), "", true)
 			# The reception's big plants in its first view: the hotel's monstera, the tall pachira.
@@ -490,6 +488,40 @@ static func front_desk(builder: Node3D, holder: Node3D, size: Vector2, room: Dic
 		if k == 0: MODELS.put(builder, holder, "binders", Transform3D(Basis.IDENTITY, cabinet + Vector3(0, 1.02, -0.1)))
 		else: set_down(builder, holder, PLANT_MODELS[1], cabinet + Vector3(0, 1.02, -0.05), 0.4, 0.45, 1.3)
 
+## The reception's waiting seats (the reference's): from the run's lead end
+## (the lift's corner, office_recipes.reception_wait()) a pair of leather
+## seats on its steel frame, back to the wall, then a low table with the
+## terracotta pilea and the magazines, then a second pair: as many as the run
+## takes.
+const WAIT_TABLE := Vector3(0.55, 0.42, 0.5)
+const WAIT_GAP := 0.04
+static func waiting_seats(builder: Node3D, holder: Node3D, size: Vector2, item: Dictionary, seed_pos: Vector3) -> void:
+	var pair := MODELS.size_of(builder, "waiting_pair")
+	var lead := float(item.get("extra", {}).get("lead", -1.0))
+	var used := 0.0
+	for what: String in ["pair", "table", "pair"]:
+		var wide: float = pair.x if what == "pair" else WAIT_TABLE.x
+		if used + wide > size.x + 0.01: break
+		var x := lead * (size.x * 0.5 - used - wide * 0.5)
+		used += wide + WAIT_GAP
+		if what == "table":
+			var at := Vector3(x, 0, -size.y * 0.5 + WAIT_TABLE.z * 0.5 + 0.05)
+			piece(builder, holder, DESKS.low_table(builder, WAIT_TABLE, "walnut_object"), at)
+			MODELS.put(builder, holder, "plant_terracotta", Transform3D(Basis(Vector3.UP, builder.vary(seed_pos, 50) * TAU), at + Vector3(0.1, WAIT_TABLE.y, -0.08)))
+			MODELS.put(builder, holder, "folders", Transform3D(Basis(Vector3.UP, 0.15), at + Vector3(-0.1, WAIT_TABLE.y + 0.0015, 0.13)))
+			continue
+		# Its back to the wall, the frame's collider round its seats.
+		var seat := Vector3(x, 0, -size.y * 0.5 + pair.z * 0.5 + 0.01)
+		builder.box(holder, seat + Vector3(0, pair.y * 0.5, 0), pair, "", true)
+		MODELS.put(builder, holder, "waiting_pair", Transform3D(Basis.IDENTITY, seat))
+	# A pothos hung by its cords from the ceiling over the lead end's seats.
+	var hung := MODELS.size_of(builder, "plant_hanging").y
+	var high := float(builder.building_room.get("height", 2.95))
+	MODELS.put(builder, holder, "plant_hanging", Transform3D(Basis(Vector3.UP, 0.6), Vector3(lead * (size.x * 0.5 - HANG_IN.x), high - hung, -size.y * 0.5 + HANG_IN.y)))
+
+## Where the reception's pothos hangs, in from the waiting run's lead end and its wall.
+const HANG_IN := Vector2(1.0, 0.42)
+
 ## The reception counter's raised right end (front_desk()).
 const RISER := Vector3(0.6, 0.18, 0.4)
 ## Where her chair and terminal stand along the counter, and how far her
@@ -512,6 +544,16 @@ static func reserve_niche(builder: Node3D, room: Dictionary, item: Dictionary, h
 	var first: float = walls.to_wall(side, at - half)
 	var last: float = walls.to_wall(side, at + half)
 	builder.dressing_log.walls.append({"room": int(room.id), "side": side, "kind": "panel", "from": minf(first, last), "to": maxf(first, last), "low": 0.0, "high": NICHE_HEIGHT + 0.1, "depth": 0.027 + NICHE_HEAD_DEPTH})
+
+## The reception's open steel bin standing at `at` (no collider): a brushed
+## cylinder, dark inside under its rolled rim (the reference's).
+const STEEL_BIN := Vector2(0.17, 0.62)
+static func steel_bin(builder: Node3D, holder: Node3D, at: Vector3) -> void:
+	KIT.material(builder, "reception_steel")
+	builder.cylinder(holder, at + Vector3(0, STEEL_BIN.y * 0.5, 0), STEEL_BIN.x, STEEL_BIN.y, "reception_steel")
+	builder.cylinder(holder, at + Vector3(0, STEEL_BIN.y - 0.009, 0), STEEL_BIN.x + 0.006, 0.018, "reception_steel")
+	# The dark inside over its top, a rim of steel left round it.
+	builder.cylinder(holder, at + Vector3(0, STEEL_BIN.y + 0.0015, 0), STEEL_BIN.x - 0.012, 0.003, "black")
 
 ## The hotel's bins and potted plants, for the corridors and the lobbies.
 const BIN_MODELS := ["res://assets/props/hotel/metal_trash_can_clean.res", "res://assets/props/hotel/metal_trash_can_rust.res"]

@@ -850,9 +850,9 @@ func furniture_ok(data: Dictionary, errors: Array[String]) -> void:
 			if kind == "partition":
 				if float(it.size[0]) < 1.2 - 0.001 or float(it.size[0]) > 4.8 + 0.001 or not near(float(it.size[1]), size.y): ok = false
 			else:
-				var compact: Vector2 = spec.get("compact", size)
 				var actual := Vector2(float(it.size[0]), float(it.size[1]))
-				if actual.distance_to(size) > 0.001 and actual.distance_to(compact) > 0.001: ok = false
+				var sizes: Array = [size, spec.get("compact", size)] + spec.get("shorter", [])
+				if not sizes.any(func(other: Vector2) -> bool: return actual.distance_to(other) <= 0.001): ok = false
 			if not near(height, float(spec.height)) or height > OFFICE.FURNITURE_TOP + 0.001: ok = false
 			var r := LAYOUT.footprint(it)
 			if not LAYOUT.fits_in(LAYOUT.inner(room), r) or RECIPES.hits(r, zones): ok = false

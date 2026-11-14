@@ -31,7 +31,7 @@ const CAR_KICK := 0.15
 const CAR_RAIL := Vector2(0.95, 0.04)
 ## Finishes that stand in as a plain colour until their own material is made
 ## (MATERIAL_DIR): the hotel has no plain paint, block or concrete.
-const PLAIN := {"office_paint": Color("b9ad96"), "office_paint_kept": Color("b9ad96"), "vinyl_polished": Color("a99f88"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74")}
+const PLAIN := {"office_paint": Color("b9ad96"), "office_paint_kept": Color("b9ad96"), "vinyl_polished": Color("a99f88"), "vinyl_hall": Color("857862"), "block": Color("c7bfa5"), "concrete": Color("807b72"), "skirting": Color("2a2420"), "vinyl": Color("b0a68f"), "terrazzo": Color("5a5650"), "opal": Color("f2eee4"), "plaque": Color("1c1b19"), "switch": Color("d8d0bc"), "taupe": Color("857866"), "two_tone_low": Color("7e8174"), "partition": Color("aea594"), "quarry": Color("74695a"), "threshold": Color("9c9686"), "slab": Color("7c7a74")}
 ## Where the office's own materials are (spec_rediseno 8): a key's <key>.tres
 ## there takes the place of its stand-in, or of the hotel material of the same
 ## name (OWN_OVER: the carpet, the ceiling tile).
@@ -1644,10 +1644,14 @@ func arrival_lift(node: Node3D, room: Dictionary) -> void:
 	# one, which always has the wall to spare (the niche may meet the right), a
 	# plant and a framed city view over it. Inside the lift's own keep-clear.
 	var wall := -REVEAL + LINING
-	box(front, Vector3(-flank - 0.42, 0.68, wall + 0.4), Vector3(0.6, 1.35, 0.6), "", true)
-	PROPS.set_down(self, front, String(PROPS.RECEPTION_PLANTS[1][0]), Vector3(-flank - 0.42, 0, wall + 0.4), 0.72, 1.35, 0.9)
+	# The plant gives way to the waiting seats in that corner (office_recipes.wait_corner()).
+	var pot := Vector3(-flank - 0.42, 0, wall + 0.4)
+	var spot := front.transform * pot
+	if not room.get("furniture", []).any(func(item: Dictionary) -> bool: return LAYOUT.footprint(item).grow(0.3).has_point(Vector2(spot.x, spot.z))):
+		box(front, pot + Vector3(0, 0.68, 0), Vector3(0.6, 1.35, 0.6), "", true)
+		PROPS.set_down(self, front, String(PROPS.RECEPTION_PLANTS[1][0]), pot, 0.72, 1.35, 0.9)
 	box(front, Vector3(flank - 0.04, 0.31, wall + 0.24), Vector3(0.4, 0.62, 0.4), "", true)
-	PROPS.set_down(self, front, String(PROPS.BIN_MODELS[0]), Vector3(flank - 0.04, 0, wall + 0.24), 0.36, 0.62, 0.0)
+	PROPS.steel_bin(self, front, Vector3(flank - 0.04, 0, wall + 0.24))
 	var frame: Mesh = WALLS.WALL.picture_frame(self, LIFT_PICTURE, "black")
 	WALLS.framed(self, front, frame, Transform3D(Basis.IDENTITY, Vector3(-flank - 0.42, 1.72, wall)), "city", 1)
 

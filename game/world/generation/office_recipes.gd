@@ -435,7 +435,10 @@ static func reception_counter(room: Dictionary, zones: Array, lift: Vector2i, li
 				return {"wall": wall, "along": along, "half": footprint.x * 0.5 + FRAME_CLEAR, "group": group}
 	return {}
 
-static func reception_wait(room: Dictionary, zones: Array, counter: Dictionary, lift: Vector2i) -> Dictionary:
+static func reception_wait(room: Dictionary, zones: Array, counter: Dictionary, lift: Vector2i, lift_along := 0.0) -> Dictionary:
+	if lift_along != 0.0:
+		var corner := wait_corner(room, zones, counter, lift, lift_along)
+		if not corner.is_empty(): return corner
 	var side := Vector2i(lift.y, -lift.x)
 	for direction: Vector2i in [side, -side, -lift]:
 		var wall := LAYOUT.wall_of(direction)
@@ -444,6 +447,45 @@ static func reception_wait(room: Dictionary, zones: Array, counter: Dictionary, 
 			# From the lift's end first: the seats in the first view, as in the reference.
 			var run := lay_wall(room, zones, kind, 1, wall, false, feature_end(room, wall))
 			if not run.is_empty(): return run
+	return {}
+
+## How far either side of the arrival lift's middle its leaves, casing and
+## call panel reach (the panel's edge some 1.18): what waits in its corner
+## stands past them, its seats' fronts a hand clear.
+const LIFT_FRONT := 1.2
+
+## The waiting seats against the wall beside the arrival lift, from the corner
+## they share: in the first view, as the reference's. The lift's keep-clear
+## (furnish_lobby()) reaches that corner for its lamps and its plant; here only
+## its front stays clear, and the plant gives way (office_geometry.arrival_lift()).
+## {} where no run fits there.
+static func wait_corner(room: Dictionary, zones: Array, counter: Dictionary, lift: Vector2i, lift_along: float) -> Dictionary:
+	var toward := int(signf(lift_along))
+	var wall := LAYOUT.wall_of(Vector2i(toward, 0) if lift.x == 0 else Vector2i(0, toward))
+	if wall == String(counter.get("wall", "")) or not usable(room, wall): return {}
+	var lift_wall := LAYOUT.wall_of(lift)
+	var door := wall_front(room, lift_wall, lift_along, 0.1)
+	var open: Array = zones.filter(func(zone: Dictionary) -> bool: return not (zone.has("rect") and (zone.rect as Rect2).has_point(door)))
+	open.append({"rect": LAYOUT.wall_rect(room, lift_wall, lift_along, LIFT_FRONT, LAYOUT.FIXTURE_CLEAR.y)})
+	var along_z: bool = wall == "west" or wall == "east"
+	var end := float(lift.y if along_z else lift.x)
+	# The seats from the lift's end: which way that is along the run's own x.
+	var theta := float(TURNS[wall]) * PI / 2.0
+	var lead := signf(Vector2(cos(theta), -sin(theta)).dot(Vector2(0.0, end) if along_z else Vector2(end, 0.0)))
+	var reach := LAYOUT.wall_length(room, wall) / 2
+	var group: int = room.furniture.size()
+	# Longest first (office_props.waiting_seats()): two pairs of seats and their
+	# table, one pair and its table, one pair.
+	var spec: Dictionary = OFFICE.FURNITURE.waiting_row_4
+	for run: Vector2 in [spec.size] + spec.shorter:
+		var width := run.x
+		var a := end * (reach - float(FROM_CORNER[0]) - width / 2)
+		var pieces := wall_pieces(room, "waiting_row_4", 1, wall, a, group)
+		pieces[0].size[0] = width
+		pieces[0].extra["lead"] = lead
+		if not all_fit(room, open, pieces, false): continue
+		room.furniture.append_array(pieces)
+		return {"wall": wall, "along": a, "half": width / 2, "group": group}
 	return {}
 
 ## A run of `row` pieces with their backs to a wall, WALL_GAP off its face, at

@@ -53,6 +53,23 @@ Commits `4e8dfb6`, `afe8937` y `091b1db`.
 - **Mostrador y cocina:** el mostrador de recepción con paneles de roble entre listones y repisa de nogal (`desks.make_reception_counter()`); los muebles de cocina en nogal (`storage.gd`); la pantalla de la lámpara de pie de tela en anillos (`stand_ins.make_floor_lamp()`).
 - **La herramienta de ángulos** deja la cámara fuera de puertas y muebles (`clear_eye()`) y lee los tipos por la paleta (`OFFICE.label()`).
 
+## 14 de noviembre: las doce fotos del autor, modelos y acabado
+
+Sus capturas: `evidence/autor_14nov/f01` a `f12`. Commits `786d9e0` (luz), `17f533e` (cosas de cara a quien las usa), `73e8096` y `9e43fdd` (quince modelos de Sketchfab) y el del acabado. Capturas en `evidence/rediseno/rev5` a `rev9`.
+
+- **Foto 1, aplique del ascensor:** la luz sale de la caja (`accent_sconce()`, `set_sconce()`, perfil `box_sconce`). Queda una banda algo más oscura en el centro del cristal.
+- **Foto 2, botonera tapada:** fuera del marco de teca (`LIFT_CALL_GAP`).
+- **Foto 3, mostrador:** tablero de 0,60 m (`FRONT_DESK.z` 1,0) con el terminal IBM 3178 y su teclado de cara al asiento.
+- **Foto 4, z-fighting blanco en una pared:** **sin resolver**. No se reproduce (32 capturas de lejos y con zoom en dirección y secretaría, `rev9/panel/`) y un escáner de caras coplanarias (`rev9/coplanar_scan.gd`) no encuentra nada: friso y panel están a 1,5 cm. Hace falta la semilla y el sitio de la partida del autor.
+- **Foto 5, fugas de luz a oscuras:** eran los volúmenes de rebote (VoxelGI), no las lámparas: `office_bounce.shines()`, `show_near()`, `INSET` y `OVERLAP`. Medido a 0 en salas cerradas en la semilla 7.
+- **Fotos 6 y 7, cosas de lado:** el lector de microfichas y la nevera estaban horneados a 90° (`build_catalogue.gd` `YAW`); `office_models.FRONTED` y `office_dressing_test.fronts_face_seats()` vigilan 241 cosas con frente.
+- **Foto 8, z-fighting en el dintel:** `SOFFIT_DROP` 4 mm en `door_frame_mesh()`. El marco de acero, sin tocar; no se vio en captura.
+- **Fotos 9 y 10, luz que no sigue las luminarias y cortes por módulo:** a medias. La luz baja de las pantallas (`POOL_ENERGY` 2,4, `BOUNCE_ENERGY` 0,4; la lámpara de la sala con perfil `troffer` en Alto y Ultra) y las juntas de pasillo se solapan. Sin tratar: juntas nave con pasillo, la capa de lámparas de relleno y las galerías de servicio. Acabarlo pide cambiar el contrato de una lámpara por celda: decisión del autor.
+- **Fotos 11 y 12, archivo móvil:** cuatro regletas que emiten, con foco y sombra (`archive_battens()`, `batten_spot()`).
+- **Modelos:** de 48 bajados entran 15 (ventila de techo, rociador, luz de emergencia, armario de manguera, termostato y alarma, cámara, unidad de aire, lavabo, secamanos, terminal 3178, cafetera, lámpara de pie, butacas de espera, pilea y potus); los descartados están en `source_assets/oficinas/_rechazados/` y los que esperan, en su carpeta como `pendiente`. De los tres enlaces del autor solo la ventila era gratuita; la luz de emergencia (5,00 USD) y los ductos (6,90 USD) no se compraron. Los dos kits de ductos CC BY están bajados y sin usar: poner ductos a la vista es diseño nuevo.
+- **Acabado:** butacas de espera en la esquina del ascensor (`office_recipes.wait_corner()`, `office_props.waiting_seats()`; `waiting_row_4` mide 3,5 m con largos `shorter`), mesa baja con la pilea, potus colgado, papelera de acero en código (`PROPS.steel_bin()`); suelo de pasillos `vinyl_hall.tres` (`marble` y `wear` en `tile.gdshader`); recepción con rugosidad −0,24 y `tilt_always`.
+- **Queda:** el reflejo de la recepción sigue más tenue que la referencia; las butacas entran solo por el borde del encuadre de llegada (una pareja en la semilla 7); las vetas del suelo de pasillo se notan mucho; lavabo verde oliva por un error de conversión de color; la luz de emergencia muy oxidada; `fire_alarm` sin sustituto en código; todo visto en Alto y en las semillas 7, 33 y 101.
+
 ## No entró, y por qué
 
 - De Sketchfab (quedan `pendiente` en `source_assets/oficinas/`): máquina de escribir de los años 30, expendedora de café (anuncio y rótulos en inglés), persiana (las del juego son un sombreador), archivador oxidado (se lee como ruina), puertas comerciales de Delly (piezas de varias puertas mezcladas), puerta doble (un solo objeto de 3 m), manilla y pomo (las puertas traen la suya), señal de salida (la del juego ya lo es), sofá de cuero (roto), cenicero de metal (ceniza y etiqueta), silla de aluminio y libros tirados (sin preparar).

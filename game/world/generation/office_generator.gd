@@ -1746,7 +1746,7 @@ func furnish_furniture(job: Dictionary) -> String:
 						chain = counter.duplicate()
 						rng.randi_range(int(entry[2]), int(entry[3]))
 				if String(entry[0]) == "waiting_row_4" and reception_lift != Vector2i.ZERO:
-					var wait := RECIPES.reception_wait(room, walk, chain, reception_lift)
+					var wait := RECIPES.reception_wait(room, walk, chain, reception_lift, float(f.get("arrival_lift_along", 0.0)))
 					if not wait.is_empty():
 						runs.append(wait)
 						rng.randi_range(int(entry[2]), int(entry[3]))

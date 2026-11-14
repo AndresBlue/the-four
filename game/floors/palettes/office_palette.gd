@@ -447,7 +447,8 @@ const FURNITURE := {
 	# wall (office_props.front_desk()): straight, not the L it was, so it fits
 	# the small receptions too.
 	"reception_counter_l": {"size": Vector2(3.4, 1.7), "compact": Vector2(2.9, 1.42), "height": 2.15},
-	"waiting_row_4": {"size": Vector2(3.2, 0.8), "height": 0.9},
+	# Shorter in the lift's corner (office_recipes.wait_corner()): a pair and its table, a pair.
+	"waiting_row_4": {"size": Vector2(3.5, 0.8), "shorter": [Vector2(2.05, 0.8), Vector2(1.5, 0.8)], "height": 0.9},
 	"office_suite": {"size": Vector2(2.0, 2.7), "height": 1.3},
 	"meeting_table_s": {"size": Vector2(3.6, 1.85), "height": 0.9},
 	"meeting_table_m": {"size": Vector2(4.2, 1.85), "height": 0.9},
@@ -640,6 +641,9 @@ const FIXTURE_HALF := {ELECTRICAL: 2.2, SECURITY: 1.1, AIR_PLANT: 1.7}
 ## (office_props.gd, office_models.gd); the stacking chair elsewhere.
 const WAITING_CHAIR := {RECEPTION: "reception_seat", WINDOW: "waiting_chair", SECRETARY: "visitor_chair"}
 
+## The halls whose terrazzo is seen as waxed vinyl tile (floor_look()): the
+## corridors and the lift lobbies; it still sounds as terrazzo.
+const VINYL_HALLS := [LANDING, LOBBY, CORRIDOR, REFUGE]
 ## The floor as it is seen (office_geometry.floor_surface()): Dirección's
 ## carpet shows polished vinyl round its rug (rug_of()); how it sounds is
 ## floor_finish()'s still (hard_floor()).
@@ -647,6 +651,8 @@ static func floor_look(room: Dictionary) -> String:
 	var finish := floor_finish(room)
 	# The reception's vinyl polished, giving back its lights (its reference).
 	if int(room.type) == RECEPTION and finish == "vinyl": return "vinyl_polished"
+	# The halls' waxed vinyl tile, not the dark terrazzo (the author, 14 November 2026).
+	if int(room.type) in VINYL_HALLS and finish == "terrazzo": return "vinyl_hall"
 	return "vinyl" if finish == "carpet_exec" else finish
 
 ## What is left on a room's floor, by its type (office_clutter.litter()): the
